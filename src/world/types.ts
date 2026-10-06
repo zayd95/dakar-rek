@@ -15,7 +15,7 @@ export interface Action {
   /** Hidden unless this returns true (e.g. a trusted-rate job after a recommendation). */
   visible?: (s: GameState) => boolean;
   /** Handled by a dedicated flow instead of the timed action (scenes, outfit, emotes). */
-  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch';
+  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit';
 }
 export interface Interactable {
   id: string;
@@ -39,6 +39,10 @@ export interface HubWorld {
   nodes: { x: number; z: number }[][];
   lamps: THREE.MeshBasicMaterial;
   facadeMat: THREE.MeshLambertMaterial;
+  /** Additive light pools under street lamps, shown at night. */
+  lampGlow: THREE.Mesh;
+  /** Painted sign boards (lit a little at night). */
+  signs: THREE.Mesh[];
   skyDay: number;
   arena: { cx: number; cz: number; r: number } | null;
   ecurie: { cx: number; cz: number } | null;

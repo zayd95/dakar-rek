@@ -1,32 +1,29 @@
-# Handoff — visual pass in progress (6 Oct 2026, 21:55 Dakar)
+# Handoff — after the visual pass (7 Oct 2026)
 
-Branch: `wip/visual-pass` (main = v0.2, last reviewed build).
+`main` now includes the visual pass (see `docs/VISUAL_PASS.md` for before/after captures, what changed and performance).
 
 ## Decided
-- Name: **Dakar Rek**. Design doc: "Dakar Rek — Game Design Document" (Claude Docs, rev 113).
+- Name: **Dakar Rek**. Design doc: "Dakar Rek — Game Design Document" (Claude Docs).
 - First combat form: **lutte avec frappe** (Habib, 6 Oct). Strikes ship only after the written rules are reviewed by a wrestling practitioner. No hybrid.
-- Free plans/tiers only. Blender (MCP) is the only asset tool for now.
-- All cultural content (dances, gestures, rhythms, ngemb, accessories) stays marked Unreviewed until Habib + practitioners review it.
+- Free plans/tiers only, except Higgsfield: Habib authorised up to the 100 available credits (3-day validity from 6–7 Oct, no purchases).
+- All cultural content (dances, gestures, rhythms, ngemb, accessories, interiors' furnishing) stays marked Unreviewed until Habib + practitioners review it.
 
-## Habib's latest request
-"This sucks — keep taking screenshots and improve it until it looks much better." Iterate visuals with real in-game screenshots (desktop 1280×720 and phone 390×844, day and night), compare before/after, commit, republish the preview.
-
-## Done on this branch
-- `public/assets/character_v2.glb` (+ `assets-src/character_rig_v2.blend`): shared Blender humanoid, 20-bone rig, clothing meshes (Tee, Trousers, Boubou, Dress, Kufi, Headwrap, Shoes), ngemb A/B, accessory sockets; clips Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep, Dance_A/B, Celebrate, Entrance_Walk.
-- `src/actors/humanoid.ts`: Humanoid/Wrestler classes, random Dakar looks (boubou/bazin, tees, wax dresses, headwraps). Player, cast, crowd and scene extras now use it (box Character kept as fallback/logic stand-in).
-- Arena crowd placed on three tiers (stands geometry still to build).
-- `src/world/grain.ts`: world-space procedural grain shader (not yet applied to materials).
-- `src/world/batch.ts`: richer 128px facade texture (window frame, shutters, sill stain, slab band).
-- Design doc updated for lutte avec frappe.
+## Done in the visual pass
+- Rendering: ACES, sky dome (`src/world/sky.ts`), horizon fog, warmer sun/moon; grain + world-space procedural textures (`src/world/grain.ts`, `src/world/textures.ts`); partial night windows; lamp light pools.
+- Builder: plinths, cornices, parapets, roof clutter, AC units, boutiques with shutters, balconies, gates, raw breeze-block walls, trees, palms, stalls, zebra crossings, kerbs; flush signs; arena stands/wall/arch/floodlights; station with two car rapides.
+- Procedural car rapide v2 (shared mesh). Tee light band fixed (double-sided cloth). Walkable slabs lowered.
+- Walkable interiors (`src/world/interiors.ts`): starter room and gargotes; Entrer/Sortir; room camera; ceiling light only while indoors.
+- Quality Low: no grain/detail textures, no decorative props.
+- Scripts: `scripts/compare.mjs` (identical-position before/after), `scripts/perf.mjs` (load + fps, headless), `scripts/quickshots.mjs`; `scripts/shots.mjs` has interior checks (45 checks pass).
 
 ## Next steps (in order)
-1. Rendering in `src/main.ts`: ACES tone mapping, sky dome gradient + sun, warmer hemisphere/sun, fog = horizon colour; apply `addGrain` to plain, facade and ground materials in `world/builder.ts`.
-2. Builder details: signs smaller and flush on facades above awnings; darker plinth band at every building base; roof parapets, water tanks, satellite dishes; balconies with railings, AC units, coloured metal doors/gates in Pikine; neem trees; parked cars; street stalls.
-3. Arena: three-tier stands matching the crowd tiers (r 17.9/19.2/20.5, y 0.65/1.2/1.75), outer wall, banners, entrance arch, sand ring border, floodlights.
-4. Fix the light band visible on the T-shirt torso (check Cloth_Tee vs body in a close-up).
-5. Car rapide in Blender (planned asset; `makeCarRapide` loads `public/assets/car_rapide.glb` when present).
-6. Rerun `node scripts/shots.mjs http://localhost:4173/ shots` (after `npm run build && npx vite preview --port 4173`), review images, iterate; update `docs/FEATURES.md`, `docs/ASSET_REGISTER.md`, `docs/screenshots/`; merge to main; republish the preview artifact (claude.ai artifact QZYffkk4jEThNWRM4iU1mN; GLB must be shipped as `character_v2.glb.json` base64 there because .glb is not a served type).
+1. Higgsfield batch 1 (4 images) from Habib's Mac, following `docs/HIGGSFIELD_PLAN.md` (cost check before each job, provenance log). Review, then batch 2.
+2. Blender (Mac): car rapide GLB; modular facade kit (bays, shop ground floor, balcony, parapet) guided by the reviewed references; export GLB with a shared texture atlas; load per hub on demand.
+3. Real-phone tests: load time and fps on a mid-range Android and an iPhone at Low/Medium; then pick the default quality automatically.
+4. Family home and apartment interiors; dibiterie; Maïga-style eatery (confirm what Habib means first).
+5. Phone interior camera (room feels tight at 390×844).
 
 ## Notes
-- Blender files on Habib's Mac: `~/DakarRek-assets/` (character_v2.glb, character_rig_v2.blend, wrestler_v1.*).
-- Headless checks: `scripts/shots.mjs` uses Chromium at /opt/pw-browsers with SwiftShader; `?debug` exposes `window.__dakar`.
+- Preview artifact: claude.ai artifact QZYffkk4jEThNWRM4iU1mN. The GLB is shipped there as `assets/character_v2.glb.json` (base64) because .glb is not a served type.
+- Headless checks: Chromium at /opt/pw-browsers with SwiftShader (CPU): frame rates compare builds only; they are not phone numbers. `?debug` exposes `window.__dakar` (teleport, setHour, enter/exit, meshStats…).
+- Blender files on Habib's Mac: `~/DakarRek-assets/`.

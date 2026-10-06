@@ -59,6 +59,19 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => window.__dakar.act());
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${out}/desktop-action-menu.png` });
+  // interiors: enter the starter room, walk into a wall, save while inside, exit
+  await page.evaluate(() => { window.__dakar.setHour(13); window.__dakar.enter('home'); });
+  await page.waitForTimeout(900);
+  const inRoom = await page.evaluate(() => window.__dakar.pos());
+  check('interior: enter starter room', inRoom.x > 900, `${inRoom.x.toFixed(1)},${inRoom.z.toFixed(1)}`);
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(4000); await page.keyboard.up('KeyW');
+  const wallPos = await page.evaluate(() => window.__dakar.pos());
+  check('interior: walls hold the player inside', wallPos.x > 996 && wallPos.x < 1004 && Math.abs(wallPos.z) < 3, `${wallPos.x.toFixed(1)},${wallPos.z.toFixed(1)}`);
+  await page.screenshot({ path: `${out}/desktop-interior-home.png` });
+  await page.evaluate(() => { window.__dakar.state.data.wallet += 0; });
+  await page.evaluate(() => window.__dakar.exit()); await page.waitForTimeout(900);
+  const outPos = await page.evaluate(() => window.__dakar.pos());
+  check('interior: exit back to the street', outPos.x < 900 && outPos.hub === 'pikine', `${outPos.x.toFixed(1)},${outPos.z.toFixed(1)}`);
   // travel
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.__dakar.travelTo('corniche'));

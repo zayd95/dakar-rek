@@ -23,8 +23,15 @@ export class Batch {
   /** Box with its base at y. */
   box(w: number, h: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0) {
     const g = new THREE.BoxGeometry(w, h, d);
+    // drop the bottom face (-y, indices 18..23): boxes stand on something, it is never seen
+    const idx = Array.from(g.index!.array); idx.splice(18, 6); g.setIndex(idx);
     g.translate(0, h / 2, 0);
     this.finish(g, color, x, y, z, rotY);
+  }
+  /** Flat horizontal quad (2 triangles) lying at height y: road markings, stripes, decals. */
+  flat(w: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0) {
+    const g = new THREE.PlaneGeometry(w, d);
+    this.finish(g, color, x, y, z, rotY, -Math.PI / 2);
   }
   /** Box whose side faces tile a window texture (storey/bay repeat); roof/underside sample plain wall. */
   facade(w: number, h: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0) {
@@ -45,6 +52,12 @@ export class Batch {
     const g = new THREE.CylinderGeometry(rTop, rBot, h, seg);
     g.translate(0, h / 2, 0);
     this.finish(g, color, x, y, z, rot[1], rot[0], rot[2]);
+  }
+  /** Low-poly blob (tree canopy, sandbag, bush). sy squashes it vertically. */
+  blob(r: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, sy = 1, detail = 1) {
+    const g = new THREE.IcosahedronGeometry(r, detail);
+    g.scale(1, sy, 1);
+    this.finish(g, color, x, y, z);
   }
   sphere(r: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, half = false) {
     const g = half ? new THREE.SphereGeometry(r, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2) : new THREE.SphereGeometry(r, 12, 8);

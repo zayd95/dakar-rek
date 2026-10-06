@@ -8,6 +8,9 @@ import { loadSave, writeSave, clearSave, newSave } from './core/save';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
 import { buildHub } from './world/builder';
+import { Sky } from './world/sky';
+import { setGrainEnabled } from './world/grain';
+import { buildInterior, setInteriorDaylight, type Interior } from './world/interiors';
 import { ACTIONS, HUB_NAMES, travelLeg } from './world/content';
 import type { Action, Collider, HubWorld, Interactable } from './world/types';
 import { Character, PLAYER_OUTFIT } from './actors/character';
@@ -40,6 +43,8 @@ try {
   throw new Error('WebGL unavailable');
 }
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 type Quality = 'low' | 'medium' | 'high';
@@ -52,12 +57,15 @@ const QUAL = {
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9bd3f3);
-scene.fog = new THREE.Fog(0x9bd3f3, 70, 340);
+scene.fog = new THREE.Fog(0x9bd3f3, 60, 300);
 const camera = new THREE.PerspectiveCamera(58, 1, 0.3, 700);
+const sky = new Sky(); scene.add(sky.mesh);
 const hemi = new THREE.HemisphereLight(0xffffff, 0x8a7a60, 0.9); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1); sun.castShadow = true;
 sun.shadow.camera.left = -60; sun.shadow.camera.right = 60; sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60; sun.shadow.camera.far = 220; sun.shadow.bias = -0.0005;
 scene.add(sun, sun.target);
+/** Ceiling light of the interior the player is in. Only in the scene while indoors: outdoors every surface would pay for it. */
+const roomLight = new THREE.PointLight(0xffd9a0, 0, 9, 1.6);
 
 function applyQuality() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, QUAL[quality].pr));
@@ -92,30 +100,41 @@ let emoteT = 0;
 const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
 let hourOverride: number | null = null;
+/** Walkable interiors of this hub, and the one the player is in. */
+let interiors = new Map<string, Interior>();
+let inside: { int: Interior; door: Interactable } | null = null;
 
-const SKY: [number, number][] = [[0, 0x0a1330], [5, 0x0d1a3a], [6.2, 0xf6b27a], [8, 0x9bd3f3], [17, 0x9bd3f3], [18.8, 0xf08a5a], [20, 0x0d1a3a], [24, 0x0a1330]];
-function skyAt(h: number): THREE.Color {
-  for (let i = 0; i < SKY.length - 1; i++) {
-    const [h0, c0] = SKY[i], [h1, c1] = SKY[i + 1];
-    if (h >= h0 && h <= h1) return new THREE.Color(c0).lerp(new THREE.Color(c1), (h - h0) / (h1 - h0));
-  }
-  return new THREE.Color(SKY[0][1]);
-}
-
+const sunDir = new THREE.Vector3();
 function updateLighting(hour: number) {
   const d = daylight(hour), night = 1 - clamp(d * 3.2, 0, 1);
-  const sky = skyAt(hour);
-  (scene.background as THREE.Color).copy(sky); (scene.fog as THREE.Fog).color.copy(sky);
-  hemi.intensity = 0.38 + 0.62 * d; hemi.color.set(0xdde8ff).lerp(new THREE.Color(0xfff4de), d);
+  const low = 1 - clamp((d - 0.05) / 0.4, 0, 1);              // 1 near sunrise/sunset, 0 at midday
+  // Sun path: rises in the east (+x), sets over the ocean (-x), leaning south (+z) so facades get raking light.
   const a = clamp((hour - 6) / 13, 0, 1) * Math.PI;
-  const night2 = hour < 6 || hour >= 19;
-  const sd = night2 ? new THREE.Vector3(-0.3, 0.9, 0.2) : new THREE.Vector3(Math.cos(a) * 0.9, Math.max(0.25, Math.sin(a)), 0.35);
-  sun.position.copy(pos).addScaledVector(sd.normalize(), 90); sun.target.position.copy(pos);
-  sun.intensity = night2 ? 0.28 : 0.2 + 1.0 * d;
-  sun.color.set(night2 ? 0x8aa4ff : d < 0.35 ? 0xffc48a : 0xfff6e8);
+  const isNight = hour < 6 || hour >= 19;
+  sunDir.set(Math.cos(a) * 0.85, Math.sin(a) * 0.95, 0.42).normalize();
+  sky.update(hour, sunDir, isNight ? 0 : 1, camera.position);
+  (scene.background as THREE.Color).copy(sky.horizon); (scene.fog as THREE.Fog).color.copy(sky.horizon);
+  (scene.fog as THREE.Fog).near = isNight ? 40 : 60; (scene.fog as THREE.Fog).far = isNight ? 240 : 320;
+  // Moonlight at night: cool, from high up, so streets still read.
+  const ld = isNight ? new THREE.Vector3(-0.35, 0.85, 0.3).normalize() : new THREE.Vector3(sunDir.x, Math.max(0.22, sunDir.y), sunDir.z).normalize();
+  sun.position.copy(pos).addScaledVector(ld, 90); sun.target.position.copy(pos);
+  sun.intensity = isNight ? 0.55 : 0.8 + 1.5 * d;
+  sun.color.set(isNight ? 0x9fb4ff : 0xfff1dc).lerp(new THREE.Color(0xffa45c), isNight ? 0 : low * 0.85);
+  hemi.intensity = isNight ? 0.75 : 0.7 + 0.35 * d;
+  hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55));
+  hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52);
+  renderer.toneMappingExposure = isNight ? 1.3 : 1.0;
+  if (inside) {
+    // indoors: the sun only comes through the shutters; the ceiling light does the work
+    sun.intensity *= 0.25; hemi.intensity = isNight ? 0.35 : 0.55; hemi.color.set(0xfff2e0); hemi.groundColor.set(0x6a5a48);
+    setInteriorDaylight(sky.horizon.clone().lerp(new THREE.Color(0xffffff), isNight ? 0 : 0.5).multiplyScalar(isNight ? 0.5 : 1.1));
+    roomLight.position.copy(inside.int.light); roomLight.color.set(inside.int.lightColor); roomLight.intensity = isNight ? 9 : 6;
+  } else roomLight.intensity = 0;
   if (world) {
-    world.facadeMat.emissiveIntensity = night * 1.0;
+    world.facadeMat.emissiveIntensity = night * 1.25;
     world.lamps.color.setScalar(lerp(0.45, 1, night));
+    world.lampGlow.visible = night > 0.3;
+    for (const m of world.signs) (m.material as THREE.MeshLambertMaterial).emissiveIntensity = night * 0.45;
   }
 }
 
@@ -124,8 +143,9 @@ const rand = rng(Date.now() & 0xffff);
 
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   if (world) { scene.remove(world.group); world.dispose(); }
+  setGrainEnabled(quality !== 'low');                     // procedural surface noise is the main per-pixel cost
   extra.clear();
-  world = buildHub(id);
+  world = buildHub(id, quality === 'low');
   scene.add(world.group);
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
   extra.add(crowd.group, traffic.group);
@@ -139,6 +159,14 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
     const c = h ?? new Character(m.outfit); c.group.position.set(x, 0.1, z); extra.add(c.group);
     castChars.push({ id: m.id, c, h, x, z });
     world.interactables.push({ id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x, z, radius: 3.2, actions: m.id === 'ibou' ? ACTIONS.ibou : CHAT, npc: m.id });
+  }
+  interiors = new Map(); inside = null; follow.indoor = false; scene.remove(roomLight);
+  let n = 0;
+  for (const it of world.interactables) {
+    const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : null;
+    if (!kind) continue;
+    const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
+    world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
   }
   const p = at ?? world.spawn;
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
@@ -167,7 +195,7 @@ let nearest: Interactable | null = null;
 function findNearest() {
   nearest = null; if (!world) return;
   let best = 1e9;
-  for (const it of world.interactables) {
+  for (const it of inside ? inside.int.interactables : world.interactables) {
     const d = Math.hypot(it.x - pos.x, it.z - pos.z);
     if (d <= it.radius && d < best) { best = d; nearest = it; }
   }
@@ -217,7 +245,38 @@ function runSpecial(a: Action) {
     case 'watch': startScene('watch', () => { if (a.needs) state.adjust(a.needs); }); break;
     case 'outfit': openOutfit(); break;
     case 'emote': openEmotes(); break;
+    case 'enter': if (nearest) enterInterior(nearest); break;
+    case 'exit': exitInterior(); break;
   }
+}
+
+/** Hide the street (and its crowd) while indoors: nothing outside is visible and it saves draw calls. */
+function showStreet(on: boolean) {
+  if (!world) return;
+  const rooms = new Set<THREE.Object3D>([...interiors.values()].map(i => i.group));
+  for (const c of world.group.children) c.visible = on || rooms.has(c);
+  for (const int of interiors.values()) int.group.visible = !on && inside?.int === int;
+  extra.visible = on;
+}
+
+function enterInterior(door: Interactable) {
+  const int = interiors.get(door.id); if (!int) return;
+  hud.fade(true, door.name);
+  setTimeout(() => {
+    inside = { int, door }; follow.indoor = true; showStreet(false); scene.add(roomLight);
+    pos.set(int.spawn.x, 0.1, int.spawn.z); facing = int.spawn.yaw; speed = 0; follow.snapBehind(facing);
+    hud.fade(false); mode = 'play'; input.enabled = true;
+  }, 350);
+}
+function exitInterior() {
+  if (!inside) return;
+  const d = inside.door;
+  hud.fade(true, HUB_NAMES[world!.id]);
+  setTimeout(() => {
+    inside = null; follow.indoor = false; showStreet(true); scene.remove(roomLight);
+    pos.set(d.x, 0.1, d.z); speed = 0; follow.snapBehind(facing);
+    hud.fade(false); mode = 'play'; input.enabled = true; saveNow();
+  }, 350);
 }
 
 function startScene(kind: SceneKind, onDone?: () => void) {
@@ -369,9 +428,18 @@ function openSystem() {
   });
 }
 
-function saveNow(): boolean { state.place(world!.id, pos.x, pos.z, facing); return writeSave(store, state.data); }
+function saveNow(): boolean {
+  // indoors, save the street position at the door: interiors are rebuilt on load
+  if (inside) state.place(world!.id, inside.door.x, inside.door.z, facing); else state.place(world!.id, pos.x, pos.z, facing);
+  return writeSave(store, state.data);
+}
 
-hud.onAction = () => { if (mode === 'play' && nearest) { if (nearest.kind === 'travel') openTravel(); else openActions(nearest); } };
+hud.onAction = () => {
+  if (mode !== 'play' || !nearest) return;
+  if (nearest.kind === 'travel') openTravel();
+  else if (nearest.actions.length === 1 && nearest.actions[0].special === 'exit') exitInterior();
+  else openActions(nearest);
+};
 hud.onMenu = () => { if (mode === 'play') openSystem(); };
 new MutationObserver(() => { if (!hud.modalOpen && mode === 'menu') { mode = 'play'; input.enabled = true; } }).observe(document.getElementById('modal')!, { attributes: true });
 addEventListener('visibilitychange', () => { if (document.hidden && world) saveNow(); });
@@ -406,8 +474,8 @@ function frame(now: number) {
       const want = Math.atan2(dx, dz);
       facing += Math.atan2(Math.sin(want - facing), Math.cos(want - facing)) * Math.min(1, dt * 14);
       let nx = pos.x + (dx / (Math.hypot(dx, dz) || 1)) * speed * dt, nz = pos.z + (dz / (Math.hypot(dx, dz) || 1)) * speed * dt;
-      [nx, nz] = pushOut(nx, nz, 0.5, world.colliders);
-      const b = world.bounds; nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1);
+      [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
+      const b = inside ? inside.int.bounds : world.bounds; nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1);
       pos.x = nx; pos.z = nz;
     } else speed *= 0.8;
     state.tick(dt * 1000);
@@ -431,7 +499,7 @@ function frame(now: number) {
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
   hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);
 
-  if (!lambScene) follow.update(dt, pos, facing, drag, world.colliders, innerHeight > innerWidth, speed > 0.5);
+  if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined);
   const ct = cityTimeAt(Date.now()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
@@ -454,7 +522,7 @@ void start();
 
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
-    state, hubs: HUB_IDS,
+    state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
     pos: () => ({ x: pos.x, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
@@ -477,6 +545,15 @@ if (DEBUG) {
     outfit: () => openOutfit(), journal: () => openJournal(),
     emote(i = 0) { playEmote(i); },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
+    enter(kind: 'home' | 'gargote') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
+    exit() { exitInterior(); },
+    look(yaw: number, pitch?: number) { follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
+    place(x: number, z: number, yaw: number) { pos.set(x, 0.1, z); facing = yaw; follow.snapBehind(yaw); },
+    meshStats() {
+      const rows: { name: string; tris: number; visible: boolean }[] = [];
+      world?.group.children.forEach((o, i) => { let t = 0; o.traverse(m => { const g = (m as THREE.Mesh).geometry; if (g) t += (g.index ? g.index.count : g.attributes.position.count) / 3; }); rows.push({ name: `${i}:${o.type}:${((o as THREE.Mesh).material as THREE.Material | undefined)?.type ?? ''}`, tris: Math.round(t), visible: o.visible }); });
+      return rows.sort((a, b) => b.tris - a.tris).slice(0, 12);
+    },
     lookAtPlayer(dist = 4, yawOff = Math.PI) { follow.yaw = facing + yawOff; void dist; },
   };
 }

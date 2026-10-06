@@ -2,7 +2,7 @@
 
 Legend: **Implemented** = works and was verified (unit tests and/or headless browser checks). **Partial** = a first working version with stated limits. **Pending** = not started. Placeholders are never listed as implemented. Cultural content is always marked **Unreviewed** until Habib and wrestling practitioners have reviewed it.
 
-Last updated: v0.2 (6 October 2026). Verification: 17 unit tests; headless Chromium checks at 1280×720 and 390×844 (`scripts/shots.mjs`), all passing.
+Last updated: visual pass (7 October 2026). Verification: 17 unit tests; 45 headless Chromium checks at 1280×720 and 390×844 (`scripts/shots.mjs`), all passing. Before/after captures: `docs/VISUAL_PASS.md`.
 
 ## Implemented
 
@@ -20,6 +20,8 @@ Last updated: v0.2 (6 October 2026). Verification: 17 unit tests; headless Chrom
 | Short branching story beats | 13 beats, 1–3 choices; recommendation, rival introduction, vendor remembering help, écurie celebration, news travelling between friends | unit tests, headless (UI choice) |
 | Beats unlock jobs and discounts | Trusted rate at Modou's garage, Ousmane's morning pirogue, friends' prices at two gargotes, paid service at Le Pointe | unit tests |
 | One suggested next step | HUD chip + journal (Carnet) | headless |
+| Walkable interiors | Starter room (Pikine) and gargotes (Plateau, Corniche, Pikine): Entrer/Sortir, collisions, room camera, ceiling light, actions inside (sleep, wash, order); saving indoors stores the door position | headless (enter, wall collision, exit) |
+| Rendering pass | Tone mapping, sky dome with haze/sun/stars, procedural grain and seamless textures, partial night windows, lamp light pools; Low quality turns per-pixel extras off | headless captures day/night, desktop/phone |
 | Training, entrance and stands scenes are distinct | Separate settings, camera, sound and on-screen label | headless (each scene runs and ends) |
 
 ## Partial
@@ -33,13 +35,14 @@ Last updated: v0.2 (6 October 2026). Verification: 17 unit tests; headless Chrom
 | Combat | Arena entry point and stance/grab/fall clips | Rule set unresolved (lutte simple or avec frappe); no fight implemented |
 | City clock | From the device clock | Server time |
 | Jobs | Simple timed jobs in each hub + trusted-rate variants | Tiak Tiak, clando and Yango driving jobs |
-| Food venues | Order and eat; friends' discounts | Seating, interiors, Maïga-style spot, dibiterie, nightlife |
+| Food venues | Order and eat; friends' discounts; walkable gargote interiors with tables and counter | Sitting animation at tables, Maïga-style spot, dibiterie, nightlife |
 | NPCs | Recurring cast standing at their places; background walkers | Daily routines and movement between places |
-| Quality settings | Low / Medium / High | Automatic choice from measured performance |
+| Quality settings | Low / Medium / High; Low also drops grain, detail textures and decorative props | Automatic choice from measured performance; real-phone measurements |
+| Generated references and textures | Plan, prompts and provenance rules in `docs/HIGGSFIELD_PLAN.md` | Not run: Higgsfield sign-in not available in the cloud session; 0 credits spent |
 
 ## Pending
 
-Driving (Tiak Tiak, clando, Yango) · vehicle radio · shared vehicles and anti-blocking · interiors · nightlife and dance areas · shared meals · multiplayer (presence, chat, home visits, invitations) · social money · bills and tontines · housing progression · mosque and collective prayer · Quran reading · làmb combat · traits, wishes, aspiration · skills beyond counters · city milestones · photo mode · live statistics · accounts, server ledger, migrations (Supabase + Drizzle) · session servers (Durable Objects) · asset CDN · monitoring.
+Driving (Tiak Tiak, clando, Yango) · vehicle radio · shared vehicles and anti-blocking · family home and apartment interiors · nightlife and dance areas · shared meals · multiplayer (presence, chat, home visits, invitations) · social money · bills and tontines · housing progression · mosque and collective prayer · Quran reading · làmb combat · traits, wishes, aspiration · skills beyond counters · city milestones · photo mode · live statistics · accounts, server ledger, migrations (Supabase + Drizzle) · session servers (Durable Objects) · asset CDN · monitoring.
 
 ## Provisional decisions taken without review
 

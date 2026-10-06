@@ -27,7 +27,7 @@ export class Crowd {
       const e = pick(world.edges, rand);
       const c = humanoidReady() ? new Humanoid(randomLook(rand)) : new Character(pick(NPC_OUTFITS, rand));
       this.group.add(c.group);
-      this.walkers.push({ char: c, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 1.1 + rand() * 0.7, lat: (rand() < 0.5 ? -1 : 1) * (4.6 + rand() * 1.6), prev: '' });
+      this.walkers.push({ char: c, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 1.1 + rand() * 0.7, lat: (rand() < 0.5 ? -1 : 1) * (5.3 + rand() * 1.2), prev: '' });
     }
   }
   update(dt: number) {
@@ -62,7 +62,7 @@ export class DecorativeTraffic {
       const e = pick(world.edges, rand);
       const g = rand() < 0.35 ? makeCarRapide() : makeTaxi(pick([0xf0b800, 0xf2f2ec, 0xd9482b, 0x2f8fd1], rand));
       this.group.add(g);
-      this.cars.push({ g, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 5 + rand() * 3, prev: '', lane: 3.6 });
+      this.cars.push({ g, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 5 + rand() * 3, prev: '', lane: 2.5 });
     }
   }
   update(dt: number) {

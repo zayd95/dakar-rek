@@ -59,9 +59,10 @@ function fabric(base: number, accent: number, pattern: Pattern): THREE.Texture |
   t.repeat.set(3, 3); t.flipY = false; fabricCache.set(key, t); return t;
 }
 function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xffffff): THREE.Material {
-  if (pattern === 'bazin') return new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.05 }); // bazin's sheen
+  // Double-sided like the Blender materials: some cloth faces point inward and would otherwise vanish.
+  if (pattern === 'bazin') return new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.05, side: THREE.DoubleSide }); // bazin's sheen
   const map = fabric(color, accent, pattern);
-  return new THREE.MeshLambertMaterial({ color: map ? 0xffffff : color, map });
+  return new THREE.MeshLambertMaterial({ color: map ? 0xffffff : color, map, side: THREE.DoubleSide });
 }
 
 const SOCKET_NODE: Record<Socket, string> = { armL: 'socket_armL', armR: 'socket_armR', waist: 'socket_waist', neck: 'socket_neck' };
@@ -84,8 +85,8 @@ export class Humanoid {
     if (!template) throw new Error('character asset not loaded');
     this.root = cloneSkinned(template.scene);
     this.group.add(this.root); this.group.name = 'humanoid_v2';
-    this.skinMat = new THREE.MeshLambertMaterial({ color: 0x5b3420 });
-    const hair = new THREE.MeshLambertMaterial({ color: 0x141011 });
+    this.skinMat = new THREE.MeshLambertMaterial({ color: 0x5b3420, side: THREE.DoubleSide });
+    const hair = new THREE.MeshLambertMaterial({ color: 0x141011, side: THREE.DoubleSide });
     this.root.traverse(o => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;

@@ -57,6 +57,9 @@ export const ACTIONS: Record<string, Action[]> = {
   ],
 };
 
+/** Door action on enterable places (home, gargote): opens the walkable interior. */
+export const ENTER: Action = { id: 'entrer', label: 'Entrer', detail: 'Visiter l’intérieur', seconds: 0, special: 'enter' };
+
 export interface TravelLeg { cost: number; minutes: number }
 const legs: Record<string, TravelLeg> = {
   'plateau-corniche': { cost: 500, minutes: 10 }, 'plateau-almadies': { cost: 1500, minutes: 25 },
