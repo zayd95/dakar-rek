@@ -1,19 +1,24 @@
 {
-  "name": "dakar-life",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "dakar-rek",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dakar Rek — open-world life sim set in Dakar (Three.js + TypeScript + Vite)",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "three": "^0.169.0"
   },
   "devDependencies": {
-    "html-minifier-terser": "^7.2.0",
-    "terser": "^5.51.2"
+    "@types/three": "^0.169.0",
+    "playwright": "^1.56.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
   }
 }
