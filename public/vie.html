@@ -1,0 +1,1237 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Dakar Life : vis ta vie à Dakar. Car rapide, ceebu jën, lutte, tontine et délestage.">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head><body>
+<title>Dakar Life</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Layout: phone-first single column — car-rapide stripe band, compact HUD, painted Cap-Vert peninsula map, action list, bottom tab bar; two columns on desktop */
+:root{
+  --paper:#E9EFF3; --card:#FFFFFF; --ink:#13202F; --muted:#5A6A7B; --line:rgba(19,32,47,.12); --chip:#EDF2F6;
+  --yellow:#F2B300; --blue:#1A4C9C; --on-yellow:#13202F; --glass:#BCD7EA;
+  --sea:#8BBCDD; --sea-ink:#4A88B8; --land:#F1E6CC; --land-edge:#CDB688; --lac:#E59AB6; --night:#0A1B3D;
+  --food:#CF3B27; --work:#1A4C9C; --fun:#0B8A50; --shop:#B37C00; --home:#13202F;
+  --good:#157544; --bad:#BE2A40; --warn:#A86200;
+  --f-display:'Bungee','Arial Black',Impact,sans-serif;
+  --f-body:'Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --nav-h:62px; --r:16px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#08121D; --card:#101E2F; --ink:#E6EDF4; --muted:#93A4B7; --line:rgba(230,237,244,.13); --chip:#172A40;
+  --blue:#3D70C9; --glass:#2B4A66;
+  --sea:#0E2943; --sea-ink:#2A5884; --land:#263245; --land-edge:#46566F; --lac:#8E4A66; --night:#000814;
+  --food:#F06A52; --work:#6F9CEB; --fun:#3BC27D; --shop:#E5B238; --home:#E6EDF4;
+  --good:#4CC386; --bad:#F06B80; --warn:#F0A53D; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#08121D; --card:#101E2F; --ink:#E6EDF4; --muted:#93A4B7; --line:rgba(230,237,244,.13); --chip:#172A40;
+  --blue:#3D70C9; --glass:#2B4A66;
+  --sea:#0E2943; --sea-ink:#2A5884; --land:#263245; --land-edge:#46566F; --lac:#8E4A66; --night:#000814;
+  --food:#F06A52; --work:#6F9CEB; --fun:#3BC27D; --shop:#E5B238; --home:#E6EDF4;
+  --good:#4CC386; --bad:#F06B80; --warn:#F0A53D; color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+h1,h2,h3{text-wrap:balance;margin:0}
+p{margin:0}
+.app{max-width:540px;margin:0 auto;padding-inline:16px;padding-bottom:calc(var(--nav-h) + 24px + env(safe-area-inset-bottom,0px));min-height:100%}
+.muted{color:var(--muted)}
+.stripe{height:9px;margin-inline:-16px;background:
+  linear-gradient(var(--blue),var(--blue)) top/100% 3px no-repeat,
+  repeating-linear-gradient(90deg,var(--yellow) 0 26px,var(--food) 26px 30px,var(--yellow) 30px 56px,var(--fun) 56px 60px)}
+.stripe.sm{margin-inline:0;border-radius:6px 6px 0 0}
+:focus-visible{outline:2.5px solid var(--blue);outline-offset:2px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+
+/* ---------- onboarding */
+.onboard{display:flex;flex-direction:column;gap:22px;padding-block:0 32px}
+.ob-hero{display:flex;flex-direction:column;gap:10px;padding-top:22px}
+.logo{font-family:var(--f-display);font-size:clamp(44px,13vw,64px);line-height:.92;letter-spacing:.01em;color:var(--blue)}
+.logo span{display:block;color:var(--yellow);-webkit-text-stroke:1.5px var(--on-yellow);paint-order:stroke fill}
+.ob-hero p{font-size:17px;max-width:34ch}
+.car{width:min(320px,100%);height:auto;display:block;margin-top:4px}
+.car .body{animation:drive 1.4s cubic-bezier(.2,.8,.2,1) both}
+.car .wheel{transform-box:fill-box;transform-origin:center;animation:spin 1.4s cubic-bezier(.2,.8,.2,1) both}
+@keyframes drive{from{transform:translateX(-110%)}to{transform:none}}
+@keyframes spin{from{transform:rotate(-720deg)}to{transform:none}}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label,.field .lbl{font-weight:700;font-size:13px}
+.input{font:inherit;font-size:17px;padding:13px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);width:100%;box-sizing:border-box}
+.input:focus{border-color:var(--blue);outline:none}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.sw{width:38px;height:38px;border-radius:50%;border:3px solid var(--card);box-shadow:0 0 0 1.5px var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ink)}
+.starts{display:grid;grid-template-columns:1fr;gap:10px}
+.start{display:flex;flex-direction:column;gap:6px;text-align:left;padding:14px 16px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--card);cursor:pointer}
+.start b{font-family:var(--f-display);font-weight:400;font-size:17px;letter-spacing:.01em}
+.start small{color:var(--muted);font-size:13.5px}
+.start .tag{font-size:12px;font-weight:700;color:var(--blue)}
+.start[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;padding:14px 18px;font-weight:800;font-size:16px;cursor:pointer;background:var(--yellow);color:var(--on-yellow);box-shadow:0 3px 0 var(--on-yellow)}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--on-yellow)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.small{padding:9px 13px;font-size:14px;border-radius:11px}
+.link{background:none;border:0;padding:0;color:var(--blue);font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* ---------- HUD */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--paper);padding-bottom:10px;margin-inline:-16px;padding-inline:16px;box-shadow:0 1px 0 var(--line)}
+.hud .stripe{margin-bottom:10px}
+.hud-row{display:flex;align-items:center;gap:10px}
+.av{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:#fff;font-size:16px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35);text-shadow:0 1px 1px rgba(0,0,0,.25)}
+.av.lg{width:56px;height:56px;font-size:24px}
+.hud-id{flex:1;min-width:0}
+.hud-name{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-time{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hud-time svg{width:13px;height:13px;flex:none}
+.hud-money{text-align:right}
+.hud-money b{display:block;font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hud-money small{font-size:11.5px;color:var(--muted)}
+.needs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.need{display:flex;flex-direction:column;gap:4px;min-width:0}
+.need span{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.need .bar{height:7px;border-radius:4px;background:var(--chip);overflow:hidden}
+.need .bar i{display:block;height:100%;border-radius:4px;background:var(--fun);transition:width .5s}
+.need.mid .bar i{background:var(--shop)}
+.need.low .bar i{background:var(--bad)}
+.need.low span{color:var(--bad)}
+.banners{display:flex;gap:6px;margin-top:9px;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
+.banners::-webkit-scrollbar{display:none}
+.bn{flex:none;font-size:12px;font-weight:700;padding:5px 10px;border-radius:999px;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.bn::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c,var(--muted))}
+
+/* ---------- views */
+.view{padding-top:14px}
+.mapcard{position:relative;border-radius:20px;overflow:hidden;background:var(--sea);box-shadow:0 0 0 1px var(--line)}
+#map{display:block;width:100%;height:auto;aspect-ratio:400/290;max-width:100%;touch-action:manipulation}
+.m-sea{fill:var(--sea)}
+.m-wave{fill:none;stroke:var(--sea-ink);stroke-width:.8;opacity:.45}
+.m-land{fill:var(--land);stroke:var(--land-edge);stroke-width:1.4;stroke-linejoin:round}
+.m-lac{fill:var(--lac);stroke:var(--land-edge);stroke-width:.8}
+.m-ter{fill:none;stroke:var(--blue);stroke-width:1.6;stroke-dasharray:5 3;opacity:.55}
+.m-brt{fill:none;stroke:var(--shop);stroke-width:1.6;stroke-dasharray:2 3;opacity:.7}
+.m-water{fill:var(--sea-ink);font:700 7px var(--f-body);letter-spacing:.28em}
+.m-night{fill:var(--night);pointer-events:none;transition:opacity .8s}
+.pin{cursor:pointer}
+.pin-hit{fill:transparent}
+.pin-dot{stroke:var(--card);stroke-width:2.2;transition:r .2s}
+.c-food{fill:var(--food)} .c-work{fill:var(--work)} .c-fun{fill:var(--fun)} .c-shop{fill:var(--shop)} .c-home{fill:var(--home)}
+.pin-home{fill:var(--home);stroke:var(--card);stroke-width:2;stroke-linejoin:round}
+.pin.closed .pin-dot{opacity:.55}
+.pin.on .pin-dot,.pin.on .pin-home{stroke:var(--yellow);stroke-width:3}
+.pin-lbl{font:700 9.5px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+.pin:focus{outline:none}
+.pin:focus-visible .pin-dot{stroke:var(--blue);stroke-width:3}
+.me-ring{fill:none;stroke-width:2;transform-box:fill-box;transform-origin:center;animation:ring 1.8s ease-out infinite}
+@keyframes ring{from{transform:scale(.9);opacity:.9}to{transform:scale(2);opacity:0}}
+.me-ini{font:800 9px var(--f-body);fill:#fff;pointer-events:none}
+.peer{stroke:var(--card);stroke-width:1.5}
+.peer-n{font:800 7px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--card);stroke-width:2.5px}
+.map-legend{position:absolute;right:8px;top:8px;max-width:72%;justify-content:flex-end;display:flex;gap:5px;flex-wrap:wrap;font-size:10px;font-weight:700;color:var(--ink);pointer-events:none}
+.map-legend span{display:flex;align-items:center;gap:4px;background:var(--card);padding:2px 7px;border-radius:999px;opacity:.92}
+.map-legend i{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.chips{display:flex;gap:7px;overflow-x:auto;padding-block:12px 4px;margin-inline:-16px;padding-inline:16px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:flex;align-items:center;gap:6px;border:0;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.chip[aria-current="true"]{box-shadow:inset 0 0 0 2px var(--ink)}
+.chip.here::after{content:"ici";font-size:10px;font-weight:800;background:var(--yellow);color:var(--on-yellow);padding:1px 6px;border-radius:999px}
+
+.panel{margin-top:12px;display:flex;flex-direction:column;gap:12px;scroll-margin-top:150px}
+.ph{display:flex;flex-direction:column;gap:6px}
+.ph h2{font-family:var(--f-display);font-weight:400;font-size:24px;line-height:1.05;letter-spacing:.005em}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--chip);color:var(--muted)}
+.pill.here{background:var(--yellow);color:var(--on-yellow)}
+.pill.open{color:var(--good)} .pill.shut{color:var(--bad)}
+.desc{color:var(--muted);font-size:14px;max-width:60ch}
+.travel{background:var(--card);border-radius:var(--r);padding:12px;box-shadow:0 0 0 1px var(--line)}
+.travel-h{font-weight:800;font-size:13px;margin-bottom:8px}
+.tgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tbtn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:0;border-radius:12px;padding:10px 11px;background:var(--chip);cursor:pointer;min-width:0}
+.tbtn b{font-size:14px}
+.tbtn span{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tbtn em{font-style:normal;font-size:11.5px;color:var(--blue);font-weight:600}
+.tbtn:hover:not(:disabled){box-shadow:inset 0 0 0 1.5px var(--ink)}
+.tbtn:disabled{opacity:.45;cursor:not-allowed}
+.tbtn.best{background:var(--yellow);color:var(--on-yellow)}
+.tbtn.best span,.tbtn.best em{color:var(--on-yellow)}
+.peers-here{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.peers-here .dots{display:flex}
+.peers-here .dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--paper);margin-left:-5px}
+.peers-here .dots i:first-child{margin-left:0}
+.sec{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.acts{display:flex;flex-direction:column;gap:7px}
+.act{display:flex;align-items:center;gap:10px;justify-content:space-between;text-align:left;border:0;background:var(--card);border-radius:14px;padding:11px 13px;box-shadow:0 0 0 1px var(--line);cursor:pointer;width:100%}
+.act:hover:not(:disabled){box-shadow:0 0 0 1.5px var(--ink)}
+.act:active:not(:disabled){transform:scale(.99)}
+.act:disabled{cursor:not-allowed}
+.act:disabled .act-label{color:var(--muted)}
+.act-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.act-label{font-weight:700;font-size:14.5px}
+.act-meta{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.act-why{font-size:12px;color:var(--bad);font-weight:600}
+.act-fx{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;flex:0 1 44%}
+.fx{font-style:normal;font-size:11px;font-weight:800;padding:2px 6px;border-radius:6px;background:var(--chip);white-space:nowrap;font-variant-numeric:tabular-nums}
+.fx.up{color:var(--good)} .fx.dn{color:var(--bad)} .fx.money{color:var(--shop)}
+.info-row{display:flex;justify-content:space-between;gap:10px;padding:11px 13px;border-radius:14px;background:var(--chip);font-size:14px}
+.info-row b{font-weight:700}
+.info-row span{color:var(--muted);font-size:12.5px;text-align:right}
+
+/* ---------- cards (Moi / Live / Journal) */
+.stack{display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border-radius:var(--r);padding:14px 16px;box-shadow:0 0 0 1px var(--line);display:flex;flex-direction:column;gap:10px}
+.card h3{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.idcard{flex-direction:row;align-items:center;gap:14px}
+.idcard h2{font-family:var(--f-display);font-weight:400;font-size:22px}
+.big{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.neg{color:var(--bad)}
+.goal{display:flex;flex-direction:column;gap:5px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.goal .bar,.meter .bar{height:8px;border-radius:4px;background:var(--chip);overflow:hidden}
+.goal .bar i,.meter .bar i{display:block;height:100%;background:var(--yellow);border-radius:4px}
+.badge{align-self:flex-start;font-weight:800;font-size:13px;background:var(--yellow);color:var(--on-yellow);padding:5px 11px;border-radius:999px}
+.meters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.meter{display:flex;flex-direction:column;gap:5px;font-size:13px}
+.meter span{display:flex;justify-content:space-between;font-weight:700}
+.meter .bar i{background:var(--blue)}
+.rows{display:flex;flex-direction:column}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.row:first-child{border-top:0}
+.row span:last-child{color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);font-size:14px}
+.friend{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 0;border-top:1px solid var(--line)}
+.friend:first-child{border-top:0}
+.friend b{font-size:14px} .friend small{grid-column:1/-1;color:var(--muted);font-size:12.5px}
+.hearts{display:flex;gap:3px}
+.hearts i{width:9px;height:9px;border-radius:2px;background:var(--chip);transform:rotate(45deg)}
+.hearts i.on{background:var(--food)}
+.danger{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.log{display:flex;flex-direction:column}
+.log li{list-style:none;display:grid;grid-template-columns:76px 1fr;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.log li:first-child{border-top:0}
+.log time{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;padding-top:2px}
+.log ul{margin:0;padding:0}
+.log .k-money{color:var(--shop);font-weight:700} .log .k-bad{color:var(--bad)} .log .k-event{font-weight:700}
+
+/* live */
+.live-h{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-size:15px;letter-spacing:.04em;color:var(--blue)}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--bad);box-shadow:0 0 0 0 var(--bad);animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bad) 60%,transparent)}100%{box-shadow:0 0 0 10px transparent}}
+.live-title{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,8vw,38px);line-height:1.02;margin-top:6px}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+.tile{background:var(--card);border-radius:var(--r);padding:14px;box-shadow:0 0 0 1px var(--line);display:flex;flex-direction:column;gap:4px;min-width:0}
+.tile b{font-size:clamp(26px,8vw,34px);font-weight:800;font-variant-numeric:tabular-nums;line-height:1.05;overflow-wrap:anywhere}
+.tile span{font-size:12.5px;font-weight:700;color:var(--muted)}
+.tile.hot{background:var(--yellow);color:var(--on-yellow);box-shadow:none}
+.tile.hot span{color:var(--on-yellow)}
+.note{font-size:13px;color:var(--muted);margin-top:10px}
+.lb{width:100%;border-collapse:collapse;font-size:14px}
+.lb td{padding:8px 0;border-top:1px solid var(--line);vertical-align:middle}
+.lb tr:first-child td{border-top:0}
+.lb .rk{width:28px;font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums}
+.lb .nm{display:flex;align-items:center;gap:8px;min-width:0}
+.lb .nm i{width:12px;height:12px;border-radius:50%;flex:none}
+.lb .nw{text-align:right;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lb .you{font-size:10.5px;font-weight:800;background:var(--yellow);color:var(--on-yellow);padding:1px 6px;border-radius:999px}
+.zbars{display:flex;flex-direction:column;gap:8px}
+.zb{display:grid;grid-template-columns:96px 1fr 30px;gap:10px;align-items:center;font-size:13px}
+.zb .bar{height:10px;border-radius:5px;background:var(--chip);overflow:hidden}
+.zb .bar i{display:block;height:100%;background:var(--blue);border-radius:5px}
+.zb b{text-align:right;font-variant-numeric:tabular-nums}
+.boards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.board{aspect-ratio:4/3;max-width:100%;border-radius:10px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:3px;padding:8px;background:repeating-linear-gradient(135deg,var(--chip) 0 8px,var(--card) 8px 16px);box-shadow:inset 0 0 0 2px var(--line);font-size:11.5px;color:var(--muted)}
+.board b{font-family:var(--f-display);font-weight:400;font-size:12px;color:var(--ink);letter-spacing:.02em}
+.share{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+a.btn{text-decoration:none}
+
+/* ---------- nav, modal, toasts */
+.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(540px,100%);z-index:30;background:var(--card);box-shadow:0 -1px 0 var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav button{height:var(--nav-h);border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:700;color:var(--muted);cursor:pointer;position:relative}
+.nav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav button[aria-current="page"]{color:var(--ink)}
+.nav button[aria-current="page"]::before{content:"";position:absolute;top:0;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--yellow)}
+.modal{position:fixed;inset:0;z-index:50;background:rgba(5,12,22,.55);display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.modal-card{width:min(460px,100%);background:var(--card);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;max-height:86%;animation:up .28s ease-out}
+.modal-in{padding:16px 18px 18px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.modal-in h2{font-family:var(--f-display);font-weight:400;font-size:22px;line-height:1.08}
+.modal-in p{font-size:15px}
+.modal-c{display:flex;flex-direction:column;gap:8px}
+.modal-c .btn{width:100%}
+.mlines{display:flex;flex-direction:column;font-size:14px}
+.mlines div{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.mlines div:first-child{border-top:0}
+@keyframes up{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+@media (min-width:640px){.modal{align-items:center}}
+.toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom,0px));width:min(508px,calc(100% - 32px));z-index:40;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast{background:var(--ink);color:var(--paper);border-radius:14px;padding:10px 14px;font-size:14px;font-weight:600;display:flex;flex-direction:column;gap:5px;box-shadow:0 6px 20px rgba(0,0,0,.18);animation:up .25s ease-out}
+.toast.bad{background:var(--bad);color:#fff}
+.toast .tfx{display:flex;gap:4px;flex-wrap:wrap}
+.toast .fx{background:rgba(255,255,255,.12)}
+.toast .fx.up{color:#7FE0A9} .toast .fx.dn{color:#FF9DAB} .toast .fx.money{color:#FFD15C}
+
+@media (min-width:900px){
+  .app{max-width:1000px}
+  .nav{width:min(1000px,100%)}
+  #v-ville{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:22px;align-items:start}
+  .mapwrap{position:sticky;top:150px}
+  .panel{margin-top:0}
+  .stack.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+
+<div class="app">
+  <!-- onboarding -->
+  <section id="onboard" class="onboard" hidden>
+    <div class="stripe"></div>
+    <div class="ob-hero">
+      <h1 class="logo">Dakar<span>Life</span></h1>
+      <p>Vis ta vie à Dakar. Prends le car rapide à Colobane, mange un ceebu jën chez Adja, lutte à l’Arène, danse aux Almadies, et survis au délestage.</p>
+      <svg class="car" viewBox="0 0 260 112" aria-hidden="true">
+        <ellipse cx="132" cy="104" rx="112" ry="5" style="fill:var(--ink);opacity:.12"/>
+        <g class="body">
+          <rect x="32" y="13" width="150" height="4" rx="2" style="fill:var(--ink)"/>
+          <rect x="40" y="13" width="3" height="12" style="fill:var(--ink)"/><rect x="100" y="13" width="3" height="12" style="fill:var(--ink)"/><rect x="170" y="13" width="3" height="12" style="fill:var(--ink)"/>
+          <rect x="18" y="24" width="208" height="64" rx="12" style="fill:var(--yellow)"/>
+          <rect x="196" y="46" width="50" height="42" rx="11" style="fill:var(--yellow)"/>
+          <rect x="18" y="24" width="208" height="11" rx="6" style="fill:var(--blue)"/>
+          <rect x="30" y="40" width="26" height="19" rx="3" style="fill:var(--glass)"/>
+          <rect x="63" y="40" width="26" height="19" rx="3" style="fill:var(--glass)"/>
+          <rect x="96" y="40" width="26" height="19" rx="3" style="fill:var(--glass)"/>
+          <rect x="129" y="40" width="26" height="19" rx="3" style="fill:var(--glass)"/>
+          <rect x="162" y="40" width="26" height="19" rx="3" style="fill:var(--glass)"/>
+          <path d="M202 50 h26 l8 14 h-34 z" style="fill:var(--glass)"/>
+          <rect x="18" y="64" width="228" height="5" style="fill:var(--food)"/>
+          <rect x="18" y="71" width="228" height="3" style="fill:var(--fun)"/>
+          <text x="104" y="84" text-anchor="middle" style="font:400 8.5px var(--f-display);fill:var(--blue);letter-spacing:.06em">NDANK NDANK</text>
+          <circle cx="242" cy="78" r="3.2" style="fill:var(--card)"/>
+          <rect x="10" y="40" width="3" height="44" style="fill:var(--ink)"/><rect x="10" y="50" width="9" height="2" style="fill:var(--ink)"/><rect x="10" y="62" width="9" height="2" style="fill:var(--ink)"/><rect x="10" y="74" width="9" height="2" style="fill:var(--ink)"/>
+          <g class="wheel"><circle cx="62" cy="90" r="13" style="fill:var(--ink)"/><circle cx="62" cy="90" r="5" style="fill:var(--card)"/><rect x="61" y="79" width="2" height="22" style="fill:var(--card);opacity:.5"/></g>
+          <g class="wheel"><circle cx="210" cy="90" r="13" style="fill:var(--ink)"/><circle cx="210" cy="90" r="5" style="fill:var(--card)"/><rect x="209" y="79" width="2" height="22" style="fill:var(--card);opacity:.5"/></g>
+        </g>
+      </svg>
+    </div>
+    <form id="ob-form" class="stack" autocomplete="off">
+      <div class="field">
+        <label for="ob-name">Ton prénom dans le jeu</label>
+        <input id="ob-name" class="input" maxlength="20" placeholder="Ex. Awa, Modou, Khadija" required>
+      </div>
+      <div class="field">
+        <span class="lbl">Ta couleur</span>
+        <div class="swatches" id="ob-colors"></div>
+      </div>
+      <div class="field">
+        <span class="lbl">Ton point de départ</span>
+        <div class="starts">
+          <button type="button" class="start" data-start="gorgorlu" aria-pressed="true">
+            <span class="tag">Mode débrouille</span>
+            <b>Góorgóorlu</b>
+            <small>Une chambre à Pikine et 115 000 F en poche, dont 100 000 F de microcrédit à rembourser chaque samedi. Tout est à construire.</small>
+          </button>
+          <button type="button" class="start" data-start="nepo" aria-pressed="false">
+            <span class="tag">Mode facile</span>
+            <b>Fils ou fille à papa</b>
+            <small>La villa familiale à Mermoz, 2 000 000 F et des études déjà avancées. Papa finira par te demander de te prendre en charge.</small>
+          </button>
+        </div>
+      </div>
+      <button class="btn" type="submit" id="ob-go">Commencer ma vie à Dakar</button>
+      <a class="btn ghost" href="rue.html" style="text-decoration:none">Prendre le volant (mode Rue)</a>
+      <button class="link" type="button" id="ob-live">Voir Dakar en direct</button>
+    </form>
+  </section>
+
+  <!-- game -->
+  <div id="game" hidden>
+    <header class="hud" id="hud">
+      <div class="stripe"></div>
+      <div class="hud-row">
+        <div class="av" id="hud-av"></div>
+        <div class="hud-id">
+          <div class="hud-name" id="hud-name"></div>
+          <div class="hud-time"><span id="hud-sky"></span><span id="hud-time"></span></div>
+        </div>
+        <div class="hud-money"><b id="hud-money"></b><small id="hud-loc"></small></div>
+      </div>
+      <div class="needs" id="hud-needs"></div>
+      <div class="banners" id="hud-banners"></div>
+    </header>
+
+    <section id="v-ville" class="view">
+      <div class="mapwrap">
+        <div class="mapcard" id="mapcard">
+          <svg id="map" viewBox="0 0 400 290" role="img" aria-label="Carte de Dakar"></svg>
+          <div class="map-legend" aria-hidden="true">
+            <span style="--c:var(--food)"><i></i>Manger</span><span style="--c:var(--work)"><i></i>Travail</span><span style="--c:var(--fun)"><i></i>Sortir</span><span style="--c:var(--shop)"><i></i>Acheter</span>
+          </div>
+        </div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <section class="panel" id="panel"></section>
+    </section>
+    <section id="v-moi" class="view" hidden></section>
+    <section id="v-journal" class="view" hidden></section>
+  </div>
+
+  <section id="v-live" class="view" hidden></section>
+</div>
+
+<nav class="nav" id="nav" hidden>
+  <button data-v="ville" aria-current="page"><svg viewBox="0 0 24 24"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg>Ville</button>
+  <button data-v="moi"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6"/></svg>Moi</button>
+  <button data-v="live"><svg viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 5 12 2.5-6h4"/></svg>Live</button>
+  <a href="rue.html" style="height:var(--nav-h);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:700;color:var(--muted);text-decoration:none"><svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M5 16l1.5-5h11L19 16M4 16h16v3H4zM7 19v1.5M17 19v1.5"/></svg>Rue</a>
+  <button data-v="journal"><svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h7M9 14h7M9 18h4"/></svg>Journal</button>
+</nav>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-t">
+    <div class="stripe sm"></div>
+    <div class="modal-in">
+      <h2 id="modal-t"></h2>
+      <div id="modal-b" class="stack"></div>
+      <div class="modal-c" id="modal-c"></div>
+    </div>
+  </div>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(() => {
+'use strict';
+const KEY = 'dakarlife.save.v1';
+const DAYS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+const NEEDS = [['faim','Faim'],['energie','Énergie'],['moral','Moral'],['social','Social']];
+const LABEL = {faim:'Faim',energie:'Énergie',moral:'Moral',social:'Social',etudes:'Études',forme:'Forme',followers:'abonnés'};
+const COLORS = ['#E39A00','#1A4C9C','#C0283F','#0B8A50','#7B3FB4','#D9561B'];
+const CAT = {food:'Manger',work:'Travail',fun:'Sortir',shop:'Acheter',home:'Chez toi'};
+const CATC = {food:'var(--food)',work:'var(--work)',fun:'var(--fun)',shop:'var(--shop)',home:'var(--home)'};
+const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ---------------------------------------------------------------- data
+const HOMES = {
+  papa:{name:'Chez papa à Mermoz', short:'Chez papa', q:'Mermoz', x:88, y:152, rent:0, price:0, sleep:13, moral:2},
+  pikine:{name:'Chambre à Pikine', short:'Chambre', q:'Pikine', x:240, y:132, rent:7500, price:0, sleep:9, moral:-2, flood:1, rail:1},
+  parcelles:{name:'Studio aux Parcelles', short:'Studio', q:'Parcelles', x:180, y:122, rent:25000, price:9e6, sleep:11, moral:0, rail:1},
+  pointe:{name:'Appartement au Point E', short:'Appart', q:'Point E', x:110, y:168, rent:80000, price:48e6, sleep:12, moral:3},
+  mermoz:{name:'Villa à Mermoz', short:'Villa', q:'Mermoz', x:88, y:152, rent:300000, price:190e6, sleep:13, moral:5},
+  almadies:{name:'Villa pieds dans l’eau aux Almadies', short:'Villa Almadies', q:'Almadies', x:56, y:84, rent:1200000, price:780e6, sleep:14, moral:8},
+  ngor:{name:'Maison sur l’île de Ngor', short:'Île de Ngor', q:'Île de Ngor', x:78, y:48, rent:0, price:1.25e9, sleep:15, moral:12, island:'ngor'}
+};
+const P = {
+  tangana:{name:'Tangana de Tonton Ibou', short:'Tangana', q:'Grand Yoff', x:150, y:142, cat:'food', open:[5,24], rail:1, desc:'Bancs en bois, café Touba qui fume et radio allumée : le QG du quartier.'},
+  sandaga:{name:'Marché Sandaga', short:'Sandaga', q:'Plateau', x:96, y:236, cat:'work', open:[7,20], rail:1, desc:'Le grand marché du centre-ville. Ça crie, ça négocie, ça vend de tout.'},
+  plateau:{name:'Plateau', short:'Plateau', q:'Bureaux et banques', x:122, y:252, cat:'work', open:[8,19], rail:1, desc:'Banques, agences et startups. On y travaille dans les bureaux, on y achète des maisons et on y investit.'},
+  colobane:{name:'Colobane', short:'Colobane', q:'Gare et friperie', x:132, y:188, cat:'work', open:[6,22], rail:1, desc:'Gare des cars rapides et friperie à ciel ouvert.'},
+  hlm:{name:'Marché HLM', short:'HLM', q:'HLM', x:108, y:198, cat:'shop', open:[8,20], rail:1, desc:'Bazin, wax et tailleurs à la chaîne. Le temple du grand boubou.'},
+  gargote:{name:'Gargote Chez Adja', short:'Chez Adja', q:'Médina', x:84, y:214, cat:'food', open:[11,22], desc:'Le ceebu jën de la Médina, servi dans un grand bol à partager.'},
+  dibiterie:{name:'Dibiterie de la Patte d’Oie', short:'Dibiterie', q:'Patte d’Oie', x:128, y:120, cat:'food', open:[12,2], desc:'Agneau grillé au feu de bois, oignons et moutarde. Ça se mange avec les doigts.'},
+  ucad:{name:'Université Cheikh Anta Diop', short:'UCAD', q:'Fann', x:74, y:186, cat:'work', open:[7,21], desc:'Amphis bondés et bibliothèque. Les études ouvrent les meilleurs emplois.'},
+  corniche:{name:'Corniche Ouest', short:'Corniche', q:'Fann', x:46, y:166, cat:'fun', open:null, desc:'Joggeurs, vendeurs de café et coucher de soleil sur l’Atlantique.'},
+  monument:{name:'Monument de la Renaissance', short:'Monument', q:'Ouakam', x:62, y:134, cat:'fun', open:[6,22], desc:'Le géant de bronze sur la colline des Mamelles. Spot photo numéro un.'},
+  yoff:{name:'Plage de Yoff', short:'Yoff', q:'Yoff', x:112, y:78, cat:'work', open:null, desc:'Pirogues colorées, filets et poisson frais au retour de la pêche.'},
+  ngoris:{name:'Île de Ngor', short:'Île de Ngor', q:'Ngor', x:60, y:58, cat:'fun', open:[7,21], island:'ngor', desc:'Cinq minutes de pirogue et tu es en vacances.'},
+  resto:{name:'Restaurant La Pointe', short:'La Pointe', q:'Almadies', x:64, y:108, cat:'food', open:[12,24], desc:'Terrasse face à l’océan, poisson grillé et clientèle chic.'},
+  club:{name:'Club des Almadies', short:'Club', q:'Almadies', x:34, y:100, cat:'fun', open:[22,5], desc:'Mbalax, afrobeats et carré VIP jusqu’à l’aube.'},
+  arene:{name:'Arène nationale', short:'Arène', q:'Pikine', x:210, y:150, cat:'fun', open:[6,22], rail:1, desc:'La lutte avec frappe, sport roi. Tam-tams, gris-gris et foule en délire.'},
+  parcelles:{name:'Parcelles Assainies', short:'Parcelles', q:'Parcelles', x:160, y:102, cat:'work', open:[7,22], rail:1, desc:'Quartier populaire et vivant. La tontine des voisines tourne ici.'},
+  guediawaye:{name:'Guédiawaye', short:'Guédiawaye', q:'Banlieue', x:222, y:104, cat:'work', open:[5,23], rail:1, desc:'Banlieue animée : clandos, terrains de sable et navétanes.'},
+  foirail:{name:'Foirail', short:'Foirail', q:'Thiaroye', x:262, y:170, cat:'shop', open:[7,19], rail:1, desc:'Moutons, béliers et marchandage serré avant la Tabaski.'},
+  concession:{name:'Diamniadio', short:'Diamniadio', q:'Ville nouvelle', x:330, y:208, cat:'shop', open:[8,19], rail:1, desc:'Concessionnaires, stades et zone économique de la ville nouvelle.'},
+  lacrose:{name:'Lac Rose', short:'Lac Rose', q:'Retba', x:330, y:72, cat:'fun', open:[8,18], desc:'Eau rose bonbon, dunes et récolteurs de sel.'},
+  goree:{name:'Île de Gorée', short:'Gorée', q:'Gorée', x:152, y:272, cat:'work', open:[7,19], island:'goree', desc:'Ruelles colorées et bougainvilliers, à vingt minutes de chaloupe.'}
+};
+const JETTY = {ngor:{x:66,y:74,cost:1000,h:.2,label:'pirogue'}, goree:{x:128,y:258,cost:2600,h:.4,label:'chaloupe'}};
+const JOBS = {
+  vendeur:{name:'Vendeur ambulant', dur:6, pay:6000, e:22, req:{}},
+  apprenti:{name:'Apprenti car rapide', dur:7, pay:7500, e:28, req:{}},
+  pecheur:{name:'Pêcheur', dur:5, pay:5000, bonus:15000, e:26, req:{}, open:[4,12]},
+  agent:{name:'Agent de transfert d’argent', dur:8, pay:12000, e:16, req:{etudes:15}},
+  clando:{name:'Chauffeur de clando', dur:8, pay:15000, e:24, req:{xp:8}},
+  tailleur:{name:'Tailleur', dur:8, pay:19000, e:20, req:{xp:15}},
+  guide:{name:'Guide touristique', dur:6, pay:16000, bonus:20000, e:18, req:{etudes:30}},
+  dev:{name:'Développeur web', dur:8, pay:65000, e:24, req:{etudes:70}},
+  banque:{name:'Cadre de banque', dur:9, pay:120000, e:28, req:{etudes:85, xp:40}}
+};
+const BIZ = {
+  tangana:{name:'Tangana de quartier', price:300000, inc:15000},
+  boutique:{name:'Boutique de tissus à Sandaga', price:2e6, inc:90000},
+  dibiterie:{name:'Dibiterie', price:8e6, inc:380000},
+  taxis:{name:'Flotte de 5 taxis', price:30e6, inc:1.4e6},
+  hotel:{name:'Hôtel à Saly', price:200e6, inc:9e6},
+  immeuble:{name:'Immeuble au Plateau', price:1.2e9, inc:55e6}
+};
+const ITEMS = {
+  groupe:{name:'Groupe électrogène', price:250000, desc:'Le délestage ne gâche plus tes nuits.'},
+  boubou:{name:'Grand boubou en bazin riche', price:60000, desc:'Chaque vendredi : +Moral et +Social.'},
+  mouton:{name:'Mouton pour la Tabaski', price:180000, desc:'Indispensable le jour J.'},
+  ladoum:{name:'Bélier ladoum', price:1500000, desc:'La star du quartier, Tabaski après Tabaski.'},
+  jakarta:{name:'Moto Jakarta', price:650000, desc:'Se faufile dans les bouchons.'},
+  voiture:{name:'Voiture venue de Belgique', price:4500000, desc:'Clim, confort, et +Moral à chaque trajet.'}
+};
+const NPCS = {
+  ibou:{name:'Tonton Ibou', role:'tient le tangana', perk:'café Touba offert', lines:['Nanga def ? Assieds-toi, le café arrive.','Ndank ndank, petit. Tout vient à point.','Tu as vu le combat de dimanche ?']},
+  fatou:{name:'Fatou', role:'vend des fataya à Sandaga', perk:'fataya offerts et +20 % comme vendeur', lines:['Fataya chauds ! Viande ou poisson ?','Sandaga, c’est la jungle. Il faut savoir crier.','Jërëjëf, reviens demain !']},
+  moussa:{name:'Moussa', role:'apprenti sur la ligne de Colobane', perk:'car rapide gratuit', lines:['Colobane, Petersen ! Monte, il reste de la place.','On est serrés, mais on est ensemble.','L’apprenti voit tout et entend tout.']},
+  mame:{name:'Mame Diarra', role:'tailleuse au marché HLM', perk:'boubou à moitié prix et +20 % comme tailleur', lines:['Ce bazin va te faire briller vendredi.','Les mesures, c’est sacré.','Mariage samedi : j’ai vingt boubous à finir.']},
+  aida:{name:'Aïda', role:'étudiante en informatique', perk:'Études +50 %', lines:['Les partiels approchent, on révise ensemble ?','Je code un site pour une boutique de Sandaga.','Le savoir, c’est le vrai capital.']},
+  cheikh:{name:'Cheikh', role:'lutteur de l’écurie du quartier', perk:'entraînement doublé et +10 % au combat', lines:['Dans l’arène, c’est le mental qui gagne.','Viens courir sur la plage à l’aube.','Mon prochain combat, tout Pikine sera là.']},
+  ousmane:{name:'Ousmane', role:'pêcheur à Yoff', perk:'prises doublées à la pêche', lines:['La mer donne à ceux qui se lèvent tôt.','Le thiof se fait rare cette année.','Demain matin, on sort la pirogue ensemble.']}
+};
+const NPC_AT = {tangana:'ibou', sandaga:'fatou', colobane:'moussa', hlm:'mame', ucad:'aida', arene:'cheikh', yoff:'ousmane'};
+const LAND = [[22,92],[30,78],[48,70],[78,72],[100,66],[130,66],[170,72],[210,76],[250,70],[300,60],[350,52],[430,44],[430,238],[360,228],[320,222],[280,206],[240,190],[200,192],[170,210],[150,232],[138,256],[126,270],[108,268],[90,254],[72,232],[58,206],[44,182],[36,160],[34,138],[30,118]];
+
+// ---------------------------------------------------------------- helpers
+const $ = (q, r = document) => r.querySelector(q);
+const clamp = (v, a = 0, b = 100) => Math.max(a, Math.min(b, v));
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const esc = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const okColor = c => typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c);
+function num(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+function F(n){
+  n = Math.round(n); const neg = n < 0; n = Math.abs(n); let t;
+  if (n >= 1e9) t = (n/1e9).toFixed(2).replace(/\.?0+$/,'').replace('.',',') + ' Md';
+  else if (n >= 1e7) t = (n/1e6).toFixed(1).replace(/\.0$/,'').replace('.',',') + ' M';
+  else t = num(n);
+  return (neg ? '−' : '') + t + ' F';
+}
+function hhmm(h){ const t = Math.round(h*60) % 1440; return String(Math.floor(t/60)).padStart(2,'0') + ':' + String(t%60).padStart(2,'0'); }
+function dur(h){
+  if (h < 1) return Math.max(5, Math.round(h*12)*5) + ' min';
+  let hh = Math.floor(h), m = Math.round((h-hh)*12)*5; if (m === 60){ hh++; m = 0; }
+  return m ? hh + ' h ' + String(m).padStart(2,'0') : hh + ' h';
+}
+function inWin(o, h){ if (!o) return true; const [a,b] = o; return a < b ? (h >= a && h < b) : (h >= a || h < b); }
+function openText(o){ if (!o) return '24 h/24'; return o[0] + ' h – ' + (o[1] === 24 ? 0 : o[1]) + ' h'; }
+const todayStr = () => new Date().toISOString().slice(0,10);
+
+// ---------------------------------------------------------------- state
+let s = null, sel = 'maison', view = 'ville', busy = false, curActs = {}, curRoutes = [], resetArmed = false;
+const dayIdx = () => (s.day - 1) % 7;
+const perk = id => (s.friends[id] || 0) >= 3;
+
+function newGame(name, color, start){
+  const nepo = start === 'nepo';
+  return {v:1, name, color, start, day:1, hour:8,
+    money: nepo ? 2000000 : 115000, debt: nepo ? 0 : 120000, debtWeekly: nepo ? 0 : 15000,
+    needs:{faim:70, energie:85, moral: nepo ? 80 : 65, social:60},
+    etudes: nepo ? 45 : 10, forme: nepo ? 20 : 30, xp:0, jobs:{}, home: nepo ? 'papa' : 'pikine', owned:[], loc:'maison',
+    inv:{}, biz:{}, followers: nepo ? 800 : 60, friends:{}, talked:{}, posted:{}, flags:{}, fights:{won:0,lost:0},
+    tontine:null, ucad: nepo, arrears:0, log:[], queue:[], visits:0, visitsToday:0, visitDay:'', created:Date.now()};
+}
+function save(){ try { if (s) localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){} }
+function load(){ try { const t = localStorage.getItem(KEY); if (!t) return null; const o = JSON.parse(t); return o && o.v === 1 ? o : null; } catch(e){ return null; } }
+function log(t, k){ s.log.unshift({d:s.day, h:s.hour, t, k:k||''}); if (s.log.length > 140) s.log.length = 140; }
+function queue(ev){ ev.choices = ev.choices && ev.choices.length ? ev.choices : [{label:'D’accord'}]; s.queue.push(ev); }
+
+function placeInfo(id){
+  if (id === 'maison'){ const h = HOMES[s.home]; return {name:h.name, short:'Maison', q:h.q, x:h.x, y:h.y, cat:'home', open:null, rail:h.rail, island:h.island, desc:'Ton chez-toi : dormir, cuisiner, recevoir les voisins.'}; }
+  return P[id];
+}
+function netWorth(){
+  let v = s.money - s.debt;
+  for (const h of s.owned) v += HOMES[h].price || 0;
+  for (const k in s.biz) v += BIZ[k].price * s.biz[k];
+  for (const k in s.inv) if (s.inv[k]) v += Math.round(ITEMS[k].price * (k === 'ladoum' ? 1 : .6));
+  return v;
+}
+function sleepRate(){ return HOMES[s.home].sleep * (s.flags.delestage && !s.inv.groupe ? .55 : 1); }
+function sleepHours(){ let h = (7 - s.hour + 24) % 24; if (h < 1) h = 1; return Math.min(10, h); }
+
+// ---------------------------------------------------------------- time
+function advance(hours, mode){
+  let left = hours;
+  while (left > 1e-6){
+    const st = Math.min(left, .25), n = s.needs;
+    if (mode === 'sleep'){ n.faim -= 1.6*st; n.energie += (s._rate || 10)*st; }
+    else { n.faim -= 4*st; n.energie -= 3.2*st; n.moral -= 1.1*st; n.social -= .9*st; }
+    for (const k in n) n[k] = clamp(n[k]);
+    s.hour += st; left -= st;
+    if (s.hour >= 24 - 1e-9){ s.hour -= 24; if (s.hour < 0) s.hour = 0; newDay(); }
+  }
+}
+function newDay(){
+  s.day++;
+  const di = dayIdx();
+  let inc = 0;
+  for (const k in s.biz) inc += BIZ[k].inc * s.biz[k];
+  const deals = Math.floor(s.followers / 1000) * 2500; inc += deals;
+  if (inc > 0){ s.money += inc; log('Revenus du jour : +' + F(inc) + (deals ? ' (dont ' + F(deals) + ' de partenariats)' : ''), 'money'); }
+  s.needs.moral = clamp(s.needs.moral + HOMES[s.home].moral);
+  if (di === 5) saturday();
+  if (s.day % 30 === 15) tabaski();
+  if (di === 4 && s.inv.boubou){ s.needs.moral = clamp(s.needs.moral + 10); s.needs.social = clamp(s.needs.social + 12); log('Vendredi en grand boubou : tout le quartier te complimente.', 'event'); }
+  if (Math.random() < .55) rollEvent();
+}
+function saturday(){
+  const h = HOMES[s.home], lines = []; let due = 0;
+  const rent = (!s.owned.includes(s.home) && h.rent) ? h.rent : 0;
+  if (rent){ lines.push(['Loyer · ' + h.short, rent]); due += rent; }
+  const loan = s.debt > 0 ? Math.min(s.debt, s.debtWeekly || 15000) : 0;
+  if (loan){ lines.push(['Remboursement des dettes', loan]); due += loan; }
+  const cot = s.tontine ? 10000 : 0;
+  if (cot){ lines.push(['Cotisation tontine', cot]); due += cot; }
+  if (!due && !s.tontine) return;
+  let body;
+  if (s.money >= due){ s.money -= due; s.debt -= loan; s.arrears = 0; body = 'Tout est réglé. Le bailleur te salue avec le sourire.'; }
+  else {
+    const short = due - s.money; s.money = 0; s.debt = s.debt - loan + short; s.arrears++;
+    s.needs.moral = clamp(s.needs.moral - 15);
+    body = 'Il te manque ' + F(short) + '. Le reste passe en dette.';
+    if (rent && s.arrears >= 2 && s.home !== 'pikine'){ s.home = 'pikine'; s.arrears = 0; body += ' Deux samedis impayés : le bailleur reprend le logement. Retour à la chambre de Pikine.'; }
+  }
+  if (s.debt <= 0){ s.debt = 0; s.debtWeekly = 0; }
+  else if (s.debtWeekly < Math.ceil(s.debt/8/500)*500) s.debtWeekly = Math.max(s.debtWeekly, Math.ceil(s.debt/8/500)*500);
+  if (s.tontine){
+    s.tontine.week++;
+    if (s.tontine.week === s.tontine.turn){ s.money += 80000; body += ' C’est ton tour à la tontine : tu touches 80 000 F.'; }
+    if (s.tontine.week >= 8){ s.tontine = null; body += ' Le cycle de la tontine est terminé.'; }
+  }
+  log('Samedi : ' + F(due) + ' de charges', 'money');
+  queue({title:'Samedi, jour des comptes', lines, body});
+}
+function tabaski(){
+  if (s.inv.ladoum){ applyFx({moral:45, social:45, followers:600}); queue({title:'Tabaski !', body:'Ton ladoum fait sensation : tout le quartier défile pour le prendre en photo.', fx:{moral:45, social:45, followers:600}}); }
+  else if (s.inv.mouton){ s.inv.mouton = false; applyFx({moral:30, social:25}); queue({title:'Tabaski !', body:'Le mouton est prêt, la famille est réunie, les plats circulent chez les voisins.', fx:{moral:30, social:25}}); }
+  else { applyFx({moral:-15, social:5}); queue({title:'Tabaski sans mouton', body:'Pas de mouton cette année. Tes voisins t’invitent quand même : c’est ça, la teranga.', fx:{moral:-15, social:5}}); }
+  log('Tabaski', 'event');
+}
+const EVENTS = [
+  {w:3, make:()=>({title:'Ton cousin débarque', body:'Ton cousin de Kaolack arrive sans prévenir avec son sac. Il compte rester « deux ou trois jours ».', choices:[{label:'L’accueillir, teranga oblige', fx:{money:-5000, social:20, moral:4}},{label:'Dire que tu voyages demain', fx:{social:-15}}]})},
+  {w:3, make:()=> s.inv.groupe ? {title:'Délestage ce soir', body:'Coupure d’électricité dans ton quartier, mais ton groupe électrogène tourne. Les voisins viennent charger leurs téléphones chez toi.', fx:{social:12}} : (s.flags.delestage = true, {title:'Délestage ce soir', body:'Coupure d’électricité annoncée dans ton quartier cette nuit. Sans ventilateur, ton sommeil sera moins réparateur.'})},
+  {w:3, make:()=>(s.flags.traffic = s.day, {title:'Bouchons monstres', body:'Accident sur la VDN et travaux sur l’autoroute : les routes sont bloquées toute la journée. Le TER, le BRT et les Jakarta restent rapides.'})},
+  {w:2, make:()=>({title:'Baptême chez les voisins', body:'Les voisins célèbrent le ngénte de leur bébé ce matin.', choices:[{label:'Y aller avec une enveloppe', fx:{money:-5000, social:25, moral:8, hours:3}},{label:'Passer ton tour', fx:{social:-8}}]})},
+  {w:2, make:()=>{ const a = rnd(10,40)*1000; return {title:'Transfert de la diaspora', body:'Ta tante à Paris t’envoie ' + F(a) + ' « pour le petit-déjeuner ».', fx:{money:a}}; }},
+  {w:2, make:()=>({title:'Coupure d’eau', body:'Plus une goutte au robinet depuis ce matin. Bidons et seaux au programme.', fx:{moral:-8}})},
+  {w:1, make:()=>({title:'Mariage d’un ami', body:'Ton ami d’enfance se marie ce week-end. La famille attend ta participation.', choices:[{label:'Cotiser', fx:{money:-10000, social:22, moral:10}},{label:'Envoyer juste un message', fx:{social:-12}}]})},
+  {w:2, cond:()=>HOMES[s.home].flood, make:()=>({title:'Inondation', body:'Grosse pluie d’hivernage : ton quartier a les pieds dans l’eau. Il faut pomper et réparer.', fx:{money:-8000, moral:-15}})},
+  {w:1, make:()=>(s.flags.navetanes = s.day, {title:'Navétanes ce soir', body:'Finale du tournoi de quartier à Guédiawaye : tout le monde y va.'})},
+  {w:1, make:()=>(s.flags.thiof = s.day, {title:'Arrivage de thiof', body:'Les pirogues de Yoff rentrent chargées : le poisson grillé est à moitié prix aujourd’hui.'})},
+  {w:2, cond:()=>s.home === 'papa' && s.day > 6, make:()=>({title:'Papa veut te parler', body:'« Tu as quel âge déjà ? Il serait temps de te prendre en charge. »', fx:{moral:-10}})}
+];
+function rollEvent(){
+  const pool = EVENTS.filter(e => !e.cond || e.cond());
+  let r = Math.random() * pool.reduce((a,e) => a + e.w, 0);
+  for (const e of pool){ r -= e.w; if (r <= 0){ const ev = e.make(); if (ev.fx) applyFx(ev.fx); log(ev.title, 'event'); queue(ev); return; } }
+}
+
+// ---------------------------------------------------------------- effects
+function applyFx(fx){
+  if (!fx) return;
+  for (const k in fx){
+    const v = fx[k]; if (!v) continue;
+    if (k === 'money') s.money += v;
+    else if (k === 'hours') advance(v, 'awake');
+    else if (k === 'followers') s.followers = Math.max(0, Math.round(s.followers + v));
+    else if (k in s.needs) s.needs[k] = clamp(s.needs[k] + v);
+    else if (k === 'etudes' || k === 'forme') s[k] = clamp(s[k] + v);
+  }
+  if (s.money < 0){ s.debt += -s.money; log('Découvert : ' + F(-s.money) + ' ajoutés à tes dettes.', 'bad'); s.money = 0; s.debtWeekly = Math.max(s.debtWeekly || 0, Math.ceil(s.debt/8/500)*500); }
+}
+function fxChips(fx, cost){
+  const out = [];
+  if (cost) out.push('<i class="fx dn">−' + F(cost) + '</i>');
+  if (fx) for (const k in fx){
+    const v = fx[k]; if (!v || k === 'hours') continue;
+    if (k === 'money') out.push('<i class="fx money">' + (v > 0 ? '+' : '−') + F(Math.abs(v)) + '</i>');
+    else if (k === 'followers') out.push('<i class="fx up">+' + num(v) + ' abonnés</i>');
+    else out.push('<i class="fx ' + (v > 0 ? 'up' : 'dn') + '">' + (v > 0 ? '+' : '−') + Math.round(Math.abs(v)*10)/10 + ' ' + LABEL[k] + '</i>');
+  }
+  return out.join('');
+}
+function reqText(req){
+  if (req.etudes && s.etudes < req.etudes) return 'Requiert Études ' + req.etudes + ' (tu as ' + Math.floor(s.etudes) + ')';
+  if (req.xp && s.xp < req.xp) return 'Requiert ' + req.xp + ' services d’expérience (tu en as ' + s.xp + ')';
+  return null;
+}
+
+// ---------------------------------------------------------------- actions
+const jobLevel = id => Math.min(5, 1 + Math.floor((s.jobs[id] || 0) / 6));
+function payOf(id){
+  const j = JOBS[id]; let p = j.pay * (1 + .2 * (jobLevel(id) - 1));
+  if ((id === 'vendeur' && perk('fatou')) || (id === 'tailleur' && perk('mame'))) p *= 1.2;
+  if (s.needs.moral < 25) p *= .75;
+  return Math.round(p / 100) * 100;
+}
+function work(id){
+  const j = JOBS[id];
+  return {id:'w_' + id, label:'Travailler : ' + j.name, dur:j.dur, open:j.open, fx:{energie:-j.e},
+    preview:() => ({money:payOf(id), energie:-j.e}),
+    meta:() => 'Niveau ' + jobLevel(id) + (s.needs.moral < 25 ? ' · moral bas −25 %' : '') + (j.bonus ? ' · + ' + (id === 'pecheur' ? 'prise' : 'pourboires') : ''),
+    req:() => reqText(j.req) || (s.needs.energie < 18 ? 'Ton énergie est trop basse pour un service.' : null),
+    run:() => {
+      const pay = payOf(id); let bonus = 0;
+      if (j.bonus) bonus = Math.round(Math.random() * j.bonus * (id === 'pecheur' && perk('ousmane') ? 2 : 1) / 100) * 100;
+      const before = jobLevel(id); s.jobs[id] = (s.jobs[id] || 0) + 1; s.xp++; const after = jobLevel(id);
+      return {fx:{money:pay + bonus}, msg:j.name + ' : +' + F(pay + bonus) + (bonus ? ' dont ' + F(bonus) + (id === 'pecheur' ? ' de prise' : ' de pourboires') : '') + (after > before ? ' · Promotion au niveau ' + after + ' !' : '')};
+    }};
+}
+function food(id, label, d, cost, fx){ return {id, label, dur:d, cost, fx}; }
+function talk(id){
+  const n = NPCS[id];
+  return {id:'talk_' + id, label:'Discuter avec ' + n.name, dur:1, fx:{social:12, moral:3},
+    meta:() => n.role + ' · amitié ' + (s.friends[id] || 0) + '/5',
+    req:() => s.talked[id] === s.day ? 'Tu as déjà vu ' + n.name + ' aujourd’hui.' : null,
+    run:() => {
+      s.talked[id] = s.day; const was = s.friends[id] || 0, lv = Math.min(5, was + 1); s.friends[id] = lv;
+      return {msg: lv === 3 && was === 2 ? n.name + ' te considère comme un ami. Bonus débloqué : ' + n.perk + '.' : n.name + ' : « ' + pick(n.lines) + ' »'};
+    }};
+}
+function post(pid, mult){
+  return {id:'post_' + pid, label:'Poster une vidéo', dur:.5, fx:{energie:-4},
+    meta:() => num(s.followers) + ' abonnés · 2 500 F/jour par tranche de 1 000',
+    req:() => s.posted[pid] === s.day ? 'Déjà posté d’ici aujourd’hui.' : null,
+    run:() => {
+      s.posted[pid] = s.day;
+      let g = Math.round((25 + s.needs.social * .8) * mult * (.6 + Math.random() * .9) + s.followers * .03 * Math.random());
+      const viral = Math.random() < .06; if (viral) g *= 8;
+      return {fx:{followers:g}, msg: viral ? 'Ta vidéo devient virale !' : 'Vidéo publiée.'};
+    }};
+}
+function buy(k){
+  const it = ITEMS[k];
+  const price = () => k === 'boubou' && perk('mame') ? it.price / 2 : it.price;
+  return {id:'buy_' + k, label:it.name, dur:.5, cost:price, meta:() => it.desc,
+    req:() => s.inv[k] ? 'Déjà à toi.' : null,
+    run:() => { s.inv[k] = true; return {msg:'Acheté : ' + it.name + '.'}; }};
+}
+function fight(){
+  const chance = () => clamp(.2 + s.forme / 150 + (perk('cheikh') ? .1 : 0), .15, .85);
+  const prize = () => 25000 + Math.round(s.forme) * 3000 + s.fights.won * 10000;
+  return {id:'fight', label:'Combattre dans l’arène', dur:2, open:[15,21],
+    meta:() => 'Prime ' + F(prize()) + ' · ' + Math.round(chance() * 100) + ' % de chances',
+    req:() => s.forme < 40 ? 'Requiert Forme 40 (tu as ' + Math.floor(s.forme) + ')' : s.flags.fought === s.day ? 'Un combat par jour, champion.' : s.needs.energie < 35 ? 'Trop peu d’énergie pour combattre.' : null,
+    run:() => {
+      s.flags.fought = s.day; const p = prize();
+      if (Math.random() < chance()){ s.fights.won++; return {fx:{money:p, moral:25, social:15, followers:150 + s.fights.won * 50, energie:-25}, msg:'Victoire ! Ton adversaire touche le sable en premier.'}; }
+      s.fights.lost++; return {fx:{moral:-18, energie:-40}, msg:'Défaite. Tu as touché le sable en premier.'};
+    }};
+}
+function homeRows(){
+  const rows = [];
+  for (const [k, h] of Object.entries(HOMES)){
+    if (k === 'papa') continue;
+    const owned = s.owned.includes(k), cur = s.home === k;
+    if (cur && owned){ rows.push({id:'hi_' + k, info:true, label:h.name, meta:() => 'Chez toi · propriétaire'}); continue; }
+    if (cur) rows.push({id:'hi_' + k, info:true, label:h.name, meta:() => 'Ta location · ' + F(h.rent) + '/sem.'});
+    if (owned){
+      rows.push({id:'hm_' + k, label:'Emménager : ' + h.name, dur:1, meta:() => 'Tu en es propriétaire', run:() => { s.home = k; return {msg:'Tu emménages : ' + h.name + '.'}; }});
+      rows.push({id:'hs_' + k, label:'Vendre : ' + h.short, dur:.5, preview:() => ({money:h.price * .8}), meta:() => 'Revente à 80 %', run:() => { s.owned = s.owned.filter(x => x !== k); return {fx:{money:h.price * .8}, msg:'Vendu : ' + h.name + '.'}; }});
+      continue;
+    }
+    if (h.rent && !cur) rows.push({id:'hr_' + k, label:'Louer : ' + h.name, dur:1, cost:h.rent * 2, meta:() => F(h.rent) + '/sem. · caution de deux semaines', run:() => { s.home = k; s.arrears = 0; return {msg:'Nouvelle location : ' + h.name + '.'}; }});
+    if (h.price) rows.push({id:'hb_' + k, label:'Acheter : ' + h.name, dur:1, cost:h.price, meta:() => cur ? 'Fini le loyer' : 'Tu emménages tout de suite', run:() => { s.owned.push(k); s.home = k; s.arrears = 0; return {msg:'Tu es propriétaire : ' + h.name + ' !'}; }});
+  }
+  return rows;
+}
+function bizRows(){
+  return Object.entries(BIZ).map(([k, b]) => {
+    const n = s.biz[k] || 0; const price = Math.round(b.price * Math.pow(1.15, n) / 1000) * 1000;
+    return {id:'biz_' + k, label:b.name + (n ? ' (×' + n + ')' : ''), dur:1, cost:price, meta:() => '+' + F(b.inc) + ' par jour', run:() => { s.biz[k] = n + 1; return {msg:'Nouveau business : ' + b.name + '.'}; }};
+  });
+}
+function debtRows(){
+  if (s.debt <= 0) return [];
+  const part = Math.min(s.debt, 50000), rows = [{id:'repay_part', label:'Rembourser ' + F(part), dur:.5, cost:part, meta:() => 'Dettes : ' + F(s.debt) + ' · ' + F(s.debtWeekly) + ' prélevés chaque samedi', run:() => { s.debt -= part; if (s.debt <= 0){ s.debt = 0; s.debtWeekly = 0; } return {msg:'Remboursement effectué.'}; }}];
+  if (s.debt > part){ const all = s.debt; rows.push({id:'repay_all', label:'Tout rembourser', dur:.5, cost:all, run:() => { s.debt = 0; s.debtWeekly = 0; return {msg:'Plus aucune dette. Libre !'}; }}); }
+  return rows;
+}
+function tontineRow(){
+  if (s.tontine) return {id:'tont_info', info:true, label:'Tu cotises à la tontine', meta:() => 'Semaine ' + s.tontine.week + '/8 · ton tour : semaine ' + s.tontine.turn};
+  return {id:'tont_join', label:'Rejoindre la tontine des voisines', dur:.5, fx:{social:8}, meta:() => '10 000 F chaque samedi · 8 membres · 80 000 F à ton tour',
+    run:() => { s.tontine = {week:0, turn:rnd(1,8)}; return {msg:'Tu rejoins la tontine. Ton tour : semaine ' + s.tontine.turn + '.'}; }};
+}
+
+function sectionsFor(pid){
+  const S = []; const sec = (title, items) => { items = items.filter(Boolean); if (items.length) S.push({title, items}); };
+  const npc = NPC_AT[pid];
+  switch (pid){
+    case 'maison': sec('Chez toi', [
+      {id:'sleep', label:'Dormir jusqu’au matin', sleep:true, dur:sleepHours, preview:() => ({energie:Math.round(Math.min(100 - s.needs.energie, sleepRate() * sleepHours()))}),
+        meta:() => 'Réveil vers 07:00' + (s.flags.delestage && !s.inv.groupe ? ' · délestage cette nuit' : ''),
+        run:() => ({msg: s.flags.delestage && !s.inv.groupe ? 'Nuit agitée : délestage, ventilateur à l’arrêt.' : 'Bonne nuit de sommeil.'})},
+      {id:'nap', label:'Faire une sieste', sleep:true, dur:2, preview:() => ({energie:Math.round(Math.min(100 - s.needs.energie, sleepRate() * 2))}), run:() => ({msg:'Petite sieste réparatrice.'})},
+      food('mafe', 'Cuisiner un mafé', 1.5, 2500, {faim:60, moral:4}),
+      {id:'attaya', label:'Préparer l’attaya avec les voisins', dur:2, cost:500, fx:{social:22, moral:8}, meta:() => 'Trois verres de thé, des heures de discussion'},
+      {id:'revise', label:'Réviser à la maison', dur:2, fx:{etudes:1.5, energie:-8}, req:() => s.ucad ? null : 'Inscris-toi d’abord à l’UCAD.'}
+    ]); break;
+    case 'tangana': sec('Au comptoir', [food('cafe', 'Café Touba et pain ndambé', .5, () => perk('ibou') ? 0 : 400, {faim:25, energie:8})]); break;
+    case 'sandaga': sec('Manger', [food('fataya', 'Fataya chez Fatou', .3, () => perk('fatou') ? 0 : 300, {faim:15})]); sec('Travailler', [work('vendeur')]); sec('Boutique', [buy('groupe')]); break;
+    case 'plateau': sec('Travailler', [work('dev'), work('banque')]); sec('Agence immobilière', homeRows()); sec('Investir', bizRows()); sec('Finances', debtRows()); sec('Balade', [{id:'indep', label:'Flâner place de l’Indépendance', dur:1, fx:{moral:6}}]); break;
+    case 'colobane': sec('Travailler', [work('apprenti')]); sec('Friperie', [{id:'fripe', label:'Fouiller la friperie', dur:1, cost:2000, fx:{moral:9}}]); break;
+    case 'hlm': sec('Travailler', [work('tailleur')]); sec('Boutique', [buy('boubou')]); break;
+    case 'gargote': sec('Au menu', [food('ceebu', 'Ceebu jën', 1, 1500, {faim:55, moral:5}), food('yassa', 'Yassa poulet', 1, 2000, {faim:50, moral:8})]); break;
+    case 'dibiterie': sec('Au menu', [food('dibi', 'Dibi, oignons et moutarde', 1, 3000, {faim:50, moral:10, social:6})]); break;
+    case 'ucad': {
+      const m = perk('aida') ? 1.5 : 1;
+      sec('Études', [
+        !s.ucad && {id:'inscr', label:'S’inscrire à l’UCAD', dur:1, cost:25000, meta:() => 'Une seule fois', run:() => { s.ucad = true; return {msg:'Inscription validée. Bienvenue à l’UCAD !'}; }},
+        {id:'cours', label:'Suivre les cours', dur:4, fx:{etudes:4*m, energie:-14}, req:() => s.ucad ? null : 'Inscription requise.'},
+        {id:'bu', label:'Réviser à la bibliothèque', dur:2, fx:{etudes:2*m, energie:-6}, req:() => s.ucad ? null : 'Inscription requise.'}
+      ]); break;
+    }
+    case 'corniche': sec('Activités', [{id:'jog', label:'Jogging sur la Corniche', dur:1.5, fx:{forme:3, energie:-16, moral:8}}, {id:'sunset', label:'Regarder le coucher de soleil', dur:1, open:[17,20], fx:{moral:16}}, post('corniche', 1.4)]); break;
+    case 'monument': sec('Activités', [{id:'marches', label:'Grimper les marches du Monument', dur:.5, fx:{forme:2, energie:-8, moral:5}}, post('monument', 2)]); break;
+    case 'yoff': sec('Travailler', [work('pecheur')]); sec('Plage', [{id:'swim', label:'Se baigner', dur:1, fx:{moral:15}}, food('grill', 'Poisson grillé sur la plage', 1, () => s.flags.thiof === s.day ? 1200 : 2500, {faim:45, moral:6})]); break;
+    case 'ngoris': sec('Sur l’île', [{id:'chill', label:'Se poser face à l’océan', dur:3, cost:2000, fx:{moral:30, social:6}}, post('ngoris', 1.8)]); break;
+    case 'resto': sec('Au menu', [food('chic', 'Dîner en terrasse', 1.5, 18000, {faim:60, moral:22, social:10})]); break;
+    case 'club': sec('Ce soir', [{id:'party', label:'Faire la fête jusqu’à l’aube', dur:4, cost:15000, fx:{moral:35, social:30, energie:-30}}, post('club', 1.6)]); break;
+    case 'arene': sec('Lutte', [
+      {id:'watch', label:'Regarder un combat', dur:3, cost:3000, open:[14,22], fx:() => ({moral: dayIdx() === 6 ? 40 : 20, social:10}), meta:() => dayIdx() === 6 ? 'Grand combat du dimanche' : 'Combats de quartier'},
+      {id:'train', label:'S’entraîner avec l’écurie', dur:3, open:[6,12], fx:() => ({forme: perk('cheikh') ? 12 : 6, energie:-30})},
+      fight()]); break;
+    case 'parcelles': sec('Travailler', [work('agent')]); sec('Tontine du quartier', [tontineRow()]); sec('Quartier', [{id:'palabre', label:'Discuter sous l’arbre à palabres', dur:1, fx:{social:12, moral:3}}]); break;
+    case 'guediawaye': sec('Travailler', [work('clando')]); sec('Foot', [{id:'nav', label:'Regarder les navétanes', dur:2, cost:500, open:[16,23], fx:() => s.flags.navetanes === s.day ? {moral:30, social:22} : {moral:14, social:12}, meta:() => s.flags.navetanes === s.day ? 'Finale ce soir' : 'Match de quartier'}]); break;
+    case 'foirail': sec('Moutons', [buy('mouton'), buy('ladoum')]); break;
+    case 'concession': sec('Véhicules', [buy('jakarta'), buy('voiture')]); break;
+    case 'lacrose': sec('Excursion', [{id:'lac', label:'Pirogue sur le lac et dunes', dur:4, cost:15000, fx:{moral:45, social:6}}, post('lacrose', 2.4)]); break;
+    case 'goree': sec('Travailler', [work('guide')]); sec('Balade', [{id:'ruelles', label:'Flâner dans les ruelles', dur:2, fx:{moral:24}}]); break;
+  }
+  if (npc) sec('Les gens', [talk(npc)]);
+  return S;
+}
+const valOf = (x) => typeof x === 'function' ? x() : x;
+const costOf = a => valOf(a.cost) || 0;
+const durOf = a => valOf(a.dur) || 0;
+const fxOf = a => valOf(a.fx) || null;
+function blocked(pid, a){
+  if (s.loc !== pid) return 'here';
+  const o = a.open !== undefined ? a.open : placeInfo(pid).open;
+  if (o && !inWin(o, s.hour)) return 'Fermé maintenant · ' + openText(o);
+  const c = costOf(a); if (c > s.money) return 'Il te faut ' + F(c) + '.';
+  const r = a.req && a.req(); if (r) return r;
+  return null;
+}
+
+// ---------------------------------------------------------------- travel
+function routes(from, to){
+  const A = placeInfo(from), B = placeInfo(to);
+  if (A.island && A.island === B.island) return [{id:'pied', label:'À pied', cost:0, hours:.2}];
+  let a = {x:A.x, y:A.y}, b = {x:B.x, y:B.y}, bc = 0, bh = 0; const boats = [];
+  if (A.island){ const j = JETTY[A.island]; a = j; bc += j.cost; bh += j.h; boats.push(j.label); }
+  if (B.island){ const j = JETTY[B.island]; b = j; bc += j.cost; bh += j.h; boats.push(j.label); }
+  const d = Math.hypot(a.x - b.x, a.y - b.y), tr = s.flags.traffic === s.day, opts = [];
+  const add = (id, label, cost, h, note) => opts.push({id, label, cost:cost + bc, hours:h + bh, note:[note, boats.length ? '+ ' + boats.join(' + ') : ''].filter(Boolean).join(' · ')});
+  if (d <= 40) add('pied', 'À pied', 0, .1 + d/45);
+  add('car', 'Car rapide', perk('moussa') ? 0 : 200, .3 + d/110*(tr ? 1.9 : 1), perk('moussa') ? 'Moussa te fait monter gratuit' : (tr ? 'Bouchons' : ''));
+  add('taxi', 'Taxi', Math.round((1200 + d*20)/100)*100, .1 + d/170*(tr ? 2.1 : 1), tr ? 'Bouchons' : '');
+  if (!A.island && !B.island && A.rail && B.rail) add('rail', 'TER / BRT', 500, .2 + d/260, 'Climatisé, à l’heure');
+  if (s.inv.jakarta) add('moto', 'Ma Jakarta', 300, .05 + d/200*(tr ? 1.15 : 1), 'Se faufile partout');
+  if (s.inv.voiture) add('auto', 'Ma voiture', Math.round(d*10/100)*100 + 200, .05 + d/175*(tr ? 2.1 : 1), tr ? 'Bouchons' : 'Clim et confort');
+  let best = null; for (const o of opts) if (o.cost <= s.money && (!best || o.hours < best.hours)) best = o;
+  if (best) best.best = true;
+  return opts;
+}
+async function doTravel(i){
+  const o = curRoutes[i]; if (!o || busy) return;
+  if (o.cost > s.money) return toast('Pas assez d’argent pour ce trajet.', '', 'bad');
+  busy = true;
+  const target = sel, A = placeInfo(s.loc), B = placeInfo(target);
+  const mc = $('#mapcard'); if (mc.getBoundingClientRect().bottom < 120) window.scrollTo({top:0, behavior: reduce ? 'auto' : 'smooth'});
+  await animateMove(A, B, o.id);
+  s.money -= o.cost; let h = o.hours; const fx = {}; let msg = 'Te voilà : ' + B.short + '.';
+  if (o.id === 'car'){ const r = Math.random(); if (r < .12){ h += .6; fx.moral = -5; msg = 'Le car rapide est tombé en panne. Tout le monde pousse, puis on repart.'; } else if (r < .2){ fx.social = 4; msg = 'L’apprenti chante les arrêts, les passagers rigolent : trajet sympa.'; } }
+  if (o.id === 'taxi' && Math.random() < .15 && s.money >= 1000){ s.money -= 1000; msg = 'Le taximan a fait monter le prix à cause des bouchons (+1 000 F).'; }
+  if (o.id === 'rail' || o.id === 'auto') fx.moral = 3;
+  if (o.id === 'pied') fx.forme = 1;
+  advance(h, 'awake'); s.loc = target; applyFx(fx);
+  log(msg + ' (' + o.label + ', ' + dur(h) + ')');
+  toast(msg, fxChips(fx, o.cost));
+  busy = false; after();
+}
+function animateMove(A, B, mode){
+  return new Promise(res => {
+    if (reduce || view !== 'ville'){ res(); return; }
+    const g = $('#m-mover'), me = $('#m-me');
+    const body = {car:'var(--yellow)', taxi:'var(--yellow)', rail:'var(--blue)'}[mode] || s.color;
+    g.innerHTML = '<g><rect x="-9" y="-5.5" width="18" height="11" rx="3" style="fill:' + body + ';stroke:var(--card);stroke-width:1.5"/>' + (mode === 'car' ? '<rect x="-9" y="-5.5" width="18" height="3.5" rx="1.5" style="fill:var(--blue)"/>' : '') + (mode === 'taxi' ? '<rect x="-9" y="-1" width="18" height="2" style="fill:var(--on-yellow)"/>' : '') + '</g>';
+    me.style.opacity = 0;
+    const node = g.firstChild, t0 = performance.now(), D = Math.min(1400, 450 + Math.hypot(B.x - A.x, B.y - A.y) * 4);
+    let done = false; const fin = () => { if (done) return; done = true; g.innerHTML = ''; me.style.opacity = ''; res(); };
+    const step = t => { const k = Math.min(1, (t - t0) / D), e = k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2)/2;
+      node.setAttribute('transform', 'translate(' + (A.x + (B.x - A.x)*e) + ' ' + (A.y + (B.y - A.y)*e) + ')');
+      if (k < 1) requestAnimationFrame(step); else fin(); };
+    requestAnimationFrame(step); setTimeout(fin, D + 400);
+  });
+}
+
+// ---------------------------------------------------------------- doing things
+function doAction(pid, id){
+  if (busy) return; const a = curActs[id]; if (!a || a.info) return;
+  const why = blocked(pid, a);
+  if (why){ toast(why === 'here' ? 'Va d’abord sur place.' : why, '', 'bad'); return; }
+  const cost = costOf(a), d = durOf(a), fx0 = fxOf(a);
+  s.money -= cost;
+  const res = (a.run && a.run()) || {};
+  if (a.sleep){ const before = s.needs.energie; s._rate = sleepRate(); advance(d, 'sleep'); s.flags.delestage = false; res.fx = Object.assign({}, res.fx, {}); res.slept = Math.round(s.needs.energie - before); }
+  else advance(d, 'awake');
+  const fx = Object.assign({}, fx0 || {}); if (res.fx) for (const k in res.fx) fx[k] = (fx[k] || 0) + res.fx[k];
+  applyFx(fx);
+  const shown = a.sleep ? Object.assign({energie:res.slept}, fx) : fx;
+  const msg = res.msg || a.label;
+  log(msg, fx.money > 0 ? 'money' : '');
+  toast(msg, fxChips(shown, cost));
+  after();
+}
+function checkCollapse(){
+  if (s.needs.faim <= 0){
+    s.needs.faim = 35; s.needs.moral = clamp(s.needs.moral - 15);
+    s.money -= 10000; applyFx({});
+    s._rate = 4; advance(3, 'sleep');
+    log('Malaise : Hôpital Principal', 'bad');
+    queue({title:'Malaise', body:'Tu n’as rien mangé depuis trop longtemps. Direction l’Hôpital Principal : 10 000 F de soins et trois heures perdues.'});
+  }
+  if (s.needs.energie <= 0){
+    s._rate = 7; advance(5, 'sleep'); s.needs.moral = clamp(s.needs.moral - 10);
+    log('Coup de barre', 'bad');
+    queue({title:'Coup de barre', body:'Le sommeil gagne : tu fermes les yeux sur place et te réveilles cinq heures plus tard, courbatures en prime.'});
+  }
+}
+function after(){
+  checkCollapse(); save(); renderAll(); pushPresence(); scheduleSync(); showModal();
+}
+
+// ---------------------------------------------------------------- modal & toasts
+function showModal(){
+  const m = $('#modal');
+  if (!s || !s.queue.length){ m.hidden = true; return; }
+  const ev = s.queue[0];
+  $('#modal-t').textContent = ev.title;
+  let b = '<p>' + esc(ev.body || '') + '</p>';
+  if (ev.lines && ev.lines.length) b = '<div class="mlines">' + ev.lines.map(l => '<div><span>' + esc(l[0]) + '</span><b>' + F(l[1]) + '</b></div>').join('') + '</div>' + b;
+  if (ev.fx){ const c = fxChips(ev.fx); if (c) b += '<div class="act-fx" style="justify-content:flex-start">' + c + '</div>'; }
+  $('#modal-b').innerHTML = b;
+  $('#modal-c').innerHTML = ev.choices.map((c, i) => {
+    const cost = c.fx && c.fx.money < 0 ? -c.fx.money : 0, no = cost > s.money;
+    const chips = c.fx ? fxChips(c.fx) : '';
+    return '<button class="btn ' + (i ? 'ghost' : '') + '" data-c="' + i + '" ' + (no ? 'disabled' : '') + '>' + esc(c.label) + (no ? ' (fonds insuffisants)' : '') + '</button>' + (chips ? '<div class="act-fx" style="justify-content:center;margin-top:-2px">' + chips + '</div>' : '');
+  }).join('');
+  m.hidden = false;
+  const f = $('#modal-c button:not(:disabled)'); if (f) f.focus({preventScroll:true});
+}
+$('#modal-c').addEventListener('click', e => {
+  const b = e.target.closest('[data-c]'); if (!b || !s.queue.length) return;
+  const ev = s.queue.shift(), c = ev.choices[+b.dataset.c];
+  if (c && c.fx){ applyFx(c.fx); log(ev.title + ' : ' + c.label); }
+  after();
+});
+function toast(msg, chips, kind){
+  const box = $('#toasts'), t = document.createElement('div');
+  t.className = 'toast' + (kind ? ' ' + kind : '');
+  t.innerHTML = '<span>' + esc(msg) + '</span>' + (chips ? '<span class="tfx">' + chips + '</span>' : '');
+  box.appendChild(t); while (box.children.length > 3) box.firstChild.remove();
+  setTimeout(() => t.remove(), 3400);
+}
+
+// ---------------------------------------------------------------- map
+function smooth(pts){
+  const n = pts.length; let d = 'M' + pts[0][0] + ' ' + pts[0][1];
+  for (let i = 0; i < n; i++){
+    const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+    d += ' C' + (p1[0] + (p2[0] - p0[0])/6).toFixed(1) + ' ' + (p1[1] + (p2[1] - p0[1])/6).toFixed(1) + ' ' + (p2[0] - (p3[0] - p1[0])/6).toFixed(1) + ' ' + (p2[1] - (p3[1] - p1[1])/6).toFixed(1) + ' ' + p2[0] + ' ' + p2[1];
+  }
+  return d + 'Z';
+}
+function buildMap(){
+  const pts = l => l.map(id => P[id].x + ',' + P[id].y).join(' ');
+  $('#map').innerHTML =
+    '<defs><pattern id="waves" width="26" height="13" patternUnits="userSpaceOnUse"><path class="m-wave" d="M0 7 q6.5 -5 13 0 t13 0"/></pattern></defs>' +
+    '<rect class="m-sea" width="400" height="290"/><rect width="400" height="290" fill="url(#waves)"/>' +
+    '<path class="m-land" d="' + smooth(LAND) + '"/>' +
+    '<ellipse class="m-land" cx="68" cy="54" rx="16" ry="8"/><ellipse class="m-land" cx="152" cy="272" rx="8" ry="5"/><ellipse class="m-land" cx="16" cy="178" rx="4" ry="3"/>' +
+    '<ellipse class="m-lac" cx="330" cy="72" rx="15" ry="7"/>' +
+    '<polyline class="m-ter" points="' + pts(['plateau','colobane','arene','foirail','concession']) + '"/>' +
+    '<polyline class="m-brt" points="' + pts(['plateau','hlm','tangana','parcelles','guediawaye']) + '"/>' +
+    '<text class="m-water" x="248" y="266">OCÉAN ATLANTIQUE</text><text class="m-water" x="190" y="220">BAIE DE HANN</text>' +
+    '<rect id="m-night" class="m-night" width="400" height="290" opacity="0"/>' +
+    '<g id="m-pins"></g><g id="m-peers"></g><g id="m-mover"></g><g id="m-me"></g>';
+}
+function nightLevel(h){ if (h >= 20 || h < 5.5) return .4; if (h >= 18.5) return (h - 18.5)/1.5*.4; if (h < 7) return (7 - h)/1.5*.4; return 0; }
+function renderMap(){
+  const wide = $('#mapcard').clientWidth >= 480;
+  const ids = ['maison'].concat(Object.keys(P));
+  $('#m-pins').innerHTML = ids.map(id => {
+    const p = placeInfo(id), on = id === sel, here = id === s.loc, show = wide || on || here || id === 'maison';
+    const shape = id === 'maison' ? '<path class="pin-home" d="M-8 2 L0 -7 L8 2 L8 8 L-8 8 Z"/>' : '<circle class="pin-dot c-' + p.cat + '" r="' + (on ? 9.5 : 7) + '"/>';
+    return '<g class="pin' + (on ? ' on' : '') + (inWin(p.open, s.hour) ? '' : ' closed') + '" data-p="' + id + '" transform="translate(' + p.x + ' ' + p.y + ')" tabindex="0" role="button" aria-label="' + esc(p.name) + '"><circle class="pin-hit" r="15"/>' + shape + (show ? '<text class="pin-lbl" y="' + (on || here ? -15 : -12) + '" text-anchor="middle">' + esc(p.short) + '</text>' : '') + '</g>';
+  }).join('');
+  const me = placeInfo(s.loc);
+  $('#m-me').innerHTML = '<g transform="translate(' + me.x + ' ' + me.y + ')" style="pointer-events:none"><circle class="me-ring" r="9" style="stroke:' + s.color + '"/><circle r="9" style="fill:' + s.color + ';stroke:var(--card);stroke-width:2.5"/><text class="me-ini" y="3.2" text-anchor="middle">' + esc(initial(s.name)) + '</text></g>';
+  $('#m-night').setAttribute('opacity', nightLevel(s.hour).toFixed(2));
+  renderPeersOnMap();
+}
+function renderPeersOnMap(){
+  const g = $('#m-peers'); if (!g || !s) return;
+  const groups = {};
+  for (const p of otherPlayers()){ const c = peerCoords(p.presence); if (!c) continue; const key = c.x + ',' + c.y; (groups[key] = groups[key] || {c, list:[]}).list.push(p); }
+  let out = '';
+  for (const k in groups){
+    const {c, list} = groups[k];
+    list.slice(0, 5).forEach((p, i) => { const ang = -Math.PI/2 + (i - (Math.min(list.length,5) - 1)/2) * .55 + Math.PI; const x = c.x + Math.cos(ang)*13, y = c.y + Math.sin(ang)*13; out += '<circle class="peer" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3.6" style="fill:' + (okColor(p.presence.c) ? p.presence.c : 'var(--muted)') + '"/>'; });
+    if (list.length > 5) out += '<text class="peer-n" x="' + (c.x + 14) + '" y="' + (c.y + 18) + '">+' + (list.length - 5) + '</text>';
+  }
+  g.innerHTML = out;
+}
+const initial = n => (String(n || '?').trim()[0] || '?').toUpperCase();
+
+// ---------------------------------------------------------------- render
+function renderAll(){ if (!s) return; renderHUD(); if (view === 'ville'){ renderMap(); renderChips(); renderPanel(); } if (view === 'moi') renderMe(); if (view === 'journal') renderJournal(); if (view === 'live') renderLive(); }
+function banners(){
+  const b = [], di = dayIdx();
+  if (di === 6) b.push(['fun', 'Grand combat de lutte aujourd’hui à l’Arène']);
+  if (s.flags.traffic === s.day) b.push(['bad', 'Bouchons : prends le TER, le BRT ou une Jakarta']);
+  if (s.flags.delestage) b.push(['bad', 'Délestage prévu cette nuit']);
+  if (s.flags.navetanes === s.day) b.push(['fun', 'Navétanes ce soir à Guédiawaye']);
+  if (s.flags.thiof === s.day) b.push(['food', 'Poisson grillé à moitié prix à Yoff']);
+  const t = 15 - (s.day % 30); if (t > 0 && t <= 7) b.push(['shop', 'Tabaski dans ' + t + ' jour' + (t > 1 ? 's' : '') + (s.inv.mouton || s.inv.ladoum ? '' : ' · pense au mouton')]);
+  if (di === 4){ const h = HOMES[s.home]; let due = (!s.owned.includes(s.home) && h.rent ? h.rent : 0) + (s.debt > 0 ? Math.min(s.debt, s.debtWeekly) : 0) + (s.tontine ? 10000 : 0); if (due) b.push(['bad', 'Demain samedi : ' + F(due) + ' à payer']); b.push(['shop', s.inv.boubou ? 'Vendredi : sors le grand boubou' : 'Vendredi : jour du grand boubou']); }
+  if (s.home === 'papa' && s.day > 6) b.push(['work', 'Papa attend que tu déménages']);
+  return b;
+}
+const SUN = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.3" style="fill:var(--yellow)"/><g style="stroke:var(--yellow);stroke-width:1.5;stroke-linecap:round"><path d="M8 1.2v1.6M8 13.2v1.6M1.2 8h1.6M13.2 8h1.6M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M3.2 12.8l1.1-1.1M11.7 4.3l1.1-1.1"/></g></svg>';
+const MOON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11.5 10.8A5.5 5.5 0 0 1 5.2 2.5a5.5 5.5 0 1 0 6.3 8.3z" style="fill:var(--blue)"/></svg>';
+function renderHUD(){
+  const av = $('#hud-av'); av.style.background = s.color; av.textContent = initial(s.name);
+  $('#hud-name').textContent = s.name;
+  $('#hud-sky').innerHTML = nightLevel(s.hour) >= .2 ? MOON : SUN;
+  $('#hud-time').textContent = DAYS[dayIdx()] + ' · Jour ' + s.day + ' · ' + hhmm(s.hour);
+  $('#hud-money').textContent = F(s.money);
+  $('#hud-loc').textContent = placeInfo(s.loc).short + (s.debt ? ' · dettes ' + F(s.debt) : '');
+  $('#hud-needs').innerHTML = NEEDS.map(([k, l]) => { const v = Math.round(s.needs[k]); return '<div class="need ' + (v < 25 ? 'low' : v < 50 ? 'mid' : '') + '"><span>' + l + '<b>' + v + '</b></span><div class="bar"><i style="width:' + v + '%"></i></div></div>'; }).join('');
+  const b = banners(); const bx = $('#hud-banners'); bx.hidden = !b.length;
+  bx.innerHTML = b.map(([c, t]) => '<span class="bn" style="--c:' + CATC[c] + '">' + esc(t) + '</span>').join('');
+}
+function renderChips(){
+  const ids = ['maison'].concat(Object.keys(P));
+  $('#chips').innerHTML = ids.map(id => { const p = placeInfo(id); return '<button class="chip' + (id === s.loc ? ' here' : '') + '" data-p="' + id + '" aria-current="' + (id === sel) + '" style="--c:' + CATC[p.cat] + '"><i></i>' + esc(p.short) + '</button>'; }).join('');
+}
+function centerChip(){
+  const box = $('#chips'), cur = $('#chips [aria-current="true"]');
+  if (box && cur) box.scrollLeft = cur.offsetLeft - box.clientWidth/2 + cur.offsetWidth/2;
+}
+function actHtml(pid, a, here){
+  if (a.info) return '<div class="info-row"><b>' + esc(a.label) + '</b><span>' + esc(a.meta ? a.meta() : '') + '</span></div>';
+  curActs[a.id] = a;
+  const why = blocked(pid, a), cost = costOf(a), d = durOf(a);
+  const meta = [dur(d), cost ? F(cost) : (a.cost !== undefined ? 'gratuit' : null), a.meta ? a.meta() : null].filter(Boolean).join(' · ');
+  const pv = a.preview ? a.preview() : fxOf(a);
+  return '<button class="act" data-a="' + esc(a.id) + '"' + (why ? ' disabled' : '') + '><span class="act-main"><span class="act-label">' + esc(a.label) + '</span><span class="act-meta">' + esc(meta) + '</span>' + (why && why !== 'here' ? '<span class="act-why">' + esc(why) + '</span>' : '') + '</span><span class="act-fx">' + fxChips(pv) + '</span></button>';
+}
+function renderPanel(){
+  const pid = sel, here = s.loc === pid, p = placeInfo(pid); curActs = {};
+  const isOpen = inWin(p.open, s.hour);
+  let h = '<div class="ph"><div class="eyebrow">' + CAT[p.cat] + ' · ' + esc(p.q) + '</div><h2>' + esc(p.name) + '</h2><div class="pills">' + (here ? '<span class="pill here">Tu es ici</span>' : '') + '<span class="pill ' + (isOpen ? 'open' : 'shut') + '">' + (isOpen ? 'Ouvert' : 'Fermé') + ' · ' + openText(p.open) + '</span>' + (p.rail ? '<span class="pill">TER / BRT</span>' : '') + '</div><p class="desc">' + esc(p.desc) + '</p></div>';
+  if (!here){
+    curRoutes = routes(s.loc, pid);
+    h += '<div class="travel"><div class="travel-h">Y aller depuis ' + esc(placeInfo(s.loc).short) + '</div><div class="tgrid">' + curRoutes.map((o, i) => '<button class="tbtn' + (o.best ? ' best' : '') + '" data-t="' + i + '"' + (o.cost > s.money ? ' disabled' : '') + '><b>' + o.label + '</b><span>' + dur(o.hours) + ' · ' + (o.cost ? F(o.cost) : 'gratuit') + '</span>' + (o.note ? '<em>' + esc(o.note) + '</em>' : '') + '</button>').join('') + '</div></div>';
+  }
+  const ps = otherPlayers().filter(x => { const c = peerCoords(x.presence); return c && c.x === p.x && c.y === p.y; });
+  if (ps.length) h += '<div class="peers-here"><span class="dots">' + ps.slice(0, 6).map(x => '<i style="background:' + (okColor(x.presence.c) ? x.presence.c : 'var(--muted)') + '"></i>').join('') + '</span><span>' + ps.length + ' autre' + (ps.length > 1 ? 's joueurs' : ' joueur') + ' ici : ' + esc(ps.slice(0, 3).map(x => String(x.presence.n || 'Quelqu’un').slice(0, 20)).join(', ')) + (ps.length > 3 ? '…' : '') + '</span></div>';
+  for (const sc of sectionsFor(pid)) h += '<h3 class="sec">' + esc(sc.title) + '</h3><div class="acts">' + sc.items.map(a => actHtml(pid, a, here)).join('') + '</div>';
+  $('#panel').innerHTML = h;
+}
+function select(id){
+  if (!placeInfo(id)) return; sel = id; renderMap(); renderChips(); centerChip(); renderPanel();
+  const ph = $('#panel'), r = ph.getBoundingClientRect();
+  if (window.innerWidth < 900 && r.top > window.innerHeight - 140) ph.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'start'});
+}
+
+function renderMe(){
+  const nw = netWorth(), h = HOMES[s.home];
+  const goal = clamp(Math.log10(Math.max(nw, 1)) / 9 * 100);
+  const items = Object.keys(s.inv).filter(k => s.inv[k]);
+  const bizK = Object.keys(s.biz).filter(k => s.biz[k]);
+  const jobsK = Object.keys(s.jobs);
+  const assets = nw - s.money + s.debt;
+  const passive = bizK.reduce((a, k) => a + BIZ[k].inc * s.biz[k], 0) + Math.floor(s.followers/1000)*2500;
+  const sure = resetArmed;
+  $('#v-moi').innerHTML = '<div class="stack two">' +
+    '<div class="stack">' +
+    '<div class="card idcard"><div class="av lg" style="background:' + s.color + '">' + esc(initial(s.name)) + '</div><div><h2>' + esc(s.name) + '</h2><p class="muted">' + (s.start === 'nepo' ? 'Départ : fils ou fille à papa' : 'Départ : góorgóorlu') + ' · Jour ' + s.day + '</p><p class="muted">' + esc(h.name) + (s.owned.includes(s.home) ? ' · propriétaire' : h.rent ? ' · ' + F(h.rent) + '/sem.' : '') + '</p></div></div>' +
+    '<div class="card"><h3>Patrimoine net</h3><div class="big">' + F(nw) + '</div><dl class="kv"><dt>En poche</dt><dd>' + F(s.money) + '</dd><dt>Biens et business</dt><dd>' + F(assets) + '</dd><dt>Dettes</dt><dd class="' + (s.debt ? 'neg' : '') + '">' + (s.debt ? '−' + F(s.debt) : 'Aucune') + '</dd><dt>Revenus passifs</dt><dd>' + (passive ? '+' + F(passive) + '/jour' : '—') + '</dd></dl>' +
+      (nw >= 1e9 ? '<span class="badge">Membre du Cercle des milliardaires</span>' : '<div class="goal"><span>Objectif : Cercle des milliardaires (1 Md F)</span><div class="bar"><i style="width:' + goal.toFixed(1) + '%"></i></div></div>') + '</div>' +
+    '<div class="card"><h3>Compétences</h3><div class="meters">' +
+      '<div class="meter"><span>Études<b>' + Math.floor(s.etudes) + '</b></span><div class="bar"><i style="width:' + s.etudes + '%"></i></div></div>' +
+      '<div class="meter"><span>Forme<b>' + Math.floor(s.forme) + '</b></span><div class="bar"><i style="width:' + s.forme + '%"></i></div></div></div>' +
+      '<dl class="kv"><dt>Expérience</dt><dd>' + s.xp + ' services</dd><dt>Abonnés</dt><dd>' + num(s.followers) + '</dd><dt>Combats</dt><dd>' + s.fights.won + ' V · ' + s.fights.lost + ' D</dd></dl></div>' +
+    '</div><div class="stack">' +
+    '<div class="card"><h3>Emplois</h3>' + (jobsK.length ? '<div class="rows">' + jobsK.map(k => '<div class="row"><span>' + esc(JOBS[k].name) + '</span><span>Niv. ' + jobLevel(k) + ' · ' + s.jobs[k] + ' services · ' + F(payOf(k)) + '</span></div>').join('') + '</div>' : '<p class="empty">Aucun service pour l’instant. Commence comme vendeur à Sandaga ou apprenti à Colobane.</p>') + '</div>' +
+    '<div class="card"><h3>Business</h3>' + (bizK.length ? '<div class="rows">' + bizK.map(k => '<div class="row"><span>' + esc(BIZ[k].name) + ' ×' + s.biz[k] + '</span><span>+' + F(BIZ[k].inc * s.biz[k]) + '/jour</span></div>').join('') + '</div>' : '<p class="empty">Investis au Plateau : un tangana de quartier rapporte 15 000 F par jour.</p>') + '</div>' +
+    '<div class="card"><h3>Possessions</h3>' + ((items.length || s.owned.length) ? '<div class="rows">' + s.owned.map(k => '<div class="row"><span>' + esc(HOMES[k].name) + '</span><span>' + F(HOMES[k].price) + '</span></div>').join('') + items.map(k => '<div class="row"><span>' + esc(ITEMS[k].name) + '</span><span>' + esc(ITEMS[k].desc) + '</span></div>').join('') + '</div>' : '<p class="empty">Rien encore. Le groupe électrogène de Sandaga change la vie pendant les délestages.</p>') + '</div>' +
+    '<div class="card"><h3>Amis</h3>' + Object.keys(NPCS).map(k => { const n = NPCS[k], lv = s.friends[k] || 0; return '<div class="friend"><b>' + esc(n.name) + '</b><span class="hearts" aria-label="Amitié ' + lv + ' sur 5">' + [1,2,3,4,5].map(i => '<i class="' + (i <= lv ? 'on' : '') + '"></i>').join('') + '</span><small>' + esc(n.role) + ' · ' + (lv >= 3 ? 'Bonus : ' + esc(n.perk) : 'Amitié 3 : ' + esc(n.perk)) + '</small></div>'; }).join('') + '</div>' +
+    '<div class="card"><h3>Engagements</h3><div class="rows">' +
+      '<div class="row"><span>Tontine</span><span>' + (s.tontine ? 'Semaine ' + s.tontine.week + '/8 · ton tour : semaine ' + s.tontine.turn : 'Aucune · à rejoindre aux Parcelles') + '</span></div>' +
+      '<div class="row"><span>Dettes</span><span>' + (s.debt ? F(s.debt) + ' · ' + F(s.debtWeekly) + ' chaque samedi' : 'Aucune') + '</span></div>' +
+      '<div class="row"><span>Loyer</span><span>' + (!s.owned.includes(s.home) && h.rent ? F(h.rent) + ' chaque samedi' : 'Aucun') + '</span></div></div></div>' +
+    '<div class="card"><h3>Nouvelle vie</h3><p class="muted">Efface cette partie et recommence avec un autre départ.</p><div class="danger">' + (sure ? '<button class="btn small" id="reset-yes" style="background:var(--bad);color:#fff;box-shadow:none">Tout effacer</button><button class="btn small ghost" id="reset-no">Garder ma partie</button>' : '<button class="btn small ghost" id="reset">Recommencer à zéro</button>') + '</div></div>' +
+    '</div></div>';
+}
+function renderJournal(){
+  $('#v-journal').innerHTML = '<div class="card"><h3>Journal</h3>' + (s.log.length ? '<ul class="log">' + s.log.map(e => '<li><time>J' + e.d + ' · ' + hhmm(e.h) + '</time><span class="k-' + esc(e.k) + '">' + esc(e.t) + '</span></li>').join('') + '</ul>' : '<p class="empty">Ton histoire à Dakar commence ici.</p>') + '</div>';
+}
+
+// ---------------------------------------------------------------- live (shared)
+const cap = {user:null, uid:null, db:null, room:null, players:null, peers:[], readOnly:false, ready:false};
+const ZONES = [...new Set(Object.values(HOMES).map(h => h.q))];
+function otherPlayers(){ return (cap.peers || []).filter(p => !p.sameTab && p.kind === 'viewer' && p.presence && p.presence.g === 1); }
+function peerCoords(pr){
+  if (!pr || typeof pr.p !== 'string') return null;
+  if (pr.p.startsWith('h:')){ const h = HOMES[pr.p.slice(2)]; return h ? {x:h.x, y:h.y} : null; }
+  return P[pr.p] ? {x:P[pr.p].x, y:P[pr.p].y} : null;
+}
+function liveStats(){
+  const today = todayStr();
+  const online = cap.room ? Math.max((cap.peers || []).filter(p => p.kind === 'viewer' && p.presence && p.presence.g === 1).length, s ? 1 : 0) : (s ? 1 : 0);
+  if (cap.players){
+    const L = cap.players;
+    return {shared:true, online, total:L.length, all:L.reduce((a, p) => a + (+p.visits || 0), 0), today:L.reduce((a, p) => a + (p.lastDay === today ? (+p.visitsToday || 0) : 0), 0), list:L};
+  }
+  const mine = s ? [{id:'me', name:s.name, color:s.color, netWorth:netWorth(), zone:HOMES[s.home].q}] : [];
+  return {shared:false, online, total:s ? 1 : 0, all:s ? s.visits : 0, today:s && s.visitDay === today ? s.visitsToday : 0, list:mine};
+}
+function renderLive(){
+  const host = $('#v-live'); if (!host || host.hidden) return;
+  const st = liveStats();
+  const top = st.list.slice().sort((a, b) => (+b.netWorth || 0) - (+a.netWorth || 0)).slice(0, 10);
+  const zc = {}; for (const p of st.list) if (ZONES.includes(p.zone)) zc[p.zone] = (zc[p.zone] || 0) + 1;
+  const zs = Object.entries(zc).sort((a, b) => b[1] - a[1]); const zmax = zs.length ? zs[0][1] : 1;
+  const text = 'Dakar Life en direct : ' + num(st.online) + ' en ligne, ' + num(st.total) + ' joueurs, ' + num(st.today) + ' visites aujourd’hui.';
+  host.innerHTML =
+    (!s ? '<div class="stripe" style="margin-bottom:14px"></div>' : '') +
+    '<div class="live-h"><span class="live-dot"></span>DAKAR LIFE · LIVE</div>' +
+    '<h2 class="live-title">Dakar grandit, en direct.</h2>' +
+    '<div class="tiles">' +
+      '<div class="tile hot"><b>' + num(st.online) + '</b><span>Joueurs en ligne</span></div>' +
+      '<div class="tile"><b>' + num(st.total) + '</b><span>Joueurs au total</span></div>' +
+      '<div class="tile"><b>' + num(st.today) + '</b><span>Visites aujourd’hui</span></div>' +
+      '<div class="tile"><b>' + num(st.all) + '</b><span>Visites au total</span></div>' +
+    '</div>' +
+    (st.shared ? '' : '<p class="note">' + (cap.ready ? 'Compteurs partagés indisponibles sur cet écran : seuls tes chiffres s’affichent.' : 'Connexion aux compteurs partagés…') + '</p>') +
+    '<div class="stack" style="margin-top:16px">' +
+    '<div class="card"><h3>Les plus riches de Dakar</h3>' + (top.length ? '<table class="lb"><tbody>' + top.map((p, i) => '<tr><td class="rk">' + (i + 1) + '</td><td><span class="nm"><i style="background:' + (okColor(p.color) ? p.color : 'var(--muted)') + '"></i><span>' + esc(String(p.name || 'Joueur').slice(0, 24)) + '</span>' + (p.id === cap.uid || p.id === 'me' ? '<span class="you">toi</span>' : '') + '</span></td><td class="nw">' + F(+p.netWorth || 0) + '</td></tr>').join('') + '</tbody></table>' : '<p class="empty">Le classement se remplit dès que les premiers joueurs arrivent.</p>') + '</div>' +
+    '<div class="card"><h3>Où vivent les joueurs</h3>' + (zs.length ? '<div class="zbars">' + zs.map(([z, n]) => '<div class="zb"><span>' + esc(z) + '</span><span class="bar"><i style="width:' + (n / zmax * 100).toFixed(1) + '%"></i></span><b>' + n + '</b></div>').join('') + '</div>' : '<p class="empty">Aucun joueur encore.</p>') + '</div>' +
+    '<div class="card"><h3>Espaces publicitaires</h3><div class="boards">' + [1,2,3].map(i => '<div class="board"><b>Ton affiche ici</b><span>50 000 F · 7 jours</span></div>').join('') + '</div><p class="muted" style="font-size:12.5px">Panneaux visibles sur cette page et sur la carte. Tarifs de démonstration.</p></div>' +
+    '<div class="card"><h3>Partager ces chiffres</h3><p class="muted" style="font-size:13.5px">' + esc(text) + '</p><div class="share"><a class="btn small" target="_blank" rel="noopener" href="https://x.com/intent/post?text=' + encodeURIComponent(text) + '">Poster sur X</a><button class="btn small ghost" id="copy-stats">Copier le texte</button></div></div>' +
+    (!s ? '<button class="btn" id="live-play">Jouer à Dakar Life</button>' : '') +
+    '</div>';
+  host._text = text;
+}
+function pushPresence(){ if (!cap.room || !s) return; try { cap.room.presence({g:1, p: s.loc === 'maison' ? 'h:' + s.home : s.loc, n:String(s.name).slice(0, 24), c:s.color}).catch(() => {}); } catch(e){} }
+let syncT = null, lastSent = '', syncing = false;
+function scheduleSync(){ if (!cap.db || !cap.uid || cap.readOnly || syncT) return; syncT = setTimeout(() => { syncT = null; syncPlayer(); }, 15000); }
+async function syncPlayer(){
+  if (!cap.db || !cap.uid || !s || cap.readOnly || syncing) return;
+  const body = {name:String(s.name).slice(0, 24), color:s.color, start:s.start, zone:HOMES[s.home].q, netWorth:Math.round(netWorth()), day:s.day, visits:s.visits, visitsToday:s.visitsToday, lastDay:s.visitDay};
+  const key = JSON.stringify(body); if (key === lastSent) return;
+  syncing = true;
+  try { await cap.db.doc('players/' + cap.uid).set(Object.assign({updatedAt:Date.now()}, body)); lastSent = key; }
+  catch(e){ const c = e && e.code; if (c === 'unavailable') scheduleSync(); else if (c) cap.readOnly = true; }
+  syncing = false;
+}
+function countVisit(){ const t = todayStr(); s.visits = (s.visits || 0) + 1; if (s.visitDay !== t){ s.visitDay = t; s.visitsToday = 1; } else s.visitsToday = (s.visitsToday || 0) + 1; }
+async function registerVisit(){
+  if (!cap.db || !cap.uid || !s) return;
+  try { const snap = await cap.db.doc('players/' + cap.uid).get(); if (snap.exists){ const r = snap.data() || {}; if ((+r.visits || 0) >= s.visits) s.visits = (+r.visits || 0) + 1; if (r.lastDay === s.visitDay && (+r.visitsToday || 0) >= s.visitsToday) s.visitsToday = (+r.visitsToday || 0) + 1; save(); } } catch(e){}
+  syncPlayer();
+}
+async function initCaps(){
+  const C = window.claude;
+  if (!C || typeof C.use !== 'function'){ cap.ready = true; renderLive(); return; }
+  try { cap.user = await C.use('user'); if (cap.user) cap.uid = await cap.user.id(); } catch(e){}
+  try { cap.room = await C.use('room'); } catch(e){ cap.room = null; }
+  if (cap.room){
+    try { cap.room.onPeers(ch => { cap.peers = ch.peers; if (s && view === 'ville'){ renderPeersOnMap(); if (!busy) renderPanel(); } if (view === 'live') renderLive(); }, () => { cap.room = null; cap.peers = []; renderLive(); }); } catch(e){ cap.room = null; }
+    pushPresence();
+  }
+  try { cap.db = await C.use('db'); } catch(e){ cap.db = null; }
+  if (cap.db){
+    try { cap.db.collection('players').orderBy('netWorth', 'desc').limit(500).onSnapshot(snap => { cap.players = snap.docs.filter(d => d.exists).map(d => Object.assign({id:d.id}, d.data())); renderLive(); }, () => { cap.players = null; renderLive(); }); } catch(e){}
+    if (s) registerVisit();
+  }
+  cap.ready = true; renderLive();
+}
+
+// ---------------------------------------------------------------- views & events
+function setView(v){
+  view = v;
+  for (const id of ['ville','moi','journal']) $('#v-' + id).hidden = v !== id;
+  $('#v-live').hidden = v !== 'live';
+  document.querySelectorAll('#nav button').forEach(b => b.setAttribute('aria-current', b.dataset.v === v ? 'page' : 'false'));
+  resetArmed = false; renderAll(); window.scrollTo({top:0});
+}
+$('#nav').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) setView(b.dataset.v); });
+$('#map').addEventListener('click', e => { const g = e.target.closest('.pin'); if (g && !busy) select(g.dataset.p); });
+$('#map').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const g = e.target.closest('.pin'); if (g){ e.preventDefault(); select(g.dataset.p); } });
+$('#chips').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b && !busy) select(b.dataset.p); });
+$('#panel').addEventListener('click', e => {
+  const t = e.target.closest('[data-t]'); if (t){ doTravel(+t.dataset.t); return; }
+  const a = e.target.closest('[data-a]'); if (a) doAction(sel, a.dataset.a);
+});
+$('#v-moi').addEventListener('click', e => {
+  if (e.target.closest('#reset')){ resetArmed = true; renderMe(); }
+  else if (e.target.closest('#reset-no')){ resetArmed = false; renderMe(); }
+  else if (e.target.closest('#reset-yes')){ try { localStorage.removeItem(KEY); } catch(er){} s = null; resetArmed = false; showOnboarding(); }
+});
+$('#v-live').addEventListener('click', e => {
+  if (e.target.closest('#copy-stats')){ const txt = $('#v-live')._text || ''; try { navigator.clipboard.writeText(txt).then(() => toast('Texte copié.'), () => toast('Copie impossible ici : sélectionne le texte.', '', 'bad')); } catch(er){ toast('Copie impossible ici : sélectionne le texte.', '', 'bad'); } }
+  if (e.target.closest('#live-play')){ $('#v-live').hidden = true; showOnboarding(); }
+});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden'){ save(); syncPlayer(); } else if (s){ const f = load(); if (f && f.money !== s.money){ s.money = f.money; renderAll(); } } });
+let resizeT; window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (s && view === 'ville') renderMap(); }, 150); });
+
+// onboarding
+let obColor = COLORS[0], obStart = 'gorgorlu';
+function showOnboarding(){
+  $('#game').hidden = true; $('#nav').hidden = true; $('#v-live').hidden = true; $('#onboard').hidden = false; $('#modal').hidden = true;
+  $('#ob-colors').innerHTML = COLORS.map(c => '<button type="button" class="sw" data-c="' + c + '" style="background:' + c + '" aria-label="Couleur ' + c + '" aria-pressed="' + (c === obColor) + '"></button>').join('');
+  window.scrollTo({top:0});
+}
+$('#ob-colors').addEventListener('click', e => { const b = e.target.closest('[data-c]'); if (!b) return; obColor = b.dataset.c; document.querySelectorAll('#ob-colors .sw').forEach(x => x.setAttribute('aria-pressed', x.dataset.c === obColor)); });
+document.querySelectorAll('.start').forEach(b => b.addEventListener('click', () => { obStart = b.dataset.start; document.querySelectorAll('.start').forEach(x => x.setAttribute('aria-pressed', x === b)); }));
+$('#ob-live').addEventListener('click', () => { $('#onboard').hidden = true; $('#v-live').hidden = false; view = 'live'; renderLive(); window.scrollTo({top:0}); });
+$('#ob-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('#ob-name').value.trim().replace(/\s+/g, ' ').slice(0, 20);
+  if (!name){ $('#ob-name').focus(); return; }
+  s = newGame(name, obColor, obStart); countVisit();
+  queue({title:'Bienvenue à Dakar, ' + name, body: obStart === 'nepo'
+    ? 'Tu te réveilles dans la villa familiale de Mermoz. 2 000 000 F sur ton compte, mais papa ne paiera pas éternellement. Surveille tes quatre jauges, investis au Plateau, et vise le Cercle des milliardaires.'
+    : 'Tu te réveilles dans ta chambre à Pikine avec 115 000 F, dont un microcrédit de 100 000 F. Chaque samedi tombent le loyer et 15 000 F de remboursement. Commence par un service à Sandaga ou Colobane, et surveille tes quatre jauges.'});
+  log('Arrivée à Dakar', 'event');
+  startGame(); if (cap.db) registerVisit(); else syncPlayer();
+});
+function startGame(){
+  $('#onboard').hidden = true; $('#game').hidden = false; $('#nav').hidden = false;
+  sel = s.loc; buildMap(); setView('ville'); save(); pushPresence(); showModal();
+}
+
+// boot
+function boot(data){
+  const fromHot = data && data.s && data.s.v === 1;
+  s = fromHot ? data.s : load();
+  if (s){
+    if (!fromHot) countVisit();
+    if (data && data.view) view = data.view;
+    $('#onboard').hidden = true; $('#game').hidden = false; $('#nav').hidden = false;
+    sel = (data && data.sel) || s.loc; buildMap(); setView(view === 'live' || view === 'moi' || view === 'journal' ? view : 'ville'); save(); showModal();
+  } else if (location.hash === '#live'){
+    $('#v-live').hidden = false; view = 'live'; renderLive();
+  } else showOnboarding();
+  initCaps();
+}
+const hot = window.claude && window.claude.hot;
+if (hot && typeof hot.snapshot === 'function') { try { hot.snapshot(() => ({s, sel, view})); } catch(e){} }
+if (hot && typeof hot.ready === 'function') hot.ready(boot); else boot((hot && hot.data) || {});
+})();
+</script>
+
+</body></html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0B1E3F">
+<title>Dakar Life</title>
+<meta name="description" content="Dakar Life : le jeu de la vie à Dakar. Conduis en 3D, fais le clando, vis ta vie de la Médina aux Almadies. Gratuit dans ton navigateur.">
+<meta property="og:title" content="Dakar Life">
+<meta property="og:description" content="Vole un taxi, fais le clando, sème la police sur la Corniche. Le jeu de Dakar, gratuit dans ton navigateur.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Figtree:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--yellow:#F2B300;--blue:#1A4C9C;--red:#D63A2F;--green:#1C9E5B;--pink:#FF4F9A;--teal:#22D3C5;--ink:#0D1626;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:#fff;font-family:'Figtree',system-ui,sans-serif;background:radial-gradient(120% 80% at 80% 0%,rgba(255,79,154,.35),transparent 55%),radial-gradient(90% 70% at 0% 100%,rgba(34,211,197,.28),transparent 60%),linear-gradient(180deg,#0B1E3F,#120B2E);padding:calc(env(safe-area-inset-top,0px) + 28px) 18px calc(env(safe-area-inset-bottom,0px) + 28px)}
+main{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.stripe{height:9px;border-radius:5px;background:linear-gradient(var(--blue),var(--blue)) top/100% 3px no-repeat,repeating-linear-gradient(90deg,var(--yellow) 0 26px,var(--red) 26px 30px,var(--yellow) 30px 56px,var(--green) 56px 60px)}
+h1{font-family:'Bungee','Arial Black',sans-serif;font-weight:400;font-size:clamp(52px,15vw,104px);line-height:.88;margin:0;color:var(--yellow);-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:5px 5px 0 var(--pink)}
+.lead{font-size:18px;color:#dbe4f2;max-width:44ch;margin:0}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.mode{display:flex;flex-direction:column;gap:8px;padding:20px;border-radius:20px;text-decoration:none;color:#fff;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14);transition:transform .15s}
+.mode:hover{transform:translateY(-3px)}
+.mode b{font-family:'Bungee',sans-serif;font-weight:400;font-size:26px}
+.mode.rue{background:var(--yellow);color:var(--ink);box-shadow:0 5px 0 #000}
+.mode.rue small{color:#3a2c00}
+.mode small{font-size:15px;color:#cfd8e6;line-height:1.4}
+.mode span{font-weight:800;font-size:14px;margin-top:4px}
+footer{font-size:13px;color:#9fb0c8}
+</style>
+</head>
+<body>
+<main>
+  <div class="stripe"></div>
+  <h1>Dakar Life</h1>
+  <p class="lead">Le jeu de Dakar, gratuit dans ton navigateur. Pas de téléchargement, pas de compte.</p>
+  <div class="modes">
+    <a class="mode rue" href="rue.html"><b>Rue</b><small>Conduis dans Dakar en 3D. Vole un taxi, un car rapide ou une Jakarta, fais le clando de Sandaga aux Almadies et sème la police sur la Corniche.</small><span>Prendre le volant →</span></a>
+    <a class="mode" href="vie.html"><b>La Vie</b><small>Pikine ou Mermoz, à toi de choisir. Travaille, mange, fais la fête, survis au délestage et à la Tabaski, vise le Cercle des milliardaires.</small><span>Commencer ma vie →</span></a>
+  </div>
+  <footer>L’argent gagné dans la Rue est partagé avec La Vie. Fait à Dakar.</footer>
+</main>
+</body>
+</html>

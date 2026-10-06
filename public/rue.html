@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0B1E3F">
+<title>Dakar Life · Rue</title>
+<meta name="description" content="Prends le volant dans Dakar : taxis, cars rapides, Jakarta, courses de clando et police aux trousses. Gratuit, dans ton navigateur.">
+<meta property="og:title" content="Dakar Life · Rue">
+<meta property="og:description" content="Conduis dans Dakar en 3D. Vole un taxi, fais le clando, sème la police. Gratuit dans ton navigateur.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Figtree:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --yellow:#F2B300; --blue:#1A4C9C; --ink:#0D1626; --red:#D63A2F; --green:#1C9E5B; --pink:#FF4F9A; --teal:#22D3C5;
+  --glass:rgba(10,18,32,.62); --line:rgba(255,255,255,.16);
+  --f-d:'Bungee','Arial Black',Impact,sans-serif; --f-b:'Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#0B1E3F;color:#fff;font-family:var(--f-b);-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:none}
+[hidden]{display:none!important}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+button{font:inherit;color:inherit;cursor:pointer}
+.stroke{text-shadow:0 2px 0 #000,0 -1px 0 #000,1px 0 0 #000,-1px 0 0 #000,0 0 12px rgba(0,0,0,.4)}
+
+/* HUD */
+.hud{position:fixed;inset:0;pointer-events:none;padding:calc(env(safe-area-inset-top,0px) + 12px) calc(env(safe-area-inset-right,0px) + 14px) calc(env(safe-area-inset-bottom,0px) + 12px) calc(env(safe-area-inset-left,0px) + 14px)}
+.tl{position:absolute;left:calc(env(safe-area-inset-left,0px) + 14px);top:calc(env(safe-area-inset-top,0px) + 10px);display:flex;flex-direction:column;gap:6px}
+.money{font-family:var(--f-d);font-size:clamp(22px,4.6vw,34px);color:#7CF29A;letter-spacing:.02em;line-height:1;font-variant-numeric:tabular-nums}
+.health{width:150px;height:8px;border-radius:4px;background:rgba(0,0,0,.45);overflow:hidden;box-shadow:0 0 0 1.5px rgba(0,0,0,.6)}
+.health i{display:block;height:100%;background:linear-gradient(90deg,#FF4F6A,#FF8A5C);width:100%;transition:width .3s}
+.health.car i{background:linear-gradient(90deg,var(--teal),#7CF2E6)}
+.tr{position:absolute;right:calc(env(safe-area-inset-right,0px) + 14px);top:calc(env(safe-area-inset-top,0px) + 10px);display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.stars{display:flex;gap:3px}
+.stars svg{width:clamp(20px,4vw,28px);height:auto;filter:drop-shadow(0 2px 0 #000)}
+.stars path{fill:rgba(255,255,255,.18);stroke:#000;stroke-width:1.2}
+.stars .on path{fill:#FFD84A}
+.stars.flash .on path{animation:sf .5s steps(2) infinite}
+@keyframes sf{50%{fill:#fff}}
+.clock{font-family:var(--f-d);font-size:15px;letter-spacing:.04em}
+.district{position:absolute;right:calc(env(safe-area-inset-right,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 190px);font-family:var(--f-d);font-size:clamp(20px,4.4vw,34px);color:var(--pink);opacity:0;transition:opacity .6s;text-align:right;max-width:70vw;line-height:1.05}
+.district.show{opacity:1}
+.mission{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 10px);background:var(--glass);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:12px;padding:8px 14px;font-weight:700;font-size:14px;text-align:center;max-width:min(460px,56vw);box-shadow:0 0 0 1px var(--line)}
+.mission b{color:var(--yellow)}
+.mission small{display:block;font-weight:600;color:#cfd8e6;font-size:12.5px}
+.speed{position:absolute;right:calc(env(safe-area-inset-right,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);text-align:right}
+.speed b{font-family:var(--f-d);font-size:44px;line-height:1;display:block;font-variant-numeric:tabular-nums}
+.speed span{font-weight:800;font-size:13px;letter-spacing:.08em;color:var(--teal)}
+.speed small{display:block;font-size:12.5px;font-weight:700;color:#cfd8e6}
+#mini{position:absolute;left:calc(env(safe-area-inset-left,0px) + 14px);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);width:170px;height:170px;border-radius:50%;box-shadow:0 0 0 3px rgba(0,0,0,.7),0 0 0 5px rgba(255,255,255,.25)}
+.hint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);background:var(--glass);border-radius:999px;padding:8px 16px;font-weight:700;font-size:14px;white-space:nowrap;box-shadow:0 0 0 1px var(--line)}
+.hint kbd{font-family:var(--f-d);font-size:12px;background:var(--yellow);color:var(--ink);border-radius:5px;padding:1px 6px;margin-right:6px}
+.toasts{position:absolute;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 74px);display:flex;flex-direction:column;align-items:center;gap:6px;width:min(520px,90vw)}
+.toast{background:var(--glass);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:12px;padding:8px 14px;font-weight:700;font-size:14.5px;text-align:center;animation:tin .25s ease-out;box-shadow:0 0 0 1px var(--line)}
+.toast.money{color:#7CF29A}.toast.bad{color:#FF8D9B}.toast.pink{color:var(--pink)}
+@keyframes tin{from{transform:translateY(-8px);opacity:0}}
+.big{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.big div{font-family:var(--f-d);font-size:clamp(40px,11vw,96px);letter-spacing:.03em;animation:bin .4s ease-out}
+.big .busted{color:#FF4F6A}.big .paid{color:#7CF29A}.big .wasted{color:#FF4F6A}
+@keyframes bin{from{transform:scale(1.4);opacity:0}}
+
+/* touch */
+.touch{position:fixed;inset:0;pointer-events:none}
+.touch .zone{position:absolute;left:0;top:30%;bottom:0;width:50%;pointer-events:auto}
+.stick{position:absolute;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 2px rgba(255,255,255,.25);pointer-events:none}
+.stick i{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(255,255,255,.35);box-shadow:0 0 0 2px rgba(0,0,0,.3)}
+.tbtns{position:absolute;right:calc(env(safe-area-inset-right,0px) + 14px);bottom:calc(env(safe-area-inset-bottom,0px) + 104px);display:grid;grid-template-columns:repeat(2,64px);gap:10px;pointer-events:auto}
+.tb{width:64px;height:64px;border-radius:50%;border:0;background:rgba(10,18,32,.55);box-shadow:inset 0 0 0 2px rgba(255,255,255,.3);font-weight:800;font-size:11.5px;display:grid;place-items:center;text-align:center;line-height:1.1;touch-action:none}
+.tb.y{background:var(--yellow);color:var(--ink);box-shadow:0 3px 0 #000}
+.tb.on{background:rgba(255,255,255,.35)}
+.camzone{position:absolute;right:0;top:15%;bottom:0;width:50%;pointer-events:auto}
+.topbtns{position:absolute;right:calc(env(safe-area-inset-right,0px) + 14px);top:calc(env(safe-area-inset-top,0px) + 74px);display:flex;gap:8px;pointer-events:auto}
+.sb{width:40px;height:40px;border-radius:12px;border:0;background:var(--glass);box-shadow:0 0 0 1px var(--line);display:grid;place-items:center}
+.sb svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* screens */
+.screen{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(120% 90% at 70% 10%,rgba(255,79,154,.35),transparent 55%),radial-gradient(90% 80% at 10% 90%,rgba(34,211,197,.3),transparent 60%),linear-gradient(180deg,#0B1E3F,#120B2E);overflow:auto;touch-action:pan-y}
+.card{width:min(520px,100%);display:flex;flex-direction:column;gap:18px}
+.stripe{height:9px;border-radius:5px;background:linear-gradient(var(--blue),var(--blue)) top/100% 3px no-repeat,repeating-linear-gradient(90deg,var(--yellow) 0 26px,var(--red) 26px 30px,var(--yellow) 30px 56px,var(--green) 56px 60px)}
+.logo{font-family:var(--f-d);font-size:clamp(46px,13vw,76px);line-height:.9;margin:0;color:var(--yellow);-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:4px 4px 0 var(--pink)}
+.logo span{display:block;font-size:.5em;color:var(--teal);text-shadow:3px 3px 0 #000;margin-top:6px;letter-spacing:.06em}
+.lead{font-size:17px;color:#dbe4f2;margin:0;max-width:40ch}
+.btn{border:0;border-radius:14px;padding:15px 20px;font-weight:800;font-size:17px;background:var(--yellow);color:var(--ink);box-shadow:0 4px 0 #000;text-decoration:none;text-align:center;display:block}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 #000}
+.btn.ghost{background:transparent;color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.35)}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1 1 160px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;color:#cfd8e6;margin:0}
+.keys dt{font-family:var(--f-d);font-size:12px;color:var(--yellow);white-space:nowrap}
+.keys dd{margin:0}
+.small{font-size:13px;color:#9fb0c8}
+.menu{display:flex;flex-direction:column;gap:10px}
+.loading{font-weight:700;color:#cfd8e6}
+@media (max-width:640px){
+  #mini{width:120px;height:120px;left:auto;right:calc(env(safe-area-inset-right,0px) + 14px);top:calc(env(safe-area-inset-top,0px) + 130px);bottom:auto}
+  .speed{bottom:calc(env(safe-area-inset-bottom,0px) + 260px)}
+  .speed b{font-size:34px}
+  .district{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 270px)}
+  .mission{top:calc(env(safe-area-inset-top,0px) + 64px);left:14px;transform:none;max-width:calc(100vw - 160px);text-align:left}
+  .toasts{top:calc(env(safe-area-inset-top,0px) + 140px)}
+  .hint{bottom:calc(env(safe-area-inset-bottom,0px) + 250px);font-size:13px}
+  .topbtns{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);right:calc(env(safe-area-inset-right,0px) + 14px)}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="hud" id="hud" hidden>
+  <div class="tl">
+    <div class="money stroke" id="money">0 F</div>
+    <div class="health" id="health"><i></i></div>
+  </div>
+  <div class="tr">
+    <div class="stars" id="stars"></div>
+    <div class="clock stroke" id="clock"></div>
+  </div>
+  <div class="mission" id="mission" hidden></div>
+  <div class="toasts" id="toasts"></div>
+  <div class="district stroke" id="district"></div>
+  <canvas id="mini" width="340" height="340"></canvas>
+  <div class="speed stroke" id="speed" hidden><b id="kmh">0</b><span>KM/H</span><small id="carname"></small></div>
+  <div class="hint" id="hint" hidden></div>
+  <div class="big" id="big"></div>
+</div>
+
+<div class="touch" id="touch" hidden>
+  <div class="camzone" id="camzone"></div>
+  <div class="zone" id="zone"></div>
+  <div class="stick" id="stick" hidden><i></i></div>
+  <div class="tbtns" id="tbtns">
+    <button class="tb" data-k="horn">Klaxon</button>
+    <button class="tb y" data-k="enter" id="tb-enter">Monter</button>
+    <button class="tb" data-k="hand" id="tb-hand">Frein à main</button>
+    <button class="tb" data-k="sprint" id="tb-sprint">Courir</button>
+  </div>
+</div>
+<div class="topbtns" id="topbtns" hidden>
+  <button class="sb" id="b-cam" aria-label="Changer de caméra"><svg viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+  <button class="sb" id="b-radio" aria-label="Radio"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M7 8 17 3"/><circle cx="15.5" cy="14" r="2.5"/><path d="M6 12h4M6 16h4"/></svg></button>
+  <button class="sb" id="b-pause" aria-label="Pause"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg></button>
+</div>
+
+<section class="screen" id="start">
+  <div class="card">
+    <div class="stripe"></div>
+    <h1 class="logo">Dakar Life<span>RUE</span></h1>
+    <p class="lead">Prends le volant dans Dakar. Monte dans un taxi, un car rapide ou une Jakarta, fais le clando de Sandaga aux Almadies, et sème la police sur la Corniche.</p>
+    <div class="row">
+      <button class="btn" id="play" disabled>Chargement…</button>
+      <a class="btn ghost" href="vie.html">Mode La Vie</a>
+    </div>
+    <dl class="keys" id="keys-desk">
+      <dt>ZQSD / WASD</dt><dd>Marcher, accélérer, freiner, tourner</dd>
+      <dt>E</dt><dd>Monter dans une voiture ou en descendre</dd>
+      <dt>ESPACE</dt><dd>Frein à main (drift)</dd>
+      <dt>MAJ</dt><dd>Courir</dd>
+      <dt>H · R · C</dt><dd>Klaxon · Radio · Caméra</dd>
+      <dt>SOURIS</dt><dd>Glisser pour tourner la caméra à pied</dd>
+    </dl>
+    <p class="small" id="keys-touch" hidden>Joystick à gauche pour marcher et conduire. Glisse à droite pour tourner la caméra. Bouton jaune pour monter dans une voiture.</p>
+    <p class="small">Monte dans une voiture, un client t’attend : dépose-le à destination pour gagner des francs CFA. L’argent est partagé avec le mode La Vie.</p>
+  </div>
+</section>
+
+<section class="screen" id="pause" hidden>
+  <div class="card">
+    <h2 class="logo" style="font-size:44px">Pause</h2>
+    <div class="menu">
+      <button class="btn" id="m-resume">Reprendre</button>
+      <button class="btn ghost" id="m-shadows">Ombres : activées</button>
+      <button class="btn ghost" id="m-sound">Son : activé</button>
+      <button class="btn ghost" id="m-unstuck">Me débloquer</button>
+      <a class="btn ghost" href="index.html">Accueil</a>
+    </div>
+  </div>
+</section>
+
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
+<script type="module" src="rue.js"></script>
+</body>
+</html>
