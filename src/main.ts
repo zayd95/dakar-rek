@@ -15,7 +15,7 @@ import { Crowd, DecorativeTraffic } from './actors/npc';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
-import { preloadWrestler, wrestlerReady, Wrestler, type Clip } from './actors/wrestler';
+import { preloadHumanoid, humanoidReady, Humanoid, lookFromOutfit, type Clip, type PersonLook } from './actors/humanoid';
 import { CAST, castById } from './social/cast';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
@@ -83,7 +83,10 @@ const pos = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
 let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null;
-let castChars: { id: string; c: Character; x: number; z: number }[] = [];
+let castChars: { id: string; c: { group: THREE.Group; animate(dt: number, speed: number): void }; h?: Humanoid; x: number; z: number }[] = [];
+/** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
+const PLAYER_LOOK: PersonLook = { skin: 0x6b3f25, style: 'tee', top: 0x1a9d54, accent: 0xf4c20d, pattern: 'uni', bottom: 0x3d4a5c, shoes: 0xf2f2ec };
+let playerBody: Humanoid | null = null;
 let lambScene: LambScene | null = null;
 let emoteT = 0;
 const extra = new THREE.Group(); scene.add(extra);
@@ -132,8 +135,9 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
     const anchor = world.interactables.find(i => i.id.includes(':' + m.anchor));
     if (!anchor) continue;
     const x = anchor.x + m.ox, z = anchor.z + m.oz;
-    const c = new Character(m.outfit); c.group.position.set(x, 0.1, z); extra.add(c.group);
-    castChars.push({ id: m.id, c, x, z });
+    const h = humanoidReady() ? new Humanoid(lookFromOutfit(m.outfit, m.female)) : undefined;
+    const c = h ?? new Character(m.outfit); c.group.position.set(x, 0.1, z); extra.add(c.group);
+    castChars.push({ id: m.id, c, h, x, z });
     world.interactables.push({ id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x, z, radius: 3.2, actions: m.id === 'ibou' ? ACTIONS.ibou : CHAT, npc: m.id });
   }
   const p = at ?? world.spawn;
@@ -236,6 +240,7 @@ function endScene() {
   extra.remove(lambScene.group); lambScene.dispose(); lambScene = null;
   hud.setScene(null); mode = 'play'; input.enabled = true;
   for (const n of castChars) n.c.group.visible = true;
+  if (playerBody) player.group.visible = false;
   follow.snapBehind(facing);
   done?.(); saveNow();
 }
@@ -261,15 +266,16 @@ function openOutfit() {
 }
 
 let previewT = 0;
-/** Blender wrestler shown in place of the box player for outfit previews and emotes. */
-let proxy: Wrestler | null = null;
+/** Wrestling attire and emotes shown on the player's Blender body (box character fallback). */
+let proxy = false;
 function showProxy(clip: Clip) {
-  if (!wrestlerReady()) { player.setWrestler(state.data.wrestler); return; }
-  if (!proxy) { proxy = new Wrestler(PLAYER_OUTFIT.skin); extra.add(proxy.group); }
-  const w = state.data.wrestler; proxy.setLook(w, w.ngembPattern === 'bordure' ? 'B' : 'A'); proxy.play(clip, 0.15);
-  player.group.visible = false;
+  if (!playerBody) { player.setWrestler(state.data.wrestler); return; }
+  const w = state.data.wrestler; playerBody.setWrestler(w, w.ngembPattern === 'bordure' ? 'B' : 'A'); playerBody.hold = clip; proxy = true;
 }
-function hideProxy() { proxy?.dispose(); proxy = null; player.group.visible = true; player.setWrestler(null); }
+function hideProxy() {
+  if (playerBody && proxy) { playerBody.setLook(PLAYER_LOOK); playerBody.hold = null; }
+  proxy = false; player.setWrestler(null);
+}
 function previewOutfit() { showProxy('Idle'); previewT = 6; hud.toast('Aperçu de la tenue (6 s)'); }
 const EMOTE_CLIP: Record<string, Clip> = { pas1: 'Dance_A', pas2: 'Dance_B', fete: 'Celebrate' };
 
@@ -282,7 +288,7 @@ function openEmotes() {
 
 function playEmote(i: number) {
   const e = EMOTES[i]; emoteT = e.seconds;
-  if (wrestlerReady()) showProxy(EMOTE_CLIP[e.id] ?? 'Idle'); else { player.setWrestler(state.data.wrestler); player.setPose(e.pose); }
+  if (playerBody) showProxy(EMOTE_CLIP[e.id] ?? 'Idle'); else { player.setWrestler(state.data.wrestler); player.setPose(e.pose); }
 }
 
 function openJournal() {
@@ -410,12 +416,14 @@ function frame(now: number) {
     if ((player.pose || proxy) && speed > 0.5) { player.setPose(null); emoteT = 0; previewT = 0; hideProxy(); }
     if (emoteT > 0) { emoteT -= dt; if (emoteT <= 0) { player.setPose(null); hideProxy(); } }
     if (previewT > 0) { previewT -= dt; if (previewT <= 0 && emoteT <= 0) hideProxy(); }
-    if (proxy) { proxy.group.position.copy(pos); proxy.group.rotation.y = facing; proxy.update(dt); }
+
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
-  } else player.animate(0, 0);
+    if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
+  } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
   for (const n of castChars) {
     const d = Math.hypot(pos.x - n.x, pos.z - n.z);
     if (d < 9) n.c.group.rotation.y = Math.atan2(pos.x - n.x, pos.z - n.z);
+    if (n.h) n.h.hold = d < 3.4 ? 'Talk' : null;
     n.c.animate(dt, 0);
   }
   crowd?.update(dt); traffic?.update(dt);
@@ -434,7 +442,8 @@ function frame(now: number) {
 // ------------------------------------------------------------------ start
 resize(); applyQuality();
 async function start() {
-  await Promise.all([preloadAssets(), preloadWrestler()]);
+  await Promise.all([preloadAssets(), preloadHumanoid()]);
+  if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); scene.add(playerBody.group); player.group.visible = false; }
   const startHub = state.data.hub;
   if (isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
@@ -461,7 +470,7 @@ if (DEBUG) {
     playBeat(id: string, choice: string) { const b = BEATS.find(x => x.id === id)!; const c = b.choices.find(x => x.id === choice)!; return applyChoice(b, c, rel, state); },
     openNpc(id: string) { const it = world?.interactables.find(i => i.npc === id); if (it) openActions(it); },
     scene(kind: SceneKind) { const a = [...ACTIONS.arena, ...ACTIONS.ecurie].find(x => x.special === kind); if (a) runSpecial(a); else startScene(kind); },
-    wrestlerReady: () => wrestlerReady(),
+    wrestlerReady: () => humanoidReady(),
     faceCamera() { follow.yaw = facing + Math.PI; },
     sceneInfo: () => (lambScene ? { kind: lambScene.kind, t: lambScene.t } : null),
     scenePeek(t: number) { if (lambScene) { lambScene.t = t; lambScene.snap = true; } },

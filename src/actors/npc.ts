@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { Character, NPC_OUTFITS } from './character';
+import { Humanoid, humanoidReady, randomLook } from './humanoid';
 import { makeTaxi, makeCarRapide } from './vehicles';
 import { pick } from '../core/rng';
 import type { HubWorld } from '../world/types';
 
-interface Walker { char: Character; ax: number; az: number; bx: number; bz: number; t: number; speed: number; lat: number; prev: string }
+interface Walker { char: { group: THREE.Group; animate(dt: number, speed: number): void }; ax: number; az: number; bx: number; bz: number; t: number; speed: number; lat: number; prev: string }
 
 const nodeKey = (x: number, z: number) => `${Math.round(x)},${Math.round(z)}`;
 
@@ -24,7 +25,7 @@ export class Crowd {
   constructor(private world: HubWorld, private rand: () => number, count = 14) {
     for (let n = 0; n < count; n++) {
       const e = pick(world.edges, rand);
-      const c = new Character(pick(NPC_OUTFITS, rand));
+      const c = humanoidReady() ? new Humanoid(randomLook(rand)) : new Character(pick(NPC_OUTFITS, rand));
       this.group.add(c.group);
       this.walkers.push({ char: c, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 1.1 + rand() * 0.7, lat: (rand() < 0.5 ? -1 : 1) * (4.6 + rand() * 1.6), prev: '' });
     }

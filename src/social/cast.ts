@@ -11,21 +11,22 @@ export interface CastMember {
   /** Interactable kind this character stands next to (garage, gargote, cafe, market, gym, port, restaurant, ecurie, arena, home). */
   anchor: string; ox: number; oz: number;
   outfit: Outfit;
+  female?: boolean;
 }
 
 export const CAST: CastMember[] = [
   { id: 'ibou', name: 'Tonton Ibou', title: 'voisin', role: 'neighbour', hub: 'pikine', anchor: 'home', ox: 6, oz: 0, outfit: { top: 0xf2f2ec, bottom: 0xf2f2ec, skin: 0x5b3420, long: true, hat: 0xd9d2c4 } },
   { id: 'modou', name: 'Modou', title: 'garagiste', role: 'employer', hub: 'pikine', anchor: 'garage', ox: -4, oz: 0, outfit: { top: 0x3c4a5c, bottom: 0x3c4a5c, skin: 0x6b3f25 } },
-  { id: 'mame', name: 'Mame Diarra', title: 'cuisinière', role: 'vendor', hub: 'pikine', anchor: 'gargote', ox: 4, oz: 0, outfit: { top: 0xe58a2f, bottom: 0xe58a2f, skin: 0x7a4a2c, long: true, hat: 0xe7b82f } },
+  { female: true, id: 'mame', name: 'Mame Diarra', title: 'cuisinière', role: 'vendor', hub: 'pikine', anchor: 'gargote', ox: 4, oz: 0, outfit: { top: 0xe58a2f, bottom: 0xe58a2f, skin: 0x7a4a2c, long: true, hat: 0xe7b82f } },
   { id: 'ablaye', name: 'Coach Ablaye', title: 'coach · écurie Baobab', role: 'coach', hub: 'pikine', anchor: 'ecurie', ox: -3, oz: -2, outfit: { top: 0x1a7a44, bottom: 0x2b2b33, skin: 0x4e2e1c } },
   { id: 'babacar', name: 'Babacar', title: 'lutteur · écurie Baobab', role: 'wrestler', hub: 'pikine', anchor: 'ecurie', ox: 3, oz: -3, outfit: { top: 0x5b3420, bottom: 0xf2f2ec, skin: 0x5b3420 } },
   { id: 'lamine', name: 'Lamine', title: 'lutteur · écurie Teranga', role: 'wrestler', hub: 'pikine', anchor: 'arena', ox: 3, oz: -2, outfit: { top: 0x4e2e1c, bottom: 0xd9322b, skin: 0x4e2e1c } },
-  { id: 'adja', name: 'Adja', title: 'commerçante à Sandaga', role: 'employer', hub: 'plateau', anchor: 'market', ox: 3, oz: 1, outfit: { top: 0x7a5fd1, bottom: 0x7a5fd1, skin: 0x6b3f25, long: true, hat: 0x7a5fd1 } },
-  { id: 'fatou', name: 'Fatou', title: 'gargote Chez Fatou', role: 'vendor', hub: 'plateau', anchor: 'gargote', ox: 4, oz: 0, outfit: { top: 0xc2417f, bottom: 0xc2417f, skin: 0x8a5a3a, long: true } },
+  { female: true, id: 'adja', name: 'Adja', title: 'commerçante à Sandaga', role: 'employer', hub: 'plateau', anchor: 'market', ox: 3, oz: 1, outfit: { top: 0x7a5fd1, bottom: 0x7a5fd1, skin: 0x6b3f25, long: true, hat: 0x7a5fd1 } },
+  { female: true, id: 'fatou', name: 'Fatou', title: 'gargote Chez Fatou', role: 'vendor', hub: 'plateau', anchor: 'gargote', ox: 4, oz: 0, outfit: { top: 0xc2417f, bottom: 0xc2417f, skin: 0x8a5a3a, long: true } },
   { id: 'moussa', name: 'Moussa', title: 'coach sportif', role: 'coach', hub: 'corniche', anchor: 'gym', ox: 5, oz: 3, outfit: { top: 0xd9482b, bottom: 0x2b2b33, skin: 0x5b3420 } },
-  { id: 'aida', name: 'Aïda', title: 'étudiante, café Touba', role: 'vendor', hub: 'corniche', anchor: 'cafe', ox: 4, oz: 0, outfit: { top: 0x2f8fd1, bottom: 0x2b3a55, skin: 0x7a4a2c } },
+  { female: true, id: 'aida', name: 'Aïda', title: 'étudiante, café Touba', role: 'vendor', hub: 'corniche', anchor: 'cafe', ox: 4, oz: 0, outfit: { top: 0x2f8fd1, bottom: 0x2b3a55, skin: 0x7a4a2c } },
   { id: 'ousmane', name: 'Ousmane', title: 'chef de quai', role: 'employer', hub: 'almadies', anchor: 'port', ox: 4, oz: 1, outfit: { top: 0xe7b82f, bottom: 0x2b3a55, skin: 0x4e2e1c, hat: 0x1e6fd9 } },
-  { id: 'khady', name: 'Khady', title: 'gérante du Pointe', role: 'employer', hub: 'almadies', anchor: 'restaurant', ox: 4, oz: 0, outfit: { top: 0xf3f0ea, bottom: 0x0c4a6e, skin: 0x6b3f25 } },
+  { female: true, id: 'khady', name: 'Khady', title: 'gérante du Pointe', role: 'employer', hub: 'almadies', anchor: 'restaurant', ox: 4, oz: 0, outfit: { top: 0xf3f0ea, bottom: 0x0c4a6e, skin: 0x6b3f25 } },
 ];
 
 export const castById = (id: string) => CAST.find(c => c.id === id);
