@@ -4,6 +4,9 @@ import type { WrestlerLook } from '../core/types';
 import { celebrate, crowdCheer, crowdIdle, danceA, danceB, drill, drum, prep } from './poses';
 import { Percussion, crowdCheer as cheerSound } from './audio';
 import { castById } from '../social/cast';
+import { Wrestler, wrestlerReady, type Clip } from '../actors/wrestler';
+
+const CLIP_FOR = new Map<Pose, Clip>([[danceA, 'Dance_A'], [danceB, 'Dance_B'], [prep, 'Prep'], [drill, 'Stance'], [celebrate, 'Celebrate']]);
 
 /**
  * Arena and écurie scenes. Three distinct kinds — Entraînement (training), Entrée (entrance) and Combat —
@@ -15,7 +18,7 @@ export const SCENE_LABEL: Record<SceneKind, string> = {
   training: 'Entraînement · écurie', entrance: 'Entrée dans l’arène', prep: 'Préparation', celebration: 'Fête de l’écurie', watch: 'Tribunes',
 };
 
-interface Extra { c: Character; pose: Pose | null; from?: THREE.Vector3; to?: THREE.Vector3; t0?: number; t1?: number; yaw?: number }
+interface Extra { w?: Wrestler; c: Character; pose: Pose | null; from?: THREE.Vector3; to?: THREE.Vector3; t0?: number; t1?: number; yaw?: number }
 
 export interface SceneFrame { cam: THREE.Vector3; look: THREE.Vector3 }
 
@@ -30,12 +33,17 @@ export class LambScene {
   private drums = new Percussion();
   private cheered = new Set<number>();
   private o: THREE.Vector3;
+  /** Blender wrestler standing in for the player during the scene (when the asset is loaded). */
+  private pw: Wrestler | null = null;
 
   constructor(readonly kind: SceneKind, private player: Character, origin: { x: number; z: number }, look: WrestlerLook, private crowdSize: number) {
     this.o = new THREE.Vector3(origin.x, 0.1, origin.z);
     this.duration = { training: 7, entrance: 15, prep: 7, celebration: 8, watch: 8 }[kind];
     const inArena = kind === 'entrance' || kind === 'prep' || kind === 'watch';
-    if (kind !== 'watch') player.setWrestler(look);
+    if (kind !== 'watch') {
+      player.setWrestler(look);
+      if (wrestlerReady()) { this.pw = new Wrestler(0x7a4a2c); this.pw.setLook(look, look.ngembPattern === 'bordure' ? 'B' : 'A'); this.group.add(this.pw.group); player.group.visible = false; }
+    }
     if (inArena) this.addCrowd(kind === 'prep' ? crowdIdle : crowdCheer);
     if (kind === 'entrance' || kind === 'celebration' || kind === 'watch') this.addDrummers(kind === 'celebration' ? -6 : -10);
     if (kind === 'entrance') {
@@ -44,16 +52,16 @@ export class LambScene {
     if (kind === 'training') {
       const coach = castById('ablaye')!, bab = castById('babacar')!;
       this.add(coach.outfit, crowdIdle, -4, 1.5);
-      const b = this.add(bab.outfit, drill, 1.6, 0); b.c.setWrestler({ ngembColor: 'vert', ngembPattern: 'bordure', accessories: [] }); b.yaw = -Math.PI / 2;
-      for (let k = 0; k < 2; k++) { const e = this.add(NPC_OUTFITS[k], drill, -1 + k * 3, 3); e.c.setWrestler({ ngembColor: 'blanc', ngembPattern: 'uni', accessories: [] }); }
+      this.wrestle(bab.outfit, drill, 1.6, 0, { ngembColor: 'vert', ngembPattern: 'bordure', accessories: [] }, -Math.PI / 2);
+      for (let k = 0; k < 2; k++) this.wrestle(NPC_OUTFITS[k], drill, -1 + k * 3, 3, { ngembColor: 'blanc', ngembPattern: 'uni', accessories: [] });
     }
     if (kind === 'celebration') {
-      const bab = this.add(castById('babacar')!.outfit, celebrate, 0, 2.5); bab.c.setWrestler({ ngembColor: 'vert', ngembPattern: 'bordure', accessories: [] });
+      this.wrestle(castById('babacar')!.outfit, celebrate, 0, 2.5, { ngembColor: 'vert', ngembPattern: 'bordure', accessories: [] });
       this.add(castById('ablaye')!.outfit, danceB, -3, 3.5);
       for (let k = 0; k < 6; k++) this.add(NPC_OUTFITS[k % NPC_OUTFITS.length], k % 2 ? danceA : danceB, -5 + k * 2, 5 + (k % 2));
     }
     if (kind === 'watch') {
-      for (const [x, col] of [[-1.2, 'rouge'], [1.2, 'indigo']] as const) { const w = this.add(NPC_OUTFITS[2], drill, x, 0); w.c.setWrestler({ ngembColor: col, ngembPattern: 'uni', accessories: [] }); w.yaw = x < 0 ? Math.PI / 2 : -Math.PI / 2; }
+      for (const [x, col] of [[-1.2, 'rouge'], [1.2, 'indigo']] as const) this.wrestle(NPC_OUTFITS[2], drill, x, 0, { ngembColor: col, ngembPattern: 'uni', accessories: [] }, x < 0 ? Math.PI / 2 : -Math.PI / 2);
     }
     if (kind === 'entrance' || kind === 'celebration' || kind === 'watch') this.drums.start(kind === 'celebration' ? 126 : 116);
     if (kind === 'celebration') cheerSound(3, 0.16);
@@ -66,6 +74,16 @@ export class LambScene {
     if (walk) { e.from = c.group.position.clone(); e.to = new THREE.Vector3(this.o.x + dx, 0.1, this.o.z - 4 + walk.dz); e.t0 = 0.6; e.t1 = 6.6; }
     if (pose) c.setPose(pose);
     this.group.add(c.group); this.extras.push(e);
+    return e;
+  }
+  /** A wrestler extra: the Blender rig when loaded, else the temporary box character in wrestling attire. */
+  private wrestle(o: (typeof NPC_OUTFITS)[number], pose: Pose, dx: number, dz: number, look: WrestlerLook, yaw?: number): Extra {
+    const e = this.add(o, pose, dx, dz);
+    if (yaw !== undefined) e.yaw = yaw;
+    if (wrestlerReady()) {
+      const w = new Wrestler(o.skin); w.setLook(look, look.ngembPattern === 'bordure' ? 'B' : 'A'); w.play(CLIP_FOR.get(pose) ?? 'Idle', 0);
+      w.group.position.copy(e.c.group.position); this.group.add(w.group); e.c.group.visible = false; e.w = w;
+    } else e.c.setWrestler(look);
     return e;
   }
   private addCrowd(pose: Pose) {
@@ -93,7 +111,7 @@ export class LambScene {
       } else {
         if (e.yaw !== undefined) e.c.group.rotation.y = e.yaw;
         else e.c.group.rotation.y = Math.atan2(p.position.x - e.c.group.position.x, p.position.z - e.c.group.position.z);
-        e.c.animate(dt, 0);
+        if (e.w) { e.w.group.rotation.y = e.c.group.rotation.y; e.w.update(dt); } else e.c.animate(dt, 0);
       }
     }
     const cam = new THREE.Vector3(), look = new THREE.Vector3();
@@ -138,6 +156,12 @@ export class LambScene {
         break;
       }
     }
+    if (this.pw) {
+      this.pw.group.position.copy(p.position); this.pw.group.rotation.y = p.rotation.y;
+      const walking = this.kind === 'entrance' && t < 7;
+      this.pw.play(walking ? (t > 0.6 && t < 6.6 ? 'Entrance_Walk' : 'Idle') : (this.player.pose ? CLIP_FOR.get(this.player.pose) ?? 'Idle' : 'Idle'));
+      this.pw.update(dt);
+    }
     return { cam, look };
   }
 
@@ -145,7 +169,8 @@ export class LambScene {
 
   dispose() {
     this.drums.stop();
-    this.player.setPose(null); this.player.setWrestler(null);
+    this.player.setPose(null); this.player.setWrestler(null); this.player.group.visible = true;
+    this.pw?.dispose(); for (const e of this.extras) e.w?.dispose();
     this.group.traverse(obj => { const m = obj as THREE.Mesh; if (m.isMesh) m.geometry.dispose(); });
   }
 }

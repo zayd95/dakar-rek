@@ -15,6 +15,7 @@ import { Crowd, DecorativeTraffic } from './actors/npc';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
+import { preloadWrestler, wrestlerReady, Wrestler, type Clip } from './actors/wrestler';
 import { CAST, castById } from './social/cast';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
@@ -217,6 +218,7 @@ function runSpecial(a: Action) {
 
 function startScene(kind: SceneKind, onDone?: () => void) {
   if (!world) return;
+  hideProxy(); emoteT = 0; previewT = 0;
   const at = kind === 'training' || kind === 'celebration' ? world.ecurie : world.arena;
   if (!at) { hud.toast('Disponible à Pikine (arène et écurie)'); mode = 'play'; return; }
   hud.closeModal();
@@ -224,6 +226,7 @@ function startScene(kind: SceneKind, onDone?: () => void) {
   lambScene = new LambScene(kind, player, { x: at.cx, z: at.cz }, state.data.wrestler, quality === 'low' ? 14 : quality === 'medium' ? 20 : 26);
   lambScene.onDone = onDone;
   extra.add(lambScene.group);
+  for (const n of castChars) n.c.group.visible = false; // the scene places its own cast
   hud.setScene(SCENE_LABEL[kind], 'Gestes, danse et rythmes provisoires · non validés');
 }
 
@@ -232,6 +235,7 @@ function endScene() {
   const done = lambScene.onDone;
   extra.remove(lambScene.group); lambScene.dispose(); lambScene = null;
   hud.setScene(null); mode = 'play'; input.enabled = true;
+  for (const n of castChars) n.c.group.visible = true;
   follow.snapBehind(facing);
   done?.(); saveNow();
 }
@@ -257,13 +261,28 @@ function openOutfit() {
 }
 
 let previewT = 0;
-function previewOutfit() { player.setWrestler(state.data.wrestler); previewT = 6; hud.toast('Aperçu de la tenue (6 s)'); }
+/** Blender wrestler shown in place of the box player for outfit previews and emotes. */
+let proxy: Wrestler | null = null;
+function showProxy(clip: Clip) {
+  if (!wrestlerReady()) { player.setWrestler(state.data.wrestler); return; }
+  if (!proxy) { proxy = new Wrestler(PLAYER_OUTFIT.skin); extra.add(proxy.group); }
+  const w = state.data.wrestler; proxy.setLook(w, w.ngembPattern === 'bordure' ? 'B' : 'A'); proxy.play(clip, 0.15);
+  player.group.visible = false;
+}
+function hideProxy() { proxy?.dispose(); proxy = null; player.group.visible = true; player.setWrestler(null); }
+function previewOutfit() { showProxy('Idle'); previewT = 6; hud.toast('Aperçu de la tenue (6 s)'); }
+const EMOTE_CLIP: Record<string, Clip> = { pas1: 'Dance_A', pas2: 'Dance_B', fete: 'Celebrate' };
 
 function openEmotes() {
   mode = 'menu';
   hud.openMenu('Mbakkou', 'Mouvements provisoires — les pas, noms et gestes seront validés avec des pratiquants.', EMOTES.map(e => ({
-    label: e.label, detail: 'Non validé', onPick: () => { hud.closeModal(); player.setWrestler(state.data.wrestler); player.setPose(e.pose); emoteT = e.seconds; },
+    label: e.label, detail: 'Non validé', onPick: () => { hud.closeModal(); playEmote(EMOTES.indexOf(e)); },
   })));
+}
+
+function playEmote(i: number) {
+  const e = EMOTES[i]; emoteT = e.seconds;
+  if (wrestlerReady()) showProxy(EMOTE_CLIP[e.id] ?? 'Idle'); else { player.setWrestler(state.data.wrestler); player.setPose(e.pose); }
 }
 
 function openJournal() {
@@ -388,9 +407,10 @@ function frame(now: number) {
     state.tick(dt * 1000);
   } else if (mode === 'busy') { state.tick(dt * 1000); speed = 0; }
   if (!lambScene) {
-    if (player.pose && speed > 0.5) { player.setPose(null); emoteT = 0; player.setWrestler(null); }
-    if (emoteT > 0) { emoteT -= dt; if (emoteT <= 0) { player.setPose(null); player.setWrestler(null); } }
-    if (previewT > 0) { previewT -= dt; if (previewT <= 0 && !player.pose) player.setWrestler(null); }
+    if ((player.pose || proxy) && speed > 0.5) { player.setPose(null); emoteT = 0; previewT = 0; hideProxy(); }
+    if (emoteT > 0) { emoteT -= dt; if (emoteT <= 0) { player.setPose(null); hideProxy(); } }
+    if (previewT > 0) { previewT -= dt; if (previewT <= 0 && emoteT <= 0) hideProxy(); }
+    if (proxy) { proxy.group.position.copy(pos); proxy.group.rotation.y = facing; proxy.update(dt); }
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
   } else player.animate(0, 0);
   for (const n of castChars) {
@@ -414,7 +434,7 @@ function frame(now: number) {
 // ------------------------------------------------------------------ start
 resize(); applyQuality();
 async function start() {
-  await preloadAssets();
+  await Promise.all([preloadAssets(), preloadWrestler()]);
   const startHub = state.data.hub;
   if (isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
@@ -441,10 +461,12 @@ if (DEBUG) {
     playBeat(id: string, choice: string) { const b = BEATS.find(x => x.id === id)!; const c = b.choices.find(x => x.id === choice)!; return applyChoice(b, c, rel, state); },
     openNpc(id: string) { const it = world?.interactables.find(i => i.npc === id); if (it) openActions(it); },
     scene(kind: SceneKind) { const a = [...ACTIONS.arena, ...ACTIONS.ecurie].find(x => x.special === kind); if (a) runSpecial(a); else startScene(kind); },
+    wrestlerReady: () => wrestlerReady(),
+    faceCamera() { follow.yaw = facing + Math.PI; },
     sceneInfo: () => (lambScene ? { kind: lambScene.kind, t: lambScene.t } : null),
     scenePeek(t: number) { if (lambScene) { lambScene.t = t; lambScene.snap = true; } },
     outfit: () => openOutfit(), journal: () => openJournal(),
-    emote(i = 0) { player.setWrestler(state.data.wrestler); player.setPose(EMOTES[i].pose); emoteT = EMOTES[i].seconds; },
+    emote(i = 0) { playEmote(i); },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
     lookAtPlayer(dist = 4, yawOff = Math.PI) { follow.yaw = facing + yawOff; void dist; },
   };

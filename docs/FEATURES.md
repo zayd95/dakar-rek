@@ -1,37 +1,49 @@
 # Dakar Rek — feature status
 
-Legend: **Implemented** = works and was verified. **Partial** = a first working version with stated limits. **Pending** = not started. Placeholders are never listed as implemented.
+Legend: **Implemented** = works and was verified (unit tests and/or headless browser checks). **Partial** = a first working version with stated limits. **Pending** = not started. Placeholders are never listed as implemented. Cultural content is always marked **Unreviewed** until Habib and wrestling practitioners have reviewed it.
 
-Last updated: milestone 1 (v0.1).
+Last updated: v0.2 (6 October 2026). Verification: 17 unit tests; headless Chromium checks at 1280×720 and 390×844 (`scripts/shots.mjs`), all passing.
 
-## Implemented (milestone 1)
+## Implemented
 
-| Feature | Notes |
-| --- | --- |
-| Vite + TypeScript + Three.js project | `npm run dev`, `npm run build`, `npm test` |
-| Four hubs reachable | Plateau · Médina, Corniche · Fann · Mamelles, Almadies · Ngor · Yoff, Pikine · Guédiawaye · Parcelles; each generated from its own spec with its own look |
-| Travel between hubs | Car rapide station in every hub; costs FCFA and a little fatigue; fade transition |
-| Third-person camera | Behind and slightly above, character low-centre, drag to rotate, pulls in near buildings, wider in portrait |
-| Mobile and desktop movement | Virtual joystick + drag on touch; WASD/ZQSD/arrows + mouse drag on desktop |
-| Contextual action button | Appears near interactable places and people; opens a short list of choices |
-| Interaction foundation | Data-driven actions (cost, gain, needs, duration, requirements) |
-| Needs and mood | Faim, Énergie, Moral, Social, Hygiène; drain with personal played time |
-| Guest save | Device-local, versioned, validated and migrated; autosave; unit-tested |
-| Shared city clock | One city day = 24 real minutes; day/night lighting |
+| Feature | Notes | Verified by |
+| --- | --- | --- |
+| Vite + TypeScript + Three.js project | `npm run dev`, `npm run build`, `npm test` | build, tests |
+| Four hubs reachable | Plateau · Médina, Corniche · Fann · Mamelles, Almadies · Ngor · Yoff, Pikine · Guédiawaye · Parcelles, each with its own look | headless: all four load, day and night, desktop and phone |
+| Travel between hubs | Car rapide station in every hub; costs FCFA and some fatigue | headless: Pikine → Corniche |
+| Third-person camera, desktop and touch movement | Joystick + drag on touch; WASD/ZQSD/arrows + mouse on desktop | headless |
+| Contextual action button and data-driven actions | Cost, gain, needs, duration, requirements, visibility | headless |
+| Needs and mood | Drain with personal played time | unit tests |
+| Guest save (schema v2) | Device-local, versioned, migrated from v1, autosave | unit tests, headless reload |
+| Recurring cast with NPC–NPC relationships | 12 characters across the four hubs; 11 authored links (friends, cousins, rivals…) | unit tests |
+| Persistent relationship states | Levels, flags, completed beats; saved; no offline decay | unit tests |
+| Short branching story beats | 13 beats, 1–3 choices; recommendation, rival introduction, vendor remembering help, écurie celebration, news travelling between friends | unit tests, headless (UI choice) |
+| Beats unlock jobs and discounts | Trusted rate at Modou's garage, Ousmane's morning pirogue, friends' prices at two gargotes, paid service at Le Pointe | unit tests |
+| One suggested next step | HUD chip + journal (Carnet) | headless |
+| Training, entrance and stands scenes are distinct | Separate settings, camera, sound and on-screen label | headless (each scene runs and ends) |
 
 ## Partial
 
 | Feature | What exists | What is missing |
 | --- | --- | --- |
-| City clock | Computed from the device clock | Server time (backend not built) |
-| First session | Start in Pikine, Tonton Ibou, a first paid job in each hub | Guided introduction, starter-room interior |
-| Jobs | One simple paid activity per hub (market, port, garage, training) | Tiak Tiak, clando and Yango driving jobs |
-| Food venues | Order and eat at gargotes, restaurant and café Touba stands | Seating, interiors, Maïga-style spot, dibiterie, nightlife |
-| NPCs | Background walkers and one named character (Tonton Ibou) | Routines, recurring cast, relationships |
-| Decorative traffic | Visual-only cars with no gameplay collisions | Shared interactive vehicles |
-| Quality settings | Low / Medium / High (resolution, shadows, crowd, traffic) | Automatic choice from measured device performance |
-| Landmarks | Mosque, market, monument, outdoor gym, pitch, port, arena, écurie as scenery | Interiors, activities at the mosque, arena and écurie |
+| Làmb presentation | Écurie training, arena entrance (walk-in, dance, preparation), preparation, stands, écurie celebration; crowd reactions; percussion | **Unreviewed**: dances, gestures, rhythms are placeholders; real sabar recordings or validated rhythms; entourage roles |
+| Ngemb and accessories | 6 colours, 4 patterns, 2 cuts on the Blender rig; 4 accessory sockets with neutral placeholder items; cosmetic only | **Unreviewed**: real attire references, gris-gris chosen from validated references |
+| Mbakkou emotes | 3 placeholder emotes (Blender clips), started from the écurie | Real steps validated by practitioners; playable performance (later, needs design) |
+| Wrestling character (Blender) | Skinned rig with 20 bones, 2 ngemb cuts, 4 sockets, 10 clips including Stance, Grab, Fall_Back | Mesh is segmented (rigid joint blending), no hands/face detail; grab/fall deformation not yet checked with paired animations; not yet used for the city player |
+| Combat | Arena entry point and stance/grab/fall clips | Rule set unresolved (lutte simple or avec frappe); no fight implemented |
+| City clock | From the device clock | Server time |
+| Jobs | Simple timed jobs in each hub + trusted-rate variants | Tiak Tiak, clando and Yango driving jobs |
+| Food venues | Order and eat; friends' discounts | Seating, interiors, Maïga-style spot, dibiterie, nightlife |
+| NPCs | Recurring cast standing at their places; background walkers | Daily routines and movement between places |
+| Quality settings | Low / Medium / High | Automatic choice from measured performance |
 
 ## Pending
 
-Driving (Tiak Tiak, clando, Yango) · vehicle radio · shared vehicles and anti-blocking · interiors · Maïga-style spot, dibiterie, nightlife and dance areas · social actions and shared meals · multiplayer (presence, chat, home visits, invitations) · social money (gifts, loans) · personal bills and tontines · housing progression · mosque and collective prayer · Quran reading · làmb combat and arena social life · traits, wishes, aspiration · skills · city evolution and milestones · photo mode · live statistics page · accounts, server ledger, migrations (Supabase + Drizzle) · session servers (Durable Objects) · asset CDN · monitoring.
+Driving (Tiak Tiak, clando, Yango) · vehicle radio · shared vehicles and anti-blocking · interiors · nightlife and dance areas · shared meals · multiplayer (presence, chat, home visits, invitations) · social money · bills and tontines · housing progression · mosque and collective prayer · Quran reading · làmb combat · traits, wishes, aspiration · skills beyond counters · city milestones · photo mode · live statistics · accounts, server ledger, migrations (Supabase + Drizzle) · session servers (Durable Objects) · asset CDN · monitoring.
+
+## Provisional decisions taken without review
+
+- Cast names, roles, links and all beat text are an editable draft (`src/social/cast.ts`, `src/social/beats.ts`).
+- Écurie names "Baobab" and "Teranga" are fictional placeholders, chosen so no real écurie is represented.
+- Ngemb cut B is shown when the "Bordure" pattern is picked (temporary mapping until a cut selector exists).
+- Percussion is synthesised in the browser from a generic pattern, not a sabar rhythm.

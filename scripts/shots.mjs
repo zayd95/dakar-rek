@@ -117,6 +117,14 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     const si = await page.evaluate(() => window.__dakar.sceneInfo());
     check(`${label}: scene ${kind} runs and ends`, si === null);
   }
+  check(`${label}: Blender wrestler asset loaded`, await page.evaluate(() => window.__dakar.wrestlerReady()));
+  await page.evaluate(() => { const d = window.__dakar; d.setHour(16); d.teleport('pikine', 0, -30, 0); });
+  await page.waitForTimeout(600);
+  await page.evaluate(() => { const d = window.__dakar; d.faceCamera(); d.emote(0); });
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${out}/${label}-emote-dance.png` });
+  await page.evaluate(() => window.__dakar.emote(2)); await page.waitForTimeout(1200);
+  await page.screenshot({ path: `${out}/${label}-emote-celebrate.png` });
   const ent = await page.evaluate(() => window.__dakar.state.data.counters.entrees ?? 0);
   check(`${label}: entrance completion recorded`, ent >= 1, String(ent));
   check(`${label}: no page errors (social + scenes)`, errors.length === 0, errors.slice(0, 3).join(' | '));
