@@ -14,9 +14,13 @@ void main() {
 }`;
 const frag = /* glsl */ `
 uniform vec3 uZenith, uHorizon, uHaze, uSunColor, uSunDir;
-uniform float uNight;
+uniform float uNight, uTime, uClouds;
 varying vec3 vDir;
 float h21(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += a * n2(p); p = p * 2.03 + 11.7; a *= 0.5; } return s; }
 void main() {
   vec3 d = normalize(vDir);
   float y = max(d.y, 0.0);
@@ -24,6 +28,15 @@ void main() {
   col = mix(col, uHaze, exp(-y * 14.0) * 0.75);                 // dusty band just above the horizon
   float s = max(dot(d, normalize(uSunDir)), 0.0);
   col += uSunColor * (pow(s, 900.0) * 6.0 + pow(s, 24.0) * 0.32 + pow(s, 4.0) * 0.12);
+  // Clouds: a flat layer projected onto the dome, drifting slowly; lit by the sun colour, thin near the horizon.
+  if (d.y > 0.02 && uClouds > 0.0) {
+    vec2 cp = d.xz / (d.y + 0.08) * 0.9 + vec2(uTime * 0.004, uTime * 0.0015);
+    float c = fbm(cp * 1.3);
+    float cov = smoothstep(0.52 - 0.12 * uClouds, 0.82, c) * smoothstep(0.02, 0.22, d.y);
+    float lit = 0.75 + 0.35 * fbm(cp * 1.3 + vec2(0.35, 0.2));
+    vec3 cc = mix(uHorizon * 1.05, vec3(1.0), 0.55) * lit + uSunColor * 0.25 * pow(s, 3.0);
+    col = mix(col, mix(cc, uHorizon * 0.6, uNight * 0.8), cov * 0.85);
+  }
   if (uNight > 0.01 && d.y > 0.05) {
     vec3 c = floor(d * 260.0);
     float st = step(0.9965, h21(c));
@@ -57,7 +70,7 @@ export class Sky {
   constructor() {
     this.u = {
       uZenith: { value: new THREE.Color() }, uHorizon: { value: new THREE.Color() }, uHaze: { value: new THREE.Color() },
-      uSunColor: { value: new THREE.Color(0xfff0d0) }, uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uNight: { value: 0 },
+      uSunColor: { value: new THREE.Color(0xfff0d0) }, uSunDir: { value: new THREE.Vector3(0, 1, 0) }, uNight: { value: 0 }, uTime: { value: 0 }, uClouds: { value: 0.6 },
     };
     const mat = new THREE.ShaderMaterial({ uniforms: this.u, vertexShader: vert, fragmentShader: frag, side: THREE.BackSide, depthWrite: false, fog: false });
     this.mesh = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), mat);
@@ -75,6 +88,7 @@ export class Sky {
     (this.u.uSunDir.value as THREE.Vector3).copy(sunDir);
     (this.u.uSunColor.value as THREE.Color).set(hour < 8 || hour > 17 ? 0xffb070 : 0xfff2d8).multiplyScalar(sunVisible);
     this.u.uNight.value = hour < 5.5 || hour > 19.8 ? 1 : 0;
+    this.u.uTime.value = performance.now() / 1000;
     this.mesh.position.copy(camPos);
   }
 }

@@ -15,8 +15,10 @@ Every asset has a row. **TEMP** = temporary, to be replaced or revised through t
 | Landmarks: mosque, monument, arena (with gate), écurie, gym, pitch | `src/world/builder.ts` | Own code | merged | TEMP | Not reviewed |
 | Shop signs (canvas text) | `src/world/batch.ts` | Own code; fictional shop names | 2 per sign | TEMP | Not reviewed |
 | City player, cast and crowd (boxes) — fallback only when the GLB fails to load | `src/actors/character.ts` | Own code | ~200 each | TEMP | Not reviewed |
-| Car rapide (procedural v2: roof rack, ladder, painted panels; one shared mesh) | `src/actors/vehicles.ts` | Own code | ~1k | TEMP until the Blender model | Not reviewed |
-| Taxi | `src/actors/vehicles.ts` | Own code | ~100 | TEMP | Not reviewed |
+| Car rapide (Blender v1, baked AO) | `assets-src/vehicles_v1.blend` → `car_rapide.glb` | Own work, 7 Oct 2026 | 3.8k | TEMP | **Unreviewed** (paint scheme) |
+| Sedan / taxi + decimated parked copy | `vehicles_v1.blend` → `sedan.glb`, `sedan_low.glb` | Own work, 7 Oct 2026 | 2.3k / 0.47k | TEMP | Not reviewed |
+| Street props: lamp post, power pole, bench, drum bin | `assets-src/props_v1.blend` → `props.glb` | Own work, 7 Oct 2026 | 50–380 each | TEMP | Not reviewed |
+| Wires, parked cars, canopies, palm fronds, road textures, facade atlas, clouds | `src/world/*` | Own code | — | TEMP | Not reviewed |
 | **Character v5 (shared humanoid)** | `assets-src/character_rig_v5.blend` → `public/assets/character_v5.glb` | Own work, Blender 5.2 via MCP for Blender, 6–7 Oct 2026; baked AO in vertex colours | body 1.7k, head 2k, hands 1.4k, garments 0.2–2.6k each | TEMP | Not reviewed |
 | Character v5 garments: tee, trousers, shorts, shoes, dress top + skirt, grand boubou (rebuilt 7 Oct: draped sleeves, flared robe), kufi, headwrap; hair short/puff; beard | character GLB | Own work | see above | TEMP | Not reviewed |
 | Garment prints and embroidery (wax, stripes, bazin damask, boubou collar/chest chevrons/hem bands) | `src/actors/humanoid.ts` (canvas) | Own designs, generic | — | TEMP | **Unreviewed** (embroidery motifs) |

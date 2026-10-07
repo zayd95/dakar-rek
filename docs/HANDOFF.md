@@ -30,6 +30,11 @@
 - Accessory sockets moved to the upper arm, ngemb waist and neck base, with upright axes (bands were drawn as discs before).
 - Known limits: seated robe lets shins show through the front.
 
+## World look pass (7 Oct, local commits only)
+- Blender vehicles and props (one draw call per moving vehicle, parked cars and props merged per hub); overhead wires; leafy canopies; palm fronds; asphalt/sand roads; facade atlas (4 window styles); sky clouds.
+- Post-processing (grade, vignette, bloom) on High only. One skin draw call per person.
+- Plateau 13:00 headless: ~480 → ~180 draw calls.
+
 ## Next steps (in order)
 1. Higgsfield batch 1 (4 images) from Habib's Mac, following `docs/HIGGSFIELD_PLAN.md` (cost check before each job, provenance log). Review, then batch 2.
 2. Blender (Mac): car rapide GLB; modular facade kit (bays, shop ground floor, balcony, parapet) guided by the reviewed references; export GLB with a shared texture atlas; load per hub on demand.
