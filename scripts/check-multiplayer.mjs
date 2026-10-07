@@ -28,10 +28,15 @@ try {
   }
   const health = await (await fetch(new URL('/api/health', base))).json();
   check('worker health and protocol', health.ok && health.protocol === 1 && health.roomCapacity === 24);
-  browser = await chromium.launch({ args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  browser = await chromium.launch({
+    args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    ...(process.env.DAKAR_BROWSER_PROXY ? { proxy: { server: process.env.DAKAR_BROWSER_PROXY } } : {}),
+  });
   const pageErrors = [];
   for (const [i, viewport] of [[0, { width: 390, height: 844 }], [1, { width: 1280, height: 720 }]]) {
-    const ctx = await browser.newContext({ viewport, hasTouch: i === 0, isMobile: i === 0 }); contexts.push(ctx);
+    const ctx = await browser.newContext({ viewport, hasTouch: i === 0, isMobile: i === 0,
+      ignoreHTTPSErrors: process.env.DAKAR_TEST_PROXY_TLS === 'true',
+    }); contexts.push(ctx);
     await ctx.addInitScript(i => { localStorage.setItem('dakarrek.quality', 'low'); localStorage.setItem('dakarrek.presence.profile', JSON.stringify({ name: i ? 'Awa' : 'Moussa', look: i ? 1 : 0 })); }, i);
     const page = await ctx.newPage(); page.on('pageerror', e => pageErrors.push(e.message));
     await page.goto(`${base}?debug${i === 0 ? '&touch' : ''}`);
