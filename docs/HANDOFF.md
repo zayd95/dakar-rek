@@ -35,6 +35,12 @@
 - Post-processing (grade, vignette, bloom) on High only. One skin draw call per person.
 - Plateau 13:00 headless: ~480 → ~180 draw calls.
 
+## Goal: better than The Sims 3 (Habib, 7 Oct). Gaps, biggest first
+1. People: more hairstyles (braids, locs, twists), skin detail, hand poses, facial expressions/blinking, more animations (eat, phone, carry, greet, dance).
+2. Homes: build/buy (place furniture), more interiors (family compound, apartment).
+3. Social: richer interactions with animations; NPC daily routines.
+4. Phones: real-device frame rates, then raise Medium quality.
+
 ## Next steps (in order)
 1. Higgsfield batch 1 (4 images) from Habib's Mac, following `docs/HIGGSFIELD_PLAN.md` (cost check before each job, provenance log). Review, then batch 2.
 2. Blender (Mac): car rapide GLB; modular facade kit (bays, shop ground floor, balcony, parapet) guided by the reviewed references; export GLB with a shared texture atlas; load per hub on demand.
