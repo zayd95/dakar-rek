@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import type { HubId } from '../core/types';
 import { rng, pick } from '../core/rng';
-import { Batch, facadeTextures, signTexture } from './batch';
+import { Batch, facadeTextures, signTexture, useFacadeAtlas } from './batch';
 import { ACTIONS, ENTER } from './content';
 import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
-import { pavingTexture, breezeBlockTexture } from './textures';
+import { pavingTexture, breezeBlockTexture, leafTexture, asphaltTexture, sandRoadTexture, frondTexture } from './textures';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
@@ -100,16 +100,22 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const interactables: Interactable[] = [];
   const plain = new Batch(), fac = new Batch(), lampPosts = new Batch(), lampBulbs = new Batch();
   const glass = new Batch(), water = new Batch(), leaves = new Batch();
-  const pave = new Batch(), blocks = new Batch();   // world-space textured: paving slabs, raw breeze blocks
+  const pave = new Batch(), blocks = new Batch(), roads = new Batch(), fronds = new Batch();
+  // Facade window style per building, from its position (no draw from R(), so layouts stay identical).
+  const STYLE_MIX: Record<string, number[]> = { dense: [0, 1, 1, 2, 0, 3], student: [3, 3, 0, 1], villa: [3, 2, 3, 0], banlieue: [2, 0, 2, 3] };
+  const facStyle = (x: number, z: number) => { const h = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1; const l = STYLE_MIX[sp.style] ?? [0]; return l[Math.floor(h * l.length)]; };   // world-space textured: paving slabs, raw breeze blocks
   const pools: THREE.BufferGeometry[] = [];
 
   const tex = facadeTextures();
   const facadeMat = addGrain(new THREE.MeshLambertMaterial({ map: tex.map, vertexColors: true, emissive: 0xffc070, emissiveMap: tex.glow, emissiveIntensity: 0 }), 0.7, 1, true) as THREE.MeshLambertMaterial;
+  useFacadeAtlas(facadeMat);
   const plainMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 1, 1);
   const paveMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.6, 1, false, pavingTexture(), 2);
   const blockMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.6, 1, false, breezeBlockTexture(), 1.6);
-  const leafMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), 0.8, 2.5);
+  const leafMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.8, 2.5, false, leafTexture(), 1.1);
   const glassMat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x335577, emissiveIntensity: 0.25 });
+  const frondMat = new THREE.MeshLambertMaterial({ map: frondTexture(), vertexColors: true, alphaTest: 0.45, side: THREE.DoubleSide });
+  const roadMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.7, 1, false, sp.style === 'banlieue' ? sandRoadTexture() : asphaltTexture(), sp.style === 'banlieue' ? 3 : 4);
   const lampMat = new THREE.MeshBasicMaterial({ vertexColors: true });
 
   const size = HALF * 2;
@@ -139,8 +145,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const edges: RoadEdge[] = [];
   const nodes: { x: number; z: number }[][] = [];
   for (let k = 0; k <= NB; k++) {
-    plain.box(ROAD, 0.08, size + 12, roadC(k), 0, 0, sp.road);      // roads along z (x = roadC(k))
-    plain.box(size + 12, 0.08, ROAD, 0, 0, roadC(k), sp.road);      // roads along x
+    roads.box(ROAD, 0.08, size + 12, roadC(k), 0, 0, sp.road);      // roads along z (x = roadC(k))
+    roads.box(size + 12, 0.08, ROAD, 0, 0, roadC(k), sp.road);      // roads along x
   }
   for (let a = 0; a <= NB; a++) { nodes[a] = []; for (let b = 0; b <= NB; b++) nodes[a][b] = { x: roadC(a), z: roadC(b) }; }
   for (let a = 0; a <= NB; a++) for (let b = 0; b <= NB; b++) {
@@ -196,15 +202,14 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const palm = (x: number, z: number, s = 1) => {
     R(); // (was lean; kept so the hub layouts stay the same)
     const h = 6.2 * s;
-    for (let k = 0; k < 2; k++) plain.cyl(0.2 * s + (1 - k) * 0.06, 0.26 * s + (1 - k) * 0.06, h / 2 + 0.05, x, 0.1 + (k * h) / 2, z, k % 2 ? 0x8a6b45 : 0x7a5d3a, 5);
+    for (let k = 0; k < 4; k++) plain.cyl(0.19 * s + (3 - k) * 0.025, 0.21 * s + (3 - k) * 0.025, h / 4 + 0.03, x, 0.1 + (k * h) / 4, z, k % 2 ? 0x8a6b45 : 0x7a5d3a, 8);
     const top = 0.1 + h;
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + R() * 0.5;
-      const len = 3.4 * s;
-      // each frond: two boxes drooping outward
-      leaves.box(0.75 * s, 0.1 * s, len, x + Math.sin(a) * len * 0.45, top - 0.3 * s, z + Math.cos(a) * len * 0.45, k % 2 ? 0x2f7f3e : 0x3d9450, a);
+    for (let k = 0; k < 11; k++) {
+      const a = (k / 11) * Math.PI * 2 + R() * 0.5;
+      const young = k % 3 === 0;
+      fronds.frond(x, top - 0.1 * s, z, a, (young ? 2.6 : 3.4) * s, 0.95 * s, young ? 0.9 : 0.35, young ? 1.2 : 1.6, k % 2 ? 0x5a9e44 : 0x6aae50);
     }
-    leaves.blob(0.45 * s, x, top - 0.1, z, 0x6b5a2a, 1, 0);
+    leaves.blob(0.42 * s, x, top - 0.15, z, 0x6b5a2a, 1.1, 1);
   };
   /** Neem / flamboyant-style shade tree: short trunk, wide clumpy canopy. */
   const tree = (x: number, z: number, s = 1, flower = false) => {
@@ -213,7 +218,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const cols = flower ? [0xc8442c, 0xd9542f, 0x4a7a35] : [0x3f6e2e, 0x4c7d36, 0x365f28];
     for (let k = 0; k < 5; k++) {
       const a = k * 1.3 + R(), r = k === 0 ? 0 : 1.3 * s;
-      leaves.blob((1.4 + R() * 0.6) * s, x + Math.sin(a) * r, (3.3 + R() * 0.8) * s, z + Math.cos(a) * r, cols[k % 3], 0.75, 0);
+      leaves.canopy((1.4 + R() * 0.6) * s, x + Math.sin(a) * r, (3.3 + R() * 0.8) * s, z + Math.cos(a) * r, cols[k % 3], 0.72, x * 0.37 + z * 0.71 + k * 1.9, lite ? 1 : 2);
     }
     solidC(x, z, 0.6, 0.6, 2.4);
   };
@@ -311,7 +316,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         const w = 8 + R() * 3, d = 8 + R() * 3, fl = 1 + (R() < 0.35 ? 1 : 0);
         const cx = L.cx + (k ? 5.5 : -5.5), cz = L.cz + (R() - 0.5) * 6, h = fl * 3 + 0.3;
         const col = pick(sp.palette, R);
-        fac.facade(w, h, d, cx, G - 0.02, cz, col);
+        fac.facade(w, h, d, cx, G - 0.02, cz, col, 0, facStyle(cx, cz));
         plain.box(w + 0.4, 0.25, d + 0.4, cx, G + h - 0.02, cz, 0x9a968c);            // roof slab
         parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.2, shade(col, 0.9), 0.5);
         plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));          // splash band
@@ -331,7 +336,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     if (sp.style === 'villa') {
       const w = 15 + R() * 3, d = 11 + R() * 2, fl = 2, h = fl * 3.2;
       const col = pick(sp.palette, R);
-      fac.facade(w, h, d, L.cx, G - 0.02, L.cz + 3, col);
+      fac.facade(w, h, d, L.cx, G - 0.02, L.cz + 3, col, 0, facStyle(L.cx, L.cz + 3));
       plain.box(w + 0.6, 0.3, d + 0.6, L.cx, G + h - 0.02, L.cz + 3, 0xdadada);
       plain.box(w + 0.1, 0.6, d + 0.1, L.cx, G - 0.02, L.cz + 3, 0xb9b2a4);
       plain.box(w * 0.5, 0.25, 2.2, L.cx - w * 0.2, G + 3.2, L.cz + 3 - d / 2 - 1.1, 0xe8e4dc); // terrace slab
@@ -346,7 +351,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       for (let k = 0; k < (lite ? 0 : 4); k++) {
         const t = R(), side = R() < 0.5;
         const x = side ? L.x0 + 0.3 + t * (LS - 0.6) : (R() < 0.5 ? L.x0 + 0.3 : L.x1 - 0.3), z = side ? (R() < 0.5 ? L.z0 + 0.3 : L.z1 - 0.3) : L.z0 + 0.3 + t * (LS - 0.6);
-        leaves.blob(0.9 + R() * 0.5, x, G + 2.3, z, pick([0xc2307a, 0xd94a8c, 0xa8256a, 0x3f7a35], R), 0.7, 0);
+        leaves.canopy(0.9 + R() * 0.5, x, G + 2.3, z, pick([0xc2307a, 0xd94a8c, 0xa8256a, 0x3f7a35], R), 0.7, x + z);
       }
       solidC(L.cx, L.cz + 3, w, d, h);
       palm(L.x0 + 2.5, L.z0 + 2.5, 0.9); palm(L.x1 - 2.5, L.z0 + 3, 0.9);
@@ -357,7 +362,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const w = 15 + R() * 5, d = 15 + R() * 5, h = fl * 3.2;
     const col = pick(sp.palette, R);
     const cx = L.cx + (R() - 0.5) * 2, cz = L.cz + (R() - 0.5) * 2;
-    fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    fac.facade(w, h, d, cx, G - 0.02, cz, col, 0, facStyle(cx, cz));
     plain.box(w + 0.5, 0.3, d + 0.5, cx, G + h - 0.02, cz, 0xd2cdc2);
     parapet(cx, cz, w + 0.5, d + 0.5, G + h + 0.26, shade(col, 0.92), 0.8);
     roofClutter(cx, cz, w, d, G + h + 0.28);
@@ -389,7 +394,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const w = 14, d = 8, h = 4.2;
     const cz = south ? L.z1 - d / 2 - 0.5 : L.z0 + d / 2 + 0.5, cx = L.cx;
     const col = k.kind === 'cafe' ? 0x6fa56a : k.kind === 'gargote' ? 0xe8a43c : k.kind === 'restaurant' ? 0xf3f0ea : k.kind === 'garage' ? 0x7f8a96 : 0xe7b45a;
-    fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    fac.facade(w, h, d, cx, G - 0.02, cz, col, 0, facStyle(cx, cz));
     plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
     parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.9), 0.6);
     plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));
@@ -429,7 +434,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const B = G + 0.02;
     switch (kind) {
       case 'mosque': {
-        fac.facade(26, 11, 22, cx, B, cz + 2, 0xf6f3ea);
+        fac.facade(26, 11, 22, cx, B, cz + 2, 0xf6f3ea, 0, facStyle(cx, cz + 2));
         plain.box(26.2, 0.7, 22.2, cx, B, cz + 2, 0xcfc7b4);
         plain.box(20, 1.2, 16, cx, 11.2, cz + 2, 0xe9e5d8);
         plain.sphere(7.5, cx, 12.4, cz + 2, 0x8fc7a8, true);
@@ -585,7 +590,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       }
       case 'ecurie': {
         const w = 18, d = 14;
-        fac.facade(w, 6, d, cx, B, cz + 6, 0xe0ad5a);
+        fac.facade(w, 6, d, cx, B, cz + 6, 0xe0ad5a, 0, facStyle(cx, cz + 6));
         plain.box(w + 0.1, 0.7, d + 0.1, cx, B, cz + 6, 0xa77a40);
         plain.box(w + 0.4, 0.3, d + 0.4, cx, B + 6, cz + 6, 0xc9bb9c);
         parapet(cx, cz + 6, w + 0.4, d + 0.4, B + 6.3, 0xd9a45a, 0.6);
@@ -688,8 +693,9 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     stall(x, z);
   }
 
-  for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true]] as [Batch, THREE.Material, boolean][]) {
+  for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [roads, roadMat, false], [fronds, frondMat, true]] as [Batch, THREE.Material, boolean][]) {
     const mesh = b.build(m, true, shadow); if (mesh) group.add(mesh);
+    if (mesh && b === fronds) mesh.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: frondTexture(), alphaTest: 0.45 });
   }
   const lampGlow = new THREE.Mesh(mergeGeometries(pools, false)!, new THREE.MeshBasicMaterial({ map: lightPoolTexture(), color: 0xffb860, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
   lampGlow.visible = false; lampGlow.renderOrder = 1; group.add(lampGlow);

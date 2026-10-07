@@ -41,8 +41,8 @@ export const pavingTexture = () => make('paving', 256, (c, S, r) => {
     if (r() < 0.25) { c.fillStyle = 'rgba(90,80,60,0.12)'; c.beginPath(); c.arc(i * t + r() * t, j * t + r() * t, 6 + r() * 14, 0, Math.PI * 2); c.fill(); } // stains
   }
   speckle(c, S, r, 2500, 190, 255, 1.5, 0.35);
-  c.fillStyle = 'rgba(120,112,100,0.9)';
-  for (let k = 0; k <= n; k++) { c.fillRect(k * t - 2, 0, 3, S); c.fillRect(0, k * t - 2, S, 3); }
+  c.fillStyle = 'rgba(120,112,100,0.5)';
+  for (let k = 0; k <= n; k++) { c.fillRect(k * t - 1, 0, 2, S); c.fillRect(0, k * t - 1, S, 2); }
 });
 
 /** Hollow cement breeze blocks (parpaings) 40 × 20 cm, running bond with rough mortar. Covers 1.6 m × 1.6 m. */
@@ -104,3 +104,77 @@ export const plasterTexture = () => make('plaster', 128, (c, S, r) => {
   speckle(c, S, r, 1800, 215, 255, 2, 0.5);
   for (let i = 0; i < 8; i++) { c.fillStyle = 'rgba(160,150,130,0.06)'; const x = r() * S, y = r() * S, s = 20 + r() * 40; for (const dx of [0, -S]) for (const dy of [0, -S]) c.fillRect(x + dx, y + dy, s, s * 0.6); }
 });
+
+/** Leaf clusters: overlapping small leaves in light/dark tones, seamless. Multiplied with the canopy colour. Covers 1.1 m. */
+export const leafTexture = () => make('leaves', 256, (c, S, r) => {
+  c.fillStyle = '#9a9a9a'; c.fillRect(0, 0, S, S);
+  for (let i = 0; i < 1400; i++) {
+    const x = r() * S, y = r() * S, a = r() * Math.PI, l = 7 + r() * 9, w = 3 + r() * 3;
+    const v = Math.floor(120 + r() * 135);
+    c.fillStyle = `rgb(${v},${Math.min(255, v + 8)},${Math.max(0, v - 20)})`;
+    for (const dx of [0, -S, S]) for (const dy of [0, -S, S]) { c.beginPath(); c.ellipse(x + dx, y + dy, l, w, a, 0, Math.PI * 2); c.fill(); }
+  }
+  for (let i = 0; i < 260; i++) {                                               // dark gaps between leaves
+    const x = r() * S, y = r() * S; c.fillStyle = 'rgba(40,40,30,0.55)';
+    for (const dx of [0, -S]) for (const dy of [0, -S]) { c.beginPath(); c.arc(x + dx, y + dy, 1.5 + r() * 2.5, 0, Math.PI * 2); c.fill(); }
+  }
+});
+
+/** Worn asphalt: fine aggregate, darker patch repairs, hairline cracks, oil stains. Covers 4 m. */
+export const asphaltTexture = () => make('asphalt', 512, (c, S, r) => {
+  c.fillStyle = '#c8c8c8'; c.fillRect(0, 0, S, S);
+  speckle(c, S, r, 26000, 120, 255, 1.4, 0.55);
+  for (let i = 0; i < 7; i++) {                                                 // patch repairs (darker, newer asphalt)
+    const x = r() * S, y = r() * S, w = 40 + r() * 120, h = 30 + r() * 90, v = 120 + Math.floor(r() * 30);
+    c.fillStyle = `rgba(${v},${v},${v + 4},0.55)`;
+    for (const dx of [0, -S]) for (const dy of [0, -S]) c.fillRect(x + dx, y + dy, w, h);
+  }
+  for (let i = 0; i < 10; i++) {                                                // oil / tyre stains
+    const x = r() * S, y = r() * S, s = 10 + r() * 30;
+    const g = c.createRadialGradient(x, y, 0, x, y, s); g.addColorStop(0, 'rgba(40,40,45,0.35)'); g.addColorStop(1, 'rgba(40,40,45,0)');
+    c.fillStyle = g; c.fillRect(x - s, y - s, s * 2, s * 2);
+  }
+  c.strokeStyle = 'rgba(60,60,60,0.55)'; c.lineWidth = 1.2;                     // hairline cracks
+  for (let i = 0; i < 14; i++) {
+    let x = r() * S, y = r() * S; c.beginPath(); c.moveTo(x, y);
+    for (let k = 0; k < 8; k++) { x += (r() - 0.5) * 30; y += (r() - 0.5) * 30; c.lineTo(x, y); }
+    c.stroke();
+  }
+});
+
+/** Packed sand street: grains, darker damp patches, scattered pebbles and footprints. Covers 3 m. */
+export const sandRoadTexture = () => make('sandroad', 512, (c, S, r) => {
+  c.fillStyle = '#e4e0d8'; c.fillRect(0, 0, S, S);
+  for (let i = 0; i < 18; i++) {
+    const x = r() * S, y = r() * S, s = 30 + r() * 90;
+    const g = c.createRadialGradient(x, y, 0, x, y, s); const d = r() < 0.5;
+    g.addColorStop(0, d ? 'rgba(150,130,100,0.22)' : 'rgba(255,250,240,0.25)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g; for (const dx of [0, -S, S]) for (const dy of [0, -S, S]) c.fillRect(x - s + dx, y - s + dy, s * 2, s * 2);
+  }
+  speckle(c, S, r, 20000, 150, 255, 1.2, 0.5);
+  for (let i = 0; i < 160; i++) { const v = 110 + Math.floor(r() * 80); c.fillStyle = `rgb(${v},${v - 6},${v - 14})`; const x = r() * S, y = r() * S; c.beginPath(); c.arc(x, y, 1 + r() * 2.2, 0, Math.PI * 2); c.fill(); }
+  for (let i = 0; i < 40; i++) {                                                 // footprints
+    const x = r() * S, y = r() * S, a = r() * Math.PI * 2;
+    c.fillStyle = 'rgba(140,120,95,0.18)'; c.beginPath(); c.ellipse(x, y, 5, 11, a, 0, Math.PI * 2); c.fill();
+  }
+});
+
+/** Palm frond leaflets on a transparent background: rib along v, leaflets angled toward the tip. 128 × 256. */
+let frondTex: THREE.CanvasTexture | null = null;
+export function frondTexture(): THREE.CanvasTexture {
+  if (frondTex) return frondTex;
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 256;
+  const c = cv.getContext('2d')!; const r = prng(99);
+  c.clearRect(0, 0, 128, 256);
+  for (let y = 6; y < 250; y += 5) {
+    for (const s of [-1, 1]) {
+      const len = 54 * (0.55 + 0.45 * Math.sin(Math.PI * (y / 256))) * (0.85 + r() * 0.3);
+      const v = 150 + Math.floor(r() * 90);
+      c.strokeStyle = `rgb(${v},${Math.min(255, v + 15)},${Math.floor(v * 0.6)})`; c.lineWidth = 3.2;
+      c.beginPath(); c.moveTo(64, y); c.quadraticCurveTo(64 + s * len * 0.5, y + 6, 64 + s * len, y + 18 + r() * 6); c.stroke();
+    }
+  }
+  c.strokeStyle = 'rgb(190,170,110)'; c.lineWidth = 4; c.beginPath(); c.moveTo(64, 0); c.lineTo(64, 256); c.stroke();
+  frondTex = new THREE.CanvasTexture(cv); frondTex.colorSpace = THREE.SRGBColorSpace; frondTex.anisotropy = 4;
+  return frondTex;
+}
