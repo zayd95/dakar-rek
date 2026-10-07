@@ -11,7 +11,7 @@ npm install
 npm run dev        # desktop: http://localhost:5173 · phone on the same Wi-Fi: http://<your-computer-ip>:5173
 npm run build      # typecheck + production build in dist/
 npm run preview    # serve the production build
-npm test           # unit tests (clock, save, needs, relationships, beats)
+npm test           # unit tests (clock, save, needs, relationships, beats, arena sightlines)
 npm run dev:online # game + multiplayer Worker at http://127.0.0.1:8787
 npm run check:online # two-client checks with local Durable Objects
 ```
