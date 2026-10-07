@@ -587,6 +587,14 @@ if (DEBUG) {
     portrait(dist = 2.2, h = 1.5, side = 0.35) { camOverride = dist > 0 ? { dist, h, side } : null; },
     addPeople(n = 6) { if (!world) return; for (let k = 0; k < n; k++) { const h = new Humanoid(randomLookDbg()); h.group.position.set(pos.x + Math.sin(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2), 0.1, pos.z + Math.cos(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2)); h.group.rotation.y = facing + Math.PI; h.hold = k % 3 === 0 ? 'Talk' : 'Idle'; extra.add(h.group); debugPeople.push(h); } },
     sceneInfo: () => (lambScene ? { kind: lambScene.kind, t: lambScene.t } : null),
+    sceneCrowd: () => lambScene?.crowdSpots() ?? [],
+    /** Distance from a to the first world surface on the segment a→b (equals the segment length when nothing is in the way). */
+    sightline(a: [number, number, number], b: [number, number, number]) {
+      const A = new THREE.Vector3(...a), d = new THREE.Vector3(...b).sub(A), len = d.length();
+      const rc = new THREE.Raycaster(A, d.normalize(), 0.05, len); rc.camera = camera;
+      const hit = world ? rc.intersectObject(world.group, true)[0] : undefined;
+      return { len, hit: hit ? hit.distance : len };
+    },
     scenePeek(t: number) { if (lambScene) { lambScene.t = t; lambScene.snap = true; } },
     outfit: () => openOutfit(), journal: () => openJournal(),
     emote(i = 0) { playEmote(i); },

@@ -11,7 +11,7 @@ npm install
 npm run dev        # desktop: http://localhost:5173 · phone on the same Wi-Fi: http://<your-computer-ip>:5173
 npm run build      # typecheck + production build in dist/
 npm run preview    # serve the production build
-npm test           # unit tests (clock, save, needs, relationships, beats)
+npm test           # unit tests (clock, save, needs, relationships, beats, arena sightlines)
 ```
 
 Add `?debug` to the URL for the test hooks (`window.__dakar`). Add `?touch` on a desktop browser to show the touch controls.
