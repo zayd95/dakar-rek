@@ -1,0 +1,63 @@
+{
+  "project": "Dakar Rek",
+  "updated_at": "2026-10-07",
+  "setup_state": "delivered_for_review",
+  "branch": "codex/agent-studio-bootstrap",
+  "base_commit": "547bb1e8077127094a3fc647821cf6ac73d2a42c",
+  "visual_candidate_snapshot": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7",
+  "production_branch": {
+    "documented": "codex/launch-controls",
+    "authority": "docs/CLOUDFLARE_OPS.md at base commit",
+    "verified_via_cloudflare": false
+  },
+  "active_tasks": [],
+  "active_game_implementation_tasks": [],
+  "integration_owner": "producer",
+  "reservations": [],
+  "existing_cloudflare_ops": "preserved",
+  "unattended_ai_runner_installed": false,
+  "new_automations_installed": [],
+  "new_dependencies": [],
+  "production_mutations_authorized": false,
+  "claude_active_checkout_modified": false,
+  "review_tasks": [],
+  "completed_tasks": [
+    "DKAG-001",
+    "DKAG-002",
+    "DKAG-003"
+  ],
+  "backlog_tasks": [
+    "DKAG-004",
+    "DKAG-005"
+  ],
+  "claude_native_load_verified": false,
+  "sessions": [
+    {
+      "name": "dakar_release_audit",
+      "task": "DKAG-002",
+      "state": "completed"
+    },
+    {
+      "name": "dakar_gameplay_audit",
+      "task": "DKAG-003",
+      "state": "completed"
+    },
+    {
+      "name": "dakar_studio_qa",
+      "task": "DKAG-001",
+      "state": "completed"
+    }
+  ],
+  "pull_request": "https://github.com/zayd95/dakar-rek/pull/6",
+  "validation": {
+    "reviewer": "dakar_studio_qa",
+    "reviewed_commit": "7520b3148efd7ec74555f58b3f43d8c38af91ec8",
+    "preserved_existing_blobs": 63,
+    "added_files": 31,
+    "changed_existing_files": 0,
+    "existing_refs_unchanged_at_review": true,
+    "runtime_tests_executed": false,
+    "native_claude_load_verified": false,
+    "meaning": "setup delivered for review; not merged, loaded or deployed"
+  }
+}
