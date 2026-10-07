@@ -18,7 +18,7 @@ import { Crowd, DecorativeTraffic } from './actors/npc';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
-import { preloadHumanoid, humanoidReady, Humanoid, lookFromOutfit, type Clip, type PersonLook } from './actors/humanoid';
+import { preloadHumanoid, humanoidReady, Humanoid, lookFromOutfit, randomLook, type Clip, type PersonLook } from './actors/humanoid';
 import { CAST, castById } from './social/cast';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
@@ -95,6 +95,9 @@ let castChars: { id: string; c: { group: THREE.Group; animate(dt: number, speed:
 /** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
 const PLAYER_LOOK: PersonLook = { skin: 0x6b3f25, style: 'tee', top: 0x1a9d54, accent: 0xf4c20d, pattern: 'uni', bottom: 0x3d4a5c, shoes: 0xf2f2ec };
 let playerBody: Humanoid | null = null;
+const debugPeople: Humanoid[] = [];
+const dbgRand = rng(42);
+const randomLookDbg = () => randomLook(dbgRand);
 let lambScene: LambScene | null = null;
 let emoteT = 0;
 const extra = new THREE.Group(); scene.add(extra);
@@ -103,6 +106,8 @@ let hourOverride: number | null = null;
 /** Walkable interiors of this hub, and the one the player is in. */
 let interiors = new Map<string, Interior>();
 let inside: { int: Interior; door: Interactable } | null = null;
+/** Debug only: fixed camera offset from the player (front portraits for visual review). */
+let camOverride: { dist: number; h: number; side: number } | null = null;
 
 const sunDir = new THREE.Vector3();
 function updateLighting(hour: number) {
@@ -495,11 +500,17 @@ function frame(now: number) {
     n.c.animate(dt, 0);
   }
   crowd?.update(dt); traffic?.update(dt);
+  for (const h of debugPeople) h.animate(dt, 0);
   findNearest();
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
   hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);
 
   if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined);
+  if (camOverride && !lambScene) {
+    const a = facing + camOverride.side;
+    camera.position.set(pos.x + Math.sin(a) * camOverride.dist, camOverride.h, pos.z + Math.cos(a) * camOverride.dist);
+    camera.lookAt(pos.x, camOverride.h - 0.1, pos.z);
+  }
   const ct = cityTimeAt(Date.now()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
@@ -539,7 +550,10 @@ if (DEBUG) {
     openNpc(id: string) { const it = world?.interactables.find(i => i.npc === id); if (it) openActions(it); },
     scene(kind: SceneKind) { const a = [...ACTIONS.arena, ...ACTIONS.ecurie].find(x => x.special === kind); if (a) runSpecial(a); else startScene(kind); },
     wrestlerReady: () => humanoidReady(),
+    body: () => playerBody,
     faceCamera() { follow.yaw = facing + Math.PI; },
+    portrait(dist = 2.2, h = 1.5, side = 0.35) { camOverride = dist > 0 ? { dist, h, side } : null; },
+    addPeople(n = 6) { if (!world) return; for (let k = 0; k < n; k++) { const h = new Humanoid(randomLookDbg()); h.group.position.set(pos.x + Math.sin(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2), 0.1, pos.z + Math.cos(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2)); h.group.rotation.y = facing + Math.PI; h.hold = k % 3 === 0 ? 'Talk' : 'Idle'; extra.add(h.group); debugPeople.push(h); } },
     sceneInfo: () => (lambScene ? { kind: lambScene.kind, t: lambScene.t } : null),
     scenePeek(t: number) { if (lambScene) { lambScene.t = t; lambScene.snap = true; } },
     outfit: () => openOutfit(), journal: () => openJournal(),

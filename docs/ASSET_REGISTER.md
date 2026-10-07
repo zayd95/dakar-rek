@@ -17,8 +17,10 @@ Every asset has a row. **TEMP** = temporary, to be replaced or revised through t
 | City player, cast and crowd (boxes) — fallback only when the GLB fails to load | `src/actors/character.ts` | Own code | ~200 each | TEMP | Not reviewed |
 | Car rapide (procedural v2: roof rack, ladder, painted panels; one shared mesh) | `src/actors/vehicles.ts` | Own code | ~1k | TEMP until the Blender model | Not reviewed |
 | Taxi | `src/actors/vehicles.ts` | Own code | ~100 | TEMP | Not reviewed |
-| **Humanoid v2** (shared body, clothing, ngemb A/B, sockets, 13 clips) | `assets-src/character_rig_v2.blend` → `public/assets/character_v2.glb` | Own work, Blender via MCP | see GLB | TEMP | Not reviewed; clothing materials are double-sided at runtime |
-| **Wrestler rig v1** | `assets-src/wrestler_rig_v1.blend` → `public/assets/wrestler_v1.glb` | Own work, made in Blender 5.2 via MCP for Blender, 6 Oct 2026 | body 370; ngemb A 52, B 64 | TEMP | Not reviewed; deformation in grabs/falls to check in paired animations |
+| **Character v4 (shared humanoid)** | `assets-src/character_rig_v4.blend` → `public/assets/character_v4.glb` | Own work, Blender 5.2 via MCP for Blender, 6 Oct 2026 | body 1.9k, head 2k, garments 0.2–2.3k each | TEMP | Not reviewed |
+| Character v4 garments: tee, trousers, shorts, shoes, dress top + skirt, grand boubou, kufi, headwrap; hair short/puff; beard | character GLB | Own work | see above | TEMP | Not reviewed |
+| Character v4 body shapes: Female, Muscular, Heavy (morph targets shared by body and fitted garments) | character GLB | Own work | — | TEMP | Not reviewed |
+| **Wrestler rig v1** (superseded by v4) | `assets-src/wrestler_rig_v1.blend` → `public/assets/wrestler_v1.glb` | Own work, made in Blender 5.2 via MCP for Blender, 6 Oct 2026 | body 370; ngemb A 52, B 64 | TEMP | Not reviewed; deformation in grabs/falls to check in paired animations |
 | Ngemb cuts A and B, colours, patterns | wrestler GLB + `src/lamb/look.ts` | Own work | in rig | TEMP | **Unreviewed** |
 | Accessory sockets (armL, armR, waist, neck) and placeholder items | wrestler GLB + `src/lamb/look.ts` | Own work | <100 | TEMP | **Unreviewed** (placeholders, no real gris-gris) |
 | Clips: Idle, Walk, Stance, Grab, Fall_Back | wrestler GLB | Own work | — | TEMP | Not reviewed |

@@ -16,6 +16,11 @@
 - Quality Low: no grain/detail textures, no decorative props.
 - Scripts: `scripts/compare.mjs` (identical-position before/after), `scripts/perf.mjs` (load + fps, headless), `scripts/quickshots.mjs`; `scripts/shots.mjs` has interior checks (45 checks pass).
 
+## Avatar v4 (done after this handoff was first written)
+- `public/assets/character_v4.glb` (source `assets-src/character_rig_v4.blend`) replaces v2: continuous skin-modifier body with automatic weights, shaped head (eyes, brows, nose, lips, ears), garments cut from the body surface (tee, trousers, shorts, shoes, dress top + skirt, grand boubou, kufi, headwrap), short hair / puff / beard, and Female / Muscular / Heavy morphs shared by body and garments.
+- `scripts/portrait.mjs` takes close-up avatar review shots (desktop + phone).
+- Known limits: mitten hands, head ~2k triangles, boubou sleeves clip when forearms rise, beard edge jagged, muscular morph subtle.
+
 ## Next steps (in order)
 1. Higgsfield batch 1 (4 images) from Habib's Mac, following `docs/HIGGSFIELD_PLAN.md` (cost check before each job, provenance log). Review, then batch 2.
 2. Blender (Mac): car rapide GLB; modular facade kit (bays, shop ground floor, balcony, parapet) guided by the reviewed references; export GLB with a shared texture atlas; load per hub on demand.
@@ -24,6 +29,6 @@
 5. Phone interior camera (room feels tight at 390×844).
 
 ## Notes
-- Preview artifact: claude.ai artifact QZYffkk4jEThNWRM4iU1mN. The GLB is shipped there as `assets/character_v2.glb.json` (base64) because .glb is not a served type.
+- Preview artifact: claude.ai artifact QZYffkk4jEThNWRM4iU1mN. The GLB is shipped there as `assets/character_v4.glb.json` (base64) because .glb is not a served type.
 - Headless checks: Chromium at /opt/pw-browsers with SwiftShader (CPU): frame rates compare builds only; they are not phone numbers. `?debug` exposes `window.__dakar` (teleport, setHour, enter/exit, meshStats…).
 - Blender files on Habib's Mac: `~/DakarRek-assets/`.
