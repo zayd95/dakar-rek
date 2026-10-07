@@ -172,3 +172,15 @@ forward with an arm flung back. 3. Corniche Ouest — dual carriageway, concrete
 whitewashed palm trunks, mosque minarets in the distance. 4. Aerial view of the Plateau — towers, red tile roofs, cream and
 ochre blocks, greenery. 5. Corniche Ouest promenade — red path under yellow tubular railings and arches, grass, beach.
 Used for: the monument, the Corniche road and promenade, Plateau towers and roofs (`src/world/builder.ts`).
+
+## Arena photos supplied by Habib (7 Oct 2026, in chat)
+
+Three photographs used as **factual references** for the làmb arena (not stored in the repository: authorship and licence
+unknown; they show real venues, sponsors and people). 1. A large modern arena seen from the upper stands: a bowl of two
+tiers under a canopy roof, a wide sand field, the fighting area outlined in white sandbags with sponsor boards and feather
+flags around it, crowd barriers, security staff in orange vests. 2. A stadium bout at ground level: a circle of white
+sandbags on deep sand, judges in white on folding chairs at the bags, an officials' table at the barriers, banners on the
+barrier fence, two tiers of stands. 3. An older arena from the stands: concrete terraces, a parapet wall covered in sponsor
+banners, sponsor boards just outside the ring, the ring a white traced circle with sandbags. Used for: the arena ring side in
+`src/world/builder.ts` (white sandbags, traced line, blank sponsor boards, judges' chairs, officials' table and canopy,
+barriers, bannered parapet, feather flags). No sponsor names, logos or people are reproduced.
