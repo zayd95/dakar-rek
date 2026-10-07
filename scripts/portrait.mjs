@@ -32,6 +32,8 @@ for (const [label, vp, touch] of views) {
   await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/${label}-avatar-seated.png` });
   await page.evaluate(() => { const d = window.__dakar; d.playerLook({ female: true, style: 'dress', top: 0x2f6fb3, pattern: 'wax', accent: 0xf4c20d, hair: 'braids', skin: 0x4e2e1c }, 'Idle'); d.portrait(1.1, 1.7, 2.4); });
   await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/${label}-avatar-braids.png` });
+  await page.evaluate(() => { const d = window.__dakar; d.playerLook({ hair: 'locs' }, 'Phone'); d.portrait(1.6, 1.6, 0.5); });
+  await page.waitForTimeout(4000); await page.screenshot({ path: `${out}/${label}-avatar-phone.png` });
   console.log(label, errs.length ? 'ERRORS ' + errs.join(' | ') : 'no errors');
 }
 await browser.close();

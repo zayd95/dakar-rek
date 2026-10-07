@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Character, NPC_OUTFITS } from './character';
-import { Humanoid, humanoidReady, randomLook } from './humanoid';
+import { Humanoid, humanoidReady, randomLook, type Clip } from './humanoid';
 import { makeTaxi, makeCarRapide } from './vehicles';
 import { pick } from '../core/rng';
 import type { HubWorld } from '../world/types';
@@ -126,7 +126,7 @@ export class Loiterers {
       for (let k = 0; k < n && placed < max; k++, placed++) {
         const h = new Humanoid(randomLook(rand));
         if (seated && k < 2) {
-          h.group.position.set(cx - 0.55 + k * 1.1, 0.28, cz + 0.05); h.group.rotation.y = Math.PI; h.hold = 'Sit';
+          h.group.position.set(cx - 0.55 + k * 1.1, 0.28, cz + 0.05); h.group.rotation.y = Math.PI; h.hold = /gargote|restaurant/.test(s.id) && rand() < 0.6 ? 'Eat' : 'Sit';
         } else {
           const a = (k / n) * Math.PI * 2 + rand() * 0.5;
           h.group.position.set(cx + Math.sin(a) * 0.8, 0.1, cz + Math.cos(a) * 0.8);
@@ -140,6 +140,7 @@ export class Loiterers {
   }
   /** Conversation: one speaker at a time (Talk), the others turn their heads to the speaker; turns rotate every few seconds. */
   private groups: { members: Humanoid[]; speaker: number; t: number }[] = [];
+  private greet = new Map<Humanoid, { done: boolean; t: number; prev: Clip | null }>();
   private t = 0;
   update(dt: number, px: number, pz: number) {
     this.t += dt;
@@ -157,7 +158,7 @@ export class Loiterers {
       g.t -= dt;
       if (g.t <= 0 && g.members.length > 1) {
         g.speaker = (g.speaker + 1 + Math.floor(Math.random() * (g.members.length - 1))) % g.members.length; g.t = 2.5 + Math.random() * 4;
-        g.members.forEach((m, i) => { if (m.hold !== 'Sit') m.hold = i === g.speaker ? 'Talk' : 'Idle'; });
+        g.members.forEach((m, i) => { if (m.hold !== 'Sit' && m.hold !== 'Eat') m.hold = i === g.speaker ? 'Talk' : (Math.random() < 0.2 ? 'Phone' : 'Idle'); });
       }
       const sp = g.members[g.speaker];
       for (const m of g.members) {
@@ -167,8 +168,15 @@ export class Loiterers {
       }
     }
     for (const h of this.people) {
-      const far = Math.hypot(h.group.position.x - px, h.group.position.z - pz) > 60;
+      const dp = Math.hypot(h.group.position.x - px, h.group.position.z - pz);
+      const far = dp > 60;
       h.group.visible = !far;
+      // greet the player once when they come close (Wave for 1.2 s, then back to what they were doing)
+      const st = this.greet.get(h) ?? { done: false, t: 0, prev: h.hold };
+      if (!st.done && dp < 3.5 && h.hold !== 'Sit' && h.hold !== 'Eat') { st.done = true; st.t = 1.2; st.prev = h.hold; h.hold = 'Wave'; h.lookTarget = new THREE.Vector3(px, 1.6, pz); }
+      if (st.t > 0) { st.t -= dt; if (st.t <= 0) h.hold = st.prev === 'Wave' ? 'Idle' : st.prev; }
+      if (dp > 12) st.done = false;
+      this.greet.set(h, st);
       if (!far) { h.play(h.hold ?? 'Idle', 0.3); h.update(dt); }
     }
   }

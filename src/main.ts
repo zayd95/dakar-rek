@@ -566,6 +566,7 @@ if (DEBUG) {
     outfit: () => openOutfit(), journal: () => openJournal(),
     emote(i = 0) { playEmote(i); },
     wrestle(clip: Clip = 'Stance') { showProxy(clip); },
+    bone(n: string) { const b = playerBody?.group.getObjectByName(n); if (!b) return null; const v = new THREE.Vector3(); b.getWorldPosition(v); v.sub(playerBody!.group.position); return [v.x, v.y, v.z].map(x => +x.toFixed(3)); },
     playerLook(l: Partial<PersonLook>, clip?: Clip) { hideProxy(); playerBody?.setLook({ ...PLAYER_LOOK, ...l }); if (playerBody && clip) playerBody.hold = clip; },
     clearPeople() { for (const h of debugPeople) extra.remove(h.group); debugPeople.length = 0; },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },

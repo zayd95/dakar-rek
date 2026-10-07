@@ -11,7 +11,7 @@ import type { Outfit } from './character';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk';
+export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Phone' | 'Wave' | 'Eat';
 export type Style = 'boubou' | 'tee' | 'dress';
 export type Pattern = 'uni' | 'wax' | 'bazin' | 'rayure';
 export interface PersonLook {
@@ -228,8 +228,17 @@ export class Humanoid {
     this.group.scale.setScalar(1.08);
   }
 
+  private phoneMesh?: THREE.Mesh;
   play(name: Clip, fade = 0.2, offset = 0) {
     if (this.clipName === name) return;
+    if (name === 'Phone' || this.phoneMesh) {
+      if (!this.phoneMesh) {
+        const hand = this.root.getObjectByName('hand.R') ?? this.root.getObjectByName('handR');
+        this.phoneMesh = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.14, 0.012), new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.3 }));
+        this.phoneMesh.position.set(0, 0.07, -0.02); hand?.add(this.phoneMesh);
+      }
+      this.phoneMesh.visible = name === 'Phone';
+    }
     const next = this.actions.get(name); if (!next) return;
     next.reset(); next.setLoop(THREE.LoopRepeat, Infinity); next.timeScale = 1;
     if (offset) next.time = offset * next.getClip().duration;
