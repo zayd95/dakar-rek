@@ -4,7 +4,7 @@ import { rng, pick } from '../core/rng';
 import { Batch, facadeTextures, signTexture, useFacadeAtlas } from './batch';
 import { ACTIONS, ENTER } from './content';
 import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
-import { makeCarRapide } from '../actors/vehicles';
+import { makeCarRapide, parkedCars } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { pavingTexture, breezeBlockTexture, leafTexture, asphaltTexture, sandRoadTexture, frondTexture } from './textures';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -693,6 +693,24 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     stall(x, z);
   }
 
+  // Parked cars along the kerbs (own RNG so the rest of the layout is unchanged); solid for the player.
+  {
+    const PR = rng(sp.seed * 977 + 5), spots: { x: number; z: number; rot: number; color: number }[] = [];
+    const cols = banlieue ? [0xf0b800, 0xf0b800, 0xe9e6dc, 0x8a8f96, 0x5b2a26, 0x2a4d7a] : [0xf0b800, 0xf2f2ec, 0x1d1d1f, 0x8a8f96, 0x7a1f1f, 0x2a4d7a, 0xc9c3b4];
+    const nearCross = (t: number) => Math.abs(t - roadC(Math.round((t + HALF - ROAD / 2) / PITCH))) < ROAD / 2 + 4;
+    for (let k = 0; k <= NB; k++) for (const along of [true, false]) for (const s of [-1, 1]) {
+      for (let t = -HALF + 8; t < HALF - 8; t += 5.6) {
+        if (PR() > (sp.style === 'dense' ? 0.42 : 0.24) || nearCross(t)) continue;
+        const off = roadC(k) + s * (ROAD / 2 - 1.35);
+        const x = along ? off : t, z = along ? t : off;
+        if (Math.abs(x) > HALF - 3 || Math.abs(z) > HALF - 3) continue;
+        const rot = (along ? 0 : Math.PI / 2) + (PR() < 0.5 ? 0 : Math.PI) + (PR() - 0.5) * 0.06;
+        spots.push({ x, z, rot, color: pick(cols, PR) });
+        if (along) solidC(x, z, 1.8, 4.4, 1.4); else solidC(x, z, 4.4, 1.8, 1.4);
+      }
+    }
+    const pc = parkedCars(spots); if (pc) group.add(pc);
+  }
   for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [roads, roadMat, false], [fronds, frondMat, true]] as [Batch, THREE.Material, boolean][]) {
     const mesh = b.build(m, true, shadow); if (mesh) group.add(mesh);
     if (mesh && b === fronds) mesh.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: frondTexture(), alphaTest: 0.45 });

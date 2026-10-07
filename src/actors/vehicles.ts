@@ -59,6 +59,25 @@ export async function preloadAssets(base = import.meta.env.BASE_URL): Promise<vo
     if (bT && pT && bP && pP) { sedanTaxi = { baked: bT, paint: pT }; sedanPrivate = { baked: bP, paint: pP }; assetStatus.sedan = 'Blender GLB'; }
   }
 }
+/** Parked cars along the kerbs, merged into one static mesh (one draw call per hub). Empty if the GLB is missing. */
+export function parkedCars(spots: { x: number; z: number; rot: number; color: number }[]): THREE.Mesh | null {
+  if (!sedanTaxi || !sedanPrivate || !spots.length) return null;
+  const parts: THREE.BufferGeometry[] = [];
+  const m = new THREE.Matrix4(), c = new THREE.Color();
+  for (const sp of spots) {
+    const set = sp.color === 0xf0b800 ? sedanTaxi : sedanPrivate;
+    m.makeRotationY(sp.rot).setPosition(sp.x, 0.06, sp.z);
+    parts.push(set.baked.clone().applyMatrix4(m));
+    const p = set.paint.clone().applyMatrix4(m); c.set(sp.color);
+    const col = p.attributes.color as THREE.BufferAttribute;
+    for (let i = 0; i < col.count; i++) col.setXYZ(i, col.getX(i) * c.r, col.getY(i) * c.g, col.getZ(i) * c.b);
+    parts.push(p);
+  }
+  const g = mergeGeometries(parts, false); if (!g) return null;
+  g.computeBoundingSphere();
+  const mesh = new THREE.Mesh(g, bakedMat); mesh.castShadow = true; mesh.receiveShadow = true; mesh.name = 'parked_cars';
+  return mesh;
+}
 const bakedMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.05 });
 const paintMats = new Map<number, THREE.Material>();
 function paintMat(c: number) {

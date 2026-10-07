@@ -17,6 +17,7 @@ import { Character, PLAYER_OUTFIT } from './actors/character';
 import { Crowd, DecorativeTraffic, Loiterers } from './actors/npc';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
+import { Post, type PostMode } from './render/post';
 import { preloadAssets } from './actors/vehicles';
 import { preloadHumanoid, humanoidReady, Humanoid, lookFromOutfit, randomLook, type Clip, type PersonLook } from './actors/humanoid';
 import { CAST, castById } from './social/cast';
@@ -50,9 +51,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 type Quality = 'low' | 'medium' | 'high';
 let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarrek.quality'); if (q === 'low' || q === 'medium' || q === 'high') return q; } catch { /* */ } return /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'medium' : 'high'; })();
 const QUAL = {
-  low: { pr: 1, shadow: 0, crowd: 12, traffic: 5, loiter: 6 },
-  medium: { pr: 1.5, shadow: 1024, crowd: 22, traffic: 9, loiter: 14 },
-  high: { pr: 2, shadow: 2048, crowd: 30, traffic: 12, loiter: 22 },
+  low: { pr: 1, shadow: 0, crowd: 12, traffic: 5, loiter: 6, post: 'off' as PostMode },
+  medium: { pr: 1.5, shadow: 1024, crowd: 22, traffic: 9, loiter: 14, post: 'grade' as PostMode },
+  high: { pr: 2, shadow: 2048, crowd: 30, traffic: 12, loiter: 22, post: 'full' as PostMode },
 };
 
 const scene = new THREE.Scene();
@@ -60,6 +61,8 @@ scene.background = new THREE.Color(0x9bd3f3);
 scene.fog = new THREE.Fog(0x9bd3f3, 60, 300);
 const camera = new THREE.PerspectiveCamera(58, 1, 0.3, 700);
 const sky = new Sky(); scene.add(sky.mesh);
+const post = new Post(renderer, scene, camera);
+let nightAmount = 0;
 const hemi = new THREE.HemisphereLight(0xffffff, 0x8a7a60, 0.9); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 1); sun.castShadow = true;
 sun.shadow.camera.left = -60; sun.shadow.camera.right = 60; sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60; sun.shadow.camera.far = 220; sun.shadow.bias = -0.0005;
@@ -72,9 +75,10 @@ function applyQuality() {
   renderer.shadowMap.enabled = QUAL[quality].shadow > 0; sun.castShadow = QUAL[quality].shadow > 0;
   if (QUAL[quality].shadow) { sun.shadow.mapSize.set(QUAL[quality].shadow, QUAL[quality].shadow); sun.shadow.map?.dispose(); sun.shadow.map = null; }
   scene.traverse(o => { const m = (o as THREE.Mesh).material as THREE.Material | undefined; if (m) m.needsUpdate = true; });
+  post.setMode(QUAL[quality].post); post.setSize(innerWidth, innerHeight);
   try { store?.setItem('dakarrek.quality', quality); } catch { /* */ }
 }
-function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.fov = innerWidth < innerHeight ? 66 : 58; camera.updateProjectionMatrix(); }
+function resize() { renderer.setSize(innerWidth, innerHeight, false); post.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.fov = innerWidth < innerHeight ? 66 : 58; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize);
 
 // ------------------------------------------------------------------ game objects
@@ -112,6 +116,7 @@ let camOverride: { dist: number; h: number; side: number } | null = null;
 const sunDir = new THREE.Vector3();
 function updateLighting(hour: number) {
   const d = daylight(hour), night = 1 - clamp(d * 3.2, 0, 1);
+  nightAmount = night;
   const low = 1 - clamp((d - 0.05) / 0.4, 0, 1);              // 1 near sunrise/sunset, 0 at midday
   // Sun path: rises in the east (+x), sets over the ocean (-x), leaning south (+z) so facades get raking light.
   const a = clamp((hour - 6) / 13, 0, 1) * Math.PI;
@@ -516,7 +521,7 @@ function frame(now: number) {
   updateLighting(hour);
   statsT -= dt;
   if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); hud.setGoal(mode === 'play' && sg ? sg.hint : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
-  renderer.render(scene, camera);
+  post.render(nightAmount);
 }
 
 // ------------------------------------------------------------------ start
