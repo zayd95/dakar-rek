@@ -1,6 +1,12 @@
-# Higgsfield reference and texture generation — plan (not yet run)
+# Higgsfield reference and texture generation — plan (batch 1 run)
 
-Status (7 Oct 2026): **no credits spent.** Update 02:40 UTC: the cloud session signed in with the CLI (workspace "Private",
+Status (7 Oct 2026, 02:35 UTC): **batch 1 generated, 8 credits spent (102 left).** Run through the Higgsfield MCP connector
+after a cost check (2 credits per image). The files could not be downloaded into the repo: the cloud environment's network
+policy blocks the Higgsfield CDN (`d8j0ntlcm91z4.cloudfront.net`). Job ids and target paths are in
+`assets-src/references/PROVENANCE.md`. Next: download the four files (Habib's Mac, or allow that host), review them, seam-check
+#4, then decide on batch 2.
+
+Earlier update (CLI sign-in): the cloud session signed in with the CLI (workspace "Private",
 plus plan, 110 credits) after `higgsfield.ai` was allowed in the environment's network settings. Cost estimates work
 (Nano Banana Pro 2k: 2 credits/image; Seedream 5.0 Pro 2.5; FLUX.2 1; GPT Image 2 6.5; Z Image 0.15), but every
 `generate create` is refused with `only_mcp_usage_on_trial_is_available`: on the trial, generation is only allowed through
@@ -50,5 +56,9 @@ unfinished concrete, breeze blocks, sand, concrete paving, floor tiles, weathere
 | Date | Job id | Model | Settings | Credits | Output | Used for |
 | --- | --- | --- | --- | --- | --- | --- |
 | 7 Oct | — (4 jobs refused: trial is MCP-only) | nano_banana_pro | 2k, 16:9 / 1:1 | 0 | — | — |
+| 7 Oct 02:34 | `3a050f14-e6e2-4cb2-a9d1-ae63463e5220` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `01_pikine_street.png` (not downloaded) | #1 Pikine street ref |
+| 7 Oct 02:34 | `bab52e8f-8598-4231-9e38-d96df96077f0` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `02_starter_room.png` (not downloaded) | #2 starter room ref |
+| 7 Oct 02:34 | `99db7326-b74a-4c79-b9a0-221d3314fc42` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `03_gargote.png` (not downloaded) | #3 gargote ref |
+| 7 Oct 02:34 | `5ca06dff-cfdd-4382-bbef-e636a68af495` | nano_banana_pro (MCP) | 2k, 1:1 | 2 | `04_texture_plaster_ochre.png` (not downloaded) | #4 plaster texture (seam check pending) |
 
-Running total: **0 / 100 credits.**
+Running total: **8 / 100 credits** (account balance 110 → 102, checked against the Higgsfield transactions list).

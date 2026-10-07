@@ -33,4 +33,4 @@ Every asset has a row. **TEMP** = temporary, to be replaced or revised through t
 
 Wrestler rig v1: 20 bones (root, hips, spine, chest, neck, head, shoulders, upper arms, forearms, hands, thighs, shins, feet), rigid-segment skinning with 50/50 blending at joints, socket empties parented to bones. Next: a continuous body mesh, hands and face, paired grab/throw animations, clipping checks from the combat camera on in-game footage.
 
-No AI-generated images are in the game or the repository yet. When they are added, each one is logged in `assets-src/references/PROVENANCE.md` (prompt, model, cost, date, job id) and labelled an artistic interpretation.
+No AI-generated images are in the game or the repository yet. Higgsfield batch 1 (4 references, 7 Oct) exists in the Higgsfield library and is logged in `assets-src/references/PROVENANCE.md`; it is not downloaded, reviewed or used. When images are added, each one is logged in `assets-src/references/PROVENANCE.md` (prompt, model, cost, date, job id) and labelled an artistic interpretation.
