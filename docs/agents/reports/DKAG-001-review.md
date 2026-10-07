@@ -59,3 +59,18 @@ Le producteur doit fournir le commit distant bootstrap et une PR non fusionnée,
 - **Cultural assumptions :** contenu culturel et làmb demeurent `unverified`; revue humaine sénégalaise nommée nécessaire, aucune certification par cette QA.
 - **Next owner :** producteur de cette conversation pour acceptation, état, PR et preuve du diff, puis reviewer pour contrôle final si nécessaire.
 - **Smallest next action :** comparer les chemins ajoutés distants à la liste DKAG-001 et transmettre le commit/PR au reviewer.
+
+## Complément — preuve distante indépendante, 20:20 UTC
+
+**Verdict distant : ready pour clôture documentaire de DKAG-001.** Les conditions externes laissées ouvertes ci-dessus ont été vérifiées par le reviewer au commit `7520b3148efd7ec74555f58b3f43d8c38af91ec8`. Aucune autorisation de merge, déploiement ou implémentation du backlog n'en découle.
+
+- Lecture GitHub `compare` de la base `547bb1e8077127094a3fc647821cf6ac73d2a42c` au head : un commit d'avance, 31 fichiers tous `added`, aucune modification ou suppression. Les chemins sont exclusivement les deux contrats, les neuf profils nouveaux et `docs/agents/**`.
+- Lectures des deux Git trees récursifs, tous deux `truncated: false` : **63 blobs existants dans la base, 94 dans le head; les 63 chemins/SHA existants sont identiques; 31 nouveaux blobs.** Agent Cloudflare, guide, watcher, workflow, sources, packages et assets sont donc conservés exactement.
+- Lecture des branches existantes : `main@547bb1e8077127094a3fc647821cf6ac73d2a42c`, `wip/visual-pass@00abf96efeadcc8bdb8d4c859eb1d0258b0978b7`, `codex/launch-controls@6216bb80db6bb7d777997e70d1681fa71240b057`. Elles correspondent aux snapshots inspectés; aucun déplacement de ces refs n'apparaît à cette lecture.
+- [PR #6](https://github.com/zayd95/dakar-rek/pull/6) : ouverte, draft, `merged: false`, base main et head bootstrap corrects. La relecture à 20:20:19 UTC confirme la correction de la prose « 71 » vers **63** fichiers conservés.
+- Lecture distante de STATE, HANDOFF et tâches DKAG-001/004/005 : DKAG-001 en revue en attendant cette preuve, audits DKAG-002/003 terminés, aucune tâche de code active, DKAG-004/005 en backlog sans réservation ni commissionnement. Chargement natif Claude et configuration Cloudflare restent explicitement non vérifiés.
+- Calcul local des hashes Git confirme que les profils, briefs, contrats, STUDIO et rapports relus correspondent aux blobs distants; les mises à jour d'état/tâches et HANDOFF sont examinées séparément dans leur contenu distant.
+
+Sources de cette QA distante : endpoints GitHub `/compare/547bb1e...7520b31`, `/git/trees/{SHA}?recursive=1`, `/branches/{main,wip/visual-pass,codex/launch-controls}`, métadonnées PR #6 et contenu au SHA des cinq documents cités. Lecture via outils GitHub uniquement; aucun commentaire, review GitHub, workflow ou mutation de ref effectué par QA. La preuve des refs ne vaut toujours pas attestation de version Cloudflare active ni accès au checkout local de Claude.
+
+Le producteur peut conserver ce complément puis clôturer la tâche, l'état et HANDOFF dans un commit **documentaire seulement** sur la même branche bootstrap. Toute modification du jeu, des profils déjà approuvés ou d'un chemin existant exige une nouvelle revue. Plus petite prochaine action : conserver ce rapport et vérifier l'allowlist des seuls fichiers documentaires de clôture.

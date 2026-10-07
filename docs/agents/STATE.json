@@ -1,7 +1,7 @@
 {
   "project": "Dakar Rek",
   "updated_at": "2026-10-07",
-  "setup_state": "review_ready_on_isolated_branch",
+  "setup_state": "delivered_for_review",
   "branch": "codex/agent-studio-bootstrap",
   "base_commit": "547bb1e8077127094a3fc647821cf6ac73d2a42c",
   "visual_candidate_snapshot": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7",
@@ -13,57 +13,16 @@
   "active_tasks": [],
   "active_game_implementation_tasks": [],
   "integration_owner": "producer",
-  "reservations": [
-    {
-      "owner": "producer",
-      "paths": [
-        "AGENTS.md",
-        "CLAUDE.md",
-        ".claude/agents/dakar-producer.md",
-        ".claude/agents/dakar-gameplay.md",
-        ".claude/agents/dakar-world.md",
-        ".claude/agents/dakar-characters.md",
-        ".claude/agents/dakar-animation.md",
-        ".claude/agents/dakar-combat.md",
-        ".claude/agents/dakar-network.md",
-        ".claude/agents/dakar-qa.md",
-        ".claude/agents/dakar-culture.md",
-        "docs/agents/STUDIO.md",
-        "docs/agents/STATE.json",
-        "docs/agents/HANDOFF.md",
-        "docs/agents/roles/",
-        "docs/agents/tasks/"
-      ]
-    },
-    {
-      "owner": "dakar_release_audit",
-      "paths": [
-        "docs/agents/reports/DKAG-002-release.md"
-      ]
-    },
-    {
-      "owner": "dakar_gameplay_audit",
-      "paths": [
-        "docs/agents/reports/DKAG-003-gameplay.md"
-      ]
-    },
-    {
-      "owner": "dakar_studio_qa",
-      "paths": [
-        "docs/agents/reports/DKAG-001-review.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "existing_cloudflare_ops": "preserved",
   "unattended_ai_runner_installed": false,
   "new_automations_installed": [],
   "new_dependencies": [],
   "production_mutations_authorized": false,
   "claude_active_checkout_modified": false,
-  "review_tasks": [
-    "DKAG-001"
-  ],
+  "review_tasks": [],
   "completed_tasks": [
+    "DKAG-001",
     "DKAG-002",
     "DKAG-003"
   ],
@@ -86,7 +45,19 @@
     {
       "name": "dakar_studio_qa",
       "task": "DKAG-001",
-      "state": "static_review_ready_remote_diff_pending"
+      "state": "completed"
     }
-  ]
+  ],
+  "pull_request": "https://github.com/zayd95/dakar-rek/pull/6",
+  "validation": {
+    "reviewer": "dakar_studio_qa",
+    "reviewed_commit": "7520b3148efd7ec74555f58b3f43d8c38af91ec8",
+    "preserved_existing_blobs": 63,
+    "added_files": 31,
+    "changed_existing_files": 0,
+    "existing_refs_unchanged_at_review": true,
+    "runtime_tests_executed": false,
+    "native_claude_load_verified": false,
+    "meaning": "setup delivered for review; not merged, loaded or deployed"
+  }
 }
