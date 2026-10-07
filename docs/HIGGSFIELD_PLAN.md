@@ -1,10 +1,11 @@
 # Higgsfield reference and texture generation — plan (batch 1 run)
 
-Status (7 Oct 2026, 02:35 UTC): **batch 1 generated, 8 credits spent (102 left).** Run through the Higgsfield MCP connector
-after a cost check (2 credits per image). The files could not be downloaded into the repo: the cloud environment's network
-policy blocks the Higgsfield CDN (`d8j0ntlcm91z4.cloudfront.net`). Job ids and target paths are in
-`assets-src/references/PROVENANCE.md`. Next: download the four files (Habib's Mac, or allow that host), review them, seam-check
-#4, then decide on batch 2.
+Status (7 Oct 2026): **batch 1 generated and downloaded, 8 credits spent (102 left).** Run through the Higgsfield MCP
+connector after a cost check (2 credits per image). Files in `assets-src/references/higgsfield/` (the CDN host
+`d8j0ntlcm91z4.cloudfront.net` is now allowed in the environment). First-look notes and the texture seam check are in
+`assets-src/references/PROVENANCE.md`: the three reference images match their briefs; the plaster texture **fails** the seam
+check (internal 2×2 repeat, top/bottom seam) and is not used. Next: **Habib reviews batch 1**, then batch 2. Credits expire
+around 9–10 Oct.
 
 Earlier update (CLI sign-in): the cloud session signed in with the CLI (workspace "Private",
 plus plan, 110 credits) after `higgsfield.ai` was allowed in the environment's network settings. Cost estimates work
@@ -56,9 +57,9 @@ unfinished concrete, breeze blocks, sand, concrete paving, floor tiles, weathere
 | Date | Job id | Model | Settings | Credits | Output | Used for |
 | --- | --- | --- | --- | --- | --- | --- |
 | 7 Oct | — (4 jobs refused: trial is MCP-only) | nano_banana_pro | 2k, 16:9 / 1:1 | 0 | — | — |
-| 7 Oct 02:34 | `3a050f14-e6e2-4cb2-a9d1-ae63463e5220` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `01_pikine_street.png` (not downloaded) | #1 Pikine street ref |
-| 7 Oct 02:34 | `bab52e8f-8598-4231-9e38-d96df96077f0` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `02_starter_room.png` (not downloaded) | #2 starter room ref |
-| 7 Oct 02:34 | `99db7326-b74a-4c79-b9a0-221d3314fc42` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `03_gargote.png` (not downloaded) | #3 gargote ref |
-| 7 Oct 02:34 | `5ca06dff-cfdd-4382-bbef-e636a68af495` | nano_banana_pro (MCP) | 2k, 1:1 | 2 | `04_texture_plaster_ochre.png` (not downloaded) | #4 plaster texture (seam check pending) |
+| 7 Oct 02:34 | `3a050f14-e6e2-4cb2-a9d1-ae63463e5220` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `01_pikine_street.jpg` | #1 Pikine street ref |
+| 7 Oct 02:34 | `bab52e8f-8598-4231-9e38-d96df96077f0` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `02_starter_room.jpg` | #2 starter room ref |
+| 7 Oct 02:34 | `99db7326-b74a-4c79-b9a0-221d3314fc42` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `03_gargote.jpg` | #3 gargote ref |
+| 7 Oct 02:34 | `5ca06dff-cfdd-4382-bbef-e636a68af495` | nano_banana_pro (MCP) | 2k, 1:1 | 2 | `04_texture_plaster_ochre.jpg` | #4 plaster texture — seam check failed, not used |
 
 Running total: **8 / 100 credits** (account balance 110 → 102, checked against the Higgsfield transactions list).

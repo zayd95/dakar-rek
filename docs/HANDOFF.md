@@ -22,7 +22,7 @@
 - Known limits: mitten hands, head ~2k triangles, boubou sleeves clip when forearms rise, beard edge jagged, muscular morph subtle.
 
 ## Next steps (in order)
-1. Higgsfield: **batch 1 generated** (7 Oct 02:34 UTC, 8 credits, 102 left) through the MCP connector. The images are in the Higgsfield library but not in the repo: the cloud network policy blocks the CDN host `d8j0ntlcm91z4.cloudfront.net`. Next: download them to `assets-src/references/higgsfield/` (job ids and file names in `assets-src/references/PROVENANCE.md`) from Habib's Mac, or add that host under the environment's Allowed domains; review them, seam-check the texture, then decide on batch 2 (`docs/HIGGSFIELD_PLAN.md`). Credits expire ~9–10 Oct.
+1. Higgsfield: **batch 1 generated and downloaded** (7 Oct, 8 credits, 102 left) into `assets-src/references/higgsfield/`. First-look notes in `assets-src/references/PROVENANCE.md`: the street, room and gargote references match their briefs; the plaster texture fails the seam check (not used). Next: Habib reviews batch 1, then batch 2 (`docs/HIGGSFIELD_PLAN.md`). Credits expire around 9–10 Oct.
 2. Blender (Mac): car rapide GLB; modular facade kit (bays, shop ground floor, balcony, parapet) guided by the reviewed references; export GLB with a shared texture atlas; load per hub on demand.
 3. Real-phone tests: load time and fps on a mid-range Android and an iPhone at Low/Medium; then pick the default quality automatically.
 4. Family home and apartment interiors; dibiterie; Maïga-style eatery (confirm what Habib means first).
