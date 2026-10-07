@@ -28,6 +28,8 @@ for (const [label, vp, touch] of views) {
   await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/${label}-avatar-boubou.png` });
   await page.evaluate(() => window.__dakar.portrait(3.0, 1.4, 1.7)); await page.waitForTimeout(1000);
   await page.screenshot({ path: `${out}/${label}-avatar-boubou-side.png` });
+  await page.evaluate(() => { const d = window.__dakar; d.playerLook({ style: 'boubou', top: 0xe8e2d0, pattern: 'bazin', hat: 'kufi', hatColor: 0xf2f2ec, beard: 0xdddddd, heavy: 0.4 }, 'Sit'); d.portrait(2.6, 1.2, 0.6); });
+  await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/${label}-avatar-seated.png` });
   console.log(label, errs.length ? 'ERRORS ' + errs.join(' | ') : 'no errors');
 }
 await browser.close();
