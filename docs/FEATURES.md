@@ -43,11 +43,12 @@ Last updated: visual pass (7 October 2026). Verification: 17 unit tests; 48 head
 | Food venues | Order and eat; friends' discounts; walkable gargote interiors with tables and counter | Sitting animation at tables, Maïga-style spot, dibiterie, nightlife |
 | NPCs | Recurring cast standing at their places; background walkers | Daily routines and movement between places |
 | Quality settings | Low / Medium / High; Low also drops grain, detail textures and decorative props | Automatic choice from measured performance; real-phone measurements |
+| Multiplayer presence | Cloudflare Worker + hibernatable Durable Objects; groups per hub; visible remote avatars, profiles, movement/poses, shared public interiors, invite links and reconnects; local two-client checks | Production deployment, real-phone verification and load testing; accounts, shared economy, chat, invitations to personal homes and multiplayer combat |
 | Generated references and textures | Plan, prompts and provenance rules in `docs/HIGGSFIELD_PLAN.md` | Not run: Higgsfield sign-in not available in the cloud session; 0 credits spent |
 
 ## Pending
 
-Driving (Tiak Tiak, clando, Yango) · vehicle radio · shared vehicles and anti-blocking · family home and apartment interiors · nightlife and dance areas · shared meals · multiplayer (presence, chat, home visits, invitations) · social money · bills and tontines · housing progression · mosque and collective prayer · Quran reading · làmb combat · traits, wishes, aspiration · skills beyond counters · city milestones · photo mode · live statistics · accounts, server ledger, migrations (Supabase + Drizzle) · session servers (Durable Objects) · asset CDN · monitoring.
+Driving (Tiak Tiak, clando, Yango) · vehicle radio · shared vehicles and anti-blocking · family home and apartment interiors · nightlife and dance areas · shared meals · multiplayer chat and personal home visits · social money · bills and tontines · housing progression · mosque and collective prayer · Quran reading · làmb combat · traits, wishes, aspiration · skills beyond counters · city milestones · photo mode · live statistics · accounts, server ledger, migrations (Supabase + Drizzle) · production deployment and load testing · monitoring.
 
 ## Provisional decisions taken without review
 

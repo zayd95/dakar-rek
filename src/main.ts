@@ -27,6 +27,10 @@ import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './soci
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
+import { PresenceClient, loadProfile } from './multiplayer/client';
+import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
+import { PresenceUi } from './multiplayer/ui';
+import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -85,6 +89,8 @@ const hud = new Hud(document.getElementById('ui')!, input);
 const saved = loadSave(store);
 const isNewGame = !saved;
 const state = new GameState(saved ?? newSave());
+const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
+const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
 const rel = new Relations(state.data);
 const follow = new FollowCamera(camera);
 const player = new Character(PLAYER_OUTFIT);
@@ -101,7 +107,7 @@ let ambient: Humanoid[] = [];
 let freeCam: { p: THREE.Vector3; t: THREE.Vector3 } | null = null;
 let castChars: { id: string; c: { group: THREE.Group; animate(dt: number, speed: number): void }; h?: Humanoid; x: number; z: number }[] = [];
 /** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
-const PLAYER_LOOK: PersonLook = { skin: 0x6b3f25, style: 'tee', top: 0x1a9d54, accent: 0xf4c20d, pattern: 'uni', bottom: 0x3d4a5c, shoes: 0xf2f2ec };
+const PLAYER_LOOK: PersonLook = avatarLook(presence.profile.look);
 let playerBody: Humanoid | null = null;
 const debugPeople: Humanoid[] = [];
 const dbgRand = rng(42);
@@ -116,6 +122,12 @@ let interiors = new Map<string, Interior>();
 let inside: { int: Interior; door: Interactable } | null = null;
 /** Debug only: fixed camera offset from the player (front portraits for visual review). */
 let camOverride: { dist: number; h: number; side: number } | null = null;
+const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
+const roomParam = Number(params.get('room'));
+const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
+const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
+presence.onChange = () => { presenceUi.update(); if (!presence.count) remoteAvatars.clear(); };
+function presenceSpace() { return lambScene ? 'scene' : inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'; }
 
 const sunDir = new THREE.Vector3();
 function updateLighting(hour: number) {
@@ -195,11 +207,13 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
     const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
   }
-  const p = at ?? world.spawn;
+  const requested = at ?? world.spawn, bounds = world.bounds;
+  const p = requested.x >= bounds.x0 && requested.x <= bounds.x1 && requested.z >= bounds.z0 && requested.z <= bounds.z1 ? requested : world.spawn;
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
   follow.snapBehind(facing);
   state.place(id, p.x, p.z, p.yaw);
   hud.setPlace(HUB_NAMES[id], '', false);
+  remoteAvatars.clear(); presence.join(id, id === invitedHub ? invitedRoom : null);
 }
 
 function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, number] {
@@ -456,7 +470,20 @@ function openSystem() {
     { label: 'Nouvelle partie', detail: 'Efface la sauvegarde de cet appareil', onPick: () => { clearSave(store); location.reload(); } },
   ], kv, panel => {
     panel.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
-      quality = b.dataset.q as Quality; applyQuality(); if (world) loadHub(world.id, { x: pos.x, z: pos.z, yaw: facing }); hud.closeModal();
+      const roomId = inside?.door.id, roomPosition = inside ? pos.clone() : null;
+      const at = { x: inside ? inside.door.x : pos.x, z: inside ? inside.door.z : pos.z, yaw: facing };
+      quality = b.dataset.q as Quality; applyQuality();
+      if (world) {
+        loadHub(world.id, at);
+        // Rebuild at the street doorway, then restore the room without leaking its off-map coordinates.
+        const door = roomId ? world.interactables.find(i => i.id === roomId) : undefined;
+        const int = door ? interiors.get(door.id) : undefined;
+        if (door && int && roomPosition) {
+          inside = { door, int }; follow.indoor = true; showStreet(false); scene.add(roomLight);
+          pos.copy(roomPosition); follow.snapBehind(facing);
+        }
+      }
+      hud.closeModal();
     }));
   });
 }
@@ -532,6 +559,10 @@ function frame(now: number) {
   for (const h of ambient) h.animate(dt, 0);
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
+  const space = presenceSpace();
+  const clip = mode === 'play' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
+  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
+  remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   findNearest();
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
   hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);
@@ -542,7 +573,7 @@ function frame(now: number) {
     camera.position.set(pos.x + Math.sin(a) * camOverride.dist, camOverride.h, pos.z + Math.cos(a) * camOverride.dist);
     camera.lookAt(pos.x, camOverride.h - 0.1, pos.z);
   }
-  const ct = cityTimeAt(Date.now()); const hour = hourOverride ?? ct.hourFloat;
+  const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
   if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); hud.setGoal(mode === 'play' && sg ? sg.hint : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
@@ -555,8 +586,8 @@ resize(); applyQuality();
 async function start() {
   await Promise.all([preloadAssets(), preloadHumanoid()]);
   if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); scene.add(playerBody.group); player.group.visible = false; }
-  const startHub = state.data.hub;
-  if (isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
+  const startHub = invitedHub ?? state.data.hub;
+  if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
   if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
   requestAnimationFrame(frame);
@@ -566,6 +597,7 @@ void start();
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size }),
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),

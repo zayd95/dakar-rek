@@ -13,17 +13,16 @@ export const assetStatus = { carRapide: 'TEMP procedural' as 'TEMP procedural' |
 
 export async function preloadAssets(base = import.meta.env.BASE_URL): Promise<void> {
   try {
-    const res = await fetch(`${base}assets/car_rapide.glb`);
-    if (!res.ok) return;
-    const buf = await res.arrayBuffer();
-    const gltf = await new GLTFLoader().parseAsync(buf, '');
+    // Let the loader resolve any external textures relative to the model's URL.
+    const gltf = await new GLTFLoader().loadAsync(`${base}assets/car_rapide.glb`);
     const g = new THREE.Group(); g.name = 'car_rapide_blender';
     gltf.scene.traverse(o => {
       const m = o as THREE.Mesh;
       if (m.isMesh) {
         m.castShadow = true;
-        const old = m.material as THREE.MeshStandardMaterial;
-        m.material = new THREE.MeshLambertMaterial({ color: old.color });
+        // Keep Blender's textures, transparency and PBR materials, including material arrays.
+        // Group.clone shares geometry/materials: hub cleanup must not dispose the template's resources.
+        m.userData.shared = true;
       }
     });
     g.add(gltf.scene);
