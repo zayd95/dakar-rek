@@ -1,10 +1,10 @@
 # Higgsfield reference and texture generation — plan (batch 1 run)
 
-Status (7 Oct 2026): **batch 1 generated and downloaded, 8 credits spent (102 left).** Run through the Higgsfield MCP
-connector after a cost check (2 credits per image). Files in `assets-src/references/higgsfield/` (the CDN host
-`d8j0ntlcm91z4.cloudfront.net` is now allowed in the environment). First-look notes and the texture seam check are in
-`assets-src/references/PROVENANCE.md`: the three reference images match their briefs; the plaster texture **fails** the seam
-check (internal 2×2 repeat, top/bottom seam) and is not used. Next: **Habib reviews batch 1**, then batch 2. Credits expire
+Status (7 Oct 2026, 12:15 UTC): **batches 1 and 2 done, 34 credits spent (76 left).** Batch 1 validated by Habib (chat,
+7 Oct). Batch 2: 13 images (3 streets, salon, kitchen, dibiterie, 7 textures), 26 credits; first-look notes and seam checks
+in `assets-src/references/PROVENANCE.md`. Textures: concrete, breeze block, sand, floor tiles and painted metal pass; paving
+passes the seams but the slab layout is uneven; wood planks fail (top/bottom seam). Not generated: the Maïga-style eatery
+(term to confirm with Habib). Next: Habib reviews batch 2; then decide whether to redo wood/plaster/paving. Credits expire
 around 9–10 Oct.
 
 Earlier update (CLI sign-in): the cloud session signed in with the CLI (workspace "Private",
@@ -61,5 +61,7 @@ unfinished concrete, breeze blocks, sand, concrete paving, floor tiles, weathere
 | 7 Oct 02:34 | `bab52e8f-8598-4231-9e38-d96df96077f0` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `02_starter_room.jpg` | #2 starter room ref |
 | 7 Oct 02:34 | `99db7326-b74a-4c79-b9a0-221d3314fc42` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `03_gargote.jpg` | #3 gargote ref |
 | 7 Oct 02:34 | `5ca06dff-cfdd-4382-bbef-e636a68af495` | nano_banana_pro (MCP) | 2k, 1:1 | 2 | `04_texture_plaster_ochre.jpg` | #4 plaster texture — seam check failed, not used |
+| 7 Oct 12:11–12:12 | batch 2, 13 jobs (ids in PROVENANCE.md) | nano_banana_pro (MCP) | 2k, 16:9 ×6 / 1:1 ×7 | 26 | `05_…` to `17_…` | streets, interiors, dibiterie, textures |
+| 7 Oct 12:11 | 5 submissions refused ("Out of credits", spurious) | nano_banana_pro (MCP) | — | 0 | — | resubmitted |
 
-Running total: **8 / 100 credits** (account balance 110 → 102, checked against the Higgsfield transactions list).
+Running total: **34 / 100 credits** (account balance 110 → 76, checked against the Higgsfield transactions list).
