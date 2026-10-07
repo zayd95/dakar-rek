@@ -22,7 +22,7 @@
 - Known limits: mitten hands, head ~2k triangles, boubou sleeves clip when forearms rise, beard edge jagged, muscular morph subtle.
 
 ## Next steps (in order)
-1. Higgsfield: **batches 1 and 2 validated by Habib, plus the Maïga** (36 credits, 74 left) in `assets-src/references/higgsfield/`, notes in `assets-src/references/PROVENANCE.md`. A Maïga is a gargote-style eatery, smaller and dirtier. Failed textures (wood planks, plaster) are unused; paving slabs are uneven. Next use of the references: interiors (step 4) and the Blender facade kit (step 2). Credits expire around 9–10 Oct.
+1. Higgsfield: **batches 1 and 2 validated by Habib, plus the Maïga, a texture redo and làmb arena references** (48 credits, 62 left) in `assets-src/references/higgsfield/`, notes in `assets-src/references/PROVENANCE.md`. Wood v2 (seam fixed) and paving v2 pass; arena ring and exterior references are in; plaster v2 and the high arena view were still generating (job ids logged, charged, do not resubmit). Next: use the arena references for the làmb arena in `src/world/builder.ts` (ring of sandbags, canopy and officials' table, stands fence, perimeter wall and gate). Credits expire around 9–10 Oct.
 2. Blender (Mac): car rapide GLB; modular facade kit (bays, shop ground floor, balcony, parapet) guided by the reviewed references; export GLB with a shared texture atlas; load per hub on demand.
 3. Real-phone tests: load time and fps on a mid-range Android and an iPhone at Low/Medium; then pick the default quality automatically.
 4. Family home and apartment interiors; dibiterie; Maïga (a smaller, dirtier gargote; reference `18_maiga.jpg`).

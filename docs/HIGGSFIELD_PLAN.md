@@ -1,10 +1,10 @@
 # Higgsfield reference and texture generation — plan (batch 1 run)
 
-Status (7 Oct 2026, 13:10 UTC): **batches 1 and 2 validated by Habib, plus the Maïga eatery; 36 credits spent (74 left).**
-Files and notes in `assets-src/references/higgsfield/` and `assets-src/references/PROVENANCE.md`. A Maïga is a gargote-style
-eatery, smaller and dirtier (Habib, 7 Oct). Textures: concrete, breeze block, sand, floor tiles and painted metal pass;
-paving passes the seams but its slab layout is uneven; wood planks (batch 2) and plaster (batch 1) fail and are not used.
-Open: redo the failed textures (about 2 credits each) if wanted. Credits expire around 9–10 Oct.
+Status (7 Oct 2026, 13:20 UTC): **batches 1 and 2 validated by Habib, plus the Maïga, a texture redo and làmb arena
+references; 48 credits spent (62 left).** Files and notes in `assets-src/references/higgsfield/` and
+`assets-src/references/PROVENANCE.md`. Passing textures: concrete, breeze block, sand, floor tiles, painted metal, paving v2,
+wood planks v2 (after a top/bottom crossfade). Plaster v2 and the high arena view were still generating (charged; do not
+resubmit). Credits expire around 9–10 Oct.
 
 Earlier update (CLI sign-in): the cloud session signed in with the CLI (workspace "Private",
 plus plan, 110 credits) after `higgsfield.ai` was allowed in the environment's network settings. Cost estimates work
@@ -63,5 +63,6 @@ unfinished concrete, breeze blocks, sand, concrete paving, floor tiles, weathere
 | 7 Oct 12:11–12:12 | batch 2, 13 jobs (ids in PROVENANCE.md) | nano_banana_pro (MCP) | 2k, 16:9 ×6 / 1:1 ×7 | 26 | `05_…` to `17_…` | streets, interiors, dibiterie, textures |
 | 7 Oct 12:11 | 5 submissions refused ("Out of credits", spurious) | nano_banana_pro (MCP) | — | 0 | — | resubmitted |
 | 7 Oct 13:08 | `47a3b778-eed0-4abd-b312-e9a5435c53ea` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `18_maiga.jpg` | Maïga eatery ref |
+| 7 Oct 13:10 | 6 jobs #19–24 (ids in PROVENANCE.md) | nano_banana_pro (MCP) | 2k, 1:1 ×3 / 16:9 ×3 | 12 | `19_…` to `24_…` | texture redo (wood, plaster, paving), làmb arena |
 
-Running total: **36 / 100 credits** (account balance 110 → 74, checked against the Higgsfield transactions list).
+Running total: **48 / 100 credits** (account balance 110 → 62, checked against the Higgsfield transactions list).
