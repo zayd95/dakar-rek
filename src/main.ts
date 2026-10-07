@@ -15,6 +15,7 @@ import { ACTIONS, HUB_NAMES, travelLeg } from './world/content';
 import type { Action, Collider, HubWorld, Interactable } from './world/types';
 import { Character, PLAYER_OUTFIT } from './actors/character';
 import { Crowd, DecorativeTraffic } from './actors/npc';
+import { MonumentLife } from './actors/life';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
@@ -90,7 +91,9 @@ scene.add(player.group);
 const pos = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
-let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null;
+let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, life: MonumentLife | null = null;
+/** Debug-only fixed camera (screenshots of landmarks). */
+let freeCam: { p: THREE.Vector3; t: THREE.Vector3 } | null = null;
 let castChars: { id: string; c: { group: THREE.Group; animate(dt: number, speed: number): void }; h?: Humanoid; x: number; z: number }[] = [];
 /** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
 const PLAYER_LOOK: PersonLook = { skin: 0x6b3f25, style: 'tee', top: 0x1a9d54, accent: 0xf4c20d, pattern: 'uni', bottom: 0x3d4a5c, shoes: 0xf2f2ec };
@@ -154,6 +157,8 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   scene.add(world.group);
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
   extra.add(crowd.group, traffic.group);
+  life?.dispose(); life = world.monument ? new MonumentLife(world.monument, rand, QUAL[quality].crowd) : null;
+  if (life) extra.add(life.group);
   // Recurring cast of this hub, standing at their places (PROVISIONAL cast, see src/social/cast.ts).
   castChars = [];
   for (const m of CAST.filter(c => c.hub === id)) {
@@ -499,7 +504,7 @@ function frame(now: number) {
     if (n.h) n.h.hold = d < 3.4 ? 'Talk' : null;
     n.c.animate(dt, 0);
   }
-  crowd?.update(dt); traffic?.update(dt);
+  crowd?.update(dt); traffic?.update(dt); life?.update(dt);
   for (const h of debugPeople) h.animate(dt, 0);
   findNearest();
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
@@ -515,6 +520,7 @@ function frame(now: number) {
   updateLighting(hour);
   statsT -= dt;
   if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); hud.setGoal(mode === 'play' && sg ? sg.hint : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
+  if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   renderer.render(scene, camera);
 }
 
@@ -563,6 +569,7 @@ if (DEBUG) {
     exit() { exitInterior(); },
     look(yaw: number, pitch?: number) { follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
     place(x: number, z: number, yaw: number) { pos.set(x, 0.1, z); facing = yaw; follow.snapBehind(yaw); },
+    cam(p: [number, number, number] | null, t?: [number, number, number]) { freeCam = p && t ? { p: new THREE.Vector3(...p), t: new THREE.Vector3(...t) } : null; },
     meshStats() {
       const rows: { name: string; tris: number; visible: boolean }[] = [];
       world?.group.children.forEach((o, i) => { let t = 0; o.traverse(m => { const g = (m as THREE.Mesh).geometry; if (g) t += (g.index ? g.index.count : g.attributes.position.count) / 3; }); rows.push({ name: `${i}:${o.type}:${((o as THREE.Mesh).material as THREE.Material | undefined)?.type ?? ''}`, tris: Math.round(t), visible: o.visible }); });

@@ -78,6 +78,13 @@ const SIDEWALK = 2; // m of sidewalk between the carriageway and the block edge
 
 const shade = (c: number, k: number) => new THREE.Color(c).multiplyScalar(k).getHex();
 
+/** Cylinder from point A to point B (radii r0 at A, r1 at B): limbs and leaning members built from primitives. */
+function limb(b: Batch, A: [number, number, number], Bp: [number, number, number], r0: number, r1: number, col: number, seg = 7) {
+  const dx = Bp[0] - A[0], dy = Bp[1] - A[1], dz = Bp[2] - A[2], len = Math.hypot(dx, dy, dz);
+  const theta = Math.acos(THREE.MathUtils.clamp(dy / len, -1, 1)), phi = Math.atan2(dz, dx);
+  b.cyl(r1, r0, len, A[0], A[1], A[2], col, seg, [0, -phi, -theta]);
+}
+
 /** Soft radial light pool texture for street lamps at night. */
 let poolTex: THREE.Texture | null = null;
 function lightPoolTexture() {
@@ -127,6 +134,19 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     plain.box(4, 0.06, size + 60, -HALF - 36, 0.02, 0, 0xf4f1e6);                  // surf line
     bounds.x0 = -HALF + 6;
     plain.box(1, 1, size, -HALF + 6.5, 0, 0, 0xcfc8b4);                              // sea wall
+    if (id === 'corniche') {
+      // Monumental arch on the Corniche promenade, facing the ocean at the end of the central street.
+      // STYLISED, TEMP: proportions and shape to verify against photos before it is called the real landmark.
+      const ax = -HALF - 2, AW = 0xe8dcc4, AD = 0xcbbd9f;
+      plain.box(6, 0.6, 26, ax, 0.05, 0, AD);                                        // plaza
+      for (const sz of [-1, 1]) {
+        plain.box(3.6, 1.2, 4, ax, 0.6, sz * 8.5, AD);                               // footings
+        limb(plain, [ax, 1.8, sz * 8.5], [ax, 17, sz * 3.2], 1.5, 1.0, AW, 6);       // leaning legs
+        limb(plain, [ax, 16, sz * 3.6], [ax, 22, sz * 0.4], 1.0, 0.7, AW, 6);
+      }
+      plain.box(2.6, 2.2, 3.4, ax, 21, 0, AD);                                        // crown
+      plain.box(1.6, 3.2, 1.6, ax, 23.2, 0, AW);
+    }
   }
   if (sp.sea === 'north') {
     plain.box(size + 40, 0.1, 40, 0, 0, -HALF - 16, 0xe9d9a8);                       // beach
@@ -190,7 +210,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
 
   const signs: THREE.Mesh[] = [];
   const addSign = (text: string, bg: string, fg: string, x: number, y: number, z: number, rotY: number, w = 6, h = 1.5) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: signTexture(text, bg, fg), emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
+    const tex = text.length > 18 ? signTexture(text, bg, fg, 768, 112) : signTexture(text, bg, fg);   // long names get a wider canvas so they never clip
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
     m.position.set(x, y, z); m.rotation.y = rotY; group.add(m); signs.push(m);
   };
   const palm = (x: number, z: number, s = 1) => {
@@ -482,14 +503,50 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         break;
       }
       case 'monument': {
-        plain.cyl(22, 22, 2.5, cx, B, cz, 0xa8b78a, 20);
-        for (let k = 0; k < 8; k++) plain.box(12, 0.3, 1.4, cx, B + 2.5 - k * 0.3, cz + 6 + 1.4 * k, 0xcfc7b4); // steps
-        plain.box(12, 3, 12, cx, 2.7, cz, 0x7a746a);
-        plain.box(8, 12, 8, cx, 5.7, cz, 0x8c867b);
-        plain.box(5, 18, 3.5, cx, 17.7, cz, 0x6b7f6b);                                    // stylised figure (temp)
-        plain.sphere(2.2, cx, 37, cz, 0x6b7f6b); plain.box(1.6, 8, 1.6, cx + 3.2, 28, cz, 0x6b7f6b, 0.4);
-        solidC(cx, cz, 12, 12, 24);
-        addSign('MONUMENT DE LA RENAISSANCE', '#14212b', '#d8e2dc', cx, 7.5, cz + 4.05, 0, 7.5, 1.2);
+        // Monument de la Renaissance africaine on the Mamelles hill — STYLISED, TEMP, to verify against photos.
+        // Hill with a stair up the sea side, pedestal, and the bronze group facing the ocean (west):
+        // a man holding a child up on his raised arm (the child points out to sea), a woman behind him.
+        const HILL = 0xa89a72, STONE = 0xd6cdb8, BRONZE = 0x5b4632;
+        for (let k = 0; k < 4; k++) plain.cyl(19 - k * 4, 21 - k * 4, 2.4, cx, B + k * 2.4, cz, k % 2 ? 0x9c8e66 : HILL, 18);   // terraced hill
+        for (let k = 0; k < 24; k++) plain.box(5, 0.42, 1.0, cx - 21 + k * 0.62, B, cz, STONE, Math.PI / 2);                     // stair west (base)
+        for (let k = 0; k < 24; k++) plain.box(5, B + k * 0.4 + 0.4, 0.62, cx - 20.7 + k * 0.62, 0, cz, STONE, Math.PI / 2);     // stair treads rising to the top
+        const top = B + 9.6;
+        plain.box(8, 2.6, 8, cx, top, cz, STONE);                                                                                 // pedestal
+        plain.box(8.6, 0.4, 8.6, cx, top + 2.6, cz, 0xc4baa4);
+        // statue in local axes: a = toward the sea (-x), s = to the statue's right (-z), u = up; k scales metres
+        const k = 1.75, base = top + 3;
+        const W = (a: number, s2: number, u: number): [number, number, number] => [cx - a * k, base + u * k, cz - s2 * k];
+        const limbAB = (A: [number, number, number], Bp: [number, number, number], r0: number, r1: number, col = BRONZE) => limb(plain, W(...A), W(...Bp), r0 * k * 1.25, r1 * k * 1.25, col);
+        const ball = (P: [number, number, number], r: number) => { const [x, y, z] = W(...P); plain.sphere(r * k * 1.15, x, y, z, BRONZE); };
+        // man
+        limbAB([1.5, -0.6, 0], [0.2, -0.5, 7.4], 0.75, 0.95); limbAB([-1.3, 0.6, 0], [-0.2, 0.5, 7.4], 0.75, 0.95);           // striding legs
+        limbAB([0, 0, 7], [0.35, 0, 12.6], 1.45, 1.9);                                                                          // torso
+        limbAB([0.35, 0, 12.4], [0.4, 0, 13.4], 0.5, 0.5); ball([0.45, 0, 14.3], 1.05);                                         // neck, head
+        limbAB([0.3, -1.7, 12.2], [1.6, -2.3, 17.4], 0.55, 0.5);                                                                // raised arm
+        limbAB([0.2, 1.7, 12.1], [-0.9, 2.5, 9.2], 0.55, 0.5);                                                                  // arm around the woman
+        // child held up, pointing to sea
+        limbAB([1.7, -2.3, 17.4], [1.9, -2.3, 19.8], 0.5, 0.45); ball([2.0, -2.3, 20.5], 0.45);
+        limbAB([2.0, -2.3, 19.5], [4.0, -2.3, 20.4], 0.2, 0.18);
+        // woman behind, scarf and arm flowing back
+        limbAB([-0.8, 2.2, 0], [-1.3, 2.5, 6.2], 0.6, 0.75); limbAB([-1.9, 2.9, 0], [-1.4, 2.6, 6.2], 0.6, 0.75);
+        limbAB([-1.35, 2.5, 4.2], [-1.3, 2.5, 7], 0.95, 1.25);                                                                  // skirt
+        limbAB([-1.3, 2.5, 6.6], [-1.2, 2.4, 10.8], 1.1, 1.35); ball([-1.1, 2.4, 12.1], 0.85);
+        limbAB([-1.2, 3.3, 10.5], [-3.9, 4.3, 12.6], 0.45, 0.35);
+        limbAB([-1.2, 2.4, 12.3], [-3.4, 2.6, 13.1], 0.5, 0.2);
+        // hill collider: a square plus a cross approximate the round terraces, leaving the block corners free
+        solidC(cx, cz, 30, 30, top + 3); solidC(cx, cz, 42, 14, top); solidC(cx, cz, 14, 42, top);
+        // festive corners: a canopy, speakers and bunting at the two south corners (people are added in actors/life.ts)
+        const spots = [{ x: cx + 16.5, z: cz + 16.5 }, { x: cx - 16.5, z: cz + 16.5 }];
+        for (const [n, sp2] of spots.entries()) {
+          const col = n ? 0xd9322b : 0x1a9d54;
+          for (const [dx, dz] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) plain.box(0.1, 2.6, 0.1, sp2.x + dx, B, sp2.z + dz, 0x555555);
+          awning(sp2.x, sp2.z, 5.2, 5.2, 2.85, col, true, 1);
+          plain.box(0.6, 1.1, 0.5, sp2.x + 2.2, B, sp2.z - 2.2, 0x1d1d1f); plain.box(0.6, 1.1, 0.5, sp2.x - 2.2, B, sp2.z - 2.2, 0x1d1d1f); // speakers
+          for (let f = 0; f < 8; f++) plain.box(0.35, 0.45, 0.02, sp2.x - 2.6 + f * 0.75, 2.45, sp2.z + 2.6, [0x1a9d54, 0xf4c20d, 0xd9322b][f % 3]); // bunting
+        }
+        monumentInfo = { cx, cz, stairX0: cx - 20.7, stairX1: cx - 6.4, stairZ: cz, y0: B + 0.4, y1: top, spots };
+        plain.box(9, 1.6, 0.5, cx, B, cz + 21.6, STONE);
+        addSign('MONUMENT DE LA RENAISSANCE AFRICAINE', '#14212b', '#d8e2dc', cx, B + 0.85, cz + 21.9, 0, 8, 1.0);
         break;
       }
       case 'gym': {
@@ -610,7 +667,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const kioskLots = new Map<string, KioskSpec>();
   for (const k of sp.kiosks) kioskLots.set(`${k.i},${k.j},${k.lot}`, k);
   let spawn = { x: 0, z: 0, yaw: 0 };
-  let arenaInfo: HubWorld['arena'] = null, ecurieInfo: HubWorld['ecurie'] = null;
+  let arenaInfo: HubWorld['arena'] = null, ecurieInfo: HubWorld['ecurie'] = null, monumentInfo: HubWorld['monument'] = null;
   for (let i = 0; i < NB; i++) for (let j = 0; j < NB; j++) {
     const key = `${i},${j}`;
     const s = sp.specials[key];
@@ -697,7 +754,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
 
   return {
     id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs,
-    skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo,
+    skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
     dispose() { disposeGroup(group); },
   };
 }

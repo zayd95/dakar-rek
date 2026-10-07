@@ -21,6 +21,7 @@ Last updated: visual pass (7 October 2026). Verification: 17 unit tests; 45 head
 | Beats unlock jobs and discounts | Trusted rate at Modou's garage, Ousmane's morning pirogue, friends' prices at two gargotes, paid service at Le Pointe | unit tests |
 | One suggested next step | HUD chip + journal (Carnet) | headless |
 | Walkable interiors | Starter room (Pikine) and gargotes (Plateau, Corniche, Pikine): Entrer/Sortir, collisions, room camera, ceiling light, actions inside (sleep, wash, order); saving indoors stores the door position | headless (enter, wall collision, exit) |
+| Corniche landmarks | Monument de la Renaissance on its hill with joggers running the stair, people training on the summit and festive groups with drummers at the foot; a monumental arch on the promenade | headless captures (`__dakar.cam`) — stylised, **Unreviewed** |
 | Rendering pass | Tone mapping, sky dome with haze/sun/stars, procedural grain and seamless textures, partial night windows, lamp light pools; Low quality turns per-pixel extras off | headless captures day/night, desktop/phone |
 | Training, entrance and stands scenes are distinct | Separate settings, camera, sound and on-screen label | headless (each scene runs and ends) |
 

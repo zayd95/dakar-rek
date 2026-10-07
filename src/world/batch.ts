@@ -112,7 +112,7 @@ export function signTexture(text: string, bg: string, fg: string, w = 256, h = 6
   c.fillStyle = bg; c.fillRect(0, 0, w, h);
   c.strokeStyle = fg; c.lineWidth = 3; c.strokeRect(4, 4, w - 8, h - 8);
   c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
-  let size = 34; c.font = `800 ${size}px system-ui, sans-serif`;
+  let size = Math.round(h * 0.53); c.font = `800 ${size}px system-ui, sans-serif`;
   while (c.measureText(text).width > w - 24 && size > 12) { size -= 2; c.font = `800 ${size}px system-ui, sans-serif`; }
   c.fillText(text, w / 2, h / 2 + 2);
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;

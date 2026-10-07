@@ -9,6 +9,9 @@ Every asset has a row. **TEMP** = temporary, to be replaced or revised through t
 | Surface grain and night-window shader | `src/world/grain.ts` | Own code | — | TEMP | Not reviewed |
 | Sky dome | `src/world/sky.ts` | Own code | 960 | TEMP | Not reviewed |
 | Interiors: starter room, gargote (furniture, pots, fridge, fan, ataya set, prayer mat) | `src/world/interiors.ts` | Own code; generic wax-style prints of own design; menu board text authored in code | ~2k each | TEMP | **Unreviewed** layout and furnishing |
+| Monument de la Renaissance africaine (hill, stair, pedestal, bronze group) | `src/world/builder.ts` (`case 'monument'`) | Own code, stylised from general knowledge; no photo reference yet | merged | TEMP | **Unreviewed** — proportions and pose to verify against photos |
+| Corniche arch (monumental gate on the promenade) | `src/world/builder.ts` (corniche sea front) | Own code, stylised; shape not verified | merged | TEMP | **Unreviewed** — to verify against photos before naming it after the real landmark |
+| Monument life: joggers on the stair, training on the summit, festive groups with drummers, canopies, speakers, bunting | `src/actors/life.ts`, `src/world/builder.ts` | Own code; dance and drumming clips are placeholders | humanoids | TEMP | **Unreviewed** (dances, drumming) |
 | Trees (neem/flamboyant style), palms, bougainvillea, street stalls | `src/world/builder.ts` | Own code | merged | TEMP | Not reviewed |
 | Facade window texture | `src/world/batch.ts` (canvas) | Own code | — | TEMP | Not reviewed |
 | Props: palms, lamp posts, stalls, awnings, pier, boats | `src/world/builder.ts` | Own code | merged | TEMP | Not reviewed |

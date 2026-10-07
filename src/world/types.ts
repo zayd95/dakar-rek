@@ -45,6 +45,8 @@ export interface HubWorld {
   signs: THREE.Mesh[];
   skyDay: number;
   arena: { cx: number; cz: number; r: number } | null;
+  /** Monument hill: stair run (x0→x1 at stairZ, rising y0→y1), summit terrace height, festive ground spots. */
+  monument: { cx: number; cz: number; stairX0: number; stairX1: number; stairZ: number; y0: number; y1: number; spots: { x: number; z: number }[] } | null;
   ecurie: { cx: number; cz: number } | null;
   dispose(): void;
 }
