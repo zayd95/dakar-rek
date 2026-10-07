@@ -25,7 +25,10 @@
 - `character_v5.glb`: capsule-finger hands, baked AO, morph-aware garments, rebuilt grand boubou (draped sleeves weighted along the arm, robe weighted partly to thighs/shins so legs stay inside when walking), rebuilt ngemb A/B from the body surface (B has a back knot and two tails; **Unreviewed**).
 - Garment canvas textures: prints and boubou embroidery. Fixed: glTF stores v as 1 − v, so the texture uses repeat.y < 0 with an offset (before this, embroidery sat at the wrong height).
 - Debug hooks: `wrestle(clip)`, `playerLook(look, clip)`, `clearPeople()`; `scripts/portrait.mjs` also shoots the wrestler from behind and a boubou close-up.
-- Known limits: seated robe lets shins show through the front; Stance/Dance clips are placeholders; head ~2k triangles.
+- Face: upper/lower eyelids, fuller lips, broader nose, chin and jaw shaping (head ~2.3k triangles).
+- Clips Stance, Grab, Fall_Back, Prep, Dance_A, Dance_B re-keyed on the v5 rig (the old keys leaned backwards with arms overhead). Prep and both dances remain **Unreviewed** placeholders.
+- Accessory sockets moved to the upper arm, ngemb waist and neck base, with upright axes (bands were drawn as discs before).
+- Known limits: seated robe lets shins show through the front.
 
 ## Next steps (in order)
 1. Higgsfield batch 1 (4 images) from Habib's Mac, following `docs/HIGGSFIELD_PLAN.md` (cost check before each job, provenance log). Review, then batch 2.

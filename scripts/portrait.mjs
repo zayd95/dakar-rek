@@ -14,6 +14,8 @@ for (const [label, vp, touch] of views) {
   await page.waitForTimeout(800);
   await page.evaluate(() => { const d = window.__dakar; d.addPeople(7); d.portrait(1.5, 1.7, 0.25); });
   await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/${label}-avatar-front.png` });
+  await page.evaluate(() => window.__dakar.portrait(0.85, 1.75, 0.3)); await page.waitForTimeout(1000);
+  await page.screenshot({ path: `${out}/${label}-avatar-face.png` });
   await page.evaluate(() => window.__dakar.portrait(2.6, 1.45, 0.75)); await page.waitForTimeout(1000);
   await page.screenshot({ path: `${out}/${label}-avatar-34.png` });
   await page.evaluate(() => window.__dakar.portrait(5.5, 2.0, 0.45)); await page.waitForTimeout(1000);

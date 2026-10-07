@@ -199,8 +199,8 @@ export class Humanoid {
     for (const id of look.accessories) {
       const a = ACCESSORIES.find(x => x.id === id); if (!a) continue;
       const node = this.root.getObjectByName(SOCKET_NODE[a.socket]); if (!node) continue;
-      const g = a.socket === 'waist' ? new THREE.CylinderGeometry(0.185, 0.185, 0.04, 16, 1, true) : a.socket === 'neck' ? new THREE.TorusGeometry(0.09, 0.016, 6, 12) : new THREE.CylinderGeometry(0.085, 0.085, 0.06, 10);
-      const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: a.color }));
+      const g = a.socket === 'waist' ? new THREE.CylinderGeometry(0.185, 0.185, 0.04, 16, 1, true) : a.socket === 'neck' ? new THREE.TorusGeometry(0.09, 0.016, 6, 12) : new THREE.CylinderGeometry(0.056, 0.056, 0.05, 12, 1, true);
+      const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: a.color, side: THREE.DoubleSide }));
       if (a.socket === 'neck') mesh.rotation.x = Math.PI / 2;
       node.add(mesh); this.accessoryMeshes.push(mesh);
     }
