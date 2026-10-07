@@ -854,25 +854,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           lampBulbs.box(2.7, 1.1, 0.05, x - Math.sin(a) * 0.62, 15.15, z - Math.cos(a) * 0.62, 0xfff3d0, a);
           solidC(x, z, 0.6, 0.6, 15);
         }
-        // After Higgsfield references #22–24 (artistic interpretations; set-up UNREVIEWED):
-        // wire fence between the field and the stands
-        const fenceR = 16.9;
-        for (let s2 = 0; s2 < 56; s2++) {
-          const a = (s2 / 56) * Math.PI * 2; if (gateGap(a)) continue;
-          const x = cx + Math.sin(a) * fenceR, z = cz + Math.cos(a) * fenceR, a2 = ((s2 + 1) / 56) * Math.PI * 2;
-          plain.box(0.06, 1.9, 0.06, x, B, z, 0x6f7377);
-          if (!gateGap(a2)) for (const y of [0.35, 1.0, 1.85]) limb(plain, [x, B + y, z], [cx + Math.sin(a2) * fenceR, B + y, cz + Math.cos(a2) * fenceR], 0.015, 0.015, 0x8a8f93, 3);
-        }
-        // officials' and guests' canopies at the ring side (east), with a table, plastic chairs and resting drums
-        for (const [n, a] of [1.2, 1.6, 2.0].entries()) {
-          const tx = cx + Math.sin(a) * 13.6, tz = cz + Math.cos(a) * 13.6, col = [0xf4c20d, 0x1a9d54, 0xd9322b][n];
-          for (const [dx, dz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) plain.box(0.07, 2.4, 0.07, tx + dx, B, tz + dz, 0xcfcfcf);
-          for (let k2 = 0; k2 < 4; k2++) plain.box(3.4, 0.06, 0.86, tx, B + 2.4 + (k2 % 2) * 0.05, tz - 1.3 + k2 * 0.86, k2 % 2 ? col : 0xf3eee2);
-          plain.box(3.4, 0.3, 0.04, tx, B + 2.15, tz - 1.7, col);
-          plain.box(1.6, 0.05, 0.7, tx, B + 0.72, tz, 0xf2f2ee); plain.box(0.06, 0.72, 0.06, tx, B, tz, 0x888888);
-          for (let c2 = 0; c2 < 4; c2++) { const chx = tx - 1.2 + c2 * 0.8; plain.box(0.45, 0.05, 0.45, chx, B + 0.45, tz - 0.8, n === 1 ? 0x2a8fd1 : 0xf2f2ee); plain.box(0.45, 0.45, 0.05, chx, B + 0.45, tz - 1.0, n === 1 ? 0x2a8fd1 : 0xf2f2ee); }
-          for (let d2 = 0; d2 < 3; d2++) plain.cyl(0.2, 0.15, 0.7, tx + 2.0, B, tz - 1.0 + d2 * 0.55, 0x7a4a26, 10);   // drums resting on the sand
-        }
+        // After Higgsfield reference #24 (artistic interpretation; set-up UNREVIEWED). The ring side follows Habib's photos above.
         // outside: crowd barriers along the queue to the gate, and vendors under parasols
         const gzz = cz - wallR;
         for (const sx of [-1, 1]) for (let k2 = 0; k2 < 6; k2++) {
