@@ -22,7 +22,7 @@
 - Known limits: mitten hands, head ~2k triangles, boubou sleeves clip when forearms rise, beard edge jagged, muscular morph subtle.
 
 ## Next steps (in order)
-1. Higgsfield batch 1 (4 images) from Habib's Mac, following `docs/HIGGSFIELD_PLAN.md` (cost check before each job, provenance log). Review, then batch 2.
+1. Higgsfield batch 1 (4 images, Nano Banana Pro 2k, 8 credits) through the Higgsfield MCP connector (the trial refuses CLI generation), following `docs/HIGGSFIELD_PLAN.md` (cost check before each job, provenance log). Review, then batch 2. The cloud environment now allows `higgsfield.ai`.
 2. Blender (Mac): car rapide GLB; modular facade kit (bays, shop ground floor, balcony, parapet) guided by the reviewed references; export GLB with a shared texture atlas; load per hub on demand.
 3. Real-phone tests: load time and fps on a mid-range Android and an iPhone at Low/Medium; then pick the default quality automatically.
 4. Family home and apartment interiors; dibiterie; Maïga-style eatery (confirm what Habib means first).

@@ -1,6 +1,13 @@
 # Higgsfield reference and texture generation — plan (not yet run)
 
-Status (7 Oct 2026): **no credits spent.** Habib authorised up to the 100 available Higgsfield credits (3-day validity, no purchases).
+Status (7 Oct 2026): **no credits spent.** Update 02:40 UTC: the cloud session signed in with the CLI (workspace "Private",
+plus plan, 110 credits) after `higgsfield.ai` was allowed in the environment's network settings. Cost estimates work
+(Nano Banana Pro 2k: 2 credits/image; Seedream 5.0 Pro 2.5; FLUX.2 1; GPT Image 2 6.5; Z Image 0.15), but every
+`generate create` is refused with `only_mcp_usage_on_trial_is_available`: on the trial, generation is only allowed through
+the Higgsfield **MCP connector**, not the CLI. Nothing was charged. Next: finish connecting the Higgsfield connector at
+claude.ai → Customize → Connectors, start a new session, and run batch 1 with Nano Banana Pro 2k (8 credits).
+
+Earlier status: **no credits spent.** Habib authorised up to the 100 available Higgsfield credits (3-day validity, no purchases).
 The cloud build session could not sign in: the CLI's browser login redirects to `localhost` on the machine that started it,
 and the claude.ai Higgsfield connector was not connected in that session. The prompts below are ready to run from Habib's Mac,
 where `higgsfield` (v1.1.26) is signed in to the "Private" workspace.
@@ -42,6 +49,6 @@ unfinished concrete, breeze blocks, sand, concrete paving, floor tiles, weathere
 
 | Date | Job id | Model | Settings | Credits | Output | Used for |
 | --- | --- | --- | --- | --- | --- | --- |
-| — | — | — | — | 0 | — | — |
+| 7 Oct | — (4 jobs refused: trial is MCP-only) | nano_banana_pro | 2k, 16:9 / 1:1 | 0 | — | — |
 
 Running total: **0 / 100 credits.**
