@@ -53,6 +53,10 @@ Décliner le kit dans les quatre quartiers en variant plans, façades, matériau
 
 Le lancement alpha ne constitue pas la validation de ce niveau artistique. Le registre de livraison distingue, pour chaque asset, référence, modèle intégré, interactions fonctionnelles et revue culturelle.
 
+### Écarts visibles sur la recette du 7 octobre
+
+Le portrait de l’avatar v4 montre une jonction trop fine entre tête et cou, des mains peu détaillées et un vêtement sans épaisseur ni plis suffisants. Revoir ces points dans le fichier Blender source, puis vérifier les clips marche, assise, discussion et danse avec le nouvel export. Le Maïga dispose du volume et des équipements de base ; son service, ses habitants récurrents et la finesse du mobilier restent à produire. Les façades et les rues nécessitent davantage de variations locales et d’activités visibles. Ces observations portent sur les captures du jeu intégré en qualité moyenne.
+
 ## Chaîne de production avec Claude
 
 1. Constituer une planche de références locales et noter le lieu, l’usage, les matériaux et l’échelle. Réutiliser les références déjà fournies et validées par Habib.

@@ -13,7 +13,9 @@ export class RemoteAvatars {
   readonly group = new THREE.Group();
   private avatars = new Map<string, Avatar>();
   constructor(private presence: PresenceClient) { this.group.name = 'remote_players'; }
-  update(dt: number, local: THREE.Vector3, space: string, maxBodies: number) {
+  update(dt: number, local: THREE.Vector3, space: string, maxBodies: number, camera: THREE.PerspectiveCamera, viewportHeight: number) {
+    // Keep names at 28 screen pixels even when an indoor camera is close to another player.
+    const labelHeight = 56 / (Math.max(1, viewportHeight) * camera.projectionMatrix.elements[5]);
     const visible = [...this.presence.peers.values()]
       .filter(p => p.space === space && space !== 'home' && space !== 'scene' && Math.hypot(p.x - local.x, p.z - local.z) < 110)
       .sort((a, b) => Math.hypot(a.x - local.x, a.z - local.z) - Math.hypot(b.x - local.x, b.z - local.z)).slice(0, maxBodies);
@@ -31,6 +33,7 @@ export class RemoteAvatars {
       if (a.body instanceof Humanoid) a.body.hold = peer.clip;
       a.body.animate(dt, peer.speed);
       a.name.visible = Math.hypot(peer.x - local.x, peer.z - local.z) < 35;
+      a.name.scale.set(labelHeight * 256 / 48, labelHeight, 1);
     }
   }
   clear() { for (const a of this.avatars.values()) this.drop(a); this.avatars.clear(); }
@@ -43,8 +46,8 @@ export class RemoteAvatars {
     c.fillStyle = 'rgba(8, 20, 32, .85)'; c.beginPath(); c.roundRect(0, 0, 256, 48, 14); c.fill();
     c.fillStyle = '#6ee7b7'; c.font = '600 22px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(peer.name, 128, 24, 238);
     const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
-    const name = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true }));
-    name.position.y = 2.35; name.scale.set(2.5, 0.47, 1); body.group.add(name);
+    const name = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true, sizeAttenuation: false }));
+    name.position.y = 2.35; body.group.add(name);
     return { body, name, texture, look: peer.look, label: peer.name };
   }
   private drop(a: Avatar) {

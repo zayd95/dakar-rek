@@ -10,7 +10,7 @@ const browser = await chromium.launch({
   args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
   ...(process.env.DAKAR_BROWSER_PROXY ? { proxy: { server: process.env.DAKAR_BROWSER_PROXY } } : {}),
 });
-const contexts = [], captures = [];
+const contexts = [], captures = [], errors = [];
 try {
   for (const [name, viewport, touch] of [['Moussa', { width: 1280, height: 720 }, false], ['Awa', { width: 390, height: 844 }, true]]) {
     const ctx = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch,
@@ -21,6 +21,7 @@ try {
       localStorage.setItem('dakarrek.presence.profile', JSON.stringify({ name, look: name === 'Awa' ? 1 : 0 }));
     }, name);
     const page = await ctx.newPage();
+    page.on('pageerror', error => errors.push(error.message));
     await page.goto(`${base}?debug${touch ? '&touch' : ''}`);
     await page.waitForFunction(() => window.__dakar?.presence().status === 'online' && window.__dakar.wrestlerReady(), null, { timeout: 60000 });
     await page.evaluate(() => { window.__dakar.setHour(16); });
@@ -52,6 +53,7 @@ try {
   await capture(desktop, 'dakar-rek-avatar.png', 'Current integrated player model, front view');
   await desktop.evaluate(() => { const d = window.__dakar; d.portrait(0); d.scene('entrance'); d.scenePeek(9); });
   await capture(desktop, 'dakar-rek-arena.png', 'Current arena entrance scene; cultural motions are provisional');
+  if (errors.length) throw new Error(errors.join(' | '));
   await fs.writeFile(`${out}/captures.json`, JSON.stringify(captures, null, 2));
 } finally {
   for (const ctx of contexts) await ctx.close();

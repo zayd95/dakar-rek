@@ -548,7 +548,7 @@ function frame(now: number) {
   const space = presenceSpace();
   const clip = mode === 'play' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
   presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
-  remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14);
+  remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   findNearest();
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
   hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);

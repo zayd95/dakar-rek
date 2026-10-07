@@ -4,9 +4,9 @@ Décision de Habib : le lancement comprend la présence multijoueur. Direction v
 
 ## Recette publique du 7 octobre
 
-La version de recette est déployée sur [dakar-rek.cyclic-echinodon.workers.dev](https://dakar-rek.cyclic-echinodon.workers.dev/), version Worker `e59df22a-b8f5-4c47-88b1-f9e889b2e062`. Le compte temporaire doit être revendiqué par Habib avant environ 16 h 25 UTC pour conserver le déploiement. Le lien privé de revendication est transmis uniquement à Habib et ne figure pas dans le dépôt.
+La version de recette est déployée sur [dakar-rek.cyclic-echinodon.workers.dev](https://dakar-rek.cyclic-echinodon.workers.dev/), version Worker `2e5b7f6e-e0cf-4fd2-bf64-6d3b561a12ef`. Le compte temporaire doit être revendiqué par Habib avant environ 16 h 25 UTC pour conserver le déploiement. Le lien privé de revendication est transmis uniquement à Habib et ne figure pas dans le dépôt.
 
-Les 17 vérifications de `check:online` ont passé sur ce serveur public avec deux clients Chromium indépendants, puis 25 connexions WebSocket supplémentaires pour vérifier le débordement. Résultats : `docs/screenshots/multiplayer/results.json`. La validation sur deux vrais téléphones reste à faire.
+Les 17 vérifications de `check:online` ont passé sur ce serveur public avec deux clients Chromium indépendants, puis 25 connexions WebSocket supplémentaires pour vérifier le débordement. Résultats : `docs/screenshots/multiplayer/results.json`. La mise à jour suivante corrige uniquement la taille des pseudos à l’écran : 28 pixels, même dans les intérieurs. La validation sur deux vrais téléphones reste à faire.
 
 Pour reproduire les captures de revue en qualité moyenne : `node scripts/capture-online.mjs https://adresse-du-worker/`. Elles sont écrites dans `shots/public-preview/`, avec leur source et l’heure de capture. Le script prend des vues du joueur, de Pikine, du Maïga partagé et de l’arène. Ce sont des captures de l’alpha intégrée, pas des maquettes du niveau artistique visé.
 
