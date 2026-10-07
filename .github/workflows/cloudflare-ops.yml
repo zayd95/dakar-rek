@@ -1,0 +1,54 @@
+name: Dakar Rek production watch
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main, codex/cloudflare-agent]
+    paths:
+      - .github/workflows/cloudflare-ops.yml
+      - scripts/check-production-presence.mjs
+permissions:
+  contents: read
+  checks: read
+concurrency:
+  group: dakar-rek-production-watch
+  cancel-in-progress: false
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check the live game, presence protocol and build
+        run: node scripts/check-production-presence.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DAKAR_GAME_URL: ${{ vars.DAKAR_GAME_URL || 'https://dakar-rek.habibjallow95.workers.dev/' }}
+          DAKAR_PRODUCTION_BRANCH: ${{ vars.DAKAR_PRODUCTION_BRANCH || 'codex/launch-controls' }}
+      - name: Keep diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-presence
+          path: shots/ops/latest.json
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Write the run summary
+        if: always()
+        shell: bash
+        run: |
+          node --input-type=module <<'JS' >> "$GITHUB_STEP_SUMMARY"
+          import { readFileSync } from 'node:fs';
+          try {
+            const report = JSON.parse(readFileSync('shots/ops/latest.json', 'utf8'));
+            console.log(`# Dakar Rek — ${report.ok ? 'PASS' : 'FAIL'}\n`);
+            console.log(`Source: ${report.source}\n\nChecked: ${report.completedAt}\n`);
+            for (const check of report.checks) console.log(`- ${check.ok ? 'PASS' : 'FAIL'}: ${check.name}${check.error ? ` — ${check.error}` : ''}`);
+            if (report.build) console.log(`\nCloudflare branch: ${report.build.branch}; commit: ${report.build.commit}; build: ${report.build.status}/${report.build.conclusion || 'pending'}.`);
+            console.log('\nProtocol checks do not measure rendered gameplay, phone FPS or peak capacity.');
+          } catch { console.log('No diagnostic report was produced; inspect the job logs.'); }
+          JS
