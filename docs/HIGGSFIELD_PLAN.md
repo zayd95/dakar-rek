@@ -65,3 +65,8 @@ unfinished concrete, breeze blocks, sand, concrete paving, floor tiles, weathere
 | 7 Oct 12:11 | 5 submissions refused ("Out of credits", spurious) | nano_banana_pro (MCP) | — | 0 | — | resubmitted |
 
 Running total: **34 / 100 credits** (account balance 110 → 76, checked against the Higgsfield transactions list).
+
+
+## Terms check (7 Oct 2026)
+
+Higgsfield help centre, "Who owns my generations, and can I use them commercially?" (dated 2 Aug 2026, citing Terms of Use §4–5): you own inputs and outputs; commercial use is not restricted and not limited to paid plans; outputs are not guaranteed to be exclusive; outputs may not be used to train AI/ML models. Four batch-2 textures are now in the game (see `assets-src/references/PROVENANCE.md`). Re-check the terms before a public release.

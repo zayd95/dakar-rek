@@ -45,6 +45,12 @@ export interface HubWorld {
   signs: THREE.Mesh[];
   skyDay: number;
   arena: { cx: number; cz: number; r: number } | null;
+  /** Per-frame ambient animation of the hub (grill smoke…). */
+  tick(dt: number): void;
+  /** Ground height above the street level at (x, z): stairs and terraces the player can climb. */
+  heightAt(x: number, z: number): number;
+  /** Ambient people placed by the builder (grill cook, seated customers…): position, facing, clip. */
+  people: { x: number; z: number; yaw: number; clip: 'Idle' | 'Talk' | 'Sit'; y?: number }[];
   /** Parked car rapides at the station (they get an apprentice calling for passengers). */
   rapides: THREE.Object3D[];
   /** Monument hill: stair run (x0→x1 at stairZ, rising y0→y1), summit terrace height, festive ground spots. */

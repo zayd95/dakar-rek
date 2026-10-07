@@ -95,6 +95,8 @@ let facing = 0, speed = 0;
 let world: HubWorld | null = null;
 let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, life: MonumentLife | null = null;
 let apprentices: Apprentice[] = [];
+/** Ambient people placed by the hub builder (dibiterie cook, customers…). */
+let ambient: Humanoid[] = [];
 /** Debug-only fixed camera (screenshots of landmarks). */
 let freeCam: { p: THREE.Vector3; t: THREE.Vector3 } | null = null;
 let castChars: { id: string; c: { group: THREE.Group; animate(dt: number, speed: number): void }; h?: Humanoid; x: number; z: number }[] = [];
@@ -155,6 +157,8 @@ const rand = rng(Date.now() & 0xffff);
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   for (const a of apprentices) a.dispose();          // detach them before the hub geometry is freed
   apprentices = [];
+  for (const h of ambient) h.dispose();
+  ambient = [];
   if (world) { scene.remove(world.group); world.dispose(); }
   setGrainEnabled(quality !== 'low');                     // procedural surface noise is the main per-pixel cost
   extra.clear();
@@ -164,6 +168,11 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   extra.add(crowd.group, traffic.group);
   apprentices = humanoidReady() ? world.rapides.map(car => { const a = new Apprentice(id, rand); a.attach(car); return a; }) : [];
   for (const car of traffic.rapides()) { if (!humanoidReady()) break; const a = new Apprentice(id, rand, true); a.attach(car); apprentices.push(a); }
+  if (humanoidReady()) for (const p of world.people) {
+    const h = new Humanoid(randomLook(rand)); h.hold = p.clip;
+    h.group.position.set(p.x, 0.1 + (p.y ?? 0), p.z); h.group.rotation.y = p.yaw;
+    extra.add(h.group); ambient.push(h);
+  }
   life?.dispose(); life = world.monument ? new MonumentLife(world.monument, rand, QUAL[quality].crowd) : null;
   if (life) extra.add(life.group);
   // Recurring cast of this hub, standing at their places (PROVISIONAL cast, see src/social/cast.ts).
@@ -495,6 +504,7 @@ function frame(now: number) {
       const b = inside ? inside.int.bounds : world.bounds; nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1);
       pos.x = nx; pos.z = nz;
     } else speed *= 0.8;
+    { const gy = 0.1 + (inside ? 0 : world.heightAt(pos.x, pos.z)); pos.y += (gy - pos.y) * Math.min(1, dt * 14); } // climb stairs smoothly
     state.tick(dt * 1000);
   } else if (mode === 'busy') { state.tick(dt * 1000); speed = 0; }
   if (!lambScene) {
@@ -511,14 +521,15 @@ function frame(now: number) {
     if (n.h) n.h.hold = d < 3.4 ? 'Talk' : null;
     n.c.animate(dt, 0);
   }
-  crowd?.update(dt); traffic?.update(dt); life?.update(dt);
+  crowd?.update(dt); traffic?.update(dt); life?.update(dt); world.tick(dt);
+  for (const h of ambient) h.animate(dt, 0);
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
   findNearest();
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
   hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);
 
-  if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined);
+  if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
   if (camOverride && !lambScene) {
     const a = facing + camOverride.side;
     camera.position.set(pos.x + Math.sin(a) * camOverride.dist, camOverride.h, pos.z + Math.cos(a) * camOverride.dist);
@@ -550,7 +561,7 @@ if (DEBUG) {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
-    pos: () => ({ x: pos.x, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
+    pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
     lookYaw(y: number) { follow.yaw = y; },
     act() { hud.onAction(); },
@@ -576,7 +587,7 @@ if (DEBUG) {
     enter(kind: 'home' | 'gargote') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
     exit() { exitInterior(); },
     look(yaw: number, pitch?: number) { follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
-    place(x: number, z: number, yaw: number) { pos.set(x, 0.1, z); facing = yaw; follow.snapBehind(yaw); },
+    place(x: number, z: number, yaw: number) { pos.set(x, 0.1 + (world?.heightAt(x, z) ?? 0), z); facing = yaw; follow.snapBehind(yaw); },
     cam(p: [number, number, number] | null, t?: [number, number, number]) { freeCam = p && t ? { p: new THREE.Vector3(...p), t: new THREE.Vector3(...t) } : null; },
     meshStats() {
       const rows: { name: string; tris: number; visible: boolean }[] = [];

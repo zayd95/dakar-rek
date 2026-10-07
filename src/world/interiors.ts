@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Batch, signTexture } from './batch';
 import { addGrain } from './grain';
-import { floorTileTexture, plasterTexture, woodTexture, metalTexture } from './textures';
+import { floorTileTexture, plasterTexture, woodTexture, metalTexture, generatedTexture } from './textures';
 import { ACTIONS } from './content';
 import type { Collider, Interactable } from './types';
 
@@ -36,6 +36,8 @@ function materials() {
   const lam = () => new THREE.MeshLambertMaterial({ vertexColors: true });
   mats = {
     floor: addGrain(lam(), 0.3, 1, false, floorTileTexture(), 1.32),
+    // gargote floor: Higgsfield texture #15, beige and terracotta tiles, 4 × 4 tiles of 30 cm per repeat
+    floorGargote: addGrain(lam(), 0.2, 1, false, generatedTexture('floor_tiles_terracotta'), 1.2),
     wall: addGrain(lam(), 0.4, 1, false, plasterTexture(), 2),
     wood: addGrain(lam(), 0.2, 1, false, woodTexture(), 1),
     metal: addGrain(lam(), 0.3, 1, false, metalTexture(), 1),
@@ -74,7 +76,7 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
 
   // shell: tiled floor, two-tone painted walls with skirting, door in the south wall (+z)
   const lower = kind === 'home' ? 0x8fc3d9 : 0x7fb07a, upper = kind === 'home' ? 0xf3efe6 : 0xf2e2a8;
-  floor.box(W, 0.1, D, ox, 0, oz, kind === 'home' ? 0xf2f0ec : 0xe8e4dc);
+  floor.box(W, 0.1, D, ox, 0, oz, kind === 'home' ? 0xf2f0ec : 0xffffff);
   const side = (w: number, d: number, x: number, z: number) => {
     wall.box(w, 1.2, d, x, 0.1, z, lower); wall.box(w, H - 1.2, d, x, 1.3, z, upper);
     plain.box(w + (d > w ? 0.02 : 0), 0.04, d + (w > d ? 0.02 : 0), x, 1.28, z, 0x5f7f8f);   // dado line
@@ -174,7 +176,7 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     for (const [z, c] of [[oz - 2, 0xd9482b], [oz + 2, 0x1e6fd9]] as const) plain.box(0.6, 0.8, 0.01, x1 - 0.01, 1.5, z, c, Math.PI / 2);
   }
 
-  for (const [b, m, cast] of [[floor, M.floor, false], [wall, M.wall, false], [wood, M.wood, true], [metal, M.metal, true], [plain, M.plain, true], [glow, M.glow, false], [sky, M.sky, false]] as [Batch, THREE.Material, boolean][]) {
+  for (const [b, m, cast] of [[floor, kind === 'gargote' ? M.floorGargote : M.floor, false], [wall, M.wall, false], [wood, M.wood, true], [metal, M.metal, true], [plain, M.plain, true], [glow, M.glow, false], [sky, M.sky, false]] as [Batch, THREE.Material, boolean][]) {
     const mesh = b.build(m, true, cast); if (mesh) group.add(mesh);
   }
   interactables.push({ id: `${hub}:in:door`, name: 'Sortir', kind: 'actions', x: doorX, z: z1 - 0.6, radius: 1.2, actions: [{ id: 'sortir', label: 'Sortir', seconds: 0, special: 'exit' }] });
