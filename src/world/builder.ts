@@ -664,13 +664,65 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         break;
       }
       case 'arena': {
-        // Sand floor, sandbag ring, three tiers of stands (where the scene crowd stands), outer wall, gate and floodlights.
+        // Sand floor, sandbag ring, ring-side furniture, three tiers of stands (where the scene crowd stands), outer wall,
+        // gate and floodlights. Ring side after Habib's arena photos (7 Oct): white sandbags with a traced line inside,
+        // low sponsor boards just outside, judges' chairs, an officials' table under a canopy, crowd barriers, a bannered
+        // parapet in front of the stands and feather flags. Boards and banners are blank colour panels (no real sponsors).
         plain.cyl(17.3, 17.3, 0.04, cx, B, cz, 0xe8d3a2, 40);
-        for (let s = 0; s < 44; s++) {                                                  // sandbag ring of the combat circle
-          const a = (s / 44) * Math.PI * 2;
-          plain.blob(0.42, cx + Math.sin(a) * 9, B + 0.12, cz + Math.cos(a) * 9, s % 2 ? 0xe9e2d0 : 0xd8cfb8, 0.45, 0);
+        for (let s = 0; s < 64; s++) {                                                  // white sandbag ring of the combat circle
+          const a = (s / 64) * Math.PI * 2;
+          plain.blob(0.46, cx + Math.sin(a) * 9, B + 0.1, cz + Math.cos(a) * 9, s % 3 ? 0xf3f0e8 : 0xe2ddd0, 0.4, 1);
         }
-        const gateGap = (a: number) => Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.3;
+        for (let s = 0; s < 72; s++) {                                                  // white line traced in the sand inside the bags
+          const a = (s / 72) * Math.PI * 2;
+          plain.flat((2 * Math.PI * 8.3) / 72 + 0.02, 0.14, cx + Math.sin(a) * 8.3, B + 0.05, cz + Math.cos(a) * 8.3, 0xf7f4ec, a);
+        }
+        const gateGap = (a: number, w = 0.3) => Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < w;
+        const BOARD = [0xf2f2ec, 0x1e6fd9, 0xd9482b, 0x2f8f4e, 0xf4c20d, 0x0f3d6e];
+        for (let s = 0; s < 26; s++) {                                                  // sponsor boards around the ring
+          const a = ((s + 0.5) / 26) * Math.PI * 2;
+          if (gateGap(a, 0.36)) continue;
+          const x = cx + Math.sin(a) * 10.6, z = cz + Math.cos(a) * 10.6, col = BOARD[s % BOARD.length];
+          plain.box(2.1, 0.75, 0.08, x, B, z, 0xf2f2ec, a);
+          plain.box(1.9, 0.5, 0.02, x + Math.sin(a) * -0.05, B + 0.13, z + Math.cos(a) * -0.05, col, a);   // panel facing the ring
+          solidC(x, z, 1.4, 1.4, 0.75);
+        }
+        for (const a of [0, Math.PI / 2, (3 * Math.PI) / 2, Math.PI / 4, -Math.PI / 4]) { // judges' folding chairs at the bags
+          const x = cx + Math.sin(a) * 9.9, z = cz + Math.cos(a) * 9.9;
+          plain.box(0.46, 0.45, 0.44, x, B, z, 0x2b2f36, a); plain.box(0.46, 0.5, 0.05, x + Math.sin(a) * 0.2, B + 0.45, z + Math.cos(a) * 0.2, 0x2b2f36, a);
+        }
+        {                                                                               // officials' table under a canopy (+x side)
+          const tx = cx + 13.2, tz = cz + 2;
+          plain.box(3.2, 0.75, 0.9, tx, B, tz, 0xf2f2ec);
+          for (let n = 0; n < 4; n++) plain.box(0.45, 0.45, 0.45, tx - 1.2 + n * 0.8, B, tz + 0.8, 0x3a5fa0);
+          for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) plain.box(0.07, 2.6, 0.07, tx + sx * 2, B, tz + sz * 1.5, 0xd8d8d8);
+          plain.box(4.4, 0.12, 3.4, tx, B + 2.6, tz, 0x2f8f4e);
+          for (const sz of [-1, 1]) plain.box(4.4, 0.35, 0.03, tx, B + 2.3, tz + sz * 1.7, 0xf4c20d);
+          solidC(tx, tz, 3.2, 1.8, 0.9);
+        }
+        for (let s = 0; s < 64; s++) {                                                  // metal crowd barriers in front of the parapet
+          const a = ((s + 0.5) / 64) * Math.PI * 2;
+          if (gateGap(a)) continue;
+          const r = 16.4, wSeg = (2 * Math.PI * r) / 64, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
+          plain.box(wSeg - 0.12, 0.05, 0.05, x, B + 1.0, z, 0xa9adb3, a);
+          plain.box(wSeg - 0.12, 0.05, 0.05, x, B + 0.25, z, 0xa9adb3, a);
+          for (let v = 0; v < 4; v++) { const o = (v / 3 - 0.5) * (wSeg - 0.2); plain.box(0.03, 0.8, 0.03, x + Math.cos(a) * o, B + 0.25, z - Math.sin(a) * o, 0xa9adb3, a); }
+        }
+        for (let s = 0; s < 48; s++) {                                                  // bannered parapet in front of the first tier
+          const a = ((s + 0.5) / 48) * Math.PI * 2;
+          if (gateGap(a)) continue;
+          const r = 17.15, wSeg = (2 * Math.PI * r) / 48 + 0.05, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
+          plain.box(wSeg, 1.0, 0.22, x, 0, z, 0xe9e4d8, a);
+          if (s % 2 === 0) plain.box(wSeg * 1.6, 0.62, 0.03, cx + Math.sin(a) * (r - 0.13), 0.24, cz + Math.cos(a) * (r - 0.13), BOARD[(s / 2) % BOARD.length], a);
+        }
+        if (!lite) for (let s = 0; s < 10; s++) {                                       // feather flags along the barriers
+          const a = ((s + 0.5) / 10) * Math.PI * 2 + 0.15;
+          if (gateGap(a, 0.5)) continue;
+          const x = cx + Math.sin(a) * 15.6, z = cz + Math.cos(a) * 15.6, col = BOARD[(s + 1) % BOARD.length];
+          plain.box(0.05, 3.6, 0.05, x, B, z, 0x555555);
+          plain.box(0.7, 2.6, 0.03, x + Math.cos(a) * 0.37, B + 0.8, z - Math.sin(a) * 0.37, col, a);
+          plain.box(0.6, 0.5, 0.03, x + Math.cos(a) * 0.32, B + 3.4, z - Math.sin(a) * 0.32, col, a);
+        }
         const TIER_COL = [0xd5cbb8, 0xc6bba6, 0xb7ab95];
         const FLAG = [0x1a9d54, 0xf4c20d, 0xd9322b];
         for (let t = 0; t < 3; t++) {

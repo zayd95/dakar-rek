@@ -17,6 +17,7 @@ Every asset has a row. **TEMP** = temporary, to be replaced or revised through t
 | Facade window texture | `src/world/batch.ts` (canvas) | Own code | — | TEMP | Not reviewed |
 | Props: palms, lamp posts, stalls, awnings, pier, boats | `src/world/builder.ts` | Own code | merged | TEMP | Not reviewed |
 | Landmarks: mosque, monument, arena (with gate), écurie, gym, pitch | `src/world/builder.ts` | Own code | merged | TEMP | Not reviewed |
+| Arena ring side: white sandbag ring and traced line, blank sponsor boards, judges' chairs, officials' table and canopy, crowd barriers, bannered parapet, feather flags | `src/world/builder.ts` | Own code, after Habib's arena photos (7 Oct; not stored) | merged, ~10k | TEMP | **Unreviewed** layout |
 | Shop signs (canvas text) | `src/world/batch.ts` | Own code; fictional shop names | 2 per sign | TEMP | Not reviewed |
 | City player, cast and crowd (boxes) — fallback only when the GLB fails to load | `src/actors/character.ts` | Own code | ~200 each | TEMP | Not reviewed |
 | Car rapide (procedural v3 after Habib's references: indigo/white/yellow body, rounded roof front, short bonnet, yellow roof rack with luggage, ladder, open rear door, step; painted panels drawn in code: TRANSPORT EN COMMUN, diamond, fish, birds, stars, crescent, flag stripes, eyes, ALHAMDOULILAH) | `src/actors/vehicles.ts` | Own code; reference images supplied by Habib (not stored) | ~1.5k + 4 decal quads, shared | TEMP until a Blender model | **Unreviewed** motifs and lettering |
