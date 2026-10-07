@@ -9,6 +9,7 @@ export class Input {
 
   constructor(el: HTMLElement) {
     addEventListener('keydown', e => {
+      if (e.code !== 'Escape' && e.target instanceof HTMLElement && e.target.closest('input,textarea,select,[contenteditable="true"]')) return;
       if (e.repeat) return;
       this.keys.add(e.code);
       if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') this.actionPressed = true;
@@ -16,6 +17,7 @@ export class Input {
     });
     addEventListener('keyup', e => this.keys.delete(e.code));
     addEventListener('blur', () => this.keys.clear());
+    addEventListener('focusin', e => { if (e.target instanceof HTMLElement && e.target.closest('input,textarea,select,[contenteditable="true"]')) this.keys.clear(); });
     // Mouse drag rotates the camera.
     let dragging = false;
     el.addEventListener('mousedown', e => { dragging = true; e.preventDefault(); });
