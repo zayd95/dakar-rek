@@ -22,7 +22,7 @@
 - Known limits: mitten hands, head ~2k triangles, boubou sleeves clip when forearms rise, beard edge jagged, muscular morph subtle.
 
 ## Next steps (in order)
-1. Higgsfield: **batch 1 generated and downloaded** (7 Oct, 8 credits, 102 left) into `assets-src/references/higgsfield/`. First-look notes in `assets-src/references/PROVENANCE.md`: the street, room and gargote references match their briefs; the plaster texture fails the seam check (not used). Next: Habib reviews batch 1, then batch 2 (`docs/HIGGSFIELD_PLAN.md`). Credits expire around 9–10 Oct.
+1. Higgsfield: **batches 1 and 2 done** (34 credits, 76 left) in `assets-src/references/higgsfield/`; batch 1 validated by Habib. Batch 2 (streets of Plateau, Corniche/Fann, Almadies/Ngor; salon; kitchen; dibiterie; 7 textures) awaits his review: notes and seam checks in `assets-src/references/PROVENANCE.md` (wood planks and the batch 1 plaster fail; paving layout uneven). Still to do: confirm what a Maïga-style eatery is, then generate it; optionally redo the failed textures. Credits expire around 9–10 Oct.
 2. Blender (Mac): car rapide GLB; modular facade kit (bays, shop ground floor, balcony, parapet) guided by the reviewed references; export GLB with a shared texture atlas; load per hub on demand.
 3. Real-phone tests: load time and fps on a mid-range Android and an iPhone at Low/Medium; then pick the default quality automatically.
 4. Family home and apartment interiors; dibiterie; Maïga-style eatery (confirm what Habib means first).
