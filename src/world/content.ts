@@ -49,7 +49,7 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'entree', label: 'Faire son entrée', detail: 'Entourage, sabar, foule · séquence provisoire', seconds: 0, special: 'entrance', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : null) },
     { id: 'preparation', label: 'Préparation avant le combat', detail: 'Gestes provisoires, à valider', seconds: 0, special: 'prep', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : null) },
     { id: 'regarder', label: 'S’asseoir dans les tribunes', detail: 'Ambiance et sabar', needs: { social: 10, moral: 8 }, seconds: 0, special: 'watch' },
-    { id: 'combat', label: 'Combattre un adversaire', seconds: 0, requires: () => 'Bientôt : règles à valider (lutte simple ou avec frappe)' },
+    { id: 'combat', label: 'Combattre un adversaire', detail: 'Lutte sans frappe · règles provisoires à valider', seconds: 0, special: 'combat', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : s.data.needs.energie < 20 ? 'Trop fatigué' : null) },
   ],
   maiga: [
     { id: 'riz', label: 'Riz au poisson', detail: 'Le moins cher du quartier', cost: 500, needs: { faim: 40, moral: 2 }, seconds: 3, counter: 'meals' },
