@@ -207,7 +207,8 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
     const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
   }
-  const p = at ?? world.spawn;
+  const requested = at ?? world.spawn, bounds = world.bounds;
+  const p = requested.x >= bounds.x0 && requested.x <= bounds.x1 && requested.z >= bounds.z0 && requested.z <= bounds.z1 ? requested : world.spawn;
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
   follow.snapBehind(facing);
   state.place(id, p.x, p.z, p.yaw);
@@ -469,7 +470,20 @@ function openSystem() {
     { label: 'Nouvelle partie', detail: 'Efface la sauvegarde de cet appareil', onPick: () => { clearSave(store); location.reload(); } },
   ], kv, panel => {
     panel.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
-      quality = b.dataset.q as Quality; applyQuality(); if (world) loadHub(world.id, { x: pos.x, z: pos.z, yaw: facing }); hud.closeModal();
+      const roomId = inside?.door.id, roomPosition = inside ? pos.clone() : null;
+      const at = { x: inside ? inside.door.x : pos.x, z: inside ? inside.door.z : pos.z, yaw: facing };
+      quality = b.dataset.q as Quality; applyQuality();
+      if (world) {
+        loadHub(world.id, at);
+        // Rebuild at the street doorway, then restore the room without leaking its off-map coordinates.
+        const door = roomId ? world.interactables.find(i => i.id === roomId) : undefined;
+        const int = door ? interiors.get(door.id) : undefined;
+        if (door && int && roomPosition) {
+          inside = { door, int }; follow.indoor = true; showStreet(false); scene.add(roomLight);
+          pos.copy(roomPosition); follow.snapBehind(facing);
+        }
+      }
+      hud.closeModal();
     }));
   });
 }
