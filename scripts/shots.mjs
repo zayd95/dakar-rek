@@ -94,8 +94,15 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // làmb bout against a local opponent: grabbing and pushing in the empoignade wins, the result is recorded
   await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.duel(); });
   await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'fight', null, { timeout: 120000 }).catch(() => {});
-  for (let i = 0; i < 400; i++) { const inf = await page.evaluate(() => window.__dakar.duelInfo()); if (!inf || inf.phase === 'fall' || inf.phase === 'result') break; await page.evaluate(() => window.__dakar.duelGrab()); await page.waitForTimeout(100); }
-  const bout = await page.evaluate(() => window.__dakar.duelInfo());
+  // keep grabbing until the fall (a wall-clock budget: slow CPU rendering stretches the clinch), remembering the last state seen
+  let bout = null;
+  for (const t0 = Date.now(); Date.now() - t0 < 90000;) {
+    const inf = await page.evaluate(() => window.__dakar.duelInfo());
+    if (!inf) break;
+    bout = inf;
+    if (inf.phase === 'fall' || inf.phase === 'result') break;
+    await page.evaluate(() => window.__dakar.duelGrab()); await page.waitForTimeout(100);
+  }
   await page.waitForFunction(() => window.__dakar.duelInfo() === null, null, { timeout: 120000 }).catch(() => {});
   const wins = await page.evaluate(() => ({ v: window.__dakar.state.data.counters.victoires ?? 0, mode: window.__dakar.pos().mode }));
   check('lamb: controlled bout, grab and empoignade win', bout?.winner === 'player' && wins.v >= 1 && wins.mode === 'play', `${JSON.stringify(bout)} wins ${wins.v} ${wins.mode}`);
