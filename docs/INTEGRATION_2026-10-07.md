@@ -36,3 +36,11 @@ Le test de voyage attend maintenant l'arrivée, jusqu'à 15 s, au lieu d'un dél
 Aucune recette publique ne répond au 7 octobre vers 18 h (Dakar) : `dakar-rek.ludicrous-emoji.workers.dev` ne se résout
 plus (DNS), et `cyclic-echinodon` ne répondait déjà plus. Il faut déployer depuis le compte Cloudflare propriétaire
 (`docs/LAUNCH.md`). L'aperçu claude.ai (sans multijoueur, pas de Worker) est à jour avec cette intégration.
+
+## Captures et vidéo de cette version
+
+- Vidéo réelle (Chromium + SwiftShader, qualité moyenne, accélérée ×3 car le rendu logiciel est lent) :
+  `docs/videos/alpha-walk-dibi-ibou-lamb-x3.mp4`. Marche dans la rue de Pikine jusqu'à la dibiterie, commande d'un
+  dibi (portefeuille 3 000 → 1 000 F), Tonton Ibou, puis un combat contrôlé : « Trop loin », « Bloqué ! »,
+  empoignade et victoire.
+- Combat : `docs/screenshots/lamb/` ; lieux : `docs/screenshots/{visual-pass,landmarks,car-rapide,dibiterie,maiga,arena}/`.
