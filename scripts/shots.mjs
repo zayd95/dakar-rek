@@ -91,6 +91,14 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   check('maiga: enter the narrow room', mg.x > 900, `${mg.x.toFixed(1)} ${mg.near}`);
   await page.evaluate(() => window.__dakar.exit());
   await page.waitForFunction(() => window.__dakar.pos().x < 900, null, { timeout: 8000 }).catch(() => {});
+  // làmb bout against a local opponent: grabbing and pushing in the empoignade wins, the result is recorded
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.duel(); });
+  await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'fight', null, { timeout: 120000 }).catch(() => {});
+  for (let i = 0; i < 400; i++) { const inf = await page.evaluate(() => window.__dakar.duelInfo()); if (!inf || inf.phase === 'fall' || inf.phase === 'result') break; await page.evaluate(() => window.__dakar.duelGrab()); await page.waitForTimeout(100); }
+  const bout = await page.evaluate(() => window.__dakar.duelInfo());
+  await page.waitForFunction(() => window.__dakar.duelInfo() === null, null, { timeout: 120000 }).catch(() => {});
+  const wins = await page.evaluate(() => ({ v: window.__dakar.state.data.counters.victoires ?? 0, mode: window.__dakar.pos().mode }));
+  check('lamb: controlled bout, grab and empoignade win', bout?.winner === 'player' && wins.v >= 1 && wins.mode === 'play', `${JSON.stringify(bout)} wins ${wins.v} ${wins.mode}`);
   // monument stair: standing half-way up puts the player well above the street
   await page.evaluate(() => { const d = window.__dakar; d.teleport('corniche'); d.place(-44, -90, Math.PI / 2); });
   await page.waitForTimeout(400);
@@ -100,7 +108,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // travel
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.__dakar.travelTo('corniche'));
-  await page.waitForTimeout(2500);
+  // wait for the arrival (fade + hub build take ~3 s under SwiftShader); still fails if the player never arrives
+  await page.waitForFunction(() => window.__dakar.pos().hub === 'corniche', null, { timeout: 15000 }).catch(() => {});
   const t = await page.evaluate(() => window.__dakar.pos());
   check('travel: pikine -> corniche', t.hub === 'corniche', t.hub);
   // save + reload

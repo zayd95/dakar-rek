@@ -25,6 +25,7 @@ import { CAST, castById } from './social/cast';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
+import { LambDuel } from './lamb/duel';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
@@ -112,7 +113,7 @@ let playerBody: Humanoid | null = null;
 const debugPeople: Humanoid[] = [];
 const dbgRand = rng(42);
 const randomLookDbg = () => randomLook(dbgRand);
-let lambScene: LambScene | null = null;
+let lambScene: LambScene | LambDuel | null = null;
 let emoteT = 0;
 const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
@@ -284,6 +285,7 @@ function runSpecial(a: Action) {
     case 'entrance': startScene('entrance', () => { state.adjust({ moral: 10, social: 6 }); state.count('entrees'); }); break;
     case 'prep': startScene('prep'); break;
     case 'watch': startScene('watch', () => { if (a.needs) state.adjust(a.needs); }); break;
+    case 'combat': startDuel(); break;
     case 'outfit': openOutfit(); break;
     case 'emote': openEmotes(); break;
     case 'enter': if (nearest) enterInterior(nearest); break;
@@ -338,6 +340,26 @@ function startScene(kind: SceneKind, onDone?: () => void) {
   extra.add(lambScene.group);
   for (const n of castChars) n.c.group.visible = false; // the scene places its own cast
   hud.setScene(SCENE_LABEL[kind], 'Gestes, danse et rythmes provisoires · non validés');
+}
+
+/** Controlled bout in the arena against a local opponent (provisional rules, no strikes). */
+function startDuel() {
+  if (!world?.arena) { hud.toast('Les combats ont lieu à l’arène de Pikine'); mode = 'play'; return; }
+  hideProxy(); emoteT = 0; previewT = 0;
+  hud.closeModal();
+  mode = 'scene';
+  const wins = state.data.counters.victoires ?? 0;
+  const duel = new LambDuel({ x: world.arena.cx, z: world.arena.cz }, state.data.wrestler, input, quality === 'low' ? 12 : quality === 'medium' ? 18 : 24, Math.min(1.35, 0.85 + wins * 0.08));
+  duel.onDone = () => {
+    state.adjust({ energie: -22, hygiene: -12, faim: -8 });
+    state.count('combats');
+    if (duel.winner === 'player') { state.count('victoires'); state.adjust({ moral: 14, social: 6 }); rel.change(PLAYER, 'ablaye', 2); hud.toast(`Victoire ! (${(state.data.counters.victoires ?? 0)} au total)`); }
+    else { state.adjust({ moral: -4 }); hud.toast('Défaite. Coach Ablaye : « On retourne à l’entraînement. »'); }
+  };
+  lambScene = duel;
+  extra.add(duel.group);
+  for (const n of castChars) n.c.group.visible = false;
+  hud.setScene('Combat · làmb', 'Lutte sans frappe · règles provisoires, à valider par des lutteurs');
 }
 
 function endScene() {
@@ -619,6 +641,10 @@ if (DEBUG) {
     portrait(dist = 2.2, h = 1.5, side = 0.35) { camOverride = dist > 0 ? { dist, h, side } : null; },
     addPeople(n = 6) { if (!world) return; for (let k = 0; k < n; k++) { const h = new Humanoid(randomLookDbg()); h.group.position.set(pos.x + Math.sin(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2), 0.1, pos.z + Math.cos(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2)); h.group.rotation.y = facing + Math.PI; h.hold = k % 3 === 0 ? 'Talk' : 'Idle'; extra.add(h.group); debugPeople.push(h); } },
     sceneInfo: () => (lambScene ? { kind: lambScene.kind, t: lambScene.t } : null),
+    duel() { startDuel(); },
+    duelInfo: () => (lambScene instanceof LambDuel ? { phase: lambScene.phase, winner: lambScene.winner } : null),
+    duelGrab() { if (lambScene instanceof LambDuel) lambScene.pressGrab(); },
+    duelGuard(on: boolean) { if (lambScene instanceof LambDuel) lambScene.setGuard(on); },
     scenePeek(t: number) { if (lambScene) { lambScene.t = t; lambScene.snap = true; } },
     outfit: () => openOutfit(), journal: () => openJournal(),
     emote(i = 0) { playEmote(i); },

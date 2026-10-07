@@ -2,7 +2,7 @@
 
 Legend: **Implemented** = works and was verified (unit tests and/or headless browser checks). **Partial** = a first working version with stated limits. **Pending** = not started. Placeholders are never listed as implemented. Cultural content is always marked **Unreviewed** until Habib and wrestling practitioners have reviewed it.
 
-Last updated: visual pass (7 October 2026). Verification: 17 unit tests; 48 headless Chromium checks at 1280×720 and 390×844 (`scripts/shots.mjs`), all passing. Before/after captures: `docs/VISUAL_PASS.md`.
+Last updated: visual pass (7 October 2026). Verification: 17 unit tests; 49 headless Chromium checks at 1280×720 and 390×844 (`scripts/shots.mjs`), all passing. Before/after captures: `docs/VISUAL_PASS.md`.
 
 ## Implemented
 
@@ -22,6 +22,7 @@ Last updated: visual pass (7 October 2026). Verification: 17 unit tests; 48 head
 | One suggested next step | HUD chip + journal (Carnet) | headless |
 | Walkable interiors | Starter room (Pikine) and gargotes (Plateau, Corniche, Pikine): Entrer/Sortir, collisions, room camera, ceiling light, actions inside (sleep, wash, order); saving indoors stores the door position | headless (enter, wall collision, exit) |
 | Maïga | Smaller, dirtier gargote (Habib's definition) in Pikine and at Fann: walk-in narrow room, cheapest dishes | headless (enter) |
+| Codex integration | PR #2 (vehicle GLTF materials), #3 (multiplayer presence, Cloudflare Worker), #4 (launch controls) fast-forwarded into `wip/visual-pass` on top of the visual pass; 23 unit tests, server typecheck, 17 online checks and 11 launch checks + full gameplay suite pass | Deployment from the owner's Cloudflare account; real phones |
 | Dibiterie | Walk-in grilled-meat shop in Pikine (next to the starter home) and the Plateau: dibi mouton, brochettes, sit on the bench; grill smoke, cook, butcher and customers | headless (walk in from the street, counter prompt) |
 | Monument stair | The player can climb the monument stair to the statue's terrace; the camera follows the slope | headless (climb) |
 | Car rapide and apprentice | Painted car rapide after Habib's references at every station and in traffic; the apprentice calls destinations at the door when the player is near, and rides the step on moving ones | headless captures |
@@ -37,7 +38,7 @@ Last updated: visual pass (7 October 2026). Verification: 17 unit tests; 48 head
 | Ngemb and accessories | 6 colours, 4 patterns, 2 cuts on the Blender rig; 4 accessory sockets with neutral placeholder items; cosmetic only | **Unreviewed**: real attire references, gris-gris chosen from validated references |
 | Mbakkou emotes | 3 placeholder emotes (Blender clips), started from the écurie | Real steps validated by practitioners; playable performance (later, needs design) |
 | Wrestling character (Blender) | Skinned rig with 20 bones, 2 ngemb cuts, 4 sockets, 10 clips including Stance, Grab, Fall_Back | Mesh is segmented (rigid joint blending), no hands/face detail; grab/fall deformation not yet checked with paired animations; not yet used for the city player |
-| Combat | Arena entry point and stance/grab/fall clips | Rule set unresolved (lutte simple or avec frappe); no fight implemented |
+| Combat (làmb) | Controlled bout against a local opponent in the Pikine arena: move, guard (blocks grabs, slows recovery), endurance, grab attempt, opponent AI (approach, guard, its own grabs), empoignade decided by taps + endurance, fall, result with rewards and a victory counter; difficulty rises with victories. **Provisional rules, no strikes** (strikes wait for a practitioner's written rules) | Practitioner review of rules and gestures; strikes; paired throw animations; synchronised two-player duel (server match state) |
 | City clock | From the device clock | Server time |
 | Jobs | Simple timed jobs in each hub + trusted-rate variants | Tiak Tiak, clando and Yango driving jobs |
 | Food venues | Order and eat; friends' discounts; walkable gargote interiors with tables and counter | Sitting animation at tables, Maïga-style spot, dibiterie, nightlife |

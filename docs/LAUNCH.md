@@ -4,7 +4,15 @@ Décision de Habib : le lancement comprend la présence multijoueur. Direction v
 
 ## Recette publique du 7 octobre
 
-La version de recette est déployée sur [dakar-rek.cyclic-echinodon.workers.dev](https://dakar-rek.cyclic-echinodon.workers.dev/), version Worker `2e5b7f6e-e0cf-4fd2-bf64-6d3b561a12ef`. Le compte temporaire doit être revendiqué par Habib avant environ 16 h 25 UTC pour conserver le déploiement. Le lien privé de revendication est transmis uniquement à Habib et ne figure pas dans le dépôt.
+**État au 7 octobre, ~18 h Dakar (vérifié depuis la session cloud Claude) : aucune recette publique en ligne.**
+`dakar-rek.ludicrous-emoji.workers.dev` (Worker `4b3fd184-e7b1-46f7-955a-3f4779527fc3`) ne se résout plus (DNS
+`ENOTFOUND`) et l'ancienne adresse `dakar-rek.cyclic-echinodon.workers.dev` ne répondait déjà plus : les comptes
+temporaires ont expiré sans revendication confirmée. Le code intégré (Claude + Codex #2–#4) est sur `wip/visual-pass`.
+**Prochaine étape, depuis le Mac de Habib :** `npm ci`, `npx wrangler login` (navigateur du propriétaire),
+`npm run deploy`, puis `npm run check:online -- https://<adresse-retenue>/` et mettre l'adresse ici.
+Le lien de revendication et les jetons ne figurent pas dans le dépôt.
+
+Historique : version de recette précédente sur `dakar-rek.cyclic-echinodon.workers.dev`, Worker `2e5b7f6e-e0cf-4fd2-bf64-6d3b561a12ef`.
 
 Les 17 vérifications de `check:online` ont passé sur ce serveur public avec deux clients Chromium indépendants, puis 25 connexions WebSocket supplémentaires pour vérifier le débordement. Résultats : `docs/screenshots/multiplayer/results.json`. La mise à jour suivante corrige uniquement la taille des pseudos à l’écran : 28 pixels, même dans les intérieurs. La validation sur deux vrais téléphones reste à faire.
 
