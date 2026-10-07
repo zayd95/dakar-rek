@@ -114,15 +114,14 @@ door to a busy street (figures blurred). Useful for: the Maïga as a cramped, di
 ## Higgsfield — texture redo and làmb arena (7 Oct 2026, 13:10 UTC)
 
 Asked by Habib (chat, 7 Oct: redo the failed textures, then the làmb arena). Same model and settings, cost checked first.
-6 jobs, **12 credits** (balance 74 → 62). Jobs #20 and #22 were still running when this was written; they are charged and
-must not be resubmitted. The arena prompts ask for a generic arena, not a specific real stadium (plan rule 4).
+6 jobs, **12 credits** (balance 74 → 62). #20 and #22 took about 12 minutes to finish; nothing was resubmitted. The arena prompts ask for a generic arena, not a specific real stadium (plan rule 4).
 
 | # | File | Job id | Aspect | Credits | Prompt |
 | --- | --- | --- | --- | --- | --- |
 | 19 | `19_texture_wood_planks_v2.jpg` (raw) + `19_texture_wood_planks_v2_tiled.jpg` (seam fixed) | `65b95405-1a67-49aa-8afc-a4aebbb62634` | 1:1, 2048×2048 | 2 | Seamless tileable texture of weathered wooden planks, exactly six vertical planks of equal width, each plank running unbroken from the top edge to the bottom edge with no horizontal joints, continuous vertical grain, natural faded brown wood, front-facing orthographic view, flat even lighting, no nails, no shadows, no text. |
-| 20 | `20_texture_plaster_v2.jpg` — **pending** | `1cc5b308-9a19-49d2-9a75-b6bc35fd3be1` | 1:1, 2048×2048 | 2 | Seamless tileable texture of weathered painted cement plaster wall, pale ochre, fine evenly distributed hairline cracks and tiny chips only, no large peeled patches, no stains, no repeated motifs, front-facing orthographic view, flat even lighting, no shadows, no objects, no text, fills the whole frame. |
+| 20 | `20_texture_plaster_v2.jpg` | `1cc5b308-9a19-49d2-9a75-b6bc35fd3be1` | 1:1, 2048×2048 | 2 | Seamless tileable texture of weathered painted cement plaster wall, pale ochre, fine evenly distributed hairline cracks and tiny chips only, no large peeled patches, no stains, no repeated motifs, front-facing orthographic view, flat even lighting, no shadows, no objects, no text, fills the whole frame. |
 | 21 | `21_texture_paving_v2.jpg` | `278e7d8d-9bf2-45cf-b54f-a667ff36fff3` | 1:1, 2048×2048 | 2 | Seamless tileable texture of worn grey concrete paving slabs seen straight from above, a perfectly regular grid of exactly four by four identical square slabs, all slabs the same size, straight thin joints, half a joint width along every edge of the image, light sand in the joints, flat even lighting, no shadows, no perspective, no text. |
-| 22 | `22_arena_stands.jpg` — **pending** | `8fd6f4ae-ba9a-4a9a-9101-e8c988b0b570` | 16:9, 2752×1536 | 2 | Wide photo-style view of a large open-air Senegalese traditional wrestling (lamb) arena in Dakar in late afternoon, seen from high in the stands: a round sand ring bordered by a low ring of sandbags, tiered concrete stands packed with a colourful crowd, tall floodlight masts, groups of drummers seated at the ring side, coloured fabric canopies, haze and dust in warm light. Not a specific real stadium. No faces in focus, no readable text, no logos. |
+| 22 | `22_arena_stands.jpg` | `8fd6f4ae-ba9a-4a9a-9101-e8c988b0b570` | 16:9, 2752×1536 | 2 | Wide photo-style view of a large open-air Senegalese traditional wrestling (lamb) arena in Dakar in late afternoon, seen from high in the stands: a round sand ring bordered by a low ring of sandbags, tiered concrete stands packed with a colourful crowd, tall floodlight masts, groups of drummers seated at the ring side, coloured fabric canopies, haze and dust in warm light. Not a specific real stadium. No faces in focus, no readable text, no logos. |
 | 23 | `23_arena_ring_ground.jpg` | `2ec09d3e-e99d-4b7e-8887-30e6a3d2fc8b` | 16:9, 2752×1536 | 2 | Ground-level photo-style view from the edge of an empty Senegalese wrestling (lamb) ring in Dakar before the bouts: smooth raked sand, a low boundary of stacked sandbags, plastic chairs and a small officials' table under a canopy, drums resting on the sand at the ring side, concrete stands behind a fence, floodlights not yet on, late afternoon light. No people, no readable text, no logos. |
 | 24 | `24_arena_exterior.jpg` | `3d0adb5c-f47e-4d43-b455-db540b6bdff9` | 16:9, 2752×1536 | 2 | Exterior of a large open-air wrestling arena in Dakar, Senegal, on fight day in the early afternoon: a high painted perimeter wall, a wide entrance gate with metal barriers, a long queue of spectators, street vendors with parasols selling drinks and snacks, parked motorbikes and taxis, flags and fabric banners without text, dust and bright light. Not a specific real stadium. No faces in focus, no readable text, no logos. |
 
@@ -132,8 +131,12 @@ must not be resubmitted. The arena prompts ask for a generic arena, not a specif
   between neighbouring rows). Fixed by a crossfade: the last 256 rows are blended into the first 256, the image is cut to
   1792 rows and resized back to 2048 (Pillow/numpy). After the fix: 12.4 vs 10.4, no visible seam at full
   resolution or tiled 3×3. **Pass** (use the `_tiled` file; colour map only). Replaces #17.
+- **#20 plaster v2:** fine hairline cracks and pinholes, no large patches. Both wraps invisible at full resolution (left/right
+  edge difference 7.4 vs 4.5 between columns, but no visible line); a faint repeat when tiled 3×3. **Pass.** Replaces #4.
 - **#21 paving v2:** a regular 4×4 grid of equal slabs; joints line up across both wraps (the higher edge numbers come from
   the joint sitting on the edge). **Pass.** Replaces #14.
+- **#22 arena from the stands:** sandbag ring in a wide sand field, packed stands all round, floodlight masts, coloured
+  canopies over seated officials and guests, drummers at the ring side, warm dusty light.
 - **#23 arena ring:** sandbag ring on raked sand, officials' table and plastic chairs under a canopy, drums at the ring side,
   concrete stands behind a wire fence, floodlight masts. **#24 arena exterior:** painted perimeter wall with invented murals,
   a gate with crowd barriers, a dense queue, vendors with parasols, taxis and motorbikes, Senegalese flags and fabric

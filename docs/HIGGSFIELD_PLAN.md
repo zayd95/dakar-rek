@@ -2,9 +2,8 @@
 
 Status (7 Oct 2026, 13:20 UTC): **batches 1 and 2 validated by Habib, plus the Maïga, a texture redo and làmb arena
 references; 48 credits spent (62 left).** Files and notes in `assets-src/references/higgsfield/` and
-`assets-src/references/PROVENANCE.md`. Passing textures: concrete, breeze block, sand, floor tiles, painted metal, paving v2,
-wood planks v2 (after a top/bottom crossfade). Plaster v2 and the high arena view were still generating (charged; do not
-resubmit). Credits expire around 9–10 Oct.
+`assets-src/references/PROVENANCE.md`. Passing textures: concrete, breeze block, sand, floor tiles, painted metal, plaster v2,
+paving v2, wood planks v2 (after a top/bottom crossfade). Arena: view from the stands, ring at ground level, exterior. Credits expire around 9–10 Oct.
 
 Earlier update (CLI sign-in): the cloud session signed in with the CLI (workspace "Private",
 plus plan, 110 credits) after `higgsfield.ai` was allowed in the environment's network settings. Cost estimates work
