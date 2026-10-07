@@ -267,6 +267,18 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     plain.box(w + 0.1, 0.75, d + 0.1, cx, G - 0.02, cz, shade(col, 0.68));              // dusty plinth band
     plain.box(w + 0.3, 0.18, d + 0.3, cx, G + h - 0.18, cz, shade(col, 0.88));          // cornice
     const floors = Math.round(h / 3.2);
+    // Massing and relief: slab bands at every storey, corner pilasters, and a set-back top floor on taller blocks.
+    if (!lite) {
+      for (let f = 1; f < floors; f++) plain.box(w + 0.16, 0.16, d + 0.16, cx, G + f * 3.2 - 0.1, cz, shade(col, 0.82));
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) plain.box(0.5, h - 0.2, 0.5, cx + sx * (w / 2 - 0.1), G - 0.02, cz + sz * (d / 2 - 0.1), shade(col, 0.94));
+      if (floors >= 4 && R() < 0.6) {
+        const pw = w * (0.45 + R() * 0.2), pd = d * (0.45 + R() * 0.2), ox = (R() - 0.5) * (w - pw) * 0.6, oz = (R() - 0.5) * (d - pd) * 0.6;
+        fac.facade(pw, 3.0, pd, cx + ox, G + h + 0.28, cz + oz, shade(col, 0.97), 0, facStyle(cx + 1, cz));
+        plain.box(pw + 0.4, 0.2, pd + 0.4, cx + ox, G + h + 3.28, cz + oz, shade(col, 0.88));
+        // shade awning over the roof terrace
+        plain.box(pw * 0.8, 0.08, 2.2, cx + ox, G + h + 2.6, cz + oz + (pd / 2 + 1.1) * (oz >= 0 ? -1 : 1), 0xe9e4d6);
+      }
+    }
     for (const [nx, nz] of faces) {
       const len = nx ? d : w;
       const fx = cx + nx * (w / 2), fz = cz + nz * (d / 2);
@@ -475,12 +487,22 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         const cr = makeCarRapide(); cr.position.set(cx - 3, B, cz); cr.rotation.y = Math.PI / 2; group.add(cr);
         const cr2 = makeCarRapide(); cr2.position.set(cx - 5, B, cz - 4.5); cr2.rotation.y = Math.PI / 2 + 0.08; group.add(cr2);
         solidC(cx - 5, cz - 4.5, 6.6, 2.8, 2.4);
-        plain.box(0.3, 4.5, 0.3, cx + 9, B, cz - 5, 0x444444);
+        plain.cyl(0.1, 0.12, 4.5, cx + 9, B, cz - 5, 0x5a5f66, 8);
         addSign('GARE · CAR RAPIDE', '#1e3a8a', '#fde68a', cx + 9, 4.6, cz - 5.2, Math.PI, 4.6, 1.0);
-        plain.box(12, 0.15, 3.5, cx + 6, 3.2, cz + 4, 0x1e3a8a);                           // shelter
-        plain.box(12, 0.4, 0.06, cx + 6, 2.95, cz + 2.25, 0xf4c20d);
-        for (const dx of [0.2, 11.8]) plain.box(0.2, 3.1, 0.2, cx + dx, B, cz + 4, 0x444444);
-        plain.box(8, 0.5, 1, cx + 6, B, cz + 4.6, 0x6b5a4a);                           // bench
+        // shelter: corrugated roof sloping back, steel posts with braces, fascia, benches and an advert panel
+        for (let k = 0; k < 12; k++) plain.box(1.0, 0.06, 3.8, cx + 0.5 + k, 3.15 - (k % 2) * 0.04, cz + 4.1, k % 2 ? 0x1e3a8a : 0x24469c);
+        plain.box(12, 0.45, 0.08, cx + 6, 2.85, cz + 2.2, 0xf4c20d);
+        plain.box(12, 0.08, 0.1, cx + 6, 3.32, cz + 2.2, 0x1e3a8a);
+        for (const dx of [0.3, 4.1, 7.9, 11.7]) {
+          plain.cyl(0.08, 0.08, 3.15, cx + dx, B, cz + 5.6, 0x5a5f66, 8);
+          plain.box(0.06, 0.06, 3.0, cx + dx, 3.0, cz + 4.1, 0x5a5f66);
+          plain.box(0.05, 0.05, 1.2, cx + dx, 2.6, cz + 5.1, 0x5a5f66, 0);
+        }
+        plain.box(12, 1.0, 0.06, cx + 6, B, cz + 5.95, 0x8a9096);                       // low back rail panel
+        plain.box(3.2, 1.6, 0.04, cx + 2.4, B + 1.0, cz + 5.9, 0xf4c20d);                // advert panel frame
+        plain.box(3.0, 1.4, 0.05, cx + 2.4, B + 1.0, cz + 5.88, 0xd9482b);
+        if (props) for (const dx of [5, 7.4, 9.8]) plain.geo(props.bench, cx + dx, B, cz + 5.1, Math.PI);
+        else plain.box(8, 0.5, 1, cx + 6, B, cz + 4.6, 0x6b5a4a);
         solidC(cx - 3, cz, 6.4, 2.6, 2.4);
         stall(cx - 10, cz + 6); stall(cx + 3, cz - 6.5);
         tree(cx + 11, cz + 8, 1.1); tree(cx - 11, cz - 8, 1);
