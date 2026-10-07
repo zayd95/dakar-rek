@@ -406,7 +406,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     solidC(cx, cz, w, d + 1.4, h);
     const bg = k.kind === 'cafe' ? '#14532d' : k.kind === 'gargote' ? '#7c2d12' : k.kind === 'restaurant' ? '#0c4a6e' : k.kind === 'garage' ? '#1f2937' : '#78350f';
     // painted sign board flush on the facade, between the awning and the roof
-    addSign(k.name.toUpperCase(), bg, '#fff7e0', cx, G + 3.55, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 7.2, 1.0);
+    addSign(k.name.toUpperCase(), bg, '#fff7e0', cx, G + 3.7, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 4.6, 0.65);
     const px = cx, pz = south ? blockMin(k.j) + BLK + 1.5 : blockMin(k.j) - 1.5;
     interactables.push({ id: `${id}:${k.kind}:${k.i}${k.j}`, name: k.name, kind: 'actions', x: px, z: pz, radius: 4.4, actions: k.kind === 'home' || k.kind === 'gargote' ? [ENTER, ...ACTIONS[k.kind]] : ACTIONS[k.kind] });
     return { px, pz, south, cx };

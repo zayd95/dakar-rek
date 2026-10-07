@@ -14,7 +14,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { waitUntil: 'load' });
-  await page.waitForFunction(() => window.__dakar, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__dakar, null, { timeout: 90000 });
   await page.waitForTimeout(1500);
   for (const h of hubs) for (const hour of [13, 21]) {
     await page.evaluate(([hub, hr]) => { window.__dakar.setHour(hr); window.__dakar.teleport(hub); }, [h, hour]);

@@ -14,7 +14,7 @@ import { buildInterior, setInteriorDaylight, type Interior } from './world/inter
 import { ACTIONS, HUB_NAMES, travelLeg } from './world/content';
 import type { Action, Collider, HubWorld, Interactable } from './world/types';
 import { Character, PLAYER_OUTFIT } from './actors/character';
-import { Crowd, DecorativeTraffic } from './actors/npc';
+import { Crowd, DecorativeTraffic, Loiterers } from './actors/npc';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
@@ -50,9 +50,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 type Quality = 'low' | 'medium' | 'high';
 let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarrek.quality'); if (q === 'low' || q === 'medium' || q === 'high') return q; } catch { /* */ } return /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'medium' : 'high'; })();
 const QUAL = {
-  low: { pr: 1, shadow: 0, crowd: 8, traffic: 3 },
-  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 5 },
-  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 7 },
+  low: { pr: 1, shadow: 0, crowd: 12, traffic: 5, loiter: 6 },
+  medium: { pr: 1.5, shadow: 1024, crowd: 22, traffic: 9, loiter: 14 },
+  high: { pr: 2, shadow: 2048, crowd: 30, traffic: 12, loiter: 22 },
 };
 
 const scene = new THREE.Scene();
@@ -90,7 +90,7 @@ scene.add(player.group);
 const pos = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
-let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null;
+let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, loiterers: Loiterers | null = null;
 let castChars: { id: string; c: { group: THREE.Group; animate(dt: number, speed: number): void }; h?: Humanoid; x: number; z: number }[] = [];
 /** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
 const PLAYER_LOOK: PersonLook = { skin: 0x6b3f25, style: 'tee', top: 0x1a9d54, accent: 0xf4c20d, pattern: 'uni', bottom: 0x3d4a5c, shoes: 0xf2f2ec };
@@ -153,6 +153,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   world = buildHub(id, quality === 'low');
   scene.add(world.group);
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
+  loiterers = new Loiterers(world, rand, QUAL[quality].loiter); extra.add(loiterers.group);
   extra.add(crowd.group, traffic.group);
   // Recurring cast of this hub, standing at their places (PROVISIONAL cast, see src/social/cast.ts).
   castChars = [];
@@ -499,7 +500,7 @@ function frame(now: number) {
     if (n.h) n.h.hold = d < 3.4 ? 'Talk' : null;
     n.c.animate(dt, 0);
   }
-  crowd?.update(dt); traffic?.update(dt);
+  crowd?.update(dt, pos.x, pos.z); traffic?.update(dt); loiterers?.update(dt, pos.x, pos.z);
   for (const h of debugPeople) h.animate(dt, 0);
   findNearest();
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;

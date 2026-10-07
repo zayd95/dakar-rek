@@ -4,7 +4,7 @@ import type { Collider } from '../world/types';
 
 /** Third-person follow camera: behind and slightly above, character low-centre, never inside walls. */
 export class FollowCamera {
-  yaw = 0; pitch = 0.36;
+  yaw = 0; pitch = 0.24;
   /** Inside a room: shorter, lower camera. */
   indoor = false;
   private pos = new THREE.Vector3();
@@ -22,10 +22,10 @@ export class FollowCamera {
       const d = Math.atan2(Math.sin(facing - this.yaw), Math.cos(facing - this.yaw));
       this.yaw += d * Math.min(1, dt * 0.9);
     }
-    const dist = this.indoor ? (portrait ? 4.6 : 4.0) : portrait ? 10.5 : 8;
+    const dist = this.indoor ? (portrait ? 4.6 : 4.0) : portrait ? 7.2 : 5.6;
     if (this.indoor) this.pitch = clamp(this.pitch, 0.5, 0.8);   // looking down into the room shows more of it
     const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
-    const want = new THREE.Vector3(target.x - Math.sin(this.yaw) * cp * dist, target.y + 1.3 + sp * dist, target.z - Math.cos(this.yaw) * cp * dist);
+    const want = new THREE.Vector3(target.x - Math.sin(this.yaw) * cp * dist, target.y + 1.55 + sp * dist, target.z - Math.cos(this.yaw) * cp * dist);
     const from = new THREE.Vector3(target.x, target.y + 1.5, target.z);
     let k = 1;
     if (room) {
@@ -39,8 +39,8 @@ export class FollowCamera {
       if (hit) { k = Math.max(0.12, (s - 1) / 12); break; }
     }
     want.lerpVectors(from, want, k);
-    const ahead = this.indoor ? 1.2 : portrait ? 3.6 : 3.2;
-    const look = new THREE.Vector3(target.x + Math.sin(this.yaw) * ahead, target.y + 1.2, target.z + Math.cos(this.yaw) * ahead);
+    const ahead = this.indoor ? 1.2 : portrait ? 2.6 : 2.2;
+    const look = new THREE.Vector3(target.x + Math.sin(this.yaw) * ahead, target.y + 1.45, target.z + Math.cos(this.yaw) * ahead);
     if (!this.inited) { this.pos.copy(want); this.look.copy(look); this.inited = true; }
     const a = 1 - Math.exp(-dt * 9);
     this.pos.lerp(want, a); this.look.lerp(look, a);

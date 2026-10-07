@@ -27,11 +27,26 @@ export class Crowd {
       const e = pick(world.edges, rand);
       const c = humanoidReady() ? new Humanoid(randomLook(rand)) : new Character(pick(NPC_OUTFITS, rand));
       this.group.add(c.group);
+      const prev = this.walkers[this.walkers.length - 1];
+      if (prev && n % 3 === 2) {   // walking together: same street, side by side
+        this.walkers.push({ char: c, ax: prev.ax, az: prev.az, bx: prev.bx, bz: prev.bz, t: prev.t, speed: prev.speed, lat: prev.lat + Math.sign(prev.lat) * -0.75, prev: '' });
+        continue;
+      }
       this.walkers.push({ char: c, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 1.1 + rand() * 0.7, lat: (rand() < 0.5 ? -1 : 1) * (5.3 + rand() * 1.2), prev: '' });
     }
   }
-  update(dt: number) {
+  /** Keep the crowd around the player: walkers that drift too far are moved to a street 20–55 m away. */
+  private respawnNear(w: Walker, px: number, pz: number) {
+    for (let tries = 0; tries < 24; tries++) {
+      const e = pick(this.world.edges, this.rand), t = this.rand();
+      const x = e.ax + (e.bx - e.ax) * t, z = e.az + (e.bz - e.az) * t, d = Math.hypot(x - px, z - pz);
+      if (d > 20 && d < 55) { w.ax = e.ax; w.az = e.az; w.bx = e.bx; w.bz = e.bz; w.t = t; w.prev = ''; return; }
+    }
+  }
+  update(dt: number, px = 0, pz = 0) {
     for (const w of this.walkers) {
+      const cx = w.char.group.position.x, cz = w.char.group.position.z;
+      if (Math.hypot(cx - px, cz - pz) > 75) this.respawnNear(w, px, pz);
       const len = Math.hypot(w.bx - w.ax, w.bz - w.az);
       w.t += (w.speed * dt) / len;
       if (w.t >= 1) {
@@ -43,7 +58,9 @@ export class Crowd {
       const dx = (w.bx - w.ax) / l2 || 0, dz = (w.bz - w.az) / l2 || 0;
       const x = w.ax + (w.bx - w.ax) * w.t - dz * w.lat, z = w.az + (w.bz - w.az) * w.t + dx * w.lat;
       w.char.group.position.set(x, 0.1, z); w.char.group.rotation.y = Math.atan2(dx, dz);
-      w.char.animate(dt, w.speed);
+      const far = Math.hypot(x - px, z - pz) > 60;
+      w.char.group.visible = !far;
+      if (!far) w.char.animate(dt, w.speed);
     }
   }
 }
@@ -78,6 +95,51 @@ export class DecorativeTraffic {
       const dx = (c.bx - c.ax) / l2 || 0, dz = (c.bz - c.az) / l2 || 0;
       c.g.position.set(c.ax + (c.bx - c.ax) * c.t - dz * c.lane, 0.08, c.az + (c.bz - c.az) * c.t + dx * c.lane);
       c.g.rotation.y = Math.atan2(dx, dz);
+    }
+  }
+}
+
+
+/**
+ * People standing and chatting in small groups at busy spots (shops, cafés, market, station), some seated
+ * on benches. Local and decorative like the crowd.
+ */
+export class Loiterers {
+  group = new THREE.Group();
+  private people: Humanoid[] = [];
+  constructor(world: HubWorld, rand: () => number, max = 18) {
+    if (!humanoidReady()) return;
+    const spots = world.interactables.filter(i => /:(gargote|cafe|market|station|garage|restaurant|gym|port)/.test(i.id));
+    let placed = 0;
+    for (const s of spots) {
+      if (placed >= max) break;
+      const n = 2 + Math.floor(rand() * 3);
+      const cx = s.x + (rand() - 0.5) * 6, cz = s.z + (rand() < 0.5 ? -1 : 1) * (2.2 + rand() * 1.5);
+      const seated = /cafe|gargote/.test(s.id) && rand() < 0.6;
+      if (seated) {
+        const bench = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.42, 0.45), new THREE.MeshLambertMaterial({ color: 0x6b4a2e }));
+        bench.position.set(cx, 0.31, cz); bench.castShadow = true; this.group.add(bench);
+      }
+      for (let k = 0; k < n && placed < max; k++, placed++) {
+        const h = new Humanoid(randomLook(rand));
+        if (seated && k < 2) {
+          h.group.position.set(cx - 0.55 + k * 1.1, 0.28, cz + 0.05); h.group.rotation.y = Math.PI; h.hold = 'Sit';
+        } else {
+          const a = (k / n) * Math.PI * 2 + rand() * 0.5;
+          h.group.position.set(cx + Math.sin(a) * 0.8, 0.1, cz + Math.cos(a) * 0.8);
+          h.group.rotation.y = a + Math.PI;                          // facing the middle of the group
+          h.hold = rand() < 0.5 ? 'Talk' : 'Idle';
+        }
+        h.play(h.hold!, 0, rand());
+        this.group.add(h.group); this.people.push(h);
+      }
+    }
+  }
+  update(dt: number, px: number, pz: number) {
+    for (const h of this.people) {
+      const far = Math.hypot(h.group.position.x - px, h.group.position.z - pz) > 60;
+      h.group.visible = !far;
+      if (!far) h.update(dt);
     }
   }
 }
