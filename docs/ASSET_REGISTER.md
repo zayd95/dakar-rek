@@ -19,7 +19,8 @@ Every asset has a row. **TEMP** = temporary, to be replaced or revised through t
 | Landmarks: mosque, monument, arena (with gate), écurie, gym, pitch | `src/world/builder.ts` | Own code | merged | TEMP | Not reviewed |
 | Shop signs (canvas text) | `src/world/batch.ts` | Own code; fictional shop names | 2 per sign | TEMP | Not reviewed |
 | City player, cast and crowd (boxes) — fallback only when the GLB fails to load | `src/actors/character.ts` | Own code | ~200 each | TEMP | Not reviewed |
-| Car rapide (procedural v2: roof rack, ladder, painted panels; one shared mesh) | `src/actors/vehicles.ts` | Own code | ~1k | TEMP until the Blender model | Not reviewed |
+| Car rapide (procedural v3 after Habib's references: indigo/white/yellow body, rounded roof front, short bonnet, yellow roof rack with luggage, ladder, open rear door, step; painted panels drawn in code: TRANSPORT EN COMMUN, diamond, fish, birds, stars, crescent, flag stripes, eyes, ALHAMDOULILAH) | `src/actors/vehicles.ts` | Own code; reference images supplied by Habib (not stored) | ~1.5k + 4 decal quads, shared | TEMP until a Blender model | **Unreviewed** motifs and lettering |
+| Car rapide apprentice (stands at the open rear door calling destinations in a speech bubble; rides the rear step on moving cars) | `src/actors/apprenti.ts` | Own code; destination calls are real Dakar neighbourhoods, list provisional | humanoid | TEMP | **Unreviewed** calls and gestures |
 | Taxi | `src/actors/vehicles.ts` | Own code | ~100 | TEMP | Not reviewed |
 | **Character v4 (shared humanoid)** | `assets-src/character_rig_v4.blend` → `public/assets/character_v4.glb` | Own work, Blender 5.2 via MCP for Blender, 6 Oct 2026 | body 1.9k, head 2k, garments 0.2–2.3k each | TEMP | Not reviewed |
 | Character v4 garments: tee, trousers, shorts, shoes, dress top + skirt, grand boubou, kufi, headwrap; hair short/puff; beard | character GLB | Own work | see above | TEMP | Not reviewed |

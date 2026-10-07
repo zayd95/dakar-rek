@@ -232,6 +232,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const solidC = (cx: number, cz: number, w: number, d: number, h: number) => solid(cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2, h);
 
   const signs: THREE.Mesh[] = [];
+  const rapides: THREE.Object3D[] = [];
   const addSign = (text: string, bg: string, fg: string, x: number, y: number, z: number, rotY: number, w = 6, h = 1.5) => {
     const tex = text.length > 18 ? signTexture(text, bg, fg, 768, 112) : signTexture(text, bg, fg);   // long names get a wider canvas so they never clip
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
@@ -527,6 +528,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         for (let k = -2; k <= 2; k++) plain.box(0.2, 0.02, 5, cx - 3 + k * 0.01, B + 0.04, cz + k * 2.8, 0xe8e4d8, Math.PI / 2);
         const cr = makeCarRapide(); cr.position.set(cx - 3, B, cz); cr.rotation.y = Math.PI / 2; group.add(cr);
         const cr2 = makeCarRapide(); cr2.position.set(cx - 5, B, cz - 4.5); cr2.rotation.y = Math.PI / 2 + 0.08; group.add(cr2);
+        rapides.push(cr, cr2);
         solidC(cx - 5, cz - 4.5, 6.6, 2.8, 2.4);
         plain.box(0.3, 4.5, 0.3, cx + 9, B, cz - 5, 0x444444);
         addSign('GARE · CAR RAPIDE', '#1e3a8a', '#fde68a', cx + 9, 4.6, cz - 5.2, Math.PI, 4.6, 1.0);
@@ -827,7 +829,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
 
   return {
     id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs,
-    skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
+    rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
     dispose() { disposeGroup(group); },
   };
 }

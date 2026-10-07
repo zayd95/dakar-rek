@@ -65,6 +65,8 @@ export class DecorativeTraffic {
       this.cars.push({ g, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 5 + rand() * 3, prev: '', lane: 2.5 });
     }
   }
+  /** Car rapide groups in this traffic (they carry an apprentice on the step). */
+  rapides() { return this.cars.map(c => c.g).filter(g => g.name.includes('car_rapide')); }
   update(dt: number) {
     for (const c of this.cars) {
       const len = Math.hypot(c.bx - c.ax, c.bz - c.az);
