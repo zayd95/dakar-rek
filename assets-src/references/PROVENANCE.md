@@ -153,9 +153,11 @@ Derived 512 px JPEGs in `public/assets/tex/` (loaded on demand; switched off on 
 | `sand.jpg` | #13 | tint neutralised (mean 0.9) | ground plane of every hub, 3 m per repeat |
 | `painted_metal.jpg` | #16 | greyscale, contrast ×1.5, mean 0.82 | gates and boutique shutters, 1.2 m per repeat |
 | `floor_tiles_terracotta.jpg` | #15 | resized only (colour kept) | gargote floors, 1.2 m per repeat (4 × 4 tiles of 30 cm) |
+| `paving.jpg` | #21 (paving v2) | greyscale, mean 0.8 | sidewalks and plazas (replaces the procedural paving), 2 m per repeat |
+| `wood.jpg` | #19 (wood v2, `_tiled` seam-fixed file) | greyscale, contrast ×1.3, mean 0.82 | interior furniture (beds, counters, benches), 1 m per repeat |
 
 Each was tiled 3×3 after processing: no visible seam. Not used: #4 plaster and #17 wood (seam failures), #14 paving
-(slab layout to be judged by Habib), #11 concrete (no use yet). Reference images #10 (dibiterie) guided the dibiterie build.
+(replaced by #21), #11 concrete and #20 plaster v2 (no use yet). References #10 (dibiterie), #18 (Maïga) and #22–24 (arena) guided those builds.
 
 Terms (checked 7 Oct 2026, Higgsfield help centre "Who owns my generations", dated 2 Aug 2026, citing Terms of Use §4–5):
 the user owns inputs and outputs; commercial use is not restricted and not limited to paid plans; outputs are not

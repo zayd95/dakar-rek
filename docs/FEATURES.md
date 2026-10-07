@@ -2,7 +2,7 @@
 
 Legend: **Implemented** = works and was verified (unit tests and/or headless browser checks). **Partial** = a first working version with stated limits. **Pending** = not started. Placeholders are never listed as implemented. Cultural content is always marked **Unreviewed** until Habib and wrestling practitioners have reviewed it.
 
-Last updated: visual pass (7 October 2026). Verification: 17 unit tests; 47 headless Chromium checks at 1280×720 and 390×844 (`scripts/shots.mjs`), all passing. Before/after captures: `docs/VISUAL_PASS.md`.
+Last updated: visual pass (7 October 2026). Verification: 17 unit tests; 48 headless Chromium checks at 1280×720 and 390×844 (`scripts/shots.mjs`), all passing. Before/after captures: `docs/VISUAL_PASS.md`.
 
 ## Implemented
 
@@ -21,6 +21,7 @@ Last updated: visual pass (7 October 2026). Verification: 17 unit tests; 47 head
 | Beats unlock jobs and discounts | Trusted rate at Modou's garage, Ousmane's morning pirogue, friends' prices at two gargotes, paid service at Le Pointe | unit tests |
 | One suggested next step | HUD chip + journal (Carnet) | headless |
 | Walkable interiors | Starter room (Pikine) and gargotes (Plateau, Corniche, Pikine): Entrer/Sortir, collisions, room camera, ceiling light, actions inside (sleep, wash, order); saving indoors stores the door position | headless (enter, wall collision, exit) |
+| Maïga | Smaller, dirtier gargote (Habib's definition) in Pikine and at Fann: walk-in narrow room, cheapest dishes | headless (enter) |
 | Dibiterie | Walk-in grilled-meat shop in Pikine (next to the starter home) and the Plateau: dibi mouton, brochettes, sit on the bench; grill smoke, cook, butcher and customers | headless (walk in from the street, counter prompt) |
 | Monument stair | The player can climb the monument stair to the statue's terrace; the camera follows the slope | headless (climb) |
 | Car rapide and apprentice | Painted car rapide after Habib's references at every station and in traffic; the apprentice calls destinations at the door when the player is near, and rides the step on moving ones | headless captures |

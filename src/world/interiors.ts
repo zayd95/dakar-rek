@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Batch, signTexture } from './batch';
 import { addGrain } from './grain';
-import { floorTileTexture, plasterTexture, woodTexture, metalTexture, generatedTexture } from './textures';
+import { floorTileTexture, plasterTexture, metalTexture, generatedTexture } from './textures';
 import { ACTIONS } from './content';
 import type { Collider, Interactable } from './types';
 
@@ -11,7 +11,7 @@ import type { Collider, Interactable } from './types';
  * Ceiling is a downward-facing plane: seen from inside, culled if the camera ever rises above it.
  * Furniture and layout are PROVISIONAL (to review with Habib); no brand names, no real places.
  */
-export type InteriorKind = 'home' | 'gargote';
+export type InteriorKind = 'home' | 'gargote' | 'maiga';
 
 export interface Interior {
   kind: InteriorKind;
@@ -39,7 +39,8 @@ function materials() {
     // gargote floor: Higgsfield texture #15, beige and terracotta tiles, 4 × 4 tiles of 30 cm per repeat
     floorGargote: addGrain(lam(), 0.2, 1, false, generatedTexture('floor_tiles_terracotta'), 1.2),
     wall: addGrain(lam(), 0.4, 1, false, plasterTexture(), 2),
-    wood: addGrain(lam(), 0.2, 1, false, woodTexture(), 1),
+    // wood: Higgsfield texture #19 (planks v2, seam-fixed), desaturated, 1 m per repeat
+    wood: addGrain(lam(), 0.2, 1, false, generatedTexture('wood'), 1),
     metal: addGrain(lam(), 0.3, 1, false, metalTexture(), 1),
     plain: addGrain(lam(), 0.5, 2),
     glow: new THREE.MeshBasicMaterial({ vertexColors: true }),
@@ -69,14 +70,15 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
   const floor = new Batch(), wall = new Batch(), wood = new Batch(), metal = new Batch(), plain = new Batch(), glow = new Batch(), sky = new Batch();
   const colliders: Collider[] = [];
   const interactables: Interactable[] = [];
-  const W = kind === 'home' ? 6 : 10, D = kind === 'home' ? 4.8 : 7.5;
+  const W = kind === 'home' ? 6 : kind === 'maiga' ? 3.8 : 10, D = kind === 'home' ? 4.8 : kind === 'maiga' ? 7 : 7.5;
   const x0 = ox - W / 2, x1 = ox + W / 2, z0 = oz - D / 2, z1 = oz + D / 2;
   const solid = (cx: number, cz: number, w: number, d: number, h = 1.2) => colliders.push({ x0: cx - w / 2, z0: cz - d / 2, x1: cx + w / 2, z1: cz + d / 2, h });
   const signs: THREE.Mesh[] = [];
 
   // shell: tiled floor, two-tone painted walls with skirting, door in the south wall (+z)
-  const lower = kind === 'home' ? 0x8fc3d9 : 0x7fb07a, upper = kind === 'home' ? 0xf3efe6 : 0xf2e2a8;
-  floor.box(W, 0.1, D, ox, 0, oz, kind === 'home' ? 0xf2f0ec : 0xffffff);
+  // Maïga (Habib, 7 Oct: a gargote, smaller and dirtier; Higgsfield reference #18): peeling blue-green walls, worn tiles
+  const lower = kind === 'home' ? 0x8fc3d9 : kind === 'maiga' ? 0x3f7f86 : 0x7fb07a, upper = kind === 'home' ? 0xf3efe6 : kind === 'maiga' ? 0x8eaaa0 : 0xf2e2a8;
+  floor.box(W, 0.1, D, ox, 0, oz, kind === 'home' ? 0xf2f0ec : kind === 'maiga' ? 0xa89f90 : 0xffffff);
   const side = (w: number, d: number, x: number, z: number) => {
     wall.box(w, 1.2, d, x, 0.1, z, lower); wall.box(w, H - 1.2, d, x, 1.3, z, upper);
     plain.box(w + (d > w ? 0.02 : 0), 0.04, d + (w > d ? 0.02 : 0), x, 1.28, z, 0x5f7f8f);   // dado line
@@ -101,14 +103,16 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     wood.box(1.4, 0.06, 0.18, x, 1.24, z + 0.08, 0xd9cbb3);
     plain.box(0.5, 1.5, 0.04, x - 0.75, 1.0, z + 0.15, kind === 'home' ? 0xc2417f : 0xe7b82f); // curtain
   };
-  win(ox - W / 4, z0); if (kind === 'gargote') win(ox + W / 4, z0);
+  if (kind !== 'maiga') win(ox - W / 4, z0); if (kind === 'gargote') win(ox + W / 4, z0);
   // ceiling light: bulb at home, fluorescent tube in the gargote
-  if (kind === 'home') { plain.cyl(0.02, 0.02, 0.3, ox, H - 0.2, oz, 0x222222, 4); glow.sphere(0.07, ox, H - 0.25, oz, 0xfff1c8); }
+  if (kind !== 'gargote') { plain.cyl(0.02, 0.02, 0.3, ox, H - 0.2, oz, 0x222222, 4); glow.sphere(0.07, ox, H - 0.25, oz, 0xfff1c8); }
   else { plain.box(1.3, 0.06, 0.12, ox, H - 0.08, oz, 0xdddddd); glow.box(1.2, 0.05, 0.06, ox, H - 0.13, oz, 0xeaf6ff); }
-  // ceiling fan
+  // ceiling fan (the Maïga has a small wall fan instead)
+  if (kind !== 'maiga') {
   const fanX = kind === 'home' ? ox + 1.2 : ox - 2, fanZ = kind === 'home' ? oz : oz + 1;
   plain.cyl(0.03, 0.03, 0.4, fanX, H - 0.3, fanZ, 0x333333, 4); plain.cyl(0.12, 0.12, 0.1, fanX, H - 0.38, fanZ, 0xe8e8e8, 8);
   for (let k = 0; k < 3; k++) plain.box(0.14, 0.015, 0.8, fanX + Math.sin(k * 2.094) * 0.42, H - 0.36, fanZ + Math.cos(k * 2.094) * 0.42, 0xe8e8e8, k * 2.094);
+  }
 
   const chair = (x: number, z: number, rot: number, col = 0xf2f2ee) => {   // monobloc plastic chair
     const c = Math.cos(rot), s = Math.sin(rot);
@@ -146,6 +150,34 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     // framed photos and a calendar (images left blank on purpose: no real people)
     for (const [x, c] of [[ox - 0.4, 0x7a5a3c], [ox + 0.4, 0x3d4a5c]] as const) { wood.box(0.45, 0.55, 0.03, x, 1.6, z0 + 0.02, c); plain.box(0.35, 0.45, 0.01, x, 1.65, z0 + 0.05, 0xd9d2c4); }
     plain.box(0.4, 0.55, 0.01, x0 + 0.02, 1.5, oz + 0.8, 0xf4f1e8, Math.PI / 2);
+  } else if (kind === 'maiga') {
+    // one narrow room: a worn wooden counter with dented pots on gas rings along one wall, a long table with oilcloth and a
+    // bench along the other, mismatched plastic chairs, a wall fan, peeling paint and soot (decals), a bare bulb
+    const cx = x0 + 0.55;
+    wood.box(0.9, 0.95, 3.2, cx, 0.1, oz - 1.4, 0x8a6a48);
+    for (let k = 0; k < 3; k++) {
+      const pz = oz - 2.6 + k * 1.15;
+      metal.box(0.5, 0.12, 0.5, cx, 1.05, pz, 0x333333);                                       // gas ring
+      metal.cyl(0.26 - k * 0.03, 0.24 - k * 0.03, 0.42 - k * 0.06, cx + (k % 2 ? 0.05 : -0.04), 1.17, pz, 0x9da2a6, 10);   // dented aluminium pots
+    }
+    metal.cyl(0.16, 0.16, 0.55, cx, 0.1, oz + 0.5, 0x2a6fb3, 10);                                 // butane bottle
+    colliders.push({ x0: x0, z0: oz - 3.1, x1: cx + 0.5, z1: oz + 0.25, h: 1.2 });
+    interactables.push({ id: `${hub}:in:counter`, name, kind: 'actions', x: cx + 1.1, z: oz - 1.4, radius: 1.5, actions: ACTIONS.maiga });
+    const tx = x1 - 0.5;
+    const cloth = new THREE.MeshLambertMaterial({ map: waxTexture('#efe2c8', '#c2417f', '#4f8a3c') });
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 3.6), cloth); top.position.set(tx, 0.84, oz - 0.3); group.add(top);
+    for (const dz of [-1.6, 1.0]) wood.box(0.7, 0.72, 0.06, tx, 0.1, oz - 0.3 + dz, 0x6b4a2e);
+    wood.box(0.35, 0.45, 3.2, tx - 0.75, 0.1, oz - 0.3, 0x7a5a3c);                                 // bench
+    colliders.push({ x0: tx - 0.95, z0: oz - 2.2, x1: x1, z1: oz + 1.6, h: 0.9 });
+    chair(tx - 0.2, oz + 2.0, Math.PI, 0xf2f2ee); chair(x0 + 0.8, oz + 1.6, Math.PI / 2 + 0.4, 0x2a6fb3);
+    // wall fan, soot on the ceiling and walls, peeling patches
+    plain.box(0.1, 0.25, 0.1, x1 - 0.06, 2.3, oz - 2.8, 0x333333); plain.cyl(0.22, 0.22, 0.08, x1 - 0.2, 2.4, oz - 2.8, 0xd8d8d8, 10, [0, 0, Math.PI / 2]);
+    for (let k = 0; k < 9; k++) {
+      const side = k % 2 ? x0 + 0.01 : x1 - 0.01, z = oz - 3 + k * 0.75, y = 0.6 + ((k * 37) % 17) / 10;
+      plain.box(0.02, 0.3 + (k % 3) * 0.15, 0.35 + (k % 2) * 0.3, side, y, z, k % 3 ? 0xc9c4b4 : 0x5a6a62);   // peeled plaster / stains
+    }
+    plain.box(W - 0.2, 0.02, 1.6, ox, H + 0.08, oz - 2.2, 0x3a3630);                              // soot above the stove
+    plain.box(0.02, 0.9, 2.6, x0 + 0.01, 1.9, oz - 1.6, 0x4a4842);
   } else {
     // counter with large cooking pots, a basin and the menu board
     const cz = z0 + 1.3;
@@ -185,6 +217,6 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     bounds: { x0: x0 + 0.3, x1: x1 - 0.3, z0: z0 + 0.3, z1: z1 - 0.3 },
     cameraBox: { x0: x0 + 0.15, x1: x1 - 0.15, z0: z0 + 0.15, z1: z1 - 0.15 },
     spawn: { x: doorX - 0.6, z: oz - D * 0.06, yaw: Math.PI + 0.35 },
-    light: new THREE.Vector3(ox, H - 0.35, oz), lightColor: kind === 'home' ? 0xffd9a0 : 0xe8f2ff,
+    light: new THREE.Vector3(ox, H - 0.35, oz), lightColor: kind === 'gargote' ? 0xe8f2ff : 0xffd9a0,
   };
 }

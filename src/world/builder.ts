@@ -6,7 +6,7 @@ import { ACTIONS, ENTER } from './content';
 import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
-import { pavingTexture, generatedTexture } from './textures';
+import { generatedTexture } from './textures';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
@@ -16,7 +16,7 @@ const roadC = (k: number) => -HALF + ROAD / 2 + k * PITCH;
 const blockMin = (i: number) => -HALF + ROAD + i * PITCH;
 
 type Special = 'mosque' | 'market' | 'station' | 'monument' | 'gym' | 'pitch' | 'port' | 'arena' | 'ecurie' | 'plaza';
-type KioskKind = 'gargote' | 'restaurant' | 'cafe' | 'garage' | 'home' | 'dibiterie';
+type KioskKind = 'gargote' | 'restaurant' | 'cafe' | 'garage' | 'home' | 'dibiterie' | 'maiga';
 interface KioskSpec { i: number; j: number; lot: 0 | 1 | 2 | 3; kind: KioskKind; name: string }
 type Style = 'dense' | 'villa' | 'student' | 'banlieue';
 interface HubSpec {
@@ -37,7 +37,7 @@ const SPECS: Record<HubId, HubSpec> = {
     id: 'corniche', seed: 23, style: 'student', ground: 0xd8c690, road: 0x4d5056, walk: 0xcfc8b4, blockGround: 0xb7c7a2,
     palette: [0xf0e0c4, 0xdfe6e8, 0xe9cfae, 0xcfe0d6, 0xf3d9b8], floors: [2, 4], sea: 'west', palms: 22,
     specials: { '0,1': 'gym', '0,2': 'pitch', '1,0': 'monument', '2,2': 'station' },
-    kiosks: [{ i: 1, j: 2, lot: 0, kind: 'cafe', name: 'Café Touba · Fann' }, { i: 2, j: 1, lot: 2, kind: 'gargote', name: 'Gargote des étudiants' }],
+    kiosks: [{ i: 1, j: 2, lot: 0, kind: 'cafe', name: 'Café Touba · Fann' }, { i: 2, j: 1, lot: 2, kind: 'gargote', name: 'Gargote des étudiants' }, { i: 2, j: 1, lot: 3, kind: 'maiga', name: 'Maïga de Fann' }],
     spawnBlock: [2, 2],
   },
   almadies: {
@@ -53,7 +53,7 @@ const SPECS: Record<HubId, HubSpec> = {
     specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station' },
     kiosks: [
       { i: 1, j: 1, lot: 0, kind: 'home', name: 'Ma chambre' }, { i: 1, j: 1, lot: 1, kind: 'dibiterie', name: 'Dibiterie Chez Pathé' }, { i: 3, j: 2, lot: 2, kind: 'gargote', name: 'Gargote Mame Diarra' },
-      { i: 0, j: 2, lot: 1, kind: 'cafe', name: 'Café Touba · Parcelles' }, { i: 3, j: 1, lot: 3, kind: 'garage', name: 'Garage Modou' },
+      { i: 0, j: 2, lot: 1, kind: 'cafe', name: 'Café Touba · Parcelles' }, { i: 3, j: 1, lot: 3, kind: 'garage', name: 'Garage Modou' }, { i: 3, j: 1, lot: 2, kind: 'maiga', name: 'Maïga du marché' },
     ],
     spawnBlock: [1, 1],
   },
@@ -116,7 +116,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const tex = facadeTextures();
   const facadeMat = addGrain(new THREE.MeshLambertMaterial({ map: tex.map, vertexColors: true, emissive: 0xffc070, emissiveMap: tex.glow, emissiveIntensity: 0 }), 0.7, 1, true) as THREE.MeshLambertMaterial;
   const plainMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 1, 1);
-  const paveMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.6, 1, false, pavingTexture(), 2);
+  // concrete paving: Higgsfield texture #21 (paving v2, regular 4 × 4 slabs of 50 cm per 2 m repeat)
+  const paveMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.5, 1, false, generatedTexture('paving'), 2);
   // raw breeze-block walls: Higgsfield texture #12, 4 blocks × 8 courses per repeat = 1.6 m (40 × 20 cm parpaings)
   const blockMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.4, 1, false, generatedTexture('breeze_block'), 1.6);
   // painted metal gates and shutters: Higgsfield texture #16 (desaturated), 1 m per repeat
@@ -518,16 +519,25 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const L = lotRect(k.i, k.j, k.lot % 2, k.lot >> 1);
     const south = (k.lot >> 1) === 1;       // lot row b: 0 -> faces -z, 1 -> faces +z
     const dir = south ? 1 : -1;
-    const w = 14, d = 8, h = 4.2;
+    const small = k.kind === 'maiga';
+    const w = small ? 7 : 14, d = small ? 6 : 8, h = small ? 3.6 : 4.2;
     const cz = south ? L.z1 - d / 2 - 0.5 : L.z0 + d / 2 + 0.5, cx = L.cx;
-    const col = k.kind === 'cafe' ? 0x6fa56a : k.kind === 'gargote' ? 0xe8a43c : k.kind === 'restaurant' ? 0xf3f0ea : k.kind === 'garage' ? 0x7f8a96 : 0xe7b45a;
+    const col = k.kind === 'cafe' ? 0x6fa56a : k.kind === 'gargote' ? 0xe8a43c : k.kind === 'restaurant' ? 0xf3f0ea : k.kind === 'garage' ? 0x7f8a96 : k.kind === 'maiga' ? 0x6f9e98 : 0xe7b45a;
     fac.facade(w, h, d, cx, G - 0.02, cz, col);
     plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
     parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.9), 0.6);
     plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));
+    if (!small) {
     awning(cx, cz + dir * (d / 2 + 1.2), w - 1, 2.4, 3.0, k.kind === 'cafe' ? 0x2f8f4e : k.kind === 'garage' ? 0x2d3748 : 0xd9482b, true, dir);
     plain.box(w - 3, 1, 0.8, cx, G, cz + dir * (d / 2 + 0.6), 0x7a5a3c);              // counter
     plain.box(w - 2.6, 0.08, 1.0, cx, G + 1, cz + dir * (d / 2 + 0.6), 0x5a3f2a);
+    } else {
+      // Maïga front: a bare doorway with a plastic strip curtain, soot above it, one bench outside
+      plain.box(1.3, 2.3, 0.05, cx - 1.5, G, cz + dir * (d / 2 + 0.03), 0x1e1e1e);
+      for (let n = 0; n < 6; n++) plain.box(0.18, 2.1, 0.02, cx - 2.05 + n * 0.22, G + 0.15, cz + dir * (d / 2 + 0.07), [0xd9322b, 0xf4c20d, 0x2a8fd1][n % 3]);
+      plain.box(2.2, 1.0, 0.03, cx - 1.5, G + 2.4, cz + dir * (d / 2 + 0.04), 0x4a4842);
+      plain.box(1.6, 0.45, 0.4, cx + 1.6, G, cz + dir * (d / 2 + 0.9), 0x6b4a2e);
+    }
     if (k.kind === 'gargote' || k.kind === 'cafe' || k.kind === 'restaurant') {
       for (let n = 0; n < 3; n++) {                                                   // benches and a low table out front
         const bx = cx - 4 + n * 4, bz = cz + dir * (d / 2 + 3.2);
@@ -535,12 +545,13 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       }
     }
     if (k.kind === 'garage') for (let n = 0; n < 4; n++) plain.cyl(0.38, 0.38, 0.28, cx + 5 + (n % 2) * 0.2, G + n * 0.28, cz + dir * (d / 2 + 2.4), 0x1d1d1f, 10); // tyre stack
-    solidC(cx, cz, w, d + 1.4, h);
-    const bg = k.kind === 'cafe' ? '#14532d' : k.kind === 'gargote' ? '#7c2d12' : k.kind === 'restaurant' ? '#0c4a6e' : k.kind === 'garage' ? '#1f2937' : '#78350f';
+    solidC(cx, cz, w, d + (small ? 0.2 : 1.4), h);
+    const bg = k.kind === 'maiga' ? '#3f4f4a' : k.kind === 'cafe' ? '#14532d' : k.kind === 'gargote' ? '#7c2d12' : k.kind === 'restaurant' ? '#0c4a6e' : k.kind === 'garage' ? '#1f2937' : '#78350f';
     // painted sign board flush on the facade, between the awning and the roof
-    addSign(k.name.toUpperCase(), bg, '#fff7e0', cx, G + 3.55, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 7.2, 1.0);
+    if (small) addSign('MAÏGA', bg, '#f1e6c8', cx + 1.3, G + 2.6, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 2.6, 0.7);
+    else addSign(k.name.toUpperCase(), bg, '#fff7e0', cx, G + 3.55, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 7.2, 1.0);
     const px = cx, pz = south ? blockMin(k.j) + BLK + 1.5 : blockMin(k.j) - 1.5;
-    interactables.push({ id: `${id}:${k.kind}:${k.i}${k.j}`, name: k.name, kind: 'actions', x: px, z: pz, radius: 4.4, actions: k.kind === 'home' || k.kind === 'gargote' ? [ENTER, ...ACTIONS[k.kind]] : ACTIONS[k.kind] });
+    interactables.push({ id: `${id}:${k.kind}:${k.i}${k.j}`, name: k.name, kind: 'actions', x: px, z: pz, radius: 4.4, actions: k.kind === 'home' || k.kind === 'gargote' || k.kind === 'maiga' ? [ENTER, ...ACTIONS[k.kind]] : ACTIONS[k.kind] });
     return { px, pz, south, cx };
   };
 
@@ -791,6 +802,34 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           lampBulbs.box(2.7, 1.1, 0.05, x - Math.sin(a) * 0.62, 15.15, z - Math.cos(a) * 0.62, 0xfff3d0, a);
           solidC(x, z, 0.6, 0.6, 15);
         }
+        // After Higgsfield references #22–24 (artistic interpretations; set-up UNREVIEWED):
+        // wire fence between the field and the stands
+        const fenceR = 16.9;
+        for (let s2 = 0; s2 < 56; s2++) {
+          const a = (s2 / 56) * Math.PI * 2; if (gateGap(a)) continue;
+          const x = cx + Math.sin(a) * fenceR, z = cz + Math.cos(a) * fenceR, a2 = ((s2 + 1) / 56) * Math.PI * 2;
+          plain.box(0.06, 1.9, 0.06, x, B, z, 0x6f7377);
+          if (!gateGap(a2)) for (const y of [0.35, 1.0, 1.85]) limb(plain, [x, B + y, z], [cx + Math.sin(a2) * fenceR, B + y, cz + Math.cos(a2) * fenceR], 0.015, 0.015, 0x8a8f93, 3);
+        }
+        // officials' and guests' canopies at the ring side (east), with a table, plastic chairs and resting drums
+        for (const [n, a] of [1.2, 1.6, 2.0].entries()) {
+          const tx = cx + Math.sin(a) * 13.6, tz = cz + Math.cos(a) * 13.6, col = [0xf4c20d, 0x1a9d54, 0xd9322b][n];
+          for (const [dx, dz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) plain.box(0.07, 2.4, 0.07, tx + dx, B, tz + dz, 0xcfcfcf);
+          for (let k2 = 0; k2 < 4; k2++) plain.box(3.4, 0.06, 0.86, tx, B + 2.4 + (k2 % 2) * 0.05, tz - 1.3 + k2 * 0.86, k2 % 2 ? col : 0xf3eee2);
+          plain.box(3.4, 0.3, 0.04, tx, B + 2.15, tz - 1.7, col);
+          plain.box(1.6, 0.05, 0.7, tx, B + 0.72, tz, 0xf2f2ee); plain.box(0.06, 0.72, 0.06, tx, B, tz, 0x888888);
+          for (let c2 = 0; c2 < 4; c2++) { const chx = tx - 1.2 + c2 * 0.8; plain.box(0.45, 0.05, 0.45, chx, B + 0.45, tz - 0.8, n === 1 ? 0x2a8fd1 : 0xf2f2ee); plain.box(0.45, 0.45, 0.05, chx, B + 0.45, tz - 1.0, n === 1 ? 0x2a8fd1 : 0xf2f2ee); }
+          for (let d2 = 0; d2 < 3; d2++) plain.cyl(0.2, 0.15, 0.7, tx + 2.0, B, tz - 1.0 + d2 * 0.55, 0x7a4a26, 10);   // drums resting on the sand
+        }
+        // outside: crowd barriers along the queue to the gate, and vendors under parasols
+        const gzz = cz - wallR;
+        for (const sx of [-1, 1]) for (let k2 = 0; k2 < 6; k2++) {
+          const bz2 = gzz - 2.5 - k2 * 2.2, bx2 = cx + sx * 2.6;
+          for (const y of [0.15, 1.05]) plain.box(0.04, 0.04, 2.1, bx2, B + y, bz2, 0xa8adb1);           // open steel frame
+          for (let v = 0; v < 9; v++) plain.box(0.025, 0.9, 0.025, bx2, B + 0.15, bz2 - 1.0 + v * 0.25, 0xb8bdc1);
+          plain.box(0.4, 0.03, 0.3, bx2, B, bz2 - 0.9, 0xa8adb1); plain.box(0.4, 0.03, 0.3, bx2, B, bz2 + 0.9, 0xa8adb1);
+        }
+        for (const sx of [-1, 1]) for (let k2 = 0; k2 < 2; k2++) stall(cx + sx * (8 + k2 * 4.5), gzz - 4 - k2 * 1.5);
         interactables.push({ id: `${id}:arena`, name: 'Arène · làmb', kind: 'actions', x: cx, z: cz - 24, radius: 5, actions: ACTIONS.arena });
         arenaInfo = { cx, cz, r: 19 };
         break;

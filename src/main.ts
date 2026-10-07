@@ -187,9 +187,10 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
     world.interactables.push({ id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x, z, radius: 3.2, actions: m.id === 'ibou' ? ACTIONS.ibou : CHAT, npc: m.id });
   }
   interiors = new Map(); inside = null; follow.indoor = false; scene.remove(roomLight);
+  doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;
   for (const it of world.interactables) {
-    const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : null;
+    const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
     if (!kind) continue;
     const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
@@ -285,10 +286,14 @@ function showStreet(on: boolean) {
   extra.visible = on;
 }
 
+/** Bumped on every door transition and hub load: a fade that finishes late never applies to a newer state. */
+let doorSeq = 0;
 function enterInterior(door: Interactable) {
   const int = interiors.get(door.id); if (!int) return;
+  const seq = ++doorSeq;
   hud.fade(true, door.name);
   setTimeout(() => {
+    if (seq !== doorSeq) return;
     inside = { int, door }; follow.indoor = true; showStreet(false); scene.add(roomLight);
     pos.set(int.spawn.x, 0.1, int.spawn.z); facing = int.spawn.yaw; speed = 0; follow.snapBehind(facing);
     hud.fade(false); mode = 'play'; input.enabled = true;
@@ -297,8 +302,10 @@ function enterInterior(door: Interactable) {
 function exitInterior() {
   if (!inside) return;
   const d = inside.door;
+  const seq = ++doorSeq;
   hud.fade(true, HUB_NAMES[world!.id]);
   setTimeout(() => {
+    if (seq !== doorSeq) return;
     inside = null; follow.indoor = false; showStreet(true); scene.remove(roomLight);
     pos.set(d.x, 0.1, d.z); speed = 0; follow.snapBehind(facing);
     hud.fade(false); mode = 'play'; input.enabled = true; saveNow();

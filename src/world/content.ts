@@ -51,6 +51,10 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'regarder', label: 'S’asseoir dans les tribunes', detail: 'Ambiance et sabar', needs: { social: 10, moral: 8 }, seconds: 0, special: 'watch' },
     { id: 'combat', label: 'Combattre un adversaire', seconds: 0, requires: () => 'Bientôt : règles à valider (lutte simple ou avec frappe)' },
   ],
+  maiga: [
+    { id: 'riz', label: 'Riz au poisson', detail: 'Le moins cher du quartier', cost: 500, needs: { faim: 40, moral: 2 }, seconds: 3, counter: 'meals' },
+    { id: 'mafe', label: 'Mafé', cost: 700, needs: { faim: 45, moral: 4 }, seconds: 3, counter: 'meals' },
+  ],
   dibiterie: [
     { id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois, oignons et moutarde', cost: 2000, needs: { faim: 55, moral: 10, social: 4 }, seconds: 3, counter: 'meals' },
     { id: 'brochettes', label: 'Brochettes à emporter', cost: 1000, needs: { faim: 28, moral: 4 }, seconds: 2, counter: 'meals' },

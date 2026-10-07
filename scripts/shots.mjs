@@ -61,7 +61,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.screenshot({ path: `${out}/desktop-action-menu.png` });
   // interiors: enter the starter room, walk into a wall, save while inside, exit
   await page.evaluate(() => { window.__dakar.setHour(13); window.__dakar.enter('home'); });
-  await page.waitForTimeout(900);
+  await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 8000 }).catch(() => {});
   const inRoom = await page.evaluate(() => window.__dakar.pos());
   check('interior: enter starter room', inRoom.x > 900, `${inRoom.x.toFixed(1)},${inRoom.z.toFixed(1)}`);
   await page.keyboard.down('KeyW'); await page.waitForTimeout(4000); await page.keyboard.up('KeyW');
@@ -69,7 +69,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   check('interior: walls hold the player inside', wallPos.x > 996 && wallPos.x < 1004 && Math.abs(wallPos.z) < 3, `${wallPos.x.toFixed(1)},${wallPos.z.toFixed(1)}`);
   await page.screenshot({ path: `${out}/desktop-interior-home.png` });
   await page.evaluate(() => { window.__dakar.state.data.wallet += 0; });
-  await page.evaluate(() => window.__dakar.exit()); await page.waitForTimeout(900);
+  await page.evaluate(() => window.__dakar.exit());
+  await page.waitForFunction(() => window.__dakar.pos().x < 900, null, { timeout: 8000 }).catch(() => {});
   const outPos = await page.evaluate(() => window.__dakar.pos());
   check('interior: exit back to the street', outPos.x < 900 && outPos.hub === 'pikine', `${outPos.x.toFixed(1)},${outPos.z.toFixed(1)}`);
   // dibiterie: walk in from the street to the counter
@@ -77,6 +78,13 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.keyboard.down('KeyW'); for (let i = 0; i < 40; i++) { await page.waitForTimeout(300); if ((await page.evaluate(() => window.__dakar.pos())).z > -50.5) break; } await page.keyboard.up('KeyW');
   const dib = await page.evaluate(() => window.__dakar.pos());
   check('dibiterie: walk in from the street', /Dibiterie/.test(dib.near ?? ''), `${dib.z.toFixed(1)} ${dib.near}`);
+  // Maïga: enter and find the counter
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.enter('maiga'); });
+  await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 8000 }).catch(() => {});
+  const mg = await page.evaluate(() => window.__dakar.pos());
+  check('maiga: enter the narrow room', mg.x > 900, `${mg.x.toFixed(1)} ${mg.near}`);
+  await page.evaluate(() => window.__dakar.exit());
+  await page.waitForFunction(() => window.__dakar.pos().x < 900, null, { timeout: 8000 }).catch(() => {});
   // monument stair: standing half-way up puts the player well above the street
   await page.evaluate(() => { const d = window.__dakar; d.teleport('corniche'); d.place(-44, -90, Math.PI / 2); });
   await page.waitForTimeout(400);
