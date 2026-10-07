@@ -19,7 +19,7 @@ export interface PersonLook {
   hat?: 'kufi' | 'headwrap' | null; hatColor?: number; shoes?: number; female?: boolean;
   /** Body shape (morph targets from the Blender rig, 0–1). */
   heavy?: number; muscular?: number;
-  hair?: 'short' | 'puff' | 'none'; beard?: number | null; // beard colour, null = none
+  hair?: 'short' | 'puff' | 'braids' | 'locs' | 'none'; beard?: number | null; // beard colour, null = none
 }
 
 let template: { scene: THREE.Object3D; clips: THREE.AnimationClip[] } | null = null;
@@ -126,7 +126,7 @@ function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xffffff, ki
 }
 
 const SOCKET_NODE: Record<Socket, string> = { armL: 'socket_armL', armR: 'socket_armR', waist: 'socket_waist', neck: 'socket_neck' };
-const CLOTH = ['Cloth_Tee', 'Cloth_Trousers', 'Cloth_Shorts', 'Cloth_Boubou', 'Cloth_DressTop', 'Cloth_Skirt', 'Cloth_Kufi', 'Cloth_Headwrap', 'Cloth_Shoes', 'Ngemb_A', 'Ngemb_B', 'Hair_Short', 'Hair_Puff', 'Beard'];
+const CLOTH = ['Cloth_Tee', 'Cloth_Trousers', 'Cloth_Shorts', 'Cloth_Boubou', 'Cloth_DressTop', 'Cloth_Skirt', 'Cloth_Kufi', 'Cloth_Headwrap', 'Cloth_Shoes', 'Ngemb_A', 'Ngemb_B', 'Hair_Short', 'Hair_Puff', 'Hair_Braids', 'Hair_Locs', 'Beard'];
 
 export class Humanoid {
   readonly group = new THREE.Group();
@@ -178,7 +178,7 @@ export class Humanoid {
     this.setSkin(l.skin);
     const vis = ['Cloth_Shoes'];
     const hair = l.hair ?? (l.female ? 'puff' : 'short');
-    if (!l.hat && hair !== 'none') vis.push(hair === 'puff' ? 'Hair_Puff' : 'Hair_Short');
+    if (hair !== 'none' && (!l.hat || hair === 'braids')) vis.push(({ puff: 'Hair_Puff', braids: 'Hair_Braids', locs: 'Hair_Locs', short: 'Hair_Short' } as const)[hair]);
     if (l.beard != null) { vis.push('Beard'); this.beardMat.color.set(l.beard); }
     this.setShape(l.female ? 1 : 0, l.muscular ?? 0, l.heavy ?? 0);
     const set = (k: string, mat: THREE.Material) => { const m = this.parts.get(k); if (m) m.material = mat; vis.push(k); };
@@ -247,8 +247,19 @@ export class Humanoid {
     } else this.play(this.hold, 0.2);
     this.mixer.update(dt);
     this.applyLook(dt);
+    this.blink(dt);
   }
-  update(dt: number) { this.mixer.update(dt); this.applyLook(dt); }
+  /** Blink every 2–6 s (0.15 s close-open), using the Blink morph target on the skin mesh. */
+  private blinkT = 1 + Math.random() * 4; private blinkSkin?: THREE.Mesh | null;
+  private blink(dt: number) {
+    if (this.blinkSkin === undefined) this.blinkSkin = this.morphed.find(m => m.morphTargetDictionary?.Blink !== undefined && (m.material === this.skinMat)) ?? null;
+    const m = this.blinkSkin; if (!m) return;
+    this.blinkT -= dt;
+    const t = this.blinkT < 0 ? -this.blinkT : 0;
+    m.morphTargetInfluences![m.morphTargetDictionary!.Blink] = t > 0 ? Math.max(0, 1 - Math.abs(t - 0.075) / 0.075) : 0;
+    if (t > 0.15) this.blinkT = 2 + Math.random() * 4;
+  }
+  update(dt: number) { this.mixer.update(dt); this.applyLook(dt); this.blink(dt); }
 
   /** World point the head turns toward (neck + head share the turn), or null. Limited to ±70° yaw, ±25° pitch. */
   lookTarget: THREE.Vector3 | null = null;
@@ -298,9 +309,9 @@ const pickR = <T,>(a: T[], r: () => number) => a[Math.floor(r() * a.length)];
 export function randomLook(r: () => number): PersonLook {
   const skin = pickR(SKINS, r), u = r();
   const heavy = r() < 0.25 ? 0.4 + r() * 0.6 : 0;
-  if (u < 0.36) return { skin, female: true, heavy, style: 'dress', top: pickR(DRESS, r), pattern: r() < 0.75 ? 'wax' : 'uni', accent: pickR(ACC, r), hat: r() < 0.65 ? 'headwrap' : null, shoes: 0x6b4a2e };
+  if (u < 0.36) return { skin, female: true, heavy, hair: r() < 0.45 ? 'braids' : 'puff', style: 'dress', top: pickR(DRESS, r), pattern: r() < 0.75 ? 'wax' : 'uni', accent: pickR(ACC, r), hat: r() < 0.65 ? 'headwrap' : null, shoes: 0x6b4a2e };
   if (u < 0.62) return { skin, heavy, style: 'boubou', top: pickR(BOUBOU, r), pattern: r() < 0.5 ? 'bazin' : 'uni', hat: r() < 0.5 ? 'kufi' : null, hatColor: r() < 0.6 ? 0xf2f2ec : 0x1c1c1f, shoes: 0x3a2a1e, beard: r() < 0.35 ? pickR([0xd8d4cc, 0x8a8580, 0x1a1414], r) : null };
-  return { skin, muscular: r() < 0.3 ? r() : 0, beard: r() < 0.15 ? 0x1a1414 : null, style: 'tee', top: pickR(TEES, r), pattern: r() < 0.25 ? 'rayure' : 'uni', accent: 0xffffff, bottom: pickR([0x2b2f3a, 0x3d4a5c, 0x1c1c1f, 0x6b5a45], r), shoes: pickR([0xf2f2ec, 0x1c1c1f, 0x8a5a3a], r) };
+  return { skin, hair: r() < 0.18 ? 'locs' : 'short', muscular: r() < 0.3 ? r() : 0, beard: r() < 0.15 ? 0x1a1414 : null, style: 'tee', top: pickR(TEES, r), pattern: r() < 0.25 ? 'rayure' : 'uni', accent: 0xffffff, bottom: pickR([0x2b2f3a, 0x3d4a5c, 0x1c1c1f, 0x6b5a45], r), shoes: pickR([0xf2f2ec, 0x1c1c1f, 0x8a5a3a], r) };
 }
 
 /** Derive a look from the old box outfit (used for the cast until each has an authored look). */
