@@ -1,11 +1,10 @@
 # Higgsfield reference and texture generation — plan (batch 1 run)
 
-Status (7 Oct 2026, 12:15 UTC): **batches 1 and 2 done, 34 credits spent (76 left).** Batch 1 validated by Habib (chat,
-7 Oct). Batch 2: 13 images (3 streets, salon, kitchen, dibiterie, 7 textures), 26 credits; first-look notes and seam checks
-in `assets-src/references/PROVENANCE.md`. Textures: concrete, breeze block, sand, floor tiles and painted metal pass; paving
-passes the seams but the slab layout is uneven; wood planks fail (top/bottom seam). Not generated: the Maïga-style eatery
-(term to confirm with Habib). Next: Habib reviews batch 2; then decide whether to redo wood/plaster/paving. Credits expire
-around 9–10 Oct.
+Status (7 Oct 2026, 13:10 UTC): **batches 1 and 2 validated by Habib, plus the Maïga eatery; 36 credits spent (74 left).**
+Files and notes in `assets-src/references/higgsfield/` and `assets-src/references/PROVENANCE.md`. A Maïga is a gargote-style
+eatery, smaller and dirtier (Habib, 7 Oct). Textures: concrete, breeze block, sand, floor tiles and painted metal pass;
+paving passes the seams but its slab layout is uneven; wood planks (batch 2) and plaster (batch 1) fail and are not used.
+Open: redo the failed textures (about 2 credits each) if wanted. Credits expire around 9–10 Oct.
 
 Earlier update (CLI sign-in): the cloud session signed in with the CLI (workspace "Private",
 plus plan, 110 credits) after `higgsfield.ai` was allowed in the environment's network settings. Cost estimates work
@@ -63,5 +62,6 @@ unfinished concrete, breeze blocks, sand, concrete paving, floor tiles, weathere
 | 7 Oct 02:34 | `5ca06dff-cfdd-4382-bbef-e636a68af495` | nano_banana_pro (MCP) | 2k, 1:1 | 2 | `04_texture_plaster_ochre.jpg` | #4 plaster texture — seam check failed, not used |
 | 7 Oct 12:11–12:12 | batch 2, 13 jobs (ids in PROVENANCE.md) | nano_banana_pro (MCP) | 2k, 16:9 ×6 / 1:1 ×7 | 26 | `05_…` to `17_…` | streets, interiors, dibiterie, textures |
 | 7 Oct 12:11 | 5 submissions refused ("Out of credits", spurious) | nano_banana_pro (MCP) | — | 0 | — | resubmitted |
+| 7 Oct 13:08 | `47a3b778-eed0-4abd-b312-e9a5435c53ea` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `18_maiga.jpg` | Maïga eatery ref |
 
-Running total: **34 / 100 credits** (account balance 110 → 76, checked against the Higgsfield transactions list).
+Running total: **36 / 100 credits** (account balance 110 → 74, checked against the Higgsfield transactions list).

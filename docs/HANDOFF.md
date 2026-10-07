@@ -22,10 +22,10 @@
 - Known limits: mitten hands, head ~2k triangles, boubou sleeves clip when forearms rise, beard edge jagged, muscular morph subtle.
 
 ## Next steps (in order)
-1. Higgsfield: **batches 1 and 2 done** (34 credits, 76 left) in `assets-src/references/higgsfield/`; batch 1 validated by Habib. Batch 2 (streets of Plateau, Corniche/Fann, Almadies/Ngor; salon; kitchen; dibiterie; 7 textures) awaits his review: notes and seam checks in `assets-src/references/PROVENANCE.md` (wood planks and the batch 1 plaster fail; paving layout uneven). Still to do: confirm what a Maïga-style eatery is, then generate it; optionally redo the failed textures. Credits expire around 9–10 Oct.
+1. Higgsfield: **batches 1 and 2 validated by Habib, plus the Maïga** (36 credits, 74 left) in `assets-src/references/higgsfield/`, notes in `assets-src/references/PROVENANCE.md`. A Maïga is a gargote-style eatery, smaller and dirtier. Failed textures (wood planks, plaster) are unused; paving slabs are uneven. Next use of the references: interiors (step 4) and the Blender facade kit (step 2). Credits expire around 9–10 Oct.
 2. Blender (Mac): car rapide GLB; modular facade kit (bays, shop ground floor, balcony, parapet) guided by the reviewed references; export GLB with a shared texture atlas; load per hub on demand.
 3. Real-phone tests: load time and fps on a mid-range Android and an iPhone at Low/Medium; then pick the default quality automatically.
-4. Family home and apartment interiors; dibiterie; Maïga-style eatery (confirm what Habib means first).
+4. Family home and apartment interiors; dibiterie; Maïga (a smaller, dirtier gargote; reference `18_maiga.jpg`).
 5. Phone interior camera (room feels tight at 390×844).
 
 ## Notes

@@ -72,7 +72,10 @@ Files in `assets-src/references/higgsfield/` (JPEG, full resolution; original PN
 | 16 | `16_texture_painted_metal.jpg` | `72d3d4e8-f408-45a8-b9d4-f57cfecb3ba8` | 1:1, 2048×2048 | 2 | Seamless tileable texture of weathered painted sheet metal, faded turquoise paint with small evenly spread scratches and light rust spots, front-facing orthographic view, flat even lighting, no large distinctive marks, no repeated motifs, no rivets, no text, fills the whole frame. |
 | 17 | `17_texture_wood_planks.jpg` | `d19198da-55b6-4cf4-aad3-3b216f375672` | 1:1, 2048×2048 | 2 | Seamless tileable texture of weathered wooden planks, exactly six vertical planks of equal width filling the frame edge to edge, natural brown wood with faded grain, front-facing orthographic view, flat even lighting, no knots that repeat, no nails, no shadows, no text. |
 
-### First look (Claude, 7 Oct) — not a review
+### First look (Claude, 7 Oct) and review
+
+**Validated by Habib in chat (7 Oct).** Same limits as batch 1: references only; cultural details stay Unreviewed;
+the wood planks stay unused (seam check failed).
 
 - **#5 Plateau:** arcaded colonial blocks, iron balconies, plain concrete blocks, taxis. One taxi shows a plate-like number:
   no text to be copied. **#6 Corniche/Fann:** balconied blocks with laundry, sea wall, palms, haze; shop signs blurred.
@@ -94,6 +97,19 @@ Files in `assets-src/references/higgsfield/` (JPEG, full resolution; original PN
 | 17 wood planks | **top/bottom seam**: every plank breaks at the same height | — | **fail**, not used |
 
 Nothing from batch 2 is used in the game yet.
+
+## Higgsfield — Maïga eatery (7 Oct 2026, 13:08 UTC)
+
+Habib (chat, 7 Oct): a Maïga is the same kind of eatery as a gargote, **smaller and dirtier**. Same model and settings,
+cost checked first, **2 credits** (balance 76 → 74).
+
+| # | File | Job id | Aspect | Credits | Prompt |
+| --- | --- | --- | --- | --- | --- |
+| 18 | `18_maiga.jpg` | `47a3b778-eed0-4abd-b312-e9a5435c53ea` | 16:9, 2752×1536 | 2 | Interior of a tiny, cramped and grimy neighbourhood Maïga eatery in Dakar, Senegal, smaller and dirtier than a typical gargote: one narrow room, stained and peeling painted walls, a worn tiled floor, a short counter with two or three large dented aluminium cooking pots, one long table with a faded patterned oilcloth, a wooden bench and a few mismatched plastic chairs, a small fan, a single bare bulb, smoke-darkened ceiling, midday light from the open doorway. No faces in focus, no readable text, no brand logos. |
+
+First look (not reviewed): a narrow corridor-like room, blue-green walls stained and peeling, soot-black ceiling, pots on
+gas rings on a battered wooden counter, a bench and an oilcloth table along one wall, a wall fan, a bare bulb, the open
+door to a busy street (figures blurred). Useful for: the Maïga as a cramped, dirtier variant of the gargote interior.
 
 ## Photos supplied by Habib (7 Oct 2026, in chat)
 
