@@ -5,7 +5,7 @@ import { makeTaxi, makeCarRapide } from './vehicles';
 import { pick } from '../core/rng';
 import type { HubWorld } from '../world/types';
 
-interface Walker { char: { group: THREE.Group; animate(dt: number, speed: number): void }; ax: number; az: number; bx: number; bz: number; t: number; speed: number; lat: number; prev: string }
+interface Walker { char: { group: THREE.Group; animate(dt: number, speed: number): void; lookTarget?: THREE.Vector3 | null }; ax: number; az: number; bx: number; bz: number; t: number; speed: number; lat: number; prev: string }
 
 const nodeKey = (x: number, z: number) => `${Math.round(x)},${Math.round(z)}`;
 
@@ -60,6 +60,9 @@ export class Crowd {
       w.char.group.position.set(x, 0.1, z); w.char.group.rotation.y = Math.atan2(dx, dz);
       const far = Math.hypot(x - px, z - pz) > 60;
       w.char.group.visible = !far;
+      // passers-by glance at the player when they come close
+      const dp = Math.hypot(x - px, z - pz);
+      w.char.lookTarget = dp < 4.5 ? (w.char.lookTarget ?? new THREE.Vector3()).set(px, 1.6, pz) : null;
       if (!far) w.char.animate(dt, w.speed);
     }
   }
@@ -135,11 +138,38 @@ export class Loiterers {
       }
     }
   }
+  /** Conversation: one speaker at a time (Talk), the others turn their heads to the speaker; turns rotate every few seconds. */
+  private groups: { members: Humanoid[]; speaker: number; t: number }[] = [];
+  private t = 0;
   update(dt: number, px: number, pz: number) {
+    this.t += dt;
+    if (!this.groups.length && this.people.length) {
+      let cur: Humanoid[] = [];
+      for (const h of this.people) {
+        const last = cur[cur.length - 1];
+        if (last && last.group.position.distanceTo(h.group.position) > 3.2) { this.groups.push({ members: cur, speaker: 0, t: 2 + Math.random() * 3 }); cur = []; }
+        cur.push(h);
+      }
+      if (cur.length) this.groups.push({ members: cur, speaker: 0, t: 2 + Math.random() * 3 });
+    }
+    for (const g of this.groups) {
+      const near = Math.hypot(g.members[0].group.position.x - px, g.members[0].group.position.z - pz) < 35;
+      g.t -= dt;
+      if (g.t <= 0 && g.members.length > 1) {
+        g.speaker = (g.speaker + 1 + Math.floor(Math.random() * (g.members.length - 1))) % g.members.length; g.t = 2.5 + Math.random() * 4;
+        g.members.forEach((m, i) => { if (m.hold !== 'Sit') m.hold = i === g.speaker ? 'Talk' : 'Idle'; });
+      }
+      const sp = g.members[g.speaker];
+      for (const m of g.members) {
+        if (!near) { m.lookTarget = null; continue; }
+        if (m === sp) { const o = g.members[(g.speaker + 1) % g.members.length]; m.lookTarget = o === m ? null : o.group.position.clone().setY(1.6); }
+        else m.lookTarget = sp.group.position.clone().setY(sp.hold === 'Sit' ? 1.15 : 1.6);
+      }
+    }
     for (const h of this.people) {
       const far = Math.hypot(h.group.position.x - px, h.group.position.z - pz) > 60;
       h.group.visible = !far;
-      if (!far) h.update(dt);
+      if (!far) { h.play(h.hold ?? 'Idle', 0.3); h.update(dt); }
     }
   }
 }

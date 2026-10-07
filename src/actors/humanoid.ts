@@ -246,8 +246,35 @@ export class Humanoid {
       else this.play('Idle', 0.25);
     } else this.play(this.hold, 0.2);
     this.mixer.update(dt);
+    this.applyLook(dt);
   }
-  update(dt: number) { this.mixer.update(dt); }
+  update(dt: number) { this.mixer.update(dt); this.applyLook(dt); }
+
+  /** World point the head turns toward (neck + head share the turn), or null. Limited to ±70° yaw, ±25° pitch. */
+  lookTarget: THREE.Vector3 | null = null;
+  private lookYaw = 0; private lookPitch = 0;
+  private headBone?: THREE.Bone; private neckBone?: THREE.Bone;
+  private static tmpV = new THREE.Vector3(); private static tmpQ = new THREE.Quaternion(); private static axisY = new THREE.Vector3(0, 1, 0); private static axisX = new THREE.Vector3(1, 0, 0);
+  private applyLook(dt: number) {
+    if (!this.headBone) { this.headBone = this.root.getObjectByName('head') as THREE.Bone; this.neckBone = this.root.getObjectByName('neck') as THREE.Bone; }
+    let ty = 0, tp = 0;
+    if (this.lookTarget && this.headBone) {
+      const v = Humanoid.tmpV.copy(this.lookTarget); this.group.worldToLocal(v);
+      const hy = 1.62 * (this.group.scale.y || 1);
+      ty = THREE.MathUtils.clamp(Math.atan2(v.x, v.z), -1.2, 1.2);
+      tp = THREE.MathUtils.clamp(Math.atan2(v.y - hy, Math.hypot(v.x, v.z)), -0.45, 0.4);
+      if (Math.abs(Math.atan2(v.x, v.z)) > 1.9) { ty = 0; tp = 0; }          // behind: don't twist
+    }
+    const k = Math.min(1, dt * 4);
+    this.lookYaw += (ty - this.lookYaw) * k; this.lookPitch += (tp - this.lookPitch) * k;
+    if (Math.abs(this.lookYaw) < 1e-3 && Math.abs(this.lookPitch) < 1e-3) return;
+    // bones' local Y runs along the bone (up the neck): yaw = turn about local Y, pitch = about local X
+    for (const [b, f] of [[this.neckBone, 0.4], [this.headBone, 0.6]] as const) {
+      if (!b) continue;
+      b.quaternion.multiply(Humanoid.tmpQ.setFromAxisAngle(Humanoid.axisY, this.lookYaw * f));
+      b.quaternion.multiply(Humanoid.tmpQ.setFromAxisAngle(Humanoid.axisX, this.lookPitch * f));
+    }
+  }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
 }
 
