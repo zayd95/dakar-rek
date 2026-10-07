@@ -139,7 +139,16 @@ function carRapideGeometry(): THREE.BufferGeometry {
   b.box(2.3, 0.95, 6.5, 0, 0.45, -0.1, BL);                                       // lower body (painted panels go on top)
   b.box(2.32, 0.28, 6.52, 0, 1.38, -0.1, W);                                      // white band
   b.box(2.24, 0.92, 5.6, 0, 1.64, -0.55, Y);                                      // passenger cabin
-  b.box(2.27, 0.56, 5.3, 0, 1.78, -0.6, GL);                                      // window row
+  b.box(2.1, 0.56, 5.3, 0, 1.78, -0.6, GL);                                       // window row (inset: passengers show through)
+  // passengers: heads and shoulders at the windows, some in headwraps (a few seats left empty)
+  const SK = [0x3b2216, 0x5b3420, 0x6b3f25, 0x4e2e1c], WRAP = [0xd9322b, 0xf4c20d, 0x1a9d54, 0x6b3fa0, 0xe8742c];
+  for (const sx of [-1, 1]) for (let k = 0; k < 5; k++) {
+    if ((k * 3 + (sx > 0 ? 1 : 0)) % 5 === 4) continue;
+    const z = -2.75 + k * 1.02 + (sx > 0 ? 0.2 : 0);
+    b.box(0.2, 0.22, 0.5, sx * 1.02, 1.78, z, [0xf2f2ec, 0x2f6fb3, 0x1a9d54, 0xd9482b, 0x8a5a3a][(k + (sx > 0 ? 2 : 0)) % 5]); // shoulders
+    b.blob(0.13, sx * 1.03, 2.08, z, SK[(k + 1) % 4], 1.15, 1);
+    if (k % 2 === (sx > 0 ? 0 : 1)) b.box(0.24, 0.12, 0.26, sx * 1.03, 2.18, z, WRAP[(k + (sx > 0 ? 3 : 0)) % 5]);
+  }
   for (let k = 0; k < 6; k++) b.box(2.29, 0.58, 0.14, 0, 1.77, -3.15 + k * 1.02, Y);
   b.box(2.24, 0.16, 5.6, 0, 2.54, -0.55, W);                                      // white roof
   axle(b, 0.42, 2.24, 0, 2.12, 2.23, Y, 10);                                       // rounded front of the roof

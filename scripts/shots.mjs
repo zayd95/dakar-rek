@@ -72,6 +72,17 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => window.__dakar.exit()); await page.waitForTimeout(900);
   const outPos = await page.evaluate(() => window.__dakar.pos());
   check('interior: exit back to the street', outPos.x < 900 && outPos.hub === 'pikine', `${outPos.x.toFixed(1)},${outPos.z.toFixed(1)}`);
+  // dibiterie: walk in from the street to the counter
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.place(-18, -56, 0); });
+  await page.keyboard.down('KeyW'); for (let i = 0; i < 40; i++) { await page.waitForTimeout(300); if ((await page.evaluate(() => window.__dakar.pos())).z > -50.5) break; } await page.keyboard.up('KeyW');
+  const dib = await page.evaluate(() => window.__dakar.pos());
+  check('dibiterie: walk in from the street', /Dibiterie/.test(dib.near ?? ''), `${dib.z.toFixed(1)} ${dib.near}`);
+  // monument stair: standing half-way up puts the player well above the street
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('corniche'); d.place(-44, -90, Math.PI / 2); });
+  await page.waitForTimeout(400);
+  const st = await page.evaluate(() => window.__dakar.pos());
+  check('monument: stair height', st.y > 4 && st.y < 9, st.y.toFixed(2));
+  await page.evaluate(() => window.__dakar.teleport('pikine'));
   // travel
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.__dakar.travelTo('corniche'));

@@ -96,7 +96,7 @@ the wood planks stay unused (seam check failed; replaced by #19). Paving #14 is 
 | 16 painted metal | invisible | half-image repeat visible at 3×3 | pass (colour map) |
 | 17 wood planks | **top/bottom seam**: every plank breaks at the same height | — | **fail**, not used |
 
-Nothing from batch 2 is used in the game yet.
+Batch-2 textures used in the game: see "Used in the game" below.
 
 ## Higgsfield — Maïga eatery (7 Oct 2026, 13:08 UTC)
 
@@ -142,6 +142,24 @@ Asked by Habib (chat, 7 Oct: redo the failed textures, then the làmb arena). Sa
   a gate with crowd barriers, a dense queue, vendors with parasols, taxis and motorbikes, Senegalese flags and fabric
   banners. Drums, set-up and crowd are **Unreviewed** cultural content. Useful for: `src/world/builder.ts` arena (ring
   boundary, canopy, stands fence, perimeter wall and gate) and the arena-day street scene.
+
+## Used in the game (7 Oct 2026, cloud session)
+
+Derived 512 px JPEGs in `public/assets/tex/` (loaded on demand; switched off on Low quality):
+
+| Game file | From | Processing | Used for |
+| --- | --- | --- | --- |
+| `breeze_block.jpg` | #12 | greyscale, contrast ×1.7, mean normalised to 0.84 so it modulates the wall colour | raw breeze-block yard walls (Pikine), 1.6 m per repeat |
+| `sand.jpg` | #13 | tint neutralised (mean 0.9) | ground plane of every hub, 3 m per repeat |
+| `painted_metal.jpg` | #16 | greyscale, contrast ×1.5, mean 0.82 | gates and boutique shutters, 1.2 m per repeat |
+| `floor_tiles_terracotta.jpg` | #15 | resized only (colour kept) | gargote floors, 1.2 m per repeat (4 × 4 tiles of 30 cm) |
+
+Each was tiled 3×3 after processing: no visible seam. Not used: #4 plaster and #17 wood (seam failures), #14 paving
+(slab layout to be judged by Habib), #11 concrete (no use yet). Reference images #10 (dibiterie) guided the dibiterie build.
+
+Terms (checked 7 Oct 2026, Higgsfield help centre "Who owns my generations", dated 2 Aug 2026, citing Terms of Use §4–5):
+the user owns inputs and outputs; commercial use is not restricted and not limited to paid plans; outputs are not
+guaranteed exclusive; outputs may not be used to train or improve AI/ML models. Re-check before a public release.
 
 ## Photos supplied by Habib (7 Oct 2026, in chat)
 

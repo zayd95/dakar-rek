@@ -51,6 +51,11 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'regarder', label: 'S’asseoir dans les tribunes', detail: 'Ambiance et sabar', needs: { social: 10, moral: 8 }, seconds: 0, special: 'watch' },
     { id: 'combat', label: 'Combattre un adversaire', seconds: 0, requires: () => 'Bientôt : règles à valider (lutte simple ou avec frappe)' },
   ],
+  dibiterie: [
+    { id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois, oignons et moutarde', cost: 2000, needs: { faim: 55, moral: 10, social: 4 }, seconds: 3, counter: 'meals' },
+    { id: 'brochettes', label: 'Brochettes à emporter', cost: 1000, needs: { faim: 28, moral: 4 }, seconds: 2, counter: 'meals' },
+    { id: 'attendre', label: 'S’asseoir sur le banc', detail: 'Regarder la rue, discuter', needs: { social: 8, moral: 4 }, seconds: 3 },
+  ],
   ibou: [
     { id: 'parler', label: 'Discuter avec Tonton Ibou', needs: { social: 10, moral: 4 }, seconds: 3, counter: 'chats' },
     { id: 'attaya', label: 'Boire l’attaya ensemble', detail: '200 F le thé', cost: 200, needs: { social: 14, moral: 8 }, seconds: 4, counter: 'chats' },

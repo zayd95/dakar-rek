@@ -6,7 +6,7 @@ import { ACTIONS, ENTER } from './content';
 import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
-import { pavingTexture, breezeBlockTexture } from './textures';
+import { pavingTexture, generatedTexture } from './textures';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
@@ -16,7 +16,7 @@ const roadC = (k: number) => -HALF + ROAD / 2 + k * PITCH;
 const blockMin = (i: number) => -HALF + ROAD + i * PITCH;
 
 type Special = 'mosque' | 'market' | 'station' | 'monument' | 'gym' | 'pitch' | 'port' | 'arena' | 'ecurie' | 'plaza';
-type KioskKind = 'gargote' | 'restaurant' | 'cafe' | 'garage' | 'home';
+type KioskKind = 'gargote' | 'restaurant' | 'cafe' | 'garage' | 'home' | 'dibiterie';
 interface KioskSpec { i: number; j: number; lot: 0 | 1 | 2 | 3; kind: KioskKind; name: string }
 type Style = 'dense' | 'villa' | 'student' | 'banlieue';
 interface HubSpec {
@@ -30,7 +30,7 @@ const SPECS: Record<HubId, HubSpec> = {
     id: 'plateau', seed: 11, style: 'dense', ground: 0xcdbf9f, road: 0x4b4e54, walk: 0xc2baa8, blockGround: 0xada594,
     palette: [0xf1e6d2, 0xe8d8b8, 0xdcd0c0, 0xf4efe6, 0xc7d5df, 0xe3c9a6, 0xd9a47c], floors: [3, 7], palms: 6,
     specials: { '1,1': 'mosque', '2,1': 'market', '2,2': 'station' },
-    kiosks: [{ i: 1, j: 2, lot: 3, kind: 'gargote', name: 'Gargote Chez Fatou' }, { i: 3, j: 2, lot: 0, kind: 'cafe', name: 'Café Touba · Sandaga' }],
+    kiosks: [{ i: 1, j: 2, lot: 3, kind: 'gargote', name: 'Gargote Chez Fatou' }, { i: 1, j: 2, lot: 2, kind: 'dibiterie', name: 'Dibiterie de la Médina' }, { i: 3, j: 2, lot: 0, kind: 'cafe', name: 'Café Touba · Sandaga' }],
     spawnBlock: [2, 2],
   },
   corniche: {
@@ -52,7 +52,7 @@ const SPECS: Record<HubId, HubSpec> = {
     palette: [0x5fa8c9, 0x8fcf9a, 0xe7b45a, 0xe58aa0, 0xd9d2c4, 0x9c8fd1, 0xd96f4f, 0x7fb8a4], floors: [1, 2], palms: 5,
     specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station' },
     kiosks: [
-      { i: 1, j: 1, lot: 0, kind: 'home', name: 'Ma chambre' }, { i: 3, j: 2, lot: 2, kind: 'gargote', name: 'Gargote Mame Diarra' },
+      { i: 1, j: 1, lot: 0, kind: 'home', name: 'Ma chambre' }, { i: 1, j: 1, lot: 1, kind: 'dibiterie', name: 'Dibiterie Chez Pathé' }, { i: 3, j: 2, lot: 2, kind: 'gargote', name: 'Gargote Mame Diarra' },
       { i: 0, j: 2, lot: 1, kind: 'cafe', name: 'Café Touba · Parcelles' }, { i: 3, j: 1, lot: 3, kind: 'garage', name: 'Garage Modou' },
     ],
     spawnBlock: [1, 1],
@@ -109,15 +109,19 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const glass = new Batch(), water = new Batch(), leaves = new Batch();
   const pave = new Batch(), blocks = new Batch();   // world-space textured: paving slabs, raw breeze blocks
   const pools: THREE.BufferGeometry[] = [];
-  const pool = (x: number, z: number, r: number) => {
-    const g = new THREE.PlaneGeometry(r * 2, r * 2); g.rotateX(-Math.PI / 2); g.translate(x, 0.16, z); pools.push(g);
+  const pool = (x: number, z: number, r: number, y = 0.16) => {
+    const g = new THREE.PlaneGeometry(r * 2, r * 2); g.rotateX(-Math.PI / 2); g.translate(x, y, z); pools.push(g);
   };
 
   const tex = facadeTextures();
   const facadeMat = addGrain(new THREE.MeshLambertMaterial({ map: tex.map, vertexColors: true, emissive: 0xffc070, emissiveMap: tex.glow, emissiveIntensity: 0 }), 0.7, 1, true) as THREE.MeshLambertMaterial;
   const plainMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 1, 1);
   const paveMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.6, 1, false, pavingTexture(), 2);
-  const blockMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.6, 1, false, breezeBlockTexture(), 1.6);
+  // raw breeze-block walls: Higgsfield texture #12, 4 blocks × 8 courses per repeat = 1.6 m (40 × 20 cm parpaings)
+  const blockMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.4, 1, false, generatedTexture('breeze_block'), 1.6);
+  // painted metal gates and shutters: Higgsfield texture #16 (desaturated), 1 m per repeat
+  const metalMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.3, 1, false, generatedTexture('painted_metal'), 1.2);
+  const metal = new Batch();
   const leafMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), 0.8, 2.5);
   const glassMat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x335577, emissiveIntensity: 0.25 });
   const lampMat = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -125,7 +129,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const size = HALF * 2;
   const banlieue = sp.style === 'banlieue';
   // Ground, with the sea or beach on open sides.
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), addGrain(new THREE.MeshLambertMaterial({ color: sp.ground }), 1.2, 0.5));
+  // ground: grain plus the Higgsfield sand texture #13 (3 m per repeat)
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), addGrain(new THREE.MeshLambertMaterial({ color: sp.ground }), 1.2, 0.5, false, generatedTexture('sand'), 3));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.02; ground.receiveShadow = true; group.add(ground);
 
   const bounds = { x0: -HALF - 3, x1: HALF + 3, z0: -HALF - 3, z1: HALF + 3 };
@@ -233,6 +238,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
 
   const signs: THREE.Mesh[] = [];
   const rapides: THREE.Object3D[] = [];
+  /** Climbable stairs: height rises linearly from y0 at x0 to y1 at x1, then stays at y1 until xEnd. */
+  const ramps: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number; xEnd: number }[] = [];
   const addSign = (text: string, bg: string, fg: string, x: number, y: number, z: number, rotY: number, w = 6, h = 1.5) => {
     const tex = text.length > 18 ? signTexture(text, bg, fg, 768, 112) : signTexture(text, bg, fg);   // long names get a wider canvas so they never clip
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
@@ -276,7 +283,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const SHOP_BOARDS = [0xd9482b, 0xf4c20d, 0x1e6fd9, 0x2f8f4e, 0xe8742c, 0x6b3fa0];
   const shopfront = (x: number, z: number, nx: number, nz: number) => {
     const rot = Math.atan2(nx, nz);
-    plain.box(2.6, 2.4, 0.08, x, G, z, R() < 0.5 ? 0x8a9096 : 0x6f8aa0, rot);
+    metal.box(2.6, 2.4, 0.08, x, G, z, R() < 0.5 ? 0x8a9096 : 0x6f8aa0, rot);
     for (let k = 0; k < 3; k++) plain.box(2.6, 0.04, 0.1, x, G + 0.5 + k * 0.6, z, 0x5c6266, rot);
     plain.box(3.0, 0.6, 0.1, x + nx * 0.03, G + 2.6, z + nz * 0.03, pick(SHOP_BOARDS, R), rot);
   };
@@ -342,7 +349,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   /** Painted metal gate set into a yard wall (normal nx, nz). */
   const gate = (x: number, z: number, nx: number, nz: number, h = 2.2) => {
     const rot = Math.atan2(nx, nz), col = pick(GATES, R);
-    plain.box(2.6, h, 0.42, x, G - 0.02, z, col, rot);
+    metal.box(2.6, h, 0.42, x, G - 0.02, z, col, rot);
     for (let k = 0; k < (lite ? 0 : 4); k++) plain.box(0.06, h - 0.3, 0.46, x + (nz ? -0.9 + k * 0.6 : 0), G + 0.15, z + (nx ? -0.9 + k * 0.6 : 0), shade(col, 0.7), rot);
     for (const s of [-1.45, 1.45]) plain.box(0.45, h + 0.4, 0.5, x + (nz ? s : 0), G - 0.02, z + (nx ? s : 0), 0xe9e1cf, rot);
   };
@@ -441,6 +448,71 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     }
     solidC(cx, cz, w + 0.5, d + 0.5, h);
   };
+
+  /**
+   * Dibiterie (grilled-meat eatery), after Higgsfield reference #10 (artistic interpretation): an open-fronted room the
+   * player walks into, under a corrugated tin awning; charcoal grill with skewers and smoke at the front edge, tiled
+   * butcher's counter with hanging meat inside, a wooden bench, plastic tables and chairs, a bulb and a fluorescent tube,
+   * walls painted blue to waist height and cream above. Names are fictional.
+   */
+  const dibiterie = (k: KioskSpec) => {
+    const L = lotRect(k.i, k.j, k.lot % 2, k.lot >> 1);
+    const south = (k.lot >> 1) === 1, dir = south ? 1 : -1;
+    const w = 11, d = 7.5, h = 3.4, cx = L.cx;
+    const cz = south ? L.z1 - d / 2 - 0.5 : L.z0 + d / 2 + 0.5;
+    const front = cz + dir * d / 2, back = cz - dir * d / 2;
+    const at = (t: number) => cz + dir * t;                                           // depth from the centre toward the street
+    const WB = 0x5f8fae, WC = 0xeee2c4;
+    plain.box(w, 0.06, d, cx, G - 0.02, cz, 0xb9b2a4);                                // cement floor
+    for (const [bw, bx, bz, bd] of [[w, cx, back, 0.3], [0.3, cx - w / 2, cz, d], [0.3, cx + w / 2, cz, d]] as const) {
+      plain.box(bw, 1.2, bd, bx, G, bz, WB); plain.box(bw, h - 1.2, bd, bx, G + 1.2, bz, WC);
+    }
+    plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h, cz, 0xd2cdc2);                        // roof slab
+    for (const sx of [-1, 1]) plain.box(0.4, h, 0.4, cx + sx * (w / 2 - 0.2), G, front, WC); // front piers
+    plain.box(w, 0.5, 0.35, cx, G + h - 0.5, front, WC);                              // lintel
+    // corrugated tin awning on poles over the pavement
+    for (let n = 0; n < 12; n++) plain.box((w + 1) / 12 + 0.02, 0.06, 2.8, cx - (w + 1) / 2 + (n + 0.5) * ((w + 1) / 12), G + 3.0 - (n % 2) * 0.05, front + dir * 1.4, n % 2 ? 0x9aa0a4 : 0x8a8f93);
+    for (const sx of [-1, 1]) plain.box(0.08, 2.9, 0.08, cx + sx * (w / 2 + 0.3), G, front + dir * 2.7, 0x555555);
+    // charcoal grill at the front edge with skewers and glowing embers
+    const gx = cx - 2.5, gz = at(d / 2 - 0.6);
+    plain.box(2.0, 0.8, 0.7, gx, G, gz, 0x3a3a3a); for (const sx of [-1, 1]) for (const sz of [-1, 1]) plain.box(0.06, 0.8, 0.06, gx + sx * 0.95, G, gz + sz * 0.3, 0x2a2a2a);
+    lampBulbs.box(1.8, 0.04, 0.55, gx, G + 0.82, gz, 0xff7a2a);                       // embers
+    for (let n = 0; n < 9; n++) { plain.box(0.03, 0.03, 0.7, gx - 0.8 + n * 0.2, G + 0.9, gz, 0xb0b0b0); plain.box(0.1, 0.07, 0.4, gx - 0.8 + n * 0.2, G + 0.92, gz, 0x7a3a1e); }
+    solidC(gx, gz, 2.0, 0.8, 1);
+    // butcher's counter (white tiles) with meat hanging from a rail
+    const kz = at(-d / 2 + 1.4);
+    plain.box(4.5, 1.05, 0.9, cx + 2.4, G, kz, 0xf2f0ea); plain.box(4.6, 0.06, 1.0, cx + 2.4, G + 1.05, kz, 0xd8d4cc);
+    plain.box(4.6, 0.04, 0.04, cx + 2.4, G + 2.4, kz - dir * 0.6, 0x9a9a9a);
+    for (let n = 0; n < 5; n++) { plain.box(0.02, 0.25, 0.02, cx + 0.6 + n * 0.8, G + 2.15, kz - dir * 0.6, 0x9a9a9a); plain.blob(0.22, cx + 0.6 + n * 0.8, G + 1.85, kz - dir * 0.6, n % 2 ? 0x9c3a2e : 0xb24b3a, 1.6, 0); }
+    solidC(cx + 2.4, kz, 4.6, 1.2, 1.1);
+    // bench along the side wall, plastic tables and chairs in the room
+    plain.box(0.5, 0.45, 3.4, cx - w / 2 + 0.6, G, cz, 0x7a5a3c); plain.box(0.1, 0.9, 3.4, cx - w / 2 + 0.3, G + 0.45, cz, 0x6b4a2e);
+    solidC(cx - w / 2 + 0.6, cz, 0.6, 3.4, 0.5);
+    for (const [tx, tz, col] of [[cx - 1.2, at(-0.3), 0xf2f2ee], [cx + 1.4, at(1.5), 0x2a8fd1]] as const) {
+      plain.box(0.06, 0.72, 0.06, tx, G, tz, 0x666666); plain.box(1.1, 0.04, 0.75, tx, G + 0.72, tz, col);
+      for (const sx of [-1, 1]) { plain.box(0.45, 0.04, 0.45, tx + sx * 0.8, G + 0.45, tz, sx > 0 ? 0x1a9d54 : col); plain.box(0.45, 0.45, 0.04, tx + sx * 1.0, G + 0.45, tz, sx > 0 ? 0x1a9d54 : col); for (const dz of [-0.18, 0.18]) plain.box(0.04, 0.45, 0.04, tx + sx * 0.8, G, tz + dz, 0xdddddd); }
+      solidC(tx, tz, 1.2, 0.8, 0.8);
+      plain.cyl(0.12, 0.12, 0.03, tx - 0.2, G + 0.76, tz, 0xf4f1e8, 10); plain.box(0.2, 0.05, 0.12, tx + 0.2, G + 0.78, tz, 0x7a3a1e);
+    }
+    // lights: fluorescent tube and a bare bulb
+    plain.box(1.3, 0.06, 0.12, cx, G + h - 0.12, at(-1), 0xdddddd); lampBulbs.box(1.2, 0.05, 0.06, cx, G + h - 0.17, at(-1), 0xeaf6ff);
+    plain.cyl(0.01, 0.01, 0.3, gx, G + h - 0.3, gz - dir * 0.8, 0x222222, 4); lampBulbs.sphere(0.07, gx, G + h - 0.36, gz - dir * 0.8, 0xfff1c8);
+    // walls collide (front stays open)
+    solid(cx - w / 2 - 0.3, Math.min(back, front), cx - w / 2 + 0.15, Math.max(back, front), h);
+    solid(cx + w / 2 - 0.15, Math.min(back, front), cx + w / 2 + 0.3, Math.max(back, front), h);
+    solidC(cx, back, w, 0.4, h);
+    addSign(k.name.toUpperCase(), '#7c2d12', '#fff7e0', cx, G + h - 0.25, front + dir * 0.2, dir > 0 ? 0 : Math.PI, 6.8, 0.75);
+    smokeAt.push({ x: gx, y: G + 1.0, z: gz });
+    pool(cx, at(-0.6), 5, G + 0.07); pool(gx, gz + dir * 1.2, 3.2, G + 0.07);          // light spilling at night
+    const face = dir > 0 ? 0 : Math.PI;                                               // facing the street
+    people.push({ x: gx, z: gz - dir * 0.75, yaw: face, clip: 'Talk' });            // the cook at the grill
+    people.push({ x: cx - 1.2 - 0.85, z: at(-0.3), yaw: Math.PI / 2, clip: 'Sit', y: -0.05 });
+    people.push({ x: cx + 1.4 + 0.85, z: at(1.5), yaw: -Math.PI / 2, clip: 'Sit', y: -0.05 });
+    people.push({ x: cx + 2.4, z: kz - dir * 0.75, yaw: face, clip: 'Idle' });     // the butcher behind the counter
+    interactables.push({ id: `${id}:dibiterie:${k.i}${k.j}`, name: k.name, kind: 'actions', x: cx, z: at(0.6), radius: 3.6, actions: ACTIONS.dibiterie });
+  };
+  const smokeAt: { x: number; y: number; z: number }[] = [];
+  const people: HubWorld['people'] = [];
 
   const kioskAt = (k: KioskSpec) => {
     const L = lotRect(k.i, k.j, k.lot % 2, k.lot >> 1);
@@ -611,7 +683,13 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         L([-0.1, 3.5, 13.8], [-1.9, 3.9, 14.1], 0.5, 0.15);                                                      // hair streaming back
         L([-0.3, 4.4, 12.0], [-2.0, 5.9, 10.8], 0.42, 0.38); L([-2.0, 5.9, 10.8], [-3.6, 7.2, 9.6], 0.38, 0.3);  // arm flung back
         // hill collider: square plus cross approximate the round hill; the block corners stay free
-        solidC(cx, cz, 32, 32, top + 2); solidC(cx, cz, 44, 16, top); solidC(cx, cz, 16, 44, top);
+        // The stair is walkable: a corridor |z - cz| < 3.3 from the foot (x0) to the summit terrace in front of the rock.
+        // Everything else on the hill collides (square and cross approximate the round hill; block corners stay free).
+        const SH = SW / 2 - 0.2, rockX = cx - 5.4;
+        solid(rockX, cz - 16, cx + 16, cz + 16, top + 2);
+        solid(cx - 22, cz - 16, rockX, cz - SH, top + 2); solid(cx - 22, cz + SH, rockX, cz + 16, top + 2);
+        solid(cx - 8, cz - 22, cx + 8, cz - 16, top); solid(cx - 8, cz + 16, cx + 8, cz + 22, top); solid(cx + 16, cz - 8, cx + 22, cz + 8, top);
+        ramps.push({ x0, x1, z0: cz - SH, z1: cz + SH, y0: 0.3, y1: HH + 0.2, xEnd: rockX });          // tread tops are hAt + 0.4; feet sit at 0.1 + height
         plain.box(0.5, 1.6, 9, cx - R0 - 2.2, B, cz + 9, STONE);                                                // name plaque wall at the stair foot
         addSign('MONUMENT DE LA RENAISSANCE AFRICAINE', '#14212b', '#d8e2dc', cx - R0 - 2.47, B + 0.85, cz + 9, -Math.PI / 2, 8, 1.0);
         // festive corners: a canopy, speakers and bunting (people in actors/life.ts)
@@ -804,6 +882,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     for (let lot = 0; lot < 4; lot++) {
       const k = kioskLots.get(`${i},${j},${lot}`);
       if (k) {
+        if (k.kind === 'dibiterie') { dibiterie(k); continue; }
         const info = kioskAt(k);
         if (k.kind === 'home') {
           // Face the home at an angle: the camera stays on the street side and the first view shows the neighbourhood.
@@ -872,16 +951,45 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     stall(x, z);
   }
 
-  for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true]] as [Batch, THREE.Material, boolean][]) {
+  for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true]] as [Batch, THREE.Material, boolean][]) {
     const mesh = b.build(m, true, shadow); if (mesh) group.add(mesh);
   }
   const lampGlow = new THREE.Mesh(mergeGeometries(pools, false)!, new THREE.MeshBasicMaterial({ map: lightPoolTexture(), color: 0xffb860, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
   lampGlow.visible = false; lampGlow.renderOrder = 1; group.add(lampGlow);
   for (const s of signs) (s.material as THREE.MeshLambertMaterial).emissiveMap = (s.material as THREE.MeshLambertMaterial).map;
+  // Grill smoke: a few soft sprites per grill rising, spreading and fading (looped, local only).
+  const smoke: { s: THREE.Sprite; o: { x: number; y: number; z: number }; t: number }[] = [];
+  if (smokeAt.length) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const c = cv.getContext('2d')!, gr = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(235,235,232,0.9)'); gr.addColorStop(0.6, 'rgba(220,220,216,0.35)'); gr.addColorStop(1, 'rgba(210,210,205,0)');
+    c.fillStyle = gr; c.fillRect(0, 0, 64, 64);
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+    for (const o of smokeAt) for (let n = 0; n < (lite ? 4 : 9); n++) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.5 }));
+      sp.renderOrder = 2; group.add(sp); smoke.push({ s: sp, o, t: n / (lite ? 4 : 9) });
+    }
+  }
+  const tick = (dt: number) => {
+    for (const p of smoke) {
+      p.t = (p.t + dt * 0.28) % 1;
+      const k = p.t, m = p.s.material as THREE.SpriteMaterial;
+      p.s.position.set(p.o.x + Math.sin(k * 5 + p.o.z) * 0.3 + k * 0.6, p.o.y + k * 3.2, p.o.z + Math.cos(k * 4) * 0.2);
+      p.s.scale.setScalar(0.5 + k * 1.8); m.opacity = 0.55 * (1 - k) * Math.min(1, k * 6);
+    }
+  };
 
   return {
     id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs,
-    rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
+    tick,
+    heightAt(x: number, z: number) {
+      for (const r of ramps) {
+        if (z < r.z0 || z > r.z1 || x < r.x0 || x > r.xEnd) continue;
+        return x >= r.x1 ? r.y1 : r.y0 + ((x - r.x0) / (r.x1 - r.x0)) * (r.y1 - r.y0);
+      }
+      return 0;
+    },
+    people, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
     dispose() { disposeGroup(group); },
   };
 }
