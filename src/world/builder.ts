@@ -109,6 +109,9 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const glass = new Batch(), water = new Batch(), leaves = new Batch();
   const pave = new Batch(), blocks = new Batch();   // world-space textured: paving slabs, raw breeze blocks
   const pools: THREE.BufferGeometry[] = [];
+  const pool = (x: number, z: number, r: number) => {
+    const g = new THREE.PlaneGeometry(r * 2, r * 2); g.rotateX(-Math.PI / 2); g.translate(x, 0.16, z); pools.push(g);
+  };
 
   const tex = facadeTextures();
   const facadeMat = addGrain(new THREE.MeshLambertMaterial({ map: tex.map, vertexColors: true, emissive: 0xffc070, emissiveMap: tex.glow, emissiveIntensity: 0 }), 0.7, 1, true) as THREE.MeshLambertMaterial;
@@ -128,24 +131,44 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const bounds = { x0: -HALF - 3, x1: HALF + 3, z0: -HALF - 3, z1: HALF + 3 };
   const seaMat = new THREE.MeshLambertMaterial({ color: 0x1f7fae, emissive: 0x0b3a55, emissiveIntensity: 0.35 });
   if (sp.sea === 'west') {
-    plain.box(22, 0.1, size + 40, -HALF + 1, 0, 0, 0xd8c690);                      // beach / promenade edge
+    const wallC = (x0: number, z0: number, x1: number, z1: number, h: number) => colliders.push({ x0, z0, x1, z1, h });
+    // Corniche Ouest (after Habib's reference photos): dual carriageway with a concrete median, sidewalk with
+    // whitewashed palms, then a red-paved promenade under yellow tubular railings and arches, grass, beach, ocean.
+    const CX = roadC(0), PX = -HALF - 4.6;                                          // road centre, promenade centre
+    plain.box(22, 0.05, size + 40, -HALF + 1, 0, 0, 0xd8c690);                     // ground under road and promenade (below the road top)
     plain.box(30, 0.04, size + 60, -HALF - 22, 0, 0, 0xe2d2a0);                    // wet sand
     const sea = new THREE.Mesh(new THREE.PlaneGeometry(700, 1400), seaMat); sea.rotation.x = -Math.PI / 2; sea.position.set(-HALF - 380, 0.05, 0); group.add(sea);
     plain.box(4, 0.06, size + 60, -HALF - 36, 0.02, 0, 0xf4f1e6);                  // surf line
-    bounds.x0 = -HALF + 6;
-    plain.box(1, 1, size, -HALF + 6.5, 0, 0, 0xcfc8b4);                              // sea wall
-    if (id === 'corniche') {
-      // Monumental arch on the Corniche promenade, facing the ocean at the end of the central street.
-      // STYLISED, TEMP: proportions and shape to verify against photos before it is called the real landmark.
-      const ax = -HALF - 2, AW = 0xe8dcc4, AD = 0xcbbd9f;
-      plain.box(6, 0.6, 26, ax, 0.05, 0, AD);                                        // plaza
-      for (const sz of [-1, 1]) {
-        plain.box(3.6, 1.2, 4, ax, 0.6, sz * 8.5, AD);                               // footings
-        limb(plain, [ax, 1.8, sz * 8.5], [ax, 17, sz * 3.2], 1.5, 1.0, AW, 6);       // leaning legs
-        limb(plain, [ax, 16, sz * 3.6], [ax, 22, sz * 0.4], 1.0, 0.7, AW, 6);
+    pave.box(2.4, G, size + 12, -HALF - 1.2, 0, 0, 0xd8d2c4);                      // sea-side sidewalk
+    plain.box(3.6, G + 0.01, size + 12, PX, 0, 0, 0xb5563a);                       // red promenade path
+    plain.box(2.2, G, size + 12, PX - 2.9, 0, 0, 0x6f9a4a);                        // grass verge
+    plain.box(1.2, G - 0.02, size + 12, -HALF - 3.0, 0, 0, 0x7aa556);
+    const YEL = 0xf2b21b;
+    for (const rx of [PX + 1.95, PX - 1.95]) plain.box(0.09, 0.09, size + 12, rx, 1.05, 0, YEL);   // handrails
+    for (let z = -HALF - 4; z <= HALF + 4; z += 2.5) for (const rx of [PX + 1.95, PX - 1.95]) plain.box(0.08, 1.05, 0.08, rx, G, z, YEL);
+    for (let z = -HALF; z <= HALF; z += 7.5) {                                     // arches over the path
+      limb(plain, [PX - 1.95, 1.0, z], [PX - 0.9, 2.9, z + 0.4], 0.06, 0.06, YEL, 5);
+      limb(plain, [PX - 0.9, 2.9, z + 0.4], [PX + 0.9, 2.9, z + 0.4], 0.06, 0.06, YEL, 5);
+      limb(plain, [PX + 0.9, 2.9, z + 0.4], [PX + 1.95, 1.0, z], 0.06, 0.06, YEL, 5);
+    }
+    // road-side railing blocks the player except at each street end
+    for (let k = 0; k < NB; k++) wallC(PX + 1.8, roadC(k) + 3, PX + 2.1, roadC(k + 1) - 3, 1.1);
+    wallC(PX + 1.8, -HALF - 30, PX + 2.1, roadC(0) - 3, 1.1); wallC(PX + 1.8, roadC(NB) + 3, PX + 2.1, HALF + 30, 1.1);
+    bounds.x0 = PX - 1.6;
+    // concrete median with gaps at the crossings; tall orange double-arm lamps on it
+    for (let k = 0; k < NB; k++) {
+      const z0 = roadC(k) + ROAD / 2 + 1, z1 = roadC(k + 1) - ROAD / 2 - 1;
+      plain.box(0.7, 0.75, z1 - z0, CX, 0.05, (z0 + z1) / 2, 0xd8d2c4);
+      wallC(CX - 0.35, z0, CX + 0.35, z1, 0.8);
+      for (let z = z0 + 6; z < z1 - 3; z += 14) {
+        lampPosts.cyl(0.1, 0.16, 9, CX, 0.8, z, 0xe08a1e, 6);
+        for (const sx of [-1, 1]) {
+          limb(lampPosts, [CX, 9.5, z], [CX + sx * 1.6, 9.9, z], 0.06, 0.06, 0xe08a1e, 5);
+          lampPosts.box(0.9, 0.22, 0.5, CX + sx * 1.9, 9.7, z, 0xe08a1e);
+          lampBulbs.box(0.75, 0.06, 0.38, CX + sx * 1.9, 9.62, z, 0xffe2a0);
+          pool(CX + sx * 1.9, z, 7);
+        }
       }
-      plain.box(2.6, 2.2, 3.4, ax, 21, 0, AD);                                        // crown
-      plain.box(1.6, 3.2, 1.6, ax, 23.2, 0, AW);
     }
   }
   if (sp.sea === 'north') {
@@ -214,10 +237,10 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
     m.position.set(x, y, z); m.rotation.y = rotY; group.add(m); signs.push(m);
   };
-  const palm = (x: number, z: number, s = 1) => {
+  const palm = (x: number, z: number, s = 1, whitewash = false) => {
     R(); // (was lean; kept so the hub layouts stay the same)
     const h = 6.2 * s;
-    for (let k = 0; k < 2; k++) plain.cyl(0.2 * s + (1 - k) * 0.06, 0.26 * s + (1 - k) * 0.06, h / 2 + 0.05, x, 0.1 + (k * h) / 2, z, k % 2 ? 0x8a6b45 : 0x7a5d3a, 5);
+    for (let k = 0; k < 2; k++) plain.cyl(0.2 * s + (1 - k) * 0.06, 0.26 * s + (1 - k) * 0.06, h / 2 + 0.05, x, 0.1 + (k * h) / 2, z, k % 2 ? 0x8a6b45 : whitewash ? 0xf1eee6 : 0x7a5d3a, 5);
     const top = 0.1 + h;
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2 + R() * 0.5;
@@ -374,14 +397,29 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       roofClutter(L.cx, L.cz + 3, w, d, G + h + 0.28);
       return;
     }
-    const fl = sp.floors[0] + Math.floor(R() * (sp.floors[1] - sp.floors[0] + 1));
-    const w = 15 + R() * 5, d = 15 + R() * 5, h = fl * 3.2;
-    const col = pick(sp.palette, R);
+    // Plateau (after Habib's aerial photo): a few towers among 3–7 storey blocks, some low blocks under red tile roofs
+    const tower = sp.style === 'dense' && R() < 0.16;
+    const tiles = sp.style === 'dense' && !tower && R() < 0.3;
+    let fl = sp.floors[0] + Math.floor(R() * (sp.floors[1] - sp.floors[0] + 1));
+    if (tower) fl = 11 + Math.floor(R() * 8); else if (tiles) fl = Math.min(fl, 4);
+    const w = tower ? 13 + R() * 3 : 15 + R() * 5, d = tower ? 13 + R() * 3 : 15 + R() * 5, h = fl * 3.2;
+    const col = tower ? pick([0xf1e6d2, 0xe8d8b8, 0xf4efe6, 0xe3c9a6, 0xd9773f], R) : pick(sp.palette, R);
     const cx = L.cx + (R() - 0.5) * 2, cz = L.cz + (R() - 0.5) * 2;
     fac.facade(w, h, d, cx, G - 0.02, cz, col);
     plain.box(w + 0.5, 0.3, d + 0.5, cx, G + h - 0.02, cz, 0xd2cdc2);
-    parapet(cx, cz, w + 0.5, d + 0.5, G + h + 0.26, shade(col, 0.92), 0.8);
-    roofClutter(cx, cz, w, d, G + h + 0.28);
+    if (tiles) {
+      // hipped roof in red clay tiles (4-sided pyramid, flattened)
+      const rr = Math.max(w, d) * 0.72;
+      plain.cyl(0.6, rr, 3.0, cx, G + h + 0.25, cz, 0xc0532e, 4, [0, Math.PI / 4, 0]);
+    } else {
+      parapet(cx, cz, w + 0.5, d + 0.5, G + h + 0.26, shade(col, 0.92), 0.8);
+      roofClutter(cx, cz, w, d, G + h + 0.28);
+    }
+    if (tower) {
+      plain.box(4, 3, 4, cx, G + h + 0.28, cz, 0xb8b2a6);                               // lift machine room
+      for (let a = 0; a < 3; a++) plain.cyl(0.06, 0.06, 6 + a * 2, cx - 1 + a, G + h + 3.2, cz, 0x9a9a9a, 4);   // antennas
+      glass.box(w * 0.34, h - 4, 0.12, cx, G + 3.4, cz + (b ? 1 : -1) * (d / 2 + 0.07), 0x35607e);    // glazed stair core
+    }
     dressBuilding(cx, cz, w, d, h, col, lotFaces(a, b), sp.style === 'student');
     if (sp.style === 'dense') {
       const fz = b ? 1 : -1;
@@ -503,50 +541,87 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         break;
       }
       case 'monument': {
-        // Monument de la Renaissance africaine on the Mamelles hill — STYLISED, TEMP, to verify against photos.
-        // Hill with a stair up the sea side, pedestal, and the bronze group facing the ocean (west):
-        // a man holding a child up on his raised arm (the child points out to sea), a woman behind him.
-        const HILL = 0xa89a72, STONE = 0xd6cdb8, BRONZE = 0x5b4632;
-        for (let k = 0; k < 4; k++) plain.cyl(19 - k * 4, 21 - k * 4, 2.4, cx, B + k * 2.4, cz, k % 2 ? 0x9c8e66 : HILL, 18);   // terraced hill
-        for (let k = 0; k < 24; k++) plain.box(5, 0.42, 1.0, cx - 21 + k * 0.62, B, cz, STONE, Math.PI / 2);                     // stair west (base)
-        for (let k = 0; k < 24; k++) plain.box(5, B + k * 0.4 + 0.4, 0.62, cx - 20.7 + k * 0.62, 0, cz, STONE, Math.PI / 2);     // stair treads rising to the top
-        const top = B + 9.6;
-        plain.box(8, 2.6, 8, cx, top, cz, STONE);                                                                                 // pedestal
-        plain.box(8.6, 0.4, 8.6, cx, top + 2.6, cz, 0xc4baa4);
-        // statue in local axes: a = toward the sea (-x), s = to the statue's right (-z), u = up; k scales metres
-        const k = 1.75, base = top + 3;
-        const W = (a: number, s2: number, u: number): [number, number, number] => [cx - a * k, base + u * k, cz - s2 * k];
-        const limbAB = (A: [number, number, number], Bp: [number, number, number], r0: number, r1: number, col = BRONZE) => limb(plain, W(...A), W(...Bp), r0 * k * 1.25, r1 * k * 1.25, col);
-        const ball = (P: [number, number, number], r: number) => { const [x, y, z] = W(...P); plain.sphere(r * k * 1.15, x, y, z, BRONZE); };
+        // Monument de la Renaissance africaine, after Habib's reference photos (7 Oct 2026). Stylised and scaled down.
+        // A natural hill (dry grass, scrub, pink bougainvillea, palms) climbed by one long straight stair with white
+        // parapets, railings and lamps; at the top the group rises out of angular rock with a tall rock slab beside
+        // the man: the man (bare-chested, wrapped cloth, headband) holds the child seated on his raised left arm,
+        // the child points out to sea; the woman leans forward at his right, arm flung back, hair and dress flowing.
+        const HILL = 0xa8925f, STONE = 0xd9d4ca, BRONZE = 0x7a5f45, ROCK = 0x806549;
+        const R0 = 22, R1 = 7, HH = 12;                                         // hill base/top radius, height
+        const hAt = (r: number) => HH * THREE.MathUtils.clamp((R0 - r) / (R0 - R1), 0, 1);
+        plain.cyl(R1, R0, HH, cx, B - 0.05, cz, HILL, 28);                      // the hill (a frustum: straight slopes)
+        plain.cyl(R1 + 0.3, R1 + 0.3, 0.12, cx, B + HH - 0.05, cz, STONE, 24); // summit plaza
+        const top = B + HH;
+        // stair up the sea side (west, -x): treads sit on the slope; parapets, railings and lamps on both sides
+        const SW = 7, steps = 34, x0 = cx - R0 - 0.6, x1 = cx - R1;
+        for (let k = 0; k < steps; k++) {
+          const xa = x0 + ((x1 - x0) * k) / steps, ya = B + hAt(cx - xa) + 0.05;
+          plain.box((x1 - x0) / steps + 0.02, Math.max(0.12, ya - B + 0.35), SW, xa + (x1 - x0) / steps / 2, 0, cz, k % 2 ? 0xc9c4ba : 0xbdb8ae);
+        }
+        for (const sz of [-1, 1]) {
+          const zz = cz + sz * (SW / 2 + 0.25);
+          limb(plain, [x0, B + 0.5, zz], [x1, top + 0.5, zz], 0.32, 0.32, STONE, 4);        // white parapet
+          limb(plain, [x0, B + 1.4, zz - sz * 0.1], [x1, top + 1.4, zz - sz * 0.1], 0.04, 0.04, 0x9aa0a6, 4); // handrail
+          for (let k = 0; k <= 6; k++) {
+            const xa = x0 + ((x1 - x0) * k) / 6, ya = B + hAt(cx - xa);
+            plain.box(0.06, 1.0, 0.06, xa, ya + 0.4, zz - sz * 0.1, 0x9aa0a6);
+            if (k % 2 === 0) { lampPosts.box(0.12, 3.2, 0.12, xa, ya + 0.6, zz + sz * 0.6, 0xd9d4ca); lampBulbs.sphere(0.28, xa, ya + 3.9, zz + sz * 0.6, 0xfff1d0); }
+          }
+        }
+        // vegetation on the slopes, kept off the stair
+        for (let n = 0; n < 70; n++) {
+          const a = R() * Math.PI * 2;
+          if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.42) continue;
+          const r = R1 + 1 + R() * (R0 - R1 - 1.5), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+          leaves.blob(0.7 + R() * 0.9, x, B + hAt(r) - 0.1, z, R() < 0.3 ? pick([0xd2468a, 0xc2307a, 0xe05a9a], R) : pick([0x5f7a3a, 0x7a8a46, 0x4f6a32], R), 0.6, 0);
+        }
+        for (let n = 0; n < 6; n++) { const a = (n / 6) * Math.PI * 2 + 0.5; if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.6) continue; palm(cx + Math.cos(a) * (R1 + 1.2), cz + Math.sin(a) * (R1 + 1.2), 0.9); }
+        // statue group, local axes: a = toward the sea (-x), s = the statue's right (-z), u = up from the summit
+        const k = 1.25;
+        const W = (a: number, s2: number, u: number): [number, number, number] => [cx - a * k, top + u * k, cz - s2 * k];
+        const L = (A: [number, number, number], Bp: [number, number, number], r0: number, r1: number, col = BRONZE) => limb(plain, W(...A), W(...Bp), r0 * k, r1 * k, col);
+        const ball = (P: [number, number, number], r: number, col = BRONZE) => { const [x, y, z] = W(...P); plain.sphere(r * k, x, y, z, col); };
+        const rock = (a: number, s2: number, u: number, w: number, h: number, d: number, rot: number) => { const [x, y, z] = W(a, s2, u); plain.box(w * k, h * k, d * k, x, y, z, ROCK, rot); };
+        // angular rock the figures rise out of, stepping down toward the stair, and the tall slab at the man's left
+        rock(0, 0.5, 0, 9, 3, 8, 0.1); rock(1.5, 0.2, 2.6, 6.5, 2.4, 6, -0.25); rock(2.6, -0.4, 4.6, 4.2, 2.2, 4.5, 0.35);
+        rock(1.0, 2.6, 2.4, 4, 2.6, 3.2, 0.6); rock(-1.2, -1.6, 2.8, 4.5, 3.4, 4, -0.4);
+        rock(-1.0, -4.4, 0, 2.6, 15.5, 2.4, 0.15); rock(-0.6, -4.9, 12, 1.8, 3.2, 1.6, 0.4);
         // man
-        limbAB([1.5, -0.6, 0], [0.2, -0.5, 7.4], 0.75, 0.95); limbAB([-1.3, 0.6, 0], [-0.2, 0.5, 7.4], 0.75, 0.95);           // striding legs
-        limbAB([0, 0, 7], [0.35, 0, 12.6], 1.45, 1.9);                                                                          // torso
-        limbAB([0.35, 0, 12.4], [0.4, 0, 13.4], 0.5, 0.5); ball([0.45, 0, 14.3], 1.05);                                         // neck, head
-        limbAB([0.3, -1.7, 12.2], [1.6, -2.3, 17.4], 0.55, 0.5);                                                                // raised arm
-        limbAB([0.2, 1.7, 12.1], [-0.9, 2.5, 9.2], 0.55, 0.5);                                                                  // arm around the woman
-        // child held up, pointing to sea
-        limbAB([1.7, -2.3, 17.4], [1.9, -2.3, 19.8], 0.5, 0.45); ball([2.0, -2.3, 20.5], 0.45);
-        limbAB([2.0, -2.3, 19.5], [4.0, -2.3, 20.4], 0.2, 0.18);
-        // woman behind, scarf and arm flowing back
-        limbAB([-0.8, 2.2, 0], [-1.3, 2.5, 6.2], 0.6, 0.75); limbAB([-1.9, 2.9, 0], [-1.4, 2.6, 6.2], 0.6, 0.75);
-        limbAB([-1.35, 2.5, 4.2], [-1.3, 2.5, 7], 0.95, 1.25);                                                                  // skirt
-        limbAB([-1.3, 2.5, 6.6], [-1.2, 2.4, 10.8], 1.1, 1.35); ball([-1.1, 2.4, 12.1], 0.85);
-        limbAB([-1.2, 3.3, 10.5], [-3.9, 4.3, 12.6], 0.45, 0.35);
-        limbAB([-1.2, 2.4, 12.3], [-3.4, 2.6, 13.1], 0.5, 0.2);
-        // hill collider: a square plus a cross approximate the round terraces, leaving the block corners free
-        solidC(cx, cz, 30, 30, top + 3); solidC(cx, cz, 42, 14, top); solidC(cx, cz, 14, 42, top);
-        // festive corners: a canopy, speakers and bunting at the two south corners (people are added in actors/life.ts)
-        const spots = [{ x: cx + 16.5, z: cz + 16.5 }, { x: cx - 16.5, z: cz + 16.5 }];
+        L([0.2, -0.7, 7.6], [2.3, -1.1, 6.1], 0.95, 0.85); L([2.3, -1.1, 6.1], [2.9, -1.2, 3.2], 0.85, 0.7);   // forward left leg, knee out of the rock
+        L([0.0, 0.7, 7.6], [-0.4, 0.9, 4.5], 0.95, 0.8);
+        L([0.0, 0, 7.2], [0.1, 0, 9.4], 1.75, 1.6, ROCK);                                                       // wrapped cloth
+        L([0.1, 0, 9.2], [0.45, 0, 14.0], 1.55, 2.15);                                                           // torso, broad chest
+        L([0.4, -2.1, 13.6], [0.4, 2.1, 13.6], 0.75, 0.75);                                                      // shoulders
+        L([0.45, 0, 14.2], [0.55, 0, 15.0], 0.6, 0.6); ball([0.65, 0, 15.9], 1.0);
+        L([0.6, 0, 16.5], [0.62, 0, 16.9], 0.92, 0.9, 0x5e4836);                                                 // headband
+        L([0.4, -2.2, 13.7], [0.9, -3.8, 16.3], 0.65, 0.55);                                                     // raised left upper arm
+        L([0.9, -3.8, 16.3], [1.0, -2.1, 17.4], 0.55, 0.45);                                                     // forearm back over the shoulder
+        L([0.3, 2.2, 13.4], [0.2, 3.0, 11.0], 0.6, 0.5); L([0.2, 3.0, 11.0], [-0.5, 3.4, 9.6], 0.5, 0.42);      // right arm round the woman
+        // child seated on the forearm, pointing out to sea
+        L([1.0, -2.8, 17.6], [1.2, -2.8, 19.3], 0.55, 0.5); ball([1.3, -2.8, 20.0], 0.5);
+        L([1.1, -2.6, 17.7], [1.8, -2.4, 16.9], 0.24, 0.2); L([1.1, -3.0, 17.7], [1.8, -3.2, 16.9], 0.24, 0.2); // dangling legs
+        L([1.3, -2.5, 19.2], [3.4, -3.5, 20.9], 0.2, 0.15);                                                     // pointing arm
+        // woman, leaning forward at his right
+        L([1.4, 3.2, 3.0], [-0.3, 3.6, 7.6], 0.75, 0.85);                                                        // leg out of the rock
+        L([-0.3, 3.6, 7.0], [-0.5, 3.7, 9.8], 1.25, 1.0, 0x725840);                                              // wrapped dress
+        L([-0.4, 3.8, 7.6], [-2.4, 4.4, 6.7], 0.8, 0.25, 0x725840);                                              // dress flowing back
+        L([-0.5, 3.7, 9.6], [-0.2, 3.6, 12.5], 1.0, 1.1); ball([0.0, 3.5, 13.5], 0.72);
+        L([-0.1, 3.5, 13.8], [-1.9, 3.9, 14.1], 0.5, 0.15);                                                      // hair streaming back
+        L([-0.3, 4.4, 12.0], [-2.0, 5.9, 10.8], 0.42, 0.38); L([-2.0, 5.9, 10.8], [-3.6, 7.2, 9.6], 0.38, 0.3);  // arm flung back
+        // hill collider: square plus cross approximate the round hill; the block corners stay free
+        solidC(cx, cz, 32, 32, top + 2); solidC(cx, cz, 44, 16, top); solidC(cx, cz, 16, 44, top);
+        plain.box(0.5, 1.6, 9, cx - R0 - 2.2, B, cz + 9, STONE);                                                // name plaque wall at the stair foot
+        addSign('MONUMENT DE LA RENAISSANCE AFRICAINE', '#14212b', '#d8e2dc', cx - R0 - 2.47, B + 0.85, cz + 9, -Math.PI / 2, 8, 1.0);
+        // festive corners: a canopy, speakers and bunting (people in actors/life.ts)
+        const spots = [{ x: cx + 17, z: cz + 17 }, { x: cx - 17, z: cz + 17 }];
         for (const [n, sp2] of spots.entries()) {
           const col = n ? 0xd9322b : 0x1a9d54;
           for (const [dx, dz] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) plain.box(0.1, 2.6, 0.1, sp2.x + dx, B, sp2.z + dz, 0x555555);
           awning(sp2.x, sp2.z, 5.2, 5.2, 2.85, col, true, 1);
-          plain.box(0.6, 1.1, 0.5, sp2.x + 2.2, B, sp2.z - 2.2, 0x1d1d1f); plain.box(0.6, 1.1, 0.5, sp2.x - 2.2, B, sp2.z - 2.2, 0x1d1d1f); // speakers
-          for (let f = 0; f < 8; f++) plain.box(0.35, 0.45, 0.02, sp2.x - 2.6 + f * 0.75, 2.45, sp2.z + 2.6, [0x1a9d54, 0xf4c20d, 0xd9322b][f % 3]); // bunting
+          plain.box(0.6, 1.1, 0.5, sp2.x + 2.2, B, sp2.z - 2.2, 0x1d1d1f); plain.box(0.6, 1.1, 0.5, sp2.x - 2.2, B, sp2.z - 2.2, 0x1d1d1f);
+          for (let f = 0; f < 8; f++) plain.box(0.35, 0.45, 0.02, sp2.x - 2.6 + f * 0.75, 2.45, sp2.z + 2.6, [0x1a9d54, 0xf4c20d, 0xd9322b][f % 3]);
         }
-        monumentInfo = { cx, cz, stairX0: cx - 20.7, stairX1: cx - 6.4, stairZ: cz, y0: B + 0.4, y1: top, spots };
-        plain.box(9, 1.6, 0.5, cx, B, cz + 21.6, STONE);
-        addSign('MONUMENT DE LA RENAISSANCE AFRICAINE', '#14212b', '#d8e2dc', cx, B + 0.85, cz + 21.9, 0, 8, 1.0);
+        monumentInfo = { cx, cz, stairX0: x0, stairX1: x1, stairZ: cz, y0: B + 0.35, y1: top + 0.05, spots };
         break;
       }
       case 'gym': {
@@ -694,9 +769,6 @@ export function buildHub(id: HubId, lite = false): HubWorld {
 
   // Street lamps (post, arm over the road, lamp head) with a light pool on the ground at night; shade trees between them.
   const blocked = (x: number, z: number, r: number) => colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r);
-  const pool = (x: number, z: number, r: number) => {
-    const g = new THREE.PlaneGeometry(r * 2, r * 2); g.rotateX(-Math.PI / 2); g.translate(x, 0.16, z); pools.push(g);
-  };
   const off = ROAD / 2 - SIDEWALK + 0.6; // lamp posts stand at the kerb
   for (let k = 0; k <= NB; k++) {
     for (let t = -HALF + 14; t < HALF - 8; t += 30) {
@@ -705,6 +777,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         for (const along of [true, false]) {
           const x = along ? roadC(k) + s * off : tt, z = along ? tt : roadC(k) + s * off;
           if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 1) continue; // not in intersections
+          if (sp.sea === 'west' && along && k === 0) continue;                         // the Corniche has median lamps
           const ax = along ? -s : 0, az = along ? 0 : -s;   // arm points over the road
           lampPosts.cyl(0.08, 0.12, 6.4, x, 0, z, 0x3d4047, 6);
           lampPosts.box(along ? 1.6 : 0.1, 0.1, along ? 0.1 : 1.6, x + ax * 0.8, 6.3, z + az * 0.8, 0x3d4047);
@@ -734,7 +807,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     if (blocked(x, z, 0.8)) continue;
     palm(x, z, 0.9 + R() * 0.4);
   }
-  if (sp.sea === 'west') for (let z = -HALF + 14; z < HALF - 8; z += 16) palm(-HALF + 3, z, 1.1);
+  if (sp.sea === 'west') for (let z = -HALF + 6; z < HALF - 4; z += 9) { if (Math.abs(z - roadC(Math.round((z + HALF - ROAD / 2) / PITCH))) > ROAD / 2 + 1) palm(-HALF - 1.2, z, 1.15, true); } // whitewashed trunks
   if (sp.sea === 'north') for (let x = -HALF + 10; x < HALF - 6; x += 18) palm(x, -HALF - 3, 1.1);
   // A few street vendors on the sidewalks.
   for (let n = 0; n < (banlieue ? 8 : 5); n++) {

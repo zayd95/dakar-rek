@@ -25,3 +25,13 @@ Download URL pattern: `https://d8j0ntlcm91z4.cloudfront.net/user_3J7IyVV0T7wCwVU
 (`_min.webp` suffix for previews).
 
 Review status: **not reviewed.** #4 has not had its 3×3 seam check. Nothing from batch 1 is used in the game.
+
+## Photos supplied by Habib (7 Oct 2026, in chat)
+
+Five photographs used as **factual references** (not stored in the repository: their authorship and licence are unknown):
+1–2. Monument de la Renaissance africaine — straight stair with railings and lamps, natural hill with scrub, bougainvillea
+and palms; the group rising out of angular rock with a tall slab; man with the child on his raised arm, woman leaning
+forward with an arm flung back. 3. Corniche Ouest — dual carriageway, concrete median, orange double-arm lamps,
+whitewashed palm trunks, mosque minarets in the distance. 4. Aerial view of the Plateau — towers, red tile roofs, cream and
+ochre blocks, greenery. 5. Corniche Ouest promenade — red path under yellow tubular railings and arches, grass, beach.
+Used for: the monument, the Corniche road and promenade, Plateau towers and roofs (`src/world/builder.ts`).
