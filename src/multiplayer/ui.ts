@@ -12,6 +12,12 @@ export class PresenceUi {
     this.button.addEventListener('pointerdown', e => e.stopPropagation());
     this.button.addEventListener('click', () => this.open());
     document.getElementById('ui')!.appendChild(this.button); this.update();
+    const place = document.getElementById('place');
+    if (place) {
+      const position = () => { this.button.style.top = `${Math.max(66, place.getBoundingClientRect().bottom + 8)}px`; };
+      if (typeof ResizeObserver !== 'undefined') new ResizeObserver(position).observe(place);
+      addEventListener('resize', position); position();
+    }
   }
   update() {
     const p = this.presence;

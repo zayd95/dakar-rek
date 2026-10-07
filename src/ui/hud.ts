@@ -10,6 +10,7 @@ export class Hud {
   private bars = new Map<string, HTMLElement>();
   private el: Record<string, HTMLElement> = {};
   private toastT = 0;
+  private resetTouch: () => void = () => {};
   onAction: () => void = () => {};
   onMenu: () => void = () => {};
 
@@ -41,7 +42,12 @@ export class Hud {
     const joy = this.el.joy, knob = joy.firstElementChild as HTMLElement;
     let joyId = -1, camId = -1, lx = 0, ly = 0;
     const R = 50;
+    const reset = () => { joyId = camId = -1; this.input.reset(); knob.style.transform = ''; };
+    this.resetTouch = reset;
+    window.addEventListener('blur', reset);
+    window.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
     window.addEventListener('pointerdown', e => {
+      if (!this.input.enabled) return;
       if (e.pointerType !== 'touch' && !document.body.classList.contains('touch')) return;
       const t = e.target as HTMLElement;
       if (t.closest('#act,#menuBtn,#modal,#stats')) return;
@@ -102,6 +108,7 @@ export class Hud {
   closeModal() { this.el.modal.classList.remove('on'); }
 
   openMenu(title: string, subtitle: string, items: MenuItem[], extraHtml = '', afterRender?: (panel: HTMLElement) => void) {
+    this.resetTouch();
     const panel = this.el.modal.querySelector('.panel') as HTMLElement;
     panel.innerHTML = `<h2></h2><p></p>${extraHtml}<div class="list"></div>`;
     (panel.querySelector('h2') as HTMLElement).textContent = title; (panel.querySelector('p') as HTMLElement).textContent = subtitle;
