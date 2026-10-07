@@ -25,7 +25,7 @@ export class Hud {
       <div id="joy"><i></i></div>
       <div id="hint" class="card">ZQSD/WASD ou flèches : marcher · glisser : caméra · E : action · Échap : menu</div>
       <button id="act" class="off">Action</button>
-      <div id="temp">v0.1 · ASSETS TEMPORAIRES — décor et personnages à remplacer (voir registre)</div>
+      <div id="temp">Dakar Rek · Alpha</div>
       <div id="fade"></div>
       <div id="modal"><div class="panel"></div></div>`;
     for (const id of ['money', 'mood', 'hubName', 'clock', 'toast', 'progress', 'progLabel', 'progBar', 'joy', 'act', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag']) this.el[id] = root.querySelector('#' + id)!;
