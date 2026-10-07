@@ -44,7 +44,7 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
 }
 
 // ---------------------------------------------------------------- garment textures (generic prints, own designs)
-// Garment UVs from Blender: u = around the body (front centre at u = 0.5), v = height / 0.6 m.
+// Garment UVs from Blender: u = around the body (front centre at u = 0.5), v = height / 0.6 m (glTF flips it to 1 - v).
 // One canvas covers the whole garment (v scaled so 1 = 1.65 m), so trims and embroidery sit where they belong.
 type Kind = 'boubou' | 'tee' | 'dress' | 'plain';
 const texCache = new Map<string, THREE.Texture>();
@@ -77,7 +77,7 @@ function garmentTex(kind: Kind, base: number, accent: number, pattern: Pattern):
   const emb = pattern === 'bazin' || pattern === 'uni' ? (new THREE.Color(base).getHSL({ h: 0, s: 0, l: 0 }).l > 0.6 ? 0x8a6a2a : 0xe9cf7a) : accent;
   if (kind === 'boubou') {                                       // embroidery: collar, front panel, hem
     g.fillStyle = hex(emb); g.strokeStyle = hex(emb);
-    g.fillRect(0, zy(1.54), W, zy(1.62) - zy(1.54));
+    g.fillRect(0, zy(1.565), W, zy(1.64) - zy(1.565));
     g.lineWidth = 3;
     const cx = W / 2;
     for (let k = 0; k < 7; k++) {                                // stacked chevrons down the chest
@@ -89,13 +89,13 @@ function garmentTex(kind: Kind, base: number, accent: number, pattern: Pattern):
     g.fillRect(0, zy(0.16), W, 5); g.fillRect(0, zy(0.2), W, 2);
   } else if (kind === 'tee') {                                   // ribbed collar and a chest band
     g.fillStyle = hex(accent === base ? 0xf2f2ec : accent);
-    g.fillRect(0, zy(1.55), W, H - zy(1.55));
+    g.fillRect(0, zy(1.58), W, H - zy(1.58));
   } else if (kind === 'dress') {
-    g.fillStyle = hex(emb); g.fillRect(0, zy(1.53), W, H - zy(1.53));
+    g.fillStyle = hex(emb); g.fillRect(0, zy(1.565), W, H - zy(1.565));
     g.fillRect(0, zy(0.98), W, 6);
   }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
-  t.repeat.set(1, 0.6 / 1.65); t.flipY = false; t.anisotropy = 4; texCache.set(key, t); return t;
+  t.repeat.set(1, -0.6 / 1.65); t.offset.set(0, 0.6 / 1.65); t.flipY = false; /* glTF stores v as 1 - v */ t.anisotropy = 4; texCache.set(key, t); return t;
 }
 function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xffffff, kind: Kind = 'plain'): THREE.Material {
   // Double-sided like the Blender materials: some cloth faces point inward and would otherwise vanish.
@@ -199,7 +199,7 @@ export class Humanoid {
     for (const id of look.accessories) {
       const a = ACCESSORIES.find(x => x.id === id); if (!a) continue;
       const node = this.root.getObjectByName(SOCKET_NODE[a.socket]); if (!node) continue;
-      const g = a.socket === 'waist' ? new THREE.CylinderGeometry(0.21, 0.21, 0.05, 12) : a.socket === 'neck' ? new THREE.TorusGeometry(0.09, 0.016, 6, 12) : new THREE.CylinderGeometry(0.085, 0.085, 0.06, 10);
+      const g = a.socket === 'waist' ? new THREE.CylinderGeometry(0.185, 0.185, 0.04, 16, 1, true) : a.socket === 'neck' ? new THREE.TorusGeometry(0.09, 0.016, 6, 12) : new THREE.CylinderGeometry(0.085, 0.085, 0.06, 10);
       const mesh = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: a.color }));
       if (a.socket === 'neck') mesh.rotation.x = Math.PI / 2;
       node.add(mesh); this.accessoryMeshes.push(mesh);

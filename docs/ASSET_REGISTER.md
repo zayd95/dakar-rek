@@ -17,11 +17,12 @@ Every asset has a row. **TEMP** = temporary, to be replaced or revised through t
 | City player, cast and crowd (boxes) — fallback only when the GLB fails to load | `src/actors/character.ts` | Own code | ~200 each | TEMP | Not reviewed |
 | Car rapide (procedural v2: roof rack, ladder, painted panels; one shared mesh) | `src/actors/vehicles.ts` | Own code | ~1k | TEMP until the Blender model | Not reviewed |
 | Taxi | `src/actors/vehicles.ts` | Own code | ~100 | TEMP | Not reviewed |
-| **Character v4 (shared humanoid)** | `assets-src/character_rig_v4.blend` → `public/assets/character_v4.glb` | Own work, Blender 5.2 via MCP for Blender, 6 Oct 2026 | body 1.9k, head 2k, garments 0.2–2.3k each | TEMP | Not reviewed |
-| Character v4 garments: tee, trousers, shorts, shoes, dress top + skirt, grand boubou, kufi, headwrap; hair short/puff; beard | character GLB | Own work | see above | TEMP | Not reviewed |
-| Character v4 body shapes: Female, Muscular, Heavy (morph targets shared by body and fitted garments) | character GLB | Own work | — | TEMP | Not reviewed |
+| **Character v5 (shared humanoid)** | `assets-src/character_rig_v5.blend` → `public/assets/character_v5.glb` | Own work, Blender 5.2 via MCP for Blender, 6–7 Oct 2026; baked AO in vertex colours | body 1.7k, head 2k, hands 1.4k, garments 0.2–2.6k each | TEMP | Not reviewed |
+| Character v5 garments: tee, trousers, shorts, shoes, dress top + skirt, grand boubou (rebuilt 7 Oct: draped sleeves, flared robe), kufi, headwrap; hair short/puff; beard | character GLB | Own work | see above | TEMP | Not reviewed |
+| Garment prints and embroidery (wax, stripes, bazin damask, boubou collar/chest chevrons/hem bands) | `src/actors/humanoid.ts` (canvas) | Own designs, generic | — | TEMP | **Unreviewed** (embroidery motifs) |
+| Character v5 body shapes: Female, Muscular, Heavy (morph targets shared by body and fitted garments) | character GLB | Own work | — | TEMP | Not reviewed |
 | **Wrestler rig v1** (superseded by v4) | `assets-src/wrestler_rig_v1.blend` → `public/assets/wrestler_v1.glb` | Own work, made in Blender 5.2 via MCP for Blender, 6 Oct 2026 | body 370; ngemb A 52, B 64 | TEMP | Not reviewed; deformation in grabs/falls to check in paired animations |
-| Ngemb cuts A and B, colours, patterns | wrestler GLB + `src/lamb/look.ts` | Own work | in rig | TEMP | **Unreviewed** |
+| Ngemb cuts A (brief with rolled waist) and B (thicker roll, back knot and two tails), colours, patterns | character v5 GLB + `src/lamb/look.ts` | Own work, rebuilt 7 Oct from the body surface | A 0.6k, B 0.9k | TEMP | **Unreviewed** |
 | Accessory sockets (armL, armR, waist, neck) and placeholder items | wrestler GLB + `src/lamb/look.ts` | Own work | <100 | TEMP | **Unreviewed** (placeholders, no real gris-gris) |
 | Clips: Idle, Walk, Stance, Grab, Fall_Back | wrestler GLB | Own work | — | TEMP | Not reviewed |
 | Clips: Dance_A, Dance_B, Celebrate, Prep, Entrance_Walk | wrestler GLB | Own work, placeholder motion | — | TEMP | **Unreviewed** |

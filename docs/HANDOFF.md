@@ -21,6 +21,12 @@
 - `scripts/portrait.mjs` takes close-up avatar review shots (desktop + phone).
 - Known limits: mitten hands, head ~2k triangles, boubou sleeves clip when forearms rise, beard edge jagged, muscular morph subtle.
 
+## Avatar v5 (local commits only — Habib asked not to push until it is right)
+- `character_v5.glb`: capsule-finger hands, baked AO, morph-aware garments, rebuilt grand boubou (draped sleeves weighted along the arm, robe weighted partly to thighs/shins so legs stay inside when walking), rebuilt ngemb A/B from the body surface (B has a back knot and two tails; **Unreviewed**).
+- Garment canvas textures: prints and boubou embroidery. Fixed: glTF stores v as 1 − v, so the texture uses repeat.y < 0 with an offset (before this, embroidery sat at the wrong height).
+- Debug hooks: `wrestle(clip)`, `playerLook(look, clip)`, `clearPeople()`; `scripts/portrait.mjs` also shoots the wrestler from behind and a boubou close-up.
+- Known limits: seated robe lets shins show through the front; Stance/Dance clips are placeholders; head ~2k triangles.
+
 ## Next steps (in order)
 1. Higgsfield batch 1 (4 images) from Habib's Mac, following `docs/HIGGSFIELD_PLAN.md` (cost check before each job, provenance log). Review, then batch 2.
 2. Blender (Mac): car rapide GLB; modular facade kit (bays, shop ground floor, balcony, parapet) guided by the reviewed references; export GLB with a shared texture atlas; load per hub on demand.

@@ -18,8 +18,14 @@ for (const [label, vp, touch] of views) {
   await page.screenshot({ path: `${out}/${label}-avatar-34.png` });
   await page.evaluate(() => window.__dakar.portrait(5.5, 2.0, 0.45)); await page.waitForTimeout(1000);
   await page.screenshot({ path: `${out}/${label}-avatar-group.png` });
-  await page.evaluate(() => { const d = window.__dakar; d.setLook('indigo', 'bordure', ['taille', 'bras_d']); d.emote(1); d.portrait(3.0, 1.5, 0.4); });
+  await page.evaluate(() => { const d = window.__dakar; d.clearPeople(); d.setLook('indigo', 'uni', ['taille', 'bras_d']); d.wrestle('Stance'); d.portrait(2.6, 1.35, 0.5); });
   await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/${label}-avatar-wrestler.png` });
+  await page.evaluate(() => { const d = window.__dakar; d.setLook('rouge', 'bordure', []); d.wrestle('Idle'); d.portrait(2.4, 1.3, 2.6); });
+  await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/${label}-avatar-wrestler-back.png` });
+  await page.evaluate(() => { const d = window.__dakar; d.playerLook({ style: 'boubou', top: 0x2f5fa8, pattern: 'bazin', accent: 0xe9cf7a, hat: 'kufi', hatColor: 0xf2f2ec, beard: 0x222222, heavy: 0.3 }, 'Idle'); d.portrait(2.9, 1.45, 0.45); });
+  await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/${label}-avatar-boubou.png` });
+  await page.evaluate(() => window.__dakar.portrait(3.0, 1.4, 1.7)); await page.waitForTimeout(1000);
+  await page.screenshot({ path: `${out}/${label}-avatar-boubou-side.png` });
   console.log(label, errs.length ? 'ERRORS ' + errs.join(' | ') : 'no errors');
 }
 await browser.close();
