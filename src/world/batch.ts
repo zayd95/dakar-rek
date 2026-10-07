@@ -119,6 +119,15 @@ export class Batch {
     this.finish(g, color, x, y, z);
   }
 
+  /** A prepared geometry (with a colour attribute), rotated about Y and placed. */
+  geo(src: THREE.BufferGeometry, x: number, y: number, z: number, rotY = 0, scale = 1) {
+    const g = src.clone(); if (scale !== 1) g.scale(scale, scale, scale);
+    g.rotateY(rotY); g.translate(x, y, z);
+    const keep = new THREE.BufferGeometry();
+    keep.setAttribute('position', g.attributes.position); keep.setAttribute('normal', g.attributes.normal); keep.setAttribute('color', g.attributes.color);
+    keep.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));   // batches merge only identical attribute sets
+    this.geos.push(keep); this.count++;
+  }
   build(material: THREE.Material, receive = true, cast = true): THREE.Mesh | null {
     if (!this.geos.length) return null;
     const merged = mergeGeometries(this.geos, false)!;

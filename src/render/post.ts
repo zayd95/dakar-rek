@@ -64,6 +64,7 @@ export class Post {
     if (!this.composer) { this.renderer.render(this.scene, this.camera); return; }
     if (this.grade) this.grade.uniforms.uNight.value = night;
     if (this.bloom) { this.bloom.strength = 0.18 + 0.55 * night; this.bloom.threshold = 1.15 - 0.55 * night; }
+    this.renderer.info.autoReset = false; this.renderer.info.reset();   // count every pass of the frame
     this.composer.render();
   }
 }

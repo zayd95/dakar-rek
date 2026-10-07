@@ -5,6 +5,7 @@ import { Batch, facadeTextures, signTexture, useFacadeAtlas } from './batch';
 import { ACTIONS, ENTER } from './content';
 import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide, parkedCars } from '../actors/vehicles';
+import { props } from './props';
 import { addGrain } from './grain';
 import { pavingTexture, breezeBlockTexture, leafTexture, asphaltTexture, sandRoadTexture, frondTexture } from './textures';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -654,10 +655,15 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           const x = along ? roadC(k) + s * off : tt, z = along ? tt : roadC(k) + s * off;
           if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 1) continue; // not in intersections
           const ax = along ? -s : 0, az = along ? 0 : -s;   // arm points over the road
-          lampPosts.cyl(0.08, 0.12, 6.4, x, 0, z, 0x3d4047, 6);
-          lampPosts.box(along ? 1.6 : 0.1, 0.1, along ? 0.1 : 1.6, x + ax * 0.8, 6.3, z + az * 0.8, 0x3d4047);
-          lampPosts.box(0.7, 0.18, 0.4, x + ax * 1.5, 6.2, z + az * 1.5, 0x3d4047, along ? 0 : Math.PI / 2);
-          lampBulbs.box(0.55, 0.06, 0.3, x + ax * 1.5, 6.14, z + az * 1.5, 0xffe2a0, along ? 0 : Math.PI / 2);
+          if (props) {
+            const rot = Math.atan2(-az, ax);
+            lampPosts.geo(props.lamp, x, 0, z, rot); lampBulbs.geo(props.lampBulb, x, 0, z, rot);
+          } else {
+            lampPosts.cyl(0.08, 0.12, 6.4, x, 0, z, 0x3d4047, 6);
+            lampPosts.box(along ? 1.6 : 0.1, 0.1, along ? 0.1 : 1.6, x + ax * 0.8, 6.3, z + az * 0.8, 0x3d4047);
+            lampPosts.box(0.7, 0.18, 0.4, x + ax * 1.5, 6.2, z + az * 1.5, 0x3d4047, along ? 0 : Math.PI / 2);
+            lampBulbs.box(0.55, 0.06, 0.3, x + ax * 1.5, 6.14, z + az * 1.5, 0xffe2a0, along ? 0 : Math.PI / 2);
+          }
           pool(x + ax * 1.5, z + az * 1.5, 5.5);
         }
       }
@@ -693,6 +699,53 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     stall(x, z);
   }
 
+  // Overhead wires on wooden poles along the streets (Dakar's tangle of power and phone lines), benches and drums.
+  const wirePts: number[] = [];
+  if (props && !lite) {
+    const WR = rng(sp.seed * 131 + 9);
+    const poleOff = ROAD / 2 + SIDEWALK - 0.35;
+    for (let k = 0; k <= NB; k++) for (const along of [true, false]) {
+      const s = WR() < 0.5 ? -1 : 1; let prev: THREE.Vector3 | null = null;
+      if (!banlieue && sp.style !== 'dense' && WR() < 0.5) continue;
+      for (let t = -HALF + 6; t < HALF - 6; t += 26) {
+        const x = along ? roadC(k) + s * poleOff : t, z = along ? t : roadC(k) + s * poleOff;
+        if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 1.5 || blocked(x, z, 0.4)) { prev = null; continue; }
+        lampPosts.geo(props.pole, x, 0, z, along ? Math.PI / 2 : 0);
+        solidC(x, z, 0.35, 0.35, 7);
+        const top = new THREE.Vector3(x, 7.62, z);
+        if (prev) {
+          for (const o of [-0.7, 0, 0.7]) {                                // three sagging wires per span
+            const ox = along ? o : 0, oz = along ? 0 : o, N = 8, sag = 0.5 + WR() * 0.4;
+            for (let i = 0; i < N; i++) {
+              const a = i / N, b = (i + 1) / N;
+              const pa = prev.clone().lerp(top, a), pb = prev.clone().lerp(top, b);
+              wirePts.push(pa.x + ox, pa.y - sag * 4 * a * (1 - a), pa.z + oz, pb.x + ox, pb.y - sag * 4 * b * (1 - b), pb.z + oz);
+            }
+          }
+        }
+        // a service drop to the nearest facade now and then
+        if (WR() < 0.6) {
+          const tx = along ? x + s * 6 : x + (WR() - 0.5) * 6, tz = along ? z + (WR() - 0.5) * 6 : z + s * 6, ty = 4.2 + WR() * 1.5;
+          const N = 6; for (let i = 0; i < N; i++) { const a = i / N, b = (i + 1) / N; wirePts.push(x + (tx - x) * a, 7.4 + (ty - 7.4) * a - 0.4 * 4 * a * (1 - a), z + (tz - z) * a, x + (tx - x) * b, 7.4 + (ty - 7.4) * b - 0.4 * 4 * b * (1 - b), z + (tz - z) * b); }
+        }
+        prev = top;
+      }
+    }
+    // benches and oil-drum bins on the sidewalks
+    for (let n = 0; n < (banlieue ? 14 : 10); n++) {
+      const k = Math.floor(WR() * (NB + 1)), t = -HALF + 14 + WR() * (size - 28), s = WR() < 0.5 ? -1 : 1, along = WR() < 0.5;
+      const o = ROAD / 2 + SIDEWALK - 0.6, x = along ? roadC(k) + s * o : t, z = along ? t : roadC(k) + s * o;
+      if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 3 || blocked(x, z, 1.2)) continue;
+      const rot = along ? (s > 0 ? -Math.PI / 2 : Math.PI / 2) : (s > 0 ? Math.PI : 0);
+      if (WR() < 0.6) { plain.geo(props.bench, x, G, z, rot); solidC(x, z, along ? 0.6 : 1.9, along ? 1.9 : 0.6, 0.8); }
+      else { plain.geo(props.drum, x, G, z, WR() * 6); solidC(x, z, 0.6, 0.6, 0.9); }
+    }
+  }
+  if (wirePts.length) {
+    const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(wirePts, 3));
+    const wires = new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color: 0x1c1c1e })); wires.name = 'wires'; group.add(wires);
+  }
+
   // Parked cars along the kerbs (own RNG so the rest of the layout is unchanged); solid for the player.
   {
     const PR = rng(sp.seed * 977 + 5), spots: { x: number; z: number; rot: number; color: number }[] = [];
@@ -700,10 +753,11 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const nearCross = (t: number) => Math.abs(t - roadC(Math.round((t + HALF - ROAD / 2) / PITCH))) < ROAD / 2 + 4;
     for (let k = 0; k <= NB; k++) for (const along of [true, false]) for (const s of [-1, 1]) {
       for (let t = -HALF + 8; t < HALF - 8; t += 5.6) {
-        if (PR() > (sp.style === 'dense' ? 0.42 : 0.24) || nearCross(t)) continue;
+        if (PR() > (sp.style === 'dense' ? 0.32 : 0.18) || nearCross(t)) continue;
         const off = roadC(k) + s * (ROAD / 2 - 1.35);
         const x = along ? off : t, z = along ? t : off;
         if (Math.abs(x) > HALF - 3 || Math.abs(z) > HALF - 3) continue;
+        if (Math.hypot(x - spawn.x, z - spawn.z) < 14 || interactables.some(it => Math.hypot(x - it.x, z - it.z) < 7)) continue;   // keep doors and the spawn clear
         const rot = (along ? 0 : Math.PI / 2) + (PR() < 0.5 ? 0 : Math.PI) + (PR() - 0.5) * 0.06;
         spots.push({ x, z, rot, color: pick(cols, PR) });
         if (along) solidC(x, z, 1.8, 4.4, 1.4); else solidC(x, z, 4.4, 1.8, 1.4);

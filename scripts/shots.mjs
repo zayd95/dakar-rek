@@ -41,7 +41,10 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => { window.__dakar.setHour(13); window.__dakar.teleport('pikine'); });
   await page.waitForTimeout(500);
   const a = await page.evaluate(() => window.__dakar.pos());
-  await page.keyboard.down('KeyW'); await page.waitForTimeout(3000); await page.keyboard.up('KeyW');
+  await page.keyboard.down('KeyW');
+  // SwiftShader runs at a few frames per second and the game caps dt at 0.1 s, so wait on distance, not on time.
+  await page.waitForFunction(([x, z]) => { const p = window.__dakar.pos(); return Math.hypot(p.x - x, p.z - z) > 1.2; }, [a.x, a.z], { timeout: 30000 }).catch(() => {});
+  await page.keyboard.up('KeyW');
   const b = await page.evaluate(() => window.__dakar.pos());
   check('movement: W moves the character', Math.hypot(b.x - a.x, b.z - a.z) > 1, `moved ${Math.hypot(b.x - a.x, b.z - a.z).toFixed(1)}`);
   // walk into a wall for a long time: must stay inside the world and not tunnel
@@ -75,7 +78,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // travel
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.__dakar.travelTo('corniche'));
-  await page.waitForTimeout(2500);
+  await page.waitForFunction(() => window.__dakar.pos().hub === 'corniche', null, { timeout: 15000 }).catch(() => {});
   const t = await page.evaluate(() => window.__dakar.pos());
   check('travel: pikine -> corniche', t.hub === 'corniche', t.hub);
   // save + reload

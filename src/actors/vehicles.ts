@@ -16,9 +16,12 @@ function bx(w: number, h: number, d: number, x: number, y: number, z: number, ma
 let rapideTemplate: THREE.BufferGeometry | null = null;
 let sedanTaxi: { baked: THREE.BufferGeometry; paint: THREE.BufferGeometry } | null = null;
 let sedanPrivate: { baked: THREE.BufferGeometry; paint: THREE.BufferGeometry } | null = null;
+/** Decimated sedan (~470 triangles) for parked cars: hundreds of them share one static mesh. */
+type SedanSet = { baked: THREE.BufferGeometry; paint: THREE.BufferGeometry };
+let lowTaxi: SedanSet | null = null, lowPrivate: SedanSet | null = null;
 export const assetStatus = { carRapide: 'TEMP procedural' as 'TEMP procedural' | 'Blender GLB', sedan: 'TEMP procedural' as 'TEMP procedural' | 'Blender GLB' };
 
-async function loadGlb(url: string): Promise<THREE.Object3D | null> {
+export async function loadGlb(url: string): Promise<THREE.Object3D | null> {
   try {
     const res = await fetch(url); if (!res.ok) return null;
     return (await new GLTFLoader().parseAsync(await res.arrayBuffer(), '')).scene;
@@ -27,7 +30,7 @@ async function loadGlb(url: string): Promise<THREE.Object3D | null> {
 /** Colour overrides for the flattened look (no reflections here, so glass and chrome need help to read). */
 const TINT: Record<string, number> = { Glass: 0x4b6372, Chrome: 0x9aa1a8, Tyre: 0x2a2a2a };
 /** Mesh parts whose material passes `keep`, merged; colour = (white or material colour) × AO. */
-function flatten(root: THREE.Object3D, keep: (name: string) => boolean, tintFrom: (name: string) => boolean): THREE.BufferGeometry | null {
+export function flatten(root: THREE.Object3D, keep: (name: string) => boolean, tintFrom: (name: string) => boolean): THREE.BufferGeometry | null {
   const geos: THREE.BufferGeometry[] = [];
   root.updateMatrixWorld(true);
   root.traverse(o => {
@@ -49,7 +52,7 @@ function flatten(root: THREE.Object3D, keep: (name: string) => boolean, tintFrom
 }
 
 export async function preloadAssets(base = import.meta.env.BASE_URL): Promise<void> {
-  const [rap, sed] = await Promise.all([loadGlb(`${base}assets/car_rapide.glb`), loadGlb(`${base}assets/sedan.glb`)]);
+  const [rap, sed, low] = await Promise.all([loadGlb(`${base}assets/car_rapide.glb`), loadGlb(`${base}assets/sedan.glb`), loadGlb(`${base}assets/sedan_low.glb`)]);
   if (rap) { rapideTemplate = flatten(rap, () => true, () => true); if (rapideTemplate) assetStatus.carRapide = 'Blender GLB'; }
   if (sed) {
     const paintT = (n: string) => n === 'Paint_Body';
@@ -58,14 +61,21 @@ export async function preloadAssets(base = import.meta.env.BASE_URL): Promise<vo
     const bP = flatten(sed, n => !paintP(n) && n !== 'TaxiSign', () => true), pP = flatten(sed, paintP, () => false);
     if (bT && pT && bP && pP) { sedanTaxi = { baked: bT, paint: pT }; sedanPrivate = { baked: bP, paint: pP }; assetStatus.sedan = 'Blender GLB'; }
   }
+  if (low) {
+    const paintT = (n: string) => n === 'Paint_Body', paintP = (n: string) => n === 'Paint_Body' || n === 'Paint_Accent';
+    const bT = flatten(low, n => !paintT(n), () => true), pT = flatten(low, paintT, () => false);
+    const bP = flatten(low, n => !paintP(n) && n !== 'TaxiSign', () => true), pP = flatten(low, paintP, () => false);
+    if (bT && pT && bP && pP) { lowTaxi = { baked: bT, paint: pT }; lowPrivate = { baked: bP, paint: pP }; }
+  }
 }
 /** Parked cars along the kerbs, merged into one static mesh (one draw call per hub). Empty if the GLB is missing. */
 export function parkedCars(spots: { x: number; z: number; rot: number; color: number }[]): THREE.Mesh | null {
-  if (!sedanTaxi || !sedanPrivate || !spots.length) return null;
+  const T = lowTaxi ?? sedanTaxi, P = lowPrivate ?? sedanPrivate;
+  if (!T || !P || !spots.length) return null;
   const parts: THREE.BufferGeometry[] = [];
   const m = new THREE.Matrix4(), c = new THREE.Color();
   for (const sp of spots) {
-    const set = sp.color === 0xf0b800 ? sedanTaxi : sedanPrivate;
+    const set = sp.color === 0xf0b800 ? T : P;
     m.makeRotationY(sp.rot).setPosition(sp.x, 0.06, sp.z);
     parts.push(set.baked.clone().applyMatrix4(m));
     const p = set.paint.clone().applyMatrix4(m); c.set(sp.color);

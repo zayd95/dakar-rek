@@ -18,6 +18,7 @@ import { Crowd, DecorativeTraffic, Loiterers } from './actors/npc';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
 import { Post, type PostMode } from './render/post';
+import { preloadProps } from './world/props';
 import { preloadAssets } from './actors/vehicles';
 import { preloadHumanoid, humanoidReady, Humanoid, lookFromOutfit, randomLook, type Clip, type PersonLook } from './actors/humanoid';
 import { CAST, castById } from './social/cast';
@@ -52,7 +53,7 @@ type Quality = 'low' | 'medium' | 'high';
 let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarrek.quality'); if (q === 'low' || q === 'medium' || q === 'high') return q; } catch { /* */ } return /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'medium' : 'high'; })();
 const QUAL = {
   low: { pr: 1, shadow: 0, crowd: 12, traffic: 5, loiter: 6, post: 'off' as PostMode },
-  medium: { pr: 1.5, shadow: 1024, crowd: 22, traffic: 9, loiter: 14, post: 'grade' as PostMode },
+  medium: { pr: 1.5, shadow: 1024, crowd: 22, traffic: 9, loiter: 14, post: 'off' as PostMode },   // phones: no extra full-screen passes until measured on real devices
   high: { pr: 2, shadow: 2048, crowd: 30, traffic: 12, loiter: 22, post: 'full' as PostMode },
 };
 
@@ -527,7 +528,7 @@ function frame(now: number) {
 // ------------------------------------------------------------------ start
 resize(); applyQuality();
 async function start() {
-  await Promise.all([preloadAssets(), preloadHumanoid()]);
+  await Promise.all([preloadAssets(), preloadHumanoid(), preloadProps()]);
   if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); scene.add(playerBody.group); player.group.visible = false; }
   const startHub = state.data.hub;
   if (isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);

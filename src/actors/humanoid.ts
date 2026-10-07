@@ -39,8 +39,29 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
       buf = u8.buffer;
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
+    // Body, hands and head are one skinned mesh: eyes, iris and brows keep fixed colours through `fixColor`
+    // (rgb = colour, a = 1 where fixed), everything else takes the person's skin colour. One draw call for the skin.
+    gltf.scene.traverse(o => {
+      const g = (o as THREE.Mesh).geometry; if (!g) return;
+      const fix = g.getAttribute('_fix'); if (fix) { g.setAttribute('fixColor', fix); g.deleteAttribute('_fix'); }
+      if (g.getAttribute('color_1')) g.deleteAttribute('color_1');
+    });
     template = { scene: gltf.scene, clips: gltf.animations };
   } catch { /* box characters stay in use */ }
+}
+
+/** Skin material with fixed-colour parts (eyes, brows) read from the `fixColor` vertex attribute. */
+function skinMaterial(): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ color: 0x5b3420, roughness: 0.52, metalness: 0, vertexColors: true, side: THREE.DoubleSide });
+  m.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 fixColor;\nvarying vec4 vFix;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFix = fixColor;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vFix;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vFix.rgb * vColor.rgb, vFix.a);')
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.2, vFix.a);');
+  };
+  m.customProgramCacheKey = () => 'skin-fix';
+  return m;
 }
 
 // ---------------------------------------------------------------- garment textures (generic prints, own designs)
@@ -128,7 +149,7 @@ export class Humanoid {
     this.root = cloneSkinned(template.scene);
     this.group.add(this.root); this.group.name = 'humanoid_v2';
     // Skin: a little specular so dark skin keeps its form; baked ambient occlusion comes in as vertex colour.
-    this.skinMat = new THREE.MeshStandardMaterial({ color: 0x5b3420, roughness: 0.52, metalness: 0, vertexColors: true, side: THREE.DoubleSide });
+    this.skinMat = skinMaterial();
     const hair = new THREE.MeshStandardMaterial({ color: 0x141011, roughness: 0.85, vertexColors: true, side: THREE.DoubleSide });
     this.root.traverse(o => {
       const m = o as THREE.Mesh;
