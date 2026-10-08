@@ -1,48 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08T17:13:00Z",
+  "updatedAt": "2026-10-08T17:19:43Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
-  "phase": "operational_scheduler_enabled",
-  "lease": {
-    "token": "resume-20261008T165500Z-5677b8b0fdd0",
-    "owner": "coordinator_resume_1655",
-    "acquiredAt": "2026-10-08T16:55:00Z",
-    "expiresAt": "2026-10-08T17:40:00Z",
-    "baseHead": "feac8c3da1cefd766f43794133d135ea6a99853e"
-  },
+  "phase": "operational_candidate_review",
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "DKAG-008-QA",
-      "owner": "qa_resume_1655",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-008-combat-review.md"
-      ]
-    },
-    {
-      "task": "DKAG-016-QA",
-      "owner": "qa_ibou_1701",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "c089dce66e972d8785208e0cb64055ddb954430f",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-016-characters-review.md"
-      ]
-    },
-    {
-      "task": "DKAG-017-QA",
-      "owner": "qa_animation_1707",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "e3cdf9ad3c697a51d50bca3766f6ea51364befda",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-017-animation-review.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -120,7 +86,8 @@
     "DKAG-009",
     "DKAG-011",
     "DKAG-012",
-    "DKAG-013"
+    "DKAG-013",
+    "DKAG-008"
   ],
   "ci": {
     "aidaCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -149,15 +116,10 @@
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [
-    "DKAG-008",
     "DKAG-016",
     "DKAG-017"
   ],
-  "activeSessions": [
-    "qa_resume_1655",
-    "qa_ibou_1701",
-    "qa_animation_1707"
-  ],
+  "activeSessions": [],
   "completedSessions": [
     "activation_producer",
     "activation_qa",
@@ -171,9 +133,12 @@
     "culture_resume_1655",
     "combat_resume_1655",
     "characters_resume_1655",
-    "animation_resume_1655"
+    "animation_resume_1655",
+    "qa_resume_1655",
+    "qa_ibou_1701",
+    "qa_animation_1707"
   ],
-  "nextAction": "Complete frozen candidates13/14/15 exact CI and independent QA; next bounded code lot DKAG-018 arena billboard access on isolated fork after rechecking source owner.",
+  "nextAction": "Resume only frozen CI for DKAG-016/017 and update QA; then oldest ready DKAG-018 surgical arena billboard access after fresh PR10 ownership/head check. No merge/deploy.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -230,5 +195,141 @@
     "previousToken": "cycle-20261008T132800Z-608bc7678079",
     "reason": "Usage-limit interruption; original delegated agents errored; list_agents confirms no active writer. Refs unchanged and task branch at base; partial local code recovered.",
     "confirmedAt": "2026-10-08T16:55:00Z"
-  }
+  },
+  "combatCandidate": {
+    "sourceCommit": "55def6b14e7cdf47d9ca0e0885a6e5950219c920",
+    "pullRequest": 13,
+    "status": "verified",
+    "reviewer": "qa_resume_1655",
+    "ci": [
+      {
+        "id": 37813286790,
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "sha": "55def6b14e7cdf47d9ca0e0885a6e5950219c920"
+      },
+      {
+        "id": 37813282258,
+        "status": "completed",
+        "conclusion": "success",
+        "event": "push",
+        "sha": "55def6b14e7cdf47d9ca0e0885a6e5950219c920"
+      }
+    ],
+    "reviewReport": "docs/agents/operations/reports/DKAG-008-combat-review.md",
+    "merged": false,
+    "deployed": false
+  },
+  "ibouCandidate": {
+    "sourceCommit": "a26e90543641c1fe0ef396f8938598de9897940f",
+    "pullRequest": 14,
+    "status": "review",
+    "reviewer": "qa_ibou_1701",
+    "ci": [
+      {
+        "id": 37814046695,
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "sha": "a26e90543641c1fe0ef396f8938598de9897940f"
+      },
+      {
+        "id": 37814040671,
+        "status": "in_progress",
+        "conclusion": null,
+        "event": "push",
+        "sha": "a26e90543641c1fe0ef396f8938598de9897940f"
+      }
+    ],
+    "reviewReport": "docs/agents/operations/reports/DKAG-016-characters-review.md",
+    "merged": false,
+    "deployed": false
+  },
+  "animationCandidate": {
+    "sourceCommit": "25bbb40e7882ccbd06e2181689982d0f0085b504",
+    "pullRequest": 15,
+    "status": "review",
+    "reviewer": "qa_animation_1707",
+    "ci": [
+      {
+        "id": 37814728980,
+        "status": "in_progress",
+        "conclusion": null,
+        "event": "pull_request",
+        "sha": "25bbb40e7882ccbd06e2181689982d0f0085b504"
+      },
+      {
+        "id": 37814723950,
+        "status": "in_progress",
+        "conclusion": null,
+        "event": "push",
+        "sha": "25bbb40e7882ccbd06e2181689982d0f0085b504"
+      }
+    ],
+    "reviewReport": "docs/agents/operations/reports/DKAG-017-animation-review.md",
+    "merged": false,
+    "deployed": false
+  },
+  "lastCycle": {
+    "entry": "docs/agents/operations/CYCLE-2026-10-08-RESUME.md",
+    "completedAt": "2026-10-08T17:19:43Z",
+    "trigger": "user continuation",
+    "codeCandidates": 3,
+    "verifiedCandidates": [
+      "DKAG-008"
+    ],
+    "reviewCandidates": [
+      "DKAG-016",
+      "DKAG-017"
+    ],
+    "protectedRefsUnchanged": true,
+    "leaseReleased": "resume-20261008T165500Z-5677b8b0fdd0"
+  },
+  "protectedRefsLatest": [
+    {
+      "name": "codex/agent-studio-bootstrap",
+      "sha": "3ef649b19382955ad2c933fce551ea7ba36d8c57"
+    },
+    {
+      "name": "codex/aida-revision-activity",
+      "sha": "0af76c38b152df885c0c27352aa43ac320aa71af"
+    },
+    {
+      "name": "codex/cloudflare-agent",
+      "sha": "53345bf594e7015c56eef9871610e8f25e8b18ff"
+    },
+    {
+      "name": "codex/dakar-city-life",
+      "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+    },
+    {
+      "name": "codex/launch-controls",
+      "sha": "6216bb80db6bb7d777997e70d1681fa71240b057"
+    },
+    {
+      "name": "codex/multiplayer-launch",
+      "sha": "792a455acd681dea0476a5dcc11cfc8e7594f312"
+    },
+    {
+      "name": "codex/preserve-vehicle-materials",
+      "sha": "e20b9f775062048a76cf0b9470992dc31de511a3"
+    },
+    {
+      "name": "codex/v1-core-launch-scope",
+      "sha": "9f9b76dfae5f34f3ecba6defdd1154c966560a1e"
+    },
+    {
+      "name": "codex/v1-mosque-ads",
+      "sha": "e4f1c291117fb61633d169a008823efd59dce19f"
+    },
+    {
+      "name": "main",
+      "sha": "547bb1e8077127094a3fc647821cf6ac73d2a42c"
+    },
+    {
+      "name": "wip/visual-pass",
+      "sha": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7"
+    }
+  ]
 }

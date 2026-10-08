@@ -25,7 +25,9 @@
   "firstAutonomousRun": {
     "requested": false,
     "completed": false,
-    "note": "Enabled schedule is confirmed; no autonomous completion claimed."
+    "note": "Scheduled attempt observed, interrupted by usage limit. User continuation resumed actual code/QA; no unattended completed run invented.",
+    "status": "interrupted_usage_limit",
+    "attemptObservedAt": "2026-10-08T13:26:30Z"
   },
   "claudeNativeLoadVerified": false,
   "productionChanged": false,
@@ -45,5 +47,22 @@
     "pausedTaskTitle": "Nattoo Payments Watch",
     "pausedNotDeleted": true,
     "conversationAssociationPreserved": true
+  },
+  "userContinuation": {
+    "requestedAt": "2026-10-08T16:53:57Z",
+    "completedAt": "2026-10-08T17:19:43Z",
+    "cycle": "docs/agents/operations/CYCLE-2026-10-08-RESUME.md",
+    "candidates": [
+      13,
+      14,
+      15
+    ],
+    "verified": [
+      13
+    ],
+    "review": [
+      14,
+      15
+    ]
   }
 }

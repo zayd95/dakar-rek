@@ -75,7 +75,7 @@
       "id": "DKAG-008",
       "role": "combat",
       "kind": "implementation",
-      "status": "review",
+      "status": "done",
       "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
       "branch": "codex/agents/dkag-008-duel-input-reset",
       "allowedFiles": [
@@ -120,9 +120,40 @@
         },
         "authorBuild": "PASS",
         "authorServerTypecheck": "PASS",
-        "ci": "pending",
-        "independentQa": "running"
-      }
+        "ci": {
+          "runs": [
+            {
+              "id": 37813286790,
+              "status": "completed",
+              "conclusion": "success",
+              "event": "pull_request",
+              "sha": "55def6b14e7cdf47d9ca0e0885a6e5950219c920"
+            },
+            {
+              "id": 37813282258,
+              "status": "completed",
+              "conclusion": "success",
+              "event": "push",
+              "sha": "55def6b14e7cdf47d9ca0e0885a6e5950219c920"
+            }
+          ],
+          "readAt": "2026-10-08T17:19:43Z"
+        },
+        "independentQa": "ready candidate after exact source CI",
+        "independentUnit": {
+          "passed": 48,
+          "total": 48
+        },
+        "independentBuild": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBrowser": {
+          "passed": 28,
+          "total": 28,
+          "scope": "actual UI/source fixture, no renderer"
+        }
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-008-combat-review.md",
+      "acceptedScope": "verified isolated candidate; independent local tests and exact source push/PR complete CI; not merged/deployed"
     },
     {
       "id": "DKAG-009",
@@ -372,9 +403,40 @@
         },
         "authorBuild": "PASS",
         "authorServerTypecheck": "PASS",
-        "ci": "pending",
-        "independentQa": "running"
-      }
+        "ci": {
+          "runs": [
+            {
+              "id": 37814046695,
+              "status": "completed",
+              "conclusion": "success",
+              "event": "pull_request",
+              "sha": "a26e90543641c1fe0ef396f8938598de9897940f"
+            },
+            {
+              "id": 37814040671,
+              "status": "in_progress",
+              "conclusion": null,
+              "event": "push",
+              "sha": "a26e90543641c1fe0ef396f8938598de9897940f"
+            }
+          ],
+          "readAt": "2026-10-08T17:19:43Z"
+        },
+        "independentQa": "completed local review",
+        "independentUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "independentBuild": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBrowser": {
+          "passed": 22,
+          "total": 22,
+          "scope": "compiled game menu/save browser with debug positioning"
+        }
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-016-characters-review.md",
+      "acceptedScope": "independent local validation PASS; pending CI must be resumed without code rewrite"
     },
     {
       "id": "DKAG-017",
@@ -414,9 +476,39 @@
         "authorBuild": "PASS",
         "authorServerTypecheck": "PASS",
         "authorBrowser": "PASS both controlled duel outcomes; real GLB and renderer; not phone/visual clipping",
-        "ci": "pending",
-        "independentQa": "running"
-      }
+        "ci": {
+          "runs": [
+            {
+              "id": 37814728980,
+              "status": "in_progress",
+              "conclusion": null,
+              "event": "pull_request",
+              "sha": "25bbb40e7882ccbd06e2181689982d0f0085b504"
+            },
+            {
+              "id": 37814723950,
+              "status": "in_progress",
+              "conclusion": null,
+              "event": "push",
+              "sha": "25bbb40e7882ccbd06e2181689982d0f0085b504"
+            }
+          ],
+          "readAt": "2026-10-08T17:19:43Z"
+        },
+        "independentQa": "completed local review",
+        "independentUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "independentBuild": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBrowser": {
+          "result": "PASS",
+          "scope": "real GLB/Three renderer and both controlled duel outcomes; no clipping/physical-phone attestation"
+        }
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-017-animation-review.md",
+      "acceptedScope": "independent local validation PASS; pending CI must be resumed without code rewrite"
     },
     {
       "id": "DKAG-018",

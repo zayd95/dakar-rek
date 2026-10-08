@@ -25,3 +25,15 @@ DKAG009 Monde, DKAG011 Personnages, DKAG012 Animation, DKAG013 Culture terminés
 DKAG016et017 commissionnés sur fichiersbornés disjoints, une seuleréalisationcodeactiveàlafois, revueenparallèle. DKAG018 prêt: décaler uniquementpanneauarènehorsaxedeporte, basePR10e4f1c291117fb61633d169a008823efd59dce19f actuelle relue, exceptéréservationbuilderstrictementcandidateisolée et testexistant; ne jamais remplacertoutbuilder, recopierville/mosquée oumodifierrefsautressessions.
 
 Le registre scheduler enabled reste une activation historiquementattestée, pas une preuve de runautomatiqueachevé. Cette reprise utilisateur est distincte. Finaliser CI/QA auSHA, enregistrerlimites, puislibérerseulementcettelease; siCIpendingprochaincyclelitcandidateimmobilesansrefairecode.
+
+## Clôture effective — 2026-10-08T17:19:43Z
+
+DKAG008 accepté candidate vérifiée: QA distincte48/48unité+28/28fixture, push37813282258 checkoutdirect55def6b et PR37813286790 merge0a05d5c727f40db583f862321fc2e6b8ff7ead73 terminés success, logs relus, artefacts11566476982/11566063680. CI existante17réseau/52Aïda et gameplay bureau/tactile PASS; fixture28 reste séparé de CI.
+
+DKAG016 QA37/37+22/22menu/savePASS; PR37814046695success, mergea91153fd4050a141ebcec7f9a1b642a5a1746378 treed2c69af87e9bceb18995ddcd103e4ae69a0bb120 identiqueauHEAD, artefact11566637617. Push37814040671 encorein_progress àdernièrelecture17:18:47; statusreview.
+
+DKAG017 QA37/37+mixer+GLBbrowserdeuxissuesPASS; push37814723950/PR37814728980 encorein_progress àdernièrelecture17:18:47, statusreview. Aucun code à refaire; prochaincyclelitlogsfinaux.
+
+Neufvulnérabilités annoncées dansnpmci CI(3moderate,4high,2critical), sansauditpackagesdétaillé ni exploitaffirmé; lockpréservé, aucunautofix. Detteàinspecterséparémentaveccommission, pasrégressionattribuéeauxlots.
+
+TroisrapportsQA publiés au registre. Relecture complète des branches final17:18:11: toutesrefs hors contrôle/tâches sont identiquesausnapshotdereprise, dontmain,wip/visual-pass,branchesClaude/autressessions/launch-controls. Aucunefusion/déploiement/service/credential/dépense. Corpslease uniquementducoordinateur remisànull parCAS expectedHEADexact; activeCodeTasknull etréservationslibérées. Prochainpropriétairecoordinateur: CI/review016/017puisDKAG018, source et ownershiprevérifiés. Contexteculturelresteunverified.
