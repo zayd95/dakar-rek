@@ -36,6 +36,8 @@ Le parcours `scripts/check-v1-core.mjs` vérifie désormais :
 
 Première exécution CI (`37855312799`) : compilation et 34/34 tests réussis ; les contrôles de séparation et les trois positions centrales ont réussi. Le premier contrôle de navigation a échoué avant que ses positions soient journalisées. La première correction ciblée part maintenant à 10 m, avance jusqu’à l’état d’interaction attendu dans une boucle bornée à 3 s, garantit le relâchement de la commande et journalise les positions avant l’assertion. Le parcours mobile injecte de vrais événements tactiles Chromium (`Input.dispatchTouchEvent`) au lieu d’événements souris. Aucune assertion n’a été retirée ou assouplie.
 
+La CI de la première correction (`37855663294`) a montré que `place` avait bien repositionné le joueur à 10 m, mais que l’interaction de la frame précédente restait brièvement exposée ; la boucle vers la cible se terminait donc avant tout déplacement. La seconde et dernière correction attend désormais, après chacun des quatre repositionnements, que l’interaction ne soit plus la cible attendue avant de capturer le départ et d’envoyer la commande. La boucle bornée vers la cible, le relâchement garanti, le seuil de déplacement supérieur à 3,5 m et toutes les assertions sont conservés.
+
 ## Statut
 
 Candidate d’auteur prête pour CI et revue QA indépendante. Pas d’auto-approbation, pas de merge et pas de déploiement.

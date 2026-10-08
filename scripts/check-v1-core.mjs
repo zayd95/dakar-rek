@@ -85,6 +85,7 @@ try {
         check(`arena menu stays stable on the centreline at ${dz >= 0 ? '+' : ''}${dz} m`, await page.evaluate(() => window.__dakar.nearestInteractable() === 'Arène · làmb'));
       }
       await page.evaluate(a => window.__dakar.place(a.x, a.z - 10, 0), anchors.arena);
+      await page.waitForFunction(expected => window.__dakar.nearestInteractable() !== expected, 'Arène · làmb');
       const arenaStart = await page.evaluate(() => window.__dakar.pos());
       await page.keyboard.down('w');
       try { await page.waitForFunction(expected => window.__dakar.nearestInteractable() === expected, 'Arène · làmb', { timeout: 3000 }); }
@@ -94,6 +95,7 @@ try {
       check('medium desktop navigation reaches the arena menu through the gate', Math.hypot(arenaEnd.x - arenaStart.x, arenaEnd.z - arenaStart.z) > 3.5 && arenaEnd.near === 'Arène · làmb');
       await page.screenshot({ path: `${evidence}/arena-centreline-desktop.png` });
       await page.evaluate(b => window.__dakar.place(b.x, b.z - 10, 0), anchors.board);
+      await page.waitForFunction(expected => window.__dakar.nearestInteractable() !== expected, 'Annonces · arène');
       const boardStart = await page.evaluate(() => window.__dakar.pos());
       await page.keyboard.down('w');
       try { await page.waitForFunction(expected => window.__dakar.nearestInteractable() === expected, 'Annonces · arène', { timeout: 3000 }); }
@@ -127,6 +129,7 @@ try {
     board: window.__dakar.interactables().find(i => i.id.endsWith('pikine-arena')),
   }));
   await phone.evaluate(a => window.__dakar.place(a.x, a.z - 10, 0), mobileAnchors.arena);
+  await phone.waitForFunction(expected => window.__dakar.nearestInteractable() !== expected, 'Arène · làmb');
   const joy = await phone.locator('#joy').boundingBox();
   check('touch joystick is visible', !!joy);
   const touch = await mobile.newCDPSession(phone);
@@ -144,6 +147,7 @@ try {
   check('low touch navigation reaches the arena menu through the gate', Math.hypot(touchEnd.x - touchStart.x, touchEnd.z - touchStart.z) > 3.5 && touchEnd.near === 'Arène · làmb');
   await phone.screenshot({ path: `${evidence}/arena-centreline-mobile.png` });
   await phone.evaluate(b => window.__dakar.place(b.x, b.z - 10, 0), mobileAnchors.board);
+  await phone.waitForFunction(expected => window.__dakar.nearestInteractable() !== expected, 'Annonces · arène');
   const boardTouchStart = await phone.evaluate(() => window.__dakar.pos());
   await walkTouchUntil('Annonces · arène');
   const boardTouchEnd = await phone.evaluate(() => window.__dakar.pos());
