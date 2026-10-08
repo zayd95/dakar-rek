@@ -97,6 +97,9 @@ try {
   if (process.argv.includes('--full')) {
     for (const context of contexts.splice(0)) await context.close();
     await browser.close(); browser = null;
+    const aida = spawn(process.execPath, ['scripts/check-aida-activity.mjs', base, 'shots/launch-controls/aida'], { stdio: 'inherit' });
+    const aidaCode = await new Promise((resolve, reject) => { aida.on('close', resolve); aida.on('error', reject); });
+    check('Aïda activity desktop and touch UI journey', aidaCode === 0);
     const full = spawn(process.execPath, ['scripts/shots.mjs', base, 'shots/launch-gameplay'], { stdio: 'inherit' });
     const code = await new Promise(resolve => full.on('close', resolve));
     check('full desktop and phone gameplay suite', code === 0);

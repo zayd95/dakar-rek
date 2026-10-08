@@ -1,5 +1,30 @@
 import type { Action } from './types';
 import type { HubId } from '../core/types';
+import type { GameState } from '../core/state';
+import { Relations, PLAYER } from '../social/relations';
+
+/** A one-off local activity, represented by the existing four-second runner. */
+export const AIDA_REVISION: Action = {
+  id: 'aida_revision', label: 'Réviser avec Aïda', detail: 'Une courte séance ensemble · énergie −6',
+  seconds: 4, needs: { social: 12, energie: -6 }, counter: 'aida_revisions',
+  visible: aidaRevisionPending,
+  requires: s => s.data.needs.energie < 6 ? 'Il faut au moins 6 d’énergie' : null,
+};
+
+export function aidaRevisionPending(s: GameState): boolean {
+  return s.data.flags.includes('aida_revision_invited') && !s.data.flags.includes('aida_friend')
+    && !('aida_revised' in s.data.beats) && (s.data.counters.aida_revisions ?? 0) < 1;
+}
+
+/** Called only at the end of a started activity; no progress is persisted. */
+export function completeAidaRevision(s: GameState): boolean {
+  if (!aidaRevisionPending(s)) return false;
+  s.adjust(AIDA_REVISION.needs!);
+  s.count('aida_revisions');
+  s.count('actions');
+  new Relations(s.data).change(PLAYER, 'aida', 1);
+  return true;
+}
 
 const flag = (f: string) => (s: { data: { flags: string[] } }) => s.data.flags.includes(f);
 const noFlag = (f: string) => (s: { data: { flags: string[] } }) => !s.data.flags.includes(f);
@@ -8,6 +33,10 @@ const friendHere = (s: { data: { flags: string[]; hub: string } }) => !!FRIEND_F
 const tired = (n: number) => (s: { data: { needs: { energie: number } } }) => (s.data.needs.energie < n ? 'Trop fatigué' : null);
 
 export const ACTIONS: Record<string, Action[]> = {
+  aida: [
+    AIDA_REVISION,
+    { id: 'discuter', label: 'Discuter', detail: 'Prendre des nouvelles', needs: { social: 8, moral: 2 }, seconds: 2.5, counter: 'chats' },
+  ],
   gargote: [
     { id: 'ceebu', label: 'Ceebu jën', detail: 'Le plat du jour', cost: 1000, needs: { faim: 45, moral: 4 }, seconds: 3, counter: 'meals' },
     { id: 'ami', label: 'Ceebu jën à prix d’ami', detail: 'On se souvient de ton aide', cost: 600, needs: { faim: 45, moral: 8, social: 4 }, seconds: 3, counter: 'meals', visible: friendHere },

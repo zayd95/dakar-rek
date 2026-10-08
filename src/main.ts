@@ -11,7 +11,7 @@ import { buildHub } from './world/builder';
 import { Sky } from './world/sky';
 import { setGrainEnabled } from './world/grain';
 import { buildInterior, setInteriorDaylight, type Interior } from './world/interiors';
-import { ACTIONS, HUB_NAMES, travelLeg } from './world/content';
+import { ACTIONS, HUB_NAMES, travelLeg, AIDA_REVISION, completeAidaRevision } from './world/content';
 import type { Action, Collider, HubWorld, Interactable } from './world/types';
 import { Character, PLAYER_OUTFIT } from './actors/character';
 import { Crowd, DecorativeTraffic } from './actors/npc';
@@ -117,6 +117,7 @@ let lambScene: LambScene | LambDuel | null = null;
 let emoteT = 0;
 const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
+let interactionVersion = 0;
 let hourOverride: number | null = null;
 /** Walkable interiors of this hub, and the one the player is in. */
 let interiors = new Map<string, Interior>();
@@ -126,7 +127,7 @@ let camOverride: { dist: number; h: number; side: number } | null = null;
 const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
 const roomParam = Number(params.get('room'));
 const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
-const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
+const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { ++interactionVersion; mode = 'menu'; input.enabled = false; });
 presence.onChange = () => { presenceUi.update(); if (!presence.count) remoteAvatars.clear(); };
 function presenceSpace() { return lambScene ? 'scene' : inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'; }
 
@@ -197,7 +198,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
     const h = humanoidReady() ? new Humanoid(lookFromOutfit(m.outfit, m.female)) : undefined;
     const c = h ?? new Character(m.outfit); c.group.position.set(x, 0.1, z); extra.add(c.group);
     castChars.push({ id: m.id, c, h, x, z });
-    world.interactables.push({ id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x, z, radius: 3.2, actions: m.id === 'ibou' ? ACTIONS.ibou : CHAT, npc: m.id });
+    world.interactables.push({ id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x, z, radius: 3.2, actions: m.id === 'ibou' ? ACTIONS.ibou : m.id === 'aida' ? ACTIONS.aida : CHAT, npc: m.id });
   }
   interiors = new Map(); inside = null; follow.indoor = false; scene.remove(roomLight);
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
@@ -250,16 +251,25 @@ function describe(a: Action): string {
 }
 
 function openActions(it: Interactable) {
+  if (mode === 'busy' || mode === 'scene') return;
+  const version = ++interactionVersion;
   mode = 'menu';
   const visible = it.actions.filter(a => !a.visible || a.visible(state));
   const items = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc); } };
+    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined, disabled: !!why, onPick: () => {
+      if (mode !== 'menu' || !hud.modalOpen || version !== interactionVersion) return;
+      ++interactionVersion;
+      hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc);
+    } };
   });
   let subtitle = 'Que veux-tu faire ?';
   if (it.npc) {
     const beat = availableBeat(it.npc, rel, state);
-    if (beat) items.unshift({ label: '★ ' + beat.title, detail: 'Histoire', right: undefined, disabled: false, onPick: () => openBeat(beat) });
+    if (beat) items.unshift({ label: '★ ' + beat.title, detail: 'Histoire', right: undefined, disabled: false, onPick: () => {
+      if (mode !== 'menu' || !hud.modalOpen || version !== interactionVersion) return;
+      openBeat(beat);
+    } });
     const lv = rel.level(it.npc);
     subtitle = `Relation : ${Relations.label(lv)} (${lv > 0 ? '+' : ''}${Math.round(lv)})`;
   }
@@ -267,12 +277,20 @@ function openActions(it: Interactable) {
 }
 
 function openBeat(beat: Beat) {
+  if (mode === 'busy' || mode === 'scene' || availableBeat(beat.npc, rel, state)?.id !== beat.id) return;
+  const version = ++interactionVersion;
   const who = castById(beat.npc)!;
   mode = 'menu';
   hud.openMenu(`${who.name} — ${beat.title}`, beat.text, beat.choices.map(ch => ({
     label: ch.label, onPick: () => {
+      if (mode !== 'menu' || !hud.modalOpen || version !== interactionVersion || availableBeat(beat.npc, rel, state)?.id !== beat.id) return;
+      const replyVersion = ++interactionVersion;
       const notes = applyChoice(beat, ch, rel, state);
-      hud.openMenu(who.name, ch.reply, [{ label: 'Continuer', onPick: () => { hud.closeModal(); if (ch.effects.scene === 'celebration') startScene('celebration'); } }]);
+      hud.openMenu(who.name, ch.reply, [{ label: 'Continuer', onPick: () => {
+        if (mode !== 'menu' || !hud.modalOpen || replyVersion !== interactionVersion) return;
+        ++interactionVersion;
+        hud.closeModal(); if (ch.effects.scene === 'celebration') startScene('celebration');
+      } }]);
       if (notes.length || ch.effects.money) hud.toast([...notes, ch.effects.money ? '+' + fcfa(ch.effects.money) : ''].filter(Boolean).join('  '));
       saveNow();
     },
@@ -374,6 +392,7 @@ function endScene() {
 }
 
 function openOutfit() {
+  ++interactionVersion;
   mode = 'menu';
   const w = state.data.wrestler;
   const html = `<div class="draft">${REVIEW_STATUS} — couleurs, motifs et accessoires provisoires. Purement cosmétique : aucun effet sur les combats.</div>
@@ -408,6 +427,7 @@ function previewOutfit() { showProxy('Idle'); previewT = 6; hud.toast('Aperçu d
 const EMOTE_CLIP: Record<string, Clip> = { pas1: 'Dance_A', pas2: 'Dance_B', fete: 'Celebrate' };
 
 function openEmotes() {
+  ++interactionVersion;
   mode = 'menu';
   hud.openMenu('Mbakkou', 'Mouvements provisoires — les pas, noms et gestes seront validés avec des pratiquants.', EMOTES.map(e => ({
     label: e.label, detail: 'Non validé', onPick: () => { hud.closeModal(); playEmote(EMOTES.indexOf(e)); },
@@ -420,6 +440,7 @@ function playEmote(i: number) {
 }
 
 function openJournal() {
+  ++interactionVersion;
   mode = 'menu';
   const met = CAST.filter(c => rel.level(c.id) !== 0 || BEATS.some(b => b.npc === c.id && rel.beatDone(b.id)));
   const next = suggestion(rel, state);
@@ -432,6 +453,11 @@ function openJournal() {
 }
 
 function runAction(a: Action, npc?: string) {
+  if (mode === 'busy' || mode === 'scene') return;
+  const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
+  if ((a.visible && !a.visible(state)) || why || (a.id === AIDA_REVISION.id && npc !== 'aida')) {
+    mode = 'play'; input.enabled = true; if (why) hud.toast(why); return;
+  }
   mode = 'busy'; input.enabled = false;
   const t0 = performance.now(), dur = a.seconds * 1000;
   hud.progress(true, 0, a.label);
@@ -440,12 +466,16 @@ function runAction(a: Action, npc?: string) {
     hud.progress(true, p, a.label);
     if (p < 1) { requestAnimationFrame(tick); return; }
     hud.progress(false);
-    if (a.cost) state.addMoney(-a.cost);
-    if (a.gain) state.addMoney(a.gain);
-    if (a.needs) state.adjust(a.needs);
-    if (a.counter) state.count(a.counter);
-    if (npc) rel.change(PLAYER, npc, 1);
-    state.count('actions');
+    if (a.id === AIDA_REVISION.id) {
+      if (!completeAidaRevision(state)) { mode = 'play'; input.enabled = true; return; }
+    } else {
+      if (a.cost) state.addMoney(-a.cost);
+      if (a.gain) state.addMoney(a.gain);
+      if (a.needs) state.adjust(a.needs);
+      if (a.counter) state.count(a.counter);
+      if (npc) rel.change(PLAYER, npc, 1);
+      state.count('actions');
+    }
     const bits = [a.label + ' ✓'];
     if (a.gain) bits.push('+' + fcfa(a.gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
     hud.toast(bits.join('  '));
@@ -455,6 +485,7 @@ function runAction(a: Action, npc?: string) {
 }
 
 function openTravel() {
+  ++interactionVersion;
   if (!world) return;
   mode = 'menu';
   const here = world.id;
@@ -481,6 +512,7 @@ function doTravel(dest: HubId) {
 }
 
 function openSystem() {
+  ++interactionVersion;
   mode = 'menu';
   const c = state.data.counters;
   const kv = `<div class="kv">Temps de jeu : ${Math.floor(state.data.playedMs / 60000)} min · Repas : ${c.meals ?? 0} · Services : ${c.shifts ?? 0} · Forme : ${c.forme ?? 0} · Trajets : ${c.trips ?? 0}<br>Sauvegarde invité : sur cet appareil seulement (pas de compte).</div>
