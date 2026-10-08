@@ -212,7 +212,7 @@ References:
   beach:** resembles the Soumbédioune setting (cliffs, market hall); artistic interpretation only, not a reconstruction.
 - **#45 family courtyard, #46 rooftop terrace, #47 night street:** usable for home interiors and night lighting.
 
-Nothing from batch 3 is used in the game yet.
+Batch 3 textures are used in the game since 8 Oct ("Used in the game" below) and were remastered the same night (section after it).
 
 ## Used in the game (7 Oct 2026, cloud session)
 
@@ -226,15 +226,15 @@ Derived 512 px JPEGs in `public/assets/tex/` (loaded on demand; switched off on 
 | `floor_tiles_terracotta.jpg` | #15 | resized only (colour kept) | gargote floors, 1.2 m per repeat (4 × 4 tiles of 30 cm) |
 | `paving.jpg` | #21 (paving v2) | greyscale, mean 0.8 | sidewalks and plazas (replaces the procedural paving), 2 m per repeat |
 | `wood.jpg` | #19 (wood v2, `_tiled` seam-fixed file) | greyscale, contrast ×1.3, mean 0.82 | interior furniture (beds, counters, benches), 1 m per repeat |
-| `hollow_block.jpg` | #50 | greyscale, contrast ×1.6, mean 0.84 | raw breeze-block walls (replaces `breeze_block.jpg`, whose units read as bricks), 1.2 m per repeat = 3 × 6 blocks of 40 × 20 cm |
-| `asphalt.jpg` | #27 | greyscale, contrast ×1.4, mean 0.9 | roads in Plateau, Corniche and Almadies (Pikine's stay sandy), 3 m per repeat |
-| `clay_tiles.jpg` | #29 | greyscale, contrast ×1.5, mean 0.86 | Plateau red hipped roofs, 1.8 m per repeat (6 rows of 30 cm) |
-| `corrugated.jpg` | #25 | greyscale, contrast ×1.8, mean 0.88 | arena roof sheets, mapped on each panel's UVs (4 × 5 repeats per panel, about 11 cm pitch) so the ribs run down the slope; plain colour on Low |
-| `corrugated_rusty.jpg` | #26 | colour kept, mean 0.86 | dibiterie tin awnings, 1.2 m per repeat |
+| `hollow_block.jpg` | #50 | remastered (block tones equalised, joints kept); greyscale, contrast ×1.5, mean 0.84; relief 2 cm | raw breeze-block walls (replaces `breeze_block.jpg`, whose units read as bricks), 1.2 m per repeat = 3 × 6 blocks of 40 × 20 cm |
+| `asphalt.jpg` | #27 | remastered (blotches equalised); greyscale, contrast ×1.4, mean 0.9; relief 1 cm | roads in Plateau, Corniche and Almadies (Pikine's stay sandy), 3 m per repeat |
+| `clay_tiles.jpg` | #29 | remastered (tile tones equalised); greyscale, contrast ×1.15, darkest values lifted (row gaps were black lines), mean 0.86; relief 4 cm | Plateau red hipped roofs, 1.8 m per repeat (6 rows of 30 cm) |
+| `corrugated.jpg` | #25 | remastered (banding along the ribs flattened, top/bottom join crossfaded); greyscale, contrast ×1.4, mean 0.88; three.js bump map from the same file | arena roof sheets, mapped on each panel's UVs (4 × 5 repeats per panel, about 11 cm pitch) so the ribs run down the slope; plain colour on Low |
+| `corrugated_rusty.jpg` | #26 | remastered (large blotches equalised); colour kept, mean 0.86; relief 1.5 cm | dibiterie tin awnings, 1.2 m per repeat |
 | `concrete.jpg` | #11 | greyscale, contrast ×1.4, mean 0.9 | arena tiers, 2 m per repeat |
-| `palm_trunk.jpg` | #49 (palm trunk v2, `_tiled` seam-fixed file) | greyscale, contrast ×1.3, mean 0.86 | palm trunks (whitewashed ones too), 1 m per repeat |
-| `terrazzo.jpg` | #28 (`_tiled` seam-fixed file) | colour kept, mean 0.92 | bank hall and mall courtyard floors, 1.5 m per repeat |
-| `sand_trampled.jpg` | #31 | tint neutralised (mean 0.9) | arena sand floor, 2.5 m per repeat |
+| `palm_trunk.jpg` | #49 (palm trunk v2, `_tiled` seam-fixed file) | remastered (light columns equalised); greyscale, contrast ×1.3, mean 0.86; relief 0.6 cm | palm trunks (whitewashed ones too), 1 m per repeat |
+| `terrazzo.jpg` | #28 (`_tiled` seam-fixed file) | remastered (base tone equalised, chips kept); colour kept, mean 0.92; no relief (polished) | bank hall and mall courtyard floors, 1.5 m per repeat |
+| `sand_trampled.jpg` | #31 | remastered (blotches equalised); tint neutralised (mean 0.9); relief 4 cm (footprints) | arena sand floor, 2.5 m per repeat |
 
 Each was tiled 3×3 after processing: no visible seam (batch 3 files also checked by wrap-edge difference; the clay tile and
 corrugated top/bottom edges fall on a tile row and a flat run, and read as continuous when tiled 2×2). Not used: #4 plaster,
@@ -244,6 +244,49 @@ corrugated top/bottom edges fall on a tile row and a flat run, and read as conti
 Terms (checked 7 Oct 2026, Higgsfield help centre "Who owns my generations", dated 2 Aug 2026, citing Terms of Use §4–5):
 the user owns inputs and outputs; commercial use is not restricted and not limited to paid plans; outputs are not
 guaranteed exclusive; outputs may not be used to train or improve AI/ML models. Re-check before a public release.
+
+## Remaster of the batch 3 game textures (8 Oct 2026, night, no credits)
+
+Asked by Habib (chat: "make the 23 images even better"). No Higgsfield credits were spent: the 100 authorised are used,
+and the 10 left on the account are outside the authorisation. Local processing only, from the unchanged 2048 px sources,
+reproducible with `python3 scripts/tex/remaster.py --report` (numpy and Pillow; every filter wraps around the tile, so the
+textures stay seamless).
+
+- **Fewer visible repeats.** Brightness is equalised at the scale that showed as a grid when tiled (periodic Gaussian local
+  mean; the darkest pixels are left out of the mean so mortar joints, tile gaps and terrazzo chips keep their depth): the
+  palm bark's light columns, the light and dark hollow blocks, clay tile tones, asphalt blotches, banding down the
+  galvanized ribs. The galvanized sheet's top/bottom join is crossfaded (its streaks were cut there).
+- **Contrast retuned:** clay tiles ×1.15 with the darkest values lifted (the row gaps were black lines), hollow blocks ×1.5,
+  galvanized sheet ×1.4.
+- **Relief in the shader** (`src/world/grain.ts`): the world-space detail map's brightness is read as height (dark = low)
+  and tilts the normal by its slope (Mikkelsen surface-gradient bump, forward differences one pixel apart), with a depth
+  per material in metres (column "Processing" above; also paving 1.2 cm, Pikine sand 1.2 cm, arena tiers 0.8 cm, Maïga
+  floor tiles 0.6 cm). The arena roof sheets use three.js's bump map with the same texture. No new files to download;
+  Medium and High only (Low has no detail textures).
+
+Measured on the game files (old → new). Tone spread: spread of a 1/32-tile blur over the mean, lower repeats less. Seam:
+difference across the wrap edge over the difference between neighbouring rows, about 1 is invisible; the clay tile and
+hollow block values stay high because their edge falls on a tile row and a mortar joint, as checked on 7–8 Oct.
+
+| Game file | Tone spread | Seam |
+| --- | --- | --- |
+| `hollow_block.jpg` | 0.039 → 0.029 | 1.61 → 1.60 |
+| `asphalt.jpg` | 0.006 → 0.004 | 0.97 → 0.99 |
+| `clay_tiles.jpg` | 0.050 → 0.035 | 6.71 → 6.34 |
+| `corrugated.jpg` | 0.025 → 0.018 | 2.41 → 1.63 |
+| `corrugated_rusty.jpg` | 0.022 → 0.021 | 1.11 → 1.09 |
+| `palm_trunk.jpg` | 0.019 → 0.008 | 1.31 → 1.33 |
+| `terrazzo.jpg` | 0.008 → 0.008 | 0.84 → 0.84 |
+| `sand_trampled.jpg` | 0.004 → 0.004 | 1.16 → 1.16 |
+
+In-game before/after (same camera, 15:00): `docs/screenshots/textures/` (block wall, arena sand, palm trunk, paving). The
+first relief setting for the palm trunk (1.5 cm, height slope from `dFdx`) showed blocky 2×2 pixel artefacts close up; it
+was lowered and switched to forward differences before the captures. Total texture size slightly smaller (1.15 → 1.13 MB for the 14 files).
+
+**Reference #39:** `39_car_rapide_front_rear_clean.jpg` replaces the manufacturer badge on the grille with the plain
+slats beside it (same rows); the raw file is kept. Use the clean copy for modelling. The other references (#33–38,
+#40–48) are unchanged: they guide modelling and colour, players never see them, and better versions would need new
+generations, so new credits.
 
 ## Photos supplied by Habib (7 Oct 2026, in chat)
 

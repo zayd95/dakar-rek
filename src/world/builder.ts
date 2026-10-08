@@ -119,25 +119,25 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const facadeMat = addGrain(new THREE.MeshLambertMaterial({ map: tex.map, vertexColors: true, emissive: 0xffc070, emissiveMap: tex.glow, emissiveIntensity: 0 }), 0.7, 1, true) as THREE.MeshLambertMaterial;
   const plainMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 1, 1);
   // concrete paving: Higgsfield texture #21 (paving v2, regular 4 × 4 slabs of 50 cm per 2 m repeat)
-  const paveMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.5, 1, false, generatedTexture('paving'), 2);
+  const paveMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.5, 1, false, generatedTexture('paving'), 2, 0.012);
   // raw breeze-block walls: Higgsfield texture #50 (2:1 hollow cement blocks), 3 blocks × 6 courses per repeat = 1.2 m (40 × 20 cm)
-  const blockMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.4, 1, false, generatedTexture('hollow_block'), 1.2);
+  const blockMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.4, 1, false, generatedTexture('hollow_block'), 1.2, 0.02);
   // painted metal gates and shutters: Higgsfield texture #16 (desaturated), 1 m per repeat
   const metalMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.3, 1, false, generatedTexture('painted_metal'), 1.2);
   const metal = new Batch();
   // Higgsfield batch 3 textures (8 Oct; prompts, ids and seam checks in assets-src/references/PROVENANCE.md)
   const lam = () => new THREE.MeshLambertMaterial({ vertexColors: true });
-  const asphalt = new Batch(), asphaltMat = addGrain(lam(), 0.5, 1, false, generatedTexture('asphalt'), 3);              // #27, 3 m
-  const tileRoof = new Batch(), tileRoofMat = addGrain(lam(), 0.4, 1, false, generatedTexture('clay_tiles'), 1.8);       // #29, 6 rows of 30 cm
-  const tin = new Batch(), tinMat = addGrain(lam(), 0.3, 1, false, generatedTexture('corrugated_rusty'), 1.2);           // #26, rusty sheet
-  const trunks = new Batch(), trunkMat = addGrain(lam(), 0.4, 1, false, generatedTexture('palm_trunk'), 1);              // #49, palm bark
-  const concrete = new Batch(), concreteMat = addGrain(lam(), 0.5, 1, false, generatedTexture('concrete'), 2);           // #11, arena tiers
-  const ringSand = new Batch(), ringSandMat = addGrain(lam(), 0.6, 1, false, generatedTexture('sand_trampled'), 2.5);   // #31, arena floor
+  const asphalt = new Batch(), asphaltMat = addGrain(lam(), 0.5, 1, false, generatedTexture('asphalt'), 3, 0.01);              // #27, 3 m
+  const tileRoof = new Batch(), tileRoofMat = addGrain(lam(), 0.4, 1, false, generatedTexture('clay_tiles'), 1.8, 0.04);       // #29, 6 rows of 30 cm
+  const tin = new Batch(), tinMat = addGrain(lam(), 0.3, 1, false, generatedTexture('corrugated_rusty'), 1.2, 0.015);           // #26, rusty sheet
+  const trunks = new Batch(), trunkMat = addGrain(lam(), 0.4, 1, false, generatedTexture('palm_trunk'), 1, 0.006);              // #49, palm bark
+  const concrete = new Batch(), concreteMat = addGrain(lam(), 0.5, 1, false, generatedTexture('concrete'), 2, 0.008);           // #11, arena tiers
+  const ringSand = new Batch(), ringSandMat = addGrain(lam(), 0.6, 1, false, generatedTexture('sand_trampled'), 2.5, 0.04);   // #31, arena floor
   const terrazzo = new Batch(), terrazzoMat = addGrain(lam(), 0.2, 1, false, generatedTexture('terrazzo'), 1.5);         // #28, bank and mall floors
   // arena roof sheets: #25 mapped on each panel's own UVs so the corrugations run down the slope (about 11 cm pitch);
   // Low quality keeps the plain colour like every other detail texture
   const roofSheet = new Batch();
-  const roofSheetMat = lite ? plainMat : addGrain(new THREE.MeshLambertMaterial({ vertexColors: true, map: generatedTexture('corrugated', [4, 5]) }), 0.3, 1);
+  const roofSheetMat = lite ? plainMat : addGrain(new THREE.MeshLambertMaterial({ vertexColors: true, map: generatedTexture('corrugated', [4, 5]), bumpMap: generatedTexture('corrugated', [4, 5]), bumpScale: 2 }), 0.3, 1);
   const leafMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), 0.8, 2.5);
   const glassMat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x335577, emissiveIntensity: 0.25 });
   const lampMat = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -146,7 +146,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const banlieue = sp.style === 'banlieue';
   // Ground, with the sea or beach on open sides.
   // ground: grain plus the Higgsfield sand texture #13 (3 m per repeat)
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), addGrain(new THREE.MeshLambertMaterial({ color: sp.ground }), 1.2, 0.5, false, generatedTexture('sand'), 3));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400), addGrain(new THREE.MeshLambertMaterial({ color: sp.ground }), 1.2, 0.5, false, generatedTexture('sand'), 3, 0.012));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.02; ground.receiveShadow = true; group.add(ground);
 
   const bounds = { x0: -HALF - 3, x1: HALF + 3, z0: -HALF - 3, z1: HALF + 3 };

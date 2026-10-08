@@ -40,7 +40,7 @@ function materials() {
   mats = {
     floor: addGrain(lam(), 0.3, 1, false, floorTileTexture(), 1.32),
     // gargote floor: Higgsfield texture #15, beige and terracotta tiles, 4 × 4 tiles of 30 cm per repeat
-    floorGargote: addGrain(lam(), 0.2, 1, false, generatedTexture('floor_tiles_terracotta'), 1.2),
+    floorGargote: addGrain(lam(), 0.2, 1, false, generatedTexture('floor_tiles_terracotta'), 1.2, 0.006),
     wall: addGrain(lam(), 0.4, 1, false, plasterTexture(), 2),
     // wood: Higgsfield texture #19 (planks v2, seam-fixed), desaturated, 1 m per repeat
     wood: addGrain(lam(), 0.2, 1, false, generatedTexture('wood'), 1),

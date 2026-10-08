@@ -110,7 +110,8 @@ export const plasterTexture = () => make('plaster', 128, (c, S, r) => {
  * assets-src/references/PROVENANCE.md). Shipped as 512 px JPEGs in public/assets/tex and loaded on demand the first time
  * a hub needs them. Detail maps (sand, painted_metal, paving, wood, and from batch 3 hollow_block, asphalt,
  * clay_tiles, corrugated, concrete, palm_trunk) were desaturated/neutralised so they modulate each surface's own colour;
- * floor_tiles_terracotta, terrazzo and corrugated_rusty keep their colours, sand_trampled is tint-neutralised. Colour maps only.
+ * floor_tiles_terracotta, terrazzo and corrugated_rusty keep their colours, sand_trampled is tint-neutralised. Colour maps only:
+ * relief is derived from their brightness in the shader (addGrain's `relief`). Batch 3 files come from scripts/tex/remaster.py.
  */
 const loaded = new Map<string, THREE.Texture>();
 export type GeneratedTexture =
