@@ -1,11 +1,13 @@
-# Dakar Rek — candidate Aïda
+# Décisions — candidate Aïda
 
-D-AG-002,7October2026,continued8October: Habib requested continuing work beyond reports and then said continue. Parent commissions the already proposed invitation→local activity→recognition improvement. Frenchtext and4s abstraction remain unverified drafts. Existing runners reused; no architectural, networking, cultural-rule or production expansion.
+**D-AG-002, 7 octobre 2026, poursuivie le 8 octobre.** Habib demande de continuer au-delà des rapports. La tâche déjà proposée devient une amélioration jouable : invitation, activité locale, reconnaissance mémorisée. Elle réutilise les runners existants ; aucun lieu, système réseau, moteur de quêtes ou changement d’architecture ajouté. Texte français et durée abstraite restent unverified.
 
-Only six code files owned by dakar_aida_implementation; independent dakar_aida_qa reviews. Parent owns task/state/decision/remote commits, deployment agent owns its read-only report. Previous supplied AGENTS instructions revoked by user. No selfapproval, no Claude checkout/branch mutation or production merge/deploy.
+Un propriétaire de code, une QA indépendante et des chemins réservés. Le parent coordonne les documents et la livraison. Les anciennes instructions AGENTS fournies par l’utilisateur ont été révoquées. Aucun travail dans le checkout de Claude, déplacement de sa branche, merge ou déploiement. Les neuf profils du bootstrap restent disponibles dans PR #6 sans prétendre leur chargement automatique.
 
-New candidate branchcodex/aida-revision-activity originates remotevisual00abf96. New environment reconstructed83textfiles and verifies7runtimeassetSHA; copied exactlockeddependencies without editing manifests. Localreconstruction7df440d is NOT upstreamcommit. RemoteGitHubtree assembled from actualvisualbase, only authorized changes.
+La candidate codex/aida-revision-activity part de la base visuelle distante 00abf96. Le nouvel environnement reconstruit les 83 fichiers texte et vérifie les SHA de sept assets ; les dépendances utilisées correspondent au lock. Le HEAD local 7df440d est une reconstruction. Les commits distants utilisent le vrai Git tree de la base et les seules modifications autorisées.
 
-First Mac verification used differing cachedtoolversions and could not launch browser. Superseded by exactlockLinux tests/build and actualChromium141/Playwright1.56 route-backed local assets. Browser transport does not measure production, realphones or networkperformance. ExistinglocalWorker checks require external test-host loopback-enumeration adapter because containerdenies uv_interface_addresses; actual HTTP/WebSockets/Workerlogic are retained, adapter is not gamecode.
+Les premières vérifications Mac utilisaient des outils de versions différentes et le navigateur était bloqué. Elles sont remplacées par des tests/build Linux avec dépendances exactes et de vrais parcours Chromium. Le transport route-backed charge localement les assets compilés, sans serveur TCP ou contact public. La recette intégrée au runner existant utilise également le Worker HTTP local. Aucun de ces parcours ne mesure un téléphone physique ou la production.
 
-DKAG005 remains blocked on authenticatedCloudflareactive-version access, while datedGitHubbuild/watch evidence is reported. No accesssetup or publication necessary to continue game work.
+L’énumération des interfaces réseau du container échoue avec uv_interface_addresses. Un adaptateur extérieur au dépôt expose uniquement le loopback lorsque cet appel échoue. Le Worker, ses requêtes HTTP et ses WebSockets restent réels ; aucun fichier du jeu n’est modifié pour ce contournement.
+
+DKAG-005 établit la traçabilité GitHub et confirme la surveillance planifiée. L’attestation de version active reste bloquée sans outil Cloudflare authentifié. Ce blocage n’interrompt pas le travail gameplay et ne démontre aucune panne. Aucun accès ou service ajouté.

@@ -1,13 +1,15 @@
 # DKAG-004 — Réviser avec Aïda
 
-Status: active. Implementation owner: dakar_aida_implementation. Independent reviewer: dakar_aida_qa. Parent coordinates state and remote delivery.
+État : done pour la candidate isolée vérifiée. Propriétaire : dakar_aida_implementation. Reviewer indépendant : dakar_aida_qa. Coordination et livraison : parent de session.
 
-User authorization: continue operating after reports, then continue on8October. Earlier supplied AGENTS instructions revoked. Preserve Claudecheckout/branch and production; new candidate only, no merge/deploy.
+Habib a demandé de continuer après les rapports, puis de reprendre le 8 octobre. Les instructions AGENTS précédemment fournies ont été révoquées. La tâche autorise une candidate isolée ; aucune fusion dans Claude ou publication en production.
 
-Remote base00abf96efeadcc8bdb8d4c859eb1d0258b0978b7; branchcodex/aida-revision-activity. Isolated cwd/workspace/scratch/5677b8b0fdd0/dakar-rek-aida. LocalHEAD7df440d is an exact83-text-file reconstruction plus7asset hashes verified, not upstreamSHA. Root connector commits only allowedchanges onto upstreambase.
+Base distante : 00abf96efeadcc8bdb8d4c859eb1d0258b0978b7. Branche : codex/aida-revision-activity. PR : https://github.com/zayd95/dakar-rek/pull/7. Premier commit source vérifié : 9b0789277807a0a3008fa75b9e4fc31c63451400. Le HEAD local 7df440d est une reconstruction, pas le commit amont. Les 83 fichiers texte et 7 assets utilisés ont été comparés à la base.
 
-Allowed6implementationfiles: src/main.ts,src/social/beats.ts,src/world/content.ts,tests/social.test.ts,scripts/check-aida-activity.mjs,scripts/check-launch-controls.mjs. No packages/workflows/assets/server/other source edits. Root owns task/decision/state/handoff; QA owns reviewreport.
+Six fichiers de réalisation réservés : src/main.ts, src/social/beats.ts, src/world/content.ts, tests/social.test.ts, scripts/check-aida-activity.mjs et scripts/check-launch-controls.mjs. Le parent possède les documents de tâche/état/décision/handoff et les preuves conservées ; QA possède son rapport. Aucun package, workflow, asset existant, serveur ou autre source modifié.
 
-Acceptance: invitation grants no session rewards; refusals no repeated reward;4s Aïda-only activity requiresenergy>=6 atstart and grants rewardatcompletiononce; recognition grants friendship,study and relationshiponce. Reload before/during/after explicit, oldcompleted saves preserved. Stalebutton/doubleclick/menu replacement no repeats. Ordinarychat/otherstories preserved. Existingrunners reused, no architecturechange. Frenchtext/duration drafts unverified.
+Critères réalisés et revus : invitation sans récompense de séance ; refus sans effet répétable ; activité de 4 s réservée à Aïda et nécessitant 6 d’énergie au départ ; besoins/compteur accordés une seule fois à la fin ; reconnaissance accordant amitié, étude et relation une seule fois. Rechargements avant/pendant/après, anciennes sauvegardes, doubles clics et menus périmés vérifiés. Discussion habituelle et autres histoires conservées. Texte et durée : drafts unverified.
 
-Verification: exactlockunit,typecheck,build/servertypecheck; real desktop+touchviewportUI/browserjourney and screenshots; existingnetwork/launchchecks if appropriate. No productionprobesorloadtest. Review independently; atmost2targetedcorrectionrounds thenhonestblocker.
+Preuves : 32/32 tests avec dépendances exactes, build et typecheck serveur ; 52/52 contrôles Chromium ordinateur et viewport tactile par QA indépendante, avec captures et états. Contrôles réseau locaux : 17/17 avec adaptateur externe d’énumération loopback requis par le container. Runner global local : 13/13 contrôles, dont le parcours Aïda Worker HTTP 52/52 et la suite générale 58/58 (résultats distincts, ne pas additionner les contrôles imbriqués). La CI distante au commit source est encore en cours à la clôture locale ; aucun test sur téléphone physique ou production.
+
+Livraison : PR #7 en brouillon, rapport QA indépendant et preuves sous docs/agents/evidence/aida. Réservations de fichiers libérées. Prochaine action : lire le verdict final de la CI existante ; intégration à Claude et publication restent distinctes et non effectuées.

@@ -1,0 +1,82 @@
+{
+  "sourceCommit": "9b0789277807a0a3008fa75b9e4fc31c63451400",
+  "recordedAt": "2026-10-08T01:44:42.444869+00:00",
+  "basis": "actual executions; no source modifications after this source commit",
+  "checks": [
+    {
+      "command": "npm test",
+      "result": "PASS",
+      "passed": 32,
+      "total": 32,
+      "review": "independent"
+    },
+    {
+      "command": "npm run build",
+      "result": "PASS",
+      "includes": "client typecheck"
+    },
+    {
+      "command": "npm run typecheck:server",
+      "result": "PASS"
+    },
+    {
+      "command": "node scripts/check-aida-activity.mjs ... --static-dir=dist",
+      "result": "PASS",
+      "passed": 52,
+      "total": 52,
+      "transport": "Playwright routes serving real compiled local assets",
+      "review": "independent",
+      "evidence": "results.json"
+    },
+    {
+      "command": "npm run check:online",
+      "result": "PASS",
+      "passed": 17,
+      "total": 17,
+      "transport": "local Worker HTTP and WebSockets",
+      "evidence": "network-local.json"
+    },
+    {
+      "command": "npm run check:launch",
+      "result": "PASS",
+      "passed": 13,
+      "total": 13,
+      "evidence": "launch-controls-local.json",
+      "contains": [
+        "worker-aida-local.json: 52/52",
+        "full-gameplay-local.json: 58/58"
+      ]
+    }
+  ],
+  "ci": {
+    "sourceRuns": [
+      37713605951,
+      37713634150
+    ],
+    "status": "in_progress",
+    "passedSteps": [
+      "npm ci",
+      "unit tests",
+      "server typecheck",
+      "build",
+      "browser install",
+      "online checks"
+    ],
+    "pending": "full launch runner and artifact upload"
+  },
+  "limits": [
+    "Chromium desktop and emulated touch viewports; no physical phone test",
+    "No production runtime test by these agents",
+    "Route-backed dedicated QA does not attest network behavior; separate real local Worker runs do",
+    "Local Worker commands required an external loopback-only os.networkInterfaces compatibility adapter after container uv_interface_addresses failure; adapter is outside repository",
+    "French text and abstract activity duration remain unverified cultural drafts"
+  ],
+  "sourceBlobs": {
+    "src/main.ts": "b9dca1f3df0466b068b57f761fd7f1aa1a7ebf50",
+    "src/social/beats.ts": "065d27cb19983bff7e5c029cb0853f81fc0c696f",
+    "src/world/content.ts": "c6c6c3f1ced44e6851944beb1c3d9db9cdf1fc1f",
+    "tests/social.test.ts": "d7ef1a8a0b6e2209a62429c3f1a9b0d2d984a008",
+    "scripts/check-aida-activity.mjs": "2dbb2b6b4364a05d51abdd18a5165bb4ff99c1b6",
+    "scripts/check-launch-controls.mjs": "723ab84d0e3668396f6e33ed26c07576c88df8ef"
+  }
+}

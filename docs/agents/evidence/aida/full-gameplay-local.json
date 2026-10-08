@@ -1,0 +1,292 @@
+[
+ {
+  "name": "desktop: plateau 13h loads",
+  "ok": true,
+  "extra": "draw calls 327, tris 216112"
+ },
+ {
+  "name": "desktop: plateau 21h loads",
+  "ok": true,
+  "extra": "draw calls 311, tris 207748"
+ },
+ {
+  "name": "desktop: corniche 13h loads",
+  "ok": true,
+  "extra": "draw calls 468, tris 312978"
+ },
+ {
+  "name": "desktop: corniche 21h loads",
+  "ok": true,
+  "extra": "draw calls 502, tris 323478"
+ },
+ {
+  "name": "desktop: almadies 13h loads",
+  "ok": true,
+  "extra": "draw calls 289, tris 207774"
+ },
+ {
+  "name": "desktop: almadies 21h loads",
+  "ok": true,
+  "extra": "draw calls 275, tris 209306"
+ },
+ {
+  "name": "desktop: pikine 13h loads",
+  "ok": true,
+  "extra": "draw calls 369, tris 257788"
+ },
+ {
+  "name": "desktop: pikine 21h loads",
+  "ok": true,
+  "extra": "draw calls 380, tris 257752"
+ },
+ {
+  "name": "desktop: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: plateau 13h loads",
+  "ok": true,
+  "extra": "draw calls 316, tris 204814"
+ },
+ {
+  "name": "phone: plateau 21h loads",
+  "ok": true,
+  "extra": "draw calls 323, tris 218754"
+ },
+ {
+  "name": "phone: corniche 13h loads",
+  "ok": true,
+  "extra": "draw calls 449, tris 312034"
+ },
+ {
+  "name": "phone: corniche 21h loads",
+  "ok": true,
+  "extra": "draw calls 476, tris 323430"
+ },
+ {
+  "name": "phone: almadies 13h loads",
+  "ok": true,
+  "extra": "draw calls 262, tris 201946"
+ },
+ {
+  "name": "phone: almadies 21h loads",
+  "ok": true,
+  "extra": "draw calls 245, tris 199910"
+ },
+ {
+  "name": "phone: pikine 13h loads",
+  "ok": true,
+  "extra": "draw calls 360, tris 265288"
+ },
+ {
+  "name": "phone: pikine 21h loads",
+  "ok": true,
+  "extra": "draw calls 320, tris 247700"
+ },
+ {
+  "name": "phone: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "movement: W moves the character",
+  "ok": true,
+  "extra": "moved 2.9"
+ },
+ {
+  "name": "collision: position stays finite",
+  "ok": true,
+  "extra": "-31,-51"
+ },
+ {
+  "name": "interaction: nearby place detected",
+  "ok": true,
+  "extra": "Tonton Ibou · voisin"
+ },
+ {
+  "name": "interior: enter starter room",
+  "ok": true,
+  "extra": "1001.1,-0.3"
+ },
+ {
+  "name": "interior: walls hold the player inside",
+  "ok": true,
+  "extra": "997.3,-2.1"
+ },
+ {
+  "name": "interior: exit back to the street",
+  "ok": true,
+  "extra": "-42.0,-54.5"
+ },
+ {
+  "name": "dibiterie: walk in from the street",
+  "ok": true,
+  "extra": "-50.4 Dibiterie Chez Pathé"
+ },
+ {
+  "name": "maiga: enter the narrow room",
+  "ok": true,
+  "extra": "1040.0 Maïga du marché"
+ },
+ {
+  "name": "lamb: controlled bout, grab and empoignade win",
+  "ok": true,
+  "extra": "{\"phase\":\"fall\",\"winner\":\"player\"} wins 1 play"
+ },
+ {
+  "name": "monument: stair height",
+  "ok": true,
+  "extra": "6.96"
+ },
+ {
+  "name": "arena: walk in through the gate past the stands",
+  "ok": true,
+  "extra": "13.6 m from the centre"
+ },
+ {
+  "name": "arena: tier 1 sees into the ring",
+  "ok": true,
+  "extra": "8/8 clear"
+ },
+ {
+  "name": "arena: tier 2 sees into the ring",
+  "ok": true,
+  "extra": "8/8 clear"
+ },
+ {
+  "name": "arena: tier 3 sees into the ring",
+  "ok": true,
+  "extra": "8/8 clear"
+ },
+ {
+  "name": "arena: top-tier heads visible from the ring",
+  "ok": true,
+  "extra": "8/8 clear"
+ },
+ {
+  "name": "arena: roof over the stands",
+  "ok": true,
+  "extra": "8/8 covered"
+ },
+ {
+  "name": "arena: gate open (no stands or roof)",
+  "ok": true,
+  "extra": "2/2 clear"
+ },
+ {
+  "name": "arena: crowd stands on the raised tiers, gate clear",
+  "ok": true,
+  "extra": "24 spectators, 24 on tiers"
+ },
+ {
+  "name": "arena: watch scene ends, back to play",
+  "ok": true,
+  "extra": "null play"
+ },
+ {
+  "name": "travel: pikine -> corniche",
+  "ok": true,
+  "extra": "corniche"
+ },
+ {
+  "name": "save: written to device storage",
+  "ok": true,
+  "extra": "531 bytes"
+ },
+ {
+  "name": "save: restored after reload",
+  "ok": true,
+  "extra": "wallet 1801, hub corniche"
+ },
+ {
+  "name": "desktop: first suggested beat is Ibou",
+  "ok": true,
+  "extra": "ibou_welcome"
+ },
+ {
+  "name": "desktop: beat choice sets reco_modou via UI",
+  "ok": true,
+  "extra": "reco_modou"
+ },
+ {
+  "name": "desktop: scene entrance runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: scene training runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: scene celebration runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: scene watch runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: Blender wrestler asset loaded",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: entrance completion recorded",
+  "ok": true,
+  "extra": "1"
+ },
+ {
+  "name": "desktop: no page errors (social + scenes)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: first suggested beat is Ibou",
+  "ok": true,
+  "extra": "ibou_welcome"
+ },
+ {
+  "name": "phone: beat choice sets reco_modou via UI",
+  "ok": true,
+  "extra": "reco_modou"
+ },
+ {
+  "name": "phone: scene entrance runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: scene training runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: scene celebration runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: scene watch runs and ends",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: Blender wrestler asset loaded",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: entrance completion recorded",
+  "ok": true,
+  "extra": "1"
+ },
+ {
+  "name": "phone: no page errors (social + scenes)",
+  "ok": true,
+  "extra": ""
+ }
+]
