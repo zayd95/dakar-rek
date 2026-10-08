@@ -255,7 +255,7 @@ function openActions(it: Interactable) {
   if (it.adSlot) {
     mode = 'menu';
     const ad = campaignAt(it.adSlot);
-    hud.openMenu(it.name, ad ? `Publicité · ${ad.sponsor} — ${ad.headline}. ${ad.message}` : 'Cet emplacement publicitaire est disponible.', ad ? (ad.url ? [{ label: 'Ouvrir le site de l’annonceur ↗', detail: 'Lien externe', onPick: () => {
+    hud.openContextActions(it.name, ad ? `Publicité · ${ad.sponsor} — ${ad.headline}. ${ad.message}` : 'Cet emplacement publicitaire est disponible.', ad ? (ad.url ? [{ label: 'Ouvrir le site de l’annonceur ↗', detail: 'Lien externe', onPick: () => {
       const current = campaignAt(it.adSlot!);
       const url = current?.id === ad.id && current.url === ad.url ? sponsorUrl(current.url) : undefined;
       if (url) window.open(url, '_blank', 'noopener,noreferrer');
@@ -277,7 +277,7 @@ function openActions(it: Interactable) {
     const lv = rel.level(it.npc);
     subtitle = `Relation : ${Relations.label(lv)} (${lv > 0 ? '+' : ''}${Math.round(lv)})`;
   }
-  hud.openMenu(it.name, subtitle, items);
+  hud.openContextActions(it.name, subtitle, items);
 }
 
 function openBeat(beat: Beat) {

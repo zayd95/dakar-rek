@@ -31,7 +31,9 @@ export function parseMove(value: unknown, hub: HubId): Move | null {
   if (v.type !== 'move' || !['x', 'y', 'z', 'yaw', 'speed'].every(k => typeof v[k] === 'number' && Number.isFinite(v[k]))) return null;
   const x = v.x as number, y = v.y as number, z = v.z as number, speed = v.speed as number;
   if (Math.abs(x) > 4096 || Math.abs(z) > 4096 || y < -20 || y > 100 || speed < 0 || speed > 6) return null;
-  if (typeof v.space !== 'string' || !(v.space === 'street' || v.space === 'home' || v.space === 'scene' || new RegExp(`^${hub}:(?:gargote|maiga):[0-9]{2}$`).test(v.space))) return null;
+  if (typeof v.space !== 'string' || !(v.space === 'street' || v.space === 'home' || v.space === 'scene'
+    || (hub === 'plateau' && v.space === 'plateau:mosque:door')
+    || new RegExp(`^${hub}:(?:gargote|maiga):[0-9]{2}$`).test(v.space))) return null;
   if (!PRESENCE_CLIPS.includes(v.clip as PresenceClip)) return null;
   return { type: 'move', x, y, z, speed, yaw: Math.atan2(Math.sin(v.yaw as number), Math.cos(v.yaw as number)), space: v.space, clip: v.clip as PresenceClip };
 }

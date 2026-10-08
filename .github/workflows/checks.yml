@@ -21,6 +21,20 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run check:online
       - run: npm run check:launch
+      - name: Mosque and advertising journeys
+        env:
+          PLAYWRIGHT_CHANNEL: chromium
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4188 > /tmp/dakar-v1-preview.log 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid"' EXIT
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:4188/ > /dev/null; then
+              break
+            fi
+            sleep 0.5
+          done
+          node scripts/check-v1-core.mjs http://127.0.0.1:4188/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -29,4 +43,5 @@ jobs:
             shots/multiplayer/
             shots/launch-controls/
             shots/launch-gameplay/
+            docs/evidence/v1-core/
           if-no-files-found: ignore

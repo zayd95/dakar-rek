@@ -22,4 +22,11 @@ describe('presence protocol', () => {
     expect(lookIndex('3')).toBe(3); expect(lookIndex(100)).toBe(0);
     expect(isHub('pikine')).toBe(true); expect(isHub('elsewhere')).toBe(false);
   });
+  it('shares the mosque only at its actual Plateau doorway', () => {
+    expect(parseMove({ ...move, x: 1003, z: 6, space: 'plateau:mosque:door' }, 'plateau')?.space).toBe('plateau:mosque:door');
+    for (const space of ['pikine:mosque:door', 'plateau:mosque:invented', 'plateau:mosque:00']) {
+      expect(parseMove({ ...move, space }, 'plateau')).toBeNull();
+    }
+    expect(parseMove({ ...move, space: 'plateau:mosque:door' }, 'pikine')).toBeNull();
+  });
 });

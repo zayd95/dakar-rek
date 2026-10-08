@@ -29,6 +29,16 @@ try {
   await page.evaluate(p => window.__dakar.place(p.x - 3, p.z - 6, Math.PI), spawn);
   await page.waitForFunction(() => window.__dakar.nearestInteractable() === 'Un moment au calme');
   await page.keyboard.press('e');
+  const dock = await page.locator('#modal.context .panel').boundingBox();
+  check('context choices leave most of the scene visible', !!dock && dock.height <= 240 && dock.y > 500);
+  check('context dialog receives keyboard focus', await page.locator('#modal').evaluate(el => el.contains(document.activeElement)));
+  await page.keyboard.press('Shift+Tab');
+  check('keyboard focus stays in the contextual choices', await page.getByRole('button', { name: 'Fermer', exact: true }).evaluate(el => el === document.activeElement));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => window.__dakar.pos().mode === 'play');
+  check('Escape closes choices and resumes play', await page.locator('#modal.on').count() === 0);
+  await page.keyboard.press('e');
+  await page.screenshot({ path: `${evidence}/context-actions-desktop.png` });
   check('prayer and ordinary pause are both available', await page.getByRole('button', { name: /^Prendre un moment pour prier/ }).count() === 1 && await page.getByRole('button', { name: /^Se poser au calme/ }).count() === 1);
   const before = await page.evaluate(() => ({ wallet: window.__dakar.state.wallet, flags: [...window.__dakar.flags()], counters: { ...window.__dakar.state.data.counters } }));
   await page.getByRole('button', { name: /^Prendre un moment pour prier/ }).click();
@@ -79,6 +89,10 @@ try {
   await phone.waitForTimeout(1500); await phone.locator('#act').tap();
   check('mobile sponsor menu identifies sponsored content', (await phone.locator('#modal').textContent()).includes('Publicité · Commerce test'));
   check('mobile sponsor menu exposes explicit external link', await phone.getByRole('button', { name: /^Ouvrir le site de l’annonceur/ }).count() === 1);
+  const phoneDock = await phone.locator('#modal.context .panel').boundingBox();
+  check('mobile choices remain compact and inside the viewport', !!phoneDock && phoneDock.height <= 240 && phoneDock.x >= 0 && phoneDock.x + phoneDock.width <= 390 && phoneDock.y + phoneDock.height <= 844);
+  const closeTarget = await phone.getByRole('button', { name: 'Fermer', exact: true }).boundingBox();
+  check('mobile close control has a 44 pixel touch target', !!closeTarget && closeTarget.width >= 44 && closeTarget.height >= 44);
   await phone.screenshot({ path: `${evidence}/advertising-mobile.png` });
   // Replace the manifest and advance polling time; already-open stale links must be revalidated.
   manifest = { schemaVersion: 1, campaigns: [] };
@@ -90,6 +104,10 @@ try {
   await phone.locator('#act').tap();
   check('removed campaign returns to available slot', (await phone.locator('#modal').textContent()).includes('disponible'));
   await phone.getByRole('button', { name: 'Fermer', exact: true }).tap();
+  check('detailed needs are collapsed during play', await phone.locator('#needDetails').isHidden());
+  await phone.locator('#statsBtn').tap();
+  check('needs expand on request with an accessible state', await phone.locator('#statsBtn').getAttribute('aria-expanded') === 'true' && await phone.locator('#needDetails').isVisible());
+  await phone.locator('#statsBtn').tap();
   await phone.screenshot({ path: `${evidence}/arena-board-mobile.png` });
   check('no browser runtime errors', errors.length === 0);
   await writeFile(`${evidence}/browser-checks.json`, JSON.stringify({ base, checks, errors }, null, 2) + '\n');
