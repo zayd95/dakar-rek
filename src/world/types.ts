@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import type { HubId, Needs } from '../core/types';
 import type { GameState } from '../core/state';
+import type { AdSlot } from '../ads/campaigns';
 
 export interface Action {
   id: string;
@@ -25,6 +26,7 @@ export interface Interactable {
   actions: Action[];
   /** Set when this interactable is a recurring cast member. */
   npc?: string;
+  adSlot?: AdSlot;
 }
 export interface Collider { x0: number; z0: number; x1: number; z1: number; h: number }
 

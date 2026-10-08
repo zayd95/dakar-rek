@@ -76,6 +76,26 @@ try {
     await a.waitForFunction(() => window.__dakar.presence().peers.length === 1);
     await b.waitForFunction(() => window.__dakar.presence().peers.length === 1);
     check(`hub membership follows travel: ${hub}`, (await a.evaluate(() => window.__dakar.pos().hub)) === hub);
+    if (hub === 'plateau') {
+      await a.evaluate(() => window.__dakar.enter('mosque'));
+      await a.waitForFunction(() => window.__dakar.pos().x > 900);
+      await b.waitForFunction(() => window.__dakar.presence().peers.some(p => p.space === 'plateau:mosque:door'));
+      await b.waitForFunction(() => window.__dakar.presence().visible === 0);
+      check('mosque visitor is hidden from the street', true);
+      await b.evaluate(() => window.__dakar.enter('mosque'));
+      await b.waitForFunction(() => window.__dakar.pos().x > 900);
+      await a.waitForFunction(() => window.__dakar.presence().visible === 1);
+      await b.waitForFunction(() => window.__dakar.presence().visible === 1);
+      check('two visitors share the mosque interior', true);
+      await a.evaluate(() => window.__dakar.exit());
+      await a.waitForFunction(() => window.__dakar.pos().x < 900);
+      await b.waitForFunction(() => window.__dakar.presence().visible === 0);
+      check('a street visitor is hidden from the mosque', true);
+      await b.evaluate(() => window.__dakar.exit());
+      await b.waitForFunction(() => window.__dakar.pos().x < 900);
+      await a.waitForFunction(() => window.__dakar.presence().visible === 1);
+      check('mosque visitors reunite in the street', true);
+    }
   }
   const before = await a.evaluate(() => ({ id: window.__dakar.presence().id, wallet: window.__dakar.state.wallet }));
   await contexts[0].setOffline(true);

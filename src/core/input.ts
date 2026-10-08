@@ -11,6 +11,7 @@ export class Input {
   constructor(el: HTMLElement) {
     addEventListener('keydown', e => {
       if (e.code !== 'Escape' && e.target instanceof HTMLElement && e.target.closest('input,textarea,select,[contenteditable="true"]')) return;
+      if (e.target instanceof HTMLElement && e.target.closest('button') && ['Enter', 'Space'].includes(e.code)) return;
       if (e.repeat) return;
       this.keys.add(e.code);
       if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') this.actionPressed = true;

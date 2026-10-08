@@ -9,6 +9,8 @@ import { addGrain } from './grain';
 import { generatedTexture } from './textures';
 import { inGate, tierRadius, tierTop, TIERS, TIER_DEPTH, PARAPET_R, PARAPET_H, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { createBillboard } from '../ads/billboard';
+import type { AdSlot } from '../ads/campaigns';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -239,6 +241,12 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const solidC = (cx: number, cz: number, w: number, d: number, h: number) => solid(cx - w / 2, cz - d / 2, cx + w / 2, cz + d / 2, h);
 
   const signs: THREE.Mesh[] = [];
+  const ads: ReturnType<typeof createBillboard>[] = [];
+  const addBillboard = (slot: AdSlot, x: number, z: number, yaw: number) => {
+    const ad = createBillboard(slot, x, z, yaw); ads.push(ad); group.add(ad.group); signs.push(ad.face);
+    for (const dx of [-2, 2]) solidC(x + Math.cos(yaw) * dx, z - Math.sin(yaw) * dx, 0.2, 0.2, 4.6);
+    interactables.push({ id: `${id}:ad:${slot}`, name: slot === 'pikine-arena' ? 'Annonces · arène' : 'Tableau du quartier', kind: 'actions', x: x + Math.sin(yaw) * 1.5, z: z + Math.cos(yaw) * 1.5, radius: 3, actions: [], adSlot: slot });
+  };
   const rapides: THREE.Object3D[] = [];
   /** Climbable stairs: height rises linearly from y0 at x0 to y1 at x1, then stays at y1 until xEnd. */
   const ramps: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number; xEnd: number }[] = [];
@@ -587,6 +595,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         for (const sx of [-1, 1]) tree(cx + sx * 9, cz - 15, 1.1);
         solidC(cx, cz + 2, 26, 22, 11);
         addSign('GRANDE MOSQUÉE', '#0f3d33', '#f3ecd0', cx, 7.6, cz - 9.05, Math.PI, 7, 1.2);
+        interactables.push({ id: `${id}:mosque:door`, name: 'Grande mosquée', kind: 'actions', x: cx, z: cz - 11.5, radius: 3, actions: [ENTER] });
         break;
       }
       case 'market': {
@@ -887,6 +896,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         for (const sx of [-1, 1]) for (let k2 = 0; k2 < 2; k2++) stall(cx + sx * (8 + k2 * 4.5), gzz - 4 - k2 * 1.5);
         interactables.push({ id: `${id}:arena`, name: 'Arène · làmb', kind: 'actions', x: cx, z: cz - 24, radius: 5, actions: ACTIONS.arena });
         arenaInfo = { cx, cz, r: 19 };
+        addBillboard('pikine-arena', cx, cz - WALL_R - 0.7, Math.PI);
         break;
       }
       case 'ecurie': {
@@ -936,6 +946,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     }
   }
   const [si, sj] = sp.spawnBlock;
+  addBillboard(`${id}-street`, blockMin(si) + BLK - 7, blockMin(sj) + BLK + 0.5, 0);
   if (id !== 'pikine') {
     const sx = blockMin(si) + BLK / 2, sz = blockMin(sj) + BLK / 2;
     // beside the waiting car rapide, looking down the street so the first view shows the neighbourhood
@@ -1013,6 +1024,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     }
   }
   const tick = (dt: number) => {
+    for (const ad of ads) ad.tick(dt);
     for (const p of smoke) {
       p.t = (p.t + dt * 0.28) % 1;
       const k = p.t, m = p.s.material as THREE.SpriteMaterial;
@@ -1032,6 +1044,6 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       return 0;
     },
     people, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
-    dispose() { disposeGroup(group); },
+    dispose() { for (const ad of ads) ad.dispose(); disposeGroup(group); },
   };
 }

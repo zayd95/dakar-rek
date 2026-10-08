@@ -40,6 +40,10 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'dormir', label: 'Dormir', detail: 'Retrouver de l’énergie', needs: { energie: 70, faim: -10, moral: 4 }, seconds: 5 },
     { id: 'laver', label: 'Se laver', needs: { hygiene: 60, moral: 3 }, seconds: 2 },
   ],
+  mosque: [
+    { id: 'priere', label: 'Prendre un moment pour prier', detail: 'Au choix, dans le calme', seconds: 4 },
+    { id: 'calme', label: 'Se poser au calme', detail: 'Faire une pause', needs: { moral: 8, energie: 4 }, seconds: 4 },
+  ],
   ecurie: [
     { id: 'entrainement', label: 'Entraînement avec l’écurie', detail: 'Échauffement, prises, sparring · Lutte +1', needs: { energie: -24, hygiene: -14, faim: -10, moral: 6 }, seconds: 0, counter: 'lutte', special: 'training', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Parle d’abord à Coach Ablaye' : s.data.needs.energie < 24 ? 'Trop fatigué' : null) },
     { id: 'tenue', label: 'Tenue de lutte (ngemb, accessoires)', detail: 'Cosmétique uniquement · brouillon à valider', seconds: 0, special: 'outfit' },

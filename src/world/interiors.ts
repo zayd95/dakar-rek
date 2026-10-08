@@ -4,6 +4,7 @@ import { addGrain } from './grain';
 import { floorTileTexture, plasterTexture, metalTexture, generatedTexture } from './textures';
 import { ACTIONS } from './content';
 import type { Collider, Interactable } from './types';
+import { buildMosqueInterior } from './mosque';
 
 /**
  * Walkable interiors, built off the street grid (x ≥ 1000) and entered through a door action.
@@ -11,7 +12,7 @@ import type { Collider, Interactable } from './types';
  * Ceiling is a downward-facing plane: seen from inside, culled if the camera ever rises above it.
  * Furniture and layout are PROVISIONAL (to review with Habib); no brand names, no real places.
  */
-export type InteriorKind = 'home' | 'gargote' | 'maiga';
+export type InteriorKind = 'home' | 'gargote' | 'maiga' | 'mosque';
 
 export interface Interior {
   kind: InteriorKind;
@@ -65,6 +66,7 @@ function waxTexture(a: string, b: string, c: string) {
 export function setInteriorDaylight(c: THREE.Color) { (materials().sky as THREE.MeshBasicMaterial).color.copy(c); }
 
 export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: string, hub: string): Interior {
+  if (kind === 'mosque') return buildMosqueInterior(ox, oz, name, hub);
   const M = materials();
   const group = new THREE.Group();
   const floor = new Batch(), wall = new Batch(), wood = new Batch(), metal = new Batch(), plain = new Batch(), glow = new Batch(), sky = new Batch();

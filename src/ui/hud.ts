@@ -10,16 +10,17 @@ export class Hud {
   private bars = new Map<string, HTMLElement>();
   private el: Record<string, HTMLElement> = {};
   private toastT = 0;
+  private returnFocus: HTMLElement | null = null;
   private resetTouch: () => void = () => {};
   onAction: () => void = () => {};
   onMenu: () => void = () => {};
 
   constructor(root: HTMLElement, private input: Input) {
     root.innerHTML = `
-      <div id="stats" class="card"><div id="wallet"><span id="money">0 F</span></div><div id="mood"></div>${NEED_LABELS.map(([k, l]) => `<div class="need"><span>${l}</span><div class="bar"><i data-need="${k}"></i></div></div>`).join('')}</div>
+      <div id="stats" class="card"><button id="statsBtn" aria-expanded="false" aria-controls="needDetails" aria-label="Solde et besoins : afficher les détails"><span id="wallet"><span id="money">0 F</span><span aria-hidden="true">⌄</span></span><span id="vitals"></span></button><div id="needDetails" hidden><div id="mood"></div>${NEED_LABELS.map(([k, l]) => `<div class="need"><span>${l}</span><div class="bar"><i data-need="${k}"></i></div></div>`).join('')}</div></div>
       <div id="place" class="card"><b id="hubName"></b><small id="clock"></small></div>
-      <div id="menuBtn" class="card" role="button" aria-label="Menu">☰</div>
-      <div id="toast" class="card"></div>
+      <button id="menuBtn" class="card" aria-label="Menu">☰</button>
+      <div id="toast" class="card" role="status" aria-live="polite"></div>
       <div id="goal" class="card"></div>
       <div id="sceneTag" class="card"></div>
       <div id="progress" class="card"><span id="progLabel"></span><div class="bar"><i id="progBar" style="width:0"></i></div></div>
@@ -28,9 +29,40 @@ export class Hud {
       <button id="act" class="off">Action</button>
       <div id="temp">Dakar Rek · Alpha</div>
       <div id="fade"></div>
-      <div id="modal"><div class="panel"></div></div>`;
-    for (const id of ['money', 'mood', 'hubName', 'clock', 'toast', 'progress', 'progLabel', 'progBar', 'joy', 'act', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag']) this.el[id] = root.querySelector('#' + id)!;
+      <div id="modal"><div class="panel" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" tabindex="-1"></div></div>`;
+    for (const id of ['statsBtn', 'needDetails', 'vitals', 'money', 'mood', 'hubName', 'clock', 'toast', 'progress', 'progLabel', 'progBar', 'joy', 'act', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag']) this.el[id] = root.querySelector('#' + id)!;
     root.querySelectorAll<HTMLElement>('[data-need]').forEach(b => this.bars.set(b.dataset.need!, b));
+    for (const [k, label] of NEED_LABELS) {
+      const bar = this.bars.get(k)!;
+      bar.setAttribute('role', 'meter'); bar.setAttribute('aria-label', label);
+      bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
+    }
+    this.el.statsBtn.addEventListener('click', () => {
+      const open = this.el.needDetails.hidden;
+      this.el.needDetails.hidden = !open;
+      this.el.statsBtn.setAttribute('aria-expanded', String(open));
+    });
+    this.el.statsBtn.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !this.el.needDetails.hidden) {
+        e.preventDefault(); e.stopPropagation(); this.el.needDetails.hidden = true;
+        this.el.statsBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    document.addEventListener('pointerdown', e => {
+      if (!(e.target as HTMLElement).closest('#stats')) {
+        this.el.needDetails.hidden = true;
+        this.el.statsBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    this.el.modal.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.closeModal(); }
+      if (e.key !== 'Tab') return;
+      const buttons = Array.from(this.el.modal.querySelectorAll<HTMLElement>('button:not(:disabled),input,select,textarea,[tabindex="0"]')).filter(el => el.getClientRects().length);
+      const first = buttons[0], last = buttons.at(-1);
+      if (!first) { e.preventDefault(); return; }
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === this.el.modal.querySelector('.panel'))) { e.preventDefault(); last!.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
     this.el.act.addEventListener('click', () => this.onAction());
     this.el.menuBtn.addEventListener('click', () => this.onMenu());
     this.el.modal.addEventListener('click', e => { if (e.target === this.el.modal) this.closeModal(); });
@@ -76,16 +108,20 @@ export class Hud {
 
   setStats(wallet: number, needs: Needs, mood: string) {
     this.el.money.textContent = fcfa(wallet);
+    this.el.vitals.textContent = `Faim ${Math.round(needs.faim)} · Énergie ${Math.round(needs.energie)}`;
     this.el.mood.textContent = 'Humeur : ' + mood;
     for (const [k] of NEED_LABELS) {
       const b = this.bars.get(k)!, v = needs[k];
       b.style.width = v + '%'; b.className = v < 25 ? 'low' : v < 50 ? 'mid' : '';
+      b.setAttribute('aria-valuenow', String(Math.round(v)));
     }
   }
   setPlace(name: string, clock: string, night: boolean) { this.el.hubName.textContent = name; this.el.clock.textContent = (night ? '🌙 ' : '☀️ ') + clock; }
   setPrompt(label: string | null, sub = '') {
     this.el.act.className = label ? '' : 'off';
-    this.el.act.innerHTML = label ? `${label}<small>${sub || 'Appuyer / E'}</small>` : 'Action';
+    (this.el.act as HTMLButtonElement).disabled = !label;
+    this.el.act.textContent = label || 'Action';
+    if (label) { const small = document.createElement('small'); small.textContent = sub || 'Appuyer / E'; this.el.act.appendChild(small); }
   }
   /** One suggested next step at most (nothing is compulsory). */
   setGoal(text: string | null) { this.el.goal.textContent = text ? '➜ ' + text : ''; this.el.goal.classList.toggle('on', !!text); }
@@ -105,16 +141,34 @@ export class Hud {
   }
   fade(on: boolean, text = '') { this.el.fade.textContent = text; this.el.fade.classList.toggle('on', on); }
   get modalOpen() { return this.el.modal.classList.contains('on'); }
-  closeModal() { this.el.modal.classList.remove('on'); }
+  closeModal() {
+    this.el.modal.classList.remove('on');
+    document.body.classList.remove('choosing');
+    this.resetTouch();
+    if (this.returnFocus?.isConnected && !(this.returnFocus as HTMLButtonElement).disabled) this.returnFocus.focus({ preventScroll: true });
+    this.returnFocus = null;
+  }
+
+  /** Small contextual choices leave the character and scene visible. */
+  openContextActions(title: string, subtitle: string, items: MenuItem[]) {
+    this.openMenu(title, subtitle, items);
+    this.el.modal.classList.add('context');
+    document.body.classList.add('choosing');
+  }
 
   openMenu(title: string, subtitle: string, items: MenuItem[], extraHtml = '', afterRender?: (panel: HTMLElement) => void) {
     this.resetTouch();
+    if (!this.modalOpen) this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.el.modal.classList.remove('context');
+    document.body.classList.remove('choosing');
+    this.el.needDetails.hidden = true;
+    this.el.statsBtn.setAttribute('aria-expanded', 'false');
     const panel = this.el.modal.querySelector('.panel') as HTMLElement;
-    panel.innerHTML = `<h2></h2><p></p>${extraHtml}<div class="list"></div>`;
+    panel.innerHTML = `<h2 id="dialogTitle"></h2><p></p>${extraHtml}<div class="list"></div>`;
     (panel.querySelector('h2') as HTMLElement).textContent = title; (panel.querySelector('p') as HTMLElement).textContent = subtitle;
     const list = panel.querySelector('.list') as HTMLElement;
     for (const it of items) {
-      const b = document.createElement('button'); b.className = 'item' + (it.disabled ? ' dis' : '');
+      const b = document.createElement('button'); b.className = 'item' + (it.disabled ? ' dis' : ''); b.disabled = !!it.disabled;
       const l = document.createElement('div'); l.textContent = it.label;
       if (it.detail) { const s = document.createElement('small'); s.textContent = it.detail; l.appendChild(s); }
       b.appendChild(l);
@@ -125,5 +179,6 @@ export class Hud {
     const c = document.createElement('button'); c.className = 'item close'; c.textContent = 'Fermer'; c.addEventListener('click', () => this.closeModal()); list.appendChild(c);
     this.el.modal.classList.add('on');
     afterRender?.(panel);
+    (panel.querySelector<HTMLElement>('button:not(:disabled),input') ?? panel).focus({ preventScroll: true });
   }
 }
