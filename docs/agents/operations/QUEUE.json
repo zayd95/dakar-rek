@@ -49,7 +49,8 @@
         "independentServerTypecheck": "PASS",
         "ciPush": {
           "id": 37774079135,
-          "status": "in_progress"
+          "status": "completed",
+          "conclusion": "cancelled"
         },
         "ciPr": {
           "id": 37774210307,
@@ -71,7 +72,7 @@
       "id": "DKAG-008",
       "role": "combat",
       "kind": "implementation",
-      "status": "ready",
+      "status": "active",
       "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
       "branch": "codex/agents/dkag-008-duel-input-reset",
       "allowedFiles": [
@@ -97,22 +98,26 @@
         "path": "src/lamb/duel.ts",
         "blob": "992b4dfeceff90a58f8310bf34dd0a75a32bb756",
         "basis": "producer actual static review, no blur/visibility reset unlike src/core/input.ts"
-      }
+      },
+      "owner": "combat_20261008_1328",
+      "reviewer": "qa_20261008_1328",
+      "ownerState": "assigned",
+      "controlBriefCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e"
     },
     {
       "id": "DKAG-009",
       "role": "world",
       "kind": "compatibility_review",
       "status": "review",
-      "owner": "activation_world",
+      "owner": "world_20261008_1328",
       "inputs": [
+        {
+          "pr": 10,
+          "sha": "e4f1c291117fb61633d169a008823efd59dce19f"
+        },
         {
           "pr": 9,
           "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
-        },
-        {
-          "pr": 10,
-          "sha": "1610e51bc63a11983f6eee779fb01a82d7ac7cbd"
         }
       ],
       "acceptance": [
@@ -122,7 +127,12 @@
       ],
       "output": "docs/agents/operations/reports/DKAG-009-world.md",
       "dependencies": [],
-      "ownerState": "completed handoff"
+      "ownerState": "assigned refresh",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-009-world.md"
+      ]
     },
     {
       "id": "DKAG-010",

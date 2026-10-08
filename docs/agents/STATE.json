@@ -1,14 +1,53 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08T12:30:35.909469+00:00",
+  "updatedAt": "2026-10-08T13:28:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_scheduler_enabled",
-  "lease": null,
-  "activeCodeTask": null,
+  "lease": {
+    "token": "cycle-20261008T132800Z-608bc7678079",
+    "owner": "coordinator_20261008_1328",
+    "acquiredAt": "2026-10-08T13:28:00Z",
+    "expiresAt": "2026-10-08T14:13:00Z",
+    "baseHead": "3ceaf4ab236abf474669b86cea2934be439ac27e"
+  },
+  "activeCodeTask": "DKAG-008",
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "task": "DKAG-008",
+      "owner": "combat_20261008_1328",
+      "reviewer": "qa_20261008_1328",
+      "branch": "codex/agents/dkag-008-duel-input-reset",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "allowedFiles": [
+        "src/lamb/duel.ts",
+        "src/lamb/duelInput.ts",
+        "tests/duel-input.test.ts",
+        "scripts/check-duel-input.mjs",
+        "docs/agents/reports/DKAG-008-combat.md"
+      ]
+    },
+    {
+      "task": "DKAG-009",
+      "owner": "world_20261008_1328",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-009-world.md"
+      ]
+    },
+    {
+      "task": "DKAG-008-QA",
+      "owner": "qa_20261008_1328",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-008-combat-review.md"
+      ]
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -113,7 +152,11 @@
   "reviewTasks": [
     "DKAG-009"
   ],
-  "activeSessions": [],
+  "activeSessions": [
+    "combat_20261008_1328",
+    "qa_20261008_1328",
+    "world_20261008_1328"
+  ],
   "completedSessions": [
     "activation_producer",
     "activation_qa",
@@ -144,7 +187,7 @@
     {
       "pr": 10,
       "branch": "codex/v1-mosque-ads",
-      "sha": "9241786a8f3d7da2045bcf1856596f785aec6079",
+      "sha": "e4f1c291117fb61633d169a008823efd59dce19f",
       "owner": "other session; never mutate"
     },
     {
