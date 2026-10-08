@@ -1,11 +1,18 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08T17:19:43Z",
+  "updatedAt": "2026-10-08T22:36:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
-  "lease": null,
+  "lease": {
+    "token": "cycle-20261008T223600Z-38176862ca6b",
+    "owner": "codex-scheduled-coordinator",
+    "acquiredAt": "2026-10-08T22:36:00Z",
+    "expiresAt": "2026-10-08T23:26:00Z",
+    "headAtAcquire": "8495ac2ebe75aae8e56618ba91dd688ff5123d63",
+    "purpose": "reconcile DKAG-016/017 exact-source CI, then commission DKAG-018 if PR10 remains unchanged"
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
