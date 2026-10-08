@@ -518,7 +518,7 @@
       "id": "DKAG-018",
       "role": "world",
       "kind": "implementation",
-      "status": "review",
+      "status": "active",
       "branch": "codex/agents/dkag-018-arena-billboard-offset",
       "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
       "allowedFiles": [
@@ -541,7 +541,7 @@
       "culturalStatus": "provisional geometry, no cultural certification",
       "owner": "world_dkag018_2236",
       "reviewer": "qa_dkag018_2236",
-      "ownerState": "correction 1 final frozen handoff",
+      "ownerState": "correction 2 assigned",
       "controlBriefCommit": "8495ac2ebe75aae8e56618ba91dd688ff5123d63",
       "dispatchBaseVerifiedAt": "2026-10-08T22:38:00Z",
       "sourceCommit": "99f24f90aa60413f034607486c1a8bcce871378b",
@@ -554,10 +554,27 @@
         "authorBuild": "PASS",
         "authorServerTypecheck": "PASS",
         "authorBrowser": "container blocked; exact-source CI required",
-        "independentQa": "final correction 1 under review",
+        "independentQa": "BLOCKED on stale nearest immediately after place; source geometry still passes",
         "ci": {
-          "runs": [],
-          "readAt": "2026-10-08T22:55:00Z"
+          "runs": [
+            {
+              "id": 37855657890,
+              "event": "push",
+              "status": "completed",
+              "conclusion": "failure",
+              "sha": "99f24f90aa60413f034607486c1a8bcce871378b",
+              "artifactId": 11584500412
+            },
+            {
+              "id": 37855663294,
+              "event": "pull_request",
+              "status": "completed",
+              "conclusion": "failure",
+              "sha": "99f24f90aa60413f034607486c1a8bcce871378b",
+              "artifactId": 11583886777
+            }
+          ],
+          "readAt": "2026-10-08T23:04:00Z"
         }
       },
       "correctionAttempts": [
@@ -571,6 +588,15 @@
           "reason": "replace fixed delay with bounded state-driven navigation; use real touch events; retain assertions",
           "sourceCommit": "99f24f90aa60413f034607486c1a8bcce871378b",
           "result": "bounded 3s state-driven keyboard/touch navigation, guaranteed release, real CDP touch events, logs, assertions retained"
+        },
+        {
+          "attempt": 2,
+          "assignedAt": "2026-10-08T23:04:00Z",
+          "scope": [
+            "scripts/check-v1-core.mjs",
+            "docs/agents/reports/DKAG-018-world.md"
+          ],
+          "reason": "wait for post-place nearest recalculation away from expected before movement; retain all movement assertions"
         }
       ]
     }
