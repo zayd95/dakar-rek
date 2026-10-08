@@ -16,7 +16,7 @@ export interface Action {
   /** Hidden unless this returns true (e.g. a trusted-rate job after a recommendation). */
   visible?: (s: GameState) => boolean;
   /** Handled by a dedicated flow instead of the timed action (scenes, outfit, emotes). */
-  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat';
+  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat' | 'combat_classe' | 'combat_entrainement';
 }
 export interface Interactable {
   id: string;
