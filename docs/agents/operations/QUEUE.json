@@ -162,7 +162,7 @@
       "id": "DKAG-011",
       "role": "characters",
       "kind": "design",
-      "status": "ready",
+      "status": "active",
       "inputs": [
         {
           "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -179,13 +179,21 @@
         "No new cast or overlapping city edits; French dialogue remains unverified"
       ],
       "output": "docs/agents/operations/reports/DKAG-011-characters.md",
-      "dependencies": []
+      "dependencies": [],
+      "owner": "characters_20261008_1328",
+      "ownerState": "assigned",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-011-characters.md"
+      ],
+      "controlBriefCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e"
     },
     {
       "id": "DKAG-012",
       "role": "animation",
       "kind": "asset_review",
-      "status": "ready",
+      "status": "active",
       "inputs": [
         {
           "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -201,13 +209,21 @@
         "Distinguish metadata inspection from visual playback; no paid generation"
       ],
       "output": "docs/agents/operations/reports/DKAG-012-animation.md",
-      "dependencies": []
+      "dependencies": [],
+      "owner": "animation_20261008_1328",
+      "ownerState": "assigned",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-012-animation.md"
+      ],
+      "controlBriefCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e"
     },
     {
       "id": "DKAG-013",
       "role": "culture",
       "kind": "provenance_review",
-      "status": "ready",
+      "status": "active",
       "inputs": [
         {
           "pr": 9,
@@ -224,7 +240,15 @@
         "List only concrete content requiring human review; do not block unrelated generic fixes"
       ],
       "output": "docs/agents/operations/reports/DKAG-013-culture.md",
-      "dependencies": []
+      "dependencies": [],
+      "owner": "culture_20261008_1328",
+      "ownerState": "assigned",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-013-culture.md"
+      ],
+      "controlBriefCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e"
     },
     {
       "id": "DKAG-014",

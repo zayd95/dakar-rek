@@ -46,6 +46,33 @@
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-008-combat-review.md"
       ]
+    },
+    {
+      "task": "DKAG-011",
+      "owner": "characters_20261008_1328",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-011-characters.md"
+      ]
+    },
+    {
+      "task": "DKAG-012",
+      "owner": "animation_20261008_1328",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-012-animation.md"
+      ]
+    },
+    {
+      "task": "DKAG-013",
+      "owner": "culture_20261008_1328",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-013-culture.md"
+      ]
     }
   ],
   "externalWork": [
@@ -155,7 +182,10 @@
   "activeSessions": [
     "combat_20261008_1328",
     "qa_20261008_1328",
-    "world_20261008_1328"
+    "world_20261008_1328",
+    "characters_20261008_1328",
+    "animation_20261008_1328",
+    "culture_20261008_1328"
   ],
   "completedSessions": [
     "activation_producer",
