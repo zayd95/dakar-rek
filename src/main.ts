@@ -14,7 +14,7 @@ import { buildInterior, setInteriorDaylight, type Interior } from './world/inter
 import { ACTIONS, HUB_NAMES, travelLeg } from './world/content';
 import type { Action, Collider, HubWorld, Interactable } from './world/types';
 import { Character, PLAYER_OUTFIT } from './actors/character';
-import { Crowd, DecorativeTraffic } from './actors/npc';
+import { Crowd, DecorativeTraffic, Loiterers } from './actors/npc';
 import { MonumentLife } from './actors/life';
 import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
@@ -57,9 +57,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 type Quality = 'low' | 'medium' | 'high';
 let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarrek.quality'); if (q === 'low' || q === 'medium' || q === 'high') return q; } catch { /* */ } return /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'medium' : 'high'; })();
 const QUAL = {
-  low: { pr: 1, shadow: 0, crowd: 8, traffic: 3 },
-  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 5 },
-  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 7 },
+  low: { pr: 1, shadow: 0, crowd: 8, traffic: 3, loiter: 6 },
+  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 5, loiter: 12 },
+  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 7, loiter: 18 },
 };
 
 const scene = new THREE.Scene();
@@ -122,6 +122,7 @@ let hourOverride: number | null = null;
 let interiors = new Map<string, Interior>();
 let inside: { int: Interior; door: Interactable } | null = null;
 /** Debug only: fixed camera offset from the player (front portraits for visual review). */
+let loiterers: Loiterers | null = null;
 let camOverride: { dist: number; h: number; side: number } | null = null;
 const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
 const roomParam = Number(params.get('room'));
@@ -179,6 +180,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   scene.add(world.group);
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
   extra.add(crowd.group, traffic.group);
+  loiterers = new Loiterers(world, rand, QUAL[quality].loiter); extra.add(loiterers.group);
   apprentices = humanoidReady() ? world.rapides.map(car => { const a = new Apprentice(id, rand); a.attach(car); return a; }) : [];
   for (const car of traffic.rapides()) { if (!humanoidReady()) break; const a = new Apprentice(id, rand, true); a.attach(car); apprentices.push(a); }
   if (humanoidReady()) for (const p of world.people) {
@@ -577,7 +579,7 @@ function frame(now: number) {
     if (n.h) n.h.hold = d < 3.4 ? 'Talk' : null;
     n.c.animate(dt, 0);
   }
-  crowd?.update(dt); traffic?.update(dt); life?.update(dt); world.tick(dt);
+  crowd?.update(dt, pos.x, pos.z); traffic?.update(dt); loiterers?.update(dt, pos.x, pos.z); life?.update(dt); world.tick(dt);
   for (const h of ambient) h.animate(dt, 0);
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
@@ -656,6 +658,9 @@ if (DEBUG) {
     scenePeek(t: number) { if (lambScene) { lambScene.t = t; lambScene.snap = true; } },
     outfit: () => openOutfit(), journal: () => openJournal(),
     emote(i = 0) { playEmote(i); },
+    wrestle(clip: Clip = 'Stance') { showProxy(clip); },
+    clearPeople() { for (const h of debugPeople) extra.remove(h.group); debugPeople.length = 0; },
+    playerLook(l: Partial<PersonLook>, clip?: Clip) { hideProxy(); playerBody?.setLook({ ...PLAYER_LOOK, ...l }); if (playerBody && clip) playerBody.hold = clip; },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
     enter(kind: 'home' | 'gargote') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
     exit() { exitInterior(); },
