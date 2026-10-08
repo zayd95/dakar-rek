@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08T22:45:00Z",
+  "updatedAt": "2026-10-08T22:51:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
@@ -13,9 +13,23 @@
     "headAtAcquire": "8495ac2ebe75aae8e56618ba91dd688ff5123d63",
     "purpose": "reconcile DKAG-016/017 exact-source CI, then commission DKAG-018 if PR10 remains unchanged"
   },
-  "activeCodeTask": null,
+  "activeCodeTask": "DKAG-018",
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "task": "DKAG-018",
+      "owner": "world_dkag018_2236",
+      "reviewer": "qa_dkag018_2236",
+      "branch": "codex/agents/dkag-018-arena-billboard-offset",
+      "baseCommit": "eb63509706ac39af5c4c31b3c206091b7ff6ac56",
+      "allowedFiles": [
+        "scripts/check-v1-core.mjs",
+        "docs/agents/reports/DKAG-018-world.md"
+      ],
+      "correctionAttempt": 1,
+      "acquiredAt": "2026-10-08T22:51:00Z"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -124,10 +138,9 @@
     "claudeNativeLoadVerified": false
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [
-    "DKAG-018"
-  ],
+  "reviewTasks": [],
   "activeSessions": [
+    "world_dkag018_2236",
     "qa_dkag018_2236"
   ],
   "completedSessions": [
@@ -149,7 +162,7 @@
     "qa_animation_1707",
     "world_dkag018_2236"
   ],
-  "nextAction": "Independent QA reviews DKAG-018 source eb635097 and exact-source CI for draft PR16; no rewrite while CI is pending.",
+  "nextAction": "Author correction #1: deterministic bounded navigation and true touch dispatch in existing check; keep assertions. QA re-reviews new frozen SHA and exact CI.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -351,7 +364,7 @@
     "sourceCommit": "eb63509706ac39af5c4c31b3c206091b7ff6ac56",
     "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
     "pullRequest": 16,
-    "status": "review",
+    "status": "correction-1",
     "owner": "world_dkag018_2236",
     "reviewer": "qa_dkag018_2236",
     "local": {
@@ -365,6 +378,24 @@
       "browser": "blocked by container socket policy; CI required"
     },
     "merged": false,
-    "deployed": false
+    "deployed": false,
+    "ci": [
+      {
+        "id": 37855268199,
+        "event": "push",
+        "status": "completed",
+        "conclusion": "failure",
+        "sha": "eb63509706ac39af5c4c31b3c206091b7ff6ac56"
+      },
+      {
+        "id": 37855312799,
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "failure",
+        "sha": "eb63509706ac39af5c4c31b3c206091b7ff6ac56",
+        "artifactId": 11584385204
+      }
+    ],
+    "failure": "check-v1-core medium desktop navigation used fixed 1000ms and failed before remaining captures; geometry assertions passed"
   }
 }

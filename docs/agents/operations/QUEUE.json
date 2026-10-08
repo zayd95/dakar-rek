@@ -518,7 +518,7 @@
       "id": "DKAG-018",
       "role": "world",
       "kind": "implementation",
-      "status": "review",
+      "status": "active",
       "branch": "codex/agents/dkag-018-arena-billboard-offset",
       "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
       "allowedFiles": [
@@ -541,7 +541,7 @@
       "culturalStatus": "provisional geometry, no cultural certification",
       "owner": "world_dkag018_2236",
       "reviewer": "qa_dkag018_2236",
-      "ownerState": "completed frozen handoff",
+      "ownerState": "correction 1 assigned",
       "controlBriefCommit": "8495ac2ebe75aae8e56618ba91dd688ff5123d63",
       "dispatchBaseVerifiedAt": "2026-10-08T22:38:00Z",
       "sourceCommit": "eb63509706ac39af5c4c31b3c206091b7ff6ac56",
@@ -554,12 +554,39 @@
         "authorBuild": "PASS",
         "authorServerTypecheck": "PASS",
         "authorBrowser": "blocked by container socket policy; CI required",
-        "independentQa": "in progress",
+        "independentQa": "BLOCKED: exact-source CI navigation timing failure; geometry and scope review pass",
         "ci": {
-          "runs": [],
-          "readAt": "2026-10-08T22:45:00Z"
+          "runs": [
+            {
+              "id": 37855268199,
+              "event": "push",
+              "status": "completed",
+              "conclusion": "failure",
+              "sha": "eb63509706ac39af5c4c31b3c206091b7ff6ac56"
+            },
+            {
+              "id": 37855312799,
+              "event": "pull_request",
+              "status": "completed",
+              "conclusion": "failure",
+              "sha": "eb63509706ac39af5c4c31b3c206091b7ff6ac56",
+              "artifactId": 11584385204
+            }
+          ],
+          "readAt": "2026-10-08T22:51:00Z"
         }
-      }
+      },
+      "correctionAttempts": [
+        {
+          "attempt": 1,
+          "assignedAt": "2026-10-08T22:51:00Z",
+          "scope": [
+            "scripts/check-v1-core.mjs",
+            "docs/agents/reports/DKAG-018-world.md"
+          ],
+          "reason": "replace fixed delay with bounded state-driven navigation; use real touch events; retain assertions"
+        }
+      ]
     }
   ]
 }
