@@ -1,35 +1,36 @@
-# Vérification du premier incrément V1 — 8 octobre 2026
+# Vérification UI et premier incrément V1 — 8 octobre 2026
 
-Base isolée : `wip/visual-pass`, commit `00abf96efeadcc8bdb8d4c859eb1d0258b0978b7`. Les 83 fichiers texte du snapshot local ont été comparés aux empreintes Git de cette base avant modification. Aucun changement provenant du travail Aïda n'a été repris. Cette proposition active la mosquée et prépare les emplacements publicitaires ; elle ne constitue pas la totalité de la V1 et n'a pas été déployée.
+Code validé : `4fbf62adc6b222fd738bcf8bd8d85aa56738fc66`, sur la branche isolée `codex/v1-mosque-ads`, proposée vers `wip/visual-pass`. Aucun déploiement de production.
 
-## Contrôles exécutés
+[Workflow complet réussi](https://github.com/zayd95/dakar-rek/actions/runs/37775725930) · [Captures et résultats](https://github.com/zayd95/dakar-rek/actions/runs/37775725930/artifacts/11549704587) · [Proposition #10](https://github.com/zayd95/dakar-rek/pull/10)
 
-- `npm test` : **34 tests réussis**, dont 6 contrôles des campagnes et de la visite facultative, et un contrôle de la présence dans la mosquée.
-- `npm run build` : TypeScript et compilation de production réussis.
-- Chrome, version locale : entrée par le bouton de la mosquée ; marche sur le sol de la salle ; choix distincts de prière et de pause ; fin des deux actions ; portefeuille toujours à 3 000 F ; changement de qualité dans la salle puis sortie à la porte d'origine (`x=-30, z=-41.5`).
-- Chrome : panneau libre du Plateau, mention « disponible », renseignements sur la vie du quartier et absence de bouton de sponsor ; panneau devant l'arène de Pikine.
-- Chrome en aperçu responsive **390 × 844** : le menu du panneau de l'arène tient dans l'écran et sa fermeture est accessible. Cet aperçu ne remplace pas un essai sur téléphone réel.
-- Campagne de vérification locale : le menu identifie « Publicité · Commerce test », affiche son texte et un bouton explicite vers un site externe. Cette campagne a ensuite été supprimée du manifeste livré.
+## Interface
 
-Les points de contrôle locaux employaient les déplacements de l'API de développement uniquement pour rejoindre les lieux ; les menus, les actions et les changements de qualité ont été contrôlés dans l'interface. Des captures ont été inspectées pendant cette session. Les contrôles locaux supplémentaires ne sont pas inclus dans le produit.
+- Choix de lieux, dialogues, trajets et gestes dans une barre en bas de l'écran, limitée à 240 px. Mesure sur ordinateur : environ 138 px ; le personnage et le décor restent visibles.
+- Solde, faim et énergie dans un indicateur compact ; cinq besoins et humeur dépliables à la demande. Valeurs des jauges exposées aux lecteurs d'écran.
+- Bouton d'action masqué lorsqu'aucune interaction n'est proche.
+- Boutons natifs, états désactivés, focus visible, tabulation contenue dans les choix, fermeture par Échap et restitution du focus. Échap replie aussi les besoins.
+- Fermeture tactile de 44 px au minimum ; défilement des choix supplémentaires et prise en compte des zones sûres.
+- Réglages et personnalisation conservent des dialogues dédiés.
 
-## Validation GitHub
+## Contrôles réussis
 
-La première version publiée (`1610e51`) a terminé avec succès le workflow GitHub : installation du lockfile, tests, types serveur, compilation, parcours multijoueur et parcours de lancement. Le nouvel incrément ajoute une barre de choix contextuels, les besoins repliables, la navigation clavier et un parcours navigateur dédié à la mosquée et aux annonces. Les résultats de cet incrément doivent être vérifiés sur son propre commit.
+| Contrôle | Résultat |
+| --- | --- |
+| Installation des dépendances du lockfile | Réussie |
+| Tests unitaires | 34 / 34 |
+| Types du serveur et compilation de production | Réussis |
+| Parcours dédiés mosquée, annonces et interface | 30 / 30 |
+| Présence multijoueur, dont deux visiteurs dans la mosquée | Réussie |
+| Parcours complet du jeu sur ordinateur et en format mobile | Réussi |
 
-## Interface de jeu
+Les parcours dédiés vérifient l'entrée, la marche et la sortie de la mosquée, le changement de qualité dans la salle, la sauvegarde à la porte, les choix facultatifs de prière et de pause, cinq emplacements publicitaires, le retrait d'une campagne, les liens périmés, la taille des choix et boutons tactiles, le focus au clavier et les besoins dépliables. Aucun paiement, affiliation ou compteur religieux n'est ajouté.
 
-- Choix de lieux, trajets, gestes et dialogues dans une barre au bas de l'écran, limitée à 240 px de hauteur ; actions supplémentaires accessibles par défilement horizontal.
-- Solde, faim et énergie dans un petit indicateur ; les cinq besoins se déplient à la demande.
-- Bouton d'action masqué lorsqu'aucun lieu interactif n'est proche.
-- Boutons natifs, états désactivés, indication de focus, tabulation contenue dans les choix, fermeture par Échap et restitution du focus.
-- Fermeture de 44 px au minimum, zones sûres et réduction des transitions selon les préférences système.
-- Les menus de réglages conservent une boîte de dialogue dédiée.
+Les captures ordinateur et mobile ont été inspectées. La campagne « Commerce test » appartient uniquement au test navigateur ; le manifeste livré reste vide.
 
-## Limites à lever avant mise en ligne
+## Limites
 
-- Le script `scripts/check-v1-core.mjs` est préparé mais **n'a pas terminé un parcours automatisé** : le navigateur Playwright n'est pas installé et le lancement de Chrome depuis le processus de test s'arrête avec `SIGABRT` dans cet environnement. Vérifier les parcours automatisés dans un environnement disposant de son navigateur de test.
-- La session Chrome existante remonte des rejets répétés de listener asynchrone / canal de message. Le jeu a continué à fonctionner ; leur origine n'a pas été isolée dans une session sans extensions. Ne pas considérer cette vérification manuelle comme une preuve d'absence de toutes les erreurs navigateur.
-- Dépendances de test disponibles localement : Vite 5.4.19, TypeScript 5.9.3, Vitest **3.2.7**, Playwright 1.62.1. Vitest diffère du majeur 2 déclaré dans le dépôt. Le lockfile n'a pas été modifié. Relancer `npm ci`, les tests et les parcours navigateur avec le lockfile dans l'environnement de validation avant lancement.
-- Les paiements réels, la console commerciale et les statistiques d'impressions/clics restent à construire. Aucun paiement ou chiffre d'audience n'est simulé par cette proposition.
-- Le traitement culturel de la mosquée et du làmb reste à valider avec Habib. Le combat existant demeure local et n'est pas transformé en combat multijoueur par ces changements.
+- L'émulation mobile en navigateur ne remplace pas un essai sur téléphone réel ; aucune certification d'accessibilité complète n'est revendiquée.
+- Les paiements réels, la console commerciale et les statistiques d'audience restent à construire.
+- Le traitement culturel de la mosquée et du làmb reste à valider avec Habib.
+- Le combat existant demeure local ; les changements de présence ne le transforment pas en combat multijoueur.
