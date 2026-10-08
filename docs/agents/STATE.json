@@ -37,6 +37,42 @@
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-008-combat-review.md"
       ]
+    },
+    {
+      "task": "DKAG-009",
+      "owner": "world_resume_1655",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-009-world.md"
+      ]
+    },
+    {
+      "task": "DKAG-011",
+      "owner": "characters_resume_1655",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-011-characters.md"
+      ]
+    },
+    {
+      "task": "DKAG-012",
+      "owner": "animation_resume_1655",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-012-animation.md"
+      ]
+    },
+    {
+      "task": "DKAG-013",
+      "owner": "culture_resume_1655",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-013-culture.md"
+      ]
     }
   ],
   "externalWork": [
@@ -145,7 +181,11 @@
   ],
   "activeSessions": [
     "combat_resume_1655",
-    "qa_resume_1655"
+    "qa_resume_1655",
+    "world_resume_1655",
+    "characters_resume_1655",
+    "animation_resume_1655",
+    "culture_resume_1655"
   ],
   "completedSessions": [
     "activation_producer",

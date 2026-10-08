@@ -108,8 +108,8 @@
       "id": "DKAG-009",
       "role": "world",
       "kind": "compatibility_review",
-      "status": "review",
-      "owner": "world_20261008_1328",
+      "status": "active",
+      "owner": "world_resume_1655",
       "inputs": [
         {
           "pr": 10,
@@ -127,12 +127,13 @@
       ],
       "output": "docs/agents/operations/reports/DKAG-009-world.md",
       "dependencies": [],
-      "ownerState": "interrupted_usage_limit_partial_static_review",
+      "ownerState": "assigned",
       "branch": "codex/agent-studio-active",
-      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-009-world.md"
-      ]
+      ],
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e"
     },
     {
       "id": "DKAG-010",
@@ -162,7 +163,7 @@
       "id": "DKAG-011",
       "role": "characters",
       "kind": "design",
-      "status": "ready",
+      "status": "active",
       "inputs": [
         {
           "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -180,20 +181,20 @@
       ],
       "output": "docs/agents/operations/reports/DKAG-011-characters.md",
       "dependencies": [],
-      "owner": "characters_20261008_1328",
-      "ownerState": "interrupted_usage_limit_no_handoff",
+      "owner": "characters_resume_1655",
+      "ownerState": "assigned",
       "branch": "codex/agent-studio-active",
-      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-011-characters.md"
       ],
-      "controlBriefCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e"
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e"
     },
     {
       "id": "DKAG-012",
       "role": "animation",
       "kind": "asset_review",
-      "status": "ready",
+      "status": "active",
       "inputs": [
         {
           "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -210,28 +211,28 @@
       ],
       "output": "docs/agents/operations/reports/DKAG-012-animation.md",
       "dependencies": [],
-      "owner": "animation_20261008_1328",
-      "ownerState": "interrupted_usage_limit_no_handoff",
+      "owner": "animation_resume_1655",
+      "ownerState": "assigned",
       "branch": "codex/agent-studio-active",
-      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-012-animation.md"
       ],
-      "controlBriefCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e"
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e"
     },
     {
       "id": "DKAG-013",
       "role": "culture",
       "kind": "provenance_review",
-      "status": "ready",
+      "status": "active",
       "inputs": [
+        {
+          "pr": 10,
+          "sha": "e4f1c291117fb61633d169a008823efd59dce19f"
+        },
         {
           "pr": 9,
           "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
-        },
-        {
-          "pr": 10,
-          "sha": "1610e51bc63a11983f6eee779fb01a82d7ac7cbd"
         }
       ],
       "acceptance": [
@@ -241,14 +242,14 @@
       ],
       "output": "docs/agents/operations/reports/DKAG-013-culture.md",
       "dependencies": [],
-      "owner": "culture_20261008_1328",
-      "ownerState": "interrupted_usage_limit_no_handoff",
+      "owner": "culture_resume_1655",
+      "ownerState": "assigned",
       "branch": "codex/agent-studio-active",
-      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-013-culture.md"
       ],
-      "controlBriefCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e"
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e"
     },
     {
       "id": "DKAG-014",
