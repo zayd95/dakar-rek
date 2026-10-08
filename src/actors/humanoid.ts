@@ -173,7 +173,13 @@ export class Humanoid {
   play(name: Clip, fade = 0.2, offset = 0) {
     if (this.clipName === name) return;
     const next = this.actions.get(name); if (!next) return;
-    next.reset(); next.setLoop(THREE.LoopRepeat, Infinity); next.timeScale = 1;
+    next.reset();
+    // A fall must stay on its final pose through the duel result, not stand up
+    // at every loop boundary. Locomotion and all other held clips still loop.
+    const once = name === 'Fall_Back';
+    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, once ? 1 : Infinity);
+    next.clampWhenFinished = once;
+    next.timeScale = 1;
     if (offset) next.time = offset * next.getClip().duration;
     next.fadeIn(fade).play();
     this.current?.fadeOut(fade);
