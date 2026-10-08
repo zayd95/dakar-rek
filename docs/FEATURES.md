@@ -17,9 +17,12 @@ Last updated: city life (8 October 2026). The city extends the latest visual/are
 | Contextual action button and data-driven actions | Cost, gain, needs, duration, requirements, visibility | headless |
 | Needs and mood | Drain with personal played time | unit tests |
 | Guest save (schema v2) | Device-local, versioned, migrated from v1, autosave | unit tests, headless reload |
-| Recurring cast with NPC–NPC relationships | 12 characters across the four hubs; 11 authored links (friends, cousins, rivals…) | unit tests |
+| Recurring cast with NPC–NPC relationships | 15 characters across the four hubs (with the Diallo family — Mamadou, boutiquier at the Boutique Diallo, and his niece Kadiatou, student at Fann — and Ndeye, couturière at the Atelier Ndeye); 19 authored links | unit tests |
 | Persistent relationship states | Levels, flags, completed beats; saved; no offline decay | unit tests |
-| Short branching story beats | 13 beats, 1–3 choices; recommendation, rival introduction, vendor remembering help, écurie celebration, news travelling between friends | unit tests, headless (UI choice) |
+| Short branching story beats | 17 beats, 1–3 choices; recommendation, rival introduction, vendor remembering help, écurie celebration, news travelling between friends, the Diallo delivery, Kadiatou's survey, Ndeye's festival order | unit tests, headless (UI choice) |
+| NPC daily routines | Each recurring character has a schedule by city hour (home, work, meals seated at the gargote/Maïga/café, attaya on the grand-place, Place de la Médina, Fann square, Soumbédioune beach); walks between places on the sidewalks (collision-checked graph), holds a pose (seated with knees fixed, talking, waiting, stance); can be talked to anywhere; respects `setHour` | unit tests, `scripts/check-npc.mjs` (paths audited in all four hubs, poses at 8h/12h/14h30/20h) |
+| NPC memory and recognition | Visits (one per city hour) and services at their place counted in the existing save counters/flags; regular after 3; greetings vary with remembered help, commitments, activity and hour; regular perks; introductions unlock someone's beat; "Les gens du quartier" list (`phoneHooks.openPeople`) | unit tests, `scripts/check-npc.mjs` |
+| Everyday situations | Shared meal at the Maïga (pay for Babacar or not → he remembers, favour later) and attaya on the grand-place (news unlock a delivery job or the port); once per city day, texts vary with who is there and earlier choices | unit tests, `scripts/check-npc.mjs` |
 | Beats unlock jobs and discounts | Trusted rate at Modou's garage, Ousmane's morning pirogue, friends' prices at two gargotes, paid service at Le Pointe | unit tests |
 | One suggested next step | HUD chip + journal (Carnet) | headless |
 | Walkable interiors | Starter room (Pikine) and gargotes (Plateau, Corniche, Pikine): Entrer/Sortir, collisions, room camera, ceiling light, actions inside (sleep, wash, order); saving indoors stores the door position | headless (enter, wall collision, exit) |
@@ -44,18 +47,20 @@ Last updated: city life (8 October 2026). The city extends the latest visual/are
 | City clock | From the device clock | Server time |
 | Jobs | Simple timed jobs in each hub + trusted-rate variants | Tiak Tiak, clando and Yango driving jobs |
 | Food venues | Order and eat; friends' discounts; walkable gargote interiors with tables and counter | Sitting animation at tables, Maïga-style spot, dibiterie, nightlife |
-| NPCs | Recurring cast standing at their places; background walkers | Daily routines and movement between places |
+| NPCs | Routines, memory, situations (see above); background walkers | **Brouillon à relire par Habib**: sheets, lines, origins and humour in `src/social/profiles.ts`; Wolof/Pulaar/Sérère expressions are TODO placeholders; NPCs stay in their hub; no eating/serving props in hand |
 | Quality settings | Low / Medium / High; Low also drops grain, detail textures and decorative props | Automatic choice from measured performance; real-phone measurements |
 | Multiplayer presence | Cloudflare Worker + hibernatable Durable Objects; groups per hub; visible remote avatars, profiles, movement/poses, shared public interiors, invite links and reconnects; local two-client checks | Production deployment, real-phone verification and load testing; accounts, shared economy, chat, invitations to personal homes and multiplayer combat |
 | Generated references and textures | Plan, prompts and provenance rules in `docs/HIGGSFIELD_PLAN.md` | Not run: Higgsfield sign-in not available in the cloud session; 0 credits spent |
 
 ## Pending
 
-Driving (Tiak Tiak, clando, Yango) · vehicle radio · shared vehicles and anti-blocking · family home and apartment interiors · nightlife and dance areas · shared meals · multiplayer chat and personal home visits · social money · bills and tontines · housing progression · mosque and collective prayer · Quran reading · làmb combat · traits, wishes, aspiration · skills beyond counters · city milestones · photo mode · live statistics · accounts, server ledger, migrations (Supabase + Drizzle) · production deployment and load testing · monitoring.
+Driving (Tiak Tiak, clando, Yango) · vehicle radio · shared vehicles and anti-blocking · family home and apartment interiors · nightlife and dance areas · multiplayer chat and personal home visits · social money · bills and tontines · housing progression · mosque and collective prayer · Quran reading · làmb combat · traits, wishes, aspiration · skills beyond counters · city milestones · photo mode · live statistics · accounts, server ledger, migrations (Supabase + Drizzle) · production deployment and load testing · monitoring.
 
 ## Provisional decisions taken without review
 
 - Cast names, roles, links and all beat text are an editable draft (`src/social/cast.ts`, `src/social/beats.ts`).
+- NPC sheets, routines, reactions and situations are a draft (`src/social/profiles.ts`, `routines.ts`, `situations.ts`): origins, households and humour invented for the prototype; no Wolof, Pulaar or Sérère text beyond words already in the game.
+- The exported `Sit` clip bends the knees backwards; the cast uses a derived `Seated` clip (knee rotation mirrored at load). The ambient sitters still use `Sit`.
 - Écurie names "Baobab" and "Teranga" are fictional placeholders, chosen so no real écurie is represented.
 - Ngemb cut B is shown when the "Bordure" pattern is picked (temporary mapping until a cut selector exists).
 - Percussion is synthesised in the browser from a generic pattern, not a sabar rhythm.

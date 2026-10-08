@@ -11,7 +11,7 @@ import type { Outfit } from './character';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk';
+export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Seated';
 export type Style = 'boubou' | 'tee' | 'dress';
 export type Pattern = 'uni' | 'wax' | 'bazin' | 'rayure';
 export interface PersonLook {
@@ -40,6 +40,14 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
     template = { scene: gltf.scene, clips: gltf.animations };
+    // The exported Sit bends the knees backwards (ankles above the knees, feet in the air). 'Seated' is a copy with the
+    // knee rotation mirrored, used by the recurring cast on benches and stools (src/social/npcLife.ts); Sit is untouched.
+    for (const [src, name] of [['Sit', 'Seated']]) {
+      const c = gltf.animations.find(a => a.name === src); if (!c) continue;
+      const d = c.clone(); d.name = name;
+      for (const t of d.tracks) if (/^shin[LR]\.quaternion$/.test(t.name)) for (let k = 0; k < t.values.length; k += 4) { t.values[k] *= -1; t.values[k + 1] *= -1; t.values[k + 2] *= -1; }
+      template.clips.push(d);
+    }
   } catch { /* box characters stay in use */ }
 }
 

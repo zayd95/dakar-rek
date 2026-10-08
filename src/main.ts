@@ -21,8 +21,9 @@ import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
-import { preloadHumanoid, humanoidReady, Humanoid, lookFromOutfit, randomLook, type Clip, type PersonLook } from './actors/humanoid';
+import { preloadHumanoid, humanoidReady, Humanoid, randomLook, type Clip, type PersonLook } from './actors/humanoid';
 import { CAST, castById } from './social/cast';
+import { NpcLife } from './social/npcLife';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
@@ -109,7 +110,8 @@ let apprentices: Apprentice[] = [];
 let ambient: PlacedPeople | null = null;
 /** Debug-only fixed camera (screenshots of landmarks). */
 let freeCam: { p: THREE.Vector3; t: THREE.Vector3 } | null = null;
-let castChars: { id: string; c: { group: THREE.Group; animate(dt: number, speed: number): void }; h?: Humanoid; x: number; z: number }[] = [];
+/** Recurring cast: routines, memory, situations (src/social/npcLife.ts). */
+const npcLife = new NpcLife({ hud, rel, state, clock: () => { const ct = cityTimeAt(presence.serverNow()); return { hour: hourOverride ?? ct.hourFloat, day: ct.day }; }, menuMode: () => { mode = 'menu'; }, save: () => { saveNow(); }, openBeat: b => openBeat(b) });
 /** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
 const PLAYER_LOOK: PersonLook = avatarLook(presence.profile.look);
 let playerBody: Humanoid | null = null;
@@ -186,17 +188,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   ambient = new PlacedPeople(world, rand, h => extra.add(h.group));
   life?.dispose(); life = world.monument ? new MonumentLife(world.monument, rand, QUAL[quality].crowd) : null;
   if (life) extra.add(life.group);
-  // Recurring cast of this hub, standing at their places (PROVISIONAL cast, see src/social/cast.ts).
-  castChars = [];
-  for (const m of CAST.filter(c => c.hub === id)) {
-    const anchor = world.interactables.find(i => i.id.includes(':' + m.anchor));
-    if (!anchor) continue;
-    const x = anchor.x + m.ox, z = anchor.z + m.oz;
-    const h = humanoidReady() ? new Humanoid(lookFromOutfit(m.outfit, m.female)) : undefined;
-    const c = h ?? new Character(m.outfit); c.group.position.set(x, 0.1, z); extra.add(c.group);
-    castChars.push({ id: m.id, c, h, x, z });
-    world.interactables.push({ id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x, z, radius: 3.2, actions: m.id === 'ibou' ? ACTIONS.ibou : CHAT, npc: m.id });
-  }
+  npcLife.load(world, extra);                            // recurring cast on their daily routines
   interiors = new Map(); inside = null; follow.indoor = false; scene.remove(roomLight);
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;
@@ -230,7 +222,6 @@ function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, nu
 }
 
 // ------------------------------------------------------------------ interactions
-const CHAT: Action[] = [{ id: 'discuter', label: 'Discuter', detail: 'Prendre des nouvelles', needs: { social: 8, moral: 2 }, seconds: 2.5, counter: 'chats' }];
 let nearest: Interactable | null = null;
 function findNearest() {
   nearest = null; if (!world) return;
@@ -252,14 +243,15 @@ function openActions(it: Interactable) {
   const visible = it.actions.filter(a => !a.visible || a.visible(state));
   const items = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc); } };
+    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
   });
   let subtitle = it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {
+    items.unshift(...npcLife.menuItems(it.npc));            // situation, favour, introduction (after the beat)
     const beat = availableBeat(it.npc, rel, state);
     if (beat) items.unshift({ label: '★ ' + beat.title, detail: 'Histoire', right: undefined, disabled: false, onPick: () => openBeat(beat) });
     const lv = rel.level(it.npc);
-    subtitle = `Relation : ${Relations.label(lv)} (${lv > 0 ? '+' : ''}${Math.round(lv)})`;
+    subtitle = `« ${npcLife.greet(it.npc)} » · Relation : ${Relations.label(lv)} (${lv > 0 ? '+' : ''}${Math.round(lv)})`;
   }
   hud.openMenu(it.name, subtitle, items);
 }
@@ -336,7 +328,7 @@ function startScene(kind: SceneKind, onDone?: () => void) {
   lambScene = new LambScene(kind, player, { x: at.cx, z: at.cz }, state.data.wrestler, quality === 'low' ? 14 : quality === 'medium' ? 20 : 26);
   lambScene.onDone = onDone;
   extra.add(lambScene.group);
-  for (const n of castChars) n.c.group.visible = false; // the scene places its own cast
+  npcLife.setVisible(false);                              // the scene places its own cast
   hud.setScene(SCENE_LABEL[kind], 'Gestes, danse et rythmes provisoires · non validés');
 }
 
@@ -356,7 +348,7 @@ function startDuel() {
   };
   lambScene = duel;
   extra.add(duel.group);
-  for (const n of castChars) n.c.group.visible = false;
+  npcLife.setVisible(false);
   hud.setScene('Combat · làmb', 'Lutte sans frappe · règles provisoires, à valider par des lutteurs');
 }
 
@@ -365,7 +357,7 @@ function endScene() {
   const done = lambScene.onDone;
   extra.remove(lambScene.group); lambScene.dispose(); lambScene = null;
   hud.setScene(null); mode = 'play'; input.enabled = true;
-  for (const n of castChars) n.c.group.visible = true;
+  npcLife.setVisible(true);
   if (playerBody) player.group.visible = false;
   follow.snapBehind(facing);
   done?.(); saveNow();
@@ -429,7 +421,7 @@ function openJournal() {
   hud.openMenu('Carnet', `${Object.keys(state.data.beats).length} histoire(s) vécue(s)`, [], html);
 }
 
-function runAction(a: Action, npc?: string) {
+function runAction(a: Action, npc?: string, it?: Interactable) {
   mode = 'busy'; input.enabled = false;
   const t0 = performance.now(), dur = a.seconds * 1000;
   hud.progress(true, 0, a.label);
@@ -444,6 +436,7 @@ function runAction(a: Action, npc?: string) {
     if (a.counter) state.count(a.counter);
     if (npc) rel.change(PLAYER, npc, 1);
     state.count('actions');
+    npcLife.afterAction(a, it ?? null);
     const bits = [a.label + ' ✓'];
     if (a.gain) bits.push('+' + fcfa(a.gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
     hud.toast(bits.join('  '));
@@ -487,6 +480,7 @@ function openSystem() {
     { label: 'Reprendre', onPick: () => hud.closeModal() },
     { label: 'Carnet', detail: 'Relations et prochaine piste', onPick: () => openJournal() },
     { label: 'Les coins du quartier', detail: 'Commerces, travail et lieux de rencontre', onPick: () => openPlaces() },
+    { label: 'Les gens du quartier', detail: 'Où les trouver, ce qu’ils retiennent de toi', onPick: () => npcLife.openPeople() },
     { label: 'Sauvegarder maintenant', onPick: () => { hud.toast(saveNow() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'); hud.closeModal(); } },
     { label: 'Nouvelle partie', detail: 'Efface la sauvegarde de cet appareil', onPick: () => { clearSave(store); location.reload(); } },
   ], kv, panel => {
@@ -595,12 +589,7 @@ function frame(now: number) {
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
     if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
   } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
-  for (const n of castChars) {
-    const d = Math.hypot(pos.x - n.x, pos.z - n.z);
-    if (d < 9) n.c.group.rotation.y = Math.atan2(pos.x - n.x, pos.z - n.z);
-    if (n.h) n.h.hold = d < 3.4 ? 'Talk' : null;
-    n.c.animate(dt, 0);
-  }
+  npcLife.update(dt, pos, freeCam?.p ?? camera.position);
   crowd?.update(dt); traffic?.update(dt); life?.update(dt); world.tick(dt);
   ambient?.update(dt, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90);
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
@@ -660,6 +649,8 @@ if (DEBUG) {
     rel, beats: () => ({ ...state.data.beats }), flags: () => [...state.data.flags],
     suggestion: () => suggestion(rel, state)?.id ?? null,
     playBeat(id: string, choice: string) { const b = BEATS.find(x => x.id === id)!; const c = b.choices.find(x => x.id === choice)!; return applyChoice(b, c, rel, state); },
+    npcWhere: (id: string) => npcLife.where(id), npcSheet: (id: string) => npcLife.sheet(id),
+    npcSettle: () => npcLife.settle(), npcAudit: () => npcLife.audit(), npcSlots: (h: number) => npcLife.slotsAt(h), people: () => npcLife.openPeople(),
     openNpc(id: string) { const it = world?.interactables.find(i => i.npc === id); if (it) openActions(it); },
     scene(kind: SceneKind) { const a = [...ACTIONS.arena, ...ACTIONS.ecurie].find(x => x.special === kind); if (a) runSpecial(a); else startScene(kind); },
     wrestlerReady: () => humanoidReady(),
