@@ -23,6 +23,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run check:online
       - run: npm run check:launch
+      - run: npm run check:city
       - name: Publish game and presence server together
         run: npx wrangler deploy
         env:

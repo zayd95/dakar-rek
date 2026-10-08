@@ -9,6 +9,13 @@ export class Batch {
   private geos: THREE.BufferGeometry[] = [];
   count = 0;
 
+  /** Add a custom surface (boat planks, fish…) to the same merged draw call. */
+  geometry(g: THREE.BufferGeometry, color: THREE.ColorRepresentation, x: number, y: number, z: number, yaw = 0) {
+    if (!g.attributes.normal) g.computeVertexNormals();
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    this.finish(g, color, x, y, z, yaw);
+  }
+
   private finish(g: THREE.BufferGeometry, color: THREE.ColorRepresentation, x: number, y: number, z: number, rotY = 0, rotX = 0, rotZ = 0) {
     g.rotateX(rotX); g.rotateZ(rotZ); g.rotateY(rotY); g.translate(x, y, z);
     const c = new THREE.Color(color);

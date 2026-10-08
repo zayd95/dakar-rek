@@ -16,6 +16,7 @@ import type { Action, Collider, HubWorld, Interactable } from './world/types';
 import { Character, PLAYER_OUTFIT } from './actors/character';
 import { Crowd, DecorativeTraffic } from './actors/npc';
 import { MonumentLife } from './actors/life';
+import { PlacedPeople } from './actors/placedPeople';
 import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
@@ -26,6 +27,7 @@ import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { LambDuel } from './lamb/duel';
+import { phoneHooks } from './ui/phoneHooks';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
@@ -100,10 +102,11 @@ const pos = new THREE.Vector3();
 const tmpV = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
+let destination: { id: string; hub: HubId } | null = null;
 let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, life: MonumentLife | null = null;
 let apprentices: Apprentice[] = [];
 /** Ambient people placed by the hub builder (dibiterie cook, customers…). */
-let ambient: Humanoid[] = [];
+let ambient: PlacedPeople | null = null;
 /** Debug-only fixed camera (screenshots of landmarks). */
 let freeCam: { p: THREE.Vector3; t: THREE.Vector3 } | null = null;
 let castChars: { id: string; c: { group: THREE.Group; animate(dt: number, speed: number): void }; h?: Humanoid; x: number; z: number }[] = [];
@@ -170,8 +173,7 @@ const rand = rng(Date.now() & 0xffff);
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   for (const a of apprentices) a.dispose();          // detach them before the hub geometry is freed
   apprentices = [];
-  for (const h of ambient) h.dispose();
-  ambient = [];
+  ambient?.dispose(); ambient = null;
   if (world) { scene.remove(world.group); world.dispose(); }
   setGrainEnabled(quality !== 'low');                     // procedural surface noise is the main per-pixel cost
   extra.clear();
@@ -181,11 +183,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   extra.add(crowd.group, traffic.group);
   apprentices = humanoidReady() ? world.rapides.map(car => { const a = new Apprentice(id, rand); a.attach(car); return a; }) : [];
   for (const car of traffic.rapides()) { if (!humanoidReady()) break; const a = new Apprentice(id, rand, true); a.attach(car); apprentices.push(a); }
-  if (humanoidReady()) for (const p of world.people) {
-    const h = new Humanoid(randomLook(rand)); h.hold = p.clip;
-    h.group.position.set(p.x, 0.1 + (p.y ?? 0), p.z); h.group.rotation.y = p.yaw;
-    extra.add(h.group); ambient.push(h);
-  }
+  ambient = new PlacedPeople(world, rand, h => extra.add(h.group));
   life?.dispose(); life = world.monument ? new MonumentLife(world.monument, rand, QUAL[quality].crowd) : null;
   if (life) extra.add(life.group);
   // Recurring cast of this hub, standing at their places (PROVISIONAL cast, see src/social/cast.ts).
@@ -256,7 +254,7 @@ function openActions(it: Interactable) {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
     return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc); } };
   });
-  let subtitle = 'Que veux-tu faire ?';
+  let subtitle = it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {
     const beat = availableBeat(it.npc, rel, state);
     if (beat) items.unshift({ label: '★ ' + beat.title, detail: 'Histoire', right: undefined, disabled: false, onPick: () => openBeat(beat) });
@@ -488,6 +486,7 @@ function openSystem() {
   hud.openMenu('Dakar Rek', 'Version de développement 0.1', [
     { label: 'Reprendre', onPick: () => hud.closeModal() },
     { label: 'Carnet', detail: 'Relations et prochaine piste', onPick: () => openJournal() },
+    { label: 'Les coins du quartier', detail: 'Commerces, travail et lieux de rencontre', onPick: () => openPlaces() },
     { label: 'Sauvegarder maintenant', onPick: () => { hud.toast(saveNow() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'); hud.closeModal(); } },
     { label: 'Nouvelle partie', detail: 'Efface la sauvegarde de cet appareil', onPick: () => { clearSave(store); location.reload(); } },
   ], kv, panel => {
@@ -508,6 +507,31 @@ function openSystem() {
       hud.closeModal();
     }));
   });
+}
+
+function openPlaces() {
+  if (!world) return;
+  mode = 'menu';
+  const places = world.interactables.filter(i => i.id.includes(':city:')).sort((a, b) => Math.hypot(a.x - pos.x, a.z - pos.z) - Math.hypot(b.x - pos.x, b.z - pos.z));
+  hud.openMenu('Les coins du quartier', HUB_NAMES[world.id], [
+    ...(destination ? [{ label: 'Retirer le repère', onPick: () => { destination = null; hud.closeModal(); } }] : []),
+    ...places.map(it => ({ label: it.name, detail: `${Math.round(Math.hypot(it.x - (inside?.door.x ?? pos.x), it.z - (inside?.door.z ?? pos.z)))} m à pied · ${it.actions.some(a => a.gain) ? 'petits services rémunérés' : 'se retrouver'}`, onPick: () => {
+      destination = { id: it.id, hub: world!.id }; hud.closeModal(); hud.toast('Repère : ' + it.name);
+    } })),
+  ]);
+}
+phoneHooks.openPlaces = openPlaces;
+
+function walkingHint(): string | null {
+  if (!destination || destination.hub !== world?.id) { destination = null; return null; }
+  const target = world.interactables.find(i => i.id === destination!.id);
+  if (!target) { destination = null; return null; }
+  if (inside) return 'Sors dans la rue pour rejoindre ' + target.name;
+  const dx = target.x - pos.x, dz = target.z - pos.z, distance = Math.hypot(dx, dz);
+  if (distance < 2.3) { destination = null; hud.toast('Te voilà : ' + target.name); return null; }
+  const angle = Math.atan2(dx, dz) - follow.yaw;
+  const arrow = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8];
+  return `${arrow} ${target.name} · ${Math.round(distance)} m`;
 }
 
 function saveNow(): boolean {
@@ -578,7 +602,7 @@ function frame(now: number) {
     n.c.animate(dt, 0);
   }
   crowd?.update(dt); traffic?.update(dt); life?.update(dt); world.tick(dt);
-  for (const h of ambient) h.animate(dt, 0);
+  ambient?.update(dt, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90);
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
   const space = presenceSpace();
@@ -598,7 +622,7 @@ function frame(now: number) {
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
-  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); hud.setGoal(mode === 'play' && sg ? sg.hint : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
+  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); hud.setGoal(mode === 'play' ? walkingHint() ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   renderer.render(scene, camera);
 }
@@ -624,6 +648,9 @@ if (DEBUG) {
     setHour(h: number | null) { hourOverride = h; },
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
+    cityPlaces: () => world?.interactables.filter(i => i.id.includes(':city:')).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, radius: i.radius, actions: i.actions.map(a => ({ id: a.id, label: a.label, gain: a.gain, cost: a.cost })) })) ?? [],
+    cityGeometry: () => world ? { bounds: world.bounds, colliders: world.colliders, people: world.people } : null,
+    places: openPlaces,
     lookYaw(y: number) { follow.yaw = y; },
     act() { hud.onAction(); },
     drawCalls: () => renderer.info.render.calls,
