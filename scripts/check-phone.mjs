@@ -39,7 +39,10 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   const status = (await page.locator('#phone .ph-status').innerText()).replace(/\s/g, ' ');
   check(`${label}: status bar shows city time and FCFA balance`, /\d\d:\d\d/.test(status) && / F/.test(status), status.replace(/\n/g, ' '));
   const tiles = await page.locator('#phone [data-app]').evaluateAll(els => els.map(e => e.dataset.app));
-  check(`${label}: hook apps hidden without their module`, !tiles.some(t => ['messages', 'maison', 'travail', 'habitants'].includes(t)) && tiles.includes('reglages'), tiles.join(','));
+  // A hook app shows exactly when its module registered the hook (economy, NPCs, chat and city merge in over time).
+  const HOOK_APPS = { messages: 'openMessages', quartier: 'openPlaces', travail: 'openJobs', maison: 'openHome', habitants: 'openPeople' };
+  const hooked = await page.evaluate(names => Object.fromEntries(Object.entries(names).map(([app, hook]) => [app, typeof window.__dakar.phoneHooks[hook] === 'function'])), HOOK_APPS);
+  check(`${label}: hook apps shown only with their module`, Object.entries(hooked).every(([app, on]) => tiles.includes(app) === on) && tiles.includes('reglages'), `${tiles.join(',')} · hooks ${JSON.stringify(hooked)}`);
   await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-home.png` });
 
   // Movement is disabled while the phone is open.
@@ -61,10 +64,11 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await press('#phone [data-nav="home"]'); await press('#phone [data-app="carte"]');
   const map = await page.evaluate(() => ({ here: document.querySelector('#phone .ph-hub.here')?.dataset.hub, hubs: document.querySelectorAll('#phone .ph-hub').length, text: document.querySelector('#phone .ph-screen').innerText }));
   check(`${label}: map highlights the current hub and its places`, map.here === 'pikine' && map.hubs === 4 && map.text.includes('Ma chambre') && map.text.includes('gare des cars rapides'), JSON.stringify({ here: map.here, hubs: map.hubs }));
-  // Portefeuille without ledger hook.
+  // Portefeuille: game money; the history line waits for the economy module's ledger hook.
   await press('#phone [data-nav="home"]'); await press('#phone [data-app="portefeuille"]');
   const wallet = await page.locator('#phone .ph-screen').innerText();
-  check(`${label}: wallet shows game money and the pending history line`, wallet.includes('monnaie de jeu') && wallet.includes('arrive avec les métiers'));
+  const hasLedger = await page.evaluate(() => typeof window.__dakar.phoneHooks.ledger === 'function');
+  check(`${label}: wallet shows game money and ${hasLedger ? 'the ledger' : 'the pending history line'}`, wallet.includes('monnaie de jeu') && wallet.includes('arrive avec les métiers') !== hasLedger);
   // Back button: Réglages > Aide > back = Réglages.
   await press('#phone [data-nav="home"]'); await press('#phone [data-app="reglages"]'); await press('#phone .ph-screen [data-app="aide"]');
   await press('#phone [data-nav="back"]');
@@ -124,6 +128,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // Apps from other lanes: tile appears with its hook, closes the phone and hands over.
   await page.evaluate(() => {
     const h = window.__dakar.phoneHooks;
+    window.__realHooks = { openMessages: h.openMessages, ledger: h.ledger, arenaProfile: h.arenaProfile };
     h.openMessages = () => { window.__msg = (window.__msg ?? 0) + 1; };
     h.ledger = () => [{ at: Date.now() - 60000, label: 'Dibi mouton', amount: -2000 }, { at: Date.now(), label: 'Service au garage', amount: 2800 }];
     h.arenaProfile = () => [{ label: 'Catégorie', value: 'Poids léger' }];
@@ -137,7 +142,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => window.__dakar.phone('arene'));
   const arena = await page.locator('#phone .ph-screen').innerText();
   check(`${label}: ledger and arena profile hooks are shown`, ledger.includes('Service au garage') && ledger.includes('2 800 F') && arena.includes('Poids léger') && arena.includes('Victoires'));
-  await page.evaluate(() => { const h = window.__dakar.phoneHooks; delete h.openMessages; delete h.ledger; delete h.arenaProfile; });
+  await page.evaluate(() => { const h = window.__dakar.phoneHooks; for (const [k, f] of Object.entries(window.__realHooks)) { if (f) h[k] = f; else delete h[k]; } });
 
   // Debug journal() opens the Carnet; Escape closes it.
   await page.evaluate(() => window.__dakar.phoneClose());
