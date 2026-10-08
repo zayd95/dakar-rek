@@ -1,6 +1,18 @@
-# Higgsfield reference and texture generation — plan (not yet run)
+# Higgsfield reference and texture generation — plan (batch 1 run)
 
-Status (7 Oct 2026): **no credits spent.** Habib authorised up to the 100 available Higgsfield credits (3-day validity, no purchases).
+Status (7 Oct 2026, 13:20 UTC): **batches 1 and 2 validated by Habib, plus the Maïga, a texture redo and làmb arena
+references; 48 credits spent (62 left).** Files and notes in `assets-src/references/higgsfield/` and
+`assets-src/references/PROVENANCE.md`. Passing textures: concrete, breeze block, sand, floor tiles, painted metal, plaster v2,
+paving v2, wood planks v2 (after a top/bottom crossfade). Arena: view from the stands, ring at ground level, exterior. Credits expire around 9–10 Oct.
+
+Earlier update (CLI sign-in): the cloud session signed in with the CLI (workspace "Private",
+plus plan, 110 credits) after `higgsfield.ai` was allowed in the environment's network settings. Cost estimates work
+(Nano Banana Pro 2k: 2 credits/image; Seedream 5.0 Pro 2.5; FLUX.2 1; GPT Image 2 6.5; Z Image 0.15), but every
+`generate create` is refused with `only_mcp_usage_on_trial_is_available`: on the trial, generation is only allowed through
+the Higgsfield **MCP connector**, not the CLI. Nothing was charged. Next: finish connecting the Higgsfield connector at
+claude.ai → Customize → Connectors, start a new session, and run batch 1 with Nano Banana Pro 2k (8 credits).
+
+Earlier status: **no credits spent.** Habib authorised up to the 100 available Higgsfield credits (3-day validity, no purchases).
 The cloud build session could not sign in: the CLI's browser login redirects to `localhost` on the machine that started it,
 and the claude.ai Higgsfield connector was not connected in that session. The prompts below are ready to run from Habib's Mac,
 where `higgsfield` (v1.1.26) is signed in to the "Private" workspace.
@@ -42,6 +54,19 @@ unfinished concrete, breeze blocks, sand, concrete paving, floor tiles, weathere
 
 | Date | Job id | Model | Settings | Credits | Output | Used for |
 | --- | --- | --- | --- | --- | --- | --- |
-| — | — | — | — | 0 | — | — |
+| 7 Oct | — (4 jobs refused: trial is MCP-only) | nano_banana_pro | 2k, 16:9 / 1:1 | 0 | — | — |
+| 7 Oct 02:34 | `3a050f14-e6e2-4cb2-a9d1-ae63463e5220` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `01_pikine_street.jpg` | #1 Pikine street ref |
+| 7 Oct 02:34 | `bab52e8f-8598-4231-9e38-d96df96077f0` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `02_starter_room.jpg` | #2 starter room ref |
+| 7 Oct 02:34 | `99db7326-b74a-4c79-b9a0-221d3314fc42` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `03_gargote.jpg` | #3 gargote ref |
+| 7 Oct 02:34 | `5ca06dff-cfdd-4382-bbef-e636a68af495` | nano_banana_pro (MCP) | 2k, 1:1 | 2 | `04_texture_plaster_ochre.jpg` | #4 plaster texture — seam check failed, not used |
+| 7 Oct 12:11–12:12 | batch 2, 13 jobs (ids in PROVENANCE.md) | nano_banana_pro (MCP) | 2k, 16:9 ×6 / 1:1 ×7 | 26 | `05_…` to `17_…` | streets, interiors, dibiterie, textures |
+| 7 Oct 12:11 | 5 submissions refused ("Out of credits", spurious) | nano_banana_pro (MCP) | — | 0 | — | resubmitted |
+| 7 Oct 13:08 | `47a3b778-eed0-4abd-b312-e9a5435c53ea` | nano_banana_pro (MCP) | 2k, 16:9 | 2 | `18_maiga.jpg` | Maïga eatery ref |
+| 7 Oct 13:10 | 6 jobs #19–24 (ids in PROVENANCE.md) | nano_banana_pro (MCP) | 2k, 1:1 ×3 / 16:9 ×3 | 12 | `19_…` to `24_…` | texture redo (wood, plaster, paving), làmb arena |
 
-Running total: **0 / 100 credits.**
+Running total: **48 / 100 credits** (account balance 110 → 62, checked against the Higgsfield transactions list).
+
+
+## Terms check (7 Oct 2026)
+
+Higgsfield help centre, "Who owns my generations, and can I use them commercially?" (dated 2 Aug 2026, citing Terms of Use §4–5): you own inputs and outputs; commercial use is not restricted and not limited to paid plans; outputs are not guaranteed to be exclusive; outputs may not be used to train AI/ML models. Four batch-2 textures are now in the game (see `assets-src/references/PROVENANCE.md`). Re-check the terms before a public release.

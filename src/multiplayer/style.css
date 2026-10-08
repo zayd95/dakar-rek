@@ -1,0 +1,6 @@
+#presenceBtn { position:absolute; top:66px; right:10px; max-width:calc(100vw - 170px); min-height:40px; padding:9px 12px; color:#cbd5e1; font:600 12px var(--font); cursor:pointer; }
+#presenceBtn[data-state="online"] { color:#6ee7b7; border-color:rgba(110,231,183,.4); }
+.presence-label { display:block; font-size:13px; margin:14px 0; }
+#presenceName { display:block; width:100%; margin-top:6px; padding:12px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.08); color:#fff; font:16px var(--font); user-select:text; touch-action:auto; }
+#presenceLooks button { width:36px; height:36px; padding:0; }
+#presenceFeedback { overflow-wrap:anywhere; }

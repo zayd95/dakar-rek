@@ -178,3 +178,17 @@ export function frondTexture(): THREE.CanvasTexture {
   frondTex = new THREE.CanvasTexture(cv); frondTex.colorSpace = THREE.SRGBColorSpace; frondTex.anisotropy = 4;
   return frondTex;
 }
+
+/**
+ * Higgsfield-generated textures (artistic interpretations; prompts, job ids and seam checks in
+ * assets-src/references/PROVENANCE.md). Shipped as 512 px JPEGs in public/assets/tex and loaded on demand the first time
+ * a hub needs them. Detail maps (breeze_block, sand, painted_metal, paving, wood) were desaturated/neutralised so they
+ * modulate each surface's own colour; floor_tiles_terracotta keeps its colours. Colour maps only.
+ */
+const loaded = new Map<string, THREE.Texture>();
+export function generatedTexture(name: 'breeze_block' | 'sand' | 'painted_metal' | 'floor_tiles_terracotta' | 'paving' | 'wood'): THREE.Texture {
+  const hit = loaded.get(name); if (hit) return hit;
+  const t = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/tex/${name}.jpg`);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  loaded.set(name, t); return t;
+}

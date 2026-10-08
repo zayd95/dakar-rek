@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dakar-rek",
+  "main": "server/worker.ts",
+  "compatibility_date": "2026-10-07",
+  "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "durable_objects": { "bindings": [
+    { "name": "ROOMS", "class_name": "CityRoom" },
+    { "name": "LOBBIES", "class_name": "HubLobby" }
+  ] },
+  "migrations": [{ "tag": "v1-presence", "new_sqlite_classes": ["CityRoom", "HubLobby"] }],
+  "observability": { "enabled": true },
+  "build": { "command": "npm run build:online" }
+}

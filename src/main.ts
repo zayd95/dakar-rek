@@ -15,6 +15,8 @@ import { ACTIONS, HUB_NAMES, travelLeg } from './world/content';
 import type { Action, Collider, HubWorld, Interactable } from './world/types';
 import { Character, PLAYER_OUTFIT } from './actors/character';
 import { Crowd, DecorativeTraffic, Loiterers } from './actors/npc';
+import { MonumentLife } from './actors/life';
+import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
 import { Post, type PostMode } from './render/post';
@@ -25,8 +27,13 @@ import { CAST, castById } from './social/cast';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
+import { LambDuel } from './lamb/duel';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
+import { PresenceClient, loadProfile } from './multiplayer/client';
+import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
+import { PresenceUi } from './multiplayer/ui';
+import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -88,22 +95,30 @@ const hud = new Hud(document.getElementById('ui')!, input);
 const saved = loadSave(store);
 const isNewGame = !saved;
 const state = new GameState(saved ?? newSave());
+const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
+const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
 const rel = new Relations(state.data);
 const follow = new FollowCamera(camera);
 const player = new Character(PLAYER_OUTFIT);
 scene.add(player.group);
 const pos = new THREE.Vector3();
+const tmpV = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
-let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, loiterers: Loiterers | null = null;
+let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, loiterers: Loiterers | null = null, life: MonumentLife | null = null;
+let apprentices: Apprentice[] = [];
+/** Ambient people placed by the hub builder (dibiterie cook, customers…). */
+let ambient: Humanoid[] = [];
+/** Debug-only fixed camera (screenshots of landmarks). */
+let freeCam: { p: THREE.Vector3; t: THREE.Vector3 } | null = null;
 let castChars: { id: string; c: { group: THREE.Group; animate(dt: number, speed: number): void }; h?: Humanoid; x: number; z: number }[] = [];
 /** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
-const PLAYER_LOOK: PersonLook = { skin: 0x6b3f25, style: 'tee', top: 0x1a9d54, accent: 0xf4c20d, pattern: 'uni', bottom: 0x3d4a5c, shoes: 0xf2f2ec };
+const PLAYER_LOOK: PersonLook = avatarLook(presence.profile.look);
 let playerBody: Humanoid | null = null;
 const debugPeople: Humanoid[] = [];
 const dbgRand = rng(42);
 const randomLookDbg = () => randomLook(dbgRand);
-let lambScene: LambScene | null = null;
+let lambScene: LambScene | LambDuel | null = null;
 let emoteT = 0;
 const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
@@ -113,6 +128,12 @@ let interiors = new Map<string, Interior>();
 let inside: { int: Interior; door: Interactable } | null = null;
 /** Debug only: fixed camera offset from the player (front portraits for visual review). */
 let camOverride: { dist: number; h: number; side: number } | null = null;
+const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
+const roomParam = Number(params.get('room'));
+const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
+const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
+presence.onChange = () => { presenceUi.update(); if (!presence.count) remoteAvatars.clear(); };
+function presenceSpace() { return lambScene ? 'scene' : inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'; }
 
 const sunDir = new THREE.Vector3();
 function updateLighting(hour: number) {
@@ -153,6 +174,10 @@ function updateLighting(hour: number) {
 const rand = rng(Date.now() & 0xffff);
 
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
+  for (const a of apprentices) a.dispose();          // detach them before the hub geometry is freed
+  apprentices = [];
+  for (const h of ambient) h.dispose();
+  ambient = [];
   if (world) { scene.remove(world.group); world.dispose(); }
   setGrainEnabled(quality !== 'low');                     // procedural surface noise is the main per-pixel cost
   extra.clear();
@@ -161,6 +186,15 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
   loiterers = new Loiterers(world, rand, QUAL[quality].loiter); extra.add(loiterers.group);
   extra.add(crowd.group, traffic.group);
+  apprentices = humanoidReady() ? world.rapides.map(car => { const a = new Apprentice(id, rand); a.attach(car); return a; }) : [];
+  for (const car of traffic.rapides()) { if (!humanoidReady()) break; const a = new Apprentice(id, rand, true); a.attach(car); apprentices.push(a); }
+  if (humanoidReady()) for (const p of world.people) {
+    const h = new Humanoid(randomLook(rand)); h.hold = p.clip;
+    h.group.position.set(p.x, 0.1 + (p.y ?? 0), p.z); h.group.rotation.y = p.yaw;
+    extra.add(h.group); ambient.push(h);
+  }
+  life?.dispose(); life = world.monument ? new MonumentLife(world.monument, rand, QUAL[quality].crowd) : null;
+  if (life) extra.add(life.group);
   // Recurring cast of this hub, standing at their places (PROVISIONAL cast, see src/social/cast.ts).
   castChars = [];
   for (const m of CAST.filter(c => c.hub === id)) {
@@ -173,18 +207,21 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
     world.interactables.push({ id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x, z, radius: 3.2, actions: m.id === 'ibou' ? ACTIONS.ibou : CHAT, npc: m.id });
   }
   interiors = new Map(); inside = null; follow.indoor = false; scene.remove(roomLight);
+  doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;
   for (const it of world.interactables) {
-    const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : null;
+    const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
     if (!kind) continue;
     const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
   }
-  const p = at ?? world.spawn;
+  const requested = at ?? world.spawn, bounds = world.bounds;
+  const p = requested.x >= bounds.x0 && requested.x <= bounds.x1 && requested.z >= bounds.z0 && requested.z <= bounds.z1 ? requested : world.spawn;
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
   follow.snapBehind(facing);
   state.place(id, p.x, p.z, p.yaw);
   hud.setPlace(HUB_NAMES[id], '', false);
+  remoteAvatars.clear(); presence.join(id, id === invitedHub ? invitedRoom : null);
 }
 
 function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, number] {
@@ -255,6 +292,7 @@ function runSpecial(a: Action) {
     case 'entrance': startScene('entrance', () => { state.adjust({ moral: 10, social: 6 }); state.count('entrees'); }); break;
     case 'prep': startScene('prep'); break;
     case 'watch': startScene('watch', () => { if (a.needs) state.adjust(a.needs); }); break;
+    case 'combat': startDuel(); break;
     case 'outfit': openOutfit(); break;
     case 'emote': openEmotes(); break;
     case 'enter': if (nearest) enterInterior(nearest); break;
@@ -271,10 +309,14 @@ function showStreet(on: boolean) {
   extra.visible = on;
 }
 
+/** Bumped on every door transition and hub load: a fade that finishes late never applies to a newer state. */
+let doorSeq = 0;
 function enterInterior(door: Interactable) {
   const int = interiors.get(door.id); if (!int) return;
+  const seq = ++doorSeq;
   hud.fade(true, door.name);
   setTimeout(() => {
+    if (seq !== doorSeq) return;
     inside = { int, door }; follow.indoor = true; showStreet(false); scene.add(roomLight);
     pos.set(int.spawn.x, 0.1, int.spawn.z); facing = int.spawn.yaw; speed = 0; follow.snapBehind(facing);
     hud.fade(false); mode = 'play'; input.enabled = true;
@@ -283,8 +325,10 @@ function enterInterior(door: Interactable) {
 function exitInterior() {
   if (!inside) return;
   const d = inside.door;
+  const seq = ++doorSeq;
   hud.fade(true, HUB_NAMES[world!.id]);
   setTimeout(() => {
+    if (seq !== doorSeq) return;
     inside = null; follow.indoor = false; showStreet(true); scene.remove(roomLight);
     pos.set(d.x, 0.1, d.z); speed = 0; follow.snapBehind(facing);
     hud.fade(false); mode = 'play'; input.enabled = true; saveNow();
@@ -303,6 +347,26 @@ function startScene(kind: SceneKind, onDone?: () => void) {
   extra.add(lambScene.group);
   for (const n of castChars) n.c.group.visible = false; // the scene places its own cast
   hud.setScene(SCENE_LABEL[kind], 'Gestes, danse et rythmes provisoires · non validés');
+}
+
+/** Controlled bout in the arena against a local opponent (provisional rules, no strikes). */
+function startDuel() {
+  if (!world?.arena) { hud.toast('Les combats ont lieu à l’arène de Pikine'); mode = 'play'; return; }
+  hideProxy(); emoteT = 0; previewT = 0;
+  hud.closeModal();
+  mode = 'scene';
+  const wins = state.data.counters.victoires ?? 0;
+  const duel = new LambDuel({ x: world.arena.cx, z: world.arena.cz }, state.data.wrestler, input, quality === 'low' ? 12 : quality === 'medium' ? 18 : 24, Math.min(1.35, 0.85 + wins * 0.08));
+  duel.onDone = () => {
+    state.adjust({ energie: -22, hygiene: -12, faim: -8 });
+    state.count('combats');
+    if (duel.winner === 'player') { state.count('victoires'); state.adjust({ moral: 14, social: 6 }); rel.change(PLAYER, 'ablaye', 2); hud.toast(`Victoire ! (${(state.data.counters.victoires ?? 0)} au total)`); }
+    else { state.adjust({ moral: -4 }); hud.toast('Défaite. Coach Ablaye : « On retourne à l’entraînement. »'); }
+  };
+  lambScene = duel;
+  extra.add(duel.group);
+  for (const n of castChars) n.c.group.visible = false;
+  hud.setScene('Combat · làmb', 'Lutte sans frappe · règles provisoires, à valider par des lutteurs');
 }
 
 function endScene() {
@@ -435,7 +499,20 @@ function openSystem() {
     { label: 'Nouvelle partie', detail: 'Efface la sauvegarde de cet appareil', onPick: () => { clearSave(store); location.reload(); } },
   ], kv, panel => {
     panel.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
-      quality = b.dataset.q as Quality; applyQuality(); if (world) loadHub(world.id, { x: pos.x, z: pos.z, yaw: facing }); hud.closeModal();
+      const roomId = inside?.door.id, roomPosition = inside ? pos.clone() : null;
+      const at = { x: inside ? inside.door.x : pos.x, z: inside ? inside.door.z : pos.z, yaw: facing };
+      quality = b.dataset.q as Quality; applyQuality();
+      if (world) {
+        loadHub(world.id, at);
+        // Rebuild at the street doorway, then restore the room without leaking its off-map coordinates.
+        const door = roomId ? world.interactables.find(i => i.id === roomId) : undefined;
+        const int = door ? interiors.get(door.id) : undefined;
+        if (door && int && roomPosition) {
+          inside = { door, int }; follow.indoor = true; showStreet(false); scene.add(roomLight);
+          pos.copy(roomPosition); follow.snapBehind(facing);
+        }
+      }
+      hud.closeModal();
     }));
   });
 }
@@ -490,6 +567,7 @@ function frame(now: number) {
       const b = inside ? inside.int.bounds : world.bounds; nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1);
       pos.x = nx; pos.z = nz;
     } else speed *= 0.8;
+    { const gy = 0.1 + (inside ? 0 : world.heightAt(pos.x, pos.z)); pos.y += (gy - pos.y) * Math.min(1, dt * 14); } // climb stairs smoothly
     state.tick(dt * 1000);
   } else if (mode === 'busy') { state.tick(dt * 1000); speed = 0; }
   if (!lambScene) {
@@ -506,22 +584,29 @@ function frame(now: number) {
     if (n.h) n.h.hold = d < 3.4 ? 'Talk' : null;
     n.c.animate(dt, 0);
   }
-  crowd?.update(dt, pos.x, pos.z); traffic?.update(dt); loiterers?.update(dt, pos.x, pos.z);
+  crowd?.update(dt, pos.x, pos.z); traffic?.update(dt); loiterers?.update(dt, pos.x, pos.z); life?.update(dt); world.tick(dt);
+  for (const h of ambient) h.animate(dt, 0);
+  for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
+  const space = presenceSpace();
+  const clip = mode === 'play' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
+  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
+  remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   findNearest();
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
   hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);
 
-  if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined);
+  if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
   if (camOverride && !lambScene) {
     const a = facing + camOverride.side;
     camera.position.set(pos.x + Math.sin(a) * camOverride.dist, camOverride.h, pos.z + Math.cos(a) * camOverride.dist);
     camera.lookAt(pos.x, camOverride.h - 0.1, pos.z);
   }
-  const ct = cityTimeAt(Date.now()); const hour = hourOverride ?? ct.hourFloat;
+  const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
   if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); hud.setGoal(mode === 'play' && sg ? sg.hint : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
+  if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   post.render(nightAmount);
 }
 
@@ -530,8 +615,8 @@ resize(); applyQuality();
 async function start() {
   await Promise.all([preloadAssets(), preloadHumanoid(), preloadProps()]);
   if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); scene.add(playerBody.group); player.group.visible = false; }
-  const startHub = state.data.hub;
-  if (isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
+  const startHub = invitedHub ?? state.data.hub;
+  if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
   if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
   requestAnimationFrame(frame);
@@ -541,9 +626,10 @@ void start();
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size }),
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
-    pos: () => ({ x: pos.x, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
+    pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
     lookYaw(y: number) { follow.yaw = y; },
     act() { hud.onAction(); },
@@ -562,6 +648,18 @@ if (DEBUG) {
     portrait(dist = 2.2, h = 1.5, side = 0.35) { camOverride = dist > 0 ? { dist, h, side } : null; },
     addPeople(n = 6) { if (!world) return; for (let k = 0; k < n; k++) { const h = new Humanoid(randomLookDbg()); h.group.position.set(pos.x + Math.sin(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2), 0.1, pos.z + Math.cos(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2)); h.group.rotation.y = facing + Math.PI; h.hold = k % 3 === 0 ? 'Talk' : 'Idle'; h.lookTarget = new THREE.Vector3(pos.x, 1.6, pos.z); extra.add(h.group); debugPeople.push(h); } },
     sceneInfo: () => (lambScene ? { kind: lambScene.kind, t: lambScene.t } : null),
+    sceneCrowd: () => (lambScene instanceof LambScene ? lambScene.crowdSpots() : []),
+    /** Distance from a to the first world surface on the segment a→b (equals the segment length when nothing is in the way). */
+    sightline(a: [number, number, number], b: [number, number, number]) {
+      const A = new THREE.Vector3(...a), d = new THREE.Vector3(...b).sub(A), len = d.length();
+      const rc = new THREE.Raycaster(A, d.normalize(), 0.05, len); rc.camera = camera;
+      const hit = world ? rc.intersectObject(world.group, true)[0] : undefined;
+      return { len, hit: hit ? hit.distance : len };
+    },
+    duel() { startDuel(); },
+    duelInfo: () => (lambScene instanceof LambDuel ? { phase: lambScene.phase, winner: lambScene.winner } : null),
+    duelGrab() { if (lambScene instanceof LambDuel) lambScene.pressGrab(); },
+    duelGuard(on: boolean) { if (lambScene instanceof LambDuel) lambScene.setGuard(on); },
     scenePeek(t: number) { if (lambScene) { lambScene.t = t; lambScene.snap = true; } },
     outfit: () => openOutfit(), journal: () => openJournal(),
     emote(i = 0) { playEmote(i); },
@@ -573,7 +671,8 @@ if (DEBUG) {
     enter(kind: 'home' | 'gargote') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
     exit() { exitInterior(); },
     look(yaw: number, pitch?: number) { follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
-    place(x: number, z: number, yaw: number) { pos.set(x, 0.1, z); facing = yaw; follow.snapBehind(yaw); },
+    place(x: number, z: number, yaw: number) { pos.set(x, 0.1 + (world?.heightAt(x, z) ?? 0), z); facing = yaw; follow.snapBehind(yaw); },
+    cam(p: [number, number, number] | null, t?: [number, number, number]) { freeCam = p && t ? { p: new THREE.Vector3(...p), t: new THREE.Vector3(...t) } : null; },
     meshStats() {
       const rows: { name: string; tris: number; visible: boolean }[] = [];
       world?.group.children.forEach((o, i) => { let t = 0; o.traverse(m => { const g = (m as THREE.Mesh).geometry; if (g) t += (g.index ? g.index.count : g.attributes.position.count) / 3; }); rows.push({ name: `${i}:${o.type}:${((o as THREE.Mesh).material as THREE.Material | undefined)?.type ?? ''}`, tris: Math.round(t), visible: o.visible }); });

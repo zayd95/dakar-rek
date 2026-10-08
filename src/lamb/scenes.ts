@@ -6,6 +6,7 @@ import { Percussion, crowdCheer as cheerSound } from './audio';
 import { castById } from '../social/cast';
 import { Humanoid, Wrestler, wrestlerReady, randomLook, lookFromOutfit, type Clip } from '../actors/humanoid';
 import { rng } from '../core/rng';
+import { inGate, tierRadius, tierTop, TIERS } from '../world/geew';
 
 const CLIP_FOR = new Map<Pose, Clip>([[danceA, 'Dance_A'], [danceB, 'Dance_B'], [prep, 'Prep'], [drill, 'Stance'], [celebrate, 'Celebrate'], [crowdCheer, 'Celebrate'], [crowdIdle, 'Idle'], [drum, 'Talk']]);
 
@@ -19,7 +20,7 @@ export const SCENE_LABEL: Record<SceneKind, string> = {
   training: 'Entraînement · écurie', entrance: 'Entrée dans l’arène', prep: 'Préparation', celebration: 'Fête de l’écurie', watch: 'Tribunes',
 };
 
-interface Extra { w?: Humanoid; walking?: boolean; c: Character; pose: Pose | null; from?: THREE.Vector3; to?: THREE.Vector3; t0?: number; t1?: number; yaw?: number }
+interface Extra { w?: Humanoid; walking?: boolean; crowd?: boolean; c: Character; pose: Pose | null; from?: THREE.Vector3; to?: THREE.Vector3; t0?: number; t1?: number; yaw?: number }
 
 export interface SceneFrame { cam: THREE.Vector3; look: THREE.Vector3 }
 
@@ -31,6 +32,8 @@ export class LambScene {
   /** Set when the camera should jump instead of easing (scene start, debug time jumps). */
   snap = true;
   private extras: Extra[] = [];
+  /** Debug/checks: where the spectators stand, relative to the scene origin (radius, height, angle). */
+  crowdSpots() { return this.extras.filter(e => e.crowd).map(e => { const p = e.c.group.position; return { r: Math.hypot(p.x - this.o.x, p.z - this.o.z), y: p.y, a: Math.atan2(p.x - this.o.x, p.z - this.o.z) }; }); }
   private drums = new Percussion();
   private cheered = new Set<number>();
   private o: THREE.Vector3;
@@ -72,7 +75,7 @@ export class LambScene {
   private add(o: (typeof NPC_OUTFITS)[number], pose: Pose | null, dx: number, dz: number, walk?: { walk: true; dz: number }, y = 0.1, crowd = false): Extra {
     const c = new Character(o);
     c.group.position.set(this.o.x + dx, y, this.o.z + dz);
-    const e: Extra = { c, pose };
+    const e: Extra = { c, pose, crowd };
     if (walk) { e.from = c.group.position.clone(); e.to = new THREE.Vector3(this.o.x + dx, 0.1, this.o.z - 4 + walk.dz); e.t0 = 0.6; e.t1 = 6.6; e.walking = true; }
     if (pose) c.setPose(pose);
     this.group.add(c.group); this.extras.push(e);
@@ -93,12 +96,12 @@ export class LambScene {
     return e;
   }
   private addCrowd(pose: Pose) {
-    // Spectators on the three tiers of the stands (see the arena in world/builder.ts).
+    // Spectators on the tiers of the géew (dimensions in world/geew.ts, drawn by world/builder.ts).
     for (let k = 0; k < this.crowdSize; k++) {
       const a = (k / this.crowdSize) * Math.PI * 2 + 0.12;
-      if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.3) continue; // keep the gate clear
-      const tier = k % 3;
-      const r = 17.9 + tier * 1.3, y = 0.1 + 0.55 * (tier + 1);
+      if (inGate(a)) continue; // keep the gate clear
+      const tier = k % TIERS;
+      const r = tierRadius(tier), y = tierTop(tier);
       const e = this.add(NPC_OUTFITS[k % NPC_OUTFITS.length], pose, Math.sin(a) * r, Math.cos(a) * r, undefined, y, true);
       e.yaw = a + Math.PI;
     }

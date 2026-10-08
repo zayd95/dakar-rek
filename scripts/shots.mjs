@@ -9,14 +9,20 @@ const hubs = ['plateau', 'corniche', 'almadies', 'pikine'];
 const results = [];
 const check = (name, ok, extra = '') => { results.push({ name, ok, extra }); console.log(ok ? 'PASS' : 'FAIL', name, extra); };
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 
 for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]]) {
   const ctx = await browser.newContext({ viewport: vp, hasTouch: touch, isMobile: touch, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
-  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('console', m => {
+    if (m.type() !== 'error') return;
+    const url = m.location().url;
+    // The optional Blender vehicle is absent until its export lands; the game uses its procedural car.
+    if (url.endsWith('/assets/car_rapide.glb') && m.text().includes('404')) return;
+    errors.push(`${m.text()} ${url}`);
+  });
   await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar, null, { timeout: 30000 });
   await page.waitForTimeout(1500);
@@ -64,7 +70,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.screenshot({ path: `${out}/desktop-action-menu.png` });
   // interiors: enter the starter room, walk into a wall, save while inside, exit
   await page.evaluate(() => { window.__dakar.setHour(13); window.__dakar.enter('home'); });
-  await page.waitForTimeout(900);
+  await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 8000 }).catch(() => {});
   const inRoom = await page.evaluate(() => window.__dakar.pos());
   check('interior: enter starter room', inRoom.x > 900, `${inRoom.x.toFixed(1)},${inRoom.z.toFixed(1)}`);
   await page.keyboard.down('KeyW'); await page.waitForTimeout(4000); await page.keyboard.up('KeyW');
@@ -72,12 +78,82 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   check('interior: walls hold the player inside', wallPos.x > 996 && wallPos.x < 1004 && Math.abs(wallPos.z) < 3, `${wallPos.x.toFixed(1)},${wallPos.z.toFixed(1)}`);
   await page.screenshot({ path: `${out}/desktop-interior-home.png` });
   await page.evaluate(() => { window.__dakar.state.data.wallet += 0; });
-  await page.evaluate(() => window.__dakar.exit()); await page.waitForTimeout(900);
+  await page.evaluate(() => window.__dakar.exit());
+  await page.waitForFunction(() => window.__dakar.pos().x < 900, null, { timeout: 8000 }).catch(() => {});
   const outPos = await page.evaluate(() => window.__dakar.pos());
   check('interior: exit back to the street', outPos.x < 900 && outPos.hub === 'pikine', `${outPos.x.toFixed(1)},${outPos.z.toFixed(1)}`);
+  // dibiterie: walk in from the street to the counter
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.place(-18, -56, 0); });
+  await page.keyboard.down('KeyW'); for (let i = 0; i < 40; i++) { await page.waitForTimeout(300); if ((await page.evaluate(() => window.__dakar.pos())).z > -50.5) break; } await page.keyboard.up('KeyW');
+  const dib = await page.evaluate(() => window.__dakar.pos());
+  check('dibiterie: walk in from the street', /Dibiterie/.test(dib.near ?? ''), `${dib.z.toFixed(1)} ${dib.near}`);
+  // Maïga: enter and find the counter
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.enter('maiga'); });
+  await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 8000 }).catch(() => {});
+  const mg = await page.evaluate(() => window.__dakar.pos());
+  check('maiga: enter the narrow room', mg.x > 900, `${mg.x.toFixed(1)} ${mg.near}`);
+  await page.evaluate(() => window.__dakar.exit());
+  await page.waitForFunction(() => window.__dakar.pos().x < 900, null, { timeout: 8000 }).catch(() => {});
+  // làmb bout against a local opponent: grabbing and pushing in the empoignade wins, the result is recorded
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.duel(); });
+  await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'fight', null, { timeout: 120000 }).catch(() => {});
+  // keep grabbing until the fall (a wall-clock budget: slow CPU rendering stretches the clinch), remembering the last state seen
+  let bout = null;
+  for (const t0 = Date.now(); Date.now() - t0 < 90000;) {
+    const inf = await page.evaluate(() => window.__dakar.duelInfo());
+    if (!inf) break;
+    bout = inf;
+    if (inf.phase === 'fall' || inf.phase === 'result') break;
+    await page.evaluate(() => window.__dakar.duelGrab()); await page.waitForTimeout(100);
+  }
+  await page.waitForFunction(() => window.__dakar.duelInfo() === null, null, { timeout: 120000 }).catch(() => {});
+  const wins = await page.evaluate(() => ({ v: window.__dakar.state.data.counters.victoires ?? 0, mode: window.__dakar.pos().mode }));
+  check('lamb: controlled bout, grab and empoignade win', bout?.winner === 'player' && wins.v >= 1 && wins.mode === 'play', `${JSON.stringify(bout)} wins ${wins.v} ${wins.mode}`);
+  // monument stair: standing half-way up puts the player well above the street
+  await page.evaluate(() => { const d = window.__dakar; d.teleport('corniche'); d.place(-44, -90, Math.PI / 2); });
+  await page.waitForTimeout(400);
+  const st = await page.evaluate(() => window.__dakar.pos());
+  check('monument: stair height', st.y > 4 && st.y < 9, st.y.toFixed(2));
+  // géew (arena): gate passage, crowd on the raised tiers, sightlines and roof. Expected numbers mirror src/world/geew.ts.
+  const TIER_R = [17.9, 19.2, 20.5], TIER_TOP = [1.1, 2.0, 2.9], EYE = 1.55, HEAD = 1.75;
+  await page.evaluate(() => window.__dakar.teleport('pikine'));
+  await page.waitForTimeout(500);
+  const ar = await page.evaluate(() => { const a = window.__dakar.interactables().find(i => i.id.endsWith(':arena')); return { x: a.x, z: a.z + 24 }; });
+  // headless frame rates make walking slow (~0.5 m/s): start just outside the wall and walk past the stands and barriers
+  await page.evaluate(([x, z]) => window.__dakar.place(x, z, 0), [ar.x, ar.z - 23.5]);
+  await page.keyboard.down('KeyW');
+  for (let i = 0; i < 90; i++) { await page.waitForTimeout(300); const p = await page.evaluate(() => window.__dakar.pos()); if (Math.hypot(p.x - ar.x, p.z - ar.z) < 14) break; }
+  await page.keyboard.up('KeyW');
+  const gp = await page.evaluate(() => window.__dakar.pos());
+  check('arena: walk in through the gate past the stands', Math.hypot(gp.x - ar.x, gp.z - ar.z) < 14.5, `${Math.hypot(gp.x - ar.x, gp.z - ar.z).toFixed(1)} m from the centre`);
+  const angles = [...Array(8)].map((_, k) => Math.PI / 8 + (k * Math.PI) / 4);
+  const at = (a, r, y) => [ar.x + Math.sin(a) * r, y, ar.z + Math.cos(a) * r];
+  const clearCount = async segs => (await page.evaluate(ss => ss.map(([p, q]) => window.__dakar.sightline(p, q)), segs)).filter(h => h.hit >= h.len - 0.05).length;
+  for (let t = 0; t < 3; t++) {
+    const n = await clearCount(angles.map(a => [at(a, TIER_R[t], TIER_TOP[t] + EYE), at(a, 8, 0.3)]));
+    check(`arena: tier ${t + 1} sees into the ring`, n >= 7, `${n}/8 clear`);
+  }
+  const fromRing = await clearCount(angles.map(a => [[ar.x, 0.14 + EYE, ar.z], at(a, TIER_R[2], TIER_TOP[2] + HEAD)]));
+  check('arena: top-tier heads visible from the ring', fromRing >= 7, `${fromRing}/8 clear`);
+  const roofed = 8 - await clearCount(angles.map(a => [at(a, TIER_R[2], TIER_TOP[2] + HEAD), at(a, TIER_R[2], 12)]));
+  check('arena: roof over the stands', roofed === 8, `${roofed}/8 covered`);
+  const gateOpen = await clearCount([[at(Math.PI, 9.8, 0.6), at(Math.PI, 26, 0.6)], [at(Math.PI, 19, 3.5), at(Math.PI, 19, 12)]]);
+  check('arena: gate open (no stands or roof)', gateOpen === 2, `${gateOpen}/2 clear`);
+  await page.evaluate(() => window.__dakar.scene('watch')); await page.waitForTimeout(300);
+  await page.evaluate(() => window.__dakar.scenePeek(3)); await page.waitForTimeout(500);
+  const crowd = await page.evaluate(() => window.__dakar.sceneCrowd());
+  const onTier = s => TIER_R.some((r, t) => Math.abs(s.r - r) < 0.05 && Math.abs(s.y - TIER_TOP[t]) < 0.05);
+  const inGate = s => Math.abs(Math.atan2(Math.sin(s.a - Math.PI), Math.cos(s.a - Math.PI))) < 0.3;
+  check('arena: crowd stands on the raised tiers, gate clear', crowd.length > 0 && crowd.every(onTier) && !crowd.some(inGate), `${crowd.length} spectators, ${crowd.filter(onTier).length} on tiers`);
+  await page.evaluate(() => window.__dakar.scenePeek(99));
+  await page.waitForFunction(() => window.__dakar.sceneInfo() === null, null, { timeout: 15000 }).catch(() => {});
+  const afterWatch = await page.evaluate(() => ({ s: window.__dakar.sceneInfo(), p: window.__dakar.pos() }));
+  check('arena: watch scene ends, back to play', afterWatch.s === null && afterWatch.p.mode === 'play', `${JSON.stringify(afterWatch.s)} ${afterWatch.p.mode}`);
+  await page.evaluate(() => window.__dakar.teleport('pikine'));
   // travel
   await page.keyboard.press('Escape');
   await page.evaluate(() => window.__dakar.travelTo('corniche'));
+  // wait for the arrival (fade + hub build take ~3 s under SwiftShader); still fails if the player never arrives
   await page.waitForFunction(() => window.__dakar.pos().hub === 'corniche', null, { timeout: 15000 }).catch(() => {});
   const t = await page.evaluate(() => window.__dakar.pos());
   check('travel: pikine -> corniche', t.hub === 'corniche', t.hub);
