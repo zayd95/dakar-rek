@@ -23,6 +23,23 @@ export interface SaveData {
   beats: Record<string, string>;
   /** Wrestling identity (cosmetic only, never combat power). */
   wrestler: WrestlerLook;
+  /** v3: wallet history on this device (last 100 money changes). Not a server ledger. */
+  ledger: LedgerEntry[];
+  /** v3: furniture owned in the starter room (item ids, src/economy/furniture.ts). */
+  furniture: string[];
+  /** v3: Tiak Tiak delivery in progress and completed run ids (a run is paid once). */
+  jobs: JobsState;
 }
+
+export interface LedgerEntry { at: number; label: string; amount: number }
+export interface ActiveJob {
+  runId: string; routeId: string; hub: HubId;
+  /** 'pickup': go to the pick-up point first (accepted from the phone); 'deliver': parcel in hand. */
+  stage: 'pickup' | 'deliver';
+  pay: number;
+  /** Played time (ms) when the delivery leg started, and its limit. */
+  startedMs: number; limitMs: number;
+}
+export interface JobsState { active: ActiveJob | null; done: string[]; seq: number }
 
 export interface WrestlerLook { ngembColor: string; ngembPattern: string; accessories: string[] }

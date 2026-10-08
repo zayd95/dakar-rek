@@ -1,0 +1,197 @@
+[
+ {
+  "name": "fresh save: first suggestion is still Ibou’s welcome",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "fresh save: empty ledger and no furniture",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "after the welcome, the chip points to Tiak Tiak",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "furniture stall exists in Pikine",
+  "ok": true,
+  "extra": "Quincaillerie · meubles 87,-6"
+ },
+ {
+  "name": "pick-up point lists its delivery offers",
+  "ok": true,
+  "extra": "2 offers"
+ },
+ {
+  "name": "delivery accepted at the pick-up point (parcel in hand)",
+  "ok": true,
+  "extra": "{\"runId\":\"c2d14c03-1-1633\",\"routeId\":\"pk_mame_garage\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1200,\"startedMs\":1633.4000000000015,\"limitMs\":68849}"
+ },
+ {
+  "name": "HUD line \"Livraison → <place>, X m\"",
+  "ok": true,
+  "extra": "Livraison → Garage Modou, 22 m  · 1:09"
+ },
+ {
+  "name": "world marker on the drop-off",
+  "ok": true,
+  "extra": "{\"visible\":true,\"x\":102,\"z\":-5.5}"
+ },
+ {
+  "name": "walked to the drop-off: delivery paid",
+  "ok": true,
+  "extra": "3000 → 4200 · Livraison réussie ✓ +1 200 F · Nouvelle cliente : Awa, cliente du Café Touba. Elle te recommandera."
+ },
+ {
+  "name": "first client met, recommended run unlocked",
+  "ok": true,
+  "extra": "Livraison réussie ✓ +1 200 F · Nouvelle cliente : Awa, cliente du Café Touba. Elle te recommandera."
+ },
+ {
+  "name": "completing the same run id twice pays once",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "second run: complete twice → one payment",
+  "ok": true,
+  "extra": "{\"runId\":\"c2d14c03-2-3550\",\"paid\":1000,\"late\":false,\"newClient\":null} null 5200"
+ },
+ {
+  "name": "cancel: no payment, no double effect",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "ledger records the deliveries (newest first)",
+  "ok": true,
+  "extra": "[{\"at\":1791496775203,\"label\":\"Livraison Tiak Tiak → Café Touba · Parcelles\",\"amount\":1000},{\"at\":1791496765699,\"label\":\"Livraison Tiak Tiak → Garage Modou\",\"amount\":1200}]"
+ },
+ {
+  "name": "Ibou’s delivery beat is suggested",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "Ibou sets the goal (radio)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "the chip now points to buying the radio",
+  "ok": true,
+  "extra": "goal_buy"
+ },
+ {
+  "name": "bought the radio at the stall (charged once)",
+  "ok": true,
+  "extra": "5200 → 1200"
+ },
+ {
+  "name": "buying it again is refused (no double charge)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "radio is in the room with its action",
+  "ok": true,
+  "extra": "Petite radio"
+ },
+ {
+  "name": "« Écouter la radio » raises the mood",
+  "ok": true,
+  "extra": "74.1 → 84.1"
+ },
+ {
+  "name": "all six items can be bought; the room refreshes while inside",
+  "ok": true,
+  "extra": "[true,true,true,true,true]"
+ },
+ {
+  "name": "bed now offers the better sleep",
+  "ok": true,
+  "extra": "Lit · bon matelasQue veux-tu faire ?Dormir (bon matelas)Bien mieux reposéFermer"
+ },
+ {
+  "name": "Ibou’s furniture beat is suggested",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "reload: money persisted",
+  "ok": true,
+  "extra": "12700 / 12700"
+ },
+ {
+  "name": "reload: ledger persisted",
+  "ok": true,
+  "extra": "9 entries"
+ },
+ {
+  "name": "reload: furniture persisted",
+  "ok": true,
+  "extra": "radio,miroir,tapis,chaises,matelas,tele"
+ },
+ {
+  "name": "reload: completed runs and delivery count persisted",
+  "ok": true,
+  "extra": "2 runs, 2 deliveries"
+ },
+ {
+  "name": "save is schema v3",
+  "ok": true,
+  "extra": "3"
+ },
+ {
+  "name": "reload: Ibou’s furniture beat still available",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "after Ibou’s furniture beat the chip moves on",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "desktop: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: save loaded with furniture",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: accepted from the jobs app → pick-up stage",
+  "ok": true,
+  "extra": "{\"runId\":\"c2d14c03-4-8583\",\"routeId\":\"pk_maiga_station\",\"hub\":\"pikine\",\"stage\":\"pickup\",\"pay\":1100,\"startedMs\":8583.400000000014,\"limitMs\":0}"
+ },
+ {
+  "name": "phone: walking to the pick-up point starts the delivery leg",
+  "ok": true,
+  "extra": "{\"runId\":\"c2d14c03-4-8583\",\"routeId\":\"pk_maiga_station\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1100,\"startedMs\":8683.400000000014,\"limitMs\":92479}"
+ },
+ {
+  "name": "phone: HUD line visible",
+  "ok": true,
+  "extra": "Livraison → Gare des cars rapides, 47 m  · 1:32"
+ },
+ {
+  "name": "phone: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "old v2 off-map save: recovered in the city, money kept, empty ledger, no furniture, v3",
+  "ok": true,
+  "extra": "{\"p\":{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\"},\"w\":7777,\"ledger\":0,\"owned\":0,\"ver\":3}"
+ },
+ {
+  "name": "old save: no page errors",
+  "ok": true,
+  "extra": ""
+ }
+]

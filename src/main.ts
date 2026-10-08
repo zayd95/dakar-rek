@@ -10,7 +10,7 @@ import { HUB_IDS } from './core/types';
 import { buildHub } from './world/builder';
 import { Sky } from './world/sky';
 import { setGrainEnabled } from './world/grain';
-import { buildInterior, setInteriorDaylight, type Interior } from './world/interiors';
+import { buildInterior, disposeInterior, setInteriorDaylight, type Interior } from './world/interiors';
 import { ACTIONS, HUB_NAMES, travelLeg } from './world/content';
 import type { Action, Collider, HubWorld, Interactable } from './world/types';
 import { Character, PLAYER_OUTFIT } from './actors/character';
@@ -32,6 +32,7 @@ import { PresenceClient, loadProfile } from './multiplayer/client';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { PresenceUi } from './multiplayer/ui';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
+import { Economy } from './economy/ui';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -128,6 +129,8 @@ const roomParam = Number(params.get('room'));
 const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
 const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
 presence.onChange = () => { presenceUi.update(); if (!presence.count) remoteAvatars.clear(); };
+// Lot B economy (src/economy/*): Tiak Tiak deliveries, wallet history, starter-room furniture, phone hooks. Device-local.
+const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), refreshHome: () => refreshHomeInteriors() });
 function presenceSpace() { return lambScene ? 'scene' : inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'; }
 
 const sunDir = new THREE.Vector3();
@@ -199,13 +202,14 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
     castChars.push({ id: m.id, c, h, x, z });
     world.interactables.push({ id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x, z, radius: 3.2, actions: m.id === 'ibou' ? ACTIONS.ibou : CHAT, npc: m.id });
   }
+  economy.decorateHub(world);
   interiors = new Map(); inside = null; follow.indoor = false; scene.remove(roomLight);
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;
   for (const it of world.interactables) {
     const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
     if (!kind) continue;
-    const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
+    const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id, kind === 'home' ? state.data.furniture : []); n++;
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
   }
   const requested = at ?? world.spawn, bounds = world.bounds;
@@ -290,6 +294,8 @@ function runSpecial(a: Action) {
     case 'emote': openEmotes(); break;
     case 'enter': if (nearest) enterInterior(nearest); break;
     case 'exit': exitInterior(); break;
+    case 'jobs': economy.openJobs(nearest ?? undefined); break;
+    case 'shop': economy.openShop(); break;
   }
 }
 
@@ -314,6 +320,17 @@ function enterInterior(door: Interactable) {
     pos.set(int.spawn.x, 0.1, int.spawn.z); facing = int.spawn.yaw; speed = 0; follow.snapBehind(facing);
     hud.fade(false); mode = 'play'; input.enabled = true;
   }, 350);
+}
+/** Rebuild the starter room after a furniture purchase; the player stays where they stand. */
+function refreshHomeInteriors() {
+  if (!world) return;
+  for (const [doorId, int] of interiors) {
+    if (int.kind !== 'home') continue;
+    const fresh = buildInterior('home', (int.bounds.x0 + int.bounds.x1) / 2, (int.bounds.z0 + int.bounds.z1) / 2, int.name, world.id, state.data.furniture);
+    fresh.group.visible = int.group.visible;
+    world.group.remove(int.group); disposeInterior(int); world.group.add(fresh.group); interiors.set(doorId, fresh);
+    if (inside?.int === int) inside.int = fresh;
+  }
 }
 function exitInterior() {
   if (!inside) return;
@@ -440,8 +457,8 @@ function runAction(a: Action, npc?: string) {
     hud.progress(true, p, a.label);
     if (p < 1) { requestAnimationFrame(tick); return; }
     hud.progress(false);
-    if (a.cost) state.addMoney(-a.cost);
-    if (a.gain) state.addMoney(a.gain);
+    if (a.cost) state.addMoney(-a.cost, a.label);
+    if (a.gain) state.addMoney(a.gain, a.label);
     if (a.needs) state.adjust(a.needs);
     if (a.counter) state.count(a.counter);
     if (npc) rel.change(PLAYER, npc, 1);
@@ -472,7 +489,7 @@ function doTravel(dest: HubId) {
   mode = 'busy'; input.enabled = false;
   hud.fade(true, '🚌 ' + HUB_NAMES[dest]);
   setTimeout(() => {
-    state.addMoney(-leg.cost); state.tick(leg.minutes * 60000 * 0.15); state.count('trips');
+    state.addMoney(-leg.cost, 'Car rapide → ' + HUB_NAMES[dest]); state.tick(leg.minutes * 60000 * 0.15); state.count('trips');
     loadHub(dest);
     hud.fade(false);
     hud.toast('Arrivée : ' + HUB_NAMES[dest]);
@@ -488,6 +505,7 @@ function openSystem() {
   hud.openMenu('Dakar Rek', 'Version de développement 0.1', [
     { label: 'Reprendre', onPick: () => hud.closeModal() },
     { label: 'Carnet', detail: 'Relations et prochaine piste', onPick: () => openJournal() },
+    { label: 'Argent et maison', detail: 'Portefeuille, livraisons Tiak Tiak, meubles', onPick: () => economy.openWallet() },
     { label: 'Sauvegarder maintenant', onPick: () => { hud.toast(saveNow() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'); hud.closeModal(); } },
     { label: 'Nouvelle partie', detail: 'Efface la sauvegarde de cet appareil', onPick: () => { clearSave(store); location.reload(); } },
   ], kv, panel => {
@@ -586,6 +604,7 @@ function frame(now: number) {
   presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   findNearest();
+  economy.update(dt, pos, !!inside, mode === 'play' && !lambScene);
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
   hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);
 
@@ -660,5 +679,6 @@ if (DEBUG) {
       return rows.sort((a, b) => b.tris - a.tris).slice(0, 12);
     },
     lookAtPlayer(dist = 4, yawOff = Math.PI) { follow.yaw = facing + yawOff; void dist; },
+    ...economy.debug(),
   };
 }

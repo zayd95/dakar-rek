@@ -2,6 +2,7 @@ import type { Needs } from '../core/types';
 import type { GameState } from '../core/state';
 import { Relations, PLAYER } from './relations';
 import { castById } from './cast';
+import { economyStep, type Step } from '../economy/progress';
 
 /**
  * Authored story beats — short branching interactions (2–4 choices) triggered by place and relationship state.
@@ -22,6 +23,8 @@ export interface Beat {
   choices: Choice[];
   /** One line shown in the journal when this beat is the suggested next step. */
   hint: string;
+  /** Draft text still to review (all beats are drafts; set on the newer ones explicitly). */
+  draft?: boolean;
 }
 
 const P = PLAYER;
@@ -32,8 +35,30 @@ export const BEATS: Beat[] = [
     text: 'Ah, te voilà installé ! Le quartier est petit, tout le monde se connaît. Tu cherches du travail ?',
     when: () => true,
     choices: [
-      { id: 'oui', label: 'Oui, n’importe quoi d’honnête', reply: 'Va voir Modou au garage. Dis-lui que c’est Ibou qui t’envoie.', effects: { rel: [[P, 'ibou', 8]], flags: ['reco_modou'], needs: { social: 8 } } },
-      { id: 'installer', label: 'D’abord je m’installe', reply: 'Prends ton temps. Quand tu seras prêt, Modou au garage cherche de l’aide.', effects: { rel: [[P, 'ibou', 4]], flags: ['reco_modou'], needs: { social: 6 } } },
+      { id: 'oui', label: 'Oui, n’importe quoi d’honnête', reply: 'Va voir Modou au garage. Dis-lui que c’est Ibou qui t’envoie. Et Mame Diarra, à sa gargote, cherche quelqu’un pour livrer ses plats en Tiak Tiak.', effects: { rel: [[P, 'ibou', 8]], flags: ['reco_modou'], needs: { social: 8 } } },
+      { id: 'installer', label: 'D’abord je m’installe', reply: 'Prends ton temps. Quand tu seras prêt, Modou au garage cherche de l’aide, et Mame Diarra a des livraisons Tiak Tiak à faire.', effects: { rel: [[P, 'ibou', 4]], flags: ['reco_modou'], needs: { social: 6 } } },
+    ],
+  },
+  // Lot B « Première ascension » (DRAFT text, to review): Ibou reacts to the first delivery, then to the first furniture,
+  // and each time suggests the next goal (an 'objectif:<item>' flag read by src/economy/progress.ts).
+  {
+    id: 'ibou_tiak', npc: 'ibou', title: 'Le Tiak Tiak', hint: 'Tonton Ibou a entendu parler de ta première livraison : va le voir (Pikine).', draft: true,
+    text: 'On m’a dit que tu as fait ta première livraison ! Le Tiak Tiak, c’est du travail honnête : on gagne sa journée et on connaît vite tout le quartier. Qu’est-ce que tu vas faire de cet argent ?',
+    when: (_r, s) => (s.data.counters.livraisons ?? 0) >= 1,
+    choices: [
+      { id: 'radio', label: 'Meubler ma chambre, une radio d’abord', reply: 'Bonne idée, une radio tient compagnie le soir. La quincaillerie, à côté de la Maïga du marché, vend des meubles.', effects: { rel: [[P, 'ibou', 5]], flags: ['objectif:radio'], needs: { moral: 4 } } },
+      { id: 'matelas', label: 'Un vrai matelas', reply: 'Ton dos te remerciera ! Garde de l’argent de côté : la quincaillerie près de la Maïga en vend.', effects: { rel: [[P, 'ibou', 5]], flags: ['objectif:matelas'], needs: { moral: 4 } } },
+      { id: 'epargner', label: 'Garder de côté', reply: 'C’est sage. Mais un miroir ne coûte pas cher, et il faut être présentable devant les clients.', effects: { rel: [[P, 'ibou', 4]], flags: ['objectif:miroir'], needs: { moral: 2 } } },
+    ],
+  },
+  {
+    id: 'ibou_meuble', npc: 'ibou', title: 'La chambre prend forme', hint: 'Tonton Ibou a vu ton premier meuble : va lui parler (Pikine).', draft: true,
+    text: 'Je suis passé devant ta porte : ta chambre commence à ressembler à une vraie maison ! Et maintenant, tu vises quoi ?',
+    when: (_r, s) => s.data.furniture.length >= 1,
+    choices: [
+      { id: 'chaises', label: 'Des chaises, pour recevoir', reply: 'Comme ça je viendrai prendre le thé chez toi ! Deux chaises en plastique, ce n’est pas cher.', effects: { rel: [[P, 'ibou', 6]], flags: ['objectif:chaises'], needs: { social: 6 } } },
+      { id: 'tele', label: 'Une petite télé', reply: 'Pour regarder la lutte ? Il faudra beaucoup de livraisons. Courage, garde de l’argent pour ça.', effects: { rel: [[P, 'ibou', 4]], flags: ['objectif:tele'], needs: { social: 4 } } },
+      { id: 'matelas', label: 'Un bon matelas', reply: 'Bien dormir, c’est bien travailler. Mets un peu de côté après chaque livraison.', effects: { rel: [[P, 'ibou', 4]], flags: ['objectif:matelas'], needs: { social: 4 } } },
     ],
   },
   {
@@ -149,9 +174,18 @@ export function availableBeat(npc: string, r: Relations, s: GameState): Beat | n
   return BEATS.find(b => b.npc === npc && !r.beatDone(b.id) && b.when(r, s)) ?? null;
 }
 
-/** The one suggested next step (at most one at a time; nothing is compulsory). */
-export function suggestion(r: Relations, s: GameState): Beat | null {
-  return BEATS.find(b => !r.beatDone(b.id) && b.when(r, s)) ?? null;
+/**
+ * The one suggested next step (at most one at a time; nothing is compulsory).
+ * Order: Ibou's welcome, then Ibou's reactions to the first delivery / furniture, then the economic step
+ * (src/economy/progress.ts), then the other beats.
+ */
+export function suggestion(r: Relations, s: GameState): Beat | Step | null {
+  const open = (b: Beat) => !r.beatDone(b.id) && b.when(r, s);
+  const welcome = BEATS[0];
+  if (open(welcome)) return welcome;
+  const ibou = BEATS.find(b => (b.id === 'ibou_tiak' || b.id === 'ibou_meuble') && open(b));
+  if (ibou) return ibou;
+  return economyStep(s) ?? BEATS.find(open) ?? null;
 }
 
 export function applyChoice(beat: Beat, choice: Choice, r: Relations, s: GameState): string[] {
@@ -164,7 +198,7 @@ export function applyChoice(beat: Beat, choice: Choice, r: Relations, s: GameSta
     }
   }
   for (const f of e.flags ?? []) r.set(f);
-  if (e.money) s.addMoney(e.money);
+  if (e.money) s.addMoney(e.money, beat.title);
   if (e.needs) s.adjust(e.needs);
   if (e.counter) s.count(e.counter);
   if (choice.completes !== false) s.data.beats[beat.id] = choice.id;
