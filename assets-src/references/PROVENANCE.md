@@ -143,6 +143,77 @@ Asked by Habib (chat, 7 Oct: redo the failed textures, then the làmb arena). Sa
   banners. Drums, set-up and crowd are **Unreviewed** cultural content. Useful for: `src/world/builder.ts` arena (ring
   boundary, canopy, stands fence, perimeter wall and gate) and the arena-day street scene.
 
+## Higgsfield — batch 3: last credits (8 Oct 2026, 22:03–22:08 UTC)
+
+Asked by Habib (chat, 8 Oct: "use the remaining credits fast and usefully"), within his 100-credit authorisation. Same model
+and settings (`nano_banana_pro`, 2k), cost checked first per aspect ratio (1:1, 16:9, 21:9: 2 credits each). 26 images,
+**52 credits** (balance 62 → 10, checked against the balance after each round). Authorised total now **100 / 100**; the
+remaining 10 account credits are outside the authorisation and were not used. Chosen for what the next steps need: textures
+for materials still in placeholder colours (arena roof, roads, floors, roofs, trees, walls), orthographic elevations for the
+Blender facade kit and the car rapide (handoff step 2), and references for the arena roof and the places added by the
+city-life work (bank, shopping gallery, fishing beach) plus home spaces (courtyard, rooftop) and a night street.
+
+| # | File | Job id | Aspect | Credits | Prompt |
+| --- | --- | --- | --- | --- | --- |
+| 25 | `25_texture_corrugated_galvanized.jpg` | `af981784-fe20-43d9-bc83-32c52d96d641` | 1:1 | 2 | Seamless tileable texture of corrugated galvanized steel roof sheet, exactly eight vertical corrugations of equal width filling the frame edge to edge, slightly dull zinc grey with faint even weathering, front-facing orthographic view, flat even lighting, no shadows, no perspective, no rivets, no text. |
+| 26 | `26_texture_corrugated_rusty.jpg` | `9dc8da99-bb52-4ec8-8f26-3f7e57a89f7f` | 1:1 | 2 | Seamless tileable texture of rusty old corrugated tin roof sheet, exactly eight vertical corrugations of equal width filling the frame edge to edge, patchy orange-brown rust evenly spread over grey zinc, small fine spots only, no large distinctive stains, no repeated motifs, front-facing orthographic view, flat even lighting, no shadows, no text. |
+| 27 | `27_texture_asphalt.jpg` | `fd93f958-8d1e-41fb-b069-1e83b2bf372d` | 1:1 | 2 | Seamless tileable texture of worn dark grey asphalt road surface seen straight from above, fine aggregate, a few thin hairline cracks evenly spread, light dust, no road markings, no large patches, no repeated motifs, flat even lighting, no shadows, no text, fills the whole frame. |
+| 28 | `28_texture_terrazzo.jpg` (raw) + `28_texture_terrazzo_tiled.jpg` (seam fixed) | `c8164e5d-da26-4a46-b8f2-71f811b81cfe` | 1:1 | 2 | Seamless tileable texture of a polished terrazzo floor seen straight from above, cream base with small evenly scattered chips of grey, black and terracotta, no tile joints, no large features, no repeated motifs, flat even lighting, no reflections, no text, fills the whole frame. |
+| 29 | `29_texture_clay_roof_tiles.jpg` | `22d5aaa6-6b9a-4bd9-b762-48c7e18e444e` | 1:1 | 2 | Seamless tileable texture of old red clay roof tiles seen straight from above, exactly six rows of overlapping curved tiles and six tiles per row filling the frame edge to edge, faded terracotta with slight even weathering, flat even lighting, no shadows, no perspective, no text. |
+| 30 | `30_texture_render_pink.jpg` | `745ba895-7a53-4d68-b005-0a276c477ef5` | 1:1 | 2 | Seamless tileable texture of a cement-rendered house wall painted in faded pastel pink, fine even trowel marks, small hairline cracks and a light dust tone evenly spread, no large stains or patches, no repeated motifs, front-facing orthographic view, flat even lighting, no shadows, no objects, no text, fills the whole frame. |
+| 31 | `31_texture_sand_trampled.jpg` | `45594ee7-2387-4201-9df6-87bcdd4a3690` | 1:1 | 2 | Seamless tileable texture of trampled pale beige sand seen straight from above, many small shallow footprints and scuffs evenly spread over the whole frame, fine grains, no large features, no repeated motifs, flat even lighting, no shadows, no text. |
+| 32 | `32_texture_palm_trunk.jpg` | `33c41004-10f9-4ef4-b529-ef2d4ce55e5d` | 1:1 | 2 | Seamless tileable texture of a palm tree trunk bark, grey-brown overlapping diamond-shaped leaf scars in a regular grid exactly four across and four down filling the frame edge to edge, front-facing orthographic view, flat even lighting, no shadows, no text. |
+| 33 | `33_elev_pikine_house.jpg` | `d00b5bc3-ae9b-402f-96ab-75b872d68127` | 16:9 | 2 | Orthographic front elevation, architectural reference, of a two-storey cement block family house in a Dakar suburb, Senegal: painted render on the ground floor, bare grey breeze block on the unfinished upper floor with protruding rebar, a painted metal entrance gate, two small windows with metal grilles, a flat roof with a low parapet, straight-on view, no perspective, flat even daylight, plain sky background, no people, no text. |
+| 34 | `34_elev_plateau_arcade.jpg` | `bfd0bab4-73ee-46fc-bc7e-f44acaf56a9f` | 16:9 | 2 | Orthographic front elevation, architectural reference, of a colonial-era four-storey building in central Dakar, Senegal: a ground-floor arcade of round arches on square pillars, three upper storeys with tall windows, wooden louvred shutters and wrought-iron balconies, cornice and parapet at the top, cream and ochre render, straight-on view, no perspective, flat even daylight, plain background, no people, no text. |
+| 35 | `35_elev_boutique.jpg` | `4d7b9979-e0aa-4099-b30a-687203f40113` | 16:9 | 2 | Orthographic front elevation, architectural reference, of a ground-floor neighbourhood shop (boutique) in Dakar, Senegal: two bays, one with a rolled-up corrugated metal shutter showing a counter and shelves of goods, one with the shutter half down, a small concrete step, a plain painted wall above with an empty sign board, straight-on view, no perspective, flat even daylight, no people, no readable text, no logos. |
+| 36 | `36_elev_balconies_windows.jpg` | `9b6f6f30-b4eb-438f-b86b-5ab0e1661273` | 16:9 | 2 | Orthographic front elevation, architectural reference, of three typical balcony and window types on Dakar apartment buildings side by side: a concrete balcony with a wrought-iron railing, a window with a metal security grille, and a window with blue metal louvres, on a plain painted wall, straight-on view, no perspective, flat even daylight, no people, no text. |
+| 37 | `37_elev_medina_block.jpg` | `acd90dce-7f7d-44c6-bb12-5525e301b48d` | 16:9 | 2 | Orthographic front elevation, architectural reference, of a three-storey residential block in the Medina district of Dakar, Senegal: narrow frontage, small shops on the ground floor, two upper floors with balconies and laundry, flat roof with a water tank and a satellite dish, faded painted render, straight-on view, no perspective, flat even daylight, plain background, no people, no readable text. |
+| 38 | `38_car_rapide_side.jpg` | `ac8fd97d-4820-40c0-a6f1-fcd7113f3fef` | 21:9 | 2 | Orthographic side elevation, vehicle modelling reference, of a Dakar car rapide minibus (old Renault SG2-style van body): boxy body, roof rack with luggage rails, rear door step with a ladder, painted in yellow and blue with decorative stripes and geometric patterns, small side windows, straight-on side view, no perspective, flat even light, plain white background, no people, no readable text, no logos. |
+| 39 | `39_car_rapide_front_rear.jpg` | `d5104daa-af0d-47c3-b25b-b239d3f14172` | 16:9 | 2 | Vehicle modelling reference sheet showing the front view and the rear view side by side of a Dakar car rapide minibus (old Renault SG2-style van body): boxy body painted yellow and blue with decorative stripes, round headlights, roof rack, rear open doorway with a step where the apprentice stands, orthographic straight-on views, no perspective, flat even light, plain white background, no people, no readable text, no logos. |
+| 40 | `40_arena_stands_roof.jpg` | `ac8524bf-f887-4e8f-b1f4-b38e5ba8b30c` | 16:9 | 2 | Photo-style view of the covered concrete stands of a large open-air wrestling arena in Dakar, Senegal, seen from the sand field in the early afternoon: stepped grey concrete terraces with painted risers, a low wall with blank coloured banners in front, a roof of corrugated metal sheets on steel columns and cantilever trusses above the upper rows, empty seats, strong shadows under the roof. Not a specific real stadium. No people, no readable text, no logos. |
+| 41 | `41_arena_roof_underside.jpg` | `9828804a-b268-46df-be2a-e80d2e0e6274` | 16:9 | 2 | Photo-style view looking up at the underside of a stadium stand roof in Dakar, Senegal: corrugated metal roof sheets on steel purlins, tapered steel cantilever trusses fixed to concrete columns at the back of the stands, a painted fascia along the front edge, daylight through the gap above the back wall. Not a specific real stadium. No people, no readable text, no logos. |
+| 42 | `42_bank_interior.jpg` | `d509d3de-9207-47f1-8f5e-215b5f35a665` | 16:9 | 2 | Interior of a small bank branch in Dakar, Senegal: tiled floor, a counter with glass screens and three teller windows, a short queue line with stanchions, plastic chairs along the wall, a ceiling fan and fluorescent lights, an ATM by the door, eye-level view, daylight. No faces in focus, no readable text, no logos, not a specific real bank. |
+| 43 | `43_shopping_gallery.jpg` | `a2d153e9-739b-4d7b-b3b8-2a30d0ee39c7` | 16:9 | 2 | Interior of a covered shopping gallery in Dakar, Senegal: a long tiled corridor with small shops on both sides selling phones, fabrics, shoes and cosmetics, metal roller shutters, fluorescent lights, a skylight, a few shoppers in the distance, eye-level view. No faces in focus, no readable text, no logos, not a specific real mall. |
+| 44 | `44_fishing_beach_market.jpg` | `fdacfe28-085d-40f9-9b45-cb4c221bef39` | 16:9 | 2 | Photo-style view of a busy fishing beach in Dakar, Senegal, in the late afternoon: colourful wooden pirogues pulled up on the sand, fishermen unloading crates, women with basins of fish, a covered fish market hall with a corrugated roof behind, cliffs and buildings above the beach, the Atlantic Ocean. Not a specific real place. No faces in focus, no readable text, no logos. |
+| 45 | `45_family_courtyard.jpg` | `832933a3-c21f-4cae-b5a6-a2ac3a369648` | 16:9 | 2 | Photo-style view of the inner courtyard of a family house in a Dakar suburb, Senegal: tiled courtyard open to the sky, a shade tree, doors of several rooms around, a water tap and plastic buckets, a clothesline, plastic chairs and a low wooden bench, a charcoal stove for tea, afternoon light. No people, no readable text. |
+| 46 | `46_rooftop_terrace.jpg` | `874eb15f-2d86-47ab-a25b-7adb89df29ba` | 16:9 | 2 | Photo-style view of a flat rooftop terrace of a house in Dakar, Senegal, at golden hour: a parapet wall, a black plastic water tank on a stand, a satellite dish, laundry on lines, protruding rebar from an unfinished next floor, neighbouring rooftops and a minaret in the distance. No people, no readable text. |
+| 47 | `47_pikine_street_night.jpg` | `e643759e-011f-48f9-b1e5-f63182bd89ac` | 16:9 | 2 | Street-level photo-style view of a residential street in a Dakar suburb, Senegal, at night: one- and two-storey houses, a few lit windows, a small neighbourhood shop with a fluorescent tube under a rolled-up shutter, warm street lamps making pools of light on the sandy road, a parked taxi, deep blue sky. No people in the foreground, no readable text, no logos. |
+| 48 | `48_car_rapide_side_ortho.jpg` | `7054ff8e-1ab7-4b76-b892-b49c9b661c82` | 21:9 | 2 | Strict orthographic side elevation, flat 2D vehicle blueprint style, of a Dakar car rapide minibus (boxy 1970s van body): perfectly side-on, both wheels as perfect circles, no perspective, no three-quarter view, roof rack with luggage rails, rear step and ladder, painted yellow and blue with decorative stripes and geometric patterns, flat even light, plain white background, no people, no readable text, no logos, no badges. |
+| 49 | `49_texture_palm_trunk_v2.jpg` (raw) + `49_texture_palm_trunk_v2_tiled.jpg` (seam fixed) | `103fdfbc-06db-4f80-8888-3fb4e4de28a4` | 1:1 | 2 | Seamless tileable texture of a coconut palm tree trunk, grey-brown fibrous bark with fine horizontal ring scars evenly spaced every few centimetres, vertical fibres running unbroken from the top edge to the bottom edge, no large diamond scars, no knots, front-facing orthographic view, flat even lighting, no shadows, no text, fills the whole frame. |
+| 50 | `50_texture_hollow_block.jpg` | `efcc58b4-b545-4b6e-af15-b5bf80f2ca28` | 1:1 | 2 | Seamless tileable texture of a bare wall of large grey hollow cement blocks as used in Dakar, Senegal, each block 40 cm long and 20 cm high (twice as long as high), exactly three blocks wide and six courses high in a running bond, thin grey mortar joints, rough porous cement surface, front-facing orthographic view, flat even lighting, no shadows, no perspective, no text, fills the frame edge to edge. |
+
+### Checks and first look (Claude, 8 Oct) — not a review
+
+Textures (tiled 3×3, both wrap joins viewed at full resolution):
+
+| # | Verdict | Notes |
+| --- | --- | --- |
+| 25 galvanized corrugated | pass | faint horizontal banding when tiled |
+| 26 rusty corrugated | pass | — |
+| 27 asphalt | pass | — |
+| 28 terrazzo | pass after fix | chips cut along the top/bottom join; crossfade fix (`_tiled`, edge difference 3.7 vs 4.5 between rows) |
+| 29 clay roof tiles | pass | the top/bottom join falls on a tile row, reads as a normal overlap |
+| 30 pink render | pass | — |
+| 31 trampled sand | pass | candidate for the arena ring floor |
+| 32 palm trunk | **fail**, not used | bark cut on both joins, obvious repeat; replaced by #49 |
+| 49 palm trunk v2 | pass after fix | top/bottom seam crossfaded (`_tiled`, 9.5 vs 8.8) |
+| 50 hollow cement block | pass | 2:1 blocks, answers the "looks like brick" note on #12 |
+
+References:
+
+- **#33–37 elevations:** clean straight-on views, usable for the facade kit (Pikine house with unfinished breeze-block floor,
+  Plateau arcade building, two-bay boutique, balcony and window types, narrow Médina block).
+- **#38 car rapide side:** came out in three-quarter view, not orthographic; colour and decoration reference only. **#48** is
+  the true side elevation. **#39 front/rear:** usable, but the grille shows a manufacturer badge: **do not reproduce it**.
+  Car rapide paint patterns are generated: **Unreviewed** cultural content.
+- **#40–41 arena:** stepped concrete terraces with painted risers, roof of corrugated sheets on cantilever trusses, blank
+  banners; underside of the roof with purlins and trusses. Material and structure reference for the géew stands and roof.
+- **#42 bank, #43 shopping gallery:** faces blurred, no logos seen; shop-sign shapes are not to be copied. **#44 fishing
+  beach:** resembles the Soumbédioune setting (cliffs, market hall); artistic interpretation only, not a reconstruction.
+- **#45 family courtyard, #46 rooftop terrace, #47 night street:** usable for home interiors and night lighting.
+
+Nothing from batch 3 is used in the game yet.
+
 ## Used in the game (7 Oct 2026, cloud session)
 
 Derived 512 px JPEGs in `public/assets/tex/` (loaded on demand; switched off on Low quality):
