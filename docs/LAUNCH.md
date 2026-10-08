@@ -59,6 +59,16 @@ Les scripts acceptent `DAKAR_BROWSER_PROXY` pour un environnement de test avec p
 
 Pour le développement habituel, `npm run dev` et `npm run build` gardent le mode solo. `npm run dev:online` construit le mode réseau et démarre le jeu et le serveur ensemble sur `http://127.0.0.1:8787`. Le mode en ligne utilise `.env.online`, sans clé secrète dans le client.
 
+## Discussion entre joueurs (texte)
+
+- Bouton « 💬 Chat » sous le bouton multijoueur, uniquement dans la version en ligne (absent du mode solo et de l’aperçu claude.ai). Le téléphone du jeu ouvre les messages privés via `phoneHooks.openMessages`.
+- **À proximité** : entendu par les joueurs du même groupe, du même lieu partagé (rue ou Maïga/gargote public) et à moins de 30 m. Une bulle apparaît 6 s au-dessus du personnage (60 caractères au plus, le message entier reste dans l’historique). La chambre et les scènes de lutte sont privées : personne n’y entend.
+- **Messages privés** : vers un joueur du même groupe (même quartier, même groupe de 24). Pas encore de messages entre groupes ni hors ligne, pas encore de groupes de discussion.
+- Le serveur nettoie les caractères de contrôle sans réécrire ni traduire le texte, limite à 200 caractères et à 5 messages par 10 s par connexion, et reconnaît un renvoi avec le même identifiant après une reconnexion (aucun doublon). Statuts visibles : envoi… / reçu / échec (+ Réessayer).
+- Muet, bloquer et signaler sont sur la fiche d’un joueur (onglet Messages privés, ou en touchant son nom). Muet et bloquer sont gardés sur l’appareil et suivent le joueur après reconnexion grâce à une étiquette publique dérivée d’une clé privée de l’appareil. **Signaler est provisoire** : journal local + compteur par joueur dans le Durable Object + ligne `player-report` dans les logs Workers. Aucune équipe de modération ne reçoit encore ces signalements.
+- Un message ne paie, ne prête et ne déclenche jamais rien : le texte n’est jamais interprété.
+- Vérification : `npm run check:chat` (runtime Workers local sur le port 8794, aperçu solo sur 4204). Captures : `docs/screenshots/chat/`.
+
 ## Publication depuis le Mac
 
 Après intégration de cette branche avec les changements visuels de Claude :

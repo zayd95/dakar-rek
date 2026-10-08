@@ -36,6 +36,7 @@ import { PresenceClient, loadProfile } from './multiplayer/client';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { PresenceUi } from './multiplayer/ui';
 import { Phone } from './ui/phone';
+import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 
@@ -135,7 +136,9 @@ const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
 const roomParam = Number(params.get('room'));
 const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
 const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
-presence.onChange = () => { presenceUi.update(); if (!presence.count) remoteAvatars.clear(); };
+const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: store, enabled: import.meta.env.VITE_MULTIPLAYER === 'true', local: () => pos, space: presenceSpace,
+  suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
+presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); };
 // Lot B economy (src/economy/*): Tiak Tiak deliveries, wallet history, starter-room furniture, phone hooks. Device-local.
 const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), refreshHome: () => refreshHomeInteriors(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
@@ -643,6 +646,7 @@ function frame(now: number) {
   const clip = mode === 'play' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
   presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
+  chat.update(dt, camera, innerHeight);
   findNearest();
   economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;

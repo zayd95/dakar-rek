@@ -1,0 +1,152 @@
+[
+  {
+    "name": "chat button below the multiplayer button, clear of the hub title (390 px)",
+    "ok": true,
+    "detail": "{\"c\":[306.6875,125,380,165],\"p\":[244.171875,77,380,117],\"t\":[160,10,328,69]}"
+  },
+  {
+    "name": "chat button below the multiplayer button, clear of the hub title (320 px)",
+    "ok": true,
+    "detail": "{\"c\":[236.6875,125,310,165],\"p\":[174.171875,77,310,117],\"t\":[160,10,258,97]}"
+  },
+  {
+    "name": "proximity message acknowledged as received by one nearby player",
+    "ok": true,
+    "detail": "{\"id\":\"99e5bd46-102f-4430-8b87-0b684b72bc0a\",\"name\":\"Toi\",\"text\":\"Salaam aleekum Moussa, na nga def ? 🙏🏾\",\"mine\":true,\"status\":\"sent\",\"delivered\":1}"
+  },
+  {
+    "name": "speaker sees their own bubble and the \"reçu\" status",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "text shown unchanged and bubble visible above the speaker on the other screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "out of range (46 m): not delivered, sender sees \"personne à portée\"",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "street message does not reach a player inside the Maïga",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "shared public interior: proximity message delivered",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "personal room: proximity message refused with a readable status",
+    "ok": true,
+    "detail": "{\"id\":\"2b6f5bb1-977f-4159-a12d-9d3fd7bbf77b\",\"name\":\"Toi\",\"text\":\"Allô ?\",\"mine\":true,\"status\":\"failed\",\"reason\":\"private-space\"}"
+  },
+  {
+    "name": "Escape closes the chat panel without opening the game menu",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: typing W in the chat field does not move the player",
+    "ok": true,
+    "detail": "[{\"x\":-7,\"y\":0.1,\"z\":-25,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},{\"x\":-7,\"y\":0.1,\"z\":-25,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}]"
+  },
+  {
+    "name": "phone: joystick ignored while the keyboard field is focused",
+    "ok": true,
+    "detail": "[{\"x\":-6,\"y\":0.1,\"z\":-30,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},{\"x\":-6,\"y\":0.1,\"z\":-30,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}]"
+  },
+  {
+    "name": "phone: joystick works again once the chat is closed",
+    "ok": true,
+    "detail": "[{\"x\":-6,\"y\":0.1,\"z\":-30,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},{\"x\":-6,\"y\":0.1,\"z\":-29.44,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}]"
+  },
+  {
+    "name": "draft kept after closing and reopening the panel",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "private message acknowledged",
+    "ok": true,
+    "detail": "{\"id\":\"b2cc95cf-7a82-426c-a2ae-e4beb3bc737a\",\"name\":\"Toi\",\"text\":\"Rendez-vous au Maïga ce soir ?\",\"mine\":true,\"status\":\"sent\",\"delivered\":1}"
+  },
+  {
+    "name": "private message delivered to the recipient only, with an unread badge",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "reconnected player keeps the same public tag (mute/block survive reconnects)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "resending the same message id after a reconnect does not duplicate it",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "over-long message rejected with \"trop long\"",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "sixth message in ten seconds is rate-limited, with a retry button",
+    "ok": true,
+    "detail": "[\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"sent:\",\"failed:rate-limited\"]"
+  },
+  {
+    "name": "mute: no bubble and no history line from the muted player",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "block: the blocked player’s avatar is hidden on this device",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "report: confirmed as \"Signalé\", logged locally and counted by the server",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "bubble fades out after 6 seconds (history keeps the message)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "server delivers with server-side identity, ignoring spoofed fields",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "server: same id after reconnect acknowledged as duplicate, not delivered twice",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "server rejects over 200 characters and private messages to absent players",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "server rate limit: five per ten seconds per connection",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no browser page errors (online)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "solo build: no chat button, no chat runtime, no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

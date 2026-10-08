@@ -16,7 +16,8 @@
     "deploy": "npm test && npm run typecheck:server && wrangler deploy",
     "check:online": "node scripts/check-multiplayer.mjs",
     "check:launch": "node scripts/check-launch-controls.mjs --full",
-    "check:city": "node scripts/check-city-life.mjs"
+    "check:city": "node scripts/check-city-life.mjs",
+    "check:chat": "node scripts/check-chat.mjs"
   },
   "dependencies": {
     "three": "^0.169.0"

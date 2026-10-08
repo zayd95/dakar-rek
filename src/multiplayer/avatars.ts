@@ -12,12 +12,14 @@ interface Avatar { body: Humanoid | Character; name: THREE.Sprite; texture: THRE
 export class RemoteAvatars {
   readonly group = new THREE.Group();
   private avatars = new Map<string, Avatar>();
+  /** Peers the local player blocked (chat module): their avatar is not drawn on this device. */
+  hidden: (peer: Peer) => boolean = () => false;
   constructor(private presence: PresenceClient) { this.group.name = 'remote_players'; }
   update(dt: number, local: THREE.Vector3, space: string, maxBodies: number, camera: THREE.PerspectiveCamera, viewportHeight: number) {
     // Keep names at 28 screen pixels even when an indoor camera is close to another player.
     const labelHeight = 56 / (Math.max(1, viewportHeight) * camera.projectionMatrix.elements[5]);
     const visible = [...this.presence.peers.values()]
-      .filter(p => p.space === space && space !== 'home' && space !== 'scene' && Math.hypot(p.x - local.x, p.z - local.z) < 110)
+      .filter(p => p.space === space && space !== 'home' && space !== 'scene' && Math.hypot(p.x - local.x, p.z - local.z) < 110 && !this.hidden(p))
       .sort((a, b) => Math.hypot(a.x - local.x, a.z - local.z) - Math.hypot(b.x - local.x, b.z - local.z)).slice(0, maxBodies);
     const keep = new Set(visible.map(p => p.id));
     for (const [id, avatar] of this.avatars) if (!keep.has(id)) { this.drop(avatar); this.avatars.delete(id); }
@@ -36,6 +38,8 @@ export class RemoteAvatars {
       a.name.scale.set(labelHeight * 256 / 48, labelHeight, 1);
     }
   }
+  /** Rendered body of a peer (chat bubbles follow it), or null when the peer is not drawn. */
+  bodyOf(id: string): THREE.Object3D | null { return this.avatars.get(id)?.body.group ?? null; }
   clear() { for (const a of this.avatars.values()) this.drop(a); this.avatars.clear(); }
   get size() { return this.avatars.size; }
   private make(peer: Peer): Avatar {
