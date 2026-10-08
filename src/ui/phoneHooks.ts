@@ -17,4 +17,6 @@ export const phoneHooks: {
   arenaProfile?: () => { label: string; value: string }[];
   /** People app: neighbours the player knows (NPC module). */
   openPeople?: () => void;
+  /** Local places directory and walking destination (city module). */
+  openPlaces?: () => void;
 } = {};

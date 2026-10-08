@@ -1,6 +1,7 @@
 import type * as THREE from 'three';
 import type { HubId, Needs } from '../core/types';
 import type { GameState } from '../core/state';
+import type { PersonLook } from '../actors/humanoid';
 
 export interface Action {
   id: string;
@@ -23,6 +24,8 @@ export interface Interactable {
   kind: 'actions' | 'travel';
   x: number; z: number; radius: number;
   actions: Action[];
+  /** Short greeting/context spoken by the host of this place. */
+  description?: string;
   /** Set when this interactable is a recurring cast member. */
   npc?: string;
 }
@@ -50,7 +53,7 @@ export interface HubWorld {
   /** Ground height above the street level at (x, z): stairs and terraces the player can climb. */
   heightAt(x: number, z: number): number;
   /** Ambient people placed by the builder (grill cook, seated customers…): position, facing, clip. */
-  people: { x: number; z: number; yaw: number; clip: 'Idle' | 'Talk' | 'Sit'; y?: number }[];
+  people: { x: number; z: number; yaw: number; clip: 'Idle' | 'Talk' | 'Sit'; y?: number; look?: PersonLook; walkTo?: { x: number; z: number } }[];
   /** Parked car rapides at the station (they get an apprentice calling for passengers). */
   rapides: THREE.Object3D[];
   /** Monument hill: stair run (x0→x1 at stairZ, rising y0→y1), summit terrace height, festive ground spots. */

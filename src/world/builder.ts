@@ -9,6 +9,7 @@ import { addGrain } from './grain';
 import { generatedTexture } from './textures';
 import { inGate, tierRadius, tierTop, TIERS, TIER_DEPTH, PARAPET_R, PARAPET_H, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -151,8 +152,17 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     plain.box(2.2, G, size + 12, PX - 2.9, 0, 0, 0x6f9a4a);                        // grass verge
     plain.box(1.2, G - 0.02, size + 12, -HALF - 3.0, 0, 0, 0x7aa556);
     const YEL = 0xf2b21b;
-    for (const rx of [PX + 1.95, PX - 1.95]) plain.box(0.09, 0.09, size + 12, rx, 1.05, 0, YEL);   // handrails
-    for (let z = -HALF - 4; z <= HALF + 4; z += 2.5) for (const rx of [PX + 1.95, PX - 1.95]) plain.box(0.08, 1.05, 0.08, rx, G, z, YEL);
+    for (const rx of [PX + 1.95, PX - 1.95]) {
+      if (rx > PX) plain.box(0.09, 0.09, size + 12, rx, 1.05, 0, YEL);
+      else for (const [z0, z1] of [[-HALF - 6, BAY.z0], [BAY.z1, HALF + 6]]) {
+        plain.box(0.09, 0.09, z1 - z0, rx, 1.05, (z0 + z1) / 2, YEL);
+        wallC(rx - 0.13, z0, rx + 0.13, z1, 1.1);
+      }
+    }
+    for (let z = -HALF - 4; z <= HALF + 4; z += 2.5) for (const rx of [PX + 1.95, PX - 1.95]) {
+      if (rx < PX && z > BAY.z0 && z < BAY.z1) continue;
+      plain.box(0.08, 1.05, 0.08, rx, G, z, YEL);
+    }
     for (let z = -HALF; z <= HALF; z += 7.5) {                                     // arches over the path
       limb(plain, [PX - 1.95, 1.0, z], [PX - 0.9, 2.9, z + 0.4], 0.06, 0.06, YEL, 5);
       limb(plain, [PX - 0.9, 2.9, z + 0.4], [PX + 0.9, 2.9, z + 0.4], 0.06, 0.06, YEL, 5);
@@ -161,7 +171,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     // road-side railing blocks the player except at each street end
     for (let k = 0; k < NB; k++) wallC(PX + 1.8, roadC(k) + 3, PX + 2.1, roadC(k + 1) - 3, 1.1);
     wallC(PX + 1.8, -HALF - 30, PX + 2.1, roadC(0) - 3, 1.1); wallC(PX + 1.8, roadC(NB) + 3, PX + 2.1, HALF + 30, 1.1);
-    bounds.x0 = PX - 1.6;
+    bounds.x0 = BAY.shoreX;
     // concrete median with gaps at the crossings; tall orange double-arm lamps on it
     for (let k = 0; k < NB; k++) {
       const z0 = roadC(k) + ROAD / 2 + 1, z1 = roadC(k + 1) - ROAD / 2 - 1;
@@ -919,6 +929,11 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   let arenaInfo: HubWorld['arena'] = null, ecurieInfo: HubWorld['ecurie'] = null, monumentInfo: HubWorld['monument'] = null;
   for (let i = 0; i < NB; i++) for (let j = 0; j < NB; j++) {
     const key = `${i},${j}`;
+    const city = CITY_BLOCKS[id][key];
+    if (city) {
+      buildCityBlock({ hub: id, lite, plain, glass, pave, people, interactables, colliders, sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
+      continue;
+    }
     const s = sp.specials[key];
     if (s) { specialAt(i, j, s); continue; }
     for (let lot = 0; lot < 4; lot++) {
@@ -943,7 +958,10 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   }
 
   // Street lamps (post, arm over the road, lamp head) with a light pool on the ground at night; shade trees between them.
-  const blocked = (x: number, z: number, r: number) => colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r);
+  // The new blocks have their own trees and furniture; random street props must not obstruct their aisles.
+  const cityRects = Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; });
+  const blocked = (x: number, z: number, r: number) => colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r)
+    || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r);
   const off = ROAD / 2 - SIDEWALK + 0.6; // lamp posts stand at the kerb
   for (let k = 0; k <= NB; k++) {
     for (let t = -HALF + 14; t < HALF - 8; t += 30) {
