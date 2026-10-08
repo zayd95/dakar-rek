@@ -1,24 +1,24 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08T13:28:00Z",
+  "updatedAt": "2026-10-08T16:55:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_scheduler_enabled",
   "lease": {
-    "token": "cycle-20261008T132800Z-608bc7678079",
-    "owner": "coordinator_20261008_1328",
-    "acquiredAt": "2026-10-08T13:28:00Z",
-    "expiresAt": "2026-10-08T14:13:00Z",
-    "baseHead": "3ceaf4ab236abf474669b86cea2934be439ac27e"
+    "token": "resume-20261008T165500Z-5677b8b0fdd0",
+    "owner": "coordinator_resume_1655",
+    "acquiredAt": "2026-10-08T16:55:00Z",
+    "expiresAt": "2026-10-08T17:40:00Z",
+    "baseHead": "feac8c3da1cefd766f43794133d135ea6a99853e"
   },
   "activeCodeTask": "DKAG-008",
   "maxConcurrentCodeTasks": 1,
   "reservations": [
     {
       "task": "DKAG-008",
-      "owner": "combat_20261008_1328",
-      "reviewer": "qa_20261008_1328",
+      "owner": "combat_resume_1655",
+      "reviewer": "qa_resume_1655",
       "branch": "codex/agents/dkag-008-duel-input-reset",
       "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
       "allowedFiles": [
@@ -30,48 +30,12 @@
       ]
     },
     {
-      "task": "DKAG-009",
-      "owner": "world_20261008_1328",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-009-world.md"
-      ]
-    },
-    {
       "task": "DKAG-008-QA",
-      "owner": "qa_20261008_1328",
+      "owner": "qa_resume_1655",
       "branch": "codex/agent-studio-active",
       "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-008-combat-review.md"
-      ]
-    },
-    {
-      "task": "DKAG-011",
-      "owner": "characters_20261008_1328",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-011-characters.md"
-      ]
-    },
-    {
-      "task": "DKAG-012",
-      "owner": "animation_20261008_1328",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-012-animation.md"
-      ]
-    },
-    {
-      "task": "DKAG-013",
-      "owner": "culture_20261008_1328",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-013-culture.md"
       ]
     }
   ],
@@ -180,12 +144,8 @@
     "DKAG-009"
   ],
   "activeSessions": [
-    "combat_20261008_1328",
-    "qa_20261008_1328",
-    "world_20261008_1328",
-    "characters_20261008_1328",
-    "animation_20261008_1328",
-    "culture_20261008_1328"
+    "combat_resume_1655",
+    "qa_resume_1655"
   ],
   "completedSessions": [
     "activation_producer",
@@ -247,5 +207,10 @@
     },
     "merged": false,
     "deployed": false
+  },
+  "recovery": {
+    "previousToken": "cycle-20261008T132800Z-608bc7678079",
+    "reason": "Usage-limit interruption; original delegated agents errored; list_agents confirms no active writer. Refs unchanged and task branch at base; partial local code recovered.",
+    "confirmedAt": "2026-10-08T16:55:00Z"
   }
 }

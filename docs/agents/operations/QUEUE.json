@@ -99,10 +99,10 @@
         "blob": "992b4dfeceff90a58f8310bf34dd0a75a32bb756",
         "basis": "producer actual static review, no blur/visibility reset unlike src/core/input.ts"
       },
-      "owner": "combat_20261008_1328",
-      "reviewer": "qa_20261008_1328",
-      "ownerState": "assigned",
-      "controlBriefCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e"
+      "owner": "combat_resume_1655",
+      "reviewer": "qa_resume_1655",
+      "ownerState": "recover partial local sources; finish implementation",
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e"
     },
     {
       "id": "DKAG-009",
@@ -127,7 +127,7 @@
       ],
       "output": "docs/agents/operations/reports/DKAG-009-world.md",
       "dependencies": [],
-      "ownerState": "assigned refresh",
+      "ownerState": "interrupted_usage_limit_partial_static_review",
       "branch": "codex/agent-studio-active",
       "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
       "allowedFiles": [
@@ -162,7 +162,7 @@
       "id": "DKAG-011",
       "role": "characters",
       "kind": "design",
-      "status": "active",
+      "status": "ready",
       "inputs": [
         {
           "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -181,7 +181,7 @@
       "output": "docs/agents/operations/reports/DKAG-011-characters.md",
       "dependencies": [],
       "owner": "characters_20261008_1328",
-      "ownerState": "assigned",
+      "ownerState": "interrupted_usage_limit_no_handoff",
       "branch": "codex/agent-studio-active",
       "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
       "allowedFiles": [
@@ -193,7 +193,7 @@
       "id": "DKAG-012",
       "role": "animation",
       "kind": "asset_review",
-      "status": "active",
+      "status": "ready",
       "inputs": [
         {
           "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -211,7 +211,7 @@
       "output": "docs/agents/operations/reports/DKAG-012-animation.md",
       "dependencies": [],
       "owner": "animation_20261008_1328",
-      "ownerState": "assigned",
+      "ownerState": "interrupted_usage_limit_no_handoff",
       "branch": "codex/agent-studio-active",
       "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
       "allowedFiles": [
@@ -223,7 +223,7 @@
       "id": "DKAG-013",
       "role": "culture",
       "kind": "provenance_review",
-      "status": "active",
+      "status": "ready",
       "inputs": [
         {
           "pr": 9,
@@ -242,7 +242,7 @@
       "output": "docs/agents/operations/reports/DKAG-013-culture.md",
       "dependencies": [],
       "owner": "culture_20261008_1328",
-      "ownerState": "assigned",
+      "ownerState": "interrupted_usage_limit_no_handoff",
       "branch": "codex/agent-studio-active",
       "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
       "allowedFiles": [
