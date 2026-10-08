@@ -2,7 +2,7 @@
 
 Legend: **Implemented** = works and was verified (unit tests and/or headless browser checks). **Partial** = a first working version with stated limits. **Pending** = not started. Placeholders are never listed as implemented. Cultural content is always marked **Unreviewed** until Habib and wrestling practitioners have reviewed it.
 
-Last updated: city life (8 October 2026). The city extends the latest visual/arena pass while retaining the existing multiplayer integration. Acceptance commands and limits: `docs/CITY_LIFE.md`; earlier visual comparisons: `docs/VISUAL_PASS.md`.
+Last updated: phone, economy, arena, NPC life and chat lanes merged on top of city life (8 October 2026). The city extends the latest visual/arena pass while retaining the existing multiplayer integration. Acceptance commands and limits: `docs/CITY_LIFE.md`; earlier visual comparisons: `docs/VISUAL_PASS.md`.
 
 ## Implemented
 
@@ -10,6 +10,8 @@ Last updated: city life (8 October 2026). The city extends the latest visual/are
 | --- | --- | --- |
 | Populated city blocks | Soumbédioune landing beach, painted pirogues, fish market and crafts; Dakar Life Mall and four shops; two Banque Teranga agencies; neighbourhood boutiques, repair shop, salon and four meeting squares. Timed services, food and social activities; public spaces remain in the existing presence rooms | `npm run check:city`; details and limits in `docs/CITY_LIFE.md` |
 | Places directory | Current neighbourhood's new venues, direction/distance walking marker, automatic arrival, reusable phone hook | desktop/touch acceptance |
+| In-game phone | ☰ / Échap / M opens it (movement off while open): status bar with city time and FCFA balance; Portefeuille (ledger), Carte (four hubs, travel cost/time, "Choisir un repère à pied"), Arène (sporting profile), Carnet, Aide, Réglages (quality that keeps you in the room, sound on/off, camera sensitivity, save now, new game with confirmation); module apps appear only when their hook exists: Coins du quartier, Travail, Maison et proches, Habitants, Messages (online build). Replaces the old system menu | `scripts/check-phone.mjs` (55/55, desktop, 390×844, landscape) |
+| Text chat between players (online build) | Proximity messages (30 m, same space) with bubbles, private messages within the group, mute / block / report per device, 200 characters, 5 messages per 10 s, server-side identity and dedupe across reconnects; private spaces refuse chat. Report is logged, not yet reviewed by moderators | `tests/chat.test.ts`, `npm run check:chat` (30/30, local Workers runtime, two clients) |
 | Vite + TypeScript + Three.js project | `npm run dev`, `npm run build`, `npm test` | build, tests |
 | Four hubs reachable | Plateau · Médina, Corniche · Fann · Mamelles, Almadies · Ngor · Yoff, Pikine · Guédiawaye · Parcelles, each with its own look | headless: all four load, day and night, desktop and phone |
 | Travel between hubs | Car rapide station in every hub; costs FCFA and some fatigue | headless: Pikine → Corniche |
@@ -55,11 +57,11 @@ Last updated: city life (8 October 2026). The city extends the latest visual/are
 | NPCs | Routines, memory, situations (see above); background walkers | **Brouillon à relire par Habib**: sheets, lines, origins and humour in `src/social/profiles.ts`; Wolof/Pulaar/Sérère expressions are TODO placeholders; NPCs stay in their hub; no eating/serving props in hand |
 | Quality settings | Low / Medium / High; Low also drops grain, detail textures and decorative props | Automatic choice from measured performance; real-phone measurements |
 | Multiplayer presence | Cloudflare Worker + hibernatable Durable Objects; groups per hub; visible remote avatars, profiles, movement/poses, shared public interiors, invite links and reconnects; local two-client checks | Production deployment, real-phone verification and load testing; accounts, shared economy, chat, invitations to personal homes and multiplayer combat |
-| Generated references and textures | Plan, prompts and provenance rules in `docs/HIGGSFIELD_PLAN.md` | Not run: Higgsfield sign-in not available in the cloud session; 0 credits spent |
+| Generated references and textures | 100 authorised Higgsfield credits used; 50 references and textures with prompts and provenance (`docs/HIGGSFIELD_PLAN.md`, `assets-src/references/PROVENANCE.md`); textures in game | Review of batch 3 and the latest views by Habib; elevations still to be turned into the Blender facade kit |
 
 ## Pending
 
-Driving (Tiak Tiak by scooter, clando, Yango) · vehicle radio · shared vehicles and anti-blocking · family home and apartment interiors · nightlife and dance areas · multiplayer chat and personal home visits · social money · bills and tontines · housing progression beyond the starter room · mosque and collective prayer · Quran reading · traits, wishes, aspiration · skills beyond counters · city milestones · photo mode · live statistics · accounts, server ledger, migrations (Supabase + Drizzle) · production deployment and load testing · monitoring.
+Driving (Tiak Tiak by scooter, clando, Yango) · vehicle radio · shared vehicles and anti-blocking · family home and apartment interiors · nightlife and dance areas · voice notes, group chats and personal home visits · moderation queue for reports · social money · bills and tontines · housing progression beyond the starter room · mosque and collective prayer · Quran reading · traits, wishes, aspiration · skills beyond counters · city milestones · photo mode · live statistics · accounts, server ledger, migrations (Supabase + Drizzle) · production deployment and load testing · monitoring.
 
 ## Provisional decisions taken without review
 
