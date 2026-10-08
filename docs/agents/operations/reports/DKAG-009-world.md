@@ -1,0 +1,11 @@
+# DKAG-009 — Monde, compatibilité indépendante
+
+Auteur activation_world, lecture seule, 8 octobre 2026. Handoff prêt; aucun source/ref modifié. Sources exactes : base00abf96efeadcc8bdb8d4c859eb1d0258b0978b7; ville#9 84311a716fa722cd20b4e725a72fd15f60511291; mosquée/publicité#10 1610e51bc63a11983f6eee779fb01a82d7ac7cbd; Aïda#7 0af76c38b152df885c0c27352aa43ac320aa71af.
+
+Conflits reproduits via git merge-file sur copies temporaires exactes : #9/#10, import builder.ts (ville ET publicité), import types.ts (PersonLook ET AdSlot). #7/#10, openActions dans main.ts : préserver busy/scene et interactionVersion avant publicité, ainsi que la revalidation du lien sponsor. #7/#9 : aucun conflit textuel commun; Aïda/mosquée content.ts : ajouts distincts se combinant textuellement. Aucun résultat d'intégration exécutée ne s'en déduit.
+
+Défaut concret #10 : l'annonce de l'arène et sa proximité sur l'axe de porte. WALL_R21.7, approche annonce(cx,cz−23.9) contre arène(cx,cz−24), écart10cm. findNearest bascule entre z=cz−24.04 et z=cz−23.94, reproduit arithmétiquement avec formules exactes; aucun navigateur revendiqué. Correctif futur : déplacer panneau/approche latéralement, vérifier accès arène et annonce explicite desktop/tactile. Fichiers potentiels builder.ts/check-v1-core.mjs appartiennent à l'autre session; transmettre le diagnostic, ne pas modifier leur ref sans handoff.
+
+Inspecté : aucun des dix blocs CITY_BLOCKS ne recouvre les landmarks/kiosques/départ; mosquée Plateau et café de Fann/Aïda stables. Porte mosquée2.5m devant collider, clé de sortie et sauvegarde stable; low-quality réduit détails/habitants sans IDs; intérieurs stables. Batch geometry utilise finish existant; phoneHooks.openPlaces optionnel, annuaire menu accessible, pas de téléphone implémenté. À une future intégration Aïda, openPlaces doit également invalider interactionVersion pour les callbacks périmés.
+
+Prochain propriétaire producteur pour les dépendances d'intégration, puis auteur de #10 pour le diagnostic panneau. Trois fonctionnalités peuvent être combinées sur une nouvelle branche après résolutions et tests réels, sans déplacer leurs refs. Culture unverified; aucun merge/déploiement/Unity changé.

@@ -1,0 +1,35 @@
+{
+  "decision": "D-AG-003",
+  "controlBranch": "codex/agent-studio-active",
+  "inSessionRoles": {
+    "producer": "completed real source/task inspection",
+    "network": "implemented and pushed PR11",
+    "qa": "independent42/42/build/typechecks and activation review",
+    "world": "completed real compatibility/merge-conflict inspection"
+  },
+  "recurringCoordinator": {
+    "requested": true,
+    "enabled": false,
+    "creationResult": {
+      "status": "ERROR",
+      "error_code": "too_many_active_automations",
+      "message": "Your current plan allows only 5 scheduled tasks.",
+      "user_message": "Your current plan allows only 5 scheduled tasks.",
+      "error_data": {
+        "current_count": 5,
+        "plan_limit": 5
+      }
+    },
+    "scheduleProposed": "BEGIN:VEVENT\nRRULE:FREQ=HOURLY\nEND:VEVENT",
+    "timingMode": "flexible_schedule",
+    "timezone": "Africa/Dakar",
+    "promptPath": "docs/agents/operations/COORDINATOR_PROMPT.md",
+    "requires": "User chooses which existing task to pause; no unrelated task modified"
+  },
+  "firstAutonomousRun": {
+    "requested": false,
+    "completed": false
+  },
+  "claudeNativeLoadVerified": false,
+  "productionChanged": false
+}

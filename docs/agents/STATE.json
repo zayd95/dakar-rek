@@ -4,35 +4,11 @@
   "updatedAt": "2026-10-08",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
-  "phase": "activation_in_progress",
-  "lease": {
-    "owner": "root-current-activation",
-    "token": "dkag006-20261008-root",
-    "expiresAt": "2026-10-08T14:00:00Z",
-    "recovery": "Do not take over on expiry without reconciling writers/refs/CI"
-  },
-  "activeCodeTask": "DKAG-007",
+  "phase": "operational_in_session_scheduler_blocked",
+  "lease": null,
+  "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "DKAG-007",
-      "owner": "activation_network",
-      "branch": "codex/agents/dkag-007-network-handshake",
-      "paths": [
-        "src/multiplayer/client.ts",
-        "tests/presence-client.test.ts",
-        "docs/agents/reports/DKAG-007-network.md"
-      ]
-    },
-    {
-      "task": "DKAG-009",
-      "owner": "activation_world",
-      "branch": "codex/agent-studio-active",
-      "paths": [
-        "docs/agents/operations/reports/DKAG-009-world.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -117,10 +93,47 @@
     }
   },
   "scheduler": {
-    "status": "not_created_yet",
+    "status": "blocked_plan_limit",
     "engine": "Codex cloud automation",
+    "attempted": true,
+    "enabled": false,
+    "errorCode": "too_many_active_automations",
+    "currentCount": 5,
+    "planLimit": 5,
+    "prompt": "docs/agents/operations/COORDINATOR_PROMPT.md",
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false
   },
-  "productionMutationsAuthorized": false
+  "productionMutationsAuthorized": false,
+  "reviewTasks": [
+    "DKAG-007",
+    "DKAG-009",
+    "DKAG-014"
+  ],
+  "activeSessions": [],
+  "completedSessions": [
+    "activation_producer",
+    "activation_qa",
+    "activation_network",
+    "activation_network_qa",
+    "activation_world"
+  ],
+  "nextAction": "Observe network exact-source CI and accept candidate after final checks; activate prepared coordinator once user selects a scheduled-task slot.",
+  "externalReservations": {
+    "authority": "Other sessions; do not edit refs",
+    "prs": [
+      9,
+      10
+    ],
+    "paths": [
+      "src/main.ts",
+      "src/world/builder.ts",
+      "src/world/types.ts",
+      "src/world/content.ts",
+      "src/world/interiors.ts",
+      "src/world/batch.ts",
+      "src/ui/phoneHooks.ts"
+    ],
+    "note": "Separate candidate edits may only be commissioned after explicit conflict/dependency decision; never overwrite their branches."
+  }
 }

@@ -14,7 +14,7 @@ D-AG-003, 8 octobre 2026 : activation autorisée par Habib. Les profils du boots
 | QA | Revue indépendante, exécution possible, CI et preuves exactes |
 | Culture/droits | Références, représentation, droits et besoins de revue humaine |
 
-Le coordinateur récurrent utilise les outils Codex disponibles, lit la file GitHub durable et délègue les rôles à la demande. Neuf fonctions, pas neuf démons permanents. Les profils Claude sont aussi disponibles dans ce checkout isolé; aucun chargement natif Claude n'est attesté ni aucune session Claude actuelle modifiée. Aucun modèle supplémentaire imposé.
+Le coordinateur récurrent préparé utilisera les outils Codex disponibles, la file GitHub durable et les rôles délégués à la demande. Sa création a été refusée par le plafond de cinq tâches planifiées déjà actives : il n'est PAS enabled. Les rôles travaillent effectivement dans la session présente; ce blocage concerne seulement leur relance automatique entre sessions. Neuf fonctions, pas neuf démons permanents. Les profils Claude sont aussi disponibles dans ce checkout isolé; aucun chargement natif Claude n'est attesté ni aucune session Claude actuelle modifiée. Aucun modèle supplémentaire imposé.
 
 Les profils Gameplay et Personnages possèdent maintenant les outils de réalisation réservée. QA peut exécuter les contrôles sans corriger le code de l'auteur. Le parent Codex assure les mutations du registre et la délégation quand le profil producteur prépare ses affectations.
 

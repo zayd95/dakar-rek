@@ -16,7 +16,7 @@
       "id": "DKAG-007",
       "role": "network",
       "kind": "implementation",
-      "status": "active",
+      "status": "review",
       "owner": "activation_network",
       "reviewer": "activation_network_qa",
       "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -34,7 +34,27 @@
         "Exact-commit existing unit/build/server/network/full-launch CI and independent QA"
       ],
       "dependencies": [],
-      "authority": "Current isolated-development authorization, generic client lifecycle fix; no protocol/server/schema change"
+      "authority": "Current isolated-development authorization, generic client lifecycle fix; no protocol/server/schema change",
+      "sourceCommit": "183311c58185678421a70969371fed625d6347c2",
+      "pullRequest": 11,
+      "ownerState": "completed handoff",
+      "validation": {
+        "independentUnit": {
+          "passed": 42,
+          "total": 42
+        },
+        "independentBuild": "PASS",
+        "independentClientTypecheck": "PASS",
+        "independentServerTypecheck": "PASS",
+        "ciPush": {
+          "id": 37774079135,
+          "status": "in_progress"
+        },
+        "ciPr": {
+          "id": 37774210307,
+          "status": "in_progress"
+        }
+      }
     },
     {
       "id": "DKAG-008",
@@ -72,7 +92,7 @@
       "id": "DKAG-009",
       "role": "world",
       "kind": "compatibility_review",
-      "status": "active",
+      "status": "review",
       "owner": "activation_world",
       "inputs": [
         {
@@ -90,7 +110,8 @@
         "Do not recreate city/mosque/ads or mutate their refs"
       ],
       "output": "docs/agents/operations/reports/DKAG-009-world.md",
-      "dependencies": []
+      "dependencies": [],
+      "ownerState": "completed handoff"
     },
     {
       "id": "DKAG-010",
@@ -144,7 +165,7 @@
           "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
           "paths": [
             "src/lamb/duel.ts",
-            "src/world/humanoid.ts"
+            "src/actors/humanoid.ts"
           ]
         }
       ],
@@ -183,7 +204,7 @@
       "id": "DKAG-014",
       "role": "qa",
       "kind": "review",
-      "status": "waiting",
+      "status": "review",
       "target": "DKAG-007",
       "acceptance": [
         "Distinct reviewer verifies source diff/tests/exact CI and scope",
@@ -191,7 +212,9 @@
       ],
       "dependencies": [
         "DKAG-007:code-ready"
-      ]
+      ],
+      "owner": "activation_network_qa",
+      "output": "docs/agents/operations/reports/DKAG-007-network-review.md"
     },
     {
       "id": "DKAG-005",
