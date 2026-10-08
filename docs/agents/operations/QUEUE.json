@@ -518,7 +518,7 @@
       "id": "DKAG-018",
       "role": "world",
       "kind": "implementation",
-      "status": "active",
+      "status": "review",
       "branch": "codex/agents/dkag-018-arena-billboard-offset",
       "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
       "allowedFiles": [
@@ -541,10 +541,10 @@
       "culturalStatus": "provisional geometry, no cultural certification",
       "owner": "world_dkag018_2236",
       "reviewer": "qa_dkag018_2236",
-      "ownerState": "correction 1 assigned",
+      "ownerState": "correction 1 frozen handoff",
       "controlBriefCommit": "8495ac2ebe75aae8e56618ba91dd688ff5123d63",
       "dispatchBaseVerifiedAt": "2026-10-08T22:38:00Z",
-      "sourceCommit": "eb63509706ac39af5c4c31b3c206091b7ff6ac56",
+      "sourceCommit": "171c86958f4923e713470363f97effac70335fc9",
       "pullRequest": 16,
       "validation": {
         "authorUnit": {
@@ -553,27 +553,11 @@
         },
         "authorBuild": "PASS",
         "authorServerTypecheck": "PASS",
-        "authorBrowser": "blocked by container socket policy; CI required",
-        "independentQa": "BLOCKED: exact-source CI navigation timing failure; geometry and scope review pass",
+        "authorBrowser": "container blocked; exact-source CI required",
+        "independentQa": "correction 1 under review",
         "ci": {
-          "runs": [
-            {
-              "id": 37855268199,
-              "event": "push",
-              "status": "completed",
-              "conclusion": "failure",
-              "sha": "eb63509706ac39af5c4c31b3c206091b7ff6ac56"
-            },
-            {
-              "id": 37855312799,
-              "event": "pull_request",
-              "status": "completed",
-              "conclusion": "failure",
-              "sha": "eb63509706ac39af5c4c31b3c206091b7ff6ac56",
-              "artifactId": 11584385204
-            }
-          ],
-          "readAt": "2026-10-08T22:51:00Z"
+          "runs": [],
+          "readAt": "2026-10-08T22:55:00Z"
         }
       },
       "correctionAttempts": [
@@ -584,7 +568,9 @@
             "scripts/check-v1-core.mjs",
             "docs/agents/reports/DKAG-018-world.md"
           ],
-          "reason": "replace fixed delay with bounded state-driven navigation; use real touch events; retain assertions"
+          "reason": "replace fixed delay with bounded state-driven navigation; use real touch events; retain assertions",
+          "sourceCommit": "171c86958f4923e713470363f97effac70335fc9",
+          "result": "wait for nearest interaction after each release; navigation logs; assertions retained"
         }
       ]
     }
