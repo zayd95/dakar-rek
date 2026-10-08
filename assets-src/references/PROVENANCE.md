@@ -184,3 +184,5 @@ barrier fence, two tiers of stands. 3. An older arena from the stands: concrete 
 banners, sponsor boards just outside the ring, the ring a white traced circle with sandbags. Used for: the arena ring side in
 `src/world/builder.ts` (white sandbags, traced line, blank sponsor boards, judges' chairs, officials' table and canopy,
 barriers, bannered parapet, feather flags). No sponsor names, logos or people are reproduced.
+Also used (7 Oct, later) for the height and roof of the stands: three raised tiers under a roof carried on the outer wall.
+These photos are visual references only; they do not validate the arena culturally (layout, roles, set-up stay Unreviewed).

@@ -9,6 +9,13 @@ export class Batch {
   private geos: THREE.BufferGeometry[] = [];
   count = 0;
 
+  /** Add a custom surface (boat planks, fish…) to the same merged draw call. */
+  geometry(g: THREE.BufferGeometry, color: THREE.ColorRepresentation, x: number, y: number, z: number, yaw = 0) {
+    if (!g.attributes.normal) g.computeVertexNormals();
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    this.finish(g, color, x, y, z, yaw);
+  }
+
   private finish(g: THREE.BufferGeometry, color: THREE.ColorRepresentation, x: number, y: number, z: number, rotY = 0, rotX = 0, rotZ = 0) {
     g.rotateX(rotX); g.rotateZ(rotZ); g.rotateY(rotY); g.translate(x, y, z);
     const c = new THREE.Color(color);
@@ -27,6 +34,10 @@ export class Batch {
     const idx = Array.from(g.index!.array); idx.splice(18, 6); g.setIndex(idx);
     g.translate(0, h / 2, 0);
     this.finish(g, color, x, y, z, rotY);
+  }
+  /** Box centred at height y keeping all six faces (seen from below: roofs, canopies), tilted by `tilt` about its own x axis. */
+  slab(w: number, h: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0, tilt = 0) {
+    this.finish(new THREE.BoxGeometry(w, h, d), color, x, y, z, rotY, tilt);
   }
   /** Flat horizontal quad (2 triangles) lying at height y: road markings, stripes, decals. */
   flat(w: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0) {

@@ -7,7 +7,9 @@ import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { generatedTexture } from './textures';
+import { inGate, tierRadius, tierTop, TIERS, TIER_DEPTH, PARAPET_R, PARAPET_H, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -150,8 +152,17 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     plain.box(2.2, G, size + 12, PX - 2.9, 0, 0, 0x6f9a4a);                        // grass verge
     plain.box(1.2, G - 0.02, size + 12, -HALF - 3.0, 0, 0, 0x7aa556);
     const YEL = 0xf2b21b;
-    for (const rx of [PX + 1.95, PX - 1.95]) plain.box(0.09, 0.09, size + 12, rx, 1.05, 0, YEL);   // handrails
-    for (let z = -HALF - 4; z <= HALF + 4; z += 2.5) for (const rx of [PX + 1.95, PX - 1.95]) plain.box(0.08, 1.05, 0.08, rx, G, z, YEL);
+    for (const rx of [PX + 1.95, PX - 1.95]) {
+      if (rx > PX) plain.box(0.09, 0.09, size + 12, rx, 1.05, 0, YEL);
+      else for (const [z0, z1] of [[-HALF - 6, BAY.z0], [BAY.z1, HALF + 6]]) {
+        plain.box(0.09, 0.09, z1 - z0, rx, 1.05, (z0 + z1) / 2, YEL);
+        wallC(rx - 0.13, z0, rx + 0.13, z1, 1.1);
+      }
+    }
+    for (let z = -HALF - 4; z <= HALF + 4; z += 2.5) for (const rx of [PX + 1.95, PX - 1.95]) {
+      if (rx < PX && z > BAY.z0 && z < BAY.z1) continue;
+      plain.box(0.08, 1.05, 0.08, rx, G, z, YEL);
+    }
     for (let z = -HALF; z <= HALF; z += 7.5) {                                     // arches over the path
       limb(plain, [PX - 1.95, 1.0, z], [PX - 0.9, 2.9, z + 0.4], 0.06, 0.06, YEL, 5);
       limb(plain, [PX - 0.9, 2.9, z + 0.4], [PX + 0.9, 2.9, z + 0.4], 0.06, 0.06, YEL, 5);
@@ -160,7 +171,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     // road-side railing blocks the player except at each street end
     for (let k = 0; k < NB; k++) wallC(PX + 1.8, roadC(k) + 3, PX + 2.1, roadC(k + 1) - 3, 1.1);
     wallC(PX + 1.8, -HALF - 30, PX + 2.1, roadC(0) - 3, 1.1); wallC(PX + 1.8, roadC(NB) + 3, PX + 2.1, HALF + 30, 1.1);
-    bounds.x0 = PX - 1.6;
+    bounds.x0 = BAY.shoreX;
     // concrete median with gaps at the crossings; tall orange double-arm lamps on it
     for (let k = 0; k < NB; k++) {
       const z0 = roadC(k) + ROAD / 2 + 1, z1 = roadC(k + 1) - ROAD / 2 - 1;
@@ -753,8 +764,9 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         break;
       }
       case 'arena': {
-        // Sand floor, sandbag ring, ring-side furniture, three tiers of stands (where the scene crowd stands), outer wall,
-        // gate and floodlights. Ring side after Habib's arena photos (7 Oct): white sandbags with a traced line inside,
+        // Géew (the arena circle): sand floor, sandbag ring of the mbër, ring-side furniture, three raised tiers of stands
+        // under a roof (the scene crowd stands on the tiers; dimensions shared with lamb/scenes.ts through world/geew.ts),
+        // outer wall, gate and floodlights. Ring side after Habib's arena photos (7 Oct): white sandbags with a traced line inside,
         // low sponsor boards just outside, judges' chairs, an officials' table under a canopy, crowd barriers, a bannered
         // parapet in front of the stands and feather flags. Boards and banners are blank colour panels (no real sponsors).
         plain.cyl(17.3, 17.3, 0.04, cx, B, cz, 0xe8d3a2, 40);
@@ -766,7 +778,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           const a = (s / 72) * Math.PI * 2;
           plain.flat((2 * Math.PI * 8.3) / 72 + 0.02, 0.14, cx + Math.sin(a) * 8.3, B + 0.05, cz + Math.cos(a) * 8.3, 0xf7f4ec, a);
         }
-        const gateGap = (a: number, w = 0.3) => Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < w;
+        const gateGap = inGate;
         const BOARD = [0xf2f2ec, 0x1e6fd9, 0xd9482b, 0x2f8f4e, 0xf4c20d, 0x0f3d6e];
         for (let s = 0; s < 26; s++) {                                                  // sponsor boards around the ring
           const a = ((s + 0.5) / 26) * Math.PI * 2;
@@ -800,8 +812,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         for (let s = 0; s < 48; s++) {                                                  // bannered parapet in front of the first tier
           const a = ((s + 0.5) / 48) * Math.PI * 2;
           if (gateGap(a)) continue;
-          const r = 17.15, wSeg = (2 * Math.PI * r) / 48 + 0.05, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
-          plain.box(wSeg, 1.0, 0.22, x, 0, z, 0xe9e4d8, a);
+          const r = PARAPET_R, wSeg = (2 * Math.PI * r) / 48 + 0.05, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
+          plain.box(wSeg, PARAPET_H, 0.22, x, 0, z, 0xe9e4d8, a);
           if (s % 2 === 0) plain.box(wSeg * 1.6, 0.62, 0.03, cx + Math.sin(a) * (r - 0.13), 0.24, cz + Math.cos(a) * (r - 0.13), BOARD[(s / 2) % BOARD.length], a);
         }
         if (!lite) for (let s = 0; s < 10; s++) {                                       // feather flags along the barriers
@@ -814,17 +826,18 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         }
         const TIER_COL = [0xd5cbb8, 0xc6bba6, 0xb7ab95];
         const FLAG = [0x1a9d54, 0xf4c20d, 0xd9322b];
-        for (let t = 0; t < 3; t++) {
-          const r = 17.9 + t * 1.3, top = 0.65 + 0.55 * t, segs = 48;
+        for (let t = 0; t < TIERS; t++) {                                               // raised tiers (TEMP concrete), one level only
+          const r = tierRadius(t), top = tierTop(t), segs = 48;
           for (let s = 0; s < segs; s++) {
             const a = ((s + 0.5) / segs) * Math.PI * 2;
             if (gateGap(a)) continue;
             const wSeg = (2 * Math.PI * r) / segs + 0.06;
-            plain.box(wSeg, top, 1.32, cx + Math.sin(a) * r, 0, cz + Math.cos(a) * r, TIER_COL[t], a);
+            plain.box(wSeg, top, TIER_DEPTH, cx + Math.sin(a) * r, 0, cz + Math.cos(a) * r, TIER_COL[t], a);
             plain.box(wSeg, 0.12, 0.06, cx + Math.sin(a) * (r - 0.67), top - 0.18, cz + Math.cos(a) * (r - 0.67), FLAG[Math.floor(s / 4) % 3], a); // painted riser band
+            plain.box(wSeg, 0.06, 0.12, cx + Math.sin(a) * (r - 0.6), top, cz + Math.cos(a) * (r - 0.6), 0xe9e4d8, a);  // worn seat edge
           }
         }
-        const wallR = 21.7, wallH = 3.8, wsegs = 40;
+        const wallR = WALL_R, wallH = WALL_H, wsegs = 40;
         for (let s = 0; s < wsegs; s++) {
           const a = ((s + 0.5) / wsegs) * Math.PI * 2;
           if (gateGap(a)) continue;
@@ -836,9 +849,27 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           if (s % 3 === 0) plain.box(wSeg * 0.7, 1.4, 0.05, cx + Math.sin(a) * (wallR + 0.28), 1.3, cz + Math.cos(a) * (wallR + 0.28), FLAG[(s / 3) % 3], a); // painted banner
           solidC(x, z, 3.6, 3.6, wallH);
         }
-        for (let t = 0; t < 3; t++) for (let s = 0; s < 24; s++) {                      // stands collide too (player cannot climb them)
+        // stands collide too (player cannot climb them); their height reaches the roof so the follow camera stays under it
+        for (let t = 0; t < TIERS; t++) for (let s = 0; s < 24; s++) {
           const a = ((s + 0.5) / 24) * Math.PI * 2; if (gateGap(a)) continue;
-          const r = 17.9 + t * 1.3; solidC(cx + Math.sin(a) * r, cz + Math.cos(a) * r, 2.6, 2.6, 0.65 + 0.55 * t);
+          const r = tierRadius(t); solidC(cx + Math.sin(a) * r, cz + Math.cos(a) * r, 2.6, 2.6, roofY(r));
+        }
+        {                                                                               // roof over the stands (TEMP painted sheet metal)
+          const segs = 40, rm = (ROOF_FRONT_R + ROOF_BACK_R) / 2, ym = (ROOF_FRONT_Y + ROOF_BACK_Y) / 2;
+          const run = ROOF_BACK_R - ROOF_FRONT_R, rise = ROOF_FRONT_Y - ROOF_BACK_Y, tilt = Math.atan2(rise, run), depth = Math.hypot(run, rise);
+          for (let s = 0; s < segs; s++) {
+            const a = ((s + 0.5) / segs) * Math.PI * 2;
+            if (gateGap(a)) continue;
+            const sa = Math.sin(a), ca = Math.cos(a), wSeg = (2 * Math.PI * ROOF_BACK_R) / segs + 0.04;
+            plain.slab(wSeg, 0.16, depth, cx + sa * rm, ym, cz + ca * rm, s % 2 ? 0xb8bdc3 : 0xadb3ba, a, tilt);
+            plain.box(wSeg * (ROOF_FRONT_R / ROOF_BACK_R) + 0.1, 0.5, 0.08, cx + sa * (ROOF_FRONT_R - 0.02), ROOF_FRONT_Y - 0.42, cz + ca * (ROOF_FRONT_R - 0.02), 0xf1ead8, a); // fascia
+            if (s % 2) continue;
+            // column on the outer wall, cantilever beam under the roof, and a strut
+            const top = roofY(wallR) - 0.1, bx = cx + sa * wallR, bz = cz + ca * wallR;
+            plain.box(0.4, top - wallH, 0.4, bx, wallH, bz, 0x8d9299, a);
+            limb(plain, [bx, top, bz], [cx + sa * (ROOF_FRONT_R + 0.4), roofY(ROOF_FRONT_R + 0.4) - 0.12, cz + ca * (ROOF_FRONT_R + 0.4)], 0.13, 0.08, 0x7d838a, 6);
+            if (!lite) limb(plain, [bx, wallH + 0.4, bz], [cx + sa * 19.6, roofY(19.6) - 0.14, cz + ca * 19.6], 0.07, 0.07, 0x7d838a, 5);
+          }
         }
         // entrance arch at the gate (-z)
         const gz = cz - wallR;
@@ -898,6 +929,11 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   let arenaInfo: HubWorld['arena'] = null, ecurieInfo: HubWorld['ecurie'] = null, monumentInfo: HubWorld['monument'] = null;
   for (let i = 0; i < NB; i++) for (let j = 0; j < NB; j++) {
     const key = `${i},${j}`;
+    const city = CITY_BLOCKS[id][key];
+    if (city) {
+      buildCityBlock({ hub: id, lite, plain, glass, pave, people, interactables, colliders, sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
+      continue;
+    }
     const s = sp.specials[key];
     if (s) { specialAt(i, j, s); continue; }
     for (let lot = 0; lot < 4; lot++) {
@@ -922,7 +958,10 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   }
 
   // Street lamps (post, arm over the road, lamp head) with a light pool on the ground at night; shade trees between them.
-  const blocked = (x: number, z: number, r: number) => colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r);
+  // The new blocks have their own trees and furniture; random street props must not obstruct their aisles.
+  const cityRects = Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; });
+  const blocked = (x: number, z: number, r: number) => colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r)
+    || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r);
   const off = ROAD / 2 - SIDEWALK + 0.6; // lamp posts stand at the kerb
   for (let k = 0; k <= NB; k++) {
     for (let t = -HALF + 14; t < HALF - 8; t += 30) {

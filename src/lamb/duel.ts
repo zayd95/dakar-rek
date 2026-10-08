@@ -4,6 +4,7 @@ import type { Input } from '../core/input';
 import type { WrestlerLook } from '../core/types';
 import { rng } from '../core/rng';
 import { Percussion, crowdCheer } from './audio';
+import { inGate, tierRadius, tierTop, TIERS } from '../world/geew';
 
 /**
  * Controlled làmb bout against a local opponent (no network).
@@ -54,12 +55,12 @@ export class LambDuel {
     };
     this.me = mk(0x6b3f25, look, -3, Math.PI / 2);
     this.ai = mk(0x3b2216, { ngembColor: 'rouge', ngembPattern: 'uni', accessories: [] }, 3, -Math.PI / 2);
-    // spectators on the stands (the arena's three tiers, radius 17.9 + 1.3 k)
+    // spectators on the tiers of the géew (dimensions in world/geew.ts)
     const r = rng(11);
     if (wrestlerReady()) for (let k = 0; k < crowdSize; k++) {
       const a = (k / crowdSize) * Math.PI * 2 + 0.2;
-      if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.35) continue;
-      const tier = k % 3, rr = 17.9 + tier * 1.3, y = 0.1 + 0.55 * (tier + 1);
+      if (inGate(a, 0.35)) continue;
+      const tier = k % TIERS, rr = tierRadius(tier), y = tierTop(tier);
       const h = new Humanoid(randomLook(r)); h.hold = k % 3 ? 'Celebrate' : 'Idle';
       h.group.position.set(origin.x + Math.sin(a) * rr, y, origin.z + Math.cos(a) * rr); h.group.rotation.y = a + Math.PI;
       this.group.add(h.group); this.crowd.push(h);
