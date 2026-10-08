@@ -18,13 +18,13 @@ export class Hud {
     root.innerHTML = `
       <div id="stats" class="card"><div id="wallet"><span id="money">0 F</span></div><div id="mood"></div>${NEED_LABELS.map(([k, l]) => `<div class="need"><span>${l}</span><div class="bar"><i data-need="${k}"></i></div></div>`).join('')}</div>
       <div id="place" class="card"><b id="hubName"></b><small id="clock"></small></div>
-      <div id="menuBtn" class="card" role="button" aria-label="Menu">☰</div>
+      <div id="menuBtn" class="card" role="button" aria-label="Téléphone">☰</div>
       <div id="toast" class="card"></div>
       <div id="goal" class="card"></div>
       <div id="sceneTag" class="card"></div>
       <div id="progress" class="card"><span id="progLabel"></span><div class="bar"><i id="progBar" style="width:0"></i></div></div>
       <div id="joy"><i></i></div>
-      <div id="hint" class="card">ZQSD/WASD ou flèches : marcher · glisser : caméra · E : action · Échap : menu</div>
+      <div id="hint" class="card">ZQSD/WASD ou flèches : marcher · glisser : caméra · E : action · Échap : téléphone</div>
       <button id="act" class="off">Action</button>
       <div id="temp">Dakar Rek · Alpha</div>
       <div id="fade"></div>
@@ -104,6 +104,8 @@ export class Hud {
     (this.el.progBar as HTMLElement).style.width = pct * 100 + '%';
   }
   fade(on: boolean, text = '') { this.el.fade.textContent = text; this.el.fade.classList.toggle('on', on); }
+  /** Drop held keys, joystick finger and camera drag (opening the phone or a menu). */
+  resetControls() { this.resetTouch(); }
   get modalOpen() { return this.el.modal.classList.contains('on'); }
   closeModal() { this.el.modal.classList.remove('on'); }
 

@@ -34,9 +34,12 @@ try {
   for (const [kind, quality] of [['maiga', 'medium'], ['home', 'low']]) {
     await page.evaluate(kind => window.__dakar.enter(kind), kind);
     await page.waitForFunction(() => window.__dakar.pos().x > 900);
+    // Quality lives in the phone (Réglages); the phone remembers the last app between openings.
     await page.locator('#menuBtn').tap();
-    await page.locator(`button[data-q="${quality}"]`).tap();
-    await page.waitForFunction(() => !document.querySelector('#modal').classList.contains('on'));
+    if (!(await page.locator(`#phone button[data-q="${quality}"]`).count())) await page.locator('#phone [data-app="reglages"]').tap();
+    await page.locator(`#phone button[data-q="${quality}"]`).tap();
+    await page.locator('#phone [data-nav="close"]').tap();
+    await page.waitForFunction(() => !document.querySelector('#modal').classList.contains('on') && !document.querySelector('#phone').classList.contains('on'));
     await page.evaluate(() => window.__dakar.exit());
     await sleep(700);
     const p = await page.evaluate(() => window.__dakar.pos());

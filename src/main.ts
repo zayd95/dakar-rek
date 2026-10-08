@@ -31,6 +31,7 @@ import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb
 import { PresenceClient, loadProfile } from './multiplayer/client';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { PresenceUi } from './multiplayer/ui';
+import { Phone } from './ui/phone';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 
 const params = new URLSearchParams(location.search);
@@ -215,6 +216,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   state.place(id, p.x, p.z, p.yaw);
   hud.setPlace(HUB_NAMES[id], '', false);
   remoteAvatars.clear(); presence.join(id, id === invitedHub ? invitedRoom : null);
+  phone.remember();
 }
 
 function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, number] {
@@ -419,17 +421,8 @@ function playEmote(i: number) {
   if (playerBody) showProxy(EMOTE_CLIP[e.id] ?? 'Idle'); else { player.setWrestler(state.data.wrestler); player.setPose(e.pose); }
 }
 
-function openJournal() {
-  mode = 'menu';
-  const met = CAST.filter(c => rel.level(c.id) !== 0 || BEATS.some(b => b.npc === c.id && rel.beatDone(b.id)));
-  const next = suggestion(rel, state);
-  const esc = (t: string) => t.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]!));
-  const html = `<h3>Prochaine piste</h3><div class="kv">${next ? esc(next.hint) : 'Aucune pour l’instant.'}</div>
-    <h3>Tes relations</h3><div class="rel">${met.length ? met.map(c => `<span>${esc(c.name)} · ${esc(c.title)}</span><em>${Relations.label(rel.level(c.id))}</em>`).join('') : '<span>Personne encore.</span><em></em>'}</div>
-    <h3>Le quartier se connaît</h3><div class="rel">${rel.links().map(l => `<span>${esc(l.a)} ↔ ${esc(l.b)}</span><em>${esc(l.note)}</em>`).join('')}</div>
-    <div class="draft">Personnages et histoires : brouillon à valider par Habib.</div>`;
-  hud.openMenu('Carnet', `${Object.keys(state.data.beats).length} histoire(s) vécue(s)`, [], html);
-}
+/** The journal lives in the phone (Carnet app). */
+function openJournal() { hud.closeModal(); phone.open('carnet'); }
 
 function runAction(a: Action, npc?: string) {
   mode = 'busy'; input.enabled = false;
@@ -480,35 +473,35 @@ function doTravel(dest: HubId) {
   }, 900);
 }
 
-function openSystem() {
-  mode = 'menu';
-  const c = state.data.counters;
-  const kv = `<div class="kv">Temps de jeu : ${Math.floor(state.data.playedMs / 60000)} min · Repas : ${c.meals ?? 0} · Services : ${c.shifts ?? 0} · Forme : ${c.forme ?? 0} · Trajets : ${c.trips ?? 0}<br>Sauvegarde invité : sur cet appareil seulement (pas de compte).</div>
-    <div class="seg" data-q>${(['low', 'medium', 'high'] as Quality[]).map(q => `<button data-q="${q}" class="${q === quality ? 'on' : ''}">${{ low: 'Qualité basse', medium: 'Moyenne', high: 'Haute' }[q]}</button>`).join('')}</div>`;
-  hud.openMenu('Dakar Rek', 'Version de développement 0.1', [
-    { label: 'Reprendre', onPick: () => hud.closeModal() },
-    { label: 'Carnet', detail: 'Relations et prochaine piste', onPick: () => openJournal() },
-    { label: 'Sauvegarder maintenant', onPick: () => { hud.toast(saveNow() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'); hud.closeModal(); } },
-    { label: 'Nouvelle partie', detail: 'Efface la sauvegarde de cet appareil', onPick: () => { clearSave(store); location.reload(); } },
-  ], kv, panel => {
-    panel.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
-      const roomId = inside?.door.id, roomPosition = inside ? pos.clone() : null;
-      const at = { x: inside ? inside.door.x : pos.x, z: inside ? inside.door.z : pos.z, yaw: facing };
-      quality = b.dataset.q as Quality; applyQuality();
-      if (world) {
-        loadHub(world.id, at);
-        // Rebuild at the street doorway, then restore the room without leaking its off-map coordinates.
-        const door = roomId ? world.interactables.find(i => i.id === roomId) : undefined;
-        const int = door ? interiors.get(door.id) : undefined;
-        if (door && int && roomPosition) {
-          inside = { door, int }; follow.indoor = true; showStreet(false); scene.add(roomLight);
-          pos.copy(roomPosition); follow.snapBehind(facing);
-        }
-      }
-      hud.closeModal();
-    }));
-  });
+/** Quality change (phone › Réglages): rebuilds the hub and keeps the player in the room they were in. */
+function setQuality(q: Quality) {
+  const roomId = inside?.door.id, roomPosition = inside ? pos.clone() : null;
+  const at = { x: inside ? inside.door.x : pos.x, z: inside ? inside.door.z : pos.z, yaw: facing };
+  quality = q; applyQuality();
+  if (world) {
+    loadHub(world.id, at);
+    // Rebuild at the street doorway, then restore the room without leaking its off-map coordinates.
+    const door = roomId ? world.interactables.find(i => i.id === roomId) : undefined;
+    const int = door ? interiors.get(door.id) : undefined;
+    if (door && int && roomPosition) {
+      inside = { door, int }; follow.indoor = true; showStreet(false); scene.add(roomLight);
+      pos.copy(roomPosition); follow.snapBehind(facing);
+    }
+  }
 }
+
+// ------------------------------------------------------------------ phone (settings and services; replaces the old system menu)
+const phone = new Phone({
+  state, rel, input, hub: () => world?.id ?? null, now: () => presence.serverNow(),
+  places: () => world?.interactables.filter(i => !i.npc).map(i => i.name) ?? [],
+  quality: () => quality, setQuality, save: saveNow, toast: m => hud.toast(m),
+  newGame: () => { clearSave(store); world = null; location.reload(); },   // world = null: no save on the way out
+  lock: on => {
+    if (on) { if (mode === 'play') mode = 'menu'; if (mode === 'menu') { input.enabled = false; hud.resetControls(); } }
+    else if (mode === 'menu' && !hud.modalOpen) { mode = 'play'; input.enabled = true; }
+    else if (hud.modalOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // an app opened a menu
+  },
+});
 
 function saveNow(): boolean {
   // indoors, save the street position at the door: interiors are rebuilt on load
@@ -522,8 +515,8 @@ hud.onAction = () => {
   else if (nearest.actions.length === 1 && nearest.actions[0].special === 'exit') exitInterior();
   else openActions(nearest);
 };
-hud.onMenu = () => { if (mode === 'play') openSystem(); };
-new MutationObserver(() => { if (!hud.modalOpen && mode === 'menu') { mode = 'play'; input.enabled = true; } }).observe(document.getElementById('modal')!, { attributes: true });
+hud.onMenu = () => { if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); };
+new MutationObserver(() => { if (!hud.modalOpen && !phone.isOpen && mode === 'menu') { mode = 'play'; input.enabled = true; } }).observe(document.getElementById('modal')!, { attributes: true });
 addEventListener('visibilitychange', () => { if (document.hidden && world) saveNow(); });
 addEventListener('pagehide', () => { if (world) saveNow(); });
 setInterval(() => { if (world && mode === 'play') saveNow(); }, 8000);
@@ -535,7 +528,8 @@ function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (document.hidden || !world) return;
 
-  if (input.takeMenu()) { if (hud.modalOpen) hud.closeModal(); else if (mode === 'play') openSystem(); }
+  if (input.takeMenu()) { if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
+  if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
   if (input.takeAction() && mode === 'play' && nearest) hud.onAction();
 
   const drag = input.takeDrag();
@@ -647,6 +641,9 @@ if (DEBUG) {
     duelGuard(on: boolean) { if (lambScene instanceof LambDuel) lambScene.setGuard(on); },
     scenePeek(t: number) { if (lambScene) { lambScene.t = t; lambScene.snap = true; } },
     outfit: () => openOutfit(), journal: () => openJournal(),
+    phone(app?: string) { hud.closeModal(); return phone.open(app); },
+    phoneClose() { phone.close(); },
+    phoneInfo: () => phone.info(), phoneHooks: phone.hooks,
     emote(i = 0) { playEmote(i); },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
     enter(kind: 'home' | 'gargote') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
