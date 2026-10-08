@@ -98,6 +98,78 @@ describe('Aïda revision activity', () => {
   });
 });
 
+describe('Ibou recommendation follow-up', () => {
+  const id = 'ibou_modou_followup';
+  const unlock = () => {
+    const { s, r } = fresh();
+    play(r, s, 'ibou_welcome', 'oui');
+    play(r, s, 'modou_reco', 'commencer');
+    return { s, r };
+  };
+  it('requires both the completed welcome and Modou trust, not a generic shift', () => {
+    const b = BEATS.find(b => b.id === id)!;
+    for (const [welcome, trust] of [[false, false], [true, false], [false, true]]) {
+      const { s, r } = fresh();
+      if (welcome) s.data.beats.ibou_welcome = 'oui';
+      if (trust) r.set('modou_trust');
+      s.count('shifts', 20);
+      const before = JSON.stringify(s.data);
+      expect(b.when(r, s)).toBe(false);
+      expect(applyChoice(b, b.choices[0], r, s)).toEqual([]);
+      expect(JSON.stringify(s.data)).toBe(before);
+    }
+    const { s, r } = unlock();
+    expect(availableBeat('ibou', r, s)?.id).toBe(id);
+  });
+  it('adds only two relationship points and completion memory, exactly once', () => {
+    const { s, r } = unlock();
+    const before = JSON.parse(JSON.stringify(s.data));
+    expect(play(r, s, id, 'merci')).toEqual(['Tonton Ibou ▲']);
+    const expected = JSON.parse(JSON.stringify(before));
+    expected.rel['ibou|player'] += 2;
+    expected.flags.push(id);
+    expected.beats[id] = 'merci';
+    expect(s.data).toEqual(expected);
+    const done = JSON.stringify(s.data);
+    expect(play(r, s, id, 'merci')).toEqual([]);
+    expect(play(r, s, id, 'plus_tard')).toEqual([]);
+    expect(JSON.stringify(s.data)).toBe(done);
+    expect(availableBeat('ibou', r, s)).toBeNull();
+    const restored = new GameState(migrate(JSON.parse(done))!);
+    const rr = new Relations(restored.data), loaded = JSON.stringify(restored.data);
+    expect(availableBeat('ibou', rr, restored)).toBeNull();
+    expect(play(rr, restored, id, 'merci')).toEqual([]);
+    expect(JSON.stringify(restored.data)).toBe(loaded);
+  });
+  it('repeated postponement is neutral and available again after reload', () => {
+    const { s, r } = unlock(), before = JSON.stringify(s.data);
+    for (let i = 0; i < 5; i++) expect(play(r, s, id, 'plus_tard')).toEqual([]);
+    expect(JSON.stringify(s.data)).toBe(before);
+    const restored = new GameState(migrate(JSON.parse(before))!);
+    expect(availableBeat('ibou', new Relations(restored.data), restored)?.id).toBe(id);
+  });
+  it('rejects foreign choices, forged beats and stale preconditions', () => {
+    const { s, r } = unlock(), b = BEATS.find(b => b.id === id)!;
+    const before = JSON.stringify(s.data);
+    const foreign = BEATS.find(b => b.id === 'adja_stall')!.choices[0];
+    expect(applyChoice(b, foreign, r, s)).toEqual([]);
+    expect(applyChoice(b, { ...b.choices[0] }, r, s)).toEqual([]);
+    expect(applyChoice({ ...b }, b.choices[0], r, s)).toEqual([]);
+    expect(JSON.stringify(s.data)).toBe(before);
+    s.data.flags = s.data.flags.filter(f => f !== 'modou_trust');
+    const stale = JSON.stringify(s.data);
+    expect(applyChoice(b, b.choices[0], r, s)).toEqual([]);
+    expect(JSON.stringify(s.data)).toBe(stale);
+  });
+  it('keeps all existing beats in their authored order', () => {
+    expect(BEATS.map(b => b.id)).toEqual([
+      'ibou_welcome', 'modou_reco', 'mame_gaz', 'moussa_coach', 'ablaye_join',
+      'ablaye_rival', 'lamine_meet', 'babacar_win', 'adja_stall', 'fatou_friend',
+      'aida_revise', 'aida_revised', 'ousmane_cousin', 'khady_service', id,
+    ]);
+  });
+});
+
 describe('cast and links', () => {
   it('every beat and link refers to a cast member, every hub has someone', () => {
     const ids = new Set(CAST.map(c => c.id));
