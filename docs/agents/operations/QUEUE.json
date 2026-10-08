@@ -9,7 +9,8 @@
     "DKAG-012",
     "DKAG-013",
     "DKAG-014",
-    "DKAG-005"
+    "DKAG-005",
+    "DKAG-015"
   ],
   "tasks": [
     {
@@ -117,7 +118,7 @@
       "id": "DKAG-010",
       "role": "gameplay",
       "kind": "design_review",
-      "status": "ready",
+      "status": "done",
       "inputs": [
         {
           "pr": 9,
@@ -130,7 +131,12 @@
         "Produce a bounded playable task with costs/duration/effects/interrupt and reload criteria"
       ],
       "output": "docs/agents/operations/reports/DKAG-010-gameplay.md",
-      "dependencies": []
+      "dependencies": [],
+      "scope": "design review only; no source edit",
+      "owner": "activation_gameplay",
+      "ownerState": "completed handoff",
+      "inspectedControlCommit": "99ea0da7f200d638c69d7c84333dc9d4cb004ca2",
+      "nextTask": "DKAG-015"
     },
     {
       "id": "DKAG-011",
@@ -229,6 +235,29 @@
       "dependencies": [
         "authenticated Cloudflare owner access"
       ]
+    },
+    {
+      "id": "DKAG-015",
+      "role": "gameplay",
+      "kind": "implementation",
+      "status": "needs-decision",
+      "sourceCommit": "84311a716fa722cd20b4e725a72fd15f60511291",
+      "proposedBranch": "codex/agents/dkag-015-place-summary",
+      "proposedFiles": [
+        "src/ui/placeSummary.ts",
+        "tests/place-summary.test.ts",
+        "src/main.ts",
+        "scripts/check-city-life.mjs"
+      ],
+      "dependency": "Producer records compatible base and shared main.ts ownership/conflict decision, then reserves task",
+      "acceptance": [
+        "Directory advertises existing job/food/rest capabilities from actual action data",
+        "Show actual cost/duration/effects and disabled reasons, omit invisible actions",
+        "Directory only changes marker: zero wallet/need/counter effect",
+        "Existing income/food/rest economy and save behavior preserved",
+        "Meaningful formatter tests and desktop/touch journey at exact source"
+      ],
+      "culturalStatus": "fictional balance, unverified"
     }
   ]
 }

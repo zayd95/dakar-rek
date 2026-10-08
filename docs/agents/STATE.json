@@ -79,7 +79,8 @@
     "DKAG-001",
     "DKAG-002",
     "DKAG-003",
-    "DKAG-004"
+    "DKAG-004",
+    "DKAG-010"
   ],
   "ci": {
     "aidaCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -116,7 +117,8 @@
     "activation_qa",
     "activation_network",
     "activation_network_qa",
-    "activation_world"
+    "activation_world",
+    "activation_gameplay"
   ],
   "nextAction": "Observe network exact-source CI and accept candidate after final checks; activate prepared coordinator once user selects a scheduled-task slot.",
   "externalReservations": {
@@ -135,5 +137,26 @@
       "src/ui/phoneHooks.ts"
     ],
     "note": "Separate candidate edits may only be commissioned after explicit conflict/dependency decision; never overwrite their branches."
-  }
+  },
+  "externalWorkCurrentSnapshot": [
+    {
+      "pr": 10,
+      "branch": "codex/v1-mosque-ads",
+      "sha": "9241786a8f3d7da2045bcf1856596f785aec6079",
+      "owner": "other session; never mutate"
+    },
+    {
+      "pr": 9,
+      "branch": "codex/dakar-city-life",
+      "sha": "84311a716fa722cd20b4e725a72fd15f60511291",
+      "owner": "other session; never mutate"
+    },
+    {
+      "pr": 8,
+      "branch": "codex/v1-core-launch-scope",
+      "sha": "9f9b76dfae5f34f3ecba6defdd1154c966560a1e",
+      "owner": "other session; never mutate"
+    }
+  ],
+  "snapshotNote": "Earlier input SHAs remain pinned for historical reviews. Other sessions may advance their refs; this team did not mutate those refs."
 }
