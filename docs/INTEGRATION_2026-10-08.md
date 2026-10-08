@@ -45,7 +45,9 @@ lot Higgsfield 3. Aucun travail n'a été écrasé : les conflits (surtout `src/
 | `scripts/check-lamb.mjs` | 24/24 |
 | `scripts/check-npc.mjs` | 48/48 |
 | Version en ligne, test de chargement (bureau + téléphone) | sans erreur ; Chat, Messages, Travail, Habitants, Quartier présents |
-| `npm run check:online`, `npm run check:chat`, `npm run check:city` | en cours au moment de ce commit ; résultats ajoutés ensuite |
+| `npm run check:online` (runtime Workers local, deux clients) | 17/17 |
+| `npm run check:chat` | 30/30 |
+| `npm run check:city` | 37/37 (bureau et téléphone) |
 
 La machine était très chargée pendant le travail parallèle (charge 12–16 sur 4 cœurs, moins d'une image par seconde en
 rendu logiciel) : certains délais fixes des contrôles (marche dans le mall de `check:city`, attente « en ligne » de
