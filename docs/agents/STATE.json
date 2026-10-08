@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08T17:01:30Z",
+  "updatedAt": "2026-10-08T17:07:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_scheduler_enabled",
@@ -12,7 +12,7 @@
     "expiresAt": "2026-10-08T17:40:00Z",
     "baseHead": "feac8c3da1cefd766f43794133d135ea6a99853e"
   },
-  "activeCodeTask": "DKAG-016",
+  "activeCodeTask": "DKAG-017",
   "maxConcurrentCodeTasks": 1,
   "reservations": [
     {
@@ -25,25 +25,34 @@
       ]
     },
     {
-      "task": "DKAG-016",
-      "owner": "characters_resume_1655",
-      "reviewer": "qa_ibou_1701",
-      "branch": "codex/agents/dkag-016-ibou-followup",
-      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
-      "allowedFiles": [
-        "src/social/beats.ts",
-        "tests/social.test.ts",
-        "scripts/check-ibou-followup.mjs",
-        "docs/agents/reports/DKAG-016-characters.md"
-      ]
-    },
-    {
       "task": "DKAG-016-QA",
       "owner": "qa_ibou_1701",
       "branch": "codex/agent-studio-active",
       "baseCommit": "c089dce66e972d8785208e0cb64055ddb954430f",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-016-characters-review.md"
+      ]
+    },
+    {
+      "task": "DKAG-017",
+      "owner": "animation_resume_1655",
+      "reviewer": "qa_animation_1707",
+      "branch": "codex/agents/dkag-017-fall-one-shot",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "allowedFiles": [
+        "src/actors/humanoid.ts",
+        "tests/humanoid-animation.test.ts",
+        "scripts/check-fall-animation.mjs",
+        "docs/agents/reports/DKAG-017-animation.md"
+      ]
+    },
+    {
+      "task": "DKAG-017-QA",
+      "owner": "qa_animation_1707",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "e3cdf9ad3c697a51d50bca3766f6ea51364befda",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-017-animation-review.md"
       ]
     }
   ],
@@ -153,12 +162,14 @@
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [
-    "DKAG-008"
+    "DKAG-008",
+    "DKAG-016"
   ],
   "activeSessions": [
     "qa_resume_1655",
-    "characters_resume_1655",
-    "qa_ibou_1701"
+    "qa_ibou_1701",
+    "animation_resume_1655",
+    "qa_animation_1707"
   ],
   "completedSessions": [
     "activation_producer",
@@ -171,7 +182,8 @@
     "characters_resume_1655",
     "animation_resume_1655",
     "culture_resume_1655",
-    "combat_resume_1655"
+    "combat_resume_1655",
+    "characters_resume_1655"
   ],
   "nextAction": "Coordinator takes the next isolated cycle from durable queue; combat DKAG-008 ready. Current chat remains usable independently of scheduler.",
   "externalReservations": {

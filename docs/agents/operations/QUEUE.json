@@ -331,7 +331,7 @@
       "id": "DKAG-016",
       "role": "characters",
       "kind": "implementation",
-      "status": "active",
+      "status": "review",
       "branch": "codex/agents/dkag-016-ibou-followup",
       "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
       "allowedFiles": [
@@ -356,13 +356,30 @@
       "owner": "characters_resume_1655",
       "reviewer": "qa_ibou_1701",
       "controlBriefCommit": "c089dce66e972d8785208e0cb64055ddb954430f",
-      "ownerState": "assigned implementation"
+      "ownerState": "completed frozen handoff",
+      "sourceCommit": "a26e90543641c1fe0ef396f8938598de9897940f",
+      "pullRequest": 14,
+      "validation": {
+        "authorUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "authorBrowser": {
+          "passed": 22,
+          "total": 22,
+          "scope": "compiled real menu/save journey with debug positioning desktop/touch"
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "ci": "pending",
+        "independentQa": "running"
+      }
     },
     {
       "id": "DKAG-017",
       "role": "animation",
       "kind": "implementation",
-      "status": "ready",
+      "status": "active",
       "branch": "codex/agents/dkag-017-fall-one-shot",
       "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
       "allowedFiles": [
@@ -381,7 +398,11 @@
         "Playback with existing exported asset and both duel outcomes if feasible; disclose static metadata versus visual checks"
       ],
       "basis": "DKAG-012 actual clip0.6s looping +0.71mY/+0.90mZ root jump",
-      "decision": "Separate humanoid.ts-only fix, no duel.ts ownership conflict; one active code task remains."
+      "decision": "Separate humanoid.ts-only fix, no duel.ts ownership conflict; one active code task remains.",
+      "owner": "animation_resume_1655",
+      "reviewer": "qa_animation_1707",
+      "controlBriefCommit": "e3cdf9ad3c697a51d50bca3766f6ea51364befda",
+      "ownerState": "assigned"
     }
   ]
 }
