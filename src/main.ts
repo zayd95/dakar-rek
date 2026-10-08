@@ -32,6 +32,7 @@ import { PresenceClient, loadProfile } from './multiplayer/client';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { PresenceUi } from './multiplayer/ui';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
+import { campaignAt, sponsorUrl } from './ads/campaigns';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -155,6 +156,7 @@ function updateLighting(hour: number) {
     sun.intensity *= 0.25; hemi.intensity = isNight ? 0.35 : 0.55; hemi.color.set(0xfff2e0); hemi.groundColor.set(0x6a5a48);
     setInteriorDaylight(sky.horizon.clone().lerp(new THREE.Color(0xffffff), isNight ? 0 : 0.5).multiplyScalar(isNight ? 0.5 : 1.1));
     roomLight.position.copy(inside.int.light); roomLight.color.set(inside.int.lightColor); roomLight.intensity = isNight ? 9 : 6;
+    roomLight.distance = inside.int.kind === 'mosque' ? 22 : 9;
   } else roomLight.intensity = 0;
   if (world) {
     world.facadeMat.emissiveIntensity = night * 1.25;
@@ -203,7 +205,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;
   for (const it of world.interactables) {
-    const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
+    const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : it.id.includes(':mosque:') ? 'mosque' : null;
     if (!kind) continue;
     const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
@@ -250,6 +252,18 @@ function describe(a: Action): string {
 }
 
 function openActions(it: Interactable) {
+  if (it.adSlot) {
+    mode = 'menu';
+    const ad = campaignAt(it.adSlot);
+    hud.openMenu(it.name, ad ? `Publicité · ${ad.sponsor} — ${ad.headline}. ${ad.message}` : 'Cet emplacement publicitaire est disponible.', ad ? (ad.url ? [{ label: 'Ouvrir le site de l’annonceur ↗', detail: 'Lien externe', onPick: () => {
+      const current = campaignAt(it.adSlot!);
+      const url = current?.id === ad.id && current.url === ad.url ? sponsorUrl(current.url) : undefined;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      else hud.toast('Cette annonce n’est plus disponible.');
+      hud.closeModal();
+    } }] : []) : [{ label: 'La vie du quartier', detail: 'Travail, rencontres et pauses en ville · làmb à Pikine · mosquée au Plateau', onPick: () => hud.closeModal() }]);
+    return;
+  }
   mode = 'menu';
   const visible = it.actions.filter(a => !a.visible || a.visible(state));
   const items = visible.map(a => {
@@ -657,7 +671,7 @@ if (DEBUG) {
     outfit: () => openOutfit(), journal: () => openJournal(),
     emote(i = 0) { playEmote(i); },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
-    enter(kind: 'home' | 'gargote') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
+    enter(kind: 'home' | 'gargote' | 'maiga' | 'mosque') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
     exit() { exitInterior(); },
     look(yaw: number, pitch?: number) { follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
     place(x: number, z: number, yaw: number) { pos.set(x, 0.1 + (world?.heightAt(x, z) ?? 0), z); facing = yaw; follow.snapBehind(yaw); },
