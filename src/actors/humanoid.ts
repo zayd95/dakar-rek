@@ -39,8 +39,27 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
       buf = u8.buffer;
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
+    fixSitKnees(gltf.animations);
     template = { scene: gltf.scene, clips: gltf.animations };
   } catch { /* box characters stay in use */ }
+}
+
+/**
+ * The exported Sit action flexes the knees the wrong way: with the thighs level, the shins point up along the
+ * chest instead of hanging to the ground. Mirror the shin rotation (−X → +X about the knee) so the feet rest on
+ * the ground in front of the seat. Only applies while the shins still bend the wrong way, so it becomes a no-op
+ * once the Blender action is corrected and re-exported.
+ */
+export function fixSitKnees(clips: THREE.AnimationClip[]) {
+  const sit = clips.find(c => c.name === 'Sit'); if (!sit) return;
+  for (const track of sit.tracks) {
+    if (!/^shin\.?[LR]\.quaternion$/.test(track.name)) continue;
+    const v = track.values;
+    let backward = true;
+    for (let i = 0; i < v.length; i += 4) if (v[i] > -0.3) backward = false;
+    if (!backward) continue;
+    for (let i = 0; i < v.length; i += 4) { v[i] = -v[i]; v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
+  }
 }
 
 // ---------------------------------------------------------------- fabric textures (generic prints, own designs)
