@@ -10,7 +10,8 @@
     "DKAG-013",
     "DKAG-014",
     "DKAG-005",
-    "DKAG-015"
+    "DKAG-015",
+    "DKAG-016"
   ],
   "tasks": [
     {
@@ -303,6 +304,33 @@
         "Meaningful formatter tests and desktop/touch journey at exact source"
       ],
       "culturalStatus": "fictional balance, unverified"
+    },
+    {
+      "id": "DKAG-016",
+      "role": "characters",
+      "kind": "implementation",
+      "status": "ready",
+      "branch": "codex/agents/dkag-016-ibou-followup",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "allowedFiles": [
+        "src/social/beats.ts",
+        "tests/social.test.ts",
+        "scripts/check-ibou-followup.mjs",
+        "docs/agents/reports/DKAG-016-characters.md"
+      ],
+      "dependencies": [],
+      "authority": "Producer commissions bounded existing-NPC reaction within approved daily-life scope; no main/world/economy/schema/assets edit",
+      "basis": "DKAG-011 design and actual current base API inspected by producer",
+      "acceptance": [
+        "New optional Ibou follow-up requires completed welcome and modou_trust; shifts alone does not unlock it",
+        "Confirmation adds exactly +2 player-Ibou once and persistent completion flag; wallet/needs/counters/other relationships unchanged",
+        "Refusal repeat has zero state effect and keeps beat available",
+        "Direct replay/double call/foreign choice/missing preconditions cannot apply effects; save roundtrip preserves completion",
+        "Existing beats order and Aida/Modou flows preserved; narrowly guard this new beat without unrelated refactor",
+        "Meaningful deterministic tests, exact-source build/typechecks/CI and independent QA; dedicated browser flow if available"
+      ],
+      "culturalStatus": "fictional French dialogue unverified",
+      "decision": "Only beats.ts and tests/social.test.ts modified game sources; disjoint from active combat. Single active code rule remains; dispatch only after combat author handoff."
     }
   ]
 }
