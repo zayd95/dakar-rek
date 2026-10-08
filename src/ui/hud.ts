@@ -32,10 +32,21 @@ export class Hud {
       <div id="modal"><div class="panel" role="dialog" aria-modal="true" aria-labelledby="dialogTitle" tabindex="-1"></div></div>`;
     for (const id of ['statsBtn', 'needDetails', 'vitals', 'money', 'mood', 'hubName', 'clock', 'toast', 'progress', 'progLabel', 'progBar', 'joy', 'act', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag']) this.el[id] = root.querySelector('#' + id)!;
     root.querySelectorAll<HTMLElement>('[data-need]').forEach(b => this.bars.set(b.dataset.need!, b));
+    for (const [k, label] of NEED_LABELS) {
+      const bar = this.bars.get(k)!;
+      bar.setAttribute('role', 'meter'); bar.setAttribute('aria-label', label);
+      bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
+    }
     this.el.statsBtn.addEventListener('click', () => {
       const open = this.el.needDetails.hidden;
       this.el.needDetails.hidden = !open;
       this.el.statsBtn.setAttribute('aria-expanded', String(open));
+    });
+    this.el.statsBtn.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !this.el.needDetails.hidden) {
+        e.preventDefault(); e.stopPropagation(); this.el.needDetails.hidden = true;
+        this.el.statsBtn.setAttribute('aria-expanded', 'false');
+      }
     });
     document.addEventListener('pointerdown', e => {
       if (!(e.target as HTMLElement).closest('#stats')) {
@@ -102,6 +113,7 @@ export class Hud {
     for (const [k] of NEED_LABELS) {
       const b = this.bars.get(k)!, v = needs[k];
       b.style.width = v + '%'; b.className = v < 25 ? 'low' : v < 50 ? 'mid' : '';
+      b.setAttribute('aria-valuenow', String(Math.round(v)));
     }
   }
   setPlace(name: string, clock: string, night: boolean) { this.el.hubName.textContent = name; this.el.clock.textContent = (night ? '🌙 ' : '☀️ ') + clock; }

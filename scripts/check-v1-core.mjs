@@ -29,7 +29,10 @@ try {
   await page.evaluate(p => window.__dakar.place(p.x - 3, p.z - 6, Math.PI), spawn);
   await page.waitForFunction(() => window.__dakar.nearestInteractable() === 'Un moment au calme');
   await page.keyboard.press('e');
+  await page.locator('#modal.context.on').waitFor({ state: 'visible' });
+  await page.screenshot({ path: `${evidence}/context-actions-desktop.png` });
   const dock = await page.locator('#modal.context .panel').boundingBox();
+  console.log('Desktop context bounds:', JSON.stringify(dock));
   check('context choices leave most of the scene visible', !!dock && dock.height <= 240 && dock.y > 500);
   check('context dialog receives keyboard focus', await page.locator('#modal').evaluate(el => el.contains(document.activeElement)));
   await page.keyboard.press('Shift+Tab');
@@ -38,7 +41,7 @@ try {
   await page.waitForFunction(() => window.__dakar.pos().mode === 'play');
   check('Escape closes choices and resumes play', await page.locator('#modal.on').count() === 0);
   await page.keyboard.press('e');
-  await page.screenshot({ path: `${evidence}/context-actions-desktop.png` });
+  await page.locator('#modal.context.on').waitFor({ state: 'visible' });
   check('prayer and ordinary pause are both available', await page.getByRole('button', { name: /^Prendre un moment pour prier/ }).count() === 1 && await page.getByRole('button', { name: /^Se poser au calme/ }).count() === 1);
   const before = await page.evaluate(() => ({ wallet: window.__dakar.state.wallet, flags: [...window.__dakar.flags()], counters: { ...window.__dakar.state.data.counters } }));
   await page.getByRole('button', { name: /^Prendre un moment pour prier/ }).click();
@@ -67,6 +70,7 @@ try {
     await page.evaluate(b => window.__dakar.place(b.x, b.z, Math.PI), board);
     await page.waitForFunction(() => window.__dakar.nearestInteractable() === 'Tableau du quartier');
     await page.keyboard.press('e');
+    await page.locator('#modal.context.on').waitFor({ state: 'visible' });
     check(`${hub} empty slot is available without a sponsor link`, (await page.locator('#modal').textContent()).includes('disponible') && await page.getByRole('button', { name: /^Ouvrir le site/ }).count() === 0);
     await page.getByRole('button', { name: 'Fermer', exact: true }).click();
   }
@@ -107,7 +111,8 @@ try {
   check('detailed needs are collapsed during play', await phone.locator('#needDetails').isHidden());
   await phone.locator('#statsBtn').tap();
   check('needs expand on request with an accessible state', await phone.locator('#statsBtn').getAttribute('aria-expanded') === 'true' && await phone.locator('#needDetails').isVisible());
-  await phone.locator('#statsBtn').tap();
+  await phone.locator('#statsBtn').focus(); await phone.keyboard.press('Escape');
+  check('Escape collapses needs without opening another menu', await phone.locator('#needDetails').isHidden() && await phone.locator('#modal.on').count() === 0);
   await phone.screenshot({ path: `${evidence}/arena-board-mobile.png` });
   check('no browser runtime errors', errors.length === 0);
   await writeFile(`${evidence}/browser-checks.json`, JSON.stringify({ base, checks, errors }, null, 2) + '\n');

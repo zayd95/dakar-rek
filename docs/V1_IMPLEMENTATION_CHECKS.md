@@ -13,18 +13,20 @@ Base isolée : `wip/visual-pass`, commit `00abf96efeadcc8bdb8d4c859eb1d0258b0978
 
 Les points de contrôle locaux employaient les déplacements de l'API de développement uniquement pour rejoindre les lieux ; les menus, les actions et les changements de qualité ont été contrôlés dans l'interface. Des captures ont été inspectées pendant cette session. Les contrôles locaux supplémentaires ne sont pas inclus dans le produit.
 
-## Limites à lever avant mise en ligne
+## Validation GitHub
 
 La première version publiée (`1610e51`) a terminé avec succès le workflow GitHub : installation du lockfile, tests, types serveur, compilation, parcours multijoueur et parcours de lancement. Le nouvel incrément ajoute une barre de choix contextuels, les besoins repliables, la navigation clavier et un parcours navigateur dédié à la mosquée et aux annonces. Les résultats de cet incrément doivent être vérifiés sur son propre commit.
 
 ## Interface de jeu
 
-- Choix courants dans une barre au bas de l'écran, limitée à 240 px de hauteur ; actions supplémentaires accessibles par défilement horizontal.
+- Choix de lieux, trajets, gestes et dialogues dans une barre au bas de l'écran, limitée à 240 px de hauteur ; actions supplémentaires accessibles par défilement horizontal.
 - Solde, faim et énergie dans un petit indicateur ; les cinq besoins se déplient à la demande.
 - Bouton d'action masqué lorsqu'aucun lieu interactif n'est proche.
 - Boutons natifs, états désactivés, indication de focus, tabulation contenue dans les choix, fermeture par Échap et restitution du focus.
 - Fermeture de 44 px au minimum, zones sûres et réduction des transitions selon les préférences système.
 - Les menus de réglages conservent une boîte de dialogue dédiée.
+
+## Limites à lever avant mise en ligne
 
 - Le script `scripts/check-v1-core.mjs` est préparé mais **n'a pas terminé un parcours automatisé** : le navigateur Playwright n'est pas installé et le lancement de Chrome depuis le processus de test s'arrête avec `SIGABRT` dans cet environnement. Vérifier les parcours automatisés dans un environnement disposant de son navigateur de test.
 - La session Chrome existante remonte des rejets répétés de listener asynchrone / canal de message. Le jeu a continué à fonctionner ; leur origine n'a pas été isolée dans une session sans extensions. Ne pas considérer cette vérification manuelle comme une preuve d'absence de toutes les erreurs navigateur.

@@ -283,10 +283,10 @@ function openActions(it: Interactable) {
 function openBeat(beat: Beat) {
   const who = castById(beat.npc)!;
   mode = 'menu';
-  hud.openMenu(`${who.name} — ${beat.title}`, beat.text, beat.choices.map(ch => ({
+  hud.openContextActions(`${who.name} — ${beat.title}`, beat.text, beat.choices.map(ch => ({
     label: ch.label, onPick: () => {
       const notes = applyChoice(beat, ch, rel, state);
-      hud.openMenu(who.name, ch.reply, [{ label: 'Continuer', onPick: () => { hud.closeModal(); if (ch.effects.scene === 'celebration') startScene('celebration'); } }]);
+      hud.openContextActions(who.name, ch.reply, [{ label: 'Continuer', onPick: () => { hud.closeModal(); if (ch.effects.scene === 'celebration') startScene('celebration'); } }]);
       if (notes.length || ch.effects.money) hud.toast([...notes, ch.effects.money ? '+' + fcfa(ch.effects.money) : ''].filter(Boolean).join('  '));
       saveNow();
     },
@@ -423,7 +423,7 @@ const EMOTE_CLIP: Record<string, Clip> = { pas1: 'Dance_A', pas2: 'Dance_B', fet
 
 function openEmotes() {
   mode = 'menu';
-  hud.openMenu('Mbakkou', 'Mouvements provisoires — les pas, noms et gestes seront validés avec des pratiquants.', EMOTES.map(e => ({
+  hud.openContextActions('Mbakkou', 'Mouvements provisoires — les pas, noms et gestes seront validés avec des pratiquants.', EMOTES.map(e => ({
     label: e.label, detail: 'Non validé', onPick: () => { hud.closeModal(); playEmote(EMOTES.indexOf(e)); },
   })));
 }
@@ -477,7 +477,7 @@ function openTravel() {
     const poor = !state.canAfford(leg.cost);
     return { label: HUB_NAMES[h], detail: poor ? 'Pas assez d’argent' : `≈ ${leg.minutes} min de route`, right: fcfa(leg.cost), disabled: poor, onPick: () => { hud.closeModal(); doTravel(h); } };
   });
-  hud.openMenu('Car rapide', 'Où va-t-on ? Le trajet coûte de l’argent et un peu de fatigue.', items);
+  hud.openContextActions('Car rapide', 'Où va-t-on ? Le trajet coûte de l’argent et un peu de fatigue.', items);
 }
 
 function doTravel(dest: HubId) {
