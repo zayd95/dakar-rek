@@ -1,0 +1,1370 @@
+{
+  "date": "2026-10-08T01:35:05.814Z",
+  "environment": "local Chromium, desktop + touch viewport; not physical phones",
+  "transport": "route-backed local static build; no TCP server",
+  "base": "http://127.0.0.1:4173",
+  "results": [
+    {
+      "name": "desktop: revision absent before invitation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: refusal 1 has no rewards",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: refusal 2 has no rewards",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: invitation grants no session rewards",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: reply points to actual action",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: retained story opener cannot replace reply",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: retained reply cannot close another NPC menu",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: invitation persists through reload",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: another NPC has no revision action",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: low energy explains disabled action",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: disabled action gives no counter",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: detached stale menu cannot start activity",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: stale action cannot replace system menu",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: energy changed under menu prevents start",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: rewards absent during visible progress",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: interrupted activity available after reload",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: double click completes one activity",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: needs paid at completion",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: completed activity cannot replay through retained button",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: completed session persists, recognition available",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: recognition grants friendship/study once",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: stale references cannot replay rewards",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: recognized state persists with generic chat",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: generic chat still works",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: old completed save stays completed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: no browser exceptions",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: revision absent before invitation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: refusal 1 has no rewards",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: refusal 2 has no rewards",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: invitation grants no session rewards",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: reply points to actual action",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: retained story opener cannot replace reply",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: retained reply cannot close another NPC menu",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: invitation persists through reload",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: another NPC has no revision action",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: low energy explains disabled action",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: disabled action gives no counter",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: detached stale menu cannot start activity",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: stale action cannot replace system menu",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: energy changed under menu prevents start",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: rewards absent during visible progress",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: interrupted activity available after reload",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: double click completes one activity",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: needs paid at completion",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: completed activity cannot replay through retained button",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: completed session persists, recognition available",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: recognition grants friendship/study once",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: stale references cannot replay rewards",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: recognized state persists with generic chat",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: generic chat still works",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: old completed save stays completed",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "touch: no browser exceptions",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "snapshots": [
+    {
+      "label": "desktop",
+      "milestone": "before-refusal",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423200823,
+        "playedMs": 383.2999999999997,
+        "hub": "corniche",
+        "x": 27,
+        "z": 37,
+        "yaw": 3.891592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98977866666665,
+          "energie": 84.9942505,
+          "moral": 70.01433774923191,
+          "social": 59.994889333333326,
+          "hygiene": 79.99616699999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [],
+        "beats": {},
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "after-refusal",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423200823,
+        "playedMs": 383.2999999999997,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98977866666665,
+          "energie": 84.9942505,
+          "moral": 70.01433774923191,
+          "social": 59.994889333333326,
+          "hygiene": 79.99616699999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [],
+        "beats": {},
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "before-refusal",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423200823,
+        "playedMs": 383.2999999999997,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98977866666665,
+          "energie": 84.9942505,
+          "moral": 70.01433774923191,
+          "social": 59.994889333333326,
+          "hygiene": 79.99616699999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [],
+        "beats": {},
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "after-refusal",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423200823,
+        "playedMs": 383.2999999999997,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98977866666665,
+          "energie": 84.9942505,
+          "moral": 70.01433774923191,
+          "social": 59.994889333333326,
+          "hygiene": 79.99616699999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [],
+        "beats": {},
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "before-invitation",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423200823,
+        "playedMs": 383.2999999999997,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98977866666665,
+          "energie": 84.9942505,
+          "moral": 70.01433774923191,
+          "social": 59.994889333333326,
+          "hygiene": 79.99616699999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [],
+        "beats": {},
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "invited",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423200823,
+        "playedMs": 383.2999999999997,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98977866666665,
+          "energie": 84.9942505,
+          "moral": 70.01433774923191,
+          "social": 59.994889333333326,
+          "hygiene": 79.99616699999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "low-energy",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423209678,
+        "playedMs": 649.9999999999995,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98266666666665,
+          "energie": 5,
+          "moral": 70.02426768588221,
+          "social": 59.99133333333332,
+          "hygiene": 79.99349999999997
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "interrupted-progress",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423209678,
+        "playedMs": 933.1999999999985,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.97511466666664,
+          "energie": 29.998752,
+          "moral": 69.9958745935586,
+          "social": 59.98755733333332,
+          "hygiene": 79.99066799999996
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "after-interruption",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423225778,
+        "playedMs": 1166.4999999999986,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.9688933333333,
+          "energie": 29.9952525,
+          "moral": 69.97253713337093,
+          "social": 59.98444666666665,
+          "hygiene": 79.98833499999995
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "before-completion",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423225778,
+        "playedMs": 1166.4999999999986,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.9688933333333,
+          "energie": 29.9952525,
+          "moral": 69.97253713337093,
+          "social": 59.98444666666665,
+          "hygiene": 79.98833499999995
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "activity-completed",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423225778,
+        "playedMs": 2066.4999999999986,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.94489333333327,
+          "energie": 23.9817525,
+          "moral": 69.88292819693369,
+          "social": 71.97244666666663,
+          "hygiene": 79.9793349999999
+        },
+        "counters": {
+          "aida_revisions": 1,
+          "actions": 1
+        },
+        "rel": {
+          "aida|player": 1
+        },
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "completed-button-replayed",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423225778,
+        "playedMs": 2066.4999999999986,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.94489333333327,
+          "energie": 23.9817525,
+          "moral": 69.88292819693369,
+          "social": 71.97244666666663,
+          "hygiene": 79.9793349999999
+        },
+        "counters": {
+          "aida_revisions": 1,
+          "actions": 1
+        },
+        "rel": {
+          "aida|player": 1
+        },
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "recognized",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423232918,
+        "playedMs": 2299.7999999999984,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.93867199999993,
+          "energie": 23.978253,
+          "moral": 69.86330779788452,
+          "social": 71.96933599999996,
+          "hygiene": 79.9770019999999
+        },
+        "counters": {
+          "aida_revisions": 1,
+          "actions": 1,
+          "etudes": 1
+        },
+        "rel": {
+          "aida|player": 10
+        },
+        "flags": [
+          "aida_revision_invited",
+          "aida_friend"
+        ],
+        "beats": {
+          "aida_revise": "venir",
+          "aida_revised": "merci"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "stale-replayed",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423232918,
+        "playedMs": 2299.7999999999984,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.93867199999993,
+          "energie": 23.978253,
+          "moral": 69.86330779788452,
+          "social": 71.96933599999996,
+          "hygiene": 79.9770019999999
+        },
+        "counters": {
+          "aida_revisions": 1,
+          "actions": 1,
+          "etudes": 1
+        },
+        "rel": {
+          "aida|player": 10
+        },
+        "flags": [
+          "aida_revision_invited",
+          "aida_friend"
+        ],
+        "beats": {
+          "aida_revise": "venir",
+          "aida_revised": "merci"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "desktop",
+      "milestone": "legacy-completed",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "b490f10c-34d4-4fc2-bc98-760bacefb859",
+        "createdAt": 1791423200823,
+        "savedAt": 1791423250507,
+        "playedMs": 3516.499999999999,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.90622666666656,
+          "energie": 23.960002499999998,
+          "moral": 71.76157811487575,
+          "social": 79.95311333333328,
+          "hygiene": 79.96483499999987
+        },
+        "counters": {
+          "etudes": 1
+        },
+        "rel": {
+          "aida|player": 10
+        },
+        "flags": [
+          "aida_friend"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "before-refusal",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423255097,
+        "playedMs": 733.4000000000001,
+        "hub": "corniche",
+        "x": 27,
+        "z": 37,
+        "yaw": 3.891592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98044266666663,
+          "energie": 84.98899900000005,
+          "moral": 70.0273644820052,
+          "social": 59.99022133333332,
+          "hygiene": 79.99266599999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [],
+        "beats": {},
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "after-refusal",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423255097,
+        "playedMs": 733.4000000000001,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98044266666663,
+          "energie": 84.98899900000005,
+          "moral": 70.0273644820052,
+          "social": 59.99022133333332,
+          "hygiene": 79.99266599999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [],
+        "beats": {},
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "before-refusal",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423255097,
+        "playedMs": 733.4000000000001,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98044266666663,
+          "energie": 84.98899900000005,
+          "moral": 70.0273644820052,
+          "social": 59.99022133333332,
+          "hygiene": 79.99266599999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [],
+        "beats": {},
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "after-refusal",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423255097,
+        "playedMs": 733.4000000000001,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98044266666663,
+          "energie": 84.98899900000005,
+          "moral": 70.0273644820052,
+          "social": 59.99022133333332,
+          "hygiene": 79.99266599999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [],
+        "beats": {},
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "before-invitation",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423255097,
+        "playedMs": 733.4000000000001,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98044266666663,
+          "energie": 84.98899900000005,
+          "moral": 70.0273644820052,
+          "social": 59.99022133333332,
+          "hygiene": 79.99266599999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [],
+        "beats": {},
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "invited",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423255097,
+        "playedMs": 733.4000000000001,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.98044266666663,
+          "energie": 84.98899900000005,
+          "moral": 70.0273644820052,
+          "social": 59.99022133333332,
+          "hygiene": 79.99266599999999
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "low-energy",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423267159,
+        "playedMs": 983.4000000000001,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.97377599999996,
+          "energie": 5,
+          "moral": 70.0366269546567,
+          "social": 59.98688799999998,
+          "hygiene": 79.99016599999997
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "interrupted-progress",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423267159,
+        "playedMs": 1383.4,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.96310933333328,
+          "energie": 29.997,
+          "moral": 69.99647679566104,
+          "social": 59.98155466666664,
+          "hygiene": 79.98616599999995
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "after-interruption",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423281160,
+        "playedMs": 1650.1,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.95599733333327,
+          "energie": 29.9929995,
+          "moral": 69.96978367908878,
+          "social": 59.977998666666636,
+          "hygiene": 79.98349899999994
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "before-completion",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423281160,
+        "playedMs": 1650.1,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.95599733333327,
+          "energie": 29.9929995,
+          "moral": 69.96978367908878,
+          "social": 59.977998666666636,
+          "hygiene": 79.98349899999994
+        },
+        "counters": {},
+        "rel": {},
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "activity-completed",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423281160,
+        "playedMs": 3300,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.91199999999989,
+          "energie": 23.968251,
+          "moral": 69.80596443625458,
+          "social": 71.95599999999995,
+          "hygiene": 79.96699999999989
+        },
+        "counters": {
+          "aida_revisions": 1,
+          "actions": 1
+        },
+        "rel": {
+          "aida|player": 1
+        },
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "completed-button-replayed",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423281160,
+        "playedMs": 3300,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.91199999999989,
+          "energie": 23.968251,
+          "moral": 69.80596443625458,
+          "social": 71.95599999999995,
+          "hygiene": 79.96699999999989
+        },
+        "counters": {
+          "aida_revisions": 1,
+          "actions": 1
+        },
+        "rel": {
+          "aida|player": 1
+        },
+        "flags": [
+          "aida_revision_invited"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "recognized",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423287785,
+        "playedMs": 3533.1999999999994,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.90578133333321,
+          "energie": 23.964752999999998,
+          "moral": 69.78648826704975,
+          "social": 71.95289066666662,
+          "hygiene": 79.96466799999989
+        },
+        "counters": {
+          "aida_revisions": 1,
+          "actions": 1,
+          "etudes": 1
+        },
+        "rel": {
+          "aida|player": 10
+        },
+        "flags": [
+          "aida_revision_invited",
+          "aida_friend"
+        ],
+        "beats": {
+          "aida_revise": "venir",
+          "aida_revised": "merci"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "stale-replayed",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423287785,
+        "playedMs": 3533.1999999999994,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.90578133333321,
+          "energie": 23.964752999999998,
+          "moral": 69.78648826704975,
+          "social": 71.95289066666662,
+          "hygiene": 79.96466799999989
+        },
+        "counters": {
+          "aida_revisions": 1,
+          "actions": 1,
+          "etudes": 1
+        },
+        "rel": {
+          "aida|player": 10
+        },
+        "flags": [
+          "aida_revision_invited",
+          "aida_friend"
+        ],
+        "beats": {
+          "aida_revise": "venir",
+          "aida_revised": "merci"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    },
+    {
+      "label": "touch",
+      "milestone": "legacy-completed",
+      "data": {
+        "schemaVersion": 2,
+        "guestId": "0aa8c62f-9d8d-45a7-b242-cc7100aeb833",
+        "createdAt": 1791423255097,
+        "savedAt": 1791423303957,
+        "playedMs": 5300,
+        "hub": "corniche",
+        "x": -38,
+        "z": 6.5,
+        "yaw": 3.141592653589793,
+        "wallet": 3000,
+        "needs": {
+          "faim": 69.8586666666665,
+          "energie": 23.938250999999998,
+          "moral": 71.6401065629839,
+          "social": 79.92933333333326,
+          "hygiene": 79.94699999999983
+        },
+        "counters": {
+          "etudes": 1
+        },
+        "rel": {
+          "aida|player": 10
+        },
+        "flags": [
+          "aida_friend"
+        ],
+        "beats": {
+          "aida_revise": "venir"
+        },
+        "wrestler": {
+          "ngembColor": "blanc",
+          "ngembPattern": "uni",
+          "accessories": []
+        }
+      }
+    }
+  ]
+}

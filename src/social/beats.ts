@@ -119,11 +119,19 @@ export const BEATS: Beat[] = [
   },
   {
     id: 'aida_revise', npc: 'aida', title: 'Réviser ensemble', hint: 'Aïda, au café Touba de Fann, prépare ses examens.',
-    text: 'On révise en groupe ce soir à la bibliothèque de l’UCAD. Tu veux venir ? Il y a toujours du café.',
-    when: () => true,
+    text: 'Je prépare mes examens. On peut réviser un moment ici, au café. Tu veux te joindre à moi ?',
+    when: r => !r.has('aida_friend'),
     choices: [
-      { id: 'venir', label: 'Je viens', reply: 'Super, on se retrouve ici après le cours.', effects: { rel: [[P, 'aida', 10]], needs: { social: 12, energie: -6 }, counter: 'etudes', flags: ['aida_friend'] } },
-      { id: 'non', label: 'Pas ce soir', reply: 'Une autre fois !', effects: { rel: [[P, 'aida', 1]] }, completes: false },
+      { id: 'venir', label: 'Je viens', reply: 'Super ! Ferme cette fenêtre, puis choisis « Réviser avec Aïda » dans mon menu pour commencer.', effects: { flags: ['aida_revision_invited'] } },
+      { id: 'non', label: 'Une autre fois', reply: 'Une autre fois !', effects: {}, completes: false },
+    ],
+  },
+  {
+    id: 'aida_revised', npc: 'aida', title: 'Une séance ensemble', hint: 'La séance est terminée : reparle à Aïda au café de Fann.',
+    text: 'Merci d’avoir révisé avec moi. Expliquer les exercices à quelqu’un m’aide à y voir plus clair !',
+    when: (r, s) => r.has('aida_revision_invited') && !r.has('aida_friend') && (s.data.counters.aida_revisions ?? 0) >= 1,
+    choices: [
+      { id: 'merci', label: 'À bientôt, Aïda', reply: 'À bientôt ! On pourra aussi prendre des nouvelles.', effects: { rel: [[P, 'aida', 9]], counter: 'etudes', flags: ['aida_friend'] } },
     ],
   },
   {
@@ -155,6 +163,9 @@ export function suggestion(r: Relations, s: GameState): Beat | null {
 }
 
 export function applyChoice(beat: Beat, choice: Choice, r: Relations, s: GameState): string[] {
+  // The old invitation ID remains valid, but stale choices and completed saves
+  // cannot replay rewards or skip Aïda's revision activity.
+  if (beat.npc === 'aida' && (r.beatDone(beat.id) || !beat.when(r, s) || !beat.choices.includes(choice))) return [];
   const e = choice.effects, notes: string[] = [];
   for (const [a, b, d] of e.rel ?? []) {
     r.change(a, b, d);

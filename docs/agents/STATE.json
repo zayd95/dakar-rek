@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-08T01:44:42.444869+00:00",
+  "project": "Dakar Rek",
+  "candidate": {
+    "branch": "codex/aida-revision-activity",
+    "sourceCommit": "9b0789277807a0a3008fa75b9e4fc31c63451400",
+    "baseCommit": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7",
+    "pullRequest": 7,
+    "delivery": "draft PR; not merged or deployed"
+  },
+  "protectedRefs": {
+    "main": "547bb1e8077127094a3fc647821cf6ac73d2a42c",
+    "wip/visual-pass": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7",
+    "codex/launch-controls": "6216bb80db6bb7d777997e70d1681fa71240b057"
+  },
+  "tasks": [
+    {
+      "id": "DKAG-004",
+      "status": "done",
+      "scope": "verified isolated candidate",
+      "owner": "dakar_aida_implementation",
+      "reviewer": "dakar_aida_qa",
+      "openItem": "observe remote CI completion"
+    },
+    {
+      "id": "DKAG-005",
+      "status": "blocked",
+      "scope": "authenticated active-version attestation only",
+      "report": "ready, independently reviewed",
+      "owner": "dakar_deployment_attestation",
+      "blocker": "No authenticated Cloudflare tool exposed"
+    }
+  ],
+  "fileReservations": [],
+  "bootstrap": {
+    "pullRequest": 6,
+    "status": "draft; profiles and briefs available; no persistent AI runner installed"
+  },
+  "runtimeChanges": {
+    "production": false,
+    "claudeBranch": false,
+    "cloudflareConfig": false,
+    "unattendedAgentService": false
+  },
+  "culturalValidation": "unverified",
+  "ciSnapshot": {
+    "sourceRuns": [
+      37713605951,
+      37713634150
+    ],
+    "status": "in_progress",
+    "passedSteps": [
+      "npm ci",
+      "unit tests",
+      "server typecheck",
+      "build",
+      "browser install",
+      "online checks"
+    ],
+    "pending": "full launch runner and artifact upload"
+  }
+}

@@ -4,11 +4,99 @@ import { newSave, migrate, SCHEMA_VERSION } from '../src/core/save';
 import { Relations, PLAYER } from '../src/social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice } from '../src/social/beats';
 import { CAST, START_LINKS } from '../src/social/cast';
+import { ACTIONS, AIDA_REVISION, completeAidaRevision } from '../src/world/content';
 
 const fresh = () => { const s = new GameState(newSave(0)); return { s, r: new Relations(s.data) }; };
 const play = (r: Relations, s: GameState, id: string, choice: string) => {
   const b = BEATS.find(x => x.id === id)!; return applyChoice(b, b.choices.find(c => c.id === choice)!, r, s);
 };
+
+describe('Aïda revision activity', () => {
+  it('a promise grants no session rewards; activity and recognition grant them once', () => {
+    const { s, r } = fresh();
+    const before = JSON.parse(JSON.stringify(s.data));
+    expect(AIDA_REVISION.visible!(s)).toBe(false);
+    expect(completeAidaRevision(s)).toBe(false);
+    expect(availableBeat('aida', r, s)?.id).toBe('aida_revise');
+    play(r, s, 'aida_revised', 'merci');
+    expect(s.data.flags).not.toContain('aida_friend');
+    play(r, s, 'aida_revise', 'venir');
+    expect(s.data.flags).toContain('aida_revision_invited');
+    expect(s.data.needs).toEqual(before.needs);
+    expect(r.level('aida')).toBe(0);
+    expect(s.data.counters).toEqual({});
+    expect(availableBeat('aida', r, s)).toBeNull();
+    expect(AIDA_REVISION.visible!(s)).toBe(true);
+    expect(AIDA_REVISION.requires!(s)).toBeNull();
+    expect(completeAidaRevision(s)).toBe(true);
+    expect(s.data.needs.social).toBe(before.needs.social + 12);
+    expect(s.data.needs.energie).toBe(before.needs.energie - 6);
+    expect(s.data.counters).toEqual({ aida_revisions: 1, actions: 1 });
+    expect(r.level('aida')).toBe(1);
+    expect(s.data.flags).not.toContain('aida_friend');
+    expect(AIDA_REVISION.visible!(s)).toBe(false);
+    expect(availableBeat('aida', r, s)?.id).toBe('aida_revised');
+    play(r, s, 'aida_revised', 'merci');
+    expect(s.data.flags).toContain('aida_friend');
+    expect(s.data.counters.etudes).toBe(1);
+    expect(r.level('aida')).toBe(10);
+    const completed = JSON.stringify(s.data);
+    play(r, s, 'aida_revise', 'venir');
+    play(r, s, 'aida_revised', 'merci');
+    expect(completeAidaRevision(s)).toBe(false);
+    expect(JSON.stringify(s.data)).toBe(completed);
+    expect(availableBeat('aida', r, s)).toBeNull();
+  });
+  it('repeated refusal changes nothing and leaves the invitation available', () => {
+    const { s, r } = fresh(), before = JSON.stringify(s.data);
+    for (let i = 0; i < 5; i++) play(r, s, 'aida_revise', 'non');
+    expect(JSON.stringify(s.data)).toBe(before);
+    expect(availableBeat('aida', r, s)?.id).toBe('aida_revise');
+    expect(AIDA_REVISION.visible!(s)).toBe(false);
+  });
+  it('energy is a start prerequisite and the activity belongs only to Aïda', () => {
+    const { s, r } = fresh();
+    play(r, s, 'aida_revise', 'venir');
+    s.data.needs.energie = 5.99;
+    expect(AIDA_REVISION.requires!(s)).toContain('6');
+    s.data.needs.energie = 6;
+    expect(AIDA_REVISION.requires!(s)).toBeNull();
+    expect(AIDA_REVISION.seconds).toBe(4);
+    for (const [owner, actions] of Object.entries(ACTIONS)) expect(actions.some(a => a.id === AIDA_REVISION.id)).toBe(owner === 'aida');
+    // Natural drain while busy does not invalidate a session started at 6.
+    s.tick(4000);
+    expect(completeAidaRevision(s)).toBe(true);
+    expect(s.data.needs.energie).toBe(0);
+  });
+  it('all three explicit milestones survive reload without replaying rewards', () => {
+    let { s, r } = fresh();
+    const reload = () => { s = new GameState(migrate(JSON.parse(JSON.stringify(s.data)))!); r = new Relations(s.data); };
+    play(r, s, 'aida_revise', 'venir'); reload();
+    expect(AIDA_REVISION.visible!(s)).toBe(true);
+    expect(s.data.counters.aida_revisions).toBeUndefined();
+    completeAidaRevision(s); reload();
+    expect(AIDA_REVISION.visible!(s)).toBe(false);
+    expect(availableBeat('aida', r, s)?.id).toBe('aida_revised');
+    expect(completeAidaRevision(s)).toBe(false);
+    play(r, s, 'aida_revised', 'merci'); reload();
+    const before = JSON.stringify(s.data);
+    play(r, s, 'aida_revised', 'merci');
+    expect(JSON.stringify(s.data)).toBe(before);
+    expect(s.data.counters.etudes).toBe(1);
+  });
+  it('old completed saves remain completed without retroactive rewards', () => {
+    const { s, r } = fresh();
+    s.data.beats.aida_revise = 'venir'; s.data.flags.push('aida_friend');
+    s.data.counters.etudes = 1; r.change(PLAYER, 'aida', 10);
+    const restored = new GameState(migrate(JSON.parse(JSON.stringify(s.data)))!);
+    const rr = new Relations(restored.data), before = JSON.stringify(restored.data);
+    expect(availableBeat('aida', rr, restored)).toBeNull();
+    expect(AIDA_REVISION.visible!(restored)).toBe(false);
+    expect(completeAidaRevision(restored)).toBe(false);
+    play(rr, restored, 'aida_revised', 'merci');
+    expect(JSON.stringify(restored.data)).toBe(before);
+  });
+});
 
 describe('cast and links', () => {
   it('every beat and link refers to a cast member, every hub has someone', () => {
