@@ -151,6 +151,16 @@ export const BEATS: Beat[] = [
       { id: 'non', label: 'Je ne peux pas ce soir', reply: 'Dommage. Reviens si tu veux du travail.', effects: {}, completes: false },
     ],
   },
+  {
+    id: 'ibou_modou_followup', npc: 'ibou', title: 'Des nouvelles de Modou',
+    hint: 'Tu peux donner des nouvelles à Tonton Ibou, devant ta chambre à Pikine.',
+    text: 'Tu as pu parler avec Modou ?',
+    when: r => r.beatDone('ibou_welcome') && r.has('modou_trust') && !r.has('ibou_modou_followup'),
+    choices: [
+      { id: 'merci', label: 'Merci pour la recommandation', reply: 'Content que vous ayez pu parler. Pour la suite, vois directement avec lui.', effects: { rel: [[P, 'ibou', 2]], flags: ['ibou_modou_followup'] } },
+      { id: 'plus_tard', label: 'Je te raconterai plus tard', reply: 'D’accord, on en reparlera.', effects: {}, completes: false },
+    ],
+  },
 ];
 
 export function availableBeat(npc: string, r: Relations, s: GameState): Beat | null {
@@ -163,6 +173,12 @@ export function suggestion(r: Relations, s: GameState): Beat | null {
 }
 
 export function applyChoice(beat: Beat, choice: Choice, r: Relations, s: GameState): string[] {
+  // This optional return must not reward stale or foreign choices, including
+  // direct callers that do not pass through the UI's interaction-version guard.
+  if (beat.id === 'ibou_modou_followup') {
+    const authored = BEATS.find(b => b.id === 'ibou_modou_followup')!;
+    if (beat !== authored || r.beatDone(beat.id) || !authored.when(r, s) || !authored.choices.includes(choice)) return [];
+  }
   // The old invitation ID remains valid, but stale choices and completed saves
   // cannot replay rewards or skip Aïda's revision activity.
   if (beat.npc === 'aida' && (r.beatDone(beat.id) || !beat.when(r, s) || !beat.choices.includes(choice))) return [];
