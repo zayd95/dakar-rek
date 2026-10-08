@@ -10,7 +10,7 @@ export class PresenceClient {
   private socket: WebSocket | null = null;
   private hub: HubId | null = null;
   private requestedRoom: number | null = null;
-  private retry = 0; private heartbeat = 0; private retryAttempt = 0; private generation = 0;
+  private retry = 0; private handshake = 0; private heartbeat = 0; private retryAttempt = 0; private generation = 0;
   private lastSentAt = 0; private lastMove = ''; private latest: Move | null = null; private clockOffset = 0;
   private lastPong = 0;
   constructor(public profile: Profile, private enabled: boolean, private endpoint?: string) {
@@ -49,12 +49,17 @@ export class PresenceClient {
     let ws: WebSocket;
     try { ws = new WebSocket(url); } catch { this.scheduleRetry(); return; }
     this.socket = ws;
+    // Bound both transport establishment and the server's welcome response.
+    this.handshake = window.setTimeout(() => {
+      if (generation === this.generation && this.socket === ws) this.scheduleRetry();
+    }, 8000);
     ws.onmessage = event => {
       if (generation !== this.generation) return;
       if (event.data === 'pong') { this.lastPong = Date.now(); return; }
       let message: ServerMessage; try { message = JSON.parse(event.data as string) as ServerMessage; } catch { return; }
       if (message.type === 'welcome') {
         if (message.version !== PROTOCOL_VERSION || message.hub !== this.hub) { this.stopSocket(); this.setStatus('offline'); return; }
+        clearTimeout(this.handshake); this.handshake = 0;
         this.id = message.id; this.room = message.room; this.count = message.count; this.clockOffset = message.time - Date.now();
         this.retryAttempt = 0; this.lastMove = ''; this.lastSentAt = -Infinity; this.lastPong = Date.now();
         for (const peer of message.peers) if (peer.id !== this.id) this.peers.set(peer.id, peer);
@@ -80,7 +85,7 @@ export class PresenceClient {
     this.retry = window.setTimeout(() => this.open(), delay);
   }
   private stopSocket() {
-    this.generation++; clearTimeout(this.retry); clearInterval(this.heartbeat); this.retry = this.heartbeat = 0;
+    this.generation++; clearTimeout(this.retry); clearTimeout(this.handshake); clearInterval(this.heartbeat); this.retry = this.handshake = this.heartbeat = 0;
     if (this.socket) { this.socket.onclose = null; this.socket.close(); this.socket = null; }
     this.peers.clear(); this.id = ''; this.count = 0; this.room = 0; this.lastMove = ''; this.onChange();
   }
