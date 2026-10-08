@@ -32,7 +32,7 @@
  {
   "name": "delivery accepted at the pick-up point (parcel in hand)",
   "ok": true,
-  "extra": "{\"runId\":\"64af819a-1-2316\",\"routeId\":\"pk_mame_boutique\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1200,\"startedMs\":2316.500000000011,\"limitMs\":121116}"
+  "extra": "{\"runId\":\"09421365-1-2466\",\"routeId\":\"pk_mame_boutique\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1200,\"startedMs\":2466.600000000002,\"limitMs\":121116}"
  },
  {
   "name": "the city walking marker follows the parcel",
@@ -77,7 +77,7 @@
  {
   "name": "second run: complete twice → one payment",
   "ok": true,
-  "extra": "{\"runId\":\"64af819a-2-4116\",\"paid\":1000,\"late\":false,\"newClient\":null} null 5200"
+  "extra": "{\"runId\":\"09421365-2-4383\",\"paid\":1000,\"late\":false,\"newClient\":null} null 5200"
  },
  {
   "name": "cancel: no payment, no double effect",
@@ -87,7 +87,7 @@
  {
   "name": "ledger records the deliveries (newest first)",
   "ok": true,
-  "extra": "[{\"at\":1791499357660,\"label\":\"Livraison Tiak Tiak → Salon Awa\",\"amount\":1000},{\"at\":1791499346834,\"label\":\"Livraison Tiak Tiak → Boutique Diallo\",\"amount\":1200}]"
+  "extra": "[{\"at\":1791500150478,\"label\":\"Livraison Tiak Tiak → Salon Awa\",\"amount\":1000},{\"at\":1791500143969,\"label\":\"Livraison Tiak Tiak → Boutique Diallo\",\"amount\":1200}]"
  },
  {
   "name": "jobs app lists Tiak Tiak offers and the city’s paid services",
@@ -107,7 +107,7 @@
  {
   "name": "a city service (Boutique Diallo stock) is in the ledger",
   "ok": true,
-  "extra": "{\"at\":1791499382731,\"label\":\"Aider à ranger le stock · Boutique Diallo\",\"amount\":1500}"
+  "extra": "{\"at\":1791500173937,\"label\":\"Aider à ranger le stock · Boutique Diallo\",\"amount\":1500}"
  },
  {
   "name": "Ibou’s delivery beat is suggested",
@@ -142,7 +142,7 @@
  {
   "name": "« Écouter la radio » raises the mood",
   "ok": true,
-  "extra": "74.0 → 84.0"
+  "extra": "74.1 → 84.1"
  },
  {
   "name": "all six items can be bought; the room refreshes while inside",
@@ -207,12 +207,12 @@
  {
   "name": "phone: accepted from the jobs app → pick-up stage",
   "ok": true,
-  "extra": "{\"runId\":\"64af819a-4-9933\",\"routeId\":\"pk_maiga_garage\",\"hub\":\"pikine\",\"stage\":\"pickup\",\"pay\":1100,\"startedMs\":9933.300000000016,\"limitMs\":0}"
+  "extra": "{\"runId\":\"09421365-4-9866\",\"routeId\":\"pk_maiga_garage\",\"hub\":\"pikine\",\"stage\":\"pickup\",\"pay\":1100,\"startedMs\":9866.6,\"limitMs\":0}"
  },
  {
   "name": "phone: walking to the pick-up point starts the delivery leg",
   "ok": true,
-  "extra": "{\"runId\":\"64af819a-4-9933\",\"routeId\":\"pk_maiga_garage\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1100,\"startedMs\":10266.600000000015,\"limitMs\":60000}"
+  "extra": "{\"runId\":\"09421365-4-9866\",\"routeId\":\"pk_maiga_garage\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1100,\"startedMs\":9966.6,\"limitMs\":60000}"
  },
  {
   "name": "phone: HUD line visible",
