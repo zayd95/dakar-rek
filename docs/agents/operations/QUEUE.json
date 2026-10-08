@@ -11,7 +11,8 @@
     "DKAG-014",
     "DKAG-005",
     "DKAG-015",
-    "DKAG-016"
+    "DKAG-016",
+    "DKAG-017"
   ],
   "tasks": [
     {
@@ -109,7 +110,7 @@
       "id": "DKAG-009",
       "role": "world",
       "kind": "compatibility_review",
-      "status": "active",
+      "status": "done",
       "owner": "world_resume_1655",
       "inputs": [
         {
@@ -128,13 +129,14 @@
       ],
       "output": "docs/agents/operations/reports/DKAG-009-world.md",
       "dependencies": [],
-      "ownerState": "assigned",
+      "ownerState": "completed report handoff",
       "branch": "codex/agent-studio-active",
       "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-009-world.md"
       ],
-      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e"
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
     },
     {
       "id": "DKAG-010",
@@ -164,7 +166,7 @@
       "id": "DKAG-011",
       "role": "characters",
       "kind": "design",
-      "status": "active",
+      "status": "done",
       "inputs": [
         {
           "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -183,19 +185,20 @@
       "output": "docs/agents/operations/reports/DKAG-011-characters.md",
       "dependencies": [],
       "owner": "characters_resume_1655",
-      "ownerState": "assigned",
+      "ownerState": "completed report handoff",
       "branch": "codex/agent-studio-active",
       "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-011-characters.md"
       ],
-      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e"
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
     },
     {
       "id": "DKAG-012",
       "role": "animation",
       "kind": "asset_review",
-      "status": "active",
+      "status": "done",
       "inputs": [
         {
           "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -213,19 +216,20 @@
       "output": "docs/agents/operations/reports/DKAG-012-animation.md",
       "dependencies": [],
       "owner": "animation_resume_1655",
-      "ownerState": "assigned",
+      "ownerState": "completed report handoff",
       "branch": "codex/agent-studio-active",
       "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-012-animation.md"
       ],
-      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e"
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
     },
     {
       "id": "DKAG-013",
       "role": "culture",
       "kind": "provenance_review",
-      "status": "active",
+      "status": "done",
       "inputs": [
         {
           "pr": 10,
@@ -244,13 +248,14 @@
       "output": "docs/agents/operations/reports/DKAG-013-culture.md",
       "dependencies": [],
       "owner": "culture_resume_1655",
-      "ownerState": "assigned",
+      "ownerState": "completed report handoff",
       "branch": "codex/agent-studio-active",
       "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-013-culture.md"
       ],
-      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e"
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
     },
     {
       "id": "DKAG-014",
@@ -331,6 +336,31 @@
       ],
       "culturalStatus": "fictional French dialogue unverified",
       "decision": "Only beats.ts and tests/social.test.ts modified game sources; disjoint from active combat. Single active code rule remains; dispatch only after combat author handoff."
+    },
+    {
+      "id": "DKAG-017",
+      "role": "animation",
+      "kind": "implementation",
+      "status": "ready",
+      "branch": "codex/agents/dkag-017-fall-one-shot",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "allowedFiles": [
+        "src/actors/humanoid.ts",
+        "tests/humanoid-animation.test.ts",
+        "scripts/check-fall-animation.mjs",
+        "docs/agents/reports/DKAG-017-animation.md"
+      ],
+      "dependencies": [],
+      "authority": "Producer commissions generic one-shot Fall_Back playback for provisional lamb; no changes to combat outcomes, phases, rig, assets, other clips, packages or workflows",
+      "acceptance": [
+        "Fall_Back plays once and clamps finished action; final pose stable beyond 0.6s through result duration",
+        "Returning Stance then Fall_Back restarts action correctly",
+        "Stance Grab Celebrate retain looping behavior, no save/economy/network changes",
+        "Deterministic mixer regression tests and exact-source build/unit/CI independent QA",
+        "Playback with existing exported asset and both duel outcomes if feasible; disclose static metadata versus visual checks"
+      ],
+      "basis": "DKAG-012 actual clip0.6s looping +0.71mY/+0.90mZ root jump",
+      "decision": "Separate humanoid.ts-only fix, no duel.ts ownership conflict; one active code task remains."
     }
   ]
 }

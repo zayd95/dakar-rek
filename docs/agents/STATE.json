@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08T16:55:00Z",
+  "updatedAt": "2026-10-08T17:02:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_scheduler_enabled",
@@ -36,42 +36,6 @@
       "baseCommit": "3ceaf4ab236abf474669b86cea2934be439ac27e",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-008-combat-review.md"
-      ]
-    },
-    {
-      "task": "DKAG-009",
-      "owner": "world_resume_1655",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-009-world.md"
-      ]
-    },
-    {
-      "task": "DKAG-011",
-      "owner": "characters_resume_1655",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-011-characters.md"
-      ]
-    },
-    {
-      "task": "DKAG-012",
-      "owner": "animation_resume_1655",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-012-animation.md"
-      ]
-    },
-    {
-      "task": "DKAG-013",
-      "owner": "culture_resume_1655",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-013-culture.md"
       ]
     }
   ],
@@ -148,7 +112,11 @@
     "DKAG-004",
     "DKAG-010",
     "DKAG-007",
-    "DKAG-014"
+    "DKAG-014",
+    "DKAG-009",
+    "DKAG-011",
+    "DKAG-012",
+    "DKAG-013"
   ],
   "ci": {
     "aidaCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -176,16 +144,10 @@
     "claudeNativeLoadVerified": false
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [
-    "DKAG-009"
-  ],
+  "reviewTasks": [],
   "activeSessions": [
     "combat_resume_1655",
-    "qa_resume_1655",
-    "world_resume_1655",
-    "characters_resume_1655",
-    "animation_resume_1655",
-    "culture_resume_1655"
+    "qa_resume_1655"
   ],
   "completedSessions": [
     "activation_producer",
@@ -193,7 +155,11 @@
     "activation_network",
     "activation_network_qa",
     "activation_world",
-    "activation_gameplay"
+    "activation_gameplay",
+    "world_resume_1655",
+    "characters_resume_1655",
+    "animation_resume_1655",
+    "culture_resume_1655"
   ],
   "nextAction": "Coordinator takes the next isolated cycle from durable queue; combat DKAG-008 ready. Current chat remains usable independently of scheduler.",
   "externalReservations": {
