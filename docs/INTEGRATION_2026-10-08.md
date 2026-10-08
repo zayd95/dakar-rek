@@ -48,6 +48,7 @@ lot Higgsfield 3. Aucun travail n'a été écrasé : les conflits (surtout `src/
 | `npm run check:online` (runtime Workers local, deux clients) | 17/17 |
 | `npm run check:chat` | 30/30 |
 | `npm run check:city` | 37/37 (bureau et téléphone) |
+| `npm run check:launch` (contrôles de lancement + suite gameplay complète, bureau et téléphone, dont le combat de làmb, le voyage et la sauvegarde v3) | réussi, 0 échec |
 
 La machine était très chargée pendant le travail parallèle (charge 12–16 sur 4 cœurs, moins d'une image par seconde en
 rendu logiciel) : certains délais fixes des contrôles (marche dans le mall de `check:city`, attente « en ligne » de
