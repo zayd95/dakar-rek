@@ -75,6 +75,7 @@ try {
     await page.getByRole('button', { name: 'Fermer', exact: true }).click();
   }
   check('five total advertising slots', total === 5);
+  await context.close();
 
   // Mobile campaign fixture only: never ship an invented advertiser.
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
@@ -85,19 +86,25 @@ try {
   const phone = await mobile.newPage(); phone.on('pageerror', e => errors.push(e.message));
   let manifest = { schemaVersion: 1, campaigns: [{ id: 'browser-fixture', slot: 'pikine-arena', approved: true, status: 'active', sponsor: 'Commerce test', headline: 'Annonce de test', message: 'Exemple de campagne pour vérifier le panneau.', startsAt: new Date(Date.now() - 60000).toISOString(), endsAt: new Date(Date.now() + 300000).toISOString(), background: '#123f39', foreground: '#fff1ce', url: 'https://example.com/' }] };
   await phone.route('**/ad-campaigns.json', route => route.fulfill({ json: manifest }));
+  const campaignResponse = phone.waitForResponse(r => r.url().endsWith('/ad-campaigns.json') && r.status() === 200);
   await phone.goto(`${base}?debug&touch&hub=pikine`);
   await phone.waitForFunction(() => window.__dakar?.interactables().length > 0);
+  await campaignResponse;
+  await phone.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await phone.evaluate(() => window.__dakar.setHour(12));
   const arena = await phone.evaluate(() => window.__dakar.interactables().find(i => i.id.endsWith('pikine-arena')));
   await phone.evaluate(b => window.__dakar.place(b.x, b.z, 0), arena);
+  await phone.waitForFunction(() => window.__dakar.nearestInteractable() === 'Annonces · arène');
   await phone.waitForTimeout(1500); await phone.locator('#act').tap();
+  await phone.locator('#modal.context.on').waitFor({ state: 'visible' });
+  console.log('Mobile sponsored choices:', await phone.locator('#modal').textContent());
+  await phone.screenshot({ path: `${evidence}/advertising-mobile.png` });
   check('mobile sponsor menu identifies sponsored content', (await phone.locator('#modal').textContent()).includes('Publicité · Commerce test'));
   check('mobile sponsor menu exposes explicit external link', await phone.getByRole('button', { name: /^Ouvrir le site de l’annonceur/ }).count() === 1);
   const phoneDock = await phone.locator('#modal.context .panel').boundingBox();
   check('mobile choices remain compact and inside the viewport', !!phoneDock && phoneDock.height <= 240 && phoneDock.x >= 0 && phoneDock.x + phoneDock.width <= 390 && phoneDock.y + phoneDock.height <= 844);
   const closeTarget = await phone.getByRole('button', { name: 'Fermer', exact: true }).boundingBox();
   check('mobile close control has a 44 pixel touch target', !!closeTarget && closeTarget.width >= 44 && closeTarget.height >= 44);
-  await phone.screenshot({ path: `${evidence}/advertising-mobile.png` });
   // Replace the manifest and advance polling time; already-open stale links must be revalidated.
   manifest = { schemaVersion: 1, campaigns: [] };
   await phone.evaluate(() => { window.__timeOffset = 61000; }); await phone.waitForTimeout(1600);
@@ -106,6 +113,7 @@ try {
   await phone.waitForTimeout(300);
   check('removed campaign cannot open a stale sponsor link', popups === 0);
   await phone.locator('#act').tap();
+  await phone.locator('#modal.context.on').waitFor({ state: 'visible' });
   check('removed campaign returns to available slot', (await phone.locator('#modal').textContent()).includes('disponible'));
   await phone.getByRole('button', { name: 'Fermer', exact: true }).tap();
   check('detailed needs are collapsed during play', await phone.locator('#needDetails').isHidden());
