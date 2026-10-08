@@ -1,0 +1,72 @@
+/* In-game phone (src/ui/phone.ts). Neutral, fictional device: no real brand. */
+#phone { position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center;
+  padding:max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background:rgba(2,6,23,.32); }
+#phone.on { display:flex; }
+#phone .ph-device { position:relative; display:flex; flex-direction:column; width:min(380px, 100%); height:min(760px, 100%);
+  background:linear-gradient(180deg,#14213d 0%,#0d1629 55%,#0b1222 100%); border:3px solid #26324d; border-radius:34px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.06) inset, 0 24px 60px rgba(0,0,0,.55); overflow:hidden; animation:phIn .14s ease-out; }
+@keyframes phIn { from { transform:translateY(18px) scale(.97); opacity:0; } to { transform:none; opacity:1; } }
+.ph-status { display:flex; justify-content:space-between; align-items:center; padding:12px 22px 4px; font:700 12.5px var(--font); color:#e2e8f0; font-variant-numeric:tabular-nums; }
+.ph-money { color:var(--gold); }
+.ph-head { padding:4px 20px 8px; }
+.ph-head h2 { margin:0; font-size:19px; letter-spacing:.2px; }
+#phone[data-screen="home"] .ph-head { display:none; }
+.ph-screen { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; padding:4px 18px 16px; }
+.ph-screen h3 { margin:16px 0 4px; font-size:11.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.6px; }
+.ph-screen h3:first-child { margin-top:4px; }
+.ph-note { margin:6px 0; font-size:12px; line-height:1.45; color:#94a3b8; }
+.ph-note.warn { color:#fbbf24; }
+.ph-sub { margin:0 0 6px; font-size:12px; color:#94a3b8; }
+.ph-nav { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px 12px 12px; border-top:1px solid var(--line); background:rgba(0,0,0,.18); }
+.ph-nav button { min-height:44px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:#e2e8f0; font:600 13px var(--font); cursor:pointer; }
+.ph-nav button:disabled { opacity:.35; cursor:default; }
+.ph-nav [data-nav="close"] { background:var(--gold); color:#1f2937; border-color:transparent; font-weight:800; }
+.ph-widget { margin:6px 0 16px; padding:14px; border-radius:18px; background:rgba(255,255,255,.07); border:1px solid var(--line); }
+.ph-widget b { display:block; font-size:16px; }
+.ph-widget small { display:block; margin-top:4px; font-size:12.5px; color:#fde68a; line-height:1.4; }
+.ph-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px 6px; }
+.ph-app { display:flex; flex-direction:column; align-items:center; gap:6px; padding:0; border:0; background:none; color:#e2e8f0; font:600 11px/1.2 var(--font); text-align:center; cursor:pointer; }
+.ph-app i { display:grid; place-items:center; width:56px; height:56px; border-radius:17px; box-shadow:0 4px 12px rgba(0,0,0,.35); }
+.ph-app svg { width:28px; height:28px; fill:none; stroke:#fff; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.ph-app:active i { transform:scale(.94); }
+.ph-btn { display:block; width:100%; margin-top:8px; padding:13px 14px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:#fff; font:600 14px var(--font); text-align:left; cursor:pointer; }
+.ph-btn small { display:block; margin-top:2px; font-weight:500; font-size:11.5px; color:#94a3b8; }
+.ph-btn.danger { background:#b91c1c; border-color:transparent; text-align:center; }
+.ph-toggle { display:flex; justify-content:space-between; align-items:center; width:100%; padding:13px 14px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:#fff; font:600 14px var(--font); cursor:pointer; }
+.ph-toggle em { font-style:normal; font-size:12px; padding:4px 10px; border-radius:20px; background:rgba(255,255,255,.12); color:#cbd5e1; }
+.ph-toggle.on em { background:var(--green); color:#052e16; }
+#phone .seg button { min-height:42px; }
+.ph-balance { margin:6px 0 4px; padding:16px; border-radius:18px; background:linear-gradient(135deg,#78350f,#b45309); }
+.ph-balance small { display:block; font-size:12px; color:#fde68a; }
+.ph-balance b { display:block; font-size:30px; margin:2px 0; font-variant-numeric:tabular-nums; }
+.ph-balance span { font-size:11.5px; color:#fef3c7; }
+.ph-rows { display:grid; gap:1px; border-radius:12px; overflow:hidden; background:var(--line); }
+.ph-rows > div { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; background:#111c33; font-size:13px; }
+.ph-rows em { font-style:normal; color:#cbd5e1; text-align:right; font-size:12.5px; }
+.ph-rows em.pos { color:var(--green); font-weight:700; } .ph-rows em.neg { color:var(--red); font-weight:700; }
+.ph-rows small { display:block; color:#64748b; font-size:11px; }
+.ph-hub { margin-top:10px; padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.05); border:1px solid var(--line); }
+.ph-hub.here { border-color:var(--gold); background:rgba(251,191,36,.1); }
+.ph-hub header { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.ph-hub header em { font-style:normal; font-size:11px; font-weight:800; color:#1f2937; background:var(--gold); padding:2px 8px; border-radius:10px; }
+.ph-hub header small { font-size:11.5px; color:#94a3b8; white-space:nowrap; }
+.ph-hub ul { margin:6px 0 0; padding-left:18px; font-size:12.5px; color:#cbd5e1; line-height:1.55; }
+.ph-journal .kv { margin-top:2px; }
+
+/* Small portrait phones: nearly full screen, still a rounded device. */
+@media (max-width:480px) and (orientation:portrait) {
+  #phone { padding:max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); }
+  #phone .ph-device { width:100%; height:100%; border-radius:28px; }
+}
+/* Landscape phones: a wide device so nothing is cramped. */
+@media (orientation:landscape) and (max-height:560px) {
+  #phone { padding:8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left)); }
+  #phone .ph-device { width:min(760px, 100%); height:100%; border-radius:24px; }
+  .ph-status { padding-top:8px; }
+  .ph-head { padding-bottom:4px; } .ph-head h2 { font-size:16px; }
+  .ph-grid { grid-template-columns:repeat(6,1fr); gap:12px 6px; }
+  .ph-widget { margin:4px 0 10px; padding:10px 12px; }
+  .ph-nav { padding:6px 10px 8px; } .ph-nav button { min-height:38px; }
+}
+@media (prefers-reduced-motion:reduce) { #phone .ph-device { animation:none; } }

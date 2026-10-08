@@ -44,7 +44,9 @@ export class Input {
     return l > 1 ? { x: x / l, y: y / l } : { x, y };
   }
   rotateKey(): number { return (this.keys.has('KeyQ') ? 1 : 0) - (this.keys.has('KeyR') ? 1 : 0); }
-  takeDrag() { const d = { yaw: this.dragYaw, pitch: this.dragPitch }; this.dragYaw = 0; this.dragPitch = 0; return d; }
+  /** Camera drag sensitivity (phone › Réglages): scales mouse and touch drags. */
+  sensitivity = 1;
+  takeDrag() { const d = { yaw: this.dragYaw * this.sensitivity, pitch: this.dragPitch * this.sensitivity }; this.dragYaw = 0; this.dragPitch = 0; return d; }
   takeAction() { const a = this.actionPressed; this.actionPressed = false; return a; }
   takeMenu() { const a = this.menuPressed; this.menuPressed = false; return a; }
 }
