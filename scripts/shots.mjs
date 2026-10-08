@@ -47,9 +47,17 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => { window.__dakar.setHour(13); window.__dakar.teleport('pikine'); });
   await page.waitForTimeout(500);
   const a = await page.evaluate(() => window.__dakar.pos());
-  await page.keyboard.down('KeyW'); await page.waitForTimeout(3000); await page.keyboard.up('KeyW');
-  const b = await page.evaluate(() => window.__dakar.pos());
-  check('movement: W moves the character', Math.hypot(b.x - a.x, b.z - a.z) > 1, `moved ${Math.hypot(b.x - a.x, b.z - a.z).toFixed(1)}`);
+  // hold W until the character has walked a metre (wall clock, up to 12 s): a fixed 3 s hold measured the software
+  // renderer's frame rate on CI (0.6 m once, 1.7 m locally) rather than whether W moves the character
+  let moved = 0;
+  await page.keyboard.down('KeyW');
+  for (const t0 = Date.now(); moved <= 1 && Date.now() - t0 < 12000;) {
+    await page.waitForTimeout(400);
+    const b = await page.evaluate(() => window.__dakar.pos());
+    moved = Math.hypot(b.x - a.x, b.z - a.z);
+  }
+  await page.keyboard.up('KeyW');
+  check('movement: W moves the character', moved > 1, `moved ${moved.toFixed(1)}`);
   // walk into a wall for a long time: must stay inside the world and not tunnel
   await page.keyboard.down('KeyW'); await page.waitForTimeout(8000); await page.keyboard.up('KeyW');
   const c = await page.evaluate(() => window.__dakar.pos());
