@@ -1,6 +1,6 @@
-# Consigne prête du coordinateur
+# Consigne active du coordinateur
 
-Création bloquée : cinq tâches planifiées déjà actives sur le plan actuel. Ne pas annoncer une activation ou une exécution future. La libération d'une place doit être choisie par Habib; ne pas arrêter une veille existante sans sa décision.
+Activation confirmée le 8 octobre 2026 : cadence horaire, Africa/Dakar, après pause de la seule veille paiements Nattoo demandée par Habib. Le scheduler est enabled; une exécution autonome achevée doit être attestée séparément.
 
 Fais avancer réellement Dakar Rek avec l'équipe d'agents autorisée par Habib, sur des branches de développement isolées. Ce cycle est un cycle de réalisation et de QA, pas uniquement un résumé d'avancement.
 

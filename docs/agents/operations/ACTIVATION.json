@@ -9,27 +9,41 @@
   },
   "recurringCoordinator": {
     "requested": true,
-    "enabled": false,
-    "creationResult": {
-      "status": "ERROR",
-      "error_code": "too_many_active_automations",
-      "message": "Your current plan allows only 5 scheduled tasks.",
-      "user_message": "Your current plan allows only 5 scheduled tasks.",
-      "error_data": {
-        "current_count": 5,
-        "plan_limit": 5
-      }
-    },
-    "scheduleProposed": "BEGIN:VEVENT\nRRULE:FREQ=HOURLY\nEND:VEVENT",
+    "enabled": true,
+    "automationId": "6ac78ceb6c508191839a41b6c0683b14",
+    "title": "Faire avancer Dakar Rek",
+    "schedule": "BEGIN:VEVENT\nDTSTART:20261008T123035Z\nRRULE:FREQ=HOURLY\nEND:VEVENT",
     "timingMode": "flexible_schedule",
     "timezone": "Africa/Dakar",
-    "promptPath": "docs/agents/operations/COORDINATOR_PROMPT.md",
-    "requires": "User chooses which existing task to pause; no unrelated task modified"
+    "registeredAt": "2026-10-08T12:30:35.909469+00:00",
+    "creationResult": {
+      "success": true,
+      "message": "Automation created."
+    },
+    "promptPath": "docs/agents/operations/COORDINATOR_PROMPT.md"
   },
   "firstAutonomousRun": {
     "requested": false,
-    "completed": false
+    "completed": false,
+    "note": "Enabled schedule is confirmed; no autonomous completion claimed."
   },
   "claudeNativeLoadVerified": false,
-  "productionChanged": false
+  "productionChanged": false,
+  "previousFailedCreation": {
+    "status": "ERROR",
+    "error_code": "too_many_active_automations",
+    "message": "Your current plan allows only 5 scheduled tasks.",
+    "user_message": "Your current plan allows only 5 scheduled tasks.",
+    "error_data": {
+      "current_count": 5,
+      "plan_limit": 5
+    }
+  },
+  "slotDecision": {
+    "at": "2026-10-08T12:29:36Z",
+    "user": "Pause Nattoo Payments Watch but keep chat session active",
+    "pausedTaskTitle": "Nattoo Payments Watch",
+    "pausedNotDeleted": true,
+    "conversationAssociationPreserved": true
+  }
 }

@@ -11,3 +11,5 @@ Le premier lot DKAG-007 répare un blocage réseau observé par lecture du clien
 Les autres sessions réalisent déjà la ville #9 et mosquée/publicité #10. Le rôle Monde examine leur compatibilité; les tâches suivantes de gameplay/personnages/animation/culture préparent les incréments avec leur preuve propre. Aucun doublon de leur code.
 
 Les leases/allowlists et consignes sont un protocole de coordination, pas de nouvelles permissions GitHub ou protections de branches. CAS obligatoire; pas de reprise aveugle d'un writer expiré. En absence de reviewer distinct, la candidate reste review; en absence de shell, les tests locaux ne sont pas annoncés, CI existante au SHA exact peut les exécuter.
+
+D-AG-004, 8 octobre12:29UTC : Habib choisit la pause de la veille paiements Nattoo pour libérer une place, en gardant le chat actif. Seul is_enabled de cette veille est changé; prompt, horaire et association à sa conversation sont conservés. Création du coordinateur Codex horaire confirmée enabled à12:30UTC. Aucun run_now demandé ou résultat de premier run inventé. La session présente et la conversation Nattoo ne sont pas archivées ou supprimées.

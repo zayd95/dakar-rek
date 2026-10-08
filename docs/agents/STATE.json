@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08",
+  "updatedAt": "2026-10-08T12:30:35.909469+00:00",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
-  "phase": "operational_in_session_scheduler_blocked",
+  "phase": "operational_scheduler_enabled",
   "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
@@ -96,14 +96,16 @@
     }
   },
   "scheduler": {
-    "status": "blocked_plan_limit",
+    "status": "enabled",
     "engine": "Codex cloud automation",
-    "attempted": true,
-    "enabled": false,
-    "errorCode": "too_many_active_automations",
-    "currentCount": 5,
-    "planLimit": 5,
-    "prompt": "docs/agents/operations/COORDINATOR_PROMPT.md",
+    "automationId": "6ac78ceb6c508191839a41b6c0683b14",
+    "title": "Faire avancer Dakar Rek",
+    "isEnabled": true,
+    "schedule": "BEGIN:VEVENT\nDTSTART:20261008T123035Z\nRRULE:FREQ=HOURLY\nEND:VEVENT",
+    "timingMode": "flexible_schedule",
+    "timezone": "Africa/Dakar",
+    "registeredAt": "2026-10-08T12:30:35.909469+00:00",
+    "firstAutonomousRunCompleted": false,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false
   },
@@ -120,7 +122,7 @@
     "activation_world",
     "activation_gameplay"
   ],
-  "nextAction": "Combat DKAG-008 is ready for the next isolated cycle; automatic resumption needs Habib to select a scheduled-task slot.",
+  "nextAction": "Coordinator takes the next isolated cycle from durable queue; combat DKAG-008 ready. Current chat remains usable independently of scheduler.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
