@@ -1,5 +1,6 @@
 import type { HubId } from '../core/types';
-import { nickname, lookIndex, PROTOCOL_VERSION, SEND_INTERVAL_MS, type Move, type Peer, type ServerMessage } from './protocol';
+import { nickname, lookIndex, PROTOCOL_VERSION, SEND_INTERVAL_MS, type Move, type Peer, type ServerMessage, type ChatMessage, type ChatAck } from './protocol';
+import type { ChatRequest, ReportRequest } from './chatRules';
 
 export type ConnectionState = 'solo' | 'connecting' | 'online' | 'reconnecting' | 'offline';
 export interface Profile { name: string; look: number }
@@ -7,6 +8,10 @@ export class PresenceClient {
   readonly peers = new Map<string, Peer>();
   id = ''; room = 0; count = 0; status: ConnectionState = 'solo';
   onChange: () => void = () => {};
+  /** Chat traffic (chat module). Presence keeps working when nobody listens. */
+  onChat: (message: ChatMessage) => void = () => {};
+  onChatAck: (ack: ChatAck) => void = () => {};
+  onReportAck: (target: string, ok: boolean) => void = () => {};
   private socket: WebSocket | null = null;
   private hub: HubId | null = null;
   private requestedRoom: number | null = null;
@@ -36,6 +41,13 @@ export class PresenceClient {
     if (encoded === this.lastMove) return;
     this.socket.send(encoded); this.lastMove = encoded; this.lastSentAt = now;
   }
+  /** Sends a chat request on the open socket; false when offline (the caller keeps it pending and resends with the same id). */
+  sendChat(request: ChatRequest): boolean { return this.sendRaw(request); }
+  sendReport(request: ReportRequest): boolean { return this.sendRaw(request); }
+  private sendRaw(payload: ChatRequest | ReportRequest) {
+    if (this.status !== 'online' || this.socket?.readyState !== WebSocket.OPEN) return false;
+    try { this.socket.send(JSON.stringify(payload)); return true; } catch { return false; }
+  }
   serverNow() { return Date.now() + (this.status === 'online' ? this.clockOffset : 0); }
   private open() {
     this.stopSocket();
@@ -45,6 +57,7 @@ export class PresenceClient {
     const url = new URL(this.endpoint || '/api/presence', location.href);
     url.protocol = url.protocol === 'https:' || url.protocol === 'wss:' ? 'wss:' : 'ws:';
     url.searchParams.set('hub', this.hub); url.searchParams.set('name', this.profile.name); url.searchParams.set('look', String(this.profile.look));
+    const key = deviceChatKey(); if (key) url.searchParams.set('key', key);
     if (this.requestedRoom) url.searchParams.set('room', String(this.requestedRoom));
     let ws: WebSocket;
     try { ws = new WebSocket(url); } catch { this.scheduleRetry(); return; }
@@ -69,6 +82,9 @@ export class PresenceClient {
       } else if (message.type === 'leave') {
         this.peers.delete(message.id); this.count = message.count; this.onChange();
       } else if (message.type === 'count') { this.count = message.count; this.onChange(); }
+      else if (message.type === 'chat') { if (message.from !== this.id) this.onChat(message); }
+      else if (message.type === 'chat-ack') this.onChatAck(message);
+      else if (message.type === 'report-ack') this.onReportAck(message.target, message.ok);
     };
     ws.onclose = () => { if (generation === this.generation) this.scheduleRetry(); };
     ws.onerror = () => { /* close drives the retry; no effect on local saves or gameplay */ };
@@ -85,6 +101,19 @@ export class PresenceClient {
     this.peers.clear(); this.id = ''; this.count = 0; this.room = 0; this.lastMove = ''; this.onChange();
   }
   private setStatus(status: ConnectionState) { this.status = status; this.onChange(); }
+}
+
+let chatKey: string | null | undefined;
+/** Private random key for this device; the server only shares a hash of it, so mute/block survive reconnects. */
+function deviceChatKey(): string | null {
+  if (chatKey !== undefined) return chatKey;
+  const fresh = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
+  try {
+    const saved = localStorage.getItem('dakarrek.chat.key');
+    if (saved && /^[a-f0-9]{32}$/.test(saved)) return (chatKey = saved);
+    chatKey = fresh(); localStorage.setItem('dakarrek.chat.key', chatKey);
+  } catch { chatKey ??= typeof crypto?.getRandomValues === 'function' ? fresh() : null; }
+  return chatKey;
 }
 
 export function loadProfile(storage: Storage | null, guestId: string): Profile {

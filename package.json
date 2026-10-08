@@ -15,6 +15,7 @@
     "dev:online": "wrangler dev --ip 127.0.0.1 --port 8787",
     "deploy": "npm test && npm run typecheck:server && wrangler deploy",
     "check:online": "node scripts/check-multiplayer.mjs",
+    "check:chat": "node scripts/check-chat.mjs",
     "check:launch": "node scripts/check-launch-controls.mjs --full"
   },
   "dependencies": {

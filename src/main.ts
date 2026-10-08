@@ -31,6 +31,7 @@ import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb
 import { PresenceClient, loadProfile } from './multiplayer/client';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { PresenceUi } from './multiplayer/ui';
+import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 
 const params = new URLSearchParams(location.search);
@@ -127,7 +128,9 @@ const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
 const roomParam = Number(params.get('room'));
 const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
 const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
-presence.onChange = () => { presenceUi.update(); if (!presence.count) remoteAvatars.clear(); };
+const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: store, enabled: import.meta.env.VITE_MULTIPLAYER === 'true', local: () => pos, space: presenceSpace,
+  suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
+presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); };
 function presenceSpace() { return lambScene ? 'scene' : inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'; }
 
 const sunDir = new THREE.Vector3();
@@ -585,6 +588,7 @@ function frame(now: number) {
   const clip = mode === 'play' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
   presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
+  chat.update(dt, camera, innerHeight);
   findNearest();
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
   hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);
