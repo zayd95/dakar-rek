@@ -4,6 +4,7 @@ import type { Input } from '../core/input';
 import type { WrestlerLook } from '../core/types';
 import { rng } from '../core/rng';
 import { Percussion, crowdCheer } from './audio';
+import { DuelInput } from './duelInput';
 import { inGate, tierRadius, tierTop, TIERS } from '../world/geew';
 
 /**
@@ -39,12 +40,7 @@ export class LambDuel {
   private crowd: Humanoid[] = [];
   private drums = new Percussion();
   private ui: HTMLDivElement;
-  private guardHeld = false;
-  /** Taps of the Saisir button since the last frame (each tap counts in an empoignade). */
-  private grabTaps = 0;
-  private onKey = (e: KeyboardEvent) => {
-    if (e.code === 'KeyG' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') this.guardHeld = e.type === 'keydown';
-  };
+  private controls!: DuelInput;
 
   constructor(origin: { x: number; z: number }, look: WrestlerLook, private input: Input, crowdSize: number, readonly difficulty = 1) {
     this.o = new THREE.Vector3(origin.x, 0.1, origin.z);
@@ -66,7 +62,6 @@ export class LambDuel {
       this.group.add(h.group); this.crowd.push(h);
     }
     this.drums.start(122);
-    addEventListener('keydown', this.onKey); addEventListener('keyup', this.onKey);
     this.ui = this.buildUi();
     input.enabled = true; input.takeAction();
   }
@@ -92,9 +87,9 @@ export class LambDuel {
       .duel-note{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 6px);transform:translateX(-50%);font-size:11px;opacity:.8;text-align:center;width:92vw}`;
     d.appendChild(st);
     const guard = d.querySelector<HTMLButtonElement>('[data-k=guard]')!, grab = d.querySelector<HTMLButtonElement>('[data-k=grab]')!;
-    const hold = (on: boolean) => (e: Event) => { e.preventDefault(); this.guardHeld = on; guard.classList.toggle('on', on); };
-    guard.addEventListener('pointerdown', hold(true)); guard.addEventListener('pointerup', hold(false)); guard.addEventListener('pointerleave', hold(false)); guard.addEventListener('pointercancel', hold(false));
-    grab.addEventListener('pointerdown', e => { e.preventDefault(); this.grabTaps++; });
+    this.controls = new DuelInput(window, document, guard, grab, () => {
+      this.input.takeAction(); this.me.guard = false;
+    });
     document.body.appendChild(d);
     return d;
   }
@@ -106,8 +101,8 @@ export class LambDuel {
   }
 
   /** Debug/test hooks. */
-  pressGrab() { this.grabTaps++; }
-  setGuard(on: boolean) { this.guardHeld = on; }
+  pressGrab() { this.controls.pressGrab(); }
+  setGuard(on: boolean) { this.controls.setGuard(on); }
 
   private tryGrab(a: Fighter, b: Fighter): 'none' | 'blocked' | 'clinch' {
     if (a.busy > 0 || a.stamina < GRAB_COST) return 'none';
@@ -120,7 +115,7 @@ export class LambDuel {
   update(dt: number): { cam: THREE.Vector3; look: THREE.Vector3 } {
     this.t += dt; this.phaseT += dt;
     const me = this.me, ai = this.ai;
-    const taps = this.grabTaps + (this.input.takeAction() ? 1 : 0); this.grabTaps = 0;
+    const taps = this.controls.takeGrabs(this.input.takeAction());
     const grab = taps > 0;
     for (const f of [me, ai]) { f.busy = Math.max(0, f.busy - dt); }
 
@@ -131,7 +126,7 @@ export class LambDuel {
     } else if (this.phase === 'fight') {
       // player: move relative to the side camera (screen right = +x), guard while held
       const m = this.input.move();
-      me.guard = this.guardHeld && me.busy <= 0;
+      me.guard = this.controls.guardHeld && me.busy <= 0;
       const sp = me.guard ? 1.4 : 2.6;
       if (me.busy <= 0) me.pos.add(new THREE.Vector3(m.x, 0, -m.y).multiplyScalar(sp * dt));
       // opponent: approach, keep a fighting distance, guard when the player is close, grab when it has the endurance
@@ -216,7 +211,7 @@ export class LambDuel {
 
   dispose() {
     this.drums.stop();
-    removeEventListener('keydown', this.onKey); removeEventListener('keyup', this.onKey);
+    this.controls.dispose();
     this.ui.remove();
     for (const f of [this.me, this.ai]) f.w?.dispose();
     for (const h of this.crowd) h.dispose();
