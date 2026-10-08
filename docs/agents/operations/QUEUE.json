@@ -17,7 +17,7 @@
       "id": "DKAG-007",
       "role": "network",
       "kind": "implementation",
-      "status": "review",
+      "status": "done",
       "owner": "activation_network",
       "reviewer": "activation_network_qa",
       "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -53,9 +53,19 @@
         },
         "ciPr": {
           "id": 37774210307,
-          "status": "in_progress"
+          "jobId": 113300900972,
+          "status": "completed",
+          "conclusion": "success",
+          "independentlyRead": true,
+          "results": {
+            "unit": 42,
+            "network": 17,
+            "aida": 52,
+            "generalGameplay": 58
+          }
         }
-      }
+      },
+      "acceptedScope": "verified isolated candidate, not merged/deployed"
     },
     {
       "id": "DKAG-008",
@@ -210,7 +220,7 @@
       "id": "DKAG-014",
       "role": "qa",
       "kind": "review",
-      "status": "review",
+      "status": "done",
       "target": "DKAG-007",
       "acceptance": [
         "Distinct reviewer verifies source diff/tests/exact CI and scope",

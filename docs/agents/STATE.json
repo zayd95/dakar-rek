@@ -80,7 +80,9 @@
     "DKAG-002",
     "DKAG-003",
     "DKAG-004",
-    "DKAG-010"
+    "DKAG-010",
+    "DKAG-007",
+    "DKAG-014"
   ],
   "ci": {
     "aidaCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -107,9 +109,7 @@
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [
-    "DKAG-007",
-    "DKAG-009",
-    "DKAG-014"
+    "DKAG-009"
   ],
   "activeSessions": [],
   "completedSessions": [
@@ -120,7 +120,7 @@
     "activation_world",
     "activation_gameplay"
   ],
-  "nextAction": "Observe network exact-source CI and accept candidate after final checks; activate prepared coordinator once user selects a scheduled-task slot.",
+  "nextAction": "Combat DKAG-008 is ready for the next isolated cycle; automatic resumption needs Habib to select a scheduled-task slot.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -158,5 +158,19 @@
       "owner": "other session; never mutate"
     }
   ],
-  "snapshotNote": "Earlier input SHAs remain pinned for historical reviews. Other sessions may advance their refs; this team did not mutate those refs."
+  "snapshotNote": "Earlier input SHAs remain pinned for historical reviews. Other sessions may advance their refs; this team did not mutate those refs.",
+  "networkCandidate": {
+    "sourceCommit": "183311c58185678421a70969371fed625d6347c2",
+    "pullRequest": 11,
+    "status": "verified",
+    "reviewer": "activation_network_qa",
+    "fullCi": {
+      "runId": 37774210307,
+      "jobId": 113300900972,
+      "conclusion": "success",
+      "artifactId": 11549408045
+    },
+    "merged": false,
+    "deployed": false
+  }
 }
