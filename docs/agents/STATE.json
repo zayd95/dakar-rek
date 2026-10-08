@@ -1,63 +1,126 @@
 {
-  "schemaVersion": 1,
-  "updatedAt": "2026-10-08T01:44:42.444869+00:00",
+  "schemaVersion": 2,
   "project": "Dakar Rek",
-  "candidate": {
-    "branch": "codex/aida-revision-activity",
-    "sourceCommit": "9b0789277807a0a3008fa75b9e4fc31c63451400",
-    "baseCommit": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7",
-    "pullRequest": 7,
-    "delivery": "draft PR; not merged or deployed"
+  "updatedAt": "2026-10-08",
+  "controlBranch": "codex/agent-studio-active",
+  "userAuthorization": "D-AG-003: activate working agents on isolated branches",
+  "phase": "activation_in_progress",
+  "lease": {
+    "owner": "root-current-activation",
+    "token": "dkag006-20261008-root",
+    "expiresAt": "2026-10-08T14:00:00Z",
+    "recovery": "Do not take over on expiry without reconciling writers/refs/CI"
   },
-  "protectedRefs": {
-    "main": "547bb1e8077127094a3fc647821cf6ac73d2a42c",
-    "wip/visual-pass": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7",
-    "codex/launch-controls": "6216bb80db6bb7d777997e70d1681fa71240b057"
-  },
-  "tasks": [
+  "activeCodeTask": "DKAG-007",
+  "maxConcurrentCodeTasks": 1,
+  "reservations": [
     {
-      "id": "DKAG-004",
-      "status": "done",
-      "scope": "verified isolated candidate",
-      "owner": "dakar_aida_implementation",
-      "reviewer": "dakar_aida_qa",
-      "openItem": "observe remote CI completion"
+      "task": "DKAG-007",
+      "owner": "activation_network",
+      "branch": "codex/agents/dkag-007-network-handshake",
+      "paths": [
+        "src/multiplayer/client.ts",
+        "tests/presence-client.test.ts",
+        "docs/agents/reports/DKAG-007-network.md"
+      ]
     },
     {
-      "id": "DKAG-005",
-      "status": "blocked",
-      "scope": "authenticated active-version attestation only",
-      "report": "ready, independently reviewed",
-      "owner": "dakar_deployment_attestation",
-      "blocker": "No authenticated Cloudflare tool exposed"
+      "task": "DKAG-009",
+      "owner": "activation_world",
+      "branch": "codex/agent-studio-active",
+      "paths": [
+        "docs/agents/operations/reports/DKAG-009-world.md"
+      ]
     }
   ],
-  "fileReservations": [],
-  "bootstrap": {
-    "pullRequest": 6,
-    "status": "draft; profiles and briefs available; no persistent AI runner installed"
+  "externalWork": [
+    {
+      "pr": 10,
+      "branch": "codex/v1-mosque-ads",
+      "sha": "1610e51bc63a11983f6eee779fb01a82d7ac7cbd",
+      "owner": "other session; never mutate"
+    },
+    {
+      "pr": 9,
+      "branch": "codex/dakar-city-life",
+      "sha": "84311a716fa722cd20b4e725a72fd15f60511291",
+      "owner": "other session; never mutate"
+    },
+    {
+      "pr": 8,
+      "branch": "codex/v1-core-launch-scope",
+      "sha": "9f9b76dfae5f34f3ecba6defdd1154c966560a1e",
+      "owner": "other session; never mutate"
+    }
+  ],
+  "protectedRefSnapshot": [
+    {
+      "name": "codex/agent-studio-bootstrap",
+      "sha": "3ef649b19382955ad2c933fce551ea7ba36d8c57"
+    },
+    {
+      "name": "codex/aida-revision-activity",
+      "sha": "0af76c38b152df885c0c27352aa43ac320aa71af"
+    },
+    {
+      "name": "codex/cloudflare-agent",
+      "sha": "53345bf594e7015c56eef9871610e8f25e8b18ff"
+    },
+    {
+      "name": "codex/dakar-city-life",
+      "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+    },
+    {
+      "name": "codex/launch-controls",
+      "sha": "6216bb80db6bb7d777997e70d1681fa71240b057"
+    },
+    {
+      "name": "codex/multiplayer-launch",
+      "sha": "792a455acd681dea0476a5dcc11cfc8e7594f312"
+    },
+    {
+      "name": "codex/preserve-vehicle-materials",
+      "sha": "e20b9f775062048a76cf0b9470992dc31de511a3"
+    },
+    {
+      "name": "codex/v1-core-launch-scope",
+      "sha": "9f9b76dfae5f34f3ecba6defdd1154c966560a1e"
+    },
+    {
+      "name": "codex/v1-mosque-ads",
+      "sha": "1610e51bc63a11983f6eee779fb01a82d7ac7cbd"
+    },
+    {
+      "name": "main",
+      "sha": "547bb1e8077127094a3fc647821cf6ac73d2a42c"
+    },
+    {
+      "name": "wip/visual-pass",
+      "sha": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7"
+    }
+  ],
+  "completedTasks": [
+    "DKAG-001",
+    "DKAG-002",
+    "DKAG-003",
+    "DKAG-004"
+  ],
+  "ci": {
+    "aidaCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+    "push": {
+      "id": 37714474684,
+      "conclusion": "success"
+    },
+    "pr": {
+      "id": 37714480696,
+      "conclusion": "success"
+    }
   },
-  "runtimeChanges": {
-    "production": false,
-    "claudeBranch": false,
-    "cloudflareConfig": false,
-    "unattendedAgentService": false
+  "scheduler": {
+    "status": "not_created_yet",
+    "engine": "Codex cloud automation",
+    "rolesDispatchedOnDemand": true,
+    "claudeNativeLoadVerified": false
   },
-  "culturalValidation": "unverified",
-  "ciSnapshot": {
-    "sourceRuns": [
-      37713605951,
-      37713634150
-    ],
-    "status": "in_progress",
-    "passedSteps": [
-      "npm ci",
-      "unit tests",
-      "server typecheck",
-      "build",
-      "browser install",
-      "online checks"
-    ],
-    "pending": "full launch runner and artifact upload"
-  }
+  "productionMutationsAuthorized": false
 }

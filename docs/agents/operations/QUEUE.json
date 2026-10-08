@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "order": [
+    "DKAG-007",
+    "DKAG-008",
+    "DKAG-009",
+    "DKAG-010",
+    "DKAG-011",
+    "DKAG-012",
+    "DKAG-013",
+    "DKAG-014",
+    "DKAG-005"
+  ],
+  "tasks": [
+    {
+      "id": "DKAG-007",
+      "role": "network",
+      "kind": "implementation",
+      "status": "active",
+      "owner": "activation_network",
+      "reviewer": "activation_network_qa",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "branch": "codex/agents/dkag-007-network-handshake",
+      "allowedFiles": [
+        "src/multiplayer/client.ts",
+        "tests/presence-client.test.ts",
+        "docs/agents/reports/DKAG-007-network.md"
+      ],
+      "acceptance": [
+        "8-second per-attempt deadline covers socket never opening or welcome never arriving",
+        "Valid welcome cancels deadline; teardown cancels stale work",
+        "Retry uses existing lifecycle with no duplicate peers and latest position",
+        "Deterministic fake WebSocket/timer regression tests",
+        "Exact-commit existing unit/build/server/network/full-launch CI and independent QA"
+      ],
+      "dependencies": [],
+      "authority": "Current isolated-development authorization, generic client lifecycle fix; no protocol/server/schema change"
+    },
+    {
+      "id": "DKAG-008",
+      "role": "combat",
+      "kind": "implementation",
+      "status": "ready",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "branch": "codex/agents/dkag-008-duel-input-reset",
+      "allowedFiles": [
+        "src/lamb/duel.ts",
+        "src/lamb/duelInput.ts",
+        "tests/duel-input.test.ts",
+        "scripts/check-duel-input.mjs",
+        "docs/agents/reports/DKAG-008-combat.md"
+      ],
+      "acceptance": [
+        "Blur or hidden document releases guard and pending grab inputs",
+        "A fresh key/touch works after return",
+        "Touch cancellation and pointer loss reset guard and visual state",
+        "Editable form input cannot activate fight controls",
+        "Dispose removes listeners; replacement instances do not accumulate handlers",
+        "No combat rules/rewards/phases/animation/network/save changes",
+        "Meaningful deterministic tests and exact-source CI; dedicated browser check if execution available, limitation explicit otherwise"
+      ],
+      "dependencies": [
+        "DKAG-007"
+      ],
+      "verifiedDefect": {
+        "path": "src/lamb/duel.ts",
+        "blob": "992b4dfeceff90a58f8310bf34dd0a75a32bb756",
+        "basis": "producer actual static review, no blur/visibility reset unlike src/core/input.ts"
+      }
+    },
+    {
+      "id": "DKAG-009",
+      "role": "world",
+      "kind": "compatibility_review",
+      "status": "active",
+      "owner": "activation_world",
+      "inputs": [
+        {
+          "pr": 9,
+          "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+        },
+        {
+          "pr": 10,
+          "sha": "1610e51bc63a11983f6eee779fb01a82d7ac7cbd"
+        }
+      ],
+      "acceptance": [
+        "Inspect actual navigation/collisions/door anchors and quality rebuild",
+        "Name exact overlapping files and compatibility defects",
+        "Do not recreate city/mosque/ads or mutate their refs"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-009-world.md",
+      "dependencies": []
+    },
+    {
+      "id": "DKAG-010",
+      "role": "gameplay",
+      "kind": "design_review",
+      "status": "ready",
+      "inputs": [
+        {
+          "pr": 9,
+          "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+        }
+      ],
+      "acceptance": [
+        "Trace income to food/rest player journey in actual cityContent/main",
+        "Identify one observed comprehension/progression gap",
+        "Produce a bounded playable task with costs/duration/effects/interrupt and reload criteria"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-010-gameplay.md",
+      "dependencies": []
+    },
+    {
+      "id": "DKAG-011",
+      "role": "characters",
+      "kind": "design",
+      "status": "ready",
+      "inputs": [
+        {
+          "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+          "paths": [
+            "src/social/cast.ts",
+            "src/social/beats.ts",
+            "src/social/relations.ts"
+          ]
+        }
+      ],
+      "acceptance": [
+        "Inspect actual NPC APIs and anchors",
+        "Prepare one existing NPC routine with objective/reactions and testable consequence",
+        "No new cast or overlapping city edits; French dialogue remains unverified"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-011-characters.md",
+      "dependencies": []
+    },
+    {
+      "id": "DKAG-012",
+      "role": "animation",
+      "kind": "asset_review",
+      "status": "ready",
+      "inputs": [
+        {
+          "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+          "paths": [
+            "src/lamb/duel.ts",
+            "src/world/humanoid.ts"
+          ]
+        }
+      ],
+      "acceptance": [
+        "Verify actual asset loader/clip names for Stance Grab Fall_Back Celebrate and fallbacks",
+        "Prepare transition/clipping/scale checks against existing exported assets",
+        "Distinguish metadata inspection from visual playback; no paid generation"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-012-animation.md",
+      "dependencies": []
+    },
+    {
+      "id": "DKAG-013",
+      "role": "culture",
+      "kind": "provenance_review",
+      "status": "ready",
+      "inputs": [
+        {
+          "pr": 9,
+          "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+        },
+        {
+          "pr": 10,
+          "sha": "1610e51bc63a11983f6eee779fb01a82d7ac7cbd"
+        }
+      ],
+      "acceptance": [
+        "Inspect actual fishing/social/mosque/ads claims and provenance",
+        "Keep mosque optional with no invented religious reward or cultural certification",
+        "List only concrete content requiring human review; do not block unrelated generic fixes"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-013-culture.md",
+      "dependencies": []
+    },
+    {
+      "id": "DKAG-014",
+      "role": "qa",
+      "kind": "review",
+      "status": "waiting",
+      "target": "DKAG-007",
+      "acceptance": [
+        "Distinct reviewer verifies source diff/tests/exact CI and scope",
+        "Owner cannot accept itself; failures returned to author"
+      ],
+      "dependencies": [
+        "DKAG-007:code-ready"
+      ]
+    },
+    {
+      "id": "DKAG-005",
+      "role": "cloudflare-ops",
+      "kind": "attestation",
+      "status": "blocked",
+      "blocker": "No authenticated Cloudflare tool exposed; active version unknown",
+      "acceptance": [
+        "Read existing Worker active deployment and traffic in connected owner session",
+        "No deploy or public probe required"
+      ],
+      "dependencies": [
+        "authenticated Cloudflare owner access"
+      ]
+    }
+  ]
+}
