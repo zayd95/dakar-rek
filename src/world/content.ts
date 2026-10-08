@@ -42,6 +42,7 @@ export const ACTIONS: Record<string, Action[]> = {
   ],
   ecurie: [
     { id: 'entrainement', label: 'Entraînement avec l’écurie', detail: 'Échauffement, prises, sparring · Lutte +1', needs: { energie: -24, hygiene: -14, faim: -10, moral: 6 }, seconds: 0, counter: 'lutte', special: 'training', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Parle d’abord à Coach Ablaye' : s.data.needs.energie < 24 ? 'Trop fatigué' : null) },
+    { id: 'combat_entrainement', label: 'Entraînement guidé au combat (Coach Ablaye)', detail: 'Bouger, garde, saisie, empoignade, dégagement · non classé · règles provisoires', seconds: 0, special: 'combat_entrainement', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Parle d’abord à Coach Ablaye' : s.data.needs.energie < 12 ? 'Trop fatigué' : null) },
     { id: 'tenue', label: 'Tenue de lutte (ngemb, accessoires)', detail: 'Cosmétique uniquement · brouillon à valider', seconds: 0, special: 'outfit' },
     { id: 'mbakkou', label: 'Mbakkou (danse)', detail: 'Emotes · mouvements provisoires à valider', seconds: 0, special: 'emote' },
   ],
@@ -49,7 +50,8 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'entree', label: 'Faire son entrée', detail: 'Entourage, sabar, foule · séquence provisoire', seconds: 0, special: 'entrance', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : null) },
     { id: 'preparation', label: 'Préparation avant le combat', detail: 'Gestes provisoires, à valider', seconds: 0, special: 'prep', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : null) },
     { id: 'regarder', label: 'S’asseoir dans les tribunes', detail: 'Ambiance et sabar', needs: { social: 10, moral: 8 }, seconds: 0, special: 'watch' },
-    { id: 'combat', label: 'Combattre un adversaire', detail: 'Lutte sans frappe · règles provisoires à valider', seconds: 0, special: 'combat', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : s.data.needs.energie < 20 ? 'Trop fatigué' : null) },
+    { id: 'combat', label: 'Combat amical (non classé)', detail: 'Lutte sans frappe · choisis ton adversaire · règles provisoires à valider', seconds: 0, special: 'combat', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : s.data.needs.energie < 20 ? 'Trop fatigué' : null) },
+    { id: 'combat_classe', label: 'Combat classé', detail: 'Lutte sans frappe · adversaire selon ton classement · règles provisoires à valider', seconds: 0, special: 'combat_classe', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : !(s.data.counters.lamb_skill ?? 0) ? 'Termine d’abord l’entraînement guidé à l’écurie' : s.data.needs.energie < 20 ? 'Trop fatigué' : null) },
   ],
   maiga: [
     { id: 'riz', label: 'Riz au poisson', detail: 'Le moins cher du quartier', cost: 500, needs: { faim: 40, moral: 2 }, seconds: 3, counter: 'meals' },

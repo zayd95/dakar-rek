@@ -26,6 +26,8 @@ import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { LambDuel } from './lamb/duel';
+import { PARTNER, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type StyleId } from './lamb/rules';
+import { phoneHooks } from './ui/phoneHooks';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
@@ -285,7 +287,9 @@ function runSpecial(a: Action) {
     case 'entrance': startScene('entrance', () => { state.adjust({ moral: 10, social: 6 }); state.count('entrees'); }); break;
     case 'prep': startScene('prep'); break;
     case 'watch': startScene('watch', () => { if (a.needs) state.adjust(a.needs); }); break;
-    case 'combat': startDuel(); break;
+    case 'combat': openFriendly(); break;
+    case 'combat_classe': openRanked(); break;
+    case 'combat_entrainement': startDuel('entrainement'); break;
     case 'outfit': openOutfit(); break;
     case 'emote': openEmotes(); break;
     case 'enter': if (nearest) enterInterior(nearest); break;
@@ -342,25 +346,54 @@ function startScene(kind: SceneKind, onDone?: () => void) {
   hud.setScene(SCENE_LABEL[kind], 'Gestes, danse et rythmes provisoires · non validés');
 }
 
-/** Controlled bout in the arena against a local opponent (provisional rules, no strikes). */
-function startDuel() {
-  if (!world?.arena) { hud.toast('Les combats ont lieu à l’arène de Pikine'); mode = 'play'; return; }
+// ------------------------------------------------------------------ làmb bouts (provisional rules, no strikes; see src/lamb/rules.ts)
+/** Friendly bout: the player picks the opponent's style; the level follows the friendly record. */
+function openFriendly() {
+  mode = 'menu';
+  const r = record(state.data.counters, 'amical'), level = opponentLevel(r.v, r.d);
+  hud.openMenu('Combat amical', `Non classé · niveau ${level} · ${RULES_STATUS}`, STYLE_IDS.map(id => {
+    const st = STYLES[id];
+    return { label: `${st.name} · ${st.label} · niveau ${level}`, detail: st.hint, onPick: () => startDuel('amical', id) };
+  }), `<div class="draft">Lutte sans frappe. Adversaires fictifs. La tenue, les danses et les accessoires n’ont aucun effet sur le combat ; l’argent non plus.</div>`);
+}
+/** Ranked bout: the opponent is assigned by the ranked record (style rotation, level from wins and defeats). */
+function openRanked() {
+  mode = 'menu';
+  const r = record(state.data.counters, 'classe'), level = opponentLevel(r.v, r.d), st = STYLES[rankedStyle(r.v + r.d + r.n)];
+  hud.openMenu('Combat classé', `Classement local (cet appareil) · ${r.v} V · ${r.d} D · ${r.n} N`, [
+    { label: `Affronter ${st.name} · ${st.label} · niveau ${level}`, detail: st.hint, onPick: () => startDuel('classe', st.id) },
+  ], `<div class="draft">Lutte sans frappe · ${RULES_STATUS}. Un abandon est compté à part : ce n’est ni une victoire ni une défaite.</div>`);
+}
+
+/** Controlled bout against a local opponent: guided training at the écurie, friendly or ranked at the arena. */
+function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId) {
+  if (lambScene) return;                                                       // one bout or scene at a time
+  const at = boutMode === 'entrainement' ? world?.ecurie : world?.arena;
+  if (!at) { hud.toast(boutMode === 'entrainement' ? 'L’entraînement a lieu à l’écurie de Pikine' : 'Les combats ont lieu à l’arène de Pikine'); mode = 'play'; return; }
   hideProxy(); emoteT = 0; previewT = 0;
   hud.closeModal();
   mode = 'scene';
-  const wins = state.data.counters.victoires ?? 0;
-  const duel = new LambDuel({ x: world.arena.cx, z: world.arena.cz }, state.data.wrestler, input, quality === 'low' ? 12 : quality === 'medium' ? 18 : 24, Math.min(1.35, 0.85 + wins * 0.08));
+  const rec = boutMode === 'entrainement' ? null : record(state.data.counters, boutMode);
+  const style = boutMode === 'entrainement' ? PARTNER : STYLES[styleId ?? (boutMode === 'classe' ? rankedStyle(rec!.v + rec!.d + rec!.n) : 'costaud')];
+  const crowd = boutMode === 'entrainement' ? 0 : quality === 'low' ? 12 : quality === 'medium' ? 18 : 24;
+  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level: rec ? opponentLevel(rec.v, rec.d) : 1, ring: boutMode === 'entrainement' ? 5 : 7.6 });
   duel.onDone = () => {
-    state.adjust({ energie: -22, hygiene: -12, faim: -8 });
-    state.count('combats');
-    if (duel.winner === 'player') { state.count('victoires'); state.adjust({ moral: 14, social: 6 }); rel.change(PLAYER, 'ablaye', 2); hud.toast(`Victoire ! (${(state.data.counters.victoires ?? 0)} au total)`); }
-    else { state.adjust({ moral: -4 }); hud.toast('Défaite. Coach Ablaye : « On retourne à l’entraînement. »'); }
+    // only a finished bout counts; a bout cut short without a result (e.g. leaving the hub) records nothing
+    const r = duel.result; if (!r) return;
+    state.adjust(r.rewards.needs);
+    for (const [k, v] of Object.entries(recordIncrements(r))) state.count(k, v);
+    if (r.rewards.coach) rel.change(PLAYER, 'ablaye', r.rewards.coach);
+    const n = state.data.counters;
+    hud.toast(r.mode === 'entrainement' ? (r.outcome === 'abandon' ? 'Entraînement interrompu' : `Entraînement terminé ✓  Compétence ${n.lamb_skill ?? 0}`)
+      : r.outcome === 'abandon' ? 'Abandon enregistré (à part des défaites)'
+      : r.winner === 'player' ? `Victoire ! (${n.victoires ?? 0} au total)` : r.winner === 'opponent' ? 'Défaite. Coach Ablaye : « On retourne à l’entraînement. »' : 'Match nul');
   };
   lambScene = duel;
   extra.add(duel.group);
   for (const n of castChars) n.c.group.visible = false;
-  hud.setScene('Combat · làmb', 'Lutte sans frappe · règles provisoires, à valider par des lutteurs');
+  hud.setScene(boutMode === 'entrainement' ? 'Entraînement · combat' : 'Combat · làmb', `Lutte sans frappe · ${RULES_STATUS}`);
 }
+phoneHooks.arenaProfile = () => arenaProfileRows(state.data.counters, state.data.flags.includes('ecurie_baobab') ? 'Baobab (fictive)' : null);
 
 function endScene() {
   if (!lambScene) return;
@@ -649,10 +682,17 @@ if (DEBUG) {
       const hit = world ? rc.intersectObject(world.group, true)[0] : undefined;
       return { len, hit: hit ? hit.distance : len };
     },
-    duel() { startDuel(); },
-    duelInfo: () => (lambScene instanceof LambDuel ? { phase: lambScene.phase, winner: lambScene.winner } : null),
+    duel() { startDuel('amical', 'costaud'); },
+    duelStart(m: BoutMode = 'amical', style?: StyleId) { startDuel(m, style); },
+    duelInfo: () => (lambScene instanceof LambDuel ? lambScene.info() : null),
     duelGrab() { if (lambScene instanceof LambDuel) lambScene.pressGrab(); },
     duelGuard(on: boolean) { if (lambScene instanceof LambDuel) lambScene.setGuard(on); },
+    duelBreak() { if (lambScene instanceof LambDuel) lambScene.pressBreak(); },
+    duelAbandon(confirm = true) { if (lambScene instanceof LambDuel) { if (confirm) lambScene.abandon(); else lambScene.askAbandon(true); } },
+    duelFinish() { if (lambScene instanceof LambDuel) lambScene.finish(); },
+    /** Screen pixels of points on both wrestlers (checks that the touch buttons never cover them). */
+    duelScreen: () => (lambScene instanceof LambDuel ? lambScene.fighterPoints().map(p => { const v = new THREE.Vector3(...p).project(camera); return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight }; }) : null),
+    arenaProfile: () => phoneHooks.arenaProfile?.() ?? [],
     scenePeek(t: number) { if (lambScene) { lambScene.t = t; lambScene.snap = true; } },
     outfit: () => openOutfit(), journal: () => openJournal(),
     emote(i = 0) { playEmote(i); },
