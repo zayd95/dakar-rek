@@ -87,13 +87,17 @@ try {
       await page.evaluate(a => window.__dakar.place(a.x, a.z - 7, 0), anchors.arena);
       const arenaStart = await page.evaluate(() => window.__dakar.pos());
       await page.keyboard.down('w'); await page.waitForTimeout(1000); await page.keyboard.up('w');
+      await page.waitForFunction(() => window.__dakar.nearestInteractable() === 'Arène · làmb');
       const arenaEnd = await page.evaluate(() => window.__dakar.pos());
+      console.log('Desktop arena navigation:', JSON.stringify({ arenaStart, arenaEnd }));
       check('medium desktop navigation reaches the arena menu through the gate', Math.hypot(arenaEnd.x - arenaStart.x, arenaEnd.z - arenaStart.z) > 3.5 && arenaEnd.near === 'Arène · làmb');
       await page.screenshot({ path: `${evidence}/arena-centreline-desktop.png` });
       await page.evaluate(b => window.__dakar.place(b.x, b.z - 7, 0), anchors.board);
       const boardStart = await page.evaluate(() => window.__dakar.pos());
       await page.keyboard.down('w'); await page.waitForTimeout(1000); await page.keyboard.up('w');
+      await page.waitForFunction(() => window.__dakar.nearestInteractable() === 'Annonces · arène');
       const boardEnd = await page.evaluate(() => window.__dakar.pos());
+      console.log('Desktop board navigation:', JSON.stringify({ boardStart, boardEnd }));
       check('medium desktop navigation deliberately reaches the off-axis board', Math.hypot(boardEnd.x - boardStart.x, boardEnd.z - boardStart.z) > 3.5 && boardEnd.near === 'Annonces · arène');
       await page.screenshot({ path: `${evidence}/arena-board-desktop.png` });
     }
@@ -125,14 +129,18 @@ try {
   const touchStart = await phone.evaluate(() => window.__dakar.pos());
   await phone.mouse.move(joy.x + joy.width / 2, joy.y + joy.height / 2);
   await phone.mouse.down(); await phone.mouse.move(joy.x + joy.width / 2, joy.y + 5); await phone.waitForTimeout(1000); await phone.mouse.up();
+  await phone.waitForFunction(() => window.__dakar.nearestInteractable() === 'Arène · làmb');
   const touchEnd = await phone.evaluate(() => window.__dakar.pos());
+  console.log('Touch arena navigation:', JSON.stringify({ touchStart, touchEnd }));
   check('low touch navigation reaches the arena menu through the gate', Math.hypot(touchEnd.x - touchStart.x, touchEnd.z - touchStart.z) > 3.5 && touchEnd.near === 'Arène · làmb');
   await phone.screenshot({ path: `${evidence}/arena-centreline-mobile.png` });
   await phone.evaluate(b => window.__dakar.place(b.x, b.z - 7, 0), mobileAnchors.board);
   const boardTouchStart = await phone.evaluate(() => window.__dakar.pos());
   await phone.mouse.move(joy.x + joy.width / 2, joy.y + joy.height / 2);
   await phone.mouse.down(); await phone.mouse.move(joy.x + joy.width / 2, joy.y + 5); await phone.waitForTimeout(1000); await phone.mouse.up();
+  await phone.waitForFunction(() => window.__dakar.nearestInteractable() === 'Annonces · arène');
   const boardTouchEnd = await phone.evaluate(() => window.__dakar.pos());
+  console.log('Touch board navigation:', JSON.stringify({ boardTouchStart, boardTouchEnd }));
   check('low touch navigation deliberately reaches the off-axis board', Math.hypot(boardTouchEnd.x - boardTouchStart.x, boardTouchEnd.z - boardTouchStart.z) > 3.5 && boardTouchEnd.near === 'Annonces · arène');
   await phone.evaluate(b => window.__dakar.place(b.x, b.z, 0), mobileAnchors.board);
   await phone.waitForFunction(() => window.__dakar.nearestInteractable() === 'Annonces · arène');

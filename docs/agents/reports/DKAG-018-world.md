@@ -34,6 +34,8 @@ Le parcours `scripts/check-v1-core.mjs` vérifie désormais :
 - `git diff --check` : réussi.
 - Parcours Playwright et captures : **non exécutables localement dans ce conteneur**. Chromium a été obtenu sans modifier le projet, mais son démarrage est bloqué par la politique du runtime (`socket() failed: Operation not permitted`). Les assertions restent destinées à la CI existante ; aucun succès navigateur ni aucune capture ne sont revendiqués ici.
 
+Première exécution CI (`37855312799`) : compilation et 34/34 tests réussis ; les contrôles de séparation et les trois positions centrales ont réussi. Le premier contrôle de navigation a lu l’état juste après `keyboard.up`, avant la frame de recalcul de l’interaction. La première correction ciblée attend désormais explicitement l’interaction attendue après chaque relâchement et journalise les positions de départ/arrivée ; aucune assertion n’a été retirée ou assouplie.
+
 ## Statut
 
 Candidate d’auteur prête pour CI et revue QA indépendante. Pas d’auto-approbation, pas de merge et pas de déploiement.
