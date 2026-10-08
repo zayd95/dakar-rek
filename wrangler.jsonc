@@ -9,6 +9,12 @@
     { "name": "LOBBIES", "class_name": "HubLobby" }
   ] },
   "migrations": [{ "tag": "v1-presence", "new_sqlite_classes": ["CityRoom", "HubLobby"] }],
+  // Worker Previews (Workers Builds on non-production branches, `wrangler preview`): each Preview gets its own
+  // Durable Object namespace and storage, so test players never join production rooms.
+  "previews": { "durable_objects": { "bindings": [
+    { "name": "ROOMS", "class_name": "CityRoom" },
+    { "name": "LOBBIES", "class_name": "HubLobby" }
+  ] } },
   "observability": { "enabled": true },
   "build": { "command": "npm run build:online" }
 }

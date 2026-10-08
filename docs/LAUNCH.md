@@ -13,6 +13,11 @@ branche republie la recette. `main` ne contient pas encore la version en ligne (
 la PR #1, remettre la branche de production sur `main`. Reste à faire : lancer `npm run check:online -- https://<adresse>/`
 contre l'adresse publique et la noter ici.
 
+Les autres branches passent par les **Worker Previews** (`npx wrangler preview`, Worker créé après leur lancement). Cette
+commande exige un bloc `previews` dans `wrangler.jsonc` ; sans lui, chaque build de prévisualisation échouait (« missing a
+`previews` block »). Le bloc déclare les deux Durable Objects : chaque prévisualisation a ses propres salles et son propre
+stockage, sans joueurs de la production. Les liens de prévisualisation sont publics par défaut.
+
 État précédent, 7 octobre, ~18 h Dakar (vérifié depuis la session cloud Claude) : aucune recette publique en ligne.
 `dakar-rek.ludicrous-emoji.workers.dev` (Worker `4b3fd184-e7b1-46f7-955a-3f4779527fc3`) ne se résout plus (DNS
 `ENOTFOUND`) et l'ancienne adresse `dakar-rek.cyclic-echinodon.workers.dev` ne répondait déjà plus : les comptes
