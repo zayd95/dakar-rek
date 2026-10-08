@@ -74,7 +74,7 @@
       "id": "DKAG-008",
       "role": "combat",
       "kind": "implementation",
-      "status": "active",
+      "status": "review",
       "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
       "branch": "codex/agents/dkag-008-duel-input-reset",
       "allowedFiles": [
@@ -103,8 +103,25 @@
       },
       "owner": "combat_resume_1655",
       "reviewer": "qa_resume_1655",
-      "ownerState": "recover partial local sources; finish implementation",
-      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e"
+      "ownerState": "completed frozen handoff",
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "sourceCommit": "55def6b14e7cdf47d9ca0e0885a6e5950219c920",
+      "pullRequest": 13,
+      "validation": {
+        "authorUnit": {
+          "passed": 48,
+          "total": 48
+        },
+        "authorBrowser": {
+          "passed": 28,
+          "total": 28,
+          "scope": "real UI/source fixture, not full game or physical phone"
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "ci": "pending",
+        "independentQa": "running"
+      }
     },
     {
       "id": "DKAG-009",
@@ -314,7 +331,7 @@
       "id": "DKAG-016",
       "role": "characters",
       "kind": "implementation",
-      "status": "ready",
+      "status": "active",
       "branch": "codex/agents/dkag-016-ibou-followup",
       "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
       "allowedFiles": [
@@ -335,7 +352,11 @@
         "Meaningful deterministic tests, exact-source build/typechecks/CI and independent QA; dedicated browser flow if available"
       ],
       "culturalStatus": "fictional French dialogue unverified",
-      "decision": "Only beats.ts and tests/social.test.ts modified game sources; disjoint from active combat. Single active code rule remains; dispatch only after combat author handoff."
+      "decision": "Only beats.ts and tests/social.test.ts modified game sources; disjoint from active combat. Single active code rule remains; dispatch only after combat author handoff.",
+      "owner": "characters_resume_1655",
+      "reviewer": "qa_ibou_1701",
+      "controlBriefCommit": "c089dce66e972d8785208e0cb64055ddb954430f",
+      "ownerState": "assigned implementation"
     },
     {
       "id": "DKAG-017",
