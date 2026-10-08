@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08T22:55:00Z",
+  "updatedAt": "2026-10-08T22:58:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
@@ -149,7 +149,7 @@
     "qa_animation_1707",
     "world_dkag018_2236"
   ],
-  "nextAction": "QA reviews correction-1 SHA 171c869 and new exact-source push/PR CI; second correction only for a real remaining failure.",
+  "nextAction": "QA reviews final correction-1 SHA 99f24f9 with bounded state-driven keyboard and true CDP touch; read exact push/PR CI.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -348,7 +348,7 @@
     }
   ],
   "worldCandidate": {
-    "sourceCommit": "171c86958f4923e713470363f97effac70335fc9",
+    "sourceCommit": "99f24f90aa60413f034607486c1a8bcce871378b",
     "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
     "pullRequest": 16,
     "status": "review",
