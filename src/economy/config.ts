@@ -6,10 +6,10 @@ export const ECONOMY = {
   /** Tiak Tiak deliveries (walked for now: no driving physics). Pay per route id (see src/economy/jobs.ts). */
   tiak: {
     pay: {
-      pk_mame_garage: 1200, pk_mame_ecurie: 1400, pk_maiga_cafe: 1000, pk_pathe_arena: 1300, pk_maiga_station: 1100,
-      pk_reco_cafe_arena: 2200,
-      pl_fatou_market: 1300, pl_fatou_station: 1200, pl_medina_cafe: 1100, pl_cafe_station: 1000,
-      pl_reco_medina_market: 2400,
+      pk_mame_boutique: 1200, pk_mame_bank: 1400, pk_boutique_salon: 1000, pk_pathe_square: 1300, pk_maiga_garage: 1100,
+      pk_reco_salon_bank: 2200,
+      pl_fatou_market: 1300, pl_fatou_bank: 1200, pl_medina_square: 1100, pl_atelier_reparation: 1000,
+      pl_reco_reparation_bank: 2400,
     } as Record<string, number>,
     /** Share of the pay when the delivery arrives after the time limit (never negative). */
     latePayFactor: 0.6,

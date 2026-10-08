@@ -133,7 +133,9 @@ const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <
 const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
 presence.onChange = () => { presenceUi.update(); if (!presence.count) remoteAvatars.clear(); };
 // Lot B economy (src/economy/*): Tiak Tiak deliveries, wallet history, starter-room furniture, phone hooks. Device-local.
-const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), refreshHome: () => refreshHomeInteriors() });
+const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), refreshHome: () => refreshHomeInteriors(), walkTo: id => setDestination(id) });
+/** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
+function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
 function presenceSpace() { return lambScene ? 'scene' : inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'; }
 
 const sunDir = new THREE.Vector3();
@@ -256,7 +258,7 @@ function openActions(it: Interactable) {
   const visible = it.actions.filter(a => !a.visible || a.visible(state));
   const items = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc); } };
+    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it.name); } };
   });
   let subtitle = it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {
@@ -446,7 +448,7 @@ function openJournal() {
   hud.openMenu('Carnet', `${Object.keys(state.data.beats).length} histoire(s) vécue(s)`, [], html);
 }
 
-function runAction(a: Action, npc?: string) {
+function runAction(a: Action, npc?: string, where?: string) {
   mode = 'busy'; input.enabled = false;
   const t0 = performance.now(), dur = a.seconds * 1000;
   hud.progress(true, 0, a.label);
@@ -455,8 +457,9 @@ function runAction(a: Action, npc?: string) {
     hud.progress(true, p, a.label);
     if (p < 1) { requestAnimationFrame(tick); return; }
     hud.progress(false);
-    if (a.cost) state.addMoney(-a.cost, a.label);
-    if (a.gain) state.addMoney(a.gain, a.label);
+    const entry = where && !where.startsWith(a.label) ? `${a.label} · ${where}` : a.label;   // wallet history line
+    if (a.cost) state.addMoney(-a.cost, entry);
+    if (a.gain) state.addMoney(a.gain, entry);
     if (a.needs) state.adjust(a.needs);
     if (a.counter) state.count(a.counter);
     if (npc) rel.change(PLAYER, npc, 1);
@@ -504,7 +507,7 @@ function openSystem() {
     { label: 'Reprendre', onPick: () => hud.closeModal() },
     { label: 'Carnet', detail: 'Relations et prochaine piste', onPick: () => openJournal() },
     { label: 'Les coins du quartier', detail: 'Commerces, travail et lieux de rencontre', onPick: () => openPlaces() },
-    { label: 'Argent et maison', detail: 'Portefeuille, livraisons Tiak Tiak, meubles', onPick: () => economy.openWallet() },
+    { label: 'Argent et maison', detail: 'Portefeuille, petits boulots, meubles', onPick: () => economy.openWallet() },
     { label: 'Sauvegarder maintenant', onPick: () => { hud.toast(saveNow() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'); hud.closeModal(); } },
     { label: 'Nouvelle partie', detail: 'Efface la sauvegarde de cet appareil', onPick: () => { clearSave(store); location.reload(); } },
   ], kv, panel => {
@@ -628,7 +631,7 @@ function frame(now: number) {
   presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   findNearest();
-  economy.update(dt, pos, !!inside, mode === 'play' && !lambScene);
+  economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
   hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);
 
@@ -670,6 +673,7 @@ if (DEBUG) {
     cityPlaces: () => world?.interactables.filter(i => i.id.includes(':city:')).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, radius: i.radius, actions: i.actions.map(a => ({ id: a.id, label: a.label, gain: a.gain, cost: a.cost })) })) ?? [],
     cityGeometry: () => world ? { bounds: world.bounds, colliders: world.colliders, people: world.people } : null,
     places: openPlaces,
+    destination: () => destination?.id ?? null,
     lookYaw(y: number) { follow.yaw = y; },
     act() { hud.onAction(); },
     drawCalls: () => renderer.info.render.calls,

@@ -142,7 +142,7 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     // small table (with the TV once bought, else a thermos and a cup), a chair, a standing fan
     wood.box(1.0, 0.7, 0.5, x1 - 0.6, 0.1, oz + 0.7, 0x8b6a47);
     if (has('tele')) {
-      plain.box(0.7, 0.45, 0.35, x1 - 0.6, 0.8, oz + 0.7, 0x1d1d1f); glow.box(0.6, 0.36, 0.01, x1 - 0.95 + 0.01, 0.84, oz + 0.7, 0x3b5f8a, Math.PI / 2);
+      plain.box(0.3, 0.44, 0.68, x1 - 0.55, 0.8, oz + 0.7, 0x1d1d1f); glow.box(0.6, 0.36, 0.01, x1 - 0.705, 0.84, oz + 0.7, 0x3b5f8a, Math.PI / 2);   // screen faces the room (−x)
       interactables.push({ id: `${hub}:in:tele`, name: 'Petite télé', kind: 'actions', x: x1 - 1.5, z: oz + 0.1, radius: 1.1, actions: [furnitureById('tele')!.action] });
     } else { plain.cyl(0.07, 0.07, 0.3, x1 - 0.4, 0.8, oz + 0.75, 0xd9322b, 8); plain.cyl(0.05, 0.04, 0.08, x1 - 0.75, 0.8, oz + 0.65, 0xf2f2ec, 8); }
     solid(x1 - 0.6, oz + 0.7, 1.0, 0.6, 1);

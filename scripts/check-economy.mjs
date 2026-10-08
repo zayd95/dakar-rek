@@ -23,11 +23,25 @@ const goNear = async (page, x, z, yaw, name) => {
   await page.waitForFunction(n => window.__dakar.pos().near === n, name, { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(200);
 };
+/** A spot `dist` m from the target with a clear straight walk to it (no collider on the way), facing the target. */
+const approach = (page, t, dist) => D(page, ([tx, tz, d]) => {
+  const cols = window.__dakar.cityGeometry().colliders, R = 0.6;
+  const blocked = (x, z) => cols.some(c => x > c.x0 - R && x < c.x1 + R && z > c.z0 - R && z < c.z1 + R);
+  for (let k = 0; k < 16; k++) {
+    const a = (k / 16) * Math.PI * 2, x = tx + Math.sin(a) * d, z = tz + Math.cos(a) * d;
+    let ok = true;
+    for (let f = 0; f <= 1 && ok; f += 0.05) if (blocked(x + (tx - x) * f * 0.6, z + (tz - z) * f * 0.6)) ok = false;   // the last metres are inside the arrival radius
+    if (ok) return { x, z, yaw: Math.atan2(tx - x, tz - z) };
+  }
+  return { x: tx, z: tz + d, yaw: Math.PI };
+}, [t.x, t.z, dist]);
 const toast = page => D(page, () => document.querySelector('#toast').textContent);
 const insideRoom = async page => { await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 8000 }).catch(() => {}); await page.waitForTimeout(400); return D(page, () => window.__dakar.pos()); };
 const outside = async page => { await D(page, () => window.__dakar.exit()); await page.waitForFunction(() => window.__dakar.pos().x < 900, null, { timeout: 8000 }).catch(() => {}); await page.waitForTimeout(300); };
 /** Fixed camera in the starter room (same view before/after), from the door corner towards the bed. */
 const roomCam = (page, ox) => D(page, o => window.__dakar.cam([o + 2.65, 2.45, 2.15], [o - 1.0, 0.55, -0.9]), ox);
+/** Second fixed view, from the bed side towards the east wall (mirror, TV table, chair). */
+const roomCamEast = (page, ox) => D(page, o => window.__dakar.cam([o - 2.0, 2.3, 1.9], [o + 2.6, 0.8, -0.5]), ox);
 const watchErrors = page => { const errors = []; page.on('pageerror', e => errors.push(String(e))); page.on('console', m => { if (m.type() === 'error' && !m.location().url.endsWith('/assets/car_rapide.glb')) errors.push(m.text()); }); return errors; };
 
 let savedJson = null;
@@ -50,16 +64,20 @@ let savedJson = null;
   const ox = room0.x - 1.1;                       // room spawn is 1.1 m east of the room centre
   await roomCam(page, ox); await page.waitForTimeout(700);
   await page.screenshot({ path: `${out}/desktop-room-before.png` });
+  await roomCamEast(page, ox); await page.waitForTimeout(700);
+  await page.screenshot({ path: `${out}/desktop-room-before-east.png` });
   await D(page, () => window.__dakar.cam(null)); await outside(page);
 
   // Ibou's welcome (story), then the chip points to the first delivery
   await D(page, () => window.__dakar.playBeat('ibou_welcome', 'oui'));
   check('after the welcome, the chip points to Tiak Tiak', (await D(page, () => window.__dakar.suggestion())) === 'goal_tiak');
+  const endsPk = await D(page, () => window.__dakar.routeEnds());
+  check('Pikine: every Tiak Tiak pick-up and drop-off is an existing city place', endsPk.length >= 10 && endsPk.every(e => e.place === e.name), endsPk.filter(e => e.place !== e.name).map(e => e.name).join(', ') || `${endsPk.length} ends`);
 
   // accept a delivery at the pick-up point (Gargote Mame Diarra), through the action menu
   const its = await D(page, () => window.__dakar.interactables());
   const garg = its.find(i => i.id === 'pikine:gargote:32') ?? its.find(i => /Mame Diarra/.test(i.name));
-  const garage = its.find(i => /:garage:/.test(i.id));
+  const garage = its.find(i => /:city:boutique/.test(i.id));      // drop-off: Boutique Diallo (city place)
   const shop = its.find(i => i.id.includes(':shop:'));
   check('furniture stall exists in Pikine', !!shop, shop ? `${shop.name} ${shop.x.toFixed(0)},${shop.z.toFixed(0)}` : 'none');
   await goNear(page, garg.x, garg.z + 1.5, Math.PI, garg.name);
@@ -69,22 +87,28 @@ let savedJson = null;
   const offerCount = await page.locator('#modal.on .item:not(.close)').count();
   check('pick-up point lists its delivery offers', offerCount >= 2, `${offerCount} offers`);
   const wallet0 = await D(page, () => window.__dakar.state.wallet);
-  await pick(page, 'Garage Modou');
+  await pick(page, 'Boutique Diallo');
   const job = await D(page, () => window.__dakar.activeJob());
-  check('delivery accepted at the pick-up point (parcel in hand)', job?.routeId === 'pk_mame_garage' && job.stage === 'deliver', JSON.stringify(job));
+  check('delivery accepted at the pick-up point (parcel in hand)', job?.routeId === 'pk_mame_boutique' && job.stage === 'deliver', JSON.stringify(job));
+  await page.waitForFunction(id => window.__dakar.destination() === id, garage.id, { timeout: 15000 }).catch(() => {});
+  check('the city walking marker follows the parcel', (await D(page, () => window.__dakar.destination())) === garage.id);
 
   // marker + HUD line, seen from the street
-  await D(page, ([x, z]) => window.__dakar.place(x, z + 22, Math.PI), [garage.x, garage.z]);
+  const far = await approach(page, garage, 22);
+  await D(page, p => window.__dakar.place(p.x, p.z, p.yaw), far);
   await page.waitForFunction(() => /, 2\d m/.test(document.querySelector('#delivery.on')?.textContent ?? ''), null, { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(800);
   const line = await D(page, () => document.querySelector('#delivery.on')?.textContent ?? '');
   const mk = await D(page, () => window.__dakar.marker());
-  check('HUD line "Livraison → <place>, X m"', /Livraison → Garage Modou, \d+ m/.test(line), line);
+  check('HUD line "Livraison → <place>, X m"', /Livraison → Boutique Diallo, \d+ m/.test(line), line);
+  const chip = await D(page, () => document.querySelector('#goal')?.textContent ?? '');
+  check('the city direction chip points to the drop-off', /Boutique Diallo · \d+ m/.test(chip), chip);
   check('world marker on the drop-off', mk.visible && Math.hypot(mk.x - garage.x, mk.z - garage.z) < 0.5, JSON.stringify(mk));
   await page.screenshot({ path: `${out}/desktop-delivery-marker.png` });
 
   // walk the last metres into the ring: paid on arrival (SwiftShader runs at a few fps here, so allow time)
-  await D(page, ([x, z]) => window.__dakar.place(x, z + 6.5, Math.PI), [garage.x, garage.z]);
+  const near = await approach(page, garage, 6.5);
+  await D(page, p => window.__dakar.place(p.x, p.z, p.yaw), near);
   await page.waitForTimeout(300);
   await page.keyboard.down('KeyW');
   for (let i = 0; i < 150 && (await D(page, () => window.__dakar.activeJob())); i++) await page.waitForTimeout(200);
@@ -99,15 +123,36 @@ let savedJson = null;
   const again = await D(page, id => window.__dakar.completeJob(id), job.runId);
   check('completing the same run id twice pays once', again === null && (await D(page, () => window.__dakar.state.wallet)) === wallet1);
   // a second run via the debug hooks: complete() twice → one payment; cancel → nothing
-  const j2 = await D(page, () => window.__dakar.acceptJob('pk_maiga_cafe'));
+  check('the city marker is cleared after the hand-over', (await D(page, () => window.__dakar.destination())) === null);
+  const j2 = await D(page, () => window.__dakar.acceptJob('pk_boutique_salon'));
   const c1 = await D(page, () => window.__dakar.completeJob()), c2 = await D(page, id => window.__dakar.completeJob(id), j2.runId);
   const wallet2 = await D(page, () => window.__dakar.state.wallet);
   check('second run: complete twice → one payment', c1?.paid === 1000 && c2 === null && wallet2 === wallet1 + 1000, `${JSON.stringify(c1)} ${JSON.stringify(c2)} ${wallet2}`);
-  await D(page, () => window.__dakar.acceptJob('pk_pathe_arena'));
+  await D(page, () => window.__dakar.acceptJob('pk_pathe_square'));
   const cancelled = await D(page, () => [window.__dakar.cancelJob(), window.__dakar.cancelJob(), window.__dakar.completeJob()]);
   check('cancel: no payment, no double effect', cancelled[0] === true && cancelled[1] === false && cancelled[2] === null && (await D(page, () => window.__dakar.state.wallet)) === wallet2);
   const led = await D(page, () => window.__dakar.ledger());
   check('ledger records the deliveries (newest first)', led.length === 2 && led[0].amount === 1000 && /Livraison Tiak Tiak/.test(led[1].label), JSON.stringify(led));
+
+  // jobs app: Tiak Tiak + the city's existing paid services, with pay, energy and distance; picking one sets the marker
+  const appRows = await D(page, () => window.__dakar.jobsApp());
+  await page.screenshot({ path: `${out}/desktop-jobs-app.png` });
+  const svc = appRows.filter(t => !/Tiak Tiak/.test(t));
+  check('jobs app lists Tiak Tiak offers and the city’s paid services', appRows.some(t => /Tiak Tiak/.test(t)) && svc.some(t => /Ranger|ranger le stock/.test(t) && /Boutique Diallo/.test(t)) && svc.some(t => /dossiers/.test(t)), `${appRows.length} rows: ${svc.slice(0, 4).join(' | ')}`);
+  check('service rows show pay, energy cost and distance', svc.length > 0 && svc.every(t => /\+\d[\d\s]*F/.test(t) && /énergie/.test(t) && /\d+ m/.test(t)), svc.filter(t => !(/énergie/.test(t) && /\d+ m/.test(t))).join(' | ') || svc[0]);
+  const posBefore = await D(page, () => window.__dakar.pos());
+  await pick(page, 'dossiers');
+  const dest = await D(page, () => window.__dakar.destination()), posAfter = await D(page, () => window.__dakar.pos());
+  check('picking a city service sets the walking marker, no teleport', /:city:bank/.test(dest ?? '') && posAfter.x === posBefore.x && posAfter.z === posBefore.z, dest);
+  await D(page, () => window.__dakar.cam(null));
+  // a city paid service lands in the ledger with its place
+  const diallo = garage;
+  await goNear(page, diallo.x, diallo.z, 0, diallo.name);
+  await D(page, () => window.__dakar.act()); await page.waitForTimeout(300);
+  await pick(page, 'ranger le stock');
+  await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 20000 }).catch(() => {});
+  const led2 = await D(page, () => window.__dakar.ledger());
+  check('a city service (Boutique Diallo stock) is in the ledger', led2[0]?.amount === 1500 && /Boutique Diallo/.test(led2[0].label), JSON.stringify(led2[0]));
 
   // Ibou reacts to the first delivery and suggests a goal (UI)
   check('Ibou’s delivery beat is suggested', (await D(page, () => window.__dakar.suggestion())) === 'ibou_tiak');
@@ -160,6 +205,8 @@ let savedJson = null;
   await page.waitForTimeout(400);
   await roomCam(page, ox); await page.waitForTimeout(700);
   await page.screenshot({ path: `${out}/desktop-room-after-all.png` });
+  await roomCamEast(page, ox); await page.waitForTimeout(700);
+  await page.screenshot({ path: `${out}/desktop-room-after-all-east.png` });
   await D(page, () => window.__dakar.cam(null));
   await goNear(page, ox - 0.25, -0.6, -Math.PI / 2, 'Lit · bon matelas');
   await D(page, () => window.__dakar.act()); await page.waitForTimeout(300);
@@ -213,7 +260,7 @@ let savedJson = null;
   check('phone: save loaded with furniture', (await D(page, () => window.__dakar.furniture().owned.length)) === 6);
   await D(page, () => window.__dakar.jobsMenu()); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/phone-jobs-app.png` });
-  await pick(page, 'Gare des cars rapides');      // accepted from the phone: go to the pick-up first
+  await pick(page, 'Maïga du marché → Garage Modou');      // accepted from the phone: go to the pick-up first
   const pj = await D(page, () => window.__dakar.activeJob());
   check('phone: accepted from the jobs app → pick-up stage', pj?.stage === 'pickup', JSON.stringify(pj));
   const its = await D(page, () => window.__dakar.interactables());
@@ -222,12 +269,12 @@ let savedJson = null;
   await page.waitForFunction(() => window.__dakar.activeJob()?.stage === 'deliver', null, { timeout: 15000 }).catch(() => {});
   const st = await D(page, () => window.__dakar.activeJob());
   check('phone: walking to the pick-up point starts the delivery leg', st?.stage === 'deliver', JSON.stringify(st));
-  const station = its.find(i => /:station/.test(i.id));
+  const station = its.find(i => /:garage:/.test(i.id));
   await D(page, ([x, z, mx, mz]) => { const yaw = Math.atan2(x - mx, z - mz); window.__dakar.place(mx + (x - mx) * 0.6, mz + (z - mz) * 0.6, yaw); }, [station.x, station.z, maiga.x, maiga.z]);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${out}/phone-delivery-marker.png` });
   const line = await D(page, () => document.querySelector('#delivery.on')?.textContent ?? '');
-  check('phone: HUD line visible', /Livraison → Gare des cars rapides, \d+ m/.test(line), line);
+  check('phone: HUD line visible', /Livraison → Garage Modou, \d+ m/.test(line), line);
   await D(page, () => window.__dakar.completeJob()); await page.waitForTimeout(300);
   await D(page, () => window.__dakar.homeApp()); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/phone-home-app.png` });
@@ -239,6 +286,9 @@ let savedJson = null;
   await insideRoom(page);
   await page.screenshot({ path: `${out}/phone-room-gameplay.png` });
   await outside(page);
+  await D(page, () => window.__dakar.teleport('plateau')); await page.waitForTimeout(800);
+  const endsPl = await D(page, () => window.__dakar.routeEnds()), jobsPl = await D(page, () => window.__dakar.jobs());
+  check('Plateau: Tiak Tiak routes on existing city places', endsPl.length >= 8 && endsPl.every(e => e.place === e.name) && jobsPl.length >= 4, endsPl.filter(e => e.place !== e.name).map(e => e.name).join(', ') || `${jobsPl.length} offers`);
   check('phone: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }

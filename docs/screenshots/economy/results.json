@@ -15,6 +15,11 @@
   "extra": ""
  },
  {
+  "name": "Pikine: every Tiak Tiak pick-up and drop-off is an existing city place",
+  "ok": true,
+  "extra": "12 ends"
+ },
+ {
   "name": "furniture stall exists in Pikine",
   "ok": true,
   "extra": "Quincaillerie · meubles 87,-6"
@@ -27,27 +32,37 @@
  {
   "name": "delivery accepted at the pick-up point (parcel in hand)",
   "ok": true,
-  "extra": "{\"runId\":\"c2d14c03-1-1633\",\"routeId\":\"pk_mame_garage\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1200,\"startedMs\":1633.4000000000015,\"limitMs\":68849}"
+  "extra": "{\"runId\":\"64af819a-1-2316\",\"routeId\":\"pk_mame_boutique\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1200,\"startedMs\":2316.500000000011,\"limitMs\":121116}"
+ },
+ {
+  "name": "the city walking marker follows the parcel",
+  "ok": true,
+  "extra": ""
  },
  {
   "name": "HUD line \"Livraison → <place>, X m\"",
   "ok": true,
-  "extra": "Livraison → Garage Modou, 22 m  · 1:09"
+  "extra": "Livraison → Boutique Diallo, 22 m  · 2:01"
+ },
+ {
+  "name": "the city direction chip points to the drop-off",
+  "ok": true,
+  "extra": "➜ ↑ Boutique Diallo · 22 m"
  },
  {
   "name": "world marker on the drop-off",
   "ok": true,
-  "extra": "{\"visible\":true,\"x\":102,\"z\":-5.5}"
+  "extra": "{\"visible\":true,\"x\":-101,\"z\":85.7}"
  },
  {
   "name": "walked to the drop-off: delivery paid",
   "ok": true,
-  "extra": "3000 → 4200 · Livraison réussie ✓ +1 200 F · Nouvelle cliente : Awa, cliente du Café Touba. Elle te recommandera."
+  "extra": "3000 → 4200 · Livraison réussie ✓ +1 200 F · Nouvelle cliente : Awa, du Salon Awa. Elle te recommandera."
  },
  {
   "name": "first client met, recommended run unlocked",
   "ok": true,
-  "extra": "Livraison réussie ✓ +1 200 F · Nouvelle cliente : Awa, cliente du Café Touba. Elle te recommandera."
+  "extra": "Livraison réussie ✓ +1 200 F · Nouvelle cliente : Awa, du Salon Awa. Elle te recommandera."
  },
  {
   "name": "completing the same run id twice pays once",
@@ -55,9 +70,14 @@
   "extra": ""
  },
  {
+  "name": "the city marker is cleared after the hand-over",
+  "ok": true,
+  "extra": ""
+ },
+ {
   "name": "second run: complete twice → one payment",
   "ok": true,
-  "extra": "{\"runId\":\"c2d14c03-2-3550\",\"paid\":1000,\"late\":false,\"newClient\":null} null 5200"
+  "extra": "{\"runId\":\"64af819a-2-4116\",\"paid\":1000,\"late\":false,\"newClient\":null} null 5200"
  },
  {
   "name": "cancel: no payment, no double effect",
@@ -67,7 +87,27 @@
  {
   "name": "ledger records the deliveries (newest first)",
   "ok": true,
-  "extra": "[{\"at\":1791496775203,\"label\":\"Livraison Tiak Tiak → Café Touba · Parcelles\",\"amount\":1000},{\"at\":1791496765699,\"label\":\"Livraison Tiak Tiak → Garage Modou\",\"amount\":1200}]"
+  "extra": "[{\"at\":1791499357660,\"label\":\"Livraison Tiak Tiak → Salon Awa\",\"amount\":1000},{\"at\":1791499346834,\"label\":\"Livraison Tiak Tiak → Boutique Diallo\",\"amount\":1200}]"
+ },
+ {
+  "name": "jobs app lists Tiak Tiak offers and the city’s paid services",
+  "ok": true,
+  "extra": "9 rows: Aider à ranger le stockBoutique Diallo · −15 énergie · 3 m+1 500 F | Livrer les dossiers de l’agenceBanque Teranga · Pikine · −20 énergie · 118 m+2 400 F | Aider le mécanicienGarage Modou · −18 énergie · 224 m+2 000 F"
+ },
+ {
+  "name": "service rows show pay, energy cost and distance",
+  "ok": true,
+  "extra": "Aider à ranger le stockBoutique Diallo · −15 énergie · 3 m+1 500 F"
+ },
+ {
+  "name": "picking a city service sets the walking marker, no teleport",
+  "ok": true,
+  "extra": "pikine:city:bank"
+ },
+ {
+  "name": "a city service (Boutique Diallo stock) is in the ledger",
+  "ok": true,
+  "extra": "{\"at\":1791499382731,\"label\":\"Aider à ranger le stock · Boutique Diallo\",\"amount\":1500}"
  },
  {
   "name": "Ibou’s delivery beat is suggested",
@@ -87,7 +127,7 @@
  {
   "name": "bought the radio at the stall (charged once)",
   "ok": true,
-  "extra": "5200 → 1200"
+  "extra": "6700 → 2700"
  },
  {
   "name": "buying it again is refused (no double charge)",
@@ -102,7 +142,7 @@
  {
   "name": "« Écouter la radio » raises the mood",
   "ok": true,
-  "extra": "74.1 → 84.1"
+  "extra": "74.0 → 84.0"
  },
  {
   "name": "all six items can be bought; the room refreshes while inside",
@@ -122,12 +162,12 @@
  {
   "name": "reload: money persisted",
   "ok": true,
-  "extra": "12700 / 12700"
+  "extra": "14200 / 14200"
  },
  {
   "name": "reload: ledger persisted",
   "ok": true,
-  "extra": "9 entries"
+  "extra": "10 entries"
  },
  {
   "name": "reload: furniture persisted",
@@ -167,17 +207,22 @@
  {
   "name": "phone: accepted from the jobs app → pick-up stage",
   "ok": true,
-  "extra": "{\"runId\":\"c2d14c03-4-8583\",\"routeId\":\"pk_maiga_station\",\"hub\":\"pikine\",\"stage\":\"pickup\",\"pay\":1100,\"startedMs\":8583.400000000014,\"limitMs\":0}"
+  "extra": "{\"runId\":\"64af819a-4-9933\",\"routeId\":\"pk_maiga_garage\",\"hub\":\"pikine\",\"stage\":\"pickup\",\"pay\":1100,\"startedMs\":9933.300000000016,\"limitMs\":0}"
  },
  {
   "name": "phone: walking to the pick-up point starts the delivery leg",
   "ok": true,
-  "extra": "{\"runId\":\"c2d14c03-4-8583\",\"routeId\":\"pk_maiga_station\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1100,\"startedMs\":8683.400000000014,\"limitMs\":92479}"
+  "extra": "{\"runId\":\"64af819a-4-9933\",\"routeId\":\"pk_maiga_garage\",\"hub\":\"pikine\",\"stage\":\"deliver\",\"pay\":1100,\"startedMs\":10266.600000000015,\"limitMs\":60000}"
  },
  {
   "name": "phone: HUD line visible",
   "ok": true,
-  "extra": "Livraison → Gare des cars rapides, 47 m  · 1:32"
+  "extra": "Livraison → Garage Modou, 10 m  · 1:00"
+ },
+ {
+  "name": "Plateau: Tiak Tiak routes on existing city places",
+  "ok": true,
+  "extra": "4 offers"
  },
  {
   "name": "phone: no page errors",

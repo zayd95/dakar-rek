@@ -7,7 +7,7 @@ import type { Action, HubWorld, Interactable } from '../world/types';
 import { Batch, signTexture } from '../world/batch';
 import { HUB_NAMES } from '../world/content';
 import { ECONOMY } from './config';
-import { acceptJob, cancelJob, completeJob, deliveryLimitMs, offers, pickUp, pickupFrags, remainingMs, routeById, whyNot, type Completion, type Route } from './jobs';
+import { ROUTES, acceptJob, cancelJob, completeJob, deliveryLimitMs, offers, pickUp, pickupFrags, remainingMs, routeById, whyNot, type Completion, type Route } from './jobs';
 import { FURNITURE, buyFurniture, cannotBuy, furnitureById, owns, priceOf } from './furniture';
 import { homeGoalLine } from './progress';
 import './economy.css';
@@ -29,6 +29,8 @@ export interface EconomyDeps {
   save(): boolean;
   /** Rebuild the starter room so bought furniture appears. */
   refreshHome(): void;
+  /** Set (or clear) the city's walking marker — main.ts `destination`, the one "Les coins du quartier" uses. */
+  walkTo(placeId: string | null): void;
 }
 
 const esc = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
@@ -43,6 +45,10 @@ export class Economy {
   private line: HTMLElement;
   private t = 0;
   private lineT = 0;
+  /** Last player position seen (street position at the door when indoors), for distances in the jobs app. */
+  private here = { x: 0, z: 0 };
+  /** Run and stage the city walking marker was last set for (so it follows pick-up → drop-off once each). */
+  private markedFor: string | null = null;
 
   constructor(private d: EconomyDeps) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.55, 40), this.ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06;
@@ -105,30 +111,51 @@ export class Economy {
     world.interactables.push({ id: `${world.id}:shop:meubles`, name: 'Quincaillerie · meubles', kind: 'actions', x: sx, z: sz + 2.4, radius: 2.6, actions: [SHOP_ACTION] });
   }
 
-  // ---------------------------------------------------------------- deliveries
+  // ---------------------------------------------------------------- deliveries and the jobs app
+  /**
+   * Jobs. At a pick-up point (its "Livraisons Tiak Tiak" action): the deliveries leaving from there, parcel in hand.
+   * From the phone / wallet: Tiak Tiak offers of the hub, then the city's existing paid services (any place action with
+   * a `gain`: Soumbédioune, the mall, the bank, Boutique Diallo, the market, the garage…). Picking a service only sets the
+   * city's walking marker; the work itself is done at the place, as before (no teleport).
+   */
   openJobs(at?: Interactable) {
     const w = this.world; if (!w) return;
     const s = this.s, a = s.data.jobs.active, hub = w.id;
     const fromHere = at && at.id.startsWith(hub + ':') ? (r: Route) => at.id.includes(r.from.frag) : null;
     const items: MenuItem[] = [];
+    const away = (x: number, z: number) => Math.round(Math.hypot(x - this.here.x, z - this.here.z));
+    const tiakEnergy = `${ECONOMY.tiak.fatigue.energie} énergie`.replace('-', '−');
     if (a) {
       const r = routeById(a.routeId);
-      items.push({ label: `En cours : ${r?.from.name ?? '?'} → ${r?.to.name ?? '?'}`, detail: a.stage === 'pickup' ? 'Colis à récupérer' : this.limitText(), right: '+' + fcfa(a.pay), disabled: true, onPick: () => {} });
+      items.push({ label: `Tiak Tiak en cours : ${r?.from.name ?? '?'} → ${r?.to.name ?? '?'}`, detail: a.stage === 'pickup' ? 'Colis à récupérer' : this.limitText(), right: '+' + fcfa(a.pay), disabled: true, onPick: () => {} });
       items.push({ label: 'Annuler la livraison', detail: 'Aucun paiement', onPick: () => { this.cancel(); this.d.hud.closeModal(); } });
     } else {
-      const list = offers(s, hub).filter(r => !fromHere || fromHere(r));
-      for (const r of list) {
-        const why = whyNot(s, r), dist = this.distance(r);
-        const reco = r.needFlag ? '★ ' : '';
-        const parts = [r.what, dist !== null ? `≈ ${Math.round(dist)} m` : '', fromHere ? '' : `à récupérer : ${r.from.name}`].filter(Boolean);
-        items.push({ label: `${reco}${r.from.name} → ${r.to.name}`, detail: why ?? parts.join(' · '), right: '+' + fcfa(ECONOMY.tiak.pay[r.id] ?? 0), disabled: !!why, onPick: () => { this.d.hud.closeModal(); this.accept(r.id, !!fromHere); } });
+      for (const r of offers(s, hub).filter(r => !fromHere || fromHere(r))) {
+        const why = whyNot(s, r), dist = this.distance(r), start = this.placeOf(r.from.frag);
+        const parts = [r.what, tiakEnergy, dist !== null ? `trajet ≈ ${Math.round(dist)} m` : '', !fromHere && start ? `départ à ${away(start.x, start.z)} m` : ''].filter(Boolean);
+        items.push({ label: `${r.needFlag ? '★ ' : ''}Tiak Tiak · ${r.from.name} → ${r.to.name}`, detail: why ?? parts.join(' · '), right: '+' + fcfa(ECONOMY.tiak.pay[r.id] ?? 0), disabled: !!why, onPick: () => { this.d.hud.closeModal(); this.accept(r.id, !!fromHere); } });
+      }
+    }
+    if (!fromHere) {
+      const services = w.interactables
+        .filter(it => it.id.startsWith(hub + ':') && it.kind === 'actions')
+        .flatMap(it => it.actions.filter(x => x.gain && !x.special && (!x.visible || x.visible(s))).map(x => ({ it, x })))
+        .sort((p, q) => away(p.it.x, p.it.z) - away(q.it.x, q.it.z));
+      for (const { it, x } of services) {
+        const why = x.requires?.(s) ?? null, energy = x.needs?.energie ?? 0;
+        items.push({
+          label: x.label, right: '+' + fcfa(x.gain!), disabled: !!why,
+          detail: [it.name, energy < 0 ? `−${-energy} énergie` : '', `${away(it.x, it.z)} m`, why ?? ''].filter(Boolean).join(' · '),
+          onPick: () => { this.d.hud.closeModal(); this.d.walkTo(it.id); this.d.hud.toast(`Repère : ${it.name} · ${x.label}`); },
+        });
       }
     }
     const none = pickupFrags(hub).length === 0;
-    const sub = a ? 'Une livraison à la fois.' : none ? 'Pas encore de livraisons dans ce quartier (Pikine et Plateau pour l’instant).' : fromHere ? 'Commandes à livrer depuis ici. Temps large ; en retard, la course paie moins.' : `Commandes à ${HUB_NAMES[hub]}. Le colis se récupère au point de départ.`;
+    const sub = fromHere ? 'Commandes à livrer depuis ici. Temps large ; en retard, la course paie moins.'
+      : `${HUB_NAMES[hub]} · ${a ? 'une livraison à la fois' : none ? 'pas encore de Tiak Tiak ici (Pikine et Plateau)' : 'le colis se récupère au point de départ'}. Choisir un service pose un repère à suivre à pied.`;
     const done = s.data.counters.livraisons ?? 0;
     this.d.menu();
-    this.d.hud.openMenu('Tiak Tiak · livraisons', sub, items, `<div class="kv">Livraisons faites : ${done}. ${esc(LOCAL_NOTE)}</div><div class="draft">Trajets, clients et tarifs provisoires (à relire). À pied pour l’instant : pas encore de conduite.</div>`);
+    this.d.hud.openMenu(fromHere ? 'Tiak Tiak · livraisons' : 'Petits boulots', sub, items, `<div class="kv">Livraisons faites : ${done}. ${esc(LOCAL_NOTE)}</div><div class="draft">Trajets, clients et tarifs Tiak Tiak provisoires (à relire). À pied pour l’instant : pas encore de conduite.</div>`);
   }
 
   private limitText() {
@@ -148,6 +175,7 @@ export class Economy {
 
   cancel() {
     if (!cancelJob(this.s)) return false;
+    this.unmark();
     this.d.hud.toast('Livraison annulée · aucun paiement'); this.d.save();
     return true;
   }
@@ -156,6 +184,7 @@ export class Economy {
   finish(runId: string): Completion | null {
     const c = completeJob(this.s, runId);
     if (!c) return null;
+    this.unmark();
     const msg = [`${c.late ? 'Livré en retard' : 'Livraison réussie'} ✓ +${fcfa(c.paid)}`];
     if (c.newClient) msg.push(`Nouvelle cliente : ${c.newClient}. Elle te recommandera.`);
     this.d.hud.toast(msg.join(' · '));
@@ -163,14 +192,19 @@ export class Economy {
     return c;
   }
 
-  /** Per-frame: marker on the current target, HUD line, arrival at the pick-up / drop-off. */
-  update(dt: number, pos: THREE.Vector3, inside: boolean, playing: boolean) {
+  private unmark() { if (this.markedFor) { this.d.walkTo(null); this.markedFor = null; } }
+
+  /** Per-frame: marker on the current target, HUD line, arrival at the pick-up / drop-off. `street` = position outdoors (the door when inside). */
+  update(dt: number, pos: THREE.Vector3, inside: boolean, playing: boolean, street: { x: number; z: number } = pos) {
     this.t += dt;
+    this.here = { x: street.x, z: street.z };
     const s = this.s, a = s.data.jobs.active, w = this.world;
     const r = a ? routeById(a.routeId) : undefined;
     if (a && !r) { cancelJob(s); this.d.save(); }        // a route removed from the design table: drop the run, pay nothing
     const tgt = a && r && w && w.id === a.hub ? this.placeOf(a.stage === 'pickup' ? r.from.frag : r.to.frag) : undefined;
     this.marker.visible = !!tgt && !inside;
+    if (!a && this.markedFor) this.unmark();
+    if (tgt && `${a!.runId}:${a!.stage}` !== this.markedFor) { this.markedFor = `${a!.runId}:${a!.stage}`; this.d.walkTo(tgt.id); }   // the city's arrow follows the parcel
     if (tgt && w) {
       const col = a!.stage === 'pickup' ? 0x4fd1ff : 0xffc83d;
       this.ringMat.color.setHex(col); this.beamMat.color.setHex(col);
@@ -237,7 +271,7 @@ export class Economy {
       <div class="draft">${esc(LOCAL_NOTE)} Les 100 derniers mouvements sont gardés.</div>`;
     this.d.menu();
     this.d.hud.openMenu('Portefeuille', `${fcfa(s.wallet)} · ${homeGoalLine(s)}`, [
-      { label: 'Livraisons Tiak Tiak', detail: 'Offres du quartier', onPick: () => this.openJobs() },
+      { label: 'Petits boulots', detail: 'Tiak Tiak et services payés du quartier', onPick: () => this.openJobs() },
       { label: 'Ma chambre · meubles', detail: `${s.data.furniture.length}/${FURNITURE.length} meubles`, onPick: () => this.openShop(true) },
     ], html);
   }
@@ -258,10 +292,13 @@ export class Economy {
         return c ? { runId: c.runId, paid: c.paid, late: c.late, newClient: c.newClient } : null;
       },
       cancelJob: () => this.cancel(),
-      jobsMenu: () => this.openJobs(), shop: () => this.openShop(false), homeApp: () => this.openShop(true), wallet: () => this.openWallet(),
+      jobsMenu: () => this.openJobs(),
+      jobsApp: () => { this.openJobs(); return [...document.querySelectorAll('#modal.on .item:not(.close)')].map(e => e.textContent ?? ''); }, shop: () => this.openShop(false), homeApp: () => this.openShop(true), wallet: () => this.openWallet(),
       buy: (id: string) => this.buy(id),
       furniture: () => ({ owned: [...s.data.furniture], items: FURNITURE.map(f => ({ id: f.id, name: f.name, price: priceOf(f.id), owned: owns(s, f.id) })) }),
       ledger: () => phoneHooks.ledger?.() ?? [],
+      /** Every Tiak Tiak pick-up / drop-off of the current hub, resolved against the city's existing places. */
+      routeEnds: () => (this.world ? ROUTES.filter(r => r.hub === this.world!.id).flatMap(r => [r.from, r.to]).map(p => ({ name: p.name, place: this.placeOf(p.frag)?.name ?? null })) : []),
       marker: () => ({ visible: this.marker.visible, x: this.marker.position.x, z: this.marker.position.z }),
     };
   }

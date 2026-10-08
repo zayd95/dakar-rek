@@ -28,17 +28,17 @@ describe('save schema v3', () => {
     expect(m.schemaVersion).toBe(SCHEMA_VERSION); expect(m.ledger).toEqual([]); expect(m.furniture).toEqual([]);
   });
   it('sanitises ledger, furniture and jobs, and round-trips them', () => {
-    const m = migrate({ schemaVersion: 3, ledger: [{ at: 1, label: 'ok', amount: 5 }, { label: 'bad' }, 'x'], furniture: ['radio', 'radio', 3], jobs: { active: { runId: 'r1', routeId: 'pk_mame_garage', hub: 'mars' }, done: ['a', 2], seq: 'z' } })!;
+    const m = migrate({ schemaVersion: 3, ledger: [{ at: 1, label: 'ok', amount: 5 }, { label: 'bad' }, 'x'], furniture: ['radio', 'radio', 3], jobs: { active: { runId: 'r1', routeId: 'pk_mame_boutique', hub: 'mars' }, done: ['a', 2], seq: 'z' } })!;
     expect(m.ledger).toEqual([{ at: 1, label: 'ok', amount: 5 }]);
     expect(m.furniture).toEqual(['radio']);
     expect(m.jobs).toEqual({ active: null, done: ['a'], seq: 0 });
     const { s } = fresh();
-    expect(buyFurniture(s, 'miroir')).toBe(true); s.addMoney(-100, 'Café Touba'); acceptJob(s, 'pk_mame_garage', true, 60000);
+    expect(buyFurniture(s, 'miroir')).toBe(true); s.addMoney(-100, 'Café Touba'); acceptJob(s, 'pk_mame_boutique', true, 60000);
     const back = migrate(JSON.parse(JSON.stringify(s.data)))!;
     expect(back.ledger).toEqual(s.data.ledger); expect(back.furniture).toEqual(['miroir']); expect(back.jobs).toEqual(s.data.jobs);
   });
   it('drops a restored active run that was already completed', () => {
-    const m = migrate({ schemaVersion: 3, jobs: { active: { runId: 'r1', routeId: 'pk_mame_garage', hub: 'pikine', stage: 'deliver', pay: 1200, startedMs: 0, limitMs: 1 }, done: ['r1'], seq: 1 } })!;
+    const m = migrate({ schemaVersion: 3, jobs: { active: { runId: 'r1', routeId: 'pk_mame_boutique', hub: 'pikine', stage: 'deliver', pay: 1200, startedMs: 0, limitMs: 1 }, done: ['r1'], seq: 1 } })!;
     expect(m.jobs.active).toBeNull();
   });
 });
@@ -73,7 +73,7 @@ describe('Tiak Tiak deliveries', () => {
   });
   it('pays once: completing the same run id twice pays a single time', () => {
     const { s } = fresh();
-    const job = acceptJob(s, 'pk_mame_garage', true, 60000)!;
+    const job = acceptJob(s, 'pk_mame_boutique', true, 60000)!;
     const first = completeJob(s, job.runId)!;
     expect(first.paid).toBe(1200); expect(first.late).toBe(false);
     const wallet = s.wallet, ledger = s.data.ledger.length, count = s.data.counters.livraisons;
@@ -86,14 +86,14 @@ describe('Tiak Tiak deliveries', () => {
   });
   it('gives each run its own id', () => {
     const { s } = fresh();
-    const a = acceptJob(s, 'pk_mame_garage', true, 60000)!; completeJob(s, a.runId);
-    const b = acceptJob(s, 'pk_mame_garage', true, 60000)!;
+    const a = acceptJob(s, 'pk_mame_boutique', true, 60000)!; completeJob(s, a.runId);
+    const b = acceptJob(s, 'pk_mame_boutique', true, 60000)!;
     expect(b.runId).not.toBe(a.runId);
   });
   it('cancelling pays nothing, and has no double effect', () => {
     const { s } = fresh();
     const w = s.wallet, energy = s.data.needs.energie;
-    const job = acceptJob(s, 'pk_maiga_cafe', true, 60000)!;
+    const job = acceptJob(s, 'pk_boutique_salon', true, 60000)!;
     expect(cancelJob(s)).toBe(true); expect(cancelJob(s)).toBe(false);
     expect(completeJob(s, job.runId)).toBeNull();
     expect(s.wallet).toBe(w); expect(s.data.needs.energie).toBe(energy); expect(s.data.ledger).toEqual([]);
@@ -101,16 +101,16 @@ describe('Tiak Tiak deliveries', () => {
   });
   it('one delivery at a time; a run accepted from the phone must be picked up first', () => {
     const { s } = fresh();
-    const job = acceptJob(s, 'pk_mame_ecurie', false, 0)!;
+    const job = acceptJob(s, 'pk_mame_bank', false, 0)!;
     expect(job.stage).toBe('pickup');
-    expect(acceptJob(s, 'pk_maiga_cafe', true, 60000)).toBeNull();
+    expect(acceptJob(s, 'pk_boutique_salon', true, 60000)).toBeNull();
     expect(completeJob(s, job.runId)).toBeNull();            // nothing to hand over yet
     expect(pickUp(s, 90000)).toBe(true); expect(pickUp(s, 90000)).toBe(false);
     expect(completeJob(s, job.runId)!.paid).toBe(1400);
   });
   it('late deliveries pay less but never a negative amount; fatigue is small', () => {
     const { s } = fresh();
-    const job = acceptJob(s, 'pk_mame_garage', true, 60000)!;
+    const job = acceptJob(s, 'pk_mame_boutique', true, 60000)!;
     s.tick(61000);
     const before = s.wallet, energy = s.data.needs.energie;
     const c = completeJob(s, job.runId)!;
@@ -123,16 +123,16 @@ describe('Tiak Tiak deliveries', () => {
   it('the first client recommends a better-paid run, visible in the next offers', () => {
     const { s } = fresh();
     expect(offers(s, 'pikine').some(r => r.needFlag)).toBe(false);
-    const job = acceptJob(s, 'pk_pathe_arena', true, 60000)!;
+    const job = acceptJob(s, 'pk_pathe_square', true, 60000)!;
     expect(completeJob(s, job.runId)!.newClient).toBe(CLIENTS.pikine!.name);
-    expect(offers(s, 'pikine')[0].id).toBe('pk_reco_cafe_arena');
-    const again = acceptJob(s, 'pk_mame_garage', true, 60000)!;
+    expect(offers(s, 'pikine')[0].id).toBe('pk_reco_salon_bank');
+    const again = acceptJob(s, 'pk_mame_boutique', true, 60000)!;
     expect(completeJob(s, again.runId)!.newClient).toBeNull();
   });
   it('a tired courier cannot take a delivery', () => {
     const { s } = fresh();
     s.data.needs.energie = 2;
-    expect(acceptJob(s, 'pk_mame_garage', true, 60000)).toBeNull();
+    expect(acceptJob(s, 'pk_mame_boutique', true, 60000)).toBeNull();
   });
 });
 
@@ -165,7 +165,7 @@ describe('a close one reacts (Ibou) and the next step', () => {
     play(r, s, 'ibou_welcome', 'oui');
     expect(suggestion(r, s)?.id).toBe('goal_tiak');
     expect(availableBeat('ibou', r, s)).toBeNull();
-    const job = acceptJob(s, 'pk_mame_garage', true, 60000)!;
+    const job = acceptJob(s, 'pk_mame_boutique', true, 60000)!;
     expect(suggestion(r, s)?.id).toBe('goal_deliver');
     completeJob(s, job.runId);
     expect(availableBeat('ibou', r, s)?.id).toBe('ibou_tiak');
