@@ -2,9 +2,18 @@
 
 Décision de Habib : le lancement comprend la présence multijoueur. Direction visuelle : `ART_DIRECTION.md`.
 
-## Recette publique du 7 octobre
+## Recette publique
 
-**État au 7 octobre, ~18 h Dakar (vérifié depuis la session cloud Claude) : aucune recette publique en ligne.**
+**8 octobre, ~23 h UTC : la recette est en ligne sur le compte Cloudflare de Habib** (Worker `dakar-rek`, bouton
+« Visit » du tableau de bord ; Habib a confirmé que le jeu s'ouvre). Déploiement par **Workers Builds** relié au dépôt :
+build `npm run build:online`, déploiement `npx wrangler deploy`, jeton de build `dakar-rek-build`, aucune variable.
+**Branche de production : `wip/visual-pass`** (réglée dans Settings → Build → Branch control) : chaque push sur cette
+branche republie la recette. `main` ne contient pas encore la version en ligne (pas de `build:online` ni de
+`wrangler.jsonc`) ; c'est pourquoi les builds échouaient tant que la production pointait sur `main`. Après la fusion de
+la PR #1, remettre la branche de production sur `main`. Reste à faire : lancer `npm run check:online -- https://<adresse>/`
+contre l'adresse publique et la noter ici.
+
+État précédent, 7 octobre, ~18 h Dakar (vérifié depuis la session cloud Claude) : aucune recette publique en ligne.
 `dakar-rek.ludicrous-emoji.workers.dev` (Worker `4b3fd184-e7b1-46f7-955a-3f4779527fc3`) ne se résout plus (DNS
 `ENOTFOUND`) et l'ancienne adresse `dakar-rek.cyclic-echinodon.workers.dev` ne répondait déjà plus : les comptes
 temporaires ont expiré sans revendication confirmée. Le code intégré (Claude + Codex #2–#4) est sur `wip/visual-pass`.
@@ -66,7 +75,7 @@ Si plusieurs comptes sont disponibles, choisir le compte du projet et définir `
 
 ## Publication depuis GitHub
 
-Le workflow `Game checks` vérifie chaque push et PR. Le workflow `Deploy Dakar Rek` est déclenché manuellement sur la branche à publier ; aucun push ne publie automatiquement.
+Le workflow `Game checks` vérifie chaque push et PR. Le workflow `Deploy Dakar Rek` est déclenché manuellement sur la branche à publier. **En plus, depuis le 8 octobre, Cloudflare Workers Builds publie automatiquement chaque push sur la branche de production** (`wip/visual-pass` pour l'instant, voir plus haut).
 
 Configurer les secrets `CLOUDFLARE_API_TOKEN` et `CLOUDFLARE_ACCOUNT_ID` dans l’environnement GitHub `production`, puis lancer le workflow. Utiliser un token Cloudflare autorisé pour le déploiement Workers dans le compte choisi ; les autorisations exactes dépendent aussi des éventuelles routes personnalisées. Ne jamais mettre ce token dans `VITE_*`, le dépôt ou une conversation.
 

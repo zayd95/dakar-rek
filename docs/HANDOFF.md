@@ -33,3 +33,4 @@
 - Preview artifact: claude.ai artifact QZYffkk4jEThNWRM4iU1mN. The GLB is shipped there as `assets/character_v4.glb.json` (base64) because .glb is not a served type.
 - Headless checks: Chromium at /opt/pw-browsers with SwiftShader (CPU): frame rates compare builds only; they are not phone numbers. `?debug` exposes `window.__dakar` (teleport, setHour, enter/exit, meshStats…).
 - Blender files on Habib's Mac: `~/DakarRek-assets/`.
+- Deployment (8 Oct): Cloudflare Workers Builds deploys every push to `wip/visual-pass` (production branch set there until PR #1 is merged; then set it back to `main`). Details in `docs/LAUNCH.md`.
