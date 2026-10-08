@@ -168,6 +168,47 @@ export const BEATS: Beat[] = [
       { id: 'non', label: 'Je ne peux pas ce soir', reply: 'Dommage. Reviens si tu veux du travail.', effects: {}, completes: false },
     ],
   },
+  // ---- NPC life lane (8 Oct 2026): the Diallo family and Ndeye. BROUILLON — à relire par Habib. French only;
+  // no Wolof/Pulaar beyond what the repo already has.
+  {
+    id: 'mamadou_livraison', npc: 'mamadou', title: 'Le riz de Mame Diarra', hint: 'Mamadou Diallo, à la Boutique Diallo (Pikine), cherche quelqu’un pour une livraison.',
+    text: 'On m’a dit que tu cherches à te rendre utile. Trois sacs de riz attendent Mame Diarra à sa gargote, et Thierno ne peut pas quitter le comptoir. Tu t’en charges ?',
+    when: r => r.has('info_livraison') || r.has('intro_mamadou'),
+    choices: [
+      { id: 'livrer', label: 'Je livre les sacs (+1 500 F)', reply: 'Mame a fait dire que tout est arrivé. J’écris ton nom dans mon carnet — du bon côté, celui des gens fiables.', effects: { rel: [[P, 'mamadou', 12], [P, 'mame', 4], ['mamadou', 'mame', 3]], money: 1500, needs: { energie: -14, faim: -4 }, flags: ['mamadou_trust'], counter: 'shifts' } },
+      { id: 'credit', label: '« Et si tu me faisais crédit en échange ? »', reply: 'Ha ! Mon carnet de crédit est déjà plus épais que l’annuaire. Rends d’abord le service, on parlera après.', effects: { rel: [[P, 'mamadou', 2]] }, completes: false },
+      { id: 'non', label: 'Pas aujourd’hui', reply: 'Le riz attendra. Pas trop longtemps, j’espère : Mame n’est pas patiente.', effects: {}, completes: false },
+    ],
+  },
+  {
+    id: 'kadiatou_enquete', npc: 'kadiatou', title: 'L’enquête de Kadiatou', hint: 'Kadiatou Diallo, place des étudiants à Fann, cherche des témoins pour son mémoire.',
+    text: 'Tonton Mamadou t’envoie ? Il t’a sûrement dit que je pose trop de questions. Mon mémoire porte sur le crédit dans les boutiques de quartier. Cinq questions… peut-être six ?',
+    when: r => r.has('intro_kadiatou'),
+    choices: [
+      { id: 'repondre', label: 'Je réponds à tout', reply: 'Merci ! Tu es mon dixième témoin. Mon directeur de mémoire sera content, pour une fois.', effects: { rel: [[P, 'kadiatou', 10], ['kadiatou', 'mamadou', 1]], needs: { social: 8, energie: -4 }, counter: 'etudes', flags: ['kadiatou_friend'] } },
+      { id: 'carnet', label: '« Ton oncle note même les bonbons dans son carnet, non ? »', reply: 'Même les bonbons ! C’est pour ça qu’il est mon premier cas d’étude. Surtout, ne lui dis pas.', effects: { rel: [[P, 'kadiatou', 6]], needs: { social: 6, moral: 4 }, flags: ['kadiatou_friend', 'kadiatou_carnet'] } },
+      { id: 'plus_tard', label: 'Une autre fois', reply: 'Je suis là tous les après-midi, sur le banc. Avec mes fiches.', effects: {}, completes: false },
+    ],
+  },
+  {
+    id: 'kadiatou_ndeye', npc: 'kadiatou', title: 'Une commerçante de la Médina', hint: 'Kadiatou voudrait interroger une commerçante de la Médina : tu connais Ndeye.',
+    text: 'Il me manque une commerçante de la Médina pour mon enquête. Tu connais quelqu’un qui accepterait de me parler ?',
+    when: (r, s) => r.has('kadiatou_friend') && (r.level(PLAYER, 'ndeye') >= 10 || s.data.flags.includes('regular_ndeye')),
+    choices: [
+      { id: 'presenter', label: 'Je te présente Ndeye, à l’atelier', reply: 'Ndeye a parlé deux heures ! J’ai de quoi écrire un chapitre entier. Elle te salue.', effects: { rel: [[P, 'kadiatou', 6], [P, 'ndeye', 4], ['kadiatou', 'ndeye', 20]], flags: ['kadiatou_ndeye'] } },
+      { id: 'non', label: 'Je ne connais personne', reply: 'Tant pis, je trouverai bien.', effects: {}, completes: false },
+    ],
+  },
+  {
+    id: 'ndeye_commande', npc: 'ndeye', title: 'La commande de la fête', hint: 'Ndeye, à l’Atelier Ndeye (Médina), est débordée avant une fête.',
+    text: 'Trois boubous à finir pour un baptême samedi, et Ousseynou est parti livrer. Il me manque du fil, et le repassage n’attend pas. Tu as un moment ?',
+    when: () => true,
+    choices: [
+      { id: 'sandaga', label: 'Je vais chercher le fil chez Adja, à Sandaga', reply: 'Adja t’a fait le bon prix ? Elle ne le fait qu’aux gens qu’elle apprécie. Les boubous seront prêts.', effects: { rel: [[P, 'ndeye', 10], [P, 'adja', 4], ['ndeye', 'adja', 3]], needs: { energie: -10 }, flags: ['ndeye_trust'] } },
+      { id: 'repasser', label: 'Je reste repasser (+1 200 F)', reply: 'Pas un pli. Tu as déjà fait ça, avoue.', effects: { rel: [[P, 'ndeye', 8]], money: 1200, needs: { energie: -12, hygiene: -4 }, flags: ['ndeye_trust'], counter: 'shifts' } },
+      { id: 'non', label: 'Pas maintenant', reply: 'Bon. Si tu repasses, l’atelier est ouvert jusqu’au soir.', effects: {}, completes: false },
+    ],
+  },
 ];
 
 export function availableBeat(npc: string, r: Relations, s: GameState): Beat | null {
@@ -189,7 +230,15 @@ export function suggestion(r: Relations, s: GameState): Beat | Step | null {
 }
 
 export function applyChoice(beat: Beat, choice: Choice, r: Relations, s: GameState): string[] {
-  const e = choice.effects, notes: string[] = [];
+  const notes = applyEffects(choice.effects, r, s, beat.title);
+  if (choice.completes !== false) s.data.beats[beat.id] = choice.id;
+  return notes;
+}
+
+/** Apply effects (shared by story beats and replayable situations); returns the relationship notes for a toast.
+ * `label` names any money movement in the wallet history (the beat or situation title). */
+export function applyEffects(e: Effects, r: Relations, s: GameState, label: string): string[] {
+  const notes: string[] = [];
   for (const [a, b, d] of e.rel ?? []) {
     r.change(a, b, d);
     if (a === PLAYER || b === PLAYER) {
@@ -198,9 +247,8 @@ export function applyChoice(beat: Beat, choice: Choice, r: Relations, s: GameSta
     }
   }
   for (const f of e.flags ?? []) r.set(f);
-  if (e.money) s.addMoney(e.money, beat.title);
+  if (e.money) s.addMoney(e.money, label);
   if (e.needs) s.adjust(e.needs);
   if (e.counter) s.count(e.counter);
-  if (choice.completes !== false) s.data.beats[beat.id] = choice.id;
   return notes;
 }
