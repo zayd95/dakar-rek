@@ -12,7 +12,8 @@
     "DKAG-005",
     "DKAG-015",
     "DKAG-016",
-    "DKAG-017"
+    "DKAG-017",
+    "DKAG-018"
   ],
   "tasks": [
     {
@@ -403,6 +404,32 @@
       "reviewer": "qa_animation_1707",
       "controlBriefCommit": "e3cdf9ad3c697a51d50bca3766f6ea51364befda",
       "ownerState": "assigned"
+    },
+    {
+      "id": "DKAG-018",
+      "role": "world",
+      "kind": "implementation",
+      "status": "ready",
+      "branch": "codex/agents/dkag-018-arena-billboard-offset",
+      "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
+      "allowedFiles": [
+        "src/world/builder.ts",
+        "scripts/check-v1-core.mjs",
+        "docs/agents/reports/DKAG-018-world.md"
+      ],
+      "dependencies": [],
+      "basis": "DKAG-009 exact-source calculation: arena and ad interaction anchors10cm apart; central approach menu changes with10cm movement",
+      "authority": "Producer commissions surgical existing billboard relocation on isolated fork; complements PR10 without duplicating city/mosque/ads code or touching other refs",
+      "decision": "Explicit externalReservation exception for candidate ONLY: base PR10 exact preserving all other blobs, modify only arena billboard transform/approach parameters plus its existing regression script. No PR9/10 integration and no replacement of builder with another head. Recheck current #10 before dispatch; if owner has already fixed defect reconcile instead of duplicate.",
+      "acceptance": [
+        "Arena entrance centerline retains arena menu across nearby approach positions, not billboard",
+        "Billboard and advertising menu remain deliberately reachable away from entry axis",
+        "Chosen lateral placement tested against actual neighboring stalls/stands/poles/barriers, player0.5mclearance",
+        "Desktop/touch and low/medium navigation tests and door/ring framing captures at exact source",
+        "No new ads/rules/global nearest priority/assets/packages/workflows/schema/economy changes; existing mosque and ads suites preserved",
+        "Independent QA and exact-source CI; source/base pinned and draft PR only"
+      ],
+      "culturalStatus": "provisional geometry, no cultural certification"
     }
   ]
 }
