@@ -380,7 +380,7 @@
       "id": "DKAG-017",
       "role": "animation",
       "kind": "implementation",
-      "status": "active",
+      "status": "review",
       "branch": "codex/agents/dkag-017-fall-one-shot",
       "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
       "allowedFiles": [
@@ -403,7 +403,20 @@
       "owner": "animation_resume_1655",
       "reviewer": "qa_animation_1707",
       "controlBriefCommit": "e3cdf9ad3c697a51d50bca3766f6ea51364befda",
-      "ownerState": "assigned"
+      "ownerState": "completed frozen handoff",
+      "sourceCommit": "25bbb40e7882ccbd06e2181689982d0f0085b504",
+      "pullRequest": 15,
+      "validation": {
+        "authorUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "authorBrowser": "PASS both controlled duel outcomes; real GLB and renderer; not phone/visual clipping",
+        "ci": "pending",
+        "independentQa": "running"
+      }
     },
     {
       "id": "DKAG-018",

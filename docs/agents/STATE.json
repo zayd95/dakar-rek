@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08T17:07:00Z",
+  "updatedAt": "2026-10-08T17:13:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_scheduler_enabled",
@@ -12,7 +12,7 @@
     "expiresAt": "2026-10-08T17:40:00Z",
     "baseHead": "feac8c3da1cefd766f43794133d135ea6a99853e"
   },
-  "activeCodeTask": "DKAG-017",
+  "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [
     {
@@ -31,19 +31,6 @@
       "baseCommit": "c089dce66e972d8785208e0cb64055ddb954430f",
       "allowedFiles": [
         "docs/agents/operations/reports/DKAG-016-characters-review.md"
-      ]
-    },
-    {
-      "task": "DKAG-017",
-      "owner": "animation_resume_1655",
-      "reviewer": "qa_animation_1707",
-      "branch": "codex/agents/dkag-017-fall-one-shot",
-      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
-      "allowedFiles": [
-        "src/actors/humanoid.ts",
-        "tests/humanoid-animation.test.ts",
-        "scripts/check-fall-animation.mjs",
-        "docs/agents/reports/DKAG-017-animation.md"
       ]
     },
     {
@@ -163,12 +150,12 @@
   "productionMutationsAuthorized": false,
   "reviewTasks": [
     "DKAG-008",
-    "DKAG-016"
+    "DKAG-016",
+    "DKAG-017"
   ],
   "activeSessions": [
     "qa_resume_1655",
     "qa_ibou_1701",
-    "animation_resume_1655",
     "qa_animation_1707"
   ],
   "completedSessions": [
@@ -183,9 +170,10 @@
     "animation_resume_1655",
     "culture_resume_1655",
     "combat_resume_1655",
-    "characters_resume_1655"
+    "characters_resume_1655",
+    "animation_resume_1655"
   ],
-  "nextAction": "Coordinator takes the next isolated cycle from durable queue; combat DKAG-008 ready. Current chat remains usable independently of scheduler.",
+  "nextAction": "Complete frozen candidates13/14/15 exact CI and independent QA; next bounded code lot DKAG-018 arena billboard access on isolated fork after rechecking source owner.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
