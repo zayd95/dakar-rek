@@ -18,12 +18,16 @@ export const BAY = { z0: 64, z1: 116, shoreX: -155, railX: -133.55 };
 export interface CityContext {
   hub: HubId; lite: boolean;
   plain: Batch; glass: Batch; pave: Batch;
+  /** Terrazzo floors (Higgsfield texture #28): bank hall and mall courtyard. */
+  floor: Batch;
   people: HubWorld['people']; interactables: Interactable[]; colliders: Collider[];
   sign(text: string, bg: string, fg: string, x: number, y: number, z: number, yaw: number, w?: number, h?: number): void;
   tree(x: number, z: number, size?: number, flower?: boolean): void;
   pool(x: number, z: number, radius: number, y?: number): void;
 }
 
+/** Terrazzo floors sit just above the block ground slab (top at 0.13 m), so they neither z-fight with it nor hide under it. */
+const TERRAZZO_Y = 0.135, TERRAZZO = 0xe6dfd2;
 const FLOOR = 0.12, WHITE = 0xf2e9d6, WOOD = 0x8c6542, DARK = 0x253d43;
 const FISHER: PersonLook = { skin: 0x633a24, style: 'tee', top: 0x236da0, bottom: 0x31404d, hat: 'kufi', hatColor: 0xf4c443, shoes: 0x242b27, muscular: 0.4 };
 const VENDOR: PersonLook = { skin: 0x78452b, style: 'dress', top: 0xd66532, bottom: 0xd66532, female: true, pattern: 'wax', accent: 0xeee1b0, hat: 'headwrap', hatColor: 0xe8b734 };
@@ -144,6 +148,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     const name = `Banque Teranga · ${c.hub === 'pikine' ? 'Pikine' : 'Plateau'}`;
     const x = cx, z = cz - 7, w = 32, d = 22, h = 5.5;
     pave.box(41, 0.04, 41, cx, 0.07, cz, 0xd5d4c6);
+    c.floor.box(w - 0.4, 0.012, d - 0.4, x, TERRAZZO_Y, z, TERRAZZO);                   // terrazzo hall floor
     for (const dx of [-w / 2, w / 2]) { box(0.4, h, d, x + dx, z, WHITE); solid(x + dx, z, 0.4, d, h); }
     box(w, h, 0.4, x, z - d / 2, WHITE); solid(x, z - d / 2, w, 0.4, h);
     // Upper offices only at the back; entrance and waiting court stay visible from the game camera.
@@ -169,7 +174,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
   }
 
   if (kind === 'mall') {
-    pave.box(44, 0.035, 44, cx, 0.07, cz, 0xdacdb7);
+    c.floor.box(44, 0.012, 44, cx, TERRAZZO_Y, cz, TERRAZZO);                           // terrazzo courtyard
     const shops = [
       { dx: -14, name: 'Ndar Tech', actions: A.tech, mode: 'tech' as const, key: 'tech' },
       { dx: 0, name: 'Style Rek', actions: A.style, mode: 'cloth' as const, key: 'style' },

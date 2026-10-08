@@ -220,15 +220,26 @@ Derived 512 px JPEGs in `public/assets/tex/` (loaded on demand; switched off on 
 
 | Game file | From | Processing | Used for |
 | --- | --- | --- | --- |
-| `breeze_block.jpg` | #12 | greyscale, contrast ×1.7, mean normalised to 0.84 so it modulates the wall colour | raw breeze-block yard walls (Pikine), 1.6 m per repeat |
+| ~~`breeze_block.jpg`~~ (removed 8 Oct, replaced by `hollow_block.jpg`) | #12 | greyscale, contrast ×1.7, mean normalised to 0.84 so it modulates the wall colour | raw breeze-block yard walls (Pikine), 1.6 m per repeat |
 | `sand.jpg` | #13 | tint neutralised (mean 0.9) | ground plane of every hub, 3 m per repeat |
 | `painted_metal.jpg` | #16 | greyscale, contrast ×1.5, mean 0.82 | gates and boutique shutters, 1.2 m per repeat |
 | `floor_tiles_terracotta.jpg` | #15 | resized only (colour kept) | gargote floors, 1.2 m per repeat (4 × 4 tiles of 30 cm) |
 | `paving.jpg` | #21 (paving v2) | greyscale, mean 0.8 | sidewalks and plazas (replaces the procedural paving), 2 m per repeat |
 | `wood.jpg` | #19 (wood v2, `_tiled` seam-fixed file) | greyscale, contrast ×1.3, mean 0.82 | interior furniture (beds, counters, benches), 1 m per repeat |
+| `hollow_block.jpg` | #50 | greyscale, contrast ×1.6, mean 0.84 | raw breeze-block walls (replaces `breeze_block.jpg`, whose units read as bricks), 1.2 m per repeat = 3 × 6 blocks of 40 × 20 cm |
+| `asphalt.jpg` | #27 | greyscale, contrast ×1.4, mean 0.9 | roads in Plateau, Corniche and Almadies (Pikine's stay sandy), 3 m per repeat |
+| `clay_tiles.jpg` | #29 | greyscale, contrast ×1.5, mean 0.86 | Plateau red hipped roofs, 1.8 m per repeat (6 rows of 30 cm) |
+| `corrugated.jpg` | #25 | greyscale, contrast ×1.8, mean 0.88 | arena roof sheets, mapped on each panel's UVs (4 × 5 repeats per panel, about 11 cm pitch) so the ribs run down the slope; plain colour on Low |
+| `corrugated_rusty.jpg` | #26 | colour kept, mean 0.86 | dibiterie tin awnings, 1.2 m per repeat |
+| `concrete.jpg` | #11 | greyscale, contrast ×1.4, mean 0.9 | arena tiers, 2 m per repeat |
+| `palm_trunk.jpg` | #49 (palm trunk v2, `_tiled` seam-fixed file) | greyscale, contrast ×1.3, mean 0.86 | palm trunks (whitewashed ones too), 1 m per repeat |
+| `terrazzo.jpg` | #28 (`_tiled` seam-fixed file) | colour kept, mean 0.92 | bank hall and mall courtyard floors, 1.5 m per repeat |
+| `sand_trampled.jpg` | #31 | tint neutralised (mean 0.9) | arena sand floor, 2.5 m per repeat |
 
-Each was tiled 3×3 after processing: no visible seam. Not used: #4 plaster and #17 wood (seam failures), #14 paving
-(replaced by #21), #11 concrete and #20 plaster v2 (no use yet). References #10 (dibiterie), #18 (Maïga) and #22–24 (arena) guided those builds.
+Each was tiled 3×3 after processing: no visible seam (batch 3 files also checked by wrap-edge difference; the clay tile and
+corrugated top/bottom edges fall on a tile row and a flat run, and read as continuous when tiled 2×2). Not used: #4 plaster,
+#17 wood and #32 palm trunk (seam failures), #14 paving (replaced by #21), #12 breeze block (replaced by #50 on 8 Oct),
+#20 plaster v2 and #30 pink render (facades already carry their own window texture). References #10 (dibiterie), #18 (Maïga) and #22–24 (arena) guided those builds.
 
 Terms (checked 7 Oct 2026, Higgsfield help centre "Who owns my generations", dated 2 Aug 2026, citing Terms of Use §4–5):
 the user owns inputs and outputs; commercial use is not restricted and not limited to paid plans; outputs are not
