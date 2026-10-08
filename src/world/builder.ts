@@ -896,7 +896,9 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         for (const sx of [-1, 1]) for (let k2 = 0; k2 < 2; k2++) stall(cx + sx * (8 + k2 * 4.5), gzz - 4 - k2 * 1.5);
         interactables.push({ id: `${id}:arena`, name: 'Arène · làmb', kind: 'actions', x: cx, z: cz - 24, radius: 5, actions: ACTIONS.arena });
         arenaInfo = { cx, cz, r: 19 };
-        addBillboard('pikine-arena', cx, cz - WALL_R - 0.7, Math.PI);
+        // Keep the gate centreline for the arena prompt. The board sits east of the queue: its 3.8 m clear
+        // span stays walkable for the 0.5 m player radius, away from the nearest stall, wall and floodlight.
+        addBillboard('pikine-arena', cx + 17, cz - WALL_R - 0.7, Math.PI);
         break;
       }
       case 'ecurie': {
