@@ -120,11 +120,24 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const plainMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 1, 1);
   // concrete paving: Higgsfield texture #21 (paving v2, regular 4 × 4 slabs of 50 cm per 2 m repeat)
   const paveMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.5, 1, false, generatedTexture('paving'), 2);
-  // raw breeze-block walls: Higgsfield texture #12, 4 blocks × 8 courses per repeat = 1.6 m (40 × 20 cm parpaings)
-  const blockMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.4, 1, false, generatedTexture('breeze_block'), 1.6);
+  // raw breeze-block walls: Higgsfield texture #50 (2:1 hollow cement blocks), 3 blocks × 6 courses per repeat = 1.2 m (40 × 20 cm)
+  const blockMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.4, 1, false, generatedTexture('hollow_block'), 1.2);
   // painted metal gates and shutters: Higgsfield texture #16 (desaturated), 1 m per repeat
   const metalMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.3, 1, false, generatedTexture('painted_metal'), 1.2);
   const metal = new Batch();
+  // Higgsfield batch 3 textures (8 Oct; prompts, ids and seam checks in assets-src/references/PROVENANCE.md)
+  const lam = () => new THREE.MeshLambertMaterial({ vertexColors: true });
+  const asphalt = new Batch(), asphaltMat = addGrain(lam(), 0.5, 1, false, generatedTexture('asphalt'), 3);              // #27, 3 m
+  const tileRoof = new Batch(), tileRoofMat = addGrain(lam(), 0.4, 1, false, generatedTexture('clay_tiles'), 1.8);       // #29, 6 rows of 30 cm
+  const tin = new Batch(), tinMat = addGrain(lam(), 0.3, 1, false, generatedTexture('corrugated_rusty'), 1.2);           // #26, rusty sheet
+  const trunks = new Batch(), trunkMat = addGrain(lam(), 0.4, 1, false, generatedTexture('palm_trunk'), 1);              // #49, palm bark
+  const concrete = new Batch(), concreteMat = addGrain(lam(), 0.5, 1, false, generatedTexture('concrete'), 2);           // #11, arena tiers
+  const ringSand = new Batch(), ringSandMat = addGrain(lam(), 0.6, 1, false, generatedTexture('sand_trampled'), 2.5);   // #31, arena floor
+  const terrazzo = new Batch(), terrazzoMat = addGrain(lam(), 0.2, 1, false, generatedTexture('terrazzo'), 1.5);         // #28, bank and mall floors
+  // arena roof sheets: #25 mapped on each panel's own UVs so the corrugations run down the slope (about 11 cm pitch);
+  // Low quality keeps the plain colour like every other detail texture
+  const roofSheet = new Batch();
+  const roofSheetMat = lite ? plainMat : addGrain(new THREE.MeshLambertMaterial({ vertexColors: true, map: generatedTexture('corrugated', [4, 5]) }), 0.3, 1);
   const leafMat = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), 0.8, 2.5);
   const glassMat = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x335577, emissiveIntensity: 0.25 });
   const lampMat = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -199,8 +212,9 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const edges: RoadEdge[] = [];
   const nodes: { x: number; z: number }[][] = [];
   for (let k = 0; k <= NB; k++) {
-    plain.box(ROAD, 0.08, size + 12, roadC(k), 0, 0, sp.road);      // roads along z (x = roadC(k))
-    plain.box(size + 12, 0.08, ROAD, 0, 0, roadC(k), sp.road);      // roads along x
+    const road = banlieue ? plain : asphalt;                         // Pikine's roads stay sandy
+    road.box(ROAD, 0.08, size + 12, roadC(k), 0, 0, sp.road);       // roads along z (x = roadC(k))
+    road.box(size + 12, 0.08, ROAD, 0, 0, roadC(k), sp.road);       // roads along x
   }
   for (let a = 0; a <= NB; a++) { nodes[a] = []; for (let b = 0; b <= NB; b++) nodes[a][b] = { x: roadC(a), z: roadC(b) }; }
   for (let a = 0; a <= NB; a++) for (let b = 0; b <= NB; b++) {
@@ -260,7 +274,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const palm = (x: number, z: number, s = 1, whitewash = false) => {
     R(); // (was lean; kept so the hub layouts stay the same)
     const h = 6.2 * s;
-    for (let k = 0; k < 2; k++) plain.cyl(0.2 * s + (1 - k) * 0.06, 0.26 * s + (1 - k) * 0.06, h / 2 + 0.05, x, 0.1 + (k * h) / 2, z, k % 2 ? 0x8a6b45 : whitewash ? 0xf1eee6 : 0x7a5d3a, 5);
+    for (let k = 0; k < 2; k++) trunks.cyl(0.2 * s + (1 - k) * 0.06, 0.26 * s + (1 - k) * 0.06, h / 2 + 0.05, x, 0.1 + (k * h) / 2, z, k % 2 ? 0x9a7b55 : whitewash ? 0xf1eee6 : 0x8a6d4a, 5);
     const top = 0.1 + h;
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2 + R() * 0.5;
@@ -430,7 +444,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     if (tiles) {
       // hipped roof in red clay tiles (4-sided pyramid, flattened)
       const rr = Math.max(w, d) * 0.72;
-      plain.cyl(0.6, rr, 3.0, cx, G + h + 0.25, cz, 0xc0532e, 4, [0, Math.PI / 4, 0]);
+      tileRoof.cyl(0.6, rr, 3.0, cx, G + h + 0.25, cz, 0xcc5d34, 4, [0, Math.PI / 4, 0]);
     } else {
       parapet(cx, cz, w + 0.5, d + 0.5, G + h + 0.26, shade(col, 0.92), 0.8);
       roofClutter(cx, cz, w, d, G + h + 0.28);
@@ -483,7 +497,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     for (const sx of [-1, 1]) plain.box(0.4, h, 0.4, cx + sx * (w / 2 - 0.2), G, front, WC); // front piers
     plain.box(w, 0.5, 0.35, cx, G + h - 0.5, front, WC);                              // lintel
     // corrugated tin awning on poles over the pavement
-    for (let n = 0; n < 12; n++) plain.box((w + 1) / 12 + 0.02, 0.06, 2.8, cx - (w + 1) / 2 + (n + 0.5) * ((w + 1) / 12), G + 3.0 - (n % 2) * 0.05, front + dir * 1.4, n % 2 ? 0x9aa0a4 : 0x8a8f93);
+    for (let n = 0; n < 12; n++) tin.box((w + 1) / 12 + 0.02, 0.06, 2.8, cx - (w + 1) / 2 + (n + 0.5) * ((w + 1) / 12), G + 3.0 - (n % 2) * 0.05, front + dir * 1.4, n % 2 ? 0xe2dfd8 : 0xd2cfc8);
     for (const sx of [-1, 1]) plain.box(0.08, 2.9, 0.08, cx + sx * (w / 2 + 0.3), G, front + dir * 2.7, 0x555555);
     // charcoal grill at the front edge with skewers and glowing embers
     const gx = cx - 2.5, gz = at(d / 2 - 0.6);
@@ -769,7 +783,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         // outer wall, gate and floodlights. Ring side after Habib's arena photos (7 Oct): white sandbags with a traced line inside,
         // low sponsor boards just outside, judges' chairs, an officials' table under a canopy, crowd barriers, a bannered
         // parapet in front of the stands and feather flags. Boards and banners are blank colour panels (no real sponsors).
-        plain.cyl(17.3, 17.3, 0.04, cx, B, cz, 0xe8d3a2, 40);
+        ringSand.cyl(17.3, 17.3, 0.04, cx, B, cz, 0xead6a8, 40);                         // trampled sand (#31)
         for (let s = 0; s < 64; s++) {                                                  // white sandbag ring of the combat circle
           const a = (s / 64) * Math.PI * 2;
           plain.blob(0.46, cx + Math.sin(a) * 9, B + 0.1, cz + Math.cos(a) * 9, s % 3 ? 0xf3f0e8 : 0xe2ddd0, 0.4, 1);
@@ -832,7 +846,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
             const a = ((s + 0.5) / segs) * Math.PI * 2;
             if (gateGap(a)) continue;
             const wSeg = (2 * Math.PI * r) / segs + 0.06;
-            plain.box(wSeg, top, TIER_DEPTH, cx + Math.sin(a) * r, 0, cz + Math.cos(a) * r, TIER_COL[t], a);
+            concrete.box(wSeg, top, TIER_DEPTH, cx + Math.sin(a) * r, 0, cz + Math.cos(a) * r, TIER_COL[t], a);  // cast concrete (#11)
             plain.box(wSeg, 0.12, 0.06, cx + Math.sin(a) * (r - 0.67), top - 0.18, cz + Math.cos(a) * (r - 0.67), FLAG[Math.floor(s / 4) % 3], a); // painted riser band
             plain.box(wSeg, 0.06, 0.12, cx + Math.sin(a) * (r - 0.6), top, cz + Math.cos(a) * (r - 0.6), 0xe9e4d8, a);  // worn seat edge
           }
@@ -861,7 +875,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
             const a = ((s + 0.5) / segs) * Math.PI * 2;
             if (gateGap(a)) continue;
             const sa = Math.sin(a), ca = Math.cos(a), wSeg = (2 * Math.PI * ROOF_BACK_R) / segs + 0.04;
-            plain.slab(wSeg, 0.16, depth, cx + sa * rm, ym, cz + ca * rm, s % 2 ? 0xb8bdc3 : 0xadb3ba, a, tilt);
+            roofSheet.slab(wSeg, 0.16, depth, cx + sa * rm, ym, cz + ca * rm, s % 2 ? 0xc4c9cf : 0xb9bfc6, a, tilt);  // galvanized sheet (#25)
             plain.box(wSeg * (ROOF_FRONT_R / ROOF_BACK_R) + 0.1, 0.5, 0.08, cx + sa * (ROOF_FRONT_R - 0.02), ROOF_FRONT_Y - 0.42, cz + ca * (ROOF_FRONT_R - 0.02), 0xf1ead8, a); // fascia
             if (s % 2) continue;
             // column on the outer wall, cantilever beam under the roof, and a strut
@@ -931,7 +945,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const key = `${i},${j}`;
     const city = CITY_BLOCKS[id][key];
     if (city) {
-      buildCityBlock({ hub: id, lite, plain, glass, pave, people, interactables, colliders, sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
+      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
       continue;
     }
     const s = sp.specials[key];
@@ -1011,7 +1025,9 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     stall(x, z);
   }
 
-  for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true]] as [Batch, THREE.Material, boolean][]) {
+  for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true],
+    [asphalt, asphaltMat, false], [tileRoof, tileRoofMat, true], [tin, tinMat, true], [trunks, trunkMat, true], [concrete, concreteMat, true],
+    [ringSand, ringSandMat, false], [terrazzo, terrazzoMat, false], [roofSheet, roofSheetMat, true]] as [Batch, THREE.Material, boolean][]) {
     const mesh = b.build(m, true, shadow); if (mesh) group.add(mesh);
   }
   const lampGlow = new THREE.Mesh(mergeGeometries(pools, false)!, new THREE.MeshBasicMaterial({ map: lightPoolTexture(), color: 0xffb860, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));

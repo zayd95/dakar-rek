@@ -108,13 +108,21 @@ export const plasterTexture = () => make('plaster', 128, (c, S, r) => {
 /**
  * Higgsfield-generated textures (artistic interpretations; prompts, job ids and seam checks in
  * assets-src/references/PROVENANCE.md). Shipped as 512 px JPEGs in public/assets/tex and loaded on demand the first time
- * a hub needs them. Detail maps (breeze_block, sand, painted_metal, paving, wood) were desaturated/neutralised so they
- * modulate each surface's own colour; floor_tiles_terracotta keeps its colours. Colour maps only.
+ * a hub needs them. Detail maps (sand, painted_metal, paving, wood, and from batch 3 hollow_block, asphalt,
+ * clay_tiles, corrugated, concrete, palm_trunk) were desaturated/neutralised so they modulate each surface's own colour;
+ * floor_tiles_terracotta, terrazzo and corrugated_rusty keep their colours, sand_trampled is tint-neutralised. Colour maps only.
  */
 const loaded = new Map<string, THREE.Texture>();
-export function generatedTexture(name: 'breeze_block' | 'sand' | 'painted_metal' | 'floor_tiles_terracotta' | 'paving' | 'wood'): THREE.Texture {
-  const hit = loaded.get(name); if (hit) return hit;
+export type GeneratedTexture =
+  | 'sand' | 'painted_metal' | 'floor_tiles_terracotta' | 'paving' | 'wood'
+  // batch 3 (8 Oct): detail maps, except corrugated_rusty, terrazzo and sand_trampled (tint kept or neutralised)
+  | 'hollow_block' | 'asphalt' | 'clay_tiles' | 'corrugated' | 'corrugated_rusty' | 'concrete' | 'palm_trunk' | 'terrazzo' | 'sand_trampled';
+/** repeat: for UV-mapped use (`map`), one cached texture per repeat; world-space detail maps leave it unset. */
+export function generatedTexture(name: GeneratedTexture, repeat?: [number, number]): THREE.Texture {
+  const key = repeat ? `${name}@${repeat[0]}x${repeat[1]}` : name;
+  const hit = loaded.get(key); if (hit) return hit;
   const t = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/tex/${name}.jpg`);
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  loaded.set(name, t); return t;
+  if (repeat) t.repeat.set(repeat[0], repeat[1]);
+  loaded.set(key, t); return t;
 }
