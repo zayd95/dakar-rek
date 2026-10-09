@@ -13,7 +13,7 @@ const exe = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 try { await fs.access(exe); launch.executablePath = exe; } catch { /* Playwright's own Chromium */ }
 const browser = await chromium.launch(launch);
 
-const APPS = [['portefeuille', 'Portefeuille'], ['carte', 'Carte et déplacements'], ['arene', 'Arène'], ['carnet', 'Carnet'], ['aide', 'Aide'], ['reglages', 'Réglages']];
+const APPS = [['portefeuille', 'Portefeuille'], ['carte', 'Carte et déplacements'], ['arene', 'Arène'], ['carnet', 'Carnet'], ['actus', 'Actus · Dakar'], ['sante', 'Santé'], ['profil', 'Profil'], ['horloge', 'Horloge'], ['meteo', 'Météo'], ['calcul', 'Calculatrice'], ['aide', 'Aide'], ['reglages', 'Réglages']];
 
 for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]]) {
   const ctx = await browser.newContext({ viewport: vp, hasTouch: touch, isMobile: touch });
@@ -37,7 +37,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   let i = await info(), p = await pos();
   check(`${label}: ☰ opens the phone on the home screen`, i.open && i.screen === 'home' && p.mode === 'menu', JSON.stringify({ ...i, mode: p.mode }));
   const status = (await page.locator('#phone .ph-status').innerText()).replace(/\s/g, ' ');
-  check(`${label}: status bar shows city time and FCFA balance`, /\d\d:\d\d/.test(status) && / F/.test(status), status.replace(/\n/g, ' '));
+  const balance = (await page.locator('#phone .ph-wid[data-open="portefeuille"]').innerText()).replace(/\s/g, ' ');
+  check(`${label}: status bar shows city time, home widget the FCFA balance`, /\d\d:\d\d/.test(status) && / F/.test(balance), `${status} | ${balance}`);
   const tiles = await page.locator('#phone [data-app]').evaluateAll(els => els.map(e => e.dataset.app));
   // A hook app shows exactly when its module registered the hook (economy, NPCs, chat and city merge in over time).
   const HOOK_APPS = { messages: 'openMessages', quartier: 'openPlaces', travail: 'openJobs', maison: 'openHome', habitants: 'openPeople' };
