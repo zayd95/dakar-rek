@@ -129,16 +129,18 @@ export class MotoModule implements GameModule {
     const kerbZ = road + side * 4.3;
     const g = new THREE.Group(); g.name = 'moto:dealer';
     // two display motorbikes nose to the road, a sign on a pole
+    // (on the pavement, pushed back from the kerb so the road stays clear)
+    const zd = z + side * 0.5;
     for (const dx of [-1.6, 1.6]) {
       const b = buildVehicle('moto', { seed: jakartaSeed() + (dx > 0 ? 7 : 3), driver: false, passengers: false });
-      b.group.position.set(x + dx, 0.12, z); b.group.rotation.y = side > 0 ? Math.PI : 0; g.add(b.group);
-      hub.colliders.push({ x0: x + dx - 0.5, x1: x + dx + 0.5, z0: z - 1, z1: z + 1, h: 1.1 });
+      b.group.position.set(x + dx, 0.12, zd); b.group.rotation.y = side > 0 ? Math.PI : 0; g.add(b.group);
+      hub.colliders.push({ x0: x + dx - 0.45, x1: x + dx + 0.45, z0: zd - 0.9, z1: zd + 0.9, h: 1.1 });
     }
     const sign = signTexture(DEALER.name);
     const pole = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.8, 0.08), new THREE.MeshLambertMaterial({ color: 0x3b3f46 }));
-    pole.position.set(x + 3.2, 1.52, z - side * 0.6); g.add(pole);
+    pole.position.set(x + 3.2, 1.52, z + side * 0.6); g.add(pole);
     const plate = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 0.05), new THREE.MeshLambertMaterial({ map: sign }));
-    plate.position.set(x + 3.2, 2.75, z - side * 0.6); g.add(plate);
+    plate.position.set(x + 3.2, 2.75, z + side * 0.6); g.add(plate);
     ctx.extra.add(g);
     const delivery = { x: garage.x + 1.5, z: kerbZ, yaw: Math.PI / 2 };
     clearKerb(ctx.extra, hub.colliders, [{ x: delivery.x, z: delivery.z, dx: 1, dz: 0, rx: 0, rz: side, offset: 4.3, from: -10, to: 6 }]);
