@@ -156,7 +156,7 @@ const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: stor
   suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
 presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); };
 // Lot B economy (src/economy/*): Tiak Tiak deliveries, wallet history, starter-room furniture, phone hooks. Device-local.
-const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), refreshHome: () => refreshHomeInteriors(), walkTo: id => setDestination(id) });
+const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
 function presenceSpace() { return lambScene ? 'scene' : modulePresence() ?? moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
@@ -226,9 +226,10 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;
   for (const it of world.interactables) {
-    const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
+    // homes (the starter room included) are built by the ownership module through ctx.addInterior (src/economy/estate.ts)
+    const kind = it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
     if (!kind) continue;
-    const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id, kind === 'home' ? state.data.furniture : []); n++;
+    const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
   }
   registerSeats();
@@ -298,6 +299,8 @@ const activities = new ActivityRunner({
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   rel: (npc, d) => rel.change(PLAYER, npc, d), flag: f => { if (!state.data.flags.includes(f)) state.data.flags.push(f); },
   item: (id, d) => inventory.add(id, d), hasItem: (id, n) => inventory.has(id, n),
+  // polyvalence: the category of each activity is practised, and work pay is scaled by the variety (src/economy)
+  category: c => economy.practiseCategory(c), pay: (m, c) => economy.scalePay(m, c), payPreview: (m, c) => economy.previewPay(m, c),
   gesture: (g, label, done) => gestures.play(g, label, done),
 });
 const places = new Places(activities, () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat);
@@ -323,11 +326,19 @@ const ctx: GameCtx = {
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   addInterior(door, int) {
     if (!world) return;
-    world.group.add(int.group); int.group.visible = false; interiors.set(door.id, int);
+    const old = interiors.get(door.id);
+    if (old) {                                                        // a rebuilt room (upgrade…) replaces the one behind the door
+      if (seated && old.seats.some(s => s.id === seated!.id)) standUp(true);
+      for (const s of old.seats) seats.remove(s.id);
+      world.group.remove(old.group); disposeInterior(old);
+      if (inside?.int === old) inside.int = int;
+    }
+    world.group.add(int.group); int.group.visible = inside?.int === int; interiors.set(door.id, int);
     seats.addAll(int.seats.map(s => ({ ...s, space: spaceOf(door) })));
   },
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
+  walkTo: id => setDestination(id),
 };
 ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
@@ -397,7 +408,7 @@ function openActions(it: Interactable) {
   const visible = it.actions.filter(a => !a.visible || a.visible(state));
   const items = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
+    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
   });
   let subtitle = it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {
@@ -438,6 +449,7 @@ function runSpecial(a: Action) {
     case 'exit': exitInterior(); break;
     case 'jobs': economy.openJobs(nearest ?? undefined); break;
     case 'shop': economy.openShop(); break;
+    case 'business': economy.openBusiness(); break;
   }
 }
 
@@ -464,20 +476,6 @@ function enterInterior(door: Interactable) {
     pos.set(int.spawn.x, 0.1, int.spawn.z); facing = int.spawn.yaw; speed = 0; follow.snapBehind(facing);
     hud.fade(false); mode = 'play'; input.enabled = true;
   }, 350);
-}
-/** Rebuild the starter room after a furniture purchase; the player stays where they stand. */
-function refreshHomeInteriors() {
-  if (!world) return;
-  for (const [doorId, int] of interiors) {
-    if (int.kind !== 'home') continue;
-    const fresh = buildInterior('home', (int.bounds.x0 + int.bounds.x1) / 2, (int.bounds.z0 + int.bounds.z1) / 2, int.name, world.id, state.data.furniture);
-    fresh.group.visible = int.group.visible;
-    world.group.remove(int.group); disposeInterior(int); world.group.add(fresh.group); interiors.set(doorId, fresh);
-    if (inside?.int === int) inside.int = fresh;
-  }
-  if (seated?.space === 'home') standUp(true);
-  seats.clear('home');
-  for (const [doorId, int] of interiors) if (int.kind === 'home') seats.addAll(int.seats.map(s => ({ ...s, space: doorId.includes(':home:') ? 'home' : doorId })));
 }
 function exitInterior() {
   if (!inside) return;
@@ -637,15 +635,16 @@ function runAction(a: Action, npc?: string, it?: Interactable) {
     if (p < 1) { requestAnimationFrame(tick); return; }
     hud.progress(false);
     const entry = where && !where.startsWith(a.label) ? `${a.label} · ${where}` : a.label;   // wallet history line
+    const gain = economy.work(a, it);                       // records the activity (polyvalence) and scales the pay
     if (a.cost) state.addMoney(-a.cost, entry);
-    if (a.gain) state.addMoney(a.gain, entry);
+    if (gain) state.addMoney(gain, entry);
     if (a.needs) state.adjust(a.needs);
     if (a.counter) state.count(a.counter);
     if (npc) rel.change(PLAYER, npc, 1);
     state.count('actions');
     npcLife.afterAction(a, it ?? null);
     const bits = [a.label + ' ✓'];
-    if (a.gain) bits.push('+' + fcfa(a.gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
+    if (gain) bits.push('+' + fcfa(gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
     hud.toast(bits.join('  '));
     mode = 'play'; input.enabled = true; saveNow();
   };
