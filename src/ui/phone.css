@@ -3,7 +3,7 @@
 #phone { --ios-blue:#0a84ff; --ios-bg:#f2f2f7; --ios-card:#fff; --ios-ink:#111114; --ios-sub:#6e6e73; --ios-sep:rgba(60,60,67,.14);
   position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center;
   padding:max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-  background:rgba(2,6,23,.38); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  background:rgba(2,6,23,.55);   /* a plain dim: blurring the live 3D view every frame is costly on modest phones */
   --ph-font:-apple-system, "SF Pro Text", "Inter", system-ui, "Segoe UI", Roboto, sans-serif; font-family:var(--ph-font); }
 #phone.on { display:flex; }
 .ph-stage { position:relative; display:flex; flex-direction:column; align-items:flex-end; gap:10px; width:min(372px, 100%); height:min(800px, 100%); }
