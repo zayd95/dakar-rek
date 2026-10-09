@@ -166,12 +166,19 @@ export function mosque(b: Base & { peaks?: [number, number][] }, h: PlaceHooks =
   return { id: b.id, name: b.name, space: b.space, type: 'mosque', peaks: b.peaks, anchors: list, offers };
 }
 
-/** Hair salon: a chair, a service, a new look; clients chat. */
-export function salon(b: Base & { services: { id: string; label: string; price: number; seconds: number }[] }, h: PlaceHooks = {}): PlaceSpec {
+/**
+ * Hair salon: sit in a free chair, the service runs, the look changes (`restyle`); clients chat. `chairs` points at the
+ * styling chairs so the service never picks the waiting bench.
+ */
+export function salon(b: Base & { services: { id: string; label: string; price: number; seconds: number; detail?: string }[]; chairs?: { x: number; z: number; r?: number } }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
-  return { id: b.id, name: b.name, space: b.space, type: 'salon', hours: [9, 21], chat: true, anchors: [at('chair')], offers: {
-    chair: b.services.map(s => P.use({ id: s.id, label: s.label, price: s.price, seconds: s.seconds, seat: 'near', primitive: 'buy',
-      effects: { needs: { moral: 8, hygiene: 6 }, category: 'loisir' }, then: () => h.restyle?.(s.id) })),
+  const seat: SeatPick = b.chairs ? { near: { x: b.chairs.x, z: b.chairs.z }, r: b.chairs.r ?? 3, kind: 'chair' } : 'near';
+  return { id: b.id, name: b.name, space: b.space, type: 'salon', hours: [9, 21], chat: true, peaks: [[10, 13], [16, 20]], anchors: [at('chair')], offers: {
+    chair: [
+      ...b.services.map(s => P.use({ id: s.id, label: s.label, detail: s.detail, price: s.price, seconds: s.seconds, seat, primitive: 'buy',
+        effects: { needs: { moral: 8, hygiene: 6 }, counters: { ['salon:' + b.id]: 1 }, category: 'loisir' }, then: () => h.restyle?.(s.id) })),
+      ...opt(h.converse, P.talk({ id: 'coiffeuse', label: 'Parler avec la coiffeuse', then: () => h.converse!('coiffeuse') })),
+    ],
   } };
 }
 

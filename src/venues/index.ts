@@ -4,6 +4,8 @@ import { VenueMaterials } from './kit';
 import { buildDibi } from './dibi';
 import { buildMosque } from './mosque';
 import { buildBeach } from './beach';
+import { buildSalon } from './salon';
+import { applyStyle } from './style';
 import { nightOf, type Venue, type VenueEnv } from './venue';
 import { PRAYER_TIMES, nextPrayer, prayerAt } from './prayer';
 
@@ -12,7 +14,7 @@ export { PRAYER_TIMES, prayerAt, nextPrayer, prayerPeaks } from './prayer';
 /**
  * Venues (docs/LIVING_DAKAR.md): real places composed from the shared framework on the sites the hub builder leaves
  * free (src/world/sites.ts) — the Dibi of Pikine and of the Médina, the Grande Mosquée — and on city blocks that
- * already exist (Soumbédioune's pirogue and mareyeuses). Each venue = procedural geometry
+ * already exist (Soumbédioune's pirogue and mareyeuses, Salon Awa's chairs). Each venue = procedural geometry
  * in a few merged draw calls + a place (anchors, offers, hours, peaks, chat) built by a recipe of
  * src/activity/templates.ts + seats of the shared registry + the people who hold it. Everything is rebuilt per hub.
  */
@@ -20,6 +22,7 @@ let venues: Venue[] = [];
 let mats: VenueMaterials | null = null;
 let bodies: (() => Body[])[] = [];
 let people: People | null = null;
+let styleT = 0;
 
 function clear() {
   for (const v of venues) v.dispose();
@@ -38,13 +41,17 @@ export const VenuesModule: GameModule = {
     const sites = hub.sites ?? [];
     // Soumbédioune's beach is a city block of the hub: the venue joins it through the places it already has
     const landing = hub.interactables.find(i => i.id === `${hub.id}:city:soumbedioune`), market = hub.interactables.find(i => i.id === `${hub.id}:city:fish-market`);
-    if (!sites.length && !(landing && market)) return;
+    const salon = hub.interactables.find(i => i.id === `${hub.id}:city:salon-tech` && i.name === 'Salon Awa');
+    if (!sites.length && !(landing && market) && !salon) return;
     mats = new VenueMaterials();
     const env: VenueEnv = { ctx, mats, lite: ctx.quality() === 'low', addPeople: f => bodies.push(f) };
     for (const s of sites) venues.push(s.kind === 'mosque' ? buildMosque(env, s) : buildDibi(env, s));
     if (landing && market) venues.push(buildBeach(env, landing, market));
+    if (salon) venues.push(buildSalon(env, salon));
   },
   update(ctx, dt) {
+    styleT -= dt;                                                            // the salon's cut and beard stay on the player in every hub
+    if (styleT <= 0) { styleT = 0.5; const body = ctx.player.body(); if (body) applyStyle(body, ctx.state.data.counters); }
     if (!venues.length) return;
     mats?.setNight(nightOf(ctx.hour()));
     for (const v of venues) v.update(dt);

@@ -2,7 +2,7 @@
 // (order → sit → eat; the grill gesture; the owner; ablutions → shoes off → prayer → imam), day / night / closed.
 // (order → sit → eat; the grill; the owner; ablutions → shoes off → prayer → imam; the pirogue trip → the mareyeuses).
 // Usage: flock /tmp/dakar-browser.lock node scripts/check-venues.mjs [baseUrl] [outDir]   (needs a running build, e.g.
-// `npx vite preview --port 4212`). ONLY=desktop|phone and SECTIONS=dibi,mosque,beach narrow a run while iterating.
+// `npx vite preview --port 4212`). ONLY=desktop|phone and SECTIONS=dibi,mosque,beach,salon narrow a run while iterating.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -15,7 +15,7 @@ const results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
-const SECTIONS = (process.env.SECTIONS ?? 'dibi,mosque,beach').split(',');
+const SECTIONS = (process.env.SECTIONS ?? 'dibi,mosque,beach,salon').split(',');
 for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 844 }, true]]) {
   if (process.env.ONLY && process.env.ONLY !== label) continue;
   const page = await (await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch })).newPage();
@@ -264,6 +264,29 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await d(() => window.__dakar.act());
   await until(() => /Fermé · ouvre à 6 h/.test(document.getElementById('toast')?.textContent ?? ''), null, 15000);
   check(`${label}: no trips at night (the reason is shown)`, /Fermé · ouvre à 6 h/.test(await toast()) && !(await d(() => window.__dakar.activity())), await toast());
+  }
+  // ================================================================== Salon Awa: a chair, a cut, a look that stays
+  if (SECTIONS.includes('salon')) {
+  await d(() => { window.__dakar.teleport('pikine'); window.__dakar.setHour(11); const s = window.__dakar.state; s.data.wallet = 5000; delete s.data.counters.coiffure; });
+  await until(() => window.__dakar.pos().hub === 'pikine' && window.__dakar.venues().some(x => x.type === 'salon'));
+  const sv = await venue('salon');
+  check(`${label}: Salon Awa has two styling chairs`, !!sv && sv.seats.length === 2, sv ? sv.seats.join(' ') : 'none');
+  const sheetIt = await d(() => window.__dakar.interactables().find(i => i.id === 'pikine:city:salon-tech'));
+  await d(([p]) => window.__dakar.place(p.x + 3.6, p.z + 1.2, Math.PI), [sheetIt]);
+  const toChair = await walk(() => /venue:salon:chair$/.test(window.__dakar.focus()?.id ?? ''), null, 30000);
+  const fs = await d(() => window.__dakar.focus());
+  check(`${label}: walking into the shop, the chairs offer cuts and the beard`, toChair && ['Coupe courte', 'Coiffure afro', 'Crâne rasé', 'Barbe taillée'].every(x => fs?.all.includes(x)), fs?.all.join(' | '));
+  await d(() => window.__dakar.more());
+  await until(() => !!document.querySelector('#modal.on'), null, 10000);
+  await pick('Coiffure afro');
+  await until(() => window.__dakar.activity()?.id === 'afro', null, 20000);
+  const cut = await d(() => ({ seat: window.__dakar.seated(), wallet: window.__dakar.state.wallet }));
+  check(`${label}: « Coiffure afro » is paid and you sit in the free chair`, (cut.seat ?? '').includes('venue:salon:fauteuil') && cut.wallet === 2500, JSON.stringify(cut));
+  await d(() => window.__dakar.portrait(2.6, 1.6, 1.1)); await shot('salon-cut'); await d(() => window.__dakar.portrait(0));
+  await until(() => !window.__dakar.activity(), null, 120000);
+  const look = await d(() => { let short = false, puff = false; window.__dakar.body().group.traverse(o => { if (o.isMesh && o.name.startsWith('Hair_Short')) short ||= o.visible; if (o.isMesh && o.name.startsWith('Hair_Puff')) puff ||= o.visible; }); return { short, puff, saved: JSON.parse(localStorage.getItem('dakarrek.guest.save') ?? '{}').counters?.coiffure ?? 0 }; });
+  check(`${label}: the new cut shows on your character and is saved`, !look.short && look.puff && look.saved === 3, JSON.stringify(look));
+  await d(() => window.__dakar.stand());
   }
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
 }

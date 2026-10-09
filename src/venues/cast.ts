@@ -69,6 +69,9 @@ export class Cast {
     }
   }
 
+  /** Change what a standing role is doing (the stylist works while a client sits). */
+  setClip(id: string, clip: Clip) { const e = this.list.find(x => x.r.id === id); if (e && !e.r.seat) e.h.hold = clip; }
+
   /** Bodies for the greeting system (src/interact/people.ts): street roles only. */
   bodies() {
     return this.list.filter(e => e.shown).map(e => ({ id: `${this.owner}:${e.r.id}`, obj: e.h.group, h: e.h, seated: !!e.r.seat, female: !!e.r.look.female }));

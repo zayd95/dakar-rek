@@ -156,6 +156,35 @@ describe('fishing beach: a trip in the pirogue, then the mareyeuses', () => {
   });
 });
 
+describe('salon: a chair, a service, a look that stays', async () => {
+  const THREE = await import('three');
+  const { SALON_SERVICES, applyStyle, hairParts, HAIR, BEARD } = await import('../src/venues/style');
+  let restyled = '';
+  const place = T.salon({ id: 'pk:salon', name: 'Salon Awa', space: 'street', chairs: { x: 5, z: 0 }, services: SALON_SERVICES.map(s => ({ ...s })), anchors: [A('chair', 4, 0)] }, { restyle: id => { restyled = id; } });
+  it('open 9 h–21 h with a chat; each service sits you in a styling chair (never the bench) and restyles you', () => {
+    expect(place.hours).toEqual([9, 21]); expect(place.chat).toBe(true);
+    const r = rig(); r.at(4, 0.5);
+    r.seats.add({ id: 'banc', x: 4, z: 0.6, top: 0.58, yaw: 0, kind: 'bench', space: 'street', occupant: null });
+    r.seats.add({ id: 'fauteuil', x: 5, z: 1, top: 0.6, yaw: 0, kind: 'chair', space: 'street', occupant: null });
+    const coupe = place.offers.chair.find(o => o.id === 'coupe')!;
+    r.runner.start(coupe); expect(r.state.wallet).toBe(10000 - 1500);
+    expect(r.seated()?.id).toBe('fauteuil');
+    run(r.runner, 8.5); expect(restyled).toBe('coupe'); expect(r.state.data.counters['salon:pk:salon']).toBe(1);
+  });
+  it('the cut and the beard are applied to the body, under a hat the hair stays covered', () => {
+    expect(hairParts(HAIR.rase)).toEqual({ short: false, puff: false }); expect(hairParts(HAIR.profil)).toBeNull();
+    const group = new THREE.Group();
+    const mesh = (name: string, visible: boolean) => { const m = new THREE.Mesh(); m.name = name; m.visible = visible; group.add(m); return m; };
+    const short = mesh('Hair_Short', true), puff = mesh('Hair_Puff', false), beard = mesh('Beard', false); mesh('Cloth_Kufi', false);
+    const body = { group } as unknown as import('../src/actors/humanoid').Humanoid;
+    expect(applyStyle(body, { coiffure: HAIR.afro, barbe: BEARD.taillee })).toBe(true);
+    expect([short.visible, puff.visible, beard.visible]).toEqual([false, true, true]);
+    expect(applyStyle(body, { coiffure: HAIR.afro, barbe: BEARD.taillee })).toBe(false);          // already applied
+    group.children[3].visible = true;                                                          // a kufi on: the hair stays as it is
+    applyStyle(body, { coiffure: HAIR.courte, barbe: BEARD.rasee }); expect([short.visible, puff.visible, beard.visible]).toEqual([false, true, false]);
+  });
+});
+
 describe('prayer times (Wolof names, city hours)', () => {
   it('five times; the congregation gathers half an hour before to an hour after', () => {
     expect(PRAYER_TIMES.map(p => p.name)).toEqual(['Fajar', 'Tisbaar', 'Takusaan', 'Timis', 'Gee']);
