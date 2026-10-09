@@ -10,6 +10,7 @@ import { generatedTexture } from './textures';
 import { inGate, tierRadius, tierTop, TIERS, TIER_DEPTH, PARAPET_R, PARAPET_H, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
+import { benchSeats } from '../interact/seats';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -496,6 +497,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       plain.box(bw, 1.2, bd, bx, G, bz, WB); plain.box(bw, h - 1.2, bd, bx, G + 1.2, bz, WC);
     }
     plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h, cz, 0xd2cdc2);                        // roof slab
+    roofs.push({ x0: cx - w / 2, x1: cx + w / 2, z0: Math.min(back, front + dir * 2.8), z1: Math.max(back, front + dir * 2.8), h: G + 2.9 });   // room + awning
     for (const sx of [-1, 1]) plain.box(0.4, h, 0.4, cx + sx * (w / 2 - 0.2), G, front, WC); // front piers
     plain.box(w, 0.5, 0.35, cx, G + h - 0.5, front, WC);                              // lintel
     // corrugated tin awning on poles over the pavement
@@ -516,9 +518,16 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     // bench along the side wall, plastic tables and chairs in the room
     plain.box(0.5, 0.45, 3.4, cx - w / 2 + 0.6, G, cz, 0x7a5a3c); plain.box(0.1, 0.9, 3.4, cx - w / 2 + 0.3, G + 0.45, cz, 0x6b4a2e);
     solidC(cx - w / 2 + 0.6, cz, 0.6, 3.4, 0.5);
+    const key = `${id}:dibiterie:${k.i}${k.j}`;
+    seats.push(...benchSeats(`${key}:bench`, cx - w / 2 + 0.6, cz, Math.PI / 2, G + 0.45, 'street', 3.4, 3));
     for (const [tx, tz, col] of [[cx - 1.2, at(-0.3), 0xf2f2ee], [cx + 1.4, at(1.5), 0x2a8fd1]] as const) {
       plain.box(0.06, 0.72, 0.06, tx, G, tz, 0x666666); plain.box(1.1, 0.04, 0.75, tx, G + 0.72, tz, col);
-      for (const sx of [-1, 1]) { plain.box(0.45, 0.04, 0.45, tx + sx * 0.8, G + 0.45, tz, sx > 0 ? 0x1a9d54 : col); plain.box(0.45, 0.45, 0.04, tx + sx * 1.0, G + 0.45, tz, sx > 0 ? 0x1a9d54 : col); for (const dz of [-0.18, 0.18]) plain.box(0.04, 0.45, 0.04, tx + sx * 0.8, G, tz + dz, 0xdddddd); }
+      for (const sx of [-1, 1]) {
+        plain.box(0.45, 0.04, 0.45, tx + sx * 0.8, G + 0.45, tz, sx > 0 ? 0x1a9d54 : col); plain.box(0.45, 0.45, 0.04, tx + sx * 1.0, G + 0.45, tz, sx > 0 ? 0x1a9d54 : col); for (const dz of [-0.18, 0.18]) plain.box(0.04, 0.45, 0.04, tx + sx * 0.8, G, tz + dz, 0xdddddd);
+        // the chair faces the table (its back is on the outside); the left place is served on the plate laid there
+        seats.push({ id: `${key}:chair:${seats.length}`, x: tx + sx * 0.8, z: tz, top: G + 0.49, yaw: -sx * Math.PI / 2, kind: 'chair', space: 'street', occupant: null,
+          table: sx < 0 ? { x: tx - 0.2, y: G + 0.79, z: tz } : { x: tx + 0.3, y: G + 0.76, z: tz - 0.2 } });
+      }
       solidC(tx, tz, 1.2, 0.8, 0.8);
       plain.cyl(0.12, 0.12, 0.03, tx - 0.2, G + 0.76, tz, 0xf4f1e8, 10); plain.box(0.2, 0.05, 0.12, tx + 0.2, G + 0.78, tz, 0x7a3a1e);
     }
@@ -542,6 +551,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const smokeAt: { x: number; y: number; z: number }[] = [];
   const people: HubWorld['people'] = [];
   const seats: HubWorld['seats'] = [];
+  const roofs: HubWorld['roofs'] = [];
 
   const kioskAt = (k: KioskSpec) => {
     const L = lotRect(k.i, k.j, k.lot % 2, k.lot >> 1);
@@ -565,11 +575,14 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       for (let n = 0; n < 6; n++) plain.box(0.18, 2.1, 0.02, cx - 2.05 + n * 0.22, G + 0.15, cz + dir * (d / 2 + 0.07), [0xd9322b, 0xf4c20d, 0x2a8fd1][n % 3]);
       plain.box(2.2, 1.0, 0.03, cx - 1.5, G + 2.4, cz + dir * (d / 2 + 0.04), 0x4a4842);
       plain.box(1.6, 0.45, 0.4, cx + 1.6, G, cz + dir * (d / 2 + 0.9), 0x6b4a2e);
+      seats.push(...benchSeats(`${id}:${k.kind}:${k.i}${k.j}:bench`, cx + 1.6, cz + dir * (d / 2 + 0.9), dir > 0 ? 0 : Math.PI, G + 0.45, 'street', 1.6, 2));
     }
     if (k.kind === 'gargote' || k.kind === 'cafe' || k.kind === 'restaurant') {
       for (let n = 0; n < 3; n++) {                                                   // benches and a low table out front
         const bx = cx - 4 + n * 4, bz = cz + dir * (d / 2 + 3.2);
         plain.box(1.6, 0.45, 0.4, bx, G, bz, 0x6b4a2e); plain.box(1.0, 0.05, 1.0, bx, G + 0.6, bz + dir * 0.8, 0x8b6a47); plain.box(0.1, 0.6, 0.1, bx, G, bz + dir * 0.8, 0x5a3f2a);
+        // two places on the bench, facing the low table (toward the street)
+        seats.push(...benchSeats(`${id}:${k.kind}:${k.i}${k.j}:bench:${n}`, bx, bz, dir > 0 ? 0 : Math.PI, G + 0.45, 'street', 1.6, 2).map(b => ({ ...b, table: { x: b.x, y: G + 0.65, z: bz + dir * 0.55 } })));
       }
     }
     if (k.kind === 'garage') for (let n = 0; n < 4; n++) plain.cyl(0.38, 0.38, 0.28, cx + 5 + (n % 2) * 0.2, G + n * 0.28, cz + dir * (d / 2 + 2.4), 0x1d1d1f, 10); // tyre stack
@@ -1068,7 +1081,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       }
       return 0;
     },
-    people, seats, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
+    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
     dispose() { disposeGroup(group); },
   };
 }

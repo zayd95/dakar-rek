@@ -15,7 +15,7 @@ export class FollowCamera {
   snapBehind(yawFacing: number) { this.yaw = yawFacing; this.inited = false; }
 
   /** room: when indoors, the camera is clamped inside this rectangle (and under the ceiling) instead of colliding. */
-  update(dt: number, target: THREE.Vector3, facing: number, drag: { yaw: number; pitch: number }, colliders: Collider[], portrait: boolean, auto: boolean, room?: { x0: number; x1: number; z0: number; z1: number }, groundAt?: (x: number, z: number) => number) {
+  update(dt: number, target: THREE.Vector3, facing: number, drag: { yaw: number; pitch: number }, colliders: Collider[], portrait: boolean, auto: boolean, room?: { x0: number; x1: number; z0: number; z1: number }, groundAt?: (x: number, z: number) => number, roofs: readonly Collider[] = []) {
     this.yaw += drag.yaw;
     this.pitch = clamp(this.pitch + drag.pitch, 0.14, 0.95);
     if (auto && drag.yaw === 0) { // ease behind the character while walking
@@ -39,6 +39,8 @@ export class FollowCamera {
       if (hit) { k = Math.max(0.12, (s - 1) / 12); break; }
     }
     want.lerpVectors(from, want, k);
+    // under a roof open on one side (dibiterie): stay below it, or the slab hides the character
+    for (const r of roofs) if (target.x > r.x0 && target.x < r.x1 && target.z > r.z0 && target.z < r.z1) want.y = Math.min(want.y, r.h - 0.2);
     if (groundAt) want.y = Math.max(want.y, groundAt(want.x, want.z) + 1.3);   // stay above stairs and terraces
     const ahead = this.indoor ? 1.2 : portrait ? 3.6 : 3.2;
     const look = new THREE.Vector3(target.x + Math.sin(this.yaw) * ahead, target.y + 1.2, target.z + Math.cos(this.yaw) * ahead);

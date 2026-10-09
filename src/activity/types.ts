@@ -35,8 +35,8 @@ export interface Effects {
   category?: ActivityCategory;
 }
 
-/** Which seat a step uses: a seat id, the nearest free one in the place, or the nearest of a kind around a point. */
-export type SeatPick = string | 'near' | { near: { x: number; z: number }; r?: number; kind?: SeatKind };
+/** Which seat a step uses: a seat id, the nearest free one in the place, or the nearest of a kind (around a point). */
+export type SeatPick = string | 'near' | { near?: { x: number; z: number }; r?: number; kind?: SeatKind };
 
 export interface Step {
   /** Shown in the progress bar: « Cuisson », « Tu manges », « Ablutions ». */

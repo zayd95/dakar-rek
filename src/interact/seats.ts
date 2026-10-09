@@ -20,6 +20,8 @@ export interface Seat {
   space: string;
   /** 'player', an NPC id, a remote player id, or null when free. */
   occupant: string | null;
+  /** Where a plate or a glass goes for someone sitting here (the table in front); absent = held on the lap. */
+  table?: { x: number; y: number; z: number };
 }
 
 /** Height of the Sit clip's hips above the character origin (actors/humanoid.ts, corrected Sit). */

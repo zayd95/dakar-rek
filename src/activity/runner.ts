@@ -18,8 +18,10 @@ export interface ActivityServices extends EffectHooks {
   space(): string;
   player(): { x: number; z: number };
   seated(): Seat | null;
-  /** Sit the player on this seat; false if it could not. */
+  /** Sit the player on this seat (main.ts walks there first when it is not at hand); false if it cannot be reached. */
   sit(seat: Seat): boolean;
+  /** True while the player is still walking to the seat the current step asked for. */
+  walking?(): boolean;
   /** Hold a clip on the player's body (null = back to normal). */
   clip(c: Clip | null): void;
   /** Movement lock while a timed step runs. */
@@ -31,10 +33,11 @@ export interface ActivityServices extends EffectHooks {
   save(): void;
 }
 
-interface Running { spec: ActivitySpec; ctx: ActivityCtx; i: number; t: number; notes: string[] }
+interface Running { spec: ActivitySpec; ctx: ActivityCtx; i: number; t: number; notes: string[]; walk?: boolean }
 
 /**
- * Plays any ActivitySpec: charge the price, then each step in order — take a seat if asked, hold a clip, show the
+ * Plays any ActivitySpec: charge the price, then each step in order — take a seat if asked (and wait while the player
+ * walks to it), hold a clip, show the
  * progress, apply the step's effects when it ends, run its follow-up. The player can stop at any moment (the price is
  * not refunded; effects of unfinished steps are not applied). One activity at a time.
  */
@@ -74,6 +77,7 @@ export class ActivityRunner {
   /** Advance by dt real seconds. */
   update(dt: number) {
     const c = this.cur; if (!c) return;
+    if (c.walk) { if (this.s.walking?.()) return; c.walk = false; this.begin(); return; }
     const step = c.spec.steps[c.i];
     const dur = step.seconds ?? 0;
     c.t += dt;
@@ -95,9 +99,16 @@ export class ActivityRunner {
     if (c.i >= c.spec.steps.length) return this.finish();
     const step = c.spec.steps[c.i];
     if (step.seat) {
-      const seat = this.pickSeat(step.seat);
-      if (seat && this.s.seated()?.id !== seat.id) this.s.sit(seat);
+      const now = this.s.seated();
+      for (const seat of this.seatChoices(step.seat)) if (now?.id === seat.id || this.s.sit(seat)) break;   // unreachable: try the next one
+      if (this.s.walking?.()) { c.walk = true; this.s.busy(true); this.s.progress(true, 0, step.label); return; }
     }
+    this.begin();
+  }
+
+  /** The timed part of the current step (after the walk to its seat). */
+  private begin() {
+    const c = this.cur!, step = c.spec.steps[c.i];
     if (step.clip) this.s.clip(step.clip);
     if ((step.seconds ?? 0) > 0) { this.s.busy(true); this.s.progress(true, 0, step.label); }
     else this.finishStep();
@@ -120,11 +131,14 @@ export class ActivityRunner {
     this.onEnd(c.spec, true);
   }
 
-  private pickSeat(p: SeatPick): Seat | null {
-    const space = this.s.space(), me = this.s.player();
-    if (typeof p === 'string') return p === 'near' ? (this.s.seated() ?? this.s.seats.nearestFree(space, me.x, me.z, 8)) : this.s.seats.get(p);
-    const list = this.s.seats.inSpace(space).filter(s => !s.occupant && (!p.kind || s.kind === p.kind) && Math.hypot(s.x - p.near.x, s.z - p.near.z) <= (p.r ?? 6));
-    list.sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z));
-    return list[0] ?? null;
+  /** Seats that fit the pick, best first: the one the player already sits on, else the free ones nearest to the player. */
+  private seatChoices(p: SeatPick): Seat[] {
+    if (typeof p === 'string' && p !== 'near') { const s = this.s.seats.get(p); return s ? [s] : []; }
+    const o = p === 'near' ? {} : p, me = this.s.player(), now = this.s.seated();
+    const at = o.near ?? me, r = o.r ?? (o.near ? 6 : 8);
+    const fits = (s: Seat) => (!o.kind || s.kind === o.kind) && Math.hypot(s.x - at.x, s.z - at.z) <= r;
+    if (now && fits(now)) return [now];
+    return this.s.seats.inSpace(this.s.space()).filter(s => !s.occupant && fits(s))
+      .sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z)).slice(0, 6);
   }
 }

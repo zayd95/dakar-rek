@@ -3,6 +3,7 @@ import { pickTarget, primaryOf, Interactions } from '../src/interact/system';
 import { Seats, benchSeats, sitOriginY, SIT_HIPS, type Seat } from '../src/interact/seats';
 import { LegacySource, actionVerb } from '../src/interact/legacy';
 import type { Target } from '../src/interact/types';
+import { approachPath, seatEntries, segClear, type Rect } from '../src/interact/approach';
 import type { Interactable } from '../src/world/types';
 
 const T = (id: string, x: number, z: number, o: Partial<Target> = {}): Target => ({ id, name: id, kind: 'place', space: 'street', x, z, radius: 3, affordances: () => [{ id: 'a', verb: 'use', label: id, run() {} }], ...o });
@@ -58,6 +59,45 @@ describe('seats', () => {
     expect(sitOriginY({ top: 0.58 })).toBeCloseTo(0.58 - SIT_HIPS);
     const out: Target[] = []; const s = new Seats(); s.add(seat('st', 0, 0, { kind: 'stool', top: 0.45 })); s.collect('street', 0, 0, out);
     expect(out[0].affordances()[0].verb).toBe('sit');
+  });
+});
+
+describe('walking to a seat', () => {
+  // a gargote table (1.2 × 0.8) with a chair on each side, both facing it, and the counter wall behind the player
+  const box = (x: number, z: number, w: number, d: number): Rect => ({ x0: x - w / 2, z0: z - d / 2, x1: x + w / 2, z1: z + d / 2 });
+  const room = [box(0, 0, 1.2, 0.8), box(-0.85, 0, 0.5, 0.5), box(0.85, 0, 0.5, 0.5), box(0, -3, 6, 0.4)];
+  const left = { x: -0.81, z: 0, yaw: Math.PI / 2 };                        // faces +x, the table
+  const grown = (r: number) => room.map(c => ({ x0: c.x0 - r + 0.03, z0: c.z0 - r + 0.03, x1: c.x1 + r - 0.03, z1: c.z1 + r - 0.03 }));
+  it('segment test against rectangles', () => {
+    expect(segClear({ x: -2, z: 0 }, { x: 2, z: 0 }, [box(0, 0, 1, 1)])).toBe(false);
+    expect(segClear({ x: -2, z: 1 }, { x: 2, z: 1 }, [box(0, 0, 1, 1)])).toBe(true);
+    expect(segClear({ x: 0.5, z: -2 }, { x: 0.5, z: 2 }, [box(0, 0, 1, 1)])).toBe(true);   // along an edge
+  });
+  it('steps in from the side or the back, never through the table in front', () => {
+    const e = seatEntries(left);
+    expect(e[3].x).toBeGreaterThan(left.x);                                   // the last candidate is in front (the table)
+    const path = approachPath({ x: 0.2, z: -2.2 }, left, room, 0.3)!;
+    expect(path).not.toBeNull();
+    expect(path.at(-1)).toEqual({ x: left.x, z: left.z });
+    const spot = path.at(-2)!;
+    expect(Math.hypot(spot.x - left.x, spot.z - left.z)).toBeCloseTo(0.75);
+    expect(spot.x).toBeLessThan(left.x + 0.1);                                 // beside or behind the chair, not at the table
+    // every leg before the last one keeps the player's radius away from the furniture
+    const legs = [{ x: 0.2, z: -2.2 }, ...path.slice(0, -1)];
+    for (let i = 1; i < legs.length; i++) expect(segClear(legs[i - 1], legs[i], grown(0.3))).toBe(true);
+  });
+  it('goes round the table when the seat is on the far side', () => {
+    const right = { x: 0.81, z: 0, yaw: -Math.PI / 2 };
+    const from = { x: -2, z: 0.1 };
+    const path = approachPath(from, right, room, 0.3)!;
+    expect(path.length).toBeGreaterThan(2);                                     // at least one turn
+    const legs = [from, ...path.slice(0, -1)];
+    for (let i = 1; i < legs.length; i++) expect(segClear(legs[i - 1], legs[i], grown(0.3))).toBe(true);
+  });
+  it('sits at once when the seat is at hand, gives up when it is walled in', () => {
+    expect(approachPath({ x: -1.5, z: 0.2 }, left, room, 0.3)).toEqual([{ x: left.x, z: left.z }]);
+    const walled = [box(5, 3.4, 3, 0.2), box(5, 6.6, 3, 0.2), box(3.4, 5, 0.2, 3), box(6.6, 5, 0.2, 3)];
+    expect(approachPath({ x: 0, z: 0 }, { x: 5, z: 5, yaw: 0 }, walled, 0.3)).toBeNull();
   });
 });
 

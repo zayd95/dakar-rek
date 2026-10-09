@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Batch, signTexture } from './batch';
 import { addGrain } from './grain';
 import { floorTileTexture, plasterTexture, metalTexture, generatedTexture } from './textures';
-import { ACTIONS } from './content';
+import { ACTIONS, onSeat } from './content';
 import { furnitureById } from '../economy/furniture';
 import type { Collider, Interactable } from './types';
 import { benchSeats, type Seat } from '../interact/seats';
@@ -121,13 +121,16 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
   for (let k = 0; k < 3; k++) plain.box(0.14, 0.015, 0.8, fanX + Math.sin(k * 2.094) * 0.42, H - 0.36, fanZ + Math.cos(k * 2.094) * 0.42, 0xe8e8e8, k * 2.094);
   }
 
-  const chair = (x: number, z: number, rot: number, col = 0xf2f2ee) => {   // monobloc plastic chair
-    seats.push({ id: `${hub}:${kind}:chair:${seats.length}`, x: x + Math.sin(rot) * 0.04, z: z + Math.cos(rot) * 0.04, top: 0.53, yaw: rot, kind: 'chair', space: '', occupant: null });
+  /** Monobloc plastic chair facing `rot` (its back is behind the sitter); `table` = where the plate goes. Returns the seat id. */
+  const chair = (x: number, z: number, rot: number, col = 0xf2f2ee, table?: Seat['table']) => {
+    const id = `${hub}:${kind}:chair:${seats.length}`;
+    seats.push({ id, x: x + Math.sin(rot) * 0.04, z: z + Math.cos(rot) * 0.04, top: 0.53, yaw: rot, kind: 'chair', space: '', occupant: null, table });
     const c = Math.cos(rot), s = Math.sin(rot);
     plain.box(0.46, 0.05, 0.44, x, 0.48, z, col, rot);
     for (const [dx, dz] of [[-0.2, -0.18], [0.2, -0.18], [-0.2, 0.18], [0.2, 0.18]]) plain.box(0.04, 0.46, 0.04, x + dx * c + dz * s, 0.05, z - dx * s + dz * c, col);
     plain.box(0.46, 0.42, 0.04, x - 0.2 * s, 0.53, z - 0.2 * c, col, rot);
     solid(x, z, 0.5, 0.5, 0.9);
+    return id;
   };
 
   if (kind === 'home') {
@@ -140,18 +143,22 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     if (good) { plain.box(0.6, 0.15, 0.35, bx - 0.35, 0.45 + mh, bz - 0.75, 0xf2f2ec); plain.box(0.6, 0.15, 0.35, bx + 0.35, 0.45 + mh, bz - 0.75, 0xf4e6c8); }
     else plain.box(0.9, 0.14, 0.35, bx, 0.67, bz - 0.75, 0xf2f2ec);
     solid(bx, bz, 1.6, 2.1, 0.7);
-    interactables.push({ id: `${hub}:in:bed`, name: good ? 'Lit · bon matelas' : 'Lit', kind: 'actions', x: bx + 1.05, z: bz, radius: 1.4, actions: good ? [furnitureById('matelas')!.action] : ACTIONS.home.filter(a => a.id === 'dormir') });
+    // lying on the bed: feet at the foot end, head on the pillow (seat yaw 0 = the feet point to +z)
+    const bed = `${hub}:home:bed`;
+    const sleep = good ? furnitureById('matelas')!.action : ACTIONS.home.find(a => a.id === 'dormir')!;
+    interactables.push({ id: `${hub}:in:bed`, name: good ? 'Lit · bon matelas' : 'Lit', kind: 'actions', x: bx + 1.05, z: bz, radius: 1.4, actions: [onSeat(sleep, bed, 'sleep')] });
+    seats.push({ id: bed, x: bx, z: bz + 0.9, top: 0.45 + mh, yaw: 0, kind: 'bed', space: '', occupant: null });
     // wardrobe with mirror
     wood.box(1.2, 2.0, 0.55, x1 - 0.7, 0.1, z0 + 0.4, 0x6e4426); plain.box(0.4, 1.2, 0.02, x1 - 0.95, 0.6, z0 + 0.68, 0xbcd0dc); plain.box(0.02, 1.8, 0.02, x1 - 0.7, 0.2, z0 + 0.68, 0x4a2e18);
     solid(x1 - 0.7, z0 + 0.4, 1.2, 0.6, 2);
-    // small table (with the TV once bought, else a thermos and a cup), a chair, a standing fan
+    // small table (with the TV once bought, else a thermos and a cup), a chair facing it, a standing fan
     wood.box(1.0, 0.7, 0.5, x1 - 0.6, 0.1, oz + 0.7, 0x8b6a47);
-    if (has('tele')) {
+    const tableChair = chair(x1 - 1.6, oz + 0.9, Math.PI / 2 + 0.3);
+    if (has('tele')) {   // watched from the chair
       plain.box(0.3, 0.44, 0.68, x1 - 0.55, 0.8, oz + 0.7, 0x1d1d1f); glow.box(0.6, 0.36, 0.01, x1 - 0.705, 0.84, oz + 0.7, 0x3b5f8a, Math.PI / 2);   // screen faces the room (−x)
-      interactables.push({ id: `${hub}:in:tele`, name: 'Petite télé', kind: 'actions', x: x1 - 1.5, z: oz + 0.1, radius: 1.1, actions: [furnitureById('tele')!.action] });
+      interactables.push({ id: `${hub}:in:tele`, name: 'Petite télé', kind: 'actions', x: x1 - 1.5, z: oz + 0.1, radius: 1.1, actions: [onSeat(furnitureById('tele')!.action, tableChair)] });
     } else { plain.cyl(0.07, 0.07, 0.3, x1 - 0.4, 0.8, oz + 0.75, 0xd9322b, 8); plain.cyl(0.05, 0.04, 0.08, x1 - 0.75, 0.8, oz + 0.65, 0xf2f2ec, 8); }
     solid(x1 - 0.6, oz + 0.7, 1.0, 0.6, 1);
-    chair(x1 - 1.6, oz + 0.9, Math.PI / 2 + 0.3);
     plain.cyl(0.18, 0.2, 0.05, x0 + 0.5, 0.1, z1 - 0.5, 0x333333, 10); plain.cyl(0.02, 0.02, 1.1, x0 + 0.5, 0.15, z1 - 0.5, 0x333333, 4); plain.cyl(0.24, 0.24, 0.1, x0 + 0.5, 1.25, z1 - 0.45, 0xe8e8e8, 10, [Math.PI / 2, 0, 0]);
     // prayer mat, suitcase, ataya set on a small charcoal stove, plastic kettle and bucket for washing
     const mat = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.02, 1.2), new THREE.MeshLambertMaterial({ map: waxTexture('#1f5a3a', '#d4b24a', '#7a1f3d') }));
@@ -184,7 +191,8 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     }
     if (has('chaises')) { // two monobloc chairs for guests along the west wall
       chair(x0 + 0.45, oz + 0.8, Math.PI / 2, 0x2a8fd1); chair(x0 + 0.45, oz + 1.38, Math.PI / 2, 0xf2f2ee);
-      interactables.push({ id: `${hub}:in:chaises`, name: 'Chaises pour les invités', kind: 'actions', x: x0 + 1.0, z: oz + 0.75, radius: 0.8, actions: [furnitureById('chaises')!.action] });
+      interactables.push({ id: `${hub}:in:chaises`, name: 'Chaises pour les invités', kind: 'actions', x: x0 + 1.0, z: oz + 0.75, radius: 0.8,
+        actions: [onSeat(furnitureById('chaises')!.action, { near: { x: x0 + 0.45, z: oz + 1.1 }, r: 0.6, kind: 'chair' })] });
     }
   } else if (kind === 'maiga') {
     // one narrow room: a worn wooden counter with dented pots on gas rings along one wall, a long table with oilcloth and a
@@ -204,9 +212,9 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     const top = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 3.6), cloth); top.position.set(tx, 0.84, oz - 0.3); group.add(top);
     for (const dz of [-1.6, 1.0]) wood.box(0.7, 0.72, 0.06, tx, 0.1, oz - 0.3 + dz, 0x6b4a2e);
     wood.box(0.35, 0.45, 3.2, tx - 0.75, 0.1, oz - 0.3, 0x7a5a3c);                                 // bench
-    seats.push(...benchSeats(`${hub}:${kind}:bench`, tx - 0.75, oz - 0.3, Math.PI / 2, 0.55, '', 3.2, 3));
+    seats.push(...benchSeats(`${hub}:${kind}:bench`, tx - 0.75, oz - 0.3, Math.PI / 2, 0.55, '', 3.2, 3).map(b => ({ ...b, table: { x: tx - 0.22, y: 0.86, z: b.z } })));
     colliders.push({ x0: tx - 0.95, z0: oz - 2.2, x1: x1, z1: oz + 1.6, h: 0.9 });
-    chair(tx - 0.2, oz + 2.0, Math.PI, 0xf2f2ee); chair(x0 + 0.8, oz + 1.6, Math.PI / 2 + 0.4, 0x2a6fb3);
+    chair(tx - 0.2, oz + 2.0, Math.PI, 0xf2f2ee, { x: tx - 0.2, y: 0.86, z: oz + 1.3 }); chair(x0 + 0.8, oz + 1.6, Math.PI / 2 + 0.4, 0x2a6fb3);
     // wall fan, soot on the ceiling and walls, peeling patches
     plain.box(0.1, 0.25, 0.1, x1 - 0.06, 2.3, oz - 2.8, 0x333333); plain.cyl(0.22, 0.22, 0.08, x1 - 0.2, 2.4, oz - 2.8, 0xd8d8d8, 10, [0, 0, Math.PI / 2]);
     for (let k = 0; k < 9; k++) {
@@ -237,7 +245,9 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
       plain.box(0.06, 0.72, 0.06, tx, 0.1, tz, 0x555555);
       const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.8), cloth); top.position.set(tx, 0.84, tz); top.castShadow = true; group.add(top);
       solid(tx, tz, 1.2, 0.8, 0.9);
-      chair(tx - 0.85, tz, -Math.PI / 2, c % 2 ? 0x2a8fd1 : 0xf2f2ee); chair(tx + 0.85, tz, Math.PI / 2, c % 2 ? 0x2a8fd1 : 0xf2f2ee);
+      // one chair on each side, both facing the table (yaw = the way the sitter looks)
+      chair(tx - 0.85, tz, Math.PI / 2, c % 2 ? 0x2a8fd1 : 0xf2f2ee, { x: tx - 0.25, y: 0.89, z: tz });     // served on the plate laid there
+      chair(tx + 0.85, tz, -Math.PI / 2, c % 2 ? 0x2a8fd1 : 0xf2f2ee, { x: tx + 0.3, y: 0.86, z: tz - 0.15 });
       plain.cyl(0.12, 0.12, 0.03, tx - 0.25, 0.86, tz, 0xf4f1e8, 10); plain.cyl(0.04, 0.04, 0.15, tx + 0.3, 0.86, tz + 0.1, 0x6fbf6a, 6);
     }
     // TV on a wall bracket, posters

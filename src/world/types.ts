@@ -65,6 +65,8 @@ export interface HubWorld {
   ecurie: { cx: number; cz: number } | null;
   /** Every street seat of the hub (benches…): src/interact/seats.ts. */
   seats: Seat[];
+  /** Roofs open on one side (the dibiterie): under one, the camera stays below `h` so the slab never hides the player. */
+  roofs: Collider[];
   dispose(): void;
 }
 export interface RoadEdge { ax: number; az: number; bx: number; bz: number }

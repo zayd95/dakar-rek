@@ -1,22 +1,38 @@
 import type { Action } from './types';
 import type { HubId } from '../core/types';
 import { order } from '../activity/primitives';
+import type { Primitive, SeatPick } from '../activity/types';
 
 const flag = (f: string) => (s: { data: { flags: string[] } }) => s.data.flags.includes(f);
 const noFlag = (f: string) => (s: { data: { flags: string[] } }) => !s.data.flags.includes(f);
 const FRIEND_FLAG: Record<string, string> = { pikine: 'mame_helped', plateau: 'fatou_friend' };
 const friendHere = (s: { data: { flags: string[]; hub: string } }) => !!FRIEND_FLAG[s.data.hub] && s.data.flags.includes(FRIEND_FLAG[s.data.hub]);
 const tired = (n: number) => (s: { data: { needs: { energie: number } } }) => (s.data.needs.energie < n ? 'Trop fatigué' : null);
+/**
+ * A dish or a drink served at the table: pay, it is prepared, the player walks to a free seat, sits and eats (the plate
+ * shows in front of them), and stays seated. Same steps everywhere (src/activity/primitives.ts `order`).
+ */
+export const served = (a: Omit<Action, 'steps' | 'seconds'> & { cost: number; prep?: number; eat?: number; drink?: boolean; prop?: string }): Action => {
+  const { prep = 2, eat = 4, drink, prop, ...rest } = a;
+  return { ...rest, seconds: prep + eat, steps: order({ id: a.id, label: a.label, price: a.cost, prep, eat, drink, prop: prop ?? a.id, needs: a.needs ?? {} }).steps };
+};
+
+/**
+ * An action done on a seat — a bench in the shade, the TV from the chair, the hairdresser's chair, sleep on the bed: the
+ * universal runner walks the player there, sits (or lies) them down, then applies the action's needs and counter.
+ */
+export const onSeat = (a: Action, seat: SeatPick, primitive: Primitive = 'sit'): Action =>
+  ({ ...a, steps: [{ label: a.label, primitive, seconds: a.seconds, seat, effects: { needs: a.needs, counters: a.counter ? { [a.counter]: 1 } : undefined } }] });
 
 export const ACTIONS: Record<string, Action[]> = {
   gargote: [
-    { id: 'ceebu', label: 'Ceebu jën', detail: 'Le plat du jour', cost: 1000, needs: { faim: 45, moral: 4 }, seconds: 3, counter: 'meals' },
-    { id: 'ami', label: 'Ceebu jën à prix d’ami', detail: 'On se souvient de ton aide', cost: 600, needs: { faim: 45, moral: 8, social: 4 }, seconds: 3, counter: 'meals', visible: friendHere },
-    { id: 'yassa', label: 'Yassa poulet', detail: 'Bien copieux', cost: 1500, needs: { faim: 60, moral: 6 }, seconds: 3, counter: 'meals' },
+    served({ id: 'ceebu', label: 'Ceebu jën', detail: 'Le plat du jour · servi à table', cost: 1000, needs: { faim: 45, moral: 4 }, counter: 'meals' }),
+    served({ id: 'ami', label: 'Ceebu jën à prix d’ami', detail: 'On se souvient de ton aide · servi à table', cost: 600, needs: { faim: 45, moral: 8, social: 4 }, counter: 'meals', visible: friendHere, prop: 'ceebu' }),
+    served({ id: 'yassa', label: 'Yassa poulet', detail: 'Bien copieux · servi à table', cost: 1500, needs: { faim: 60, moral: 6 }, counter: 'meals' }),
   ],
   restaurant: [
-    { id: 'poisson', label: 'Poisson grillé', detail: 'Face à l’océan', cost: 3500, needs: { faim: 55, moral: 12, social: 4 }, seconds: 3, counter: 'meals' },
-    { id: 'jus', label: 'Jus de bissap', cost: 800, needs: { faim: 8, moral: 8 }, seconds: 2 },
+    served({ id: 'poisson', label: 'Poisson grillé', detail: 'Face à l’océan · servi à table', cost: 3500, needs: { faim: 55, moral: 12, social: 4 }, counter: 'meals', prep: 3 }),
+    served({ id: 'jus', label: 'Jus de bissap', cost: 800, needs: { faim: 8, moral: 8 }, drink: true, prep: 1, eat: 2, prop: 'bissap' }),
   ],
   cafe: [
     { id: 'touba', label: 'Café Touba', detail: 'Épicé, bien serré', cost: 100, needs: { faim: 3, energie: 6, moral: 6, social: 2 }, seconds: 1.5, counter: 'cafes' },
@@ -56,15 +72,13 @@ export const ACTIONS: Record<string, Action[]> = {
   ],
   maiga: [
     // Composed with the universal primitives: pay → the plate is prepared → sit on a free bench or chair → eat.
-    { id: 'riz', label: 'Riz au poisson', detail: 'Le moins cher du quartier · servi à table', cost: 500, needs: { faim: 40, moral: 2 }, seconds: 3, counter: 'meals',
-      steps: order({ id: 'riz', label: 'Riz au poisson', price: 500, prep: 2, eat: 4, needs: { faim: 40, moral: 2 } }).steps },
-    { id: 'mafe', label: 'Mafé', detail: 'Servi à table', cost: 700, needs: { faim: 45, moral: 4 }, seconds: 3, counter: 'meals',
-      steps: order({ id: 'mafe', label: 'Mafé', price: 700, prep: 2, eat: 4, needs: { faim: 45, moral: 4 } }).steps },
+    served({ id: 'riz', label: 'Riz au poisson', detail: 'Le moins cher du quartier · servi à table', cost: 500, needs: { faim: 40, moral: 2 }, counter: 'meals' }),
+    served({ id: 'mafe', label: 'Mafé', detail: 'Servi à table', cost: 700, needs: { faim: 45, moral: 4 }, counter: 'meals' }),
   ],
   dibiterie: [
-    { id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois, oignons et moutarde', cost: 2000, needs: { faim: 55, moral: 10, social: 4 }, seconds: 3, counter: 'meals' },
+    served({ id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois, oignons et moutarde · servi à table', cost: 2000, needs: { faim: 55, moral: 10, social: 4 }, counter: 'meals', prep: 3 }),
     { id: 'brochettes', label: 'Brochettes à emporter', cost: 1000, needs: { faim: 28, moral: 4 }, seconds: 2, counter: 'meals' },
-    { id: 'attendre', label: 'S’asseoir sur le banc', detail: 'Regarder la rue, discuter', needs: { social: 8, moral: 4 }, seconds: 3 },
+    onSeat({ id: 'attendre', label: 'S’asseoir sur le banc', detail: 'Regarder la rue, discuter', needs: { social: 8, moral: 4 }, seconds: 3 }, { kind: 'bench' }),
   ],
   ibou: [
     { id: 'parler', label: 'Discuter avec Tonton Ibou', needs: { social: 10, moral: 4 }, seconds: 3, counter: 'chats' },

@@ -42,6 +42,32 @@ describe('activity runner', () => {
     expect(w.log).toContain('cat:loisir');
     expect(w.log.at(-1)).toBe('save');
   });
+  it('waits while the player walks to the seat, and tries the next seat when one cannot be reached', () => {
+    const w = world();
+    let walk = 0; const tried: string[] = [];
+    const s = (w.runner as unknown as { s: ActivityServices }).s;
+    const sit = s.sit;
+    s.sit = seat => { tried.push(seat.id); if (seat.id === 'b:1') return false; walk = 1.5; return sit(seat); };   // b:1 is blocked
+    s.walking = () => walk > 0;
+    w.runner.start(P.order({ id: 'mafe', label: 'Mafé', price: 700, prep: 1, eat: 2, needs: { faim: 45 } }));
+    run(w.runner, 1.1);
+    expect(tried).toEqual(['b:1', 'b:0']);                                   // nearest first, then the next one
+    expect(w.runner.current?.step.label).toBe('Tu t’installes');               // still walking: not eating yet
+    for (let t = 0; t < 1.5; t += 0.25) { walk -= 0.25; w.runner.update(0.25); }
+    expect(w.runner.current?.step.label).toBe('Tu manges');
+    run(w.runner, 2.1);
+    expect(w.state.data.needs.faim).toBe(65);
+    expect(w.seated()?.id).toBe('b:0');
+  });
+  it('a seat of a kind: the bed for sleeping, staying on it when already there', () => {
+    const w = world();
+    w.seats.add({ id: 'lit', x: 3, z: 0, top: 0.6, yaw: 0, kind: 'bed', space: 'dibi', occupant: null });
+    w.runner.start(P.sleep({ id: 'dormir', label: 'Dormir', seat: { kind: 'bed' }, seconds: 1 }));
+    expect(w.seated()?.id).toBe('lit');
+    run(w.runner, 1.1);
+    w.runner.start(P.sleep({ id: 'dormir', label: 'Dormir', seat: { kind: 'bed' }, seconds: 1 }));
+    expect(w.log.filter(l => l === 'sit:lit')).toHaveLength(1);
+  });
   it('stopping keeps the price but skips unfinished effects', () => {
     const w = world();
     w.runner.start(P.order({ id: 'x', label: 'Mafé', price: 700, prep: 1, eat: 4, needs: { faim: 45 } }));

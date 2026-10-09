@@ -11,6 +11,7 @@ import type { HubWorld, Interactable } from '../world/types';
 import type { Interior } from '../world/interiors';
 import type { Humanoid } from '../actors/humanoid';
 import type { FollowCamera } from '../actors/camera';
+import { meals } from './meals';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -81,4 +82,4 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [];
+export const MODULES: GameModule[] = [meals];

@@ -79,7 +79,11 @@ Composition examples:
 - **Plot / billboard** = sign: `inspect`, `own`, `rent`.
 - **Car rapide** = door: `ride` (board a vehicle seat); stops: `alight`.
 
-Already composed: the Maïga meals (pay → the plate is prepared → sit on a free bench or chair → eat → stay seated).
+Already composed: every meal at a Maïga, a gargote (inside or on the benches out front), a restaurant front and a
+dibiterie (pay → the plate is prepared → the player walks round the tables to a free seat (`src/interact/approach.ts`)
+→ sits facing the table → the plate stands in front of them and empties (`src/game/meals.ts`) → stays seated). Every
+chair and bench faces its table (`check-interact.mjs` audits it); the routine characters hold the bench seat they sit
+on. At home, the TV is watched from the chair, the guest chairs are sat on, and « Dormir » lies the player on the bed.
 
 ## Waves
 

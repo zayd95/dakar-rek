@@ -24,6 +24,7 @@ import { preloadAssets } from './actors/vehicles';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, type Clip, type PersonLook } from './actors/humanoid';
 import { castById } from './social/cast';
 import { NpcLife } from './social/npcLife';
+import { ROUTINES } from './social/routines';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
@@ -41,6 +42,7 @@ import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './m
 import { Economy } from './economy/ui';
 import { Interactions } from './interact/system';
 import { Seats, sitOriginY, type Seat } from './interact/seats';
+import { approachPath } from './interact/approach';
 import { LegacySource } from './interact/legacy';
 import type { Target } from './interact/types';
 import { ActivityRunner } from './activity/runner';
@@ -253,6 +255,11 @@ function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, nu
 const interactions = new Interactions();
 const seats = new Seats();
 let seated: Seat | null = null;
+/** Walking to a seat before sitting (meals, « S’asseoir »): legs round the furniture, then a short sit-down. */
+let approach: { seat: Seat; path: { x: number; z: number }[]; i: number; t: number; settle: number; from?: { x: number; y: number; z: number; yaw: number } } | null = null;
+/** A bed is lain on (the standing pose turned flat, head on the pillow), every other seat is sat on. */
+const restClip = (s: Seat): Clip => s.kind === 'bed' ? 'Idle' : 'Sit';
+const restY = (s: Seat) => s.kind === 'bed' ? s.top + 0.12 : sitOriginY(s);
 /** Space key shared by seats, targets and presence: 'street', 'home' (own room) or the interior's door id. */
 const spaceOf = (door: Interactable) => door.id.includes(':home:') ? 'home' : door.id;
 const interactSpace = () => inside ? spaceOf(inside.door) : 'street';
@@ -270,15 +277,19 @@ interactions.add({ name: 'self', collect(space, x, z, out) {           // while 
   if (!seated) return;
   out.push({ id: 'self', name: 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() }] });
 } });
-seats.onSit = s => sitOn(s);
+seats.onSit = s => { if (mode === 'play' && !seated && goSit(s)) { mode = 'busy'; input.enabled = false; } };
 
 /** Universal activities (src/activity): one runner plays every composed activity; places compose the primitives. */
 const inventory = new Inventory(state);
 const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
-  sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
-  clip: c => { if (playerBody) playerBody.hold = c ?? (seated ? 'Sit' : null); },
-  busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
+  sit: s => goSit(s), walking: () => approach !== null,
+  clip: c => { if (playerBody) playerBody.hold = c === 'Sit' && seated ? restClip(seated) : c ?? (seated ? restClip(seated) : null); },
+  busy: on => {
+    if (on) { mode = 'busy'; input.enabled = false; return; }
+    if (approach) { seats.release(approach.seat.id, 'player'); approach = null; speed = 0; }   // stopped on the way to the seat
+    if (mode === 'busy') { mode = 'play'; input.enabled = true; }
+  },
   progress: (on, pct = 0, label = '') => hud.progress(on, pct, label),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   rel: (npc, d) => rel.change(PLAYER, npc, d), flag: f => { if (!state.data.flags.includes(f)) state.data.flags.push(f); },
@@ -320,15 +331,64 @@ function actionSpec(a: Action): ActivitySpec {
 
 function sitOn(seat: Seat, force = false) {
   if ((!force && mode !== 'play') || seated || !seats.occupy(seat.id, 'player')) return;
+  approach = null;
   seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0;
-  pos.set(seat.x, sitOriginY(seat) + (inside ? 0 : 0), seat.z); facing = seat.yaw;
-  if (playerBody) playerBody.hold = 'Sit';
+  pos.set(seat.x, restY(seat), seat.z); facing = seat.yaw;
+  if (playerBody) playerBody.hold = restClip(seat);
+}
+/**
+ * Walks the player to a seat, round tables and chairs (src/interact/approach.ts), then sits down: the seat is held
+ * for the player on the way. False when no free spot beside it can be reached. The frame loop moves the player
+ * while `approach` is set (mode 'busy').
+ */
+function goSit(seat: Seat): boolean {
+  if (seated?.id === seat.id) return true;
+  if (seated) standUp();
+  if (!world || approach || !seats.occupy(seat.id, 'player')) return false;
+  const path = approachPath(pos, seat, inside ? inside.int.colliders : world.colliders, inside ? 0.3 : 0.5, inside ? inside.int.bounds : world.bounds);
+  if (!path) { seats.release(seat.id, 'player'); return false; }
+  approach = { seat, path, i: 0, t: 0, settle: -1 };
+  hideProxy(); emoteT = 0; previewT = 0; player.setPose(null);
+  if (playerBody) playerBody.hold = null;
+  return true;
+}
+const WALK_SPEED = 1.7;
+function stepApproach(dt: number) {
+  const a = approach!, last = a.path.length - 1; a.t += dt;
+  if (a.i < last && a.t < 12) {                                  // walk the legs to the spot beside the seat
+    const p = a.path[a.i], dx = p.x - pos.x, dz = p.z - pos.z, d = Math.hypot(dx, dz);
+    speed += (WALK_SPEED - speed) * Math.min(1, dt * 8);
+    const want = Math.atan2(dx, dz);
+    facing += Math.atan2(Math.sin(want - facing), Math.cos(want - facing)) * Math.min(1, dt * 10);
+    const step = Math.min(d, speed * dt);
+    if (d > 1e-4) { pos.x += (dx / d) * step; pos.z += (dz / d) * step; }
+    if (d - step < 0.05) a.i++;
+    pos.y = 0.1 + (inside || !world ? 0 : world.heightAt(pos.x, pos.z));
+    return;
+  }
+  // then turn to face the way the seat faces and sit down (or lie down) in 0.45 s
+  if (a.settle < 0) { a.settle = 0; a.from = { x: pos.x, y: pos.y, z: pos.z, yaw: facing }; if (playerBody) playerBody.hold = restClip(a.seat); }
+  a.settle = Math.min(1, a.settle + dt / 0.45); speed = 0;
+  const k = a.settle * a.settle * (3 - 2 * a.settle), s = a.seat, f = a.from!;
+  pos.set(lerp(f.x, s.x, k), lerp(f.y, restY(s), k), lerp(f.z, s.z, k));
+  facing = f.yaw + Math.atan2(Math.sin(s.yaw - f.yaw), Math.cos(s.yaw - f.yaw)) * k;
+  if (a.settle >= 1) {
+    sitOn(s, true);
+    if (!activities.running && mode === 'busy') { mode = 'play'; input.enabled = true; }   // « S’asseoir » on its own
+  }
+}
+/** 0 standing … 1 lying flat (on a bed, or lying down on one). */
+function lying() {
+  if (seated?.kind === 'bed') return 1;
+  if (approach?.seat.kind === 'bed' && approach.settle >= 0) return approach.settle * approach.settle * (3 - 2 * approach.settle);
+  return 0;
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
 function standUp(inPlace = false) {
+  if (approach) { seats.release(approach.seat.id, 'player'); approach = null; speed = 0; }
   if (!seated) return;
   const s = seated; seats.release(s.id, 'player'); seated = null;
-  if (playerBody && playerBody.hold === 'Sit') playerBody.hold = null;
+  if (playerBody && (playerBody.hold === 'Sit' || s.kind === 'bed')) playerBody.hold = null;
   if (inPlace || !world) return;
   let nx = s.x + Math.sin(s.yaw) * 0.7, nz = s.z + Math.cos(s.yaw) * 0.7;
   [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
@@ -340,6 +400,19 @@ function registerSeats() {
   seats.addAll(world.seats);
   for (const [doorId, int] of interiors) seats.addAll(int.seats.map(s => ({ ...s, space: doorId.includes(':home:') ? 'home' : doorId })));
   for (const p of world.people) if (p.clip === 'Sit') seats.occupyNear('street', p.x, p.z, 'npc');
+}
+/** The routine characters sit on the same street benches as the player: their seats are held while they sit there. */
+function syncNpcSeats() {
+  if (!world) return;
+  const held = new Set<string>();
+  for (const r of ROUTINES) {
+    if (r.hub !== world.id) continue;
+    const w = npcLife.where(r.id);
+    if (!w?.here || !w.sit || w.x === undefined || w.z === undefined) continue;
+    const who = 'npc:' + r.id, s = seats.inSpace('street').find(x => x.occupant === who) ?? seats.occupyNear('street', w.x, w.z, who);
+    if (s && Math.hypot(s.x - w.x, s.z - w.z) <= 0.45) held.add(s.id);
+  }
+  for (const s of seats.inSpace('street')) if (s.occupant?.startsWith('npc:') && !held.has(s.id)) seats.release(s.id, s.occupant);
 }
 /** What the action button did before the contextual system (kept for places, people and stations). */
 function legacyAction(it: Interactable) {
@@ -748,7 +821,7 @@ function showPrompt(t: Target | null) {
 }
 
 // ------------------------------------------------------------------ main loop
-let last = performance.now(), statsT = 0;
+let last = performance.now(), statsT = 0, npcSeatT = 0;
 function frame(now: number) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
@@ -771,7 +844,7 @@ function frame(now: number) {
     const m = input.move();
     speed = 0;
     if (Math.hypot(m.x, m.y) > 0.35) standUp();                  // moving the stick or a key stands up
-    else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody) playerBody.hold = 'Sit'; }
+    else { pos.set(seated.x, restY(seated), seated.z); facing = seated.yaw; if (playerBody) playerBody.hold = restClip(seated); }
     state.tick(dt * 1000);
   } else if (mode === 'play') {
     const m = input.move();
@@ -790,23 +863,28 @@ function frame(now: number) {
     } else speed *= 0.8;
     { const gy = 0.1 + (inside ? 0 : world.heightAt(pos.x, pos.z)); pos.y += (gy - pos.y) * Math.min(1, dt * 14); } // climb stairs smoothly
     state.tick(dt * 1000);
-  } else if (mode === 'busy') { state.tick(dt * 1000); speed = 0; }
+  } else if (mode === 'busy') {
+    if (approach) stepApproach(dt); else speed = 0;
+    state.tick(dt * 1000);
+  }
   if (!lambScene) {
     if ((player.pose || proxy) && speed > 0.5) { player.setPose(null); emoteT = 0; previewT = 0; hideProxy(); }
     if (emoteT > 0) { emoteT -= dt; if (emoteT <= 0) { player.setPose(null); hideProxy(); } }
     if (previewT > 0) { previewT -= dt; if (previewT <= 0 && emoteT <= 0) hideProxy(); }
 
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
-    if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
+    if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.set(-Math.PI / 2 * lying(), facing, 0); playerBody.animate(dt, speed); }
   } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
   npcLife.update(dt, pos, freeCam?.p ?? camera.position);
+  if ((npcSeatT -= dt) <= 0) { npcSeatT = 0.5; syncNpcSeats(); }
   crowd?.update(dt); traffic?.update(dt); life?.update(dt); world.tick(dt);
   ambient?.update(dt, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90);
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
   const space = presenceSpace();
-  const clip = mode === 'play' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
-  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
+  // seated meals and the walk to the seat run in 'busy' mode: others see them too
+  const clip = (mode === 'play' || mode === 'busy') && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
+  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach ? speed : 0, space, clip }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
@@ -814,7 +892,7 @@ function frame(now: number) {
   economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
   showPrompt(focus);
 
-  if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
+  if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z), inside ? [] : world.roofs);
   if (camOverride && !lambScene) {
     const a = facing + camOverride.side;
     camera.position.set(pos.x + Math.sin(a) * camOverride.dist, camOverride.h, pos.z + Math.cos(a) * camOverride.dist);
@@ -833,7 +911,7 @@ resize(); applyQuality();
 async function start() {
   await Promise.all([preloadAssets(), preloadHumanoid()]);
   for (const m of MODULES) m.init?.(ctx);
-  if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); scene.add(playerBody.group); player.group.visible = false; }
+  if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); playerBody.group.rotation.order = 'YXZ'; scene.add(playerBody.group); player.group.visible = false; }
   const startHub = invitedHub ?? state.data.hub;
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
@@ -861,7 +939,10 @@ if (DEBUG) {
     nearestInteractable: () => nearest?.name ?? null,
     focus: () => { const t = interactions.focus; return t ? { id: t.id, name: t.name, kind: t.kind, space: t.space, primary: interactions.primary(t)?.label ?? null, all: interactions.all(t).map(a => a.label) } : null; },
     seated: () => seated?.id ?? null,
-    seatsHere: () => seats.inSpace(interactSpace()).map(s => ({ id: s.id, x: s.x, z: s.z, top: s.top, yaw: s.yaw, kind: s.kind, occupant: s.occupant })),
+    approach: () => approach ? { seat: approach.seat.id, leg: approach.i, legs: approach.path.length, settle: +approach.settle.toFixed(2), x: +pos.x.toFixed(2), z: +pos.z.toFixed(2) } : null,
+    lying: () => +lying().toFixed(2),
+    roomGeometry: () => inside ? { colliders: inside.int.colliders, bounds: inside.int.bounds } : null,
+    seatsHere: () => seats.inSpace(interactSpace()).map(s => ({ id: s.id, x: s.x, z: s.z, top: s.top, yaw: s.yaw, kind: s.kind, occupant: s.occupant, table: s.table ?? null })),
     sit(id: string) { const s = seats.get(id); if (s) sitOn(s); return seated?.id ?? null; },
     stand() { standUp(); },
     more() { openMore(); },
@@ -910,10 +991,10 @@ if (DEBUG) {
     phoneInfo: () => phone.info(), phoneHooks: phone.hooks,
     emote(i = 0) { playEmote(i); },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
-    enter(kind: 'home' | 'gargote') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
+    enter(kind: 'home' | 'gargote' | 'maiga') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
     exit() { exitInterior(); },
     look(yaw: number, pitch?: number) { follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
-    place(x: number, z: number, yaw: number) { pos.set(x, 0.1 + (world?.heightAt(x, z) ?? 0), z); facing = yaw; follow.snapBehind(yaw); },
+    place(x: number, z: number, yaw: number) { standUp(true); pos.set(x, 0.1 + (inside ? 0 : world?.heightAt(x, z) ?? 0), z); facing = yaw; follow.snapBehind(yaw); },
     cam(p: [number, number, number] | null, t?: [number, number, number]) { freeCam = p && t ? { p: new THREE.Vector3(...p), t: new THREE.Vector3(...t) } : null; },
     meshStats() {
       const rows: { name: string; tris: number; visible: boolean }[] = [];

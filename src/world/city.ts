@@ -4,6 +4,7 @@ import type { PersonLook } from '../actors/humanoid';
 import type { Batch } from './batch';
 import type { Action, Collider, HubWorld, Interactable } from './types';
 import { CITY_ACTIONS as A } from './cityContent';
+import { onSeat } from './content';
 import { benchSeats, type Seat } from '../interact/seats';
 
 export type CityBlock = 'soumbedioune' | 'mall' | 'bank' | 'square' | 'shops';
@@ -55,6 +56,23 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     for (const side of [-1, 1]) b.box(0.16, 0.4, 0.6, x + Math.cos(yaw) * side * 1.25, FLOOR, z - Math.sin(yaw) * side * 1.25, DARK, yaw);
     b.box(3.2, 0.5, 0.1, x - Math.sin(yaw) * 0.32, 0.55, z - Math.cos(yaw) * 0.32, WOOD, yaw);
     solid(x, z, Math.abs(Math.cos(yaw)) * 3.2 + Math.abs(Math.sin(yaw)) * 0.7, Math.abs(Math.sin(yaw)) * 3.2 + Math.abs(Math.cos(yaw)) * 0.7, 0.7);
+  };
+  /** Low table between two plain benches facing it: street food eaten seated, the plates go on the table. */
+  const eatingSpot = (x: number, z: number) => {
+    box(1.8, 0.05, 0.75, x, z, WOOD, FLOOR + 0.6); for (const dx of [-0.75, 0.75]) box(0.08, 0.6, 0.08, x + dx, z, DARK);
+    solid(x, z, 1.8, 0.75, 0.7);
+    for (const side of [-1, 1]) {
+      const bz = z + side * 0.75;
+      box(1.8, 0.45, 0.35, x, bz, WOOD);
+      c.seats.push(...benchSeats(`${c.hub}:eat:${c.seats.length}`, x, bz, side < 0 ? 0 : Math.PI, FLOOR + 0.45, 'street', 1.8, 2)
+        .map(s => ({ ...s, table: { x: s.x, y: FLOOR + 0.65, z: z + side * 0.15 } })));
+    }
+  };
+  /** Low wooden stool facing `yaw` (players sit on it too). */
+  const stool = (x: number, z: number, yaw: number) => {
+    c.seats.push({ id: `${c.hub}:stool:${c.seats.length}`, x, z, top: FLOOR + 0.46, yaw, kind: 'stool', space: 'street', occupant: null });
+    box(0.42, 0.06, 0.42, x, z, WOOD, FLOOR + 0.4);
+    for (const [dx, dz] of [[-0.16, -0.16], [0.16, -0.16], [-0.16, 0.16], [0.16, 0.16]]) box(0.05, 0.4, 0.05, x + dx, z + dz, DARK);
   };
   const table = (x: number, z: number, w = 2.8, color = WOOD) => {
     box(w, 0.09, 1.2, x, z, color, 0.9);
@@ -132,6 +150,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     }
     sign('JËN · POISSON DU JOUR', cx - 8, cz + 7.55, '#24657b', 3.4, 15);
     place('fish-market', 'Marché au poisson', cx - 8, cz + 8.5, A.fish, 'Jën bu bees ! Le poisson du jour est sur les étals.', 3.5);
+    eatingSpot(cx - 8, cz + 12.5);                                                   // the grilled fish is eaten here
     // Artisans along the street edge, behind the landing market.
     for (let k = 0; k < 3; k++) {
       const x = cx - 14 + k * 12, z = cz - 16;
@@ -208,6 +227,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     sign('JUS & GO', cx + 14, cz + 10.05, '#49704b', 3.3, 7);
     person(cx + 14, cz + 2.5, 0, 'Talk', VENDOR);
     place('mall-juice', 'Jus & Go', cx + 14, cz + 7, A.juice, 'Bouye ou bissap ? On te prépare ça.', 2.8);
+    eatingSpot(cx + 16.5, cz + 8);                                                     // under the shade, beside the counter
     for (const dz of [1, 9]) { bench(cx - 14, cz + dz); person(cx - 14, cz + dz, 0, 'Sit'); }
     for (const dx of [-7, 7]) { c.tree(cx + dx, cz + 9, 1.2); box(3, 0.4, 3, cx + dx, cz + 9, 0xb9a38c); solid(cx + dx, cz + 9, 3, 3, 0.6); }
     person(cx - 3.5, cz + 3, 0.7); person(cx - 2.5, cz + 5, -2.4);
@@ -224,7 +244,17 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     person(cx - 7.5, cz - 9, 0, 'Talk', { ...FISHER, style: 'boubou', top: 0xe8decb, hatColor: 0xeee4d4 });
     shop(pikine ? 'Salon Awa' : 'Dakar Réparation', cx + 11, cz - 10, pikine ? 0xca7f93 : 0x437282, 17);
     goods(cx + 11, cz - 10, pikine ? 'home' : 'tech');
-    place('salon-tech', pikine ? 'Salon Awa' : 'Dakar Réparation', cx + 11, cz - 4.3, pikine ? A.salon : A.tech, pikine ? 'Viens t’asseoir. Aujourd’hui, tout le quartier parle de l’arène.' : 'Téléphones, accessoires, commandes : il y a toujours de quoi s’occuper.', 3);
+    if (pikine) {   // the hairdresser's chair facing a mirror on the side wall: « Se faire coiffer » happens sitting there
+      const sx = cx + 17, sz = cz - 10.2;
+      c.seats.push({ id: `${c.hub}:salon-chair`, x: sx, z: sz, top: FLOOR + 0.5, yaw: Math.PI / 2, kind: 'chair', space: 'street', occupant: null });
+      b.cyl(0.25, 0.25, 0.03, sx, FLOOR, sz, 0x9aa0a6, 12); b.cyl(0.05, 0.05, 0.42, sx, FLOOR, sz, 0x9aa0a6, 8);
+      box(0.55, 0.08, 0.55, sx, sz, 0x2b2b33, FLOOR + 0.42); box(0.08, 0.62, 0.55, sx - 0.3, sz, 0x2b2b33, FLOOR + 0.5);
+      for (const dz of [-0.3, 0.3]) box(0.4, 0.05, 0.06, sx, sz + dz, 0x2b2b33, FLOOR + 0.68);
+      glass.box(0.04, 1.1, 0.9, cx + 19.33, 0.95, sz, 0xc8dce6); box(0.25, 0.05, 1.0, cx + 19.25, sz, WOOD, 0.85);
+      for (let k = 0; k < 3; k++) b.cyl(0.04, 0.04, 0.16, cx + 19.25, 0.9, sz - 0.3 + k * 0.3, [0xd34c3c, 0xe9be43, 0x3e8d87][k], 6);
+    }
+    const salon = A.salon.map(a => a.id === 'coiffure' ? onSeat(a, `${c.hub}:salon-chair`) : a);
+    place('salon-tech', pikine ? 'Salon Awa' : 'Dakar Réparation', cx + 11, cz - 4.3, pikine ? salon : A.tech, pikine ? 'Viens t’asseoir. Aujourd’hui, tout le quartier parle de l’arène.' : 'Téléphones, accessoires, commandes : il y a toujours de quoi s’occuper.', 3);
     person(cx + 14, cz - 9, 0, 'Talk', pikine ? VENDOR : FISHER);
     bench(cx - 11, cz + 11); bench(cx + 11, cz + 11);
     c.tree(cx, cz + 14, 1.7); c.pool(cx - 11, cz - 3, 6); c.pool(cx + 11, cz - 3, 6);
@@ -244,6 +274,8 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
   b.sphere(0.17, cx + 11, 1.05, cz - 1, 0x426c60); // teapot and glasses
   for (let n = 0; n < 3; n++) b.cyl(0.06, 0.06, 0.12, cx + 10.55 + n * 0.25, 1, cz - 0.6, WHITE, 6);
   person(cx + 9.4, cz - 1, Math.PI / 2, 'Talk'); person(cx + 12.6, cz - 1, -Math.PI / 2, 'Talk');
+  // the two checkers players sit on stools at the ends of the table, facing the board
+  stool(cx - 12.7, cz - 1, Math.PI / 2); stool(cx - 9.3, cz - 1, -Math.PI / 2);
   person(cx - 12.7, cz - 1, Math.PI / 2, 'Sit'); person(cx - 9.3, cz - 1, -Math.PI / 2, 'Sit');
   person(cx + 11, cz + 8, -Math.PI / 2, 'Sit'); person(cx - 11, cz - 8, Math.PI / 2, 'Sit');
   sign(names[c.hub].toUpperCase(), cx, cz + 20, '#68432c', 3, 18);
