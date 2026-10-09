@@ -2,6 +2,7 @@
 // free seat, ride past a stop, interruptions (phone, « Arrêter »), ask to get off, alight on the pavement, then a door,
 // a hub change and reloads during and after a ride. Desktop (Pikine) and phone portrait (Plateau).
 // Usage: node scripts/check-transport.mjs [baseUrl] [outDir]   (needs a running build, e.g. `npx vite preview --port 4213`)
+// On a shared machine run browsers one at a time: flock /tmp/dakar-browser.lock node scripts/check-transport.mjs …
 // The line clock is the real clock: the checks only skip the wait for the next car (warp), never the ride itself.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -15,7 +16,9 @@ const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); i
 const KERB = 5;                                         // carriageway half-width; the pavement runs from 5 to 7 m off the centre line
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
-for (const [label, viewport, touch, hub] of [['desktop', { width: 1280, height: 800 }, false, 'pikine'], ['phone', { width: 390, height: 844 }, true, 'plateau']]) {
+const RUNS = [['desktop', { width: 1280, height: 800 }, false, 'pikine'], ['phone', { width: 390, height: 844 }, true, 'plateau']];
+// ONLY=desktop or ONLY=phone runs one viewport (while iterating; run both before committing)
+for (const [label, viewport, touch, hub] of RUNS.filter(r => !process.env.ONLY || r[0] === process.env.ONLY)) {
   const context = await browser.newContext(touch ? { viewport, deviceScaleFactor: 1, isMobile: true, hasTouch: true } : { viewport });
   const page = await context.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));

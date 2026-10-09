@@ -135,11 +135,16 @@ export class StopPeople {
     this.resetAll();
   }
 
-  /** Bodies for the « Saluer » system (people waiting at the stops). */
+  /** Bumped whenever someone starts or stops waiting (the greetable list changes). */
+  version = 0;
+  private list: { id: string; obj: THREE.Object3D; h: Humanoid; seated: boolean }[] = [];
+  private listVersion = -1;
+  /** Bodies for the « Saluer » system (people waiting at the stops); rebuilt only when it changed. */
   bodies() {
-    const out: { id: string; obj: THREE.Object3D; h: Humanoid; seated: boolean }[] = [];
-    this.riders.forEach((list, i) => list.forEach((r, k) => { if (r.state === 'wait' || r.state === 'idle') out.push({ id: `stop:${i}:${k}`, obj: r.h.group, h: r.h, seated: !!r.seat }); }));
-    return out;
+    if (this.listVersion === this.version) return this.list;
+    this.listVersion = this.version; this.list = [];
+    this.riders.forEach((list, i) => list.forEach((r, k) => { if (r.state === 'wait' || r.state === 'idle') this.list.push({ id: `stop:${i}:${k}`, obj: r.h.group, h: r.h, seated: !!r.seat }); }));
+    return this.list;
   }
 
   private place(r: Rider) {
@@ -150,6 +155,7 @@ export class StopPeople {
   private resetStop(i: number) {
     const list = this.riders[i], waiting = list.length - 1;
     list.forEach((r, k) => { r.state = k < waiting ? 'wait' : 'gone'; r.h.group.visible = r.state === 'wait'; this.place(r); });
+    this.version++;
     this.dirty[i] = false;
   }
   resetAll() { this.riders.forEach((_, i) => this.resetStop(i)); }
@@ -185,7 +191,7 @@ export class StopPeople {
           r.h.group.position.set(r.from.x + (r.to.x - r.from.x) * f, 0.1, r.from.z + (r.to.z - r.from.z) * f);
           r.h.group.rotation.y = Math.atan2(r.to.x - r.from.x, r.to.z - r.from.z);
           r.h.animate(dt, 1.2);
-          if (f >= 1) { if (r.state === 'board') { r.state = 'gone'; r.h.group.visible = false; } else { r.state = 'idle'; r.h.hold = 'Talk'; } }
+          if (f >= 1) { if (r.state === 'board') { r.state = 'gone'; r.h.group.visible = false; } else { r.state = 'idle'; r.h.hold = 'Talk'; } this.version++; }
         } else r.h.animate(dt, 0);
       }
     }
@@ -193,7 +199,7 @@ export class StopPeople {
 
   private walk(r: Rider, state: 'board' | 'off', from: { x: number; z: number }, to: { x: number; z: number }, speed: number) {
     if (r.seat) { r.seat.occupant = null; r.seat = null; }
-    r.state = state; r.h.hold = null; r.t = 0;
+    r.state = state; r.h.hold = null; r.t = 0; this.version++;
     r.from = { x: from.x, z: from.z }; r.to = { x: to.x, z: to.z };
     r.dur = Math.max(0.6, Math.hypot(to.x - from.x, to.z - from.z) / speed);
     if (state === 'off') { r.h.group.position.set(from.x, 0.1, from.z); r.h.group.visible = true; }

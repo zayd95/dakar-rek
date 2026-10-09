@@ -82,7 +82,7 @@ export class TransportModule implements GameModule {
     if (ui) this.card = new RideCard(ui);
     ctx.interactions.add(this.targets);
     // people waiting at the stops can be greeted like anyone in the street
-    const waiting = new People(() => this.lines.flatMap(l => l.people?.bodies() ?? []), ctx.activities, line => ctx.toast(line), () => ({ x: ctx.player.pos.x, z: ctx.player.pos.z }));
+    const waiting = new People(() => this.waitingBodies(), ctx.activities, line => ctx.toast(line), () => ({ x: ctx.player.pos.x, z: ctx.player.pos.z }));
     ctx.interactions.add({ name: 'transport-people', collect: (space, x, z, out) => waiting.collect(space, x, z, out) });
   }
 
@@ -188,6 +188,16 @@ export class TransportModule implements GameModule {
     };
   }
 
+  /** Everyone waiting at the hub's stops, kept between frames until someone starts or stops waiting. */
+  private waiting: ReturnType<StopPeople['bodies']> = [];
+  private waitingKey = -1;
+  private waitingBodies() {
+    let key = 0;                                              // versions only grow: their sum changes with any of them
+    for (const l of this.lines) key += l.people?.version ?? 0;
+    if (key !== this.waitingKey) { this.waitingKey = key; this.waiting = this.lines.flatMap(l => l.people?.bodies() ?? []); }
+    return this.waiting;
+  }
+
   // ---------------------------------------------------------------- lines, stops and passengers
   private clear() {
     this.endTrip(false);
@@ -196,7 +206,7 @@ export class TransportModule implements GameModule {
       rt.people?.dispose(); rt.furniture.dispose();
       for (const t of rt.calls) t.dispose();
     }
-    this.lines = []; this.hub = null; this.doorTargets.clear();
+    this.lines = []; this.hub = null; this.doorTargets.clear(); this.waitingKey = -1;
   }
 
   private clock() { return this.ctx.now() / 1000 + this.warp; }
