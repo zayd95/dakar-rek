@@ -22,7 +22,7 @@ for (const [label, viewport, touch] of views.filter(v => !only || only.split(','
   const d = (fn, arg) => page.evaluate(fn, arg);
   // SwiftShader frames are slow: wait until the UI's finite animations (sheet slide, toasts, transitions) are over.
   const settle = () => page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity), null, { timeout: 15000 }).catch(() => {});
-  const shot = async name => { await page.waitForTimeout(250); await settle(); await page.waitForTimeout(150); await page.screenshot({ path: `${out}/${prefix}-${label}-${name}.png` }); console.log(`${prefix}-${label}-${name}`); };
+  const shot = async name => { await page.waitForTimeout(250); await settle(); await page.waitForTimeout(150); await page.screenshot({ timeout: 120000, path: `${out}/${prefix}-${label}-${name}.png` }); console.log(`${prefix}-${label}-${name}`); };
 
   // 1. Street, bright noon, a bench in focus (primary verb on the button, diegetic prompt above the seat).
   await d(() => { window.__dakar.setHour(12); window.__dakar.teleport('pikine'); });

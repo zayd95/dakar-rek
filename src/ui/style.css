@@ -300,6 +300,9 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #place { top:calc(8px + var(--sa-t)); }
   #goal { top:calc(80px + var(--sa-t)); }
   #toast { top:calc(60px + var(--sa-t)); width:min(420px, calc(100vw - 340px)); }
+  /* the trades' gesture card (src/ui/gesture.ts) is centred at the bottom, 52vw wide: the action column stays right of it */
+  #act { max-width:calc(24vw - 20px - var(--sa-r)); }
+  #progress { min-width:0; width:calc(24vw - 20px - var(--sa-r)); }
   #modal .sheet { right:calc(10px + var(--sa-r)); bottom:calc(8px + var(--sa-b) + var(--kb)); width:min(400px, 56vw); max-height:min(86%, calc(100% - 16px - var(--kb))); }
   #modal[data-kind="quick"] .sheet { bottom:calc(8px + var(--sa-b)); max-height:calc(100% - 16px - var(--sa-b) - var(--sa-t)); width:min(440px, 56vw); }
 }

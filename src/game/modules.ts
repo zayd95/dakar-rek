@@ -58,7 +58,8 @@ export interface GameCtx {
   menu(title: string, subtitle: string, items: MenuItem[]): void;
   /**
    * The next-step place to walk to, in the current hub (way-finding marker and goal compass, src/ui/worldMarkers.ts):
-   * the walking destination when one is set, else the person of the suggested story beat; null when there is none.
+   * the walking destination when one is set, else the person of the suggested story beat, else (first job) the nearest
+   * Tiak Tiak pick-up; null when there is none.
    */
   guide(): { name: string; x: number; z: number } | null;
   toast(msg: string): void;

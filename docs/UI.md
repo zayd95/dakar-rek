@@ -69,7 +69,8 @@ without steps: nothing paid, nothing applied) and a làmb scene (no reward). Due
 - `setPrompt(label, sub?, more?, { icon, cost, gain, disabled, stop })` and `setWorldPrompt(at, icon, label, { cost, gain, disabled })` — DOM touched only on change (they run every frame). A leading emoji in `label` still becomes the icon.
 - `progress(on, pct, label, { title, icon, step, steps })`, `deny(reason)`, `toast(msg, 'info' | 'warn')`,
   `setGuide({ angle, dist } | null)`, `setScene(label, note, stoppable)` + `onSceneStop`.
-- `GameCtx.guide()` (src/game/modules.ts): the next-step place (walking destination, else the suggested person in this hub).
+- `GameCtx.guide()` (src/game/modules.ts): the next-step place in this hub — the walking destination, else the person of
+  the suggested story beat, else (first job) the nearest Tiak Tiak pick-up.
 
 ## Sheet content (for every lane)
 

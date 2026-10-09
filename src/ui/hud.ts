@@ -23,6 +23,16 @@ export const fcfa = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3}
 const signed = (n: number) => (n < 0 ? '−' : '+') + fcfa(Math.abs(n));
 /** A leading emoji in a label (« ✋ Arrêter ») becomes the button's icon. */
 const LEAD_ICON = /^(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*)\s+(.+)$/u;
+export function splitIcon(label: string): { icon: string; text: string } {
+  const m = LEAD_ICON.exec(label); return m ? { icon: m[1], text: m[2] } : { icon: '', text: label };
+}
+/** Toast parts: the game joins bits with two spaces (« Jus de bouye ✓  −500 F »); amounts become coloured chips. */
+export function toastParts(msg: string): { text: string; amount?: 'gain' | 'cost' }[] {
+  return msg.split(/\s{2,}/).filter(Boolean).map(text => {
+    const t = text.trim();
+    return /^[+−-]\s?\d[\d\s]*F$/.test(t) ? { text, amount: t[0] === '+' ? 'gain' as const : 'cost' as const } : { text };
+  });
+}
 const PHONE_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M10.5 5.2h3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="12" cy="18.2" r="1.05" fill="currentColor"/></svg>';
 
 /** Optional details of the primary action and the diegetic bubble. */
@@ -214,9 +224,7 @@ export class Hud {
     const act = this.el.act;
     this.el.actMore.className = label && more ? '' : 'off';
     if (!label) { act.className = 'off'; act.innerHTML = 'Action'; act.removeAttribute('aria-label'); return; }
-    let icon = opt.icon ?? '', text = label;
-    const m = !opt.icon ? LEAD_ICON.exec(label) : null;
-    if (m) { icon = m[1]; text = m[2]; }
+    const { icon, text } = opt.icon ? { icon: opt.icon, text: label } : splitIcon(label);
     const price = opt.cost ? signed(-opt.cost) : opt.gain ? signed(opt.gain) : '';
     act.className = opt.stop ? 'stop' : opt.disabled ? 'dis' : '';
     act.innerHTML = `${icon ? `<i class="a-ic" aria-hidden="true">${esc(icon)}</i>` : ''}<span class="a-tx"><b>${esc(text)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>`
@@ -301,12 +309,10 @@ export class Hud {
     if (same) { this.armToast(same, msg); replay(same, 'again'); return; }
     const t = document.createElement('div');
     t.className = 't ' + kind + (/✓/.test(msg) ? ' ok' : ''); t.dataset.msg = msg;
-    const parts = msg.split(/\s{2,}/).filter(Boolean);
-    parts.forEach((p, i) => {
+    toastParts(msg).forEach((p, i) => {
       if (i) t.appendChild(document.createTextNode(' '));
-      const amount = /^[+−-]\s?\d[\d\s]*F$/.test(p.trim());
-      const s = document.createElement('span'); s.textContent = p;
-      if (amount) s.className = 'amt ' + (p.trim()[0] === '+' ? 'gain' : 'cost');
+      const s = document.createElement('span'); s.textContent = p.text;
+      if (p.amount) s.className = 'amt ' + p.amount;
       t.appendChild(s);
     });
     box.prepend(t);

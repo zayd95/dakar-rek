@@ -28,22 +28,30 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   const isOpen = () => d(() => document.getElementById('modal').classList.contains('on'));
   const rect = sel => d(s => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }; }, sel);
   const settle = () => page.waitForFunction(() => document.getAnimations().every(a => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity), null, { timeout: 15000 }).catch(() => {});
-  const playAgain = () => page.waitForFunction(() => window.__dakar.pos().mode === 'play' && !document.getElementById('modal').classList.contains('on'), null, { timeout: 20000 }).then(() => true, () => false);
-  /** Walk for a moment (keyboard or the touch stick) and say whether the character moved. */
+  const playAgain = async () => {
+    const ok = await page.waitForFunction(() => window.__dakar.pos().mode === 'play' && !document.getElementById('modal').classList.contains('on'), null, { timeout: 20000 }).then(() => true, () => false);
+    await page.waitForTimeout(600);                        // nothing else may open on the way out (the phone, another sheet)
+    return ok && (await d(() => window.__dakar.pos().mode === 'play' && !document.querySelector('#modal.on') && !document.querySelector('#phone.on')));
+  };
+  /** Walk for a moment (keyboard or the touch stick; backwards first, the player usually faces a counter) and say whether the character moved. */
   const walks = async () => {
-    const a = await d(() => window.__dakar.pos());
-    if (touch) {
-      const j = await rect('#joy'); const x = j.left + j.width / 2, y = j.top + j.height / 2 - 35;
-      await d(([x, y]) => document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', pointerId: 31, clientX: x, clientY: y })), [x, y]);
-      await page.waitForFunction(p => Math.hypot(window.__dakar.pos().x - p.x, window.__dakar.pos().z - p.z) > 0.4, a, { timeout: 15000 }).catch(() => {});
-      await d(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerType: 'touch', pointerId: 31 })));
-    } else {
-      await page.keyboard.down('KeyW');
-      await page.waitForFunction(p => Math.hypot(window.__dakar.pos().x - p.x, window.__dakar.pos().z - p.z) > 0.4, a, { timeout: 15000 }).catch(() => {});
-      await page.keyboard.up('KeyW');
+    for (const dir of [1, -1]) {
+      const a = await d(() => window.__dakar.pos());
+      if (touch) {
+        const j = await rect('#joy'); const x = j.left + j.width / 2, y = j.top + j.height / 2 + 35 * dir;
+        await d(([x, y]) => document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', pointerId: 31, clientX: x, clientY: y })), [x, y]);
+        await page.waitForFunction(p => Math.hypot(window.__dakar.pos().x - p.x, window.__dakar.pos().z - p.z) > 0.4, a, { timeout: 15000 }).catch(() => {});
+        await d(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerType: 'touch', pointerId: 31 })));
+      } else {
+        const key = dir > 0 ? 'KeyS' : 'KeyW';
+        await page.keyboard.down(key);
+        await page.waitForFunction(p => Math.hypot(window.__dakar.pos().x - p.x, window.__dakar.pos().z - p.z) > 0.4, a, { timeout: 15000 }).catch(() => {});
+        await page.keyboard.up(key);
+      }
+      const b = await d(() => window.__dakar.pos());
+      if (Math.hypot(b.x - a.x, b.z - a.z) > 0.4) return true;
     }
-    const b = await d(() => window.__dakar.pos());
-    return Math.hypot(b.x - a.x, b.z - a.z) > 0.4;
+    return false;
   };
 
   // 1. Layout: the HUD chips never overlap, stay on screen, and the buttons are at least 44 px.
@@ -79,7 +87,7 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   const sheet = await rect('#modal .sheet');
   if (label === 'phone') check(`${label}: bottom sheet anchored at the bottom, at most ~56 % high`, Math.abs(sheet.bottom - viewport.height) < 2 && sheet.height <= viewport.height * 0.57 && sheet.left === 0, JSON.stringify(sheet));
   else check(`${label}: sheet on the right, clear of the character in the centre`, sheet.left > viewport.width / 2 - 10 && sheet.bottom <= viewport.height && sheet.top >= 0, JSON.stringify(sheet));
-  await page.screenshot({ path: `${out}/check-${label}-sheet.png` });
+  await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-sheet.png` });
   const rows = await d(() => [...document.querySelectorAll('#modal .list .item')].map(b => b.getBoundingClientRect().height));
   check(`${label}: sheet rows are at least 44 px`, rows.length > 0 && rows.every(h => h >= 44), rows.join(','));
   await page.keyboard.press('Escape');
@@ -118,8 +126,8 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   check(`${label}: « ⋯ » shows the target's actions as tiles with prices`, tiles.length >= 3 && tiles.some(t => /−500 F/.test(t.text)) && tiles.every(t => t.h >= 44), JSON.stringify(tiles.map(t => t.text)));
   const q = await rect('#modal .sheet');
   check(`${label}: quick actions sit in the bottom-right thumb zone`, q.right >= viewport.width - 30 && q.bottom >= viewport.height * 0.6, JSON.stringify(q));
-  await page.screenshot({ path: `${out}/check-${label}-quick.png` });
-  await page.locator('#modal .item.tile.dis').first().click();
+  await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-quick.png` });
+  await page.locator('#modal .item.tile.dis').first().click({ force: true });   // aria-disabled: Playwright would wait for « enabled »
   await page.waitForFunction(() => /argent/.test(document.getElementById('toast').textContent), null, { timeout: 10000 }).catch(() => {});
   check(`${label}: a disabled tile says why (« Pas assez d’argent »)`, /Pas assez d’argent/.test(await d(() => document.getElementById('toast').textContent)) && (await isOpen()));
   if (touch) await page.touchscreen.tap(30, viewport.height * 0.3); else await page.mouse.click(30, viewport.height * 0.3);
@@ -146,7 +154,7 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
     const pill = await rect('#progress'), btn = await rect('#act');
     const pillText = await d(() => document.getElementById('progress').textContent);
     check(`${label}: progress pill above the « Arrêter » button`, pill.width > 0 && pill.bottom <= btn.top + 1 && Math.abs(pill.right - btn.right) < 4 && /Riz au poisson/.test(pillText) && /Arrêter/.test(await d(() => document.getElementById('act').textContent)), `${pillText} ${JSON.stringify(pill)}`);
-    await page.screenshot({ path: `${out}/check-${label}-activity.png` });
+    await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-activity.png` });
     await page.keyboard.press('Escape');
     const stopped = await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 15000 }).then(() => true, () => false);
     check(`${label}: Escape stops the activity and gives the controls back`, stopped && !(await d(() => document.querySelector('#progress.on'))));
@@ -198,7 +206,7 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   await page.waitForFunction(() => window.__dakar.uiMarkers().pin, null, { timeout: 20000 }).catch(() => {});
   const g = await d(() => ({ m: window.__dakar.uiMarkers(), ibou: window.__dakar.npcWhere('ibou'), goal: document.getElementById('goal').textContent, gd: document.querySelector('#goal .gd')?.textContent }));
   check(`${label}: way-finding pin over the suggested person, distance in the hint`, g.m.pin && Math.hypot(g.m.pinAt.x - g.ibou.x, g.m.pinAt.z - g.ibou.z) < 0.5 && /\d+ m/.test(g.goal), JSON.stringify(g));
-  await settle(); await page.screenshot({ path: `${out}/check-${label}-guide.png` });
+  await settle(); await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-guide.png` });
 
   // 10. Toasts stack (three at most); a wallet change floats beside the wallet.
   await d(() => { for (const m of ['Un', 'Deux', 'Trois', 'Quatre', 'Cinq']) window.__dakar.uiToast(m); });
@@ -223,7 +231,7 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await page.waitForTimeout(500);
     const top = await d(() => document.querySelector('#modal .panel').scrollTop);
     check(`${label}: the profile sheet scrolls with a touch drag`, dims.sh - dims.ch <= 20 || top > 20, `${JSON.stringify(dims)} scrollTop ${top}`);
-    await page.screenshot({ path: `${out}/check-${label}-profile.png` });
+    await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-profile.png` });
     await page.getByRole('button', { name: 'Fermer', exact: true }).tap();
     check(`${label}: closing the profile sheet gives the controls back`, await playAgain());
   }

@@ -39,6 +39,7 @@ import { Phone } from './ui/phone';
 import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
+import { pickupFrags } from './economy/jobs';
 import { Interactions } from './interact/system';
 import { Seats, sitOriginY, type Seat } from './interact/seats';
 import { LegacySource } from './interact/legacy';
@@ -685,12 +686,18 @@ function openPlaces() {
 }
 phoneHooks.openPlaces = openPlaces;
 
-/** Person of the suggested story beat (refreshed with the HUD, 4 times a second). */
-let guideNpc: string | null = null;
-/** Way-finding: the walking destination, else the suggested person when they are in this hub. */
+/** Person of the suggested story beat, or « first delivery » (refreshed with the HUD, 4 times a second). */
+let guideNpc: string | null = null, guideJob = false;
+/** Way-finding: the walking destination, else the suggested person (or the nearest Tiak Tiak pick-up for the first job) in this hub. */
 function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
   if (destination?.hub === world.id) { const it = world.interactables.find(i => i.id === destination!.id); if (it) return { name: it.name, x: it.x, z: it.z }; }
+  if (guideJob) {
+    const w = world, here = inside ? inside.door : pos;
+    const ends = pickupFrags(w.id).map(f => w.interactables.find(i => i.id.startsWith(w.id + ':') && i.id.includes(f))).filter((i): i is Interactable => !!i);
+    ends.sort((a, b) => Math.hypot(a.x - here.x, a.z - here.z) - Math.hypot(b.x - here.x, b.z - here.z));
+    if (ends[0]) return { name: ends[0].name, x: ends[0].x, z: ends[0].z };
+  }
   const w = guideNpc ? npcLife.where(guideNpc) : null;
   return w?.here && w.x !== undefined && w.z !== undefined ? { name: castById(guideNpc!)?.name ?? '', x: w.x, z: w.z } : null;
 }
@@ -855,7 +862,7 @@ function frame(now: number) {
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
-  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); guideNpc = sg && 'npc' in sg ? sg.npc : null; hud.setGoal(mode === 'play' ? walkingHint() ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
+  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); guideNpc = sg && 'npc' in sg ? sg.npc : null; guideJob = sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' ? walkingHint() ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   renderer.render(scene, camera);
