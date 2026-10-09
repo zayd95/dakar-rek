@@ -17,6 +17,7 @@ import { transport } from '../transport/module';
 import { moto } from '../transport/motoModule';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
+import { arenaExteriorModule } from '../arena/exterior';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -114,4 +115,4 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [wolofModule, assetKitModule, transport, VenuesModule, moto, ESTATE_MODULE];
+export const MODULES: GameModule[] = [wolofModule, assetKitModule, transport, VenuesModule, moto, ESTATE_MODULE, arenaExteriorModule];
