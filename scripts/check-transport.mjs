@@ -72,7 +72,7 @@ for (const [label, viewport, touch, hub] of RUNS.filter(r => !process.env.ONLY |
   await page.waitForFunction(() => window.__dakar.transport.lines()[0].vehicles.some(v => v.dwell === 0), null, T).catch(() => {});
   await shot('2-arrival');
   await page.waitForFunction(() => ['boarding', 'riding'].includes(window.__dakar.transport.trip().phase), null, T).catch(() => {});
-  await d(() => window.__dakar.act());                                       // pressing again while boarding: no second fare
+  if ((await trip()).phase === 'boarding') await d(() => window.__dakar.act());   // pressing again while boarding: no second fare
   await page.waitForFunction(() => window.__dakar.transport.trip().phase === 'riding', null, T).catch(() => {});
   let tr = await trip();
   const seats = (await line()).vehicles.find(v => v.id === tr.vehicle)?.seats ?? [];
@@ -96,6 +96,7 @@ for (const [label, viewport, touch, hub] of RUNS.filter(r => !process.env.ONLY |
   // 3. Interruptions: the phone (menu key) and « Arrêter » leave the player seated, riding, never stuck.
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => window.__dakar.phoneInfo().open, null, T).catch(() => {});
+  await page.waitForFunction(v => { const x = window.__dakar.transport.lines()[0].vehicles.find(c => c.id === v); return x && x.v > 2; }, tr.vehicle, T).catch(() => {});
   const q0 = await d(() => window.__dakar.pos());
   await page.waitForTimeout(2500);
   const q1 = await d(() => window.__dakar.pos());

@@ -251,7 +251,7 @@ export class TransportModule implements GameModule {
     const waitingHere = () => this.trip.phase === 'waiting' && this.line === rt && this.trip.stop === site.index;
     const place = stopRecipe({
       id: `stop:${rt.def.id}:${site.def.id}`, name: `Arrêt ${site.def.name} · ${rt.def.number}`, space: 'street', line: rt.def.id,
-      anchors: [{ id: 'stop', kind: 'spot', x: site.x, z: site.z, y: 3.0, radius: 2.8, bias: 0.2 }],
+      anchors: [{ id: 'stop', kind: 'spot', x: site.x, z: site.z, y: 3.0, radius: 2.8, bias: -0.4 }],   // the stop wins over the people waiting there, unless one stands right in front
     }, { board: () => this.wantBoard(rt, site.index) });
     const offers = place.offers.stop;
     for (const o of offers) { o.visible = () => !waitingHere() && (this.trip.phase === 'idle' || this.trip.phase === 'waiting'); o.detail = `${rt.def.number} · ${rt.def.from} ⇄ ${rt.def.to} · ${fcfa(rt.def.fare)}`; }
