@@ -12,6 +12,7 @@ import type { Interior } from '../world/interiors';
 import type { Humanoid } from '../actors/humanoid';
 import type { FollowCamera } from '../actors/camera';
 import { wolofModule } from '../i18n/module';
+import { assetKitModule } from './assetKit';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -82,4 +83,4 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [wolofModule];
+export const MODULES: GameModule[] = [wolofModule, assetKitModule];
