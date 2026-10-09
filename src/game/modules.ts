@@ -11,6 +11,7 @@ import type { HubWorld, Interactable } from '../world/types';
 import type { Interior } from '../world/interiors';
 import type { Humanoid } from '../actors/humanoid';
 import type { FollowCamera } from '../actors/camera';
+import { worldMarkers } from '../ui/worldMarkers';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -55,6 +56,11 @@ export interface GameCtx {
   /** 'menu' and 'busy' lock movement; 'play' gives it back. */
   setMode(m: GameMode): void;
   menu(title: string, subtitle: string, items: MenuItem[]): void;
+  /**
+   * The next-step place to walk to, in the current hub (way-finding marker and goal compass, src/ui/worldMarkers.ts):
+   * the walking destination when one is set, else the person of the suggested story beat; null when there is none.
+   */
+  guide(): { name: string; x: number; z: number } | null;
   toast(msg: string): void;
   save(): void;
   /** Walkable interior of the current hub behind `door` (built by the module; hidden until entered). */
@@ -81,4 +87,4 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [];
+export const MODULES: GameModule[] = [worldMarkers()];
