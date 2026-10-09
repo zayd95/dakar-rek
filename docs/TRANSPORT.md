@@ -70,6 +70,9 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
 - `src/actors/vehicleKit.ts`: option `seated` (exactly these seats get a baked passenger) and `spec.occupied`; option
   `stand` (a rider-less motorbike's side stand, up while the player rides it).
 - `VehicleSpec.build({ ridden })` and `Vehicle.setRidden()`: the model while the player is at the controls.
+- `SeatSpec.clip` (copied to the `Seat`): the pose held on that seat — the kit's motorbike seats give 'Ride'.
+- `Vehicle.animate(speed, steer, dt)`: the kit's `animateVehicle` (wheels, steering, a motorbike's lean, near model
+  only), called by drive mode every frame and by the car rapides near the camera.
 - `main.ts`: the seated branch follows the seat every frame in play, busy (and menu when locked) so the body rides
   along; module space / camera / safe place hooks; the legacy source only lists street content in the street.
 - `src/multiplayer/protocol.ts`: presence accepts `<hub>:rapide:<line>:<k>` spaces of the current hub (test added).
@@ -98,7 +101,10 @@ away while the player is still on the way to the door, they get in at once.
 - **Get off:** « Descendre de la moto » (it brakes first if moving): the player stands beside it; it stays parked there,
   in that hub, across reloads (a reload mid-ride parks it where it was and puts the player beside it).
 - **Parked:** solid (three boxes along it: the player walks around it, the other vehicles stop at it); side stand down
-  when parked, up while ridden. The rider keeps the city « Sit » clip (no riding pose in the asset library yet).
+  when parked, up while ridden.
+- **Alive:** the rider sits astride in the kit seat's « Ride » pose (hands on the grips) and leans with the motorbike in
+  turns, about the same ground line; the wheels spin and the front end steers (the kit's `animateVehicle`, near model
+  only). Top speed stays well above running on foot (12.5 m/s against 7).
 - **Same framework:** `VehicleSpec` (driver seat + `drive`), `Vehicle.place()`, `PassengerCamera`, the ride card; the
   motorbike and the car are two `OwnedVehicleModule` instances with their own def.
 
@@ -115,7 +121,8 @@ away while the player is still on the way to the door, they get in at once.
   (motorbike 3.2), no lean (the body rolls a little out of the corners). Collisions as for the motorbike, on a
   footprint of seven circles (no gap a post or a wall corner can slip into). Views from the kit's anchors: behind the
   car (`chase`; higher and further back on a phone held upright), « Au volant » (the kit's `driver` anchor, the
-  player's body hidden: the dashboard and the street through the windscreen), « Vue d’en haut ».
+  player's body hidden: the dashboard and the street through the windscreen), « Vue d’en haut ». The wheels spin and
+  the front wheels steer; the driver sits (« Sit »).
 - **Get out:** « Sortir de la voiture » (it brakes first if moving): the player stands on the pavement side — the side
   farther from the road's centre line, the right-hand side when parked at a kerb — else the other side, else behind.
   It stays parked there, solid, in that hub, across reloads (a reload while driving parks it where it was).
@@ -161,7 +168,7 @@ away while the player is still on the way to the door, they get in at once.
 ## Known gaps
 
 - NPC passengers are the kit's seated busts (no animation); the player's humanoid sits with the city « Sit » clip
-  (no riding pose on the motorbike yet — to set as the driver seat's `clip` when the asset library has one).
+  (the motorbike's rider: the kit's « Ride » pose).
 - Owned vehicles are not seen by other players (only the driver, seated); they do not follow their owner to another
   hub. Nobody can ride along yet (the car's other seats are not offered; no taxi job yet).
 - The car rapides do not see the player's vehicle (the player's vehicle stops at them).

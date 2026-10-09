@@ -32,8 +32,8 @@ export interface Spot { x: number; z: number; yaw: number }
 export interface DealerSite {
   /** Where the seller stands (the shop anchor). */
   counter: { x: number; z: number };
-  /** The sign on its pole (the plate faces ±z at yaw 0). */
-  sign: Spot;
+  /** The sign on its pole (the plate faces ±z at yaw 0; `w` m wide, default 1.5). */
+  sign: Spot & { w?: number };
   /** Vehicles on display (other kit seeds: other colours). */
   displays: (Spot & { seed: number })[];
   /** Where the bought vehicle waits. */
@@ -114,7 +114,7 @@ export function kerbDealer(px: number, pz: number, o: { displays: { along: numbe
   const counter = at(0, 6.2);
   return {
     counter: { x: counter.x, z: counter.z },
-    sign: at(o.sign, 6.6, alongZ ? Math.PI / 2 : 0),
+    sign: { ...at(o.sign, 6.6, alongZ ? Math.PI / 2 : 0), w: 2.4 },
     displays: o.displays.map(d => ({ ...at(d.along, 4.3), seed: d.seed })),
     delivery,
     kerb: [{ x: delivery.x, z: delivery.z, dx: fx, dz: fz, rx: nx, rz: nz, offset: 4.3, from: o.clear[0] - o.delivery, to: o.clear[1] - o.delivery }],
@@ -265,10 +265,11 @@ export class OwnedVehicleModule implements GameModule {
       if (drive) hub.colliders.push(...footprint(drive, s.x, s.z, s.yaw, this.def.height));
     }
     const sign = signTexture(D.sign);
-    const pole = mesh(new THREE.BoxGeometry(0.08, 2.8, 0.08), new THREE.MeshLambertMaterial({ color: 0x3b3f46 }));
-    pole.position.set(site.sign.x, 1.52, site.sign.z);
-    const plate = mesh(new THREE.BoxGeometry(1.5, 0.5, 0.05), new THREE.MeshLambertMaterial({ map: sign }));
-    plate.position.set(site.sign.x, 2.75, site.sign.z); plate.rotation.y = site.sign.yaw;
+    const sw = site.sign.w ?? 1.5, sh = sw / 3, top = 2.5 + sh;
+    const pole = mesh(new THREE.BoxGeometry(0.08, top, 0.08), new THREE.MeshLambertMaterial({ color: 0x3b3f46 }));
+    pole.position.set(site.sign.x, 0.12 + top / 2, site.sign.z);
+    const plate = mesh(new THREE.BoxGeometry(sw, sh, 0.05), new THREE.MeshLambertMaterial({ map: sign }));
+    plate.position.set(site.sign.x, 2.5 + sh / 2, site.sign.z); plate.rotation.y = site.sign.yaw;
     if (site.desk) {
       const desk = mesh(new THREE.BoxGeometry(1.3, 0.85, 0.6), new THREE.MeshLambertMaterial({ color: 0x2e5c8a }));
       desk.position.set(site.desk.x, 0.55, site.desk.z); desk.rotation.y = site.desk.yaw;

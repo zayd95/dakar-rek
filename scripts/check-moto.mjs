@@ -88,7 +88,9 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => window.__dakar.moto.info().driving, null, T).catch(() => {});
   let i2 = await info();
-  check(`${label}: on the motorbike: driver seat, own interaction space, still in the street for the others`, i2.driving && /moto:.*:driver$/.test(await d(() => window.__dakar.seated()) ?? '') && i2.space === 'pikine:moto:jakarta' && i2.presence === 'street' && i2.camera, JSON.stringify(i2));
+  await page.waitForFunction(() => window.__dakar.clip() === 'Ride', null, { timeout: 30000 }).catch(() => {});
+  const clip = await d(() => window.__dakar.clip());
+  check(`${label}: on the motorbike: driver seat (astride, Ride pose), own interaction space, still in the street for the others`, i2.driving && /moto:.*:driver$/.test(await d(() => window.__dakar.seated()) ?? '') && i2.space === 'pikine:moto:jakarta' && i2.presence === 'street' && i2.camera && clip === 'Ride', JSON.stringify({ ...i2, clip }));
   await shot('3-on');
 
   // 3. Ride along the road (east), then steer.

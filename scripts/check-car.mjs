@@ -121,8 +121,9 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => window.__dakar.car.info().driving, null, T).catch(() => {});
   let i2 = await info();
-  check(`${label}: at the wheel: driver seat, own interaction space, still in the street for the others, chase view`, i2.driving && /car:berline:driver$/.test(await d(() => window.__dakar.seated()) ?? '') && i2.space === 'plateau:car:berline' && i2.presence === 'street' && i2.camera && i2.view === 'chase' && !i2.solid,
-    JSON.stringify(i2));
+  const clip = await d(() => window.__dakar.clip());
+  check(`${label}: at the wheel: driver seat (seated), own interaction space, still in the street for the others, chase view`, i2.driving && /car:berline:driver$/.test(await d(() => window.__dakar.seated()) ?? '') && i2.space === 'plateau:car:berline' && i2.presence === 'street' && i2.camera && i2.view === 'chase' && !i2.solid && clip !== 'Ride',
+    JSON.stringify({ ...i2, clip }));
   await shot('4-in');
 
   // 4. Drive along the kerb lane, then steer.
