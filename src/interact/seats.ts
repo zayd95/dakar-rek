@@ -20,6 +20,12 @@ export interface Seat {
   space: string;
   /** 'player', an NPC id, a remote player id, or null when free. */
   occupant: string | null;
+  /**
+   * Locked seat (a seat in a moving vehicle): moving the stick does not stand the player up and « Se lever » is not
+   * offered; the module owning the seat gives the way out (src/transport: « Descendre au prochain arrêt »). Seats may
+   * also move: main.ts places a seated player from the seat's x / top / z / yaw every frame.
+   */
+  locked?: boolean;
 }
 
 /** Height of the Sit clip's hips above the character origin (actors/humanoid.ts, corrected Sit). */
@@ -71,7 +77,8 @@ export class Seats implements TargetSource {
 
   collect(space: string, x: number, z: number, out: Target[]) {
     for (const s of this.inSpace(space)) {
-      if (s.occupant || Math.abs(s.x - x) > REACH || Math.abs(s.z - z) > REACH) continue;
+      // vehicle seats are taken by boarding the vehicle (ride), never offered on their own
+      if (s.occupant || s.kind === 'vehicle' || Math.abs(s.x - x) > REACH || Math.abs(s.z - z) > REACH) continue;
       out.push({
         id: 'seat:' + s.id, name: SEAT_NAME[s.kind], kind: 'seat', space, x: s.x, z: s.z, y: s.top + 0.5, radius: REACH, bias: 1,
         affordances: () => [{ id: 'sit', verb: s.kind === 'bed' ? 'sleep' : 'sit', label: s.kind === 'bed' ? 'S’allonger' : 'S’asseoir', icon: s.kind === 'bed' ? '🛏️' : '🪑', run: () => this.onSit(s) }],

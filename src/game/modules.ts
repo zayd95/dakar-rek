@@ -11,6 +11,7 @@ import type { HubWorld, Interactable } from '../world/types';
 import type { Interior } from '../world/interiors';
 import type { Humanoid } from '../actors/humanoid';
 import type { FollowCamera } from '../actors/camera';
+import { transport } from '../transport/module';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -41,6 +42,8 @@ export interface GameCtx {
   /** City clock (respects the debug hour override). */
   hour(): number;
   day(): number;
+  /** Shared clock in ms (server time when online, the device clock otherwise): timetables every client agrees on. */
+  now(): number;
   player: {
     pos: THREE.Vector3;
     facing(): number;
@@ -74,6 +77,21 @@ export interface GameModule {
   update?(ctx: GameCtx, dt: number): void;
   /** The player entered or left an interior (space = new interaction space). */
   spaceChanged?(ctx: GameCtx, space: string): void;
+  /**
+   * A space of the module's own the player is in right now (a vehicle id while riding), or null. While set, it is the
+   * interaction space (targets, seats) and the presence / chat space; street-only content is not offered.
+   */
+  space?(ctx: GameCtx): string | null;
+  /**
+   * Drive the camera this frame (passenger view, cut-scene…); return true when done, and the follow camera is skipped.
+   * `drag` is the player's camera drag of this frame (mouse, touch, Q/R keys).
+   */
+  camera?(ctx: GameCtx, dt: number, drag: { yaw: number; pitch: number }): boolean;
+  /**
+   * Where to save the player right now instead of their position (e.g. riding: the pavement of the next stop), so a
+   * reload never resumes inside a moving vehicle. Null = save the position as usual.
+   */
+  safePlace?(ctx: GameCtx): { x: number; z: number; yaw: number } | null;
   /** Entries merged into window.__dakar (?debug) for the checks. */
   debug?(ctx: GameCtx): Record<string, unknown>;
 }
@@ -81,4 +99,4 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [];
+export const MODULES: GameModule[] = [transport];

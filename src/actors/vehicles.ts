@@ -95,11 +95,15 @@ function rapidePaint() {
     // crescent and star
     c.fillStyle = '#f4c20d'; c.beginPath(); c.arc(240, 130, 20, 0, Math.PI * 2); c.fill(); c.fillStyle = hex(CR.blue); c.beginPath(); c.arc(248, 125, 18, 0, Math.PI * 2); c.fill(); star(c, 262, 122, 7, '#f4c20d');
   });
-  // Front: blue face with painted eyes and a white strip reading ALHAMDOULILAH (common on car rapides; UNREVIEWED)
+  // Front: blue face with painted eyes and a white strip of coloured diamonds (no inscription: the game never paints
+  // religious text on vehicles, Habib 9 Oct; UNREVIEWED)
   const front = mk(256, 128, c => {
     c.fillStyle = hex(CR.blue); c.fillRect(0, 0, 256, 128);
     c.fillStyle = hex(CR.white); c.fillRect(0, 0, 256, 30);
-    c.fillStyle = '#1b2a7a'; c.font = 'italic 900 17px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('ALHAMDOULILAH', 128, 16);
+    for (let k = 0; k < 9; k++) {                                                              // geometric band
+      const x = 16 + k * 28; c.fillStyle = ['#d9322b', '#1a9d54', '#f4c20d', '#e8742c'][k % 4];
+      c.beginPath(); c.moveTo(x, 4); c.lineTo(x + 10, 15); c.lineTo(x, 26); c.lineTo(x - 10, 15); c.fill();
+    }
     for (const x of [62, 194]) { // painted eyes
       c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(x, 66, 30, 16, 0, 0, Math.PI * 2); c.fill();
       c.fillStyle = '#3a7bd5'; c.beginPath(); c.arc(x, 66, 11, 0, Math.PI * 2); c.fill();

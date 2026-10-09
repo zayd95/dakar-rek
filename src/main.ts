@@ -154,7 +154,9 @@ presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.c
 const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), refreshHome: () => refreshHomeInteriors(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
-function presenceSpace() { return lambScene ? 'scene' : inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'; }
+function presenceSpace() { return lambScene ? 'scene' : moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
+/** A module's own space the player is in (a vehicle while riding: src/transport), or null. */
+function moduleSpace(): string | null { for (const m of MODULES) { const s = m.space?.(ctx); if (s) return s; } return null; }
 
 const sunDir = new THREE.Vector3();
 function updateLighting(hour: number) {
@@ -255,9 +257,9 @@ const seats = new Seats();
 let seated: Seat | null = null;
 /** Space key shared by seats, targets and presence: 'street', 'home' (own room) or the interior's door id. */
 const spaceOf = (door: Interactable) => door.id.includes(':home:') ? 'home' : door.id;
-const interactSpace = () => inside ? spaceOf(inside.door) : 'street';
+const interactSpace = () => moduleSpace() ?? (inside ? spaceOf(inside.door) : 'street');
 interactions.add(new LegacySource({
-  list: () => !world ? [] : inside ? inside.int.interactables : world.interactables,
+  list: space => !world ? [] : inside ? inside.int.interactables : space === 'street' ? world.interactables : [],
   run: it => legacyAction(it),
   runAction: (it, a) => { nearest = it; hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); },
   talkLabel: it => { const b = it.npc ? availableBeat(it.npc, rel, state) : null; return b ? '★ ' + b.title : null; },
@@ -266,8 +268,8 @@ interactions.add(new LegacySource({
   requires: a => a.requires?.(state) ?? null,
 }));
 interactions.add(seats);
-interactions.add({ name: 'self', collect(space, x, z, out) {           // while seated: « Se lever »
-  if (!seated) return;
+interactions.add({ name: 'self', collect(space, x, z, out) {           // while seated: « Se lever » (not on a locked seat)
+  if (!seated || seated.locked) return;
   out.push({ id: 'self', name: 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() }] });
 } });
 seats.onSit = s => sitOn(s);
@@ -295,7 +297,7 @@ const people = interactions.add(new People(() => [
 const ctx: GameCtx = {
   scene, camera, follow, extra, state, hud, input, interactions, seats, places, activities, inventory,
   quality: () => quality, world: () => world, inside: () => inside, space: () => interactSpace(),
-  hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day,
+  hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day, now: () => presence.serverNow(),
   player: {
     pos, facing: () => facing, body: () => playerBody, seated: () => seated,
     sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace),
@@ -715,7 +717,9 @@ const phone = new Phone({
 
 function saveNow(): boolean {
   // indoors, save the street position at the door: interiors are rebuilt on load
-  if (inside) state.place(world!.id, inside.door.x, inside.door.z, facing); else state.place(world!.id, pos.x, pos.z, facing);
+  // a module may hold the player somewhere they cannot resume (a moving vehicle): it gives a safe spot instead
+  const safe = inside ? null : MODULES.reduce<{ x: number; z: number; yaw: number } | null>((p, m) => p ?? m.safePlace?.(ctx) ?? null, null);
+  if (inside) state.place(world!.id, inside.door.x, inside.door.z, facing); else if (safe) state.place(world!.id, safe.x, safe.z, safe.yaw); else state.place(world!.id, pos.x, pos.z, facing);
   return writeSave(store, state.data);
 }
 
@@ -767,12 +771,13 @@ function frame(now: number) {
     if (lambScene.snap) { camera.position.copy(f.cam); lambScene.snap = false; } else camera.position.lerp(f.cam, Math.min(1, dt * 3));
     camera.lookAt(f.look);
     if (lambScene.done) endScene();
-  } else if (mode === 'play' && seated) {
+  } else if (seated && (mode === 'play' || mode === 'busy' || seated.locked)) {
+    // the body follows its seat every frame (seats in vehicles move); the stick stands up, except on a locked seat
     const m = input.move();
     speed = 0;
-    if (Math.hypot(m.x, m.y) > 0.35) standUp();                  // moving the stick or a key stands up
-    else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody) playerBody.hold = 'Sit'; }
-    state.tick(dt * 1000);
+    if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp();
+    else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = 'Sit'; }
+    if (mode !== 'menu') state.tick(dt * 1000);
   } else if (mode === 'play') {
     const m = input.move();
     const fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
@@ -814,7 +819,7 @@ function frame(now: number) {
   economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
   showPrompt(focus);
 
-  if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
+  if (!lambScene && !MODULES.some(m => m.camera?.(ctx, dt, drag))) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
   if (camOverride && !lambScene) {
     const a = facing + camOverride.side;
     camera.position.set(pos.x + Math.sin(a) * camOverride.dist, camOverride.h, pos.z + Math.cos(a) * camOverride.dist);
