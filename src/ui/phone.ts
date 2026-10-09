@@ -15,6 +15,7 @@ import type { Relations } from '../social/relations';
 import { suggestion } from '../social/beats';
 import { phoneHooks } from './phoneHooks';
 import { journalView, esc } from './journal';
+import { glossesShown, setGlossesShown } from '../i18n/wolof';
 import { fcfa } from './hud';
 
 export type Quality = 'low' | 'medium' | 'high';
@@ -360,7 +361,7 @@ export class Phone {
   }
 
   private settingsHtml(): string {
-    const q = this.ctx.quality(), muted = isMuted(), sens = this.ctx.input.sensitivity;
+    const q = this.ctx.quality(), muted = isMuted(), sens = this.ctx.input.sensitivity, gloss = glossesShown();
     const c = this.ctx.state.data.counters;
     return `<h3>Graphismes</h3>
       <div class="seg">${(['low', 'medium', 'high'] as Quality[]).map(k => `<button type="button" data-q="${k}" class="${k === q ? 'on' : ''}" aria-pressed="${k === q}">${QUALITY_LABEL[k]}</button>`).join('')}</div>
@@ -371,8 +372,10 @@ export class Phone {
       <div class="seg">${SENSITIVITY.map(([v, l]) => `<button type="button" data-sens="${v}" class="${v === sens ? 'on' : ''}" aria-pressed="${v === sens}">${l}</button>`).join('')}</div>
       <p class="ph-note">Sensibilité quand tu glisses pour tourner la caméra.</p>
       <h3>Langue</h3>
-      <div class="seg"><button type="button" class="on" aria-pressed="true">Français</button></div>
-      <p class="ph-note">Les textes en wolof et en pulaar sont en cours de relecture ; ils seront proposés une fois validés.</p>
+      <div class="seg"><button type="button" class="on" aria-pressed="true">Français, expressions en wolof</button></div>
+      <p class="ph-note">On parle comme à Dakar : en français, avec le wolof de tous les jours (salutations, merci, marché, attaya, làmb…).</p>
+      <button type="button" class="ph-toggle ${gloss ? 'on' : ''}" data-act="gloss" aria-pressed="${gloss}"><span>Traduction des expressions wolof</span><em>${gloss ? 'Affichée' : 'Masquée'}</em></button>
+      <p class="ph-note">${gloss ? '« Jërëjëf (merci) » : la traduction suit l’expression.' : '« Jërëjëf » : le wolof seul, sans traduction.'}</p>
       <h3>Partie</h3>
       <button type="button" class="ph-btn" data-act="save">Sauvegarder maintenant</button>
       <button type="button" class="ph-btn" data-act="new">Nouvelle partie<small>Efface la sauvegarde de cet appareil</small></button>
@@ -452,6 +455,7 @@ export class Phone {
     }));
     const act = (name: string, fn: () => void) => s.querySelector(`[data-act="${name}"]`)?.addEventListener('click', fn);
     act('sound', () => { setMuted(!isMuted()); this.render(); });
+    act('gloss', () => { setGlossesShown(!glossesShown()); this.render(); });
     act('save', () => this.ctx.toast(this.ctx.save() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'));
     act('new', () => this.go('nouvelle'));
     act('cancel', () => this.back());

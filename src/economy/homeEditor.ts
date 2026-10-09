@@ -67,7 +67,6 @@ export class HomeEditor {
     v.furniture.add(this.marker);
     const first = this.items().find(f => f.at) ?? this.items()[0];
     this.select(first.uid);
-    this.ctx.setCamera(() => this.camera());
     addEventListener('keydown', this.onKey, true);
     document.getElementById('c')?.addEventListener('pointerdown', this.onTap);
     this.render();
@@ -82,7 +81,6 @@ export class HomeEditor {
     this.view = null; this.sel = null; this.pending = null;
     removeEventListener('keydown', this.onKey, true);
     document.getElementById('c')?.removeEventListener('pointerdown', this.onTap);
-    this.ctx.setCamera(null);
     document.body.classList.remove('placing');
     this.el.classList.remove('on');
     touchAssets();                                                     // every piece back where it is saved
@@ -162,8 +160,9 @@ export class HomeEditor {
   }
 
   // ---------------------------------------------------------------- camera, input, panel
-  private camera() {
-    const v = this.view; if (!v) return;
+  /** The view from above the room while placing (the module's camera hook); false when the editor is closed. */
+  camera(): boolean {
+    const v = this.view; if (!v) return false;
     const cam = this.ctx.camera, L = layoutOf(v.spec);
     const tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), tanH = tanV * cam.aspect;
     const portrait = cam.aspect < 1;
@@ -171,6 +170,7 @@ export class HomeEditor {
     const shift = L.d * (portrait ? 0.22 : 0.14);                         // the panel covers the bottom of the screen
     cam.position.set(v.ox, FLOOR + dist, v.oz + shift + dist * 0.16);
     cam.lookAt(v.ox, FLOOR, v.oz + shift);
+    return true;
   }
   private tap(e: PointerEvent) {
     const v = this.view; if (!v) return;

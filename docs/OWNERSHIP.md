@@ -50,10 +50,14 @@ polyvalence.
 Places use the shared recipes: `shop` (Keur Meubles: browse → catalogue, talk to the seller) and `ownable` (plots,
 billboard, homes: look / manage / enter). Furniture activities are a `home:<id>` place per home; « Aménager » is a
 `self` target. Save schema **v5**: `assets` (migrated from v3 `furniture` and v4 `business`) and `inventory` (from the
-`inv:*` counters). GameCtx gained `setCamera` and `walkTo`; `addInterior` replaces the interior behind a door.
+`inv:*` counters). GameCtx gained `walkTo`; `addInterior` replaces the interior behind a door; placement mode takes the
+camera through the `GameModule.camera` hook. The Dibi (venues module) offers « Parler affaires »: `phoneHooks.openAsset`
+opens `business:<placeId>`, a short talk with the owner that leads to the « Affaires » ventures.
 
-**3D kit integration:** `setFurnitureKit((id, type, grade) => model | null)` swaps any piece's model; the contract is in
-`furnitureModels.ts` (centred, base at y = 0, facing +z, inside the catalogue footprint).
+**3D kit:** `src/economy/furnitureKitAdapter.ts` plugs the asset lane's kit (`src/world/furnitureKit.ts`) into the
+`setFurnitureKit` seam: 31 catalogue pieces use a kit model, squeezed on the floor plane to their catalogue footprint
+(heights untouched), and their seat heights follow the kit model. Radio and speakers, plants, dressing table, small
+stove, table lamp and the mattress upgrade keep the built-in models (no kit piece of that size).
 
 ## Checks
 
@@ -65,4 +69,5 @@ save migrating). Screenshots in `docs/screenshots/ownership/`.
 ## Known gaps
 
 Building on a plot, buying vehicles (drive mode) and the jet come later; NPC visits and other players' homes are not
-shown; the lying pose (sleeping sits on the bed for now) and the final furniture models come from the asset lane.
+shown; the lying pose (sleeping sits on the bed for now); the kit's own seats and use anchors are not used yet (the
+catalogue's are); the shower stays a built-in of the room; the Dibi talk does not sell a share of the Dibi itself.

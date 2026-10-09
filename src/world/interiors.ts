@@ -19,7 +19,8 @@ import { benchSeats, type Seat } from '../interact/seats';
 export type InteriorKind = 'home' | 'gargote' | 'maiga';
 
 export interface Interior {
-  kind: InteriorKind;
+  /** 'venue': built by a gameplay module (src/venues) and registered with GameCtx.addInterior. */
+  kind: InteriorKind | 'venue';
   name: string;
   group: THREE.Group;
   colliders: Collider[];

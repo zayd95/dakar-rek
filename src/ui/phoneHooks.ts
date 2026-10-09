@@ -13,6 +13,8 @@ export const phoneHooks: {
   openHome?: () => void;
   /** « Biens » app: net worth, everything owned or rented, listings (ownership module). */
   openAssets?: () => void;
+  /** The ownership sheet of one asset id (a home, a plot…; `business:<placeId>` talks business at that place). */
+  openAsset?: (assetId: string) => void;
   /** Jobs app (economy module). */
   openJobs?: () => void;
   /** « Affaires » app: ventures, income, polyvalence, purchases (economy module). */

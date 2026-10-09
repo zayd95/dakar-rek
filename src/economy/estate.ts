@@ -25,13 +25,14 @@ import {
 } from './catalog';
 import { CATALOGUE, cannotBuy as cannotBuyFurniture, deliverFurniture, furnitureById, hasGoodMattress, piecesOf } from './furniture';
 import { furnitureModel } from './furnitureModels';
+import { installFurnitureKit } from './furnitureKitAdapter';
 import { buildHomeInterior } from './homeInterior';
 import { footprint, toHome, yawOf } from './placement';
 import { CITE_HUB, billboardTexture, buildCiteJamm, dressPlot, plotBoardTexture, signPanel, type CiteJamm } from './citeJamm';
 import { Batch, signTexture } from '../world/batch';
 import { BLK, HALF, PITCH, ROAD } from '../world/builder';
 import { HomeEditor, type HomeView } from './homeEditor';
-import { ownedVentures } from './business';
+import { cannotBuy as cannotBuyVenture, ownedVentures } from './business';
 import './estate.css';
 
 /**
@@ -85,9 +86,11 @@ class Estate {
 
   init(ctx: GameCtx) {
     this.ctx = ctx;
+    installFurnitureKit();                                             // the 3D asset lane's models (src/world/furnitureKit.ts)
     this.editor = new HomeEditor(ctx);
     normalize(ctx.state);
     phoneHooks.openAssets = () => this.openAssets();
+    phoneHooks.openAsset = id => this.openSheet(id);
     phoneHooks.openHome = () => this.openHomeApp();
     // « Aménager » (and the listing of a home being visited) wherever nothing else is at hand inside a home
     ctx.interactions.add({ name: 'estate-home', collect: (space, x, z, out) => this.collectSelf(space, x, z, out) });
@@ -172,6 +175,8 @@ class Estate {
     for (const h of this.people) { const near = Math.hypot(h.group.position.x - p.x, h.group.position.z - p.z) < 60; h.group.visible = near; if (near) h.animate(dt, 0); }
   }
   spaceChanged() { if (this.editor.isOpen) this.editor.close(); }
+  /** Placement mode looks at the room from above (the follow camera is skipped meanwhile). */
+  camera() { return this.editor.camera(); }
 
   /** Brings the world in line with the assets (after any change: purchase, placement, settlement…). */
   refresh() {
@@ -363,8 +368,29 @@ class Estate {
   private left(price: number) { return fcfa(Math.max(0, this.s.wallet - price)); }
 
   /** The sheet of a home, a plot or a billboard: listing (buy, rent, visit) or management (enter, move in, let, upgrade, sell). */
+  /**
+   * « Parler affaires » at a place another module runs (the Dibi: `business:<placeId>`): the owner keeps the place and
+   * talks about starting out; the player's own ventures (business assets, « Affaires ») are one tap away.
+   */
+  private talkBusiness(placeId: string) {
+    const s = this.s, place = this.ctx.places.get(placeId);
+    const owned = ownedVentures(s), units = Object.values(owned).reduce((a, n) => a + n, 0);
+    const next = VENTURES.find(v => !cannotBuyVenture(s, v.id)) ?? VENTURES.find(v => !owned[v.id]) ?? null;
+    const rows: [string, string][] = [
+      ['Le patron', '« Ma place reste à moi, mais une affaire, ça commence petit : une table, puis un kiosque… »'],
+      ['Tes affaires', units ? `${units} · +${fcfa(incomePerHour(s))} / h avec tes biens` : 'aucune pour l’instant'],
+    ];
+    if (next) rows.push(['À ta portée', next.name]);
+    const html = `<div class="est-rows">${rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`;
+    this.open(`Affaires · ${place?.name ?? 'le quartier'}`, 'Parler affaires', [
+      { icon: '🏪', label: 'Voir les affaires à acheter', detail: next ? `Prix, revenus par heure, polyvalence · ${next.name}` : 'Tes affaires et leurs revenus', onPick: () => { this.ctx.hud.closeModal(); phoneHooks.openBusiness?.(); } },
+      { icon: '👋', label: 'Jërëjëf, ba beneen yoon', onPick: () => this.ctx.hud.closeModal() },
+    ], html);
+  }
+
   openSheet(specId: string) {
-    const sp = specOf(specId); if (!sp) return;
+    const sp = specOf(specId);
+    if (!sp) { if (specId.startsWith('business:')) this.talkBusiness(specId.slice('business:'.length)); return; }
     const s = this.s, a = holding(s, specId), home = homeSpec(specId), reopen = () => this.openSheet(specId);
     const items: MenuItem[] = [], rows: string[] = [];
     rows.push(`${KIND_ICON[sp.kind]} ${esc(sp.what)}`);
@@ -559,12 +585,19 @@ class Estate {
       buyAsset: (id: string) => !!buyAsset(self.s, id), rentAsset: (id: string) => !!rentAsset(self.s, id), moveIn: (id: string) => { const a = holding(self.s, id); return !!a && moveIn(self.s, a.uid, true); },
       letAsset: (id: string, on = true) => { const a = holding(self.s, id); return !!a && setLeased(self.s, a.uid, on); },
       buyPiece: (id: string) => { const p = deliverFurniture(self.s, id); return p ? { uid: p.uid, at: p.at ?? null } : null; },
-      homeView: () => { const v = this.viewInside(); return v ? { spec: v.spec.id, ox: v.ox, oz: v.oz, pieces: [...v.pieces.entries()].map(([uid, p]) => ({ uid, spec: p.spec, x: p.obj.position.x, z: p.obj.position.z, yaw: p.obj.rotation.y })), seats: v.seatIds.map(id => this.ctx.seats.get(id)).filter(Boolean), colliders: v.int.colliders.length } : null; },
+      homeView: () => { const v = this.viewInside(); return v ? { spec: v.spec.id, ox: v.ox, oz: v.oz, pieces: [...v.pieces.entries()].map(([uid, p]) => ({ uid, spec: p.spec, model: p.obj.name, x: p.obj.position.x, z: p.obj.position.z, yaw: p.obj.rotation.y })), seats: v.seatIds.map(id => this.ctx.seats.get(id)).filter(Boolean), colliders: v.int.colliders.length } : null; },
       placer: {
         open: () => { const v = this.viewInside(); return v ? self.editor.open(v) : false; }, close: () => self.editor.close(), info: () => self.editor.info(),
         select: (uid: string) => self.editor.select(uid), move: (dx: number, dz: number) => self.editor.move(dx, dz), moveTo: (x: number, z: number) => self.editor.moveTo(x, z), rotate: () => self.editor.rotate(), put: () => self.editor.put(), stash: () => self.editor.stash(),
       },
       legacyItem: (id: string) => furnitureById(id)?.name ?? null,
+      /** The hub's Dibi (venues module): does it offer « Parler affaires », and open that sheet. */
+      dibiBusiness: () => {
+        const p = this.ctx.places.all().find(x => x.type === 'dibi'); if (!p) return null;
+        const offer = Object.values(p.offers).some(list => list.some(o => o.id === 'affaire'));
+        this.openSheet('business:' + p.id);
+        return { place: p.id, offer };
+      },
       enterHome: (id: string) => { const sp = homeSpec(id); if (sp) this.ctx.enter(sp.home.door); return !!sp; },
       citeState: () => ({ board: this.boardKey, plots: Object.fromEntries(this.plotKeys), plotColliders: Object.fromEntries([...this.plotCols].map(([k, v]) => [k, v.length])) }),
       homeSpots: () => { const v = this.viewInside(); return v ? { spots: v.spots, spawn: v.int.spawn, door: v.door.id } : null; },
@@ -584,7 +617,7 @@ function setMap(m: THREE.Mesh, tex: THREE.Texture) {
   const mat = m.material as THREE.MeshLambertMaterial;
   mat.map?.dispose(); mat.map = tex; mat.emissiveMap = tex; mat.needsUpdate = true;
 }
-function disposeModel(o: THREE.Object3D) { o.traverse(c => { const m = c as THREE.Mesh; if (!m.isMesh) return; m.geometry?.dispose(); const mat = m.material as THREE.Material; if (mat && !mat.userData.shared) mat.dispose(); }); }
+function disposeModel(o: THREE.Object3D) { o.traverse(c => { const m = c as THREE.Mesh; if (!m.isMesh) return; if (!m.userData.shared) m.geometry?.dispose(); const mat = m.material as THREE.Material; if (mat && !mat.userData.shared) mat.dispose(); }); }
 
 const estate = new Estate();
 /** The ownership module (registered in src/game/modules.ts MODULES). */

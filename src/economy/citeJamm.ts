@@ -133,7 +133,7 @@ export function buildCiteJamm(hub: HubWorld, lite: boolean): CiteJamm {
     (f.seats ?? []).forEach((s, k) => { const [x, z] = toHome(at, s.x, s.z); seats.push({ id: `pikine:jamm:display:${n}:${k}`, x, z, top: s.top - 0.1 + G + 0.03, yaw: yawOf(at) + s.yaw, kind: s.kind, space: 'street', occupant: null }); });
   });
   for (const m of mergeStatic(models)) hub.group.add(m);
-  for (const m of models) m.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.isMesh) mesh.geometry.dispose(); });
+  for (const m of models) m.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.isMesh && !mesh.userData.shared) mesh.geometry.dispose(); });   // kit geometry is cached
 
   // ---------------------------------------------------------------- Résidence Jàmm: four storeys of apartments
   {

@@ -4,10 +4,11 @@ import { Relations, PLAYER } from './relations';
 import { castById } from './cast';
 import { economyStep, type Step } from '../economy/progress';
 import { furnitureCount } from '../economy/furniture';
+import { quote, say } from '../i18n/wolof';
 
 /**
  * Authored story beats — short branching interactions (2–4 choices) triggered by place and relationship state.
- * PROVISIONAL DRAFT text in French (Habib to review). No generative dialogue.
+ * French text with everyday Wolof from src/i18n/wolof.ts (`say` adds the gloss). No generative dialogue.
  */
 export interface Effects {
   rel?: [string, string, number][];     // [a, b, delta]; use 'player' for the player
@@ -24,8 +25,6 @@ export interface Beat {
   choices: Choice[];
   /** One line shown in the journal when this beat is the suggested next step. */
   hint: string;
-  /** Draft text still to review (all beats are drafts; set on the newer ones explicitly). */
-  draft?: boolean;
 }
 
 const P = PLAYER;
@@ -33,18 +32,18 @@ const P = PLAYER;
 export const BEATS: Beat[] = [
   {
     id: 'ibou_welcome', npc: 'ibou', title: 'Bienvenue au quartier', hint: 'Parle à Tonton Ibou, devant ta chambre (Pikine).',
-    text: 'Ah, te voilà installé ! Le quartier est petit, tout le monde se connaît. Tu cherches du travail ?',
+    text: `Ah, te voilà installé ! ${say('Dalal ak jàmm')}. Le quartier est petit, tout le monde se connaît, et ici on dit ${quote('Nit nitay garabam')}. Tu cherches du travail ?`,
     when: () => true,
     choices: [
       { id: 'oui', label: 'Oui, n’importe quoi d’honnête', reply: 'Va voir Modou au garage. Dis-lui que c’est Ibou qui t’envoie. Et Mame Diarra, à sa gargote, cherche quelqu’un pour livrer ses plats en Tiak Tiak.', effects: { rel: [[P, 'ibou', 8]], flags: ['reco_modou'], needs: { social: 8 } } },
       { id: 'installer', label: 'D’abord je m’installe', reply: 'Prends ton temps. Quand tu seras prêt, Modou au garage cherche de l’aide, et Mame Diarra a des livraisons Tiak Tiak à faire.', effects: { rel: [[P, 'ibou', 4]], flags: ['reco_modou'], needs: { social: 6 } } },
     ],
   },
-  // Lot B « Première ascension » (DRAFT text, to review): Ibou reacts to the first delivery, then to the first furniture,
+  // Lot B « Première ascension »: Ibou reacts to the first delivery, then to the first furniture,
   // and each time suggests the next goal (an 'objectif:<item>' flag read by src/economy/progress.ts).
   {
-    id: 'ibou_tiak', npc: 'ibou', title: 'Le Tiak Tiak', hint: 'Tonton Ibou a entendu parler de ta première livraison : va le voir (Pikine).', draft: true,
-    text: 'On m’a dit que tu as fait ta première livraison ! Le Tiak Tiak, c’est du travail honnête : on gagne sa journée et on connaît vite tout le quartier. Qu’est-ce que tu vas faire de cet argent ?',
+    id: 'ibou_tiak', npc: 'ibou', title: 'Le Tiak Tiak', hint: 'Tonton Ibou a entendu parler de ta première livraison : va le voir (Pikine).',
+    text: `On m’a dit que tu as fait ta première livraison ! ${say('Baax na')}. Le Tiak Tiak, c’est du travail honnête : on gagne sa journée et on connaît vite tout le quartier. Qu’est-ce que tu vas faire de ce ${say('xaalis')} ?`,
     when: (_r, s) => (s.data.counters.livraisons ?? 0) >= 1,
     choices: [
       { id: 'radio', label: 'Meubler ma chambre, une radio d’abord', reply: 'Bonne idée, une radio tient compagnie le soir. La quincaillerie, à côté de la Maïga du marché, vend des meubles.', effects: { rel: [[P, 'ibou', 5]], flags: ['objectif:radio'], needs: { moral: 4 } } },
@@ -53,7 +52,7 @@ export const BEATS: Beat[] = [
     ],
   },
   {
-    id: 'ibou_meuble', npc: 'ibou', title: 'La chambre prend forme', hint: 'Tonton Ibou a vu ton premier meuble : va lui parler (Pikine).', draft: true,
+    id: 'ibou_meuble', npc: 'ibou', title: 'La chambre prend forme', hint: 'Tonton Ibou a vu ton premier meuble : va lui parler (Pikine).',
     text: 'Je suis passé devant ta porte : ta chambre commence à ressembler à une vraie maison ! Et maintenant, tu vises quoi ?',
     when: (_r, s) => furnitureCount(s) >= 1,
     choices: [
@@ -67,7 +66,7 @@ export const BEATS: Beat[] = [
     text: 'Ibou t’envoie ? Si Ibou te fait confiance, moi aussi. Le travail est dur mais je paie bien ceux qui sont sérieux.',
     when: r => r.has('reco_modou'),
     choices: [
-      { id: 'commencer', label: 'Je peux commencer quand vous voulez', reply: 'Bien. Passe au garage : tu toucheras le tarif des gens de confiance.', effects: { rel: [[P, 'modou', 12], [P, 'ibou', 4], ['ibou', 'modou', 2]], flags: ['modou_trust'] } },
+      { id: 'commencer', label: 'Je peux commencer quand vous voulez', reply: `${say('Baax na')}. Passe au garage : tu toucheras le tarif des gens de confiance.`, effects: { rel: [[P, 'modou', 12], [P, 'ibou', 4], ['ibou', 'modou', 2]], flags: ['modou_trust'] } },
       { id: 'plus_tard', label: 'Merci, je repasserai', reply: 'La porte est ouverte.', effects: { rel: [[P, 'modou', 3]] }, completes: false },
     ],
   },
@@ -76,7 +75,7 @@ export const BEATS: Beat[] = [
     text: 'Ma bonbonne de gaz est vide et le service commence bientôt. Tu peux m’aider à porter la nouvelle ?',
     when: (_r, s) => (s.data.counters.actions ?? 0) >= 1,
     choices: [
-      { id: 'aider', label: 'Bien sûr, j’arrive', reply: 'Que Dieu te le rende ! Ici, tu manges désormais à prix d’ami.', effects: { rel: [[P, 'mame', 14]], flags: ['mame_helped'], needs: { energie: -8, moral: 6 } } },
+      { id: 'aider', label: 'Bien sûr, j’arrive', reply: `${say('Jërëjëf')}, ${say('sama doom')} ! Ici, tu manges désormais à prix d’ami.`, effects: { rel: [[P, 'mame', 14]], flags: ['mame_helped'], needs: { energie: -8, moral: 6 } } },
       { id: 'refuser', label: 'Désolé, pas le temps', reply: 'Bon… une autre fois peut-être.', effects: { rel: [[P, 'mame', -3]] }, completes: false },
     ],
   },
@@ -91,7 +90,7 @@ export const BEATS: Beat[] = [
   },
   {
     id: 'ablaye_join', npc: 'ablaye', title: 'L’écurie Baobab', hint: 'Coach Ablaye, à l’écurie de Pikine, cherche des jeunes.',
-    text: 'Tu as le gabarit. Ici on s’entraîne dur, on respecte les anciens et on reste humble. Tu veux t’entraîner avec l’écurie Baobab ?',
+    text: `Tu as le gabarit. Ici, la ${say('làmb')} se respecte : on s’entraîne dur, on salue les anciens et on reste humble. Tu veux t’entraîner avec l’écurie Baobab ?`,
     when: () => true,
     choices: [
       { id: 'rejoindre', label: 'Je veux apprendre', reply: 'Alors à demain matin, sur le sable. Tu as maintenant accès à l’entraînement de l’écurie.', effects: { rel: [[P, 'ablaye', 10], [P, 'babacar', 5]], flags: ['ecurie_baobab'] } },
@@ -103,7 +102,7 @@ export const BEATS: Beat[] = [
     text: 'Lamine, de l’écurie Teranga, raconte partout qu’aucun jeune de Baobab ne lui résiste. Il traîne près de l’arène. Je vais te le présenter.',
     when: (r, s) => r.has('ecurie_baobab') && (s.data.counters.lutte ?? 0) >= 2,
     choices: [
-      { id: 'pret', label: 'Je suis prêt', reply: 'Garde la tête froide. On répond dans l’arène, pas avec la bouche.', effects: { rel: [[P, 'ablaye', 5]], flags: ['meet_lamine'] } },
+      { id: 'pret', label: 'Je suis prêt', reply: `${say('Bul tiit')}, mais garde la tête froide. On répond dans l’arène, pas avec la bouche.`, effects: { rel: [[P, 'ablaye', 5]], flags: ['meet_lamine'] } },
       { id: 'eviter', label: 'Je préfère éviter les histoires', reply: 'Les histoires viennent toutes seules. Va au moins le saluer.', effects: { rel: [[P, 'ablaye', -2]], flags: ['meet_lamine'] } },
     ],
   },
@@ -119,19 +118,19 @@ export const BEATS: Beat[] = [
   },
   {
     id: 'babacar_win', npc: 'babacar', title: 'L’écurie fête Babacar', hint: 'Babacar a gagné son combat : l’écurie Baobab fait la fête (Pikine).',
-    text: 'J’ai gagné hier ! Toute l’écurie est là, les tambours aussi. Tu viens fêter avec nous ?',
+    text: `${say('Daan naa')} ! Hier, sur le sable, devant tout le monde. Toute l’écurie est là, les tambours aussi. Tu viens fêter avec nous ?`,
     when: r => r.has('ecurie_baobab') && r.has('rival_lamine'),
     choices: [
       { id: 'danser', label: 'Je danse avec l’écurie', reply: 'Voilà l’esprit de Baobab !', effects: { rel: [[P, 'babacar', 10], [P, 'ablaye', 4]], needs: { social: 20, moral: 12, energie: -6 }, scene: 'celebration', flags: ['fete_baobab'] } },
-      { id: 'feliciter', label: 'Féliciter Babacar', reply: 'Merci, mon frère. La prochaine fois, c’est ton tour.', effects: { rel: [[P, 'babacar', 6]], needs: { social: 8 } } },
+      { id: 'feliciter', label: 'Féliciter Babacar', reply: `${say('Jërëjëf')}, mon frère. La prochaine fois, c’est ton tour.`, effects: { rel: [[P, 'babacar', 6]], needs: { social: 8 } } },
     ],
   },
   {
     id: 'adja_stall', npc: 'adja', title: 'Tenir l’étal', hint: 'Adja, au marché Sandaga (Plateau), a besoin de quelqu’un.',
-    text: 'Mon vendeur est malade aujourd’hui. Tu peux tenir l’étal une heure ? Je te paie, bien sûr.',
+    text: `Mon vendeur est malade aujourd’hui. Tu peux tenir l’étal une heure ? Quand une cliente demande ${quote('Ñaata la ?')}, tu montres l’étiquette. Je te paie, bien sûr.`,
     when: () => true,
     choices: [
-      { id: 'accepter', label: 'D’accord (+3 000 F)', reply: 'Tu as bien vendu ! Je parlerai de toi à Fatou.', effects: { rel: [[P, 'adja', 12]], money: 3000, needs: { energie: -18, faim: -6 }, flags: ['adja_trust'], counter: 'shifts' } },
+      { id: 'accepter', label: 'D’accord (+3 000 F)', reply: `Tu as bien vendu ! Même quand on te disait ${quote('Wàññi ko tuuti')}, tu as tenu bon. Je parlerai de toi à Fatou.`, effects: { rel: [[P, 'adja', 12]], money: 3000, needs: { energie: -18, faim: -6 }, flags: ['adja_trust'], counter: 'shifts' } },
       { id: 'refuser', label: 'Une autre fois', reply: 'Pas de souci, reviens quand tu veux.', effects: {}, completes: false },
     ],
   },
@@ -140,7 +139,7 @@ export const BEATS: Beat[] = [
     text: 'Adja m’a dit que tu l’as bien aidée au marché. Les amis d’Adja mangent à prix d’ami chez moi.',
     when: r => r.has('adja_trust'),
     choices: [
-      { id: 'merci', label: 'Merci, Fatou', reply: 'Assieds-toi, le ceebu jën est prêt.', effects: { rel: [[P, 'fatou', 12], ['adja', 'fatou', 2]], flags: ['fatou_friend'] } },
+      { id: 'merci', label: `${say('Jërëjëf')}, Fatou`, reply: `${say('Toogal')}, le ceebu jën est prêt.`, effects: { rel: [[P, 'fatou', 12], ['adja', 'fatou', 2]], flags: ['fatou_friend'] } },
     ],
   },
   {
@@ -149,7 +148,7 @@ export const BEATS: Beat[] = [
     when: () => true,
     choices: [
       { id: 'venir', label: 'Je viens', reply: 'Super, on se retrouve ici après le cours.', effects: { rel: [[P, 'aida', 10]], needs: { social: 12, energie: -6 }, counter: 'etudes', flags: ['aida_friend'] } },
-      { id: 'non', label: 'Pas ce soir', reply: 'Une autre fois !', effects: { rel: [[P, 'aida', 1]] }, completes: false },
+      { id: 'non', label: 'Pas ce soir', reply: `${say('Amul solo')}, une autre fois !`, effects: { rel: [[P, 'aida', 1]] }, completes: false },
     ],
   },
   {
@@ -157,7 +156,7 @@ export const BEATS: Beat[] = [
     text: 'Tu viens de Pikine ? Tu connais Ibou ? C’est mon cousin ! S’il te connaît, tu peux monter sur la pirogue du matin.',
     when: r => r.level(PLAYER, 'ibou') >= 8,
     choices: [
-      { id: 'oui', label: 'Ibou est mon voisin', reply: 'Alors bienvenue sur le quai. Les gens de confiance sont mieux payés.', effects: { rel: [[P, 'ousmane', 12], [P, 'ibou', 3]], flags: ['ousmane_trust'] } },
+      { id: 'oui', label: 'Ibou est mon voisin', reply: `Alors ${say('dalal ak jàmm')} sur le quai. Les gens de confiance sont mieux payés.`, effects: { rel: [[P, 'ousmane', 12], [P, 'ibou', 3]], flags: ['ousmane_trust'] } },
     ],
   },
   {
@@ -165,18 +164,17 @@ export const BEATS: Beat[] = [
     text: 'Ousmane dit que tu es sérieux. Un serveur m’a lâchée ce soir. Tu peux faire le service ?',
     when: r => r.has('ousmane_trust'),
     choices: [
-      { id: 'oui', label: 'Oui (+4 000 F)', reply: 'Merci ! Les clients t’ont trouvé très poli.', effects: { rel: [[P, 'khady', 12], ['ousmane', 'khady', 2]], money: 4000, needs: { energie: -20 }, flags: ['khady_trust'], counter: 'shifts' } },
+      { id: 'oui', label: 'Oui (+4 000 F)', reply: `${say('Jërëjëf')} ! Les clients t’ont trouvé très poli.`, effects: { rel: [[P, 'khady', 12], ['ousmane', 'khady', 2]], money: 4000, needs: { energie: -20 }, flags: ['khady_trust'], counter: 'shifts' } },
       { id: 'non', label: 'Je ne peux pas ce soir', reply: 'Dommage. Reviens si tu veux du travail.', effects: {}, completes: false },
     ],
   },
-  // ---- NPC life lane (8 Oct 2026): the Diallo family and Ndeye. BROUILLON — à relire par Habib. French only;
-  // no Wolof/Pulaar beyond what the repo already has.
+  // ---- NPC life lane (8 Oct 2026): the Diallo family and Ndeye.
   {
     id: 'mamadou_livraison', npc: 'mamadou', title: 'Le riz de Mame Diarra', hint: 'Mamadou Diallo, à la Boutique Diallo (Pikine), cherche quelqu’un pour une livraison.',
-    text: 'On m’a dit que tu cherches à te rendre utile. Trois sacs de riz attendent Mame Diarra à sa gargote, et Thierno ne peut pas quitter le comptoir. Tu t’en charges ?',
+    text: `${say('Salaam aleekum')}. On m’a dit que tu cherches à te rendre utile. Trois sacs de ${say('ceeb')} attendent Mame Diarra à sa gargote, et Thierno ne peut pas quitter le comptoir. Tu t’en charges ?`,
     when: r => r.has('info_livraison') || r.has('intro_mamadou'),
     choices: [
-      { id: 'livrer', label: 'Je livre les sacs (+1 500 F)', reply: 'Mame a fait dire que tout est arrivé. J’écris ton nom dans mon carnet — du bon côté, celui des gens fiables.', effects: { rel: [[P, 'mamadou', 12], [P, 'mame', 4], ['mamadou', 'mame', 3]], money: 1500, needs: { energie: -14, faim: -4 }, flags: ['mamadou_trust'], counter: 'shifts' } },
+      { id: 'livrer', label: 'Je livre les sacs (+1 500 F)', reply: `Mame a fait dire que tout est arrivé. ${say('Jërëjëf')} ! J’écris ton nom dans mon carnet — du bon côté, celui des gens fiables.`, effects: { rel: [[P, 'mamadou', 12], [P, 'mame', 4], ['mamadou', 'mame', 3]], money: 1500, needs: { energie: -14, faim: -4 }, flags: ['mamadou_trust'], counter: 'shifts' } },
       { id: 'credit', label: '« Et si tu me faisais crédit en échange ? »', reply: 'Ha ! Mon carnet de crédit est déjà plus épais que l’annuaire. Rends d’abord le service, on parlera après.', effects: { rel: [[P, 'mamadou', 2]] }, completes: false },
       { id: 'non', label: 'Pas aujourd’hui', reply: 'Le riz attendra. Pas trop longtemps, j’espère : Mame n’est pas patiente.', effects: {}, completes: false },
     ],
@@ -186,7 +184,7 @@ export const BEATS: Beat[] = [
     text: 'Tonton Mamadou t’envoie ? Il t’a sûrement dit que je pose trop de questions. Mon mémoire porte sur le crédit dans les boutiques de quartier. Cinq questions… peut-être six ?',
     when: r => r.has('intro_kadiatou'),
     choices: [
-      { id: 'repondre', label: 'Je réponds à tout', reply: 'Merci ! Tu es mon dixième témoin. Mon directeur de mémoire sera content, pour une fois.', effects: { rel: [[P, 'kadiatou', 10], ['kadiatou', 'mamadou', 1]], needs: { social: 8, energie: -4 }, counter: 'etudes', flags: ['kadiatou_friend'] } },
+      { id: 'repondre', label: 'Je réponds à tout', reply: `${say('Jërëjëf')} ! Tu es mon dixième témoin. Mon directeur de mémoire sera content, pour une fois.`, effects: { rel: [[P, 'kadiatou', 10], ['kadiatou', 'mamadou', 1]], needs: { social: 8, energie: -4 }, counter: 'etudes', flags: ['kadiatou_friend'] } },
       { id: 'carnet', label: '« Ton oncle note même les bonbons dans son carnet, non ? »', reply: 'Même les bonbons ! C’est pour ça qu’il est mon premier cas d’étude. Surtout, ne lui dis pas.', effects: { rel: [[P, 'kadiatou', 6]], needs: { social: 6, moral: 4 }, flags: ['kadiatou_friend', 'kadiatou_carnet'] } },
       { id: 'plus_tard', label: 'Une autre fois', reply: 'Je suis là tous les après-midi, sur le banc. Avec mes fiches.', effects: {}, completes: false },
     ],
@@ -207,7 +205,7 @@ export const BEATS: Beat[] = [
     choices: [
       { id: 'sandaga', label: 'Je vais chercher le fil chez Adja, à Sandaga', reply: 'Adja t’a fait le bon prix ? Elle ne le fait qu’aux gens qu’elle apprécie. Les boubous seront prêts.', effects: { rel: [[P, 'ndeye', 10], [P, 'adja', 4], ['ndeye', 'adja', 3]], needs: { energie: -10 }, flags: ['ndeye_trust'] } },
       { id: 'repasser', label: 'Je reste repasser (+1 200 F)', reply: 'Pas un pli. Tu as déjà fait ça, avoue.', effects: { rel: [[P, 'ndeye', 8]], money: 1200, needs: { energie: -12, hygiene: -4 }, flags: ['ndeye_trust'], counter: 'shifts' } },
-      { id: 'non', label: 'Pas maintenant', reply: 'Bon. Si tu repasses, l’atelier est ouvert jusqu’au soir.', effects: {}, completes: false },
+      { id: 'non', label: 'Pas maintenant', reply: `${say('Amul solo')}. Si tu repasses, l’atelier est ouvert jusqu’au soir.`, effects: {}, completes: false },
     ],
   },
 ];

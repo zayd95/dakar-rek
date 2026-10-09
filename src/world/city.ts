@@ -5,6 +5,7 @@ import type { Batch } from './batch';
 import type { Action, Collider, HubWorld, Interactable } from './types';
 import { CITY_ACTIONS as A } from './cityContent';
 import { benchSeats, type Seat } from '../interact/seats';
+import { say } from '../i18n/wolof';
 
 export type CityBlock = 'soumbedioune' | 'mall' | 'bank' | 'square' | 'shops';
 /** Compact, stylised geography within the existing four hubs. Never displaces an existing landmark. */
@@ -98,7 +99,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     pave.box(5.5, 0.03, 46, cx - 20, 0.075, cz, 0xd9ceb0);
     sign('SOUMBÉDIOUNE', cx + 1, cz + 21, '#235b70', 4.0, 14);
     for (const dx of [-7, 9]) box(0.18, 3.6, 0.18, cx + dx, cz + 21, DARK);
-    place('soumbedioune', 'Soumbédioune · débarquement', -138, cz + 6, A.landing, 'Nanga def ! Les pirogues sont rentrées. Viens donner un coup de main.', 3.6);
+    place('soumbedioune', 'Soumbédioune · débarquement', -138, cz + 6, A.landing, `${say('Na nga def ?')} Les pirogues sont rentrées. Viens donner un coup de main.`, 3.6);
     for (let k = 0; k < (lite ? 4 : 7); k++) {
       const x = -147 + (k % 2) * 6, z = cz - 18 + k * 5.5;
       pirogue(b, x, z, 9 + k % 3, (k % 2 ? 0.12 : -0.2), k);
@@ -131,7 +132,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
       person(x, cz + 1.5, 0, 'Talk', { ...VENDOR, top: [0xd66532, 0x387f77, 0x79529a][k] });
     }
     sign('JËN · POISSON DU JOUR', cx - 8, cz + 7.55, '#24657b', 3.4, 15);
-    place('fish-market', 'Marché au poisson', cx - 8, cz + 8.5, A.fish, 'Jën bu bees ! Le poisson du jour est sur les étals.', 3.5);
+    place('fish-market', 'Marché au poisson', cx - 8, cz + 8.5, A.fish, `${say('Jën bu bees')} ! Le poisson du jour est sur les étals.`, 3.5);
     // Artisans along the street edge, behind the landing market.
     for (let k = 0; k < 3; k++) {
       const x = cx - 14 + k * 12, z = cz - 16;
@@ -166,7 +167,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     table(x, z - 1, 9, WHITE);
     person(x - 1, z - 2.8, 0, 'Talk', { ...FISHER, top: WHITE, bottom: DARK, hat: null });
     for (const dx of [-10, 10]) { bench(x + dx, z + 2, dx < 0 ? Math.PI / 2 : -Math.PI / 2); person(x + dx, z + 2, dx < 0 ? Math.PI / 2 : -Math.PI / 2, 'Sit'); }
-    place('bank', name, cx, cz + 1.5, A.bank, 'Dalal ak jàmm. Pour ton projet, passe à l’accueil.', 3.3);
+    place('bank', name, cx, cz + 1.5, A.bank, `${say('Dalal ak jàmm')}. Pour ton projet, passe à l’accueil.`, 3.3);
     // ATM casing is scenery until accounts and a server ledger are delivered.
     box(1.7, 2.35, 0.85, cx + 12, cz + 15, 0x246b68);
     solid(cx + 12, cz + 15, 1.7, 0.85, 2.35);
@@ -186,7 +187,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     ];
     for (const s of shops) {
       shop(s.name, cx + s.dx, cz - 12, 0xb95c37, 12); goods(cx + s.dx, cz - 12, s.mode);
-      place(`mall-${s.key}`, s.name, cx + s.dx, cz - 6.3, s.actions, 'Dalal ak jàmm ! Entre, prends le temps de regarder.', 2.8);
+      place(`mall-${s.key}`, s.name, cx + s.dx, cz - 6.3, s.actions, `${say('Dalal ak jàmm')} ! Entre, prends le temps de regarder.`, 2.8);
       person(cx + s.dx + 2, cz - 10, 0, 'Talk');
     }
     // Continuous upper facade makes the gallery a shopping complex, with ground-level shops below.
@@ -207,7 +208,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     shade(cx + 14, cz + 6, 10, 8, 0xcc9a50); table(cx + 14, cz + 4, 6, WHITE);
     sign('JUS & GO', cx + 14, cz + 10.05, '#49704b', 3.3, 7);
     person(cx + 14, cz + 2.5, 0, 'Talk', VENDOR);
-    place('mall-juice', 'Jus & Go', cx + 14, cz + 7, A.juice, 'Bouye ou bissap ? On te prépare ça.', 2.8);
+    place('mall-juice', 'Jus & Go', cx + 14, cz + 7, A.juice, `${say('Dafa tàng')} ! Bouye ou bissap ? On te prépare ça.`, 2.8);
     for (const dz of [1, 9]) { bench(cx - 14, cz + dz); person(cx - 14, cz + dz, 0, 'Sit'); }
     for (const dx of [-7, 7]) { c.tree(cx + dx, cz + 9, 1.2); box(3, 0.4, 3, cx + dx, cz + 9, 0xb9a38c); solid(cx + dx, cz + 9, 3, 3, 0.6); }
     person(cx - 3.5, cz + 3, 0.7); person(cx - 2.5, cz + 5, -2.4);
@@ -220,11 +221,11 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     const pikine = c.hub === 'pikine';
     shop(pikine ? 'Boutique Diallo' : 'Atelier Ndeye', cx - 11, cz - 10, pikine ? 0x368f8d : 0xc69055, 17);
     goods(cx - 11, cz - 10, pikine ? 'food' : 'cloth');
-    place('boutique', pikine ? 'Boutique Diallo' : 'Atelier Ndeye · couture', cx - 11, cz - 4.3, pikine ? A.boutique : A.style, pikine ? 'Jaaraama ! Mamadou t’accueille. Du pain, du lait ou un petit service ?' : 'Dalal ak jàmm. Les commandes de la fête arrivent.', 3);
+    place('boutique', pikine ? 'Boutique Diallo' : 'Atelier Ndeye · couture', cx - 11, cz - 4.3, pikine ? A.boutique : A.style, pikine ? `Salaam aleekum ! Mamadou t’accueille. ${say('Mburu ak meew')} ou un petit service ?` : `${say('Dalal ak jàmm')}. Les commandes de la fête arrivent.`, 3);
     person(cx - 7.5, cz - 9, 0, 'Talk', { ...FISHER, style: 'boubou', top: 0xe8decb, hatColor: 0xeee4d4 });
     shop(pikine ? 'Salon Awa' : 'Dakar Réparation', cx + 11, cz - 10, pikine ? 0xca7f93 : 0x437282, 17);
     goods(cx + 11, cz - 10, pikine ? 'home' : 'tech');
-    place('salon-tech', pikine ? 'Salon Awa' : 'Dakar Réparation', cx + 11, cz - 4.3, pikine ? A.salon : A.tech, pikine ? 'Viens t’asseoir. Aujourd’hui, tout le quartier parle de l’arène.' : 'Téléphones, accessoires, commandes : il y a toujours de quoi s’occuper.', 3);
+    place('salon-tech', pikine ? 'Salon Awa' : 'Dakar Réparation', cx + 11, cz - 4.3, pikine ? A.salon : A.tech, pikine ? `${say('Toogal')}. Aujourd’hui, tout le quartier parle de la ${say('làmb')} et de l’arène.` : 'Téléphones, accessoires, commandes : il y a toujours de quoi s’occuper.', 3);
     person(cx + 14, cz - 9, 0, 'Talk', pikine ? VENDOR : FISHER);
     bench(cx - 11, cz + 11); bench(cx + 11, cz + 11);
     c.tree(cx, cz + 14, 1.7); c.pool(cx - 11, cz - 3, 6); c.pool(cx + 11, cz - 3, 6);
@@ -248,12 +249,12 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
   person(cx + 11, cz + 8, -Math.PI / 2, 'Sit'); person(cx - 11, cz - 8, Math.PI / 2, 'Sit');
   sign(names[c.hub].toUpperCase(), cx, cz + 20, '#68432c', 3, 18);
   for (const dx of [-10, 10]) box(0.15, 2.8, 0.15, cx + dx, cz + 20, WOOD);
-  place('square', names[c.hub], cx + 10.5, cz + 3, A.square, 'Nanga def ? Pose-toi. Il reste de l’attaya et une place à l’ombre.', 3.2);
+  place('square', names[c.hub], cx + 10.5, cz + 3, A.square, `${say('Na nga def ?')} Pose-toi : il reste de l’attaya et une place à l’ombre.`, 3.2);
   c.pool(cx + 11, cz - 1, 8); c.pool(cx - 11, cz - 1, 8);
 }
 
-/** Open, tapered wooden hull with raised ends; all pieces merge with the city's static geometry. */
-function pirogue(b: Batch, x: number, z: number, length: number, yaw: number, variant: number, y = 0.08) {
+/** Open, tapered wooden hull with raised ends (thwarts, motor box at the +z stern), merged into `b` (also used by src/venues). */
+export function pirogue(b: Batch, x: number, z: number, length: number, yaw: number, variant: number, y = 0.08) {
   const palettes = [[0x236baa, 0xe3bd3a, 0xd74b38], [0x287c63, 0xd74b38, 0xf2dfa1], [0xdfa736, 0x246899, 0x2f8567]];
   const colors = palettes[variant % palettes.length], scale = length / 10;
   const hull = (low: number, high: number, color: number) => {

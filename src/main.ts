@@ -40,7 +40,7 @@ import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { Interactions } from './interact/system';
-import { Seats, sitOriginY, type Seat } from './interact/seats';
+import { Seats, seatClip, sitOriginY, type Seat } from './interact/seats';
 import { LegacySource } from './interact/legacy';
 import type { Target } from './interact/types';
 import { ActivityRunner } from './activity/runner';
@@ -50,6 +50,7 @@ import { actionVerb } from './interact/legacy';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { GesturePlayer } from './ui/gesture';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -137,6 +138,8 @@ let lambScene: LambScene | LambDuel | null = null;
 let emoteT = 0;
 const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
+/** Set once the module context (`ctx`, below) exists. */
+let ctxReady = false;
 let hourOverride: number | null = null;
 /** Walkable interiors of this hub, and the one the player is in. */
 let interiors = new Map<string, Interior>();
@@ -154,7 +157,10 @@ presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.c
 const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
-function presenceSpace() { return lambScene ? 'scene' : inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'; }
+function presenceSpace() { return lambScene ? 'scene' : moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
+/** A module's own space the player is in (a vehicle while riding: src/transport), or null. */
+/** Module-owned space (a vehicle…). Presence can ask before the module context exists (online start-up): no module space yet. */
+function moduleSpace(): string | null { if (!ctxReady) return null; for (const m of MODULES) { const s = m.space?.(ctx); if (s) return s; } return null; }
 
 const sunDir = new THREE.Vector3();
 function updateLighting(hour: number) {
@@ -256,9 +262,9 @@ const seats = new Seats();
 let seated: Seat | null = null;
 /** Space key shared by seats, targets and presence: 'street', 'home' (own room) or the interior's door id. */
 const spaceOf = (door: Interactable) => door.id.includes(':home:') ? 'home' : door.id;
-const interactSpace = () => inside ? spaceOf(inside.door) : 'street';
+const interactSpace = () => moduleSpace() ?? (inside ? spaceOf(inside.door) : 'street');
 interactions.add(new LegacySource({
-  list: () => !world ? [] : inside ? inside.int.interactables : world.interactables,
+  list: space => !world ? [] : inside ? inside.int.interactables : space === 'street' ? world.interactables : [],
   run: it => legacyAction(it),
   runAction: (it, a) => { nearest = it; hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); },
   talkLabel: it => { const b = it.npc ? availableBeat(it.npc, rel, state) : null; return b ? '★ ' + b.title : null; },
@@ -267,18 +273,20 @@ interactions.add(new LegacySource({
   requires: a => a.requires?.(state) ?? null,
 }));
 interactions.add(seats);
-interactions.add({ name: 'self', collect(space, x, z, out) {           // while seated: « Se lever »
-  if (!seated) return;
+interactions.add({ name: 'self', collect(space, x, z, out) {           // while seated: « Se lever » (not on a locked seat)
+  if (!seated || seated.locked) return;
   out.push({ id: 'self', name: 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() }] });
 } });
 seats.onSit = s => sitOn(s);
 
 /** Universal activities (src/activity): one runner plays every composed activity; places compose the primitives. */
 const inventory = new Inventory(state);
+/** Gestures of the trades: the hands-on part of a shift (serve, pass the tool, tighten, pull). */
+const gestures = new GesturePlayer(document.getElementById('ui')!);
 const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
   sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
-  clip: c => { if (playerBody) playerBody.hold = c ?? (seated ? 'Sit' : null); },
+  clip: c => { if (playerBody) playerBody.hold = c ?? (seated ? seatClip(seated) : null); },
   busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
   progress: (on, pct = 0, label = '') => hud.progress(on, pct, label),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
@@ -286,6 +294,7 @@ const activities = new ActivityRunner({
   item: (id, d) => inventory.add(id, d), hasItem: (id, n) => inventory.has(id, n),
   // polyvalence: the category of each activity is practised, and work pay is scaled by the variety (src/economy)
   category: c => economy.practiseCategory(c), pay: (m, c) => economy.scalePay(m, c), payPreview: (m, c) => economy.previewPay(m, c),
+  gesture: (g, label, done) => gestures.play(g, label, done),
 });
 const places = new Places(activities, () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat);
 interactions.add(places);
@@ -298,7 +307,7 @@ const people = interactions.add(new People(() => [
 const ctx: GameCtx = {
   scene, camera, follow, extra, state, hud, input, interactions, seats, places, activities, inventory,
   quality: () => quality, world: () => world, inside: () => inside, space: () => interactSpace(),
-  hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day,
+  hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day, now: () => presence.serverNow(),
   player: {
     pos, facing: () => facing, body: () => playerBody, seated: () => seated,
     sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace),
@@ -322,11 +331,9 @@ const ctx: GameCtx = {
   },
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
-  setCamera(fn) { cameraHook = fn; },
   walkTo: id => setDestination(id),
 };
-/** A module holding the camera for a moment (furniture placement…): runs after the follow camera, every frame. */
-let cameraHook: ((dt: number) => void) | null = null;
+ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
 function actionSpec(a: Action): ActivitySpec {
   return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined };
@@ -336,13 +343,13 @@ function sitOn(seat: Seat, force = false) {
   if ((!force && mode !== 'play') || seated || !seats.occupy(seat.id, 'player')) return;
   seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0;
   pos.set(seat.x, sitOriginY(seat) + (inside ? 0 : 0), seat.z); facing = seat.yaw;
-  if (playerBody) playerBody.hold = 'Sit';
+  if (playerBody) playerBody.hold = seatClip(seat);
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
 function standUp(inPlace = false) {
   if (!seated) return;
   const s = seated; seats.release(s.id, 'player'); seated = null;
-  if (playerBody && playerBody.hold === 'Sit') playerBody.hold = null;
+  if (playerBody && playerBody.hold === seatClip(s)) playerBody.hold = null;
   if (inPlace || !world) return;
   let nx = s.x + Math.sin(s.yaw) * 0.7, nz = s.z + Math.cos(s.yaw) * 0.7;
   [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
@@ -605,7 +612,10 @@ function openJournal() { hud.closeModal(); phone.open('carnet'); }
 function runAction(a: Action, npc?: string, it?: Interactable) {
   const where = it?.name;
   if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
-    activities.onEnd = (_s, done) => { if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); } };   // counters belong to the steps
+    activities.onEnd = (_s, done) => {                    // once: later activities (places, venues) must not replay this action's hooks
+      activities.onEnd = () => {};
+      if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); }   // counters belong to the steps
+    };
     activities.start(actionSpec(a), { place: where });
     return;
   }
@@ -717,7 +727,9 @@ const phone = new Phone({
 
 function saveNow(): boolean {
   // indoors, save the street position at the door: interiors are rebuilt on load
-  if (inside) state.place(world!.id, inside.door.x, inside.door.z, facing); else state.place(world!.id, pos.x, pos.z, facing);
+  // a module may hold the player somewhere they cannot resume (a moving vehicle): it gives a safe spot instead
+  const safe = inside || !ctxReady ? null : MODULES.reduce<{ x: number; z: number; yaw: number } | null>((p, m) => p ?? m.safePlace?.(ctx) ?? null, null);
+  if (inside) state.place(world!.id, inside.door.x, inside.door.z, facing); else if (safe) state.place(world!.id, safe.x, safe.z, safe.yaw); else state.place(world!.id, pos.x, pos.z, facing);
   return writeSave(store, state.data);
 }
 
@@ -769,12 +781,13 @@ function frame(now: number) {
     if (lambScene.snap) { camera.position.copy(f.cam); lambScene.snap = false; } else camera.position.lerp(f.cam, Math.min(1, dt * 3));
     camera.lookAt(f.look);
     if (lambScene.done) endScene();
-  } else if (mode === 'play' && seated) {
+  } else if (seated && (mode === 'play' || mode === 'busy' || seated.locked)) {
+    // the body follows its seat every frame (seats in vehicles move); the stick stands up, except on a locked seat
     const m = input.move();
     speed = 0;
-    if (Math.hypot(m.x, m.y) > 0.35) standUp();                  // moving the stick or a key stands up
-    else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody) playerBody.hold = 'Sit'; }
-    state.tick(dt * 1000);
+    if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp();      // moving the stick stands up (not in a moving vehicle)
+    else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = seatClip(seated); }
+    if (mode !== 'menu') state.tick(dt * 1000);
   } else if (mode === 'play') {
     const m = input.move();
     const fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
@@ -816,8 +829,7 @@ function frame(now: number) {
   economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
   showPrompt(focus);
 
-  if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
-  if (cameraHook && !lambScene) cameraHook(dt);
+  if (!lambScene && !MODULES.some(m => m.camera?.(ctx, dt, drag))) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
   if (camOverride && !lambScene) {
     const a = facing + camOverride.side;
     camera.position.set(pos.x + Math.sin(a) * camOverride.dist, camOverride.h, pos.z + Math.cos(a) * camOverride.dist);
@@ -869,7 +881,10 @@ if (DEBUG) {
     stand() { standUp(); },
     more() { openMore(); },
     clip: () => playerBody?.clipName ?? null,
-    activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index } : null; },
+    activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores } : null; },
+    gesture: () => gestures.info(),
+    /** Checks that test something else than the gesture itself finish it at once with this score. */
+    gestureFinish: (score = 1) => gestures.finishNow(score),
     placeList: () => places.all().map(p => ({ id: p.id, type: p.type, name: p.name, space: p.space, anchors: p.anchors.map(a => a.id) })),
     inventory: () => inventory.list(),
     roomInteractables: () => inside ? inside.int.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) : [],

@@ -75,6 +75,10 @@ export class Batch {
     this.finish(g, color, x, y, z);
   }
 
+  /** Number of pieces so far; `rollback(mark)` drops the pieces added after it (a builder's dry run). */
+  mark() { return this.geos.length; }
+  rollback(mark: number) { this.geos.length = Math.min(this.geos.length, mark); this.count = this.geos.length; }
+
   build(material: THREE.Material, receive = true, cast = true): THREE.Mesh | null {
     if (!this.geos.length) return null;
     const merged = mergeGeometries(this.geos, false)!;

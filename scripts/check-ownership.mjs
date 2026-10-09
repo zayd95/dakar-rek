@@ -94,6 +94,7 @@ let savedJson = null;
   await page.waitForFunction(() => window.__dakar.pos().x > 900, null, T); await settle(page, 1000);
   let hv = await D(page, () => window.__dakar.homeView());
   check('inside: the chair is in the room with its seat', hv?.pieces.some(p => p.uid === chair.uid) && hv.seats.some(s => s.id.endsWith(`${chair.uid}:0`)), JSON.stringify(hv?.pieces));
+  check('the chair is the 3D kit model (src/world/furnitureKit.ts)', hv?.pieces.find(p => p.uid === chair.uid)?.model?.startsWith('kit_'), hv?.pieces.map(p => p.model).join(','));
   check('« Aménager » is the action where nothing else is at hand', await focusIs(page, '^home:self\\|Aménager'), JSON.stringify(await D(page, () => window.__dakar.focus())));
   await D(page, () => window.__dakar.act());
   await page.waitForFunction(() => window.__dakar.placer.info().open && document.querySelector('#placer.on'), null, T).catch(() => {});
@@ -233,6 +234,12 @@ let savedJson = null;
   check('wallet: value of assets, total wealth, income and charges per hour', /Valeur des biens/.test(wtxt) && /Fortune totale/.test(wtxt) && /Loyers et charges/.test(wtxt), wtxt.slice(0, 160));
   await page.screenshot({ path: `${out}/desktop-phone-wallet.png` });
   await D(page, () => window.__dakar.phoneClose());
+  // the Dibi (venues module) talks business through the ownership sheet
+  const dibi = await D(page, () => window.__dakar.dibiBusiness()); m = await modal(page);
+  check('Dibi « Parler affaires » opens the ventures sheet', dibi?.offer && /Affaires/.test(m.title) && m.items.some(t => t.includes('Voir les affaires à acheter')), `${JSON.stringify(dibi)} · ${m.title}`);
+  await pick(page, 'Voir les affaires à acheter'); m = await modal(page);
+  check('… and leads to the « Affaires » app', m.items.some(t => /Table de bana-bana/.test(t)), m.items.slice(0, 3).join(' | '));
+  await closeModal(page);
 
   // reload: everything persisted
   const before = await est(page), wb = await wallet(page);

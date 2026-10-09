@@ -4,6 +4,7 @@ import type { GameState } from '../core/state';
 import type { PersonLook } from '../actors/humanoid';
 import type { Seat } from '../interact/seats';
 import type { Step } from '../activity/types';
+import type { Site } from './sites';
 
 export interface Action {
   id: string;
@@ -65,6 +66,8 @@ export interface HubWorld {
   ecurie: { cx: number; cz: number } | null;
   /** Every street seat of the hub (benches…): src/interact/seats.ts. */
   seats: Seat[];
+  /** Lots and blocks left to a gameplay module (src/world/sites.ts, composed by src/venues). */
+  sites?: Site[];
   dispose(): void;
 }
 export interface RoadEdge { ax: number; az: number; bx: number; bz: number }
