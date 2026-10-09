@@ -5,14 +5,14 @@
     "detail": "{\"open\":true,\"screen\":\"home\",\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
   },
   {
-    "name": "desktop: status bar shows city time and FCFA balance",
+    "name": "desktop: status bar shows city time, home widget the FCFA balance",
     "ok": true,
-    "detail": "05:49 · Jour 175 3 000 F"
+    "detail": "03:22 4G | 💰 Solde 3 000 F"
   },
   {
-    "name": "desktop: hook apps hidden without their module",
+    "name": "desktop: hook apps shown only with their module",
     "ok": true,
-    "detail": "portefeuille,carte,arene,carnet,aide,reglages"
+    "detail": "quartier,travail,maison,habitants,arene,actus,sante,profil,horloge,meteo,calcul,aide,portefeuille,carte,carnet,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"maison\":true,\"habitants\":true}"
   },
   {
     "name": "desktop: no movement while the phone is open",
@@ -40,6 +40,36 @@
     "detail": "Carnet"
   },
   {
+    "name": "desktop: app actus opens",
+    "ok": true,
+    "detail": "Actus · Dakar"
+  },
+  {
+    "name": "desktop: app sante opens",
+    "ok": true,
+    "detail": "Santé"
+  },
+  {
+    "name": "desktop: app profil opens",
+    "ok": true,
+    "detail": "Profil"
+  },
+  {
+    "name": "desktop: app horloge opens",
+    "ok": true,
+    "detail": "Horloge"
+  },
+  {
+    "name": "desktop: app meteo opens",
+    "ok": true,
+    "detail": "Météo"
+  },
+  {
+    "name": "desktop: app calcul opens",
+    "ok": true,
+    "detail": "Calculatrice"
+  },
+  {
     "name": "desktop: app aide opens",
     "ok": true,
     "detail": "Aide"
@@ -55,7 +85,7 @@
     "detail": "{\"here\":\"pikine\",\"hubs\":4}"
   },
   {
-    "name": "desktop: wallet shows game money and the pending history line",
+    "name": "desktop: wallet shows game money and the ledger",
     "ok": true,
     "detail": ""
   },
@@ -87,7 +117,7 @@
   {
     "name": "desktop: Escape closes the phone, then W moves the player",
     "ok": true,
-    "detail": "moved 1.12"
+    "detail": "moved 0.56"
   },
   {
     "name": "desktop: M reopens on the last app",
@@ -140,14 +170,14 @@
     "detail": "{\"open\":true,\"screen\":\"home\",\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
   },
   {
-    "name": "phone: status bar shows city time and FCFA balance",
+    "name": "phone: status bar shows city time, home widget the FCFA balance",
     "ok": true,
-    "detail": "07:12 · Jour 175 3 000 F"
+    "detail": "06:56 4G | 💰 Solde 3 000 F"
   },
   {
-    "name": "phone: hook apps hidden without their module",
+    "name": "phone: hook apps shown only with their module",
     "ok": true,
-    "detail": "portefeuille,carte,arene,carnet,aide,reglages"
+    "detail": "quartier,travail,maison,habitants,arene,actus,sante,profil,horloge,meteo,calcul,aide,portefeuille,carte,carnet,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"maison\":true,\"habitants\":true}"
   },
   {
     "name": "phone: no movement while the phone is open",
@@ -175,6 +205,36 @@
     "detail": "Carnet"
   },
   {
+    "name": "phone: app actus opens",
+    "ok": true,
+    "detail": "Actus · Dakar"
+  },
+  {
+    "name": "phone: app sante opens",
+    "ok": true,
+    "detail": "Santé"
+  },
+  {
+    "name": "phone: app profil opens",
+    "ok": true,
+    "detail": "Profil"
+  },
+  {
+    "name": "phone: app horloge opens",
+    "ok": true,
+    "detail": "Horloge"
+  },
+  {
+    "name": "phone: app meteo opens",
+    "ok": true,
+    "detail": "Météo"
+  },
+  {
+    "name": "phone: app calcul opens",
+    "ok": true,
+    "detail": "Calculatrice"
+  },
+  {
     "name": "phone: app aide opens",
     "ok": true,
     "detail": "Aide"
@@ -190,7 +250,7 @@
     "detail": "{\"here\":\"pikine\",\"hubs\":4}"
   },
   {
-    "name": "phone: wallet shows game money and the pending history line",
+    "name": "phone: wallet shows game money and the ledger",
     "ok": true,
     "detail": ""
   },
@@ -222,7 +282,7 @@
   {
     "name": "phone: Escape closes the phone, then W moves the player",
     "ok": true,
-    "detail": "moved 0.56"
+    "detail": "moved 1.12"
   },
   {
     "name": "phone: M reopens on the last app",
@@ -267,7 +327,7 @@
   {
     "name": "phone: landscape device fits the screen",
     "ok": true,
-    "detail": "{\"x\":53.399993896484375,\"y\":31.610000610351562,\"width\":737.1999816894531,\"height\":362.78001403808594}"
+    "detail": "{\"x\":22.71820068359375,\"y\":31.921005249023438,\"width\":693.1104736328125,\"height\":382.89234924316406}"
   },
   {
     "name": "phone: no page errors",
