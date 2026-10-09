@@ -280,10 +280,13 @@ class Estate {
     const v = this.viewInside(); if (!v) return;
     const held = holding(this.s, v.spec.id);
     out.push({
-      id: 'home:self', name: v.spec.name.split(' · ')[0], kind: 'self', space, x, z, radius: 1, bias: 1.6,
-      affordances: () => held
-        ? [{ id: 'amenager', verb: 'use', label: 'Aménager', icon: '🛋️', detail: 'Déplacer, tourner, ranger tes meubles', run: () => { this.editor.open(v); } }]
-        : [{ id: 'annonce', verb: 'inspect', label: 'Voir l’annonce', icon: '🔍', detail: 'Louer ou acheter ce logement', run: () => this.openSheet(v.spec.id) }],
+      id: 'home:self', name: v.spec.name.split(' · ')[0], kind: 'self', space, x, z, radius: 1, bias: 2.6,
+      affordances: () => !held
+        ? [{ id: 'annonce', verb: 'inspect', label: 'Voir l’annonce', icon: '🔍', detail: 'Louer ou acheter ce logement', run: () => this.openSheet(v.spec.id) }]
+        : furnitureIn(this.s, held.uid).some(f => !furnitureSpec(f.spec)?.fixed)
+          ? [{ id: 'amenager', verb: 'use', label: 'Aménager', icon: '🛋️', detail: 'Déplacer, tourner, ranger tes meubles', run: () => { this.editor.open(v); } },
+             { id: 'commander', verb: 'browse', label: 'Commander des meubles', icon: '🛒', detail: 'Keur Meubles livre et installe chez toi', run: () => this.openCatalogue() }]
+          : [{ id: 'commander', verb: 'browse', label: 'Commander des meubles', icon: '🛒', detail: 'Keur Meubles livre et installe chez toi', run: () => this.openCatalogue() }],
     });
   }
   private enterHome(id: string) {
@@ -539,6 +542,9 @@ class Estate {
         select: (uid: string) => self.editor.select(uid), move: (dx: number, dz: number) => self.editor.move(dx, dz), moveTo: (x: number, z: number) => self.editor.moveTo(x, z), rotate: () => self.editor.rotate(), put: () => self.editor.put(), stash: () => self.editor.stash(),
       },
       legacyItem: (id: string) => furnitureById(id)?.name ?? null,
+      enterHome: (id: string) => { const sp = homeSpec(id); if (sp) this.ctx.enter(sp.home.door); return !!sp; },
+      citeState: () => ({ board: this.boardKey, plots: Object.fromEntries(this.plotKeys), plotColliders: Object.fromEntries([...this.plotCols].map(([k, v]) => [k, v.length])) }),
+      homeSpots: () => { const v = this.viewInside(); return v ? { spots: v.spots, spawn: v.int.spawn, door: v.door.id } : null; },
     };
   }
 }
