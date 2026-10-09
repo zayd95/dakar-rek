@@ -78,6 +78,8 @@ export interface VehicleSpec {
   /** Distance where the far model takes over. */
   lodDistance: number;
   budget: { near: { tris: number; drawCalls: number; nightDrawCalls: number }; far: { tris: number; drawCalls: number } };
+  /** Seats with a baked person in this build (car rapide; empty when unknown). */
+  occupied?: string[];
 }
 export interface VehicleOpts {
   /** Picks colour, livery, load and who is on board; same seed, same vehicle. */
@@ -91,6 +93,12 @@ export interface VehicleOpts {
   lite?: boolean;
   /** Baked passengers in the seats (default true). The transport lane passes false and seats real people. */
   passengers?: boolean;
+  /**
+   * Exactly these seats get a baked passenger (overrides the seeded pattern; the driver still follows `driver`).
+   * The transport lane uses it so the people drawn in a car rapide are the seats its passengers hold.
+   * Each distinct list is a cached geometry: callers keep to a few patterns.
+   */
+  seated?: readonly string[];
   /** Baked driver / rider (default true; false for parked vehicles). */
   driver?: boolean;
 }
@@ -207,6 +215,8 @@ interface Layout {
 }
 interface Model {
   key: string; variant: number; colors: { body: number; accent: number }; layout: Layout;
+  /** Seats with a baked person (reported in the spec). */
+  occupied?: string[];
   speed: number; lod: number;
   near(b: KitBuilder, g: KitBuilder): void;
   far(b: KitBuilder): void;
@@ -217,7 +227,7 @@ const wheelSet = (x: number, r: number, width: number, zs: number[], steerZ: num
 const seat = (id: string, x: number, z: number, top: number, kind: SeatRole, door: string, yaw = 0): VehicleSeat => ({ id, x, z, top, yaw, kind, door });
 /** Which seats get a baked passenger (≈ fraction of them), stable per pattern. */
 const occupied = (seats: VehicleSeat[], o: VehicleOpts, p: number, fraction: number) =>
-  seats.filter((s, i) => s.kind === 'driver' ? o.driver !== false : o.passengers !== false && h2(i + 1, p + 11) < fraction);
+  seats.filter((s, i) => s.kind === 'driver' ? o.driver !== false : o.passengers !== false && (o.seated ? o.seated.includes(s.id) : h2(i + 1, p + 11) < fraction));
 
 // ------------------------------------------------------------------------------------------------------------ cars
 interface CarDims {
@@ -455,7 +465,8 @@ const pickCarRapide: Pick = (r, o) => {
     controls: wheelControls([0.55, 1.36, 2.18], 0.2),
     step: { riding: { x: -0.3, y: 0.43, z: zr - 0.2, yaw: Math.PI - 0.9 }, standing: { x: -1.55, y: 0, z: zr - 0.8, yaw: -Math.PI / 2 - 0.5 } },
   };
-  const people = occupied(seats, o, p, 0.62).map((s, i) => ({ s, lk: lookOf(i + 2, p + livery * 5) }));
+  // looks follow the seat (not the order), so a passenger keeps their look when others get on or off
+  const people = occupied(seats, o, p, 0.62).map(s => ({ s, lk: lookOf(seats.indexOf(s) + 2, p + livery * 5) }));
   const occKey = people.map(q => q.s.id).join('.');
   const arches = [{ z: rz, r: ar, y: wr }, { z: fz, r: ar, y: wr }];
   const name = [UV.name0, UV.name1, UV.name2][livery], panel = [UV.panel0, UV.panel1, UV.panel2][livery];
@@ -561,7 +572,7 @@ const pickCarRapide: Pick = (r, o) => {
     b.box(1.96, 0.3, 4.9, 0, 2.48, -0.4, rack); b.box(1.5, 0.35, 3.0, 0, 2.6, -0.6, 0x6b3fa0);
     for (const w of wheels) b.box(w.width, w.r * 1.8, w.r * 2, w.x, 0.02, w.z, TYRE);
   };
-  return { key: `carRapide|${livery}|${luggage}|${rack}|${occKey}`, variant: livery, colors: { body: Y, accent: BL }, layout, speed: 6, lod: 60, near, far, beam: b => beamQuad(b, zf + 0.3, 9, 2.0, 4.6) };
+  return { key: `carRapide|${livery}|${luggage}|${rack}|${occKey}`, occupied: people.map(q => q.s.id), variant: livery, colors: { body: Y, accent: BL }, layout, speed: 6, lod: 60, near, far, beam: b => beamQuad(b, zf + 0.3, 9, 2.0, 4.6) };
 };
 
 // ------------------------------------------------------------------------------------------------------------ city bus
@@ -891,6 +902,7 @@ export function buildVehicle(kind: VehicleKind, opts: VehicleOpts = {}): Vehicle
   };
   if (L.step) { spec.step = L.step; spec.cameras.step = { pos: [L.step.riding.x - 0.2, 1.95, L.step.riding.z - 0.2], look: [-4, 1.3, L.step.riding.z - 6], fov: 70 }; }
   if (L.cargo) spec.cargo = { ...L.cargo };
+  if (m.occupied) spec.occupied = [...m.occupied];
   group.userData.vehicleSpec = spec;
   return { group, spec, lod };
 }

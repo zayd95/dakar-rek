@@ -13,7 +13,11 @@ import type * as THREE from 'three';
 export interface LocalPose { x: number; y: number; z: number; yaw: number }
 
 /** A seat: x, z on the floor plan; y = height of the sitting surface above the ground origin; yaw relative to the vehicle. */
-export interface SeatSpec extends LocalPose { id: string }
+export interface SeatSpec extends LocalPose {
+  id: string;
+  /** Reached through a door the player does not use (the car rapide's cab bench): NPC passengers only. */
+  npcOnly?: boolean;
+}
 
 export interface DoorSpec {
   id: string;
@@ -32,6 +36,10 @@ export interface CameraAnchor {
   look: [number, number, number];
   /** Phone portrait (narrow field of view): further back and higher so the street stays readable. */
   portrait?: { pos: [number, number, number]; look: [number, number, number] };
+  /** pos / look are offsets from the player's seat (seat x, top, z), in the vehicle's frame: a view from one's seat. */
+  seat?: boolean;
+  /** The camera is inside the cabin: the player's own body is hidden while this view is on. */
+  inside?: boolean;
 }
 
 /** Handling for drive mode (the player at the driver seat). Not used by timetabled lines. */
@@ -69,8 +77,11 @@ export interface VehicleSpec {
   drive?: DriveSpec;
   /** How much the body sways: 1 = a loaded minibus on worn springs. */
   sway?: number;
-  /** The 3D model (front +z). Instances may share geometry and materials (userData.shared). */
-  build(): THREE.Object3D;
+  /**
+   * The 3D model (front +z). `seed` picks the livery; `seated` lists the passenger seats drawn with someone sitting
+   * there (open cabins). Instances may share geometry and materials (userData.shared).
+   */
+  build(o?: { seed?: number; seated?: readonly string[]; driver?: boolean }): THREE.Object3D;
 }
 
 /** A pose in the world (x, z on the ground plane, y the ground height under the vehicle). */
