@@ -237,10 +237,13 @@ export function planDemand(spots: readonly AmbientSpot[], acts: readonly Ambient
     const d = s.space === 'street' ? Math.hypot(s.x - o.px, s.z - o.pz) : 0;
     if (d > o.far) continue;
     const k = d <= o.near ? 1 : 0.5;
+    // activities of one spot share its places: seats, standing places, rows (Friday prayer and daily prayer, chats)
+    const used: Record<string, number> = {};
     for (const a of acts) {
       if (!fits(a, s, o.seatKind)) continue;
-      const n = wanted(a, s, o.hour, o.dow, o.scale * k, capacity(a, s, o.seatKind));
-      if (n > 0) rows.push({ spot: s, act: a, n, d: d * (s.prio ?? 1) });
+      const res = a.pose === 'row' ? 'row' : a.pose === 'sit' ? 'sit' : a.pose === 'stand' ? 'stand' : a.id;
+      const n = wanted(a, s, o.hour, o.dow, o.scale * k, capacity(a, s, o.seatKind) - (used[res] ?? 0));
+      if (n > 0) { rows.push({ spot: s, act: a, n, d: d * (s.prio ?? 1) }); used[res] = (used[res] ?? 0) + n; }
     }
   }
   rows.sort((p, q) => p.d - q.d);

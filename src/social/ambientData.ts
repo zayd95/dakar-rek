@@ -80,7 +80,7 @@ export const TRAFFIC_BY_HOUR: readonly (readonly [number, number])[] = [[0, 0.35
 
 /** Spot tags for a registered place type (PlaceSpec.type); unknown types get 'place' (a few visitors near the anchors). */
 export const PLACE_TAGS: Readonly<Record<string, readonly string[]>> = {
-  dibi: ['dibi', 'eat'], eatery: ['eat'], restaurant: ['eat'], cafe: ['cafe', 'eat'], maiga: ['eat'],
+  dibi: ['dibi'], eatery: ['eat'], restaurant: ['eat'], cafe: ['cafe', 'eat'], maiga: ['eat'],
   mosque: ['mosque'], stop: ['stop'], station: ['stop'], beach: ['landing', 'fishmarket'], market: ['market'],
   shop: ['shop'], salon: ['salon'], club: ['club'], bank: ['bank'], square: ['square', 'attaya'],
   home: [], plot: [], billboard: [],
