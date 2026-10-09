@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import { daylight } from '../core/clock';
 import { clamp } from '../core/rng';
 import type { GameModule } from './modules';
-import { furnitureRows, furnishedRooms } from './assetShowroom';
+import { furnitureRows, furnishedRooms, poseScene, rideScene } from './assetShowroom';
+import type { Humanoid } from '../actors/humanoid';
+import { rng } from '../core/rng';
 import { placeParked, PARKED_COUNT } from './parkedVehicles';
 import type { FurnitureId } from '../world/furnitureKit';
-import { buildVehicle, scaleVehicleLods, setVehicleNight, VEHICLE_KINDS, type VehicleKind, type VehicleOpts } from '../actors/vehicleKit';
+import { animateVehicle, buildVehicle, scaleVehicleLods, setVehicleNight, VEHICLE_KINDS, type VehicleKind, type VehicleOpts } from '../actors/vehicleKit';
 
 /**
  * 3D asset kit module: drives the kit's night lamps from the city clock, and gives the checks a showroom (?debug):
@@ -13,7 +15,8 @@ import { buildVehicle, scaleVehicleLods, setVehicleNight, VEHICLE_KINDS, type Ve
  */
 let showroom: THREE.Group | null = null;
 let nightOverride: number | null = null;
-function clearShowroom() { if (showroom) { showroom.removeFromParent(); showroom = null; } }
+let posers: Humanoid[] = [];
+function clearShowroom() { if (showroom) { showroom.removeFromParent(); showroom = null; } for (const h of posers) h.dispose(); posers = []; }
 
 /** LOD distance factor per quality level: the far models take over closer on Low. */
 export const KIT_LOD_SCALE = { low: 0.6, medium: 0.85, high: 1 } as const;
@@ -27,7 +30,8 @@ export const assetKitModule: GameModule = {
     const k = KIT_LOD_SCALE[ctx.quality()];
     scaleVehicleLods(hub.group, k); scaleVehicleLods(ctx.extra, k);
   },
-  update(ctx) {
+  update(ctx, dt) {
+    for (const h of posers) h.animate(dt, 0);
     const night = 1 - clamp(daylight(ctx.hour()) * 3.2, 0, 1);
     setVehicleNight(nightOverride ?? night);
   },
@@ -75,6 +79,19 @@ export const assetKitModule: GameModule = {
         const r = furnishedRooms(o.x ?? 4000, o.z ?? 0, !!o.night);
         ctx.scene.add(r.group); showroom = r.group;
         return r.rooms;
+      },
+      /** People on furniture seats: `before` = old logic (chair Sit 0.48 m under every surface), else the seat's pose. */
+      kitPoses(kind: 'bed' | 'mat' | 'attaya' | 'ride', o: { x?: number; z?: number; before?: boolean } = {}) {
+        clearShowroom();
+        const r = kind === 'ride' ? rideScene(o.x ?? 4000, o.z ?? 0, !!o.before, rng(7)) : poseScene(kind, o.x ?? 4000, o.z ?? 0, !!o.before, rng(7));
+        ctx.scene.add(r.group); showroom = r.group; posers = r.people;
+        return r.people.map(h => h.group.position.toArray());
+      },
+      /** Drives every showroom vehicle for `seconds` (wheels spin, front wheels / fork steer, motos lean). */
+      kitDrive(speed: number, steer: number, seconds = 1) {
+        const vs: THREE.Object3D[] = []; showroom?.traverse(o => { if (o.userData.vehicleSpec) vs.push(o); });
+        for (let t = 0; t < seconds; t += 1 / 30) for (const v of vs) animateVehicle(v, speed, steer, 1 / 30);
+        return vs.length;
       },
       kitClear: clearShowroom,
       /** Force the lamps on (1) or off (0); null follows the clock. */

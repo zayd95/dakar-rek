@@ -40,6 +40,14 @@ export class KitBuilder {
   private N: number[] = [];
   private C: number[] = [];
   private U: number[] = [];
+  private T: number[] = [];
+  /**
+   * Animation tag written on every vertex built while it is set (vehicle wheels, steering parts): xyz = pivot (a
+   * wheel's centre), w = mode (0 static). Read by the vehicle material's vertex shader (vehicleKit animateVehicle).
+   */
+  tag: [number, number, number, number] | null = null;
+  /** Always write the `wheel` attribute (zeros when untagged): materials that read it need it on every geometry. */
+  withTags = false;
   private stack: THREE.Matrix4[] = [];
   /** Baked vertical shading: colour × lerp(lo, 1, clamp((y − y0) / h)). Darkens sills and undersides like soft AO. */
   shade: { lo: number; y0: number; h: number } | null = null;
@@ -81,6 +89,7 @@ export class KitBuilder {
       this.P.push(v.x, v.y, v.z); this.N.push(vn.x, vn.y, vn.z);
       const c = this.color(paint, v.x, v.y, v.z); this.C.push(c.r, c.g, c.b);
       const uv = uvs?.[k] ?? this.plain; this.U.push(uv[0], uv[1]);
+      const t = this.tag; if (t) this.T.push(t[0], t[1], t[2], t[3]); else this.T.push(0, 0, 0, 0);
     }
   }
   /** a b c d counter-clockwise from outside (a bottom-left, b bottom-right, c top-right, d top-left); rect maps onto it. */
@@ -223,6 +232,7 @@ export class KitBuilder {
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.N, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.C, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(this.U, 2));
+    if (this.withTags || this.T.some(v => v !== 0)) g.setAttribute('wheel', new THREE.Float32BufferAttribute(this.T, 4));
     g.computeBoundingBox(); g.computeBoundingSphere();
     return g;
   }

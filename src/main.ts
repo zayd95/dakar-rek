@@ -292,7 +292,7 @@ const strideUi = new StrideUi(document.getElementById('ui')!, stride);
 const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
   sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
-  clip: c => { if (playerBody) playerBody.hold = c ?? (seated ? seatClip(seated) : null); },
+  clip: c => { if (playerBody) playerBody.hold = seated && (c === 'Sit' || !c) ? seatClip(seated) : c ?? null; },   // a step's Sit means « the seat's own pose » (lying on a bed…)
   busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
   progress: (on, pct = 0, label = '') => hud.progress(on, pct, label),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
