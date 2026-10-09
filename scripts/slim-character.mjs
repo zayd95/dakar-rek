@@ -19,6 +19,12 @@ for (const n of root.listNodes()) {
   n.setName(n.getName().replace(/\.\d+$/, ''));
 }
 for (const m of root.listMeshes()) {
+  // morph deltas below 0.05 mm are refit noise: zero them so mostly-still targets become sparse
+  for (const p of m.listPrimitives()) for (const t of p.listTargets()) {
+    const a = t.getAttribute('POSITION'); if (!a) continue;
+    const arr = a.getArray(); for (let i = 0; i < arr.length; i++) if (Math.abs(arr[i]) < 5e-5) arr[i] = 0;
+    a.setArray(arr);
+  }
   m.setName(m.getName().replace(/\.\d+$/, ''));
   // baked ambient occlusion in COLOR_0: soften it (0.42 + 0.58 * ao), keep it as 3 floats
   for (const p of m.listPrimitives()) {
