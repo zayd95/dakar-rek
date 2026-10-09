@@ -28,7 +28,8 @@ export const CAR_RAPIDE: VehicleSpec = {
   doors: [{ id: 'arriere', x: -0.45, z: -3.95, outX: -1.95, outZ: -4.25 }],
   cameras: [
     { id: 'derriere', label: 'Derrière le car', pos: [0, 4.4, -12.5], look: [0, 1.7, 6], portrait: { pos: [0, 6.6, -16.5], look: [0, 1.2, 9] } },
-    { id: 'fenetre', label: 'À la fenêtre', pos: [-1.95, 2.05, -0.8], look: [-3.6, 1.45, 8], portrait: { pos: [-2.25, 2.5, -3.4], look: [-3.4, 1.2, 9] } },
+    // just outside the pavement-side windows, ahead of the stop's shelter when the car stands at a stop
+    { id: 'fenetre', label: 'À la fenêtre', pos: [-1.5, 2.1, 0.6], look: [-3.4, 1.4, 9], portrait: { pos: [-1.6, 2.4, -1.2], look: [-3.0, 1.2, 9] } },
     { id: 'haut', label: 'Vue d’en haut', pos: [0, 12.5, -15], look: [0, 0.5, 9], portrait: { pos: [0, 17, -18], look: [0, 0, 10] } },
   ],
   cabin: 'closed',

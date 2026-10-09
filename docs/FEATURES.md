@@ -15,6 +15,7 @@ Last updated: phone, economy, arena, NPC life and chat lanes merged on top of ci
 | Vite + TypeScript + Three.js project | `npm run dev`, `npm run build`, `npm test` | build, tests |
 | Four hubs reachable | Plateau · Médina, Corniche · Fann · Mamelles, Almadies · Ngor · Yoff, Pikine · Guédiawaye · Parcelles, each with its own look | headless: all four load, day and night, desktop and phone |
 | Travel between hubs | Car rapide station in every hub; costs FCFA and some fatigue | headless: Pikine → Corniche |
+| Car rapide lines (passenger) | One line per hub looping round the central blocks (Ligne 23 Pikine, 5 Plateau, 8 Corniche, 31 Almadies), four stops each on the pavement (sign, shelter, bench, people waiting), two cars per line on the shared clock, apprenti calling at the door. Wait (« Monter dans le prochain »), board at the rear door, fare paid once (wallet line), free seat only, passenger camera (behind / window / high, phone-portrait placements), sways and bumps, chat/presence space = the vehicle, « Descendre au prochain arrêt », off on the pavement. Robust to a phone menu, « Arrêter », a door or hub change and a reload mid-ride. Details: `docs/TRANSPORT.md` | `tests/transport.test.ts`, `scripts/check-transport.mjs` (desktop + phone) |
 | Third-person camera, desktop and touch movement | Joystick + drag on touch; WASD/ZQSD/arrows + mouse on desktop | headless |
 | Contextual action button and data-driven actions | Cost, gain, needs, duration, requirements, visibility | headless |
 | Needs and mood | Drain with personal played time | unit tests |

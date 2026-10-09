@@ -83,16 +83,17 @@ export function buildStops(line: LineDef, sites: readonly StopSite[], lite: bool
     { const p = at(0, 0.58); b.box(2.5, 1.05, 0.05, p.x, PAVE + 0.8, p.z, BLUE, along); b.box(2.5, 0.1, 0.06, p.x, PAVE + 1.85, p.z, YELLOW, along); }
     { const p = at(0, 0.25); b.box(1.95, 0.07, 0.42, p.x, BENCH_TOP - 0.07, p.z, WOOD, along); }
     for (const a of [-0.85, 0.85]) { const p = at(a, 0.25); b.box(0.07, BENCH_TOP - PAVE - 0.07, 0.36, p.x, PAVE, p.z, POST, along); }
-    // pole with the sign plate, near the kerb ahead of the shelter, plate across the road direction
-    const pole = at(1.9, -0.75);
-    b.box(0.09, 2.75, 0.09, pole.x, PAVE, pole.z, POST);
-    const g = new THREE.BoxGeometry(1.15, 0.58, 0.04);
+    // pole with the sign plate at the back of the pavement ahead of the shelter, plate across the road direction
+    // (clear of the vehicle's side and of the passengers' window view)
+    const pole = at(1.9, 0.35);
+    b.box(0.09, 2.95, 0.09, pole.x, PAVE, pole.z, POST);
+    const g = new THREE.BoxGeometry(0.8, 0.42, 0.04);
     const uv = g.attributes.uv as THREE.BufferAttribute, v0 = 1 - (s.index + 1) / sites.length, v1 = 1 - s.index / sites.length;
     for (let i = 0; i < uv.count; i++) {
       if (i >= 16) uv.setXY(i, uv.getX(i), v0 + uv.getY(i) * (v1 - v0));     // the two large faces show the row
       else uv.setXY(i, 0.5, v0 + 0.1 * (v1 - v0));                            // edges: the blue band
     }
-    g.rotateY(Math.atan2(s.dx, s.dz)); g.translate(pole.x, PAVE + 2.42, pole.z); plates.push(g);
+    g.rotateY(Math.atan2(s.dx, s.dz)); g.translate(pole.x, PAVE + 2.7, pole.z); plates.push(g);
     if (!lite) { const k = at(0, -1.25 - 0.12); b.flat(9, 0.22, k.x, 0.086, k.z, YELLOW, along); }   // yellow mark on the carriageway edge
   }
   const group = new THREE.Group(); group.name = 'transport:stops:' + line.id;

@@ -72,6 +72,8 @@ export class TransportModule implements GameModule {
   /** Fares paid (debug: the checks verify a trip is paid once). */
   private paid = 0;
   private camMs = 0;
+  /** Debug only (checks): seats left free when the vehicles are crowded on purpose. */
+  private crowdFree: string | null = null;
 
   // ---------------------------------------------------------------- GameModule
   init(ctx: GameCtx) {
@@ -167,7 +169,7 @@ export class TransportModule implements GameModule {
       transport: {
         lines: () => this.lines.map(rt => ({
           id: rt.def.id, number: rt.def.number, period: rt.table.period, fare: rt.def.fare,
-          stops: rt.sites.map(s => ({ id: s.def.id, name: s.def.name, x: s.x, z: s.z, yaw: s.yaw, s: rt.table.stops[s.index].s, alight: alightPoint(s) })),
+          stops: rt.sites.map(s => ({ id: s.def.id, name: s.def.name, x: s.x, z: s.z, yaw: s.yaw, dx: s.dx, dz: s.dz, rx: s.rx, rz: s.rz, s: rt.table.stops[s.index].s, alight: alightPoint(s) })),
           vehicles: rt.vehicles.map(v => ({ id: v.id, x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, s: v.motion.s, v: v.motion.v, dwell: v.motion.dwell, dwellLeft: v.motion.dwellLeft, next: v.motion.next, eta: v.motion.eta,
             free: v.seats.filter(s => !s.occupant).length, seats: v.seats.map(s => ({ id: s.id, occupant: s.occupant })) })),
         })),
@@ -178,6 +180,8 @@ export class TransportModule implements GameModule {
         warp: (sec: number) => { this.warp += sec; },
         card: () => this.card?.text ?? '',
         safePlace: () => this.safePlace(),
+        /** Checks: every passenger seat taken by NPCs except those ending with `free` (null: back to normal). */
+        crowd: (free: string | null) => { this.crowdFree = free; for (const rt of this.lines) for (const v of rt.vehicles) this.shuffle(v); },
         /** Show or hide everything the module draws (draw-call budget measurement). */
         show: (on: boolean) => { for (const rt of this.lines) { rt.furniture.group.visible = on; for (const v of rt.vehicles) v.group.visible = on; } },
       },
@@ -223,6 +227,7 @@ export class TransportModule implements GameModule {
 
   /** At each stop a few passengers get off and others get on (their seats only; the closed cabin hides them). */
   private shuffle(v: LineVehicle) {
+    if (this.crowdFree !== null) { for (const s of v.seats) if (s.occupant !== 'player') s.occupant = s.id.endsWith(this.crowdFree) ? null : 'npc'; return; }
     let free = 0;
     for (const s of v.seats) {
       if (s.occupant === 'npc' && this.rand() < 0.35) s.occupant = null;
@@ -239,7 +244,7 @@ export class TransportModule implements GameModule {
       anchors: [{ id: 'stop', kind: 'spot', x: site.x, z: site.z, y: 3.0, radius: 2.8, bias: 0.2 }],
     }, { board: () => this.wantBoard(rt, site.index) });
     const offers = place.offers.stop;
-    for (const o of offers) { o.visible = () => !waitingHere() && this.trip.phase !== 'boarding'; o.detail = `${rt.def.number} · ${rt.def.from} ⇄ ${rt.def.to} · ${fcfa(rt.def.fare)}`; }
+    for (const o of offers) { o.visible = () => !waitingHere() && (this.trip.phase === 'idle' || this.trip.phase === 'waiting'); o.detail = `${rt.def.number} · ${rt.def.from} ⇄ ${rt.def.to} · ${fcfa(rt.def.fare)}`; }
     offers.push(
       { ...P.use({ id: 'annuler', label: 'Ne plus attendre', seconds: 0, visible: waitingHere, then: () => this.stopWaiting('Tu n’attends plus le car rapide') }), quiet: true },
       P.inspect({ id: 'horaires', label: 'Voir la ligne', detail: `${rt.def.number} · ${rt.def.from} ⇄ ${rt.def.to}`, then: () => this.openLine(rt, site) }),
