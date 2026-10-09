@@ -70,6 +70,27 @@ LOD distance (× 0.6 on Low, × 0.85 on Medium quality).
 
 Before the kit: old taxi 7 meshes / 3 materials / 84 tris; old car rapide 5 meshes / 4 materials / 1,916 tris.
 
+Measured in the game (`node scripts/perf-vehicles.mjs`, headless Chromium + SwiftShader, so ratios only, not phone
+frame rates; raw data `docs/perf/vehicles-before.json` and `vehicles-after.json`, captures in
+`docs/screenshots/assets/before/` and `after/`). Same « rush hour » in both builds: 12 vehicles (4 car rapides + 8
+cars) on the avenue at x = 0, 10–66 m ahead of the player, game camera; random traffic hidden. « Vehicle » columns =
+frame with the 12 vehicles minus the frame without them.
+
+| Viewport (quality) | Hub | Hour | Vehicle draw calls | Vehicle triangles | Frame draw calls | Frame triangles |
+| --- | --- | --- | --- | --- | --- | --- |
+| desktop (high) | plateau | 10h | 76 → 20 | 8,336 → 6,506 | 350 → 284 | 187,384 → 183,274 |
+| desktop (high) | plateau | 21h | 76 → 24 | 8,336 → 6,514 | 341 → 279 | 182,144 → 178,042 |
+| desktop (high) | pikine | 10h | 76 → 20 | 8,336 → 6,506 | 403 → 339 | 244,812 → 241,010 |
+| desktop (high) | pikine | 21h | 76 → 24 | 8,336 → 6,514 | 404 → 344 | 245,248 → 241,454 |
+| phone (medium) | plateau | 10h | 73 → 18 | 8,330 → 5,850 | 287 → 227 | 162,544 → 158,528 |
+| phone (medium) | plateau | 21h | 73 → 21 | 8,330 → 5,856 | 278 → 221 | 157,304 → 153,294 |
+| phone (medium) | pikine | 10h | 73 → 18 | 8,330 → 5,850 | 344 → 288 | 221,134 → 220,406 |
+| phone (medium) | pikine | 21h | 73 → 21 | 8,330 → 5,856 | 345 → 292 | 221,570 → 220,848 |
+| phone-low (low) | plateau | 10h | 73 → 14 | 8,330 → 3,182 | 227 → 162 | 122,504 → 112,004 |
+| phone-low (low) | plateau | 21h | 73 → 15 | 8,330 → 3,184 | 218 → 154 | 117,264 → 106,766 |
+| phone-low (low) | pikine | 10h | 73 → 14 | 8,330 → 3,182 | 294 → 233 | 184,050 → 176,602 |
+| phone-low (low) | pikine | 21h | 73 → 15 | 8,330 → 3,184 | 295 → 235 | 184,486 → 177,040 |
+
 | Furniture (tris) | Basic | Better | Premium |
 | --- | --- | --- | --- |
 | Bed | Natte et matelas mousse 48 | Lit en bois 110 | Grand lit sculpté 400 |
