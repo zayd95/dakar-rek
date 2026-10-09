@@ -84,9 +84,9 @@ economy lane's `Asset` (kind `vehicle`): buying spawns a `Vehicle` from the cata
   vehicle geometry (5 draw calls) + its apprenti; people at stops drawn and animated only within 70 m of the camera
   (one waiting person per stop on Low).
 - No per-frame allocations in the vehicle / route / seat updates (preallocated poses, motions and arrival lists).
-- Measured by `scripts/check-transport.mjs` in Pikine, 6 m from a stop with a car standing there: **422 draw calls with
-  the line's cars and stops, 404 without** (+18; the people waiting at the stops are counted in both). The hub view
-  around it was ~400 draw calls before this lane.
+- Measured by `scripts/check-transport.mjs` 6 m from a stop with a car standing there: **+16 to +18 draw calls** for the
+  line's cars and stops (Pikine desktop 445 with / 429 without; Plateau phone at Low-equivalent framing 308 / 290); the
+  people waiting at the stops are counted in both.
 
 ## Checks
 
@@ -96,7 +96,8 @@ economy lane's `Asset` (kind `vehicle`): buying spawns a `Vehicle` from the cata
 - `scripts/check-transport.mjs` (desktop Pikine, phone portrait Plateau): walk to a stop, wait, board on the only free
   seat, fare paid once, stick does not stand up, phone and « Arrêter » mid-ride, three views, ride past a stop,
   request, alight on the pavement, door and hub change right after, hub change mid-ride, reload mid-ride, draw calls.
-  Screenshots in `docs/screenshots/transport/`.
+  Screenshots in `docs/screenshots/transport/`. Last run (9 Oct): **45/45** (desktop 23, phone 22);
+  `scripts/check-interact.mjs` 34/34 and `scripts/check-city-life.mjs` all pass with the transport module.
 
 ## Known gaps
 
