@@ -66,7 +66,10 @@ try {
     await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 30000 });
     const after = await page.evaluate(() => ({ money: window.__dakar.state.wallet, energy: window.__dakar.state.data.needs.energie }));
     check(`${label}: fishing service pays and consumes energy`, after.money - before.money === 3200 && before.energy - after.energy >= 26);
-    await page.evaluate(() => { window.__dakar.state.data.needs.energie = 0; window.__dakar.act(); });
+    // after the job nothing is in focus any more (focus() is null): face the landing place again before acting
+    await page.evaluate(p => { const d = window.__dakar; d.place(p.x, p.z, Math.PI / 2); d.state.data.needs.energie = 0; }, fishing);
+    await page.waitForFunction(() => window.__dakar.focus()?.id?.endsWith(':soumbedioune'));
+    await page.evaluate(() => window.__dakar.act());
     check(`${label}: an exhausted player cannot take the fishing job`, await page.getByRole('button', { name: /^Débarquer les caisses de poisson/ }).getAttribute('class') === 'item dis');
     await page.getByRole('button', { name: 'Fermer', exact: true }).click();
     await page.evaluate(() => { const d = window.__dakar; d.setHour(16); d.cam([-123, 16, 117], [-142, 1, 90]); });
