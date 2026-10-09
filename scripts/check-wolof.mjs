@@ -137,10 +137,16 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
 
   // 2. Haggling at the market: the Sandaga stall (a customer discusses the price), the Soumbédioune fish stall.
   const stall = await goTo(page, 'plateau', i => i.id.endsWith(':market'));
-  if (stall && await runVerb(page, 'Vendre au marché')) {
+  if (stall && await runVerb(page, 'Tenir l’étal')) {
     const ok = await waitToast(page, /^Une cliente : « (Ñaata la \? » \(c’est combien \?\) · Toi : « 1 500 F\.|Seer na ! Wàññi ko tuuti\. » \(c’est cher · baisse un peu\) · Toi : « Déedéet, 1 500 F rekk\.)/);
     check(`${label}: selling at the Sandaga stall, a customer asks « Ñaata la ? » or haggles`, ok, await toast(page));
     await shot(page, `${label}-haggle-sandaga`);
+    // Then the stall gesture: each customer asks for her goods, in French with a Wolof touch (src/activity/gestures.ts).
+    await page.waitForFunction(() => window.__dakar.gesture?.()?.kind === 'choose', null, T).catch(() => {});
+    const ask = await d(page, () => (document.querySelector('#gesture .gst-ask')?.textContent ?? '').replace(/[  ]/g, ' '));
+    check(`${label}: at the stall each customer asks for her goods (French goods, glossed Wolof touch)`, /^Cliente « .+ »/.test(ask) && !/[⁣⁤]/.test(ask), ask);
+    await shot(page, `${label}-stall-ask`, false);
+    await page.keyboard.press('Escape');                                           // stops the shift (as in check-gestures)
     await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
   } else check(`${label}: Sandaga stall found`, false);
   const fish = await goTo(page, 'corniche', i => i.id.endsWith(':city:fish-market'));
