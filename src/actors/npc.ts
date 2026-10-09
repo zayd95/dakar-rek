@@ -30,6 +30,8 @@ export class Crowd {
       this.walkers.push({ char: c, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 1.1 + rand() * 0.7, lat: (rand() < 0.5 ? -1 : 1) * (5.3 + rand() * 1.2), prev: '' });
     }
   }
+  /** Bodies for the interaction system (greet in passing). */
+  bodies() { return this.walkers.map((w, i) => ({ id: 'walker:' + i, h: w.char instanceof Humanoid ? w.char : null, obj: w.char.group })); }
   update(dt: number) {
     for (const w of this.walkers) {
       const len = Math.hypot(w.bx - w.ax, w.bz - w.az);

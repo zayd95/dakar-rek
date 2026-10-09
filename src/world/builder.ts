@@ -541,6 +541,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   };
   const smokeAt: { x: number; y: number; z: number }[] = [];
   const people: HubWorld['people'] = [];
+  const seats: HubWorld['seats'] = [];
 
   const kioskAt = (k: KioskSpec) => {
     const L = lotRect(k.i, k.j, k.lot % 2, k.lot >> 1);
@@ -947,7 +948,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const key = `${i},${j}`;
     const city = CITY_BLOCKS[id][key];
     if (city) {
-      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
+      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, seats, sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
       continue;
     }
     const s = sp.specials[key];
@@ -1067,7 +1068,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       }
       return 0;
     },
-    people, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
+    people, seats, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
     dispose() { disposeGroup(group); },
   };
 }

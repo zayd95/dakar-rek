@@ -35,5 +35,8 @@ export class PlacedPeople {
     }
   }
 
+  /** Bodies for the interaction system (greet, ask a name…). */
+  bodies() { return this.entries.map((e, i) => ({ id: 'placed:' + i, h: e.h, seated: e.p.clip === 'Sit', female: !!e.p.look?.female })); }
+
   dispose() { for (const e of this.entries) e.h.dispose(); this.entries = []; }
 }

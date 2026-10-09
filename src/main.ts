@@ -39,6 +39,16 @@ import { Phone } from './ui/phone';
 import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
+import { Interactions } from './interact/system';
+import { Seats, sitOriginY, type Seat } from './interact/seats';
+import { LegacySource } from './interact/legacy';
+import type { Target } from './interact/types';
+import { ActivityRunner } from './activity/runner';
+import { Places } from './activity/places';
+import { Inventory } from './activity/inventory';
+import { actionVerb } from './interact/legacy';
+import { People } from './interact/people';
+import type { ActivitySpec } from './activity/types';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -183,6 +193,7 @@ function updateLighting(hour: number) {
 const rand = rng(Date.now() & 0xffff);
 
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
+  activities.cancel(); standUp(true);
   for (const a of apprentices) a.dispose();          // detach them before the hub geometry is freed
   apprentices = [];
   ambient?.dispose(); ambient = null;
@@ -209,6 +220,8 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
     const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id, kind === 'home' ? state.data.furniture : []); n++;
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
   }
+  registerSeats();
+  places.clear(); people.clear();
   const requested = at ?? world.spawn, bounds = world.bounds;
   const p = requested.x >= bounds.x0 && requested.x <= bounds.x1 && requested.z >= bounds.z0 && requested.z <= bounds.z1 ? requested : world.spawn;
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
@@ -234,6 +247,94 @@ function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, nu
 }
 
 // ------------------------------------------------------------------ interactions
+/** One contextual interaction system (src/interact): legacy content, seats, and the modules' own targets. */
+const interactions = new Interactions();
+const seats = new Seats();
+let seated: Seat | null = null;
+/** Space key shared by seats, targets and presence: 'street', 'home' (own room) or the interior's door id. */
+const spaceOf = (door: Interactable) => door.id.includes(':home:') ? 'home' : door.id;
+const interactSpace = () => inside ? spaceOf(inside.door) : 'street';
+interactions.add(new LegacySource({
+  list: () => !world ? [] : inside ? inside.int.interactables : world.interactables,
+  run: it => legacyAction(it),
+  runAction: (it, a) => { nearest = it; hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); },
+  talkLabel: it => { const b = it.npc ? availableBeat(it.npc, rel, state) : null; return b ? '★ ' + b.title : null; },
+  canAfford: c => state.canAfford(c),
+  visible: a => !a.visible || a.visible(state),
+  requires: a => a.requires?.(state) ?? null,
+}));
+interactions.add(seats);
+interactions.add({ name: 'self', collect(space, x, z, out) {           // while seated: « Se lever »
+  if (!seated) return;
+  out.push({ id: 'self', name: 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() }] });
+} });
+seats.onSit = s => sitOn(s);
+
+/** Universal activities (src/activity): one runner plays every composed activity; places compose the primitives. */
+const inventory = new Inventory(state);
+const activities = new ActivityRunner({
+  state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
+  sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
+  clip: c => { if (playerBody) playerBody.hold = c ?? (seated ? 'Sit' : null); },
+  busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
+  progress: (on, pct = 0, label = '') => hud.progress(on, pct, label),
+  toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
+  rel: (npc, d) => rel.change(PLAYER, npc, d), flag: f => { if (!state.data.flags.includes(f)) state.data.flags.push(f); },
+  item: (id, d) => inventory.add(id, d), hasItem: (id, n) => inventory.has(id, n),
+});
+const places = new Places(activities, () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat);
+interactions.add(places);
+/** Everyone in the street can be greeted (placed people and walkers). */
+const people = interactions.add(new People(() => [
+  ...(ambient?.bodies() ?? []).map(b => ({ id: b.id, obj: b.h.group, h: b.h, seated: b.seated, female: b.female })),
+  ...(crowd?.bodies() ?? []).map(b => ({ id: b.id, obj: b.obj, h: b.h })),
+], activities, line => hud.toast(line), () => ({ x: pos.x, z: pos.z }))) as People;
+/** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
+function actionSpec(a: Action): ActivitySpec {
+  return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined };
+}
+
+function sitOn(seat: Seat, force = false) {
+  if ((!force && mode !== 'play') || seated || !seats.occupy(seat.id, 'player')) return;
+  seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0;
+  pos.set(seat.x, sitOriginY(seat) + (inside ? 0 : 0), seat.z); facing = seat.yaw;
+  if (playerBody) playerBody.hold = 'Sit';
+}
+/** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
+function standUp(inPlace = false) {
+  if (!seated) return;
+  const s = seated; seats.release(s.id, 'player'); seated = null;
+  if (playerBody && playerBody.hold === 'Sit') playerBody.hold = null;
+  if (inPlace || !world) return;
+  let nx = s.x + Math.sin(s.yaw) * 0.7, nz = s.z + Math.cos(s.yaw) * 0.7;
+  [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
+  pos.set(nx, 0.1 + (inside ? 0 : world.heightAt(nx, nz)), nz);
+}
+/** Registers the seats of the hub, its interiors and marks those already used by the ambient people. */
+function registerSeats() {
+  seats.clear(); if (!world) return;
+  seats.addAll(world.seats);
+  for (const [doorId, int] of interiors) seats.addAll(int.seats.map(s => ({ ...s, space: doorId.includes(':home:') ? 'home' : doorId })));
+  for (const p of world.people) if (p.clip === 'Sit') seats.occupyNear('street', p.x, p.z, 'npc');
+}
+/** What the action button did before the contextual system (kept for places, people and stations). */
+function legacyAction(it: Interactable) {
+  nearest = it;
+  if (it.kind === 'travel') openTravel();
+  else if (it.actions.length === 1 && it.actions[0].special === 'exit') exitInterior();
+  else openActions(it);
+}
+function openMore() {
+  const t = interactions.focus; if (!t || mode !== 'play') return;
+  const list = interactions.all(t); if (!list.length) return;
+  mode = 'menu';
+  hud.openMenu(t.name, '', list.map(a => ({
+    icon: a.icon, label: a.label, detail: a.disabled ?? a.detail, disabled: !!a.disabled,
+    right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined,
+    onPick: () => { hud.closeModal(); mode = 'play'; a.run(); },
+  })));
+}
+
 let nearest: Interactable | null = null;
 function findNearest() {
   nearest = null; if (!world) return;
@@ -312,6 +413,7 @@ function showStreet(on: boolean) {
 let doorSeq = 0;
 function enterInterior(door: Interactable) {
   const int = interiors.get(door.id); if (!int) return;
+  activities.cancel(); standUp(true);
   const seq = ++doorSeq;
   hud.fade(true, door.name);
   setTimeout(() => {
@@ -331,9 +433,13 @@ function refreshHomeInteriors() {
     world.group.remove(int.group); disposeInterior(int); world.group.add(fresh.group); interiors.set(doorId, fresh);
     if (inside?.int === int) inside.int = fresh;
   }
+  if (seated?.space === 'home') standUp(true);
+  seats.clear('home');
+  for (const [doorId, int] of interiors) if (int.kind === 'home') seats.addAll(int.seats.map(s => ({ ...s, space: doorId.includes(':home:') ? 'home' : doorId })));
 }
 function exitInterior() {
   if (!inside) return;
+  activities.cancel(); standUp(true);
   const d = inside.door;
   const seq = ++doorSeq;
   hud.fade(true, HUB_NAMES[world!.id]);
@@ -347,6 +453,7 @@ function exitInterior() {
 
 function startScene(kind: SceneKind, onDone?: () => void) {
   if (!world) return;
+  activities.cancel(); standUp(true);
   hideProxy(); emoteT = 0; previewT = 0;
   const at = kind === 'training' || kind === 'celebration' ? world.ecurie : world.arena;
   if (!at) { hud.toast('Disponible à Pikine (arène et écurie)'); mode = 'play'; return; }
@@ -470,6 +577,11 @@ function openJournal() { hud.closeModal(); phone.open('carnet'); }
 
 function runAction(a: Action, npc?: string, it?: Interactable) {
   const where = it?.name;
+  if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
+    activities.onEnd = (_s, done) => { if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); } };   // counters belong to the steps
+    activities.start(actionSpec(a), { place: where });
+    return;
+  }
   mode = 'busy'; input.enabled = false;
   const t0 = performance.now(), dur = a.seconds * 1000;
   hud.progress(true, 0, a.label);
@@ -582,16 +694,32 @@ function saveNow(): boolean {
 }
 
 hud.onAction = () => {
-  if (mode !== 'play' || !nearest) return;
-  if (nearest.kind === 'travel') openTravel();
-  else if (nearest.actions.length === 1 && nearest.actions[0].special === 'exit') exitInterior();
-  else openActions(nearest);
+  if (activities.running) { activities.cancel('Arrêté'); return; }
+  if (mode !== 'play') return;
+  const a = interactions.primary();
+  if (a && !a.disabled) a.run(); else if (a?.disabled) hud.toast(a.disabled);
 };
+hud.onMore = () => openMore();
 hud.onMenu = () => { if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); };
 new MutationObserver(() => { if (!hud.modalOpen && !phone.isOpen && mode === 'menu') { mode = 'play'; input.enabled = true; } }).observe(document.getElementById('modal')!, { attributes: true });
 addEventListener('visibilitychange', () => { if (document.hidden && world) saveNow(); });
 addEventListener('pagehide', () => { if (world) saveNow(); });
 setInterval(() => { if (world && mode === 'play') saveNow(); }, 8000);
+
+/** Action button + diegetic prompt for the focused target. */
+const promptV = new THREE.Vector3();
+function showPrompt(t: Target | null) {
+  const run = activities.current;
+  if (run) { hud.setPrompt('✋ Arrêter', run.step.label); hud.setWorldPrompt(null); return; }
+  const a = t ? interactions.primary(t) : null;
+  if (!t || !a) { hud.setPrompt(null); hud.setWorldPrompt(null); return; }
+  const all = interactions.all(t);
+  hud.setPrompt((a.icon ? a.icon + ' ' : '') + a.label, a.label === t.name ? (a.disabled ?? 'Appuyer / E') : t.name, all.length > 1);
+  if (t.kind === 'self' || !world) { hud.setWorldPrompt(null); return; }
+  promptV.set(t.x, (t.y ?? 1.9) + (inside ? 0 : world.heightAt(t.x, t.z)), t.z).project(camera);
+  if (promptV.z > 1 || Math.abs(promptV.x) > 1.1 || Math.abs(promptV.y) > 1.1) { hud.setWorldPrompt(null); return; }
+  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, a.icon, a.label);
+}
 
 // ------------------------------------------------------------------ main loop
 let last = performance.now(), statsT = 0;
@@ -600,9 +728,10 @@ function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (document.hidden || !world) return;
 
-  if (input.takeMenu()) { if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
+  if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
-  if (input.takeAction() && mode === 'play' && nearest) hud.onAction();
+  if (input.takeAction() && ((mode === 'play' && interactions.focus) || activities.running)) hud.onAction();
+  activities.update(dt);
 
   const drag = input.takeDrag();
   drag.yaw += input.rotateKey() * dt * 1.8;
@@ -611,6 +740,12 @@ function frame(now: number) {
     if (lambScene.snap) { camera.position.copy(f.cam); lambScene.snap = false; } else camera.position.lerp(f.cam, Math.min(1, dt * 3));
     camera.lookAt(f.look);
     if (lambScene.done) endScene();
+  } else if (mode === 'play' && seated) {
+    const m = input.move();
+    speed = 0;
+    if (Math.hypot(m.x, m.y) > 0.35) standUp();                  // moving the stick or a key stands up
+    else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody) playerBody.hold = 'Sit'; }
+    state.tick(dt * 1000);
   } else if (mode === 'play') {
     const m = input.move();
     const fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
@@ -648,9 +783,9 @@ function frame(now: number) {
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
+  const focus = mode === 'play' && !lambScene ? interactions.update(interactSpace(), pos.x, pos.z, facing) : (interactions.focus = null);
   economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
-  const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
-  hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);
+  showPrompt(focus);
 
   if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
   if (camOverride && !lambScene) {
@@ -696,6 +831,17 @@ if (DEBUG) {
     drawCalls: () => renderer.info.render.calls,
     tris: () => renderer.info.render.triangles,
     nearestInteractable: () => nearest?.name ?? null,
+    focus: () => { const t = interactions.focus; return t ? { id: t.id, name: t.name, kind: t.kind, space: t.space, primary: interactions.primary(t)?.label ?? null, all: interactions.all(t).map(a => a.label) } : null; },
+    seated: () => seated?.id ?? null,
+    seatsHere: () => seats.inSpace(interactSpace()).map(s => ({ id: s.id, x: s.x, z: s.z, top: s.top, yaw: s.yaw, kind: s.kind, occupant: s.occupant })),
+    sit(id: string) { const s = seats.get(id); if (s) sitOn(s); return seated?.id ?? null; },
+    stand() { standUp(); },
+    more() { openMore(); },
+    clip: () => playerBody?.clipName ?? null,
+    activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index } : null; },
+    placeList: () => places.all().map(p => ({ id: p.id, type: p.type, name: p.name, space: p.space, anchors: p.anchors.map(a => a.id) })),
+    inventory: () => inventory.list(),
+    roomInteractables: () => inside ? inside.int.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) : [],
     travelTo: (h: HubId) => doTravel(h),
     rel, beats: () => ({ ...state.data.beats }), flags: () => [...state.data.flags],
     suggestion: () => suggestion(rel, state)?.id ?? null,

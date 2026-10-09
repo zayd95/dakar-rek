@@ -2,6 +2,8 @@ import type * as THREE from 'three';
 import type { HubId, Needs } from '../core/types';
 import type { GameState } from '../core/state';
 import type { PersonLook } from '../actors/humanoid';
+import type { Seat } from '../interact/seats';
+import type { Step } from '../activity/types';
 
 export interface Action {
   id: string;
@@ -16,6 +18,8 @@ export interface Action {
   /** Hidden unless this returns true (e.g. a trusted-rate job after a recommendation). */
   visible?: (s: GameState) => boolean;
   /** Handled by a dedicated flow instead of the timed action (scenes, outfit, emotes). */
+  /** Composed activity (src/activity): when present, the universal runner plays these steps (price = `cost`). */
+  steps?: Step[];
   special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat' | 'combat_classe' | 'combat_entrainement' | 'jobs' | 'shop';
 }
 export interface Interactable {
@@ -59,6 +63,8 @@ export interface HubWorld {
   /** Monument hill: stair run (x0→x1 at stairZ, rising y0→y1), summit terrace height, festive ground spots. */
   monument: { cx: number; cz: number; stairX0: number; stairX1: number; stairZ: number; y0: number; y1: number; spots: { x: number; z: number }[] } | null;
   ecurie: { cx: number; cz: number } | null;
+  /** Every street seat of the hub (benches…): src/interact/seats.ts. */
+  seats: Seat[];
   dispose(): void;
 }
 export interface RoadEdge { ax: number; az: number; bx: number; bz: number }

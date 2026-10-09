@@ -4,6 +4,7 @@ import type { PersonLook } from '../actors/humanoid';
 import type { Batch } from './batch';
 import type { Action, Collider, HubWorld, Interactable } from './types';
 import { CITY_ACTIONS as A } from './cityContent';
+import { benchSeats, type Seat } from '../interact/seats';
 
 export type CityBlock = 'soumbedioune' | 'mall' | 'bank' | 'square' | 'shops';
 /** Compact, stylised geography within the existing four hubs. Never displaces an existing landmark. */
@@ -21,6 +22,8 @@ export interface CityContext {
   /** Terrazzo floors (Higgsfield texture #28): bank hall and mall courtyard. */
   floor: Batch;
   people: HubWorld['people']; interactables: Interactable[]; colliders: Collider[];
+  /** Street seats (src/interact/seats.ts): every bench built here can be sat on. */
+  seats: Seat[];
   sign(text: string, bg: string, fg: string, x: number, y: number, z: number, yaw: number, w?: number, h?: number): void;
   tree(x: number, z: number, size?: number, flower?: boolean): void;
   pool(x: number, z: number, radius: number, y?: number): void;
@@ -47,6 +50,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     c.people.push({ x, z, yaw, clip, look, walkTo });
   };
   const bench = (x: number, z: number, yaw = 0) => {
+    c.seats.push(...benchSeats(`${c.hub}:bench:${c.seats.length}`, x, z, yaw, 0.58, 'street'));
     b.box(3.2, 0.12, 0.65, x, 0.46, z, WOOD, yaw);
     for (const side of [-1, 1]) b.box(0.16, 0.4, 0.6, x + Math.cos(yaw) * side * 1.25, FLOOR, z - Math.sin(yaw) * side * 1.25, DARK, yaw);
     b.box(3.2, 0.5, 0.1, x - Math.sin(yaw) * 0.32, 0.55, z - Math.cos(yaw) * 0.32, WOOD, yaw);

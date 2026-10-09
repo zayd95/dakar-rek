@@ -1,5 +1,6 @@
 import type { Action } from './types';
 import type { HubId } from '../core/types';
+import { order } from '../activity/primitives';
 
 const flag = (f: string) => (s: { data: { flags: string[] } }) => s.data.flags.includes(f);
 const noFlag = (f: string) => (s: { data: { flags: string[] } }) => !s.data.flags.includes(f);
@@ -54,8 +55,11 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'combat_classe', label: 'Combat classé', detail: 'Lutte sans frappe · adversaire selon ton classement', seconds: 0, special: 'combat_classe', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : !(s.data.counters.lamb_skill ?? 0) ? 'Termine d’abord l’entraînement guidé à l’écurie' : s.data.needs.energie < 20 ? 'Trop fatigué' : null) },
   ],
   maiga: [
-    { id: 'riz', label: 'Riz au poisson', detail: 'Le moins cher du quartier', cost: 500, needs: { faim: 40, moral: 2 }, seconds: 3, counter: 'meals' },
-    { id: 'mafe', label: 'Mafé', cost: 700, needs: { faim: 45, moral: 4 }, seconds: 3, counter: 'meals' },
+    // Composed with the universal primitives: pay → the plate is prepared → sit on a free bench or chair → eat.
+    { id: 'riz', label: 'Riz au poisson', detail: 'Le moins cher du quartier · servi à table', cost: 500, needs: { faim: 40, moral: 2 }, seconds: 3, counter: 'meals',
+      steps: order({ id: 'riz', label: 'Riz au poisson', price: 500, prep: 2, eat: 4, needs: { faim: 40, moral: 2 } }).steps },
+    { id: 'mafe', label: 'Mafé', detail: 'Servi à table', cost: 700, needs: { faim: 45, moral: 4 }, seconds: 3, counter: 'meals',
+      steps: order({ id: 'mafe', label: 'Mafé', price: 700, prep: 2, eat: 4, needs: { faim: 45, moral: 4 } }).steps },
   ],
   dibiterie: [
     { id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois, oignons et moutarde', cost: 2000, needs: { faim: 55, moral: 10, social: 4 }, seconds: 3, counter: 'meals' },

@@ -50,6 +50,37 @@ completely differently is the goal.
 | Vehicles | `src/transport/` + `src/actors/vehicleKit*` | Vehicle spec (seats, doors, driver seat, camera anchors, model builder); passenger, chase and drive modes; routes on the hub road graph. |
 | NPC activity | `src/social/` | People pick activities by place, time and day (eat, wait, board, work, pray, exercise, fish, sell, gather, go home), using seats and venues. |
 
+## Universal activity framework (built 9 Oct)
+
+Habib: « build a universal interaction/activity framework — enter, sit, talk, buy, sell, eat, use, work, own, ride,
+invite… — then locations compose those primitives differently. »
+
+| Layer | Module | What it does |
+| --- | --- | --- |
+| Primitives | `src/activity/primitives.ts` | Builders for every verb: `order` (pay → prepared → sit → eat/drink), `buy`, `sell`, `work`, `use`, `sleep`, `wash`, `pray`, `dance`, `fish`, `greet`, and hand-over verbs that start a dedicated system at once (`talk`, `invite`, `own`, `rent`, `ride`, `enter`, `browse`, `inspect`). |
+| Activity | `src/activity/types.ts` | An `ActivitySpec` is data: a price paid at the start and `Step`s (label, seconds, clip, seat to take, prop, effects, follow-up). |
+| Runner | `src/activity/runner.ts` | Plays any activity the same way: charges the price, takes a seat when a step asks for one, holds a clip, shows progress, applies each step's effects when it ends, can be stopped (« Arrêter »). |
+| Effects | `src/activity/effects.ts` | One place applies money (with a wallet history label), needs, counters, items, relationships, flags and the activity category (polyvalence). |
+| Places | `src/activity/places.ts` | A place = anchors (counter, grill, prayer row, mirror, plot sign…) + the activities offered at each + opening hours + location chat. Every Dibi, mosque, salon, shop, club, home, beach or plot is a `PlaceSpec`, served by the same registry. |
+| Interaction | `src/interact/` | Targets in reach (places' anchors, seats, people, legacy content, vehicles…) are focused in front of the player; the primary verb is on the action button and in a prompt above the target; « ⋯ » lists the others. |
+| Seats | `src/interact/seats.ts` | One sit system: benches, chairs, stools, sofas, beds, prayer rows, vehicle seats — players and NPCs occupy them. |
+| People | `src/interact/people.ts` | Everyone in the street can be greeted and asked their name (greet / talk primitives). |
+| Inventory | `src/activity/inventory.ts` | Items carried (fish to sell, goods…); stored in save counters until the save schema gets an inventory field. |
+
+Composition examples:
+
+- **Dibi** = counter: `order(dibi mouton)`, `order(bissap, drink)`; grill: `work(aider au grill)`; tables: seats; chat for
+  players inside.
+- **Mosque** = entrance: `enter` (shoes off); taps: `wash`; prayer hall: `pray` on prayer-row seats; imam: `talk`;
+  reading: only from a verified source.
+- **Salon** = chairs: seats; counter: `buy(service)` whose follow-up changes the appearance; clients: `talk`.
+- **Soumbédioune** = pirogues: `fish`/`work`; mareyeuses: `buy`/`sell` fish; benches: seats.
+- **Furniture store / shops** = shelves: `browse`, `buy` (item to the home or inventory).
+- **Plot / billboard** = sign: `inspect`, `own`, `rent`.
+- **Car rapide** = door: `ride` (board a vehicle seat); stops: `alight`.
+
+Already composed: the Maïga meals (pay → the plate is prepared → sit on a free bench or chair → eat → stay seated).
+
 ## Waves
 
 **Wave 1 — the vertical slice that proves the feeling:** interaction system + UI overhaul, a usable Dibi, an improved

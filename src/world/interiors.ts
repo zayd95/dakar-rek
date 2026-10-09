@@ -5,6 +5,7 @@ import { floorTileTexture, plasterTexture, metalTexture, generatedTexture } from
 import { ACTIONS } from './content';
 import { furnitureById } from '../economy/furniture';
 import type { Collider, Interactable } from './types';
+import { benchSeats, type Seat } from '../interact/seats';
 
 /**
  * Walkable interiors, built off the street grid (x ≥ 1000) and entered through a door action.
@@ -22,6 +23,8 @@ export interface Interior {
   group: THREE.Group;
   colliders: Collider[];
   interactables: Interactable[];
+  /** Chairs and benches (space filled in by main.ts with the door's space key). */
+  seats: Seat[];
   bounds: { x0: number; x1: number; z0: number; z1: number };
   /** Where the camera may go (just inside the walls). */
   cameraBox: { x0: number; x1: number; z0: number; z1: number };
@@ -73,6 +76,7 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
   const floor = new Batch(), wall = new Batch(), wood = new Batch(), metal = new Batch(), plain = new Batch(), glow = new Batch(), sky = new Batch();
   const colliders: Collider[] = [];
   const interactables: Interactable[] = [];
+  const seats: Seat[] = [];
   const W = kind === 'home' ? 6 : kind === 'maiga' ? 3.8 : 10, D = kind === 'home' ? 4.8 : kind === 'maiga' ? 7 : 7.5;
   const x0 = ox - W / 2, x1 = ox + W / 2, z0 = oz - D / 2, z1 = oz + D / 2;
   const solid = (cx: number, cz: number, w: number, d: number, h = 1.2) => colliders.push({ x0: cx - w / 2, z0: cz - d / 2, x1: cx + w / 2, z1: cz + d / 2, h });
@@ -118,6 +122,7 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
   }
 
   const chair = (x: number, z: number, rot: number, col = 0xf2f2ee) => {   // monobloc plastic chair
+    seats.push({ id: `${hub}:${kind}:chair:${seats.length}`, x: x + Math.sin(rot) * 0.04, z: z + Math.cos(rot) * 0.04, top: 0.53, yaw: rot, kind: 'chair', space: '', occupant: null });
     const c = Math.cos(rot), s = Math.sin(rot);
     plain.box(0.46, 0.05, 0.44, x, 0.48, z, col, rot);
     for (const [dx, dz] of [[-0.2, -0.18], [0.2, -0.18], [-0.2, 0.18], [0.2, 0.18]]) plain.box(0.04, 0.46, 0.04, x + dx * c + dz * s, 0.05, z - dx * s + dz * c, col);
@@ -199,6 +204,7 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     const top = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 3.6), cloth); top.position.set(tx, 0.84, oz - 0.3); group.add(top);
     for (const dz of [-1.6, 1.0]) wood.box(0.7, 0.72, 0.06, tx, 0.1, oz - 0.3 + dz, 0x6b4a2e);
     wood.box(0.35, 0.45, 3.2, tx - 0.75, 0.1, oz - 0.3, 0x7a5a3c);                                 // bench
+    seats.push(...benchSeats(`${hub}:${kind}:bench`, tx - 0.75, oz - 0.3, Math.PI / 2, 0.55, '', 3.2, 3));
     colliders.push({ x0: tx - 0.95, z0: oz - 2.2, x1: x1, z1: oz + 1.6, h: 0.9 });
     chair(tx - 0.2, oz + 2.0, Math.PI, 0xf2f2ee); chair(x0 + 0.8, oz + 1.6, Math.PI / 2 + 0.4, 0x2a6fb3);
     // wall fan, soot on the ceiling and walls, peeling patches
@@ -244,7 +250,7 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
   }
   interactables.push({ id: `${hub}:in:door`, name: 'Sortir', kind: 'actions', x: doorX, z: z1 - 0.6, radius: 1.2, actions: [{ id: 'sortir', label: 'Sortir', seconds: 0, special: 'exit' }] });
   return {
-    kind, name, group, colliders, interactables,
+    kind, name, group, colliders, interactables, seats,
     bounds: { x0: x0 + 0.3, x1: x1 - 0.3, z0: z0 + 0.3, z1: z1 - 0.3 },
     cameraBox: { x0: x0 + 0.15, x1: x1 - 0.15, z0: z0 + 0.15, z1: z1 - 0.15 },
     spawn: { x: doorX - 0.6, z: oz - D * 0.06, yaw: Math.PI + 0.35 },
