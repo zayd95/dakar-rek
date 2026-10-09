@@ -84,8 +84,11 @@ for the old dark panel never vanish. Use the existing blocks — `.kv` (info car
 - `#gesture` (src/ui/gesture.ts, the trades' gesture card) sits bottom-centre, ~150 px above the bottom on phones: the
   progress pill (bottom 92 px + 46 px) and the action button stay below it in portrait; in landscape the card is 52 vw
   wide at the bottom, so the action column (button and pill) is limited to 24 vw on the right.
-- `#ride` (transport), `#delivery` (economy), `#presenceBtn` / `#chatBtn` (multiplayer) are `.card`s: light now, with
-  their text colours remapped in style.css (« other modules' HUD elements »).
+- `#ride` (transport), `#delivery` (economy), `#placer` (furniture placement), `#presenceBtn` / `#chatBtn` (multiplayer)
+  are `.card`s: light now, with their text colours remapped in style.css (« other modules' HUD elements »); the
+  ownership confirmation rows (`.est-rows`) get light rows inside sheets.
+- `#runBtn` (stride, touch: right of the joystick): in portrait the action button is capped at `100vw − 248px` so it
+  never covers « Courir »; the wallet chip uses the economy lane's `fcfaShort` (full amount as its accessible label).
 - Wolof glosses: HUD text is plain DOM text, resolved by the gloss observer (src/i18n/dom.ts) like any other text.
 - HUD buttons drop the focus after a tap or click, so Space/Enter (the game's action keys) never fire them twice.
 

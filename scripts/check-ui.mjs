@@ -125,7 +125,7 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   await page.waitForFunction(() => document.querySelector('#modal.on[data-kind="quick"]'), null, T).catch(() => {});
   await settle();
   const tiles = await d(() => [...document.querySelectorAll('#modal .item.tile')].map(t => ({ text: t.textContent, dis: t.classList.contains('dis'), h: t.getBoundingClientRect().height })));
-  check(`${label}: « ⋯ » shows the target's actions as tiles with prices`, tiles.length >= 3 && tiles.some(t => /−500 F/.test(t.text)) && tiles.every(t => t.h >= 44), JSON.stringify(tiles.map(t => t.text)));
+  check(`${label}: « ⋯ » shows the target's actions as tiles with prices`, tiles.length >= 3 && tiles.some(t => /−500\sF/.test(t.text)) && tiles.every(t => t.h >= 44), JSON.stringify(tiles.map(t => t.text)));
   const q = await rect('#modal .sheet');
   check(`${label}: quick actions sit in the bottom-right thumb zone`, q.right >= viewport.width - 30 && q.bottom >= viewport.height * 0.6, JSON.stringify(q));
   await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-quick.png` });
@@ -142,9 +142,11 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   await page.waitForFunction(() => window.__dakar.pos().x > 900, null, T).catch(() => {});
   const counter = (await d(() => window.__dakar.roomInteractables())).find(i => /counter/.test(i.id));
   const order = async () => {
-    await d(() => { const s = window.__dakar.state; s.data.wallet = 3000; s.data.needs.faim = 30; });
-    await d(p => window.__dakar.place(p.x - 0.6, p.z, Math.PI / 2), counter);
-    await page.waitForFunction(() => /:counter$/.test(window.__dakar.focus()?.id ?? ''), null, T).catch(() => {});
+    await d(() => { const g = window.__dakar; g.stand(); const s = g.state; s.data.wallet = 3000; s.data.needs.faim = 30; });
+    for (const dx of [0.6, 0.75]) {                        // a second spot if the first frame missed the counter
+      await d(([p, dx]) => window.__dakar.place(p.x - dx, p.z, Math.PI / 2), [counter, dx]);
+      if (await page.waitForFunction(() => /:counter$/.test(window.__dakar.focus()?.id ?? ''), null, { timeout: 30000 }).then(() => true, () => false)) break;
+    }
     await d(() => window.__dakar.act());
     const open = await page.waitForFunction(() => document.querySelector('#modal.on'), null, { timeout: 30000 }).then(() => true, () => false);
     if (!open) { console.log('order: no sheet', JSON.stringify(await d(() => ({ focus: window.__dakar.focus(), pos: window.__dakar.pos(), phone: !!document.querySelector('#phone.on'), act: document.getElementById('act').textContent })))); return false; }
@@ -162,9 +164,12 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
     await page.keyboard.press('Escape');
     const stopped = await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 15000 }).then(() => true, () => false);
     check(`${label}: Escape stops the activity and gives the controls back`, stopped && !(await d(() => document.querySelector('#progress.on'))));
-    check(`${label}: an activity starts again`, await order());
-    if (touch) await page.locator('#act').tap(); else await page.locator('#act').click();
-    check(`${label}: « Arrêter » stops it and gives the controls back`, await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 15000 }).then(() => true, () => false));
+    const again = await order();
+    check(`${label}: an activity starts again`, again);
+    if (again) {
+      if (touch) await page.locator('#act').tap(); else await page.locator('#act').click();
+      check(`${label}: « Arrêter » stops it and gives the controls back`, await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 15000 }).then(() => true, () => false));
+    }
     await d(() => window.__dakar.stand());
     await d(() => window.__dakar.exit());
     await page.waitForFunction(() => window.__dakar.pos().x < 900, null, T).catch(() => {});
@@ -219,7 +224,7 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   const tb = await rect('#toast'), ab = await rect('#actbar');
   check(`${label}: toasts stay clear of the action area`, !overlap(tb, ab), JSON.stringify(tb));
   await d(() => { window.__dakar.state.data.wallet += 1200; });
-  check(`${label}: a wallet change shows « +1 200 F »`, await page.waitForFunction(() => /\+1 200 F/.test(document.querySelector('#wallet .mfx')?.textContent ?? ''), null, { timeout: 5000 }).then(() => true, () => false));
+  check(`${label}: a wallet change shows « +1 200 F »`, await page.waitForFunction(() => /\+1\s200\sF/.test(document.querySelector('#wallet .mfx')?.textContent ?? ''), null, { timeout: 5000 }).then(() => true, () => false));
 
   // 11. The profile sheet (text field, swatches) scrolls with a real touch drag when it is taller than the screen.
   if (touch) {
