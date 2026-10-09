@@ -116,9 +116,9 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   check(`${label}: « Aider au grill » is offered with its pay and the next rung`, g0.f?.primary === 'Aider au grill', g0.f?.all.join(' | '));
   await d(() => window.__dakar.act());
   await until(() => (window.__dakar.activity()?.id ?? '').startsWith('grill_'), null, 20000);
-  await until(p => window.__dakar.clip() === 'Grab' && Math.hypot(window.__dakar.pos().x - p.x, window.__dakar.pos().z - p.z) < 0.3, W(v, -8.0 + 1.15, 8.6 - 0.85), 30000);
+  await until(p => window.__dakar.clip() === 'Talk' && Math.hypot(window.__dakar.pos().x - p.x, window.__dakar.pos().z - p.z) < 0.3, W(v, -8.0 + 1.15, 8.6 - 0.85), 30000);
   const gw = await d(([p]) => ({ a: window.__dakar.activity(), clip: window.__dakar.clip(), pos: window.__dakar.pos(), cook: p }), [W(v, -8.0 + 1.15, 8.6 - 0.85)]);
-  check(`${label}: the player steps beside the cook and works the skewers`, gw.a?.id === 'grill_aide' && gw.clip === 'Grab' && Math.hypot(gw.pos.x - gw.cook.x, gw.pos.z - gw.cook.z) < 0.3, JSON.stringify({ clip: gw.clip, step: gw.a?.step }));
+  check(`${label}: the player steps beside the cook and works the skewers`, gw.a?.id === 'grill_aide' && gw.clip === 'Talk' && Math.hypot(gw.pos.x - gw.cook.x, gw.pos.z - gw.cook.z) < 0.3, JSON.stringify({ clip: gw.clip, step: gw.a?.step }));
   await cam(v, [-3.5, 2.6, 4.5], [-7.5, 1.0, 8.6]); await shot('dibi-grill'); await d(() => window.__dakar.cam(null));
   await until(() => !window.__dakar.activity(), null, 120000);
   const g1 = await d(() => ({ wallet: window.__dakar.state.wallet, grill: window.__dakar.venues().find(x => x.type === 'dibi').counters.grill, ledger: window.__dakar.state.data.ledger.at(-1) }));
@@ -258,7 +258,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await until(() => !window.__dakar.activity(), null, 60000);
   const sold = await d(() => ({ w: window.__dakar.state.wallet, fish: window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0, save: JSON.parse(localStorage.getItem('dakarrek.guest.save') ?? '{}').counters?.['inv:poisson'] ?? 0 }));
   check(`${label}: selling 4 fish pays 2 400 F; the 2 left are saved in the inventory`, sold.w - w0 === 2400 && sold.fish === back.fish - 4 && sold.save === sold.fish, JSON.stringify(sold));
-  await shot('beach-mareyeuses');
+  await d(([p]) => window.__dakar.cam([p.x - 2.5, 2.4, p.z - 5.5], [p.x, 1.1, p.z]), [marketAt]); await shot('beach-mareyeuses'); await d(() => window.__dakar.cam(null));
   await d(() => window.__dakar.setHour(21));
   await d(([p]) => window.__dakar.place(p.x, p.z, -Math.PI / 2), [boatAt]);
   await until(() => /:pirogue$/.test(window.__dakar.focus()?.id ?? ''), null, 20000);
@@ -287,6 +287,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await until(() => !window.__dakar.activity(), null, 120000);
   const look = await d(() => { let short = false, puff = false; window.__dakar.body().group.traverse(o => { if (o.isMesh && o.name.startsWith('Hair_Short')) short ||= o.visible; if (o.isMesh && o.name.startsWith('Hair_Puff')) puff ||= o.visible; }); return { short, puff, saved: JSON.parse(localStorage.getItem('dakarrek.guest.save') ?? '{}').counters?.coiffure ?? 0 }; });
   check(`${label}: the new cut shows on your character and is saved`, !look.short && look.puff && look.saved === 3, JSON.stringify(look));
+  await d(() => window.__dakar.portrait(2.2, 1.5, 0.6)); await shot('salon-afro'); await d(() => window.__dakar.portrait(0));
   await d(() => window.__dakar.stand());
   }
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));

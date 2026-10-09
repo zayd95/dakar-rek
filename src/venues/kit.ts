@@ -93,14 +93,18 @@ export class VenueKit {
   /** Keep something to dispose with the venue (textures, materials made by the venue). */
   keep<T extends { dispose(): void }>(x: T): T { this.own.push(x); return x; }
 
+  /** The merged mesh of each material once built (a venue can hide its roof for the camera). */
+  readonly meshes: Partial<Record<MatKey, THREE.Mesh>> = {};
   /** Merge the batches into the group (one draw call per used material). */
   build(mats: VenueMaterials) {
     const shadow: Partial<Record<MatKey, boolean>> = { plain: true, wall: true, block: true, tin: true, wood: true, metal: true };
     for (const k of Object.keys(this.b) as MatKey[]) {
       const mesh = this.b[k].build(mats.m[k], k !== 'glow', !!shadow[k]);
-      if (mesh) { this.group.add(mesh); this.own.push(mesh.geometry); }
+      if (mesh) { this.group.add(mesh); this.own.push(mesh.geometry); this.meshes[k] = mesh; }
     }
   }
+  /** World → local (inverse of `w`). */
+  local(x: number, z: number) { const dx = x - this.origin.x, dz = z - this.origin.z; return { x: dx * this.c - dz * this.s, z: dx * this.s + dz * this.c }; }
   dispose() { this.group.removeFromParent(); for (const o of this.own) o.dispose(); this.own = []; }
 }
 

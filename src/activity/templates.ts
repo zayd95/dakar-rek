@@ -100,7 +100,7 @@ export function dibi(b: Base & { owner?: string; tables?: { x: number; z: number
   const meal = (spec: ActivitySpec) => countOn(spec, keys.meals);
   const hour = () => h.hour?.() ?? 12;
   // a timed `work` step per rung (the integration turns it into the shared timing gesture); the text follows the save
-  const grill = GRILL_LADDER.map(r => live(P.work({ id: 'grill_' + r.id, label: r.label, pay: r.pay, seconds: r.seconds, counter: keys.grill, category: 'service', clip: 'Grab',
+  const grill = GRILL_LADDER.map(r => live(P.work({ id: 'grill_' + r.id, label: r.label, pay: r.pay, seconds: r.seconds, counter: keys.grill, category: 'service', clip: 'Talk',
     needs: { energie: -r.energie, hygiene: -6, faim: -4 }, requires: () => h.tired?.(r.energie) ?? null, visible: () => grillRank(n(keys.grill), hour()) === r }), () => {
     const done = n(keys.grill), next = nextGrillRank(done);
     return next ? `${r.detail} · ${done}/${next.from} services avant « ${next.label} »` : r.detail;
@@ -160,7 +160,7 @@ export function mosque(b: Base & { peaks?: [number, number][] }, h: PlaceHooks =
   if (has('cour')) {
     list.push(at('cour'));
     // volunteering for the neighbourhood (not a religious practice): no money and no activity category, only the time spent with people
-    offers.cour = [P.use({ id: 'balayer', primitive: 'work', label: 'Balayer la cour', detail: 'Bénévole · le quartier s’en souvient', seconds: 6, clip: 'Grab', effects: { needs: { energie: -4, social: 4 }, counters: { mosquee_aide: 1 } } })];
+    offers.cour = [P.use({ id: 'balayer', primitive: 'work', label: 'Balayer la cour', detail: 'Bénévole · le quartier s’en souvient', seconds: 6, effects: { needs: { energie: -4, social: 4 }, counters: { mosquee_aide: 1 } } })];
   }
   if (has('shelf')) { list.push(at('shelf')); offers.shelf = [P.use({ id: 'lire', label: 'Lire', icon: '📖', detail: 'Texte vérifié à venir', seconds: 0, requires: () => 'Pas encore disponible : texte vérifié à venir' })]; }
   return { id: b.id, name: b.name, space: b.space, type: 'mosque', peaks: b.peaks, anchors: list, offers };

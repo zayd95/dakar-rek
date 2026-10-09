@@ -223,7 +223,7 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   const S = (sid: string) => k.seats.find(s => s.id === sid)!;
   const roles: Role[] = [
     { id: 'owner', look: OWNER_LOOK, ...at(-4.8, -7.3), yaw: yaw, clip: 'Idle', when: m => m !== 'closed' },
-    { id: 'cook', look: COOK_LOOK, ...at(GX, GZ - 0.85), yaw: yaw, clip: 'Grab', when: m => m !== 'closed' },
+    { id: 'cook', look: COOK_LOOK, ...at(GX, GZ - 0.85), yaw: yaw, clip: 'Talk', when: m => m !== 'closed' },
     { id: 'c1', look: look(), seat: S(`${id}:An:0`), when: m => m !== 'closed' },
     { id: 'c2', look: look(), seat: S(`${id}:P1:1`), when: m => m !== 'closed' && !lite },
     { id: 'c3', look: look(), seat: S(`${id}:As:2`), when: m => m === 'evening' },
@@ -247,7 +247,7 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   let t = 0, moment = '';
 
   // ---------------------------------------------------------------- helping at the grill: step beside the cook, facing the fire
-  // A plain timed `work` step (the rung's clip 'Grab' turns the skewers); the integration makes it the shared timing gesture.
+  // A plain timed `work` step (hands busy at chest height, 'Talk'); the integration makes it the shared timing gesture.
   let stanceFor: unknown = null;
   const stance = () => {
     const cur = ctx.activities.current;
@@ -271,6 +271,9 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     lightsMat.color.setScalar(open ? 0.5 + 0.5 * night : 0.3);
     for (const s of signs) (s.material as THREE.MeshLambertMaterial).emissiveIntensity = night * 0.45;
     smoke.on = open; smoke.update(dt, night);
+    // cutaway: under the tin roof the follow camera (about 4 m up) would only see the roof's top, so it lifts away
+    const me = k.local(ctx.player.pos.x, ctx.player.pos.z), roof = k.meshes.tin;
+    if (roof) roof.visible = !(ctx.camera.position.y > G0 + 2.8 && me.x > SX0 - 1.2 && me.x < SX1 + 1.2 && me.z > SZ0 - 1.2 && me.z < SZ1 + 1.2);
     const street = ctx.space() === 'street';
     cast.update(dt, ctx.camera.position, lite ? 45 : 70, street);
     // the dish or the glass in front of the player while eating at this Dibi

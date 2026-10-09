@@ -63,7 +63,7 @@ describe('Dibi recipe: why return tomorrow', () => {
   it('each rung is a timed work shift: pay, fatigue, the counter of this grill, the service category', () => {
     const g = place.offers.grill[0];
     expect(g.primitive).toBe('work');
-    expect(g.steps[0]).toMatchObject({ seconds: 6, clip: 'Grab', effects: { money: 900, counters: { [keys.grill]: 1, shifts: 1 }, category: 'service' } });
+    expect(g.steps[0]).toMatchObject({ seconds: 6, clip: 'Talk', effects: { money: 900, counters: { [keys.grill]: 1, shifts: 1 }, category: 'service' } });
     expect(g.steps[0].effects!.needs!.energie).toBeLessThan(0);
     const r = rig(); r.state.data.needs.energie = 100;
     expect(r.runner.blocked(g)).toBeNull();
