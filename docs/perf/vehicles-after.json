@@ -1,0 +1,284 @@
+{
+ "label": "after",
+ "date": "2026-10-09T09:52:28.275Z",
+ "rows": [
+  {
+   "vp": "desktop",
+   "quality": "high",
+   "hub": "plateau",
+   "hour": 10,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 284,
+   "tris": 183274,
+   "drawCallsNoVehicles": 264,
+   "trisNoVehicles": 176768,
+   "vehicleDrawCalls": 20,
+   "vehicleTris": 6506
+  },
+  {
+   "vp": "desktop",
+   "quality": "high",
+   "hub": "plateau",
+   "hour": 21,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 279,
+   "tris": 178042,
+   "drawCallsNoVehicles": 255,
+   "trisNoVehicles": 171528,
+   "vehicleDrawCalls": 24,
+   "vehicleTris": 6514
+  },
+  {
+   "vp": "desktop",
+   "quality": "high",
+   "hub": "pikine",
+   "hour": 10,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 339,
+   "tris": 241010,
+   "drawCallsNoVehicles": 319,
+   "trisNoVehicles": 234504,
+   "vehicleDrawCalls": 20,
+   "vehicleTris": 6506
+  },
+  {
+   "vp": "desktop",
+   "quality": "high",
+   "hub": "pikine",
+   "hour": 21,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 344,
+   "tris": 241454,
+   "drawCallsNoVehicles": 320,
+   "trisNoVehicles": 234940,
+   "vehicleDrawCalls": 24,
+   "vehicleTris": 6514
+  },
+  {
+   "vp": "phone",
+   "quality": "medium",
+   "hub": "plateau",
+   "hour": 10,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 227,
+   "tris": 158528,
+   "drawCallsNoVehicles": 209,
+   "trisNoVehicles": 152678,
+   "vehicleDrawCalls": 18,
+   "vehicleTris": 5850
+  },
+  {
+   "vp": "phone",
+   "quality": "medium",
+   "hub": "plateau",
+   "hour": 21,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 221,
+   "tris": 153294,
+   "drawCallsNoVehicles": 200,
+   "trisNoVehicles": 147438,
+   "vehicleDrawCalls": 21,
+   "vehicleTris": 5856
+  },
+  {
+   "vp": "phone",
+   "quality": "medium",
+   "hub": "pikine",
+   "hour": 10,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 288,
+   "tris": 220406,
+   "drawCallsNoVehicles": 270,
+   "trisNoVehicles": 214556,
+   "vehicleDrawCalls": 18,
+   "vehicleTris": 5850
+  },
+  {
+   "vp": "phone",
+   "quality": "medium",
+   "hub": "pikine",
+   "hour": 21,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 292,
+   "tris": 220848,
+   "drawCallsNoVehicles": 271,
+   "trisNoVehicles": 214992,
+   "vehicleDrawCalls": 21,
+   "vehicleTris": 5856
+  },
+  {
+   "vp": "phone-low",
+   "quality": "low",
+   "hub": "plateau",
+   "hour": 10,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 162,
+   "tris": 112004,
+   "drawCallsNoVehicles": 148,
+   "trisNoVehicles": 108822,
+   "vehicleDrawCalls": 14,
+   "vehicleTris": 3182
+  },
+  {
+   "vp": "phone-low",
+   "quality": "low",
+   "hub": "plateau",
+   "hour": 21,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 154,
+   "tris": 106766,
+   "drawCallsNoVehicles": 139,
+   "trisNoVehicles": 103582,
+   "vehicleDrawCalls": 15,
+   "vehicleTris": 3184
+  },
+  {
+   "vp": "phone-low",
+   "quality": "low",
+   "hub": "pikine",
+   "hour": 10,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 233,
+   "tris": 176602,
+   "drawCallsNoVehicles": 219,
+   "trisNoVehicles": 173420,
+   "vehicleDrawCalls": 14,
+   "vehicleTris": 3182
+  },
+  {
+   "vp": "phone-low",
+   "quality": "low",
+   "hub": "pikine",
+   "hour": 21,
+   "kit": true,
+   "vehicles": 12,
+   "drawCalls": 235,
+   "tris": 177040,
+   "drawCallsNoVehicles": 220,
+   "trisNoVehicles": 173856,
+   "vehicleDrawCalls": 15,
+   "vehicleTris": 3184
+  }
+ ],
+ "models": [
+  {
+   "name": "carRapide near",
+   "meshes": 3,
+   "materials": 3,
+   "tris": 2036
+  },
+  {
+   "name": "carRapide far",
+   "meshes": 1,
+   "materials": 1,
+   "tris": 114
+  },
+  {
+   "name": "bus near",
+   "meshes": 3,
+   "materials": 3,
+   "tris": 2254
+  },
+  {
+   "name": "bus far",
+   "meshes": 1,
+   "materials": 1,
+   "tris": 80
+  },
+  {
+   "name": "taxi near",
+   "meshes": 3,
+   "materials": 3,
+   "tris": 742
+  },
+  {
+   "name": "taxi far",
+   "meshes": 1,
+   "materials": 1,
+   "tris": 88
+  },
+  {
+   "name": "moto near",
+   "meshes": 2,
+   "materials": 2,
+   "tris": 942
+  },
+  {
+   "name": "moto far",
+   "meshes": 1,
+   "materials": 1,
+   "tris": 64
+  },
+  {
+   "name": "sedan near",
+   "meshes": 3,
+   "materials": 3,
+   "tris": 728
+  },
+  {
+   "name": "sedan far",
+   "meshes": 1,
+   "materials": 1,
+   "tris": 78
+  },
+  {
+   "name": "suv near",
+   "meshes": 3,
+   "materials": 3,
+   "tris": 876
+  },
+  {
+   "name": "suv far",
+   "meshes": 1,
+   "materials": 1,
+   "tris": 142
+  },
+  {
+   "name": "luxury near",
+   "meshes": 3,
+   "materials": 3,
+   "tris": 766
+  },
+  {
+   "name": "luxury far",
+   "meshes": 1,
+   "materials": 1,
+   "tris": 78
+  },
+  {
+   "name": "pickup near",
+   "meshes": 3,
+   "materials": 3,
+   "tris": 828
+  },
+  {
+   "name": "pickup far",
+   "meshes": 1,
+   "materials": 1,
+   "tris": 112
+  },
+  {
+   "name": "truck near",
+   "meshes": 3,
+   "materials": 3,
+   "tris": 896
+  },
+  {
+   "name": "truck far",
+   "meshes": 1,
+   "materials": 1,
+   "tris": 80
+  }
+ ]
+}

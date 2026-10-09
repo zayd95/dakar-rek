@@ -70,8 +70,8 @@ for (const t of TYPES) {
     if (!want(name) || (night && !NIGHT_TYPES.has(t))) continue;
     const [row] = await d(([t, night]) => window.__dakar.kitFurniture([['basic', 'better', 'premium'].map(r => `${t}:${r}`)], { night }), [t, night]);
     await anchorPlayer(row.cx, row.wallZ + 25);
-    const dist = Math.max(3.4, row.width * 0.72 + 1.4), h = Math.max(0.6, row.height);
-    await shot(name, { p: [row.cx + row.width * 0.08, 1.2 + h * 0.55, row.wallZ + dist], t: [row.cx, h * 0.38, row.wallZ + 0.5] }, night ? 21 : 12);
+    const dist = Math.max(2.4, row.width * 0.62 + 0.9), h = Math.max(0.5, row.height);
+    await shot(name, { p: [row.cx + row.width * 0.06, 0.7 + h * 0.6, row.wallZ + dist], t: [row.cx, h * 0.42, row.wallZ + 0.45] }, night ? 21 : 12);
   }
 }
 for (const night of [false, true]) {
