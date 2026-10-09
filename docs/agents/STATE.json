@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-08T23:08:00Z",
+  "updatedAt": "2026-10-09T03:36:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
   "lease": {
-    "token": "cycle-20261008T223600Z-38176862ca6b",
+    "token": "cycle-20261009T033600Z-c4137dc972bf",
     "owner": "codex-scheduled-coordinator",
-    "acquiredAt": "2026-10-08T22:36:00Z",
-    "expiresAt": "2026-10-08T23:26:00Z",
-    "headAtAcquire": "8495ac2ebe75aae8e56618ba91dd688ff5123d63",
-    "purpose": "reconcile DKAG-016/017 exact-source CI, then commission DKAG-018 if PR10 remains unchanged"
+    "acquiredAt": "2026-10-09T03:36:00Z",
+    "expiresAt": "2026-10-09T04:26:00Z",
+    "headAtAcquire": "8ae64ed4cc1c33d8446ec8bd2020309c2222e0fc",
+    "purpose": "independent final QA and durable resolution for DKAG-018 mixed exact-source CI"
   },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
@@ -203,9 +203,9 @@
     "deployed": false
   },
   "recovery": {
-    "previousToken": "cycle-20261008T132800Z-608bc7678079",
-    "reason": "Usage-limit interruption; original delegated agents errored; list_agents confirms no active writer. Refs unchanged and task branch at base; partial local code recovered.",
-    "confirmedAt": "2026-10-08T16:55:00Z"
+    "previousToken": "cycle-20261008T223600Z-38176862ca6b",
+    "reason": "Lease expired after final author handoff. Task branch stable at 17108c2 since 2026-10-08T22:52Z; author explicitly stopped; prior QA terminated on usage limit; no prior writer present in current execution. Final push/PR CI reconciled before takeover.",
+    "confirmedAt": "2026-10-09T03:36:00Z"
   },
   "combatCandidate": {
     "sourceCommit": "55def6b14e7cdf47d9ca0e0885a6e5950219c920",
