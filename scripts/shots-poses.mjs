@@ -1,4 +1,4 @@
-// Before / after captures of the home and social poses (bed → Lie, mat / rug → SitFloor, attaya circle → SitFloor),
+// Before / after captures of the poses (bed → Lie, mat / rug → SitFloor, attaya circle → SitFloor, moto → Ride),
 // desktop and phone, plus the vehicle animation (steering and moto lean). Needs a running build (?debug).
 // Usage: flock /tmp/dakar-browser.lock node scripts/shots-poses.mjs [baseUrl] [outDir]
 // « before » rebuilds the old logic in the same build: every seat held the chair Sit clip 0.48 m under its surface.
@@ -15,6 +15,7 @@ const VIEWS = {
   bed: { p: [0.6, 2.7, 3.9], t: [0, 0.45, -0.6] },
   mat: { p: [0.5, 2.3, 3.7], t: [0, 0.3, 0] },
   attaya: { p: [0.4, 2.0, 3.2], t: [0, 0.35, -0.15] },
+  ride: { p: [2.4, 1.6, 2.6], t: [0, 0.8, 0] },
 };
 for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]]) {
   const page = await (await browser.newContext({ viewport, hasTouch: touch, isMobile: touch })).newPage();
@@ -24,7 +25,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await page.waitForFunction(() => window.__dakar?.pos().hub && window.__dakar.kitPoses && window.__dakar.wrestlerReady(), null, T);
   await page.evaluate(() => { document.getElementById('ui').style.visibility = 'hidden'; window.__dakar.teleport('almadies'); window.__dakar.setHour(11); });
   const settle = () => page.evaluate(() => new Promise(r => { let n = 0; const f = () => (++n < 6 ? requestAnimationFrame(f) : r()); requestAnimationFrame(f); }));
-  for (const scene of ['bed', 'mat', 'attaya']) {
+  for (const scene of ['bed', 'mat', 'attaya', 'ride']) {
     for (const before of [true, false]) {
       const people = await page.evaluate(([s, b]) => { const d = window.__dakar; const r = d.kitPoses(s, { before: b }); d.place(4000, 30, 0); const body = d.body(); if (body) body.group.scale.setScalar(0.0001); return r; }, [scene, before]);
       const v = VIEWS[scene], k = touch ? 1.55 : 1;

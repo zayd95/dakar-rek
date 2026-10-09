@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { buildPoseClips, POSES, type PoseClip } from '../src/actors/humanoid';
 import { seatClip, sitOriginY, SIT_HIPS } from '../src/interact/seats';
 import { buildFurniture, furnitureSeats } from '../src/world/furnitureKit';
+import { buildVehicle, vehicleSeats, vehicleSpec } from '../src/actors/vehicleKit';
 import { loadRig, posed } from './rig';
 
 /** Joint positions of a pose built from the shipped rig (character space: origin on the surface under the hips). */
@@ -32,7 +33,7 @@ describe('procedural poses', () => {
     }
   });
 
-  for (const name of Object.keys(POSES) as PoseClip[]) {
+  for (const name of ['Lie', 'SitFloor'] as PoseClip[]) {
     it(`${name}: nothing below the surface, bones keep their lengths`, () => {
       const p = pose(name);
       for (const j of JOINTS) expect(p.pos(j).y, `${name} ${j}`).toBeGreaterThan(0.03);
@@ -69,6 +70,26 @@ describe('procedural poses', () => {
     expect(p.pos('head').y).toBeGreaterThan(0.75);
     // the shins cross at different heights (no interpenetration at the ankles)
     expect(Math.abs(p.pos('footL').y - p.pos('footR').y)).toBeGreaterThan(0.025);
+  });
+
+  it('Ride: astride the kit motorbike, hands on its grips, feet on its pegs, the saddle under the hips', () => {
+    let seed = 1; while (vehicleSpec('moto', { seed }).controls.pegs![0][2] > 0) seed++;   // the 125 cc (not the scooter)
+    const spec = vehicleSpec('moto', { seed }), drv = spec.seats.find(x => x.kind === 'driver')!;
+    expect(drv.clip).toBe('Ride');
+    // character space of the rider: origin SIT_HIPS under the saddle, like Sit
+    const toChar = (p: readonly number[]) => new THREE.Vector3(p[0] - drv.x, p[1] - (drv.top - SIT_HIPS), p[2] - drv.z);
+    const p = pose('Ride');
+    expect(p.pos('hips').y).toBeCloseTo(SIT_HIPS + 0.02, 2);                     // just above the saddle
+    for (const [i, s] of (['L', 'R'] as const).entries()) {
+      const palm = p.tip(`hand${s}`, 0.07), grip = toChar(spec.controls.grips[i]);
+      expect(palm.distanceTo(grip), `hand ${s}`).toBeLessThan(0.1);
+      expect(p.pos(`foot${s}`).distanceTo(toChar(spec.controls.pegs![i])), `foot ${s}`).toBeLessThan(0.12);
+      expect(Math.abs(p.pos(`shin${s}`).x)).toBeLessThan(0.26);                // knees against the tank, not splayed
+    }
+    expect(p.pos('head').z).toBeGreaterThan(0.1);                                // leaning forward over the bars
+    // the interaction seats of a placed moto carry the pose
+    const v = buildVehicle('moto', { seed }); v.group.updateMatrixWorld(true);
+    expect(vehicleSeats(v.group, v.spec, 'moto:1').map(x => x.clip)).toEqual(['Ride', 'Ride']);
   });
 
   it('furniture seats carry their pose and stand the body on the surface (Seat.clip, floorSeatTop)', () => {

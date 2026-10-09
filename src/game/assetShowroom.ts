@@ -2,6 +2,26 @@ import * as THREE from 'three';
 import { buildFurniture, furnitureSeats, TIERS, type FurnitureId, type Tier } from '../world/furnitureKit';
 import { Humanoid, humanoidReady, randomLook } from '../actors/humanoid';
 import { seatClip, sitOriginY, SIT_HIPS } from '../interact/seats';
+import { buildVehicle, vehicleSeats, vehicleSpec } from '../actors/vehicleKit';
+
+/** Motorbikes (the 125 cc and a scooter) with a rider on the driver seat: `before` = chair Sit, else the seat's Ride. */
+export function rideScene(x0: number, z0: number, before: boolean, rand: () => number) {
+  const g = new THREE.Group(); g.name = 'kit_showroom';
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), floorMat(0x9a9488)); floor.rotation.x = -Math.PI / 2; floor.position.set(x0, 0, z0); floor.receiveShadow = true; g.add(floor);
+  const people: Humanoid[] = [];
+  const seedOf = (scooter: boolean) => { let s = 1; while ((vehicleSpec('moto', { seed: s }).controls.pegs![0][2] > 0) !== scooter) s++; return s; };
+  [seedOf(false), seedOf(true)].forEach((seed, i) => {
+    const v = buildVehicle('moto', { seed, driver: false, passengers: false });
+    v.group.position.set(x0 - 0.8 + i * 1.6, 0, z0); v.group.rotation.y = 0.5; g.add(v.group); g.updateMatrixWorld(true);
+    const s = vehicleSeats(v.group, v.spec, 'showroom')[0];
+    if (!humanoidReady()) return;
+    const h = new Humanoid(randomLook(rand));
+    h.hold = before ? 'Sit' : seatClip(s);
+    h.group.position.set(s.x, sitOriginY(s), s.z); h.group.rotation.y = s.yaw;
+    g.add(h.group); people.push(h);
+  });
+  return { group: g, people };
+}
 
 /**
  * Debug showrooms for the asset captures (scripts/shots-assets.mjs): furniture lined up by tier against a wall, and

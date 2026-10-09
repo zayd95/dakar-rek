@@ -12,8 +12,8 @@ import type { Outfit } from './character';
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
 export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
-/** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged. 'Kneel' is derived from Sit (deriveKneel). */
-export type PoseClip = 'Lie' | 'SitFloor';
+/** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
+export type PoseClip = 'Lie' | 'SitFloor' | 'Ride';
 export type Style = 'boubou' | 'tee' | 'dress';
 export type Pattern = 'uni' | 'wax' | 'bazin' | 'rayure';
 export interface PersonLook {
@@ -73,6 +73,8 @@ export function fixSitKnees(clips: THREE.AnimationClip[]) {
  * tail); bones without a direction keep their rest orientation relative to their parent. Heights are chosen so
  * the body rests ON the surface the origin stands on: a mattress (Lie, head on the pillow), a mat, rug or floor
  * cushion (SitFloor). Seats carry them in Seat.clip with top = surface + SIT_HIPS (src/interact/seats.ts floorSeatTop).
+ * Ride keeps the chair convention (origin SIT_HIPS under the saddle, like Sit): astride a motorbike, hands on the
+ * grips and feet on the pegs of the vehicle kit's 125 cc (spec.controls.grips / pegs).
  */
 interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number]; aim: Record<string, [number, number, number]> }
 export const POSES: Record<PoseClip, PoseDef> = {
@@ -96,6 +98,17 @@ export const POSES: Record<PoseClip, PoseDef> = {
       thighR: [-0.72, -0.05, 0.69], shinR: [0.92, 0.04, 0.2], footR: [0.75, -0.3, 0.2],
       upper_armL: [0.27, -0.88, 0.42], forearmL: [0.39, -0.83, 0.39], handL: [0.2, -0.5, 0.85],
       upper_armR: [-0.27, -0.88, 0.42], forearmR: [-0.39, -0.83, 0.39], handR: [-0.2, -0.5, 0.85],
+    },
+  },
+  // astride a two-wheeler: leaning forward, hands on the handlebar grips, knees against the tank, feet on the pegs
+  Ride: {
+    hipsY: 0.5, hips: [0, 0, 0],
+    aim: {
+      spine: [0, 1, 0.3], chest: [0, 1, 0.35], neck: [0, 1, 0.2], head: [0, 1, 0.05],
+      upper_armL: [0.27, -0.68, 0.68], forearmL: [0.24, -0.64, 0.73], handL: [0.1, -0.3, 1],
+      upper_armR: [-0.27, -0.68, 0.68], forearmR: [-0.24, -0.64, 0.73], handR: [-0.1, -0.3, 1],
+      thighL: [0.2, -0.35, 0.91], shinL: [-0.05, -0.9, -0.43], footL: [0.05, -0.2, 1],
+      thighR: [-0.2, -0.35, 0.91], shinR: [0.05, -0.9, -0.43], footR: [-0.05, -0.2, 1],
     },
   },
 };

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { daylight } from '../core/clock';
 import { clamp } from '../core/rng';
 import type { GameModule } from './modules';
-import { furnitureRows, furnishedRooms, poseScene } from './assetShowroom';
+import { furnitureRows, furnishedRooms, poseScene, rideScene } from './assetShowroom';
 import type { Humanoid } from '../actors/humanoid';
 import { rng } from '../core/rng';
 import { placeParked, PARKED_COUNT } from './parkedVehicles';
@@ -81,9 +81,9 @@ export const assetKitModule: GameModule = {
         return r.rooms;
       },
       /** People on furniture seats: `before` = old logic (chair Sit 0.48 m under every surface), else the seat's pose. */
-      kitPoses(kind: 'bed' | 'mat' | 'attaya', o: { x?: number; z?: number; before?: boolean } = {}) {
+      kitPoses(kind: 'bed' | 'mat' | 'attaya' | 'ride', o: { x?: number; z?: number; before?: boolean } = {}) {
         clearShowroom();
-        const r = poseScene(kind, o.x ?? 4000, o.z ?? 0, !!o.before, rng(7));
+        const r = kind === 'ride' ? rideScene(o.x ?? 4000, o.z ?? 0, !!o.before, rng(7)) : poseScene(kind, o.x ?? 4000, o.z ?? 0, !!o.before, rng(7));
         ctx.scene.add(r.group); showroom = r.group; posers = r.people;
         return r.people.map(h => h.group.position.toArray());
       },

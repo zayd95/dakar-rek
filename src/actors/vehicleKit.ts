@@ -40,6 +40,8 @@ export interface VehicleSeat {
   kind: SeatRole;
   /** Door used to reach it. */
   door: string;
+  /** Pose held there when it is not the chair Sit (motorbikes: 'Ride'); copied to the interaction seat. */
+  clip?: 'Ride';
 }
 export interface VehicleDoor {
   id: string;
@@ -67,8 +69,8 @@ export interface VehicleSpec {
   doors: VehicleDoor[];
   cameras: { chase: CameraAnchor; driver: CameraAnchor; passenger: CameraAnchor; side: CameraAnchor; step?: CameraAnchor };
   lights: { head: V3[]; tail: V3[] };
-  /** Drive mode: steering wheel / handlebar centre and the two hand grips (local). */
-  controls: { steering: V3; grips: [V3, V3] };
+  /** Drive mode: steering wheel / handlebar centre and the two hand grips (local); footpegs on two-wheelers. */
+  controls: { steering: V3; grips: [V3, V3]; pegs?: [V3, V3] };
   /**
    * animateVehicle: wheel radius (spin = distance / radius), steering limit (rad), largest lean in turns (rad, motos
    * only) and, for motos, the steering axis (pivot on the head tube, axis along the fork) the front end turns about.
@@ -825,12 +827,12 @@ const pickMoto: Pick = (r, o) => {
   const seatTop = scooter ? 0.78 : 0.9;
   const headY = scooter ? 1.0 : 0.96, headZ = fz - (scooter ? 0.12 : 0.2), hbY = headY + 0.12, hbZ = headZ - 0.1;
   const wheels: Wheel[] = [{ x: 0, y: wr, z: fz, r: wr, width: 0.1, steer: true }, { x: 0, y: wr, z: rz, r: wr, width: 0.1, steer: false }];
-  const seats = [seat('driver', 0, -0.22, seatTop, 'driver', 'left'), seat('pillion', 0, -0.58, seatTop + 0.03, 'passenger', 'left')];
+  const seats: VehicleSeat[] = [{ ...seat('driver', 0, -0.22, seatTop, 'driver', 'left'), clip: 'Ride' }, { ...seat('pillion', 0, -0.58, seatTop + 0.03, 'passenger', 'left'), clip: 'Ride' }];
   const layout: Layout = {
     L: 1.95, W: 0.75, H: 1.15, wheelbase: fz - rz, wheels, seats,
     doors: [{ id: 'left', side: 'left', x: 0.35, y: 0, z: -0.3, width: 0.8, height: 1.2, board: [0.7, 0, -0.3], seats: ['driver', 'pillion'], open: true }],
     head: [[0, scooter ? 1.0 : 0.98, 0.56]], tail: [[0, seatTop - 0.04, -0.9]],
-    controls: { steering: [0, hbY, hbZ], grips: [[0.36, hbY, hbZ], [-0.36, hbY, hbZ]] },
+    controls: { steering: [0, hbY, hbZ], grips: [[0.36, hbY, hbZ], [-0.36, hbY, hbZ]], pegs: scooter ? [[0.12, 0.37, 0.05], [-0.12, 0.37, 0.05]] : [[0.16, 0.37, -0.05], [-0.16, 0.37, -0.05]] },
     drive: { steerMax: 0.6, lean: 0.45, pivot: [0, headY, headZ], axis: (() => { const a = new THREE.Vector3(0, headY - 0.02 - wr, headZ - 0.06 - fz).normalize(); return [a.x, a.y, a.z] as V3; })() },
   };
   const rider = o.driver !== false, pillion = rider && o.passengers !== false && h2(p, ci) < 0.35, helmet = h2(ci, p + 1) < 0.5 ? HELMET[Math.floor(h2(p, 3) * HELMET.length)] : null;
@@ -992,7 +994,7 @@ export function vehicleToWorld(obj: THREE.Object3D, p: V3, out = new THREE.Vecto
  */
 export function vehicleSeats(obj: THREE.Object3D, spec: VehicleSpec, space: string, prefix = space): Seat[] {
   const yaw = worldYaw(obj), v = new THREE.Vector3();
-  return spec.seats.map(s => { vehicleToWorld(obj, [s.x, s.top, s.z], v); return { id: `${prefix}:${s.id}`, x: v.x, z: v.z, top: v.y, yaw: yaw + s.yaw, kind: 'vehicle' as const, space, occupant: null }; });
+  return spec.seats.map(s => { vehicleToWorld(obj, [s.x, s.top, s.z], v); return { id: `${prefix}:${s.id}`, x: v.x, z: v.z, top: v.y, yaw: yaw + s.yaw, kind: 'vehicle' as const, space, occupant: null, ...(s.clip ? { clip: s.clip } : {}) }; });
 }
 /** Camera anchor in world coordinates. */
 export function vehicleCamera(obj: THREE.Object3D, a: CameraAnchor) {
