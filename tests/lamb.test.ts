@@ -10,7 +10,7 @@ describe('làmb rules (provisional game adaptation)', () => {
     expect(RULES.sans_frappe.strikes).toBe(false);
     expect(RULES.avec_frappe.enabled).toBe(false);
     expect(RULES.sans_frappe.status).toBe(RULES_STATUS);
-    expect(RULES_STATUS).toMatch(/provisoire, à valider/);
+    expect(RULES_STATUS).toBe('Règles Dakar Rek');
   });
 
   it('referee decision at time-out: more points wins, equal points is a draw', () => {

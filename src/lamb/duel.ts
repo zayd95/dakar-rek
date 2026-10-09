@@ -13,8 +13,8 @@ import {
 
 /**
  * Controlled làmb bout against a local opponent (no network).
- * GAME ADAPTATION, PROVISIONAL, TO BE VALIDATED by a wrestling practitioner (see src/lamb/rules.ts and
- * docs/LAMB_RULES_PROVISIONAL.md). Discipline "sans frappe" only: strikes wait for written, reviewed rules.
+ * Dakar Rek's own rules (src/lamb/rules.ts, docs/LAMB_RULES.md). Discipline "sans frappe" for now; "avec frappe"
+ * is the next discipline to build.
  *
  * Loop: referee call → bout (move, guard, grab, dégagement, openings, response windows, empoignade, timer) →
  * stop (projection, time-out decision or abandon) → recap. Three modes: guided training with Coach Ablaye (tutorial

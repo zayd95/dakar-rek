@@ -1,10 +1,8 @@
 /**
- * Làmb rules used by the controlled bout — GAME ADAPTATION, PROVISIONAL, TO BE VALIDATED.
- *
- * Nothing in this file is an official rule of Senegalese wrestling. The numbers and the referee decision at time-out
- * are game choices made so a bout is playable on a phone; they are documented in docs/LAMB_RULES_PROVISIONAL.md with
- * the list of points a practitioner must validate. Pure data and pure functions only (no Three.js, no DOM), so the
- * logic is unit-tested in tests/lamb.test.ts.
+ * Làmb rules of Dakar Rek — the game's own rules (decided by the team, 9 Oct 2026: « c'est notre jeu, on crée nos
+ * règles »). They are not the official rules of Senegalese wrestling and do not need outside validation. Documented
+ * in docs/LAMB_RULES.md. Pure data and pure functions only (no Three.js, no DOM), so the logic is unit-tested in
+ * tests/lamb.test.ts.
  */
 
 export type Discipline = 'sans_frappe' | 'avec_frappe';
@@ -13,13 +11,13 @@ export type Side = 'player' | 'opponent';
 /** How a bout ended. `abandon` is never a sporting win for anyone and is recorded apart from defeats. */
 export type BoutOutcome = 'projection' | 'decision' | 'egalite' | 'abandon' | 'entrainement';
 
-export const RULES_STATUS = 'Adaptation de jeu — provisoire, à valider';
+export const RULES_STATUS = 'Règles Dakar Rek';
 
 export interface DisciplineRules {
   id: Discipline;
   label: string;
   status: typeof RULES_STATUS;
-  /** False until written rules exist and a practitioner has reviewed them. */
+  /** False while the discipline's mechanics are not built yet. */
   enabled: boolean;
   strikes: boolean;
   /** Bout length in seconds of game time (one round). */
@@ -64,13 +62,13 @@ export const RULES: Record<Discipline, DisciplineRules> = {
     breakCycle: 1.0, breakOpen: 0.38, breakFirst: 0.45,
     timeout: { guard: 1, grab: 1, breakaway: 1, tie: 'egalite' },
   },
-  // TODO(avec frappe): Habib chose "lutte avec frappe" as the target discipline, but strikes ship only after the
-  // written rules are reviewed by a wrestling practitioner. Keep `enabled: false` until then; the separate ranking
-  // counters (`lamb_af_*`) are reserved so the two disciplines never share a record.
+  // TODO(avec frappe): Habib chose "lutte avec frappe" as the target discipline; it is ours to design (no outside
+  // review). Keep `enabled: false` until the strike mechanics exist; the separate ranking counters (`lamb_af_*`) are
+  // reserved so the two disciplines never share a record.
   avec_frappe: {
     id: 'avec_frappe', label: 'Lutte avec frappe', status: RULES_STATUS, enabled: false, strikes: true,
     roundSeconds: 90,
-    endsBy: 'À définir avec un pratiquant (règles écrites non encore relues)',
+    endsBy: 'Prochaine discipline du jeu, en conception',
     grabRange: 1.5,
     stamina: { max: 100, regen: 14, regenGuard: 7, grabCost: 22, breakCost: 25, breakMissCost: 12, dodgeCost: 12, clinchDrain: 8 },
     responseWindow: 0.6, openingSeconds: 0.9, clinchSeconds: 2.6,
@@ -235,7 +233,7 @@ export function arenaProfileRows(k: Counters, ecurie: string | null): { label: s
   const fmt = (m: 'amical' | 'classe') => { const r = record(k, m); return `${r.v} V · ${r.d} D · ${r.n} N${r.ab ? ` · ${r.ab} abandon${r.ab > 1 ? 's' : ''}` : ''}`; };
   return [
     { label: 'Discipline', value: `${RULES.sans_frappe.label} (${RULES_STATUS})` },
-    { label: 'Avec frappe', value: 'Pas encore disponible (règles à relire par un pratiquant)' },
+    { label: 'Avec frappe', value: 'Bientôt : prochaine discipline du jeu' },
     { label: 'Combats amicaux', value: fmt('amical') },
     { label: 'Combats classés', value: fmt('classe') },
     { label: 'Niveau adverse (classé)', value: String(opponentLevel(record(k, 'classe').v, record(k, 'classe').d)) },

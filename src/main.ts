@@ -356,7 +356,7 @@ function startScene(kind: SceneKind, onDone?: () => void) {
   lambScene.onDone = onDone;
   extra.add(lambScene.group);
   npcLife.setVisible(false);                              // the scene places its own cast
-  hud.setScene(SCENE_LABEL[kind], 'Gestes, danse et rythmes provisoires · non validés');
+  hud.setScene(SCENE_LABEL[kind], 'Làmb · Dakar Rek');
 }
 
 // ------------------------------------------------------------------ làmb bouts (provisional rules, no strikes; see src/lamb/rules.ts)
@@ -422,7 +422,7 @@ function endScene() {
 function openOutfit() {
   mode = 'menu';
   const w = state.data.wrestler;
-  const html = `<div class="draft">${REVIEW_STATUS} — couleurs, motifs et accessoires provisoires. Purement cosmétique : aucun effet sur les combats.</div>
+  const html = `<div class="draft">${REVIEW_STATUS} — purement cosmétique : aucun effet sur les combats.</div>
     <h3>Ngemb · couleur</h3><div class="swatches" data-k="c">${NGEMB_COLORS.map(c => `<button data-v="${c.id}" class="${c.id === w.ngembColor ? 'on' : ''}"><i style="background:#${c.hex.toString(16).padStart(6, '0')}"></i>${c.label}</button>`).join('')}</div>
     <h3>Ngemb · motif</h3><div class="swatches" data-k="p">${NGEMB_PATTERNS.map(p => `<button data-v="${p.id}" class="${p.id === w.ngembPattern ? 'on' : ''}">${p.label}</button>`).join('')}</div>
     <h3>Accessoires (emplacements)</h3><div class="swatches" data-k="a">${ACCESSORIES.map(a => `<button data-v="${a.id}" class="${w.accessories.includes(a.id) ? 'on' : ''}">${a.label}</button>`).join('')}</div>`;
@@ -455,7 +455,7 @@ const EMOTE_CLIP: Record<string, Clip> = { pas1: 'Dance_A', pas2: 'Dance_B', fet
 
 function openEmotes() {
   mode = 'menu';
-  hud.openMenu('Mbakkou', 'Mouvements provisoires — les pas, noms et gestes seront validés avec des pratiquants.', EMOTES.map(e => ({
+  hud.openMenu('Mbakkou', 'Danses de lutteur : choisis un pas.', EMOTES.map(e => ({
     label: e.label, detail: 'Non validé', onPick: () => { hud.closeModal(); playEmote(EMOTES.indexOf(e)); },
   })));
 }

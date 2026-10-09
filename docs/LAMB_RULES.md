@@ -1,17 +1,13 @@
-# Làmb — règles du combat contrôlé : adaptation de jeu, provisoire, à valider
+# Làmb — règles du jeu Dakar Rek
 
-**Statut : « Adaptation de jeu — provisoire, à valider ».** Rien dans ce document n’est une règle officielle de la lutte
-sénégalaise. Ce sont des choix de jeu faits pour qu’un combat soit jouable sur téléphone. Aucun terme ci-dessous ne doit
-être présenté comme officiel dans le jeu tant qu’un pratiquant (lutteur, entraîneur ou arbitre) ne l’a pas relu.
+**Ce sont les règles de notre jeu.** Décision de Habib (9 oct. 2026) : « C'est notre jeu, on crée nos règles. » Elles
+s'inspirent de la lutte sénégalaise sans en reprendre le règlement officiel, et n'ont pas besoin de validation extérieure.
+Elles évoluent avec le jeu.
 
 - Code : `src/lamb/rules.ts` (données et fonctions pures, testées dans `tests/lamb.test.ts`), `src/lamb/duel.ts` (combat).
-- Décision de Habib (6 oct.) : la forme visée est la **lutte avec frappe**. Les frappes ne sortent qu’après relecture des
-  règles écrites par un pratiquant. Seule la discipline **sans frappe** est donc jouable ; la configuration
-  `avec_frappe` existe déjà (désactivée, `enabled: false`) avec ses compteurs réservés, pour que les deux disciplines
-  aient des règles et des classements séparés.
-- Sources : aucune source écrite n’a encore été consultée ni validée pour ces nombres. **À fournir** : règlement du
-  CNG (Comité national de gestion de la lutte) pour la lutte avec et sans frappe, et l’avis d’au moins un pratiquant.
-  Tant que ce n’est pas fait, chaque valeur reste un choix de jeu.
+- Disciplines : la **lutte sans frappe** est jouable. La **lutte avec frappe** (forme visée, décision du 6 oct.) est la
+  prochaine discipline à construire ; sa configuration `avec_frappe` existe déjà (désactivée, `enabled: false`) avec ses
+  compteurs réservés, pour que les deux disciplines aient des règles et des classements séparés.
 
 ## 1. Discipline « sans frappe » (jouable)
 
@@ -100,20 +96,7 @@ l’arbitre → combat → arrêt ou résultat → récapitulatif et récompense
 attribué (classé) → contrôle de l’arbitre → combat → arrêt → récapitulatif. L’entrée et la préparation restent des
 actions séparées de l’arène.
 
-## 5. À faire valider par un pratiquant (liste exacte)
-
-1. Ce qui termine un combat sans frappe : la chute (quelles parties du corps au sol ?), sortie du cercle, autres cas.
-2. La durée d’un combat, le nombre de reprises, et ce qui se passe au temps : décision, nul, prolongation ?
-3. La décision aux points du § 3 : existe-t-il un équivalent réel ? Sinon, quel arbitrage serait juste ?
-4. Le rôle et les mots de l’arbitre au départ et à l’arrêt ; ce que le jeu affiche aujourd’hui (« Arbitre : prêts ? »,
-   « Làmb ! ») est un texte de jeu.
-5. Les gestes : garde, saisie, empoignade, dégagement, pas en arrière ; leurs noms en wolof et en français.
-6. L’abandon : comment il se dit et se compte réellement.
-7. Les trois styles d’adversaires : sont-ils crédibles ? Lesquels manquent ?
-8. Les règles de la lutte **avec frappe** (frappes autorisées, interdites, arrêt, sanctions) avant toute mise en jeu.
-9. Toute mention d’écurie, de classement ou de catégorie (poids, âge) à respecter.
-
-## 6. Duel synchronisé entre deux joueurs (hors périmètre, esquisse d’interface)
+## 5. Duel synchronisé entre deux joueurs (hors périmètre, esquisse d’interface)
 
 Le combat actuel est local. Un duel entre deux joueurs demande un **état de match côté serveur** (Durable Object du
 Worker `server/`), jamais décidé par un client :
@@ -137,7 +120,7 @@ Règles d’interface : deux places, phases horodatées par le serveur, délai d
 **déconnexion ou un abandon n’est pas une victoire sportive** (résultat `deconnexion`/`abandon`, compté à part) ; le
 résultat classé n’est écrit qu’une fois, de façon idempotente, par le serveur.
 
-## 7. Vérification
+## 6. Vérification
 
 - `npm test` : `tests/lamb.test.ts` (décision de l’arbitre, empoignade, fenêtre de dégagement, styles, niveaux,
   compteurs séparés amical/classé, abandon compté à part, récompenses sans argent, profil de l’app Arène).

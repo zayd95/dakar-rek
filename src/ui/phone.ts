@@ -266,7 +266,7 @@ export class Phone {
     ];
     return `<div class="ph-rows">${rows.map(r => `<div><span>${esc(r.label)}</span><em>${esc(r.value)}</em></div>`).join('')}</div>
       ${d.flags.includes('ecurie_baobab') ? '' : '<p class="ph-note">Pour rejoindre une écurie, va voir Coach Ablaye à l’écurie Baobab, à Pikine.</p>'}
-      <p class="ph-note warn">Lutte sans frappe : règles provisoires, à valider par des lutteurs.</p>`;
+      <p class="ph-note">Lutte sans frappe : règles Dakar Rek. La lutte avec frappe arrive ensuite.</p>`;
   }
 
   private bind() {

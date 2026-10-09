@@ -4,9 +4,13 @@
 
 ## Decided
 - Name: **Dakar Rek**. Design doc: "Dakar Rek — Game Design Document" (Claude Docs).
-- First combat form: **lutte avec frappe** (Habib, 6 Oct). Strikes ship only after the written rules are reviewed by a wrestling practitioner. No hybrid.
+- First combat form: **lutte avec frappe** (Habib, 6 Oct); it is the next discipline to build. No hybrid.
+- **Our game, our rules** (Habib, 9 Oct): the làmb rules are the game's own (`docs/LAMB_RULES.md`); no outside validation.
+- **Language** (Habib, 9 Oct): French with Wolof; Wolof expressions may be written directly. No Pulaar, Sérère or Diola for now.
+- **Economy** (Habib, 9 Oct): fully virtual and uncapped — a player can reach billions through work; doing many different activities must pay off.
+- **Chat** (Habib, 9 Oct): free — players talk as they want; no reporting or moderation review. Personal mute and block stay.
 - Free plans/tiers only, except Higgsfield: Habib authorised up to the 100 available credits (3-day validity from 6–7 Oct, no purchases).
-- All cultural content (dances, gestures, rhythms, ngemb, accessories, interiors' furnishing) stays marked Unreviewed until Habib + practitioners review it.
+- Cultural content (dances, gestures, rhythms, ngemb, accessories, interiors) is the game's own creation; it improves with the art passes, without an outside review step.
 
 ## Done in the visual pass
 - Rendering: ACES, sky dome (`src/world/sky.ts`), horizon fog, warmer sun/moon; grain + world-space procedural textures (`src/world/grain.ts`, `src/world/textures.ts`); Higgsfield detail maps with shader relief (bump from the map's brightness, depth per material; batch 3 remastered with `scripts/tex/remaster.py`); partial night windows; lamp light pools.

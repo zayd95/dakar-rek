@@ -61,7 +61,7 @@ const shot = (page, name) => page.screenshot({ path: `${out}/${name}.jpg`, quali
   await wait(page, () => document.querySelector('#modal.on'), null, 10000);
   const menu = await page.evaluate(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent));
   await shot(page, 'desktop-arena-menu');
-  check('menu: arena offers friendly and ranked bouts with provisional rules', menu.some(t => /Combat amical/.test(t) && /provisoires/.test(t)) && menu.some(t => /Combat classé/.test(t) && /Termine d’abord l’entraînement/.test(t)), menu.filter(t => /Combat/.test(t)).join(' | '));
+  check('menu: arena offers friendly and ranked bouts', menu.some(t => /Combat amical/.test(t) && /Lutte sans frappe/.test(t)) && menu.some(t => /Combat classé/.test(t) && /Termine d’abord l’entraînement/.test(t)), menu.filter(t => /Combat/.test(t)).join(' | '));
   await page.keyboard.press('Escape');
 
   // 1. guided training with Coach Ablaye at the écurie
