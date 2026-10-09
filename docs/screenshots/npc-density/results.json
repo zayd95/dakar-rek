@@ -1,6 +1,6 @@
 {
   "base": "http://localhost:4216/",
-  "checkedAt": "2026-10-09T08:49:10.116Z",
+  "checkedAt": "2026-10-09T19:51:31.642Z",
   "results": [
     {
       "name": "desktop pikine-gargote 7h: seat and place invariants hold",
@@ -10,7 +10,7 @@
     {
       "name": "desktop pikine-gargote 7h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "5/20 full · 12 figures · 153 draw calls"
+      "detail": "5/20 full · 11 figures · 138 draw calls"
     },
     {
       "name": "desktop pikine-gargote 7h: nobody has lunch at 7 h; the café serves breakfast instead",
@@ -25,7 +25,7 @@
     {
       "name": "desktop pikine-gargote 13h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "7/20 full · 14 figures · 161 draw calls"
+      "detail": "8/20 full · 13 figures · 172 draw calls"
     },
     {
       "name": "desktop pikine-gargote 13h: people eat seated at the gargote at lunch",
@@ -40,7 +40,7 @@
     {
       "name": "desktop pikine-gargote 19h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "4/20 full · 11 figures · 137 draw calls"
+      "detail": "5/20 full · 9 figures · 137 draw calls"
     },
     {
       "name": "desktop pikine-gargote 23h: seat and place invariants hold",
@@ -50,7 +50,7 @@
     {
       "name": "desktop pikine-gargote 23h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "3/20 full · 9 figures · 113 draw calls"
+      "detail": "4/20 full · 8 figures · 127 draw calls"
     },
     {
       "name": "desktop pikine-gargote 23h: the gargote is closed at 23 h",
@@ -65,7 +65,7 @@
     {
       "name": "desktop pikine-grand-place 7h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "5/20 full · 18 figures · 119 draw calls"
+      "detail": "4/20 full · 26 figures · 133 draw calls"
     },
     {
       "name": "desktop pikine-grand-place 13h: seat and place invariants hold",
@@ -75,7 +75,7 @@
     {
       "name": "desktop pikine-grand-place 13h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "7/20 full · 18 figures · 139 draw calls"
+      "detail": "6/20 full · 22 figures · 151 draw calls"
     },
     {
       "name": "desktop pikine-grand-place 13h: the grand-place is quieter at 13 h than at 19 h",
@@ -90,7 +90,7 @@
     {
       "name": "desktop pikine-grand-place 19h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "12/20 full · 21 figures · 182 draw calls"
+      "detail": "11/20 full · 25 figures · 190 draw calls"
     },
     {
       "name": "desktop pikine-grand-place 19h: attaya circle and benches on the grand-place in the evening",
@@ -105,7 +105,7 @@
     {
       "name": "desktop pikine-grand-place 23h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "10/20 full · 13 figures · 162 draw calls"
+      "detail": "8/20 full · 16 figures · 160 draw calls"
     },
     {
       "name": "desktop plateau-gare-sandaga 7h: seat and place invariants hold",
@@ -115,7 +115,7 @@
     {
       "name": "desktop plateau-gare-sandaga 7h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "11/20 full · 24 figures · 157 draw calls"
+      "detail": "16/20 full · 35 figures · 164 draw calls"
     },
     {
       "name": "desktop plateau-gare-sandaga 7h: people wait for the car rapide at 7 h",
@@ -135,7 +135,7 @@
     {
       "name": "desktop plateau-gare-sandaga 13h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "11/20 full · 35 figures · 150 draw calls"
+      "detail": "18/20 full · 33 figures · 156 draw calls"
     },
     {
       "name": "desktop plateau-gare-sandaga 13h: shoppers at Sandaga at 13 h",
@@ -150,7 +150,7 @@
     {
       "name": "desktop plateau-gare-sandaga 19h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "12/20 full · 21 figures · 176 draw calls"
+      "detail": "18/20 full · 29 figures · 169 draw calls"
     },
     {
       "name": "desktop plateau-gare-sandaga 23h: seat and place invariants hold",
@@ -160,7 +160,7 @@
     {
       "name": "desktop plateau-gare-sandaga 23h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "7/20 full · 10 figures · 119 draw calls"
+      "detail": "10/20 full · 14 figures · 129 draw calls"
     },
     {
       "name": "desktop plateau-gare-sandaga 23h: the market is empty at 23 h",
@@ -175,7 +175,7 @@
     {
       "name": "desktop plateau-mosquee 7h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "4/20 full · 9 figures · 76 draw calls"
+      "detail": "6/20 full · 20 figures · 103 draw calls"
     },
     {
       "name": "desktop plateau-mosquee 13h: seat and place invariants hold",
@@ -185,12 +185,12 @@
     {
       "name": "desktop plateau-mosquee 13h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "4/20 full · 10 figures · 69 draw calls"
+      "detail": "5/20 full · 20 figures · 107 draw calls"
     },
     {
       "name": "desktop plateau-mosquee 13h: no prayer rows outside prayer time (13 h)",
       "ok": true,
-      "detail": "{}"
+      "detail": "{\"attendre-car\":3}"
     },
     {
       "name": "desktop plateau-mosquee 19h: seat and place invariants hold",
@@ -200,12 +200,12 @@
     {
       "name": "desktop plateau-mosquee 19h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "12/20 full · 11 figures · 162 draw calls"
+      "detail": "14/20 full · 21 figures · 189 draw calls"
     },
     {
-      "name": "desktop plateau-mosquee 19h: rows at the mosque at Timis (presence and posture)",
+      "name": "desktop plateau-mosquee 19h: rows on the mosque forecourt at Timis (presence and posture)",
       "ok": true,
-      "detail": "{\"priere\":9}"
+      "detail": "{\"attendre-car\":3,\"priere-cour\":7}"
     },
     {
       "name": "desktop plateau-mosquee 23h: seat and place invariants hold",
@@ -215,7 +215,7 @@
     {
       "name": "desktop plateau-mosquee 23h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "4/20 full · 7 figures · 84 draw calls"
+      "detail": "3/20 full · 12 figures · 97 draw calls"
     },
     {
       "name": "desktop corniche-promenade 7h: seat and place invariants hold",
@@ -225,7 +225,7 @@
     {
       "name": "desktop corniche-promenade 7h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "8/20 full · 23 figures · 85 draw calls"
+      "detail": "5/20 full · 23 figures · 76 draw calls"
     },
     {
       "name": "desktop corniche-promenade 7h: joggers on the Corniche at 7 h",
@@ -240,7 +240,7 @@
     {
       "name": "desktop corniche-promenade 13h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "5/20 full · 14 figures · 76 draw calls"
+      "detail": "2/20 full · 14 figures · 66 draw calls"
     },
     {
       "name": "desktop corniche-promenade 13h: nobody jogs at 13 h",
@@ -255,7 +255,7 @@
     {
       "name": "desktop corniche-promenade 19h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "14/20 full · 27 figures · 84 draw calls"
+      "detail": "12/20 full · 27 figures · 95 draw calls"
     },
     {
       "name": "desktop corniche-promenade 19h: joggers and walkers on the Corniche at 19 h",
@@ -270,7 +270,7 @@
     {
       "name": "desktop corniche-promenade 23h: animated humanoids within the medium budget",
       "ok": true,
-      "detail": "5/20 full · 9 figures · 69 draw calls"
+      "detail": "4/20 full · 9 figures · 65 draw calls"
     },
     {
       "name": "desktop corniche-promenade 23h: the promenade is empty at 23 h",
@@ -280,17 +280,17 @@
     {
       "name": "desktop: the grand-place is busier at 19 h than at 13 h",
       "ok": true,
-      "detail": "19 → 22"
+      "detail": "20 → 25"
     },
     {
       "name": "desktop: fewer people late at night (Pikine, 23 h vs 19 h)",
       "ok": true,
-      "detail": "22 → 12"
+      "detail": "25 → 12"
     },
     {
       "name": "desktop: Friday 14 h, the rows of the mosque are full (presence only)",
       "ok": true,
-      "detail": "30 in rows"
+      "detail": "26 in rows"
     },
     {
       "name": "desktop: people praying are not offered a conversation",
@@ -300,22 +300,22 @@
     {
       "name": "desktop: the player sits on a free gargote bench",
       "ok": true,
-      "detail": "pikine:gargote:32:amb:bench0r"
+      "detail": "pikine:gargote:32:amb:bench0l"
     },
     {
       "name": "desktop: nobody takes the player's seat",
       "ok": true,
-      "detail": "{\"mine\":\"player\",\"free\":2,\"npc\":3,\"seated\":\"pikine:gargote:32:amb:bench0r\"}"
+      "detail": "{\"mine\":\"player\",\"free\":2,\"npc\":3,\"seated\":\"pikine:gargote:32:amb:bench0l\"}"
     },
     {
       "name": "desktop: the gargote keeps free seats while the player eats there",
       "ok": true,
-      "detail": "{\"mine\":\"player\",\"free\":2,\"npc\":3,\"seated\":\"pikine:gargote:32:amb:bench0r\"}"
+      "detail": "{\"mine\":\"player\",\"free\":2,\"npc\":3,\"seated\":\"pikine:gargote:32:amb:bench0l\"}"
     },
     {
       "name": "desktop: an ambient person offers « Saluer » and « Demander son nom »",
       "ok": true,
-      "detail": "{\"id\":\"person:amb:3\",\"name\":\"Passant\",\"kind\":\"person\",\"space\":\"street\",\"primary\":\"Saluer\",\"all\":[\"Saluer\",\"Demander son nom\"]}"
+      "detail": "{\"id\":\"person:amb:5\",\"name\":\"Passant\",\"kind\":\"person\",\"space\":\"street\",\"primary\":\"Saluer\",\"all\":[\"Saluer\",\"Demander son nom\"]}"
     },
     {
       "name": "desktop: the greeting gets an answer",
@@ -355,7 +355,7 @@
     {
       "name": "phone pikine-gargote 7h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "3/12 full · 5 figures · 95 draw calls"
+      "detail": "4/12 full · 4 figures · 114 draw calls"
     },
     {
       "name": "phone pikine-gargote 7h: nobody has lunch at 7 h; the café serves breakfast instead",
@@ -370,7 +370,7 @@
     {
       "name": "phone pikine-gargote 13h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "4/12 full · 8 figures · 98 draw calls"
+      "detail": "6/12 full · 4 figures · 125 draw calls"
     },
     {
       "name": "phone pikine-gargote 13h: people eat seated at the gargote at lunch",
@@ -385,7 +385,7 @@
     {
       "name": "phone pikine-gargote 19h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "1/12 full · 6 figures · 67 draw calls"
+      "detail": "2/12 full · 5 figures · 95 draw calls"
     },
     {
       "name": "phone pikine-gargote 23h: seat and place invariants hold",
@@ -395,7 +395,7 @@
     {
       "name": "phone pikine-gargote 23h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "1/12 full · 3 figures · 67 draw calls"
+      "detail": "2/12 full · 3 figures · 83 draw calls"
     },
     {
       "name": "phone pikine-gargote 23h: the gargote is closed at 23 h",
@@ -410,7 +410,7 @@
     {
       "name": "phone pikine-grand-place 7h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "2/12 full · 5 figures · 72 draw calls"
+      "detail": "3/12 full · 12 figures · 74 draw calls"
     },
     {
       "name": "phone pikine-grand-place 13h: seat and place invariants hold",
@@ -420,7 +420,7 @@
     {
       "name": "phone pikine-grand-place 13h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "4/12 full · 6 figures · 93 draw calls"
+      "detail": "4/12 full · 9 figures · 94 draw calls"
     },
     {
       "name": "phone pikine-grand-place 13h: the grand-place is quieter at 13 h than at 19 h",
@@ -435,12 +435,12 @@
     {
       "name": "phone pikine-grand-place 19h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "6/12 full · 9 figures · 94 draw calls"
+      "detail": "9/12 full · 11 figures · 95 draw calls"
     },
     {
       "name": "phone pikine-grand-place 19h: attaya circle and benches on the grand-place in the evening",
       "ok": true,
-      "detail": "{\"banc\":1,\"attaya\":2,\"dames\":2}"
+      "detail": "{\"attaya\":2,\"banc\":1,\"dames\":2}"
     },
     {
       "name": "phone pikine-grand-place 23h: seat and place invariants hold",
@@ -450,7 +450,7 @@
     {
       "name": "phone pikine-grand-place 23h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "5/12 full · 8 figures · 83 draw calls"
+      "detail": "4/12 full · 8 figures · 85 draw calls"
     },
     {
       "name": "phone plateau-gare-sandaga 7h: seat and place invariants hold",
@@ -460,7 +460,7 @@
     {
       "name": "phone plateau-gare-sandaga 7h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "2/12 full · 17 figures · 75 draw calls"
+      "detail": "6/12 full · 24 figures · 108 draw calls"
     },
     {
       "name": "phone plateau-gare-sandaga 7h: people wait for the car rapide at 7 h",
@@ -480,7 +480,7 @@
     {
       "name": "phone plateau-gare-sandaga 13h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "4/12 full · 18 figures · 86 draw calls"
+      "detail": "7/12 full · 19 figures · 85 draw calls"
     },
     {
       "name": "phone plateau-gare-sandaga 13h: shoppers at Sandaga at 13 h",
@@ -495,7 +495,7 @@
     {
       "name": "phone plateau-gare-sandaga 19h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "6/12 full · 10 figures · 105 draw calls"
+      "detail": "7/12 full · 15 figures · 77 draw calls"
     },
     {
       "name": "phone plateau-gare-sandaga 23h: seat and place invariants hold",
@@ -505,7 +505,7 @@
     {
       "name": "phone plateau-gare-sandaga 23h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "2/12 full · 5 figures · 63 draw calls"
+      "detail": "3/12 full · 6 figures · 66 draw calls"
     },
     {
       "name": "phone plateau-gare-sandaga 23h: the market is empty at 23 h",
@@ -520,7 +520,7 @@
     {
       "name": "phone plateau-mosquee 7h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "0/12 full · 3 figures · 46 draw calls"
+      "detail": "2/12 full · 13 figures · 73 draw calls"
     },
     {
       "name": "phone plateau-mosquee 13h: seat and place invariants hold",
@@ -530,12 +530,12 @@
     {
       "name": "phone plateau-mosquee 13h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "1/12 full · 6 figures · 46 draw calls"
+      "detail": "2/12 full · 13 figures · 72 draw calls"
     },
     {
       "name": "phone plateau-mosquee 13h: no prayer rows outside prayer time (13 h)",
       "ok": true,
-      "detail": "{}"
+      "detail": "{\"attendre-car\":2,\"attendre-assis\":1}"
     },
     {
       "name": "phone plateau-mosquee 19h: seat and place invariants hold",
@@ -545,12 +545,12 @@
     {
       "name": "phone plateau-mosquee 19h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "6/12 full · 7 figures · 111 draw calls"
+      "detail": "8/12 full · 15 figures · 120 draw calls"
     },
     {
-      "name": "phone plateau-mosquee 19h: rows at the mosque at Timis (presence and posture)",
+      "name": "phone plateau-mosquee 19h: rows on the mosque forecourt at Timis (presence and posture)",
       "ok": true,
-      "detail": "{\"priere\":6}"
+      "detail": "{\"attendre-car\":2,\"attendre-assis\":1,\"priere-cour\":5}"
     },
     {
       "name": "phone plateau-mosquee 23h: seat and place invariants hold",
@@ -560,7 +560,7 @@
     {
       "name": "phone plateau-mosquee 23h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "1/12 full · 2 figures · 47 draw calls"
+      "detail": "0/12 full · 6 figures · 59 draw calls"
     },
     {
       "name": "phone corniche-promenade 7h: seat and place invariants hold",
@@ -570,7 +570,7 @@
     {
       "name": "phone corniche-promenade 7h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "6/12 full · 8 figures · 73 draw calls"
+      "detail": "3/12 full · 11 figures · 53 draw calls"
     },
     {
       "name": "phone corniche-promenade 7h: joggers on the Corniche at 7 h",
@@ -585,7 +585,7 @@
     {
       "name": "phone corniche-promenade 13h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "2/12 full · 3 figures · 63 draw calls"
+      "detail": "1/12 full · 4 figures · 53 draw calls"
     },
     {
       "name": "phone corniche-promenade 13h: nobody jogs at 13 h",
@@ -600,7 +600,7 @@
     {
       "name": "phone corniche-promenade 19h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "9/12 full · 14 figures · 94 draw calls"
+      "detail": "8/12 full · 15 figures · 84 draw calls"
     },
     {
       "name": "phone corniche-promenade 19h: joggers and walkers on the Corniche at 19 h",
@@ -615,7 +615,7 @@
     {
       "name": "phone corniche-promenade 23h: animated humanoids within the low budget",
       "ok": true,
-      "detail": "4/12 full · 4 figures · 64 draw calls"
+      "detail": "4/12 full · 5 figures · 64 draw calls"
     },
     {
       "name": "phone corniche-promenade 23h: the promenade is empty at 23 h",
@@ -625,17 +625,17 @@
     {
       "name": "phone: the grand-place is busier at 19 h than at 13 h",
       "ok": true,
-      "detail": "10 → 12"
+      "detail": "12 → 14"
     },
     {
       "name": "phone: fewer people late at night (Pikine, 23 h vs 19 h)",
       "ok": true,
-      "detail": "12 → 9"
+      "detail": "14 → 9"
     },
     {
       "name": "phone: Friday 14 h, the rows of the mosque are full (presence only)",
       "ok": true,
-      "detail": "21 in rows"
+      "detail": "19 in rows"
     },
     {
       "name": "phone: people praying are not offered a conversation",
@@ -645,27 +645,22 @@
     {
       "name": "phone: the player sits on a free gargote bench",
       "ok": true,
-      "detail": "pikine:gargote:32:amb:bench0l"
+      "detail": "pikine:gargote:32:amb:bench1r"
     },
     {
       "name": "phone: nobody takes the player's seat",
       "ok": true,
-      "detail": "{\"mine\":\"player\",\"free\":3,\"npc\":2,\"seated\":\"pikine:gargote:32:amb:bench0l\"}"
+      "detail": "{\"mine\":\"player\",\"free\":2,\"npc\":3,\"seated\":\"pikine:gargote:32:amb:bench1r\"}"
     },
     {
       "name": "phone: the gargote keeps free seats while the player eats there",
       "ok": true,
-      "detail": "{\"mine\":\"player\",\"free\":3,\"npc\":2,\"seated\":\"pikine:gargote:32:amb:bench0l\"}"
+      "detail": "{\"mine\":\"player\",\"free\":2,\"npc\":3,\"seated\":\"pikine:gargote:32:amb:bench1r\"}"
     },
     {
       "name": "phone: an ambient person offers « Saluer » and « Demander son nom »",
-      "ok": true,
-      "detail": "{\"id\":\"person:amb:3\",\"name\":\"Passant\",\"kind\":\"person\",\"space\":\"street\",\"primary\":\"Saluer\",\"all\":[\"Saluer\",\"Demander son nom\"]}"
-    },
-    {
-      "name": "phone: the greeting gets an answer",
-      "ok": true,
-      "detail": ""
+      "ok": false,
+      "detail": "null"
     },
     {
       "name": "phone: a Dibi registered by another lane gets its evening customers",
@@ -698,61 +693,61 @@
       "label": "desktop",
       "view": "pikine-gargote",
       "hour": 7,
-      "live": 12,
+      "live": 16,
       "byTag": {
         "eat": 3,
         "kiosk": 3,
         "corner": 5,
         "maiga": 1,
-        "stop": 4
+        "stop": 8
       },
       "full": 5,
       "fullAmbient": 3,
       "fullOther": 2,
-      "figures": 12,
+      "figures": 11,
       "budget": 20,
-      "drawCalls": 153
+      "drawCalls": 138
     },
     {
       "label": "desktop",
       "view": "pikine-gargote",
       "hour": 13,
-      "live": 16,
+      "live": 18,
       "byTag": {
         "eat": 5,
         "kiosk": 5,
         "corner": 8,
+        "stop": 4,
         "maiga": 1,
-        "attaya": 1,
-        "stop": 2
+        "attaya": 1
       },
-      "full": 7,
+      "full": 8,
       "fullAmbient": 5,
-      "fullOther": 2,
-      "figures": 14,
+      "fullOther": 3,
+      "figures": 13,
       "budget": 20,
-      "drawCalls": 161
+      "drawCalls": 172
     },
     {
       "label": "desktop",
       "view": "pikine-gargote",
       "hour": 19,
-      "live": 15,
+      "live": 18,
       "byTag": {
         "corner": 6,
-        "stop": 3,
-        "square": 1,
-        "bench": 1,
+        "stop": 6,
         "eat": 2,
         "kiosk": 2,
         "maiga": 1,
         "attaya": 1,
+        "square": 1,
+        "bench": 1,
         "dames": 2
       },
-      "full": 4,
+      "full": 5,
       "fullAmbient": 2,
-      "fullOther": 2,
-      "figures": 11,
+      "fullOther": 3,
+      "figures": 9,
       "budget": 20,
       "drawCalls": 137
     },
@@ -766,78 +761,75 @@
         "stop": 1,
         "attaya": 1
       },
-      "full": 3,
+      "full": 4,
       "fullAmbient": 1,
-      "fullOther": 2,
-      "figures": 9,
+      "fullOther": 3,
+      "figures": 8,
       "budget": 20,
-      "drawCalls": 113
+      "drawCalls": 127
     },
     {
       "label": "desktop",
       "view": "pikine-grand-place",
       "hour": 7,
-      "live": 15,
+      "live": 21,
       "byTag": {
-        "stop": 8,
+        "stop": 14,
         "corner": 5,
         "cafe": 1,
         "eat": 2,
         "kiosk": 2
       },
-      "full": 5,
+      "full": 4,
       "fullAmbient": 0,
-      "fullOther": 5,
-      "figures": 18,
+      "fullOther": 4,
+      "figures": 26,
       "budget": 20,
-      "drawCalls": 119
+      "drawCalls": 133
     },
     {
       "label": "desktop",
       "view": "pikine-grand-place",
       "hour": 13,
-      "live": 19,
+      "live": 20,
       "byTag": {
         "attaya": 2,
-        "stop": 4,
-        "shop": 2,
-        "salon": 2,
+        "stop": 7,
         "corner": 7,
         "cafe": 1,
         "eat": 4,
         "kiosk": 4
       },
-      "full": 7,
+      "full": 6,
       "fullAmbient": 2,
-      "fullOther": 5,
-      "figures": 18,
+      "fullOther": 4,
+      "figures": 22,
       "budget": 20,
-      "drawCalls": 139
+      "drawCalls": 151
     },
     {
       "label": "desktop",
       "view": "pikine-grand-place",
       "hour": 19,
-      "live": 22,
+      "live": 25,
       "byTag": {
         "attaya": 3,
-        "stop": 6,
-        "shop": 3,
-        "salon": 2,
+        "stop": 11,
         "square": 2,
         "bench": 4,
         "corner": 2,
         "dames": 3,
+        "shop": 1,
         "cafe": 1,
         "eat": 1,
         "kiosk": 1
       },
-      "full": 12,
+      "full": 11,
       "fullAmbient": 6,
-      "fullOther": 6,
-      "figures": 21,
+      "fullOther": 5,
+      "figures": 25,
       "budget": 20,
-      "drawCalls": 182
+      "drawCalls": 190
     },
     {
       "label": "desktop",
@@ -847,24 +839,24 @@
       "byTag": {
         "square": 2,
         "bench": 3,
-        "attaya": 2,
         "corner": 6,
+        "attaya": 2,
         "stop": 1
       },
-      "full": 10,
-      "fullAmbient": 4,
-      "fullOther": 6,
-      "figures": 13,
+      "full": 8,
+      "fullAmbient": 3,
+      "fullOther": 5,
+      "figures": 16,
       "budget": 20,
-      "drawCalls": 162
+      "drawCalls": 160
     },
     {
       "label": "desktop",
       "view": "plateau-gare-sandaga",
       "hour": 7,
-      "live": 24,
+      "live": 38,
       "byTag": {
-        "stop": 7,
+        "stop": 21,
         "eat": 4,
         "kiosk": 4,
         "stall": 3,
@@ -872,225 +864,229 @@
         "corner": 7,
         "cafe": 2
       },
-      "full": 11,
+      "full": 16,
       "fullAmbient": 10,
-      "fullOther": 1,
-      "figures": 24,
+      "fullOther": 6,
+      "figures": 35,
       "budget": 20,
-      "drawCalls": 157
+      "drawCalls": 164
     },
     {
       "label": "desktop",
       "view": "plateau-gare-sandaga",
       "hour": 13,
-      "live": 36,
+      "live": 37,
       "byTag": {
-        "stop": 5,
+        "stop": 12,
         "eat": 6,
         "kiosk": 6,
         "stall": 5,
         "market": 6,
-        "corner": 8,
+        "corner": 4,
         "cafe": 4,
         "dibi": 1,
         "attaya": 1,
-        "shop": 2,
-        "bank": 2,
-        "salon": 1
+        "shop": 1,
+        "bank": 1
       },
-      "full": 11,
-      "fullAmbient": 9,
-      "fullOther": 2,
-      "figures": 35,
+      "full": 18,
+      "fullAmbient": 10,
+      "fullOther": 8,
+      "figures": 33,
       "budget": 20,
-      "drawCalls": 150
+      "drawCalls": 156
     },
     {
       "label": "desktop",
       "view": "plateau-gare-sandaga",
       "hour": 19,
-      "live": 33,
+      "live": 36,
       "byTag": {
-        "stop": 7,
+        "stop": 18,
         "eat": 1,
         "kiosk": 1,
         "stall": 4,
-        "dibi": 3,
-        "corner": 8,
+        "dibi": 2,
+        "corner": 4,
+        "bench": 1,
         "attaya": 2,
-        "mosque": 4,
-        "dames": 2,
-        "square": 1,
-        "bench": 2
+        "mosque-yard": 4
       },
-      "full": 12,
+      "full": 18,
       "fullAmbient": 10,
-      "fullOther": 2,
-      "figures": 21,
+      "fullOther": 8,
+      "figures": 29,
       "budget": 20,
-      "drawCalls": 176
+      "drawCalls": 169
     },
     {
       "label": "desktop",
       "view": "plateau-gare-sandaga",
       "hour": 23,
-      "live": 12,
+      "live": 13,
       "byTag": {
         "corner": 6,
         "square": 1,
         "bench": 2,
-        "stop": 1,
+        "stop": 2,
         "dibi": 2,
         "attaya": 1
       },
-      "full": 7,
+      "full": 10,
       "fullAmbient": 4,
-      "fullOther": 3,
-      "figures": 10,
+      "fullOther": 6,
+      "figures": 14,
       "budget": 20,
-      "drawCalls": 119
+      "drawCalls": 129
     },
     {
       "label": "desktop",
       "view": "plateau-mosquee",
       "hour": 7,
-      "live": 16,
+      "live": 27,
       "byTag": {
+        "stop": 14,
         "corner": 9,
         "stall": 1,
-        "stop": 3,
         "market": 2,
         "eat": 1,
         "kiosk": 1
       },
-      "full": 4,
-      "fullAmbient": 2,
-      "fullOther": 2,
-      "figures": 9,
+      "full": 6,
+      "fullAmbient": 3,
+      "fullOther": 3,
+      "figures": 20,
       "budget": 20,
-      "drawCalls": 76
+      "drawCalls": 103
     },
     {
       "label": "desktop",
       "view": "plateau-mosquee",
       "hour": 13,
-      "live": 21,
+      "live": 27,
       "byTag": {
+        "stop": 9,
         "corner": 8,
         "stall": 2,
-        "stop": 3,
         "market": 3,
         "dibi": 1,
         "eat": 2,
         "kiosk": 2,
         "bank": 2
       },
-      "full": 4,
-      "fullAmbient": 2,
+      "full": 5,
+      "fullAmbient": 3,
       "fullOther": 2,
-      "figures": 10,
+      "figures": 20,
       "budget": 20,
-      "drawCalls": 69
+      "drawCalls": 107
     },
     {
       "label": "desktop",
       "view": "plateau-mosquee",
       "hour": 19,
-      "live": 28,
+      "live": 36,
       "byTag": {
+        "stop": 13,
         "corner": 10,
         "stall": 2,
-        "stop": 3,
-        "mosque": 9,
+        "mosque-yard": 7,
         "eat": 1,
         "kiosk": 1,
-        "dibi": 3
+        "dibi": 2,
+        "bench": 1
       },
-      "full": 12,
-      "fullAmbient": 10,
-      "fullOther": 2,
-      "figures": 11,
+      "full": 14,
+      "fullAmbient": 9,
+      "fullOther": 5,
+      "figures": 21,
       "budget": 20,
-      "drawCalls": 162
+      "drawCalls": 189
     },
     {
       "label": "desktop",
       "view": "plateau-mosquee",
       "hour": 23,
-      "live": 14,
+      "live": 16,
       "byTag": {
+        "bench": 1,
         "corner": 12,
         "stop": 1,
-        "dibi": 1
+        "dibi": 2
       },
-      "full": 4,
-      "fullAmbient": 2,
-      "fullOther": 2,
-      "figures": 7,
+      "full": 3,
+      "fullAmbient": 3,
+      "fullOther": 0,
+      "figures": 12,
       "budget": 20,
-      "drawCalls": 84
+      "drawCalls": 97
     },
     {
       "label": "desktop",
       "view": "corniche-promenade",
       "hour": 7,
-      "live": 24,
+      "live": 29,
       "byTag": {
-        "corner": 7,
+        "corner": 6,
         "promenade": 10,
         "gym": 3,
+        "stop": 4,
         "cafe": 1,
         "eat": 1,
         "kiosk": 1,
-        "landing": 2,
-        "fishmarket": 1
-      },
-      "full": 8,
-      "fullAmbient": 5,
-      "fullOther": 3,
-      "figures": 23,
-      "budget": 20,
-      "drawCalls": 85
-    },
-    {
-      "label": "desktop",
-      "view": "corniche-promenade",
-      "hour": 13,
-      "live": 11,
-      "byTag": {
-        "corner": 7,
-        "cafe": 2,
-        "eat": 2,
-        "kiosk": 2,
-        "shop": 1,
-        "landing": 1
+        "landing": 5,
+        "fishmarket": 3
       },
       "full": 5,
-      "fullAmbient": 2,
-      "fullOther": 3,
-      "figures": 14,
+      "fullAmbient": 4,
+      "fullOther": 1,
+      "figures": 23,
       "budget": 20,
       "drawCalls": 76
     },
     {
       "label": "desktop",
       "view": "corniche-promenade",
+      "hour": 13,
+      "live": 13,
+      "byTag": {
+        "corner": 6,
+        "cafe": 2,
+        "eat": 2,
+        "kiosk": 2,
+        "shop": 1,
+        "landing": 2,
+        "fishmarket": 1,
+        "stop": 2
+      },
+      "full": 2,
+      "fullAmbient": 2,
+      "fullOther": 0,
+      "figures": 14,
+      "budget": 20,
+      "drawCalls": 66
+    },
+    {
+      "label": "desktop",
+      "view": "corniche-promenade",
       "hour": 19,
-      "live": 36,
+      "live": 38,
       "byTag": {
         "promenade": 17,
         "corner": 5,
+        "stop": 3,
         "gym": 3,
         "pitch": 7,
-        "fishmarket": 3,
+        "landing": 2,
+        "fishmarket": 2,
         "bench": 1
       },
-      "full": 14,
-      "fullAmbient": 9,
-      "fullOther": 5,
+      "full": 12,
+      "fullAmbient": 10,
+      "fullOther": 2,
       "figures": 27,
       "budget": 20,
-      "drawCalls": 84
+      "drawCalls": 95
     },
     {
       "label": "desktop",
@@ -1100,27 +1096,65 @@
       "byTag": {
         "corner": 8
       },
-      "full": 5,
+      "full": 4,
       "fullAmbient": 2,
-      "fullOther": 3,
+      "fullOther": 2,
       "figures": 9,
       "budget": 20,
-      "drawCalls": 69
+      "drawCalls": 65
     },
     {
       "label": "phone",
       "view": "pikine-gargote",
       "hour": 7,
-      "live": 8,
+      "live": 12,
       "byTag": {
         "eat": 2,
         "kiosk": 2,
-        "corner": 3,
-        "stop": 3
+        "stop": 7,
+        "corner": 3
       },
-      "full": 3,
+      "full": 4,
       "fullAmbient": 2,
-      "fullOther": 1,
+      "fullOther": 2,
+      "figures": 4,
+      "budget": 12,
+      "drawCalls": 114
+    },
+    {
+      "label": "phone",
+      "view": "pikine-gargote",
+      "hour": 13,
+      "live": 13,
+      "byTag": {
+        "eat": 3,
+        "kiosk": 3,
+        "corner": 5,
+        "attaya": 1,
+        "stop": 4
+      },
+      "full": 6,
+      "fullAmbient": 4,
+      "fullOther": 2,
+      "figures": 4,
+      "budget": 12,
+      "drawCalls": 125
+    },
+    {
+      "label": "phone",
+      "view": "pikine-gargote",
+      "hour": 19,
+      "live": 8,
+      "byTag": {
+        "stop": 3,
+        "square": 1,
+        "bench": 1,
+        "corner": 3,
+        "attaya": 1
+      },
+      "full": 2,
+      "fullAmbient": 0,
+      "fullOther": 2,
       "figures": 5,
       "budget": 12,
       "drawCalls": 95
@@ -1128,111 +1162,50 @@
     {
       "label": "phone",
       "view": "pikine-gargote",
-      "hour": 13,
-      "live": 11,
-      "byTag": {
-        "eat": 3,
-        "kiosk": 3,
-        "corner": 5,
-        "stop": 2,
-        "attaya": 1
-      },
-      "full": 4,
-      "fullAmbient": 3,
-      "fullOther": 1,
-      "figures": 8,
-      "budget": 12,
-      "drawCalls": 98
-    },
-    {
-      "label": "phone",
-      "view": "pikine-gargote",
-      "hour": 19,
-      "live": 6,
-      "byTag": {
-        "square": 1,
-        "bench": 1,
-        "corner": 3,
-        "stop": 1,
-        "attaya": 1
-      },
-      "full": 1,
-      "fullAmbient": 0,
-      "fullOther": 1,
-      "figures": 6,
-      "budget": 12,
-      "drawCalls": 67
-    },
-    {
-      "label": "phone",
-      "view": "pikine-gargote",
       "hour": 23,
       "live": 5,
       "byTag": {
         "corner": 3,
-        "stop": 1,
-        "attaya": 1
+        "attaya": 1,
+        "stop": 1
       },
-      "full": 1,
+      "full": 2,
       "fullAmbient": 0,
-      "fullOther": 1,
+      "fullOther": 2,
       "figures": 3,
       "budget": 12,
-      "drawCalls": 67
+      "drawCalls": 83
     },
     {
       "label": "phone",
       "view": "pikine-grand-place",
       "hour": 7,
-      "live": 8,
+      "live": 12,
       "byTag": {
-        "stop": 3,
+        "stop": 7,
         "corner": 5
       },
-      "full": 2,
+      "full": 3,
       "fullAmbient": 0,
-      "fullOther": 2,
-      "figures": 5,
+      "fullOther": 3,
+      "figures": 12,
       "budget": 12,
-      "drawCalls": 72
+      "drawCalls": 74
     },
     {
       "label": "phone",
       "view": "pikine-grand-place",
       "hour": 13,
-      "live": 10,
+      "live": 12,
       "byTag": {
-        "stop": 2,
         "attaya": 2,
-        "shop": 1,
+        "stop": 4,
         "salon": 1,
         "corner": 5
       },
       "full": 4,
       "fullAmbient": 2,
       "fullOther": 2,
-      "figures": 6,
-      "budget": 12,
-      "drawCalls": 93
-    },
-    {
-      "label": "phone",
-      "view": "pikine-grand-place",
-      "hour": 19,
-      "live": 12,
-      "byTag": {
-        "stop": 1,
-        "square": 1,
-        "bench": 3,
-        "attaya": 2,
-        "shop": 2,
-        "salon": 2,
-        "corner": 2,
-        "dames": 2
-      },
-      "full": 6,
-      "fullAmbient": 3,
-      "fullOther": 3,
       "figures": 9,
       "budget": 12,
       "drawCalls": 94
@@ -1240,29 +1213,50 @@
     {
       "label": "phone",
       "view": "pikine-grand-place",
+      "hour": 19,
+      "live": 14,
+      "byTag": {
+        "attaya": 2,
+        "stop": 4,
+        "square": 1,
+        "bench": 3,
+        "salon": 1,
+        "corner": 2,
+        "dames": 2
+      },
+      "full": 9,
+      "fullAmbient": 5,
+      "fullOther": 4,
+      "figures": 11,
+      "budget": 12,
+      "drawCalls": 95
+    },
+    {
+      "label": "phone",
+      "view": "pikine-grand-place",
       "hour": 23,
       "live": 9,
       "byTag": {
-        "stop": 1,
         "square": 2,
         "bench": 3,
+        "corner": 4,
         "attaya": 1,
-        "corner": 4
+        "stop": 1
       },
-      "full": 5,
-      "fullAmbient": 2,
+      "full": 4,
+      "fullAmbient": 1,
       "fullOther": 3,
       "figures": 8,
       "budget": 12,
-      "drawCalls": 83
+      "drawCalls": 85
     },
     {
       "label": "phone",
       "view": "plateau-gare-sandaga",
       "hour": 7,
-      "live": 16,
+      "live": 26,
       "byTag": {
-        "stop": 5,
+        "stop": 15,
         "eat": 3,
         "kiosk": 3,
         "stall": 2,
@@ -1270,186 +1264,188 @@
         "corner": 4,
         "cafe": 2
       },
-      "full": 2,
-      "fullAmbient": 2,
-      "fullOther": 0,
-      "figures": 17,
+      "full": 6,
+      "fullAmbient": 5,
+      "fullOther": 1,
+      "figures": 24,
       "budget": 12,
-      "drawCalls": 75
+      "drawCalls": 108
     },
     {
       "label": "phone",
       "view": "plateau-gare-sandaga",
       "hour": 13,
-      "live": 23,
+      "live": 25,
       "byTag": {
-        "stop": 3,
         "eat": 5,
         "kiosk": 5,
+        "stop": 9,
         "stall": 3,
         "market": 4,
-        "corner": 4,
+        "corner": 3,
         "cafe": 3,
-        "attaya": 1,
-        "shop": 2,
-        "bank": 1,
-        "salon": 1
+        "dibi": 1
       },
-      "full": 4,
-      "fullAmbient": 4,
-      "fullOther": 0,
-      "figures": 18,
+      "full": 7,
+      "fullAmbient": 6,
+      "fullOther": 1,
+      "figures": 19,
       "budget": 12,
-      "drawCalls": 86
+      "drawCalls": 85
     },
     {
       "label": "phone",
       "view": "plateau-gare-sandaga",
       "hour": 19,
-      "live": 22,
+      "live": 26,
       "byTag": {
-        "stop": 5,
+        "stop": 14,
         "eat": 1,
         "kiosk": 1,
         "stall": 3,
         "dibi": 2,
-        "mosque": 3,
-        "corner": 5,
-        "dames": 1,
-        "attaya": 1,
-        "square": 1,
-        "bench": 1
+        "corner": 3,
+        "bench": 2,
+        "attaya": 1
       },
-      "full": 6,
+      "full": 7,
       "fullAmbient": 6,
-      "fullOther": 0,
-      "figures": 10,
+      "fullOther": 1,
+      "figures": 15,
       "budget": 12,
-      "drawCalls": 105
+      "drawCalls": 77
     },
     {
       "label": "phone",
       "view": "plateau-gare-sandaga",
       "hour": 23,
-      "live": 4,
+      "live": 7,
       "byTag": {
+        "stop": 2,
         "corner": 2,
-        "stop": 1,
-        "dibi": 1
+        "dibi": 2,
+        "bench": 1
       },
-      "full": 2,
+      "full": 3,
       "fullAmbient": 2,
-      "fullOther": 0,
-      "figures": 5,
+      "fullOther": 1,
+      "figures": 6,
       "budget": 12,
-      "drawCalls": 63
+      "drawCalls": 66
     },
     {
       "label": "phone",
       "view": "plateau-mosquee",
       "hour": 7,
-      "live": 5,
+      "live": 10,
       "byTag": {
+        "stop": 5,
         "corner": 3,
         "stall": 1,
         "market": 1
       },
-      "full": 0,
-      "fullAmbient": 0,
-      "fullOther": 0,
-      "figures": 3,
-      "budget": 12,
-      "drawCalls": 46
-    },
-    {
-      "label": "phone",
-      "view": "plateau-mosquee",
-      "hour": 13,
-      "live": 6,
-      "byTag": {
-        "corner": 3,
-        "stall": 1,
-        "market": 2
-      },
-      "full": 1,
+      "full": 2,
       "fullAmbient": 1,
-      "fullOther": 0,
-      "figures": 6,
-      "budget": 12,
-      "drawCalls": 46
-    },
-    {
-      "label": "phone",
-      "view": "plateau-mosquee",
-      "hour": 19,
-      "live": 14,
-      "byTag": {
-        "corner": 4,
-        "stall": 2,
-        "mosque": 6,
-        "dibi": 2
-      },
-      "full": 6,
-      "fullAmbient": 6,
-      "fullOther": 0,
-      "figures": 7,
-      "budget": 12,
-      "drawCalls": 111
-    },
-    {
-      "label": "phone",
-      "view": "plateau-mosquee",
-      "hour": 23,
-      "live": 6,
-      "byTag": {
-        "corner": 5,
-        "dibi": 1
-      },
-      "full": 1,
-      "fullAmbient": 1,
-      "fullOther": 0,
-      "figures": 2,
-      "budget": 12,
-      "drawCalls": 47
-    },
-    {
-      "label": "phone",
-      "view": "corniche-promenade",
-      "hour": 7,
-      "live": 18,
-      "byTag": {
-        "corner": 5,
-        "promenade": 8,
-        "gym": 2,
-        "landing": 2,
-        "fishmarket": 1
-      },
-      "full": 6,
-      "fullAmbient": 4,
-      "fullOther": 2,
-      "figures": 8,
+      "fullOther": 1,
+      "figures": 13,
       "budget": 12,
       "drawCalls": 73
     },
     {
       "label": "phone",
+      "view": "plateau-mosquee",
+      "hour": 13,
+      "live": 12,
+      "byTag": {
+        "stop": 5,
+        "corner": 3,
+        "stall": 1,
+        "market": 2,
+        "dibi": 1
+      },
+      "full": 2,
+      "fullAmbient": 1,
+      "fullOther": 1,
+      "figures": 13,
+      "budget": 12,
+      "drawCalls": 72
+    },
+    {
+      "label": "phone",
+      "view": "plateau-mosquee",
+      "hour": 19,
+      "live": 19,
+      "byTag": {
+        "stop": 5,
+        "corner": 4,
+        "mosque-yard": 5,
+        "stall": 2,
+        "dibi": 2,
+        "bench": 1
+      },
+      "full": 8,
+      "fullAmbient": 6,
+      "fullOther": 2,
+      "figures": 15,
+      "budget": 12,
+      "drawCalls": 120
+    },
+    {
+      "label": "phone",
+      "view": "plateau-mosquee",
+      "hour": 23,
+      "live": 8,
+      "byTag": {
+        "bench": 1,
+        "corner": 5,
+        "dibi": 2
+      },
+      "full": 0,
+      "fullAmbient": 0,
+      "fullOther": 0,
+      "figures": 6,
+      "budget": 12,
+      "drawCalls": 59
+    },
+    {
+      "label": "phone",
+      "view": "corniche-promenade",
+      "hour": 7,
+      "live": 21,
+      "byTag": {
+        "corner": 5,
+        "promenade": 8,
+        "gym": 2,
+        "stop": 4,
+        "landing": 2
+      },
+      "full": 3,
+      "fullAmbient": 2,
+      "fullOther": 1,
+      "figures": 11,
+      "budget": 12,
+      "drawCalls": 53
+    },
+    {
+      "label": "phone",
       "view": "corniche-promenade",
       "hour": 13,
-      "live": 7,
+      "live": 10,
       "byTag": {
         "corner": 4,
         "cafe": 1,
         "eat": 1,
         "kiosk": 1,
         "shop": 1,
-        "landing": 1
+        "landing": 1,
+        "stop": 3
       },
-      "full": 2,
+      "full": 1,
       "fullAmbient": 1,
-      "fullOther": 1,
-      "figures": 3,
+      "fullOther": 0,
+      "figures": 4,
       "budget": 12,
-      "drawCalls": 63
+      "drawCalls": 53
     },
     {
       "label": "phone",
@@ -1457,18 +1453,18 @@
       "hour": 19,
       "live": 26,
       "byTag": {
-        "corner": 3,
+        "corner": 2,
         "promenade": 14,
+        "stop": 3,
         "gym": 2,
-        "pitch": 5,
-        "fishmarket": 2
+        "pitch": 5
       },
-      "full": 9,
+      "full": 8,
       "fullAmbient": 6,
-      "fullOther": 3,
-      "figures": 14,
+      "fullOther": 2,
+      "figures": 15,
       "budget": 12,
-      "drawCalls": 94
+      "drawCalls": 84
     },
     {
       "label": "phone",
@@ -1481,7 +1477,7 @@
       "full": 4,
       "fullAmbient": 2,
       "fullOther": 2,
-      "figures": 4,
+      "figures": 5,
       "budget": 12,
       "drawCalls": 64
     }
