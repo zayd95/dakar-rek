@@ -5,13 +5,12 @@ import type { Seat } from '../interact/seats';
 import type { WrestlerLook } from '../core/types';
 import { Batch, signTexture } from '../world/batch';
 import { Humanoid, Wrestler, humanoidReady, randomLook, type Clip } from '../actors/humanoid';
-import { buildVehicle } from '../actors/vehicleKit';
 import { rng } from '../core/rng';
 import * as P from '../activity/primitives';
 import { Percussion, crowdCheer } from '../lamb/audio';
 import { STYLES } from '../lamb/rules';
 import { WALL_R } from '../world/geew';
-import { ARENA, haggler, tasteLine } from '../i18n/lines';
+import { ARENA } from '../i18n/lines';
 import {
   BILL, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
   fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketsChecked, type Moment, type ShowPhase, type Street,
@@ -21,14 +20,13 @@ import { WatchedBout } from './bout';
 import { GalaCard } from './card';
 
 /**
- * A fight evening at the Pikine arena (docs/ARENA_VISIT.md): the street in front of the gate comes alive (vendors of
- * bissap, grilled peanuts, scarves and flags; drummers; a car rapide dropping fans; the queue between the barriers),
- * the ticket is bought at the window (price shown before paying, paid once for the evening), the controller lets
- * ticket holders in, the player takes a free place on the tiers (« S'asseoir »), the stands fill, the wrestlers make
- * their entrance with drums and dances, the existing làmb duel is played by two NPC wrestlers of the game's cast, the
- * crowd reacts, the result is announced, the stands empty and the street winds down.
+ * A fight evening inside the Pikine arena (docs/ARENA_VISIT.md): the ticket is bought at the window by the gate (price
+ * shown before paying, paid once for the evening), the controller lets ticket holders in, the player takes a free place
+ * on the tiers (« S'asseoir »), the stands fill, the wrestlers make their entrance with drums and dances, the existing
+ * làmb duel is played by two NPC wrestlers of the game's cast, the crowd reacts, the result is announced and the stands
+ * empty. The street outside the walls (vendors, queue, fans, drummers) belongs to src/arena/exterior.ts (another lane).
  *
- * Built on the shared systems: places and the activity runner (vendors, ticket), the seat registry (the tiers' places,
+ * Built on the shared systems: places and the activity runner (the ticket), the seat registry (the tiers' places,
  * shared by the crowd and the player, never twice), the module camera hook (the view from the seat), the làmb duel
  * (rules untouched, src/arena/bout.ts) and the Wolof lines (src/i18n/lines.ts). Density follows the graphics quality.
  */
@@ -48,12 +46,6 @@ class ArenaEvening {
   speed = 1;
   street: Street = 'quiet';
   result = '';
-  private wares = new THREE.Group();
-  private car: THREE.Group | null = null;
-  private vendors: Humanoid[] = [];
-  private queue: Humanoid[] = [];
-  private drummers: Humanoid[] = [];
-  private fans: { h: Humanoid; t: number; speed: number }[] = [];
   private own: { dispose(): void }[] = [];
   private entrance: Walker[] = [];
   private insideCast: Humanoid[] = [];
@@ -68,11 +60,10 @@ class ArenaEvening {
   private camYaw = 0;
   private look = new V3();
   private rand = rng(41);
-  private fanFrom: THREE.Vector3; private fanTo: THREE.Vector3;
   private ground: (x: number, z: number) => number;
 
   constructor(private ctx: GameCtx, hub: HubWorld) {
-    const a = hub.arena!, q = ctx.quality(), D = DENSITY[q], lite = q === 'low';
+    const a = hub.arena!, D = DENSITY[ctx.quality()];
     this.cx = a.cx; this.cz = a.cz; this.gz = a.cz - WALL_R;
     this.ground = (x, z) => 0.1 + hub.heightAt(x, z);
     const cx = this.cx, gz = this.gz;
@@ -89,8 +80,8 @@ class ArenaEvening {
     this.crowd = new StandCrowd(order.slice(0, this.cap), D.near);
     this.group.add(this.crowd.group);
 
-    // ---------------------------------------------------------------- the street in front of the gate
-    const B = new Batch(), W = new Batch();                         // B: always there (the ticket booth); W: the evening's wares
+    // ---------------------------------------------------------------- the ticket window by the gate
+    const B = new Batch();
     const bx = cx - 5.2, bz = gz - 3.0, g0 = this.ground(bx, bz) - 0.1;
     B.box(1.7, 2.3, 1.3, bx, g0, bz, 0xe9dcc0); B.box(1.9, 0.14, 1.5, bx, g0 + 2.3, bz, 0x7a3f1a);
     B.box(1.1, 0.75, 0.04, bx, g0 + 1.05, bz - 0.66, 0x1f2a36); B.box(1.5, 0.08, 0.32, bx, g0 + 0.98, bz - 0.8, 0x8b6a47);
@@ -98,47 +89,9 @@ class ArenaEvening {
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.4), new THREE.MeshLambertMaterial({ map: signTexture('GUICHET · BILLETS', '#7a3f1a', '#ffe7b0', 512, 128) }));
     sign.position.set(bx, g0 + 2.62, bz - 0.68); sign.rotation.y = Math.PI; this.group.add(sign);
     this.own.push(sign.geometry, sign.material as THREE.Material, (sign.material as THREE.MeshLambertMaterial).map!);
-    // bissap cooler (left far stall), peanut roaster (left near), scarves and flags (right near)
-    const s1 = { x: cx - 12.5, z: gz - 5.5 }, s2 = { x: cx - 8, z: gz - 4 }, s3 = { x: cx + 8, z: gz - 4 };
-    const y1 = this.ground(s1.x, s1.z) - 0.1 + 0.8;
-    W.box(0.6, 0.42, 0.42, s1.x - 0.25, y1, s1.z, 0xd9322b); W.box(0.62, 0.06, 0.44, s1.x - 0.25, y1 + 0.42, s1.z, 0xf2f2ec);
-    for (let k = 0; k < 5; k++) W.cyl(0.035, 0.035, 0.24, s1.x + 0.25 + k * 0.09, y1, s1.z - 0.15, 0x8a1538, 6);
-    const y2 = this.ground(s2.x, s2.z) - 0.1 + 0.8;
-    W.cyl(0.32, 0.26, 0.12, s2.x - 0.2, y2, s2.z, 0x3a3a3a, 12); W.cyl(0.3, 0.3, 0.03, s2.x - 0.2, y2 + 0.12, s2.z, 0xc9a26a, 12);
-    for (let k = 0; k < 6; k++) W.box(0.1, 0.16, 0.1, s2.x + 0.35 + (k % 3) * 0.12, y2, s2.z - 0.15 + Math.floor(k / 3) * 0.2, 0xf1e3c2);
-    const y3 = this.ground(s3.x, s3.z) - 0.1;
-    for (const dx of [-0.9, 0.9]) W.box(0.05, 2.1, 0.05, s3.x + dx, y3, s3.z - 0.55, 0x555555);
-    W.box(1.85, 0.05, 0.05, s3.x, y3 + 2.05, s3.z - 0.55, 0x555555);
-    [0x1a9d54, 0xd9322b, 0xf4c20d, 0x1a9d54, 0xd9322b].forEach((col, k) => W.box(0.24, 0.9, 0.02, s3.x - 0.72 + k * 0.36, y3 + 1.1, s3.z - 0.55, col));
-    // drums of the drummers by the queue
-    const drumX = (k: number) => cx + 4.3 + k * 0.85, drumZ = gz - 7.6;
-    for (let k = 0; k < D.drummers; k++) W.cyl(0.17, 0.12, 0.75, drumX(k) - 0.3, this.ground(drumX(k), drumZ) - 0.1 + 0.18, drumZ + 0.05, 0x8a5a2e, 10, [0, 0, -0.5]);
     const mat = new THREE.MeshLambertMaterial({ vertexColors: true }); this.own.push(mat);
-    for (const [b, parent] of [[B, this.group], [W, this.wares]] as const) { const m = b.build(mat, true, true); if (m) { parent.add(m); this.own.push(m.geometry); } }
-    this.group.add(this.wares);
-    // a car rapide at the kerb, dropping fans
-    const carX = cx + 20, carZ = gz - 4.0;
-    if (!lite) {
-      const v = buildVehicle('carRapide', { seed: 23, lite, passengers: false });
-      v.group.position.set(carX, this.ground(carX, carZ) - 0.1, carZ); v.group.rotation.y = Math.PI / 2;
-      this.car = v.group; this.group.add(v.group);
-    }
-    this.fanFrom = new V3(carX - 4.2, 0, carZ - 0.6); this.fanTo = new V3(cx + 0.9, 0, gz - 3.2 - D.queue * 1.0);
-
-    // ---------------------------------------------------------------- people of the street
-    if (humanoidReady()) {
-      const R = rng(57);
-      const person = (x: number, z: number, yaw: number, clip: Clip) => {
-        const h = new Humanoid(randomLook(R)); h.hold = clip; h.group.position.set(x, this.ground(x, z), z); h.group.rotation.y = yaw;
-        h.group.visible = false; this.group.add(h.group); return h;
-      };
-      this.vendors = [person(s1.x, s1.z + 0.8, Math.PI, 'Talk'), person(s2.x, s2.z + 0.8, Math.PI, 'Idle'), person(s3.x, s3.z + 0.3, Math.PI, 'Talk')];
-      for (let k = 0; k < D.queue; k++) this.queue.push(person(cx + (k % 2 ? 0.35 : -0.35), gz - 2.8 - k * 1.0, 0, k % 3 === 1 ? 'Talk' : 'Idle'));
-      for (let k = 0; k < D.drummers; k++) this.drummers.push(person(drumX(k), drumZ, -Math.PI / 2 + 0.2, 'Talk'));
-      for (let k = 0; k < D.fans; k++) { const h = person(this.fanFrom.x, this.fanFrom.z, 0, 'Walk'); h.hold = null; this.fans.push({ h, t: k / Math.max(1, D.fans), speed: 1.2 + R() * 0.4 }); }
-    }
-
-    // ---------------------------------------------------------------- places: the ticket window and the vendors
+    { const m = B.build(mat, true, true); if (m) { this.group.add(m); this.own.push(m.geometry); } }
+    // ---------------------------------------------------------------- the ticket window: a place of the shared registry
     const place = 'Arène de Pikine';
     ctx.places.add({
       id: `${hub.id}:arena:guichet`, type: 'ticket', name: 'Guichet · Arène de Pikine', space: 'street', hours: [GALA.doors, GALA.close],
@@ -148,24 +101,6 @@ class ArenaEvening {
         requires: () => (hasTicket(ctx.state.data.counters, ctx.day()) ? 'Tu as déjà ton billet pour ce soir' : null),
         then: () => this.confirmTicket(place),
       })] },
-    });
-    ctx.places.add({
-      id: `${hub.id}:arena:bissap`, type: 'stall', name: 'Bissap glacé', space: 'street', hours: [GALA.setup, GALA.close + 1],
-      anchors: [{ id: 'bissap', kind: 'counter', x: s1.x, z: s1.z - 1.25, radius: 1.9 }],
-      offers: { bissap: [P.order({ id: 'bissap', label: 'Bissap glacé', detail: 'Dans un sachet, bien froid', price: 200, prep: 1, eat: 2, drink: true, seat: false, needs: { faim: 4, moral: 4 }, line: ARENA.bissap, eatLine: tasteLine })] },
-    });
-    ctx.places.add({
-      id: `${hub.id}:arena:arachides`, type: 'stall', name: 'Arachides grillées', space: 'street', hours: [GALA.setup, GALA.close + 1],
-      anchors: [{ id: 'arachides', kind: 'counter', x: s2.x, z: s2.z - 1.25, radius: 1.9 }],
-      offers: { arachides: [P.buy({ id: 'arachides', label: 'Un cornet d’arachides grillées', price: 100, items: { arachides: 1 }, haggle: haggler('buy', 100, 'La vendeuse', false) })] },
-    });
-    ctx.places.add({
-      id: `${hub.id}:arena:echarpes`, type: 'stall', name: 'Écharpes et drapeaux', space: 'street', hours: [GALA.setup, GALA.close + 1],
-      anchors: [{ id: 'echarpes', kind: 'counter', x: s3.x, z: s3.z - 1.35, radius: 1.9 }],
-      offers: { echarpes: [
-        P.buy({ id: 'echarpe-baobab', label: 'Écharpe verte · écurie Baobab', price: 500, items: { echarpe_baobab: 1 }, haggle: haggler('buy', 500, 'Le vendeur') }),
-        P.buy({ id: 'drapeau-teranga', label: 'Petit drapeau rouge · écurie Teranga', price: 300, items: { drapeau_teranga: 1 }, haggle: haggler('buy', 300, 'Le vendeur') }),
-      ] },
     });
     this.card = new GalaCard(document.getElementById('ui') ?? document.body);
     ctx.extra.add(this.group);
@@ -191,25 +126,10 @@ class ArenaEvening {
   update(dt: number) {
     const { ctx } = this, hour = ctx.hour(), day = ctx.day(), counters = ctx.state.data.counters;
     const galaDone = counters[GALA_DONE_COUNTER] === day;
+    if (this.phase === 'over' && !galaDone) this.phase = 'idle';            // a new day, a new gala evening
     const showing = this.phase !== 'idle' && this.phase !== 'over';
     this.street = showing ? 'doors' : streetAt(hour, galaDone);
-    const me = ctx.player.pos, near = Math.hypot(me.x - this.cx, me.z - this.gz) < 85;
-
-    // the street: wares and people by the evening's moment, drawn only near the viewer
-    const st = this.street;
-    this.wares.visible = st !== 'quiet';
-    if (this.car) this.car.visible = st === 'setup' || st === 'doors';
-    this.vendors.forEach((h, i) => { h.group.visible = near && (st === 'setup' || st === 'doors' || (st === 'after' && i < 2)); if (h.group.visible) h.animate(dt, 0); });
-    for (const h of this.queue) { h.group.visible = near && st === 'doors' && this.phase === 'idle'; if (h.group.visible) h.animate(dt, 0); }
-    for (const h of this.drummers) { h.group.visible = near && (st === 'setup' || st === 'doors'); if (h.group.visible) h.animate(dt, 0); }
-    for (const f of this.fans) {
-      const on = near && (st === 'doors' || st === 'after');
-      f.h.group.visible = on; if (!on) continue;
-      f.t = (f.t + (dt * f.speed) / this.fanFrom.distanceTo(this.fanTo)) % 1;
-      const [a, b] = st === 'after' ? [this.fanTo, this.fanFrom] : [this.fanFrom, this.fanTo];   // after the gala they head back
-      const x = a.x + (b.x - a.x) * f.t, z = a.z + (b.z - a.z) * f.t;
-      f.h.group.position.set(x, this.ground(x, z), z); f.h.group.rotation.y = Math.atan2(b.x - a.x, b.z - a.z); f.h.animate(dt, f.speed);
-    }
+    const me = ctx.player.pos;
 
     // the gate: the controller checks tickets while the doors are open
     const seat = this.seatedHere();
@@ -389,7 +309,6 @@ class ArenaEvening {
       ticket: hasTicket(counters, day), galaDone: counters[GALA_DONE_COUNTER] === day,
       seat: seat?.id ?? null, seatsTotal: this.seats.length, seatsFree: this.seats.filter(s => !s.occupant).length,
       crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering },
-      street_people: { vendors: this.vendors.filter(h => h.group.visible).length, queue: this.queue.filter(h => h.group.visible).length, drummers: this.drummers.filter(h => h.group.visible).length, fans: this.fans.filter(f => f.h.group.visible).length, car: !!this.car?.visible, wares: this.wares.visible },
       entrance: this.entrance.length, bout: this.bout?.info() ?? null, result: this.result, card: this.card.text,
       gate: { x: this.cx, z: this.gz }, centre: { x: this.cx, z: this.cz },
     };
@@ -397,7 +316,6 @@ class ArenaEvening {
 
   dispose() {
     this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
-    for (const h of [...this.vendors, ...this.queue, ...this.drummers, ...this.fans.map(f => f.h)]) h.dispose();
     this.crowd.dispose(); this.card.dispose();
     for (const s of this.seats) this.ctx.seats.release(s.id, CROWD);
     for (const o of this.own) o.dispose(); this.own = [];
@@ -420,9 +338,11 @@ export const arenaModule: GameModule = {
   update(_ctx, dt) { evening?.update(dt); },
   camera(ctx, dt, drag) { return evening ? evening.camera(ctx.camera, dt, drag) : false; },
   safePlace() { return evening?.seatedHere() ? { x: evening.cx, z: evening.gz - 2.5, yaw: Math.PI } : null; },
-  debug: () => ({
+  debug: ctx => ({
     arena: {
       info: () => evening?.debug() ?? null,
+      /** Where the camera is and where it looks on the ground (the seat's view must face the ring). */
+      cam: () => { const c = ctx.camera, d = new THREE.Vector3(); c.getWorldDirection(d); return { x: c.position.x, y: c.position.y, z: c.position.z, dx: d.x, dy: d.y, dz: d.z }; },
       /** Faster show for the checks (the bout runs `n` duel steps per frame). */
       speed: (n = 1) => { if (evening) evening.speed = Math.max(1, Math.round(n)); },
       go: (phase: ShowPhase) => evening?.go(phase),

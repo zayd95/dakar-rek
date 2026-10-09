@@ -1,11 +1,11 @@
 /**
  * The gala evening at the Pikine arena (pure data and functions: no Three.js, no DOM; tested in tests/arena.test.ts).
  *
- * A fight evening every day (provisional): the street in front of the gate wakes up at 16 h (vendors set up, drummers),
- * the gate opens at 17 h (ticket at the window, queue between the barriers, the stands fill hour after hour), and the
- * gala itself starts once the player has a seat — the wrestlers' entrance, the bout (the existing làmb duel played by two
- * fictional wrestlers of the game's own cast), the result, then the crowd goes home and the street winds down. After
- * 23 h, or once that day's gala is over, the exterior is quiet again.
+ * A fight evening every day (provisional): set-up from 16 h, the gate opens at 17 h (ticket at the window, the stands
+ * fill hour after hour), and the gala itself starts once the player has a seat — the wrestlers' entrance, the bout (the
+ * existing làmb duel played by two fictional wrestlers of the game's own cast), the result, then the crowd goes home.
+ * After 23 h, or once that day's gala is over, the arena is quiet again. The street outside the walls (vendors, queue,
+ * fans, drummers) is src/arena/exterior.ts (another lane), which will give the event days and the gate position.
  *
  * Names are the game's fictional cast and écuries (Babacar of Baobab, Lamine of Teranga): no real wrestler, écurie,
  * promoter or brand. No ritual or religious text anywhere in the show — drums, dances and the crowd.
@@ -42,11 +42,11 @@ export function fillAt(hour: number): number {
   return Math.min(1, 0.35 + (h - GALA.doors) * 0.33);
 }
 
-/** How many people the evening draws, by graphics quality (instanced spectators are cheap; humanoids are not). */
-export const DENSITY: Record<Quality, { crowdShare: number; near: number; queue: number; drummers: number; fans: number }> = {
-  low: { crowdShare: 0.42, near: 0, queue: 3, drummers: 2, fans: 0 },
-  medium: { crowdShare: 0.68, near: 4, queue: 6, drummers: 3, fans: 2 },
-  high: { crowdShare: 0.86, near: 8, queue: 9, drummers: 4, fans: 3 },
+/** How full the stands get, by graphics quality (instanced spectators are cheap; real humanoids next to you are not). */
+export const DENSITY: Record<Quality, { crowdShare: number; near: number }> = {
+  low: { crowdShare: 0.42, near: 0 },
+  medium: { crowdShare: 0.68, near: 4 },
+  high: { crowdShare: 0.86, near: 8 },
 };
 
 // ------------------------------------------------------------------ stand seats

@@ -43,7 +43,7 @@ describe('the gala evening', () => {
     expect(DENSITY.low.crowdShare).toBeLessThan(DENSITY.medium.crowdShare);
     expect(DENSITY.medium.crowdShare).toBeLessThan(DENSITY.high.crowdShare);
     expect(DENSITY.low.near).toBe(0);
-    expect(DENSITY.high.queue).toBeGreaterThan(DENSITY.low.queue);
+    expect(DENSITY.high.near).toBeGreaterThan(DENSITY.medium.near);
   });
   it('the show has a duration for every timed phase and reactions for every moment', () => {
     for (const k of ['filling', 'entrance', 'result', 'leaving'] as const) expect(SHOW[k]).toBeGreaterThan(0);
@@ -120,13 +120,13 @@ describe('the watched bout and the lines', () => {
   });
   it('arena lines: lexicon Wolof with glosses, French spacing, no religious formula', () => {
     unknownPhrases.clear();
-    const lines = [ARENA.ticket(TICKET_PRICE), ARENA.welcome(), ARENA.stop(), ARENA.bissap(), ARENA.bill('Babacar', 'Baobab', 'Lamine', 'Teranga'),
+    const lines = [ARENA.ticket(TICKET_PRICE), ARENA.welcome(), ARENA.stop(), ARENA.bill('Babacar', 'Baobab', 'Lamine', 'Teranga'),
       ARENA.entrance('Babacar', 'Baobab'), ARENA.result('Babacar', 'projection'), ARENA.result('Lamine', 'decision'), ARENA.result(null, 'egalite'), ARENA.over].map(plain);
     expect([...unknownPhrases]).toEqual([]);
     expect(lines[0]).toBe('Le guichetier : « 1 000 F, jërëjëf ! » (merci)');
     expect(lines[1]).toMatch(/^Le contrôleur : « Dalal ak jàmm ! » \(bienvenue\)/);
     expect(lines[2]).toMatch(/^Le contrôleur : « Xaaral tuuti ! » \(attends un peu\) · Il faut un billet/);
-    expect(lines[6]).toBe('Babacar l’emporte par projection ! · Le public : « Daan na ! » (il a gagné)');
+    expect(lines[5]).toBe('Babacar l’emporte par projection ! · Le public : « Daan na ! » (il a gagné)');
     for (const l of lines) {
       expect(l).not.toMatch(/allah|alxamdu|bismi|insha|marabout|sourate|verset|coran|du[’']a/i);
       expect(/[^\s(][?!;»]/.test(l) || /«[^\s]/.test(l), l).toBe(false);
