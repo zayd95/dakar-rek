@@ -103,6 +103,14 @@ Already composed:
   ablutions, prayer and the calm seat change no need, no money, no counter, no activity category. No commerce, no
   location chat, always open; reading stays disabled until a verified text source exists. The rows fill up around the
   five prayer times (`src/venues/prayer.ts`, Wolof names; also the place's `peaks` for the NPC lane).
+- **Soumbédioune's pirogue and mareyeuses** (`src/venues/beach.ts`, Corniche, on the existing beach block): « Partir avec
+  les pêcheurs » boards you on the pirogue's thwart; the boat pushes out to sea with you and its crew aboard, you pull
+  the net, it comes back to the sand (catch in the inventory: 6 fish in the morning, 4 by day, 3 late); then sell to
+  Coumba and the mareyeuses (600 F a fish, or buy one at 700 F) and talk prices. Open 6 h–20 h. The landing's unloading
+  and net repairs stay as they were.
+- **Salon Awa's chairs** (`src/venues/salon.ts`, Pikine): two styling chairs facing mirrors, the stylist working behind
+  you, a client in the other chair. Cuts (short, afro, shaved) and the beard change your character and stay (saved,
+  every hub, `src/venues/style.ts`). Open 9 h–21 h.
 
 Composition seams added for this: `HubWorld.sites` (`src/world/sites.ts`: lots and blocks a module composes — the
 builder keeps the place's identity interactable and leaves the ground free, with the street dressing unchanged),
