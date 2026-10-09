@@ -97,7 +97,7 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
   check(`${label}: a passer-by can be greeted`, f?.primary === 'Saluer', JSON.stringify(f));
   if (f) {
     await idle(page); await d(page, () => window.__dakar.act());
-    const ok = await waitToast(page, /Toi : « Salaam aleekum ! » · Passan(t|te) : « Maleekum salaam ! »/);
+    const ok = await waitToast(page, /Toi : « Salaam aleekum ! » · Passan(t|te) : « Maleekum salaam ! »/, 60000);   // first hub load: slow frames
     check(`${label}: « Salaam aleekum ! » — « Maleekum salaam ! »`, ok, await toast(page));
     await shot(page, `${label}-greet`);
     const follow = await waitToast(page, /« (Na nga fanaane \?|Jàmm nga am \?) »/, 4500);
@@ -130,14 +130,14 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
   // 2. Haggling at the market: the Sandaga stall (a customer discusses the price), the Soumbédioune fish stall.
   const stall = await goTo(page, 'plateau', i => i.id.endsWith(':market'));
   if (stall && await runVerb(page, 'Vendre au marché')) {
-    const ok = await waitToast(page, /^Une cliente : « (Ñaata la \? » \(c’est combien \?\) · Toi : « 1 500 F\.|Seer na ! Wàññi ko tuuti\. » \(c’est cher · baisse un peu\) · Toi : « Déedéet, 1 500 F rekk\.)/);
+    const ok = await waitToast(page, /^Une cliente : « (Ñaata la \? » \(c’est combien \?\) · Toi : « 1 500 F\.|Seer na ! Wàññi ko tuuti\. » \(c’est cher · baisse un peu\) · Toi : « Déedéet, 1 500 F rekk\.)/);
     check(`${label}: selling at the Sandaga stall, a customer asks « Ñaata la ? » or haggles`, ok, await toast(page));
     await shot(page, `${label}-haggle-sandaga`);
     await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
   } else check(`${label}: Sandaga stall found`, false);
   const fish = await goTo(page, 'corniche', i => i.id.endsWith(':city:fish-market'));
   if (fish && await runVerb(page, 'Commander du poisson grillé')) {
-    const ok = await waitToast(page, /^Toi : « (Ñaata la \?|Seer na ! Wàññi ko tuuti\.) » .* · La vendeuse : « (1 200 F|Déedéet, 1 200 F rekk)/);
+    const ok = await waitToast(page, /^Toi : « (Ñaata la \?|Seer na ! Wàññi ko tuuti\.) » .* · La vendeuse : « (1 200 F|Déedéet, 1 200 F rekk)/);
     check(`${label}: ordering grilled fish at Soumbédioune starts with the price`, ok, await toast(page));
     await shot(page, `${label}-haggle-fish`);
     const taste = await waitToast(page, /^Toi : « Neex na ! » \(c’est bon\)$/, 90000);     // SwiftShader: a frame can take longer than dt's 0.1 s cap
@@ -147,7 +147,7 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
   if (label === 'desktop') {
     const boutique = await goTo(page, 'pikine', i => i.id.endsWith(':city:boutique'));
     if (boutique && await runVerb(page, 'Pain et lait')) {
-      const ok = await waitToast(page, /^Toi : « Ñaata la \? » \(c’est combien \?\) · Le boutiquier : « 400 F\./);
+      const ok = await waitToast(page, /^Toi : « Ñaata la \? » \(c’est combien \?\) · Le boutiquier : « 400 F\./);
       check(`${label}: bread and milk at the Boutique Diallo: « Ñaata la ? » — « 400 F. »`, ok, await toast(page));
       await shot(page, `${label}-boutique-price`);
       await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
