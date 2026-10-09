@@ -474,6 +474,9 @@ export class AmbientLife implements GameModule {
     const spot = a.spot!, ctx = this.ctx;
     for (const s of ctx.seats.all()) {
       if (s.kind !== 'vehicle' || s.occupant || Math.hypot(s.x - spot.x, s.z - spot.z) > 14) continue;
+      // a vehicle keeps seats for players too: riders never take more than its capacity
+      const cabin = ctx.seats.inSpace(s.space);
+      if (cabin.filter(x => isNpcOccupant(x.occupant)).length >= seatCapacity(cabin.length)) continue;
       if (!ctx.seats.occupy(s.id, a.key)) continue;
       this.seatPose(a, s, null);
       return { x: a.ax, z: a.az };

@@ -1,13 +1,13 @@
 // NPC activity density (docs/NPC_LIFE.md): the same streets at 7 h, 13 h, 19 h and 23 h, on desktop (medium quality)
 // and phone (low quality). Asserts who is where by place and hour, the seat rules (never the player's seat, free seats
 // kept, no orphan seat), the humanoid budget, greeting an ambient person, and no page errors. Screenshots + results.json.
-// Usage: node scripts/check-npc-density.mjs [baseUrl=http://localhost:4231/] [outDir=docs/screenshots/npc-density]
-// Serve a build first: npx vite build && npx vite preview --port 4231
+// Usage: flock /tmp/dakar-browser.lock node scripts/check-npc-density.mjs [baseUrl=http://localhost:4216/] [outDir=docs/screenshots/npc-density]
+// Serve a build first: npx vite build && npx vite preview --port 4216   (env ONLY=desktop|phone, VIEWS=id,… while iterating)
 // SwiftShader renders a few frames per second (game dt clamped to 0.1 s): waits are on game state.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
-const base = process.argv[2] ?? 'http://localhost:4231/';
+const base = process.argv[2] ?? 'http://localhost:4216/';
 const out = process.argv[3] ?? 'docs/screenshots/npc-density';
 fs.mkdirSync(out, { recursive: true });
 const results = []; let failed = 0;
@@ -22,7 +22,7 @@ const browser = await chromium.launch({
 const VIEWS = [
   { id: 'pikine-gargote', hub: 'pikine', player: [70, 64], cam: [86, 4.5, 65], look: [78, 0.8, 55] },
   { id: 'pikine-grand-place', hub: 'pikine', player: [-26, 102], cam: [-8, 7, 103], look: [-22, 0.8, 89] },
-  { id: 'plateau-gare-sandaga', hub: 'plateau', player: [22, 22], cam: [44, 8, 46], look: [33, 0.8, 30] },
+  { id: 'plateau-gare-sandaga', hub: 'plateau', player: [22, 22], cam: [47, 6.5, 19], look: [34, 0.8, 32] },
   { id: 'plateau-mosquee', hub: 'plateau', player: [-38, -58], cam: [-14, 9, -62], look: [-30, 1, -45] },
   { id: 'corniche-promenade', hub: 'corniche', player: [-128.2, -10], cam: [-126, 4, -2], look: [-132, 1, -30] },
 ];
@@ -63,7 +63,9 @@ const EXPECT = {
 
 const frames = (page, n) => page.evaluate(n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
 const summary = [];
-for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, height: 720 }, false, 'medium'], ['phone', { width: 390, height: 844 }, true, 'low']]) {
+// ONLY=desktop|phone runs one viewport (iteration); VIEWS=id,id limits the streets. The full pass runs both.
+const ONLY = process.env.ONLY, ONLY_VIEWS = process.env.VIEWS?.split(',');
+for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, height: 720 }, false, 'medium'], ['phone', { width: 390, height: 844 }, true, 'low']].filter(v => !ONLY || v[0] === ONLY)) {
   const ctx = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch, deviceScaleFactor: 1 });
   await ctx.addInitScript(q => { try { localStorage.setItem('dakarrek.quality', q); } catch { /* */ } }, quality);
   const page = await ctx.newPage(); page.setDefaultTimeout(120000);
@@ -74,7 +76,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await page.waitForFunction(() => window.__dakar?.body(), null, T);
   await page.evaluate(() => window.__dakar.ambientDay(1));                     // a Tuesday: same week day for every run
   const totals = {};
-  for (const v of VIEWS) {
+  for (const v of VIEWS.filter(x => !ONLY_VIEWS || ONLY_VIEWS.includes(x.id))) {
     for (const h of HOURS) {
       await page.evaluate(([v, h]) => { const d = window.__dakar; d.cam(null); d.setHour(h); if (d.pos().hub !== v.hub) d.teleport(v.hub, v.player[0], v.player[1], 0); else d.place(v.player[0], v.player[1], 0); }, [v, h]);
       // the population settles at once after an hour jump; give it a few frames and the walkers their places
@@ -91,12 +93,14 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
       for (const [name, ok, detail] of EXPECT[v.id]?.[h]?.(a) ?? []) check(`${label} ${v.id} ${h}h: ${name}`, ok, detail);
     }
   }
-  check(`${label}: the grand-place is busier at 19 h than at 13 h`, totals['pikine-grand-place@19'] >= totals['pikine-grand-place@13'], `${totals['pikine-grand-place@13']} → ${totals['pikine-grand-place@19']}`);
-  check(`${label}: fewer people late at night (Pikine, 23 h vs 19 h)`, totals['pikine-grand-place@23'] <= totals['pikine-grand-place@19'], `${totals['pikine-grand-place@19']} → ${totals['pikine-grand-place@23']}`);
+  if ('pikine-grand-place@19' in totals) {
+    check(`${label}: the grand-place is busier at 19 h than at 13 h`, totals['pikine-grand-place@19'] >= totals['pikine-grand-place@13'], `${totals['pikine-grand-place@13']} → ${totals['pikine-grand-place@19']}`);
+    check(`${label}: fewer people late at night (Pikine, 23 h vs 19 h)`, totals['pikine-grand-place@23'] <= totals['pikine-grand-place@19'], `${totals['pikine-grand-place@19']} → ${totals['pikine-grand-place@23']}`);
+  }
 
   // Friday: the rows of Tisbar are fuller (Ajjuma)
-  await page.evaluate(() => { const d = window.__dakar; d.cam(null); d.ambientDay(4); d.setHour(14.1); d.place(-38, -58, 0); });
-  await page.waitForFunction(() => Math.abs(window.__dakar.ambient().hour - 14.1) < 0.01, null, T); await frames(page, 6);
+  await page.evaluate(() => { const d = window.__dakar; d.cam(null); d.ambientDay(4); d.setHour(14.1); if (d.pos().hub !== 'plateau') d.teleport('plateau', -38, -58, 0); else d.place(-38, -58, 0); });
+  await page.waitForFunction(() => { const a = window.__dakar.ambient(); return Math.abs(a.hour - 14.1) < 0.01 && a.live > 0 && window.__dakar.pos().hub === 'plateau'; }, null, T).catch(() => {}); await frames(page, 4);
   await page.evaluate(() => window.__dakar.ambientSettle()); await frames(page, 3);
   await page.evaluate(() => window.__dakar.cam([-14, 9, -62], [-30, 1, -45])); await frames(page, 4);
   const fri = await page.evaluate(() => window.__dakar.ambient());
@@ -153,7 +157,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await page.evaluate(() => {
     const d = window.__dakar; d.setHour(7.6); d.place(70, 64, 0);
     d.ambientAddPlace({ id: 'test-stop', type: 'stop', name: 'Arrêt test', space: 'street', anchors: [{ id: 'stop', kind: 'spot', x: 60, z: 58 }], offers: {} },
-      [0, 1, 2, 3].map(i => ({ id: 'test-car:' + i, x: 63.5 + i * 0.55, z: 55, top: 0.75, yaw: Math.PI / 2, kind: 'vehicle', space: 'test-car', occupant: null })));
+      [0, 1, 2, 3, 4, 5].map(i => ({ id: 'test-car:' + i, x: 63.5 + (i % 3) * 0.55, z: 55 + Math.floor(i / 3) * 0.7, top: 0.75, yaw: Math.PI / 2, kind: 'vehicle', space: 'test-car', occupant: null })));
   });
   await page.waitForFunction(() => (window.__dakar.ambient().bySpot['place:test-stop']?.acts['attendre-car'] ?? 0) >= 1, null, T).catch(() => {});
   const waiting = await page.evaluate(() => window.__dakar.ambient().bySpot['place:test-stop']);
@@ -162,6 +166,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await frames(page, 3);
   const riders = await page.evaluate(() => window.__dakar.ambientActors().filter(a => a.state === 'ride').map(a => ({ seat: a.seat, y: a.y })));
   check(`${label}: when the vehicle is there they board and ride on its seats`, riders.length >= 1 && riders.every(r => r.seat?.startsWith('test-car:')), JSON.stringify(riders));
+  check(`${label}: riders leave seats in the vehicle for players`, riders.length <= 3, `${riders.length}/6 seats taken`);
   check(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }

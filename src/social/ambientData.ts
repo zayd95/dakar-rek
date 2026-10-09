@@ -35,8 +35,8 @@ export const ACTIVITIES: readonly AmbientActivity[] = [
   { id: 'attendre-assis', label: 'Attendre assis sous l’abri', at: ['stop'], hours: [[6, 22.5]], pose: 'sit', clips: ['Sit'], stay: [30, 70], density: 2, board: true },
 
   // ------------------------------------------------------------------ work and trade
-  { id: 'etal', label: 'Vendre à son étal', at: ['stall'], hours: [[7.5, 19.5]], pose: 'stand', clips: ['Talk', 'Grab', 'Talk', 'Idle'], stay: [200, 400], density: 1, look: 'vendor', days: NOT_SUNDAY },
-  { id: 'marche', label: 'Faire le marché', at: ['market'], hours: [[7.5, 19]], pose: 'stand', clips: ['Talk', 'Idle'], stay: [18, 45], group: [1, 2], density: 5, curve: [[7.5, 0.7], [10, 1], [13, 0.6], [17, 0.9], [19, 0.3]], dayBoost: { [SATURDAY]: 1.3, [SUNDAY]: 0.5 } },
+  { id: 'etal', label: 'Vendre à son étal', at: ['stall'], hours: [[6.8, 19.5]], pose: 'stand', clips: ['Talk', 'Grab', 'Talk', 'Idle'], stay: [200, 400], density: 1, look: 'vendor', days: NOT_SUNDAY },
+  { id: 'marche', label: 'Faire le marché', at: ['market'], hours: [[7, 19]], pose: 'stand', clips: ['Talk', 'Idle'], stay: [18, 45], group: [1, 2], density: 5, curve: [[7, 0.7], [10, 1], [13, 0.6], [17, 0.9], [19, 0.3]], dayBoost: { [SATURDAY]: 1.3, [SUNDAY]: 0.5 } },
   { id: 'poisson', label: 'Acheter du poisson', at: ['fishmarket'], hours: [[7, 11.5], [16, 19.5]], pose: 'stand', clips: ['Talk', 'Talk', 'Idle'], stay: [18, 45], density: 5 },
   { id: 'debarquer', label: 'Débarquer la pêche', at: ['landing'], hours: [[6.5, 10], [16, 19]], pose: 'stand', clips: ['Grab', 'Grab', 'Talk'], stay: [40, 90], group: [1, 2], density: 4, look: 'fisher' },
   { id: 'filets', label: 'Réparer les filets', at: ['landing'], hours: [[10, 16]], pose: 'stand', clips: ['Grab', 'Idle'], stay: [60, 150], density: 2, look: 'fisher' },
