@@ -4,8 +4,8 @@ import type { ActivityRunner } from '../activity/runner';
 import { greet, talk } from '../activity/primitives';
 import type { Target, TargetSource } from './types';
 
-/** An ambient person of the street (placed by a builder or walking the pavements). */
-export interface Body { id: string; obj: THREE.Object3D; h: Humanoid | null; female?: boolean; seated?: boolean }
+/** An ambient person of the street (placed by a builder or walking the pavements). `space`: 'street' by default. */
+export interface Body { id: string; obj: THREE.Object3D; h: Humanoid | null; female?: boolean; seated?: boolean; space?: string }
 
 const NAMES_F = ['Awa', 'Fatou', 'Aminata', 'Mariama', 'Khady', 'Aïssatou', 'Ndeye', 'Coumba', 'Astou', 'Bineta', 'Dieynaba', 'Rokhaya'];
 const NAMES_M = ['Modou', 'Moussa', 'Ibrahima', 'Cheikh', 'Abdou', 'Ousmane', 'Babacar', 'Lamine', 'Pape', 'Alioune', 'Serigne', 'Mbaye'];
@@ -24,16 +24,24 @@ export function nameFor(id: string, female: boolean) {
 export class People implements TargetSource {
   readonly name = 'people';
   private met = new Map<string, string>();
+  private more: (() => readonly Body[])[] = [];
   constructor(private bodies: () => Body[], private runner: ActivityRunner, private say: (line: string) => void, private player: () => { x: number; z: number }) {}
+
+  /** Another provider of bodies (a module's ambient people, passengers…): they can be greeted the same way. */
+  addBodies(list: () => readonly Body[]) { this.more.push(list); }
 
   /** Forget who was met (hub change). */
   clear() { this.met.clear(); }
 
   collect(space: string, x: number, z: number, out: Target[]) {
-    if (space !== 'street') return;
-    for (const b of this.bodies()) {
+    if (space === 'street') this.collectFrom(this.bodies(), space, x, z, out);
+    for (const list of this.more) this.collectFrom(list(), space, x, z, out);
+  }
+
+  private collectFrom(bodies: readonly Body[], space: string, x: number, z: number, out: Target[]) {
+    for (const b of bodies) {
       const p = b.obj.position;
-      if (!b.obj.visible || Math.abs(p.x - x) > REACH || Math.abs(p.z - z) > REACH) continue;
+      if ((b.space ?? 'street') !== space || !b.obj.visible || Math.abs(p.x - x) > REACH || Math.abs(p.z - z) > REACH) continue;
       const known = this.met.get(b.id);
       out.push({
         id: 'person:' + b.id, name: known ?? (b.female ? 'Passante' : 'Passant'), kind: 'person', space, x: p.x, z: p.z,
