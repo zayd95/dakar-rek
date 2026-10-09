@@ -130,11 +130,12 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await frames(page, 6);
   let greeted = null;
   for (let k = 0; k < 12 && !greeted; k++) {
-    const p = await page.evaluate(k => window.__dakar.ambientActors().filter(x => x.lod === 2 && x.state === 'do' && !x.sitting && !x.spot.includes('mosque'))
+    // people standing still (no joggers or players on the pitch), corner chats first; the nearest get a full body
+    const p = await page.evaluate(k => window.__dakar.ambientActors().filter(x => x.state === 'do' && !x.sitting && !x.spot.includes('mosque') && !x.spot.startsWith('sea:') && !x.spot.includes('pitch'))
       .sort((a, b) => (b.spot.startsWith('corner') ? 1 : 0) - (a.spot.startsWith('corner') ? 1 : 0))[k], k);
     if (!p) break;
     await page.evaluate(p => window.__dakar.place(p.x + Math.sin(p.yaw) * 0.9, p.z + Math.cos(p.yaw) * 0.9, p.yaw + Math.PI), p);
-    await frames(page, 4);
+    await frames(page, 6);
     const f = await page.evaluate(() => window.__dakar.focus());
     if (f?.kind === 'person' && f.id.startsWith('person:amb:')) greeted = f;
   }
