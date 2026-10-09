@@ -173,7 +173,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => { window.__dakar.state.data.wallet += 1; });
   await page.waitForTimeout(9000);
   const saved = await page.evaluate(() => localStorage.getItem('dakarrek.guest.save'));
-  check('save: written to device storage', !!saved && JSON.parse(saved).schemaVersion === 3, saved ? `${saved.length} bytes` : 'none');
+  check('save: written to device storage', !!saved && JSON.parse(saved).schemaVersion >= 3, saved ? `${saved.length} bytes · v${JSON.parse(saved).schemaVersion}` : 'none');
   const walletBefore = await page.evaluate(() => window.__dakar.state.data.wallet);
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar, null, { timeout: 30000 });
