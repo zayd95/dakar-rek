@@ -20,8 +20,11 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
   Standing at the door, the car itself offers « Monter · 150 F ».
 - **Board:** the fare is paid once through the universal runner (verb `ride`, wallet line « Car rapide Ligne 23 ·
   Arène », counter `car_rapide`, category `transport`), the player walks to the rear door and sits on a free seat
-  (a window seat on the pavement side when there is one; never a seat an NPC holds).
-- **Ride:** the passenger camera hangs behind the car (or « À la fenêtre », or « Vue d’en haut » — « Changer de vue »),
+  (pavement side first; never a seat an NPC holds, never the cab bench).
+- **Ride:** the car rapide is the shared vehicle kit's, with an open cabin: the people holding seats are drawn sitting
+  there (they change at stops, never onto the player's seat). Views (« Changer de vue »): behind the car, « À ta place »
+  (from your own seat, looking out of the pavement-side windows), « Au marchepied » (beside the apprenti on the rear
+  step) and « Vue d’en haut »; each has a phone-portrait placement. The camera
   swings smoothly in corners, can be turned by dragging and drifts back; the body sways (roll in corners, pitch when
   braking, bumps — stronger on Pikine's sandy streets). The stick does not stand the player up. « Parler au voisin »
   gives a short French / Wolof exchange. The player's space is the vehicle (`<hub>:rapide:<line>:<k>`): targets, chat
@@ -35,7 +38,11 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
 | File | Role |
 | --- | --- |
 | `spec.ts` | `VehicleSpec`: passenger seats and the **driver seat** (local pose, seat-top height, yaw), doors (in / out points), camera anchors (with phone-portrait placements), cabin `open`/`closed`, crew (apprenti on the step / at the door), `drive` handling for drive mode, `build()` model. `toWorld`, `seatToWorld`. |
-| `carRapide.ts` | **Adapter** for the existing car rapide model (`makeCarRapide`, Blender GLB when present). The vehicle kit swaps in here (`build`, and seats/cameras if its proportions differ). Closed cabin: passengers are seated logically, not drawn; camera views stay outside. |
+| `carRapide.ts` | **Adapter** on the vehicle kit (`vehicleSpec('carRapide')`): seats (the cab bench is NPC-only), the rear doorway's boarding point, the apprenti's step, camera anchors; `build({ seed, seated })` draws the NPC passengers on exactly their seats (kit option `seated`, one draw call). |
+| `passengers.ts` | Fixed passenger sets per line (bounded model variants, always seats left for the player), the player's seat choice, and clearing the kerb of parked vehicles where the car pulls in at a stop. |
+| `drive.ts` | Drive mode as pure logic: stick → throttle / steering, bicycle model, braking then reverse, coasting, collisions (stops at walls, slides along them, creeps out if left touching). |
+| `moto.ts`, `motoModule.ts` | The Jakarta motorbike: kit spec + drive handling; the dealer corner at Garage Modou (shop recipe), purchase with confirmation, get on / ride / get off, parked where left, saved; chase view, speed card. |
+| `owned.ts` | Ownership adapter until the ownership lane's `Asset` store: save flag `asset:vehicle:<id>` + counters `asset:<id>:hub|x|z|yaw|seed|price|at`, `toAsset()` mapping. |
 | `route.ts` | Pure math: `lanePath` (right-hand lane around road-grid nodes, rounded corners), `Path` (arc length, smooth heading, projection, curvature), `Timetable` (speed profile with corner speeds, acceleration, braking, rest and dwell at every stop; deterministic and periodic), `pullIn` (to the kerb at stops). |
 | `lines.ts` | Line data (loop nodes, stops by leg + metres, fare, fleet, calls) and the French / Wolof lines (draft for review). |
 | `vehicle.ts` | `Vehicle`: model + seats (Seats registry, space = vehicle id, `locked`) + sway; `place(x, z, yaw, speed, accel…)` is the controller seam. `LineVehicle`: places a Vehicle from the timetable on the shared clock, reports stops reached since the previous frame, apprenti and calls. |
@@ -54,7 +61,11 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
 - `GameModule.space()`: a module's own space the player is in (the vehicle while riding) → interaction space, chat and
   presence space; street-only legacy content is not offered there.
 - `GameModule.camera(ctx, dt, drag)`: drive the camera this frame (returns true → the follow camera is skipped).
-- `GameModule.safePlace()`: where to save the player instead of their position (riding → the pavement of the next stop).
+- `GameModule.safePlace()`: where to save the player instead of their position (riding → the pavement of the next stop;
+  on the motorbike → beside it, parked there).
+- `GameModule.presenceSpace()`: presence / chat space when it differs from the module's interaction space (on one's own
+  motorbike the player stays visible to the street).
+- `src/actors/vehicleKit.ts`: option `seated` (exactly these seats get a baked passenger) and `spec.occupied`.
 - `main.ts`: the seated branch follows the seat every frame in play, busy (and menu when locked) so the body rides
   along; module space / camera / safe place hooks; the legacy source only lists street content in the street.
 - `src/multiplayer/protocol.ts`: presence accepts `<hub>:rapide:<line>:<k>` spaces of the current hub (test added).
@@ -69,14 +80,21 @@ real clock too, and each vehicle reports the stops it reached since the previous
 a walk never outlasts a stop, even at a few frames per second (busy test machine, cheap phone hiccup). If the car pulls
 away while the player is still on the way to the door, they get in at once.
 
-## Next: personal mobility on the same framework
+## Personal mobility: the Jakarta motorbike (drive mode)
 
-The API is ready for drive mode (owned motorbike, then car): `VehicleSpec.driver` + `VehicleSpec.drive`
-(max/reverse speed, acceleration, braking, turning radius, steering rate, collider half-extents, `lean` for
-two-wheelers) and `Vehicle.place()` as the controller seam. A `DriveController` reads the stick (throttle / steer),
-integrates a bicycle model, collides with the hub's colliders using the half-extents, and calls `place()`; the player
-sits on `vehicle.driverSeat` (locked); the passenger camera's anchors serve as chase views. Ownership comes from the
-economy lane's `Asset` (kind `vehicle`): buying spawns a `Vehicle` from the catalogue's spec near the player.
+- **Buy:** « Motos · Garage Modou » corner next to the garage in Pikine (two motorbikes on display, a sign). « Voir les
+  articles » lists the Moto Jakarta 125 with its price; picking it opens a confirmation with the price and the wallet;
+  « Confirmer l’achat » pays once through the runner (verb `buy`, wallet line « Moto Jakarta 125 · Motos · Garage
+  Modou », counter `vehicules`). Price 75 000 F (provisional). It is delivered at the kerb in front of the garage.
+- **Ride:** « Monter sur la moto » sits the player on its driver seat (locked). Stick or keys: up accelerates (about
+  45 km/h flat out), down brakes then reverses slowly, left / right steers (tighter at low speed); releasing coasts to a
+  stop. It never goes through walls, parked vehicles, stairs or the car rapides; it slides along a wall met at an
+  angle. Chase camera from the kit's `chase` anchor (portrait placement on phones), « Vue d’en haut »; the card shows
+  the speed. Interaction space = the motorbike (no shop counters while riding); presence stays « street ».
+- **Get off:** « Descendre de la moto » (it brakes first if moving): the player stands beside it; it stays parked there,
+  in that hub, across reloads (a reload mid-ride parks it where it was and puts the player beside it).
+- **Same framework:** `VehicleSpec` (driver seat + `drive`), `Vehicle.place()`, `PassengerCamera`, the ride card.
+  A car next is a new spec on the kit (`sedan`…) with its own `drive` numbers.
 
 ## Performance
 
@@ -101,12 +119,12 @@ economy lane's `Asset` (kind `vehicle`): buying spawns a `Vehicle` from the cata
 
 ## Known gaps
 
-- The current model's cabin is closed: no visible interior, so NPC passengers have seats but no bodies and the
-  camera views are outside the car (the vehicle kit with an interior will add an inside view and passenger bodies:
-  `cabin: 'open'`).
+- NPC passengers are the kit's seated busts (no animation); the player's humanoid sits with the city « Sit » clip
+  (no riding pose on the motorbike yet; the rider-less kit motorbike keeps its side stand down while ridden).
+- The motorbike is not seen by other players (only the rider, seated); it does not follow its owner to another hub.
 - Cars of the line and the decorative traffic do not see each other (they may overlap at crossings).
 - Stopping is at stops only (no « Taxawal fii » anywhere along the street yet).
 - The trip itself is not saved: a reload mid-ride puts the player on the next stop's pavement (fare already paid).
-- Players in the street do not see riders (different presence space); riders of the same car see each other.
+- Players in the street do not see car rapide riders (different presence space); riders of the same car see each other.
 - The inter-hub trip from the station still fades (no departure scene yet).
 - Wolof lines and calls are a draft to review with the language lane.

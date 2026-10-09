@@ -90,8 +90,9 @@ export class MotoModule implements GameModule {
     const mv = ctx.mode() === 'play' ? ctx.input.move() : { x: 0, y: 0 };
     const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : { throttle: mv.y, steer: mv.x };
     transport.obstacles(this.obst);
+    const v0 = Math.abs(this.st.speed);
     const hit = driveStep(this.st, input, this.spec.drive, dt, this.blocked);
-    if (hit && Math.abs(this.st.speed) > 0.5) this.bumps++;
+    if (hit && v0 > 0.5) this.bumps++;
     m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(this.st.speed), this.st.accel, this.st.odo, dt);
     if (this.leaving && Math.abs(this.st.speed) < 0.3) this.getOff(true);
     this.cardT -= dt;

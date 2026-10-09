@@ -27,16 +27,20 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const shot = async name => { await page.waitForTimeout(500); await page.screenshot({ path: `${out}/${label}-${name}.png` }); };
   const ready = () => page.waitForFunction(() => window.__dakar.focus() !== null && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   const inWall = async p => (await d(() => window.__dakar.cityGeometry())).colliders.some(c => p.x > c.x0 && p.x < c.x1 && p.z > c.z0 && p.z < c.z1);
-  /** Ride: hold the throttle (keys on desktop, the joystick on the phone) for `ms`, steering −1 / 0 / 1. */
-  const ride = async (ms, steer = 0) => {
+  /**
+   * Ride: hold the throttle (keys on desktop, the joystick on the phone), steering −1 / 0 / 1, until `until` holds in
+   * the page (frames are slow on the test machine: wait on the motorbike, not on the clock) or `ms` at most.
+   */
+  const ride = async (ms, steer = 0, until = null, arg = null) => {
+    const hold = () => until ? page.waitForFunction(until, arg, { timeout: Math.max(ms, 1000) }).catch(() => {}) : page.waitForTimeout(ms);
     if (!touch) {
       await page.keyboard.down('KeyW'); if (steer) await page.keyboard.down(steer > 0 ? 'KeyD' : 'KeyA');
-      await page.waitForTimeout(ms);
+      await hold();
       if (steer) await page.keyboard.up(steer > 0 ? 'KeyD' : 'KeyA'); await page.keyboard.up('KeyW');
     } else {
       const j = await d(() => { const r = document.getElementById('joy').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
       await page.mouse.move(j.x, j.y); await page.mouse.down(); await page.mouse.move(j.x + steer * 30, j.y - 42, { steps: 4 });
-      await page.waitForTimeout(ms);
+      await hold();
       await page.mouse.up();
     }
   };
@@ -89,18 +93,19 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
 
   // 3. Ride along the road (east), then steer.
   const p0 = { x: i2.x, z: i2.z };
-  await ride(2500);
+  await ride(120000, 0, p => { const m = window.__dakar.moto.info(); return Math.hypot(m.x - p.x, m.z - p.z) > 5 && m.speed > 2; }, p0);
   i2 = await info();
   const moved = Math.hypot(i2.x - p0.x, i2.z - p0.z);
   check(`${label}: the throttle moves the motorbike and the card shows the speed`, moved > 4 && /km\/h/.test(await d(() => window.__dakar.moto.card())), `${moved.toFixed(1)} m, ${await d(() => window.__dakar.moto.card())}`);
   await shot('4-riding');
   const y0 = i2.yaw;
-  await ride(1500, 1);
+  await ride(120000, 1, y => window.__dakar.moto.info().yaw < y - 0.3, y0);
   i2 = await info();
   check(`${label}: steering right turns the motorbike right`, i2.yaw < y0 - 0.2, `${y0.toFixed(2)} → ${i2.yaw.toFixed(2)}`);
   // 4. Into a wall: it stops against it, never inside.
-  await d(r => window.__dakar.moto.place(r.x, r.z - 1.5, Math.PI), rec);          // facing the garage's block
-  await ride(3000);
+  await d(r => window.__dakar.moto.place(r.x, r.z + 2, Math.PI), rec);            // facing the garage's block, 4 m away
+  await ride(120000, 0, () => window.__dakar.moto.info().bumps > 0);
+  await page.waitForTimeout(800);
   i2 = await info();
   check(`${label}: riding into the block stops at the wall (never inside it)`, !(await inWall({ x: i2.x, z: i2.z })) && i2.bumps > 0, JSON.stringify({ x: i2.x, z: i2.z, bumps: i2.bumps }));
   await d(r => window.__dakar.moto.place(r.x - 6, r.z, Math.PI / 2), rec);
@@ -126,7 +131,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await page.waitForFunction(() => window.__dakar.focus()?.name === 'Ta moto Jakarta', null, T).catch(() => {});
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => window.__dakar.moto.info().driving, null, T).catch(() => {});
-  await ride(1500);
+  await ride(60000, 0, () => window.__dakar.moto.info().speed > 2);
   const mid = await info();
   await page.reload({ timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.moto && window.__dakar.pos().hub === 'pikine', null, T);

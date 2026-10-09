@@ -31,7 +31,7 @@ export function carRapideSpec(): VehicleSpec {
       { id: 'derriere', label: 'Derrière le car', pos: [chase.pos[0], chase.pos[1] + 0.3, chase.pos[2] - 2.5], look: [chase.look[0], chase.look[1], chase.look[2]],
         portrait: { pos: [chase.pos[0], chase.pos[1] + 2.4, chase.pos[2] - 6.5], look: [chase.look[0], chase.look[1] - 0.4, chase.look[2] + 4] } },
       // from your own seat, looking out of the pavement-side windows (the kit's passenger anchor, made seat-relative)
-      { id: 'place', label: 'À ta place', seat: true, inside: true, pos: [0.05, 0.74, 0.1], look: [-6, 0.45, 2.5], portrait: { pos: [0.1, 0.78, -0.25], look: [-6, 0.3, 3.5] } },
+      { id: 'place', label: 'À ta place', seat: true, inside: true, pos: [0.05, 0.86, 0.2], look: [-6, 0.5, 2.5], portrait: { pos: [0.1, 0.9, -0.1], look: [-6, 0.35, 3.5] } },
       // beside the apprenti on the rear step, looking back along the pavement side
       { id: 'marchepied', label: 'Au marchepied', pos: [(step?.riding.x ?? -0.3) - 0.8, 2.15, (step?.riding.z ?? -3.2) - 0.35], look: [-4, 1.2, (step?.riding.z ?? -3.2) - 6.5],
         portrait: { pos: [(step?.riding.x ?? -0.3) - 0.9, 2.4, (step?.riding.z ?? -3.2) - 1.2], look: [-3.6, 1.0, (step?.riding.z ?? -3.2) - 8] } },
