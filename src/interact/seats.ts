@@ -6,7 +6,7 @@ import type { Clip } from '../actors/humanoid';
  * Builders and venues register seats; the player (and later NPCs) occupy them. A seat is a target with « S'asseoir »
  * while it is free and the player is near it.
  */
-export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'vehicle' | 'prayer';
+export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'vehicle' | 'prayer' | 'stand';
 
 export interface Seat {
   id: string;
@@ -32,6 +32,11 @@ export interface Seat {
    * their `top` is then the floor height + SIT_HIPS, so the sitter's origin lands on the floor (see floorSeatTop).
    */
   clip?: Clip;
+  /**
+   * How far the player may stand from the seat to take it (default 1.3 m). The arena's stands are out of the walkable
+   * floor (their tiers collide): their places are offered from the ring side, a few metres away.
+   */
+  reach?: number;
 }
 
 /** Height of the Sit clip's hips above the character origin (actors/humanoid.ts, corrected Sit). */
@@ -88,16 +93,17 @@ export class Seats implements TargetSource {
   collect(space: string, x: number, z: number, out: Target[]) {
     for (const s of this.inSpace(space)) {
       // vehicle seats are taken by boarding the vehicle (ride), never offered on their own
-      if (s.occupant || s.kind === 'vehicle' || Math.abs(s.x - x) > REACH || Math.abs(s.z - z) > REACH) continue;
+      const reach = s.reach ?? REACH;
+      if (s.occupant || s.kind === 'vehicle' || Math.abs(s.x - x) > reach || Math.abs(s.z - z) > reach) continue;
       out.push({
-        id: 'seat:' + s.id, name: SEAT_NAME[s.kind], kind: 'seat', space, x: s.x, z: s.z, y: s.top + 0.5, radius: REACH, bias: 1,
+        id: 'seat:' + s.id, name: SEAT_NAME[s.kind], kind: 'seat', space, x: s.x, z: s.z, y: s.top + 0.5, radius: reach, bias: 1,
         affordances: () => [{ id: 'sit', verb: s.kind === 'bed' ? 'sleep' : 'sit', label: s.kind === 'bed' ? 'S’allonger' : 'S’asseoir', icon: s.kind === 'bed' ? '🛏️' : '🪑', run: () => this.onSit(s) }],
       });
     }
   }
 }
 
-const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', vehicle: 'Siège', prayer: 'Rang de prière' };
+const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', vehicle: 'Siège', prayer: 'Rang de prière', stand: 'Place en tribune' };
 
 /**
  * Seats along a bench of length `len` centred on (x, z), facing `yaw` (the bench back is behind the sitters).

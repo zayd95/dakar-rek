@@ -222,6 +222,34 @@ export const RIDE = {
   ],
 };
 
+// ------------------------------------------------------------------ the arena's gala evening
+
+/**
+ * The gala at the Pikine arena (src/arena): the ticket window, the controller at the gate, the stands' vendors, the
+ * announcer and the crowd. French with a Wolof touch; no ritual or religious formula anywhere in the show.
+ */
+export const ARENA = {
+  /** Le guichetier : « 1 000 F, jërëjëf ! » (merci) */
+  ticket: (fare: number) => exchange(['Le guichetier', [{ wo: `${price(fare)},` }, 'jërëjëf !']]),
+  /** At the gate with a ticket. */
+  welcome: () => `${exchange(['Le contrôleur', ['Dalal ak jàmm !']])} · Les tribunes sont de chaque côté.`,
+  /** At the gate without one. */
+  stop: () => `${exchange(['Le contrôleur', ['Xaaral tuuti !']])} · Il faut un billet : le guichet est à gauche de la porte.`,
+  /** The bissap seller calls you over; the peanut seller answers « Ñaata la ? »; the scarves are haggled. */
+  bissap: () => exchange(['Le vendeur', ['Kaay fi !']]),
+  /** The announcer, when the gala starts. */
+  bill: (left: string, leftEcurie: string, right: string, rightEcurie: string) => `Gala de làmb : ${left} (écurie ${leftEcurie}) contre ${right} (écurie ${rightEcurie}) !`,
+  /** The wrestlers' entrance: drums, the crowd. */
+  entrance: (name: string, ecurie: string) => `Entrée de ${name}, écurie ${ecurie} : sabar et danse.`,
+  /** The result, and the crowd's shout. */
+  result: (winner: string | null, how: 'projection' | 'decision' | 'egalite' | 'abandon') =>
+    winner === null || how === 'egalite' || how === 'abandon'
+      ? 'Temps ! Match nul : l’arbitre ne départage pas les deux lutteurs.'
+      : `${winner} l’emporte ${how === 'projection' ? 'par projection' : 'à la décision de l’arbitre'} ! · Le public : ${utter(['Daan na !'])}`,
+  /** The end of the evening. */
+  over: 'Le gala est fini : le public rentre, la rue se vide.',
+};
+
 // ------------------------------------------------------------------ chat
 
 export type ChatPlace = 'street' | 'food' | 'market' | 'transport' | 'mosque' | 'club' | 'home';
