@@ -85,7 +85,7 @@ economy lane's `Asset` (kind `vehicle`): buying spawns a `Vehicle` from the cata
   (one waiting person per stop on Low).
 - No per-frame allocations in the vehicle / route / seat updates (preallocated poses, motions and arrival lists).
 - Measured by `scripts/check-transport.mjs` 6 m from a stop with a car standing there: **+16 to +18 draw calls** for the
-  line's cars and stops (Pikine desktop 445 with / 429 without; Plateau phone at Low-equivalent framing 308 / 290); the
+  line's cars and stops (Pikine desktop 445 with / 429 without; Plateau phone portrait 308 / 290); the
   people waiting at the stops are counted in both.
 
 ## Checks
