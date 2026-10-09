@@ -268,6 +268,7 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 #ui #chatBtn:not([data-state="online"]) { color:var(--ink-3); }
 #ui #delivery { color:var(--ink); border:0; box-shadow:inset 4px 0 0 var(--sun), var(--shadow); }
 #ui #delivery small { color:#8a5300; } #ui #delivery.late small { color:var(--warn); }
+#ui #ride { color:var(--ink); border:0; } #ui #ride small { color:var(--ink-2); } #ui #ride .req { color:var(--warn); }
 
 /* ------------------------------------------------------------- portrait phones */
 @media (max-width:640px) and (orientation:portrait) {

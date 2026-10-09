@@ -199,11 +199,11 @@ const settleClip = (page, id, clip) => page.waitForFunction(([id, clip]) => wind
   await clickItem(page, /^Mame Diarra/);
   const sh = await modal(page);
   const shHtml = await d(page, () => document.querySelector('#modal .panel').textContent);
-  check('People sheet: job, place now, relation, last memory', /Dernier souvenir/.test(shHtml) && /Maintenant/.test(shHtml) && /Relation/.test(shHtml), sh.title);
+  check('People sheet: job, place now, relation, last memory, Wolof expressions', /Dernier souvenir/.test(shHtml) && /Maintenant/.test(shHtml) && /Relation/.test(shHtml) && /Sa façon de parler.*« Kaay lekk » \(viens manger\)/.test(shHtml), sh.title);
   await page.screenshot({ path: `${out}/desktop-people-sheet.png` });
   await closeModal(page);
   const sheet = await d(page, () => window.__dakar.npcSheet('mamadou'));
-  check('npcSheet(mamadou): draft sheet with routine and memory', sheet?.review?.includes('à relire') && sheet.routine.length >= 5 && !!sheet.lastMemory, sheet?.lastMemory);
+  check('npcSheet(mamadou): sheet with Wolof expressions, routine and memory', sheet?.expressions?.length >= 2 && sheet.expressions.every(e => e.wo && e.fr) && sheet.routine.length >= 5 && !!sheet.lastMemory, `${sheet?.expressions?.map(e => e.wo).join(' | ')} · ${sheet?.lastMemory}`);
 
   // Kadiatou (Peul student) at Fann, and the beach training in the evening.
   const wk = await goHour(page, 'corniche', 15, 'kadiatou', [0, -100]);
