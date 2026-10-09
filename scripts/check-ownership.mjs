@@ -287,7 +287,7 @@ let savedJson = null;
   const hv = await D(page, () => window.__dakar.homeView());
   const bp = hv.pieces.find(p => p.uid === bed.uid);
   await D(page, () => { window.__dakar.state.data.needs.energie = 20; });
-  await D(page, p => window.__dakar.place(p.x + 1.3, p.z, -Math.PI / 2), bp);
+  await D(page, p => window.__dakar.place(p.x + 1.1, p.z, -Math.PI / 2), bp);
   check('phone: the bed offers « Dormir »', await focusIs(page, `^home:appart_jamm:${bed.uid}\\|Dormir`), JSON.stringify(await D(page, () => window.__dakar.focus())));
   await page.locator('#act').tap();
   await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu dors', null, T).catch(() => {});

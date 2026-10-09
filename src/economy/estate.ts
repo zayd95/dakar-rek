@@ -27,7 +27,9 @@ import { CATALOGUE, cannotBuy as cannotBuyFurniture, deliverFurniture, furniture
 import { furnitureModel } from './furnitureModels';
 import { buildHomeInterior } from './homeInterior';
 import { footprint, toHome, yawOf } from './placement';
-import { CITE_HUB, billboardTexture, buildCiteJamm, dressPlot, plotBoardTexture, type CiteJamm } from './citeJamm';
+import { CITE_HUB, billboardTexture, buildCiteJamm, dressPlot, plotBoardTexture, signPanel, type CiteJamm } from './citeJamm';
+import { Batch, signTexture } from '../world/batch';
+import { BLK, HALF, PITCH, ROAD } from '../world/builder';
 import { HomeEditor, type HomeView } from './homeEditor';
 import { ownedVentures } from './business';
 import './estate.css';
@@ -51,6 +53,7 @@ const perDay = (n: number) => `${fcfa(n)} / jour`;
 const ENTRY: Record<string, string> = {
   appart_jamm: 'pikine:city:jamm', maison_cite: 'pikine:city:maison', parcelle_150: 'pikine:city:parcelles', parcelle_300: 'pikine:city:parcelles',
   panneau_jamm: 'pikine:city:panneau', keur_meubles: 'pikine:city:keur_meubles',
+  villa_almadies: 'almadies:city:villa', residence_ngor: 'almadies:city:residence',
 };
 const SELLER_LINES = [
   'Pape, vendeur : « Dalal ak jàmm ! Essaie les canapés, tout est livré chez toi, sans frais. »',
@@ -98,6 +101,7 @@ class Estate {
     this.people = []; this.views.clear(); this.plotCols.clear(); this.plotKeys.clear(); this.boardKey = '';
     this.hub = hub; this.cite = null;
     if (hub.id === CITE_HUB) this.buildCite(hub);
+    if (hub.id === 'almadies') this.buildVillas(hub);
     HOMES.forEach((spec, i) => {
       if (spec.hub !== hub.id) return;
       const door = hub.interactables.find(it => it.id === spec.home.door); if (!door) return;
@@ -137,6 +141,27 @@ class Estate {
       const h = new Humanoid(look); h.hold = 'Idle';
       h.group.position.set(c.shop.seller.x, FLOOR + 0.05, c.shop.seller.z); h.group.rotation.y = c.shop.seller.yaw;
       ctx.extra.add(h.group); this.people.push(h);
+    }
+  }
+
+  /**
+   * The villa and the luxury residence of Almadies stand behind two villa gates of the hub (world/builder.ts puts each
+   * villa lot's gate at the lot's centre, on the street side): a listing board, the door, a directory entry.
+   */
+  private buildVillas(hub: HubWorld) {
+    const ctx = this.ctx;
+    const hooks: PlaceHooks = { ownership: id => this.openSheet(id), holds: id => holds(this.s, id), enterHome: id => this.enterHome(id) };
+    for (const [id, gate] of Object.entries(VILLA_GATES)) {
+      const sp = homeSpec(id)!, door = { x: gate.x, z: gate.z + 1.4 }, board = { x: gate.x + 2.3, z: gate.z + 0.9 };
+      hub.interactables.push({ id: sp.home.door, name: sp.name, kind: 'actions', x: door.x, z: door.z, radius: -1, actions: [] });
+      hub.interactables.push({ id: ENTRY[id], name: sp.name, kind: 'actions', x: gate.x - 2.6, z: gate.z + 2.2, radius: -1, actions: [], description: 'Logement à louer ou à vendre' });
+      ctx.places.add(ownable({ id, name: sp.name.split(' · ')[0], space: 'street', type: 'home', assetId: id, anchors: [{ id: 'sign', kind: 'door', x: door.x, z: door.z + 0.3, radius: 2.2 }] }, hooks));
+      const b = new Batch();
+      for (const dx of [-0.75, 0.75]) b.box(0.1, 2.3, 0.1, board.x + dx, 0.12, board.z, 0x6b4a2e);
+      const mesh = b.build(new THREE.MeshLambertMaterial({ vertexColors: true }), true, true); if (mesh) hub.group.add(mesh);
+      const panel = signPanel(signTexture(id === 'villa_almadies' ? 'VILLA À VENDRE' : 'RÉSIDENCE DE LUXE', '#0c4a6e', '#fde68a', 512, 160), 1.8, 0.6);
+      panel.position.set(board.x, 1.95, board.z + 0.07); hub.group.add(panel); hub.signs.push(panel);
+      hub.colliders.push({ x0: board.x - 0.9, z0: board.z - 0.1, x1: board.x + 0.9, z1: board.z + 0.1, h: 2.3 });
     }
   }
 
@@ -550,6 +575,12 @@ class Estate {
 }
 
 const seatId = (hub: string, uid: string, k: number) => `${hub}:home:${uid}:${k}`;
+/** Gates of two villa lots of Almadies, block (1, 1), lots 3 and 2 (the gate is the lot's centre, on the street side). */
+const LOT = (BLK - 2) / 2, BM = (k: number) => -HALF + ROAD + k * PITCH;   // lot size and block corner (world/builder.ts)
+const VILLA_GATES: Record<string, { x: number; z: number }> = {
+  villa_almadies: { x: BM(1) + LOT + 2 + LOT / 2, z: BM(1) + LOT + 2 + LOT - 0.3 },
+  residence_ngor: { x: BM(1) + LOT / 2, z: BM(1) + LOT + 2 + LOT - 0.3 },
+};
 const ventureName = (s: GameCtx['state']) => { const v = [...VENTURES].reverse().find(x => (ownedVentures(s)[x.id] ?? 0) > 0); return v ? v.name : 'Ton affaire'; };
 function setMap(m: THREE.Mesh, tex: THREE.Texture) {
   const mat = m.material as THREE.MeshLambertMaterial;

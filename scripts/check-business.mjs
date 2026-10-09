@@ -93,12 +93,12 @@ let savedJson = null;
   await page.screenshot({ path: `${out}/desktop-hud-billion.png` });
   await D(page, () => window.__dakar.phone('portefeuille')); await page.waitForTimeout(400);
   const bal = await D(page, () => { const e = document.querySelector('#phone .ph-balance b'); return { text: e.textContent, fits: e.scrollWidth <= e.clientWidth + 1, screen: document.querySelector('#phone .ph-screen').textContent }; });
-  check('phone wallet: the full amount on one line, with total wealth', bal.text === full(1250000000) && bal.fits && /Fortune totale/.test(bal.screen) && /Valeur des affaires/.test(bal.screen) && /Polyvalence : 4 activités/.test(bal.screen), bal.text);
+  check('phone wallet: the full amount on one line, with total wealth', bal.text === full(1250000000) && bal.fits && /Fortune totale/.test(bal.screen) && /Valeur des biens/.test(bal.screen) && /Polyvalence : 4 activités/.test(bal.screen), bal.text);
   await page.screenshot({ path: `${out}/desktop-phone-wallet-billion.png` });
   await D(page, () => window.__dakar.phoneClose());
 
   // the whole ladder once every activity is known: up to the big company
-  await D(page, () => { for (const a of ['services', 'combat', 'artisanat']) window.__dakar.practise(a); window.__dakar.giveMoney(1500000000); });
+  await D(page, () => { for (const a of ['service', 'combat', 'artisanat']) window.__dakar.practise(a); window.__dakar.giveMoney(1500000000); });
   const ladder = await D(page, () => ['kiosque', 'boutique', 'car_rapide', 'restaurant', 'immeuble', 'entreprise'].map(id => window.__dakar.buyVenture(id)));
   b = await D(page, () => window.__dakar.business());
   check('every tier can be bought in order once unlocked (bana-bana → grande entreprise)', ladder.every(Boolean) && Object.keys(b.owned).length === 7 && b.mult === 2, `${JSON.stringify(b.owned)} · ×${b.mult} · ${b.perHour} F/h`);
@@ -117,13 +117,13 @@ let savedJson = null;
   const bank = await D(page, () => window.__dakar.cityPlaces().find(p => /:city:bank/.test(p.id)));
   check('Banque Teranga offers « Investir dans une affaire »', bank?.actions.some(a => a.id === 'affaires'), bank?.name);
 
-  // reload: everything persisted in schema v4
+  // reload: everything persisted in schema v5
   await D(page, () => window.__dakar.state.data.jobs.active = null);
   const before = await D(page, () => ({ b: window.__dakar.business(), w: window.__dakar.state.wallet }));
   await D(page, () => window.__dakar.phone('reglages')); await page.locator('#phone [data-act="save"]').click(); await D(page, () => window.__dakar.phoneClose());
   await page.reload({ waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1200);
   const after = await D(page, () => ({ b: window.__dakar.business(), w: window.__dakar.state.wallet, ver: JSON.parse(localStorage.getItem('dakarrek.guest.save')).schemaVersion }));
-  check('reload: ventures, earnings, activities and wallet persisted (schema v4)', after.ver === 4 && JSON.stringify(after.b.owned) === JSON.stringify(before.b.owned) && after.b.earned === before.b.earned && after.b.known.length === 7 && after.w >= before.w, `${after.w} F · earned ${after.b.earned}`);
+  check('reload: ventures, earnings, activities and wallet persisted (schema v5)', after.ver === 5 && JSON.stringify(after.b.owned) === JSON.stringify(before.b.owned) && after.b.earned === before.b.earned && after.b.known.length === 7 && after.w >= before.w, `${after.w} F · earned ${after.b.earned}`);
   savedJson = await D(page, () => localStorage.getItem('dakarrek.guest.save'));
   check('desktop: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();

@@ -265,13 +265,25 @@ export class Economy {
     const s = this.s, home = specOfAsset(currentHome(s)).name;
     const items: MenuItem[] = FURNITURE.map(f => {
       const mine = owns(s, f.id), why = cannotBuy(s, f.id);
-      return { label: f.name, detail: mine ? `Chez toi ✓ · ${f.effect}` : why && why !== 'Déjà chez toi' ? `${why} · ${f.effect}` : f.effect, right: mine ? '✓' : fcfa(priceOf(f.id)), disabled: !!why, onPick: () => { this.d.hud.closeModal(); this.buy(f.id); } };
+      return { label: f.name, detail: mine ? `Chez toi ✓ · ${f.effect}` : why && why !== 'Déjà chez toi' ? `${why} · ${f.effect}` : f.effect, right: mine ? '✓' : fcfa(priceOf(f.id)), disabled: !!why, onPick: () => this.confirmPiece(f.id, fromPhone) };
     });
     const owned = FURNITURE.filter(f => owns(s, f.id));
     const html = `<div class="kv">${owned.length ? 'Dans ta chambre : ' + owned.map(f => esc(f.name)).join(', ') : 'Ta chambre est encore vide.'}<br>${esc(homeGoalLine(s))}</div>
       <div class="draft">Livré chez toi (${esc(home)}). Plus de choix à Keur Meubles, Cité Jàmm. ${esc(LOCAL_NOTE)}</div>`;
     this.d.menu();
     this.d.hud.openMenu(fromPhone ? 'Ma chambre · meubles' : 'Quincaillerie · meubles', `${owned.length}/${FURNITURE.length} meubles · portefeuille ${fcfa(s.wallet)}`, items, html);
+  }
+
+  /** What a piece costs and brings, before the one confirmation (owner's rule: no surprise after paying). */
+  private confirmPiece(id: string, fromPhone: boolean) {
+    const s = this.s, f = furnitureById(id), price = priceOf(id), home = specOfAsset(currentHome(s)).name; if (!f) return;
+    const rows: [string, string][] = [['Prix', fcfa(price)], ['Ce qu’il apporte', f.effect], ['Livré', id === 'matelas' ? `sur ton lit (${home})` : `chez toi (${home}), installé où il y a de la place`], ['Il te restera', fcfa(Math.max(0, s.wallet - price))]];
+    const why = cannotBuy(s, id);
+    this.d.menu();
+    this.d.hud.openMenu(`Acheter : ${f.name}`, 'Vérifie avant de confirmer :', [
+      { icon: '✅', label: 'Acheter', right: '−' + fcfa(price), detail: why ?? 'Une seule fois : pas de papiers, pas d’attente', disabled: !!why, onPick: () => { this.d.hud.closeModal(); this.buy(id); } },
+      { icon: '↩️', label: 'Retour', onPick: () => this.openShop(fromPhone) },
+    ], `<div class="est-rows">${rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`);
   }
 
   buy(id: string): boolean {
