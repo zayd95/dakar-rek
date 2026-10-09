@@ -6,6 +6,8 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
+// Mirrors src/multiplayer/chatRules.ts (CHAT_MAX_CHARS, CHAT_RATE_COUNT).
+const CHAT_MAX = 500, RATE = 10;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const checks = [];
@@ -179,16 +181,16 @@ try {
 
   // ---- over-long and rate-limited messages: rejected with a visible status
   await b.click('.chat-tabs button[data-tab="near"]');
-  await b.evaluate(() => { const f = document.getElementById('chatInput'); f.removeAttribute('maxlength'); f.value = 'a'.repeat(250); f.dispatchEvent(new Event('input')); });
+  await b.evaluate(() => { const f = document.getElementById('chatInput'); f.removeAttribute('maxlength'); f.value = 'a'.repeat(CHAT_MAX + 50); f.dispatchEvent(new Event('input')); });
   await b.press('#chatInput', 'Enter');
-  const long = await settled(b, 'near', 'a'.repeat(250));
+  const long = await settled(b, 'near', 'a'.repeat(CHAT_MAX + 50));
   check('over-long message rejected with "trop long"', long.status === 'failed' && long.reason === 'too-long' && (await domStatus(b, long.id)).includes('trop long'));
-  await b.evaluate(() => document.getElementById('chatInput').setAttribute('maxlength', '200'));
-  // Six quick reactions in one burst (Playwright clicks are slow under SwiftShader and would spread over the window).
-  await b.evaluate(() => document.querySelectorAll('.chat-react button').forEach(x => x.click()));
-  await b.waitForFunction(() => (window.__dakarChat.state().history.near ?? []).filter(e => e.mine).slice(-6).every(e => e.status !== 'sending'), null, { timeout: 60000 });
-  const burst = conv(await state(b), 'near').filter(e => e.mine).slice(-6);
-  check('sixth message in ten seconds is rate-limited, with a retry button', burst.slice(0, 5).every(e => e.status === 'sent') && burst[5].status === 'failed' && burst[5].reason === 'rate-limited' && (await domStatus(b, burst[5].id)).includes('Réessayer'), JSON.stringify(burst.map(e => e.status + ':' + (e.reason ?? ''))));
+  await b.evaluate(() => document.getElementById('chatInput').setAttribute('maxlength', String(CHAT_MAX)), CHAT_MAX);
+  // One burst of RATE + 1 quick reactions (Playwright clicks are slow under SwiftShader and would spread over the window).
+  await b.evaluate(n => { const r = [...document.querySelectorAll('.chat-react button')]; for (let i = 0; i < n; i++) r[i % r.length].click(); }, RATE + 1);
+  await b.waitForFunction(n => (window.__dakarChat.state().history.near ?? []).filter(e => e.mine).slice(-n).every(e => e.status !== 'sending'), RATE + 1, { timeout: 60000 });
+  const burst = conv(await state(b), 'near').filter(e => e.mine).slice(-(RATE + 1));
+  check(`message ${RATE + 1} in ten seconds is rate-limited, with a retry button`, burst.slice(0, RATE).every(e => e.status === 'sent') && burst[RATE].status === 'failed' && burst[RATE].reason === 'rate-limited' && (await domStatus(b, burst[RATE].id)).includes('Réessayer'), JSON.stringify(burst.map(e => e.status + ':' + (e.reason ?? ''))));
   await sleep(300); await b.screenshot({ path: `${SHOTS}/desktop-statuses.png` });
 
   // ---- mute hides bubbles and messages; block hides the avatar; report confirmed
@@ -249,14 +251,14 @@ try {
   s1b.ws.send(JSON.stringify({ type: 'chat', id: mid, channel: 'near', text: 'Bonjour le Plateau' }));
   const dupAck = await until(s1b.inbox, m => m.type === 'chat-ack' && m.id === mid); await sleep(700);
   check('server: same id after reconnect acknowledged as duplicate, not delivered twice', dupAck?.ok === true && dupAck.duplicate === true && s2.inbox.filter(m => m.type === 'chat' && m.id === mid).length === 1);
-  s1b.ws.send(JSON.stringify({ type: 'chat', id: `long-${run}`, channel: 'near', text: 'x'.repeat(201) }));
+  s1b.ws.send(JSON.stringify({ type: 'chat', id: `long-${run}`, channel: 'near', text: 'x'.repeat(CHAT_MAX + 1) }));
   s1b.ws.send(JSON.stringify({ type: 'chat', id: `nobody-${run}`, channel: 'dm', to: '00000000-0000-4000-8000-000000000000', text: 'allô' }));
   const longAck = await until(s1b.inbox, m => m.type === 'chat-ack' && m.id === `long-${run}`);
   const dmAck = await until(s1b.inbox, m => m.type === 'chat-ack' && m.id === `nobody-${run}`);
-  check('server rejects over 200 characters and private messages to absent players', longAck?.reason === 'too-long' && dmAck?.reason === 'offline');
-  for (let i = 0; i < 6; i++) s1b.ws.send(JSON.stringify({ type: 'chat', id: `rate-${run}-${i}`, channel: 'dm', to: s2.welcome.id, text: `n°${i}` }));
-  const sixth = await until(s1b.inbox, m => m.type === 'chat-ack' && m.id === `rate-${run}-5`);
-  check('server rate limit: five per ten seconds per connection', sixth?.ok === false && sixth.reason === 'rate-limited');
+  check(`server rejects over ${CHAT_MAX} characters and private messages to absent players`, longAck?.reason === 'too-long' && dmAck?.reason === 'offline');
+  for (let i = 0; i <= RATE; i++) s1b.ws.send(JSON.stringify({ type: 'chat', id: `rate-${run}-${i}`, channel: 'dm', to: s2.welcome.id, text: `n°${i}` }));
+  const over = await until(s1b.inbox, m => m.type === 'chat-ack' && m.id === `rate-${run}-${RATE}`);
+  check(`server rate limit: ${RATE} per ten seconds per connection`, over?.ok === false && over.reason === 'rate-limited');
   check('no browser page errors (online)', pageErrors.length === 0, pageErrors.join(' | '));
 
   // ---- solo build (no Worker): chat hidden, no errors

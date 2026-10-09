@@ -42,7 +42,7 @@ describe('chat envelope', () => {
     expect(parseChatRequest({ type: 'chat', id: 'x', channel: 'near', text: 'a' })).toEqual({ ok: false, reason: 'invalid' });
     expect(parseChatRequest({ type: 'chat', id, channel: 'group', text: 'a' })).toEqual({ ok: false, id, reason: 'invalid' });
     expect(parseChatRequest({ type: 'chat', id, channel: 'dm', text: 'a' })).toEqual({ ok: false, id, reason: 'invalid' });
-    expect(parseChatRequest({ type: 'chat', id, channel: 'near', text: 'a'.repeat(201) })).toEqual({ ok: false, id, reason: 'too-long' });
+    expect(parseChatRequest({ type: 'chat', id, channel: 'near', text: 'a'.repeat(CHAT_MAX_CHARS + 1) })).toEqual({ ok: false, id, reason: 'too-long' });
   });
   it('accepts reports with a known reason only', () => {
     expect(parseReport({ type: 'report', target: 'peer-1234-abcd', reason: 'insulte' })).toEqual({ type: 'report', target: 'peer-1234-abcd', reason: 'insulte' });

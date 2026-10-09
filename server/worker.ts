@@ -10,6 +10,8 @@ interface Session {
   chat?: number[]; reported?: string[];
 }
 const MAX_REPORTS_PER_CONNECTION = 20;
+/** Largest frame accepted: a full chat message (CHAT_MAX_CHARS, any script or emoji) plus its envelope. */
+const MAX_FRAME = 4096;
 const CHAT_DEDUPE_TTL = 15 * 60_000;
 /** Public tag = hash of the private device key. Lets players mute/block across reconnects; the key itself is never broadcast. */
 async function publicTag(key: string | null): Promise<string | undefined> {
@@ -93,7 +95,7 @@ export class CityRoom extends DurableObject<Env> {
   }
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
     const s = this.sessions.get(ws); if (!s) return;
-    if (typeof message !== 'string' || message.length > 1024) { this.reject(ws, 1009); return; }
+    if (typeof message !== 'string' || message.length > MAX_FRAME) { this.reject(ws, 1009); return; }
     const now = Date.now();
     if (now - s.windowAt >= 1000) { s.windowAt = now; s.messages = 0; }
     if (++s.messages > 20) { this.reject(ws, 1008); return; }

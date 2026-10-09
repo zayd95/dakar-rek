@@ -8,7 +8,7 @@
 - **Our game, our rules** (Habib, 9 Oct): the làmb rules are the game's own (`docs/LAMB_RULES.md`); no outside validation.
 - **Language** (Habib, 9 Oct): French with Wolof; Wolof expressions may be written directly. No Pulaar, Sérère or Diola for now.
 - **Economy** (Habib, 9 Oct): fully virtual and uncapped — a player can reach billions through work; doing many different activities must pay off.
-- **Chat** (Habib, 9 Oct): free — players talk as they want; no reporting or moderation review. Personal mute and block stay.
+- **Chat** (Habib, 9 Oct): free — players talk as they want, no moderation review. Messages up to 500 characters, flood limit 10 per 10 s; personal mute and block stay. The « Signaler » button and its server counter are still in place for now (removal not done in the 9 Oct session).
 - Free plans/tiers only, except Higgsfield: Habib authorised up to the 100 available credits (3-day validity from 6–7 Oct, no purchases).
 - Cultural content (dances, gestures, rhythms, ngemb, accessories, interiors) is the game's own creation; it improves with the art passes, without an outside review step.
 

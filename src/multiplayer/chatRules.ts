@@ -5,9 +5,10 @@
  * A chat message is text between players. It never carries, triggers or authorises a payment,
  * a transfer or any other economic action; nothing in the game parses chat text for commands.
  */
-export const CHAT_MAX_CHARS = 200;
+export const CHAT_MAX_CHARS = 500;
 export const CHAT_NEAR_RADIUS = 30;
-export const CHAT_RATE_COUNT = 5;
+/** Anti-flood only (a stuck key or a script), far above how fast a person types. */
+export const CHAT_RATE_COUNT = 10;
 export const CHAT_RATE_WINDOW_MS = 10_000;
 export const CHAT_DEDUPE_SIZE = 512;
 export const REPORT_REASONS = ['insulte', 'harcelement', 'arnaque', 'autre'] as const;
