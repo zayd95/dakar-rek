@@ -59,7 +59,22 @@ every frame within 16 m, every other frame beyond. Bodies outside the camera are
 Performance: see `docs/perf/npc-density-*.json` and the table below (`scripts/perf-npc.mjs`, fixed walks, phone
 viewport, SwiftShader: compare builds only).
 
-PERF_TABLE
+| Quality | Walk | Draw calls before (avg / max) | after | Triangles | Animated humanoids drawn (incl. the player) | Frame ms avg / p95 (SwiftShader) |
+| --- | --- | --- | --- | --- | --- | --- |
+| low | pikine 13.2 h | 180 / 206 | **52 / 85** | 146k → 77k | 16 (max 16) → **5.4 (max 9)** | 833.4 / 1600.1 → 681.6 / 1337.8 |
+| low | pikine 20.3 h | 201 / 231 | **56 / 72** | 161k → 79k | 17.9 (max 19) → **9.3 (max 13)** | 847.9 / 1936.8 → 639.7 / 1993.5 |
+| low | plateau 19.2 h | 147 / 167 | **50 / 62** | 106k → 54k | 12.6 (max 14) → **5.6 (max 9)** | 814.1 / 1591.6 → 751.7 / 2578.7 |
+
+Same walk at **Medium** before the change (baseline build): 240 draw calls on average (max 278), 22.4 animated
+humanoids. After, on the density check's desktop captures at Medium (fixed cameras, 7/13/19/23 h): 69–182 draw calls with
+at most 12 full NPC bodies (budget 20) plus 7–35 far figures — while the street holds more people (up to 36 ambient
+people around the player instead of none). Before the change, standing at each hub's spawn at 13 h (Medium): 336 (Pikine,
+Plateau), 406 (Corniche), 467 (Almadies) draw calls with 26–35 full humanoids drawn. Phone captures at Low: 46–111 draw
+calls, at most 9 full NPC bodies (budget 12).
+
+Frame times above were measured on a shared 4-core machine while other lanes ran browsers (load average 10–30): they are
+noise-level evidence only; draw calls, triangles and humanoid counts do not depend on the load. `scripts/perf-npc.mjs`
+holds the browser lock when re-run (`flock /tmp/dakar-browser.lock node scripts/perf-npc.mjs <url> <label> <out.json>`).
 
 ## Checks
 
@@ -84,7 +99,10 @@ PERF_TABLE
 - **No local avoidance.** People keep to paths clear of walls and furniture, but walkers can pass through each other
   and through a pair chatting on a corner.
 - **Other systems' hidden bodies are still animated by their owners** (only their draw calls are saved); the cast,
-  walkers and placed people keep their own visibility rules on top of the budget.
+  walkers and placed people keep their own visibility rules on top of the budget. The apprentices of the parked car
+  rapides live in the hub geometry, outside the budget (the « max 13 » at Low above is 12 NPC bodies + the player).
+- Medium-quality frame times before/after along the same walk were not re-measured under the browser lock (the shared
+  lock queue was hours long); draw calls and humanoid counts at Medium come from the captures listed above.
 - Interiors fill only while the player is inside; arrivals in a room need a straight or one-turn clear path.
 - Prayer times and opening hours are the game's own approximations (draft, to be reviewed by Habib); the city week
   (day 1 = Tuesday 6 Oct 2026) passes in under three real hours.
