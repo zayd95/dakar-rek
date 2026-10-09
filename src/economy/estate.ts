@@ -202,11 +202,9 @@ class Estate {
         v.int = h.int; v.spots = h.spots; v.ceiling = h.ceiling;
       }
       v.base = [...v.int.colliders];
-      v.int.group.add(v.furniture);
+      v.int.group.add(v.furniture);                                      // moves out of the old room before it is disposed
       ctx.addInterior(v.door, v.int);
       v.shellKey = key;
-      for (const p of v.pieces.values()) v.furniture.remove(p.obj);
-      v.pieces.clear();
     }
     // pieces: one model per placed piece, at its saved spot
     const want = held ? furnitureIn(s, held.uid).filter(f => f.at && !furnitureSpec(f.spec)?.fixed) : [];
@@ -488,7 +486,7 @@ class Estate {
     const s = this.s, home = specOfAsset(currentHome(s)).name;
     const rows: [string, string][] = [['Prix', fcfa(f.price ?? 0)], ['Gamme', GRADE_LABEL[f.grade]], ['Ce qu’il apporte', f.what]];
     if (f.sleep) rows.push(['Sommeil', `+${f.sleep} énergie par nuit`]);
-    if (f.seats?.length) rows.push(['Places assises', String(f.seats.length)]);
+    if (f.seats?.length && f.type !== 'bed') rows.push(['Places assises', String(f.seats.length)]);
     if (f.use?.pay) rows.push(['Rapporte', `+${fcfa(f.use.pay)} une fois par heure en ville`]);
     rows.push(['Livré', f.fixed ? `sur ton lit (${home})` : `chez toi (${home}), installé où il y a de la place`]);
     rows.push(['Il te restera', this.left(f.price ?? 0)]);

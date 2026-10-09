@@ -49,6 +49,8 @@ let savedJson = null;
   check('the places directory lists the Cité Jàmm', ['pikine:city:keur_meubles', 'pikine:city:jamm', 'pikine:city:parcelles', 'pikine:city:panneau'].every(id => dir.includes(id)), dir.filter(i => /jamm|meubles|parcel|panneau|maison/.test(i)).join(','));
   await D(page, () => window.__dakar.cam([-30, 30, -40], [-30, 0, -88])); await settle(page, 1500);
   await page.screenshot({ path: `${out}/desktop-cite-jamm.png` });
+  const calls = await D(page, () => window.__dakar.drawCalls());
+  check('draw calls looking over the whole Cité Jàmm (Low quality; for the record)', calls > 0 && calls < 600, `${calls} draw calls`);
   await D(page, () => window.__dakar.cam(null));
 
   // earn: one Tiak Tiak delivery (a real job: paid once, in the ledger)
@@ -125,8 +127,9 @@ let savedJson = null;
   await page.waitForFunction(() => window.__dakar.clip() === 'Sit', null, T).catch(() => {});
   const sat = await D(page, () => ({ seated: window.__dakar.seated(), y: window.__dakar.pos().y, clip: window.__dakar.clip() }));
   check('sitting on the chair at the right height', sat.seated === seat.id && sat.clip === 'Sit' && Math.abs(sat.y - (seat.top - 0.48)) < 0.05, JSON.stringify(sat));
-  await D(page, () => window.__dakar.faceCamera()); await settle(page, 1200);
+  await D(page, st => window.__dakar.cam([st.x - 2.4, 2.3, st.z + 2.6], [st.x, 0.7, st.z]), seat); await settle(page, 1200);
   await page.screenshot({ path: `${out}/desktop-sitting-on-chair.png` });
+  await D(page, () => window.__dakar.cam(null));
   await D(page, () => window.__dakar.stand());
   await D(page, () => window.__dakar.exit()); await page.waitForFunction(() => window.__dakar.pos().x < 900, null, T); await settle(page, 600);
 
@@ -203,14 +206,15 @@ let savedJson = null;
   await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.state.data.needs.faim > 60, null, { timeout: 90000 }).catch(() => {});
   check('cooking at home feeds the player (500 F of ingredients)', (await D(page, () => window.__dakar.state.data.needs.faim)) > 60 && (await D(page, () => window.__dakar.ledger()[0].amount)) === -500);
   await D(page, k => window.__dakar.place(k.x, k.z + 0.2, Math.PI), hs.spots.shower);
-  check('the shower offers « Prendre une douche »', await focusIs(page, '^home:appart_jamm:douche\\|douche'));
+  check('the shower offers « Prendre une douche »', await focusIs(page, '^home:appart_jamm:douche\\|Prendre une douche'), JSON.stringify(await D(page, () => window.__dakar.focus())));
   await D(page, () => window.__dakar.act());
   await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.state.data.needs.hygiene > 80, null, { timeout: 90000 }).catch(() => {});
   check('the shower washes', (await D(page, () => window.__dakar.state.data.needs.hygiene)) > 80);
   await D(page, () => window.__dakar.exit()); await page.waitForFunction(() => window.__dakar.pos().x < 900, null, T); await settle(page, 600);
   const rentPaid = await D(page, ms => window.__dakar.advancePlayed(ms), hourMs);
   const led2 = await D(page, () => window.__dakar.ledger());
-  check('the next hour: rents in, the apartment’s rent (250 F) out', led2.some(l => /^Loyer · Appartement F2/.test(l.label) && l.amount === -250), `${rentPaid} · ${led2.slice(0, 2).map(l => l.label + ' ' + l.amount).join(' | ')}`);
+  // the rent runs at 250 F per in-game hour of play (the minutes played since renting count too)
+  check('the next hour: rents in, the apartment’s rent out (250 F per in-game hour)', led2.some(l => /^Loyer · Appartement F2/.test(l.label) && l.amount <= -250 && l.amount % 1 === 0), `${rentPaid} · ${led2.slice(0, 2).map(l => l.label + ' ' + l.amount).join(' | ')}`);
 
   // phone: « Biens » and the wallet
   await page.locator('#menuBtn').click(); await page.locator('#phone [data-app="biens"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}); await settle(page, 600);

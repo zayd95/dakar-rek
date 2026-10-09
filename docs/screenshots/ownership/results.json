@@ -1,0 +1,287 @@
+[
+ {
+  "name": "fresh save: v5, the starter room is the home, nothing else owned",
+  "ok": true,
+  "extra": "[{\"uid\":\"a1\",\"spec\":\"chambre_pikine\",\"kind\":\"home\",\"how\":\"given\",\"leased\":false,\"ownAd\":false,\"home\":null,\"at\":null,\"upgrades\":[],\"condition\":100}]"
+ },
+ {
+  "name": "Pikine: the Cité Jàmm is built (Keur Meubles, Résidence Jàmm, house, two plots, billboard)",
+  "ok": true,
+  "extra": "{\"x\":-39.5,\"z\":-75.4}"
+ },
+ {
+  "name": "the places directory lists the Cité Jàmm",
+  "ok": true,
+  "extra": "pikine:city:jamm,pikine:city:maison,pikine:city:keur_meubles,pikine:city:parcelles,pikine:city:panneau"
+ },
+ {
+  "name": "earned with a delivery",
+  "ok": true,
+  "extra": "3000 → 4200"
+ },
+ {
+  "name": "at the till, the action is « Voir les articles »",
+  "ok": true,
+  "extra": "{\"id\":\"keur_meubles:till\",\"name\":\"Keur Meubles\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Voir les articles\",\"all\":[\"Voir les articles\",\"Parler au vendeur\"]}"
+ },
+ {
+  "name": "the catalogue opens by room (Salon, Chambre, Cuisine, Bureau, Télé, Déco)",
+  "ok": true,
+  "extra": "🪑SalonCanapés, faut | 🛏️ChambreLits, lite | 🔥CuisineRéchaud, cu | 🗂️BureauTravailler  | 📻Télé et musiqueTél | 🪞DécoTapis, miroirs"
+ },
+ {
+  "name": "Salon lists simple, comfort and prestige pieces with prices",
+  "ok": true,
+  "extra": "🪑Chaise en plastiqueSimple · Une chaise de plus pour les visites1 800 F | 🪑Deux chaises en plastiqueSimple · Pour recevoir des amis3 500 F | 🫖Table basseSimple · « Préparer l’ataya » : le thé entre amis6 000 F"
+ },
+ {
+  "name": "confirmation shows price, effect, delivery and what is left before buying",
+  "ok": true,
+  "extra": "Acheter : Chaise en plastiqueVérifie avant de confirmer :Prix1 800 FGammeSimpleCe qu’il apporteUne chaise de plus pour les visitesPlaces assises1Livréchez toi (Ta chambre · Pikine), installé où il y a"
+ },
+ {
+  "name": "bought once (−1 800 F), delivered to the starter room and set up",
+  "ok": true,
+  "extra": "4200 → 2400 · {\"uid\":\"a2\",\"spec\":\"chaise_plastique\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a1\",\"at\":{\"x\":-0.5,\"z\":-2.15,\"rot\":0},\"upgrades\":[],\"condition\":100}"
+ },
+ {
+  "name": "the purchase is in the wallet history",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "reload after the purchase: chair kept, no double charge",
+  "ok": true,
+  "extra": "2400"
+ },
+ {
+  "name": "inside: the chair is in the room with its seat",
+  "ok": true,
+  "extra": "[{\"uid\":\"a2\",\"spec\":\"chaise_plastique\",\"x\":1599.5,\"z\":-2.15,\"yaw\":0}]"
+ },
+ {
+  "name": "« Aménager » is the action where nothing else is at hand",
+  "ok": true,
+  "extra": "{\"id\":\"home:self\",\"name\":\"Ta chambre\",\"kind\":\"self\",\"space\":\"home\",\"primary\":\"Aménager\",\"all\":[\"Aménager\",\"Commander des meubles\"]}"
+ },
+ {
+  "name": "the placement mode opens on the chair (camera above the room, panel)",
+  "ok": true,
+  "extra": "{\"open\":true,\"selected\":\"a2\",\"pending\":{\"x\":-0.5,\"z\":-2.15,\"rot\":0},\"why\":null,\"items\":[{\"uid\":\"a2\",\"spec\":\"chaise_plastique\",\"at\":{\"x\":-0.5,\"z\":-2.15,\"rot\":0}}]}"
+ },
+ {
+  "name": "arrows and « Tourner » move the chair on the grid (not saved yet)",
+  "ok": true,
+  "extra": "{\"x\":-1,\"z\":-1.4,\"rot\":2}"
+ },
+ {
+  "name": "a spot on the bed is refused (red footprint, reason)",
+  "ok": true,
+  "extra": "Gêné par un meuble de la maison"
+ },
+ {
+  "name": "a free spot fits (green footprint)",
+  "ok": true,
+  "extra": "{\"x\":1,\"z\":-1.25,\"rot\":2}"
+ },
+ {
+  "name": "« Poser » saves the new spot",
+  "ok": true,
+  "extra": "{\"x\":1,\"z\":-1.25,\"rot\":2}"
+ },
+ {
+  "name": "« Terminé » gives the game back",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "walking up to the chair offers « S’asseoir »",
+  "ok": true,
+  "extra": "{\"id\":\"seat:pikine:home:a2:0\",\"name\":\"Chaise\",\"kind\":\"seat\",\"space\":\"home\",\"primary\":\"S’asseoir\",\"all\":[\"S’asseoir\"]}"
+ },
+ {
+  "name": "sitting on the chair at the right height",
+  "ok": true,
+  "extra": "{\"seated\":\"pikine:home:a2:0\",\"y\":0.050000000000000044,\"clip\":\"Sit\"}"
+ },
+ {
+  "name": "at the plot board: « Voir la parcelle »",
+  "ok": true,
+  "extra": "{\"id\":\"parcelle_150:sign\",\"name\":\"Parcelle de 150 m²\",\"kind\":\"land\",\"space\":\"street\",\"primary\":\"Voir la parcelle\",\"all\":[\"Voir la parcelle\"]}"
+ },
+ {
+  "name": "plot sheet: price, rent once let, Acheter",
+  "ok": true,
+  "extra": "Parcelle de 150 m²Terrain · Pikine · Cité Jàmm🟫 Terrain nu derrière Keur Meubles : un maraîcher le loue en attendant que tu construisesPikine · Cité Jàmm · 150"
+ },
+ {
+  "name": "plot confirmation shows the income it can bring",
+  "ok": true,
+  "extra": "Acheter : Parcelle de 150 m²Vérifie avant de confirmer :Prix3 000 000 FIl te restera27 002 400 FRapporte+4 500 F / h une fois louéAméliorableMur de clôtureReventetout de suite, 90 % de sa valeur✅Achet"
+ },
+ {
+  "name": "plot bought (−3 000 000 F)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "plot let to a market gardener",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "at the billboard: « Voir le panneau »",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "billboard sheet also offers ad space for a day",
+  "ok": true,
+  "extra": "🔑AcheterLoué aux annonceurs : +12 000 F / h, ou ta pub−5 000 000 F | 📣Louer l’espace pub · 1 jourTa pub en ville : tes affaires rapportent +10 %−25 000 F"
+ },
+ {
+  "name": "billboard bought and let to advertisers",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "the billboard shows an advertiser’s poster",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "one in-game hour later: plot + billboard rents paid (one ledger line)",
+  "ok": true,
+  "extra": "16755 · Revenus · Panneau 4 × 3 · carrefour de la Cité Jàmm et 1 autre bien"
+ },
+ {
+  "name": "at the Résidence Jàmm: « Voir le logement »",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "apartment sheet: buy or rent, visit",
+  "ok": true,
+  "extra": "🔑Acheter52 m² à meubler, cuisine et douche · ou à louer : +213 F / h−15 000 000 F | 📝Louer250 F chaque heure en ville · tu rends les clés quand tu veux6 000 F / jour | 🚪VisiterEntrer voir le logeme"
+ },
+ {
+  "name": "rent confirmation: rent per day and per hour, what it unlocks",
+  "ok": true,
+  "extra": "Louer : Appartement F2Vérifie avant de confirmer :Loyer6 000 F / jour · soit 250 F chaque heure en villePayéau fil du jeu, pendant que tu joues (rien hors ligne)DébloqueEmménager, y mettre tes meubles, cuisiner et te dou"
+ },
+ {
+  "name": "apartment rented",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "moved in: the chair followed and is set up there",
+  "ok": true,
+  "extra": "{\"uid\":\"a2\",\"spec\":\"chaise_plastique\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a5\",\"at\":{\"x\":0,\"z\":-3,\"rot\":0},\"upgrades\":[],\"condition\":100}"
+ },
+ {
+  "name": "inside the apartment with the chair",
+  "ok": true,
+  "extra": "[{\"uid\":\"a2\",\"spec\":\"chaise_plastique\",\"x\":1660,\"z\":-3,\"yaw\":0}]"
+ },
+ {
+  "name": "the kitchen offers « Cuisiner un repas »",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "cooking at home feeds the player (500 F of ingredients)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "the shower offers « Prendre une douche »",
+  "ok": false,
+  "extra": ""
+ },
+ {
+  "name": "the shower washes",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "the next hour: rents in, the apartment’s rent (250 F) out",
+  "ok": false,
+  "extra": "27092 · Loyer · Appartement F2 · Résidence Jàmm -416 | Revenus · Panneau 4 × 3 · carrefour de la Cité Jàmm et 1 autre bien 27508"
+ },
+ {
+  "name": "phone « Biens »: net worth, income, every asset held",
+  "ok": true,
+  "extra": "🏠Ta chambre · Pikineprêté | 🟫Parcelle de 150 m² · Cit | 🪧Panneau 4 × 3 · carrefou | 🏠Appartement F2 · Résiden | 🏪AffairesAucune pour l’in | 🛋️Meubles1 pièce · aménag | 🔎AnnoncesLogements, terra"
+ },
+ {
+  "name": "listings show the homes ladder up to the luxury residence and the jet (later)",
+  "ok": true,
+  "extra": "11"
+ },
+ {
+  "name": "wallet: value of assets, total wealth, income and charges per hour",
+  "ok": true,
+  "extra": "Solde22 045 747 FFCFA · monnaie de jeu, sans valeur réelle\n      \n        Valeur des biensLogements, terrains, panneau, affaires, meubles7 995 868 F\n        For"
+ },
+ {
+  "name": "reload: assets, placements, home and wallet persisted (schema v5)",
+  "ok": true,
+  "extra": "5 · 5 assets"
+ },
+ {
+  "name": "desktop: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: a bed bought by touch, delivered to the apartment",
+  "ok": true,
+  "extra": "{\"uid\":\"a6\",\"spec\":\"matelas_sol\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a5\",\"at\":{\"x\":0.75,\"z\":-2.25,\"rot\":0},\"upgrades\":[],\"condition\":100}"
+ },
+ {
+  "name": "phone: « Aménager » on the action button",
+  "ok": true,
+  "extra": "{\"id\":\"home:self\",\"name\":\"Appartement F2\",\"kind\":\"self\",\"space\":\"home\",\"primary\":\"Aménager\",\"all\":[\"Aménager\",\"Commander des meubles\"]}"
+ },
+ {
+  "name": "phone: the bed moved and saved by touch",
+  "ok": true,
+  "extra": "{\"x\":1,\"z\":-2,\"rot\":0}"
+ },
+ {
+  "name": "phone: the bed offers « Dormir »",
+  "ok": true,
+  "extra": "{\"id\":\"home:appart_jamm:a6\",\"name\":\"Matelas au sol\",\"kind\":\"furniture\",\"space\":\"home\",\"primary\":\"Dormir\",\"all\":[\"Dormir\"]}"
+ },
+ {
+  "name": "phone: a night on the floor mattress restores energy",
+  "ok": true,
+  "extra": "74.8985025"
+ },
+ {
+  "name": "phone: « Biens » fits the screen",
+  "ok": true,
+  "extra": "7"
+ },
+ {
+  "name": "phone: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "v4 save: money, ventures (2 bana-bana), earnings kept; furniture placed at its usual spots; inventory field",
+  "ok": true,
+  "extra": "{\"radio\":{\"uid\":\"a2\",\"spec\":\"radio\",\"kind\":\"furniture\",\"how\":\"owned\",\"leased\":false,\"ownAd\":false,\"home\":\"a1\",\"at\":{\"x\":-0.9,\"z\":-2.2,\"rot\":0},\"upgrades\":[],\"condition\":100},\"inv\":[{\"id\":\"poisson\",\"count\":4}],\"known\":[\"livraison\",\"service\",\"commerce\"]}"
+ },
+ {
+  "name": "v4 save: the radio and the rug stand in the room; the bed has the good mattress",
+  "ok": true,
+  "extra": "[\"radio\",\"tapis\"]"
+ },
+ {
+  "name": "old save: no page errors",
+  "ok": true,
+  "extra": ""
+ }
+]
