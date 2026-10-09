@@ -6,10 +6,13 @@ import { ACCESSORIES, ngembTexture, type Socket } from '../lamb/look';
 import type { Outfit } from './character';
 
 /**
- * Shared humanoid from Blender (public/assets/character_v5.glb, source assets-src/character_rig_v5.blend):
- * one skinned body on a 20-bone rig with clothing meshes (Tee, Trousers, Boubou, Dress, Kufi, Headwrap, Shoes),
- * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
- * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
+ * Shared humanoid v6 (public/assets/character_v6.glb; source people_mpfb_v1.blend on Habib's Mac, generator scripts in
+ * assets-src/people_v6/). Body: MakeHuman/MPFB2 (CC0 system assets) as the 1.6k-vertex "male1591" proxy on the 31-bone CMU rig,
+ * textured (public/assets/tex/skin_v6.jpg is the young African male skin normalised to mid-grey so any skin tone can tint it).
+ * Garments and hair are generated around the body (same UV convention as v5). Body shapes are morph targets plus bone offsets:
+ * Female, Heavy, Muscular, Old and female variants HeavyF, MuscularF, OldF; Blink on the eyelids and lashes.
+ * Clips: CMU motion capture retargeted (Walk, Run, Idle, Talk, Phone, Sit, Eat, Wave) and the v5 wrestling clips retargeted
+ * (Stance, Grab, Fall_Back, Prep, Dance_A, Dance_B, Celebrate, Entrance_Walk). Status: TEMP v6 (see docs/ASSET_REGISTER.md).
  */
 export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Phone' | 'Wave' | 'Eat';
 export type Style = 'boubou' | 'tee' | 'dress';
@@ -17,51 +20,60 @@ export type Pattern = 'uni' | 'wax' | 'bazin' | 'rayure';
 export interface PersonLook {
   skin: number; style: Style; top: number; bottom?: number; pattern?: Pattern; accent?: number;
   hat?: 'kufi' | 'headwrap' | null; hatColor?: number; shoes?: number; female?: boolean;
-  /** Body shape (morph targets from the Blender rig, 0–1). */
-  heavy?: number; muscular?: number;
+  /** Body shape (morph targets + bone offsets from the Blender rig, 0–1). */
+  heavy?: number; muscular?: number; old?: number;
   hair?: 'short' | 'puff' | 'braids' | 'locs' | 'none'; beard?: number | null; // beard colour, null = none
 }
 
-let template: { scene: THREE.Object3D; clips: THREE.AnimationClip[] } | null = null;
+type Deltas = Record<string, Record<string, [number, number, number]>>;
+type TexKey = 'skin' | 'eye' | 'brows' | 'lashes' | 'hair';
+interface Template {
+  scene: THREE.Object3D; clips: THREE.AnimationClip[]; deltas: Deltas; tex: Partial<Record<TexKey, THREE.Texture>>;
+  /** Rest local position of each bone and the inverse rotation of its parent in model space (for body-shape bone offsets). */
+  rest: Map<string, { pos: THREE.Vector3; parentInv: THREE.Matrix3; parent: string | null }>;
+}
+let template: Template | null = null;
 export const humanoidReady = () => !!template;
+
+/** Fine dark grain for hair caps and beards (u around the head, v = height / 0.6 m). */
+function hairTexture(): THREE.Texture {
+  const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
+  const g = c.getContext('2d')!; g.fillStyle = '#8a8a8a'; g.fillRect(0, 0, S, S);
+  let s = 7; const r = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let i = 0; i < 2600; i++) { const v = 60 + Math.floor(r() * 150); g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(r() * S, r() * S, 1 + r() * 1.5, 1 + r() * 2.5); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(10, 10); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
 
 export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<void> {
   try {
     let buf: ArrayBuffer | null = null;
-    const res = await fetch(`${base}assets/character_v5.glb`).catch(() => null);
+    const res = await fetch(`${base}assets/character_v6.glb`).catch(() => null);
     if (res?.ok) buf = await res.arrayBuffer();
     else {
       // Hosts that do not serve .glb (e.g. the claude.ai preview) get the same bytes as base64 JSON.
-      const alt = await fetch(`${base}assets/character_v5.glb.json`).catch(() => null);
+      const alt = await fetch(`${base}assets/character_v6.glb.json`).catch(() => null);
       if (!alt?.ok) return;
       const bin = atob(((await alt.json()) as { glb: string }).glb);
       const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       buf = u8.buffer;
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
-    // Body, hands and head are one skinned mesh: eyes, iris and brows keep fixed colours through `fixColor`
-    // (rgb = colour, a = 1 where fixed), everything else takes the person's skin colour. One draw call for the skin.
+    const tl = new THREE.TextureLoader();
+    const load = (f: string) => tl.loadAsync(`${base}assets/tex/${f}`).then(t => { t.flipY = false; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }).catch(() => undefined);
+    const [skin, eye, brows, lashes] = await Promise.all([load('skin_v6.jpg'), load('eye_v6.jpg'), load('brows_v6.png'), load('lashes_v6.png')]);
+    // Bones keep their rest positions (body shapes move them); only rotations and the hips position are animated.
+    for (const c of gltf.animations) c.tracks = c.tracks.filter(t => t.name.endsWith('.quaternion') || t.name === 'Hips.position');
+    let deltas: Deltas = {};
+    gltf.scene.traverse(o => { const mb = o.userData?.morph_bones; if (typeof mb === 'string') deltas = JSON.parse(mb) as Deltas; });
+    gltf.scene.updateMatrixWorld(true);
+    const rest: Template['rest'] = new Map();
     gltf.scene.traverse(o => {
-      const g = (o as THREE.Mesh).geometry; if (!g) return;
-      const fix = g.getAttribute('_fix'); if (fix) { g.setAttribute('fixColor', fix); g.deleteAttribute('_fix'); }
-      if (g.getAttribute('color_1')) g.deleteAttribute('color_1');
+      if (!(o as THREE.Bone).isBone) return;
+      const p = o.parent!;
+      rest.set(o.name, { pos: o.position.clone(), parentInv: new THREE.Matrix3().setFromMatrix4(p.matrixWorld).invert(), parent: (p as THREE.Bone).isBone ? p.name : null });
     });
-    template = { scene: gltf.scene, clips: gltf.animations };
-  } catch { /* box characters stay in use */ }
-}
-
-/** Skin material with fixed-colour parts (eyes, brows) read from the `fixColor` vertex attribute. */
-function skinMaterial(): THREE.MeshStandardMaterial {
-  const m = new THREE.MeshStandardMaterial({ color: 0x5b3420, roughness: 0.52, metalness: 0, vertexColors: true, side: THREE.DoubleSide });
-  m.onBeforeCompile = sh => {
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 fixColor;\nvarying vec4 vFix;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFix = fixColor;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vFix;')
-      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vFix.rgb * vColor.rgb, vFix.a);')
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.2, vFix.a);');
-  };
-  m.customProgramCacheKey = () => 'skin-fix';
-  return m;
+    template = { scene: gltf.scene, clips: gltf.animations, deltas, tex: { skin, eye, brows, lashes, hair: hairTexture() }, rest };
+  } catch (e) { console.warn('character_v6 not loaded', e); /* box characters stay in use */ }
 }
 
 // ---------------------------------------------------------------- garment textures (generic prints, own designs)
@@ -122,11 +134,14 @@ function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xffffff, ki
   // Double-sided like the Blender materials: some cloth faces point inward and would otherwise vanish.
   const map = garmentTex(kind, color, accent, pattern);
   const rough = pattern === 'bazin' ? 0.5 : 0.92;               // bazin keeps a soft sheen
-  return new THREE.MeshStandardMaterial({ color: map ? 0xffffff : color, map, roughness: rough, metalness: 0, vertexColors: true, side: THREE.DoubleSide });
+  return new THREE.MeshStandardMaterial({ color: map ? 0xffffff : color, map, roughness: rough, metalness: 0, side: THREE.DoubleSide, vertexColors: true });
 }
 
 const SOCKET_NODE: Record<Socket, string> = { armL: 'socket_armL', armR: 'socket_armR', waist: 'socket_waist', neck: 'socket_neck' };
 const CLOTH = ['Cloth_Tee', 'Cloth_Trousers', 'Cloth_Shorts', 'Cloth_Boubou', 'Cloth_DressTop', 'Cloth_Skirt', 'Cloth_Kufi', 'Cloth_Headwrap', 'Cloth_Shoes', 'Ngemb_A', 'Ngemb_B', 'Hair_Short', 'Hair_Puff', 'Hair_Braids', 'Hair_Locs', 'Beard'];
+const SHAPES = ['Female', 'Heavy', 'HeavyF', 'Muscular', 'MuscularF', 'Old', 'OldF'] as const;
+type ShapeW = Record<(typeof SHAPES)[number], number>;
+const _v = new THREE.Vector3(), _m = new THREE.Matrix4();
 
 export class Humanoid {
   readonly group = new THREE.Group();
@@ -136,9 +151,12 @@ export class Humanoid {
   private root: THREE.Object3D;
   private parts = new Map<string, THREE.Mesh>();
   private skinMat: THREE.MeshStandardMaterial;
-  private lipsMat = new THREE.MeshStandardMaterial({ color: 0x3a1a12, roughness: 0.45, vertexColors: true });
-  private beardMat = new THREE.MeshLambertMaterial({ color: 0x1a1414, vertexColors: true });
+  private hairMat: THREE.MeshStandardMaterial;
+  private beardMat: THREE.MeshStandardMaterial;
   private morphed: THREE.Mesh[] = [];
+  private bones = new Map<string, THREE.Bone>();
+  private skeleton?: THREE.Skeleton; private baseInverses: THREE.Matrix4[] = [];
+  private hipsOffset = new THREE.Vector3();
   private accessoryMeshes: THREE.Object3D[] = [];
   clipName: Clip | null = null;
   /** When set, city movement does not change the clip (emotes, talking, sitting). */
@@ -146,26 +164,40 @@ export class Humanoid {
 
   constructor(look?: PersonLook) {
     if (!template) throw new Error('character asset not loaded');
-    this.root = cloneSkinned(template.scene);
-    this.group.add(this.root); this.group.name = 'humanoid_v2';
-    // Skin: a little specular so dark skin keeps its form; baked ambient occlusion comes in as vertex colour.
-    this.skinMat = skinMaterial();
-    const hair = new THREE.MeshStandardMaterial({ color: 0x141011, roughness: 0.85, vertexColors: true, side: THREE.DoubleSide });
+    const T = template;
+    this.root = cloneSkinned(T.scene);
+    this.group.add(this.root); this.group.name = 'humanoid_v6';
+    this.skinMat = new THREE.MeshStandardMaterial({ map: T.tex.skin ?? null, color: 0x5b3420, roughness: 0.55, metalness: 0, vertexColors: true });
+    const eyes = new THREE.MeshStandardMaterial({ map: T.tex.eye ?? null, color: 0xa39a94, roughness: 0.12 });
+    const brows = new THREE.MeshStandardMaterial({ map: T.tex.brows ?? null, color: 0x2a2220, alphaTest: 0.35, roughness: 0.9, side: THREE.DoubleSide });
+    const lashes = new THREE.MeshStandardMaterial({ map: T.tex.lashes ?? null, color: 0x1a1414, alphaTest: 0.3, roughness: 0.9, side: THREE.DoubleSide });
+    this.hairMat = new THREE.MeshStandardMaterial({ map: T.tex.hair ?? null, color: 0x2a2224, roughness: 0.8, side: THREE.DoubleSide, vertexColors: true });
+    this.beardMat = new THREE.MeshStandardMaterial({ map: T.tex.hair ?? null, color: 0x2a2224, roughness: 0.85, side: THREE.DoubleSide, vertexColors: true });
     this.root.traverse(o => {
+      if ((o as THREE.Bone).isBone) { this.bones.set(o.name, o as THREE.Bone); return; }
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
       m.castShadow = true; m.frustumCulled = false;
-      const key = CLOTH.find(n => m.name.startsWith(n));
       if (m.morphTargetDictionary) this.morphed.push(m);
-      const src = m.material as THREE.MeshStandardMaterial;
-      if (key) { this.parts.set(key, m); if (key.startsWith('Hair_')) m.material = hair; if (key === 'Beard') m.material = this.beardMat; }
-      else if (src.name.startsWith('Skin')) m.material = this.skinMat;
-      else if (src.name === 'Hair') m.material = hair;
-      else if (src.name === 'Lips') m.material = this.lipsMat;
-      else m.material = new THREE.MeshStandardMaterial({ color: src.color, roughness: 0.25, vertexColors: true });   // eyes: wet highlight
+      const sk = m as THREE.SkinnedMesh;
+      if (sk.isSkinnedMesh) {
+        // One skeleton per person shared by every mesh (all use the same glTF skin), with its own copy of the bind
+        // matrices because body shapes move the joints.
+        if (!this.skeleton) {
+          this.baseInverses = sk.skeleton.boneInverses.map(b => b.clone());
+          this.skeleton = new THREE.Skeleton(sk.skeleton.bones, this.baseInverses.map(b => b.clone()));
+        }
+        sk.bind(this.skeleton, sk.bindMatrix);
+      }
+      const key = CLOTH.find(n => m.name === n || m.name.startsWith(n + '_'));
+      if (key) { this.parts.set(key, m); m.material = key === 'Beard' ? this.beardMat : key.startsWith('Hair_') ? this.hairMat : m.material; }
+      else if (m.name.startsWith('Body')) m.material = this.skinMat;
+      else if (m.name.startsWith('Eyes')) m.material = eyes;
+      else if (m.name.startsWith('Brows')) m.material = brows;
+      else if (m.name.startsWith('Lashes')) m.material = lashes;
     });
     this.mixer = new THREE.AnimationMixer(this.root);
-    for (const c of template.clips) this.actions.set(c.name, this.mixer.clipAction(c));
+    for (const c of T.clips) this.actions.set(c.name, this.mixer.clipAction(c));
     if (look) this.setLook(look);
   }
 
@@ -179,8 +211,9 @@ export class Humanoid {
     const vis = ['Cloth_Shoes'];
     const hair = l.hair ?? (l.female ? 'puff' : 'short');
     if (hair !== 'none' && (!l.hat || hair === 'braids')) vis.push(({ puff: 'Hair_Puff', braids: 'Hair_Braids', locs: 'Hair_Locs', short: 'Hair_Short' } as const)[hair]);
-    if (l.beard != null) { vis.push('Beard'); this.beardMat.color.set(l.beard); }
-    this.setShape(l.female ? 1 : 0, l.muscular ?? 0, l.heavy ?? 0);
+    if (l.beard != null) { vis.push('Beard'); this.beardMat.color.set(l.beard).multiplyScalar(1.6); }
+    this.hairMat.color.set((l.old ?? 0) > 0.6 ? 0x9a948c : 0x1c1617).multiplyScalar(1.6);
+    this.setShape(l.female ? 1 : 0, l.muscular ?? 0, l.heavy ?? 0, l.old ?? 0);
     const set = (k: string, mat: THREE.Material) => { const m = this.parts.get(k); if (m) m.material = mat; vis.push(k); };
     if (l.style === 'boubou') { set('Cloth_Boubou', clothMat(l.top, l.pattern ?? 'bazin', l.accent ?? 0xe9cf7a, 'boubou')); set('Cloth_Trousers', clothMat(l.bottom ?? l.top, l.pattern === 'bazin' ? 'bazin' : 'uni')); }
     if (l.style === 'tee') { set('Cloth_Tee', clothMat(l.top, l.pattern, l.accent ?? l.top, 'tee')); set('Cloth_Trousers', clothMat(l.bottom ?? 0x2b2f3a)); }
@@ -189,32 +222,48 @@ export class Humanoid {
     if (l.hat === 'headwrap') set('Cloth_Headwrap', clothMat(l.hatColor ?? l.top, l.pattern === 'wax' ? 'wax' : 'uni', l.accent ?? 0xf6e7c1));
     const shoes = this.parts.get('Cloth_Shoes'); if (shoes) shoes.material = clothMat(l.shoes ?? 0x3a2a1e);
     this.show(vis);
-    this.group.scale.set(l.female ? 0.96 : 1, l.female ? 0.95 : 1, l.female ? 0.96 : 1);
+    this.group.scale.setScalar(1);
   }
 
-  /** Body shape via morph targets shared by the body and every fitted garment. */
-  setShape(female: number, muscular: number, heavy: number) {
+  /** Body shape: morph targets on the body and every garment, plus the matching joint offsets. 0–1 each. */
+  setShape(female: number, muscular: number, heavy: number, old = 0) {
+    const w: ShapeW = { Female: female, Heavy: heavy * (1 - female), HeavyF: heavy * female, Muscular: muscular * (1 - female), MuscularF: muscular * female, Old: old * (1 - female), OldF: old * female };
     for (const m of this.morphed) {
       const d = m.morphTargetDictionary!, inf = m.morphTargetInfluences!;
-      if (d.Female !== undefined) inf[d.Female] = female;
-      if (d.Muscular !== undefined) inf[d.Muscular] = muscular;
-      if (d.Heavy !== undefined) inf[d.Heavy] = heavy;
+      for (const k of SHAPES) if (d[k] !== undefined) inf[d[k]] = w[k];
     }
+    this.shapeBones(w);
   }
-  private setSkin(c: number) {
-    this.skinMat.color.set(c);
-    this.lipsMat.color.set(c).multiplyScalar(0.62);
+  /** Moves each joint by the weighted offsets (model space) and rebinds, so the shaped mesh deforms around its own joints. */
+  private shapeBones(w: ShapeW) {
+    const T = template!; const off = new Map<string, THREE.Vector3>();
+    for (const k of SHAPES) {
+      const d = T.deltas[k]; if (!d || !w[k]) continue;
+      for (const b in d) { const v = off.get(b) ?? new THREE.Vector3(); v.x += d[b][0] * w[k]; v.y += d[b][1] * w[k]; v.z += d[b][2] * w[k]; off.set(b, v); }
+    }
+    const zero = new THREE.Vector3();
+    for (const [name, bone] of this.bones) {
+      const r = T.rest.get(name); if (!r) continue;
+      const own = off.get(name) ?? zero, par = (r.parent && off.get(r.parent)) || zero;
+      _v.copy(own).sub(par).applyMatrix3(r.parentInv);
+      bone.position.copy(r.pos).add(_v);
+      if (name === 'Hips') this.hipsOffset.copy(_v);
+    }
+    const sk = this.skeleton;
+    if (sk) sk.bones.forEach((b, i) => { const o = off.get(b.name); sk.boneInverses[i].copy(this.baseInverses[i]); if (o) sk.boneInverses[i].multiply(_m.makeTranslation(-o.x, -o.y, -o.z)); });
   }
+  private setSkin(c: number) { this.skinMat.color.set(c).multiplyScalar(2); }
 
   /** Wrestling attire: ngemb (cut A short, B long with knot) and accessories on sockets. Cosmetic only. */
   setWrestler(look: WrestlerLook, cut: 'A' | 'B' = 'A', skin?: number) {
     if (skin !== undefined) this.setSkin(skin);
     const tex = ngembTexture(look.ngembColor, look.ngembPattern).clone();
     tex.flipY = false; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 1); tex.needsUpdate = true;
-    const mat = new THREE.MeshLambertMaterial({ map: tex, vertexColors: true, side: THREE.DoubleSide });
+    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, side: THREE.DoubleSide, vertexColors: true });
     const key = cut === 'A' ? 'Ngemb_A' : 'Ngemb_B';
     const m = this.parts.get(key); if (m) m.material = mat;
     this.show([key, 'Hair_Short']);
+    this.hairMat.color.set(0x1c1617).multiplyScalar(1.6);
     this.setShape(0, 1, 0);
     this.clearAccessories();
     for (const id of look.accessories) {
@@ -225,7 +274,7 @@ export class Humanoid {
       if (a.socket === 'neck') mesh.rotation.x = Math.PI / 2;
       node.add(mesh); this.accessoryMeshes.push(mesh);
     }
-    this.group.scale.setScalar(1.08);
+    this.group.scale.setScalar(1.04);
   }
 
   private phoneMesh?: THREE.Mesh;
@@ -233,9 +282,10 @@ export class Humanoid {
     if (this.clipName === name) return;
     if (name === 'Phone' || this.phoneMesh) {
       if (!this.phoneMesh) {
-        const hand = this.root.getObjectByName('hand.R') ?? this.root.getObjectByName('handR');
+        // the Phone capture holds the phone to the left ear
+        const hand = this.bones.get('LeftHand');
         this.phoneMesh = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.14, 0.012), new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.3 }));
-        this.phoneMesh.position.set(0, 0.07, -0.02); hand?.add(this.phoneMesh);
+        this.phoneMesh.position.set(0, 0.05, 0.025); hand?.add(this.phoneMesh);
       }
       this.phoneMesh.visible = name === 'Phone';
     }
@@ -247,38 +297,41 @@ export class Humanoid {
     this.current = next; this.clipName = name;
   }
 
+  private tick(dt: number) {
+    this.mixer.update(dt);
+    const hips = this.bones.get('Hips'); if (hips && this.hipsOffset.lengthSq() > 0) hips.position.add(this.hipsOffset);
+    this.applyLook(dt);
+    this.blink(dt);
+  }
   /** City locomotion: idle, walk or run from ground speed (m/s). */
   animate(dt: number, speed: number) {
     if (!this.hold) {
       if (speed > 3) { this.play('Run', 0.15); if (this.current) this.current.timeScale = speed / 5.2; }
-      else if (speed > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = Math.max(0.6, speed / 1.45); }
+      else if (speed > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = Math.max(0.6, speed / 1.35); }
       else this.play('Idle', 0.25);
     } else this.play(this.hold, 0.2);
-    this.mixer.update(dt);
-    this.applyLook(dt);
-    this.blink(dt);
+    this.tick(dt);
   }
-  /** Blink every 2–6 s (0.15 s close-open), using the Blink morph target on the skin mesh. */
-  private blinkT = 1 + Math.random() * 4; private blinkSkin?: THREE.Mesh | null;
+  /** Blink every 2–6 s (0.15 s close-open), using the Blink morph target on the eyelids and lashes. */
+  private blinkT = 1 + Math.random() * 4; private blinkMeshes?: THREE.Mesh[];
   private blink(dt: number) {
-    if (this.blinkSkin === undefined) this.blinkSkin = this.morphed.find(m => m.morphTargetDictionary?.Blink !== undefined && (m.material === this.skinMat)) ?? null;
-    const m = this.blinkSkin; if (!m) return;
+    this.blinkMeshes ??= this.morphed.filter(m => m.morphTargetDictionary?.Blink !== undefined);
+    if (!this.blinkMeshes.length) return;
     this.blinkT -= dt;
-    const t = this.blinkT < 0 ? -this.blinkT : 0;
-    m.morphTargetInfluences![m.morphTargetDictionary!.Blink] = t > 0 ? Math.max(0, 1 - Math.abs(t - 0.075) / 0.075) : 0;
+    const t = this.blinkT < 0 ? -this.blinkT : 0, v = t > 0 ? Math.max(0, 1 - Math.abs(t - 0.075) / 0.075) : 0;
+    for (const m of this.blinkMeshes) m.morphTargetInfluences![m.morphTargetDictionary!.Blink] = v;
     if (t > 0.15) this.blinkT = 2 + Math.random() * 4;
   }
-  update(dt: number) { this.mixer.update(dt); this.applyLook(dt); this.blink(dt); }
+  update(dt: number) { this.tick(dt); }
 
   /** World point the head turns toward (neck + head share the turn), or null. Limited to ±70° yaw, ±25° pitch. */
   lookTarget: THREE.Vector3 | null = null;
   private lookYaw = 0; private lookPitch = 0;
-  private headBone?: THREE.Bone; private neckBone?: THREE.Bone;
   private static tmpV = new THREE.Vector3(); private static tmpQ = new THREE.Quaternion(); private static axisY = new THREE.Vector3(0, 1, 0); private static axisX = new THREE.Vector3(1, 0, 0);
   private applyLook(dt: number) {
-    if (!this.headBone) { this.headBone = this.root.getObjectByName('head') as THREE.Bone; this.neckBone = this.root.getObjectByName('neck') as THREE.Bone; }
+    const head = this.bones.get('Head'), neck = this.bones.get('Neck1');
     let ty = 0, tp = 0;
-    if (this.lookTarget && this.headBone) {
+    if (this.lookTarget && head) {
       const v = Humanoid.tmpV.copy(this.lookTarget); this.group.worldToLocal(v);
       const hy = 1.62 * (this.group.scale.y || 1);
       ty = THREE.MathUtils.clamp(Math.atan2(v.x, v.z), -1.2, 1.2);
@@ -289,10 +342,10 @@ export class Humanoid {
     this.lookYaw += (ty - this.lookYaw) * k; this.lookPitch += (tp - this.lookPitch) * k;
     if (Math.abs(this.lookYaw) < 1e-3 && Math.abs(this.lookPitch) < 1e-3) return;
     // bones' local Y runs along the bone (up the neck): yaw = turn about local Y, pitch = about local X
-    for (const [b, f] of [[this.neckBone, 0.4], [this.headBone, 0.6]] as const) {
+    for (const [b, f] of [[neck, 0.4], [head, 0.6]] as const) {
       if (!b) continue;
       b.quaternion.multiply(Humanoid.tmpQ.setFromAxisAngle(Humanoid.axisY, this.lookYaw * f));
-      b.quaternion.multiply(Humanoid.tmpQ.setFromAxisAngle(Humanoid.axisX, this.lookPitch * f));
+      b.quaternion.multiply(Humanoid.tmpQ.setFromAxisAngle(Humanoid.axisX, -this.lookPitch * f));
     }
   }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
@@ -318,8 +371,11 @@ const pickR = <T,>(a: T[], r: () => number) => a[Math.floor(r() * a.length)];
 export function randomLook(r: () => number): PersonLook {
   const skin = pickR(SKINS, r), u = r();
   const heavy = r() < 0.25 ? 0.4 + r() * 0.6 : 0;
-  if (u < 0.36) return { skin, female: true, heavy, hair: r() < 0.45 ? 'braids' : 'puff', style: 'dress', top: pickR(DRESS, r), pattern: r() < 0.75 ? 'wax' : 'uni', accent: pickR(ACC, r), hat: r() < 0.65 ? 'headwrap' : null, shoes: 0x6b4a2e };
-  if (u < 0.62) return { skin, heavy, style: 'boubou', top: pickR(BOUBOU, r), pattern: r() < 0.5 ? 'bazin' : 'uni', hat: r() < 0.5 ? 'kufi' : null, hatColor: r() < 0.6 ? 0xf2f2ec : 0x1c1c1f, shoes: 0x3a2a1e, beard: r() < 0.35 ? pickR([0xd8d4cc, 0x8a8580, 0x1a1414], r) : null };
+  if (u < 0.36) return { skin, female: true, heavy, old: r() < 0.15 ? 0.4 + r() * 0.5 : 0, hair: r() < 0.45 ? 'braids' : 'puff', style: 'dress', top: pickR(DRESS, r), pattern: r() < 0.75 ? 'wax' : 'uni', accent: pickR(ACC, r), hat: r() < 0.65 ? 'headwrap' : null, shoes: 0x6b4a2e };
+  if (u < 0.62) {
+    const beard = r() < 0.35 ? pickR([0xd8d4cc, 0x8a8580, 0x1a1414], r) : null;
+    return { skin, heavy, old: beard !== null && beard !== 0x1a1414 ? 0.5 + r() * 0.5 : 0, style: 'boubou', top: pickR(BOUBOU, r), pattern: r() < 0.5 ? 'bazin' : 'uni', hat: r() < 0.5 ? 'kufi' : null, hatColor: r() < 0.6 ? 0xf2f2ec : 0x1c1c1f, shoes: 0x3a2a1e, beard };
+  }
   return { skin, hair: r() < 0.18 ? 'locs' : 'short', muscular: r() < 0.3 ? r() : 0, beard: r() < 0.15 ? 0x1a1414 : null, style: 'tee', top: pickR(TEES, r), pattern: r() < 0.25 ? 'rayure' : 'uni', accent: 0xffffff, bottom: pickR([0x2b2f3a, 0x3d4a5c, 0x1c1c1f, 0x6b5a45], r), shoes: pickR([0xf2f2ec, 0x1c1c1f, 0x8a5a3a], r) };
 }
 

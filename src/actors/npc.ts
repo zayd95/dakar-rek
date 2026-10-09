@@ -123,12 +123,12 @@ export class Loiterers {
       const seated = /cafe|gargote/.test(s.id) && rand() < 0.6;
       if (seated) {
         const bench = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.42, 0.45), new THREE.MeshLambertMaterial({ color: 0x6b4a2e }));
-        bench.position.set(cx, 0.31, cz); bench.castShadow = true; this.group.add(bench);
+        bench.position.set(cx, 0.31, cz - 0.06); bench.castShadow = true; this.group.add(bench);
       }
       for (let k = 0; k < n && placed < max; k++, placed++) {
         const h = new Humanoid(randomLook(rand));
         if (seated && k < 2) {
-          h.group.position.set(cx - 0.55 + k * 1.1, 0.28, cz + 0.05); h.group.rotation.y = Math.PI; h.hold = /gargote|restaurant/.test(s.id) && rand() < 0.6 ? 'Eat' : 'Sit';
+          h.group.position.set(cx - 0.55 + k * 1.1, 0.1, cz + 0.05); h.group.rotation.y = Math.PI; h.hold = /gargote|restaurant/.test(s.id) && rand() < 0.6 ? 'Eat' : 'Sit';
         } else {
           const a = (k / n) * Math.PI * 2 + rand() * 0.5;
           h.group.position.set(cx + Math.sin(a) * 0.8, 0.1, cz + Math.cos(a) * 0.8);
