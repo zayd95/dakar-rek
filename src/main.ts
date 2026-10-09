@@ -155,7 +155,9 @@ presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.c
 const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), refreshHome: () => refreshHomeInteriors(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
-function presenceSpace() { return lambScene ? 'scene' : moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
+function presenceSpace() { return lambScene ? 'scene' : modulePresence() ?? moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
+/** A module's presence space when it differs from its interaction space (one's own motorbike: still in the street). */
+function modulePresence(): string | null { for (const m of MODULES) { const s = m.presenceSpace?.(ctx); if (s) return s; } return null; }
 /** A module's own space the player is in (a vehicle while riding: src/transport), or null. */
 function moduleSpace(): string | null { for (const m of MODULES) { const s = m.space?.(ctx); if (s) return s; } return null; }
 

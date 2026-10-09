@@ -14,6 +14,7 @@ import type { FollowCamera } from '../actors/camera';
 import { wolofModule } from '../i18n/module';
 import { assetKitModule } from './assetKit';
 import { transport } from '../transport/module';
+import { moto } from '../transport/motoModule';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -85,6 +86,11 @@ export interface GameModule {
    */
   space?(ctx: GameCtx): string | null;
   /**
+   * Presence / chat space while the module's interaction space is set, when it should differ (on one's own motorbike
+   * the player stays visible to the street: 'street'). Null = same as `space`.
+   */
+  presenceSpace?(ctx: GameCtx): string | null;
+  /**
    * Drive the camera this frame (passenger view, cut-scene…); return true when done, and the follow camera is skipped.
    * `drag` is the player's camera drag of this frame (mouse, touch, Q/R keys).
    */
@@ -101,4 +107,4 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [wolofModule, assetKitModule, transport];
+export const MODULES: GameModule[] = [wolofModule, assetKitModule, transport, moto];

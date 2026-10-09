@@ -5,9 +5,9 @@ export class RideCard {
   private el: HTMLElement;
   private num: HTMLElement; private title: HTMLElement; private sub: HTMLElement; private req: HTMLElement;
   private last = '';
-  constructor(root: HTMLElement) {
+  constructor(root: HTMLElement, id = 'ride') {
     this.el = document.createElement('div');
-    this.el.id = 'ride'; this.el.className = 'card'; this.el.setAttribute('aria-live', 'polite');
+    this.el.id = id; this.el.className = 'card ridecard'; this.el.setAttribute('aria-live', 'polite');
     this.el.innerHTML = '<span class="num"></span><div class="txt"><b></b><small></small><div class="req"></div></div>';
     root.appendChild(this.el);
     this.num = this.el.querySelector('.num')!; this.title = this.el.querySelector('b')!; this.sub = this.el.querySelector('small')!; this.req = this.el.querySelector('.req')!;
