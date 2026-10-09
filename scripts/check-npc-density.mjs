@@ -125,14 +125,15 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
     await page.evaluate(() => window.__dakar.stand());
   }
 
-  // Anyone of the ambient life can be greeted.
+  // Anyone of the ambient life can be greeted (away from counters, the cast and free seats, which keep the focus first).
   await page.evaluate(() => { const d = window.__dakar; d.setHour(13.2); d.place(70, 64, 0); });
   await frames(page, 6);
   let greeted = null;
-  for (let k = 0; k < 6 && !greeted; k++) {
-    const p = await page.evaluate(k => window.__dakar.ambientActors().filter(x => x.lod === 2 && x.state === 'do' && !x.sitting && !x.spot.includes('mosque'))[k], k);
+  for (let k = 0; k < 12 && !greeted; k++) {
+    const p = await page.evaluate(k => window.__dakar.ambientActors().filter(x => x.lod === 2 && x.state === 'do' && !x.sitting && !x.spot.includes('mosque'))
+      .sort((a, b) => (b.spot.startsWith('corner') ? 1 : 0) - (a.spot.startsWith('corner') ? 1 : 0))[k], k);
     if (!p) break;
-    await page.evaluate(p => window.__dakar.place(p.x + Math.sin(p.yaw) * 1.2, p.z + Math.cos(p.yaw) * 1.2, p.yaw + Math.PI), p);
+    await page.evaluate(p => window.__dakar.place(p.x + Math.sin(p.yaw) * 0.9, p.z + Math.cos(p.yaw) * 0.9, p.yaw + Math.PI), p);
     await frames(page, 4);
     const f = await page.evaluate(() => window.__dakar.focus());
     if (f?.kind === 'person' && f.id.startsWith('person:amb:')) greeted = f;

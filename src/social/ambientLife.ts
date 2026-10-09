@@ -239,7 +239,7 @@ export class AmbientLife implements GameModule {
       n, key: 'npc:amb:' + n, state: 'off', born: 0, spot: null, act: null, look: randomLook(this.rand), color: new THREE.Color(), clip: 'Idle',
       seat: null, slot: -1, slotRow: false, standOn: false, sitting: false, x: 0, z: 0, y: 0.1, yaw: 0, tx: 0, tz: 0, tyaw: 0,
       ax: 0, az: 0, sitY: 0.1, path: [], seg: 0, speed: 1.3, until: 0, pause: 0, cool: 0, q: -1, qx: 0, qz: 0, qyaw: 0, waitT: 0, clipT: 0, tw: 0, twDir: 1, route: null, board: null,
-      body: null, lod: 0, acc: 0, d: 0, rec: { id: 'amb:' + n, obj: new THREE.Object3D(), h: null, bias: 1.1 },   // after counters, the cast and seats
+      body: null, lod: 0, acc: 0, d: 0, rec: { id: 'amb:' + n, obj: new THREE.Object3D(), h: null, bias: 3 },   // focus after places, the cast and seats in reach: a passer-by never hides them
     };
     this.actors.push(a);
     return a;
