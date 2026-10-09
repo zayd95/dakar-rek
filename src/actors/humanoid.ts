@@ -284,8 +284,8 @@ export class Humanoid {
       if (!this.phoneMesh) {
         // the Phone capture holds the phone to the left ear
         const hand = this.bones.get('LeftHand');
-        this.phoneMesh = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.14, 0.012), new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.3 }));
-        this.phoneMesh.position.set(0, 0.05, 0.025); hand?.add(this.phoneMesh);
+        this.phoneMesh = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.01), new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.3 }));
+        this.phoneMesh.position.set(0, 0.06, 0.02); hand?.add(this.phoneMesh);
       }
       this.phoneMesh.visible = name === 'Phone';
     }

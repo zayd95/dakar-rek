@@ -1,3 +1,5 @@
+// Slims the Blender export of the v6 character for the game. Needs @gltf-transform/core and @gltf-transform/functions (v4),
+// e.g. installed in a scratch folder: npm i @gltf-transform/core@4 @gltf-transform/functions@4. Usage: node slim-character.mjs in.glb out.glb
 import { NodeIO } from '@gltf-transform/core';
 import { prune, dedup, resample, sparse } from '@gltf-transform/functions';
 const [,, src, dst] = process.argv;
