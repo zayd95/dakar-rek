@@ -111,7 +111,9 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     if (inf.phase === 'fall' || inf.phase === 'result') break;
     await page.evaluate(() => window.__dakar.duelGrab()); await page.waitForTimeout(100);
   }
-  await page.waitForFunction(() => window.__dakar.duelInfo() === null, null, { timeout: 120000 }).catch(() => {});
+  // the fall, the result and the way back to play run on game time: on a slow CI runner (well under 10 fps, frames capped
+  // at 0.1 s) that took more than 120 s of wall clock once (run 37864249615), so wait for the outcome itself, up to 4 min
+  await page.waitForFunction(() => window.__dakar.duelInfo() === null && window.__dakar.pos().mode === 'play', null, { timeout: 240000 }).catch(() => {});
   const wins = await page.evaluate(() => ({ v: window.__dakar.state.data.counters.victoires ?? 0, mode: window.__dakar.pos().mode }));
   check('lamb: controlled bout, grab and empoignade win', bout?.winner === 'player' && wins.v >= 1 && wins.mode === 'play', `${JSON.stringify(bout)} wins ${wins.v} ${wins.mode}`);
   // monument stair: standing half-way up puts the player well above the street
@@ -127,7 +129,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // headless frame rates make walking slow (~0.5 m/s): start just outside the wall and walk past the stands and barriers
   await page.evaluate(([x, z]) => window.__dakar.place(x, z, 0), [ar.x, ar.z - 23.5]);
   await page.keyboard.down('KeyW');
-  for (let i = 0; i < 90; i++) { await page.waitForTimeout(300); const p = await page.evaluate(() => window.__dakar.pos()); if (Math.hypot(p.x - ar.x, p.z - ar.z) < 14) break; }
+  // wall clock, up to 75 s: one slow CI runner covered 2.8 m in the old 27 s budget where another walked the 9.5 m in 16 s
+  for (const t0 = Date.now(); Date.now() - t0 < 75000;) { await page.waitForTimeout(300); const p = await page.evaluate(() => window.__dakar.pos()); if (Math.hypot(p.x - ar.x, p.z - ar.z) < 14) break; }
   await page.keyboard.up('KeyW');
   const gp = await page.evaluate(() => window.__dakar.pos());
   check('arena: walk in through the gate past the stands', Math.hypot(gp.x - ar.x, gp.z - ar.z) < 14.5, `${Math.hypot(gp.x - ar.x, gp.z - ar.z).toFixed(1)} m from the centre`);
