@@ -95,7 +95,7 @@ export function buildSalon(env: VenueEnv, sheet: Interactable): Venue {
   const place = salonRecipe({
     id, name: 'Salon Awa · fauteuils', space: 'street', chairs: { ...centre, r: 2.5 },
     services: SALON_SERVICES.map(s => ({ id: s.id, label: s.label, detail: s.detail, price: s.price, seconds: s.seconds })),
-    anchors: [{ id: 'chair', name: 'Fauteuils · Salon Awa', kind: 'furniture', ...at(4.1, 0.35), y: 1.8, radius: 2.2 }],
+    anchors: [{ id: 'chair', name: 'Fauteuils · Salon Awa', kind: 'furniture', ...at(4.1, 0.35), y: 1.8, radius: 2.2, bias: -1 }],   // wins over the stylist and Awa beside it
   }, { restyle, converse: talk });
   ctx.places.add(place);
 

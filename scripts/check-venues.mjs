@@ -234,7 +234,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   check(`${label}: Soumbédioune has a pirogue ready to leave and the mareyeuses`, !!b && b.anchors.length === 2 && b.crew >= 1, b ? `${b.crew} fishermen` : 'none');
   const boatAt = anchor(b, 'pirogue'), marketAt = anchor(b, 'mareyeuses');
   // walk across the sand to the pirogue (from the landing, toward the boat's side)
-  await d(([p]) => window.__dakar.place(p.x + 6, p.z - 2, -Math.PI / 2 - 0.3), [boatAt]);
+  await d(([p]) => window.__dakar.place(p.x + 5, p.z, -Math.PI / 2), [boatAt]);   // the corridor between the hub's last boat and ours
   const reached = await walk(() => /:pirogue$/.test(window.__dakar.focus()?.id ?? ''), null, 30000);
   const fb = await d(() => window.__dakar.focus());
   check(`${label}: walking up to the pirogue offers the trip (morning catch)`, reached && fb?.primary === 'Partir avec les pêcheurs', JSON.stringify(fb));
