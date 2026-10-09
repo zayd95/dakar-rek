@@ -1,7 +1,7 @@
 // Géew (Wolof: the circle of the arena and its spectators) — shared dimensions of the làmb arena stands and roof.
 // Pure numbers, no three.js: the builder draws from them, the scene crowd stands on them, the tests check sightlines.
 // Distances are metres from the arena centre; heights are metres above the arena ground.
-// Wolof terms here and in the arena code are TEMP and unreviewed until checked by a Wolof speaker and practitioners.
+// Wolof terms follow src/i18n/wolof.ts; the arena layout and làmb gestures still await practitioners' review.
 
 /** Sandbag ring where the mbër (wrestlers) fight. */
 export const RING_R = 9;

@@ -1,5 +1,6 @@
 import type { Needs } from '../core/types';
 import type { Input } from '../core/input';
+import { glossed } from '../i18n/wolof';
 
 export interface MenuItem { label: string; detail?: string; right?: string; disabled?: boolean; icon?: string; onPick: () => void }
 
@@ -113,7 +114,7 @@ export class Hud {
     this.el.sceneTag.classList.toggle('on', !!label); document.body.classList.toggle('inscene', !!label);
   }
   toast(msg: string) {
-    this.el.toast.textContent = msg; this.el.toast.classList.add('on');
+    this.el.toast.textContent = glossed(msg); this.el.toast.classList.add('on');
     clearTimeout(this.toastT); this.toastT = window.setTimeout(() => this.el.toast.classList.remove('on'), 2600);
   }
   progress(on: boolean, pct = 0, label = '') {
@@ -126,17 +127,18 @@ export class Hud {
   get modalOpen() { return this.el.modal.classList.contains('on'); }
   closeModal() { this.el.modal.classList.remove('on'); }
 
+  /** Every menu text goes through `glossed`: Wolof glosses shown or hidden as set in Réglages › Langue. */
   openMenu(title: string, subtitle: string, items: MenuItem[], extraHtml = '', afterRender?: (panel: HTMLElement) => void) {
     this.resetTouch();
     const panel = this.el.modal.querySelector('.panel') as HTMLElement;
-    panel.innerHTML = `<h2></h2><p></p>${extraHtml}<div class="list"></div>`;
-    (panel.querySelector('h2') as HTMLElement).textContent = title; (panel.querySelector('p') as HTMLElement).textContent = subtitle;
+    panel.innerHTML = `<h2></h2><p></p>${glossed(extraHtml)}<div class="list"></div>`;
+    (panel.querySelector('h2') as HTMLElement).textContent = glossed(title); (panel.querySelector('p') as HTMLElement).textContent = glossed(subtitle);
     const list = panel.querySelector('.list') as HTMLElement;
     for (const it of items) {
       const b = document.createElement('button'); b.className = 'item' + (it.disabled ? ' dis' : '');
       if (it.icon) { const ic = document.createElement('i'); ic.className = 'ic'; ic.textContent = it.icon; b.appendChild(ic); }
-      const l = document.createElement('div'); l.textContent = it.label;
-      if (it.detail) { const s = document.createElement('small'); s.textContent = it.detail; l.appendChild(s); }
+      const l = document.createElement('div'); l.textContent = glossed(it.label);
+      if (it.detail) { const s = document.createElement('small'); s.textContent = glossed(it.detail); l.appendChild(s); }
       b.appendChild(l);
       if (it.right) { const r = document.createElement('em'); r.textContent = it.right; b.appendChild(r); }
       if (!it.disabled) b.addEventListener('click', () => it.onPick());

@@ -2,6 +2,7 @@ import type { GameState } from '../core/state';
 import { Relations, PLAYER } from './relations';
 import { profileOf, type Cond, type Intro, type Profile, type Reaction } from './profiles';
 import type { Activity } from './routines';
+import { HOUR_GREETING, withHourGreeting } from '../i18n/wolof';
 
 /**
  * Memory and recognition, stored in the existing guest save only (no schema change):
@@ -50,9 +51,10 @@ export function matches(c: Cond, x: Ctx): boolean {
   return true;
 }
 
-/** The line the character greets the player with now (first matching reaction). */
+/** The line the character greets the player with now (first matching reaction), with the Wolof greeting of the hour. */
 export function greeting(p: Profile, x: Ctx): Reaction {
-  return p.reactions.find(rc => matches(rc.when, x)) ?? p.reactions[p.reactions.length - 1];
+  const rc = p.reactions.find(r => matches(r.when, x)) ?? p.reactions[p.reactions.length - 1];
+  return rc.line.includes(HOUR_GREETING) ? { ...rc, line: withHourGreeting(rc.line, x.hour) } : rc;
 }
 
 /** An introduction the character can make now (each target only once). */

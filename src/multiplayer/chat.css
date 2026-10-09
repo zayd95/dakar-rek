@@ -47,6 +47,8 @@ li[data-status="failed"] .chat-status { color:#fca5a5; }
 .chat-compose { margin-top:6px; }
 .chat-react { display:flex; gap:4px; margin-bottom:6px; }
 .chat-react button { flex:1; padding:5px 0; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.06); font-size:17px; cursor:pointer; }
+.chat-phrases { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
+.chat-phrases button { flex:1 0 auto; padding:5px 7px; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:#fff; font:600 12px var(--font); cursor:pointer; }
 .chat-row { display:flex; gap:6px; }
 #chatInput { flex:1; min-width:0; padding:10px 11px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.08); color:#fff; font:16px var(--font); user-select:text; -webkit-user-select:text; touch-action:auto; }
 #chatInput:focus { outline:2px solid rgba(251,191,36,.7); outline-offset:0; }
