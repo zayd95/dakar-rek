@@ -1,0 +1,537 @@
+[
+  {
+    "name": "desktop: HUD chips do not overlap",
+    "ok": true,
+    "detail": "{\"#stats\":{\"left\":10,\"top\":10,\"right\":164,\"bottom\":74,\"width\":154,\"height\":64},\"#place\":{\"left\":525.4453125,\"top\":10,\"right\":754.5546875,\"bottom\":54.1875,\"width\":229.109375,\"height\":44.1875},\"#menuBtn\":{\"left\":1226,\"top\":10,\"right\":1270,\"bottom\":54,\"width\":44,\"height\":44},\"#goal\":{\"left\":10,\"top\":84,\"right\":330,\"bottom\":125.1875,\"width\":320,\"height\":41.1875}}"
+  },
+  {
+    "name": "desktop: HUD chips are on screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: phone button is a 44 px target",
+    "ok": true,
+    "detail": "44×44"
+  },
+  {
+    "name": "desktop: the focused place has a ring on the ground",
+    "ok": true,
+    "detail": "{\"focus\":true,\"focusAt\":{\"x\":44,\"z\":37},\"pin\":false,\"pinAt\":null}"
+  },
+  {
+    "name": "desktop: action button shows the verb with its icon, 60 px tall",
+    "ok": true,
+    "detail": "167.90625×60 👋Jus & GoE"
+  },
+  {
+    "name": "desktop: « ⋯ » is a 44 px target above the action button",
+    "ok": true,
+    "detail": "48×48"
+  },
+  {
+    "name": "desktop: action area clear of the joystick",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: the place sheet opens in menu mode",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: sheet on the right, clear of the character in the centre",
+    "ok": true,
+    "detail": "{\"left\":856,\"top\":585.5625,\"right\":1256,\"bottom\":776,\"width\":400,\"height\":190.4375}"
+  },
+  {
+    "name": "desktop: sheet rows are at least 44 px",
+    "ok": true,
+    "detail": "54,55"
+  },
+  {
+    "name": "desktop: Escape closes the sheet and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: tapping outside closes it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: « ✕ » closes it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: the menu key closes it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: after the sheets, the character walks",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: « ⋯ » shows the target's actions as tiles with prices",
+    "ok": true,
+    "detail": "[\"👋Jus & Go\",\"🍽️Jus de bouye frais−500 F\",\"🍽️Bissap et sandwichPas assez d’argent−1 000 F\"]"
+  },
+  {
+    "name": "desktop: quick actions sit in the bottom-right thumb zone",
+    "ok": true,
+    "detail": "{\"left\":916,\"top\":509.125,\"right\":1268,\"bottom\":704,\"width\":352,\"height\":194.875}"
+  },
+  {
+    "name": "desktop: a disabled tile says why (« Pas assez d’argent »)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: tapping outside the quick actions gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: an activity starts",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: progress pill above the « Arrêter » button",
+    "ok": false,
+    "detail": "⏳Riz au poissonPréparation · 1/20 % {\"left\":1006.5999755859375,\"top\":653.469970703125,\"right\":1261.4000244140625,\"bottom\":699.5299682617188,\"width\":254.800048828125,\"height\":46.05999755859375}"
+  },
+  {
+    "name": "desktop: Escape stops the activity and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: an activity starts again",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: « Arrêter » stops it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: a plain timed action shows « Arrêter »",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: Escape stops it, no pay, controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: a scene shows « Arrêter » (44 px)",
+    "ok": true,
+    "detail": "{\"left\":651.8046875,\"top\":728,\"right\":745.3984375,\"bottom\":772,\"width\":93.59375,\"height\":44}"
+  },
+  {
+    "name": "desktop: leaving the scene gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: the phone closes back to play",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: way-finding pin over the suggested person, distance in the hint",
+    "ok": true,
+    "detail": "{\"m\":{\"focus\":true,\"focusAt\":{\"x\":-42,\"z\":-54.5},\"pin\":true,\"pinAt\":{\"x\":-36,\"z\":-54.5}},\"ibou\":{\"id\":\"ibou\",\"hub\":\"pikine\",\"here\":true,\"x\":-36,\"z\":-54.5,\"y\":0,\"yaw\":3.14,\"act\":\"wait\",\"clip\":\"Idle\",\"walking\":false,\"paused\":false,\"sit\":false,\"key\":\"wait:ibou_welcome\",\"place\":\"devant ta chambre : il attend le nouveau voisin\",\"target\":{\"x\":-36,\"z\":-54.5},\"left\":0,\"it\":{\"x\":0,\"z\":0}},\"goal\":\"↑Parle à Tonton Ibou, devant ta chambre (Pikine).6 m\",\"gd\":\"6 m\"}"
+  },
+  {
+    "name": "desktop: toasts stack, three at most",
+    "ok": true,
+    "detail": "3"
+  },
+  {
+    "name": "desktop: toasts stay clear of the action area",
+    "ok": true,
+    "detail": "{\"left\":410,\"top\":66,\"right\":870,\"bottom\":261.09375,\"width\":460,\"height\":195.09375}"
+  },
+  {
+    "name": "desktop: a wallet change shows « +1 200 F »",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: HUD chips do not overlap",
+    "ok": true,
+    "detail": "{\"#stats\":{\"left\":10,\"top\":10,\"right\":162,\"bottom\":72,\"width\":152,\"height\":62},\"#place\":{\"left\":172,\"top\":10,\"right\":328,\"bottom\":67,\"width\":156,\"height\":57},\"#menuBtn\":{\"left\":336,\"top\":10,\"right\":380,\"bottom\":54,\"width\":44,\"height\":44},\"#goal\":{\"left\":10,\"top\":84,\"right\":251.796875,\"bottom\":125.1875,\"width\":241.796875,\"height\":41.1875}}"
+  },
+  {
+    "name": "phone: HUD chips are on screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: phone button is a 44 px target",
+    "ok": true,
+    "detail": "44×44"
+  },
+  {
+    "name": "phone: the focused place has a ring on the ground",
+    "ok": true,
+    "detail": "{\"focus\":true,\"focusAt\":{\"x\":44,\"z\":37},\"pin\":false,\"pinAt\":null}"
+  },
+  {
+    "name": "phone: action button shows the verb with its icon, 60 px tall",
+    "ok": true,
+    "detail": "142.90625×60 👋Jus & GoE"
+  },
+  {
+    "name": "phone: « ⋯ » is a 44 px target above the action button",
+    "ok": true,
+    "detail": "48×48"
+  },
+  {
+    "name": "phone: action area clear of the joystick",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: the place sheet opens in menu mode",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: bottom sheet anchored at the bottom, at most ~56 % high",
+    "ok": true,
+    "detail": "{\"left\":0,\"top\":646.5625,\"right\":390,\"bottom\":844,\"width\":390,\"height\":197.4375}"
+  },
+  {
+    "name": "phone: sheet rows are at least 44 px",
+    "ok": true,
+    "detail": "54,55"
+  },
+  {
+    "name": "phone: Escape closes the sheet and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: tapping outside closes it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: « ✕ » closes it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: the menu key closes it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: swiping the sheet down closes it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: after the sheets, the character walks",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: « ⋯ » shows the target's actions as tiles with prices",
+    "ok": true,
+    "detail": "[\"👋Jus & Go\",\"🍽️Jus de bouye frais−500 F\",\"🍽️Bissap et sandwichPas assez d’argent−1 000 F\"]"
+  },
+  {
+    "name": "phone: quick actions sit in the bottom-right thumb zone",
+    "ok": true,
+    "detail": "{\"left\":28,\"top\":553.125,\"right\":380,\"bottom\":748,\"width\":352,\"height\":194.875}"
+  },
+  {
+    "name": "phone: a disabled tile says why (« Pas assez d’argent »)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: tapping outside the quick actions gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: an activity starts",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: progress pill above the « Arrêter » button",
+    "ok": false,
+    "detail": "⏳Riz au poissonPréparation · 1/20 % {\"left\":158.17999267578125,\"top\":697.469970703125,\"right\":371.82000732421875,\"bottom\":743.5299682617188,\"width\":213.6400146484375,\"height\":46.05999755859375}"
+  },
+  {
+    "name": "phone: Escape stops the activity and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: an activity starts again",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: « Arrêter » stops it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: a plain timed action shows « Arrêter »",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: Escape stops it, no pay, controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: a scene shows « Arrêter » (44 px)",
+    "ok": true,
+    "detail": "{\"left\":192.90625,\"top\":770.5,\"right\":286.5,\"bottom\":814.5,\"width\":93.59375,\"height\":44}"
+  },
+  {
+    "name": "phone: leaving the scene gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: the phone closes back to play",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: way-finding pin over the suggested person, distance in the hint",
+    "ok": true,
+    "detail": "{\"m\":{\"focus\":false,\"focusAt\":null,\"pin\":true,\"pinAt\":{\"x\":-36,\"z\":-54.5}},\"ibou\":{\"id\":\"ibou\",\"hub\":\"pikine\",\"here\":true,\"x\":-36,\"z\":-54.5,\"y\":0.1,\"yaw\":3.14,\"act\":\"wait\",\"clip\":\"Idle\",\"walking\":false,\"paused\":false,\"sit\":false,\"key\":\"wait:ibou_welcome\",\"place\":\"devant ta chambre : il attend le nouveau voisin\",\"target\":{\"x\":-36,\"z\":-54.5},\"left\":0,\"it\":{\"x\":-36,\"z\":-54.5}},\"goal\":\"↑Parle à Tonton Ibou, devant ta chambre (Pikine).64 m\",\"gd\":\"64 m\"}"
+  },
+  {
+    "name": "phone: toasts stack, three at most",
+    "ok": true,
+    "detail": "3"
+  },
+  {
+    "name": "phone: toasts stay clear of the action area",
+    "ok": true,
+    "detail": "{\"left\":12,\"top\":170,\"right\":378,\"bottom\":365.09375,\"width\":366,\"height\":195.09375}"
+  },
+  {
+    "name": "phone: a wallet change shows « +1 200 F »",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: the profile sheet scrolls with a touch drag",
+    "ok": true,
+    "detail": "{\"sh\":352,\"ch\":352} scrollTop 0"
+  },
+  {
+    "name": "phone: closing the profile sheet gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": false,
+    "detail": "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found."
+  },
+  {
+    "name": "landscape: HUD chips do not overlap",
+    "ok": true,
+    "detail": "{\"#stats\":{\"left\":10,\"top\":8,\"right\":164,\"bottom\":72,\"width\":154,\"height\":64},\"#place\":{\"left\":307.4453125,\"top\":8,\"right\":536.5546875,\"bottom\":52.1875,\"width\":229.109375,\"height\":44.1875},\"#menuBtn\":{\"left\":790,\"top\":10,\"right\":834,\"bottom\":54,\"width\":44,\"height\":44},\"#goal\":{\"left\":10,\"top\":80,\"right\":330,\"bottom\":121.1875,\"width\":320,\"height\":41.1875}}"
+  },
+  {
+    "name": "landscape: HUD chips are on screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: phone button is a 44 px target",
+    "ok": true,
+    "detail": "44×44"
+  },
+  {
+    "name": "landscape: the focused place has a ring on the ground",
+    "ok": true,
+    "detail": "{\"focus\":true,\"focusAt\":{\"x\":44,\"z\":37},\"pin\":false,\"pinAt\":null}"
+  },
+  {
+    "name": "landscape: action button shows the verb with its icon, 60 px tall",
+    "ok": true,
+    "detail": "142.90625×60 👋Jus & GoE"
+  },
+  {
+    "name": "landscape: « ⋯ » is a 44 px target above the action button",
+    "ok": true,
+    "detail": "48×48"
+  },
+  {
+    "name": "landscape: action area clear of the joystick",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: the place sheet opens in menu mode",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: sheet on the right, clear of the character in the centre",
+    "ok": true,
+    "detail": "{\"left\":434,\"top\":191.5625,\"right\":834,\"bottom\":382,\"width\":400,\"height\":190.4375}"
+  },
+  {
+    "name": "landscape: sheet rows are at least 44 px",
+    "ok": true,
+    "detail": "54,55"
+  },
+  {
+    "name": "landscape: Escape closes the sheet and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: tapping outside closes it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: « ✕ » closes it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: the menu key closes it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: after the sheets, the character walks",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: « ⋯ » shows the target's actions as tiles with prices",
+    "ok": true,
+    "detail": "[\"👋Jus & Go\",\"🍽️Jus de bouye frais−500 F\",\"🍽️Bissap et sandwichPas assez d’argent−1 000 F\"]"
+  },
+  {
+    "name": "landscape: quick actions sit in the bottom-right thumb zone",
+    "ok": true,
+    "detail": "{\"left\":392,\"top\":187.125,\"right\":832,\"bottom\":382,\"width\":440,\"height\":194.875}"
+  },
+  {
+    "name": "landscape: a disabled tile says why (« Pas assez d’argent »)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: tapping outside the quick actions gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: an activity starts",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: progress pill above the « Arrêter » button",
+    "ok": false,
+    "detail": "⏳Riz au poissonPréparation · 1/20 % {\"left\":647.278564453125,\"top\":243.47000122070312,\"right\":826.1744995117188,\"bottom\":289.5299987792969,\"width\":178.89593505859375,\"height\":46.05999755859375}"
+  },
+  {
+    "name": "landscape: Escape stops the activity and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: an activity starts again",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: « Arrêter » stops it and gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: a plain timed action shows « Arrêter »",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: Escape stops it, no pay, controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: a scene shows « Arrêter » (44 px)",
+    "ok": true,
+    "detail": "{\"left\":433.8046875,\"top\":318,\"right\":527.3984375,\"bottom\":362,\"width\":93.59375,\"height\":44}"
+  },
+  {
+    "name": "landscape: leaving the scene gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: the phone closes back to play",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: way-finding pin over the suggested person, distance in the hint",
+    "ok": true,
+    "detail": "{\"m\":{\"focus\":true,\"focusAt\":{\"x\":-42,\"z\":-54.5},\"pin\":true,\"pinAt\":{\"x\":-36,\"z\":-54.5}},\"ibou\":{\"id\":\"ibou\",\"hub\":\"pikine\",\"here\":true,\"x\":-36,\"z\":-54.5,\"y\":0,\"yaw\":3.14,\"act\":\"wait\",\"clip\":\"Idle\",\"walking\":false,\"paused\":false,\"sit\":false,\"key\":\"wait:ibou_welcome\",\"place\":\"devant ta chambre : il attend le nouveau voisin\",\"target\":{\"x\":-36,\"z\":-54.5},\"left\":0,\"it\":{\"x\":0,\"z\":0}},\"goal\":\"↑Parle à Tonton Ibou, devant ta chambre (Pikine).6 m\",\"gd\":\"6 m\"}"
+  },
+  {
+    "name": "landscape: toasts stack, three at most",
+    "ok": true,
+    "detail": "3"
+  },
+  {
+    "name": "landscape: toasts stay clear of the action area",
+    "ok": true,
+    "detail": "{\"left\":212,\"top\":60,\"right\":632,\"bottom\":255.09375,\"width\":420,\"height\":195.09375}"
+  },
+  {
+    "name": "landscape: a wallet change shows « +1 200 F »",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: the profile sheet scrolls with a touch drag",
+    "ok": true,
+    "detail": "{\"sh\":345,\"ch\":335} scrollTop 10"
+  },
+  {
+    "name": "landscape: closing the profile sheet gives the controls back",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "landscape: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

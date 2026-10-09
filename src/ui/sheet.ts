@@ -131,7 +131,7 @@ export class Sheet {
       if (e.pointerType === 'mouse' || id >= 0 || !bottom() || !(e.target as HTMLElement).closest('.sh-top')) return;
       id = e.pointerId; y0 = e.clientY; t0 = performance.now(); dy = 0;
       this.box.classList.add('drag');
-      this.box.setPointerCapture?.(id);
+      try { this.box.setPointerCapture(id); } catch { /* synthetic or already released pointer */ }
     });
     this.box.addEventListener('pointermove', e => {
       if (e.pointerId !== id) return;

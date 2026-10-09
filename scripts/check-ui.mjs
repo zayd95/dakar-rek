@@ -151,6 +151,7 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   if (counter) {
     check(`${label}: an activity starts`, await order());
     await page.waitForFunction(() => document.querySelector('#progress.on'), null, { timeout: 10000 }).catch(() => {});
+    await settle();
     const pill = await rect('#progress'), btn = await rect('#act');
     const pillText = await d(() => document.getElementById('progress').textContent);
     check(`${label}: progress pill above the « Arrêter » button`, pill.width > 0 && pill.bottom <= btn.top + 1 && Math.abs(pill.right - btn.right) < 4 && /Riz au poisson/.test(pillText) && /Arrêter/.test(await d(() => document.getElementById('act').textContent)), `${pillText} ${JSON.stringify(pill)}`);

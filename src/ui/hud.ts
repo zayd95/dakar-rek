@@ -102,10 +102,12 @@ export class Hud {
     root.querySelectorAll<HTMLElement>('.ring').forEach(r => this.rings.set(r.dataset.need as keyof Needs, r));
     root.querySelectorAll<HTMLElement>('.nrow').forEach(r => this.rows.set(r.dataset.row as keyof Needs, r));
     this.sheet = new Sheet(this.el.modal, { deny: r => this.toast(r, 'warn'), opened: () => this.resetTouch() });
-    this.el.act.addEventListener('click', () => this.onAction());
-    this.el.actMore.addEventListener('click', () => this.onMore());
-    this.el.menuBtn.addEventListener('click', () => this.onMenu());
-    this.el.wprompt.addEventListener('click', () => this.onAction());                 // tap the bubble in the world = act
+    // Tapped or clicked HUD buttons give the focus back: a focused button would also fire on Space/Enter, the game's action keys.
+    const tap = (e: HTMLElement, fn: () => void) => e.addEventListener('click', () => { e.blur(); fn(); });
+    tap(this.el.act, () => this.onAction());
+    tap(this.el.actMore, () => this.onMore());
+    tap(this.el.menuBtn, () => this.onMenu());
+    tap(this.el.wprompt, () => this.onAction());                                      // tap the bubble in the world = act
     this.el.sceneTag.querySelector('.st-stop')!.addEventListener('click', () => this.onSceneStop());
     this.el.stats.addEventListener('click', () => this.toggleNeeds());
     this.el.stats.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); this.toggleNeeds(); } });
