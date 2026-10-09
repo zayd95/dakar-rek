@@ -1,16 +1,20 @@
 import type { Needs } from '../core/types';
 import type { Input } from '../core/input';
+import { fcfaShort, fcfaText } from '../economy/format';
 
 export interface MenuItem { label: string; detail?: string; right?: string; disabled?: boolean; icon?: string; onPick: () => void }
 
 const NEED_LABELS: [keyof Needs, string][] = [['faim', 'Faim'], ['energie', 'Énergie'], ['moral', 'Moral'], ['social', 'Social'], ['hygiene', 'Hygiène']];
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-export const fcfa = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' F';
+/** Full amount (menus, phone): « 1 250 000 000 F », exact at any size; the HUD card shows the compact form (fcfaShort). */
+export const fcfa = (n: number) => fcfaText(n);
 
 export class Hud {
   private bars = new Map<string, HTMLElement>();
   private el: Record<string, HTMLElement> = {};
   private toastT = 0;
+  /** Wallet last shown (the card text is compact; its accessible label is the full amount). */
+  private shownWallet = NaN;
   private resetTouch: () => void = () => {};
   onAction: () => void = () => {};
   onMenu: () => void = () => {};
@@ -81,7 +85,7 @@ export class Hud {
   }
 
   setStats(wallet: number, needs: Needs, mood: string) {
-    this.el.money.textContent = fcfa(wallet);
+    if (wallet !== this.shownWallet) { this.shownWallet = wallet; this.el.money.textContent = fcfaShort(wallet); this.el.money.setAttribute('aria-label', fcfa(wallet)); }
     this.el.mood.textContent = 'Humeur : ' + mood;
     for (const [k] of NEED_LABELS) {
       const b = this.bars.get(k)!, v = needs[k];

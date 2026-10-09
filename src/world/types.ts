@@ -21,7 +21,7 @@ export interface Action {
   /** Handled by a dedicated flow instead of the timed action (scenes, outfit, emotes). */
   /** Composed activity (src/activity): when present, the universal runner plays these steps (price = `cost`). */
   steps?: Step[];
-  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat' | 'combat_classe' | 'combat_entrainement' | 'jobs' | 'shop';
+  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat' | 'combat_classe' | 'combat_entrainement' | 'jobs' | 'shop' | 'business';
 }
 export interface Interactable {
   id: string;
