@@ -20,14 +20,21 @@ still has a few tables. Everyone can be greeted (« Saluer », « Demander son n
 | Crowd LOD | `src/actors/crowdLod.ts` | Frustum culling for humanoids, instanced far figures, and the same budget applied to the other systems' humanoids (walkers, placed people, cast, apprentices, monument life). |
 
 Adding life to a new place needs no code: register a `PlaceSpec` whose `type` is in `PLACE_TAGS` (or add the type
-there), with seats near its anchors (or in its space). A seat of kind `prayer`/`mat` is used standing by the prayer rows;
-`vehicle` seats near a `stop` take people who board (they follow the seat while it moves and leave when it is removed).
-New behaviour = one line in `ACTIVITIES`.
+there), with seats near its anchors (or in its space); `peaks` make it busier in its windows. A room of `prayer` seats
+(the venues' mosque hall) is filled at prayer times by people holding the seat's pose (`Seat.clip`, Kneel), like the
+venue's own congregation; prayer seats without a pose are stood on. `vehicle` seats near a `stop` take people who board
+(they follow the seat while it moves and leave when it is removed). Anchors in another space than their place (a
+mosque's hall) do not make standing places in the street. New behaviour = one line in `ACTIVITIES`.
+
+Merged with `integration/living-dakar` (Wolof, assets, transport, venues, gestures): the venues' Dibi, Grande Mosquée,
+Soumbédioune and Salon Awa and the transport stops are populated through their `PlaceSpec`s and seats; the legacy
+spots and derived furniture seats of the lots they took over step aside. Their own roles (cook, imam, congregation,
+passengers) count as characters on seats, so the free-seat share holds for everyone together.
 
 ## Rules kept
 
 - **Seats.** Ambient people take seats only through `seats.occupy(id, 'npc:amb:<n>')` and release them when they stand
-  up. Never a taken seat (player, remote player, cast, placed people); never a seat within 2.6 m of the player or ahead
+  up. Never a taken seat (player, remote player, cast, placed people, venue roles, passengers); never a seat within 2.6 m of the player or ahead
   of the player while they walk toward it (9 m cone); someone still walking to a seat gives it up when the player gets
   there first. Non-player characters together never hold more than `seatCapacity(n)` of a place's seats: at least one
   and ~a third stay free. Cast members' seats for the current hour are held for them (`npc:cast:<id>`). The density
@@ -36,8 +43,11 @@ New behaviour = one line in `ACTIVITIES`.
   shared with `NpcLife`); a person who cannot get there cleanly does not walk (settled out of sight, or gives up).
   Seats with a table in front are approached from behind or the side. Inside rooms, only straight or one-turn paths
   that miss the furniture.
-- **Mosque.** Rows of people standing quietly facing the qibla during the five prayer windows (approximate Dakar
-  times, game-own), more on Friday; no text, no recitation, not offered a conversation.
+- **Mosque.** Rows of people facing the qibla during the five prayer windows (the venues' times, `src/venues/prayer.ts`):
+  standing on the forecourt, kneeling on the hall's prayer rows; more on Friday; no text, no recitation, not offered a
+  conversation.
+- **Focus.** Ambient people rank after places, the cast and seats in reach (focus bias 3 m): a passer-by never hides
+  the counter or Tonton Ibou; someone alone can be greeted.
 - **Player first at the counter.** Standing places keep 1.8 m from every interaction anchor, so the player's focus never
   lands on a customer instead of the counter.
 
@@ -87,10 +97,9 @@ holds the browser lock when re-run (`flock /tmp/dakar-browser.lock node scripts/
 
 ## Known gaps
 
-- **Other lanes' places are tested with stand-ins.** The venue (Dibi, mosque, salon, Soumbédioune) and transport (stops,
-  car rapide seats) branches were not merged here: the check registers a test Dibi, a test stop and vehicle seats at run
-  time and the unit tests register a mosque with prayer seats. Contract assumed for vehicles: seats in world
-  coordinates, updated while the vehicle moves, removed when it leaves (a rider follows its seat and goes with it).
+- **Riding.** Boarding uses free `vehicle` seats within 14 m of a stop (the density check registers a test stop and
+  vehicle seats; the transport lane's car rapides are boarded the same way when they stand at a stop). A rider follows
+  the seat and leaves after two city hours or when the seat is removed; no alighting animation at the next stop.
 - **Derived furniture seats** (kiosk benches, Maïga bench, dibiterie chairs, station and gym benches) are registered by
   this lane until the builders or venues do it; a seat within 35 cm of an existing one is never added twice, but a
   venue lane registering its own seats *after* the first frame would get doubles.
