@@ -94,6 +94,12 @@ describe('walking to a seat', () => {
     const legs = [from, ...path.slice(0, -1)];
     for (let i = 1; i < legs.length; i++) expect(segClear(legs[i - 1], legs[i], grown(0.3))).toBe(true);
   });
+  it('steps in further out from a deep bench whose footprint covers the near spots', () => {
+    const bench = { x: 10, z: 0, yaw: -Math.PI / 2 };                         // a city bench along z, 0.7 m deep
+    const path = approachPath({ x: 6, z: 3 }, bench, [box(10, 0, 0.7, 3.2)], 0.5)!;
+    expect(path).not.toBeNull();
+    expect(Math.hypot(path.at(-2)!.x - 10, path.at(-2)!.z)).toBeCloseTo(1.1);
+  });
   it('sits at once when the seat is at hand, gives up when it is walled in', () => {
     expect(approachPath({ x: -1.5, z: 0.2 }, left, room, 0.3)).toEqual([{ x: left.x, z: left.z }]);
     const walled = [box(5, 3.4, 3, 0.2), box(5, 6.6, 3, 0.2), box(3.4, 5, 0.2, 3), box(6.6, 5, 0.2, 3)];

@@ -230,7 +230,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     await d(() => window.__dakar.more());
     await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
     await page.locator('#modal .item', { hasText: 'Dormir' }).first().click();
-    await page.waitForFunction(() => window.__dakar.lying() === 1 && window.__dakar.activity(), null, { timeout: 120000 }).catch(() => {});
+    await page.waitForFunction(() => window.__dakar.seated() && window.__dakar.lying() === 1 && window.__dakar.activity(), null, { timeout: 120000 }).catch(() => {});
     const lie = await d(() => ({ seated: window.__dakar.seated(), lying: window.__dakar.lying(), y: window.__dakar.pos().y, a: window.__dakar.activity() }));
     check(`${label}: « Dormir » lies down on the bed`, /:home:bed$/.test(lie.seated ?? '') && lie.lying === 1 && lie.y > 0.6, JSON.stringify(lie));
     await page.waitForTimeout(500); await page.screenshot({ path: `${out}/${label}-sleeping.png` });

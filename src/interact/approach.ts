@@ -7,8 +7,8 @@ export interface Pt { x: number; z: number }
 export interface Rect { x0: number; z0: number; x1: number; z1: number }
 
 const CELL = 0.15;
-/** Distance from the seat to the spot the player walks to before sitting down. */
-const STEP_IN = 0.75;
+/** Distances from the seat to the spot the player walks to before sitting down (further out for a deep bench). */
+const STEP_IN = [0.75, 1.1];
 /** Closer than this, the player sits straight away. */
 const AT_HAND = 0.9;
 
@@ -31,7 +31,7 @@ export function segClear(a: Pt, b: Pt, rects: readonly Rect[]): boolean {
 }
 
 /** Spots around a seat the player can step in from: left, right, behind, in front (forward = sin/cos of yaw). */
-export function seatEntries(seat: { x: number; z: number; yaw: number }, d = STEP_IN): Pt[] {
+export function seatEntries(seat: { x: number; z: number; yaw: number }, d = STEP_IN[0]): Pt[] {
   const fx = Math.sin(seat.yaw), fz = Math.cos(seat.yaw);
   return [[fz, -fx], [-fz, fx], [-fx, -fz], [fx, fz]].map(([ux, uz]) => ({ x: seat.x + ux * d, z: seat.z + uz * d }));
 }
@@ -53,11 +53,11 @@ export function approachPath(from: Pt, seat: { x: number; z: number; yaw: number
     .filter(c => !inside(from, c));                                    // already touching one: let the route leave it
   const walkable = (p: Pt) => p.x >= area.x0 && p.x <= area.x1 && p.z >= area.z0 && p.z <= area.z1 && !rects.some(c => inside(p, c));
   let best: Pt[] | null = null, bestLen = Infinity;
-  for (const e of seatEntries(seat)) {
+  for (const e of STEP_IN.flatMap(d => seatEntries(seat, d))) {
     if (!walkable(e)) continue;
     const legs = route(from, e, rects, area, walkable);
     if (!legs) continue;
-    const len = legs.reduce((s, p, i) => s + dist(i ? legs[i - 1] : from, p), 0) + STEP_IN;
+    const len = legs.reduce((s, p, i) => s + dist(i ? legs[i - 1] : from, p), 0) + dist(e, end);
     if (len < bestLen) { bestLen = len; best = [...legs, end]; }
   }
   return best;
