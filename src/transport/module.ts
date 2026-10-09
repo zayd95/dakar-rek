@@ -272,14 +272,14 @@ export class TransportModule implements GameModule {
   /** « Monter dans le prochain »: wait at this stop; the next car standing here takes the player. */
   private wantBoard(rt: LineRt, stop: number) {
     if (this.trip.phase !== 'idle' && this.trip.phase !== 'waiting') return;
-    this.trip.wait(stop); this.line = rt;
+    this.trip.wait(stop); this.line = rt; this.cardT = 0;
     const t = this.nextArrival(rt, stop);
     this.ctx.toast(t <= 0 ? `Le ${rt.def.number} est là : on monte !` : `Tu attends le ${rt.def.number} · ${SAY.waiting('il arrive', t)}`);
   }
 
   private stopWaiting(msg: string) {
     if (this.trip.phase !== 'waiting') return;
-    this.trip.reset(); this.line = null;
+    this.trip.reset(); this.line = null; this.cardT = 0;
     if (msg) this.ctx.toast(msg);
   }
 
@@ -353,7 +353,7 @@ export class TransportModule implements GameModule {
     ctx.player.sit(seat);
     if (ctx.player.seated()?.id !== seat.id) { this.endTrip(true); if (ctx.mode() === 'busy') ctx.setMode('play'); return; }
     if (ctx.mode() === 'busy') ctx.setMode('play');
-    this.trip.seated();
+    this.trip.seated(); this.cardT = 0;
     ctx.toast(`${SAY.fare(rt.def.fare)} · ${rt.def.number} vers ${rt.def.to}`);
     ctx.save();
   }
@@ -372,7 +372,7 @@ export class TransportModule implements GameModule {
       ctx.player.place(to.x, to.z, to.yaw);
       if (ctx.mode() === 'busy') ctx.setMode('play');
       ctx.toast(SAY.alight(site.def.name));
-      this.trip.reset(); this.line = null;
+      this.trip.reset(); this.line = null; this.cardT = 0;
       ctx.save();
     };
     // still standing at the stop and the game is in play: two steps from the door; otherwise straight onto the pavement
@@ -410,7 +410,7 @@ export class TransportModule implements GameModule {
       if (ctx.mode() === 'busy') ctx.setMode('play');
     }
     const body = ctx?.player.body(); if (body && body.hold === 'Walk') body.hold = null;
-    this.trip.reset(); this.line = null; this.seat = null; this.walk = null; this.pending = null;
+    this.trip.reset(); this.line = null; this.seat = null; this.walk = null; this.pending = null; this.cardT = 0;
     if (this.cam.active) { this.cam.end(); ctx?.follow.snapBehind(ctx.player.facing()); }
   }
 
@@ -476,7 +476,7 @@ export class TransportModule implements GameModule {
         { id: 'descendre', verb: 'alight', label: '', icon: '🛑', run: () => this.requestStop() },
         { id: 'vue', verb: 'use', label: 'Changer de vue', icon: '🎥', run: () => this.cam.next(this.vehicle()?.spec.cameras.length ?? 1) },
         { id: 'voisin', verb: 'talk', label: 'Parler au voisin', icon: '💬', run: () => this.talkToNeighbour() },
-        { id: 'annuler', verb: 'stand', label: 'Ne pas descendre', icon: '↩️', run: () => { this.trip.cancelRequest(); this.ctx.toast('Tu restes dans le car'); } },
+        { id: 'annuler', verb: 'stand', label: 'Ne pas descendre', icon: '↩️', run: () => { this.trip.cancelRequest(); this.cardT = 0; this.ctx.toast('Tu restes dans le car'); } },
       ];
     }
     const [down, view, talk, cancel] = this.rideAff;
@@ -494,7 +494,7 @@ export class TransportModule implements GameModule {
 
   private requestStop() {
     const v = this.vehicle(), rt = this.line; if (!v || !rt || this.trip.phase !== 'riding') return;
-    const i = this.trip.request(v.motion);
+    const i = this.trip.request(v.motion); this.cardT = 0;
     this.ctx.toast(SAY.request(rt.sites[i].def.name));
   }
 

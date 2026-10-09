@@ -132,7 +132,7 @@ export class LineVehicle {
     this.calls = textures;
     if (!this.apprentice || !textures.length) return;
     this.bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures[0], depthWrite: false, transparent: true }));
-    this.bubble.scale.set(2.1, 0.66, 1); this.bubble.position.set(0.7, 2.45, 0); this.bubble.visible = false;
+    this.bubble.scale.set(2.1, 0.66, 1); this.bubble.position.set(0.7, 3.0, 0);    // above the shelter roof this.bubble.visible = false;
     this.apprentice.h.group.add(this.bubble);
   }
 

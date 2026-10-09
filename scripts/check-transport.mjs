@@ -61,6 +61,9 @@ for (const [label, viewport, touch, hub] of RUNS.filter(r => !process.env.ONLY |
 
   // 2. Every seat taken but one (r3c0): the player must sit exactly there, never on an NPC's seat.
   await d(() => window.__dakar.transport.crowd('r3c0'));
+  // a car standing at the stop (or just arriving) would take the player at once: let it go, to see the wait first
+  const soon = await d(([l]) => window.__dakar.transport.nextAt(l, 0), [L.id]);
+  if (soon < 15) { await d(w => window.__dakar.transport.warp(w), soon + 12); await page.waitForTimeout(1500); }
   const wallet0 = await d(() => window.__dakar.state.wallet);
   const ledger0 = await d(() => window.__dakar.state.data.ledger.length);
   await d(() => window.__dakar.act());
@@ -136,13 +139,13 @@ for (const [label, viewport, touch, hub] of RUNS.filter(r => !process.env.ONLY |
   check(`${label}: the car rapide passes a stop and the player stays on board`, tr.phase === 'riding' && tr.passed >= 1, JSON.stringify(tr));
   await ready();
   await d(() => window.__dakar.act());
-  await page.waitForFunction(() => window.__dakar.transport.trip().alightAt >= 0, null, T).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.transport.trip().alightAt >= 0 && /Arrêt demandé/.test(window.__dakar.transport.card()), null, T).catch(() => {});
   tr = await trip();
   const card = await d(() => window.__dakar.transport.card());
   check(`${label}: « Descendre au prochain arrêt » is heard (stop requested)`, tr.alightAt >= 0 && /Arrêt demandé/.test(card), card);
   await shot('6-requested');
   const target = (await line()).stops[tr.alightAt];
-  await page.waitForFunction(() => window.__dakar.transport.trip().phase === 'idle' && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.transport.trip().phase === 'idle' && window.__dakar.pos().mode === 'play' && window.__dakar.transport.card() === '', null, T).catch(() => {});
   const p2 = await d(() => window.__dakar.pos());
   tr = await trip();
   const geo = await d(() => window.__dakar.cityGeometry());
