@@ -1,6 +1,6 @@
 import type { Needs } from '../core/types';
 import type { Clip } from '../actors/humanoid';
-import type { ActivityCategory, ActivitySpec, Effects, Primitive, SeatPick, Step } from './types';
+import type { ActivityCategory, ActivitySpec, Effects, Gesture, Primitive, SeatPick, Step } from './types';
 
 /**
  * Builders for the universal primitives. A place composes them (places.ts): the same `order` makes a Dibi plate, a
@@ -41,6 +41,21 @@ export function sell(b: Base & { price: number; items: Record<string, number>; s
 export function work(b: Base & { pay: number; seconds: number; needs?: Partial<Needs>; counter?: string; category: ActivityCategory; clip?: Clip; items?: Record<string, number>; seat?: SeatPick }): ActivitySpec {
   return spec('work', b, [{ label: b.label, primitive: 'work', seconds: b.seconds, clip: b.clip, seat: b.seat,
     effects: { money: b.pay, needs: b.needs, counters: b.counter ? { [b.counter]: 1, shifts: 1 } : { shifts: 1 }, category: b.category, items: b.items } }]);
+}
+
+/**
+ * A trade done with the hands: one or more gesture parts (serve customers, pass tools, tighten bolts…). The pay is
+ * split over the parts by `share` and scaled by how well each part is played; fatigue and counters come at the end.
+ */
+export function trade(b: Base & { pay: number; needs?: Partial<Needs>; counter?: string; category: ActivityCategory; clip?: Clip;
+  parts: { label: string; gesture: Gesture; share?: number; clip?: Clip }[] }): ActivitySpec {
+  const total = b.parts.reduce((t, p) => t + (p.share ?? 1), 0);
+  const steps: Step[] = b.parts.map((p, i) => ({
+    label: p.label, primitive: 'work', clip: p.clip ?? b.clip, gesture: p.gesture, seconds: 3,
+    effects: { money: Math.round(b.pay * (p.share ?? 1) / total),
+      ...(i === b.parts.length - 1 ? { needs: b.needs, counters: b.counter ? { [b.counter]: 1, shifts: 1 } : { shifts: 1 }, category: b.category } : {}) },
+  }));
+  return spec('work', b, steps);
 }
 
 /** Use an object or a spot (mirror, radio, tap, shower, game table…): optional seat, a clip, effects. */

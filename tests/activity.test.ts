@@ -80,6 +80,40 @@ describe('activity runner', () => {
   });
 });
 
+describe('gestures of the trades', async () => {
+  const { gesturePay } = await import('../src/activity/runner');
+  const { G } = await import('../src/activity/gestures');
+  const shift = () => P.trade({ id: 'meca', label: 'Aider le mécanicien', pay: 2000, needs: { energie: -18 }, counter: 'garage', category: 'artisanat',
+    parts: [{ label: 'Passer les outils', gesture: G.tools(4) }, { label: 'Serrer les écrous', gesture: G.bolts(4) }] });
+  it('the pay follows how well each part is played (30 % floor, 20 % tip when perfect)', () => {
+    expect(gesturePay(1000, 0)).toBe(300); expect(gesturePay(1000, 0.5)).toBe(650); expect(gesturePay(1000, 1)).toBe(1200);
+  });
+  it('a shift waits for each gesture, pays per part and tires only at the end', () => {
+    const w = world(0); const pending: ((s: number) => void)[] = [];
+    const r = new ActivityRunner({ ...(w.runner as unknown as { s: ActivityServices }).s, gesture: (_g, _l, done) => { pending.push(done); return () => {}; } });
+    w.state.data.needs.energie = 80;
+    r.start(shift());
+    run(r, 20);                                                              // time alone never ends a gesture
+    expect(r.current?.index).toBe(0); expect(w.state.wallet).toBe(0);
+    pending.shift()!(1);                                                     // perfect tools
+    expect(w.state.wallet).toBe(1200); expect(w.state.data.needs.energie).toBe(80);
+    pending.shift()!(0.5);                                                   // so-so bolts
+    expect(w.state.wallet).toBe(1200 + 650); expect(w.state.data.needs.energie).toBe(62);
+    expect(w.state.data.counters.garage).toBe(1); expect(r.running).toBe(false);
+  });
+  it('stopping mid-gesture aborts it: no pay, no late callback', () => {
+    const w = world(0); let aborted = 0; let late: ((s: number) => void) | null = null;
+    const r = new ActivityRunner({ ...(w.runner as unknown as { s: ActivityServices }).s, gesture: (_g, _l, done) => { late = done; return () => { aborted++; }; } });
+    r.start(shift()); r.cancel('Arrêté');
+    expect(aborted).toBe(1); late!(1);
+    expect(w.state.wallet).toBe(0); expect(r.running).toBe(false);
+  });
+  it('without a gesture player, a gesture step is a short timed step with a middling score', () => {
+    const w = world(0); w.runner.start(shift()); run(w.runner, 7);
+    expect(w.runner.running).toBe(false); expect(w.state.wallet).toBe(2 * gesturePay(1000, 0.6));
+  });
+});
+
 describe('places compose primitives at anchors', () => {
   const w = world();
   const place: PlaceSpec = {

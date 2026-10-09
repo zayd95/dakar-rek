@@ -50,6 +50,7 @@ import { actionVerb } from './interact/legacy';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { GesturePlayer } from './ui/gesture';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -274,6 +275,8 @@ seats.onSit = s => sitOn(s);
 
 /** Universal activities (src/activity): one runner plays every composed activity; places compose the primitives. */
 const inventory = new Inventory(state);
+/** Gestures of the trades: the hands-on part of a shift (serve, pass the tool, tighten, pull). */
+const gestures = new GesturePlayer(document.getElementById('ui')!);
 const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
   sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
@@ -283,6 +286,7 @@ const activities = new ActivityRunner({
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   rel: (npc, d) => rel.change(PLAYER, npc, d), flag: f => { if (!state.data.flags.includes(f)) state.data.flags.push(f); },
   item: (id, d) => inventory.add(id, d), hasItem: (id, n) => inventory.has(id, n),
+  gesture: (g, label, done) => gestures.play(g, label, done),
 });
 const places = new Places(activities, () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat);
 interactions.add(places);
@@ -866,7 +870,8 @@ if (DEBUG) {
     stand() { standUp(); },
     more() { openMore(); },
     clip: () => playerBody?.clipName ?? null,
-    activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index } : null; },
+    activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores } : null; },
+    gesture: () => gestures.info(),
     placeList: () => places.all().map(p => ({ id: p.id, type: p.type, name: p.name, space: p.space, anchors: p.anchors.map(a => a.id) })),
     inventory: () => inventory.list(),
     roomInteractables: () => inside ? inside.int.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) : [],

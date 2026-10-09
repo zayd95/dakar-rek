@@ -38,6 +38,21 @@ export interface Effects {
 /** Which seat a step uses: a seat id, the nearest free one in the place, or the nearest of a kind around a point. */
 export type SeatPick = string | 'near' | { near: { x: number; z: number }; r?: number; kind?: SeatKind };
 
+/** An option of a « choose » gesture: a tool, an item on the stall, an ingredient. */
+export interface GestureOption { id: string; label: string; icon: string; /** What the person asks for it: « Passe-moi la clé de 13 ! » */ ask?: string }
+
+/**
+ * A short hands-on game played during a step instead of waiting (the gestures of a trade). The score (0…1) scales the
+ * money the step pays; needs and counters apply whatever the score.
+ * - timing: press when the moving cursor is in the zone (tighten a bolt, turn the skewers, pull the net);
+ * - choose: hand over what the person asks for, before they lose patience (serve a customer, pass the right tool);
+ * - sequence: do the steps in the right order (change a wheel, cook a dish).
+ */
+export type Gesture =
+  | { kind: 'timing'; prompt: string; rounds: number; verb?: string; icon?: string; speed?: number; zone?: number }
+  | { kind: 'choose'; prompt: string; rounds: number; who?: string; options: GestureOption[]; patience?: number }
+  | { kind: 'sequence'; prompt: string; steps: GestureOption[] };
+
 export interface Step {
   /** Shown in the progress bar: « Cuisson », « Tu manges », « Ablutions ». */
   label: string;
@@ -51,6 +66,8 @@ export interface Step {
   /** Prop id the place shows during the step (plate, glass, prayer mat…). */
   prop?: string;
   effects?: Effects;
+  /** Hands-on gesture played instead of waiting `seconds`; its score scales `effects.money`. */
+  gesture?: Gesture;
   /** Called when the step ends (after its effects): open a conversation, change the hairstyle, board… */
   then?: () => void;
 }
