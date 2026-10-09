@@ -227,7 +227,7 @@ Derived 512 px JPEGs in `public/assets/tex/` (loaded on demand; switched off on 
 | `paving.jpg` | #21 (paving v2) | greyscale, mean 0.8 | sidewalks and plazas (replaces the procedural paving), 2 m per repeat |
 | `wood.jpg` | #19 (wood v2, `_tiled` seam-fixed file) | greyscale, contrast ×1.3, mean 0.82 | interior furniture (beds, counters, benches), 1 m per repeat |
 | `hollow_block.jpg` | #50 | remastered (block tones equalised, joints kept); greyscale, contrast ×1.5, mean 0.84; relief 2 cm | raw breeze-block walls (replaces `breeze_block.jpg`, whose units read as bricks), 1.2 m per repeat = 3 × 6 blocks of 40 × 20 cm |
-| `asphalt.jpg` | #27 | remastered (blotches equalised); greyscale, contrast ×1.4, mean 0.9; relief 1 cm | roads in Plateau, Corniche and Almadies (Pikine's stay sandy), 3 m per repeat |
+| `asphalt.jpg` | #27 | remastered (blotches equalised); greyscale, contrast ×1.4, mean 0.9; no relief (roads fill the frame) | roads in Plateau, Corniche and Almadies (Pikine's stay sandy), 3 m per repeat |
 | `clay_tiles.jpg` | #29 | remastered (tile tones equalised); greyscale, contrast ×1.15, darkest values lifted (row gaps were black lines), mean 0.86; relief 4 cm | Plateau red hipped roofs, 1.8 m per repeat (6 rows of 30 cm) |
 | `corrugated.jpg` | #25 | remastered (banding along the ribs flattened, top/bottom join crossfaded); greyscale, contrast ×1.4, mean 0.88; three.js bump map from the same file | arena roof sheets, mapped on each panel's UVs (4 × 5 repeats per panel, about 11 cm pitch) so the ribs run down the slope; plain colour on Low |
 | `corrugated_rusty.jpg` | #26 | remastered (large blotches equalised); colour kept, mean 0.86; relief 1.5 cm | dibiterie tin awnings, 1.2 m per repeat |
@@ -260,9 +260,14 @@ textures stay seamless).
   galvanized sheet ×1.4.
 - **Relief in the shader** (`src/world/grain.ts`): the world-space detail map's brightness is read as height (dark = low)
   and tilts the normal by its slope (Mikkelsen surface-gradient bump, forward differences one pixel apart), with a depth
-  per material in metres (column "Processing" above; also paving 1.2 cm, Pikine sand 1.2 cm, arena tiers 0.8 cm, Maïga
-  floor tiles 0.6 cm). The arena roof sheets use three.js's bump map with the same texture. No new files to download;
-  Medium and High only (Low has no detail textures).
+  per material in metres (column "Processing" above). Only on surfaces where it reads and that cover little of the
+  screen (walls, roof tiles, tin, palm trunks, the ring); the arena roof sheets use three.js's bump map with the same
+  texture. No new files to download; Medium and High only (Low has no detail textures).
+- **Cost.** The first version also put relief on the ground, paving, asphalt, arena tiers and Maïga floor. In the
+  software renderer used by CI that cost up to 30 % of the frame rate (Almadies mall 1.75 → 1.23 fps) and the mall
+  walk-through check timed out on CI. Those surfaces fill most of the frame for little visible gain, so they lost their
+  relief: mall 1.84 fps, Pikine street 2.52 (2.49 before), block wall close-up 2.46 (2.72), arena sand 1.76 (1.98).
+  Software-rendering figures from one 6 s sample each; they show the relative per-pixel cost, not phone frame rates.
 
 Measured on the game files (old → new). Tone spread: spread of a 1/32-tile blur over the mean, lower repeats less. Seam:
 difference across the wrap edge over the difference between neighbouring rows, about 1 is invisible; the clay tile and
@@ -279,7 +284,7 @@ hollow block values stay high because their edge falls on a tile row and a morta
 | `terrazzo.jpg` | 0.008 → 0.008 | 0.84 → 0.84 |
 | `sand_trampled.jpg` | 0.004 → 0.004 | 1.16 → 1.16 |
 
-In-game before/after (same camera, 15:00): `docs/screenshots/textures/` (block wall, arena sand, palm trunk, paving). The
+In-game before/after (same camera, 15:00): `docs/screenshots/textures/` (block wall, arena sand, palm trunk). The
 first relief setting for the palm trunk (1.5 cm, height slope from `dFdx`) showed blocky 2×2 pixel artefacts close up; it
 was lowered and switched to forward differences before the captures. Total texture size slightly smaller (1.15 → 1.13 MB for the 14 files).
 
