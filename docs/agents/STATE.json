@@ -1,63 +1,406 @@
 {
-  "schemaVersion": 1,
-  "updatedAt": "2026-10-08T01:44:42.444869+00:00",
+  "schemaVersion": 2,
   "project": "Dakar Rek",
-  "candidate": {
-    "branch": "codex/aida-revision-activity",
-    "sourceCommit": "9b0789277807a0a3008fa75b9e4fc31c63451400",
-    "baseCommit": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7",
-    "pullRequest": 7,
-    "delivery": "draft PR; not merged or deployed"
+  "updatedAt": "2026-10-09T03:47:00Z",
+  "controlBranch": "codex/agent-studio-active",
+  "userAuthorization": "D-AG-003: activate working agents on isolated branches",
+  "phase": "operational_candidate_review",
+  "lease": {
+    "token": "cycle-20261009T033600Z-c4137dc972bf",
+    "owner": "codex-scheduled-coordinator",
+    "acquiredAt": "2026-10-09T03:36:00Z",
+    "expiresAt": "2026-10-09T04:26:00Z",
+    "headAtAcquire": "8ae64ed4cc1c33d8446ec8bd2020309c2222e0fc",
+    "purpose": "independent final QA and durable resolution for DKAG-018 mixed exact-source CI"
   },
-  "protectedRefs": {
-    "main": "547bb1e8077127094a3fc647821cf6ac73d2a42c",
-    "wip/visual-pass": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7",
-    "codex/launch-controls": "6216bb80db6bb7d777997e70d1681fa71240b057"
-  },
-  "tasks": [
+  "activeCodeTask": "DKAG-019",
+  "maxConcurrentCodeTasks": 1,
+  "reservations": [
     {
-      "id": "DKAG-004",
-      "status": "done",
-      "scope": "verified isolated candidate",
-      "owner": "dakar_aida_implementation",
-      "reviewer": "dakar_aida_qa",
-      "openItem": "observe remote CI completion"
-    },
-    {
-      "id": "DKAG-005",
-      "status": "blocked",
-      "scope": "authenticated active-version attestation only",
-      "report": "ready, independently reviewed",
-      "owner": "dakar_deployment_attestation",
-      "blocker": "No authenticated Cloudflare tool exposed"
+      "task": "DKAG-019",
+      "owner": "gameplay_dkag019_0347",
+      "reviewer": "qa_dkag019_0347",
+      "branch": "codex/agents/dkag-019-ci-navigation-determinism",
+      "baseCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+      "allowedFiles": [
+        "scripts/check-v1-core.mjs",
+        "docs/agents/reports/DKAG-019-ci-navigation.md"
+      ],
+      "acquiredAt": "2026-10-09T03:47:00Z"
     }
   ],
-  "fileReservations": [],
-  "bootstrap": {
-    "pullRequest": 6,
-    "status": "draft; profiles and briefs available; no persistent AI runner installed"
+  "externalWork": [
+    {
+      "pr": 10,
+      "branch": "codex/v1-mosque-ads",
+      "sha": "1610e51bc63a11983f6eee779fb01a82d7ac7cbd",
+      "owner": "other session; never mutate"
+    },
+    {
+      "pr": 9,
+      "branch": "codex/dakar-city-life",
+      "sha": "84311a716fa722cd20b4e725a72fd15f60511291",
+      "owner": "other session; never mutate"
+    },
+    {
+      "pr": 8,
+      "branch": "codex/v1-core-launch-scope",
+      "sha": "9f9b76dfae5f34f3ecba6defdd1154c966560a1e",
+      "owner": "other session; never mutate"
+    }
+  ],
+  "protectedRefSnapshot": [
+    {
+      "name": "codex/agent-studio-bootstrap",
+      "sha": "3ef649b19382955ad2c933fce551ea7ba36d8c57"
+    },
+    {
+      "name": "codex/aida-revision-activity",
+      "sha": "0af76c38b152df885c0c27352aa43ac320aa71af"
+    },
+    {
+      "name": "codex/cloudflare-agent",
+      "sha": "53345bf594e7015c56eef9871610e8f25e8b18ff"
+    },
+    {
+      "name": "codex/dakar-city-life",
+      "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+    },
+    {
+      "name": "codex/launch-controls",
+      "sha": "6216bb80db6bb7d777997e70d1681fa71240b057"
+    },
+    {
+      "name": "codex/multiplayer-launch",
+      "sha": "792a455acd681dea0476a5dcc11cfc8e7594f312"
+    },
+    {
+      "name": "codex/preserve-vehicle-materials",
+      "sha": "e20b9f775062048a76cf0b9470992dc31de511a3"
+    },
+    {
+      "name": "codex/v1-core-launch-scope",
+      "sha": "9f9b76dfae5f34f3ecba6defdd1154c966560a1e"
+    },
+    {
+      "name": "codex/v1-mosque-ads",
+      "sha": "1610e51bc63a11983f6eee779fb01a82d7ac7cbd"
+    },
+    {
+      "name": "main",
+      "sha": "547bb1e8077127094a3fc647821cf6ac73d2a42c"
+    },
+    {
+      "name": "wip/visual-pass",
+      "sha": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7"
+    }
+  ],
+  "completedTasks": [
+    "DKAG-001",
+    "DKAG-002",
+    "DKAG-003",
+    "DKAG-004",
+    "DKAG-010",
+    "DKAG-007",
+    "DKAG-014",
+    "DKAG-009",
+    "DKAG-011",
+    "DKAG-012",
+    "DKAG-013",
+    "DKAG-008",
+    "DKAG-016",
+    "DKAG-017"
+  ],
+  "ci": {
+    "aidaCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+    "push": {
+      "id": 37714474684,
+      "conclusion": "success"
+    },
+    "pr": {
+      "id": 37714480696,
+      "conclusion": "success"
+    }
   },
-  "runtimeChanges": {
-    "production": false,
-    "claudeBranch": false,
-    "cloudflareConfig": false,
-    "unattendedAgentService": false
+  "scheduler": {
+    "status": "enabled",
+    "engine": "Codex cloud automation",
+    "automationId": "6ac78ceb6c508191839a41b6c0683b14",
+    "title": "Faire avancer Dakar Rek",
+    "isEnabled": true,
+    "schedule": "BEGIN:VEVENT\nDTSTART:20261008T123035Z\nRRULE:FREQ=HOURLY\nEND:VEVENT",
+    "timingMode": "flexible_schedule",
+    "timezone": "Africa/Dakar",
+    "registeredAt": "2026-10-08T12:30:35.909469+00:00",
+    "firstAutonomousRunCompleted": false,
+    "rolesDispatchedOnDemand": true,
+    "claudeNativeLoadVerified": false
   },
-  "culturalValidation": "unverified",
-  "ciSnapshot": {
-    "sourceRuns": [
-      37713605951,
-      37713634150
+  "productionMutationsAuthorized": false,
+  "reviewTasks": [
+    "DKAG-018"
+  ],
+  "activeSessions": [
+    "gameplay_dkag019_0347",
+    "qa_dkag019_0347"
+  ],
+  "completedSessions": [
+    "activation_producer",
+    "activation_qa",
+    "activation_network",
+    "activation_network_qa",
+    "activation_world",
+    "activation_gameplay",
+    "world_resume_1655",
+    "characters_resume_1655",
+    "animation_resume_1655",
+    "culture_resume_1655",
+    "combat_resume_1655",
+    "qa_resume_1655",
+    "qa_ibou_1701",
+    "qa_animation_1707",
+    "world_dkag018_2236",
+    "qa_dkag018_final_0336"
+  ],
+  "nextAction": "DKAG-019 author makes the existing navigation harness deterministic only; distinct QA requires exact green push and PR before DKAG-018 can be requalified.",
+  "externalReservations": {
+    "authority": "Other sessions; do not edit refs",
+    "prs": [
+      9,
+      10
     ],
-    "status": "in_progress",
-    "passedSteps": [
-      "npm ci",
-      "unit tests",
-      "server typecheck",
-      "build",
-      "browser install",
-      "online checks"
+    "paths": [
+      "src/main.ts",
+      "src/world/builder.ts",
+      "src/world/types.ts",
+      "src/world/content.ts",
+      "src/world/interiors.ts",
+      "src/world/batch.ts",
+      "src/ui/phoneHooks.ts"
     ],
-    "pending": "full launch runner and artifact upload"
+    "note": "Separate candidate edits may only be commissioned after explicit conflict/dependency decision; never overwrite their branches."
+  },
+  "externalWorkCurrentSnapshot": [
+    {
+      "pr": 10,
+      "branch": "codex/v1-mosque-ads",
+      "sha": "e4f1c291117fb61633d169a008823efd59dce19f",
+      "owner": "other session; never mutate"
+    },
+    {
+      "pr": 9,
+      "branch": "codex/dakar-city-life",
+      "sha": "84311a716fa722cd20b4e725a72fd15f60511291",
+      "owner": "other session; never mutate"
+    },
+    {
+      "pr": 8,
+      "branch": "codex/v1-core-launch-scope",
+      "sha": "9f9b76dfae5f34f3ecba6defdd1154c966560a1e",
+      "owner": "other session; never mutate"
+    }
+  ],
+  "snapshotNote": "Earlier input SHAs remain pinned for historical reviews. Other sessions may advance their refs; this team did not mutate those refs.",
+  "networkCandidate": {
+    "sourceCommit": "183311c58185678421a70969371fed625d6347c2",
+    "pullRequest": 11,
+    "status": "verified",
+    "reviewer": "activation_network_qa",
+    "fullCi": {
+      "runId": 37774210307,
+      "jobId": 113300900972,
+      "conclusion": "success",
+      "artifactId": 11549408045
+    },
+    "merged": false,
+    "deployed": false
+  },
+  "recovery": {
+    "previousToken": "cycle-20261008T223600Z-38176862ca6b",
+    "reason": "Lease expired after final author handoff. Task branch stable at 17108c2 since 2026-10-08T22:52Z; author explicitly stopped; prior QA terminated on usage limit; no prior writer present in current execution. Final push/PR CI reconciled before takeover.",
+    "confirmedAt": "2026-10-09T03:36:00Z"
+  },
+  "combatCandidate": {
+    "sourceCommit": "55def6b14e7cdf47d9ca0e0885a6e5950219c920",
+    "pullRequest": 13,
+    "status": "verified",
+    "reviewer": "qa_resume_1655",
+    "ci": [
+      {
+        "id": 37813286790,
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "sha": "55def6b14e7cdf47d9ca0e0885a6e5950219c920"
+      },
+      {
+        "id": 37813282258,
+        "status": "completed",
+        "conclusion": "success",
+        "event": "push",
+        "sha": "55def6b14e7cdf47d9ca0e0885a6e5950219c920"
+      }
+    ],
+    "reviewReport": "docs/agents/operations/reports/DKAG-008-combat-review.md",
+    "merged": false,
+    "deployed": false
+  },
+  "ibouCandidate": {
+    "sourceCommit": "a26e90543641c1fe0ef396f8938598de9897940f",
+    "pullRequest": 14,
+    "status": "verified",
+    "reviewer": "qa_ibou_1701",
+    "ci": [
+      {
+        "id": 37814046695,
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "sha": "a26e90543641c1fe0ef396f8938598de9897940f",
+        "artifactId": 11566637617
+      },
+      {
+        "id": 37814040671,
+        "status": "completed",
+        "conclusion": "success",
+        "event": "push",
+        "sha": "a26e90543641c1fe0ef396f8938598de9897940f",
+        "artifactId": 11567495978
+      }
+    ],
+    "reviewReport": "docs/agents/operations/reports/DKAG-016-characters-review.md",
+    "merged": false,
+    "deployed": false
+  },
+  "animationCandidate": {
+    "sourceCommit": "25bbb40e7882ccbd06e2181689982d0f0085b504",
+    "pullRequest": 15,
+    "status": "verified",
+    "reviewer": "qa_animation_1707",
+    "ci": [
+      {
+        "id": 37814728980,
+        "status": "completed",
+        "conclusion": "success",
+        "event": "pull_request",
+        "sha": "25bbb40e7882ccbd06e2181689982d0f0085b504",
+        "artifactId": 11567745850
+      },
+      {
+        "id": 37814723950,
+        "status": "completed",
+        "conclusion": "success",
+        "event": "push",
+        "sha": "25bbb40e7882ccbd06e2181689982d0f0085b504",
+        "artifactId": 11565944947
+      }
+    ],
+    "reviewReport": "docs/agents/operations/reports/DKAG-017-animation-review.md",
+    "merged": false,
+    "deployed": false
+  },
+  "lastCycle": {
+    "entry": "docs/agents/operations/CYCLE-2026-10-08-RESUME.md",
+    "completedAt": "2026-10-08T17:19:43Z",
+    "trigger": "user continuation",
+    "codeCandidates": 3,
+    "verifiedCandidates": [
+      "DKAG-008"
+    ],
+    "reviewCandidates": [
+      "DKAG-016",
+      "DKAG-017"
+    ],
+    "protectedRefsUnchanged": true,
+    "leaseReleased": "resume-20261008T165500Z-5677b8b0fdd0"
+  },
+  "protectedRefsLatest": [
+    {
+      "name": "codex/agent-studio-bootstrap",
+      "sha": "3ef649b19382955ad2c933fce551ea7ba36d8c57"
+    },
+    {
+      "name": "codex/aida-revision-activity",
+      "sha": "0af76c38b152df885c0c27352aa43ac320aa71af"
+    },
+    {
+      "name": "codex/cloudflare-agent",
+      "sha": "53345bf594e7015c56eef9871610e8f25e8b18ff"
+    },
+    {
+      "name": "codex/dakar-city-life",
+      "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+    },
+    {
+      "name": "codex/launch-controls",
+      "sha": "6216bb80db6bb7d777997e70d1681fa71240b057"
+    },
+    {
+      "name": "codex/multiplayer-launch",
+      "sha": "792a455acd681dea0476a5dcc11cfc8e7594f312"
+    },
+    {
+      "name": "codex/preserve-vehicle-materials",
+      "sha": "e20b9f775062048a76cf0b9470992dc31de511a3"
+    },
+    {
+      "name": "codex/v1-core-launch-scope",
+      "sha": "9f9b76dfae5f34f3ecba6defdd1154c966560a1e"
+    },
+    {
+      "name": "codex/v1-mosque-ads",
+      "sha": "e4f1c291117fb61633d169a008823efd59dce19f"
+    },
+    {
+      "name": "main",
+      "sha": "547bb1e8077127094a3fc647821cf6ac73d2a42c"
+    },
+    {
+      "name": "wip/visual-pass",
+      "sha": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7"
+    }
+  ],
+  "worldCandidate": {
+    "sourceCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+    "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
+    "pullRequest": 16,
+    "status": "blocked_ci_harness",
+    "owner": "world_dkag018_2236",
+    "reviewer": "qa_dkag018_final_0336",
+    "local": {
+      "npmCi": "PASS",
+      "unit": {
+        "passed": 34,
+        "total": 34
+      },
+      "build": "PASS",
+      "serverTypecheck": "PASS",
+      "nodeCheck": "PASS",
+      "diffCheck": "PASS",
+      "browser": "blocked by container socket policy; CI required"
+    },
+    "merged": false,
+    "deployed": false,
+    "ci": [
+      {
+        "id": 37856142783,
+        "event": "push",
+        "status": "completed",
+        "conclusion": "success",
+        "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+        "artifactId": 11584073506
+      },
+      {
+        "id": 37856146883,
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "failure",
+        "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+        "artifactId": 11584566053
+      }
+    ],
+    "failure": "after place(), stale nearest target made state-driven loop resolve before movement; start=end",
+    "correctionAttempt": 2,
+    "reviewReport": "docs/agents/operations/reports/DKAG-018-world-review.md"
   }
 }

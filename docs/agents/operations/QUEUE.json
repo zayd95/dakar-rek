@@ -1,0 +1,647 @@
+{
+  "schemaVersion": 1,
+  "order": [
+    "DKAG-007",
+    "DKAG-008",
+    "DKAG-009",
+    "DKAG-010",
+    "DKAG-011",
+    "DKAG-012",
+    "DKAG-013",
+    "DKAG-014",
+    "DKAG-005",
+    "DKAG-015",
+    "DKAG-016",
+    "DKAG-017",
+    "DKAG-018",
+    "DKAG-019"
+  ],
+  "tasks": [
+    {
+      "id": "DKAG-007",
+      "role": "network",
+      "kind": "implementation",
+      "status": "done",
+      "owner": "activation_network",
+      "reviewer": "activation_network_qa",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "branch": "codex/agents/dkag-007-network-handshake",
+      "allowedFiles": [
+        "src/multiplayer/client.ts",
+        "tests/presence-client.test.ts",
+        "docs/agents/reports/DKAG-007-network.md"
+      ],
+      "acceptance": [
+        "8-second per-attempt deadline covers socket never opening or welcome never arriving",
+        "Valid welcome cancels deadline; teardown cancels stale work",
+        "Retry uses existing lifecycle with no duplicate peers and latest position",
+        "Deterministic fake WebSocket/timer regression tests",
+        "Exact-commit existing unit/build/server/network/full-launch CI and independent QA"
+      ],
+      "dependencies": [],
+      "authority": "Current isolated-development authorization, generic client lifecycle fix; no protocol/server/schema change",
+      "sourceCommit": "183311c58185678421a70969371fed625d6347c2",
+      "pullRequest": 11,
+      "ownerState": "completed handoff",
+      "validation": {
+        "independentUnit": {
+          "passed": 42,
+          "total": 42
+        },
+        "independentBuild": "PASS",
+        "independentClientTypecheck": "PASS",
+        "independentServerTypecheck": "PASS",
+        "ciPush": {
+          "id": 37774079135,
+          "status": "completed",
+          "conclusion": "cancelled"
+        },
+        "ciPr": {
+          "id": 37774210307,
+          "jobId": 113300900972,
+          "status": "completed",
+          "conclusion": "success",
+          "independentlyRead": true,
+          "results": {
+            "unit": 42,
+            "network": 17,
+            "aida": 52,
+            "generalGameplay": 58
+          }
+        }
+      },
+      "acceptedScope": "verified isolated candidate, not merged/deployed"
+    },
+    {
+      "id": "DKAG-008",
+      "role": "combat",
+      "kind": "implementation",
+      "status": "done",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "branch": "codex/agents/dkag-008-duel-input-reset",
+      "allowedFiles": [
+        "src/lamb/duel.ts",
+        "src/lamb/duelInput.ts",
+        "tests/duel-input.test.ts",
+        "scripts/check-duel-input.mjs",
+        "docs/agents/reports/DKAG-008-combat.md"
+      ],
+      "acceptance": [
+        "Blur or hidden document releases guard and pending grab inputs",
+        "A fresh key/touch works after return",
+        "Touch cancellation and pointer loss reset guard and visual state",
+        "Editable form input cannot activate fight controls",
+        "Dispose removes listeners; replacement instances do not accumulate handlers",
+        "No combat rules/rewards/phases/animation/network/save changes",
+        "Meaningful deterministic tests and exact-source CI; dedicated browser check if execution available, limitation explicit otherwise"
+      ],
+      "dependencies": [
+        "DKAG-007"
+      ],
+      "verifiedDefect": {
+        "path": "src/lamb/duel.ts",
+        "blob": "992b4dfeceff90a58f8310bf34dd0a75a32bb756",
+        "basis": "producer actual static review, no blur/visibility reset unlike src/core/input.ts"
+      },
+      "owner": "combat_resume_1655",
+      "reviewer": "qa_resume_1655",
+      "ownerState": "completed frozen handoff",
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "sourceCommit": "55def6b14e7cdf47d9ca0e0885a6e5950219c920",
+      "pullRequest": 13,
+      "validation": {
+        "authorUnit": {
+          "passed": 48,
+          "total": 48
+        },
+        "authorBrowser": {
+          "passed": 28,
+          "total": 28,
+          "scope": "real UI/source fixture, not full game or physical phone"
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "ci": {
+          "runs": [
+            {
+              "id": 37813286790,
+              "status": "completed",
+              "conclusion": "success",
+              "event": "pull_request",
+              "sha": "55def6b14e7cdf47d9ca0e0885a6e5950219c920"
+            },
+            {
+              "id": 37813282258,
+              "status": "completed",
+              "conclusion": "success",
+              "event": "push",
+              "sha": "55def6b14e7cdf47d9ca0e0885a6e5950219c920"
+            }
+          ],
+          "readAt": "2026-10-08T17:19:43Z"
+        },
+        "independentQa": "ready candidate after exact source CI",
+        "independentUnit": {
+          "passed": 48,
+          "total": 48
+        },
+        "independentBuild": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBrowser": {
+          "passed": 28,
+          "total": 28,
+          "scope": "actual UI/source fixture, no renderer"
+        }
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-008-combat-review.md",
+      "acceptedScope": "verified isolated candidate; independent local tests and exact source push/PR complete CI; not merged/deployed"
+    },
+    {
+      "id": "DKAG-009",
+      "role": "world",
+      "kind": "compatibility_review",
+      "status": "done",
+      "owner": "world_resume_1655",
+      "inputs": [
+        {
+          "pr": 10,
+          "sha": "e4f1c291117fb61633d169a008823efd59dce19f"
+        },
+        {
+          "pr": 9,
+          "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+        }
+      ],
+      "acceptance": [
+        "Inspect actual navigation/collisions/door anchors and quality rebuild",
+        "Name exact overlapping files and compatibility defects",
+        "Do not recreate city/mosque/ads or mutate their refs"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-009-world.md",
+      "dependencies": [],
+      "ownerState": "completed report handoff",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-009-world.md"
+      ],
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
+    },
+    {
+      "id": "DKAG-010",
+      "role": "gameplay",
+      "kind": "design_review",
+      "status": "done",
+      "inputs": [
+        {
+          "pr": 9,
+          "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+        }
+      ],
+      "acceptance": [
+        "Trace income to food/rest player journey in actual cityContent/main",
+        "Identify one observed comprehension/progression gap",
+        "Produce a bounded playable task with costs/duration/effects/interrupt and reload criteria"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-010-gameplay.md",
+      "dependencies": [],
+      "scope": "design review only; no source edit",
+      "owner": "activation_gameplay",
+      "ownerState": "completed handoff",
+      "inspectedControlCommit": "99ea0da7f200d638c69d7c84333dc9d4cb004ca2",
+      "nextTask": "DKAG-015"
+    },
+    {
+      "id": "DKAG-011",
+      "role": "characters",
+      "kind": "design",
+      "status": "done",
+      "inputs": [
+        {
+          "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+          "paths": [
+            "src/social/cast.ts",
+            "src/social/beats.ts",
+            "src/social/relations.ts"
+          ]
+        }
+      ],
+      "acceptance": [
+        "Inspect actual NPC APIs and anchors",
+        "Prepare one existing NPC routine with objective/reactions and testable consequence",
+        "No new cast or overlapping city edits; French dialogue remains unverified"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-011-characters.md",
+      "dependencies": [],
+      "owner": "characters_resume_1655",
+      "ownerState": "completed report handoff",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-011-characters.md"
+      ],
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
+    },
+    {
+      "id": "DKAG-012",
+      "role": "animation",
+      "kind": "asset_review",
+      "status": "done",
+      "inputs": [
+        {
+          "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+          "paths": [
+            "src/lamb/duel.ts",
+            "src/actors/humanoid.ts"
+          ]
+        }
+      ],
+      "acceptance": [
+        "Verify actual asset loader/clip names for Stance Grab Fall_Back Celebrate and fallbacks",
+        "Prepare transition/clipping/scale checks against existing exported assets",
+        "Distinguish metadata inspection from visual playback; no paid generation"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-012-animation.md",
+      "dependencies": [],
+      "owner": "animation_resume_1655",
+      "ownerState": "completed report handoff",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-012-animation.md"
+      ],
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
+    },
+    {
+      "id": "DKAG-013",
+      "role": "culture",
+      "kind": "provenance_review",
+      "status": "done",
+      "inputs": [
+        {
+          "pr": 10,
+          "sha": "e4f1c291117fb61633d169a008823efd59dce19f"
+        },
+        {
+          "pr": 9,
+          "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+        }
+      ],
+      "acceptance": [
+        "Inspect actual fishing/social/mosque/ads claims and provenance",
+        "Keep mosque optional with no invented religious reward or cultural certification",
+        "List only concrete content requiring human review; do not block unrelated generic fixes"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-013-culture.md",
+      "dependencies": [],
+      "owner": "culture_resume_1655",
+      "ownerState": "completed report handoff",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-013-culture.md"
+      ],
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
+    },
+    {
+      "id": "DKAG-014",
+      "role": "qa",
+      "kind": "review",
+      "status": "done",
+      "target": "DKAG-007",
+      "acceptance": [
+        "Distinct reviewer verifies source diff/tests/exact CI and scope",
+        "Owner cannot accept itself; failures returned to author"
+      ],
+      "dependencies": [
+        "DKAG-007:code-ready"
+      ],
+      "owner": "activation_network_qa",
+      "output": "docs/agents/operations/reports/DKAG-007-network-review.md"
+    },
+    {
+      "id": "DKAG-005",
+      "role": "cloudflare-ops",
+      "kind": "attestation",
+      "status": "blocked",
+      "blocker": "No authenticated Cloudflare tool exposed; active version unknown",
+      "acceptance": [
+        "Read existing Worker active deployment and traffic in connected owner session",
+        "No deploy or public probe required"
+      ],
+      "dependencies": [
+        "authenticated Cloudflare owner access"
+      ]
+    },
+    {
+      "id": "DKAG-015",
+      "role": "gameplay",
+      "kind": "implementation",
+      "status": "needs-decision",
+      "sourceCommit": "84311a716fa722cd20b4e725a72fd15f60511291",
+      "proposedBranch": "codex/agents/dkag-015-place-summary",
+      "proposedFiles": [
+        "src/ui/placeSummary.ts",
+        "tests/place-summary.test.ts",
+        "src/main.ts",
+        "scripts/check-city-life.mjs"
+      ],
+      "dependency": "Producer records compatible base and shared main.ts ownership/conflict decision, then reserves task",
+      "acceptance": [
+        "Directory advertises existing job/food/rest capabilities from actual action data",
+        "Show actual cost/duration/effects and disabled reasons, omit invisible actions",
+        "Directory only changes marker: zero wallet/need/counter effect",
+        "Existing income/food/rest economy and save behavior preserved",
+        "Meaningful formatter tests and desktop/touch journey at exact source"
+      ],
+      "culturalStatus": "fictional balance, unverified"
+    },
+    {
+      "id": "DKAG-016",
+      "role": "characters",
+      "kind": "implementation",
+      "status": "done",
+      "branch": "codex/agents/dkag-016-ibou-followup",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "allowedFiles": [
+        "src/social/beats.ts",
+        "tests/social.test.ts",
+        "scripts/check-ibou-followup.mjs",
+        "docs/agents/reports/DKAG-016-characters.md"
+      ],
+      "dependencies": [],
+      "authority": "Producer commissions bounded existing-NPC reaction within approved daily-life scope; no main/world/economy/schema/assets edit",
+      "basis": "DKAG-011 design and actual current base API inspected by producer",
+      "acceptance": [
+        "New optional Ibou follow-up requires completed welcome and modou_trust; shifts alone does not unlock it",
+        "Confirmation adds exactly +2 player-Ibou once and persistent completion flag; wallet/needs/counters/other relationships unchanged",
+        "Refusal repeat has zero state effect and keeps beat available",
+        "Direct replay/double call/foreign choice/missing preconditions cannot apply effects; save roundtrip preserves completion",
+        "Existing beats order and Aida/Modou flows preserved; narrowly guard this new beat without unrelated refactor",
+        "Meaningful deterministic tests, exact-source build/typechecks/CI and independent QA; dedicated browser flow if available"
+      ],
+      "culturalStatus": "fictional French dialogue unverified",
+      "decision": "Only beats.ts and tests/social.test.ts modified game sources; disjoint from active combat. Single active code rule remains; dispatch only after combat author handoff.",
+      "owner": "characters_resume_1655",
+      "reviewer": "qa_ibou_1701",
+      "controlBriefCommit": "c089dce66e972d8785208e0cb64055ddb954430f",
+      "ownerState": "verified frozen handoff",
+      "sourceCommit": "a26e90543641c1fe0ef396f8938598de9897940f",
+      "pullRequest": 14,
+      "validation": {
+        "authorUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "authorBrowser": {
+          "passed": 22,
+          "total": 22,
+          "scope": "compiled real menu/save journey with debug positioning desktop/touch"
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "ci": {
+          "runs": [
+            {
+              "id": 37814046695,
+              "event": "pull_request",
+              "artifactId": 11566637617,
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "a26e90543641c1fe0ef396f8938598de9897940f"
+            },
+            {
+              "id": 37814040671,
+              "event": "push",
+              "artifactId": 11567495978,
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "a26e90543641c1fe0ef396f8938598de9897940f"
+            }
+          ],
+          "readAt": "2026-10-08T22:38:00Z"
+        },
+        "independentQa": "verified candidate after exact-source push and PR CI",
+        "independentUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "independentBuild": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBrowser": {
+          "passed": 22,
+          "total": 22,
+          "scope": "compiled game menu/save browser with debug positioning"
+        }
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-016-characters-review.md",
+      "acceptedScope": "verified isolated candidate; independent local validation and exact-source push/PR CI; not merged/deployed"
+    },
+    {
+      "id": "DKAG-017",
+      "role": "animation",
+      "kind": "implementation",
+      "status": "done",
+      "branch": "codex/agents/dkag-017-fall-one-shot",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "allowedFiles": [
+        "src/actors/humanoid.ts",
+        "tests/humanoid-animation.test.ts",
+        "scripts/check-fall-animation.mjs",
+        "docs/agents/reports/DKAG-017-animation.md"
+      ],
+      "dependencies": [],
+      "authority": "Producer commissions generic one-shot Fall_Back playback for provisional lamb; no changes to combat outcomes, phases, rig, assets, other clips, packages or workflows",
+      "acceptance": [
+        "Fall_Back plays once and clamps finished action; final pose stable beyond 0.6s through result duration",
+        "Returning Stance then Fall_Back restarts action correctly",
+        "Stance Grab Celebrate retain looping behavior, no save/economy/network changes",
+        "Deterministic mixer regression tests and exact-source build/unit/CI independent QA",
+        "Playback with existing exported asset and both duel outcomes if feasible; disclose static metadata versus visual checks"
+      ],
+      "basis": "DKAG-012 actual clip0.6s looping +0.71mY/+0.90mZ root jump",
+      "decision": "Separate humanoid.ts-only fix, no duel.ts ownership conflict; one active code task remains.",
+      "owner": "animation_resume_1655",
+      "reviewer": "qa_animation_1707",
+      "controlBriefCommit": "e3cdf9ad3c697a51d50bca3766f6ea51364befda",
+      "ownerState": "verified frozen handoff",
+      "sourceCommit": "25bbb40e7882ccbd06e2181689982d0f0085b504",
+      "pullRequest": 15,
+      "validation": {
+        "authorUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "authorBrowser": "PASS both controlled duel outcomes; real GLB and renderer; not phone/visual clipping",
+        "ci": {
+          "runs": [
+            {
+              "id": 37814728980,
+              "event": "pull_request",
+              "artifactId": 11567745850,
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "25bbb40e7882ccbd06e2181689982d0f0085b504"
+            },
+            {
+              "id": 37814723950,
+              "event": "push",
+              "artifactId": 11565944947,
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "25bbb40e7882ccbd06e2181689982d0f0085b504"
+            }
+          ],
+          "readAt": "2026-10-08T22:38:00Z"
+        },
+        "independentQa": "verified candidate after exact-source push and PR CI",
+        "independentUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "independentBuild": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBrowser": {
+          "result": "PASS",
+          "scope": "real GLB/Three renderer and both controlled duel outcomes; no clipping/physical-phone attestation"
+        }
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-017-animation-review.md",
+      "acceptedScope": "verified isolated candidate; independent local validation and exact-source push/PR CI; not merged/deployed"
+    },
+    {
+      "id": "DKAG-018",
+      "role": "world",
+      "kind": "implementation",
+      "status": "blocked",
+      "branch": "codex/agents/dkag-018-arena-billboard-offset",
+      "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
+      "allowedFiles": [
+        "src/world/builder.ts",
+        "scripts/check-v1-core.mjs",
+        "docs/agents/reports/DKAG-018-world.md"
+      ],
+      "dependencies": [],
+      "basis": "DKAG-009 exact-source calculation: arena and ad interaction anchors10cm apart; central approach menu changes with10cm movement",
+      "authority": "Producer commissions surgical existing billboard relocation on isolated fork; complements PR10 without duplicating city/mosque/ads code or touching other refs",
+      "decision": "Explicit externalReservation exception for candidate ONLY: base PR10 exact preserving all other blobs, modify only arena billboard transform/approach parameters plus its existing regression script. No PR9/10 integration and no replacement of builder with another head. Recheck current #10 before dispatch; if owner has already fixed defect reconcile instead of duplicate.",
+      "acceptance": [
+        "Arena entrance centerline retains arena menu across nearby approach positions, not billboard",
+        "Billboard and advertising menu remain deliberately reachable away from entry axis",
+        "Chosen lateral placement tested against actual neighboring stalls/stands/poles/barriers, player0.5mclearance",
+        "Desktop/touch and low/medium navigation tests and door/ring framing captures at exact source",
+        "No new ads/rules/global nearest priority/assets/packages/workflows/schema/economy changes; existing mosque and ads suites preserved",
+        "Independent QA and exact-source CI; source/base pinned and draft PR only"
+      ],
+      "culturalStatus": "provisional geometry, no cultural certification",
+      "owner": "world_dkag018_2236",
+      "reviewer": "qa_dkag018_final_0336",
+      "ownerState": "correction 2 final frozen handoff",
+      "controlBriefCommit": "8495ac2ebe75aae8e56618ba91dd688ff5123d63",
+      "dispatchBaseVerifiedAt": "2026-10-08T22:38:00Z",
+      "sourceCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+      "pullRequest": 16,
+      "validation": {
+        "authorUnit": {
+          "passed": 34,
+          "total": 34
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "authorBrowser": "container blocked; exact-source CI required",
+        "independentQa": "BLOCKED: product evidence positive, PR harness failure reproducible",
+        "ci": {
+          "runs": [
+            {
+              "id": 37856142783,
+              "event": "push",
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+              "artifactId": 11584073506
+            },
+            {
+              "id": 37856146883,
+              "event": "pull_request",
+              "status": "completed",
+              "conclusion": "failure",
+              "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+              "attempts": 2,
+              "jobs": [
+                113580679139,
+                113658491542
+              ],
+              "artifactId": 11584566053
+            }
+          ],
+          "readAt": "2026-10-09T03:47:00Z"
+        }
+      },
+      "correctionAttempts": [
+        {
+          "attempt": 1,
+          "assignedAt": "2026-10-08T22:51:00Z",
+          "scope": [
+            "scripts/check-v1-core.mjs",
+            "docs/agents/reports/DKAG-018-world.md"
+          ],
+          "reason": "replace fixed delay with bounded state-driven navigation; use real touch events; retain assertions",
+          "sourceCommit": "99f24f90aa60413f034607486c1a8bcce871378b",
+          "result": "bounded 3s state-driven keyboard/touch navigation, guaranteed release, real CDP touch events, logs, assertions retained"
+        },
+        {
+          "attempt": 2,
+          "assignedAt": "2026-10-08T23:04:00Z",
+          "scope": [
+            "scripts/check-v1-core.mjs",
+            "docs/agents/reports/DKAG-018-world.md"
+          ],
+          "reason": "wait for post-place nearest recalculation away from expected before movement; retain all movement assertions",
+          "sourceCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+          "result": "post-place wait for nearest != expected before bounded movement; assertions retained"
+        }
+      ],
+      "reviewOutput": "docs/agents/operations/reports/DKAG-018-world-review.md",
+      "reviewAllowedFiles": [
+        "docs/agents/operations/reports/DKAG-018-world-review.md"
+      ],
+      "blocker": "CI PR harness times out reproducibly at fixed 3s on identical tree; product path passes complete exact-source push CI. Two author corrections consumed.",
+      "reviewReport": "docs/agents/operations/reports/DKAG-018-world-review.md"
+    },
+    {
+      "id": "DKAG-019",
+      "role": "gameplay",
+      "kind": "ci_harness_implementation",
+      "status": "active",
+      "owner": "gameplay_dkag019_0347",
+      "reviewer": "qa_dkag019_0347",
+      "branch": "codex/agents/dkag-019-ci-navigation-determinism",
+      "baseCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+      "allowedFiles": [
+        "scripts/check-v1-core.mjs",
+        "docs/agents/reports/DKAG-019-ci-navigation.md"
+      ],
+      "dependencies": [
+        "DKAG-018:source-frozen"
+      ],
+      "authority": "Bounded follow-up for reproducible PR-only navigation timeout; no third DKAG-018 correction and no product/workflow/package/schema/asset change",
+      "basis": "PR run 37856146883 failed twice at 3s while exact push run 37856142783 passed same-tree full journey",
+      "acceptance": [
+        "Replace fixed 3s dependency with deterministic bounded navigation compatible with observed slow runner",
+        "Retain >3.5m movement threshold and every arena/board assertion",
+        "No product source, workflow, package, schema, asset, priority, economy or cultural change",
+        "Local node/diff/unit/build/typecheck evidence",
+        "Exact same-source push and PR runs both success",
+        "Independent QA reviews diff and logs before DKAG-018 requalification"
+      ],
+      "ownerState": "commissioned",
+      "controlBriefCommit": "8ae64ed4cc1c33d8446ec8bd2020309c2222e0fc"
+    }
+  ]
+}
