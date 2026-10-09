@@ -657,7 +657,7 @@ export class AmbientLife implements GameModule {
     this.stats = { full, mineFull: mine, foreignFull: full - mine, figures: 0, foreign: foreignN };
     // people the player can greet: those with a body
     const list = this.bodyList; list.length = 0;
-    for (const a of this.actors) if (a.body && !a.spot!.tags.includes('mosque')) {   // at the mosque: presence only, no exchange
+    for (const a of this.actors) if (a.body && !a.spot!.tags.some(t => t.startsWith('mosque'))) {   // at the mosque: presence only, no exchange
       const r = a.rec; r.obj = a.body.group; r.h = a.body; r.seated = a.sitting; r.space = a.state === 'ride' ? 'street' : a.spot!.space; r.female = !!a.look.female;
       list.push(r);
     }
@@ -808,11 +808,13 @@ export class AmbientLife implements GameModule {
       const a = this.actors.find(x => x.key === s.occupant);
       if (!a || a.seat !== s.id || a.state === 'off') problems.push(`orphan ${s.id}`);
     }
+    // ambient people never hold more than a place's share (they count everyone already seated when they sit down;
+    // other systems — a venue, the transport's waiting passengers — may fill the rest after them)
     for (const sp of this.spots ?? []) {
       const list = sp.seats.map(id => ctx.seats.get(id)).filter((s): s is Seat => !!s && !STAND_ON.includes(s.kind) && s.kind !== 'vehicle');
       if (list.length < 2) continue;
-      const npc = list.filter(s => isNpcOccupant(s.occupant)).length, amb = list.filter(s => s.occupant?.startsWith('npc:amb:')).length;
-      if (amb && npc > seatCapacity(list.length)) problems.push(`full ${sp.id} ${npc}/${list.length}`);
+      const amb = list.filter(s => s.occupant?.startsWith('npc:amb:')).length;
+      if (amb > seatCapacity(list.length)) problems.push(`full ${sp.id} ${amb}/${list.length}`);
     }
     return { quality: this.q, hour: +ctx.hour().toFixed(2), dow: this.dow(), live: live.length, cap: this.B.population, byTag, byAct, bySpot, problems, ...this.humanoidCount() };
   }

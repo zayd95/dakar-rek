@@ -50,8 +50,8 @@ const EXPECT = {
     23: a => [['the market is empty at 23 h', sum(at(a, 'market'), ['marche', 'etal']) === 0, JSON.stringify(at(a, 'market'))]],
   },
   'plateau-mosquee': {
-    13: a => [['no prayer rows outside prayer time (13 h)', !at(a, 'mosque').priere, JSON.stringify(at(a, 'mosque'))]],
-    19: a => [['rows at the mosque at Timis (presence and posture)', (at(a, 'mosque').priere ?? 0) >= 4, JSON.stringify(at(a, 'mosque'))]],
+    13: a => [['no prayer rows outside prayer time (13 h)', !at(a, 'mosque').priere && !at(a, 'mosque')['priere-cour'], JSON.stringify(at(a, 'mosque'))]],
+    19: a => [['rows on the mosque forecourt at Timis (presence and posture)', sum(at(a, 'mosque'), ['priere', 'priere-cour']) >= 4, JSON.stringify(at(a, 'mosque'))]],
   },
   'corniche-promenade': {
     7: a => [['joggers on the Corniche at 7 h', (at(a, 'promenade').jogging ?? 0) >= 2, JSON.stringify(at(a, 'promenade'))]],
@@ -104,7 +104,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await page.evaluate(() => window.__dakar.ambientSettle()); await frames(page, 3);
   await page.evaluate(() => window.__dakar.cam([-14, 9, -62], [-30, 1, -45])); await frames(page, 4);
   const fri = await page.evaluate(() => window.__dakar.ambient());
-  const rows = Object.entries(fri.bySpot).filter(([id]) => id.includes('mosque')).reduce((v, [, s]) => v + (s.acts.priere ?? 0) + (s.acts.ajjuma ?? 0), 0);
+  const rows = Object.entries(fri.bySpot).filter(([id]) => id.includes('mosque')).reduce((v, [, s]) => v + (s.acts.priere ?? 0) + (s.acts['priere-cour'] ?? 0) + (s.acts.ajjuma ?? 0), 0);
   check(`${label}: Friday 14 h, the rows of the mosque are full (presence only)`, rows >= (quality === 'low' ? 8 : 12), `${rows} in rows`);
   await page.screenshot({ path: `${out}/${label}-plateau-mosquee-vendredi-14h.jpg`, type: 'jpeg', quality: 84 });
   const greetMosque = await page.evaluate(() => { const d = window.__dakar; const m = d.ambientActors().find(x => x.spot.includes('mosque') && x.lod === 2); if (!m) return null; d.cam(null); d.place(m.x + Math.sin(m.yaw) * 1.1, m.z + Math.cos(m.yaw) * 1.1, m.yaw + Math.PI); return m; });

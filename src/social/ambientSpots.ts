@@ -228,9 +228,10 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
 
   // 3. landmarks and the sea front
   for (const sp of inp.layout.specials) {
-    if (sp.kind === 'mosque' && !superseded(sp.x, sp.z, ['mosque'], 30)) {
-      const rows = prayerRows(sp.x, sp.z - 16.2, 4, 8).filter(s => !inside(cols, s.x, s.z, 0.25));
-      push({ id: `special:mosque:${sp.x},${sp.z}`, tags: ['mosque'], space: 'street', x: sp.x, z: sp.z - 15, rows, stands: stands(ring(sp.x, sp.z - 13.2, 3.4, 8, PI / 8)), source: 'special' });
+    if (sp.kind === 'mosque') {
+      // the forecourt: rows outside at prayer times (the hall of a venue mosque has its own rows), fuller on Friday
+      const rows = prayerRows(sp.x, sp.z - 16.2, 4, 8).filter(s => !inside(cols, s.x, s.z, 0.25) && !anchors.some(a => Math.hypot(a.x - s.x, a.z - s.z) < 1.2));
+      push({ id: `special:mosque:${sp.x},${sp.z}`, tags: ['mosque-yard'], space: 'street', x: sp.x, z: sp.z - 15, rows, stands: stands(ring(sp.x, sp.z - 13.2, 3.4, 8, PI / 8)), source: 'special' });
     }
     if (sp.kind === 'pitch') push({ id: `special:pitch:${sp.x},${sp.z}`, tags: ['pitch'], space: 'street', x: sp.x, z: sp.z, area: [sp.x - 17, sp.z - 12, sp.x + 17, sp.z + 12], source: 'special' });
   }

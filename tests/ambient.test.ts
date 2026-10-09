@@ -57,7 +57,7 @@ describe('ambient life: calendar and hours', () => {
 });
 
 describe('ambient life: data', () => {
-  const tags = new Set<string>([...Object.values(PLACE_TAGS).flat(), ...LEGACY_TAGS.flatMap(r => r.tags), 'bench', 'corner', 'promenade', 'beachwalk', 'pitch', 'attaya', 'dames', 'stall', 'mosque', 'square', 'place']);
+  const tags = new Set<string>([...Object.values(PLACE_TAGS).flat(), ...LEGACY_TAGS.flatMap(r => r.tags), 'bench', 'corner', 'promenade', 'beachwalk', 'pitch', 'attaya', 'dames', 'stall', 'mosque', 'mosque-yard', 'square', 'place']);
   it('every activity happens somewhere the spot builders create', () => {
     for (const a of ACTIVITIES) expect(a.at.some(t => tags.has(t)), a.id).toBe(true);
   });
@@ -73,9 +73,9 @@ describe('ambient life: data', () => {
     }
   });
   it('prayer is presence and posture only: standing rows, no talking clip, mosque only', () => {
-    for (const a of ACTIVITIES.filter(x => x.at.includes('mosque') && x.pose === 'row')) {
+    for (const a of ACTIVITIES.filter(x => x.at.some(t => t.startsWith('mosque')) && x.pose === 'row')) {
       expect(a.clips).toEqual(['Idle']);
-      expect(a.at).toEqual(['mosque']);
+      expect(a.at.every(t => t.startsWith('mosque'))).toBe(true);   // the hall and the forecourt only
     }
     const priere = act('priere');
     for (const p of PRAYERS) expect(activityLevel(priere, (p.hours[0] + p.hours[1]) / 2, MON), p.id).toBeGreaterThan(0.5);
