@@ -85,7 +85,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
       await page.evaluate(([c, t]) => { window.__dakar.ambientSettle(); window.__dakar.cam(c, t); }, [v.cam, v.look]);
       await frames(page, 3);
       const a = await page.evaluate(() => ({ ...window.__dakar.ambient(), dc: window.__dakar.drawCalls() }));
-      await page.screenshot({ path: `${out}/${label}-${v.id}-${String(h).padStart(2, '0')}h.png` });
+      await page.screenshot({ path: `${out}/${label}-${v.id}-${String(h).padStart(2, '0')}h.jpg`, type: 'jpeg', quality: 84 });
       totals[`${v.id}@${h}`] = a.live;
       summary.push({ label, view: v.id, hour: h, live: a.live, byTag: a.byTag, full: a.full, fullAmbient: a.fullAmbient, fullOther: a.fullOther, figures: a.figures, budget: a.budget, drawCalls: a.dc });
       check(`${label} ${v.id} ${h}h: seat and place invariants hold`, a.problems.length === 0, a.problems.join(' | '));
@@ -106,7 +106,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   const fri = await page.evaluate(() => window.__dakar.ambient());
   const rows = Object.entries(fri.bySpot).filter(([id]) => id.includes('mosque')).reduce((v, [, s]) => v + (s.acts.priere ?? 0) + (s.acts.ajjuma ?? 0), 0);
   check(`${label}: Friday 14 h, the rows of the mosque are full (presence only)`, rows >= (quality === 'low' ? 8 : 12), `${rows} in rows`);
-  await page.screenshot({ path: `${out}/${label}-plateau-mosquee-vendredi-14h.png` });
+  await page.screenshot({ path: `${out}/${label}-plateau-mosquee-vendredi-14h.jpg`, type: 'jpeg', quality: 84 });
   const greetMosque = await page.evaluate(() => { const d = window.__dakar; const m = d.ambientActors().find(x => x.spot.includes('mosque') && x.lod === 2); if (!m) return null; d.cam(null); d.place(m.x + Math.sin(m.yaw) * 1.1, m.z + Math.cos(m.yaw) * 1.1, m.yaw + Math.PI); return m; });
   if (greetMosque) { await frames(page, 4); const f = await page.evaluate(() => window.__dakar.focus()); check(`${label}: people praying are not offered a conversation`, f?.kind !== 'person', JSON.stringify(f)); }
   await page.evaluate(() => window.__dakar.ambientDay(1));
@@ -121,7 +121,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
     const st = await page.evaluate(id => { const d = window.__dakar; const seats = d.seatsHere().filter(x => x.id.includes(':gargote:32:amb:')); return { mine: seats.find(x => x.id === id)?.occupant, free: seats.filter(x => !x.occupant).length, npc: seats.filter(x => x.occupant?.startsWith('npc')).length, seated: d.seated() }; }, mine);
     check(`${label}: nobody takes the player's seat`, st.mine === 'player' && st.seated === mine, JSON.stringify(st));
     check(`${label}: the gargote keeps free seats while the player eats there`, st.free >= 1, JSON.stringify(st));
-    await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-player-seated-gargote.png` });
+    await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-player-seated-gargote.jpg`, type: 'jpeg', quality: 84 });
     await page.evaluate(() => window.__dakar.stand());
   }
 
