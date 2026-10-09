@@ -1,0 +1,227 @@
+[
+  {
+    "name": "desktop: pikine has a car rapide line with stops and vehicles",
+    "ok": true,
+    "detail": "Ligne 23: Arène, Marché, Gare, Rue 10 · 2 cars · loop 116 s"
+  },
+  {
+    "name": "desktop: every stop is a place of the « stop » recipe",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: walking up to the stop offers « Monter dans le prochain »",
+    "ok": true,
+    "detail": "{\"id\":\"stop:23:arene:stop\",\"name\":\"Arrêt Arène · Ligne 23\",\"kind\":\"spot\",\"space\":\"street\",\"primary\":\"Monter dans le prochain\",\"all\":[\"Monter dans le prochain\",\"Voir la ligne\"]}"
+  },
+  {
+    "name": "desktop: waiting at the stop shows the line and the next car",
+    "ok": true,
+    "detail": "23Arrêt Arène · Pikine ⇄ GuédiawayeProchain car rapide dans ≈ 40 s"
+  },
+  {
+    "name": "desktop: boarding sits the player on the only free seat (never an NPC's)",
+    "ok": true,
+    "detail": "{\"tr\":{\"phase\":\"riding\",\"line\":\"23\",\"stop\":0,\"vehicle\":\"pikine:rapide:23:0\",\"alightAt\":-1,\"passed\":0,\"seat\":\"pikine:rapide:23:0:r3c0\",\"space\":\"pikine:rapide:23:0\",\"view\":0,\"camera\":true,\"paid\":1},\"mine\":[{\"id\":\"pikine:rapide:23:0:r3c0\",\"occupant\":\"player\"}]}"
+  },
+  {
+    "name": "desktop: the fare is paid once (150 F, one wallet line)",
+    "ok": true,
+    "detail": "{\"wallet0\":2000,\"wallet1\":1850,\"fares\":[{\"at\":1791552656313,\"label\":\"Car rapide Ligne 23 · Arène\",\"amount\":-150}],\"paid\":1}"
+  },
+  {
+    "name": "desktop: the player's space is the vehicle (chat, presence, targets)",
+    "ok": true,
+    "detail": "{\"phase\":\"riding\",\"line\":\"23\",\"stop\":0,\"vehicle\":\"pikine:rapide:23:0\",\"alightAt\":-1,\"passed\":0,\"seat\":\"pikine:rapide:23:0:r3c0\",\"space\":\"pikine:rapide:23:0\",\"view\":0,\"camera\":true,\"paid\":1}"
+  },
+  {
+    "name": "desktop: riding, the main action is « Descendre au prochain arrêt »",
+    "ok": true,
+    "detail": "{\"id\":\"transport:ride\",\"name\":\"Ligne 23 · Pikine ⇄ Guédiawaye\",\"kind\":\"self\",\"space\":\"pikine:rapide:23:0\",\"primary\":\"Descendre ici\",\"all\":[\"Descendre ici\",\"Changer de vue\",\"Parler au voisin\"]}"
+  },
+  {
+    "name": "desktop: moving the stick does not stand the player up mid-ride; the body rides along",
+    "ok": true,
+    "detail": "{\"p0\":{\"x\":23.999365104078844,\"y\":0.7337969386230239,\"z\":-57.5201765782211,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},\"p1\":{\"x\":29.932152822599868,\"y\":0.7225509692602732,\"z\":-58.019999999999996,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Arène · làmb\"}}"
+  },
+  {
+    "name": "desktop: phone open mid-ride: still seated, the car keeps going",
+    "ok": true,
+    "detail": "{\"q0\":{\"x\":57.84821657171488,\"y\":0.7659178492589449,\"z\":-54.85087050362203,\"hub\":\"pikine\",\"mode\":\"menu\",\"near\":null},\"q1\":{\"x\":58.019999999999996,\"y\":0.6999579585364202,\"z\":-46.57312808650911,\"hub\":\"pikine\",\"mode\":\"menu\",\"near\":null}}"
+  },
+  {
+    "name": "desktop: « Arrêter » mid-ride stops the talk, the ride goes on",
+    "ok": true,
+    "detail": "{\"talking\":{\"id\":\"voisin\",\"step\":\"Salut\",\"index\":0},\"tr\":{\"phase\":\"riding\",\"line\":\"23\",\"stop\":0,\"vehicle\":\"pikine:rapide:23:0\",\"alightAt\":-1,\"passed\":0,\"seat\":\"pikine:rapide:23:0:r3c0\",\"space\":\"pikine:rapide:23:0\",\"view\":0,\"camera\":true,\"paid\":1}}"
+  },
+  {
+    "name": "desktop: three passenger views (behind, window, high)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: the car rapide passes a stop and the player stays on board",
+    "ok": true,
+    "detail": "{\"phase\":\"riding\",\"line\":\"23\",\"stop\":0,\"vehicle\":\"pikine:rapide:23:0\",\"alightAt\":-1,\"passed\":1,\"seat\":\"pikine:rapide:23:0:r3c0\",\"space\":\"pikine:rapide:23:0\",\"view\":0,\"camera\":true,\"paid\":1}"
+  },
+  {
+    "name": "desktop: « Descendre au prochain arrêt » is heard (stop requested)",
+    "ok": true,
+    "detail": "23Ligne 23 · vers GuédiawayeProchain arrêt : Gare · 18 s🛑 Arrêt demandé : Gare"
+  },
+  {
+    "name": "desktop: off at the requested stop, on the pavement (not in the road, a wall or the car)",
+    "ok": true,
+    "detail": "{\"p2\":{\"x\":-23.6,\"y\":0.1,\"z\":54.35,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},\"stop\":\"Gare\",\"off\":\"5.65\",\"inWall\":false,\"inCar\":false}"
+  },
+  {
+    "name": "desktop: back in the street: street space, follow camera, card hidden",
+    "ok": true,
+    "detail": "{\"phase\":\"idle\",\"line\":null,\"stop\":-1,\"vehicle\":null,\"alightAt\":-1,\"passed\":0,\"seat\":null,\"space\":null,\"view\":0,\"camera\":false,\"paid\":1}"
+  },
+  {
+    "name": "desktop: the save after the ride is the pavement where the player got off",
+    "ok": true,
+    "detail": "{\"x\":-23.6,\"z\":54.35}"
+  },
+  {
+    "name": "desktop: entering and leaving the room right after the ride",
+    "ok": true,
+    "detail": "{\"x\":1001.1,\"y\":0.1,\"z\":-0.288,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}"
+  },
+  {
+    "name": "desktop: changing hub right after: the new hub has its own line, no trip left over",
+    "ok": true,
+    "detail": "Ligne 8"
+  },
+  {
+    "name": "desktop: travelling to another hub mid-ride ends the trip cleanly",
+    "ok": true,
+    "detail": "{\"phase\":\"idle\",\"line\":null,\"stop\":-1,\"vehicle\":null,\"alightAt\":-1,\"passed\":0,\"seat\":null,\"space\":null,\"view\":0,\"camera\":false,\"paid\":2}"
+  },
+  {
+    "name": "desktop: reload mid-ride resumes standing on a stop's pavement",
+    "ok": true,
+    "detail": "{\"p3\":{\"x\":-54.35,\"y\":0.1,\"z\":-13.6,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null},\"safe\":{\"x\":-54.35,\"z\":-13.6,\"yaw\":3.141592653589793}}"
+  },
+  {
+    "name": "desktop: transport draw calls near a busy stop stay small",
+    "ok": true,
+    "detail": "445 with, 429 without vehicles and stops (people at the stops not hidden)"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: plateau has a car rapide line with stops and vehicles",
+    "ok": true,
+    "detail": "Ligne 5: Sandaga, Gare, Médina, Mosquée · 2 cars · loop 115 s"
+  },
+  {
+    "name": "phone: every stop is a place of the « stop » recipe",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: walking up to the stop offers « Monter dans le prochain »",
+    "ok": true,
+    "detail": "{\"id\":\"stop:5:sandaga:stop\",\"name\":\"Arrêt Sandaga · Ligne 5\",\"kind\":\"spot\",\"space\":\"street\",\"primary\":\"Monter dans le prochain\",\"all\":[\"Monter dans le prochain\",\"Voir la ligne\"]}"
+  },
+  {
+    "name": "phone: waiting at the stop shows the line and the next car",
+    "ok": true,
+    "detail": "5Arrêt Sandaga · Plateau ⇄ ColobaneProchain car rapide dans ≈ 42 s"
+  },
+  {
+    "name": "phone: boarding sits the player on the only free seat (never an NPC's)",
+    "ok": true,
+    "detail": "{\"tr\":{\"phase\":\"riding\",\"line\":\"5\",\"stop\":0,\"vehicle\":\"plateau:rapide:5:1\",\"alightAt\":-1,\"passed\":0,\"seat\":\"plateau:rapide:5:1:r3c0\",\"space\":\"plateau:rapide:5:1\",\"view\":0,\"camera\":true,\"paid\":1},\"mine\":[{\"id\":\"plateau:rapide:5:1:r3c0\",\"occupant\":\"player\"}]}"
+  },
+  {
+    "name": "phone: the fare is paid once (150 F, one wallet line)",
+    "ok": true,
+    "detail": "{\"wallet0\":2000,\"wallet1\":1850,\"fares\":[{\"at\":1791552850650,\"label\":\"Car rapide Ligne 5 · Sandaga\",\"amount\":-150}],\"paid\":1}"
+  },
+  {
+    "name": "phone: the player's space is the vehicle (chat, presence, targets)",
+    "ok": true,
+    "detail": "{\"phase\":\"riding\",\"line\":\"5\",\"stop\":0,\"vehicle\":\"plateau:rapide:5:1\",\"alightAt\":-1,\"passed\":0,\"seat\":\"plateau:rapide:5:1:r3c0\",\"space\":\"plateau:rapide:5:1\",\"view\":0,\"camera\":true,\"paid\":1}"
+  },
+  {
+    "name": "phone: riding, the main action is « Descendre au prochain arrêt »",
+    "ok": true,
+    "detail": "{\"id\":\"transport:ride\",\"name\":\"Ligne 5 · Plateau ⇄ Colobane\",\"kind\":\"self\",\"space\":\"plateau:rapide:5:1\",\"primary\":\"Descendre ici\",\"all\":[\"Descendre ici\",\"Changer de vue\",\"Parler au voisin\"]}"
+  },
+  {
+    "name": "phone: moving the stick does not stand the player up mid-ride; the body rides along",
+    "ok": true,
+    "detail": "{\"p0\":{\"x\":41.36121500181166,\"y\":0.7708693494358574,\"z\":-57.42679797004706,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null},\"p1\":{\"x\":49.626357035969725,\"y\":0.7508780578949852,\"z\":-58.019999999999996,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null}}"
+  },
+  {
+    "name": "phone: phone open mid-ride: still seated, the car keeps going",
+    "ok": true,
+    "detail": "{\"q0\":{\"x\":57.76026327299826,\"y\":0.7649186624068176,\"z\":-55.17124726598445,\"hub\":\"plateau\",\"mode\":\"menu\",\"near\":null},\"q1\":{\"x\":58.019999999999996,\"y\":0.7225535152437355,\"z\":-42.66237427172418,\"hub\":\"plateau\",\"mode\":\"menu\",\"near\":null}}"
+  },
+  {
+    "name": "phone: « Arrêter » mid-ride stops the talk, the ride goes on",
+    "ok": true,
+    "detail": "{\"talking\":{\"id\":\"voisin\",\"step\":\"Salut\",\"index\":0},\"tr\":{\"phase\":\"riding\",\"line\":\"5\",\"stop\":0,\"vehicle\":\"plateau:rapide:5:1\",\"alightAt\":-1,\"passed\":0,\"seat\":\"plateau:rapide:5:1:r3c0\",\"space\":\"plateau:rapide:5:1\",\"view\":0,\"camera\":true,\"paid\":1}}"
+  },
+  {
+    "name": "phone: three passenger views (behind, window, high)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: the car rapide passes a stop and the player stays on board",
+    "ok": true,
+    "detail": "{\"phase\":\"riding\",\"line\":\"5\",\"stop\":0,\"vehicle\":\"plateau:rapide:5:1\",\"alightAt\":-1,\"passed\":1,\"seat\":\"plateau:rapide:5:1:r3c0\",\"space\":\"plateau:rapide:5:1\",\"view\":0,\"camera\":true,\"paid\":1}"
+  },
+  {
+    "name": "phone: « Descendre au prochain arrêt » is heard (stop requested)",
+    "ok": true,
+    "detail": "5Ligne 5 · vers ColobaneProchain arrêt : Médina · 20 s🛑 Arrêt demandé : Médina"
+  },
+  {
+    "name": "phone: off at the requested stop, on the pavement (not in the road, a wall or the car)",
+    "ok": true,
+    "detail": "{\"p2\":{\"x\":-26.6,\"y\":0.1,\"z\":54.35,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null},\"stop\":\"Médina\",\"off\":\"5.65\",\"inWall\":false,\"inCar\":false}"
+  },
+  {
+    "name": "phone: back in the street: street space, follow camera, card hidden",
+    "ok": true,
+    "detail": "{\"phase\":\"idle\",\"line\":null,\"stop\":-1,\"vehicle\":null,\"alightAt\":-1,\"passed\":0,\"seat\":null,\"space\":null,\"view\":0,\"camera\":false,\"paid\":1}"
+  },
+  {
+    "name": "phone: the save after the ride is the pavement where the player got off",
+    "ok": true,
+    "detail": "{\"x\":-26.6,\"z\":54.35}"
+  },
+  {
+    "name": "phone: changing hub right after: the new hub has its own line, no trip left over",
+    "ok": true,
+    "detail": "Ligne 31"
+  },
+  {
+    "name": "phone: travelling to another hub mid-ride ends the trip cleanly",
+    "ok": true,
+    "detail": "{\"phase\":\"idle\",\"line\":null,\"stop\":-1,\"vehicle\":null,\"alightAt\":-1,\"passed\":0,\"seat\":null,\"space\":null,\"view\":0,\"camera\":false,\"paid\":2}"
+  },
+  {
+    "name": "phone: reload mid-ride resumes standing on a stop's pavement",
+    "ok": true,
+    "detail": "{\"p3\":{\"x\":-54.35,\"y\":0.1,\"z\":-24.6,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null},\"safe\":{\"x\":-54.35,\"z\":-24.6,\"yaw\":3.141592653589793}}"
+  },
+  {
+    "name": "phone: transport draw calls near a busy stop stay small",
+    "ok": true,
+    "detail": "308 with, 290 without vehicles and stops (people at the stops not hidden)"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]
