@@ -29,7 +29,8 @@ let cached: VehicleSpec | null = null;
 export function motoSpec(): VehicleSpec {
   if (cached) return cached;
   const seed = jakartaSeed(), k = vehicleSpec('moto', { seed, driver: false, passengers: false });
-  const toSeat = (s: VehicleSeat): SeatSpec => ({ id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, npcOnly: s.kind !== 'driver' });
+  // the kit's seats carry the 'Ride' pose (astride, hands on the grips)
+  const toSeat = (s: VehicleSeat): SeatSpec => ({ id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, npcOnly: s.kind !== 'driver', ...(s.clip ? { clip: s.clip } : {}) });
   const driver = k.seats.find(s => s.kind === 'driver') ?? k.seats[0];
   const door = k.doors[0], chase = k.cameras.chase;
   const spec: VehicleSpec = {

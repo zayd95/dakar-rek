@@ -116,4 +116,18 @@ describe('the motorbike side stand', () => {
     const spec = motoSpec();
     expect(spec.build({ ridden: true })).not.toBe(spec.build({ ridden: false }));
   });
+
+  it('the rider sits astride (the kit seat\'s Ride pose), the car\'s driver sits; the model animates', async () => {
+    const { Vehicle } = await import('../src/transport/vehicle');
+    expect(motoSpec().driver.clip).toBe('Ride'); expect(carSpec().driver.clip).toBeUndefined();
+    const v = new Vehicle(motoSpec(), 'pikine:moto:jakarta', 1, jakartaSeed());
+    expect(v.driverSeat.clip).toBe('Ride');
+    let lean = 0;
+    v.setRidden(true);
+    for (let i = 0; i < 60; i++) lean = v.animate(10, -1, 1 / 30);            // full left at 36 km/h
+    expect(Math.abs(lean)).toBeGreaterThan(0.2);
+    v.setRidden(false); expect(v.animate(0, 0, 1 / 30)).toBe(0);              // a fresh model when getting off: upright
+    const c = new Vehicle(carSpec(), 'plateau:car:berline', 1, sedanSeed());
+    for (let i = 0; i < 30; i++) expect(c.animate(10, 1, 1 / 30)).toBe(0);   // cars do not lean
+  });
 });

@@ -147,6 +147,8 @@ export class OwnedVehicleModule implements GameModule {
   private solid: Collider[] = [];
   /** Re-check once after a hub load that another module's kerb clearing did not take the parked boxes away. */
   private solidCheck = false;
+  /** The model's lean this frame (a motorbike in a turn), for the rider. */
+  private lean = 0;
 
   readonly def: OwnedDef;
   private readonly parkedTarget: Target;
@@ -204,6 +206,7 @@ export class OwnedVehicleModule implements GameModule {
     const hit = driveStep(this.st, input, this.spec.drive, dt, this.blocked);
     if (hit && v0 > 0.5) this.bumps++;
     m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(this.st.speed), this.st.accel, this.st.odo, dt);
+    this.lean = m.animate(this.st.speed, this.st.steer, dt);                     // wheels, steering, a motorbike's lean
     if (this.leaving && Math.abs(this.st.speed) < 0.3) this.getOff(true);
     this.cardT -= dt;
     if (this.cardT <= 0) { this.cardT = 0.25; this.refreshCard(); }
@@ -216,7 +219,20 @@ export class OwnedVehicleModule implements GameModule {
     this.cam.update(Math.max(dt, real), ctx.camera, m.pose, m.bounce, a, drag, this.hub?.colliders ?? []);
     const body = ctx.player.body();
     if (body && a.inside) body.group.visible = false;         // at the wheel: looking out (shown again next frame)
+    if (body) this.leanRider(body.group, m);
     return true;
+  }
+
+  /**
+   * The rider leans with the motorbike, about the same ground line (main.ts has just put the body on the seat, upright,
+   * this frame; the roll is undone when getting off).
+   */
+  private leanRider(g: THREE.Object3D, m: Vehicle) {
+    const a = this.lean;
+    g.rotation.z = a;
+    if (!a) return;
+    const h = g.position.y - m.pose.y, dx = -h * Math.sin(a), yaw = m.pose.yaw;
+    g.position.x += Math.cos(yaw) * dx; g.position.z -= Math.sin(yaw) * dx; g.position.y += h * (Math.cos(a) - 1);
   }
 
   debug(ctx: GameCtx): Record<string, unknown> {
@@ -348,7 +364,8 @@ export class OwnedVehicleModule implements GameModule {
     if (ctx.player.seated()?.id === m.driverSeat.id) ctx.player.standUp(true);
     this.st.speed = 0;
     m.place(this.st.x, this.st.z, this.st.yaw, 0, 0, this.st.odo, 0);
-    m.setRidden(false);
+    m.setRidden(false);                                         // also a fresh model: upright, wheels straight
+    this.upright();
     parkOwned(ctx.state.data, this.def.id, this.hub.id, this.st.x, this.st.z, this.st.yaw);
     this.setSolid(true);
     this.cam.end();
@@ -401,8 +418,14 @@ export class OwnedVehicleModule implements GameModule {
     this.card.show({ num: this.def.icon, title: `${this.def.item.name} · ${kmh} km/h`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : HINT });
   }
 
+  private upright() {
+    this.lean = 0;
+    const body = this.ctx?.player.body();
+    if (body) body.group.rotation.z = 0;
+  }
+
   private clear() {
-    if (this.driving) { this.driving = false; this.cam.end(); }
+    if (this.driving) { this.driving = false; this.cam.end(); this.upright(); }
     this.setSolid(false);
     this.vehicle?.dispose(); this.vehicle = null;
     if (this.dealer) {

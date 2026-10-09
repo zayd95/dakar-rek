@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import type { Clip } from '../actors/humanoid';
 
 /**
  * One vehicle framework (docs/LIVING_DAKAR.md, rule 3): every vehicle — car rapide, Dem Dikk bus, taxi, moto, the
@@ -17,6 +18,8 @@ export interface SeatSpec extends LocalPose {
   id: string;
   /** Reached through a door the player does not use (the car rapide's cab bench): NPC passengers only. */
   npcOnly?: boolean;
+  /** Pose held there (default 'Sit'): 'Ride' astride a two-wheeler (from the kit's seat). */
+  clip?: Clip;
 }
 
 export interface DoorSpec {

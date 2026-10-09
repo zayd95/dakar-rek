@@ -140,7 +140,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await drive(60000, 0, () => Math.abs(window.__dakar.car.info().speed) < 0.3, null, true);
 
   // 5. The views: at the wheel (the driver's body hidden, the dashboard ahead), high above, back behind the car.
-  await d(c => window.__dakar.car.place(c.x, c.z + 14, 0), car0);
+  await d(c => window.__dakar.car.place(c.x, c.z, c.yaw), car0);                // back at the kerb, looking down the road
   const v1 = await view('volant');
   await shot('6-volant');
   const v2 = await view('haut');
