@@ -40,7 +40,7 @@ import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { Interactions } from './interact/system';
-import { Seats, sitOriginY, type Seat } from './interact/seats';
+import { Seats, seatClip, sitOriginY, type Seat } from './interact/seats';
 import { LegacySource } from './interact/legacy';
 import type { Target } from './interact/types';
 import { ActivityRunner } from './activity/runner';
@@ -285,7 +285,7 @@ const gestures = new GesturePlayer(document.getElementById('ui')!);
 const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
   sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
-  clip: c => { if (playerBody) playerBody.hold = c ?? (seated ? 'Sit' : null); },
+  clip: c => { if (playerBody) playerBody.hold = c ?? (seated ? seatClip(seated) : null); },
   busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
   progress: (on, pct = 0, label = '') => hud.progress(on, pct, label),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
@@ -332,13 +332,13 @@ function sitOn(seat: Seat, force = false) {
   if ((!force && mode !== 'play') || seated || !seats.occupy(seat.id, 'player')) return;
   seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0;
   pos.set(seat.x, sitOriginY(seat) + (inside ? 0 : 0), seat.z); facing = seat.yaw;
-  if (playerBody) playerBody.hold = 'Sit';
+  if (playerBody) playerBody.hold = seatClip(seat);
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
 function standUp(inPlace = false) {
   if (!seated) return;
   const s = seated; seats.release(s.id, 'player'); seated = null;
-  if (playerBody && playerBody.hold === 'Sit') playerBody.hold = null;
+  if (playerBody && playerBody.hold === seatClip(s)) playerBody.hold = null;
   if (inPlace || !world) return;
   let nx = s.x + Math.sin(s.yaw) * 0.7, nz = s.z + Math.cos(s.yaw) * 0.7;
   [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
@@ -614,7 +614,10 @@ function openJournal() { hud.closeModal(); phone.open('carnet'); }
 function runAction(a: Action, npc?: string, it?: Interactable) {
   const where = it?.name;
   if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
-    activities.onEnd = (_s, done) => { if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); } };   // counters belong to the steps
+    activities.onEnd = (_s, done) => {                    // once: later activities (places, venues) must not replay this action's hooks
+      activities.onEnd = () => {};
+      if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); }   // counters belong to the steps
+    };
     activities.start(actionSpec(a), { place: where });
     return;
   }
@@ -783,8 +786,8 @@ function frame(now: number) {
     // the body follows its seat every frame (seats in vehicles move); the stick stands up, except on a locked seat
     const m = input.move();
     speed = 0;
-    if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp();
-    else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = 'Sit'; }
+    if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp();      // moving the stick stands up (not in a moving vehicle)
+    else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = seatClip(seated); }
     if (mode !== 'menu') state.tick(dt * 1000);
   } else if (mode === 'play') {
     const m = input.move();
@@ -881,6 +884,8 @@ if (DEBUG) {
     clip: () => playerBody?.clipName ?? null,
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores } : null; },
     gesture: () => gestures.info(),
+    /** Checks that test something else than the gesture itself finish it at once with this score. */
+    gestureFinish: (score = 1) => gestures.finishNow(score),
     placeList: () => places.all().map(p => ({ id: p.id, type: p.type, name: p.name, space: p.space, anchors: p.anchors.map(a => a.id) })),
     inventory: () => inventory.list(),
     roomInteractables: () => inside ? inside.int.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) : [],

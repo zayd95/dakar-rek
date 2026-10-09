@@ -11,7 +11,7 @@ import type { Outfit } from './character';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk';
+export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel';
 export type Style = 'boubou' | 'tee' | 'dress';
 export type Pattern = 'uni' | 'wax' | 'bazin' | 'rayure';
 export interface PersonLook {
@@ -40,6 +40,7 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
     fixSitKnees(gltf.animations);
+    deriveKneel(gltf.animations);
     template = { scene: gltf.scene, clips: gltf.animations };
   } catch { /* box characters stay in use */ }
 }
@@ -60,6 +61,33 @@ export function fixSitKnees(clips: THREE.AnimationClip[]) {
     if (!backward) continue;
     for (let i = 0; i < v.length; i += 4) { v[i] = -v[i]; v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
   }
+}
+
+/**
+ * 'Kneel' (derived at load, no Blender export needed): seated on the heels on the floor — knees down in front, shins
+ * flat behind, the top of the feet on the ground, back straight, head slightly bowed, hands on the thighs (arms of the
+ * corrected Sit). Used by floor places (prayer rows, mats): the origin stays on the floor, the hips about 0.3 m above it.
+ * Angles: thigh 119° about X from the hips (29° below horizontal), knee 151° (shin pointing back), foot −6°.
+ */
+export const KNEEL_HIPS = 0.3;
+export function deriveKneel(clips: THREE.AnimationClip[]) {
+  if (clips.some(c => c.name === 'Kneel')) return;
+  const sit = clips.find(c => c.name === 'Sit'); if (!sit) return;
+  const kneel = sit.clone(); kneel.name = 'Kneel';
+  const rx = (deg: number) => [Math.sin((deg * Math.PI) / 360), 0, 0, Math.cos((deg * Math.PI) / 360)];
+  const pose: [RegExp, number[]][] = [
+    [/^root\.position$/, [0, KNEEL_HIPS - 0.95, 0]],                 // hips joint 0.95 m above the root at rest
+    [/^thigh\.?[LR]\.quaternion$/, rx(119)], [/^shin\.?[LR]\.quaternion$/, rx(151)], [/^foot\.?[LR]\.quaternion$/, rx(-6)],
+    [/^spine\.quaternion$/, rx(4)], [/^neck\.quaternion$/, rx(6)], [/^head\.quaternion$/, rx(6)],
+  ];
+  for (const track of kneel.tracks) {
+    const hit = pose.find(([re]) => re.test(track.name)); if (!hit) continue;
+    const v = hit[1], n = v.length;
+    const values = new Float32Array(track.values.length);
+    for (let i = 0; i < values.length; i++) values[i] = v[i % n];
+    track.values = values;
+  }
+  clips.push(kneel);
 }
 
 // ---------------------------------------------------------------- fabric textures (generic prints, own designs)
