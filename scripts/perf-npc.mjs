@@ -5,17 +5,17 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
-const [,, base = 'http://localhost:4231/', label = 'build', outFile] = process.argv;
+const [,, base = 'http://localhost:4216/', label = 'build', outFile, qualities = 'low,medium'] = process.argv;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 /** The fixed walks: hub, hour, waypoints (the player is moved along them; the follow camera trails). */
 const WALKS = [
-  { hub: 'pikine', hour: 13.2, pts: [[60, 64], [86, 64], [86, 98], [-20, 98], [-40, 98]] },
+  { hub: 'pikine', hour: 13.2, pts: [[60, 64], [86, 64], [86, 98], [-20, 98]] },
   { hub: 'pikine', hour: 20.3, pts: [[-40, 102], [-10, 102], [-10, 64], [70, 64]] },
   { hub: 'plateau', hour: 19.2, pts: [[22, 22], [22, -60], [-38, -60]] },
 ];
-const STEPS = 48;
+const STEPS = Number(process.env.STEPS ?? 30);
 const rows = [];
-for (const quality of ['low', 'medium']) {
+for (const quality of qualities.split(',')) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
   await ctx.addInitScript(q => { try { localStorage.setItem('dakarrek.quality', q); } catch { /* */ } }, quality);
   const page = await ctx.newPage(); page.setDefaultTimeout(180000);
@@ -23,7 +23,7 @@ for (const quality of ['low', 'medium']) {
   await page.waitForFunction(() => window.__dakar?.body(), null, { timeout: 180000 });
   for (const w of WALKS) {
     await page.evaluate(w => { const d = window.__dakar; d.setHour(w.hour); d.teleport(w.hub, w.pts[0][0], w.pts[0][1], 0); d.ambientDay?.(1); }, w);
-    await page.evaluate(() => new Promise(r => { let k = 0; const f = () => (++k > 25 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }));   // the street fills
+    await page.evaluate(() => new Promise(r => { let k = 0; const f = () => (++k > 12 ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }));   // the street fills
     const r = await page.evaluate(([pts, steps]) => new Promise(res => {
       const d = window.__dakar, scene = d.three.scene;
       // walk the polyline at an even pace, one waypoint per frame

@@ -72,4 +72,20 @@ PERF_TABLE
 
 ## Known gaps
 
-KNOWN_GAPS
+- **Other lanes' places are tested with stand-ins.** The venue (Dibi, mosque, salon, Soumbédioune) and transport (stops,
+  car rapide seats) branches were not merged here: the check registers a test Dibi, a test stop and vehicle seats at run
+  time and the unit tests register a mosque with prayer seats. Contract assumed for vehicles: seats in world
+  coordinates, updated while the vehicle moves, removed when it leaves (a rider follows its seat and goes with it).
+- **Derived furniture seats** (kiosk benches, Maïga bench, dibiterie chairs, station and gym benches) are registered by
+  this lane until the builders or venues do it; a seat within 35 cm of an existing one is never added twice, but a
+  venue lane registering its own seats *after* the first frame would get doubles.
+- **Gestures.** No eating or serving clip, no prop in hand (a plate on the table only at kiosks and dibiteries); prayer
+  is standing rows only (no bowing animation); football without a ball; vendors alternate Talk / Grab / Idle.
+- **No local avoidance.** People keep to paths clear of walls and furniture, but walkers can pass through each other
+  and through a pair chatting on a corner.
+- **Other systems' hidden bodies are still animated by their owners** (only their draw calls are saved); the cast,
+  walkers and placed people keep their own visibility rules on top of the budget.
+- Interiors fill only while the player is inside; arrivals in a room need a straight or one-turn clear path.
+- Prayer times and opening hours are the game's own approximations (draft, to be reviewed by Habib); the city week
+  (day 1 = Tuesday 6 Oct 2026) passes in under three real hours.
+- Frame times come from SwiftShader on a shared CPU: they compare builds, they are not phone measurements.
