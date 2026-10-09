@@ -17,7 +17,7 @@
  {
   "name": "draw calls looking over the whole Cité Jàmm (Low quality; for the record)",
   "ok": true,
-  "extra": "251 draw calls"
+  "extra": "231 draw calls"
  },
  {
   "name": "earned with a delivery",
@@ -62,7 +62,12 @@
  {
   "name": "inside: the chair is in the room with its seat",
   "ok": true,
-  "extra": "[{\"uid\":\"a2\",\"spec\":\"chaise_plastique\",\"x\":1599.5,\"z\":-2.15,\"yaw\":0}]"
+  "extra": "[{\"uid\":\"a2\",\"spec\":\"chaise_plastique\",\"model\":\"kit_chaise_plastique\",\"x\":1599.5,\"z\":-2.15,\"yaw\":0}]"
+ },
+ {
+  "name": "the chair is the 3D kit model (src/world/furnitureKit.ts)",
+  "ok": true,
+  "extra": "kit_chaise_plastique"
  },
  {
   "name": "« Aménager » is the action where nothing else is at hand",
@@ -107,7 +112,7 @@
  {
   "name": "sitting on the chair at the right height",
   "ok": true,
-  "extra": "{\"seated\":\"pikine:home:a2:0\",\"y\":0.050000000000000044,\"clip\":\"Sit\"}"
+  "extra": "{\"seated\":\"pikine:home:a2:0\",\"y\":0.07000000000000006,\"clip\":\"Sit\"}"
  },
  {
   "name": "at the plot board: « Voir la parcelle »",
@@ -157,7 +162,7 @@
  {
   "name": "one in-game hour later: plot + billboard rents paid (one ledger line)",
   "ok": true,
-  "extra": "16796 · Revenus · Panneau 4 × 3 · carrefour de la Cité Jàmm et 1 autre bien"
+  "extra": "16829 · Revenus · Panneau 4 × 3 · carrefour de la Cité Jàmm et 1 autre bien"
  },
  {
   "name": "at the Résidence Jàmm: « Voir le logement »",
@@ -187,7 +192,7 @@
  {
   "name": "inside the apartment with the chair",
   "ok": true,
-  "extra": "[{\"uid\":\"a2\",\"spec\":\"chaise_plastique\",\"x\":1660,\"z\":-3,\"yaw\":0}]"
+  "extra": "[{\"uid\":\"a2\",\"spec\":\"chaise_plastique\",\"model\":\"kit_chaise_plastique\",\"x\":1660,\"z\":-3,\"yaw\":0}]"
  },
  {
   "name": "the kitchen offers « Cuisiner un repas »",
@@ -212,7 +217,7 @@
  {
   "name": "the next hour: rents in, the apartment’s rent out (250 F per in-game hour)",
   "ok": true,
-  "extra": "19269 · Loyer · Appartement F2 · Résidence Jàmm -296 | Revenus · Panneau 4 × 3 · carrefour de la Cité Jàmm et 1 autre bien 19565"
+  "extra": "19197 · Loyer · Appartement F2 · Résidence Jàmm -295 | Revenus · Panneau 4 × 3 · carrefour de la Cité Jàmm et 1 autre bien 19492"
  },
  {
   "name": "phone « Biens »: net worth, income, every asset held",
@@ -227,7 +232,17 @@
  {
   "name": "wallet: value of assets, total wealth, income and charges per hour",
   "ok": true,
-  "extra": "Solde22 037 965 FFCFA · monnaie de jeu, sans valeur réelle\n      \n        Valeur des biensLogements, terrains, panneau, affaires, meubles7 996 770 F\n        For"
+  "extra": "Solde22 037 926 FFCFA · monnaie de jeu, sans valeur réelle\n      \n        Valeur des biensLogements, terrains, panneau, affaires, meubles7 996 774 F\n        For"
+ },
+ {
+  "name": "Dibi « Parler affaires » opens the ventures sheet",
+  "ok": true,
+  "extra": "{\"place\":\"pikine:venue:dibiterie:11\",\"offer\":true} · Affaires · Dibiterie Chez Pathé"
+ },
+ {
+  "name": "… and leads to the « Affaires » app",
+  "ok": true,
+  "extra": "Table de bana-banaArachides, cartes de recharge et petites choses, au coin de la rue · +480 F/h · acheter50 000 F | KiosqueÀ débloquer : 1 table de bana-banaBloqué | Boutique de quartierÀ débloquer : 3 activités différentes pratiquées (2/3) et 1 kiosqueBloqué"
  },
  {
   "name": "reload: assets, placements, home and wallet persisted (schema v5)",
@@ -262,7 +277,7 @@
  {
   "name": "phone: a night on the floor mattress restores energy",
   "ok": true,
-  "extra": "74.8990035"
+  "extra": "74.9027655"
  },
  {
   "name": "phone: « Biens » fits the screen",
