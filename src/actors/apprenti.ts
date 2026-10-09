@@ -1,18 +1,21 @@
 import * as THREE from 'three';
 import { Humanoid, humanoidReady, randomLook } from './humanoid';
 import type { HubId } from '../core/types';
+import { apprentiCalls } from '../i18n/lines';
 
 /**
  * The car rapide apprentice: stands at the open rear door (parked) or hangs on the rear step (moving), one hand on the
- * grab bar, calling out the destinations to people on the street. The calls appear in a speech bubble (text authored
- * here). Destinations are real Dakar neighbourhoods served by car rapides; the list per hub is PROVISIONAL (Unreviewed).
+ * grab bar, calling out the destinations to people on the street — « Colobane ! Colobane ! », « Petersen ! Nanu dem ! »,
+ * « Fan nga dem ? » (src/i18n/lines.ts). Destinations are real Dakar neighbourhoods served by car rapides; the list per
+ * hub is PROVISIONAL (Unreviewed).
  */
-const CALLS: Record<HubId, string[]> = {
-  plateau: ['Colobane ! Colobane !', 'Petersen ! Petersen !', 'Médina, Médina !', 'Pikine ! Ndaw, ndaw !'],
-  corniche: ['Fann ! Mermoz !', 'Ouakam ! Ouakam !', 'Colobane !', 'Liberté 6 !'],
-  almadies: ['Ngor ! Yoff !', 'Ouakam !', 'Petersen !', 'Parcelles !'],
-  pikine: ['Petersen ! Petersen !', 'Colobane !', 'Thiaroye ! Guédiawaye !', 'Parcelles ! Ndaw !'],
+const DESTINATIONS: Record<HubId, string[]> = {
+  plateau: ['Colobane', 'Petersen', 'Médina', 'Pikine'],
+  corniche: ['Fann', 'Mermoz', 'Ouakam', 'Liberté 6'],
+  almadies: ['Ngor', 'Yoff', 'Ouakam', 'Parcelles'],
+  pikine: ['Petersen', 'Colobane', 'Thiaroye', 'Guédiawaye'],
 };
+const CALLS: Record<HubId, string[]> = Object.fromEntries(Object.entries(DESTINATIONS).map(([hub, d]) => [hub, apprentiCalls(d)])) as Record<HubId, string[]>;
 
 function bubbleTexture(text: string) {
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 160;

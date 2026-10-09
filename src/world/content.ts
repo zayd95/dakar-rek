@@ -2,6 +2,7 @@ import type { Action } from './types';
 import type { HubId } from '../core/types';
 import { order, trade } from '../activity/primitives';
 import { G } from '../activity/gestures';
+import { haggler } from '../i18n/lines';
 
 const flag = (f: string) => (s: { data: { flags: string[] } }) => s.data.flags.includes(f);
 const noFlag = (f: string) => (s: { data: { flags: string[] } }) => !s.data.flags.includes(f);
@@ -28,8 +29,9 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'discuter', label: 'Rester discuter', detail: 'Gratuit', needs: { social: 12, moral: 4 }, seconds: 3 },
   ],
   market: [
+    // A shift at the stall: a customer opens by discussing the price (« Ñaata la ? », « Wàññi ko tuuti ! »), then serve them all.
     { id: 'vendre', label: 'Tenir l’étal', detail: 'Servir les clientes · jusqu’à +3 000 F', gain: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: tired(22),
-      steps: trade({ id: 'vendre', label: 'Tenir l’étal', pay: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, counter: 'marche', category: 'commerce', clip: 'Talk', parts: [{ label: 'Servir les clientes', gesture: G.stall(6) }] }).steps },
+      steps: trade({ id: 'vendre', label: 'Tenir l’étal', pay: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, counter: 'marche', category: 'commerce', clip: 'Talk', line: haggler('sell', 1500, 'Une cliente'), parts: [{ label: 'Servir les clientes', gesture: G.stall(6) }] }).steps },
   ],
   gym: [
     { id: 'courir', label: 'Courir sur la Corniche', detail: 'Forme +1', needs: { energie: -20, moral: 10, hygiene: -10, faim: -8 }, seconds: 4, counter: 'forme', requires: tired(20) },

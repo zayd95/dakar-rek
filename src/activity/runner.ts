@@ -110,6 +110,8 @@ export class ActivityRunner {
       if (seat && this.s.seated()?.id !== seat.id) this.s.sit(seat);
     }
     if (step.clip) this.s.clip(step.clip);
+    const line = typeof step.line === 'function' ? step.line() : step.line;
+    if (line) this.s.toast(line);
     if (step.gesture && this.s.gesture) {
       this.s.busy(true); this.s.progress(false);
       const i = c.i; let ended = false;

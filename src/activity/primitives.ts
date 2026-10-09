@@ -1,6 +1,6 @@
 import type { Needs } from '../core/types';
 import type { Clip } from '../actors/humanoid';
-import type { ActivityCategory, ActivitySpec, Effects, Gesture, Primitive, SeatPick, Step } from './types';
+import type { ActivityCategory, ActivitySpec, Effects, Gesture, Line, Primitive, SeatPick, Step } from './types';
 
 /**
  * Builders for the universal primitives. A place composes them (places.ts): the same `order` makes a Dibi plate, a
@@ -13,28 +13,46 @@ export const ICONS: Record<Primitive, string> = {
   wash: '💧', sleep: '🛏️', dance: '💃', fish: '🎣', browse: '👀', inspect: '🔍', wait: '⏳', open: '👋', travel: '🚐',
 };
 
-interface Base { id: string; label: string; detail?: string; icon?: string; requires?: () => string | null; visible?: () => boolean }
-const spec = (primitive: Primitive, b: Base, steps: Step[], price?: number): ActivitySpec =>
-  ({ id: b.id, primitive, label: b.label, detail: b.detail, icon: b.icon ?? ICONS[primitive], price, steps, requires: b.requires, visible: b.visible });
+interface Base {
+  id: string; label: string; detail?: string; icon?: string; requires?: () => string | null; visible?: () => boolean;
+  /** Said when the activity starts (a host's welcome, an apprentice's call…), from src/i18n/lines.ts. */
+  line?: Line;
+}
+const spec = (primitive: Primitive, b: Base, steps: Step[], price?: number): ActivitySpec => {
+  if (b.line && steps.length && !steps[0].line) steps[0] = { ...steps[0], line: b.line };
+  return { id: b.id, primitive, label: b.label, detail: b.detail, icon: b.icon ?? ICONS[primitive], price, steps, requires: b.requires, visible: b.visible };
+};
 
-/** Order food or drink: pay, wait while it is prepared, sit (nearest free seat by default), eat or drink. */
-export function order(b: Base & { price: number; prep?: number; eat?: number; needs: Partial<Needs>; seat?: SeatPick | false; prop?: string; drink?: boolean; category?: ActivityCategory }): ActivitySpec {
+/**
+ * A short spoken exchange before the activity itself: asking the price and haggling at a market, a word with the
+ * host. The talk step only shows its line (no effects); the activity then runs as before.
+ */
+export function talkFirst(a: ActivitySpec, line: Line, label = 'On discute', seconds = 2): ActivitySpec {
+  return { ...a, steps: [{ label, primitive: 'talk', seconds, line }, ...a.steps] };
+}
+
+/** Order food or drink: pay, wait while it is prepared, sit (nearest free seat by default), eat or drink.
+ * `line` is said while it is prepared (« Xaaral tuuti ! »), `eatLine` with the first bite (« Neex na ! »). */
+export function order(b: Base & { price: number; prep?: number; eat?: number; needs: Partial<Needs>; seat?: SeatPick | false; prop?: string; drink?: boolean; category?: ActivityCategory; eatLine?: Line }): ActivitySpec {
   const steps: Step[] = [{ label: b.drink ? 'On te sert' : 'Préparation', primitive: 'wait', seconds: b.prep ?? 2 }];
   if (b.seat !== false) steps.push({ label: 'Tu t’installes', primitive: 'sit', seat: b.seat ?? 'near' });
-  steps.push({ label: b.drink ? 'Tu bois' : 'Tu manges', primitive: b.drink ? 'drink' : 'eat', seconds: b.eat ?? 4, prop: b.prop,
+  steps.push({ label: b.drink ? 'Tu bois' : 'Tu manges', primitive: b.drink ? 'drink' : 'eat', seconds: b.eat ?? 4, prop: b.prop, line: b.eatLine,
     effects: { needs: b.needs, counters: b.drink ? undefined : { meals: 1 }, category: b.category ?? 'loisir' } });
   return spec('order', b, steps, b.price);
 }
 
-/** Buy goods: pay, receive the items (inventory, home or business — the place decides with `then`). */
-export function buy(b: Base & { price: number; items?: Record<string, number>; seconds?: number; then?: () => void }): ActivitySpec {
-  return spec('buy', b, [{ label: 'Paiement', primitive: 'buy', seconds: b.seconds ?? 1, effects: { items: b.items, category: 'commerce' }, then: b.then }], b.price);
+/** Buy goods: pay, receive the items (inventory, home or business — the place decides with `then`).
+ * `haggle`: at a market, the price is asked and discussed first (src/i18n/lines.ts `haggler`). */
+export function buy(b: Base & { price: number; items?: Record<string, number>; seconds?: number; then?: () => void; haggle?: Line }): ActivitySpec {
+  const a = spec('buy', b, [{ label: 'Paiement', primitive: 'buy', seconds: b.seconds ?? 1, effects: { items: b.items, category: 'commerce' }, then: b.then }], b.price);
+  return b.haggle ? talkFirst(a, b.haggle, 'On discute le prix') : a;
 }
 
-/** Sell goods you carry: the buyer pays, the items leave the inventory. */
-export function sell(b: Base & { price: number; items: Record<string, number>; seconds?: number }): ActivitySpec {
+/** Sell goods you carry: the buyer pays, the items leave the inventory. `haggle`: the buyer discusses the price first. */
+export function sell(b: Base & { price: number; items: Record<string, number>; seconds?: number; haggle?: Line }): ActivitySpec {
   const out = Object.fromEntries(Object.entries(b.items).map(([k, v]) => [k, -Math.abs(v)]));
-  return spec('sell', b, [{ label: 'Vente', primitive: 'sell', seconds: b.seconds ?? 1.5, effects: { money: b.price, items: out, category: 'commerce' } }]);
+  const a = spec('sell', b, [{ label: 'Vente', primitive: 'sell', seconds: b.seconds ?? 1.5, effects: { money: b.price, items: out, category: 'commerce' } }]);
+  return b.haggle ? talkFirst(a, b.haggle, 'On discute le prix') : a;
 }
 
 /** Work a shift: time, a clip, pay and fatigue. */

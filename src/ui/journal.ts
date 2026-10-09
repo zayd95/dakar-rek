@@ -11,7 +11,6 @@ export function journalView(rel: Relations, state: GameState): { subtitle: strin
   const next = suggestion(rel, state);
   const html = `<h3>Prochaine piste</h3><div class="kv">${next ? esc(next.hint) : 'Aucune pour l’instant.'}</div>
     <h3>Tes relations</h3><div class="rel">${met.length ? met.map(c => `<span>${esc(c.name)} · ${esc(c.title)}</span><em>${Relations.label(rel.level(c.id))}</em>`).join('') : '<span>Personne encore.</span><em></em>'}</div>
-    <h3>Le quartier se connaît</h3><div class="rel">${rel.links().map(l => `<span>${esc(l.a)} ↔ ${esc(l.b)}</span><em>${esc(l.note)}</em>`).join('')}</div>
-    <div class="draft">Personnages et histoires : brouillon à valider par Habib.</div>`;
+    <h3>Le quartier se connaît</h3><div class="rel">${rel.links().map(l => `<span>${esc(l.a)} ↔ ${esc(l.b)}</span><em>${esc(l.note)}</em>`).join('')}</div>`;
   return { subtitle: `${Object.keys(state.data.beats).length} histoire(s) vécue(s)`, html };
 }
