@@ -1,11 +1,12 @@
 import type { HubId } from '../core/types';
 import type { Pt } from './route';
+import { RIDE, rapideCalls } from '../i18n/lines';
 
 /**
  * Public transport lines, as data. Line numbers are fictional; stop and terminus names are real Dakar neighbourhoods
  * or the game's own landmarks (no real company, no livery, no inscription). Every hub has one car rapide loop around
  * its four central blocks, driven on the right with the blocks inside the loop on the pavement side, so every stop is
- * on a pavement the player can walk to. Texts are French with everyday Wolof (CLAD spelling) — draft, to review.
+ * on a pavement the player can walk to. Texts are French with everyday Wolof from the language library (src/i18n).
  */
 
 /** Road grid of the hub builder (src/world/builder.ts: PITCH 60, ROAD 14, NB 4 → centre lines at −120, −60, 0, 60, 120). */
@@ -52,7 +53,7 @@ export const LINES: LineDef[] = [
       { id: 'gare', name: 'Gare', leg: 2, at: 84 },
       { id: 'rue10', name: 'Rue 10', leg: 3, at: 80 },
     ],
-    calls: ['Guédiawaye ! Guédiawaye !', 'Thiaroye, Thiaroye !', 'Am na place !', 'Pikine Rue 10 !'],
+    calls: rapideCalls(['Guédiawaye', 'Thiaroye', 'Rue 10']),
   },
   {
     id: '5', hub: 'plateau', number: 'Ligne 5', from: 'Plateau', to: 'Colobane', loop: LOOP, fare: 150, fleet: 2, phase: 17,
@@ -62,7 +63,7 @@ export const LINES: LineDef[] = [
       { id: 'medina', name: 'Médina', leg: 2, at: 85 },
       { id: 'mosquee', name: 'Mosquée', leg: 3, at: 85 },
     ],
-    calls: ['Colobane ! Colobane !', 'Petersen ! Petersen !', 'Médina, Médina !', 'Am na place !'],
+    calls: rapideCalls(['Colobane', 'Petersen', 'Médina']),
   },
   {
     id: '8', hub: 'corniche', number: 'Ligne 8', from: 'Fann', to: 'Ouakam', loop: LOOP, fare: 150, fleet: 2, phase: 41,
@@ -72,7 +73,7 @@ export const LINES: LineDef[] = [
       { id: 'gare', name: 'Gare', leg: 2, at: 35 },
       { id: 'mermoz', name: 'Mermoz', leg: 3, at: 35 },
     ],
-    calls: ['Ouakam ! Ouakam !', 'Fann ! Mermoz !', 'Liberté 6 !', 'Am na place !'],
+    calls: rapideCalls(['Ouakam', 'Fann', 'Mermoz', 'Liberté 6']),
   },
   {
     id: '31', hub: 'almadies', number: 'Ligne 31', from: 'Ngor', to: 'Yoff', loop: LOOP, fare: 200, fleet: 2, phase: 63,
@@ -82,7 +83,7 @@ export const LINES: LineDef[] = [
       { id: 'gare', name: 'Gare', leg: 2, at: 90 },
       { id: 'almadies', name: 'Almadies', leg: 3, at: 85 },
     ],
-    calls: ['Ngor ! Yoff !', 'Ouakam !', 'Almadies, Almadies !', 'Am na place !'],
+    calls: rapideCalls(['Ngor', 'Yoff', 'Ouakam', 'Almadies']),
   },
 ];
 
@@ -98,12 +99,12 @@ export function stopOnLeg(line: LineDef, stop: StopDef): { x: number; z: number;
   return { x: a.x + dx * stop.at, z: a.z + dz * stop.at, dx, dz };
 }
 
-/** Lines, calls and replies (French + Wolof, CLAD). Draft for the language review. */
+/** Lines, calls and replies: French with everyday Wolof (CLAD) from src/i18n/lines.ts, glosses after the quotes. */
 export const SAY = {
-  fare: (fare: number) => `L’apprenti : « ${fare} F, jërëjëf ! »`,
-  depart: 'Ñu dem !',
-  request: (stop: string) => `Toi : « Apprenti, dinaa wàcc ci ${stop} ! » · tak-tak sur la carrosserie`,
-  alight: (stop: string) => `${stop} · L’apprenti : « Ba beneen yoon ! »`,
-  neighbour: ['« Na nga def ? » · « Maa ngi fi rekk, jërëjëf. »', '« Salaam aleekum ! » · « Maleekum salaam ! »', '« Tangaay bi dafa metti tey… » · « Waaw, dafa tàng. »', '« Fan nga jëm ? » · « Maa ngi dem liggéey. »'],
+  fare: (fare: number) => RIDE.fare(fare),
+  depart: RIDE.depart,
+  request: (stop: string) => `${RIDE.request(stop)} · tak-tak sur la carrosserie`,
+  alight: (stop: string) => `${stop} · ${RIDE.alight()}`,
+  neighbour: RIDE.neighbour(),
   waiting: (what: string, s: number) => s <= 2 ? what : `${what} dans ≈ ${Math.ceil(s)} s`,
 };

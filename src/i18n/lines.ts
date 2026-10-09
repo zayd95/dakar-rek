@@ -194,6 +194,33 @@ export function apprentiLine(destinations: readonly string[], seed: string | num
   const d = pickOf(destinations, seed, 'stop');
   return exchange(['L’apprenti', [{ wo: `${d} !` }, 'Nanu dem !']]);
 }
+/** A car rapide line's calls at its stops: the destinations, « Fan nga dem ? » and « Am na place ! » (plain text). */
+export const rapideCalls = (destinations: readonly string[]): string[] => [...apprentiCalls(destinations), 'Am na place !'];
+
+/** Someone asks, you answer, on one line after « Ton voisin : »: « Na nga def ? » · Toi : « Maa ngi fi rekk. » */
+export const askAndAnswer = (ask: Phrase[], answer: Phrase[]): string => `${utter(ask)} · ${ME} : ${utter(answer)}`;
+
+/**
+ * Riding a car rapide (src/transport): paying the apprentice, asking to get off, alighting, the passenger next to you.
+ * Stop names stay as written (they are places, not Wolof).
+ */
+export const RIDE = {
+  /** L’apprenti : « 150 F, jërëjëf ! » (merci) */
+  fare: (fare: number) => exchange(['L’apprenti', [{ wo: `${price(fare)},` }, 'jërëjëf !']]),
+  /** Last call before the car pulls away (canvas bubble, plain text). */
+  depart: 'Nanu dem !',
+  /** Toi : « Apprenti, dinaa wàcc ci Marché ! » (je descends à Marché) */
+  request: (stop: string) => exchange([ME, [{ wo: `Apprenti, dinaa wàcc ci ${stop} !`, fr: `je descends à ${stop}` }]]),
+  /** L’apprenti : « Ba beneen yoon ! » (à la prochaine) */
+  alight: () => exchange(['L’apprenti', ['Ba beneen yoon !']]),
+  /** What the passenger next to you says, and your answer. */
+  neighbour: (): string[] => [
+    askAndAnswer(['Na nga def ?'], ['Maa ngi fi rekk,', 'jërëjëf.']),
+    askAndAnswer(['Salaam aleekum !'], ['Maleekum salaam !']),
+    askAndAnswer(['Dafa tàng !'], ['Dëgg la.']),
+    askAndAnswer(['Fan nga dem ?'], [{ wo: 'Maa ngi dem liggéey.', fr: 'je vais au travail' }]),
+  ],
+};
 
 // ------------------------------------------------------------------ chat
 

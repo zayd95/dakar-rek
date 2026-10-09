@@ -1,6 +1,6 @@
 // Wolof in game (src/i18n): greetings by the hour, names, goodbyes, haggling, glosses on/off, the cast, the chat's
 // quick phrases. Checks + captures in docs/screenshots/wolof (desktop 1280×720 and phone 390×844).
-// Usage: node scripts/check-wolof.mjs [baseUrl=http://localhost:4247/] [outDir=docs/screenshots/wolof] [--chat=http://127.0.0.1:8797/]
+// Usage: node scripts/check-wolof.mjs [baseUrl=http://localhost:4247/] [outDir=docs/screenshots/wolof] [--only=solo|chat] [--view=desktop|phone] [--chat=http://127.0.0.1:8797/]
 //   baseUrl: a solo build served by `npx vite preview --port 4247`; --chat: an online build served by `wrangler dev --local`.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -17,7 +17,9 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
 });
-const VIEWS = [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]];
+const ALL_VIEWS = [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]];
+const view = args.find(a => a.startsWith('--view='))?.slice(7) ?? 'all';       // all | desktop | phone (solo part; the chat needs both)
+const VIEWS = view === 'all' || only === 'chat' ? ALL_VIEWS : ALL_VIEWS.filter(([l]) => l === view);
 const d = (page, fn, arg) => page.evaluate(fn, arg);
 /** The toast's text, no-break spaces read as spaces (the lines use French typography: « Na nga def ? »). */
 const toast = page => d(page, () => (document.getElementById('toast')?.textContent ?? '').replace(/[\u00a0\u202f]/g, ' '));
