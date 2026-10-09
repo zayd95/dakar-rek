@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { buildFurniture, TIERS, type FurnitureId, type Tier } from '../world/furnitureKit';
+import { buildFurniture, furnitureSeats, TIERS, type FurnitureId, type Tier } from '../world/furnitureKit';
+import { Humanoid, humanoidReady, randomLook } from '../actors/humanoid';
+import { seatPose, sitOriginY, SIT_HIPS } from '../interact/seats';
 
 /**
  * Debug showrooms for the asset captures (scripts/shots-assets.mjs): furniture lined up by tier against a wall, and
@@ -52,4 +54,32 @@ export function furnishedRooms(x0: number, z0: number, night: boolean, tiers: re
     rooms.push({ tier: t, cx, cz });
   });
   return { group: g, rooms };
+}
+
+/**
+ * Pose scenes for the captures: furniture with people on its seats. `before` reproduces the old logic (every seat
+ * held the chair Sit clip 0.48 m below the surface), otherwise each seat takes its own pose and height
+ * (seatPose / sitOriginY: Lie on beds, SitFloor on mats, rugs and floor cushions).
+ */
+export function poseScene(kind: 'bed' | 'mat' | 'attaya', x0: number, z0: number, before: boolean, rand: () => number) {
+  const g = new THREE.Group(); g.name = 'kit_showroom';
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), floorMat(0xd8d2c6)); floor.rotation.x = -Math.PI / 2; floor.position.set(x0, 0, z0); floor.receiveShadow = true; g.add(floor);
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(12, 3, 0.1), wallMat()); wall.position.set(x0, 1.5, z0 - 1.6); g.add(wall);
+  const ids: FurnitureId[] = kind === 'bed' ? ['bed:basic', 'bed:better', 'bed:premium'] : kind === 'mat' ? ['rug:basic', 'rug:better', 'rug:premium'] : ['attaya:basic', 'attaya:premium'];
+  const people: Humanoid[] = [];
+  let x = x0 - (kind === 'attaya' ? 1.1 : 2.4);
+  for (const id of ids) {
+    const f = buildFurniture(id);
+    const zc = kind === 'bed' ? z0 - 1.55 + f.footprint.d / 2 : z0;
+    f.group.position.set(x, 0, zc); g.add(f.group); g.updateMatrixWorld(true);
+    for (const s of furnitureSeats(f.group, f.spec, 'showroom', id)) {
+      if (!humanoidReady()) break;
+      const h = new Humanoid(randomLook(rand));
+      h.hold = before ? 'Sit' : seatPose(s);
+      h.group.position.set(s.x, before ? s.top - SIT_HIPS : sitOriginY(s), s.z); h.group.rotation.y = s.yaw;
+      g.add(h.group); people.push(h);
+    }
+    x += kind === 'attaya' ? 2.2 : 2.4;
+  }
+  return { group: g, people };
 }

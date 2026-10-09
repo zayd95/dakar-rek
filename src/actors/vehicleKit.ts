@@ -69,6 +69,11 @@ export interface VehicleSpec {
   lights: { head: V3[]; tail: V3[] };
   /** Drive mode: steering wheel / handlebar centre and the two hand grips (local). */
   controls: { steering: V3; grips: [V3, V3] };
+  /**
+   * animateVehicle: wheel radius (spin = distance / radius), steering limit (rad), largest lean in turns (rad, motos
+   * only) and, for motos, the steering axis (pivot on the head tube, axis along the fork) the front end turns about.
+   */
+  drive: { wheelRadius: number; steerMax: number; lean: number; pivot?: V3; axis?: V3 };
   /** Car rapide: where the apprentice rides (on the step) and stands (parked, calling passengers). */
   step?: { riding: { x: number; y: number; z: number; yaw: number }; standing: { x: number; y: number; z: number; yaw: number } };
   /** Open load area (pickup bed, truck body): centre on the floor and size. */
@@ -115,6 +120,7 @@ export function vehicleMaterials() {
   if (mats) return mats;
   const { map, glow } = paintAtlas(AW, AH, 2, drawVehicleAtlas);
   const body = new THREE.MeshLambertMaterial({ vertexColors: true, map, emissive: glow ? 0xffffff : 0x000000, emissiveMap: glow, emissiveIntensity: 0 });
+  installWheelShader(body, animUniforms());                                       // the shared material stays at rest
   const glass = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.58, side: THREE.DoubleSide, depthWrite: false });
   const beam = new THREE.MeshBasicMaterial({ map: beamTexture(), color: 0xffe3b0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
   beam.visible = false;
@@ -122,6 +128,71 @@ export function vehicleMaterials() {
   for (const m of Object.values(mats)) m.userData.shared = true;
   return mats;
 }
+// ------------------------------------------------------------------------------------------------------------ animation
+type AnimUniforms = { uSpin: { value: number }; uSteer: { value: number }; uPivot: { value: THREE.Vector3 }; uAxis: { value: THREE.Vector3 } };
+const animUniforms = (): AnimUniforms => ({ uSpin: { value: 0 }, uSteer: { value: 0 }, uPivot: { value: new THREE.Vector3() }, uAxis: { value: new THREE.Vector3(0, 1, 0) } });
+/** Spins tagged wheels about their axle (x), turns steered ones about the vertical, turns a moto's front end about its fork. */
+const WHEEL_GLSL = `
+attribute vec4 wheel;
+uniform float uSpin; uniform float uSteer; uniform vec3 uPivot; uniform vec3 uAxis;
+vec3 kitRot(vec3 v, vec3 a, float t) { float c = cos(t), s = sin(t); return v * c + cross(a, v) * s + a * dot(a, v) * (1.0 - c); }
+vec3 kitAnim(vec3 v, float isPos) {
+  float m = wheel.w;
+  if (m < 0.5) return v;
+  vec3 c = wheel.xyz * isPos;
+  if (m < 3.5) v = kitRot(v - c, vec3(1.0, 0.0, 0.0), uSpin) + c;
+  if (m > 1.5 && m < 2.5) v = kitRot(v - c, vec3(0.0, 1.0, 0.0), uSteer) + c;
+  if (m > 2.5) { vec3 p = uPivot * isPos; v = kitRot(v - p, uAxis, uSteer) + p; }
+  return v;
+}
+`;
+function installWheelShader(m: THREE.MeshLambertMaterial, u: AnimUniforms) {
+  m.onBeforeCompile = shader => {
+    Object.assign(shader.uniforms, u);
+    shader.vertexShader = WHEEL_GLSL + shader.vertexShader
+      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n  objectNormal = kitAnim(objectNormal, 0.0);')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed = kitAnim(transformed, 1.0);');
+  };
+  m.customProgramCacheKey = () => 'kitVehicleWheels';
+  m.userData.anim = u;
+}
+interface AnimState { spin: number; lean: number; lod: THREE.LOD | null; body: THREE.Mesh | null; u: AnimUniforms | null }
+/**
+ * Animates a kit vehicle for one frame: wheels spin with `speed` (m/s, negative = reversing), front wheels — or a
+ * motorbike's whole front end — turn with `steer` (rad, + = to the left, clamped to spec.drive.steerMax), and motos
+ * lean into turns (up to spec.drive.lean). Cheap: only the near model is animated; the first call gives that vehicle
+ * its own copy of the body material (same program and textures, same draw calls) to carry its wheel angles.
+ */
+export function animateVehicle(group: THREE.Object3D, speed: number, steer: number, dt: number) {
+  const spec = group.userData.vehicleSpec as VehicleSpec | undefined; if (!spec) return;
+  let st = group.userData.kitAnim as AnimState | undefined;
+  if (!st) {
+    const lod = (group.children.find(c => (c as THREE.LOD).isLOD) as THREE.LOD | undefined) ?? null;
+    const near = lod ? lod.levels[0].object : group.children.find(c => c.name === 'near') ?? null;
+    st = { spin: 0, lean: 0, lod, body: (near?.getObjectByName('body') as THREE.Mesh | undefined) ?? null, u: null };
+    group.userData.kitAnim = st;
+  }
+  const d = spec.drive, s = THREE.MathUtils.clamp(steer, -d.steerMax, d.steerMax);
+  if (d.lean > 0) {                                                              // lean into the turn, about the ground line
+    const target = THREE.MathUtils.clamp(-s * Math.abs(speed) * 0.09, -d.lean, d.lean);
+    st.lean += (target - st.lean) * Math.min(1, dt * 5);
+    (st.lod ?? group).rotation.z = st.lean;
+  }
+  if (!st.body || (st.lod && st.lod.getCurrentLevel() !== 0)) return;            // far model: nothing to turn
+  if (!st.u) {
+    const base = vehicleMaterials().body, own = base.clone();
+    const u = animUniforms();
+    installWheelShader(own, u);
+    own.userData.shared = true; own.userData.kitAnimClone = true;
+    own.onBeforeRender = () => { own.emissiveIntensity = base.emissiveIntensity; };   // lamps follow the night
+    if (d.pivot) u.uPivot.value.set(...d.pivot);
+    if (d.axis) u.uAxis.value.set(...d.axis);
+    st.body.material = own; st.u = u;
+  }
+  st.spin = (st.spin + (speed * dt) / d.wheelRadius) % (Math.PI * 2);
+  st.u.uSpin.value = st.spin; st.u.uSteer.value = s;
+}
+
 /** Night factor 0 (day) … 1 (night): lamps glow and headlight beams light the road. Called every frame by the kit module. */
 export function setVehicleNight(f: number) {
   const m = vehicleMaterials();
@@ -158,9 +229,13 @@ function person(b: KitBuilder, x: number, top: number, z: number, lk: Look, grip
   else b.box(0.2, 0.07, 0.22, x, top + 0.77, z - 0.015, lk.hat ?? 0x161210);
   if (grips) [-1, 1].forEach((s, k) => b.beam([x + s * 0.18, top + 0.46, z - 0.02], grips[k], 0.075, 0.075, lk.shirt));
 }
-function tyre(b: KitBuilder, w: { x: number; y: number; z: number; r: number; width: number }, rim: Rect, seg = 12) {
+function tyre(b: KitBuilder, w: { x: number; y: number; z: number; r: number; width: number; steer?: boolean }, rim: Rect, seg = 12) {
+  b.tag = [w.x, w.y, w.z, w.steer ? ANIM.spinSteer : ANIM.spin];               // spins (and steers) in the vertex shader
   b.cyl('x', w.r, w.r, w.width, w.x, w.y, w.z, TYRE, seg, w.x > 0 ? { pos: rim, neg: true, capPaint: TYRE } : { neg: rim, pos: true, capPaint: TYRE });
+  b.tag = null;
 }
+/** Vertex animation modes (KitBuilder.tag w): wheels spin, steered wheels also turn, moto front end turns about the fork. */
+const ANIM = { none: 0, spin: 1, spinSteer: 2, spinFork: 3, fork: 4 } as const;
 /** Points of a side outline from y0 to y1 between z0 and z1 with wheel arches cut into its bottom edge. */
 function outline(z0: number, z1: number, y0: number, y1: number, arches: { z: number; r: number; y: number }[], top?: [number, number, number?][]): [number, number, number?][] {
   const pts: [number, number, number?][] = [[z0, y0, T.SILL]];
@@ -204,6 +279,7 @@ interface Wheel { x: number; y: number; z: number; r: number; width: number; ste
 interface Layout {
   L: number; W: number; H: number; wheelbase: number; wheels: Wheel[]; seats: VehicleSeat[]; doors: VehicleDoor[];
   head: V3[]; tail: V3[]; controls: VehicleSpec['controls']; step?: VehicleSpec['step']; cargo?: VehicleSpec['cargo'];
+  drive?: Partial<VehicleSpec['drive']>;
 }
 interface Model {
   key: string; variant: number; colors: { body: number; accent: number }; layout: Layout;
@@ -755,16 +831,19 @@ const pickMoto: Pick = (r, o) => {
     doors: [{ id: 'left', side: 'left', x: 0.35, y: 0, z: -0.3, width: 0.8, height: 1.2, board: [0.7, 0, -0.3], seats: ['driver', 'pillion'], open: true }],
     head: [[0, scooter ? 1.0 : 0.98, 0.56]], tail: [[0, seatTop - 0.04, -0.9]],
     controls: { steering: [0, hbY, hbZ], grips: [[0.36, hbY, hbZ], [-0.36, hbY, hbZ]] },
+    drive: { steerMax: 0.6, lean: 0.45, pivot: [0, headY, headZ], axis: (() => { const a = new THREE.Vector3(0, headY - 0.02 - wr, headZ - 0.06 - fz).normalize(); return [a.x, a.y, a.z] as V3; })() },
   };
   const rider = o.driver !== false, pillion = rider && o.passengers !== false && h2(p, ci) < 0.35, helmet = h2(ci, p + 1) < 0.5 ? HELMET[Math.floor(h2(p, 3) * HELMET.length)] : null;
   const near = (b: KitBuilder) => {
-    for (const w of wheels) b.cyl('x', w.r, w.r, w.width, 0, w.y, w.z, TYRE, 12, { pos: UV.rimMoto, neg: UV.rimMoto });
+    for (const w of wheels) { b.tag = [0, w.y, w.z, w.steer ? ANIM.spinFork : ANIM.spin]; b.cyl('x', w.r, w.r, w.width, 0, w.y, w.z, TYRE, 12, { pos: UV.rimMoto, neg: UV.rimMoto }); }
+    b.tag = [0, 0, 0, ANIM.fork];                                                   // fork, handlebar, lamp and mudguard turn with the steering
     const head: V3 = [0, headY, headZ];
     for (const s of [1, -1]) b.beam([s * 0.075, wr, fz], [s * 0.075, head[1] - 0.02, head[2] - 0.06], 0.035, 0.035, CHROME);
     b.beam([-0.36, head[1] + 0.12, head[2] - 0.1], [0.36, head[1] + 0.12, head[2] - 0.1], 0.03, 0.03, DARK);
     for (const s of [1, -1]) { b.box(0.08, 0.04, 0.04, s * 0.36, head[1] + 0.1, head[2] - 0.1, 0x111111); b.beam([s * 0.22, head[1] + 0.12, head[2] - 0.12], [s * 0.28, head[1] + 0.38, head[2] - 0.14], 0.015, 0.015, DARK); b.box(0.1, 0.07, 0.02, s * 0.29, head[1] + 0.38, head[2] - 0.14, DARK); }
     b.cyl('z', 0.085, 0.1, 0.12, 0, head[1], head[2] + 0.06, body, 10, { pos: UV.head, neg: true });
     b.beam([0, wr + 0.24, fz + 0.22], [0, wr + 0.32, fz - 0.02], 0.12, 0.02, body); b.beam([0, wr + 0.32, fz - 0.02], [0, wr + 0.26, fz - 0.22], 0.12, 0.02, body);
+    b.tag = null;
     if (scooter) {
       b.prism([[0.25, 0.32, T.UNDER], [0.42, 0.34, T.FRONT], [0.5, 0.95, T.TOP], [0.42, 1.0, T.TOP], [0.36, 0.42, T.REAR]], { hw: [0.3, 0.2, 1.0, 0.16], paint: body });
       b.box(0.3, 0.06, 0.62, 0, 0.3, 0.0, 0x2a2a2a);
@@ -825,6 +904,7 @@ function geometryOf(key: string, build: (b: KitBuilder, g: KitBuilder) => void) 
   let hit = geoCache.get(key);
   if (!hit) {
     const b = plainB(), g = plainB();
+    b.withTags = true;                                                              // the body material reads `wheel`
     build(b, g);
     hit = { body: b.build(), glass: g.triangles ? g.build() : null };
     geoCache.set(key, hit);
@@ -884,6 +964,7 @@ export function buildVehicle(kind: VehicleKind, opts: VehicleOpts = {}): Vehicle
     length: L.L, width: L.W, height: L.H, wheelbase: L.wheelbase, wheels: L.wheels.map(w => ({ ...w })),
     seats: L.seats.map(s => ({ ...s })), doors: L.doors.map(d => ({ ...d, seats: [...d.seats] })),
     cameras: cameras(L), lights: { head: L.head, tail: L.tail }, controls: L.controls, speed: m.speed, lodDistance,
+    drive: { wheelRadius: L.wheels[0].r, steerMax: 0.6, lean: 0, ...L.drive },
     budget: {
       near: { tris: near ? triCount(near.body) + triCount(near.glass) : 0, drawCalls: near ? 1 + (near.glass ? 1 : 0) : 0, nightDrawCalls: near ? 2 + (near.glass ? 1 : 0) : 0 },
       far: { tris: far ? triCount(far.body) : 0, drawCalls: far ? 1 : 0 },

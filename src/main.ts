@@ -40,7 +40,7 @@ import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { Interactions } from './interact/system';
-import { Seats, sitOriginY, type Seat } from './interact/seats';
+import { Seats, sitOriginY, seatPose, type Seat } from './interact/seats';
 import { LegacySource } from './interact/legacy';
 import type { Target } from './interact/types';
 import { ActivityRunner } from './activity/runner';
@@ -282,7 +282,7 @@ const gestures = new GesturePlayer(document.getElementById('ui')!);
 const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
   sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
-  clip: c => { if (playerBody) playerBody.hold = c ?? (seated ? 'Sit' : null); },
+  clip: c => { if (playerBody) playerBody.hold = seated && (c === 'Sit' || !c) ? seatPose(seated) : c ?? null; },
   busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
   progress: (on, pct = 0, label = '') => hud.progress(on, pct, label),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
@@ -328,13 +328,13 @@ function sitOn(seat: Seat, force = false) {
   if ((!force && mode !== 'play') || seated || !seats.occupy(seat.id, 'player')) return;
   seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0;
   pos.set(seat.x, sitOriginY(seat) + (inside ? 0 : 0), seat.z); facing = seat.yaw;
-  if (playerBody) playerBody.hold = 'Sit';
+  if (playerBody) playerBody.hold = seatPose(seat);
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
 function standUp(inPlace = false) {
   if (!seated) return;
   const s = seated; seats.release(s.id, 'player'); seated = null;
-  if (playerBody && playerBody.hold === 'Sit') playerBody.hold = null;
+  if (playerBody && playerBody.hold === seatPose(s)) playerBody.hold = null;
   if (inPlace || !world) return;
   let nx = s.x + Math.sin(s.yaw) * 0.7, nz = s.z + Math.cos(s.yaw) * 0.7;
   [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
@@ -780,7 +780,7 @@ function frame(now: number) {
     const m = input.move();
     speed = 0;
     if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp();
-    else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = 'Sit'; }
+    else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = seatPose(seated); }
     if (mode !== 'menu') state.tick(dt * 1000);
   } else if (mode === 'play') {
     const m = input.move();

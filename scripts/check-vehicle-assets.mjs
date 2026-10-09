@@ -45,12 +45,12 @@ try {
           if (!useFixture) {
             // Vehicle kit: every kit vehicle (station and traffic) is ≤ 3 meshes on 3 shared materials, with a spec.
             const kits = []; d.three.scene.traverse(o => { if (/^kit_/.test(o.name) && o.userData.vehicleSpec) kits.push(o); });
-            const mats = new Set(); let worst = 0, unshared = 0;
+            const mats = new Set(); let worst = 0, unshared = 0, clones = 0;   // animation clones (animateVehicle) share program and textures
             for (const k of kits) {
               const lod = k.children.find(c => c.isLOD);
               const near = []; (lod ? lod.levels[0].object : k).traverse(m => { if (m.isMesh) near.push(m); });
               worst = Math.max(worst, near.length);
-              k.traverse(m => { if (m.isMesh && m.name !== 'apprenti') { mats.add(m.material); if (!m.userData.shared && m.geometry?.attributes?.color) unshared++; } });
+              k.traverse(m => { if (m.isMesh && m.name !== 'apprenti') { if (!m.material.userData.kitAnimClone) mats.add(m.material); else clones++; if (!m.userData.shared && m.geometry?.attributes?.color) unshared++; } });
             }
             const spec = root?.userData.vehicleSpec;
             return { hub: d.pos().hub, found: !!root, kits: kits.length, worst, kitMaterials: [...mats].filter(m => m.vertexColors).length, unshared,

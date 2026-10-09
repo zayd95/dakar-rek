@@ -1,11 +1,13 @@
 import type { Target, TargetSource } from './types';
+import type { Clip } from '../actors/humanoid';
 
 /**
  * One sit system for every seat in Dakar: benches, chairs, stools, sofas, beds, prayer rows, vehicle seats.
  * Builders and venues register seats; the player (and later NPCs) occupy them. A seat is a target with « S'asseoir »
  * while it is free and the player is near it.
  */
-export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'vehicle';
+/** 'mat' and 'floor' are sat on cross-legged (a mat, rug or floor cushion); 'bed' is lain on. */
+export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'floor' | 'vehicle';
 
 export interface Seat {
   id: string;
@@ -30,8 +32,15 @@ export interface Seat {
 
 /** Height of the Sit clip's hips above the character origin (actors/humanoid.ts, corrected Sit). */
 export const SIT_HIPS = 0.48;
-/** Character origin height for someone sitting on this seat. */
-export const sitOriginY = (s: Pick<Seat, 'top'>) => s.top - SIT_HIPS;
+/**
+ * The body pose for a seat (held through Humanoid.hold): lying on a bed, cross-legged on a mat / rug / floor cushion,
+ * sitting on everything else. The procedural poses (actors/humanoid.ts POSES) put their origin ON the surface.
+ */
+export function seatPose(s: { kind?: string }): Extract<Clip, 'Sit' | 'Lie' | 'SitFloor'> {
+  return s.kind === 'bed' ? 'Lie' : s.kind === 'mat' || s.kind === 'floor' ? 'SitFloor' : 'Sit';
+}
+/** Character origin height for someone on this seat: below a chair's surface by the Sit hips, on a bed or mat's surface. */
+export const sitOriginY = (s: { top: number; kind?: string }) => s.top - (seatPose(s) === 'Sit' ? SIT_HIPS : 0);
 
 const REACH = 1.3;
 
@@ -81,13 +90,13 @@ export class Seats implements TargetSource {
       if (s.occupant || s.kind === 'vehicle' || Math.abs(s.x - x) > REACH || Math.abs(s.z - z) > REACH) continue;
       out.push({
         id: 'seat:' + s.id, name: SEAT_NAME[s.kind], kind: 'seat', space, x: s.x, z: s.z, y: s.top + 0.5, radius: REACH, bias: 1,
-        affordances: () => [{ id: 'sit', verb: s.kind === 'bed' ? 'sleep' : 'sit', label: s.kind === 'bed' ? 'S’allonger' : 'S’asseoir', icon: s.kind === 'bed' ? '🛏️' : '🪑', run: () => this.onSit(s) }],
+        affordances: () => [{ id: 'sit', verb: s.kind === 'bed' ? 'sleep' : 'sit', label: s.kind === 'bed' ? 'S’allonger' : 'S’asseoir', icon: s.kind === 'bed' ? '🛏️' : s.kind === 'mat' || s.kind === 'floor' ? '🧘' : '🪑', run: () => this.onSit(s) }],
       });
     }
   }
 }
 
-const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', vehicle: 'Siège' };
+const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', floor: 'Coussin', vehicle: 'Siège' };
 
 /**
  * Seats along a bench of length `len` centred on (x, z), facing `yaw` (the bench back is behind the sitters).

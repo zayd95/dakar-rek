@@ -11,7 +11,9 @@ import type { Outfit } from './character';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk';
+export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | PoseClip;
+/** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, cross-legged, kneeling. */
+export type PoseClip = 'Lie' | 'SitFloor' | 'SitKneel';
 export type Style = 'boubou' | 'tee' | 'dress';
 export type Pattern = 'uni' | 'wax' | 'bazin' | 'rayure';
 export interface PersonLook {
@@ -40,7 +42,7 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
     fixSitKnees(gltf.animations);
-    template = { scene: gltf.scene, clips: gltf.animations };
+    template = { scene: gltf.scene, clips: [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)] };
   } catch { /* box characters stay in use */ }
 }
 
@@ -60,6 +62,94 @@ export function fixSitKnees(clips: THREE.AnimationClip[]) {
     if (!backward) continue;
     for (let i = 0; i < v.length; i += 4) { v[i] = -v[i]; v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
   }
+}
+
+// ---------------------------------------------------------------- poses built in code (home and social life)
+/**
+ * Character space: origin on the surface under the hips, +z forward (toes), +x the character's left, +y up.
+ * Each pose gives the hips' height and orientation, and the direction each bone points to (its +Y axis, head to
+ * tail); bones without a direction keep their rest orientation relative to their parent. Heights are chosen so
+ * the body rests ON the surface the origin stands on: a mattress (Lie, head on the pillow), a mat, rug or floor
+ * cushion (SitFloor, SitKneel). Seats map to them by kind (src/interact/seats.ts: seatPose).
+ */
+interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number]; aim: Record<string, [number, number, number]> }
+export const POSES: Record<PoseClip, PoseDef> = {
+  // on the back, head towards −z on the pillow, one knee raised, hands resting on the belly
+  Lie: {
+    hipsY: 0.13, hips: [-Math.PI / 2, 0, 0],
+    aim: {
+      spine: [0, 0, -1], chest: [0, 0.08, -1], neck: [0, 0.35, -1], head: [0, 0.4, -1],
+      upper_armL: [0.26, -0.04, 1], forearmL: [-0.8, 0.45, 0.4], handL: [-0.6, 0.2, 0.75],
+      upper_armR: [-0.26, -0.04, 1], forearmR: [0.8, 0.45, 0.4], handR: [0.6, 0.2, 0.75],
+      thighL: [0.12, 0.3, 1], shinL: [0.04, -0.33, 1], footL: [0.12, 0.95, 0.28],
+      thighR: [-0.08, 0, 1], shinR: [-0.03, 0, 1], footR: [-0.15, 0.95, 0.25],
+    },
+  },
+  // cross-legged on a mat, rug or cushion (attaya circles, floor seats), hands on the knees
+  SitFloor: {
+    hipsY: 0.14, hips: [0, 0, 0],
+    aim: {
+      spine: [0, 1, 0.1], chest: [0, 1, 0.12], neck: [0, 1, 0.06], head: [0, 1, 0],
+      thighL: [0.72, -0.05, 0.69], shinL: [-0.92, -0.06, 0.33], footL: [-0.75, -0.25, 0.3],
+      thighR: [-0.72, -0.05, 0.69], shinR: [0.92, 0.04, 0.2], footR: [0.75, -0.3, 0.2],
+      upper_armL: [0.27, -0.88, 0.42], forearmL: [0.39, -0.83, 0.39], handL: [0.2, -0.5, 0.85],
+      upper_armR: [-0.27, -0.88, 0.42], forearmR: [-0.39, -0.83, 0.39], handR: [-0.2, -0.5, 0.85],
+    },
+  },
+  // kneeling, sitting back on the heels, hands on the thighs
+  SitKneel: {
+    hipsY: 0.31, hips: [0, 0, 0],
+    aim: {
+      spine: [0, 1, 0.05], chest: [0, 1, 0.05], neck: [0, 1, 0.03], head: [0, 1, 0],
+      thighL: [0.05, -0.5, 0.87], shinL: [0, -0.03, -1], footL: [0.05, -0.15, -1],
+      thighR: [-0.05, -0.5, 0.87], shinR: [0, -0.03, -1], footR: [-0.05, -0.15, -1],
+      upper_armL: [0.12, -0.9, 0.42], forearmL: [-0.33, -0.88, 0.33], handL: [-0.1, -0.6, 0.8],
+      upper_armR: [-0.12, -0.9, 0.42], forearmR: [0.33, -0.88, 0.33], handR: [0.1, -0.6, 0.8],
+    },
+  },
+};
+
+/**
+ * One-frame clips for POSES, solved from the rest pose of `scene` (the rig as GLTFLoader gives it). Every track of
+ * `like` (an existing clip, so cross-fades cover every bone) gets a value: the posed rotation where the pose aims the
+ * bone, the rest value otherwise; the hips also get their position.
+ */
+export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip[]): THREE.AnimationClip[] {
+  const like = clips.find(c => c.name === 'Idle') ?? clips[0];
+  const rootBone = scene.getObjectByName('root'), hipsBone = scene.getObjectByName('hips');
+  if (!like || !rootBone || !hipsBone) return [];
+  scene.updateMatrixWorld(true);
+  const sceneInv = new THREE.Matrix4().copy(scene.matrixWorld).invert();
+  const inScene = (o: THREE.Object3D) => { const m = new THREE.Matrix4().multiplyMatrices(sceneInv, o.matrixWorld), q = new THREE.Quaternion(); m.decompose(new THREE.Vector3(), q, new THREE.Vector3()); return q; };
+  const Y = new THREE.Vector3(0, 1, 0);
+  return (Object.keys(POSES) as PoseClip[]).map(name => {
+    const def = POSES[name];
+    const world = new Map<THREE.Object3D, THREE.Quaternion>(), local = new Map<THREE.Object3D, THREE.Quaternion>();
+    const parentQ = inScene(hipsBone.parent!);
+    const hq = new THREE.Quaternion().setFromEuler(new THREE.Euler(...def.hips, 'XYZ'));
+    world.set(hipsBone, hq); local.set(hipsBone, parentQ.clone().invert().multiply(hq));
+    const visit = (o: THREE.Object3D) => {
+      for (const c of o.children) {
+        const pw = world.get(o)!;
+        let w = pw.clone().multiply(c.quaternion);
+        const aim = def.aim[c.name];
+        if (aim) w = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(w), new THREE.Vector3(...aim).normalize()).multiply(w);
+        world.set(c, w); local.set(c, pw.clone().invert().multiply(w));
+        visit(c);
+      }
+    };
+    visit(hipsBone);
+    // hips position: in its parent's space, at (0, hipsY, hipsZ) in character space
+    const hp = new THREE.Vector3(0, def.hipsY, def.hipsZ ?? 0).applyMatrix4(scene.matrixWorld);
+    hipsBone.parent!.worldToLocal(hp);
+    const tracks = like.tracks.map(t => {
+      const [node, prop] = [t.name.slice(0, t.name.lastIndexOf('.')), t.name.slice(t.name.lastIndexOf('.') + 1)];
+      const o = scene.getObjectByName(node);
+      if (prop === 'quaternion') return new THREE.QuaternionKeyframeTrack(t.name, [0], (o && local.get(o) ? local.get(o)! : o?.quaternion ?? new THREE.Quaternion()).toArray());
+      return new THREE.VectorKeyframeTrack(t.name, [0], (o === hipsBone ? hp : o?.position ?? new THREE.Vector3()).toArray());
+    });
+    return new THREE.AnimationClip(name, 1, tracks);
+  });
 }
 
 // ---------------------------------------------------------------- fabric textures (generic prints, own designs)
