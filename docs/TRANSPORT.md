@@ -98,12 +98,12 @@ away while the player is still on the way to the door, they get in at once.
 
 ## Performance
 
-- One merged mesh + one sign mesh per hub for the stops; two car rapides per line (one on Low quality), each the shared
-  vehicle geometry (5 draw calls) + its apprenti; people at stops drawn and animated only within 70 m of the camera
-  (one waiting person per stop on Low).
+- One merged mesh + one sign mesh per hub for the stops; two car rapides per line (one on Low quality), each a kit
+  vehicle (1–3 draw calls, LOD; its NPC passengers are part of the same mesh) + its apprenti; people at stops drawn and
+  animated only within 70 m of the camera (one waiting person per stop on Low). The motorbike is one kit vehicle.
 - No per-frame allocations in the vehicle / route / seat updates (preallocated poses, motions and arrival lists).
-- Measured by `scripts/check-transport.mjs` 6 m from a stop with a car standing there: **+16 to +18 draw calls** for the
-  line's cars and stops (Pikine desktop 445 with / 429 without; Plateau phone portrait 308 / 290); the
+- Measured by `scripts/check-transport.mjs` 6 m from a stop with a car standing there: **+15 to +16 draw calls** for the
+  line's cars and stops with the kit (Pikine desktop 411 with / 395 without; Plateau phone portrait 359 / 344); the
   people waiting at the stops are counted in both.
 
 ## Checks
@@ -111,11 +111,18 @@ away while the player is still on the way to the door, they get in at once.
 - `tests/transport.test.ts`: lane path and sampling, timetable (dwell, speeds, monotonic, periodic, next stop / ETA),
   seat transforms, camera anchors and wall pull-in, trip logic (board, ride past, request, alight, slow frames,
   cancel), stop placement and alight points, line vehicle seats and arrivals.
+- `tests/moto.test.ts`: drive model (top speed, coasting, brake then reverse, steering direction, walls and sliding),
+  the Jakarta spec, ownership record round trip and Asset mapping. `tests/transport.test.ts` also covers the kit
+  adapter (seats, door, step, open cabin, `seated` drawn exactly), passenger sets, seat choice and kerb clearing.
 - `scripts/check-transport.mjs` (desktop Pikine, phone portrait Plateau): walk to a stop, wait, board on the only free
-  seat, fare paid once, stick does not stand up, phone and « Arrêter » mid-ride, three views, ride past a stop,
+  seat, fare paid once, stick does not stand up, phone and « Arrêter » mid-ride, four views, ride past a stop,
   request, alight on the pavement, door and hub change right after, hub change mid-ride, reload mid-ride, draw calls.
-  Screenshots in `docs/screenshots/transport/`. Last run (9 Oct): **45/45** (desktop 23, phone 22);
-  `scripts/check-interact.mjs` 34/34 and `scripts/check-city-life.mjs` all pass with the transport module.
+  Screenshots in `docs/screenshots/transport/`.
+- `scripts/check-moto.mjs` (desktop keys, phone joystick; Pikine): dealer catalogue with the price, confirmation with
+  price and wallet, paid once, not twice, get on, ride, steer, stop at a wall (never inside), get off beside it, reload
+  (parked, and mid-ride), another hub and back. Screenshots in `docs/screenshots/moto/`.
+- Last run (9 Oct, after merging the vehicle kit and the venues lane): transport **45/45**, motorbike **32/32**,
+  `scripts/check-interact.mjs` **34/34**, `scripts/check-city-life.mjs` all pass (37).
 
 ## Known gaps
 

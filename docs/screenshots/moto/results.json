@@ -22,7 +22,7 @@
   {
     "name": "desktop: bought once: −75 000 F, one wallet line, the motorbike delivered at the kerb",
     "ok": true,
-    "detail": "{\"w0\":100000,\"w1\":25000,\"lines\":[{\"at\":1791558737026,\"label\":\"Moto Jakarta 125 · Motos · Garage Modou\",\"amount\":-75000}],\"rec\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":103.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791558743970}}"
+    "detail": "{\"w0\":100000,\"w1\":25000,\"lines\":[{\"at\":1791570595117,\"label\":\"Moto Jakarta 125 · Motos · Garage Modou\",\"amount\":-75000}],\"rec\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":103.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791570606498}}"
   },
   {
     "name": "desktop: it cannot be bought twice",
@@ -37,27 +37,27 @@
   {
     "name": "desktop: on the motorbike: driver seat, own interaction space, still in the street for the others",
     "ok": true,
-    "detail": "{\"owned\":true,\"record\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":103.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791558743970},\"here\":true,\"driving\":true,\"x\":103.5,\"z\":-4.3,\"yaw\":1.5707963267948966,\"speed\":0,\"bumps\":0,\"bought\":1,\"dealer\":{\"x\":110.5,\"z\":-5.5,\"delivery\":{\"x\":103.5,\"z\":-4.3,\"yaw\":1.5707963267948966}},\"space\":\"pikine:moto:jakarta\",\"presence\":\"street\",\"camera\":true}"
+    "detail": "{\"owned\":true,\"record\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":103.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791570606498},\"here\":true,\"driving\":true,\"x\":103.5,\"z\":-4.3,\"yaw\":1.5707963267948966,\"speed\":0,\"bumps\":0,\"bought\":1,\"dealer\":{\"x\":110.5,\"z\":-5.5,\"delivery\":{\"x\":103.5,\"z\":-4.3,\"yaw\":1.5707963267948966}},\"space\":\"pikine:moto:jakarta\",\"presence\":\"street\",\"camera\":true}"
   },
   {
     "name": "desktop: the throttle moves the motorbike and the card shows the speed",
-    "ok": false,
-    "detail": "3.8 m, 🏍️Moto Jakarta 125 · 2 km/h↑ accélérer · ↓ freiner · ← → tourner"
+    "ok": true,
+    "detail": "5.4 m, 🏍️Moto Jakarta 125 · 18 km/h↑ accélérer · ↓ freiner · ← → tourner"
   },
   {
     "name": "desktop: steering right turns the motorbike right",
     "ok": true,
-    "detail": "1.57 → 1.26"
+    "detail": "1.57 → 1.22"
   },
   {
     "name": "desktop: riding into the block stops at the wall (never inside it)",
     "ok": true,
-    "detail": "{\"x\":103.5,\"z\":-2.3,\"bumps\":15}"
+    "detail": "{\"x\":103.6250216661873,\"z\":-5.682810714987795,\"bumps\":1}"
   },
   {
     "name": "desktop: « Descendre de la moto »: standing beside it, it stays parked there",
     "ok": true,
-    "detail": "{\"me\":{\"x\":97.5,\"y\":0.1,\"z\":-5.1499999999999995,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Garage Modou\"},\"moto\":{\"x\":97.5,\"z\":-4.3},\"rec\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":97.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791558743970}}"
+    "detail": "{\"me\":{\"x\":97.5,\"y\":0.1,\"z\":-5.1499999999999995,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Garage Modou\"},\"moto\":{\"x\":97.5,\"z\":-4.3},\"rec\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":97.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791570606498}}"
   },
   {
     "name": "desktop: after a reload the motorbike is still parked where it was left",
@@ -67,12 +67,12 @@
   {
     "name": "desktop: reload mid-ride: parked where it was, standing beside it, not riding",
     "ok": true,
-    "detail": "{\"mid\":{\"x\":98.19745444805864,\"z\":-4.300142052784814},\"after\":{\"x\":98.2,\"z\":-4.3},\"me3\":{\"x\":98.19728132583549,\"y\":0.1,\"z\":-5.1501420351546345,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Garage Modou\"}}"
+    "detail": "{\"mid\":{\"x\":98.26865630159625,\"z\":-4.300156554694734},\"after\":{\"x\":98.27,\"z\":-4.3},\"me3\":{\"x\":98.2684831793731,\"y\":0.1,\"z\":-5.150156537064555,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Modou · garagiste\"}}"
   },
   {
     "name": "desktop: in another hub it is not there; back in Pikine it waits where it was",
     "ok": true,
-    "detail": "{\"away\":false,\"back\":{\"x\":98.2,\"z\":-4.3}}"
+    "detail": "{\"away\":false,\"back\":{\"x\":98.27,\"z\":-4.3}}"
   },
   {
     "name": "desktop: no page errors",
@@ -102,7 +102,7 @@
   {
     "name": "phone: bought once: −75 000 F, one wallet line, the motorbike delivered at the kerb",
     "ok": true,
-    "detail": "{\"w0\":100000,\"w1\":25000,\"lines\":[{\"at\":1791558930192,\"label\":\"Moto Jakarta 125 · Motos · Garage Modou\",\"amount\":-75000}],\"rec\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":103.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791558934027}}"
+    "detail": "{\"w0\":100000,\"w1\":25000,\"lines\":[{\"at\":1791570706521,\"label\":\"Moto Jakarta 125 · Motos · Garage Modou\",\"amount\":-75000}],\"rec\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":103.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791570712673}}"
   },
   {
     "name": "phone: it cannot be bought twice",
@@ -117,12 +117,12 @@
   {
     "name": "phone: on the motorbike: driver seat, own interaction space, still in the street for the others",
     "ok": true,
-    "detail": "{\"owned\":true,\"record\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":103.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791558934027},\"here\":true,\"driving\":true,\"x\":103.5,\"z\":-4.3,\"yaw\":1.5707963267948966,\"speed\":0,\"bumps\":0,\"bought\":1,\"dealer\":{\"x\":110.5,\"z\":-5.5,\"delivery\":{\"x\":103.5,\"z\":-4.3,\"yaw\":1.5707963267948966}},\"space\":\"pikine:moto:jakarta\",\"presence\":\"street\",\"camera\":true}"
+    "detail": "{\"owned\":true,\"record\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":103.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791570712673},\"here\":true,\"driving\":true,\"x\":103.5,\"z\":-4.3,\"yaw\":1.5707963267948966,\"speed\":0,\"bumps\":0,\"bought\":1,\"dealer\":{\"x\":110.5,\"z\":-5.5,\"delivery\":{\"x\":103.5,\"z\":-4.3,\"yaw\":1.5707963267948966}},\"space\":\"pikine:moto:jakarta\",\"presence\":\"street\",\"camera\":true}"
   },
   {
     "name": "phone: the throttle moves the motorbike and the card shows the speed",
-    "ok": false,
-    "detail": "3.8 m, 🏍️Moto Jakarta 125 · 2 km/h↑ accélérer · ↓ freiner · ← → tourner"
+    "ok": true,
+    "detail": "5.4 m, 🏍️Moto Jakarta 125 · 19 km/h↑ accélérer · ↓ freiner · ← → tourner"
   },
   {
     "name": "phone: steering right turns the motorbike right",
@@ -132,12 +132,12 @@
   {
     "name": "phone: riding into the block stops at the wall (never inside it)",
     "ok": true,
-    "detail": "{\"x\":103.51020355812977,\"z\":-3.095918849753838,\"bumps\":15}"
+    "detail": "{\"x\":103.56692649741852,\"z\":-5.684161776775532,\"bumps\":2}"
   },
   {
     "name": "phone: « Descendre de la moto »: standing beside it, it stays parked there",
     "ok": true,
-    "detail": "{\"me\":{\"x\":97.5,\"y\":0.1,\"z\":-5.1499999999999995,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Garage Modou\"},\"moto\":{\"x\":97.5,\"z\":-4.3},\"rec\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":97.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791558934027}}"
+    "detail": "{\"me\":{\"x\":97.5,\"y\":0.1,\"z\":-5.1499999999999995,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Garage Modou\"},\"moto\":{\"x\":97.5,\"z\":-4.3},\"rec\":{\"id\":\"moto_jakarta\",\"kind\":\"moto\",\"seed\":8,\"hub\":\"pikine\",\"x\":97.5,\"z\":-4.3,\"yaw\":1.571,\"price\":75000,\"at\":1791570712673}}"
   },
   {
     "name": "phone: after a reload the motorbike is still parked where it was left",
@@ -147,12 +147,12 @@
   {
     "name": "phone: reload mid-ride: parked where it was, standing beside it, not riding",
     "ok": true,
-    "detail": "{\"mid\":{\"x\":98.19745444805864,\"z\":-4.300142052784814},\"after\":{\"x\":98.2,\"z\":-4.3},\"me3\":{\"x\":98.19728132583549,\"y\":0.1,\"z\":-5.1501420351546345,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Garage Modou\"}}"
+    "detail": "{\"mid\":{\"x\":98.4261349664476,\"z\":-4.3001886288795825},\"after\":{\"x\":98.43,\"z\":-4.3},\"me3\":{\"x\":98.42596184422446,\"y\":0.1,\"z\":-5.150188611249403,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Modou · garagiste\"}}"
   },
   {
     "name": "phone: in another hub it is not there; back in Pikine it waits where it was",
     "ok": true,
-    "detail": "{\"away\":false,\"back\":{\"x\":98.2,\"z\":-4.3}}"
+    "detail": "{\"away\":false,\"back\":{\"x\":98.43,\"z\":-4.3}}"
   },
   {
     "name": "phone: no page errors",
