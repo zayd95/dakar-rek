@@ -7,7 +7,8 @@ import { Places, isPeak } from '../src/activity/places';
 import * as T from '../src/activity/templates';
 import type { Target } from '../src/interact/types';
 import { PRAYER_TIMES, prayerAt, nextPrayer, prayerPeaks, hourLabel } from '../src/venues/prayer';
-import { imamTimes, imamGreeting, ownerGreeting, ownerWork, ownerSpecial, programme, doormanGreeting, doormanRegulars, djContest, driverGreeting, driverLadder } from '../src/venues/talk';
+import { imamTimes, imamGreeting, ownerGreeting, ownerWork, ownerSpecial, programme, doormanGreeting, doormanRegulars, djContest, doormanAsk, clubberHello, clubberTonight, clubberBye } from '../src/venues/talk';
+import { unknownPhrases } from '../src/i18n/lines';
 import { G } from '../src/activity/gestures';
 import { COMPOSED_SITES, isComposed } from '../src/world/sites';
 
@@ -235,9 +236,9 @@ describe('club (La Vague): a night out with a reason to come back', () => {
   const offer = (anchor: string, id: string) => place.offers[anchor].find(o => o.id === id)!;
   const reset = () => { for (const k of Object.keys(counters)) delete counters[k]; done.length = 0; hour = 23; day = 10; };
 
-  it('opens at night only (21 h–5 h), crowded after 22 h, with a location chat; a night runs past midnight', () => {
+  it('opens at night only (21 h–5 h), crowded after midnight, with a location chat; a night runs past midnight', () => {
     expect(place.hours).toEqual([21, 5]); expect(place.chat).toBe(true); expect(place.type).toBe('club');
-    expect(isPeak(place, 23)).toBe(true); expect(isPeak(place, 21.5)).toBe(false);
+    expect(isPeak(place, 1)).toBe(true); expect(isPeak(place, 21.5)).toBe(false);
     expect(T.clubNight(10, 23)).toBe(10); expect(T.clubNight(11, 2)).toBe(10); expect(T.clubNight(11, 21)).toBe(11);
     // closed by day: the sheet gives the reason
     const r = rig(); const places = new Places(r.runner, () => 13); places.add(place);
@@ -253,15 +254,15 @@ describe('club (La Vague): a night out with a reason to come back', () => {
   });
   it('the entry is paid once a night at the door; until then the floor, the bar and the DJ send you to the door', () => {
     reset();
-    expect(visible('door')).toEqual(['entree', 'videur']);
-    expect(offer('door', 'entree').price).toBe(T.CLUB_ENTRY);
+    expect(visible('door')).toEqual(['payer', 'videur']);
+    expect(offer('door', 'payer').price).toBe(T.CLUB_ENTRY);
     for (const [a, id] of [['floor', 'danser'], ['bar', 'bissap'], ['dj', 'morceau']] as const) expect(offer(a, id).requires!()).toBe('Paie l’entrée à la porte');
-    const r = rig(); r.runner.start(offer('door', 'entree')); run(r.runner, 2);
+    const r = rig(); r.runner.start(offer('door', 'payer')); run(r.runner, 2);
     expect(r.state.wallet).toBe(10000 - T.CLUB_ENTRY); expect(done).toEqual(['entree']); expect(r.state.data.counters[keys.nights]).toBe(1);
     counters[keys.nights] = 1;
     expect(visible('door')).toEqual(['videur']);
     expect(offer('floor', 'danser').requires!()).toBeNull(); expect(offer('bar', 'bissap').requires!()).toBeNull();
-    day = 11; hour = 21.5; expect(visible('door')).toEqual(['entree', 'videur']);             // the next night, pay again
+    day = 11; hour = 21.5; expect(visible('door')).toEqual(['payer', 'videur']);             // the next night, pay again
   });
   it('after three nights the doorman lets a regular in free', () => {
     reset(); counters[keys.nights] = T.CLUB_REGULAR;
@@ -305,35 +306,52 @@ describe('club (La Vague): a night out with a reason to come back', () => {
   });
 });
 
-describe('port (Ngor): loading the fish truck, twice a day', () => {
+describe('club MVP: the fee before paying, table service, the crowd by the hour, the way out', () => {
   const counters: Record<string, number> = {};
-  let hour = 8;
-  const keys = T.dockCounters('al:port');
-  const place = T.dock({ id: 'al:port', name: 'Port de Ngor', space: 'street', driver: 'Babacar', anchors: [A('camion')] },
-    { count: k => counters[k] ?? 0, hour: () => hour, day: () => 4, converse: () => {}, tired: () => null });
-  const visible = () => place.offers.camion.filter(o => !o.visible || o.visible()).map(o => o.id);
-  it('the truck stands at the quay after the morning and the afternoon boats; otherwise the sheet says when it comes back', () => {
-    expect(T.truckHere(8)).toBe(true); expect(T.truckHere(13)).toBe(false); expect(T.truckHere(16)).toBe(true); expect(T.truckHere(20)).toBe(false);
-    expect(T.nextTruck(12)).toBe(15); expect(T.nextTruck(20)).toBe(6);
-    hour = 12; expect(place.offers.camion[0].requires!()).toBe('Le camion revient à 15 h'); hour = 8;
-    expect(place.offers.camion[0].requires!()).toBeNull();
+  const done: string[] = []; let asked = 0;
+  const keys = T.clubCounters('al:club2');
+  const hooks: T.PlaceHooks = { count: k => counters[k] ?? 0, hour: () => 23.5, day: () => 10, enter: () => { asked++; }, done: a => { done.push(a); if (a === 'entree') counters[keys.paid] = 11; } };
+  const place = T.club({ id: 'al:club2', name: 'La Vague', space: 'al:venue:club', bar: { x: 8, z: 0 }, lounge: { x: -11, z: 0, r: 5 },
+    anchors: [A('door', 0, 10, { space: 'street' }), A('floor'), A('bar', 8), A('lounge', -9), A('exit', 0, 7)] }, hooks);
+  const visible = (anchor: string) => place.offers[anchor].filter(o => !o.visible || o.visible()).map(o => o.id);
+  it('« Entrer » asks first: the place shows the fee, nothing is paid until « payer » runs', () => {
+    expect(visible('door')).toEqual(['entree']);
+    const entree = place.offers.door.find(o => o.id === 'entree')!;
+    expect(entree.price).toBeUndefined(); expect(entree.detail).toMatch(/Entrée 2\s000\sF, une fois pour la nuit/);
+    const r = rig('street'); r.runner.start(entree); run(r.runner, 1);
+    expect(asked).toBe(1); expect(r.state.wallet).toBe(10000);
+    r.runner.start({ ...place.offers.door.find(o => o.id === 'payer')!, visible: undefined }); run(r.runner, 2);   // what the confirmation runs
+    expect(r.state.wallet).toBe(10000 - T.CLUB_ENTRY); expect(done).toEqual(['entree']); expect(visible('door')).toEqual([]);
+    expect(doormanAsk({ night: 10, hour: 23, nights: 0, regularAt: 3, entry: T.CLUB_ENTRY })).toMatch(/2000 F, une seule fois pour toute la nuit/);
   });
-  it('the crates the driver calls for are a « choose » gesture; the pay follows the gesture; loads count at this port', () => {
-    const job = place.offers.camion.find(o => o.id === 'charger_porteur')!;
-    expect(job.steps).toHaveLength(1); expect(job.steps[0].gesture).toMatchObject({ kind: 'choose', who: 'Babacar' });
-    expect(G.crates().kind).toBe('choose');
-    const r = rig(); r.runner.start(job); run(r.runner, 6);
-    expect(r.state.wallet).toBe(10000 + gesturePay(1500, 0.6)); expect(r.state.data.counters[keys.loads]).toBe(1);
-    expect(job.detail).toMatch(/0\/8 chargements avant « Chef de chargement »/); expect(job.detail).toContain(T.arrivage(4));
+  it('table service: sit at a free lounge table first, then the waiter brings the drink (bar prices)', () => {
+    const t = place.offers.lounge.find(o => o.id === 'table_bissap')!;
+    expect(t.price).toBe(T.CLUB_DRINKS[0].price);
+    expect(t.steps.map(s => s.primitive)).toEqual(['sit', 'wait', 'drink']);
+    expect(t.steps[0].seat).toEqual({ near: { x: -11, z: 0 }, r: 5, kind: 'bench' }); expect(t.steps[1].label).toBe(T.TABLE_SERVICE);
+    const r = rig('al:venue:club');
+    const bench: Seat = { id: 'b1', x: -11, z: 1, top: 0.6, yaw: 0, kind: 'bench', space: 'al:venue:club', occupant: null };
+    const npc: Seat = { ...bench, id: 'b0', z: 0, occupant: null };
+    r.seats.add(npc); r.seats.add(bench); r.seats.occupy('b0', 'club:lounge0');
+    r.at(-10, 0); r.runner.start(t); run(r.runner, 8);
+    expect(r.seated()?.id).toBe('b1');                                          // never the clubber's place
+    r.runner.start(place.offers.lounge.find(o => o.id === 'table_eau')!); run(r.runner, 1);
+    expect(r.seated()?.id).toBe('b1');                                          // a second drink: same table, no seat hopping
   });
-  it('after eight loads the job grows: more crates and the tarp to tie, better paid', () => {
-    expect(visible()).toEqual(['charger_porteur', 'chauffeur']);
-    counters[keys.loads] = 8; expect(visible()).toEqual(['charger_chef', 'chauffeur']);
-    const chef = place.offers.camion.find(o => o.id === 'charger_chef')!;
-    expect(chef.steps.map(s => s.gesture!.kind)).toEqual(['choose', 'timing']);
-    expect(chef.steps.reduce((t, s) => t + (s.effects?.money ?? 0), 0)).toBe(3200);
-    expect(driverLadder(8)).toContain('Chef de chargement'); expect(driverLadder(3)).toContain('Encore 5');
-    expect(driverGreeting(0, false, 15)).toContain('15 h');
-    counters[keys.loads] = 0;
+  it('the crowd follows the hour: closed by day, early, building, the peak after midnight, thinning at dawn', () => {
+    expect([13, 21.5, 23.5, 1, 3.8, 5].map(T.clubCrowd)).toEqual(['closed', 'early', 'warm', 'peak', 'dawn', 'closed']);
+    expect(T.isEvening(1)).toBe(true); expect(isPeak(place, 1)).toBe(true); expect(isPeak(place, 22)).toBe(false);
+  });
+  it('« Sortir » by the gate hands over to the place', () => {
+    const out = place.offers.exit[0]; expect(out.primitive).toBe('exit');
+    const r = rig('al:venue:club'); r.runner.start(out); expect(done).toContain('sortie');
+  });
+  it('clubbers speak French with everyday Wolof from the lexicon', () => {
+    unknownPhrases.clear();
+    expect(clubberHello('Ndeye', 'early', true)).toMatch(/Na nga def \?/); expect(clubberHello('Ndeye', 'early', true)).toContain('Moi c’est Ndeye');
+    expect(clubberHello('Pape', 'dawn', false)).toContain('Dama sonn');
+    expect(clubberTonight(T.nightsToContest(10) + 10, 23.5)).toContain('Le concours a commencé');
+    expect(clubberBye('dawn')).toContain('Ñibbil ak jàmm');
+    expect([...unknownPhrases]).toEqual([]);
   });
 });

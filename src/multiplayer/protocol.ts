@@ -41,10 +41,11 @@ export function parseMove(value: unknown, hub: HubId): Move | null {
   const x = v.x as number, y = v.y as number, z = v.z as number, speed = v.speed as number;
   if (Math.abs(x) > 4096 || Math.abs(z) > 4096 || y < -20 || y > 100 || speed < 0 || speed > 6) return null;
   // spaces: the street, the own room, a scene, a public interior of this hub, a vehicle of one of its lines
-  // (src/transport) or a mosque's prayer hall (src/venues/mosque.ts)
+  // (src/transport), a mosque's prayer hall (src/venues/mosque.ts) or a club's terrace (src/venues/club.ts)
   if (typeof v.space !== 'string' || !(v.space === 'street' || v.space === 'home' || v.space === 'scene'
     || new RegExp(`^${hub}:(?:(?:gargote|maiga):[0-9]{2}|rapide:[0-9a-z]{1,6}:[0-9])$`).test(v.space)
-    || new RegExp(`^${hub}:venue:mosque:[0-9]{2}:salle$`).test(v.space))) return null;
+    || new RegExp(`^${hub}:venue:mosque:[0-9]{2}:salle$`).test(v.space)
+    || v.space === `${hub}:venue:club`)) return null;
   if (!PRESENCE_CLIPS.includes(v.clip as PresenceClip)) return null;
   return { type: 'move', x, y, z, speed, yaw: Math.atan2(Math.sin(v.yaw as number), Math.cos(v.yaw as number)), space: v.space, clip: v.clip as PresenceClip };
 }

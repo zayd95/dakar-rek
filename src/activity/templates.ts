@@ -278,14 +278,29 @@ export const CLUB_DRINKS: readonly { id: string; label: string; detail?: string;
   { id: 'eau', label: 'Eau fraîche', price: 300, needs: { energie: 3 } },
 ];
 
+/** How full a club is by the hour: empty early, building before midnight, the peak after it, thinning at dawn. */
+export type ClubCrowd = 'closed' | 'early' | 'warm' | 'peak' | 'dawn';
+export function clubCrowd(h: number): ClubCrowd {
+  if (h >= 5 && h < 21) return 'closed';
+  if (h >= 21 && h < 23) return 'early';
+  if (h >= 23) return 'warm';
+  return h < 3.5 ? 'peak' : 'dawn';
+}
+/** Label of the step during which the waiter brings a drink to the table (the venue walks him over). */
+export const TABLE_SERVICE = 'Le serveur t’apporte ta boisson';
+
 /**
- * Dance terrace / night club: open at night (21 h–5 h) with tonight's theme. The entry is paid once a night at the
- * door (`done('entree')` lets you in; a regular, after `CLUB_REGULAR` nights, comes in free), then: the dance floor (a
- * timing gesture on the drum's beat, two steps, the second faster), the bar (drinks on the stools around `bar`), the DJ
- * (ask for a song) and, on the contest night of the week, a three-round dance contest after 23 h (each round's prize
- * scaled by how well it is danced, once a night). Without a door (or without hooks) everything is open.
+ * Night club / dance terrace: open at night (21 h–5 h) with tonight's theme.
+ * - Door: « Entrer » shows the fee before anything is paid (`enter`: the place's own confirmation, which then runs the
+ *   « payer » offer, hidden on the sheet, as `{ ...payer, visible: undefined }`; without that hook « payer » is offered
+ *   directly). Paid once a night (`done('entree')` lets you
+ *   in); a regular, after `CLUB_REGULAR` nights, comes in free.
+ * - Floor: dancing is the shared timing gesture on the drum's beat (two steps, the second faster); on the contest night of
+ *   the week, a three-round contest after 23 h (prize scaled by how well each round is danced, once a night).
+ * - Bar: drinks on a free stool around `bar`; lounge: sit at a free table around `lounge` and the waiter brings it.
+ * - DJ: ask for a song; exit: « Sortir » by the gate (`done('sortie')`).
  */
-export function club(b: Base & { bar?: { x: number; z: number; r?: number } }, h: PlaceHooks = {}): PlaceSpec {
+export function club(b: Base & { bar?: { x: number; z: number; r?: number }; lounge?: { x: number; z: number; r?: number } }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
   const has = (id: string) => b.anchors.some(a => a.id === id);
   const keys = clubCounters(b.id);
@@ -297,7 +312,7 @@ export function club(b: Base & { bar?: { x: number; z: number; r?: number } }, h
   const regular = () => n(keys.nights) >= CLUB_REGULAR;
   const inside = () => (admitted() ? null : 'Paie l’entrée à la porte');
   const both = (a: () => string | null, c: () => string | null) => () => a() ?? c();
-  const seat: SeatPick = b.bar ? { near: { x: b.bar.x, z: b.bar.z }, r: b.bar.r ?? 4, kind: 'stool' } : 'near';
+  const stool: SeatPick = b.bar ? { near: { x: b.bar.x, z: b.bar.z }, r: b.bar.r ?? 4, kind: 'stool' } : 'near';
   const late = () => hour() >= CONTEST_FROM || hour() < 5;
   const soon = () => {
     const k = nightsToContest(night());
@@ -324,11 +339,25 @@ export function club(b: Base & { bar?: { x: number; z: number; r?: number } }, h
   const offers: Record<string, ActivitySpec[]> = {
     floor: [dance, contest],
     bar: [
-      ...CLUB_DRINKS.map(d => P.order({ id: d.id, label: d.label, detail: d.detail, price: d.price, prep: 1, eat: 3, drink: true, seat, needs: d.needs, requires: inside })),
+      ...CLUB_DRINKS.map(d => P.order({ id: d.id, label: d.label, detail: d.detail, price: d.price, prep: 1, eat: 3, drink: true, seat: stool, needs: d.needs, requires: inside })),
       ...opt(h.converse, P.talk({ id: 'barman', label: 'Parler au barman', requires: inside, then: () => h.converse!('barman') })),
     ],
   };
   const list = [at('floor'), at('bar')];
+  if (has('lounge')) {
+    // table service: sit at a free table first, then the waiter brings the drink (same prices as the bar)
+    const lounge = b.lounge ?? at('lounge');
+    const table: SeatPick = { near: { x: lounge.x, z: lounge.z }, r: b.lounge?.r ?? 5, kind: 'bench' };
+    list.push(at('lounge'));
+    offers.lounge = CLUB_DRINKS.map((d): ActivitySpec => ({
+      id: 'table_' + d.id, primitive: 'order', label: `${d.label} · à table`, icon: P.ICONS.order, detail: 'Le serveur te l’apporte', price: d.price, requires: inside,
+      steps: [
+        { label: 'Tu t’installes', primitive: 'sit', seat: table },
+        { label: TABLE_SERVICE, primitive: 'wait', seconds: 3 },
+        { label: 'Tu bois', primitive: 'drink', seconds: 3, effects: { needs: { ...d.needs, social: (d.needs.social ?? 0) + 2 }, category: 'loisir' } },
+      ],
+    }));
+  }
   if (has('dj')) {
     list.push(at('dj'));
     offers.dj = [
@@ -337,61 +366,21 @@ export function club(b: Base & { bar?: { x: number; z: number; r?: number } }, h
       ...opt(h.converse, P.talk({ id: 'dj', label: 'Parler au DJ', requires: inside, then: () => h.converse!('dj') })),
     ];
   }
+  if (has('exit')) { list.push(at('exit')); offers.exit = [P.handOver('exit', { id: 'sortir', label: 'Sortir', detail: 'Le videur te souhaite bonne nuit', then: () => h.done?.('sortie') })]; }
   if (has('door')) {
     list.push(at('door'));
     const tonight = () => `Ce soir : ${theme().label} · ${theme().detail}`;
     // the night counts once, when you come in (paid at the door, or free as a regular)
     const come = (a: ActivitySpec) => { const s = a.steps[a.steps.length - 1]; s.effects = { ...s.effects, counters: { [keys.nights]: 1 }, category: 'loisir' }; return a; };
+    const asking = !!h.enter;
     offers.door = [
-      live(come(P.buy({ id: 'entree', label: 'Payer l’entrée', price: CLUB_ENTRY, visible: () => !admitted() && !regular(), then: () => h.done?.('entree') })), tonight),
+      ...opt(asking, live(P.enter({ id: 'entree', label: 'Entrer', visible: () => !admitted() && !regular(), then: () => h.enter!() }), () => `Entrée ${price(CLUB_ENTRY)}, une fois pour la nuit · ${tonight()}`)),
+      live(come(P.buy({ id: 'payer', label: 'Payer l’entrée', price: CLUB_ENTRY, visible: () => !asking && !admitted() && !regular(), then: () => h.done?.('entree') })), tonight),
       live(come(P.use({ id: 'entree_habitue', primitive: 'enter', label: 'Entrer · habitué', seconds: 1, visible: () => !admitted() && regular(), then: () => h.done?.('entree') })), () => `Entrée offerte aux habitués · ${tonight()}`),
       ...opt(h.converse, P.talk({ id: 'videur', label: 'Le programme de la semaine', then: () => h.converse!('videur') })),
     ];
   }
-  return { id: b.id, name: b.name, space: b.space, type: 'club', hours: [21, 5], chat: true, peaks: [[22, 3]], anchors: list, offers };
-}
-
-/** A rung of the loading job at a port's fish truck: more crates, then the tarp, as the player keeps coming back. */
-export interface DockRank { id: string; label: string; detail: string; from: number; pay: number; rounds: number; energie: number; strap?: boolean }
-export const DOCK_LADDER: readonly DockRank[] = [
-  { id: 'porteur', label: 'Charger le camion', detail: 'Passer les caisses que le chauffeur appelle', from: 0, pay: 1500, rounds: 4, energie: 12 },
-  { id: 'chef', label: 'Chef de chargement', detail: 'Tu mènes le chargement et tu arrimes la bâche', from: 8, pay: 3200, rounds: 5, energie: 14, strap: true },
-];
-/** The fish truck stands at the port twice a day, after the morning boats and after the afternoon ones. */
-export const TRUCK_WINDOWS: readonly [number, number][] = [[6, 11], [15, 19]];
-export const truckHere = (h: number) => TRUCK_WINDOWS.some(([a, b]) => h >= a && h < b);
-/** Hour the truck comes back (the next window's start). */
-export const nextTruck = (h: number) => TRUCK_WINDOWS.find(([a]) => a > h)?.[0] ?? TRUCK_WINDOWS[0][0];
-/** The best rung open to someone with `loads` loads at this port. */
-export const dockRank = (loads: number) => [...DOCK_LADDER].reverse().find(r => loads >= r.from) ?? DOCK_LADDER[0];
-export const dockCounters = (placeId: string) => ({ loads: 'chargements:' + placeId });
-/** The day's catch the truck takes to the markets (the same for everyone that day). */
-export const ARRIVAGES = ['yaboy et capitaine', 'thiof et seiches', 'yaboy et crevettes', 'capitaine et thiof', 'seiches et yaboy'] as const;
-export const arrivage = (day: number) => ARRIVAGES[mod(day, ARRIVAGES.length)];
-
-/**
- * Port: load the fish truck while it stands at the quay (twice a day, `TRUCK_WINDOWS`). A trade: the crates the driver
- * calls for (a « choose » gesture), and from the second rung the tarp to tie (a timing gesture); the pay follows how
- * well it is done, the rung follows the loads done at this port. Outside the truck's hours the sheet says when it comes back.
- */
-export function dock(b: Base & { driver?: string }, h: PlaceHooks = {}): PlaceSpec {
-  const at = anchors(b.anchors);
-  const keys = dockCounters(b.id);
-  const n = (k: string) => h.count?.(k) ?? 0;
-  const hour = () => h.hour?.() ?? 8;
-  const driver = b.driver ?? 'Le chauffeur';
-  const jobs = DOCK_LADDER.map((r, i) => live(P.trade({ id: 'charger_' + r.id, label: r.label, pay: r.pay, counter: keys.loads, category: 'service', clip: 'Grab',
-    needs: { energie: -r.energie, hygiene: -8, faim: -5 }, line: () => comeLine(driver),
-    requires: () => (truckHere(hour()) ? h.tired?.(r.energie) ?? null : `Le camion revient à ${nextTruck(hour())} h`),
-    visible: () => dockRank(n(keys.loads)) === r,
-    parts: [{ label: 'Charger les caisses', gesture: G.crates(r.rounds), share: 3 }, ...(r.strap ? [{ label: 'Arrimer la bâche', gesture: G.strap(3), share: 1 }] : [])] }), () => {
-    const done = n(keys.loads), next = DOCK_LADDER[i + 1];
-    const today = h.day ? ` · arrivage du jour : ${arrivage(h.day())}` : '';
-    return (next ? `${r.detail} · ${done}/${next.from} chargements avant « ${next.label} »` : r.detail) + today;
-  }));
-  return { id: b.id, name: b.name, space: b.space, type: 'port', hours: [6, 19], chat: true, peaks: [[6, 10], [15, 18]], anchors: [at('camion')], offers: {
-    camion: [...jobs, ...opt(h.converse, P.talk({ id: 'chauffeur', label: `Parler à ${driver}`, then: () => h.converse!('chauffeur') }))],
-  } };
+  return { id: b.id, name: b.name, space: b.space, type: 'club', hours: [21, 5], chat: true, peaks: [[0, 3.5]], anchors: list, offers };
 }
 
 /** Plot of land or a billboard: inspect and own / rent — the ownership system does the rest. */

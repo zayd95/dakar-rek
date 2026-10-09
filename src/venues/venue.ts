@@ -13,6 +13,8 @@ export interface Venue {
   places: PlaceSpec[];
   update(dt: number): void;
   spaceChanged?(space: string): void;
+  /** The venue's own presence / interaction space while the player is in it (a club's terrace), else null. */
+  space?(): string | null;
   dispose(): void;
   debug(): Record<string, unknown>;
 }

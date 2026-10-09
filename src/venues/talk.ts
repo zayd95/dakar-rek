@@ -1,5 +1,6 @@
-import { CLUB_DRINKS, CONTEST_FROM, CONTEST_ROUNDS, DIBI_SPECIALS, DOCK_LADDER, GRILL_LADDER, clubTheme, dibiSpecial, dockRank, grillRank, isEvening, nextGrillRank, nightsToContest } from '../activity/templates';
+import { CLUB_DRINKS, CONTEST_FROM, CONTEST_ROUNDS, DIBI_SPECIALS, GRILL_LADDER, clubTheme, dibiSpecial, grillRank, isEvening, nextGrillRank, nightsToContest } from '../activity/templates';
 import { PRAYER_TIMES, hourLabel, nextPrayer, prayerAt } from './prayer';
+import { quote } from '../i18n/wolof';
 
 /**
  * Short everyday exchanges with the people who hold a venue (Dibi owner, imam): French with everyday Wolof (CLAD
@@ -123,17 +124,30 @@ export function djContest(c: ClubCtx): string {
 export const barmanGreeting = (nights: number) => (nights > 2 ? 'Saliou : « Sama xarit ! Comme d’habitude, un bissap bien glacé ? »' : 'Saliou : « Dalal ak jàmm ! Ici, rien que des jus maison et de l’eau bien fraîche. »');
 export const barmanMenu = () => `« ${CLUB_DRINKS.map(d => `${d.label.toLowerCase()} ${d.price} F`).join(', ')}. Le bouye, c’est le jus du baobab : goûte, neex na ! »`;
 export const CLUB_BYE = '« Ba beneen yoon ! Ñibbil ak jàmm. »';
+/** At the door, before anything is paid: the fee, once for the night. */
+export function doormanAsk(c: ClubCtx): string {
+  const t = clubTheme(c.night).label;
+  return `Lamine : « Ce soir, c’est ${t}. L’entrée, c’est ${c.entry} F, une seule fois pour toute la nuit : tu peux sortir et revenir. »`;
+}
+export const doormanBye = () => `Lamine : ${quote('Ñibbil ak jàmm')} · « Reviens quand tu veux. »`;
 
-// ------------------------------------------------------------------ Port de Ngor: Babacar, the fish truck's driver
-export function driverGreeting(loads: number, here: boolean, next: number): string {
-  if (!here) return `Babacar : « Le camion est parti au marché. Je reviens à ${next} h, avec la glace. »`;
-  if (loads >= DOCK_LADDER[DOCK_LADDER.length - 1].from) return 'Babacar : « Sama xarit ! Tu mènes le chargement, moi je vérifie la glace. »';
-  if (loads > 0) return 'Babacar : « Te revoilà ! Kaay fi, les caisses n’attendent pas. »';
-  return 'Babacar : « Salaam aleekum ! Tu veux aider ? J’appelle la caisse, tu me la passes. Gaawal, le poisson n’aime pas le soleil. »';
+// ------------------------------------------------------------------ clubbers at La Vague (short exchanges)
+export type ClubMoment = 'early' | 'warm' | 'peak' | 'dawn';
+export const CLUBBER_NAMES = { f: ['Ndeye', 'Mariama', 'Astou', 'Khady', 'Bineta'], m: ['Pape', 'Cheikh', 'Moussa', 'Alioune', 'Babacar'] } as const;
+export function clubberHello(who: string, m: ClubMoment, first: boolean): string {
+  const intro = first ? `Moi c’est ${who}. ` : '';
+  if (m === 'dawn') return `${who} : ${quote('Dama sonn')} · « ${intro}On a dansé toute la nuit ! Bientôt le premier car rapide. »`;
+  if (m === 'early') return `${who} : ${quote(first ? 'Na nga def ?' : 'Lu bees ?')} · « ${intro}C’est encore calme : ici, ça commence vraiment après minuit. »`;
+  return `${who} : ${quote(first ? 'Na nga def ?' : 'Lu bees ?')} · « ${intro}Ça chauffe ce soir ! »`;
 }
-export const driverRoute = (catchOfDay: string) => `« Aujourd’hui, c’est ${catchOfDay}. Le matin je livre les mareyeuses du marché, l’après-midi les restaurants des Almadies. »`;
-export function driverLadder(loads: number): string {
-  const r = dockRank(loads), next = DOCK_LADDER.find(x => x.from > loads);
-  return next ? `« Tu as fait ${loads} chargement${loads > 1 ? 's' : ''}. Encore ${next.from - loads} et tu deviens « ${next.label} » : ${next.pay} F le camion. »` : `« ${r.label}, c’est toi maintenant. Le camion part quand tu dis qu’il est prêt. »`;
+export function clubberTonight(night: number, hour: number): string {
+  const t = clubTheme(night), k = nightsToContest(night);
+  const contest = t.contest ? (hour >= CONTEST_FROM || hour < 5 ? 'Le concours a commencé, monte sur la piste !' : `Le concours commence à ${CONTEST_FROM} h, tu tentes ?`) : `Le concours de danse, c’est la nuit du sabar : ${k === 1 ? 'demain' : `dans ${k} nuits`}.`;
+  return `« Ce soir, c’est ${t.label}. ${contest} »`;
 }
-export const DRIVER_BYE = '« Jërëjëf ! Ba beneen yoon. »';
+export function clubberRegulars(nights: number, regularAt: number): string {
+  if (nights >= regularAt) return '« Lamine te connaît maintenant : tu entres sans payer, comme nous. »';
+  return `« Moi je viens chaque semaine. Après ${regularAt} soirées, Lamine te laisse entrer sans payer. »`;
+}
+export const clubberDance = () => `${quote('Nanu dem')} · « Je te retrouve sur la piste ! »`;
+export const clubberBye = (m: ClubMoment) => (m === 'dawn' ? quote('Ñibbil ak jàmm') : quote('Ba beneen yoon'));

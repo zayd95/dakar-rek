@@ -124,19 +124,13 @@ Already composed:
   afro, rap galsen, salsa, zouk, the sabar contest, retro) on the board by the gate; after three nights you are a
   regular and come in free. Open 21 h–5 h: by day the gate is shut (« Fermé · ouvre à 21 h »), it never closes on
   someone inside; location chat.
-- **The fish truck at Ngor's port** (`src/venues/port.ts`, Almadies; `dock` recipe): the mareyeur's truck stands in the
-  port's yard twice a day (6 h–11 h and 15 h–19 h, otherwise « Le camion revient à 15 h »). *Do:* load it — Babacar
-  calls the crates (yaboy, thiof, capitaine, seiches, crevettes, ice) and you hand up the right one before he loses
-  patience (a `choose` gesture, `G.crates`); your load rides in the truck's bed until it leaves. *Earn:* 1 500 F a load
-  scaled by the gesture; after eight loads, « Chef de chargement » (more crates and the tarp to tie, `G.strap`, 3 200 F).
-  *Why return:* the two daily windows, the day's catch, the next rung. The port's « Aider les pêcheurs » stays as it was.
 
 Composition seams added for this: `HubWorld.sites` (`src/world/sites.ts`: lots and blocks a module composes — the
 builder keeps the place's identity interactable and leaves the ground free, with the street dressing unchanged),
 `PlaceSpec.peaks` (busy hours), `Anchor.space` (one place across a courtyard and a hall), `Seat.clip` (the pose held on
 a seat: `Kneel` on prayer rows), seat kind `prayer`, `GameCtx.addInterior` used by a module's own interior; for the
-terrace and the port: `Role.phase` / `Role.yieldR` / `Cast.burst` (dancers out of step, stepping aside for the player,
-cheering), the data-only gestures `G.dance`, `G.crates`, `G.strap`.
+terrace: `Role.phase` / `Role.yieldR` / `Cast.burst` (dancers out of step, stepping aside for the player,
+cheering), the data-only gesture `G.dance`.
 
 ## Waves
 

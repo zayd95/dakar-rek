@@ -36,6 +36,8 @@ export function hideShoes(h: Humanoid, hide = true) {
 export class Cast {
   private list: { r: Role; h: Humanoid; shown: boolean }[] = [];
   private cheer = new Map<string, number>();
+  /** Roles walking somewhere (a waiter to a table): the points left, then the facing and the clip once there. */
+  private walks = new Map<string, { path: { x: number; z: number }[]; yaw: number; clip: Clip; speed: number }>();
   private moment = '';
 
   constructor(roles: Role[], private seats: Seats, parent: THREE.Object3D, private owner: string) {
@@ -72,7 +74,8 @@ export class Cast {
       this.cheer.delete(id); const e = this.list.find(x => x.r.id === id); if (e) e.h.hold = e.r.clip ?? 'Idle';
     }
     for (const e of this.list) {
-      if (player && e.r.yieldR && !e.r.seat) this.yieldTo(e, player, dt);
+      if (this.walks.has(e.r.id)) this.step(e, dt);
+      else if (player && e.r.yieldR && !e.r.seat) this.yieldTo(e, player, dt);
       const p = e.h.group.getWorldPosition(WP);                              // roles may ride a moving parent (a pirogue)
       const vis = active && e.shown && Math.hypot(p.x - viewer.x, p.z - viewer.z) <= limit;
       e.h.group.visible = vis;
@@ -88,6 +91,22 @@ export class Cast {
     const g = e.h.group.position, a = Math.min(1, dt * 5);
     g.x += (tx - g.x) * a; g.z += (tz - g.z) * a;
   }
+
+  /** One walking step toward the next point, then the role's facing and clip at the end. */
+  private step(e: { r: Role; h: Humanoid }, dt: number) {
+    const w = this.walks.get(e.r.id)!, g = e.h.group.position, to = w.path[0];
+    if (!to) { e.h.hold = w.clip; e.h.group.rotation.y = w.yaw; this.walks.delete(e.r.id); return; }
+    const dx = to.x - g.x, dz = to.z - g.z, d = Math.hypot(dx, dz), s = w.speed * dt;
+    if (d <= s) { g.x = to.x; g.z = to.z; w.path.shift(); return; }
+    g.x += (dx / d) * s; g.z += (dz / d) * s; e.h.group.rotation.y = Math.atan2(dx, dz); e.h.hold = 'Walk';
+  }
+  /** Walk a standing role along `path` (world points), then face `yaw` and hold `clip`. */
+  walkTo(id: string, path: { x: number; z: number }[], yaw: number, clip: Clip, speed = 1.5) {
+    const e = this.list.find(x => x.r.id === id); if (!e || e.r.seat) return;
+    this.walks.set(id, { path: path.map(p => ({ ...p })), yaw, clip, speed });
+  }
+  /** True while a role is still walking. */
+  walking(id: string) { return this.walks.has(id); }
 
   /** Change what a standing role is doing (the stylist works while a client sits). */
   setClip(id: string, clip: Clip) { const e = this.list.find(x => x.r.id === id); if (e && !e.r.seat) e.h.hold = clip; }
