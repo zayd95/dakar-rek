@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-09T03:38:00Z",
+  "updatedAt": "2026-10-09T03:47:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
@@ -13,20 +13,20 @@
     "headAtAcquire": "8ae64ed4cc1c33d8446ec8bd2020309c2222e0fc",
     "purpose": "independent final QA and durable resolution for DKAG-018 mixed exact-source CI"
   },
-  "activeCodeTask": null,
+  "activeCodeTask": "DKAG-019",
   "maxConcurrentCodeTasks": 1,
   "reservations": [
     {
-      "task": "DKAG-018-QA",
-      "owner": "qa_dkag018_final_0336",
-      "reviewer": "independent",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "0595a9401e1e1fd8bd6911a4ab061046070d9520",
+      "task": "DKAG-019",
+      "owner": "gameplay_dkag019_0347",
+      "reviewer": "qa_dkag019_0347",
+      "branch": "codex/agents/dkag-019-ci-navigation-determinism",
+      "baseCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
       "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-018-world-review.md"
+        "scripts/check-v1-core.mjs",
+        "docs/agents/reports/DKAG-019-ci-navigation.md"
       ],
-      "kind": "review-report",
-      "acquiredAt": "2026-10-09T03:38:00Z"
+      "acquiredAt": "2026-10-09T03:47:00Z"
     }
   ],
   "externalWork": [
@@ -141,7 +141,8 @@
     "DKAG-018"
   ],
   "activeSessions": [
-    "qa_dkag018_final_0336"
+    "gameplay_dkag019_0347",
+    "qa_dkag019_0347"
   ],
   "completedSessions": [
     "activation_producer",
@@ -155,14 +156,13 @@
     "animation_resume_1655",
     "culture_resume_1655",
     "combat_resume_1655",
-    "characters_resume_1655",
-    "animation_resume_1655",
     "qa_resume_1655",
     "qa_ibou_1701",
     "qa_animation_1707",
-    "world_dkag018_2236"
+    "world_dkag018_2236",
+    "qa_dkag018_final_0336"
   ],
-  "nextAction": "Distinct QA final review of frozen SHA 17108c2 and mixed exact-source CI; no third correction. Classify candidate blocked or verified-with-explained-infrastructure variance based on source/log evidence.",
+  "nextAction": "DKAG-019 author makes the existing navigation harness deterministic only; distinct QA requires exact green push and PR before DKAG-018 can be requalified.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -364,7 +364,7 @@
     "sourceCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
     "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
     "pullRequest": 16,
-    "status": "review",
+    "status": "blocked_ci_harness",
     "owner": "world_dkag018_2236",
     "reviewer": "qa_dkag018_final_0336",
     "local": {
@@ -400,6 +400,7 @@
       }
     ],
     "failure": "after place(), stale nearest target made state-driven loop resolve before movement; start=end",
-    "correctionAttempt": 2
+    "correctionAttempt": 2,
+    "reviewReport": "docs/agents/operations/reports/DKAG-018-world-review.md"
   }
 }

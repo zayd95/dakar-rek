@@ -13,7 +13,8 @@
     "DKAG-015",
     "DKAG-016",
     "DKAG-017",
-    "DKAG-018"
+    "DKAG-018",
+    "DKAG-019"
   ],
   "tasks": [
     {
@@ -518,7 +519,7 @@
       "id": "DKAG-018",
       "role": "world",
       "kind": "implementation",
-      "status": "review",
+      "status": "blocked",
       "branch": "codex/agents/dkag-018-arena-billboard-offset",
       "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
       "allowedFiles": [
@@ -554,7 +555,7 @@
         "authorBuild": "PASS",
         "authorServerTypecheck": "PASS",
         "authorBrowser": "container blocked; exact-source CI required",
-        "independentQa": "final replacement reviewer assigned after prior QA usage-limit termination",
+        "independentQa": "BLOCKED: product evidence positive, PR harness failure reproducible",
         "ci": {
           "runs": [
             {
@@ -571,10 +572,15 @@
               "status": "completed",
               "conclusion": "failure",
               "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+              "attempts": 2,
+              "jobs": [
+                113580679139,
+                113658491542
+              ],
               "artifactId": 11584566053
             }
           ],
-          "readAt": "2026-10-09T03:38:00Z"
+          "readAt": "2026-10-09T03:47:00Z"
         }
       },
       "correctionAttempts": [
@@ -604,7 +610,38 @@
       "reviewOutput": "docs/agents/operations/reports/DKAG-018-world-review.md",
       "reviewAllowedFiles": [
         "docs/agents/operations/reports/DKAG-018-world-review.md"
-      ]
+      ],
+      "blocker": "CI PR harness times out reproducibly at fixed 3s on identical tree; product path passes complete exact-source push CI. Two author corrections consumed.",
+      "reviewReport": "docs/agents/operations/reports/DKAG-018-world-review.md"
+    },
+    {
+      "id": "DKAG-019",
+      "role": "gameplay",
+      "kind": "ci_harness_implementation",
+      "status": "active",
+      "owner": "gameplay_dkag019_0347",
+      "reviewer": "qa_dkag019_0347",
+      "branch": "codex/agents/dkag-019-ci-navigation-determinism",
+      "baseCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+      "allowedFiles": [
+        "scripts/check-v1-core.mjs",
+        "docs/agents/reports/DKAG-019-ci-navigation.md"
+      ],
+      "dependencies": [
+        "DKAG-018:source-frozen"
+      ],
+      "authority": "Bounded follow-up for reproducible PR-only navigation timeout; no third DKAG-018 correction and no product/workflow/package/schema/asset change",
+      "basis": "PR run 37856146883 failed twice at 3s while exact push run 37856142783 passed same-tree full journey",
+      "acceptance": [
+        "Replace fixed 3s dependency with deterministic bounded navigation compatible with observed slow runner",
+        "Retain >3.5m movement threshold and every arena/board assertion",
+        "No product source, workflow, package, schema, asset, priority, economy or cultural change",
+        "Local node/diff/unit/build/typecheck evidence",
+        "Exact same-source push and PR runs both success",
+        "Independent QA reviews diff and logs before DKAG-018 requalification"
+      ],
+      "ownerState": "commissioned",
+      "controlBriefCommit": "8ae64ed4cc1c33d8446ec8bd2020309c2222e0fc"
     }
   ]
 }
