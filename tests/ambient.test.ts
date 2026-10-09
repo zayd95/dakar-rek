@@ -289,3 +289,40 @@ describe('ambient life: spots from the registries and the hub', () => {
     for (const id of s.seats) expect(s.seatApproach![id].z).toBeLessThan(55.7);       // sit down from behind, not through the table
   });
 });
+
+describe('ambient life: places and seats of the venue and transport lanes', () => {
+  const layout = { specials: [], sea: null };
+  it('venue roles and passengers count as characters on seats; remote players do not', () => {
+    expect(isNpcOccupant('dibi-pikine:client1')).toBe(true);
+    expect(isNpcOccupant('npc')).toBe(true);
+    expect(isNpcOccupant('remote:7')).toBe(false);
+    expect(isNpcOccupant('player')).toBe(false);
+    const list = [seat('a', 0, 0, { occupant: 'dibi:client' }), seat('b', 1, 0), seat('c', 2, 0)];
+    expect(chooseSeat(list, { r: 0.5 })).toBeNull();                    // the venue's client already holds the share of characters
+  });
+  it('a place busier in its peak windows (PlaceSpec.peaks) gets more people', () => {
+    const base = spot('d', ['dibi'], { seats: Array.from({ length: 12 }, (_, i) => 's' + i), hours: [11, 2] });
+    const peaked = { ...base, peaks: [[19, 23]] as [number, number][] };
+    let a = 0, b = 0;
+    for (let h = 19; h < 23; h += 0.2) { a += wanted(act('dibi'), base, h, MON, 1, 20); b += wanted(act('dibi'), peaked, h, MON, 1, 20); }
+    expect(b).toBeGreaterThan(a);
+  });
+  it('a hall of prayer rows (venue mosque) is a mosque spot; its rows fill at prayer time', () => {
+    const rows = Array.from({ length: 10 }, (_, i) => seat('m:row:' + i, 2000 + i * 0.9, 0, { kind: 'prayer', top: 0.58, space: 'mosque:hall' }));
+    const spots = buildSpots({ places: [], seats: rows, interactables: [], layout, colliders: [], people: [], arena: null });
+    const hall = spots.find(s => s.space === 'mosque:hall')!;
+    expect(hall.tags).toEqual(['mosque']);
+    expect(acts(plan(spots, registry(rows).kind, 19.3, MON, { space: 'mosque:hall' }), hall.id)).toContain('priere');
+  });
+  it('anchors of another space (a mosque hall) do not make standing places in the street', () => {
+    const m: PlaceSpec = { id: 'gm', type: 'mosque', name: 'Grande Mosquée', space: 'street', anchors: [{ id: 'taps', kind: 'spot', x: 0, z: 0 }, { id: 'hall', kind: 'place', x: 2000, z: 0, space: 'mosque:hall' }], offers: {} };
+    const s = buildSpots({ places: [m], seats: [], interactables: [], layout, colliders: [], people: [], arena: null }).find(x => x.place === 'gm')!;
+    expect(s.stands.every(p => Math.abs(p.x) < 10)).toBe(true);
+  });
+  it('no furniture seats on a lot a venue took over (the old dibiterie under a venue Dibi)', () => {
+    const old = { id: 'pikine:dibiterie:11', x: -18, z: -48.9 };
+    expect(furnitureSeats([old], layout, []).length).toBeGreaterThan(0);
+    const venue: PlaceSpec = { id: 'dibi-pikine', type: 'dibi', name: 'Dibi', space: 'street', anchors: [{ id: 'counter', kind: 'counter', x: -16, z: -44 }], offers: {} };
+    expect(furnitureSeats([old], layout, [], [venue])).toHaveLength(0);
+  });
+});

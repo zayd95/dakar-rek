@@ -8,15 +8,11 @@
  * without new code.
  */
 import type { AmbientActivity } from './ambient';
+import { PRAYER_TIMES, prayerPeaks } from '../venues/prayer';
 
-/** Approximate prayer times in Dakar used for gatherings (Fajar, Tisbar, Takusaan, Timis, Gee). */
-export const PRAYERS: readonly { id: string; label: string; hours: readonly [number, number] }[] = [
-  { id: 'fajar', label: 'Fajar', hours: [5.75, 6.6] },
-  { id: 'tisbar', label: 'Tisbar', hours: [13.6, 14.5] },
-  { id: 'takusaan', label: 'Takusaan', hours: [16.8, 17.4] },
-  { id: 'timis', label: 'Timis', hours: [18.9, 19.6] },
-  { id: 'gee', label: 'Gee', hours: [20.5, 21.1] },
-];
+/** Prayer gatherings: the same five times and windows as the venues' mosque (src/venues/prayer.ts, `prayerPeaks`). */
+export const PRAYERS: readonly { id: string; label: string; hours: readonly [number, number] }[] =
+  PRAYER_TIMES.map((p, i) => ({ id: p.id, label: p.name, hours: prayerPeaks()[i] }));
 const FRIDAY = 4, SATURDAY = 5, SUNDAY = 6;
 const WEEK = [0, 1, 2, 3, 4], NOT_SUNDAY = [0, 1, 2, 3, 4, 5];
 
@@ -48,8 +44,8 @@ export const ACTIVITIES: readonly AmbientActivity[] = [
   // ------------------------------------------------------------------ pray (posture and presence only)
   { id: 'priere', label: 'Prière en rangs (présence)', at: ['mosque'], hours: PRAYERS.map(p => p.hours), pose: 'row', clips: ['Idle'], stay: [400, 600], density: 12, look: 'prayer',
     dayBoost: { [FRIDAY]: 1.3 }, keepFree: 0.1 },
-  { id: 'ajjuma', label: 'Prière du vendredi (présence)', at: ['mosque'], hours: [[13.4, 14.9]], days: [FRIDAY], pose: 'row', clips: ['Idle'], stay: [400, 600], density: 20, look: 'prayer', keepFree: 0.1 },
-  { id: 'apres-priere', label: 'Causer devant la mosquée après la prière', at: ['mosque'], hours: [[14.5, 15.1], [19.6, 20.1]], pose: 'stand', clips: ['Talk', 'Idle'], stay: [25, 50], group: [2, 3], density: 5, look: 'prayer',
+  { id: 'ajjuma', label: 'Prière du vendredi (présence)', at: ['mosque'], hours: [[13.5, 15]], days: [FRIDAY], pose: 'row', clips: ['Idle'], stay: [400, 600], density: 20, look: 'prayer', keepFree: 0.1 },
+  { id: 'apres-priere', label: 'Causer devant la mosquée après la prière', at: ['mosque'], hours: [[15, 15.6], [21.5, 22]], pose: 'stand', clips: ['Talk', 'Idle'], stay: [25, 50], group: [2, 3], density: 5, look: 'prayer',
     dayBoost: { [FRIDAY]: 1.6 } },
 
   // ------------------------------------------------------------------ gather

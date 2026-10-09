@@ -1,18 +1,22 @@
 import * as THREE from 'three';
 import { Humanoid, humanoidReady, randomLook } from './humanoid';
 import type { HubId } from '../core/types';
+import { apprentiCalls } from '../i18n/lines';
+import type { VehicleSpec } from './vehicleKit';
 
 /**
  * The car rapide apprentice: stands at the open rear door (parked) or hangs on the rear step (moving), one hand on the
- * grab bar, calling out the destinations to people on the street. The calls appear in a speech bubble (text authored
- * here). Destinations are real Dakar neighbourhoods served by car rapides; the list per hub is PROVISIONAL (Unreviewed).
+ * grab bar, calling out the destinations to people on the street — « Colobane ! Colobane ! », « Petersen ! Nanu dem ! »,
+ * « Fan nga dem ? » (src/i18n/lines.ts). Destinations are real Dakar neighbourhoods served by car rapides; the list per
+ * hub is PROVISIONAL (Unreviewed).
  */
-const CALLS: Record<HubId, string[]> = {
-  plateau: ['Colobane ! Colobane !', 'Petersen ! Petersen !', 'Médina, Médina !', 'Pikine ! Ndaw, ndaw !'],
-  corniche: ['Fann ! Mermoz !', 'Ouakam ! Ouakam !', 'Colobane !', 'Liberté 6 !'],
-  almadies: ['Ngor ! Yoff !', 'Ouakam !', 'Petersen !', 'Parcelles !'],
-  pikine: ['Petersen ! Petersen !', 'Colobane !', 'Thiaroye ! Guédiawaye !', 'Parcelles ! Ndaw !'],
+const DESTINATIONS: Record<HubId, string[]> = {
+  plateau: ['Colobane', 'Petersen', 'Médina', 'Pikine'],
+  corniche: ['Fann', 'Mermoz', 'Ouakam', 'Liberté 6'],
+  almadies: ['Ngor', 'Yoff', 'Ouakam', 'Parcelles'],
+  pikine: ['Petersen', 'Colobane', 'Thiaroye', 'Guédiawaye'],
 };
+const CALLS: Record<HubId, string[]> = Object.fromEntries(Object.entries(DESTINATIONS).map(([hub, d]) => [hub, apprentiCalls(d)])) as Record<HubId, string[]>;
 
 function bubbleTexture(text: string) {
   const cv = document.createElement('canvas'); cv.width = 512; cv.height = 160;
@@ -53,8 +57,10 @@ export class Apprentice {
   /** Place him relative to a car group (front +z, rear door at -z on the left). */
   attach(car: THREE.Object3D) {
     car.add(this.h.group);
-    if (this.riding) { this.h.group.position.set(-0.45, 0.24, -3.62); this.h.group.rotation.y = Math.PI - 0.9; }
-    else { this.h.group.position.set(-1.6, -0.05, -3.9); this.h.group.rotation.y = -Math.PI / 2 - 0.5; }
+    // the vehicle kit gives the step and the standing spot (VehicleSpec.step); the Blender model keeps the old values
+    const step = (car.userData.vehicleSpec as VehicleSpec | undefined)?.step;
+    const at = step ? (this.riding ? step.riding : step.standing) : this.riding ? { x: -0.45, y: 0.24, z: -3.62, yaw: Math.PI - 0.9 } : { x: -1.6, y: -0.05, z: -3.9, yaw: -Math.PI / 2 - 0.5 };
+    this.h.group.position.set(at.x, at.y, at.z); this.h.group.rotation.y = at.yaw;
   }
 
   update(dt: number, near: boolean) {

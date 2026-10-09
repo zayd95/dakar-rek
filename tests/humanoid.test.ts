@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { fixSitKnees } from '../src/actors/humanoid';
+import { fixSitKnees, deriveKneel, KNEEL_HIPS } from '../src/actors/humanoid';
 
 /** Reads the skeleton and the Sit clip of the shipped character straight from the GLB bytes (no meshes, no textures). */
 function loadRig() {
@@ -69,5 +69,25 @@ describe('humanoid: seated pose', () => {
     const walk = new THREE.AnimationClip('Walk', 1, [new THREE.QuaternionKeyframeTrack('shinL.quaternion', [0], [-0.69, 0, 0, 0.72])]);
     fixSitKnees([walk]);
     expect(Array.from(walk.tracks[0].values)).toEqual([...new Float32Array([-0.69, 0, 0, 0.72])]);
+  });
+});
+
+describe('humanoid: kneeling on a floor place (prayer row)', () => {
+  it('folds the legs under: knees down in front, shins flat behind, hips about 0.3 m up', () => {
+    const { root, clip } = loadRig();
+    fixSitKnees([clip]);
+    const clips = [clip]; deriveKneel(clips);
+    const kneel = clips.find(c => c.name === 'Kneel')!;
+    const { dir, pos } = boneDirections(root, kneel);
+    for (const side of ['L', 'R']) {
+      expect(pos(`shin${side}`).y).toBeLessThan(0.16);       // knee joint just above the floor
+      expect(pos(`shin${side}`).z).toBeGreaterThan(0.25);    // knees in front of the hips
+      expect(dir(`shin${side}`).z).toBeLessThan(-0.9);       // shins lying back along the floor
+      expect(pos(`foot${side}`).y).toBeLessThan(0.16);       // ankles on the floor
+      expect(Math.abs(pos(`foot${side}`).z)).toBeLessThan(0.15);   // feet under the hips
+    }
+    expect(pos('hips').y).toBeCloseTo(KNEEL_HIPS, 1);
+    deriveKneel(clips);
+    expect(clips.filter(c => c.name === 'Kneel')).toHaveLength(1);   // derived once
   });
 });

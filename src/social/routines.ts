@@ -3,7 +3,7 @@ import type { Clip } from '../actors/humanoid';
 import { PITCH, BLK, ROAD, NB } from '../world/builder';
 
 /**
- * Daily routines of the recurring cast — BROUILLON, à relire par Habib.
+ * Daily routines of the recurring cast.
  * Each character keeps to their hub. A schedule is a list of slots by city hour (0–24, the shared city clock or the
  * debug `setHour` override); each slot names a place, resolved at run time from the hub's interactables (gargote,
  * Maïga, café, boutique, grand-place…), and an activity that gives the pose (seated, talking, waiting, training).

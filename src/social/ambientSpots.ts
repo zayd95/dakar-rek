@@ -44,14 +44,21 @@ export const ANCHOR_ROOM = 1.8;
 const inside = (cols: readonly Collider[], x: number, z: number, m = 0.3) =>
   cols.some(c => c.h > 0.3 && x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m);
 
-/** Street furniture seats the builders draw but do not register yet (ids `<hub-ish anchor id>:amb:…`). */
-export function furnitureSeats(interactables: SpotInputs['interactables'], layout: SpotInputs['layout'], existing: readonly SeatLike[]): SeatLike[] {
+/**
+ * Street furniture seats the builders draw but do not register yet (ids `<hub-ish anchor id>:amb:…`). Lots a registered
+ * place took over (a venue lane's Dibi on the old dibiterie lot) are skipped: their furniture is theirs.
+ */
+export function furnitureSeats(interactables: SpotInputs['interactables'], layout: SpotInputs['layout'], existing: readonly SeatLike[], places: readonly PlaceSpec[] = []): SeatLike[] {
   const out: SeatLike[] = [];
+  const taken = (a: Pt, tags: readonly string[]) => places.some(p => (PLACE_TAGS[p.type] ?? []).some(t => tags.includes(t))
+    && p.anchors.some(x => (x.space ?? p.space) === 'street' && Math.hypot(x.x - a.x, x.z - a.z) < 16));
   const add = (s: Omit<SeatLike, 'occupant' | 'space'>) => {
     if ([...existing, ...out].some(e => e.space === 'street' && Math.hypot(e.x - s.x, e.z - s.z) < 0.35)) return;
     out.push({ ...s, space: 'street', occupant: null });
   };
   for (const a of interactables) {
+    const rule = LEGACY_TAGS.find(r => a.id.includes(r.has));
+    if (rule && taken(a, rule.tags)) continue;
     const kiosk = /:(gargote|cafe|restaurant):/.test(a.id), maiga = a.id.includes(':maiga:');
     if (kiosk || maiga) {
       const dir = kioskDir(a.z), face = dir > 0 ? 0 : PI;
@@ -87,7 +94,7 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
   const spots: AmbientSpot[] = [];
   const cols = inp.colliders;
   const taken = new Set<string>();
-  const anchors: Pt[] = [...inp.interactables, ...inp.places.flatMap(p => p.space === 'street' ? p.anchors : [])];
+  const anchors: Pt[] = [...inp.interactables, ...inp.places.flatMap(p => p.anchors.filter(a => (a.space ?? p.space) === 'street'))];
   const seatOf = new Map(inp.seats.map(s => [s.id, s]));
   /** A standing slot in the street is usable: not in a solid object, not on a placed person, not on an anchor. */
   const okStand = (s: StandSlot, room = ANCHOR_ROOM) => !inside(cols, s.x, s.z) && !inp.people.some(p => Math.hypot(p.x - s.x, p.z - s.z) < 0.8)
@@ -107,19 +114,18 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
   const placeTagged: { tags: readonly string[]; pts: Pt[] }[] = [];
   for (const p of inp.places) {
     const tags = PLACE_TAGS[p.type] ?? ['place'];
-    if (!tags.length || !p.anchors.length) continue;
+    const own = p.anchors.filter(a => (a.space ?? p.space) === p.space);     // anchors of other spaces (a mosque's hall) are not here
+    if (!tags.length || !own.length) continue;
     const street = p.space === 'street';
-    const cx = p.anchors.reduce((v, a) => v + a.x, 0) / p.anchors.length, cz = p.anchors.reduce((v, a) => v + a.z, 0) / p.anchors.length;
-    const seats = claim(s => s.space === p.space && (!street || p.anchors.some(a => Math.hypot(a.x - s.x, a.z - s.z) < 7)));
-    let st: StandSlot[] = p.anchors.flatMap(a => ring(a.x, a.z, 2.1, 6, 0.3));
-    st = street ? stands(st) : st.filter(s => !p.anchors.some(a => Math.hypot(a.x - s.x, a.z - s.z) < ANCHOR_ROOM));
+    const cx = own.reduce((v, a) => v + a.x, 0) / own.length, cz = own.reduce((v, a) => v + a.z, 0) / own.length;
+    const seats = claim(s => s.space === p.space && (!street || own.some(a => Math.hypot(a.x - s.x, a.z - s.z) < 7)));
+    let st: StandSlot[] = own.flatMap(a => ring(a.x, a.z, 2.1, 6, 0.3));
+    st = street ? stands(st) : st.filter(s => !own.some(a => Math.hypot(a.x - s.x, a.z - s.z) < ANCHOR_ROOM));
     let rows: StandSlot[] | undefined;
-    if (p.type === 'mosque') {
-      const hall = p.anchors.find(a => a.id === 'hall') ?? p.anchors[0];
-      rows = prayerRows(hall.x, hall.z, 3, 6).filter(s => !street || (!inside(cols, s.x, s.z) && Math.hypot(s.x - hall.x, s.z - hall.z) >= 1));
-    }
-    push({ id: `place:${p.id}`, tags, space: p.space, x: cx, z: cz, seats, stands: st, rows, hours: p.hours, place: p.id, source: 'place' });
-    placeTagged.push({ tags, pts: p.anchors });
+    const hall = p.type === 'mosque' ? own.find(a => a.id === 'hall') : undefined;
+    if (hall) rows = prayerRows(hall.x, hall.z, 3, 6).filter(s => !street || (!inside(cols, s.x, s.z) && Math.hypot(s.x - hall.x, s.z - hall.z) >= 1));
+    push({ id: `place:${p.id}`, tags, space: p.space, x: cx, z: cz, seats, stands: st, rows, hours: p.hours, peaks: p.peaks, place: p.id, source: 'place' });
+    placeTagged.push({ tags, pts: street ? own : [] });
   }
   /** A legacy place is replaced by a registered place of the same family next to it. */
   const superseded = (x: number, z: number, tags: readonly string[], r = 14) =>
@@ -251,7 +257,8 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
   for (const [key, list] of byGroup) {
     const space = list[0].space, street = space === 'street';
     const rule = street ? null : LEGACY_TAGS.find(r => space.includes(r.has));
-    const tags = street ? ['bench'] : rule?.tags ?? ['indoor'];
+    // a room of prayer rows (a venue mosque's hall): the congregation at prayer times
+    const tags = list.every(s => s.kind === 'prayer') ? ['mosque'] : street ? ['bench'] : rule?.tags ?? ['indoor'];
     for (const s of list) taken.add(s.id);
     push({ id: `${street ? 'seats' : 'interior'}:${key}`, tags, space, x: list.reduce((v, s) => v + s.x, 0) / list.length, z: list.reduce((v, s) => v + s.z, 0) / list.length,
       seats: list.map(s => s.id), hours: rule?.hours, source: street ? 'seats' : 'interior', prio: street ? 1.3 : 1 });

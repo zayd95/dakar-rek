@@ -77,6 +77,8 @@ export interface AmbientSpot {
   area?: readonly [number, number, number, number];
   /** Opening hours of the place [open, close) (absent = always open). */
   hours?: readonly [number, number];
+  /** Busy windows of a registered place (`PlaceSpec.peaks`: lunch and evening at a Dibi, prayer times): more people. */
+  peaks?: readonly (readonly [number, number])[];
   /** Density multiplier of this spot (a big market vs a single bench). */
   weight?: number;
   /** Distance multiplier when the population cap is shared (generic corners and benches > 1: places come first). */
@@ -140,8 +142,11 @@ export const spotOpen = (s: Pick<AmbientSpot, 'hours'>, hour: number) => !s.hour
 // ------------------------------------------------------------------ seats
 /** The parts of a shared Seat the scheduler reads (interact/seats.ts). */
 export interface SeatLike { id: string; x: number; z: number; top: number; yaw: number; kind: string; space: string; occupant: string | null }
-/** Seats taken by non-player characters: placed people ('npc'), the cast ('npc:cast:…'), ambient people ('npc:amb:…'). */
-export const isNpcOccupant = (o: string | null) => !!o && o.startsWith('npc');
+/**
+ * Seats taken by non-player characters: placed people ('npc'), the cast ('npc:cast:…'), ambient people ('npc:amb:…'),
+ * venue roles ('<venue>:<role>'), transport passengers… — anyone but the player and remote players ('remote:…').
+ */
+export const isNpcOccupant = (o: string | null) => !!o && o !== 'player' && !o.startsWith('remote');
 const VEHICLE = 'vehicle';
 /** Seat kinds people stand on instead of sitting (prayer rows, mats on the floor). */
 export const STAND_ON = ['prayer', 'mat'];
@@ -212,7 +217,8 @@ export function capacity(a: AmbientActivity, s: AmbientSpot, seatKind: (id: stri
  */
 export function wanted(a: AmbientActivity, s: AmbientSpot, hour: number, dow: number, scale: number, cap: number): number {
   if (a.open && !spotOpen(s, hour)) return 0;
-  const v = a.density * (s.weight ?? 1) * activityLevel(a, hour, dow) * scale;
+  const peak = s.peaks?.length ? (s.peaks.some(w => inHours(hour, w)) ? 1.4 : 0.85) : 1;
+  const v = a.density * (s.weight ?? 1) * activityLevel(a, hour, dow) * scale * peak;
   if (v <= 0) return 0;
   const base = Math.floor(v), draw = hashStr(`${s.id}/${a.id}/${Math.floor(hour * 6)}`);
   return Math.min(cap, base + (draw < v - base ? 1 : 0));

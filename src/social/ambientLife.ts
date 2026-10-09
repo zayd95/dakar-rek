@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { GameCtx, GameModule } from '../game/modules';
 import type { HubWorld } from '../world/types';
 import type { Body } from '../interact/people';
-import { sitOriginY, type Seat } from '../interact/seats';
+import { seatClip, sitOriginY, type Seat } from '../interact/seats';
 import { Humanoid, humanoidReady, randomLook, type Clip, type PersonLook } from '../actors/humanoid';
 import { Impostors, ForeignBodies, cullHumanoid, ownerVisible, type Foreign } from '../actors/crowdLod';
 import { hubLayout } from '../world/builder';
@@ -28,8 +28,8 @@ interface Actor {
   seat: string | null; slot: number; slotRow: boolean; standOn: boolean; sitting: boolean;
   x: number; z: number; y: number; yaw: number;
   tx: number; tz: number; tyaw: number;
-  /** In front of the seat (where a walk ends before sitting down) and the body height when seated. */
-  ax: number; az: number; sitY: number;
+  /** In front of the seat (where a walk ends before sitting down), the body height and the pose when seated (Sit, Kneel). */
+  ax: number; az: number; sitY: number; sitClip: Clip;
   path: Pt[]; seg: number; speed: number; until: number; pause: number; cool: number;
   /** Place in the counter queue while waiting to be served (−1: none), and how long the wait lasts. */
   q: number; qx: number; qz: number; qyaw: number; waitT: number;
@@ -152,7 +152,7 @@ export class AmbientLife implements GameModule {
   private build() {
     const ctx = this.ctx, w = this.world!;
     // street furniture the builders draw without seats (kiosk benches, dibiterie chairs…), once per hub
-    for (const s of furnitureSeats(w.interactables, hubLayout(w.id), ctx.seats.all())) {
+    for (const s of furnitureSeats(w.interactables, hubLayout(w.id), ctx.seats.all(), ctx.places.all())) {
       ctx.seats.add({ ...s, kind: s.kind as Seat['kind'] });
       for (const pp of w.people) if (pp.clip === 'Sit' && Math.hypot(pp.x - s.x, pp.z - s.z) < 0.5) ctx.seats.occupy(s.id, 'npc');
     }
@@ -238,7 +238,7 @@ export class AmbientLife implements GameModule {
     const a: Actor = {
       n, key: 'npc:amb:' + n, state: 'off', born: 0, spot: null, act: null, look: randomLook(this.rand), color: new THREE.Color(), clip: 'Idle',
       seat: null, slot: -1, slotRow: false, standOn: false, sitting: false, x: 0, z: 0, y: 0.1, yaw: 0, tx: 0, tz: 0, tyaw: 0,
-      ax: 0, az: 0, sitY: 0.1, path: [], seg: 0, speed: 1.3, until: 0, pause: 0, cool: 0, q: -1, qx: 0, qz: 0, qyaw: 0, waitT: 0, clipT: 0, tw: 0, twDir: 1, route: null, board: null,
+      ax: 0, az: 0, sitY: 0.1, sitClip: 'Sit', path: [], seg: 0, speed: 1.3, until: 0, pause: 0, cool: 0, q: -1, qx: 0, qz: 0, qyaw: 0, waitT: 0, clipT: 0, tw: 0, twDir: 1, route: null, board: null,
       body: null, lod: 0, acc: 0, d: 0, rec: { id: 'amb:' + n, obj: new THREE.Object3D(), h: null, bias: 3 },   // focus after places, the cast and seats in reach: a passer-by never hides them
     };
     this.actors.push(a);
@@ -287,7 +287,8 @@ export class AmbientLife implements GameModule {
       case 'sit': return takeSeat(seatList(false), act.keepFree);
       case 'row': {
         const prayerSeats = seatList(true);
-        if (prayerSeats.length) { if (!takeSeat(prayerSeats, act.keepFree ?? 0.1)) return false; a.standOn = true; return true; }
+        // prayer rows of a venue kneel like its own congregation (Seat.clip); bare rows without a pose are stood on
+        if (prayerSeats.length) { if (!takeSeat(prayerSeats, act.keepFree ?? 0.1)) return false; a.standOn = !(ctx.seats.get(a.seat!) as Seat).clip; return true; }
         return this.takeSlot(a, spot, spot.rows ?? [], true, null, nearPlayer, nearCast);
       }
       case 'stand': return this.takeSlot(a, spot, spot.stands, false, mate, nearPlayer, nearCast);
@@ -318,7 +319,7 @@ export class AmbientLife implements GameModule {
 
   /** Seat target and the step in front of it — or beside/behind it when a table or a wall is in front. */
   private seatPose(a: Actor, s: SeatLike, spot: AmbientSpot | null) {
-    a.seat = s.id; a.tx = s.x; a.tz = s.z; a.tyaw = s.yaw; a.sitY = sitOriginY(s);
+    a.seat = s.id; a.tx = s.x; a.tz = s.z; a.tyaw = s.yaw; a.sitY = sitOriginY(s); a.sitClip = seatClip(s as Pick<Seat, 'clip'>);
     const hint = spot?.seatApproach?.[s.id];
     if (hint) { a.ax = hint.x; a.az = hint.z; return; }
     const cols = this.colsFor(s.space), fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
@@ -685,7 +686,7 @@ export class AmbientLife implements GameModule {
   }
 
   private clipOf(a: Actor): Clip {
-    if (a.tw > 0 || a.sitting || a.state === 'ride') return 'Sit';
+    if (a.tw > 0 || a.sitting || a.state === 'ride') return a.sitClip;
     if (a.state === 'in' || a.state === 'out') return a.pause > 0 ? 'Talk' : 'Walk';
     if (a.state === 'wait') return a.waitT % 5 < 3 ? 'Talk' : 'Idle';
     const act = a.act!;

@@ -21,7 +21,7 @@ const fixture = {
   meshes: [{ name: 'VehicleAssetFixture', primitives: [0, 1].map(material => ({ attributes: { POSITION: 0, TEXCOORD_0: 1 }, material })) }],
 };
 
-const browser = await chromium.launch({ args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 try {
   for (const useFixture of [false, true]) {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -39,10 +39,23 @@ try {
         const result = await page.evaluate(([hub, useFixture]) => {
           const d = window.__dakar;
           d.teleport(hub);
-          const root = d.three.scene.getObjectByName(useFixture ? 'car_rapide_blender' : 'TEMP_car_rapide');
+          const root = d.three.scene.getObjectByName(useFixture ? 'car_rapide_blender' : 'kit_car_rapide');
           // The apprentice is attached too; check only the imported fixture's meshes.
           const meshes = []; root?.traverse(o => { if (o.isMesh && o.name.startsWith('VehicleAssetFixture')) meshes.push(o); });
-          if (!useFixture) return { hub: d.pos().hub, found: !!root };
+          if (!useFixture) {
+            // Vehicle kit: every kit vehicle (station and traffic) is ≤ 3 meshes on 3 shared materials, with a spec.
+            const kits = []; d.three.scene.traverse(o => { if (/^kit_/.test(o.name) && o.userData.vehicleSpec) kits.push(o); });
+            const mats = new Set(); let worst = 0, unshared = 0;
+            for (const k of kits) {
+              const lod = k.children.find(c => c.isLOD);
+              const near = []; (lod ? lod.levels[0].object : k).traverse(m => { if (m.isMesh) near.push(m); });
+              worst = Math.max(worst, near.length);
+              k.traverse(m => { if (m.isMesh && m.name !== 'apprenti') { mats.add(m.material); if (!m.userData.shared && m.geometry?.attributes?.color) unshared++; } });
+            }
+            const spec = root?.userData.vehicleSpec;
+            return { hub: d.pos().hub, found: !!root, kits: kits.length, worst, kitMaterials: [...mats].filter(m => m.vertexColors).length, unshared,
+              step: !!spec?.step, seats: spec?.seats.length ?? 0, doors: spec?.doors.map(x => x.id) ?? [] };
+          }
           const materials = meshes.flatMap(m => Array.isArray(m.material) ? m.material : [m.material]);
           const paint = materials.find(m => m.map);
           const glass = materials.find(m => m.transparent);
@@ -57,6 +70,13 @@ try {
             shared: meshes.every(m => m.userData.shared), disposals: window.__vehicleDisposals };
         }, [hub, useFixture]);
         assert.equal(result.hub, hub); assert.equal(result.found, true);
+        if (!useFixture) {
+          assert.ok(result.kits >= 3, `kit vehicles in ${hub}: ${result.kits}`);
+          assert.ok(result.worst <= 3, `near model meshes ≤ 3, got ${result.worst}`);
+          assert.ok(result.kitMaterials <= 2, `kit body + glass materials shared, got ${result.kitMaterials}`);
+          assert.equal(result.unshared, 0);
+          assert.equal(result.step, true); assert.ok(result.seats >= 12); assert.ok(result.doors.includes('rear'));
+        }
         if (useFixture) {
           assert.equal(result.textured, true); assert.equal(result.roughness, 0.35); assert.equal(result.metalness, 0.6);
           assert.equal(result.opacity, 0.4); assert.equal(result.shared, true); assert.equal(result.disposals, 0);
@@ -64,7 +84,7 @@ try {
       }
       assert.deepEqual(errors, []);
       assert.equal(textureRequests, useFixture ? 1 : 0);
-      console.log(`PASS: four hubs, ${useFixture ? 'textured PBR asset and shared-resource cleanup' : 'missing-asset fallback'}, no page errors`);
+      console.log(`PASS: four hubs, ${useFixture ? 'textured PBR asset and shared-resource cleanup' : 'missing-asset fallback to the vehicle kit (≤ 3 meshes per vehicle, shared materials, car rapide spec)'}, no page errors`);
     } finally { await ctx.close(); }
   }
 } finally { await browser.close(); }

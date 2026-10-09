@@ -71,12 +71,56 @@ describe('activity runner', () => {
     w.runner.start(P.own({ id: 'parcelle', label: 'Voir la parcelle', then: () => { opened = 'plot'; } }));
     expect(opened).toBe('plot'); expect(w.runner.running).toBe(false);
   });
-  it('pray: optional ablutions, then a prayer row seat; spiritual category', () => {
+  it('pray and wash: seat-based and calm, with no reward at all (no needs, money, counters or category)', () => {
     const w = world();
+    const before = JSON.stringify({ needs: w.state.data.needs, wallet: w.state.wallet, counters: w.state.data.counters });
     const a = P.pray({ id: 'priere', label: 'Prier', wash: true, seconds: 2 });
     expect(a.steps.map(s => s.primitive)).toEqual(['wash', 'pray']);
+    expect(a.steps.every(s => !s.effects)).toBe(true);
+    expect(a.steps[1].seat).toBe('near');
     w.runner.start(a); run(w.runner, 5.5);
-    expect(w.state.data.counters.prieres).toBe(1); expect(w.log).toContain('cat:spirituel');
+    expect(w.runner.running).toBe(false);
+    expect(w.seated()).not.toBeNull();                                      // prayed on a seat (the row)
+    expect(JSON.stringify({ needs: w.state.data.needs, wallet: w.state.wallet, counters: w.state.data.counters })).toBe(before);
+    expect(w.log.some(l => l.startsWith('cat:'))).toBe(false);
+    const ab = P.wash({ id: 'ablutions', label: 'Ablutions', seconds: 1 });
+    expect(ab.steps[0].effects).toBeUndefined();
+    w.runner.start(ab); w.runner.cancel('Arrêté');                          // interruptible
+    expect(w.runner.running).toBe(false);
+  });
+});
+
+describe('gestures of the trades', async () => {
+  const { gesturePay } = await import('../src/activity/runner');
+  const { G } = await import('../src/activity/gestures');
+  const shift = () => P.trade({ id: 'meca', label: 'Aider le mécanicien', pay: 2000, needs: { energie: -18 }, counter: 'garage', category: 'artisanat',
+    parts: [{ label: 'Passer les outils', gesture: G.tools(4) }, { label: 'Serrer les écrous', gesture: G.bolts(4) }] });
+  it('the pay follows how well each part is played (30 % floor, 20 % tip when perfect)', () => {
+    expect(gesturePay(1000, 0)).toBe(300); expect(gesturePay(1000, 0.5)).toBe(650); expect(gesturePay(1000, 1)).toBe(1200);
+  });
+  it('a shift waits for each gesture, pays per part and tires only at the end', () => {
+    const w = world(0); const pending: ((s: number) => void)[] = [];
+    const r = new ActivityRunner({ ...(w.runner as unknown as { s: ActivityServices }).s, gesture: (_g, _l, done) => { pending.push(done); return () => {}; } });
+    w.state.data.needs.energie = 80;
+    r.start(shift());
+    run(r, 20);                                                              // time alone never ends a gesture
+    expect(r.current?.index).toBe(0); expect(w.state.wallet).toBe(0);
+    pending.shift()!(1);                                                     // perfect tools
+    expect(w.state.wallet).toBe(1200); expect(w.state.data.needs.energie).toBe(80);
+    pending.shift()!(0.5);                                                   // so-so bolts
+    expect(w.state.wallet).toBe(1200 + 650); expect(w.state.data.needs.energie).toBe(62);
+    expect(w.state.data.counters.garage).toBe(1); expect(r.running).toBe(false);
+  });
+  it('stopping mid-gesture aborts it: no pay, no late callback', () => {
+    const w = world(0); let aborted = 0; let late: ((s: number) => void) | null = null;
+    const r = new ActivityRunner({ ...(w.runner as unknown as { s: ActivityServices }).s, gesture: (_g, _l, done) => { late = done; return () => { aborted++; }; } });
+    r.start(shift()); r.cancel('Arrêté');
+    expect(aborted).toBe(1); late!(1);
+    expect(w.state.wallet).toBe(0); expect(r.running).toBe(false);
+  });
+  it('without a gesture player, a gesture step is a short timed step with a middling score', () => {
+    const w = world(0); w.runner.start(shift()); run(w.runner, 7);
+    expect(w.runner.running).toBe(false); expect(w.state.wallet).toBe(2 * gesturePay(1000, 0.6));
   });
 });
 
@@ -131,7 +175,7 @@ describe('place recipes compose the same primitives differently', async () => {
     expect(m.offers.hall[0].primitive).toBe('pray');
     expect(m.hours).toBeUndefined();                                                  // always open
     const beach = T.fishingBeach({ id: 'b', name: 'Soumbédioune', space: 'street', anchors: [A('pirogue'), A('mareyeuses', 4)] });
-    expect(beach.offers.mareyeuses.map(o => o.primitive)).toEqual(['sell', 'buy']);
+    expect(beach.offers.mareyeuses.map(o => o.primitive)).toEqual(['sell', 'sell', 'buy']);
     expect(T.club({ id: 'c', name: 'Club', space: 'club', anchors: [A('floor'), A('bar', 3)] }).hours).toEqual([21, 5]);
     const plot = T.ownable({ id: 'p', name: 'Parcelle 12', space: 'street', anchors: [A('sign')], type: 'plot', assetId: 'plot:12' }, { ownership: () => {} });
     expect(plot.offers.sign[0].primitive).toBe('inspect');

@@ -30,6 +30,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat', null, T).catch(() => {});
     const f = await focus();
     check(`${label}: walking up to a bench focuses it with « S’asseoir »`, f?.kind === 'seat' && /asseoir/.test(f.primary ?? ''), JSON.stringify(f));
+    // the bubble is placed by the frame loop (projection of the target): wait for a frame that shows it (slow software rendering)
+    await page.waitForFunction(() => document.getElementById('wprompt')?.classList.contains('on'), null, T).catch(() => {});
     const prompt = await d(() => document.getElementById('wprompt')?.classList.contains('on') && document.getElementById('wprompt').textContent);
     check(`${label}: a diegetic prompt floats above the seat`, typeof prompt === 'string' && /asseoir/.test(prompt), String(prompt));
     await d(() => window.__dakar.act());
@@ -56,8 +58,12 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   check(`${label}: walking up to a person offers « Saluer » and « Demander son nom »`, greeted?.primary === 'Saluer' && greeted.all.includes('Demander son nom'), JSON.stringify(greeted));
   if (greeted) {
     await d(() => window.__dakar.act());
-    await page.waitForFunction(() => /Maleekum salaam/.test(document.getElementById('toast')?.textContent ?? ''), null, T).catch(() => {});
-    check(`${label}: greeting gets an answer`, /Maleekum salaam/.test(await d(() => document.getElementById('toast').textContent)));
+    // Wolof exchange (src/i18n/lines.ts), French typography with no-break spaces: « Toi : « Salaam aleekum ! » · Passant : « Maleekum salaam ! » »
+    const said = () => (document.getElementById('toast')?.textContent ?? '').replace(/[  ]/g, ' ');
+    await page.waitForFunction(src => new RegExp(src).test((document.getElementById('toast')?.textContent ?? '').replace(/[  ]/g, ' ')), 'Maleekum salaam', T).catch(() => {});
+    const answer = await d(said);
+    // (the toast may already show this person's follow-up: the greeting of the hour and « Jàmm rekk. »)
+    check(`${label}: greeting gets an answer (« Salaam aleekum ! » — « Maleekum salaam ! »)`, /^Toi : « Salaam aleekum ! » · Passan(t|te) : « Maleekum salaam ! »$|· Toi : « Jàmm rekk\. » \(tout va bien\)$/.test(answer), answer);
     await page.screenshot({ path: `${out}/${label}-greet.png` });
   }
 
