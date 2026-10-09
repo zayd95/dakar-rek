@@ -190,7 +190,7 @@ export class AmbientLife implements GameModule {
       if (!s.sit) continue;
       const seat = ctx.seats.inSpace('street').find(x => Math.hypot(x.x - s.x, x.z - s.z) < 0.5);
       if (!seat) continue;
-      if (seat.occupant?.startsWith('npc:amb:')) { const a = this.actors.find(x => x.key === seat.occupant); if (a) this.off(a, true); }
+      if (seat.occupant?.startsWith('npc:amb:')) { const a = this.actors.find(x => x.key === seat.occupant); if (a) this.leave(a); }   // stands up for them
       if (ctx.seats.occupy(seat.id, 'npc:cast:' + r.id)) this.castHolds.push(seat.id);
     }
   }
@@ -222,8 +222,9 @@ export class AmbientLife implements GameModule {
         if (near && paths <= 0) break;
         const g = Math.min(deficit, this.groupSize(r.act));
         const made = this.spawn(r.spot, r.act, g, !near);
+        if (near) paths -= Math.max(1, made);                       // failed walks cost a path too
         if (!made) break;
-        deficit -= made; if (near) paths -= made;
+        deficit -= made;
       }
     }
   }
@@ -256,7 +257,8 @@ export class AmbientLife implements GameModule {
       a.until = this.t + act.stay[0] + this.rand() * (act.stay[1] - act.stay[0]);
       a.speed = act.speed ? act.speed[0] + this.rand() * (act.speed[1] - act.speed[0]) : WALK[0] + this.rand() * (WALK[1] - WALK[0]);
       a.pause = 0; a.tw = 0; a.board = null;
-      if (snap || !this.arrive(a)) this.settle(a);
+      if (snap) this.settle(a);
+      else if (!this.arrive(a)) { this.off(a, true); break; }       // no clean way in, in sight of the player: nobody pops up
       a.rec.space = spot.space; a.rec.female = !!a.look.female;
       made++; first ??= a;
     }

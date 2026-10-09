@@ -79,11 +79,9 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
       await page.evaluate(([v, h]) => { const d = window.__dakar; d.cam(null); d.setHour(h); if (d.pos().hub !== v.hub) d.teleport(v.hub, v.player[0], v.player[1], 0); else d.place(v.player[0], v.player[1], 0); }, [v, h]);
       // the population settles at once after an hour jump; give it a few frames and the walkers their places
       await page.waitForFunction(h => { const a = window.__dakar.ambient(); return Math.abs(a.hour - h) < 0.01 && a.live > 0; }, h, T).catch(() => {});
-      await frames(page, 6);
-      await page.evaluate(() => window.__dakar.ambientSettle());
-      await frames(page, 4);
-      await page.evaluate(([c, t]) => window.__dakar.cam(c, t), [v.cam, v.look]);
-      await frames(page, 4);
+      await frames(page, 3);
+      await page.evaluate(([c, t]) => { window.__dakar.ambientSettle(); window.__dakar.cam(c, t); }, [v.cam, v.look]);
+      await frames(page, 3);
       const a = await page.evaluate(() => ({ ...window.__dakar.ambient(), dc: window.__dakar.drawCalls() }));
       await page.screenshot({ path: `${out}/${label}-${v.id}-${String(h).padStart(2, '0')}h.png` });
       totals[`${v.id}@${h}`] = a.live;

@@ -22,7 +22,7 @@ const WEEK = [0, 1, 2, 3, 4], NOT_SUNDAY = [0, 1, 2, 3, 4, 5];
 
 export const ACTIVITIES: readonly AmbientActivity[] = [
   // ------------------------------------------------------------------ eat
-  { id: 'petit-dej', label: 'Petit-déjeuner au café', at: ['cafe'], hours: [[6.5, 10.5]], pose: 'sit', clips: ['Sit'], stay: [35, 70], group: [1, 2], density: 3, open: true, prop: 'plate', serve: [6, 12] },
+  { id: 'petit-dej', label: 'Petit-déjeuner (café Touba, pain, bouillie)', at: ['cafe', 'kiosk'], hours: [[6.5, 10.5]], pose: 'sit', clips: ['Sit'], stay: [35, 70], group: [1, 2], density: 3, open: true, prop: 'plate', serve: [6, 12] },
   { id: 'dejeuner', label: 'Déjeuner', at: ['eat'], hours: [[12.3, 15.5]], pose: 'sit', clips: ['Sit'], stay: [45, 90], group: [1, 3], density: 4, open: true, prop: 'plate', serve: [6, 14], curve: [[12.3, 0.6], [13.5, 1], [15.5, 0.5]] },
   { id: 'diner', label: 'Dîner', at: ['eat'], hours: [[19.3, 22.8]], pose: 'sit', clips: ['Sit'], stay: [40, 80], group: [1, 3], density: 3, open: true, prop: 'plate', serve: [6, 14] },
   { id: 'dibi', label: 'Dibi du soir entre amis', at: ['dibi'], hours: [[18.5, 1.5]], pose: 'sit', clips: ['Sit'], stay: [50, 100], group: [2, 3], density: 4, open: true, prop: 'plate', serve: [8, 16], dayBoost: { [FRIDAY]: 1.2, [SATURDAY]: 1.5 } },
@@ -56,6 +56,7 @@ export const ACTIVITIES: readonly AmbientActivity[] = [
   { id: 'attaya', label: 'Attaya entre amis', at: ['attaya'], hours: [[10, 13.5], [16, 0.5]], pose: 'stand', clips: ['Talk', 'Talk', 'Idle'], stay: [60, 140], group: [2, 3], density: 4, curve: [[10, 0.6], [16, 0.7], [20, 1], [0.5, 0.5]] },
   { id: 'dames', label: 'Regarder la partie de dames', at: ['dames'], hours: [[10, 13], [16, 22.5]], pose: 'stand', clips: ['Idle', 'Talk'], stay: [40, 100], density: 3 },
   { id: 'banc', label: 'Se poser sur un banc', at: ['bench', 'square'], hours: [[8.5, 12.5], [15.5, 23.5]], pose: 'sit', clips: ['Sit'], stay: [50, 130], group: [1, 2], density: 2, curve: [[8.5, 0.6], [12, 0.5], [16, 0.7], [19.5, 1], [23.5, 0.4]] },
+  { id: 'salutations', label: 'Se saluer en partant au travail', at: ['corner'], hours: [[6.7, 9.6]], pose: 'stand', clips: ['Talk', 'Talk', 'Idle'], stay: [25, 60], group: [2, 2], density: 2, days: [0, 1, 2, 3, 4, 5] },
   { id: 'causer', label: 'Causer au coin de la rue', at: ['corner'], hours: [[10.5, 14], [17, 1]], pose: 'stand', clips: ['Talk', 'Talk', 'Idle'], stay: [40, 100], group: [2, 2], density: 2, curve: [[10.5, 0.5], [13, 0.8], [17, 0.7], [20.5, 1], [23, 0.6], [1, 0.25]] },
   { id: 'veillee', label: 'Prendre le frais le soir', at: ['corner', 'square'], hours: [[20, 1.5]], pose: 'stand', clips: ['Talk', 'Idle'], stay: [60, 140], group: [2, 3], density: 1, dayBoost: { [SATURDAY]: 1.5 } },
 
