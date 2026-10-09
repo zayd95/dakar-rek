@@ -40,7 +40,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   check(`${label}: status bar shows city time and FCFA balance`, /\d\d:\d\d/.test(status) && / F/.test(status), status.replace(/\n/g, ' '));
   const tiles = await page.locator('#phone [data-app]').evaluateAll(els => els.map(e => e.dataset.app));
   // A hook app shows exactly when its module registered the hook (economy, NPCs, chat and city merge in over time).
-  const HOOK_APPS = { messages: 'openMessages', quartier: 'openPlaces', travail: 'openJobs', maison: 'openHome', habitants: 'openPeople' };
+  const HOOK_APPS = { messages: 'openMessages', quartier: 'openPlaces', travail: 'openJobs', affaires: 'openBusiness', maison: 'openHome', habitants: 'openPeople' };
   const hooked = await page.evaluate(names => Object.fromEntries(Object.entries(names).map(([app, hook]) => [app, typeof window.__dakar.phoneHooks[hook] === 'function'])), HOOK_APPS);
   check(`${label}: hook apps shown only with their module`, Object.entries(hooked).every(([app, on]) => tiles.includes(app) === on) && tiles.includes('reglages'), `${tiles.join(',')} · hooks ${JSON.stringify(hooked)}`);
   await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-home.png` });

@@ -1,5 +1,8 @@
 export type HubId = 'plateau' | 'corniche' | 'almadies' | 'pikine';
 export const HUB_IDS: HubId[] = ['plateau', 'corniche', 'almadies', 'pikine'];
+/** Activity categories for polyvalence (src/economy/polyvalence.ts). */
+export const ACTIVITY_IDS = ['livraison', 'services', 'commerce', 'combat', 'peche', 'artisanat', 'social'] as const;
+export type ActivityId = typeof ACTIVITY_IDS[number];
 
 export interface Needs { faim: number; energie: number; moral: number; social: number; hygiene: number }
 
@@ -29,6 +32,10 @@ export interface SaveData {
   furniture: string[];
   /** v3: Tiak Tiak delivery in progress and completed run ids (a run is paid once). */
   jobs: JobsState;
+  /** v4: ventures owned and their income clock (src/economy/business.ts). */
+  business: BusinessState;
+  /** v4: activity categories practised, for polyvalence (src/economy/polyvalence.ts). */
+  activities: ActivityState;
 }
 
 export interface LedgerEntry { at: number; label: string; amount: number }
@@ -41,5 +48,17 @@ export interface ActiveJob {
   startedMs: number; limitMs: number;
 }
 export interface JobsState { active: ActiveJob | null; done: string[]; seq: number }
+export interface BusinessState {
+  /** Units owned per venture id. */
+  owned: Record<string, number>;
+  /** Played time (ms) up to which income was counted into `carry`, and of the last hourly payout. */
+  clockMs: number; payMs: number;
+  /** Income counted but not paid yet (F, fractional), and the total paid so far. */
+  carry: number; earned: number;
+}
+export interface ActivityState {
+  /** Categories ever practised (unlocks), and the played time (ms) each was last practised (polyvalence). */
+  known: ActivityId[]; last: Partial<Record<ActivityId, number>>;
+}
 
 export interface WrestlerLook { ngembColor: string; ngembPattern: string; accessories: string[] }

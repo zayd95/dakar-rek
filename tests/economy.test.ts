@@ -12,18 +12,18 @@ const play = (r: Relations, s: GameState, id: string, choice: string) => {
   const b = BEATS.find(x => x.id === id)!; return applyChoice(b, b.choices.find(c => c.id === choice)!, r, s);
 };
 
-describe('save schema v3', () => {
+describe('save schema v3 (now part of v4)', () => {
   it('a v2 save migrates with an empty ledger, no furniture and no delivery, keeping money and story', () => {
     const v2 = { schemaVersion: 2, guestId: 'g', hub: 'pikine', x: 1040, z: 0, wallet: 7777, flags: ['reco_modou'], beats: { ibou_welcome: 'oui' } };
     const m = migrate(v2)!;
-    expect(SCHEMA_VERSION).toBe(3);
-    expect(m.schemaVersion).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
+    expect(m.schemaVersion).toBe(4);
     expect(m.ledger).toEqual([]); expect(m.furniture).toEqual([]);
     expect(m.jobs).toEqual({ active: null, done: [], seq: 0 });
     expect(m.wallet).toBe(7777); expect(m.flags).toEqual(['reco_modou']); expect(m.beats.ibou_welcome).toBe('oui');
     expect(m.x).toBe(1040);              // off-map positions are recovered at load time (main.ts), not by the migration
   });
-  it('a v1 save also reaches v3', () => {
+  it('a v1 save also reaches the current schema', () => {
     const m = migrate({ schemaVersion: 1, wallet: 500 })!;
     expect(m.schemaVersion).toBe(SCHEMA_VERSION); expect(m.ledger).toEqual([]); expect(m.furniture).toEqual([]);
   });

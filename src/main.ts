@@ -255,7 +255,7 @@ function openActions(it: Interactable) {
   const visible = it.actions.filter(a => !a.visible || a.visible(state));
   const items = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
+    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
   });
   let subtitle = it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {
@@ -296,6 +296,7 @@ function runSpecial(a: Action) {
     case 'exit': exitInterior(); break;
     case 'jobs': economy.openJobs(nearest ?? undefined); break;
     case 'shop': economy.openShop(); break;
+    case 'business': economy.openBusiness(); break;
   }
 }
 
@@ -479,15 +480,16 @@ function runAction(a: Action, npc?: string, it?: Interactable) {
     if (p < 1) { requestAnimationFrame(tick); return; }
     hud.progress(false);
     const entry = where && !where.startsWith(a.label) ? `${a.label} · ${where}` : a.label;   // wallet history line
+    const gain = economy.work(a, it);                       // records the activity (polyvalence) and scales the pay
     if (a.cost) state.addMoney(-a.cost, entry);
-    if (a.gain) state.addMoney(a.gain, entry);
+    if (gain) state.addMoney(gain, entry);
     if (a.needs) state.adjust(a.needs);
     if (a.counter) state.count(a.counter);
     if (npc) rel.change(PLAYER, npc, 1);
     state.count('actions');
     npcLife.afterAction(a, it ?? null);
     const bits = [a.label + ' ✓'];
-    if (a.gain) bits.push('+' + fcfa(a.gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
+    if (gain) bits.push('+' + fcfa(gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
     hud.toast(bits.join('  '));
     mode = 'play'; input.enabled = true; saveNow();
   };

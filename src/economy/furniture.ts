@@ -1,10 +1,11 @@
 import type { Action } from '../world/types';
 import type { GameState } from '../core/state';
 import { ECONOMY } from './config';
+import { practise } from './polyvalence';
 
 /**
  * Starter-room furniture (Pikine). Each item is drawn in the 'home' interior once owned (src/world/interiors.ts)
- * and adds its action to the room. Names, effects and prices are a PROVISIONAL design table (prices in config.ts).
+ * and adds its action to the room. Prices are in config.ts; a purchase counts as commerce (polyvalence).
  * No brands; the radio plays no real station (no sound at all for now).
  */
 export interface FurnitureItem { id: string; name: string; effect: string; action: Action }
@@ -41,7 +42,7 @@ export function buyFurniture(s: GameState, id: string): boolean {
   const item = furnitureById(id)!;
   s.addMoney(-priceOf(id), `Achat : ${item.name}`);
   s.data.furniture.push(id);
-  s.count('meubles');
+  s.count('meubles'); practise(s, 'commerce');
   return true;
 }
 
