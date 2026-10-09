@@ -14,7 +14,7 @@ export const PRAYERS: readonly { id: string; label: string; hours: readonly [num
   { id: 'fajar', label: 'Fajar', hours: [5.75, 6.6] },
   { id: 'tisbar', label: 'Tisbar', hours: [13.6, 14.5] },
   { id: 'takusaan', label: 'Takusaan', hours: [16.8, 17.4] },
-  { id: 'timis', label: 'Timis', hours: [19.0, 19.6] },
+  { id: 'timis', label: 'Timis', hours: [18.9, 19.6] },
   { id: 'gee', label: 'Gee', hours: [20.5, 21.1] },
 ];
 const FRIDAY = 4, SATURDAY = 5, SUNDAY = 6;

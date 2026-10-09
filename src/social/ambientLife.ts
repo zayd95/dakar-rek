@@ -238,7 +238,7 @@ export class AmbientLife implements GameModule {
       n, key: 'npc:amb:' + n, state: 'off', born: 0, spot: null, act: null, look: randomLook(this.rand), color: new THREE.Color(), clip: 'Idle',
       seat: null, slot: -1, slotRow: false, standOn: false, sitting: false, x: 0, z: 0, y: 0.1, yaw: 0, tx: 0, tz: 0, tyaw: 0,
       ax: 0, az: 0, sitY: 0.1, path: [], seg: 0, speed: 1.3, until: 0, pause: 0, cool: 0, q: -1, qx: 0, qz: 0, qyaw: 0, waitT: 0, clipT: 0, tw: 0, twDir: 1, route: null, board: null,
-      body: null, lod: 0, acc: 0, d: 0, rec: { id: 'amb:' + n, obj: new THREE.Object3D(), h: null },
+      body: null, lod: 0, acc: 0, d: 0, rec: { id: 'amb:' + n, obj: new THREE.Object3D(), h: null, bias: 1.1 },   // after counters, the cast and seats
     };
     this.actors.push(a);
     return a;
@@ -600,10 +600,13 @@ export class AmbientLife implements GameModule {
     return false;
   }
 
+  /** Point of a route at its progress, in a reused object (called every frame for joggers). */
   private routePoint(a: Actor) {
-    const r = a.route!, dx = r.bx - r.ax, dz = r.bz - r.az, len = Math.hypot(dx, dz) || 1, nx = -dz / len, nz = dx / len;
-    return { x: r.ax + dx * r.t + nx * r.lat, z: r.az + dz * r.t + nz * r.lat, yaw: Math.atan2(dx * r.dir, dz * r.dir) };
+    const r = a.route!, dx = r.bx - r.ax, dz = r.bz - r.az, len = Math.hypot(dx, dz) || 1, nx = -dz / len, nz = dx / len, o = this.rp;
+    o.x = r.ax + dx * r.t + nx * r.lat; o.z = r.az + dz * r.t + nz * r.lat; o.yaw = Math.atan2(dx * r.dir, dz * r.dir);
+    return o;
   }
+  private rp = { x: 0, z: 0, yaw: 0 };
 
   // ------------------------------------------------------------------ bodies and figures
   private prioOf(g: THREE.Object3D) {
@@ -765,7 +768,16 @@ export class AmbientLife implements GameModule {
       /** Day of the week override (0 = lundi … 6 = dimanche), null = the city calendar. */
       ambientDay: (d: number | null) => { this.dayOverride = d; this.snapNext = true; },
       /** Everyone walking reaches their place now; people leaving are gone (captures). */
-      ambientSettle: () => { for (const a of this.actors) { if (a.state === 'in') { a.path.length = 0; this.settle(a); } else if (a.state === 'out') this.off(a, false); a.tw = 0; } },
+      ambientSettle: () => {
+        for (const a of this.actors) {
+          a.tw = 0;
+          if (a.state === 'in' || a.state === 'wait') { a.path.length = 0; this.settle(a); }
+          else if (a.state === 'out' && a.board && a.seat) { a.state = 'ride'; a.sitting = true; a.until = this.t + 120; const s = this.ctx.seats.get(a.seat); if (s) { a.x = s.x; a.z = s.z; a.yaw = s.yaw; a.y = sitOriginY(s); } }
+          else if (a.state === 'out') this.off(a, false);
+        }
+      },
+      /** The people of the spots whose id contains `frag` end their activity now (boarding, leaving: checks). */
+      ambientLeave: (frag: string) => { let n = 0; for (const a of this.actors) if (a.state === 'do' && a.spot!.id.includes(frag)) { this.leave(a); n++; } return n; },
       /** Registers a place (and its seats) as another lane would: the city populates it. */
       ambientAddPlace: (spec: Parameters<GameCtx['places']['add']>[0], seats: Seat[] = []) => { for (const s of seats) this.ctx.seats.add({ ...s }); this.ctx.places.add(spec); this.sigT = 0; },
       ambientRebuild: () => { this.build(); this.snapNext = true; },

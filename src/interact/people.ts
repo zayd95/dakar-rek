@@ -4,8 +4,11 @@ import type { ActivityRunner } from '../activity/runner';
 import { greet, talk } from '../activity/primitives';
 import type { Target, TargetSource } from './types';
 
-/** An ambient person of the street (placed by a builder or walking the pavements). `space`: 'street' by default. */
-export interface Body { id: string; obj: THREE.Object3D; h: Humanoid | null; female?: boolean; seated?: boolean; space?: string }
+/**
+ * An ambient person of the street (placed by a builder or walking the pavements). `space`: 'street' by default;
+ * `bias`: metres added when ranking the focus (default 0.3; background crowds use more so they never hide a counter or the cast).
+ */
+export interface Body { id: string; obj: THREE.Object3D; h: Humanoid | null; female?: boolean; seated?: boolean; space?: string; bias?: number }
 
 const NAMES_F = ['Awa', 'Fatou', 'Aminata', 'Mariama', 'Khady', 'Aïssatou', 'Ndeye', 'Coumba', 'Astou', 'Bineta', 'Dieynaba', 'Rokhaya'];
 const NAMES_M = ['Modou', 'Moussa', 'Ibrahima', 'Cheikh', 'Abdou', 'Ousmane', 'Babacar', 'Lamine', 'Pape', 'Alioune', 'Serigne', 'Mbaye'];
@@ -45,7 +48,7 @@ export class People implements TargetSource {
       const known = this.met.get(b.id);
       out.push({
         id: 'person:' + b.id, name: known ?? (b.female ? 'Passante' : 'Passant'), kind: 'person', space, x: p.x, z: p.z,
-        y: b.seated ? 1.6 : 2.15, radius: REACH, bias: 0.3,
+        y: b.seated ? 1.6 : 2.15, radius: REACH, bias: b.bias ?? 0.3,
         affordances: () => [
           greet({ id: 'saluer', label: 'Saluer', then: () => { this.face(b); this.say(`Toi : « Salaam aleekum ! » · ${known ?? 'Réponse'} : « Maleekum salaam ! »`); } }),
           talk({ id: 'nom', label: known ? `Parler avec ${known}` : 'Demander son nom', then: () => {
