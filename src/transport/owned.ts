@@ -1,49 +1,55 @@
 import type { HubId, SaveData } from '../core/types';
 import { HUB_IDS } from '../core/types';
+import type { GameState } from '../core/state';
+import { addOwned, holds } from '../economy/assets';
 
 /**
- * Owned vehicles — a tiny adapter until the ownership lane's generic `Asset` store is merged. Everything lives in the
- * existing save fields (no schema change, no migration):
- *   flag     `asset:vehicle:<id>`              the player owns it
- *   counters `asset:<id>:hub|x|z|yaw|seed|price|at`   where it is parked, its look, what it cost, when it was bought
- * Mapping to the generic model: Asset { id, kind: 'vehicle', catalogue: id, price, location: { hub, x, z, yaw },
- * owner: the player, condition: 1 } — `toAsset()` returns exactly that, so the ownership lane can import it once.
+ * Owned vehicles: ownership is the generic asset model (src/economy/assets.ts — bought with `buyAsset`, listed in
+ * « Biens », sold there); this file only keeps WHERE each owned vehicle is parked, keyed to its catalogue id, in the
+ * save's counters (no schema change):
+ *   `vehicle:<asset>:hub|x|z|yaw`
+ * No record yet (bought from « Biens », or never driven): it waits at its dealer's kerb.
  */
-export type OwnedId = 'moto_jakarta' | 'car_sedan';
-export type OwnedKind = 'moto' | 'car';
-/** What each catalogue item is (the save stores only the id). */
-export const OWNED_KIND: Record<OwnedId, OwnedKind> = { moto_jakarta: 'moto', car_sedan: 'car' };
-export interface OwnedVehicle { id: OwnedId; kind: OwnedKind; seed: number; hub: HubId; x: number; z: number; yaw: number; price: number; at: number }
+export type VehicleAsset = 'jakarta' | 'clando';
+export interface Parked { asset: VehicleAsset; hub: HubId; x: number; z: number; yaw: number }
 
-const flag = (id: OwnedId) => `asset:vehicle:${id}`;
-const key = (id: OwnedId, f: string) => `asset:${id}:${f}`;
+const key = (id: VehicleAsset, f: string) => `vehicle:${id}:${f}`;
 
-export function owns(data: SaveData, id: OwnedId) { return data.flags.includes(flag(id)); }
+/** The player owns it (the asset model's word). */
+export const ownsVehicle = (s: GameState, id: VehicleAsset) => holds(s, id);
 
-export function readOwned(data: SaveData, id: OwnedId): OwnedVehicle | null {
-  if (!owns(data, id)) return null;
-  const c = data.counters, n = (f: string, d = 0) => (typeof c[key(id, f)] === 'number' ? c[key(id, f)] : d);
-  const hub = HUB_IDS[Math.round(n('hub'))] ?? 'pikine';
-  return { id, kind: OWNED_KIND[id], seed: n('seed', 1), hub, x: n('x'), z: n('z'), yaw: n('yaw'), price: n('price'), at: n('at') };
+export function parked(data: SaveData, id: VehicleAsset): Parked | null {
+  const c = data.counters, n = (f: string) => c[key(id, f)];
+  if (typeof n('x') !== 'number' || typeof n('z') !== 'number') return null;
+  return { asset: id, hub: HUB_IDS[Math.round(n('hub') ?? 0)] ?? 'pikine', x: n('x'), z: n('z'), yaw: n('yaw') ?? 0 };
 }
 
-/** Records the vehicle (ownership + where it is parked). */
-export function writeOwned(data: SaveData, v: OwnedVehicle) {
-  if (!data.flags.includes(flag(v.id))) data.flags.push(flag(v.id));
+/** Records where it is parked (bought and delivered, or left there by its driver). */
+export function park(data: SaveData, p: Parked) {
   const c = data.counters;
-  c[key(v.id, 'hub')] = Math.max(0, HUB_IDS.indexOf(v.hub));
-  c[key(v.id, 'x')] = Math.round(v.x * 100) / 100; c[key(v.id, 'z')] = Math.round(v.z * 100) / 100;
-  c[key(v.id, 'yaw')] = Math.round(v.yaw * 1000) / 1000;
-  c[key(v.id, 'seed')] = v.seed; c[key(v.id, 'price')] = v.price; c[key(v.id, 'at')] = v.at;
+  c[key(p.asset, 'hub')] = Math.max(0, HUB_IDS.indexOf(p.hub));
+  c[key(p.asset, 'x')] = Math.round(p.x * 100) / 100; c[key(p.asset, 'z')] = Math.round(p.z * 100) / 100;
+  c[key(p.asset, 'yaw')] = Math.round(p.yaw * 1000) / 1000;
 }
 
-/** Only the parking spot changes (the vehicle was ridden and left somewhere else). */
-export function parkOwned(data: SaveData, id: OwnedId, hub: HubId, x: number, z: number, yaw: number) {
-  const v = readOwned(data, id); if (!v) return;
-  writeOwned(data, { ...v, hub, x, z, yaw });
+/** Forget the parking spot (sold: a vehicle bought again is delivered at the dealer's kerb). */
+export function unpark(data: SaveData, id: VehicleAsset) {
+  for (const f of ['hub', 'x', 'z', 'yaw']) delete data.counters[key(id, f)];
 }
 
-/** The generic Asset shape of the ownership lane (to import these records when its store lands). */
-export function toAsset(v: OwnedVehicle) {
-  return { id: v.id, kind: 'vehicle' as const, catalogue: v.id, price: v.price, location: { hub: v.hub, x: v.x, z: v.z, yaw: v.yaw }, owner: 'player', condition: 1, boughtAt: v.at };
+/**
+ * Saves from before the asset model held the motorbike in a flag `asset:vehicle:moto_jakarta` and counters
+ * `asset:moto_jakarta:hub|x|z|yaw|seed|price|at`. They get the `jakarta` asset at what they paid (never charged again)
+ * and keep their parking spot; the old keys go. Returns true when something was moved over.
+ */
+export function migrateOwned(s: GameState): boolean {
+  const d = s.data, flag = 'asset:vehicle:moto_jakarta', old = (f: string) => `asset:moto_jakarta:${f}`;
+  if (!d.flags.includes(flag)) return false;
+  const c = d.counters, num = (f: string) => (typeof c[old(f)] === 'number' ? c[old(f)] : undefined);
+  if (!holds(s, 'jakarta')) addOwned(s, 'jakarta', num('price') ?? 75000);
+  const x = num('x'), z = num('z');
+  if (!parked(d, 'jakarta') && x !== undefined && z !== undefined) park(d, { asset: 'jakarta', hub: HUB_IDS[Math.round(num('hub') ?? 0)] ?? 'pikine', x, z, yaw: num('yaw') ?? 0 });
+  d.flags.splice(d.flags.indexOf(flag), 1);
+  for (const f of ['hub', 'x', 'z', 'yaw', 'seed', 'price', 'at']) delete c[old(f)];
+  return true;
 }

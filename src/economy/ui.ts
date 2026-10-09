@@ -167,10 +167,10 @@ export class Economy {
     }
     const none = pickupFrags(hub).length === 0;
     const sub = fromHere ? 'Commandes à livrer depuis ici. Temps large ; en retard, la course paie moins.'
-      : `${HUB_NAMES[hub]} · ${a ? 'une livraison à la fois' : none ? 'pas encore de Tiak Tiak ici (Pikine et Plateau)' : 'le colis se récupère au point de départ'}. Choisir un service pose un repère à suivre à pied.`;
+      : `${HUB_NAMES[hub]} · ${a ? 'une livraison à la fois' : none ? 'pas encore de Tiak Tiak ici (Pikine et Plateau)' : 'le colis se récupère au point de départ'}. Choisir un service pose un repère à suivre, à pied ou avec ta moto.`;
     const done = s.data.counters.livraisons ?? 0, hint = firstVentureHint(s);
     this.d.menu();
-    this.d.hud.openMenu(fromHere ? 'Tiak Tiak · livraisons' : 'Petits boulots', sub, items, `<div class="kv">Livraisons faites : ${done}. ${esc(polyLine(s))} (paies affichées avec ce bonus).${hint ? '<br>' + esc(hint) : ''}</div><div class="draft">Trajets et clients Tiak Tiak : textes à relire. À pied pour l’instant : pas encore de conduite.</div>`);
+    this.d.hud.openMenu(fromHere ? 'Tiak Tiak · livraisons' : 'Petits boulots', sub, items, `<div class="kv">Livraisons faites : ${done}. ${esc(polyLine(s))} (paies affichées avec ce bonus).${hint ? '<br>' + esc(hint) : ''}</div><div class="draft">Trajets et clients Tiak Tiak : textes à relire. À pied, à moto ou en voiture : le colis se prend et se remet en arrivant, sans descendre.</div>`);
   }
 
   private limitText() {

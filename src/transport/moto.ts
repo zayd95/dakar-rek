@@ -6,13 +6,9 @@ import type { SeatSpec, VehicleSpec } from './spec';
  * VehicleSpec with a driver seat and drive handling. Built without a baked rider: the player rides it, with the side
  * stand down when parked and up while ridden (`build({ ridden })`).
  */
-export const MOTO_CATALOGUE = {
-  id: 'moto_jakarta' as const,
-  name: 'Moto Jakarta 125',
-  /** Game price (provisional, to review with the economy design table). */
-  price: 75000,
-  detail: 'Neuve · 125 cm³ · se gare où tu la laisses',
-};
+/** Its catalogue entry (src/economy/catalog.ts: name and price, owned through the asset model). */
+export const MOTO_ASSET = 'jakarta' as const;
+export const MOTO_DETAIL = 'D’occasion · 125 cm³ · se gare où tu la laisses';
 
 /** First kit seed giving a red, non-scooter motorbike (the classic Jakarta look); the same on every client. */
 let seedCache = 0;

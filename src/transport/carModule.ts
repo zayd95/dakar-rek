@@ -1,13 +1,14 @@
 import type { HubWorld } from '../world/types';
-import { carSpec, sedanSeed, CAR_CATALOGUE, SEDAN_BLUE, SEDAN_WHITE } from './car';
+import { carSpec, sedanSeed, CAR_ASSET, CAR_DETAIL, SEDAN_BLUE, SEDAN_WHITE } from './car';
 import { OwnedVehicleModule, kerbDealer, type DealerSite } from './ownedModule';
 
 /**
- * The player's car: a used saloon bought at « Voitures d'occasion · Ndiaye Auto » (fictional), a used-car corner on
- * the pavement of the Plateau, beside Dakar Réparation. Price shown, then confirmed, paid once; delivered at the kerb.
+ * The player's car: the catalogue's « Voiture d'occasion » (`clando`, a used kit saloon) bought at « Voitures
+ * d'occasion · Ndiaye Auto » (fictional), a used-car corner on the pavement of the Plateau, beside Dakar Réparation.
+ * Price shown (the catalogue's), then confirmed, paid once through the asset model; delivered at the kerb.
  * « Monter (conducteur) » on the driver seat, drive (the motorbike's controls, car handling), « Sortir de la voiture »
  * on the pavement side; it stays parked where you leave it, in that hub, across reloads.
- * src/transport/ownedModule.ts does the work; ownership through src/transport/owned.ts (`car_sedan`).
+ * src/transport/ownedModule.ts does the work; src/transport/owned.ts keeps where it is parked.
  */
 function carDealer(hub: HubWorld): DealerSite | null {
   const shop = hub.interactables.find(i => i.id === 'plateau:city:salon-tech');
@@ -20,16 +21,16 @@ function carDealer(hub: HubWorld): DealerSite | null {
 }
 
 export const car = new OwnedVehicleModule({
-  key: 'car', id: CAR_CATALOGUE.id, item: CAR_CATALOGUE, icon: '🚗', kit: 'sedan',
+  key: 'car', asset: CAR_ASSET, detail: CAR_DETAIL, icon: '🚗', kit: 'sedan',
   seed: () => sedanSeed(), spec: carSpec, height: 1.45, space: 'car:berline',
   dealer: {
     hub: 'plateau', name: 'Voitures d’occasion · Ndiaye Auto', catalogue: 'voitures', site: carDealer,
     sign: { bg: '#1b2a7a', band: '#f4c20d', title: 'OCCASIONS', sub: 'Ndiaye Auto · Plateau', subColor: '#1b2a7a' },
   },
   text: {
-    mine: 'Ta berline', getOn: 'Monter (conducteur)', getOff: 'Sortir de la voiture',
-    confirm: 'Acheter la berline d’occasion ?', delivered: 'Livrée au bord du trottoir, prête à rouler',
-    welcome: 'Ta berline t’attend au bord du trottoir. Jërëjëf !', parked: 'Voiture garée.', owned: 'Elle est déjà à toi',
+    mine: 'Ta voiture', getOn: 'Monter (conducteur)', getOff: 'Sortir de la voiture',
+    confirm: 'Acheter la voiture d’occasion ?', delivered: 'Livrée au bord du trottoir, prête à rouler',
+    welcome: 'Ta voiture t’attend au bord du trottoir. Jërëjëf !', parked: 'Voiture garée.', owned: 'Elle est déjà à toi',
   },
   exit: 'pavement', reach: 1.4,
 });

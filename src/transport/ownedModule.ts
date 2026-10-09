@@ -4,14 +4,15 @@ import type { GameCtx, GameModule } from '../game/modules';
 import type { Collider, HubWorld } from '../world/types';
 import type { Affordance, Target, TargetSource } from '../interact/types';
 import { shop } from '../activity/templates';
-import * as P from '../activity/primitives';
 import { buildVehicle, type VehicleKind } from '../actors/vehicleKit';
 import { fcfa } from '../ui/hud';
 import { Vehicle } from './vehicle';
 import { PassengerCamera } from './camera';
 import { RideCard } from './ui';
 import { driveStep, newDriveState, type DriveState } from './drive';
-import { readOwned, writeOwned, parkOwned, owns, OWNED_KIND, type OwnedId } from './owned';
+import { assetsRevision, buyAsset, cannotBuy, holding } from '../economy/assets';
+import { specOf } from '../economy/catalog';
+import { migrateOwned, ownsVehicle, park, parked, unpark, type VehicleAsset } from './owned';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
 import { transport } from './module';
@@ -26,7 +27,9 @@ import type { DriveSpec, VehicleSpec } from './spec';
  *     steers; walls, parked vehicles, stairs, the car rapides and the hub's edge stop it), the kit's camera anchors;
  *   - « Descendre / Sortir » → parked where it is (a solid footprint the player walks around), the player beside it
  *     (a car: on the pavement side), saved in that hub across reloads (a reload while driving parks it there).
- * Ownership is recorded through src/transport/owned.ts (save flag + counters → `toAsset()`).
+ * Ownership is the asset model (src/economy/assets.ts: `buyAsset`, the catalogue's price and name, « Biens »); only the
+ * parking spot is kept by src/transport/owned.ts. Bought from « Biens », it waits at its dealer's kerb; sold there,
+ * it is gone.
  */
 export interface Spot { x: number; z: number; yaw: number }
 export interface DealerSite {
@@ -47,8 +50,10 @@ export interface DealerSite {
 export interface OwnedDef {
   /** Module name and debug key (`__dakar.moto`, `__dakar.car`). */
   key: string;
-  id: OwnedId;
-  item: { name: string; price: number; detail: string };
+  /** Catalogue id (src/economy/catalog.ts): name and price come from there. */
+  asset: VehicleAsset;
+  /** One line under its name at the dealer. */
+  detail: string;
   icon: string;
   kit: VehicleKind;
   seed(): number;
@@ -149,6 +154,8 @@ export class OwnedVehicleModule implements GameModule {
   private solidCheck = false;
   /** The model's lean this frame (a motorbike in a turn), for the rider. */
   private lean = 0;
+  /** Asset model revision last looked at. */
+  private rev = -1;
 
   readonly def: OwnedDef;
   private readonly parkedTarget: Target;
@@ -158,7 +165,7 @@ export class OwnedVehicleModule implements GameModule {
   constructor(def: OwnedDef) {
     this.def = def; this.name = def.key;
     this.parkedTarget = { id: `${def.key}:parked`, name: def.text.mine, kind: 'vehicle', space: 'street', x: 0, z: 0, y: 1.6, radius: def.reach, bias: -0.2, affordances: () => this.parkedAffordances() };
-    this.rideTarget = { id: `${def.key}:ride`, name: def.item.name, kind: 'self', space: '', x: 0, z: 0, radius: 2, bias: -1, affordances: () => this.rideAffordances() };
+    this.rideTarget = { id: `${def.key}:ride`, name: this.label(), kind: 'self', space: '', x: 0, z: 0, radius: 2, bias: -1, affordances: () => this.rideAffordances() };
     this.targets = { name: def.key, collect: (space, x, z, out) => this.collect(space, x, z, out) };
   }
 
@@ -175,8 +182,28 @@ export class OwnedVehicleModule implements GameModule {
     this.hub = hub;
     this.spec = this.def.spec();
     if (hub.id === this.def.dealer.hub) this.buildDealer(ctx, hub);
-    const own = readOwned(ctx.state.data, this.def.id);
-    if (own && own.hub === hub.id) this.spawn(own.x, own.z, own.yaw);
+    migrateOwned(ctx.state);                                    // a save from before the asset model
+    this.sync(); this.rev = assetsRevision();
+  }
+
+  /** Name and price from the catalogue. */
+  private label() { return specOf(this.def.asset)?.name ?? this.def.key; }
+  private price() { return specOf(this.def.asset)?.price ?? 0; }
+
+  /**
+   * The vehicle in this hub follows the asset model: owned and parked here → it stands there; owned with no spot yet
+   * (bought from « Biens ») → delivered at the dealer's kerb when this is its hub; no longer owned (sold) → gone.
+   */
+  private sync() {
+    const s = this.ctx.state, a = this.def.asset;
+    if (!ownsVehicle(s, a)) {
+      if (this.vehicle) { if (this.driving) this.getOff(false); this.setSolid(false); this.vehicle.dispose(); this.vehicle = null; unpark(s.data, a); }
+      return;
+    }
+    if (this.vehicle || !this.hub) return;
+    let p = parked(s.data, a);
+    if (!p && this.dealer) { p = { asset: a, hub: this.hub.id, ...this.dealer.site.delivery }; park(s.data, p); }
+    if (p && p.hub === this.hub.id) this.spawn(p.x, p.z, p.yaw);
   }
 
   spaceChanged(_ctx: GameCtx, _space: string) { /* the vehicle stays where it is parked */ }
@@ -189,12 +216,13 @@ export class OwnedVehicleModule implements GameModule {
   /** Saved while driving: the vehicle is parked where it is, the player standing beside it. */
   safePlace(): { x: number; z: number; yaw: number } | null {
     if (!this.driving || !this.hub || !this.vehicle) return null;
-    parkOwned(this.ctx.state.data, this.def.id, this.hub.id, this.st.x, this.st.z, this.st.yaw);
+    park(this.ctx.state.data, { asset: this.def.asset, hub: this.hub.id, x: this.st.x, z: this.st.z, yaw: this.st.yaw });
     const p = this.beside();
     return { x: p.x, z: p.z, yaw: this.st.yaw };
   }
 
   update(ctx: GameCtx, dt: number) {
+    const r = assetsRevision(); if (r !== this.rev && this.hub) { this.rev = r; this.sync(); }   // bought or sold in « Biens »
     const m = this.vehicle; if (!m || !this.spec?.drive) return;
     if (this.solidCheck) { this.solidCheck = false; this.setSolid(!this.driving); }
     if (!this.driving) return;
@@ -239,7 +267,7 @@ export class OwnedVehicleModule implements GameModule {
     this.ctx = ctx;
     return {
       [this.def.key]: {
-        info: () => ({ id: this.def.id, price: this.def.item.price, owned: owns(ctx.state.data, this.def.id), record: readOwned(ctx.state.data, this.def.id), here: !!this.vehicle, driving: this.driving, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, bumps: this.bumps, bought: this.bought,
+        info: () => ({ id: this.def.asset, name: this.label(), price: this.price(), owned: ownsVehicle(ctx.state, this.def.asset), asset: holding(ctx.state, this.def.asset) ?? null, record: parked(ctx.state.data, this.def.asset), here: !!this.vehicle, driving: this.driving, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, bumps: this.bumps, bought: this.bought,
           dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.displays.length } : null,
           space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
@@ -285,36 +313,38 @@ export class OwnedVehicleModule implements GameModule {
   }
 
   private openCatalogue() {
-    const ctx = this.ctx, it = this.def.item, mine = owns(ctx.state.data, this.def.id);
+    const ctx = this.ctx, mine = ownsVehicle(ctx.state, this.def.asset);
     ctx.menu(this.def.dealer.name, 'Le prix est affiché avant de confirmer.', [{
-      icon: this.def.icon, label: it.name, detail: mine ? this.def.text.owned : it.detail, right: fcfa(it.price), disabled: mine,
+      icon: this.def.icon, label: this.label(), detail: mine ? this.def.text.owned : this.def.detail, right: fcfa(this.price()), disabled: mine,
       onPick: () => this.confirm(),
     }]);
   }
 
   private confirm() {
-    const ctx = this.ctx, it = this.def.item, can = ctx.state.canAfford(it.price);
-    ctx.menu(this.def.text.confirm, `Prix : ${fcfa(it.price)} · Ton argent : ${fcfa(ctx.state.wallet)}`, [
-      { icon: '✅', label: 'Confirmer l’achat', right: '−' + fcfa(it.price), detail: can ? this.def.text.delivered : 'Pas assez d’argent', disabled: !can, onPick: () => this.buy() },
+    const ctx = this.ctx, price = this.price(), why = cannotBuy(ctx.state, this.def.asset);
+    ctx.menu(this.def.text.confirm, `Prix : ${fcfa(price)} · Ton argent : ${fcfa(ctx.state.wallet)}`, [
+      { icon: '✅', label: 'Confirmer l’achat', right: '−' + fcfa(price), detail: why ?? this.def.text.delivered, disabled: !!why, onPick: () => this.buy() },
       { icon: '↩️', label: 'Pas maintenant', onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); } },
     ]);
   }
 
-  /** Pays once through the universal runner (verb buy, wallet line « <item> · <dealer> »). */
+  /**
+   * Paid once through the asset model (`buyAsset`: the catalogue price, one wallet line « Achat : <name> », listed in
+   * « Biens »), then delivered at the kerb.
+   */
   private buy() {
-    const ctx = this.ctx, def = this.def;
+    const ctx = this.ctx, s = ctx.state, a = this.def.asset;
     ctx.hud.closeModal(); ctx.setMode('play');
-    if (owns(ctx.state.data, def.id) || !this.dealer || !this.hub) return;
-    const d = this.dealer.site.delivery, hub = this.hub;
-    ctx.activities.start(P.buy({ id: def.id, label: def.item.name, price: def.item.price, then: () => {
-      if (owns(ctx.state.data, def.id)) return;
-      this.bought++;
-      writeOwned(ctx.state.data, { id: def.id, kind: OWNED_KIND[def.id], seed: def.seed(), hub: hub.id, x: d.x, z: d.z, yaw: d.yaw, price: def.item.price, at: Date.now() });
-      ctx.state.count('vehicules');
-      this.spawn(d.x, d.z, d.yaw);
-      ctx.toast(def.text.welcome);
-      ctx.save();
-    } }), { place: def.dealer.name });
+    if (!this.dealer || !this.hub) return;
+    const why = cannotBuy(s, a);
+    if (why) { ctx.toast(why); return; }
+    park(s.data, { asset: a, hub: this.hub.id, ...this.dealer.site.delivery });   // where sync() delivers it
+    if (!buyAsset(s, a)) return;
+    this.bought++;
+    s.count('vehicules');
+    this.sync(); this.rev = assetsRevision();
+    ctx.toast(this.def.text.welcome);
+    ctx.save();
   }
 
   // ---------------------------------------------------------------- the vehicle
@@ -367,7 +397,7 @@ export class OwnedVehicleModule implements GameModule {
     m.place(this.st.x, this.st.z, this.st.yaw, 0, 0, this.st.odo, 0);
     m.setRidden(false);                                         // also a fresh model: upright, wheels straight
     this.upright();
-    parkOwned(ctx.state.data, this.def.id, this.hub.id, this.st.x, this.st.z, this.st.yaw);
+    park(ctx.state.data, { asset: this.def.asset, hub: this.hub.id, x: this.st.x, z: this.st.z, yaw: this.st.yaw });
     this.setSolid(true);
     this.cam.end();
     if (normal || !ctx.inside()) { const p = this.beside(); ctx.player.place(p.x, p.z, this.st.yaw); }
@@ -416,7 +446,7 @@ export class OwnedVehicleModule implements GameModule {
     if (!this.card) return;
     if (!this.driving) { this.card.show(null); return; }
     const kmh = Math.round(Math.abs(this.st.speed) * 3.6);
-    this.card.show({ num: this.def.icon, title: `${this.def.item.name} · ${kmh} km/h`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : HINT });
+    this.card.show({ num: this.def.icon, title: `${this.label()} · ${kmh} km/h`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : HINT });
   }
 
   private upright() {

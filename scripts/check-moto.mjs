@@ -1,6 +1,7 @@
 // Headless checks of the player's motorbike (src/transport/motoModule.ts): buy it at the dealer corner (price shown,
 // then confirmed, paid once), get on, ride with the keys (desktop) or the joystick (phone), never through a wall, get
-// off beside it, find it parked after a reload (also mid-ride) and after a trip to another hub.
+// off beside it, find it parked after a reload (also mid-ride) and after a trip to another hub. Ownership is the asset
+// model: listed once in « Biens », charged once; a Tiak Tiak delivery is picked up and handed over while riding.
 // Usage: node scripts/check-moto.mjs [baseUrl] [outDir]   (needs a running build, e.g. `npx vite preview --port 4213`)
 // On a shared machine run browsers one at a time: flock /tmp/dakar-browser.lock node scripts/check-moto.mjs …
 // ONLY=desktop or ONLY=phone runs one viewport.
@@ -45,9 +46,10 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
     }
   };
 
-  await d(() => { window.__dakar.teleport('pikine'); window.__dakar.setHour(10); window.__dakar.state.data.wallet = 100000; });
+  await d(() => { window.__dakar.teleport('pikine'); window.__dakar.setHour(10); window.__dakar.state.data.wallet = 400000; });
   await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine' && window.__dakar.moto.info().dealer, null, T);
-  const dealer = (await info()).dealer;
+  const dealer = (await info()).dealer, price = (await info()).price;
+  const digits = t => (t ?? '').replace(/[^0-9]/g, '');
   check(`${label}: Pikine has the motorbike corner at Garage Modou`, !!dealer, JSON.stringify(dealer));
 
   // 1. The dealer: « Voir les articles », the price before confirming, then paid once.
@@ -59,18 +61,26 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
   const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Jakarta/.test(t)) ?? null);
-  check(`${label}: the catalogue shows the Jakarta with its price`, /Jakarta/.test(item ?? '') && /75\s000\sF/.test(item ?? ''), String(item));
+  check(`${label}: the catalogue shows the Jakarta with its catalogue price`, /Jakarta/.test(item ?? '') && price === 150000 && digits(item).includes(String(price)), String(item));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
   await page.locator('#modal .item', { hasText: 'Jakarta' }).first().click();
   await page.waitForFunction(() => /Acheter/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, T).catch(() => {});
   const confirmText = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
-  check(`${label}: a confirmation shows the price and the wallet before paying`, /Acheter/.test(confirmText) && /75\s000\sF/.test(confirmText) && (await d(() => window.__dakar.state.wallet)) === w0, confirmText.slice(0, 160));
+  check(`${label}: a confirmation shows the price and the wallet before paying`, /Acheter/.test(confirmText) && digits(confirmText).includes(String(price)) && (await d(() => window.__dakar.state.wallet)) === w0, confirmText.slice(0, 160));
   await shot('2-confirm');
   await page.locator('#modal .item', { hasText: 'Confirmer' }).first().click();
   await page.waitForFunction(() => window.__dakar.moto.info().owned && window.__dakar.moto.info().here, null, T).catch(() => {});
   const bought = await info(), w1 = await d(() => window.__dakar.state.wallet);
   const lines = await d(n => window.__dakar.state.data.ledger.slice(n), l0);
-  check(`${label}: bought once: −75 000 F, one wallet line, the motorbike delivered at the kerb`, bought.owned && bought.here && w0 - w1 === 75000 && lines.length === 1 && /Jakarta/.test(lines[0].label) && bought.bought === 1, JSON.stringify({ w0, w1, lines, rec: bought.record }));
+  check(`${label}: bought once through the asset model: −price, one wallet line, the motorbike delivered at the kerb`, bought.owned && bought.here && w0 - w1 === price && lines.length === 1 && /Jakarta/.test(lines[0].label) && bought.bought === 1 && bought.asset?.how === 'owned' && bought.asset?.paid === price,
+    JSON.stringify({ w0, w1, lines, rec: bought.record, asset: bought.asset }));
+  // « Biens » lists it once (and the listings no longer offer it)
+  const biens = await d(() => { window.__dakar.assetsApp(); return [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent ?? ''); });
+  const ads = await d(() => { window.__dakar.listings(); return [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent ?? ''); });
+  await shot('2b-biens');
+  await d(() => document.querySelector('#modal .item.close')?.click());
+  await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T).catch(() => {});
+  check(`${label}: « Biens » lists the motorbike once (not in the listings any more)`, biens.filter(t => /Moto Jakarta/.test(t)).length === 1 && !ads.some(t => /Moto Jakarta/.test(t)), JSON.stringify({ biens: biens.filter(t => /Jakarta/.test(t)), ads: ads.filter(t => /Jakarta/.test(t)) }));
   await ready();
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
@@ -110,6 +120,20 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await page.waitForTimeout(800);
   i2 = await info();
   check(`${label}: riding into the block stops at the wall (never inside it)`, !(await inWall({ x: i2.x, z: i2.z })) && i2.bumps > 0, JSON.stringify({ x: i2.x, z: i2.z, bumps: i2.bumps }));
+
+  // 4b. A Tiak Tiak delivery on the motorbike: the parcel is picked up and handed over on arrival, without getting off.
+  const job = (await d(() => window.__dakar.jobs())).find(j => !j.blocked);
+  const n0 = await d(() => window.__dakar.state.data.counters.livraisons ?? 0);
+  const run = job ? await d(id => window.__dakar.acceptJob(id, false), job.id) : null;
+  const goTo = async () => { const m = await d(() => window.__dakar.marker()); await d(p => window.__dakar.moto.place(p.x + 1.2, p.z, Math.PI / 2), m); return m; };
+  if (run) await goTo();
+  await page.waitForFunction(() => window.__dakar.activeJob()?.stage === 'deliver', null, { timeout: 60000 }).catch(() => {});
+  const picked = await d(() => window.__dakar.activeJob());
+  if (picked?.stage === 'deliver') await goTo();
+  await page.waitForFunction(() => !window.__dakar.activeJob(), null, { timeout: 60000 }).catch(() => {});
+  const n1 = await d(() => window.__dakar.state.data.counters.livraisons ?? 0), still = await info();
+  check(`${label}: a Tiak Tiak delivery is picked up and handed over while riding`, !!run && picked?.stage === 'deliver' && !(await d(() => window.__dakar.activeJob())) && n1 === n0 + 1 && still.driving,
+    JSON.stringify({ job: job?.id, run: run?.stage, picked: picked?.stage, delivered: n1 - n0, riding: still.driving }));
   await d(r => window.__dakar.moto.place(r.x - 6, r.z, Math.PI / 2), rec);
 
   // 5. Get off: beside it, parked there.
@@ -127,7 +151,10 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await page.waitForFunction(() => window.__dakar?.moto && window.__dakar.pos().hub === 'pikine', null, T);
   await page.waitForTimeout(1200);
   let i3 = await info();
-  check(`${label}: after a reload the motorbike is still parked where it was left`, i3.owned && i3.here && Math.hypot(i3.x - i2.x, i3.z - i2.z) < 0.05, JSON.stringify({ before: { x: i2.x, z: i2.z }, after: { x: i3.x, z: i3.z } }));
+  const buys = await d(() => window.__dakar.state.data.ledger.filter(l => /Jakarta/.test(l.label) && l.amount < 0).length);
+  const held = await d(() => window.__dakar.estate().assets.filter(a => a.spec === 'jakarta').length);
+  check(`${label}: after a reload the motorbike is still owned (once, charged once) and parked where it was left`, i3.owned && i3.here && Math.hypot(i3.x - i2.x, i3.z - i2.z) < 0.05 && buys === 1 && held === 1,
+    JSON.stringify({ before: { x: i2.x, z: i2.z }, after: { x: i3.x, z: i3.z }, buys, held }));
   await shot('6-after-reload');
   await d(r => window.__dakar.place(r.x + 1.2, r.z, -Math.PI / 2), { x: i3.x, z: i3.z });
   await page.waitForFunction(() => window.__dakar.focus()?.name === 'Ta moto Jakarta', null, T).catch(() => {});

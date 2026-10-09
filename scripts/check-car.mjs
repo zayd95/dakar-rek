@@ -1,5 +1,6 @@
 // Headless checks of the player's car (src/transport/carModule.ts on src/transport/ownedModule.ts): buy the used
-// saloon at the Plateau dealer (price shown, then confirmed, paid once, delivered at the kerb), walk around it (it is
+// car (« Voiture d'occasion », the catalogue's `clando`) at the Plateau dealer (price shown, then confirmed, paid once
+// through the asset model, listed in « Biens », delivered at the kerb), walk around it (it is
 // solid when parked), « Monter (conducteur) », drive with the keys (desktop) or the joystick (phone), the three views,
 // never through a wall, « Sortir de la voiture » on the pavement side, find it parked after a reload (also mid-drive)
 // and after a trip to another hub.
@@ -58,7 +59,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
     return (await info()).view;
   };
 
-  await d(() => { window.__dakar.teleport('plateau'); window.__dakar.setHour(10); window.__dakar.state.data.wallet = 1000000; });
+  await d(() => { window.__dakar.teleport('plateau'); window.__dakar.setHour(10); window.__dakar.state.data.wallet = 3000000; });
   await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.car.info().dealer, null, T);
   const i0 = await info(), dealer = i0.dealer, price = i0.price;
   check(`${label}: the Plateau has the used-car corner with cars on display`, !!dealer && dealer.displays === 2, JSON.stringify(dealer));
@@ -73,11 +74,11 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await shot('1-dealer');
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Berline/.test(t)) ?? null);
+  const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Voiture d’occasion/.test(t)) ?? null);
   const digits = s => (s ?? '').replace(/[^0-9]/g, '');
-  check(`${label}: the catalogue shows the saloon with its price`, /Berline/.test(item ?? '') && digits(item).includes(String(price)) && /\sF/.test(item ?? ''), String(item));
+  check(`${label}: the catalogue shows the used car with its catalogue price`, /Voiture d’occasion/.test(item ?? '') && price === 2800000 && digits(item).includes(String(price)) && /\sF/.test(item ?? ''), String(item));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
-  await page.locator('#modal .item', { hasText: 'Berline' }).first().click();
+  await page.locator('#modal .item', { hasText: 'Voiture d’occasion' }).first().click();
   await page.waitForFunction(() => /Acheter/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, T).catch(() => {});
   const confirmText = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
   check(`${label}: a confirmation shows the price and the wallet before paying`, /Acheter/.test(confirmText) && digits(confirmText).includes(String(price)) && /Ton argent/.test(confirmText) && (await d(() => window.__dakar.state.wallet)) === w0, confirmText.slice(0, 160));
@@ -87,14 +88,18 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const bought = await info(), w1 = await d(() => window.__dakar.state.wallet);
   const lines = await d(n => window.__dakar.state.data.ledger.slice(n), l0);
   const rec = bought.record;
-  check(`${label}: bought once: −price, one wallet line, delivered at the kerb`, bought.owned && bought.here && w0 - w1 === price && lines.length === 1 && /Berline/.test(lines[0].label) && bought.bought === 1
+  check(`${label}: bought once: −price, one wallet line, delivered at the kerb`, bought.owned && bought.here && w0 - w1 === price && lines.length === 1 && /Voiture/.test(lines[0].label) && bought.bought === 1 && bought.asset?.paid === price
     && Math.hypot(rec.x - dealer.delivery.x, rec.z - dealer.delivery.z) < 0.05 && Math.abs(roadDistance(rec.x, rec.z) - 4.3) < 0.2, JSON.stringify({ w0, w1, lines, rec }));
   await ready();
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const again = await d(() => [...document.querySelectorAll('#modal .item')].find(b => /Berline/.test(b.textContent))?.className ?? '');
+  const again = await d(() => [...document.querySelectorAll('#modal .item')].find(b => /Voiture d’occasion/.test(b.textContent))?.className ?? '');
   await d(() => document.querySelector('#modal .item.close')?.click());
   await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T).catch(() => {});
+  const biens = await d(() => { window.__dakar.assetsApp(); return [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent ?? ''); });
+  await d(() => document.querySelector('#modal .item.close')?.click());
+  await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T).catch(() => {});
+  check(`${label}: « Biens » lists the car once`, biens.filter(t => /Voiture d’occasion/.test(t)).length === 1, JSON.stringify(biens.filter(t => /Voiture/.test(t))));
   check(`${label}: it cannot be bought twice`, /disabled|off/.test(again) || (await d(() => window.__dakar.state.wallet)) === w1, again);
 
   // 2. Parked, it is solid: walking into it from the pavement stops at its side.
@@ -114,7 +119,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
 
   // 3. « Monter (conducteur) ».
   await d(([p, s]) => window.__dakar.place(p.x, p.z, s * Math.PI / 2), [pave, toRoad]);
-  await page.waitForFunction(() => window.__dakar.focus()?.name === 'Ta berline', null, T).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.focus()?.name === 'Ta voiture', null, T).catch(() => {});
   const f2 = await d(() => window.__dakar.focus());
   check(`${label}: walking up to it offers « Monter (conducteur) »`, f2?.primary === 'Monter (conducteur)', JSON.stringify(f2));
   await shot('3-delivered');
@@ -183,7 +188,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   let i3 = await info();
   check(`${label}: after a reload the car is still parked where it was left`, i3.owned && i3.here && Math.hypot(i3.x - i2.x, i3.z - i2.z) < 0.05 && i3.solid, JSON.stringify({ before: { x: i2.x, z: i2.z }, after: { x: i3.x, z: i3.z } }));
   await d(([c, s]) => window.__dakar.place(c.x - s * 2.2, c.z, s * Math.PI / 2), [{ x: i3.x, z: i3.z }, toRoad]);
-  await page.waitForFunction(() => window.__dakar.focus()?.name === 'Ta berline', null, T).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.focus()?.name === 'Ta voiture', null, T).catch(() => {});
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => window.__dakar.car.info().driving, null, T).catch(() => {});
   await drive(60000, 0, () => window.__dakar.car.info().speed > 2.5);

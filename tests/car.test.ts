@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { driveStep, hits, newDriveState, type Blocked } from '../src/transport/drive';
-import { carSpec, sedanSeed, CAR_CATALOGUE, CAR_PRICE, SEDAN_SILVER } from '../src/transport/car';
+import { carSpec, sedanSeed, CAR_ASSET, SEDAN_SILVER } from '../src/transport/car';
 import { motoSpec, jakartaSeed } from '../src/transport/moto';
 import { footprint, kerbDealer, roadDistance } from '../src/transport/ownedModule';
 import { kerbCoords } from '../src/transport/passengers';
-import { owns, readOwned, writeOwned, parkOwned, toAsset } from '../src/transport/owned';
+import { ownsVehicle, park, parked } from '../src/transport/owned';
+import { buyAsset, holding } from '../src/economy/assets';
+import { specOf } from '../src/economy/catalog';
+import { GameState } from '../src/core/state';
 import { vehicleSpec } from '../src/actors/vehicleKit';
 import { newSave } from '../src/core/save';
 import type { DriveSpec } from '../src/transport/spec';
@@ -67,8 +70,9 @@ describe('the used saloon', () => {
     expect(Math.min(...boxes.map(b => b.x0))).toBeCloseTo(10 - d.halfWidth); expect(Math.max(...boxes.map(b => b.z1))).toBeCloseTo(5 + d.halfLength);
   });
 
-  it('the price is one placeholder constant, shown in the catalogue entry', () => {
-    expect(CAR_CATALOGUE.price).toBe(CAR_PRICE); expect(CAR_PRICE).toBeGreaterThan(75000);
+  it('is the catalogue\'s « Voiture d\'occasion », for sale at its price', () => {
+    expect(specOf(CAR_ASSET)).toMatchObject({ kind: 'vehicle', name: 'Voiture d’occasion', price: 2_800_000 });
+    expect(specOf(CAR_ASSET)?.soon).toBeUndefined();
   });
 });
 
@@ -92,18 +96,17 @@ describe('the dealer at the kerb', () => {
   });
 });
 
-describe('ownership of the car and the motorbike side by side', () => {
-  it('is recorded in the save and maps to the generic Asset', () => {
-    const data = newSave();
-    writeOwned(data, { id: 'moto_jakarta', kind: 'moto', seed: jakartaSeed(), hub: 'pikine', x: 1, z: 2, yaw: 0, price: 75000, at: 1 });
-    expect(owns(data, 'car_sedan')).toBe(false);
-    writeOwned(data, { id: 'car_sedan', kind: 'car', seed: sedanSeed(), hub: 'plateau', x: 115.7, z: 92.2, yaw: 0, price: CAR_PRICE, at: 2 });
-    parkOwned(data, 'car_sedan', 'corniche', -30.5, 64.3, 1.5708);
-    const c = readOwned(data, 'car_sedan')!, m = readOwned(data, 'moto_jakarta')!;
-    expect(c).toMatchObject({ kind: 'car', hub: 'corniche', x: -30.5, z: 64.3, price: CAR_PRICE });
-    expect(m).toMatchObject({ kind: 'moto', hub: 'pikine', x: 1 });
-    expect(toAsset(c)).toMatchObject({ kind: 'vehicle', catalogue: 'car_sedan', location: { hub: 'corniche' }, owner: 'player', price: CAR_PRICE });
-    expect(readOwned(JSON.parse(JSON.stringify(data)), 'car_sedan')).toEqual(c);
+describe('owning the car and the motorbike side by side', () => {
+  it('two assets, two parking spots', () => {
+    const s = new GameState(newSave(0)); s.data.wallet = 3_000_000;
+    expect(buyAsset(s, 'jakarta')).toBeTruthy(); expect(ownsVehicle(s, 'clando')).toBe(false);
+    expect(buyAsset(s, 'clando')).toBeTruthy();
+    expect(s.wallet).toBe(3_000_000 - 150_000 - 2_800_000);
+    park(s.data, { asset: 'jakarta', hub: 'pikine', x: 1, z: 2, yaw: 0 });
+    park(s.data, { asset: 'clando', hub: 'corniche', x: -30.5, z: 64.3, yaw: 1.5708 });
+    expect(parked(s.data, 'clando')).toMatchObject({ hub: 'corniche', x: -30.5, z: 64.3 });
+    expect(parked(s.data, 'jakarta')).toMatchObject({ hub: 'pikine', x: 1 });
+    expect(holding(s, 'clando')?.paid).toBe(2_800_000);
   });
 });
 

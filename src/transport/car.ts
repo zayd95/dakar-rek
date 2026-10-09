@@ -7,15 +7,9 @@ import type { SeatSpec, VehicleSpec } from './spec';
  * turning circle than the motorbike, a little faster. Built empty: the player drives it, nobody else is drawn inside.
  */
 
-/** PLACEHOLDER price of the used saloon (F CFA, game money). The ownership lane rebalances it with the economy table. */
-export const CAR_PRICE = 450000;
-
-export const CAR_CATALOGUE = {
-  id: 'car_sedan' as const,
-  name: 'Berline d’occasion',
-  price: CAR_PRICE,
-  detail: 'Occasion · 5 places · se gare où tu la laisses',
-};
+/** Its catalogue entry (src/economy/catalog.ts « Voiture d'occasion »: name and price, owned through the asset model). */
+export const CAR_ASSET = 'clando' as const;
+export const CAR_DETAIL = 'Une berline d’occasion · 5 places · se gare où tu la laisses';
 
 /** Kit body colours used at the dealer: the one sold (silver) and the two on display. */
 export const SEDAN_SILVER = 0xb9bdc2, SEDAN_WHITE = 0xf2f2f0, SEDAN_BLUE = 0x1f3f78;

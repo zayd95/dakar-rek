@@ -1,5 +1,5 @@
 import type { HubWorld, Interactable } from '../world/types';
-import { motoSpec, jakartaSeed, MOTO_CATALOGUE } from './moto';
+import { motoSpec, jakartaSeed, MOTO_ASSET, MOTO_DETAIL } from './moto';
 import { OwnedVehicleModule, type DealerSite } from './ownedModule';
 
 /**
@@ -28,7 +28,7 @@ function motoDealer(hub: HubWorld): DealerSite | null {
 }
 
 export const moto = new OwnedVehicleModule({
-  key: 'moto', id: MOTO_CATALOGUE.id, item: MOTO_CATALOGUE, icon: '🏍️', kit: 'moto',
+  key: 'moto', asset: MOTO_ASSET, detail: MOTO_DETAIL, icon: '🏍️', kit: 'moto',
   seed: jakartaSeed, spec: motoSpec, height: 1.1, space: 'moto:jakarta',
   dealer: {
     hub: 'pikine', name: 'Motos · Garage Modou', catalogue: 'motos', site: motoDealer,
@@ -36,7 +36,7 @@ export const moto = new OwnedVehicleModule({
   },
   text: {
     mine: 'Ta moto Jakarta', getOn: 'Monter sur la moto', getOff: 'Descendre de la moto',
-    confirm: `Acheter la ${MOTO_CATALOGUE.name} ?`, delivered: 'Livrée devant le garage, prête à rouler',
+    confirm: 'Acheter la Moto Jakarta ?', delivered: 'D’occasion, livrée devant le garage, prête à rouler',
     welcome: 'Ta moto t’attend au bord de la route. Jërëjëf !', parked: 'Moto garée.', owned: 'Elle est déjà à toi',
   },
   exit: 'left', reach: 1.8,
