@@ -1,0 +1,21 @@
+/* Running on foot (src/ui/stride.ts): stamina gauge + touch « Courir » toggle. */
+#stamina {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 64px);
+  width: min(180px, 40vw); height: 8px; border-radius: 4px; background: rgba(12, 22, 38, 0.55);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18); display: none; z-index: 20; pointer-events: none;
+}
+#stamina.on { display: block; }
+#stamina i { display: block; height: 100%; width: 100%; border-radius: 4px; background: linear-gradient(90deg, #22c55e, #a3e635); }
+#stamina.low i { background: linear-gradient(90deg, #ef4444, #f59e0b); }
+#stamina span { position: absolute; left: 0; right: 0; top: -17px; text-align: center; font: 600 11px system-ui, sans-serif; color: #f8fafc; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+#runBtn { display: none; }
+body.touch #runBtn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  position: fixed; left: calc(env(safe-area-inset-left, 0px) + 168px); bottom: calc(env(safe-area-inset-bottom, 0px) + 34px);
+  width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(12, 22, 38, 0.6); color: #f8fafc; font: 22px/1 system-ui, sans-serif; z-index: 20; touch-action: none;
+}
+body.touch #runBtn small { font: 600 10px system-ui, sans-serif; margin-top: 2px; }
+body.touch #runBtn.on { background: #f59e0b; border-color: #fde68a; color: #1c1917; }
+body.touch #runBtn.blocked { opacity: 0.45; }
+body.touch #runBtn.hidden { display: none; }
