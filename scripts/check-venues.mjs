@@ -1,8 +1,9 @@
 // End-to-end checks of the composed venues (src/venues): walk in from the street, recognise the place, play its routes
 // (order → sit → eat; the grill gesture; the owner; ablutions → shoes off → prayer → imam), day / night / closed.
-// (order → sit → eat; the grill; the owner; ablutions → shoes off → prayer → imam; the pirogue trip → the mareyeuses).
+// (order → sit → eat; the grill; the owner; ablutions → shoes off → prayer → imam; the pirogue trip → the mareyeuses;
+// La Vague: the door by day and at night, the entry, the dance gesture, the contest, the bar's stools, the DJ).
 // Usage: flock /tmp/dakar-browser.lock node scripts/check-venues.mjs [baseUrl] [outDir]   (needs a running build, e.g.
-// `npx vite preview --port 4212`). ONLY=desktop|phone and SECTIONS=dibi,mosque,beach,salon narrow a run while iterating.
+// `npx vite preview --port 4212`). ONLY=desktop|phone and SECTIONS=dibi,mosque,beach,salon,club narrow a run while iterating.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -15,7 +16,7 @@ const results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
-const SECTIONS = (process.env.SECTIONS ?? 'dibi,mosque,beach,salon').split(',');
+const SECTIONS = (process.env.SECTIONS ?? 'dibi,mosque,beach,salon,club').split(',');
 for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 844 }, true]]) {
   if (process.env.ONLY && process.env.ONLY !== label) continue;
   const page = await (await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch })).newPage();
@@ -295,6 +296,97 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   check(`${label}: the new cut shows on your character and is saved`, !look.short && look.puff && look.saved === 3, JSON.stringify(look));
   await d(() => window.__dakar.portrait(2.2, 1.5, 0.6)); await shot('salon-afro'); await d(() => window.__dakar.portrait(0));
   await d(() => window.__dakar.stand());
+  }
+  // ================================================================== La Vague (Ngor): entry at the door, dance, bar, DJ, contest
+  if (SECTIONS.includes('club')) {
+  await d(() => { const D = window.__dakar; D.teleport('almadies'); D.setHour(13); D.clubShift(0); const s = D.state; s.data.needs.energie = 100; s.data.wallet = 20000; for (const k of Object.keys(s.data.counters)) if (k.startsWith('club:')) delete s.data.counters[k]; });
+  await until(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.venues().some(x => x.type === 'club'));
+  let c = await venue('club');
+  check(`${label}: Ngor's beach has La Vague (door, dance floor, bar with 5 stools, DJ)`, !!c && c.stools.length === 5 && ['door', 'floor', 'bar', 'dj'].every(a => anchor(c, a)), c ? c.anchors.map(a => a.id).join(' ') : 'none');
+  check(`${label}: it is one of the neighbourhood's spots`, await d(() => window.__dakar.cityPlaces().some(p => p.id === 'almadies:city:club')), '');
+  // tonight becomes the week's contest night (debug shift of the city day), so one visit plays every route
+  await d(n => window.__dakar.clubShift(n), c.contestIn);
+  c = await venue('club');
+  check(`${label}: by day it is closed: the gate is shut, nobody inside`, !c.open && c.gateShut === true && c.npcs === 0 && c.theme === 'sabar', `${c.moment} ${c.theme} npcs=${c.npcs}`);
+  await d(([p]) => window.__dakar.place(p.x, p.z, Math.PI), [W(c, 0, 14)]);
+  const atDoor = await walk(() => /venue:club:door$/.test(window.__dakar.focus()?.id ?? ''), null, 30000);
+  await d(() => window.__dakar.act());
+  await until(() => /Fermé · ouvre à 21 h/.test(document.getElementById('toast')?.textContent ?? ''), null, 15000);
+  check(`${label}: at the door by day the reason is shown (« Fermé · ouvre à 21 h »)`, atDoor && /Fermé · ouvre à 21 h/.test(await toast()) && !(await d(() => window.__dakar.activity())), await toast());
+  await walk(() => false, null, 3000);
+  const held = await d(() => window.__dakar.pos());
+  check(`${label}: the shut gate keeps you outside`, held.z > W(c, 0, 9.5).z, `z=${held.z.toFixed(2)} gate at ${W(c, 0, 9).z.toFixed(2)}`);
+  await cam(c, [10, 6, 27], [0, 1.6, 6]); await shot('club-day-gate'); await d(() => window.__dakar.cam(null));
+  // the night: the doorman and his rope at 21 h, a bigger crowd after 22 h
+  await d(() => window.__dakar.setHour(21.5));
+  await until(() => window.__dakar.venues().find(x => x.type === 'club').moment === 'early');
+  const early = (await venue('club')).npcs;
+  await d(() => window.__dakar.setHour(22.5));
+  await until(() => window.__dakar.venues().find(x => x.type === 'club').moment === 'peak');
+  c = await venue('club');
+  check(`${label}: open at night, the rope at the gate, the crowd grows after 22 h`, c.open && c.rope && c.gateShut && c.npcs > early && c.beams > 0, `${early} → ${c.npcs} people, ${c.beams} beams`);
+  await d(([p]) => window.__dakar.place(p.x, p.z, Math.PI), [W(c, 0, 11.4)]);
+  await until(() => /venue:club:door$/.test(window.__dakar.focus()?.id ?? ''), null, 20000);
+  let f = await d(() => window.__dakar.focus());
+  check(`${label}: the door offers the entry and the week's programme`, f?.primary === 'Payer l’entrée' && f.all.includes('Le programme de la semaine'), f?.all.join(' | '));
+  const w0 = await d(() => window.__dakar.state.wallet);
+  await d(() => window.__dakar.act());
+  await until(() => window.__dakar.venues().find(x => x.type === 'club').admitted && !window.__dakar.activity(), null, 30000);
+  c = await venue('club');
+  const w1 = await d(() => window.__dakar.state.wallet);
+  check(`${label}: the entry is paid once (2 000 F) and the rope is lifted for the night`, c.admitted && !c.rope && w1 === w0 - 2000 && c.counters.nights === 1, `wallet ${w0} → ${w1}, rope ${c.rope}`);
+  const walkedIn = await walk(p => window.__dakar.pos().z < p.z, W(c, 0, 6), 30000);
+  check(`${label}: through the gate onto the deck`, walkedIn, JSON.stringify(await d(() => window.__dakar.pos())));
+  // the dance floor: the shared timing gesture on the drum's beat, the body dances
+  check(`${label}: on the floor « Danser » is offered`, await standAt(anchor(c, 'floor'), Math.PI, /venue:club:floor$/, 1.2), JSON.stringify(await d(() => window.__dakar.focus())));
+  await d(() => window.__dakar.act());
+  const played = await until(() => !!window.__dakar.gesture() && /^Dance_/.test(window.__dakar.clip() ?? ''), null, 20000);
+  const gi = await d(() => ({ g: window.__dakar.gesture(), clip: window.__dakar.clip() }));
+  check(`${label}: dancing is a timing gesture on the drum while the body dances`, played && /tambour/.test(JSON.stringify(gi.g)) && /^Dance_/.test(gi.clip ?? ''), JSON.stringify(gi));
+  await shot('club-dance-gesture');
+  await until(() => { if (window.__dakar.gesture()) window.__dakar.gestureFinish(1); return !window.__dakar.activity(); }, null, 90000);
+  const cheered = await until(() => window.__dakar.venues().find(x => x.type === 'club').dancers.some(x => x?.clip === 'Celebrate') || /Rafet na/.test(document.getElementById('toast')?.textContent ?? ''), null, 30000);
+  c = await venue('club');
+  check(`${label}: a perfect dance counts and the crowd cheers`, c.counters.dances === 1 && cheered, `dances=${c.counters.dances}`);
+  await cam(c, [1, 8, 21], [-2, 1, -3]); await shot('club-night-terrace');
+  await cam(c, [3, 2.6, 2], [-3, 2.8, -7]); await shot('club-night-dj'); await d(() => window.__dakar.cam(null));
+  // the contest of the sabar night, after 23 h: three rounds, faster each time
+  await d(() => window.__dakar.setHour(23.5));
+  await until(() => window.__dakar.focus()?.all.includes('Concours de danse'), null, 20000);
+  const w2 = await d(() => window.__dakar.state.wallet);
+  await d(() => window.__dakar.more());
+  await until(() => !!document.querySelector('#modal.on'), null, 10000);
+  await pick('Concours de danse');
+  await until(() => { const g = window.__dakar.gesture(); if (g) { window.__dakar.gestureFinish(1); window.__cr = (window.__cr ?? 0) + 1; } return !window.__dakar.activity() && (window.__cr ?? 0) > 0; }, null, 150000);
+  const rounds = await d(() => window.__cr ?? 0);
+  c = await venue('club');
+  const w3 = await d(() => window.__dakar.state.wallet);
+  check(`${label}: the dance contest: three rounds danced perfectly win 7 200 F, once a night`, w3 - w2 === 7200 && c.counters.contests === 1 && c.counters.contestNight === c.night + 1 && rounds >= 3, `+${w3 - w2} F, ${rounds} gestures`);
+  // the bar: a drink seats you on a free stool
+  check(`${label}: at the bar the juices are offered`, await standAt(anchor(c, 'bar'), Math.PI / 2, /venue:club:bar$/, 0.4), JSON.stringify(await d(() => window.__dakar.focus())));
+  f = await d(() => window.__dakar.focus());
+  check(`${label}: bissap, bouye, ginger, a fruit cocktail, water (no alcohol), the barman`, ['Bissap glacé', 'Jus de bouye', 'Cocktail de fruits maison', 'Parler au barman'].every(x => f?.all.includes(x)), f?.all.join(' | '));
+  await d(() => window.__dakar.more());
+  await until(() => !!document.querySelector('#modal.on'), null, 10000);
+  await pick('Bissap glacé');
+  await until(() => (window.__dakar.seated() ?? '').includes('tabouret'), null, 30000);
+  const st = await d(() => ({ seat: window.__dakar.seated(), taken: window.__dakar.seatsHere().filter(s => s.id.includes('tabouret') && s.occupant && s.occupant !== 'player').map(s => s.id) }));
+  check(`${label}: the drink seats you on a free stool (never a regular's)`, (st.seat ?? '').includes('tabouret') && !st.taken.includes(st.seat) && st.taken.length >= 1, JSON.stringify(st));
+  await until(() => !window.__dakar.activity(), null, 60000);
+  await cam(c, [5.5, 2.2, 3.5], [10, 1.3, -1.5]); await shot('club-night-bar'); await d(() => window.__dakar.cam(null));
+  await d(() => window.__dakar.stand());
+  // the DJ plays your song
+  check(`${label}: at the booth, ask the DJ for a song`, await standAt(anchor(c, 'dj'), Math.PI, /venue:club:dj$/, 0.2), JSON.stringify(await d(() => window.__dakar.focus())));
+  const w4 = await d(() => window.__dakar.state.wallet);
+  await d(() => window.__dakar.act());
+  await until(() => !window.__dakar.activity() && window.__dakar.state.wallet < w4, null, 30000);
+  await until(() => /Waaw kay/.test(document.getElementById('toast')?.textContent ?? ''), null, 20000);
+  check(`${label}: the song request (500 F) and the DJ's answer`, (await d(() => window.__dakar.state.wallet)) === w4 - 500 && /Waaw kay/.test(await toast()), await toast());
+  // closing time never traps anyone: by day the gate opens from the inside
+  await d(([p]) => { window.__dakar.setHour(13); window.__dakar.place(p.x, p.z, 0); }, [W(c, 0, 6)]);
+  const left = await walk(p => window.__dakar.pos().z > p.z, W(c, 0, 10.5), 30000);
+  check(`${label}: by day you can always walk out through the gate`, left && (await venue('club')).gateShut !== false, JSON.stringify(await d(() => window.__dakar.pos())));
+  await d(() => window.__dakar.clubShift(0));
   }
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
 }

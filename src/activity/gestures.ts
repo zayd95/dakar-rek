@@ -23,6 +23,16 @@ export const STALL: GestureOption[] = [
   { id: 'poisson', label: 'Poisson séché', icon: '🐟', ask: 'Du poisson séché pour le ceebu jën.' },
 ];
 
+/** Crates of the fish truck at the port: what the driver calls for (the catch of Dakar's boats, and the ice). */
+export const CRATES: GestureOption[] = [
+  { id: 'yaboy', label: 'Yaboy (sardinelles)', icon: '🐟', ask: 'Les caisses de yaboy, vite !' },
+  { id: 'thiof', label: 'Thiof', icon: '🐠', ask: 'Le thiof d’abord, il part au restaurant.' },
+  { id: 'capitaine', label: 'Capitaine', icon: '🐡', ask: 'Passe-moi la caisse de capitaine.' },
+  { id: 'seiches', label: 'Seiches', icon: '🦑', ask: 'Les seiches, au fond du camion.' },
+  { id: 'crevettes', label: 'Crevettes', icon: '🦐', ask: 'Les crevettes, doucement !' },
+  { id: 'glace', label: 'Glace pilée', icon: '🧊', ask: 'De la glace sur les caisses, sinon tout s’abîme !' },
+];
+
 /** Pick `n` distinct options (seeded by the round, so a shift mixes its asks). */
 export function someOf(list: GestureOption[], n: number, seed = Date.now()): GestureOption[] {
   const a = [...list]; let h = seed >>> 0;
@@ -41,6 +51,10 @@ export const G = {
   haul: (rounds = 4): Gesture => ({ kind: 'timing', prompt: 'Tire au rythme des vagues', verb: 'Tirer', icon: '🪢', rounds, speed: 0.9, zone: 0.22 }),
   /** Turn the skewers before they burn. */
   grill: (rounds = 4): Gesture => ({ kind: 'timing', prompt: 'Retourne les brochettes au bon moment', verb: 'Retourner', icon: '🍢', rounds, speed: 1.1, zone: 0.2 }),
+  /** Load the fish truck: hand up the crate the driver calls for, before he loses patience. */
+  crates: (rounds = 4): Gesture => ({ kind: 'choose', prompt: 'Le chauffeur appelle les caisses', who: 'Babacar', rounds, options: CRATES, patience: 6 }),
+  /** Tie the tarp over the load: pull the strap tight at the right moment. */
+  strap: (rounds = 3): Gesture => ({ kind: 'timing', prompt: 'Serre la sangle de la bâche au bon moment', verb: 'Serrer', icon: '🪢', rounds, speed: 1.15, zone: 0.2 }),
   /** Dance on the beat: press when the cursor crosses the drum's beat (faster in a contest). */
   dance: (rounds = 6, speed = 1.2): Gesture => ({ kind: 'timing', prompt: 'Danse sur le temps du tambour', verb: 'Pas', icon: '💃', rounds, speed, zone: 0.22 }),
   /** Change a wheel in the right order. */

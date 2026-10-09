@@ -1,7 +1,8 @@
 import type { Anchor, PlaceSpec } from './places';
 import * as P from './primitives';
-import type { ActivitySpec, SeatPick } from './types';
-import { apprentiLine, comeLine, haggler, hostSays, tasteLine, waitLine } from '../i18n/lines';
+import type { ActivitySpec, SeatPick, Step } from './types';
+import type { Needs } from '../core/types';
+import { apprentiLine, comeLine, haggler, hostSays, price, tasteLine, waitLine } from '../i18n/lines';
 import { G } from './gestures';
 
 /**
@@ -234,12 +235,162 @@ export function fishingBeach(b: Base & { boat?: string }, h: PlaceHooks = {}): P
   } };
 }
 
-/** Night club: open at night, dance and drinks, a crowd. */
-export function club(b: Base): PlaceSpec {
+/** A club night runs from the evening to the morning: the hours before noon belong to the night before. */
+export const clubNight = (day: number, hour: number) => Math.floor(day) - (hour < 12 ? 1 : 0);
+/** One theme a night, the same for everyone, a week of seven: the doorman and the DJ give the week's programme. */
+export interface ClubTheme { id: string; label: string; detail: string; contest?: boolean }
+export const CLUB_THEMES: readonly ClubTheme[] = [
+  { id: 'mbalax', label: 'Soirée mbalax', detail: 'Le sabar et les guitares : le son de Dakar' },
+  { id: 'afro', label: 'Afro night', detail: 'Afrobeats et coupé-décalé jusqu’au matin' },
+  { id: 'rap', label: 'Rap galsen', detail: 'Le rap de Dakar, en wolof et en français' },
+  { id: 'salsa', label: 'Salsa dakaroise', detail: 'La salsa des grands orchestres de la ville' },
+  { id: 'zouk', label: 'Zouk et kizomba', detail: 'Les morceaux lents, on danse à deux' },
+  { id: 'sabar', label: 'Nuit du sabar · concours', detail: 'Les batteurs en live · concours de danse dès 23 h', contest: true },
+  { id: 'retro', label: 'Soirée rétro', detail: 'Les classiques des années 70 et 80' },
+];
+const mod = (n: number, m: number) => ((Math.floor(n) % m) + m) % m;
+export const clubTheme = (night: number) => CLUB_THEMES[mod(night, CLUB_THEMES.length)];
+/** Nights from `night` to the next contest night (0 = tonight). */
+export function nightsToContest(night: number): number {
+  for (let k = 0; k < CLUB_THEMES.length; k++) if (clubTheme(night + k).contest) return k;
+  return -1;
+}
+/** Entry at the door (paid once a night), nights out before the doorman lets a regular in free, the contest. */
+export const CLUB_ENTRY = 2000;
+export const CLUB_REGULAR = 3;
+export const CONTEST_FROM = 23;
+export const CONTEST_ROUNDS = [
+  { label: 'Premier passage', prize: 1500, rounds: 5, speed: 1.3, clip: 'Dance_A' },
+  { label: 'Deuxième passage', prize: 2000, rounds: 6, speed: 1.5, clip: 'Dance_B' },
+  { label: 'La finale', prize: 2500, rounds: 7, speed: 1.75, clip: 'Dance_A' },
+] as const;
+/** Save counters of one club: the night paid for (night + 1), nights out there, dances, contests and the contest's night (night + 1). */
+export const clubCounters = (placeId: string) => ({
+  paid: `club:${placeId}:nuit`, nights: `club:${placeId}:soirees`, dances: `club:${placeId}:danses`,
+  contests: `club:${placeId}:concours`, contestNight: `club:${placeId}:concours_nuit`, requests: `club:${placeId}:morceaux`,
+});
+/** Drinks of a dance terrace (no alcohol on the menu: the juices of Dakar, a fruit cocktail, water). */
+export const CLUB_DRINKS: readonly { id: string; label: string; detail?: string; price: number; needs: Partial<Needs> }[] = [
+  { id: 'bissap', label: 'Bissap glacé', price: 500, needs: { moral: 4, social: 3 } },
+  { id: 'bouye', label: 'Jus de bouye', detail: 'Le jus du fruit du baobab', price: 700, needs: { faim: 6, moral: 5, social: 3 } },
+  { id: 'gingembre', label: 'Jus de gingembre', detail: 'Ça pique, ça réveille', price: 700, needs: { energie: 6, moral: 4 } },
+  { id: 'cocktail', label: 'Cocktail de fruits maison', detail: 'Mangue, ananas, bissap · sans alcool', price: 1500, needs: { moral: 10, social: 6 } },
+  { id: 'eau', label: 'Eau fraîche', price: 300, needs: { energie: 3 } },
+];
+
+/**
+ * Dance terrace / night club: open at night (21 h–5 h) with tonight's theme. The entry is paid once a night at the
+ * door (`done('entree')` lets you in; a regular, after `CLUB_REGULAR` nights, comes in free), then: the dance floor (a
+ * timing gesture on the drum's beat, two steps, the second faster), the bar (drinks on the stools around `bar`), the DJ
+ * (ask for a song) and, on the contest night of the week, a three-round dance contest after 23 h (each round's prize
+ * scaled by how well it is danced, once a night). Without a door (or without hooks) everything is open.
+ */
+export function club(b: Base & { bar?: { x: number; z: number; r?: number } }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
-  return { ...b, type: 'club', hours: [21, 5], chat: true, anchors: [at('floor'), at('bar')], offers: {
-    floor: [P.dance({ id: 'danser', label: 'Danser', seconds: 8 }), P.dance({ id: 'danser2', label: 'Danser (autre pas)', seconds: 8, clip: 'Dance_B' })],
-    bar: [P.order({ id: 'soda', label: 'Boisson fraîche', price: 1000, prep: 1, eat: 2, drink: true, seat: false, needs: { moral: 4, social: 4 } })],
+  const has = (id: string) => b.anchors.some(a => a.id === id);
+  const keys = clubCounters(b.id);
+  const n = (k: string) => h.count?.(k) ?? 0;
+  const hour = () => h.hour?.() ?? 23;
+  const night = () => clubNight(h.day?.() ?? 0, hour());
+  const theme = () => clubTheme(night());
+  const admitted = () => !h.count || !has('door') || n(keys.paid) === night() + 1;
+  const regular = () => n(keys.nights) >= CLUB_REGULAR;
+  const inside = () => (admitted() ? null : 'Paie l’entrée à la porte');
+  const both = (a: () => string | null, c: () => string | null) => () => a() ?? c();
+  const seat: SeatPick = b.bar ? { near: { x: b.bar.x, z: b.bar.z }, r: b.bar.r ?? 4, kind: 'stool' } : 'near';
+  const late = () => hour() >= CONTEST_FROM || hour() < 5;
+  const soon = () => {
+    const k = nightsToContest(night());
+    return k === 0 ? (late() ? 'concours de danse en cours' : `concours de danse ce soir à ${CONTEST_FROM} h`) : `prochain concours dans ${k} nuit${k > 1 ? 's' : ''}`;
+  };
+  const dance = live<ActivitySpec>({
+    id: 'danser', primitive: 'dance', label: 'Danser', icon: P.ICONS.dance, requires: both(inside, () => h.tired?.(8) ?? null),
+    steps: [
+      { label: 'Le pas de base', primitive: 'dance', clip: 'Dance_A', gesture: G.dance(4, 1.1), seconds: 4 },
+      { label: 'Le pas du soir', primitive: 'dance', clip: 'Dance_B', gesture: G.dance(5, 1.35), seconds: 4,
+        effects: { needs: { moral: 12, social: 10, energie: -8 }, counters: { [keys.dances]: 1 }, category: 'loisir' }, then: () => h.done?.('danse') },
+    ],
+  }, () => `${theme().label} · danse sur le temps · ${soon()}`);
+  const last = CONTEST_ROUNDS.length - 1;
+  const contest = live<ActivitySpec>({
+    id: 'concours', primitive: 'dance', label: 'Concours de danse', icon: '🏆', visible: () => !!theme().contest && late(),
+    requires: both(inside, () => (n(keys.contestNight) === night() + 1 ? 'Tu as déjà dansé au concours ce soir · reviens la semaine prochaine' : h.tired?.(14) ?? null)),
+    steps: CONTEST_ROUNDS.map((r, i): Step => ({
+      label: r.label, primitive: 'dance', clip: r.clip, gesture: G.dance(r.rounds, r.speed), seconds: 4,
+      effects: { money: r.prize, ...(i === last ? { needs: { moral: 16, social: 12, energie: -14 }, counters: { [keys.contests]: 1 }, category: 'loisir' as const } : {}) },
+      ...(i === last ? { then: () => h.done?.('concours') } : {}),
+    })),
+  }, () => `Trois passages devant le public · jusqu’à ${price(Math.round(CONTEST_ROUNDS.reduce((t, r) => t + r.prize, 0) * 1.2))} selon ta danse`);
+  const offers: Record<string, ActivitySpec[]> = {
+    floor: [dance, contest],
+    bar: [
+      ...CLUB_DRINKS.map(d => P.order({ id: d.id, label: d.label, detail: d.detail, price: d.price, prep: 1, eat: 3, drink: true, seat, needs: d.needs, requires: inside })),
+      ...opt(h.converse, P.talk({ id: 'barman', label: 'Parler au barman', requires: inside, then: () => h.converse!('barman') })),
+    ],
+  };
+  const list = [at('floor'), at('bar')];
+  if (has('dj')) {
+    list.push(at('dj'));
+    offers.dj = [
+      P.use({ id: 'morceau', primitive: 'buy', label: 'Demander un morceau', detail: 'Le DJ le passe juste après', price: 500, seconds: 2, requires: inside,
+        effects: { needs: { moral: 5, social: 3 }, counters: { [keys.requests]: 1 }, category: 'loisir' }, then: () => h.done?.('morceau') }),
+      ...opt(h.converse, P.talk({ id: 'dj', label: 'Parler au DJ', requires: inside, then: () => h.converse!('dj') })),
+    ];
+  }
+  if (has('door')) {
+    list.push(at('door'));
+    const tonight = () => `Ce soir : ${theme().label} · ${theme().detail}`;
+    // the night counts once, when you come in (paid at the door, or free as a regular)
+    const come = (a: ActivitySpec) => { const s = a.steps[a.steps.length - 1]; s.effects = { ...s.effects, counters: { [keys.nights]: 1 }, category: 'loisir' }; return a; };
+    offers.door = [
+      live(come(P.buy({ id: 'entree', label: 'Payer l’entrée', price: CLUB_ENTRY, visible: () => !admitted() && !regular(), then: () => h.done?.('entree') })), tonight),
+      live(come(P.use({ id: 'entree_habitue', primitive: 'enter', label: 'Entrer · habitué', seconds: 1, visible: () => !admitted() && regular(), then: () => h.done?.('entree') })), () => `Entrée offerte aux habitués · ${tonight()}`),
+      ...opt(h.converse, P.talk({ id: 'videur', label: 'Le programme de la semaine', then: () => h.converse!('videur') })),
+    ];
+  }
+  return { id: b.id, name: b.name, space: b.space, type: 'club', hours: [21, 5], chat: true, peaks: [[22, 3]], anchors: list, offers };
+}
+
+/** A rung of the loading job at a port's fish truck: more crates, then the tarp, as the player keeps coming back. */
+export interface DockRank { id: string; label: string; detail: string; from: number; pay: number; rounds: number; energie: number; strap?: boolean }
+export const DOCK_LADDER: readonly DockRank[] = [
+  { id: 'porteur', label: 'Charger le camion', detail: 'Passer les caisses que le chauffeur appelle', from: 0, pay: 1500, rounds: 4, energie: 12 },
+  { id: 'chef', label: 'Chef de chargement', detail: 'Tu mènes le chargement et tu arrimes la bâche', from: 8, pay: 3200, rounds: 5, energie: 14, strap: true },
+];
+/** The fish truck stands at the port twice a day, after the morning boats and after the afternoon ones. */
+export const TRUCK_WINDOWS: readonly [number, number][] = [[6, 11], [15, 19]];
+export const truckHere = (h: number) => TRUCK_WINDOWS.some(([a, b]) => h >= a && h < b);
+/** Hour the truck comes back (the next window's start). */
+export const nextTruck = (h: number) => TRUCK_WINDOWS.find(([a]) => a > h)?.[0] ?? TRUCK_WINDOWS[0][0];
+/** The best rung open to someone with `loads` loads at this port. */
+export const dockRank = (loads: number) => [...DOCK_LADDER].reverse().find(r => loads >= r.from) ?? DOCK_LADDER[0];
+export const dockCounters = (placeId: string) => ({ loads: 'chargements:' + placeId });
+/** The day's catch the truck takes to the markets (the same for everyone that day). */
+export const ARRIVAGES = ['yaboy et capitaine', 'thiof et seiches', 'yaboy et crevettes', 'capitaine et thiof', 'seiches et yaboy'] as const;
+export const arrivage = (day: number) => ARRIVAGES[mod(day, ARRIVAGES.length)];
+
+/**
+ * Port: load the fish truck while it stands at the quay (twice a day, `TRUCK_WINDOWS`). A trade: the crates the driver
+ * calls for (a « choose » gesture), and from the second rung the tarp to tie (a timing gesture); the pay follows how
+ * well it is done, the rung follows the loads done at this port. Outside the truck's hours the sheet says when it comes back.
+ */
+export function dock(b: Base & { driver?: string }, h: PlaceHooks = {}): PlaceSpec {
+  const at = anchors(b.anchors);
+  const keys = dockCounters(b.id);
+  const n = (k: string) => h.count?.(k) ?? 0;
+  const hour = () => h.hour?.() ?? 8;
+  const driver = b.driver ?? 'Le chauffeur';
+  const jobs = DOCK_LADDER.map((r, i) => live(P.trade({ id: 'charger_' + r.id, label: r.label, pay: r.pay, counter: keys.loads, category: 'service', clip: 'Grab',
+    needs: { energie: -r.energie, hygiene: -8, faim: -5 }, line: () => comeLine(driver),
+    requires: () => (truckHere(hour()) ? h.tired?.(r.energie) ?? null : `Le camion revient à ${nextTruck(hour())} h`),
+    visible: () => dockRank(n(keys.loads)) === r,
+    parts: [{ label: 'Charger les caisses', gesture: G.crates(r.rounds), share: 3 }, ...(r.strap ? [{ label: 'Arrimer la bâche', gesture: G.strap(3), share: 1 }] : [])] }), () => {
+    const done = n(keys.loads), next = DOCK_LADDER[i + 1];
+    const today = h.day ? ` · arrivage du jour : ${arrivage(h.day())}` : '';
+    return (next ? `${r.detail} · ${done}/${next.from} chargements avant « ${next.label} »` : r.detail) + today;
+  }));
+  return { id: b.id, name: b.name, space: b.space, type: 'port', hours: [6, 19], chat: true, peaks: [[6, 10], [15, 18]], anchors: [at('camion')], offers: {
+    camion: [...jobs, ...opt(h.converse, P.talk({ id: 'chauffeur', label: `Parler à ${driver}`, then: () => h.converse!('chauffeur') }))],
   } };
 }
 

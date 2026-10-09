@@ -2,12 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { GameState } from '../src/core/state';
 import { newSave } from '../src/core/save';
 import { Seats, floorSeatTop, seatClip, sitOriginY, SIT_HIPS, type Seat } from '../src/interact/seats';
-import { ActivityRunner, type ActivityServices } from '../src/activity/runner';
+import { ActivityRunner, gesturePay, type ActivityServices } from '../src/activity/runner';
 import { Places, isPeak } from '../src/activity/places';
 import * as T from '../src/activity/templates';
 import type { Target } from '../src/interact/types';
 import { PRAYER_TIMES, prayerAt, nextPrayer, prayerPeaks, hourLabel } from '../src/venues/prayer';
-import { imamTimes, imamGreeting, ownerGreeting, ownerWork, ownerSpecial } from '../src/venues/talk';
+import { imamTimes, imamGreeting, ownerGreeting, ownerWork, ownerSpecial, programme, doormanGreeting, doormanRegulars, djContest, driverGreeting, driverLadder } from '../src/venues/talk';
+import { G } from '../src/activity/gestures';
 import { COMPOSED_SITES, isComposed } from '../src/world/sites';
 
 function rig(space = 'street') {
@@ -219,5 +220,120 @@ describe('seats: floor places and their pose', () => {
     expect(isComposed('pikine', 'dibiterie:11')).toBe(true); expect(isComposed('plateau', 'mosque:11')).toBe(true);
     expect(isComposed('corniche', 'dibiterie:11')).toBe(false);
     for (const list of Object.values(COMPOSED_SITES)) for (const k of list!) expect(k).toMatch(/^(dibiterie|mosque):\d\d$/);
+  });
+});
+
+describe('club (La Vague): a night out with a reason to come back', () => {
+  const counters: Record<string, number> = {};
+  let hour = 23, day = 10;
+  const done: string[] = [];
+  const keys = T.clubCounters('al:club');
+  const hooks: T.PlaceHooks = { count: k => counters[k] ?? 0, hour: () => hour, day: () => day, converse: () => {}, tired: () => null,
+    done: a => { done.push(a); if (a === 'entree') counters[keys.paid] = T.clubNight(day, hour) + 1; if (a === 'concours') counters[keys.contestNight] = T.clubNight(day, hour) + 1; } };
+  const place = T.club({ id: 'al:club', name: 'La Vague', space: 'street', bar: { x: 8, z: 0, r: 4 }, anchors: [A('door', 0, 10), A('floor'), A('bar', 8), A('dj', 0, -5)] }, hooks);
+  const visible = (anchor: string) => place.offers[anchor].filter(o => !o.visible || o.visible()).map(o => o.id);
+  const offer = (anchor: string, id: string) => place.offers[anchor].find(o => o.id === id)!;
+  const reset = () => { for (const k of Object.keys(counters)) delete counters[k]; done.length = 0; hour = 23; day = 10; };
+
+  it('opens at night only (21 h–5 h), crowded after 22 h, with a location chat; a night runs past midnight', () => {
+    expect(place.hours).toEqual([21, 5]); expect(place.chat).toBe(true); expect(place.type).toBe('club');
+    expect(isPeak(place, 23)).toBe(true); expect(isPeak(place, 21.5)).toBe(false);
+    expect(T.clubNight(10, 23)).toBe(10); expect(T.clubNight(11, 2)).toBe(10); expect(T.clubNight(11, 21)).toBe(11);
+    // closed by day: the sheet gives the reason
+    const r = rig(); const places = new Places(r.runner, () => 13); places.add(place);
+    const out: Target[] = []; places.collect('street', 0, 10, out);
+    expect(out[0].affordances()[0].disabled).toBe('Fermé · ouvre à 21 h');
+  });
+  it('a theme each night, a week of seven, one contest night; the programme starts tonight', () => {
+    expect(T.CLUB_THEMES).toHaveLength(7); expect(T.CLUB_THEMES.filter(t => t.contest)).toHaveLength(1);
+    const k = T.nightsToContest(10); expect(T.clubTheme(10 + k).contest).toBe(true); expect(k).toBeGreaterThanOrEqual(0);
+    expect(T.clubTheme(-3)).toBe(T.clubTheme(4));
+    const p = programme(10); expect(p).toHaveLength(7); expect(p[0]).toBe(`Ce soir · ${T.clubTheme(10).label}`); expect(p[1]).toMatch(/^Demain/);
+    expect(djContest({ night: 10, hour: 22, nights: 0, regularAt: 3, entry: 2000 })).toMatch(/Trois passages/);
+  });
+  it('the entry is paid once a night at the door; until then the floor, the bar and the DJ send you to the door', () => {
+    reset();
+    expect(visible('door')).toEqual(['entree', 'videur']);
+    expect(offer('door', 'entree').price).toBe(T.CLUB_ENTRY);
+    for (const [a, id] of [['floor', 'danser'], ['bar', 'bissap'], ['dj', 'morceau']] as const) expect(offer(a, id).requires!()).toBe('Paie l’entrée à la porte');
+    const r = rig(); r.runner.start(offer('door', 'entree')); run(r.runner, 2);
+    expect(r.state.wallet).toBe(10000 - T.CLUB_ENTRY); expect(done).toEqual(['entree']); expect(r.state.data.counters[keys.nights]).toBe(1);
+    counters[keys.nights] = 1;
+    expect(visible('door')).toEqual(['videur']);
+    expect(offer('floor', 'danser').requires!()).toBeNull(); expect(offer('bar', 'bissap').requires!()).toBeNull();
+    day = 11; hour = 21.5; expect(visible('door')).toEqual(['entree', 'videur']);             // the next night, pay again
+  });
+  it('after three nights the doorman lets a regular in free', () => {
+    reset(); counters[keys.nights] = T.CLUB_REGULAR;
+    expect(visible('door')).toEqual(['entree_habitue', 'videur']); expect(offer('door', 'entree_habitue').price).toBeUndefined();
+    expect(doormanGreeting({ night: 10, hour: 23, nights: 3, regularAt: 3, entry: 2000 })).toContain('Sama xarit');
+    expect(doormanRegulars({ night: 10, hour: 23, nights: 1, regularAt: 3, entry: 2000 })).toContain('Encore 2 soirées');
+  });
+  it('dancing is two timing gestures on the drum, the second faster, with the dance clips', () => {
+    reset(); counters[keys.paid] = 11;
+    const d = offer('floor', 'danser');
+    expect(d.steps.map(s => s.clip)).toEqual(['Dance_A', 'Dance_B']);
+    const g = d.steps.map(s => s.gesture!);
+    expect(g.every(x => x.kind === 'timing')).toBe(true);
+    expect((g[1] as { speed: number }).speed).toBeGreaterThan((g[0] as { speed: number }).speed);
+    expect(G.dance()).toMatchObject({ kind: 'timing', verb: 'Pas' });
+    expect(d.steps[1].effects).toMatchObject({ needs: { moral: 12, social: 10, energie: -8 }, counters: { [keys.dances]: 1 }, category: 'loisir' });
+    expect(d.detail).toContain(T.clubTheme(10).label);
+    const r = rig(); r.runner.start(d); run(r.runner, 10);
+    expect(r.runner.running).toBe(false); expect(r.clips).toContain('Dance_B'); expect(done).toEqual(['danse']);
+  });
+  it('the dance contest: the theme night only, after 23 h, three faster rounds, prize scaled by the dance, once a night', () => {
+    reset();
+    const night = T.nightsToContest(10) + 10; day = night; hour = 22; counters[keys.paid] = night + 1;
+    expect(visible('floor')).toEqual(['danser']);
+    hour = 23.5; expect(visible('floor')).toEqual(['danser', 'concours']);
+    day = night + 1; counters[keys.paid] = night + 2; expect(visible('floor')).toEqual(['danser']); day = night; counters[keys.paid] = night + 1;
+    const c = offer('floor', 'concours');
+    const speeds = c.steps.map(s => (s.gesture as { speed: number }).speed); expect(speeds).toEqual([...speeds].sort((a, b) => a - b));
+    const r = rig(); r.runner.start(c); run(r.runner, 20);
+    expect(r.state.wallet).toBe(10000 + T.CONTEST_ROUNDS.reduce((t, x) => t + gesturePay(x.prize, 0.6), 0));
+    expect(done).toEqual(['concours']);
+    expect(c.requires!()).toMatch(/déjà dansé au concours ce soir/);
+  });
+  it('the bar: juices of Dakar on a free stool near the counter (no alcohol); the DJ plays your song', () => {
+    reset(); counters[keys.paid] = 11;
+    expect(visible('bar')).toEqual([...T.CLUB_DRINKS.map(d => d.id), 'barman']);
+    for (const d of T.CLUB_DRINKS) expect(d.label).not.toMatch(/bière|vin|whisky|alcool/i);
+    expect(offer('bar', 'bissap').steps.find(s => s.primitive === 'sit')!.seat).toEqual({ near: { x: 8, z: 0 }, r: 4, kind: 'stool' });
+    const r = rig(); r.runner.start(offer('dj', 'morceau')); run(r.runner, 3);
+    expect(r.state.wallet).toBe(9500); expect(done).toEqual(['morceau']);
+  });
+});
+
+describe('port (Ngor): loading the fish truck, twice a day', () => {
+  const counters: Record<string, number> = {};
+  let hour = 8;
+  const keys = T.dockCounters('al:port');
+  const place = T.dock({ id: 'al:port', name: 'Port de Ngor', space: 'street', driver: 'Babacar', anchors: [A('camion')] },
+    { count: k => counters[k] ?? 0, hour: () => hour, day: () => 4, converse: () => {}, tired: () => null });
+  const visible = () => place.offers.camion.filter(o => !o.visible || o.visible()).map(o => o.id);
+  it('the truck stands at the quay after the morning and the afternoon boats; otherwise the sheet says when it comes back', () => {
+    expect(T.truckHere(8)).toBe(true); expect(T.truckHere(13)).toBe(false); expect(T.truckHere(16)).toBe(true); expect(T.truckHere(20)).toBe(false);
+    expect(T.nextTruck(12)).toBe(15); expect(T.nextTruck(20)).toBe(6);
+    hour = 12; expect(place.offers.camion[0].requires!()).toBe('Le camion revient à 15 h'); hour = 8;
+    expect(place.offers.camion[0].requires!()).toBeNull();
+  });
+  it('the crates the driver calls for are a « choose » gesture; the pay follows the gesture; loads count at this port', () => {
+    const job = place.offers.camion.find(o => o.id === 'charger_porteur')!;
+    expect(job.steps).toHaveLength(1); expect(job.steps[0].gesture).toMatchObject({ kind: 'choose', who: 'Babacar' });
+    expect(G.crates().kind).toBe('choose');
+    const r = rig(); r.runner.start(job); run(r.runner, 6);
+    expect(r.state.wallet).toBe(10000 + gesturePay(1500, 0.6)); expect(r.state.data.counters[keys.loads]).toBe(1);
+    expect(job.detail).toMatch(/0\/8 chargements avant « Chef de chargement »/); expect(job.detail).toContain(T.arrivage(4));
+  });
+  it('after eight loads the job grows: more crates and the tarp to tie, better paid', () => {
+    expect(visible()).toEqual(['charger_porteur', 'chauffeur']);
+    counters[keys.loads] = 8; expect(visible()).toEqual(['charger_chef', 'chauffeur']);
+    const chef = place.offers.camion.find(o => o.id === 'charger_chef')!;
+    expect(chef.steps.map(s => s.gesture!.kind)).toEqual(['choose', 'timing']);
+    expect(chef.steps.reduce((t, s) => t + (s.effects?.money ?? 0), 0)).toBe(3200);
+    expect(driverLadder(8)).toContain('Chef de chargement'); expect(driverLadder(3)).toContain('Encore 5');
+    expect(driverGreeting(0, false, 15)).toContain('15 h');
+    counters[keys.loads] = 0;
   });
 });

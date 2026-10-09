@@ -111,11 +111,32 @@ Already composed:
 - **Salon Awa's chairs** (`src/venues/salon.ts`, Pikine): two styling chairs facing mirrors, the stylist working behind
   you, a client in the other chair. Cuts (short, afro, shaved) and the beard change your character and stay (saved,
   every hub, `src/venues/style.ts`). Open 9 h–21 h.
+- **La Vague, the dance terrace** (`src/venues/club.ts`, Almadies, on Ngor's beach; `club` recipe): a wooden deck behind a
+  bamboo fence, one gate on the road side with the doorman and his rope, a dance floor whose tiles light up on the beat,
+  the DJ booth under a truss of coloured beams, a thatched bar with five stools (juices of Dakar and a fruit cocktail, no
+  alcohol), low benches by the fence, string lights, the sea behind. *Do:* pay the entry at the door once a night
+  (2 000 F; the rope is lifted, the gate opens), dance (the shared timing gesture `G.dance` on the drum's beat, two steps,
+  the second faster, while your body dances), drink seated on a free stool, ask the DJ for a song, and on the « Nuit du
+  sabar » enter the dance contest after 23 h (three faster rounds, prize scaled by how well each is danced, up to
+  7 200 F, once a night). *Who:* Lamine the doorman (the week's programme, regulars), Saliou at the bar, DJ Mbaye
+  (contest), dancers who make room for you and cheer a good dance; a crowd that grows after 22 h (4 / 7 / 10 dancers by
+  graphics quality) and sits on real stools and benches. *Why return:* a theme every night of a seven-night week (mbalax,
+  afro, rap galsen, salsa, zouk, the sabar contest, retro) on the board by the gate; after three nights you are a
+  regular and come in free. Open 21 h–5 h: by day the gate is shut (« Fermé · ouvre à 21 h »), it never closes on
+  someone inside; location chat.
+- **The fish truck at Ngor's port** (`src/venues/port.ts`, Almadies; `dock` recipe): the mareyeur's truck stands in the
+  port's yard twice a day (6 h–11 h and 15 h–19 h, otherwise « Le camion revient à 15 h »). *Do:* load it — Babacar
+  calls the crates (yaboy, thiof, capitaine, seiches, crevettes, ice) and you hand up the right one before he loses
+  patience (a `choose` gesture, `G.crates`); your load rides in the truck's bed until it leaves. *Earn:* 1 500 F a load
+  scaled by the gesture; after eight loads, « Chef de chargement » (more crates and the tarp to tie, `G.strap`, 3 200 F).
+  *Why return:* the two daily windows, the day's catch, the next rung. The port's « Aider les pêcheurs » stays as it was.
 
 Composition seams added for this: `HubWorld.sites` (`src/world/sites.ts`: lots and blocks a module composes — the
 builder keeps the place's identity interactable and leaves the ground free, with the street dressing unchanged),
 `PlaceSpec.peaks` (busy hours), `Anchor.space` (one place across a courtyard and a hall), `Seat.clip` (the pose held on
-a seat: `Kneel` on prayer rows), seat kind `prayer`, `GameCtx.addInterior` used by a module's own interior.
+a seat: `Kneel` on prayer rows), seat kind `prayer`, `GameCtx.addInterior` used by a module's own interior; for the
+terrace and the port: `Role.phase` / `Role.yieldR` / `Cast.burst` (dancers out of step, stepping aside for the player,
+cheering), the data-only gestures `G.dance`, `G.crates`, `G.strap`.
 
 ## Waves
 

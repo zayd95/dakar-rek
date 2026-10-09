@@ -1,4 +1,4 @@
-import { DIBI_SPECIALS, GRILL_LADDER, dibiSpecial, grillRank, isEvening, nextGrillRank } from '../activity/templates';
+import { CLUB_DRINKS, CONTEST_FROM, CONTEST_ROUNDS, DIBI_SPECIALS, DOCK_LADDER, GRILL_LADDER, clubTheme, dibiSpecial, dockRank, grillRank, isEvening, nextGrillRank, nightsToContest } from '../activity/templates';
 import { PRAYER_TIMES, hourLabel, nextPrayer, prayerAt } from './prayer';
 
 /**
@@ -86,3 +86,54 @@ export function mareyeuseSea(hour: number): string {
   return '« Le soir, la houle monte. Les derniers bateaux rentrent, il faudra attendre demain matin. »';
 }
 export const MAREYEUSE_BYE = '« Jërëjëf, ba ëllëg ! »';
+
+// ------------------------------------------------------------------ Dance terrace (La Vague, Ngor)
+export interface ClubCtx { night: number; hour: number; nights: number; regularAt: number; entry: number }
+const when = (k: number) => (k === 0 ? 'Ce soir' : k === 1 ? 'Demain' : `Dans ${k} nuits`);
+/** The week's programme from tonight: « Ce soir · Soirée mbalax », « Demain · Afro night »… */
+export const programme = (night: number, n = 7) => Array.from({ length: n }, (_, k) => `${when(k)} · ${clubTheme(night + k).label}`);
+
+export function doormanGreeting(c: ClubCtx): string {
+  const t = clubTheme(c.night).label;
+  if (c.nights >= c.regularAt) return `Lamine : « Sama xarit ! Dalal ak jàmm. Ce soir, c’est ${t}. Pour toi, l’entrée est offerte. »`;
+  if (c.nights > 0) return `Lamine : « Te revoilà ! Ce soir, c’est ${t}. L’entrée, c’est ${c.entry} F, comme d’habitude. »`;
+  return `Lamine : « Dalal ak jàmm à La Vague ! Ce soir, c’est ${t}. L’entrée, c’est ${c.entry} F, et tu danses jusqu’au matin. »`;
+}
+export function doormanRegulars(c: ClubCtx): string {
+  if (c.nights >= c.regularAt) return '« Tu es un habitué maintenant : tu entres sans payer. C’est la teraanga de La Vague. »';
+  const left = c.regularAt - c.nights;
+  return `« Les habitués entrent sans payer. Encore ${left} soirée${left > 1 ? 's' : ''} ici et je te reconnaîtrai à la porte. »`;
+}
+/** What the doorman says when you come in (paid or as a regular); `nights` counts tonight. */
+export function doormanWelcome(c: ClubCtx): string {
+  if (c.nights === c.regularAt) return 'Lamine : « Sama xarit ! À partir de maintenant, l’entrée est pour moi. »';
+  if (c.nights > c.regularAt) return 'Lamine : « Dalal ak jàmm ! Entre, entre. »';
+  return 'Lamine : « Rafet na ! Bonne soirée, la piste est à toi. »';
+}
+export function djTalk(c: ClubCtx): string {
+  const t = clubTheme(c.night);
+  if (t.contest) return c.hour >= CONTEST_FROM || c.hour < 5 ? 'DJ Mbaye : « Le concours a commencé ! Monte sur la piste, les batteurs t’attendent. »' : `DJ Mbaye : « Ce soir, ${t.label} ! Les batteurs arrivent, le concours commence à ${CONTEST_FROM} h. »`;
+  return `DJ Mbaye : « Ce soir, ${t.label} : ${t.detail.charAt(0).toLowerCase()}${t.detail.slice(1)}. Nanu dem ! »`;
+}
+export function djContest(c: ClubCtx): string {
+  const k = nightsToContest(c.night), top = CONTEST_ROUNDS.reduce((s, r) => s + r.prize, 0);
+  const rule = `Trois passages sur le tambour, chacun plus rapide. Mieux tu tiens le temps, plus tu gagnes : jusqu’à ${Math.round(top * 1.2)} F.`;
+  return k === 0 ? `« C’est ce soir, à partir de ${CONTEST_FROM} h. ${rule} »` : `« La nuit du sabar, c’est ${k === 1 ? 'demain' : `dans ${k} nuits`}. ${rule} »`;
+}
+export const barmanGreeting = (nights: number) => (nights > 2 ? 'Saliou : « Sama xarit ! Comme d’habitude, un bissap bien glacé ? »' : 'Saliou : « Dalal ak jàmm ! Ici, rien que des jus maison et de l’eau bien fraîche. »');
+export const barmanMenu = () => `« ${CLUB_DRINKS.map(d => `${d.label.toLowerCase()} ${d.price} F`).join(', ')}. Le bouye, c’est le jus du baobab : goûte, neex na ! »`;
+export const CLUB_BYE = '« Ba beneen yoon ! Ñibbil ak jàmm. »';
+
+// ------------------------------------------------------------------ Port de Ngor: Babacar, the fish truck's driver
+export function driverGreeting(loads: number, here: boolean, next: number): string {
+  if (!here) return `Babacar : « Le camion est parti au marché. Je reviens à ${next} h, avec la glace. »`;
+  if (loads >= DOCK_LADDER[DOCK_LADDER.length - 1].from) return 'Babacar : « Sama xarit ! Tu mènes le chargement, moi je vérifie la glace. »';
+  if (loads > 0) return 'Babacar : « Te revoilà ! Kaay fi, les caisses n’attendent pas. »';
+  return 'Babacar : « Salaam aleekum ! Tu veux aider ? J’appelle la caisse, tu me la passes. Gaawal, le poisson n’aime pas le soleil. »';
+}
+export const driverRoute = (catchOfDay: string) => `« Aujourd’hui, c’est ${catchOfDay}. Le matin je livre les mareyeuses du marché, l’après-midi les restaurants des Almadies. »`;
+export function driverLadder(loads: number): string {
+  const r = dockRank(loads), next = DOCK_LADDER.find(x => x.from > loads);
+  return next ? `« Tu as fait ${loads} chargement${loads > 1 ? 's' : ''}. Encore ${next.from - loads} et tu deviens « ${next.label} » : ${next.pay} F le camion. »` : `« ${r.label}, c’est toi maintenant. Le camion part quand tu dis qu’il est prêt. »`;
+}
+export const DRIVER_BYE = '« Jërëjëf ! Ba beneen yoon. »';
