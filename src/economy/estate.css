@@ -1,0 +1,26 @@
+/* Ownership (src/economy/estate.ts): confirmation rows, and the placement bar inside the home (homeEditor.ts). */
+.est-rows { display:grid; gap:1px; margin:4px 0 6px; border-radius:12px; overflow:hidden; background:var(--line); }
+.est-rows > div { display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:8px 11px; background:#16223d; font-size:12.5px; color:#cbd5e1; }
+.est-rows b { color:#fff; font-weight:700; text-align:right; font-variant-numeric:tabular-nums; }
+.kv .soon { color:#fbbf24; }
+
+#placer { position:absolute; left:50%; bottom:calc(10px + env(safe-area-inset-bottom)); transform:translateX(-50%); width:min(560px, calc(100vw - 16px));
+  display:none; padding:10px 10px 8px; z-index:20; box-shadow:0 10px 28px rgba(0,0,0,.45); }
+#placer.on { display:block; }
+#placer .pl-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+#placer .pl-head b { font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#placer button { min-height:42px; padding:8px 12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,.08); color:#fff; font:700 13px var(--font); cursor:pointer; touch-action:manipulation; }
+#placer button:active { transform:scale(.96); }
+#placer [data-a="done"] { background:var(--green); color:#052e16; border-color:transparent; }
+#placer .pl-items { display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; scrollbar-width:thin; }
+#placer .pl-items button { flex:none; font-weight:600; font-size:12.5px; }
+#placer .pl-items button.on { background:var(--gold); color:#1f2937; border-color:transparent; }
+#placer .pl-items button.stored { opacity:.75; border-style:dashed; }
+#placer .pl-items small { margin-left:5px; font-size:10.5px; opacity:.8; }
+#placer .pl-ctrl { display:grid; grid-template-columns:repeat(4, 44px) 1fr 1fr 1fr; gap:6px; }
+#placer .pl-ctrl button { padding:8px 4px; }
+#placer .pl-ctrl .go { background:var(--gold); color:#1f2937; border-color:transparent; }
+#placer .pl-status { display:block; margin-top:6px; font-size:11.5px; color:#cbd5e1; }
+#placer .pl-status.bad { color:#fca5a5; } #placer .pl-status.ok { color:#86efac; }
+body.placing #act, body.placing #actMore, body.placing #joy, body.placing #goal, body.placing #delivery, body.placing #wprompt, body.placing #hint { display:none !important; }
+@media (max-width:420px) { #placer .pl-ctrl { grid-template-columns:repeat(4, 1fr); } #placer .pl-ctrl [data-a="rot"], #placer .pl-ctrl .go, #placer .pl-ctrl [data-a="stash"] { grid-column:span 1; } #placer .pl-ctrl [data-a="rot"] { grid-column:1 / span 2; } }

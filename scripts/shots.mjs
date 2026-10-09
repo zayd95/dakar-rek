@@ -90,8 +90,12 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // dibiterie: walk in from the street to the counter
   await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.place(-18, -56, 0); });
   await page.keyboard.down('KeyW'); for (let i = 0; i < 40; i++) { await page.waitForTimeout(300); if ((await page.evaluate(() => window.__dakar.pos())).z > -50.5) break; } await page.keyboard.up('KeyW');
-  const dib = await page.evaluate(() => window.__dakar.pos());
-  check('dibiterie: walk in from the street', /Dibiterie/.test(dib.near ?? ''), `${dib.z.toFixed(1)} ${dib.near}`);
+  const dib = await page.evaluate(() => {
+    const d = window.__dakar, p = d.pos(), it = d.interactables().find(i => /Dibiterie/.test(i.name));
+    return { ...p, focus: d.focus()?.id ?? null, dist: it ? Math.hypot(it.x - p.x, it.z - p.z) : null };
+  });
+  // the Dibi is an open-air venue (src/venues): walking in from the street reaches its tables (benches may all be taken)
+  check('dibiterie: walk in from the street', /Dibiterie/.test(dib.near ?? '') || /dibiterie:/.test(dib.focus ?? '') || (dib.dist !== null && dib.dist < 5), `${dib.z.toFixed(1)} ${dib.near ?? dib.focus ?? `${dib.dist?.toFixed(1)} m from the Dibi`}`);
   // Maïga: enter and find the counter
   await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.enter('maiga'); });
   await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 8000 }).catch(() => {});

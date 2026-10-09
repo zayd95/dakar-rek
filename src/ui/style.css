@@ -269,6 +269,16 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 #ui #delivery { color:var(--ink); border:0; box-shadow:inset 4px 0 0 var(--sun), var(--shadow); }
 #ui #delivery small { color:#8a5300; } #ui #delivery.late small { color:var(--warn); }
 #ui #ride { color:var(--ink); border:0; } #ui #ride small { color:var(--ink-2); } #ui #ride .req { color:var(--warn); }
+/* furniture placement bar (src/economy/homeEditor.ts) */
+#ui #placer { color:var(--ink); border:0; }
+#ui #placer button { color:var(--ink); background:var(--surface-2); border-color:var(--sep); }
+#ui #placer [data-a="done"] { background:var(--green); color:#052e16; border-color:transparent; }
+#ui #placer .pl-items button.on, #ui #placer .pl-ctrl .go { background:var(--gold); color:#1f2937; border-color:transparent; }
+#ui #placer .pl-status { color:var(--ink-2); } #ui #placer .pl-status.bad { color:var(--warn); } #ui #placer .pl-status.ok { color:var(--gain); }
+/* ownership confirmations (src/economy/estate.ts) inside a sheet */
+#modal .est-rows { background:var(--sep); }
+#modal .est-rows > div { background:var(--row); color:var(--ink-2); }
+#modal .est-rows b { color:var(--ink); }
 
 /* ------------------------------------------------------------- portrait phones */
 @media (max-width:640px) and (orientation:portrait) {
@@ -278,6 +288,10 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #place b { font-size:12.5px; } #place small { font-size:11px; }
   #toast { top:calc(170px + var(--sa-t)); }
   #act { max-width:calc(100vw - 190px); }
+  /* the stride lane's « Courir » button sits right of the joystick (left 168 px, 58 px wide): keep clear of it */
+  body.touch #act { max-width:calc(100vw - 248px - var(--sa-l) - var(--sa-r)); gap:7px; padding-right:12px; }
+  body.touch #act .a-ic { width:42px; height:42px; font-size:21px; }
+  body.touch #act b { font-size:14.5px; }
   #progress { min-width:0; width:min(250px, calc(100vw - 172px)); }
   #modal { background:rgba(8,12,20,.28); }
   #modal .sheet { left:0; right:0; bottom:var(--kb); width:auto; max-height:56%; border-radius:var(--r-sheet) var(--r-sheet) 0 0; padding-bottom:var(--sa-b); animation:shUp .22s ease-out; }

@@ -1,6 +1,55 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { buildVehicle, vehicleSpec, vehicleSeats, vehicleCamera, worldYaw, VEHICLE_KINDS, type VehicleKind } from '../src/actors/vehicleKit';
+import { animateVehicle, buildVehicle, vehicleMaterials, vehicleSpec, vehicleSeats, vehicleCamera, worldYaw, VEHICLE_KINDS, type VehicleKind } from '../src/actors/vehicleKit';
+
+describe('vehicle animation', () => {
+  const body = (g: THREE.Object3D) => (g.children.find(c => (c as THREE.LOD).isLOD) as THREE.LOD).levels[0].object.getObjectByName('body') as THREE.Mesh;
+  const modes = (m: THREE.Mesh) => { const a = m.geometry.getAttribute('wheel'); const set = new Set<number>(); for (let i = 0; i < a.count; i++) set.add(a.getW(i)); return set; };
+  it('tags the wheels of every body geometry (steered ones apart) and leaves the far model at rest', () => {
+    for (const kind of VEHICLE_KINDS) {
+      const v = buildVehicle(kind, { seed: 2 });
+      const m = modes(body(v.group));
+      expect(m.has(0)).toBe(true);
+      if (kind === 'moto') { expect(m.has(1)).toBe(true); expect(m.has(3)).toBe(true); expect(m.has(4)).toBe(true); }
+      else { expect(m.has(1)).toBe(true); expect(m.has(2)).toBe(true); }
+      const far = (v.lod!.levels[1].object as THREE.Mesh).geometry.getAttribute('wheel');
+      expect(far).toBeDefined(); for (let i = 0; i < far.count; i++) expect(far.getW(i)).toBe(0);
+      expect(v.spec.drive.wheelRadius).toBe(v.spec.wheels[0].r);
+    }
+  });
+  it('spins the wheels with the distance travelled and steers within the limit, on the near model only', () => {
+    const v = buildVehicle('taxi', { seed: 3 }), m = body(v.group);
+    expect(m.material).toBe(vehicleMaterials().body);
+    animateVehicle(v.group, 6, 2, 0.5);
+    expect(m.material).not.toBe(vehicleMaterials().body);                   // its own copy carries the angles…
+    const mat = m.material as THREE.MeshLambertMaterial, base = vehicleMaterials().body;
+    expect(mat.map).toBe(base.map); expect(mat.customProgramCacheKey()).toBe(base.customProgramCacheKey());   // …same textures, same program
+    const u = mat.userData.anim;
+    expect(u.uSpin.value).toBeCloseTo((6 * 0.5) / v.spec.drive.wheelRadius % (Math.PI * 2));
+    expect(u.uSteer.value).toBeCloseTo(v.spec.drive.steerMax);
+    animateVehicle(v.group, 6, -0.1, 0.5);
+    expect(u.uSteer.value).toBeCloseTo(-0.1);
+    expect(v.group.rotation.z).toBe(0);                                     // cars do not lean
+    expect(meshes(v.group).length).toBe(4);                                 // no extra mesh: same draw calls
+  });
+  it('leans a motorbike into the turn and turns its front end about the fork', () => {
+    const v = buildVehicle('moto', { seed: 1 }), lod = v.lod!;
+    for (let k = 0; k < 40; k++) animateVehicle(v.group, 8, 0.4, 0.05);      // turning left
+    expect(lod.rotation.z).toBeLessThan(-0.2); expect(lod.rotation.z).toBeGreaterThanOrEqual(-v.spec.drive.lean - 1e-6);   // top towards +x
+    for (let k = 0; k < 60; k++) animateVehicle(v.group, 8, 0, 0.05);
+    expect(Math.abs(lod.rotation.z)).toBeLessThan(0.01);                    // back upright
+    const u = (body(v.group).material as THREE.MeshLambertMaterial).userData.anim;
+    expect(u.uAxis.value.length()).toBeCloseTo(1); expect(u.uAxis.value.y).toBeGreaterThan(0.8); expect(u.uAxis.value.z).toBeLessThan(0);   // fork raked back
+  });
+  it('compiles the wheel hook into the shared material', () => {
+    const shader = { uniforms: {} as Record<string, unknown>, vertexShader: '#include <beginnormal_vertex>\n#include <begin_vertex>', fragmentShader: '' };
+    vehicleMaterials().body.onBeforeCompile(shader as never, undefined as never);
+    expect(shader.vertexShader).toContain('attribute vec4 wheel');
+    expect(shader.vertexShader).toContain('transformed = kitAnim(transformed, 1.0)');
+    expect(shader.vertexShader).toContain('objectNormal = kitAnim(objectNormal, 0.0)');
+    expect(Object.keys(shader.uniforms)).toEqual(['uSpin', 'uSteer', 'uPivot', 'uAxis']);
+  });
+});
 import { sitOriginY } from '../src/interact/seats';
 import { placeParked, PARKED_COUNT, PARK_OFFSET } from '../src/game/parkedVehicles';
 import type { HubWorld } from '../src/world/types';

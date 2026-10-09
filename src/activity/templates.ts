@@ -13,8 +13,12 @@ import { G } from './gestures';
 export interface PlaceHooks {
   /** Open a conversation with the person holding this role (cook, imam, hairdresser, seller…). */
   converse?(role: string): void;
-  /** Ownership sheet of an asset (plot, billboard, home, business…). */
+  /** Ownership sheet of an asset (plot, billboard, home, business…): buy, rent, let, sell, upgrade. */
   ownership?(assetId: string): void;
+  /** Whether the player holds this asset (owned or rented): ownable places then offer « Entrer » / « Gérer ». */
+  holds?(assetId: string): boolean;
+  /** Go into a home the player holds (its interior). */
+  enterHome?(assetId: string): void;
   /** Catalogue of a shop (furniture, clothes, phones…). */
   browse?(catalogue: string): void;
   /** Board a vehicle / line from a stop. */
@@ -187,13 +191,14 @@ export function salon(b: Base & { services: { id: string; label: string; price: 
   } };
 }
 
-/** Shop: browse the catalogue (furniture, clothes…), or buy quick items at the till. */
-export function shop(b: Base & { catalogue: string; quick?: { id: string; label: string; price: number; item: string }[] }, h: PlaceHooks = {}): PlaceSpec {
+/** Shop: browse the catalogue (furniture, clothes…), buy quick items at the till, talk to the seller. */
+export function shop(b: Base & { catalogue: string; quick?: { id: string; label: string; price: number; item: string }[]; seller?: string }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
   return { id: b.id, name: b.name, space: b.space, type: 'shop', hours: [8, 22], anchors: [at('till')], offers: {
     till: [
       ...opt(h.browse, P.browse({ id: 'catalogue', label: 'Voir les articles', then: () => h.browse!(b.catalogue) })),
       ...(b.quick ?? []).map(q => P.buy({ id: q.id, label: q.label, price: q.price, items: { [q.item]: 1 } })),
+      ...opt(h.converse && b.seller, P.talk({ id: 'vendeur', label: 'Parler au vendeur', then: () => h.converse!(b.seller!) })),
     ],
   } };
 }
@@ -243,11 +248,18 @@ export function club(b: Base): PlaceSpec {
   } };
 }
 
-/** Plot of land or a billboard: inspect and own / rent — the ownership system does the rest. */
+/**
+ * A plot of land, a billboard or a home on sale or to let: look at the listing (buy, rent… in the ownership sheet);
+ * once the player holds it, « Gérer » (and « Entrer chez toi » for a home) — the ownership system does the rest.
+ */
 export function ownable(b: Base & { type: 'plot' | 'billboard' | 'home'; assetId: string }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
+  const mine = () => !!h.holds?.(b.assetId);
+  const what = b.type === 'billboard' ? ['le panneau', 'ton panneau'] : b.type === 'home' ? ['le logement', 'ton logement'] : ['la parcelle', 'ta parcelle'];
   const offers: ActivitySpec[] = [
-    ...opt(h.ownership, P.inspect({ id: 'voir', label: b.type === 'billboard' ? 'Voir le panneau' : 'Voir la parcelle', then: () => h.ownership!(b.assetId) })),
+    ...opt(h.enterHome && b.type === 'home', P.enter({ id: 'entrer', label: 'Entrer chez toi', visible: mine, then: () => h.enterHome!(b.assetId) })),
+    ...opt(h.ownership, P.inspect({ id: 'voir', label: `Voir ${what[0]}`, visible: () => !mine(), then: () => h.ownership!(b.assetId) })),
+    ...opt(h.ownership && h.holds, P.own({ id: 'gerer', label: `Gérer ${what[1]}`, visible: mine, then: () => h.ownership!(b.assetId) })),
   ];
   return { id: b.id, name: b.name, space: b.space, type: b.type, anchors: [at('sign')], offers: { sign: offers } };
 }

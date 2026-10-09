@@ -21,7 +21,9 @@ describe('UI helpers (docs/UI.md)', () => {
     expect(toastParts('Débarquer ✓  +3 200 F')[1]).toEqual({ text: '+3 200 F', amount: 'gain' });
     expect(toastParts('Maleekum salaam !')).toEqual([{ text: 'Maleekum salaam !' }]);
   });
-  it('amounts in F CFA with grouped thousands, uncapped', () => {
-    expect(fcfa(1250000000)).toBe('1 250 000 000 F');
+  it('amounts in F CFA with grouped thousands, uncapped (economy format)', () => {
+    expect(fcfa(1250000000).replace(/\s/g, ' ')).toBe('1 250 000 000 F');
+    expect(toastParts('Achat ✓  ' + '−' + fcfa(25000))[1].amount).toBe('cost');
+    expect(priceClass('+' + fcfa(1200))).toBe('gain');
   });
 });

@@ -23,6 +23,9 @@ il salue ses clients en wolof.
 | Boutique Diallo (« Pain et lait ») | « Ñaata la ? » — « 400 F. » (on ne marchande pas le pain) | idem |
 | Recettes de lieux (Dibi, gargote, mosquée, plage, arrêt) | Dibi : « Xaaral tuuti ! » pendant la grillade, « Neex na ! », le patron « Dalal ak jàmm ! Toogal. », « Kaay fi ! » au grill. Gargote : « Kaay lekk ! ». Mosquée : seulement « Salaam aleekum. » — « Maleekum salaam. Jàmm nga am ? ». Mareyeuses : le prix se discute avant d'acheter ou de vendre ; « Jën bu bees ! ». Pêcheurs : « Kaay fi ! Gaawal ! ». Arrêt : « Vers Colobane, Petersen » et l'apprenti « Colobane ! Nanu dem ! » | `src/activity/templates.ts` (utilisé par les lanes lieux / transport) |
 | Apprentis des cars rapides | Bulles : « Colobane ! Colobane ! », « Petersen ! Nanu dem ! », « Fan nga dem ? » | `src/actors/apprenti.ts` |
+| Lignes de car rapide (lane transport) | Aux arrêts : les terminus, « Fan nga dem ? », « Am na place ! », puis « Nanu dem ! » au départ. En route : L'apprenti : « 150 F, jërëjëf ! » ; Toi : « Apprenti, dinaa wàcc ci Marché ! » (je descends à Marché) ; « Ba beneen yoon ! » à la descente ; « Parler au voisin » : « Na nga def ? », « Salaam aleekum ! », « Dafa tàng ! », « Fan nga dem ? » et ta réponse | `src/transport/lines.ts` → `RIDE`, `rapideCalls` de `src/i18n/lines.ts` |
+| Surnoms peints des cars rapides | TERAANGA, NDANK NDANK, JÀMM (mots du lexique, en capitales) | `src/actors/vehicleAtlas.ts` |
+| Gestes de métier (étal, garage) | La cliente : « Jox ma (donne-moi) un tas de tomates. », « Un kilo d'oignons, sama xarit (mon ami). », « Trois mangues bien mûres. Ñaata la ? » ; Modou : « Jox ma la clé de 13 ! », « Le tournevis, gaawal (dépêche-toi) ! », « Un chiffon, sama doom (mon enfant) : … » ; réponses « Jërëjëf ! » / « Déedéet, pas ça. » | `src/activity/gestures.ts`, `src/ui/gesture.ts` |
 | Chat de lieu (version en ligne) | Phrases rapides selon le lieu et l'heure : « Salaam aleekum », salutation de l'heure, « Jërëjëf », « Waaw », « Déedéet », « Amul solo », au revoir de l'heure, plus deux qui vont avec le lieu (« Neex na », « Dama suur » dans une gargote ; « Ñaata la ? », « Wàññi ko tuuti » au marché ; « Nanu dem », « Maa ngi ñëw » dans un car rapide ; « Lu bees ? », « Maa ngi ñëw » dans la rue). Mosquée : salutation, merci, au revoir seulement. Envoyées telles quelles, glose en info-bulle. Aucune modération ajoutée ; bloquer / muet / signaler inchangés | `src/multiplayer/chat.ts` |
 | Personnages (fiches, salutations, histoires, situations) | 3–4 expressions par fiche (« Sa façon de parler »), salutation de l'heure dans les répliques, Ibou « Dalal ak jàmm » et « Nit nitay garabam », Mamadou « Dalal ak jàmm ! », Adja « Wàññi ko tuuti ? Déedéet ! » | `src/social/*` |
 | Lieux de la ville | « Jën bu bees ! », « Dalal ak jàmm », « Kaay naan attaya », « Mburu ak meew » | `src/world/city.ts`, `cityContent.ts` |
@@ -32,7 +35,7 @@ il salue ses clients en wolof.
 
 ### Lexique : `src/i18n/wolof.ts`
 
-- `LEXICON` : 104 entrées `{ wo, fr, tags, reply?, known? }` en orthographe CLAD. Une phrase commence par une
+- `LEXICON` : 109 entrées `{ wo, fr, tags, reply?, known? }` en orthographe CLAD. Une phrase commence par une
   majuscule (« Na nga def ? »), un mot seul est en minuscules (« xaalis »). `fr` est la glose courte ; `reply` la
   réponse habituelle ; `known` marque ce que tout joueur connaît (« Salaam aleekum », « Maleekum salaam », « attaya »,
   « ceebu jën ») : dit sans glose.
@@ -93,7 +96,7 @@ Orthographe latine standard du wolof (CLAD, décret de 2005) :
 - Jamais d'orthographe à la française : pas de `ou`, `ch`, `dj`, `gn`, ni « Nanga def » en un mot.
 - Ponctuation française : espace avant `?` et `!` (« Na nga def ? »).
 - Les noms propres gardent leur graphie d'usage (Banque Teranga, écurie Teranga, Ouakam, Guédiawaye, Aïssatou) ; ce ne
-  sont pas des répliques wolof.
+  sont pas des répliques wolof. Les surnoms peints des cars rapides, eux, sont des mots wolof : TERAANGA en CLAD.
 
 ## Registre
 
@@ -126,6 +129,8 @@ P.buy({ id: 'poisson', label: 'Acheter un poisson', price: 700, items: { poisson
 | « Yow nag ? », « Yow itam » (et toi ? / toi aussi) | Tournures plausibles mais non vérifiées ; les échanges s'en passent. |
 | « Ñibbil ak jàmm » (rentre bien) | Dans le lexique depuis le premier passage, jamais utilisé dans une réplique ; à confirmer. |
 | « Gaal yi ñëw nañu », « Jën bu bees la » | Phrases construites, pas assez sûres ; on garde « Jën bu bees ! ». |
+| « Tangaay bi dafa metti tey… », « Fan nga jëm ? », « Ñu dem ! » (premier jet de la lane transport) | Remplacés par des phrases du lexique : « Dafa tàng ! », « Fan nga dem ? », « Nanu dem ! ». |
+| Noms des marchandises en wolof (« tamaate »…) | Pas assez sûrs : les marchandises gardent leur nom français. |
 | Toute formule religieuse | Règle du jeu : pas de texte religieux inventé. |
 | Pulaar, sérère, diola | Décision de Habib : wolof seulement pour l'instant. |
 
@@ -144,6 +149,10 @@ Choix faits sans locuteur natif à côté. Tout le reste est du wolof très cour
 | « Daan naa » (j'ai gagné) | Littéralement « j'ai terrassé ». |
 | « Nit nitay garabam », « Ndank ndank mooy jàpp golo ci ñaay » | Découpage et orthographe des proverbes. |
 | « 1 500 F rekk » (1 500 F seulement) | Mélange chiffre + « rekk », à la dakaroise. |
+| « Am na place ! » (cri d'apprenti) | Wolof « am na » + le mot français « place », comme on l'entend ; « palaas » n'est pas écrit. |
+| « Apprenti, dinaa wàcc ci Marché ! » | On entend aussi « Fii laay wàcc ». |
+| « Jox ma … » + nom français (« Jox ma un tas de tomates ») | Mélange voulu : les marchandises gardent leur nom français. |
+| « Maa ngi dem liggéey. » (je vais au travail) | Réponse du voisin dans le car rapide. |
 
 ## Vérifications
 

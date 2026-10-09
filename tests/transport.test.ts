@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { LineVehicle } from '../src/transport/vehicle';
-import { CAR_RAPIDE } from '../src/transport/carRapide';
+import { carRapideSpec, carRapideKit } from '../src/transport/carRapide';
+import { passengerPatterns, pickSeat, clearKerb, kerbCoords } from '../src/transport/passengers';
 import { alightPoint } from '../src/transport/module';
 import { lanePath, Path, Timetable, newMotion, pullIn, angleDiff, type Pose } from '../src/transport/route';
 import { seatToWorld, toWorld } from '../src/transport/spec';
@@ -224,7 +225,7 @@ describe('lines data', () => {
 });
 
 describe('line vehicle (timetable → vehicle, seats, arrivals)', () => {
-  const spec = { ...CAR_RAPIDE, build: () => new THREE.Group() };
+  const spec = { ...carRapideSpec(), build: () => new THREE.Group() };
   const path = new Path(lanePath(square, 2.6, 4.5));
   const table = new Timetable(path, [60, 180, 300, 420].map(s => ({ s, dwell: 9 })), MOTION);
 
@@ -237,11 +238,11 @@ describe('line vehicle (timetable → vehicle, seats, arrivals)', () => {
     const out = { x: 0, z: 0, top: 0, yaw: 0 };
     seatToWorld(v.pose, local, out, v.bounce);
     expect(seat.x).toBeCloseTo(out.x, 6); expect(seat.z).toBeCloseTo(out.z, 6); expect(seat.yaw).toBeCloseTo(v.pose.yaw, 6);
-    expect(v.vehicle.driverSeat.id).toBe('pikine:rapide:23:0:chauffeur');
+    expect(v.vehicle.driverSeat.id).toBe('pikine:rapide:23:0:driver');
     // standing at a stop: pulled in towards the kerb (right of the lane)
     const lane: Pose = { x: 0, z: 0, yaw: 0 }; path.sample(v.motion.s, lane);
     const right = (v.pose.x - lane.x) * -Math.cos(lane.yaw) + (v.pose.z - lane.z) * Math.sin(lane.yaw);
-    expect(right).toBeCloseTo(1.1, 1);
+    expect(right).toBeCloseTo(1.6, 1);
   });
 
   it('reports every stop reached since the previous frame, even on a very long frame', () => {
@@ -253,5 +254,79 @@ describe('line vehicle (timetable → vehicle, seats, arrivals)', () => {
     expect([...v.arrivals].sort()).toEqual([1, 2]); expect(arrived.sort()).toEqual([1, 2]);
     v.update(table.stops[2].arrive + 0.6, 0.1, false);
     expect(v.arrivals).toEqual([]);
+  });
+});
+
+describe('car rapide from the vehicle kit', () => {
+  const spec = carRapideSpec(), kit = carRapideKit();
+
+  it('takes seats, the rear door, the apprenti step and an open cabin from the kit', () => {
+    expect(spec.seats.length + 1).toBe(kit.seats.length);
+    expect(spec.driver.id).toBe(kit.seats.find(s => s.kind === 'driver')!.id);
+    for (const s of spec.seats) {
+      const k = kit.seats.find(x => x.id === s.id)!;
+      expect([s.x, s.y, s.z]).toEqual([k.x, k.top, k.z]);
+      expect(!!s.npcOnly).toBe(k.door !== 'rear');                     // the cab bench is reached by another door
+    }
+    const rear = kit.doors.find(d => d.id === 'rear')!;
+    expect([spec.doors[0].x, spec.doors[0].z]).toEqual([rear.board[0], rear.board[2]]);
+    expect(spec.doors[0].outX).toBeLessThan(spec.doors[0].x);           // steps out towards the pavement side
+    expect(spec.crew?.step).toEqual(kit.step!.riding);
+    expect(spec.cabin).toBe('open');
+    expect(spec.cameras.some(c => c.seat && c.inside)).toBe(true);
+    expect(spec.cameras.every(c => c.portrait)).toBe(true);
+  });
+
+  it('draws exactly the seats NPCs hold, and the kit reports them', async () => {
+    const { buildVehicle } = await import('../src/actors/vehicleKit');
+    const seated = ['b10', 'b21', 'cab1'];
+    const b = buildVehicle('carRapide', { seed: 3, seated, driver: true, lod: 'near' });
+    expect(b.spec.occupied?.slice().sort()).toEqual(['b10', 'b21', 'cab1', 'driver'].sort());
+    const empty = buildVehicle('carRapide', { seed: 3, seated: [], driver: false, lod: 'near' });
+    expect(empty.spec.occupied).toEqual([]);
+  });
+});
+
+describe('passengers and the kerb at stops', () => {
+  const spec = carRapideSpec();
+
+  it('passenger sets always leave free seats the player can take', () => {
+    const sets = passengerPatterns(spec.seats, 4, 23);
+    expect(sets).toHaveLength(4);
+    expect(new Set(sets.map(p => p.join('.'))).size).toBeGreaterThan(1);
+    for (const p of sets) {
+      const open = spec.seats.filter(s => !s.npcOnly && !p.includes(s.id));
+      expect(open.length).toBeGreaterThanOrEqual(3);
+      expect(p.length).toBeGreaterThan(2);
+    }
+  });
+
+  it('the player never takes a seat an NPC holds nor the cab bench; pavement side first', () => {
+    const seats = spec.seats.map(s => ({ id: s.id, x: 0, z: 0, top: 0, yaw: 0, kind: 'vehicle' as const, space: 'v', occupant: null as string | null }));
+    for (let n = 0; n < 50; n++) {
+      const r = Math.random;
+      seats.forEach(s => { s.occupant = r() < 0.6 ? 'npc' : null; });
+      const i = pickSeat(spec.seats, seats, r);
+      const open = spec.seats.filter((s, k) => !seats[k].occupant && !s.npcOnly);
+      if (!open.length) { expect(i).toBe(-1); continue; }
+      expect(seats[i].occupant).toBeNull(); expect(spec.seats[i].npcOnly).toBeFalsy();
+      expect(spec.seats[i].x).toBeLessThanOrEqual(Math.min(...open.map(s => s.x)) + 0.05);
+    }
+    seats.forEach(s => { s.occupant = 'npc'; });
+    expect(pickSeat(spec.seats, seats, Math.random)).toBe(-1);
+  });
+
+  it('clears the vehicles parked where the car pulls in, and only there', () => {
+    // a stop on a road along +x at z = 0: its spot is 6.25 m right of the centre line (+z)
+    const zone = { x: 0, z: 6.25, dx: 1, dz: 0, rx: 0, rz: 1, offset: 6.25, from: -20, to: 12 };
+    const root = new THREE.Group(), parked = new THREE.Group(); parked.name = 'kit_parked'; root.add(parked);
+    const car = (x: number, z: number) => { const g = new THREE.Group(); g.position.set(x, 0, z); parked.add(g); return g; };
+    car(-5, 4.3); car(30, 4.3); car(-5, -4.3);                         // in the zone; further along; the other side
+    const cols = [{ x0: -7, x1: -3, z0: 3.4, z1: 5.2, h: 1.5 }, { x0: 28, x1: 32, z0: 3.4, z1: 5.2, h: 1.5 }, { x0: -10, x1: 10, z0: 7, z1: 20, h: 9 }];
+    expect(kerbCoords(zone, -5, 4.3)).toEqual({ along: -5, lateral: 4.3 });
+    expect(clearKerb(root, cols, [zone])).toBe(1);
+    expect(parked.children.map(c => c.position.x)).toEqual([30, -5]);
+    expect(cols).toHaveLength(2);                                        // the parked car's collider went, the building stays
+    expect(cols.some(c => c.h === 9)).toBe(true);
   });
 });

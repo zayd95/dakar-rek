@@ -1,7 +1,7 @@
 import type { GameState } from '../core/state';
 import { fcfaText } from './format';
 import { routeById } from './jobs';
-import { goalItem, owns, priceOf } from './furniture';
+import { furnitureCount, goalItem, owns, priceOf } from './furniture';
 
 /**
  * "Première ascension" — the next economic step shown in the suggestion chip:
@@ -22,7 +22,7 @@ export function economyStep(s: GameState): Step | null {
     return { id: 'goal_tiak', hint: `Gagne ta vie : prends une livraison Tiak Tiak à ${where}.` };
   }
   // After the first piece of furniture, only the goal Ibou suggested stays on the chip (the rest is in the Carnet).
-  const first = s.data.furniture.length === 0;
+  const first = furnitureCount(s) === 0;
   if (!first && !('ibou_meuble' in s.data.beats)) return null;
   const item = goalItem(s);
   if (!item || (!first && !s.data.flags.includes('objectif:' + item.id))) return null;

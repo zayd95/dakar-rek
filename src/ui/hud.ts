@@ -1,6 +1,7 @@
 import type { Needs } from '../core/types';
 import type { Input } from '../core/input';
 import { Sheet, replay, type MenuItem } from './sheet';
+import { fcfaShort, fcfaText } from '../economy/format';
 
 export type { MenuItem } from './sheet';
 
@@ -18,7 +19,8 @@ const NEEDS: { k: keyof Needs; label: string; icon: string }[] = [
 const MOOD_FACE: Record<string, string> = { 'au top': '😄', bien: '🙂', bof: '😐', mal: '😟' };
 const ARROWS = '↑↗→↘↓↙←↖';
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-export const fcfa = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' F';
+/** Full amount (menus, phone): « 1 250 000 000 F », exact at any size; the wallet chip shows the compact form (fcfaShort). */
+export const fcfa = (n: number) => fcfaText(n);
 /** « −500 F » / « +1 200 F ». */
 const signed = (n: number) => (n < 0 ? '−' : '+') + fcfa(Math.abs(n));
 /** A leading emoji in a label (« ✋ Arrêter ») becomes the button's icon. */
@@ -188,8 +190,9 @@ export class Hud {
   /** Wallet: counts to the new amount and floats the difference (+/− F) beside it. */
   private showWallet(w: number) {
     const s = this.wallet;
-    if (Number.isNaN(s.shown)) { s.shown = s.to = w; this.el.money.textContent = fcfa(w); return; }
+    if (Number.isNaN(s.shown)) { s.shown = s.to = w; this.el.money.textContent = fcfaShort(w); this.el.money.setAttribute('aria-label', fcfa(w)); return; }
     if (w === s.to) return;
+    this.el.money.setAttribute('aria-label', fcfa(w));
     const delta = w - s.to;
     s.from = s.shown; s.to = w; s.t0 = performance.now();
     if (!s.raf) s.raf = requestAnimationFrame(this.tickWallet);
@@ -204,7 +207,7 @@ export class Hud {
   private tickWallet = (now: number) => {
     const s = this.wallet, k = Math.min(1, (now - s.t0) / 650), e = 1 - (1 - k) ** 3;
     s.shown = Math.round(s.from + (s.to - s.from) * e);
-    this.el.money.textContent = fcfa(s.shown);
+    this.el.money.textContent = fcfaShort(s.shown);
     s.raf = k < 1 ? requestAnimationFrame(this.tickWallet) : 0;
   };
 

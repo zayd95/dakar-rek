@@ -80,6 +80,8 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   check(`${label}: action button shows the verb with its icon, 60 px tall`, act.height >= 56 && /Jus & Go/.test(actText) && !!(await d(() => document.querySelector('#act .a-ic'))), `${act.width}×${act.height} ${actText}`);
   check(`${label}: « ⋯ » is a 44 px target above the action button`, more.width >= 44 && more.height >= 44 && more.bottom <= act.top, `${more.width}×${more.height}`);
   check(`${label}: action area clear of the joystick`, !touch || !overlap(act, await rect('#joy')));
+  const run = await rect('#runBtn');
+  check(`${label}: action button clear of the « Courir » button`, !run?.width || !overlap(act, run), JSON.stringify(run));
 
   // 3. Every way of closing a sheet gives the controls back.
   const openSheet = async () => { await d(() => window.__dakar.act()); await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {}); await settle(); return (await isOpen()) && (await mode()) === 'menu'; };
@@ -144,7 +146,8 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
     await d(p => window.__dakar.place(p.x - 0.6, p.z, Math.PI / 2), counter);
     await page.waitForFunction(() => /:counter$/.test(window.__dakar.focus()?.id ?? ''), null, T).catch(() => {});
     await d(() => window.__dakar.act());
-    await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
+    const open = await page.waitForFunction(() => document.querySelector('#modal.on'), null, { timeout: 30000 }).then(() => true, () => false);
+    if (!open) { console.log('order: no sheet', JSON.stringify(await d(() => ({ focus: window.__dakar.focus(), pos: window.__dakar.pos(), phone: !!document.querySelector('#phone.on'), act: document.getElementById('act').textContent })))); return false; }
     await page.locator('#modal .item', { hasText: 'Riz au poisson' }).first().click();
     return page.waitForFunction(() => window.__dakar.activity()?.step === 'Préparation', null, T).then(() => true, () => false);
   };

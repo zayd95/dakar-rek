@@ -11,13 +11,14 @@ import { fcfa } from '../ui/hud';
 import { rng } from '../core/rng';
 import { lanePath, Path, Timetable, type Motion } from './route';
 import { linesOf, loopNodes, SAY, type LineDef } from './lines';
-import { CAR_RAPIDE } from './carRapide';
+import { carRapideSpec } from './carRapide';
 import { LineVehicle, callTexture } from './vehicle';
 import { placeStops, buildStops, StopPeople, STOP_OFFSET, type StopSite } from './stops';
 import { PassengerCamera } from './camera';
 import { TripLogic, MIN_STOP } from './trip';
 import { RideCard } from './ui';
-import type { VehicleSpec } from './spec';
+import type { CameraAnchor, VehicleSpec } from './spec';
+import { clearKerb, passengerPatterns, pickSeat, type KerbZone } from './passengers';
 
 /**
  * Transport module (Wave 1: the car rapide passenger experience). Every hub has a car rapide line looping around its
@@ -27,7 +28,8 @@ import type { VehicleSpec } from './spec';
  * sways and bumps, chat space = the vehicle), asks to get off and steps out onto the pavement at the stop.
  * See docs/TRANSPORT.md.
  */
-const LANE = 2.6, CORNER = 4.5, DWELL = 9;
+/** Lane offset from the centre line: clear of the cars parked along the kerb (src/game/parkedVehicles.ts, 4.3 m). */
+const LANE = 2.0, CORNER = 4.5, DWELL = 9;
 const MOTION = { vmax: 9, vmin: 3.2, lateral: 2.6, accel: 1.5, decel: 2.2 };
 /** Camera distance within which the apprenti and the people at the stops are drawn and animated. */
 const NEAR = 70;
@@ -44,6 +46,8 @@ interface LineRt {
   people: StopPeople | null;
   furniture: { group: THREE.Group; dispose(): void };
   calls: THREE.CanvasTexture[];
+  /** A few fixed sets of NPC passengers (spec seat ids): each car takes one at every stop (bounded model variants). */
+  patterns: string[][];
 }
 
 /** A short scripted walk (to the rear door, onto the pavement), timed on the real clock so it never outlasts a stop. */
@@ -92,7 +96,7 @@ export class TransportModule implements GameModule {
     this.hub = hub;
     const low = ctx.quality() === 'low';
     for (const def of linesOf(hub.id)) {
-      const spec = CAR_RAPIDE;
+      const spec = carRapideSpec();
       const path = new Path(lanePath(loopNodes(def), LANE, CORNER));
       const sites = placeStops(def, hub.colliders);
       const door = spec.doors[0];
@@ -102,12 +106,17 @@ export class TransportModule implements GameModule {
       const calls = [...def.calls.map(callTexture), callTexture(SAY.depart)];
       const fleet = low ? 1 : def.fleet;
       const bumpy = hub.id === 'pikine' ? 1.7 : 1;
+      const patterns = passengerPatterns(spec.seats, 4, Number(def.id) || 1);
+      // no parking at a bus stop: the kerb where the car pulls in is cleared of parked vehicles
+      const zones: KerbZone[] = sites.map(s => ({ x: s.x, z: s.z, dx: s.dx, dz: s.dz, rx: s.rx, rz: s.rz, offset: STOP_OFFSET, from: -20, to: 12 }));
+      clearKerb(ctx.extra, hub.colliders, zones);
       const vehicles = Array.from({ length: fleet }, (_, k) => {
-        const v = new LineVehicle(spec, hub.id, def.id, k, table, table.stops.map(s => s.s), bumpy, this.rand);
+        const v = new LineVehicle(spec, hub.id, def.id, k, table, table.stops.map(s => s.s), bumpy, this.rand, (Number(def.id) || 7) * 31 + k * 7 + 3);
         v.setCalls(calls);
-        for (const s of v.seats) { ctx.seats.add(s); if (this.rand() < 0.45) s.occupant = 'npc'; }
+        for (const s of v.seats) ctx.seats.add(s);
+        v.vehicle.setPassengers(patterns[k % patterns.length]);
         ctx.seats.add(v.vehicle.driverSeat); v.vehicle.driverSeat.occupant = 'npc';      // the chauffeur
-        v.onArrive = () => this.shuffle(v);
+        v.onArrive = () => this.shuffle(rt, v);
         ctx.extra.add(v.group);
         return v;
       });
@@ -115,7 +124,7 @@ export class TransportModule implements GameModule {
       ctx.extra.add(furniture.group);
       for (const s of sites) for (const seat of s.seats) ctx.seats.add(seat);
       const people = new StopPeople(sites, low ? 1 : 2, this.rand, o => ctx.extra.add(o));
-      const rt: LineRt = { def, spec, path, table, sites, vehicles, motions: vehicles.map(v => v.motion), arrivals: vehicles.map(v => v.arrivals), people, furniture, calls };
+      const rt: LineRt = { def, spec, path, table, sites, vehicles, motions: vehicles.map(v => v.motion), arrivals: vehicles.map(v => v.arrivals), people, furniture, calls, patterns };
       this.lines.push(rt);
       for (const site of sites) ctx.places.add(this.stopPlace(rt, site));
     }
@@ -157,10 +166,30 @@ export class TransportModule implements GameModule {
     const v = this.vehicle();
     if (!v || !this.cam.active || this.trip.phase === 'idle' || this.trip.phase === 'waiting') return false;
     const views = v.spec.cameras;
+    let a = views[this.cam.view % views.length];
+    if (a.seat) a = this.seatView(v, a) ?? views[0];          // a view from one's seat needs the seat
     // the vehicle moves on the real clock: smooth the camera on real time too (frame dt is capped at 0.1 s)
     const t = performance.now(), real = this.camMs ? Math.min(1, (t - this.camMs) / 1000) : dt; this.camMs = t;
-    this.cam.update(Math.max(dt, real), ctx.camera, v.pose, v.bounce, views[this.cam.view % views.length], drag, this.hub?.colliders ?? []);
+    this.cam.update(Math.max(dt, real), ctx.camera, v.pose, v.bounce, a, drag, this.hub?.colliders ?? []);
+    const body = ctx.player.body();
+    if (body && a.inside) body.group.visible = false;         // looking out from where one sits (shown again next frame)
     return true;
+  }
+
+  /** A seat-relative camera anchor turned into a vehicle-frame anchor for the player's seat (cached per seat). */
+  private seatAnchor: CameraAnchor | null = null;
+  private seatAnchorKey = '';
+  private seatView(v: LineVehicle, a: CameraAnchor): CameraAnchor | null {
+    const i = this.seat ? v.seats.indexOf(this.seat) : -1;
+    if (i < 0 || this.trip.phase !== 'riding') return null;
+    const key = `${a.id}|${i}`;
+    if (key !== this.seatAnchorKey) {
+      const s = v.spec.seats[i];
+      const off = (p: [number, number, number]): [number, number, number] => [s.x + p[0], s.y + p[1], s.z + p[2]];
+      this.seatAnchor = { ...a, seat: false, pos: off(a.pos), look: off(a.look), portrait: a.portrait ? { pos: off(a.portrait.pos), look: off(a.portrait.look) } : undefined };
+      this.seatAnchorKey = key;
+    }
+    return this.seatAnchor;
   }
 
   debug(ctx: GameCtx): Record<string, unknown> {
@@ -181,7 +210,7 @@ export class TransportModule implements GameModule {
         card: () => this.card?.text ?? '',
         safePlace: () => this.safePlace(),
         /** Checks: every passenger seat taken by NPCs except those ending with `free` (null: back to normal). */
-        crowd: (free: string | null) => { this.crowdFree = free; for (const rt of this.lines) for (const v of rt.vehicles) this.shuffle(v); },
+        crowd: (free: string | null) => { this.crowdFree = free; for (const rt of this.lines) for (const v of rt.vehicles) this.shuffle(rt, v); },
         /** Show or hide everything the module draws (draw-call budget measurement). */
         show: (on: boolean) => { for (const rt of this.lines) { rt.furniture.group.visible = on; for (const v of rt.vehicles) v.group.visible = on; } },
       },
@@ -196,6 +225,13 @@ export class TransportModule implements GameModule {
     for (const l of this.lines) key += l.people?.version ?? 0;
     if (key !== this.waitingKey) { this.waitingKey = key; this.waiting = this.lines.flatMap(l => l.people?.bodies() ?? []); }
     return this.waiting;
+  }
+
+  /** Footprints of the line's cars (drive mode collides with them): centre, heading, half length and width. */
+  obstacles(out: { x: number; z: number; yaw: number; hl: number; hw: number }[]) {
+    out.length = 0;
+    for (const rt of this.lines) for (const v of rt.vehicles) out.push({ x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, hl: rt.spec.length / 2, hw: rt.spec.width / 2 });
+    return out;
   }
 
   // ---------------------------------------------------------------- lines, stops and passengers
@@ -235,16 +271,15 @@ export class TransportModule implements GameModule {
     return null;
   }
 
-  /** At each stop a few passengers get off and others get on (their seats only; the closed cabin hides them). */
-  private shuffle(v: LineVehicle) {
-    if (this.crowdFree !== null) { for (const s of v.seats) if (s.occupant !== 'player') s.occupant = s.id.endsWith(this.crowdFree) ? null : 'npc'; return; }
-    let free = 0;
-    for (const s of v.seats) {
-      if (s.occupant === 'npc' && this.rand() < 0.35) s.occupant = null;
-      else if (!s.occupant && this.rand() < 0.3) s.occupant = 'npc';
-      if (!s.occupant) free++;
-    }
-    for (const s of v.seats) { if (free >= 4) break; if (s.occupant === 'npc') { s.occupant = null; free++; } }
+  /**
+   * At each stop some passengers get off and others get on: the car takes another of the line's passenger sets, never
+   * one that would sit someone on the player's seat (the open cabin shows who sits where).
+   */
+  private shuffle(rt: LineRt, v: LineVehicle) {
+    const mine = v.seats.findIndex(s => s.occupant === 'player'), mineId = mine >= 0 ? rt.spec.seats[mine].id : null;
+    if (this.crowdFree !== null) { v.vehicle.setPassengers(rt.spec.seats.filter(s => !s.id.endsWith(this.crowdFree!) && s.id !== mineId).map(s => s.id)); return; }
+    const ok = rt.patterns.filter(p => !mineId || !p.includes(mineId));
+    if (ok.length) v.vehicle.setPassengers(ok[Math.floor(this.rand() * ok.length)]);
   }
 
   private stopPlace(rt: LineRt, site: StopSite) {
@@ -311,10 +346,10 @@ export class TransportModule implements GameModule {
   private board(rt: LineRt, k: number) {
     const ctx = this.ctx, v = rt.vehicles[k], m = v.motion;
     if (this.trip.phase === 'boarding' || this.trip.phase === 'riding' || this.trip.phase === 'alighting') return;   // one fare, one trip
-    // a free passenger seat (never one an NPC sits on), by the window on the pavement side when there is one
-    const free = v.seats.filter(s => !s.occupant);
-    if (!free.length) { ctx.toast('Plein ! Attends le prochain.'); return; }
-    const seat = free.find(s => s.id.endsWith('c2')) ?? free[Math.floor(this.rand() * free.length)];
+    // a free passenger seat (never one an NPC holds, never the cab bench), on the pavement side when there is one
+    const i = pickSeat(rt.spec.seats, v.seats, this.rand);
+    if (i < 0) { ctx.toast('Plein ! Attends le prochain.'); return; }
+    const seat = v.seats[i];
     const stop = m.dwell >= 0 ? m.dwell : this.trip.stop >= 0 ? this.trip.stop : 0;
     const spec: ActivitySpec = {
       id: 'monter', primitive: 'ride', label: `Monter · ${rt.def.number}`, icon: '🚐', quiet: true,

@@ -14,7 +14,9 @@ import type { FollowCamera } from '../actors/camera';
 import { wolofModule } from '../i18n/module';
 import { assetKitModule } from './assetKit';
 import { transport } from '../transport/module';
+import { moto } from '../transport/motoModule';
 import { VenuesModule } from '../venues';
+import { ESTATE_MODULE } from '../economy/estate';
 import { worldMarkers } from '../ui/worldMarkers';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
@@ -70,10 +72,15 @@ export interface GameCtx {
   guide(): { name: string; x: number; z: number } | null;
   toast(msg: string): void;
   save(): void;
-  /** Walkable interior of the current hub behind `door` (built by the module; hidden until entered). */
+  /**
+   * Walkable interior of the current hub behind `door` (built by the module; hidden until entered). Called again for the
+   * same door, it replaces the previous interior (seats, meshes; the player inside stays in the new one).
+   */
   addInterior(door: Interactable, int: Interior): void;
   enter(doorId: string): void;
   exit(): void;
+  /** Set (or clear) the city's walking marker towards an interactable of the current hub (the places directory's marker). */
+  walkTo(id: string | null): void;
 }
 
 /** A gameplay module: hooks are called by main.ts in this order every hub / frame. */
@@ -93,6 +100,11 @@ export interface GameModule {
    */
   space?(ctx: GameCtx): string | null;
   /**
+   * Presence / chat space while the module's interaction space is set, when it should differ (on one's own motorbike
+   * the player stays visible to the street: 'street'). Null = same as `space`.
+   */
+  presenceSpace?(ctx: GameCtx): string | null;
+  /**
    * Drive the camera this frame (passenger view, cut-scene…); return true when done, and the follow camera is skipped.
    * `drag` is the player's camera drag of this frame (mouse, touch, Q/R keys).
    */
@@ -109,4 +121,4 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [wolofModule, assetKitModule, transport, VenuesModule, worldMarkers()];
+export const MODULES: GameModule[] = [wolofModule, assetKitModule, transport, VenuesModule, moto, ESTATE_MODULE, worldMarkers()];
