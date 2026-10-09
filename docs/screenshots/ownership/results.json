@@ -15,6 +15,11 @@
   "extra": "pikine:city:jamm,pikine:city:maison,pikine:city:keur_meubles,pikine:city:parcelles,pikine:city:panneau"
  },
  {
+  "name": "draw calls looking over the whole Cité Jàmm (Low quality; for the record)",
+  "ok": true,
+  "extra": "251 draw calls"
+ },
+ {
   "name": "earned with a delivery",
   "ok": true,
   "extra": "3000 → 4200"
@@ -152,7 +157,7 @@
  {
   "name": "one in-game hour later: plot + billboard rents paid (one ledger line)",
   "ok": true,
-  "extra": "16755 · Revenus · Panneau 4 × 3 · carrefour de la Cité Jàmm et 1 autre bien"
+  "extra": "16796 · Revenus · Panneau 4 × 3 · carrefour de la Cité Jàmm et 1 autre bien"
  },
  {
   "name": "at the Résidence Jàmm: « Voir le logement »",
@@ -196,8 +201,8 @@
  },
  {
   "name": "the shower offers « Prendre une douche »",
-  "ok": false,
-  "extra": ""
+  "ok": true,
+  "extra": "{\"id\":\"home:appart_jamm:douche\",\"name\":\"Douche\",\"kind\":\"spot\",\"space\":\"home\",\"primary\":\"Prendre une douche\",\"all\":[\"Prendre une douche\"]}"
  },
  {
   "name": "the shower washes",
@@ -205,9 +210,9 @@
   "extra": ""
  },
  {
-  "name": "the next hour: rents in, the apartment’s rent (250 F) out",
-  "ok": false,
-  "extra": "27092 · Loyer · Appartement F2 · Résidence Jàmm -416 | Revenus · Panneau 4 × 3 · carrefour de la Cité Jàmm et 1 autre bien 27508"
+  "name": "the next hour: rents in, the apartment’s rent out (250 F per in-game hour)",
+  "ok": true,
+  "extra": "19269 · Loyer · Appartement F2 · Résidence Jàmm -296 | Revenus · Panneau 4 × 3 · carrefour de la Cité Jàmm et 1 autre bien 19565"
  },
  {
   "name": "phone « Biens »: net worth, income, every asset held",
@@ -222,7 +227,7 @@
  {
   "name": "wallet: value of assets, total wealth, income and charges per hour",
   "ok": true,
-  "extra": "Solde22 045 747 FFCFA · monnaie de jeu, sans valeur réelle\n      \n        Valeur des biensLogements, terrains, panneau, affaires, meubles7 995 868 F\n        For"
+  "extra": "Solde22 037 965 FFCFA · monnaie de jeu, sans valeur réelle\n      \n        Valeur des biensLogements, terrains, panneau, affaires, meubles7 996 770 F\n        For"
  },
  {
   "name": "reload: assets, placements, home and wallet persisted (schema v5)",
@@ -257,7 +262,7 @@
  {
   "name": "phone: a night on the floor mattress restores energy",
   "ok": true,
-  "extra": "74.8985025"
+  "extra": "74.8990035"
  },
  {
   "name": "phone: « Biens » fits the screen",
