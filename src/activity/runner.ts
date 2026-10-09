@@ -1,6 +1,6 @@
 import type { GameState } from '../core/state';
 import type { Clip } from '../actors/humanoid';
-import type { Seat, Seats } from '../interact/seats';
+import { seatClip, type Seat, type Seats } from '../interact/seats';
 import { applyEffects, type EffectHooks } from './effects';
 import type { ActivityCtx, ActivitySpec, SeatPick, Step } from './types';
 
@@ -85,7 +85,7 @@ export class ActivityRunner {
   cancel(reason = '') {
     const c = this.cur; if (!c) return;
     this.cur = null;
-    this.s.progress(false); this.s.busy(false); this.s.clip(this.s.seated() ? 'Sit' : null);
+    this.s.progress(false); this.s.busy(false); this.s.clip(this.seatPose());
     if (reason) this.s.toast(reason);
     this.onEnd(c.spec, false);
   }
@@ -114,11 +114,14 @@ export class ActivityRunner {
 
   private finish() {
     const c = this.cur!; this.cur = null;
-    this.s.progress(false); this.s.busy(false); this.s.clip(this.s.seated() ? 'Sit' : null);
+    this.s.progress(false); this.s.busy(false); this.s.clip(this.seatPose());
     if (!c.spec.quiet || c.notes.length) this.s.toast([c.spec.label + ' ✓', ...c.notes].join('  '));
     this.s.save();
     this.onEnd(c.spec, true);
   }
+
+  /** Back to the seat's own pose (Sit, Kneel on a prayer row…) or to normal when standing. */
+  private seatPose(): Clip | null { const s = this.s.seated(); return s ? seatClip(s) : null; }
 
   private pickSeat(p: SeatPick): Seat | null {
     const space = this.s.space(), me = this.s.player();

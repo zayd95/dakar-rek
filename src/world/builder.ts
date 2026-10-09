@@ -10,6 +10,7 @@ import { generatedTexture } from './textures';
 import { inGate, tierRadius, tierTop, TIERS, TIER_DEPTH, PARAPET_R, PARAPET_H, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
+import { isComposed, type Site } from './sites';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -542,6 +543,14 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const smokeAt: { x: number; y: number; z: number }[] = [];
   const people: HubWorld['people'] = [];
   const seats: HubWorld['seats'] = [];
+  /** Sites left to the venues module (src/world/sites.ts): ground only, plus the place's identity interactable. */
+  const sites: Site[] = [];
+  const composedLot = (k: KioskSpec) => {
+    const a = k.lot % 2, b = k.lot >> 1, L = lotRect(k.i, k.j, a, b), dir = b ? 1 : -1;
+    const key = `${k.kind}:${k.i}${k.j}`, itId = `${id}:${key}`;
+    sites.push({ key, kind: 'dibiterie', name: k.name, x0: L.x0, z0: L.z0, x1: L.x1, z1: L.z1, front: { x: 0, z: dir }, side: { x: a ? 1 : -1, z: 0 }, interactable: itId });
+    interactables.push({ id: itId, name: k.name, kind: 'actions', x: L.cx, z: dir > 0 ? L.z1 : L.z0, radius: 3, actions: [] });
+  };
 
   const kioskAt = (k: KioskSpec) => {
     const L = lotRect(k.i, k.j, k.lot % 2, k.lot >> 1);
@@ -600,6 +609,11 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const B = G + 0.02;
     switch (kind) {
       case 'mosque': {
+        if (isComposed(id, `mosque:${i}${j}`)) {
+          for (const sx of [-1, 1]) tree(cx + sx * 9, cz - 15, 1.1);          // the forecourt's two shade trees stay
+          sites.push({ key: `mosque:${i}${j}`, kind: 'mosque', name: 'Grande Mosquée', x0: bx, z0: bz, x1: bx + BLK, z1: bz + BLK, front: { x: 0, z: -1 } });
+          break;
+        }
         fac.facade(26, 11, 22, cx, B, cz + 2, 0xf6f3ea);
         plain.box(26.2, 0.7, 22.2, cx, B, cz + 2, 0xcfc7b4);
         plain.box(20, 1.2, 16, cx, 11.2, cz + 2, 0xe9e5d8);
@@ -956,7 +970,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     for (let lot = 0; lot < 4; lot++) {
       const k = kioskLots.get(`${i},${j},${lot}`);
       if (k) {
-        if (k.kind === 'dibiterie') { dibiterie(k); continue; }
+        if (k.kind === 'dibiterie') { if (isComposed(id, `dibiterie:${k.i}${k.j}`)) composedLot(k); else dibiterie(k); continue; }
         const info = kioskAt(k);
         if (k.kind === 'home') {
           // Face the home at an angle: the camera stays on the street side and the first view shows the neighbourhood.
@@ -1068,7 +1082,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       }
       return 0;
     },
-    people, seats, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
+    people, seats, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites,
     dispose() { disposeGroup(group); },
   };
 }

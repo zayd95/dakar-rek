@@ -1,11 +1,12 @@
 import type { Target, TargetSource } from './types';
+import type { Clip } from '../actors/humanoid';
 
 /**
  * One sit system for every seat in Dakar: benches, chairs, stools, sofas, beds, prayer rows, vehicle seats.
  * Builders and venues register seats; the player (and later NPCs) occupy them. A seat is a target with « S'asseoir »
  * while it is free and the player is near it.
  */
-export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'vehicle';
+export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'vehicle' | 'prayer';
 
 export interface Seat {
   id: string;
@@ -20,12 +21,21 @@ export interface Seat {
   space: string;
   /** 'player', an NPC id, a remote player id, or null when free. */
   occupant: string | null;
+  /**
+   * Pose held by whoever sits here (player or NPC); default 'Sit'. Floor places use 'Kneel' (a prayer row, a mat):
+   * their `top` is then the floor height + SIT_HIPS, so the sitter's origin lands on the floor (see floorSeatTop).
+   */
+  clip?: Clip;
 }
 
 /** Height of the Sit clip's hips above the character origin (actors/humanoid.ts, corrected Sit). */
 export const SIT_HIPS = 0.48;
 /** Character origin height for someone sitting on this seat. */
 export const sitOriginY = (s: Pick<Seat, 'top'>) => s.top - SIT_HIPS;
+/** `top` of a floor place (prayer row, mat) whose sitter kneels with their origin on a floor at `floorY`. */
+export const floorSeatTop = (floorY: number) => floorY + SIT_HIPS;
+/** The pose someone holds on this seat. */
+export const seatClip = (s: Pick<Seat, 'clip'>): Clip => s.clip ?? 'Sit';
 
 const REACH = 1.3;
 
@@ -80,7 +90,7 @@ export class Seats implements TargetSource {
   }
 }
 
-const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', vehicle: 'Siège' };
+const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', vehicle: 'Siège', prayer: 'Rang de prière' };
 
 /**
  * Seats along a bench of length `len` centred on (x, z), facing `yaw` (the bench back is behind the sitters).

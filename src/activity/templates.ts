@@ -1,6 +1,6 @@
 import type { Anchor, PlaceSpec } from './places';
 import * as P from './primitives';
-import type { ActivitySpec } from './types';
+import type { ActivitySpec, SeatPick } from './types';
 
 /**
  * Place recipes: each kind of place in Dakar is a composition of the same primitives. A builder (street block,
@@ -19,7 +19,29 @@ export interface PlaceHooks {
   board?(line: string): void;
   /** Appearance change after a salon service. */
   restyle?(service: string): void;
+  /** Walk into the place's interior (a mosque hall, a club…): the module that built the place owns the door. */
+  enter?(): void;
+  /** Progress counters of the save (shifts at a grill, meals at a place…): offers unlock with use. */
+  count?(counter: string): number;
+  /** City day number (daily specials) and hour (evening-only offers). */
+  day?(): number;
+  hour?(): number;
+  /** Why the player is too tired for a job costing `energy`, or null. */
+  tired?(energy: number): string | null;
+  /** Mosque: name of the prayer the congregation gathers for right now (null outside the prayer windows). */
+  congregation?(): string | null;
+  /** Mosque: what to do first before praying (« ablutions in the courtyard »), or null when ready. */
+  prayReady?(): string | null;
+  /** One of the place's activities finished (the module reacts: ablutions done, a prop, a counter…). */
+  done?(activity: string): void;
+  /**
+   * The module plays this job as a gesture in the world (flip the skewers on time, serve, haul…) and pays through the
+   * runner when it ends; without it, the job is a timed `work` step.
+   */
+  playJob?(job: PlayJob): void;
 }
+/** A job a module plays in the world: the rung's data and the counter its shifts go to. */
+export type PlayJob = GrillRank & { counter: string };
 
 type At = (id: string) => Anchor;
 const need = (a: Anchor | undefined, id: string): Anchor => { if (!a) throw new Error(`place recipe: missing anchor ${id}`); return a; };
@@ -28,18 +50,90 @@ const opt = <T>(cond: unknown, v: T): T[] => (cond ? [v] : []);
 
 interface Base { id: string; name: string; space: string; anchors: Anchor[] }
 
-/** Dibiterie: grilled meat ordered at the counter, eaten at the tables; a hand at the grill; open late. */
-export function dibi(b: Base, h: PlaceHooks = {}): PlaceSpec {
+/** A rung of a Dibi's grill ladder: helping at the grill pays more as the player keeps coming back (shifts per place). */
+export interface GrillRank {
+  id: string; label: string; detail: string; from: number; pay: number; seconds: number; energie: number; evening?: boolean;
+  /** Played shift: skewers in the batch and seconds each one takes to cook (less time to react higher up the ladder). */
+  skewers: number; cook: number;
+}
+export const GRILL_LADDER: readonly GrillRank[] = [
+  { id: 'aide', label: 'Aider au grill', detail: 'Tourner les brochettes, éventer la braise', from: 0, pay: 900, seconds: 6, energie: 8, skewers: 4, cook: 3.6 },
+  { id: 'grilleur', label: 'Tenir le grill', detail: 'Tu grilles seul pendant que le patron sert', from: 5, pay: 1800, seconds: 7, energie: 10, skewers: 5, cook: 3.2 },
+  { id: 'chef', label: 'Chef de grill', detail: 'Tu mènes le grill et l’apprenti', from: 15, pay: 3500, seconds: 8, energie: 12, skewers: 6, cook: 2.9 },
+  { id: 'soir', label: 'Mener le service du soir', detail: 'Grill, commandes et caisse jusqu’à la fermeture', from: 30, pay: 6000, seconds: 10, energie: 16, evening: true, skewers: 8, cook: 2.6 },
+];
+/** Evening at a Dibi (the grill's busiest hours, attaya after the meal). */
+export const isEvening = (h: number) => h >= 18 || h < 2;
+/** Best grill job open to someone with `shifts` shifts at this place, at hour h. */
+export function grillRank(shifts: number, h = 12): GrillRank {
+  let best = GRILL_LADDER[0];
+  for (const r of GRILL_LADDER) if (shifts >= r.from && (!r.evening || isEvening(h))) best = r;
+  return best;
+}
+/** The next rung to reach, or null at the top. */
+export const nextGrillRank = (shifts: number) => GRILL_LADDER.find(r => r.from > shifts) ?? null;
+/** One special a day, the same for everyone on that city day. */
+export const DIBI_SPECIALS = [
+  { id: 'poulet', label: 'Dibi poulet', price: 1800, faim: 50 },
+  { id: 'foie', label: 'Brochettes de foie', price: 1200, faim: 32 },
+  { id: 'cotes', label: 'Côtelettes d’agneau', price: 2500, faim: 60 },
+  { id: 'oignons', label: 'Dibi mouton · sauce oignons', price: 2200, faim: 58 },
+] as const;
+export const dibiSpecial = (day: number) => DIBI_SPECIALS[((Math.floor(day) % DIBI_SPECIALS.length) + DIBI_SPECIALS.length) % DIBI_SPECIALS.length];
+/** Meals at the same Dibi before the owner gives the regular's price. */
+export const REGULAR_MEALS = 5;
+/** Save counters of one Dibi: grill shifts and meals there. */
+export const dibiCounters = (placeId: string) => ({ grill: 'grill:' + placeId, meals: 'repas:' + placeId });
+
+/** Adds a per-place counter to the step that has effects (the meal itself). */
+function countOn(spec: ActivitySpec, counter: string): ActivitySpec {
+  const step = [...spec.steps].reverse().find(s => s.effects);
+  if (step) step.effects = { ...step.effects, counters: { ...step.effects!.counters, [counter]: 1 } };
+  return spec;
+}
+/** A text that follows the save (progress toward the next rung, today's prayer…): read each time the sheet is shown. */
+function live<T extends ActivitySpec>(spec: T, detail: () => string | undefined): T {
+  Object.defineProperty(spec, 'detail', { get: detail, enumerable: true, configurable: true });
+  return spec;
+}
+
+/**
+ * Dibiterie: grilled meat ordered at the counter, eaten at the tables; a hand at the grill that grows into a job; open
+ * late. With hooks it also offers the day's special, the regular's price, attaya in the evening, the owner and a talk
+ * about the business (ownership system).
+ */
+export function dibi(b: Base & { owner?: string; tables?: { x: number; z: number; r?: number }; peaks?: [number, number][] }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
-  return { ...b, type: 'dibi', hours: [11, 2], chat: true, anchors: [at('counter'), at('grill')], offers: {
-    counter: [
-      P.order({ id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois, oignons et moutarde', price: 2000, prep: 4, eat: 5, needs: { faim: 55, moral: 10, social: 4 } }),
-      P.order({ id: 'brochettes', label: 'Brochettes', price: 1000, prep: 3, eat: 3, needs: { faim: 28, moral: 4 } }),
-      P.order({ id: 'bissap', label: 'Bissap frais', price: 300, prep: 1, eat: 2, drink: true, seat: false, needs: { moral: 3 } }),
-      ...opt(h.converse, P.talk({ id: 'patron', label: 'Parler au patron', then: () => h.converse!('dibi_owner') })),
-    ],
-    grill: [P.work({ id: 'grill', label: 'Aider au grill', pay: 900, seconds: 6, needs: { energie: -8, hygiene: -6 }, category: 'service', clip: 'Grab' })],
-  } };
+  const keys = dibiCounters(b.id);
+  const n = (k: string) => h.count?.(k) ?? 0;
+  const regular = () => n(keys.meals) >= REGULAR_MEALS;
+  const seat: SeatPick | undefined = b.tables ? { near: { x: b.tables.x, z: b.tables.z }, r: b.tables.r ?? 8 } : undefined;
+  const meal = (spec: ActivitySpec) => countOn(spec, keys.meals);
+  const hour = () => h.hour?.() ?? 12;
+  const grill = GRILL_LADDER.map(r => {
+    const base = { id: 'grill_' + r.id, label: r.label, requires: () => h.tired?.(r.energie) ?? null, visible: () => grillRank(n(keys.grill), hour()) === r };
+    const spec = h.playJob ? P.handOver('work', { ...base, then: () => h.playJob!({ ...r, counter: keys.grill }) })
+      : P.work({ ...base, pay: r.pay, seconds: r.seconds, counter: keys.grill, category: 'service', clip: 'Grab', needs: { energie: -r.energie, hygiene: -6, faim: -4 } });
+    return live(spec, () => {
+      const done = n(keys.grill), next = nextGrillRank(done);
+      const what = h.playJob ? `${r.skewers} brochettes à retourner bien dorées · jusqu’à ${r.pay} F` : r.detail;
+      return next ? `${what} · ${done}/${next.from} services avant « ${next.label} »` : what;
+    });
+  });
+  return { id: b.id, name: b.name, space: b.space, type: 'dibi', hours: [11, 2], chat: true, peaks: b.peaks ?? [[12.5, 14.5], [19, 1]],
+    anchors: [at('counter'), at('grill')], offers: {
+      counter: [
+        meal(P.order({ id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois, oignons et moutarde', price: 2000, prep: 4, eat: 5, seat, prop: 'dibi', needs: { faim: 55, moral: 10, social: 4 }, visible: () => !regular() })),
+        ...opt(h.count, meal(P.order({ id: 'dibi_habitue', label: 'Dibi mouton · prix d’habitué', detail: (b.owner ?? 'Le patron') + ' te fait le prix des habitués', price: 1500, prep: 3, eat: 5, seat, prop: 'dibi', needs: { faim: 55, moral: 14, social: 6 }, visible: regular }))),
+        meal(P.order({ id: 'brochettes', label: 'Brochettes', detail: 'Trois brochettes et du pain', price: 1000, prep: 3, eat: 3, seat, prop: 'brochettes', needs: { faim: 28, moral: 4 } })),
+        ...(h.day ? DIBI_SPECIALS.map(d => live(meal(P.order({ id: 'jour_' + d.id, label: 'Plat du jour · ' + d.label, price: d.price, prep: 4, eat: 5, seat, prop: 'dibi', needs: { faim: d.faim, moral: 8 }, visible: () => dibiSpecial(h.day!()) === d })), () => 'Seulement aujourd’hui · demain, autre chose')) : []),
+        P.order({ id: 'bissap', label: 'Bissap frais', price: 300, prep: 1, eat: 2, drink: true, seat: false, needs: { moral: 3 } }),
+        ...opt(h.hour, P.order({ id: 'attaya', label: 'Attaya après le repas', detail: 'Le thé du soir · on prend le temps', price: 200, prep: 2, eat: 6, drink: true, seat, prop: 'attaya', needs: { social: 10, moral: 5 }, visible: () => isEvening(hour()) })),
+        ...opt(h.converse, P.talk({ id: 'patron', label: b.owner ? 'Parler à ' + b.owner : 'Parler au patron', then: () => h.converse!('dibi_owner') })),
+        ...opt(h.ownership, P.own({ id: 'affaire', label: 'Parler affaires', detail: 'Investir dans la dibiterie', then: () => h.ownership!('business:' + b.id) })),
+      ],
+      grill,
+    } };
 }
 
 /** Gargote / Maïga: the dish of the day served at the tables. */
@@ -53,14 +147,38 @@ export function eatery(b: Base & { dishes: { id: string; label: string; price: n
   } };
 }
 
-/** Mosque: shoes off at the entrance, ablutions, prayer rows, the imam. Calm, no commerce, no recitation from memory. */
-export function mosque(b: Base, h: PlaceHooks = {}): PlaceSpec {
+/**
+ * Mosque: ablutions at the taps, shoes off at the door, prayer rows, a calm seat, the imam, a courtyard to sweep.
+ * Calm: no commerce, no location chat, always open, and no reward for religious practice (ablutions, prayer and the
+ * calm seat change nothing in the save). Prayer asks for ablutions first when the place says so
+ * (`prayReady`). Reading stays disabled until a verified text source exists — nothing is ever recited from memory.
+ * Anchors may live in two spaces (taps and door in the courtyard, rows and imam in the hall).
+ */
+export function mosque(b: Base & { peaks?: [number, number][] }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
-  return { ...b, type: 'mosque', anchors: [at('ablutions'), at('hall'), at('imam')], offers: {
-    ablutions: [P.wash({ id: 'ablutions', label: 'Faire ses ablutions', seconds: 4 })],
-    hall: [P.pray({ id: 'priere', label: 'Prier', seconds: 8 }), P.use({ id: 'calme', label: 'S’asseoir au calme', primitive: 'sit', seconds: 6, seat: 'near', effects: { needs: { moral: 6 } } })],
+  const has = (id: string) => b.anchors.some(a => a.id === id);
+  const taps = at('ablutions'), hall = at('hall');
+  const rows: SeatPick = { near: { x: hall.x, z: hall.z }, r: 12, kind: 'prayer' };
+  const ready = () => h.prayReady?.() ?? null;
+  const gathering = () => h.congregation?.() ?? null;
+  const offers: Record<string, ActivitySpec[]> = {
+    ablutions: [P.wash({ id: 'ablutions', label: 'Faire ses ablutions', seconds: 4, seat: { near: { x: taps.x, z: taps.z }, r: 3, kind: 'stool' }, then: () => h.done?.('ablutions') })],
+    hall: [
+      P.pray({ id: 'priere', label: 'Prier', seconds: 8, seat: rows, requires: ready, visible: () => !gathering() }),
+      live(P.pray({ id: 'priere_groupe', label: 'Prier avec l’assemblée', seconds: 10, seat: rows, requires: ready, visible: () => !!gathering() }), () => gathering() ?? undefined),
+      P.use({ id: 'calme', label: 'S’asseoir au calme', primitive: 'sit', seconds: 6, seat: rows }),
+    ],
     imam: [...opt(h.converse, P.talk({ id: 'imam', label: 'Parler à l’imam', then: () => h.converse!('imam') }))],
-  } };
+  };
+  const list = [taps, hall, at('imam')];
+  if (has('door') && h.enter) { list.push(at('door')); offers.door = [P.enter({ id: 'entrer', label: 'Entrer · laisser ses chaussures', then: () => h.enter!() })]; }
+  if (has('cour')) {
+    list.push(at('cour'));
+    // volunteering for the neighbourhood (not a religious practice): no money and no activity category, only the time spent with people
+    offers.cour = [P.use({ id: 'balayer', primitive: 'work', label: 'Balayer la cour', detail: 'Bénévole · le quartier s’en souvient', seconds: 6, clip: 'Grab', effects: { needs: { energie: -4, social: 4 }, counters: { mosquee_aide: 1 } } })];
+  }
+  if (has('shelf')) { list.push(at('shelf')); offers.shelf = [P.use({ id: 'lire', label: 'Lire', icon: '📖', detail: 'Texte vérifié à venir', seconds: 0, requires: () => 'Pas encore disponible : texte vérifié à venir' })]; }
+  return { id: b.id, name: b.name, space: b.space, type: 'mosque', peaks: b.peaks, anchors: list, offers };
 }
 
 /** Hair salon: a chair, a service, a new look; clients chat. */

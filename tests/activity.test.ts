@@ -71,12 +71,22 @@ describe('activity runner', () => {
     w.runner.start(P.own({ id: 'parcelle', label: 'Voir la parcelle', then: () => { opened = 'plot'; } }));
     expect(opened).toBe('plot'); expect(w.runner.running).toBe(false);
   });
-  it('pray: optional ablutions, then a prayer row seat; spiritual category', () => {
+  it('pray and wash: seat-based and calm, with no reward at all (no needs, money, counters or category)', () => {
     const w = world();
+    const before = JSON.stringify({ needs: w.state.data.needs, wallet: w.state.wallet, counters: w.state.data.counters });
     const a = P.pray({ id: 'priere', label: 'Prier', wash: true, seconds: 2 });
     expect(a.steps.map(s => s.primitive)).toEqual(['wash', 'pray']);
+    expect(a.steps.every(s => !s.effects)).toBe(true);
+    expect(a.steps[1].seat).toBe('near');
     w.runner.start(a); run(w.runner, 5.5);
-    expect(w.state.data.counters.prieres).toBe(1); expect(w.log).toContain('cat:spirituel');
+    expect(w.runner.running).toBe(false);
+    expect(w.seated()).not.toBeNull();                                      // prayed on a seat (the row)
+    expect(JSON.stringify({ needs: w.state.data.needs, wallet: w.state.wallet, counters: w.state.data.counters })).toBe(before);
+    expect(w.log.some(l => l.startsWith('cat:'))).toBe(false);
+    const ab = P.wash({ id: 'ablutions', label: 'Ablutions', seconds: 1 });
+    expect(ab.steps[0].effects).toBeUndefined();
+    w.runner.start(ab); w.runner.cancel('Arrêté');                          // interruptible
+    expect(w.runner.running).toBe(false);
   });
 });
 
