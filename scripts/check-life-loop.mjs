@@ -28,7 +28,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     await page.waitForFunction(() => !document.querySelector('#modal.on') && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   };
   const pickItem = async text => { await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {}); await page.locator('#modal.on .item', { hasText: text }).first().click(); };
-  const S = () => d(() => { const s = window.__dakar.state; return { wallet: s.wallet, needs: { ...s.data.needs }, counters: { ...s.data.counters }, furniture: [...s.data.furniture], ledger: s.data.ledger.length }; });
+  const S = () => d(() => { const s = window.__dakar.state; return { wallet: s.wallet, needs: { ...s.data.needs }, counters: { ...s.data.counters }, furniture: [...window.__dakar.furniture().owned], ledger: s.data.ledger.length }; });
 
   // 1. Start small: a new game in Pikine, a little money, a clear next step.
   await d(() => window.__dakar.setHour(10));
