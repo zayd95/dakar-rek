@@ -116,7 +116,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   check(`${label}: « Aider au grill » is offered with its pay and the next rung`, g0.f?.primary === 'Aider au grill', g0.f?.all.join(' | '));
   await d(() => window.__dakar.act());
   await until(() => (window.__dakar.activity()?.id ?? '').startsWith('grill_'), null, 20000);
-  await page.waitForTimeout(600);
+  await until(p => window.__dakar.clip() === 'Grab' && Math.hypot(window.__dakar.pos().x - p.x, window.__dakar.pos().z - p.z) < 0.3, W(v, -8.0 + 1.15, 8.6 - 0.85), 30000);
   const gw = await d(([p]) => ({ a: window.__dakar.activity(), clip: window.__dakar.clip(), pos: window.__dakar.pos(), cook: p }), [W(v, -8.0 + 1.15, 8.6 - 0.85)]);
   check(`${label}: the player steps beside the cook and works the skewers`, gw.a?.id === 'grill_aide' && gw.clip === 'Grab' && Math.hypot(gw.pos.x - gw.cook.x, gw.pos.z - gw.cook.z) < 0.3, JSON.stringify({ clip: gw.clip, step: gw.a?.step }));
   await cam(v, [-3.5, 2.6, 4.5], [-7.5, 1.0, 8.6]); await shot('dibi-grill'); await d(() => window.__dakar.cam(null));
@@ -160,6 +160,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const before = await d(() => JSON.stringify({ n: window.__dakar.state.data.needs, w: window.__dakar.state.wallet, c: window.__dakar.state.data.counters }));
   await d(() => window.__dakar.act());
   await until(() => window.__dakar.activity()?.id === 'ablutions', null, 20000);
+  await until(() => window.__dakar.clip() === 'Sit', null, 30000);
   const wash = await d(() => ({ seat: window.__dakar.seated(), clip: window.__dakar.clip() }));
   check(`${label}: ablutions seated on the low stool in front of a tap`, (wash.seat ?? '').includes('robinet') && wash.clip === 'Sit', JSON.stringify(wash));
   await shot('mosque-ablutions');
@@ -183,7 +184,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const b2 = await d(() => JSON.stringify({ n: window.__dakar.state.data.needs, w: window.__dakar.state.wallet, c: window.__dakar.state.data.counters }));
   await d(() => window.__dakar.act());
   await until(() => window.__dakar.activity()?.id === 'priere', null, 20000);
-  await page.waitForTimeout(800);
+  await until(() => window.__dakar.clip() === 'Kneel', null, 30000);
   const pr = await d(() => ({ seat: window.__dakar.seated(), clip: window.__dakar.clip(), y: window.__dakar.pos().y, seats: window.__dakar.seatsHere() }));
   const row = pr.seats.find(s => s.id === pr.seat);
   check(`${label}: prayer on a free place of a row, kneeling on the floor`, row?.kind === 'prayer' && row.occupant === 'player' && pr.clip === 'Kneel' && Math.abs(pr.y - 0.1) < 0.05, JSON.stringify({ seat: pr.seat, clip: pr.clip, y: pr.y }));
@@ -229,7 +230,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   // ================================================================== Soumbédioune: the pirogue, then the mareyeuses
   if (SECTIONS.includes('beach')) {
   await d(() => { window.__dakar.teleport('corniche'); window.__dakar.setHour(7.5); const s = window.__dakar.state; s.data.needs.energie = 100; s.data.wallet = 1000; });
-  await until(() => window.__dakar.pos().hub === 'corniche' && window.__dakar.venues().some(x => x.type === 'beach'));
+  await until(() => window.__dakar.pos().hub === 'corniche' && (window.__dakar.venues().find(x => x.type === 'beach')?.crew ?? 0) > 0);
   const b = await venue('beach');
   check(`${label}: Soumbédioune has a pirogue ready to leave and the mareyeuses`, !!b && b.anchors.length === 2 && b.crew >= 1, b ? `${b.crew} fishermen` : 'none');
   const boatAt = anchor(b, 'pirogue'), marketAt = anchor(b, 'mareyeuses');
