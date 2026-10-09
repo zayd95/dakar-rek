@@ -1,24 +1,26 @@
 import type { Gesture, GestureOption } from './types';
+import { say } from '../i18n/wolof';
 
 /**
  * Gestures of the trades (data). Options are things a Dakar stall, garage or kitchen really has; the asks are short
- * French lines with an everyday Wolof touch where it is certain.
+ * French lines with an everyday Wolof touch where it is certain (`say` from src/i18n/wolof.ts: lexicon phrases only,
+ * with their gloss — « Jox ma (donne-moi) un tas de tomates. »). The goods keep their French names.
  */
 export const TOOLS: GestureOption[] = [
-  { id: 'cle', label: 'Clé de 13', icon: '🔧', ask: 'Passe-moi la clé de 13 !' },
-  { id: 'tournevis', label: 'Tournevis', icon: '🪛', ask: 'Le tournevis, vite !' },
+  { id: 'cle', label: 'Clé de 13', icon: '🔧', ask: `${say('Jox ma')} la clé de 13 !` },
+  { id: 'tournevis', label: 'Tournevis', icon: '🪛', ask: `Le tournevis, ${say('gaawal')} !` },
   { id: 'marteau', label: 'Marteau', icon: '🔨', ask: 'Donne le marteau.' },
   { id: 'cric', label: 'Cric', icon: '🛞', ask: 'Apporte le cric, on lève la voiture.' },
   { id: 'huile', label: 'Bidon d’huile', icon: '🛢️', ask: 'Le bidon d’huile, s’il te plaît.' },
-  { id: 'chiffon', label: 'Chiffon', icon: '🧽', ask: 'Un chiffon, j’ai les mains pleines de cambouis.' },
+  { id: 'chiffon', label: 'Chiffon', icon: '🧽', ask: `Un chiffon, ${say('sama doom')} : j’ai les mains pleines de cambouis.` },
 ];
 
 export const STALL: GestureOption[] = [
-  { id: 'tomates', label: 'Tomates', icon: '🍅', ask: 'Un tas de tomates.' },
-  { id: 'oignons', label: 'Oignons', icon: '🧅', ask: 'Un kilo d’oignons.' },
-  { id: 'piment', label: 'Piment', icon: '🌶️', ask: 'Un peu de piment.' },
-  { id: 'mangues', label: 'Mangues', icon: '🥭', ask: 'Trois mangues bien mûres.' },
-  { id: 'arachides', label: 'Arachides', icon: '🥜', ask: 'Un cornet d’arachides.' },
+  { id: 'tomates', label: 'Tomates', icon: '🍅', ask: `${say('Jox ma')} un tas de tomates.` },
+  { id: 'oignons', label: 'Oignons', icon: '🧅', ask: `Un kilo d’oignons, ${say('sama xarit')}.` },
+  { id: 'piment', label: 'Piment', icon: '🌶️', ask: `Un peu de piment, ${say('jërëjëf')}.` },
+  { id: 'mangues', label: 'Mangues', icon: '🥭', ask: `Trois mangues bien mûres. ${say('Ñaata la ?')}` },
+  { id: 'arachides', label: 'Arachides', icon: '🥜', ask: `Un cornet d’arachides, ${say('gaawal')} !` },
   { id: 'citrons', label: 'Citrons', icon: '🍋', ask: 'Des citrons pour le yassa.' },
   { id: 'poisson', label: 'Poisson séché', icon: '🐟', ask: 'Du poisson séché pour le ceebu jën.' },
 ];

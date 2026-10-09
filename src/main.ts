@@ -51,6 +51,8 @@ import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
 import { GesturePlayer } from './ui/gesture';
+import { Stride } from './game/stride';
+import { StrideUi } from './ui/stride';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -157,7 +159,9 @@ presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.c
 const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), refreshHome: () => refreshHomeInteriors(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
-function presenceSpace() { return lambScene ? 'scene' : moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
+function presenceSpace() { return lambScene ? 'scene' : modulePresence() ?? moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
+/** A module's presence space when it differs from its interaction space (one's own motorbike: still in the street). */
+function modulePresence(): string | null { if (!ctxReady) return null; for (const m of MODULES) { const s = m.presenceSpace?.(ctx); if (s) return s; } return null; }
 /** A module's own space the player is in (a vehicle while riding: src/transport), or null. */
 /** Module-owned space (a vehicle…). Presence can ask before the module context exists (online start-up): no module space yet. */
 function moduleSpace(): string | null { if (!ctxReady) return null; for (const m of MODULES) { const s = m.space?.(ctx); if (s) return s; } return null; }
@@ -282,10 +286,13 @@ seats.onSit = s => sitOn(s);
 const inventory = new Inventory(state);
 /** Gestures of the trades: the hands-on part of a shift (serve, pass the tool, tighten, pull). */
 const gestures = new GesturePlayer(document.getElementById('ui')!);
+/** On foot, always free: walk, brisk walk, run while stamina lasts (fitness = « forme »). */
+const stride = new Stride(state);
+const strideUi = new StrideUi(document.getElementById('ui')!, stride);
 const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
   sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
-  clip: c => { if (playerBody) playerBody.hold = c ?? (seated ? seatClip(seated) : null); },
+  clip: c => { if (playerBody) playerBody.hold = seated && (c === 'Sit' || !c) ? seatClip(seated) : c ?? null; },   // a step's Sit means « the seat's own pose » (lying on a bed…)
   busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
   progress: (on, pct = 0, label = '') => hud.progress(on, pct, label),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
@@ -773,6 +780,7 @@ function frame(now: number) {
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
   if (input.takeAction() && ((mode === 'play' && interactions.focus) || activities.running)) hud.onAction();
   activities.update(dt);
+  { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
   for (const m of MODULES) m.update?.(ctx, dt);
 
   const drag = input.takeDrag();
@@ -794,14 +802,16 @@ function frame(now: number) {
     const fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
     const dx = fx * m.y + rx * m.x, dz = fz * m.y + rz * m.x;
     const mag = Math.min(1, Math.hypot(m.x, m.y));
-    const target = 5.6 * mag;
-    speed += (target - speed) * Math.min(1, dt * 12);
+    const wantRun = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight') || strideUi.runToggle;
+    const target = stride.target(mag, wantRun, dt);
+    speed += (target - speed) * Math.min(1, dt * (target > speed ? 6 : 12));
     if (mag > 0.05) {
       const want = Math.atan2(dx, dz);
       facing += Math.atan2(Math.sin(want - facing), Math.cos(want - facing)) * Math.min(1, dt * 14);
       let nx = pos.x + (dx / (Math.hypot(dx, dz) || 1)) * speed * dt, nz = pos.z + (dz / (Math.hypot(dx, dz) || 1)) * speed * dt;
       [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
       const b = inside ? inside.int.bounds : world.bounds; nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1);
+      stride.moved(Math.hypot(nx - pos.x, nz - pos.z));
       pos.x = nx; pos.z = nz;
     } else speed *= 0.8;
     { const gy = 0.1 + (inside ? 0 : world.heightAt(pos.x, pos.z)); pos.y += (gy - pos.y) * Math.min(1, dt * 14); } // climb stairs smoothly
@@ -884,6 +894,8 @@ if (DEBUG) {
     clip: () => playerBody?.clipName ?? null,
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores } : null; },
     gesture: () => gestures.info(),
+    stride: () => ({ stamina: Math.round(stride.stamina), max: stride.maxStamina(), running: stride.running, winded: stride.winded, forme: stride.forme, speed, run: stride.runSpeed(), why: stride.whyNot(), toggle: strideUi.runToggle }),
+    strideToggle: (on: boolean) => { strideUi.runToggle = on; },
     /** Checks that test something else than the gesture itself finish it at once with this score. */
     gestureFinish: (score = 1) => gestures.finishNow(score),
     placeList: () => places.all().map(p => ({ id: p.id, type: p.type, name: p.name, space: p.space, anchors: p.anchors.map(a => a.id) })),

@@ -32,10 +32,11 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   };
   /** Plays the current gesture: `right` = the share of rounds to get right. Real clicks / taps on the card. */
   const playGesture = async (right = 1) => {
-    let n = 0;
+    let n = 0, label = null;
     const T2 = { timeout: 180000 };                      // software rendering can drop to ~1 frame/s under load
     for (let guard = 0; guard < 40; guard++) {
       const s = await g(); if (!s) break;
+      if (label === null) label = s.label; else if (s.label !== label) break;   // the next part of the shift is played by the next call
       if (s.pause) { await page.waitForFunction(r => !window.__dakar.gesture()?.pause, null, T2).catch(() => {}); continue; }
       const good = n < Math.round(right * s.rounds);
       const before = { round: s.round, done: s.results.length };

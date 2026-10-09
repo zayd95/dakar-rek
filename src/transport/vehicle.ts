@@ -9,7 +9,7 @@ import { seatToWorld, toWorld, type LocalPose, type VehicleSpec, type WorldPose 
 /** Road surface height (the carriageway slab of the hub builder). */
 export const ROAD_Y = 0.08;
 /** Extra metres to the right when standing at a stop (pulled in to the kerb). */
-export const PULL_IN = 1.1;
+export const PULL_IN = 1.6;
 
 /** Speech bubble texture (the apprenti's calls), drawn in code like the parked apprentices' bubbles. */
 export function callTexture(text: string): THREE.CanvasTexture {
@@ -47,16 +47,38 @@ export class Vehicle {
   /** Heading change rate (rad/s), smoothed — the body rolls with it. */
   yawRate = 0;
   private tmp = { x: 0, z: 0 };
+  private model: THREE.Object3D;
+  private shown = '';
 
-  constructor(readonly spec: VehicleSpec, readonly id: string, private bumpy = 1) {
+  constructor(readonly spec: VehicleSpec, readonly id: string, private bumpy = 1, private seed = 1) {
     this.group.name = 'vehicle:' + id;
     this.group.add(this.body);
     this.body.rotation.order = 'YXZ';
-    this.body.add(spec.build());
+    this.model = spec.build({ seed });
+    this.body.add(this.model);
     const seat = (s: { id: string }): Seat => ({ id: `${id}:${s.id}`, x: 0, z: 0, top: 0, yaw: 0, kind: 'vehicle', space: id, occupant: null, locked: true });
     this.seats = spec.seats.map(seat);
     this.driverSeat = seat(spec.driver);
   }
+
+  /**
+   * NPC passengers: exactly these passenger seats (spec ids) are held by people; the others are freed, except the
+   * one the player holds. Open cabins draw them (the model is rebuilt from the kit's cached variants).
+   */
+  setPassengers(ids: readonly string[]) {
+    this.spec.seats.forEach((s, i) => {
+      const seat = this.seats[i];
+      if (seat.occupant === 'player' || (seat.occupant && seat.occupant !== 'npc')) return;
+      seat.occupant = ids.includes(s.id) ? 'npc' : null;
+    });
+    const drawn = this.spec.seats.filter((_s, i) => this.seats[i].occupant === 'npc').map(s => s.id), key = drawn.join('.');
+    if (this.spec.cabin !== 'open' || key === this.shown) return;
+    this.shown = key;
+    const next = this.spec.build({ seed: this.seed, seated: drawn });
+    this.body.remove(this.model); this.body.add(next); this.model = next;
+  }
+  /** Spec ids of the passenger seats NPCs hold now. */
+  passengers(): string[] { return this.spec.seats.filter((_, i) => this.seats[i].occupant === 'npc').map(s => s.id); }
 
   /**
    * Put the vehicle at a ground pose (x, z, yaw) with its speed and acceleration; `travelled` (m) drives the road bumps.
@@ -109,8 +131,8 @@ export class LineVehicle {
   /** Called when the vehicle arrives at a stop (index): passengers get on and off. */
   onArrive: (stop: number) => void = () => {};
 
-  constructor(spec: VehicleSpec, hub: HubId, lineId: string, readonly index: number, private table: Timetable, private stopS: readonly number[], bumpy: number, rand: () => number) {
-    this.vehicle = new Vehicle(spec, `${hub}:rapide:${lineId}:${index}`, bumpy);
+  constructor(spec: VehicleSpec, hub: HubId, lineId: string, readonly index: number, private table: Timetable, private stopS: readonly number[], bumpy: number, rand: () => number, seed = 1) {
+    this.vehicle = new Vehicle(spec, `${hub}:rapide:${lineId}:${index}`, bumpy, seed);
     if (humanoidReady() && spec.crew) {
       this.apprentice = new Apprentice(hub, rand, true);
       this.apprentice.attach(this.vehicle.body);
