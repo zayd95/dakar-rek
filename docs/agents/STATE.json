@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-09T03:36:00Z",
+  "updatedAt": "2026-10-09T03:38:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
@@ -15,7 +15,20 @@
   },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "task": "DKAG-018-QA",
+      "owner": "qa_dkag018_final_0336",
+      "reviewer": "independent",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "0595a9401e1e1fd8bd6911a4ab061046070d9520",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-018-world-review.md"
+      ],
+      "kind": "review-report",
+      "acquiredAt": "2026-10-09T03:38:00Z"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -128,7 +141,7 @@
     "DKAG-018"
   ],
   "activeSessions": [
-    "qa_dkag018_2236"
+    "qa_dkag018_final_0336"
   ],
   "completedSessions": [
     "activation_producer",
@@ -149,7 +162,7 @@
     "qa_animation_1707",
     "world_dkag018_2236"
   ],
-  "nextAction": "QA final review of correction-2 SHA 17108c2 and exact push/PR CI. No further author correction allowed; block with diagnosis if failure remains.",
+  "nextAction": "Distinct QA final review of frozen SHA 17108c2 and mixed exact-source CI; no third correction. Classify candidate blocked or verified-with-explained-infrastructure variance based on source/log evidence.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -353,7 +366,7 @@
     "pullRequest": 16,
     "status": "review",
     "owner": "world_dkag018_2236",
-    "reviewer": "qa_dkag018_2236",
+    "reviewer": "qa_dkag018_final_0336",
     "local": {
       "npmCi": "PASS",
       "unit": {
@@ -370,20 +383,20 @@
     "deployed": false,
     "ci": [
       {
-        "id": 37855657890,
+        "id": 37856142783,
         "event": "push",
         "status": "completed",
-        "conclusion": "failure",
-        "sha": "99f24f90aa60413f034607486c1a8bcce871378b",
-        "artifactId": 11584500412
+        "conclusion": "success",
+        "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+        "artifactId": 11584073506
       },
       {
-        "id": 37855663294,
+        "id": 37856146883,
         "event": "pull_request",
         "status": "completed",
         "conclusion": "failure",
-        "sha": "99f24f90aa60413f034607486c1a8bcce871378b",
-        "artifactId": 11583886777
+        "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+        "artifactId": 11584566053
       }
     ],
     "failure": "after place(), stale nearest target made state-driven loop resolve before movement; start=end",

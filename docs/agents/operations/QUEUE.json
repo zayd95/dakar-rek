@@ -540,7 +540,7 @@
       ],
       "culturalStatus": "provisional geometry, no cultural certification",
       "owner": "world_dkag018_2236",
-      "reviewer": "qa_dkag018_2236",
+      "reviewer": "qa_dkag018_final_0336",
       "ownerState": "correction 2 final frozen handoff",
       "controlBriefCommit": "8495ac2ebe75aae8e56618ba91dd688ff5123d63",
       "dispatchBaseVerifiedAt": "2026-10-08T22:38:00Z",
@@ -554,10 +554,27 @@
         "authorBuild": "PASS",
         "authorServerTypecheck": "PASS",
         "authorBrowser": "container blocked; exact-source CI required",
-        "independentQa": "final correction 2 under review",
+        "independentQa": "final replacement reviewer assigned after prior QA usage-limit termination",
         "ci": {
-          "runs": [],
-          "readAt": "2026-10-08T23:08:00Z"
+          "runs": [
+            {
+              "id": 37856142783,
+              "event": "push",
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+              "artifactId": 11584073506
+            },
+            {
+              "id": 37856146883,
+              "event": "pull_request",
+              "status": "completed",
+              "conclusion": "failure",
+              "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+              "artifactId": 11584566053
+            }
+          ],
+          "readAt": "2026-10-09T03:38:00Z"
         }
       },
       "correctionAttempts": [
@@ -583,6 +600,10 @@
           "sourceCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
           "result": "post-place wait for nearest != expected before bounded movement; assertions retained"
         }
+      ],
+      "reviewOutput": "docs/agents/operations/reports/DKAG-018-world-review.md",
+      "reviewAllowedFiles": [
+        "docs/agents/operations/reports/DKAG-018-world-review.md"
       ]
     }
   ]
