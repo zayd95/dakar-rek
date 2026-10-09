@@ -181,11 +181,11 @@ try {
 
   // ---- over-long and rate-limited messages: rejected with a visible status
   await b.click('.chat-tabs button[data-tab="near"]');
-  await b.evaluate(() => { const f = document.getElementById('chatInput'); f.removeAttribute('maxlength'); f.value = 'a'.repeat(CHAT_MAX + 50); f.dispatchEvent(new Event('input')); });
+  await b.evaluate(n => { const f = document.getElementById('chatInput'); f.removeAttribute('maxlength'); f.value = 'a'.repeat(n + 50); f.dispatchEvent(new Event('input')); }, CHAT_MAX);
   await b.press('#chatInput', 'Enter');
   const long = await settled(b, 'near', 'a'.repeat(CHAT_MAX + 50));
   check('over-long message rejected with "trop long"', long.status === 'failed' && long.reason === 'too-long' && (await domStatus(b, long.id)).includes('trop long'));
-  await b.evaluate(() => document.getElementById('chatInput').setAttribute('maxlength', String(CHAT_MAX)), CHAT_MAX);
+  await b.evaluate(n => document.getElementById('chatInput').setAttribute('maxlength', String(n)), CHAT_MAX);
   // One burst of RATE + 1 quick reactions (Playwright clicks are slow under SwiftShader and would spread over the window).
   await b.evaluate(n => { const r = [...document.querySelectorAll('.chat-react button')]; for (let i = 0; i < n; i++) r[i % r.length].click(); }, RATE + 1);
   await b.waitForFunction(n => (window.__dakarChat.state().history.near ?? []).filter(e => e.mine).slice(-n).every(e => e.status !== 'sending'), RATE + 1, { timeout: 60000 });
