@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { daylight } from '../core/clock';
 import { clamp } from '../core/rng';
 import type { GameModule } from './modules';
+import { furnitureRows, furnishedRooms } from './assetShowroom';
+import type { FurnitureId } from '../world/furnitureKit';
 import { buildVehicle, scaleVehicleLods, setVehicleNight, VEHICLE_KINDS, type VehicleKind, type VehicleOpts } from '../actors/vehicleKit';
 
 /**
@@ -56,6 +58,20 @@ export const assetKitModule: GameModule = {
         }
         ctx.scene.add(g); showroom = g;
         return spots;
+      },
+      /** Furniture rows (each row against a wall), with a warm room light at night. */
+      kitFurniture(rows: FurnitureId[][], o: { x?: number; z?: number; night?: boolean } = {}) {
+        clearShowroom();
+        const r = furnitureRows(rows, o.x ?? 4000, o.z ?? 0, !!o.night);
+        ctx.scene.add(r.group); showroom = r.group;
+        return r.rows;
+      },
+      /** One furnished room per tier (basic, better, premium). */
+      kitRooms(o: { x?: number; z?: number; night?: boolean } = {}) {
+        clearShowroom();
+        const r = furnishedRooms(o.x ?? 4000, o.z ?? 0, !!o.night);
+        ctx.scene.add(r.group); showroom = r.group;
+        return r.rooms;
       },
       kitClear: clearShowroom,
       /** Force the lamps on (1) or off (0); null follows the clock. */

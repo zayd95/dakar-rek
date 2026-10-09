@@ -33,7 +33,7 @@ const anchorPlayer = (x, z) => d(([x, z]) => { const d = window.__dakar; d.place
 
 // ---------------------------------------------------------------------------------------------- vehicles
 const KINDS = ['carRapide', 'bus', 'taxi', 'moto', 'sedan', 'suv', 'luxury', 'pickup', 'truck'];
-if (!only.startsWith('furn')) {
+if (!only || !/^(furn|room)/.test(only)) {
   const spots = await d(k => window.__dakar.kitShowroom({ vehicles: k.map((kind, i) => ({ kind, seed: 3 + i })), gap: 5 }), KINDS);
   const mid = (spots[0].x + spots[spots.length - 1].x) / 2;
   await anchorPlayer(mid, 30);
@@ -60,6 +60,27 @@ if (!only.startsWith('furn')) {
   }
   await d(() => window.__dakar.kitClear());
 }
+
+// ---------------------------------------------------------------------------------------------- furniture
+const TYPES = ['bed', 'sofa', 'armchair', 'plasticChair', 'woodenChair', 'table', 'lowTable', 'desk', 'tv', 'wardrobe', 'shower', 'kitchen', 'fan', 'rug', 'lamp', 'shelf', 'mirror', 'attaya', 'prayerMat'];
+const NIGHT_TYPES = new Set(['lamp', 'tv', 'kitchen', 'bed', 'sofa']);
+for (const t of TYPES) {
+  for (const night of [false, true]) {
+    const name = `furniture-${t}-${night ? 'night' : 'day'}`;
+    if (!want(name) || (night && !NIGHT_TYPES.has(t))) continue;
+    const [row] = await d(([t, night]) => window.__dakar.kitFurniture([['basic', 'better', 'premium'].map(r => `${t}:${r}`)], { night }), [t, night]);
+    await anchorPlayer(row.cx, row.wallZ + 25);
+    const dist = Math.max(3.4, row.width * 0.72 + 1.4), h = Math.max(0.6, row.height);
+    await shot(name, { p: [row.cx + row.width * 0.08, 1.2 + h * 0.55, row.wallZ + dist], t: [row.cx, h * 0.38, row.wallZ + 0.5] }, night ? 21 : 12);
+  }
+}
+for (const night of [false, true]) {
+  if (!want(`rooms-${night ? 'night' : 'day'}`) && !want('room-')) continue;
+  const rooms = await d(n => window.__dakar.kitRooms({ night: n }), night);
+  await anchorPlayer(rooms[1].cx, rooms[1].cz + 20);
+  for (const r of rooms) await shot(`room-${r.tier}-${night ? 'night' : 'day'}`, { p: [r.cx + 5.2, 5.2, r.cz + 6.2], t: [r.cx - 0.2, 0.4, r.cz - 0.6] }, night ? 21 : 11);
+}
+await d(() => window.__dakar.kitClear());
 
 console.log(JSON.stringify({ shots: done.length, errors }));
 await browser.close();

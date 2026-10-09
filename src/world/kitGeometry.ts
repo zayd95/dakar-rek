@@ -139,12 +139,16 @@ export class KitBuilder {
    * Caps: true, false, or an atlas rect drawn as a disc on the cap (wheel rims, lamps, clock faces).
    */
   cyl(axis: 'x' | 'y' | 'z', r0: number, r1: number, len: number, cx: number, cy: number, cz: number, paint: Paint, seg = 10,
-      caps: { neg?: boolean | Rect; pos?: boolean | Rect; capPaint?: Paint } = { neg: true, pos: true }, phase = 0) {
+      caps: { neg?: boolean | Rect; pos?: boolean | Rect; capPaint?: Paint; side?: Rect } = { neg: true, pos: true }, phase = 0) {
     const rot = axis === 'x' ? new THREE.Matrix4().makeRotationZ(-Math.PI / 2) : axis === 'z' ? new THREE.Matrix4().makeRotationX(Math.PI / 2) : new THREE.Matrix4();
     const m = new THREE.Matrix4().makeTranslation(cx, cy, cz).multiply(rot).multiply(new THREE.Matrix4().makeTranslation(0, -len / 2, 0));
     this.with(m, () => {
       const p = (i: number, y: number, r: number): V3 => { const t = phase + (i / seg) * Math.PI * 2; return [r * Math.sin(t), y, r * Math.cos(t)]; };
-      for (let i = 0; i < seg; i++) this.quad(p(i, 0, r0), p(i + 1, 0, r0), p(i + 1, len, r1), p(i, len, r1), paint);
+      const sr = caps.side;
+      for (let i = 0; i < seg; i++) {
+        if (sr) { const u0 = sr[0] + (sr[2] - sr[0]) * i / seg, u1 = sr[0] + (sr[2] - sr[0]) * (i + 1) / seg; this.poly([p(i, 0, r0), p(i + 1, 0, r0), p(i + 1, len, r1), p(i, len, r1)], 0xffffff, [[u0, sr[1]], [u1, sr[1]], [u1, sr[3]], [u0, sr[3]]]); }
+        else this.quad(p(i, 0, r0), p(i + 1, 0, r0), p(i + 1, len, r1), p(i, len, r1), paint);
+      }
       const cap = (y: number, r: number, c: boolean | Rect | undefined, top: boolean) => {
         if (!c || r <= 0) return;
         const rect = c === true ? null : c;
