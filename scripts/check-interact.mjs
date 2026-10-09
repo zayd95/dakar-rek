@@ -38,7 +38,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     check(`${label}: the action sits the character on the bench`, sat.seated === free.id && sat.clip === 'Sit' && Math.abs(sat.y - (free.top - 0.48)) < 0.05, JSON.stringify(sat));
     check(`${label}: while seated the main action is « Se lever »`, sat.focus?.primary === 'Se lever', JSON.stringify(sat.focus));
     await page.waitForTimeout(600); await page.screenshot({ path: `${out}/${label}-bench-seated.png` });
-    if (touch) await d(() => window.__dakar.act());
+    if (touch) { await d(() => window.__dakar.act()); await page.waitForFunction(() => !window.__dakar.seated() && window.__dakar.clip() !== 'Sit', null, T).catch(() => {}); }
     else { await page.keyboard.down('KeyW'); await page.waitForFunction(() => !window.__dakar.seated(), null, T).catch(() => {}); await page.keyboard.up('KeyW'); }
     const up = await d(() => ({ seated: window.__dakar.seated(), clip: window.__dakar.clip(), pos: window.__dakar.pos() }));
     check(`${label}: ${touch ? '« Se lever »' : 'moving'} stands up`, up.seated === null && up.clip !== 'Sit', JSON.stringify(up));
@@ -112,7 +112,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
       await d(() => window.__dakar.act());
       await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
       await page.locator('#modal .item', { hasText: 'Riz au poisson' }).first().click();
-      await page.waitForFunction(() => window.__dakar.activity()?.step === 'Préparation', null, T).catch(() => {});
+      await page.waitForFunction(() => window.__dakar.activity()?.step === 'Préparation' && /Arrêter/.test(document.getElementById('act').textContent), null, T).catch(() => {});
       const waiting = await d(() => ({ a: window.__dakar.activity(), wallet: window.__dakar.state.wallet, seated: window.__dakar.seated(), btn: document.getElementById('act').textContent }));
       check(`${label}: ordering pays at the counter, then the plate is prepared`, waiting.wallet === 2500 && waiting.a?.step === 'Préparation' && !waiting.seated && /Arrêter/.test(waiting.btn), JSON.stringify(waiting));
       await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu manges', null, { timeout: 180000 }).catch(() => {});

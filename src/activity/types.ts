@@ -73,4 +73,6 @@ export interface ActivitySpec {
   /** Reason it cannot be done now, or null. */
   requires?: () => string | null;
   visible?: () => boolean;
+  /** No « ✓ » toast at the end (conversations and hand-overs speak for themselves). */
+  quiet?: boolean;
 }

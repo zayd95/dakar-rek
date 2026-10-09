@@ -115,7 +115,7 @@ export class ActivityRunner {
   private finish() {
     const c = this.cur!; this.cur = null;
     this.s.progress(false); this.s.busy(false); this.s.clip(this.s.seated() ? 'Sit' : null);
-    this.s.toast([c.spec.label + ' ✓', ...c.notes].join('  '));
+    if (!c.spec.quiet || c.notes.length) this.s.toast([c.spec.label + ' ✓', ...c.notes].join('  '));
     this.s.save();
     this.onEnd(c.spec, true);
   }

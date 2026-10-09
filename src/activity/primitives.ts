@@ -79,7 +79,7 @@ export function fish(b: Base & { seconds: number; pay?: number; fish?: number })
 
 /** Greet someone: a short exchange, a little company, the relationship moves (`then` shows the line). */
 export function greet(b: Base & { npc?: string; then?: () => void }): ActivitySpec {
-  return spec('greet', b, [{ label: 'Salut', primitive: 'greet', seconds: 1.2, clip: 'Talk', effects: { needs: { social: 3 }, rel: b.npc ? { [b.npc]: 1 } : undefined, category: 'social' }, then: b.then }]);
+  return { ...spec('greet', b, [{ label: 'Salut', primitive: 'greet', seconds: 1.2, clip: 'Talk', effects: { needs: { social: 3 }, rel: b.npc ? { [b.npc]: 1 } : undefined, category: 'social' }, then: b.then }]), quiet: true };
 }
 
 /**
@@ -87,7 +87,7 @@ export function greet(b: Base & { npc?: string; then?: () => void }): ActivitySp
  * invitation, browsing, entering a space). They share the same button, icon and availability rules as the rest.
  */
 export function handOver(primitive: Primitive, b: Base & { then: () => void; price?: number }): ActivitySpec {
-  return spec(primitive, b, [{ label: b.label, primitive, then: b.then }], b.price);
+  return { ...spec(primitive, b, [{ label: b.label, primitive, then: b.then }], b.price), quiet: true };
 }
 export const talk = (b: Base & { then: () => void }) => handOver('talk', b);
 export const invite = (b: Base & { then: () => void }) => handOver('invite', b);
