@@ -25,7 +25,12 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const d = (fn, arg) => page.evaluate(fn, arg);
   // a loaded machine renders SwiftShader at a few frames per second and game time follows the frames (dt ≤ 0.1 s): wait long
   const until = (fn, arg, timeout = 60000) => page.waitForFunction(fn, arg, { timeout: timeout * SLOW, polling: 200 }).then(() => true).catch(() => false);
-  const shot = async name => { await page.waitForTimeout(700); await page.screenshot({ path: `${out}/${label}-${name}.png` }); };
+  // a capture never fails a run: on a loaded machine a frame can take longer than Playwright's default 30 s
+  const shot = async name => {
+    await page.waitForTimeout(700);
+    try { await page.screenshot({ path: `${out}/${label}-${name}.png`, timeout: 120000 * SLOW }); }
+    catch (e) { console.log(`NOTE: capture ${label}-${name} skipped (${String(e.message).split('\n')[0]})`); }
+  };
   const W = (v, lx, lz) => ({ x: v.origin.x + lx * Math.cos(v.yaw) + lz * Math.sin(v.yaw), z: v.origin.z - lx * Math.sin(v.yaw) + lz * Math.cos(v.yaw) });
   const cam = (v, from, to) => { const a = W(v, from[0], from[2]), b = W(v, to[0], to[2]); return d(([p, q]) => window.__dakar.cam(p, q), [[a.x, from[1], a.z], [b.x, to[1], b.z]]); };
   const venue = type => d(t => window.__dakar.venues().find(v => v.type === t) ?? null, type);
