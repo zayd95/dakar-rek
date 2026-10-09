@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { buildPoseClips, POSES, type PoseClip } from '../src/actors/humanoid';
-import { seatPose, sitOriginY, SIT_HIPS, type Seat } from '../src/interact/seats';
+import { seatClip, sitOriginY, SIT_HIPS } from '../src/interact/seats';
+import { buildFurniture, furnitureSeats } from '../src/world/furnitureKit';
 import { loadRig, posed } from './rig';
 
 /** Joint positions of a pose built from the shipped rig (character space: origin on the surface under the hips). */
@@ -70,20 +71,20 @@ describe('procedural poses', () => {
     expect(Math.abs(p.pos('footL').y - p.pos('footR').y)).toBeGreaterThan(0.025);
   });
 
-  it('SitKneel: knees on the floor in front, shins back along the floor, sitting on the heels', () => {
-    const p = pose('SitKneel');
-    for (const s of ['L', 'R']) { expect(p.pos(`shin${s}`).y).toBeLessThan(0.15); expect(p.pos(`shin${s}`).z).toBeGreaterThan(0.25); expect(p.pos(`foot${s}`).z).toBeLessThan(0.05); }
-    expect(p.pos('hips').y).toBeGreaterThan(p.pos('footL').y + 0.15);
-    expect(p.pos('head').y).toBeGreaterThan(0.95);
+  it('furniture seats carry their pose and stand the body on the surface (Seat.clip, floorSeatTop)', () => {
+    const at = (id: Parameters<typeof buildFurniture>[0], floorY = 0.1) => {
+      const f = buildFurniture(id); f.group.position.set(1000, floorY, 0); f.group.updateMatrixWorld(true);
+      return { local: f.spec.seats[0], seat: furnitureSeats(f.group, f.spec, 'home', 'home')[0] };
+    };
+    const bed = at('bed:better');
+    expect(seatClip(bed.seat)).toBe('Lie');
+    expect(sitOriginY(bed.seat)).toBeCloseTo(0.1 + bed.local.top);          // origin on the mattress: nobody sinks into it
+    const rug = at('rug:premium');
+    expect(seatClip(rug.seat)).toBe('SitFloor'); expect(sitOriginY(rug.seat)).toBeCloseTo(0.1 + rug.local.top);
+    const cushion = at('attaya:better');
+    expect(seatClip(cushion.seat)).toBe('SitFloor'); expect(sitOriginY(cushion.seat)).toBeCloseTo(0.1 + cushion.local.top);
+    const chair = at('plasticChair:basic');
+    expect(seatClip(chair.seat)).toBe('Sit'); expect(sitOriginY(chair.seat)).toBeCloseTo(0.1 + chair.local.top - SIT_HIPS);
   });
 
-  it('seats pick the pose and the body height from their kind', () => {
-    const seat = (kind: Seat['kind'], top: number) => ({ kind, top });
-    expect(seatPose(seat('chair', 0.45))).toBe('Sit'); expect(seatPose(seat('bench', 0.58))).toBe('Sit'); expect(seatPose(seat('vehicle', 1))).toBe('Sit');
-    expect(seatPose(seat('bed', 0.58))).toBe('Lie'); expect(seatPose(seat('mat', 0.01))).toBe('SitFloor'); expect(seatPose(seat('floor', 0.08))).toBe('SitFloor');
-    expect(sitOriginY(seat('chair', 0.45))).toBeCloseTo(0.45 - SIT_HIPS);
-    // lying and floor poses stand their origin on the surface: nobody sinks into the mattress or the floor
-    expect(sitOriginY(seat('bed', 0.58))).toBeCloseTo(0.58);
-    expect(sitOriginY(seat('mat', 0.01))).toBeCloseTo(0.01);
-  });
 });

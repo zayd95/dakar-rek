@@ -11,9 +11,9 @@ import type { Outfit } from './character';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | PoseClip;
-/** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, cross-legged, kneeling. */
-export type PoseClip = 'Lie' | 'SitFloor' | 'SitKneel';
+export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
+/** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged. 'Kneel' is derived from Sit (deriveKneel). */
+export type PoseClip = 'Lie' | 'SitFloor';
 export type Style = 'boubou' | 'tee' | 'dress';
 export type Pattern = 'uni' | 'wax' | 'bazin' | 'rayure';
 export interface PersonLook {
@@ -42,6 +42,8 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
     fixSitKnees(gltf.animations);
+    fixSitKnees(gltf.animations);
+    deriveKneel(gltf.animations);
     template = { scene: gltf.scene, clips: [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)] };
   } catch { /* box characters stay in use */ }
 }
@@ -70,7 +72,7 @@ export function fixSitKnees(clips: THREE.AnimationClip[]) {
  * Each pose gives the hips' height and orientation, and the direction each bone points to (its +Y axis, head to
  * tail); bones without a direction keep their rest orientation relative to their parent. Heights are chosen so
  * the body rests ON the surface the origin stands on: a mattress (Lie, head on the pillow), a mat, rug or floor
- * cushion (SitFloor, SitKneel). Seats map to them by kind (src/interact/seats.ts: seatPose).
+ * cushion (SitFloor). Seats carry them in Seat.clip with top = surface + SIT_HIPS (src/interact/seats.ts floorSeatTop).
  */
 interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number]; aim: Record<string, [number, number, number]> }
 export const POSES: Record<PoseClip, PoseDef> = {
@@ -94,17 +96,6 @@ export const POSES: Record<PoseClip, PoseDef> = {
       thighR: [-0.72, -0.05, 0.69], shinR: [0.92, 0.04, 0.2], footR: [0.75, -0.3, 0.2],
       upper_armL: [0.27, -0.88, 0.42], forearmL: [0.39, -0.83, 0.39], handL: [0.2, -0.5, 0.85],
       upper_armR: [-0.27, -0.88, 0.42], forearmR: [-0.39, -0.83, 0.39], handR: [-0.2, -0.5, 0.85],
-    },
-  },
-  // kneeling, sitting back on the heels, hands on the thighs
-  SitKneel: {
-    hipsY: 0.31, hips: [0, 0, 0],
-    aim: {
-      spine: [0, 1, 0.05], chest: [0, 1, 0.05], neck: [0, 1, 0.03], head: [0, 1, 0],
-      thighL: [0.05, -0.5, 0.87], shinL: [0, -0.03, -1], footL: [0.05, -0.15, -1],
-      thighR: [-0.05, -0.5, 0.87], shinR: [0, -0.03, -1], footR: [-0.05, -0.15, -1],
-      upper_armL: [0.12, -0.9, 0.42], forearmL: [-0.33, -0.88, 0.33], handL: [-0.1, -0.6, 0.8],
-      upper_armR: [-0.12, -0.9, 0.42], forearmR: [0.33, -0.88, 0.33], handR: [0.1, -0.6, 0.8],
     },
   },
 };
@@ -154,6 +145,33 @@ export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip
     });
     return new THREE.AnimationClip(name, 1, tracks);
   });
+}
+
+/**
+ * 'Kneel' (derived at load, no Blender export needed): seated on the heels on the floor — knees down in front, shins
+ * flat behind, the top of the feet on the ground, back straight, head slightly bowed, hands on the thighs (arms of the
+ * corrected Sit). Used by floor places (prayer rows, mats): the origin stays on the floor, the hips about 0.3 m above it.
+ * Angles: thigh 119° about X from the hips (29° below horizontal), knee 151° (shin pointing back), foot −6°.
+ */
+export const KNEEL_HIPS = 0.3;
+export function deriveKneel(clips: THREE.AnimationClip[]) {
+  if (clips.some(c => c.name === 'Kneel')) return;
+  const sit = clips.find(c => c.name === 'Sit'); if (!sit) return;
+  const kneel = sit.clone(); kneel.name = 'Kneel';
+  const rx = (deg: number) => [Math.sin((deg * Math.PI) / 360), 0, 0, Math.cos((deg * Math.PI) / 360)];
+  const pose: [RegExp, number[]][] = [
+    [/^root\.position$/, [0, KNEEL_HIPS - 0.95, 0]],                 // hips joint 0.95 m above the root at rest
+    [/^thigh\.?[LR]\.quaternion$/, rx(119)], [/^shin\.?[LR]\.quaternion$/, rx(151)], [/^foot\.?[LR]\.quaternion$/, rx(-6)],
+    [/^spine\.quaternion$/, rx(4)], [/^neck\.quaternion$/, rx(6)], [/^head\.quaternion$/, rx(6)],
+  ];
+  for (const track of kneel.tracks) {
+    const hit = pose.find(([re]) => re.test(track.name)); if (!hit) continue;
+    const v = hit[1], n = v.length;
+    const values = new Float32Array(track.values.length);
+    for (let i = 0; i < values.length; i++) values[i] = v[i % n];
+    track.values = values;
+  }
+  clips.push(kneel);
 }
 
 // ---------------------------------------------------------------- fabric textures (generic prints, own designs)

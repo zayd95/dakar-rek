@@ -6,8 +6,8 @@ import type { Clip } from '../actors/humanoid';
  * Builders and venues register seats; the player (and later NPCs) occupy them. A seat is a target with « S'asseoir »
  * while it is free and the player is near it.
  */
-/** 'mat' and 'floor' are sat on cross-legged (a mat, rug or floor cushion); 'bed' is lain on. */
-export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'floor' | 'vehicle';
+/** 'floor': a floor cushion (attaya circles); with 'mat' and 'bed' these seats usually carry a floor pose in `clip`. */
+export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'floor' | 'vehicle' | 'prayer';
 
 export interface Seat {
   id: string;
@@ -28,19 +28,22 @@ export interface Seat {
    * also move: main.ts places a seated player from the seat's x / top / z / yaw every frame.
    */
   locked?: boolean;
+  /**
+   * Pose held by whoever sits here (player or NPC); default 'Sit'. Floor places use 'Kneel' (a prayer row), 'SitFloor'
+   * (cross-legged on a mat, rug or cushion) or 'Lie' (on a bed: the mattress is the floor): their `top` is then the
+   * surface height + SIT_HIPS, so the sitter's origin lands on the surface (see floorSeatTop).
+   */
+  clip?: Clip;
 }
 
 /** Height of the Sit clip's hips above the character origin (actors/humanoid.ts, corrected Sit). */
 export const SIT_HIPS = 0.48;
-/**
- * The body pose for a seat (held through Humanoid.hold): lying on a bed, cross-legged on a mat / rug / floor cushion,
- * sitting on everything else. The procedural poses (actors/humanoid.ts POSES) put their origin ON the surface.
- */
-export function seatPose(s: { kind?: string }): Extract<Clip, 'Sit' | 'Lie' | 'SitFloor'> {
-  return s.kind === 'bed' ? 'Lie' : s.kind === 'mat' || s.kind === 'floor' ? 'SitFloor' : 'Sit';
-}
-/** Character origin height for someone on this seat: below a chair's surface by the Sit hips, on a bed or mat's surface. */
-export const sitOriginY = (s: { top: number; kind?: string }) => s.top - (seatPose(s) === 'Sit' ? SIT_HIPS : 0);
+/** Character origin height for someone sitting on this seat. */
+export const sitOriginY = (s: Pick<Seat, 'top'>) => s.top - SIT_HIPS;
+/** `top` of a floor place (prayer row, mat) whose sitter kneels with their origin on a floor at `floorY`. */
+export const floorSeatTop = (floorY: number) => floorY + SIT_HIPS;
+/** The pose someone holds on this seat. */
+export const seatClip = (s: Pick<Seat, 'clip'>): Clip => s.clip ?? 'Sit';
 
 const REACH = 1.3;
 
@@ -96,7 +99,7 @@ export class Seats implements TargetSource {
   }
 }
 
-const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', floor: 'Coussin', vehicle: 'Siège' };
+const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', floor: 'Coussin', vehicle: 'Siège', prayer: 'Rang de prière' };
 
 /**
  * Seats along a bench of length `len` centred on (x, z), facing `yaw` (the bench back is behind the sitters).

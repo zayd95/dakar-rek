@@ -30,6 +30,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat', null, T).catch(() => {});
     const f = await focus();
     check(`${label}: walking up to a bench focuses it with « S’asseoir »`, f?.kind === 'seat' && /asseoir/.test(f.primary ?? ''), JSON.stringify(f));
+    // the bubble is placed by the frame loop (projection of the target): wait for a frame that shows it (slow software rendering)
+    await page.waitForFunction(() => document.getElementById('wprompt')?.classList.contains('on'), null, T).catch(() => {});
     const prompt = await d(() => document.getElementById('wprompt')?.classList.contains('on') && document.getElementById('wprompt').textContent);
     check(`${label}: a diegetic prompt floats above the seat`, typeof prompt === 'string' && /asseoir/.test(prompt), String(prompt));
     await d(() => window.__dakar.act());

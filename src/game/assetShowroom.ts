@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { buildFurniture, furnitureSeats, TIERS, type FurnitureId, type Tier } from '../world/furnitureKit';
 import { Humanoid, humanoidReady, randomLook } from '../actors/humanoid';
-import { seatPose, sitOriginY, SIT_HIPS } from '../interact/seats';
+import { seatClip, sitOriginY, SIT_HIPS } from '../interact/seats';
 
 /**
  * Debug showrooms for the asset captures (scripts/shots-assets.mjs): furniture lined up by tier against a wall, and
@@ -59,7 +59,7 @@ export function furnishedRooms(x0: number, z0: number, night: boolean, tiers: re
 /**
  * Pose scenes for the captures: furniture with people on its seats. `before` reproduces the old logic (every seat
  * held the chair Sit clip 0.48 m below the surface), otherwise each seat takes its own pose and height
- * (seatPose / sitOriginY: Lie on beds, SitFloor on mats, rugs and floor cushions).
+ * (Seat.clip / sitOriginY: Lie on beds, SitFloor on mats, rugs and floor cushions).
  */
 export function poseScene(kind: 'bed' | 'mat' | 'attaya', x0: number, z0: number, before: boolean, rand: () => number) {
   const g = new THREE.Group(); g.name = 'kit_showroom';
@@ -72,13 +72,14 @@ export function poseScene(kind: 'bed' | 'mat' | 'attaya', x0: number, z0: number
     const f = buildFurniture(id);
     const zc = kind === 'bed' ? z0 - 1.55 + f.footprint.d / 2 : z0;
     f.group.position.set(x, 0, zc); g.add(f.group); g.updateMatrixWorld(true);
-    for (const s of furnitureSeats(f.group, f.spec, 'showroom', id)) {
-      if (!humanoidReady()) break;
+    furnitureSeats(f.group, f.spec, 'showroom', id).forEach((s, i) => {
+      if (!humanoidReady()) return;
       const h = new Humanoid(randomLook(rand));
-      h.hold = before ? 'Sit' : seatPose(s);
-      h.group.position.set(s.x, before ? s.top - SIT_HIPS : sitOriginY(s), s.z); h.group.rotation.y = s.yaw;
+      // before: the chair Sit 0.48 m under the real surface (the furniture seat's own top), after: the seat's pose
+      h.hold = before ? 'Sit' : seatClip(s);
+      h.group.position.set(s.x, before ? f.spec.seats[i].top - SIT_HIPS : sitOriginY(s), s.z); h.group.rotation.y = s.yaw;
       g.add(h.group); people.push(h);
-    }
+    });
     x += kind === 'attaya' ? 2.2 : 2.4;
   }
   return { group: g, people };

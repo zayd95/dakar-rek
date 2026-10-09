@@ -200,7 +200,7 @@ describe('recipes and primitives speak through Step.line', async () => {
   });
   it('fishing beach: the mareyeuses discuss the price before buying or selling', () => {
     const b = T.fishingBeach({ id: 'b', name: 'Soumbédioune', space: 'street', anchors: [A('pirogue'), A('mareyeuses', 4)] }, { converse: () => {} });
-    const [sell, buy] = b.offers.mareyeuses;
+    const sell = b.offers.mareyeuses.find(o => o.id === 'vendre')!, buy = b.offers.mareyeuses.find(o => o.id === 'acheter')!;
     expect(sell.primitive).toBe('sell'); expect(buy.primitive).toBe('buy');
     for (const a of [sell, buy]) { expect(a.steps[0]).toMatchObject({ primitive: 'talk', label: 'On discute le prix' }); expect(say(a.steps[0].line)).toMatch(/La mareyeuse/); }
     expect(say(buy.steps[0].line)).toMatch(/« (Ñaata la \?|Seer na ! Wàññi ko tuuti\.) »/);
