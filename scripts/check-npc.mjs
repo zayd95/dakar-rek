@@ -194,6 +194,7 @@ const settleClip = (page, id, clip) => page.waitForFunction(([id, clip]) => wind
   const res = await d(page, () => ({ w: window.__dakar.state.wallet, f: window.__dakar.flags(), rel: window.__dakar.rel.level('babacar') }));
   check('Maïga situation: paying costs 1 000 F, Babacar remembers', res.w === w1 - 1000 && res.f.includes('babacar_doit') && res.rel >= 10, `rel ${res.rel}`);
   await closeModal(page); await d(page, () => window.__dakar.cam(null));
+  await standBy(page, 'babacar', 'Babacar');               // a seat freed on the Maïga bench may now be the closer target
   await d(page, () => window.__dakar.act());
   const mb = await modal(page);
   check('Maïga situation: not twice the same day; Babacar now owes a favour', !mb.items.some(t => /Repas partagé/.test(t)) && mb.items.some(t => /rend la pareille/.test(t)) && /repas de la Maïga/.test(mb.sub), mb.sub);
