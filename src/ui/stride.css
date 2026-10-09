@@ -19,3 +19,5 @@ body.touch #runBtn small { font: 600 10px system-ui, sans-serif; margin-top: 2px
 body.touch #runBtn.on { background: #f59e0b; border-color: #fde68a; color: #1c1917; }
 body.touch #runBtn.blocked { opacity: 0.45; }
 body.touch #runBtn.hidden { display: none; }
+/* phones: above the joystick / « Courir » row so the label stays readable */
+body.touch #stamina { bottom: calc(env(safe-area-inset-bottom, 0px) + 116px); }
