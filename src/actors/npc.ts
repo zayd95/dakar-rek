@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Character, NPC_OUTFITS } from './character';
 import { Humanoid, humanoidReady, randomLook } from './humanoid';
 import { makeCarRapide } from './vehicles';
-import { buildVehicle, type VehicleKind } from './vehicleKit';
+import { animateVehicle, buildVehicle, type VehicleKind } from './vehicleKit';
 import { pick } from '../core/rng';
 import type { HubWorld } from '../world/types';
 
@@ -103,6 +103,7 @@ export class DecorativeTraffic {
       const dx = (c.bx - c.ax) / l2 || 0, dz = (c.bz - c.az) / l2 || 0;
       c.g.position.set(c.ax + (c.bx - c.ax) * c.t - dz * c.lane, 0.08, c.az + (c.bz - c.az) * c.t + dx * c.lane);
       c.g.rotation.y = Math.atan2(dx, dz);
+      animateVehicle(c.g, c.speed, 0, dt);                                       // wheels turn (near models only)
     }
   }
 }

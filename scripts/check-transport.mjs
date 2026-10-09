@@ -59,8 +59,8 @@ for (const [label, viewport, touch, hub] of RUNS.filter(r => !process.env.ONLY |
   check(`${label}: walking up to the stop offers « Monter dans le prochain »`, f1?.primary === 'Monter dans le prochain' && /Arrêt/.test(f1.name), JSON.stringify(f1));
   await shot('1-stop');
 
-  // 2. Every seat taken but one (r3c0): the player must sit exactly there, never on an NPC's seat.
-  await d(() => window.__dakar.transport.crowd('r3c0'));
+  // 2. Every seat taken but one (b21, the middle of the third bench): the player must sit exactly there, never on an NPC's seat.
+  await d(() => window.__dakar.transport.crowd('b21'));
   // a car standing at the stop (or just arriving) would take the player at once: let it go, to see the wait first
   const soon = await d(([l]) => window.__dakar.transport.nextAt(l, 0), [L.id]);
   if (soon < 15) { await d(w => window.__dakar.transport.warp(w), soon + 12); await page.waitForTimeout(1500); }
@@ -80,7 +80,7 @@ for (const [label, viewport, touch, hub] of RUNS.filter(r => !process.env.ONLY |
   let tr = await trip();
   const seats = (await line()).vehicles.find(v => v.id === tr.vehicle)?.seats ?? [];
   const mine = seats.filter(s => s.occupant === 'player');
-  check(`${label}: boarding sits the player on the only free seat (never an NPC's)`, tr.phase === 'riding' && tr.seat?.endsWith('r3c0') && mine.length === 1 && mine[0].id === tr.seat && (await d(() => window.__dakar.seated())) === tr.seat, JSON.stringify({ tr, mine }));
+  check(`${label}: boarding sits the player on the only free seat (never an NPC's)`, tr.phase === 'riding' && tr.seat?.endsWith(':b21') && mine.length === 1 && mine[0].id === tr.seat && (await d(() => window.__dakar.seated())) === tr.seat, JSON.stringify({ tr, mine }));
   await d(() => window.__dakar.transport.crowd(null));
   const wallet1 = await d(() => window.__dakar.state.wallet);
   const fares = await d(n => window.__dakar.state.data.ledger.slice(n).filter(l => /Car rapide/.test(l.label)), ledger0);
@@ -117,8 +117,8 @@ for (const [label, viewport, touch, hub] of RUNS.filter(r => !process.env.ONLY |
   tr = await trip();
   check(`${label}: « Arrêter » mid-ride stops the talk, the ride goes on`, talking?.id === 'voisin' && tr.phase === 'riding' && (await d(() => window.__dakar.seated())) === tr.seat, JSON.stringify({ talking, tr }));
 
-  // 4. Watching Dakar pass: the other views.
-  for (const [i, name] of [[1, '4-window'], [2, '5-high']]) {
+  // 4. Watching Dakar pass: the other views (from one's seat inside the open cabin, the rear step, high above).
+  for (const [i, name] of [[1, '4-seat'], [2, '4b-step'], [3, '5-high']]) {
     await ready();
     await d(() => window.__dakar.more());
     await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
@@ -131,7 +131,7 @@ for (const [label, viewport, touch, hub] of RUNS.filter(r => !process.env.ONLY |
   await d(() => window.__dakar.more());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
   await page.locator('#modal .item', { hasText: 'Changer de vue' }).first().click().catch(() => {});
-  check(`${label}: three passenger views (behind, window, high)`, (await trip()).view === 0);
+  check(`${label}: four passenger views (behind, from one's seat, rear step, high)`, (await trip()).view === 0);
 
   // 5. Ride past at least one stop, then ask to get off at the next one.
   await page.waitForFunction(() => window.__dakar.transport.trip().passed >= 1 && window.__dakar.transport.lines()[0].vehicles.find(c => c.id === window.__dakar.transport.trip().vehicle)?.dwell === -1, null, T).catch(() => {});

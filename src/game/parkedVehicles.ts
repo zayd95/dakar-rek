@@ -29,7 +29,8 @@ export function placeParked(world: HubWorld, count: number, seedSalt = 0): THREE
     world.colliders.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0) || taken.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0);
   const busy = (x: number, z: number) =>
     world.interactables.some(i => Math.hypot(i.x - x, i.z - z) < 6) || world.rapides.some(o => Math.hypot(o.position.x - x, o.position.z - z) < 10)
-    || Math.hypot(world.spawn.x - x, world.spawn.z - z) < 7 || world.seats.some(s => Math.hypot(s.x - x, s.z - z) < 2.5);
+    || Math.hypot(world.spawn.x - x, world.spawn.z - z) < 16 ||   // the first view of a new game (camera behind the player) stays clear
+    world.seats.some(s => Math.hypot(s.x - x, s.z - z) < 2.5);
   let tries = 0;
   while (g.children.length < count && tries++ < count * 30) {
     const e = world.edges[Math.floor(R() * world.edges.length)];

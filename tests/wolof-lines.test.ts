@@ -285,6 +285,63 @@ describe('gloss resolution in the page', () => {
   });
 });
 
+describe('trades, car rapides and painted nicknames speak through the lexicon', async () => {
+  const { STALL, TOOLS } = await import('../src/activity/gestures');
+  const { LINES, SAY } = await import('../src/transport/lines');
+  const { RAPIDE_NAMES } = await import('../src/actors/vehicleAtlas');
+  const RELIGIOUS = /allah|alxamdu|alhamdu|bismi|insha|inch|amiin|amine|sourate|verset|coran|du[’']a|serigne|touba|baay fall/i;
+  it('stall and garage asks: French goods, a certain Wolof touch with its gloss, French spacing', () => {
+    const asks = [...STALL, ...TOOLS].map(o => o.ask ?? o.label);
+    expect(asks.filter(a => a.includes('⁣')).length).toBeGreaterThanOrEqual(7);       // most asks carry a glossed Wolof phrase
+    for (const a of asks) {
+      const shown = g(`« ${a} »`);
+      expect(badSpacing(shown), shown).toBe(false);
+      expect(shown).not.toMatch(RELIGIOUS);
+    }
+    const stall = STALL.map(o => g(o.ask!)).join('\n');
+    expect(stall).toContain('Jox ma (donne-moi) un tas de tomates.');
+    expect(stall).toContain('Trois mangues bien mûres. Ñaata la ? (c’est combien ?)');
+    expect(TOOLS.map(o => g(o.ask!)).join('\n')).toContain('Jox ma (donne-moi) la clé de 13 !');
+  });
+  it('car rapide calls: the line’s destinations, « Fan nga dem ? », « Am na place ! », then « Nanu dem ! »', () => {
+    for (const line of LINES) {
+      expect(line.calls).toContain('Fan nga dem ?'); expect(line.calls).toContain('Am na place !');
+      for (const c of line.calls) {
+        if (c === 'Fan nga dem ?' || c === 'Am na place !') { expect(find(c)).not.toBeNull(); continue; }
+        const m = /^(.+?) ! (.+?) !$/.exec(c);
+        expect(m, c).not.toBeNull();
+        expect(m![2] === m![1] || m![2] === 'Nanu dem', c).toBe(true);
+      }
+      expect(line.calls.join(' ')).not.toMatch(/ndaw|Ñu dem/i);
+    }
+    expect(SAY.depart).toBe('Nanu dem !');
+  });
+  it('riding: fare, asking to get off, alighting and the neighbour’s small talk are lexicon Wolof with glosses', () => {
+    const stops = LINES.flatMap(l => l.stops.map(s => s.name));
+    unknownPhrases.clear();
+    const said = [SAY.fare(150), SAY.fare(200), ...stops.map(s => SAY.request(s)), ...stops.map(s => SAY.alight(s)), ...SAY.neighbour.map(n => `Ton voisin : ${n}`)];
+    expect([...unknownPhrases]).toEqual([]);
+    expect(g(SAY.fare(150))).toBe('L’apprenti : « 150 F, jërëjëf ! » (merci)');
+    expect(g(SAY.request('Marché'))).toBe('Toi : « Apprenti, dinaa wàcc ci Marché ! » (je descends à Marché) · tak-tak sur la carrosserie');
+    expect(g(SAY.alight('Gare'))).toBe('Gare · L’apprenti : « Ba beneen yoon ! » (à la prochaine)');
+    expect(SAY.neighbour.map(g)).toEqual([
+      '« Na nga def ? » (comment ça va ?) · Toi : « Maa ngi fi rekk, jërëjëf. » (je suis là, ça va · merci)',
+      '« Salaam aleekum ! » · Toi : « Maleekum salaam ! »',
+      '« Dafa tàng ! » (il fait chaud) · Toi : « Dëgg la. » (c’est vrai)',
+      '« Fan nga dem ? » (tu vas où ?) · Toi : « Maa ngi dem liggéey. » (je vais au travail)',
+    ]);
+    for (const line of said.map(g)) {
+      expect(badSpacing(line), line).toBe(false);
+      for (const w of wolofParts(line, stops)) expect(CLAD.test(w) && !FRENCH_DIGRAPHS.test(w), `${w} in ${line}`).toBe(true);
+      expect(line).not.toMatch(RELIGIOUS);
+    }
+  });
+  it('painted nicknames are lexicon words in CLAD capitals: TERAANGA, NDANK NDANK, JÀMM', () => {
+    expect([...RAPIDE_NAMES]).toEqual(['TERAANGA', 'NDANK NDANK', 'JÀMM']);
+    for (const n of RAPIDE_NAMES) expect(find(n.toLowerCase()), n).not.toBeNull();
+  });
+});
+
 describe('sources: no French-style Wolof spellings', () => {
   const SRC = new URL('../src/', import.meta.url);
   const files = readdirSync(SRC, { recursive: true }).filter(f => String(f).endsWith('.ts')).map(f => ({ f: String(f), src: new TextDecoder().decode(readFileSync(new URL(String(f), SRC))) }));
