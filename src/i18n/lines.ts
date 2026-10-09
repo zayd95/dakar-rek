@@ -6,7 +6,7 @@
  *   Toi : « Salaam aleekum ! » · Awa : « Maleekum salaam ! »
  *   Awa : « Na nga fanaane ? » (bien dormi ?) · Toi : « Jàmm rekk. » (tout va bien)
  *
- * Every Wolof phrase given as a string must be a lexicon entry (tests/wolof.test.ts generates every line and checks
+ * Every Wolof phrase given as a string must be a lexicon entry (tests/wolof-lines.test.ts generates every line and checks
  * it); a templated phrase (a price, a first name) is passed as `{ wo, fr }`. Lines are short on purpose: one toast,
  * two speakers. Mosque: the everyday greeting only, never a recitation.
  */

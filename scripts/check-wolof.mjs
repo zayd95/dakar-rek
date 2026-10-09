@@ -110,8 +110,14 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
     await shot(page, `${label}-name`);
     await d(page, () => window.__dakar.setHour(20.5));
     await idle(page);
+    const YENDOO = /Toi : « Na nga yendoo \? » \(la journée s’est bien passée \?\) · \S+ : « Jàmm rekk\. »/;
     await d(page, () => window.__dakar.act());                                      // greet again: the evening greeting
-    const evening = await waitToast(page, /Toi : « Na nga yendoo \? » \(la journée s’est bien passée \?\) · \S+ : « Jàmm rekk\. »/);
+    let evening = await waitToast(page, new RegExp(`${YENDOO.source}|Maleekum salaam`));
+    if (evening && !YENDOO.test(await toast(page))) {
+      // A walker passed in front and took the focus: that was a first greeting. Greet the same person once more.
+      await idle(page); await page.waitForTimeout(2800); await d(page, () => window.__dakar.act());
+      evening = await waitToast(page, YENDOO);
+    } else evening = YENDOO.test(await toast(page));
     check(`${label}: greeting again at 20 h 30 uses « Na nga yendoo ? »`, evening, await toast(page));
     await shot(page, `${label}-greet-evening`);
     const bye = await runVerb(page, 'Dire au revoir');
@@ -120,8 +126,8 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
     // Glosses hidden (Réglages › Langue): small talk without the French.
     await d(page, () => { window.__dakar.wolof.glosses(false); window.__dakar.setHour(9); });
     await page.waitForTimeout(2800);
-    const talked = await runVerb(page, 'Parler avec');
-    const plain = talked && await waitToast(page, /^[^()]+ : « [^»()]+ » · Toi : « [^»()]+ »$/);
+    const talked = await runVerb(page, 'Parler avec') || await runVerb(page, 'Demander son nom');   // (if a walker took the focus)
+    const plain = talked && await waitToast(page, /^[^()]+ : « [^»()]+ » · [^()]+ : « [^»()]+ »$/);
     check(`${label}: with glosses hidden the Wolof small talk stands alone`, plain, await toast(page));
     await shot(page, `${label}-talk-no-gloss`);
     await d(page, () => window.__dakar.wolof.glosses(true));
