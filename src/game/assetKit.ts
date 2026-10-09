@@ -3,6 +3,7 @@ import { daylight } from '../core/clock';
 import { clamp } from '../core/rng';
 import type { GameModule } from './modules';
 import { furnitureRows, furnishedRooms } from './assetShowroom';
+import { placeParked, PARKED_COUNT } from './parkedVehicles';
 import type { FurnitureId } from '../world/furnitureKit';
 import { buildVehicle, scaleVehicleLods, setVehicleNight, VEHICLE_KINDS, type VehicleKind, type VehicleOpts } from '../actors/vehicleKit';
 
@@ -20,6 +21,8 @@ export const KIT_LOD_SCALE = { low: 0.6, medium: 0.85, high: 1 } as const;
 export const assetKitModule: GameModule = {
   name: 'assetKit',
   hubLoaded(ctx, hub) {
+    // parked vehicles along the kerbs: none on Low, more on High (density follows the graphics quality)
+    ctx.extra.add(placeParked(hub, PARKED_COUNT[ctx.quality()]));
     // traffic and parked vehicles were just built: their far models take over closer on lower quality
     const k = KIT_LOD_SCALE[ctx.quality()];
     scaleVehicleLods(hub.group, k); scaleVehicleLods(ctx.extra, k);

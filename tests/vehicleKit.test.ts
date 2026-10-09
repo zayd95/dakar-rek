@@ -2,6 +2,39 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { buildVehicle, vehicleSpec, vehicleSeats, vehicleCamera, worldYaw, VEHICLE_KINDS, type VehicleKind } from '../src/actors/vehicleKit';
 import { sitOriginY } from '../src/interact/seats';
+import { placeParked, PARKED_COUNT, PARK_OFFSET } from '../src/game/parkedVehicles';
+import type { HubWorld } from '../src/world/types';
+
+describe('parked vehicles', () => {
+  const fakeWorld = () => {
+    const edges = [];
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 5; j++) { edges.push({ ax: -120 + i * 60, az: -120 + j * 60, bx: -60 + i * 60, bz: -120 + j * 60 }); edges.push({ ax: -120 + j * 60, az: -120 + i * 60, bx: -120 + j * 60, bz: -60 + i * 60 }); }
+    return { id: 'plateau', edges, colliders: [{ x0: -50, z0: -50, x1: -10, z1: -10, h: 9 }], interactables: [], rapides: [], seats: [], bounds: { x0: -127, x1: 127, z0: -127, z1: 127 }, spawn: { x: 0, z: 0, yaw: 0 } } as unknown as HubWorld;
+  };
+  it('follows the quality level, stays on the kerb lane, never overlaps and adds colliders', () => {
+    expect(PARKED_COUNT.low).toBe(0);
+    expect(PARKED_COUNT.high).toBeGreaterThan(PARKED_COUNT.medium);
+    const w = fakeWorld(), before = w.colliders.length;
+    const g = placeParked(w, PARKED_COUNT.high);
+    expect(g.children.length).toBeGreaterThanOrEqual(PARKED_COUNT.high);
+    expect(w.colliders.length).toBeGreaterThan(before);
+    const added = w.colliders.slice(before);
+    for (let i = 0; i < added.length; i++) for (let j = i + 1; j < added.length; j++) {
+      const a = added[i], b = added[j];
+      expect(a.x0 < b.x1 && a.x1 > b.x0 && a.z0 < b.z1 && a.z1 > b.z0).toBe(false);
+    }
+    for (const v of g.children) {
+      // every parked vehicle stands PARK_OFFSET (± 0.3 m for motorbikes) from a road centre line
+      const lx = ((v.position.x + 120) % 60 + 60) % 60, lz = ((v.position.z + 120) % 60 + 60) % 60;
+      const off = Math.min(Math.abs(lx - PARK_OFFSET), Math.abs(60 - lx - PARK_OFFSET), Math.abs(lz - PARK_OFFSET), Math.abs(60 - lz - PARK_OFFSET));
+      expect(off).toBeLessThan(0.5);
+      expect(v.userData.vehicleSpec.seats.length).toBeGreaterThan(0);
+    }
+    expect(placeParked(fakeWorld(), 0).children).toHaveLength(0);
+    const key = () => placeParked(fakeWorld(), 5).children.map(v => v.position.toArray().map(n => n.toFixed(2)).join());
+    expect(key()).toEqual(key());                                     // same hub, same parked cars
+  });
+});
 
 const meshes = (o: THREE.Object3D) => { const out: THREE.Mesh[] = []; o.traverse(x => { if ((x as THREE.Mesh).isMesh) out.push(x as THREE.Mesh); }); return out; };
 const WHEELS: Record<VehicleKind, number> = { carRapide: 4, bus: 4, taxi: 4, moto: 2, sedan: 4, suv: 4, luxury: 4, pickup: 4, truck: 6 };

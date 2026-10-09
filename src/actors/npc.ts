@@ -60,7 +60,8 @@ const TRAFFIC_MIX: Record<HubWorld['id'], [VehicleKind, number][]> = {
   almadies: [['taxi', 20], ['sedan', 20], ['suv', 22], ['luxury', 18], ['moto', 8], ['carRapide', 6], ['bus', 4], ['pickup', 2]],
   pikine: [['carRapide', 28], ['taxi', 20], ['moto', 20], ['sedan', 10], ['pickup', 8], ['truck', 6], ['bus', 5], ['suv', 3]],
 };
-const LANE: Partial<Record<VehicleKind, number>> = { moto: 3.7, bus: 2.7, truck: 2.7 };
+/** Lateral offset from the road centre (right-hand traffic); parked vehicles stand at 4.3 m (src/game/parkedVehicles.ts). */
+const LANE: Partial<Record<VehicleKind, number>> = { moto: 3.0, bus: 2.6, truck: 2.6 };
 function pickKind(hub: HubWorld['id'], r: number): VehicleKind {
   const mix = TRAFFIC_MIX[hub] ?? TRAFFIC_MIX.plateau, total = mix.reduce((a, [, w]) => a + w, 0);
   let x = r * total;
