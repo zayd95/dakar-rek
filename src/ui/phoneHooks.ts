@@ -13,6 +13,10 @@ export const phoneHooks: {
   openHome?: () => void;
   /** Jobs app (economy module). */
   openJobs?: () => void;
+  /** « Affaires » app: ventures, income, polyvalence, purchases (economy module). */
+  openBusiness?: () => void;
+  /** Wealth beside the cash, for the wallet (economy module): ventures' value, their income per in-game hour, polyvalence line. */
+  wealth?: () => { ventures: number; perHour: number; polyvalence: string };
   /** Arena app: sporting profile (arena module). */
   arenaProfile?: () => { label: string; value: string }[];
   /** People app: neighbours the player knows (NPC module). */

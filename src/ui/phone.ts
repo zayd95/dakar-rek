@@ -47,6 +47,7 @@ const ICON: Record<string, string> = {
   portefeuille: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M15.5 14.5h2"/>',
   carte: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/>',
   travail: '<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M9 7V5h6v2M3 12h18"/>',
+  affaires: '<path d="M4 4v16h16"/><path d="M7.5 15.5l3.5-4 3 2.5 5-6"/><path d="M15.5 8h3.5v3.5"/>',
   maison: '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-6h4v6"/>',
   habitants: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M15.5 14c3 0 5.5 2 5.5 5"/>',
   quartier: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
@@ -87,6 +88,7 @@ const TILES: Tile[] = [
   { id: 'carte', label: 'Carte et déplacements', color: '#0284c7', icon: ICON.carte, screen: 'carte' },
   { id: 'quartier', label: 'Coins du quartier', color: '#0f766e', icon: ICON.quartier, hook: () => phoneHooks.openPlaces },
   { id: 'travail', label: 'Travail', color: '#7c5a2a', icon: ICON.travail, hook: () => phoneHooks.openJobs },
+  { id: 'affaires', label: 'Affaires', color: '#a16207', icon: ICON.affaires, hook: () => phoneHooks.openBusiness },
   { id: 'maison', label: 'Maison et proches', color: '#dc2626', icon: ICON.maison, hook: () => phoneHooks.openHome },
   { id: 'habitants', label: 'Habitants', color: '#0d9488', icon: ICON.habitants, hook: () => phoneHooks.openPeople },
   { id: 'arene', label: 'Arène', color: '#9333ea', icon: ICON.arene, screen: 'arene' },
@@ -382,7 +384,16 @@ export class Phone {
       ? '<p class="ph-note">L’historique des gains et des dépenses arrive avec les métiers.</p>'
       : rows.length === 0 ? '<p class="ph-note">Aucune opération pour l’instant.</p>'
         : `<div class="ph-rows">${rows.slice().sort((a, b) => b.at - a.at).map(r => `<div><span>${esc(r.label)}<small>${esc(when(r.at))}</small></span><em class="${r.amount < 0 ? 'neg' : 'pos'}">${r.amount < 0 ? '−' : '+'}${fcfa(Math.abs(r.amount))}</em></div>`).join('')}</div>`;
-    return `<div class="ph-balance"><small>Solde</small><b>${fcfa(this.ctx.state.wallet)}</b><span>FCFA · monnaie de jeu, sans valeur réelle</span></div>
+    const cash = this.ctx.state.wallet, w = phoneHooks.wealth?.(), full = fcfa(cash);
+    const size = full.length > 17 ? 'xl' : full.length > 13 ? 'l' : '';   // a long amount stays on one line
+    const wealth = w ? `<div class="ph-rows ph-wealth">
+        <div><span>Valeur des affaires</span><em>${fcfa(w.ventures)}</em></div>
+        <div><span>Fortune totale<small>En poche + affaires</small></span><em class="pos">${fcfa(cash + w.ventures)}</em></div>
+        <div><span>Revenus des affaires<small>Par heure en ville, pendant que tu joues</small></span><em>+${fcfa(w.perHour)}</em></div>
+        <div><span>${esc(w.polyvalence)}</span></div>
+      </div>${phoneHooks.openBusiness ? '<button type="button" class="ph-btn" data-app="affaires">Affaires<small>Acheter, voir les revenus et la polyvalence</small></button>' : ''}` : '';
+    return `<div class="ph-balance"><small>Solde</small><b class="${size}">${full}</b><span>FCFA · monnaie de jeu, sans valeur réelle</span></div>
+      ${wealth}
       <p class="ph-note">Partie invité : cet argent est enregistré sur cet appareil seulement.</p>
       <h3>Historique</h3>${history}`;
   }
