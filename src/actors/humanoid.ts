@@ -146,7 +146,11 @@ export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip
       const [node, prop] = [t.name.slice(0, t.name.lastIndexOf('.')), t.name.slice(t.name.lastIndexOf('.') + 1)];
       const o = scene.getObjectByName(node);
       if (prop === 'quaternion') return new THREE.QuaternionKeyframeTrack(t.name, [0], (o && local.get(o) ? local.get(o)! : o?.quaternion ?? new THREE.Quaternion()).toArray());
-      return new THREE.VectorKeyframeTrack(t.name, [0], (o === hipsBone ? hp : o?.position ?? new THREE.Vector3()).toArray());
+      if (prop === 'position' && o) return new THREE.VectorKeyframeTrack(t.name, [0], (o === hipsBone ? hp : o.position).toArray());
+      if (prop === 'scale' && o) return new THREE.VectorKeyframeTrack(t.name, [0], o.scale.toArray());
+      // anything else (morph weights…): hold the clip's first value
+      const n = t.getValueSize(), T = t.constructor as new (name: string, times: number[], values: number[]) => THREE.KeyframeTrack;
+      return new T(t.name, [0], Array.from(t.values.slice(0, n)));
     });
     return new THREE.AnimationClip(name, 1, tracks);
   });

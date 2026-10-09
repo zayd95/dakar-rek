@@ -25,11 +25,12 @@ export function loadRig() {
   });
   gltf.nodes.forEach((n: { children?: number[] }, i: number) => n.children?.forEach(c => nodes[i].add(nodes[c])));
   const clips = gltf.animations.map((anim: { name: string; samplers: { input: number; output: number }[]; channels: { sampler: number; target: { node: number; path: string } }[] }) => {
-    const tracks = anim.channels.filter(ch => ch.target.path !== 'scale').map(ch => {
+    // every channel, scale included, as GLTFLoader gives them to the game
+    const tracks = anim.channels.map(ch => {
       const s = anim.samplers[ch.sampler], name = nodes[ch.target.node].name;
       return ch.target.path === 'rotation'
         ? new THREE.QuaternionKeyframeTrack(`${name}.quaternion`, read(s.input), read(s.output))
-        : new THREE.VectorKeyframeTrack(`${name}.position`, read(s.input), read(s.output));
+        : new THREE.VectorKeyframeTrack(`${name}.${ch.target.path === 'scale' ? 'scale' : 'position'}`, read(s.input), read(s.output));
     });
     return new THREE.AnimationClip(anim.name, -1, tracks);
   });

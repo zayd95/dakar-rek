@@ -21,6 +21,14 @@ describe('procedural poses', () => {
     expect(built.map(c => c.name)).toEqual(Object.keys(POSES));
     const idle = clips.find(c => c.name === 'Idle')!;
     for (const c of built) expect(c.tracks.map(t => t.name)).toEqual(idle.tracks.map(t => t.name));
+    expect(idle.tracks.some(t => t.name.endsWith('.scale'))).toBe(true);   // the shipped clips carry scale tracks…
+  });
+
+  it('keeps every bone at its rest scale (no collapsed body)', () => {
+    for (const name of Object.keys(POSES) as PoseClip[]) {
+      const p = pose(name), root = p.mixer.getRoot() as THREE.Object3D;
+      root.traverse(o => { if (o.name) expect(o.scale.toArray().map(v => +v.toFixed(3)), `${name} ${o.name}`).toEqual([1, 1, 1]); });
+    }
   });
 
   for (const name of Object.keys(POSES) as PoseClip[]) {
