@@ -79,6 +79,16 @@ for the old dark panel never vanish. Use the existing blocks — `.kv` (info car
 (two-column card), `.draft` (small provisional note), `.seg`, `.swatches`, inputs — and the tokens (`var(--ink-2)`,
 `var(--gain)`, `var(--warn)`) with a selector starting `#modal …` when a colour matters. Fills may keep `--gold`/`--green`.
 
+## Living with the other lanes' UI
+
+- `#gesture` (src/ui/gesture.ts, the trades' gesture card) sits bottom-centre, ~150 px above the bottom on phones: the
+  progress pill (bottom 92 px + 46 px) and the action button stay below it in portrait; in landscape the card is 52 vw
+  wide at the bottom, so the action column (button and pill) is limited to 24 vw on the right.
+- `#ride` (transport), `#delivery` (economy), `#presenceBtn` / `#chatBtn` (multiplayer) are `.card`s: light now, with
+  their text colours remapped in style.css (« other modules' HUD elements »).
+- Wolof glosses: HUD text is plain DOM text, resolved by the gloss observer (src/i18n/dom.ts) like any other text.
+- HUD buttons drop the focus after a tap or click, so Space/Enter (the game's action keys) never fire them twice.
+
 ## Checks
 
 `node scripts/check-ui.mjs <url> <outDir> [desktop,phone,landscape]` — HUD layout and touch targets, each closing path
