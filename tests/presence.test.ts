@@ -15,6 +15,10 @@ describe('presence protocol', () => {
     expect(parseMove({ ...move, space: 'plateau:gargote:12' }, 'pikine')).toBeNull();
     expect(parseMove({ ...move, space: 'home' }, 'pikine')?.space).toBe('home');
     expect(parseMove({ ...move, space: 'invented' }, 'pikine')).toBeNull();
+    expect(parseMove({ ...move, space: 'plateau:venue:mosque:11:salle' }, 'plateau')?.space).toBe('plateau:venue:mosque:11:salle');   // the prayer hall
+    expect(parseMove({ ...move, space: 'plateau:venue:mosque:11:salle' }, 'pikine')).toBeNull();
+    for (const bad of ['plateau:venue:mosque:11', 'plateau:venue:mosque:1:salle', 'plateau:venue:mosque:11:salle:x', 'plateau:venue:dibiterie:12:salle']) expect(parseMove({ ...move, space: bad }, 'plateau')).toBeNull();
+    expect(parseMove({ ...move, space: 'plateau:venue:mosque:11:salle', clip: 'Kneel', speed: 0 }, 'plateau')?.clip).toBe('Kneel');   // kneeling on a row
   });
   it('normalises display names and restricts appearance and hub identifiers', () => {
     expect(nickname(' <b> Mame\n Diarra </b> ')).toBe('b Mame Diarra b');
