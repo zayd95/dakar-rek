@@ -84,7 +84,9 @@ economy lane's `Asset` (kind `vehicle`): buying spawns a `Vehicle` from the cata
   vehicle geometry (5 draw calls) + its apprenti; people at stops drawn and animated only within 70 m of the camera
   (one waiting person per stop on Low).
 - No per-frame allocations in the vehicle / route / seat updates (preallocated poses, motions and arrival lists).
-- Measured by `scripts/check-transport.mjs` near a stop with a car standing there (see the results below).
+- Measured by `scripts/check-transport.mjs` in Pikine, 6 m from a stop with a car standing there: **422 draw calls with
+  the line's cars and stops, 404 without** (+18; the people waiting at the stops are counted in both). The hub view
+  around it was ~400 draw calls before this lane.
 
 ## Checks
 
