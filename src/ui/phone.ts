@@ -67,6 +67,7 @@ const LOOK: Record<string, { emoji: string; grad: string; short?: string }> = {
   maison: { emoji: '🏠', grad: '#fda4af,#e11d48', short: 'Maison' },
   habitants: { emoji: '👥', grad: '#5eead4,#0e7490' },
   affaires: { emoji: '🏢', grad: '#34d399,#047857' },
+  biens: { emoji: '🔑', grad: '#fde68a,#b45309' },
   arene: { emoji: '🤼', grad: '#d8b4fe,#7e22ce' },
   carnet: { emoji: '📒', grad: '#fde68a,#d97706' },
   meteo: { emoji: '⛅', grad: '#7dd3fc,#1e40af' },
@@ -90,6 +91,7 @@ const TILES: Tile[] = [
   { id: 'travail', label: 'Travail', color: '#7c5a2a', icon: ICON.travail, hook: () => phoneHooks.openJobs },
   { id: 'affaires', label: 'Affaires', color: '#a16207', icon: ICON.affaires, hook: () => phoneHooks.openBusiness },
   { id: 'maison', label: 'Maison et proches', color: '#dc2626', icon: ICON.maison, hook: () => phoneHooks.openHome },
+  { id: 'biens', label: 'Biens', color: '#b45309', icon: ICON.maison, hook: () => phoneHooks.openAssets },
   { id: 'habitants', label: 'Habitants', color: '#0d9488', icon: ICON.habitants, hook: () => phoneHooks.openPeople },
   { id: 'arene', label: 'Arène', color: '#9333ea', icon: ICON.arene, screen: 'arene' },
   { id: 'carnet', label: 'Carnet', color: '#475569', icon: ICON.carnet, screen: 'carnet' },
@@ -387,11 +389,12 @@ export class Phone {
     const cash = this.ctx.state.wallet, w = phoneHooks.wealth?.(), full = fcfa(cash);
     const size = full.length > 17 ? 'xl' : full.length > 13 ? 'l' : '';   // a long amount stays on one line
     const wealth = w ? `<div class="ph-rows ph-wealth">
-        <div><span>Valeur des affaires</span><em>${fcfa(w.ventures)}</em></div>
-        <div><span>Fortune totale<small>En poche + affaires</small></span><em class="pos">${fcfa(cash + w.ventures)}</em></div>
-        <div><span>Revenus des affaires<small>Par heure en ville, pendant que tu joues</small></span><em>+${fcfa(w.perHour)}</em></div>
+        <div><span>Valeur des biens<small>Logements, terrains, panneau, affaires, meubles</small></span><em>${fcfa(w.assets)}</em></div>
+        <div><span>Fortune totale<small>En poche + biens</small></span><em class="pos">${fcfa(cash + w.assets)}</em></div>
+        <div><span>Revenus<small>Par heure en ville, pendant que tu joues</small></span><em>+${fcfa(w.perHour)}</em></div>
+        ${w.charges ? `<div><span>Loyers et charges<small>Par heure en ville</small></span><em class="neg">−${fcfa(w.charges)}</em></div>` : ''}
         <div><span>${esc(w.polyvalence)}</span></div>
-      </div>${phoneHooks.openBusiness ? '<button type="button" class="ph-btn" data-app="affaires">Affaires<small>Acheter, voir les revenus et la polyvalence</small></button>' : ''}` : '';
+      </div>${phoneHooks.openAssets ? '<button type="button" class="ph-btn" data-app="biens">Biens<small>Logements, terrains, panneau, annonces</small></button>' : ''}${phoneHooks.openBusiness ? '<button type="button" class="ph-btn" data-app="affaires">Affaires<small>Acheter, voir les revenus et la polyvalence</small></button>' : ''}` : '';
     return `<div class="ph-balance"><small>Solde</small><b class="${size}">${full}</b><span>FCFA · monnaie de jeu, sans valeur réelle</span></div>
       ${wealth}
       <p class="ph-note">Partie invité : cet argent est enregistré sur cet appareil seulement.</p>

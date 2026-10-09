@@ -2,7 +2,7 @@ import type { GameState } from '../core/state';
 import type { Clip } from '../actors/humanoid';
 import type { Seat, Seats } from '../interact/seats';
 import { applyEffects, type EffectHooks } from './effects';
-import type { ActivityCtx, ActivitySpec, SeatPick, Step } from './types';
+import type { ActivityCategory, ActivityCtx, ActivitySpec, SeatPick, Step } from './types';
 
 /** Items an activity takes away (sell, use up), summed over its steps. */
 export function itemsUsed(spec: ActivitySpec): Record<string, number> {
@@ -49,6 +49,9 @@ export class ActivityRunner {
   get current(): { spec: ActivitySpec; step: Step; index: number; t: number } | null {
     const c = this.cur; return c ? { spec: c.spec, step: c.spec.steps[c.i], index: c.i, t: c.t } : null;
   }
+
+  /** Money an activity step would pay if done now (polyvalence…), for the prices shown before choosing. */
+  payPreview(money: number, c: ActivityCategory | null): number { return this.s.payPreview ? this.s.payPreview(money, c) : money; }
 
   /** Why the activity cannot start right now, or null. */
   blocked(spec: ActivitySpec): string | null {

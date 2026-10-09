@@ -151,7 +151,7 @@ const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: stor
   suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
 presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); };
 // Lot B economy (src/economy/*): Tiak Tiak deliveries, wallet history, starter-room furniture, phone hooks. Device-local.
-const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), refreshHome: () => refreshHomeInteriors(), walkTo: id => setDestination(id) });
+const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
 function presenceSpace() { return lambScene ? 'scene' : inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'; }
@@ -216,9 +216,10 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;
   for (const it of world.interactables) {
-    const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
+    // homes (the starter room included) are built by the ownership module through ctx.addInterior (src/economy/estate.ts)
+    const kind = it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
     if (!kind) continue;
-    const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id, kind === 'home' ? state.data.furniture : []); n++;
+    const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
   }
   registerSeats();
@@ -283,6 +284,8 @@ const activities = new ActivityRunner({
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   rel: (npc, d) => rel.change(PLAYER, npc, d), flag: f => { if (!state.data.flags.includes(f)) state.data.flags.push(f); },
   item: (id, d) => inventory.add(id, d), hasItem: (id, n) => inventory.has(id, n),
+  // polyvalence: the category of each activity is practised, and work pay is scaled by the variety (src/economy)
+  category: c => economy.practiseCategory(c), pay: (m, c) => economy.scalePay(m, c), payPreview: (m, c) => economy.previewPay(m, c),
 });
 const places = new Places(activities, () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat);
 interactions.add(places);
@@ -307,12 +310,23 @@ const ctx: GameCtx = {
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   addInterior(door, int) {
     if (!world) return;
-    world.group.add(int.group); int.group.visible = false; interiors.set(door.id, int);
+    const old = interiors.get(door.id);
+    if (old) {                                                        // a rebuilt room (upgrade…) replaces the one behind the door
+      if (seated && old.seats.some(s => s.id === seated!.id)) standUp(true);
+      for (const s of old.seats) seats.remove(s.id);
+      world.group.remove(old.group); disposeInterior(old);
+      if (inside?.int === old) inside.int = int;
+    }
+    world.group.add(int.group); int.group.visible = inside?.int === int; interiors.set(door.id, int);
     seats.addAll(int.seats.map(s => ({ ...s, space: spaceOf(door) })));
   },
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
+  setCamera(fn) { cameraHook = fn; },
+  walkTo: id => setDestination(id),
 };
+/** A module holding the camera for a moment (furniture placement…): runs after the follow camera, every frame. */
+let cameraHook: ((dt: number) => void) | null = null;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
 function actionSpec(a: Action): ActivitySpec {
   return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined };
@@ -448,20 +462,6 @@ function enterInterior(door: Interactable) {
     pos.set(int.spawn.x, 0.1, int.spawn.z); facing = int.spawn.yaw; speed = 0; follow.snapBehind(facing);
     hud.fade(false); mode = 'play'; input.enabled = true;
   }, 350);
-}
-/** Rebuild the starter room after a furniture purchase; the player stays where they stand. */
-function refreshHomeInteriors() {
-  if (!world) return;
-  for (const [doorId, int] of interiors) {
-    if (int.kind !== 'home') continue;
-    const fresh = buildInterior('home', (int.bounds.x0 + int.bounds.x1) / 2, (int.bounds.z0 + int.bounds.z1) / 2, int.name, world.id, state.data.furniture);
-    fresh.group.visible = int.group.visible;
-    world.group.remove(int.group); disposeInterior(int); world.group.add(fresh.group); interiors.set(doorId, fresh);
-    if (inside?.int === int) inside.int = fresh;
-  }
-  if (seated?.space === 'home') standUp(true);
-  seats.clear('home');
-  for (const [doorId, int] of interiors) if (int.kind === 'home') seats.addAll(int.seats.map(s => ({ ...s, space: doorId.includes(':home:') ? 'home' : doorId })));
 }
 function exitInterior() {
   if (!inside) return;
@@ -817,6 +817,7 @@ function frame(now: number) {
   showPrompt(focus);
 
   if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
+  if (cameraHook && !lambScene) cameraHook(dt);
   if (camOverride && !lambScene) {
     const a = facing + camOverride.side;
     camera.position.set(pos.x + Math.sin(a) * camOverride.dist, camOverride.h, pos.z + Math.cos(a) * camOverride.dist);

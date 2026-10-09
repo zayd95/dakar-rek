@@ -49,6 +49,12 @@ export class Seats implements TargetSource {
     for (const s of this.bySpace.get(space) ?? []) this.byId.delete(s.id);
     this.bySpace.delete(space);
   }
+  /** Forget one seat (a piece of furniture moved or stored). */
+  remove(id: string) {
+    const s = this.byId.get(id); if (!s) return;
+    this.byId.delete(id);
+    const list = this.bySpace.get(s.space); if (list) this.bySpace.set(s.space, list.filter(x => x.id !== id));
+  }
   get(id: string) { return this.byId.get(id) ?? null; }
   inSpace(space: string): readonly Seat[] { return this.bySpace.get(space) ?? []; }
   get size() { return this.byId.size; }

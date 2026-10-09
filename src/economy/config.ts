@@ -52,6 +52,26 @@ export const ECONOMY = {
     /** +20 % per category beyond the first: 4 → ×1,6; capped at ×2 (6 categories). */
     step: 0.2, cap: 2,
   },
+  /**
+   * Ownership rules (src/economy/assets.ts). Homes, land, billboards, ventures and furniture share one model; each item's
+   * price, rent and income is in its catalogue entry (src/economy/catalog.ts).
+   */
+  property: {
+    /** Share of a home's rent its owner receives when letting it (the rest goes to the agency and the upkeep). */
+    letShare: 0.85,
+    /** Selling pays this share of the current value at once (no paperwork, no wait); furniture resells at half price. */
+    saleShare: 0.9, furnitureResale: 0.5,
+    /** Value of land, homes and billboards: (price + upgrades) × (floor + (1 − floor) × condition / 100). */
+    valueFloor: 0.7,
+    /** Rent brought by a let asset: × (floor + (1 − floor) × condition / 100). */
+    rentFloor: 0.5,
+    /** A repair costs this share of the price per condition point missing. */
+    repairPerPoint: 0.001,
+    /** A lease ends after this many in-game days of unpaid rent (the landlord takes the keys back; the debt is dropped). */
+    evictDays: 3,
+    /** Ad space on a billboard: price per in-game day, and the boost to the ventures' income while the ad runs. */
+    adSpace: { perDay: 25_000, boost: 0.1 },
+  },
   /** Wallet history kept in the save. */
   ledgerMax: 100,
 } as const;

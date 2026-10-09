@@ -9,14 +9,19 @@ export const phoneHooks: {
   openMessages?: () => void;
   /** Wallet history (economy module). Local to the device until a server ledger exists. */
   ledger?: () => LedgerEntry[];
-  /** Home app: furniture owned and available (economy/housing module). */
+  /** Home app: where the player lives, its furniture, arranging it (ownership module). */
   openHome?: () => void;
+  /** « Biens » app: net worth, everything owned or rented, listings (ownership module). */
+  openAssets?: () => void;
   /** Jobs app (economy module). */
   openJobs?: () => void;
   /** « Affaires » app: ventures, income, polyvalence, purchases (economy module). */
   openBusiness?: () => void;
-  /** Wealth beside the cash, for the wallet (economy module): ventures' value, their income per in-game hour, polyvalence line. */
-  wealth?: () => { ventures: number; perHour: number; polyvalence: string };
+  /**
+   * Wealth beside the cash, for the wallet (economy module): value of everything owned (homes, land, billboards,
+   * ventures, furniture), income and charges per in-game hour, polyvalence line.
+   */
+  wealth?: () => { assets: number; perHour: number; charges: number; polyvalence: string };
   /** Arena app: sporting profile (arena module). */
   arenaProfile?: () => { label: string; value: string }[];
   /** People app: neighbours the player knows (NPC module). */

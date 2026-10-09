@@ -1,5 +1,6 @@
 import type { GameState } from '../core/state';
 import type { ActivityId, SaveData } from '../core/types';
+import type { ActivityCategory } from '../activity/types';
 import { ACTIVITY_IDS } from '../core/types';
 import { CITY_DAY_MS } from '../core/clock';
 import { ECONOMY } from './config';
@@ -8,14 +9,15 @@ import { times } from './format';
 /**
  * Polyvalence: « ceux qui ont beaucoup d'activités, c'est important » (Habib). The categories of activity the player
  * practised within the last 3 in-game days of play raise every job pay and the ventures' income. Pure logic (unit-tested).
- * Categories are inferred from what already exists (action ids, places, counters); no other module's content is rewritten.
+ * Activities played by the activity framework report their `category` through applyEffects (src/activity/effects.ts,
+ * `fromCategory`); older content is read from what already exists (action ids, places, counters).
  */
 export const ACTIVITIES = ACTIVITY_IDS;
 export type Activity = ActivityId;
 
 export const ACTIVITY_INFO: Record<Activity, { label: string; where: string }> = {
   livraison: { label: 'Livraisons', where: 'Tiak Tiak à Pikine et au Plateau' },
-  services: { label: 'Petits boulots', where: 'Services payés des commerces (appli Travail)' },
+  service: { label: 'Petits boulots', where: 'Services payés des commerces (appli Travail)' },
   commerce: { label: 'Commerce', where: 'Vendre à Sandaga, acheter un meuble ou une affaire' },
   combat: { label: 'Lutte', where: 'Écurie et arène de Pikine' },
   peche: { label: 'Pêche', where: 'Soumbédioune (Corniche) et le port de pêche' },
@@ -35,9 +37,13 @@ const BY_ID: Record<string, Activity> = {
 /** …then by place (interactable id fragment), so new work added at these places is counted the same way. */
 const BY_PLACE: [string, Activity][] = [[':soumbedioune', 'peche'], [':fish-market', 'peche'], [':port', 'peche'], [':craft', 'artisanat'], [':garage', 'artisanat'], [':market', 'commerce']];
 
+/** Polyvalence category of an activity-framework category (leisure, prayer and travel do not count). */
+export const fromCategory = (c: ActivityCategory | null | undefined): Activity | null =>
+  c && (ACTIVITIES as readonly string[]).includes(c) ? c as Activity : null;
+
 /** Category of a finished city action, or null (meals, rest and leisure are not activities). */
 export function activityOf(a: { id: string; gain?: number; counter?: string }, placeId = ''): Activity | null {
-  if (a.gain) return BY_ID[a.id] ?? BY_PLACE.find(([f]) => placeId.includes(f))?.[1] ?? 'services';
+  if (a.gain) return BY_ID[a.id] ?? BY_PLACE.find(([f]) => placeId.includes(f))?.[1] ?? 'service';
   return a.counter === 'chats' ? 'social' : null;
 }
 

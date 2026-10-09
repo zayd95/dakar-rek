@@ -2,7 +2,8 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { GameState } from '../src/core/state';
 import { newSave, migrate, SCHEMA_VERSION, MONEY_MAX } from '../src/core/save';
 import { ECONOMY } from '../src/economy/config';
-import { VENTURES, HOUR_MS, accrue, buyVenture, cannotBuy, incomePerHour, lockedWhy, nextPrice, unitPrice, venturesValue, baseIncome, ownedOf } from '../src/economy/business';
+import { VENTURES, HOUR_MS, accrue, buyVenture, cannotBuy, incomePerHour, lockedWhy, nextPrice, unitPrice, venturesValue, baseIncome, ownedOf, ownedVentures } from '../src/economy/business';
+import { ownedFurnitureIds } from '../src/economy/furniture';
 import { ACTIVITIES, WINDOW_MS, activityOf, multiplier, multiplierFor, noticeActivities, polyLine, polyvalence, practise, signature, type Activity } from '../src/economy/polyvalence';
 import { acceptJob, completeJob } from '../src/economy/jobs';
 import { buyFurniture } from '../src/economy/furniture';
@@ -51,7 +52,7 @@ describe('ventures: the ladder and its prices', () => {
     expect(lockedWhy(s, 'entreprise')).toMatch(/7 activités/);
     doing(s, ...ACTIVITIES);
     for (const v of VENTURES.slice(1)) { expect(buyVenture(s, v.id)).toBe(true); }   // each tier opens the next
-    expect(Object.values(s.data.business.owned)).toEqual(VENTURES.map(() => 1));
+    expect(VENTURES.map(v => ownedOf(s, v.id))).toEqual(VENTURES.map(() => 1));
   });
   it('buying charges the next price once, records it and makes the next one dearer', () => {
     const s = fresh(200_000); doing(s, 'livraison');
@@ -78,9 +79,9 @@ describe('ventures: income per in-game hour of play, paid in hourly batches', ()
     expect(s.data.ledger.at(-1)).toMatchObject({ label: 'Revenus · Table de bana-bana', amount: rate });
     expect(accrue(s)).toBe(0);                                                     // nothing twice for the same hour
     play(s, 5 * HOUR_MS + 10_000); expect(accrue(s)).toBe(2480);                   // a trip: one batch, all that was counted (5 h 10 s)
-    expect(s.data.ledger.length).toBe(lines + 2); expect(s.data.business.earned).toBe(480 + 2480);
+    expect(s.data.ledger.length).toBe(lines + 2); expect(s.data.assets.earned).toBe(480 + 2480);
     play(s, 50_000); expect(accrue(s)).toBe(400);                                  // the next hour mark: the rest of that hour
-    expect(s.data.business.earned).toBe(7 * rate);
+    expect(s.data.assets.earned).toBe(7 * rate);
   });
   it('a purchase counts the income so far at the old rate; several ventures share one line', () => {
     const s = owner();
@@ -100,7 +101,7 @@ describe('ventures: income per in-game hour of play, paid in hourly batches', ()
     const back = new GameState(migrate(JSON.parse(JSON.stringify(s.data)), Date.now() + 365 * 86_400_000)!);
     expect(accrue(back)).toBe(0); expect(back.wallet).toBe(w);
     // a save whose clocks run ahead of the played time is pulled back, not paid
-    back.data.business.payMs = back.data.playedMs - 10 * HOUR_MS; back.data.business.clockMs = back.data.playedMs + 99 * HOUR_MS;
+    back.data.assets.payMs = back.data.playedMs - 10 * HOUR_MS; back.data.assets.clockMs = back.data.playedMs + 99 * HOUR_MS;
     expect(accrue(back)).toBe(0);
     play(back, HOUR_MS); expect(accrue(back)).toBe(incomePerHour(back));
   });
@@ -150,8 +151,8 @@ describe('polyvalence', () => {
     expect(cat('meca', 'pikine:garage:12')).toBe('artisanat');
     expect(cat('couture')).toBe('artisanat');
     expect(cat('vendre', 'plateau:market')).toBe('commerce');
-    expect(cat('courrier', 'pikine:city:bank')).toBe('services');
-    expect(cat('boutique-stock', 'pikine:city:boutique')).toBe('services');
+    expect(cat('courrier', 'pikine:city:bank')).toBe('service');
+    expect(cat('boutique-stock', 'pikine:city:boutique')).toBe('service');
     expect(activityOf({ id: 'nouveau-filet', gain: 900 }, 'corniche:city:fish-market')).toBe('peche');
     expect(cat('boutique-salut')).toBe('social'); expect(cat('parler')).toBe('social');
     expect(cat('ceebu')).toBeNull(); expect(cat('dormir')).toBeNull();
@@ -198,41 +199,44 @@ describe('big numbers', () => {
     expect(s.addMoney(1e13, 'x')).toBe(1e13); s.addMoney(1, 'x');
     expect(s.wallet).toBe(10_000_000_000_001);
     expect(s.addMoney(NaN, 'x')).toBe(0); expect(s.addMoney(Infinity, 'x')).toBe(0); expect(s.wallet).toBe(10_000_000_000_001);
-    s.data.business.earned = 4_321_000_000_000;
+    s.data.assets.earned = 4_321_000_000_000;
     const back = migrate(JSON.parse(JSON.stringify(s.data)))!;
-    expect(back.wallet).toBe(10_000_000_000_001); expect(back.business.earned).toBe(4_321_000_000_000);
+    expect(back.wallet).toBe(10_000_000_000_001); expect(back.assets.earned).toBe(4_321_000_000_000);
     expect(back.ledger.at(-1)!.amount).toBe(1);
     expect(migrate({ schemaVersion: 4, wallet: 1e300 })!.wallet).toBe(MONEY_MAX);
   });
 });
 
-describe('save schema v4', () => {
-  it('a v3 save gains empty ventures and the activities its counters show (known, not recent)', () => {
+describe('save schema v4 → v5', () => {
+  it('a v3 save gains no ventures and the activities its counters show (known, not recent); its furniture becomes assets', () => {
     const v3 = { schemaVersion: 3, wallet: 52_000, playedMs: 7_200_000, counters: { livraisons: 4, shifts: 2, chats: 1, combats: 1 }, furniture: ['radio'], beats: { ibou_welcome: 'oui' } };
     const m = migrate(v3)!;
-    expect(SCHEMA_VERSION).toBe(4); expect(m.schemaVersion).toBe(4);
-    expect(m.business).toEqual({ owned: {}, clockMs: 7_200_000, payMs: 7_200_000, carry: 0, earned: 0 });
-    expect(m.activities).toEqual({ known: ['livraison', 'services', 'commerce', 'combat', 'social'], last: {} });
+    expect(SCHEMA_VERSION).toBe(5); expect(m.schemaVersion).toBe(5);
+    expect(ownedVentures(new GameState(m))).toEqual({});
+    expect(m.assets).toMatchObject({ clockMs: 7_200_000, payMs: 7_200_000, carryIn: 0, earned: 0 });
+    expect(ownedFurnitureIds(new GameState(m))).toEqual(['radio']);
+    expect(m.activities).toEqual({ known: ['livraison', 'service', 'commerce', 'combat', 'social'], last: {} });
     const s = new GameState(m);
     expect(polyvalence(s)).toBe(0);
     expect(lockedWhy(s, 'car_rapide')).toMatch(/1 boutique de quartier/);       // 5 known activities: only the tier below is missing
     expect(migrate({ schemaVersion: 3 })!.activities).toEqual({ known: [], last: {} });
   });
-  it('v1 and v2 saves reach v4 through the chain', () => {
+  it('v1 and v2 saves reach v5 through the chain', () => {
     for (const v of [1, 2]) {
       const m = migrate({ schemaVersion: v, wallet: 500 })!;
-      expect(m.schemaVersion).toBe(4); expect(m.wallet).toBe(500); expect(m.ledger).toEqual([]);
-      expect(m.business.owned).toEqual({}); expect(m.activities.known).toEqual([]);
+      expect(m.schemaVersion).toBe(5); expect(m.wallet).toBe(500); expect(m.ledger).toEqual([]);
+      expect(ownedVentures(new GameState(m))).toEqual({}); expect(m.activities.known).toEqual([]);
     }
   });
   it('round-trips ventures and activities, and sanitises bad values', () => {
     const s = fresh(1e9); doing(s, 'livraison', 'peche'); buyVenture(s, 'bana'); buyVenture(s, 'bana'); play(s, 90_000); accrue(s);
     const back = migrate(JSON.parse(JSON.stringify(s.data)))!;
-    expect(back.business).toEqual(s.data.business); expect(back.activities).toEqual(s.data.activities);
+    expect(back.assets).toEqual(s.data.assets); expect(back.activities).toEqual(s.data.activities);
     const bad = migrate({ schemaVersion: 4, playedMs: 1000, business: { owned: { bana: 2.7, kiosque: -1, 'x y': 3, boutique: 'z' }, clockMs: 5000, payMs: -3, carry: -1, earned: 'a' }, activities: { known: ['livraison', 'magie', 3], last: { peche: 9000, social: 'x', vol: 1 } } })!;
-    expect(bad.business).toEqual({ owned: { bana: 2 }, clockMs: 1000, payMs: 0, carry: 0, earned: 0 });
+    expect(ownedVentures(new GameState(bad))).toEqual({ bana: 2 });
+    expect(bad.assets).toMatchObject({ clockMs: 1000, payMs: 0, carryIn: 0, earned: 0 });
     expect(bad.activities).toEqual({ known: ['livraison', 'peche'], last: { peche: 1000 } });
-    expect(migrate({ schemaVersion: 5 })).toBeNull();
+    expect(migrate({ schemaVersion: 6 })).toBeNull();
   });
 });
 
@@ -242,7 +246,7 @@ describe('save schema v4', () => {
  * new category every few hours, and reinvests everything greedily in the best income per franc.
  */
 function simulate(recent: number, hours: number) {
-  const s = fresh(3000), order: Activity[] = ['livraison', 'commerce', 'services', 'social', 'peche', 'artisanat', 'combat'];
+  const s = fresh(3000), order: Activity[] = ['livraison', 'commerce', 'service', 'social', 'peche', 'artisanat', 'combat'];
   const discover = [0, 1, 3, 6, 10, 15, 20];                                       // hours of play at which each category is first practised
   const marks: Record<string, number> = {};
   for (let min = 0; min < hours * 60; min++) {

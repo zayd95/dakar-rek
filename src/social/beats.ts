@@ -3,6 +3,7 @@ import type { GameState } from '../core/state';
 import { Relations, PLAYER } from './relations';
 import { castById } from './cast';
 import { economyStep, type Step } from '../economy/progress';
+import { furnitureCount } from '../economy/furniture';
 
 /**
  * Authored story beats — short branching interactions (2–4 choices) triggered by place and relationship state.
@@ -54,7 +55,7 @@ export const BEATS: Beat[] = [
   {
     id: 'ibou_meuble', npc: 'ibou', title: 'La chambre prend forme', hint: 'Tonton Ibou a vu ton premier meuble : va lui parler (Pikine).', draft: true,
     text: 'Je suis passé devant ta porte : ta chambre commence à ressembler à une vraie maison ! Et maintenant, tu vises quoi ?',
-    when: (_r, s) => s.data.furniture.length >= 1,
+    when: (_r, s) => furnitureCount(s) >= 1,
     choices: [
       { id: 'chaises', label: 'Des chaises, pour recevoir', reply: 'Comme ça je viendrai prendre le thé chez toi ! Deux chaises en plastique, ce n’est pas cher.', effects: { rel: [[P, 'ibou', 6]], flags: ['objectif:chaises'], needs: { social: 6 } } },
       { id: 'tele', label: 'Une petite télé', reply: 'Pour regarder la lutte ? Il faudra beaucoup de livraisons. Courage, garde de l’argent pour ça.', effects: { rel: [[P, 'ibou', 4]], flags: ['objectif:tele'], needs: { social: 4 } } },

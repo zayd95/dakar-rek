@@ -12,8 +12,9 @@ import { benchSeats, type Seat } from '../interact/seats';
  * The interior is not the same footprint as the street building (a common game shortcut, noted in FEATURES.md).
  * Ceiling is a downward-facing plane: seen from inside, culled if the camera ever rises above it.
  * Furniture and layout are PROVISIONAL (to review with Habib); no brand names, no real places.
- * The starter room ('home') also draws the furniture the player bought (`owned`, src/economy/furniture.ts) and adds
- * its actions; main.ts rebuilds the room after a purchase.
+ * The starter room ('home') is built here with its own pieces (bed, wardrobe, table…); a « bon matelas » the player owns
+ * (`owned`) improves the bed. The furniture the player buys is set up by the ownership module (src/economy/estate.ts,
+ * src/economy/homeEditor.ts), which builds every home through ctx.addInterior.
  */
 export type InteriorKind = 'home' | 'gargote' | 'maiga';
 
@@ -58,7 +59,7 @@ function materials() {
 }
 
 /** Generic wax-style print for bed sheets and tablecloths (own design). */
-function waxTexture(a: string, b: string, c: string) {
+export function waxTexture(a: string, b: string, c: string) {
   const cv = document.createElement('canvas'); cv.width = cv.height = 64;
   const g = cv.getContext('2d')!;
   g.fillStyle = a; g.fillRect(0, 0, 64, 64);
@@ -144,12 +145,9 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     // wardrobe with mirror
     wood.box(1.2, 2.0, 0.55, x1 - 0.7, 0.1, z0 + 0.4, 0x6e4426); plain.box(0.4, 1.2, 0.02, x1 - 0.95, 0.6, z0 + 0.68, 0xbcd0dc); plain.box(0.02, 1.8, 0.02, x1 - 0.7, 0.2, z0 + 0.68, 0x4a2e18);
     solid(x1 - 0.7, z0 + 0.4, 1.2, 0.6, 2);
-    // small table (with the TV once bought, else a thermos and a cup), a chair, a standing fan
+    // small table with a thermos and a cup, a chair, a standing fan
     wood.box(1.0, 0.7, 0.5, x1 - 0.6, 0.1, oz + 0.7, 0x8b6a47);
-    if (has('tele')) {
-      plain.box(0.3, 0.44, 0.68, x1 - 0.55, 0.8, oz + 0.7, 0x1d1d1f); glow.box(0.6, 0.36, 0.01, x1 - 0.705, 0.84, oz + 0.7, 0x3b5f8a, Math.PI / 2);   // screen faces the room (−x)
-      interactables.push({ id: `${hub}:in:tele`, name: 'Petite télé', kind: 'actions', x: x1 - 1.5, z: oz + 0.1, radius: 1.1, actions: [furnitureById('tele')!.action] });
-    } else { plain.cyl(0.07, 0.07, 0.3, x1 - 0.4, 0.8, oz + 0.75, 0xd9322b, 8); plain.cyl(0.05, 0.04, 0.08, x1 - 0.75, 0.8, oz + 0.65, 0xf2f2ec, 8); }
+    plain.cyl(0.07, 0.07, 0.3, x1 - 0.4, 0.8, oz + 0.75, 0xd9322b, 8); plain.cyl(0.05, 0.04, 0.08, x1 - 0.75, 0.8, oz + 0.65, 0xf2f2ec, 8);
     solid(x1 - 0.6, oz + 0.7, 1.0, 0.6, 1);
     chair(x1 - 1.6, oz + 0.9, Math.PI / 2 + 0.3);
     plain.cyl(0.18, 0.2, 0.05, x0 + 0.5, 0.1, z1 - 0.5, 0x333333, 10); plain.cyl(0.02, 0.02, 1.1, x0 + 0.5, 0.15, z1 - 0.5, 0x333333, 4); plain.cyl(0.24, 0.24, 0.1, x0 + 0.5, 1.25, z1 - 0.45, 0xe8e8e8, 10, [Math.PI / 2, 0, 0]);
@@ -164,28 +162,6 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     // framed photos and a calendar (images left blank on purpose: no real people)
     for (const [x, c] of [[ox - 0.4, 0x7a5a3c], [ox + 0.4, 0x3d4a5c]] as const) { wood.box(0.45, 0.55, 0.03, x, 1.6, z0 + 0.02, c); plain.box(0.35, 0.45, 0.01, x, 1.65, z0 + 0.05, 0xd9d2c4); }
     plain.box(0.4, 0.55, 0.01, x0 + 0.02, 1.5, oz + 0.8, 0xf4f1e8, Math.PI / 2);
-
-    // Bought furniture (Lot B). Doors, the door path and the camera stay free: everything sits against a wall or flat on the floor.
-    if (has('radio')) {   // low shelf by the north wall with a small radio (no real station, no sound for now)
-      wood.box(0.6, 0.5, 0.3, ox - 0.9, 0.1, z0 + 0.2, 0x7a5a3c);
-      plain.box(0.36, 0.2, 0.14, ox - 0.9, 0.6, z0 + 0.22, 0x2b2b33); plain.cyl(0.06, 0.06, 0.01, ox - 0.98, 0.7, z0 + 0.3, 0x9aa0a6, 10, [Math.PI / 2, 0, 0]);
-      plain.box(0.07, 0.03, 0.02, ox - 0.8, 0.74, z0 + 0.3, 0xf4c20d); plain.cyl(0.006, 0.006, 0.35, ox - 0.76, 0.8, z0 + 0.18, 0xbbbbbb, 4, [0, 0, -0.5]);
-      solid(ox - 0.9, z0 + 0.2, 0.6, 0.3, 0.7);
-      interactables.push({ id: `${hub}:in:radio`, name: 'Petite radio', kind: 'actions', x: ox - 0.9, z: oz - 1.6, radius: 1.0, actions: [furnitureById('radio')!.action] });
-    }
-    if (has('miroir')) {  // tall mirror with a wooden frame on the east wall
-      wood.box(0.04, 1.4, 0.65, x1 - 0.03, 0.55, oz - 0.7, 0x6e4426); plain.box(0.02, 1.25, 0.52, x1 - 0.06, 0.62, oz - 0.7, 0xc8dce6);
-      interactables.push({ id: `${hub}:in:miroir`, name: 'Grand miroir', kind: 'actions', x: x1 - 0.7, z: oz - 0.7, radius: 1.0, actions: [furnitureById('miroir')!.action] });
-    }
-    if (has('tapis')) {   // flat rug in the middle of the room (no collider)
-      const rug = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.1), new THREE.MeshLambertMaterial({ map: waxTexture('#b5452b', '#f2d16b', '#2a5b8f') }));
-      rug.rotation.x = -Math.PI / 2; rug.position.set(ox - 0.1, 0.108, oz + 0.7); rug.receiveShadow = true; group.add(rug);
-      interactables.push({ id: `${hub}:in:tapis`, name: 'Tapis', kind: 'actions', x: ox - 0.1, z: oz + 0.7, radius: 0.9, actions: [furnitureById('tapis')!.action] });
-    }
-    if (has('chaises')) { // two monobloc chairs for guests along the west wall
-      chair(x0 + 0.45, oz + 0.8, Math.PI / 2, 0x2a8fd1); chair(x0 + 0.45, oz + 1.38, Math.PI / 2, 0xf2f2ee);
-      interactables.push({ id: `${hub}:in:chaises`, name: 'Chaises pour les invités', kind: 'actions', x: x0 + 1.0, z: oz + 0.75, radius: 0.8, actions: [furnitureById('chaises')!.action] });
-    }
   } else if (kind === 'maiga') {
     // one narrow room: a worn wooden counter with dented pots on gas rings along one wall, a long table with oilcloth and a
     // bench along the other, mismatched plastic chairs, a wall fan, peeling paint and soot (decals), a bare bulb

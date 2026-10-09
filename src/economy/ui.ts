@@ -8,10 +8,12 @@ import { Batch, signTexture } from '../world/batch';
 import { HUB_NAMES } from '../world/content';
 import { ECONOMY } from './config';
 import { ROUTES, acceptJob, cancelJob, completeJob, deliveryLimitMs, offers, payNow, pickUp, pickupFrags, remainingMs, routeById, routePay, whyNot, type Completion, type Route } from './jobs';
-import { FURNITURE, buyFurniture, cannotBuy, furnitureById, owns, priceOf } from './furniture';
+import { FURNITURE, cannotBuy, deliverFurniture, furnitureCount, furnitureById, ownedFurnitureIds, owns, priceOf } from './furniture';
+import { assetsValue, chargesPerHour, currentHome, incomePerHour as allIncome, specOfAsset, takeNotices } from './assets';
 import { homeGoalLine } from './progress';
-import { ACTIVITIES, ACTIVITY_INFO, WINDOW_MS, activityOf, isRecent, multiplier, noticeActivities, payPreview, polyLine, polyvalence, practise, signature, timeLeft, workPay, type Activity } from './polyvalence';
-import { HOUR_MS, VENTURES, accrue, baseIncome, buyVenture, cannotBuy as cannotBuyVenture, firstVentureHint, incomePerHour, lockedWhy, nextPrice, ownedOf, perHourOf, unitPrice, unitsOwned, venturesValue } from './business';
+import { ACTIVITIES, ACTIVITY_INFO, WINDOW_MS, activityOf, fromCategory, isRecent, multiplier, noticeActivities, payPreview, polyLine, polyvalence, practise, signature, timeLeft, workPay, type Activity } from './polyvalence';
+import type { ActivityCategory } from '../activity/types';
+import { HOUR_MS, VENTURES, accrue, baseIncome, buyVenture, cannotBuy as cannotBuyVenture, firstVentureHint, incomePerHour, lockedWhy, nextPrice, ownedOf, ownedVentures, perHourOf, unitPrice, unitsOwned, venturesValue } from './business';
 import { fcfaShort, times } from './format';
 import './economy.css';
 
@@ -34,8 +36,6 @@ export interface EconomyDeps {
   /** Called before a menu opens (main.ts switches to menu mode). */
   menu(): void;
   save(): boolean;
-  /** Rebuild the starter room so bought furniture appears. */
-  refreshHome(): void;
   /** Set (or clear) the city's walking marker — main.ts `destination`, the one "Les coins du quartier" uses. */
   walkTo(placeId: string | null): void;
 }
@@ -75,7 +75,7 @@ export class Economy {
     phoneHooks.openJobs = () => this.openJobs();
     phoneHooks.openHome = () => this.openShop(true);
     phoneHooks.openBusiness = () => this.openBusiness();
-    phoneHooks.wealth = () => ({ ventures: venturesValue(d.state), perHour: incomePerHour(d.state), polyvalence: polyLine(d.state) });
+    phoneHooks.wealth = () => ({ assets: assetsValue(d.state), perHour: allIncome(d.state), charges: chargesPerHour(d.state), polyvalence: polyLine(d.state) });
   }
 
   private get s() { return this.d.state; }
@@ -257,25 +257,27 @@ export class Economy {
   }
 
   // ---------------------------------------------------------------- furniture and wallet
-  /** Furniture list: the shop stall (Pikine) or the phone's home app. Purchases are delivered to the starter room. */
+  /**
+   * The six starter pieces: the quincaillerie stall (Pikine) or the debug home list. Purchases are delivered to the home
+   * the player lives in and set up there (src/economy/assets.ts); the full catalogue is at Keur Meubles (estate.ts).
+   */
   openShop(fromPhone = false) {
-    const s = this.s;
+    const s = this.s, home = specOfAsset(currentHome(s)).name;
     const items: MenuItem[] = FURNITURE.map(f => {
       const mine = owns(s, f.id), why = cannotBuy(s, f.id);
       return { label: f.name, detail: mine ? `Chez toi ✓ · ${f.effect}` : why && why !== 'Déjà chez toi' ? `${why} · ${f.effect}` : f.effect, right: mine ? '✓' : fcfa(priceOf(f.id)), disabled: !!why, onPick: () => { this.d.hud.closeModal(); this.buy(f.id); } };
     });
     const owned = FURNITURE.filter(f => owns(s, f.id));
     const html = `<div class="kv">${owned.length ? 'Dans ta chambre : ' + owned.map(f => esc(f.name)).join(', ') : 'Ta chambre est encore vide.'}<br>${esc(homeGoalLine(s))}</div>
-      <div class="draft">Livré dans ta chambre (Pikine). ${esc(LOCAL_NOTE)}</div>`;
+      <div class="draft">Livré chez toi (${esc(home)}). Plus de choix à Keur Meubles, Cité Jàmm. ${esc(LOCAL_NOTE)}</div>`;
     this.d.menu();
     this.d.hud.openMenu(fromPhone ? 'Ma chambre · meubles' : 'Quincaillerie · meubles', `${owned.length}/${FURNITURE.length} meubles · portefeuille ${fcfa(s.wallet)}`, items, html);
   }
 
   buy(id: string): boolean {
-    const item = furnitureById(id);
-    if (!item || !buyFurniture(this.s, id)) { this.d.hud.toast(cannotBuy(this.s, id) ?? 'Achat impossible'); return false; }
-    this.d.refreshHome();
-    this.d.hud.toast(`Achat : ${item.name} ✓  −${fcfa(priceOf(id))} · livré dans ta chambre`);
+    const item = furnitureById(id), piece = item ? deliverFurniture(this.s, id) : null;
+    if (!item || !piece) { this.d.hud.toast(cannotBuy(this.s, id) ?? 'Achat impossible'); return false; }
+    this.d.hud.toast(`Achat : ${item.name} ✓  −${fcfa(priceOf(id))} · livré chez toi${piece.at === null ? ' (rangé : pas de place)' : ''}`);
     this.d.save();
     return true;
   }
@@ -284,15 +286,15 @@ export class Economy {
   openWallet() {
     const s = this.s, rows = [...s.data.ledger].reverse().slice(0, 40);
     const when = (at: number) => { const d = new Date(at); return `${d.toLocaleDateString('fr-FR')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
-    const value = venturesValue(s);
-    const html = `<div class="kv">En poche : <b>${fcfa(s.wallet)}</b> · affaires : ${fcfa(value)}<br>Fortune totale : <b>${fcfa(s.wallet + value)}</b><br>${esc(polyLine(s))}</div>
+    const value = assetsValue(s);
+    const html = `<div class="kv">En poche : <b>${fcfa(s.wallet)}</b> · biens : ${fcfa(value)}<br>Fortune totale : <b>${fcfa(s.wallet + value)}</b><br>${esc(polyLine(s))}</div>
       <h3>Historique</h3><div class="rel ledger">${rows.length ? rows.map(e => `<span>${esc(e.label)}<small>${when(e.at)}</small></span><em class="${e.amount >= 0 ? 'plus' : 'minus'}">${e.amount >= 0 ? '+' : '−'}${fcfa(Math.abs(e.amount))}</em>`).join('') : '<span>Aucun mouvement pour l’instant.</span><em></em>'}</div>
       <div class="draft">${esc(LOCAL_NOTE)} Les 100 derniers mouvements sont gardés.</div>`;
     this.d.menu();
     this.d.hud.openMenu('Portefeuille', `${fcfa(s.wallet)} · ${homeGoalLine(s)}`, [
       { label: 'Petits boulots', detail: 'Tiak Tiak et services payés du quartier', onPick: () => this.openJobs() },
       { label: 'Affaires', detail: unitsOwned(s) ? `${unitsOwned(s)} affaire${unitsOwned(s) > 1 ? 's' : ''} · +${fcfa(incomePerHour(s))} par heure` : firstVentureHint(s) ?? '', onPick: () => this.openBusiness() },
-      { label: 'Ma chambre · meubles', detail: `${s.data.furniture.length}/${FURNITURE.length} meubles`, onPick: () => this.openShop(true) },
+      { label: 'Ma chambre · meubles', detail: `${furnitureCount(s)} meuble${furnitureCount(s) > 1 ? 's' : ''}`, onPick: () => this.openShop(true) },
     ], html);
   }
 
@@ -301,12 +303,17 @@ export class Economy {
   work(a: Action, it?: Interactable): number { return workPay(this.s, a.gain ?? 0, activityOf(a, it?.id)); }
   /** What `a` would pay if done now (menus). */
   workPreview(a: Action, it?: Interactable): number { return payPreview(this.s, a.gain ?? 0, activityOf(a, it?.id)); }
+  /** Activity framework (src/activity/effects.ts): a category practised, then the pay it brings, scaled by polyvalence. */
+  practiseCategory(c: ActivityCategory) { const a = fromCategory(c); if (a) practise(this.s, a); }
+  scalePay(money: number, c: ActivityCategory | null) { return fromCategory(c) ? Math.round(money * multiplier(this.s)) : money; }
+  previewPay(money: number, c: ActivityCategory | null) { const a = fromCategory(c); return a ? payPreview(this.s, money, a) : money; }
 
-  /** Activities recorded by other modules (counters) and the ventures' hourly income. Runs a few times per second. */
+  /** Activities recorded by other modules (counters) and the assets' hourly income and charges. A few times per second. */
   tickBusiness(): number {
     const s = this.s;
     this.sig = this.sig ? noticeActivities(s, this.sig) : signature(s.data);
     const paid = accrue(s);
+    for (const n of takeNotices()) this.d.hud.toast(n);
     if (paid > 0) {
       const m = document.getElementById('money');
       if (m) { m.classList.remove('up'); void m.offsetWidth; m.classList.add('up'); m.title = `Revenus des affaires : +${fcfa(paid)}`; }
@@ -331,7 +338,7 @@ export class Economy {
     const todo = ACTIVITIES.filter(a => !isRecent(s, a)).slice(0, 3).map(a => `${ACTIVITY_INFO[a].label} : ${ACTIVITY_INFO[a].where}`);
     const html = `<div class="biz-sum">
         <div><small>Revenus par heure</small><b>+${fcfa(incomePerHour(s))}</b></div>
-        <div><small>Total gagné</small><b>${fcfa(s.data.business.earned)}</b></div>
+        <div><small>Total gagné</small><b>${fcfa(s.data.assets.earned)}</b></div>
         <div><small>Valeur des affaires</small><b>${fcfa(value)}</b></div>
         <div><small>Fortune totale</small><b>${fcfa(s.wallet + value)}</b></div>
       </div>
@@ -382,11 +389,11 @@ export class Economy {
       jobsMenu: () => this.openJobs(),
       jobsApp: () => { this.openJobs(); return [...document.querySelectorAll('#modal.on .item:not(.close)')].map(e => e.textContent ?? ''); }, shop: () => this.openShop(false), homeApp: () => this.openShop(true), wallet: () => this.openWallet(),
       buy: (id: string) => this.buy(id),
-      furniture: () => ({ owned: [...s.data.furniture], items: FURNITURE.map(f => ({ id: f.id, name: f.name, price: priceOf(f.id), owned: owns(s, f.id) })) }),
+      furniture: () => ({ owned: ownedFurnitureIds(s), items: FURNITURE.map(f => ({ id: f.id, name: f.name, price: priceOf(f.id), owned: owns(s, f.id) })) }),
       ledger: () => phoneHooks.ledger?.() ?? [],
       business: () => ({
-        owned: { ...s.data.business.owned }, base: baseIncome(s), perHour: incomePerHour(s), mult: multiplier(s), poly: polyvalence(s), line: polyLine(s),
-        value: venturesValue(s), earned: s.data.business.earned, carry: s.data.business.carry, played: s.data.playedMs, hourMs: HOUR_MS,
+        owned: ownedVentures(s), base: baseIncome(s), perHour: incomePerHour(s), mult: multiplier(s), poly: polyvalence(s), line: polyLine(s),
+        value: venturesValue(s), earned: s.data.assets.earned, carry: s.data.assets.carryIn, played: s.data.playedMs, hourMs: HOUR_MS,
         known: [...s.data.activities.known], next: Object.fromEntries(VENTURES.map(v => [v.id, { price: nextPrice(s, v.id), locked: lockedWhy(s, v.id) }])),
       }),
       businessApp: () => { this.openBusiness(); return [...document.querySelectorAll('#modal.on .item:not(.close)')].map(e => e.textContent ?? ''); },
@@ -394,7 +401,7 @@ export class Economy {
       giveMoney: (n: number) => s.addMoney(n, 'Argent de test (debug)'),
       /** Played time passes (no needs drain): the ventures' income is counted and paid. Returns what was paid. */
       advancePlayed: (ms: number) => { s.data.playedMs += ms; return this.tickBusiness(); },
-      practise: (a: Activity) => { practise(s, a); return polyLine(s); },
+      practise: (a: Activity | 'services') => { practise(s, a === 'services' ? 'service' : a); return polyLine(s); },
       compact: (n: number) => fcfaShort(n),
       /** Every Tiak Tiak pick-up / drop-off of the current hub, resolved against the city's existing places. */
       routeEnds: () => (this.world ? ROUTES.filter(r => r.hub === this.world!.id).flatMap(r => [r.from, r.to]).map(p => ({ name: p.name, place: this.placeOf(p.frag)?.name ?? null })) : []),
