@@ -49,6 +49,7 @@ import { Inventory } from './activity/inventory';
 import { actionVerb } from './interact/legacy';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
+import { MODULES, type GameCtx } from './game/modules';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -222,6 +223,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   }
   registerSeats();
   places.clear(); people.clear();
+  for (const m of MODULES) m.hubLoaded?.(ctx, world);
   const requested = at ?? world.spawn, bounds = world.bounds;
   const p = requested.x >= bounds.x0 && requested.x <= bounds.x1 && requested.z >= bounds.z0 && requested.z <= bounds.z1 ? requested : world.spawn;
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
@@ -289,6 +291,28 @@ const people = interactions.add(new People(() => [
   ...(ambient?.bodies() ?? []).map(b => ({ id: b.id, obj: b.h.group, h: b.h, seated: b.seated, female: b.female })),
   ...(crowd?.bodies() ?? []).map(b => ({ id: b.id, obj: b.obj, h: b.h })),
 ], activities, line => hud.toast(line), () => ({ x: pos.x, z: pos.z }))) as People;
+/** What gameplay modules (src/game/modules.ts) may use: the shared systems, the player and the hub. */
+const ctx: GameCtx = {
+  scene, camera, follow, extra, state, hud, input, interactions, seats, places, activities, inventory,
+  quality: () => quality, world: () => world, inside: () => inside, space: () => interactSpace(),
+  hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day,
+  player: {
+    pos, facing: () => facing, body: () => playerBody, seated: () => seated,
+    sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace),
+    place(x, z, yaw) { pos.set(x, 0.1 + (inside || !world ? 0 : world.heightAt(x, z)), z); facing = yaw; follow.snapBehind(yaw); },
+  },
+  mode: () => mode,
+  setMode(m) { mode = m; input.enabled = m === 'play'; if (m !== 'play') input.reset(); },
+  menu(title, subtitle, items) { mode = 'menu'; input.enabled = false; hud.openMenu(title, subtitle, items); },
+  toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
+  addInterior(door, int) {
+    if (!world) return;
+    world.group.add(int.group); int.group.visible = false; interiors.set(door.id, int);
+    seats.addAll(int.seats.map(s => ({ ...s, space: spaceOf(door) })));
+  },
+  enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
+  exit: () => exitInterior(),
+};
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
 function actionSpec(a: Action): ActivitySpec {
   return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined };
@@ -419,6 +443,7 @@ function enterInterior(door: Interactable) {
   setTimeout(() => {
     if (seq !== doorSeq) return;
     inside = { int, door }; follow.indoor = true; showStreet(false); scene.add(roomLight);
+    for (const m of MODULES) m.spaceChanged?.(ctx, interactSpace());
     pos.set(int.spawn.x, 0.1, int.spawn.z); facing = int.spawn.yaw; speed = 0; follow.snapBehind(facing);
     hud.fade(false); mode = 'play'; input.enabled = true;
   }, 350);
@@ -446,6 +471,7 @@ function exitInterior() {
   setTimeout(() => {
     if (seq !== doorSeq) return;
     inside = null; follow.indoor = false; showStreet(true); scene.remove(roomLight);
+    for (const m of MODULES) m.spaceChanged?.(ctx, 'street');
     pos.set(d.x, 0.1, d.z); speed = 0; follow.snapBehind(facing);
     hud.fade(false); mode = 'play'; input.enabled = true; saveNow();
   }, 350);
@@ -732,6 +758,7 @@ function frame(now: number) {
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
   if (input.takeAction() && ((mode === 'play' && interactions.focus) || activities.running)) hud.onAction();
   activities.update(dt);
+  for (const m of MODULES) m.update?.(ctx, dt);
 
   const drag = input.takeDrag();
   drag.yaw += input.rotateKey() * dt * 1.8;
@@ -805,6 +832,7 @@ function frame(now: number) {
 resize(); applyQuality();
 async function start() {
   await Promise.all([preloadAssets(), preloadHumanoid()]);
+  for (const m of MODULES) m.init?.(ctx);
   if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); scene.add(playerBody.group); player.group.visible = false; }
   const startHub = invitedHub ?? state.data.hub;
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
@@ -895,4 +923,5 @@ if (DEBUG) {
     lookAtPlayer(dist = 4, yawOff = Math.PI) { follow.yaw = facing + yawOff; void dist; },
     ...economy.debug(),
   };
+  for (const m of MODULES) Object.assign((window as unknown as { __dakar: Record<string, unknown> }).__dakar, m.debug?.(ctx));
 }
