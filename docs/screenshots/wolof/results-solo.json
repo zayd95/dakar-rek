@@ -1,0 +1,142 @@
+{
+  "when": "2026-10-09T04:20:58.942Z",
+  "base": "http://localhost:4247/",
+  "chat": null,
+  "results": [
+    {
+      "name": "desktop: a passer-by can be greeted",
+      "ok": true,
+      "detail": "{\"id\":\"person:placed:3\",\"name\":\"Passant\",\"kind\":\"person\",\"space\":\"street\",\"primary\":\"Saluer\",\"all\":[\"Saluer\",\"Demander son nom\"]}"
+    },
+    {
+      "name": "desktop: « Salaam aleekum ! » — « Maleekum salaam ! »",
+      "ok": false,
+      "detail": "Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre."
+    },
+    {
+      "name": "desktop: at 9 h the follow-up (when this person adds one) is the morning greeting or « Jàmm nga am ? »",
+      "ok": true,
+      "detail": "Toi : « Salaam aleekum ! » · Passant : « Maleekum salaam ! »"
+    },
+    {
+      "name": "desktop: « Naka nga tudd ? » — « Maa ngi tudd … » / « … laa tudd »",
+      "ok": true,
+      "detail": "Toi : « Naka nga tudd ? » (comment tu t’appelles ?) · Cheikh : « Maa ngi tudd Cheikh. » (je m’appelle Cheikh)"
+    },
+    {
+      "name": "desktop: greeting again at 20 h 30 uses « Na nga yendoo ? »",
+      "ok": true,
+      "detail": "Toi : « Na nga yendoo ? » (la journée s’est bien passée ?) · Cheikh : « Jàmm rekk. » (tout va bien)"
+    },
+    {
+      "name": "desktop: « Dire au revoir » at night: « Fanaanal ak jàmm ! » — « Ba suba ! »",
+      "ok": true,
+      "detail": "Toi : « Fanaanal ak jàmm ! » (bonne nuit) · Cheikh : « Ba suba ! » (à demain)"
+    },
+    {
+      "name": "desktop: with glosses hidden the Wolof small talk stands alone",
+      "ok": true,
+      "detail": "Cheikh : « Ana waa kër gi ? » · Toi : « Ñu ngi fa. »"
+    },
+    {
+      "name": "desktop: selling at the Sandaga stall, a customer asks « Ñaata la ? » or haggles",
+      "ok": false,
+      "detail": "Une cliente : « Ñaata la ? » (c’est combien ?) · Toi : « 1 500 F. Yomb na ! » (ce n’est pas cher)"
+    },
+    {
+      "name": "desktop: ordering grilled fish at Soumbédioune starts with the price",
+      "ok": false,
+      "detail": "Toi : « Seer na ! Wàññi ko tuuti. » (c’est cher · baisse un peu) · La vendeuse : « Déedéet, 1 200 F rekk. » (non · 1 200 F seulement)"
+    },
+    {
+      "name": "desktop: … and « Neex na ! » at the first bite",
+      "ok": true,
+      "detail": "Toi : « Neex na ! » (c’est bon)"
+    },
+    {
+      "name": "desktop: bread and milk at the Boutique Diallo: « Ñaata la ? » — « 400 F. »",
+      "ok": false,
+      "detail": "Toi : « Ñaata la ? » (c’est combien ?) · Le boutiquier : « 400 F. »"
+    },
+    {
+      "name": "desktop: Ibou's welcome speaks Wolof with glosses",
+      "ok": true,
+      "detail": "Ah, te voilà installé ! Dalal ak jàmm (bienvenue). Le quartier est petit, tout le monde se connaît, et ici on dit « Nit nitay garabam » (l’homme est le remède de l’homme). Tu cherches du travail ?"
+    },
+    {
+      "name": "desktop: Mamadou greets in Wolof",
+      "ok": true,
+      "detail": "« Dalal ak jàmm (bienvenue) ! Entre, regarde. Tout ce qui est noté dans ce carnet est payé… presque tout. » · Relation : connaissance (0)"
+    },
+    {
+      "name": "desktop: no page errors",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: a passer-by can be greeted",
+      "ok": true,
+      "detail": "{\"id\":\"person:placed:0\",\"name\":\"Passant\",\"kind\":\"person\",\"space\":\"street\",\"primary\":\"Saluer\",\"all\":[\"Saluer\",\"Demander son nom\"]}"
+    },
+    {
+      "name": "phone: « Salaam aleekum ! » — « Maleekum salaam ! »",
+      "ok": true,
+      "detail": "Toi : « Salaam aleekum ! » · Passant : « Maleekum salaam ! »"
+    },
+    {
+      "name": "phone: at 9 h the follow-up (when this person adds one) is the morning greeting or « Jàmm nga am ? »",
+      "ok": true,
+      "detail": "Passant : « Jàmm nga am ? » (tout va bien ?) · Toi : « Jàmm rekk. » (tout va bien)"
+    },
+    {
+      "name": "phone: « Naka nga tudd ? » — « Maa ngi tudd … » / « … laa tudd »",
+      "ok": true,
+      "detail": "Toi : « Naka nga tudd ? » (comment tu t’appelles ?) · Ibrahima : « Maa ngi tudd Ibrahima. » (je m’appelle Ibrahima)"
+    },
+    {
+      "name": "phone: greeting again at 20 h 30 uses « Na nga yendoo ? »",
+      "ok": true,
+      "detail": "Toi : « Na nga yendoo ? » (la journée s’est bien passée ?) · Ibrahima : « Jàmm rekk. » (tout va bien)"
+    },
+    {
+      "name": "phone: « Dire au revoir » at night: « Fanaanal ak jàmm ! » — « Ba suba ! »",
+      "ok": true,
+      "detail": "Toi : « Fanaanal ak jàmm ! » (bonne nuit) · Ibrahima : « Ba suba ! » (à demain)"
+    },
+    {
+      "name": "phone: with glosses hidden the Wolof small talk stands alone",
+      "ok": true,
+      "detail": "Ibrahima : « Na nga def ? » · Toi : « Jàmm rekk. »"
+    },
+    {
+      "name": "phone: selling at the Sandaga stall, a customer asks « Ñaata la ? » or haggles",
+      "ok": false,
+      "detail": "Vendre au marché (un service) ✓  +2 500 F"
+    },
+    {
+      "name": "phone: ordering grilled fish at Soumbédioune starts with the price",
+      "ok": false,
+      "detail": "Commander du poisson grillé ✓  −1 200 F"
+    },
+    {
+      "name": "phone: … and « Neex na ! » at the first bite",
+      "ok": false,
+      "detail": "Commander du poisson grillé ✓  −1 200 F"
+    },
+    {
+      "name": "phone: a sheet shows how the character speaks, with glosses",
+      "ok": true,
+      "detail": "lle tout le monde « sama doom » (mon enfant).« Kaay lekk » (viens manger) · « Sama doom » (mon enfant) · « Neex na » (c’est bon)RetourFermer"
+    },
+    {
+      "name": "phone: Réglages › Langue has the gloss switch",
+      "ok": true,
+      "detail": "Traduction des expressions wolofAffichée"
+    },
+    {
+      "name": "phone: no page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

@@ -30,6 +30,12 @@ export type Turn = [who: string, phrases: Phrase[]];
 /** Phrases given as strings that are not in the lexicon (tests keep this empty). */
 export const unknownPhrases = new Set<string>();
 
+/**
+ * French typography for a line: a narrow no-break space before ? ! ; and a no-break space before : and inside « »,
+ * so a phone never wraps « Na nga def » away from its « ? ».
+ */
+export const typo = (s: string): string => s.replace(/ ([?!;])/g, '\u202f$1').replace(/ :/g, '\u00a0:').replace(/« /g, '«\u00a0').replace(/ »/g, '\u00a0»');
+
 /** One person speaking: « … », then the glosses of the less obvious phrases: « Seer na ! Wàññi ko tuuti. » (c’est cher · baisse un peu). */
 export function utter(phrases: Phrase[]): string {
   const text = phrases.map(p => (typeof p === 'string' ? p : p.wo)).join(' ');
@@ -38,10 +44,10 @@ export function utter(phrases: Phrase[]): string {
     if (!find(p)) unknownPhrases.add(p);
     return glossOf(p);
   }).filter(Boolean);
-  return wo(`« ${text} »`, glosses.join(' · '));
+  return wo(typo(`« ${text} »`), typo(glosses.join(' · ')));
 }
 /** A short exchange on one line: Toi : « … » · Awa : « … ». */
-export const exchange = (...turns: Turn[]): string => turns.map(([who, ph]) => `${who} : ${utter(ph)}`).join(' · ');
+export const exchange = (...turns: Turn[]): string => turns.map(([who, ph]) => `${who}\u00a0: ${utter(ph)}`).join(' · ');
 
 /** A lexicon phrase said with feeling: « Ba ci kanam ! » (questions keep their « ? »). */
 const bang = (e: Lex) => (e.wo.endsWith('?') ? e.wo : `${e.wo} !`);

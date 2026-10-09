@@ -7,7 +7,9 @@ import {
 import { find, glossed, glossesShown, greetingAt, LEXICON, setGlossesShown, wo } from '../src/i18n/wolof';
 import { resolveGlosses } from '../src/i18n/dom';
 
-const g = (s: string) => glossed(s, true);
+/** Glosses shown, no-break spaces read as spaces (typography is checked on its own). */
+const g = (s: string) => glossed(s, true).replace(/[\u00a0\u202f]/g, ' ');
+const raw = (s: string) => glossed(s, true);
 const HOURS = Array.from({ length: 24 }, (_, h) => h + 0.5);
 const DESTS = ['Colobane', 'Petersen', 'Médina', 'Pikine', 'Fann', 'Mermoz', 'Ouakam', 'Liberté 6', 'Ngor', 'Yoff', 'Parcelles', 'Thiaroye', 'Guédiawaye'];
 const HOSTS: Host[] = ['dibi', 'cook', 'imam', 'mareyeuse', 'pecheur'];
@@ -26,15 +28,15 @@ function corpus(names: readonly string[]): string[] {
     for (const h of HOSTS) out.push(hostLine(h, k));
     out.push(apprentiLine(DESTS, k));
   }
-  out.push(waitLine('Le patron'), tasteLine(), comeLine('Le patron'), ...apprentiCalls(DESTS));
-  return out.map(g);
+  out.push(waitLine('Le patron'), tasteLine(), comeLine('Le patron'));
+  return out.map(raw);
 }
 
 /** Wolof inside « … »: proper names and prices removed, what is left must be CLAD Wolof. */
 function wolofParts(line: string, names: readonly string[]): string[] {
   const parts = [...line.matchAll(/«\s([^»]*)\s»/g)].map(m => m[1]);
   return parts.map(p => {
-    let t = p.replace(/\d[\d ]* F/g, ' ');
+    let t = p.replace(/\d[\d ]* F\b/g, ' ');
     for (const n of [...names, ...DESTS].sort((a, b) => b.length - a.length)) t = t.split(n).join(' ');
     return t.replace(/\s+/g, ' ').trim();
   });
@@ -89,16 +91,16 @@ describe('prices and haggling', () => {
   it('asks the price, discusses it, and the seller holds firm', () => {
     const buys = new Set(Array.from({ length: 30 }, (_, k) => g(haggleLine('buy', 700, k, 'La mareyeuse'))));
     expect(buys).toEqual(new Set([
-      'Toi : « Ñaata la ? » (c’est combien ?) · La mareyeuse : « 700 F. »',
-      'Toi : « Ñaata la ? » (c’est combien ?) · La mareyeuse : « 700 F. Yomb na ! » (ce n’est pas cher)',
-      'Toi : « Seer na ! Wàññi ko tuuti. » (c’est cher · baisse un peu) · La mareyeuse : « Déedéet, 700 F rekk. » (non · 700 F seulement)',
+      'Toi : « Ñaata la ? » (c’est combien ?) · La mareyeuse : « 700 F. »',
+      'Toi : « Ñaata la ? » (c’est combien ?) · La mareyeuse : « 700 F. Yomb na ! » (ce n’est pas cher)',
+      'Toi : « Seer na ! Wàññi ko tuuti. » (c’est cher · baisse un peu) · La mareyeuse : « Déedéet, 700 F rekk. » (non · 700 F seulement)',
     ]));
     const sells = [...new Set(Array.from({ length: 30 }, (_, k) => g(haggleLine('sell', 2400, k))))].join('\n');
-    expect(sells).toMatch(/^Cliente : « Ñaata la \? » \(c’est combien \?\) · Toi : « 2 400 F\. »$/m);
-    expect(sells).toMatch(/Cliente : « Seer na ! Wàññi ko tuuti\. » .* Toi : « Déedéet, 2 400 F rekk\. »/);
+    expect(sells).toMatch(/^Cliente : « Ñaata la \? » \(c’est combien \?\) · Toi : « 2 400 F\. »$/m);
+    expect(sells).toMatch(/Cliente : « Seer na ! Wàññi ko tuuti\. » .* Toi : « Déedéet, 2 400 F rekk\. »/);
     const noHaggle = Array.from({ length: 30 }, (_, k) => haggleLine('buy', 400, k, 'Mamadou', false)).join('\n');
     expect(noHaggle).not.toMatch(/Wàññi|Seer na/);
-    expect(price(15000)).toBe('15 000 F');
+    expect(price(15000)).toBe('15\u202f000\u00a0F');
   });
   it('a haggler gives a fresh line each time', () => {
     const next = haggler('buy', 700);
@@ -148,7 +150,15 @@ describe('hosts, apprentices and the chat', () => {
 
 describe('orthography of every generated line (CLAD, French spacing)', async () => {
   const { STREET_NAMES } = await import('../src/interact/people');
-  const lines = corpus(STREET_NAMES);
+  const typeset = corpus(STREET_NAMES), lines = typeset.map(l => l.replace(/[\u00a0\u202f]/g, ' '));
+  it('no-break spaces keep « ? » with its words on a phone: never a plain space before ? ! : » or after «', () => {
+    const bad = typeset.filter(l => / [?!:;»]/.test(l) || /« /.test(l));
+    expect(bad).toEqual([]);
+    expect(typeset.some(l => l.includes('\u202f?'))).toBe(true);
+  });
+  it('apprentice calls are plain text for the canvas bubbles', () => {
+    for (const c of apprentiCalls(DESTS)) { expect(c).not.toMatch(/[\u2063\u2064]/); expect(badSpacing(c)).toBe(false); }
+  });
   it('every Wolof phrase given as text is a lexicon entry', () => {
     expect(lines.length).toBeGreaterThan(5000);
     expect([...unknownPhrases]).toEqual([]);
@@ -223,7 +233,7 @@ describe('recipes and primitives speak through Step.line', async () => {
     expect(fish.steps![0]).toMatchObject({ primitive: 'talk', label: 'On discute le prix' });
     expect(say(fish.steps!.at(-1)!.line)).toBe('Toi : « Neex na ! » (c’est bon)');
     const bread = CITY_ACTIONS.boutique[0];
-    expect(say(bread.steps![0].line)).toMatch(/^Toi : « Ñaata la \? » \(c’est combien \?\) · Le boutiquier : « 400 F\./);
+    expect(say(bread.steps![0].line)).toMatch(/^Toi : « Ñaata la \? » \(c’est combien \?\) · Le boutiquier : « 400 F\./);
   });
 });
 
@@ -265,7 +275,7 @@ describe('gloss resolution in the page', () => {
     const node = { nodeType: 3, nodeValue: `${wo('Jërëjëf', 'merci')} !` } as unknown as Node;
     setGlossesShown(false); resolveGlosses(node); expect(node.nodeValue).toBe('Jërëjëf !');
     const shown = { nodeType: 3, nodeValue: utter(['Toogal.']) } as unknown as Node;
-    setGlossesShown(true); resolveGlosses(shown); expect(shown.nodeValue).toBe('« Toogal. » (assieds-toi)');
+    setGlossesShown(true); resolveGlosses(shown); expect(shown.nodeValue).toBe('« Toogal. » (assieds-toi)');
   });
   it('a known phrase carries no gloss, a free one carries its own', () => {
     expect(g(utter(['Salaam aleekum !']))).toBe('« Salaam aleekum ! »');
