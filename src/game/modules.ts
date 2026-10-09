@@ -15,6 +15,7 @@ import { wolofModule } from '../i18n/module';
 import { assetKitModule } from './assetKit';
 import { transport } from '../transport/module';
 import { moto } from '../transport/motoModule';
+import { car } from '../transport/carModule';
 import { VenuesModule } from '../venues';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
@@ -108,4 +109,4 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [wolofModule, assetKitModule, transport, VenuesModule, moto];
+export const MODULES: GameModule[] = [wolofModule, assetKitModule, transport, VenuesModule, moto, car];

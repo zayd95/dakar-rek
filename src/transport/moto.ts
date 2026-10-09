@@ -3,8 +3,8 @@ import type { SeatSpec, VehicleSpec } from './spec';
 
 /**
  * The « Jakarta » motorbike (the everyday 125 cm³ of Dakar's streets) from the shared vehicle kit, as a transport
- * VehicleSpec with a driver seat and drive handling. Built without a baked rider: the player rides it (and with the
- * side stand down when parked — the kit draws the stand on rider-less motorbikes).
+ * VehicleSpec with a driver seat and drive handling. Built without a baked rider: the player rides it, with the side
+ * stand down when parked and up while ridden (`build({ ridden })`).
  */
 export const MOTO_CATALOGUE = {
   id: 'moto_jakarta' as const,
@@ -47,7 +47,7 @@ export function motoSpec(): VehicleSpec {
     sway: 1,
     // town riding: about 45 km/h flat out, quick to stop, tight turns, leans into corners
     drive: { maxSpeed: 12.5, reverseSpeed: 1.6, accel: 3.4, brake: 7.5, turnRadius: 3.2, steer: 4, halfWidth: 0.42, halfLength: k.length / 2, lean: true },
-    build: o => buildVehicle('moto', { seed: o?.seed ?? seed, driver: false, passengers: false }).group,
+    build: o => buildVehicle('moto', { seed: o?.seed ?? seed, driver: false, passengers: false, stand: !o?.ridden }).group,
   };
   return (cached = spec);
 }

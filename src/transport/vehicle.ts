@@ -49,6 +49,7 @@ export class Vehicle {
   private tmp = { x: 0, z: 0 };
   private model: THREE.Object3D;
   private shown = '';
+  private ridden = false;
 
   constructor(readonly spec: VehicleSpec, readonly id: string, private bumpy = 1, private seed = 1) {
     this.group.name = 'vehicle:' + id;
@@ -74,9 +75,17 @@ export class Vehicle {
     const drawn = this.spec.seats.filter((_s, i) => this.seats[i].occupant === 'npc').map(s => s.id), key = drawn.join('.');
     if (this.spec.cabin !== 'open' || key === this.shown) return;
     this.shown = key;
-    const next = this.spec.build({ seed: this.seed, seated: drawn });
+    const next = this.spec.build({ seed: this.seed, seated: drawn, ridden: this.ridden });
     this.body.remove(this.model); this.body.add(next); this.model = next;
   }
+  /** The player takes / leaves the controls: the model is rebuilt only when that changes the look (a motorbike's stand). */
+  setRidden(on: boolean) {
+    if (on === this.ridden) return;
+    this.ridden = on;
+    const next = this.spec.build({ seed: this.seed, ridden: on });
+    this.body.remove(this.model); this.body.add(next); this.model = next;
+  }
+
   /** Spec ids of the passenger seats NPCs hold now. */
   passengers(): string[] { return this.spec.seats.filter((_, i) => this.seats[i].occupant === 'npc').map(s => s.id); }
 

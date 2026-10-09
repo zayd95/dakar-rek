@@ -101,6 +101,8 @@ export interface VehicleOpts {
   seated?: readonly string[];
   /** Baked driver / rider (default true; false for parked vehicles). */
   driver?: boolean;
+  /** Motorbike without a baked rider: side stand down (default) or up (the player is riding it). */
+  stand?: boolean;
 }
 export interface VehicleBuild { group: THREE.Group; spec: VehicleSpec; lod: THREE.LOD | null }
 
@@ -767,7 +769,7 @@ const pickMoto: Pick = (r, o) => {
     head: [[0, scooter ? 1.0 : 0.98, 0.56]], tail: [[0, seatTop - 0.04, -0.9]],
     controls: { steering: [0, hbY, hbZ], grips: [[0.36, hbY, hbZ], [-0.36, hbY, hbZ]] },
   };
-  const rider = o.driver !== false, pillion = rider && o.passengers !== false && h2(p, ci) < 0.35, helmet = h2(ci, p + 1) < 0.5 ? HELMET[Math.floor(h2(p, 3) * HELMET.length)] : null;
+  const rider = o.driver !== false, stand = !rider && o.stand !== false, pillion = rider && o.passengers !== false && h2(p, ci) < 0.35, helmet = h2(ci, p + 1) < 0.5 ? HELMET[Math.floor(h2(p, 3) * HELMET.length)] : null;
   const near = (b: KitBuilder) => {
     for (const w of wheels) b.cyl('x', w.r, w.r, w.width, 0, w.y, w.z, TYRE, 12, { pos: UV.rimMoto, neg: UV.rimMoto });
     const head: V3 = [0, headY, headZ];
@@ -815,7 +817,7 @@ const pickMoto: Pick = (r, o) => {
         b.blob(0.118, 0, seatTop + 0.86, z2 + 0.11, lk2.hat ?? WRAP[p % WRAP.length], [1.05, 0.6, 1.1], 1);
         for (const s of [1, -1]) { b.beam([s * 0.13, seatTop + 0.06, z2], [s * 0.2, seatTop - 0.05, z2 + 0.35], 0.12, 0.12, 0x3a2f4a); b.beam([s * 0.2, seatTop - 0.05, z2 + 0.35], [s * 0.21, 0.38, z2 + 0.25], 0.1, 0.1, 0x3a2f4a); b.beam([s * 0.19, seatTop + 0.5, z2 + 0.08], [s * 0.15, seatTop + 0.3, z2 + 0.32], 0.07, 0.07, lk2.shirt); }
       }
-    } else b.beam([0.1, 0.32, -0.1], [0.28, 0.02, -0.18], 0.025, 0.025, DARK);   // side stand down
+    } else if (stand) b.beam([0.1, 0.32, -0.1], [0.28, 0.02, -0.18], 0.025, 0.025, DARK);   // side stand down
   };
   const far = (b: KitBuilder) => {
     for (const w of wheels) b.box(0.1, w.r * 2, w.r * 2, 0, 0, w.z, TYRE);
@@ -823,7 +825,7 @@ const pickMoto: Pick = (r, o) => {
     if (rider) { b.box(0.38, 0.62, 0.3, 0, seatTop, -0.18, SHIRT[ci % SHIRT.length]); b.blob(0.12, 0, seatTop + 0.78, -0.05, helmet ?? SKIN[ci % SKIN.length]); }
     frontDecal(b, 0, layout.head[0][1], 0.62, 0.16, 0.16, UV.head); rearDecal(b, 0, seatTop - 0.07, -0.95, 0.12, 0.06, UV.tail);
   };
-  return { key: `moto|${body.toString(16)}|${scooter ? 1 : 0}|${rider ? 1 : 0}|${pillion ? 1 : 0}|${helmet ?? 'n'}|${p}`, variant: (scooter ? 10 : 0) + ci, colors: { body, accent: DARK }, layout, speed: 7.5, lod: 32, near, far, beam: b => beamQuad(b, 0.7, 6.5, 0.7, 2.6) };
+  return { key: `moto|${body.toString(16)}|${scooter ? 1 : 0}|${rider ? 1 : 0}|${pillion ? 1 : 0}|${helmet ?? 'n'}|${p}${rider || stand ? '' : '|up'}`, variant: (scooter ? 10 : 0) + ci, colors: { body, accent: DARK }, layout, speed: 7.5, lod: 32, near, far, beam: b => beamQuad(b, 0.7, 6.5, 0.7, 2.6) };
 };
 
 const PICK: Record<VehicleKind, Pick> = { carRapide: pickCarRapide, bus: pickBus, taxi: pickTaxi, moto: pickMoto, sedan: pickSedan, suv: pickSuv, luxury: pickLuxury, pickup: pickPickup, truck: pickTruck };

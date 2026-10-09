@@ -35,10 +35,19 @@ export function targetSpeed(d: DriveSpec, speed: number, throttle: number): numb
   return 0;
 }
 
-/** Footprint test points of the vehicle at (x, z, yaw): front, middle and back, each a circle of halfWidth × k. */
-function hits(d: DriveSpec, x: number, z: number, yaw: number, blocked: Blocked, k = 1) {
+/**
+ * Footprint test of the vehicle at (x, z, yaw): circles of halfWidth × k along its axis, from the front to the back,
+ * close enough that the sides have no gap a wall corner could slip into (3 for a motorbike-sized footprint, 5 for a car).
+ */
+export function hits(d: DriveSpec, x: number, z: number, yaw: number, blocked: Blocked, k = 1) {
   const fx = Math.sin(yaw), fz = Math.cos(yaw), l = Math.max(0, d.halfLength - d.halfWidth), r = d.halfWidth * k;
-  return blocked(x + fx * l, z + fz * l, r) || blocked(x, z, r) || blocked(x - fx * l, z - fz * l, r);
+  const n = Math.max(1, Math.ceil(l / (d.halfWidth * 0.75)));       // circles each side of the middle one
+  if (blocked(x, z, r)) return true;
+  for (let i = 1; i <= n; i++) {
+    const t = (l * i) / n;
+    if (blocked(x + fx * t, z + fz * t, r) || blocked(x - fx * t, z - fz * t, r)) return true;
+  }
+  return false;
 }
 
 /**

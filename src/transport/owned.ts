@@ -9,8 +9,11 @@ import { HUB_IDS } from '../core/types';
  * Mapping to the generic model: Asset { id, kind: 'vehicle', catalogue: id, price, location: { hub, x, z, yaw },
  * owner: the player, condition: 1 } — `toAsset()` returns exactly that, so the ownership lane can import it once.
  */
-export type OwnedId = 'moto_jakarta';
-export interface OwnedVehicle { id: OwnedId; kind: 'moto'; seed: number; hub: HubId; x: number; z: number; yaw: number; price: number; at: number }
+export type OwnedId = 'moto_jakarta' | 'car_sedan';
+export type OwnedKind = 'moto' | 'car';
+/** What each catalogue item is (the save stores only the id). */
+export const OWNED_KIND: Record<OwnedId, OwnedKind> = { moto_jakarta: 'moto', car_sedan: 'car' };
+export interface OwnedVehicle { id: OwnedId; kind: OwnedKind; seed: number; hub: HubId; x: number; z: number; yaw: number; price: number; at: number }
 
 const flag = (id: OwnedId) => `asset:vehicle:${id}`;
 const key = (id: OwnedId, f: string) => `asset:${id}:${f}`;
@@ -21,7 +24,7 @@ export function readOwned(data: SaveData, id: OwnedId): OwnedVehicle | null {
   if (!owns(data, id)) return null;
   const c = data.counters, n = (f: string, d = 0) => (typeof c[key(id, f)] === 'number' ? c[key(id, f)] : d);
   const hub = HUB_IDS[Math.round(n('hub'))] ?? 'pikine';
-  return { id, kind: 'moto', seed: n('seed', 1), hub, x: n('x'), z: n('z'), yaw: n('yaw'), price: n('price'), at: n('at') };
+  return { id, kind: OWNED_KIND[id], seed: n('seed', 1), hub, x: n('x'), z: n('z'), yaw: n('yaw'), price: n('price'), at: n('at') };
 }
 
 /** Records the vehicle (ownership + where it is parked). */
