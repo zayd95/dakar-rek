@@ -138,6 +138,8 @@ let lambScene: LambScene | LambDuel | null = null;
 let emoteT = 0;
 const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
+/** Set once the module context (`ctx`, below) exists. */
+let ctxReady = false;
 let hourOverride: number | null = null;
 /** Walkable interiors of this hub, and the one the player is in. */
 let interiors = new Map<string, Interior>();
@@ -157,7 +159,8 @@ const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; },
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
 function presenceSpace() { return lambScene ? 'scene' : moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
 /** A module's own space the player is in (a vehicle while riding: src/transport), or null. */
-function moduleSpace(): string | null { for (const m of MODULES) { const s = m.space?.(ctx); if (s) return s; } return null; }
+/** Module-owned space (a vehicle…). Presence can ask before the module context exists (online start-up): no module space yet. */
+function moduleSpace(): string | null { if (!ctxReady) return null; for (const m of MODULES) { const s = m.space?.(ctx); if (s) return s; } return null; }
 
 const sunDir = new THREE.Vector3();
 function updateLighting(hour: number) {
@@ -319,6 +322,7 @@ const ctx: GameCtx = {
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
 };
+ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
 function actionSpec(a: Action): ActivitySpec {
   return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined };
@@ -722,7 +726,7 @@ const phone = new Phone({
 function saveNow(): boolean {
   // indoors, save the street position at the door: interiors are rebuilt on load
   // a module may hold the player somewhere they cannot resume (a moving vehicle): it gives a safe spot instead
-  const safe = inside ? null : MODULES.reduce<{ x: number; z: number; yaw: number } | null>((p, m) => p ?? m.safePlace?.(ctx) ?? null, null);
+  const safe = inside || !ctxReady ? null : MODULES.reduce<{ x: number; z: number; yaw: number } | null>((p, m) => p ?? m.safePlace?.(ctx) ?? null, null);
   if (inside) state.place(world!.id, inside.door.x, inside.door.z, facing); else if (safe) state.place(world!.id, safe.x, safe.z, safe.yaw); else state.place(world!.id, pos.x, pos.z, facing);
   return writeSave(store, state.data);
 }
