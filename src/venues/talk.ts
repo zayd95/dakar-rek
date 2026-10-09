@@ -1,6 +1,7 @@
 import { CLUB_DRINKS, CONTEST_FROM, CONTEST_ROUNDS, DIBI_SPECIALS, GRILL_LADDER, clubTheme, dibiSpecial, grillRank, isEvening, nextGrillRank, nightsToContest } from '../activity/templates';
 import { PRAYER_TIMES, hourLabel, nextPrayer, prayerAt } from './prayer';
 import { quote } from '../i18n/wolof';
+import { price } from '../i18n/lines';
 
 /**
  * Short everyday exchanges with the people who hold a venue (Dibi owner, imam): French with everyday Wolof (CLAD
@@ -97,8 +98,8 @@ export const programme = (night: number, n = 7) => Array.from({ length: n }, (_,
 export function doormanGreeting(c: ClubCtx): string {
   const t = clubTheme(c.night).label;
   if (c.nights >= c.regularAt) return `Lamine : « Sama xarit ! Dalal ak jàmm. Ce soir, c’est ${t}. Pour toi, l’entrée est offerte. »`;
-  if (c.nights > 0) return `Lamine : « Te revoilà ! Ce soir, c’est ${t}. L’entrée, c’est ${c.entry} F, comme d’habitude. »`;
-  return `Lamine : « Dalal ak jàmm à La Vague ! Ce soir, c’est ${t}. L’entrée, c’est ${c.entry} F, et tu danses jusqu’au matin. »`;
+  if (c.nights > 0) return `Lamine : « Te revoilà ! Ce soir, c’est ${t}. L’entrée, c’est ${price(c.entry)}, comme d’habitude. »`;
+  return `Lamine : « Dalal ak jàmm à La Vague ! Ce soir, c’est ${t}. L’entrée, c’est ${price(c.entry)}, et tu danses jusqu’au matin. »`;
 }
 export function doormanRegulars(c: ClubCtx): string {
   if (c.nights >= c.regularAt) return '« Tu es un habitué maintenant : tu entres sans payer. C’est la teraanga de La Vague. »';
@@ -127,7 +128,7 @@ export const CLUB_BYE = '« Ba beneen yoon ! Ñibbil ak jàmm. »';
 /** At the door, before anything is paid: the fee, once for the night. */
 export function doormanAsk(c: ClubCtx): string {
   const t = clubTheme(c.night).label;
-  return `Lamine : « Ce soir, c’est ${t}. L’entrée, c’est ${c.entry} F, une seule fois pour toute la nuit : tu peux sortir et revenir. »`;
+  return `Lamine : « Ce soir, c’est ${t}. L’entrée, c’est ${price(c.entry)}, une seule fois pour toute la nuit : tu peux sortir et revenir. »`;
 }
 export const doormanBye = () => `Lamine : ${quote('Ñibbil ak jàmm')} · « Reviens quand tu veux. »`;
 

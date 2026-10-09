@@ -322,7 +322,7 @@ describe('club MVP: the fee before paying, table service, the crowd by the hour,
     expect(asked).toBe(1); expect(r.state.wallet).toBe(10000);
     r.runner.start({ ...place.offers.door.find(o => o.id === 'payer')!, visible: undefined }); run(r.runner, 2);   // what the confirmation runs
     expect(r.state.wallet).toBe(10000 - T.CLUB_ENTRY); expect(done).toEqual(['entree']); expect(visible('door')).toEqual([]);
-    expect(doormanAsk({ night: 10, hour: 23, nights: 0, regularAt: 3, entry: T.CLUB_ENTRY })).toMatch(/2000 F, une seule fois pour toute la nuit/);
+    expect(doormanAsk({ night: 10, hour: 23, nights: 0, regularAt: 3, entry: T.CLUB_ENTRY })).toMatch(/2\s000\sF, une seule fois pour toute la nuit/);
   });
   it('table service: sit at a free lounge table first, then the waiter brings the drink (bar prices)', () => {
     const t = place.offers.lounge.find(o => o.id === 'table_bissap')!;

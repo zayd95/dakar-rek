@@ -51,6 +51,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const toast = () => d(() => document.getElementById('toast')?.textContent ?? '');
   const modal = () => d(() => (document.querySelector('#modal.on') ? document.getElementById('modal').textContent : null));
   const pick = async text => { await page.locator('#modal .item', { hasText: text }).first().click(); };
+  /** Click the menu item whose label is exactly `label` (details may mention other items' words). */
+  const pickLabel = label => d(l => { const b = [...document.querySelectorAll('#modal .item')].find(x => x.querySelector('div')?.firstChild?.textContent === l); b?.click(); return !!b; }, label);
   const closeModal = async () => { await d(() => document.querySelector('#modal .item.close')?.click()); await until(() => window.__dakar.pos().mode === 'play', null, 10000); };
 
   // ================================================================== Dibi of Pikine
@@ -306,6 +308,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   check(`${label}: it is one of the neighbourhood's spots`, await d(() => window.__dakar.cityPlaces().some(p => p.id === 'almadies:city:club')), '');
   // tonight becomes the week's contest night (debug shift of the city day), so one visit plays every route
   await d(n => window.__dakar.clubShift(n), c.contestIn);
+  await until(() => window.__dakar.venues().find(x => x.type === 'club').moment === 'closed');
   c = await venue('club');
   check(`${label}: by day it is closed: the gate is shut, nobody inside`, !c.open && c.gateShut === true && c.npcs === 0 && c.theme === 'sabar', `${c.moment} ${c.theme} npcs=${c.npcs}`);
   await d(([p]) => window.__dakar.place(p.x, p.z, Math.PI), [W(c, 0, 14)]);
@@ -363,7 +366,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const w2 = await d(() => window.__dakar.state.wallet);
   await d(() => window.__dakar.more());
   await until(() => !!document.querySelector('#modal.on'), null, 10000);
-  await pick('Concours de danse');
+  await pickLabel('Concours de danse');
   await until(() => { const g = window.__dakar.gesture(); if (g) { window.__dakar.gestureFinish(1); window.__cr = (window.__cr ?? 0) + 1; } return !window.__dakar.activity() && (window.__cr ?? 0) > 0; }, null, 150000);
   const rounds = await d(() => window.__cr ?? 0);
   c = await venue('club');

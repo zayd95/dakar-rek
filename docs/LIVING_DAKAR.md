@@ -111,26 +111,31 @@ Already composed:
 - **Salon Awa's chairs** (`src/venues/salon.ts`, Pikine): two styling chairs facing mirrors, the stylist working behind
   you, a client in the other chair. Cuts (short, afro, shaved) and the beard change your character and stay (saved,
   every hub, `src/venues/style.ts`). Open 9 h–21 h.
-- **La Vague, the dance terrace** (`src/venues/club.ts`, Almadies, on Ngor's beach; `club` recipe): a wooden deck behind a
-  bamboo fence, one gate on the road side with the doorman and his rope, a dance floor whose tiles light up on the beat,
-  the DJ booth under a truss of coloured beams, a thatched bar with five stools (juices of Dakar and a fruit cocktail, no
-  alcohol), low benches by the fence, string lights, the sea behind. *Do:* pay the entry at the door once a night
-  (2 000 F; the rope is lifted, the gate opens), dance (the shared timing gesture `G.dance` on the drum's beat, two steps,
-  the second faster, while your body dances), drink seated on a free stool, ask the DJ for a song, and on the « Nuit du
-  sabar » enter the dance contest after 23 h (three faster rounds, prize scaled by how well each is danced, up to
-  7 200 F, once a night). *Who:* Lamine the doorman (the week's programme, regulars), Saliou at the bar, DJ Mbaye
-  (contest), dancers who make room for you and cheer a good dance; a crowd that grows after 22 h (4 / 7 / 10 dancers by
-  graphics quality) and sits on real stools and benches. *Why return:* a theme every night of a seven-night week (mbalax,
-  afro, rap galsen, salsa, zouk, the sabar contest, retro) on the board by the gate; after three nights you are a
-  regular and come in free. Open 21 h–5 h: by day the gate is shut (« Fermé · ouvre à 21 h »), it never closes on
-  someone inside; location chat.
+- **La Vague, the night club** (`src/venues/club.ts`, Almadies, on Ngor's beach; `club` recipe; the owner's « Nightclub
+  MVP »): a wooden terrace behind a bamboo fence, a lit sign over the gate (fictional name), the doorman and his rope, a
+  dance floor whose tiles light up on the beat, the DJ booth under a truss of coloured beams, a thatched bar with five
+  stools (juices of Dakar and a fruit cocktail, no alcohol), lounge benches with low tables, string lights, the sea
+  behind. *Do:* « Entrer » at the door shows the fee first (2 000 F, once for the whole night) and only « Payer 2 000 F et
+  entrer » pays; dance (the shared timing gesture `G.dance` on the drum's beat, two steps, the second faster, while your
+  body dances); drink on a free stool at the bar, or sit at a free lounge table and the waiter walks the drink over; ask
+  the DJ for a song; on the « Nuit du sabar » enter the dance contest after 23 h (three faster rounds, prize scaled by how
+  well each is danced, up to 7 200 F, once a night); « Sortir » by the gate. *Who:* Lamine the doorman (the week's
+  programme, regulars), Saliou at the bar, the lounge waiter, DJ Mbaye, clubbers on stools, benches and at a high table
+  with a short French/Wolof exchange (« Na nga def ? », « Dama sonn » at dawn, « Nanu dem ! », « Ñibbil ak jàmm »),
+  dancers who make room for you and cheer a good dance. *The hour:* almost empty at 21 h, building before midnight, the
+  peak after it, thinning at dawn (4 / 7 / 10 dancers by graphics quality); NPCs sit on real seats, never on yours.
+  *Why return:* a theme every night of a seven-night week (mbalax, afro, rap galsen, salsa, zouk, the sabar contest,
+  retro) on the board by the gate; after three nights you are a regular and come in free. Inside, the terrace is its own
+  presence space (`almadies:venue:club`, accepted by `parseMove`): its location chat and quick phrases (« Rafet na »).
+  Open 21 h–5 h: by day the gate is shut (« Fermé · ouvre à 21 h »); it never closes on someone inside.
 
 Composition seams added for this: `HubWorld.sites` (`src/world/sites.ts`: lots and blocks a module composes — the
 builder keeps the place's identity interactable and leaves the ground free, with the street dressing unchanged),
 `PlaceSpec.peaks` (busy hours), `Anchor.space` (one place across a courtyard and a hall), `Seat.clip` (the pose held on
 a seat: `Kneel` on prayer rows), seat kind `prayer`, `GameCtx.addInterior` used by a module's own interior; for the
 terrace: `Role.phase` / `Role.yieldR` / `Cast.burst` (dancers out of step, stepping aside for the player,
-cheering), the data-only gesture `G.dance`.
+cheering), `Cast.walkTo` (the waiter), `Venue.space` (a venue's own presence space while the player is in it), the
+data-only gesture `G.dance`; the runner keeps a seated player on a fitting seat for a second order.
 
 ## Waves
 
