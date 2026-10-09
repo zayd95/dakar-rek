@@ -43,8 +43,8 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
 | `drive.ts` | Drive mode as pure logic: stick → throttle / steering, bicycle model, braking then reverse, coasting, collisions (a row of footprint circles front to back: stops at walls, slides along them, creeps out if left touching). |
 | `ownedModule.ts` | `OwnedVehicleModule(def)`: one owned, drivable vehicle — dealer corner (shop recipe, price → confirmation → paid once, delivered at the kerb), get in / drive / get out (beside it; a car: on the pavement side), solid when parked, parked where left and saved per hub, the kit's camera views, speed card, debug API `__dakar.<key>`. `kerbDealer()` lays a dealer out on the pavement of the nearest road. |
 | `moto.ts`, `motoModule.ts` | The Jakarta motorbike: kit spec + drive handling (leans); its def — the dealer corner at Garage Modou (Pikine). |
-| `car.ts`, `carModule.ts` | The used saloon: kit `sedan` spec + car handling (no lean, wider turning circle, faster); its def — « Voitures d’occasion · Ndiaye Auto » on the Plateau pavement beside Dakar Réparation. `CAR_PRICE` is the placeholder price. |
-| `owned.ts` | Ownership adapter until the ownership lane's `Asset` store: save flag `asset:vehicle:<id>` + counters `asset:<id>:hub|x|z|yaw|seed|price|at`, ids `moto_jakarta`, `car_sedan`, `toAsset()` mapping. |
+| `car.ts`, `carModule.ts` | The used car (catalogue `clando`, a kit `sedan`) + car handling (no lean, wider turning circle, faster); its def — « Voitures d’occasion · Ndiaye Auto » on the Plateau pavement beside Dakar Réparation. |
+| `owned.ts` | Where each owned vehicle is parked, keyed to its catalogue id: counters `vehicle:<asset>:hub|x|z|yaw`. Ownership itself is the asset model (`src/economy/assets.ts`). `migrateOwned()` moves saves from the earlier flag (`asset:vehicle:moto_jakarta`) to the `jakarta` asset at what was paid. |
 | `route.ts` | Pure math: `lanePath` (right-hand lane around road-grid nodes, rounded corners), `Path` (arc length, smooth heading, projection, curvature), `Timetable` (speed profile with corner speeds, acceleration, braking, rest and dwell at every stop; deterministic and periodic), `pullIn` (to the kerb at stops). |
 | `lines.ts` | Line data (loop nodes, stops by leg + metres, fare, fleet, calls) and the French / Wolof lines (draft for review). |
 | `vehicle.ts` | `Vehicle`: model + seats (Seats registry, space = vehicle id, `locked`) + sway; `place(x, z, yaw, speed, accel…)` is the controller seam. `LineVehicle`: places a Vehicle from the timetable on the shared clock, reports stops reached since the previous frame, apprenti and calls. |
@@ -90,9 +90,13 @@ away while the player is still on the way to the door, they get in at once.
 ## Personal mobility: the Jakarta motorbike (drive mode)
 
 - **Buy:** « Motos · Garage Modou » corner next to the garage in Pikine (two motorbikes on display, a sign). « Voir les
-  articles » lists the Moto Jakarta 125 with its price; picking it opens a confirmation with the price and the wallet;
-  « Confirmer l’achat » pays once through the runner (verb `buy`, wallet line « Moto Jakarta 125 · Motos · Garage
-  Modou », counter `vehicules`). Price 75 000 F (provisional). It is delivered at the kerb in front of the garage.
+  articles » lists the catalogue's « Moto Jakarta » (`jakarta`, d'occasion, **150 000 F**) with its price; picking it
+  opens a confirmation with the price and the wallet; « Confirmer l’achat » pays once through the asset model
+  (`cannotBuy` / `buyAsset`: wallet line « Achat : Moto Jakarta », counters `biens` and `vehicules`). It is listed in
+  « Biens » (once; it can be sold there) and delivered at the kerb in front of the garage. Bought from « Biens »
+  instead, it waits at that kerb.
+- **Tiak Tiak:** deliveries work on the motorbike (or in the car): the parcel is picked up and handed over on arrival,
+  without getting off.
 - **Ride:** « Monter sur la moto » sits the player on its driver seat (locked). Stick or keys: up accelerates (about
   45 km/h flat out), down brakes then reverses slowly, left / right steers (tighter at low speed); releasing coasts to a
   stop. It never goes through walls, parked vehicles, stairs or the car rapides; it slides along a wall met at an
@@ -112,10 +116,10 @@ away while the player is still on the way to the door, they get in at once.
 
 - **Buy:** « Voitures d’occasion · Ndiaye Auto » (fictional) on the Plateau, on the pavement of the road east of the
   shops block, beside Dakar Réparation: a desk, a sign « OCCASIONS », two saloons on display at the kerb. « Voir les
-  articles » lists the « Berline d’occasion » with its price; a confirmation shows the price and the wallet;
-  « Confirmer l’achat » pays once (wallet line « Berline d’occasion · Voitures d’occasion · Ndiaye Auto », counter
-  `vehicules`). **Placeholder price `CAR_PRICE` = 450 000 F** in `src/transport/car.ts` (the ownership lane rebalances
-  it). The silver saloon is delivered at the kerb, facing the traffic of that side.
+  articles » lists the catalogue's « Voiture d’occasion » (`clando`, **2 800 000 F**) with its price; a confirmation
+  shows the price and the wallet; « Confirmer l’achat » pays once through the asset model (wallet line « Achat :
+  Voiture d’occasion »), listed in « Biens ». The silver saloon is delivered at the kerb, facing the traffic of that
+  side.
 - **Drive:** « Monter (conducteur) » sits the player on the driver seat (left-hand drive). Same controls as the
   motorbike, car numbers: about 60 km/h flat out (motorbike 45), slower to pick up and to stop, a 5.6 m turning radius
   (motorbike 3.2), no lean (the body rolls a little out of the corners). Collisions as for the motorbike, on a
@@ -126,7 +130,7 @@ away while the player is still on the way to the door, they get in at once.
 - **Get out:** « Sortir de la voiture » (it brakes first if moving): the player stands on the pavement side — the side
   farther from the road's centre line, the right-hand side when parked at a kerb — else the other side, else behind.
   It stays parked there, solid, in that hub, across reloads (a reload while driving parks it where it was).
-- **Ownership:** `owned.ts` record `car_sedan` (kind `car`), the same `toAsset()` mapping as the motorbike.
+- **Ownership:** the `clando` asset; `owned.ts` keeps where it is parked.
 
 ## Performance
 
