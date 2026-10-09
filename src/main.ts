@@ -211,7 +211,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   if (world) { scene.remove(world.group); world.dispose(); }
   setGrainEnabled(quality !== 'low');                     // procedural surface noise is the main per-pixel cost
   extra.clear();
-  world = buildHub(id, quality === 'low');
+  world = buildHub(id, quality === 'low', quality);
   scene.add(world.group);
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
   extra.add(crowd.group, traffic.group);
