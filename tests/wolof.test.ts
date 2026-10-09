@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import {
-  LEXICON, QUICK_CHAT, find, lex, byTag, replyTo, greetingAt, greetingPair, farewellAt, pick, seedHash,
+  LEXICON, find, lex, byTag, replyTo, greetingAt, greetingPair, farewellAt, pick, seedHash,
   wo, say, quote, glossed, glossesShown, setGlossesShown, withHourGreeting, HOUR_GREETING,
 } from '../src/i18n/wolof';
 
@@ -52,7 +52,6 @@ describe('Wolof lexicon', () => {
     }
     expect(used.length).toBeGreaterThan(60);
     expect(used.filter(u => !find(u))).toEqual([]);
-    for (const q of QUICK_CHAT) { expect(LEXICON).toContain(q); expect(q.tags).toContain('chat'); }
   });
 });
 

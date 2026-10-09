@@ -1,5 +1,7 @@
 import type { Action } from './types';
 import { say } from '../i18n/wolof';
+import { haggler, tasteLine } from '../i18n/lines';
+import { order, talkFirst } from '../activity/primitives';
 
 const energy = (amount: number): NonNullable<Action['requires']> => s => s.data.needs.energie < amount ? 'Repose-toi avant ce service' : null;
 
@@ -11,7 +13,9 @@ export const CITY_ACTIONS = {
     { id: 'quai', label: 'Prendre des nouvelles des pêcheurs', detail: `${say('Na nga def ?')} Ça a donné quoi aujourd’hui ?`, needs: { social: 14, moral: 6 }, seconds: 3, counter: 'chats' },
   ],
   fish: [
-    { id: 'poisson-frais', label: 'Commander du poisson grillé', detail: 'Poisson du jour, pain et citron', cost: 1200, needs: { faim: 42, moral: 7 }, seconds: 3, counter: 'meals' },
+    // Composed: the price is discussed at the stall (« Ñaata la ? »), the fish is grilled, eaten standing.
+    { id: 'poisson-frais', label: 'Commander du poisson grillé', detail: 'Poisson du jour, pain et citron', cost: 1200, needs: { faim: 42, moral: 7 }, seconds: 3, counter: 'meals',
+      steps: talkFirst(order({ id: 'poisson-frais', label: 'Commander du poisson grillé', price: 1200, prep: 1.5, eat: 3, seat: false, needs: { faim: 42, moral: 7 }, eatLine: tasteLine }), haggler('buy', 1200, 'La vendeuse'), 'On discute le prix').steps },
     { id: 'poisson-service', label: 'Aider au nettoyage et à la vente', detail: 'Un service avec les mareyeuses · +2 200 F', gain: 2200, needs: { energie: -20, hygiene: -10, social: 5 }, seconds: 5, counter: 'shifts', requires: energy(20) },
   ],
   craft: [
@@ -43,7 +47,9 @@ export const CITY_ACTIONS = {
     { id: 'bissap', label: 'Bissap et sandwich', cost: 1000, needs: { faim: 30, moral: 6 }, seconds: 3, counter: 'meals' },
   ],
   boutique: [
-    { id: 'pain-lait', label: 'Pain et lait', detail: 'Le petit-déjeuner du coin', cost: 400, needs: { faim: 25, energie: 4 }, seconds: 2, counter: 'meals' },
+    // Composed: « Ñaata la ? » at the counter (no haggling over bread and milk), then breakfast standing.
+    { id: 'pain-lait', label: 'Pain et lait', detail: 'Le petit-déjeuner du coin', cost: 400, needs: { faim: 25, energie: 4 }, seconds: 2, counter: 'meals',
+      steps: talkFirst(order({ id: 'pain-lait', label: 'Pain et lait', price: 400, prep: 1, eat: 2, seat: false, needs: { faim: 25, energie: 4 } }), haggler('buy', 400, 'Le boutiquier', false), 'Au comptoir', 1.6).steps },
     { id: 'boutique-stock', label: 'Aider à ranger le stock', detail: 'Un service à la boutique · +1 500 F', gain: 1500, needs: { energie: -15, hygiene: -4, social: 4 }, seconds: 4, counter: 'shifts', requires: energy(15) },
     { id: 'boutique-salut', label: 'Prendre des nouvelles de Mamadou', detail: `Salaam aleekum ! ${say('Ana waa kër gi ?')}`, needs: { social: 11, moral: 4 }, seconds: 3, counter: 'chats' },
   ],

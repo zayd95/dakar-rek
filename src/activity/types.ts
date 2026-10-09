@@ -35,6 +35,9 @@ export interface Effects {
   category?: ActivityCategory;
 }
 
+/** A spoken line: fixed, or picked afresh each time the step starts (Wolof exchanges from src/i18n/lines.ts). */
+export type Line = string | (() => string);
+
 /** Which seat a step uses: a seat id, the nearest free one in the place, or the nearest of a kind around a point. */
 export type SeatPick = string | 'near' | { near: { x: number; z: number }; r?: number; kind?: SeatKind };
 
@@ -50,6 +53,8 @@ export interface Step {
   seat?: SeatPick;
   /** Prop id the place shows during the step (plate, glass, prayer mat…). */
   prop?: string;
+  /** Said when the step starts (shown like a toast): « Toi : « Ñaata la ? » · Vendeuse : « 700 F. » ». */
+  line?: Line;
   effects?: Effects;
   /** Called when the step ends (after its effects): open a conversation, change the hairstyle, board… */
   then?: () => void;

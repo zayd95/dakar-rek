@@ -99,6 +99,8 @@ export class ActivityRunner {
       if (seat && this.s.seated()?.id !== seat.id) this.s.sit(seat);
     }
     if (step.clip) this.s.clip(step.clip);
+    const line = typeof step.line === 'function' ? step.line() : step.line;
+    if (line) this.s.toast(line);
     if ((step.seconds ?? 0) > 0) { this.s.busy(true); this.s.progress(true, 0, step.label); }
     else this.finishStep();
   }

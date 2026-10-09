@@ -14,7 +14,7 @@
 export type Tag =
   | 'greeting' | 'reply' | 'thanks' | 'farewell' | 'yesno' | 'ask' | 'invite' | 'market' | 'food' | 'attaya'
   | 'work' | 'money' | 'encourage' | 'lamb' | 'weather' | 'family' | 'blessing' | 'chat' | 'proverb' | 'sea'
-  | 'morning' | 'evening' | 'night' | 'news' | 'word';
+  | 'morning' | 'evening' | 'night' | 'news' | 'word' | 'transport';
 
 export interface Lex {
   /** Wolof, CLAD orthography. Phrases start with a capital; single words are lower case. */
@@ -24,14 +24,18 @@ export interface Lex {
   tags: Tag[];
   /** The usual answer (the `wo` of another entry). */
   reply?: string;
+  /** Known by every player (« Salaam aleekum », « attaya »): said without a French gloss. */
+  known?: true;
 }
 
 const L = (wo: string, fr: string, tags: Tag[], reply?: string): Lex => (reply ? { wo, fr, tags, reply } : { wo, fr, tags });
+/** An entry every player knows: no gloss in dialogue. */
+const K = (wo: string, fr: string, tags: Tag[], reply?: string): Lex => ({ ...L(wo, fr, tags, reply), known: true });
 
 export const LEXICON: readonly Lex[] = [
   // Greetings and their answers
-  L('Salaam aleekum', 'bonjour', ['greeting'], 'Maleekum salaam'),
-  L('Maleekum salaam', 'la paix sur toi aussi', ['reply']),
+  K('Salaam aleekum', 'bonjour', ['greeting'], 'Maleekum salaam'),
+  K('Maleekum salaam', 'la paix sur toi aussi', ['reply']),
   L('Na nga def ?', 'comment ça va ?', ['greeting', 'ask', 'news', 'chat'], 'Maa ngi fi rekk'),
   L('Maa ngi fi rekk', 'je suis là, ça va', ['reply', 'chat']),
   L('Jàmm nga am ?', 'tout va bien ?', ['greeting', 'ask', 'news'], 'Jàmm rekk'),
@@ -60,12 +64,13 @@ export const LEXICON: readonly Lex[] = [
   L('Dara', 'rien de spécial', ['reply']),
   L('Fan nga dëkk ?', 'tu habites où ?', ['ask']),
   L('Naka nga tudd ?', 'comment tu t’appelles ?', ['ask']),
+  L('Fan nga dem ?', 'tu vas où ?', ['ask', 'transport']),
   // Invitations
   L('Kaay lekk', 'viens manger', ['invite', 'food']),
   L('Kaay fi', 'viens ici', ['invite']),
   L('Toogal', 'assieds-toi', ['invite']),
   L('Kaay naan attaya', 'viens boire l’attaya', ['invite', 'attaya']),
-  L('Nanu dem', 'on y va', ['invite', 'chat']),
+  L('Nanu dem', 'on y va', ['invite', 'chat', 'transport']),
   // Market and bargaining
   L('Ñaata la ?', 'c’est combien ?', ['market', 'ask']),
   L('Wàññi ko tuuti', 'baisse un peu', ['market']),
@@ -87,9 +92,9 @@ export const LEXICON: readonly Lex[] = [
   L('Neex na', 'c’est bon', ['food', 'chat']),
   L('lekk', 'manger', ['food', 'word']),
   L('naan', 'boire', ['food', 'word']),
-  L('ceebu jën', 'riz au poisson', ['food', 'word']),
+  K('ceebu jën', 'riz au poisson', ['food', 'word']),
   L('Jën bu bees', 'poisson frais', ['food', 'sea', 'market']),
-  L('attaya', 'thé vert à la menthe, servi en trois verres', ['attaya', 'word']),
+  K('attaya', 'thé vert à la menthe, servi en trois verres', ['attaya', 'word']),
   // Work and money
   L('liggéey', 'travail', ['work', 'word']),
   L('xaalis', 'argent', ['money', 'word']),
@@ -142,7 +147,8 @@ export const LEXICON: readonly Lex[] = [
   L('Dégg naa', 'j’ai compris', ['chat']),
   L('Ndeysaan', 'le pauvre !', ['chat']),
   L('Rafet na', 'c’est beau', ['chat']),
-  L('Maa ngi ñëw', 'j’arrive', ['chat']),
+  L('Maa ngi ñëw', 'j’arrive', ['chat', 'transport']),
+  L('rekk', 'seulement', ['word']),
   // Proverbs (well-known ones only)
   L('Nit nitay garabam', 'l’homme est le remède de l’homme', ['proverb']),
   L('Ndank ndank mooy jàpp golo ci ñaay', 'doucement, doucement, on attrape le singe dans la forêt', ['proverb', 'encourage']),
@@ -162,8 +168,6 @@ export const byTag = (tag: Tag): Lex[] => LEXICON.filter(e => e.tags.includes(ta
 /** The usual answer to a phrase (greeting → reply), or null. */
 export const replyTo = (wo: string): Lex | null => { const r = lex(wo).reply; return r ? find(r) : null; };
 
-/** Quick chat reactions (chat panel, under the emoji row). */
-export const QUICK_CHAT: readonly Lex[] = ['Na nga def ?', 'Jërëjëf', 'Waaw', 'Déedéet', 'Amul solo', 'Ba beneen yoon'].map(k => lex(k));
 
 // ------------------------------------------------------------------ time of day
 
@@ -187,10 +191,12 @@ export function greetingPair(hour: number): { ask: Lex; reply: Lex } {
 
 // ------------------------------------------------------------------ seeded choice
 
-/** FNV-1a hash of a seed: the same seed always gives the same expression. */
+/** FNV-1a hash of a seed, then mixed (murmur3 finaliser) so close seeds (« placed:1 », « placed:2 ») spread well:
+ * the same seed always gives the same expression. */
 export function seedHash(seed: string | number): number {
   let h = 0x811c9dc5;
   for (const ch of String(seed)) { h ^= ch.codePointAt(0)!; h = Math.imul(h, 0x01000193) >>> 0; }
+  h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
   return h >>> 0;
 }
 /** A random-but-seeded expression with this tag (e.g. seed = npc id + city day). */
@@ -212,10 +218,12 @@ const GLOSS_KEY = 'dakarrek.wolof.gloss';
 
 /** « Wolof (français) » inline; without a gloss, the Wolof alone. */
 export const wo = (text: string, fr?: string): string => (fr ? `${text}${G0} (${fr})${G1}` : text);
+/** The French gloss of a phrase, or '' when it is unknown or known by every player (« Salaam aleekum »). */
+export const glossOf = (phrase: string): string => { const e = find(phrase); return e && !e.known ? e.fr : ''; };
 /** A lexicon phrase with its gloss, written as given (capitalised or not). */
-export const say = (phrase: string): string => wo(phrase, find(phrase)?.fr);
+export const say = (phrase: string): string => wo(phrase, glossOf(phrase));
 /** The same between French quotes, gloss outside: « Ñaata la ? » (c’est combien ?). */
-export const quote = (phrase: string): string => wo(`« ${phrase} »`, find(phrase)?.fr);
+export const quote = (phrase: string): string => wo(`« ${phrase} »`, glossOf(phrase));
 
 function storage(): Storage | null {
   try { return (globalThis as { localStorage?: Storage }).localStorage ?? null; } catch { return null; }

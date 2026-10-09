@@ -1,6 +1,7 @@
 import type { Action } from './types';
 import type { HubId } from '../core/types';
-import { order } from '../activity/primitives';
+import { order, work } from '../activity/primitives';
+import { haggler } from '../i18n/lines';
 
 const flag = (f: string) => (s: { data: { flags: string[] } }) => s.data.flags.includes(f);
 const noFlag = (f: string) => (s: { data: { flags: string[] } }) => !s.data.flags.includes(f);
@@ -23,7 +24,9 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'discuter', label: 'Rester discuter', detail: 'Gratuit', needs: { social: 12, moral: 4 }, seconds: 3 },
   ],
   market: [
-    { id: 'vendre', label: 'Vendre au marché (un service)', detail: '+2 500 F', gain: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: tired(22) },
+    // Composed: a shift at the stall, where a customer always discusses the price (« Ñaata la ? », « Wàññi ko tuuti ! »).
+    { id: 'vendre', label: 'Vendre au marché (un service)', detail: '+2 500 F', gain: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: tired(22),
+      steps: work({ id: 'vendre', label: 'Vendre au marché', pay: 2500, seconds: 4, needs: { energie: -22, hygiene: -8, faim: -8 }, category: 'commerce', line: haggler('sell', 1500, 'Une cliente') }).steps },
   ],
   gym: [
     { id: 'courir', label: 'Courir sur la Corniche', detail: 'Forme +1', needs: { energie: -20, moral: 10, hygiene: -10, faim: -8 }, seconds: 4, counter: 'forme', requires: tired(20) },
