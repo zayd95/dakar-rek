@@ -80,6 +80,13 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await press('#phone [data-act="sound"]');
   const unmuted = await page.evaluate(() => ({ i: window.__dakar.phoneInfo().muted, s: localStorage.getItem('dakarrek.sound') }));
   check(`${label}: sound toggles off and on (saved)`, muted.i === true && muted.s === 'off' && unmuted.i === false && unmuted.s === 'on', JSON.stringify([muted, unmuted]));
+  // Langue: French with Wolof expressions; the French glosses can be hidden (saved).
+  const langNote = await page.locator('#phone .ph-screen').innerText();
+  await press('#phone [data-act="gloss"]');
+  const hidden = await page.evaluate(() => ({ s: localStorage.getItem('dakarrek.wolof.gloss'), t: document.querySelector('#phone [data-act="gloss"]').textContent }));
+  await press('#phone [data-act="gloss"]');
+  const shown = await page.evaluate(() => ({ s: localStorage.getItem('dakarrek.wolof.gloss'), t: document.querySelector('#phone [data-act="gloss"]').textContent }));
+  check(`${label}: language is French with Wolof expressions; glosses hide and show (saved)`, /expressions en wolof/.test(langNote) && !/pulaar/i.test(langNote) && hidden.s === 'off' && /Masquée/.test(hidden.t) && shown.s === 'on' && /Affichée/.test(shown.t), JSON.stringify([hidden, shown]));
   // Camera sensitivity.
   await press('#phone button[data-sens="1.5"]');
   const sens = (await info()).sensitivity;

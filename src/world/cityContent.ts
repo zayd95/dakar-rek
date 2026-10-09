@@ -1,4 +1,5 @@
 import type { Action } from './types';
+import { say } from '../i18n/wolof';
 
 const energy = (amount: number): NonNullable<Action['requires']> => s => s.data.needs.energie < amount ? 'Repose-toi avant ce service' : null;
 
@@ -7,7 +8,7 @@ export const CITY_ACTIONS = {
   landing: [
     { id: 'debarquement', label: 'Débarquer les caisses de poisson', detail: 'Avec l’équipe de pêche · +3 200 F', gain: 3200, needs: { energie: -26, hygiene: -12, faim: -8, social: 4 }, seconds: 6, counter: 'shifts', requires: energy(26) },
     { id: 'filets', label: 'Aider à réparer les filets', detail: 'À l’ombre, avant la prochaine sortie · +1 800 F', gain: 1800, needs: { energie: -14, social: 6 }, seconds: 5, counter: 'shifts', requires: energy(14) },
-    { id: 'quai', label: 'Prendre des nouvelles des pêcheurs', detail: 'Nanga def ? Ça a donné quoi aujourd’hui ?', needs: { social: 14, moral: 6 }, seconds: 3, counter: 'chats' },
+    { id: 'quai', label: 'Prendre des nouvelles des pêcheurs', detail: `${say('Na nga def ?')} Ça a donné quoi aujourd’hui ?`, needs: { social: 14, moral: 6 }, seconds: 3, counter: 'chats' },
   ],
   fish: [
     { id: 'poisson-frais', label: 'Commander du poisson grillé', detail: 'Poisson du jour, pain et citron', cost: 1200, needs: { faim: 42, moral: 7 }, seconds: 3, counter: 'meals' },
@@ -44,14 +45,14 @@ export const CITY_ACTIONS = {
   boutique: [
     { id: 'pain-lait', label: 'Pain et lait', detail: 'Le petit-déjeuner du coin', cost: 400, needs: { faim: 25, energie: 4 }, seconds: 2, counter: 'meals' },
     { id: 'boutique-stock', label: 'Aider à ranger le stock', detail: 'Un service à la boutique · +1 500 F', gain: 1500, needs: { energie: -15, hygiene: -4, social: 4 }, seconds: 4, counter: 'shifts', requires: energy(15) },
-    { id: 'boutique-salut', label: 'Prendre des nouvelles de Mamadou', detail: 'Jaaraama ! Et la famille ?', needs: { social: 11, moral: 4 }, seconds: 3, counter: 'chats' },
+    { id: 'boutique-salut', label: 'Prendre des nouvelles de Mamadou', detail: `Salaam aleekum ! ${say('Ana waa kër gi ?')}`, needs: { social: 11, moral: 4 }, seconds: 3, counter: 'chats' },
   ],
   salon: [
     { id: 'coiffure', label: 'Se faire coiffer', detail: 'Un moment pour soi', cost: 1500, needs: { moral: 14, hygiene: 8, social: 5 }, seconds: 4 },
     { id: 'salon-parler', label: 'Écouter les nouvelles du quartier', detail: 'Le salon a toujours une histoire', needs: { social: 13, moral: 5 }, seconds: 3, counter: 'chats' },
   ],
   square: [
-    { id: 'attaya-place', label: 'Partager l’attaya', detail: 'Ñu naan attaya · prendre le temps ensemble', cost: 100, needs: { social: 18, moral: 9, energie: 3 }, seconds: 4, counter: 'chats' },
+    { id: 'attaya-place', label: 'Partager l’attaya', detail: `${say('Kaay naan attaya')} · prendre le temps ensemble`, cost: 100, needs: { social: 18, moral: 9, energie: 3 }, seconds: 4, counter: 'chats' },
     { id: 'dames', label: 'Regarder la partie de dames', detail: 'Les commentaires font partie du spectacle', needs: { social: 10, moral: 9 }, seconds: 3, counter: 'visits' },
     { id: 'banc', label: 'Se poser à l’ombre', detail: 'Souffler et regarder la ville vivre', needs: { energie: 10, moral: 6 }, seconds: 4 },
   ],

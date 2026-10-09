@@ -4,6 +4,7 @@ import type { RemoteAvatars } from './avatars';
 import type { ChatAck, ChatMessage, Peer } from './protocol';
 import { cleanChatText, bubbleText, FAILURE_LABEL, CHAT_MAX_CHARS, CHAT_NEAR_RADIUS, REPORT_REASONS, type ChatChannel, type ChatFailure, type ReportReason } from './chatRules';
 import { phoneHooks } from '../ui/phoneHooks';
+import { QUICK_CHAT } from '../i18n/wolof';
 import './chat.css';
 
 /**
@@ -305,12 +306,15 @@ export class ChatUi {
 
     const reactions = el('div', 'chat-react');
     for (const r of REACTIONS) { const rb = el('button', '', r); rb.type = 'button'; rb.setAttribute('aria-label', `Envoyer ${r}`); rb.addEventListener('click', () => this.send(r)); reactions.appendChild(rb); }
+    // Quick Wolof phrases (src/i18n/wolof.ts), sent as written; the French gloss is the tooltip.
+    const phrases = el('div', 'chat-phrases');
+    for (const q of QUICK_CHAT) { const qb = el('button', '', q.wo); qb.type = 'button'; qb.title = q.fr; qb.setAttribute('aria-label', `Envoyer « ${q.wo} » (${q.fr})`); qb.addEventListener('click', () => this.send(q.wo)); phrases.appendChild(qb); }
     const row = el('div', 'chat-row');
     const f = this.field; f.id = 'chatInput'; f.type = 'text'; f.maxLength = CHAT_MAX_CHARS; f.autocomplete = 'off'; f.enterKeyHint = 'send';
     f.setAttribute('aria-label', 'Message'); f.spellcheck = true;
     const sendBtn = el('button', 'chat-send', 'Envoyer'); sendBtn.type = 'submit';
     row.append(f, sendBtn);
-    this.form.append(reactions, row, this.counter, this.note);
+    this.form.append(reactions, phrases, row, this.counter, this.note);
     this.form.addEventListener('submit', e => { e.preventDefault(); const text = f.value; if (!text.trim()) return; this.send(text); f.value = ''; this.saveDraft(); });
     f.addEventListener('input', () => this.saveDraft());
     f.addEventListener('focus', () => { this.focused = true; this.d.suspend(true); });

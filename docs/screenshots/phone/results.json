@@ -7,12 +7,12 @@
   {
     "name": "desktop: status bar shows city time and FCFA balance",
     "ok": true,
-    "detail": "05:49 · Jour 175 3 000 F"
+    "detail": "04:58 · Jour 187 3 000 F"
   },
   {
-    "name": "desktop: hook apps hidden without their module",
+    "name": "desktop: hook apps shown only with their module",
     "ok": true,
-    "detail": "portefeuille,carte,arene,carnet,aide,reglages"
+    "detail": "portefeuille,carte,quartier,travail,maison,habitants,arene,carnet,aide,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"maison\":true,\"habitants\":true}"
   },
   {
     "name": "desktop: no movement while the phone is open",
@@ -55,7 +55,7 @@
     "detail": "{\"here\":\"pikine\",\"hubs\":4}"
   },
   {
-    "name": "desktop: wallet shows game money and the pending history line",
+    "name": "desktop: wallet shows game money and the ledger",
     "ok": true,
     "detail": ""
   },
@@ -68,6 +68,11 @@
     "name": "desktop: sound toggles off and on (saved)",
     "ok": true,
     "detail": "[{\"i\":true,\"s\":\"off\"},{\"i\":false,\"s\":\"on\"}]"
+  },
+  {
+    "name": "desktop: language is French with Wolof expressions; glosses hide and show (saved)",
+    "ok": true,
+    "detail": "[{\"s\":\"off\",\"t\":\"Traduction des expressions wolofMasquée\"},{\"s\":\"on\",\"t\":\"Traduction des expressions wolofAffichée\"}]"
   },
   {
     "name": "desktop: camera sensitivity setting",
@@ -87,7 +92,7 @@
   {
     "name": "desktop: Escape closes the phone, then W moves the player",
     "ok": true,
-    "detail": "moved 1.12"
+    "detail": "moved 0.56"
   },
   {
     "name": "desktop: M reopens on the last app",
@@ -142,12 +147,12 @@
   {
     "name": "phone: status bar shows city time and FCFA balance",
     "ok": true,
-    "detail": "07:12 · Jour 175 3 000 F"
+    "detail": "07:31 · Jour 187 3 000 F"
   },
   {
-    "name": "phone: hook apps hidden without their module",
+    "name": "phone: hook apps shown only with their module",
     "ok": true,
-    "detail": "portefeuille,carte,arene,carnet,aide,reglages"
+    "detail": "portefeuille,carte,quartier,travail,maison,habitants,arene,carnet,aide,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"maison\":true,\"habitants\":true}"
   },
   {
     "name": "phone: no movement while the phone is open",
@@ -190,7 +195,7 @@
     "detail": "{\"here\":\"pikine\",\"hubs\":4}"
   },
   {
-    "name": "phone: wallet shows game money and the pending history line",
+    "name": "phone: wallet shows game money and the ledger",
     "ok": true,
     "detail": ""
   },
@@ -203,6 +208,11 @@
     "name": "phone: sound toggles off and on (saved)",
     "ok": true,
     "detail": "[{\"i\":true,\"s\":\"off\"},{\"i\":false,\"s\":\"on\"}]"
+  },
+  {
+    "name": "phone: language is French with Wolof expressions; glosses hide and show (saved)",
+    "ok": true,
+    "detail": "[{\"s\":\"off\",\"t\":\"Traduction des expressions wolofMasquée\"},{\"s\":\"on\",\"t\":\"Traduction des expressions wolofAffichée\"}]"
   },
   {
     "name": "phone: camera sensitivity setting",
