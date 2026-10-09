@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Character, NPC_OUTFITS } from './character';
 import { Humanoid, humanoidReady, randomLook } from './humanoid';
-import { makeTaxi, makeCarRapide } from './vehicles';
+import { makeCarRapide } from './vehicles';
+import { buildVehicle, type VehicleKind } from './vehicleKit';
 import { pick } from '../core/rng';
 import type { HubWorld } from '../world/types';
 
@@ -52,9 +53,25 @@ export class Crowd {
 
 interface Car { g: THREE.Group; ax: number; az: number; bx: number; bz: number; t: number; speed: number; prev: string; lane: number }
 
+/** Traffic mix per neighbourhood (weights): car rapides and motorbikes in Pikine, taxis and buses downtown, 4×4s and luxury cars in Almadies. */
+const TRAFFIC_MIX: Record<HubWorld['id'], [VehicleKind, number][]> = {
+  plateau: [['taxi', 30], ['carRapide', 15], ['bus', 12], ['sedan', 18], ['suv', 8], ['luxury', 5], ['moto', 8], ['pickup', 2], ['truck', 2]],
+  corniche: [['taxi', 25], ['carRapide', 15], ['bus', 10], ['sedan', 20], ['suv', 10], ['luxury', 8], ['moto', 10], ['pickup', 2]],
+  almadies: [['taxi', 20], ['sedan', 20], ['suv', 22], ['luxury', 18], ['moto', 8], ['carRapide', 6], ['bus', 4], ['pickup', 2]],
+  pikine: [['carRapide', 28], ['taxi', 20], ['moto', 20], ['sedan', 10], ['pickup', 8], ['truck', 6], ['bus', 5], ['suv', 3]],
+};
+const LANE: Partial<Record<VehicleKind, number>> = { moto: 3.7, bus: 2.7, truck: 2.7 };
+function pickKind(hub: HubWorld['id'], r: number): VehicleKind {
+  const mix = TRAFFIC_MIX[hub] ?? TRAFFIC_MIX.plateau, total = mix.reduce((a, [, w]) => a + w, 0);
+  let x = r * total;
+  for (const [k, w] of mix) { x -= w; if (x <= 0) return k; }
+  return mix[0][0];
+}
+
 /**
- * Decorative local traffic. VISUAL ONLY: it never collides with, blocks or affects the player, jobs or
- * anything saved. Traffic that matters will be shared, server-validated vehicles (design doc, Implementation decisions).
+ * Decorative local traffic, built from the vehicle kit (src/actors/vehicleKit.ts: 1–3 draw calls each, LOD).
+ * VISUAL ONLY: it never collides with, blocks or affects the player, jobs or anything saved. Traffic that matters will
+ * be shared, server-validated vehicles (design doc, Implementation decisions).
  */
 export class DecorativeTraffic {
   group = new THREE.Group();
@@ -62,9 +79,10 @@ export class DecorativeTraffic {
   constructor(private world: HubWorld, private rand: () => number, count = 6) {
     for (let n = 0; n < count; n++) {
       const e = pick(world.edges, rand);
-      const g = rand() < 0.35 ? makeCarRapide() : makeTaxi(pick([0xf0b800, 0xf2f2ec, 0xd9482b, 0x2f8fd1], rand));
-      this.group.add(g);
-      this.cars.push({ g, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 5 + rand() * 3, prev: '', lane: 2.5 });
+      const kind = pickKind(world.id, rand()), seed = Math.floor(rand() * 1e6);
+      const v = kind === 'carRapide' ? { group: makeCarRapide({ seed }), speed: 6 } : (() => { const b = buildVehicle(kind, { seed }); return { group: b.group, speed: b.spec.speed }; })();
+      this.group.add(v.group);
+      this.cars.push({ g: v.group, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: v.speed * (0.85 + rand() * 0.3), prev: '', lane: LANE[kind] ?? 2.5 });
     }
   }
   /** Car rapide groups in this traffic (they carry an apprentice on the step). */

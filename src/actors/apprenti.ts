@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Humanoid, humanoidReady, randomLook } from './humanoid';
 import type { HubId } from '../core/types';
+import type { VehicleSpec } from './vehicleKit';
 
 /**
  * The car rapide apprentice: stands at the open rear door (parked) or hangs on the rear step (moving), one hand on the
@@ -53,8 +54,10 @@ export class Apprentice {
   /** Place him relative to a car group (front +z, rear door at -z on the left). */
   attach(car: THREE.Object3D) {
     car.add(this.h.group);
-    if (this.riding) { this.h.group.position.set(-0.45, 0.24, -3.62); this.h.group.rotation.y = Math.PI - 0.9; }
-    else { this.h.group.position.set(-1.6, -0.05, -3.9); this.h.group.rotation.y = -Math.PI / 2 - 0.5; }
+    // the vehicle kit gives the step and the standing spot (VehicleSpec.step); the Blender model keeps the old values
+    const step = (car.userData.vehicleSpec as VehicleSpec | undefined)?.step;
+    const at = step ? (this.riding ? step.riding : step.standing) : this.riding ? { x: -0.45, y: 0.24, z: -3.62, yaw: Math.PI - 0.9 } : { x: -1.6, y: -0.05, z: -3.9, yaw: -Math.PI / 2 - 0.5 };
+    this.h.group.position.set(at.x, at.y, at.z); this.h.group.rotation.y = at.yaw;
   }
 
   update(dt: number, near: boolean) {
