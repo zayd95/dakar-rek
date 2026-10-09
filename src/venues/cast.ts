@@ -1,4 +1,4 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import { Humanoid, humanoidReady, type Clip, type PersonLook } from '../actors/humanoid';
 import { seatClip, sitOriginY, type Seat, type Seats } from '../interact/seats';
 
@@ -22,6 +22,8 @@ export interface Role {
   /** No shoes (inside the mosque). */
   barefoot?: boolean;
 }
+
+const WP = new THREE.Vector3();
 
 export function hideShoes(h: Humanoid, hide = true) {
   h.group.traverse(o => { if ((o as THREE.Mesh).isMesh && o.name.startsWith('Cloth_Shoes')) o.visible = !hide; });
@@ -60,7 +62,7 @@ export class Cast {
   /** Distance culling and animation (only the shown roles near the viewer). */
   update(dt: number, viewer: { x: number; z: number }, limit: number, active = true) {
     for (const e of this.list) {
-      const p = e.h.group.position;
+      const p = e.h.group.getWorldPosition(WP);                              // roles may ride a moving parent (a pirogue)
       const vis = active && e.shown && Math.hypot(p.x - viewer.x, p.z - viewer.z) <= limit;
       e.h.group.visible = vis;
       if (vis) e.h.animate(dt, 0);

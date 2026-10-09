@@ -253,7 +253,8 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
 }
 
 /** Open, tapered wooden hull with raised ends; all pieces merge with the city's static geometry. */
-function pirogue(b: Batch, x: number, z: number, length: number, yaw: number, variant: number, y = 0.08) {
+/** Painted pirogue (open hull, raised ends, thwarts, motor box at the +z stern), merged into `b`. */
+export function pirogue(b: Batch, x: number, z: number, length: number, yaw: number, variant: number, y = 0.08) {
   const palettes = [[0x236baa, 0xe3bd3a, 0xd74b38], [0x287c63, 0xd74b38, 0xf2dfa1], [0xdfa736, 0x246899, 0x2f8567]];
   const colors = palettes[variant % palettes.length], scale = length / 10;
   const hull = (low: number, high: number, color: number) => {

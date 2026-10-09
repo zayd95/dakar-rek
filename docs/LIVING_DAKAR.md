@@ -79,7 +79,35 @@ Composition examples:
 - **Plot / billboard** = sign: `inspect`, `own`, `rent`.
 - **Car rapide** = door: `ride` (board a vehicle seat); stops: `alight`.
 
-Already composed: the Maïga meals (pay → the plate is prepared → sit on a free bench or chair → eat → stay seated).
+Already composed:
+
+- **The Maïga meals** (pay → the plate is prepared → sit on a free bench or chair → eat → stay seated).
+- **The Dibi** (`src/venues/dibi.ts`, wave 1): one open-air venue on the old dibiterie lots — « Chez Pathé » next to the
+  starter home in Pikine and « de la Médina » on the Plateau (same plan, own owner and colours). Painted low walls on two
+  streets, the charcoal grill smoking at the corner (embers glow at night), the butcher's counter under a concrete roof,
+  long tables with benches and plastic tables under a rusty tin roof, a hand-wash kettle, a TV and a string of bulbs.
+  *Do:* order at the counter (pay → grilled → sit at a free table → eat with the dish on the table → stay seated): dibi
+  mouton, brochettes, the day's special, bissap, attaya in the evening; wash your hands; help at the grill (stand beside
+  the cook, a timed `work` step for now — the integration turns it into the shared timing gesture). *Who:* the owner
+  (short French/Wolof exchange: news, work, today's special), the cook, clients to greet (they sit on real seats).
+  *Earn / spend / own:* meals; a grill ladder (helper → grill → head of grill → evening service, 900 → 6 000 F a shift,
+  unlocked by shifts at that grill); a `ownership` hook is ready for the business lane. *Why return:* the special
+  changes every city day, the regular's price after five meals, the next rung of the ladder, the evening crowd and
+  attaya. Open 11 h–2 h (« Fermé · ouvre à 11 h », shutter down, cold grill); lively at night; location chat.
+- **The Grande Mosquée** (`src/venues/mosque.ts`, wave 1, Plateau): walled courtyard with two shade trees and benches
+  for the elders, a covered row of ablution taps with low stools and plastic kettles, a portico of arches with the shoe
+  racks, a white hall with green bands, a pale green dome and one minaret (green light ring at night). Ablutions seated at
+  a tap → « Entrer · laisser ses chaussures » (your pair waits on the rack, you are barefoot inside) → pray on a free
+  place of a row, kneeling (derived `Kneel` pose on `prayer` seats) or sit quietly → talk with the imam (greetings,
+  prayer times, how to help) → sweep the courtyard as a volunteer. **No reward for religious practice** (Habib, 9 Oct):
+  ablutions, prayer and the calm seat change no need, no money, no counter, no activity category. No commerce, no
+  location chat, always open; reading stays disabled until a verified text source exists. The rows fill up around the
+  five prayer times (`src/venues/prayer.ts`, Wolof names; also the place's `peaks` for the NPC lane).
+
+Composition seams added for this: `HubWorld.sites` (`src/world/sites.ts`: lots and blocks a module composes — the
+builder keeps the place's identity interactable and leaves the ground free, with the street dressing unchanged),
+`PlaceSpec.peaks` (busy hours), `Anchor.space` (one place across a courtyard and a hall), `Seat.clip` (the pose held on
+a seat: `Kneel` on prayer rows), seat kind `prayer`, `GameCtx.addInterior` used by a module's own interior.
 
 ## Waves
 

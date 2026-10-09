@@ -1,24 +1,30 @@
 // End-to-end checks of the composed venues (src/venues): walk in from the street, recognise the place, play its routes
 // (order → sit → eat; the grill gesture; the owner; ablutions → shoes off → prayer → imam), day / night / closed.
-// Usage: node scripts/check-venues.mjs [baseUrl] [outDir]   (needs a running build, e.g. `npx vite preview --port 4212`)
+// (order → sit → eat; the grill; the owner; ablutions → shoes off → prayer → imam; the pirogue trip → the mareyeuses).
+// Usage: flock /tmp/dakar-browser.lock node scripts/check-venues.mjs [baseUrl] [outDir]   (needs a running build, e.g.
+// `npx vite preview --port 4212`). ONLY=desktop|phone and SECTIONS=dibi,mosque,beach narrow a run while iterating.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4212/';
 const out = process.argv[3] ?? 'docs/screenshots/venues';
 fs.mkdirSync(out, { recursive: true });
-const T = { timeout: 120000 };
+const SLOW = Number(process.env.SLOW ?? 3);
+const T = { timeout: 120000 * SLOW };
 const results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+const SECTIONS = (process.env.SECTIONS ?? 'dibi,mosque,beach').split(',');
 for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 844 }, true]]) {
+  if (process.env.ONLY && process.env.ONLY !== label) continue;
   const page = await (await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch })).newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.venues, null, T);
   const d = (fn, arg) => page.evaluate(fn, arg);
-  const until = (fn, arg, timeout = 60000) => page.waitForFunction(fn, arg, { timeout }).then(() => true).catch(() => false);
+  // a loaded machine renders SwiftShader at a few frames per second and game time follows the frames (dt ≤ 0.1 s): wait long
+  const until = (fn, arg, timeout = 60000) => page.waitForFunction(fn, arg, { timeout: timeout * SLOW, polling: 200 }).then(() => true).catch(() => false);
   const shot = async name => { await page.waitForTimeout(700); await page.screenshot({ path: `${out}/${label}-${name}.png` }); };
   const W = (v, lx, lz) => ({ x: v.origin.x + lx * Math.cos(v.yaw) + lz * Math.sin(v.yaw), z: v.origin.z - lx * Math.sin(v.yaw) + lz * Math.cos(v.yaw) });
   const cam = (v, from, to) => { const a = W(v, from[0], from[2]), b = W(v, to[0], to[2]); return d(([p, q]) => window.__dakar.cam(p, q), [[a.x, from[1], a.z], [b.x, to[1], b.z]]); };
@@ -42,6 +48,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const closeModal = async () => { await d(() => document.querySelector('#modal .item.close')?.click()); await until(() => window.__dakar.pos().mode === 'play', null, 10000); };
 
   // ================================================================== Dibi of Pikine
+  if (SECTIONS.includes('dibi')) {
   await d(() => { window.__dakar.teleport('pikine'); window.__dakar.setHour(12.5); window.__dakar.state.data.needs.energie = 100; });
   await until(() => window.__dakar.pos().hub === 'pikine' && window.__dakar.venues().some(v => v.type === 'dibi'));
   let v = await venue('dibi');
@@ -102,27 +109,20 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await shot('dibi-pathe');
   await closeModal();
 
-  // the grill: a gesture — flip each skewer when it is golden
+  // the grill: a work shift beside the cook, facing the fire (a timed step; the integration makes it the shared timing gesture)
   const grillAt = anchor(v, 'grill');
   check(`${label}: the grill is a place to work`, await standAt(grillAt, v.yaw, /:grill$/, 0.2), JSON.stringify(await d(() => window.__dakar.focus())));
   const g0 = await d(() => ({ f: window.__dakar.focus(), wallet: window.__dakar.state.wallet }));
-  check(`${label}: « Aider au grill » shows what it pays`, g0.f?.primary === 'Aider au grill', g0.f?.all.join(' | '));
+  check(`${label}: « Aider au grill » is offered with its pay and the next rung`, g0.f?.primary === 'Aider au grill', g0.f?.all.join(' | '));
   await d(() => window.__dakar.act());
-  await until(() => !!window.__dakar.venues().find(x => x.type === 'dibi').shift, null, 15000);
-  const s0 = await d(() => ({ shift: window.__dakar.venues().find(x => x.type === 'dibi').shift, focus: window.__dakar.focus(), clip: window.__dakar.clip() }));
-  check(`${label}: the shift starts at the fire: « Retourner la brochette », hands on the grill`, !!s0.shift && s0.focus?.primary === 'Retourner la brochette' && s0.clip === 'Grab', JSON.stringify(s0.focus));
-  let flips = 0, early = 0, shotTaken = false;
-  for (const t0 = Date.now(); Date.now() - t0 < 150000;) {
-    const s = await d(() => window.__dakar.venues().find(x => x.type === 'dibi').shift);
-    if (!s) break;
-    if (s.state === 'dore') {
-      if (!shotTaken && s.i === 1) { await shot('dibi-grill-flip'); shotTaken = true; }
-      await d(() => window.__dakar.act()); flips++;
-    } else if (s.state === 'cru' && s.i === 0 && s.f < 0.3 && !early) { await d(() => window.__dakar.act()); early++; }
-    await page.waitForTimeout(40);
-  }
-  const g1 = await d(() => ({ wallet: window.__dakar.state.wallet, grill: window.__dakar.venues().find(x => x.type === 'dibi').counters.grill, toast: document.getElementById('toast').textContent }));
-  check(`${label}: flipping on time pays the shift (more when golden) and counts toward the next rung`, g1.wallet - g0.wallet >= 350 && g1.wallet - g0.wallet <= 900 && g1.grill === 1, `+${g1.wallet - g0.wallet} F, ${flips} flips, toast « ${g1.toast} »`);
+  await until(() => (window.__dakar.activity()?.id ?? '').startsWith('grill_'), null, 20000);
+  await page.waitForTimeout(600);
+  const gw = await d(([p]) => ({ a: window.__dakar.activity(), clip: window.__dakar.clip(), pos: window.__dakar.pos(), cook: p }), [W(v, -8.0 + 1.15, 8.6 - 0.85)]);
+  check(`${label}: the player steps beside the cook and works the skewers`, gw.a?.id === 'grill_aide' && gw.clip === 'Grab' && Math.hypot(gw.pos.x - gw.cook.x, gw.pos.z - gw.cook.z) < 0.3, JSON.stringify({ clip: gw.clip, step: gw.a?.step }));
+  await cam(v, [-3.5, 2.6, 4.5], [-7.5, 1.0, 8.6]); await shot('dibi-grill'); await d(() => window.__dakar.cam(null));
+  await until(() => !window.__dakar.activity(), null, 120000);
+  const g1 = await d(() => ({ wallet: window.__dakar.state.wallet, grill: window.__dakar.venues().find(x => x.type === 'dibi').counters.grill, ledger: window.__dakar.state.data.ledger.at(-1) }));
+  check(`${label}: the shift pays, goes to the wallet history and counts toward the next rung`, g1.wallet - g0.wallet === 900 && g1.grill === 1 && /Aider au grill/.test(g1.ledger?.label ?? ''), `+${g1.wallet - g0.wallet} F « ${g1.ledger?.label} »`);
 
   // the evening: more people, lights, attaya; then closed
   await d(() => window.__dakar.setHour(21.5));
@@ -143,7 +143,9 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   check(`${label}: closed in the morning, with the reason shown (shutter down, cold grill, nobody)`, /Fermé · ouvre à 11 h/.test(closed.toast ?? '') && !closed.a && closed.v.shutter && !closed.v.smoke && closed.v.npcs === 0, `« ${closed.toast} » shutter=${closed.v.shutter}`);
   await shot('dibi-closed');
 
+  }
   // ================================================================== Grande Mosquée (Plateau)
+  if (SECTIONS.includes('mosque')) {
   await d(() => { window.__dakar.teleport('plateau'); window.__dakar.setHour(10); });
   await until(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.venues().some(x => x.type === 'mosque'));
   const m = await venue('mosque');
@@ -223,6 +225,46 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   // the Médina's Dibi is the same venue (one system, many places)
   const med = await d(() => window.__dakar.venues().find(x => x.type === 'dibi'));
   check(`${label}: the Médina's Dibi is the same venue with its own owner`, med?.name === 'Dibiterie de la Médina' && med.owner === 'Aliou' && med.seats.length >= 18, med?.name);
+  }
+  // ================================================================== Soumbédioune: the pirogue, then the mareyeuses
+  if (SECTIONS.includes('beach')) {
+  await d(() => { window.__dakar.teleport('corniche'); window.__dakar.setHour(7.5); const s = window.__dakar.state; s.data.needs.energie = 100; s.data.wallet = 1000; });
+  await until(() => window.__dakar.pos().hub === 'corniche' && window.__dakar.venues().some(x => x.type === 'beach'));
+  const b = await venue('beach');
+  check(`${label}: Soumbédioune has a pirogue ready to leave and the mareyeuses`, !!b && b.anchors.length === 2 && b.crew >= 1, b ? `${b.crew} fishermen` : 'none');
+  const boatAt = anchor(b, 'pirogue'), marketAt = anchor(b, 'mareyeuses');
+  // walk across the sand to the pirogue (from the landing, toward the boat's side)
+  await d(([p]) => window.__dakar.place(p.x + 6, p.z - 2, -Math.PI / 2 - 0.3), [boatAt]);
+  const reached = await walk(() => /:pirogue$/.test(window.__dakar.focus()?.id ?? ''), null, 30000);
+  const fb = await d(() => window.__dakar.focus());
+  check(`${label}: walking up to the pirogue offers the trip (morning catch)`, reached && fb?.primary === 'Partir avec les pêcheurs', JSON.stringify(fb));
+  const fish0 = await d(() => window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0);
+  await d(() => window.__dakar.act());
+  await until(() => window.__dakar.seated() === window.__dakar.venues().find(x => x.type === 'beach').seat, null, 20000);
+  await until(() => window.__dakar.venues().find(x => x.type === 'beach').off > 25, null, 120000);
+  const sea = await d(() => ({ v: window.__dakar.venues().find(x => x.type === 'beach'), pos: window.__dakar.pos(), a: window.__dakar.activity() }));
+  check(`${label}: aboard, the pirogue takes you out to sea`, sea.v.atSea && sea.pos.x < sea.v.dock.x - 20 && !!sea.a, `off=${sea.v.off.toFixed(1)} step=${sea.a?.step}`);
+  await d(([p]) => window.__dakar.cam([p.x + 14, 6, p.z + 10], [p.x - 2, 0.5, p.z]), [sea.pos]); await shot('beach-at-sea'); await d(() => window.__dakar.cam(null));
+  await until(() => !window.__dakar.activity(), null, 240000);
+  const back = await d(() => ({ v: window.__dakar.venues().find(x => x.type === 'beach'), seat: window.__dakar.seated(), fish: window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0 }));
+  check(`${label}: back on the sand with the catch (6 fish in the morning), still aboard`, back.fish - fish0 === 6 && back.seat === back.v.seat && back.v.off < 2, `fish ${fish0} → ${back.fish}`);
+  await d(() => window.__dakar.stand());
+  // the mareyeuses buy the catch
+  check(`${label}: at the fish market, the mareyeuses buy fish`, await standAt(marketAt, Math.PI, /:mareyeuses$/, 0.4), JSON.stringify(await d(() => window.__dakar.focus())));
+  const w0 = await d(() => window.__dakar.state.wallet);
+  await d(() => window.__dakar.act());
+  await until(() => !window.__dakar.activity() && (window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0) < 6 + 0, null, 60000);
+  await until(() => !window.__dakar.activity(), null, 60000);
+  const sold = await d(() => ({ w: window.__dakar.state.wallet, fish: window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0, save: JSON.parse(localStorage.getItem('dakarrek.guest.save') ?? '{}').counters?.['inv:poisson'] ?? 0 }));
+  check(`${label}: selling 4 fish pays 2 400 F; the 2 left are saved in the inventory`, sold.w - w0 === 2400 && sold.fish === back.fish - 4 && sold.save === sold.fish, JSON.stringify(sold));
+  await shot('beach-mareyeuses');
+  await d(() => window.__dakar.setHour(21));
+  await d(([p]) => window.__dakar.place(p.x, p.z, -Math.PI / 2), [boatAt]);
+  await until(() => /:pirogue$/.test(window.__dakar.focus()?.id ?? ''), null, 20000);
+  await d(() => window.__dakar.act());
+  await until(() => /Fermé · ouvre à 6 h/.test(document.getElementById('toast')?.textContent ?? ''), null, 15000);
+  check(`${label}: no trips at night (the reason is shown)`, /Fermé · ouvre à 6 h/.test(await toast()) && !(await d(() => window.__dakar.activity())), await toast());
+  }
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
 }
 await browser.close();

@@ -6,7 +6,6 @@ import { ActivityRunner, type ActivityServices } from '../src/activity/runner';
 import { Places, isPeak } from '../src/activity/places';
 import * as T from '../src/activity/templates';
 import type { Target } from '../src/interact/types';
-import { GrillShift, doneness, shiftPay, GOLDEN, BURNT } from '../src/venues/grill';
 import { PRAYER_TIMES, prayerAt, nextPrayer, prayerPeaks, hourLabel } from '../src/venues/prayer';
 import { imamTimes, imamGreeting, ownerGreeting, ownerWork, ownerSpecial } from '../src/venues/talk';
 import { COMPOSED_SITES, isComposed } from '../src/world/sites';
@@ -26,31 +25,10 @@ function rig(space = 'street') {
 const run = (r: ActivityRunner, seconds: number) => { for (let t = 0; t < seconds; t += 0.25) r.update(0.25); };
 const A = (id: string, x = 0, z = 0, extra: object = {}) => ({ id, kind: 'spot' as const, x, z, ...extra });
 
-describe('grill shift: a gesture with a rule, not a progress bar', () => {
-  it('reads the skewer: raw, golden, overcooked, burnt', () => {
-    expect(doneness(0.3)).toBe('cru'); expect(doneness(GOLDEN[0])).toBe('dore'); expect(doneness(0.9)).toBe('trop'); expect(doneness(BURNT)).toBe('brule');
-  });
-  it('flipping too early does nothing, golden scores 1, late 0.6; a forgotten skewer burns and the next one goes on', () => {
-    const g = new GrillShift({ skewers: 3, seconds: 2 });
-    g.update(0.5); expect(g.flip()).toBe('trop_tot'); expect(g.i).toBe(0);
-    g.update(0.9); expect(g.flip()).toBe('parfait'); expect(g.i).toBe(1); expect(g.t).toBe(0);
-    g.update(1.9); expect(g.flip()).toBe('trop_cuit');
-    let burnt = null; for (let k = 0; k < 40 && !burnt; k++) burnt = g.update(0.1);
-    expect(burnt).toBe('brule'); expect(g.done).toBe(true);
-    expect(g.points).toBeCloseTo(1.6); expect(g.golden).toBe(1);
-    expect(g.flip()).toBeNull();
-  });
-  it('pays 40 % for showing up and the rest for quality', () => {
-    expect(shiftPay(900, 4, 4)).toBe(900);
-    expect(shiftPay(900, 0, 4)).toBe(350);
-    expect(shiftPay(1800, 2.6, 5)).toBe(1300);
-  });
-});
-
 describe('Dibi recipe: why return tomorrow', () => {
   const counters: Record<string, number> = {};
-  let hour = 13, day = 3, played: T.PlayJob | null = null;
-  const hooks: T.PlaceHooks = { count: k => counters[k] ?? 0, hour: () => hour, day: () => day, converse: () => {}, playJob: j => { played = j; }, tired: e => (e > 50 ? 'fatigué' : null) };
+  let hour = 13, day = 3;
+  const hooks: T.PlaceHooks = { count: k => counters[k] ?? 0, hour: () => hour, day: () => day, converse: () => {}, tired: e => (e > 50 ? 'fatigué' : null) };
   const place = T.dibi({ id: 'pk:dibi', name: 'Chez Pathé', space: 'street', owner: 'Pathé', tables: { x: 5, z: 0 }, anchors: [A('counter'), A('grill', 6)] }, hooks);
   const keys = T.dibiCounters('pk:dibi');
   const visible = (anchor: string) => place.offers[anchor].filter(o => !o.visible || o.visible()).map(o => o.id);
@@ -82,12 +60,15 @@ describe('Dibi recipe: why return tomorrow', () => {
     expect(place.offers.grill[0].detail).toMatch(/3\/5 services avant « Tenir le grill »/);   // live text
     counters[keys.grill] = 0;
   });
-  it('with a module that plays it, the grill job is handed over as a gesture (and the rung’s data goes with it)', () => {
-    const r = rig(); const g = place.offers.grill[0];
-    expect(g.primitive).toBe('work'); expect(g.quiet).toBe(true);
-    r.runner.start(g); expect(played).toMatchObject({ id: 'aide', skewers: 4, counter: keys.grill });
-    const timed = T.dibi({ id: 'x', name: 'x', space: 'street', anchors: [A('counter'), A('grill', 6)] }).offers.grill[0];
-    expect(timed.steps[0].effects?.money).toBe(900);                                            // without the hook: a timed shift
+  it('each rung is a timed work shift: pay, fatigue, the counter of this grill, the service category', () => {
+    const g = place.offers.grill[0];
+    expect(g.primitive).toBe('work');
+    expect(g.steps[0]).toMatchObject({ seconds: 6, clip: 'Grab', effects: { money: 900, counters: { [keys.grill]: 1, shifts: 1 }, category: 'service' } });
+    expect(g.steps[0].effects!.needs!.energie).toBeLessThan(0);
+    const r = rig(); r.state.data.needs.energie = 100;
+    expect(r.runner.blocked(g)).toBeNull();
+    const tired = T.dibi({ id: 'y', name: 'y', space: 'street', anchors: [A('counter'), A('grill', 6)] }, { tired: () => 'Repose-toi avant ce service' });
+    expect(r.runner.blocked(tired.offers.grill[0])).toBe('Repose-toi avant ce service');      // too tired: the reason is shown
   });
 });
 
@@ -141,6 +122,37 @@ describe('mosque recipe: calm, two spaces, no reward', () => {
     gathering = 'Tisbaar'; expect(vis()).toEqual(['priere_groupe', 'calme']); expect(place.offers.hall[1].detail).toBe('Tisbaar'); gathering = null;
     const r = rig(); expect(r.runner.blocked(place.offers.shelf[0])).toMatch(/texte vérifié/);
     r.runner.start(place.offers.door[0]); expect(entered).toBe(1);
+  });
+});
+
+describe('fishing beach: a trip in the pirogue, then the mareyeuses', () => {
+  let hour = 7;
+  const beach = T.fishingBeach({ id: 'cn:beach', name: 'Soumbédioune', space: 'street', boat: 'pirogue', anchors: [A('pirogue'), A('mareyeuses', 10)] }, { hour: () => hour, converse: () => {} });
+  const vis = (a: string) => beach.offers[a].filter(o => !o.visible || o.visible());
+  it('the catch depends on the hour: fuller in the morning', () => {
+    expect(T.fishCatch(7)).toBe(6); expect(T.fishCatch(12)).toBe(4); expect(T.fishCatch(18)).toBe(3);
+    expect(vis('pirogue').map(o => o.id)).toEqual(['sortie_6']); hour = 13; expect(vis('pirogue').map(o => o.id)).toEqual(['sortie_4']); hour = 7;
+    expect(beach.hours).toEqual([6, 20]); expect(beach.chat).toBe(true);
+  });
+  it('the trip boards the pirogue seat, goes out, pulls the net (the catch), comes back; the player stays aboard', () => {
+    const r = rig(); r.state.data.needs.energie = 100;
+    r.seats.add({ id: 'pirogue', x: 30, z: 30, top: 0.76, yaw: 0, kind: 'vehicle', space: 'street', occupant: null });
+    const trip = vis('pirogue')[0];
+    expect(trip.steps.map(s => s.label)).toEqual(Object.values(T.TRIP_STEPS));
+    let fish = 0; const runner = new ActivityRunner({ ...(r.runner as unknown as { s: ActivityServices }).s, item: (id, n) => { if (id === 'poisson') fish += n; } });
+    runner.start(trip);
+    expect(r.seated()?.id).toBe('pirogue');                                                  // boards from the beach, wherever the seat is
+    run(runner, 22);
+    expect(runner.running).toBe(false); expect(fish).toBe(6); expect(r.seated()?.id).toBe('pirogue');
+    expect(r.state.data.counters.sorties_peche).toBe(1);
+  });
+  it('the mareyeuses buy one or four fish (you need them) and sell one', () => {
+    expect(vis('mareyeuses').map(o => o.id)).toEqual(['vendre', 'vendre1', 'acheter', 'mareyeuse']);
+    expect(beach.offers.mareyeuses[0].steps[0].effects).toMatchObject({ money: 4 * T.FISH_PRICE.sell, items: { poisson: -4 } });
+    expect(beach.offers.mareyeuses[2].price).toBe(T.FISH_PRICE.buy);
+    const r = rig(); const sell1 = beach.offers.mareyeuses[1];
+    const runner = new ActivityRunner({ ...(r.runner as unknown as { s: ActivityServices }).s, hasItem: () => false });
+    expect(runner.blocked(sell1)).toMatch(/poisson/);
   });
 });
 

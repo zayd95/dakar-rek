@@ -3,6 +3,7 @@ import { People, type Body } from '../interact/people';
 import { VenueMaterials } from './kit';
 import { buildDibi } from './dibi';
 import { buildMosque } from './mosque';
+import { buildBeach } from './beach';
 import { nightOf, type Venue, type VenueEnv } from './venue';
 import { PRAYER_TIMES, nextPrayer, prayerAt } from './prayer';
 
@@ -10,7 +11,8 @@ export { PRAYER_TIMES, prayerAt, nextPrayer, prayerPeaks } from './prayer';
 
 /**
  * Venues (docs/LIVING_DAKAR.md): real places composed from the shared framework on the sites the hub builder leaves
- * free (src/world/sites.ts) — the Dibi of Pikine and of the Médina, the Grande Mosquée. Each venue = procedural geometry
+ * free (src/world/sites.ts) — the Dibi of Pikine and of the Médina, the Grande Mosquée — and on city blocks that
+ * already exist (Soumbédioune's pirogue and mareyeuses). Each venue = procedural geometry
  * in a few merged draw calls + a place (anchors, offers, hours, peaks, chat) built by a recipe of
  * src/activity/templates.ts + seats of the shared registry + the people who hold it. Everything is rebuilt per hub.
  */
@@ -30,16 +32,17 @@ export const VenuesModule: GameModule = {
     // clients at the tables and elders in the courtyard can be greeted like anyone in the street
     people = new People(() => bodies.flatMap(f => f()), ctx.activities, line => ctx.toast(line), () => ({ x: ctx.player.pos.x, z: ctx.player.pos.z }));
     ctx.interactions.add({ name: 'venue-people', collect: (space, x, z, out) => people?.collect(space, x, z, out) });
-    // jobs played in the world (the grill's « Retourner la brochette ») are targets too
-    ctx.interactions.add({ name: 'venue-jobs', collect: (space, x, z, out) => { for (const v of venues) v.collect?.(space, x, z, out); } });
   },
   hubLoaded(ctx, hub) {
     clear();
     const sites = hub.sites ?? [];
-    if (!sites.length) return;
+    // Soumbédioune's beach is a city block of the hub: the venue joins it through the places it already has
+    const landing = hub.interactables.find(i => i.id === `${hub.id}:city:soumbedioune`), market = hub.interactables.find(i => i.id === `${hub.id}:city:fish-market`);
+    if (!sites.length && !(landing && market)) return;
     mats = new VenueMaterials();
     const env: VenueEnv = { ctx, mats, lite: ctx.quality() === 'low', addPeople: f => bodies.push(f) };
     for (const s of sites) venues.push(s.kind === 'mosque' ? buildMosque(env, s) : buildDibi(env, s));
+    if (landing && market) venues.push(buildBeach(env, landing, market));
   },
   update(ctx, dt) {
     if (!venues.length) return;

@@ -34,14 +34,7 @@ export interface PlaceHooks {
   prayReady?(): string | null;
   /** One of the place's activities finished (the module reacts: ablutions done, a prop, a counter…). */
   done?(activity: string): void;
-  /**
-   * The module plays this job as a gesture in the world (flip the skewers on time, serve, haul…) and pays through the
-   * runner when it ends; without it, the job is a timed `work` step.
-   */
-  playJob?(job: PlayJob): void;
 }
-/** A job a module plays in the world: the rung's data and the counter its shifts go to. */
-export type PlayJob = GrillRank & { counter: string };
 
 type At = (id: string) => Anchor;
 const need = (a: Anchor | undefined, id: string): Anchor => { if (!a) throw new Error(`place recipe: missing anchor ${id}`); return a; };
@@ -51,16 +44,12 @@ const opt = <T>(cond: unknown, v: T): T[] => (cond ? [v] : []);
 interface Base { id: string; name: string; space: string; anchors: Anchor[] }
 
 /** A rung of a Dibi's grill ladder: helping at the grill pays more as the player keeps coming back (shifts per place). */
-export interface GrillRank {
-  id: string; label: string; detail: string; from: number; pay: number; seconds: number; energie: number; evening?: boolean;
-  /** Played shift: skewers in the batch and seconds each one takes to cook (less time to react higher up the ladder). */
-  skewers: number; cook: number;
-}
+export interface GrillRank { id: string; label: string; detail: string; from: number; pay: number; seconds: number; energie: number; evening?: boolean }
 export const GRILL_LADDER: readonly GrillRank[] = [
-  { id: 'aide', label: 'Aider au grill', detail: 'Tourner les brochettes, éventer la braise', from: 0, pay: 900, seconds: 6, energie: 8, skewers: 4, cook: 3.6 },
-  { id: 'grilleur', label: 'Tenir le grill', detail: 'Tu grilles seul pendant que le patron sert', from: 5, pay: 1800, seconds: 7, energie: 10, skewers: 5, cook: 3.2 },
-  { id: 'chef', label: 'Chef de grill', detail: 'Tu mènes le grill et l’apprenti', from: 15, pay: 3500, seconds: 8, energie: 12, skewers: 6, cook: 2.9 },
-  { id: 'soir', label: 'Mener le service du soir', detail: 'Grill, commandes et caisse jusqu’à la fermeture', from: 30, pay: 6000, seconds: 10, energie: 16, evening: true, skewers: 8, cook: 2.6 },
+  { id: 'aide', label: 'Aider au grill', detail: 'Tourner les brochettes, éventer la braise', from: 0, pay: 900, seconds: 6, energie: 8 },
+  { id: 'grilleur', label: 'Tenir le grill', detail: 'Tu grilles seul pendant que le patron sert', from: 5, pay: 1800, seconds: 7, energie: 10 },
+  { id: 'chef', label: 'Chef de grill', detail: 'Tu mènes le grill et l’apprenti', from: 15, pay: 3500, seconds: 8, energie: 12 },
+  { id: 'soir', label: 'Mener le service du soir', detail: 'Grill, commandes et caisse jusqu’à la fermeture', from: 30, pay: 6000, seconds: 10, energie: 16, evening: true },
 ];
 /** Evening at a Dibi (the grill's busiest hours, attaya after the meal). */
 export const isEvening = (h: number) => h >= 18 || h < 2;
@@ -110,16 +99,12 @@ export function dibi(b: Base & { owner?: string; tables?: { x: number; z: number
   const seat: SeatPick | undefined = b.tables ? { near: { x: b.tables.x, z: b.tables.z }, r: b.tables.r ?? 8 } : undefined;
   const meal = (spec: ActivitySpec) => countOn(spec, keys.meals);
   const hour = () => h.hour?.() ?? 12;
-  const grill = GRILL_LADDER.map(r => {
-    const base = { id: 'grill_' + r.id, label: r.label, requires: () => h.tired?.(r.energie) ?? null, visible: () => grillRank(n(keys.grill), hour()) === r };
-    const spec = h.playJob ? P.handOver('work', { ...base, then: () => h.playJob!({ ...r, counter: keys.grill }) })
-      : P.work({ ...base, pay: r.pay, seconds: r.seconds, counter: keys.grill, category: 'service', clip: 'Grab', needs: { energie: -r.energie, hygiene: -6, faim: -4 } });
-    return live(spec, () => {
-      const done = n(keys.grill), next = nextGrillRank(done);
-      const what = h.playJob ? `${r.skewers} brochettes à retourner bien dorées · jusqu’à ${r.pay} F` : r.detail;
-      return next ? `${what} · ${done}/${next.from} services avant « ${next.label} »` : what;
-    });
-  });
+  // a timed `work` step per rung (the integration turns it into the shared timing gesture); the text follows the save
+  const grill = GRILL_LADDER.map(r => live(P.work({ id: 'grill_' + r.id, label: r.label, pay: r.pay, seconds: r.seconds, counter: keys.grill, category: 'service', clip: 'Grab',
+    needs: { energie: -r.energie, hygiene: -6, faim: -4 }, requires: () => h.tired?.(r.energie) ?? null, visible: () => grillRank(n(keys.grill), hour()) === r }), () => {
+    const done = n(keys.grill), next = nextGrillRank(done);
+    return next ? `${r.detail} · ${done}/${next.from} services avant « ${next.label} »` : r.detail;
+  }));
   return { id: b.id, name: b.name, space: b.space, type: 'dibi', hours: [11, 2], chat: true, peaks: b.peaks ?? [[12.5, 14.5], [19, 1]],
     anchors: [at('counter'), at('grill')], offers: {
       counter: [
@@ -201,14 +186,37 @@ export function shop(b: Base & { catalogue: string; quick?: { id: string; label:
   } };
 }
 
-/** Fishing beach: unload the catch for pay, bring fish home, sell fish to the mareyeuses. */
-export function fishingBeach(b: Base, h: PlaceHooks = {}): PlaceSpec {
+/** A trip's catch by the hour: the morning boats come back fuller. */
+export const fishCatch = (h: number) => (h >= 6 && h < 10 ? 6 : h < 16 ? 4 : 3);
+/** What the mareyeuses pay for a fish, and what they sell one for. */
+export const FISH_PRICE = { sell: 600, buy: 700 } as const;
+/** Steps of a fishing trip; the module moves the boat along them (`TRIP_STEPS` labels). */
+export const TRIP_STEPS = { board: 'Tu embarques', out: 'Au large', net: 'Tu tires le filet', back: 'Retour au rivage' } as const;
+
+/**
+ * Fishing beach: go out with the fishermen in a pirogue (board its seat → out to sea → pull the net → back to the shore;
+ * the catch goes to the inventory, more in the morning), then sell fish to the mareyeuses (or buy one). `boat` is the
+ * pirogue's seat id; the module that owns the boat moves it along the trip's steps.
+ */
+export function fishingBeach(b: Base & { boat?: string }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
-  return { ...b, type: 'beach', hours: [6, 20], chat: true, anchors: [at('pirogue'), at('mareyeuses')], offers: {
-    pirogue: [P.fish({ id: 'debarquer', label: 'Débarquer les caisses', seconds: 8, pay: 1500 }), P.fish({ id: 'peche', label: 'Partir avec les pêcheurs', seconds: 12, fish: 4 })],
+  const hour = () => h.hour?.() ?? 12;
+  const trip = (n: number): ActivitySpec => ({
+    id: `sortie_${n}`, primitive: 'fish', label: 'Partir avec les pêcheurs', icon: P.ICONS.fish, detail: `${n} poissons pour toi au retour${n === 6 ? ' (pêche du matin)' : ''}`,
+    visible: () => fishCatch(hour()) === n,
+    steps: [
+      { label: TRIP_STEPS.board, primitive: 'ride', seat: b.boat ?? 'near', seconds: 1.5 },
+      { label: TRIP_STEPS.out, primitive: 'ride', seconds: 6 },
+      { label: TRIP_STEPS.net, primitive: 'fish', seconds: 8, effects: { items: { poisson: n }, needs: { energie: -10, hygiene: -6, faim: -4 }, counters: { sorties_peche: 1 }, category: 'peche' } },
+      { label: TRIP_STEPS.back, primitive: 'ride', seconds: 6 },
+    ],
+  });
+  return { id: b.id, name: b.name, space: b.space, type: 'beach', hours: [6, 20], chat: true, peaks: [[6, 10], [16, 19]], anchors: [at('pirogue'), at('mareyeuses')], offers: {
+    pirogue: [trip(6), trip(4), trip(3)],
     mareyeuses: [
-      P.sell({ id: 'vendre', label: 'Vendre 4 poissons', price: 2400, items: { poisson: 4 } }),
-      P.buy({ id: 'acheter', label: 'Acheter un poisson', price: 700, items: { poisson: 1 } }),
+      P.sell({ id: 'vendre', label: 'Vendre 4 poissons', price: FISH_PRICE.sell * 4, items: { poisson: 4 } }),
+      P.sell({ id: 'vendre1', label: 'Vendre un poisson', price: FISH_PRICE.sell, items: { poisson: 1 } }),
+      P.buy({ id: 'acheter', label: 'Acheter un poisson', price: FISH_PRICE.buy, items: { poisson: 1 } }),
       ...opt(h.converse, P.talk({ id: 'mareyeuse', label: 'Discuter des prix', then: () => h.converse!('mareyeuse') })),
     ],
   } };

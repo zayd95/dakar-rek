@@ -545,11 +545,38 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const seats: HubWorld['seats'] = [];
   /** Sites left to the venues module (src/world/sites.ts): ground only, plus the place's identity interactable. */
   const sites: Site[] = [];
+  /**
+   * Footprint the replaced building had, kept as colliders only while the streets are dressed: random trees, palms and
+   * stalls test them, so the rest of the hub keeps exactly the same layout. Removed before the hub is returned.
+   */
+  const ghosts: Collider[] = [];
+  const ghost = (x0: number, z0: number, x1: number, z1: number, h: number) => { const c = { x0, z0, x1, z1, h }; ghosts.push(c); colliders.push(c); };
+  const inSite = (x: number, z: number) => sites.some(s => x > s.x0 - 0.3 && x < s.x1 + 0.3 && z > s.z0 - 0.3 && z < s.z1 + 0.3);
+  /**
+   * Street dressing that would fall inside a composed site is not drawn, but it draws its random numbers and keeps its
+   * collider as a ghost exactly as before, so every later tree, palm and stall of the hub stays where it was.
+   */
+  const dress = (x: number, z: number, place: () => void) => {
+    if (!inSite(x, z)) { place(); return; }
+    const marks = [plain, leaves, trunks].map(b => b.mark()), n = colliders.length;
+    place();
+    [plain, leaves, trunks].forEach((b, i) => b.rollback(marks[i]));
+    for (const c of colliders.splice(n)) ghost(c.x0, c.z0, c.x1, c.z1, c.h);
+  };
   const composedLot = (k: KioskSpec) => {
     const a = k.lot % 2, b = k.lot >> 1, L = lotRect(k.i, k.j, a, b), dir = b ? 1 : -1;
     const key = `${k.kind}:${k.i}${k.j}`, itId = `${id}:${key}`;
     sites.push({ key, kind: 'dibiterie', name: k.name, x0: L.x0, z0: L.z0, x1: L.x1, z1: L.z1, front: { x: 0, z: dir }, side: { x: a ? 1 : -1, z: 0 }, interactable: itId });
     interactables.push({ id: itId, name: k.name, kind: 'actions', x: L.cx, z: dir > 0 ? L.z1 : L.z0, radius: 3, actions: [] });
+    // the old dibiterie's colliders (same numbers as dibiterie() above)
+    const w = 11, d = 7.5, h = 3.4, cx = L.cx, cz = dir > 0 ? L.z1 - d / 2 - 0.5 : L.z0 + d / 2 + 0.5;
+    const at = (t: number) => cz + dir * t, front = cz + dir * d / 2, back = cz - dir * d / 2;
+    const g = (x: number, z: number, gw: number, gd: number, gh: number) => ghost(x - gw / 2, z - gd / 2, x + gw / 2, z + gd / 2, gh);
+    g(cx - 2.5, at(d / 2 - 0.6), 2.0, 0.8, 1); g(cx + 2.4, at(-d / 2 + 1.4), 4.6, 1.2, 1.1); g(cx - w / 2 + 0.6, cz, 0.6, 3.4, 0.5);
+    g(cx - 1.2, at(-0.3), 1.2, 0.8, 0.8); g(cx + 1.4, at(1.5), 1.2, 0.8, 0.8);
+    ghost(cx - w / 2 - 0.3, Math.min(back, front), cx - w / 2 + 0.15, Math.max(back, front), h);
+    ghost(cx + w / 2 - 0.15, Math.min(back, front), cx + w / 2 + 0.3, Math.max(back, front), h);
+    g(cx, back, w, 0.4, h);
   };
 
   const kioskAt = (k: KioskSpec) => {
@@ -611,6 +638,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       case 'mosque': {
         if (isComposed(id, `mosque:${i}${j}`)) {
           for (const sx of [-1, 1]) tree(cx + sx * 9, cz - 15, 1.1);          // the forecourt's two shade trees stay
+          for (const sx of [-1, 1]) ghost(cx + sx * 15 - 1.6, cz - 9.6, cx + sx * 15 + 1.6, cz - 6.4, 26);   // old minarets and hall
+          ghost(cx - 13, cz - 9, cx + 13, cz + 13, 11);
           sites.push({ key: `mosque:${i}${j}`, kind: 'mosque', name: 'Grande Mosquée', x0: bx, z0: bz, x1: bx + BLK, z1: bz + BLK, front: { x: 0, z: -1 } });
           break;
         }
@@ -1019,7 +1048,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const x = along ? roadC(k) + s * treeOff : tt, z = along ? tt : roadC(k) + s * treeOff;
     if (Math.abs(x) > HALF - 4 || Math.abs(z) > HALF - 4 || blocked(x, z, 0.6)) continue;
     if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 2) continue;
-    if (sp.style === 'villa' || sp.style === 'student') palm(x, z, 0.9 + R() * 0.3); else tree(x, z, 0.9 + R() * 0.3, banlieue && R() < 0.2);
+    dress(x, z, () => { if (sp.style === 'villa' || sp.style === 'student') palm(x, z, 0.9 + R() * 0.3); else tree(x, z, 0.9 + R() * 0.3, banlieue && R() < 0.2); });
   }
   let placed = 0;
   while (placed < sp.palms) {
@@ -1029,7 +1058,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     placed++;
     if (sp.sea === 'west' && x < -HALF + 8) continue;
     if (blocked(x, z, 0.8)) continue;
-    palm(x, z, 0.9 + R() * 0.4);
+    dress(x, z, () => palm(x, z, 0.9 + R() * 0.4));
   }
   if (sp.sea === 'west') for (let z = -HALF + 6; z < HALF - 4; z += 9) { if (Math.abs(z - roadC(Math.round((z + HALF - ROAD / 2) / PITCH))) > ROAD / 2 + 1) palm(-HALF - 1.2, z, 1.15, true); } // whitewashed trunks
   if (sp.sea === 'north') for (let x = -HALF + 10; x < HALF - 6; x += 18) palm(x, -HALF - 3, 1.1);
@@ -1039,9 +1068,10 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const x = along ? roadC(k) + s * (ROAD / 2 + 1.6) : t, z = along ? t : roadC(k) + s * (ROAD / 2 + 1.6);
     if (Math.abs(x) > HALF - 4 || Math.abs(z) > HALF - 4 || blocked(x, z, 1.2)) continue;
     if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 3) continue;
-    stall(x, z);
+    dress(x, z, () => stall(x, z));
   }
 
+  for (const c of ghosts) colliders.splice(colliders.indexOf(c), 1);   // the venues module builds the real ones
   for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true],
     [asphalt, asphaltMat, false], [tileRoof, tileRoofMat, true], [tin, tinMat, true], [trunks, trunkMat, true], [concrete, concreteMat, true],
     [ringSand, ringSandMat, false], [terrazzo, terrazzoMat, false], [roofSheet, roofSheetMat, true]] as [Batch, THREE.Material, boolean][]) {

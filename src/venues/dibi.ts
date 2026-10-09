@@ -4,9 +4,7 @@ import type { Site } from '../world/sites';
 import { rng } from '../core/rng';
 import { randomLook, type PersonLook } from '../actors/humanoid';
 import * as P from '../activity/primitives';
-import { dibi as dibiRecipe, dibiCounters, isEvening, REGULAR_MEALS, type PlayJob } from '../activity/templates';
-import type { Target } from '../interact/types';
-import { GrillShift, doneness, shiftPay, GOLDEN, BURNT, type FlipResult } from './grill';
+import { dibi as dibiRecipe, dibiCounters, isEvening, REGULAR_MEALS } from '../activity/templates';
 import { isOpen } from '../activity/places';
 import { VenueKit, Smoke, glowQuad } from './kit';
 import { Cast, type Role } from './cast';
@@ -209,7 +207,6 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     converse: () => talkOwner(),
     count: c => counter(ctx, c), day: () => ctx.day(), hour: () => ctx.hour(),
     tired: e => ctx.state.data.needs.energie < e ? 'Repose-toi avant ce service' : null,
-    playJob: job => startShift(job),
   });
   place.anchors.push({ id: 'lavabo', name: 'Lave-mains', kind: 'spot', ...at(-9.3, 4.6), y: 1.3, radius: 1.3 });
   place.offers.lavabo = [P.use({ id: 'mains', primitive: 'wash', label: 'Se laver les mains', detail: 'La bouilloire et la bassine, avant de manger', seconds: 2, effects: { needs: { hygiene: 6 } } })];
@@ -249,63 +246,15 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   };
   let t = 0, moment = '';
 
-  // ---------------------------------------------------------------- the grill shift: flip each skewer when it is golden
-  const skewerMat = k.keep(new THREE.MeshLambertMaterial({ color: 0xc0504a }));
-  const skewerG = (() => { const b = new Batch(); b.box(0.9, 0.012, 0.012, 0, 0, 0, 0xc8c8c8); for (let m = 0; m < 5; m++) b.box(0.1, 0.07, 0.07, -0.26 + m * 0.13, -0.03, 0, 0xffffff); const g = b.build(skewerMat, false, true)!.geometry; k.keep(g); return g; })();
-  const active = new THREE.Mesh(skewerG, skewerMat); active.visible = false; k.group.add(active);
-  const trayMats: THREE.MeshLambertMaterial[] = [];
-  const tray = Array.from({ length: 8 }, (_, n) => {
-    const mat = k.keep(new THREE.MeshLambertMaterial({ color: 0x8a4a24 })); trayMats.push(mat);
-    const m = new THREE.Mesh(skewerG, mat); m.visible = false; m.rotation.y = Math.PI / 2;
-    m.position.set(-10.1 + (n % 2) * 0.12 - 0.06, G0 + 0.92 + Math.floor(n / 2) * 0.02, 6.25 + (n % 4) * 0.12); k.group.add(m); return m;
-  });
-  const RAW = new THREE.Color(0xc0504a), GOLD = new THREE.Color(0xb8742c), BURNT_C = new THREE.Color(0x2a1a10);
-  const cookColour = (f: number, out: THREE.Color) => f < 0.72 ? out.copy(RAW).lerp(GOLD, f / 0.72) : out.copy(GOLD).lerp(BURNT_C, Math.min(1, (f - 0.72) / (BURNT - 0.72 + 0.15)));
-  let shift: { job: PlayJob; g: GrillShift; spot: { x: number; z: number }; spin: number } | null = null;
-  const SAY: Record<FlipResult, string> = { trop_tot: 'Trop tôt, elle est encore crue…', parfait: 'Parfaite, bien dorée !', trop_cuit: 'Un peu trop cuite, ça passe.', brule: 'Brûlée ! Elle est perdue.' };
-  const startShift = (job: PlayJob) => {
-    const p = at(GX + 1.15, GZ - 0.85); ctx.player.place(p.x, p.z, yaw);
-    shift = { job, g: new GrillShift({ skewers: job.skewers, seconds: job.cook }), spot: p, spin: 0 };
-    for (const m of tray) m.visible = false;
-    ctx.toast(`${style.owner} : « Retourne chaque brochette quand elle est bien dorée, pas avant ! »`);
-  };
-  const endShift = (paid: boolean) => {
-    const s = shift; if (!s) return;
-    shift = null; active.visible = false; ctx.hud.progress(false);
-    const body = ctx.player.body(); if (body && body.hold === 'Grab') body.hold = null;
-    if (!paid) { ctx.toast('Tu as quitté le grill · service interrompu, rien de payé'); return; }
-    const pay = shiftPay(s.job.pay, s.g.points, s.job.skewers);
-    ctx.activities.start({ id: 'grill_paie', primitive: 'work', label: `${s.job.label} · ${s.g.golden}/${s.job.skewers} bien dorées`, steps: [{ label: s.job.label, primitive: 'work',
-      effects: { money: pay, label: `${s.job.label} · ${site.name}`, needs: { energie: -s.job.energie, hygiene: -6, faim: -4 }, counters: { [s.job.counter]: 1, shifts: 1 }, category: 'service' } }] }, { place: site.name });
-    relate(ctx, style.ownerId, s.g.golden >= s.job.skewers - 1 ? 2 : 1);
-  };
-  const flip = () => {
-    const s = shift; if (!s) return;
-    const f = s.g.f, r = s.g.flip(); if (!r) return;
-    if (r !== 'trop_tot') { const n = s.g.results.length - 1; cookColour(f, trayMats[n].color); tray[n].visible = true; s.spin = 0.3; }
-    ctx.toast(SAY[r]);
-    if (s.g.done) endShift(true);
-  };
-  const shiftTarget = (space: string, out: Target[]) => {
-    if (!shift || space !== 'street') return;
-    const g = place.anchors[1];
-    out.push({ id: `${id}:service`, name: 'Grill', kind: 'spot', space, x: g.x, z: g.z, y: 1.7, radius: 4, bias: -5, affordances: () => [
-      { id: 'retourner', verb: 'work', label: 'Retourner la brochette', icon: '🍢', run: flip },
-      { id: 'arreter', verb: 'stand', label: 'Arrêter le service', icon: '✋', run: () => endShift(false) },
-    ] });
-  };
-  const shiftUpdate = (dt: number) => {
-    const s = shift; if (!s) return;
-    if (Math.hypot(ctx.player.pos.x - s.spot.x, ctx.player.pos.z - s.spot.z) > 1.6 || ctx.space() !== 'street') { endShift(false); return; }
-    if (ctx.mode() !== 'play') return;                                                // the phone or a sheet is open: the fire waits
-    const body = ctx.player.body(); if (body) body.hold = 'Grab';
-    if (s.g.update(dt) === 'brule') { const n = s.g.results.length - 1; trayMats[n].color.copy(BURNT_C); tray[n].visible = true; ctx.toast(SAY.brule); if (s.g.done) { endShift(true); return; } }
-    const f = s.g.f, d = doneness(f);
-    active.visible = true; active.position.set(GX + 0.85, G0 + 0.98, GZ - 0.1);
-    s.spin = Math.max(0, s.spin - dt); active.rotation.x = (s.spin / 0.3) * Math.PI;
-    cookColour(f, skewerMat.color);
-    const msg = d === 'cru' ? 'ça grille…' : d === 'dore' ? 'dorée : retourne-la !' : d === 'trop' ? 'vite, elle brûle !' : 'brûlée';
-    ctx.hud.progress(true, Math.min(1, f / BURNT), `Brochette ${s.g.i + 1}/${s.job.skewers} · ${msg}`);
+  // ---------------------------------------------------------------- helping at the grill: step beside the cook, facing the fire
+  // A plain timed `work` step (the rung's clip 'Grab' turns the skewers); the integration makes it the shared timing gesture.
+  let stanceFor: unknown = null;
+  const stance = () => {
+    const cur = ctx.activities.current;
+    if (cur && cur.spec.id.startsWith('grill_') && stanceFor !== cur.spec && Math.hypot(ctx.player.pos.x - place.anchors[1].x, ctx.player.pos.z - place.anchors[1].z) < 3) {
+      stanceFor = cur.spec; const p = at(GX + 1.15, GZ - 0.85); ctx.player.place(p.x, p.z, yaw);
+    }
+    if (!cur) stanceFor = null;
   };
 
   const update = (dt: number) => {
@@ -331,15 +280,14 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
       mesh.visible = on;
       if (on) { mesh.position.set(seat!.x + Math.sin(seat!.yaw) * 0.55, G0 + 0.85, seat!.z + Math.cos(seat!.yaw) * 0.55); mesh.rotation.y = seat!.yaw; }
     }
-    shiftUpdate(dt);
+    stance();
   };
   const smoke = new Smoke(new THREE.Vector3(...((): [number, number, number] => { const p = at(GX, GZ); return [p.x, G0 + 1.05, p.z]; })()), lite ? 3 : 6);
   ctx.extra.add(smoke.group);
 
   return {
     id, type: 'dibi', name: site.name, places: [place], update,
-    collect: (space, _x, _z, out) => shiftTarget(space, out),
-    dispose() { if (shift) { shift = null; ctx.hud.progress(false); } cast.dispose(); smoke.dispose(); props.removeFromParent(); k.dispose(); },
+    dispose() { cast.dispose(); smoke.dispose(); props.removeFromParent(); k.dispose(); },
     debug: () => ({
       origin: { x: cx, z: cz }, id, type: 'dibi', name: site.name, owner: style.owner, moment, open: isOpen(place.hours, ctx.hour()),
       anchors: place.anchors.map(a => ({ id: a.id, x: a.x, z: a.z, space: a.space ?? place.space })),
@@ -347,7 +295,6 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
       smoke: smoke.on, shutter: shutter.visible, entrance: at(-1.6, 12.6), inside: at(-1.6, 7.5), yaw,
       counters: { meals: counter(ctx, keys.meals), grill: counter(ctx, keys.grill) },
       prop: Object.entries(PROPS).find(([, m]) => m.visible)?.[0] ?? null,
-      shift: shift ? { i: shift.g.i, n: shift.job.skewers, f: shift.g.f, state: doneness(shift.g.f), points: shift.g.points, golden: GOLDEN } : null,
     }),
   };
 }

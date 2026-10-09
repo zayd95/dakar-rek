@@ -72,3 +72,17 @@ export function imamHelp(c: ImamCtx): string {
   return '« Jërëjëf. La cour a toujours besoin d’un coup de balai, et le vendredi on déroule les nattes. Le balai est contre l’arbre. »';
 }
 export const IMAM_BYE = '« Ba beneen yoon. »';
+
+// ------------------------------------------------------------------ Mareyeuse (Soumbédioune)
+export function mareyeuseGreeting(talks: number, fish: number): string {
+  if (fish > 0) return `Coumba : « Jën bu bees ! Tu as ${fish} poisson${fish > 1 ? 's' : ''} ? Montre, je te les prends. »`;
+  if (talks > 2) return 'Coumba : « Na nga def ? Toujours pas de poisson ? Les pirogues partent le matin, c’est là que ça donne. »';
+  return 'Coumba : « Salaam aleekum ! Jën bu bees, le poisson est frais. Tu achètes ou tu vends ? »';
+}
+export const mareyeusePrices = (sell: number, buy: number) => `« Je t’achète le poisson ${sell} F pièce et je le revends ${buy} F. Entre les deux, il y a la glace, le transport et mes enfants ! »`;
+export function mareyeuseSea(hour: number): string {
+  if (hour < 10) return '« Le matin, la mer est calme et les filets reviennent pleins. Va voir les pêcheurs à la pirogue. »';
+  if (hour < 16) return '« À cette heure, le poisson se fait rare. Les pêcheurs reviennent avec moins. »';
+  return '« Le soir, la houle monte. Les derniers bateaux rentrent, il faudra attendre demain matin. »';
+}
+export const MAREYEUSE_BYE = '« Jërëjëf, ba ëllëg ! »';

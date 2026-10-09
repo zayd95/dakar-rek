@@ -1,6 +1,5 @@
 import type { GameCtx } from '../game/modules';
 import type { PlaceSpec } from '../activity/places';
-import type { Target } from '../interact/types';
 import type { MenuItem } from '../ui/hud';
 import type { VenueMaterials } from './kit';
 import { Relations, PLAYER } from '../social/relations';
@@ -12,8 +11,6 @@ export interface Venue {
   type: string;
   name: string;
   places: PlaceSpec[];
-  /** Targets of a job being played in the world (the grill's « Retourner »…). */
-  collect?(space: string, x: number, z: number, out: Target[]): void;
   update(dt: number): void;
   spaceChanged?(space: string): void;
   dispose(): void;

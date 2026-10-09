@@ -141,7 +141,7 @@ describe('place recipes compose the same primitives differently', async () => {
     expect(m.offers.hall[0].primitive).toBe('pray');
     expect(m.hours).toBeUndefined();                                                  // always open
     const beach = T.fishingBeach({ id: 'b', name: 'Soumbédioune', space: 'street', anchors: [A('pirogue'), A('mareyeuses', 4)] });
-    expect(beach.offers.mareyeuses.map(o => o.primitive)).toEqual(['sell', 'buy']);
+    expect(beach.offers.mareyeuses.map(o => o.primitive)).toEqual(['sell', 'sell', 'buy']);
     expect(T.club({ id: 'c', name: 'Club', space: 'club', anchors: [A('floor'), A('bar', 3)] }).hours).toEqual([21, 5]);
     const plot = T.ownable({ id: 'p', name: 'Parcelle 12', space: 'street', anchors: [A('sign')], type: 'plot', assetId: 'plot:12' }, { ownership: () => {} });
     expect(plot.offers.sign[0].primitive).toBe('inspect');
