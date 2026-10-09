@@ -86,16 +86,21 @@ export function sleep(b: Base & { seat?: SeatPick; seconds?: number; energy?: nu
   return spec('sleep', b, [{ label: 'Tu dors', primitive: 'sleep', seconds: b.seconds ?? 6, seat: b.seat ?? 'near', effects: { needs: { energie: b.energy ?? 60, moral: 4 } } }]);
 }
 
-/** Ablutions at a tap: hygiene and calm. */
-export function wash(b: Base & { seconds?: number }): ActivitySpec {
-  return spec('wash', b, [{ label: 'Ablutions', primitive: 'wash', seconds: b.seconds ?? 3, effects: { needs: { hygiene: 15, moral: 2 } } }]);
+/**
+ * Religious practice brings no reward (Habib, 9 Oct): ablutions and prayer change no need, no money, no counter and no
+ * activity category. They stay calm, seat-based and interruptible like everything else. A plain wash at a public tap or
+ * a basin is a hygiene action (`use` with the 'wash' verb), not this primitive.
+ */
+/** Ablutions at a tap (optionally seated on the low stool in front of it). No effects. */
+export function wash(b: Base & { seconds?: number; seat?: SeatPick; then?: () => void }): ActivitySpec {
+  return spec('wash', b, [{ label: 'Ablutions', primitive: 'wash', seconds: b.seconds ?? 3, seat: b.seat, then: b.then }]);
 }
 
-/** Pray: optional ablutions first, then a moment on a prayer row. No recitation text is ever shown from memory. */
+/** Pray: optional ablutions first, then a moment on a prayer row. No effects; no recitation text is ever shown. */
 export function pray(b: Base & { wash?: boolean; seat?: SeatPick; seconds?: number }): ActivitySpec {
   const steps: Step[] = [];
-  if (b.wash) steps.push({ label: 'Ablutions', primitive: 'wash', seconds: 3, effects: { needs: { hygiene: 10 } } });
-  steps.push({ label: 'Prière', primitive: 'pray', seconds: b.seconds ?? 6, seat: b.seat ?? 'near', effects: { needs: { moral: 12, social: 2 }, counters: { prieres: 1 }, category: 'spirituel' } });
+  if (b.wash) steps.push({ label: 'Ablutions', primitive: 'wash', seconds: 3 });
+  steps.push({ label: 'Prière', primitive: 'pray', seconds: b.seconds ?? 6, seat: b.seat ?? 'near' });
   return spec('pray', b, steps);
 }
 

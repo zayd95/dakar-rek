@@ -5,7 +5,7 @@ export const PROTOCOL_VERSION = 1;
 export const ROOM_CAPACITY = 24;
 export const MAX_ROOMS_PER_HUB = 128;
 export const SEND_INTERVAL_MS = 200;
-export const PRESENCE_CLIPS = ['Idle', 'Walk', 'Run', 'Talk', 'Sit', 'Stance', 'Dance_A', 'Dance_B', 'Celebrate', 'Prep', 'Entrance_Walk'] as const;
+export const PRESENCE_CLIPS = ['Idle', 'Walk', 'Run', 'Talk', 'Sit', 'Stance', 'Dance_A', 'Dance_B', 'Celebrate', 'Prep', 'Entrance_Walk', 'Kneel'] as const;
 export type PresenceClip = typeof PRESENCE_CLIPS[number];
 export interface Move {
   type: 'move'; x: number; y: number; z: number; yaw: number; speed: number;
@@ -40,8 +40,11 @@ export function parseMove(value: unknown, hub: HubId): Move | null {
   if (v.type !== 'move' || !['x', 'y', 'z', 'yaw', 'speed'].every(k => typeof v[k] === 'number' && Number.isFinite(v[k]))) return null;
   const x = v.x as number, y = v.y as number, z = v.z as number, speed = v.speed as number;
   if (Math.abs(x) > 4096 || Math.abs(z) > 4096 || y < -20 || y > 100 || speed < 0 || speed > 6) return null;
-  // spaces: the street, the own room, a scene, a public interior of this hub, or a vehicle of one of its lines (src/transport)
-  if (typeof v.space !== 'string' || !(v.space === 'street' || v.space === 'home' || v.space === 'scene' || new RegExp(`^${hub}:(?:(?:gargote|maiga):[0-9]{2}|rapide:[0-9a-z]{1,6}:[0-9])$`).test(v.space))) return null;
+  // spaces: the street, the own room, a scene, a public interior of this hub, a vehicle of one of its lines
+  // (src/transport) or a mosque's prayer hall (src/venues/mosque.ts)
+  if (typeof v.space !== 'string' || !(v.space === 'street' || v.space === 'home' || v.space === 'scene'
+    || new RegExp(`^${hub}:(?:(?:gargote|maiga):[0-9]{2}|rapide:[0-9a-z]{1,6}:[0-9])$`).test(v.space)
+    || new RegExp(`^${hub}:venue:mosque:[0-9]{2}:salle$`).test(v.space))) return null;
   if (!PRESENCE_CLIPS.includes(v.clip as PresenceClip)) return null;
   return { type: 'move', x, y, z, speed, yaw: Math.atan2(Math.sin(v.yaw as number), Math.cos(v.yaw as number)), space: v.space, clip: v.clip as PresenceClip };
 }

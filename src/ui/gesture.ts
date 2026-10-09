@@ -51,6 +51,9 @@ export class GesturePlayer {
       ask: L.ask?.id ?? null, shown: L.shown.map(o => o.id), next: L.g.kind === 'sequence' ? L.g.steps[L.next]?.id ?? null : null, pause: L.pause > 0 };
   }
 
+  /** Checks only (?debug): end the current gesture now with this score, as if played. */
+  finishNow(score: number) { const L = this.live; if (!L) return false; this.stop(); L.done(score); return true; }
+
   play(g: Gesture, label: string, done: (score: number) => void): () => void {
     this.stop();
     const L: Live = { g, done, label, round: 0, results: [], t: 0, pause: 0, zone: [0.4, 0.6], cursor: 0, ask: null, shown: [], next: 0, errors: 0 };

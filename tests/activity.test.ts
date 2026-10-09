@@ -71,12 +71,22 @@ describe('activity runner', () => {
     w.runner.start(P.own({ id: 'parcelle', label: 'Voir la parcelle', then: () => { opened = 'plot'; } }));
     expect(opened).toBe('plot'); expect(w.runner.running).toBe(false);
   });
-  it('pray: optional ablutions, then a prayer row seat; spiritual category', () => {
+  it('pray and wash: seat-based and calm, with no reward at all (no needs, money, counters or category)', () => {
     const w = world();
+    const before = JSON.stringify({ needs: w.state.data.needs, wallet: w.state.wallet, counters: w.state.data.counters });
     const a = P.pray({ id: 'priere', label: 'Prier', wash: true, seconds: 2 });
     expect(a.steps.map(s => s.primitive)).toEqual(['wash', 'pray']);
+    expect(a.steps.every(s => !s.effects)).toBe(true);
+    expect(a.steps[1].seat).toBe('near');
     w.runner.start(a); run(w.runner, 5.5);
-    expect(w.state.data.counters.prieres).toBe(1); expect(w.log).toContain('cat:spirituel');
+    expect(w.runner.running).toBe(false);
+    expect(w.seated()).not.toBeNull();                                      // prayed on a seat (the row)
+    expect(JSON.stringify({ needs: w.state.data.needs, wallet: w.state.wallet, counters: w.state.data.counters })).toBe(before);
+    expect(w.log.some(l => l.startsWith('cat:'))).toBe(false);
+    const ab = P.wash({ id: 'ablutions', label: 'Ablutions', seconds: 1 });
+    expect(ab.steps[0].effects).toBeUndefined();
+    w.runner.start(ab); w.runner.cancel('Arrêté');                          // interruptible
+    expect(w.runner.running).toBe(false);
   });
 });
 
@@ -165,7 +175,7 @@ describe('place recipes compose the same primitives differently', async () => {
     expect(m.offers.hall[0].primitive).toBe('pray');
     expect(m.hours).toBeUndefined();                                                  // always open
     const beach = T.fishingBeach({ id: 'b', name: 'Soumbédioune', space: 'street', anchors: [A('pirogue'), A('mareyeuses', 4)] });
-    expect(beach.offers.mareyeuses.map(o => o.primitive)).toEqual(['sell', 'buy']);
+    expect(beach.offers.mareyeuses.map(o => o.primitive)).toEqual(['sell', 'sell', 'buy']);
     expect(T.club({ id: 'c', name: 'Club', space: 'club', anchors: [A('floor'), A('bar', 3)] }).hours).toEqual([21, 5]);
     const plot = T.ownable({ id: 'p', name: 'Parcelle 12', space: 'street', anchors: [A('sign')], type: 'plot', assetId: 'plot:12' }, { ownership: () => {} });
     expect(plot.offers.sign[0].primitive).toBe('inspect');
