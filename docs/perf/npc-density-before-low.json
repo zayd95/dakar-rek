@@ -1,0 +1,41 @@
+[
+  {
+    "label": "before",
+    "quality": "low",
+    "hub": "pikine",
+    "hour": 13.2,
+    "frameMsAvg": 833.4,
+    "frameMsP95": 1600.1,
+    "drawCallsAvg": 180,
+    "drawCallsMax": 206,
+    "trisAvg": 146333,
+    "humanoidsAvg": 16,
+    "humanoidsMax": 16
+  },
+  {
+    "label": "before",
+    "quality": "low",
+    "hub": "pikine",
+    "hour": 20.3,
+    "frameMsAvg": 847.9,
+    "frameMsP95": 1936.8,
+    "drawCallsAvg": 201,
+    "drawCallsMax": 231,
+    "trisAvg": 160948,
+    "humanoidsAvg": 17.9,
+    "humanoidsMax": 19
+  },
+  {
+    "label": "before",
+    "quality": "low",
+    "hub": "plateau",
+    "hour": 19.2,
+    "frameMsAvg": 814.1,
+    "frameMsP95": 1591.6,
+    "drawCallsAvg": 147,
+    "drawCallsMax": 167,
+    "trisAvg": 106409,
+    "humanoidsAvg": 12.6,
+    "humanoidsMax": 14
+  }
+]
