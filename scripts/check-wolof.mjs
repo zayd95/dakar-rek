@@ -1,6 +1,6 @@
 // Wolof in game (src/i18n): greetings by the hour, names, goodbyes, haggling, glosses on/off, the cast, the chat's
 // quick phrases. Checks + captures in docs/screenshots/wolof (desktop 1280×720 and phone 390×844).
-// Usage: node scripts/check-wolof.mjs [baseUrl=http://localhost:4247/] [outDir=docs/screenshots/wolof] [--chat=http://127.0.0.1:8797/]
+// Usage: node scripts/check-wolof.mjs [baseUrl=http://localhost:4247/] [outDir=docs/screenshots/wolof] [--only=solo|chat] [--view=desktop|phone] [--chat=http://127.0.0.1:8797/]
 //   baseUrl: a solo build served by `npx vite preview --port 4247`; --chat: an online build served by `wrangler dev --local`.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -17,7 +17,9 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
 });
-const VIEWS = [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]];
+const ALL_VIEWS = [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]];
+const view = args.find(a => a.startsWith('--view='))?.slice(7) ?? 'all';       // all | desktop | phone (solo part; the chat needs both)
+const VIEWS = view === 'all' || only === 'chat' ? ALL_VIEWS : ALL_VIEWS.filter(([l]) => l === view);
 const d = (page, fn, arg) => page.evaluate(fn, arg);
 /** The toast's text, no-break spaces read as spaces (the lines use French typography: « Na nga def ? »). */
 const toast = page => d(page, () => (document.getElementById('toast')?.textContent ?? '').replace(/[\u00a0\u202f]/g, ' '));
@@ -135,10 +137,16 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
 
   // 2. Haggling at the market: the Sandaga stall (a customer discusses the price), the Soumbédioune fish stall.
   const stall = await goTo(page, 'plateau', i => i.id.endsWith(':market'));
-  if (stall && await runVerb(page, 'Vendre au marché')) {
+  if (stall && await runVerb(page, 'Tenir l’étal')) {
     const ok = await waitToast(page, /^Une cliente : « (Ñaata la \? » \(c’est combien \?\) · Toi : « 1 500 F\.|Seer na ! Wàññi ko tuuti\. » \(c’est cher · baisse un peu\) · Toi : « Déedéet, 1 500 F rekk\.)/);
     check(`${label}: selling at the Sandaga stall, a customer asks « Ñaata la ? » or haggles`, ok, await toast(page));
     await shot(page, `${label}-haggle-sandaga`);
+    // Then the stall gesture: each customer asks for her goods, in French with a Wolof touch (src/activity/gestures.ts).
+    await page.waitForFunction(() => window.__dakar.gesture?.()?.kind === 'choose', null, T).catch(() => {});
+    const ask = await d(page, () => (document.querySelector('#gesture .gst-ask')?.textContent ?? '').replace(/[  ]/g, ' '));
+    check(`${label}: at the stall each customer asks for her goods (French goods, glossed Wolof touch)`, /^Cliente « .+ »/.test(ask) && !/[⁣⁤]/.test(ask), ask);
+    await shot(page, `${label}-stall-ask`, false);
+    await page.keyboard.press('Escape');                                           // stops the shift (as in check-gestures)
     await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
   } else check(`${label}: Sandaga stall found`, false);
   const fish = await goTo(page, 'corniche', i => i.id.endsWith(':city:fish-market'));

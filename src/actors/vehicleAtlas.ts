@@ -1,9 +1,10 @@
 import { atlasRect, type Rect } from '../world/kitGeometry';
+import { lex } from '../i18n/wolof';
 
 /**
  * Shared paint atlas of the vehicle kit (1024 × 512 colour, 512 × 256 glow), drawn in code — our own designs only.
  * Car rapide art: hand-painted-style chevrons, geometric friezes, flowers, birds, fish, waves, a painted eye and
- * fictional nicknames (TERANGA, NDANK NDANK, JÀMM). No religious inscription, no crescent, no real brand, badge,
+ * fictional nicknames (TERAANGA, NDANK NDANK, JÀMM). No religious inscription, no crescent, no real brand, badge,
  * company name or logo. The bus line « SAMA BUS » is fictional (it only evokes a city bus by its colours).
  */
 export const AW = 1024, AH = 512;
@@ -25,8 +26,9 @@ export const PLAIN_UV: [number, number] = [8 / AW, 1 - 8 / AH];
 /** Part of an atlas rect (fractions of its width and height, from its bottom-left). */
 export const sub = (r: Rect, u0: number, v0: number, u1: number, v1: number): Rect => [r[0] + (r[2] - r[0]) * u0, r[1] + (r[3] - r[1]) * v0, r[0] + (r[2] - r[0]) * u1, r[1] + (r[3] - r[1]) * v1];
 
-/** Car rapide nicknames painted on the front and rear boards (fictional; Wolof words reviewed by the language lane). */
-export const RAPIDE_NAMES = ['TERANGA', 'NDANK NDANK', 'JÀMM'] as const;
+/** Car rapide nicknames painted on the front and rear boards: Wolof words from the lexicon, in CLAD spelling
+ * (teraanga « hospitalité », ndank ndank « petit à petit », jàmm « la paix »), painted in capitals. */
+export const RAPIDE_NAMES: readonly string[] = ['teraanga', 'Ndank ndank', 'jàmm'].map(k => lex(k).wo.toUpperCase());
 export const BUS_LINES = ['8  PIKINE', '15  PLATEAU', '23  PARCELLES'] as const;
 
 type C2 = CanvasRenderingContext2D;

@@ -71,12 +71,17 @@ export const LEXICON: readonly Lex[] = [
   L('Toogal', 'assieds-toi', ['invite']),
   L('Kaay naan attaya', 'viens boire l’attaya', ['invite', 'attaya']),
   L('Nanu dem', 'on y va', ['invite', 'chat', 'transport']),
+  // Car rapide: the apprentice and the passengers
+  L('Am na place', 'il y a de la place', ['transport']),
+  L('Dinaa wàcc', 'je descends', ['transport']),
   // Market and bargaining
   L('Ñaata la ?', 'c’est combien ?', ['market', 'ask']),
   L('Wàññi ko tuuti', 'baisse un peu', ['market']),
   L('Seer na', 'c’est cher', ['market', 'money']),
   L('Yomb na', 'ce n’est pas cher', ['market', 'money']),
   L('Doy na', 'ça suffit', ['market', 'chat']),
+  L('Jox ma', 'donne-moi', ['market', 'ask']),
+  L('tuuti', 'un peu', ['market', 'word']),
   L('waxaale', 'marchander', ['market', 'word']),
   L('marse', 'marché', ['market', 'word']),
   L('bitig', 'boutique', ['market', 'word']),
@@ -139,6 +144,7 @@ export const LEXICON: readonly Lex[] = [
   L('xale yi', 'les enfants', ['family', 'word']),
   L('kër', 'maison', ['family', 'word']),
   L('teraanga', 'hospitalité', ['blessing', 'word']),
+  L('jàmm', 'la paix', ['blessing', 'word']),
   // The sea
   L('géej', 'mer', ['sea', 'word']),
   L('gaal', 'pirogue', ['sea', 'word']),
