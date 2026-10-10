@@ -46,7 +46,7 @@ export interface DisciplineRules {
   /** Break-away timing inside an empoignade: a window of `breakOpen` s every `breakCycle` s, first at `breakFirst` s. */
   breakCycle: number; breakOpen: number; breakFirst: number;
   /** Referee decision at time-out: points per action; equal points = draw. */
-  timeout: { guard: number; grab: number; breakaway: number; stagger: number; tie: 'egalite' };
+  timeout: { guard: number; grab: number; breakaway: number; stagger: number; hit: number; tie: 'egalite' };
 }
 
 export const RULES: Record<Discipline, DisciplineRules> = {
@@ -60,7 +60,7 @@ export const RULES: Record<Discipline, DisciplineRules> = {
     openingSeconds: 0.9,
     clinchSeconds: 2.6,
     breakCycle: 1.0, breakOpen: 0.38, breakFirst: 0.45,
-    timeout: { guard: 1, grab: 1, breakaway: 1, stagger: 0, tie: 'egalite' },
+    timeout: { guard: 1, grab: 1, breakaway: 1, stagger: 0, hit: 0, tie: 'egalite' },
   },
   // Làmb 2.0 (spec 10 Oct.): « lutte avec frappe », the target discipline, ours to design. Built step by step
   // (src/lamb/stand.ts, docs/LAMB2.md) and playable behind the `lamb2` flag; `enabled` stays false until it is released.
@@ -73,7 +73,7 @@ export const RULES: Record<Discipline, DisciplineRules> = {
     stamina: { max: 100, regen: 14, regenGuard: 7, grabCost: 22, breakCost: 25, breakMissCost: 12, dodgeCost: 12, clinchDrain: 8 },
     responseWindow: 0.6, openingSeconds: 0.9, clinchSeconds: 2.6,
     breakCycle: 1.0, breakOpen: 0.38, breakFirst: 0.45,
-    timeout: { guard: 1, grab: 1, breakaway: 1, stagger: 1, tie: 'egalite' },
+    timeout: { guard: 1, grab: 1, breakaway: 1, stagger: 2, hit: 1, tie: 'egalite' },
   },
 };
 
@@ -94,7 +94,7 @@ export interface BoutScore {
 export const emptyScore = (): BoutScore => ({ guards: 0, grabs: 0, breaks: 0, hits: 0, staggers: 0 });
 
 export function points(s: BoutScore, r: DisciplineRules = RULES.sans_frappe): number {
-  return s.guards * r.timeout.guard + s.grabs * r.timeout.grab + s.breaks * r.timeout.breakaway + (s.staggers ?? 0) * r.timeout.stagger;
+  return s.guards * r.timeout.guard + s.grabs * r.timeout.grab + s.breaks * r.timeout.breakaway + (s.staggers ?? 0) * r.timeout.stagger + (s.hits ?? 0) * r.timeout.hit;
 }
 
 /** Referee decision when the time runs out without a projection: more points wins, equal points is a draw. */

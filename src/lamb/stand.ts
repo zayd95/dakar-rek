@@ -57,7 +57,7 @@ export const STRIKES: Record<StrikeKind, StrikeSpec> = {
 export const STAND = {
   balanceMax: 100,
   /** Balance recovery per second; below `tiredBelow` endurance it is slower. */
-  balanceRegen: 16, balanceRegenTired: 7, tiredBelow: 25,
+  balanceRegen: 12, balanceRegenTired: 6, tiredBelow: 25,
   composureMax: 100, composureRegen: 4, composureDrainTired: 3,
   /** Endurance per second while the guard is held (instead of recovering). */
   guardDrain: 2,
@@ -185,16 +185,18 @@ export interface StandStyle {
   quick: number; big: number; guard: number;
   /** When the player starts a strike: chances to guard, to step back, to strike first (quick). */
   react: { guard: number; back: number; counter: number };
+  /** Chance per decision to step in and take hold when close (wrestling is the heart of it: strikes open, grabs end). */
+  grab: number;
 }
 export const STAND_STYLES: Record<'costaud' | 'rapide' | 'defensif' | 'partenaire', StandStyle> = {
   // Puissant: heavy, hard to move, wants to hurt with big strikes and close in
-  costaud: { attrs: { force: 75, equilibre: 70, technique: 45, explosivite: 40, endurance: 60, frappe: 65, defense: 50, sangfroid: 55 }, range: 1.4, quick: 0.18, big: 0.3, guard: 0.2, react: { guard: 0.45, back: 0.05, counter: 0.1 } },
+  costaud: { attrs: { force: 75, equilibre: 70, technique: 45, explosivite: 40, endurance: 60, frappe: 65, defense: 50, sangfroid: 55 }, range: 1.4, quick: 0.18, big: 0.3, guard: 0.2, react: { guard: 0.45, back: 0.05, counter: 0.1 }, grab: 0.2 },
   // Rapide: in and out, many quick strikes, little endurance
-  rapide: { attrs: { force: 45, equilibre: 45, technique: 55, explosivite: 80, endurance: 40, frappe: 55, defense: 50, sangfroid: 45 }, range: 1.62, quick: 0.45, big: 0.1, guard: 0.15, react: { guard: 0.25, back: 0.35, counter: 0.25 } },
+  rapide: { attrs: { force: 45, equilibre: 45, technique: 55, explosivite: 80, endurance: 40, frappe: 55, defense: 50, sangfroid: 45 }, range: 1.62, quick: 0.45, big: 0.1, guard: 0.15, react: { guard: 0.25, back: 0.35, counter: 0.25 }, grab: 0.12 },
   // Défensif: guards a lot, makes you miss, answers with quick strikes
-  defensif: { attrs: { force: 50, equilibre: 60, technique: 65, explosivite: 50, endurance: 65, frappe: 45, defense: 80, sangfroid: 70 }, range: 1.9, quick: 0.25, big: 0.06, guard: 0.45, react: { guard: 0.5, back: 0.2, counter: 0.25 } },
+  defensif: { attrs: { force: 50, equilibre: 60, technique: 65, explosivite: 50, endurance: 65, frappe: 45, defense: 80, sangfroid: 70 }, range: 1.9, quick: 0.25, big: 0.06, guard: 0.45, react: { guard: 0.5, back: 0.2, counter: 0.25 }, grab: 0.08 },
   // training partner: slow, telegraphed, never strikes first
-  partenaire: { attrs: AVERAGE, range: 1.5, quick: 0, big: 0, guard: 0, react: { guard: 0, back: 0, counter: 0 } },
+  partenaire: { attrs: AVERAGE, range: 1.5, quick: 0, big: 0, guard: 0, react: { guard: 0, back: 0, counter: 0 }, grab: 0 },
 };
 
 /** What the opponent sees when it decides (its own state, the player's, the distance). */
@@ -216,6 +218,8 @@ export function decide(v: StandView, st: StandStyle, level: number, r: () => num
   if (shaken && dist <= v.grabRange && me.stamina > 30 && r() < Math.min(0.95, 0.55 * level)) { o.grab = true; return o; }
   // a raised guard stops strikes, not a grab: against a turtle, close in and take hold
   if (them.guard && dist <= v.grabRange && me.stamina > 30 && r() < Math.min(0.9, 0.45 * level)) { o.grab = true; return o; }
+  // close enough to step in: take hold, by style (the caller closes the last steps before the grab lands)
+  if (dist <= v.grabRange + 0.3 && me.stamina > 34 && r() < Math.min(0.8, st.grab * level)) { o.grab = true; return o; }
   const reachQ = dist <= STRIKES.quick.reach, reachB = dist <= STRIKES.big.reach;
   const pBig = st.big * level * (shaken ? 2.2 : them.balance < 45 ? 1.6 : 1);
   if (reachB && me.stamina > STRIKES.big.cost + 10 && r() < Math.min(0.9, pBig)) { o.strike = 'big'; return o; }

@@ -30,6 +30,7 @@ import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { LambDuel } from './lamb/duel';
 import { fighterAttributes } from './career/career';
 import { rosterOpponent } from './lamb/opponents';
+import { lamb2On } from './lamb/flag';
 import { PARTNER, RULES, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type Discipline, type StyleId } from './lamb/rules';
 import { phoneHooks } from './ui/phoneHooks';
 import { EMOTES } from './lamb/poses';
@@ -544,7 +545,7 @@ function startScene(kind: SceneKind, onDone?: () => void) {
  * Làmb 2.0 (« lutte avec frappe », src/lamb/stand.ts) is built step by step behind this flag: `?lamb2` in the address,
  * or `localStorage['dakarrek.lamb2'] = '1'`. Without it the arena offers the sans-frappe bouts only, as before.
  */
-const LAMB2 = (() => { try { return new URLSearchParams(location.search).has('lamb2') || localStorage.getItem('dakarrek.lamb2') === '1'; } catch { return false; } })();
+const LAMB2 = lamb2On();
 /** Friendly bout: the player picks the opponent's style; the level follows the friendly record. */
 function openFriendly() {
   mode = 'menu';

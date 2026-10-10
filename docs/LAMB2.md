@@ -164,6 +164,26 @@ attributs (±6 par niveau autour de 3), toujours dans la règle des ±20 %. Il e
 dans l'en-tête et dans le bilan : « Face à toi : Gora, costaud indépendant, 7-2 » (bilan de la saison sur le classement
 de la ville). Sans `?lamb2`, rien ne change.
 
+## Le combat de la soirée, avec frappe (IA contre IA)
+
+Avec `?lamb2`, le combat que regardent les spectateurs au gala (l'affiche du soir, deux lutteurs du classement) se
+lutte **avec frappe, IA contre IA**, avec les mêmes étapes : frappes, empoignade, glissade, projection, contre, chute,
+arbitre — et les tribunes réagissent (à la chute, le côté du vainqueur fête, l'autre se tient la tête). Le côté
+« joueur » du duel est piloté par la même IA que l'autre (lecture des frappes, mouvements de l'empoignade,
+projections et contres, `DuelOptions.autopilot`), chacun avec son style et son niveau.
+
+Le combat reste **le même pour tous les spectateurs** : il est semé par la soirée (`boutSeed(hub, jour)`) et joué par
+pas fixes de 1/60 s (lane « arena together »). Tous les tirages viennent du `rand` semé du duel — aucun `Math.random`,
+pas de temps réel — ; testé : la même graine donne deux fois le même combat et le même résultat, des jours différents
+donnent des combats différents (`tests/lamb2Watch.test.ts`). Pour un spectateur assis, ni ralenti ni caméra
+rapprochée : sa vue reste celle de sa place ; l'arbitre vient lever le bras du vainqueur. Sans `?lamb2`, le combat
+regardé est inchangé.
+
+Réglages de l'IA (valables aussi contre le joueur) : chaque style **s'avance pour saisir** quand il est près (Gora et
+les puissants plus que les défensifs) — la lutte reste le cœur, les frappes ouvrent, les saisies concluent ;
+l'équilibre revient un peu moins vite (12/s) pour que les échanges pèsent ; au temps, l'arbitre compte aussi les
+frappes nettes (1 point) et les déséquilibres (2 points).
+
 ## Code et vérifications
 
 - `src/lamb/stand.ts` — règles pures du combat debout (testées : `tests/lamb2.test.ts`).
@@ -171,4 +191,5 @@ de la ville). Sans `?lamb2`, rien ne change.
 - `src/lamb/clinch.ts` — entrée et empoignade (pures, testées dans `tests/lamb2.test.ts`).
 - `src/lamb/opponents.ts` — les lutteurs du classement en adversaires avec frappe (table style → IA, niveau → attributs).
 - `src/lamb/strikeRig.ts` — poses de frappe et d'empoignade sur le squelette.
+- `src/arena/bout.ts` — le combat regardé ; avec frappe, le duel joue les deux côtés (IA contre IA).
 - `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/`.

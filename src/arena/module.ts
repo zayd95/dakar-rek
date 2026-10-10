@@ -19,6 +19,8 @@ import {
 } from './program';
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
+import { lamb2On } from '../lamb/flag';
+import { rosterOpponent } from '../lamb/opponents';
 import { GalaCard } from './card';
 
 /**
@@ -250,9 +252,22 @@ class ArenaEvening {
     const side = winner === null ? null : winner === 'player' ? mine : theirs;
     if (m === 'result') { this.crowd.moment('result', { winner: side }); return; }
     if (outcome !== 'projection' || !side) { this.crowd.moment('decision'); return; }
+    this.fallReaction(side);
+  }
+
+  /** The evening's two wrestlers as themselves for a bout avec frappe (Làmb 2.0, ?lamb2 only), else null. */
+  private frappeBill() {
+    if (!lamb2On()) return null;
+    const bill = billFor(this.day()), career = (this.ctx.state.data as { career?: Parameters<typeof rosterOpponent>[2] }).career;
+    const left = rosterOpponent(bill.left.name, this.day(), career), right = rosterOpponent(bill.right.name, this.day(), career);
+    return left && right ? { left, right } : null;
+  }
+  /** A fall by projection: `side` (the winner's supporters) celebrates, the other side and the end sections hold their heads. */
+  private fallReaction(side: StandSide) {
     this.crowd.react(side, 'celebrate', { share: 0.9, seconds: 6 });
     this.crowd.react(side === 'left' ? 'right' : 'left', 'fall', { share: 0.85, seconds: 3.5 });
     this.crowd.react('ends', 'fall', { share: 0.7, seconds: 3.5 });
+    crowdCheer(3.5, 0.2 * (0.7 + 0.5 * this.crowd.level()));
   }
 
   /** The stands react to a moment (src/crowd/arenaStands.ts momentPlan): `side`, the wrestler walking in or winning. */
@@ -275,8 +290,15 @@ class ArenaEvening {
       this.startEntrance();
     } else if (phase === 'bout') {
       this.clearEntrance();
-      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, LEFT_LOOK, boutSeed(this.hubId, this.day()));
-      this.bout.onMoment = p => { if (this.bout && this.bout.time < this.catchUpTo - 0.5) return; if (p === 'clinch') this.react('clinch'); if (p === 'fall') this.react(this.bout?.info().outcome === 'projection' ? 'fall' : 'decision'); };
+      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, LEFT_LOOK, boutSeed(this.hubId, this.day()), this.frappeBill());
+      this.bout.onMoment = (p, i) => {
+        if (this.bout && this.bout.time < this.catchUpTo - 0.5) return;
+        if (p === 'clinch') this.react('clinch');
+        if (p !== 'fall') return;
+        // avec frappe, a fall splits the stands: the winner's side celebrates, the other side holds its head
+        if (this.bout?.frappe && i.outcome === 'projection' && i.winner) this.fallReaction(i.winner === 'player' ? 'left' : 'right');
+        else this.react(i.outcome === 'projection' ? 'fall' : 'decision');
+      };
       this.group.add(this.bout.group);
     } else if (phase === 'result') {
       const r = this.bout?.result;

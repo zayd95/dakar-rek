@@ -170,9 +170,15 @@ describe('làmb 2.0 · the opponent standing', () => {
     const turtle = fresh(); turtle.guard = true;
     expect(decide({ me: fresh(), them: turtle, dist: 1.3, grabRange: 1.5 }, STAND_STYLES.costaud, 1, seq(0.2)).grab).toBe(true);
   });
+  it('steps in to take hold by style when close (a power wrestler more than a defensive one)', () => {
+    const v = { me: fresh(), them: fresh(), dist: 1.7, grabRange: 1.5 };
+    expect(decide(v, STAND_STYLES.costaud, 1, seq(0.15)).grab).toBe(true);
+    expect(decide(v, STAND_STYLES.defensif, 1, seq(0.15, 0.99, 0.99, 0.99)).grab).toBe(false);
+    expect(STAND_STYLES.costaud.grab).toBeGreaterThan(STAND_STYLES.defensif.grab);
+  });
   it('a quick style throws quick strikes, a defensive one guards; nobody acts while busy', () => {
-    expect(decide({ me: fresh(), them: fresh(), dist: 1.5, grabRange: 1.5 }, STAND_STYLES.rapide, 1, seq(0.95, 0.2)).strike).toBe('quick');
-    expect(decide({ me: fresh(), them: fresh(), dist: 1.5, grabRange: 1.5 }, STAND_STYLES.defensif, 1, seq(0.99, 0.99, 0.3)).guard).toBe(true);
+    expect(decide({ me: fresh(), them: fresh(), dist: 1.5, grabRange: 1.5 }, STAND_STYLES.rapide, 1, seq(0.95, 0.95, 0.2)).strike).toBe('quick');
+    expect(decide({ me: fresh(), them: fresh(), dist: 1.5, grabRange: 1.5 }, STAND_STYLES.defensif, 1, seq(0.99, 0.99, 0.99, 0.3)).guard).toBe(true);
     const busy = fresh(); busy.recover = 0.3;
     const d = decide({ me: busy, them: fresh(), dist: 1.5, grabRange: 1.5 }, STAND_STYLES.rapide, 1, seq(0));
     expect(d.strike).toBeNull(); expect(d.grab).toBe(false);
@@ -217,10 +223,11 @@ describe('làmb 2.0 · entry into the empoignade (step 2)', () => {
 });
 
 describe('làmb 2.0 · rules', () => {
-  it('the discipline avec frappe exists with its own record keys and counts staggers at time-out', () => {
+  it('the discipline avec frappe exists with its own record keys and counts staggers and clean hits at time-out', () => {
     expect(RULES.avec_frappe.strikes).toBe(true);
     const s = emptyScore(); s.staggers = 2;
-    expect(points(s, RULES.avec_frappe)).toBe(2);
+    expect(points(s, RULES.avec_frappe)).toBe(4);
+    s.hits = 3; expect(points(s, RULES.avec_frappe)).toBe(7); expect(points(s, RULES.sans_frappe)).toBe(0);
     expect(points(s, RULES.sans_frappe)).toBe(0);
   });
 });

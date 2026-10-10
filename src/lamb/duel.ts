@@ -68,6 +68,12 @@ export interface DuelOptions {
    * he fights standing and in the empoignade, and the line that says who he is (intro, header, recap).
    */
   opponent?: { attrs: Attributes; stand: StandStyle; clinch: ClinchStyle; line: string };
+  /**
+   * Avec frappe, watched from the stands (the evening's main event): the « player » side is a roster wrestler too, fought
+   * by the same AI as the other side (reading strikes, the empoignade's moves, throws and counters). All its draws come
+   * from the duel's seeded `rand`, so a seeded bout in fixed steps plays out alike on every device.
+   */
+  autopilot?: { attrs: Attributes; stand: StandStyle; clinch: ClinchStyle; style: OpponentStyle; level: number };
   /** Seed of the opponent AI's draws (default: the clock). A watched bout seeded alike plays out alike everywhere. */
   seed?: number;
 }
@@ -152,6 +158,17 @@ export class LambDuel {
   /** Guard held on the previous frame (in the empoignade, pressing Garde is « Tirer »), and a move queued by a hook. */
   private guardWas = false;
   private moveQueued: ClinchMove | null = null;
+  /** Avec frappe, AI against AI: the « player » side's own AI (see DuelOptions.autopilot) and its timers. */
+  private auto: NonNullable<DuelOptions['autopilot']> | null = null;
+  private autoFactor = 1;
+  private autoT = 0.8;
+  private autoGuard = 0;
+  private autoReact: { at: number; what: Reaction } | null = null;
+  private autoSawStrike = false;
+  private autoSawGrab = false;
+  private autoStepIn = 0;
+  /** No DOM (unit tests of a watched bout): the duel runs without its HUD. */
+  private headless = typeof document === 'undefined';
   /** Avec frappe: who the opponent is, in one line (« Gora, costaud indépendant, 7-2 »). */
   identity: string | null = null;
   /** A throw being attempted in the empoignade (step 5): who, since when, and the other's counter (when it comes). */
@@ -184,6 +201,7 @@ export class LambDuel {
     this.discipline = opts.discipline ?? 'sans_frappe'; this.frappe = this.discipline === 'avec_frappe';
     this.standStyle = this.mode === 'entrainement' ? STAND_STYLES.partenaire : STAND_STYLES[this.style.id];
     this.clinchStyle = this.mode === 'entrainement' ? CLINCH_STYLES.partenaire : CLINCH_STYLES[this.style.id];
+    if (this.frappe && opts.autopilot) { this.auto = opts.autopilot; this.autoFactor = levelFactor(opts.autopilot.level); }
     const who = this.frappe && this.mode !== 'entrainement' ? opts.opponent : undefined;
     if (who) { this.standStyle = who.stand; this.clinchStyle = who.clinch; this.identity = who.line; }
     this.factor = opts.mode === 'entrainement' ? 1 : levelFactor(opts.level);
@@ -198,7 +216,7 @@ export class LambDuel {
     };
     // the camera stays on the -z side (gate side in the arena, open side at the écurie): screen right is world -x,
     // so the player starts at +x and is seen on the left, the opponent on the right
-    this.me = mk(0x6b3f25, look, 3, R.stamina.max, R.stamina.regen, opts.attrs ?? AVERAGE);
+    this.me = mk(0x6b3f25, look, 3, this.auto?.style.staminaMax ?? R.stamina.max, this.auto?.style.staminaRegen ?? R.stamina.regen, opts.attrs ?? this.auto?.attrs ?? AVERAGE);
     this.ai = mk(0x3b2216, { ngembColor: this.style.ngemb, ngembPattern: this.mode === 'entrainement' ? 'bordure' : 'uni', accessories: [] }, -3, this.style.staminaMax, this.style.staminaRegen, who?.attrs ?? this.standStyle.attrs);
     if (wrestlerReady()) {
       // referee (arena) or Coach Ablaye (écurie) watching from the far side of the ring
@@ -219,8 +237,8 @@ export class LambDuel {
       this.group.add(h.group); this.crowd.push(h);
     }
     if (this.mode !== 'entrainement') this.drums.start(122);
-    this.ui = this.buildUi();
-    if (this.spectate) return;                                 // watched from the stands: no keys, no controls
+    this.ui = this.headless ? (null as unknown as HTMLDivElement) : this.buildUi();
+    if (this.spectate || this.headless) return;               // watched from the stands: no keys, no controls
     addEventListener('keydown', this.onKey); addEventListener('keyup', this.onKey);
     input.enabled = true; input.takeAction();
   }
@@ -333,9 +351,14 @@ export class LambDuel {
   private msg(text: string, hold = 0) {
     if (hold <= 0 && this.msgHold > 0) return;
     if (hold > 0) this.msgHold = hold;
+    this.said = text;
+    if (this.headless) return;
     const m = this.q('msg'); if (m.textContent !== text) m.textContent = text;
   }
+  /** The last message shown (also without a HUD). */
+  said = '';
   private draw() {
+    if (this.headless) return;
     const me = this.me, ai = this.ai;
     const bar = (k: string, f: Fighter) => { const b = this.q(k); b.style.width = `${(100 * f.stamina) / f.max}%`; b.classList.toggle('low', f.stamina < R.stamina.grabCost); };
     bar('me', me); bar('ai', ai);
@@ -395,17 +418,18 @@ export class LambDuel {
   private labelCounter = false;
 
   // ---------------------------------------------------------------- abandon and recap
-  private confirmOpen() { return !this.q('confirm').hidden; }
+  private confirmOpen() { return !this.headless && !this.q('confirm').hidden; }
   askAbandon(open: boolean) {
     if (open && !(this.phase === 'intro' || this.phase === 'fight' || this.phase === 'clinch')) return;
-    if (this.done) return;
+    if (this.done || this.headless) return;
     this.q('confirm').hidden = !open; this.paused = open;
     if (open) { this.guardHeld = false; this.q<HTMLButtonElement>('no').focus(); }
   }
   /** Confirmed abandon: recorded as an abandon (no winner, no reward), never as a defeat by projection. */
   abandon() {
     if (!(this.phase === 'intro' || this.phase === 'fight' || this.phase === 'clinch') || this.done) return;
-    this.q('confirm').hidden = true; this.paused = false;
+    if (!this.headless) this.q('confirm').hidden = true;
+    this.paused = false;
     this.end('abandon', null);
   }
 
@@ -433,7 +457,9 @@ export class LambDuel {
   }
 
   private showRecap() {
-    this.phase = 'result'; this.phaseT = 0; this.msg('', 0); this.msgHold = 0; this.q('msg').textContent = '';
+    this.phase = 'result'; this.phaseT = 0; this.msg('', 0); this.msgHold = 0;
+    if (this.headless) return;
+    this.q('msg').textContent = '';
     const r = this.result!;
     const title = r.outcome === 'abandon' ? 'Abandon' : r.outcome === 'entrainement' ? 'Entraînement terminé' : r.winner === 'player' ? 'Victoire' : r.winner === 'opponent' ? 'Défaite' : 'Match nul';
     const mode = { entrainement: 'Entraînement (non classé)', amical: 'Combat amical (non classé)', classe: 'Combat classé' }[r.mode];
@@ -700,19 +726,23 @@ export class LambDuel {
       if (this.phaseT > 10) this.done = true;
     }
     // the fall's first moment plays slowly
-    return this.frame(this.phase === 'fall' && this.fallFx && this.outcome === 'projection' && this.phaseT < 0.9 ? dt * 0.3 : dt);
+    return this.frame(!this.spectate && this.phase === 'fall' && this.fallFx && this.outcome === 'projection' && this.phaseT < 0.9 ? dt * 0.3 : dt);
   }
 
   // ---------------------------------------------------------------- avec frappe: the stand-up exchange (Làmb 2.0)
   private fightFrappe(dt: number, taps: number, breaks: number, quick: number, big: number) {
     const me = this.me, ai = this.ai;
     if (this.timeLeft !== Infinity) this.timeLeft -= dt;
-    const m = this.input.move();
+    const m = this.auto ? { x: 0, y: 0 } : this.input.move();
+    if (this.auto) ({ taps, breaks, quick, big } = this.autoStand(dt, ai.pos.distanceTo(me.pos)));
     me.guard = this.guardHeld && !me.strike && me.stagger <= 0 && me.open <= 0 && me.dodge <= 0 && me.busy <= 0;
     // feet: relative to the camera; slow in guard, slower while striking, none while staggering
     if (me.busy <= 0 && me.stagger <= 0) {
       const sp = 2.6 * (me.guard ? STAND.guardSpeed : me.strike ? 0.4 : 1);
-      me.pos.addScaledVector(this.camRight, m.x * sp * dt).addScaledVector(this.camFwd, m.y * sp * dt);
+      if (this.auto) {                                                      // AI against AI: it keeps its own range
+        const d0 = ai.pos.distanceTo(me.pos), r0 = this.autoStepIn > 0 ? 1.1 : this.auto.stand.range, want = d0 > r0 + 0.15 ? 1 : d0 < r0 - 0.35 ? -0.6 : 0;
+        me.pos.addScaledVector(ai.pos.clone().sub(me.pos).setY(0).normalize(), want * (sp / 2.6) * this.auto.style.speed * Math.min(1.2, this.autoFactor) * dt);
+      } else me.pos.addScaledVector(this.camRight, m.x * sp * dt).addScaledVector(this.camFwd, m.y * sp * dt);
     }
     for (const [f, o] of [[me, ai], [ai, me]] as const) if (f.dodge > 0) {
       const away = f.pos.clone().sub(o.pos).setY(0).normalize();
@@ -755,7 +785,7 @@ export class LambDuel {
       } else {
         this.aiGuardHold = dec.guard ? this.aiThink : 0;
         // wrestling still matters standing: it may go for the grab in range
-        if (!dec.guard && d < R.grabRange && ai.stamina >= R.stamina.grabCost + 6 && this.rand() < Math.min(0.9, this.style.grabChance * 0.6 * this.factor)) this.aiGrab();
+        if (!dec.guard && d < R.grabRange + 0.2 && ai.stamina >= R.stamina.grabCost + 6 && this.rand() < Math.min(0.9, this.style.grabChance * 0.25 * this.factor)) this.aiGrab();
       }
     }
     if (this.phase !== 'fight') return;
@@ -786,6 +816,10 @@ export class LambDuel {
     const me = this.me, ai = this.ai;
     if (this.timeLeft !== Infinity) this.timeLeft -= dt;
     me.clip = ai.clip = 'Grab';
+    if (this.auto) {
+      const o = this.autoClinch(dt);
+      taps = 0; quick = 0; pull = false; breaks = o.brk ? 1 : 0; big = o.throw ? 1 : 0; this.moveQueued = o.move;
+    }
     // the player: Saisir pushes, Garde pulls, Frappe pivots, Reculer breaks free
     if (breaks > 0) {
       if (tryBreak(me, this.grip)) { me.score.breaks++; this.separate(ai, 0.5); this.msg('Dégagé !', 1.0); return; }
@@ -835,8 +869,10 @@ export class LambDuel {
   private startThrow(by: Fighter) {
     const me = this.me, ai = this.ai;
     by.stamina -= THROW.cost; me.move = ai.move = null;
-    const aiCounters = by === me && wantsCounter(ai, this.clinchStyle, this.factor, ai.composure, this.rand());
-    this.attempt = { by, t: 0, counter: false, counterAt: aiCounters ? 0.2 + 0.15 * (1 - ai.composure / 100) : Infinity };
+    // the defender answers by AI when it is the opponent, or the autopilot's side (AI against AI)
+    const def = by === me ? ai : me, viaAi = def === ai || !!this.auto;
+    const counters = viaAi && wantsCounter(def, def === ai ? this.clinchStyle : this.auto!.clinch, def === ai ? this.factor : this.autoFactor, def.composure, this.rand());
+    this.attempt = { by, t: 0, counter: false, counterAt: counters ? 0.2 + 0.15 * (1 - def.composure / 100) : Infinity };
     this.msg(by === me ? 'Tu tentes la projection…' : 'Il tente la projection ! Contre !', THROW.windup);
   }
 
@@ -847,11 +883,11 @@ export class LambDuel {
     for (const f of [me, ai]) holdTick(f, dt, f === me ? this.grip : -this.grip);
     at.t += dt;
     // the counter: the player presses Contrer while it sets up; the opponent after its reaction time
-    if (!at.counter && def === me && counterPress > 0) {
+    if (!at.counter && def === me && !this.auto && counterPress > 0) {
       if (me.stamina >= THROW.counterCost) { me.stamina -= THROW.counterCost; at.counter = true; this.msg('Contre !', 0.5); }
       else this.msg('Plus assez d’endurance pour contrer', 0.6);
     }
-    if (!at.counter && def === ai && at.t >= at.counterAt && ai.stamina >= THROW.counterCost) { ai.stamina -= THROW.counterCost; at.counter = true; }
+    if (!at.counter && (def === ai || this.auto) && at.t >= at.counterAt && def.stamina >= THROW.counterCost) { def.stamina -= THROW.counterCost; at.counter = true; }
     if (at.t < THROW.windup) return;
     this.attempt = null;
     const by: Side = att === me ? 'player' : 'opponent';
@@ -893,6 +929,55 @@ export class LambDuel {
     } else if (e.result === 'clash') text = e.move === 'pivot' ? 'Vous tournez ensemble' : winner === 'player' ? 'Tu l’emportes en force' : winner === 'opponent' ? 'Il l’emporte en force' : 'Forces égales';
     else if (e.result === 'drive') text = mine ? `Tu ${MOVES[e.move].doing}s` : `Il ${MOVES[e.move].doing}`;
     if (text) this.msg(text, e.result === 'counter' ? 0.9 : 0.5);
+  }
+
+  /**
+   * AI against AI, standing: the « player » side reads the other's strikes and grabs (guard, step back, a quick strike
+   * first), decides by its style like the other side, and presses the same buttons a player would.
+   */
+  private autoStand(dt: number, d: number) {
+    const me = this.me, ai = this.ai, a = this.auto!, out = { taps: 0, breaks: 0, quick: 0, big: 0 };
+    if (ai.strike && !ai.strike.landed && !this.autoSawStrike) {
+      this.autoSawStrike = true;
+      const w = react(ai.strike.kind, me, a.stand, this.autoFactor, this.rand());
+      this.autoReact = w === 'none' ? null : { at: reactDelay(ai.strike.kind, me), what: w };
+    }
+    if (!ai.strike) this.autoSawStrike = false;
+    if (ai.windup > 0 && !this.autoSawGrab) {                              // his grab on its way: step back, or hit him first
+      this.autoSawGrab = true;
+      const w = react('big', me, a.stand, this.autoFactor, this.rand());
+      if (w === 'back') out.breaks = 1; else if (w !== 'none') out.quick = 1;
+    }
+    if (ai.windup <= 0) this.autoSawGrab = false;
+    if (this.autoReact && (this.autoReact.at -= dt) <= 0) {
+      const w = this.autoReact.what; this.autoReact = null;
+      if (w === 'guard') this.autoGuard = 0.45; else if (w === 'back') out.breaks = 1; else if (w === 'counter') out.quick = 1;
+    }
+    this.autoT -= dt;
+    if (this.autoT <= 0 && free(me) && me.open <= 0 && me.busy <= 0) {
+      const [x0, x1] = a.style.think; this.autoT = x0 + this.rand() * (x1 - x0);
+      const dec = decide({ me, them: ai, dist: d, grabRange: R.grabRange }, a.stand, this.autoFactor, this.rand);
+      if (dec.grab && me.stamina >= R.stamina.grabCost) { if (d <= R.grabRange) out.taps = 1; else this.autoStepIn = 0.8; }
+      else if (dec.strike) { this.autoGuard = 0; if (dec.strike === 'big') out.big = 1; else out.quick = 1; }
+      else this.autoGuard = dec.guard ? this.autoT : 0;
+    }
+    // stepping in for a grab decided just out of reach: it lands once close enough
+    if (this.autoStepIn > 0) { this.autoStepIn -= dt; if (d <= R.grabRange - 0.05 && free(me) && me.open <= 0) { out.taps = 1; this.autoStepIn = 0; } }
+    this.autoGuard = Math.max(0, this.autoGuard - dt);
+    this.guardHeld = this.autoGuard > 0;
+    return out;
+  }
+
+  /** AI against AI, in the empoignade: the « player » side throws when the position is good, else reads and moves. */
+  private autoClinch(dt: number): { move: ClinchMove | null; throw: boolean; brk: boolean } {
+    const me = this.me, ai = this.ai, a = this.auto!, out = { move: null as ClinchMove | null, throw: false, brk: false };
+    this.autoT -= dt;
+    if (this.autoT > 0 || this.attempt) return out;
+    const [x0, x1] = a.clinch.think; this.autoT = x0 + this.rand() * (x1 - x0);
+    if (wantsThrow(me, ai, this.grip, a.clinch, this.autoFactor, this.rand)) { out.throw = true; return out; }
+    const d = clinchDecide(me, ai, this.grip, a.clinch, this.autoFactor, me.composure, this.rand);
+    if (d === 'break') out.brk = true; else out.move = d;
+    return out;
   }
 
   /** The player starts a strike; the opponent may see it coming. */
@@ -967,7 +1052,7 @@ export class LambDuel {
     }
     for (const f of [this.me, this.ai]) { f.strike = null; f.stagger = 0; f.recover = 0; f.dodge = 0; f.move = null; }
     this.aiReact = null; this.aiGuardHold = 0; this.moveQueued = null; this.lastExchange = null; this.attempt = null;
-    if (this.frappe) this.aiThink = 0.5;
+    if (this.frappe) { this.aiThink = 0.5; this.autoT = 0.5; }
     this.msg(text, 0.9);
   }
   /** End an empoignade without a fall: push the wrestlers apart; `exposed` (if any) is left open briefly. */
@@ -1026,9 +1111,9 @@ export class LambDuel {
     const side = new THREE.Vector3(-(ai.pos.z - me.pos.z), 0, ai.pos.x - me.pos.x).normalize();
     if (!Number.isFinite(side.x) || side.lengthSq() < 0.5) side.set(0, 0, -1);
     if (side.z > 0) side.multiplyScalar(-1);
-    const portrait = innerWidth < innerHeight;
+    const portrait = typeof innerWidth !== 'undefined' && innerWidth < innerHeight;
     const cam = mid.clone().addScaledVector(side, (portrait ? 8.5 : 6.5) + dist * (portrait ? 1.1 : 0.6)).setY(portrait ? 3.4 : 3.0);
-    if (this.phase === 'fall' && this.fallFx && this.outcome === 'projection' && this.phaseT < 1.2) {
+    if (!this.spectate && this.phase === 'fall' && this.fallFx && this.outcome === 'projection' && this.phaseT < 1.2) {
       // close and low on the wrestler going down, then back out for the referee
       const down = this.fallFx.loser.pos, c = down.clone().addScaledVector(side, portrait ? 5 : 3.6).setY(1.5);
       this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize(); this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);
@@ -1042,8 +1127,10 @@ export class LambDuel {
 
   dispose() {
     this.drums.stop();
-    removeEventListener('keydown', this.onKey); removeEventListener('keyup', this.onKey);
-    this.ui.remove(); document.body.classList.remove('induel');
+    if (!this.headless) {
+      removeEventListener('keydown', this.onKey); removeEventListener('keyup', this.onKey);
+      this.ui.remove(); document.body.classList.remove('induel');
+    }
     for (const f of [this.me, this.ai]) f.w?.dispose();
     this.official?.dispose();
     for (const h of this.crowd) h.dispose();
