@@ -79,6 +79,10 @@ class ArenaEvening {
   private own: { dispose(): void }[] = [];
   private entrance: Walker[] = [];
   private bout: WatchedBout | null = null;
+  /** Avec frappe: how the stands split at the watched bout's fall (who celebrated, who held their heads), for the checks. */
+  private fallSplit: { side: StandSide; celebrate: number; heads: number } | null = null;
+  /** The last watched bout, once over: discipline, how it ended, the referee's arm, the stands at the fall (checks). */
+  private lastBout: Record<string, unknown> | null = null;
   private drums = new Percussion();
   private card: GalaCard;
   /** The referee and officials, the drummers, the vendors in the stands, the wrestlers' entourages (src/arena/people.ts). */
@@ -276,9 +280,9 @@ class ArenaEvening {
   }
   /** A fall by projection: `side` (the winner's supporters) celebrates, the other side and the end sections hold their heads. */
   private fallReaction(side: StandSide) {
-    this.crowd.react(side, 'celebrate', { share: 0.9, seconds: 6 });
-    this.crowd.react(side === 'left' ? 'right' : 'left', 'fall', { share: 0.85, seconds: 3.5 });
-    this.crowd.react('ends', 'fall', { share: 0.7, seconds: 3.5 });
+    const celebrate = this.crowd.react(side, 'celebrate', { share: 0.9, seconds: 6 });
+    const heads = this.crowd.react(side === 'left' ? 'right' : 'left', 'fall', { share: 0.85, seconds: 3.5 }) + this.crowd.react('ends', 'fall', { share: 0.7, seconds: 3.5 });
+    this.fallSplit = { side, celebrate, heads };
     crowdCheer(3.5, 0.2 * (0.7 + 0.5 * this.crowd.level()));
   }
 
@@ -296,7 +300,7 @@ class ArenaEvening {
     const { ctx } = this;
     this.phase = phase; this.t = 0; this.fillT = 0;                          // the stands follow the phase at once
     if (phase === 'filling') {
-      this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0;
+      this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0; this.fallSplit = null; this.lastBout = null;
       const bill = billFor(this.day());
       this.say('bill', ARENA.bill(bill.left.name, bill.left.ecurie, bill.right.name, bill.right.ecurie));
     } else if (phase === 'entrance') {
@@ -314,7 +318,8 @@ class ArenaEvening {
       };
       this.group.add(this.bout.group);
     } else if (phase === 'result') {
-      const r = this.bout?.result;
+      const r = this.bout?.result, bi = this.bout?.info() as (Record<string, unknown> | undefined);
+      this.lastBout = bi ? { discipline: bi.discipline, winner: r?.winner ?? null, outcome: r?.outcome ?? null, refereeRaised: bi.refereeRaised ?? null, fallSplit: this.fallSplit } : null;
       const own: ShowResult | null = r ? { winner: !r.winner ? null : r.winner === 'player' ? 'left' : 'right', outcome: (r.outcome === 'entrainement' ? 'egalite' : r.outcome) as ShowOutcome } : null;
       this.outcome = this.adopted ?? own ?? { winner: null, outcome: 'egalite' };
       const side = this.outcome.winner, how = this.outcome.outcome;
@@ -462,7 +467,7 @@ class ArenaEvening {
       ticket: hasTicket(counters, day), galaDone: counters[GALA_DONE_COUNTER] === day,
       seat: seat?.id ?? null, seatsTotal: this.seats.length, seatsFree: this.seats.filter(s => !s.occupant).length,
       crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering, level: Math.round(this.crowd.level() * 100) / 100, lod: this.crowd.stats() },
-      entrance: this.entrance.length, bout: this.bout?.info() ?? null, result: this.result, card: this.card.text, people: this.people.debug(),
+      entrance: this.entrance.length, bout: this.bout?.info() ?? null, lastBout: this.lastBout, result: this.result, card: this.card.text, people: this.people.debug(),
       gate: { x: this.cx, z: this.gz }, centre: { x: this.cx, z: this.cz },
     };
   }

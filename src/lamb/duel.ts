@@ -127,6 +127,8 @@ export class LambDuel {
    */
   private fallFx: { loser: Fighter; winner: Fighter; refFrom: THREE.Vector3; refTo: THREE.Vector3; cheered: boolean } | null = null;
   private refRig: StrikeRig | null = null;
+  /** The referee has raised the winner's arm (avec frappe; kept for the checks once the bout is over). */
+  private refRaised = false;
   /** Avec frappe: moments of the bout for whoever listens (the stands react): the fall and the result. */
   onMoment?: (m: 'fall' | 'result', winner: Side | null) => void;
   private drums = new Percussion();
@@ -529,7 +531,7 @@ export class LambDuel {
         arm: this.phaseT > 1.8,
       } } : {}),
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
-      discipline: this.discipline, identity: this.identity,
+      discipline: this.discipline, identity: this.identity, ...(this.frappe ? { refereeRaised: this.refRaised } : {}),
       ...(this.frappe ? {
         balance: { player: Math.round(this.me.balance), opponent: Math.round(this.ai.balance) },
         composure: { player: Math.round(this.me.composure), opponent: Math.round(this.ai.composure) },
@@ -1098,6 +1100,7 @@ export class LambDuel {
         o.hold = k > 0 && k < 1 ? 'Walk' : 'Idle';
         o.animate(dt, 0);
         if (k >= 1) this.refRig?.apply({ upper_armL: [0.15, 1, 0.05], forearmL: [0.05, 1, 0], handL: [0, 1, 0] }, Math.min(1, (this.phaseT - 1.8) / 0.3));
+        if (k >= 1 && this.phaseT > 1.8) this.refRaised = true;
       } else {
         this.official.group.rotation.y = Math.atan2(mid0.x - this.official.group.position.x, mid0.z - this.official.group.position.z);
         this.official.animate(dt, 0);
