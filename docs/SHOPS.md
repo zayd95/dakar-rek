@@ -23,12 +23,23 @@ modelled one by one. Brands are fictional; words on goods are generic (riz, lait
 - **Shell mode** (`shell: true`) builds the room too (tiled floor, walls with a doorway at +z, ceiling) for walk-in
   interiors placed off the map.
 
-Tests: `tests/shopKit.test.ts` (every type × footprint × quality × open/walk-in: draw calls, triangles, anchors inside,
+Tests: `tests/shopFlow.test.ts` (paths inside every type, the shop spots of the city), `tests/shopKit.test.ts` (every type × footprint × quality × open/walk-in: draw calls, triangles, anchors inside,
 colliders inside, nothing standing on an anchor, the counter / keeper / displays reachable from the door, unique seats,
 determinism, reserve respected, the shop owners' routes of `src/social/routines.ts` kept clear).
-Browser: `scripts/check-shops.mjs` (walk in from the street, buy at the counter, desktop and phone),
+Browser: `scripts/check-shops.mjs` (walk in from the street, buy at the counter, customers who come in, queue and pay, a walk-in café, desktop and phone),
 `scripts/shots-shops.mjs` (every stocked shop, front and inside, plus the kit showroom). Captures in
 `docs/screenshots/shops/`.
+
+## Customers (spec 10 Oct, §31: enter → browse → buy → leave, without the player)
+
+The customers are the city's own ambient people (`src/social/ambientLife.ts`, NPC lane), not a second crowd: every
+stocked shop is one of their spots (`src/social/ambientSpots.ts`, `AmbientSpot.shop`) with the kit's door, displays
+(`browse` → stands), checkout line (`queue`, the counter first) and the seats inside. People walk from the sidewalk to
+the door and around the furniture (`src/world/shopFlow.ts`, grid paths over the shop's colliders) to a display or a
+chair, stay their activity's time (« Faire des courses », « Attendre à la banque », « Commander au comptoir »…), then
+join the line, move up as it frees, pay at the counter (Talk) and walk out. They never take the player's place in the
+line, share the one humanoid budget (crowd LOD) and are greetable like anyone in the street. `ambientShops()` (debug)
+tallies how many entered, queued and paid per shop; `ambientRun(s)` fast-forwards them for the checks.
 
 ## Inventory (four hubs)
 
