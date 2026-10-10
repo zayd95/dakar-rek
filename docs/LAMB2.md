@@ -14,18 +14,40 @@ l'arène, écurie, combats amicaux et classés) reste intacte à chaque étape.
 | 5 | Tentative de projection et contre | **jouable** |
 | 6 | Chute : posture, équilibre, contacts, force, réponse → ralenti court → arbitre → foule → résultat | **jouable** |
 
-## Essayer
+## Comment jouer (Habib)
 
-`?lamb2` dans l'adresse (ou `localStorage['dakarrek.lamb2'] = '1'`), puis à l'arène de Pikine : **Combat amical** →
-« Avec frappe · Gora / Pape / Saliou ». Le bilan est **à part** (`lamb_af_amical_v/d/n/ab`, jamais mélangé à la lutte
-sans frappe) ; les totaux `combats`/`victoires` comptent les deux, et le combat est rapporté à la carrière par le même
-rapport de combat (`GameModule.lamb`, avec `discipline: 'avec_frappe'`). Sans le drapeau, rien ne change.
+**Lancer.** Ajoute `?lamb2` à l'adresse du jeu. À l'arène de Pikine : **Combat amical** → « Avec frappe · Gora », « … ·
+Pape » ou « … · Saliou ». Le soir, ton combat de la soirée (entrée des lutteurs → coin → cercle) se joue aussi avec
+frappe. Sans `?lamb2`, rien ne change.
 
-Commandes debout : déplacement (joystick, ZQSD/WASD/flèches), **Frappe** (J ou C), **Grosse frappe** (K ou V),
-**Saisir** (E/Espace), **Garde** maintenue (G/Maj), **Reculer** (X). Dans l'empoignade, les mêmes boutons deviennent
-**Pousser** (E/Espace), **Tirer** (G), **Pivoter** (J), **Casser** (X), **Projeter** (K) — qui devient **Contrer**
-(en vert) pendant que l'adversaire tente sa projection. Sur téléphone, cinq boutons à droite, qui changent de nom dans
-l'empoignade.
+| | Clavier | Téléphone |
+| --- | --- | --- |
+| Se déplacer | ZQSD / WASD / flèches | joystick à gauche |
+| Frappe rapide | J (ou C) | **Frappe** |
+| Grosse frappe | K (ou V) | **Grosse frappe** |
+| Garde (maintenue) | G (ou Maj) | **Garde** (garder le doigt) |
+| Reculer | X | **Reculer** |
+| Saisir | E / Espace | **Saisir** (gros bouton jaune) |
+| **Dans l'empoignade** | | les boutons changent de nom |
+| Pousser | E / Espace | **Pousser** |
+| Tirer | G | **Tirer** |
+| Pivoter | J | **Pivoter** |
+| Casser (se dégager) | X | **Casser** |
+| Projeter / Contrer | K | **Projeter** — devient **Contrer** (vert) quand il tente sa projection |
+
+**Debout.** Trois barres par lutteur : endurance (vert), équilibre (bleu), sang-froid (orange) — pas de vie. La frappe
+rapide est sûre ; la grosse prend beaucoup d'équilibre mais, ratée ou parée, elle t'ouvre. Une frappe rapide qui
+touche coupe sa grosse frappe. La garde arrête les frappes mais pas une saisie : contre un adversaire qui se garde,
+saisis-le. Équilibre à zéro : il **vacille** — saisis-le tout de suite.
+
+**Dans l'empoignade.** Regarde son corps : penché en avant il **pousse**, assis en arrière il **tire**, tourné il
+**pivote**. Réponds avec ce qui le bat : **Tirer bat Pousser, Pivoter bat Tirer, Pousser bat Pivoter**. Chaque échange
+gagné fait glisser sa prise et son équilibre. Si sa prise est trop forte, ton équilibre s'use tout seul (bord de
+l'écran ambre puis rouge, « Tu glisses… ») : gagne un échange ou **Casse**. Quand il glisse, **Projette** ; quand
+il tente la sienne, **Contre** (le bouton devient vert).
+
+**Bilan.** À part de la lutte sans frappe (`lamb_af_amical_v/d/n/ab`) ; les totaux `combats`/`victoires` comptent les
+deux, et le combat est rapporté à la carrière (`GameModule.lamb`, `discipline: 'avec_frappe'`).
 
 ## Étape 1 — le combat debout (`src/lamb/stand.ts`)
 
@@ -127,8 +149,10 @@ un **ralenti court** (0,9 s, caméra basse et proche sur le lutteur qui tombe), 
 **l'arbitre** arrive de son côté du cercle (vers le tunnel des lutteurs) jusqu'à côté du vainqueur et **lui lève le
 bras** ; **la foule explose** (et les spectateurs de la scène se lèvent) ; le vainqueur célèbre ; puis le résultat.
 « L'arbitre lève ton bras : victoire ! » ou « L'arbitre lève le bras de Gora ». Au temps, pas de ralenti : l'arbitre
-lève le bras du vainqueur aux points. `LambDuel.onMoment('fall' | 'result', vainqueur)` est prévu pour que les
-tribunes de la soirée (lane foule) réagissent.
+lève le bras du vainqueur aux points. Les **tribunes de la soirée** réagissent (`LambDuel.onMoment` → `LambEvent`
+« moment » → le module de l'arène, avec les réactions de la lane foule) : à la chute, le côté de l'écurie du vainqueur
+fête pendant que l'autre côté et les virages se lèvent, mains sur la tête ; au résultat, le plan de résultat des
+tribunes.
 
 ## Code et vérifications
 
