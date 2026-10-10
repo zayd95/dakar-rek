@@ -10,7 +10,7 @@
  * Names are the game's fictional cast and écuries (Babacar of Baobab, Lamine of Teranga): no real wrestler, écurie,
  * promoter or brand. No ritual or religious text anywhere in the show — drums, dances and the crowd.
  */
-import { GATE_HALF, TIER_DEPTH, TIERS, inGate, tierRadius, tierTop } from '../world/geew';
+import { TIER_DEPTH, TIERS, standOpen, tierRadius, tierTop } from '../world/geew';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -67,7 +67,7 @@ export function standSeats(cx: number, cz: number, prefix = 'arena:stand'): Stan
     const r = seatRadius(t), n = Math.floor((2 * Math.PI * r) / SEAT_GAP);
     for (let i = 0; i < n; i++) {
       const a = ((i + 0.5) / n) * Math.PI * 2;
-      if (inGate(a, GATE_HALF + 0.05)) continue;
+      if (!standOpen(a)) continue;                                             // not in the gate, an aisle or the wrestlers' tunnel
       out.push({ id: `${prefix}:${t}:${i}`, tier: t, a, x: cx + Math.sin(a) * r, z: cz + Math.cos(a) * r, top: tierTop(t), yaw: a + Math.PI });
     }
   }
