@@ -166,8 +166,9 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   check(`${label}: people wait at a stop registered by the transport lane`, (waiting?.acts['attendre-car'] ?? 0) >= 1, JSON.stringify(waiting));
   await page.evaluate(() => { window.__dakar.ambientLeave('test-stop'); window.__dakar.ambientSettle(); });
   await frames(page, 3);
-  const riders = await page.evaluate(() => window.__dakar.ambientActors().filter(a => a.state === 'ride').map(a => ({ seat: a.seat, y: a.y })));
-  check(`${label}: when the vehicle is there they board and ride on its seats`, riders.length >= 1 && riders.every(r => r.seat?.startsWith('test-car:')), JSON.stringify(riders));
+  const all = await page.evaluate(() => window.__dakar.ambientActors().filter(a => a.state === 'ride').map(a => ({ seat: a.seat, y: a.y })));
+  const riders = all.filter(r => r.seat?.startsWith('test-car:')), others = all.filter(r => !r.seat?.startsWith('test-car:'));
+  check(`${label}: when the vehicle is there they board and ride on its seats`, riders.length >= 1, `${JSON.stringify(riders)} · also riding the transport lane's car rapides: ${others.length}`);
   check(`${label}: riders leave seats in the vehicle for players`, riders.length <= 3, `${riders.length}/6 seats taken`);
   check(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
