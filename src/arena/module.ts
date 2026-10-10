@@ -4,7 +4,7 @@ import type { HubWorld } from '../world/types';
 import type { Seat } from '../interact/seats';
 import type { WrestlerLook } from '../core/types';
 import { Batch, signTexture } from '../world/batch';
-import { Humanoid, Wrestler, humanoidReady, randomLook, type Clip } from '../actors/humanoid';
+import { Humanoid, Wrestler, humanoidReady, type Clip } from '../actors/humanoid';
 import { rng } from '../core/rng';
 import { arenaExterior } from './exterior';
 import * as P from '../activity/primitives';
@@ -19,6 +19,7 @@ import {
 import { StandCrowd } from './crowd';
 import { WatchedBout } from './bout';
 import { GalaCard } from './card';
+import { FightNightPeople } from './people';
 
 /**
  * A fight evening inside the Pikine arena (docs/ARENA_VISIT.md): the ticket is bought at the window by the gate (price
@@ -59,10 +60,12 @@ class ArenaEvening {
   result = '';
   private own: { dispose(): void }[] = [];
   private entrance: Walker[] = [];
-  private insideCast: Humanoid[] = [];
   private bout: WatchedBout | null = null;
   private drums = new Percussion();
   private card: GalaCard;
+  /** The referee and officials, the drummers, the vendors in the stands, the wrestlers' entourages (src/arena/people.ts). */
+  private people: FightNightPeople;
+  get peopleGroup() { return this.people.group; }
   private wasInside = false;
   private stopT = 0;
   private fillT = 0;
@@ -93,6 +96,7 @@ class ArenaEvening {
     this.cap = Math.round(defs.length * D.crowdShare);
     this.crowd = new StandCrowd(order.slice(0, this.cap), D.near);
     this.group.add(this.crowd.group);
+    this.people = new FightNightPeople(ctx, hub, this.cx, this.cz);
 
     // ---------------------------------------------------------------- the ticket window by the gate
     const B = new Batch();
@@ -187,6 +191,7 @@ class ArenaEvening {
       case 'result': if (this.t >= SHOW.result) this.go('leaving'); break;
       case 'leaving': if (this.t >= SHOW.leaving) this.go('over'); break;
     }
+    this.people.update(dt, this.phase, this.t, this.street, dt * (this.phase === 'bout' ? 1 : this.speed));
     // the stands fill with the evening and empty after the gala
     this.fillT -= dt;
     if (this.fillT <= 0) { this.fillT = 0.4; this.syncCrowd(); }
@@ -221,7 +226,7 @@ class ArenaEvening {
   }
 
   private react(m: Moment, sound = true) {
-    const r = REACTION[m]; this.crowd.react(r.share, r.seconds);
+    const r = REACTION[m]; this.crowd.react(r.share, r.seconds); this.people.react(m);
     if (sound) crowdCheer(Math.min(4, r.seconds), m === 'clinch' ? 0.1 : 0.2);
   }
   private say(key: string, line: string) { if (this.told.has(key)) return; this.told.add(key); this.ctx.toast(line); }
@@ -244,6 +249,7 @@ class ArenaEvening {
       const r = this.bout?.result;
       const winner = !r || !r.winner ? null : r.winner === 'player' ? BILL.left.name : BILL.right.name;
       this.result = ARENA.result(winner, (r?.outcome ?? 'egalite') as 'projection' | 'decision' | 'egalite' | 'abandon');
+      this.people.result(!r || !r.winner ? null : r.winner === 'player' ? 'left' : 'right');
       ctx.toast(this.result);
       this.react('result');
     } else if (phase === 'leaving') {
@@ -261,7 +267,7 @@ class ArenaEvening {
 
   private startEntrance() {
     if (!humanoidReady()) return;
-    const q = this.ctx.quality(), cx = this.cx, cz = this.cz, gz = this.gz;
+    const cx = this.cx, cz = this.cz, gz = this.gz;
     const walker = (h: Humanoid, fx: number, fz: number, tx: number, tz: number, t0: number, t1: number, end: Clip) => {
       h.group.position.set(fx, 0.1, fz); this.group.add(h.group);
       this.entrance.push({ h, from: new V3(fx, 0.1, fz), to: new V3(tx, 0.1, tz), t0, t1, end });
@@ -270,16 +276,7 @@ class ArenaEvening {
     const rw = new Wrestler(0x4e2e1c); rw.setLook(RIGHT_LOOK, 'A');
     walker(lw, cx + 0.8, gz + 1, cx + 3, cz, 0.5, 6.5, 'Dance_A');
     walker(rw, cx - 0.8, gz + 1, cx - 3, cz, 3.5, 9.5, 'Dance_B');
-    const followers = q === 'low' ? 0 : q === 'medium' ? 1 : 2;
-    const R = rng(77);
-    for (const [side, t0] of [[1, 0.9], [-1, 3.9]] as const) for (let k = 0; k < followers; k++) {
-      const h = new Humanoid({ ...randomLook(R), style: 'boubou', female: false });
-      walker(h, cx + side * (1.6 + k * 0.7), gz + 0.2 - k * 0.8, cx + side * (4.4 + k * 0.9), cz - 3.2 - k * 0.6, t0, t0 + 6, 'Celebrate');
-    }
-    for (let k = 0; k < (q === 'low' ? 1 : 2); k++) {             // two drummers by the gate, inside
-      const h = new Humanoid(randomLook(R)); h.hold = 'Talk'; h.group.position.set(cx - 5 + k * 1.1, 0.1, cz - 13.5); h.group.rotation.y = 0.3;
-      this.group.add(h.group); this.insideCast.push(h);
-    }
+    // their entourages walk in behind them and the drummers' group plays: src/arena/people.ts
     this.drums.start(116);
   }
   private updateEntrance(dt: number) {
@@ -297,11 +294,9 @@ class ArenaEvening {
     }
     if (t > 0.5) this.say('walk-left', ARENA.entrance(BILL.left.name, BILL.left.ecurie));
     if (t > 3.5) this.say('walk-right', ARENA.entrance(BILL.right.name, BILL.right.ecurie));
-    for (const h of this.insideCast) h.animate(dt, 0);
   }
   private clearEntrance() {
     for (const w of this.entrance) w.h.dispose(); this.entrance = [];
-    for (const h of this.insideCast) h.dispose(); this.insideCast = [];
     this.drums.stop();
   }
 
@@ -349,7 +344,7 @@ class ArenaEvening {
       ticket: hasTicket(counters, day), galaDone: counters[GALA_DONE_COUNTER] === day,
       seat: seat?.id ?? null, seatsTotal: this.seats.length, seatsFree: this.seats.filter(s => !s.occupant).length,
       crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering },
-      entrance: this.entrance.length, bout: this.bout?.info() ?? null, result: this.result, card: this.card.text,
+      entrance: this.entrance.length, bout: this.bout?.info() ?? null, result: this.result, card: this.card.text, people: this.people.debug(),
       gate: { x: this.cx, z: this.gz }, centre: { x: this.cx, z: this.cz },
     };
   }
@@ -357,7 +352,7 @@ class ArenaEvening {
   dispose() {
     if (this.fovSet) { this.ctx.camera.fov = this.baseFov; this.ctx.camera.updateProjectionMatrix(); this.fovSet = 0; }
     this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
-    this.crowd.dispose(); this.card.dispose();
+    this.crowd.dispose(); this.card.dispose(); this.people.dispose();
     for (const s of this.seats) this.ctx.seats.release(s.id, CROWD);
     for (const o of this.own) o.dispose(); this.own = [];
     this.group.removeFromParent();
@@ -389,7 +384,7 @@ export const arenaModule: GameModule = {
       speed: (n = 1) => { if (evening) evening.speed = Math.max(1, Math.round(n)); },
       go: (phase: ShowPhase) => evening?.go(phase),
       /** Shows or hides everything this module draws (the checks measure its own draw calls). */
-      visible: (on = true) => { if (evening) evening.group.visible = on; },
+      visible: (on = true) => { if (evening) { evening.group.visible = on; evening.peopleGroup.visible = on; } },
       /** Pretend the city day is `d` (null: the clock's), e.g. a fight evening. */
       day: (d: number | null) => { dayOverride = d; },
       /** A free place on the tiers near (x, z) (for the checks). */
