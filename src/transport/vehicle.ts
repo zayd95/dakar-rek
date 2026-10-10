@@ -51,6 +51,8 @@ export class Vehicle {
   private model: THREE.Object3D;
   private shown = '';
   private ridden = false;
+  /** Shirts of the passengers drawn now (null: their own looks). */
+  colours: readonly number[] | null = null;
 
   constructor(readonly spec: VehicleSpec, readonly id: string, private bumpy = 1, private seed = 1) {
     this.group.name = 'vehicle:' + id;
@@ -65,18 +67,20 @@ export class Vehicle {
 
   /**
    * NPC passengers: exactly these passenger seats (spec ids) are held by people; the others are freed, except the
-   * one the player holds. Open cabins draw them (the model is rebuilt from the kit's cached variants).
+   * one the player holds. Open cabins draw them (the model is rebuilt from the kit's cached variants); `colours`:
+   * their shirts in turn (fans in their écurie's colours), else their own looks.
    */
-  setPassengers(ids: readonly string[]) {
+  setPassengers(ids: readonly string[], colours?: readonly number[]) {
     this.spec.seats.forEach((s, i) => {
       const seat = this.seats[i];
       if (seat.occupant === 'player' || (seat.occupant && seat.occupant !== 'npc')) return;
       seat.occupant = ids.includes(s.id) ? 'npc' : null;
     });
-    const drawn = this.spec.seats.filter((_s, i) => this.seats[i].occupant === 'npc').map(s => s.id), key = drawn.join('.');
+    const drawn = this.spec.seats.filter((_s, i) => this.seats[i].occupant === 'npc').map(s => s.id), key = `${drawn.join('.')}|${colours?.join(',') ?? ''}`;
+    this.colours = colours?.length ? colours : null;
     if (this.spec.cabin !== 'open' || key === this.shown) return;
     this.shown = key;
-    this.swap(this.spec.build({ seed: this.seed, seated: drawn, ridden: this.ridden }));
+    this.swap(this.spec.build({ seed: this.seed, seated: drawn, ridden: this.ridden, ...(this.colours ? { colours: this.colours } : {}) }));
   }
   /**
    * Wheels and steering of the kit model this frame (spin with `speed` m/s; `steer` −1 left … 1 right as in drive.ts),

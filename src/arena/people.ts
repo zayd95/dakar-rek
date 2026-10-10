@@ -11,6 +11,7 @@ import * as P from '../activity/primitives';
 import { tasteLine, waitLine } from '../i18n/lines';
 import { Cast, type Role } from '../venues/cast';
 import { ARENA_FLOOR, PREP_SIDE, WALKWAY_R, interiorSpots } from '../world/arenaModules';
+import { WALL_R } from '../world/geew';
 import { arenaFighter, type FighterCue } from './fighter';
 import { ARENA_PURCHASES, ECURIES } from './exteriorRules';
 import type { Moment, Quality, ShowPhase, Street } from './program';
@@ -50,6 +51,19 @@ export const PEOPLE = {
    */
   way: { out: { x: 1.0, z: 11.0 }, round: { a: 0.6, r: 11.5 }, side: { a: 0.64, r: 13.2 }, gap: { x: 1.3, z: 9.6 } },
 } as const;
+/**
+ * Their weight in the shared humanoid budget (src/social/ambientLife.ts): the people in the spotlight (the entourage
+ * walking in, the winner's people, a vendor by the player, the player's own corner) count at their distance; the others
+ * as if 2.4 times farther, so from the tiers they are cheap figures and only the ones close by get a full body. The
+ * arena's own draw calls stay within the visit's budget (scripts/check-arena-visit.mjs).
+ */
+export const LOD_PRIO = { spotlight: 1, background: 2.4 } as const;
+/** Inside the walls they can be seen from inside, or from the street through the two gates (camera within these metres). */
+export const SEEN_FROM_GATE = 14;
+export function seenFrom(cx: number, cz: number, cam: { x: number; z: number }): boolean {
+  return Math.hypot(cam.x - cx, cam.z - cz) < WALL_R + 0.5 || Math.hypot(cam.x - cx, cam.z - (cz - WALL_R)) < SEEN_FROM_GATE
+    || Math.hypot(cam.x - cx, cam.z - (cz + WALL_R)) < SEEN_FROM_GATE;
+}
 /** How many of each by graphics quality (the shared humanoid budget keeps the nearest as full bodies). */
 export const PEOPLE_COUNT: Record<Quality, { judges: number; officials: number; drummers: number; vendors: number; entourage: number; camp: number; press: number; media: number }> = {
   low: { judges: 2, officials: 2, drummers: 3, vendors: 1, entourage: 1, camp: 1, press: 1, media: 0 },
@@ -207,6 +221,8 @@ export class FightNightPeople {
   private t = 0;
   /** When a vendor last called out (one call at a time, so the show's own lines stay readable). */
   private lastCall = -99;
+  /** When the people's weights in the shared budget were last set. */
+  private weighT = 0;
   private readonly sourceName: string;
 
   constructor(private ctx: GameCtx, hub: HubWorld, private cx: number, private cz: number) {
@@ -368,7 +384,24 @@ export class FightNightPeople {
       const q = polar(this.cx, this.cz, w.a, PEOPLE.walk.r);
       cast.setClip(w.id, 'Walk'); cast.place(w.id, q.x, q.z, w.a + (w.dir > 0 ? Math.PI / 2 : -Math.PI / 2));
     }
-    cast.update(dt, this.ctx.camera.position, 75, this.ctx.space() === 'street', me);
+    if ((this.weighT -= dt) <= 0) { this.weighT = 0.5; this.weigh(m); }
+    // behind the walls nobody inside can be seen from the street (except through the gates): not drawn at all
+    const cam = this.ctx.camera.position;
+    cast.update(dt, cam, 75, this.ctx.space() === 'street' && seenFrom(this.cx, this.cz, cam), me);
+  }
+
+  /** Who is in the spotlight (a full body as long as the budget allows) and who is in the background (a figure sooner). */
+  private weigh(m: PeopleMoment) {
+    const cast = this.cast!, me = this.ctx.player.pos;
+    for (const r of this.roles) {
+      let on = false;
+      if (r.who === 'vendor') { const w = cast.where(r.id); on = !!w && Math.hypot(w.x - me.x, w.z - me.z) < 8; }
+      else if (r.who === 'entourage' || r.who === 'griot' || r.who === 'camp') {
+        const s = this.sides.find(x => r.id.startsWith(x.ecurie));
+        on = !!s && (this.fighter === s.ecurie || (r.who !== 'camp' && (m === 'entrance' || (m === 'result' && this.won === s.ecurie))));
+      }
+      cast.setLodPrio(r.id, on ? LOD_PRIO.spotlight : LOD_PRIO.background);
+    }
   }
 
   /** A new moment of the evening: who is there, and where the entourages stand. */

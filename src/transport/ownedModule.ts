@@ -222,6 +222,25 @@ export class OwnedVehicleModule implements GameModule {
 
   spaceChanged(_ctx: GameCtx, _space: string) { /* the vehicle stays where it is parked */ }
 
+  /** Where the vehicle stands parked in this hub (null: ridden now, or not in this hub). */
+  parkedHere(): { x: number; z: number; yaw: number } | null {
+    return this.vehicle && !this.driving && this.hub ? { x: this.st.x, z: this.st.z, yaw: this.st.yaw } : null;
+  }
+  /** The player is riding / driving it now. */
+  get ridden() { return this.driving; }
+  /**
+   * Move the parked vehicle to another spot of this hub (a guarded parking's place, src/arena/arrival.ts), saved like a
+   * parking spot. False while it is ridden or not here.
+   */
+  moveParked(x: number, z: number, yaw: number): boolean {
+    if (!this.vehicle || this.driving || !this.hub) return false;
+    this.st.x = x; this.st.z = z; this.st.yaw = yaw; this.st.speed = 0;
+    this.vehicle.place(x, z, yaw, 0, 0, this.st.odo, 0);
+    this.setSolid(true);
+    park(this.ctx.state.data, { asset: this.def.asset, hub: this.hub.id, x, z, yaw });
+    return true;
+  }
+
   /** Driving: its own interaction space (no shop counters while driving)… */
   space(): string | null { return this.driving && this.hub ? `${this.hub.id}:${this.def.space}` : null; }
   /** …but the player stays visible to the street. */

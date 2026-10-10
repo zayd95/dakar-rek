@@ -63,13 +63,23 @@ const onSeg = (e: RoadEdge, ax: number, az: number, bx: number, bz: number) => {
   return inside(e.ax, e.az) && inside(e.bx, e.bz);
 };
 
-/** How many people the street shows now: walkers, waiting per stop, chatting groups. */
+/** Share of the pool the walkers keep whatever the stops and groups want (when the hour asks for that many). */
+export const WALKERS_KEEP = 0.45;
+/**
+ * How many people the street shows now: walkers, waiting per stop (`stops`: the stops served now near the player),
+ * chatting groups. The walkers come first: they keep up to WALKERS_KEEP of the pool, the groups give way next, then the
+ * stops, so a hub with many stops or group spots never ends up with an empty pavement.
+ */
 export function streetTargets(hub: HubId, hour: number, q: Quality, stops: number, groupSpots: number, busyStops = 0) {
   const B = STREET_BUDGET[q], H = HUB_STREETS[hub], L = H?.level ?? 0.5;
-  const perStop = Math.round(B.perStop * curveAt(STOP_BY_HOUR, hour) * Math.min(1, L + 0.2) * (H?.stops ?? 1));
-  const groups = Math.min(groupSpots, Math.round(B.groupMax * curveAt(CHAT_BY_HOUR, hour) * L * (H?.groups ?? 1)));
-  const waiting = perStop * stops + (perStop > 0 ? BUSY_STOP_EXTRA * busyStops : 0), chatting = groups * 4;   // a ring of four
-  const walkers = Math.max(0, Math.min(B.pool - waiting - chatting, Math.round(B.pool * 0.62 * curveAt(WALK_BY_HOUR, hour) * L)));
+  let perStop = Math.round(B.perStop * curveAt(STOP_BY_HOUR, hour) * Math.min(1, L + 0.2) * (H?.stops ?? 1));
+  let groups = Math.min(groupSpots, Math.round(B.groupMax * curveAt(CHAT_BY_HOUR, hour) * L * (H?.groups ?? 1)));
+  const want = Math.round(B.pool * 0.62 * curveAt(WALK_BY_HOUR, hour) * L);
+  const room = B.pool - Math.min(want, Math.floor(B.pool * WALKERS_KEEP));
+  const waitingOf = (p: number) => p * stops + (p > 0 ? BUSY_STOP_EXTRA * busyStops : 0);
+  while (perStop > 0 && waitingOf(perStop) > room) perStop--;
+  groups = Math.max(0, Math.min(groups, Math.floor((room - waitingOf(perStop)) / 4)));         // a ring of four
+  const walkers = Math.max(0, Math.min(B.pool - waitingOf(perStop) - groups * 4, want));
   return { walkers, perStop, groups };
 }
 
@@ -161,6 +171,24 @@ export function stopSlots(site: { x: number; z: number; dx: number; dz: number; 
     const x = site.x + site.dx * a + site.rx * r, z = site.z + site.dz * a + site.rz * r;
     if (blockedAt(x, z, 0.3, cols) || avoid.some(p => Math.hypot(p.x - x, p.z - z) < 1.1)) continue;
     out.push({ x, z, yaw: site.yaw + (k % 3 === 2 ? (a > 0 ? -0.9 : 0.9) : 0) });   // most face the road, some their neighbour
+  }
+  return out;
+}
+
+/**
+ * Places for a crowd waiting at a stop (the ride home after the gala): two rows on the back half of the pavement either
+ * side of the shelter, nearest the shelter first, clear of colliders and `avoid` points.
+ */
+export function crowdSlots(site: { x: number; z: number; dx: number; dz: number; rx: number; rz: number; yaw: number }, cols: readonly Collider[], avoid: readonly { x: number; z: number }[] = [], n = 18) {
+  const out: { x: number; z: number; yaw: number }[] = [];
+  for (let k = 0; out.length < n && k < 16; k++) {
+    const a = (k % 2 ? 1 : -1) * (2.9 + Math.floor(k / 2) * 0.7);
+    for (const r of [0.15, 0.6]) {
+      if (out.length >= n) break;
+      const x = site.x + site.dx * a + site.rx * r, z = site.z + site.dz * a + site.rz * r;
+      if (blockedAt(x, z, 0.25, cols) || avoid.some(p => Math.hypot(p.x - x, p.z - z) < 1.1)) continue;
+      out.push({ x, z, yaw: site.yaw + (r > 0.3 ? (a > 0 ? -0.25 : 0.25) : 0) });   // the back row looks past the front row
+    }
   }
   return out;
 }

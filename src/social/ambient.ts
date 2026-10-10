@@ -266,6 +266,20 @@ export function planDemand(spots: readonly AmbientSpot[], acts: readonly Ambient
   return rows.filter(r => r.n > 0);
 }
 
+/**
+ * After the spots are rebuilt (a place comes or goes: a street vendor's hours, a road event, a shop…), a person stays
+ * on the fresh spot of the same id when their seat is still one of its seats and their standing place, prayer-row place
+ * or queue place is still where it was. Nobody vanishes from Sandaga or from a prayer row because a vendor set up a
+ * tray down the street.
+ */
+export function keepsPlace(old: AmbientSpot, fresh: AmbientSpot, p: { seat: string | null; slot: number; slotRow: boolean; q: number; cq: boolean }): boolean {
+  const same = (u?: Pt, v?: Pt) => !!u && !!v && Math.hypot(u.x - v.x, u.z - v.z) < 0.05;
+  if (p.seat && !fresh.seats.includes(p.seat)) return false;
+  if (p.slot >= 0 && !same((p.slotRow ? old.rows : old.stands)?.[p.slot], (p.slotRow ? fresh.rows : fresh.stands)?.[p.slot])) return false;
+  if (p.q >= 0 && !same((p.cq ? old.shop?.checkout : old.stands)?.[p.q], (p.cq ? fresh.shop?.checkout : fresh.stands)?.[p.q])) return false;
+  return true;
+}
+
 /** Qibla from Dakar (≈ 58° east of north) as a game yaw: forward = (sin, cos), +x east, −z north. */
 export const QIBLA_YAW = Math.atan2(Math.sin(58 * Math.PI / 180), -Math.cos(58 * Math.PI / 180));
 

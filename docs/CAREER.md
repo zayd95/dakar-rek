@@ -20,6 +20,28 @@ with an empty record).
 Four slim gauges with a word and one reason line each — no points to spend, no screen of stats. The headline under the
 name says « Une vie à Dakar », or « Lutteur · <rang> » once the player has fought.
 
+## Moments: progress made visible (src/career/progress.ts)
+
+Only real saved values. No invented numbers and no streak counters.
+- **After a bout** (fought): a recap card at the top of the toast column, under which the toasts stack. It shows:
+  - the result (« Victoire contre Gora »);
+  - the purse;
+  - the rank change with the city place (« Nouveau palier : Undercards · 11e de la ville (était 13e) »);
+  - what moved among Forme / Richesse / Réputation / Influence and why (« Richesse +2 · le cachet »), or the new word
+    when one is reached (« Réputation : Connu du quartier ! »).
+
+  The result toast stays short.
+- **After a gala watched to the end** (fight evenings): the result, the belt (taken or kept), and the winner's new place
+  in the city's table (or the top two when nothing moved).
+- **A new word on a gauge:** a small card once, with the reason (the gauge's note). The best word reached per
+  dimension is kept (`career.dimBest`): falling back and rising again is not celebrated twice. The first look at an
+  older save only remembers where the player stands.
+- **Phone › Profil:** under each word, the change since the end of the last day played (« +6 depuis hier », « −2 depuis
+  samedi »), from `career.dims` (the scores as last seen on each of the last 8 city days, updated every 2 s). There is
+  nothing when there is no earlier day or the gauge did not move.
+- **Cards:** a tap anywhere dismisses one. They leave by themselves after 6–12 s and are never modal; two at most. On a
+  landscape phone a card keeps five lines, so it and the toasts stay above the action column.
+
 ## Fighter attributes (§7, §13) — data for the làmb 2.0 lane
 
 `fighterAttributes(counters)` → Force, Équilibre, Technique, Explosivité, Endurance, Frappe, Défense, Sang-froid, each

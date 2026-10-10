@@ -12,3 +12,8 @@
 #phone .ph-dims > div:nth-child(2) i::after { background:#16a34a; }
 #phone .ph-dims > div:nth-child(3) i::after { background:#f59e0b; }
 #phone .ph-dims > div:nth-child(4) i::after { background:#a855f7; }
+/* the change since the last day played, under the word (real saved values; nothing when it did not move) */
+#phone .ph-dims em { text-align:right; }
+#phone .ph-dims em .dl { display:block; margin-top:1px; font-size:11.5px; font-weight:650; font-variant-numeric:tabular-nums; }
+#phone .ph-dims em .dl.up { color:#15803d; }
+#phone .ph-dims em .dl.down { color:#b91c1c; }

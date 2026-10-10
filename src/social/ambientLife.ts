@@ -11,7 +11,7 @@ import { WALL_H, WALL_R } from '../world/geew';
 import { rng } from '../core/rng';
 import { ROUTINES, currentPlan, resolvePlace, planPath, laneGraph, collidersClear, pathLength, type ClearFn } from './routines';
 import { ACTIVITIES, AMBIENT_BUDGET, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR, type AmbientQuality } from './ambientData';
-import { planDemand, chooseSeat, curveAt, dayOfWeek, seatCapacity, isNpcOccupant, STAND_ON, type AmbientActivity, type AmbientSpot, type LookKind, type Pt, type SeatLike } from './ambient';
+import { planDemand, chooseSeat, curveAt, dayOfWeek, keepsPlace, seatCapacity, isNpcOccupant, STAND_ON, type AmbientActivity, type AmbientSpot, type LookKind, type Pt, type SeatLike } from './ambient';
 import { buildSpots, furnitureSeats } from './ambientSpots';
 import type { ShopInfo } from '../world/shopFlow';
 import type { Collider } from '../world/types';
@@ -179,7 +179,8 @@ export class AmbientLife implements GameModule {
     this.spotById = new Map(this.spots.map(s => [s.id, s]));
     for (const a of this.actors) if (a.state !== 'off' && a.spot && this.spotById.get(a.spot.id) !== a.spot) {
       const fresh = this.spotById.get(a.spot.id);
-      if (fresh && a.state === 'do' && (a.seat ? fresh.seats.includes(a.seat) : a.slot < 0)) a.spot = fresh; else this.off(a, false);
+      // the same place, the same seat or standing place: they stay (seated, in a row, at a stall, in a queue, walking in or out)
+      if (fresh && keepsPlace(a.spot, fresh, a)) a.spot = fresh; else this.off(a, false);
     }
     for (const id of old.keys()) if (!this.spotById.has(id)) this.slotsTaken.delete(id);
     this.sig = this.signature();
@@ -688,6 +689,8 @@ export class AmbientLife implements GameModule {
 
   // ------------------------------------------------------------------ bodies and figures
   private prioOf(g: THREE.Object3D) {
+    // an owner may weigh its own people (src/arena/people.ts: those in the spotlight 1, the others farther back)
+    for (let p: THREE.Object3D | null = g; p; p = p.parent) if (typeof p.userData.lodPrio === 'number') return p.userData.lodPrio as number;
     for (let p: THREE.Object3D | null = g.parent; p; p = p.parent) if (p.name === 'npc_life') return 0.55;   // the recurring cast first
     return 1;
   }
