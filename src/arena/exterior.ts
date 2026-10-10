@@ -73,6 +73,12 @@ let gate: ArenaGate | null = null;
 let activeNow = false;
 
 /** The API shared with the arena visit (see the module comment). */
+/** Weekday evenings bring a small neighbourhood card (fewer fans); Friday–Sunday is the big gala (the full street). */
+export type EveningSize = 'gala' | 'card';
+export const eveningSize = (day: number, hour: number): EveningSize => (isFightEvening(day, hour) ? 'gala' : 'card');
+/** Share of the fans who come to a weekday card. */
+const CARD_SHARE = 0.4;
+
 export const arenaExterior = {
   /** Fight evening (Friday–Sunday from 16 h, city clock) or a bout the arena scheduled. */
   isEventDay(day: number, hour: number): boolean { return isFightEvening(day, hour) || !!scheduled?.(day, hour); },
@@ -153,6 +159,7 @@ class Exterior {
   private fill() {
     this.queue = [];
     this.fans.forEach((f, i) => {
+      if (i >= this.limit) { f.state = 'away'; f.timer = Infinity; f.h.group.visible = false; return; }   // stays home tonight
       if (i % 2 === 0 && this.queue.length < CAP) { f.state = 'queue'; f.slot = this.queue.length; this.queue.push(f); const p = this.slotAt(f.slot); f.x = p.x + f.jitter; f.z = p.z; }
       else this.respawn(f, this.rand());
       f.h.group.visible = false;
@@ -165,8 +172,13 @@ class Exterior {
     if (progress > 0) { f.x += (path[1].x - path[0].x) * progress * 0.8; f.z += (path[1].z - path[0].z) * progress * 0.8; }
   }
 
-  setActive(on: boolean) {
-    this.active = on; this.group.visible = on;
+  /** Fans who come this evening (all of them on a gala night, fewer for a weekday card). */
+  private limit = 0;
+  size: EveningSize = 'gala';
+
+  setActive(on: boolean, size: EveningSize = 'gala') {
+    this.active = on; this.group.visible = on; this.size = size;
+    this.limit = size === 'gala' ? this.fans.length : Math.max(3, Math.ceil(this.fans.length * CARD_SHARE));
     if (on) this.fill();
     else for (const h of [...this.fans.map(f => f.h), ...this.still.map(s => s.h)]) h.group.visible = false;   // quiet: nobody drawn
   }
@@ -252,7 +264,7 @@ class Exterior {
   counts() {
     const present = this.fans.filter(f => f.state !== 'away').length + this.still.length;
     const drawn = [...this.fans.map(f => f.h), ...this.still.map(s => s.h)].filter(h => h.group.visible).length;
-    return { present: this.active ? present : 0, drawn, queue: this.queue.length, fans: this.fans.length, still: this.still.length };
+    return { present: this.active ? present : 0, drawn, queue: this.queue.length, fans: this.fans.length, still: this.still.length, coming: this.active ? this.limit : 0, size: this.size };
   }
 
   dispose() {
@@ -280,7 +292,7 @@ function closeRoads(g: ArenaGate | null) {
 }
 function setActive(ctx: GameCtx, on: boolean) {
   if (!ext) return;
-  ext.setActive(on); activeNow = on;
+  ext.setActive(on, eveningSize(dayOverride ?? ctx.day(), ctx.hour())); activeNow = on;
   closeRoads(on ? ext.g : null);
   for (const p of vendorPlaces(ext.hub.id, ext.arena)) {
     if (on) ctx.places.add(p); else ctx.places.remove(p.id);
@@ -308,7 +320,7 @@ export const arenaExteriorModule: GameModule = {
   update(ctx, dt) {
     if (!ext) { audio.set(0, 0); return; }
     const on = eventNow(ctx);
-    if (on !== ext.active) setActive(ctx, on);
+    if (on !== ext.active || (on && ext.size !== eveningSize(dayOverride ?? ctx.day(), ctx.hour()))) setActive(ctx, on);   // a gala night fills up
     ext.update(dt, ctx.player.pos, !ctx.inside());
     const v = loudness(ctx);
     audio.set(v.drums, v.murmur);
@@ -319,7 +331,7 @@ export const arenaExteriorModule: GameModule = {
       const day = dayOverride ?? ctx.day(), g = ext?.g ?? null;
       const cars = trafficPositions();
       return { event: ext?.active ?? false, day, weekday: WEEKDAY_FR[weekday(day)], hour: ctx.hour(), gate, quality: ctx.quality(),
-        ...(ext?.counts() ?? { present: 0, drawn: 0, queue: 0, fans: 0, still: 0 }),
+        ...(ext?.counts() ?? { present: 0, drawn: 0, queue: 0, fans: 0, still: 0, coming: 0, size: 'gala' }),
         items: ext?.items() ?? null,
         audio: { ...audio.info(), want: loudness(ctx), muted: isMuted() },
         traffic: { cars: cars.length, inLane: g ? cars.filter(c => queueDistance(g, c.x, c.z) < 1.5).length : 0, closed: !!trafficClosures.closed },

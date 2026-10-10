@@ -1,0 +1,92 @@
+[
+  {
+    "name": "desktop: three calligraphy panels in the prayer hall, whole verses only",
+    "ok": true,
+    "detail": "[{\"id\":\"ikhlas\",\"refs\":\"112:1,112:2,112:3,112:4\",\"lines\":1,\"drawn\":true},{\"id\":\"kursi\",\"refs\":\"2:255\",\"lines\":4,\"drawn\":true},{\"id\":\"bismillah\",\"refs\":\"1:1\",\"lines\":1,\"drawn\":true}]"
+  },
+  {
+    "name": "desktop: the panels are drawn (the device has a font that joins Arabic letters)",
+    "ok": true,
+    "detail": "ikhlas:1 kursi:4 bismillah:1"
+  },
+  {
+    "name": "desktop: inside the prayer hall",
+    "ok": true,
+    "detail": "{\"x\":1600.6,\"y\":0.1,\"z\":6.4,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null}"
+  },
+  {
+    "name": "desktop: the mushaf on its stand offers « Lire le Coran »",
+    "ok": true,
+    "detail": "{\"id\":\"plateau:venue:mosque:11:shelf\",\"name\":\"Coran sur son support\",\"kind\":\"furniture\",\"space\":\"plateau:venue:mosque:11:salle\",\"primary\":\"Lire le Coran\",\"all\":[\"Lire le Coran\"]}"
+  },
+  {
+    "name": "desktop: the reading view shows Al-Fâtiha verbatim, right to left, verse by verse",
+    "ok": true,
+    "detail": "{\"n\":7,\"nums\":\"١٢٣٤٥٦٧\"}"
+  },
+  {
+    "name": "desktop: the source is credited with its link (Tanzil Project — tanzil.net)",
+    "ok": true,
+    "detail": "Texte coranique : Tanzil Project — tanzil.net · Sourate Al-Fâtiha (1), versets 1 à 7"
+  },
+  {
+    "name": "desktop: the reading view fits the screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: Échap closes the reading; reading changed nothing (money, counters, needs)",
+    "ok": true,
+    "detail": "{\"w\":[3000,3000],\"needsSame\":true}"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: three calligraphy panels in the prayer hall, whole verses only",
+    "ok": true,
+    "detail": "[{\"id\":\"ikhlas\",\"refs\":\"112:1,112:2,112:3,112:4\",\"lines\":1,\"drawn\":true},{\"id\":\"kursi\",\"refs\":\"2:255\",\"lines\":4,\"drawn\":true},{\"id\":\"bismillah\",\"refs\":\"1:1\",\"lines\":1,\"drawn\":true}]"
+  },
+  {
+    "name": "phone: the panels are drawn (the device has a font that joins Arabic letters)",
+    "ok": true,
+    "detail": "ikhlas:1 kursi:4 bismillah:1"
+  },
+  {
+    "name": "phone: inside the prayer hall",
+    "ok": true,
+    "detail": "{\"x\":1600.6,\"y\":0.1,\"z\":6.4,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null}"
+  },
+  {
+    "name": "phone: the mushaf on its stand offers « Lire le Coran »",
+    "ok": true,
+    "detail": "{\"id\":\"plateau:venue:mosque:11:shelf\",\"name\":\"Coran sur son support\",\"kind\":\"furniture\",\"space\":\"plateau:venue:mosque:11:salle\",\"primary\":\"Lire le Coran\",\"all\":[\"Lire le Coran\"]}"
+  },
+  {
+    "name": "phone: the reading view shows Al-Fâtiha verbatim, right to left, verse by verse",
+    "ok": true,
+    "detail": "{\"n\":7,\"nums\":\"١٢٣٤٥٦٧\"}"
+  },
+  {
+    "name": "phone: the source is credited with its link (Tanzil Project — tanzil.net)",
+    "ok": true,
+    "detail": "Texte coranique : Tanzil Project — tanzil.net · Sourate Al-Fâtiha (1), versets 1 à 7"
+  },
+  {
+    "name": "phone: the reading view fits the screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: Échap closes the reading; reading changed nothing (money, counters, needs)",
+    "ok": true,
+    "detail": "{\"w\":[3000,3000],\"needsSame\":true}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

@@ -4,8 +4,8 @@ import { addGrain } from './grain';
 import { floorTileTexture, plasterTexture, metalTexture, generatedTexture } from './textures';
 import { ACTIONS } from './content';
 import { furnitureById } from '../economy/furniture';
-import type { Collider, Interactable } from './types';
-import { benchSeats, type Seat } from '../interact/seats';
+import type { Action, Collider, Interactable } from './types';
+import { benchSeats, floorSeatTop, type Seat } from '../interact/seats';
 
 /**
  * Walkable interiors, built off the street grid (x ≥ 1000) and entered through a door action.
@@ -142,7 +142,13 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     if (good) { plain.box(0.6, 0.15, 0.35, bx - 0.35, 0.45 + mh, bz - 0.75, 0xf2f2ec); plain.box(0.6, 0.15, 0.35, bx + 0.35, 0.45 + mh, bz - 0.75, 0xf4e6c8); }
     else plain.box(0.9, 0.14, 0.35, bx, 0.67, bz - 0.75, 0xf2f2ec);
     solid(bx, bz, 1.6, 2.1, 0.7);
-    interactables.push({ id: `${hub}:in:bed`, name: good ? 'Lit · bon matelas' : 'Lit', kind: 'actions', x: bx + 1.05, z: bz, radius: 1.4, actions: good ? [furnitureById('matelas')!.action] : ACTIONS.home.filter(a => a.id === 'dormir') });
+    // lying along the bed (the kit's Lie pose): hips at the middle of the mattress, head on the pillow toward the headboard
+    const bed: Seat = { id: `${hub}:${kind}:lit`, x: bx, z: bz + 0.03, top: floorSeatTop(0.45 + mh), yaw: 0, kind: 'bed', space: '', occupant: null, clip: 'Lie' };
+    seats.push(bed);
+    // « Dormir » lies down on it for the night (the universal runner: seat → sleep → up beside the bed)
+    const inBed = (a: Action): Action => ({ ...a, steps: [{ label: 'Tu dors', primitive: 'sleep', seconds: a.seconds, seat: bed.id,
+      effects: { needs: a.needs, counters: a.counter ? { [a.counter]: 1 } : undefined } }] });
+    interactables.push({ id: `${hub}:in:bed`, name: good ? 'Lit · bon matelas' : 'Lit', kind: 'actions', x: bx + 1.05, z: bz, radius: 1.4, actions: (good ? [furnitureById('matelas')!.action] : ACTIONS.home.filter(a => a.id === 'dormir')).map(inBed) });
     // wardrobe with mirror
     wood.box(1.2, 2.0, 0.55, x1 - 0.7, 0.1, z0 + 0.4, 0x6e4426); plain.box(0.4, 1.2, 0.02, x1 - 0.95, 0.6, z0 + 0.68, 0xbcd0dc); plain.box(0.02, 1.8, 0.02, x1 - 0.7, 0.2, z0 + 0.68, 0x4a2e18);
     solid(x1 - 0.7, z0 + 0.4, 1.2, 0.6, 2);

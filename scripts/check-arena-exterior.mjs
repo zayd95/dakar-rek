@@ -1,4 +1,5 @@
-// Checks of the arena's surroundings (src/arena/exterior.ts): quiet on a normal evening, alive on a fight evening
+// Checks of the arena's surroundings (src/arena/exterior.ts): quiet before the doors, a small crowd for a weekday card,
+// the full street on a Friday–Sunday gala (a bout every evening since the arena visit lane joined, 10 Oct)
 // (fans, queue, drummers, vendors), buying at two vendors (paid once, counted, the scarf in the inventory), the arena's
 // own entry still at the gate. Desktop 1280×800 and phone 390×844 (touch).
 // Usage: flock /tmp/dakar-browser.lock node scripts/check-arena-exterior.mjs [baseUrl] [outDir]  (needs a running build,
@@ -35,16 +36,23 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const g = s.gate;
   const view = () => d(([p, q]) => window.__dakar.cam(p, q), [[g.x - 15, 7.5, g.z - 24], [g.x + 1, 1.2, g.z - 5]]);
 
-  // a normal evening (Thursday): quiet, nothing on sale
-  await d(([x, z]) => window.__dakar.place(x, z, 0), [g.x - 6, g.z - 12]);
+  // a Thursday morning: no bout yet — quiet, nothing on sale
+  await d(([x, z]) => { window.__dakar.setHour(11); window.__dakar.place(x, z, 0); }, [g.x - 6, g.z - 12]);
+  await until(() => !window.__dakar.arenaOut().event, null, 15000);
   await page.waitForTimeout(1500);
   s = await info();
-  check(`${label}: normal evening (${s.weekday} ${Math.floor(s.hour)} h): quiet outside the arena`, !s.event && s.present === 0 && s.drawn === 0 && s.vendors.length === 0, JSON.stringify({ event: s.event, present: s.present, vendors: s.vendors.length }));
+  check(`${label}: before the doors (${s.weekday} ${Math.floor(s.hour)} h): quiet outside the arena`, !s.event && s.present === 0 && s.drawn === 0 && s.vendors.length === 0, JSON.stringify({ event: s.event, present: s.present, vendors: s.vendors.length }));
   await view(); await shot('normal-evening'); await d(() => window.__dakar.cam(null));
+
+  // a weekday evening (Thursday 18 h): the neighbourhood card — the street lives, with fewer fans than a gala
+  await d(() => window.__dakar.setHour(18));
+  const card = await until(() => { const a = window.__dakar.arenaOut(); return a.event && a.size === 'card'; }, null, 60000);
+  s = await info();
+  check(`${label}: weekday evening (${s.weekday} ${Math.floor(s.hour)} h): a small card — the street lives, fewer fans than a gala`, card && s.coming > 0 && s.coming < s.fans && s.vendors.length === 4, JSON.stringify({ size: s.size, coming: s.coming, fans: s.fans, vendors: s.vendors.length }));
 
   // a fight evening (Saturday 18 h): fans, a queue at the gate, drummers and dancers, four vendors
   await d(() => window.__dakar.arenaOutDay(5));
-  const alive = await until(() => { const a = window.__dakar.arenaOut(); return a.event && a.drawn >= 8 && a.queue >= 3; }, null, 60000);
+  const alive = await until(() => { const a = window.__dakar.arenaOut(); return a.event && a.size === 'gala' && a.drawn >= 8 && a.queue >= 3; }, null, 60000);
   s = await info();
   check(`${label}: fight evening (${s.weekday} ${Math.floor(s.hour)} h): the exterior comes alive`, alive && s.present >= s.fans / 2 + s.still && s.vendors.length === 4, JSON.stringify({ present: s.present, drawn: s.drawn, queue: s.queue, fans: s.fans, still: s.still, quality: s.quality }));
   const want = { low: 8, medium: 14, high: 20 }[s.quality];
@@ -118,11 +126,11 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const inv = await buy('supporters', 'Écharpe Baobab', 2000, 'buy-scarf');
   check(`${label}: the Baobab scarf is in the inventory`, inv.inv.echarpe_baobab === 1, JSON.stringify(inv.inv));
 
-  // the evening is over: everyone gone, the stalls stop selling
-  await d(() => window.__dakar.arenaOutDay(3));
+  // the evening is over (the next morning): everyone gone, the stalls stop selling
+  await d(() => { window.__dakar.arenaOutDay(3); window.__dakar.setHour(11); });
   await until(() => !window.__dakar.arenaOut().event, null, 15000);
   s = await info();
-  check(`${label}: back to a normal evening: quiet, the drums stop, the road reopens`, !s.event && s.drawn === 0 && s.vendors.length === 0 && !s.audio.playing && !s.traffic.closed, JSON.stringify({ present: s.present, drawn: s.drawn, vendors: s.vendors.length, audio: s.audio.playing, closed: s.traffic.closed }));
+  check(`${label}: the next morning: quiet, the drums stop, the road reopens`, !s.event && s.drawn === 0 && s.vendors.length === 0 && !s.audio.playing && !s.traffic.closed, JSON.stringify({ present: s.present, drawn: s.drawn, vendors: s.vendors.length, audio: s.audio.playing, closed: s.traffic.closed }));
   check(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await page.context().close();
 }

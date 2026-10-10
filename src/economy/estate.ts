@@ -3,7 +3,7 @@ import type { GameCtx, GameModule } from '../game/modules';
 import type { Collider, HubWorld } from '../world/types';
 import { buildInterior } from '../world/interiors';
 import type { AssetState } from '../core/types';
-import type { Seat } from '../interact/seats';
+import { floorSeatTop, type Seat } from '../interact/seats';
 import type { Target } from '../interact/types';
 import * as P from '../activity/primitives';
 import { ownable, shop, type PlaceHooks } from '../activity/templates';
@@ -227,9 +227,10 @@ class Estate {
     const seats: Seat[] = [];
     for (const f of want) (furnitureSpec(f.spec)!.seats ?? []).forEach((st, k) => {
       const [x, z] = toHome(f.at!, st.x, st.z);
-      seats.push({ id: seatId(hub, f.uid, k), x: v.ox + x, z: v.oz + z, top: st.top - 0.1 + FLOOR, yaw: yawOf(f.at!) + st.yaw, kind: st.kind, space: 'home', occupant: null });
+      const surface = st.top - 0.1 + FLOOR;                               // a lying place: the body's origin on the mattress
+      seats.push({ id: seatId(hub, f.uid, k), x: v.ox + x, z: v.oz + z, top: st.clip ? floorSeatTop(surface) : surface, yaw: yawOf(f.at!) + st.yaw, kind: st.kind, space: 'home', occupant: null, ...(st.clip ? { clip: st.clip } : {}) });
     });
-    const same = (a: Seat | null, b: Seat) => !!a && Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.z - b.z) < 1e-6 && a.yaw === b.yaw && a.top === b.top;
+    const same = (a: Seat | null, b: Seat) => !!a && Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.z - b.z) < 1e-6 && a.yaw === b.yaw && a.top === b.top && a.clip === b.clip;
     for (const id of v.seatIds) {
       const old = ctx.seats.get(id), next = seats.find(x => x.id === id);
       if (next && same(old, next)) continue;
@@ -468,6 +469,9 @@ class Estate {
       rows.push(['Ou le louer', `+${fcfa(sp.income ?? 0)} / h en ville`]);
       if (sp.upkeep) rows.push(['Charges', `${fcfa(sp.upkeep)} / h`]);
       if (holding(s, sp.id)?.how === 'rented') rows.push(['Ta location', 'elle s’arrête : il devient à toi']);
+    } else if (sp.kind === 'vehicle') {
+      rows.push(['Livraison', `au bord du trottoir, chez ${sp.where ?? 'le vendeur'} : monte et roule`]);
+      rows.push(['Revente', `tout de suite, ${Math.round(ECONOMY.property.saleShare * 100)} % de sa valeur`]);
     } else {
       rows.push(['Rapporte', `+${fcfa(sp.income ?? 0)} / h une fois loué`]);
       if (sp.upgrades?.length) rows.push(['Améliorable', sp.upgrades.map(u => u.name).join(', ')]);

@@ -13,14 +13,17 @@ import type { Interior } from '../world/interiors';
 import type { Humanoid } from '../actors/humanoid';
 import type { FollowCamera } from '../actors/camera';
 import { wolofModule } from '../i18n/module';
+import { arenaModule } from '../arena/module';
 import { assetKitModule } from './assetKit';
 import { transport } from '../transport/module';
 import { moto } from '../transport/motoModule';
+import { car } from '../transport/carModule';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
+import { ambientLife } from '../social/ambientLife';
 import { arenaExteriorModule } from '../arena/exterior';
 import { arenaInteriorModule } from '../arena/interior';
-import { ambientLife } from '../social/ambientLife';
+import { worldMarkers } from '../ui/worldMarkers';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -68,7 +71,14 @@ export interface GameCtx {
   mode(): GameMode;
   /** 'menu' and 'busy' lock movement; 'play' gives it back. */
   setMode(m: GameMode): void;
-  menu(title: string, subtitle: string, items: MenuItem[]): void;
+  /** Bottom sheet of choices; `extraHtml` (trusted markup built by the module) goes between the subtitle and the list. */
+  menu(title: string, subtitle: string, items: MenuItem[], extraHtml?: string): void;
+  /**
+   * The next-step place to walk to, in the current hub (way-finding marker and goal compass, src/ui/worldMarkers.ts):
+   * the walking destination when one is set, else the person of the suggested story beat, else (first job) the nearest
+   * Tiak Tiak pick-up; null when there is none.
+   */
+  guide(): { name: string; x: number; z: number } | null;
   toast(msg: string): void;
   save(): void;
   /**
@@ -121,6 +131,7 @@ export interface GameModule {
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
 export const MODULES: GameModule[] = [
-  wolofModule, assetKitModule, transport, VenuesModule, moto, ESTATE_MODULE, arenaExteriorModule, arenaInteriorModule,
-  ambientLife,          // NPC & social life lane, last: it populates the places and seats the others register (docs/NPC_LIFE.md)
+  wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule,
+  ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
+  worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
 ];

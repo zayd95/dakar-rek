@@ -19,7 +19,7 @@ import { MonumentLife } from './actors/life';
 import { PlacedPeople } from './actors/placedPeople';
 import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
-import { Hud, fcfa } from './ui/hud';
+import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, type Clip, type PersonLook } from './actors/humanoid';
 import { castById } from './social/cast';
@@ -39,8 +39,9 @@ import { Phone } from './ui/phone';
 import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
+import { pickupFrags } from './economy/jobs';
 import { Interactions } from './interact/system';
-import { Seats, seatClip, sitOriginY, type Seat } from './interact/seats';
+import { Seats, seatClip, sitOriginY, standSpots, type Seat } from './interact/seats';
 import { LegacySource } from './interact/legacy';
 import type { Target } from './interact/types';
 import { ActivityRunner } from './activity/runner';
@@ -294,8 +295,9 @@ const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
   sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
   clip: c => { if (playerBody) playerBody.hold = seated && (c === 'Sit' || !c) ? seatClip(seated) : c ?? null; },   // a step's Sit means « the seat's own pose » (lying on a bed…)
+  stand: () => standUp(),                                  // out of bed after sleeping (runner: a sleep step ends the seat)
   busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
-  progress: (on, pct = 0, label = '') => hud.progress(on, pct, label),
+  progress: (on, pct = 0, label = '') => hud.progress(on, pct, label, progressMeta()),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   rel: (npc, d) => rel.change(PLAYER, npc, d), flag: f => { if (!state.data.flags.includes(f)) state.data.flags.push(f); },
   item: (id, d) => inventory.add(id, d), hasItem: (id, n) => inventory.has(id, n),
@@ -322,7 +324,8 @@ const ctx: GameCtx = {
   },
   mode: () => mode,
   setMode(m) { mode = m; input.enabled = m === 'play'; if (m !== 'play') input.reset(); },
-  menu(title, subtitle, items) { mode = 'menu'; input.enabled = false; hud.openMenu(title, subtitle, items); },
+  menu(title, subtitle, items, extraHtml) { mode = 'menu'; input.enabled = false; hud.openMenu(title, subtitle, items, extraHtml); },
+  guide: () => guideTarget(),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   addInterior(door, int) {
     if (!world) return;
@@ -358,8 +361,16 @@ function standUp(inPlace = false) {
   const s = seated; seats.release(s.id, 'player'); seated = null;
   if (playerBody && playerBody.hold === seatClip(s)) playerBody.hold = null;
   if (inPlace || !world) return;
-  let nx = s.x + Math.sin(s.yaw) * 0.7, nz = s.z + Math.cos(s.yaw) * 0.7;
-  [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
+  // the first free spot: in front of a chair; out of a bed by a side (or past its foot), never inside furniture or a wall
+  const cols = inside ? inside.int.colliders : world.colliders, r = inside ? 0.3 : 0.5;
+  let nx = s.x, nz = s.z, best = Infinity;
+  for (const p of standSpots(s)) {
+    const [x, z] = pushOut(p.x, p.z, r, cols);
+    const blocked = cols.some(c => x > c.x0 - r * 0.9 && x < c.x1 + r * 0.9 && z > c.z0 - r * 0.9 && z < c.z1 + r * 0.9);
+    const cost = Math.hypot(x - p.x, z - p.z) + (blocked ? 10 : 0);
+    if (cost < best - 1e-6) { best = cost; nx = x; nz = z; }
+  }
+  if (s.clip === 'Lie') facing = Math.atan2(nx - s.x, nz - s.z);                // out of bed, facing away from it
   pos.set(nx, 0.1 + (inside ? 0 : world.heightAt(nx, nz)), nz);
 }
 /** Registers the seats of the hub, its interiors and marks those already used by the ambient people. */
@@ -380,7 +391,7 @@ function openMore() {
   const t = interactions.focus; if (!t || mode !== 'play') return;
   const list = interactions.all(t); if (!list.length) return;
   mode = 'menu';
-  hud.openMenu(t.name, '', list.map(a => ({
+  hud.openQuick(t.name, list.map(a => ({
     icon: a.icon, label: a.label, detail: a.disabled ?? a.detail, disabled: !!a.disabled,
     right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined,
     onPick: () => { hud.closeModal(); mode = 'play'; a.run(); },
@@ -406,9 +417,9 @@ function describe(a: Action): string {
 function openActions(it: Interactable) {
   mode = 'menu';
   const visible = it.actions.filter(a => !a.visible || a.visible(state));
-  const items = visible.map(a => {
+  const items: MenuItem[] = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
+    return { icon: actionVerb(a)[1], label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
   });
   let subtitle = it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {
@@ -504,7 +515,7 @@ function startScene(kind: SceneKind, onDone?: () => void) {
   lambScene.onDone = onDone;
   extra.add(lambScene.group);
   npcLife.setVisible(false);                              // the scene places its own cast
-  hud.setScene(SCENE_LABEL[kind], 'Làmb · Dakar Rek');
+  hud.setScene(SCENE_LABEL[kind], 'Làmb · Dakar Rek', true);
 }
 
 // ------------------------------------------------------------------ làmb bouts (provisional rules, no strikes; see src/lamb/rules.ts)
@@ -555,6 +566,12 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId) {
   hud.setScene(boutMode === 'entrainement' ? 'Entraînement · combat' : 'Combat · làmb', `Lutte sans frappe · ${RULES_STATUS}`);
 }
 phoneHooks.arenaProfile = () => arenaProfileRows(state.data.counters, state.data.flags.includes('ecurie_baobab') ? 'Baobab (fictive)' : null);
+
+/** Leave a làmb scene early (« Arrêter », Escape, the menu key): no reward, controls back. */
+function stopScene() {
+  if (!(lambScene instanceof LambScene)) return;
+  lambScene.onDone = undefined; endScene(); hud.toast('Arrêté');
+}
 
 function endScene() {
   if (!lambScene) return;
@@ -616,6 +633,9 @@ function playEmote(i: number) {
 /** The journal lives in the phone (Carnet app). */
 function openJournal() { hud.closeModal(); phone.open('carnet'); }
 
+/** A plain timed action in progress (content without steps): « Arrêter », Escape or the menu key stop it, without effects. */
+let legacyRun: { label: string; stop(): void } | null = null;
+
 function runAction(a: Action, npc?: string, it?: Interactable) {
   const where = it?.name;
   if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
@@ -628,11 +648,15 @@ function runAction(a: Action, npc?: string, it?: Interactable) {
   }
   mode = 'busy'; input.enabled = false;
   const t0 = performance.now(), dur = a.seconds * 1000;
+  let stopped = false;
+  legacyRun = { label: a.label, stop: () => { stopped = true; legacyRun = null; hud.progress(false); mode = 'play'; input.enabled = true; hud.toast('Arrêté'); } };
   hud.progress(true, 0, a.label);
   const tick = () => {
+    if (stopped) return;
     const p = clamp((performance.now() - t0) / dur, 0, 1);
     hud.progress(true, p, a.label);
     if (p < 1) { requestAnimationFrame(tick); return; }
+    legacyRun = null;
     hud.progress(false);
     const entry = where && !where.startsWith(a.label) ? `${a.label} · ${where}` : a.label;   // wallet history line
     const gain = economy.work(a, it);                       // records the activity (polyvalence) and scales the pay
@@ -690,6 +714,22 @@ function openPlaces() {
 }
 phoneHooks.openPlaces = openPlaces;
 
+/** Person of the suggested story beat, or « first delivery » (refreshed with the HUD, 4 times a second). */
+let guideNpc: string | null = null, guideJob = false;
+/** Way-finding: the walking destination, else the suggested person (or the nearest Tiak Tiak pick-up for the first job) in this hub. */
+function guideTarget(): { name: string; x: number; z: number } | null {
+  if (!world) return null;
+  if (destination?.hub === world.id) { const it = world.interactables.find(i => i.id === destination!.id); if (it) return { name: it.name, x: it.x, z: it.z }; }
+  if (guideJob) {
+    const w = world, here = inside ? inside.door : pos;
+    const ends = pickupFrags(w.id).map(f => w.interactables.find(i => i.id.startsWith(w.id + ':') && i.id.includes(f))).filter((i): i is Interactable => !!i);
+    ends.sort((a, b) => Math.hypot(a.x - here.x, a.z - here.z) - Math.hypot(b.x - here.x, b.z - here.z));
+    if (ends[0]) return { name: ends[0].name, x: ends[0].x, z: ends[0].z };
+  }
+  const w = guideNpc ? npcLife.where(guideNpc) : null;
+  return w?.here && w.x !== undefined && w.z !== undefined ? { name: castById(guideNpc!)?.name ?? '', x: w.x, z: w.z } : null;
+}
+
 function walkingHint(): string | null {
   if (!destination || destination.hub !== world?.id) { destination = null; return null; }
   const target = world.interactables.find(i => i.id === destination!.id);
@@ -742,11 +782,13 @@ function saveNow(): boolean {
 
 hud.onAction = () => {
   if (activities.running) { activities.cancel('Arrêté'); return; }
+  if (legacyRun) { legacyRun.stop(); return; }
   if (mode !== 'play') return;
   const a = interactions.primary();
-  if (a && !a.disabled) a.run(); else if (a?.disabled) hud.toast(a.disabled);
+  if (a && !a.disabled) a.run(); else if (a?.disabled) hud.deny(a.disabled);
 };
 hud.onMore = () => openMore();
+hud.onSceneStop = () => stopScene();
 hud.onMenu = () => { if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); };
 new MutationObserver(() => { if (!hud.modalOpen && !phone.isOpen && mode === 'menu') { mode = 'play'; input.enabled = true; } }).observe(document.getElementById('modal')!, { attributes: true });
 addEventListener('visibilitychange', () => { if (document.hidden && world) saveNow(); });
@@ -757,15 +799,22 @@ setInterval(() => { if (world && mode === 'play') saveNow(); }, 8000);
 const promptV = new THREE.Vector3();
 function showPrompt(t: Target | null) {
   const run = activities.current;
-  if (run) { hud.setPrompt('✋ Arrêter', run.step.label); hud.setWorldPrompt(null); return; }
+  if (run || legacyRun) { hud.setPrompt('Arrêter', run ? run.step.label : legacyRun!.label, false, { icon: '✋', stop: true }); hud.setWorldPrompt(null); return; }
   const a = t ? interactions.primary(t) : null;
   if (!t || !a) { hud.setPrompt(null); hud.setWorldPrompt(null); return; }
-  const all = interactions.all(t);
-  hud.setPrompt((a.icon ? a.icon + ' ' : '') + a.label, a.label === t.name ? (a.disabled ?? 'Appuyer / E') : t.name, all.length > 1);
+  const all = interactions.all(t), opt = { icon: a.icon, cost: a.cost, gain: a.gain, disabled: a.disabled };
+  hud.setPrompt(a.label, a.disabled ?? (a.label === t.name ? '' : t.name), all.length > 1, opt);
   if (t.kind === 'self' || !world) { hud.setWorldPrompt(null); return; }
+  camera.updateMatrixWorld();
   promptV.set(t.x, (t.y ?? 1.9) + (inside ? 0 : world.heightAt(t.x, t.z)), t.z).project(camera);
   if (promptV.z > 1 || Math.abs(promptV.x) > 1.1 || Math.abs(promptV.y) > 1.1) { hud.setWorldPrompt(null); return; }
-  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, a.icon, a.label);
+  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, a.icon, a.label, opt);
+}
+/** Title, icon and « step n/m » (timed steps) of the running activity, for the progress pill. */
+function progressMeta() {
+  const c = activities.current; if (!c) return undefined;
+  const timed = c.spec.steps.filter(s => (s.seconds ?? 0) > 0);
+  return { title: c.spec.label, icon: c.spec.icon, step: timed.indexOf(c.step) + 1, steps: timed.length };
 }
 
 // ------------------------------------------------------------------ main loop
@@ -775,9 +824,9 @@ function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (document.hidden || !world) return;
 
-  if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
+  if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (legacyRun) legacyRun.stop(); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
-  if (input.takeAction() && ((mode === 'play' && interactions.focus) || activities.running)) hud.onAction();
+  if (input.takeAction() && ((mode === 'play' && interactions.focus) || activities.running || legacyRun)) hud.onAction();
   activities.update(dt);
   { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
   for (const m of MODULES) m.update?.(ctx, dt);
@@ -830,14 +879,14 @@ function frame(now: number) {
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
   const space = presenceSpace();
-  const clip = mode === 'play' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
+  // the body's own pose, also while an activity runs (asleep in bed, praying, dancing): a narrow list, anything else is Idle
+  const clip = mode !== 'scene' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
   presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
   const focus = mode === 'play' && !lambScene ? interactions.update(interactSpace(), pos.x, pos.z, facing) : (interactions.focus = null);
   economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
-  showPrompt(focus);
 
   if (!lambScene && !MODULES.some(m => m.camera?.(ctx, dt, drag))) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
   if (camOverride && !lambScene) {
@@ -848,8 +897,9 @@ function frame(now: number) {
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
-  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); hud.setGoal(mode === 'play' ? walkingHint() ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
+  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); guideNpc = sg && 'npc' in sg ? sg.npc : null; guideJob = sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' ? walkingHint() ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
+  showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   renderer.render(scene, camera);
 }
 
@@ -870,7 +920,7 @@ void start();
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
-    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size }),
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses() }),
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
