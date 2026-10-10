@@ -9,8 +9,13 @@ import { trafficClosures, trafficPositions } from '../actors/npc';
 import { isMuted } from '../core/audioSettings';
 import {
   ECURIES, crossesQueue, drummerAt, drumsCentre, drumVolume, gateOf, isFightEvening, murmurVolume, queueDistance, stallsOf, vendorPlaces,
-  VENDORS, weekday, WEEKDAY_FR, type ArenaGate,
+  VENDORS, exteriorPhase, outflowDestinations, stallFronts, weekday, WEEKDAY_FR, type ArenaGate, type ExteriorPhase,
 } from './exteriorRules';
+import { GALA_DONE_COUNTER, streetAt } from './program';
+import { say } from '../i18n/wolof';
+import { arenaFighter } from './fighter';
+/** How much louder the drums play while a wrestler of tonight gets ready and walks out. */
+export const FIGHTER_DRUMS = 1.3;
 import { ExteriorAudio, listenForGesture } from './exteriorAudio';
 import { deckCentre } from '../world/arenaModules';
 
@@ -40,9 +45,11 @@ const VIEW = 70;
 const SLOT = 0.8, CAP = 16, GATE_EVERY = 2.4;
 
 type Pt = { x: number; z: number };
-type FanState = 'walk' | 'wait' | 'queue' | 'enter' | 'away';
+type FanState = 'walk' | 'wait' | 'queue' | 'enter' | 'away' | 'leave' | 'gone';
+/** A point of a fan's way; `wait`: seconds spent there (a last bissap at a stall on the way out). */
+type Step = Pt & { wait?: number };
 interface Fan {
-  h: Humanoid; state: FanState; path: Pt[]; x: number; z: number; speed: number; timer: number; slot: number; jitter: number; moving: boolean;
+  h: Humanoid; state: FanState; path: Step[]; x: number; z: number; speed: number; timer: number; slot: number; jitter: number; moving: boolean;
   /** What the supporter carries in the écurie's colour (null: not a supporter). */
   item: 'flag' | 'scarf' | null; hand: THREE.Object3D | null; neck: THREE.Object3D | null;
 }
@@ -102,6 +109,14 @@ class Exterior {
   private rand = rng(4242);
   private scarves: THREE.InstancedMesh | null = null;
   private flags: THREE.InstancedMesh | null = null;
+  /** Arriving and queueing, or pouring out after the gala (src/arena/exteriorRules.ts exteriorPhase). */
+  phase: ExteriorPhase = 'quiet';
+  private exitQueue: Fan[] = [];
+  private emitT = 0;
+  private dests: Pt[] = [];
+  private vendorsH: { h: Humanoid; clip: Clip }[] = [];
+  /** The vendors' last call was heard this evening. */
+  lastCall = false;
 
   constructor(ctx: GameCtx, readonly hub: HubWorld, readonly arena: { cx: number; cz: number }, readonly g: ArenaGate, quality: 'low' | 'medium' | 'high') {
     const d = EXTERIOR_DENSITY[quality], R = this.rand, q = g.queue;
@@ -129,7 +144,7 @@ class Exterior {
       for (const v of VENDORS) {
         const s = stalls[v.stall], h = new Humanoid({ ...randomLook(R), female: v.seller === 'Ndèye' || v.seller === 'Fatou' });
         h.group.position.set(s.x, 0.1, s.z + 0.8); h.group.rotation.y = Math.PI; h.hold = v.stall % 2 ? 'Talk' : 'Idle';
-        this.group.add(h.group); this.still.push({ h });
+        this.group.add(h.group); this.still.push({ h }); this.vendorsH.push({ h, clip: h.hold });
       }
       // sabar drummers beside the gate, dancers in a ring in front of them
       const drums = new Batch();
@@ -184,6 +199,46 @@ class Exterior {
     else for (const h of [...this.fans.map(f => f.h), ...this.still.map(s => s.h)]) h.group.visible = false;   // quiet: nobody drawn
   }
 
+  /**
+   * Quiet, arriving (the fans of tonight walk in and queue), or the end of the evening: the queue dissolves and everyone
+   * inside comes out of the public gate in a stream, down the lane, toward the stops and the taxis; some stop for a last
+   * bissap; the vendors call the last customers.
+   */
+  setPhase(phase: ExteriorPhase, size: EveningSize, dests: Pt[]) {
+    const was = this.phase; this.phase = phase;
+    if (phase !== 'outflow') {
+      for (const v of this.vendorsH) v.h.hold = v.clip;
+      if (phase === 'arrive' && was === 'outflow') this.lastCall = false;
+      this.setActive(phase === 'arrive', size); return;
+    }
+    if (!this.active) {                                                  // the evening was already under way: everyone is inside
+      this.active = true; this.group.visible = true; this.size = size;
+      this.limit = size === 'gala' ? this.fans.length : Math.max(3, Math.ceil(this.fans.length * CARD_SHARE));
+      for (const f of this.fans) { f.state = 'away'; f.timer = Infinity; f.h.group.visible = false; }
+    }
+    this.dests = dests; this.queue = []; this.exitQueue = [];
+    this.fans.forEach((f, i) => {
+      if (i >= this.limit) { f.state = 'gone'; return; }
+      if (f.state === 'queue' || f.state === 'wait' || f.state === 'walk') this.leave(f);
+      else if (f.state !== 'leave' && f.state !== 'gone') { f.state = 'away'; f.timer = Infinity; this.exitQueue.push(f); }
+    });
+    for (let i = this.exitQueue.length - 1; i > 0; i--) { const j = Math.floor(this.rand() * (i + 1)); [this.exitQueue[i], this.exitQueue[j]] = [this.exitQueue[j], this.exitQueue[i]]; }
+    this.emitT = 0.4;
+    for (const v of this.vendorsH) v.h.hold = 'Talk';                 // the last rush
+  }
+  /** On the way out: down the lane if in it, maybe a last stop at a stall, then a stop, a taxi corner or a street end. */
+  private leave(f: Fan, fromGate = false) {
+    const q = this.g.queue, R = this.rand, path: Step[] = [];
+    if (fromGate || (Math.abs(f.x - q.x) < q.half && f.z > q.z1 - 0.3)) path.push({ x: q.x + (R() - 0.5) * 3, z: q.z1 - 0.8 });
+    const dest = this.dests[Math.floor(R() * this.dests.length)] ?? { x: q.x + 34, z: q.z1 };
+    if (R() < 0.3) {
+      const s = stallFronts(this.arena).reduce((b, p) => (Math.hypot(p.x - dest.x, p.z - dest.z) < Math.hypot(b.x - dest.x, b.z - dest.z) ? p : b));
+      path.push({ x: s.x + (R() - 0.5) * 1.4, z: s.z - 0.2 - R() * 0.6, wait: 3 + R() * 3 });
+    }
+    path.push({ x: dest.x + (R() - 0.5) * 3, z: dest.z + (R() - 0.5) * 3 });
+    f.state = 'leave'; f.path = path; f.timer = 0;
+  }
+
   /** Moves toward a point at the fan's pace; true when there. */
   private stepTo(f: Fan, p: Pt, dt: number, pace = 1): boolean {
     const dx = p.x - f.x, dz = p.z - f.z, dist = Math.hypot(dx, dz);
@@ -198,7 +253,15 @@ class Exterior {
     if (!this.active) return;
     // the gate lets the first of the queue in now and then; everyone behind moves up one place
     this.gateT += dt;
-    const first = this.queue[0];
+    if (this.phase === 'outflow' && this.exitQueue.length) {                // out of the gate, a few at a time
+      this.emitT -= dt;
+      while (this.emitT <= 0 && this.exitQueue.length) {
+        const f = this.exitQueue.shift()!;
+        f.x = this.g.x + (this.rand() - 0.5) * 2.4; f.z = this.g.z + 0.6; this.leave(f, true);
+        this.emitT += 0.3 + this.rand() * 0.45;
+      }
+    }
+    const first = this.phase === 'arrive' ? this.queue[0] : undefined;
     if (first && this.gateT >= GATE_EVERY && Math.hypot(first.x - (this.slotAt(0).x + first.jitter), first.z - this.slotAt(0).z) < 0.3) {
       this.gateT = 0; this.queue.shift();
       first.state = 'enter'; first.slot = -1; first.path = [{ x: this.g.x, z: this.g.z + 2.2 }];
@@ -224,10 +287,20 @@ class Exterior {
           break;
         case 'away':
           f.moving = false;
-          f.timer -= dt; if (f.timer <= 0) this.respawn(f);
+          f.timer -= dt; if (f.timer <= 0 && this.phase === 'arrive') this.respawn(f);
+          break;
+        case 'leave': {
+          if (f.timer > 0) { f.timer -= dt; f.moving = false; f.h.group.rotation.y = 0; break; }   // a last bissap at the stall
+          const p = f.path[0];
+          if (!p) { f.state = 'gone'; break; }
+          if (this.stepTo(f, p, dt)) { f.path.shift(); if (p.wait) f.timer = p.wait; }
+          break;
+        }
+        case 'gone':
+          f.moving = false;
           break;
       }
-      const vis = draw && f.state !== 'away' && Math.hypot(f.x - viewer.x, f.z - viewer.z) <= VIEW;
+      const vis = draw && f.state !== 'away' && f.state !== 'gone' && Math.hypot(f.x - viewer.x, f.z - viewer.z) <= VIEW;
       f.h.group.visible = vis;
       if (vis) { f.h.group.position.set(f.x, 0.1, f.z); f.h.animate(dt, f.moving ? f.speed : 0); }
     }
@@ -263,9 +336,11 @@ class Exterior {
   }
 
   counts() {
-    const present = this.fans.filter(f => f.state !== 'away').length + this.still.length;
+    const present = this.fans.filter(f => f.state !== 'away' && f.state !== 'gone').length + this.still.length;
     const drawn = [...this.fans.map(f => f.h), ...this.still.map(s => s.h)].filter(h => h.group.visible).length;
-    return { present: this.active ? present : 0, drawn, queue: this.queue.length, fans: this.fans.length, still: this.still.length, coming: this.active ? this.limit : 0, size: this.size };
+    return { present: this.active ? present : 0, drawn, queue: this.queue.length, fans: this.fans.length, still: this.still.length, coming: this.active ? this.limit : 0, size: this.size,
+      phase: this.phase, leaving: this.fans.filter(f => f.state === 'leave').length, gone: this.fans.filter(f => f.state === 'gone').length, inside: this.exitQueue.length,
+      atStalls: this.fans.filter(f => f.state === 'leave' && f.timer > 0).length };
   }
 
   dispose() {
@@ -291,22 +366,34 @@ function closeRoads(g: ArenaGate | null) {
     return v;
   };
 }
-function setActive(ctx: GameCtx, on: boolean) {
+/** Transport stops of the hub (where the crowd heads after the gala). */
+const stopsOf = (ctx: GameCtx) => ctx.places.all().filter(p => p.type === 'stop' && p.anchors[0]).map(p => ({ x: p.anchors[0].x, z: p.anchors[0].z }));
+function setPhase(ctx: GameCtx, phase: ExteriorPhase) {
   if (!ext) return;
-  ext.setActive(on, eveningSize(dayOverride ?? ctx.day(), ctx.hour())); activeNow = on;
+  ext.setPhase(phase, eveningSize(dayOverride ?? ctx.day(), ctx.hour()), outflowDestinations(ext.g, stopsOf(ctx)));
+  const on = phase !== 'quiet'; activeNow = on;
   closeRoads(on ? ext.g : null);
   for (const p of vendorPlaces(ext.hub.id, ext.arena)) {
     if (on) ctx.places.add(p); else ctx.places.remove(p.id);
   }
 }
-const eventNow = (ctx: GameCtx) => forced ?? arenaExterior.isEventDay(dayOverride ?? ctx.day(), ctx.hour());
+/** Quiet, arriving or pouring out: the fight evening's rule, then the arena's after-gala window (src/arena/program.ts). */
+function phaseNow(ctx: GameCtx): ExteriorPhase {
+  if (forced !== null) return forced ? (forcedOut ? 'outflow' : 'arrive') : 'quiet';
+  const day = dayOverride ?? ctx.day(), hour = ctx.hour();
+  const after = streetAt(hour, ctx.state.data.counters[GALA_DONE_COUNTER] === day) === 'after';
+  return exteriorPhase(arenaExterior.isEventDay(day, hour), after);
+}
+let forcedOut = false;
 /** Loudness of the drums and of the murmur where the player stands (0 when the evening is quiet). */
 function loudness(ctx: GameCtx) {
   if (!ext?.active) return { drums: 0, murmur: 0 };
   // one rhythm for the evening, as loud as the nearer drummers: the group by the gate or the deck inside, by the tunnel
   const p = ctx.player.pos, inside = !!ctx.inside(), muted = isMuted(), c = drumsCentre(ext.g), dk = deckCentre(ext.arena.cx, ext.arena.cz);
   const dist = Math.min(Math.hypot(p.x - c.x, p.z - c.z), Math.hypot(p.x - dk.x, p.z - dk.z));
-  return { drums: drumVolume(dist, inside, muted), murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
+  // a wrestler of tonight in his corner or walking out: the drummers play louder for him (src/arena/fighter.ts)
+  const louder = arenaFighter.phase() === 'prep' || arenaFighter.phase() === 'ring' ? FIGHTER_DRUMS : 1;
+  return { drums: drumVolume(dist, inside, muted) * louder, murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
 }
 
 export const arenaExteriorModule: GameModule = {
@@ -318,12 +405,16 @@ export const arenaExteriorModule: GameModule = {
     if (!hub.arena) return;
     gate = gateOf(hub.arena);
     ext = new Exterior(ctx, hub, hub.arena, gate, ctx.quality());
-    setActive(ctx, eventNow(ctx));
+    setPhase(ctx, phaseNow(ctx));
   },
   update(ctx, dt) {
     if (!ext) { audio.set(0, 0); return; }
-    const on = eventNow(ctx);
-    if (on !== ext.active || (on && ext.size !== eveningSize(dayOverride ?? ctx.day(), ctx.hour()))) setActive(ctx, on);   // a gala night fills up
+    const ph = phaseNow(ctx);
+    if (ph !== ext.phase || (ph === 'arrive' && ext.size !== eveningSize(dayOverride ?? ctx.day(), ctx.hour()))) setPhase(ctx, ph);   // a gala night fills up
+    if (ph === 'outflow' && !ext.lastCall && !ctx.inside()) {              // the vendors call the last customers
+      const p = ctx.player.pos, fronts = stallFronts(ext.arena), i = fronts.findIndex(s => Math.hypot(s.x - p.x, s.z - p.z) < 7);
+      if (i >= 0) { const v = VENDORS.find(x => x.stall === i)!; ext.lastCall = true; ctx.toast(`${v.seller} : « Les derniers avant de rentrer ! ${say('Ñibbil ak jàmm')} ! »`); }
+    }
     ext.update(dt, ctx.player.pos, !ctx.inside());
     const v = loudness(ctx);
     audio.set(v.drums, v.murmur);
@@ -343,6 +434,8 @@ export const arenaExteriorModule: GameModule = {
     },
     /** Force the event on / off (null: back to the city clock), or pretend the city day is `day`. */
     arenaOutForce: (v: boolean | null) => { forced = v; },
+    /** With arenaOutForce(true): the end of the evening (the crowd pours out) instead of the arrivals. */
+    arenaOutOutflow: (v: boolean) => { forcedOut = v; },
     arenaOutDay: (d: number | null) => { dayOverride = d; },
   }),
 };

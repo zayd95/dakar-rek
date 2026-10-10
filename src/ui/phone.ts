@@ -299,7 +299,11 @@ export class Phone {
     const rows: [string, number | string][] = [['Temps de jeu', `${Math.floor(d.playedMs / 3600000)} h ${String(Math.floor(d.playedMs / 60000) % 60).padStart(2, '0')}`],
       ['Repas', c.meals ?? 0], ['Petits boulots', c.shifts ?? 0], ['Livraisons Tiak Tiak', c.livraisons ?? 0], ['Trajets en car rapide', c.trips ?? 0],
       ['Combats', c.combats ?? 0], ['Victoires', c.victoires ?? 0], ['Actions en ville', c.actions ?? 0], ['Meubles achetés', c.meubles ?? 0]];
-    return `<div class="ph-profile"><i>🧑🏾</i><b>Toi</b><small>${fcfa(this.ctx.state.wallet)} · humeur ${esc(this.ctx.state.mood())}</small></div>
+    // What the player became, read from what they did (career module): four light gauges, never a class to pick.
+    const dims = phoneHooks.profileDims?.() ?? [];
+    const dimsHtml = dims.length ? `<div class="ph-dims">${dims.map(d => `<div><span><b>${esc(d.label)}</b><small>${esc(d.note)}</small></span><em>${esc(d.level)}</em><i style="--v:${Math.max(0, Math.min(100, Math.round(d.score)))}"></i></div>`).join('')}</div>` : '';
+    return `<div class="ph-profile"><i>🧑🏾</i><b>Toi</b><small>${esc(phoneHooks.profileHeadline?.() ?? '')}${phoneHooks.profileHeadline ? ' · ' : ''}${fcfa(this.ctx.state.wallet)} · humeur ${esc(this.ctx.state.mood())}</small></div>
+      ${dimsHtml}
       <div class="ph-rows">${rows.map(([l, v]) => `<div><span>${l}</span><em>${typeof v === 'number' ? v.toLocaleString('fr-FR') : v}</em></div>`).join('')}</div>
       <p class="ph-note">Partie invité : ton profil est enregistré sur cet appareil.</p>`;
   }

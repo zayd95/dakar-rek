@@ -49,6 +49,16 @@ export const SECTIONS: readonly StandSection[] = STAND_GAPS.map(([c, h], i) => {
   const [nc, nh] = STAND_GAPS[(i + 1) % STAND_GAPS.length];
   return { id: 'ABCDEFGH'[i], a0: c + h, a1: (i === STAND_GAPS.length - 1 ? nc + 2 * Math.PI : nc) - nh };
 });
+/** The aisle (never the gate or the tunnel) nearest to angle a. */
+export const nearestAisle = (a: number) => AISLES.reduce((best, x) => (Math.abs(angleDiff(a, x)) < Math.abs(angleDiff(a, best)) ? x : best), AISLES[0]);
+/**
+ * Where someone leaving a place on tier t at angle a stands: in the nearest aisle, on that tier's tread (its back half,
+ * at the tier's height); then, as a second choice, down on the walkway in front of the parapet.
+ */
+export function standExits(cx: number, cz: number, a: number, t: number): { x: number; z: number }[] {
+  const al = nearestAisle(a), u = tierRadius(t) + 0.2, w = 16.78;
+  return [{ x: cx + Math.sin(al) * u, z: cz + Math.cos(al) * u }, { x: cx + Math.sin(a) * w, z: cz + Math.cos(a) * w }];
+}
 /** The aisle stairs: two steps per tier, from the walkway in front of the parapet up to the top tier. */
 export const STEP_DEPTH = 0.65, STEP_RISE = 0.45;
 /** Where the tunnel opens on the ring side (the wrestlers come out here). */

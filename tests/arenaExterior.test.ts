@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARENA_PURCHASES, DRUMS_NEAR, DRUMS_RANGE, ECURIES, FIGHT_FROM, MURMUR_RANGE, crossesQueue, drumVolume, drumsCentre, gateOf, isFightEvening, murmurVolume,
-  nextFightEvening, queueDistance, stallsOf, vendorPlaces, weekday, WEEKDAY_FR,
+  exteriorPhase, nextFightEvening, outflowDestinations, queueDistance, stallFronts, stallsOf, vendorPlaces, weekday, WEEKDAY_FR,
 } from '../src/arena/exteriorRules';
 import { arenaExterior } from '../src/arena/exterior';
+import { GALA, streetAt } from '../src/arena/program';
 import { WALL_R } from '../src/world/geew';
 
 describe('arena exterior: fight evenings', () => {
@@ -109,5 +110,29 @@ describe('arena exterior: drums, murmur and the road in front of the gate', () =
     expect(crossesQueue(g, g.x + 30, roadZ, g.x - 30, roadZ)).toBe(true);
     expect(crossesQueue(g, g.x + 30, roadZ - 60, g.x + 30, roadZ)).toBe(false);   // the side street
     expect(crossesQueue(g, g.x - 30, roadZ - 60, g.x + 30, roadZ - 60)).toBe(false); // the next street over
+  });
+});
+
+describe('arena exterior: the end of the evening', () => {
+  const g = gateOf({ cx: 100, cz: 50 });
+  it('quiet, arriving, or the crowd pouring out once the gala is over (the arena\'s after-gala window)', () => {
+    expect(exteriorPhase(false, false)).toBe('quiet');
+    expect(exteriorPhase(true, false)).toBe('arrive');
+    expect(exteriorPhase(true, true)).toBe('outflow');
+    expect(exteriorPhase(false, true)).toBe('outflow');
+    expect(streetAt(20, true)).toBe('after');                                   // the gala seen to the end at 20 h
+    expect(streetAt(GALA.close + 0.5, false)).toBe('after');                    // closing time
+    expect(streetAt(GALA.close + 1.2, false)).toBe('quiet');                    // past midnight: quiet again
+  });
+  it('the crowd heads for both street ends, the taxi corners and the stops nearby (not the far ones)', () => {
+    const d = outflowDestinations(g, [{ x: g.x + 40, z: g.z - 30 }, { x: g.x + 400, z: g.z }]);
+    expect(d).toHaveLength(5);
+    expect(d.some(p => p.x === g.x + 40)).toBe(true);
+    expect(d.some(p => p.x === g.x + 400)).toBe(false);
+    for (const p of d.slice(0, 4)) expect(queueDistance(g, p.x, p.z)).toBeGreaterThan(10);   // away from the lane
+  });
+  it('the last customers stand on the street side of the four stalls', () => {
+    const f = stallFronts({ cx: 100, cz: 50 }), s = stallsOf({ cx: 100, cz: 50 });
+    f.forEach((p, i) => { expect(p.x).toBe(s[i].x); expect(p.z).toBeLessThan(s[i].z); });
   });
 });

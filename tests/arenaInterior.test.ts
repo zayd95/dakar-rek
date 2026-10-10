@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AISLES, AISLE_HALF, GATE_HALF, PARAPET_R, SECTIONS, STAND_GAPS, TUNNEL_A, TUNNEL_HALF, TUNNEL_MOUTH_R, WALL_R, angleDiff, inAisle, inGate, inTunnel,
-  standOpen, tierRadius,
+  standExits, standOpen, tierRadius, tierTop,
 } from '../src/world/geew';
 import { Batch } from '../src/world/batch';
 import {
@@ -9,6 +9,7 @@ import {
   standSection, tunnel, type ArenaKit, type Climb,
 } from '../src/world/arenaModules';
 import { INTERIOR_DENSITY } from '../src/arena/interior';
+import { standSeats } from '../src/arena/program';
 
 const TAU = Math.PI * 2;
 
@@ -103,6 +104,25 @@ describe('arena interior: modules', () => {
     expect(CLIMB_HALF).toBeGreaterThan(0.8);
     const steps = aisleProfile();
     for (let i = 1; i < steps.length; i++) { expect(steps[i][2]).toBeGreaterThan(steps[i - 1][2]); expect(steps[i][2] - steps[i - 1][2]).toBeLessThan(0.65); }
+  });
+  it('from an aisle, the places of every tier next to it can be taken, and standing up leads back into the aisle', () => {
+    const seats = standSeats(cx, cz, 't');
+    expect(seats.length).toBeGreaterThan(200);
+    for (const s of seats) {
+      const [exit] = standExits(cx, cz, s.a, s.tier);
+      // the exit is in an aisle, clear for the player, at the tier's height
+      const c = climbs.find(k => climbHeight(k, exit.x, exit.z) !== null)!;
+      expect(c, `seat ${s.id}`).toBeTruthy();
+      expect(climbHeight(c, exit.x, exit.z)! + 0.1).toBeCloseTo(tierTop(s.tier), 6);
+      expect(cols.every(k => Math.hypot(exit.x - Math.min(Math.max(exit.x, k.x0), k.x1), exit.z - Math.min(Math.max(exit.z, k.z0), k.z1)) >= 0.5)).toBe(true);
+    }
+    // the places nearest an aisle on its tier are within the seats' reach (3.4 m) of the aisle's tread
+    for (const al of AISLES) for (let t = 0; t < 3; t++) {
+      const [exit] = standExits(cx, cz, al, t);
+      const near = seats.filter(s => s.tier === t && Math.abs(angleDiff(s.a, al)) < 0.2);
+      expect(near.length).toBeGreaterThan(0);
+      expect(Math.min(...near.map(s => Math.hypot(s.x - exit.x, s.z - exit.z)))).toBeLessThan(3.4);
+    }
   });
   it('fewer people on lower quality', () => {
     const total = (q: keyof typeof INTERIOR_DENSITY) => Object.values(INTERIOR_DENSITY[q]).reduce((a, b) => a + b, 0);
