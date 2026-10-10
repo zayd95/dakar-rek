@@ -49,8 +49,9 @@ export class ActivityRunner {
   constructor(private s: ActivityServices) {}
 
   get running() { return this.cur !== null; }
-  get current(): { spec: ActivitySpec; step: Step; index: number; t: number } | null {
-    const c = this.cur; return c ? { spec: c.spec, step: c.spec.steps[c.i], index: c.i, t: c.t } : null;
+  /** The step running now; `walking` while the player is still on the way to the step's seat. */
+  get current(): { spec: ActivitySpec; step: Step; index: number; t: number; ctx: ActivityCtx; walking: boolean } | null {
+    const c = this.cur; return c ? { spec: c.spec, step: c.spec.steps[c.i], index: c.i, t: c.t, ctx: c.ctx, walking: !!c.walk } : null;
   }
 
   /** Why the activity cannot start right now, or null. */

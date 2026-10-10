@@ -58,6 +58,8 @@ export interface Step {
 export interface ActivityCtx {
   /** Place running the activity (for labels and props). */
   place?: string;
+  /** Where the activity happens (the counter, the stall, the person): the player turns to it and works there. */
+  at?: { x: number; z: number };
 }
 
 export interface ActivitySpec {

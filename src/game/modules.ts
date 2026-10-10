@@ -12,6 +12,7 @@ import type { Interior } from '../world/interiors';
 import type { Humanoid } from '../actors/humanoid';
 import type { FollowCamera } from '../actors/camera';
 import { meals } from './meals';
+import { perform } from './perform';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -51,6 +52,8 @@ export interface GameCtx {
     /** `inPlace`: clear the seat without moving the player (before a door, a trip…). */
     standUp(inPlace?: boolean): void;
     place(x: number, z: number, yaw: number): void;
+    /** While an activity holds the player ('busy'): walking speed for the legs and the way the body faces (null = stand still). */
+    drive(m: { speed: number; facing: number } | null): void;
   };
   mode(): GameMode;
   /** 'menu' and 'busy' lock movement; 'play' gives it back. */
@@ -82,4 +85,4 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [meals];
+export const MODULES: GameModule[] = [meals, perform];

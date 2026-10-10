@@ -105,6 +105,8 @@ export class Humanoid {
   clipName: Clip | null = null;
   /** When set, city movement does not change the clip (emotes, talking, sitting). */
   hold: Clip | null = null;
+  /** Procedural gesture applied on top of the clip pose every frame (hand to mouth, comb, arms up…); every clip keys every bone, so it never accumulates. */
+  overlay: ((h: Humanoid, dt: number) => void) | null = null;
 
   constructor(look?: PersonLook) {
     if (!template) throw new Error('character asset not loaded');
@@ -129,6 +131,9 @@ export class Humanoid {
     for (const c of template.clips) this.actions.set(c.name, this.mixer.clipAction(c));
     if (look) this.setLook(look);
   }
+
+  /** A rig bone (`hand.R`, `forearm.R`, `upper_arm.R`, `head`, `chest`…) for props and gestures. */
+  bone(name: string): THREE.Object3D | null { return this.root.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(name)) ?? null; }   // the loader drops the dots
 
   private show(names: string[]) { for (const [k, m] of this.parts) m.visible = names.includes(k); }
   private clearAccessories() { for (const a of this.accessoryMeshes) a.removeFromParent(); this.accessoryMeshes = []; }
@@ -206,9 +211,9 @@ export class Humanoid {
       else if (speed > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = Math.max(0.6, speed / 1.45); }
       else this.play('Idle', 0.25);
     } else this.play(this.hold, 0.2);
-    this.mixer.update(dt);
+    this.mixer.update(dt); this.overlay?.(this, dt);
   }
-  update(dt: number) { this.mixer.update(dt); }
+  update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
 }
 

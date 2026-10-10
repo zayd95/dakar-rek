@@ -43,6 +43,7 @@ import { Economy } from './economy/ui';
 import { Interactions } from './interact/system';
 import { Seats, sitOriginY, type Seat } from './interact/seats';
 import { approachPath } from './interact/approach';
+import { reach, bodyPoint, mouth, bend, nod, grip } from './actors/gesture';
 import { LegacySource } from './interact/legacy';
 import type { Target } from './interact/types';
 import { ActivityRunner } from './activity/runner';
@@ -257,6 +258,8 @@ const seats = new Seats();
 let seated: Seat | null = null;
 /** Walking to a seat before sitting (meals, « S’asseoir »): legs round the furniture, then a short sit-down. */
 let approach: { seat: Seat; path: { x: number; z: number }[]; i: number; t: number; settle: number; from?: { x: number; y: number; z: number; yaw: number } } | null = null;
+/** A gameplay module moving the player during an activity (carrying, running…): legs speed and facing. */
+let drive: { speed: number; facing: number } | null = null;
 /** A bed is lain on (the standing pose turned flat, head on the pillow), every other seat is sat on. */
 const restClip = (s: Seat): Clip => s.kind === 'bed' ? 'Idle' : 'Sit';
 const restY = (s: Seat) => s.kind === 'bed' ? s.top + 0.12 : sitOriginY(s);
@@ -288,6 +291,7 @@ const activities = new ActivityRunner({
   busy: on => {
     if (on) { mode = 'busy'; input.enabled = false; return; }
     if (approach) { seats.release(approach.seat.id, 'player'); approach = null; speed = 0; }   // stopped on the way to the seat
+    drive = null;
     if (mode === 'busy') { mode = 'play'; input.enabled = true; }
   },
   progress: (on, pct = 0, label = '') => hud.progress(on, pct, label),
@@ -309,7 +313,7 @@ const ctx: GameCtx = {
   hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day,
   player: {
     pos, facing: () => facing, body: () => playerBody, seated: () => seated,
-    sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace),
+    sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace), drive: m => { drive = m; },
     place(x, z, yaw) { pos.set(x, 0.1 + (inside || !world ? 0 : world.heightAt(x, z)), z); facing = yaw; follow.snapBehind(yaw); },
   },
   mode: () => mode,
@@ -324,9 +328,15 @@ const ctx: GameCtx = {
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
 };
-/** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
+/**
+ * Every content action runs through the universal runner: those that declare steps (meals, seats…) as composed, the
+ * others as one timed step with the same price, pay, needs and counter as before. The gameplay modules then show it
+ * in the world (src/game/perform.ts) and it can be stopped like any activity.
+ */
 function actionSpec(a: Action): ActivitySpec {
-  return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined };
+  const verb = actionVerb(a)[0];
+  const steps = a.steps ?? [{ label: a.label, primitive: verb, seconds: a.seconds, effects: { money: a.gain, needs: a.needs, counters: a.counter ? { [a.counter]: 1 } : undefined } }];
+  return { id: a.id, primitive: verb, label: a.label, detail: a.detail, price: a.cost, steps, requires: a.requires ? () => a.requires!(state) : undefined };
 }
 
 function sitOn(seat: Seat, force = false) {
@@ -675,34 +685,9 @@ function playEmote(i: number) {
 function openJournal() { hud.closeModal(); phone.open('carnet'); }
 
 function runAction(a: Action, npc?: string, it?: Interactable) {
-  const where = it?.name;
-  if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
-    activities.onEnd = (_s, done) => { if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); } };   // counters belong to the steps
-    activities.start(actionSpec(a), { place: where });
-    return;
-  }
-  mode = 'busy'; input.enabled = false;
-  const t0 = performance.now(), dur = a.seconds * 1000;
-  hud.progress(true, 0, a.label);
-  const tick = () => {
-    const p = clamp((performance.now() - t0) / dur, 0, 1);
-    hud.progress(true, p, a.label);
-    if (p < 1) { requestAnimationFrame(tick); return; }
-    hud.progress(false);
-    const entry = where && !where.startsWith(a.label) ? `${a.label} · ${where}` : a.label;   // wallet history line
-    if (a.cost) state.addMoney(-a.cost, entry);
-    if (a.gain) state.addMoney(a.gain, entry);
-    if (a.needs) state.adjust(a.needs);
-    if (a.counter) state.count(a.counter);
-    if (npc) rel.change(PLAYER, npc, 1);
-    state.count('actions');
-    npcLife.afterAction(a, it ?? null);
-    const bits = [a.label + ' ✓'];
-    if (a.gain) bits.push('+' + fcfa(a.gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
-    hud.toast(bits.join('  '));
-    mode = 'play'; input.enabled = true; saveNow();
-  };
-  requestAnimationFrame(tick);
+  const where = it?.name && !it.name.startsWith(a.label) ? it.name : undefined;   // wallet history: « action · place »
+  activities.onEnd = (_s, done) => { if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); } };   // counters belong to the steps
+  activities.start(actionSpec(a), { place: where, at: it && { x: it.x, z: it.z } });
 }
 
 function openTravel() {
@@ -864,7 +849,11 @@ function frame(now: number) {
     { const gy = 0.1 + (inside ? 0 : world.heightAt(pos.x, pos.z)); pos.y += (gy - pos.y) * Math.min(1, dt * 14); } // climb stairs smoothly
     state.tick(dt * 1000);
   } else if (mode === 'busy') {
-    if (approach) stepApproach(dt); else speed = 0;
+    if (approach) stepApproach(dt);
+    else if (drive) {
+      speed += (drive.speed - speed) * Math.min(1, dt * 10);
+      facing += Math.atan2(Math.sin(drive.facing - facing), Math.cos(drive.facing - facing)) * Math.min(1, dt * 10);
+    } else speed = 0;
     state.tick(dt * 1000);
   }
   if (!lambScene) {
@@ -884,7 +873,7 @@ function frame(now: number) {
   const space = presenceSpace();
   // seated meals and the walk to the seat run in 'busy' mode: others see them too
   const clip = (mode === 'play' || mode === 'busy') && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
-  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach ? speed : 0, space, clip }, now);
+  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach || drive ? speed : 0, space, clip }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
@@ -947,7 +936,8 @@ if (DEBUG) {
     stand() { standUp(); },
     more() { openMore(); },
     clip: () => playerBody?.clipName ?? null,
-    activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index } : null; },
+    body: () => playerBody, gesture: { reach, bodyPoint, mouth, bend, nod, grip },
+    activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, t: +c.t.toFixed(2), seconds: c.step.seconds ?? 0 } : null; },
     placeList: () => places.all().map(p => ({ id: p.id, type: p.type, name: p.name, space: p.space, anchors: p.anchors.map(a => a.id) })),
     inventory: () => inventory.list(),
     roomInteractables: () => inside ? inside.int.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) : [],
@@ -960,7 +950,6 @@ if (DEBUG) {
     openNpc(id: string) { const it = world?.interactables.find(i => i.npc === id); if (it) openActions(it); },
     scene(kind: SceneKind) { const a = [...ACTIONS.arena, ...ACTIONS.ecurie].find(x => x.special === kind); if (a) runSpecial(a); else startScene(kind); },
     wrestlerReady: () => humanoidReady(),
-    body: () => playerBody,
     faceCamera() { follow.yaw = facing + Math.PI; },
     portrait(dist = 2.2, h = 1.5, side = 0.35) { camOverride = dist > 0 ? { dist, h, side } : null; },
     addPeople(n = 6) { if (!world) return; for (let k = 0; k < n; k++) { const h = new Humanoid(randomLookDbg()); h.group.position.set(pos.x + Math.sin(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2), 0.1, pos.z + Math.cos(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2)); h.group.rotation.y = facing + Math.PI; h.hold = k % 3 === 0 ? 'Talk' : 'Idle'; extra.add(h.group); debugPeople.push(h); } },

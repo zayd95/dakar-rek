@@ -1,10 +1,13 @@
 import * as THREE from 'three';
-import type { GameModule } from './modules';
+import type { GameCtx, GameModule } from './modules';
+import { grip, mouth, nod, reach } from '../actors/gesture';
 
 /**
  * Table service: while the player eats or drinks (any `order` activity, src/activity/primitives.ts), the dish stands on
  * the table in front of their seat (Seat.table), or on their lap where there is no table, and empties as they eat.
- * Plain shapes and the dishes' usual colours (own design, no brand).
+ * Plain shapes and the dishes' usual colours (own design, no brand). The player eats for real: the right hand takes
+ * a spoonful (or a piece of meat) from the plate and brings it to the mouth, again and again; a glass goes to the lips
+ * and back to the table.
  */
 interface Dish {
   /** Rice or the base of the plate; null = no plate (a glass, meat on paper). */
@@ -38,6 +41,7 @@ function build(id: string): { group: THREE.Group; food: THREE.Object3D[] } {
   if (d.glass !== undefined) {
     const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.032, 0.13, 12), mat(0xdfe8ee, 0.45)); glass.position.y = 0.065; group.add(glass);
     const drink = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.03, 0.1, 12), mat(d.glass)); drink.position.y = 0.055; drink.userData.drink = true; group.add(drink); food.push(drink);
+    group.userData.glass = true;
     return { group, food };
   }
   const under = new THREE.Mesh(d.paper ? new THREE.BoxGeometry(0.3, 0.006, 0.24) : new THREE.CylinderGeometry(0.15, 0.12, 0.025, 18), mat(d.paper ? 0xd8c8a0 : 0xf4f1e8));
@@ -54,10 +58,17 @@ function build(id: string): { group: THREE.Group; food: THREE.Object3D[] } {
   return { group, food };
 }
 
-let shown: { key: string; group: THREE.Group; food: THREE.Object3D[]; at: THREE.Vector3; prop: string } | null = null;
+let shown: { key: string; group: THREE.Group; food: THREE.Object3D[]; at: THREE.Vector3; prop: string; spoon: THREE.Mesh | null; bites: number } | null = null;
+let phase = 0, owner: GameCtx | null = null;
+const T1 = new THREE.Vector3(), T2 = new THREE.Vector3();
+const smooth = (x: number) => { const t = Math.min(1, Math.max(0, x)); return t * t * (3 - 2 * t); };
+/** 0 at the plate … 1 at the mouth: a bite every 1.9 s (take, lift, chew, back). */
+const lift = (c: number) => c < 0.3 ? 0 : c < 0.48 ? smooth((c - 0.3) / 0.18) : c < 0.72 ? 1 : 1 - smooth((c - 0.72) / 0.18);
 
 function clear() {
   if (!shown) return;
+  const b = owner?.player.body(); if (b?.overlay === eatPose) b.overlay = null;
+  shown.spoon?.removeFromParent(); shown.spoon?.geometry.dispose();
   shown.group.removeFromParent();
   shown.group.traverse(o => { const m = o as THREE.Mesh; m.geometry?.dispose(); (m.material as THREE.Material | undefined)?.dispose(); });
   shown = null;
@@ -78,8 +89,16 @@ export const meals: GameModule = {
       const b = build(prop);
       b.group.position.copy(at); b.group.rotation.y = seat!.yaw;
       ctx.scene.add(b.group);
-      shown = { key, group: b.group, food: b.food, at, prop };
+      const drink = DISHES[prop]?.glass !== undefined || step!.primitive === 'drink';
+      const spoon = drink || DISHES[prop]?.paper ? null : new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.012, 0.03), new THREE.MeshLambertMaterial({ color: 0xc8ccd0 }));
+      if (spoon) ctx.scene.add(spoon);
+      shown = { key, group: b.group, food: b.food, at, prop, spoon, bites: 0 }; phase = 0;
+      owner = ctx;
+      const body = ctx.player.body(); if (body) body.overlay = eatPose;
     }
+    const c = (cur!.t % 1.9) / 1.9;
+    if (phase < 0.48 && c >= 0.48) shown!.bites++;                       // the spoon reaches the mouth
+    phase = c;
     // the plate (or the glass) empties as the step goes on
     const k = Math.min(1, cur!.t / Math.max(0.1, step!.seconds ?? 1)), left = 1 - 0.75 * k;
     for (const f of shown!.food) {
@@ -87,5 +106,19 @@ export const meals: GameModule = {
       else f.scale.set(left, left * f.userData.sy, left);
     }
   },
-  debug: () => ({ meal: () => shown ? { prop: shown.prop, x: +shown.at.x.toFixed(2), y: +shown.at.y.toFixed(2), z: +shown.at.z.toFixed(2) } : null }),
+  debug: () => ({ meal: () => shown ? { prop: shown.prop, x: +shown.at.x.toFixed(2), y: +shown.at.y.toFixed(2), z: +shown.at.z.toFixed(2), bites: shown.bites, lifting: lift(phase) > 0.9 } : null }),
 };
+
+/** The eating gesture (Humanoid.overlay): right hand plate → mouth; a glass travels with the hand. */
+function eatPose(h: import('../actors/humanoid').Humanoid) {
+  if (!shown) return;
+  const yaw = h.group.rotation.y, r = new THREE.Vector3(-Math.cos(yaw), 0, Math.sin(yaw));
+  const k = lift(phase), drink = !!shown.group.userData.glass;
+  const plate = T1.copy(shown.at).add(new THREE.Vector3(0, drink ? 0.06 : 0.07, 0)).addScaledVector(r, 0.05);
+  const m = mouth(h, T2); m.y -= 0.06;
+  reach(h, 'R', plate.lerp(m, k), new THREE.Vector3(0, -1, 0).addScaledVector(r, 0.7));
+  if (k > 0.6) nod(h, -0.1 * k); else nod(h, 0.18);                       // looks at the plate, then up to the bite
+  const g = grip(h, 'R', T2);
+  if (shown.spoon) { shown.spoon.position.copy(g); shown.spoon.rotation.set(0, yaw + 0.4, 0); }
+  if (drink) shown.group.position.copy(k > 0.05 ? g.add(new THREE.Vector3(0, -0.05, 0)) : shown.at);
+}
