@@ -200,10 +200,11 @@ class ArenaEvening {
   /** The window's sheet: the three tiers, each price shown on its own « Payer … »; one ticket for the evening. */
   private confirmTicket(place: string) {
     const { ctx } = this;
+    // the prices first, one tier per row: price and name, one line on what it gets, « Payer » (src/arena/tickets.ts tierRows)
     ctx.menu('Billet · gala de làmb', ticketSheet(), [
-      ...TRIBUNES.map(t => {
-        const k = TICKETS[t], ok = ctx.state.canAfford(k.price);
-        return { label: `Payer ${k.price.toLocaleString('fr-FR')} F · ${k.label}`, icon: t === 'honneur' ? '⭐' : '🎟️', detail: ok ? `${k.detail} (${k.where})` : 'Pas assez d’argent', disabled: !ok, onPick: () => {
+      ...tierRows(ctx.state.wallet).map(r => {
+        const t = r.tribune, k = TICKETS[t];
+        return { label: r.label, detail: r.detail, right: r.right, reason: r.reason, icon: t === 'honneur' ? '⭐' : t === 'couverte' ? '⛱️' : '🎟️', disabled: r.disabled, onPick: () => {
           ctx.hud.closeModal(); ctx.setMode('play');
           ctx.activities.start(P.buy({ id: 'billet', label: ticketLabel(t), price: k.price, line: () => ARENA.ticket(k.price),
             then: () => { ctx.state.data.counters[TICKET_COUNTER] = this.day(); ctx.state.data.counters[TIER_COUNTER] = TRIBUNES.indexOf(t); } }), { place });

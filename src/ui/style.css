@@ -145,6 +145,9 @@ body.touch kbd { display:none; }
 #wprompt em.gain { color:var(--gain); background:#e3f5ec; }
 #wprompt .wp.dis { color:var(--ink-3); } #wprompt .wp.dis i { background:var(--press); filter:grayscale(1); }
 #wprompt kbd { margin-left:1px; }
+/* unavailable: the reason in full under the name (a card instead of a pill) */
+#wprompt .wp.why { flex-wrap:wrap; max-width:min(280px, 78vw); border-radius:14px; padding:5px 10px 7px 5px; white-space:normal; }
+#wprompt .wp.why small { flex-basis:100%; padding-left:32px; font:650 12px/1.3 var(--font); color:var(--warn); }
 
 /* ------------------------------------------------------------- action bar: « ⋯ » over the primary verb (bottom right) */
 #ui > #actbar { position:absolute; right:calc(16px + var(--sa-r)); bottom:calc(22px + var(--sa-b)); display:flex; flex-direction:column; align-items:flex-end; gap:10px; pointer-events:none; z-index:3; }

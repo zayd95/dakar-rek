@@ -255,8 +255,10 @@ export class Hud {
       const changed = !!this.wpKey;
       this.wpKey = key;
       const wp = w.firstElementChild as HTMLElement;
-      wp.className = 'wp' + (opt.disabled ? ' dis' : '');
-      wp.innerHTML = `${icon ? `<i>${esc(icon)}</i>` : ''}<span>${esc(label)}</span>${price ? `<em class="${opt.cost ? 'cost' : 'gain'}">${price}</em>` : ''}<kbd>E</kbd>`;
+      // unavailable: the reason under the name, in full, where the eye already is (the button's line is too short on a phone)
+      const why = opt.disabled ? glossed(opt.disabled) : '';
+      wp.className = 'wp' + (opt.disabled ? ' dis' : '') + (why ? ' why' : '');
+      wp.innerHTML = `${icon ? `<i>${esc(icon)}</i>` : ''}<span>${esc(label)}</span>${price ? `<em class="${opt.cost ? 'cost' : 'gain'}">${price}</em>` : ''}<kbd>E</kbd>${why ? `<small>${esc(why)}</small>` : ''}`;
       if (changed || !w.classList.contains('on')) replay(wp, 'pop');
     }
     w.style.transform = `translate(${Math.round(at.x)}px,${Math.round(at.y)}px) translate(-50%,-100%)`;

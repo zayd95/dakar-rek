@@ -83,7 +83,7 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   const confirm = await d(() => ({ sub: document.querySelector('#modal.on p')?.textContent ?? '', items: [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent) }));
   const sp = s => s.replace(/[  ]/g, ' ');
   check(`${label}: the three tiers' prices are shown before paying`, /Populaire 1 000 F · Tribune couverte 2 500 F · Tribune d’honneur 5 000 F/.test(sp(confirm.sub))
-    && ['Payer 1 000 F · Populaire', 'Payer 2 500 F · Tribune couverte', 'Payer 5 000 F · Tribune d’honneur'].every(w => confirm.items.some(t => sp(t).includes(w))) && confirm.items.some(t => /Annuler/.test(t)), confirm);
+    && ['1 000 F · Populaire', '2 500 F · Tribune couverte', '5 000 F · Tribune d’honneur'].every(w => confirm.items.some(t => sp(t).includes(w) && /Payer/.test(t))) && confirm.items.some(t => /Annuler/.test(t)), confirm);
   await shot('2-ticket-confirm', false);
   await page.locator('#modal.on .item', { hasText: 'Populaire' }).first().click();
   await page.waitForFunction(() => window.__dakar.arena.info().ticket, null, T).catch(() => {});
