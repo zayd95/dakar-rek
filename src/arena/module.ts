@@ -25,7 +25,7 @@ import { localPair, rosterOpponent } from '../lamb/opponents';
 import { PRELIM, PRELIM_TYPICAL, prelimFill, prelimName, undercardFor, type Prelim } from './undercard';
 import { GalaCard } from './card';
 import { FightNightPeople } from './people';
-import { TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, seatRefusal, ticketLabel, ticketSheet, whereLine, type Tribune } from './tickets';
+import { TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, seatRefusal, ticketLabel, ticketSheet, tierRows, whereLine, type Tribune } from './tickets';
 import { decorMaterial, honneurPlate, tribuneDecor } from './ticketsDecor';
 import { EntranceCeremony } from './entrance';
 import { posters } from './posters';
@@ -199,10 +199,12 @@ class ArenaEvening {
   }
 
   // ---------------------------------------------------------------- ticket
-  /** The window's sheet: the three tiers, each price shown on its own « Payer … »; one ticket for the evening. */
+  /**
+   * The window's sheet: one row per tier, its price first, a line on what it gets, then « Payer »; a tier the wallet
+   * cannot pay greyed with what is missing (src/arena/tickets.ts `tierRows`). One ticket for the evening.
+   */
   private confirmTicket(place: string) {
     const { ctx } = this;
-    // the prices first, one tier per row: price and name, one line on what it gets, « Payer » (src/arena/tickets.ts tierRows)
     ctx.menu('Billet · gala de làmb', ticketSheet(), [
       ...tierRows(ctx.state.wallet).map(r => {
         const t = r.tribune, k = TICKETS[t];

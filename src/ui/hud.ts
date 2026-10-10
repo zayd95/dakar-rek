@@ -255,15 +255,22 @@ export class Hud {
       const changed = !!this.wpKey;
       this.wpKey = key;
       const wp = w.firstElementChild as HTMLElement;
-      // unavailable: the reason under the name, in full, where the eye already is (the button's line is too short on a phone)
-      const why = opt.disabled ? glossed(opt.disabled) : '';
-      wp.className = 'wp' + (opt.disabled ? ' dis' : '') + (why ? ' why' : '');
+      // unavailable: the reason in full under the verb, where the eye already is (the button's line is cut short on a
+      // phone, « Ton billet est pour la tribune… »): the pill becomes a small card
+      const why = opt.disabled ?? '';
+      wp.className = 'wp' + (why ? ' dis why' : '');
       wp.innerHTML = `${icon ? `<i>${esc(icon)}</i>` : ''}<span>${esc(label)}</span>${price ? `<em class="${opt.cost ? 'cost' : 'gain'}">${price}</em>` : ''}<kbd>E</kbd>${why ? `<small>${esc(why)}</small>` : ''}`;
+      this.wpHalf = why ? Math.min(140, innerWidth * 0.39) : 0;                    // half the card's max width (style.css)
       if (changed || !w.classList.contains('on')) replay(wp, 'pop');
     }
-    w.style.transform = `translate(${Math.round(at.x)}px,${Math.round(at.y)}px) translate(-50%,-100%)`;
+    // the card stays on screen (8 px margin) and its tail keeps pointing at the target
+    const { x, tail } = this.wpHalf ? bubbleX(at.x, this.wpHalf, innerWidth) : { x: at.x, tail: 0 };
+    if (tail !== this.wpTail) { this.wpTail = tail; (w.firstElementChild as HTMLElement).style.setProperty('--tail', `${tail}px`); }
+    w.style.transform = `translate(${Math.round(x)}px,${Math.round(at.y)}px) translate(-50%,-100%)`;
     w.classList.add('on');
   }
+  private wpHalf = 0;
+  private wpTail = 0;
   /** The action is unavailable: shake the button and say why. */
   deny(reason: string) {
     if (!this.el.act.classList.contains('off')) replay(this.el.act, 'deny');
@@ -406,6 +413,17 @@ export class Hud {
   openQuick(title: string, items: MenuItem[], subtitle = '') {
     this.sheet.open('quick', title, subtitle, items);
   }
+}
+
+/**
+ * Where the bubble's centre goes so a card of half-width `half` stays on a screen `width` wide (8 px margins), as close
+ * to the target's `x` as it can, and how far aside its tail moves to point at the target (at most `half − 16` px: the
+ * card stays readable first).
+ */
+export function bubbleX(x: number, half: number, width: number): { x: number; tail: number } {
+  const lo = half + 8, hi = width - half - 8;
+  const c = lo > hi ? width / 2 : Math.min(hi, Math.max(lo, x)), m = Math.max(0, half - 16);
+  return { x: c, tail: Math.round(Math.min(m, Math.max(-m, x - c))) };
 }
 
 /** A goal line split into its words and the distance at its end (« 72 m », shown in the right-hand slot), if any. */

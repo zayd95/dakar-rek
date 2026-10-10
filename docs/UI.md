@@ -43,12 +43,12 @@ phones. Animations only use `transform` and `opacity`; `prefers-reduced-motion` 
 | Goal hint | `#goal` (`.gi` `.gt` `.gd`) | pill under the wallet, two lines max | one suggestion at most; when there is a place to walk to, the badge becomes a compass arrow (turns with the camera) and the distance is shown; a distance at the end of a line (« … · 72 m ») always sits in the right-hand slot (never wrapped away from its number, the « · » kept for screen readers); one line while a ride card (`.ridecard`) is on; hidden while seated watching an arena show (entrance, bout, result — `arenaShow.watching()`), back on standing up |
 | Moment card | `#toast > .mo` (`hud.moment`) | first in the toast column, the toasts under it; never over the action button or the joystick | icon, title, a few lines (a bout's recap, a new word on a gauge); tap anywhere or ✕ to dismiss, 6–12 s, two at most; five lines on a landscape phone |
 | Toasts | `#toast > .t` | top centre (portrait: under the HUD, y≈170), above sheets, never over the action area; under the arena show's card (`#galacard`) while it is on; the evening's matchup is on that card only (no toast repeating it) | three at most, newest on top; « part  part » becomes chips, amounts coloured; repeats refresh instead of stacking; `warn` toasts in red |
-| Focus ring (3D) | `worldMarkers` | sun ring on the ground under the focused target, sized by kind (person 0.62 m … vehicle 1.9 m) | grows in on focus change, breathes softly; hidden in menus, activities and scenes |
-| Bubble | `#wprompt > .wp` | above the target, with a tail | icon in a sun disc, verb, price chip, `E` keycap (desktop); greyed when unavailable; **tap it to act** |
+| Focus ring (3D) | `worldMarkers` | sun ring on the ground under the focused target, sized by kind (person 0.62 m … vehicle 1.9 m) | grows in on focus change, breathes softly; grey (`#8e8e93`) when nothing can be done there now (every affordance disabled: another tier's place on the arena's stands, a closed counter); hidden in menus, activities and scenes |
+| Bubble | `#wprompt > .wp` | above the target, with a tail | icon in a sun disc, verb, price chip, `E` keycap (desktop); **tap it to act**. Unavailable (`.why`): greyed, and the pill becomes a small card with the reason in full under the verb (12.5 px, `--warn`), at most `min(280px, 78vw)` wide; `bubbleX` keeps the card 8 px inside the screen and moves its tail to keep pointing at the target (the action button's line is cut short on a phone) |
 | Action button | `#act` in `#actbar` | bottom right, ≥ 60 px tall, max 62 vw | sun pill: icon disc + verb (two lines on a touch phone in portrait, where the button is narrow beside « Courir ») + what/why line + price chip; `.dis` white with the reason in red (tap: shake + reason); `.stop` white « ✋ Arrêter » while something runs; hidden when nothing is in reach |
 | More | `#actMore` | 48 px circle above `#act` | opens the quick actions |
 | Quick actions | `#modal[data-kind=quick]` | icon grid (tiles ≥ 96 px) anchored bottom right above the button | every affordance of the target: icon, label, price; disabled tiles show their reason and shake when tapped |
-| Sheet | `#modal[data-kind=menu]` (`.sheet > .panel`) | phone portrait: bottom sheet, full width, ≤ 56 % high (drag the grabber up: almost full height), safe-area padding; phone landscape: right side, ≤ 86 %; desktop: 400 px card bottom right | grabber, sticky title, subtitle, extra content, inset grouped rows (≥ 54 px: icon tile, label, detail, right price, disabled reason in red); close: ✕, tap outside, Escape / M, swipe down (portrait) |
+| Sheet | `#modal[data-kind=menu]` (`.sheet > .panel`) | phone portrait: bottom sheet, full width, ≤ 56 % high (drag the grabber up: almost full height), safe-area padding; phone landscape: right side, ≤ 86 %; desktop: 400 px card bottom right | grabber, sticky title, subtitle, extra content, inset grouped rows (≥ 54 px: icon tile, label, detail, right price, disabled reason in red); a right column « Payer » (`em.pay`, after a price said first in the label) is a sun pill, grey on a disabled row, and its rows get a little more room in portrait; close: ✕, tap outside, Escape / M, swipe down (portrait) |
 | Progress | `#progress` | slim pill directly above `#act`, right-aligned | icon, activity title, step label · n/m, %, 4 px bar; the button below says « ✋ Arrêter » |
 | Joystick | `#joy` | 124 px, bottom left (touch only) | floating: a finger on the base drives it from its centre; anywhere else in the left 45 % moves the base under the finger |
 | Scene banner | `#sceneTag` | bottom centre during làmb scenes | « ✋ Arrêter » leaves the scene (no reward) |
@@ -92,6 +92,20 @@ for the old dark panel never vanish. Use the existing blocks — `.kv` (info car
   never covers « Courir »; the wallet chip uses the economy lane's `fcfaShort` (full amount as its accessible label).
 - Wolof glosses: HUD text is plain DOM text, resolved by the gloss observer (src/i18n/dom.ts) like any other text.
 - HUD buttons drop the focus after a tap or click, so Space/Enter (the game's action keys) never fire them twice.
+
+## The ticket window on a phone (src/arena/tickets.ts `tierRows`)
+
+The « Billet · gala de làmb » sheet, readable in portrait (390 × 844) without scrolling:
+- **One row per tier, the price first**: « 1 000 F · Populaire », « 2 500 F · Tribune couverte », « 5 000 F · Tribune
+  d’honneur » (15 px), then « Payer » on the right as a sun pill. The subtitle keeps the three prices in one line.
+- **A line on what each tier gets** under it (`TIER_NOTE`, ≤ 40 characters, two lines at most beside « Payer »): « Les
+  deux bouts du cercle, par la porte », « Grands côtés, sous la toile, coussins », « Premiers rangs, derrière les
+  officiels ».
+- **A tier the wallet can't pay** is greyed (icon, label, pill), its note replaced in red by what is missing (« Il te
+  manque 1 500 F »); tapped, it shakes and says it, and nothing is paid.
+- **On the stands**, another tier's place has a grey focus ring and its bubble gives the controller's reason in full
+  (`seatRefusal`, « Ton billet est pour la tribune populaire (…) : cette place est en tribune d’honneur. »); the same
+  reason is on the greyed action button and in the toast when it is tapped. `__dakar.focus().why` lists it.
 
 ## Phone › Ce soir (src/arena/tonight.ts)
 
