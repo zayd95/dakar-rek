@@ -48,8 +48,10 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   // 3. Late afternoon: does anything point the player to tonight's bout?
   await d(() => window.__dakar.setHour(17.6));
   await page.waitForTimeout(1200);
-  const hint = await d(() => ({ goal: document.getElementById('goal')?.textContent ?? '', guide: window.__dakar.guide?.() ?? null, out: window.__dakar.arenaOut?.() ?? null, arena: window.__dakar.arena.info() }));
-  note(label, 'towards the evening', { goal: hint.goal, guide: hint.guide?.name ?? null, street: hint.arena?.street, size: hint.out?.size, event: hint.out?.event });
+  const hint = await d(() => ({ goal: document.getElementById('goal')?.textContent ?? '', toast: document.getElementById('toast')?.textContent ?? '', guide: window.__dakar.guide?.() ?? null, out: window.__dakar.arenaOut?.() ?? null, arena: window.__dakar.arena.info(), evening: window.__dakar.evening?.() ?? null }));
+  note(label, 'towards the evening', { goal: hint.goal, toast: hint.toast, evening: hint.evening?.text ?? null, guide: hint.guide?.name ?? null, street: hint.arena?.street, size: hint.out?.size, event: hint.out?.event });
+  // the evening's call (src/arena/eveningCall.ts): a word at the doors, then the goal line (after the welcome beat)
+  check(`${label}: at 17.6 h the goal or the evening's call points to the arena`, /arène/i.test(hint.goal + ' ' + hint.toast), JSON.stringify({ goal: hint.goal, toast: hint.toast }));
   check(`${label}: tonight there is a bout at the arena (every evening)`, !!hint.out?.event || hint.arena?.street !== 'quiet', JSON.stringify({ street: hint.arena?.street, event: hint.out?.event }));
   await shot('02-before-the-bout');
 
@@ -113,6 +115,11 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await idle();
   const after = await d(() => ({ goal: document.getElementById('goal')?.textContent ?? '', hour: window.__dakar.pos().hour ?? null, places: window.__dakar.placeList().filter(p => /club|vague|night/i.test(p.id + p.name)).map(p => p.name) }));
   note(label, 'after the bout', after);
+  // walked out of the gate: one place open at that hour to end the evening (src/arena/eveningCall.ts), else nothing
+  const gOut = await d(() => window.__dakar.arena.info().gate ?? window.__dakar.arenaOut().gate);
+  if (gOut) { await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [gOut.x, gOut.z - 7]); await page.waitForTimeout(1200); }
+  const next = await d(() => ({ goal: document.getElementById('goal')?.textContent ?? '', evening: window.__dakar.evening?.() ?? null }));
+  note(label, 'after the bout, outside the gate', { goal: next.goal, suggestion: next.evening?.text ?? null, target: next.evening?.target?.name ?? null });
   await shot('08-after');
   note(label, 'wall time of the evening (s)', wall());
   check(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
