@@ -15,11 +15,10 @@ import { GALA_DONE_COUNTER, streetAt } from '../arena/program';
 
 /**
  * The arena's street is in its after-gala window (the gala seen to the end, or closing time): the same rule the arena
- * and its exterior use (src/arena/program.ts streetAt). Fans stop arriving; the spectators pour out.
+ * and its exterior use (src/arena/program.ts streetAt). Fans stop arriving then: the crowd pours out instead.
  */
 export function afterGalaWindow(ctx: GameCtx): boolean {
-  const day = ctx.day(), hour = ctx.hour();
-  return streetAt(hour, ctx.state.data.counters[GALA_DONE_COUNTER] === day) === 'after';
+  return streetAt(ctx.hour(), ctx.state.data.counters[GALA_DONE_COUNTER] === ctx.day()) === 'after';
 }
 
 /**
@@ -89,6 +88,8 @@ export class ArenaArrivals {
   private rapideWalk: Pt[] = [];
   private ground: (x: number, z: number) => number;
   private quality: CrowdQuality;
+  /** Debug: the arrivals' clock runs this many times faster (the checks on slow renderers). */
+  speed = 1;
   /** Fans dropped so far (taxi, car rapide), for the checks. */
   readonly dropped = { taxi: 0, rapide: 0, arrived: 0 };
   active = false;
@@ -148,8 +149,11 @@ export class ArenaArrivals {
   /** A taxi stands at route r's corner now, picking people up. */
   pickingUp(r: number): boolean { return this.cabs.some(c => c.route === this.routes[r] && c.state === 'stop' && c.pickup); }
 
-  /** A taxi now (debug and checks): on route `r` (0 west, 1 east); `pickup`: it comes for people waiting there. */
-  taxi(r = Math.floor(this.rand() * this.routes.length), pickup = false): boolean {
+  /**
+   * A taxi now (debug and checks): on route `r` (0 west, 1 east); `pickup`: it comes for people waiting there;
+   * `close`: it starts 25 m before its stop.
+   */
+  taxi(r = Math.floor(this.rand() * this.routes.length), pickup = false, close = false): boolean {
     let cab = this.cabs.find(c => c.state === 'off');
     if (!cab && this.cabs.length < 2) {
       const g = makeTaxi({ seed: 11 + this.cabs.length }); g.userData.noLod = true; g.visible = false;
@@ -159,13 +163,16 @@ export class ArenaArrivals {
     }
     if (!cab) return false;
     const route = this.routes[r % this.routes.length];
-    Object.assign(cab, { route, s: 0, v: CRUISE, state: 'in', t: 0, drop: pickup ? 0 : this.span(ARRIVALS.perTaxi[this.evening()]), dropped: 0, pickup });
+    const start = close ? Math.max(0, Math.abs(route.zs - route.z0) - 25) : 0;
+    Object.assign(cab, { route, s: start, v: CRUISE, state: 'in', t: 0, drop: pickup ? 0 : this.span(ARRIVALS.perTaxi[this.evening()]), dropped: 0, pickup });
     cab.g.visible = true;
     return true;
   }
 
   update(dt: number) {
+    dt *= this.speed;
     const me = this.ctx.player.pos, near = Math.hypot(me.x - this.gate.x, me.z - this.gate.z) < ARRIVALS.range;
+    // fans come while the evening fills; once the after-gala window opens the exterior pours out instead
     this.active = arenaExterior.active() && near && !afterGalaWindow(this.ctx);
     this.crowd.group.visible = near;
     const size = this.evening();

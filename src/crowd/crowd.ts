@@ -151,6 +151,9 @@ const _fr = new THREE.Frustum(), _pm = new THREE.Matrix4(), _sp = new THREE.Sphe
 const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qd = new THREE.Quaternion(), _qs = new THREE.Quaternion(), _qi = new THREE.Quaternion();
 const _va = new THREE.Vector3(), _vb = new THREE.Vector3();
 
+/** The cleared view of a seated player: radius around them, and a strip ahead (length, half width), in metres. */
+export const CLEAR = { near: 1.3, ahead: 2.8, side: 0.5, widen: 0.4 } as const;
+
 /** Every crowd alive (the crowd module's debug entries list them). */
 export const LIVE_CROWDS = new Set<Crowd>();
 
@@ -169,6 +172,8 @@ export class Crowd {
   private eye: THREE.Vector3 | null = null;
   private frustum: THREE.Frustum | null = null;
   private focus: { x: number; z: number; yaw: number | null } | null = null;
+  /** The seated player's view: nobody stands up right beside them or in front of them on the way to what they watch. */
+  private clear: { x: number; z: number; fx: number; fz: number } | null = null;
   private layoutDirty = true;
   private lodT = 0;
   private nearT = 0;
@@ -321,7 +326,7 @@ export class Crowd {
   private retarget(m: Member, snap = false) {
     const kind = m.on ? m.st.kind : null;
     if ((kind || !m.on) && m.fidget) { m.fidget = null; this.fidgeting.delete(m); }
-    const standing = standingFor(m.slot.seated, kind);
+    const standing = standingFor(m.slot.seated, kind) && !(m.slot.seated && this.inClearView(m.slot.x, m.slot.z));
     if (standing !== m.standing) { m.standing = standing; this.layoutDirty = true; }
     m.target = poseFor(kind, standing, m.speed, m.mood, m.bpm, m.fidget);
     if (snap) { Object.assign(m.pose, m.target); m.easing = false; } else m.easing = true;
@@ -332,6 +337,25 @@ export class Crowd {
   setFocus(x: number, z: number | null, yaw: number | null = null) {
     this.focus = z === null ? null : { x, z, yaw };
     this.nearT = 0;
+  }
+  /**
+   * Keep the view of someone seated at (x, z) facing `yaw` clear (null: nobody seated): the people right beside them and
+   * those in front of them on their sight line (the next two rows down, a widening strip) stay seated whatever happens —
+   * they cheer, clap and hold their heads from their seats — so no head or shoulder ever fills the player's view, and
+   * the stands still look full.
+   */
+  setClearView(v: { x: number; z: number; yaw: number } | null) {
+    const was = new Set(this.members.filter(m => this.inClearView(m.slot.x, m.slot.z)));
+    this.clear = v ? { x: v.x, z: v.z, fx: Math.sin(v.yaw), fz: Math.cos(v.yaw) } : null;
+    for (const m of this.members) if (was.has(m) || this.inClearView(m.slot.x, m.slot.z)) this.retarget(m);
+  }
+  /** Whether a member stands in the cleared view (pure geometry, exported for the tests through `inClearView`). */
+  inClearView(x: number, z: number) {
+    const c = this.clear; if (!c) return false;
+    const dx = x - c.x, dz = z - c.z;
+    if (dx * dx + dz * dz < CLEAR.near * CLEAR.near) return true;
+    const fwd = dx * c.fx + dz * c.fz, lat = Math.abs(-dx * c.fz + dz * c.fx);
+    return fwd > 0 && fwd < CLEAR.ahead && lat < CLEAR.side + CLEAR.widen * fwd;
   }
   /** The camera of this frame: LOD distances, and near bodies outside the view are neither drawn nor animated. */
   setCamera(cam: THREE.Camera) {
