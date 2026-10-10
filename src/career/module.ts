@@ -10,6 +10,7 @@ import { arenaFighter } from '../arena/fighter';
 import { posters } from '../arena/posters';
 import { STYLES } from '../lamb/rules';
 import { setBillSource, type Bill } from '../arena/program';
+import { setRecordSource } from '../arena/ceremony';
 import {
   ATTRS, BOUTS_MAX, RUNGS, boutPoints, dimensions, fighterAttributes, publicRecord, purseOf, rankOf, recordLine, summary,
   type BoutEntry, type BoutRes, type CareerSave,
@@ -197,6 +198,8 @@ export const careerModule: GameModule = {
       c.galas = [...(c.galas ?? []).filter(g => g.day !== day), { day, winner }].slice(-60);
       ctx.save();
     });
+    // the announcer of the wrestlers' entrance reads each one's season record from the city's ladder (src/arena/ceremony.ts)
+    setRecordSource((id, _name, day) => { const st = ladder(ctx, day).table.find(x => x.id === id); return st ? { v: st.v, d: st.d, n: st.n } : null; });
     syncRecord(ctx);
     // The phone's arena app keeps its own rows (discipline, records by mode) after the career rows.
     const base = phoneHooks.arenaProfile;

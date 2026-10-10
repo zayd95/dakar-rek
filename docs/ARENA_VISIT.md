@@ -103,8 +103,9 @@ wrestlers, the lines and the sound; the entourages and griots are `src/arena/peo
   public-address chime (`paChime`, synthesised placeholder), then the line.
 - **The drums** change to a denser, faster placeholder pattern for each bàkk (`drumRhythm('bakk')` → the evening's
   percussion in `src/arena/exteriorAudio.ts`), then go back; neither pattern transcribes a real sabar rhythm.
-- **Records**: the announcer reads a wrestler's record from `setRecordSource` (the career's roster plugs in there);
-  without it he names the wrestler, his écurie and his neighbourhood only.
+- **Records**: the announcer reads a wrestler's season record through `setRecordSource`, which the career module
+  (`src/career/module.ts`) fills from the city's ladder (`src/career/roster.ts`); a wrestler it does not know is named
+  with his écurie and his neighbourhood only.
 - **The card** comes from `billFor(day)` (the career's ladder): each side's people wear their wrestler's écurie colour
   (blue for an independent), and take his écurie's corner (`PREP_SIDE`); when both wrestlers are of one écurie, or
   neither has one, the right one takes the other corner (`cornerSides`).
