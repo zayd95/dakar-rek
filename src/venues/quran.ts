@@ -83,7 +83,8 @@ export function calligraphy(p: Passage, wM: number, hM: number, opts: { px?: num
   c.direction = 'rtl'; c.textBaseline = 'middle';
   const units = wrapUnits(p, opts.numbered);
   const mark = (size: number) => size * 1.05;
-  const width = (size: number) => (u: Unit) => (typeof u === 'string' ? c.measureText(u).width : mark(size));
+  // words are always measured in the text's font (the medallion's numbers use a smaller one)
+  const width = (size: number) => (u: Unit) => { if (typeof u !== 'string') return mark(size); c.font = `${size}px ${ARABIC_FONTS}`; return c.measureText(u).width; };
   // largest size whose wrapped lines fit the frame (Arabic with vowel marks wants ~1.9 line height)
   let size = Math.floor(innerH / 1.9), lines: Unit[][] = [], gap = 0;
   for (; size > 10; size -= 2) {
