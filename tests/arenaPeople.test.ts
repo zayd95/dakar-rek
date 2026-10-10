@@ -8,6 +8,8 @@ import { ARENA_FLOOR, PREP_SIDE, drummersStand, interiorSpots, mediaZone, prepCo
 import { Batch } from '../src/world/batch';
 import { SHOW, type ShowPhase } from '../src/arena/program';
 import type { ActivitySpec } from '../src/activity/types';
+import { AMBIENT_BUDGET } from '../src/social/ambientData';
+import { LOD_PRIO, seenFrom } from '../src/arena/people';
 
 const C = { x: 100, z: -40 };
 const r = (p: { x: number; z: number }) => Math.hypot(p.x - C.x, p.z - C.z);
@@ -146,5 +148,25 @@ describe('fight night people: where they stand', () => {
   it('the vendors inside sell at the prices of the stalls outside', () => {
     const outside = new Map(VENDORS.flatMap(v => v.offers()).map((o: ActivitySpec) => [o.id, o.price]));
     for (const v of STAND_VENDORS) for (const o of v.offers(v.seller)) expect(o.price).toBe(outside.get(o.id));
+  });
+});
+
+describe('fight night people: what they cost to draw', () => {
+  it('in the background they get a full body only close by; in the spotlight as far as anyone', () => {
+    expect(LOD_PRIO.spotlight).toBe(1);
+    for (const q of ['low', 'medium'] as const) {
+      // beyond 15 m (the officials' table, the deck, the judges from most seats) a background person is a cheap figure
+      // (on high, with its larger budget, beyond 21 m)
+      expect(LOD_PRIO.background * 15.5).toBeGreaterThan(AMBIENT_BUDGET[q].full);
+      expect(LOD_PRIO.background * 15.5).toBeLessThan(AMBIENT_BUDGET[q].far * 1.5);
+    }
+  });
+  it('from the street they are drawn only when the camera is inside the walls or by one of the two gates', () => {
+    expect(seenFrom(C.x, C.z, { x: C.x + 5, z: C.z + 3 })).toBe(true);                     // in the ring
+    expect(seenFrom(C.x, C.z, { x: C.x + 12, z: C.z - 14 })).toBe(true);                   // on the tiers
+    expect(seenFrom(C.x, C.z, { x: C.x + 2, z: C.z - WALL_R - 8 })).toBe(true);            // in front of the public gate
+    expect(seenFrom(C.x, C.z, { x: C.x - 1, z: C.z + WALL_R + 6 })).toBe(true);            // at the wrestlers' gate
+    expect(seenFrom(C.x, C.z, { x: C.x + WALL_R + 6, z: C.z })).toBe(false);               // behind the wall
+    expect(seenFrom(C.x, C.z, { x: C.x + 30, z: C.z - 40 })).toBe(false);                  // down the street
   });
 });
