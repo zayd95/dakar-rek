@@ -114,7 +114,7 @@ export class LambDuel {
    */
   private fallFx: { loser: Fighter; winner: Fighter; refFrom: THREE.Vector3; refTo: THREE.Vector3; cheered: boolean } | null = null;
   private refRig: StrikeRig | null = null;
-  /** Moments of the bout for whoever listens (the stands react): the fall and the result. */
+  /** Avec frappe: moments of the bout for whoever listens (the stands react): the fall and the result. */
   onMoment?: (m: 'fall' | 'result', winner: Side | null) => void;
   private drums = new Percussion();
   private ui: HTMLDivElement;
@@ -415,7 +415,7 @@ export class LambDuel {
         this.fallFx = { loser: l, winner: w, refFrom: this.official.group.position.clone(), refTo: w.pos.clone().addScaledVector(side, 1.1).setY(this.official.group.position.y), cheered: false };
         if (outcome === 'projection') { w.clip = 'Stance'; l.clip = 'Fall_Back'; }
       }
-      this.onMoment?.('fall', winner);
+      if (this.frappe) this.onMoment?.('fall', winner);
     } else this.showRecap();
   }
 
@@ -680,7 +680,7 @@ export class LambDuel {
     } else if (this.phase === 'fall') {
       if (this.outcome === 'projection') this.msg(this.winner === 'player' ? 'Il est à terre !' : 'Tu es à terre…');
       else this.msg(this.outcome === 'decision' ? `Temps ! Décision : ${this.winner === 'player' ? 'pour toi' : 'pour ' + this.style.name}` : 'Temps ! Égalité');
-      if (this.phaseT > 2.4) this.showRecap();
+      if (this.phaseT > 2.4) { if (this.frappe) this.onMoment?.('result', this.winner); this.showRecap(); }
     } else if (this.phase === 'result') {
       if (this.phaseT > 10) this.done = true;
     }

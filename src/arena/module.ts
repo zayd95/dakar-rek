@@ -226,6 +226,22 @@ class ArenaEvening {
     }
   }
 
+  /**
+   * The player's own bout (Làmb 2.0, LambDuel.onMoment): at the fall, the side of the winner's écurie celebrates while the
+   * loser's side and the end sections leap up, hands on their heads; at the result, the stands' result plan. The player's
+   * side is his écurie's (Baobab on the left sections, Teranga on the right) when the fighter's evening is on, the left
+   * otherwise. Uses the crowd lane's reactions (src/crowd/arenaStands.ts), unchanged.
+   */
+  boutMoment(m: 'fall' | 'result', winner: 'player' | 'opponent' | null, outcome: string) {
+    const mine: StandSide = arenaFighter.corner() === 'teranga' ? 'right' : 'left', theirs: StandSide = mine === 'left' ? 'right' : 'left';
+    const side = winner === null ? null : winner === 'player' ? mine : theirs;
+    if (m === 'result') { this.crowd.moment('result', { winner: side }); return; }
+    if (outcome !== 'projection' || !side) { this.crowd.moment('decision'); return; }
+    this.crowd.react(side, 'celebrate', { share: 0.9, seconds: 6 });
+    this.crowd.react(side === 'left' ? 'right' : 'left', 'fall', { share: 0.85, seconds: 3.5 });
+    this.crowd.react('ends', 'fall', { share: 0.7, seconds: 3.5 });
+  }
+
   /** The stands react to a moment (src/crowd/arenaStands.ts momentPlan): `side`, the wrestler walking in or winning. */
   private react(m: Moment, side: StandSide | null = null, sound = true) {
     const r = REACTION[m];
@@ -386,6 +402,8 @@ export const arenaModule: GameModule = {
   },
   update(_ctx, dt) { evening?.update(dt); },
   camera(ctx, dt, drag) { return evening ? evening.camera(ctx.camera, dt, drag) : false; },
+  // the player's own bout (Làmb 2.0): the stands react to its fall and its result
+  lamb(_ctx, e) { if (e.kind === 'moment') evening?.boutMoment(e.moment, e.winner, e.outcome); },
   safePlace() { return evening?.seatedHere() ? { x: evening.cx, z: evening.gz - 2.5, yaw: Math.PI } : null; },
   debug: ctx => ({
     arena: {

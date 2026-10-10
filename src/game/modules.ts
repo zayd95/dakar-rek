@@ -148,7 +148,9 @@ export type LambEvent =
       winner: 'player' | 'opponent' | null; opponent: { name: string; style: string; label: string }; level: number;
       /** 'avec_frappe' for a Làmb 2.0 bout (src/lamb/stand.ts); absent or 'sans_frappe' otherwise. */
       discipline?: 'sans_frappe' | 'avec_frappe' }
-  | { kind: 'training'; scene: 'training' | 'entrance' | 'prep' | 'watch' | 'celebration' };
+  | { kind: 'training'; scene: 'training' | 'entrance' | 'prep' | 'watch' | 'celebration' }
+  /** Làmb 2.0: a moment of the player's own bout as it happens (the stands react): the fall, then the result. */
+  | { kind: 'moment'; moment: 'fall' | 'result'; winner: 'player' | 'opponent' | null; outcome: 'projection' | 'decision' | 'egalite' | 'abandon' | 'entrainement' };
 
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.

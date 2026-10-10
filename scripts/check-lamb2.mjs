@@ -189,6 +189,9 @@ async function friendlyMenu(page) {
     bf = await until(page, i => !i || i.phase !== 'clinch', async i => { if (!i.clinch.move.player && i.clinch.grip > -30) await page.evaluate(() => window.__dakar.duelBreak()); }, 40000);
     check('empoignade: breaking free (Casser) when the grip is not against you', bf?.phase === 'fight' && bf.score.player.breaks > before, { phase: bf?.phase, breaks: bf?.score?.player?.breaks });
   }
+  // the evening's stands fill (18 h, a fight evening): they will react to the fall
+  await page.evaluate(() => window.__dakar.setHour(18));
+  const filled = await wait(page, () => (window.__dakar.arena.info()?.crowd?.present ?? 0) > 20, null, 30000);
   // step 5: « Projeter » on a man who slips, with the grip — the throw takes him down (he may block it: try again)
   let sawAttempt = false;
   const end = await until(page, i => !i || i.phase === 'fall' || i.phase === 'result', async i => {
@@ -201,6 +204,11 @@ async function friendlyMenu(page) {
   await page.keyboard.up('KeyD');
   const lt = end?.lastThrow;
   check('step 5: a throw on a wrestler who slips, with the grip, takes him down (projection)', ['fall', 'result'].includes(end?.phase) && end.outcome === 'projection' && end.winner === 'player' && lt?.by === 'player' && lt.result === 'fall' && sawAttempt, { phase: end?.phase, outcome: end?.outcome, winner: end?.winner, lastThrow: lt, sawAttempt });
+  // the stands react to your fall: your side celebrates, the other side and the ends hold their heads
+  const stands = () => page.evaluate(() => (window.__dakar.crowds?.list() ?? []).find(c => c.name === 'arena-stands') ?? null);
+  let st6 = null;
+  for (const t0 = Date.now(); Date.now() - t0 < 30000 * SLOW;) { st6 = await stands(); if ((st6?.kinds?.celebrate ?? 0) > 0 && (st6?.kinds?.fall ?? 0) > 0) break; await page.waitForTimeout(150); }
+  check('the stands react to the fall: the winner’s side celebrates, the other side holds its head', filled && (st6?.kinds?.celebrate ?? 0) > 0 && (st6?.kinds?.fall ?? 0) > 0, { filled, kinds: st6?.kinds, present: st6?.present });
   // step 6: the fall — a short slow-down on him going down, the referee comes up and raises your arm, the stands explode
   const slow = end?.phase === 'fall' && !!end.fall?.slow;
   if (slow) await shot(page, 'desktop-fall-slow');
