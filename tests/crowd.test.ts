@@ -290,7 +290,7 @@ describe('arena stands', () => {
     s.update(1, true);
     let celebrating = 0;
     for (const o of order) if (s.crowd.reactionOf(o.id) === 'celebrate') { celebrating++; expect(sideOfId.get(o.id)).toBe('right'); }
-    expect(celebrating).toBeGreaterThan(100);
+    expect(celebrating).toBeGreaterThan(0.7 * order.filter(o => sideOf(o.a) === 'right').length);
     expect(s.level()).toBeGreaterThan(0.5);
     s.dispose();
   });
