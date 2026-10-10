@@ -266,6 +266,15 @@ export class TransportModule implements GameModule {
   }
   /** Fans ride this line now (its cars pulling in at their stop let them off: src/crowd/arrivals.ts). */
   hasFans(line: string) { return this.fans.has(line); }
+  /**
+   * The cars of a line running now (src/city/galaTraffic.ts puts fans on their rear step and sounds their horns): the
+   * body that sways with the road (attach riders to it), the kit's spec, where the car is, how fast, standing at a stop.
+   */
+  lineCars(line: string): { id: string; body: THREE.Object3D; spec: VehicleSpec; x: number; z: number; v: number; dwell: boolean }[] {
+    const rt = this.lines.find(l => l.def.id === line);
+    if (!rt?.on) return [];
+    return rt.vehicles.map(v => ({ id: v.id, body: v.vehicle.body, spec: v.spec, x: v.pose.x, z: v.pose.z, v: v.motion.v, dwell: v.motion.dwell >= 0 }));
+  }
 
   /** A car pulled in at stop i: passengers get on and off; fans get off at their stop and others get on elsewhere. */
   private arrive(rt: LineRt, v: LineVehicle, i: number) {
