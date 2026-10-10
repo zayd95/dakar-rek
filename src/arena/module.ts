@@ -4,13 +4,12 @@ import type { HubWorld } from '../world/types';
 import type { Seat } from '../interact/seats';
 import type { WrestlerLook } from '../core/types';
 import { Batch, signTexture } from '../world/batch';
-import { Humanoid, Wrestler, humanoidReady, type Clip } from '../actors/humanoid';
 import { arenaExterior, eveningSize } from './exterior';
 import { arenaFighter } from './fighter';
 import * as P from '../activity/primitives';
 import { Percussion, crowdCheer } from '../lamb/audio';
 import { STYLES } from '../lamb/rules';
-import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
+import { WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
   billFor, ecurieLabel, reportMainEvent, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
@@ -20,6 +19,7 @@ import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
 import { GalaCard } from './card';
 import { FightNightPeople } from './people';
+import { EntranceCeremony } from './entrance';
 import { posters } from './posters';
 import { recordGalaResult } from '../social/fightTalk';
 
@@ -49,7 +49,6 @@ let dayOverride: number | null = null;
 const SEAT_ZOOM = 0.74;
 const V3 = THREE.Vector3;
 
-interface Walker { h: Humanoid; from: THREE.Vector3; to: THREE.Vector3; t0: number; t1: number; end: Clip }
 /** How the evening's bout ended, as the show tells it (and as friends share it: src/arena/together.ts). */
 export type ShowOutcome = 'projection' | 'decision' | 'egalite' | 'abandon';
 export interface ShowResult { winner: 'left' | 'right' | null; outcome: ShowOutcome }
@@ -75,7 +74,8 @@ class ArenaEvening {
   private catchUpTo = 0;
   private hubId: string;
   private own: { dispose(): void }[] = [];
-  private entrance: Walker[] = [];
+  /** The wrestlers' entrance as a ceremony: tunnel, bàkk on the sand, corner, ring (src/arena/entrance.ts). */
+  private ceremony: EntranceCeremony | null = null;
   private bout: WatchedBout | null = null;
   private drums = new Percussion();
   private card: GalaCard;
@@ -208,12 +208,12 @@ class ArenaEvening {
     if (this.phase !== 'idle' && this.phase !== 'over' && this.phase !== 'bout') this.t += dt * this.speed;
     switch (this.phase) {
       case 'filling': if (this.t >= SHOW.filling) this.go('entrance'); break;
-      case 'entrance': this.updateEntrance(dt * this.speed); if (this.t >= SHOW.entrance) this.go('bout'); break;
+      case 'entrance': this.ceremony?.update(this.t, dt * this.speed); if (this.t >= SHOW.entrance) this.go('bout'); break;
       case 'bout': if (this.bout) { this.bout.advance(dt * this.speed); this.t = this.bout.time; if (this.bout.over) this.go('result'); } break;
       case 'result': if (this.t >= SHOW.result) this.go('leaving'); break;
       case 'leaving': if (this.t >= SHOW.leaving) this.go('over'); break;
     }
-    this.people.update(dt, this.phase, this.t, this.street, dt * (this.phase === 'bout' ? 1 : this.speed));
+    this.people.update(dt, this.phase, this.t, this.street, dt * (this.phase === 'bout' ? 1 : this.speed), billFor(this.day()));
     // the stands fill with the evening and empty after the gala
     this.fillT -= dt;
     if (this.fillT <= 0) { this.fillT = 0.4; this.syncCrowd(); }
@@ -340,50 +340,21 @@ class ArenaEvening {
   }
 
   private startEntrance() {
-    if (!humanoidReady()) return;
-    const cx = this.cx, cz = this.cz;
-    const walker = (h: Humanoid, fx: number, fz: number, tx: number, tz: number, t0: number, t1: number, end: Clip) => {
-      h.group.position.set(fx, 0.1, fz); this.group.add(h.group);
-      this.entrance.push({ h, from: new V3(fx, 0.1, fz), to: new V3(tx, 0.1, tz), t0, t1, end });
-    };
-    const lw = new Wrestler(0x5b3420); lw.setLook(LEFT_LOOK, 'B');
-    const rw = new Wrestler(0x4e2e1c); rw.setLook(RIGHT_LOOK, 'A');
-    // the wrestlers come out of their tunnel opposite the public gate (src/world/geew.ts TUNNEL_*), down the runner
-    const tz = cz + TUNNEL_MOUTH_R + 2.5;
-    walker(lw, cx + 0.8, tz, cx + 3, cz, 0.5, 6.5, 'Dance_A');
-    walker(rw, cx - 0.8, tz, cx - 3, cz, 3.5, 9.5, 'Dance_B');
-    // their entourages walk out of the tunnel behind them (src/arena/people.ts); the drums of the evening are the
-    // drummers' group on its deck by the tunnel, heard by distance through src/arena/exteriorAudio.ts all evening
-  }
-  private updateEntrance(dt: number) {
-    const t = this.t;
-    for (const w of this.entrance) {
-      const k = THREE.MathUtils.clamp((t - w.t0) / (w.t1 - w.t0), 0, 1);
-      w.h.group.position.lerpVectors(w.from, w.to, k);
-      const dir = Math.atan2(w.to.x - w.from.x, w.to.z - w.from.z);
-      const walking = k > 0 && k < 1;
-      w.h.group.rotation.y = walking || k === 0 ? dir : Math.atan2(this.cx - w.h.group.position.x, this.cz - w.h.group.position.z);
-      if (w.h instanceof Wrestler) {
-        w.h.play(walking ? 'Entrance_Walk' : k >= 1 ? (t > SHOW.entrance - 1.6 ? 'Prep' : w.end) : 'Idle'); w.h.update(dt);
-        if (k >= 1 && !this.told.has(`arrived:${w.end}`)) { this.told.add(`arrived:${w.end}`); this.react('entrance', w.end === 'Dance_A' ? 'left' : 'right'); }
-      } else { w.h.hold = walking ? null : w.end; w.h.animate(dt, walking ? 1.4 : 0); }
-    }
-    const bill = billFor(this.day());
-    if (t > 0.5) this.say('walk-left', ARENA.entrance(bill.left.name, bill.left.ecurie));
-    if (t > 3.5) this.say('walk-right', ARENA.entrance(bill.right.name, bill.right.ecurie));
+    // the wrestlers come out of their tunnel opposite the public gate (src/world/geew.ts TUNNEL_*), do their bàkk on the
+    // sand, get ready in their corner, then come to the ring; their entourages and griots are src/arena/people.ts; the
+    // drums of the evening are the drummers' group on its deck, heard through src/arena/exteriorAudio.ts
+    this.ceremony?.dispose();
+    this.ceremony = new EntranceCeremony(this.ctx, this.group, this.cx, this.cz, billFor(this.day()), { left: LEFT_LOOK, right: RIGHT_LOOK }, who => this.react('entrance', who));
   }
   private clearEntrance() {
-    for (const w of this.entrance) w.h.dispose(); this.entrance = [];
+    this.ceremony?.dispose(); this.ceremony = null;
     this.drums.stop();
   }
 
   /** What the seat's camera looks at: the walking wrestlers, the bout, or the ring. */
   focus(out: THREE.Vector3) {
     if (this.phase === 'bout' && this.bout) return out.copy(this.bout.focus());
-    if (this.phase === 'entrance' && this.entrance.length) {
-      const ws = this.entrance.filter(w => w.h instanceof Wrestler);
-      out.set(0, 0, 0); for (const w of ws) out.add(w.h.group.position); return out.multiplyScalar(1 / ws.length).setY(1.2);
-    }
+    if (this.phase === 'entrance' && this.ceremony?.focus(out, this.t)) return out;
     return out.set(this.cx, 1.0, this.cz);
   }
 
@@ -421,7 +392,7 @@ class ArenaEvening {
       ticket: hasTicket(counters, day), galaDone: counters[GALA_DONE_COUNTER] === day,
       seat: seat?.id ?? null, seatsTotal: this.seats.length, seatsFree: this.seats.filter(s => !s.occupant).length,
       crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering, level: Math.round(this.crowd.level() * 100) / 100, lod: this.crowd.stats() },
-      entrance: this.entrance.length, bout: this.bout?.info() ?? null, result: this.result, card: this.card.text, people: this.people.debug(),
+      entrance: this.ceremony?.wrestlers.length ?? 0, ceremony: this.phase === 'entrance' ? this.ceremony?.info(this.t) ?? null : null, bout: this.bout?.info() ?? null, result: this.result, card: this.card.text, people: this.people.debug(),
       gate: { x: this.cx, z: this.gz }, centre: { x: this.cx, z: this.cz },
     };
   }
