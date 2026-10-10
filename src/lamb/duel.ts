@@ -4,11 +4,16 @@ import type { Input } from '../core/input';
 import type { WrestlerLook } from '../core/types';
 import { rng } from '../core/rng';
 import { castById } from '../social/cast';
-import { Percussion, crowdCheer } from './audio';
+import { Percussion, crowdCheer, strikeSound } from './audio';
+import {
+  AVERAGE, STAND, STAND_STYLES, STRIKES, clinchStrength2, decide, free, land, react, reactDelay, standState, startStrike, tick,
+  type Attributes, type Reaction, type StandState, type StandStyle, type StrikeKind,
+} from './stand';
+import { StrikeRig } from './strikeRig';
 import { inGate, tierRadius, tierTop, TIERS } from '../world/geew';
 import {
   RULES, RULES_STATUS, OUTCOME_TEXT, boutRewards, breakWindowOpen, clinchStrength, emptyScore, levelFactor, points, refereeDecision,
-  type BoutMode, type BoutOutcome, type BoutScore, type OpponentStyle, type Rewards, type Side,
+  type BoutMode, type BoutOutcome, type BoutScore, type Discipline, type OpponentStyle, type Rewards, type Side,
 } from './rules';
 
 /**
@@ -21,17 +26,15 @@ import {
  * steps, unranked), friendly and ranked. Difficulty comes from the opponent's style and level only.
  */
 export type DuelPhase = 'intro' | 'fight' | 'clinch' | 'fall' | 'result';
-interface Fighter {
-  w: Wrestler | null; pos: THREE.Vector3; facing: number; stamina: number; max: number; regen: number;
-  guard: boolean; busy: number; clip: Clip;
-  /** Seconds left exposed after a failed grab (cannot guard, a grab on it skips the response window). */
-  open: number;
+/** A wrestler in the bout. The stand-up fields (balance, composure, strikes) only move in the « avec frappe » discipline. */
+interface Fighter extends StandState {
+  w: Wrestler | null; pos: THREE.Vector3; facing: number; regen: number;
+  busy: number; clip: Clip;
   /** Seconds left before this fighter's grab lands (the defender's response window). */
   windup: number;
-  /** Step-back dodge in progress (seconds left). */
-  dodge: number;
   effort: number;
   score: BoutScore;
+  rig: StrikeRig | null;
 }
 export interface DuelOptions {
   origin: { x: number; z: number };
@@ -49,6 +52,10 @@ export interface DuelOptions {
    * moves it through `input.move()` in the duel's camera axes (`axes()`); the other side is the duel's opponent AI.
    */
   spectate?: boolean;
+  /** 'sans_frappe' (default: the bout every check and the arena evening use) or 'avec_frappe' (Làmb 2.0, src/lamb/stand.ts). */
+  discipline?: Discipline;
+  /** The player's attributes (avec frappe); average when not given. */
+  attrs?: Attributes;
 }
 export interface DuelResult {
   mode: BoutMode; outcome: BoutOutcome; winner: Side | null; seconds: number;
@@ -107,6 +114,18 @@ export class LambDuel {
   private camRight = new THREE.Vector3(-1, 0, 0);
   private camFwd = new THREE.Vector3(0, 0, 1);
   private spectate: boolean;
+  /** Làmb 2.0: strikes, balance and composure (« lutte avec frappe »). */
+  readonly discipline: Discipline;
+  private frappe: boolean;
+  private standStyle: StandStyle;
+  private quickPresses = 0;
+  private bigPresses = 0;
+  /** The opponent's pending answer to the player's strike, and how long it keeps its guard up. */
+  private aiReact: { at: number; what: Reaction } | null = null;
+  private aiGuardHold = 0;
+
+  /** Last strike that landed (for the checks and the HUD). */
+  lastStrike: { by: Side; kind: StrikeKind; result: string } | null = null;
   private onKey = (e: KeyboardEvent) => {
     const down = e.type === 'keydown';
     if (e.code === 'KeyG' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') { this.guardHeld = down; this.ui.querySelector('[data-k=guard]')?.classList.toggle('on', down); }
@@ -117,25 +136,29 @@ export class LambDuel {
       if (this.phase === 'result') this.finish(); else if (!this.paused) this.grabTaps++;
     }
     if (e.code === 'KeyX' && !this.paused) this.breakPresses++;
+    if (this.frappe && !this.paused && (e.code === 'KeyJ' || e.code === 'KeyC')) this.quickPresses++;
+    if (this.frappe && !this.paused && (e.code === 'KeyK' || e.code === 'KeyV')) this.bigPresses++;
     if (e.code === 'Escape') { if (this.phase === 'result') this.finish(); else this.askAbandon(!this.confirmOpen()); }
   };
 
   constructor(opts: DuelOptions) {
     const { origin, look, input, crowdSize } = opts;
     this.input = input; this.mode = opts.mode; this.style = opts.style; this.level = opts.level; this.spectate = !!opts.spectate;
+    this.discipline = opts.discipline ?? 'sans_frappe'; this.frappe = this.discipline === 'avec_frappe';
+    this.standStyle = this.mode === 'entrainement' ? STAND_STYLES.partenaire : STAND_STYLES[this.style.id];
     this.factor = opts.mode === 'entrainement' ? 1 : levelFactor(opts.level);
     this.timeLeft = opts.mode === 'entrainement' ? Infinity : R.roundSeconds;
     this.ring = opts.ring ?? 7.6;
     this.o = new THREE.Vector3(origin.x, 0.1, origin.z);
-    const mk = (skin: number, l: WrestlerLook, x: number, max: number, regen: number): Fighter => {
+    const mk = (skin: number, l: WrestlerLook, x: number, max: number, regen: number, attrs: Attributes): Fighter => {
       const w = wrestlerReady() ? new Wrestler(skin) : null;
       if (w) { w.setLook(l, l.ngembPattern === 'bordure' ? 'B' : 'A'); this.group.add(w.group); }
-      return { w, pos: new THREE.Vector3(origin.x + x, 0.1, origin.z), facing: 0, stamina: max, max, regen, guard: false, busy: 0, clip: 'Prep', open: 0, windup: 0, dodge: 0, effort: 0, score: emptyScore() };
+      return { ...standState(attrs, max), w, pos: new THREE.Vector3(origin.x + x, 0.1, origin.z), facing: 0, regen, busy: 0, clip: 'Prep', windup: 0, effort: 0, score: emptyScore(), rig: w && this.frappe ? new StrikeRig(w) : null };
     };
     // the camera stays on the -z side (gate side in the arena, open side at the écurie): screen right is world -x,
     // so the player starts at +x and is seen on the left, the opponent on the right
-    this.me = mk(0x6b3f25, look, 3, R.stamina.max, R.stamina.regen);
-    this.ai = mk(0x3b2216, { ngembColor: this.style.ngemb, ngembPattern: this.mode === 'entrainement' ? 'bordure' : 'uni', accessories: [] }, -3, this.style.staminaMax, this.style.staminaRegen);
+    this.me = mk(0x6b3f25, look, 3, R.stamina.max, R.stamina.regen, opts.attrs ?? AVERAGE);
+    this.ai = mk(0x3b2216, { ngembColor: this.style.ngemb, ngembPattern: this.mode === 'entrainement' ? 'bordure' : 'uni', accessories: [] }, -3, this.style.staminaMax, this.style.staminaRegen, this.standStyle.attrs);
     if (wrestlerReady()) {
       // referee (arena) or Coach Ablaye (écurie) watching from the far side of the ring
       const coach = castById('ablaye');
@@ -162,22 +185,26 @@ export class LambDuel {
 
   // ---------------------------------------------------------------- UI
   private buildUi(): HTMLDivElement {
-    const d = document.createElement('div'); d.className = 'duel-ui';
+    const d = document.createElement('div'); d.className = this.frappe ? 'duel-ui frappe' : 'duel-ui';
     const title = { entrainement: 'Entraînement · Coach Ablaye', amical: 'Combat amical', classe: 'Combat classé' }[this.mode];
     const sub = this.mode === 'entrainement' ? 'Partenaire : Babacar · non classé' : `${this.style.name} · ${this.style.label} · niveau ${this.level}`;
-    const keys = document.body.classList.contains('touch') ? '' : ' · E/Espace saisir · G/Maj garde · X dégager · Échap abandonner';
+    const keys = document.body.classList.contains('touch') ? '' : this.frappe
+      ? ' · J frappe · K grosse frappe · E/Espace saisir · G/Maj garde · X reculer/dégager · Échap abandonner'
+      : ' · E/Espace saisir · G/Maj garde · X dégager · Échap abandonner';
+    const states = (who: string) => this.frappe ? `<i class="bal"><b data-k="${who}bal"></b></i><i class="cmp"><b data-k="${who}cmp"></b></i>` : '';
     d.innerHTML = `
       <div class="duel-top">
         <div class="duel-head"><b></b><small></small></div>
         <div class="duel-timer" data-k="timer"></div>
         <button class="duel-ab" data-k="abandon">Abandonner</button>
       </div>
-      <div class="duel-bars"><div data-k="mebar"><span>Toi <em data-k="meopen"></em></span><i><b data-k="me"></b></i></div><div data-k="aibar"><span>${this.style.name} <em data-k="aiopen"></em></span><i><b data-k="ai"></b></i></div></div>
-      <div class="duel-note">Lutte sans frappe · ${RULES_STATUS}${keys}</div>
+      <div class="duel-bars"><div data-k="mebar"><span>Toi <em data-k="meopen"></em></span><i><b data-k="me"></b></i>${states('me')}</div><div data-k="aibar"><span>${this.style.name} <em data-k="aiopen"></em></span><i><b data-k="ai"></b></i>${states('ai')}</div></div>
+      ${this.frappe ? '<div class="duel-legend"><span class="e">Endurance</span><span class="b">Équilibre</span><span class="c">Sang-froid</span></div>' : ''}
+      <div class="duel-note">${RULES[this.discipline].label} · ${RULES_STATUS}${keys}</div>
       <div class="duel-step" data-k="step" hidden></div>
       <div class="duel-msg" data-k="msg">Arbitre : prêts ?</div>
       <div class="duel-clinch" data-k="clinch" hidden><i><b data-k="tug"></b></i><em data-k="cl"></em></div>
-      <div class="duel-btns"><button data-k="break">Dégager</button><button data-k="guard">Garde</button><button data-k="grab">Saisir</button></div>
+      <div class="duel-btns${this.frappe ? ' frappe' : ''}"><button data-k="break">${this.frappe ? 'Reculer' : 'Dégager'}</button><button data-k="guard">Garde</button><button data-k="grab">Saisir</button>${this.frappe ? '<button data-k="quick">Frappe</button><button data-k="big">Grosse<br>frappe</button>' : ''}</div>
       <div class="duel-confirm" data-k="confirm" hidden><div><b>Abandonner le combat ?</b><p>Compté comme un abandon, à part des défaites : ce n’est pas une chute, et il n’y a aucune récompense.</p><button data-k="yes">Abandonner</button><button data-k="no">Continuer le combat</button></div></div>
       <div class="duel-recap" data-k="recap" hidden></div>`;
     (d.querySelector('.duel-head b') as HTMLElement).textContent = title;
@@ -197,6 +224,13 @@ export class LambDuel {
       .duel-bars i{display:block;height:7px;border-radius:4px;background:rgba(255,255,255,.18);margin-top:3px;overflow:hidden}
       .duel-bars b{display:block;height:100%;width:100%;background:#22c55e;transition:width .1s}
       .duel-bars b.low{background:#f97316}
+      .duel-bars i.bal,.duel-bars i.cmp{height:5px;margin-top:2px}.duel-bars i.bal b{background:#38bdf8}.duel-bars i.cmp b{background:#f59e0b}
+      .duel-bars i.bal b.low{background:#ef4444}
+      .duel-legend{position:absolute;top:calc(env(safe-area-inset-top,0px) + 100px);left:50%;transform:translateX(-50%);display:flex;gap:12px;font-size:10.5px;text-shadow:0 1px 3px #000;white-space:nowrap}
+      .duel-legend span::before{content:'';display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+      .duel-legend .e::before{background:#22c55e}.duel-legend .b::before{background:#38bdf8}.duel-legend .c::before{background:#f59e0b}
+      .duel-ui.frappe .duel-note{top:calc(env(safe-area-inset-top,0px) + 118px)}
+      .duel-ui.frappe .duel-step{top:calc(env(safe-area-inset-top,0px) + 138px)}
       .duel-note{position:absolute;top:calc(env(safe-area-inset-top,0px) + 104px);left:50%;transform:translateX(-50%);font-size:10.5px;opacity:.85;text-align:center;width:94vw;text-shadow:0 1px 3px #000}
       .duel-step{position:absolute;top:calc(env(safe-area-inset-top,0px) + 124px);left:50%;transform:translateX(-50%);width:min(92vw,440px);background:rgba(20,83,45,.85);border:1px solid #4ade80;border-radius:10px;padding:6px 10px;font-size:13px;text-align:center}
       .duel-step small{display:block;font-size:11px;color:#bbf7d0;margin-top:2px}
@@ -212,6 +246,11 @@ export class LambDuel {
       .duel-btns button[data-k=break]{right:9px;bottom:96px;width:70px;height:70px;background:#e5e7eb}
       .duel-btns button[data-k=break].hot{background:#4ade80;box-shadow:0 0 0 4px #bbf7d0,0 4px 14px rgba(0,0,0,.45)}
       .duel-btns button.on{transform:scale(.93);filter:brightness(.85)}
+      .duel-btns.frappe{width:236px;height:170px}
+      .duel-btns button[data-k=quick]{right:82px;bottom:84px;width:62px;height:62px;background:#fdba74;font-size:12px}
+      .duel-btns button[data-k=big]{right:166px;bottom:34px;width:66px;height:66px;background:#f87171;font-size:11.5px;line-height:1.05}
+      .duel-btns.frappe button[data-k=guard]{right:94px;bottom:2px;width:66px;height:66px}
+      .duel-btns.frappe button[data-k=break]{right:10px;bottom:96px;width:62px;height:62px}
       .duel-confirm,.duel-recap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,.55);pointer-events:auto}
       .duel-confirm[hidden],.duel-recap[hidden],.duel-step[hidden],.duel-clinch[hidden]{display:none}
       .duel-confirm>div,.duel-recap>div{background:#0f172a;border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:16px;width:min(88vw,380px);max-height:86vh;overflow:auto}
@@ -231,6 +270,9 @@ export class LambDuel {
       for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => b.classList.remove('on'));
     };
     tap(grab, () => this.grabTaps++); tap(brk, () => this.breakPresses++);
+    const quick = d.querySelector<HTMLButtonElement>('[data-k=quick]'), big = d.querySelector<HTMLButtonElement>('[data-k=big]');
+    if (quick) tap(quick, () => this.quickPresses++);
+    if (big) tap(big, () => this.bigPresses++);
     d.querySelector<HTMLButtonElement>('[data-k=abandon]')!.addEventListener('click', e => { (e.currentTarget as HTMLButtonElement).blur(); this.askAbandon(true); });
     d.querySelector('[data-k=yes]')!.addEventListener('click', () => this.abandon());
     d.querySelector('[data-k=no]')!.addEventListener('click', () => this.askAbandon(false));
@@ -249,8 +291,12 @@ export class LambDuel {
     const me = this.me, ai = this.ai;
     const bar = (k: string, f: Fighter) => { const b = this.q(k); b.style.width = `${(100 * f.stamina) / f.max}%`; b.classList.toggle('low', f.stamina < R.stamina.grabCost); };
     bar('me', me); bar('ai', ai);
-    this.q('meopen').textContent = me.open > 0 ? '· exposé' : '';
-    this.q('aiopen').textContent = ai.open > 0 ? '· OUVERT' : '';
+    if (this.frappe) for (const [k, f] of [['me', me], ['ai', ai]] as const) {
+      const b = this.q(k + 'bal'); b.style.width = `${Math.round(f.balance)}%`; b.classList.toggle('low', f.balance < 30);
+      this.q(k + 'cmp').style.width = `${Math.round(f.composure)}%`;
+    }
+    this.q('meopen').textContent = me.stagger > 0 ? '· tu vacilles' : me.open > 0 ? '· exposé' : '';
+    this.q('aiopen').textContent = ai.stagger > 0 ? '· VACILLE' : ai.open > 0 ? '· OUVERT' : '';
     const tl = this.timeLeft;
     this.q('timer').textContent = tl === Infinity ? '—' : `${Math.floor(Math.max(0, Math.ceil(tl)) / 60)}:${String(Math.max(0, Math.ceil(tl)) % 60).padStart(2, '0')}`;
     const step = this.q('step');
@@ -312,10 +358,11 @@ export class LambDuel {
       ${row('Parades réussies', r.score.player.guards, r.score.opponent.guards)}
       ${row('Saisies engagées', r.score.player.grabs, r.score.opponent.grabs)}
       ${row('Dégagements', r.score.player.breaks, r.score.opponent.breaks)}
-      ${r.outcome === 'decision' || r.outcome === 'egalite' ? row('Points (arbitre)', points(r.score.player), points(r.score.opponent)) : ''}
+      ${this.frappe ? row('Frappes touchées', r.score.player.hits ?? 0, r.score.opponent.hits ?? 0) + row('Adversaire vacille', r.score.player.staggers ?? 0, r.score.opponent.staggers ?? 0) : ''}
+      ${r.outcome === 'decision' || r.outcome === 'egalite' ? row('Points (arbitre)', points(r.score.player, RULES[this.discipline]), points(r.score.opponent, RULES[this.discipline])) : ''}
       </table>
       <b>Récompenses</b><ul>${r.rewards.lines.map(() => '<li></li>').join('')}</ul>
-      <small>${RULES.sans_frappe.label} · ${RULES_STATUS}. Durée : ${Math.round(r.seconds)} s.</small>
+      <small>${RULES[this.discipline].label} · ${RULES_STATUS}. Durée : ${Math.round(r.seconds)} s.</small>
       <button data-k="continue">Continuer</button></div>`;
     box.querySelector('h2')!.textContent = title;
     box.querySelector('[data-r=how]')!.textContent = `${OUTCOME_TEXT[r.outcome]} · ${opp}`;
@@ -332,6 +379,8 @@ export class LambDuel {
   /** Screen axes of the duel's camera on the ground (where `input.move()` x and y point): right and forward. */
   axes() { return { right: { x: this.camRight.x, z: this.camRight.z }, fwd: { x: this.camFwd.x, z: this.camFwd.z } }; }
   pressBreak() { this.breakPresses++; }
+  /** Avec frappe: a quick or a big strike (same as the buttons). */
+  pressStrike(kind: StrikeKind) { if (kind === 'big') this.bigPresses++; else this.quickPresses++; }
   setGuard(on: boolean) { this.guardHeld = on; }
   /** World points on both wrestlers (feet, waist, head) for layout checks. */
   fighterPoints(): [number, number, number][] { return [this.me, this.ai].flatMap(f => [0.1, 1, 1.8].map(h => [f.pos.x, f.pos.y + h, f.pos.z] as [number, number, number])); }
@@ -346,14 +395,23 @@ export class LambDuel {
       windup: this.ai.windup > 0, dist: Math.round(this.me.pos.distanceTo(this.ai.pos) * 100) / 100,
       clinch: c ? { by: c.by, losing: c.losing, breakWindow: c.breakWindow, share: Math.round(c.share * 100) / 100 } : null,
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
+      discipline: this.discipline,
+      ...(this.frappe ? {
+        balance: { player: Math.round(this.me.balance), opponent: Math.round(this.ai.balance) },
+        composure: { player: Math.round(this.me.composure), opponent: Math.round(this.ai.composure) },
+        guard: { player: this.me.guard, opponent: this.ai.guard },
+        strike: { player: this.me.strike?.kind ?? null, opponent: this.ai.strike?.kind ?? null },
+        stagger: this.me.stagger > 0 ? 'player' : this.ai.stagger > 0 ? 'opponent' : null,
+        lastStrike: this.lastStrike,
+      } : {}),
     };
   }
 
   // ---------------------------------------------------------------- rules in motion
   private clinchState() {
     if (this.phase !== 'clinch' || !this.clinchBy) return null;
-    const mine = clinchStrength(this.me.effort, this.me.stamina, this.clinchBy === this.me);
-    const theirs = clinchStrength(this.ai.effort, this.ai.stamina, this.clinchBy === this.ai);
+    const strength = (f: Fighter) => this.frappe ? clinchStrength2(f.effort, f.stamina, this.clinchBy === f, f.balance) : clinchStrength(f.effort, f.stamina, this.clinchBy === f);
+    const mine = strength(this.me), theirs = strength(this.ai);
     return { by: (this.clinchBy === this.me ? 'player' : 'opponent') as Side, mine, theirs, losing: mine < theirs, share: mine / Math.max(0.01, mine + theirs), breakWindow: breakWindowOpen(this.phaseT) };
   }
   private stepId(): StepId | null { return this.mode === 'entrainement' && this.step < TUTORIAL.length ? TUTORIAL[this.step].id : null; }
@@ -367,7 +425,7 @@ export class LambDuel {
   private playerGrab() {
     const me = this.me, ai = this.ai, d = me.pos.distanceTo(ai.pos);
     if (me.open > 0) { this.msg('Tu es exposé : recule ou attends', 0.8); return; }
-    if (!this.canAct(me)) return;
+    if (!this.canAct(me) || (this.frappe && !free(me))) return;
     if (me.stamina < R.stamina.grabCost) { this.msg('Plus d’endurance', 0.8); return; }
     me.stamina -= R.stamina.grabCost; me.busy = 0.6; me.clip = 'Grab';
     if (d > R.grabRange) { me.open = R.openingSeconds * 0.6; this.msg('Trop loin', 0.8); return; }
@@ -380,13 +438,14 @@ export class LambDuel {
       return;
     }
     if (ai.windup > 0) ai.windup = 0;                                              // grabbed before its own grab landed
+    if (ai.strike && !ai.strike.landed) ai.strike = null;                         // grabbed while winding up a strike
     this.startClinch(me, ai.open > 0 ? 'Saisie sur l’ouverture !' : 'Empoignade !');
   }
   /** Opponent grab: starts a windup, the player's response window (guard or dégagement cancels it). */
   private aiGrab() {
     const me = this.me, ai = this.ai;
     ai.stamina -= R.stamina.grabCost; ai.score.grabs++; ai.clip = 'Grab'; ai.busy = 0;
-    if (me.open > 0) { this.startClinch(ai, 'Contre ! Il saisit ton ouverture'); return; }
+    if (me.open > 0 || me.stagger > 0) { this.startClinch(ai, me.stagger > 0 ? 'Tu vacilles : il te saisit !' : 'Contre ! Il saisit ton ouverture'); return; }
     ai.windup = R.responseWindow * this.style.windup;
     this.msg('Il attaque ! Garde ou dégage !', ai.windup);
   }
@@ -399,7 +458,7 @@ export class LambDuel {
   }
   private dodge() {
     const me = this.me;
-    if (me.busy > 0 || me.dodge > 0) return;
+    if (me.busy > 0 || me.dodge > 0 || (this.frappe && !free(me))) return;
     if (me.stamina < R.stamina.dodgeCost) { this.msg('Plus d’endurance', 0.8); return; }
     me.stamina -= R.stamina.dodgeCost; me.dodge = 0.28; me.busy = 0.35; me.guard = false;
     if (this.ai.windup > 0) this.responded('dodge');
@@ -412,7 +471,8 @@ export class LambDuel {
     const me = this.me, ai = this.ai;
     const taps = this.grabTaps; this.grabTaps = 0;
     const breaks = this.breakPresses; this.breakPresses = 0;
-    for (const f of [me, ai]) { f.busy = Math.max(0, f.busy - dt); f.open = Math.max(0, f.open - dt); }
+    const quick = this.quickPresses, big = this.bigPresses; this.quickPresses = 0; this.bigPresses = 0;
+    for (const f of [me, ai]) { f.busy = Math.max(0, f.busy - dt); if (!this.frappe) f.open = Math.max(0, f.open - dt); }
     const step = this.stepId();
 
     if (this.phase === 'intro') {
@@ -420,6 +480,8 @@ export class LambDuel {
       this.msg(this.phaseT < 1.4 ? (this.mode === 'entrainement' ? 'Coach Ablaye : prêts ?' : 'Arbitre : prêts ?') : 'Làmb !');
       me.clip = ai.clip = 'Prep';
       if (this.phaseT > 2.2) { this.phase = 'fight'; this.phaseT = 0; this.msg(''); }
+    } else if (this.phase === 'fight' && this.frappe) {
+      this.fightFrappe(dt, taps, breaks, quick, big);
     } else if (this.phase === 'fight') {
       if (this.timeLeft !== Infinity) this.timeLeft -= dt;
       const m = this.input.move();
@@ -514,6 +576,112 @@ export class LambDuel {
     return this.frame(dt);
   }
 
+  // ---------------------------------------------------------------- avec frappe: the stand-up exchange (Làmb 2.0)
+  private fightFrappe(dt: number, taps: number, breaks: number, quick: number, big: number) {
+    const me = this.me, ai = this.ai;
+    if (this.timeLeft !== Infinity) this.timeLeft -= dt;
+    const m = this.input.move();
+    me.guard = this.guardHeld && !me.strike && me.stagger <= 0 && me.open <= 0 && me.dodge <= 0 && me.busy <= 0;
+    // feet: relative to the camera; slow in guard, slower while striking, none while staggering
+    if (me.busy <= 0 && me.stagger <= 0) {
+      const sp = 2.6 * (me.guard ? STAND.guardSpeed : me.strike ? 0.4 : 1);
+      me.pos.addScaledVector(this.camRight, m.x * sp * dt).addScaledVector(this.camFwd, m.y * sp * dt);
+    }
+    for (const [f, o] of [[me, ai], [ai, me]] as const) if (f.dodge > 0) {
+      const away = f.pos.clone().sub(o.pos).setY(0).normalize();
+      f.pos.addScaledVector(away, 4.2 * Math.min(dt, f.dodge));
+    }
+    let d = ai.pos.distanceTo(me.pos);
+
+    // the opponent's grab in its response window (as sans frappe)
+    if (ai.windup > 0) {
+      if (me.guard) this.responded('guard');
+      else {
+        ai.windup = Math.max(0, ai.windup - dt);
+        if (ai.windup <= 0) {
+          if (d <= R.grabRange + 0.3) this.startClinch(ai, 'Il t’a saisi ! Empoignade');
+          else { ai.open = R.openingSeconds; this.msg('Il a raté ! Ouverture !', 1.1); }
+        }
+      }
+    }
+    if (this.phase !== 'fight') return;
+    if (breaks > 0) this.dodge();
+    if (quick + big > 0) this.playerStrike(big > 0 ? 'big' : 'quick');
+    if (taps > 0) this.playerGrab();
+    if (this.phase !== 'fight') return;
+
+    // the opponent answers the player's strike (guard, step back, or a quick strike first)
+    if (this.aiReact && (this.aiReact.at -= dt) <= 0) {
+      const what = this.aiReact.what; this.aiReact = null;
+      if (what === 'guard' && free(ai) && ai.open <= 0) this.aiGuardHold = 0.6;
+      else if (what === 'back' && free(ai)) { ai.dodge = 0.3; this.aiGuardHold = 0; }
+      else if (what === 'counter') { this.aiGuardHold = 0; startStrike(ai, 'quick'); }
+    }
+    // the opponent's decisions
+    this.aiThink -= dt;
+    if (this.aiThink <= 0 && free(ai) && ai.windup <= 0 && ai.open <= 0 && ai.busy <= 0) {
+      const [a0, b0] = this.style.think; this.aiThink = a0 + this.rand() * (b0 - a0);
+      const dec = decide({ me: ai, them: me, dist: d, grabRange: R.grabRange }, this.standStyle, this.factor, this.rand);
+      if (dec.grab && ai.stamina >= R.stamina.grabCost) this.aiGrab();
+      else if (dec.strike) {
+        this.aiGuardHold = 0; ai.guard = false;
+        if (startStrike(ai, dec.strike) && dec.strike === 'big') this.msg('Grosse frappe ! Garde, recule ou frappe vite', 0.6);
+      } else {
+        this.aiGuardHold = dec.guard ? this.aiThink : 0;
+        // wrestling still matters standing: it may go for the grab in range
+        if (!dec.guard && d < R.grabRange && ai.stamina >= R.stamina.grabCost + 6 && this.rand() < Math.min(0.9, this.style.grabChance * 0.6 * this.factor)) this.aiGrab();
+      }
+    }
+    if (this.phase !== 'fight') return;
+    this.aiGuardHold = Math.max(0, this.aiGuardHold - dt);
+    ai.guard = this.aiGuardHold > 0 && !ai.strike && ai.stagger <= 0 && ai.open <= 0 && ai.windup <= 0;
+    if (ai.busy <= 0 && ai.windup <= 0 && ai.stagger <= 0 && ai.dodge <= 0) {
+      const range = this.standStyle.range, want = d > range + 0.15 ? 1 : d < range - 0.35 ? -0.6 : 0;
+      const dir = me.pos.clone().sub(ai.pos).setY(0).normalize();
+      ai.pos.addScaledVector(dir, want * (ai.guard ? STAND.guardSpeed : ai.strike ? 0.4 : 1) * this.style.speed * Math.min(1.2, this.factor) * dt);
+    }
+    // states over time; strikes land at the end of their windup
+    d = ai.pos.distanceTo(me.pos);
+    for (const [f, o] of [[me, ai], [ai, me]] as const) {
+      if (tick(f, dt, f.regen)) this.strikeLands(f, o, d);
+    }
+    for (const f of [me, ai]) {
+      if (f.busy <= 0 && f.windup <= 0) f.clip = f.stagger > 0 ? 'Idle' : f === me && Math.hypot(m.x, m.y) > 0.1 && !f.strike ? 'Walk' : 'Stance';
+    }
+    if (this.msgHold <= 0) {
+      this.msg(me.stagger > 0 ? 'Tu vacilles… recule ou garde-toi' : ai.stagger > 0 ? `${this.style.name} vacille : saisis-le !`
+        : me.open > 0 ? 'Tu es ouvert !' : ai.open > 0 ? 'Ouverture !' : ai.strike?.kind === 'big' && !ai.strike.landed ? 'Grosse frappe ! Garde, recule ou frappe vite' : '');
+    }
+    if (this.timeLeft <= 0) this.timeUp();
+  }
+
+  /** The player starts a strike; the opponent may see it coming. */
+  private playerStrike(kind: StrikeKind) {
+    const me = this.me, ai = this.ai;
+    if (me.open > 0) { this.msg('Tu es ouvert : recule ou attends', 0.7); return; }
+    if (!free(me) || me.busy > 0) return;
+    const wasGuard = me.guard; me.guard = false;
+    if (!startStrike(me, kind)) { me.guard = wasGuard; if (me.stamina < STRIKES[kind].cost) this.msg('Plus d’endurance', 0.8); return; }
+    const what = react(kind, ai, this.standStyle, this.factor, this.rand());
+    this.aiReact = what === 'none' ? null : { at: reactDelay(kind, ai), what };
+  }
+
+  /** A strike reaches its landing moment: hit, stagger, guarded or missed; messages, sounds, the crowd. */
+  private strikeLands(a: Fighter, d: Fighter, dist: number) {
+    const l = land(a, d, dist), mine = a === this.me, name = this.style.name;
+    this.lastStrike = { by: mine ? 'player' : 'opponent', kind: l.kind, result: l.result };
+    strikeSound(l.kind, l.result);
+    if (l.result === 'hit' || l.result === 'stagger') a.score.hits = (a.score.hits ?? 0) + 1;
+    if (l.result === 'stagger') { a.score.staggers = (a.score.staggers ?? 0) + 1; crowdCheer(1.6, 0.14); }
+    else if (l.result === 'hit' && l.kind === 'big') crowdCheer(0.9, 0.08);
+    if (l.result === 'guarded') d.score.guards++;
+    const cut = l.interrupted ? ' · frappe coupée' : '';
+    const text = mine
+      ? { hit: l.kind === 'big' ? 'Grosse frappe touchée !' : 'Touché', stagger: `${name} vacille ! Saisis-le !`, guarded: l.kind === 'big' ? 'Paré : tu es ouvert !' : 'Paré par sa garde', miss: l.kind === 'big' ? 'Raté ! Tu es ouvert' : 'Dans le vide' }[l.result]
+      : { hit: l.kind === 'big' ? 'Il te touche fort' : 'Il te touche', stagger: 'Tu vacilles… recule !', guarded: l.kind === 'big' ? 'Bien paré : il est ouvert !' : 'Paré', miss: l.kind === 'big' ? 'Il a raté : ouverture !' : 'Esquivé' }[l.result];
+    this.msg(text + cut, l.result === 'stagger' ? 1.2 : l.kind === 'big' ? 0.9 : 0.5);
+  }
+
   private resolveClinch(playerWins: boolean) {
     const step = this.stepId();
     const me = this.me, ai = this.ai;
@@ -534,7 +702,7 @@ export class LambDuel {
   }
 
   private timeUp() {
-    const w = refereeDecision(this.me.score, this.ai.score);
+    const w = refereeDecision(this.me.score, this.ai.score, RULES[this.discipline]);
     this.me.clip = this.ai.clip = 'Stance';
     if (w) (w === 'player' ? this.me : this.ai).clip = 'Celebrate';
     this.end(w ? 'decision' : 'egalite', w);
@@ -546,6 +714,8 @@ export class LambDuel {
     this.phase = 'clinch'; this.phaseT = 0; this.clinchBy = by; this.aiBreakTried = -1;
     this.me.effort = 0; this.ai.effort = 0; this.me.guard = this.ai.guard = false;
     this.me.windup = this.ai.windup = 0; this.me.open = this.ai.open = 0; this.me.dodge = 0;
+    for (const f of [this.me, this.ai]) { f.strike = null; f.stagger = 0; f.recover = 0; f.dodge = 0; }
+    this.aiReact = null; this.aiGuardHold = 0;
     this.msg(text, 0.9);
   }
   /** End an empoignade without a fall: push the wrestlers apart; `exposed` (if any) is left open briefly. */
@@ -571,7 +741,10 @@ export class LambDuel {
     if (dist < 0.75 && this.phase === 'fight') { const push = gap.normalize().multiplyScalar((0.75 - dist) / 2); ai.pos.add(push); me.pos.sub(push); }
     me.facing = Math.atan2(ai.pos.x - me.pos.x, ai.pos.z - me.pos.z);
     ai.facing = Math.atan2(me.pos.x - ai.pos.x, me.pos.z - ai.pos.z);
-    for (const f of [me, ai]) if (f.w) { f.w.group.position.copy(f.pos); f.w.group.rotation.y = f.facing; f.w.hold = f.clip; f.w.animate(dt, 0); }
+    for (const f of [me, ai]) if (f.w) {
+      f.w.group.position.copy(f.pos); f.w.group.rotation.y = f.facing; f.w.hold = f.clip; f.w.animate(dt, 0);
+      if (f.rig && this.phase === 'fight') f.rig.pose(f, dt);
+    }
     if (this.official) {
       const mid0 = me.pos.clone().add(ai.pos).multiplyScalar(0.5);
       this.official.group.rotation.y = Math.atan2(mid0.x - this.official.group.position.x, mid0.z - this.official.group.position.z);
