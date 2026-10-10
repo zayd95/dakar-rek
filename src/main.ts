@@ -636,7 +636,7 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () 
   };
   if (after) { const recorded = duel.onDone; duel.onDone = () => { recorded?.(); after(); }; }   // a module's next step (ctx.startBout)
   // avec frappe: the bout's moments go to the modules as they happen (the arena's stands react to the fall and the result)
-  duel.onMoment = (m, w) => { for (const mod of MODULES) mod.lamb?.(ctx, { kind: 'moment', moment: m, winner: w, outcome: duel.outcome ?? 'decision' }); };
+  duel.onMoment = (m, w, o) => { for (const mod of MODULES) mod.lamb?.(ctx, { kind: 'moment', moment: m, winner: w, outcome: duel.outcome ?? 'decision', strike: o?.kind, opponent: style.name }); };
   lambScene = duel;
   extra.add(duel.group);
   npcLife.setVisible(false);

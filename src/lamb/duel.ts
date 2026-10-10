@@ -46,6 +46,12 @@ interface Fighter extends StandState {
   /** Avec frappe: the move being set up in the empoignade (push, pull, pivot). */
   move: { kind: ClinchMove; t: number } | null;
 }
+/**
+ * Avec frappe, the moments of a bout as they happen (onMoment; not in the écurie's lesson or drills): a clean strike, a
+ * knockdown (he staggers: « vacille »), the fall that ends it, the referee raising the winner's arm, the result. `who`:
+ * the one who landed the strike or made the other stagger; the winner.
+ */
+export type DuelMoment = 'strike' | 'stagger' | 'fall' | 'arm' | 'result';
 export interface DuelOptions {
   origin: { x: number; z: number };
   look: WrestlerLook;
@@ -142,8 +148,10 @@ export class LambDuel {
   private refRig: StrikeRig | null = null;
   /** The referee has raised the winner's arm (avec frappe; kept for the checks once the bout is over). */
   private refRaised = false;
+  /** The referee's raised arm was told (onMoment 'arm'), once. */
+  private armTold = false;
   /** Avec frappe: moments of the bout for whoever listens (the stands react): the fall and the result. */
-  onMoment?: (m: 'fall' | 'result', winner: Side | null) => void;
+  onMoment?: (m: DuelMoment, who: Side | null, o?: { kind?: StrikeKind }) => void;
   private drums = new Percussion();
   private ui: HTMLDivElement;
   private input: Input;
@@ -526,6 +534,13 @@ export class LambDuel {
     } else this.showRecap();
   }
 
+  /** Avec frappe: the referee raises the winner's arm (step 6) — told once, as a moment (the announcer gives the result). */
+  private armMoment() {
+    if (this.armTold || !this.winner || this.phaseT <= 1.8) return;
+    this.armTold = true;
+    this.onMoment?.('arm', this.winner);
+  }
+
   private showRecap() {
     this.phase = 'result'; this.phaseT = 0; this.msg('', 0); this.msgHold = 0;
     if (this.headless) return;
@@ -814,11 +829,13 @@ export class LambDuel {
         for (const h of this.crowd) h.hold = 'Celebrate';
       }
       if (t > 1.3 && this.outcome === 'projection') fx.winner.clip = 'Celebrate';
+      this.armMoment();
       const name = this.style.name;
       this.msg(t < 1.1 ? (this.outcome === 'projection' ? (this.winner === 'player' ? 'Projection ! Il est au sol' : 'Tu es au sol…') : 'Temps !')
         : this.winner === 'player' ? 'L’arbitre lève ton bras : victoire !' : `L’arbitre lève le bras de ${name}`);
       if (t > 3.4) { this.onMoment?.('result', this.winner); this.showRecap(); }
     } else if (this.phase === 'fall') {
+      if (this.frappe) this.armMoment();
       if (this.outcome === 'projection') this.msg(this.winner === 'player' ? 'Il est à terre !' : 'Tu es à terre…');
       else this.msg(this.outcome === 'decision' ? `Temps ! Décision : ${this.winner === 'player' ? 'pour toi' : 'pour ' + this.style.name}` : 'Temps ! Égalité');
       if (this.phaseT > 2.4) { if (this.frappe) this.onMoment?.('result', this.winner); this.showRecap(); }
@@ -1226,6 +1243,7 @@ export class LambDuel {
     const l = land(a, d, dist), mine = a === this.me, name = this.style.name;
     this.lastStrike = { by: mine ? 'player' : 'opponent', kind: l.kind, result: l.result };
     if (this.lesson) this.lessonHear({ k: 'strike', by: mine ? 'player' : 'opponent', kind: l.kind, result: l.result });
+    if (this.mode !== 'entrainement' && (l.result === 'hit' || l.result === 'stagger')) this.onMoment?.(l.result === 'stagger' ? 'stagger' : 'strike', mine ? 'player' : 'opponent', { kind: l.kind });
     if (this.drill && mine) {
       this.drillHear({ k: 'land', kind: l.kind, result: l.result });
       d.balance = Math.max(d.balance, 80); d.stagger = 0; d.composure = 100;   // the pads take it
