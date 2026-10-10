@@ -98,6 +98,8 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
   };
   /** Someone sitting on a seat of the kit (the waiting chairs of a bank…). */
   const sitOn = (st: Seat | undefined, look?: PersonLook) => { if (st) person(st.x, st.z, st.yaw, 'Sit', look); };
+  /** The shopkeeper on the kit's keeper anchor: kept at every quality (Low thins out the customers only). */
+  const keeper = (a: { x: number; z: number; yaw: number }, look?: PersonLook) => { c.people.push({ x: a.x, z: a.z, yaw: a.yaw, clip: 'Talk', look }); };
 
   if (kind === 'soumbedioune') {
     // The beach extends out of the western city grid. Existing Corniche crossings lead to it.
@@ -145,7 +147,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
       const x = cx - 14 + k * 12, z = cz - 16;
       shop(['Vannerie', 'Cuir & bois', 'Pirogues peintes'][k], x, z, 0xc58b57, 10);
       const s = stock(`craft-${k}`, 'craft', x, z, 10, 8, { variant: k });
-      person(s.anchors.keeper.x, s.anchors.keeper.z, s.anchors.keeper.yaw, 'Talk');
+      keeper(s.anchors.keeper);
       if (k === 1) craftAt = s.anchors.counter;
     }
     place('craft', 'Ateliers de Soumbédioune', craftAt.x, craftAt.z, A.craft, 'Bienvenue à l’atelier. Chaque objet commence entre les mains de quelqu’un.', 3.4);
@@ -170,7 +172,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     sign('ACCUEIL · AGENCE', x, z - 2.4, '#145d5b', 3.2, 8);
     // the hall: guichets behind glass, back office, the queue between posts, waiting chairs (shop kit)
     const hall = stock('bank', 'bank', x, z, w - 0.4, d - 0.4, { height: h - 0.1, at: { x, z, y: TERRAZZO_Y + 0.012 } });
-    person(hall.anchors.keeper.x, hall.anchors.keeper.z, 0, 'Talk', TELLER);
+    keeper(hall.anchors.keeper, TELLER);
     for (const t of hall.anchors.staff.slice(0, lite ? 0 : 2)) person(t.x, t.z, t.yaw, 'Idle', { ...TELLER, top: 0x145d5b, female: true, style: 'dress', hat: 'headwrap', hatColor: 0x145d5b });
     sitOn(hall.seats[1]); sitOn(hall.seats[hall.seats.length - 3]);
     place('bank', name, hall.anchors.counter.x, hall.anchors.counter.z, A.bank, `${say('Dalal ak jàmm')}. Pour ton projet, passe à l’accueil.`, 3.3);
@@ -195,7 +197,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
       shop(s.name, cx + s.dx, cz - 12, 0xb95c37, 12);
       const it = stock(`mall-${s.key}`, s.type, cx + s.dx, cz - 12, 12, 8), k = it.anchors.keeper;
       place(`mall-${s.key}`, s.name, it.anchors.counter.x, it.anchors.counter.z, s.actions, `${say('Dalal ak jàmm')} ! Entre, prends le temps de regarder.`, 2.8);
-      person(k.x, k.z, k.yaw, 'Talk');
+      keeper(k);
       const v = it.anchors.browse[0]; if (v) person(v.x, v.z, v.yaw, 'Idle');
     }
     // Continuous upper facade makes the gallery a shopping complex, with ground-level shops below.
@@ -216,7 +218,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     shade(cx + 14, cz + 6, 10, 8, 0xcc9a50);
     const bar = stock('mall-juice', 'cafe', cx + 14, cz + 6, 9.4, 7.4, { height: 3.1 });
     sign('JUS & GO', cx + 14, cz + 10.05, '#49704b', 3.3, 7);
-    person(bar.anchors.keeper.x, bar.anchors.keeper.z, 0, 'Talk', VENDOR);
+    keeper(bar.anchors.keeper, VENDOR);
     sitOn(bar.seats.find(s => s.kind === 'chair'));
     place('mall-juice', 'Jus & Go', bar.anchors.counter.x, bar.anchors.counter.z, A.juice, `${say('Dafa tàng')} ! Bouye ou bissap ? On te prépare ça.`, 2.8);
     for (const dz of [1, 9]) { bench(cx - 14, cz + dz); person(cx - 14, cz + dz, 0, 'Sit'); }
@@ -239,7 +241,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     shop(pikine ? 'Salon Awa' : 'Dakar Réparation', cx + 11, cz - 10, pikine ? 0xca7f93 : 0x437282, 17);
     const right = stock('salon-tech', pikine ? 'beauty' : 'phone', cx + 11, cz - 10, 17, 8, pikine ? { reserve: [{ x0: 3.4, x1: 8.6, z0: -4.2, z1: 4.2 }] } : {});
     place('salon-tech', pikine ? 'Salon Awa' : 'Dakar Réparation', pikine ? cx + 11 : right.anchors.counter.x, pikine ? cz - 4.3 : right.anchors.counter.z, pikine ? A.salon : A.tech, pikine ? `${say('Toogal')}. Aujourd’hui, tout le quartier parle de la ${say('làmb')} et de l’arène.` : 'Téléphones, accessoires, commandes : il y a toujours de quoi s’occuper.', 3);
-    person(right.anchors.keeper.x, right.anchors.keeper.z, right.anchors.keeper.yaw, 'Talk', pikine ? VENDOR : FISHER);
+    keeper(right.anchors.keeper, pikine ? VENDOR : FISHER);
     bench(cx - 11, cz + 11); bench(cx + 11, cz + 11);
     c.tree(cx, cz + 14, 1.7); c.pool(cx - 11, cz - 3, 6); c.pool(cx + 11, cz - 3, 6);
     return;

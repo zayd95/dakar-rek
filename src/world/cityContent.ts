@@ -21,6 +21,7 @@ export const CITY_ACTIONS = {
   craft: [
     { id: 'atelier', label: 'Aider à préparer une commande', detail: 'Emballer paniers et objets de bois · +1 600 F', gain: 1600, needs: { energie: -14, moral: 5 }, seconds: 5, counter: 'shifts', requires: energy(14) },
     { id: 'savoir-faire', label: 'Découvrir le travail des artisans', detail: 'Tressage, cuir et petites pirogues peintes', needs: { moral: 10, social: 9 }, seconds: 4, counter: 'visits' },
+    { id: 'craft-panier', label: 'Acheter un petit panier tressé', detail: 'Fait main à l’atelier', cost: 1500, needs: { moral: 8 }, seconds: 2 },
   ],
   bank: [
     { id: 'courrier', label: 'Livrer les dossiers de l’agence', detail: 'Une petite mission rémunérée · +2 400 F', gain: 2400, needs: { energie: -20, faim: -5 }, seconds: 5, counter: 'shifts', requires: energy(20) },
@@ -33,14 +34,17 @@ export const CITY_ACTIONS = {
   tech: [
     { id: 'tech-service', label: 'Aider à préparer les commandes', detail: 'Accessoires et petits appareils · +2 000 F', gain: 2000, needs: { energie: -17 }, seconds: 4, counter: 'shifts', requires: energy(17) },
     { id: 'tech-discuter', label: 'Discuter avec le réparateur', detail: 'Les nouvelles du quartier passent aussi ici', needs: { social: 10, moral: 3 }, seconds: 3, counter: 'chats' },
+    { id: 'tech-credit', label: 'Recharger son crédit', detail: 'Une carte de recharge · appels et messages', cost: 500, needs: { social: 4, moral: 2 }, seconds: 2 },
   ],
   style: [
     { id: 'tenues', label: 'Voir les tenues de lutte', detail: 'Ngemb et accessoires · aperçu', seconds: 0, special: 'outfit' },
     { id: 'couture', label: 'Aider à préparer une commande', detail: 'Trier les tissus et les fournitures · +1 800 F', gain: 1800, needs: { energie: -16, moral: 4 }, seconds: 4, counter: 'shifts', requires: energy(16) },
+    { id: 'style-pagne', label: 'Acheter un pagne wax', detail: 'Six yards, imprimé maison · pour la prochaine tenue', cost: 3000, needs: { moral: 10 }, seconds: 3 },
   ],
   household: [
     { id: 'maison-service', label: 'Ranger les arrivages', detail: 'Vaisselle, lampes et petits meubles · +2 100 F', gain: 2100, needs: { energie: -19, hygiene: -4 }, seconds: 4, counter: 'shifts', requires: energy(19) },
     { id: 'maison-idees', label: 'Chercher des idées pour sa chambre', detail: 'Repérer des couleurs et des objets', needs: { moral: 8 }, seconds: 3, counter: 'visits' },
+    { id: 'meubles', label: 'Voir les meubles', detail: 'Livrés dans ta chambre · prix provisoires', seconds: 0, special: 'shop' },
   ],
   juice: [
     { id: 'bouye', label: 'Jus de bouye frais', cost: 500, needs: { faim: 10, energie: 5, moral: 7 }, seconds: 2 },

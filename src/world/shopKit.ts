@@ -304,12 +304,23 @@ class Room {
   /** A model pirogue (two cones nose to nose, painted stripes), along x. */
   pirogue(x: number, y: number, z: number, len: number, rotY = 0) {
     this.b.at(x, y, z, rotY, () => {
-      this.b.with(new THREE.Matrix4().makeScale(1, 0.55, 0.42), () => {
-        const r = len * 0.16;
+      for (const dx of [-len * 0.22, len * 0.22]) this.b.box(0.04, 0.05, Math.max(0.1, len * 0.18), dx, 0, 0, C.woodDark);   // its stand
+      this.b.with(new THREE.Matrix4().makeTranslation(0, 0.03, 0).multiply(new THREE.Matrix4().makeScale(1, 0.85, 0.6)), () => {
+        const r = len * 0.19;
         this.b.cyl('x', 0.001, r, len / 2, -len / 4, r, 0, 0xffffff, 6, { pos: false, neg: false, side: SUV.pirogue });
         this.b.cyl('x', r, 0.001, len / 2, len / 4, r, 0, 0xffffff, 6, { pos: false, neg: false, side: SUV.pirogue });
       });
     });
+  }
+  /** Carved wood: bowls, small drums, a mortar and its pestle. */
+  woodcraft(x0: number, x1: number, y: number, zf: number, gap: number) {
+    let x = x0;
+    while (x1 - x > 0.25) {
+      const k = Math.floor(this.r() * 3);
+      if (k === 0) { const r = this.rnd(0.1, 0.14); this.b.cyl('y', r * 0.6, r, 0.09, x + r, y + 0.045, zf - r, this.pick([0x8a5a32, 0x6b3a1e, 0xa8723f]), 8, { pos: true, neg: true, capPaint: 0x4a2c18 }); x += r * 2 + 0.04; }
+      else if (k === 1) { const h = Math.min(gap - 0.04, 0.3); this.b.cyl('y', 0.07, 0.1, h, x + 0.1, y + h / 2, zf - 0.11, 0x6b3a1e, 8, { pos: true, neg: false, capPaint: 0xd9c4a0 }); x += 0.24; }
+      else { this.b.cyl('y', 0.09, 0.11, 0.17, x + 0.11, y + 0.085, zf - 0.12, 0x8a5a32, 8, { pos: true, neg: false, capPaint: 0x3a2418 }); this.b.beam([x + 0.08, y + 0.1, zf - 0.12], [x + 0.16, y + Math.min(gap - 0.05, 0.38), zf - 0.12], 0.035, 0.035, 0xa8723f); x += 0.26; }
+    }
   }
   wigs(x0: number, x1: number, y: number, zf: number) {
     for (let x = x0 + 0.15; x < x1 - 0.12; x += 0.34) {
@@ -337,7 +348,7 @@ class Room {
   }
   till(x: number, z: number, h: number) {
     this.b.box(0.36, 0.11, 0.32, x, h, z, C.dark);
-    this.b.box(0.26, 0.17, 0.03, x, h + 0.11, z + 0.08, C.dark, { pz: { rect: SUV.ticket } });
+    this.b.box(0.26, 0.17, 0.03, x, h + 0.11, z + 0.08, C.dark, { pz: { rect: SUV.tag } });   // the customer's display: the price
   }
   fridge(x: number, z: number, rotY: number, w = 0.72, h = 1.95, d = 0.68): boolean {
     const f = this.foot(x, z, w, d, rotY);
@@ -513,11 +524,13 @@ const hardwareFill: Fill = (R, lvl, levels, x0, x1, y, zf, dp, gap, u) => {
   if (lvl === 0 || (lvl + u) % 2 === 0) R.pots(x0, x1, y, zf, gap, ['paint0', 'paint1']);
   else R.cartons(x0, x1, y, zf, dp, gap, ['pk7', 'pk5'], [0.12, 0.2], 0.16);
 };
-const craftFill = (v: number): Fill => (R, lvl, levels, x0, x1, y, zf, _dp, gap) => {
+const craftFill = (v: number): Fill => (R, lvl, levels, x0, x1, y, zf, _dp, gap, u) => {
   if (!R.full(lvl, levels)) return R.strip(x0, x1, y, zf, gap, 'sCraft');
+  const alt = (lvl + u) % 2 === 1;
   if (v === 0) R.baskets(x0, x1, y, zf, gap);
-  else if (v === 1) R.leather(x0, x1, y, zf, gap);
-  else for (let x = x0 + 0.3; x < x1 - 0.25; x += 0.62) R.pirogue(x, y + 0.02, zf - 0.12, 0.55);
+  else if (v === 1) { if (alt) R.woodcraft(x0, x1, y, zf, gap); else R.leather(x0, x1, y, zf, gap); }
+  else if (alt) R.woodcraft(x0, x1, y, zf, gap);
+  else for (let x = x0 + 0.33; x < x1 - 0.3; x += 0.66) R.pirogue(x, y, zf - 0.14, 0.6);
 };
 const beautyFill: Fill = (R, lvl, levels, x0, x1, y, zf, dp, gap) => {
   if (!R.full(lvl, levels)) return R.strip(x0, x1, y, zf, gap, 'sBeauty');
@@ -700,9 +713,9 @@ const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank'>, Style> = {
       put('lamp:better', lx - 1.55, oz + 0.35);
       put('armchair:better', lx + 1.75, oz + 1.6, -PI / 2);
       if (w > 4.4) { put('wardrobe:better', Z.right.x1 - 0.32, Z.right.z0 + 0.7, -PI / 2); put('tv:better', Z.right.x1 - 0.25, Z.right.z0 + 2.0, -PI / 2, { x: Z.right.x1 - 1.5, z: Z.right.z0 + 2.0, yaw: PI / 2 }); }
-      const tx = Z.island.x0 + Math.min(1.1, (Z.island.x1 - Z.island.x0) / 2), tz = Z.island.z0 + 1.0;
-      if (put('table:better', tx, tz)) { put('woodenChair:better', tx - 0.85, tz, PI / 2); put('woodenChair:better', tx + 0.85, tz, -PI / 2); }
-      put('fan:better', Z.island.x1 - 0.3, Z.island.z0 + 0.3);
+      const tx = Z.island.x1 - 1.4, tz = Z.island.z0 + 0.8;
+      if (put('table:better', tx, tz, 0, { x: tx, z: tz + 1.0, yaw: PI })) { put('woodenChair:better', tx - 0.85, tz, PI / 2); put('woodenChair:better', tx + 0.85, tz, -PI / 2); }
+      put('fan:better', Z.island.x0 + 0.3, Z.island.z0 + 0.3);
       put('plasticChair:basic', Z.behind.x0 + 0.4, Z.behind.z0 + 0.4);
     },
   },
@@ -750,7 +763,14 @@ const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank'>, Style> = {
           R.solid(f, 0.9); R.browse.push({ x: ix, z: iz + 1.0, yaw: PI });
         }
       }
-      if (R.det === 2) R.b.at(Z.right.x0 + 0.2, 0, Z.right.z1 - 0.3, 0.2, () => { R.b.beam([0, 0, 0], [0, 2.4, -0.5], 0.05, 0.05, 0xb48c5c); R.b.beam([0.4, 0, 0], [0.4, 2.4, -0.5], 0.05, 0.05, 0xb48c5c); for (let k = 1; k < 7; k++) R.b.beam([0, k * 0.34, -k * 0.07], [0.4, k * 0.34, -k * 0.07], 0.03, 0.03, 0xb48c5c); });
+      if (R.det === 2) {                                                                   // a ladder leaning on the right wall
+        const lx = Z.right.x1, lz = Z.right.z1 - 0.45, f = R.foot(lx - 0.3, lz, 0.6, 0.5);
+        if (R.ok(f)) {
+          for (const dz of [-0.2, 0.2]) R.b.beam([lx - 0.6, 0, lz + dz], [lx - 0.05, 2.4, lz + dz], 0.05, 0.05, 0xb48c5c);
+          for (let k = 1; k < 7; k++) { const t = k / 7; R.b.beam([lx - 0.6 + t * 0.55, t * 2.4, lz - 0.2], [lx - 0.6 + t * 0.55, t * 2.4, lz + 0.2], 0.03, 0.03, 0xb48c5c); }
+          R.solid(f, 1);
+        }
+      }
     },
   },
   craft: {
@@ -905,7 +925,7 @@ function bankPlan(R: Room): Plan {
     const wx = win(i), pw = len / n - 0.08;
     R.g.box(pw, 0.9, 0.02, wx, ch + 0.3, cz + 0.1, C.glass);
     R.b.decal([wx, ch + 1.42, cz + 0.16], [1, 0, 0], [0, 1, 0], 0.9, 0.3, SUV.guichet);
-    R.b.box(0.42, 0.3, 0.05, wx - 0.5, ch, cz - 0.22, C.dark, { pz: { rect: SUV.screen2 } });   // the teller's screen
+    R.b.box(0.42, 0.3, 0.05, wx - 0.5, ch, cz - 0.22, C.dark, { nz: { rect: SUV.screen2 } });   // the teller's screen, facing the teller
     R.chair(wx, cz - cd / 2 - 0.95, 0, C.dark, 0.5, 'chair', false, false);
     if (i !== Math.floor(n / 2)) R.staff.push({ x: wx, z: cz - cd / 2 - 0.45, yaw: 0 });
   }
