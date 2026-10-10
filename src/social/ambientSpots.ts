@@ -17,6 +17,7 @@ import { WALL_R } from '../world/geew';
 import { LANE, kioskDir } from './routines';
 import { PLACE_TAGS, LEGACY_TAGS } from './ambientData';
 import { pair, prayerRows, ring, type AmbientSpot, type Pt, type SeatLike, type StandSlot } from './ambient';
+import { ShopPaths, type ShopInfo } from '../world/shopFlow';
 
 export interface SpotInputs {
   places: readonly PlaceSpec[];
@@ -32,6 +33,8 @@ export interface SpotInputs {
   doors?: readonly Pt[];
   /** Low quality: the builders drew fewer pirogues. */
   lite?: boolean;
+  /** Shops stocked by the shop kit (src/world/city.ts): their door, displays, counter queue and furniture. */
+  shops?: readonly ShopInfo[];
 }
 
 const PI = Math.PI;
@@ -137,6 +140,20 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
     if (!rule || a.id.startsWith('npc:') || a.id.includes(':home:') || superseded(a.x, a.z, rule.tags)) continue;
     const base = { space: 'street', hours: rule.hours, source: 'legacy' as const };
     const id = `legacy:${a.id}`;
+    // a shop stocked by the shop kit (the three Soumbédioune workshops share the 'craft' sheet): in through the door,
+    // the displays, then the counter
+    const stocked = inp.shops?.filter(s => s.key === a.id || s.key.startsWith(a.id + '-')) ?? [];
+    if (stocked.length) {
+      for (const s of stocked) {
+        const k = s.anchors, b = s.bounds, paths = new ShopPaths(b, s.colliders);
+        const seats = claim(x => x.space === 'street' && x.x > b.x0 && x.x < b.x1 && x.z > b.z0 && x.z < b.z1);
+        const browse = k.browse.filter(p => paths.walkable(p) && paths.path(k.door, p));
+        const checkout = k.queue.filter(p => paths.walkable(p));
+        push({ ...base, id: stocked.length > 1 ? `${id}:${s.key.slice(a.id.length + 1)}` : id, tags: rule.tags, x: (b.x0 + b.x1) / 2, z: (b.z0 + b.z1) / 2, seats,
+          stands: browse.length ? browse : checkout.slice(1), shop: { door: k.door, checkout, path: (p, q) => paths.path(p, q) } });
+      }
+      continue;
+    }
     if (/:(gargote|cafe|restaurant|maiga):/.test(a.id)) {
       const dir = kioskDir(a.z), toCounter = dir > 0 ? PI : 0;
       const seats = claim(s => s.space === 'street' && s.id.startsWith(a.id + ':amb:'));

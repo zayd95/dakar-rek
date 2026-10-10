@@ -11,6 +11,8 @@ import { ROUTINES, currentPlan, resolvePlace, planPath, laneGraph, collidersClea
 import { ACTIVITIES, AMBIENT_BUDGET, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR, type AmbientQuality } from './ambientData';
 import { planDemand, chooseSeat, curveAt, dayOfWeek, seatCapacity, isNpcOccupant, STAND_ON, type AmbientActivity, type AmbientSpot, type LookKind, type Pt, type SeatLike } from './ambient';
 import { buildSpots, furnitureSeats } from './ambientSpots';
+import type { ShopInfo } from '../world/shopFlow';
+import type { Collider } from '../world/types';
 
 /**
  * Ambient city life at run time (docs/NPC_LIFE.md): people come to the spots of the hub, do what the hour and the day
@@ -33,6 +35,8 @@ interface Actor {
   path: Pt[]; seg: number; speed: number; until: number; pause: number; cool: number;
   /** Place in the counter queue while waiting to be served (−1: none), and how long the wait lasts. */
   q: number; qx: number; qz: number; qyaw: number; waitT: number;
+  /** In a shop's checkout line (spot.shop.checkout) rather than a serving queue; done = has gone to pay already. */
+  cq: boolean; paid: boolean;
   /** Time before the next change of gesture (vendors and talkers do not freeze in one clip). */
   clipT: number;
   /** Sitting down (twDir 1) / standing up (−1): counts down from 1 over half a second. */
@@ -89,6 +93,9 @@ export class AmbientLife implements GameModule {
   private pv = { x: 0, z: 0, vx: 0, vz: 0 };
   private thinT = 0;
   private stats = { full: 0, mineFull: 0, foreignFull: 0, figures: 0, foreign: 0 };
+  /** Stocked shops (spot.shop): how many came in through the door, joined the checkout line and paid at the counter. */
+  private shopTally = new Map<string, { entered: number; queued: number; paid: number }>();
+  private tally(spot: string, k: 'entered' | 'queued' | 'paid') { const t = this.shopTally.get(spot) ?? { entered: 0, queued: 0, paid: 0 }; t[k]++; this.shopTally.set(spot, t); }
 
   // ------------------------------------------------------------------ module hooks
   init(ctx: GameCtx) {
@@ -105,7 +112,7 @@ export class AmbientLife implements GameModule {
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
     this.ctx = ctx;
     for (const a of this.actors) this.off(a, false);
-    this.world = hub; this.spots = null; this.spotById.clear(); this.slotsTaken.clear();
+    this.world = hub; this.spots = null; this.spotById.clear(); this.slotsTaken.clear(); this.shopTally.clear();
     this.clear = collidersClear(hub.colliders);
     this.foreign.clear(); this.reserved = []; this.castHolds = []; this.resKey = -1;
     this.loadFrame = this.frameNo; this.snapNext = true; this.sig = '';
@@ -163,7 +170,10 @@ export class AmbientLife implements GameModule {
       if (pp.walkTo) for (let k = 1; k <= 4; k++) people.push({ x: pp.x + (pp.walkTo.x - pp.x) * k / 4, z: pp.z + (pp.walkTo.z - pp.z) * k / 4 });
     }
     const old = this.spotById;
-    this.spots = buildSpots({ places: ctx.places.all(), seats: ctx.seats.all(), interactables: w.interactables, layout: hubLayout(w.id), colliders: w.colliders, people, arena: w.arena, doors, lite: ctx.quality() === 'low' });
+    // the shops stocked by the shop kit (src/world/city.ts): their door, displays, counter queue and furniture
+    const shops: ShopInfo[] = [];
+    w.group.traverse(o => { const u = o.userData.shop; if (u) shops.push({ key: u.key, type: u.type, anchors: u.anchors, bounds: u.bounds, colliders: (o.userData.shopColliders as Collider[] | undefined) ?? [] }); });
+    this.spots = buildSpots({ places: ctx.places.all(), seats: ctx.seats.all(), interactables: w.interactables, layout: hubLayout(w.id), colliders: w.colliders, people, arena: w.arena, doors, lite: ctx.quality() === 'low', shops });
     this.spotById = new Map(this.spots.map(s => [s.id, s]));
     for (const a of this.actors) if (a.state !== 'off' && a.spot && this.spotById.get(a.spot.id) !== a.spot) {
       const fresh = this.spotById.get(a.spot.id);
@@ -238,7 +248,7 @@ export class AmbientLife implements GameModule {
     const a: Actor = {
       n, key: 'npc:amb:' + n, state: 'off', born: 0, spot: null, act: null, look: randomLook(this.rand), color: new THREE.Color(), clip: 'Idle',
       seat: null, slot: -1, slotRow: false, standOn: false, sitting: false, x: 0, z: 0, y: 0.1, yaw: 0, tx: 0, tz: 0, tyaw: 0,
-      ax: 0, az: 0, sitY: 0.1, sitClip: 'Sit', path: [], seg: 0, speed: 1.3, until: 0, pause: 0, cool: 0, q: -1, qx: 0, qz: 0, qyaw: 0, waitT: 0, clipT: 0, tw: 0, twDir: 1, route: null, board: null,
+      ax: 0, az: 0, sitY: 0.1, sitClip: 'Sit', path: [], seg: 0, speed: 1.3, until: 0, pause: 0, cool: 0, q: -1, qx: 0, qz: 0, qyaw: 0, waitT: 0, cq: false, paid: false, clipT: 0, tw: 0, twDir: 1, route: null, board: null,
       body: null, lod: 0, acc: 0, d: 0, rec: { id: 'amb:' + n, obj: new THREE.Object3D(), h: null, bias: 3 },   // focus after places, the cast and seats in reach: a passer-by never hides them
     };
     this.actors.push(a);
@@ -256,7 +266,7 @@ export class AmbientLife implements GameModule {
       a.clip = act.pose === 'sit' ? 'Sit' : act.clips[Math.floor(this.rand() * act.clips.length)];
       a.until = this.t + act.stay[0] + this.rand() * (act.stay[1] - act.stay[0]);
       a.speed = act.speed ? act.speed[0] + this.rand() * (act.speed[1] - act.speed[0]) : WALK[0] + this.rand() * (WALK[1] - WALK[0]);
-      a.pause = 0; a.tw = 0; a.board = null;
+      a.pause = 0; a.tw = 0; a.board = null; a.paid = false;
       if (snap) this.settle(a);
       else if (!this.arrive(a)) { this.off(a, true); break; }       // no clean way in, in sight of the player: nobody pops up
       a.rec.space = spot.space; a.rec.female = !!a.look.female;
@@ -366,10 +376,53 @@ export class AmbientLife implements GameModule {
   }
 
   private freeQueue(a: Actor) {
-    if (a.q < 0 || !a.spot) return;
-    const taken = this.slotsTaken.get(a.spot.id + '#stands');
+    if (a.q < 0 || !a.spot) { a.cq = false; return; }
+    const taken = this.slotsTaken.get(a.spot.id + (a.cq ? '#checkout' : '#stands'));
     if (taken && taken[a.q] === a.n) taken[a.q] = null;
-    a.q = -1;
+    a.q = -1; a.cq = false;
+  }
+
+  /**
+   * In a shop, the activity done (browsing a display, waiting on a chair), the person joins the checkout line at the
+   * counter before leaving (spec §31). False when there is no line here, it is full, or the person already paid.
+   */
+  private checkout(a: Actor): boolean {
+    const spot = a.spot!, shop = spot.shop;
+    if (!shop || a.paid || spot.space !== 'street' || !shop.checkout.length) return false;
+    a.paid = true;
+    const key = spot.id + '#checkout';
+    let taken = this.slotsTaken.get(key);
+    if (!taken) { taken = new Array(shop.checkout.length).fill(null); this.slotsTaken.set(key, taken); }
+    let k = -1;
+    for (let i = 0; i < shop.checkout.length && k < 0; i++) if (taken[i] === null && !this.playersSpot(shop.checkout[i].x, shop.checkout[i].z, 0.8)) k = i;
+    if (k < 0) return false;
+    const wasSitting = a.sitting, start = wasSitting ? { x: a.ax, z: a.az } : { x: a.x, z: a.z };
+    this.releaseSeat(a); this.freeSlot(a);
+    const s = shop.checkout[k];
+    taken[k] = a.n; a.q = k; a.cq = true; a.qx = s.x; a.qz = s.z; a.qyaw = s.yaw;
+    a.path = shop.path(start, s) ?? [start, s]; a.seg = 0; a.state = 'in'; a.pause = 0;
+    a.waitT = 3 + this.rand() * 3;
+    if (wasSitting) { a.tw = 1; a.twDir = -1; }
+    this.tally(spot.id, 'queued');
+    return true;
+  }
+
+  /** In the checkout line: move up when the place ahead frees, pay at the counter, then go. */
+  private checkoutWait(a: Actor, dt: number) {
+    const shop = a.spot!.shop!;
+    a.x = a.qx; a.z = a.qz; a.yaw = turn(a.yaw, a.qyaw, dt * 5);
+    if (a.q > 0) {
+      const taken = this.slotsTaken.get(a.spot!.id + '#checkout'), s = shop.checkout[a.q - 1];
+      if (taken && taken[a.q - 1] === null && !this.playersSpot(s.x, s.z, 0.8)) {
+        taken[a.q] = null; a.q--; taken[a.q] = a.n;
+        a.qx = s.x; a.qz = s.z; a.qyaw = s.yaw;
+        a.path = shop.path({ x: a.x, z: a.z }, s) ?? [{ x: a.x, z: a.z }, s]; a.seg = 0; a.state = 'in';
+      }
+      return;
+    }
+    if ((a.waitT -= dt) > 0) return;
+    this.tally(a.spot!.id, 'paid');
+    this.leave(a);
   }
 
   private takeSlot(a: Actor, spot: AmbientSpot, slots: readonly { x: number; z: number; yaw: number }[], row: boolean, mate: Actor | null,
@@ -410,11 +463,16 @@ export class AmbientLife implements GameModule {
   /** Walks in from the sidewalk (or the room's door). False when no path: the caller settles the person in place. */
   private arrive(a: Actor): boolean {
     const spot = a.spot!, ctx = this.ctx, act = a.act!;
-    // customers first queue at the counter to be served, then go and sit
-    const queued = !!act.serve && !!a.seat && spot.stands.length > 0 && this.takeQueue(a, spot);
+    // customers first queue at the counter to be served, then go and sit (in a stocked shop they pay on the way out)
+    const queued = !spot.shop && !!act.serve && !!a.seat && spot.stands.length > 0 && this.takeQueue(a, spot);
     const to = queued ? { x: a.qx, z: a.qz } : this.approach(a);
     let path: Pt[] | null = null;
-    if (spot.space !== 'street') {
+    if (spot.shop && spot.space === 'street') {
+      // from the sidewalk to the shop's door, then around the furniture to the display or the chair
+      const door = spot.shop.door, from = this.sidewalkPoint(door, 14, 32), inner = spot.shop.path(door, to);
+      if (from && inner) { const outer = planPath(from, door, this.clear); if (this.pathOk(outer, 'street')) path = [...outer, ...inner.slice(1)]; }
+      if (path) this.tally(spot.id, 'entered');
+    } else if (spot.space !== 'street') {
       const ins = ctx.inside();
       if (ins && ctx.space() === spot.space) path = this.roomPath({ x: ins.int.spawn.x, z: ins.int.spawn.z }, to, spot.space);
     } else {
@@ -458,7 +516,12 @@ export class AmbientLife implements GameModule {
     if (a.act!.board) to = this.boardVehicle(a) ?? spot.boardAt ?? null;
     const start = wasSitting ? { x: a.ax, z: a.az } : { x: a.x, z: a.z };
     let path: Pt[] | null = null;
-    if (spot.space !== 'street') { const ins = ctx.inside(); to = ins ? { x: ins.int.spawn.x, z: ins.int.spawn.z } : null; if (to) path = this.roomPath(start, to, spot.space); }
+    if (spot.shop && spot.space === 'street') {
+      // around the furniture to the shop's door, then out to the sidewalk
+      const door = spot.shop.door, inner = spot.shop.path(start, door);
+      to = this.sidewalkPoint(door, 16, 30);
+      if (inner && to) { const outer = planPath(door, to, this.clear); if (this.pathOk(outer, 'street')) path = [...inner, ...outer.slice(1)]; }
+    } else if (spot.space !== 'street') { const ins = ctx.inside(); to = ins ? { x: ins.int.spawn.x, z: ins.int.spawn.z } : null; if (to) path = this.roomPath(start, to, spot.space); }
     else {
       to ??= this.sidewalkPoint(a, 16, 30);
       if (to) { path = planPath(start, to, this.clear); if (!this.pathOk(path, 'street')) path = null; }
@@ -518,6 +581,7 @@ export class AmbientLife implements GameModule {
     }
     // the player has priority: a seat they come to (or walk toward) before the person reached it is theirs
     if ((a.state === 'in' || a.state === 'wait') && a.seat && !a.standOn && this.playersSpot(a.tx, a.tz, 2.2) && a.spot!.space === this.ctx.space()) { this.leave(a); return; }
+    if (a.state === 'wait' && a.cq) { this.checkoutWait(a, dt); return; }   // a shop's checkout line
     if (a.state === 'wait') {                                         // at the counter, being served
       a.x = a.qx; a.z = a.qz; a.yaw = turn(a.yaw, a.qyaw, dt * 5);
       if ((a.waitT -= dt) > 0) return;
@@ -554,8 +618,8 @@ export class AmbientLife implements GameModule {
       a.x = s.x; a.z = s.z; a.yaw = s.yaw; a.y = sitOriginY(s);
       return;
     }
-    // doing the activity
-    if (this.t > a.until) { this.leave(a); return; }
+    // doing the activity (in a shop: then to the counter to pay)
+    if (this.t > a.until) { if (!this.checkout(a)) this.leave(a); return; }
     if (a.seat) {
       const s = this.ctx.seats.get(a.seat);
       if (!s || s.occupant !== a.key) { this.off(a, false); return; }
@@ -688,7 +752,7 @@ export class AmbientLife implements GameModule {
   private clipOf(a: Actor): Clip {
     if (a.tw > 0 || a.sitting || a.state === 'ride') return a.sitClip;
     if (a.state === 'in' || a.state === 'out') return a.pause > 0 ? 'Talk' : 'Walk';
-    if (a.state === 'wait') return a.waitT % 5 < 3 ? 'Talk' : 'Idle';
+    if (a.state === 'wait') return a.cq && a.q > 0 ? 'Idle' : a.waitT % 5 < 3 ? 'Talk' : 'Idle';
     const act = a.act!;
     if (act.pose === 'route') return a.pause > 0 ? 'Idle' : a.speed > 2 ? 'Run' : 'Walk';
     if (act.pose === 'roam') return a.pause > 0 ? 'Idle' : 'Run';
@@ -787,6 +851,14 @@ export class AmbientLife implements GameModule {
       /** Registers a place (and its seats) as another lane would: the city populates it. */
       ambientAddPlace: (spec: Parameters<GameCtx['places']['add']>[0], seats: Seat[] = []) => { for (const s of seats) this.ctx.seats.add({ ...s }); this.ctx.places.add(spec); this.sigT = 0; },
       ambientRebuild: () => { this.build(); this.snapNext = true; },
+      /** Runs the city's people for `seconds` of game time now (0.1 s steps): checks that cannot wait in real time. */
+      ambientRun: (seconds: number) => { for (let t = 0; t < seconds; t += 0.1) this.update(this.ctx, 0.1); return this.summary().live; },
+      /** Stocked shops (spec §31): people inside now by state, and how many entered, queued and paid since the hub load. */
+      ambientShops: () => (this.spots ?? []).filter(s => s.shop).map(s => {
+        const here = this.actors.filter(a => a.state !== 'off' && a.spot === s), by: Record<string, number> = {};
+        for (const a of here) { const k = a.state === 'wait' && a.cq ? (a.q === 0 ? 'pay' : 'line') : a.state; by[k] = (by[k] ?? 0) + 1; }
+        return { id: s.id, tags: s.tags, stands: s.stands.length, checkout: s.shop!.checkout.length, seats: s.seats.length, now: by, ...(this.shopTally.get(s.id) ?? { entered: 0, queued: 0, paid: 0 }) };
+      }),
       /** Full animated NPC humanoids drawn now (ambient + other systems), far figures, and the budget. */
       humanoids: () => this.humanoidCount(),
     };

@@ -90,22 +90,23 @@ try {
       const kept = data.shops.filter(s => !(hub === 'pikine' && /boutique/.test(s.key)) && !(hub === 'plateau' && /boutique/.test(s.key)))
         .map(s => data.people.some(p => Math.hypot(p.x - s.anchors.keeper.x, p.z - s.anchors.keeper.z) < 0.3));
       check(`${label}: ${hub} keepers stand behind their counters`, kept.every(Boolean), kept.join(','));
-      // spec §31: customers come in, look, buy and leave without the player
-      const sim = (await d(page, () => window.__dakar.shopSim(150))).filter(f => f.key.includes(':city:'));
-      check(`${label}: ${hub} customers come in, browse, buy and leave on their own`, sim.length === data.shops.length && sim.every(f => f.stats.entered >= 1 && f.stats.bought >= 1 && f.stats.left >= 1),
-        sim.map(f => `${f.key.split(':').pop()} ${f.stats.entered}/${f.stats.browsed}/${f.stats.bought}/${f.stats.left}`).join(' '));
+      // spec §31: the city's people come in, browse, queue and pay at the counter, and leave — without the player
+      const spots = await d(page, () => window.__dakar.ambientShops());
+      check(`${label}: ${hub} every stocked shop is a spot of the city's people (door, displays, checkout line)`, spots.length === data.shops.length && spots.every(x => x.stands >= 1 && x.checkout >= 1),
+        spots.map(x => `${x.id.split(':').slice(3).join(':')} ${x.stands}/${x.checkout}`).join(' '));
+      const s = data.shops.find(x => /boutique|mall-style|craft-1|bank/.test(x.key)), b = s.bounds, cx = (b.x0 + b.x1) / 2, w = b.x1 - b.x0;
+      await d(page, ([x, z]) => window.__dakar.place(x, z, Math.PI), [cx + w * 0.3, b.z1 + 6]);
+      await d(page, () => window.__dakar.ambientRun(240));
+      const mine = (await d(page, () => window.__dakar.ambientShops())).find(x => x.id.endsWith(s.key.split(':city:')[1].replace(/-(\d)$/, ':$1')));
+      check(`${label}: ${hub} people come into ${s.key.split(':').pop()}, queue at the counter and pay on their own`, !!mine && mine.queued >= 1 && mine.paid >= 1, JSON.stringify(mine));
       if (hub === 'pikine' || hub === 'almadies') {
-        const s = data.shops.find(x => /boutique|mall-style/.test(x.key)), b = s.bounds, cx = (b.x0 + b.x1) / 2, w = b.x1 - b.x0;
-        await d(page, ([x, z]) => window.__dakar.place(x, z, Math.PI), [cx + w * 0.3, b.z1 + 5]);
         await d(page, ([p, t]) => window.__dakar.cam(p, t), [[cx + w * 0.12, 3.0, b.z1 + Math.max(5.5, w * 0.5)], [cx, 1.2, (b.z0 + b.z1) / 2]]);
-        for (let k = 0; k < 20; k++) {                                   // until someone is inside the shop
-          const f = (await d(page, () => window.__dakar.shopFlows())).find(x => x.key === s.key);
-          if (f.states.some(st => st === 'browse' || st === 'buy' || st === 'queue')) break;
-          await d(page, () => window.__dakar.shopSim(2));
+        for (let k = 0; k < 15; k++) {                                   // until someone is inside, at a display or in the line
+          const m = (await d(page, () => window.__dakar.ambientShops())).find(x => x.id === mine?.id);
+          if (m && (m.now.do || m.now.line || m.now.pay)) break;
+          await d(page, () => window.__dakar.ambientRun(4));
         }
-        await page.waitForTimeout(700);
-        const shown = (await d(page, () => window.__dakar.shopFlows())).find(x => x.key === s.key).shown;
-        check(`${label}: customers are drawn in the ${s.type} shop`, shown >= 1, `${shown} shown`);
+        await page.waitForTimeout(800);
         await shot(page, `${label}-customers-${s.type}`);
         await d(page, () => window.__dakar.cam(null));
       }

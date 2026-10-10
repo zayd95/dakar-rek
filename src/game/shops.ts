@@ -1,12 +1,8 @@
 import * as THREE from 'three';
 import { daylight } from '../core/clock';
-import { clamp, rng } from '../core/rng';
-import type { GameCtx, GameModule } from './modules';
-import { Humanoid, humanoidReady, randomLook, type PersonLook } from '../actors/humanoid';
-import { People } from '../interact/people';
-import { isOpen } from '../activity/places';
-import { ShopFlow, ShopPaths, type Pt } from '../world/shopFlow';
-import type { Collider } from '../world/types';
+import { clamp } from '../core/rng';
+import type { GameModule } from './modules';
+import type { PersonLook } from '../actors/humanoid';
 import type { Interactable } from '../world/types';
 import type { Interior } from '../world/interiors';
 import { ENTER } from '../world/content';
@@ -19,8 +15,8 @@ import { buildShopInterior, setShopNight, SHOP_TYPES, type ShopDetail, type Shop
  *  - turns the café kiosks of the four hubs (Café Touba, facades until now) into walk-in cafés: « Entrer » on their
  *    sheet, a room stocked by the same kit (shell mode) off the map, the café's own menu at the inside counter, the
  *    barista behind it and a regular on a stool;
- *  - brings customers into every stocked shop (spec §31): they come in from the street, look at a display, queue,
- *    buy at the counter and leave, on their own (src/world/shopFlow.ts); greetable like anyone in the street;
+ *  - (customers: the city's ambient people come in through each stocked shop's door, browse at its displays, queue and
+ *    pay at its counter, and leave — src/social/ambientLife.ts on the kit's anchors, paths from src/world/shopFlow.ts);
  *  - lights tubes, screens and fridges at night;
  *  - gives the checks (?debug) the stocked shops, `shops()`, the walk-in cafés, `shopRooms()`, and a showroom of every
  *    type of the kit, `shopShowroom({ types, detail })`.
@@ -33,37 +29,6 @@ const ROOM_X = 3400, ROOM_GAP = 30;                 // off the map, past the hom
 
 interface Room { door: Interactable; shop: ShopInterior; cast: Cast | null }
 let rooms: Room[] = [];
-/** One shop's customers: the flow and the humanoids that show it (in `space`, during `hours`). */
-interface Flow { key: string; type: ShopType; flow: ShopFlow; bodies: Humanoid[]; female: boolean[]; space: string; hours: [number, number] }
-let flows: Flow[] = [];
-let people: People | null = null;
-const WALK = 1.15;
-function clearFlows() { for (const f of flows) for (const b of f.bodies) { b.group.removeFromParent(); b.dispose(); } flows = []; people?.clear(); }
-/** Customers of a shop: a flow on its anchors and colliders, and one humanoid per customer (hidden until they come in). */
-function addFlow(ctx: GameCtx, key: string, type: ShopType, a: ShopInterior['anchors'], bounds: ShopInterior['bounds'], cols: readonly Collider[], space: string, count: number, outside?: number) {
-  const r = rng(seedOf(key));
-  const flow = new ShopFlow(a, new ShopPaths(bounds, cols), count, r, outside === undefined ? {} : { outside });
-  const looks = flow.customers.map(() => randomLook(r));
-  const bodies = humanoidReady() ? looks.map(l => { const h = new Humanoid(l); h.group.visible = false; ctx.extra.add(h.group); return h; }) : [];
-  flows.push({ key, type, flow, bodies, female: looks.map(l => !!l.female), space, hours: type === 'bank' ? [8, 18] : [7, 22] });
-}
-function stepFlows(ctx: GameCtx, dt: number, draw: boolean) {
-  const h = ctx.hour(), space = ctx.space(), cam = ctx.camera.position, p = ctx.player.pos, lim = ctx.quality() === 'low' ? 45 : 70;
-  for (const f of flows) {
-    const here = space === f.space;
-    f.flow.update(dt, isOpen(f.hours, h), (q: Pt) => here && Math.hypot(q.x - p.x, q.z - p.z) < 0.7);
-    if (!draw) continue;
-    f.flow.customers.forEach((c, i) => {
-      const b = f.bodies[i]; if (!b) return;
-      const vis = here && c.state !== 'away' && Math.hypot(c.x - cam.x, c.z - cam.z) < lim;
-      b.group.visible = vis;
-      if (!vis) return;
-      b.group.position.set(c.x, 0.1, c.z); b.group.rotation.y = c.yaw;
-      b.hold = c.walking ? null : c.pose;
-      b.animate(dt, c.walking ? WALK : 0);
-    });
-  }
-}
 let showroom: THREE.Group | null = null;
 let built: ShopInterior[] = [];
 let ground: THREE.Mesh | null = null;
@@ -76,12 +41,8 @@ const seedOf = (k: string) => { let h = 2166136261; for (let i = 0; i < k.length
 
 export const shopsModule: GameModule = {
   name: 'shops',
-  init(ctx) {
-    people = new People(() => flows.flatMap(f => f.bodies.map((b, i) => ({ id: `shop:${f.key}:${i}`, obj: b.group, h: b, female: f.female[i] }))), ctx.activities, line => ctx.toast(line), () => ({ x: ctx.player.pos.x, z: ctx.player.pos.z }));
-    ctx.interactions.add({ name: 'shop-people', collect: (space, x, z, out) => people?.collect(space, x, z, out) });
-  },
   hubLoaded(ctx, hub) {
-    clearShowroom(); clearFlows();
+    clearShowroom();
     for (const r of rooms) { r.cast?.dispose(); r.shop.dispose(); }
     rooms = [];
     const detail = ctx.quality();
@@ -113,20 +74,10 @@ export const shopsModule: GameModule = {
       const cast = new Cast(roles, ctx.seats, ctx.extra, `${it.id}:salle`);       // world coordinates; shown only inside
       cast.setMoment('open');
       rooms.push({ door: it, shop, cast });
-      addFlow(ctx, `${it.id}:salle`, spec.type, a, b, shop.colliders, it.id, ctx.quality() === 'low' ? 1 : 2, 0);
     }
-    // customers in every stocked shop of the street (fewer on Low)
-    const lite = ctx.quality() === 'low';
-    hub.group.traverse(o => {
-      const u = o.userData.shop as { key: string; type: ShopType; anchors: ShopInterior['anchors']; bounds: ShopInterior['bounds'] } | undefined;
-      if (!u) return;
-      const n = lite ? 1 : u.type === 'bank' ? 3 : u.type === 'craft' ? 1 : 2;
-      addFlow(ctx, u.key, u.type, u.anchors, u.bounds, (o.userData.shopColliders as Collider[] | undefined) ?? [], 'street', n);
-    });
   },
   update(ctx, dt) {
     setShopNight(1 - clamp(daylight(ctx.hour()) * 3.2, 0, 1));
-    stepFlows(ctx, dt, true);
     const space = ctx.space();
     for (const r of rooms) r.cast?.update(dt, ctx.camera.position, 25, space === r.door.id);
   },
@@ -144,10 +95,6 @@ export const shopsModule: GameModule = {
         let n = 0; ctx.world()?.group.traverse(o => { if (o.userData.shop) { o.visible = v; n++; } });
         return n;
       },
-      /** Customers of every shop: where they are in their visit, and how many came, browsed, bought and left. */
-      shopFlows: () => flows.map(f => ({ key: f.key, type: f.type, space: f.space, stats: { ...f.flow.stats }, states: f.flow.customers.map(c => c.state), shown: f.bodies.filter(b => b.group.visible).length })),
-      /** Fast-forward the customers by `seconds` of game time (0.1 s steps, nothing drawn); returns shopFlows(). */
-      shopSim(seconds: number) { for (let t = 0; t < seconds; t += 0.1) stepFlows(ctx, 0.1, false); return flows.map(f => ({ key: f.key, stats: { ...f.flow.stats }, states: f.flow.customers.map(c => c.state) })); },
       /** The walk-in rooms of this hub (door sheet, type, anchors, budget, people present). */
       shopRooms: () => rooms.map(r => ({ door: r.door.id, name: r.door.name, type: r.shop.type, anchors: r.shop.anchors, bounds: r.shop.bounds, budget: r.shop.budget, people: r.cast?.presentCount ?? 0 })),
       /** One shop of each type side by side on a plain floor far from the hub; returns where each one stands. */

@@ -2,12 +2,14 @@ import type { Collider } from './types';
 import type { ShopAnchors, ShopRect } from './shopKit';
 
 /**
- * Customers of a shop (spec 10 Oct, §31): they come in from the street, look at a display, queue, buy at the counter
- * and leave — without the player. Pure logic (no rendering): positions, facing, pose and walking state that
- * src/game/shops.ts puts on humanoids. Paths are planned on a grid over the shop's footprint around its colliders
- * (src/world/shopKit.ts anchors: door, browse, queue, counter), so nobody walks through a shelf.
+ * Walking inside a stocked shop (spec 10 Oct, §31: customers enter → browse → buy → leave without the player). The city's
+ * ambient people (src/social/ambientLife.ts) come in through the shop's door, stand at a display (`anchors.browse`),
+ * queue at the counter (`anchors.queue`, the first place is the counter) and leave; their steps inside go around the
+ * furniture on the grid planned here, over the shop's footprint and colliders (src/world/shopKit.ts). Pure: no Three.js.
  */
 export interface Pt { x: number; z: number }
+/** A stocked shop as the city's people see it: its place sheet key, kit anchors, footprint and colliders (world). */
+export interface ShopInfo { key: string; type: string; anchors: ShopAnchors; bounds: ShopRect; colliders: readonly Collider[] }
 
 /** Grid path planner over a shop's footprint, for walkers of radius `r`. */
 export class ShopPaths {
@@ -88,106 +90,4 @@ export class ShopPaths {
     out.push(b);
     return out;
   }
-}
-
-export type CustomerState = 'away' | 'enter' | 'browse' | 'queue' | 'buy' | 'leave';
-export interface Customer {
-  id: number;
-  state: CustomerState;
-  x: number; z: number; yaw: number;
-  /** Walking along `path` (else standing in its pose). */
-  walking: boolean;
-  pose: 'Idle' | 'Talk';
-  /** Queue place held (0 = at the counter), -1 none. */
-  slot: number;
-  path: Pt[]; seg: number; t: number;
-}
-export interface FlowStats { entered: number; browsed: number; bought: number; left: number }
-
-/**
- * The comings and goings of one shop. `update(dt, open, blocked)`: `open` lets new customers come in (opening hours);
- * `blocked(p)` tells when someone else (the player) stands on a spot, so customers wait their turn behind them.
- */
-export class ShopFlow {
-  readonly customers: Customer[] = [];
-  readonly stats: FlowStats = { entered: 0, browsed: 0, bought: 0, left: 0 };
-  private readonly out: Pt;
-  constructor(readonly a: ShopAnchors, private readonly paths: ShopPaths, count: number, private readonly rand: () => number,
-    o: { outside?: number; speed?: number } = {}) {
-    const d = o.outside ?? 3.2;
-    this.out = { x: a.door.x - Math.sin(a.door.yaw) * d, z: a.door.z - Math.cos(a.door.yaw) * d };
-    this.speed = o.speed ?? 1.15;
-    for (let i = 0; i < count; i++) this.customers.push({ id: i, state: 'away', x: this.out.x, z: this.out.z, yaw: a.door.yaw, walking: false, pose: 'Idle', slot: -1, path: [], seg: 0, t: 1 + i * 4 + rand() * 4 });
-  }
-  private readonly speed: number;
-
-  private route(from: Pt, to: Pt): Pt[] { return this.paths.path(from, to) ?? [from, to]; }
-  private go(c: Customer, path: Pt[]) { c.path = path; c.seg = 0; c.walking = path.length > 1; }
-  private slotTaken(k: number, self: Customer) { return this.customers.some(o => o !== self && o.slot === k); }
-
-  update(dt: number, open: boolean, blocked: (p: Pt) => boolean = () => false) {
-    const a = this.a, q = a.queue;
-    for (const c of this.customers) {
-      if (c.walking) { this.walk(c, dt); if (c.walking) continue; }
-      c.t -= dt;
-      switch (c.state) {
-        case 'away':
-          if (c.t > 0 || !open) break;
-          {
-            const b = a.browse.length ? a.browse[Math.floor(this.rand() * a.browse.length) % a.browse.length] : q[q.length - 1];
-            c.state = 'enter'; c.x = this.out.x; c.z = this.out.z; this.stats.entered++;
-            this.go(c, [this.out, ...this.route(a.door, b)]);
-            c.t = 0;
-          }
-          break;
-        case 'enter': {                                                       // arrived at the display
-          const b = this.nearest(a.browse, c) ?? c;
-          c.state = 'browse'; c.yaw = 'yaw' in b ? (b as { yaw: number }).yaw : c.yaw; c.pose = 'Idle'; c.t = 4 + this.rand() * 6;
-          break;
-        }
-        case 'browse':
-          if (c.t > 0) break;
-          if (!open) { this.leave(c); break; }
-          {
-            const k = q.findIndex((_, i) => !this.slotTaken(i, c));
-            if (k < 0) { c.t = 2; break; }
-            this.stats.browsed++;
-            c.state = 'queue'; c.slot = k; this.go(c, this.route(c, q[k]));
-          }
-          break;
-        case 'queue': {                                                       // at the queue place: move up or reach the counter
-          c.yaw = q[c.slot].yaw; c.pose = 'Idle';
-          if (c.slot > 0 && !this.slotTaken(c.slot - 1, c)) { c.slot--; this.go(c, this.route(c, q[c.slot])); break; }
-          if (c.slot === 0 && !blocked(q[0])) { c.state = 'buy'; c.pose = 'Talk'; c.yaw = a.counter.yaw; c.t = 3 + this.rand() * 3; }
-          break;
-        }
-        case 'buy':
-          if (c.t > 0) break;
-          this.stats.bought++;
-          this.leave(c);
-          break;
-        case 'leave':                                                         // out in the street: gone for a while
-          this.stats.left++;
-          c.state = 'away'; c.slot = -1; c.t = 6 + this.rand() * 14;
-          break;
-      }
-    }
-  }
-  private leave(c: Customer) { c.state = 'leave'; c.slot = -1; c.pose = 'Idle'; this.go(c, [...this.route(c, this.a.door), this.out]); }
-  private nearest<T extends Pt>(list: readonly T[], p: Pt): T | null {
-    let best: T | null = null, bd = Infinity;
-    for (const s of list) { const d = Math.hypot(s.x - p.x, s.z - p.z); if (d < bd) { bd = d; best = s; } }
-    return bd < 0.8 ? best : null;
-  }
-  private walk(c: Customer, dt: number) {
-    let left = this.speed * dt;
-    while (left > 0 && c.seg < c.path.length - 1) {
-      const b = c.path[c.seg + 1], dx = b.x - c.x, dz = b.z - c.z, d = Math.hypot(dx, dz);
-      if (d > 0.01) c.yaw = Math.atan2(dx, dz);
-      if (d <= left) { c.x = b.x; c.z = b.z; c.seg++; left -= d; } else { c.x += (dx / d) * left; c.z += (dz / d) * left; left = 0; }
-    }
-    if (c.seg >= c.path.length - 1) c.walking = false;
-  }
-  /** Customers to draw (not away). */
-  present() { return this.customers.filter(c => c.state !== 'away'); }
 }
