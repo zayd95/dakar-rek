@@ -105,6 +105,8 @@ interface Member {
 }
 interface NearBody {
   h: Humanoid; m: Member; w: number; seen: boolean;
+  /** Greeted by the player (src/interact/people.ts turns the body and holds Talk): seconds left facing them. */
+  greet: number; greetYaw: number;
   root: THREE.Object3D;
   bones: { upper: THREE.Object3D; fore: THREE.Object3D; side: 1 | -1 }[];
 }
@@ -434,7 +436,7 @@ export class Crowd {
       if (upper && fore) bones.push({ upper, fore, side });
     }
     this.group.add(h.group);
-    const b: NearBody = { h, m, w: 0, seen: true, root, bones };
+    const b: NearBody = { h, m, w: 0, seen: true, root, bones, greet: 0, greetYaw: 0 };
     m.body = b; m.lod = 3; this.layoutDirty = true;
     return b;
   }
@@ -534,9 +536,12 @@ export class Crowd {
     g.visible = m.on && b.seen;
     if (!g.visible) return;
     const walking = m.speed > 0.2, kind = m.st.kind;
-    g.position.set(s.x, m.standing ? s.y : s.y - SIT_HIPS, s.z); g.rotation.y = s.yaw;
+    // the player greeted this person (People set Talk and turned them): standing still, they face the player a moment
+    if (b.h.hold === 'Talk' && b.greet <= 0 && !walking && m.standing) { b.greet = 2.6; b.greetYaw = g.rotation.y; }
+    b.greet = Math.max(0, b.greet - dt);
+    g.position.set(s.x, m.standing ? s.y : s.y - SIT_HIPS, s.z); g.rotation.y = b.greet > 0 ? b.greetYaw : s.yaw;
     const dancing = !kind && m.mood === 'dance' && m.standing;
-    const clip: Clip | null = walking ? null : !m.standing ? 'Sit' : kind === 'celebrate' ? 'Celebrate' : dancing ? (m.i % 2 ? 'Dance_B' : 'Dance_A') : 'Idle';
+    const clip: Clip | null = walking ? null : !m.standing ? 'Sit' : b.greet > 0 ? 'Talk' : kind === 'celebrate' ? 'Celebrate' : dancing ? (m.i % 2 ? 'Dance_B' : 'Dance_A') : 'Idle';
     b.h.hold = clip;
     if (!animate) return;
     b.h.animate(dt, walking ? m.speed : 0);
