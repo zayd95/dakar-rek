@@ -165,7 +165,9 @@ presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.c
 const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
-function presenceSpace() { return lambScene ? 'scene' : modulePresence() ?? moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
+/** A bout at the arena (the duel in its ring): the others in the street still see the player there, in the ring. */
+const arenaDuel = () => lambScene instanceof LambDuel && lambScene.mode !== 'entrainement';
+function presenceSpace() { return lambScene ? (arenaDuel() ? 'street' : 'scene') : modulePresence() ?? moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
 /** A module's presence space when it differs from its interaction space (one's own motorbike: still in the street). */
 function modulePresence(): string | null { if (!ctxReady) return null; for (const m of MODULES) { const s = m.presenceSpace?.(ctx); if (s) return s; } return null; }
 /** A module's own space the player is in (a vehicle while riding: src/transport), or null. */
@@ -949,7 +951,10 @@ function frame(now: number) {
   const clip = mode !== 'scene' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
   // the modules' optional fields (the arena show friends share: src/arena/together.ts), validated by the protocol
   const extras: Partial<PresenceExtras> = {}; for (const m of MODULES) Object.assign(extras, m.presence?.(ctx) ?? {});
-  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip, ...extras }, now);
+  // fighting at the arena: where the player's wrestler stands in the ring, in a fighting stance (src/arena/myGala.ts)
+  const ring = arenaDuel() ? (lambScene as LambDuel).fighterPoints()[0] : null;
+  presence.publish(ring ? { type: 'move', x: ring[0], y: ring[1], z: ring[2], yaw: facing, speed: 0, space, clip: 'Stance', ...extras }
+    : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip, ...extras }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();

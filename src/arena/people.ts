@@ -405,7 +405,8 @@ export class FightNightPeople {
     // the entrance (src/arena/ceremony.ts): out of the tunnel behind their wrestler to stand round his bàkk, chanting,
     // the griot singing; then into his corner behind him, in file
     const pace = Math.max(1, showDt / Math.max(dt, 1e-6));
-    if (m === 'entrance') for (const s of this.sides) for (const [rid, k] of this.members(s)) {
+    // (on the player's own gala night their people stay round them in their corner: they walk out themselves)
+    if (m === 'entrance') for (const s of this.sides) if (!this.ownNight(s)) for (const [rid, k] of this.members(s)) {
       const inKey = `${rid}:in`, cornerKey = `${rid}:corner`;
       if (t >= setOffIn(s.who, k) && !this.walked.has(inKey)) {
         this.walked.add(inKey);
@@ -475,7 +476,7 @@ export class FightNightPeople {
     // the entrance begins: everyone waits in the tunnel, in file behind their wrestler
     if (m === 'entrance') {
       this.walked.clear();
-      for (const s of this.sides) { s.started = false; for (const [rid, k] of this.members(s)) { const p = entourageIn(this.cx, this.cz, s.who, k)[0]; cast.place(rid, p.x, p.z, Math.PI); } }
+      for (const s of this.sides) { if (this.ownNight(s)) continue; s.started = false; for (const [rid, k] of this.members(s)) { const p = entourageIn(this.cx, this.cz, s.who, k)[0]; cast.place(rid, p.x, p.z, Math.PI); } }
     }
     // a jump straight into the bout (or the result): the entourages are already in their corners
     if ((m === 'bout' || m === 'result') && prev !== 'entrance' && prev !== 'bout') for (const s of this.sides) {
@@ -488,6 +489,8 @@ export class FightNightPeople {
     }
   }
 
+  /** This side is the player's own main event tonight (src/arena/myGala.ts): their people stay round them in their corner. */
+  private ownNight(s: { who: string; fighter?: { id: string } | null }) { return this.fighter?.who === s.who && s.fighter?.id === 'player'; }
   private keyNow() { return `${this.moment}|${this.fighter?.who ?? ''}|${this.fighter?.ecurie ?? ''}`; }
 
   /**
@@ -502,7 +505,8 @@ export class FightNightPeople {
     const s = e ? this.sides.find(x => x.cs === PREP_SIDE[e]) : undefined, camp = this.camps.find(x => x.ecurie === e);
     if (c === 'called' || c === 'exit' || !s || !e) { this.fighter = null; return; }
     this.fighter = { who: s.who, ecurie: e };
-    this.recolour(s, ECURIE_COLOUR[e]);
+    // their écurie's colour; on their own gala night the bill's (an independent player's people in neutral colours)
+    this.recolour(s, s.fighter?.id === 'player' ? colourOf(s.fighter) : ECURIE_COLOUR[e]);
     const me = this.ctx.player.pos, people: [string, { x: number; z: number; yaw: number }][] = [
       ...this.members(s).map(([rid, k]) => [rid, this.cornerOf(s, k)] as [string, { x: number; z: number; yaw: number }]),
       ...(camp?.ids ?? []).map(rid => [rid, campSpot(this.cx, this.cz, camp!.side)] as [string, { x: number; z: number; yaw: number }]),

@@ -164,6 +164,51 @@ wrestlers, the lines and the sound; the entourages and griots are `src/arena/peo
   ceremony is rewarded (no money, need or counter). The wrestlers wear no accessories.
 - A show joined further on (a friend's, `follow`) sets the drums right and skips the lines it missed.
 
+## The player's own gala night (`src/arena/myGala.ts`, Wave 5)
+
+When the career gives the player a gala place (Adversaires réputés and up) or the title bout, and they sign up for it
+that evening, they are tonight's main event. The pure parts are in `src/arena/myGala.ts` (`tests/myGala.test.ts`).
+
+- **The bill names them.** `billOf` (`src/career/module.ts`) returns `playerMainBill`: the player on the left (their
+  écurie or « indépendant »), their opponent on the right, `title` for the belt. The posters, the gala card and the
+  ceremony all read it through `billFor`. Their corner is the one the ceremony gives their side (`playerCorner`, from
+  `cornerSides`), so the fighter's path, their people and the ceremony agree.
+- **The preliminaries run first.** The show starts once they are in the tunnel. Their corner is held
+  (`arenaFighter.hold`) while the stands fill, the preliminaries run and the ceremony names them. « Je suis prêt » skips
+  the rest of the preliminaries (« Plus d’attente : ton entrée commence. ») or, during the entrance, goes straight to the
+  walk-out.
+- **The ceremony is theirs.** On their side there is no NPC wrestler. The announcer names them with their real record
+  from the career (`setRecordSource('player')`: « … 7 victoires, 2 défaites, 1 nul »), their griot praises them (their
+  wins once they have any, else their strength and neighbourhood, as for the roster) and their people chant. Their
+  people stay round them in their corner, in their écurie's colours (an independent's in the bill's neutral blue). The
+  opponent has the full ceremony. At 27.5 s they are released, walk out, and « Faire ton bàkk » is offered
+  (`src/arena/bakk.ts`, which does not name them a second time). The entrance lasts until they reach the ring; then
+  the fighter's path starts the duel.
+- **Their real result is the show's.** No watched bout is simulated. When their duel ends (`GameModule.lamb`, the
+  'bout' event), `myShowResult` makes it the show's result (their side is the left one). The career keeps the record,
+  the purse, the posters and the talk; the show does not report it to the ladder a second time. If they give up the
+  bout before it starts, the evening ends without a main event and without a made-up result
+  (« Le combat de la soirée n’aura pas lieu. »).
+- **Friends in the stands see them, not a simulation.** Their presence adds `arena.m = 1` (validated by `parseArena`:
+  only the value 1, on the server too through `parseMove`). On a friend's device (`remoteMain`: this evening, inside the
+  walls, the smallest id if two):
+  - The bill line reads « Gala de làmb : Moussa est le combat de la soirée ! ».
+  - The card shows « Entrée de Moussa », then « Combat en cours : Moussa ».
+  - The friend's show waits after its preliminaries for the player's entrance, then for their bout (`mainDriver`:
+    their presence moves it on, never the friend's clock). No ceremony or duel is simulated for that side.
+  - During the duel the player's avatar is published standing in the ring in a fighting stance (`main.ts`: presence
+    space 'street', the duel's position, `Stance`).
+  - The result is the one they send (`w`/`o`, the same field as any show), told as « Moussa l’emporte par chute ! ·
+    Le public : « Daan na ! » », « Moussa s’incline aux points. », « Match nul pour Moussa. » or « Abandon : Moussa
+    s’arrête là. ». Nothing is recorded on the friend's side: no ladder report, no posters, no talk.
+  - No money, purse, record numbers or reward crosses: only `m`, the phase and time, and the result codes.
+- **The same preliminaries everywhere.** `undercardFor` draws every bout from the whole list of names, whatever the
+  main event is. A name that clashes with tonight's main event is swapped afterwards. Friends with different main
+  events (the player's own night, the ladder's card) therefore watch the same preliminaries, with the same styles,
+  levels and seeds.
+- **Limits.** The friend's entourages on that side still walk the usual entrance (without a wrestler). The two
+  devices' preliminaries are aligned by presence as before, but the player's own show never follows a friend's.
+
 ## Code
 
 | File | Role |

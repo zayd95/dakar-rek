@@ -245,6 +245,14 @@ export const ARENA = {
       : `${winner} l’emporte ${how === 'projection' ? 'par projection' : 'à la décision de l’arbitre'} ! · Le public : ${utter(['Daan na !'])}`,
   /** The announcer names a preliminary bout (src/arena/undercard.ts): « Préliminaires 1/3 : Modou (Thiaroye) contre … ». */
   prelim: (k: number, n: number, left: string, right: string) => `🎤 L’annonceur : Préliminaires ${k}/${n}, ${left} contre ${right} !`,
+  /** A friend in the stands is tonight's main event (src/arena/myGala.ts): only their name, their bout is theirs. */
+  friendBill: (name: string) => `Gala de làmb : ${name} est le combat de la soirée !`,
+  /** The player gave up their own main event before it started: the evening ends without it. */
+  noMain: 'Le combat de la soirée n’aura pas lieu. Le public se lève.',
+  /** That friend's real result, as they sent it (won: true, lost: false, null: a draw or an abandon). */
+  friendResult: (name: string, won: boolean | null, how: 'projection' | 'decision' | 'egalite' | 'abandon') =>
+    how === 'abandon' ? `Abandon : ${name} s’arrête là.` : won === null || how === 'egalite' ? `Match nul pour ${name}.`
+      : won ? `${name} l’emporte ${how === 'projection' ? 'par chute' : 'aux points'} ! · Le public : ${utter(['Daan na !'])}` : `${name} s’incline ${how === 'projection' ? 'par chute' : 'aux points'}.`,
   /** A preliminary's result, short. */
   prelimResult: (winner: string | null, how: 'projection' | 'decision' | 'egalite' | 'abandon') =>
     winner === null || how === 'egalite' || how === 'abandon' ? 'Préliminaires : match nul.' : `Préliminaires : ${winner} l’emporte ${how === 'projection' ? 'par chute' : 'aux points'}.`,

@@ -49,8 +49,11 @@ function cue(ctx: GameCtx, c: FighterCue) {
     const e = arenaFighter.corner(); if (!e) return;
     offer = true; done = false;
     const rec = summary(ctx.state.data.career?.bouts ?? []);
-    if (hasGestured()) paChime();
-    ctx.toast(announceLine(playerFighter(ctx), standsSide(e), rec.bouts ? rec : null));
+    // on their own gala night the ceremony has already named them (src/arena/ceremony.ts): one voice, said once
+    if (!arenaFighter.main()) {
+      if (hasGestured()) paChime();
+      ctx.toast(announceLine(playerFighter(ctx), standsSide(e), rec.bouts ? rec : null));
+    }
     ctx.toast('Avant le cercle : « Faire ton bàkk » si tu veux — ou avance directement.');
   }
   if (c === 'bout' || c === 'called' || c === 'exit') { offer = false; if (running) finish(); }

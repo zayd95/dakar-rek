@@ -11,6 +11,7 @@ import { posters } from '../arena/posters';
 import { STYLES } from '../lamb/rules';
 import { setBillSource, type Bill } from '../arena/program';
 import { setRecordSource } from '../arena/ceremony';
+import { playerCorner, playerMainBill } from '../arena/myGala';
 import {
   ATTRS, BOUTS_MAX, RUNGS, boutPoints, dimensions, fighterAttributes, publicRecord, purseOf, rankOf, recordLine, summary,
   type BoutEntry, type BoutRes, type CareerSave,
@@ -96,7 +97,9 @@ function signUp(kind?: 'gala' | 'title') {
   const opp = kind === 'title' ? titleOffer(ctx)?.opp : kind === 'gala' ? galaOpponent(ctx) : rankedOpponent(ctx);
   if (!opp) { ctx.toast('Pas de combat pour le titre ouvert ce soir'); return; }
   signed = kind ? { day: ctx.day(), kind, opp: opp.id } : null;
-  if (!arenaFighter.begin({ mode: 'classe', style: opp.style, opponent: opp.name })) { signed = null; ctx.toast('Ton combat de ce soir est déjà prévu'); return; }
+  // a gala place or the title bout: the player is tonight's main event (the show's ceremony is theirs, src/arena/myGala.ts)
+  const main = kind ? { main: kind, corner: playerCorner(playerMainBill({ name: playerName(ctx), ecurie: ecurieOf(ctx) }, opp, kind === 'title')) } : {};
+  if (!arenaFighter.begin({ mode: 'classe', style: opp.style, opponent: opp.name, ...main })) { signed = null; ctx.toast('Ton combat de ce soir est déjà prévu'); return; }
   if (kind) ctx.toast(kind === 'title' ? `Combat pour le titre contre ${opp.name}, ce soir` : `Ta place au gala : contre ${opp.name}, ce soir`);
 }
 
@@ -151,10 +154,13 @@ function galaMoment(ctx: GameCtx, day: number, winner: string | null) {
   ctx.hud.moment(r);
 }
 
-/** The bill of an evening for the posters and the arena show: the ladder's card, or the player's own title bout. */
+/**
+ * The bill of an evening for the posters and the arena show: the ladder's card, or the player's own main event (a gala
+ * place or the title bout signed up for tonight).
+ */
 function billOf(ctx: GameCtx, day: number): Bill {
-  const s = signed && signed.day === day && signed.kind === 'title' ? wrestlerById(signed.opp) : undefined;
-  if (s) return { left: { id: 'player', name: playerName(ctx), ecurie: ecurieOf(ctx) ?? 'indépendant' }, right: { id: s.id, name: s.name, ecurie: s.ecurie ?? 'indépendant' }, title: true };
+  const s = signed && signed.day === day ? wrestlerById(signed.opp) : undefined;
+  if (s && signed) return playerMainBill({ name: playerName(ctx), ecurie: ecurieOf(ctx) }, s, signed.kind === 'title');
   return cardOf(ladder(ctx, day), day);
 }
 let recSent: string | null | undefined;
@@ -252,7 +258,10 @@ export const careerModule: GameModule = {
       ctx.save();
     });
     // the announcer of the wrestlers' entrance reads each one's season record from the city's ladder (src/arena/ceremony.ts)
-    setRecordSource((id, _name, day) => { const st = ladder(ctx, day).table.find(x => x.id === id); return st ? { v: st.v, d: st.d, n: st.n } : null; });
+    setRecordSource((id, _name, day) => {
+      if (id === 'player') { const s = summary(career(ctx).bouts); return s.bouts ? { v: s.v, d: s.d, n: s.n } : null; }   // their own record, on their gala night
+      const st = ladder(ctx, day).table.find(x => x.id === id); return st ? { v: st.v, d: st.d, n: st.n } : null;
+    });
     syncRecord(ctx);
     // The phone's arena app keeps its own rows (discipline, records by mode) after the career rows.
     const base = phoneHooks.arenaProfile;
