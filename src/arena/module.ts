@@ -31,6 +31,8 @@ import { GalaCard } from './card';
  * (rules untouched, src/arena/bout.ts) and the Wolof lines (src/i18n/lines.ts). Density follows the graphics quality.
  */
 const CROWD = 'arena-crowd';
+/** Field of view on the tiers, relative to the street camera's. */
+const SEAT_ZOOM = 0.74;
 const V3 = THREE.Vector3;
 
 interface Walker { h: Humanoid; from: THREE.Vector3; to: THREE.Vector3; t0: number; t1: number; end: Clip }
@@ -58,6 +60,8 @@ class ArenaEvening {
   private told = new Set<string>();
   private nearSeat: string | null = null;
   private camYaw = 0;
+  private baseFov = 58;
+  private fovSet = 0;
   private look = new V3();
   private rand = rng(41);
   private ground: (x: number, z: number) => number;
@@ -168,7 +172,7 @@ class ArenaEvening {
     const near = Math.hypot(ctx.player.pos.x - this.cx, ctx.player.pos.z - this.cz) < 70;
     this.crowd.group.visible = near;
     const seatId = seat?.id ?? null;
-    if (seatId !== this.nearSeat) { this.nearSeat = seatId; this.crowd.setNear(seat?.x ?? 0, seat ? seat.z : null); }
+    if (seatId !== this.nearSeat) { this.nearSeat = seatId; this.crowd.setNear(seat?.x ?? 0, seat ? seat.z : null, seat?.yaw ?? 0); }
     this.crowd.update(dt, near);
     this.card.show(this.phase === 'idle' || this.phase === 'over' ? null : {
       title: 'Gala de làmb · Arène de Pikine',
@@ -225,6 +229,7 @@ class ArenaEvening {
       this.bout?.dispose(); this.bout = null;
     } else if (phase === 'over') {
       ctx.state.data.counters[GALA_DONE_COUNTER] = ctx.day(); ctx.save();
+      this.street = streetAt(ctx.hour(), true);                       // the gate stops checking tickets from now on
       ctx.toast(ARENA.over);
     }
   }
@@ -289,16 +294,30 @@ class ArenaEvening {
     return out.set(this.cx, 1.0, this.cz);
   }
 
+  /**
+   * The view from the seat: the spectator's own eyes (the body is hidden, as in a car rapide seat), a slightly narrower
+   * field of view so the wrestlers read from the tiers, the gaze following the action; drag looks around (±80°).
+   */
   camera(cam: THREE.PerspectiveCamera, dt: number, drag: { yaw: number; pitch: number }): boolean {
-    const s = this.seatedHere(); if (!s) { this.camYaw = 0; return false; }
+    const s = this.seatedHere();
+    if (!s) {
+      if (this.fovSet) { cam.fov = this.baseFov; cam.updateProjectionMatrix(); this.fovSet = 0; }
+      this.camYaw = 0; this.look.set(0, 0, 0); return false;
+    }
+    if (cam.fov !== this.fovSet) this.baseFov = cam.fov;                       // first frame seated, or a resize changed it
     this.camYaw = THREE.MathUtils.clamp(this.camYaw + drag.yaw, -1.4, 1.4);
-    const back = new V3(-Math.sin(s.yaw), 0, -Math.cos(s.yaw));                    // away from the ring
-    const eye = new V3(s.x, s.top - 0.48 + 1.75, s.z).addScaledVector(back, 0.7);
+    const eye = new V3(s.x + Math.sin(s.yaw) * 0.12, s.top + 0.8, s.z + Math.cos(s.yaw) * 0.12);
     const want = this.focus(new V3());
     if (this.look.lengthSq() === 0) this.look.copy(want); else this.look.lerp(want, Math.min(1, dt * 2.5));
     const d = this.look.clone().sub(eye), yaw = Math.atan2(d.x, d.z) + this.camYaw, flat = Math.hypot(d.x, d.z);
     cam.position.copy(eye);
     cam.lookAt(eye.x + Math.sin(yaw) * flat, this.look.y, eye.z + Math.cos(yaw) * flat);
+    const fov = Math.round(this.baseFov * SEAT_ZOOM * 10) / 10;
+    if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
+    this.fovSet = fov;
+    const body = this.ctx.player.body();
+    if (body) body.group.visible = false;                                      // shown again by main.ts next frame
+    this.crowd.cull(cam);
     return true;
   }
 
@@ -315,6 +334,7 @@ class ArenaEvening {
   }
 
   dispose() {
+    if (this.fovSet) { this.ctx.camera.fov = this.baseFov; this.ctx.camera.updateProjectionMatrix(); this.fovSet = 0; }
     this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
     this.crowd.dispose(); this.card.dispose();
     for (const s of this.seats) this.ctx.seats.release(s.id, CROWD);
@@ -346,6 +366,8 @@ export const arenaModule: GameModule = {
       /** Faster show for the checks (the bout runs `n` duel steps per frame). */
       speed: (n = 1) => { if (evening) evening.speed = Math.max(1, Math.round(n)); },
       go: (phase: ShowPhase) => evening?.go(phase),
+      /** Shows or hides everything this module draws (the checks measure its own draw calls). */
+      visible: (on = true) => { if (evening) evening.group.visible = on; },
       /** A free place on the tiers near (x, z) (for the checks). */
       freeSeat: (x: number, z: number) => {
         if (!evening) return null;

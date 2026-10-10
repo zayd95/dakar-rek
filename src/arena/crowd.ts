@@ -39,6 +39,7 @@ interface Spot { seat: StandSeatDef; shirt: THREE.Color; skinC: THREE.Color; pha
 
 const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), P = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+const FR = new THREE.Frustum(), PM = new THREE.Matrix4(), SP = new THREE.Sphere();
 
 export class StandCrowd {
   readonly group = new THREE.Group();
@@ -49,7 +50,7 @@ export class StandCrowd {
   private mat: THREE.MeshLambertMaterial;
   private t = 0;
   private dirty = true;
-  private near: { h: Humanoid; spot: Spot }[] = [];
+  private near: { h: Humanoid; spot: Spot; seen: boolean }[] = [];
   private rand = rng(23);
 
   /** `seats`: the places the crowd may take (in fill order); `nearCount`: real humanoids next to the player. */
@@ -94,16 +95,32 @@ export class StandCrowd {
     for (const n of this.near) if (this.rand() < Math.min(1, share + 0.2)) n.spot.stand = Math.max(n.spot.stand, seconds);
   }
 
-  /** Real humanoids on the crowd seats nearest to (x, z) (the player's seat); the instances there are hidden. */
-  setNear(x: number, z: number | null) {
+  /**
+   * Real humanoids on the crowd seats nearest to (x, z) (the player's seat), those in front first (the row below, seen
+   * from behind); the instances there are hidden. `yaw`: where the player's seat faces.
+   */
+  setNear(x: number, z: number | null, yaw = 0) {
     for (const n of this.near) { n.h.dispose(); n.spot.near = false; }
     this.near = []; this.dirty = true;
     if (z === null || !this.nearCount || !humanoidReady()) return;
-    const list = this.spots.filter(s => s.on).sort((a, b) => Math.hypot(a.seat.x - x, a.seat.z - z) - Math.hypot(b.seat.x - x, b.seat.z - z)).slice(0, this.nearCount);
+    const fx = Math.sin(yaw), fz = Math.cos(yaw);
+    const score = (s: Spot) => {
+      const dx = s.seat.x - x, dz = s.seat.z - z, d = Math.hypot(dx, dz);
+      return d + ((dx * fx + dz * fz) > 0.5 * d ? 0 : 3);
+    };
+    const list = this.spots.filter(s => s.on).sort((a, b) => score(a) - score(b)).slice(0, this.nearCount);
     for (const spot of list) {
       const h = new Humanoid(randomLook(this.rand)); h.hold = 'Sit';
-      this.group.add(h.group); spot.near = true; this.near.push({ h, spot });
+      this.group.add(h.group); spot.near = true; this.near.push({ h, spot, seen: true });
     }
+  }
+
+  /** Near humanoids out of the camera's view are not drawn (their skinned meshes are never frustum-culled). */
+  cull(cam: THREE.Camera) {
+    if (!this.near.length) return;
+    cam.updateMatrixWorld();
+    FR.setFromProjectionMatrix(PM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
+    for (const n of this.near) { SP.center.set(n.spot.seat.x, n.spot.seat.top + 0.4, n.spot.seat.z); SP.radius = 1.1; n.seen = FR.intersectsSphere(SP); }
   }
 
   update(dt: number, animate: boolean) {
@@ -114,9 +131,9 @@ export class StandCrowd {
     for (const n of this.near) {
       const s = n.spot, standing = s.stand > 0;
       n.h.group.position.set(s.seat.x, standing ? s.seat.top : s.seat.top - 0.48, s.seat.z); n.h.group.rotation.y = s.seat.yaw;
-      n.h.group.visible = s.on;
+      n.h.group.visible = s.on && n.seen;
       n.h.hold = standing ? 'Celebrate' : 'Sit';
-      if (animate && s.on) n.h.animate(dt, 0);
+      if (animate && s.on && n.seen) n.h.animate(dt, 0);
     }
   }
 

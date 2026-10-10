@@ -17,7 +17,8 @@ drummers outside, event days, gate position) is another lane: `src/arena/exterio
   he welcomes you (« Dalal ak jàmm ! »).
 - **Take a free place on the tiers.** Every place on the three tiers is a seat of the shared registry
   (`kind: 'stand'`, « Place en tribune »), offered from the ring side (« S'asseoir »). Places the crowd holds are
-  taken; the player never gets one twice. The camera moves to the seat and frames the ring (drag looks around ±80°).
+  taken; the player never gets one twice. The view is the spectator's own eyes on the seat (the body is hidden, as on
+  a car rapide seat), a slightly narrower field of view, the gaze following the action; drag looks around (±80°).
 - **Watch the gala** (starts once seated while the doors are open):
   1. *Les tribunes se remplissent* (3 s) — the bill is announced: Babacar (Baobab) – Lamine (Teranga).
   2. *Entrée des lutteurs* (14 s) — the two wrestlers walk in from the gate with their people, drummers inside the
@@ -48,7 +49,9 @@ text in the show: drums, dances and the crowd.
 | `src/i18n/lines.ts` | `ARENA` lines (ticket, welcome, stop, bill, entrance, result, over). |
 
 **Density** (`DENSITY` in `program.ts`): share of the tier places the crowd fills and near-LOD humanoids —
-low 42 % / 0, medium 68 % / 4, high 86 % / 8. The crowd is 4 instanced meshes whatever its size.
+low 42 % / 0, medium 68 % / 4, high 86 % / 8. The crowd is 4 instanced meshes whatever its size; the near-LOD
+humanoids sit in the row in front when there is one and are not drawn when out of view. The entrance cast follows the
+quality too (low: the two wrestlers and one drummer, no followers).
 
 **Integration point.** The schedule (`streetAt`, every day 17 h–23 h) is provisional: the exterior lane's
 `isEventDay(day, hour)` and gate position should replace it when both lanes are merged.
@@ -59,5 +62,6 @@ low 42 % / 0, medium 68 % / 4, high 86 % / 8. The crowd is 4 instanced meshes wh
 `arena.cam()`, `arena.speed(n)` (fast-forward), `arena.go(phase)`, `arena.freeSeat(x, z)`.
 
 `flock /tmp/dakar-browser.lock node scripts/check-arena-visit.mjs [baseUrl] [outDir] [--view=desktop|phone]` plays
-the whole path on desktop (medium quality) and phone (low quality), with draw-call budgets (desktop < 420,
-phone < 260) and captures in `docs/screenshots/arena-visit/`.
+the whole path on desktop (medium quality) and phone (low quality), captures in `docs/screenshots/arena-visit/`.
+Draw calls are measured at the gate, on the seat and during the entrance: the arena's own share (the same frame with
+everything `src/arena` draws hidden; budget desktop < 160, phone < 60) and the whole frame (desktop < 600, phone < 300).

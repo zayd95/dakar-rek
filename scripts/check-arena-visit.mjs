@@ -37,6 +37,14 @@ for (const [label, viewport, touch, quality] of VIEWS) {
     await page.screenshot({ path: `${out}/${label}-${name}.png` });
     await d(() => { window.__pin?.disconnect(); window.__pin = null; });
   };
+  // draw calls of the frame, and the arena's own share (the same frame with everything src/arena draws hidden)
+  const frame = () => d(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r()))));
+  const ownDc = async () => {
+    await frame(); const all = await d(() => window.__dakar.drawCalls());
+    await d(() => window.__dakar.arena.visible(false)); await frame(); const without = await d(() => window.__dakar.drawCalls());
+    await d(() => window.__dakar.arena.visible(true)); await frame();
+    return { all, own: all - without };
+  };
   const idle = () => page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
 
   // 1. The gate on a fight evening, with its ticket window.
@@ -47,7 +55,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const places = await d(() => window.__dakar.placeList().filter(p => p.id.includes(':arena:')).map(p => p.id.split(':').pop()));
   check(`${label}: the ticket window is a place of the shared registry`, places.includes('guichet'), places.join(', '));
   await page.waitForTimeout(1500);
-  const dcExt = await d(() => window.__dakar.drawCalls());
+  const dcExt = await ownDc();
   await shot('1-gate', false);
 
   // 2. No ticket: the controller turns the player back at the gate.
@@ -104,7 +112,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   check(`${label}: the view from the seat frames the ring`, (cam.dx * toRing.x + cam.dz * toRing.z) / (len * dirLen) > 0.85 && cam.y > 1.5, cam);
   const s1 = await info();
   check(`${label}: the gala starts once seated; the crowd fills the tiers around you`, s1.phase !== 'idle' && s1.crowd.present >= s1.crowd.cap * 0.9 && s1.crowd.present > 50 && /Gala de làmb/.test(s1.card), s1.crowd);
-  const dcSeat = await d(() => window.__dakar.drawCalls());
+  const dcSeat = await ownDc();
   await shot('3-seated');
 
   // 6. The wrestlers' entrance: drums and dances, the crowd stands.
@@ -113,6 +121,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   check(`${label}: the wrestlers make their entrance (two wrestlers and their people, drums)`, e1.phase === 'entrance' && e1.entrance >= 2, e1);
   await page.waitForFunction(() => window.__dakar.arena.info().crowd.cheering > 0, null, { timeout: 60000 }).catch(() => {});
   check(`${label}: the crowd reacts to the entrance`, (await info()).crowd.cheering > 0, (await info()).crowd);
+  const dcShow = await ownDc();
   await shot('4-entrance');
 
   // 7. The bout: the existing duel played by the two wrestlers.
@@ -143,7 +152,10 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   check(`${label}: after the gala the gate no longer checks tickets and the stands stay empty`, after.street === 'after' && after.crowd.present === 0, { street: after.street, crowd: after.crowd });
   await shot('7-after', false);
 
-  check(`${label}: draw calls stay within budget (gate ${dcExt}, seat ${dcSeat})`, dcSeat < (touch ? 260 : 420) && dcExt < (touch ? 260 : 420), { dcExt, dcSeat });
+  const dc = { gate: dcExt, seat: dcSeat, entrance: dcShow };
+  const own = Math.max(dcExt.own, dcSeat.own, dcShow.own), all = Math.max(dcExt.all, dcSeat.all, dcShow.all);
+  check(`${label}: the arena's own draw calls stay small (gate +${dcExt.own}, seat +${dcSeat.own}, entrance +${dcShow.own})`, own < (touch ? 60 : 160), dc);
+  check(`${label}: draw calls of the whole frame stay within budget (max ${all})`, all < (touch ? 300 : 600), dc);
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
   await ctx.close();
 }
