@@ -7,7 +7,8 @@ import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { generatedTexture } from './textures';
-import { inGate, tierRadius, tierTop, TIERS, TIER_DEPTH, PARAPET_R, PARAPET_H, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
+import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
+import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 import { isComposed, type Site } from './sites';
@@ -271,6 +272,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const rapides: THREE.Object3D[] = [];
   /** Climbable stairs: height rises linearly from y0 at x0 to y1 at x1, then stays at y1 until xEnd. */
   const ramps: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number; xEnd: number }[] = [];
+  /** Stepped climbs along radial lines (the arena's aisles, src/world/arenaModules.ts). */
+  const climbs: Climb[] = [];
   const addSign = (text: string, bg: string, fg: string, x: number, y: number, z: number, rotY: number, w = 6, h = 1.5) => {
     const tex = text.length > 18 ? signTexture(text, bg, fg, 768, 112) : signTexture(text, bg, fg);   // long names get a wider canvas so they never clip
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
@@ -844,7 +847,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         const BOARD = [0xf2f2ec, 0x1e6fd9, 0xd9482b, 0x2f8f4e, 0xf4c20d, 0x0f3d6e];
         for (let s = 0; s < 26; s++) {                                                  // sponsor boards around the ring
           const a = ((s + 0.5) / 26) * Math.PI * 2;
-          if (gateGap(a, 0.36)) continue;
+          if (gateGap(a, 0.36) || inTunnel(a, 0.16)) continue;                       // the gate and the wrestlers' passage
           const x = cx + Math.sin(a) * 10.6, z = cz + Math.cos(a) * 10.6, col = BOARD[s % BOARD.length];
           plain.box(2.1, 0.75, 0.08, x, B, z, 0xf2f2ec, a);
           plain.box(1.9, 0.5, 0.02, x + Math.sin(a) * -0.05, B + 0.13, z + Math.cos(a) * -0.05, col, a);   // panel facing the ring
@@ -863,59 +866,33 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           for (const sz of [-1, 1]) plain.box(4.4, 0.35, 0.03, tx, B + 2.3, tz + sz * 1.7, 0xf4c20d);
           solidC(tx, tz, 3.2, 1.8, 0.9);
         }
-        for (let s = 0; s < 64; s++) {                                                  // metal crowd barriers in front of the parapet
-          const a = ((s + 0.5) / 64) * Math.PI * 2;
-          if (gateGap(a)) continue;
-          const r = 16.4, wSeg = (2 * Math.PI * r) / 64, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
-          plain.box(wSeg - 0.12, 0.05, 0.05, x, B + 1.0, z, 0xa9adb3, a);
-          plain.box(wSeg - 0.12, 0.05, 0.05, x, B + 0.25, z, 0xa9adb3, a);
-          for (let v = 0; v < 4; v++) { const o = (v / 3 - 0.5) * (wSeg - 0.2); plain.box(0.03, 0.8, 0.03, x + Math.cos(a) * o, B + 0.25, z - Math.sin(a) * o, 0xa9adb3, a); }
-        }
-        for (let s = 0; s < 48; s++) {                                                  // bannered parapet in front of the first tier
-          const a = ((s + 0.5) / 48) * Math.PI * 2;
-          if (gateGap(a)) continue;
-          const r = PARAPET_R, wSeg = (2 * Math.PI * r) / 48 + 0.05, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
-          plain.box(wSeg, PARAPET_H, 0.22, x, 0, z, 0xe9e4d8, a);
-          if (s % 2 === 0) plain.box(wSeg * 1.6, 0.62, 0.03, cx + Math.sin(a) * (r - 0.13), 0.24, cz + Math.cos(a) * (r - 0.13), BOARD[(s / 2) % BOARD.length], a);
-        }
+        // crowd barriers, the bannered parapet and the tiers: one stand-section module per section (src/world/arenaModules.ts)
         if (!lite) for (let s = 0; s < 10; s++) {                                       // feather flags along the barriers
           const a = ((s + 0.5) / 10) * Math.PI * 2 + 0.15;
-          if (gateGap(a, 0.5)) continue;
+          if (gateGap(a, 0.5) || inTunnel(a, 0.3)) continue;
           const x = cx + Math.sin(a) * 15.6, z = cz + Math.cos(a) * 15.6, col = BOARD[(s + 1) % BOARD.length];
           plain.box(0.05, 3.6, 0.05, x, B, z, 0x555555);
           plain.box(0.7, 2.6, 0.03, x + Math.cos(a) * 0.37, B + 0.8, z - Math.sin(a) * 0.37, col, a);
           plain.box(0.6, 0.5, 0.03, x + Math.cos(a) * 0.32, B + 3.4, z - Math.sin(a) * 0.32, col, a);
         }
-        const TIER_COL = [0xd5cbb8, 0xc6bba6, 0xb7ab95];
         const FLAG = [0x1a9d54, 0xf4c20d, 0xd9322b];
-        for (let t = 0; t < TIERS; t++) {                                               // raised tiers (TEMP concrete), one level only
-          const r = tierRadius(t), top = tierTop(t), segs = 48;
-          for (let s = 0; s < segs; s++) {
-            const a = ((s + 0.5) / segs) * Math.PI * 2;
-            if (gateGap(a)) continue;
-            const wSeg = (2 * Math.PI * r) / segs + 0.06;
-            concrete.box(wSeg, top, TIER_DEPTH, cx + Math.sin(a) * r, 0, cz + Math.cos(a) * r, TIER_COL[t], a);  // cast concrete (#11)
-            plain.box(wSeg, 0.12, 0.06, cx + Math.sin(a) * (r - 0.67), top - 0.18, cz + Math.cos(a) * (r - 0.67), FLAG[Math.floor(s / 4) % 3], a); // painted riser band
-            plain.box(wSeg, 0.06, 0.12, cx + Math.sin(a) * (r - 0.6), top, cz + Math.cos(a) * (r - 0.6), 0xe9e4d8, a);  // worn seat edge
-          }
-        }
+        const kit: ArenaKit = { plain, concrete, base: B, lite, solid: solidC, sign: addSign, climb: c => climbs.push(c) };
+        SECTIONS.forEach((sec, i) => standSection(kit, cx, cz, sec, i));                // eight sections between the gaps
+        for (const a of AISLES) aisleStairs(kit, cx, cz, a);                             // stairs up the aisles
         const wallR = WALL_R, wallH = WALL_H, wsegs = 40;
         for (let s = 0; s < wsegs; s++) {
           const a = ((s + 0.5) / wsegs) * Math.PI * 2;
-          if (gateGap(a)) continue;
+          if (gateGap(a) || inTunnel(a)) continue;                                     // the public gate and the wrestlers' gate
           const wSeg = (2 * Math.PI * wallR) / wsegs + 0.1;
           const x = cx + Math.sin(a) * wallR, z = cz + Math.cos(a) * wallR;
           plain.box(wSeg, wallH, 0.5, x, 0, z, 0xd9a45a, a);
           plain.box(wSeg + 0.02, 0.3, 0.6, x, wallH - 0.1, z, 0xf1ead8, a);
           plain.box(wSeg + 0.02, 0.6, 0.56, x, 0, z, 0xa77a40, a);
           if (s % 3 === 0) plain.box(wSeg * 0.7, 1.4, 0.05, cx + Math.sin(a) * (wallR + 0.28), 1.3, cz + Math.cos(a) * (wallR + 0.28), FLAG[(s / 3) % 3], a); // painted banner
-          solidC(x, z, 3.6, 3.6, wallH);
+          // three small boxes just outside the wall line (big ones would reach into the top of the aisles)
+          for (const o of [-1.15, 0, 1.15]) { const ox = cx + Math.sin(a) * (wallR + 0.55) + Math.cos(a) * o, oz = cz + Math.cos(a) * (wallR + 0.55) - Math.sin(a) * o; solidC(ox, oz, 1.2, 1.2, wallH); }
         }
-        // stands collide too (player cannot climb them); their height reaches the roof so the follow camera stays under it
-        for (let t = 0; t < TIERS; t++) for (let s = 0; s < 24; s++) {
-          const a = ((s + 0.5) / 24) * Math.PI * 2; if (gateGap(a)) continue;
-          const r = tierRadius(t); solidC(cx + Math.sin(a) * r, cz + Math.cos(a) * r, 2.6, 2.6, roofY(r));
-        }
+        // the stands' colliders come with the sections and the aisles (up to the roof: the follow camera stays under it)
         {                                                                               // roof over the stands (TEMP painted sheet metal)
           const segs = 40, rm = (ROOF_FRONT_R + ROOF_BACK_R) / 2, ym = (ROOF_FRONT_Y + ROOF_BACK_Y) / 2;
           const run = ROOF_BACK_R - ROOF_FRONT_R, rise = ROOF_FRONT_Y - ROOF_BACK_Y, tilt = Math.atan2(rise, run), depth = Math.hypot(run, rise);
@@ -957,6 +934,11 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           plain.box(0.4, 0.03, 0.3, bx2, B, bz2 - 0.9, 0xa8adb1); plain.box(0.4, 0.03, 0.3, bx2, B, bz2 + 0.9, 0xa8adb1);
         }
         for (const sx of [-1, 1]) for (let k2 = 0; k2 < 2; k2++) stall(cx + sx * (8 + k2 * 4.5), gzz - 4 - k2 * 1.5);
+        // inside: the wrestlers' tunnel and their own gate, ringside media, the drummers' stand, the écuries' corners
+        tunnel(kit, cx, cz); fightersGate(kit, cx, cz);
+        mediaZone(kit, cx, cz); drummersStand(kit, cx, cz);
+        prepCorner(kit, cx, cz, PREP_SIDE.baobab, 0x1a7a44); prepCorner(kit, cx, cz, PREP_SIDE.teranga, 0xc8322a);   // fictional écuries Baobab and Teranga
+        { const plates = sectionPlates(cx, cz, SECTIONS); if (plates) group.add(plates); }
         interactables.push({ id: `${id}:arena`, name: 'Arène · làmb', kind: 'actions', x: cx, z: cz - 24, radius: 5, actions: ACTIONS.arena });
         arenaInfo = { cx, cz, r: 19 };
         break;
@@ -1108,6 +1090,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs,
     tick,
     heightAt(x: number, z: number) {
+      for (const c of climbs) { const h = climbHeight(c, x, z); if (h !== null) return h; }
       for (const r of ramps) {
         if (z < r.z0 || z > r.z1 || x < r.x0 || x > r.xEnd) continue;
         return x >= r.x1 ? r.y1 : r.y0 + ((x - r.x0) / (r.x1 - r.x0)) * (r.y1 - r.y0);
