@@ -6,6 +6,7 @@ import { seatClip, sitOriginY, type Seat } from '../interact/seats';
 import { Humanoid, humanoidReady, randomLook, type Clip, type PersonLook } from '../actors/humanoid';
 import { Impostors, ForeignBodies, cullHumanoid, ownerVisible, type Foreign } from '../actors/crowdLod';
 import { hubLayout } from '../world/builder';
+import { WALL_H, WALL_R } from '../world/geew';
 import { rng } from '../core/rng';
 import { ROUTINES, currentPlan, resolvePlace, planPath, laneGraph, collidersClear, pathLength, type ClearFn } from './routines';
 import { ACTIVITIES, AMBIENT_BUDGET, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR, type AmbientQuality } from './ambientData';
@@ -687,10 +688,15 @@ export class AmbientLife implements GameModule {
   /** Ranks every street humanoid (ambient people and the other systems') by distance: the nearest get full bodies. */
   private lod(space: string) {
     const cam = this.ctx.camera.position, B = this.B, cand = this.cand;
+    // inside the arena's walls (seated on the tiers, in the ring) the street outside cannot be seen: nobody out there
+    // is drawn, ours or the other systems' (the exterior's fans, vendors and drummers) — docs/PERF_EVENING.md
+    const ar = this.world?.arena ?? null;
+    const enclosed = !!ar && Math.hypot(cam.x - ar.cx, cam.z - ar.cz) < WALL_R - 0.3 && cam.y < WALL_H + 3;
+    const outside = (x: number, z: number) => enclosed && Math.hypot(x - ar!.cx, z - ar!.cz) > WALL_R + 0.3;
     let n = 0;
     const slot = () => { if (n >= cand.length) cand.push({ d: 0, a: null, f: null, full: false }); return cand[n++]; };
     for (const a of this.actors) {
-      if (a.state === 'off' || !this.inView(a, space)) { if (a.body) this.dropBody(a); a.lod = 0; continue; }
+      if (a.state === 'off' || !this.inView(a, space) || outside(a.x, a.z)) { if (a.body) this.dropBody(a); a.lod = 0; continue; }
       a.d = Math.hypot(a.x - cam.x, a.z - cam.z);
       const c = slot(); c.a = a; c.f = null; c.full = a.lod === 2; c.d = a.d * (c.full ? 0.85 : 1);
     }
@@ -699,6 +705,7 @@ export class AmbientLife implements GameModule {
       if (!ownerVisible(f.g)) { f.lod = 0; continue; }
       foreignN++;
       const e = f.g.matrixWorld.elements;
+      if (outside(e[12], e[14])) { f.lod = 0; f.root.visible = false; continue; }
       f.d = Math.hypot(e[12] - cam.x, e[14] - cam.z);
       const c = slot(); c.a = null; c.f = f; c.full = f.lod === 2; c.d = f.d * f.prio * (c.full ? 0.85 : 1);
     }
@@ -829,6 +836,11 @@ export class AmbientLife implements GameModule {
   }
 
   // ------------------------------------------------------------------ debug (window.__dakar, ?debug)
+  /** Where the city's ambient people stand or sit (spot centres and standing places), for other crowds to keep clear. */
+  standPoints(): { x: number; z: number }[] {
+    return (this.spots ?? []).flatMap(s => [{ x: s.x, z: s.z }, ...s.stands.map(t => ({ x: t.x, z: t.z }))]);
+  }
+
   debug(): Record<string, unknown> {
     return {
       /** Who is doing what where, the seat invariants and the humanoid budget. */
