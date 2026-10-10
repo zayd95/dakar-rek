@@ -2,7 +2,7 @@ import type { GameCtx, GameModule } from '../game/modules';
 import { isOpen, type PlaceSpec } from '../activity/places';
 import { WALL_R } from '../world/geew';
 import { fcfaText } from '../economy/format';
-import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, hasTicket, streetAt } from './program';
+import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, followedLine, followedOn, hasTicket, streetAt } from './program';
 import { eveningSize } from './exterior';
 import { FIGHT_DAYS, WEEKDAY_FR, weekday } from './exteriorRules';
 import { MOTO_FEE, motoLot } from './arrivalRules';
@@ -164,6 +164,8 @@ export const eveningCallModule: GameModule = {
     if (ctx.mode() !== 'play') return;                                        // not over a menu or a scene
     counters[CALL_COUNTER] = day;
     ctx.toast(callText(eveningSize(day, GALA.doors)));
+    const f = followedOn(day);                                // the wrestler the player follows is on tonight's card
+    if (f) ctx.toast(followedLine(f));
     ctx.save();
   },
   debug: ctx => ({

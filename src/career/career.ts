@@ -71,6 +71,8 @@ export interface CareerSave {
   dims?: { day: number; s: [number, number, number, number] }[];
   /** The best word (level 0–4) each dimension has reached: a new word is celebrated once. */
   dimBest?: number[];
+  /** The roster wrestler the player follows (src/career/roster.ts id), if any: no reward, just following. */
+  fav?: string;
 }
 /** Bouts kept in the save: far beyond a season; the global counters keep the lifetime totals. */
 export const BOUTS_MAX = 300;
@@ -104,7 +106,8 @@ export function careerOf(v: unknown): CareerSave {
     return [{ day: Math.max(0, Math.floor(num(x.day))), s: x.s.map(score) as [number, number, number, number] }];
   }).slice(-8);
   const dimBest = Array.isArray(r.dimBest) && r.dimBest.length === 4 ? r.dimBest.map(v => Math.max(0, Math.min(4, Math.floor(num(v))))) : undefined;
-  return { bouts, best: Math.min(RUNGS.length - 1, Math.max(0, Math.floor(num(r.best)))), galas, ...(dims.length ? { dims } : {}), ...(dimBest ? { dimBest } : {}) };
+  const fav = typeof r.fav === 'string' && /^[a-z]{2,16}$/.test(r.fav) ? r.fav : undefined;
+  return { bouts, best: Math.min(RUNGS.length - 1, Math.max(0, Math.floor(num(r.best)))), galas, ...(dims.length ? { dims } : {}), ...(dimBest ? { dimBest } : {}), ...(fav ? { fav } : {}) };
 }
 
 export interface RecordSummary {

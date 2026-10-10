@@ -11,6 +11,7 @@ import * as P from '../activity/primitives';
 import { Percussion, crowdCheer, paChime } from '../lamb/audio';
 import { hasGestured } from './exteriorAudio';
 import { STYLES } from '../lamb/rules';
+import { rosterLook } from '../career/roster';
 import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
@@ -377,7 +378,7 @@ class ArenaEvening {
       this.startEntrance();
     } else if (phase === 'bout') {
       this.clearEntrance();
-      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, LEFT_LOOK, boutSeed(this.hubId, this.day()), { frappe: this.frappeBill() });
+      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, rosterLook(billFor(this.day()).left.id)?.look ?? LEFT_LOOK, boutSeed(this.hubId, this.day()), { frappe: this.frappeBill() });
       this.bout.onMoment = (p, i) => {
         if (this.bout && this.bout.time < this.catchUpTo - 0.5) return;
         if (p === 'clinch') this.react('clinch');
@@ -564,9 +565,12 @@ class ArenaEvening {
   private startEntrance() {
     // the wrestlers come out of their tunnel opposite the public gate (src/world/geew.ts TUNNEL_*), do their bàkk on the
     // sand, get ready in their corner, then come to the ring; their entourages and griots are src/arena/people.ts; the
-    // drums of the evening are the drummers' group on its deck, heard through src/arena/exteriorAudio.ts
+    // drums of the evening are the drummers' group on its deck, heard through src/arena/exteriorAudio.ts. The two
+    // wrestlers wear their own colours (src/career/roster.ts rosterLook: the phone's portraits use the same).
+    const bill = billFor(this.day()), L = rosterLook(bill.left.id), R = rosterLook(bill.right.id);
     this.ceremony?.dispose();
-    this.ceremony = new EntranceCeremony(this.ctx, this.group, this.cx, this.cz, billFor(this.day()), { left: LEFT_LOOK, right: RIGHT_LOOK }, who => this.react('entrance', who));
+    this.ceremony = new EntranceCeremony(this.ctx, this.group, this.cx, this.cz, bill, { left: L?.look ?? LEFT_LOOK, right: R?.look ?? RIGHT_LOOK },
+      who => this.react('entrance', who), { left: L?.skin, right: R?.skin });
   }
   private clearEntrance() {
     this.ceremony?.dispose(); this.ceremony = null;

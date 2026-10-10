@@ -8,6 +8,8 @@
  */
 import { RUNGS, boutPoints, type Belt, type BoutEntry, type BoutRes } from './career';
 import { FIGHT_FROM, isFightEvening } from '../arena/exteriorRules';
+import { STYLES } from '../lamb/rules';
+import type { WrestlerLook } from '../core/types';
 
 export type DuelStyle = 'costaud' | 'rapide' | 'defensif';
 export interface Wrestler { id: string; name: string; ecurie: 'Baobab' | 'Teranga' | null; style: DuelStyle; level: number }
@@ -64,7 +66,9 @@ export interface Standing { id: string; name: string; ecurie: string | null; sty
  * last city day it was put at stake (a holding player must defend within TITLE_IDLE_DAYS).
  */
 export interface Title { holder: string | null; since: number; defences: number; last: number }
-export interface Ladder { table: Standing[]; title: Title; season: number; nights: number }
+/** One bout of the season as the city saw it: `a` against `b` ('player' for the player), `r` for `a` (L won, R lost, N draw). */
+export interface LadderBout { day: number; a: string; b: string; r: 'L' | 'R' | 'N'; main: boolean; title: boolean }
+export interface Ladder { table: Standing[]; title: Title; season: number; nights: number; log: LadderBout[] }
 /** A gala's main event that the player watched to the end (its live result is the one the city remembers). */
 export interface GalaSeen { day: number; winner: string | null }
 
@@ -121,7 +125,7 @@ const BELT_MEMO_MAX = 4000;
  */
 function playSeason(from: number, to: number, day: number, start: Title, byDay: ReadonlyMap<number, readonly BoutEntry[]>, galas: readonly GalaSeen[]): Ladder {
   const t = fresh(), title: Title = { ...start };
-  const l: Ladder = { table: [...t.values()], title, season: seasonOf(to), nights: 0 };
+  const l: Ladder = { table: [...t.values()], title, season: seasonOf(to), nights: 0, log: [] };
   const take = (id: string | null, d: number) => { title.holder = id; title.since = d; title.defences = 0; title.last = d; };
   for (let d = from; d <= to; d++) {
     if (title.holder === 'player' && vacantOn(title, d)) take(null, d);                              // a belt left asleep
@@ -131,6 +135,7 @@ function playSeason(from: number, to: number, day: number, start: Title, byDay: 
       const w = wrestlerByName(b.opp); if (!w) continue;
       busy.push(w.id);
       apply(t, w.id, b.res === 'V' ? 'D' : b.res === 'D' ? 'V' : 'N', w.level);
+      l.log.push({ day: d, a: w.id, b: 'player', r: b.res === 'V' ? 'R' : b.res === 'D' ? 'L' : 'N', main: false, title: b.kind === 'title' });
       if (b.kind !== 'title') continue;
       if (title.holder === 'player') { if (b.res === 'D') take(w.id, d); else { if (b.res === 'V') title.defences++; title.last = d; } }
       else if (b.res === 'V') take('player', d);
@@ -149,6 +154,7 @@ function playSeason(from: number, to: number, day: number, start: Title, byDay: 
       const r = seen ? (seen.winner === x ? 'L' : seen.winner === y ? 'R' : 'N') : outcome(winChance(sx, sy), seeded(d, x, y));
       apply(t, x, r === 'L' ? 'V' : r === 'R' ? 'D' : 'N', sy.level);
       apply(t, y, r === 'R' ? 'V' : r === 'L' ? 'D' : 'N', sx.level);
+      l.log.push({ day: d, a: x, b: y, r, main, title: main && titleNight && (vacant || title.holder === x) });
       if (!main || !titleNight) continue;
       if (vacant) { if (r !== 'N') take(r === 'L' ? x : y, d); }
       else if (title.holder === x) { if (r === 'R') take(y, d); else { if (r === 'L') title.defences++; title.last = d; } }
@@ -236,4 +242,66 @@ export function cardOf(l: Ladder, day: number): Card {
   }
   const [a, b] = mainEvent(l, day);
   return { left: side(a), right: side(b), title: isTitleDay(day) && (vacantOn(l.title, day) || l.title.holder === a) };
+}
+
+// ------------------------------------------------------------------ the wrestlers' cards (the phone's « Lutteurs »)
+/** A level said as a word (1–5). */
+export const LEVEL_WORDS = ['', 'Débutant', 'Espoir', 'Confirmé', 'Redouté', 'Vedette'] as const;
+const SKINS = [0x5b3420, 0x4e2e1c, 0x3b2216, 0x6b3f25, 0x7a4a2c];
+const SKIN_OF: Record<string, number> = { babacar: 0x5b3420, lamine: 0x4e2e1c };          // as the cast draws them (src/social/cast.ts)
+const INDEP: Record<DuelStyle, [string, string]> = { costaud: ['rouge', 'rayures'], rapide: ['indigo', 'uni'], defensif: ['noir', 'damier'] };
+/**
+ * A roster wrestler's look: his ngemb (écurie Baobab green with a border, Teranga in the écurie's ochre, independents by
+ * style), skin, and placeholder accessories by level (src/lamb/look.ts). The arena's entrance and his phone portrait use it.
+ */
+export function rosterLook(id: string): { skin: number; look: WrestlerLook } | null {
+  const w = wrestlerById(id); if (!w) return null;
+  const [color, pattern] = w.ecurie === 'Baobab' ? ['vert', 'bordure'] : w.ecurie === 'Teranga' ? [STYLES.rapide.ngemb, 'uni'] : INDEP[w.style];
+  const skin = SKIN_OF[id] ?? SKINS[Math.floor(seeded(0, id) * SKINS.length)];
+  return { skin, look: { ngembColor: color, ngembPattern: pattern, accessories: w.level >= 4 ? ['bras_d', 'taille'] : w.level >= 3 ? ['bras_d'] : [] } };
+}
+
+export interface WrestlerCard {
+  id: string; name: string; ecurie: string; style: string; level: string;
+  v: number; d: number; n: number; pts: number; place: number;
+  /** « Champion · 2 défenses », or null. */
+  belt: string | null;
+  /** The season's last results, newest first (five at most). */
+  last: { day: number; vs: string; res: 'V' | 'D' | 'N'; main: boolean; title: boolean }[];
+  skin: number; look: WrestlerLook;
+}
+/** A wrestler's card from the ladder (pure): who he is, his season, the belt, his last results (`you`: the player's name). */
+export function wrestlerCard(l: Ladder, id: string, you = 'Toi'): WrestlerCard | null {
+  const w = wrestlerById(id), s = l.table.find(x => x.id === id), lk = rosterLook(id);
+  if (!w || !s || !lk) return null;
+  const name = (x: string) => (x === 'player' ? you : wrestlerById(x)?.name ?? x);
+  const last = l.log.filter(b => b.a === id || b.b === id).slice(-5).reverse().map(b => {
+    const mine = b.a === id, r = mine ? b.r : b.r === 'L' ? 'R' : b.r === 'R' ? 'L' : 'N';
+    return { day: b.day, vs: name(mine ? b.b : b.a), res: (r === 'L' ? 'V' : r === 'R' ? 'D' : 'N') as 'V' | 'D' | 'N', main: b.main, title: b.title };
+  });
+  const held = l.title.holder === id;
+  return {
+    id, name: w.name, ecurie: w.ecurie ? `Écurie ${w.ecurie}` : 'Indépendant', style: STYLES[w.style].label, level: LEVEL_WORDS[w.level],
+    v: s.v, d: s.d, n: s.n, pts: s.pts, place: l.table.findIndex(x => x.id === id) + 1,
+    belt: held ? `Champion${l.title.defences ? ` · ${l.title.defences} défense${l.title.defences > 1 ? 's' : ''}` : ''}` : null,
+    last, skin: lk.skin, look: lk.look,
+  };
+}
+/**
+ * Whether a followed wrestler fights tonight in the arena: the evening's main event (the card the posters and the show
+ * name). The ladder's other bouts of the night are the city's, not shown at the arena (the preliminaries there are young
+ * wrestlers of the neighbourhoods, src/arena/undercard.ts), so they are not announced.
+ */
+export function fightsTonight(l: Ladder, day: number, id: string): { vs: string } | null {
+  const c = cardOf(l, day);
+  if (c.left.id === id) return { vs: c.right.name };
+  if (c.right.id === id) return { vs: c.left.name };
+  return null;
+}
+/** His bout on a night already played (the next day's ladder holds it): the opponent and the result, or null. */
+export function resultOn(l: Ladder, day: number, id: string): { vs: string; res: 'V' | 'D' | 'N' } | null {
+  const b = l.log.find(x => x.day === day && (x.a === id || x.b === id) && x.b !== 'player' && x.a !== 'player');
+  if (!b) return null;
+  const mine = b.a === id, r = mine ? b.r : b.r === 'L' ? 'R' : b.r === 'R' ? 'L' : 'N';
+  return { vs: wrestlerById(mine ? b.b : b.a)?.name ?? '', res: r === 'L' ? 'V' : r === 'R' ? 'D' : 'N' };
 }

@@ -18,12 +18,12 @@ export class EntranceCeremony {
   private next = 0;
 
   constructor(private ctx: GameCtx, parent: THREE.Object3D, private cx: number, private cz: number,
-    bill: { left: Fighter; right: Fighter }, looks: Record<Who, WrestlerLook>, private react: (who: Who) => void) {
+    bill: { left: Fighter; right: Fighter }, looks: Record<Who, WrestlerLook>, private react: (who: Who) => void, skins: Partial<Record<Who, number>> = {}) {
     this.cues = entranceCues(bill, ctx.day());
     if (!humanoidReady()) return;
     const cs = cornerSides(bill);
     for (const [who, skin, cut] of [['left', 0x5b3420, 'B'], ['right', 0x4e2e1c, 'A']] as const) {
-      const h = new Wrestler(skin); h.setLook(looks[who], cut);
+      const h = new Wrestler(skins[who] ?? skin); h.setLook(looks[who], cut);
       const plan = wrestlerPlan(cx, cz, who, cs[who]), p = plan[0].path[0];
       h.group.position.set(p.x, 0.1, p.z); parent.add(h.group);
       this.wrestlers.push({ who, h, plan });
