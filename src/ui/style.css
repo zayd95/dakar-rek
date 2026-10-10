@@ -128,6 +128,23 @@ body.touch kbd { display:none; }
 #toast .mo-tx ul { margin:3px 0 0; padding:0; list-style:none; }
 #toast .mo-tx li { font-size:12.5px; font-weight:600; color:var(--ink-2); line-height:1.35; }
 #toast .mo-x { position:absolute; top:2px; right:2px; width:36px; height:36px; border:0; border-radius:50%; background:transparent; color:var(--ink-3); font-size:14px; cursor:pointer; }
+/* the fighter's after-bout card (hud.boutCard): the result, one row per thing that changed, « Ensuite » */
+#toast .mo.bc { width:min(420px, 100%); padding:12px 40px 12px 12px; }
+#toast .bc .mo-tx { flex:1; }
+#toast .bc .mo-tx > b { font-size:17px; letter-spacing:-.2px; }
+#toast .bc-sub { display:block; margin-top:1px; font-size:12.5px; font-weight:600; color:var(--ink-2); line-height:1.3; }
+#toast .bc-rows { margin:8px 0 0; padding:0; }
+#toast .bc-r { display:grid; grid-template-columns:minmax(76px, auto) 1fr auto; align-items:baseline; gap:2px 10px; padding:4px 0; border-top:1px solid var(--sep); }
+#toast .bc-r dt { font-size:12px; font-weight:650; color:var(--ink-2); }
+#toast .bc-r dd { margin:0; min-width:0; }
+#toast .bc-v { display:block; font-size:13.5px; font-weight:750; line-height:1.3; color:var(--ink); }
+#toast .bc-note { display:block; font-size:11.5px; font-weight:600; line-height:1.3; color:var(--ink-2); }
+#toast .bc-d { font-style:normal; font-size:12.5px; font-weight:800; white-space:nowrap; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+#toast .bc-d:empty { display:none; }
+#toast .bc-d.up { color:var(--gain); } #toast .bc-d.down { color:var(--warn); }
+#toast .bc-next { margin-top:6px; padding:7px 10px; border-radius:10px; background:#fff4d6; }
+#toast .bc-next b { display:block; font-size:11px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; color:#7a5a12; }
+#toast .bc-next span { display:block; font-size:13px; font-weight:700; line-height:1.35; color:var(--ink); }
 @keyframes moIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 @keyframes tIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 @keyframes tAgain { 50% { transform:scale(1.04); } }
@@ -326,6 +343,9 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #place .pl-more { display:none; }
   #place em.on { display:table; margin:2px 0 0 auto; }
   #toast { top:calc(170px + var(--sa-t)); }
+  /* the after-bout card: a smaller icon leaves its rows the room they need */
+  #toast .bc .mo-ic { width:30px; height:30px; font-size:16px; }
+  #toast .mo.bc { gap:8px; padding-left:10px; }
   #act { max-width:calc(100vw - 190px); }
   /* the stride lane's « Courir » button sits right of the joystick (left 168 px, 58 px wide): keep clear of it */
   body.touch #act { max-width:calc(100vw - 248px - var(--sa-l) - var(--sa-r)); gap:7px; padding-right:12px; }
@@ -362,6 +382,15 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   /* short screen: a moment card keeps its first five lines, so it and the toasts under it stay above the action column */
   #toast .mo-tx li:nth-child(n+6) { display:none; }
   #toast .mo { padding-top:8px; padding-bottom:8px; }
+  /* the after-bout card on a short screen: no icon, each note on its value's line, the first next step only; it ends
+     above the action column */
+  #toast .mo.bc { padding:7px 34px 7px 10px; }
+  #toast .bc .mo-ic, #toast .bc-next span + span { display:none; }
+  #toast .bc-v, #toast .bc-note { display:inline; } #toast .bc-note::before { content:' · '; }
+  #toast .bc .mo-tx > b { font-size:15px; }
+  #toast .bc-rows { margin-top:3px; }
+  #toast .bc-r { padding:1px 0; }
+  #toast .bc-next { margin-top:4px; padding:4px 8px; }
   /* the trades' gesture card (src/ui/gesture.ts) is centred at the bottom, 52vw wide: the action column stays right of it */
   #act { max-width:calc(24vw - 20px - var(--sa-r)); }
   #progress { min-width:0; width:calc(24vw - 20px - var(--sa-r)); }

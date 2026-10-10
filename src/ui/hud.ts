@@ -354,13 +354,47 @@ export class Hud {
    * anywhere on it or on ✕ dismisses it; it leaves by itself after a few seconds. Two at most.
    */
   moment(m: { icon: string; title: string; lines: string[] }, ms = Math.min(12000, 6000 + 900 * m.lines.length)) {
+    return this.momentCard('mo', m.icon, m.title, tx => {
+      if (m.lines.length) { const ul = document.createElement('ul'); for (const l of m.lines) { const li = document.createElement('li'); li.textContent = l; ul.appendChild(li); } tx.appendChild(ul); }
+    }, ms);
+  }
+  /**
+   * The fighter's after-bout card (src/career/progress.ts `boutCard`): a moment card, larger — the result and who
+   * against; one row per thing that changed (what, where it stands now, the change in green or red, a short note); then
+   * « Ensuite » and the next bill or step. Same rules as a moment (first in the toast column, tap to dismiss, never over
+   * the action button or the joystick); it stays longer (16–24 s).
+   */
+  boutCard(card: { icon: string; title: string; sub: string; rows: { k: string; v: string; d?: string; tone?: string; note?: string }[]; next: string[] },
+    ms = Math.min(24000, 16000 + 1000 * card.rows.length)) {
+    const add = <K extends keyof HTMLElementTagNameMap>(parent: HTMLElement, tag: K, cls: string, text = '') => {
+      const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; parent.appendChild(e); return e;
+    };
+    return this.momentCard('mo bc', card.icon, card.title, tx => {
+      add(tx, 'small', 'bc-sub', card.sub);
+      const dl = add(tx, 'dl', 'bc-rows');
+      for (const r of card.rows) {
+        const row = add(dl, 'div', 'bc-r');
+        add(row, 'dt', '', r.k);
+        const dd = add(row, 'dd', '');
+        add(dd, 'span', 'bc-v', r.v);
+        if (r.note) add(dd, 'small', 'bc-note', r.note);
+        add(row, 'em', `bc-d ${r.tone ?? ''}`.trim(), r.d ?? '');
+      }
+      if (card.next.length) {
+        const nx = add(tx, 'div', 'bc-next');
+        add(nx, 'b', '', 'Ensuite');
+        for (const l of card.next) add(nx, 'span', '', l);
+      }
+    }, ms);
+  }
+  private momentCard(cls: string, icon: string, title: string, fill: (tx: HTMLElement) => void, ms: number) {
     const box = this.el.toast;
     const c = document.createElement('div');
-    c.className = 'mo'; c.setAttribute('role', 'status');
-    const ic = document.createElement('i'); ic.className = 'mo-ic'; ic.setAttribute('aria-hidden', 'true'); ic.textContent = m.icon;
+    c.className = cls; c.setAttribute('role', 'status');
+    const ic = document.createElement('i'); ic.className = 'mo-ic'; ic.setAttribute('aria-hidden', 'true'); ic.textContent = icon;
     const tx = document.createElement('div'); tx.className = 'mo-tx';
-    const b = document.createElement('b'); b.textContent = m.title; tx.appendChild(b);
-    if (m.lines.length) { const ul = document.createElement('ul'); for (const l of m.lines) { const li = document.createElement('li'); li.textContent = l; ul.appendChild(li); } tx.appendChild(ul); }
+    const b = document.createElement('b'); b.textContent = title; tx.appendChild(b);
+    fill(tx);
     const x = document.createElement('button'); x.type = 'button'; x.className = 'mo-x'; x.setAttribute('aria-label', 'Fermer'); x.textContent = '✕';
     c.append(ic, tx, x);
     c.addEventListener('pointerdown', e => e.stopPropagation());

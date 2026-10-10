@@ -75,6 +75,20 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await d(() => window.__dakar.duelAbandon(true));
   const back = await until(() => !window.__dakar.duelInfo() && window.__dakar.fighter().phase === 'return', null, 60000);
   check(`${label}: after the result, back through the tunnel (marker on the wrestlers' gate)`, back && (await d(() => window.__dakar.destination())) === 'pikine:arena:lutteurs', (await fi()).phase);
+  // the after-bout card (src/career/progress.ts boutCard): one card with the result, the palmarès (an abandon counts
+  // apart), the place, Réputation and Influence, and « Ensuite »; on screen, clear of the action button and the joystick
+  const card = await d(() => {
+    const c = [...document.querySelectorAll('#toast .mo.bc:not(.out)')].pop(); if (!c) return null;
+    const r = c.getBoundingClientRect();
+    const hit = id => { const e = document.getElementById(id), b = e?.getBoundingClientRect(); return !!b && b.width > 0 && getComputedStyle(e).display !== 'none' && +getComputedStyle(e).opacity > 0.1 && b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; };
+    return { title: c.querySelector('.mo-tx > b')?.textContent, sub: c.querySelector('.bc-sub')?.textContent, rows: [...c.querySelectorAll('.bc-r')].map(x => `${x.querySelector('dt')?.textContent}: ${x.querySelector('.bc-v')?.textContent} ${x.querySelector('.bc-d')?.textContent}`),
+      next: [...c.querySelectorAll('.bc-next span')].map(x => x.textContent), cards: document.querySelectorAll('#toast .mo.bc:not(.out)').length,
+      inView: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight, clear: !hit('act') && !hit('actMore') && !hit('joy') };
+  });
+  check(`${label}: the bout ends on one after-bout card: result, palmarès, place, Réputation, Influence, what next`,
+    card?.cards === 1 && card.title === 'Abandon' && /^contre /.test(card.sub ?? '') && ['Palmarès', 'Classement', 'Réputation', 'Influence'].every(k => card.rows.some(r => r.startsWith(k + ':')))
+    && card.rows.some(r => /^Palmarès: .*1 abandon \+1 abandon$/.test(r)) && card.next.length >= 1 && card.inView && card.clear, JSON.stringify(card));
+  await shot('after-bout-card');
 
   // out through the tunnel and the gate
   await d(([x, z]) => window.__dakar.place(x, z, 0), [cx, cz + 16.5]);
