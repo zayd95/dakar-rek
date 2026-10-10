@@ -176,6 +176,7 @@ export class Crowd {
   private flags: THREE.InstancedMesh | null = null;
   private flagged: Member[] = [];
   private fidgeting = new Set<Member>();
+  private chatters = new Set<Member>();
   private fidgetRate: number;
   private fidgetT = 0;
 
@@ -282,7 +283,9 @@ export class Crowd {
   setMood(group: string, mood: Mood, bpm = 120) {
     for (const m of this.members) if (group === 'all' || m.slot.tags?.includes(group)) {
       if (m.mood === mood && m.bpm === bpm) continue;
-      m.mood = mood; m.bpm = bpm; this.retarget(m);
+      m.mood = mood; m.bpm = bpm;
+      if (mood === 'chat') this.chatters.add(m); else this.chatters.delete(m);
+      this.retarget(m);
     }
   }
   /** This member waves a flag of `colour` whenever the arms go up (shouting, celebrating). */
@@ -297,6 +300,13 @@ export class Crowd {
       this.flags.count = 0; this.flags.frustumCulled = false; this.flags.name = 'crowd_flags';
       this.group.add(this.flags);
     }
+  }
+  /** One member's mood (a person joining a group chat, leaving it for a walk). */
+  setMemberMood(id: string, mood: Mood, bpm = 120) {
+    const m = this.byId.get(id); if (!m || (m.mood === mood && m.bpm === bpm)) return;
+    m.mood = mood; m.bpm = bpm;
+    if (mood === 'chat') this.chatters.add(m); else this.chatters.delete(m);
+    this.retarget(m);
   }
   /** Everyone in the group settles back at once. */
   calm(group = 'all') {
@@ -426,8 +436,15 @@ export class Crowd {
       if (m.fidgetLeft <= 0) { m.fidget = null; this.fidgeting.delete(m); this.retarget(m); }
     }
     this.fidgetT -= dt;
-    if (this.fidgetT > 0 || !this.fidgetRate || !this.members.length) return;
+    if (this.fidgetT > 0 || !this.members.length) return;
     this.fidgetT = 0.5;
+    // people chatting take turns talking with their hands
+    for (const m of this.chatters) {
+      if (!m.on || m.st.kind || m.st.next || m.fidget || m.speed > 0.2 || this.rand() > 0.22) continue;
+      m.fidget = 'talk'; m.fidgetLeft = 1.2 + this.rand() * 1.8;
+      this.fidgeting.add(m); this.retarget(m);
+    }
+    if (!this.fidgetRate) return;
     const n = this.members.length * this.fidgetRate * 0.5;
     let k = Math.floor(n) + (this.rand() < n % 1 ? 1 : 0);
     for (let tries = 0; k > 0 && tries < k * 4; tries++) {
@@ -503,6 +520,14 @@ export class Crowd {
       aim(upper, _va.fromArray(d.upper), _qs, b.w);
       aim(fore, _vb.fromArray(d.fore), _qs, b.w);
     }
+  }
+
+  /**
+   * The full humanoids of this crowd as people of the street (src/interact/people.ts): the player can greet the
+   * spectator next to them or a passer-by, like anyone in the city.
+   */
+  people(): { id: string; obj: THREE.Object3D; h: Humanoid; female: boolean; seated: boolean; bias: number }[] {
+    return this.bodies.filter(b => b.m.on).map(b => ({ id: `crowd:${this.name}:${b.m.slot.id}`, obj: b.h.group, h: b.h, female: b.m.look.style === 'dress', seated: !b.m.standing, bias: 0.8 }));
   }
 
   stats() {

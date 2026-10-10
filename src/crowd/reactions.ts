@@ -134,8 +134,11 @@ export function fidgetPose(f: Fidget, standing: boolean): RigPose {
   }
 }
 
-/** What a member does between reactions: rest, or dance (a dance floor, sabar dancers by the drums). */
-export type Mood = 'rest' | 'dance';
+/**
+ * What a member does between reactions: rest, dance (a dance floor, sabar dancers by the drums), or chat (a group in
+ * front of a shop, people waiting together: they take turns talking with their hands).
+ */
+export type Mood = 'rest' | 'dance' | 'chat';
 /** Dancing on the beat: one hop per beat, the arms pumping in turn, a small step. */
 export function dancePose(bpm: number): RigPose {
   return P({ pitch: 1.1, spread: 0.3, elbow: 1.3, pitchAmp: 0.5, sideOff: Math.PI / 2, bounce: 0.07, lean: 0.06, walk: 0.12, freq: (Math.PI * bpm) / 60 });

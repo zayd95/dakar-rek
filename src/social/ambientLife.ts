@@ -765,6 +765,11 @@ export class AmbientLife implements GameModule {
   }
 
   // ------------------------------------------------------------------ debug (window.__dakar, ?debug)
+  /** Where the city's ambient people stand or sit (spot centres and standing places), for other crowds to keep clear. */
+  standPoints(): { x: number; z: number }[] {
+    return (this.spots ?? []).flatMap(s => [{ x: s.x, z: s.z }, ...s.stands.map(t => ({ x: t.x, z: t.z }))]);
+  }
+
   debug(): Record<string, unknown> {
     return {
       /** Who is doing what where, the seat invariants and the humanoid budget. */

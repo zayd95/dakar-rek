@@ -8,8 +8,9 @@ import { ECURIES, gateOf, type ArenaGate } from '../arena/exteriorRules';
 import { arenaExterior, eveningSize } from '../arena/exterior';
 import { linesOf, stopOnLeg, KERB } from '../transport/lines';
 import { STOP_OFFSET } from '../transport/stops';
-import { transport } from '../transport/module';
+import { dwellingNow, newArrivals } from './transportPeek';
 import { Crowd, defaultLook, type CrowdQuality, type CrowdSlot } from './crowd';
+import { routeClear } from './streetPlan';
 
 /**
  * Fans arriving at the arena on fight evenings (docs/CROWD.md): taxis pull in at the two corners of the arena's street
@@ -23,9 +24,11 @@ type Pt = { x: number; z: number };
 interface Walker { id: string; path: Pt[]; i: number; speed: number; on: boolean; x: number; z: number; /** Seconds before stepping off. */ wait: number }
 interface Cab {
   g: THREE.Group; route: CabRoute; s: number; v: number; state: 'off' | 'in' | 'stop' | 'out'; t: number; drop: number; dropped: number;
+  /** Picking people up after the gala (nobody gets out; it waits a little longer). */
+  pickup: boolean;
 }
 /** A taxi's run: along a road lane (x fixed) from z0 to z1, stopping at zs; fans step out at `alight` and walk `walk`. */
-interface CabRoute { x: number; z0: number; zs: number; z1: number; alight: Pt; walk: Pt[] }
+export interface CabRoute { x: number; z0: number; zs: number; z1: number; alight: Pt; walk: Pt[] }
 
 export const ARRIVALS = {
   /** Walkers at most, per quality. */
@@ -68,7 +71,12 @@ export class ArenaArrivals {
   private taxiT = 4;
   private rapideT = 0;
   private dwelling = new Set<string>();
+  /** People waiting for a taxi at each route's corner (after the gala: src/crowd/street.ts sets it). */
+  readonly demand = [0, 0];
+  private pickupT = 0;
   private rapideStop: Pt | null = null;
+  /** From the « Arène » stop to the queue's tail, round the stalls in the street. */
+  private rapideWalk: Pt[] = [];
   private ground: (x: number, z: number) => number;
   private quality: CrowdQuality;
   /** Fans dropped so far (taxi, car rapide), for the checks. */
@@ -99,6 +107,8 @@ export class ArenaArrivals {
       const stop = line.stops.find(s => s.id === 'arene'); if (!stop) continue;
       const p = stopOnLeg(line, stop), rx = -p.dz, rz = p.dx;              // right of the direction of travel
       this.rapideStop = { x: p.x + rx * (STOP_OFFSET - 0.6), z: p.z + rz * (STOP_OFFSET - 0.6) };
+      const tail = { x: this.gate.x, z: this.gate.queue.z1 - 0.35 }, side = { x: tail.x - 3.7, z: tail.z };
+      this.rapideWalk = [...(routeClear(this.rapideStop, side, hub.colliders) ?? [{ x: this.rapideStop.x, z: side.z + 4 }, side]), tail];
     }
   }
 
@@ -123,18 +133,23 @@ export class ArenaArrivals {
     return k;
   }
 
-  /** A taxi now (debug and checks): on route `r` (0 west, 1 east). */
-  taxi(r = Math.floor(this.rand() * this.routes.length)): boolean {
+  /** The taxi runs (corners where fans get out, and where people leaving get in). */
+  get cabRoutes(): readonly CabRoute[] { return this.routes; }
+  /** A taxi stands at route r's corner now, picking people up. */
+  pickingUp(r: number): boolean { return this.cabs.some(c => c.route === this.routes[r] && c.state === 'stop' && c.pickup); }
+
+  /** A taxi now (debug and checks): on route `r` (0 west, 1 east); `pickup`: it comes for people waiting there. */
+  taxi(r = Math.floor(this.rand() * this.routes.length), pickup = false): boolean {
     let cab = this.cabs.find(c => c.state === 'off');
     if (!cab && this.cabs.length < 2) {
       const g = makeTaxi({ seed: 11 + this.cabs.length }); g.userData.noLod = true; g.visible = false;
       this.ctx.extra.add(g);
-      cab = { g, route: this.routes[0], s: 0, v: 0, state: 'off', t: 0, drop: 0, dropped: 0 };
+      cab = { g, route: this.routes[0], s: 0, v: 0, state: 'off', t: 0, drop: 0, dropped: 0, pickup: false };
       this.cabs.push(cab);
     }
     if (!cab) return false;
     const route = this.routes[r % this.routes.length];
-    Object.assign(cab, { route, s: 0, v: CRUISE, state: 'in', t: 0, drop: this.span(ARRIVALS.perTaxi[this.evening()]), dropped: 0 });
+    Object.assign(cab, { route, s: 0, v: CRUISE, state: 'in', t: 0, drop: pickup ? 0 : this.span(ARRIVALS.perTaxi[this.evening()]), dropped: 0, pickup });
     cab.g.visible = true;
     return true;
   }
@@ -149,6 +164,14 @@ export class ArenaArrivals {
       if (this.taxiT <= 0) { this.taxiT = ARRIVALS.taxiEvery[size] * (0.7 + this.rand() * 0.6); this.taxi(); }
       this.rapideT -= dt;
       if (this.rapideT <= 0) { this.rapideT = 0.5; this.watchRapide(size); }
+    }
+    // after the gala: taxis come for the people waiting at the corners
+    this.pickupT -= dt;
+    if (this.pickupT <= 0 && near) {
+      this.pickupT = 2;
+      this.demand.forEach((n, r) => {
+        if (n > 0 && !this.cabs.some(c => c.route === this.routes[r] && c.state !== 'off')) this.taxi(r, true);
+      });
     }
     for (const c of this.cabs) this.driveCab(c, dt);
     // the walkers: along their path to the queue's tail, where the exterior's queue takes over
@@ -178,8 +201,8 @@ export class ArenaArrivals {
       if (c.s >= stopAt) { c.s = stopAt; c.v = 0; c.state = 'stop'; c.t = 0; }
     } else if (c.state === 'stop') {
       c.t += dt;
-      if (c.dropped === 0 && c.t > 0.8) { c.dropped = Math.max(1, this.spawn(r.alight, r.walk, c.drop, 0.6)); this.dropped.taxi += c.dropped; }
-      if (c.t > DWELL) { c.state = 'out'; c.v = 0; }
+      if (!c.pickup && c.dropped === 0 && c.t > 0.8) { c.dropped = Math.max(1, this.spawn(r.alight, r.walk, c.drop, 0.6)); this.dropped.taxi += c.dropped; }
+      if (c.t > (c.pickup ? DWELL + 2.5 : DWELL)) { c.state = 'out'; c.v = 0; }
     } else {
       c.v = Math.min(CRUISE, c.v + 3 * dt);
       c.s += c.v * dt;
@@ -194,24 +217,18 @@ export class ArenaArrivals {
   /** The car rapide at the « Arène » stop: a group steps down each time one pulls in (read from the transport lane). */
   private watchRapide(size: 'gala' | 'card') {
     if (!this.rapideStop) return;
-    const lines = (transport.debug(this.ctx).transport as { lines?: () => { id: string; stops: { id: string }[]; vehicles: { id: string; dwell: number }[] }[] } | undefined)?.lines?.();
-    if (!lines) return;
-    const now = new Set<string>();
-    for (const l of lines) {
-      const i = l.stops.findIndex(s => s.id === 'arene'); if (i < 0) continue;
-      for (const v of l.vehicles) if (v.dwell === i) now.add(v.id);
-    }
-    for (const id of now) if (!this.dwelling.has(id)) {
-      const tail = { x: this.gate.x, z: this.gate.queue.z1 - 0.35 };
-      this.dropped.rapide += this.spawn(this.rapideStop, [{ x: tail.x - 3.7, z: tail.z }, tail], this.span(ARRIVALS.perRapide[size]), 0.55);
+    const now = dwellingNow(this.ctx);
+    for (const stop of newArrivals(this.dwelling, now)) if (stop.endsWith(':arene')) {
+      this.dropped.rapide += this.spawn(this.rapideStop, this.rapideWalk, this.span(ARRIVALS.perRapide[size]), 0.55);
     }
     this.dwelling = now;
   }
 
   info() {
     return {
+      rapideWalk: this.rapideWalk,
       active: this.active, size: this.evening(), dropped: { ...this.dropped }, walking: this.walkers.filter(w => w.on).length,
-      cabs: this.cabs.map(c => ({ state: c.state, x: c.g.position.x, z: c.g.position.z, v: Math.round(c.v * 10) / 10 })),
+      cabs: this.cabs.map(c => ({ state: c.state, pickup: c.pickup, x: c.g.position.x, z: c.g.position.z, v: Math.round(c.v * 10) / 10 })), demand: [...this.demand],
       stop: this.rapideStop, routes: this.routes.map(r => ({ alight: r.alight, walk: r.walk })), crowd: this.crowd.stats(),
     };
   }
