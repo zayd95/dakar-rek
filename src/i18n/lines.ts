@@ -231,7 +231,7 @@ export const ARENA = {
   /** Le guichetier : « 1 000 F, jërëjëf ! » (merci) */
   ticket: (fare: number) => exchange(['Le guichetier', [{ wo: `${price(fare)},` }, 'jërëjëf !']]),
   /** At the gate with a ticket. */
-  welcome: () => `${exchange(['Le contrôleur', ['Dalal ak jàmm !']])} · Les tribunes sont de chaque côté.`,
+  welcome: (where?: string) => `${exchange(['Le contrôleur', ['Dalal ak jàmm !']])} · ${where ?? 'Les tribunes sont de chaque côté.'}`,
   /** At the gate without one. */
   stop: () => `${exchange(['Le contrôleur', ['Xaaral tuuti !']])} · Il faut un billet : le guichet est à gauche de la porte.`,
   /** The announcer, when the gala starts. */

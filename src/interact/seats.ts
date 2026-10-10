@@ -44,6 +44,15 @@ export interface Seat {
    * on the tiers lead into the nearest aisle at their tier's height, then down to the ring side.
    */
   exits?: { x: number; z: number }[];
+  /** The section of the stands it is in (the arena's A–H), for the places that have one. */
+  section?: string;
+  /** Its own name on the « S'asseoir » target (« Place d'honneur »), instead of the kind's. */
+  label?: string;
+  /**
+   * Why the player may not take it now (a place for another ticket), or null: « S'asseoir » is then shown greyed with
+   * that reason. Others (the crowd, friends) are not concerned.
+   */
+  refuse?: () => string | null;
 }
 
 /** Height of the Sit clip's hips above the character origin (actors/humanoid.ts, corrected Sit). */
@@ -122,8 +131,12 @@ export class Seats implements TargetSource {
       const reach = s.reach ?? REACH;
       if (s.occupant || s.kind === 'vehicle' || Math.abs(s.x - x) > reach || Math.abs(s.z - z) > reach) continue;
       out.push({
-        id: 'seat:' + s.id, name: SEAT_NAME[s.kind], kind: 'seat', space, x: s.x, z: s.z, y: s.top + 0.5, radius: reach, bias: 1,
-        affordances: () => [{ id: 'sit', verb: s.kind === 'bed' ? 'sleep' : 'sit', label: s.kind === 'bed' ? 'S’allonger' : 'S’asseoir', icon: s.kind === 'bed' ? '🛏️' : s.kind === 'mat' || s.kind === 'floor' ? '🧘' : '🪑', run: () => this.onSit(s) }],
+        id: 'seat:' + s.id, name: s.label ?? SEAT_NAME[s.kind], kind: 'seat', space, x: s.x, z: s.z, y: s.top + 0.5, radius: reach, bias: 1,
+        affordances: () => {
+          const no = s.refuse?.() ?? null;
+          return [{ id: 'sit', verb: s.kind === 'bed' ? 'sleep' : 'sit', label: s.kind === 'bed' ? 'S’allonger' : 'S’asseoir', icon: s.kind === 'bed' ? '🛏️' : s.kind === 'mat' || s.kind === 'floor' ? '🧘' : '🪑',
+            disabled: no, run: () => { if (!s.refuse?.()) this.onSit(s); } }];
+        },
       });
     }
   }
