@@ -22,10 +22,11 @@ drummers outside, event days, gate position) is another lane: `src/arena/exterio
 - **Watch the gala** (starts once seated while the doors are open):
   1. *Les tribunes se remplissent* (3 s) — the bill is announced: Babacar (Baobab) – Lamine (Teranga).
   1b. *Préliminaires* — short bouts between young wrestlers of the neighbourhoods, long before the main event, while the
-     stands fill (see *The preliminaries*).
-  2. *Entrée des lutteurs* (14 s) — the two wrestlers walk out of their tunnel, each with his entourage behind him; the
-     drummers' group plays on its deck (the evening's one rhythm, `src/arena/exteriorAudio.ts`), dances; the crowd
-     stands up and cheers (see *The people of fight night*).
+     stands fill (see *The preliminaries*); no ceremony, a short walk-in each.
+  2. *Entrée des lutteurs* (33 s) — the main event only, a ceremony (see *The entrance as a ceremony*): each wrestler
+     walks out of the tunnel behind the announcer's call, does his bàkk on the sand while his people chant round him
+     and his griot sings his praises, the drums change rhythm and his side of the stands rises; then he goes to his
+     corner, and both come to the ring. The stands are nearly full by then (the preliminaries' fill ramp).
   3. *Combat · lutte sans frappe* — the existing `LambDuel` in spectate mode (no player input, no duel HUD), the
      « player » side driven by an autopilot (`pilot()` in `program.ts`) that presses the same buttons a player has;
      the other side is the duel's own AI. The crowd reacts on clinches and falls.
@@ -71,14 +72,17 @@ clock in the browser.
 | 3 s | first preliminary: walk-in | 5 s |
 | 8 s | first preliminary: its bout | duel intro 2.2 s + up to 30 s (a fall ends it sooner) |
 | … | its result, then the next preliminary | 3.5 s; up to ~41 s per preliminary |
-| ≈ 1 min 25 s – 2 min 45 s (gala, 2–4); ≈ 45 s – 1 min 25 s (card, 1–2) | *Entrée des lutteurs*, stands ~95–100% | 14 s |
-| + 14 s | the main bout | duel intro 2.2 s + up to 90 s |
+| ≈ 1 min 25 s – 2 min 45 s (gala, 2–4); ≈ 45 s – 1 min 25 s (card, 1–2) | *Entrée des lutteurs*, the ceremony, stands ~95–100% | 33 s |
+| + 33 s | the main bout | duel intro 2.2 s + up to 90 s |
 | | *Résultat* | 7 s |
 | | *Le public rentre* | 9 s |
 
 The first preliminary is on the sand 3 s after sitting down, and its bout starts at 8 s, well under the minute asked
-for. A gala with three preliminaries and a main bout to time-out lasts about 4 minutes from sitting down to the empty
-stands.
+for. A gala with three preliminaries and a main bout to time-out lasts about 4 min 30 s from sitting down to the empty
+stands. One voice at a time: the bill at the doors, then each preliminary's name and result (3.5 s apart from the
+next one's name), and the ceremony's announcer and griots only once the last preliminary's result has been said
+(the entrance starts 3.5 s after it, its first call 0.7 s in). A preliminary passed on the way to a friend's show
+says nothing, as the ceremony's missed lines.
 
 ## The people of fight night (Wave 3)
 
@@ -124,6 +128,42 @@ structure of the arena interior (`src/world/arenaModules.ts`: `interiorSpots`, `
   mesh each. This keeps the arena's own draw calls within the visit check's budget (desktop < 160 with the people;
   on w4 they measured seat +154 and entrance +208 before).
 
+## The entrance as a ceremony (Wave 3)
+
+`src/arena/ceremony.ts` (pure, `tests/ceremony.test.ts`) times and places it; `src/arena/entrance.ts` plays the
+wrestlers, the lines and the sound; the entourages and griots are `src/arena/people.ts`.
+
+| Seconds of the entrance | Left wrestler (Baobab on the fixed bill, +x) | Right wrestler (−x) |
+|---|---|---|
+| 0.5 – 6 | walks out of the tunnel to his bàkk spot in the ring; « 🎤 L’annonceur : À ma gauche, pour l’écurie Baobab, venu de Pikine… Babacar ! » (with his record when the roster knows it) | waits in the tunnel |
+| 6 – 11.5 | **his bàkk**: four beats (dance, arms up, to his stands then to the ring); the drums switch to the bàkk's rhythm; his stands shout; his boast, his griot's praise into the microphone, his people's chant | walks out (from 8 s); named by the announcer at 11.6 s |
+| 11.5 – 17 | to his corner (out through the boards' gap, round the drummers' deck), his people in file behind him; then he warms up there | |
+| 13.5 – 19 | | **his bàkk**, the same way |
+| 19 – 24.5 | | to his corner, his people behind him |
+| 27.5 – 32 | both jog to the ring; the bout starts at 33 s | |
+
+- **The words** are short and invented, French with everyday Wolof from the lexicon (`src/i18n/wolof.ts`: « Dama am
+  doole ! » (j’ai de la force), « Gaynde ! » (lion), « sama gox » (mon quartier), plus « géew », « mbër », « bàkk »,
+  « doole »): a wrestler boasts about himself — his strength, his écurie, his neighbourhood — never about his
+  opponent. The griot praises his strength, his écurie and his neighbourhood. Lines are picked by the evening (the
+  same evening says the same lines). The announcer and the griot speak through the arena's microphone: a
+  public-address chime (`paChime`, synthesised placeholder), then the line.
+- **The drums** change to a denser, faster placeholder pattern for each bàkk (`drumRhythm('bakk')` → the evening's
+  percussion in `src/arena/exteriorAudio.ts`), then go back; neither pattern transcribes a real sabar rhythm.
+- **Records**: the announcer reads a wrestler's season record through `setRecordSource`, which the career module
+  (`src/career/module.ts`) fills from the city's ladder (`src/career/roster.ts`); a wrestler it does not know is named
+  with his écurie and his neighbourhood only.
+- **The card** comes from `billFor(day)` (the career's ladder): each side's people wear their wrestler's écurie colour
+  (blue for an independent), and take his écurie's corner (`PREP_SIDE`); when both wrestlers are of one écurie, or
+  neither has one, the right one takes the other corner (`cornerSides`).
+- **The player fighting tonight** (`src/arena/bakk.ts`): on the fighter's 'walk-out' cue the announcer names them (with
+  their record from the career) and « Faire ton bàkk » is offered on the way to the ring — optional, two beats (a
+  dance and a boast, then the arms up), stoppable like any activity. The drums change rhythm, their people cheer and
+  the stands by their corner answer (« Les tribunes de ton côté répondent : « Gaynde ! » »).
+- **Respect**: no rite is staged — no bath, no amulet, no prayer — no sacred text is written, and nothing in the
+  ceremony is rewarded (no money, need or counter). The wrestlers wear no accessories.
+- A show joined further on (a friend's, `follow`) sets the drums right and skips the lines it missed.
+
 ## Code
 
 | File | Role |
@@ -134,6 +174,7 @@ structure of the arena interior (`src/world/arenaModules.ts`: `interiorSpots`, `
 | `src/arena/bout.ts` | `WatchedBout`: a `LambDuel` with `spectate: true`, driven by the autopilot. |
 | `src/arena/card.ts` | The gala card (title, phase, bill). |
 | `src/arena/people.ts` | `FightNightPeople`: every person inside the walls (officials, judges, announcer, referee, drummers, press, vendors, corner helpers, the entourages); layout, presence by moment and counts by quality are pure and tested in `tests/arenaPeople.test.ts`. |
+| `src/arena/ceremony.ts`, `src/arena/entrance.ts`, `src/arena/bakk.ts` | The entrance as a ceremony: timings, places and lines (pure, `tests/ceremony.test.ts`), the wrestlers and cues of a gala, the player's own bàkk. |
 | `src/arena/interior.ts`, `src/world/arenaModules.ts` | The interior's structure (stands, aisles, tunnel, deck, media zone, corners) and its debug view `arenaIn()`; tested in `tests/arenaInterior.test.ts`. |
 | `src/venues/cast.ts` | The venues' Cast and roles (moments, seats, walks, cheers; `place`, `attach`, `keep`). |
 | `src/lamb/duel.ts` | Presentation only: `spectate` option (no key listeners, no HUD) and `axes()`. Rules unchanged. |

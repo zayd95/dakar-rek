@@ -1,4 +1,4 @@
-import { audioBus, Percussion } from '../lamb/audio';
+import { audioBus, Percussion, type Rhythm } from '../lamb/audio';
 
 /**
  * The sound of a fight evening outside the arena: the drummers by the gate and a soft crowd murmur near the queue.
@@ -10,6 +10,11 @@ import { audioBus, Percussion } from '../lamb/audio';
  */
 let gestured = false;
 let listening = false;
+/** Whether the player has tapped, clicked or pressed a key yet (sound may only start after that). */
+export const hasGestured = () => gestured;
+let rhythm: Rhythm = 'gala';
+/** The evening's drums change rhythm for a wrestler's bàkk (src/arena/ceremony.ts), then go back ('gala'). */
+export function drumRhythm(r?: Rhythm): Rhythm { if (r) rhythm = r; return rhythm; }
 /** Watches for the first user gesture (once per page). */
 export function listenForGesture() {
   if (listening || typeof window === 'undefined') return;
@@ -31,6 +36,7 @@ export class ExteriorAudio {
     if (!gestured) return;
     if (!this.drums) this.start();
     if (!this.drums || !this.murmur) return;
+    if (this.drums.perc.rhythm !== rhythm) this.drums.perc.setRhythm(rhythm);
     const t = this.drums.gain.context.currentTime;
     this.drums.gain.gain.setTargetAtTime(drums * 0.8, t, 0.15);
     this.murmur.gain.gain.setTargetAtTime(murmur * 0.22, t, 0.3);
@@ -60,7 +66,7 @@ export class ExteriorAudio {
   /** For the checks: what is playing and how loud (the gains' targets). */
   info() {
     return {
-      gestured, playing: !!this.drums?.perc.playing, murmuring: !!this.murmur,
+      gestured, playing: !!this.drums?.perc.playing, murmuring: !!this.murmur, rhythm: this.drums?.perc.rhythm ?? rhythm,
       drums: this.drums ? this.level.drums : 0, murmur: this.murmur ? this.level.murmur : 0,
       context: this.drums?.gain.context.state ?? null,
     };

@@ -88,12 +88,21 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   p = await people();
   const nDr = touch ? 3 : 5, nEn = touch ? 1 : 2;
   check(`${label}: the entrance — the drummers' group plays with its dancer(s), the entourages walk out of the tunnel behind their wrestler`,
-    p.drummers === nDr && p.entourage.every(e => e.people.length === nEn) && p.entourage.some(e => e.started && e.people.some(x => x.walking)), p.entourage);
+    p.drummers === nDr && p.entourage.every(e => e.people.length === nEn && !!e.griot) && p.entourage.some(e => [...e.people, e.griot].some(x => x.walking)), p.entourage);
   const dcAll = await (async () => { await frame(); const all = await d(() => window.__dakar.drawCalls()); await d(() => window.__dakar.arena.visible(false)); await frame(); const none = await d(() => window.__dakar.drawCalls()); await d(() => window.__dakar.arena.visible(true)); await frame(); return { all, arena: all - none }; })();
   check(`${label}: draw calls of the whole frame stay within budget during the entrance (${dcAll.all}, arena and its people +${dcAll.arena})`, dcAll.all < (touch ? 300 : 600), dcAll);
   await shot('3-entrance-seat');
   await cam([C.x - 4, 3.2, C.z + 4], [C.x + 1, 1.2, C.z + 15]); await shot('3b-tunnel');
   await cam([C.x + 1.5, 3.2, C.z + 6], [C.x + 6.5, 1.0, C.z + 13]); await shot('4-drummers'); await d(() => window.__dakar.cam(null));
+
+  // 5b. The left wrestler's bàkk (src/arena/ceremony.ts): on the sand, his people round him, his griot with the
+  // microphone, the drums in the bàkk's rhythm, the announcer and the lines said so far
+  await until(() => { const i = window.__dakar.arena.info(); return i.phase === 'entrance' && i.t > 8.6; });
+  const cer = (await info()).ceremony; p = await people();
+  const lw = cer?.wrestlers.find(w => w.who === 'left'), lp = p.entourage.find(e => e.who === 'left');
+  check(`${label}: the bàkk — the left wrestler dances on the sand, his people round him and his griot, the drums in the bàkk's rhythm`,
+    lw?.part === 'bakk' && cer.rhythm === 'bakk' && cer.cues >= 4 && [...lp.people, lp.griot].every(x => x && x.shown && !x.walking && Math.hypot(x.x - lw.x, x.z - lw.z) < 2.4), { cer, left: lp });
+  if (lw) { await cam([lw.x - 3.5, 2.4, lw.z - 5], [lw.x, 1.1, lw.z]); await shot('4b-bakk'); await d(() => window.__dakar.cam(null)); }
 
   // 6. The bout: the entourages in their corners, our referee gives way to the duel's own
   await d(() => window.__dakar.arena.speed(3));
@@ -114,10 +123,10 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const r1 = await info();
   if (r1.phase === 'result') {
     p = r1.people;
-    const winners = p.won ? p.entourage.find(e => e.ecurie === p.won) : null;
+    const winners = p.won ? p.entourage.find(e => e.who === p.won) : null;
     if (winners) {
-      await until(w => window.__dakar.arena.info().phase !== 'result' || window.__dakar.arena.info().people.entourage.find(e => e.ecurie === w).people.every(x => !x.walking), p.won, 240000);
-      const now = await info(), win = now.people.entourage.find(e => e.ecurie === p.won);
+      await until(w => window.__dakar.arena.info().phase !== 'result' || window.__dakar.arena.info().people.entourage.find(e => e.who === w).people.every(x => !x.walking), p.won, 240000);
+      const now = await info(), win = now.people.entourage.find(e => e.who === p.won);
       const near = win.people.every(x => Math.hypot(x.x - C.x, x.z - C.z) < 4.5);
       check(`${label}: the result — the winner's people run onto the sand to celebrate`, now.phase !== 'result' || (near && win.people.every(x => x.clip === 'Celebrate')), win.people);
       if (now.phase === 'result') { await cam([C.x - 5, 3.5, C.z - 6], [C.x, 1.0, C.z]); await shot('6-result'); await d(() => window.__dakar.cam(null)); }
@@ -143,12 +152,24 @@ for (const [label, viewport, touch, quality] of VIEWS) {
       await until(() => window.__dakar.fighter().phase === 'tunnel', null, 30000);
       await d(c => window.__dakar.place(c.x, c.z + 0.05, Math.PI), cor);
       await until(() => window.__dakar.fighter().phase === 'prep', null, 30000);
-      await until(e => window.__dakar.arena.info().people.entourage.find(x => x.ecurie === e).people.every(x => x.shown), f0.bout.ecurie, 20000);
+      await until(() => { const q = window.__dakar.arena.info().people; return !!q.fighter && q.entourage.find(x => x.who === q.fighter).people.every(x => x.shown); }, null, 20000);
       p = await people();
-      const mine = p.entourage.find(e => e.ecurie === f0.bout.ecurie), other = p.entourage.find(e => e.ecurie !== f0.bout.ecurie);
-      check(`${label}: fighting tonight — in the corner, the écurie's people gather round the player and turn to them; the other écurie's stay away`,
-        p.fighter === f0.bout.ecurie && mine.people.every(x => x.shown && Math.hypot(x.x - cor.x, x.z - cor.z) < 1.5) && p.camp >= 1 && other.people.every(x => !x.shown), { fighter: p.fighter, corner: cor, mine: mine.people });
+      const mine = p.entourage.find(e => e.who === p.fighter), other = p.entourage.find(e => e.who !== p.fighter);
+      check(`${label}: fighting tonight — in the corner, the écurie's people gather round the player and turn to them; the other side's stay away`,
+        p.fighterEcurie === f0.bout.ecurie && !!mine && mine.people.every(x => x.shown && Math.hypot(x.x - cor.x, x.z - cor.z) < 1.5) && p.camp >= 1 && other.people.every(x => !x.shown), { fighter: p.fighter, corner: cor, mine: mine?.people });
       await cam([cor.x - Math.sign(cor.x - C.x) * 3.2, 2.6, cor.z - 3.4], [cor.x, 1.0, cor.z]); await shot('7-fighter-corner'); await d(() => window.__dakar.cam(null));
+      // on cue, out of the corner towards the ring: « Faire ton bàkk » is offered (optional); the drums change, then go back
+      await until(() => window.__dakar.fighter().phase === 'ring', null, 60000);
+      const offered = await until(() => window.__dakar.bakk?.().offer && window.__dakar.focus()?.primary === 'Faire ton bàkk', null, 20000);
+      check(`${label}: on the way to the ring, « Faire ton bàkk » is offered`, offered, await d(() => ({ bakk: window.__dakar.bakk?.(), focus: window.__dakar.focus() })));
+      if (offered) {
+        await d(() => window.__dakar.act());
+        const went = await until(() => window.__dakar.bakk().running && window.__dakar.bakk().rhythm === 'bakk', null, 15000);
+        await shot('8-player-bakk');
+        const over = await until(() => window.__dakar.bakk().done && !window.__dakar.bakk().running, null, 60000);
+        const b = await d(() => window.__dakar.bakk());
+        check(`${label}: the player's bàkk — a dance and a boast, their people cheer, then the drums go back`, went && over && b.rhythm === 'gala', b);
+      }
       await d(() => window.__dakar.fighterCancel());
       await until(() => !window.__dakar.arena.info().people.fighter, null, 20000);
       p = await people();

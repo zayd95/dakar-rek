@@ -244,7 +244,7 @@ export const ARENA = {
       ? 'Temps ! Match nul : l’arbitre ne départage pas les deux lutteurs.'
       : `${winner} l’emporte ${how === 'projection' ? 'par projection' : 'à la décision de l’arbitre'} ! · Le public : ${utter(['Daan na !'])}`,
   /** The announcer names a preliminary bout (src/arena/undercard.ts): « Préliminaires 1/3 : Modou (Thiaroye) contre … ». */
-  prelim: (k: number, n: number, left: string, right: string) => `Préliminaires ${k}/${n} : ${left} contre ${right}.`,
+  prelim: (k: number, n: number, left: string, right: string) => `🎤 L’annonceur : Préliminaires ${k}/${n}, ${left} contre ${right} !`,
   /** A preliminary's result, short. */
   prelimResult: (winner: string | null, how: 'projection' | 'decision' | 'egalite' | 'abandon') =>
     winner === null || how === 'egalite' || how === 'abandon' ? 'Préliminaires : match nul.' : `Préliminaires : ${winner} l’emporte ${how === 'projection' ? 'par chute' : 'aux points'}.`,

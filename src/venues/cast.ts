@@ -127,6 +127,8 @@ export class Cast {
    * people in the background (they become cheap figures sooner).
    */
   setLodPrio(id: string, prio: number) { const e = this.list.find(x => x.r.id === id); if (e) e.h.group.userData.lodPrio = prio; }
+  /** Dress a role differently (an entourage in tonight's écurie colour). */
+  setLook(id: string, look: PersonLook) { const e = this.list.find(x => x.r.id === id); if (e) { e.r.look = look; e.h.setLook(look); } }
   /** Change what a standing role is doing (the stylist works while a client sits). */
   setClip(id: string, clip: Clip) { const e = this.list.find(x => x.r.id === id); if (e && !e.r.seat) e.h.hold = clip; }
   /** A standing role plays `clip` for `seconds`, then goes back to its own (the crowd cheers a good dancer). */
