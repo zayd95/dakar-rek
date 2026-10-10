@@ -174,7 +174,7 @@ export class AmbientLife implements GameModule {
     const old = this.spotById;
     // the shops stocked by the shop kit (src/world/city.ts): their door, displays, counter queue and furniture
     const shops: ShopInfo[] = [];
-    w.group.traverse(o => { const u = o.userData.shop; if (u) shops.push({ key: u.key, type: u.type, anchors: u.anchors, bounds: u.bounds, colliders: (o.userData.shopColliders as Collider[] | undefined) ?? [] }); });
+    w.group.traverse(o => { const u = o.userData.shop; if (u) shops.push({ key: u.key, type: u.type, anchors: u.anchors, bounds: u.bounds, colliders: (o.userData.shopColliders as Collider[] | undefined) ?? [], room: !!u.room }); });
     this.spots = buildSpots({ places: ctx.places.all(), seats: ctx.seats.all(), interactables: w.interactables, layout: hubLayout(w.id), colliders: w.colliders, people, arena: w.arena, doors, lite: ctx.quality() === 'low', shops });
     this.spotById = new Map(this.spots.map(s => [s.id, s]));
     for (const a of this.actors) if (a.state !== 'off' && a.spot && this.spotById.get(a.spot.id) !== a.spot) {

@@ -248,7 +248,7 @@ try {
         check(`${label}: « Entrer » leads into Le Pointe`, inside);
         if (inside) {
           await d(page, () => window.__dakar.ambientRun(60));
-          const diners = (await d(page, () => window.__dakar.ambientShops())).find(x => x.id.includes(room.door));
+          const all = await d(page, () => window.__dakar.ambientShops()), diners = all.find(x => x.id === `interior:${room.door}`) ?? all.find(x => x.id.includes(room.door));
           check(`${label}: people sit at Le Pointe's tables (then pay at the cash desk)`, !!diners && (diners.now.do ?? 0) + (diners.now.in ?? 0) + (diners.now.line ?? 0) + (diners.now.pay ?? 0) >= 1, JSON.stringify(diners));
           await page.waitForTimeout(600);
           await shot(page, `${label}-restaurant-inside`);

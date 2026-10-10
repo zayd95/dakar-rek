@@ -62,4 +62,27 @@ describe('walking inside a stocked shop (src/world/shopFlow.ts)', () => {
     expect(b.seats.length).toBe(bank.seats.length);                                   // the waiting chairs, then the guichet
     expect(b.shop!.checkout.length).toBeGreaterThanOrEqual(4);
   });
+
+  it('a walk-in room (Le Pointe) is the spot of its seats, in its own space; its street door keeps the terrace', () => {
+    const door = { id: 'almadies:restaurant:01', x: -64, z: -95 };
+    const room = buildShopInterior('restaurant', SIZE.restaurant, 3, { shell: true, at: { x: 3400, z: 0, y: 0.1 }, id: `${door.id}:salle`, space: door.id });
+    const terrace = [0, 1].map(n => ({ id: `${door.id}:amb:bench${n}r`, x: door.x - 4 + 4 * n, z: door.z + 1.2, top: 0.57, yaw: 0, kind: 'bench' as const, space: 'street', occupant: null }));
+    const spots = buildSpots({ interactables: [door], layout: { specials: [], sea: null }, colliders: room.colliders, people: [], arena: null, places: [], seats: [...room.seats, ...terrace],
+      shops: [{ key: door.id, type: 'restaurant', anchors: room.anchors, bounds: room.bounds, colliders: room.colliders, room: true }] });
+    const mine = spots.filter(x => x.id.includes(door.id));
+    // one shop spot only: inside, with every chair of the dining room (people sit, then pay at the cash desk)
+    expect(mine.filter(x => x.shop).map(x => x.id)).toEqual([`interior:${door.id}`]);
+    const inside = mine.find(x => x.shop)!;
+    expect(inside.space).toBe(door.id);
+    expect(inside.tags).toContain('eat');
+    expect(room.seats.length).toBeGreaterThanOrEqual(8);
+    expect(inside.seats.length).toBe(room.seats.length);
+    expect(inside.shop!.checkout.length).toBeGreaterThanOrEqual(2);
+    expect(inside.shop!.checkout[0]).toEqual(room.anchors.counter);
+    // the terrace out front: a street spot of the restaurant's door with its benches, no shop route off the map
+    const out = mine.find(x => x.id === `legacy:${door.id}`)!;
+    expect(out.space).toBe('street');
+    expect(out.shop).toBeUndefined();
+    expect(out.seats).toEqual(terrace.map(t => t.id));
+  });
 });
