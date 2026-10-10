@@ -102,7 +102,7 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
   const stands = (list: StandSlot[]) => list.filter(s => okStand(s));
   const claim = (pred: (s: SeatLike) => boolean) => {
     const ids: string[] = [];
-    for (const s of inp.seats) if (!taken.has(s.id) && s.kind !== 'vehicle' && pred(s)) { taken.add(s.id); ids.push(s.id); }
+    for (const s of inp.seats) if (!taken.has(s.id) && s.kind !== 'vehicle' && s.kind !== 'stand' && pred(s)) { taken.add(s.id); ids.push(s.id); }
     return ids;
   };
   const push = (s: Omit<AmbientSpot, 'stands' | 'seats'> & { stands?: StandSlot[]; seats?: string[] }) => {
@@ -251,7 +251,8 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
   // 4. remaining seats: each bench is a place to sit; each interior with chairs is one spot
   const byGroup = new Map<string, SeatLike[]>();
   for (const s of inp.seats) {
-    if (taken.has(s.id) || s.kind === 'vehicle' || s.kind === 'bed' || s.space === 'home') continue;
+    // the arena's tiers are filled by its own crowd (src/arena) on gala evenings, never by passers-by
+    if (taken.has(s.id) || s.kind === 'vehicle' || s.kind === 'bed' || s.kind === 'stand' || s.space === 'home') continue;
     const key = s.space === 'street' ? s.id.replace(/:[^:]*$/, '') : s.space;
     const list = byGroup.get(key) ?? []; list.push(s); byGroup.set(key, list);
   }
