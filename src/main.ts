@@ -1147,6 +1147,8 @@ if (DEBUG) {
     },
     duel() { startDuel('amical', 'costaud'); },
     duelStart(m: BoutMode = 'amical', style?: StyleId, discipline: Discipline = 'sans_frappe', name?: string) { startDuel(m, style, undefined, discipline, name); },
+    /** Checks: answer each call of the drill being played right, as it opens (see LambDuel.debugDrillAnswer). */
+    duelDrillAnswer(on = true) { if (lambScene instanceof LambDuel) lambScene.debugDrillAnswer(on); },
     /** Checks: start an écurie drill by its action id (drill_frappe, drill_saisies, drill_force) — played with ?lamb2. */
     drillStart(actionId: string) {
       const it = world?.interactables.find(i => i.actions.some(a => a.id === actionId)), a = it?.actions.find(x => x.id === actionId);
