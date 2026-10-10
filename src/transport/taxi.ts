@@ -19,7 +19,7 @@ import type { SeatSpec, VehicleSpec } from './spec';
 
 /**
  * Taxis between neighbourhoods — a trip to another hub shown as a ride, not a menu and a fade. Each hub has a taxi rank
- * at a kerb (Pikine: beside the arena, for the fight evenings; Almadies: at Ngor, by La Vague; elsewhere near where
+ * at a kerb (Pikine: across the road from the arena's west side, for the fight evenings; Almadies: at Ngor, by La Vague; elsewhere near where
  * people arrive). « Prendre un taxi » lists the other neighbourhoods with the fare (shown before paying, paid once to the
  * driver); the player sits in front, the taxi pulls out and drives through the streets to the edge of the neighbourhood,
  * a short fade, then it comes into the other one from the side that faces where it came from and stops at that hub's
@@ -29,11 +29,11 @@ import type { SeatSpec, VehicleSpec } from './spec';
  * or a lost connection mid-ride finishes it at the destination's rank — never charged twice, never left in a car.
  */
 const RANK_REF: Partial<Record<HubId, { x: number; z: number; name: string }>> = {
-  pikine: { x: 6, z: -40, name: 'Arène de Pikine' },
+  pikine: { x: -6, z: -45, name: 'Arène de Pikine' },
   almadies: { x: -36, z: -138, name: 'La Vague · Ngor' },
 };
-/** Where a taxi stops to let a passenger out: this far behind the waiting taxi of the rank (m). */
-const DROP_BEHIND = 14;
+/** Where a taxi stops to let a passenger out: this far past the waiting taxi of the rank (m); it pulls in after passing it. */
+const DROP_AHEAD = 12, PULL_BEFORE = 8;
 const CRUISE = 11, ACCEL = 2.2, DECEL = 2.6, LATERAL = 2.4;
 const COUNTER_TO = 'taxi:to', COUNTER_FARE = 'taxi:fare';
 
@@ -178,7 +178,7 @@ export class TaxiModule implements GameModule {
     const { spot, name } = this.rankSpot(hub);
     const f = { x: Math.sin(spot.yaw), z: Math.cos(spot.yaw) }, rx = -Math.cos(spot.yaw), rz = Math.sin(spot.yaw);
     // no parked cars where the taxis wait and where they let people out
-    clearKerb(ctx.extra, hub.colliders, [{ x: spot.x, z: spot.z, dx: f.x, dz: f.z, rx, rz, offset: 4.3, from: -DROP_BEHIND - 10, to: 8 }]);
+    clearKerb(ctx.extra, hub.colliders, [{ x: spot.x, z: spot.z, dx: f.x, dz: f.z, rx, rz, offset: 4.3, from: -8, to: DROP_AHEAD + 8 }]);
     const sign = new THREE.Group(); sign.name = 'taxi:rank';
     const tex = signTexture();
     const px = spot.x + rx * 2.4 + f.x * 3, pz = spot.z + rz * 2.4 + f.z * 3;              // on the pavement, ahead of the taxi
@@ -244,6 +244,7 @@ export class TaxiModule implements GameModule {
           this.paid++;
           const c = ctx.state.data.counters; c[COUNTER_TO] = HUB_IDS.indexOf(dest) + 1; c[COUNTER_FARE] = fare;   // a trip owed until the player is out
           this.pendingPay = { dest, fare };
+          ctx.save();                                                        // the fare and the trip owed, saved together
         } }],
     };
     ctx.activities.start(spec, { place: this.rank.name });
@@ -276,7 +277,7 @@ export class TaxiModule implements GameModule {
   /** Into the destination from the side that faces where the taxi came from, to the rank's kerb. */
   private arriveIn(hub: HubWorld, r: Ride) {
     const rk = this.rank!, f = { x: Math.sin(rk.spot.yaw), z: Math.cos(rk.spot.yaw) };
-    const drop: Spot = { x: rk.spot.x - f.x * DROP_BEHIND, z: rk.spot.z - f.z * DROP_BEHIND, yaw: rk.spot.yaw };
+    const drop: Spot = { x: rk.spot.x + f.x * DROP_AHEAD, z: rk.spot.z + f.z * DROP_AHEAD, yaw: rk.spot.yaw };
     const nodes = routeIn(drop, entrySide(r.from, hub.id));
     const lane = openLanePath(nodes, 2.0, 9);
     const path = new Path(lane);
@@ -315,7 +316,7 @@ export class TaxiModule implements GameModule {
 
   private place(r: Ride, dt: number, accel = 0) {
     r.path.sample(r.s, r.pose);
-    const off = r.phase === 'arrive' || r.phase === 'leave' ? pullIn(r.path, [r.drop], r.s, 2.3) : 0;
+    const off = r.phase === 'arrive' || r.phase === 'leave' ? pullIn(r.path, [r.drop], r.s, 2.3, PULL_BEFORE, 12) : 0;
     const rx = -Math.cos(r.pose.yaw), rz = Math.sin(r.pose.yaw);
     r.v.place(r.pose.x + rx * off, r.pose.z + rz * off, r.pose.yaw, r.speed, accel, r.s, dt);
     r.v.animate(r.speed, 0, dt);
@@ -359,7 +360,7 @@ export class TaxiModule implements GameModule {
   /** A trip in the save (reload mid-ride): straight to the destination's rank, without a second fare. */
   private finishOwed(dest: HubId) {
     const hub = this.hub; if (!hub) return;
-    if (hub.id === dest) { const p = this.pavement(this.rank!.spot, -DROP_BEHIND); this.ctx.player.standUp(true); this.ctx.player.place(p.x, p.z, p.yaw); this.clearOwed(); this.ctx.toast(`Te voilà : ${this.destName(dest)}`); this.ctx.save(); return; }
+    if (hub.id === dest) { const p = this.pavement(this.rank!.spot, DROP_AHEAD); this.ctx.player.standUp(true); this.ctx.player.place(p.x, p.z, p.yaw); this.clearOwed(); this.ctx.toast(`Te voilà : ${this.destName(dest)}`); this.ctx.save(); return; }
     this.ctx.travel(dest, this.dropPavement(dest), `🚕 ${this.destName(dest)}`);
   }
   private owed(): HubId | null { const n = this.ctx?.state.data.counters[COUNTER_TO]; return n ? HUB_IDS[n - 1] ?? null : null; }
@@ -375,7 +376,7 @@ export class TaxiModule implements GameModule {
     const ref = RANK_REF[dest];
     if (!ref) return undefined;
     const s = kerbSpot(ref.x, ref.z);
-    return this.pavement(s, -DROP_BEHIND);
+    return this.pavement(s, DROP_AHEAD);
   }
 
   private refreshCard() {
