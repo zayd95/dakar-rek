@@ -98,6 +98,11 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   check('menu: with ?lamb2 the friendly bouts include « avec frappe » against each style', ['Gora', 'Pape', 'Saliou'].every(n => items.some(t => t.includes(`Avec frappe · ${n}`))) && items.some(t => /Gora · Costaud · niveau/.test(t)), items.join(' | '));
   await shot(page, 'desktop-menu');
   await page.evaluate(() => [...document.querySelectorAll('#modal .item')].find(b => /Avec frappe · Gora/.test(b.textContent))?.click());
+  // the opponent as himself: who he is, in one line, before the bout (intro) and in the header
+  await wait(page, () => /Face à toi/.test(document.querySelector('.duel-msg')?.textContent ?? ''), null, 30000);
+  const intro = await page.evaluate(() => ({ msg: document.querySelector('.duel-msg')?.textContent ?? '', head: document.querySelector('.duel-head small')?.textContent ?? '', id: window.__dakar.duelInfo()?.identity }));
+  await shot(page, 'desktop-intro-identity');
+  check('the opponent is the roster’s Gora: « Face à toi : Gora, costaud indépendant, V-D » before the bout, and in the header', /^Gora, costaud indépendant, \d+-\d+/.test(intro.id ?? '') && intro.msg.includes(intro.id) && intro.head.includes(intro.id), intro);
   await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight');
   const i0 = await info(page);
   const hud = await page.evaluate(() => ({
@@ -239,7 +244,7 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   await page.waitForTimeout(400);
   const recap = await page.evaluate(() => document.querySelector('.duel-recap')?.textContent ?? '');
   await shot(page, 'desktop-recap');
-  check('recap: strikes landed and staggers, lutte avec frappe', /Frappes touchées/.test(recap) && /Adversaire vacille/.test(recap) && /Lutte avec frappe/.test(recap), recap.slice(0, 160));
+  check('recap: strikes landed and staggers, lutte avec frappe, and who he was', /Frappes touchées/.test(recap) && /Adversaire vacille/.test(recap) && /Lutte avec frappe/.test(recap) && /Gora, costaud indépendant, \d+-\d+/.test(recap), recap.slice(0, 200));
   const c0 = await page.evaluate(() => ({ ...window.__dakar.state.data.counters }));
   await page.evaluate(() => window.__dakar.duelFinish());
   await wait(page, () => window.__dakar.duelInfo() === null, null, 30000);

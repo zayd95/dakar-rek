@@ -63,6 +63,11 @@ export interface DuelOptions {
   discipline?: Discipline;
   /** The player's attributes (avec frappe); average when not given. */
   attrs?: Attributes;
+  /**
+   * Avec frappe: the opponent as himself (a wrestler of the city's roster, src/lamb/opponents.ts): his attributes, how
+   * he fights standing and in the empoignade, and the line that says who he is (intro, header, recap).
+   */
+  opponent?: { attrs: Attributes; stand: StandStyle; clinch: ClinchStyle; line: string };
 }
 export interface DuelResult {
   mode: BoutMode; outcome: BoutOutcome; winner: Side | null; seconds: number;
@@ -145,6 +150,8 @@ export class LambDuel {
   /** Guard held on the previous frame (in the empoignade, pressing Garde is « Tirer »), and a move queued by a hook. */
   private guardWas = false;
   private moveQueued: ClinchMove | null = null;
+  /** Avec frappe: who the opponent is, in one line (« Gora, costaud indépendant, 7-2 »). */
+  identity: string | null = null;
   /** A throw being attempted in the empoignade (step 5): who, since when, and the other's counter (when it comes). */
   private attempt: { by: Fighter; t: number; counter: boolean; counterAt: number } | null = null;
   /** Last throw attempt and how it ended (for the checks). */
@@ -175,6 +182,8 @@ export class LambDuel {
     this.discipline = opts.discipline ?? 'sans_frappe'; this.frappe = this.discipline === 'avec_frappe';
     this.standStyle = this.mode === 'entrainement' ? STAND_STYLES.partenaire : STAND_STYLES[this.style.id];
     this.clinchStyle = this.mode === 'entrainement' ? CLINCH_STYLES.partenaire : CLINCH_STYLES[this.style.id];
+    const who = this.frappe && this.mode !== 'entrainement' ? opts.opponent : undefined;
+    if (who) { this.standStyle = who.stand; this.clinchStyle = who.clinch; this.identity = who.line; }
     this.factor = opts.mode === 'entrainement' ? 1 : levelFactor(opts.level);
     this.timeLeft = opts.mode === 'entrainement' ? Infinity : R.roundSeconds;
     this.ring = opts.ring ?? 7.6;
@@ -187,7 +196,7 @@ export class LambDuel {
     // the camera stays on the -z side (gate side in the arena, open side at the écurie): screen right is world -x,
     // so the player starts at +x and is seen on the left, the opponent on the right
     this.me = mk(0x6b3f25, look, 3, R.stamina.max, R.stamina.regen, opts.attrs ?? AVERAGE);
-    this.ai = mk(0x3b2216, { ngembColor: this.style.ngemb, ngembPattern: this.mode === 'entrainement' ? 'bordure' : 'uni', accessories: [] }, -3, this.style.staminaMax, this.style.staminaRegen, this.standStyle.attrs);
+    this.ai = mk(0x3b2216, { ngembColor: this.style.ngemb, ngembPattern: this.mode === 'entrainement' ? 'bordure' : 'uni', accessories: [] }, -3, this.style.staminaMax, this.style.staminaRegen, who?.attrs ?? this.standStyle.attrs);
     if (wrestlerReady()) {
       // referee (arena) or Coach Ablaye (écurie) watching from the far side of the ring
       const coach = castById('ablaye');
@@ -217,7 +226,7 @@ export class LambDuel {
   private buildUi(): HTMLDivElement {
     const d = document.createElement('div'); d.className = this.frappe ? 'duel-ui frappe' : 'duel-ui';
     const title = { entrainement: 'Entraînement · Coach Ablaye', amical: 'Combat amical', classe: 'Combat classé' }[this.mode];
-    const sub = this.mode === 'entrainement' ? 'Partenaire : Babacar · non classé' : `${this.style.name} · ${this.style.label} · niveau ${this.level}`;
+    const sub = this.mode === 'entrainement' ? 'Partenaire : Babacar · non classé' : this.identity ? `${this.identity} · niveau ${this.level}` : `${this.style.name} · ${this.style.label} · niveau ${this.level}`;
     const keys = document.body.classList.contains('touch') ? '' : this.frappe
       ? ' · J frappe · K grosse frappe · E/Espace saisir · G/Maj garde · X reculer/dégager · Échap abandonner'
       : ' · E/Espace saisir · G/Maj garde · X dégager · Échap abandonner';
@@ -425,7 +434,7 @@ export class LambDuel {
     const r = this.result!;
     const title = r.outcome === 'abandon' ? 'Abandon' : r.outcome === 'entrainement' ? 'Entraînement terminé' : r.winner === 'player' ? 'Victoire' : r.winner === 'opponent' ? 'Défaite' : 'Match nul';
     const mode = { entrainement: 'Entraînement (non classé)', amical: 'Combat amical (non classé)', classe: 'Combat classé' }[r.mode];
-    const opp = r.mode === 'entrainement' ? 'Babacar (partenaire)' : `${this.style.name} · ${this.style.label} · niveau ${this.level}`;
+    const opp = r.mode === 'entrainement' ? 'Babacar (partenaire)' : this.identity ?? `${this.style.name} · ${this.style.label} · niveau ${this.level}`;
     const row = (l: string, a: number | string, b: number | string) => `<tr><td>${l}</td><td>${a}</td><td>${b}</td></tr>`;
     const box = this.q('recap');
     box.innerHTML = `<div><h2></h2><p data-r="how"></p>
@@ -491,7 +500,7 @@ export class LambDuel {
         arm: this.phaseT > 1.8,
       } } : {}),
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
-      discipline: this.discipline,
+      discipline: this.discipline, identity: this.identity,
       ...(this.frappe ? {
         balance: { player: Math.round(this.me.balance), opponent: Math.round(this.ai.balance) },
         composure: { player: Math.round(this.me.composure), opponent: Math.round(this.ai.composure) },
@@ -576,9 +585,11 @@ export class LambDuel {
 
     if (this.phase === 'intro') {
       // referee check, kept to plain words (no invented ritual wording)
-      this.msg(this.phaseT < 1.4 ? (this.mode === 'entrainement' ? 'Coach Ablaye : prêts ?' : 'Arbitre : prêts ?') : 'Làmb !');
+      // avec frappe, the opponent is introduced first: who he is, in one line
+      const lead = this.identity ? 1.3 : 0;
+      this.msg(this.phaseT < lead ? `Face à toi : ${this.identity}` : this.phaseT < lead + 1.4 ? (this.mode === 'entrainement' ? 'Coach Ablaye : prêts ?' : 'Arbitre : prêts ?') : 'Làmb !');
       me.clip = ai.clip = 'Prep';
-      if (this.phaseT > 2.2) { this.phase = 'fight'; this.phaseT = 0; this.msg(''); }
+      if (this.phaseT > lead + 2.2) { this.phase = 'fight'; this.phaseT = 0; this.msg(''); }
     } else if (this.phase === 'fight' && this.frappe) {
       this.fightFrappe(dt, taps, breaks, quick, big);
     } else if (this.phase === 'fight') {

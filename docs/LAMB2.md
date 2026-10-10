@@ -154,10 +154,21 @@ lève le bras du vainqueur aux points. Les **tribunes de la soirée** réagissen
 fête pendant que l'autre côté et les virages se lèvent, mains sur la tête ; au résultat, le plan de résultat des
 tribunes.
 
+## Les lutteurs de la ville sont eux-mêmes
+
+Avec frappe, l'adversaire est **un lutteur du classement de la ville** (`src/career/roster.ts`, données de la lane
+carrière, lues seulement) : le combat classé désigné par la carrière, ou Gora, Pape et Saliou au combat amical. Une
+seule table (`src/lamb/opponents.ts`, testée) relie son style à sa façon de lutter — debout (comment il lit les frappes
+et y répond) et dans l'empoignade (ses mouvements préférés, son goût pour la projection) — et son **niveau** décale ses
+attributs (±6 par niveau autour de 3), toujours dans la règle des ±20 %. Il est présenté en une ligne avant le combat,
+dans l'en-tête et dans le bilan : « Face à toi : Gora, costaud indépendant, 7-2 » (bilan de la saison sur le classement
+de la ville). Sans `?lamb2`, rien ne change.
+
 ## Code et vérifications
 
 - `src/lamb/stand.ts` — règles pures du combat debout (testées : `tests/lamb2.test.ts`).
 - `src/lamb/duel.ts` — `discipline: 'avec_frappe'` branche le combat debout ; `'sans_frappe'` (par défaut) est inchangé.
 - `src/lamb/clinch.ts` — entrée et empoignade (pures, testées dans `tests/lamb2.test.ts`).
+- `src/lamb/opponents.ts` — les lutteurs du classement en adversaires avec frappe (table style → IA, niveau → attributs).
 - `src/lamb/strikeRig.ts` — poses de frappe et d'empoignade sur le squelette.
 - `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/`.

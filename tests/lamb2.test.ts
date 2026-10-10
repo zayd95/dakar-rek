@@ -4,6 +4,8 @@ import {
   type StandState,
 } from '../src/lamb/stand';
 import { RULES, points, emptyScore, record, recordIncrements } from '../src/lamb/rules';
+import { LEVEL_STEP, STYLE_MAP, identityLine, rosterAttributes, rosterOpponent, rosterOpponents } from '../src/lamb/opponents';
+import { ROSTER } from '../src/career/roster';
 import {
   CLINCH, CLINCH_STYLES, ENTRY_BONUS, MOVES, THROW, answer, clinchDecide, clinchPower, counterScore, counterThrow, entryGrip, exchange, gripWords, holdTick, holder,
   moveWindup, posture, slipRate, startMove, throwLands, throwScore, tryBreak, wantsCounter, wantsThrow,
@@ -341,5 +343,37 @@ describe('làmb 2.0 · the throw attempt and the counter (step 5)', () => {
     expect(wantsCounter(h(), CLINCH_STYLES.defensif, 1, 100, 0.2)).toBe(true);
     expect(wantsCounter(h(100, AVERAGE, 2), CLINCH_STYLES.defensif, 1, 100, 0)).toBe(false);
     expect(THROW.windup).toBeGreaterThan(0.4);                                 // long enough to be seen and countered
+  });
+});
+
+describe('làmb 2.0 · the city’s wrestlers fight as themselves', () => {
+  it('one table maps every roster style to its way of fighting, standing and in the empoignade', () => {
+    for (const w of ROSTER) {
+      const m = STYLE_MAP[w.style];
+      expect(m).toBeTruthy();
+      expect(m.stand).toBe(STAND_STYLES[w.style]); expect(m.clinch).toBe(CLINCH_STYLES[w.style]);
+    }
+  });
+  it('the level shifts the attributes, higher level higher numbers, always within the ±20 % rule', () => {
+    const sum = (a: object) => (Object.values(a) as number[]).reduce((x, y) => x + y, 0);
+    for (const style of ['costaud', 'rapide', 'defensif'] as const) {
+      const lo = rosterAttributes({ style, level: 1 }), hi = rosterAttributes({ style, level: 5 });
+      expect(sum(hi)).toBeGreaterThan(sum(lo));
+      for (const v of [...Object.values(lo), ...Object.values(hi)]) { expect(v).toBeGreaterThanOrEqual(5); expect(v).toBeLessThanOrEqual(95); expect(k(v)).toBeGreaterThanOrEqual(0.8); expect(k(v)).toBeLessThanOrEqual(1.2); }
+      expect(Math.abs(hi.force - lo.force)).toBeLessThanOrEqual(4 * LEVEL_STEP);
+    }
+    expect(rosterAttributes({ style: 'costaud', level: 3 })).toEqual(STAND_STYLES.costaud.attrs);
+  });
+  it('says who he is in one line: name, style, écurie or independent, season record', () => {
+    expect(identityLine({ name: 'Gora', style: 'costaud', ecurie: null }, { v: 7, d: 2, n: 0 })).toBe('Gora, costaud indépendant, 7-2');
+    expect(identityLine({ name: 'Daouda', style: 'costaud', ecurie: 'Teranga' }, { v: 4, d: 3, n: 1 })).toBe('Daouda, costaud de l’écurie Teranga, 4-3-1');
+    expect(identityLine({ name: 'Saliou', style: 'defensif', ecurie: null })).toBe('Saliou, défensif indépendant');
+  });
+  it('a roster name gives the full opponent (attributes, AI, level, record from the city’s ladder); others give nothing', () => {
+    const o = rosterOpponent('Gora', 40)!;
+    expect(o.wrestler.id).toBe('gora'); expect(o.level).toBe(2); expect(o.stand).toBe(STAND_STYLES.costaud);
+    expect(o.record).not.toBeNull(); expect(o.line).toMatch(/^Gora, costaud indépendant, \d+-\d+/);
+    expect(rosterOpponent('Nobody', 40)).toBeNull();
+    expect(rosterOpponents(40)).toHaveLength(ROSTER.length);
   });
 });
