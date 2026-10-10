@@ -57,6 +57,11 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   check(`${label}: Pikine main street at 18:45 — people walking, waiting at the stops, chatting in groups`,
     (p1.roles.walk ?? 0) >= p1.target.walkers * 0.6 && p1.target.walkers >= (quality === 'low' ? 10 : 30) && waiting1 >= 4 && p1.groups >= 1,
     { target: p1.target, roles: p1.roles, waiting: waiting1, groups: p1.groups, lod: { near: p1.crowd.near, mid: p1.crowd.mid, far: p1.crowd.far } });
+  // a fight evening (every evening at Pikine from 16 h): Ligne 23's day stops are parked, its evening route 23s serves
+  const parked = p1.stops.filter(s => !s.served), servedStops = p1.stops.filter(s => s.served);
+  check(`${label}: only the stops served now hold people (the evening route 23s, not the parked day route)`,
+    servedStops.length > 0 && servedStops.every(s => s.key.startsWith('23s:')) && parked.every(s => s.waiting === 0),
+    { served: servedStops.map(s => `${s.key}:${s.waiting}`), parked: parked.map(s => `${s.key}:${s.waiting}`) });
   check(`${label}: the street crowd costs a handful of draw calls (${p1.drawCalls})`, p1.drawCalls <= 4 + (quality === 'low' ? 0 : quality === 'medium' ? 20 : 30), { drawCalls: p1.drawCalls });
   await frame();
   const dc1 = await d(() => window.__dakar.drawCalls());
@@ -65,7 +70,8 @@ for (const [label, viewport, touch, quality] of VIEWS) {
 
   // 2. A car rapide pulls in at a stop: some get on, some get off.
   const c0 = (await info()).counts;
-  const next = await d(() => window.__dakar.transport?.nextAt?.('23', 0) ?? null);
+  const running = await d(() => window.__dakar.transport?.lines?.().find(l => l.id.startsWith('23') && l.on)?.id ?? '23');
+  const next = await d(r => window.__dakar.transport?.nextAt?.(r, 0) ?? null, running);
   if (typeof next === 'number' && next > 2) await d(s => window.__dakar.transport.warp(s), next - 2);
   await page.waitForFunction(b => { const c = window.__dakar.street.info().counts; return c.boarded > b.boarded || c.alighted > b.alighted; }, c0, LONG).catch(() => {});
   const c1 = (await info()).counts;
@@ -85,12 +91,24 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const l0 = await info();
   await d(() => window.__dakar.street.leaveNow(18));
   await page.waitForFunction(n => window.__dakar.street.info().counts.left >= n, l0.counts.left + 12, LONG).catch(() => {});
-  await page.waitForFunction(() => (window.__dakar.street.info().stops.find(s => s.key.endsWith(':arene'))?.waiting ?? 0) >= 2, null, LONG).catch(() => {});
+  await page.waitForFunction(() => (window.__dakar.street.info().stops.find(s => s.crowd && s.served)?.waiting ?? 0) >= 2, null, LONG).catch(() => {});
   const l1 = await info();
-  const arene = l1.stops.find(s => s.key.endsWith(':arene'));
-  check(`${label}: after the gala, spectators leave for the Arène stop, the taxis and the streets`, l1.counts.left - l0.counts.left >= 10 && (arene?.waiting ?? 0) >= 2, { left: l1.counts.left - l0.counts.left, arene, taxi: l1.counts.taxi, corners: l1.corners });
+  const arene = l1.stops.find(s => s.crowd && s.served);
+  check(`${label}: after the gala, spectators leave for the Arène stop (23s), the taxis and the streets`, l1.counts.left - l0.counts.left >= 10 && arene?.key === '23s:arene' && arene.waiting >= 2, { left: l1.counts.left - l0.counts.left, arene, taxi: l1.counts.taxi, corners: l1.corners });
   await sampleSome(3);
   await shot('3-after-gala');
+
+  // 4b. The ride home: a 23s car rapide pulls in at the « Arène » stop and the crowd climbs in, one after the other.
+  await page.waitForFunction(() => (window.__dakar.street.info().stops.find(s => s.crowd)?.waiting ?? 0) >= 5, null, LONG).catch(() => {});
+  const r0 = await info();
+  const nextArene = await d(() => window.__dakar.transport?.nextAt?.('23s', 0) ?? null);
+  if (typeof nextArene === 'number' && nextArene > 2) await d(s => window.__dakar.transport.warp(s), nextArene - 2);
+  await page.waitForFunction(b => window.__dakar.street.info().counts.boarded >= b + 4, r0.counts.boarded, LONG).catch(() => {});
+  const r1 = await info();
+  const car = await d(() => window.__dakar.transport.dwellingAt('23s:arene'));
+  check(`${label}: riding home, the crowd at the Arène stop boards the 23s car rapide in turns`, r1.counts.boarded - r0.counts.boarded >= 4,
+    { waiting: r0.stops.find(s => s.crowd)?.waiting, boarded: r1.counts.boarded - r0.counts.boarded, car });
+  await shot('4-ride-home');
 
   // 5. 03:00: the streets are nearly empty.
   await d(() => window.__dakar.setHour(3));

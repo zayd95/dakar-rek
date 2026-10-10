@@ -56,7 +56,9 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const ar1 = await d(() => window.__dakar.arrivals.info());
   check(`${label}: on a fight evening a taxi pulls in by the arena and drops fans`, ar0?.active && ar1.dropped.taxi > ar0.dropped.taxi && ar1.crowd.present > 0, { active: ar0?.active, dropped: ar1.dropped, walking: ar1.walking, cabs: ar1.cabs });
   await shot('0-taxi-fans');
-  const nextRapide = await d(() => window.__dakar.transport?.nextAt?.('23', 0) ?? null);
+  // fight evenings: Ligne 23's day route is parked, its evening route 23s calls at the arena (« Arène » is its stop 0 too)
+  const rapideLine = await d(() => window.__dakar.transport?.lines?.().find(l => l.id.startsWith('23') && l.on)?.id ?? '23s');
+  const nextRapide = await d(r => window.__dakar.transport?.nextAt?.(r, 0) ?? null, rapideLine);
   if (typeof nextRapide === 'number' && nextRapide > 2) await d(s => window.__dakar.transport.warp(s), nextRapide - 2);
   await page.waitForFunction(r0 => window.__dakar.arrivals.info().dropped.rapide > r0, ar1.dropped.rapide, LONG).catch(() => {});
   const ar2 = await d(() => window.__dakar.arrivals.info());

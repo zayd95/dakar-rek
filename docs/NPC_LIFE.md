@@ -46,6 +46,10 @@ passengers) count as characters on seats, so the free-seat share holds for every
 - **Mosque.** Rows of people facing the qibla during the five prayer windows (the venues' times, `src/venues/prayer.ts`):
   standing on the forecourt, kneeling on the hall's prayer rows; more on Friday; no text, no recitation, not offered a
   conversation.
+- **Places that come and go.** The spots are rebuilt whenever a place is added or removed (a street vendor's hours, a
+  shop, a road event). People stay through a rebuild when their spot keeps its id and their seat, standing place,
+  prayer-row place or queue place is still where it was (`keepsPlace`): a market crowd or a prayer row does not vanish
+  because a vendor set up a tray down the street.
 - **Focus.** Ambient people rank after places, the cast and seats in reach (focus bias 3 m): a passer-by never hides
   the counter or Tonton Ibou; someone alone can be greeted.
 - **Player first at the counter.** Standing places keep 1.8 m from every interaction anchor, so the player's focus never
