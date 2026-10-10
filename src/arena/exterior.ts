@@ -13,6 +13,9 @@ import {
 } from './exteriorRules';
 import { GALA_DONE_COUNTER, streetAt } from './program';
 import { say } from '../i18n/wolof';
+import { arenaFighter } from './fighter';
+/** How much louder the drums play while a wrestler of tonight gets ready and walks out. */
+export const FIGHTER_DRUMS = 1.3;
 import { ExteriorAudio, listenForGesture } from './exteriorAudio';
 import { deckCentre } from '../world/arenaModules';
 
@@ -388,7 +391,9 @@ function loudness(ctx: GameCtx) {
   // one rhythm for the evening, as loud as the nearer drummers: the group by the gate or the deck inside, by the tunnel
   const p = ctx.player.pos, inside = !!ctx.inside(), muted = isMuted(), c = drumsCentre(ext.g), dk = deckCentre(ext.arena.cx, ext.arena.cz);
   const dist = Math.min(Math.hypot(p.x - c.x, p.z - c.z), Math.hypot(p.x - dk.x, p.z - dk.z));
-  return { drums: drumVolume(dist, inside, muted), murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
+  // a wrestler of tonight in his corner or walking out: the drummers play louder for him (src/arena/fighter.ts)
+  const louder = arenaFighter.phase() === 'prep' || arenaFighter.phase() === 'ring' ? FIGHTER_DRUMS : 1;
+  return { drums: drumVolume(dist, inside, muted) * louder, murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
 }
 
 export const arenaExteriorModule: GameModule = {

@@ -7,6 +7,7 @@ import { Batch, signTexture } from '../world/batch';
 import { Humanoid, Wrestler, humanoidReady, randomLook, type Clip } from '../actors/humanoid';
 import { rng } from '../core/rng';
 import { arenaExterior } from './exterior';
+import { arenaFighter } from './fighter';
 import * as P from '../activity/primitives';
 import { Percussion, crowdCheer } from '../lamb/audio';
 import { STYLES } from '../lamb/rules';
@@ -162,7 +163,7 @@ class ArenaEvening {
     const inNow = !seat && this.inside(me.x, me.z);
     this.stopT = Math.max(0, this.stopT - dt);
     if (inNow && !this.wasInside && ticketsChecked(hour, galaDone, event) && ctx.mode() === 'play') {
-      if (!hasTicket(counters, day)) {                               // turned back at the gate, toward the street
+      if (!hasTicket(counters, day) && !arenaFighter.pending()) {   // a wrestler of tonight needs no ticket                               // turned back at the gate, toward the street
         ctx.player.place(this.cx, this.gz - 1.6, Math.PI);
         if (this.stopT <= 0) { ctx.toast(ARENA.stop()); this.stopT = 3; }
         this.wasInside = false;
