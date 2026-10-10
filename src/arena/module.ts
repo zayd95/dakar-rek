@@ -19,6 +19,8 @@ import {
 } from './program';
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
+import { lamb2On } from '../lamb/flag';
+import { localPair, rosterOpponent } from '../lamb/opponents';
 import { PRELIM, PRELIM_TYPICAL, prelimFill, prelimName, undercardFor, type Prelim } from './undercard';
 import { GalaCard } from './card';
 import { FightNightPeople } from './people';
@@ -83,6 +85,10 @@ class ArenaEvening {
   /** The wrestlers' entrance as a ceremony: tunnel, bàkk on the sand, corner, ring (src/arena/entrance.ts). */
   private ceremony: EntranceCeremony | null = null;
   private bout: WatchedBout | null = null;
+  /** Avec frappe: how the stands split at the watched bout's fall (who celebrated, who held their heads), for the checks. */
+  private fallSplit: { side: StandSide; celebrate: number; heads: number } | null = null;
+  /** The last watched bout, once over: discipline, how it ended, the referee's arm, the stands at the fall (checks). */
+  private lastBout: Record<string, unknown> | null = null;
   /** The evening's preliminaries, the one running now (`pi`), its wrestlers walking in, its bout, the show time its
    *  bout ended at (−1 while it runs), what each ended with; the stands' share when the show began. */
   private prelims: Prelim[] = [];
@@ -277,6 +283,35 @@ class ArenaEvening {
     }
   }
 
+  /**
+   * The player's own bout (Làmb 2.0, LambDuel.onMoment): at the fall, the side of the winner's écurie celebrates while the
+   * loser's side and the end sections leap up, hands on their heads; at the result, the stands' result plan. The player's
+   * side is his écurie's (Baobab on the left sections, Teranga on the right) when the fighter's evening is on, the left
+   * otherwise. Uses the crowd lane's reactions (src/crowd/arenaStands.ts), unchanged.
+   */
+  boutMoment(m: 'fall' | 'result', winner: 'player' | 'opponent' | null, outcome: string) {
+    const mine: StandSide = arenaFighter.corner() === 'teranga' ? 'right' : 'left', theirs: StandSide = mine === 'left' ? 'right' : 'left';
+    const side = winner === null ? null : winner === 'player' ? mine : theirs;
+    if (m === 'result') { this.crowd.moment('result', { winner: side }); return; }
+    if (outcome !== 'projection' || !side) { this.crowd.moment('decision'); return; }
+    this.fallReaction(side);
+  }
+
+  /** The evening's two wrestlers as themselves for a bout avec frappe (Làmb 2.0, ?lamb2 only), else null. */
+  private frappeBill() {
+    if (!lamb2On()) return null;
+    const bill = billFor(this.day()), career = (this.ctx.state.data as { career?: Parameters<typeof rosterOpponent>[2] }).career;
+    const left = rosterOpponent(bill.left.name, this.day(), career), right = rosterOpponent(bill.right.name, this.day(), career);
+    return left && right ? { left, right } : null;
+  }
+  /** A fall by projection: `side` (the winner's supporters) celebrates, the other side and the end sections hold their heads. */
+  private fallReaction(side: StandSide) {
+    const celebrate = this.crowd.react(side, 'celebrate', { share: 0.9, seconds: 6 });
+    const heads = this.crowd.react(side === 'left' ? 'right' : 'left', 'fall', { share: 0.85, seconds: 3.5 }) + this.crowd.react('ends', 'fall', { share: 0.7, seconds: 3.5 });
+    this.fallSplit = { side, celebrate, heads };
+    crowdCheer(3.5, 0.2 * (0.7 + 0.5 * this.crowd.level()));
+  }
+
   /** The stands react to a moment (src/crowd/arenaStands.ts momentPlan): `side`, the wrestler walking in or winning. */
   private react(m: Moment, side: StandSide | null = null, sound = true) {
     const r = REACTION[m];
@@ -294,7 +329,7 @@ class ArenaEvening {
     this.mark(phase);
     if (phase !== 'prelims') this.clearPrelim();
     if (phase === 'filling') {
-      this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0;
+      this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0; this.fallSplit = null; this.lastBout = null;
       const bill = billFor(this.day());
       this.say('bill', ARENA.bill(bill.left.name, bill.left.ecurie, bill.right.name, bill.right.ecurie));
       // tonight's preliminaries: the same card on every device, by the evening's size, the main event's names kept out
@@ -306,16 +341,24 @@ class ArenaEvening {
       this.startEntrance();
     } else if (phase === 'bout') {
       this.clearEntrance();
-      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, LEFT_LOOK, boutSeed(this.hubId, this.day()));
-      this.bout.onMoment = p => { if (this.bout && this.bout.time < this.catchUpTo - 0.5) return; if (p === 'clinch') this.react('clinch'); if (p === 'fall') this.react(this.bout?.info().outcome === 'projection' ? 'fall' : 'decision'); };
+      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, LEFT_LOOK, boutSeed(this.hubId, this.day()), { frappe: this.frappeBill() });
+      this.bout.onMoment = (p, i) => {
+        if (this.bout && this.bout.time < this.catchUpTo - 0.5) return;
+        if (p === 'clinch') this.react('clinch');
+        if (p !== 'fall') return;
+        // avec frappe, a fall splits the stands: the winner's side celebrates, the other side holds its head
+        if (this.bout?.frappe && i.outcome === 'projection' && i.winner) this.fallReaction(i.winner === 'player' ? 'left' : 'right');
+        else this.react(i.outcome === 'projection' ? 'fall' : 'decision');
+      };
       this.group.add(this.bout.group);
     } else if (phase === 'result') {
-      const r = this.bout?.result;
+      const r = this.bout?.result, bi = this.bout?.info() as (Record<string, unknown> | undefined);
+      this.lastBout = bi ? { discipline: bi.discipline, winner: r?.winner ?? null, outcome: r?.outcome ?? null, refereeRaised: bi.refereeRaised ?? null, fallSplit: this.fallSplit } : null;
       const own: ShowResult | null = r ? { winner: !r.winner ? null : r.winner === 'player' ? 'left' : 'right', outcome: (r.outcome === 'entrainement' ? 'egalite' : r.outcome) as ShowOutcome } : null;
       this.outcome = this.adopted ?? own ?? { winner: null, outcome: 'egalite' };
       const side = this.outcome.winner, how = this.outcome.outcome;
       const bill = billFor(this.day()), won = side ? bill[side] : null, lost = side === 'left' ? bill.right : bill.left;
-      if (r) reportMainEvent(this.day(), won?.id ?? null);               // the city's ladder remembers the main event the player watched
+      if (r || this.adopted) reportMainEvent(this.day(), won?.id ?? null);   // the city's ladder remembers the main event the player watched
       this.result = this.resultLine(this.outcome);
       this.people.result(side);
       ctx.toast(this.result);
@@ -390,11 +433,13 @@ class ArenaEvening {
   }
   /**
    * The one way a preliminary's bout is made: the existing duel, AI against AI, seeded by `prelimSeed` (the same bout
-   * for everyone in the stands), a 30 s round, the young wrestler's style and level. Làmb 2.0 (avec frappe, ?lamb2)
-   * passes the pair here as WatchedBout's frappe bill when its lane is merged.
+   * for everyone in the stands), a 30 s round, the young wrestler's style and level. Làmb 2.0 (avec frappe, ?lamb2):
+   * the pair is WatchedBout's frappe bill — each young wrestler gets a style of the six from the preliminary's seed
+   * (src/lamb/opponents.ts localPair), the right one's on his card style (its colours).
    */
   private prelimBout(p: Prelim): WatchedBout {
-    return new WatchedBout({ x: this.cx, z: this.cz }, p.look, p.seed, { style: { ...STYLES[p.style], name: p.right.name }, level: p.level, round: PRELIM.round });
+    const frappe = lamb2On() ? localPair(p.seed, p.left, p.right, p.style, p.level) : null;
+    return new WatchedBout({ x: this.cx, z: this.cz }, p.look, p.seed, { style: { ...STYLES[p.style], name: p.right.name }, level: p.level, round: PRELIM.round, frappe });
   }
   private endPrelim(p: Prelim) {
     this.pEnded = this.t;
@@ -454,7 +499,10 @@ class ArenaEvening {
     if (res) {
       const differs = !this.outcome || this.outcome.winner !== res.winner || this.outcome.outcome !== res.outcome;
       this.adopted = res;
-      if (this.outcome && differs) { this.outcome = res; this.result = this.resultLine(res); this.ctx.toast(this.result); }
+      if (this.outcome && differs) {
+        this.outcome = res; this.result = this.resultLine(res); this.ctx.toast(this.result);
+        reportMainEvent(this.day(), res.winner ? billFor(this.day())[res.winner].id : null);   // the result the group saw
+      }
     }
     if (phase === 'prelims') {                                                 // which preliminary, then its time
       if (!this.prelims.length) return false;
@@ -535,8 +583,9 @@ class ArenaEvening {
       seat: seat?.id ?? null, seatsTotal: this.seats.length, seatsFree: this.seats.filter(s => !s.occupant).length,
       crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering, level: Math.round(this.crowd.level() * 100) / 100, lod: this.crowd.stats() },
       prelims: { n: this.prelims.length, i: this.pi, list: this.prelims.map(p => `${prelimName(p.left)} – ${prelimName(p.right)}`), seeds: this.prelims.map(p => p.seed),
-        stage: this.phase !== 'prelims' ? null : !this.pBout ? 'walk' : this.pEnded < 0 ? 'bout' : 'result', bout: this.pBout?.info() ?? null, walking: this.pWalk.length, results: [...this.pResults] },
-      entrance: this.ceremony?.wrestlers.length ?? 0, ceremony: this.phase === 'entrance' ? this.ceremony?.info(this.t) ?? null : null, bout: this.bout?.info() ?? null, result: this.result, card: this.card.text, people: this.people.debug(),
+        stage: this.phase !== 'prelims' ? null : !this.pBout ? 'walk' : this.pEnded < 0 ? 'bout' : 'result', bout: this.pBout?.info() ?? null, walking: this.pWalk.length, results: [...this.pResults],
+        frappe: this.pBout ? this.pBout.frappe : null },
+      entrance: this.ceremony?.wrestlers.length ?? 0, ceremony: this.phase === 'entrance' ? this.ceremony?.info(this.t) ?? null : null, bout: this.bout?.info() ?? null, lastBout: this.lastBout, result: this.result, card: this.card.text, people: this.people.debug(),
       gate: { x: this.cx, z: this.gz }, centre: { x: this.cx, z: this.cz },
     };
   }
@@ -581,6 +630,8 @@ export const arenaModule: GameModule = {
   },
   update(_ctx, dt) { evening?.update(dt); },
   camera(ctx, dt, drag) { return evening ? evening.camera(ctx.camera, dt, drag) : false; },
+  // the player's own bout (Làmb 2.0): the stands react to its fall and its result
+  lamb(_ctx, e) { if (e.kind === 'moment') evening?.boutMoment(e.moment, e.winner, e.outcome); },
   safePlace() { return evening?.seatedHere() ? { x: evening.cx, z: evening.gz - 2.5, yaw: Math.PI } : null; },
   debug: ctx => ({
     arena: {

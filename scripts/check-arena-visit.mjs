@@ -2,6 +2,7 @@
 // the controller → a free place on the tiers → the crowd → the wrestlers' entrance → the watched bout → the result →
 // the crowd leaves. (The street outside the walls is src/arena/exterior.ts, another lane.) Desktop 1280×720 and phone 390×844; captures in docs/screenshots/arena-visit.
 // Usage: node scripts/check-arena-visit.mjs [baseUrl=http://localhost:4247/] [outDir=docs/screenshots/arena-visit] [--view=desktop|phone]
+// LAMB2=1: with ?lamb2 (the watched bout avec frappe: referee's arm, the stands at the fall); captures and results suffixed -lamb2.
 // Run it under the shared lock: flock /tmp/dakar-browser.lock node scripts/check-arena-visit.mjs …
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -9,6 +10,8 @@ import fs from 'node:fs';
 const args = process.argv.slice(2);
 const [base = 'http://localhost:4247/', out = 'docs/screenshots/arena-visit'] = args.filter(a => !a.startsWith('--'));
 const view = args.find(a => a.startsWith('--view='))?.slice(7) ?? 'all';
+// LAMB2=1: the game loads with ?lamb2 (Làmb 2.0): the watched gala bout is avec frappe; without it, nothing changes
+const L2 = process.env.LAMB2 === '1';
 fs.mkdirSync(out, { recursive: true });
 const T = { timeout: 180000 };
 const results = []; let failed = 0;
@@ -19,12 +22,13 @@ const browser = await chromium.launch({
 });
 const VIEWS = [['desktop', { width: 1280, height: 720 }, false, 'medium'], ['phone', { width: 390, height: 844 }, true, 'low']].filter(([l]) => view === 'all' || l === view);
 
-for (const [label, viewport, touch, quality] of VIEWS) {
+for (const [label0, viewport, touch, quality] of VIEWS) {
+  const label = L2 ? `${label0}-lamb2` : label0;
   const ctx = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch, deviceScaleFactor: 1 });
   await ctx.addInitScript(q => { if (!sessionStorage.getItem('arena-visit')) { localStorage.clear(); localStorage.setItem('dakarrek.quality', q); sessionStorage.setItem('arena-visit', '1'); } }, quality);
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 180000 });
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}${L2 ? '&lamb2' : ''}`, { timeout: 180000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.arena, null, T);
   const d = (fn, arg) => page.evaluate(fn, arg);
   const info = () => d(() => window.__dakar.arena.info());
@@ -125,6 +129,9 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const pr1 = await info(), tl1 = await d(() => window.__dakar.arena.timeline());
   check(`${label}: the preliminaries start soon after sitting down: the first bout on the sand, named on the card`,
     pr1.phase === 'prelims' && pr1.prelims.n >= 1 && pr1.prelims.stage === 'bout' && !!pr1.prelims.bout && /Préliminaires 1\//.test(pr1.card), { prelims: pr1.prelims, card: pr1.card, timeline: tl1 });
+  // with ?lamb2 the preliminaries are fought avec frappe too (AI against AI, styles from the preliminary's seed); without it, sans frappe as before
+  check(`${label}: the preliminary is fought ${L2 ? 'avec frappe (prelims.frappe), AI against AI' : 'sans frappe, as before'}`,
+    pr1.prelims.frappe === L2 && pr1.prelims.bout?.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'), { frappe: pr1.prelims.frappe, discipline: pr1.prelims.bout?.discipline, identity: pr1.prelims.bout?.identity });
   await shot('3b-prelim');
   await d(() => window.__dakar.arena.speed(6));
   await page.waitForFunction(() => window.__dakar.arena.info().prelims.results.length >= 1, null, { timeout: 300000 }).catch(() => {});
@@ -147,7 +154,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   // 7. The bout: the existing duel played by the two wrestlers.
   await page.waitForFunction(() => window.__dakar.arena.info().phase === 'bout' && window.__dakar.arena.info().bout?.phase === 'fight', null, T).catch(() => {});
   const b1 = await info();
-  check(`${label}: the bout starts (lutte sans frappe, referee call, then the fight)`, b1.phase === 'bout' && !!b1.bout && b1.bout.mode === 'amical', b1.bout);
+  check(`${label}: the bout starts (${L2 ? 'avec frappe, the two billed wrestlers, AI against AI' : 'lutte sans frappe'}, referee call, then the fight)`, b1.phase === 'bout' && !!b1.bout && b1.bout.mode === 'amical' && b1.bout.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'), { phase: b1.bout?.phase, discipline: b1.bout?.discipline, identity: b1.bout?.identity });
   await page.waitForTimeout(2500);
   await shot('5-bout');
   await d(() => window.__dakar.arena.speed(6));
@@ -158,6 +165,12 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   if (r1.phase === 'result') {
     check(`${label}: the crowd cheers the result`, r1.crowd.cheering > 0, r1.crowd);
     await shot('6-result');
+  }
+  if (L2) {
+    // avec frappe: the referee raised the winner's arm, and at a fall the stands split (the winner's side celebrates)
+    const lb = (await info()).lastBout;
+    check(`${label}: avec frappe — the bout reached its result, the referee raised the winner's arm, the stands reacted to the fall`,
+      !!lb && lb.discipline === 'avec_frappe' && !!lb.outcome && (!lb.winner || lb.refereeRaised === true) && (lb.outcome !== 'projection' || (lb.fallSplit?.celebrate > 0 && lb.fallSplit?.heads > 0)), lb);
   }
 
   // 8. The crowd goes home.
@@ -181,6 +194,6 @@ for (const [label, viewport, touch, quality] of VIEWS) {
 }
 
 await browser.close();
-fs.writeFileSync(`${out}/results${view === 'all' ? '' : '-' + view}.json`, JSON.stringify({ when: new Date().toISOString(), base, results }, null, 2));
+fs.writeFileSync(`${out}/results${L2 ? '-lamb2' : ''}${view === 'all' ? '' : '-' + view}.json`, JSON.stringify({ when: new Date().toISOString(), base, results }, null, 2));
 console.log(`\n${results.length - failed}/${results.length} arena visit checks passed`);
 process.exit(failed ? 1 : 0);

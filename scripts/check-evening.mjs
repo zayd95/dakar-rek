@@ -1,7 +1,7 @@
 // Habib's evening (10 Oct): a new player works in the afternoon, gets to the arena, watches the bout from the stands, then
 // looks for what comes next (La Vague, Almadies). Plays the chain on the integrated build and records what a player meets
 // on the way: guidance, distances, waits, prices, crowd, what is empty. Usage:
-//   flock /tmp/dakar-browser.lock node scripts/check-evening.mjs [baseUrl] [outDir]      (ONLY=desktop|phone)
+//   flock /tmp/dakar-browser.lock node scripts/check-evening.mjs [baseUrl] [outDir]      (ONLY=desktop|phone, LAMB2=1: with ?lamb2)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -9,16 +9,19 @@ const base = process.argv[2] ?? 'http://localhost:4212/';
 const out = process.argv[3] ?? 'docs/screenshots/evening';
 fs.mkdirSync(out, { recursive: true });
 const T = { timeout: 360000 };
+// LAMB2=1: the game loads with ?lamb2 (Làmb 2.0): the watched bout is avec frappe; without it, nothing changes
+const L2 = process.env.LAMB2 === '1';
 const results = [], notes = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
 const note = (label, k, v) => { notes.push({ view: label, k, v }); console.log(`NOTE ${label} · ${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
-for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 844 }, true]]) {
-  if (process.env.ONLY && process.env.ONLY !== label) continue;
+for (const [label0, viewport, touch] of [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 844 }, true]]) {
+  if (process.env.ONLY && process.env.ONLY !== label0) continue;
+  const label = L2 ? `${label0}-lamb2` : label0;
   const page = await (await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch })).newPage();   // fresh storage: a new game
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 120000 });
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}${L2 ? '&lamb2' : ''}`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.arena, null, T);
   const d = (fn, arg) => page.evaluate(fn, arg);
   const shot = async name => { await page.waitForTimeout(700); try { await page.screenshot({ path: `${out}/${label}-${name}.png`, timeout: 240000 }); } catch (e) { console.log(`NOTE: capture ${name} skipped`); } };
@@ -110,6 +113,10 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const res = await d(() => ({ ...window.__dakar.arena.info(), toast: document.getElementById('toast')?.textContent ?? null }));
   note(label, 'result', { phase: res.phase, winner: res.bout?.winner ?? res.result ?? null, toast: res.toast });
   check(`${label}: the bout reaches its result`, ['result', 'leaving', 'over'].includes(res.phase), res.phase);
+  const lb = res.lastBout;
+  check(`${label}: the watched bout is ${L2 ? 'avec frappe (Làmb 2.0)' : 'sans frappe, as before'}`, lb?.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'), JSON.stringify(lb));
+  if (L2) check(`${label}: avec frappe — the referee raised the winner's arm and the stands reacted to the fall`,
+    !!lb?.outcome && (!lb.winner || lb.refereeRaised === true) && (lb.outcome !== 'projection' || (lb.fallSplit?.celebrate > 0 && lb.fallSplit?.heads > 0)), JSON.stringify(lb));
   await shot('07-result');
 
   // 7. After the bout: what next? (La Vague is in Almadies — its lane is not integrated yet)
