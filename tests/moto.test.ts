@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { driveStep, newDriveState, targetSpeed, type Blocked } from '../src/transport/drive';
-import { motoSpec, jakartaSeed, MOTO_CATALOGUE } from '../src/transport/moto';
-import { owns, readOwned, writeOwned, parkOwned, toAsset } from '../src/transport/owned';
+import { motoSpec, jakartaSeed, MOTO_ASSET } from '../src/transport/moto';
+import { migrateOwned, ownsVehicle, park, parked, unpark } from '../src/transport/owned';
+import { buyAsset, holding, sellAsset } from '../src/economy/assets';
+import { specOf } from '../src/economy/catalog';
+import { GameState } from '../src/core/state';
 import { vehicleSpec } from '../src/actors/vehicleKit';
 import { newSave } from '../src/core/save';
 
@@ -61,21 +64,40 @@ describe('the Jakarta motorbike', () => {
     expect(s.driver.id).toBe('driver'); expect(s.drive?.lean).toBe(true);
     expect(s.seats.every(x => x.npcOnly)).toBe(true);                     // the pillion is not for the rider
     expect(s.cameras[0].id).toBe('chase'); expect(s.cameras[0].portrait).toBeTruthy();
-    expect(MOTO_CATALOGUE.price).toBeGreaterThan(0);
+    expect(specOf(MOTO_ASSET)?.kind).toBe('vehicle'); expect(specOf(MOTO_ASSET)?.price).toBe(150_000);
   });
 
-  it('ownership is recorded in the save (flag + counters) and maps to the generic Asset', () => {
-    const data = newSave();
-    expect(owns(data, 'moto_jakarta')).toBe(false); expect(readOwned(data, 'moto_jakarta')).toBeNull();
-    writeOwned(data, { id: 'moto_jakarta', kind: 'moto', seed: 5, hub: 'pikine', x: 110.5, z: -4.3, yaw: 1.5708, price: 75000, at: 1 });
-    expect(owns(data, 'moto_jakarta')).toBe(true);
-    parkOwned(data, 'moto_jakarta', 'plateau', 12.345, -7.891, 3.14159);
-    const v = readOwned(data, 'moto_jakarta')!;
-    expect(v).toMatchObject({ hub: 'plateau', x: 12.35, z: -7.89, yaw: 3.142, seed: 5, price: 75000 });
-    expect(data.flags.filter(f => f === 'asset:vehicle:moto_jakarta')).toHaveLength(1);
-    expect(toAsset(v)).toMatchObject({ kind: 'vehicle', catalogue: 'moto_jakarta', location: { hub: 'plateau' }, owner: 'player' });
+  it('is owned through the asset model, paid once; owned.ts only keeps where it is parked', () => {
+    const s = new GameState(newSave(0)); s.data.wallet = 200_000;
+    expect(ownsVehicle(s, 'jakarta')).toBe(false); expect(parked(s.data, 'jakarta')).toBeNull();
+    const l0 = s.data.ledger.length;
+    expect(buyAsset(s, 'jakarta')).toBeTruthy();
+    expect(buyAsset(s, 'jakarta')).toBeNull();                            // not twice
+    expect(s.wallet).toBe(50_000); expect(s.data.ledger.length - l0).toBe(1);
+    expect(ownsVehicle(s, 'jakarta')).toBe(true); expect(holding(s, 'jakarta')?.paid).toBe(150_000);
+    park(s.data, { asset: 'jakarta', hub: 'plateau', x: 12.345, z: -7.891, yaw: 3.14159 });
+    expect(parked(s.data, 'jakarta')).toEqual({ asset: 'jakarta', hub: 'plateau', x: 12.35, z: -7.89, yaw: 3.142 });
     // the save survives a JSON round trip (device storage)
-    const back = JSON.parse(JSON.stringify(data));
-    expect(readOwned(back, 'moto_jakarta')).toEqual(v);
+    const back = new GameState(JSON.parse(JSON.stringify(s.data)));
+    expect(ownsVehicle(back, 'jakarta')).toBe(true); expect(parked(back.data, 'jakarta')).toEqual(parked(s.data, 'jakarta'));
+    // sold in « Biens »: no longer the player's; its spot is forgotten (bought again: delivered at the dealer)
+    expect(sellAsset(s, holding(s, 'jakarta')!.uid)).toBeGreaterThan(0);
+    expect(ownsVehicle(s, 'jakarta')).toBe(false);
+    unpark(s.data, 'jakarta'); expect(parked(s.data, 'jakarta')).toBeNull();
+  });
+
+  it('a save with the motorbike bought before the asset model gets the asset, not charged again, still parked', () => {
+    const s = new GameState(newSave(0)); s.data.wallet = 1234;
+    s.data.flags.push('asset:vehicle:moto_jakarta');
+    Object.assign(s.data.counters, { 'asset:moto_jakarta:hub': 3, 'asset:moto_jakarta:x': 110.5, 'asset:moto_jakarta:z': -4.3, 'asset:moto_jakarta:yaw': 1.571, 'asset:moto_jakarta:seed': 8, 'asset:moto_jakarta:price': 75000, 'asset:moto_jakarta:at': 1 });
+    const l0 = s.data.ledger.length;
+    expect(migrateOwned(s)).toBe(true);
+    expect(s.wallet).toBe(1234); expect(s.data.ledger.length).toBe(l0);
+    expect(holding(s, 'jakarta')).toMatchObject({ how: 'owned', paid: 75000 });
+    expect(parked(s.data, 'jakarta')).toEqual({ asset: 'jakarta', hub: 'pikine', x: 110.5, z: -4.3, yaw: 1.571 });
+    expect(s.data.flags.includes('asset:vehicle:moto_jakarta')).toBe(false);
+    expect(Object.keys(s.data.counters).some(k => k.startsWith('asset:moto_jakarta:'))).toBe(false);
+    expect(migrateOwned(s)).toBe(false);                                  // once
+    expect(s.data.assets.list.filter(a => a.spec === 'jakarta')).toHaveLength(1);
   });
 });

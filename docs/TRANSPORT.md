@@ -40,9 +40,11 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
 | `spec.ts` | `VehicleSpec`: passenger seats and the **driver seat** (local pose, seat-top height, yaw), doors (in / out points), camera anchors (with phone-portrait placements), cabin `open`/`closed`, crew (apprenti on the step / at the door), `drive` handling for drive mode, `build()` model. `toWorld`, `seatToWorld`. |
 | `carRapide.ts` | **Adapter** on the vehicle kit (`vehicleSpec('carRapide')`): seats (the cab bench is NPC-only), the rear doorway's boarding point, the apprenti's step, camera anchors; `build({ seed, seated })` draws the NPC passengers on exactly their seats (kit option `seated`, one draw call). |
 | `passengers.ts` | Fixed passenger sets per line (bounded model variants, always seats left for the player), the player's seat choice, and clearing the kerb of parked vehicles where the car pulls in at a stop. |
-| `drive.ts` | Drive mode as pure logic: stick → throttle / steering, bicycle model, braking then reverse, coasting, collisions (stops at walls, slides along them, creeps out if left touching). |
-| `moto.ts`, `motoModule.ts` | The Jakarta motorbike: kit spec + drive handling; the dealer corner at Garage Modou (shop recipe), purchase with confirmation, get on / ride / get off, parked where left, saved; chase view, speed card. |
-| `owned.ts` | Ownership adapter until the ownership lane's `Asset` store: save flag `asset:vehicle:<id>` + counters `asset:<id>:hub|x|z|yaw|seed|price|at`, `toAsset()` mapping. |
+| `drive.ts` | Drive mode as pure logic: stick → throttle / steering, bicycle model, braking then reverse, coasting, collisions (a row of footprint circles front to back: stops at walls, slides along them, creeps out if left touching). |
+| `ownedModule.ts` | `OwnedVehicleModule(def)`: one owned, drivable vehicle — dealer corner (shop recipe, price → confirmation → paid once, delivered at the kerb), get in / drive / get out (beside it; a car: on the pavement side), solid when parked, parked where left and saved per hub, the kit's camera views, speed card, debug API `__dakar.<key>`. `kerbDealer()` lays a dealer out on the pavement of the nearest road. |
+| `moto.ts`, `motoModule.ts` | The Jakarta motorbike: kit spec + drive handling (leans); its def — the dealer corner at Garage Modou (Pikine). |
+| `car.ts`, `carModule.ts` | The used car (catalogue `clando`, a kit `sedan`) + car handling (no lean, wider turning circle, faster); its def — « Voitures d’occasion · Ndiaye Auto » on the Plateau pavement beside Dakar Réparation. |
+| `owned.ts` | Where each owned vehicle is parked, keyed to its catalogue id: counters `vehicle:<asset>:hub|x|z|yaw`. Ownership itself is the asset model (`src/economy/assets.ts`). `migrateOwned()` moves saves from the earlier flag (`asset:vehicle:moto_jakarta`) to the `jakarta` asset at what was paid. |
 | `route.ts` | Pure math: `lanePath` (right-hand lane around road-grid nodes, rounded corners), `Path` (arc length, smooth heading, projection, curvature), `Timetable` (speed profile with corner speeds, acceleration, braking, rest and dwell at every stop; deterministic and periodic), `pullIn` (to the kerb at stops). |
 | `lines.ts` | Line data (loop nodes, stops by leg + metres, fare, fleet, calls) and the French / Wolof lines (draft for review). |
 | `vehicle.ts` | `Vehicle`: model + seats (Seats registry, space = vehicle id, `locked`) + sway; `place(x, z, yaw, speed, accel…)` is the controller seam. `LineVehicle`: places a Vehicle from the timetable on the shared clock, reports stops reached since the previous frame, apprenti and calls. |
@@ -65,7 +67,12 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
   on the motorbike → beside it, parked there).
 - `GameModule.presenceSpace()`: presence / chat space when it differs from the module's interaction space (on one's own
   motorbike the player stays visible to the street).
-- `src/actors/vehicleKit.ts`: option `seated` (exactly these seats get a baked passenger) and `spec.occupied`.
+- `src/actors/vehicleKit.ts`: option `seated` (exactly these seats get a baked passenger) and `spec.occupied`; option
+  `stand` (a rider-less motorbike's side stand, up while the player rides it).
+- `VehicleSpec.build({ ridden })` and `Vehicle.setRidden()`: the model while the player is at the controls.
+- `SeatSpec.clip` (copied to the `Seat`): the pose held on that seat — the kit's motorbike seats give 'Ride'.
+- `Vehicle.animate(speed, steer, dt)`: the kit's `animateVehicle` (wheels, steering, a motorbike's lean, near model
+  only), called by drive mode every frame and by the car rapides near the camera.
 - `main.ts`: the seated branch follows the seat every frame in play, busy (and menu when locked) so the body rides
   along; module space / camera / safe place hooks; the legacy source only lists street content in the street.
 - `src/multiplayer/protocol.ts`: presence accepts `<hub>:rapide:<line>:<k>` spaces of the current hub (test added).
@@ -83,9 +90,13 @@ away while the player is still on the way to the door, they get in at once.
 ## Personal mobility: the Jakarta motorbike (drive mode)
 
 - **Buy:** « Motos · Garage Modou » corner next to the garage in Pikine (two motorbikes on display, a sign). « Voir les
-  articles » lists the Moto Jakarta 125 with its price; picking it opens a confirmation with the price and the wallet;
-  « Confirmer l’achat » pays once through the runner (verb `buy`, wallet line « Moto Jakarta 125 · Motos · Garage
-  Modou », counter `vehicules`). Price 75 000 F (provisional). It is delivered at the kerb in front of the garage.
+  articles » lists the catalogue's « Moto Jakarta » (`jakarta`, d'occasion, **150 000 F**) with its price; picking it
+  opens a confirmation with the price and the wallet; « Confirmer l’achat » pays once through the asset model
+  (`cannotBuy` / `buyAsset`: wallet line « Achat : Moto Jakarta », counters `biens` and `vehicules`). It is listed in
+  « Biens » (once; it can be sold there) and delivered at the kerb in front of the garage. Bought from « Biens »
+  instead, it waits at that kerb.
+- **Tiak Tiak:** deliveries work on the motorbike (or in the car): the parcel is picked up and handed over on arrival,
+  without getting off.
 - **Ride:** « Monter sur la moto » sits the player on its driver seat (locked). Stick or keys: up accelerates (about
   45 km/h flat out), down brakes then reverses slowly, left / right steers (tighter at low speed); releasing coasts to a
   stop. It never goes through walls, parked vehicles, stairs or the car rapides; it slides along a wall met at an
@@ -93,14 +104,41 @@ away while the player is still on the way to the door, they get in at once.
   the speed. Interaction space = the motorbike (no shop counters while riding); presence stays « street ».
 - **Get off:** « Descendre de la moto » (it brakes first if moving): the player stands beside it; it stays parked there,
   in that hub, across reloads (a reload mid-ride parks it where it was and puts the player beside it).
-- **Same framework:** `VehicleSpec` (driver seat + `drive`), `Vehicle.place()`, `PassengerCamera`, the ride card.
-  A car next is a new spec on the kit (`sedan`…) with its own `drive` numbers.
+- **Parked:** solid (three boxes along it: the player walks around it, the other vehicles stop at it); side stand down
+  when parked, up while ridden.
+- **Alive:** the rider sits astride in the kit seat's « Ride » pose (hands on the grips) and leans with the motorbike in
+  turns, about the same ground line; the wheels spin and the front end steers (the kit's `animateVehicle`, near model
+  only). Top speed stays well above running on foot (12.5 m/s against 7).
+- **Same framework:** `VehicleSpec` (driver seat + `drive`), `Vehicle.place()`, `PassengerCamera`, the ride card; the
+  motorbike and the car are two `OwnedVehicleModule` instances with their own def.
+
+## Personal mobility: the used saloon
+
+- **Buy:** « Voitures d’occasion · Ndiaye Auto » (fictional) on the Plateau, on the pavement of the road east of the
+  shops block, beside Dakar Réparation: a desk, a sign « OCCASIONS », two saloons on display at the kerb. « Voir les
+  articles » lists the catalogue's « Voiture d’occasion » (`clando`, **2 800 000 F**) with its price; a confirmation
+  shows the price and the wallet; « Confirmer l’achat » pays once through the asset model (wallet line « Achat :
+  Voiture d’occasion »), listed in « Biens ». The silver saloon is delivered at the kerb, facing the traffic of that
+  side.
+- **Drive:** « Monter (conducteur) » sits the player on the driver seat (left-hand drive). Same controls as the
+  motorbike, car numbers: about 60 km/h flat out (motorbike 45), slower to pick up and to stop, a 5.6 m turning radius
+  (motorbike 3.2), no lean (the body rolls a little out of the corners). Collisions as for the motorbike, on a
+  footprint of seven circles (no gap a post or a wall corner can slip into). Views from the kit's anchors: behind the
+  car (`chase`; higher and further back on a phone held upright), « Au volant » (the kit's `driver` anchor, the
+  player's body hidden: the dashboard and the street through the windscreen), « Vue d’en haut ». The wheels spin and
+  the front wheels steer; the driver sits (« Sit »).
+- **Get out:** « Sortir de la voiture » (it brakes first if moving): the player stands on the pavement side — the side
+  farther from the road's centre line, the right-hand side when parked at a kerb — else the other side, else behind.
+  It stays parked there, solid, in that hub, across reloads (a reload while driving parks it where it was).
+- **Ownership:** the `clando` asset; `owned.ts` keeps where it is parked.
 
 ## Performance
 
 - One merged mesh + one sign mesh per hub for the stops; two car rapides per line (one on Low quality), each a kit
   vehicle (1–3 draw calls, LOD; its NPC passengers are part of the same mesh) + its apprenti; people at stops drawn and
-  animated only within 70 m of the camera (one waiting person per stop on Low). The motorbike is one kit vehicle.
+  animated only within 70 m of the camera (one waiting person per stop on Low). The motorbike and the car are one kit
+  vehicle each (2–3 draw calls near, 1 far); the car dealer adds two kit saloons, a desk and a sign (about 9 draw calls
+  near it, fewer kit cars parked there).
 - No per-frame allocations in the vehicle / route / seat updates (preallocated poses, motions and arrival lists).
 - Measured by `scripts/check-transport.mjs` 6 m from a stop with a car standing there: **+15 to +16 draw calls** for the
   line's cars and stops with the kit (Pikine desktop 411 with / 395 without; Plateau phone portrait 359 / 344); the
@@ -112,23 +150,34 @@ away while the player is still on the way to the door, they get in at once.
   seat transforms, camera anchors and wall pull-in, trip logic (board, ride past, request, alight, slow frames,
   cancel), stop placement and alight points, line vehicle seats and arrivals.
 - `tests/moto.test.ts`: drive model (top speed, coasting, brake then reverse, steering direction, walls and sliding),
-  the Jakarta spec, ownership record round trip and Asset mapping. `tests/transport.test.ts` also covers the kit
+  the Jakarta spec, ownership record round trip and Asset mapping. `tests/car.test.ts`: the saloon spec (left-hand
+  drive, seats, kit cameras with portrait placements, the wheel view inside), car numbers against the motorbike
+  (faster, wider turning, no lean), the footprint (a post at the side, a wall ahead, parked boxes), the kerb dealer
+  layout on either kind of road, the pavement side, the car and the motorbike owned side by side, the side stand. `tests/transport.test.ts` also covers the kit
   adapter (seats, door, step, open cabin, `seated` drawn exactly), passenger sets, seat choice and kerb clearing.
 - `scripts/check-transport.mjs` (desktop Pikine, phone portrait Plateau): walk to a stop, wait, board on the only free
   seat, fare paid once, stick does not stand up, phone and « Arrêter » mid-ride, four views, ride past a stop,
   request, alight on the pavement, door and hub change right after, hub change mid-ride, reload mid-ride, draw calls.
   Screenshots in `docs/screenshots/transport/`.
-- `scripts/check-moto.mjs` (desktop keys, phone joystick; Pikine): dealer catalogue with the price, confirmation with
-  price and wallet, paid once, not twice, get on, ride, steer, stop at a wall (never inside), get off beside it, reload
-  (parked, and mid-ride), another hub and back. Screenshots in `docs/screenshots/moto/`.
-- Last run (9 Oct, after merging the vehicle kit and the venues lane): transport **45/45**, motorbike **32/32**,
-  `scripts/check-interact.mjs` **34/34**, `scripts/check-city-life.mjs` all pass (37).
+- `scripts/check-moto.mjs` (desktop keys, phone joystick; Pikine): dealer catalogue with the catalogue price,
+  confirmation with price and wallet, paid once through the asset model, listed once in « Biens », not twice, get on
+  (Ride pose), ride, steer, stop at a wall (never inside), a Tiak Tiak pick-up and hand-over while riding, get off
+  beside it, reload (parked, owned once, charged once; and mid-ride), another hub and back. Screenshots in `docs/screenshots/moto/`.
+- `scripts/check-car.mjs` (desktop keys, phone joystick; Plateau): dealer catalogue with the price, confirmation with
+  price and wallet, paid once and delivered at the kerb, not twice, the parked car is solid, « Monter (conducteur) »,
+  drive, steer, brake, the three views, stop at a wall (never inside), « Sortir de la voiture » on the pavement side,
+  reload (parked, and mid-drive), another hub and back. Screenshots in `docs/screenshots/car/`.
+- Last run (10 Oct, on integration 57bc29c + the car, desktop and phone): motorbike **36/36** (asset model, « Biens »
+  once, a Tiak Tiak delivery while riding, charged once after a reload), car **38/38**. Earlier (9 Oct): transport
+  **45/45**, `scripts/check-interact.mjs` **34/34**, `scripts/check-city-life.mjs` all pass (37).
 
 ## Known gaps
 
 - NPC passengers are the kit's seated busts (no animation); the player's humanoid sits with the city « Sit » clip
-  (no riding pose on the motorbike yet; the rider-less kit motorbike keeps its side stand down while ridden).
-- The motorbike is not seen by other players (only the rider, seated); it does not follow its owner to another hub.
+  (the motorbike's rider: the kit's « Ride » pose).
+- Owned vehicles are not seen by other players (only the driver, seated); they do not follow their owner to another
+  hub. Nobody can ride along yet (the car's other seats are not offered; no taxi job yet).
+- The car rapides do not see the player's vehicle (the player's vehicle stops at them).
 - Cars of the line and the decorative traffic do not see each other (they may overlap at crossings).
 - Stopping is at stops only (no « Taxawal fii » anywhere along the street yet).
 - The trip itself is not saved: a reload mid-ride puts the player on the next stop's pavement (fare already paid).

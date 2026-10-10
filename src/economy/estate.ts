@@ -468,6 +468,9 @@ class Estate {
       rows.push(['Ou le louer', `+${fcfa(sp.income ?? 0)} / h en ville`]);
       if (sp.upkeep) rows.push(['Charges', `${fcfa(sp.upkeep)} / h`]);
       if (holding(s, sp.id)?.how === 'rented') rows.push(['Ta location', 'elle s’arrête : il devient à toi']);
+    } else if (sp.kind === 'vehicle') {
+      rows.push(['Livraison', `au bord du trottoir, chez ${sp.where ?? 'le vendeur'} : monte et roule`]);
+      rows.push(['Revente', `tout de suite, ${Math.round(ECONOMY.property.saleShare * 100)} % de sa valeur`]);
     } else {
       rows.push(['Rapporte', `+${fcfa(sp.income ?? 0)} / h une fois loué`]);
       if (sp.upgrades?.length) rows.push(['Améliorable', sp.upgrades.map(u => u.name).join(', ')]);
