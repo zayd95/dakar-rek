@@ -55,12 +55,24 @@ evening first, then the city's everyday density. No new map.
 - `Sky.overcast(c, night)` and the weather in `updateLighting` (main.ts).
 - `openLanePath` (open routes) in `src/transport/route.ts`.
 
+## For the other lanes
+
+- `transport.dwellingAt(stopId)` — the car rapide standing at a stop now (`stop:<line>:<stop>` or `<line>:<stop>`):
+  its id, its rear door in the world, the seconds it still waits; null when none or its line does not run now.
+  `transport.served(stopId)` — whether the stop is served now (Ligne 23's day stops are not on fight evenings).
+- Groups under `ctx.extra` (draw-call breakdown): `arena_streets` (fight-evening vehicles, fans, parked cars),
+  `weather` (`wet_roads`, `puddles`, `rain`), `street_vendors`, `road_events`, `taxi:rank` (sign), `taxi:waiting` and
+  `vehicle:<hub>:taxi:*` (taxis). Every humanoid added here is a `humanoid_v2` under `ctx.extra`, so the shared crowd
+  budget (`src/actors/crowdLod.ts` ForeignBodies) covers them.
+
 ## Checks
 
 - Unit: `tests/taxi.test.ts` (sides, fares, kerb spots, routes out and in, open lane paths, the evening line never
   crosses the queue), `tests/city.test.ts` (arena rush curves, card vs gala, fuller cars, weather days, showers and
   drying, rain on the street, road events off everyone's routes and at fitting hours, vendors' hours).
-- Browser: `scripts/check-taxi.mjs` (evening line and its Arène stop, no car through the queue, the rank, fare shown and
+- Browser (run by the integrator's queue): `scripts/check-taxi.mjs` — 26/26 desktop + phone on 7cba20c; `scripts/check-city.mjs`
+  — 25/26 on 7cba20c (one desktop drop-off missed after a long frame, fixed in 7b9aaac: a taxi now stops at the kerb
+  even when a frame carries it past). Then: `scripts/check-taxi.mjs` (evening line and its Arène stop, no car through the queue, the rank, fare shown and
   paid once, the ride out, the front-seat view, into Almadies, out at Ngor, reload mid-ride), `scripts/check-city.mjs`
   (drop-offs and fans, vehicles on the road, parked cars, the evening line, draw calls at the peak, pick-ups after the
   bouts, an ordinary morning, a shower and the wet streets after it, a coffee from a vendor, today's road event).
