@@ -51,6 +51,16 @@ export class Crowd {
   }
 }
 
+/**
+ * Road segments closed to the decorative traffic for a while (a fight evening's queue at the arena gate…): a module sets
+ * `closed` (segment ends → true when cars must keep off it) and puts it back to null. Cars already on a closed segment
+ * turn up on an open one; the others never turn into it.
+ */
+export const trafficClosures: { closed: ((ax: number, az: number, bx: number, bz: number) => boolean) | null } = { closed: null };
+let liveTraffic: DecorativeTraffic | null = null;
+/** Where the decorative cars are right now (checks). */
+export const trafficPositions = (): { x: number; z: number }[] => liveTraffic?.positions() ?? [];
+
 interface Car { g: THREE.Group; ax: number; az: number; bx: number; bz: number; t: number; speed: number; prev: string; lane: number }
 
 /** Traffic mix per neighbourhood (weights): car rapides and motorbikes in Pikine, taxis and buses downtown, 4×4s and luxury cars in Almadies. */
@@ -78,6 +88,7 @@ export class DecorativeTraffic {
   group = new THREE.Group();
   private cars: Car[] = [];
   constructor(private world: HubWorld, private rand: () => number, count = 6) {
+    liveTraffic = this;
     for (let n = 0; n < count; n++) {
       const e = pick(world.edges, rand);
       const kind = pickKind(world.id, rand()), seed = Math.floor(rand() * 1e6);
@@ -86,14 +97,25 @@ export class DecorativeTraffic {
       this.cars.push({ g: v.group, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: v.speed * (0.85 + rand() * 0.3), prev: '', lane: LANE[kind] ?? 2.5 });
     }
   }
+  /** Positions of the cars (checks). */
+  positions() { return this.cars.map(c => ({ x: c.g.position.x, z: c.g.position.z })); }
+  /** A car on a segment that just closed turns up on an open one (out of sight of the closure). */
+  private reroute(c: Car, shut: NonNullable<typeof trafficClosures.closed>) {
+    const open = this.world.edges.filter(e => !shut(e.ax, e.az, e.bx, e.bz));
+    if (!open.length) return;
+    const e = pick(open, this.rand);
+    c.ax = e.ax; c.az = e.az; c.bx = e.bx; c.bz = e.bz; c.t = this.rand(); c.prev = '';
+  }
   /** Car rapide groups in this traffic (they carry an apprentice on the step). */
   rapides() { return this.cars.map(c => c.g).filter(g => g.name.includes('car_rapide')); }
   update(dt: number) {
+    const shut = trafficClosures.closed;
     for (const c of this.cars) {
+      if (shut && shut(c.ax, c.az, c.bx, c.bz)) this.reroute(c, shut);
       const len = Math.hypot(c.bx - c.ax, c.bz - c.az);
       c.t += (c.speed * dt) / len;
       if (c.t >= 1) {
-        const opts = neighbours(this.world, c.bx, c.bz).filter(n => nodeKey(n.x, n.z) !== c.prev);
+        const opts = neighbours(this.world, c.bx, c.bz).filter(n => nodeKey(n.x, n.z) !== c.prev && !(shut && shut(c.bx, c.bz, n.x, n.z)));
         const next = opts.length ? pick(opts, this.rand) : { x: c.ax, z: c.az };
         c.prev = nodeKey(c.bx, c.bz); c.ax = c.bx; c.az = c.bz; c.bx = next.x; c.bz = next.z; c.t = 0;
       }

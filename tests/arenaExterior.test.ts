@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ARENA_PURCHASES, ECURIES, FIGHT_FROM, gateOf, isFightEvening, nextFightEvening, stallsOf, vendorPlaces, weekday, WEEKDAY_FR } from '../src/arena/exteriorRules';
+import {
+  ARENA_PURCHASES, DRUMS_NEAR, DRUMS_RANGE, ECURIES, FIGHT_FROM, MURMUR_RANGE, crossesQueue, drumVolume, drumsCentre, gateOf, isFightEvening, murmurVolume,
+  nextFightEvening, queueDistance, stallsOf, vendorPlaces, weekday, WEEKDAY_FR,
+} from '../src/arena/exteriorRules';
 import { arenaExterior } from '../src/arena/exterior';
 import { WALL_R } from '../src/world/geew';
 
@@ -68,5 +71,43 @@ describe('arena exterior: gate, stalls, vendors', () => {
     // anchors stand on the street side of the stalls, away from the arena's own entry at the gate
     const g = gateOf(arena);
     for (const p of places) expect(Math.hypot(p.anchors[0].x - g.x, p.anchors[0].z - (g.z - 2.3))).toBeGreaterThan(7);
+  });
+});
+
+describe('arena exterior: drums, murmur and the road in front of the gate', () => {
+  const arena = { cx: 100, cz: 50 }, g = gateOf(arena);
+  it('the drums are loud near them, fade with distance and are silent from 45 m', () => {
+    expect(drumVolume(0, false, false)).toBe(1);
+    expect(drumVolume(DRUMS_NEAR, false, false)).toBe(1);
+    const a = drumVolume(15, false, false), b = drumVolume(30, false, false), c = drumVolume(44, false, false);
+    expect(a).toBeGreaterThan(b); expect(b).toBeGreaterThan(c); expect(c).toBeGreaterThan(0);
+    expect(drumVolume(DRUMS_RANGE, false, false)).toBe(0);
+    expect(drumVolume(80, false, false)).toBe(0);
+  });
+  it('silent inside an interior and with the sound off, wherever the player stands', () => {
+    expect(drumVolume(2, true, false)).toBe(0);
+    expect(drumVolume(2, false, true)).toBe(0);
+    expect(murmurVolume(0, true, false)).toBe(0);
+    expect(murmurVolume(0, false, true)).toBe(0);
+  });
+  it('the murmur is heard near the queue only, and less far than the drums', () => {
+    expect(murmurVolume(0, false, false)).toBe(1);
+    expect(murmurVolume(MURMUR_RANGE, false, false)).toBe(0);
+    expect(MURMUR_RANGE).toBeLessThan(DRUMS_RANGE);
+    expect(queueDistance(g, g.queue.x, (g.queue.z0 + g.queue.z1) / 2)).toBe(0);
+    expect(queueDistance(g, g.queue.x + g.queue.half + 3, g.queue.z0)).toBeCloseTo(3);
+    expect(queueDistance(g, g.queue.x, g.queue.z1 - 4)).toBeCloseTo(4);
+  });
+  it('the drummers stand beside the gate, outside the queue lane', () => {
+    const c = drumsCentre(g);
+    expect(queueDistance(g, c.x, c.z)).toBeGreaterThan(1);
+    expect(Math.hypot(c.x - g.x, c.z - g.z)).toBeLessThan(8);
+  });
+  it('the street in front of the gate is closed to traffic, the others stay open', () => {
+    const roadZ = g.z - 8.3;                                                // the road between the arena block and the écurie
+    expect(crossesQueue(g, g.x - 30, roadZ, g.x + 30, roadZ)).toBe(true);
+    expect(crossesQueue(g, g.x + 30, roadZ, g.x - 30, roadZ)).toBe(true);
+    expect(crossesQueue(g, g.x + 30, roadZ - 60, g.x + 30, roadZ)).toBe(false);   // the side street
+    expect(crossesQueue(g, g.x - 30, roadZ - 60, g.x + 30, roadZ - 60)).toBe(false); // the next street over
   });
 });

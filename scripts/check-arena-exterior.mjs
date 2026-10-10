@@ -56,6 +56,36 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await page.waitForTimeout(6000 * Math.min(SLOW, 2));
   const moved = await until(() => window.__dakar.arenaOut().queue > 0, null, 5000);
   check(`${label}: the queue keeps moving through the gate (fans arrive, others go in)`, moved && q0 > 0, `queue ${q0} → ${(await info()).queue}`);
+  // supporters carry their écurie's scarf or flag: two instanced meshes for every fan
+  s = await info();
+  check(`${label}: supporters carry scarves and flags (2 instanced meshes for all the fans)`, s.items && s.items.meshes === 2 && s.items.scarves + s.items.flags >= 4 && s.items.shown >= 1, JSON.stringify(s.items));
+  await d(([p, q]) => window.__dakar.cam(p, q), [[g.x + 4.2, 2.4, g.z - 13], [g.x, 1.3, g.z - 6]]); await shot('fans-colours'); await d(() => window.__dakar.cam(null));
+  // the decorative traffic keeps off the road in front of the gate while the queue is there
+  let carsInLane = 0, samples = 0;
+  for (let k = 0; k < 12; k++) { const t = (await info()).traffic; carsInLane += t.inLane; samples++; await page.waitForTimeout(500); }
+  s = await info();
+  check(`${label}: no car in the queue lane (${samples} samples, road closed)`, carsInLane === 0 && s.traffic.closed && s.traffic.cars > 0, JSON.stringify(s.traffic));
+
+  // the drummers are heard near them (after a user gesture), not from far away, not with the sound off
+  await page.keyboard.press('Shift');
+  const dc = s.drums;
+  await d(([x, z]) => window.__dakar.place(x, z, 0), [dc.x - 1, dc.z - 5]);
+  const heard = await until(() => { const a = window.__dakar.arenaOut().audio; return a.playing && a.drums > 0.6 && a.murmuring; }, null, 20000);
+  s = await info();
+  check(`${label}: near the drummers, the drums play (placeholder percussion) with the crowd's murmur`, heard, JSON.stringify(s.audio));
+  await d(([x, z]) => window.__dakar.place(x, z, 0), [g.x - 58, g.z - 8]);
+  const far = await until(() => { const a = window.__dakar.arenaOut().audio; return !a.playing && a.want.drums === 0; }, null, 20000);
+  s = await info();
+  check(`${label}: 50 m away, silence (the audio stops)`, far, JSON.stringify(s.audio));
+  await d(([x, z]) => window.__dakar.place(x, z, 0), [dc.x - 1, dc.z - 5]);
+  await until(() => window.__dakar.arenaOut().audio.playing, null, 20000);
+  await d(() => window.__dakar.phone('reglages')); await page.locator('#phone [data-act="sound"]').click(); await d(() => window.__dakar.phoneClose());
+  const hushed = await until(() => { const a = window.__dakar.arenaOut().audio; return a.muted && !a.playing; }, null, 20000);
+  s = await info();
+  check(`${label}: with the sound off, nothing plays even next to the drums`, hushed, JSON.stringify(s.audio));
+  await d(() => window.__dakar.phone('reglages')); await page.locator('#phone [data-act="sound"]').click(); await d(() => window.__dakar.phoneClose());
+  const back = await until(() => { const a = window.__dakar.arenaOut().audio; return !a.muted && a.playing; }, null, 20000);
+  check(`${label}: sound back on, the drums again`, back, JSON.stringify((await info()).audio));
   await view(); await shot('fight-evening');
   await d(([p, q]) => window.__dakar.cam(p, q), [[g.x + 9, 3.2, g.z - 10], [g.x + 4.5, 1.0, g.z - 2.5]]); await shot('drummers');
   await d(() => window.__dakar.cam(null));
@@ -92,7 +122,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await d(() => window.__dakar.arenaOutDay(3));
   await until(() => !window.__dakar.arenaOut().event, null, 15000);
   s = await info();
-  check(`${label}: back to a normal evening, quiet again`, !s.event && s.drawn === 0 && s.vendors.length === 0, JSON.stringify({ present: s.present, drawn: s.drawn, vendors: s.vendors.length }));
+  check(`${label}: back to a normal evening: quiet, the drums stop, the road reopens`, !s.event && s.drawn === 0 && s.vendors.length === 0 && !s.audio.playing && !s.traffic.closed, JSON.stringify({ present: s.present, drawn: s.drawn, vendors: s.vendors.length, audio: s.audio.playing, closed: s.traffic.closed }));
   check(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await page.context().close();
 }

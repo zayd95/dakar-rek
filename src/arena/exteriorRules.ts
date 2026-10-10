@@ -92,3 +92,35 @@ export function vendorPlaces(hub: string, a: { cx: number; cz: number }): PlaceS
     };
   });
 }
+
+// ------------------------------------------------------------------ sound and traffic on a fight evening
+
+/** Where the k-th sabar drummer stands: beside the gate, on its +x side, facing the street. */
+export const drummerAt = (g: ArenaGate, k: number) => ({ x: g.x + 4.4 + k * 0.95, z: g.z - 2.4 });
+/** Centre of the three drummers (where their sound comes from). */
+export const drumsCentre = (g: ArenaGate) => drummerAt(g, 1);
+/** Full loudness within NEAR metres, then a smooth fall to silence at RANGE. */
+export const DRUMS_NEAR = 6, DRUMS_RANGE = 45, MURMUR_NEAR = 3, MURMUR_RANGE = 28;
+const falloff = (dist: number, near: number, range: number) => (dist <= near ? 1 : dist >= range ? 0 : (1 - (dist - near) / (range - near)) ** 2);
+/** Loudness 0..1 of the drummers heard `dist` metres away: silent beyond 45 m, inside an interior, or with the sound off. */
+export function drumVolume(dist: number, inside: boolean, muted: boolean): number {
+  return inside || muted ? 0 : falloff(dist, DRUMS_NEAR, DRUMS_RANGE);
+}
+/** Loudness 0..1 of the crowd's murmur `dist` metres from the queue lane (softer and shorter-ranged than the drums). */
+export function murmurVolume(dist: number, inside: boolean, muted: boolean): number {
+  return inside || muted ? 0 : falloff(dist, MURMUR_NEAR, MURMUR_RANGE);
+}
+/** Distance from a point to the queue lane (0 inside it). */
+export function queueDistance(g: ArenaGate, x: number, z: number): number {
+  const q = g.queue;
+  return Math.hypot(Math.max(Math.abs(x - q.x) - q.half, 0), Math.max(q.z1 - z, z - q.z0, 0));
+}
+/**
+ * Whether cars on a road segment would pass through the queue lane: decorative traffic drives up to 3 m either side of
+ * the centre line, so a segment within `margin` of the lane is closed on fight evenings.
+ */
+export function crossesQueue(g: ArenaGate, ax: number, az: number, bx: number, bz: number, margin = 4): boolean {
+  const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.5));
+  for (let i = 0; i <= n; i++) if (queueDistance(g, ax + ((bx - ax) * i) / n, az + ((bz - az) * i) / n) <= margin) return true;
+  return false;
+}
