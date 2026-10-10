@@ -110,7 +110,7 @@ try {
       const atCounter = walkedIn && await walk(page, [{ x: c.x, z: c.z }]);
       check(`${label}: walks from the street into the ${v.type} shop up to its counter`, walkedIn && atCounter, JSON.stringify(await d(page, () => window.__dakar.pos())));
       if (!atCounter) await d(page, p => window.__dakar.place(p.x, p.z, p.yaw), c);
-      await d(page, p => window.__dakar.lookYaw(p.yaw + Math.PI * 0.85), c);      // look back over the shoulder at the shelves
+      await d(page, p => window.__dakar.lookYaw(p.yaw + 0.35), c);                // the counter, the keeper and the shelves behind
       const focused = await page.waitForFunction(id => window.__dakar.focus()?.id === id, it.id, { timeout: 15000 }).then(() => true, () => false);
       check(`${label}: at the ${v.type} counter the shop is in focus`, focused, JSON.stringify(await d(page, () => window.__dakar.focus())));
       const draws = await d(page, () => window.__dakar.drawCalls());

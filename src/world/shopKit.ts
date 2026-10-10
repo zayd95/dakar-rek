@@ -799,7 +799,7 @@ const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank'>, Style> = {
         for (let k = 0; k < (R.det ? 3 : 2); k++) { const x = Z.right.x1 - 0.4, z = Z.right.z0 + 0.5 + k * 0.75; if (R.ok(R.foot(x, z, 0.6, 0.6))) { R.b.cyl('y', 0.26, 0.26, 0.38, x, 0.19, z, 0xffffff, 10, { pos: true, neg: false, capPaint: 0x8a5a32, side: SUV.leather }); R.solid(R.foot(x, z, 0.6, 0.6), 0.4); if (k === 1) R.browse.push({ x: x - 0.9, z, yaw: PI / 2 }); } }
       } else {                                                                             // a big painted pirogue on trestles
         const x = Z.right.x1 - 0.45, z = (Z.right.z0 + Z.right.z1) / 2, f = R.foot(x, z, 0.6, 2.6);
-        if (R.ok(f)) { for (const dz of [-0.8, 0.8]) R.b.box(0.5, 0.45, 0.08, x, 0, z + dz, C.woodDark); R.pirogue(x, 0.45, z, 2.4, PI / 2); R.solid(f, 0.9); R.browse.push({ x: x - 1.1, z, yaw: PI / 2 }); }
+        if (R.ok(f)) { for (const dz of [-0.8, 0.8]) R.b.box(0.5, 0.45, 0.08, x, 0, z + dz, C.woodDark); R.pirogue(x - 0.05, 0.45, z, 2.2, PI / 2 - 0.4); R.solid(f, 0.9); R.browse.push({ x: x - 1.1, z, yaw: PI / 2 }); }
       }
       if (Z.island.x1 - Z.island.x0 > 1.2 && R.table(ix, iz, 1.0, 0.6, 0.7, 0xc49a58)) {
         if (v === 0) R.baskets(ix - 0.45, ix + 0.45, 0.7, iz + 0.25, 0.4); else if (v === 1) R.leather(ix - 0.45, ix + 0.45, 0.7, iz + 0.25, 0.4); else R.pirogue(ix, 0.72, iz, 0.8);

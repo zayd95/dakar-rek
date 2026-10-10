@@ -88,6 +88,11 @@ export const shopsModule: GameModule = {
         w.group.traverse(o => { if (o.userData.shop) out.push({ ...o.userData.shop, visible: o.visible }); });
         return out;
       },
+      /** Show or hide every stocked shop interior of the hub (performance A/B in the checks); returns how many. */
+      shopsVisible(v: boolean) {
+        let n = 0; ctx.world()?.group.traverse(o => { if (o.userData.shop) { o.visible = v; n++; } });
+        return n;
+      },
       /** The walk-in rooms of this hub (door sheet, type, anchors, budget, people present). */
       shopRooms: () => rooms.map(r => ({ door: r.door.id, name: r.door.name, type: r.shop.type, anchors: r.shop.anchors, bounds: r.shop.bounds, budget: r.shop.budget, people: r.cast?.presentCount ?? 0 })),
       /** One shop of each type side by side on a plain floor far from the hub; returns where each one stands. */
