@@ -111,11 +111,21 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     const f = await d(() => window.__dakar.focus());
     await d(() => window.__dakar.act());
     if (await d(() => !!document.querySelector('#modal.on'))) await pickItem('Dormir');
+    // lying along the bed while asleep (the kit's Lie pose on the bed's seat), not sitting on its edge
+    await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu dors' && window.__dakar.clip() === 'Lie', null, T).catch(() => {});
+    const asleep = await d(() => ({ clip: window.__dakar.clip(), seat: window.__dakar.seated(), y: window.__dakar.pos().y, step: window.__dakar.activity()?.step }));
+    check(`${label}: rest — asleep, the body lies along the bed`, asleep.clip === 'Lie' && /:lit$/.test(asleep.seat ?? '') && asleep.y > 0.5, JSON.stringify(asleep));
+    await d(() => { const p = window.__dakar.pos(); window.__dakar.cam([p.x + 2.2, p.y + 1.9, p.z + 0.4], [p.x, p.y + 0.15, p.z]); });
+    await shot('05-home-sleep');
+    await d(() => window.__dakar.cam(null));
     await page.waitForFunction(() => window.__dakar.state.data.needs.energie > 60, null, LONG).catch(() => {});
     const rested = await S();
     check(`${label}: rest — sleeping at home restores energy`, rested.needs.energie > 60, `${f?.name} · énergie ${Math.round(rested.needs.energie)}`);
-    await shot('05-home-sleep');
     await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, LONG).catch(() => {});
+    // the night over, up beside the bed: standing, on the floor, outside the bed's frame
+    const up = await d(() => ({ clip: window.__dakar.clip(), seat: window.__dakar.seated(), pos: window.__dakar.pos(), bed: window.__dakar.roomInteractables().find(i => /:in:bed$/.test(i.id)) }));
+    check(`${label}: rest — awake, standing beside the bed`, up.seat === null && up.clip !== 'Lie' && up.pos.y < 0.2 && Math.abs(up.pos.x - (up.bed.x - 1.05)) > 0.75, JSON.stringify(up));
+    await shot('05b-home-awake');
   } else check(`${label}: rest — the room has a place to sleep`, false, JSON.stringify(await d(() => window.__dakar.roomInteractables())));
 
   // 6. Buy and furnish: the cheapest piece, paid once, visible and usable in the room.

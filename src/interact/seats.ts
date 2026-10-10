@@ -44,6 +44,16 @@ export const sitOriginY = (s: Pick<Seat, 'top'>) => s.top - SIT_HIPS;
 export const floorSeatTop = (floorY: number) => floorY + SIT_HIPS;
 /** The pose someone holds on this seat. */
 export const seatClip = (s: Pick<Seat, 'clip'>): Clip => s.clip ?? 'Sit';
+/**
+ * Where someone stands when they get up, best first: 0.7 m in front of a chair or a bench; out of a bed by either side
+ * (beside the hips, clear of the mattress), else past its foot. The caller keeps the first spot that is free.
+ */
+export function standSpots(s: Pick<Seat, 'x' | 'z' | 'yaw' | 'clip'>): { x: number; z: number }[] {
+  const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
+  if (s.clip !== 'Lie') return [{ x: s.x + fx * 0.7, z: s.z + fz * 0.7 }];
+  const lx = Math.cos(s.yaw), lz = -Math.sin(s.yaw), side = 1.25;      // the lying body's left (+x of the character)
+  return [{ x: s.x + lx * side, z: s.z + lz * side }, { x: s.x - lx * side, z: s.z - lz * side }, { x: s.x + fx * 1.7, z: s.z + fz * 1.7 }];
+}
 
 const REACH = 1.3;
 

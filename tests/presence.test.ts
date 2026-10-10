@@ -24,6 +24,10 @@ describe('presence protocol', () => {
     for (const bad of ['plateau:venue:mosque:11', 'plateau:venue:mosque:1:salle', 'plateau:venue:mosque:11:salle:x', 'plateau:venue:dibiterie:12:salle']) expect(parseMove({ ...move, space: bad }, 'plateau')).toBeNull();
     expect(parseMove({ ...move, space: 'plateau:venue:mosque:11:salle', clip: 'Kneel', speed: 0 }, 'plateau')?.clip).toBe('Kneel');   // kneeling on a row
   });
+  it('carries the held poses (lying on a bed, sitting on a mat, kneeling, riding) and nothing else', () => {
+    for (const clip of ['Lie', 'SitFloor', 'Kneel', 'Ride', 'Sit', 'Dance_A']) expect(parseMove({ ...move, clip, speed: 0 }, 'pikine')?.clip).toBe(clip);
+    for (const clip of ['Fall_Back', 'Grab', 'lie', 'LIE', 'Lie ', '', 'Lie;drop', 'constructor', '__proto__', 'toString', 3, null, ['Lie'], { name: 'Lie' }]) expect(parseMove({ ...move, clip }, 'pikine')).toBeNull();
+  });
   it('normalises display names and restricts appearance and hub identifiers', () => {
     expect(nickname(' <b> Mame\n Diarra </b> ')).toBe('b Mame Diarra b');
     expect(nickname('\u202e')).toBe('Dakarois'); expect(nickname('a'.repeat(100))).toHaveLength(24);
