@@ -159,15 +159,17 @@ away while the player is still on the way to the door, they get in at once.
   seat, fare paid once, stick does not stand up, phone and « Arrêter » mid-ride, four views, ride past a stop,
   request, alight on the pavement, door and hub change right after, hub change mid-ride, reload mid-ride, draw calls.
   Screenshots in `docs/screenshots/transport/`.
-- `scripts/check-moto.mjs` (desktop keys, phone joystick; Pikine): dealer catalogue with the price, confirmation with
-  price and wallet, paid once, not twice, get on, ride, steer, stop at a wall (never inside), get off beside it, reload
-  (parked, and mid-ride), another hub and back. Screenshots in `docs/screenshots/moto/`.
+- `scripts/check-moto.mjs` (desktop keys, phone joystick; Pikine): dealer catalogue with the catalogue price,
+  confirmation with price and wallet, paid once through the asset model, listed once in « Biens », not twice, get on
+  (Ride pose), ride, steer, stop at a wall (never inside), a Tiak Tiak pick-up and hand-over while riding, get off
+  beside it, reload (parked, owned once, charged once; and mid-ride), another hub and back. Screenshots in `docs/screenshots/moto/`.
 - `scripts/check-car.mjs` (desktop keys, phone joystick; Plateau): dealer catalogue with the price, confirmation with
   price and wallet, paid once and delivered at the kerb, not twice, the parked car is solid, « Monter (conducteur) »,
   drive, steer, brake, the three views, stop at a wall (never inside), « Sortir de la voiture » on the pavement side,
   reload (parked, and mid-drive), another hub and back. Screenshots in `docs/screenshots/car/`.
-- Last run (9 Oct, after merging the vehicle kit and the venues lane): transport **45/45**, motorbike **32/32**,
-  `scripts/check-interact.mjs` **34/34**, `scripts/check-city-life.mjs` all pass (37).
+- Last run (10 Oct, on integration 57bc29c + the car, desktop and phone): motorbike **36/36** (asset model, « Biens »
+  once, a Tiak Tiak delivery while riding, charged once after a reload), car **38/38**. Earlier (9 Oct): transport
+  **45/45**, `scripts/check-interact.mjs` **34/34**, `scripts/check-city-life.mjs` all pass (37).
 
 ## Known gaps
 
