@@ -20,6 +20,8 @@ import {
 } from './program';
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
+import { frappePlan, type FrappeMoment } from './frappeMoments';
+import { playerFighter } from './bakk';
 import { lamb2On } from '../lamb/flag';
 import { localPair, rosterOpponent } from '../lamb/opponents';
 import { PRELIM, PRELIM_TYPICAL, prelimFill, prelimName, undercardFor, type Prelim } from './undercard';
@@ -90,6 +92,8 @@ class ArenaEvening {
   private bout: WatchedBout | null = null;
   /** Avec frappe: how the stands split at the watched bout's fall (who celebrated, who held their heads), for the checks. */
   private fallSplit: { side: StandSide; celebrate: number; heads: number } | null = null;
+  /** When the announcer last spoke over a bout avec frappe (real clock): knockdowns are not called back to back. */
+  private lastCall = -1e9;
   /** The last watched bout, once over: discipline, how it ended, the referee's arm, the stands at the fall (checks). */
   private lastBout: Record<string, unknown> | null = null;
   /** The evening's preliminaries, the one running now (`pi`), its wrestlers walking in, its bout, the show time its
@@ -328,12 +332,28 @@ class ArenaEvening {
    * side is his écurie's (Baobab on the left sections, Teranga on the right) when the fighter's evening is on, the left
    * otherwise. Uses the crowd lane's reactions (src/crowd/arenaStands.ts), unchanged.
    */
-  boutMoment(m: 'fall' | 'result', winner: 'player' | 'opponent' | null, outcome: string) {
+  boutMoment(m: FrappeMoment, winner: 'player' | 'opponent' | null, outcome: string, o: { strike?: 'quick' | 'big'; opponent?: string } = {}) {
     const mine: StandSide = arenaFighter.corner() === 'teranga' ? 'right' : 'left', theirs: StandSide = mine === 'left' ? 'right' : 'left';
     const side = winner === null ? null : winner === 'player' ? mine : theirs;
-    if (m === 'result') { this.crowd.moment('result', { winner: side }); return; }
-    if (outcome !== 'projection' || !side) { this.crowd.moment('decision'); return; }
-    this.fallReaction(side);
+    const names = { player: playerFighter(this.ctx).name, opponent: o.opponent ?? arenaFighter.opponent() ?? 'son adversaire' };
+    // the announcer names the one who staggers (the other of the striker), or the winner
+    const named = winner === null ? null : m === 'stagger' ? names[winner === 'player' ? 'opponent' : 'player'] : names[winner];
+    this.applyFrappe(frappePlan(m, side, { kind: o.strike, outcome, name: named }));
+  }
+  /**
+   * Applies a moment of a bout avec frappe (src/arena/frappeMoments.ts) — the player's own and the watched main event's
+   * alike: the stands' reactions, the split at the fall that ends it (fallReaction: fallSplit for the checks), the gala's
+   * decision and result moments, the announcer, the sound.
+   */
+  private applyFrappe(p: ReturnType<typeof frappePlan>) {
+    for (const [g, kind, share, seconds] of p.react) this.crowd.react(g, kind, { share, seconds });
+    if (p.split) this.fallReaction(p.split);
+    if (p.moment === 'decision') this.react('decision');
+    else if (p.moment === 'result') this.crowd.moment('result', { winner: p.side });
+    if (p.cheer > 0) crowdCheer(1.4, p.cheer * (0.7 + 0.5 * this.crowd.level()));
+    // the announcer: one word at a time (a second knockdown within a few seconds is left to the stands)
+    const now = performance.now();
+    if (p.say && (p.m !== 'stagger' || now - this.lastCall > 6000)) { this.lastCall = now; if (hasGestured()) paChime(); this.ctx.toast(p.say); }
   }
 
   /** The evening's two wrestlers as themselves for a bout avec frappe (Làmb 2.0, ?lamb2 only), else null. */
@@ -384,11 +404,20 @@ class ArenaEvening {
       this.bout.onMoment = (p, i) => {
         if (this.bout && this.bout.time < this.catchUpTo - 0.5) return;
         if (p === 'clinch') this.react('clinch');
-        if (p !== 'fall') return;
-        // avec frappe, a fall splits the stands: the winner's side celebrates, the other side holds its head
-        if (this.bout?.frappe && i.outcome === 'projection' && i.winner) this.fallReaction(i.winner === 'player' ? 'left' : 'right');
-        else this.react(i.outcome === 'projection' ? 'fall' : 'decision');
+        if (p !== 'fall' || this.bout?.frappe) return;                    // avec frappe, the duel's own moments (below)
+        this.react(i.outcome === 'projection' ? 'fall' : 'decision');
       };
+      // avec frappe, the same plan as the player's own bout: strikes, a knockdown (the announcer names who staggers) and
+      // the fall that splits the stands; the result is the show's own (announced at its phase)
+      if (this.bout.frappe) {
+        const b = this.bout, bill = billFor(this.day());
+        b.duel.onMoment = (m, who, o) => {
+          if (b.time < this.catchUpTo - 0.5 || m === 'arm' || m === 'result') return;
+          const side: StandSide | null = who === null ? null : who === 'player' ? 'left' : 'right';
+          const staggered = who === 'player' ? bill.right.name : bill.left.name;
+          this.applyFrappe(frappePlan(m, side, { kind: o?.kind, outcome: b.duel.outcome ?? undefined, name: m === 'stagger' ? staggered : null }));
+        };
+      }
       this.group.add(this.bout.group);
     } else if (phase === 'result') {
       const r = this.bout?.result, bi = this.bout?.info() as (Record<string, unknown> | undefined);
@@ -673,7 +702,7 @@ export const arenaModule: GameModule = {
   update(_ctx, dt) { evening?.update(dt); },
   camera(ctx, dt, drag) { return evening ? evening.camera(ctx.camera, dt, drag) : false; },
   // the player's own bout (Làmb 2.0): the stands react to its fall and its result
-  lamb(_ctx, e) { if (e.kind === 'moment') evening?.boutMoment(e.moment, e.winner, e.outcome); },
+  lamb(_ctx, e) { if (e.kind === 'moment') evening?.boutMoment(e.moment, e.winner, e.outcome, { strike: e.strike, opponent: e.opponent }); },
   safePlace() { return evening?.seatedHere() ? { x: evening.cx, z: evening.gz - 2.5, yaw: Math.PI } : null; },
   debug: ctx => ({
     arena: {

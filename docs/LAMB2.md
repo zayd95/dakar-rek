@@ -155,6 +155,28 @@ lève le bras du vainqueur aux points. Les **tribunes de la soirée** réagissen
 fête pendant que l'autre côté et les virages se lèvent, mains sur la tête ; au résultat, le plan de résultat des
 tribunes.
 
+### Ton combat de gala, avec frappe : les tribunes et l'annonceur
+
+Le chemin du lutteur (classement de la carrière → appelé à l'arène → « Entrée des lutteurs » → coin → cercle,
+`src/arena/fighter.ts`) se lutte **avec frappe** avec `?lamb2` (`ctx.startBout` → `startDuel(…, 'avec_frappe')`), contre
+l'adversaire désigné par la carrière, lui-même (son style, son niveau, sa ligne). Ses moments (`LambDuel.onMoment` :
+`strike`, `stagger`, `fall`, `arm`, `result`) passent par **un seul plan** (`src/arena/frappeMoments.ts`, testé),
+appliqué par le module de l'arène pour ton combat comme pour le combat regardé — les mêmes réactions de la foule, la même
+réaction à la chute (`fallSplit`) :
+
+- **frappe nette** : le côté de celui qui frappe crie (grosse frappe) ou applaudit un peu (frappe rapide) ;
+- **il vacille** (l'équivalent d'un knock-down) : le côté de celui qui a frappé se lève, les virages crient, et
+  l'annonceur : « Gora vacille ! Il n'est pas tombé : le combat continue. » (pas deux fois en six secondes) — ce n'est
+  **pas** la chute ;
+- **la chute qui finit le combat** : les tribunes se partagent (le côté du vainqueur fête, les autres mains sur la tête) ;
+  au temps, elles se lèvent ;
+- **l'arbitre lève le bras du vainqueur** : l'annonceur donne le résultat (« … l'emporte par projection ! · Le public :
+  « Daan na ! » ») ; puis le plan de résultat des tribunes.
+
+Au combat regardé, le résultat reste annoncé par la soirée elle-même (sa phase « résultat ») ; les frappes, les
+déséquilibres et la chute y sont les mêmes. Pas de moment à l'écurie (leçon, exercices). Vérification :
+`LAMB2=1 node scripts/check-arena-fighter.mjs` (combat avec frappe, un déséquilibre annoncé).
+
 ## Les lutteurs de la ville sont eux-mêmes
 
 Avec frappe, l'adversaire est **un lutteur du classement de la ville** (`src/career/roster.ts`, données de la lane
