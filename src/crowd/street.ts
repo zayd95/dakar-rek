@@ -11,7 +11,7 @@ import { dwellingNow, newArrivals } from './transportPeek';
 import { afterGalaWindow, type ArenaArrivals } from './arrivals';
 import { ambientLife } from '../social/ambientLife';
 import {
-  HUB_STREETS, PAVE, STREET_BUDGET, clearWalk, groupSpots, lanesFrom, pavementLanes, routeClear, stopSlots, streetTargets, type Lane,
+  BUSY_STOP_EXTRA, HUB_STREETS, PAVE, edgeWeight, STREET_BUDGET, clearWalk, groupSpots, lanesFrom, pavementLanes, routeClear, stopSlots, streetTargets, type Lane,
 } from './streetPlan';
 
 /**
@@ -41,8 +41,8 @@ interface Agent {
   /** Seconds left in this place before moving on (people waiting have a bus to catch, groups break up). */
   stay: number;
 }
-interface StopRt { site: StopSite; key: string; slots: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; door: Pt }
-interface GroupRt { x: number; z: number; ring: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; on: boolean }
+interface StopRt { site: StopSite; key: string; slots: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; door: Pt; busy: boolean }
+interface GroupRt { x: number; z: number; ring: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; on: boolean; w: number }
 
 export const STREET_RANGE = { pop: 28, view: 70 };
 /**
@@ -106,14 +106,20 @@ export class StreetLife {
     for (const c of LIVE_CROWDS) if (c !== this.crowd) for (const s of c.slots()) avoid.push(s);
     for (const line of linesOf(hub.id)) for (const site of placeStops(line, cols)) {
       const slots = stopSlots(site, cols, avoid);
-      this.stops.push({ site, key: `${line.id}:${site.def.id}`, slots, taken: slots.map(() => null), door: { x: site.x - site.rx * 1.15, z: site.z - site.rz * 1.15 } });
+      // on a busy street? (the centre line under the stop belongs to one of the hub's busy streets)
+      const cx = site.x - site.rx * 6.25, cz = site.z - site.rz * 6.25;
+      const busy = edgeWeight({ ax: cx - site.dx, az: cz - site.dz, bx: cx + site.dx, bz: cz + site.dz }, HUB_STREETS[hub.id]?.busy ?? []) > 1;
+      this.stops.push({ site, key: `${line.id}:${site.def.id}`, slots, taken: slots.map(() => null), door: { x: site.x - site.rx * 1.15, z: site.z - site.rz * 1.15 }, busy });
     }
     const fronts = [...hub.interactables.filter(i => !i.npc).map(i => ({ x: i.x, z: i.z })),
       ...this.ctx.places.all().filter(p => p.space === 'street' && /shop|stall|dibi|salon|cafe|market|gargote|maiga/.test(p.type)).flatMap(p => p.anchors.slice(0, 1))];
     const stopAvoid = this.stops.flatMap(s => [s.site, ...s.slots]);
-    for (const g of groupSpots(fronts, this.lanes, cols, [...avoid, ...stopAvoid])) this.groups.push({ ...g, taken: g.ring.map(() => null), on: false });
-    // stable order: the groups that come first in the evening are the same every day
-    this.groups.sort((a, b) => hash(a.x, a.z) - hash(b.x, b.z));
+    for (const g of groupSpots(fronts, this.lanes, cols, [...avoid, ...stopAvoid])) {
+      const n = this.nearLanes(g.x, g.z, 1)[0];
+      this.groups.push({ ...g, taken: g.ring.map(() => null), on: false, w: n ? this.lanes[n.lane].w : 1 });
+    }
+    // stable order, the busy streets first: the groups that gather first in the evening are the same every day
+    this.groups.sort((a, b) => b.w - a.w || hash(a.x, a.z) - hash(b.x, b.z));
     // after the gala, people wait for taxis at the corners where the arrivals drop the fans
     for (const r of this.arrivals?.cabRoutes ?? []) {
       const sx = Math.sign(r.alight.x - r.x), slots: { x: number; z: number; yaw: number }[] = [];
@@ -272,7 +278,7 @@ export class StreetLife {
   /** Once a second: bring the street towards the hour's targets, a few people at a time. */
   private plan() {
     const liveStops = this.stops.filter(s => this.alive(s.site.x, s.site.z)), liveGroups = this.groups.filter(g => this.alive(g.x, g.z));
-    const t = streetTargets(this.hub.id, this.ctx.hour(), this.q, liveStops.length, liveGroups.length);
+    const t = streetTargets(this.hub.id, this.ctx.hour(), this.q, liveStops.length, liveGroups.length, liveStops.filter(s => s.busy).length);
     if (this.leaving > 0) t.walkers = Math.max(0, t.walkers - Math.min(this.leaving, 24));   // room for the spectators leaving
     this.target = t;
     // groups: the first `groups` spots near the player gather, the others break up (in sight, they walk away)
@@ -285,7 +291,8 @@ export class StreetLife {
     for (let gi = 0; gi < this.groups.length && budget > 0; gi++) if (this.groups[gi].on && this.fillGroup(gi)) budget--;
     // stops: up to perStop waiting at each (more for the Arène stop after a gala)
     this.stops.forEach((s, si) => {
-      const want = !this.alive(s.site.x, s.site.z) ? 0 : Math.min(s.slots.length, t.perStop + (this.leaving > 0 || s.taken.some(a => a && a.stay > 300) ? 6 : 0));
+      const want = !this.alive(s.site.x, s.site.z) || t.perStop === 0 && !this.leaving ? 0
+        : Math.min(s.slots.length, t.perStop + (s.busy ? BUSY_STOP_EXTRA : 0) + (this.leaving > 0 || s.taken.some(a => a && a.stay > 300) ? 6 : 0));
       const have = s.taken.filter(Boolean).length;
       if (have < want && budget > 0 && this.fillStop(si)) budget--;
       if (have > want) { const a = s.taken.find(x => x && x.role === 'stop' && !x.path); if (a) { if (this.seen(a.x, a.z)) this.toLane(a); else this.hide(a); } }
@@ -431,7 +438,7 @@ export class StreetLife {
     for (const a of this.agents) by[a.role] = (by[a.role] ?? 0) + 1;
     return {
       hub: this.hub.id, quality: this.q, target: { ...this.target }, roles: by, counts: { ...this.counts }, leaving: this.leaving,
-      lanes: this.lanes.length, busyLanes: this.lanes.filter(l => l.w > 1).length, stops: this.stops.map(s => ({ key: s.key, waiting: s.taken.filter(Boolean).length, slots: s.slots.length })),
+      lanes: this.lanes.length, busyLanes: this.lanes.filter(l => l.w > 1).length, stops: this.stops.map(s => ({ key: s.key, busy: s.busy, waiting: s.taken.filter(Boolean).length, slots: s.slots.length })),
       groups: this.groups.filter(g => g.on).length, groupSpots: this.groups.length, corners: this.corners.map(c => c.taken.filter(Boolean).length),
       crowd: this.crowd.stats(), drawCalls: this.crowd.drawCalls(),
     };

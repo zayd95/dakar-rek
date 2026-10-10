@@ -31,14 +31,22 @@ export const STREET_BUDGET: Record<Quality, { pool: number; near: number; groupM
 
 /** How lively each hub's streets are, and its busy streets (road centre-line segments) with their weight. */
 export interface BusyStreet { name: string; segs: readonly (readonly [number, number, number, number])[]; weight: number }
-export const HUB_STREETS: Record<HubId, { level: number; busy: readonly BusyStreet[] }> = {
+/**
+ * Per hub: `level` scales everyone; `stops` the people waiting for the car rapide (commuters from the banlieue, few in
+ * the villas); `groups` the groups chatting in front of the shops (the banlieue's evenings outside, students at
+ * Fann, almost nobody standing about in Almadies); `busy`, the busy streets.
+ */
+export interface HubStreets { level: number; stops: number; groups: number; busy: readonly BusyStreet[] }
+export const HUB_STREETS: Record<HubId, HubStreets> = {
   // Sandaga: the market block (2,1) and the streets round it
-  plateau: { level: 1, busy: [{ name: 'Sandaga', weight: 6, segs: [[0, -60, 60, -60], [0, 0, 60, 0], [0, -60, 0, 0], [60, -60, 60, 0]] }] },
+  plateau: { level: 1, stops: 1, groups: 0.9, busy: [{ name: 'Sandaga', weight: 6, segs: [[0, -60, 60, -60], [0, 0, 60, 0], [0, -60, 0, 0], [60, -60, 60, 0]] }] },
   // the main street: from the room's block to the arena gate and the market (the Ligne 23 runs along it)
-  pikine: { level: 0.9, busy: [{ name: 'Grand-rue de Pikine', weight: 6, segs: [[-60, -60, 60, -60], [60, -60, 60, 0]] }] },
-  corniche: { level: 0.55, busy: [] },
-  almadies: { level: 0.35, busy: [] },
+  pikine: { level: 0.9, stops: 1.15, groups: 1.25, busy: [{ name: 'Grand-rue de Pikine', weight: 6, segs: [[-60, -60, 60, -60], [60, -60, 60, 0]] }] },
+  corniche: { level: 0.55, stops: 0.75, groups: 1.1, busy: [] },
+  almadies: { level: 0.35, stops: 0.5, groups: 0.4, busy: [] },
 };
+/** People waiting at a stop on a busy street come on top of the hour's number (the Sandaga and Arène stops). */
+export const BUSY_STOP_EXTRA = 2;
 
 /** Weight of a road edge: busy streets count several times (more people spawn there and keep walking there). */
 export function edgeWeight(e: RoadEdge, busy: readonly BusyStreet[]): number {
@@ -56,11 +64,11 @@ const onSeg = (e: RoadEdge, ax: number, az: number, bx: number, bz: number) => {
 };
 
 /** How many people the street shows now: walkers, waiting per stop, chatting groups. */
-export function streetTargets(hub: HubId, hour: number, q: Quality, stops: number, groupSpots: number) {
-  const B = STREET_BUDGET[q], L = HUB_STREETS[hub]?.level ?? 0.5;
-  const perStop = Math.round(B.perStop * curveAt(STOP_BY_HOUR, hour) * Math.min(1, L + 0.2));
-  const groups = Math.min(groupSpots, Math.round(B.groupMax * curveAt(CHAT_BY_HOUR, hour) * L));
-  const waiting = perStop * stops, chatting = groups * 4;                     // a ring of four
+export function streetTargets(hub: HubId, hour: number, q: Quality, stops: number, groupSpots: number, busyStops = 0) {
+  const B = STREET_BUDGET[q], H = HUB_STREETS[hub], L = H?.level ?? 0.5;
+  const perStop = Math.round(B.perStop * curveAt(STOP_BY_HOUR, hour) * Math.min(1, L + 0.2) * (H?.stops ?? 1));
+  const groups = Math.min(groupSpots, Math.round(B.groupMax * curveAt(CHAT_BY_HOUR, hour) * L * (H?.groups ?? 1)));
+  const waiting = perStop * stops + (perStop > 0 ? BUSY_STOP_EXTRA * busyStops : 0), chatting = groups * 4;   // a ring of four
   const walkers = Math.max(0, Math.min(B.pool - waiting - chatting, Math.round(B.pool * 0.62 * curveAt(WALK_BY_HOUR, hour) * L)));
   return { walkers, perStop, groups };
 }

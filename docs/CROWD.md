@@ -209,6 +209,19 @@ It costs 3 draw calls (standing figures, silhouettes, ground shadows) plus 10 pe
     an evening the arena's street was alive. Fans stop arriving at that moment.
 - **Nobody pops up in sight.** People appear out of view (more than 28 m away, or behind the camera) or walk in. They
   leave the same way. Walkers who wander far from the player come back near them.
+- **Each hub its own street** (`HUB_STREETS`):
+
+  | Hub | Everyone | Waiting at stops | Groups chatting | Busy streets |
+  | --- | --- | --- | --- | --- |
+  | Plateau | 1 | 1 | 0.9 | Sandaga |
+  | Pikine | 0.9 | 1.15 | 1.25 | the main street |
+  | Corniche | 0.55 | 0.75 | 1.1 | none |
+  | Almadies | 0.35 | 0.5 | 0.4 | none |
+
+  - Pikine's commuters fill the car rapide stops, its evenings are spent outside, and so are the students' at Fann.
+  - The villas of Almadies keep their people indoors.
+  - Stops on a busy street (Sandaga's, the Arène and Marché stops on the main street) hold two more people.
+  - The groups on the busy streets are the first to gather.
 - **The street lives around the player**: stops and groups fill within 90, 120 or 150 m (low, medium, high). Elsewhere
   they would be beyond the crowd's far range anyway.
 - **Never through walls or furniture.** Lanes and places are checked against the colliders, and every straight walk (to a
