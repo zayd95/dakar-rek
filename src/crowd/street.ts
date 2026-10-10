@@ -300,7 +300,7 @@ export class StreetLife {
     let moved = 0;
     for (const a of this.agents) if (moved < 3 && a.role === 'walk' && !a.path && !this.alive(a.x, a.z) && !this.seen(a.x, a.z)) { this.hide(a); this.spawnWalker(); moved++; }
     // people who have waited long enough move on
-    for (const a of this.agents) if ((a.role === 'stop' || a.role === 'group') && !a.path && (a.stay -= 1) <= 0) { if (this.seen(a.x, a.z)) this.toLane(a); else this.hide(a); }
+    for (const a of this.agents) if ((a.role === 'stop' || a.role === 'group' || a.role === 'pickup') && !a.path && (a.stay -= 1) <= 0) { if (this.seen(a.x, a.z)) this.toLane(a); else this.hide(a); }
   }
 
   /** A car rapide pulls in: two or three of those waiting get on, one or two get off and walk away. */
