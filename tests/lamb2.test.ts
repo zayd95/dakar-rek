@@ -5,7 +5,8 @@ import {
 } from '../src/lamb/stand';
 import { RULES, points, emptyScore, record, recordIncrements } from '../src/lamb/rules';
 import {
-  CLINCH, CLINCH_STYLES, ENTRY_BONUS, MOVES, answer, clinchDecide, clinchPower, entryGrip, exchange, gripWords, holdTick, holder, moveWindup, posture, slipRate, startMove, tryBreak,
+  CLINCH, CLINCH_STYLES, ENTRY_BONUS, MOVES, THROW, answer, clinchDecide, clinchPower, counterScore, counterThrow, entryGrip, exchange, gripWords, holdTick, holder,
+  moveWindup, posture, slipRate, startMove, throwLands, throwScore, tryBreak, wantsCounter, wantsThrow,
   type ClinchMove, type Holder,
 } from '../src/lamb/clinch';
 
@@ -311,5 +312,34 @@ describe('làmb 2.0 · the record', () => {
     expect(record({ lamb_af_amical_v: 2, lamb_amical_v: 5 }, 'amical', 'avec_frappe').v).toBe(2);
     expect(record({ lamb_af_amical_v: 2, lamb_amical_v: 5 }, 'amical').v).toBe(5);
     expect(recordIncrements({ mode: 'classe', outcome: 'abandon', winner: null }, 'avec_frappe')).toEqual({ lamb_af_classe_ab: 1, lamb_abandons: 1 });
+  });
+});
+
+describe('làmb 2.0 · the throw attempt and the counter (step 5)', () => {
+  const h = (balance = 100, attrs = AVERAGE, stamina = 100): Holder => holder({ stamina, balance, attrs });
+  it('a throw takes him down when the position allows it — his balance, the grip — never on power alone', () => {
+    expect(throwLands(h(), h(30), 30).result).toBe('fall');
+    expect(throwLands(h(), h(90), 0).result).toBe('fail');
+    const strongest = h(100, { ...AVERAGE, force: 100, technique: 100 });
+    expect(throwLands(strongest, h(100), 0).result).toBe('fail');            // the best attributes do not throw a steady man
+    expect(throwScore(h(), { balance: 50, move: { kind: 'push', t: 0 } }, 0)).toBeGreaterThan(throwScore(h(), { balance: 50, move: null }, 0));
+  });
+  it('a failed throw leaves the thrower off balance and loosens his grip', () => {
+    const a = h(); const r = throwLands(a, h(95), 0);
+    expect(r.result).toBe('fail'); expect(a.balance).toBeLessThan(85); expect(r.grip).toBeLessThan(0);
+  });
+  it('the counter turns a throw when the defender is steady and holds on; otherwise it only blocks it', () => {
+    expect(counterThrow(h(90), h(60), 10).result).toBe('reverse');
+    const att = h(80); expect(counterThrow(h(30), att, -40).result).toBe('block'); expect(att.balance).toBeLessThan(80);
+    expect(counterScore(h(80, { ...AVERAGE, technique: 95 }), h(), 0)).toBeGreaterThan(counterScore(h(80), h(), 0));
+  });
+  it('the opponent throws when the position is good, and reads the player’s throw to counter it', () => {
+    const seq = (...xs: number[]) => { let i = 0; return () => xs[i++ % xs.length]; };
+    expect(wantsThrow(h(), h(25), 30, CLINCH_STYLES.costaud, 1, seq(0.2))).toBe(true);
+    expect(wantsThrow(h(), h(95), 0, CLINCH_STYLES.costaud, 1, seq(0))).toBe(false);
+    expect(wantsThrow(h(), h(25), 30, CLINCH_STYLES.partenaire, 1, seq(0))).toBe(false);
+    expect(wantsCounter(h(), CLINCH_STYLES.defensif, 1, 100, 0.2)).toBe(true);
+    expect(wantsCounter(h(100, AVERAGE, 2), CLINCH_STYLES.defensif, 1, 100, 0)).toBe(false);
+    expect(THROW.windup).toBeGreaterThan(0.4);                                 // long enough to be seen and countered
   });
 });

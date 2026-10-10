@@ -11,7 +11,7 @@ l'arène, écurie, combats amicaux et classés) reste intacte à chaque étape.
 | 2 | Entrée dans le clinch : l'avantage de saisie dépend de l'équilibre et de l'ouverture | **jouable** |
 | 3 | Clinch jouable : pousser, tirer, pivoter, casser ; la prise et l'équilibre bougent | **jouable** |
 | 4 | Équilibre / posture dans le clinch : on sent la position glisser | **jouable** |
-| 5 | Tentative de projection et contre | à faire |
+| 5 | Tentative de projection et contre | **jouable** |
 | 6 | Chute : posture, équilibre, contacts, force, réponse → ralenti court → arbitre → foule → résultat | à faire |
 
 ## Essayer
@@ -23,8 +23,9 @@ rapport de combat (`GameModule.lamb`, avec `discipline: 'avec_frappe'`). Sans le
 
 Commandes debout : déplacement (joystick, ZQSD/WASD/flèches), **Frappe** (J ou C), **Grosse frappe** (K ou V),
 **Saisir** (E/Espace), **Garde** maintenue (G/Maj), **Reculer** (X). Dans l'empoignade, les mêmes boutons deviennent
-**Pousser** (E/Espace), **Tirer** (G), **Pivoter** (J), **Casser** (X) ; **Projeter** (K) arrive à l'étape 5. Sur
-téléphone, cinq boutons à droite, qui changent de nom dans l'empoignade.
+**Pousser** (E/Espace), **Tirer** (G), **Pivoter** (J), **Casser** (X), **Projeter** (K) — qui devient **Contrer**
+(en vert) pendant que l'adversaire tente sa projection. Sur téléphone, cinq boutons à droite, qui changent de nom dans
+l'empoignade.
 
 ## Étape 1 — le combat debout (`src/lamb/stand.ts`)
 
@@ -105,6 +106,19 @@ qui monte.
 
 L'adversaire lit le mouvement du joueur et y répond par celui qui le bat (plus avec la Technique, moins quand il
 perd son sang-froid), casse quand sa prise est perdue, sinon joue son style : Gora pousse, Pape pivote, Saliou tire.
+
+## Étape 5 — la projection et le contre
+
+**Projeter** (12 d'endurance) se prépare 0,55 s — le corps se penche, l'autre le voit venir — puis tombe. Elle met
+l'autre au sol **si la position le permet** : son équilibre (plus il est bas, plus c'est facile), la prise (les
+contacts), l'équilibre du lanceur, sa Force et sa Technique, et un lutteur pris au milieu d'un mouvement se projette
+mieux. Sinon elle rate : le lanceur perd 20 d'équilibre et 15 de prise. Jamais « force > défense » : la même
+projection passe ou rate selon la position (les meilleurs attributs ne font pas tomber un homme stable).
+
+Pendant qu'elle se prépare, l'autre peut **Contrer** (8 d'endurance) : avec assez d'équilibre, de prise et de
+technique il la retourne et c'est le lanceur qui tombe ; sinon il la bloque seulement (le lanceur perd 10
+d'équilibre). L'adversaire tente sa projection quand la position est bonne (Gora plus que les autres) et voit venir
+celle du joueur selon sa lecture, sa Technique et son sang-froid.
 
 ## Code et vérifications
 

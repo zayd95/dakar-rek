@@ -211,12 +211,14 @@ export interface ClinchStyle {
   think: [number, number];
   /** Chance to break free per decision when the grip is clearly against it. */
   breakFree: number;
+  /** Chance to try a throw per decision when the position allows it. */
+  throwChance: number;
 }
 export const CLINCH_STYLES: Record<'costaud' | 'rapide' | 'defensif' | 'partenaire', ClinchStyle> = {
-  costaud: { prefer: { push: 0.6, pull: 0.2, pivot: 0.2 }, read: 0.3, think: [0.5, 0.9], breakFree: 0.1 },
-  rapide: { prefer: { push: 0.2, pull: 0.3, pivot: 0.5 }, read: 0.35, think: [0.35, 0.7], breakFree: 0.3 },
-  defensif: { prefer: { push: 0.2, pull: 0.55, pivot: 0.25 }, read: 0.5, think: [0.45, 0.85], breakFree: 0.35 },
-  partenaire: { prefer: { push: 0.6, pull: 0.2, pivot: 0.2 }, read: 0, think: [1.0, 1.4], breakFree: 0 },
+  costaud: { prefer: { push: 0.6, pull: 0.2, pivot: 0.2 }, read: 0.3, think: [0.5, 0.9], breakFree: 0.1, throwChance: 0.55 },
+  rapide: { prefer: { push: 0.2, pull: 0.3, pivot: 0.5 }, read: 0.35, think: [0.35, 0.7], breakFree: 0.3, throwChance: 0.4 },
+  defensif: { prefer: { push: 0.2, pull: 0.55, pivot: 0.25 }, read: 0.5, think: [0.45, 0.85], breakFree: 0.35, throwChance: 0.3 },
+  partenaire: { prefer: { push: 0.6, pull: 0.2, pivot: 0.2 }, read: 0, think: [1.0, 1.4], breakFree: 0, throwChance: 0 },
 };
 /** The move that beats `m`. */
 export const answer = (m: ClinchMove): ClinchMove => (Object.keys(BEATS) as ClinchMove[]).find(x => BEATS[x] === m)!;
@@ -231,4 +233,58 @@ export function clinchDecide(me: Holder, them: Holder, grip: number, st: ClinchS
   if (grip < -40 && me.stamina > CLINCH.breakCost + 10 && r() < st.breakFree * level) return 'break';
   const x = r() * (st.prefer.push + st.prefer.pull + st.prefer.pivot);
   return x < st.prefer.push ? 'push' : x < st.prefer.push + st.prefer.pull ? 'pull' : 'pivot';
+}
+
+// ------------------------------------------------------------------ step 5: the throw attempt and the counter
+
+/**
+ * « Projeter »: a throw is attempted from the empoignade. It is set up for a moment (the body shows it, the other sees
+ * it coming) and costs endurance. When it lands, it takes the other down if the position allows it — his balance (the
+ * lower, the easier), the grip (contacts), the thrower's own balance, Force and Technique, and a wrestler caught in the
+ * middle of a move is easier to throw. Otherwise it fails and leaves the thrower off balance, his grip loosened.
+ * While it is set up the other can « Contrer »: with enough balance, grip and technique he turns it and the thrower goes
+ * down; otherwise he only blocks it. Never `power > defence`: the same throw wins or fails by the position.
+ */
+export const THROW = {
+  cost: 12, windup: 0.55,
+  /** Score at which a throw takes the other down, and its failure's price. */
+  threshold: 40, failBalance: 20, failGrip: 15,
+  /** Counter: its cost, the score at which it turns the throw, and what a blocked throw costs the thrower. */
+  counterCost: 8, counterThreshold: 38, blockBalance: 10,
+} as const;
+
+/** How well a throw by `att` would take `def` down now (≥ THROW.threshold: he goes down). `grip` from att's side. */
+export function throwScore(att: Pick<Holder, 'balance' | 'attrs'>, def: Pick<Holder, 'balance' | 'move'>, grip: number): number {
+  return (100 - def.balance) * 0.6 + clamp(grip, -100, 100) * 0.4 + (att.balance - 50) * 0.2
+    + (k(att.attrs.force) + k(att.attrs.technique) - 2) * 50 + (def.move ? 12 : 0);
+}
+/** The throw lands (not countered): he goes down, or it fails (balance and grip lost). `grip` from att's side; returns the grip change. */
+export function throwLands(att: Holder, def: Holder, grip: number): { result: 'fall' | 'fail'; grip: number; score: number } {
+  const score = throwScore(att, def, grip);
+  if (score >= THROW.threshold) return { result: 'fall', grip: 0, score };
+  att.balance = Math.max(0, att.balance - THROW.failBalance / k(att.attrs.equilibre));
+  return { result: 'fail', grip: -THROW.failGrip, score };
+}
+/** How well `def` turns a throw (≥ THROW.counterThreshold: the thrower goes down). `grip` from def's side. */
+export function counterScore(def: Pick<Holder, 'balance' | 'attrs'>, att: Pick<Holder, 'balance'>, grip: number): number {
+  return def.balance * 0.5 + clamp(grip, -100, 100) * 0.3 + (k(def.attrs.technique) - 1) * 60 + (att.balance < 50 ? 10 : 0);
+}
+/** The counter meets the throw: turned (the thrower goes down) or only blocked (the thrower loses balance). */
+export function counterThrow(def: Holder, att: Holder, grip: number): { result: 'reverse' | 'block'; score: number } {
+  const score = counterScore(def, att, grip);
+  if (score >= THROW.counterThreshold) return { result: 'reverse', score };
+  att.balance = Math.max(0, att.balance - THROW.blockBalance / k(att.attrs.equilibre));
+  return { result: 'block', score };
+}
+
+/** Will the opponent try a throw now (`grip` from its side)? When the position is good, more for a power style. */
+export function wantsThrow(me: Holder, them: Holder, grip: number, st: ClinchStyle, level: number, r: () => number): boolean {
+  if (me.move || me.recover > 0 || me.stamina < THROW.cost + 4) return false;
+  const s = throwScore(me, them, grip);
+  if (s < THROW.threshold - 8) return false;
+  return r() < Math.min(0.9, st.throwChance * level * (s >= THROW.threshold ? 1.4 : 0.7));
+}
+/** Will the opponent counter the player's throw (decided once, when it sees it coming)? */
+export function wantsCounter(me: Holder, st: ClinchStyle, level: number, composure: number, r: number): boolean {
+  return me.stamina >= THROW.counterCost && r < Math.min(0.85, st.read * 1.2 * level * k(me.attrs.technique) * (0.5 + composure / 200));
 }
