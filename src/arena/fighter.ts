@@ -25,7 +25,8 @@ export const PREP_SECONDS = 8;
 let ctxRef: GameCtx | null = null;
 let bout: (FighterBout & { day: number; ecurie: 'baobab' | 'teranga'; member: boolean }) | null = null;
 let phase: FighterPhase = 'idle';
-let prepT = 0;
+/** When the moment in the corner ends (real time: a short pause, whatever the frame rate). */
+let prepUntil = 0;
 const listeners = new Set<(cue: FighterCue) => void>();
 const cue = (c: FighterCue) => { for (const fn of listeners) fn(c); };
 
@@ -51,6 +52,7 @@ export const arenaFighter = {
     const ctx = ctxRef; if (!ctx || (bout && phase !== 'idle')) return false;
     const member = ctx.state.data.flags.includes('ecurie_baobab');
     bout = { mode: b.mode ?? 'classe', style: b.style, opponent: b.opponent, day: ctx.day(), ecurie: member ? 'baobab' : 'teranga', member };
+    refreshSpots(ctx);                                                        // the corner of this bout's écurie, now
     go(ctx, 'called');
     return true;
   },
@@ -80,7 +82,7 @@ function go(ctx: GameCtx, next: FighterPhase) {
     case 'tunnel':
       ctx.walkTo(id.corner); ctx.toast(`Le tunnel des lutteurs. Rejoins ${corner}.`); cue('tunnel'); break;
     case 'prep':
-      ctx.walkTo(null); prepT = PREP_SECONDS;
+      ctx.walkTo(null); prepUntil = performance.now() + PREP_SECONDS * 1000;
       ctx.toast('Ton entourage t’entoure, les tambours redoublent. Prépare-toi…'); cue('prep'); break;
     case 'ring':
       ctx.walkTo(id.ring); ctx.toast('C’est l’heure : avance jusqu’au cercle.'); cue('walk-out'); break;
@@ -118,6 +120,11 @@ function places(hub: HubWorld, s: ReturnType<typeof fighterSpots>): PlaceSpec[] 
 
 let spots: ReturnType<typeof fighterSpots> | null = null;
 let spotsFor: 'baobab' | 'teranga' | null = null;
+/** The path's spots for the current bout's écurie (or Baobab's when no bout), in the current hub's arena. */
+function refreshSpots(ctx: GameCtx) {
+  const a = ctx.world()?.arena, e = bout?.ecurie ?? 'baobab';
+  if (a && (!spots || spotsFor !== e)) { spots = fighterSpots(a.cx, a.cz, e); spotsFor = e; }
+}
 
 export const fighterModule: GameModule = {
   name: 'arenaFighter',
@@ -134,23 +141,23 @@ export const fighterModule: GameModule = {
     for (const p of places(hub, spots)) ctx.places.add(p);
     if (bout && phase !== 'idle') go(ctx, phase === 'return' ? 'return' : 'called');
   },
-  update(ctx, dt) {
+  update(ctx) {
     if (!bout || phase === 'idle' || phase === 'bout') return;
     if (ctx.day() !== bout.day && phase === 'called') { bout = null; go(ctx, 'idle'); return; }   // the evening went by
     const w = ctx.world(); if (!w?.arena) return;
-    if (!spots || spotsFor !== bout.ecurie) { spots = fighterSpots(w.arena.cx, w.arena.cz, bout.ecurie); spotsFor = bout.ecurie; }
-    const p = ctx.player.pos, s = spots;
+    refreshSpots(ctx);
+    const p = ctx.player.pos, s = spots!;
     switch (phase) {
       case 'called': if (s.inTunnel(p.x, p.z)) go(ctx, 'tunnel'); break;
       case 'tunnel': if (Math.hypot(p.x - s.corner.x, p.z - s.corner.z) < 2.2) go(ctx, 'prep'); break;
-      case 'prep': prepT -= dt; if (prepT <= 0) go(ctx, 'ring'); break;
+      case 'prep': if (performance.now() >= prepUntil) go(ctx, 'ring'); break;
       case 'ring': if (Math.hypot(p.x - s.ring.x, p.z - s.ring.z) < 1.2 && ctx.mode() === 'play') go(ctx, 'bout'); break;
       case 'return': if (s.outside(p.x, p.z)) { bout = null; go(ctx, 'idle'); ctx.toast('Ba beneen yoon ! La soirée continue dehors.'); cue('exit'); } break;
     }
   },
-  debug: () => ({
-    /** The fighter's path: phase, corner, the steps' positions. */
-    fighter: () => ({ phase, bout, prep: Math.max(0, +prepT.toFixed(1)), spots: spots ? { gate: spots.gate, tunnel: spots.tunnel, corner: spots.corner, ring: spots.ring } : null }),
+  debug: ctx => ({
+    /** The fighter's path: phase, corner, the steps' positions (always those of tonight's écurie). */
+    fighter: () => { refreshSpots(ctx); return { phase, bout, prep: phase === 'prep' ? Math.max(0, +((prepUntil - performance.now()) / 1000).toFixed(1)) : 0, spots: spots ? { gate: spots.gate, tunnel: spots.tunnel, corner: spots.corner, ring: spots.ring } : null }; },
     fighterBegin: (mode: 'amical' | 'classe' = 'classe', style?: string) => arenaFighter.begin({ mode, style }),
     fighterCancel: () => arenaFighter.cancel(),
   }),
