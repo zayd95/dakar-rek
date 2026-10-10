@@ -38,6 +38,7 @@ import { worldMarkers } from '../ui/worldMarkers';
 import { crowdModule } from '../crowd/module';
 import { fightTalkModule } from '../social/fightTalkModule';
 import { careerModule } from '../career/module';
+import { tonightModule } from '../arena/tonight';
 import { togetherModule } from '../arena/together';
 import { arrivalModule } from '../arena/arrival';
 
@@ -196,4 +197,5 @@ export const MODULES: GameModule[] = [
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)
   togetherModule,       // friends at the arena: seated together, one bout for the group (src/arena/together.ts)
   arrivalModule,        // getting to the fight: the guarded moto parking, fans aboard the Ligne 23 (src/arena/arrival.ts)
+  tonightModule,        // the phone's « Ce soir »: tonight's card, getting there, after, the day's weather and roads (src/arena/tonight.ts)
 ];

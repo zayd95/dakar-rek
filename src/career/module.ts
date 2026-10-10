@@ -62,6 +62,9 @@ const TITLE: Action = { id: 'title_bout', label: 'Combat pour le titre', detail:
 let ctxRef: GameCtx | null = null;
 /** Tonight's gala place or title bout, once signed up for (the duel comes at the ring, against this wrestler). */
 let signed: { day: number; kind: 'gala' | 'title'; opp: string } | null = null;
+/** Tonight's gala place or title bout (the phone's « Ce soir »), or null for an ordinary bout or none. */
+export const careerTonight = (): { kind: 'gala' | 'title'; opp: string } | null =>
+  (signed && ctxRef && signed.day === ctxRef.day() ? { kind: signed.kind, opp: wrestlerById(signed.opp)?.name ?? '' } : null);
 
 /** The city's ladder on a day (src/career/roster.ts), kept until a bout or a watched gala changes it. */
 const ladders = new Map<number, Ladder>();

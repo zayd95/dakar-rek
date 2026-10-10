@@ -175,3 +175,11 @@ button.ph-wid { cursor:pointer; }
   .ph-weather b { font-size:44px; } .ph-calc output { font-size:40px; } .ph-calc > div { grid-template-columns:repeat(8,1fr); gap:6px; }
 }
 @media (prefers-reduced-motion:reduce) { #phone .ph-device { animation:none; } }
+/* « Ce soir » (src/arena/tonight.ts): rows with an icon, a line and its detail, « Y aller » on the right */
+.ph-tonight .ph-rows > div { align-items:center; }
+.ph-tonight .ph-rows > div > span { display:flex; align-items:flex-start; gap:10px; min-width:0; }
+.ph-tonight .ph-rows > div > span > i { flex:none; width:24px; font-style:normal; font-size:18px; line-height:1.25; text-align:center; }
+.ph-tonight .ph-rows > div > span > span { min-width:0; line-height:1.3; }
+.ph-tonight .ph-rows small { margin-top:1px; line-height:1.35; }
+.ph-go { flex:none; min-height:44px; padding:0 14px; border:0; border-radius:999px; background:#e9f1ff; color:#0050b8; font:600 14px/1 var(--ph-font); cursor:pointer; }
+.ph-go:active { background:#d6e4ff; }

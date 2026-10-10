@@ -31,6 +31,9 @@ export const phoneHooks: {
    * the change since the last day played (« +6 depuis hier », '' when none; real saved values only).
    */
   profileDims?: () => { label: string; score: number; level: string; note: string; delta?: string }[];
+  /** « Ce soir » app: the evening's page (src/arena/tonight.ts), and « Y aller » toward one of its targets. */
+  tonight?: () => { title: string; rows: { icon: string; label: string; detail?: string; go?: string; open?: string }[] }[];
+  tonightGo?: (key: string) => void;
   /** Profile app: one line under the name (« Une vie à Dakar », « Lutteur · Undercards »). Never a class to pick. */
   profileHeadline?: () => string;
   /** People app: neighbours the player knows (NPC module). */
