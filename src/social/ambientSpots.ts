@@ -141,8 +141,9 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
     const base = { space: 'street', hours: rule.hours, source: 'legacy' as const };
     const id = `legacy:${a.id}`;
     // a shop stocked by the shop kit (the three Soumbédioune workshops share the 'craft' sheet): in through the door,
-    // the displays, then the counter
-    const stocked = inp.shops?.filter(s => s.key === a.id || s.key.startsWith(a.id + '-')) ?? [];
+    // the displays, then the counter. Not a walk-in room (a café, the restaurant): its door keeps the terrace out front
+    // here, and the room inside is the spot of its seats (4. below), in the room's own space.
+    const stocked = inp.shops?.filter(s => !s.room && (s.key === a.id || s.key.startsWith(a.id + '-'))) ?? [];
     if (stocked.length) {
       for (const s of stocked) {
         const k = s.anchors, b = s.bounds, paths = new ShopPaths(b, s.colliders);
