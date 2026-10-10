@@ -111,6 +111,19 @@ body.touch kbd { display:none; }
 #toast .t.again { animation:tAgain .25s ease-out; }
 #toast .amt { display:inline-block; padding:0 7px; border-radius:999px; background:var(--surface-2); font-weight:800; font-variant-numeric:tabular-nums; }
 #toast .amt.gain { color:var(--gain); background:#e3f5ec; }
+/* moment cards (hud.moment: a bout's recap, a new word on a gauge): first in the toast column, the toasts stack under
+   them; the only part of the column that takes taps (tap anywhere on it to dismiss) */
+#toast .mo { order:-1; pointer-events:auto; position:relative; display:flex; align-items:flex-start; gap:10px; width:min(400px, 100%); box-sizing:border-box;
+  padding:10px 40px 11px 10px; border-radius:16px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); text-align:left; cursor:pointer;
+  animation:moIn .28s ease-out; transition:opacity .2s, transform .2s; }
+#toast .mo.out { opacity:0; transform:translateY(-6px); }
+#toast .mo-ic { flex:none; display:grid; place-items:center; width:36px; height:36px; border-radius:50%; background:var(--sun); font-style:normal; font-size:19px; }
+#toast .mo-tx { min-width:0; }
+#toast .mo-tx b { display:block; font-size:14px; font-weight:800; line-height:1.25; }
+#toast .mo-tx ul { margin:3px 0 0; padding:0; list-style:none; }
+#toast .mo-tx li { font-size:12.5px; font-weight:600; color:var(--ink-2); line-height:1.35; }
+#toast .mo-x { position:absolute; top:2px; right:2px; width:36px; height:36px; border:0; border-radius:50%; background:transparent; color:var(--ink-3); font-size:14px; cursor:pointer; }
+@keyframes moIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 @keyframes tIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 @keyframes tAgain { 50% { transform:scale(1.04); } }
 
@@ -331,6 +344,9 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #place { top:calc(8px + var(--sa-t)); }
   #goal { top:calc(80px + var(--sa-t)); }
   #toast { top:calc(60px + var(--sa-t)); width:min(420px, calc(100vw - 340px)); }
+  /* short screen: a moment card keeps its first five lines, so it and the toasts under it stay above the action column */
+  #toast .mo-tx li:nth-child(n+6) { display:none; }
+  #toast .mo { padding-top:8px; padding-bottom:8px; }
   /* the trades' gesture card (src/ui/gesture.ts) is centred at the bottom, 52vw wide: the action column stays right of it */
   #act { max-width:calc(24vw - 20px - var(--sa-r)); }
   #progress { min-width:0; width:calc(24vw - 20px - var(--sa-r)); }
