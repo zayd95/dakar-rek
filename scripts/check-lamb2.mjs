@@ -1,9 +1,10 @@
-// Headless checks of Làmb 2.0, steps 1–3: the stand-up exchange of the « lutte avec frappe » (src/lamb/stand.ts,
+// Headless checks of Làmb 2.0, steps 1–4: the stand-up exchange of the « lutte avec frappe » (src/lamb/stand.ts,
 // docs/LAMB2.md), behind the `lamb2` flag. Desktop: the arena menu offers it with ?lamb2 · three states and no HP ·
 // a big strike out of reach misses and opens its author · a quick strike in reach takes balance and composure (or is
 // guarded, at an endurance cost) · the guard absorbs the opponent's strikes for endurance · a wrestler out of balance
 // staggers and a grab on him goes straight into the empoignade (grip) · in the empoignade, reading his move and
-// answering it wins the exchange, Casser breaks free, a wrestler out of balance goes down · recap with the strikes,
+// answering it wins the exchange, a lost grip makes the balance slip (felt on screen), Casser breaks free, a
+// wrestler out of balance goes down · recap with the strikes,
 // not counted in any record. Phone: no « avec frappe » without the flag, the five buttons fit, captures.
 // Usage: node scripts/check-lamb2.mjs [baseUrl] [outDir]   — run it under the shared lock (flock /tmp/dakar-browser.lock).
 // SwiftShader renders a few fps and the game clamps dt to 0.1 s, so every wait is on game state.
@@ -169,6 +170,18 @@ async function friendlyMenu(page) {
   }, 150000);
   if (read) await shot(page, 'desktop-clinch-counter');
   check('empoignade: reading his move and answering with the one that beats it wins the exchange (he slips)', !!read && read.balance.opponent < 100, read ? { last: read.clinch.last, balance: read.balance, grip: read.clinch.grip } : { phase: cx?.phase, seen, last: cx?.clinch?.last });
+  // step 4: a grip clearly against you wears your balance away — the screen, the bar and the words say so
+  let sl = await info(page);
+  if (sl?.phase === 'fight') sl = await intoClinch();
+  if (sl?.phase === 'clinch') {
+    const b0 = sl.balance.player;
+    await page.evaluate(() => window.__dakar.duelSet('player', { grip: -85, balance: Math.min(50, window.__dakar.duelInfo().balance.player) }));
+    const sv = await until(page, i => !i || i.phase !== 'clinch' || i.clinch.posture.player !== 'stable', async () => page.evaluate(() => window.__dakar.duelSet('player', { grip: -85 })), 40000);
+    const ui = await page.evaluate(() => ({ cls: document.querySelector('.duel-ui')?.className ?? '', msg: document.querySelector('.duel-msg')?.textContent ?? '', warn: !!document.querySelector('[data-k=mebal].warn') }));
+    if (sv?.phase === 'clinch') await shot(page, 'desktop-clinch-slipping');
+    check('empoignade: with his grip on you, your balance slips away and you feel it (edge of the screen, bar, words)', sv?.phase === 'clinch' && sv.clinch.posture.player !== 'stable' && sv.balance.player < Math.min(50, b0) && /slip|falling/.test(ui.cls) && ui.warn && /glisses|tomber/.test(ui.msg), { posture: sv?.clinch?.posture, balance: sv?.balance, ui });
+    await page.evaluate(() => window.__dakar.duelSet('player', { grip: 0, balance: 80 }));
+  }
   // breaking free when the grip allows it
   let bf = await info(page);
   if (bf?.phase === 'clinch') {

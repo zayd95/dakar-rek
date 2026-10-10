@@ -5,7 +5,7 @@ import {
 } from '../src/lamb/stand';
 import { RULES, points, emptyScore } from '../src/lamb/rules';
 import {
-  CLINCH, CLINCH_STYLES, ENTRY_BONUS, MOVES, answer, clinchDecide, clinchPower, entryGrip, exchange, gripWords, holdTick, holder, moveWindup, startMove, tryBreak,
+  CLINCH, CLINCH_STYLES, ENTRY_BONUS, MOVES, answer, clinchDecide, clinchPower, entryGrip, exchange, gripWords, holdTick, holder, moveWindup, posture, slipRate, startMove, tryBreak,
   type ClinchMove, type Holder,
 } from '../src/lamb/clinch';
 
@@ -284,5 +284,21 @@ describe('làmb 2.0 · the empoignade is played (step 3)', () => {
     expect(clinchDecide(h(), h(), 0, CLINCH_STYLES.costaud, 1, 100, seq(0.1))).toBe('push');
     expect(clinchDecide(h(), h(), 0, CLINCH_STYLES.partenaire, 1, 100, seq(0.1))).toBe('push');
     expect(clinchDecide(h(), h(), 0, CLINCH_STYLES.rapide, 1, 100, seq(0.99))).toBe('pivot');
+  });
+});
+
+describe('làmb 2.0 · feeling the position slip (step 4)', () => {
+  it('a clearly worse grip wears the balance away between moves, faster the worse it is; an even grip lets it come back', () => {
+    expect(slipRate(0)).toBe(0); expect(slipRate(-20)).toBe(0);
+    expect(slipRate(-100)).toBeCloseTo(9); expect(slipRate(-60)).toBeLessThan(slipRate(-90));
+    const lost = holder({ stamina: 100, balance: 60, attrs: AVERAGE }), even = holder({ stamina: 100, balance: 60, attrs: AVERAGE });
+    for (let i = 0; i < 200; i++) { holdTick(lost, 0.01, -80); holdTick(even, 0.01, 0); }
+    expect(lost.balance).toBeLessThan(52); expect(even.balance).toBeGreaterThan(60);
+    const steady = holder({ stamina: 100, balance: 60, attrs: { ...AVERAGE, equilibre: 100 } });
+    for (let i = 0; i < 200; i++) holdTick(steady, 0.01, -80);
+    expect(steady.balance).toBeGreaterThan(lost.balance);
+  });
+  it('tells how he stands: steady, slipping, about to go down', () => {
+    expect(posture(80)).toBe('stable'); expect(posture(40)).toBe('glisse'); expect(posture(10)).toBe('chute');
   });
 });

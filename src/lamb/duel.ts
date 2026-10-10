@@ -11,8 +11,8 @@ import {
 } from './stand';
 import { StrikeRig } from './strikeRig';
 import {
-  CLINCH, CLINCH_STYLES, ENTRY_TEXT, MOVES, clinchDecide, clinchPower, entryGrip, exchange, gripWords, holdTick, startMove, tryBreak,
-  type ClinchMove, type ClinchStyle, type Entry, type Exchange,
+  CLINCH, CLINCH_STYLES, ENTRY_TEXT, MOVES, clinchDecide, clinchPower, entryGrip, exchange, gripWords, holdTick, posture, startMove, tryBreak,
+  type ClinchMove, type ClinchStyle, type Entry, type Exchange, type Posture,
 } from './clinch';
 import { inGate, tierRadius, tierTop, TIERS } from '../world/geew';
 import {
@@ -242,6 +242,10 @@ export class LambDuel {
       .duel-bars b.low{background:#f97316}
       .duel-bars i.bal,.duel-bars i.cmp{height:5px;margin-top:2px}.duel-bars i.bal b{background:#38bdf8}.duel-bars i.cmp b{background:#f59e0b}
       .duel-bars i.bal b.low{background:#ef4444}
+      .duel-bars i.bal b.warn{animation:duelwarn .5s ease-in-out infinite alternate}
+      @keyframes duelwarn{from{opacity:1}to{opacity:.35}}
+      .duel-ui.slip{box-shadow:inset 0 0 70px 10px rgba(245,158,11,.35)}
+      .duel-ui.falling{box-shadow:inset 0 0 90px 18px rgba(220,38,38,.5)}
       .duel-legend{position:absolute;top:calc(env(safe-area-inset-top,0px) + 110px);left:50%;transform:translateX(-50%);display:flex;gap:12px;font-size:10.5px;text-shadow:0 1px 3px #000;white-space:nowrap}
       .duel-legend span::before{content:'';display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
       .duel-legend .e::before{background:#22c55e}.duel-legend .b::before{background:#38bdf8}.duel-legend .c::before{background:#f59e0b}
@@ -308,8 +312,13 @@ export class LambDuel {
     const me = this.me, ai = this.ai;
     const bar = (k: string, f: Fighter) => { const b = this.q(k); b.style.width = `${(100 * f.stamina) / f.max}%`; b.classList.toggle('low', f.stamina < R.stamina.grabCost); };
     bar('me', me); bar('ai', ai);
+    if (this.frappe) {
+      const pm = this.phase === 'clinch' ? posture(me.balance) : 'stable';
+      this.ui.classList.toggle('slip', pm === 'glisse'); this.ui.classList.toggle('falling', pm === 'chute');
+    }
     if (this.frappe) for (const [k, f] of [['me', me], ['ai', ai]] as const) {
       const b = this.q(k + 'bal'); b.style.width = `${Math.round(f.balance)}%`; b.classList.toggle('low', f.balance < 30);
+      b.classList.toggle('warn', this.phase === 'clinch' && f.balance < 45);
       this.q(k + 'cmp').style.width = `${Math.round(f.composure)}%`;
     }
     this.q('meopen').textContent = me.stagger > 0 ? '· tu vacilles' : me.open > 0 ? '· exposé' : '';
@@ -418,8 +427,9 @@ export class LambDuel {
   /** Avec frappe: a quick or a big strike (same as the buttons). */
   pressStrike(kind: StrikeKind) { if (kind === 'big') this.bigPresses++; else this.quickPresses++; }
   /** Checks only: set a wrestler's balance, composure or endurance (to reach a state without a long bout). */
-  debugSet(side: Side, v: { balance?: number; composure?: number; stamina?: number }) {
+  debugSet(side: Side, v: { balance?: number; composure?: number; stamina?: number; grip?: number }) {
     const f = side === 'player' ? this.me : this.ai;
+    if (v.grip !== undefined) this.grip = side === 'player' ? v.grip : -v.grip;
     if (v.balance !== undefined) f.balance = v.balance;
     if (v.composure !== undefined) f.composure = v.composure;
     if (v.stamina !== undefined) f.stamina = v.stamina;
@@ -437,7 +447,8 @@ export class LambDuel {
       open: this.me.open > 0 ? 'player' : this.ai.open > 0 ? 'opponent' : null,
       windup: this.ai.windup > 0, dist: Math.round(this.me.pos.distanceTo(this.ai.pos) * 100) / 100,
       clinch: c ? { by: c.by, losing: c.losing, breakWindow: c.breakWindow, share: Math.round(c.share * 100) / 100,
-        ...(this.frappe ? { grip: Math.round(this.grip), entry: this.entry, move: { player: this.me.move?.kind ?? null, opponent: this.ai.move?.kind ?? null }, last: this.lastExchange } : {}) } : null,
+        ...(this.frappe ? { grip: Math.round(this.grip), entry: this.entry, move: { player: this.me.move?.kind ?? null, opponent: this.ai.move?.kind ?? null }, last: this.lastExchange,
+          posture: { player: posture(this.me.balance), opponent: posture(this.ai.balance) } } : {}) } : null,
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
       discipline: this.discipline,
       ...(this.frappe ? {
@@ -728,15 +739,23 @@ export class LambDuel {
     }
     // moves land: the exchange decides who loses balance and grip
     for (const [f, o] of [[me, ai], [ai, me]] as const) {
-      if (holdTick(f, dt) && f.move) this.clinchExchange(f, o, exchange(f, o, f === me ? this.grip : -this.grip));
+      if (holdTick(f, dt, f === me ? this.grip : -this.grip) && f.move) this.clinchExchange(f, o, exchange(f, o, f === me ? this.grip : -this.grip));
     }
     // a wrestler whose balance is gone goes down (step 6 brings the throw attempt, the counter and the fall itself)
     if (me.balance <= 0 || ai.balance <= 0) { this.resolveClinch(ai.balance <= 0 && (me.balance > 0 || this.grip >= 0)); return; }
     if (this.phaseT > CLINCH.maxSeconds) { this.separate(null, 0); this.msg('L’arbitre sépare les lutteurs', 1.2); return; }
+    // step 4: the player feels the position going — words, the screen's edge, a low note when it gets serious
+    const pm = posture(me.balance), po = posture(ai.balance);
+    if (pm !== this.postureWas.me && pm === 'chute') strikeSound('big', 'guarded');
+    if (po !== this.postureWas.ai && po === 'chute') crowdCheer(1.2, 0.1);
+    this.postureWas = { me: pm, ai: po };
     if (this.msgHold <= 0) {
-      this.msg(ai.move ? `Il ${MOVES[ai.move.kind].doing}…` : me.balance < 35 ? 'Tu perds l’équilibre !' : ai.balance < 35 ? 'Il perd l’équilibre !' : 'Empoignade');
+      this.msg(pm === 'chute' ? 'Tu vas tomber : contre ou casse !' : ai.move ? `Il ${MOVES[ai.move.kind].doing}…`
+        : pm === 'glisse' ? (this.grip < -25 ? 'Tu glisses : sa prise t’use, reprends-la !' : 'Tu glisses…')
+        : po === 'chute' ? 'Il va tomber : pousse !' : po === 'glisse' ? 'Il glisse !' : 'Empoignade');
     }
   }
+  private postureWas: { me: Posture; ai: Posture } = { me: 'stable', ai: 'stable' };
 
   /** Applies an exchange: grip, the pair's motion, words, the crowd. */
   private clinchExchange(a: Fighter, b: Fighter, e: Exchange) {

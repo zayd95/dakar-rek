@@ -166,14 +166,29 @@ export function exchange(a: Holder, b: Holder, grip: number): Exchange {
   return out;
 }
 
+// ------------------------------------------------------------------ step 4: feeling the position slip
+
 /**
- * One step of a wrestler in the empoignade: the hold drains endurance, balance comes back slowly, his move sets up.
- * Returns true when his move lands this step (the caller then calls `exchange`).
+ * A clearly worse grip wears the balance away even between moves: below −25 (from his side) the wrestler slips, faster
+ * the worse it is (up to 9 per second at −100), and his balance no longer comes back — he has to win an exchange or
+ * break free before it runs out. Returns balance per second lost (0 when the grip is not against him).
  */
-export function holdTick(h: Holder, dt: number): boolean {
+export const slipRate = (grip: number) => (grip < -25 ? (-25 - Math.max(-100, grip)) * 0.12 : 0);
+/** How a wrestler stands in the empoignade: steady, slipping (« il glisse »), or about to go down. */
+export type Posture = 'stable' | 'glisse' | 'chute';
+export const posture = (balance: number): Posture => (balance < 25 ? 'chute' : balance < 45 ? 'glisse' : 'stable');
+
+/**
+ * One step of a wrestler in the empoignade: the hold drains endurance, balance comes back slowly — or slips away when
+ * the grip is clearly against him (`grip` from his side) —, his move sets up. Returns true when his move lands this
+ * step (the caller then calls `exchange`).
+ */
+export function holdTick(h: Holder, dt: number, grip = 0): boolean {
   h.recover = Math.max(0, h.recover - dt);
   h.stamina = Math.max(0, h.stamina - CLINCH.drain * dt);
-  if (!h.move) h.balance = Math.min(100, h.balance + CLINCH.balanceRegen * k(h.attrs.equilibre) * dt);
+  const slip = slipRate(grip);
+  if (slip > 0) h.balance = Math.max(0, h.balance - (slip / k(h.attrs.equilibre)) * dt);
+  else if (!h.move) h.balance = Math.min(100, h.balance + CLINCH.balanceRegen * k(h.attrs.equilibre) * dt);
   if (!h.move) return false;
   h.move.t += dt;
   return h.move.t >= moveWindup(h.move.kind, h);

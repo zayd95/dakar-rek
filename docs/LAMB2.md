@@ -10,7 +10,7 @@ l'arène, écurie, combats amicaux et classés) reste intacte à chaque étape.
 | 1 | Debout : distance et déplacement, frappe rapide / grosse frappe (la grosse ratée ouvre), garde avec un coût, équilibre et sang-froid au lieu d'une vie, « il vacille » | **jouable** (drapeau `lamb2`) |
 | 2 | Entrée dans le clinch : l'avantage de saisie dépend de l'équilibre et de l'ouverture | **jouable** |
 | 3 | Clinch jouable : pousser, tirer, pivoter, casser ; la prise et l'équilibre bougent | **jouable** |
-| 4 | Équilibre / posture dans le clinch : on sent la position glisser | à faire |
+| 4 | Équilibre / posture dans le clinch : on sent la position glisser | **jouable** |
 | 5 | Tentative de projection et contre | à faire |
 | 6 | Chute : posture, équilibre, contacts, force, réponse → ralenti court → arbitre → foule → résultat | à faire |
 
@@ -92,6 +92,15 @@ l'Équilibre de celui qui subit. L'empoignade coûte 3 d'endurance par seconde �
 l'équilibre y revient lentement (5/s). **Casser** coûte 20 et ne marche pas si la prise est nettement contre soi.
 L'arbitre sépare une empoignade qui ne mène à rien après 9 s. **Un lutteur dont l'équilibre tombe à zéro dans
 l'empoignade va au sol** (l'étape 5 ajoutera la tentative de projection et le contre, l'étape 6 la chute elle-même).
+
+## Étape 4 — sentir la position glisser
+
+Une prise nettement contre soi (au-delà de −25) **use l'équilibre même entre les mouvements**, d'autant plus vite
+qu'elle est mauvaise (jusqu'à 9 par seconde), et l'équilibre ne revient plus : il faut gagner un échange ou casser
+avant qu'il ne tombe. Le joueur le sent avant la chute : « Tu glisses : sa prise t'use, reprends-la ! », le bord de
+l'écran devient ambre puis rouge (« Tu vas tomber : contre ou casse ! », avec une note grave), la barre d'équilibre
+clignote, le corps part en arrière. Côté adversaire : « Il glisse ! », puis « Il va tomber : pousse ! » et la foule
+qui monte.
 
 L'adversaire lit le mouvement du joueur et y répond par celui qui le bat (plus avec la Technique, moins quand il
 perd son sang-froid), casse quand sa prise est perdue, sinon joue son style : Gora pousse, Pape pivote, Saliou tire.
