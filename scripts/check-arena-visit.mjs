@@ -30,8 +30,9 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const info = () => d(() => window.__dakar.arena.info());
   const toast = () => d(() => (document.getElementById('toast')?.textContent ?? '').replace(/[  ]/g, ' '));
   const waitToast = re => page.waitForFunction(src => new RegExp(src).test((document.getElementById('toast')?.textContent ?? '').replace(/[  ]/g, ' ')), re.source, { timeout: 60000 }).then(() => true, () => false);
+  // keeps the toast on for the capture; the observer adds the class only when missing (re-adding it queues another mutation: endless loop)
   const shot = async (name, pinToast = true) => {
-    if (pinToast) await d(() => { const t = document.getElementById('toast'); t?.classList.add('on'); window.__pin?.disconnect(); window.__pin = new MutationObserver(() => t.classList.add('on')); window.__pin.observe(t, { attributes: true }); });
+    if (pinToast) await d(() => { const t = document.getElementById('toast'); t?.classList.add('on'); window.__pin?.disconnect(); window.__pin = new MutationObserver(() => { if (!t.classList.contains('on')) t.classList.add('on'); }); window.__pin.observe(t, { attributes: true }); });
     await page.waitForTimeout(700); await page.screenshot(); await page.waitForTimeout(500);
     await page.screenshot({ path: `${out}/${label}-${name}.png` });
     await d(() => { window.__pin?.disconnect(); window.__pin = null; });
@@ -93,6 +94,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   check(`${label}: a free place on the tiers is offered from the ring side (« S’asseoir »)`, fs1?.name === 'Place en tribune' && /asseoir/.test(fs1.primary ?? ''), fs1);
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => /arena:stand/.test(window.__dakar.seated() ?? ''), null, T).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.clip() === 'Sit', null, { timeout: 30000 }).catch(() => {});   // the pose blends in on the next frames
   const sat = await d(() => ({ seated: window.__dakar.seated(), clip: window.__dakar.clip() }));
   check(`${label}: seated on the tier, seated pose`, /arena:stand/.test(sat.seated ?? '') && sat.clip === 'Sit', sat);
   await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, T).catch(() => {});
