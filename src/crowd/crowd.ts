@@ -47,6 +47,8 @@ export interface CrowdOptions {
   near?: number;
   /** Only members this close to the focus become full humanoids (m). */
   nearRadius?: number;
+  /** Full humanoids only around a focus point (setFocus), never around the camera alone (the arena: the player's seat). */
+  nearNeedsFocus?: boolean;
   seed?: number;
   name?: string;
   look?: (slot: CrowdSlot, r: () => number) => CrowdLook;
@@ -148,6 +150,7 @@ export class Crowd {
   private excite = new Excitement();
   private lod: { near: number; mid: number; far: number };
   private nearRadius: number;
+  private nearNeedsFocus: boolean;
   private eye: THREE.Vector3 | null = null;
   private frustum: THREE.Frustum | null = null;
   private focus: { x: number; z: number; yaw: number | null } | null = null;
@@ -163,6 +166,7 @@ export class Crowd {
     const L = CROWD_LOD[o.quality];
     this.lod = { ...L, near: Math.max(0, Math.min(16, o.near ?? L.near)) };
     this.nearRadius = o.nearRadius ?? 10;
+    this.nearNeedsFocus = !!o.nearNeedsFocus;
     const R = rng((o.seed ?? 17) * 7 + 3);
     for (const slot of slots) {
       const look = o.look ? o.look(slot, R) : defaultLook(R);
@@ -298,7 +302,7 @@ export class Crowd {
 
   private pickNear() {
     const want = new Set<Member>();
-    const anchor = this.focus ?? (this.eye ? { x: this.eye.x, z: this.eye.z, yaw: null } : null);
+    const anchor = this.focus ?? (this.eye && !this.nearNeedsFocus ? { x: this.eye.x, z: this.eye.z, yaw: null } : null);
     if (anchor && this.lod.near > 0 && humanoidReady() && this.group.visible) {
       const fx = anchor.yaw === null ? 0 : Math.sin(anchor.yaw), fz = anchor.yaw === null ? 0 : Math.cos(anchor.yaw);
       const r2 = this.nearRadius * this.nearRadius;
@@ -335,7 +339,6 @@ export class Crowd {
       if (upper && fore) bones.push({ upper, fore, side });
     }
     this.group.add(h.group);
-    m.body = null;
     const b: NearBody = { h, m, w: 0, seen: true, root, bones };
     m.body = b; m.lod = 3; this.layoutDirty = true;
     return b;

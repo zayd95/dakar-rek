@@ -62,7 +62,7 @@ export class ArenaStands {
       return { id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, seated: true, tags: [side, `tier${s.tier}`, ...(s.tier === 0 ? ['ringside'] : [])] };
     });
     this.crowd = new Crowd(slots, {
-      quality: o.quality ?? N_QUALITY(nearCount), near: nearCount, seed: o.seed ?? 23, name: 'arena-stands', nearRadius: 9,
+      quality: o.quality ?? N_QUALITY(nearCount), near: nearCount, seed: o.seed ?? 23, name: 'arena-stands', nearRadius: 9, nearNeedsFocus: true,
       look: (slot, r) => {
         const side = slot.tags?.[0];
         const look = defaultLook(r);
