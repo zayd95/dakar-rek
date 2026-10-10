@@ -200,6 +200,8 @@ export class LambDuel {
   private drill: DrillRun | null = null;
   private drillEnd = 0;
   private drillNotes: string[] = [];
+  /** Checks only (debugDrillAnswer): press the right answer to each call as it opens, through the usual inputs. */
+  private drillAuto = false;
   /** No DOM (unit tests of a watched bout): the duel runs without its HUD. */
   private headless = typeof document === 'undefined';
   /** Avec frappe: who the opponent is, in one line (« Gora, costaud indépendant, 7-2 »). */
@@ -584,6 +586,11 @@ export class LambDuel {
     this.held = on;
     if (on) { this.ai.move = null; this.ai.windup = 0; this.aiReact = null; this.aiGuardHold = 0; this.ai.guard = false; }
   }
+  /**
+   * Checks only: answer each drill call right as it opens (the called strike; the move that beats his, or a push with
+   * his push), through the same inputs as the buttons — a slow browser cannot miss the call's window.
+   */
+  debugDrillAnswer(on: boolean) { this.drillAuto = on; }
   /** Checks only: the seconds left in the round (a long check's earlier steps do not eat the later ones' time). */
   debugClock(seconds: number) { if (this.timeLeft !== Infinity) this.timeLeft = seconds; }
   setGuard(on: boolean) { this.guardHeld = on; }
@@ -1094,6 +1101,14 @@ export class LambDuel {
       const word = callWord(opened.want);
       if (word) this.msg(`Coach Ablaye : « ${word} »`, 0.8);
       else { this.grip = 0; ai.move = null; ai.recover = 0; startMove(ai, opened.want as ClinchMove); }
+    }
+    if (this.drillAuto && dr.open && !dr.open.swung) {
+      const want = DRILLS[dr.id].calls[dr.open.i].want, me = this.me;
+      if (want === 'quick' || want === 'big') { if (this.phase === 'fight' && free(me) && me.busy <= 0 && !me.strike) this.pressStrike(want); }
+      else if (this.phase === 'clinch' && ai.move && !me.move && me.recover <= 0) {
+        const beats: Record<ClinchMove, ClinchMove> = { push: 'pull', pull: 'pivot', pivot: 'push' };
+        this.moveQueued = dr.id === 'saisies' ? beats[ai.move.kind] : 'push';
+      }
     }
     if (dr.done) this.finishDrill();
   }
