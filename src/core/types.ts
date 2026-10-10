@@ -1,3 +1,4 @@
+import type { CareerSave } from '../career/career';
 export type HubId = 'plateau' | 'corniche' | 'almadies' | 'pikine';
 export const HUB_IDS: HubId[] = ['plateau', 'corniche', 'almadies', 'pikine'];
 /**
@@ -42,6 +43,8 @@ export interface SaveData {
   assets: AssetsState;
   /** v5: what the player carries (item id → count; src/activity/inventory.ts). Replaces the `inv:<id>` counters. */
   inventory: Record<string, number>;
+  /** Fight record and best rung reached (src/career/career.ts). Additive field: older saves start with an empty record. */
+  career: CareerSave;
 }
 
 export interface LedgerEntry { at: number; label: string; amount: number }

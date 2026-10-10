@@ -19,6 +19,7 @@ import { moto } from '../transport/motoModule';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
 import { ambientLife } from '../social/ambientLife';
+import { careerModule } from '../career/module';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -111,14 +112,26 @@ export interface GameModule {
    * reload never resumes inside a moving vehicle. Null = save the position as usual.
    */
   safePlace?(ctx: GameCtx): { x: number; z: number; yaw: number } | null;
+  /**
+   * A làmb moment ended — a finished bout (any mode) or an écurie session with Coach Ablaye. Returns extra lines for the
+   * result toast (purse, rank). The career module (src/career) keeps the record from it.
+   */
+  lamb?(ctx: GameCtx, e: LambEvent): string[] | void;
   /** Entries merged into window.__dakar (?debug) for the checks. */
   debug?(ctx: GameCtx): Record<string, unknown>;
 }
+
+/** What main.ts reports when a làmb bout or an écurie session ends (GameModule.lamb). */
+export type LambEvent =
+  | { kind: 'bout'; mode: 'entrainement' | 'amical' | 'classe'; outcome: 'projection' | 'decision' | 'egalite' | 'abandon' | 'entrainement';
+      winner: 'player' | 'opponent' | null; opponent: { name: string; style: string; label: string }; level: number }
+  | { kind: 'training'; scene: 'training' | 'entrance' | 'prep' | 'watch' | 'celebration' };
 
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
 export const MODULES: GameModule[] = [
   wolofModule, assetKitModule, transport, VenuesModule, moto, ESTATE_MODULE,
-  ambientLife,          // NPC & social life lane, last: it populates the places and seats the others register (docs/NPC_LIFE.md)
+  ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
+  careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)
 ];
