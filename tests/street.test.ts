@@ -167,13 +167,13 @@ async function eveningArene(h: HubWorld) {
   return placeStops(LINES.find(l => l.id === '23s')!, h.colliders).find(s => s.def.id === 'arene')!;
 }
 
-function fakeCtx(hour: number, at: { x: number; z: number }) {
+function fakeCtx(hour: number, at: { x: number; z: number }, quality: 'low' | 'medium' | 'high' = 'high') {
   fake.hour = hour; fake.cars.clear();
   const camera = new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 400);
   camera.position.set(at.x, 4, at.z + 8); camera.lookAt(at.x, 1, at.z); camera.updateMatrixWorld();
   const extra = new THREE.Group();
   const ctx = {
-    quality: () => 'high', hour: () => hour, day: () => 3, player: { pos: { x: at.x, y: 0, z: at.z } }, camera, extra,
+    quality: () => quality, hour: () => hour, day: () => 3, player: { pos: { x: at.x, y: 0, z: at.z } }, camera, extra,
     places: { all: () => [] }, mode: () => 'play', inside: () => null, state: { data: { counters: {} } },
   };
   return { ctx: ctx as unknown as GameCtx, set: (hr: number) => { hour = hr; fake.hour = hr; } };
@@ -199,6 +199,21 @@ describe('street life', () => {
     expect(i.crowd.present).toBeLessThanOrEqual(STREET_BUDGET.high.pool);
     expect(i.drawCalls).toBeLessThanOrEqual(4);
     // the busy street gets more than its share: lanes of the main street hold more walkers than average
+    s.dispose();
+  });
+
+  it('on a phone at the evening rush, the main street still has people waiting (the evening route\'s Arène stop is a busy one)', async () => {
+    // check-street's view: the pavement by the room's block at 18:45, low quality (life within 90 m: one served stop)
+    const h = await hub('pikine');
+    const { StreetLife } = await import('../src/crowd/street');
+    const { ctx } = fakeCtx(18.75, { x: -24, z: -66.2 }, 'low');
+    const s = new StreetLife(ctx, h, null);
+    for (let k = 0; k < 400; k++) s.update(0.1);
+    const i = s.info(), waiting = i.stops.reduce((n, st) => n + st.waiting, 0);
+    expect(i.stops.find(st => st.key === '23s:arene')!.busy).toBe(true);
+    expect(waiting).toBeGreaterThanOrEqual(4);
+    expect(i.target.walkers).toBeGreaterThanOrEqual(10);
+    expect(i.groups).toBeGreaterThanOrEqual(1);
     s.dispose();
   });
 
