@@ -182,7 +182,7 @@ describe('làmb 2.0 · every pairing of the roster, AI against AI, ends by a fal
   const look = { ngembColor: 'vert', ngembPattern: 'uni', accessories: [] };
   const bouts: { a: string; b: string; day: number; time: number; outcome: string | null; winner: string | null }[] = [];
   for (const day of [40, 41, 52]) for (const A of ROSTER) for (const B of ROSTER) if (A !== B) {
-    const w = new WatchedBout({ x: 0, z: 0 }, look, boutSeed('pikine', day), { left: rosterOpponent(A.name, day)!, right: rosterOpponent(B.name, day)! });
+    const w = new WatchedBout({ x: 0, z: 0 }, look, boutSeed('pikine', day), { frappe: { left: rosterOpponent(A.name, day)!, right: rosterOpponent(B.name, day)! } });
     for (let i = 0; i < 60 * 60 && !w.over; i++) w.advance(1 / 60);
     bouts.push({ a: A.name, b: B.name, day, time: w.time, outcome: w.result?.outcome ?? null, winner: w.result?.winner ?? null });
     w.dispose();

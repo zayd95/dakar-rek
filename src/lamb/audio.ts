@@ -41,12 +41,20 @@ function hit(c: AudioContext, when: number, freq: number, decay: number, gain: n
   }
 }
 
-// Placeholder 16-step pattern: 1 = low tone, 2 = open, 3 = slap.
+// Placeholder 16-step patterns: 1 = low tone, 2 = open, 3 = slap. Neither transcribes a real sabar rhythm.
 const PATTERN = [1, 0, 3, 0, 2, 0, 3, 3, 1, 0, 3, 0, 2, 3, 0, 3];
+/** A denser, faster placeholder for a wrestler's bàkk (the drums change rhythm while he dances). */
+const BAKK_PATTERN = [3, 3, 1, 3, 2, 3, 3, 1, 3, 3, 1, 3, 2, 1, 3, 3];
+export type Rhythm = 'gala' | 'bakk';
+const RHYTHMS: Record<Rhythm, { pattern: number[]; tempo: number }> = { gala: { pattern: PATTERN, tempo: 1 }, bakk: { pattern: BAKK_PATTERN, tempo: 1.18 } };
 
 export class Percussion {
   private timer = 0; private step = 0; private next = 0;
+  private rhythmNow: Rhythm = 'gala';
   playing = false;
+  /** The rhythm being played (changed on the next step, without stopping). */
+  get rhythm() { return this.rhythmNow; }
+  setRhythm(r: Rhythm) { this.rhythmNow = r; }
   /** `dest`: where the hits go (a bus of `audioBus()`), the master gain by default. */
   constructor(private dest?: AudioNode) {}
   start(bpm = 118) {
@@ -55,12 +63,12 @@ export class Percussion {
     const dur = 60 / bpm / 4;
     this.timer = window.setInterval(() => {
       while (this.next < c.currentTime + 0.12) {
-        const v = PATTERN[this.step % PATTERN.length];
+        const r = RHYTHMS[this.rhythmNow], v = r.pattern[this.step % r.pattern.length];
         const to = this.dest ?? out();
         if (v === 1) hit(c, this.next, 95, 0.25, 0.5, false, to);
         if (v === 2) hit(c, this.next, 180, 0.18, 0.35, false, to);
         if (v === 3) hit(c, this.next, 320, 0.08, 0.28, true, to);
-        this.next += dur; this.step++;
+        this.next += dur / r.tempo; this.step++;
       }
     }, 40);
   }
@@ -92,4 +100,24 @@ export function crowdCheer(seconds = 2.5, level = 0.18) {
   const t = c.currentTime;
   g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(level, t + 0.4); g.gain.exponentialRampToValueAtTime(0.001, t + seconds);
   n.connect(f).connect(g).connect(out()); n.start(t);
+}
+
+/**
+ * The arena's public address before a line on the microphone (the announcer, a griot): two soft tones and a short
+ * hum. Synthesised placeholder; silent with the sound off.
+ */
+export function paChime(level = 0.05) {
+  const c = ac(); if (!c) return;
+  const t = c.currentTime;
+  for (const [f, at] of [[660, 0], [880, 0.22]] as const) {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t + at); g.gain.exponentialRampToValueAtTime(level, t + at + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.32);
+    o.connect(g).connect(out()); o.start(t + at); o.stop(t + at + 0.35);
+  }
+  const h = c.createOscillator(), hg = c.createGain();
+  h.type = 'sawtooth'; h.frequency.value = 110;
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
+  hg.gain.setValueAtTime(0.0001, t + 0.5); hg.gain.exponentialRampToValueAtTime(level * 0.25, t + 0.6); hg.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+  h.connect(lp).connect(hg).connect(out()); h.start(t + 0.5); h.stop(t + 1.35);
 }

@@ -6,6 +6,7 @@ import type { WrestlerLook } from '../core/types';
 import { rng } from '../core/rng';
 import { pilot, type BoutView } from './program';
 import type { Opponent } from '../lamb/opponents';
+import type { OpponentStyle } from '../lamb/rules';
 
 /** The bout's own time step: fixed, so a bout seeded alike plays out alike on every device (src/arena/together.ts). */
 export const BOUT_STEP = 1 / 60;
@@ -41,21 +42,31 @@ export class WatchedBout {
   /** Avec frappe: the duel plays both sides itself (its autopilot), no pilot. */
   readonly frappe: boolean;
 
-  constructor(origin: { x: number; z: number }, left: WrestlerLook, seed: number, frappe?: { left: Opponent; right: Opponent } | null) {
+  /**
+   * `o`: a preliminary's opponent style (with the young wrestler's name) and level, and a shorter round (seconds);
+   * the main event keeps the defaults. Làmb 2.0 (`o.frappe`, behind ?lamb2): the pair fights avec frappe, AI against
+   * AI — the left one is the duel's autopilot, the right one its opponent — in a short round (`o.round`, else
+   * WATCHED_ROUND); `style` and `level` then come from the pair.
+   */
+  constructor(origin: { x: number; z: number }, left: WrestlerLook, seed: number,
+    o: { style?: OpponentStyle; level?: number; round?: number; frappe?: { left: Opponent; right: Opponent } | null } = {}) {
     this.rand = rng(seed);
     const steer = this.steer;
     const input = { enabled: false, move: () => ({ x: steer.x, y: steer.y }), takeAction: () => false } as unknown as Input;
-    const duelSeed = (seed ^ 0x5bd1e995) >>> 0;
+    const duelSeed = (seed ^ 0x5bd1e995) >>> 0, frappe = o.frappe;
     this.frappe = !!frappe;
     if (frappe) {
       const L = frappe.left, Rt = frappe.right;
       this.duel = new LambDuel({
-        origin, look: left, input, crowdSize: 0, mode: 'amical', ring: 7.6, spectate: true, seed: duelSeed, discipline: 'avec_frappe', roundSeconds: WATCHED_ROUND,
+        origin, look: left, input, crowdSize: 0, mode: 'amical', ring: 7.6, spectate: true, seed: duelSeed, discipline: 'avec_frappe', roundSeconds: o.round ?? WATCHED_ROUND,
         style: { ...STYLES[Rt.wrestler.style], name: Rt.wrestler.name }, level: Rt.level,
         opponent: { attrs: Rt.attrs, stand: Rt.stand, clinch: Rt.clinch, line: Rt.line },
         autopilot: { attrs: L.attrs, stand: L.stand, clinch: L.clinch, style: STYLES[L.wrestler.style], level: L.level },
       });
-    } else this.duel = new LambDuel({ origin, look: left, input, crowdSize: 0, mode: 'amical', style: STYLES.rapide, level: 2, ring: 7.6, spectate: true, seed: duelSeed });
+    } else {
+      this.duel = new LambDuel({ origin, look: left, input, crowdSize: 0, mode: 'amical', style: o.style ?? STYLES.rapide, level: o.level ?? 2, ring: 7.6, spectate: true, seed: duelSeed });
+      if (o.round) this.duel.timeLeft = Math.min(this.duel.timeLeft, o.round);
+    }
   }
 
   get group(): THREE.Group { return this.duel.group; }

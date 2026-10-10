@@ -106,11 +106,17 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await page.waitForFunction(() => window.__dakar.pos().x > 900 && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   const bed = (await d(() => window.__dakar.roomInteractables())).find(i => /dormir|lit|bed|natte/i.test(i.id + i.name));
   if (bed) {
+    // a sheet left open by an earlier step (a story beat, a toast's sheet) must not be taken for the bed's
+    await d(() => { document.querySelector('#modal.on .item.close')?.click(); document.querySelector('#modal')?.classList.remove('on'); });
     await d(p => window.__dakar.place(p.x, p.z + 0.4, Math.PI), bed);
-    await page.waitForTimeout(800);
+    await page.waitForFunction(() => /dormir|lit|bed|natte/i.test(JSON.stringify(window.__dakar.focus() ?? {})), null, { timeout: 30000 }).catch(() => {});
     const f = await d(() => window.__dakar.focus());
     await d(() => window.__dakar.act());
-    if (await d(() => !!document.querySelector('#modal.on'))) await pickItem('Dormir');
+    if (await d(() => !!document.querySelector('#modal.on'))) {
+      const sheet = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
+      if (/Dormir/.test(sheet)) await pickItem('Dormir');
+      else console.log(`NOTE ${label}: the sheet at the bed has no « Dormir »: ${sheet.slice(0, 200)} · focus ${JSON.stringify(f)}`);
+    }
     // lying along the bed while asleep (the kit's Lie pose on the bed's seat), not sitting on its edge
     await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu dors' && window.__dakar.clip() === 'Lie', null, T).catch(() => {});
     const asleep = await d(() => ({ clip: window.__dakar.clip(), seat: window.__dakar.seated(), y: window.__dakar.pos().y, step: window.__dakar.activity()?.step }));

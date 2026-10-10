@@ -10,7 +10,7 @@ import { rosterOpponent } from '../src/lamb/opponents';
 const look = { ngembColor: 'vert', ngembPattern: 'bordure', accessories: [] };
 function play(seed: number, day = 40) {
   const left = rosterOpponent('Babacar', day)!, right = rosterOpponent('Lamine', day)!;
-  const b = new WatchedBout({ x: 30, z: -30 }, look, seed, { left, right });
+  const b = new WatchedBout({ x: 30, z: -30 }, look, seed, { frappe: { left, right } });
   const trace: string[] = [];
   let last = '';
   for (let t = 0; t < 240 && !b.over; t += 0.5) {

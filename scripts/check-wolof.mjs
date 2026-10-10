@@ -197,7 +197,8 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
     }
   } else {
     await d(page, () => { const g = window.__dakar; g.setHour(13); g.rel.change('player', 'mame', 12); g.rel.change('player', 'ibou', 8); g.people(); });
-    await page.locator('#modal .item', { hasText: /^Mame Diarra/ }).first().click();
+    // rows start with their icon since the UI lane: match the row's label
+    await page.locator('#modal .item .lb', { hasText: /^Mame Diarra/ }).first().click();
     await page.waitForTimeout(300);
     await d(page, () => { const p = document.querySelector('#modal .panel'); p.scrollTop = p.scrollHeight; });
     const sheet = await d(page, () => document.querySelector('#modal .panel').textContent);

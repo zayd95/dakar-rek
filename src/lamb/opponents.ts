@@ -6,9 +6,10 @@
  * throws), his level shifts his attributes — never past the ±20 % rule, since every attribute acts through `k()`.
  * His identity is told in one line before the bout and in the recap: « Gora, costaud indépendant, 7-2 ».
  */
-import { ROSTER, ladderAt, wrestlerByName, type Wrestler } from '../career/roster';
+import { ROSTER, ladderAt, wrestlerByName, type DuelStyle, type Wrestler } from '../career/roster';
 import type { BoutEntry } from '../career/career';
-import { STAND_STYLES, type Attributes, type StandStyle, type Style6 } from './stand';
+import { rng } from '../core/rng';
+import { STAND_STYLES, STYLE6_IDS, type Attributes, type StandStyle, type Style6 } from './stand';
 import { CLINCH_STYLES, type ClinchStyle } from './clinch';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -90,3 +91,37 @@ export function rosterOpponent(name: string, day: number, career?: { bouts?: rea
 
 /** Every roster wrestler has an avec-frappe identity (for the tests and the docs). */
 export const rosterOpponents = (day: number) => ROSTER.map(w => rosterOpponent(w.name, day)!);
+
+/**
+ * The friendly bouts avec frappe beyond Gora, Pape and Saliou (costaud, rapide, défensif): one roster wrestler for each
+ * of the three other styles, so each style can be met. `hint`: how to fight him, in one line.
+ */
+export const FRIENDLY_MORE: readonly { name: string; hint: string }[] = [
+  { name: 'Ousmane', hint: 'Il attend que tu t’engages pour contrer : feinte, garde-toi, puis saisis-le.' },
+  { name: 'Malick', hint: 'Il frappe pour t’ouvrir : garde-toi de sa grosse frappe, puis saisis-le.' },
+  { name: 'Daouda', hint: 'Il ferme vite la distance et ne lâche plus : frappe-le quand il entre, casse tôt.' },
+];
+
+/** The styles of the six that stand on a career (duel) style: its own, and the one that refines it. */
+export const stylesOn = (base: DuelStyle): Style6[] => STYLE6_IDS.filter(s => STYLE_MAP[s].base === base);
+
+/**
+ * A young wrestler of the neighbourhoods (the evening's preliminaries, src/arena/undercard.ts): not on the roster, no
+ * écurie, no season record — a style of the six and a level only. Generic local names, never a real wrestler.
+ */
+export function localOpponent(side: { name: string; from: string }, style: Style6, level: number): Opponent {
+  const m = STYLE_MAP[style];
+  const wrestler: Wrestler = { id: `local:${side.name}:${side.from}`, name: side.name, ecurie: null, style: m.base, level };
+  return { wrestler, style, attrs: rosterAttributes({ style, level }), stand: m.stand, clinch: m.clinch, level, record: null, line: `${side.name} (${side.from}), ${m.word}` };
+}
+
+/**
+ * A preliminary avec frappe: each young wrestler gets a style of the six from the preliminary's seed (the same for
+ * everyone in the stands). The right one's stands on his card style (`base`: the duel's colours, his ngemb), the left
+ * one's is any of the six.
+ */
+export function localPair(seed: number, left: { name: string; from: string }, right: { name: string; from: string }, base: DuelStyle, level: number): { left: Opponent; right: Opponent } {
+  const r = rng((seed ^ 0x6c8e9cf5) >>> 0 || 1), on = stylesOn(base);
+  const ls = STYLE6_IDS[Math.floor(r() * STYLE6_IDS.length)], rs = on[Math.floor(r() * on.length)];
+  return { left: localOpponent(left, ls, level), right: localOpponent(right, rs, level) };
+}

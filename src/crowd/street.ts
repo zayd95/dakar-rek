@@ -7,11 +7,12 @@ import { placeStops, type StopSite } from '../transport/stops';
 import { arenaExterior } from '../arena/exterior';
 import { gateOf } from '../arena/exteriorRules';
 import { Crowd, LIVE_CROWDS, type CrowdQuality, type CrowdSlot } from './crowd';
-import { dwellingNow, newArrivals } from './transportPeek';
+import { BOARD_GAP, boardCount, dwellingAt, lineFill, newArrivals, stopServed, type Dwell } from './transportPeek';
+import { carRapideSpec } from '../transport/carRapide';
 import { afterGalaWindow, type ArenaArrivals } from './arrivals';
 import { ambientLife } from '../social/ambientLife';
 import {
-  BUSY_STOP_EXTRA, HUB_STREETS, PAVE, edgeWeight, STREET_BUDGET, clearWalk, groupSpots, lanesFrom, pavementLanes, routeClear, stopSlots, streetTargets, type Lane,
+  BUSY_STOP_EXTRA, HUB_STREETS, PAVE, crowdSlots, edgeWeight, STREET_BUDGET, clearWalk, groupSpots, lanesFrom, pavementLanes, routeClear, stopSlots, streetTargets, type Lane,
 } from './streetPlan';
 
 /**
@@ -42,8 +43,16 @@ interface Agent {
   stay: number;
   /** Where a walker is heading along the lanes (the Dibi after the gala), or null: wandering. */
   goal: Pt | null;
+  /** Seconds before setting off on `path` (people climbing into a car one after the other). */
+  delay: number;
 }
-interface StopRt { site: StopSite; key: string; slots: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; door: Pt; busy: boolean }
+interface StopRt {
+  site: StopSite; key: string; slots: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; door: Pt; busy: boolean;
+  /** The ride home after the gala: the evening route's « Arène » stop holds a crowd that boards up to the cars' fill. */
+  crowd: boolean;
+  /** Its line runs now (transport.served: Ligne 23's day stops are parked on fight evenings). */
+  served: boolean;
+}
 interface GroupRt { x: number; z: number; ring: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; on: boolean; w: number }
 
 export const STREET_RANGE = { pop: 28, view: 70 };
@@ -73,7 +82,8 @@ export class StreetLife {
   private ground: (x: number, z: number) => number;
   private planT = 0;
   private busT = 0;
-  private dwelling = new Set<string>();
+  private dwelling: ReadonlyMap<string, Dwell> = new Map();
+  private carSeats = 0;
   private target = { walkers: 0, perStop: 0, groups: 0 };
   private frustum = new THREE.Frustum();
   private pm = new THREE.Matrix4();
@@ -98,7 +108,7 @@ export class StreetLife {
     this.laneW = this.lanes.map(l => l.w * l.len);
     const slots: CrowdSlot[] = Array.from({ length: B.pool }, (_, i) => ({ id: `p${i}`, x: 0, y: 0.1, z: 0, yaw: 0, seated: false, tags: ['street'] }));
     this.crowd = new Crowd(slots, { quality: this.q, near: B.near, nearRadius: 9, name: 'street', seed: 61 + hub.id.length, blobs: true, fidget: 0.02 });
-    this.agents = slots.map(s => ({ id: s.id, role: 'off', x: 0, z: 0, yaw: 0, speed: 0, lane: 0, fwd: true, t: 0, side: 0, path: null, pi: 0, then: null, spot: null, stop: -1, group: -1, corner: -1, stay: 0, goal: null }));
+    this.agents = slots.map(s => ({ id: s.id, role: 'off', x: 0, z: 0, yaw: 0, speed: 0, lane: 0, fwd: true, t: 0, side: 0, path: null, pi: 0, then: null, spot: null, stop: -1, group: -1, corner: -1, stay: 0, goal: null, delay: 0 }));
     ctx.extra.add(this.crowd.group);
   }
 
@@ -108,12 +118,16 @@ export class StreetLife {
     const hub = this.hub, cols = hub.colliders;
     const avoid: Pt[] = [...hub.people.map(p => ({ x: p.x, z: p.z })), ...ambientLife.standPoints()];
     for (const c of LIVE_CROWDS) if (c !== this.crowd) for (const s of c.slots()) avoid.push(s);
+    this.carSeats = carRapideSpec().seats.length;
     for (const line of linesOf(hub.id)) for (const site of placeStops(line, cols)) {
-      const slots = stopSlots(site, cols, avoid);
+      // the arena's stop of the evening route takes the crowd riding home after the gala
+      const crowd = site.def.id === 'arene' && !!line.fill;
+      const slots = crowd ? crowdSlots(site, cols, avoid) : stopSlots(site, cols, avoid);
       // on a busy street? (the centre line under the stop belongs to one of the hub's busy streets)
       const cx = site.x - site.rx * 6.25, cz = site.z - site.rz * 6.25;
       const busy = edgeWeight({ ax: cx - site.dx, az: cz - site.dz, bx: cx + site.dx, bz: cz + site.dz }, HUB_STREETS[hub.id]?.busy ?? []) > 1;
-      this.stops.push({ site, key: `${line.id}:${site.def.id}`, slots, taken: slots.map(() => null), door: { x: site.x - site.rx * 1.15, z: site.z - site.rz * 1.15 }, busy });
+      const key = `${line.id}:${site.def.id}`;
+      this.stops.push({ site, key, slots, taken: slots.map(() => null), door: { x: site.x - site.rx * 1.15, z: site.z - site.rz * 1.15 }, busy, crowd, served: stopServed(key) });
     }
     const fronts = [...hub.interactables.filter(i => !i.npc).map(i => ({ x: i.x, z: i.z })),
       ...this.ctx.places.all().filter(p => p.space === 'street' && /shop|stall|dibi|salon|cafe|market|gargote|maiga/.test(p.type)).flatMap(p => p.anchors.slice(0, 1))];
@@ -157,7 +171,7 @@ export class StreetLife {
   private show(a: Agent) { this.crowd.setPresent(a.id, true); this.place(a); this.counts.spawned++; }
   private hide(a: Agent) {
     this.release(a);
-    a.goal = null;
+    a.goal = null; a.delay = 0;
     a.role = 'off'; a.path = null; a.then = null; a.speed = 0;
     this.crowd.setPresent(a.id, false);
   }
@@ -286,7 +300,9 @@ export class StreetLife {
 
   /** Once a second: bring the street towards the hour's targets, a few people at a time. */
   private plan() {
-    const liveStops = this.stops.filter(s => this.alive(s.site.x, s.site.z)), liveGroups = this.groups.filter(g => this.alive(g.x, g.z));
+    for (const s of this.stops) s.served = stopServed(s.key);
+    // a parked line's stops (Ligne 23's day route on fight evenings) hold nobody and take nobody from the walkers' share
+    const liveStops = this.stops.filter(s => s.served && this.alive(s.site.x, s.site.z)), liveGroups = this.groups.filter(g => this.alive(g.x, g.z));
     const t = streetTargets(this.hub.id, this.ctx.hour(), this.q, liveStops.length, liveGroups.length, liveStops.filter(s => s.busy).length);
     if (this.leaving > 0) t.walkers = Math.max(0, t.walkers - Math.min(this.leaving, 24));   // room for the spectators leaving
     this.target = t;
@@ -298,10 +314,12 @@ export class StreetLife {
     });
     let budget = 4;                                                  // changes per second, so the street fills smoothly
     for (let gi = 0; gi < this.groups.length && budget > 0; gi++) if (this.groups[gi].on && this.fillGroup(gi)) budget--;
-    // stops: up to perStop waiting at each (more for the Arène stop after a gala)
+    // stops: up to perStop waiting at each served stop (a parked line's stops empty); the ride-home crowd after a gala
     this.stops.forEach((s, si) => {
-      const want = !this.alive(s.site.x, s.site.z) || t.perStop === 0 && !this.leaving ? 0
-        : Math.min(s.slots.length, t.perStop + (s.busy ? BUSY_STOP_EXTRA : 0) + (this.leaving > 0 || s.taken.some(a => a && a.stay > 300) ? 6 : 0));
+      const riding = s.crowd && (this.leaving > 0 || s.taken.some(a => a && a.stay > 300));
+      const want = !s.served || !this.alive(s.site.x, s.site.z) || (t.perStop === 0 && !riding) ? 0
+        : riding ? s.slots.length
+        : Math.min(s.slots.length, t.perStop + (s.busy ? BUSY_STOP_EXTRA : 0));
       const have = s.taken.filter(Boolean).length;
       if (have < want && budget > 0 && this.fillStop(si)) budget--;
       if (have > want) { const a = s.taken.find(x => x && x.role === 'stop' && !x.path); if (a) { if (this.seen(a.x, a.z)) this.toLane(a); else this.hide(a); } }
@@ -320,21 +338,32 @@ export class StreetLife {
   }
 
   /** A car rapide pulls in: two or three of those waiting get on, one or two get off and walk away. */
+  /**
+   * A car rapide pulls in at a stop (transport.dwellingAt): the people waiting there climb in at its rear door one after
+   * the other — two or three at an ordinary stop, up to the car's fill for the ride-home crowd after the gala — and one
+   * or two get off and walk away. The player's own boarding is the transport lane's: it always keeps seats free.
+   */
   private buses() {
-    const now = dwellingNow(this.ctx);
+    const now = dwellingAt(this.stops.map(s => s.key));
     for (const key of newArrivals(this.dwelling, now)) {
       const si = this.stops.findIndex(s => s.key === key); if (si < 0) continue;
-      const s = this.stops[si];
-      let board = 2 + Math.floor(this.rand() * 2) + (this.leaving > 0 && key.endsWith(':arene') ? 4 : 0);
-      for (const a of s.taken) if (a && board > 0 && a.role === 'stop' && !a.path) {
-        const route = routeClear(a, s.door, this.cols); if (!route) continue;
-        board--; this.counts.boarded++;
-        this.walkTo(a, route, () => this.hide(a), 1.4);
+      const s = this.stops[si], car = now.get(key)!, door = { x: car.x, z: car.z };
+      const waiting = s.taken.filter(a => a && a.role === 'stop' && !a.path) as Agent[];
+      // nearest to the door first: the front of the crowd gets in
+      waiting.sort((p, q) => Math.hypot(p.x - door.x, p.z - door.z) - Math.hypot(q.x - door.x, q.z - door.z));
+      const n = boardCount({ waiting: waiting.length, crowd: s.crowd, seats: this.carSeats, fill: lineFill(key, this.ctx.day(), this.ctx.hour()), left: car.left, r: this.rand() });
+      let k = 0;
+      for (const a of waiting) {
+        if (k >= n) break;
+        const route = routeClear(a, door, this.cols); if (!route) continue;
+        this.counts.boarded++;
+        this.walkTo(a, route, () => this.hide(a), 1.5);
+        a.delay = k * BOARD_GAP; k++;
       }
-      const off = this.rand() < 0.5 ? 1 : 2;
-      for (let k = 0; k < off; k++) {
+      const off = s.crowd && this.leaving > 0 ? 0 : this.rand() < 0.5 ? 1 : 2;   // nobody gets off at the arena after the gala
+      for (let j = 0; j < off; j++) {
         const a = this.free(); if (!a) break;
-        a.x = s.door.x + (this.rand() - 0.5) * 0.6; a.z = s.door.z + (this.rand() - 0.5) * 0.6; a.role = 'walk';
+        a.x = door.x + (this.rand() - 0.5) * 0.6; a.z = door.z + (this.rand() - 0.5) * 0.6; a.role = 'walk';
         this.show(a); this.counts.alighted++;
         this.toLane(a);
       }
@@ -372,8 +401,10 @@ export class StreetLife {
     if (!clearWalk(a.x, a.z, a.x, a.z, this.cols, 0.3)) { a.x = p0.x; a.z = p0.z; }
     this.show(a);
     const u = this.rand();
-    const stop = this.stops.map((s, i) => ({ i, d: Math.hypot(s.site.x - a.x, s.site.z - a.z) })).filter(s => s.d < 90).sort((x, y) => x.d - y.d)[0]?.i ?? -1;
-    if (u < 0.4 && stop >= 0) {                                          // the car rapide home
+    // the car rapide home: the nearest served stop, the evening route's « Arène » first (it holds a crowd)
+    const stop = this.stops.map((s, i) => ({ i, d: Math.hypot(s.site.x - a.x, s.site.z - a.z) * (s.crowd ? 0.5 : 1) }))
+      .filter(x => this.stops[x.i].served && x.d < 90).sort((x, y) => x.d - y.d)[0]?.i ?? -1;
+    if (u < (stop >= 0 && this.stops[stop].crowd ? 0.5 : 0.4) && stop >= 0) {
       const arene = stop, s = this.stops[arene], i = s.taken.indexOf(null);
       if (i >= 0) {
         const slot = s.slots[i], route = routeClear(a, slot, this.cols);
@@ -384,7 +415,7 @@ export class StreetLife {
         return;
       }
     }
-    if (u < 0.7 && this.corners.length && this.arrivals) {                 // a taxi at a corner
+    if (u >= 0.5 && u < 0.7 && this.corners.length && this.arrivals) {   // a taxi at a corner
       const ci = this.corners.map((c, i) => ({ i, d: Math.hypot(c.door.x - a.x, c.door.z - a.z) })).sort((x, y) => x.d - y.d)[0].i;
       const c = this.corners[ci], i = c.taken.indexOf(null);
       if (i >= 0) {
@@ -402,6 +433,7 @@ export class StreetLife {
   }
 
   private step(a: Agent, dt: number) {
+    if (a.delay > 0) { a.delay -= dt; return; }
     if (a.path) {
       const to = a.path[a.pi + 1];
       if (!to) { a.path = null; const f = a.then; a.then = null; f?.(); this.place(a); return; }
@@ -461,7 +493,7 @@ export class StreetLife {
     for (const a of this.agents) by[a.role] = (by[a.role] ?? 0) + 1;
     return {
       hub: this.hub.id, quality: this.q, target: { ...this.target }, roles: by, counts: { ...this.counts }, leaving: this.leaving,
-      lanes: this.lanes.length, busyLanes: this.lanes.filter(l => l.w > 1).length, stops: this.stops.map(s => ({ key: s.key, busy: s.busy, waiting: s.taken.filter(Boolean).length, slots: s.slots.length })),
+      lanes: this.lanes.length, busyLanes: this.lanes.filter(l => l.w > 1).length, stops: this.stops.map(s => ({ key: s.key, busy: s.busy, crowd: s.crowd, served: s.served, waiting: s.taken.filter(Boolean).length, slots: s.slots.length })),
       groups: this.groups.filter(g => g.on).length, groupSpots: this.groups.length, corners: this.corners.map(c => c.taken.filter(Boolean).length),
       crowd: this.crowd.stats(), drawCalls: this.crowd.drawCalls(),
     };

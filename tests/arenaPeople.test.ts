@@ -1,13 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PEOPLE, PEOPLE_COUNT, PRESENT, STAND_VENDORS, campSpot, celebratePath, cornerSpot, cornerSpots, drummerSpots, entouragePath, peopleMoment, polar, walkArc,
+  PEOPLE, PEOPLE_COUNT, PRESENT, STAND_VENDORS, campSpot, celebratePath, cornerSpot, cornerSpots, drummerSpots, peopleMoment, polar, walkArc,
 } from '../src/arena/people';
 import { ECURIES, VENDORS } from '../src/arena/exteriorRules';
 import { RING_R, PARAPET_R, WALL_R, TUNNEL_MOUTH_R, inGate, inTunnel } from '../src/world/geew';
 import { ARENA_FLOOR, PREP_SIDE, drummersStand, interiorSpots, mediaZone, prepCorner, prepCornerCentre, tunnel, type ArenaKit } from '../src/world/arenaModules';
 import { Batch } from '../src/world/batch';
 import { SHOW, type ShowPhase } from '../src/arena/program';
+import { OUT_FILE, ROUTE, entourageIn, entourageToCorner, type Who } from '../src/arena/ceremony';
 import type { ActivitySpec } from '../src/activity/types';
+import { AMBIENT_BUDGET } from '../src/social/ambientData';
+import { LOD_PRIO, seenFrom } from '../src/arena/people';
 
 const C = { x: 100, z: -40 };
 const r = (p: { x: number; z: number }) => Math.hypot(p.x - C.x, p.z - C.z);
@@ -41,8 +44,9 @@ describe('fight night people: who is there when', () => {
     for (const p of ['filling', 'entrance', 'bout', 'result', 'leaving'] as ShowPhase[]) expect(peopleMoment(p, 'doors')).toBe(p);
   });
   it('the officials are there from the set-up, the judges for the show, the referee until the duel brings its own', () => {
-    expect(PRESENT.officials).toContain('setup'); expect(PRESENT.judges).toEqual(['filling', 'entrance', 'bout', 'result']);
+    expect(PRESENT.officials).toContain('setup'); expect(PRESENT.judges).toEqual(['filling', 'prelims', 'entrance', 'bout', 'result']);
     expect(PRESENT.referee).not.toContain('bout'); expect(PRESENT.referee).not.toContain('result');
+    expect(PRESENT.referee).not.toContain('prelims'); expect(PRESENT.entourage).not.toContain('prelims');      // the preliminaries' duels bring their referee; no entourage
     expect(PRESENT.warmup).toContain('doors'); expect(PRESENT.drummers).not.toContain('doors');            // two drummers warm up first
     expect(PRESENT.entourage).toEqual(['entrance', 'bout', 'result', 'leaving']);                          // they come in with their wrestler
     expect(PRESENT.camp).toContain('doors');                                                               // a helper readies each corner
@@ -77,19 +81,20 @@ describe('fight night people: where they stand', () => {
     for (const s of spots.filter(s => s.clip !== 'Talk')) { expect(hit(s)).toBe(false); expect(s.y).toBe(ARENA_FLOOR); }
     for (let i = 0; i < spots.length; i++) for (let j = i + 1; j < spots.length; j++) expect(dist(spots[i], spots[j])).toBeGreaterThan(0.7);
   });
-  it('each entourage walks out of the tunnel to its own corner, round the deck and its dancers, clear of every prop', () => {
+  it('each entourage walks out of the tunnel onto the sand, then to its corner round the deck and its dancers, clear of every prop', () => {
     const dancers = drummerSpots(C.x, C.z).filter(s => s.clip !== 'Talk');
-    for (const { side } of SIDES) for (let k = 0; k < PEOPLE_COUNT.high.entourage; k++) {
-      const path = entouragePath(C.x, C.z, side, k);
-      expect(path).toHaveLength(5);
-      expect(inTunnel(ang(path[0]), 0.12)).toBe(true); expect(r(path[0])).toBeGreaterThan(TUNNEL_MOUTH_R + 2); expect(r(path[0])).toBeLessThan(WALL_R);
-      expect(path[4]).toEqual(cornerSpot(C.x, C.z, side, k));
-      for (const p of path.slice(1)) { expect(r(p)).toBeGreaterThan(10.8); expect(r(p)).toBeLessThan(16.4); expect(Math.sign(p.x - C.x)).toBe(side); }
-      for (let i = 0; i + 1 < path.length; i++) for (let t = 0; t <= 1; t += 0.05) {
-        const p = { x: path[i].x + (path[i + 1].x - path[i].x) * t, z: path[i].z + (path[i + 1].z - path[i].z) * t };
-        expect(hit(p), `side ${side} k ${k} leg ${i}`).toBe(false);
+    for (const who of ['left', 'right'] as Who[]) for (const { side } of SIDES) for (const k of [0, 1, 2, 3, 'griot'] as const) {
+      const into = entourageIn(C.x, C.z, who, k);
+      expect(inTunnel(ang(into[0]), 0.12)).toBe(true); expect(r(into[0])).toBeGreaterThan(TUNNEL_MOUTH_R + 2);
+      const to = k === 'griot' ? cornerSpot(C.x, C.z, side, 0) : cornerSpot(C.x, C.z, side, k);
+      const path = entourageToCorner(C.x, C.z, who, side, k, to);
+      expect(path[path.length - 1]).toEqual(to);
+      for (const q of path.slice(2, -1)) { expect(r(q)).toBeGreaterThan(9.5); expect(r(q)).toBeLessThan(16.4); expect(Math.sign(q.x - C.x)).toBe(side); }
+      for (const leg of [into, path]) for (let i = 0; i + 1 < leg.length; i++) for (let t = 0; t <= 1; t += 0.05) {
+        const q = { x: leg[i].x + (leg[i + 1].x - leg[i].x) * t, z: leg[i].z + (leg[i + 1].z - leg[i].z) * t };
+        expect(hit(q), `${who} side ${side} k ${k} leg ${i}`).toBe(false);
       }
-      for (const d of dancers) for (let i = 1; i + 1 < path.length; i++) expect(segDist(d, path[i], path[i + 1])).toBeGreaterThan(1.0);
+      for (const d of dancers) for (let i = 2; i + 1 < path.length; i++) expect(segDist(d, path[i], path[i + 1])).toBeGreaterThan(1.0);
     }
   });
   it('each écurie\'s people stand in its corner, on the mat round its centre (where a fighting player waits), apart, facing the ring', () => {
@@ -104,16 +109,13 @@ describe('fight night people: where they stand', () => {
       for (let a = 0; a < spots.length; a++) for (let b = a + 1; b < spots.length; b++) expect(dist(spots[a], spots[b])).toBeGreaterThan(0.6);
     }
   });
-  it('in the corner nobody walks through another: those who arrive first go furthest', () => {
+  it('in the corner nobody walks through another: those who leave first go furthest in', () => {
     for (const { side } of SIDES) {
-      const ks = [0, 1, 2, 3];
-      // the order they leave the tunnel (nearest the mouth first) and how far their spot is from the corner's open side
-      const lead = (k: number) => r(entouragePath(C.x, C.z, side, k)[0]);
-      const depth = (k: number) => dist(entouragePath(C.x, C.z, side, k)[3], cornerSpot(C.x, C.z, side, k));
-      const front = ks.filter(k => k !== 3).sort((a, b) => lead(a) - lead(b));                         // the front row
-      for (let i = 1; i < front.length; i++) expect(depth(front[i])).toBeLessThan(depth(front[i - 1]));
+      const entry = polar(C.x, C.z, side * ROUTE.side.a, ROUTE.side.r);
+      const front = OUT_FILE.filter((k): k is number => typeof k === 'number' && k < 3);                // the front row, in file
+      for (let i = 1; i < front.length; i++) expect(dist(entry, cornerSpot(C.x, C.z, side, front[i]))).toBeLessThan(dist(entry, cornerSpot(C.x, C.z, side, front[i - 1])));
       // the corner helper's place is apart from all of them
-      for (const k of ks) expect(dist(campSpot(C.x, C.z, side), cornerSpot(C.x, C.z, side, k))).toBeGreaterThan(0.6);
+      for (const k of [0, 1, 2, 3]) expect(dist(campSpot(C.x, C.z, side), cornerSpot(C.x, C.z, side, k))).toBeGreaterThan(0.6);
     }
   });
   it('the winner\'s people run onto the sand through the gap by the tunnel, not over the judges', () => {
@@ -122,7 +124,7 @@ describe('fight night people: where they stand', () => {
       const path = celebratePath(C.x, C.z, side, k), end = path[path.length - 1];
       expect(r(end)).toBeLessThan(RING_R - 4);
       for (const j of judges) for (let i = 0; i + 1 < path.length; i++) expect(segDist(j, path[i], path[i + 1])).toBeGreaterThan(1.0);
-      expect(dist(path[0], entouragePath(C.x, C.z, side, k)[3])).toBeLessThan(1e-9);                    // out of the corner by its open side
+      expect(dist(path[0], polar(C.x, C.z, side * ROUTE.side.a, ROUTE.side.r))).toBeLessThan(1e-9);      // out of the corner by its open side
       // running (4.5 m/s) they are there well before the result's end
       let len = dist(cornerSpot(C.x, C.z, side, k), path[0]);
       for (let i = 0; i + 1 < path.length; i++) len += dist(path[i], path[i + 1]);
@@ -146,5 +148,25 @@ describe('fight night people: where they stand', () => {
   it('the vendors inside sell at the prices of the stalls outside', () => {
     const outside = new Map(VENDORS.flatMap(v => v.offers()).map((o: ActivitySpec) => [o.id, o.price]));
     for (const v of STAND_VENDORS) for (const o of v.offers(v.seller)) expect(o.price).toBe(outside.get(o.id));
+  });
+});
+
+describe('fight night people: what they cost to draw', () => {
+  it('in the background they get a full body only close by; in the spotlight as far as anyone', () => {
+    expect(LOD_PRIO.spotlight).toBe(1);
+    for (const q of ['low', 'medium'] as const) {
+      // beyond 15 m (the officials' table, the deck, the judges from most seats) a background person is a cheap figure
+      // (on high, with its larger budget, beyond 21 m)
+      expect(LOD_PRIO.background * 15.5).toBeGreaterThan(AMBIENT_BUDGET[q].full);
+      expect(LOD_PRIO.background * 15.5).toBeLessThan(AMBIENT_BUDGET[q].far * 1.5);
+    }
+  });
+  it('from the street they are drawn only when the camera is inside the walls or by one of the two gates', () => {
+    expect(seenFrom(C.x, C.z, { x: C.x + 5, z: C.z + 3 })).toBe(true);                     // in the ring
+    expect(seenFrom(C.x, C.z, { x: C.x + 12, z: C.z - 14 })).toBe(true);                   // on the tiers
+    expect(seenFrom(C.x, C.z, { x: C.x + 2, z: C.z - WALL_R - 8 })).toBe(true);            // in front of the public gate
+    expect(seenFrom(C.x, C.z, { x: C.x - 1, z: C.z + WALL_R + 6 })).toBe(true);            // at the wrestlers' gate
+    expect(seenFrom(C.x, C.z, { x: C.x + WALL_R + 6, z: C.z })).toBe(false);               // behind the wall
+    expect(seenFrom(C.x, C.z, { x: C.x + 30, z: C.z - 40 })).toBe(false);                  // down the street
   });
 });

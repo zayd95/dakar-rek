@@ -104,6 +104,9 @@ for (const preset of presets) {
   await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat', null, T).catch(() => {});
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => /arena:stand/.test(window.__dakar.seated() ?? ''), null, T).catch(() => {});
+  // the main bout (the preliminaries, src/arena/undercard.ts, skipped: the main event is the heavier frame)
+  await page.waitForFunction(() => ['prelims', 'entrance', 'bout'].includes(window.__dakar.arena.info().phase), null, T).catch(() => {});
+  await d(() => { if (['filling', 'prelims'].includes(window.__dakar.arena.info().phase)) window.__dakar.arena.go('entrance'); });
   await page.waitForFunction(() => window.__dakar.arena.info().phase === 'bout', null, T).catch(() => {});
   await measure('19:00 seated, bout');
 
