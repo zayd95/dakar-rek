@@ -89,16 +89,18 @@ export interface StandState {
   stagger: number;
   /** Seconds since the last clean hit taken (presentation: recoil). */
   hitAgo: number;
+  /** A training partner sets everything up this many times slower (Coach Ablaye's lesson); 1 otherwise. */
+  slow?: number;
 }
 export function standState(attrs: Attributes, max: number, stamina = max): StandState {
   return { attrs, stamina, max, balance: STAND.balanceMax, composure: STAND.composureMax, guard: false, open: 0, dodge: 0, strike: null, recover: 0, stagger: 0, hitAgo: 99 };
 }
 
 /** Seconds a strike takes to land for this wrestler: explosive wrestlers are quicker, rattled ones slower (≤ +25 %). */
-export function windupOf(kind: StrikeKind, s: Pick<StandState, 'attrs' | 'composure'>): number {
+export function windupOf(kind: StrikeKind, s: Pick<StandState, 'attrs' | 'composure' | 'slow'>): number {
   const fast = 1.15 - (0.3 * clamp(s.attrs.explosivite, 0, 100)) / 100;
   const rattled = 1 + (1 - clamp(s.composure, 0, 100) / 100) * 0.25;
-  return STRIKES[kind].windup * fast * rattled;
+  return STRIKES[kind].windup * fast * rattled * (s.slow ?? 1);
 }
 /** Can this wrestler start an action (strike or grab) now? */
 export const free = (s: StandState) => !s.strike && s.recover <= 0 && s.stagger <= 0 && s.dodge <= 0;

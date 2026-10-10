@@ -18,7 +18,8 @@ l'arène, écurie, combats amicaux et classés) reste intacte à chaque étape.
 
 **Lancer.** Ajoute `?lamb2` à l'adresse du jeu. À l'arène de Pikine : **Combat amical** → « Avec frappe · Gora », « … ·
 Pape » ou « … · Saliou ». Le soir, ton combat de la soirée (entrée des lutteurs → coin → cercle) se joue aussi avec
-frappe. Sans `?lamb2`, rien ne change.
+frappe. **Pour apprendre** : l'Entraînement à l'écurie de Pikine devient la leçon guidée de Coach Ablaye (plus bas).
+Sans `?lamb2`, rien ne change.
 
 | | Clavier | Téléphone |
 | --- | --- | --- |
@@ -184,12 +185,60 @@ les puissants plus que les défensifs) — la lutte reste le cœur, les frappes 
 l'équilibre revient un peu moins vite (12/s) pour que les échanges pèsent ; au temps, l'arbitre compte aussi les
 frappes nettes (1 point) et les déséquilibres (2 points).
 
+## La leçon de Coach Ablaye, avec frappe
+
+Avec `?lamb2`, l'**Entraînement** de l'écurie (Coach Ablaye, Babacar en partenaire) devient une leçon guidée de la lutte
+avec frappe. Une étape à la fois, chacune **terminée en la faisant** (`src/lamb/lesson.ts`) :
+
+1. **Distance** — s'approcher à un bras (le partenaire attend : c'est toi qui avances).
+2. **Frappe rapide**, puis **grosse frappe** — et son prix : ratée ou parée, elle t'ouvre (le coach le dit).
+3. **Garde** — Babacar arme lentement une grosse frappe : la parer.
+4. **Saisir** — l'empoignade (la garde n'arrête pas une saisie).
+5. **Pousser / Tirer / Pivoter** — lire son corps (il pousse lentement) et gagner un échange en répondant.
+6. **Sentir la glissade** — sa prise est forte, ton équilibre s'use (bord de l'écran), puis **Casser**.
+7. **Projeter** — il glisse et tu tiens la prise ; puis **Contrer** sa projection quand le bouton devient vert.
+
+Le partenaire montre tout **lentement** (×1,8) ; dans la leçon personne ne tombe vraiment (on se relève). Chaque étape
+a sa phrase de Coach Ablaye : une expression du lexique avec sa traduction, puis la consigne en français — « Kaay fi ! »
+(viens ici), « Gaawal ! » (dépêche-toi), « Ndank ndank » (petit à petit), « Bul tiit ! » (n'aie pas peur), « jàpp »
+(saisir), « Xaaral tuuti » (attends un peu), « Benn, ñaar, ñett ! » (un, deux, trois), « Waaw kay ! » (bien sûr),
+« Baax na ! » (c'est bien). **Passer** (bouton, ou P) saute l'étape ; Échap abandonne comme avant. Sur téléphone, les
+boutons de l'étape (ou le joystick) sont **surlignés en vert**. À la fin, le bilan d'entraînement habituel : rien de
+plus que l'effet d'entraînement existant (compétence de lutte +1). Sans `?lamb2`, l'entraînement sans frappe est
+inchangé.
+
+## Décision à prendre (Habib) : quand la lutte avec frappe devient-elle la règle ?
+
+Aujourd'hui tout est derrière `?lamb2`. Ce qui est **prêt** : le combat debout, l'entrée et l'empoignade jouée, la
+glissade, la projection et le contre, la chute (arbitre, foule), les lutteurs du classement avec leur style et leur
+niveau, le bilan à part (`lamb_af_*`) et la carrière, le combat de la soirée avec frappe (le même pour tous), la leçon
+de Coach Ablaye, le téléphone (cinq boutons, portrait et paysage).
+
+Ce qui **manque** avant d'en faire la lutte par défaut :
+
+- **La validation en jeu** : les parties complètes au navigateur (file de l'intégrateur) et surtout **des parties
+  jouées par des gens**, sur téléphone, pour régler la difficulté (l'IA lit-elle trop bien ? la fenêtre de « Contrer »
+  est-elle jouable au pouce ?).
+- **Les animations** : frappes, empoignade et chute sont des poses provisoires posées sur le squelette (pas de vraie
+  animation de projection ni de chute dirigée) — à remplacer par des animations Blender.
+- **Le classé** : le combat classé et le chemin du lutteur sont avec frappe seulement avec le drapeau ; le classement
+  de la ville (carrière) mélange encore les deux disciplines dans un même bilan de saison.
+- **Le multijoueur** : un combat joueur contre joueur avec frappe demande l'arbitrage serveur (spec §20), pas fait.
+- **L'équilibrage des styles** (spec §12) : six styles prévus, trois écrits (puissant, rapide, défensif).
+
+Options : (a) garder « sans frappe » par défaut et proposer « avec frappe » à côté (amical, soirée) dès maintenant ;
+(b) basculer la soirée et l'entraînement par défaut d'abord, le classé ensuite ; (c) tout basculer d'un coup après
+une semaine de parties réelles. Recommandation : **(b)**, après une passe de parties sur téléphone — la soirée et la
+leçon montrent le mieux la nouvelle lutte, et le classé garde son bilan tant que la carrière ne sépare pas les deux.
+
 ## Code et vérifications
 
 - `src/lamb/stand.ts` — règles pures du combat debout (testées : `tests/lamb2.test.ts`).
 - `src/lamb/duel.ts` — `discipline: 'avec_frappe'` branche le combat debout ; `'sans_frappe'` (par défaut) est inchangé.
 - `src/lamb/clinch.ts` — entrée et empoignade (pures, testées dans `tests/lamb2.test.ts`).
 - `src/lamb/opponents.ts` — les lutteurs du classement en adversaires avec frappe (table style → IA, niveau → attributs).
+- `src/lamb/lesson.ts` — la leçon de Coach Ablaye (étapes, ce qui les termine, ses phrases ; testée, y compris dans le duel sans navigateur).
 - `src/lamb/strikeRig.ts` — poses de frappe et d'empoignade sur le squelette.
 - `src/arena/bout.ts` — le combat regardé ; avec frappe, le duel joue les deux côtés (IA contre IA).
+- `scripts/check-arena-visit.mjs`, `scripts/check-evening.mjs` — avec `LAMB2=1` : le combat de la soirée avec frappe (arbitre, tribunes).
 - `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/`.

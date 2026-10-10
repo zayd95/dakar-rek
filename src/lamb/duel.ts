@@ -10,6 +10,8 @@ import {
   type Attributes, type Reaction, type StandState, type StandStyle, type StrikeKind,
 } from './stand';
 import { StrikeRig } from './strikeRig';
+import { LESSON, advance, coachLine, feedback, hear, startLesson, stepNumber, type Lesson, type LessonEvent } from './lesson';
+import { utter } from '../i18n/lines';
 import {
   CLINCH, CLINCH_STYLES, ENTRY_TEXT, MOVES, THROW, clinchDecide, clinchPower, counterThrow, entryGrip, exchange, gripWords, holdTick, posture, startMove,
   throwLands, tryBreak, wantsCounter, wantsThrow,
@@ -169,6 +171,12 @@ export class LambDuel {
   private autoSawStrike = false;
   private autoSawGrab = false;
   private autoStepIn = 0;
+  /** Avec frappe at the écurie: Coach Ablaye's guided lesson (src/lamb/lesson.ts), one step at a time. */
+  private lesson: Lesson | null = null;
+  /** What Coach Ablaye says now (shown in the lesson's box). */
+  private coachText = '';
+  private lessonT = 0;
+  private lessonEnd = 0;
   /** No DOM (unit tests of a watched bout): the duel runs without its HUD. */
   private headless = typeof document === 'undefined';
   /** Avec frappe: who the opponent is, in one line (« Gora, costaud indépendant, 7-2 »). */
@@ -192,6 +200,7 @@ export class LambDuel {
       if (this.phase === 'result') this.finish(); else if (!this.paused) this.grabTaps++;
     }
     if (e.code === 'KeyX' && !this.paused) this.breakPresses++;
+    if (e.code === 'KeyP' && this.lesson && !this.paused) this.skipLessonStep();
     if (this.frappe && !this.paused && (e.code === 'KeyJ' || e.code === 'KeyC')) this.quickPresses++;
     if (this.frappe && !this.paused && (e.code === 'KeyK' || e.code === 'KeyV')) this.bigPresses++;
     if (e.code === 'Escape') { if (this.phase === 'result') this.finish(); else this.askAbandon(!this.confirmOpen()); }
@@ -204,6 +213,7 @@ export class LambDuel {
     this.standStyle = this.mode === 'entrainement' ? STAND_STYLES.partenaire : STAND_STYLES[this.style.id];
     this.clinchStyle = this.mode === 'entrainement' ? CLINCH_STYLES.partenaire : CLINCH_STYLES[this.style.id];
     if (this.frappe && opts.autopilot) { this.auto = opts.autopilot; this.autoFactor = levelFactor(opts.autopilot.level); }
+    if (this.frappe && this.mode === 'entrainement' && !this.spectate) { this.lesson = startLesson(); this.step = TUTORIAL.length; }
     const who = this.frappe && this.mode !== 'entrainement' ? opts.opponent : undefined;
     if (who) { this.standStyle = who.stand; this.clinchStyle = who.clinch; this.identity = who.line; }
     this.factor = opts.mode === 'entrainement' ? 1 : levelFactor(opts.level);
@@ -220,6 +230,7 @@ export class LambDuel {
     // so the player starts at +x and is seen on the left, the opponent on the right
     this.me = mk(0x6b3f25, look, 3, this.auto?.style.staminaMax ?? R.stamina.max, this.auto?.style.staminaRegen ?? R.stamina.regen, opts.attrs ?? this.auto?.attrs ?? AVERAGE);
     this.ai = mk(0x3b2216, { ngembColor: this.style.ngemb, ngembPattern: this.mode === 'entrainement' ? 'bordure' : 'uni', accessories: [] }, -3, this.style.staminaMax, this.style.staminaRegen, who?.attrs ?? this.standStyle.attrs);
+    if (this.lesson) this.ai.slow = 1.8;                                   // the partner shows everything slowly
     if (wrestlerReady()) {
       // referee (arena) or Coach Ablaye (écurie) watching from the far side of the ring
       const coach = castById('ablaye');
@@ -300,6 +311,11 @@ export class LambDuel {
       .duel-note{position:absolute;top:calc(env(safe-area-inset-top,0px) + 104px);left:50%;transform:translateX(-50%);font-size:10.5px;opacity:.85;text-align:center;width:94vw;text-shadow:0 1px 3px #000}
       .duel-step{position:absolute;top:calc(env(safe-area-inset-top,0px) + 124px);left:50%;transform:translateX(-50%);width:min(92vw,440px);background:rgba(20,83,45,.85);border:1px solid #4ade80;border-radius:10px;padding:6px 10px;font-size:13px;text-align:center}
       .duel-step small{display:block;font-size:11px;color:#bbf7d0;margin-top:2px}
+      .duel-step em{display:block;font-style:normal;font-weight:500;font-size:12px;color:#f0fdf4;margin-top:4px;line-height:1.3}
+      .duel-step button{pointer-events:auto;margin-top:5px;border:1px solid #bbf7d0;background:rgba(20,83,45,.9);color:#fff;font:700 12px system-ui;border-radius:8px;padding:6px 12px;min-height:32px}
+      .duel-btns button.teach{box-shadow:0 0 0 4px #4ade80,0 0 18px 4px rgba(74,222,128,.7);animation:duelteach .8s ease-in-out infinite alternate}
+      #joy.teach{box-shadow:0 0 0 4px #4ade80,0 0 18px 4px rgba(74,222,128,.7);border-radius:50%}
+      @keyframes duelteach{from{filter:brightness(1)}to{filter:brightness(1.25)}}
       .duel-msg{position:absolute;top:24%;left:50%;transform:translateX(-50%);font-size:clamp(20px,5.6vw,36px);font-weight:900;text-shadow:0 2px 8px #000;text-align:center;width:94vw}
       .duel-clinch{position:absolute;top:calc(24% + 48px);left:50%;transform:translateX(-50%);width:min(70vw,320px);text-align:center}
       .duel-clinch i{display:block;height:12px;border-radius:6px;background:#dc2626;overflow:hidden;border:2px solid rgba(255,255,255,.7)}
@@ -338,6 +354,7 @@ export class LambDuel {
       for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => b.classList.remove('on'));
     };
     tap(grab, () => this.grabTaps++); tap(brk, () => this.breakPresses++);
+    d.querySelector('[data-k=step]')!.addEventListener('click', e => { if ((e.target as HTMLElement).closest('[data-k=skip]')) this.skipLessonStep(); });
     const quick = d.querySelector<HTMLButtonElement>('[data-k=quick]'), big = d.querySelector<HTMLButtonElement>('[data-k=big]');
     if (quick) tap(quick, () => this.quickPresses++);
     if (big) tap(big, () => this.bigPresses++);
@@ -378,7 +395,18 @@ export class LambDuel {
     const tl = this.timeLeft;
     this.q('timer').textContent = tl === Infinity ? '—' : `${Math.floor(Math.max(0, Math.ceil(tl)) / 60)}:${String(Math.max(0, Math.ceil(tl)) % 60).padStart(2, '0')}`;
     const step = this.q('step');
-    if (this.mode === 'entrainement' && this.step < TUTORIAL.length && this.phase !== 'result') {
+    if (this.lesson) {
+      const l = this.lesson, show = !l.done && this.phase !== 'result';
+      step.hidden = !show;
+      if (show) {
+        const d = LESSON[l.step as keyof typeof LESSON], n = stepNumber(l.step);
+        const html = `<b>${n.n}/${n.of} · ${d.title}</b><small>${document.body.classList.contains('touch') ? 'Boutons en vert' : d.keys}</small><em>${this.coachText}</em><button data-k="skip" type="button">Passer</button>`;
+        if (step.innerHTML !== html) step.innerHTML = html;
+      }
+      const teach: string[] = show ? LESSON[l.step as keyof typeof LESSON].touch : [];
+      for (const b of this.ui.querySelectorAll<HTMLElement>('.duel-btns button')) b.classList.toggle('teach', teach.includes(b.dataset.k ?? ''));
+      document.getElementById('joy')?.classList.toggle('teach', teach.includes('joy'));
+    } else if (this.mode === 'entrainement' && this.step < TUTORIAL.length && this.phase !== 'result') {
       const s = TUTORIAL[this.step];
       step.hidden = false;
       const html = `<b>${this.step + 1}/${TUTORIAL.length} · ${s.text}</b><small>${s.how}</small>`;
@@ -499,6 +527,12 @@ export class LambDuel {
   pressMove(kind: ClinchMove) { this.moveQueued = kind; }
   /** Avec frappe: a quick or a big strike (same as the buttons). */
   pressStrike(kind: StrikeKind) { if (kind === 'big') this.bigPresses++; else this.quickPresses++; }
+  /** Coach Ablaye's lesson: skip the current step (« Passer »). */
+  skipLessonStep() {
+    const l = this.lesson; if (!l || l.done || this.phase === 'result') return;
+    advance(l, true);
+    if (l.done) this.finishLesson();
+  }
   /** Checks only: set a wrestler's balance, composure or endurance (to reach a state without a long bout). */
   debugSet(side: Side, v: { balance?: number; composure?: number; stamina?: number; grip?: number }) {
     const f = side === 'player' ? this.me : this.ai;
@@ -532,6 +566,7 @@ export class LambDuel {
       } } : {}),
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
       discipline: this.discipline, identity: this.identity, ...(this.frappe ? { refereeRaised: this.refRaised } : {}),
+      ...(this.lesson ? { lesson: { step: this.lesson.step, done: this.lesson.done, skipped: this.lesson.skipped } } : {}),
       ...(this.frappe ? {
         balance: { player: Math.round(this.me.balance), opponent: Math.round(this.ai.balance) },
         composure: { player: Math.round(this.me.composure), opponent: Math.round(this.ai.composure) },
@@ -621,7 +656,11 @@ export class LambDuel {
       this.msg(this.phaseT < lead ? `Face à toi : ${this.identity}` : this.phaseT < lead + 1.4 ? (this.mode === 'entrainement' ? 'Coach Ablaye : prêts ?' : 'Arbitre : prêts ?') : 'Làmb !');
       me.clip = ai.clip = 'Prep';
       if (this.phaseT > lead + 2.2) { this.phase = 'fight'; this.phaseT = 0; this.msg(''); }
+    } else if (this.lesson && this.lessonEnd > 0 && (this.lessonEnd -= dt) <= 0) {
+      this.end('entrainement', null);                                       // the lesson is over: the training's recap
     } else if (this.phase === 'fight' && this.frappe) {
+      if (this.lesson) this.lessonSetup();
+      if ((this.phase as DuelPhase) === 'clinch') return this.frame(dt);              // the step was set up in the empoignade
       this.fightFrappe(dt, taps, breaks, quick, big);
     } else if (this.phase === 'fight') {
       if (this.timeLeft !== Infinity) this.timeLeft -= dt;
@@ -683,6 +722,8 @@ export class LambDuel {
       else if (this.msgHold <= 0) this.msg('');
       if (this.phase === 'fight' && this.timeLeft <= 0) this.timeUp();
     } else if (this.phase === 'clinch' && this.frappe) {
+      if (this.lesson) this.lessonSetup();
+      if ((this.phase as DuelPhase) === 'fight') return this.frame(dt);              // the step was set up standing
       this.clinchFrappe(dt, taps, breaks, quick, big, guardPress);
     } else if (this.phase === 'clinch') {
       if (this.timeLeft !== Infinity) this.timeLeft -= dt;
@@ -751,6 +792,7 @@ export class LambDuel {
       f.pos.addScaledVector(away, 4.2 * Math.min(dt, f.dodge));
     }
     let d = ai.pos.distanceTo(me.pos);
+    if (this.lesson) this.lessonHear({ k: 'tick', dist: d });
 
     // the opponent's grab in its response window: step back or hit him (the guard does not stop a grab)
     if (ai.windup > 0) {
@@ -775,9 +817,15 @@ export class LambDuel {
       else if (what === 'back' && free(ai)) { ai.dodge = 0.3; this.aiGuardHold = 0; }
       else if (what === 'counter') { this.aiGuardHold = 0; startStrike(ai, 'quick'); }
     }
-    // the opponent's decisions
+    // the opponent's decisions (in the lesson, the partner only does what the step needs)
     this.aiThink -= dt;
-    if (this.aiThink <= 0 && free(ai) && ai.windup <= 0 && ai.open <= 0 && ai.busy <= 0) {
+    if (this.lesson) {
+      if (this.lesson.step === 'guard' && (this.lessonT += dt) > 2.4 && free(ai) && ai.open <= 0 && d <= STRIKES.big.reach) {
+        this.lessonT = 0;
+        if (startStrike(ai, 'big')) this.msg('Il arme une grosse frappe : garde !', 0.8);
+      }
+      this.aiThink = 1;
+    } else if (this.aiThink <= 0 && free(ai) && ai.windup <= 0 && ai.open <= 0 && ai.busy <= 0) {
       const [a0, b0] = this.style.think; this.aiThink = a0 + this.rand() * (b0 - a0);
       const dec = decide({ me: ai, them: me, dist: d, grabRange: R.grabRange }, this.standStyle, this.factor, this.rand);
       if (dec.grab && ai.stamina >= R.stamina.grabCost) this.aiGrab();
@@ -794,7 +842,8 @@ export class LambDuel {
     this.aiGuardHold = Math.max(0, this.aiGuardHold - dt);
     ai.guard = this.aiGuardHold > 0 && !ai.strike && ai.stagger <= 0 && ai.open <= 0 && ai.windup <= 0;
     if (ai.busy <= 0 && ai.windup <= 0 && ai.stagger <= 0 && ai.dodge <= 0) {
-      const range = this.standStyle.range, want = d > range + 0.15 ? 1 : d < range - 0.35 ? -0.6 : 0;
+      const range = this.standStyle.range, wait = this.lesson?.step === 'distance';
+      const want = wait ? 0 : d > range + 0.15 ? 1 : d < range - 0.35 ? -0.6 : 0;
       const dir = me.pos.clone().sub(ai.pos).setY(0).normalize();
       ai.pos.addScaledVector(dir, want * (ai.guard ? STAND.guardSpeed : ai.strike ? 0.4 : 1) * this.style.speed * Math.min(1.2, this.factor) * dt);
     }
@@ -824,8 +873,19 @@ export class LambDuel {
     }
     // the player: Saisir pushes, Garde pulls, Frappe pivots, Reculer breaks free
     if (breaks > 0) {
-      if (tryBreak(me, this.grip)) { me.score.breaks++; this.separate(ai, 0.5); this.msg('Dégagé !', 1.0); return; }
+      if (tryBreak(me, this.grip)) { me.score.breaks++; this.separate(ai, 0.5); this.msg('Dégagé !', 1.0); if (this.lesson) this.lessonHear({ k: 'break', by: 'player' }); return; }
       this.msg(this.grip < CLINCH.breakFloor ? 'Sa prise est trop forte pour casser' : me.move ? 'Pas au milieu d’un mouvement' : 'Plus assez d’endurance pour casser', 0.8);
+    }
+    // the lesson holds the position its step needs (a grip to feel, a balance to throw), and the partner's throw to counter
+    if (this.lesson) {
+      const s = this.lesson.step;
+      if (s === 'slip') this.grip = Math.min(this.grip, -55);
+      if (s === 'break') this.grip = Math.max(this.grip, -25);
+      if (s === 'throw') { ai.balance = Math.min(ai.balance, 28); this.grip = Math.max(this.grip, 35); }
+      if (s === 'counter') {
+        me.balance = Math.max(me.balance, 88); this.grip = Math.max(this.grip, 15);
+        if (!this.attempt && (this.lessonT += dt) > 1.6 && !ai.move && ai.recover <= 0) { this.lessonT = 0; this.startThrow(ai); return; }
+      }
     }
     // step 5: a throw being attempted takes over the empoignade until it lands
     if (this.attempt) { this.throwStep(dt, big); return; }
@@ -856,6 +916,7 @@ export class LambDuel {
     if (this.phaseT > CLINCH.maxSeconds) { this.separate(null, 0); this.msg('L’arbitre sépare les lutteurs', 1.2); return; }
     // step 4: the player feels the position going — words, the screen's edge, a low note when it gets serious
     const pm = posture(me.balance), po = posture(ai.balance);
+    if (this.lesson && this.lessonHear({ k: 'posture', player: pm })) return;
     if (pm !== this.postureWas.me && pm === 'chute') strikeSound('big', 'guarded');
     if (po !== this.postureWas.ai && po === 'chute') crowdCheer(1.2, 0.1);
     this.postureWas = { me: pm, ai: po };
@@ -890,12 +951,13 @@ export class LambDuel {
       else this.msg('Plus assez d’endurance pour contrer', 0.6);
     }
     if (!at.counter && (def === ai || this.auto) && at.t >= at.counterAt && def.stamina >= THROW.counterCost) { def.stamina -= THROW.counterCost; at.counter = true; }
-    if (at.t < THROW.windup) return;
+    if (at.t < THROW.windup * (att.slow ?? 1)) return;
     this.attempt = null;
     const by: Side = att === me ? 'player' : 'opponent';
     if (at.counter) {
       const c = counterThrow(def, att, -gAtt);
       this.lastThrow = { by, result: c.result === 'reverse' ? 'countered' : 'blocked' };
+      if (this.lesson) this.lessonHear({ k: 'throw', by, result: this.lastThrow.result });
       if (c.result === 'reverse') { this.msg(def === me ? 'Contre ! Il part au sol !' : 'Il contre ta projection…', 1.2); this.resolveClinch(def === me); return; }
       att.recover = 0.4;
       this.msg(def === me ? 'Projection bloquée' : 'Il bloque ta projection', 0.9);
@@ -903,11 +965,41 @@ export class LambDuel {
     }
     const t = throwLands(att, def, gAtt);
     this.lastThrow = { by, result: t.result };
+    if (this.lesson) this.lessonHear({ k: 'throw', by, result: t.result });
     if (t.result === 'fall') { this.msg(att === me ? 'Projection !' : 'Il te projette…', 1.2); this.resolveClinch(att === me); return; }
     this.grip = Math.max(-100, Math.min(100, this.grip + (att === me ? t.grip : -t.grip)));
     att.recover = 0.35;
     this.msg(att === me ? 'Projection ratée : il tenait bon, tu es déséquilibré' : 'Sa projection rate : il est déséquilibré !', 1.0);
   }
+
+  // ---------------------------------------------------------------- Coach Ablaye's lesson avec frappe (src/lamb/lesson.ts)
+  /** Sets the current step up once: standing or in the empoignade, a grip or a balance to feel, the coach's word. */
+  private lessonSetup() {
+    const l = this.lesson!; if (l.done) return;
+    const d = LESSON[l.step as keyof typeof LESSON];
+    const wrongPlace = (d.in === 'clinch' && this.phase === 'fight') || (d.in === 'fight' && this.phase === 'clinch');
+    if (l.ready && !(wrongPlace && !this.attempt)) return;                  // set up, and still in the right place
+    l.ready = true; this.lessonT = 0;
+    if (d.in === 'clinch' && this.phase === 'fight') this.startClinch(this.me, 'Empoignade !', 'neutral');
+    else if (d.in === 'fight' && this.phase === 'clinch') this.separate(null, 0);
+    if (d.in === 'clinch') this.me.stamina = Math.max(this.me.stamina, 70);  // enough to do the step
+    if (l.step === 'slip') this.me.balance = Math.min(this.me.balance, 58);
+    if (l.step === 'break') this.grip = Math.max(this.grip, -20);
+    this.coachText = coachLine(l.step);
+  }
+  /** The lesson hears what happened: a finished step moves on (the coach says so), else maybe a word. True: moved on. */
+  private lessonHear(e: LessonEvent): boolean {
+    const l = this.lesson; if (!l || l.done) return false;
+    const word = feedback(l.step, e);
+    if (hear(l, e)) {
+      this.msg(utter(['Baax na !']), 0.9);
+      if (l.done) this.finishLesson();
+      return true;
+    }
+    if (word) this.coachText = `Coach Ablaye : ${word}`;
+    return false;
+  }
+  private finishLesson() { this.coachText = coachLine('done'); this.msg(`${utter(['Baax na !'])} Leçon terminée`, 2.2); this.lessonEnd = 2.2; }
 
   /** Applies an exchange: grip, the pair's motion, words, the crowd. */
   private clinchExchange(a: Fighter, b: Fighter, e: Exchange) {
@@ -921,6 +1013,7 @@ export class LambDuel {
     }
     const winner: Side | null = e.winner === null ? null : (e.winner === 'a') === mine ? 'player' : 'opponent';
     this.lastExchange = { by: mine ? 'player' : 'opponent', move: e.move, against: e.against, winner, result: e.result };
+    if (this.lesson && this.lessonHear({ k: 'exchange', winner, result: e.result })) return;
     // « Tu tires sur sa poussée : il glisse ! » — 2nd person is the 3rd plus « s » for these three verbs
     const NOUN: Record<ClinchMove, [string, string]> = { push: ['sa poussée', 'ta poussée'], pull: ['sa traction', 'ta traction'], pivot: ['son pivot', 'ton pivot'] };
     let text = '';
@@ -997,6 +1090,7 @@ export class LambDuel {
   private strikeLands(a: Fighter, d: Fighter, dist: number) {
     const l = land(a, d, dist), mine = a === this.me, name = this.style.name;
     this.lastStrike = { by: mine ? 'player' : 'opponent', kind: l.kind, result: l.result };
+    if (this.lesson) this.lessonHear({ k: 'strike', by: mine ? 'player' : 'opponent', kind: l.kind, result: l.result });
     strikeSound(l.kind, l.result);
     if (l.result === 'hit' || l.result === 'stagger') a.score.hits = (a.score.hits ?? 0) + 1;
     if (l.result === 'stagger') { a.score.staggers = (a.score.staggers ?? 0) + 1; crowdCheer(1.6, 0.14); }
@@ -1015,6 +1109,13 @@ export class LambDuel {
   }
 
   private resolveClinch(playerWins: boolean) {
+    if (this.lesson) {
+      this.msg(playerWins ? 'Au sol ! On se relève.' : 'Tu es au sol… On se relève, on recommence.', 1.4);
+      this.separate(null, 0);
+      if (!this.lesson.done) this.lesson.ready = false;
+      this.me.balance = Math.max(this.me.balance, 70); this.ai.balance = Math.max(this.ai.balance, 70);
+      return;
+    }
     const step = this.stepId();
     const me = this.me, ai = this.ai;
     if (step) {
@@ -1054,6 +1155,7 @@ export class LambDuel {
     }
     for (const f of [this.me, this.ai]) { f.strike = null; f.stagger = 0; f.recover = 0; f.dodge = 0; f.move = null; }
     this.aiReact = null; this.aiGuardHold = 0; this.moveQueued = null; this.lastExchange = null; this.attempt = null;
+    if (this.lesson) this.lessonHear({ k: 'clinch', by: by === this.me ? 'player' : 'opponent' });
     if (this.frappe) { this.aiThink = 0.5; this.autoT = 0.5; }
     this.msg(text, 0.9);
   }
@@ -1131,6 +1233,7 @@ export class LambDuel {
   dispose() {
     this.drums.stop();
     if (!this.headless) {
+      document.getElementById('joy')?.classList.remove('teach');
       removeEventListener('keydown', this.onKey); removeEventListener('keyup', this.onKey);
       this.ui.remove(); document.body.classList.remove('induel');
     }

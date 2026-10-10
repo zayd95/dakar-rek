@@ -5,7 +5,8 @@
 // staggers and a grab on him goes straight into the empoignade (grip) · in the empoignade, reading his move and
 // answering it wins the exchange, a lost grip makes the balance slip (felt on screen), Casser breaks free, a
 // throw on a wrestler who slips takes him down, then the fall (slow-down, referee, crowd) (desktop), his throw is countered with « Contrer » (phone) · recap with the strikes,
-// not counted in any record. Phone: no « avec frappe » without the flag, the five buttons fit, captures.
+// not counted in any record. Phone: no « avec frappe » without the flag, the five buttons fit, Coach Ablaye's lesson
+// (his word, the buttons highlighted step by step, « Passer »), captures.
 // Usage: node scripts/check-lamb2.mjs [baseUrl] [outDir]   — run it under the shared lock (flock /tmp/dakar-browser.lock).
 // SwiftShader renders a few fps and the game clamps dt to 0.1 s, so every wait is on game state.
 import { chromium } from 'playwright';
@@ -317,6 +318,42 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   const l2 = cl?.phase === 'clinch' ? await layout(page) : null;
   check('phone 844×390, empoignade: relabelled buttons fit and read', !!l2 && layoutOk(l2) && l2.labels.some(t => t.startsWith('Pousser')), l2 ?? { phase: cl?.phase });
   check('phone landscape: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+  await ctx.close();
+}
+
+// ------------------------------------------------------------------ phone: Coach Ablaye's lesson avec frappe at the écurie
+{
+  const { ctx, page, errors } = await open({ width: 390, height: 844 }, true, true);
+  await page.evaluate(() => window.__dakar.duelStart('entrainement', undefined, 'avec_frappe'));
+  await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight' && window.__dakar.duelInfo()?.lesson?.step === 'distance', null, 60000);
+  await page.waitForTimeout(400);
+  const read = () => page.evaluate(() => ({
+    step: window.__dakar.duelInfo()?.lesson?.step,
+    box: document.querySelector('.duel-step')?.innerText ?? '',
+    teach: [...document.querySelectorAll('.duel-btns button.teach')].map(b => b.dataset.k),
+    joy: !!document.querySelector('#joy.teach'),
+  }));
+  const s1 = await read();
+  await shot(page, 'phone-lesson-distance');
+  check('lesson: Coach Ablaye’s first step, with his word (Wolof and its gloss, then French), the joystick highlighted', s1.step === 'distance' && /Coach Ablaye/.test(s1.box) && /«/.test(s1.box) && /\(viens ici\)/.test(s1.box) && /Passer/.test(s1.box) && s1.joy && s1.teach.length === 0, s1);
+  await page.evaluate(() => [...document.querySelectorAll('.duel-step button')].find(b => /Passer/.test(b.textContent))?.click());
+  await wait(page, () => window.__dakar.duelInfo()?.lesson?.step === 'quick', null, 20000);
+  await page.waitForTimeout(300);
+  const s2 = await read();
+  check('lesson: « Passer » moves on; the quick strike step highlights « Frappe »', s2.step === 'quick' && s2.teach.join() === 'quick' && !s2.joy, s2);
+  for (let k = 0; k < 3; k++) await page.evaluate(() => window.__dakar.duelLessonSkip());
+  await wait(page, () => window.__dakar.duelInfo()?.lesson?.step === 'grab', null, 20000);
+  for (let k = 0; k < 1; k++) await page.evaluate(() => window.__dakar.duelLessonSkip());
+  await wait(page, () => window.__dakar.duelInfo()?.lesson?.step === 'moves' && window.__dakar.duelInfo()?.phase === 'clinch', null, 30000);
+  await page.waitForTimeout(400);
+  const s3 = await read();
+  await shot(page, 'phone-lesson-moves');
+  check('lesson: in the empoignade, Pousser / Tirer / Pivoter are highlighted', s3.step === 'moves' && ['grab', 'guard', 'quick'].every(k => s3.teach.includes(k)), s3);
+  for (let k = 0; k < 5; k++) await page.evaluate(() => window.__dakar.duelLessonSkip());
+  const end = await wait(page, () => window.__dakar.duelInfo()?.phase === 'result', null, 60000);
+  const rec = await page.evaluate(() => ({ outcome: window.__dakar.duelInfo()?.outcome, recap: document.querySelector('.duel-recap')?.textContent ?? '' }));
+  check('lesson: skipped to the end, it closes as the usual training (recap, no other reward)', end && rec.outcome === 'entrainement' && /Entraînement terminé/.test(rec.recap), rec);
+  check('lesson: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
 

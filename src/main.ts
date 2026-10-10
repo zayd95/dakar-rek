@@ -489,7 +489,8 @@ function runSpecial(a: Action) {
     case 'watch': startScene('watch', () => { if (a.needs) state.adjust(a.needs); }); break;
     case 'combat': openFriendly(); break;
     case 'combat_classe': openRanked(); break;
-    case 'combat_entrainement': startDuel('entrainement'); break;
+    // with ?lamb2, Coach Ablaye's session is the guided lesson avec frappe (src/lamb/lesson.ts); otherwise as before
+    case 'combat_entrainement': startDuel('entrainement', undefined, undefined, LAMB2 ? 'avec_frappe' : 'sans_frappe'); break;
     case 'outfit': openOutfit(); break;
     case 'emote': openEmotes(); break;
     case 'enter': if (nearest) enterInterior(nearest); break;
@@ -1099,6 +1100,8 @@ if (DEBUG) {
     duelMove(kind: 'push' | 'pull' | 'pivot') { if (lambScene instanceof LambDuel) lambScene.pressMove(kind); },
     /** In the empoignade, the big-strike button: « Projeter », or « Contrer » while he tries a throw. */
     duelThrow() { if (lambScene instanceof LambDuel) lambScene.pressStrike('big'); },
+    /** Coach Ablaye's lesson avec frappe: skip the current step (« Passer »). */
+    duelLessonSkip() { if (lambScene instanceof LambDuel) lambScene.skipLessonStep(); },
     duelSet(side: 'player' | 'opponent', v: { balance?: number; composure?: number; stamina?: number; grip?: number }) { if (lambScene instanceof LambDuel) lambScene.debugSet(side, v); },
     duelInfo: () => (lambScene instanceof LambDuel ? lambScene.info() : null),
     duelGrab() { if (lambScene instanceof LambDuel) lambScene.pressGrab(); },

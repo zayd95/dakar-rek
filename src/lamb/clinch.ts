@@ -90,7 +90,7 @@ export const CLINCH = {
 } as const;
 
 /** A wrestler inside the empoignade (shares stamina and balance with the stand-up state). */
-export interface Holder { stamina: number; balance: number; attrs: Attributes; move: { kind: ClinchMove; t: number } | null; recover: number }
+export interface Holder { stamina: number; balance: number; attrs: Attributes; move: { kind: ClinchMove; t: number } | null; recover: number; slow?: number }
 export const holder = (s: { stamina: number; balance: number; attrs: Attributes }): Holder => ({ stamina: s.stamina, balance: s.balance, attrs: s.attrs, move: null, recover: 0 });
 
 /** Seconds a move takes to land for this wrestler (explosive ones are quicker, ±15 %). */
@@ -191,7 +191,7 @@ export function holdTick(h: Holder, dt: number, grip = 0): boolean {
   else if (!h.move) h.balance = Math.min(100, h.balance + CLINCH.balanceRegen * k(h.attrs.equilibre) * dt);
   if (!h.move) return false;
   h.move.t += dt;
-  return h.move.t >= moveWindup(h.move.kind, h);
+  return h.move.t >= moveWindup(h.move.kind, h) * (h.slow ?? 1);
 }
 
 /** Breaking free: works when the grip is not too much against him (`grip` from his side) and he has the endurance. */
