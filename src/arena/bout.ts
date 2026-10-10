@@ -70,6 +70,8 @@ export class WatchedBout {
   }
 
   get group(): THREE.Group { return this.duel.group; }
+  /** The two wrestlers' bodies by side of the card: the duel's « player » is the left one (src/arena/module.ts). */
+  bodies() { const b = this.duel.bodies(); return { left: b.player, right: b.opponent }; }
   get over() { return this.duel.phase === 'result' || this.duel.done; }
   get result() { return this.duel.result; }
   /** Seconds of bout played so far (whole steps). */

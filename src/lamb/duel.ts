@@ -610,6 +610,8 @@ export class LambDuel {
   debugClock(seconds: number) { if (this.timeLeft !== Infinity) this.timeLeft = seconds; }
   setGuard(on: boolean) { this.guardHeld = on; }
   /** World points on both wrestlers (feet, waist, head) for layout checks. */
+  /** The two wrestlers' bodies (null before the humanoid is loaded): the arena's fête moves them once the bout is over. */
+  bodies(): { player: Wrestler | null; opponent: Wrestler | null } { return { player: this.me.w, opponent: this.ai.w }; }
   fighterPoints(): [number, number, number][] { return [this.me, this.ai].flatMap(f => [0.1, 1, 1.8].map(h => [f.pos.x, f.pos.y + h, f.pos.z] as [number, number, number])); }
   info() {
     const c = this.phase === 'clinch' ? this.clinchState() : null;

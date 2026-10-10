@@ -193,6 +193,52 @@ wrestlers, the lines and the sound; the entourages and griots are `src/arena/peo
   ceremony is rewarded (no money, need or counter). The wrestlers wear no accessories.
 - A show joined further on (a friend's, `follow`) sets the drums right and skips the lines it missed.
 
+## La fête après la chute (Wave 5, `src/arena/celebration.ts`, `src/arena/party.ts`)
+
+The minute after a result is the night's signature moment. The result phase is now the fête: its plan is pure, and
+it is a function of the phase's time and of (hub, day). Every device plays the same fête, and friends following
+each other's show see it together.
+
+**The main event won** (by a fall or on points). The result phase lasts 56 s, then the crowd leaves (9 s). The street's
+outflow starts 65 s after the result, well within the 90 s allowed (`OUTFLOW_WITHIN`).
+
+| Time (s) | What happens |
+|---|---|
+| 0 | The result (toast). The winner's side celebrates, the ends applaud, the losing side sits down quietly. |
+| 0.6–3.2 | His people run onto the sand (`people.result`). 4, 8 or 12 of his supporters pour down from their stands. |
+| 1.0 | 🎤 The announcer: « Victoire de … par chute, pour l’écurie … ! Le géew est à lui ce soir ! » |
+| 1.5–50 | The drums play the bàkk's rhythm, louder (as for a wrestler of tonight). |
+| 3.4–5.4 | He steps to his side of the ring; two of his people get under him and lift him onto their shoulders. On low quality there is one helper, so he walks with his arms up. |
+| 6–36.6 | Carried once round the ring, inside the sandbags. The direction is seeded by the evening. His other people and his griot follow his track. His section dances and waves its flags and banners. The griot sings twice. |
+| 36.6–42.6 | He stops at the edge of the ring on his side and salutes his section. The section rises, and the crowd answers « Gaynde, gaynde ! ». |
+| 42.6–51 | Down again, and to his corner with his people. His supporters go back up. The closing line « Ñibbil ak jàmm ». |
+| 4–14 | The loser walks back to his corner. |
+
+**A draw** (`DRAW`, 24 s):
+- the two meet in the middle and shake hands;
+- the whole arena applauds both, more calmly;
+- there are no drums;
+- the griot: « deux mbër, un seul public ».
+
+**The player's own main event** (`OWN`, 30 s):
+- The stands react: the winner's side dances, the losing side sits down.
+- The drums play louder, and the announcer and the griot speak about the player when they win.
+- The player keeps their body and walks out by the tunnel as before. Nobody of the fête goes into the tunnel
+  (unit-tested).
+
+**A preliminary** keeps its 3.5 s, and those seconds get a burst of the bàkk's rhythm and a few people dancing in one
+section.
+
+**No new body.**
+- The winner and the loser are the duel's own two wrestlers (`LambDuel.bodies()`), moved once the bout is over.
+- The carriers and followers are the entourage's roles (`FightNightPeople.party`).
+- The supporters on the sand are the stands crowd's figures.
+
+**Draw calls:**
+- They are unchanged at rest, and at the peak too (the stands' five).
+- The entourages and the two wrestlers were already drawn during the result.
+- The cost is CPU only: a few pure pose functions per frame.
+
 ## Code
 
 | File | Role |
@@ -205,6 +251,7 @@ wrestlers, the lines and the sound; the entourages and griots are `src/arena/peo
 | `src/arena/people.ts` | `FightNightPeople`: every person inside the walls (officials, judges, announcer, referee, drummers, press, vendors, corner helpers, the entourages); layout, presence by moment and counts by quality are pure and tested in `tests/arenaPeople.test.ts`. |
 | `src/arena/tickets.ts`, `src/arena/ticketsDecor.ts` | Ticket tiers: prices, sections, the controller's rule, the crowd's share and dress per tier (pure, `tests/tickets.test.ts`); cushions, canvas and plate (one merged mesh). |
 | `src/arena/ceremony.ts`, `src/arena/entrance.ts`, `src/arena/bakk.ts` | The entrance as a ceremony: timings, places and lines (pure, `tests/ceremony.test.ts`), the wrestlers and cues of a gala, the player's own bàkk. |
+| `src/arena/celebration.ts`, `src/arena/party.ts` | The fête after a result: plan, timings, places and lines (pure, `tests/celebration.test.ts`), and its runtime on the duel's wrestlers, the entourages, the stands and the drums. |
 | `src/arena/interior.ts`, `src/world/arenaModules.ts` | The interior's structure (stands, aisles, tunnel, deck, media zone, corners) and its debug view `arenaIn()`; tested in `tests/arenaInterior.test.ts`. |
 | `src/venues/cast.ts` | The venues' Cast and roles (moments, seats, walks, cheers; `place`, `attach`, `keep`). |
 | `src/lamb/duel.ts` | Presentation only: `spectate` option (no key listeners, no HUD) and `axes()`. Rules unchanged. |
@@ -296,6 +343,14 @@ centre, people: moment, judges, officials, announcer, referee, drummers, drums, 
 
 centre), `arena.cam()`, `arena.speed(n)` (fast-forward), `arena.go(phase)`, `arena.freeSeat(x, z)`, `arena.visible(on)`,
 `arena.day(d)`, `arena.timeline()` (real seconds per phase and preliminary), `info().prelims` (the card, the one running, its stage and bout, the results); `together()` (the friend followed, jumps made, places held by friends, the presence field sent), `cheer(s)`.
+`info().party` shows the fête during the result: kind, winner, lift, length, t, cues played, the winner's part and
+position, supporters on the sand, the drums' rhythm, louder or not. `info().resultLen` is the result phase's length,
+and `info().ownParty` the fête after the player's own bout. `scripts/check-arena-people.mjs` step 7 checks the fête:
+- the winner is carried round the ring;
+- his supporters dance on the sand and in the stands;
+- the losing side sits quietly;
+- the drums play the bàkk;
+- the crowd leaves within 90 s.
 
 `npm run check:online` (scripts/check-multiplayer.mjs, CI) seats two clients side by side in the stands at 18 h: each
 sees the other seated (pose and height), the later one joins the earlier one's show (same bout phase within 3 s), a

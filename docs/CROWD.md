@@ -51,6 +51,8 @@ crowd.stats(); crowd.drawCalls(); crowd.dispose()
     at the rail cost no extra draw call. They stand up for reactions as usual.
   - `lap`: never stands, and is not drawn while the person it sits on stands.
   - `banner`: this person hangs that banner on the parapet in front of them.
+  - `manual`: shown only by the owner (`setPresent`), never by `fill`, and not counted. Used for the supporters who pour
+    onto the sand after a win (`reactOne(id, kind, s)` and `calmOne(id)` handle one person).
 - **The crowd never touches the seat registry**: the owner marks the seats it gives the crowd, as the arena does with its
   `arena-crowd` occupant, and never gives it the player's seat.
 - **Looks** (`src/crowd/looks.ts`): a Dakar mix. Each member keeps the same look across every level of detail, and the
@@ -96,6 +98,11 @@ crowd.stats(); crowd.drawCalls(); crowd.dispose()
 | `grab` | stay seated | leaning in, fists at the chin | 1 | 0.55 · 2.2 |
 | `fall` | stand | leap up, hands on the head | 4 | 0.85 · 3.5 |
 | `celebrate` | stand | arms up and waving, hopping | 5 | 0.85 · 6 |
+| `dance` | stand | dancing to the sabar: arms up in turn (flags up), a hop on the beat, foot to foot | 5 | 0.75 · 20 |
+| `slump` | stay seated | elbows on the knees, head low (the losing side after a win) | 6 | 0.9 · 25 |
+
+`dance` and `slump` came with the fête after a win (`src/arena/celebration.ts`). `slump` outranks everything, so the
+losing side stays seated while the other side celebrates. A banner's holder shakes it when they hop.
 
 **Who joins in:**
 
@@ -141,7 +148,7 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
 | clinch (the wrestlers grab) | everyone tenses (0.55), a few shout (0.1) |
 | fall (projection) | everyone leaps up, hands on the head (0.85) |
 | decision | everyone stands (0.6) |
-| result (winner) | the winner's side celebrates (0.92, 7 s), the ends applaud (0.7), the losing side mostly keeps its hands on its head (the fall outranks applause) |
+| result (winner) | the winner's side celebrates (0.92, 7 s), the ends applaud (0.7), the losing side sits down quietly (`slump`, 0.85); then the fête (below) |
 
 **Fill:**
 
@@ -183,6 +190,16 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
     before.
   - The figures carry 2 more boxes (mid) and 2 (far), and the rig uses 15 vertex attributes, under WebGL's 16.
   - In node, the stands' update rose from about 0.10 ms to 0.12–0.17 ms a frame at 19:00 (`tests/perf.evening.test.ts`).
+
+**The fête after a win** (`ArenaStands.party(plan, t)`, plan in `src/arena/celebration.ts`):
+
+- The winner's side dances (`dance`) and waves its flags; its banners are shaken.
+- The losing side sits down (`slump`), and the ends applaud.
+- 4, 8 or 12 of the winner's supporters (low / medium / high) run down from the walkway onto the sand.
+  - They are standing slots of the same crowd, shown only then.
+  - They dance inside the winner's tour of the ring, on their side and off the judges, and go back up before it ends.
+- Draw calls are unchanged: at rest the stands are still two, and at the peak five, as before. The supporters on the
+  sand use the standing figures that the celebrating side already draws.
 
 **The seated player's view** (`setNear` → `Crowd.setClearView`):
 
