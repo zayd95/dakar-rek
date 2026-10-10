@@ -373,7 +373,7 @@ export class Crowd {
   // ---------------------------------------------------------------- every frame
   /** `animate`: false while the player is far (positions are kept, no mixer or arm work). */
   update(dt: number, animate = true) {
-    tickClock(performance.now(), dt);
+    tickClock(performance.now());
     this.excite.decay(dt);
     for (const m of this.members) if (m.on && step(m.st, dt)) this.retarget(m);
     this.nearT -= dt;

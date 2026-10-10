@@ -107,12 +107,8 @@ export const figureBoxes = (k: FigureKind) => SHAPES[k]().length;
 /** Seconds, shared by every crowd (the rig's oscillations and the near bodies' arms read the same clock). */
 export const RIG_TIME = { value: 0 };
 export function crowdClock() { return RIG_TIME.value; }
-let lastTick = -1;
-/** Advance the shared clock once per frame (several crowds may call it; `now` = performance.now()). */
-export function tickClock(now: number, dt: number) {
-  if (now === lastTick) return;
-  lastTick = now; RIG_TIME.value = (RIG_TIME.value + Math.min(dt, 0.1)) % 600;
-}
+/** Set the shared clock from the page's clock (`now` = performance.now(), ms): any number of crowds may call it per frame. */
+export function tickClock(now: number) { RIG_TIME.value = (now / 1000) % 600; }
 
 const GLSL_DECL = /* glsl */`
 attribute vec4 aRig;
