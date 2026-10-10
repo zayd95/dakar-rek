@@ -10,7 +10,7 @@ import { arenaExterior } from './exterior';
 import * as P from '../activity/primitives';
 import { Percussion, crowdCheer } from '../lamb/audio';
 import { STYLES } from '../lamb/rules';
-import { TUNNEL_MOUTH_R, WALL_R } from '../world/geew';
+import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
   BILL, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
@@ -86,7 +86,8 @@ class ArenaEvening {
     // ---------------------------------------------------------------- the tiers' places, shared by the crowd and the player
     const defs = standSeats(cx, a.cz, `${hub.id}:arena:stand`);
     for (const d of defs) {
-      const s: Seat = { id: d.id, x: d.x, z: d.z, top: d.top, yaw: d.yaw, kind: 'stand', space: 'street', occupant: null, reach: 3.4 };
+      // offered from the ring side and from the aisles (src/world/geew.ts); standing up leads into the nearest aisle
+      const s: Seat = { id: d.id, x: d.x, z: d.z, top: d.top, yaw: d.yaw, kind: 'stand', space: 'street', occupant: null, reach: 3.4, exits: standExits(cx, a.cz, d.a, d.tier) };
       ctx.seats.add(s); this.seats.push(s);
     }
     const order = fillOrder(defs.length, 7).map(i => defs[i]);

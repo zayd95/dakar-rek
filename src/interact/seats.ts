@@ -39,6 +39,11 @@ export interface Seat {
    * floor (their tiers collide): their places are offered from the ring side, a few metres away.
    */
   reach?: number;
+  /**
+   * Where whoever stands up from here goes, in order of preference (default: in front of the seat). The arena's places
+   * on the tiers lead into the nearest aisle at their tier's height, then down to the ring side.
+   */
+  exits?: { x: number; z: number }[];
 }
 
 /** Height of the Sit clip's hips above the character origin (actors/humanoid.ts, corrected Sit). */
@@ -53,7 +58,8 @@ export const seatClip = (s: Pick<Seat, 'clip'>): Clip => s.clip ?? 'Sit';
  * Where someone stands when they get up, best first: 0.7 m in front of a chair or a bench; out of a bed by either side
  * (beside the hips, clear of the mattress), else past its foot. The caller keeps the first spot that is free.
  */
-export function standSpots(s: Pick<Seat, 'x' | 'z' | 'yaw' | 'clip'>): { x: number; z: number }[] {
+export function standSpots(s: Pick<Seat, 'x' | 'z' | 'yaw' | 'clip' | 'exits'>): { x: number; z: number }[] {
+  if (s.exits?.length) return s.exits;
   const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
   if (s.clip !== 'Lie') return [{ x: s.x + fx * 0.7, z: s.z + fz * 0.7 }];
   const lx = Math.cos(s.yaw), lz = -Math.sin(s.yaw), side = 1.25;      // the lying body's left (+x of the character)
