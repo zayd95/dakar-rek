@@ -222,6 +222,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   setGrainEnabled(quality !== 'low');                     // procedural surface noise is the main per-pixel cost
   extra.clear();
   world = buildHub(id, quality === 'low', quality);
+  economy.decorateHub(world, quality);                   // before the placed people: the quincaillerie's keeper is one of them
   scene.add(world.group);
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
   extra.add(crowd.group, traffic.group);
@@ -231,7 +232,6 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   life?.dispose(); life = world.monument ? new MonumentLife(world.monument, rand, QUAL[quality].crowd) : null;
   if (life) extra.add(life.group);
   npcLife.load(world, extra);                            // recurring cast on their daily routines
-  economy.decorateHub(world);
   interiors = new Map(); inside = null; follow.indoor = false; scene.remove(roomLight);
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;

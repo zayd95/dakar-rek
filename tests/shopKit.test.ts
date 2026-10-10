@@ -18,6 +18,7 @@ const SIZES: Record<ShopType, { w: number; d: number }[]> = {
   beauty: [{ w: 17, d: 8 }, { w: 8, d: 6 }],
   garage: [{ w: 14, d: 8 }, { w: 12, d: 8 }],
   restaurant: [{ w: 12, d: 9 }, { w: 10, d: 8 }],
+  showroom_cars: [{ w: 14, d: 9 }, { w: 12, d: 8 }, { w: 10, d: 8 }],
 };
 const DETAILS: ShopDetail[] = ['low', 'medium', 'high'];
 const TRIS: Record<ShopDetail, number> = { low: 9000, medium: 14000, high: 20000 };
