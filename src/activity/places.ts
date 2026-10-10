@@ -41,6 +41,8 @@ export interface PlaceSpec {
    * a hint for the NPC activity system and for the place's own ambient crowd. May pass midnight like `hours`.
    */
   peaks?: [number, number][];
+  /** Where its customers sit (a Dibi's tables): the city's people claim the seats there (src/social/ambientSpots.ts). */
+  area?: { x: number; z: number; r: number };
 }
 
 export const isOpen = (hours: [number, number] | undefined, h: number) =>

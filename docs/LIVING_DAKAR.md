@@ -94,6 +94,19 @@ Already composed:
   unlocked by shifts at that grill); a `ownership` hook is ready for the business lane. *Why return:* the special
   changes every city day, the regular's price after five meals, the next rung of the ladder, the evening crowd and
   attaya. Open 11 h–2 h (« Fermé · ouvre à 11 h », shutter down, cold grill); lively at night; location chat.
+  *At night* (`src/venues/dibiNight.ts`, wave 5: the place the evening ends, where the evening call sends players after
+  the gala): a bed of coals that glows at night (dull by day, cold when closed) and sparks (one point cloud, near the
+  camera only); the dibi master turns the brochettes on the grate one by one (Grab) — the grill job beside him is
+  unchanged; a ceiling of string lights zigzagging between the posts; a TV corner (three low benches round a low table
+  of the furniture kit) facing the TV that shows tonight's bout from the city's card (live 17 h – 23 h, then its replay,
+  with the arena's result once there is one — never an invented one); posters (tonight's card, « ouvert jusqu'à 2 h »,
+  the attaya); the menu board under the counter's fascia, drawn from the counter's own offers (dibi mouton · oignons,
+  moutarde, pain; brochettes; bissap; attaya; the pot); under the neem, the furniture kit's attaya set on its cushions:
+  « Une théière d'attaya sous le neem » (500 F, the evening, paid once, sits you on a free cushion). The city's people
+  sit and eat at every table, in the TV corner and on the cushions (the place's `area` claims the tables' seats);
+  someone makes the attaya and someone watches the TV in the evening. Draw calls: +3 by day, +4 at night (board, coals,
+  brochettes, furniture; sparks), the painted menu sign it replaces deducted; the whole Dibi is about 26 at night
+  without its people (`tests/dibiNight.test.ts`).
 - **The Grande Mosquée** (`src/venues/mosque.ts`, wave 1, Plateau): walled courtyard with two shade trees and benches
   for the elders, a covered row of ablution taps with low stools and plastic kettles, a portico of arches with the shoe
   racks, a white hall with green bands, a pale green dome and one minaret (green light ring at night). Ablutions seated at
@@ -111,11 +124,31 @@ Already composed:
 - **Salon Awa's chairs** (`src/venues/salon.ts`, Pikine): two styling chairs facing mirrors, the stylist working behind
   you, a client in the other chair. Cuts (short, afro, shaved) and the beard change your character and stay (saved,
   every hub, `src/venues/style.ts`). Open 9 h–21 h.
+- **La Vague, the night club** (`src/venues/club.ts`, Almadies, on Ngor's beach; `club` recipe; the owner's « Nightclub
+  MVP »): a wooden terrace behind a bamboo fence, a lit sign over the gate (fictional name), the doorman and his rope, a
+  dance floor whose tiles light up on the beat, the DJ booth under a truss of coloured beams, a thatched bar with five
+  stools (juices of Dakar and a fruit cocktail, no alcohol), lounge benches with low tables, string lights, the sea
+  behind. *Do:* « Entrer » at the door shows the fee first (2 000 F, once for the whole night) and only « Payer 2 000 F et
+  entrer » pays; dance (the shared timing gesture `G.dance` on the drum's beat, two steps, the second faster, while your
+  body dances); drink on a free stool at the bar, or sit at a free lounge table and the waiter walks the drink over; ask
+  the DJ for a song; on the « Nuit du sabar » enter the dance contest after 23 h (three faster rounds, prize scaled by how
+  well each is danced, up to 7 200 F, once a night); « Sortir » by the gate. *Who:* Lamine the doorman (the week's
+  programme, regulars), Saliou at the bar, the lounge waiter, DJ Mbaye, clubbers on stools, benches and at a high table
+  with a short French/Wolof exchange (« Na nga def ? », « Dama sonn » at dawn, « Nanu dem ! », « Ñibbil ak jàmm »),
+  dancers who make room for you and cheer a good dance. *The hour:* almost empty at 21 h, building before midnight, the
+  peak after it, thinning at dawn (4 / 7 / 10 dancers by graphics quality); NPCs sit on real seats, never on yours.
+  *Why return:* a theme every night of a seven-night week (mbalax, afro, rap galsen, salsa, zouk, the sabar contest,
+  retro) on the board by the gate; after three nights you are a regular and come in free. Inside, the terrace is its own
+  presence space (`almadies:venue:club`, accepted by `parseMove`): its location chat and quick phrases (« Rafet na »).
+  Open 21 h–5 h: by day the gate is shut (« Fermé · ouvre à 21 h »); it never closes on someone inside.
 
 Composition seams added for this: `HubWorld.sites` (`src/world/sites.ts`: lots and blocks a module composes — the
 builder keeps the place's identity interactable and leaves the ground free, with the street dressing unchanged),
 `PlaceSpec.peaks` (busy hours), `Anchor.space` (one place across a courtyard and a hall), `Seat.clip` (the pose held on
-a seat: `Kneel` on prayer rows), seat kind `prayer`, `GameCtx.addInterior` used by a module's own interior.
+a seat: `Kneel` on prayer rows), seat kind `prayer`, `GameCtx.addInterior` used by a module's own interior; for the
+terrace: `Role.phase` / `Role.yieldR` / `Cast.burst` (dancers out of step, stepping aside for the player,
+cheering), `Cast.walkTo` (the waiter), `Venue.space` (a venue's own presence space while the player is in it), the
+data-only gesture `G.dance`; the runner keeps a seated player on a fitting seat for a second order.
 
 ## Waves
 

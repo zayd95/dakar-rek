@@ -10,7 +10,10 @@ is one reusable system. It runs the arena's stands, the fans arriving on fight e
 | File | What it holds |
 | --- | --- |
 | `src/crowd/reactions.ts` | Pure, no Three.js: the six reactions, a member's reaction state, who joins in, the rig poses (and the arm maths shared by every level of detail), the dance mood, excitement per group. |
-| `src/crowd/rig.ts` | The instanced figures (mid: 12–14 boxes, far: 5–6) and the one shared material whose vertex shader poses arms, legs and upper body from a few numbers per instance. |
+| `src/crowd/rig.ts` | The instanced figures (mid: 14–16 boxes, far: 7–8) and the one shared material whose vertex shader poses arms, legs and upper body and shapes the look (headwear, build, prints, banners, upright legs) from a few numbers per instance. |
+| `src/crowd/looks.ts` | Pure: how people look (styles, wax prints, invented football shirts, headwear, height, build), the same person per seat, the two écuries' colours. |
+| `src/crowd/banners.ts` | The supporters' banners: invented slogans in Wolof and French, one shared texture atlas. |
+| `src/crowd/standPlan.ts` | Pure: the stands' banner holders, children on laps, people at the barrier by the ring. |
 | `src/crowd/crowd.ts` | `Crowd`: slots, presence, groups, `react`, `setMood`, levels of detail, the full humanoids next to the player, ground shadows, stats. |
 | `src/crowd/arenaStands.ts` | `ArenaStands`: the arena's stands on the crowd (drop-in for the old `StandCrowd`), sections and sides, the gala's moments. |
 | `src/crowd/arrivals.ts` | `ArenaArrivals`: fans arriving by taxi and car rapide on fight evenings and walking to the queue. |
@@ -18,7 +21,7 @@ is one reusable system. It runs the arena's stands, the fans arriving on fight e
 | `src/crowd/street.ts` | `StreetLife`: walkers, people waiting at the stops, groups chatting, the after-gala flow. |
 | `src/crowd/transportPeek.ts` | The transport lane's stop API as the crowd reads it: stops served now, cars standing there, how many get on. |
 | `src/crowd/module.ts` | The lane's module: runs the arrivals and the street, makes the crowds' full humanoids greetable, debug entries. |
-| `tests/crowd.test.ts`, `tests/street.test.ts` | 27 + 5 unit tests. The street tests build the real hubs in node (`tests/hubstub.ts`, a blank canvas). |
+| `tests/crowd.test.ts`, `tests/street.test.ts`, `tests/standLooks.test.ts` | Unit tests. The street tests build the real hubs in node (`tests/hubstub.ts`, a blank canvas). |
 | `scripts/check-crowd.mjs`, `scripts/check-street.mjs` | Browser checks (desktop medium, phone low), captures in `docs/screenshots/crowd/` and `docs/screenshots/street/`. |
 
 The arena lane's `src/arena/module.ts` builds `ArenaStands` instead of `StandCrowd`. It passes the side of the wrestler
@@ -40,12 +43,28 @@ crowd.setFocus(x, z | null, yaw?); crowd.setCamera(camera); crowd.update(dt, ani
 crowd.stats(); crowd.drawCalls(); crowd.dispose()
 ```
 
-- **Slots**: `{ id, x, y, z, yaw, seated, tags }`. `y` is the sitting surface for seated slots (hips) and the ground for
-  standing ones. Tags are the groups (`'all'` is implicit).
+- **Slots**: `{ id, x, y, z, yaw, seated, tags, with?, upright?, lap?, banner? }`. `y` is the sitting surface for seated
+  slots (hips) and the ground for standing ones. Tags are the groups (`'all'` is implicit).
+  - `with`: a companion of another slot (a child on a lap, someone at the rail who came with a spectator). It comes and
+    goes with that slot and is not counted by `fill` or `present` (`stats().companions` counts them).
+  - `upright`: drawn standing at rest with the seated figure (its thighs and shins straightened in the shader), so people
+    at the rail cost no extra draw call. They stand up for reactions as usual.
+  - `lap`: never stands, and is not drawn while the person it sits on stands.
+  - `banner`: this person hangs that banner on the parapet in front of them.
 - **The crowd never touches the seat registry**: the owner marks the seats it gives the crowd, as the arena does with its
   `arena-crowd` occupant, and never gives it the player's seat.
-- **Looks**: a Dakar mix (tees and trousers, boubous, dresses with a headwrap). Each member keeps its shirt, trousers and
-  skin across every level of detail. The owner can pass `look` (the arena dresses supporters in their écurie's colour).
+- **Looks** (`src/crowd/looks.ts`): a Dakar mix. Each member keeps the same look across every level of detail, and the
+  owner can pass `look`.
+  - Clothes: tees and trousers, boubous (plain bazin, or a wax print), long dresses (mostly wax), invented football
+    shirts (stripes, hoops or a sash in an accent colour; no club, no brand).
+  - Headwear: headwraps (most dresses), kufis, caps with a brim, short hair or none.
+  - Height 0.92–1.07 and build 0.88–1.18 (the body's width); children 0.55–0.68.
+  - All of it is per-instance numbers on the same figures, not new meshes:
+    - four colours packed as 0xRRGGBB in one attribute (skin, trousers, headwear, the print's accent);
+    - the crown's height, a brim, the print code and the build;
+    - wax motifs (dots, diamonds, waves) and the jerseys' stripes drawn in the fragment shader, fading to their average
+      colour in the distance so they never shimmer.
+  - The full humanoids near the player carry the same headwrap or kufi, the wax or striped pattern and the build.
 
 ### Levels of detail (quality-scaled)
 
@@ -109,8 +128,8 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
 `standOpen`):
 
 - `sec:A` … `sec:H`: one reaction unit each.
-- `left`: Babacar's (Baobab) supporters in B and C, the +x side he walks to. They wear green more often.
-- `right`: Lamine's (Teranga) supporters in F and G. They wear red more often.
+- `left`: Babacar's (Baobab) supporters in B and C, the +x side he walks to.
+- `right`: Lamine's (Teranga) supporters in F and G.
 - `ends`: the mixed sections A and H by the wrestlers' tunnel, D and E by the public gate.
 - `tier0`–`tier2` and `ringside` (tier 0).
 
@@ -131,7 +150,39 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
 - The crowd's sound follows its excitement (`level()`).
 - Since the crowd costs a handful of draw calls whatever its size, `DENSITY` (src/arena/program.ts) now takes 70 / 84 / 92 %
   of the seats on low / medium / high (it was 42 / 68 / 86 %). That still leaves free seats for the player.
-- One supporter in eight in B–C and F–G brought the écurie's flag (green or red).
+- One supporter in six in B–C and F–G brought the écurie's flag (green or red).
+
+**The stands' look** (credible stands, `src/crowd/looks.ts`, `src/crowd/standPlan.ts`):
+
+- **The same person on a seat every evening.** A seat's look comes from its id alone (`standLook(seatId, side)`), whatever
+  the fill order or the evening.
+- **Two sides that read at a glance.**
+  - About 68 % of a side's supporters wear their écurie's colour somewhere. It can be a tee or a boubou in it, a
+    football shirt with it as the accent, a headwrap or a dress in it, or a cap.
+  - That is Baobab green (yellow accent) on B–C and Teranga red (white accent) on F–G. The end sections stay mixed.
+- **Banners** hang on the parapet in front of a few ringside supporters, two per side section and one neutral banner
+  in A and in H.
+  - They carry invented slogans in Wolof (CLAD) with the French below:
+    - « Baobab du daanu ! »;
+    - « Sunu mbër, sunu ndam »;
+    - « Teranga, sunu kër »;
+    - « Jàpp te daan ! »;
+    - « Làmb ji, sunu aada »;
+    - and others.
+  - Each banner is part of its holder's figure, picked per instance from one texture atlas, so banners cost no draw
+    call.
+  - Banners keep 2.6 m apart and never hang over an aisle's gap.
+- **Children**:
+  - one seat in 26 (above ringside) has a child on the lap;
+  - two or three people stand at the barrier by the ring in each section except by the gate, a child among them.
+  - They are companions of a seat's spectator, so they come with the evening's attendance.
+- **Postures**: the grabs make the bout tense. About 30 % of the calm crowd leans in, elbows on their knees, until the
+  fall, the decision or the result. Keener people lean further at a grab.
+- **Cost**:
+  - Draw calls are unchanged: at rest the stands are still two (seated figures, near and far), and at the peak five as
+    before.
+  - The figures carry 2 more boxes (mid) and 2 (far), and the rig uses 15 vertex attributes, under WebGL's 16.
+  - In node, the stands' update rose from about 0.10 ms to 0.12–0.17 ms a frame at 19:00 (`tests/perf.evening.test.ts`).
 
 **The seated player's view** (`setNear` → `Crowd.setClearView`):
 

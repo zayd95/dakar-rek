@@ -43,6 +43,8 @@ export const G = {
   haul: (rounds = 4): Gesture => ({ kind: 'timing', prompt: 'Tire au rythme des vagues', verb: 'Tirer', icon: '🪢', rounds, speed: 0.9, zone: 0.22 }),
   /** Turn the skewers before they burn. */
   grill: (rounds = 4): Gesture => ({ kind: 'timing', prompt: 'Retourne les brochettes au bon moment', verb: 'Retourner', icon: '🍢', rounds, speed: 1.1, zone: 0.2 }),
+  /** Dance on the beat: press when the cursor crosses the drum's beat (faster in a contest). */
+  dance: (rounds = 6, speed = 1.2): Gesture => ({ kind: 'timing', prompt: 'Danse sur le temps du tambour', verb: 'Pas', icon: '💃', rounds, speed, zone: 0.22 }),
   /** Change a wheel in the right order. */
   wheel: (): Gesture => ({ kind: 'sequence', prompt: 'Change la roue dans l’ordre', steps: [
     { id: 'cric', label: 'Lever avec le cric', icon: '🛞' }, { id: 'devisser', label: 'Dévisser les écrous', icon: '🔧' },
