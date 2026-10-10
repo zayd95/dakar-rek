@@ -342,6 +342,7 @@ const ctx: GameCtx = {
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
   walkTo: id => setDestination(id),
+  startBout(m, style, after) { if (lambScene || !world?.arena) return false; startDuel(m, style as StyleId | undefined, after); return !!lambScene; },
 };
 ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
@@ -542,7 +543,7 @@ function openRanked() {
 }
 
 /** Controlled bout against a local opponent: guided training at the écurie, friendly or ranked at the arena. */
-function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId) {
+function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () => void) {
   if (lambScene) return;                                                       // one bout or scene at a time
   const at = boutMode === 'entrainement' ? world?.ecurie : world?.arena;
   if (!at) { hud.toast(boutMode === 'entrainement' ? 'L’entraînement a lieu à l’écurie de Pikine' : 'Les combats ont lieu à l’arène de Pikine'); mode = 'play'; return; }
@@ -567,6 +568,7 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId) {
       : r.outcome === 'abandon' ? 'Abandon enregistré (à part des défaites)'
       : r.winner === 'player' ? `Victoire ! (${n.victoires ?? 0} au total)` : r.winner === 'opponent' ? 'Défaite. Coach Ablaye : « On retourne à l’entraînement. »' : 'Match nul', ...notes].join('  '));
   };
+  if (after) { const recorded = duel.onDone; duel.onDone = () => { recorded?.(); after(); }; }   // a module's next step (ctx.startBout)
   lambScene = duel;
   extra.add(duel.group);
   npcLife.setVisible(false);

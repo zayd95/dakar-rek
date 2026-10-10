@@ -119,6 +119,23 @@ export function queueDistance(g: ArenaGate, x: number, z: number): number {
  * Whether cars on a road segment would pass through the queue lane: decorative traffic drives up to 3 m either side of
  * the centre line, so a segment within `margin` of the lane is closed on fight evenings.
  */
+// ------------------------------------------------------------------ the end of the evening
+
+/** What the street in front of the arena does: quiet, fans arriving and queueing, or the crowd pouring out after the gala. */
+export type ExteriorPhase = 'quiet' | 'arrive' | 'outflow';
+/** `after`: the arena's street is in its after-gala window (the gala seen to the end, or closing time, src/arena/program.ts). */
+export const exteriorPhase = (event: boolean, after: boolean): ExteriorPhase => (after ? 'outflow' : event ? 'arrive' : 'quiet');
+/**
+ * Where the crowd goes when it pours out: both ends of the street in front of the gate, the corners of the side streets
+ * (taxis wait there) and the transport stops near the arena (`stops`, within 150 m).
+ */
+export function outflowDestinations(g: ArenaGate, stops: readonly { x: number; z: number }[] = []): { x: number; z: number }[] {
+  const ends = [-1, 1].flatMap(sx => [{ x: g.x + sx * 34, z: g.z - 8 }, { x: g.x + sx * 25, z: g.z - 13 }]);
+  return [...ends, ...stops.filter(s => Math.hypot(s.x - g.x, s.z - g.z) < 150)];
+}
+/** Fronts of the four stalls (where the last customers stand). */
+export const stallFronts = (a: { cx: number; cz: number }) => stallsOf(a).map(s => ({ x: s.x, z: s.z - 1.15 }));
+
 export function crossesQueue(g: ArenaGate, ax: number, az: number, bx: number, bz: number, margin = 4): boolean {
   const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.5));
   for (let i = 0; i <= n; i++) if (queueDistance(g, ax + ((bx - ax) * i) / n, az + ((bz - az) * i) / n) <= margin) return true;

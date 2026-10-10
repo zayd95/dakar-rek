@@ -22,6 +22,9 @@ import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
 import { ambientLife } from '../social/ambientLife';
 import { arenaExteriorModule } from '../arena/exterior';
+import { arenaInteriorModule } from '../arena/interior';
+import { postersModule } from '../arena/posters';
+import { fighterModule } from '../arena/fighter';
 import { worldMarkers } from '../ui/worldMarkers';
 import { careerModule } from '../career/module';
 
@@ -88,6 +91,11 @@ export interface GameCtx {
   addInterior(door: Interactable, int: Interior): void;
   enter(doorId: string): void;
   exit(): void;
+  /**
+   * Start a làmb bout at the arena now — the existing duel (src/lamb/duel.ts), its rules and result recording unchanged:
+   * 'amical' or 'classe', optional opponent style; `after` runs once the duel is over. False if a bout or scene is running.
+   */
+  startBout(mode: 'amical' | 'classe', style?: string, after?: () => void): boolean;
   /** Set (or clear) the city's walking marker towards an interactable of the current hub (the places directory's marker). */
   walkTo(id: string | null): void;
 }
@@ -142,7 +150,7 @@ export type LambEvent =
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
 export const MODULES: GameModule[] = [
-  wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE, arenaModule, arenaExteriorModule,
+  wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, postersModule, fighterModule,
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)
