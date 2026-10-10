@@ -205,7 +205,7 @@ function fabric(base: number, accent: number, pattern: Pattern): THREE.Texture |
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(3, 3); t.flipY = false; fabricCache.set(key, t); return t;
 }
-function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xffffff): THREE.Material {
+export function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xffffff): THREE.Material {
   // Double-sided like the Blender materials: some cloth faces point inward and would otherwise vanish.
   if (pattern === 'bazin') return new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.05, side: THREE.DoubleSide }); // bazin's sheen
   const map = fabric(color, accent, pattern);

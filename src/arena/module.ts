@@ -19,6 +19,7 @@ import {
   SHOW_PHASES, boutSeed, fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketTier, ticketsChecked, type Moment, type ShowPhase, type Street,
 } from './program';
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
+import type { ReactionKind } from '../crowd/reactions';
 import { WatchedBout } from './bout';
 import { lamb2On } from '../lamb/flag';
 import { localPair, rosterOpponent } from '../lamb/opponents';
@@ -331,7 +332,7 @@ class ArenaEvening {
   boutMoment(m: 'fall' | 'result', winner: 'player' | 'opponent' | null, outcome: string) {
     const mine: StandSide = arenaFighter.corner() === 'teranga' ? 'right' : 'left', theirs: StandSide = mine === 'left' ? 'right' : 'left';
     const side = winner === null ? null : winner === 'player' ? mine : theirs;
-    if (m === 'result') { this.crowd.moment('result', { winner: side }); return; }
+    if (m === 'result') { notifyMoment('result', side); this.crowd.moment('result', { winner: side }); return; }
     if (outcome !== 'projection' || !side) { this.crowd.moment('decision'); return; }
     this.fallReaction(side);
   }
@@ -345,6 +346,7 @@ class ArenaEvening {
   }
   /** A fall by projection: `side` (the winner's supporters) celebrates, the other side and the end sections hold their heads. */
   private fallReaction(side: StandSide) {
+    notifyMoment('fall', side);
     const celebrate = this.crowd.react(side, 'celebrate', { share: 0.9, seconds: 6 });
     const heads = this.crowd.react(side === 'left' ? 'right' : 'left', 'fall', { share: 0.85, seconds: 3.5 }) + this.crowd.react('ends', 'fall', { share: 0.7, seconds: 3.5 });
     this.fallSplit = { side, celebrate, heads };
@@ -354,6 +356,7 @@ class ArenaEvening {
   /** The stands react to a moment (src/crowd/arenaStands.ts momentPlan): `side`, the wrestler walking in or winning. */
   private react(m: Moment, side: StandSide | null = null, sound = true) {
     const r = REACTION[m];
+    notifyMoment(m, side);
     this.crowd.moment(m, m === 'result' ? { winner: side } : { side });
     this.people.react(m);
     if (sound) crowdCheer(Math.min(4, r.seconds), (m === 'clinch' ? 0.1 : 0.2) * (0.7 + 0.5 * this.crowd.level()));
@@ -387,7 +390,7 @@ class ArenaEvening {
         if (p !== 'fall') return;
         // avec frappe, a fall splits the stands: the winner's side celebrates, the other side holds its head
         if (this.bout?.frappe && i.outcome === 'projection' && i.winner) this.fallReaction(i.winner === 'player' ? 'left' : 'right');
-        else this.react(i.outcome === 'projection' ? 'fall' : 'decision');
+        else this.react(i.outcome === 'projection' ? 'fall' : 'decision', i.outcome === 'projection' && i.winner ? (i.winner === 'player' ? 'left' : 'right') : null);
       };
       this.group.add(this.bout.group);
     } else if (phase === 'result') {
@@ -648,9 +651,17 @@ const RIGHT_LOOK: WrestlerLook = { ngembColor: STYLES.rapide.ngemb, ngembPattern
 
 let evening: ArenaEvening | null = null;
 
+/** Who listens to the stands' moments (the supporters' flags: src/arena/supporters.ts). */
+const momentListeners = new Set<(m: Moment, side: StandSide | null) => void>();
+function notifyMoment(m: Moment, side: StandSide | null) { for (const f of momentListeners) f(m, side); }
+
 /** The player's evening in the stands: for the HUD (main.ts hides the goal line while the show holds the eye) and as
  * friends share it (src/arena/together.ts): where it is, joining a friend further on, the tiers. */
 export const arenaShow = {
+  /** The stands react: a group of the crowd ('sec:B', 'left', 'all'…), a kind, from an origin (src/crowd/arenaStands.ts). How many join in. */
+  react: (group: string, kind: ReactionKind, o: { share?: number; seconds?: number; origin?: { x: number; z: number }; speed?: number } = {}) => evening?.crowd.react(group, kind, o) ?? 0,
+  /** Listen to the stands' moments: a wrestler's entrance, a fall (`side`: who won it), the result (`side`: the winner). */
+  listen(f: (m: Moment, side: StandSide | null) => void) { momentListeners.add(f); return () => { momentListeners.delete(f); }; },
   /** Seated on the tiers during the wrestlers' entrance, the bout or its result. */
   watching: () => !!evening?.seatedHere() && (evening.phase === 'prelims' || evening.phase === 'entrance' || evening.phase === 'bout' || evening.phase === 'result'),
   /** This evening's show when one runs (filling … leaving): day, phase, time, result once known, player inside. */

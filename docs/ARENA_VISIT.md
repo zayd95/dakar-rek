@@ -202,6 +202,7 @@ wrestlers, the lines and the sound; the entourages and griots are `src/arena/peo
 | `src/arena/crowd.ts` | `StandCrowd`: seated / standing figures as 4 `InstancedMesh`es, plus a few near-LOD humanoids around the player's seat. |
 | `src/arena/bout.ts` | `WatchedBout`: a `LambDuel` with `spectate: true`, driven by the autopilot. |
 | `src/arena/card.ts` | The gala card (title, phase, bill). |
+| `src/arena/supporters.ts`, `src/arena/supporterGear.ts`, `src/economy/wear.ts` | Who supports whom: the écurie colours worn (body, presence field `fan`), the flag going up, the neighbours answering « Encourager »; pure rules tested in `tests/supporters.test.ts`. |
 | `src/arena/people.ts` | `FightNightPeople`: every person inside the walls (officials, judges, announcer, referee, drummers, press, vendors, corner helpers, the entourages); layout, presence by moment and counts by quality are pure and tested in `tests/arenaPeople.test.ts`. |
 | `src/arena/tickets.ts`, `src/arena/ticketsDecor.ts` | Ticket tiers: prices, sections, the controller's rule, the crowd's share and dress per tier (pure, `tests/tickets.test.ts`); cushions, canvas and plate (one merged mesh). |
 | `src/arena/ceremony.ts`, `src/arena/entrance.ts`, `src/arena/bakk.ts` | The entrance as a ceremony: timings, places and lines (pure, `tests/ceremony.test.ts`), the wrestlers and cues of a gala, the player's own bàkk. |
@@ -283,6 +284,49 @@ backwards. A floating-point difference between browsers could still make two dev
 reference's result is shown. The next step is a show clock kept by the room (`server/worker.ts`): start time, seed and
 result, with clients only rendering it. A crowd-noise level shared by the group could come with it.
 
+## Who supports whom: the écurie colours (`src/arena/supporters.ts`)
+
+« Rester dans l'arène avec d'autres joueurs » shows who supports whom. Everything here is cosmetic: no stat, need,
+money or reward comes from it.
+
+- **The stall.** « Couleurs du Géew » (an invented name), the exterior's stall 2 on the −x side of the gate, kept by
+  Aliou on fight evenings (`src/arena/exteriorRules.ts` VENDORS, `key: 'supporters'`). It sells, for each fictional
+  écurie, a scarf (2 000 F, haggled like the city's stalls), a cap (2 500 F), a small flag (1 500 F) and a tee
+  (4 000 F) — the catalogue's `wear` kind (`src/economy/catalog.ts` WEAR). Each row shows its price; picked, it is paid
+  once (`P.buy`, one wallet line « Écharpe Baobab »…), counted in `arene:achats`, and the piece is the player's and worn
+  at once (`takeGear`). One of each: a piece already owned is greyed with « Déjà à toi · à porter depuis « Biens » ».
+  The stall shows a rail of scarves, two tees and two pennants in both colours (merged into the drums' batch) under a
+  small sign.
+- **The colours** are the stands' (`src/crowd/looks.ts` ECURIE_LOOK): Baobab green 0x1a7a44 and yellow 0xf4c20d (the
+  `left` side, sections B–C), Teranga red 0xc8322a and white 0xf2f2ec (`right`, F–G). The exterior's fans' scarves and
+  flags share the same geometry (`src/arena/supporterGear.ts`).
+- **Owned and worn.** The pieces are assets (« Biens », kind « Couleurs de supporter »): the sheet of a piece says
+  « à toi · tu le portes » and offers « L'enlever » or « Le porter »; it can be resold like any good. One piece is
+  worn at a time (`src/economy/wear.ts`, counter `supporter_porte`); selling it takes it off.
+- **On the body** (`dressFan`, no new humanoid mesh), in the city and in the stands: the tee is the body's own tee in
+  the main colour striped with the accent; the cap is the body's own kufi mesh in the two colours, over the hair; the
+  scarf (ring, a tail on the chest, the end in the accent colour) sits on the `socket_neck` bone and the small flag in
+  the `handR` hand, placed every frame.
+- **The flag goes up.** Seated in the stands with a flag, when the crowd cheers the player's wrestler — his entrance,
+  a fall he wins, his victory (`arenaShow.listen`, `raisesFlag`) — the player rises for 2.5 s with the arms up, as with
+  « Encourager », and the flag with them.
+- **The neighbours answer.** Seated in their own écurie's section (B–C for Baobab, F–G for Teranga) wearing its
+  colours, « Encourager » makes the section shout with them: `arenaShow.react('sec:X', 'shout', { share: 0.75,
+  seconds: 2.5, origin: the player's place })`, the stands' own reaction rippling out from the place
+  (`answersCheer`). Elsewhere, or without the colours, « Encourager » stays the player alone.
+- **Other players see it** through one presence field, `fan: { e, k }`: `e` is `none`, `baobab` or `teranga`, `k` is
+  `scarf`, `cap`, `flag` or `tee` (`src/multiplayer/protocol.ts` parseFan). `parseMove` refuses the whole move if the
+  field has another key or value. No price, wallet or inventory crosses the protocol; the server relays the field
+  like the other validated ones. Remote avatars are dressed from it (`RemoteAvatars.dress`, main.ts), in the city and
+  seated in the stands.
+- **Draw calls.** A worn scarf or flag: +1 (one small mesh with vertex colours on the body), for the player and for
+  each drawn remote body wearing one; tee and cap: 0 (the body's own garments recoloured); the stall's sign: +1 on fight
+  evenings; the stall's display: 0 (merged into the exterior's drums batch).
+
+Debug: `__dakar.supporters()` (worn, owned, the presence field, what the body shows, the section and its écurie, the
+neighbours' answers, flags raised), `__dakar.supportersWear(id | null)` (checks only: owns the piece at 0 F and wears
+it), `__dakar.presence().gear` (what each drawn peer's body wears).
+
 ## Debug and checks
 
 `?debug` → `__dakar.arena.info()` (street, event, day, phase, t, ticket, seats, crowd, entrance, bout, result, gate,
@@ -294,7 +338,11 @@ centre), `arena.cam()`, `arena.speed(n)` (fast-forward), `arena.go(phase)`, `are
 
 `npm run check:online` (scripts/check-multiplayer.mjs, CI) seats two clients side by side in the stands at 18 h: each
 sees the other seated (pose and height), the later one joins the earlier one's show (same bout phase within 3 s), a
-cheer is seen by the other, and both get one result.
+cheer is seen by the other, and both get one result. Before that, A wears a Baobab scarf: B sees `fan` on A's
+presence (no price, wallet or inventory key) and A's body with the scarf, in the street and seated in the stands;
+a raw client wearing a Teranga flag is drawn with it, and a `fan` field carrying a price is refused (1008).
+`scripts/check-arena-exterior.mjs` buys the Baobab scarf at « Couleurs du Géew » (−2 000 F once, owned, worn, on the
+body, in « Biens » with « tu le portes »).
 
 `flock /tmp/dakar-browser.lock node scripts/check-arena-visit.mjs [baseUrl] [outDir] [--view=desktop|phone]` plays
 the whole path on desktop (medium quality) and phone (low quality), captures in `docs/screenshots/arena-visit/`.

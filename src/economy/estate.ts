@@ -33,6 +33,7 @@ import { Batch, signTexture } from '../world/batch';
 import { BLK, HALF, PITCH, ROAD } from '../world/builder';
 import { HomeEditor, type HomeView } from './homeEditor';
 import { cannotBuy as cannotBuyVenture, ownedVentures } from './business';
+import { setWorn, worn } from './wear';
 import './estate.css';
 
 /**
@@ -446,6 +447,10 @@ class Estate {
       }
       if (a.how === 'owned' && a.condition < 95) { const cost = repairCost(a); items.push({ icon: '🔧', label: 'Réparer', right: '−' + fcfa(cost), detail: `Comme neuf : le loyer remonte`, disabled: !s.canAfford(cost), onPick: () => { if (repairAsset(s, a.uid)) this.done('Réparé ✓', reopen); } }); }
       if (sp.kind === 'land') items.push({ icon: '🏗️', label: 'Construire', detail: 'Bientôt : les chantiers arrivent avec la vague 2', disabled: true, onPick: () => {} });
+      // a supporter's colours (src/economy/wear.ts): one piece worn at a time, seen by the others in the city and the stands
+      if (sp.kind === 'wear' && a.how === 'owned') items.push(worn(s)?.id === sp.id
+        ? { icon: '👕', label: 'L’enlever', detail: 'Tu ne portes plus les couleurs', onPick: () => { setWorn(s, null); this.done(`${sp.name} rangé`, reopen); } }
+        : { icon: '🧣', label: 'Le porter', detail: 'À la place de ce que tu portes · les autres le voient', onPick: () => { setWorn(s, sp.id); this.done(`Tu portes : ${sp.name} ✓`, reopen); } });
       if (a.how === 'rented') items.push({ icon: '🗝️', label: 'Rendre les clés', detail: 'Le loyer s’arrête ; tes meubles reviennent chez toi', onPick: () => this.confirm('Rendre les clés', [['Logement', sp.name], ['Loyer', 'il s’arrête maintenant'], ['Tes meubles', 'ils reviennent dans ton logement']], 'Rendre les clés', '', null, () => { endLease(s, a.uid); this.done('Clés rendues ✓', reopen); }, reopen) });
       if (!cannotSell(s, a.uid)) items.push({ icon: '💰', label: 'Vendre', right: '+' + fcfa(saleValue(a)), detail: 'Payé tout de suite', onPick: () => this.confirm(`Vendre : ${sp.name}`, [['Tu reçois', fcfa(saleValue(a))], ['Valeur actuelle', fcfa(valueOf(a))], ...(inc ? [['Il ne rapportera plus', `+${fcfa(inc)} / h`] as [string, string]] : []), ...(home ? [['Tes meubles', 'ils reviennent dans ton logement'] as [string, string]] : [])],
         'Vendre', '+' + fcfa(saleValue(a)), cannotSell(s, a.uid), () => { const got = sellAsset(s, a.uid); this.done(`Vendu ✓ +${fcfa(got)}`, reopen); }, reopen) });
@@ -543,7 +548,7 @@ class Estate {
       const sp = specOfAsset(a), inc = incomeOf(s, a), chg = chargeOf(a);
       const tag = s.data.assets.home === a.uid ? '★ chez toi · ' : '';
       return { icon: KIND_ICON[sp.kind], label: sp.name, right: inc ? `+${fcfa(inc)}/h` : chg ? `−${fcfa(chg)}/h` : a.how === 'owned' ? fcfa(valueOf(a)) : '',
-        detail: tag + (a.how === 'rented' ? `loué par toi · ${perDay(sp.rent ?? 0)}` : a.how === 'given' ? 'prêté par la famille' : a.leased ? 'à toi · loué' : 'à toi'), onPick: () => this.openSheet(sp.id) };
+        detail: tag + (a.how === 'rented' ? `loué par toi · ${perDay(sp.rent ?? 0)}` : a.how === 'given' ? 'prêté par la famille' : a.leased ? 'à toi · loué' : worn(s)?.id === sp.id ? 'à toi · tu le portes' : 'à toi'), onPick: () => this.openSheet(sp.id) };
     });
     items.push({ icon: '🏪', label: 'Affaires', detail: ventures ? `${ventures} affaire${ventures > 1 ? 's' : ''}` : 'Aucune pour l’instant', onPick: () => { this.ctx.hud.closeModal(); phoneHooks.openBusiness?.(); } });
     items.push({ icon: '🛋️', label: 'Meubles', detail: `${pieces} pièce${pieces > 1 ? 's' : ''} · aménage chez toi`, onPick: () => this.openHomeApp() });

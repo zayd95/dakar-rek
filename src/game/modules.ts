@@ -41,6 +41,7 @@ import { crowdModule } from '../crowd/module';
 import { fightTalkModule } from '../social/fightTalkModule';
 import { careerModule } from '../career/module';
 import { tonightModule } from '../arena/tonight';
+import { supportersModule } from '../arena/supporters';
 import { togetherModule } from '../arena/together';
 import { arrivalModule } from '../arena/arrival';
 
@@ -176,6 +177,8 @@ export interface GameModule {
    * protocol's parseMove; never money, inventory or saves). Null or absent: nothing.
    */
   presence?(ctx: GameCtx): Partial<PresenceExtras> | null;
+  /** The player chose « Encourager » on a place in the stands and rose (arms up). */
+  cheered?(ctx: GameCtx): void;
   /** Entries merged into window.__dakar (?debug) for the checks. */
   debug?(ctx: GameCtx): Record<string, unknown>;
 }
@@ -205,4 +208,5 @@ export const MODULES: GameModule[] = [
   togetherModule,       // friends at the arena: seated together, one bout for the group (src/arena/together.ts)
   arrivalModule,        // getting to the fight: the guarded moto parking, fans aboard the Ligne 23 (src/arena/arrival.ts)
   tonightModule,        // the phone's « Ce soir »: tonight's card, getting there, after, the day's weather and roads (src/arena/tonight.ts)
+  supportersModule,     // who supports whom: the écurie colours worn, seen by the others, the stands answering (src/arena/supporters.ts)
 ];

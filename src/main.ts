@@ -38,6 +38,7 @@ import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
+import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
 import { Phone } from './ui/phone';
 import { ChatUi } from './multiplayer/chat';
@@ -123,6 +124,7 @@ const isNewGame = !saved;
 const state = new GameState(saved ?? newSave());
 const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
+remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
 const rel = new Relations(state.data);
 const follow = new FollowCamera(camera);
 const player = new Character(PLAYER_OUTFIT);
@@ -386,7 +388,9 @@ function sitOn(seat: Seat, force = false) {
 /** On a place in the stands: up on the tier for a moment, arms up (others see Celebrate), then back on the seat. */
 function cheer(seconds = 2.5) {
   if (!seated || seated.kind !== 'stand' || mode !== 'play') return false;
-  cheerT = Math.max(0.5, Math.min(6, seconds)); return true;
+  cheerT = Math.max(0.5, Math.min(6, seconds));
+  if (ctxReady) for (const m of MODULES) m.cheered?.(ctx);           // the neighbours in one's own écurie's section answer (src/arena/supporters.ts)
+  return true;
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
 function standUp(inPlace = false) {
@@ -1067,7 +1071,7 @@ void start();
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
-    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses() }),
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses(), gear: remoteAvatars.gear() }),
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
