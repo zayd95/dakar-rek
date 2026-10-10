@@ -37,15 +37,23 @@ async function goHour(page, hub, hour, id, far) {
   await page.waitForFunction(([id, hour]) => { const w = window.__dakar.npcWhere(id); const s = window.__dakar.npcSlots(hour).find(x => x.id === id); return w && w.here && !w.walking && (w.key === `${s.from}-${s.to}` || w.key.startsWith('wait')); }, [id, hour], T);
   return d(page, id => window.__dakar.npcWhere(id), id);
 }
-/** Stand next to the NPC (first free offset where the NPC is the nearest thing to talk to). */
+/**
+ * Stand next to the NPC, facing them, at the first free offset where they are what the action button runs: act() runs
+ * the focused target of the contextual system (a seat, a counter or a passer-by next to them could be focused instead).
+ */
 async function standBy(page, id, name) {
-  for (const [ox, oz] of [[0, 2.1], [0, -2.1], [2.1, 0], [-2.1, 0], [1.6, 1.6], [-1.6, 1.6], [1.6, -1.6], [-1.6, -1.6]]) {
+  for (const [ox, oz] of [[0, 2.1], [0, -2.1], [2.1, 0], [-2.1, 0], [1.6, 1.6], [-1.6, 1.6], [1.6, -1.6], [-1.6, -1.6], [0, 1.4], [0, -1.4], [1.4, 0], [-1.4, 0]]) {
     const w = await d(page, id => window.__dakar.npcWhere(id), id);
-    await d(page, ([x, z]) => window.__dakar.place(x, z, 0), [w.x + ox, w.z + oz]);
-    try { await page.waitForFunction(n => (window.__dakar.nearestInteractable() ?? '').startsWith(n), name, { timeout: 15000 }); return true; } catch { /* next offset */ }
+    await d(page, ([x, z, yaw]) => window.__dakar.place(x, z, yaw), [w.x + ox, w.z + oz, Math.atan2(-ox, -oz)]);
+    try {
+      await page.waitForFunction(([n, id]) => (window.__dakar.nearestInteractable() ?? '').startsWith(n) && window.__dakar.focus()?.id === 'npc:' + id, [name, id], { timeout: 15000 });
+      return true;
+    } catch { /* next offset */ }
   }
   return false;
 }
+/** Wait until the action button runs the place whose id starts with `prefix` (not a seat or a person next to it). */
+const focusOn = (page, prefix) => page.waitForFunction(p => (window.__dakar.focus()?.id ?? '').startsWith(p), prefix, T);
 const frame = (page, w, dx, h, dz) => d(page, ([w, dx, h, dz]) => window.__dakar.cam([w.x + dx, h, w.z + dz], [w.x, 0.85, w.z]), [w, dx, h, dz]);
 const settleClip = (page, id, clip) => page.waitForFunction(([id, clip]) => window.__dakar.npcWhere(id)?.clip === clip, [id, clip], T).then(() => true, () => false);
 
@@ -105,8 +113,9 @@ const settleClip = (page, id, clip) => page.waitForFunction(([id, clip]) => wind
   // A regular: one meal at the gargote, two visits to Mame at different hours.
   await goHour(page, 'pikine', 12, 'mame', far);
   const g = await d(page, () => window.__dakar.interactables().find(i => i.id.startsWith('pikine:gargote')));
-  await d(page, ([x, z]) => { const s = window.__dakar.state; s.data.wallet += 5000; window.__dakar.place(x, z + 0.6, 0); }, [g.x, g.z]);
+  await d(page, ([x, z]) => { const s = window.__dakar.state; s.data.wallet += 5000; window.__dakar.place(x, z + 0.6, Math.PI); }, [g.x, g.z]);
   await page.waitForFunction(() => /Gargote/.test(window.__dakar.nearestInteractable() ?? ''), null, T);
+  await focusOn(page, 'pikine:gargote');
   await d(page, () => window.__dakar.act());
   await clickItem(page, /^Ceebu jën/);
   await page.waitForFunction(() => window.__dakar.pos().mode === 'play' && (window.__dakar.state.data.counters.served_mame ?? 0) >= 1, null, T);
@@ -125,8 +134,9 @@ const settleClip = (page, id, clip) => page.waitForFunction(([id, clip]) => wind
   await clickItem(page, /Être présenté à Mamadou/);
   check('introduction unlocks the Peul trader’s beat', (await d(page, () => window.__dakar.flags())).includes('intro_mamadou'));
   await closeModal(page);
-  await d(page, ([x, z]) => window.__dakar.place(x, z + 0.6, 0), [g.x, g.z]);
+  await d(page, ([x, z]) => window.__dakar.place(x, z + 0.6, Math.PI), [g.x, g.z]);
   await page.waitForFunction(() => /Gargote/.test(window.__dakar.nearestInteractable() ?? ''), null, T);
+  await focusOn(page, 'pikine:gargote');
   await d(page, () => window.__dakar.act());
   check('regular favour at her place (perk visible)', (await modal(page)).items.some(t => /plat de l’habitué/.test(t)));
   await closeModal(page);
@@ -184,6 +194,7 @@ const settleClip = (page, id, clip) => page.waitForFunction(([id, clip]) => wind
   const res = await d(page, () => ({ w: window.__dakar.state.wallet, f: window.__dakar.flags(), rel: window.__dakar.rel.level('babacar') }));
   check('Maïga situation: paying costs 1 000 F, Babacar remembers', res.w === w1 - 1000 && res.f.includes('babacar_doit') && res.rel >= 10, `rel ${res.rel}`);
   await closeModal(page); await d(page, () => window.__dakar.cam(null));
+  await standBy(page, 'babacar', 'Babacar');               // a seat freed on the Maïga bench may now be the closer target
   await d(page, () => window.__dakar.act());
   const mb = await modal(page);
   check('Maïga situation: not twice the same day; Babacar now owes a favour', !mb.items.some(t => /Repas partagé/.test(t)) && mb.items.some(t => /rend la pareille/.test(t)) && /repas de la Maïga/.test(mb.sub), mb.sub);

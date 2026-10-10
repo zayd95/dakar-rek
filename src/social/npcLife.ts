@@ -10,7 +10,7 @@ import { CAST, castById, type CastMember } from './cast';
 import { Relations } from './relations';
 import { BEATS, type Beat } from './beats';
 import { PROFILES, profileOf, type Perk, type Profile } from './profiles';
-import { ROUTINES, currentPlan, planPath, poseFor, resolvePlace, slotAt, pathLength, type Activity, type PlaceSpec, type Routine, type Spot } from './routines';
+import { ROUTINES, currentPlan, planPath, poseFor, resolvePlace, slotAt, pathLength, collidersClear, type Activity, type ClearFn, type PlaceSpec, type Routine, type Spot } from './routines';
 import { greeting, hourStamp, introduction, applyIntroduction, isRegular, lastMemory, recordService, recordVisit, updateRegular, familiarity, REGULAR_AT } from './memory';
 import { SITUATIONS, choicesFor, favourFor, playSituation, sitCtx, situationFor, type Situation } from './situations';
 import { pick, quote, wo } from '../i18n/wolof';
@@ -189,20 +189,7 @@ export class NpcLife {
 
   /** Straight segment clear of the hub's solid objects (those containing an end point are the place itself: bench, counter). */
   clear = this.makeClear();
-  private makeClear() { return (a: Pt, b: Pt) => this.isClear(a, b); }
-  private isClear(a: Pt, b: Pt): boolean {
-    const cols = this.world?.colliders ?? [], m = 0.25;
-    const len = Math.hypot(b.x - a.x, b.z - a.z), steps = Math.max(1, Math.ceil(len / 0.3));
-    const near = cols.filter(c => c.h > 0.3 && Math.max(a.x, b.x) > c.x0 - m && Math.min(a.x, b.x) < c.x1 + m && Math.max(a.z, b.z) > c.z0 - m && Math.min(a.z, b.z) < c.z1 + m
-      && !(a.x > c.x0 - 0.45 && a.x < c.x1 + 0.45 && a.z > c.z0 - 0.45 && a.z < c.z1 + 0.45)
-      && !(b.x > c.x0 - 0.45 && b.x < c.x1 + 0.45 && b.z > c.z0 - 0.45 && b.z < c.z1 + 0.45));
-    if (!near.length) return true;
-    for (let k = 0; k <= steps; k++) {
-      const t = k / steps, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
-      if (near.some(c => x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m)) return false;
-    }
-    return true;
-  }
+  private makeClear(): ClearFn { return collidersClear(this.world?.colliders ?? []); }
 
   // ------------------------------------------------------------------ talking
   private npc(id: string) { return this.npcs.find(n => n.id === id); }
