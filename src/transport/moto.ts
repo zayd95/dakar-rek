@@ -3,16 +3,12 @@ import type { SeatSpec, VehicleSpec } from './spec';
 
 /**
  * The « Jakarta » motorbike (the everyday 125 cm³ of Dakar's streets) from the shared vehicle kit, as a transport
- * VehicleSpec with a driver seat and drive handling. Built without a baked rider: the player rides it (and with the
- * side stand down when parked — the kit draws the stand on rider-less motorbikes).
+ * VehicleSpec with a driver seat and drive handling. Built without a baked rider: the player rides it, with the side
+ * stand down when parked and up while ridden (`build({ ridden })`).
  */
-export const MOTO_CATALOGUE = {
-  id: 'moto_jakarta' as const,
-  name: 'Moto Jakarta 125',
-  /** Game price (provisional, to review with the economy design table). */
-  price: 75000,
-  detail: 'Neuve · 125 cm³ · se gare où tu la laisses',
-};
+/** Its catalogue entry (src/economy/catalog.ts: name and price, owned through the asset model). */
+export const MOTO_ASSET = 'jakarta' as const;
+export const MOTO_DETAIL = 'D’occasion · 125 cm³ · se gare où tu la laisses';
 
 /** First kit seed giving a red, non-scooter motorbike (the classic Jakarta look); the same on every client. */
 let seedCache = 0;
@@ -29,7 +25,8 @@ let cached: VehicleSpec | null = null;
 export function motoSpec(): VehicleSpec {
   if (cached) return cached;
   const seed = jakartaSeed(), k = vehicleSpec('moto', { seed, driver: false, passengers: false });
-  const toSeat = (s: VehicleSeat): SeatSpec => ({ id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, npcOnly: s.kind !== 'driver' });
+  // the kit's seats carry the 'Ride' pose (astride, hands on the grips)
+  const toSeat = (s: VehicleSeat): SeatSpec => ({ id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, npcOnly: s.kind !== 'driver', ...(s.clip ? { clip: s.clip } : {}) });
   const driver = k.seats.find(s => s.kind === 'driver') ?? k.seats[0];
   const door = k.doors[0], chase = k.cameras.chase;
   const spec: VehicleSpec = {
@@ -47,7 +44,7 @@ export function motoSpec(): VehicleSpec {
     sway: 1,
     // town riding: about 45 km/h flat out, quick to stop, tight turns, leans into corners
     drive: { maxSpeed: 12.5, reverseSpeed: 1.6, accel: 3.4, brake: 7.5, turnRadius: 3.2, steer: 4, halfWidth: 0.42, halfLength: k.length / 2, lean: true },
-    build: o => buildVehicle('moto', { seed: o?.seed ?? seed, driver: false, passengers: false }).group,
+    build: o => buildVehicle('moto', { seed: o?.seed ?? seed, driver: false, passengers: false, stand: !o?.ridden }).group,
   };
   return (cached = spec);
 }

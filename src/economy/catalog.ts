@@ -111,8 +111,9 @@ export const BUSINESSES: AssetSpec[] = VENTURES.map((v, i) => {
 // ------------------------------------------------------------------ vehicles and aircraft: in the model, playable later
 const DRIVE_SOON = 'Arrive avec la conduite (transports, vague 2)';
 export const VEHICLES: AssetSpec[] = [
-  { id: 'jakarta', kind: 'vehicle', name: 'Moto Jakarta', what: 'La moto des livreurs et des clandos à deux roues', price: 650_000, tier: 1, soon: DRIVE_SOON },
-  { id: 'clando', kind: 'vehicle', name: 'Voiture d’occasion', what: 'Une berline fatiguée mais fidèle, idéale pour faire le clando', price: 2_800_000, tier: 2, soon: DRIVE_SOON },
+  // drivable (src/transport/ownedModule.ts): sold at a dealer corner of their hub (or here), delivered at its kerb
+  { id: 'jakarta', kind: 'vehicle', name: 'Moto Jakarta', what: 'D’occasion · la moto des livreurs et des clandos à deux roues', price: 150_000, tier: 1, where: 'Garage Modou · Pikine' },
+  { id: 'clando', kind: 'vehicle', name: 'Voiture d’occasion', what: 'Une berline fatiguée mais fidèle, idéale pour faire le clando', price: 2_800_000, tier: 2, where: 'Ndiaye Auto · Plateau' },
   { id: 'berline', kind: 'vehicle', name: 'Berline neuve', what: 'Climatisée, sièges en cuir', price: 14_000_000, tier: 3, soon: DRIVE_SOON },
   { id: 'camion', kind: 'vehicle', name: 'Camion de livraison', what: 'Pour une affaire de transport', price: 32_000_000, tier: 3, soon: DRIVE_SOON },
   { id: 'tout_terrain', kind: 'vehicle', name: '4 × 4 de luxe', what: 'Le grand véhicule des belles occasions', price: 75_000_000, tier: 4, soon: DRIVE_SOON },

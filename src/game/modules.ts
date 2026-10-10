@@ -16,6 +16,7 @@ import { wolofModule } from '../i18n/module';
 import { assetKitModule } from './assetKit';
 import { transport } from '../transport/module';
 import { moto } from '../transport/motoModule';
+import { car } from '../transport/carModule';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
 import { ambientLife } from '../social/ambientLife';
@@ -119,6 +120,6 @@ export interface GameModule {
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
 export const MODULES: GameModule[] = [
-  wolofModule, assetKitModule, transport, VenuesModule, moto, ESTATE_MODULE,
+  wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE,
   ambientLife,          // NPC & social life lane, last: it populates the places and seats the others register (docs/NPC_LIFE.md)
 ];

@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import type { Clip } from '../actors/humanoid';
 
 /**
  * One vehicle framework (docs/LIVING_DAKAR.md, rule 3): every vehicle — car rapide, Dem Dikk bus, taxi, moto, the
@@ -17,6 +18,8 @@ export interface SeatSpec extends LocalPose {
   id: string;
   /** Reached through a door the player does not use (the car rapide's cab bench): NPC passengers only. */
   npcOnly?: boolean;
+  /** Pose held there (default 'Sit'): 'Ride' astride a two-wheeler (from the kit's seat). */
+  clip?: Clip;
 }
 
 export interface DoorSpec {
@@ -79,9 +82,10 @@ export interface VehicleSpec {
   sway?: number;
   /**
    * The 3D model (front +z). `seed` picks the livery; `seated` lists the passenger seats drawn with someone sitting
-   * there (open cabins). Instances may share geometry and materials (userData.shared).
+   * there (open cabins); `ridden`: the player is at the controls (a motorbike's side stand is up). Instances may share
+   * geometry and materials (userData.shared).
    */
-  build(o?: { seed?: number; seated?: readonly string[]; driver?: boolean }): THREE.Object3D;
+  build(o?: { seed?: number; seated?: readonly string[]; driver?: boolean; ridden?: boolean }): THREE.Object3D;
 }
 
 /** A pose in the world (x, z on the ground plane, y the ground height under the vehicle). */
