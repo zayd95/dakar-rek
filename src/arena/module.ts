@@ -31,6 +31,19 @@ import { GalaCard } from './card';
  * (rules untouched, src/arena/bout.ts) and the Wolof lines (src/i18n/lines.ts). Density follows the graphics quality.
  */
 const CROWD = 'arena-crowd';
+/**
+ * TODO(arena exterior, at integration): src/arena/exterior.ts (lane/w2-arena-life) shares the fight evenings with the
+ * street outside. Wire both ways so the two sides always agree:
+ *   import { arenaExterior } from './exterior';
+ *   const eventDay = (day: number, hour: number) => arenaExterior.isEventDay(day, hour);   // galas on its fight evenings
+ *   // in arenaModule.hubLoaded, after `evening = …`:
+ *   arenaExterior.schedule(evening ? () => !!evening?.showing() : null);                     // street alive while a gala runs
+ * (Registering `boutOn` instead keeps a gala every evening and the street alive every evening, which the exterior's
+ * check reads as « a normal Thursday must be quiet ».) Until then a gala can be watched every evening.
+ */
+const eventDay = (_day: number, _hour: number) => true;
+/** Debug: the city day the evening uses (the checks pick a fight evening). */
+let dayOverride: number | null = null;
 /** Field of view on the tiers, relative to the street camera's. */
 const SEAT_ZOOM = 0.74;
 const V3 = THREE.Vector3;
@@ -72,6 +85,7 @@ class ArenaEvening {
     this.ground = (x, z) => 0.1 + hub.heightAt(x, z);
     const cx = this.cx, gz = this.gz;
     this.group.name = 'arena_evening';
+    this.group.userData.noLod = true;                 // the show's bodies are never swapped for far figures (crowdLod.ts)
 
     // ---------------------------------------------------------------- the tiers' places, shared by the crowd and the player
     const defs = standSeats(cx, a.cz, `${hub.id}:arena:stand`);
@@ -102,7 +116,8 @@ class ArenaEvening {
       anchors: [{ id: 'guichet', name: 'Guichet · billets', kind: 'counter', x: bx, z: bz - 1.35, radius: 2.0 }],
       offers: { guichet: [P.handOver('buy', {
         id: 'billet', label: `Acheter un billet (${TICKET_PRICE.toLocaleString('fr-FR')} F)`, detail: 'Tribune populaire · valable toute la soirée',
-        requires: () => (hasTicket(ctx.state.data.counters, ctx.day()) ? 'Tu as déjà ton billet pour ce soir' : null),
+        requires: () => (hasTicket(ctx.state.data.counters, this.day()) ? 'Tu as déjà ton billet pour ce soir'
+          : eventDay(this.day(), ctx.hour()) ? null : 'Pas de gala ce soir'),
         then: () => this.confirmTicket(place),
       })] },
     });
@@ -117,29 +132,39 @@ class ArenaEvening {
       { label: `Payer ${TICKET_PRICE.toLocaleString('fr-FR')} F`, icon: '🎟️', detail: ctx.state.canAfford(TICKET_PRICE) ? 'Entrée par la porte, places libres sur les gradins' : 'Pas assez d’argent', disabled: !ctx.state.canAfford(TICKET_PRICE), onPick: () => {
         ctx.hud.closeModal(); ctx.setMode('play');
         ctx.activities.start(P.buy({ id: 'billet', label: 'Billet · gala de làmb', price: TICKET_PRICE, line: () => ARENA.ticket(TICKET_PRICE),
-          then: () => { ctx.state.data.counters[TICKET_COUNTER] = ctx.day(); } }), { place });
+          then: () => { ctx.state.data.counters[TICKET_COUNTER] = this.day(); } }), { place });
       } },
       { label: 'Annuler', icon: '↩️', onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); } },
     ]);
   }
 
   // ---------------------------------------------------------------- every frame
+  /** The city day of the evening (tickets and the gala are per day). */
+  day() { return dayOverride ?? this.ctx.day(); }
+  /** A gala is running (from the stands filling to the crowd leaving). */
+  showing() { return this.phase !== 'idle' && this.phase !== 'over'; }
+  /** A bout is on at the arena on this day and hour: doors open or a gala running. */
+  boutOn(day: number, hour: number) {
+    if (this.showing()) return true;
+    const s = streetAt(hour, this.ctx.state.data.counters[GALA_DONE_COUNTER] === day, eventDay(day, hour));
+    return s === 'setup' || s === 'doors';
+  }
   inside(x: number, z: number) { return Math.hypot(x - this.cx, z - this.cz) < WALL_R - 0.4; }
   seatedHere(): Seat | null { const s = this.ctx.player.seated(); return s && s.kind === 'stand' && this.seats.includes(s) ? s : null; }
 
   update(dt: number) {
-    const { ctx } = this, hour = ctx.hour(), day = ctx.day(), counters = ctx.state.data.counters;
+    const { ctx } = this, hour = ctx.hour(), day = this.day(), counters = ctx.state.data.counters, event = eventDay(day, hour);
     const galaDone = counters[GALA_DONE_COUNTER] === day;
     if (this.phase === 'over' && !galaDone) this.phase = 'idle';            // a new day, a new gala evening
     const showing = this.phase !== 'idle' && this.phase !== 'over';
-    this.street = showing ? 'doors' : streetAt(hour, galaDone);
+    this.street = showing ? 'doors' : streetAt(hour, galaDone, event);
     const me = ctx.player.pos;
 
     // the gate: the controller checks tickets while the doors are open
     const seat = this.seatedHere();
     const inNow = !seat && this.inside(me.x, me.z);
     this.stopT = Math.max(0, this.stopT - dt);
-    if (inNow && !this.wasInside && ticketsChecked(hour, galaDone) && ctx.mode() === 'play') {
+    if (inNow && !this.wasInside && ticketsChecked(hour, galaDone, event) && ctx.mode() === 'play') {
       if (!hasTicket(counters, day)) {                               // turned back at the gate, toward the street
         ctx.player.place(this.cx, this.gz - 1.6, Math.PI);
         if (this.stopT <= 0) { ctx.toast(ARENA.stop()); this.stopT = 3; }
@@ -228,7 +253,7 @@ class ArenaEvening {
     } else if (phase === 'leaving') {
       this.bout?.dispose(); this.bout = null;
     } else if (phase === 'over') {
-      ctx.state.data.counters[GALA_DONE_COUNTER] = ctx.day(); ctx.save();
+      ctx.state.data.counters[GALA_DONE_COUNTER] = this.day(); ctx.save();
       this.street = streetAt(ctx.hour(), true);                       // the gate stops checking tickets from now on
       ctx.toast(ARENA.over);
     }
@@ -322,9 +347,9 @@ class ArenaEvening {
   }
 
   debug() {
-    const seat = this.seatedHere(), counters = this.ctx.state.data.counters, day = this.ctx.day();
+    const seat = this.seatedHere(), counters = this.ctx.state.data.counters, day = this.day();
     return {
-      street: this.street, phase: this.phase, t: Math.round(this.t * 10) / 10, speed: this.speed,
+      street: this.street, event: eventDay(day, this.ctx.hour()), day, phase: this.phase, t: Math.round(this.t * 10) / 10, speed: this.speed,
       ticket: hasTicket(counters, day), galaDone: counters[GALA_DONE_COUNTER] === day,
       seat: seat?.id ?? null, seatsTotal: this.seats.length, seatsFree: this.seats.filter(s => !s.occupant).length,
       crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering },
@@ -368,6 +393,8 @@ export const arenaModule: GameModule = {
       go: (phase: ShowPhase) => evening?.go(phase),
       /** Shows or hides everything this module draws (the checks measure its own draw calls). */
       visible: (on = true) => { if (evening) evening.group.visible = on; },
+      /** Pretend the city day is `d` (null: the clock's), e.g. a fight evening. */
+      day: (d: number | null) => { dayOverride = d; },
       /** A free place on the tiers near (x, z) (for the checks). */
       freeSeat: (x: number, z: number) => {
         if (!evening) return null;

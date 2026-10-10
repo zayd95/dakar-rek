@@ -49,7 +49,10 @@ for (const [label, viewport, touch, quality] of VIEWS) {
 
   // 1. The gate on a fight evening, with its ticket window.
   await d(() => { window.__dakar.teleport('pikine'); window.__dakar.setHour(18); window.__dakar.state.data.wallet = 5000; });
-  await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine' && window.__dakar.arena.info()?.street === 'doors', null, T);
+  await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine' && !!window.__dakar.arena.info(), null, T);
+  // a fight evening: with the exterior lane (src/arena/exterior.ts) both sides use its days (Friday–Sunday), so take the next Friday
+  await d(() => { const x = window.__dakar; if (!x.arenaOut || !x.arenaOutDay) return; const t = x.arenaOut().day, fri = t + ((4 - (((t % 7) + 7) % 7)) + 7) % 7; x.arenaOutDay(fri); x.arena.day(fri); });
+  await page.waitForFunction(() => window.__dakar.arena.info()?.street === 'doors', null, T);
   const a0 = await info(), G = a0.gate, C = a0.centre;
   await d(g => window.__dakar.place(g.x + 6, g.z - 15, -0.35), G);
   const places = await d(() => window.__dakar.placeList().filter(p => p.id.includes(':arena:')).map(p => p.id.split(':').pop()));

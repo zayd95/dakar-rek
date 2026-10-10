@@ -22,6 +22,9 @@ describe('the gala evening', () => {
     expect(streetAt(0.5, false)).toBe('quiet');
     expect(ticketsChecked(18, false)).toBe(true);
     expect(ticketsChecked(18, true)).toBe(false);
+    // not a fight evening (the exterior's shared rule, once wired): quiet all evening, nobody checks tickets
+    expect(streetAt(18, false, false)).toBe('quiet');
+    expect(ticketsChecked(18, false, false)).toBe(false);
     expect(ticketsChecked(12, false)).toBe(false);
     expect(GALA.doors).toBeLessThan(GALA.close);
   });

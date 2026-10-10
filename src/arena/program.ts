@@ -1,7 +1,7 @@
 /**
  * The gala evening at the Pikine arena (pure data and functions: no Three.js, no DOM; tested in tests/arena.test.ts).
  *
- * A fight evening every day (provisional): set-up from 16 h, the gate opens at 17 h (ticket at the window, the stands
+ * A fight evening on every event day (every day until the exterior's shared rule is wired, see module.ts): set-up from 16 h, the gate opens at 17 h (ticket at the window, the stands
  * fill hour after hour), and the gala itself starts once the player has a seat — the wrestlers' entrance, the bout (the
  * existing làmb duel played by two fictional wrestlers of the game's own cast), the result, then the crowd goes home.
  * After 23 h, or once that day's gala is over, the arena is quiet again. The street outside the walls (vendors, queue,
@@ -25,14 +25,14 @@ export const GALA_DONE_COUNTER = 'arena_gala_day';
 
 /** What the street in front of the arena looks like at this hour. */
 export type Street = 'quiet' | 'setup' | 'doors' | 'after';
-export function streetAt(hour: number, galaDoneToday: boolean): Street {
+export function streetAt(hour: number, galaDoneToday: boolean, eventDay = true): Street {
   const h = ((hour % 24) + 24) % 24;
-  if (h < GALA.setup || h >= GALA.close + 1) return 'quiet';
+  if (!eventDay || h < GALA.setup || h >= GALA.close + 1) return 'quiet';
   if (h >= GALA.close || galaDoneToday) return 'after';
   return h < GALA.doors ? 'setup' : 'doors';
 }
 /** The gate checks tickets while the doors are open (and the gala of the day is not over). */
-export const ticketsChecked = (hour: number, galaDoneToday: boolean) => streetAt(hour, galaDoneToday) === 'doors';
+export const ticketsChecked = (hour: number, galaDoneToday: boolean, eventDay = true) => streetAt(hour, galaDoneToday, eventDay) === 'doors';
 export const hasTicket = (counters: Record<string, number>, day: number) => (counters[TICKET_COUNTER] ?? -1) === day;
 
 /** Share of the stands' crowd seats taken at this hour of a gala evening (0 before the doors, full by 19 h). */

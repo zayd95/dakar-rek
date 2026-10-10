@@ -53,13 +53,17 @@ low 42 % / 0, medium 68 % / 4, high 86 % / 8. The crowd is 4 instanced meshes wh
 humanoids sit in the row in front when there is one and are not drawn when out of view. The entrance cast follows the
 quality too (low: the two wrestlers and one drummer, no followers).
 
-**Integration point.** The schedule (`streetAt`, every day 17 h–23 h) is provisional: the exterior lane's
-`isEventDay(day, hour)` and gate position should replace it when both lanes are merged.
+**Integration point (exterior lane).** Until `src/arena/exterior.ts` is in integration a gala can be watched every
+evening (doors 17 h–23 h). The TODO at the top of `src/arena/module.ts` wires the shared rule: galas on
+`arenaExterior.isEventDay(day, hour)` (Friday–Sunday evenings) and `arenaExterior.schedule(() => evening.showing())`
+so the street stays alive while a gala runs. The ambient NPCs (`src/social/ambientSpots.ts`) never take the tiers'
+places (`kind: 'stand'`), and the arena's group is `userData.noLod` (its bodies are never swapped for far figures).
 
 ## Debug and checks
 
-`?debug` → `__dakar.arena.info()` (street, phase, t, ticket, seats, crowd, entrance, bout, result, gate, centre),
-`arena.cam()`, `arena.speed(n)` (fast-forward), `arena.go(phase)`, `arena.freeSeat(x, z)`.
+`?debug` → `__dakar.arena.info()` (street, event, day, phase, t, ticket, seats, crowd, entrance, bout, result, gate,
+centre), `arena.cam()`, `arena.speed(n)` (fast-forward), `arena.go(phase)`, `arena.freeSeat(x, z)`, `arena.visible(on)`,
+`arena.day(d)`.
 
 `flock /tmp/dakar-browser.lock node scripts/check-arena-visit.mjs [baseUrl] [outDir] [--view=desktop|phone]` plays
 the whole path on desktop (medium quality) and phone (low quality), captures in `docs/screenshots/arena-visit/`.
