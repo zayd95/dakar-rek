@@ -132,13 +132,14 @@ export function placeClock(day: number, hour: number, galaDone: boolean): { cloc
 /**
  * The goal line of the player's own bout (src/arena/fighter.ts), between the legs the walking marker already leads
  * (gate, corner, ring): it never falls back to an unrelated beat in the middle of the fighter's evening. Null in the
- * bout itself, and when no bout is on its way.
+ * bout itself, and when no bout is on its way. `main`: the player is tonight's main event (src/arena/myGala.ts), their
+ * corner waits for the preliminaries and their entrance.
  */
-export function fighterGoal(phase: FighterPhase): string | null {
+export function fighterGoal(phase: FighterPhase, main = false): string | null {
   switch (phase) {
     case 'called': return 'Tu combats ce soir : entrée des lutteurs, derrière l’arène';
     case 'tunnel': return 'Le tunnel des lutteurs : rejoins ton coin';
-    case 'prep': return 'Dans ton coin : prépare-toi, le combat arrive';
+    case 'prep': return main ? 'Dans ton coin : les préliminaires, puis ton entrée de gala' : 'Dans ton coin : prépare-toi, le combat arrive';
     case 'ring': return 'C’est l’heure : avance jusqu’au cercle';
     case 'return': return 'Retour par le tunnel des lutteurs';
     default: return null;
@@ -148,7 +149,7 @@ export function fighterGoal(phase: FighterPhase): string | null {
 /** The goal line and its way-finding target for main.ts (the HUD's goal, ctx.guide()). */
 export function eveningLine(ctx: GameCtx, welcome: boolean): { text: string; target: { name: string; x: number; z: number } | null } | null {
   const w = ctx.world(); if (!w) return null;
-  if (arenaFighter.pending()) { const t = fighterGoal(arenaFighter.phase()); return t ? { text: t, target: null } : null; }   // the fighter's own evening first
+  if (arenaFighter.pending()) { const t = fighterGoal(arenaFighter.phase(), !!arenaFighter.main()); return t ? { text: t, target: null } : null; }   // the fighter's own evening first
   const day = ctx.day(), hour = ctx.hour(), counters = ctx.state.data.counters, here = ctx.inside()?.door ?? ctx.player.pos;
   const arena = w.arena, gateIt = arena ? w.interactables.find(i => i.id === `${w.id}:arena`) : undefined;
   const gate = arena && gateIt ? { dist: Math.hypot(gateIt.x - here.x, gateIt.z - here.z), inside: !ctx.inside() && Math.hypot(here.x - arena.cx, here.z - arena.cz) < WALL_R - 0.4 } : null;

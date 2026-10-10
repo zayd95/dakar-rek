@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PLAYER_SIDE, boutByClock, entranceByClock, mainCalledOff, mainDriver, myShowResult, playerCorner, playerMainBill, remoteCard, remoteMain } from '../src/arena/myGala';
 import { undercardFor } from '../src/arena/undercard';
+import { fighterGoal } from '../src/arena/eveningCall';
 import { cornerSides, entranceCues, setRecordSource, griotLine, standsOf, type Fighter } from '../src/arena/ceremony';
 import { standsSide } from '../src/arena/bakk';
 import { PREP_SIDE } from '../src/world/arenaModules';
@@ -146,6 +147,8 @@ describe('their corner waits for the preliminaries and the ceremony', () => {
     pos.x = s.corner.x; pos.z = s.corner.z; fighterModule.update!(ctx, 0.1);
     expect(arenaFighter.phase()).toBe('prep');
     expect(toasts.at(-1)).toMatch(/préliminaires d’abord/);
+    expect(fighterGoal('prep', true)).toMatch(/les préliminaires, puis ton entrée de gala/);   // the goal line says so too
+    expect(fighterGoal('prep')).toMatch(/prépare-toi/);
     vi.advanceTimersByTime(20000); fighterModule.update!(ctx, 0.1);
     expect(arenaFighter.phase()).toBe('prep');                                                     // held past the usual moment
     held = false; fighterModule.update!(ctx, 0.1);
