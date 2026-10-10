@@ -19,6 +19,7 @@ export const FIGHTER_DRUMS = 1.3;
 import { ExteriorAudio, listenForGesture } from './exteriorAudio';
 import { deckCentre } from '../world/arenaModules';
 import { WALL_R } from '../world/geew';
+import { transport } from '../transport/module';
 
 /**
  * Outside the Pikine arena: on fight evenings the surroundings come alive — fans walking in
@@ -369,8 +370,11 @@ function closeRoads(g: ArenaGate | null) {
     return v;
   };
 }
-/** Transport stops of the hub (where the crowd heads after the gala). */
-const stopsOf = (ctx: GameCtx) => ctx.places.all().filter(p => p.type === 'stop' && p.anchors[0]).map(p => ({ x: p.anchors[0].x, z: p.anchors[0].z }));
+/**
+ * Transport stops of the hub that are served now (where the crowd heads after the gala): on fight evenings Ligne 23's
+ * day stops are parked and its evening route `23s` serves the arena (transport.served), so nobody walks to a parked stop.
+ */
+const stopsOf = (ctx: GameCtx) => ctx.places.all().filter(p => p.type === 'stop' && p.anchors[0] && transport.served(p.id)).map(p => ({ x: p.anchors[0].x, z: p.anchors[0].z }));
 function setPhase(ctx: GameCtx, phase: ExteriorPhase) {
   if (!ext) return;
   ext.setPhase(phase, eveningSize(dayOverride ?? ctx.day(), ctx.hour()), outflowDestinations(ext.g, stopsOf(ctx)));
