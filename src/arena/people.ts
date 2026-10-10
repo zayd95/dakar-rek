@@ -15,6 +15,7 @@ import { WALL_R } from '../world/geew';
 import { arenaFighter, type FighterCue } from './fighter';
 import { ARENA_PURCHASES, ECURIES } from './exteriorRules';
 import { BILL, type Bill, type Moment, type Quality, type ShowPhase, type Street } from './program';
+import { entourageAt, type PartyPlan } from './celebration';
 import {
   CEREMONY, CORNER_PACE, ECURIE_COLOUR, IN_ARRIVE, ROUTE, chantSpot, colourOf, cornerSides, ecurieId, entourageIn, entourageToCorner, griotCornerSpot,
   pathLength, sandToCorner, setOffCorner, setOffIn, type Who as BillSide,
@@ -540,6 +541,34 @@ export class FightNightPeople {
       const path = celebratePath(this.cx, this.cz, s.cs, k), to = path[path.length - 1];
       cast.walkTo(rid, path, facing(this.cx, this.cz, to), 'Celebrate', 4.5);                 // running: there well within the result's 7 s
     });
+  }
+
+  /**
+   * The fête after the main event (src/arena/celebration.ts) at time `t` of the result: two of the winner's people
+   * carry him round the ring (`from`: where he stood when the bout ended), the others and his griot follow his track.
+   * Before FETE.run their run onto the sand is `result`'s.
+   */
+  party(plan: PartyPlan, t: number, from: { x: number; z: number }) {
+    const cast = this.cast; if (!cast || plan.kind !== 'main' || !plan.winner) return;
+    const s = this.sides.find(x => x.who === plan.winner); if (!s) return;
+    for (const [rid, role, start] of this.partyRoles(s, plan)) {
+      const p = entourageAt(plan, t, this.cx, this.cz, from, start, role); if (!p) continue;
+      cast.place(rid, p.x, p.z, p.yaw);
+      cast.setClip(rid, p.clip === 'walk' ? 'Walk' : p.clip);
+    }
+  }
+  /** Who carries (the helpers first, then the coach) and who follows, with where each one ran to. */
+  partyRoles(s: Side, plan: PartyPlan): [string, { carry: 0 | 1 } | { lag: number; side: number }, { x: number; z: number }][] {
+    const order = [1, 3, 0, 2].filter(k => k < s.ids.length), carriers = plan.lift ? order.slice(0, 2) : [];
+    const out: [string, { carry: 0 | 1 } | { lag: number; side: number }, { x: number; z: number }][] = [];
+    let n = 0;
+    s.ids.forEach((rid, k) => {
+      const start = celebratePath(this.cx, this.cz, s.cs, k).at(-1)!, c = carriers.indexOf(k);
+      out.push([rid, c >= 0 ? { carry: c as 0 | 1 } : { lag: 0.9 + 0.6 * n, side: n % 2 ? 0.5 : -0.5 }, start]);
+      if (c < 0) n++;
+    });
+    if (s.griot) out.push([s.griot, { lag: 0.9 + 0.6 * n, side: n % 2 ? 0.5 : -0.5 }, griotCornerSpot(this.cx, this.cz, s.cs)]);
+    return out;
   }
 
   /** Who is inside the walls now, by role (present, and drawn near the camera). */

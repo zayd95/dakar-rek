@@ -26,7 +26,10 @@ import { lamb2On } from '../lamb/flag';
 import { localPair, rosterOpponent } from '../lamb/opponents';
 import { PRELIM, PRELIM_TYPICAL, prelimFill, prelimName, undercardFor, type Prelim } from './undercard';
 import { GalaCard } from './card';
-import { FightNightPeople } from './people';
+import { FightNightPeople, PEOPLE_COUNT } from './people';
+import { partyLength, partyPlan, type PartyKind } from './celebration';
+import { ResultParty } from './party';
+import { cornerSides, type Fighter } from './ceremony';
 import { TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, seatRefusal, ticketLabel, ticketSheet, whereLine, type Tribune } from './tickets';
 import { decorMaterial, honneurPlate, tribuneDecor } from './ticketsDecor';
 import { EntranceCeremony } from './entrance';
@@ -109,6 +112,15 @@ class ArenaEvening {
   private marks: { phase: string; at: number }[] = [];
   private drums = new Percussion();
   private card: GalaCard;
+  /**
+   * « La fête après la chute » (src/arena/celebration.ts): the main event's (the whole result phase) or a preliminary's;
+   * and the one after the player's own bout (its own clock, `ownT`).
+   */
+  private party: ResultParty | null = null;
+  private ownFete: ResultParty | null = null;
+  private ownT = 0;
+  /** How long the result phase lasts tonight (the fête's plan; the outflow starts within 90 s of the result). */
+  private resultLen: number = SHOW.result;
   /** The referee and officials, the drummers, the vendors in the stands, the wrestlers' entourages (src/arena/people.ts). */
   private people: FightNightPeople;
   get peopleGroup() { return this.people.group; }
@@ -277,10 +289,12 @@ class ArenaEvening {
       case 'prelims': this.updatePrelim(dt * this.speed); break;
       case 'entrance': this.ceremony?.update(this.t, dt * this.speed); if (this.t >= SHOW.entrance) this.go('bout'); break;
       case 'bout': if (this.bout) { this.bout.advance(dt * this.speed); this.t = this.bout.time; if (this.bout.over) this.go('result'); } break;
-      case 'result': if (this.t >= SHOW.result) this.go('leaving'); break;
+      case 'result': this.party?.update(this.t, dt * this.speed); if (this.t >= this.resultLen) this.go('leaving'); break;
       case 'leaving': if (this.t >= SHOW.leaving) this.go('over'); break;
     }
     this.people.update(dt, this.phase, this.t, this.street, dt * (this.phase === 'bout' ? 1 : this.speed), billFor(this.day()));
+    // the player's own bout won or lost: the stands, the drums and the lines for half a minute (the player walks out)
+    if (this.ownFete) { this.ownT += dt; this.ownFete.update(this.ownT, dt); if (this.ownT >= this.ownFete.plan.length) { this.ownFete.dispose(); this.ownFete = null; } }
     // the stands fill with the evening and empty after the gala
     this.fillT -= dt;
     if (this.fillT <= 0) { this.fillT = 0.4; this.syncCrowd(); }
@@ -339,6 +353,8 @@ class ArenaEvening {
     // the announcer names the one who staggers (the other of the striker), or the winner
     const named = winner === null ? null : m === 'stagger' ? names[winner === 'player' ? 'opponent' : 'player'] : names[winner];
     this.applyFrappe(frappePlan(m, side, { kind: o.strike, outcome, name: named }));
+    // la fête après la chute, for the player's own main event (src/arena/celebration.ts)
+    if (m === 'result') this.ownParty(side, mine, outcome, names);
   }
   /**
    * Applies a moment of a bout avec frappe (src/arena/frappeMoments.ts) — the player's own and the watched main event's
@@ -355,6 +371,30 @@ class ArenaEvening {
     const now = performance.now();
     if (p.say && (p.m !== 'stagger' || now - this.lastCall > 6000)) { this.lastCall = now; if (hasGestured()) paChime(); this.ctx.toast(p.say); }
   }
+
+  /** The fête after the player's own main event: the player against tonight's opponent, the player's écurie's side. */
+  private ownParty(winner: StandSide | null, mine: StandSide, outcome: string, names: { player: string; opponent: string }) {
+    const ours = arenaFighter.corner() === 'teranga' ? 'Teranga' : 'Baobab', theirs = ours === 'Baobab' ? 'Teranga' : 'Baobab';
+    const me: Fighter = { id: 'player', name: names.player, ecurie: ours }, them: Fighter = { id: 'opponent', name: names.opponent, ecurie: theirs };
+    const bill = mine === 'left' ? { left: me, right: them } : { left: them, right: me };
+    this.ownFete?.dispose();
+    this.ownFete = new ResultParty(this.ctx, this.plan('own', winner, outcome, bill, mine), this.cx, this.cz, this.crowd, null);
+    this.ownT = 0;
+  }
+  /** A fête's plan for tonight (the same on every device: hub, day, result). */
+  private plan(kind: PartyKind, winner: StandSide | null, outcome: string, bill: { left: Fighter; right: Fighter } = billFor(this.day()), player: StandSide | null = null) {
+    const q = this.ctx.quality();
+    return partyPlan({ kind, winner, outcome, hub: this.hubId, day: this.day(), quality: q, bill, corners: cornerSides(bill), entourage: PEOPLE_COUNT[q].entourage, player });
+  }
+  /** The main event's fête, from its result (again when a friend's result differs). */
+  private startParty() {
+    const o = this.outcome ?? { winner: null, outcome: 'egalite' as ShowOutcome };
+    const plan = this.plan('main', o.winner, o.outcome);
+    this.party?.dispose();
+    this.party = new ResultParty(this.ctx, plan, this.cx, this.cz, this.crowd, this.people, this.bout?.bodies() ?? { left: null, right: null });
+    this.resultLen = partyLength(plan, SHOW.leaving);
+  }
+  private endParty() { this.party?.dispose(); this.party = null; }
 
   /** The evening's two wrestlers as themselves for a bout avec frappe (Làmb 2.0, ?lamb2 only), else null. */
   private frappeBill() {
@@ -387,6 +427,7 @@ class ArenaEvening {
     if (phase === 'filling') this.marks = [];                                // the timeline starts when the show does
     this.mark(phase);
     if (phase !== 'prelims') this.clearPrelim();
+    if (phase !== 'result') this.endParty();
     if (phase === 'filling') {
       this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0; this.fallSplit = null; this.lastBout = null;
       const bill = billFor(this.day());
@@ -431,6 +472,7 @@ class ArenaEvening {
       this.people.result(side);
       ctx.toast(this.result);
       this.react('result', side);
+      this.startParty();                                                 // la fête après la chute (src/arena/celebration.ts)
       // the city talks about it that evening and the next day (src/social/fightTalk.ts), the posters print it
       recordGalaResult(ctx.state.data.counters, this.day(), side, how);
       posters.setResult(this.day(), won && how !== 'egalite' && how !== 'abandon'
@@ -447,6 +489,7 @@ class ArenaEvening {
   /** The i-th preliminary: the announcer names it, the two young wrestlers walk out of the tunnel to the ring. */
   private startPrelim(i: number) {
     this.clearPrelim();
+    this.endParty();
     this.pi = i; this.t = 0; this.pEnded = -1; this.catchUpTo = 0;
     const p = this.prelims[i]; if (!p) return;
     this.mark(`prelim ${i + 1}`);
@@ -485,6 +528,7 @@ class ArenaEvening {
       return;
     }
     this.t += dt;
+    this.party?.update(this.t - this.pEnded, dt);                        // the preliminary's few seconds of fête
     if (this.t >= this.pEnded + PRELIM.result) { if (this.pi + 1 < this.prelims.length) this.startPrelim(this.pi + 1); else this.go('entrance'); }
   }
   private startPrelimBout(p: Prelim) {
@@ -519,6 +563,10 @@ class ArenaEvening {
     if (this.pBout && this.pBout.time < this.catchUpTo - 0.5) return;           // passed on the way to a friend's show
     this.ctx.toast(line);
     this.crowd.react('all', 'applause', { share: 0.35, seconds: 2.5 });
+    // scaled down: a burst of the bàkk's rhythm, a few dancing in one section (src/arena/celebration.ts)
+    const side = !r || !r.winner ? null : r.winner === 'player' ? 'left' : 'right';
+    this.endParty();
+    this.party = new ResultParty(this.ctx, this.plan('prelim', side, how, { left: { id: 'p1', name: p.left.name, ecurie: '' }, right: { id: 'p2', name: p.right.name, ecurie: '' } }), this.cx, this.cz, this.crowd, null);
   }
   private clearPrelim() {
     for (const w of this.pWalk) w.h.dispose(); this.pWalk = [];
@@ -570,6 +618,7 @@ class ArenaEvening {
       if (this.outcome && differs) {
         this.outcome = res; this.result = this.resultLine(res); this.ctx.toast(this.result);
         reportMainEvent(this.day(), res.winner ? billFor(this.day())[res.winner].id : null);   // the result the group saw
+        if (this.phase === 'result') { this.people.result(res.winner); this.startParty(); }  // the group's fête
       }
     }
     if (phase === 'prelims') {                                                 // which preliminary, then its time
@@ -589,7 +638,7 @@ class ArenaEvening {
   }
 
   private abort() {
-    this.clearPrelim(); this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
+    this.clearPrelim(); this.clearEntrance(); this.endParty(); this.bout?.dispose(); this.bout = null; this.drums.stop();
     this.phase = 'idle'; this.t = 0;
   }
 
@@ -616,6 +665,7 @@ class ArenaEvening {
       out.set(0, 0, 0); for (const w of this.pWalk) out.add(w.h.group.position); return out.multiplyScalar(1 / this.pWalk.length).setY(1.2);
     }
     if (this.phase === 'entrance' && this.ceremony?.focus(out, this.t)) return out;
+    if (this.phase === 'result' && this.party) return this.party.focus(out);
     return out.set(this.cx, 1.0, this.cz);
   }
 
@@ -657,13 +707,14 @@ class ArenaEvening {
         stage: this.phase !== 'prelims' ? null : !this.pBout ? 'walk' : this.pEnded < 0 ? 'bout' : 'result', bout: this.pBout?.info() ?? null, walking: this.pWalk.length, results: [...this.pResults],
         frappe: this.pBout ? this.pBout.frappe : null },
       entrance: this.ceremony?.wrestlers.length ?? 0, ceremony: this.phase === 'entrance' ? this.ceremony?.info(this.t) ?? null : null, bout: this.bout?.info() ?? null, lastBout: this.lastBout, result: this.result, card: this.card.text, people: this.people.debug(),
+      party: this.party && this.phase === 'result' ? this.party.info(this.t) : null, resultLen: this.resultLen, ownParty: this.ownFete?.info(this.ownT) ?? null,
       gate: { x: this.cx, z: this.gz }, centre: { x: this.cx, z: this.cz },
     };
   }
 
   dispose() {
     if (this.fovSet) { this.ctx.camera.fov = this.baseFov; this.ctx.camera.updateProjectionMatrix(); this.fovSet = 0; }
-    this.clearPrelim(); this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
+    this.clearPrelim(); this.clearEntrance(); this.endParty(); this.ownFete?.dispose(); this.ownFete = null; this.bout?.dispose(); this.bout = null; this.drums.stop();
     this.crowd.dispose(); this.card.dispose(); this.people.dispose();
     for (const s of this.seats) this.ctx.seats.release(s.id, CROWD);
     for (const o of this.own) o.dispose(); this.own = [];
