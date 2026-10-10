@@ -15,7 +15,7 @@ plug in without new code.
 | `src/crowd/arenaStands.ts` | `ArenaStands`: the arena's stands on the crowd (drop-in for the old `StandCrowd`), sections and sides, the gala's moments. |
 | `src/crowd/arrivals.ts` | `ArenaArrivals`: fans arriving by taxi and car rapide on fight evenings and walking to the queue. |
 | `src/crowd/module.ts` | The lane's module: runs the arrivals, debug entries. |
-| `tests/crowd.test.ts` | 23 unit tests. |
+| `tests/crowd.test.ts` | 27 unit tests. |
 | `scripts/check-crowd.mjs` | Browser check (desktop medium, phone low), captures in `docs/screenshots/crowd/`. |
 
 The arena lane's `src/arena/module.ts` builds `ArenaStands` instead of `StandCrowd`. It passes the side of the wrestler
@@ -25,12 +25,13 @@ walking in and of the winner, fills the stands less for a weekday card, and feed
 ## The crowd
 
 ```ts
-const crowd = new Crowd(slots, { quality, near?, nearRadius?, nearNeedsFocus?, seed?, name?, look?, blobs? });
+const crowd = new Crowd(slots, { quality, near?, nearRadius?, nearNeedsFocus?, seed?, name?, look?, blobs?, fidget? });
 crowd.fill(n, skip?)                   // the first n slots (in the order given), minus those `skip` names
 crowd.setPresent(id, on)               // or one by one
 crowd.move(id, x, y, z, yaw, speed)    // walkers: speed > 0.2 m/s walks (legs and arms swing)
 crowd.react(group, kind, { share?, seconds?, origin?, speed? })   // → how many join in
 crowd.setMood(group, 'dance' | 'rest', bpm?)
+crowd.giveFlag(id, colour)              // waved whenever the arms go up
 crowd.calm(group?); crowd.level(group?)                          // excitement 0–1, for the sound
 crowd.setFocus(x, z | null, yaw?); crowd.setCamera(camera); crowd.update(dt, animate)
 crowd.stats(); crowd.drawCalls(); crowd.dispose()
@@ -86,6 +87,15 @@ crowd.stats(); crowd.drawCalls(); crowd.dispose()
 **Dance mood:** `setMood(group, 'dance', bpm)` makes a group dance between reactions, one hop per beat with the arms
 pumping in turn. Near bodies play Dance_A or Dance_B.
 
+**Between reactions:**
+
+- People are of different heights.
+- A few calm people at a time fidget for 2–6 s: they talk with their hands, lean in or sit back. The default rate is 3 %
+  of the crowd starting each second; `fidget: 0` turns it off. A fidget never counts as cheering, and a reaction ends it.
+- Members given a flag (`giveFlag`) wave it from the left hand whenever their arms are up (shouting, celebrating). The
+  flag sits exactly where the figure's hand is drawn (`handLocal`, the rig's maths on the CPU). All flags together cost
+  one draw call.
+
 ## The arena's stands — `ArenaStands`
 
 It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, nearCount, { quality })`, `group`, `taken()`,
@@ -111,8 +121,14 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
 | decision | everyone stands (0.6) |
 | result (winner) | the winner's side celebrates (0.92, 7 s), the ends applaud (0.7), the losing side mostly keeps its hands on its head (the fall outranks applause) |
 
-**Fill:** the Friday–Sunday gala fills the stands, and a weekday card fills them to 55 % (`eveningSize`, the same rule as
-the street outside). The crowd's sound follows its excitement (`level()`).
+**Fill:**
+
+- The Friday–Sunday gala fills the stands, and a weekday card fills them to 55 % (`eveningSize`, the same rule as the
+  street outside).
+- The crowd's sound follows its excitement (`level()`).
+- Since the crowd costs a handful of draw calls whatever its size, `DENSITY` (src/arena/program.ts) now takes 70 / 84 / 92 %
+  of the seats on low / medium / high (it was 42 / 68 / 86 %). That still leaves free seats for the player.
+- One supporter in eight in B–C and F–G brought the écurie's flag (green or red).
 
 ## Fans arriving on fight evenings — `ArenaArrivals`
 
