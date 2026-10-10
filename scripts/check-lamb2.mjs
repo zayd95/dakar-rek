@@ -398,6 +398,32 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   await ctx.close();
 }
 
+// ------------------------------------------------------------------ desktop: « Combat classé » avec frappe, on the career's ladder
+{
+  const { ctx, page, errors } = await open({ width: 1280, height: 720 }, false, true);
+  await page.evaluate(() => { const d = window.__dakar; d.state.data.flags.push('ecurie_baobab'); d.state.data.counters.lamb_skill = 1; d.state.data.needs.energie = 100; d.scene('combat_classe'); });
+  await wait(page, () => /Combat classé/.test(document.querySelector('#modal.on h2')?.textContent ?? ''), null, 20000);
+  const menu = await page.evaluate(() => ({ items: [...document.querySelectorAll('#modal .item')].map(b => b.textContent.replace(/\s+/g, ' ').trim()), draft: document.querySelector('#modal .draft')?.textContent ?? '' }));
+  check('ranked: with ?lamb2 « Combat classé » is avec frappe, against a wrestler of the ladder as himself (his style of the six, his level)',
+    menu.items.some(t => /^Affronter \S+ · .+ · niveau \d/.test(t)) && /Lutte avec frappe/.test(menu.draft), menu);
+  await page.evaluate(() => document.querySelector('#modal .item')?.click());
+  await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight', null, 60000);
+  const b0 = await info(page);
+  check('ranked: the bout is avec frappe, classé, the opponent introduced in one line', b0?.discipline === 'avec_frappe' && b0.mode === 'classe' && /^\S+, .+, \d+-\d+/.test(b0.identity ?? ''), { discipline: b0?.discipline, mode: b0?.mode, identity: b0?.identity });
+  const c0 = await page.evaluate(() => ({ counters: { ...window.__dakar.state.data.counters }, bouts: window.__dakar.state.data.career?.bouts?.length ?? 0 }));
+  await page.evaluate(() => window.__dakar.duelAbandon(true));             // the quickest finished bout: an abandon, counted apart
+  await wait(page, () => window.__dakar.duelInfo()?.phase === 'result', null, 30000);
+  await page.evaluate(() => window.__dakar.duelFinish());
+  await wait(page, () => window.__dakar.duelInfo() === null, null, 30000);
+  const c1 = await page.evaluate(() => ({ counters: { ...window.__dakar.state.data.counters }, last: window.__dakar.state.data.career?.bouts?.slice(-1)[0] ?? null, bouts: window.__dakar.state.data.career?.bouts?.length ?? 0 }));
+  const dk = k => (c1.counters[k] ?? 0) - (c0.counters[k] ?? 0);
+  check('ranked: it counts on the career ladder as a ranked bout (mode classe) and in its own record (lamb_af_classe_*), not in the sans-frappe one',
+    c1.bouts === c0.bouts + 1 && c1.last?.mode === 'classe' && c1.last?.res === 'A' && c1.last?.opp === (b0?.identity ?? '').split(',')[0] && dk('lamb_af_classe_ab') === 1 && dk('lamb_classe_ab') === 0 && dk('lamb_classe_v') === 0,
+    { last: c1.last, lamb_af_classe_ab: dk('lamb_af_classe_ab'), lamb_classe_ab: dk('lamb_classe_ab') });
+  check('ranked: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+  await ctx.close();
+}
+
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify({ when: new Date().toISOString(), base, results }, null, 2));
 const failed = results.filter(r => !r.ok).length;

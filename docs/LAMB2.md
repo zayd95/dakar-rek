@@ -317,14 +317,19 @@ L'adresse passe avant le choix enregistré, `?lamb1` avant `?lamb2` (`resolveLam
   sans frappe du menu restent.
 - **Le chemin du lutteur** (Petit combat de quartier, Place au gala, Combat pour le titre) : avec frappe, contre
   l'adversaire de la carrière lui-même ; les tribunes et l'annonceur réagissent à ses moments.
+- **Le menu « Combat classé »** de l'arène : avec frappe, contre le lutteur du classement désigné par la carrière, lui-même
+  (« Affronter Ousmane · Technicien · niveau 4 »). Il compte au classement de la carrière **exactement** comme un combat
+  classé sans frappe (la même entrée `mode: 'classe'`, les mêmes points et le même cachet, `src/career/career.ts` ;
+  aucun champ ni nombre nouveau), et dans son propre bilan `lamb_af_classe_*`, comme les amicaux.
 - **L'écurie** : la séance de Coach Ablaye devient la leçon guidée avec frappe ; les trois exercices sont joués.
 - **La soirée regardée** : le combat principal et les préliminaires avec frappe, IA contre IA (manches de 30 s).
 - **Les bilans** : ces combats comptent dans `lamb_af_*` (et `combats`/`victoires`) ; la carrière reçoit
-  `discipline: 'avec_frappe'`.
+  `discipline: 'avec_frappe'` (qu'elle n'enregistre pas : un combat classé est un combat classé).
+- Les descriptions des actions de l'arène et de l'écurie disent quelle lutte elles proposent.
 
-**Ce qui ne bascule pas** (à décider à part) : le menu « Combat classé » de l'arène reste sans frappe ; le classement de
-la ville mélange les deux disciplines dans un même bilan de saison ; le combat joueur contre joueur avec frappe
-(arbitrage serveur) n'existe pas.
+**Ce qui ne bascule pas** (à décider à part) : les combats amicaux sans frappe restent au menu ; le classement de la
+ville mélange les deux disciplines dans un même bilan de saison (voulu : mêmes points) ; le combat joueur contre joueur
+avec frappe (arbitrage serveur) n'existe pas.
 
 **Les vérifications** : sans `LAMB2=1`, les scripts chargent le jeu sans drapeau — après la bascule ils testeraient
 donc la lutte avec frappe. Pour garder la couverture sans frappe, ils devront charger `?lamb1` : `check-lamb` en entier,
@@ -346,8 +351,8 @@ Ce qui **manque** avant d'en faire la lutte par défaut :
   est-elle jouable au pouce ?).
 - **Les animations** : frappes, empoignade et chute sont des poses provisoires posées sur le squelette (pas de vraie
   animation de projection ni de chute dirigée) — à remplacer par des animations Blender.
-- **Le classé** : le combat classé et le chemin du lutteur sont avec frappe seulement avec le drapeau ; le classement
-  de la ville (carrière) mélange encore les deux disciplines dans un même bilan de saison.
+- **Le classé** : le menu « Combat classé » et le chemin du lutteur sont avec frappe avec le drapeau, aux mêmes points
+  que sans frappe ; le classement de la ville (carrière) compte les deux disciplines dans un même bilan de saison.
 - **Le multijoueur** : un combat joueur contre joueur avec frappe demande l'arbitrage serveur (spec §20), pas fait.
 - **L'équilibrage des styles** (spec §12) : les six styles sont écrits et chacun gagne et perd entre IA ; leur
   difficulté contre un joueur reste à régler avec des parties réelles (Ousmane et Daouda sont niveau 4 au combat
