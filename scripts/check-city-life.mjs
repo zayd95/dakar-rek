@@ -63,7 +63,8 @@ try {
     await page.screenshot({ path: `${out}/${label}-fishing-menu.jpg`, type: 'jpeg', quality: 85 });
     const before = await page.evaluate(() => ({ money: window.__dakar.state.wallet, energy: window.__dakar.state.data.needs.energie }));
     await page.getByRole('button', { name: /^Débarquer les caisses de poisson/ }).click();
-    await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 30000 });
+    // the job runs on game time and is played out (crates carried to the pile): slow under SwiftShader
+    await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 180000 });
     const after = await page.evaluate(() => ({ money: window.__dakar.state.wallet, energy: window.__dakar.state.data.needs.energie }));
     check(`${label}: fishing service pays and consumes energy`, after.money - before.money === 3200 && before.energy - after.energy >= 26);
     // after the job nothing is in focus any more (focus() is null): face the landing place again before acting
@@ -85,7 +86,7 @@ try {
     await page.evaluate(() => window.__dakar.act());
     const wallet = await page.evaluate(() => window.__dakar.state.wallet);
     await page.getByRole('button', { name: /^Jus de bouye frais/ }).click();
-    await page.waitForFunction(() => window.__dakar.pos().mode === 'play');
+    await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 120000 });
     check(`${label}: mall purchase debits once and feeds the player`, (await page.evaluate(() => window.__dakar.state.wallet)) === wallet - 500 && (await page.evaluate(() => window.__dakar.state.data.needs.faim)) > 39);
     if (!touch) {
       await page.evaluate(() => window.__dakar.place(30, 55, Math.PI));
