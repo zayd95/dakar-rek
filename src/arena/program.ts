@@ -101,6 +101,19 @@ export const BILL = {
   right: { id: 'lamine', name: 'Lamine', ecurie: 'Teranga' },
 } as const;
 
+/** A gala's main event: two names and their écuries (« indépendant » for a wrestler without one); `title`: the belt is at stake. */
+export interface Bill { left: { id: string; name: string; ecurie: string }; right: { id: string; name: string; ecurie: string }; title?: boolean }
+let billSource: ((day: number) => Bill | null) | null = null;
+let mainEventSink: ((day: number, winnerId: string | null) => void) | null = null;
+/**
+ * The career module (src/career/roster.ts) names each evening's real card from the city's ladder and hears how the
+ * main event the player watched ended. Without it, the fixed BILL is the card.
+ */
+export function setBillSource(card: (day: number) => Bill | null, result?: (day: number, winnerId: string | null) => void) { billSource = card; mainEventSink = result ?? null; }
+export const billFor = (day: number): Bill => billSource?.(day) ?? BILL;
+export const reportMainEvent = (day: number, winnerId: string | null) => { mainEventSink?.(day, winnerId); };
+/** « Écurie Baobab », or « Indépendant ». */
+export const ecurieLabel = (e: string) => (e === 'indépendant' || !e ? 'Indépendant' : `Écurie ${e}`);
 /**
  * Seed of the evening's bout at a hub's arena on a city day: every device draws the same bout that evening, so friends
  * in the stands watch one bout and one result (src/arena/together.ts). Display only: no record or reward depends on it.

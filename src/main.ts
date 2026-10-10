@@ -51,7 +51,10 @@ import { actionVerb } from './interact/legacy';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
-import { eveningLine } from './arena/eveningCall';
+import { arenaShow } from './arena/module';
+import { eveningLine, placeClock, welcomeFirst } from './arena/eveningCall';
+import { GALA_DONE_COUNTER } from './arena/program';
+import { weatherNow } from './city/weather';
 import { GesturePlayer } from './ui/gesture';
 import { Stride } from './game/stride';
 import { StrideUi } from './ui/stride';
@@ -80,9 +83,10 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 type Quality = 'low' | 'medium' | 'high';
 let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarrek.quality'); if (q === 'low' || q === 'medium' || q === 'high') return q; } catch { /* */ } return /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'medium' : 'high'; })();
 const QUAL = {
-  low: { pr: 1, shadow: 0, crowd: 8, traffic: 3 },
-  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 5 },
-  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 7 },
+  // traffic: the most cars on the road at rush hour (src/social/ambientLife.ts thins them by hour, the weather by rain)
+  low: { pr: 1, shadow: 0, crowd: 8, traffic: 4 },
+  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 7 },
+  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 10 },
 };
 
 const scene = new THREE.Scene();
@@ -177,16 +181,17 @@ function updateLighting(hour: number) {
   const isNight = hour < 6 || hour >= 19;
   sunDir.set(Math.cos(a) * 0.85, Math.sin(a) * 0.95, 0.42).normalize();
   sky.update(hour, sunDir, isNight ? 0 : 1, camera.position);
+  sky.overcast(weatherNow.cloud, isNight);                               // the day's weather (src/city/weather.ts)
   (scene.background as THREE.Color).copy(sky.horizon); (scene.fog as THREE.Fog).color.copy(sky.horizon);
-  (scene.fog as THREE.Fog).near = isNight ? 40 : 60; (scene.fog as THREE.Fog).far = isNight ? 240 : 320;
+  (scene.fog as THREE.Fog).near = (isNight ? 40 : 60) * (1 - 0.5 * weatherNow.rain); (scene.fog as THREE.Fog).far = (isNight ? 240 : 320) * (1 - 0.45 * weatherNow.rain);
   // Moonlight at night: cool, from high up, so streets still read.
   const ld = isNight ? new THREE.Vector3(-0.35, 0.85, 0.3).normalize() : new THREE.Vector3(sunDir.x, Math.max(0.22, sunDir.y), sunDir.z).normalize();
   sun.position.copy(pos).addScaledVector(ld, 90); sun.target.position.copy(pos);
-  sun.intensity = isNight ? 0.55 : 0.8 + 1.5 * d;
+  sun.intensity = (isNight ? 0.55 : 0.8 + 1.5 * d) * (1 - 0.72 * weatherNow.cloud);
   sun.color.set(isNight ? 0x9fb4ff : 0xfff1dc).lerp(new THREE.Color(0xffa45c), isNight ? 0 : low * 0.85);
   hemi.intensity = isNight ? 0.75 : 0.7 + 0.35 * d;
-  hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55));
-  hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52);
+  hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55 - 0.25 * weatherNow.cloud));
+  hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52).multiplyScalar(1 - 0.35 * weatherNow.wet);
   renderer.toneMappingExposure = isNight ? 1.3 : 1.0;
   if (inside) {
     // indoors: the sun only comes through the shutters; the ceiling light does the work
@@ -213,7 +218,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   if (world) { scene.remove(world.group); world.dispose(); }
   setGrainEnabled(quality !== 'low');                     // procedural surface noise is the main per-pixel cost
   extra.clear();
-  world = buildHub(id, quality === 'low');
+  world = buildHub(id, quality === 'low', quality);
   scene.add(world.group);
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
   extra.add(crowd.group, traffic.group);
@@ -348,7 +353,18 @@ const ctx: GameCtx = {
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
   walkTo: id => setDestination(id),
+  setPublicRecord: rec => presence.setRecord(rec),
   startBout(m, style, after) { if (lambScene || !world?.arena) return false; startDuel(m, style as StyleId | undefined, after); return !!lambScene; },
+  travel(dest, at, label) {
+    if (!world) return;
+    mode = 'busy'; input.enabled = false; input.reset();
+    hud.fade(true, label ?? HUB_NAMES[dest]);
+    setTimeout(() => {
+      loadHub(dest, at);
+      hud.fade(false);
+      mode = 'play'; input.enabled = true; saveNow();
+    }, 700);
+  },
 };
 ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
@@ -475,7 +491,7 @@ function runSpecial(a: Action) {
     case 'enter': if (nearest) enterInterior(nearest); break;
     case 'exit': exitInterior(); break;
     case 'jobs': economy.openJobs(nearest ?? undefined); break;
-    case 'shop': economy.openShop(); break;
+    case 'shop': economy.openShop(false, nearest?.name ?? ''); break;
     case 'business': economy.openBusiness(); break;
   }
 }
@@ -544,12 +560,15 @@ function openFriendly() {
     return { label: `${st.name} · ${st.label} · niveau ${level}`, detail: st.hint, onPick: () => startDuel('amical', id) };
   }), `<div class="draft">Lutte sans frappe. Adversaires fictifs. La tenue, les danses et les accessoires n’ont aucun effet sur le combat ; l’argent non plus.</div>`);
 }
-/** Ranked bout: the opponent is assigned by the ranked record (style rotation, level from wins and defeats). */
+/** The opponent a module (the career's roster) names for a bout of this mode, if any. */
+function opponentPick(m: 'amical' | 'classe') { for (const x of MODULES) { const p = x.opponent?.(ctx, m); if (p) return p; } return null; }
+/** Ranked bout: the career's roster names the opponent (else the ranked record's style rotation and level). */
 function openRanked() {
   mode = 'menu';
-  const r = record(state.data.counters, 'classe'), level = opponentLevel(r.v, r.d), st = STYLES[rankedStyle(r.v + r.d + r.n)];
+  const r = record(state.data.counters, 'classe'), pick = opponentPick('classe');
+  const st = STYLES[(pick?.style as StyleId | undefined) ?? rankedStyle(r.v + r.d + r.n)] ?? STYLES.costaud, level = pick?.level ?? opponentLevel(r.v, r.d);
   hud.openMenu('Combat classé', `Classement local (cet appareil) · ${r.v} V · ${r.d} D · ${r.n} N`, [
-    { label: `Affronter ${st.name} · ${st.label} · niveau ${level}`, detail: st.hint, onPick: () => startDuel('classe', st.id) },
+    { label: `Affronter ${pick?.name ?? st.name} · ${st.label} · niveau ${level}`, detail: st.hint, onPick: () => startDuel('classe', st.id) },
   ], `<div class="draft">Lutte sans frappe · ${RULES_STATUS}. Un abandon est compté à part : ce n’est ni une victoire ni une défaite.</div>`);
 }
 
@@ -562,9 +581,12 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () 
   hud.closeModal();
   mode = 'scene';
   const rec = boutMode === 'entrainement' ? null : record(state.data.counters, boutMode);
-  const style = boutMode === 'entrainement' ? PARTNER : STYLES[styleId ?? (boutMode === 'classe' ? rankedStyle(rec!.v + rec!.d + rec!.n) : 'costaud')];
+  let style = boutMode === 'entrainement' ? PARTNER : STYLES[styleId ?? (boutMode === 'classe' ? rankedStyle(rec!.v + rec!.d + rec!.n) : 'costaud')];
   const crowd = boutMode === 'entrainement' ? 0 : quality === 'low' ? 12 : quality === 'medium' ? 18 : 24;
-  const level = rec ? opponentLevel(rec.v, rec.d) : 1;
+  let level = rec ? opponentLevel(rec.v, rec.d) : 1;
+  // the career's roster names the opponent (a wrestler of the city's ladder, with their style and level)
+  const pick = boutMode === 'entrainement' ? null : opponentPick(boutMode);
+  if (pick) { style = { ...(STYLES[pick.style as StyleId] ?? style), name: pick.name }; level = pick.level; }
   const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level, ring: boutMode === 'entrainement' ? 5 : 7.6 });
   duel.onDone = () => {
     // only a finished bout counts; a bout cut short without a result (e.g. leaving the hub) records nothing
@@ -849,17 +871,26 @@ function progressMeta() {
 
 // ------------------------------------------------------------------ main loop
 let last = performance.now(), statsT = 0;
+/**
+ * Debug profiler (?debug: `__dakar.perfOn(true)`, then `__dakar.perf()`): milliseconds per system and per module of the
+ * frame loop, smoothed, for the evening performance budget (scripts/check-perf-evening.mjs). Off: one boolean test.
+ */
+let profOn = false;
+const prof = new Map<string, number>();
+const profMark = (name: string, t0: number) => { const v = performance.now() - t0; const o = prof.get(name); prof.set(name, o === undefined ? v : o * 0.92 + v * 0.08); };
 function frame(now: number) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (document.hidden || !world) return;
+  const tFrame = profOn ? performance.now() : 0;
 
   if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (legacyRun) legacyRun.stop(); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
   if (input.takeAction() && ((mode === 'play' && interactions.focus) || activities.running || legacyRun)) hud.onAction();
   activities.update(dt);
   { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
-  for (const m of MODULES) m.update?.(ctx, dt);
+  if (profOn) for (const m of MODULES) { const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }
+  else for (const m of MODULES) m.update?.(ctx, dt);
 
   const drag = input.takeDrag();
   drag.yaw += input.rotateKey() * dt * 1.8;
@@ -904,9 +935,13 @@ function frame(now: number) {
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
     if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
   } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
+  let tSys = profOn ? performance.now() : 0;
   npcLife.update(dt, pos, freeCam?.p ?? camera.position);
+  if (profOn) { profMark('npcLife', tSys); tSys = performance.now(); }
   crowd?.update(dt); traffic?.update(dt); life?.update(dt); world.tick(dt);
+  if (profOn) { profMark('walkers+traffic+life+world', tSys); tSys = performance.now(); }
   ambient?.update(dt, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90);
+  if (profOn) { profMark('ambient(npc.ts)', tSys); tSys = performance.now(); }
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
   const space = presenceSpace();
@@ -930,10 +965,12 @@ function frame(now: number) {
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
-  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state), ev = eveningLine(ctx, sg?.id === 'ibou_welcome'); eveningTarget = ev?.target ?? null; guideNpc = !ev && sg && 'npc' in sg ? sg.npc : null; guideJob = !ev && sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' ? walkingHint() ?? (ev ? withBearing(ev.text, ev.target) : null) ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
+  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state), ev = eveningLine(ctx, welcomeFirst(sg?.id === 'ibou_welcome', state.data)); eveningTarget = ev?.target ?? null; guideNpc = !ev && sg && 'npc' in sg ? sg.npc : null; guideJob = !ev && sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' && !arenaShow.watching() ? walkingHint() ?? (ev ? withBearing(ev.text, ev.target) : null) ?? sg?.hint ?? null : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
+  if (profOn) { profMark('rest of update', tSys); tSys = performance.now(); }
   renderer.render(scene, camera);
+  if (profOn) { profMark('render (CPU)', tSys); profMark('frame (JS)', tFrame); }
 }
 
 // ------------------------------------------------------------------ start
@@ -966,6 +1003,26 @@ if (DEBUG) {
     act() { hud.onAction(); },
     drawCalls: () => renderer.info.render.calls,
     tris: () => renderer.info.render.triangles,
+    /** Debug profiler: on/off, and the smoothed milliseconds per system and module (see the main loop). */
+    perfOn(on = true) { profOn = on; if (on) prof.clear(); },
+    perf: () => Object.fromEntries([...prof].map(([k, v]) => [k, Math.round(v * 1000) / 1000])),
+    /**
+     * Draw calls and triangles of this view, and each top-level group's share (the frame rendered again with that group
+     * hidden; shadows included). For the evening performance budget.
+     */
+    renderBreakdown() {
+      const measure = () => { renderer.render(scene, camera); return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; };
+      const base = measure(), by: Record<string, { calls: number; tris: number }> = {};
+      const groups = [...extra.children, ...scene.children.filter(c => c !== extra)];
+      for (const g of groups) {
+        if (!g.visible) continue;
+        g.visible = false; const m = measure(); g.visible = true;
+        const key = g.name || g.type, o = by[key] ?? (by[key] = { calls: 0, tris: 0 });
+        o.calls += base.calls - m.calls; o.tris += base.tris - m.tris;
+      }
+      measure();
+      return { base, by };
+    },
     nearestInteractable: () => nearest?.name ?? null,
     focus: () => { const t = interactions.focus; return t ? { id: t.id, name: t.name, kind: t.kind, space: t.space, primary: interactions.primary(t)?.label ?? null, all: interactions.all(t).map(a => a.label) } : null; },
     seated: () => seated?.id ?? null,

@@ -105,6 +105,8 @@ interface Member {
 }
 interface NearBody {
   h: Humanoid; m: Member; w: number; seen: boolean;
+  /** Greeted by the player (src/interact/people.ts turns the body and holds Talk): seconds left facing them. */
+  greet: number; greetYaw: number;
   root: THREE.Object3D;
   bones: { upper: THREE.Object3D; fore: THREE.Object3D; side: 1 | -1 }[];
 }
@@ -151,6 +153,9 @@ const _fr = new THREE.Frustum(), _pm = new THREE.Matrix4(), _sp = new THREE.Sphe
 const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qd = new THREE.Quaternion(), _qs = new THREE.Quaternion(), _qi = new THREE.Quaternion();
 const _va = new THREE.Vector3(), _vb = new THREE.Vector3();
 
+/** The cleared view of a seated player: radius around them, and a strip ahead (length, half width), in metres. */
+export const CLEAR = { near: 1.3, ahead: 2.8, side: 0.5, widen: 0.4, hide: 1.0 } as const;
+
 /** Every crowd alive (the crowd module's debug entries list them). */
 export const LIVE_CROWDS = new Set<Crowd>();
 
@@ -169,6 +174,8 @@ export class Crowd {
   private eye: THREE.Vector3 | null = null;
   private frustum: THREE.Frustum | null = null;
   private focus: { x: number; z: number; yaw: number | null } | null = null;
+  /** The seated player's view: nobody stands up right beside them or in front of them on the way to what they watch. */
+  private clear: { x: number; z: number; fx: number; fz: number } | null = null;
   private layoutDirty = true;
   private lodT = 0;
   private nearT = 0;
@@ -176,6 +183,7 @@ export class Crowd {
   private flags: THREE.InstancedMesh | null = null;
   private flagged: Member[] = [];
   private fidgeting = new Set<Member>();
+  private chatters = new Set<Member>();
   private fidgetRate: number;
   private fidgetT = 0;
 
@@ -282,7 +290,9 @@ export class Crowd {
   setMood(group: string, mood: Mood, bpm = 120) {
     for (const m of this.members) if (group === 'all' || m.slot.tags?.includes(group)) {
       if (m.mood === mood && m.bpm === bpm) continue;
-      m.mood = mood; m.bpm = bpm; this.retarget(m);
+      m.mood = mood; m.bpm = bpm;
+      if (mood === 'chat') this.chatters.add(m); else this.chatters.delete(m);
+      this.retarget(m);
     }
   }
   /** This member waves a flag of `colour` whenever the arms go up (shouting, celebrating). */
@@ -298,6 +308,13 @@ export class Crowd {
       this.group.add(this.flags);
     }
   }
+  /** One member's mood (a person joining a group chat, leaving it for a walk). */
+  setMemberMood(id: string, mood: Mood, bpm = 120) {
+    const m = this.byId.get(id); if (!m || (m.mood === mood && m.bpm === bpm)) return;
+    m.mood = mood; m.bpm = bpm;
+    if (mood === 'chat') this.chatters.add(m); else this.chatters.delete(m);
+    this.retarget(m);
+  }
   /** Everyone in the group settles back at once. */
   calm(group = 'all') {
     for (const m of this.members) if (group === 'all' || m.slot.tags?.includes(group)) if (calm(m.st)) this.retarget(m);
@@ -311,7 +328,7 @@ export class Crowd {
   private retarget(m: Member, snap = false) {
     const kind = m.on ? m.st.kind : null;
     if ((kind || !m.on) && m.fidget) { m.fidget = null; this.fidgeting.delete(m); }
-    const standing = standingFor(m.slot.seated, kind);
+    const standing = standingFor(m.slot.seated, kind) && !(m.slot.seated && this.inClearView(m.slot.x, m.slot.z));
     if (standing !== m.standing) { m.standing = standing; this.layoutDirty = true; }
     m.target = poseFor(kind, standing, m.speed, m.mood, m.bpm, m.fidget);
     if (snap) { Object.assign(m.pose, m.target); m.easing = false; } else m.easing = true;
@@ -322,6 +339,35 @@ export class Crowd {
   setFocus(x: number, z: number | null, yaw: number | null = null) {
     this.focus = z === null ? null : { x, z, yaw };
     this.nearT = 0;
+  }
+  /**
+   * Keep the view of someone seated at (x, z) facing `yaw` clear (null: nobody seated): the people right beside them and
+   * those in front of them on their sight line (the next two rows down, a widening strip) stay seated whatever happens —
+   * they cheer, clap and hold their heads from their seats — so no head or shoulder ever fills the player's view, and
+   * the stands still look full.
+   */
+  setClearView(v: { x: number; z: number; yaw: number } | null) {
+    const was = new Set(this.members.filter(m => this.inClearView(m.slot.x, m.slot.z)));
+    this.clear = v ? { x: v.x, z: v.z, fx: Math.sin(v.yaw), fz: Math.cos(v.yaw) } : null;
+    for (const m of this.members) if (was.has(m) || this.inClearView(m.slot.x, m.slot.z)) this.retarget(m);
+    this.layoutDirty = true; this.nearT = 0;
+  }
+  /** Whether a member stands in the cleared view (pure geometry, exported for the tests through `inClearView`). */
+  inClearView(x: number, z: number) {
+    const c = this.clear; if (!c) return false;
+    const dx = x - c.x, dz = z - c.z;
+    if (dx * dx + dz * dz < CLEAR.near * CLEAR.near) return true;
+    const fwd = dx * c.fx + dz * c.fz, lat = Math.abs(-dx * c.fz + dz * c.fx);
+    return fwd > 0 && fwd < CLEAR.ahead && lat < CLEAR.side + CLEAR.widen * fwd;
+  }
+  /**
+   * Right beside the seated player (within a metre: the neighbours on either side): not drawn at all, so a head and
+   * shoulder never fill the screen when the gaze follows the bout sideways. They keep their seats.
+   */
+  besideView(x: number, z: number) {
+    const c = this.clear; if (!c) return false;
+    const dx = x - c.x, dz = z - c.z;
+    return dx * dx + dz * dz < CLEAR.hide * CLEAR.hide;
   }
   /** The camera of this frame: LOD distances, and near bodies outside the view are neither drawn nor animated. */
   setCamera(cam: THREE.Camera) {
@@ -340,7 +386,7 @@ export class Crowd {
     const L = this.lod, mid2 = L.mid * L.mid, far2 = L.far * L.far, e = this.eye;
     for (const m of this.members) {
       let lod: Member['lod'];
-      if (!m.on) lod = 0;
+      if (!m.on || this.besideView(m.slot.x, m.slot.z)) lod = 0;
       else if (m.body) lod = 3;
       else if (!e) lod = L.mid > 0 ? 2 : 1;
       else {
@@ -359,7 +405,7 @@ export class Crowd {
       const r2 = this.nearRadius * this.nearRadius;
       const scored: { m: Member; s: number }[] = [];
       for (const m of this.members) {
-        if (!m.on) continue;
+        if (!m.on || this.besideView(m.slot.x, m.slot.z)) continue;
         const dx = m.slot.x - anchor.x, dz = m.slot.z - anchor.z, d2 = dx * dx + dz * dz;
         if (d2 > r2 || d2 < 0.04) continue;
         const d = Math.sqrt(d2);
@@ -383,6 +429,9 @@ export class Crowd {
     const h = new Humanoid(personLook(m.look));
     h.group.userData.noLod = true;
     cullHumanoid(h.group);
+    // no shadow pass for the crowd's full bodies (it doubles their ten draw calls): the stands are under the roof's
+    // shade, and on the street the crowd's round ground shadow sits under them like under the figures
+    h.group.traverse(o => { if ((o as THREE.Mesh).isMesh) o.castShadow = false; });
     const root = h.group.children.find(c => c.name === 'Scene') ?? h.group.children[0];
     const bones: NearBody['bones'] = [];
     for (const [s, side] of [['L', 1], ['R', -1]] as const) {
@@ -390,7 +439,7 @@ export class Crowd {
       if (upper && fore) bones.push({ upper, fore, side });
     }
     this.group.add(h.group);
-    const b: NearBody = { h, m, w: 0, seen: true, root, bones };
+    const b: NearBody = { h, m, w: 0, seen: true, root, bones, greet: 0, greetYaw: 0 };
     m.body = b; m.lod = 3; this.layoutDirty = true;
     return b;
   }
@@ -426,8 +475,15 @@ export class Crowd {
       if (m.fidgetLeft <= 0) { m.fidget = null; this.fidgeting.delete(m); this.retarget(m); }
     }
     this.fidgetT -= dt;
-    if (this.fidgetT > 0 || !this.fidgetRate || !this.members.length) return;
+    if (this.fidgetT > 0 || !this.members.length) return;
     this.fidgetT = 0.5;
+    // people chatting take turns talking with their hands
+    for (const m of this.chatters) {
+      if (!m.on || m.st.kind || m.st.next || m.fidget || m.speed > 0.2 || this.rand() > 0.22) continue;
+      m.fidget = 'talk'; m.fidgetLeft = 1.2 + this.rand() * 1.8;
+      this.fidgeting.add(m); this.retarget(m);
+    }
+    if (!this.fidgetRate) return;
     const n = this.members.length * this.fidgetRate * 0.5;
     let k = Math.floor(n) + (this.rand() < n % 1 ? 1 : 0);
     for (let tries = 0; k > 0 && tries < k * 4; tries++) {
@@ -483,9 +539,12 @@ export class Crowd {
     g.visible = m.on && b.seen;
     if (!g.visible) return;
     const walking = m.speed > 0.2, kind = m.st.kind;
-    g.position.set(s.x, m.standing ? s.y : s.y - SIT_HIPS, s.z); g.rotation.y = s.yaw;
+    // the player greeted this person (People set Talk and turned them): standing still, they face the player a moment
+    if (b.h.hold === 'Talk' && b.greet <= 0 && !walking && m.standing) { b.greet = 2.6; b.greetYaw = g.rotation.y; }
+    b.greet = Math.max(0, b.greet - dt);
+    g.position.set(s.x, m.standing ? s.y : s.y - SIT_HIPS, s.z); g.rotation.y = b.greet > 0 ? b.greetYaw : s.yaw;
     const dancing = !kind && m.mood === 'dance' && m.standing;
-    const clip: Clip | null = walking ? null : !m.standing ? 'Sit' : kind === 'celebrate' ? 'Celebrate' : dancing ? (m.i % 2 ? 'Dance_B' : 'Dance_A') : 'Idle';
+    const clip: Clip | null = walking ? null : !m.standing ? 'Sit' : b.greet > 0 ? 'Talk' : kind === 'celebrate' ? 'Celebrate' : dancing ? (m.i % 2 ? 'Dance_B' : 'Dance_A') : 'Idle';
     b.h.hold = clip;
     if (!animate) return;
     b.h.animate(dt, walking ? m.speed : 0);
@@ -503,6 +562,14 @@ export class Crowd {
       aim(upper, _va.fromArray(d.upper), _qs, b.w);
       aim(fore, _vb.fromArray(d.fore), _qs, b.w);
     }
+  }
+
+  /**
+   * The full humanoids of this crowd as people of the street (src/interact/people.ts): the player can greet the
+   * spectator next to them or a passer-by, like anyone in the city.
+   */
+  people(): { id: string; obj: THREE.Object3D; h: Humanoid; female: boolean; seated: boolean; bias: number }[] {
+    return this.bodies.filter(b => b.m.on).map(b => ({ id: `crowd:${this.name}:${b.m.slot.id}`, obj: b.h.group, h: b.h, female: b.m.look.style === 'dress', seated: !b.m.standing, bias: 0.8 }));
   }
 
   stats() {

@@ -9,7 +9,8 @@ import { GALA, type Street } from './program';
  * By moto: a guarded moto parking on the sand beside the arena, east of the gate, off the queue lane and the drummers.
  * A « gardien de motos » asks 100 F, shown before paying, paid once per evening. He keeps the place next to him for the
  * player's moto. The other motos fill the rows as the doors open (more on a gala night), and leave after the gala.
- * By car rapide: on a fight evening the Ligne 23 cars carry fans in their écurie's colours towards the « Arène » stop.
+ * By car rapide: on a fight evening the Ligne 23 cars (its evening route round the arena block, `23s`, src/transport/lines.ts)
+ * carry fans in their écurie's colours towards the « Arène » stop.
  */
 
 /** The gardien's fee for the evening (game balance, provisional), and the save counter of the day it was paid for. */
@@ -100,7 +101,7 @@ export function lotTaken(lot: MotoLot, n: number, mine: { x: number; z: number }
  * with a few people in their own clothes (−1).
  */
 export const FAN_COLOURS: readonly number[] = [ECURIES[0].colour, ECURIES[1].colour, ECURIES[0].colour, -1, ECURIES[1].colour, ECURIES[0].colour, -1];
-/** The stop the fans ride to, and the line that serves it. */
-export const FAN_STOP = 'arene', FAN_LINE = '23';
+/** The stop the fans ride to, and the line that serves it on fight evenings (Ligne 23's evening route, 16 h – midnight). */
+export const FAN_STOP = 'arene', FAN_LINE = '23s';
 /** Fans ride towards the arena while it is set up and while the doors are open (not after the gala). */
 export const fansRide = (street: Street) => street === 'setup' || street === 'doors';

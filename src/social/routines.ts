@@ -47,6 +47,7 @@ const S = (from: number, to: number, place: PlaceSpec, act: Activity): Slot => (
 const BEACH_IN: [number, number][] = [[-125, 60], [-131.6, 60], [-131.6, 66.5]];           // Corniche crossing to Soumbédioune
 const PIKINE_SHOP_IN: [number, number][] = [[-95.5, 86], [-95.5, 79.6]];                   // Boutique Diallo aisle, behind the counter
 const ATELIER_IN: [number, number][] = [[85, 86], [85, 79.6]];                              // Atelier Ndeye aisle
+const GARAGE_IN: [number, number][] = [[102.6, -6], [102.6, -11.1]];                        // Garage Modou: the aisle by the bench (shop kit 'garage')
 const PIK = {
   courtyard: (label = 'devant chez lui, à côté de ta chambre') => P('home', label, { ox: 6, oz: 0, yaw: PI }),
   attaya1: P('city:square', 'sur la grand-place, à l’attaya', { ox: -0.1, oz: -2.4, yaw: PI, sit: true, stool: true }),
@@ -76,9 +77,9 @@ export const ROUTINES: Routine[] = [
     id: 'modou', hub: 'pikine',
     slots: [
       S(0, 7, abs(113.6, -20, 'chez lui, derrière le garage', { yaw: -PI / 2 }), 'home'),
-      S(7, 13, P('garage', 'au Garage Modou', { ox: -4, oz: 0 }), 'work'),
+      S(7, 13, P('abs', 'derrière son établi, au Garage Modou', { ox: 98.84, oz: -11.1, yaw: 0, approach: GARAGE_IN }), 'work'),
       S(13, 15, P('maiga', 'à la Maïga du marché (déjeuner)', { maiga: 1 }), 'eat'),
-      S(15, 19, P('garage', 'au Garage Modou', { ox: -4, oz: 0 }), 'work'),
+      S(15, 19, P('abs', 'derrière son établi, au Garage Modou', { ox: 98.84, oz: -11.1, yaw: 0, approach: GARAGE_IN }), 'work'),
       S(19, 22, PIK.attaya2, 'attaya'),
       S(22, 24, abs(113.6, -20, 'chez lui, derrière le garage', { yaw: -PI / 2 }), 'home'),
     ],

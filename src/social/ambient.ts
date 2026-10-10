@@ -91,6 +91,12 @@ export interface AmbientSpot {
   seatApproach?: Readonly<Record<string, Pt>>;
   /** PlaceSpec id when the spot comes from the Places registry. */
   place?: string;
+  /**
+   * A stocked shop (src/world/shopKit.ts, spec §31): people come in through `door`, do their activity at the displays
+   * (`stands`) or seats, then queue at `checkout` (the first place is at the counter) to pay before leaving; `path`
+   * walks them around the furniture inside.
+   */
+  shop?: { door: Pt; checkout: readonly StandSlot[]; path(a: Pt, b: Pt): Pt[] | null };
   /** Where the spot comes from (debug). */
   source: 'place' | 'legacy' | 'seats' | 'special' | 'sea' | 'corner' | 'interior';
 }
@@ -236,13 +242,15 @@ export function planDemand(spots: readonly AmbientSpot[], acts: readonly Ambient
   hour: number; dow: number; scale: number; px: number; pz: number; near: number; far: number; cap: number;
   /** Only spots of this space are planned ('street', or the interior the player is in: all of it counts as near). */
   space: string; seatKind: (id: string) => string | null;
+  /** An evening's event makes some spots busier (the Dibi after a gala): a factor per spot, 1 for the others. */
+  boost?: (s: AmbientSpot) => number;
 }): DemandRow[] {
   const rows: DemandRow[] = [];
   for (const s of spots) {
     if (s.space !== o.space) continue;
     const d = s.space === 'street' ? Math.hypot(s.x - o.px, s.z - o.pz) : 0;
     if (d > o.far) continue;
-    const k = d <= o.near ? 1 : 0.5;
+    const k = (d <= o.near ? 1 : 0.5) * (o.boost?.(s) ?? 1);
     // activities of one spot share its places: seats, standing places, rows (Friday prayer and daily prayer, chats)
     const used: Record<string, number> = {};
     for (const a of acts) {

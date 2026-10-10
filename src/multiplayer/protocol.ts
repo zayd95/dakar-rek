@@ -40,7 +40,7 @@ export function parseArena(value: unknown): ArenaPresence | null {
 /** Optional fields gameplay modules add to the player's presence (GameModule.presence), each validated in parseMove. */
 export type PresenceExtras = Pick<Move, 'arena'>;
 /** `tag` is a stable public key derived server-side from a private device key: mute/block survive reconnects without revealing the key. */
-export interface Peer extends Move { id: string; name: string; look: number; tag?: string; updatedAt: number }
+export interface Peer extends Move { id: string; name: string; look: number; tag?: string; rec?: string; updatedAt: number }
 export interface ChatMessage { type: 'chat'; id: string; from: string; name: string; tag?: string; channel: ChatChannel; text: string; at: number }
 export interface ChatAck { type: 'chat-ack'; id: string; ok: boolean; reason?: ChatFailure; delivered?: number; duplicate?: boolean; at?: number }
 export type ServerMessage =
@@ -58,6 +58,22 @@ export function nickname(value: unknown): string {
 }
 /** Private per-device key (random hex) sent on connect; only its hash is ever shared. */
 export function deviceKey(value: unknown): string | null { return typeof value === 'string' && /^[a-f0-9]{32}$/.test(value) ? value : null; }
+/** Rungs of the làmb ladder a public record may name (src/career/career.ts RUNGS labels; a test keeps them in step). */
+export const REC_RUNGS = ['Petits combats', 'Undercards', 'Combats classés', 'Adversaires réputés', 'Contender', 'Champion', 'Roi des Arènes'] as const;
+export const REC_MAX = 48;
+/**
+ * A player's public sporting record, shown to others under the name: « <rung> », optionally « · <wins>-<losses> »
+ * (« -<draws> ») and « · Écurie <Name> », nothing else. Anything that does not fit this shape is refused (undefined).
+ */
+export function recordTag(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value || value.length > REC_MAX) return undefined;
+  const parts = value.normalize('NFC').split(' · ');
+  if (parts.length > 3 || !(REC_RUNGS as readonly string[]).includes(parts[0])) return undefined;
+  let i = 1;
+  if (parts[i] !== undefined && /^\d{1,4}-\d{1,4}(?:-\d{1,4})?$/.test(parts[i])) i++;
+  if (parts[i] !== undefined && /^Écurie \p{L}{2,16}$/u.test(parts[i])) i++;
+  return i === parts.length ? parts.join(' · ') : undefined;
+}
 export function lookIndex(value: unknown): number {
   const n = Number(value); return Number.isInteger(n) && n >= 0 && n < 6 ? n : 0;
 }

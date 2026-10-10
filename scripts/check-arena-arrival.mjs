@@ -2,8 +2,8 @@
 //   by moto: ride into the guarded parking by the gate; the gardien greets and asks 100 F (price shown before paying,
 //   paid once); the moto goes into the place he keeps; walk to the gate; after the gala the rows empty, the moto is
 //   still there, ride away and he says goodbye (Wolof with its gloss, French);
-//   by car rapide: on a fight evening the Ligne 23 cars carry fans in their écurie's colours; ride from « Rue 10 » to
-//   « Arène », get off with a group that walks to the queue.
+//   by car rapide: on a fight evening the Ligne 23 cars (evening route 23s) carry fans in their écurie's colours; ride
+//   from « Marché » to « Arène », get off with a group that walks to the queue.
 // Usage: node scripts/check-arena-arrival.mjs [baseUrl] [outDir]   (needs a running build, e.g. `npx vite preview --port 4213`)
 // On a shared machine run browsers one at a time: flock /tmp/dakar-browser.lock node scripts/check-arena-arrival.mjs …
 // ONLY=desktop or ONLY=phone runs one viewport.
@@ -124,11 +124,12 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
 
   // 5. By car rapide: fans aboard the Ligne 23 towards « Arène », a group gets off with the player
   await d(dd => { window.__dakar.state.data.counters.arena_gala_day = dd - 1; window.__dakar.setHour(17.6); }, day);
-  await until(() => !!window.__dakar.transport.lines()[0]?.fans, null, 30000);
-  const L = (await d(() => window.__dakar.transport.lines()))[0];
-  const ri = L.stops.findIndex(s => s.id === 'rue10'), ai = L.stops.findIndex(s => s.id === 'arene');
-  check(`${label}: on a fight evening the Ligne 23 cars carry fans in their écurie's colours (but not as they pull in at « Arène »)`,
-    !!L.fans && L.fans.dest === 'arene' && L.vehicles.some(v => v.colours?.includes(0x1a7a44) && v.colours.includes(0xc8322a)) && L.vehicles.every(v => v.dwell === ai ? !v.colours : true), JSON.stringify({ fans: L.fans, cars: L.vehicles.map(v => ({ dwell: v.dwell, colours: v.colours })) }));
+  await until(() => !!window.__dakar.transport.lines().find(l => l.id === '23s')?.fans, null, 30000);
+  const line23s = () => d(() => window.__dakar.transport.lines().find(l => l.id === '23s'));
+  const L = await line23s();
+  const ai = L.stops.findIndex(s => s.id === 'arene'), ri = (ai + L.stops.length - 1) % L.stops.length;   // the stop before « Arène »
+  check(`${label}: on a fight evening the Ligne 23 cars (evening route) carry fans in their écurie's colours (but not as they pull in at « Arène »)`,
+    L.on && !!L.fans && L.fans.dest === 'arene' && L.vehicles.some(v => v.colours?.includes(0x1a7a44) && v.colours.includes(0xc8322a)) && L.vehicles.every(v => v.dwell === ai ? !v.colours : true), JSON.stringify({ fans: L.fans, cars: L.vehicles.map(v => ({ dwell: v.dwell, colours: v.colours })) }));
   const st = L.stops[ri];
   await d(p => window.__dakar.place(p.x, p.z, 0), st.alight);
   await until(() => window.__dakar.focus()?.primary === 'Monter dans le prochain', null, 30000);
@@ -137,10 +138,10 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const wait = await d(([l, s]) => window.__dakar.transport.nextAt(l, s), [L.id, ri]);
   if (wait > 8) await d(w => window.__dakar.transport.warp(w), wait - 6);
   await until(() => window.__dakar.transport.trip().phase === 'riding', null, 120000);
-  const car = await d(() => { const t = window.__dakar.transport.trip(); return window.__dakar.transport.lines()[0].vehicles.find(v => v.id === t.vehicle); });
-  check(`${label}: aboard from « Rue 10 »: fans in green and red ride along`, !!car?.colours?.length, JSON.stringify(car?.colours));
+  const car = await d(() => { const t = window.__dakar.transport.trip(); return window.__dakar.transport.lines().find(l => l.id === t.line).vehicles.find(v => v.id === t.vehicle); });
+  check(`${label}: aboard from « ${st.name} »: fans in green and red ride along`, !!car?.colours?.length, JSON.stringify(car?.colours));
   await shot('5-aboard');
-  await until(() => { const t = window.__dakar.transport.trip(); return window.__dakar.transport.lines()[0].vehicles.find(v => v.id === t.vehicle)?.dwell === -1; }, null, 60000);
+  await until(() => { const t = window.__dakar.transport.trip(); return window.__dakar.transport.lines().find(l => l.id === t.line).vehicles.find(v => v.id === t.vehicle)?.dwell === -1; }, null, 60000);
   const dropped0 = (await d(() => window.__dakar.arrivals.info())).dropped;
   await ready();
   await d(() => window.__dakar.act());                                                                           // « Descendre au prochain arrêt »
@@ -149,7 +150,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await until(() => window.__dakar.transport.trip().phase === 'idle' && window.__dakar.pos().mode === 'play', null, 120000);
   await page.waitForTimeout(1500);
   const p2 = await d(() => window.__dakar.pos()), arr = await d(() => window.__dakar.arrivals.info());
-  const after = (await d(() => window.__dakar.transport.lines()))[0].vehicles.find(v => v.id === car.id);
+  const after = (await line23s()).vehicles.find(v => v.id === car.id);
   check(`${label}: off at « Arène » with a group of fans that walks to the queue; the car goes on without them`,
     req === ai && Math.hypot(p2.x - L.stops[ai].alight.x, p2.z - L.stops[ai].alight.z) < 0.8 && arr.dropped.rapide > dropped0.rapide && arr.dropped.fans > dropped0.fans && arr.walking > 0 && !after?.colours,
     JSON.stringify({ req, ai, p2, dropped: arr.dropped, walking: arr.walking, colours: after?.colours }));

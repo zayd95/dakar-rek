@@ -28,9 +28,10 @@ import {
  *   parking spot), so it is found again after the bout. The other motos (instanced, three meshes) fill the rows as
  *   the doors open, more on a gala night, and leave one by one after the gala. When the player rides away he says
  *   goodbye: Wolof with its gloss, French narration.
- * - By car rapide: while the arena is set up and the doors are open, the Ligne 23 cars carry fans in their écurie's
- *   colours towards the « Arène » stop (the transport's own passengers, `transport.setFans`). They get off there, and
- *   src/crowd/arrivals.ts walks the group to the queue (`transport.onStop`), with the player when they ride along.
+ * - By car rapide: while the arena is set up and the doors are open, the Ligne 23 cars of the evening route (`23s`)
+ *   carry fans in their écurie's colours towards the « Arène » stop (the transport's own passengers,
+ *   `transport.setFans`). They get off there, and src/crowd/arrivals.ts walks the group to the queue (it sees the car
+ *   pull in through `transport.dwellingAt`, and `transport.hasFans` for the bigger group), with the player when they ride along.
  * No new mechanics: places, the runner, the owned vehicle's parking record, the transport's passengers.
  */
 

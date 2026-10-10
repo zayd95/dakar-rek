@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import type { GameState } from '../core/state';
+import type { HubId } from '../core/types';
 import type { Input } from '../core/input';
 import type { Hud, MenuItem } from '../ui/hud';
 import type { Interactions } from '../interact/system';
@@ -19,8 +20,14 @@ import { assetKitModule } from './assetKit';
 import { transport } from '../transport/module';
 import { moto } from '../transport/motoModule';
 import { car } from '../transport/carModule';
+import { taxi } from '../transport/taxi';
+import { arenaStreetsModule } from '../city/arena';
+import { weatherModule } from '../city/weather';
+import { streetVendorsModule } from '../city/vendors';
+import { roadEventsModule } from '../city/roadEvents';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
+import { shopsModule } from './shops';
 import { ambientLife } from '../social/ambientLife';
 import { arenaExteriorModule } from '../arena/exterior';
 import { arenaInteriorModule } from '../arena/interior';
@@ -29,6 +36,7 @@ import { fighterModule } from '../arena/fighter';
 import { eveningCallModule } from '../arena/eveningCall';
 import { worldMarkers } from '../ui/worldMarkers';
 import { crowdModule } from '../crowd/module';
+import { fightTalkModule } from '../social/fightTalkModule';
 import { careerModule } from '../career/module';
 import { togetherModule } from '../arena/together';
 import { arrivalModule } from '../arena/arrival';
@@ -107,6 +115,16 @@ export interface GameCtx {
   startBout(mode: 'amical' | 'classe', style?: string, after?: () => void): boolean;
   /** Set (or clear) the city's walking marker towards an interactable of the current hub (the places directory's marker). */
   walkTo(id: string | null): void;
+  /**
+   * What other players may read about this player under their name (presence `rec`, validated by the server):
+   * a short line such as « Undercards · 3-1 · Écurie Baobab », or null for nothing. The career module sets it.
+   */
+  setPublicRecord(rec: string | null): void;
+  /**
+   * Go to another hub: a short fade with `label`, the hub built (modules' hubLoaded run, a ride may seat the player in
+   * its vehicle there), the player at `at` or the hub's spawn. Charges nothing: the caller has taken any fare.
+   */
+  travel(dest: HubId, at?: { x: number; z: number; yaw: number }, label?: string): void;
 }
 
 /** A gameplay module: hooks are called by main.ts in this order every hub / frame. */
@@ -146,6 +164,11 @@ export interface GameModule {
    */
   lamb?(ctx: GameCtx, e: LambEvent): string[] | void;
   /**
+   * Who the player faces in a làmb bout of this mode (the career's roster: name, duel style, level), or null to keep
+   * the duel's own rotation. Asked by main.ts when a friendly or ranked bout starts.
+   */
+  opponent?(ctx: GameCtx, mode: 'amical' | 'classe'): { name: string; style: string; level: number } | null;
+  /**
    * Optional fields this module adds to the player's presence this frame (own fields only, each validated by the
    * protocol's parseMove; never money, inventory or saves). Null or absent: nothing.
    */
@@ -164,8 +187,10 @@ export type LambEvent =
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
 export const MODULES: GameModule[] = [
-  wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, postersModule, fighterModule,
+  wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule,
+  arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   eveningCallModule,    // the evening's call to the arena and the goal line to it (src/arena/eveningCall.ts)
+  shopsModule,          // shops lane: walk-in cafés, night glow, showroom; customers are ambientLife's (docs/SHOPS.md)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)

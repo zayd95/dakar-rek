@@ -199,8 +199,12 @@ export function drummersStand(k: ArenaKit, cx: number, cz: number): { x: number;
   return spots;
 }
 
-/** Which side of the tunnel each écurie's preparation corner is on (−1: −x, +1: +x). One place to flip them. */
-export const PREP_SIDE: Record<'baobab' | 'teranga', -1 | 1> = { baobab: -1, teranga: 1 };
+/**
+ * Which side of the tunnel each écurie's preparation corner is on (−1: −x, +1: +x): the corners follow the wrestlers —
+ * the gala's left wrestler (Baobab) takes the +x side of the ring at the entrance (src/arena/module.ts). The one place
+ * that decides it: the builder, the people in the corners and the fighter's path all read it.
+ */
+export const PREP_SIDE: Record<'baobab' | 'teranga', -1 | 1> = { baobab: 1, teranga: -1 };
 /** Centre of a preparation corner's mat (where its wrestler gets ready). */
 export const prepCornerCentre = (cx: number, cz: number, side: -1 | 1) => at(cx, cz, side * 0.78, 13.6);
 /**
@@ -228,7 +232,7 @@ export function prepCorner(k: ArenaKit, cx: number, cz: number, side: -1 | 1, co
   const bn = at(cx, cz, a, r + 1.6);
   plain.box(2.2, 1.0, 0.03, bn.x, B + 1.45, bn.z, colour, a);
   plain.box(2.2, 0.12, 0.035, bn.x, B + 1.45, bn.z, 0xf2f2ec, a);
-  k.solid(back.x, back.z, 2.0, 2.0, 0.5);
+  { const b = at(cx, cz, a, r + 1.3); k.solid(b.x, b.z, 1.2, 1.2, 0.5); }               // the bench, clear of the mat's centre
   return [-0.6, 0.6, 0].map((o, i) => { const p = at(cx, cz, a + o / r, r - (i === 2 ? 0.4 : -0.2)); return { x: p.x, z: p.z, yaw }; });
 }
 

@@ -11,6 +11,7 @@ import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_
 import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
+import { buildShopInterior, type ShopDetail } from './shopKit';
 import { isComposed, type Site } from './sites';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
@@ -105,7 +106,7 @@ function lightPoolTexture() {
 }
 
 /** lite: Low quality — skips purely decorative props (roof clutter, AC units, laundry, zebra crossings, flowers). */
-export function buildHub(id: HubId, lite = false): HubWorld {
+export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubWorld {
   const sp = SPECS[id];
   const R = rng(sp.seed);
   const group = new THREE.Group();
@@ -592,11 +593,19 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const w = small ? 7 : 14, d = small ? 6 : 8, h = small ? 3.6 : 4.2;
     const cz = south ? L.z1 - d / 2 - 0.5 : L.z0 + d / 2 + 0.5, cx = L.cx;
     const col = k.kind === 'cafe' ? 0x6fa56a : k.kind === 'gargote' ? 0xe8a43c : k.kind === 'restaurant' ? 0xf3f0ea : k.kind === 'garage' ? 0x7f8a96 : k.kind === 'maiga' ? 0x6f9e98 : 0xe7b45a;
-    fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    // Garage Modou is an open workshop (the shop kit's 'garage': the bench, tools, a car on the lift, motorbikes for sale)
+    const workshop = k.kind === 'garage';
+    if (!workshop) fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    else {
+      for (const sx of [-1, 1]) plain.box(0.25, h, d, cx + sx * (w / 2 - 0.125), G - 0.02, cz, col);
+      plain.box(w, h, 0.25, cx, G - 0.02, cz - dir * (d / 2 - 0.125), col);
+      plain.box(w, 0.95, 0.25, cx, G + h - 0.97, cz + dir * (d / 2 - 0.125), shade(col, 0.9));   // the header over the opening
+      plain.box(w - 0.3, 0.02, d - 0.3, cx, G - 0.01, cz, 0x6b6e70);                            // oil-stained concrete floor
+    }
     plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
     parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.9), 0.6);
-    plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));
-    if (!small) {
+    if (!workshop) plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));
+    if (!small && !workshop) {
     awning(cx, cz + dir * (d / 2 + 1.2), w - 1, 2.4, 3.0, k.kind === 'cafe' ? 0x2f8f4e : k.kind === 'garage' ? 0x2d3748 : 0xd9482b, true, dir);
     plain.box(w - 3, 1, 0.8, cx, G, cz + dir * (d / 2 + 0.6), 0x7a5a3c);              // counter
     plain.box(w - 2.6, 0.08, 1.0, cx, G + 1, cz + dir * (d / 2 + 0.6), 0x5a3f2a);
@@ -607,6 +616,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       plain.box(2.2, 1.0, 0.03, cx - 1.5, G + 2.4, cz + dir * (d / 2 + 0.04), 0x4a4842);
       plain.box(1.6, 0.45, 0.4, cx + 1.6, G, cz + dir * (d / 2 + 0.9), 0x6b4a2e);
     }
+    if (workshop) awning(cx, cz + dir * (d / 2 + 1.2), w - 1, 2.4, 3.0, 0x2d3748, true, dir);
     if (k.kind === 'gargote' || k.kind === 'cafe' || k.kind === 'restaurant') {
       for (let n = 0; n < 3; n++) {                                                   // benches and a low table out front
         const bx = cx - 4 + n * 4, bz = cz + dir * (d / 2 + 3.2);
@@ -614,7 +624,15 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       }
     }
     if (k.kind === 'garage') for (let n = 0; n < 4; n++) plain.cyl(0.38, 0.38, 0.28, cx + 5 + (n % 2) * 0.2, G + n * 0.28, cz + dir * (d / 2 + 2.4), 0x1d1d1f, 10); // tyre stack
-    solidC(cx, cz, w, d + (small ? 0.2 : 1.4), h);
+    if (!workshop) solidC(cx, cz, w, d + (small ? 0.2 : 1.4), h);
+    else {
+      for (const sx of [-1, 1]) solidC(cx + sx * (w / 2 - 0.125), cz, 0.25, d, h);
+      solidC(cx, cz - dir * (d / 2 - 0.125), w, 0.25, h);
+      const kit = buildShopInterior('garage', { w: w - 0.25, d }, 4242, { detail: shopDetail ?? (lite ? 'low' : 'medium'), at: { x: cx, z: cz, y: G, yaw: dir > 0 ? 0 : Math.PI }, id: `${id}:garage:${k.i}${k.j}`, height: h - 0.3, shadows: false });
+      kit.group.userData.shop = { key: `${id}:${k.kind}:${k.i}${k.j}`, type: 'garage', anchors: kit.anchors, bounds: kit.bounds, budget: kit.budget };
+      kit.group.userData.shopColliders = kit.colliders;
+      group.add(kit.group); colliders.push(...kit.colliders); seats.push(...kit.seats);
+    }
     const bg = k.kind === 'maiga' ? '#3f4f4a' : k.kind === 'cafe' ? '#14532d' : k.kind === 'gargote' ? '#7c2d12' : k.kind === 'restaurant' ? '#0c4a6e' : k.kind === 'garage' ? '#1f2937' : '#78350f';
     // painted sign board flush on the facade, between the awning and the roof
     if (small) addSign('MAÏGA', bg, '#f1e6c8', cx + 1.3, G + 2.6, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 2.6, 0.7);
@@ -975,7 +993,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const key = `${i},${j}`;
     const city = CITY_BLOCKS[id][key];
     if (city) {
-      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, seats, sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
+      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, seats, shopDetail, add: o => group.add(o), sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
       continue;
     }
     const s = sp.specials[key];

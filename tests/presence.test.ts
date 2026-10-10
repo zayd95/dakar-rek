@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseMove, parseArena, nickname, lookIndex, isHub, ARENA_PHASES, ARENA_OUTCOMES } from '../src/multiplayer/protocol';
+import { parseMove, parseArena, nickname, lookIndex, isHub, recordTag, REC_RUNGS, REC_MAX, ARENA_PHASES, ARENA_OUTCOMES } from '../src/multiplayer/protocol';
+import { RUNGS, publicRecord } from '../src/career/career';
 import { SHOW_PHASES } from '../src/arena/program';
 
 const move = { type: 'move', x: 10, y: 0.1, z: -20, yaw: 0, speed: 5.6, space: 'street', clip: 'Walk' };
@@ -51,5 +52,24 @@ describe('presence protocol', () => {
     expect(nickname('\u202e')).toBe('Dakarois'); expect(nickname('a'.repeat(100))).toHaveLength(24);
     expect(lookIndex('3')).toBe(3); expect(lookIndex(100)).toBe(0);
     expect(isHub('pikine')).toBe(true); expect(isHub('elsewhere')).toBe(false);
+  });
+  it('a public sporting record (rec): a rung, a ranked record and an écurie, nothing else, length-capped', () => {
+    for (const ok of ['Undercards', 'Undercards · 3-1', 'Undercards · 3-1 · Écurie Baobab', 'Champion · 41-6-2 · Écurie Teranga', 'Petits combats · Écurie Baobab', 'Roi des Arènes · 9999-0'])
+      expect(recordTag(ok)).toBe(ok);
+    for (const bad of [
+      '', 'Undercard', 'undercards', 'Undercards · 3-1 · Écurie Baobab · x', 'Undercards · Écurie Baobab · 3-1', 'Undercards · 3-1 · https://x.y',
+      'Undercards · 3_1', 'Undercards · 12345-1', 'Undercards · 3-1 · Écurie <b>', 'Undercards · 3-1 · Écurie A', 'Undercards  · 3-1',
+      'Champion · 1-1 · Écurie ' + 'B'.repeat(40), 3, null, undefined, ['Undercards'], { rec: 'Undercards' },
+    ]) expect(recordTag(bad)).toBeUndefined();
+    expect(REC_MAX).toBeLessThanOrEqual(48);
+    // the career's rungs and the protocol's accepted labels stay in step
+    expect([...REC_RUNGS]).toEqual(RUNGS.map(r => r.label));
+    // the line the career sends is always accepted
+    const b = { at: 0, day: 1, mode: 'classe' as const, opp: 'Pape', style: 'Rapide', level: 1, res: 'V' as const, how: 'projection', purse: 0, pts: 0 };
+    expect(publicRecord([], 'Undercards', null)).toBeNull();
+    expect(publicRecord([{ ...b, mode: 'amical' }], 'Undercards', null)).toBeNull();
+    const rec = publicRecord([b, b, b, { ...b, res: 'D' }], 'Undercards', 'Baobab')!;
+    expect(rec).toBe('Undercards · 3-1 · Écurie Baobab');
+    for (const label of REC_RUNGS) expect(recordTag(publicRecord([b, { ...b, res: 'N' }], label, 'Teranga'))).toBe(publicRecord([b, { ...b, res: 'N' }], label, 'Teranga'));
   });
 });

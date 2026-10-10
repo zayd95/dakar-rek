@@ -93,7 +93,10 @@ describe('getting there: the goal line names the moto, the car rapide carries fa
     expect(eveningGoal({ ...base, moto: null })).toEqual({ kind: 'arena', how: 'ride' });
     expect(eveningGoal(base)).toEqual({ kind: 'arena', how: 'ride' });
     expect(eveningGoal({ ...base, gate: { dist: 40, inside: false }, moto: 'parked' })).toEqual({ kind: 'arena', how: 'walk' });
-    expect(eveningGoal({ ...base, ticket: true, moto: 'parked' })).toBeNull();
+    expect(eveningGoal({ ...base, gate: { dist: 20, inside: false }, moto: 'parked' })).toEqual({ kind: 'ticket' });   // parked by the gate: the window
+    expect(eveningGoal({ ...base, ticket: true, moto: 'parked' })).toEqual({ kind: 'arena', how: 'moto' });   // ticket in hand, still far
+    expect(eveningGoal({ ...base, ticket: true, gate: { dist: 40, inside: false }, moto: 'parked' })).toEqual({ kind: 'enter' });
+    expect(eveningGoal({ ...base, gate: { dist: 30, inside: true }, ticket: true, moto: 'parked' })).toEqual({ kind: 'seat' });
     expect(goalText({ kind: 'arena', how: 'moto' })).toMatch(/prends ta moto/);
     expect(goalText({ kind: 'arena', how: 'park' })).toMatch(/parking motos gardé.*100/);
   });
