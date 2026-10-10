@@ -63,6 +63,8 @@ export interface ShopOptions {
   reserve?: ShopRect[];
   /** Room height (underside of the roof); default 3.6. */
   height?: number;
+  /** Cast shadows (default true); a shop under its own roof can skip the shadow pass. */
+  shadows?: boolean;
 }
 export interface ShopInterior {
   type: ShopType;
@@ -1005,7 +1007,7 @@ export function buildShopInterior(type: ShopType, footprint: { w: number; d: num
   const M = shopMaterials();
   const group = new THREE.Group(); group.name = `shop_${type}`;
   const geos: THREE.BufferGeometry[] = [];
-  const add = (g: THREE.BufferGeometry, m: THREE.Material, shadow: boolean) => { const mesh = new THREE.Mesh(g, m); mesh.castShadow = shadow; mesh.receiveShadow = true; group.add(mesh); geos.push(g); };
+  const add = (g: THREE.BufferGeometry, m: THREE.Material, shadow: boolean) => { const mesh = new THREE.Mesh(g, m); mesh.castShadow = shadow && o.shadows !== false; mesh.receiveShadow = true; group.add(mesh); geos.push(g); };
   add(R.b.build(), M.body, true);
   if (R.g.triangles) add(R.g.build(), M.glass, false);
   if (R.furn.length) {

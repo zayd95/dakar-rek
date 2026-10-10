@@ -90,7 +90,8 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
    * customers' spot (the place's sheet goes there: buying happens at the counter), displays of the trade.
    */
   const stock = (key: string, type: ShopType, x: number, z: number, w: number, d: number, o: ShopOptions = {}): ShopInterior => {
-    const s = buildShopInterior(type, { w, d }, seedOf(`${c.hub}:${key}`), { detail: c.shopDetail ?? (lite ? 'low' : 'medium'), at: { x, z, y: FLOOR }, id: `${c.hub}:shop:${key}`, height: 3.68, ...o });
+    // under the shell's roof the goods are in shade anyway: no shadow pass for them (the bank and the juice bar keep theirs)
+    const s = buildShopInterior(type, { w, d }, seedOf(`${c.hub}:${key}`), { detail: c.shopDetail ?? (lite ? 'low' : 'medium'), at: { x, z, y: FLOOR }, id: `${c.hub}:shop:${key}`, height: 3.68, shadows: false, ...o });
     s.group.userData.shop = { key: `${c.hub}:city:${key}`, type, anchors: s.anchors, bounds: s.bounds, budget: s.budget };
     if (c.add) c.add(s.group); else s.dispose();
     c.colliders.push(...s.colliders); c.seats.push(...s.seats);
@@ -171,7 +172,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     sign('BANQUE TERANGA', x, z + 11.56, '#145d5b', 4.55, 21);
     sign('ACCUEIL · AGENCE', x, z - 2.4, '#145d5b', 3.2, 8);
     // the hall: guichets behind glass, back office, the queue between posts, waiting chairs (shop kit)
-    const hall = stock('bank', 'bank', x, z, w - 0.4, d - 0.4, { height: h - 0.1, at: { x, z, y: TERRAZZO_Y + 0.012 } });
+    const hall = stock('bank', 'bank', x, z, w - 0.4, d - 0.4, { height: h - 0.1, at: { x, z, y: TERRAZZO_Y + 0.012 }, shadows: true });
     keeper(hall.anchors.keeper, TELLER);
     for (const t of hall.anchors.staff.slice(0, lite ? 0 : 2)) person(t.x, t.z, t.yaw, 'Idle', { ...TELLER, top: 0x145d5b, female: true, style: 'dress', hat: 'headwrap', hatColor: 0x145d5b });
     sitOn(hall.seats[1]); sitOn(hall.seats[hall.seats.length - 3]);
@@ -216,7 +217,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     place('mall', 'Dakar Life Mall', cx, cz + 17, A.mall, 'On se retrouve dans la cour ? Les boutiques sont juste derrière.', 3.2);
     // Juice counter and shaded seating on the east; central axis stays open for players.
     shade(cx + 14, cz + 6, 10, 8, 0xcc9a50);
-    const bar = stock('mall-juice', 'cafe', cx + 14, cz + 6, 9.4, 7.4, { height: 3.1 });
+    const bar = stock('mall-juice', 'cafe', cx + 14, cz + 6, 9.4, 7.4, { height: 3.1, shadows: true });
     sign('JUS & GO', cx + 14, cz + 10.05, '#49704b', 3.3, 7);
     keeper(bar.anchors.keeper, VENDOR);
     sitOn(bar.seats.find(s => s.kind === 'chair'));
