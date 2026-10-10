@@ -284,11 +284,8 @@ class ArenaEvening {
       const h = new Humanoid({ ...randomLook(R), style: 'boubou', female: false });
       walker(h, cx + side * (1.0 + k * 0.5), tz + 0.8 + k * 0.8, cx + side * (4.4 + k * 0.9), cz + 3.2 + k * 0.6, t0, t0 + 6, 'Celebrate');
     }
-    for (let k = 0; k < (q === 'low' ? 1 : 2); k++) {             // two drummers by the gate, inside
-      const h = new Humanoid(randomLook(R)); h.hold = 'Talk'; h.group.position.set(cx - 5 + k * 1.1, 0.1, cz - 13.5); h.group.rotation.y = 0.3;
-      this.group.add(h.group); this.insideCast.push(h);
-    }
-    this.drums.start(116);
+    // the drums of the evening are the drummers' deck by the tunnel (src/arena/interior.ts), heard by distance through
+    // src/arena/exteriorAudio.ts all evening: no second group or second rhythm here
   }
   private updateEntrance(dt: number) {
     const t = this.t;

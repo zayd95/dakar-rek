@@ -5,7 +5,8 @@ import {
 } from '../src/world/geew';
 import { Batch } from '../src/world/batch';
 import {
-  ARENA_FLOOR, WALKWAY_R, aisleStairs, drummersStand, fightersGate, interiorSpots, mediaZone, prepCorner, standSection, tunnel, type ArenaKit,
+  ARENA_FLOOR, CLIMB_HALF, WALKWAY_R, aisleProfile, aisleStairs, climbHeight, drummersStand, fightersGate, interiorSpots, mediaZone, prepCorner,
+  standSection, tunnel, type ArenaKit, type Climb,
 } from '../src/world/arenaModules';
 import { INTERIOR_DENSITY } from '../src/arena/interior';
 
@@ -40,10 +41,12 @@ describe('arena interior: modules', () => {
   const cx = 300, cz = -40;
   const cols: { x0: number; z0: number; x1: number; z1: number; h: number }[] = [];
   const signs: string[] = [];
+  const climbs: Climb[] = [];
   const kit: ArenaKit = {
     plain: new Batch(), concrete: new Batch(), base: ARENA_FLOOR, lite: false,
     solid: (x, z, w, d, h) => cols.push({ x0: x - w / 2, z0: z - d / 2, x1: x + w / 2, z1: z + d / 2, h }),
     sign: text => { signs.push(text); },
+    climb: c => { climbs.push(c); },
   };
   SECTIONS.forEach((s, i) => standSection(kit, cx, cz, s, i));
   for (const a of AISLES) aisleStairs(kit, cx, cz, a);
@@ -81,6 +84,25 @@ describe('arena interior: modules', () => {
     expect(ds).toHaveLength(drums.length);
     ds.forEach((d, i) => { expect(d.x).toBeCloseTo(drums[i].x, 6); expect(d.z).toBeCloseTo(drums[i].z, 6); expect(d.y).toBeCloseTo(drums[i].y, 6); });
     for (const s of spots.filter(s => s.role === 'camp' || s.role === 'media')) expect(hit(s.x, s.z)).toBe(false);
+  });
+  it('every aisle can be climbed from the walkway to the top tier: nothing in the way, the steps rise', () => {
+    expect(climbs).toHaveLength(AISLES.length);
+    const PLAYER_R = 0.5;
+    const clearance = (x: number, z: number) => Math.min(...cols.map(c => Math.hypot(x - Math.min(Math.max(x, c.x0), c.x1), z - Math.min(Math.max(z, c.z0), c.z1))));
+    for (const c of climbs) {
+      let last = -1;
+      for (let u = WALKWAY_R; u <= 21.0; u += 0.1) {
+        const x = cx + Math.sin(c.a) * u, z = cz + Math.cos(c.a) * u;
+        expect(clearance(x, z), `aisle ${c.a.toFixed(2)} at ${u.toFixed(1)} m`).toBeGreaterThan(PLAYER_R);
+        const h = climbHeight(c, x, z) ?? 0;
+        expect(h).toBeGreaterThanOrEqual(last); last = h;
+      }
+      expect(last).toBeGreaterThan(2.7);                                             // standing on the top tier
+      expect(climbHeight(c, cx + Math.sin(c.a + 0.3) * 19, cz + Math.cos(c.a + 0.3) * 19)).toBeNull();   // only in the aisle
+    }
+    expect(CLIMB_HALF).toBeGreaterThan(0.8);
+    const steps = aisleProfile();
+    for (let i = 1; i < steps.length; i++) { expect(steps[i][2]).toBeGreaterThan(steps[i - 1][2]); expect(steps[i][2] - steps[i - 1][2]).toBeLessThan(0.65); }
   });
   it('fewer people on lower quality', () => {
     const total = (q: keyof typeof INTERIOR_DENSITY) => Object.values(INTERIOR_DENSITY[q]).reduce((a, b) => a + b, 0);

@@ -12,6 +12,7 @@ import {
   VENDORS, weekday, WEEKDAY_FR, type ArenaGate,
 } from './exteriorRules';
 import { ExteriorAudio, listenForGesture } from './exteriorAudio';
+import { deckCentre } from '../world/arenaModules';
 
 /**
  * Outside the Pikine arena: on fight evenings the surroundings come alive — fans walking in
@@ -302,8 +303,10 @@ const eventNow = (ctx: GameCtx) => forced ?? arenaExterior.isEventDay(dayOverrid
 /** Loudness of the drums and of the murmur where the player stands (0 when the evening is quiet). */
 function loudness(ctx: GameCtx) {
   if (!ext?.active) return { drums: 0, murmur: 0 };
-  const p = ctx.player.pos, inside = !!ctx.inside(), muted = isMuted(), c = drumsCentre(ext.g);
-  return { drums: drumVolume(Math.hypot(p.x - c.x, p.z - c.z), inside, muted), murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
+  // one rhythm for the evening, as loud as the nearer drummers: the group by the gate or the deck inside, by the tunnel
+  const p = ctx.player.pos, inside = !!ctx.inside(), muted = isMuted(), c = drumsCentre(ext.g), dk = deckCentre(ext.arena.cx, ext.arena.cz);
+  const dist = Math.min(Math.hypot(p.x - c.x, p.z - c.z), Math.hypot(p.x - dk.x, p.z - dk.z));
+  return { drums: drumVolume(dist, inside, muted), murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
 }
 
 export const arenaExteriorModule: GameModule = {

@@ -32,8 +32,8 @@ export const TUNNEL_A = 0, TUNNEL_HALF = 0.12;
 export const inTunnel = (a: number, half = TUNNEL_HALF) => Math.abs(angleDiff(a, TUNNEL_A)) < half;
 /** Aisles with stairs up the three tiers, between the sections (angles measured like the gate, as atan2(x, z)). */
 export const AISLES: readonly number[] = [Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (3 * Math.PI) / 2, (7 * Math.PI) / 4];
-/** Half the angular width of an aisle (about 1.6 m wide on the first tier). */
-export const AISLE_HALF = 0.045;
+/** Half the angular width of an aisle (about 2 m wide on the first tier: room to climb past the stands' colliders). */
+export const AISLE_HALF = 0.055;
 export const inAisle = (a: number, half = AISLE_HALF) => AISLES.some(x => Math.abs(angleDiff(a, x)) < half);
 /**
  * Where a spectator place may be on the tiers: not in the gate, an aisle or the tunnel (with a little room either side).
