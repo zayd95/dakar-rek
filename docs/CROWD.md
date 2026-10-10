@@ -133,6 +133,16 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
   of the seats on low / medium / high (it was 42 / 68 / 86 %). That still leaves free seats for the player.
 - One supporter in eight in B–C and F–G brought the écurie's flag (green or red).
 
+**The seated player's view** (`setNear` → `Crowd.setClearView`):
+
+- The neighbours within 1 m of the player's seat are not drawn at all. A head that close fills the screen when the gaze
+  follows the bout sideways.
+- The people within 1.3 m, and those ahead on the sight line to the ring (the next two rows down, in a widening strip),
+  never stand up. They cheer, clap and hold their heads from their seats.
+- Only the player's seat is affected, and those people keep their seats, so the stands still look full.
+
+**Greeting**: a full humanoid the player greets stands still and faces them while answering (`ctx.people`).
+
 ## Fans arriving on fight evenings — `ArenaArrivals`
 
 - **Taxis**: while a bout is on (`arenaExterior.active()`) and the player is within 150 m of the gate, a taxi pulls in
@@ -215,8 +225,12 @@ It costs 3 draw calls (standing figures, silhouettes, ground shadows) plus 10 pe
 
 - `__dakar.crowds.list()`: every live crowd with present, reacting, standing, near/mid/far/hidden, the kinds shown,
   level and draw calls.
-- `__dakar.crowds.react(name, group, kind)` triggers a reaction.
-- `__dakar.arrivals.info()` and `__dakar.arrivals.taxi(r)`.
+- `__dakar.crowds.react(name, group, kind)` triggers a reaction; `__dakar.crowds.calm(name)` settles a crowd.
+- `__dakar.arrivals`:
+  - `info()`;
+  - `taxi(r, close)`: `close` starts the taxi 25 m before its stop;
+  - `speed(n)`: the arrivals' clock runs n× faster, for checks on slow renderers.
+- The checks wait for states, never for fixed times, because SwiftShader may run the game at a few frames a second.
 - `__dakar.street`:
   - `info()`: targets, roles, stops, groups, counts, LOD, draw calls;
   - `where()`;
