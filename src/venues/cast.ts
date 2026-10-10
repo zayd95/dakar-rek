@@ -121,6 +121,14 @@ export class Cast {
   /** Something carried by a role (a basin on the head, a flag, a bucket), in the body's own space. */
   attach(id: string, obj: THREE.Object3D) { const e = this.list.find(v => v.r.id === id); if (e) e.h.group.add(obj); }
 
+  /**
+   * A role's weight in the shared humanoid budget (src/actors/crowdLod.ts, src/social/ambientLife.ts): its distance to
+   * the camera is multiplied by it when the full bodies are handed out — 1 for someone in the spotlight, more for the
+   * people in the background (they become cheap figures sooner).
+   */
+  setLodPrio(id: string, prio: number) { const e = this.list.find(x => x.r.id === id); if (e) e.h.group.userData.lodPrio = prio; }
+  /** Dress a role differently (an entourage in tonight's écurie colour). */
+  setLook(id: string, look: PersonLook) { const e = this.list.find(x => x.r.id === id); if (e) { e.r.look = look; e.h.setLook(look); } }
   /** Change what a standing role is doing (the stylist works while a client sits). */
   setClip(id: string, clip: Clip) { const e = this.list.find(x => x.r.id === id); if (e && !e.r.seat) e.h.hold = clip; }
   /** A standing role plays `clip` for `seconds`, then goes back to its own (the crowd cheers a good dancer). */

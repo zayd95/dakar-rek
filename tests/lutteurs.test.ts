@@ -59,16 +59,15 @@ describe('Lutteurs: the season as the city saw it', () => {
 });
 
 describe('Lutteurs: following one', () => {
-  it('when he fights tonight: the main event or the undercard; nothing on a free evening', () => {
+  it('when he fights tonight: the evening’s main event only (the arena’s preliminaries are young local wrestlers)', () => {
     const fri = 11, l = ladderAt(fri), c = cardOf(l, fri);
-    expect(fightsTonight(l, fri, c.left.id)).toEqual({ vs: c.right.name, main: true });
-    const [a, b] = undercard(l, fri, mainEvent(l, fri))[0];
-    expect(fightsTonight(l, fri, a)).toEqual({ vs: ROSTER.find(w => w.id === b)!.name, main: false });
+    expect(fightsTonight(l, fri, c.left.id)).toEqual({ vs: c.right.name });
+    expect(fightsTonight(l, fri, c.right.id)).toEqual({ vs: c.left.name });
+    const [a] = undercard(l, fri, mainEvent(l, fri))[0];
+    expect(fightsTonight(l, fri, a)).toBeNull();                              // the city's other bouts are not announced
     const tue = 8, lt = ladderAt(tue), ct = cardOf(lt, tue);
-    const idle = ROSTER.find(w => w.id !== ct.left.id && w.id !== ct.right.id)!;
-    expect(fightsTonight(lt, tue, idle.id)).toBeNull();
-    expect(followedLine({ name: 'Gora', vs: 'Pape', main: true })).toBe('Ton lutteur Gora combat ce soir contre Pape');
-    expect(followedLine({ name: 'Gora', vs: 'Pape', main: false })).toBe('Ton lutteur Gora combat ce soir contre Pape (en lever de rideau)');
+    expect(fightsTonight(lt, tue, ct.left.id)).toEqual({ vs: ct.right.name });   // a weekday card too
+    expect(followedLine({ name: 'Gora', vs: 'Pape' })).toBe('Ton lutteur Gora combat ce soir contre Pape');
   });
   it('his result once the night is played (the next day’s ladder)', () => {
     const fri = 11, l = ladderAt(fri), c = cardOf(l, fri), next = ladderAt(fri + 1);
@@ -84,8 +83,8 @@ describe('Lutteurs: following one', () => {
       tomorrow: { left: { name: 'Ousmane', ecurie: 'Baobab' }, right: { name: 'Daouda', ecurie: 'Teranga' }, size: 'gala' },
       ticket: false, galaDone: false, fighter: null, hub: 'Pikine', gate: null, ride: null, vehicles: [], after: null, weather: null, road: [],
     };
-    const rows = tonightPage({ ...base, followed: { name: 'Gora', vs: 'Pape', main: false } })[0].rows;
-    expect(rows[0]).toMatchObject({ icon: '⭐', label: 'Ton lutteur Gora combat ce soir contre Pape (en lever de rideau)', detail: 'Avant le combat principal' });
+    const rows = tonightPage({ ...base, followed: { name: 'Gora', vs: 'Pape' } })[0].rows;
+    expect(rows[0]).toMatchObject({ icon: '⭐', label: 'Ton lutteur Gora combat ce soir contre Pape', detail: 'Le combat principal de la soirée' });
     expect(tonightPage(base)[0].rows.some(r => r.icon === '⭐')).toBe(false);
     expect(careerOf({ bouts: [], best: 0, fav: 'gora' }).fav).toBe('gora');
     expect(careerOf({ bouts: [], best: 0, fav: '<b>' }).fav).toBeUndefined();

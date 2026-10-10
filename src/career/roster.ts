@@ -287,14 +287,16 @@ export function wrestlerCard(l: Ladder, id: string, you = 'Toi'): WrestlerCard |
     last, skin: lk.skin, look: lk.look,
   };
 }
-/** Where a followed wrestler fights tonight, if he does: the main event, or a bout of the undercard (fight evenings). */
-export function fightsTonight(l: Ladder, day: number, id: string): { vs: string; main: boolean } | null {
+/**
+ * Whether a followed wrestler fights tonight in the arena: the evening's main event (the card the posters and the show
+ * name). The ladder's other bouts of the night are the city's, not shown at the arena (the preliminaries there are young
+ * wrestlers of the neighbourhoods, src/arena/undercard.ts), so they are not announced.
+ */
+export function fightsTonight(l: Ladder, day: number, id: string): { vs: string } | null {
   const c = cardOf(l, day);
-  if (c.left.id === id) return { vs: c.right.name, main: true };
-  if (c.right.id === id) return { vs: c.left.name, main: true };
-  if (!isFightDay(day)) return null;
-  const pair = undercard(l, day, [c.left.id, c.right.id]).find(([a, b]) => a === id || b === id);
-  return pair ? { vs: wrestlerById(pair[0] === id ? pair[1] : pair[0])!.name, main: false } : null;
+  if (c.left.id === id) return { vs: c.right.name };
+  if (c.right.id === id) return { vs: c.left.name };
+  return null;
 }
 /** His bout on a night already played (the next day's ladder holds it): the opponent and the result, or null. */
 export function resultOn(l: Ladder, day: number, id: string): { vs: string; res: 'V' | 'D' | 'N' } | null {

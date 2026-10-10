@@ -95,6 +95,9 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const tWait = Date.now();
   await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, T).catch(() => {});
   note(label, 'wait for the show to start (wall s)', Math.round((Date.now() - tWait) / 1000));
+  // the preliminaries (src/arena/undercard.ts, checked in check-arena-visit) skipped: on to the main event
+  await page.waitForFunction(() => ['prelims', 'entrance'].includes(window.__dakar.arena.info().phase), null, T).catch(() => {});
+  await d(() => { if (window.__dakar.arena.info().phase === 'prelims') window.__dakar.arena.go('entrance'); });
   await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return i.phase === 'entrance'; }, null, T).catch(() => {});
   await shot('05-entrance');
   await page.waitForFunction(() => window.__dakar.arena.info().phase === 'bout', null, T).catch(() => {});

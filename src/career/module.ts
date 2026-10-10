@@ -10,13 +10,14 @@ import { arenaFighter } from '../arena/fighter';
 import { posters } from '../arena/posters';
 import { STYLES } from '../lamb/rules';
 import { setBillSource, setFollowSource, type Bill } from '../arena/program';
+import { setRecordSource } from '../arena/ceremony';
 import { portraitSvg } from './portrait';
 import {
   ATTRS, BOUTS_MAX, RUNGS, boutPoints, dimensions, fighterAttributes, publicRecord, purseOf, rankOf, recordLine, summary,
   type BoutEntry, type BoutRes, type CareerSave,
 } from './career';
 import {
-  GALA_RUNG, TITLE_IDLE_DAYS, TITLE_RUNG, beltOf, cardOf, fightsTonight, resultOn, wrestlerCard, galaBlock, isFightDay, ladderAt, mainEvent, opponentFor, placeOf, titleBout, wrestlerById,
+  GALA_RUNG, TITLE_IDLE_DAYS, TITLE_RUNG, beltOf, cardOf, fightsTonight, wrestlerCard, galaBlock, isFightDay, ladderAt, mainEvent, opponentFor, placeOf, titleBout, wrestlerById,
   type Ladder, type Standing,
 } from './roster';
 import { boutRecap, deltaText, dimMoves, galaRecap, recordDay, scoresOf, sinceYesterday, stepsCrossed } from './progress';
@@ -148,9 +149,9 @@ function galaMoment(ctx: GameCtx, day: number, winner: string | null) {
     place: w ? { before: placeIn(before, w.id), after: placeIn(after, w.id) } : undefined, belt,
   });
   if (r.lines.length < 2) r.lines.push(`En tête : ${after.table.slice(0, 2).map(x => `${x.name} ${x.pts} pts`).join(' · ')}`);
-  // the wrestler the player follows, if he fought tonight (main event or undercard: the next day's ladder holds the night)
-  const fav = career(ctx).fav, fw = fav ? wrestlerById(fav) : undefined, fr = fw ? resultOn(after, day, fw.id) : null;
-  if (fw && fr) r.lines.push(fr.res === 'V' ? `Ton lutteur ${fw.name} bat ${fr.vs}` : fr.res === 'D' ? `Ton lutteur ${fw.name} perd contre ${fr.vs}` : `Ton lutteur ${fw.name} et ${fr.vs} : match nul`);
+  // the wrestler the player follows, when he was in this main event
+  const fav = career(ctx).fav, fw = fav ? wrestlerById(fav) : undefined;
+  if (fw && (bill.left.id === fw.id || bill.right.id === fw.id)) r.lines.push(!w ? `Ton lutteur ${fw.name} : match nul` : w.id === fw.id ? `Ton lutteur ${fw.name} a gagné !` : `Ton lutteur ${fw.name} a perdu`);
   ctx.hud.moment(r);
 }
 
@@ -254,6 +255,8 @@ export const careerModule: GameModule = {
       galaMoment(ctx, day, winner);
       ctx.save();
     });
+    // the announcer of the wrestlers' entrance reads each one's season record from the city's ladder (src/arena/ceremony.ts)
+    setRecordSource((id, _name, day) => { const st = ladder(ctx, day).table.find(x => x.id === id); return st ? { v: st.v, d: st.d, n: st.n } : null; });
     syncRecord(ctx);
     // the wrestler the player follows: tonight's card or undercard (the evening call and « Ce soir » say so)
     setFollowSource(day => {

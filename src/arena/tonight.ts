@@ -94,7 +94,7 @@ export function tonightPage(i: TonightInput): TonightSection[] {
       const what = i.fighter.kind === 'title' ? 'Combat pour le titre' : i.fighter.kind === 'gala' ? 'Ta place au gala' : 'Ton combat du soir';
       arena.push({ icon: '🥊', label: `Tu combats ce soir${i.fighter.opponent ? ` contre ${i.fighter.opponent}` : ''}`, detail: `${what} · entrée des lutteurs, derrière l’arène (pas besoin de billet)` });
     }
-    if (i.followed) arena.push({ icon: '⭐', label: followedLine(i.followed), detail: i.followed.main ? 'Le combat principal de la soirée' : 'Avant le combat principal' });
+    if (i.followed) arena.push({ icon: '⭐', label: followedLine(i.followed), detail: 'Le combat principal de la soirée' });
     arena.push({ icon: '🤼', label: `${i.bill.left.name} – ${i.bill.right.name}`, detail: `${SIZE[i.size]}${i.bill.title ? ' · titre en jeu' : ''} · ${sides(i.bill)}` });
     arena.push({ icon: '🚪', label: i.hour < GALA.doors ? `Portes à ${GALA.doors} h` : 'Portes ouvertes', detail: `Arène de Pikine · jusqu’à ${GALA.close} h` });
     if (!i.fighter) arena.push(i.ticket ? { icon: '🎟️', label: 'Ton billet : en poche ✓', detail: 'Entrée par la porte de l’arène' }
