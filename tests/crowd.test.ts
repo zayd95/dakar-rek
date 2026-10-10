@@ -380,3 +380,36 @@ describe('stands polish', () => {
     s.dispose();
   });
 });
+
+describe('the seated player\'s view', () => {
+  it('nobody stands up right beside or in front of the player; everyone else does', () => {
+    const seats = standSeats(0, 0, 'view:stand'), order = fillOrder(seats.length, 7).map(i => seats[i]);
+    const s = new ArenaStands(order, 0, { quality: 'medium' });
+    const mine = seats.find(o => o.tier === 2 && Math.abs(o.a - 1.2) < 0.05)!;
+    s.fill(order.length, id => id === mine.id);
+    s.setNear(mine.x, mine.z, mine.yaw);
+    s.react('all', 'fall', { share: 1 });
+    s.update(1, true);
+    const fx = Math.sin(mine.yaw), fz = Math.cos(mine.yaw);
+    let kept = 0, up = 0;
+    for (const o of order) {
+      if (o.id === mine.id) continue;
+      const dx = o.x - mine.x, dz = o.z - mine.z, d = Math.hypot(dx, dz), fwd = dx * fx + dz * fz, lat = Math.abs(-dx * fz + dz * fx);
+      const inView = d < 1.3 || (fwd > 0 && fwd < 2.8 && lat < 0.5 + 0.4 * fwd);
+      if (inView) { kept++; expect(s.crowd.standingNow(o.id)).toBe(false); expect(s.crowd.reactionOf(o.id)).toBe('fall'); }
+      else if (s.crowd.standingNow(o.id)) up++;
+    }
+    expect(kept).toBeGreaterThan(3);                                          // the row in front, the neighbours
+    expect(kept).toBeLessThan(16);
+    expect(up).toBeGreaterThan(order.length * 0.9);
+    // the neighbours right beside the player are not drawn at all (a head would fill the screen when the gaze turns)
+    const st = s.stats(), beside = order.filter(o => o.id !== mine.id && Math.hypot(o.x - mine.x, o.z - mine.z) < 1);
+    expect(beside.length).toBeGreaterThan(0);
+    expect(st.hidden).toBe(beside.length);
+    s.setNear(0, null);                                                        // standing up again once the player leaves
+    s.react('all', 'fall', { share: 1 });
+    s.update(1, true);
+    expect(order.filter(o => s.crowd.standingNow(o.id)).length).toBeGreaterThan(order.length * 0.97);
+    s.dispose();
+  });
+});

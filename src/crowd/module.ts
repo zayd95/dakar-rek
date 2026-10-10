@@ -19,12 +19,16 @@ export const crowdModule: GameModule = {
   debug: () => ({
     arrivals: {
       info: () => arrivals?.info() ?? null,
-      /** A taxi now on route r (0 west road, 1 east road). */
-      taxi: (r?: number) => arrivals?.taxi(r) ?? false,
+      /** A taxi now on route r (0 west road, 1 east road); `close`: starting 25 m before its stop. */
+      taxi: (r?: number, close = false) => arrivals?.taxi(r, close) ?? false,
+      /** The arrivals' clock runs `n` times faster (checks on slow renderers). */
+      speed: (n = 1) => { if (arrivals) arrivals.speed = Math.max(1, n); },
     },
     crowds: {
       /** Every live crowd: who is shown at which level of detail, who reacts, the draw calls it costs. */
       list: () => [...LIVE_CROWDS].map(c => ({ name: c.name, ...c.stats(), level: Math.round(c.level() * 100) / 100, drawCalls: c.drawCalls(), visible: c.group.visible })),
+      /** Everyone in a crowd settles back at once (checks: one reaction at a time). */
+      calm: (name: string) => { [...LIVE_CROWDS].find(x => x.name === name)?.calm('all'); },
       /** Make a group of a crowd react (checks and captures). */
       react: (name: string, group: string, kind: ReactionKind) => {
         if (!REACTION_KINDS.includes(kind)) return -1;

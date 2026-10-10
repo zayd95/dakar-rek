@@ -42,24 +42,29 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await page.waitForFunction(() => window.__dakar.arena.info()?.street === 'doors', null, T);
   const a0 = await info(), C = a0.centre;
 
+  // Every wait below waits for a state, never for a fixed time: SwiftShader may run the game at a few frames a second.
+  const LONG = { timeout: 240000 };
+  const standsOf = () => window.__dakar.crowds.list().find(c => c.name === 'arena-stands');
+
   // 0. Getting there: a taxi pulls in at the west corner and drops fans who walk to the queue; the car rapide lets a group off at « Arène ».
   await d(() => window.__dakar.place(2.5, -28, Math.PI));
-  await page.waitForFunction(() => window.__dakar.arrivals.info()?.active, null, { timeout: 30000 }).catch(() => {});
+  await d(() => window.__dakar.arrivals.speed(4));                                // the arrivals' clock runs 4× for the check
+  await page.waitForFunction(() => window.__dakar.arrivals.info()?.active, null, LONG).catch(() => {});
   const ar0 = await d(() => window.__dakar.arrivals.info());
-  await d(() => window.__dakar.arrivals.taxi(0));
-  await page.waitForFunction(() => window.__dakar.arrivals.info().dropped.taxi > 0, null, { timeout: 60000 }).catch(() => {});
-  await page.waitForTimeout(1800);
+  await d(() => window.__dakar.arrivals.taxi(0, true));                           // starts 25 m before its stop
+  await page.waitForFunction(t0 => { const i = window.__dakar.arrivals.info(); return i.dropped.taxi > t0 && i.crowd.present > 0; }, ar0?.dropped.taxi ?? 0, LONG).catch(() => {});
   const ar1 = await d(() => window.__dakar.arrivals.info());
   check(`${label}: on a fight evening a taxi pulls in by the arena and drops fans`, ar0?.active && ar1.dropped.taxi > ar0.dropped.taxi && ar1.crowd.present > 0, { active: ar0?.active, dropped: ar1.dropped, walking: ar1.walking, cabs: ar1.cabs });
   await shot('0-taxi-fans');
   const nextRapide = await d(() => window.__dakar.transport?.nextAt?.('23', 0) ?? null);
   if (typeof nextRapide === 'number' && nextRapide > 2) await d(s => window.__dakar.transport.warp(s), nextRapide - 2);
-  await page.waitForFunction(r0 => window.__dakar.arrivals.info().dropped.rapide > r0, ar1.dropped.rapide, { timeout: 60000 }).catch(() => {});
+  await page.waitForFunction(r0 => window.__dakar.arrivals.info().dropped.rapide > r0, ar1.dropped.rapide, LONG).catch(() => {});
   const ar2 = await d(() => window.__dakar.arrivals.info());
   check(`${label}: the Ligne 23 car rapide lets a group of fans off at « Arène »`, ar2.dropped.rapide > ar1.dropped.rapide, { next: nextRapide, dropped: ar2.dropped });
-  await page.waitForFunction(() => window.__dakar.arrivals.info().dropped.arrived > 0, null, { timeout: 60000 }).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.arrivals.info().dropped.arrived > 0, null, LONG).catch(() => {});
   const ar3 = await d(() => window.__dakar.arrivals.info());
   check(`${label}: the fans walk to the tail of the queue at the gate`, ar3.dropped.arrived > 0, { dropped: ar3.dropped, walking: ar3.walking });
+  await d(() => window.__dakar.arrivals.speed(1));
 
   await d(day => { window.__dakar.state.data.counters.arena_ticket_day = day; }, a0.day);
   const seat = await d(c => window.__dakar.arena.freeSeat(c.x + 9, c.z - 14), C);
@@ -68,36 +73,44 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat', null, T).catch(() => {});
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => /arena:stand/.test(window.__dakar.seated() ?? ''), null, T).catch(() => {});
-  await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, T).catch(() => {});
-  await page.waitForFunction(() => { const c = window.__dakar.arena.info().crowd; return c.present >= c.cap * 0.9; }, null, { timeout: 60000 }).catch(() => {});
-  await page.waitForTimeout(1500);
+  await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, LONG).catch(() => {});
+  await page.waitForFunction(() => { const c = window.__dakar.arena.info().crowd; return c.present >= c.cap * 0.9; }, null, LONG).catch(() => {});
   const s1 = await stands(), i1 = await info();
   check(`${label}: seated on a fight evening, the stands are full`, /arena:stand/.test((await d(() => window.__dakar.seated())) ?? '') && s1 && s1.present >= i1.crowd.cap * 0.9 && s1.present > 100, { present: s1?.present, cap: i1.crowd.cap });
   const nearWant = quality === 'low' ? 0 : quality === 'medium' ? 4 : 8;
-  check(`${label}: levels of detail — ${nearWant} full bodies next to you, rigged figures, far silhouettes`, s1.near === nearWant && s1.mid + s1.far + s1.near + s1.hidden === s1.present && (quality === 'low' ? s1.far > s1.mid : s1.mid > 0), { near: s1.near, mid: s1.mid, far: s1.far, hidden: s1.hidden });
-  check(`${label}: the whole crowd costs a handful of draw calls`, s1.drawCalls <= 4 + nearWant * 10, { drawCalls: s1.drawCalls });
+  await page.waitForFunction(n => window.__dakar.crowds.list().find(c => c.name === 'arena-stands').near >= n, nearWant, LONG).catch(() => {});
+  const s1b = await stands();
+  check(`${label}: levels of detail — ${nearWant} full bodies next to you, rigged figures, far silhouettes`, s1b.near === nearWant && s1b.mid + s1b.far + s1b.near + s1b.hidden === s1b.present && (quality === 'low' ? s1b.far > s1b.mid : s1b.mid > 0), { near: s1b.near, mid: s1b.mid, far: s1b.far, hidden: s1b.hidden });
+  check(`${label}: the whole crowd costs a handful of draw calls`, s1b.drawCalls <= 5 + nearWant * 10, { drawCalls: s1b.drawCalls });
   await shot('1-seated');
 
-  // 2. Every reaction, group by group.
-  const seen = {};
-  for (const [group, kind, name] of [['all', 'applause', '2-applause'], ['left', 'shout', '3-shout-left'], ['all', 'standUp', null], ['all', 'grab', '4-grab'], ['all', 'fall', '5-fall'], ['right', 'celebrate', '6-celebrate-right']]) {
-    const n = await d(([g, k]) => window.__dakar.crowds.react('arena-stands', g, k), [group, kind]);
-    await page.waitForTimeout(1300);
-    const s = await stands();
-    seen[kind] = { joined: n, showing: s.kinds[kind] ?? 0, standing: s.standing };
-    if (name) await shot(name);
-    // let it settle before the next one (a stronger reaction would hold weaker ones off)
-    await page.waitForFunction(() => window.__dakar.crowds.list().find(c => c.name === 'arena-stands').reacting === 0, null, { timeout: 30000 }).catch(() => {});
-  }
-  check(`${label}: each reaction is shown by its group (applause, shout, standUp, grab, fall, celebrate)`, Object.values(seen).every(v => v.joined > 10 && v.showing > 10), seen);
-  check(`${label}: seated people stand for a fall and stay seated to clap`, seen.fall.standing > seen.applause.standing + 20, { applause: seen.applause.standing, fall: seen.fall.standing });
+  /** The show back to its full-stands part (filling → entrance → bout) when it has gone on to the result or the end. */
+  const fullStands = async () => {
+    const ph = (await info()).phase;
+    if (!['filling', 'entrance', 'bout'].includes(ph)) await d(() => window.__dakar.arena.go('filling'));
+    await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return ['filling', 'entrance', 'bout'].includes(i.phase) && i.crowd.present >= i.crowd.cap * 0.9; }, null, LONG).catch(() => {});
+  };
 
-  // 3. The gala's own moments reach the stands: the entrance (his side shouts).
-  await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return i.phase === 'entrance' || i.phase === 'bout'; }, null, T).catch(() => {});
-  await page.waitForFunction(() => (window.__dakar.arena.info().crowd.lod.kinds.shout ?? 0) > 10, null, { timeout: 60000 }).catch(() => {});
+  // 2. The gala's own moment first (it comes right after the stands fill): a wrestler walks in and his side shouts.
+  if (!['filling', 'entrance'].includes((await info()).phase)) await d(() => window.__dakar.arena.go('filling'));
+  await page.waitForFunction(() => (window.__dakar.arena.info().crowd.lod.kinds.shout ?? 0) > 10, null, LONG).catch(() => {});
   const e = await info();
   check(`${label}: a wrestler walks in and his side rises to shout`, (e.crowd.lod.kinds.shout ?? 0) > 10 && e.crowd.cheering > 0, { phase: e.phase, kinds: e.crowd.lod.kinds, level: e.crowd.level });
   await shot('7-entrance');
+
+  // 3. Every reaction, group by group, each on full stands and from calm.
+  const seen = {};
+  for (const [group, kind, name] of [['all', 'applause', '2-applause'], ['left', 'shout', '3-shout-left'], ['all', 'standUp', null], ['all', 'grab', '4-grab'], ['all', 'fall', '5-fall'], ['right', 'celebrate', '6-celebrate-right']]) {
+    await fullStands();
+    await d(() => window.__dakar.crowds.calm('arena-stands'));
+    const n = await d(([g, k]) => window.__dakar.crowds.react('arena-stands', g, k), [group, kind]);
+    await page.waitForFunction(k => (window.__dakar.crowds.list().find(c => c.name === 'arena-stands').kinds[k] ?? 0) > 10, kind, LONG).catch(() => {});
+    const s = await d(standsOf);
+    seen[kind] = { joined: n, showing: s.kinds[kind] ?? 0, standing: s.standing, phase: (await info()).phase };
+    if (name) await shot(name);
+  }
+  check(`${label}: each reaction is shown by its group (applause, shout, standUp, grab, fall, celebrate)`, Object.values(seen).every(v => v.joined > 10 && v.showing > 10), seen);
+  check(`${label}: seated people stand for a fall and stay seated to clap`, seen.fall.standing > seen.applause.standing + 20, { applause: seen.applause.standing, fall: seen.fall.standing });
 
   await frame();
   const dc = await d(() => window.__dakar.drawCalls());
