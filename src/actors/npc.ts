@@ -24,6 +24,7 @@ export class Crowd {
   group = new THREE.Group();
   private walkers: Walker[] = [];
   constructor(private world: HubWorld, private rand: () => number, count = 14) {
+    this.group.name = 'crowd_walkers';                       // social/ambientLife.ts thins them out at night
     for (let n = 0; n < count; n++) {
       const e = pick(world.edges, rand);
       const c = humanoidReady() ? new Humanoid(randomLook(rand)) : new Character(pick(NPC_OUTFITS, rand));
@@ -78,6 +79,7 @@ export class DecorativeTraffic {
   group = new THREE.Group();
   private cars: Car[] = [];
   constructor(private world: HubWorld, private rand: () => number, count = 6) {
+    this.group.name = 'traffic';                             // social/ambientLife.ts varies it by the hour
     for (let n = 0; n < count; n++) {
       const e = pick(world.edges, rand);
       const kind = pickKind(world.id, rand()), seed = Math.floor(rand() * 1e6);

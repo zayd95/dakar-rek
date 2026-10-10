@@ -1118,3 +1118,17 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     dispose() { disposeGroup(group); },
   };
 }
+
+/** Kind of a special block (landmark) of a hub. */
+export type SpecialKind = Special;
+/**
+ * Special blocks of a hub with their centres (mosque, market, station, pitch, gym, port…) and the side of the sea.
+ * Read by systems that populate the city around them (src/social/ambientSpots.ts); the geometry stays in buildHub.
+ */
+export function hubLayout(id: HubId): { specials: { kind: Special; x: number; z: number }[]; sea: 'west' | 'north' | null } {
+  const sp = SPECS[id];
+  return {
+    specials: Object.entries(sp.specials).map(([key, kind]) => { const [i, j] = key.split(',').map(Number); return { kind, x: blockMin(i) + BLK / 2, z: blockMin(j) + BLK / 2 }; }),
+    sea: sp.sea ?? null,
+  };
+}
