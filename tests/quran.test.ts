@@ -28,14 +28,20 @@ describe('Quranic text of the Grande Mosquée (Tanzil, verbatim)', () => {
 
   it('wraps between words only: every verse reads back unchanged, pause marks stay with their word', () => {
     const p = passage('kursi');
-    const units = wrapUnits(p, false);
+    const units = wrapUnits(p) as string[];
     expect(units.join(' ')).toBe(p.verses[0].text);
     expect(units.some(u => /^[\u06D6-\u06DC]/.test(u))).toBe(false);
-    const lines = wrapLines(units, 60, s => s.length);
+    const lines = wrapLines(units, 60, s => s.length, 1);
     expect(lines.length).toBeGreaterThan(3);
-    expect(lines.join(' ')).toBe(p.verses[0].text);
-    const ik = wrapUnits(passage('ikhlas')).join(' ');
-    for (const v of passage('ikhlas').verses) expect(ik).toContain(v.text);
+    expect(lines.map(l => l.join(' ')).join(' ')).toBe(p.verses[0].text);
+  });
+
+  it('closes each verse with its medallion only when numbered, never inside the text', () => {
+    const ik = passage('ikhlas'), units = wrapUnits(ik, true);
+    expect(units.filter(u => typeof u !== 'string')).toEqual([{ aya: 1 }, { aya: 2 }, { aya: 3 }, { aya: 4 }]);
+    const verses: string[][] = [[]];
+    for (const u of units) if (typeof u === 'string') verses[verses.length - 1].push(u); else verses.push([]);
+    expect(verses.slice(0, 4).map(v => v.join(' '))).toEqual(ik.verses.map(v => v.text));
   });
 
   it('numbers verses in Arabic-Indic digits', () => {

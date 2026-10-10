@@ -407,14 +407,15 @@ function buildHall(env: VenueEnv, id: string, doorId: string, ox: number, oz: nu
   const imamSeat = k.seat(`${id}:imam`, -2.2, -6.2, 0, top, 'prayer', 'Kneel');
   // Quranic calligraphy (verified Tanzil text, verbatim): high on the walls only, never at foot level
   const quran: { id: PassageId; refs: string; lines: number; drawn: boolean }[] = [];
-  const writing = (pid: PassageId, w: number, h: number, x: number, y: number, z: number, rotY: number) => {
-    const p = passage(pid), c = calligraphy(p, w, h);
+  const writing = (pid: PassageId, w: number, h: number, x: number, y: number, z: number, rotY: number, numbered = false) => {
+    const p = passage(pid), c = calligraphy(p, w, h, { numbered });
     k.keep(c.texture);
-    const m = k.mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: c.texture }));
+    // a touch of glow from its own gold so the writing reads in the hall's soft light (day and night)
+    const m = k.mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: c.texture, emissive: 0xffffff, emissiveMap: c.texture, emissiveIntensity: 0.28 }));
     m.position.set(x, y, z); m.rotation.y = rotY;
     quran.push({ id: pid, refs: p.verses.map(v => `${v.sura}:${v.aya}`).join(','), lines: c.lines, drawn: c.drawn });
   };
-  writing('ikhlas', 3.4, 0.8, 0, F + 4.15, z0 + 0.03, 0);                     // cartouche above the mihrab's arch
+  writing('ikhlas', 3.4, 0.8, 0, F + 4.15, z0 + 0.03, 0, true);                     // cartouche above the mihrab's arch
   writing('kursi', 4.6, 2.3, -6.0, F + 3.0, z0 + 0.02, 0);                    // framed Âyat al-Kursî, qibla wall, left of the mihrab
   writing('bismillah', 3.0, 0.7, 0, F + 3.75, z1 - 0.02, Math.PI);            // over the door, seen when facing the way out
   Wd.box(4.8, 2.5, 0.04, -6.0, F + 1.75, z0 + 0.02 - 0.03, 0x5e3a20);         // wooden frame behind the large panel
