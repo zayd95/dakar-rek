@@ -10,7 +10,7 @@ import { arenaExterior } from './exterior';
 import * as P from '../activity/primitives';
 import { Percussion, crowdCheer } from '../lamb/audio';
 import { STYLES } from '../lamb/rules';
-import { WALL_R } from '../world/geew';
+import { TUNNEL_MOUTH_R, WALL_R } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
   BILL, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
@@ -261,26 +261,25 @@ class ArenaEvening {
 
   private startEntrance() {
     if (!humanoidReady()) return;
-    const q = this.ctx.quality(), cx = this.cx, cz = this.cz, gz = this.gz;
+    const q = this.ctx.quality(), cx = this.cx, cz = this.cz;
     const walker = (h: Humanoid, fx: number, fz: number, tx: number, tz: number, t0: number, t1: number, end: Clip) => {
       h.group.position.set(fx, 0.1, fz); this.group.add(h.group);
       this.entrance.push({ h, from: new V3(fx, 0.1, fz), to: new V3(tx, 0.1, tz), t0, t1, end });
     };
     const lw = new Wrestler(0x5b3420); lw.setLook(LEFT_LOOK, 'B');
     const rw = new Wrestler(0x4e2e1c); rw.setLook(RIGHT_LOOK, 'A');
-    walker(lw, cx + 0.8, gz + 1, cx + 3, cz, 0.5, 6.5, 'Dance_A');
-    walker(rw, cx - 0.8, gz + 1, cx - 3, cz, 3.5, 9.5, 'Dance_B');
+    // the wrestlers come out of their tunnel opposite the public gate (src/world/geew.ts TUNNEL_*), down the runner
+    const tz = cz + TUNNEL_MOUTH_R + 2.5;
+    walker(lw, cx + 0.8, tz, cx + 3, cz, 0.5, 6.5, 'Dance_A');
+    walker(rw, cx - 0.8, tz, cx - 3, cz, 3.5, 9.5, 'Dance_B');
     const followers = q === 'low' ? 0 : q === 'medium' ? 1 : 2;
     const R = rng(77);
     for (const [side, t0] of [[1, 0.9], [-1, 3.9]] as const) for (let k = 0; k < followers; k++) {
       const h = new Humanoid({ ...randomLook(R), style: 'boubou', female: false });
-      walker(h, cx + side * (1.6 + k * 0.7), gz + 0.2 - k * 0.8, cx + side * (4.4 + k * 0.9), cz - 3.2 - k * 0.6, t0, t0 + 6, 'Celebrate');
+      walker(h, cx + side * (1.0 + k * 0.5), tz + 0.8 + k * 0.8, cx + side * (4.4 + k * 0.9), cz + 3.2 + k * 0.6, t0, t0 + 6, 'Celebrate');
     }
-    for (let k = 0; k < (q === 'low' ? 1 : 2); k++) {             // two drummers by the gate, inside
-      const h = new Humanoid(randomLook(R)); h.hold = 'Talk'; h.group.position.set(cx - 5 + k * 1.1, 0.1, cz - 13.5); h.group.rotation.y = 0.3;
-      this.group.add(h.group); this.insideCast.push(h);
-    }
-    this.drums.start(116);
+    // the drums of the evening are the drummers' deck by the tunnel (src/arena/interior.ts), heard by distance through
+    // src/arena/exteriorAudio.ts all evening: no second group or second rhythm here
   }
   private updateEntrance(dt: number) {
     const t = this.t;
