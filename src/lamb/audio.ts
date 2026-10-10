@@ -17,18 +17,27 @@ function ac(): AudioContext | null {
   return ctx;
 }
 const out = () => master!;
+/**
+ * A bus of its own under the master gain (silent until its gain is raised): a sound placed in the world (the drummers
+ * outside the arena…) gets its own loudness by distance. Null when audio is unavailable.
+ */
+export function audioBus(): { ctx: AudioContext; gain: GainNode } | null {
+  const c = ac(); if (!c) return null;
+  const g = c.createGain(); g.gain.value = 0; g.connect(out());
+  return { ctx: c, gain: g };
+}
 
-function hit(c: AudioContext, when: number, freq: number, decay: number, gain: number, slap = false) {
+function hit(c: AudioContext, when: number, freq: number, decay: number, gain: number, slap = false, dest: AudioNode = out()) {
   const o = c.createOscillator(), g = c.createGain();
   o.type = 'sine'; o.frequency.setValueAtTime(freq * (slap ? 1.8 : 1.2), when); o.frequency.exponentialRampToValueAtTime(freq, when + 0.04);
   g.gain.setValueAtTime(gain, when); g.gain.exponentialRampToValueAtTime(0.001, when + decay);
-  o.connect(g).connect(out()); o.start(when); o.stop(when + decay + 0.02);
+  o.connect(g).connect(dest); o.start(when); o.stop(when + decay + 0.02);
   if (slap) {
     const len = Math.floor(c.sampleRate * 0.05), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
     const n = c.createBufferSource(), ng = c.createGain(), f = c.createBiquadFilter();
     f.type = 'highpass'; f.frequency.value = 1800; n.buffer = buf; ng.gain.value = gain * 0.6;
-    n.connect(f).connect(ng).connect(out()); n.start(when);
+    n.connect(f).connect(ng).connect(dest); n.start(when);
   }
 }
 
@@ -38,6 +47,8 @@ const PATTERN = [1, 0, 3, 0, 2, 0, 3, 3, 1, 0, 3, 0, 2, 3, 0, 3];
 export class Percussion {
   private timer = 0; private step = 0; private next = 0;
   playing = false;
+  /** `dest`: where the hits go (a bus of `audioBus()`), the master gain by default. */
+  constructor(private dest?: AudioNode) {}
   start(bpm = 118) {
     const c = ac(); if (!c || this.playing) return;
     this.playing = true; this.step = 0; this.next = c.currentTime + 0.05;
@@ -45,9 +56,10 @@ export class Percussion {
     this.timer = window.setInterval(() => {
       while (this.next < c.currentTime + 0.12) {
         const v = PATTERN[this.step % PATTERN.length];
-        if (v === 1) hit(c, this.next, 95, 0.25, 0.5);
-        if (v === 2) hit(c, this.next, 180, 0.18, 0.35);
-        if (v === 3) hit(c, this.next, 320, 0.08, 0.28, true);
+        const to = this.dest ?? out();
+        if (v === 1) hit(c, this.next, 95, 0.25, 0.5, false, to);
+        if (v === 2) hit(c, this.next, 180, 0.18, 0.35, false, to);
+        if (v === 3) hit(c, this.next, 320, 0.08, 0.28, true, to);
         this.next += dur; this.step++;
       }
     }, 40);

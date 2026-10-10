@@ -25,7 +25,8 @@ uncapped (Habib, 9 Oct): the ladders climb to hundreds of millions and billions.
   player's own ad (+10 % on the ventures), or ad space rented for a day. Upgrades (wall, night lighting, comfort), wear and
   repair, resale at 90 % of the value at once. Ventures (« Affaires », bana-bana table → big company) are assets too.
 - **See it.** Phone « Biens »: net worth, value of the assets, income and charges per hour, everything held, listings
-  (vehicles and the jet are in the model, marked as coming later). Wallet: cash, assets, total wealth, income, charges.
+  (the Moto Jakarta and the used car are for sale and drivable — src/transport; the other vehicles and the jet are in
+  the model, marked as coming later). Wallet: cash, assets, total wealth, income, charges.
 
 Income and charges count per in-game hour **of play** (1 city hour = 1 real minute), nothing offline, at most a city day at
 once, settled in one ledger line each way. Unpaid rent piles up; after three in-game days of it the landlord takes the keys
@@ -68,6 +69,7 @@ save migrating). Screenshots in `docs/screenshots/ownership/`.
 
 ## Known gaps
 
-Building on a plot, buying vehicles (drive mode) and the jet come later; NPC visits and other players' homes are not
+Building on a plot, the other vehicles and the jet come later (the Moto Jakarta and the used car are bought, listed and
+sold here, and driven — `docs/TRANSPORT.md`); NPC visits and other players' homes are not
 shown; the lying pose (sleeping sits on the bed for now); the kit's own seats and use anchors are not used yet (the
 catalogue's are); the shower stays a built-in of the room; the Dibi talk does not sell a share of the Dibi itself.

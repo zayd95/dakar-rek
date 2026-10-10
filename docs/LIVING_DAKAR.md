@@ -101,7 +101,7 @@ Already composed:
   place of a row, kneeling (derived `Kneel` pose on `prayer` seats) or sit quietly → talk with the imam (greetings,
   prayer times, how to help) → sweep the courtyard as a volunteer. **No reward for religious practice** (Habib, 9 Oct):
   ablutions, prayer and the calm seat change no need, no money, no counter, no activity category. No commerce, no
-  location chat, always open; reading stays disabled until a verified text source exists. The rows fill up around the
+  location chat, always open. Quranic calligraphy and « Lire le Coran » come verbatim from Tanzil (see « Quranic text »). The rows fill up around the
   five prayer times (`src/venues/prayer.ts`, Wolof names; also the place's `peaks` for the NPC lane).
 - **Soumbédioune's pirogue and mareyeuses** (`src/venues/beach.ts`, Corniche, on the existing beach block): « Partir avec
   les pêcheurs » boards you on the pirogue's thwart; the boat pushes out to sea with you and its crew aboard, you pull
@@ -138,8 +138,26 @@ captures, performance) happens before anything reaches `wip/visual-pass`, which 
 World & Activities · 3D Asset Factory (with asset register and provenance) · NPC & Social Life · Economy & Ownership ·
 Transport · UI/UX · Performance · QA / Integration.
 
+## Quranic text (Grande Mosquée)
+
+Source: **Tanzil Project** (https://tanzil.net), *Tanzil Quran Text (Simple)*, CC BY 3.0, verbatim copies only. The
+verses used are copied byte for byte by `scripts/quran-extract.mjs` into `src/venues/quran.json`, which keeps Tanzil's
+copyright block; `node scripts/quran-extract.mjs --verify <tanzil-simple.xml>` re-checks them against the file. Never
+type or edit Arabic text by hand; lines break only between words (pause marks stay with their word).
+
+| Where (prayer hall only) | Text |
+|---|---|
+| Framed panel on the qibla wall, left of the mihrab (its pair on the right is geometric tiles) | Âyat al-Kursî, 2:255 |
+| Cartouche above the mihrab's arch | Al-Ikhlâs, 112:1–4 |
+| Band over the door, seen when facing the way out | 1:1 |
+| Mushaf open on its folding stand (rahla) on a low table in front of the shelf — « Lire le Coran » | Al-Fâtiha, 1:1–7, with the reference and « Texte coranique : Tanzil Project — tanzil.net » (link) |
+
+Rules: nothing outside the hall (no floors, goods, vehicles, other venues), nothing to buy, **no reward** (reading is a
+hand-over with no effect: no money, need, counter or activity category), no recitation audio, no translation (Tanzil's
+translations have their own terms) — French labels give only the surah and verse numbers. Fonts: the device's Arabic
+fonts (Naskh / Quranic faces first); if none can join Arabic letters, the panels stay plain frames. Check:
+`scripts/check-quran.mjs`, `tests/quran.test.ts`.
+
 ## Not possible from the cloud session yet
 
-- **Quran text:** tanzil.net, quran.com and api.alquran.cloud are blocked by the session's network policy. The mosque
-  can offer "read a verse" only once a verified source is reachable (allow `tanzil.net` in the environment) or the text
-  is supplied from a verified file.
+- ~~**Quran text**~~: done on 10 Oct — Habib allowed `tanzil.net` in the environment; see « Quranic text » above.
