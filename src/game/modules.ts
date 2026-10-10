@@ -100,6 +100,11 @@ export interface GameCtx {
   startBout(mode: 'amical' | 'classe', style?: string, after?: () => void): boolean;
   /** Set (or clear) the city's walking marker towards an interactable of the current hub (the places directory's marker). */
   walkTo(id: string | null): void;
+  /**
+   * What other players may read about this player under their name (presence `rec`, validated by the server):
+   * a short line such as « Undercards · 3-1 · Écurie Baobab », or null for nothing. The career module sets it.
+   */
+  setPublicRecord(rec: string | null): void;
 }
 
 /** A gameplay module: hooks are called by main.ts in this order every hub / frame. */
@@ -138,6 +143,11 @@ export interface GameModule {
    * result toast (purse, rank). The career module (src/career) keeps the record from it.
    */
   lamb?(ctx: GameCtx, e: LambEvent): string[] | void;
+  /**
+   * Who the player faces in a làmb bout of this mode (the career's roster: name, duel style, level), or null to keep
+   * the duel's own rotation. Asked by main.ts when a friendly or ranked bout starts.
+   */
+  opponent?(ctx: GameCtx, mode: 'amical' | 'classe'): { name: string; style: string; level: number } | null;
   /** Entries merged into window.__dakar (?debug) for the checks. */
   debug?(ctx: GameCtx): Record<string, unknown>;
 }

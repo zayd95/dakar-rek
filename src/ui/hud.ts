@@ -2,6 +2,7 @@ import type { Needs } from '../core/types';
 import type { Input } from '../core/input';
 import { Sheet, replay, type MenuItem } from './sheet';
 import { fcfaShort, fcfaText } from '../economy/format';
+import { glossed } from '../i18n/wolof';
 
 export type { MenuItem } from './sheet';
 
@@ -234,7 +235,7 @@ export class Hud {
     act.className = opt.stop ? 'stop' : opt.disabled ? 'dis' : '';
     act.innerHTML = `${icon ? `<i class="a-ic" aria-hidden="true">${esc(icon)}</i>` : ''}<span class="a-tx"><b>${esc(text)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>`
       + (price && !opt.stop ? `<em class="a-pr ${opt.cost ? 'cost' : 'gain'}">${price}</em>` : '') + '<kbd aria-hidden="true">E</kbd>';
-    act.setAttribute('aria-label', [text, sub, price].filter(Boolean).join(' · '));
+    act.setAttribute('aria-label', glossed([text, sub, price].filter(Boolean).join(' · ')));   // no invisible gloss marks read aloud
   }
   /** Diegetic bubble above the focused target (screen position in CSS pixels), or hidden. */
   setWorldPrompt(at: { x: number; y: number } | null, icon = '', label = '', opt: PromptOpts = {}) {
