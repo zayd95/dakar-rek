@@ -10,6 +10,7 @@ import { VenueKit, Smoke, glowQuad } from './kit';
 import { Cast, type Role } from './cast';
 import { conversation, counter, nightOf, relate, type Venue, type VenueEnv } from './venue';
 import { OWNER_BYE, ownerGreeting, ownerNews, ownerSpecial, ownerWork, type OwnerCtx } from './talk';
+import { phoneHooks } from '../ui/phoneHooks';
 
 /**
  * A Dibi (dibiterie) on a lot of the hub (src/world/sites.ts), open-air in the Dakar way: a painted low wall on the two
@@ -205,6 +206,8 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     ],
   }, {
     converse: () => talkOwner(),
+    // « Parler affaires »: the ownership module's sheet (src/economy/estate.ts), when it is installed
+    ownership: phoneHooks.openAsset ? id => phoneHooks.openAsset?.(id) : undefined,
     count: c => counter(ctx, c), day: () => ctx.day(), hour: () => ctx.hour(),
     tired: e => ctx.state.data.needs.energie < e ? 'Repose-toi avant ce service' : null,
   });

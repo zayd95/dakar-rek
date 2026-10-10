@@ -147,7 +147,7 @@ try {
       }
       const enter = focused && await pick(page, /^Entrer/);
       if (enter) await enter.click();
-      const inside = !!enter && await page.waitForFunction(() => window.__dakar.pos().x > 2000, null, { timeout: 15000 }).then(() => true, () => false);
+      const inside = !!enter && await page.waitForFunction(() => window.__dakar.pos().x > 3000, null, { timeout: 15000 }).then(() => true, () => false);
       check(`${label}: ${door.name} — « Entrer » leads into the café`, inside);
       if (!inside) continue;
       await page.waitForTimeout(600);

@@ -23,7 +23,7 @@ const BARISTA: PersonLook = { skin: 0x5b3420, style: 'tee', top: 0x14532d, botto
 const REGULAR: PersonLook = { skin: 0x6b3f25, style: 'boubou', top: 0xe8decb, pattern: 'bazin', hat: 'kufi', hatColor: 0x1c1c1f };
 /** Kiosk kinds that get a walk-in room, and the kit type that stocks it. */
 const WALK_IN: { frag: string; type: ShopType; w: number; d: number }[] = [{ frag: ':cafe:', type: 'cafe', w: 9, d: 7 }];
-const ROOM_X = 2600, ROOM_GAP = 30;
+const ROOM_X = 3400, ROOM_GAP = 30;                 // off the map, past the homes (src/economy/estate.ts: 1600 + 60 i) and the mosque hall
 
 interface Room { door: Interactable; shop: ShopInterior; cast: Cast | null }
 let rooms: Room[] = [];
