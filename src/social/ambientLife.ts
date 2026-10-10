@@ -214,7 +214,9 @@ export class AmbientLife implements GameModule {
   private reconcile(snap: boolean) {
     const ctx = this.ctx, hour = ctx.hour(), space = ctx.space(), p = ctx.player.pos, B = this.B;
     this.refreshReserved(hour);
-    const rows = planDemand(this.spots!, ACTIVITIES, { hour, dow: this.dow(), scale: B.scale, px: p.x, pz: p.z, near: B.near, far: B.plan, cap: B.population, space, seatKind: this.seatKind });
+    const ev = this.event, acts = ev ? [...ACTIVITIES, ...ev.acts] : ACTIVITIES;
+    const boost = ev ? (s: AmbientSpot) => (s.tags.some(t => ev.tags.includes(t)) ? ev.boost : 1) : undefined;
+    const rows = planDemand(this.spots!, acts, { hour, dow: this.dow(), scale: B.scale, px: p.x, pz: p.z, near: B.near, far: B.plan, cap: B.population, space, seatKind: this.seatKind, boost });
     const want = new Map<string, number>();
     for (const r of rows) want.set(r.spot.id + '/' + r.act.id, r.n);
     // newest first: they fill the quotas, the people who have been there longest are the ones who leave
@@ -842,6 +844,14 @@ export class AmbientLife implements GameModule {
   }
 
   // ------------------------------------------------------------------ debug (window.__dakar, ?debug)
+  private event: { acts: readonly AmbientActivity[]; tags: readonly string[]; boost: number } | null = null;
+  /**
+   * An evening's event (src/social/fightTalkModule.ts: the Dibi after a gala): extra activities, and the spots with
+   * one of `tags` busier by `boost`. Null: an ordinary evening.
+   */
+  setEvent(e: { acts: readonly AmbientActivity[]; tags: readonly string[]; boost: number } | null) { this.event = e; }
+  eventOn() { return !!this.event; }
+
   /** Where the city's ambient people stand or sit (spot centres and standing places), for other crowds to keep clear. */
   standPoints(): { x: number; z: number }[] {
     return (this.spots ?? []).flatMap(s => [{ x: s.x, z: s.z }, ...s.stands.map(t => ({ x: t.x, z: t.z }))]);

@@ -20,6 +20,8 @@ import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
 import { GalaCard } from './card';
 import { FightNightPeople } from './people';
+import { posters } from './posters';
+import { recordGalaResult } from '../social/fightTalk';
 
 /**
  * A fight evening inside the Pikine arena (docs/ARENA_VISIT.md): the ticket is bought at the window by the gate (price
@@ -277,12 +279,17 @@ class ArenaEvening {
       const r = this.bout?.result;
       const own: ShowResult | null = r ? { winner: !r.winner ? null : r.winner === 'player' ? 'left' : 'right', outcome: (r.outcome === 'entrainement' ? 'egalite' : r.outcome) as ShowOutcome } : null;
       this.outcome = this.adopted ?? own ?? { winner: null, outcome: 'egalite' };
-      const side = this.outcome.winner ? billFor(this.day())[this.outcome.winner] : null;
-      if (r) reportMainEvent(this.day(), side?.id ?? null);              // the city's ladder remembers the main event the player watched
+      const side = this.outcome.winner, how = this.outcome.outcome;
+      const bill = billFor(this.day()), won = side ? bill[side] : null, lost = side === 'left' ? bill.right : bill.left;
+      if (r) reportMainEvent(this.day(), won?.id ?? null);               // the city's ladder remembers the main event the player watched
       this.result = this.resultLine(this.outcome);
-      this.people.result(this.outcome.winner);
+      this.people.result(side);
       ctx.toast(this.result);
-      this.react('result', this.outcome.winner);
+      this.react('result', side);
+      // the city talks about it that evening and the next day (src/social/fightTalk.ts), the posters print it
+      recordGalaResult(ctx.state.data.counters, this.day(), side, how);
+      posters.setResult(this.day(), won && how !== 'egalite' && how !== 'abandon'
+        ? `${won.name} bat ${lost.name}, victoire ${how === 'projection' ? 'par chute' : 'aux points'}` : `${bill.left.name} et ${bill.right.name} : match nul`);
     } else if (phase === 'leaving') {
       this.bout?.dispose(); this.bout = null;
     } else if (phase === 'over') {
