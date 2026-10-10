@@ -129,6 +129,9 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   const pr1 = await info(), tl1 = await d(() => window.__dakar.arena.timeline());
   check(`${label}: the preliminaries start soon after sitting down: the first bout on the sand, named on the card`,
     pr1.phase === 'prelims' && pr1.prelims.n >= 1 && pr1.prelims.stage === 'bout' && !!pr1.prelims.bout && /Préliminaires 1\//.test(pr1.card), { prelims: pr1.prelims, card: pr1.card, timeline: tl1 });
+  // with ?lamb2 the preliminaries are fought avec frappe too (AI against AI, styles from the preliminary's seed); without it, sans frappe as before
+  check(`${label}: the preliminary is fought ${L2 ? 'avec frappe (prelims.frappe), AI against AI' : 'sans frappe, as before'}`,
+    pr1.prelims.frappe === L2 && pr1.prelims.bout?.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'), { frappe: pr1.prelims.frappe, discipline: pr1.prelims.bout?.discipline, identity: pr1.prelims.bout?.identity });
   await shot('3b-prelim');
   await d(() => window.__dakar.arena.speed(6));
   await page.waitForFunction(() => window.__dakar.arena.info().prelims.results.length >= 1, null, { timeout: 300000 }).catch(() => {});
