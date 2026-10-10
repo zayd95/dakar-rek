@@ -367,8 +367,8 @@ class ArenaEvening {
     if (phase !== 'prelims') this.clearPrelim();
     if (phase === 'filling') {
       this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0; this.fallSplit = null; this.lastBout = null;
+      // the matchup is on the gala card from now on (it used to be said again in a toast under the card: once is enough)
       const bill = billFor(this.day());
-      this.say('bill', ARENA.bill(bill.left.name, bill.left.ecurie, bill.right.name, bill.right.ecurie));
       // tonight's preliminaries: the same card on every device, by the evening's size, the main event's names kept out
       this.prelims = undercardFor(this.hubId, this.day(), eveningSize(this.day(), Math.max(17, ctx.hour())), [bill.left.name, bill.right.name]);
       this.pResults = []; this.pi = 0; this.fillStart = fillAt(ctx.hour());
