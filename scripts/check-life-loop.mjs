@@ -130,13 +130,16 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
 
   // 6. Buy and furnish: the cheapest piece, paid once, visible and usable in the room.
   const beforeBuy = await S();
-  const roomBefore = (await d(() => window.__dakar.roomInteractables())).length;
+  // what the room offers: its own spots, the home's furniture places (asset model: src/economy/estate.ts) and its seats
+  const contents = () => d(() => ({ spots: window.__dakar.roomInteractables().map(i => i.name), places: window.__dakar.placeList().filter(p => p.space === 'home').flatMap(p => p.anchors), seats: window.__dakar.seatsHere().map(x => x.id) }));
+  const size = c => c.spots.length + c.places.length + c.seats.length;
+  const roomBefore = size(await contents());
   const ok = cheapest ? await d(id => window.__dakar.buy(id), cheapest.id) : false;
   await page.waitForTimeout(800);
   const bought = await S();
-  const roomAfter = await d(() => window.__dakar.roomInteractables());
+  const roomAfter = await contents();
   check(`${label}: buy — the first furniture is paid exactly once`, ok && beforeBuy.wallet - bought.wallet === cheapest.price && bought.furniture.includes(cheapest.id), `${cheapest?.name} ${cheapest?.price} F`);
-  check(`${label}: furnish — the new piece is in the room and usable`, roomAfter.length > roomBefore, roomAfter.map(i => i.name).join(', '));
+  check(`${label}: furnish — the new piece is in the room and usable`, size(roomAfter) > roomBefore, `${roomBefore} → ${size(roomAfter)} · ${JSON.stringify(roomAfter)}`);
   await shot('06-furnished');
 
   // 7. Save and reload: money, furniture and progress come back; nothing is paid twice.
