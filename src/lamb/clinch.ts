@@ -6,7 +6,7 @@
  * plain grab in neutral a small one; the balance each brings in, technique and force tilt it. The grip then weighs in
  * the empoignade until the next steps make it move (push, pull, pivot, change of grip).
  */
-import { k, type Attributes } from './stand';
+import { k, type Attributes, type Style6 } from './stand';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
@@ -85,9 +85,25 @@ export const CLINCH = {
   recover: 0.22,
   /** Breaking free: its cost, and the grip below which it fails. */
   breakCost: 20, breakFloor: -35, breakMissCost: 8,
-  /** Seconds after which the referee separates an empoignade that goes nowhere. */
-  maxSeconds: 9,
+  /**
+   * Seconds after which the referee separates an empoignade that goes nowhere — not while a wrestler is about to go
+   * down (posture « chute »): that one he lets finish, up to `graceSeconds` more.
+   */
+  maxSeconds: 9, graceSeconds: 4,
+  /**
+   * Fatigue (spec §8: errors come with fatigue): a wrestler spent below `spent` endurance can no longer hold his
+   * balance in the empoignade — it does not come back and wears away at `spentSlip` per second (more when the grip is
+   * against him). Whoever ran out first is the one who goes down.
+   */
+  spent: 6, spentSlip: 10,
 } as const;
+
+/**
+ * The referee presses an empoignade that goes nowhere too: after URGE_CLINCH.after seconds the wrestlers look for the
+ * throw more (a weaker position will do, more often), fully by URGE_CLINCH.full. 0…1.
+ */
+export const URGE_CLINCH = { after: 3, full: 7 } as const;
+export const clinchUrge = (secondsInClinch: number) => clamp((secondsInClinch - URGE_CLINCH.after) / (URGE_CLINCH.full - URGE_CLINCH.after), 0, 1);
 
 /** A wrestler inside the empoignade (shares stamina and balance with the stand-up state). */
 export interface Holder { stamina: number; balance: number; attrs: Attributes; move: { kind: ClinchMove; t: number } | null; recover: number; slow?: number }
@@ -186,7 +202,7 @@ export const posture = (balance: number): Posture => (balance < 25 ? 'chute' : b
 export function holdTick(h: Holder, dt: number, grip = 0): boolean {
   h.recover = Math.max(0, h.recover - dt);
   h.stamina = Math.max(0, h.stamina - CLINCH.drain * dt);
-  const slip = slipRate(grip);
+  const slip = slipRate(grip) + (h.stamina < CLINCH.spent ? CLINCH.spentSlip * (1 + Math.max(0, -grip) / 50) : 0);
   if (slip > 0) h.balance = Math.max(0, h.balance - (slip / k(h.attrs.equilibre)) * dt);
   else if (!h.move) h.balance = Math.min(100, h.balance + CLINCH.balanceRegen * k(h.attrs.equilibre) * dt);
   if (!h.move) return false;
@@ -214,10 +230,15 @@ export interface ClinchStyle {
   /** Chance to try a throw per decision when the position allows it. */
   throwChance: number;
 }
-export const CLINCH_STYLES: Record<'costaud' | 'rapide' | 'defensif' | 'partenaire', ClinchStyle> = {
+export const CLINCH_STYLES: Record<Style6 | 'partenaire', ClinchStyle> = {
   costaud: { prefer: { push: 0.6, pull: 0.2, pivot: 0.2 }, read: 0.3, think: [0.5, 0.9], breakFree: 0.1, throwChance: 0.55 },
   rapide: { prefer: { push: 0.2, pull: 0.3, pivot: 0.5 }, read: 0.35, think: [0.35, 0.7], breakFree: 0.3, throwChance: 0.4 },
   defensif: { prefer: { push: 0.2, pull: 0.55, pivot: 0.25 }, read: 0.5, think: [0.45, 0.85], breakFree: 0.35, throwChance: 0.3 },
+  // Technique reads and answers best, turns and pulls; Bon frappeur wants out of the empoignade to strike again;
+  // Grand lutteur de saisie is at home there: drives, throws, never lets go
+  technique: { prefer: { push: 0.15, pull: 0.4, pivot: 0.45 }, read: 0.65, think: [0.45, 0.8], breakFree: 0.25, throwChance: 0.35 },
+  frappeur: { prefer: { push: 0.4, pull: 0.3, pivot: 0.3 }, read: 0.25, think: [0.5, 0.9], breakFree: 0.45, throwChance: 0.3 },
+  saisie: { prefer: { push: 0.45, pull: 0.3, pivot: 0.25 }, read: 0.4, think: [0.4, 0.75], breakFree: 0.05, throwChance: 0.6 },
   partenaire: { prefer: { push: 0.6, pull: 0.2, pivot: 0.2 }, read: 0, think: [1.0, 1.4], breakFree: 0, throwChance: 0 },
 };
 /** The move that beats `m`. */
@@ -277,12 +298,15 @@ export function counterThrow(def: Holder, att: Holder, grip: number): { result: 
   return { result: 'block', score };
 }
 
-/** Will the opponent try a throw now (`grip` from its side)? When the position is good, more for a power style. */
-export function wantsThrow(me: Holder, them: Holder, grip: number, st: ClinchStyle, level: number, r: () => number): boolean {
+/**
+ * Will the opponent try a throw now (`grip` from its side)? When the position is good, more for a power style; pressed
+ * by the referee (`urge` 0…1, see clinchUrge) it settles for a weaker position, more often.
+ */
+export function wantsThrow(me: Holder, them: Holder, grip: number, st: ClinchStyle, level: number, r: () => number, urge = 0): boolean {
   if (me.move || me.recover > 0 || me.stamina < THROW.cost + 4) return false;
-  const s = throwScore(me, them, grip);
-  if (s < THROW.threshold - 8) return false;
-  return r() < Math.min(0.9, st.throwChance * level * (s >= THROW.threshold ? 1.4 : 0.7));
+  const s = throwScore(me, them, grip), u = clamp(urge, 0, 1);
+  if (s < THROW.threshold - 8 - 14 * u) return false;
+  return r() < Math.min(0.9, st.throwChance * level * (s >= THROW.threshold ? 1.4 : 0.7) * (1 + 1.5 * u));
 }
 /** Will the opponent counter the player's throw (decided once, when it sees it coming)? */
 export function wantsCounter(me: Holder, st: ClinchStyle, level: number, composure: number, r: number): boolean {

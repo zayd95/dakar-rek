@@ -6,7 +6,7 @@ import { rng } from '../core/rng';
 import { castById } from '../social/cast';
 import { Percussion, crowdCheer, strikeSound } from './audio';
 import {
-  AVERAGE, STAND, STAND_STYLES, STRIKES, decide, free, land, react, reactDelay, standState, startStrike, tick,
+  AVERAGE, STAND, STAND_STYLES, STRIKES, URGE, decide, rangeOf, urgeOf, free, land, react, reactDelay, standState, startStrike, tick,
   type Attributes, type Reaction, type StandState, type StandStyle, type StrikeKind,
 } from './stand';
 import { StrikeRig } from './strikeRig';
@@ -14,7 +14,7 @@ import { LESSON, advance, coachLine, feedback, hear, startLesson, stepNumber, ty
 import { utter } from '../i18n/lines';
 import {
   CLINCH, CLINCH_STYLES, ENTRY_TEXT, MOVES, THROW, clinchDecide, clinchPower, counterThrow, entryGrip, exchange, gripWords, holdTick, posture, startMove,
-  throwLands, tryBreak, wantsCounter, wantsThrow,
+  throwLands, tryBreak, wantsCounter, wantsThrow, clinchUrge,
   type ClinchMove, type ClinchStyle, type Entry, type Exchange, type Posture,
 } from './clinch';
 import { inGate, tierRadius, tierTop, TIERS } from '../world/geew';
@@ -78,6 +78,8 @@ export interface DuelOptions {
   autopilot?: { attrs: Attributes; stand: StandStyle; clinch: ClinchStyle; style: OpponentStyle; level: number };
   /** Seed of the opponent AI's draws (default: the clock). A watched bout seeded alike plays out alike everywhere. */
   seed?: number;
+  /** Seconds of the round before the referee's decision (default: the discipline's rules; a watched gala bout is shorter). */
+  roundSeconds?: number;
 }
 export interface DuelResult {
   mode: BoutMode; outcome: BoutOutcome; winner: Side | null; seconds: number;
@@ -110,6 +112,8 @@ export class LambDuel {
   readonly level: number;
   /** Seconds left in the round (Infinity in training). */
   timeLeft: number;
+  /** The round's length in seconds (the rules', or the watched gala bout's). */
+  private round: number;
   /** Tutorial step index (training only); equals TUTORIAL.length when finished. */
   step = 0;
   paused = false;
@@ -176,6 +180,9 @@ export class LambDuel {
   private autoSawStrike = false;
   private autoSawGrab = false;
   private autoStepIn = 0;
+  /** Avec frappe: seconds standing since the last empoignade (the referee presses a bout that goes nowhere). */
+  private standT = 0;
+  private urged = false;
   /** Avec frappe at the écurie: Coach Ablaye's guided lesson (src/lamb/lesson.ts), one step at a time. */
   private lesson: Lesson | null = null;
   /** What Coach Ablaye says now (shown in the lesson's box). */
@@ -222,7 +229,8 @@ export class LambDuel {
     const who = this.frappe && this.mode !== 'entrainement' ? opts.opponent : undefined;
     if (who) { this.standStyle = who.stand; this.clinchStyle = who.clinch; this.identity = who.line; }
     this.factor = opts.mode === 'entrainement' ? 1 : levelFactor(opts.level);
-    this.timeLeft = opts.mode === 'entrainement' ? Infinity : R.roundSeconds;
+    this.round = opts.roundSeconds ?? R.roundSeconds;
+    this.timeLeft = opts.mode === 'entrainement' ? Infinity : this.round;
     this.ring = opts.ring ?? 7.6;
     if (opts.seed !== undefined) this.rand = rng(opts.seed);
     this.o = new THREE.Vector3(origin.x, 0.1, origin.z);
@@ -470,7 +478,7 @@ export class LambDuel {
 
   private end(outcome: BoutOutcome, winner: Side | null) {
     this.outcome = outcome; this.winner = winner;
-    const seconds = this.mode === 'entrainement' ? this.t : R.roundSeconds - Math.max(0, this.timeLeft);
+    const seconds = this.mode === 'entrainement' ? this.t : this.round - Math.max(0, this.timeLeft);
     this.result = {
       mode: this.mode, outcome, winner, seconds,
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
@@ -788,6 +796,9 @@ export class LambDuel {
   private fightFrappe(dt: number, taps: number, breaks: number, quick: number, big: number) {
     const me = this.me, ai = this.ai;
     if (this.timeLeft !== Infinity && !this.held) this.timeLeft -= dt;
+    if (!this.held) this.standT += dt;
+    const urge = this.lesson ? 0 : urgeOf(this.standT);
+    if (urge > 0 && !this.urged) { this.urged = true; this.msg('L’arbitre presse les lutteurs : saisissez-vous !', 1.2); }
     const m = this.auto ? { x: 0, y: 0 } : this.input.move();
     if (this.auto) ({ taps, breaks, quick, big } = this.autoStand(dt, ai.pos.distanceTo(me.pos)));
     me.guard = this.guardHeld && !me.strike && me.stagger <= 0 && me.open <= 0 && me.dodge <= 0 && me.busy <= 0;
@@ -795,7 +806,7 @@ export class LambDuel {
     if (me.busy <= 0 && me.stagger <= 0) {
       const sp = 2.6 * (me.guard ? STAND.guardSpeed : me.strike ? 0.4 : 1);
       if (this.auto) {                                                      // AI against AI: it keeps its own range
-        const d0 = ai.pos.distanceTo(me.pos), r0 = this.autoStepIn > 0 ? 1.1 : this.auto.stand.range, want = d0 > r0 + 0.15 ? 1 : d0 < r0 - 0.35 ? -0.6 : 0;
+        const d0 = ai.pos.distanceTo(me.pos), r0 = this.autoStepIn > 0 ? 1.1 : rangeOf(this.auto.stand, urgeOf(this.standT)), want = d0 > r0 + 0.15 ? 1 : d0 < r0 - 0.35 ? -0.6 : 0;
         me.pos.addScaledVector(ai.pos.clone().sub(me.pos).setY(0).normalize(), want * (sp / 2.6) * this.auto.style.speed * Math.min(1.2, this.autoFactor) * dt);
       } else me.pos.addScaledVector(this.camRight, m.x * sp * dt).addScaledVector(this.camFwd, m.y * sp * dt);
     }
@@ -840,7 +851,7 @@ export class LambDuel {
       this.aiThink = 1;
     } else if (!this.held && this.aiThink <= 0 && free(ai) && ai.windup <= 0 && ai.open <= 0 && ai.busy <= 0) {
       const [a0, b0] = this.style.think; this.aiThink = a0 + this.rand() * (b0 - a0);
-      const dec = decide({ me: ai, them: me, dist: d, grabRange: R.grabRange }, this.standStyle, this.factor, this.rand);
+      const dec = decide({ me: ai, them: me, dist: d, grabRange: R.grabRange }, this.standStyle, this.factor, this.rand, urge);
       if (dec.grab && ai.stamina >= R.stamina.grabCost) this.aiGrab();
       else if (dec.strike) {
         this.aiGuardHold = 0; ai.guard = false;
@@ -855,7 +866,7 @@ export class LambDuel {
     this.aiGuardHold = Math.max(0, this.aiGuardHold - dt);
     ai.guard = this.aiGuardHold > 0 && !ai.strike && ai.stagger <= 0 && ai.open <= 0 && ai.windup <= 0;
     if (ai.busy <= 0 && ai.windup <= 0 && ai.stagger <= 0 && ai.dodge <= 0) {
-      const range = this.standStyle.range, wait = this.lesson?.step === 'distance';
+      const range = rangeOf(this.standStyle, urge), wait = this.lesson?.step === 'distance';
       const want = wait ? 0 : d > range + 0.15 ? 1 : d < range - 0.35 ? -0.6 : 0;
       const dir = me.pos.clone().sub(ai.pos).setY(0).normalize();
       ai.pos.addScaledVector(dir, want * (ai.guard ? STAND.guardSpeed : ai.strike ? 0.4 : 1) * this.style.speed * Math.min(1.2, this.factor) * dt);
@@ -879,6 +890,8 @@ export class LambDuel {
   private clinchFrappe(dt: number, taps: number, breaks: number, quick: number, big: number, pull: boolean) {
     const me = this.me, ai = this.ai;
     if (this.timeLeft !== Infinity && !this.held) this.timeLeft -= dt;
+    // the bell ends the round in the empoignade too (a throw already launched lands first)
+    if (this.timeLeft <= 0 && !this.attempt) { this.timeUp(); return; }
     me.clip = ai.clip = 'Grab';
     if (this.auto) {
       const o = this.autoClinch(dt);
@@ -914,7 +927,7 @@ export class LambDuel {
     this.aiThink -= dt;
     if (!this.held && this.aiThink <= 0) {
       const [a0, b0] = this.clinchStyle.think; this.aiThink = a0 + this.rand() * (b0 - a0);
-      if (wantsThrow(ai, me, -this.grip, this.clinchStyle, this.factor, this.rand)) { this.startThrow(ai); return; }
+      if (wantsThrow(ai, me, -this.grip, this.clinchStyle, this.factor, this.rand, this.lesson ? 0 : clinchUrge(this.phaseT))) { this.startThrow(ai); return; }
       const d = clinchDecide(ai, me, -this.grip, this.clinchStyle, this.factor, ai.composure, this.rand);
       if (d === 'break') {
         if (tryBreak(ai, -this.grip)) { ai.score.breaks++; this.separate(me, 0.4); this.msg('Il se dégage !', 1.0); return; }
@@ -926,7 +939,13 @@ export class LambDuel {
     }
     // a wrestler whose balance is gone goes down (step 6 brings the throw attempt, the counter and the fall itself)
     if (me.balance <= 0 || ai.balance <= 0) { this.resolveClinch(ai.balance <= 0 && (me.balance > 0 || this.grip >= 0)); return; }
-    if (this.phaseT > CLINCH.maxSeconds && !this.held) { this.separate(null, 0); this.msg('L’arbitre sépare les lutteurs', 1.2); return; }
+    const going = posture(me.balance) === 'chute' || posture(ai.balance) === 'chute';
+    if (!this.held && this.phaseT > CLINCH.maxSeconds + (going ? CLINCH.graceSeconds : 0)) {
+      this.separate(null, 0); this.msg('L’arbitre sépare les lutteurs', 1.2);
+      // his patience is spent: back on their feet, he keeps pressing them to take hold again
+      if (!this.lesson) { this.standT = URGE.after; this.urged = true; }
+      return;
+    }
     // step 4: the player feels the position going — words, the screen's edge, a low note when it gets serious
     const pm = posture(me.balance), po = posture(ai.balance);
     if (this.lesson && this.lessonHear({ k: 'posture', player: pm })) return;
@@ -1064,7 +1083,7 @@ export class LambDuel {
     this.autoT -= dt;
     if (this.autoT <= 0 && free(me) && me.open <= 0 && me.busy <= 0) {
       const [x0, x1] = a.style.think; this.autoT = x0 + this.rand() * (x1 - x0);
-      const dec = decide({ me, them: ai, dist: d, grabRange: R.grabRange }, a.stand, this.autoFactor, this.rand);
+      const dec = decide({ me, them: ai, dist: d, grabRange: R.grabRange }, a.stand, this.autoFactor, this.rand, urgeOf(this.standT));
       if (dec.grab && me.stamina >= R.stamina.grabCost) { if (d <= R.grabRange) out.taps = 1; else this.autoStepIn = 0.8; }
       else if (dec.strike) { this.autoGuard = 0; if (dec.strike === 'big') out.big = 1; else out.quick = 1; }
       else this.autoGuard = dec.guard ? this.autoT : 0;
@@ -1082,7 +1101,7 @@ export class LambDuel {
     this.autoT -= dt;
     if (this.autoT > 0 || this.attempt) return out;
     const [x0, x1] = a.clinch.think; this.autoT = x0 + this.rand() * (x1 - x0);
-    if (wantsThrow(me, ai, this.grip, a.clinch, this.autoFactor, this.rand)) { out.throw = true; return out; }
+    if (wantsThrow(me, ai, this.grip, a.clinch, this.autoFactor, this.rand, clinchUrge(this.phaseT))) { out.throw = true; return out; }
     const d = clinchDecide(me, ai, this.grip, a.clinch, this.autoFactor, me.composure, this.rand);
     if (d === 'break') out.brk = true; else out.move = d;
     return out;
@@ -1168,6 +1187,7 @@ export class LambDuel {
     }
     for (const f of [this.me, this.ai]) { f.strike = null; f.stagger = 0; f.recover = 0; f.dodge = 0; f.move = null; }
     this.aiReact = null; this.aiGuardHold = 0; this.moveQueued = null; this.lastExchange = null; this.attempt = null;
+    this.standT = 0; this.urged = false;
     if (this.lesson) this.lessonHear({ k: 'clinch', by: by === this.me ? 'player' : 'opponent' });
     if (this.frappe) { this.aiThink = 0.5; this.autoT = 0.5; }
     this.msg(text, 0.9);

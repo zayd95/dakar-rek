@@ -165,6 +165,43 @@ attributs (±6 par niveau autour de 3), toujours dans la règle des ±20 %. Il e
 dans l'en-tête et dans le bilan : « Face à toi : Gora, costaud indépendant, 7-2 » (bilan de la saison sur le classement
 de la ville). Sans `?lamb2`, rien ne change.
 
+## Les six styles (spec §12)
+
+Avec frappe, chaque lutteur a l'un des **six styles de la spec**. Un style est **une entrée de données** : son IA debout
+(`STAND_STYLES`, `src/lamb/stand.ts`), ses préférences dans l'empoignade et son goût pour la projection
+(`CLINCH_STYLES`, `src/lamb/clinch.ts`), la forme de ses attributs, et le mot qui le dit (`STYLE_MAP`,
+`src/lamb/opponents.ts`). Aucun n'a tous ses attributs au-dessus d'un autre : ce sont les rencontres qui font les
+stratégies.
+
+| Style (spec) | Dit | Debout | Dans l'empoignade | Attributs forts | Lutteurs |
+| --- | --- | --- | --- | --- | --- |
+| Puissant — met la pression | costaud | s'avance et se tient près (1,4 m), grosse frappe, saisit volontiers | pousse surtout, projette souvent, lâche peu | Force | Babacar, Gora |
+| Technique — cherche les contres | technicien | distance moyenne, laisse l'autre s'engager, répond à la grosse frappe par une rapide plus que tous | lit et répond le mieux, tire et pivote | Technique, Sang-froid | Ousmane, Ndiaga |
+| Rapide — utilise le mouvement | rapide | frappes rapides, recule devant la frappe plus que tous | décide le plus vite, pivote | Explosivité | Lamine, Pape |
+| Défensif — fatigue l'autre | défensif | garde la plus longue distance (1,9 m), se garde le plus | tire, se dégage quand ça tourne mal | Défense, Endurance | Assane, Saliou |
+| Bon frappeur — crée des ouvertures | bon frappeur | à distance de frappe, frappe le plus, grosses frappes comprises | veut en sortir pour refrapper (se dégage le plus) | Frappe | Malick, Birame |
+| Grand lutteur de saisie — ferme vite la distance | grand lutteur de saisie | ferme la distance (1,2 m), saisit le plus, ne recule jamais | chez lui : pousse, projette le plus, ne lâche jamais | Force, Équilibre, Technique (peu de Frappe) | Daouda, Pathé |
+
+Les douze lutteurs du classement sont répartis deux par style (`ROSTER_STYLE6`). Chaque style affine son style de
+carrière (technicien → défensif, bon frappeur → rapide, grand lutteur de saisie → costaud) : les fiches de la carrière
+restent justes. « Face à toi : Ousmane, technicien de l'écurie Baobab, 4-3 ». Testé style par style
+(`tests/lamb2Styles.test.ts`) : chacun est mesuré contre les cinq autres sur ce qui le définit (par tirages semés : qui
+saisit, frappe, se garde, recule, contre, lit, se dégage, projette le plus).
+
+### L'arbitre presse un combat qui ne va nulle part
+
+- **Debout** : après 7 s sans empoignade, « L'arbitre presse les lutteurs : saisissez-vous ! » — ils se rapprochent et
+  saisissent davantage, pleinement à 14 s (`URGE`).
+- **Dans l'empoignade** : après 3 s, chacun se contente d'une position moins bonne pour projeter, plus souvent,
+  pleinement à 7 s (`URGE_CLINCH`). Une projection tentée trop tôt rate plus souvent et déséquilibre son auteur.
+- **La fatigue** (spec §8) : à bout d'endurance (sous 6) dans l'empoignade, un lutteur ne tient plus son équilibre, il
+  glisse (plus encore si la prise est contre lui). Celui qui s'est épuisé le premier tombe — l'arme du défensif.
+- **La séparation** : l'arbitre sépare une empoignade stérile à 9 s, mais pas quand un lutteur va tomber (posture
+  « chute ») : il laisse finir, 4 s de plus au plus. Après une séparation, il continue de presser.
+- **La cloche** termine aussi le temps dans l'empoignade (une projection déjà lancée retombe d'abord).
+
+Ces réglages valent aussi pour l'adversaire du joueur, avec frappe seulement.
+
 ## Le combat de la soirée, avec frappe (IA contre IA)
 
 Avec `?lamb2`, le combat que regardent les spectateurs au gala (l'affiche du soir, deux lutteurs du classement) se
@@ -184,6 +221,11 @@ Réglages de l'IA (valables aussi contre le joueur) : chaque style **s'avance po
 les puissants plus que les défensifs) — la lutte reste le cœur, les frappes ouvrent, les saisies concluent ;
 l'équilibre revient un peu moins vite (12/s) pour que les échanges pèsent ; au temps, l'arbitre compte aussi les
 frappes nettes (1 point) et les déséquilibres (2 points).
+
+Le combat regardé est une **manche courte de 30 s** (`WATCHED_ROUND`) : avec la présentation et la chute, il est fini
+en 40 s au plus. Presque tous finissent avant, par une chute. Testé sur toutes les paires du classement
+(`tests/lamb2Styles.test.ts`, 132 paires × 3 soirs = 396 combats) : tous finis en 40 s ou moins, 394 par projection,
+1 décision, 1 égalité ; le plus long 36 s, la moitié en moins de 17 s ; chaque style gagne et perd.
 
 ## La leçon de Coach Ablaye, avec frappe
 
@@ -224,7 +266,9 @@ Ce qui **manque** avant d'en faire la lutte par défaut :
 - **Le classé** : le combat classé et le chemin du lutteur sont avec frappe seulement avec le drapeau ; le classement
   de la ville (carrière) mélange encore les deux disciplines dans un même bilan de saison.
 - **Le multijoueur** : un combat joueur contre joueur avec frappe demande l'arbitrage serveur (spec §20), pas fait.
-- **L'équilibrage des styles** (spec §12) : six styles prévus, trois écrits (puissant, rapide, défensif).
+- **L'équilibrage des styles** (spec §12) : les six styles sont écrits et chacun gagne et perd entre IA ; leur
+  difficulté contre un joueur reste à régler avec des parties réelles. Le combat amical ne propose encore que Gora,
+  Pape et Saliou (puissant, rapide, défensif) : ajouter Ousmane, Malick et Daouda pour essayer les trois autres ?
 
 Options : (a) garder « sans frappe » par défaut et proposer « avec frappe » à côté (amical, soirée) dès maintenant ;
 (b) basculer la soirée et l'entraînement par défaut d'abord, le classé ensuite ; (c) tout basculer d'un coup après
@@ -236,9 +280,12 @@ leçon montrent le mieux la nouvelle lutte, et le classé garde son bilan tant q
 - `src/lamb/stand.ts` — règles pures du combat debout (testées : `tests/lamb2.test.ts`).
 - `src/lamb/duel.ts` — `discipline: 'avec_frappe'` branche le combat debout ; `'sans_frappe'` (par défaut) est inchangé.
 - `src/lamb/clinch.ts` — entrée et empoignade (pures, testées dans `tests/lamb2.test.ts`).
-- `src/lamb/opponents.ts` — les lutteurs du classement en adversaires avec frappe (table style → IA, niveau → attributs).
+- `src/lamb/opponents.ts` — les lutteurs du classement en adversaires avec frappe (table des six styles → IA, niveau → attributs ; `ROSTER_STYLE6`).
+- `tests/lamb2Styles.test.ts` — les six styles, l'arbitre qui presse, la fatigue, toutes les paires IA contre IA en 40 s.
 - `src/lamb/lesson.ts` — la leçon de Coach Ablaye (étapes, ce qui les termine, ses phrases ; testée, y compris dans le duel sans navigateur).
 - `src/lamb/strikeRig.ts` — poses de frappe et d'empoignade sur le squelette.
 - `src/arena/bout.ts` — le combat regardé ; avec frappe, le duel joue les deux côtés (IA contre IA).
 - `scripts/check-arena-visit.mjs`, `scripts/check-evening.mjs` — avec `LAMB2=1` : le combat de la soirée avec frappe (arbitre, tribunes).
-- `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/`.
+- `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/`. Ses étapes 4–5
+  (glissade, projection) se jouent adversaire, chrono et arbitre tenus immobiles (`__dakar.duelHold`, `duelClock` ;
+  même mise en place sans navigateur : `tests/lamb2Hold.test.ts`).

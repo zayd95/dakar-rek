@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AVERAGE, STAND, STAND_STYLES, STRIKES, decide, free, k, land, react, reactDelay, standState, startStrike, tick, windupOf,
+  AVERAGE, STAND, STAND_STYLES, STRIKES, STYLE6_IDS, decide, free, k, land, react, reactDelay, standState, startStrike, tick, windupOf,
   type StandState,
 } from '../src/lamb/stand';
 import { RULES, points, emptyScore, record, recordIncrements } from '../src/lamb/rules';
-import { LEVEL_STEP, STYLE_MAP, identityLine, rosterAttributes, rosterOpponent, rosterOpponents } from '../src/lamb/opponents';
+import { LEVEL_STEP, STYLE_MAP, identityLine, rosterAttributes, rosterOpponent, rosterOpponents, style6Of } from '../src/lamb/opponents';
 import { ROSTER } from '../src/career/roster';
 import {
   CLINCH, CLINCH_STYLES, ENTRY_BONUS, MOVES, THROW, answer, clinchDecide, clinchPower, counterScore, counterThrow, entryGrip, exchange, gripWords, holdTick, holder,
@@ -354,16 +354,17 @@ describe('làmb 2.0 · the throw attempt and the counter (step 5)', () => {
 });
 
 describe('làmb 2.0 · the city’s wrestlers fight as themselves', () => {
-  it('one table maps every roster style to its way of fighting, standing and in the empoignade', () => {
+  it('one table maps every roster wrestler, by his style of the six, to his way of fighting, standing and in the empoignade', () => {
     for (const w of ROSTER) {
-      const m = STYLE_MAP[w.style];
+      const s = style6Of(w), m = STYLE_MAP[s];
       expect(m).toBeTruthy();
-      expect(m.stand).toBe(STAND_STYLES[w.style]); expect(m.clinch).toBe(CLINCH_STYLES[w.style]);
+      expect(m.stand).toBe(STAND_STYLES[s]); expect(m.clinch).toBe(CLINCH_STYLES[s]);
+      expect(m.base).toBe(w.style);
     }
   });
   it('the level shifts the attributes, higher level higher numbers, always within the ±20 % rule', () => {
     const sum = (a: object) => (Object.values(a) as number[]).reduce((x, y) => x + y, 0);
-    for (const style of ['costaud', 'rapide', 'defensif'] as const) {
+    for (const style of STYLE6_IDS) {
       const lo = rosterAttributes({ style, level: 1 }), hi = rosterAttributes({ style, level: 5 });
       expect(sum(hi)).toBeGreaterThan(sum(lo));
       for (const v of [...Object.values(lo), ...Object.values(hi)]) { expect(v).toBeGreaterThanOrEqual(5); expect(v).toBeLessThanOrEqual(95); expect(k(v)).toBeGreaterThanOrEqual(0.8); expect(k(v)).toBeLessThanOrEqual(1.2); }

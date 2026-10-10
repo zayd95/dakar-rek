@@ -6,24 +6,44 @@
  * throws), his level shifts his attributes — never past the ±20 % rule, since every attribute acts through `k()`.
  * His identity is told in one line before the bout and in the recap: « Gora, costaud indépendant, 7-2 ».
  */
-import { ROSTER, ladderAt, wrestlerByName, type DuelStyle, type Wrestler } from '../career/roster';
+import { ROSTER, ladderAt, wrestlerByName, type Wrestler } from '../career/roster';
 import type { BoutEntry } from '../career/career';
-import { STAND_STYLES, type Attributes, type StandStyle } from './stand';
+import { STAND_STYLES, type Attributes, type StandStyle, type Style6 } from './stand';
 import { CLINCH_STYLES, type ClinchStyle } from './clinch';
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
-/** The one table: roster style → stand-up and empoignade AI, and the word for the style. */
-export const STYLE_MAP: Record<DuelStyle, { stand: StandStyle; clinch: ClinchStyle; word: string }> = {
-  costaud: { stand: STAND_STYLES.costaud, clinch: CLINCH_STYLES.costaud, word: 'costaud' },
-  rapide: { stand: STAND_STYLES.rapide, clinch: CLINCH_STYLES.rapide, word: 'rapide' },
-  defensif: { stand: STAND_STYLES.defensif, clinch: CLINCH_STYLES.defensif, word: 'défensif' },
+/**
+ * The one table: each of the six styles of the spec (§12) → stand-up and empoignade AI, the word that says it, and the
+ * sans-frappe style it stands on (the duel's pace, endurance and colours: src/lamb/rules.ts STYLES).
+ */
+export const STYLE_MAP: Record<Style6, { stand: StandStyle; clinch: ClinchStyle; word: string; base: 'costaud' | 'rapide' | 'defensif' }> = {
+  costaud: { stand: STAND_STYLES.costaud, clinch: CLINCH_STYLES.costaud, word: 'costaud', base: 'costaud' },
+  technique: { stand: STAND_STYLES.technique, clinch: CLINCH_STYLES.technique, word: 'technicien', base: 'defensif' },
+  rapide: { stand: STAND_STYLES.rapide, clinch: CLINCH_STYLES.rapide, word: 'rapide', base: 'rapide' },
+  defensif: { stand: STAND_STYLES.defensif, clinch: CLINCH_STYLES.defensif, word: 'défensif', base: 'defensif' },
+  frappeur: { stand: STAND_STYLES.frappeur, clinch: CLINCH_STYLES.frappeur, word: 'bon frappeur', base: 'rapide' },
+  saisie: { stand: STAND_STYLES.saisie, clinch: CLINCH_STYLES.saisie, word: 'grand lutteur de saisie', base: 'costaud' },
 };
+/**
+ * The roster's twelve wrestlers on the six styles (their roster style stays the career's; avec frappe each fights his
+ * own way): two of each. A wrestler not listed fights in his roster style.
+ */
+export const ROSTER_STYLE6: Readonly<Record<string, Style6>> = {
+  babacar: 'costaud', gora: 'costaud',
+  ousmane: 'technique', ndiaga: 'technique',
+  lamine: 'rapide', pape: 'rapide',
+  assane: 'defensif', saliou: 'defensif',
+  malick: 'frappeur', birame: 'frappeur',
+  daouda: 'saisie', pathe: 'saisie',
+};
+/** The avec-frappe style of a roster wrestler. */
+export const style6Of = (w: Pick<Wrestler, 'id' | 'style'>): Style6 => ROSTER_STYLE6[w.id] ?? w.style;
 /** Attribute points per level away from 3 (levels 1–5: −12…+12 on every attribute of the style). */
 export const LEVEL_STEP = 6;
 
-/** A roster wrestler's attributes: his style's, shifted by his level (kept within 5–95). */
-export function rosterAttributes(w: Pick<Wrestler, 'style' | 'level'>): Attributes {
+/** A wrestler's attributes: his style's shape, shifted by his level (kept within 5–95). */
+export function rosterAttributes(w: { style: Style6; level: number }): Attributes {
   const base = STYLE_MAP[w.style].stand.attrs, shift = (clamp(w.level, 1, 5) - 3) * LEVEL_STEP;
   const out = { ...base };
   for (const key of Object.keys(out) as (keyof Attributes)[]) out[key] = clamp(base[key] + shift, 5, 95);
@@ -31,7 +51,7 @@ export function rosterAttributes(w: Pick<Wrestler, 'style' | 'level'>): Attribut
 }
 
 /** « Gora, costaud indépendant, 7-2 » / « Daouda, costaud de l'écurie Teranga, 4-3-1 » (season record: V-D[-N]). */
-export function identityLine(w: Pick<Wrestler, 'name' | 'style' | 'ecurie'>, rec?: { v: number; d: number; n: number } | null): string {
+export function identityLine(w: { name: string; style: Style6; ecurie: string | null }, rec?: { v: number; d: number; n: number } | null): string {
   const word = STYLE_MAP[w.style].word;
   const who = w.ecurie ? `${word} de l’écurie ${w.ecurie}` : `${word} indépendant`;
   const r = rec ? `, ${rec.v}-${rec.d}${rec.n ? `-${rec.n}` : ''}` : '';
@@ -40,6 +60,8 @@ export function identityLine(w: Pick<Wrestler, 'name' | 'style' | 'ecurie'>, rec
 
 export interface Opponent {
   wrestler: Wrestler;
+  /** His avec-frappe style (one of the six). */
+  style: Style6;
   attrs: Attributes;
   stand: StandStyle;
   clinch: ClinchStyle;
@@ -62,8 +84,8 @@ export function rosterOpponent(name: string, day: number, career?: { bouts?: rea
     const s = ladderAt(day, career?.bouts ?? [], career?.galas ?? []).table.find(t => t.id === w.id);
     if (s) record = { v: s.v, d: s.d, n: s.n };
   } catch { record = null; }
-  const m = STYLE_MAP[w.style];
-  return { wrestler: w, attrs: rosterAttributes(w), stand: m.stand, clinch: m.clinch, level: w.level, record, line: identityLine(w, record) };
+  const style = style6Of(w), m = STYLE_MAP[style];
+  return { wrestler: w, style, attrs: rosterAttributes({ style, level: w.level }), stand: m.stand, clinch: m.clinch, level: w.level, record, line: identityLine({ name: w.name, style, ecurie: w.ecurie }, record) };
 }
 
 /** Every roster wrestler has an avec-frappe identity (for the tests and the docs). */

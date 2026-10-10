@@ -180,8 +180,9 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
 
   // step 3: the empoignade is played — the buttons change, reading his move and answering it wins the exchange
   const ANSWER = { push: 'pull', pull: 'pivot', pivot: 'push' };
-  // the earlier steps took their time: give the empoignade steps a whole round, so the bell does not end it first
-  await page.evaluate(() => window.__dakar.duelClock(90));
+  // the earlier steps took their time: give the empoignade steps a whole round, so the bell does not end it first, and
+  // fresh legs (a wrestler spent in the empoignade can no longer hold his balance)
+  await page.evaluate(() => { window.__dakar.duelClock(90); window.__dakar.duelSet('player', { stamina: 100 }); });
   const intoClinch = () => until(page, i => !i || i.phase !== 'fight', async i => {
     if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); }
   }, 60000).finally(() => page.keyboard.up('KeyD'));

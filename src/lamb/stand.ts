@@ -190,13 +190,26 @@ export interface StandStyle {
   /** Chance per decision to step in and take hold when close (wrestling is the heart of it: strikes open, grabs end). */
   grab: number;
 }
-export const STAND_STYLES: Record<'costaud' | 'rapide' | 'defensif' | 'partenaire', StandStyle> = {
+/**
+ * The six styles of the spec (10 Oct. §12): Puissant (« costaud »: wants to put on pressure), Technique (looks for the
+ * counters), Rapide (uses movement), Défensif (wears the other out), Bon frappeur (creates openings), Grand lutteur de
+ * saisie (wants to close the distance fast). Matchups make strategies; no style is a stat that wins.
+ */
+export type Style6 = 'costaud' | 'technique' | 'rapide' | 'defensif' | 'frappeur' | 'saisie';
+export const STYLE6_IDS: readonly Style6[] = ['costaud', 'technique', 'rapide', 'defensif', 'frappeur', 'saisie'];
+export const STAND_STYLES: Record<Style6 | 'partenaire', StandStyle> = {
   // Puissant: heavy, hard to move, wants to hurt with big strikes and close in
   costaud: { attrs: { force: 75, equilibre: 70, technique: 45, explosivite: 40, endurance: 60, frappe: 65, defense: 50, sangfroid: 55 }, range: 1.4, quick: 0.18, big: 0.3, guard: 0.2, react: { guard: 0.45, back: 0.05, counter: 0.1 }, grab: 0.2 },
   // Rapide: in and out, many quick strikes, little endurance
   rapide: { attrs: { force: 45, equilibre: 45, technique: 55, explosivite: 80, endurance: 40, frappe: 55, defense: 50, sangfroid: 45 }, range: 1.62, quick: 0.45, big: 0.1, guard: 0.15, react: { guard: 0.25, back: 0.35, counter: 0.25 }, grab: 0.12 },
   // Défensif: guards a lot, makes you miss, answers with quick strikes
   defensif: { attrs: { force: 50, equilibre: 60, technique: 65, explosivite: 50, endurance: 65, frappe: 45, defense: 80, sangfroid: 70 }, range: 1.9, quick: 0.25, big: 0.06, guard: 0.45, react: { guard: 0.5, back: 0.2, counter: 0.25 }, grab: 0.08 },
+  // Technique: keeps a middle distance, makes the other commit and answers — the counter (quick strike first) is its weapon
+  technique: { attrs: { force: 50, equilibre: 65, technique: 80, explosivite: 55, endurance: 55, frappe: 45, defense: 60, sangfroid: 70 }, range: 1.7, quick: 0.2, big: 0.06, guard: 0.3, react: { guard: 0.35, back: 0.15, counter: 0.45 }, grab: 0.12 },
+  // Bon frappeur: stays at striking distance and creates openings with strikes, big ones included; grabs what he opened
+  frappeur: { attrs: { force: 60, equilibre: 50, technique: 45, explosivite: 65, endurance: 55, frappe: 85, defense: 45, sangfroid: 55 }, range: 1.7, quick: 0.4, big: 0.35, guard: 0.12, react: { guard: 0.25, back: 0.15, counter: 0.35 }, grab: 0.1 },
+  // Grand lutteur de saisie: closes the distance fast, guards the strikes on the way in, takes hold
+  saisie: { attrs: { force: 75, equilibre: 70, technique: 70, explosivite: 55, endurance: 65, frappe: 35, defense: 50, sangfroid: 60 }, range: 1.2, quick: 0.12, big: 0.05, guard: 0.25, react: { guard: 0.5, back: 0.02, counter: 0.1 }, grab: 0.45 },
   // training partner: slow, telegraphed, never strikes first
   partenaire: { attrs: AVERAGE, range: 1.5, quick: 0, big: 0, guard: 0, react: { guard: 0, back: 0, counter: 0 }, grab: 0 },
 };
@@ -211,17 +224,27 @@ export interface StandDecision { move: number; strike: StrikeKind | null; guard:
  * guard —, guards by style.
  * `level` (0.9–1.3, the bout's difficulty) sharpens every choice a little.
  */
-export function decide(v: StandView, st: StandStyle, level: number, r: () => number): StandDecision {
+/**
+ * The referee does not let a bout go nowhere: after URGE.after seconds standing without an empoignade he presses the
+ * wrestlers (« lutte ! »), and by URGE.full seconds they want to take hold: a wrestler's grab appetite grows up to ×4,
+ * his preferred distance shrinks to a step, he reaches a little further for the grab. 0…1.
+ */
+export const URGE = { after: 7, full: 14 } as const;
+export const urgeOf = (secondsWithoutClinch: number) => Math.max(0, Math.min(1, (secondsWithoutClinch - URGE.after) / (URGE.full - URGE.after)));
+/** The distance a style keeps, pressed by the referee (`urge` 0…1). */
+export const rangeOf = (st: StandStyle, urge = 0) => st.range + (1.15 - st.range) * Math.max(0, Math.min(1, urge));
+
+export function decide(v: StandView, st: StandStyle, level: number, r: () => number, urge = 0): StandDecision {
   const o: StandDecision = { move: 0, strike: null, guard: false, grab: false };
-  const { me, them, dist } = v;
-  o.move = dist > st.range + 0.15 ? 1 : dist < st.range - 0.35 ? -0.6 : 0;
+  const { me, them, dist } = v, range = rangeOf(st, urge);
+  o.move = dist > range + 0.15 ? 1 : dist < range - 0.35 ? -0.6 : 0;
   if (!free(me) || me.open > 0) return o;
   const shaken = them.stagger > 0 || them.open > 0;
   if (shaken && dist <= v.grabRange && me.stamina > 30 && r() < Math.min(0.95, 0.55 * level)) { o.grab = true; return o; }
   // a raised guard stops strikes, not a grab: against a turtle, close in and take hold
   if (them.guard && dist <= v.grabRange && me.stamina > 30 && r() < Math.min(0.9, 0.45 * level)) { o.grab = true; return o; }
   // close enough to step in: take hold, by style (the caller closes the last steps before the grab lands)
-  if (dist <= v.grabRange + 0.3 && me.stamina > 34 && r() < Math.min(0.8, st.grab * level)) { o.grab = true; return o; }
+  if (dist <= v.grabRange + 0.3 + 0.4 * urge && me.stamina > 34 - 10 * urge && r() < Math.min(0.85, st.grab * level * (1 + 3 * urge))) { o.grab = true; return o; }
   const reachQ = dist <= STRIKES.quick.reach, reachB = dist <= STRIKES.big.reach;
   const pBig = st.big * level * (shaken ? 2.2 : them.balance < 45 ? 1.6 : 1);
   if (reachB && me.stamina > STRIKES.big.cost + 10 && r() < Math.min(0.9, pBig)) { o.strike = 'big'; return o; }

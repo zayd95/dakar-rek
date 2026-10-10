@@ -9,6 +9,12 @@ import type { Opponent } from '../lamb/opponents';
 
 /** The bout's own time step: fixed, so a bout seeded alike plays out alike on every device (src/arena/together.ts). */
 export const BOUT_STEP = 1 / 60;
+/**
+ * Avec frappe, a gala bout watched from the stands is a short round: almost every one ends by a fall well before (the
+ * referee presses a bout that goes nowhere: src/lamb/stand.ts URGE, src/lamb/clinch.ts URGE_CLINCH); at the bell the
+ * referee decides on points. With the intro, a watched bout is over within 40 seconds.
+ */
+export const WATCHED_ROUND = 30;
 
 /**
  * The gala's bout: the existing làmb duel (src/lamb/duel.ts, rules untouched) played by two NPC wrestlers. The duel's
@@ -44,7 +50,7 @@ export class WatchedBout {
     if (frappe) {
       const L = frappe.left, Rt = frappe.right;
       this.duel = new LambDuel({
-        origin, look: left, input, crowdSize: 0, mode: 'amical', ring: 7.6, spectate: true, seed: duelSeed, discipline: 'avec_frappe',
+        origin, look: left, input, crowdSize: 0, mode: 'amical', ring: 7.6, spectate: true, seed: duelSeed, discipline: 'avec_frappe', roundSeconds: WATCHED_ROUND,
         style: { ...STYLES[Rt.wrestler.style], name: Rt.wrestler.name }, level: Rt.level,
         opponent: { attrs: Rt.attrs, stand: Rt.stand, clinch: Rt.clinch, line: Rt.line },
         autopilot: { attrs: L.attrs, stand: L.stand, clinch: L.clinch, style: STYLES[L.wrestler.style], level: L.level },
