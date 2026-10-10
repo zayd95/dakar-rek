@@ -17,8 +17,9 @@ l'arène, écurie, combats amicaux et classés) reste intacte à chaque étape.
 ## Essayer
 
 `?lamb2` dans l'adresse (ou `localStorage['dakarrek.lamb2'] = '1'`), puis à l'arène de Pikine : **Combat amical** →
-« Avec frappe · Gora / Pape / Saliou ». Non compté dans les classements tant que la discipline est en construction
-(ses compteurs `lamb_af_*` sont réservés). Sans le drapeau, rien ne change.
+« Avec frappe · Gora / Pape / Saliou ». Le bilan est **à part** (`lamb_af_amical_v/d/n/ab`, jamais mélangé à la lutte
+sans frappe) ; les totaux `combats`/`victoires` comptent les deux, et le combat est rapporté à la carrière par le même
+rapport de combat (`GameModule.lamb`, avec `discipline: 'avec_frappe'`). Sans le drapeau, rien ne change.
 
 Commandes debout : déplacement (joystick, ZQSD/WASD/flèches), **Frappe** (J ou C), **Grosse frappe** (K ou V),
 **Saisir** (E/Espace), **Garde** maintenue (G/Maj), **Reculer** (X). Dans l'empoignade, les mêmes boutons deviennent

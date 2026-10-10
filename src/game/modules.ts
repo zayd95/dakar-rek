@@ -145,7 +145,9 @@ export interface GameModule {
 /** What main.ts reports when a làmb bout or an écurie session ends (GameModule.lamb). */
 export type LambEvent =
   | { kind: 'bout'; mode: 'entrainement' | 'amical' | 'classe'; outcome: 'projection' | 'decision' | 'egalite' | 'abandon' | 'entrainement';
-      winner: 'player' | 'opponent' | null; opponent: { name: string; style: string; label: string }; level: number }
+      winner: 'player' | 'opponent' | null; opponent: { name: string; style: string; label: string }; level: number;
+      /** 'avec_frappe' for a Làmb 2.0 bout (src/lamb/stand.ts); absent or 'sans_frappe' otherwise. */
+      discipline?: 'sans_frappe' | 'avec_frappe' }
   | { kind: 'training'; scene: 'training' | 'entrance' | 'prep' | 'watch' | 'celebration' };
 
 /**

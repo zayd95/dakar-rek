@@ -191,8 +191,14 @@ export const RECORD_KEYS = {
   classe: { v: 'lamb_classe_v', d: 'lamb_classe_d', n: 'lamb_classe_n', ab: 'lamb_classe_ab' },
 } as const;
 
-export function record(k: Counters, mode: 'amical' | 'classe') {
-  const r = RECORD_KEYS[mode];
+/** Avec frappe keeps its own record (`lamb_af_*`), so the two disciplines never share one. */
+export const RECORD_KEYS_AF = {
+  amical: { v: 'lamb_af_amical_v', d: 'lamb_af_amical_d', n: 'lamb_af_amical_n', ab: 'lamb_af_amical_ab' },
+  classe: { v: 'lamb_af_classe_v', d: 'lamb_af_classe_d', n: 'lamb_af_classe_n', ab: 'lamb_af_classe_ab' },
+} as const;
+
+export function record(k: Counters, mode: 'amical' | 'classe', discipline: Discipline = 'sans_frappe') {
+  const r = (discipline === 'avec_frappe' ? RECORD_KEYS_AF : RECORD_KEYS)[mode];
   return { v: c(k, r.v), d: c(k, r.d), n: c(k, r.n), ab: c(k, r.ab) };
 }
 
@@ -211,10 +217,13 @@ export function boutRewards(r: BoutResult): Rewards {
   return { needs: { ...effort, moral: -4 }, coach: 0, lines: ['Moral −4', 'Coach Ablaye : « On retourne à l’entraînement. »'] };
 }
 
-/** Counter increments for a finished bout (applied with GameState.count). Keeps the global `combats`/`victoires`. */
-export function recordIncrements(r: BoutResult): Counters {
+/**
+ * Counter increments for a finished bout (applied with GameState.count). Keeps the global `combats`/`victoires`; each
+ * discipline has its own record keys.
+ */
+export function recordIncrements(r: BoutResult, discipline: Discipline = 'sans_frappe'): Counters {
   if (r.mode === 'entrainement') return r.outcome === 'abandon' ? {} : { lamb_skill: 1 };
-  const keys = RECORD_KEYS[r.mode];
+  const keys = (discipline === 'avec_frappe' ? RECORD_KEYS_AF : RECORD_KEYS)[r.mode];
   if (r.outcome === 'abandon') return { [keys.ab]: 1, lamb_abandons: 1 };
   const out: Counters = { combats: 1 };
   if (r.winner === 'player') { out.victoires = 1; out[keys.v] = 1; }

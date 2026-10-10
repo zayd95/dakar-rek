@@ -3,7 +3,7 @@ import {
   AVERAGE, STAND, STAND_STYLES, STRIKES, decide, free, k, land, react, reactDelay, standState, startStrike, tick, windupOf,
   type StandState,
 } from '../src/lamb/stand';
-import { RULES, points, emptyScore } from '../src/lamb/rules';
+import { RULES, points, emptyScore, record, recordIncrements } from '../src/lamb/rules';
 import {
   CLINCH, CLINCH_STYLES, ENTRY_BONUS, MOVES, answer, clinchDecide, clinchPower, entryGrip, exchange, gripWords, holdTick, holder, moveWindup, posture, slipRate, startMove, tryBreak,
   type ClinchMove, type Holder,
@@ -300,5 +300,16 @@ describe('làmb 2.0 · feeling the position slip (step 4)', () => {
   });
   it('tells how he stands: steady, slipping, about to go down', () => {
     expect(posture(80)).toBe('stable'); expect(posture(40)).toBe('glisse'); expect(posture(10)).toBe('chute');
+  });
+});
+
+describe('làmb 2.0 · the record', () => {
+  it('avec frappe keeps its own record keys; the global combats and victoires count both disciplines', () => {
+    const inc = recordIncrements({ mode: 'amical', outcome: 'projection', winner: 'player' }, 'avec_frappe');
+    expect(inc).toEqual({ combats: 1, victoires: 1, lamb_af_amical_v: 1 });
+    expect(recordIncrements({ mode: 'amical', outcome: 'projection', winner: 'player' })).toEqual({ combats: 1, victoires: 1, lamb_amical_v: 1 });
+    expect(record({ lamb_af_amical_v: 2, lamb_amical_v: 5 }, 'amical', 'avec_frappe').v).toBe(2);
+    expect(record({ lamb_af_amical_v: 2, lamb_amical_v: 5 }, 'amical').v).toBe(5);
+    expect(recordIncrements({ mode: 'classe', outcome: 'abandon', winner: null }, 'avec_frappe')).toEqual({ lamb_af_classe_ab: 1, lamb_abandons: 1 });
   });
 });

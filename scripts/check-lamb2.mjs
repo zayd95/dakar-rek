@@ -207,8 +207,10 @@ async function friendlyMenu(page) {
   await page.evaluate(() => window.__dakar.duelFinish());
   await wait(page, () => window.__dakar.duelInfo() === null, null, 30000);
   const c1 = await page.evaluate(() => ({ ...window.__dakar.state.data.counters }));
-  const keys = ['combats', 'victoires', 'lamb_amical_v', 'lamb_amical_d', 'lamb_amical_n', 'lamb_classe_v'];
-  check('not counted: no record changes for a bout avec frappe (still being built)', keys.every(k => (c0[k] ?? 0) === (c1[k] ?? 0)), keys.map(k => `${k} ${c0[k] ?? 0}→${c1[k] ?? 0}`).join(', '));
+  const same = ['lamb_amical_v', 'lamb_amical_d', 'lamb_amical_n', 'lamb_classe_v'], af = ['lamb_af_amical_v', 'lamb_af_amical_d', 'lamb_af_amical_n'];
+  const d = k => (c1[k] ?? 0) - (c0[k] ?? 0);
+  check('recorded apart: the avec-frappe record (lamb_af_*) and the global count move, the sans-frappe record does not', same.every(k => d(k) === 0) && af.reduce((a, k) => a + d(k), 0) === 1 && d('combats') === 1,
+    [...same, ...af, 'combats', 'victoires'].map(k => `${k} ${c0[k] ?? 0}→${c1[k] ?? 0}`).join(', '));
   check('desktop: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }

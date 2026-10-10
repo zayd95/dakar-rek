@@ -541,7 +541,7 @@ function openFriendly() {
   });
   if (LAMB2) for (const id of STYLE_IDS) {
     const st = STYLES[id];
-    items.push({ label: `Avec frappe · ${st.name} · ${st.label}`, detail: 'Làmb 2.0, en construction : frappes, équilibre, sang-froid. Non compté.', onPick: () => startDuel('amical', id, undefined, 'avec_frappe') });
+    items.push({ label: `Avec frappe · ${st.name} · ${st.label}`, detail: 'Làmb 2.0, en construction : frappes, équilibre, empoignade. Bilan à part.', onPick: () => startDuel('amical', id, undefined, 'avec_frappe') });
   }
   hud.openMenu('Combat amical', `Non classé · niveau ${level} · ${RULES_STATUS}`, items,
     `<div class="draft">${LAMB2 ? 'Lutte sans frappe, ou avec frappe (essai)' : 'Lutte sans frappe'}. Adversaires fictifs. La tenue, les danses et les accessoires n’ont aucun effet sur le combat ; l’argent non plus.</div>`);
@@ -574,13 +574,13 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () 
     // only a finished bout counts; a bout cut short without a result (e.g. leaving the hub) records nothing
     const r = duel.result; if (!r) return;
     state.adjust(r.rewards.needs);
-    // avec frappe is still being built: its bouts are not counted in any record yet (its own `lamb_af_*` keys later)
-    if (discipline !== 'sans_frappe') { hud.toast(`${r.winner === 'player' ? 'Victoire' : r.winner === 'opponent' ? 'Défaite' : r.outcome === 'abandon' ? 'Abandon' : 'Match nul'} · lutte avec frappe (essai, non comptée)`); return; }
-    for (const [k, v] of Object.entries(recordIncrements(r))) state.count(k, v);
+    // each discipline keeps its own record (avec frappe: `lamb_af_*`); the global combats/victoires count both
+    for (const [k, v] of Object.entries(recordIncrements(r, discipline))) state.count(k, v);
     if (r.rewards.coach) rel.change(PLAYER, 'ablaye', r.rewards.coach);
     const n = state.data.counters;
     // the career (src/career) keeps the record, pays the purse and moves the rank: its lines join the result toast
-    const notes = MODULES.flatMap(m => m.lamb?.(ctx, { kind: 'bout', mode: r.mode, outcome: r.outcome, winner: r.winner, opponent: { name: style.name, style: style.id, label: style.label }, level }) ?? []);
+    const notes = MODULES.flatMap(m => m.lamb?.(ctx, { kind: 'bout', mode: r.mode, outcome: r.outcome, winner: r.winner, opponent: { name: style.name, style: style.id, label: style.label }, level, discipline }) ?? []);
+    if (discipline === 'avec_frappe') notes.unshift('Lutte avec frappe');
     hud.toast([r.mode === 'entrainement' ? (r.outcome === 'abandon' ? 'Entraînement interrompu' : `Entraînement terminé ✓  Compétence ${n.lamb_skill ?? 0}`)
       : r.outcome === 'abandon' ? 'Abandon enregistré (à part des défaites)'
       : r.winner === 'player' ? `Victoire ! (${n.victoires ?? 0} au total)` : r.winner === 'opponent' ? 'Défaite. Coach Ablaye : « On retourne à l’entraînement. »' : 'Match nul', ...notes].join('  '));
