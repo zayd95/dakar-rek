@@ -37,7 +37,9 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
     await page.mouse.move(j.x, j.y); await page.mouse.down(); await page.mouse.move(j.x, j.y + dy * 42, { steps: 4 });
     await until(fn, arg, ms); await page.mouse.up();
   };
-  const said = async re => (await info()).said.some(s => re.test(s));
+  // the lines as read: the gloss's invisible markers (U+2063 / U+2064) out, French typography's no-break spaces as spaces
+  const plain = s => s.replace(/[\u2063\u2064]/g, '').replace(/[\u00a0\u202f]/g, ' ');
+  const said = async re => (await info()).said.some(s => re.test(plain(s)));
 
   // the evening: Pikine at 17 h 36, the doors open; the player owns a Jakarta (the asset model, delivered at the garage)
   await d(() => { const D = window.__dakar; D.teleport('pikine'); D.setHour(17.6); D.state.data.wallet = 400000; D.state.data.needs.energie = 100; });
@@ -72,12 +74,12 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const f1 = await d(() => window.__dakar.focus());
   check(`${label}: the gardien offers to keep the moto, the price on the button`, /Faire garder ta moto/.test(f1?.primary ?? '') && /100/.test(f1?.primary ?? ''), JSON.stringify(f1));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
-  await d(() => window.__dakar.act());
+  if (/gardien/i.test(f1?.name ?? '')) await d(() => window.__dakar.act());                                   // (never the moto: no ride off)
   await until(() => /Payer/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, 30000);
   const menu = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
   check(`${label}: the price is shown before anything is paid`, /Payer 100\s?F/.test(menu) && (await d(() => window.__dakar.state.wallet)) === w0, menu.slice(0, 140));
   await shot('2-price');
-  await page.locator('#modal .item', { hasText: 'Payer' }).first().click();
+  await page.locator('#modal .item', { hasText: 'Payer' }).first().click({ timeout: 10000 }).catch(() => {});   // a failure above: the rest still runs
   await until(() => window.__dakar.arrival.info().paid, null, 60000);
   await ready();
   a = await info();
@@ -117,7 +119,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   m = await d(() => window.__dakar.moto.info());
   const backed = m.z < lot.reserved.z - 0.3;                                                                     // frames are slow here: any way back out
   await d(g => window.__dakar.moto.place(g.x + 3, g.z - 12, Math.PI), lot.gardien);                              // down the street
-  await until(() => window.__dakar.arrival.info().said.some(s => /Ñibbil ak jàmm/.test(s)), null, 30000);
+  await until(() => window.__dakar.arrival.info().said.some(s => /Ñibbil ak jàmm/.test(s.replace(/[\u2063\u2064]/g, ''))), null, 30000);
   check(`${label}: riding away, the gardien says goodbye (Wolof with its gloss and French)`, backed && await said(/Le gardien : .*Ñibbil ak jàmm.*Ba beneen yoon.*Il te fait signe/), JSON.stringify({ backed, said: (await info()).said.slice(-2) }));
   await d(() => window.__dakar.act());                                                                           // off the moto
   await until(() => !window.__dakar.moto.info().driving, null, 30000);
