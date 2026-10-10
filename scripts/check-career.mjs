@@ -43,6 +43,11 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const c2 = await career();
   check(`${label}: a defeat lowers the purse and the points, never to zero; a rivalry appears`, c2.bouts[1].purse < c2.bouts[0].purse && c2.bouts[1].pts < 0 && c2.rank.score > 0 && c2.record.rival?.name === 'Gora', JSON.stringify(c2.record.rival));
   check(`${label}: a friendly bout pays nothing`, c2.bouts[2].purse === 0 && c2.bouts[2].mode === 'amical');
+  // the city's ladder: twelve named wrestlers, a belt, a real card; the ranked bout faces one of them; the public record
+  const lad = await d(() => window.__dakar.careerLadder());
+  check(`${label}: the city's ladder names its wrestlers, the belt and the evening's card`, lad.table.length === 12 && !!lad.title.holder && lad.table.some(s => s.name === lad.card.left.name) && lad.card.left.name !== lad.card.right.name,
+    `${lad.card.left.name} – ${lad.card.right.name} · ceinture ${lad.title.holder}`);
+  check(`${label}: the public record line under the name follows the ranked bouts`, new RegExp(`^${c2.rank.label} · 1-1( · Écurie \\p{L}+)?$`, 'u').test(c2.rec ?? ''), String(c2.rec));
 
   // 3. The real bout path: a ranked bout started and abandoned goes through main.ts into the record (no purse).
   await d(() => { window.__dakar.teleport('pikine'); });

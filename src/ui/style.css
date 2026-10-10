@@ -85,6 +85,10 @@ body.touch kbd { display:none; }
 #goal { position:absolute; left:calc(10px + var(--sa-l)); top:calc(84px + var(--sa-t)); max-width:min(320px, 62vw); padding:5px 10px 5px 5px; display:none; align-items:center; gap:7px;
   font-size:12px; font-weight:600; line-height:1.3; color:var(--ink-2); pointer-events:none; border-radius:999px; z-index:1; }
 #goal.on { display:flex; }
+/* a ride card (src/transport/ui.ts, under the goal line) is on: the goal keeps one line so the two never touch, and the
+   card follows the top safe area like the goal does */
+#ui:has(.ridecard.on) #goal .gt { -webkit-line-clamp:1; }
+#ui .ridecard { margin-top:var(--sa-t); }
 #goal .gi { flex:none; display:grid; place-items:center; width:22px; height:22px; border-radius:50%; background:var(--surface-2); color:var(--ink); font-style:normal; font-size:12px; font-weight:800; transition:transform .25s; }
 #goal.walk .gi { background:var(--sun); font-size:15px; }
 #goal .gt { overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }

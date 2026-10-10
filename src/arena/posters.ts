@@ -3,7 +3,7 @@ import type { GameModule } from '../game/modules';
 import type { Collider, HubWorld, RoadEdge } from '../world/types';
 import { rng } from '../core/rng';
 import { WALL_R, inGate, inTunnel } from '../world/geew';
-import { BILL, GALA, GALA_DONE_COUNTER, TICKET_PRICE } from './program';
+import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, billFor, ecurieLabel } from './program';
 import { eveningSize } from './exterior';
 
 /**
@@ -14,7 +14,8 @@ import { eveningSize } from './exterior';
  * shop signs. The career lane prints the last winner through `posters.setResult(day, text)`; its own big poster by the
  * gate is kept clear (POSTER_KEEP_CLEAR).
  *
- * Wrestlers and écuries are the game's fictional cast (src/arena/program.ts BILL); no real promoter, sponsor or brand.
+ * Wrestlers and écuries are the game's fictional cast (src/arena/program.ts billFor: the career's ladder, else BILL); no real
+ * promoter, sponsor or brand.
  */
 
 /** Posters per hub: Pikine gets the most, with a share of them on the way to the arena (within NEAR_ARENA m). */
@@ -41,10 +42,11 @@ export interface PosterLines { tag: string; title: string; ecuries: string; when
 export function posterLines(day: number, hour: number, last: { day: number; text: string } | null = result, done = false): PosterLines {
   const over = (done && hour >= GALA.setup) || hour >= GALA.close;
   const tonight = !over, d = tonight ? day : day + 1, big = eveningSize(d, GALA.doors) === 'gala';
+  const bill = billFor(d);                                   // the card of the city's ladder (src/career/roster.ts) or the fixed bill
   return {
     tag: big ? 'GRAND GALA DE LUTTE' : 'COMBAT DE QUARTIER',
-    title: `${BILL.left.name} – ${BILL.right.name}`.toUpperCase(),
-    ecuries: `Écurie ${BILL.left.ecurie} · Écurie ${BILL.right.ecurie}`,
+    title: `${bill.left.name} – ${bill.right.name}`.toUpperCase(),
+    ecuries: bill.title ? `Combat pour le titre · ${ecurieLabel(bill.left.ecurie)} · ${ecurieLabel(bill.right.ecurie)}` : `${ecurieLabel(bill.left.ecurie)} · ${ecurieLabel(bill.right.ecurie)}`,
     when: `${tonight ? 'Ce soir' : 'Demain'} ${GALA.doors} h · Arène de Pikine`,
     price: `Entrée ${TICKET_PRICE.toLocaleString('fr-FR')} F`,
     result: last && day - last.day <= 2 ? `Dernier combat : ${last.text}` : null,
@@ -178,7 +180,7 @@ export const postersModule: GameModule = {
     if (!tex) return;
     t -= dt; if (t > 0) return; t = 2;
     const day = ctx.day(), l = posterLines(day, ctx.hour(), undefined, ctx.state.data.counters[GALA_DONE_COUNTER] === day);
-    const k = `${revision}|${l.tag}|${l.when}|${l.result}|${l.over}`;
+    const k = `${revision}|${l.tag}|${l.title}|${l.ecuries}|${l.when}|${l.result}|${l.over}`;
     if (k !== key) { key = k; tex.image = drawPoster(l); tex.needsUpdate = true; }
   },
   debug: ctx => ({
