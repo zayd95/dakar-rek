@@ -51,6 +51,7 @@ import { actionVerb } from './interact/legacy';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { eveningLine } from './arena/eveningCall';
 import { GesturePlayer } from './ui/gesture';
 import { Stride } from './game/stride';
 import { StrideUi } from './ui/stride';
@@ -342,11 +343,12 @@ const ctx: GameCtx = {
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
   walkTo: id => setDestination(id),
+  startBout(m, style, after) { if (lambScene || !world?.arena) return false; startDuel(m, style as StyleId | undefined, after); return !!lambScene; },
 };
 ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
 function actionSpec(a: Action): ActivitySpec {
-  return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined };
+  return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined, quiet: a.quiet };
 }
 
 function sitOn(seat: Seat, force = false) {
@@ -447,7 +449,11 @@ function openBeat(beat: Beat) {
 
 function runSpecial(a: Action) {
   switch (a.special) {
-    case 'training': startScene('training', () => { if (a.needs) state.adjust(a.needs); if (a.counter) state.count(a.counter); rel.change(PLAYER, 'ablaye', 1); hud.toast('Entraînement terminé ✓  Lutte ' + (state.data.counters.lutte ?? 0)); }); break;
+    case 'training': startScene('training', () => {
+      if (a.needs) state.adjust(a.needs); if (a.counter) state.count(a.counter); rel.change(PLAYER, 'ablaye', 1);
+      const notes = MODULES.flatMap(m => m.lamb?.(ctx, { kind: 'training', scene: 'training' }) ?? []);
+      hud.toast(['Entraînement terminé ✓  Lutte ' + (state.data.counters.lutte ?? 0), ...notes].join('  '));
+    }); break;
     case 'entrance': startScene('entrance', () => { state.adjust({ moral: 10, social: 6 }); state.count('entrees'); }); break;
     case 'prep': startScene('prep'); break;
     case 'watch': startScene('watch', () => { if (a.needs) state.adjust(a.needs); }); break;
@@ -538,7 +544,7 @@ function openRanked() {
 }
 
 /** Controlled bout against a local opponent: guided training at the écurie, friendly or ranked at the arena. */
-function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId) {
+function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () => void) {
   if (lambScene) return;                                                       // one bout or scene at a time
   const at = boutMode === 'entrainement' ? world?.ecurie : world?.arena;
   if (!at) { hud.toast(boutMode === 'entrainement' ? 'L’entraînement a lieu à l’écurie de Pikine' : 'Les combats ont lieu à l’arène de Pikine'); mode = 'play'; return; }
@@ -548,7 +554,8 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId) {
   const rec = boutMode === 'entrainement' ? null : record(state.data.counters, boutMode);
   const style = boutMode === 'entrainement' ? PARTNER : STYLES[styleId ?? (boutMode === 'classe' ? rankedStyle(rec!.v + rec!.d + rec!.n) : 'costaud')];
   const crowd = boutMode === 'entrainement' ? 0 : quality === 'low' ? 12 : quality === 'medium' ? 18 : 24;
-  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level: rec ? opponentLevel(rec.v, rec.d) : 1, ring: boutMode === 'entrainement' ? 5 : 7.6 });
+  const level = rec ? opponentLevel(rec.v, rec.d) : 1;
+  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level, ring: boutMode === 'entrainement' ? 5 : 7.6 });
   duel.onDone = () => {
     // only a finished bout counts; a bout cut short without a result (e.g. leaving the hub) records nothing
     const r = duel.result; if (!r) return;
@@ -556,10 +563,13 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId) {
     for (const [k, v] of Object.entries(recordIncrements(r))) state.count(k, v);
     if (r.rewards.coach) rel.change(PLAYER, 'ablaye', r.rewards.coach);
     const n = state.data.counters;
-    hud.toast(r.mode === 'entrainement' ? (r.outcome === 'abandon' ? 'Entraînement interrompu' : `Entraînement terminé ✓  Compétence ${n.lamb_skill ?? 0}`)
+    // the career (src/career) keeps the record, pays the purse and moves the rank: its lines join the result toast
+    const notes = MODULES.flatMap(m => m.lamb?.(ctx, { kind: 'bout', mode: r.mode, outcome: r.outcome, winner: r.winner, opponent: { name: style.name, style: style.id, label: style.label }, level }) ?? []);
+    hud.toast([r.mode === 'entrainement' ? (r.outcome === 'abandon' ? 'Entraînement interrompu' : `Entraînement terminé ✓  Compétence ${n.lamb_skill ?? 0}`)
       : r.outcome === 'abandon' ? 'Abandon enregistré (à part des défaites)'
-      : r.winner === 'player' ? `Victoire ! (${n.victoires ?? 0} au total)` : r.winner === 'opponent' ? 'Défaite. Coach Ablaye : « On retourne à l’entraînement. »' : 'Match nul');
+      : r.winner === 'player' ? `Victoire ! (${n.victoires ?? 0} au total)` : r.winner === 'opponent' ? 'Défaite. Coach Ablaye : « On retourne à l’entraînement. »' : 'Match nul', ...notes].join('  '));
   };
+  if (after) { const recorded = duel.onDone; duel.onDone = () => { recorded?.(); after(); }; }   // a module's next step (ctx.startBout)
   lambScene = duel;
   extra.add(duel.group);
   npcLife.setVisible(false);
@@ -716,10 +726,13 @@ phoneHooks.openPlaces = openPlaces;
 
 /** Person of the suggested story beat, or « first delivery » (refreshed with the HUD, 4 times a second). */
 let guideNpc: string | null = null, guideJob = false;
+/** Tonight's arena (or what to do after the bout): the goal line's target while it leads (src/arena/eveningCall.ts). */
+let eveningTarget: { name: string; x: number; z: number } | null = null;
 /** Way-finding: the walking destination, else the suggested person (or the nearest Tiak Tiak pick-up for the first job) in this hub. */
 function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
   if (destination?.hub === world.id) { const it = world.interactables.find(i => i.id === destination!.id); if (it) return { name: it.name, x: it.x, z: it.z }; }
+  if (eveningTarget) return eveningTarget;
   if (guideJob) {
     const w = world, here = inside ? inside.door : pos;
     const ends = pickupFrags(w.id).map(f => w.interactables.find(i => i.id.startsWith(w.id + ':') && i.id.includes(f))).filter((i): i is Interactable => !!i);
@@ -728,6 +741,13 @@ function guideTarget(): { name: string; x: number; z: number } | null {
   }
   const w = guideNpc ? npcLife.where(guideNpc) : null;
   return w?.here && w.x !== undefined && w.z !== undefined ? { name: castById(guideNpc!)?.name ?? '', x: w.x, z: w.z } : null;
+}
+
+/** « ↗ text · 72 m » toward a target (the same arrow as the walking marker), or the text alone. */
+function withBearing(text: string, t: { x: number; z: number } | null): string {
+  if (!t || inside) return text;
+  const dx = t.x - pos.x, dz = t.z - pos.z, angle = Math.atan2(dx, dz) - follow.yaw;
+  return `${['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8]} ${text} · ${Math.round(Math.hypot(dx, dz))} m`;
 }
 
 function walkingHint(): string | null {
@@ -897,7 +917,7 @@ function frame(now: number) {
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
-  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); guideNpc = sg && 'npc' in sg ? sg.npc : null; guideJob = sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' ? walkingHint() ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
+  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state), ev = eveningLine(ctx, sg?.id === 'ibou_welcome'); eveningTarget = ev?.target ?? null; guideNpc = !ev && sg && 'npc' in sg ? sg.npc : null; guideJob = !ev && sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' ? walkingHint() ?? (ev ? withBearing(ev.text, ev.target) : null) ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   renderer.render(scene, camera);

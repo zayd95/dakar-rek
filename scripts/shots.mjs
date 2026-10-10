@@ -210,7 +210,9 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => { const d = window.__dakar; d.playBeat('ablaye_join', 'rejoindre'); d.state.count('lutte', 2); d.playBeat('ablaye_rival', 'pret'); d.playBeat('lamine_meet', 'respect'); d.setLook('indigo', 'rayures', ['taille', 'bras_d']); });
   await page.evaluate(() => window.__dakar.journal()); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/${label}-journal.png` });
-  await page.keyboard.press('Escape'); await page.evaluate(() => document.querySelector('#modal')?.classList.remove('on')); await page.waitForTimeout(200);
+  // close the journal with its button, not Escape: since the UI lane, Escape also stops a làmb scene, and on a slow
+  // runner (~1 frame/s) the key is read only on the next frame — after the entrance scene below has started.
+  await page.evaluate(() => { document.querySelector('#modal.on .item.close')?.click(); document.querySelector('#modal')?.classList.remove('on'); }); await page.waitForTimeout(200);
   if (label === 'desktop') { await page.evaluate(() => window.__dakar.outfit()); await page.waitForTimeout(300); await page.screenshot({ path: `${out}/desktop-outfit.png` }); await page.evaluate(() => document.querySelector('#modal')?.classList.remove('on')); await page.waitForTimeout(200); }
   for (const [kind, times] of [['entrance', [3.5, 9, 13]], ['training', [3]], ['celebration', [3]], ['watch', [3]]]) {
     await page.evaluate(k => window.__dakar.scene(k), kind); await page.waitForTimeout(300);

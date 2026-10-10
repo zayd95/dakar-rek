@@ -199,6 +199,10 @@ export function drummersStand(k: ArenaKit, cx: number, cz: number): { x: number;
   return spots;
 }
 
+/** Which side of the tunnel each écurie's preparation corner is on (−1: −x, +1: +x). One place to flip them. */
+export const PREP_SIDE: Record<'baobab' | 'teranga', -1 | 1> = { baobab: -1, teranga: 1 };
+/** Centre of a preparation corner's mat (where its wrestler gets ready). */
+export const prepCornerCentre = (cx: number, cz: number, side: -1 | 1) => at(cx, cz, side * 0.78, 13.6);
 /**
  * Preparation corner of one écurie at the ring side, beside the tunnel: a mat, a bench, water and buckets, a low fence
  * and a banner in the écurie's colour. Returns where its people stand.
