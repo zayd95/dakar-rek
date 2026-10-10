@@ -116,8 +116,12 @@ export function lanesFrom(lanes: readonly Lane[], x: number, z: number, reach = 
 
 /** Is a straight walk from a to b clear of colliders (sampled every 0.5 m)? */
 export function clearWalk(ax: number, az: number, bx: number, bz: number, cols: readonly Collider[], r = 0.3): boolean {
+  // only the colliders around the segment (a hub has hundreds)
+  const x0 = Math.min(ax, bx) - r, x1 = Math.max(ax, bx) + r, z0 = Math.min(az, bz) - r, z1 = Math.max(az, bz) + r;
+  const near = cols.filter(c => c.x1 > x0 && c.x0 < x1 && c.z1 > z0 && c.z0 < z1);
+  if (!near.length) return true;
   const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.5));
-  for (let k = 0; k <= n; k++) if (blockedAt(ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n, r, cols)) return false;
+  for (let k = 0; k <= n; k++) if (blockedAt(ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n, r, near)) return false;
   return true;
 }
 

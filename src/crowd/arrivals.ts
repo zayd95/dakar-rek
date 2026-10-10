@@ -11,6 +11,16 @@ import { STOP_OFFSET } from '../transport/stops';
 import { dwellingNow, newArrivals } from './transportPeek';
 import { Crowd, defaultLook, type CrowdQuality, type CrowdSlot } from './crowd';
 import { routeClear } from './streetPlan';
+import { GALA_DONE_COUNTER, streetAt } from '../arena/program';
+
+/**
+ * The arena's street is in its after-gala window (the gala seen to the end, or closing time): the same rule the arena
+ * and its exterior use (src/arena/program.ts streetAt). Fans stop arriving; the spectators pour out.
+ */
+export function afterGalaWindow(ctx: GameCtx): boolean {
+  const day = ctx.day(), hour = ctx.hour();
+  return streetAt(hour, ctx.state.data.counters[GALA_DONE_COUNTER] === day) === 'after';
+}
 
 /**
  * Fans arriving at the arena on fight evenings (docs/CROWD.md): taxis pull in at the two corners of the arena's street
@@ -156,7 +166,7 @@ export class ArenaArrivals {
 
   update(dt: number) {
     const me = this.ctx.player.pos, near = Math.hypot(me.x - this.gate.x, me.z - this.gate.z) < ARRIVALS.range;
-    this.active = arenaExterior.active() && near;
+    this.active = arenaExterior.active() && near && !afterGalaWindow(this.ctx);
     this.crowd.group.visible = near;
     const size = this.evening();
     if (this.active) {

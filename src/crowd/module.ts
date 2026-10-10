@@ -34,6 +34,7 @@ export const crowdModule: GameModule = {
     street: {
       info: () => street?.info() ?? null,
       where: () => street?.where() ?? [],
+      blocked: () => street?.blocked() ?? [],
       /** Start the after-gala flow now (`n` spectators leaving). */
       leaveNow: (n?: number) => street?.leaveNow(n),
     },

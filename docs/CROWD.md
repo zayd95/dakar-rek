@@ -2,8 +2,8 @@
 
 Wave 3 of the signature spec (§6 crowd LOD, §37 crowd and social events), built for Habib's evening: work in the
 afternoon, a moto or the car rapide to Pikine, the fight at the arena with a full house, then on to La Vague. The crowd
-is one reusable system; the arena's stands and the fans arriving on fight evenings use it now, La Vague's dance floor can
-plug in without new code.
+is one reusable system. It runs the arena's stands, the fans arriving on fight evenings, and the street life of every hub
+(spec §23: more people, each with a reason to be there). La Vague's dance floor can plug in without new code.
 
 ## Files
 
@@ -14,9 +14,12 @@ plug in without new code.
 | `src/crowd/crowd.ts` | `Crowd`: slots, presence, groups, `react`, `setMood`, levels of detail, the full humanoids next to the player, ground shadows, stats. |
 | `src/crowd/arenaStands.ts` | `ArenaStands`: the arena's stands on the crowd (drop-in for the old `StandCrowd`), sections and sides, the gala's moments. |
 | `src/crowd/arrivals.ts` | `ArenaArrivals`: fans arriving by taxi and car rapide on fight evenings and walking to the queue. |
-| `src/crowd/module.ts` | The lane's module: runs the arrivals, debug entries. |
-| `tests/crowd.test.ts` | 27 unit tests. |
-| `scripts/check-crowd.mjs` | Browser check (desktop medium, phone low), captures in `docs/screenshots/crowd/`. |
+| `src/crowd/streetPlan.ts` | Pure: the street's hour curves and budgets, the busy streets, the pavement lanes and places checked against the colliders, short routes round obstacles. |
+| `src/crowd/street.ts` | `StreetLife`: walkers, people waiting at the stops, groups chatting, the after-gala flow. |
+| `src/crowd/transportPeek.ts` | Which car rapides stand at which stops (read from the transport lane). |
+| `src/crowd/module.ts` | The lane's module: runs the arrivals and the street, makes the crowds' full humanoids greetable, debug entries. |
+| `tests/crowd.test.ts`, `tests/street.test.ts` | 27 + 5 unit tests. The street tests build the real hubs in node (`tests/hubstub.ts`, a blank canvas). |
+| `scripts/check-crowd.mjs`, `scripts/check-street.mjs` | Browser checks (desktop medium, phone low), captures in `docs/screenshots/crowd/` and `docs/screenshots/street/`. |
 
 The arena lane's `src/arena/module.ts` builds `ArenaStands` instead of `StandCrowd`. It passes the side of the wrestler
 walking in and of the winner, fills the stands less for a weekday card, and feeds the camera every frame.
@@ -169,12 +172,63 @@ The customer flow (enter → browse → buy → leave) belongs to the shops lane
 (`src/social/ambientLife.ts`, `src/world/shopFlow.ts`, docs/SHOPS.md), so there is no second crowd there. A shop seen from
 far away could use `Crowd` silhouettes if ever needed.
 
+## Street life with reasons — `StreetLife` (spec §23)
+
+One street crowd per hub: a pool of 36, 72 or 120 people (low, medium, high) with 0, 2 or 3 full humanoids, the nearest.
+It costs 3 draw calls (standing figures, silhouettes, ground shadows) plus 10 per full humanoid. Everyone there has a reason:
+
+- **Walkers** go somewhere along the pavements, from crossing to crossing.
+  - They walk the front half of the pavement, on lanes checked against the hub's colliders for every road edge and side.
+  - At each crossing they turn towards the busy streets more often: Sandaga's four streets round the market in Plateau,
+    and the Pikine main street from the room's block past the arena to the market. Those streets weigh 6 against 1.
+  - The number follows the hour: the morning rush at 7:45, a lunch bump, the evening rush at 18:45, quiet nights.
+- **Waiting at the car rapide stops**: people stand on the back half of the pavement, either side of the shelter. The
+  shelter, its bench, its pole and the stop's own waiting humanoids keep the middle.
+  - Half of them chat with a neighbour.
+  - When a car rapide pulls in, two or three of them walk to the door and get on, and one or two step off and walk away.
+  - Nobody waits after the last car (23:15) or before 5:30.
+- **Groups chatting** gather in front of the shops, kiosks and stalls, mostly in the evening when the heat drops. Each
+  group is a ring of four on the back of the pavement. They take turns talking with their hands (the `chat` mood) and
+  break up after a few minutes.
+- **After the gala** (Pikine), the spectators come out:
+  - The arena lane's outflow brings them out of the gate to both ends of the street and the side corners.
+  - The street crowd takes them on from there: to the nearest car rapide stop (the Arène stop takes six more), to the
+    taxi corners, or home along the streets.
+  - At the taxi corners they wait, and taxis come for them (`ArenaArrivals` pick-ups).
+  - The flow starts when the after-gala window opens (`streetAt` 'after', the gala seen to the end or closing time) on
+    an evening the arena's street was alive. Fans stop arriving at that moment.
+- **Nobody pops up in sight.** People appear out of view (more than 28 m away, or behind the camera) or walk in. They
+  leave the same way. Walkers who wander far from the player come back near them.
+- **The street lives around the player**: stops and groups fill within 90, 120 or 150 m (low, medium, high). Elsewhere
+  they would be beyond the crowd's far range anyway.
+- **Never through walls or furniture.** Lanes and places are checked against the colliders, and every straight walk (to a
+  stop, into a car, across a crossing) goes round stalls and barriers with `routeClear`.
+  - `tests/street.test.ts` runs the Pikine street for two and a half minutes of evening rush and checks every person
+    every second.
+  - `__dakar.street.blocked()` lists anyone inside a collider in the browser.
+- **Greeting**: the full humanoids of every crowd (the spectator next to you, a passer-by) can be greeted like anyone in
+  the street (`ctx.people`).
+- **Cost**: the update takes about 0.1 ms a frame on average in node at high quality.
+- **Out of scope**: traffic, weather and road events stay with the city lane.
+
 ## Debug and checks
 
 - `__dakar.crowds.list()`: every live crowd with present, reacting, standing, near/mid/far/hidden, the kinds shown,
   level and draw calls.
 - `__dakar.crowds.react(name, group, kind)` triggers a reaction.
 - `__dakar.arrivals.info()` and `__dakar.arrivals.taxi(r)`.
+- `__dakar.street`:
+  - `info()`: targets, roles, stops, groups, counts, LOD, draw calls;
+  - `where()`;
+  - `blocked()`;
+  - `leaveNow(n)`: starts the after-gala flow.
+- `scripts/check-street.mjs`:
+  - the Pikine main street at 18:45 and Sandaga at 8:00;
+  - people getting on and off a car rapide;
+  - the after-gala flow;
+  - empty streets at 3 h;
+  - nobody inside a collider;
+  - draw calls and errors.
 - `__dakar.arena.info().crowd` now carries `level` and `lod` (the stats).
 - `scripts/check-crowd.mjs`:
   - a taxi drop, a car rapide group and the fans reaching the queue;

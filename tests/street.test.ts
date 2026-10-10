@@ -68,7 +68,7 @@ function fakeCtx(hour: number, at: { x: number; z: number }) {
   const extra = new THREE.Group();
   const ctx = {
     quality: () => 'high', hour: () => hour, day: () => 3, player: { pos: { x: at.x, y: 0, z: at.z } }, camera, extra,
-    places: { all: () => [] }, mode: () => 'play', inside: () => null,
+    places: { all: () => [] }, mode: () => 'play', inside: () => null, state: { data: { counters: {} } },
   };
   return { ctx: ctx as unknown as GameCtx, set: (hr: number) => { hour = hr; } };
 }
