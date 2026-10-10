@@ -247,6 +247,18 @@ export const ARENA = {
   over: 'Le gala est fini : le public rentre, la rue se vide.',
 };
 
+/** The « gardien de motos » by the arena's gate (src/arena/arrival.ts): French narration, his Wolof with its gloss. */
+export const MOTO_GUARD = {
+  /** The player gets off in his parking: his greeting, and the price before anything is paid. */
+  hello: (fee: number) => `${exchange(['Le gardien', ['Na nga def ?']])} · Parking motos : ${price(fee)} la soirée, payés une fois.`,
+  /** Paid: « 100 F, jërëjëf ! » and he puts the moto in the place he keeps by him. */
+  paid: (fee: number) => `${exchange(['Le gardien', [{ wo: `${price(fee)},` }, 'jërëjëf !', 'Amul solo.']])} · Il range ta moto à côté de lui.`,
+  /** Back on the same evening, already paid: he puts it in its place again. */
+  again: () => `${exchange(['Le gardien', ['Dalal ak jàmm !']])} · Ta place t’attend : il range ta moto.`,
+  /** Riding away: his goodbye. */
+  bye: () => `${exchange(['Le gardien', ['Ñibbil ak jàmm !', 'Ba beneen yoon !']])} · Il te fait signe de la main.`,
+};
+
 // ------------------------------------------------------------------ chat
 
 export type ChatPlace = 'street' | 'food' | 'market' | 'transport' | 'mosque' | 'club' | 'home';

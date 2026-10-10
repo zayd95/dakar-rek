@@ -106,6 +106,11 @@ export interface VehicleOpts {
    * Each distinct list is a cached geometry: callers keep to a few patterns.
    */
   seated?: readonly string[];
+  /**
+   * Car rapide: shirts of the baked passengers, in turn (fans in their écurie's colours on a fight evening); a negative
+   * entry keeps that passenger's own look. Each distinct list is another cached geometry: callers keep to one or two.
+   */
+  colours?: readonly number[];
   /** Baked driver / rider (default true; false for parked vehicles). */
   driver?: boolean;
   /** Motorbike without a baked rider: side stand down (default) or up (the player is riding it). */
@@ -546,7 +551,10 @@ const pickCarRapide: Pick = (r, o) => {
     step: { riding: { x: -0.3, y: 0.43, z: zr - 0.2, yaw: Math.PI - 0.9 }, standing: { x: -1.55, y: 0, z: zr - 0.8, yaw: -Math.PI / 2 - 0.5 } },
   };
   // looks follow the seat (not the order), so a passenger keeps their look when others get on or off
-  const people = occupied(seats, o, p, 0.62).map(s => ({ s, lk: lookOf(seats.indexOf(s) + 2, p + livery * 5) }));
+  const people = occupied(seats, o, p, 0.62).map((s, i) => {
+    const lk = lookOf(seats.indexOf(s) + 2, p + livery * 5), c = o.colours?.length ? o.colours[i % o.colours.length] : -1;
+    return { s, lk: c >= 0 ? { ...lk, shirt: c } : lk };
+  });
   const occKey = people.map(q => q.s.id).join('.');
   const arches = [{ z: rz, r: ar, y: wr }, { z: fz, r: ar, y: wr }];
   const name = [UV.name0, UV.name1, UV.name2][livery], panel = [UV.panel0, UV.panel1, UV.panel2][livery];
@@ -652,7 +660,7 @@ const pickCarRapide: Pick = (r, o) => {
     b.box(1.96, 0.3, 4.9, 0, 2.48, -0.4, rack); b.box(1.5, 0.35, 3.0, 0, 2.6, -0.6, 0x6b3fa0);
     for (const w of wheels) b.box(w.width, w.r * 1.8, w.r * 2, w.x, 0.02, w.z, TYRE);
   };
-  return { key: `carRapide|${livery}|${luggage}|${rack}|${occKey}`, occupied: people.map(q => q.s.id), variant: livery, colors: { body: Y, accent: BL }, layout, speed: 6, lod: 60, near, far, beam: b => beamQuad(b, zf + 0.3, 9, 2.0, 4.6) };
+  return { key: `carRapide|${livery}|${luggage}|${rack}|${occKey}${o.colours?.length ? `|${o.colours.map(c => c.toString(16)).join(',')}` : ''}`, occupied: people.map(q => q.s.id), variant: livery, colors: { body: Y, accent: BL }, layout, speed: 6, lod: 60, near, far, beam: b => beamQuad(b, zf + 0.3, 9, 2.0, 4.6) };
 };
 
 // ------------------------------------------------------------------------------------------------------------ city bus

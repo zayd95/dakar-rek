@@ -3,7 +3,7 @@ import type { HubId } from '../core/types';
 import { rng, pick } from '../core/rng';
 import { Batch, facadeTextures, signTexture } from './batch';
 import { ACTIONS, ENTER } from './content';
-import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
+import type { Canopy, Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { generatedTexture } from './textures';
@@ -111,6 +111,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   const R = rng(sp.seed);
   const group = new THREE.Group();
   const colliders: Collider[] = [];
+  const canopies: Canopy[] = [];
   const interactables: Interactable[] = [];
   const plain = new Batch(), fac = new Batch(), lampPosts = new Batch(), lampBulbs = new Batch();
   const glass = new Batch(), water = new Batch(), leaves = new Batch();
@@ -285,6 +286,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     const h = 6.2 * s;
     for (let k = 0; k < 2; k++) trunks.cyl(0.2 * s + (1 - k) * 0.06, 0.26 * s + (1 - k) * 0.06, h / 2 + 0.05, x, 0.1 + (k * h) / 2, z, k % 2 ? 0x9a7b55 : whitewash ? 0xf1eee6 : 0x8a6d4a, 5);
     const top = 0.1 + h;
+    canopies.push({ x, z, r: 3.3 * s, y0: top - 0.7 * s, y1: top + 0.3 * s });
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2 + R() * 0.5;
       const len = 3.4 * s;
@@ -298,10 +300,13 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     plain.cyl(0.22 * s, 0.32 * s, 2.6 * s, x, 0.1, z, 0x6e5a44, 6);
     plain.cyl(0.12 * s, 0.16 * s, 1.4 * s, x + 0.5 * s, 2.2 * s, z, 0x6e5a44, 5, [0, 0, -0.6]);
     const cols = flower ? [0xc8442c, 0xd9542f, 0x4a7a35] : [0x3f6e2e, 0x4c7d36, 0x365f28];
+    const top = { x, z, r: 0, y0: Infinity, y1: 0 };                  // the canopy's bounds, from its blobs (same random draws)
     for (let k = 0; k < 5; k++) {
-      const a = k * 1.3 + R(), r = k === 0 ? 0 : 1.3 * s;
-      leaves.blob((1.4 + R() * 0.6) * s, x + Math.sin(a) * r, (3.3 + R() * 0.8) * s, z + Math.cos(a) * r, cols[k % 3], 0.75, 0);
+      const a = k * 1.3 + R(), r = k === 0 ? 0 : 1.3 * s, br = (1.4 + R() * 0.6) * s, by = (3.3 + R() * 0.8) * s;
+      leaves.blob(br, x + Math.sin(a) * r, by, z + Math.cos(a) * r, cols[k % 3], 0.75, 0);
+      top.r = Math.max(top.r, r + br * 0.85); top.y0 = Math.min(top.y0, by - br * 0.75); top.y1 = Math.max(top.y1, by + br * 0.75);
     }
+    canopies.push(top);
     solidC(x, z, 0.6, 0.6, 2.4);
   };
   const awning = (cx: number, cz: number, w: number, d: number, y: number, col: number, alongX = true, dir = 1) => {
@@ -564,9 +569,10 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
    */
   const dress = (x: number, z: number, place: () => void) => {
     if (!inSite(x, z)) { place(); return; }
-    const marks = [plain, leaves, trunks].map(b => b.mark()), n = colliders.length;
+    const marks = [plain, leaves, trunks].map(b => b.mark()), n = colliders.length, nc = canopies.length;
     place();
     [plain, leaves, trunks].forEach((b, i) => b.rollback(marks[i]));
+    canopies.splice(nc);
     for (const c of colliders.splice(n)) ghost(c.x0, c.z0, c.x1, c.z1, c.h);
   };
   const composedLot = (k: KioskSpec) => {
@@ -1105,7 +1111,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   };
 
   return {
-    id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs,
+    id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs, canopies,
     tick,
     heightAt(x: number, z: number) {
       for (const c of climbs) { const h = climbHeight(c, x, z); if (h !== null) return h; }

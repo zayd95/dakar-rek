@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { PREP_SECONDS, arenaFighter, fighterSpots } from '../src/arena/fighter';
-import { PREP_SIDE, prepCornerCentre } from '../src/world/arenaModules';
+import { PREP_SIDE, deckCentre, prepCornerCentre } from '../src/world/arenaModules';
+import { drumVolume, fighterDrumVolume } from '../src/arena/exteriorRules';
+import { FIGHTER_DRUMS } from '../src/arena/exterior';
 import { TUNNEL_MOUTH_R, WALL_R } from '../src/world/geew';
 
 describe('the fighter\'s path: places on the arena\'s existing pieces', () => {
@@ -26,5 +28,16 @@ describe('the fighter\'s path: places on the arena\'s existing pieces', () => {
     expect(arenaFighter.begin()).toBe(false);                                 // not initialised (no game context)
     expect(arenaFighter.pending()).toBe(false);
     expect(arenaFighter.phase()).toBe('idle');
+  });
+  it('in either écurie\'s corner the drums play louder for him, across the ring from their deck too', () => {
+    const dk = deckCentre(cx, cz);
+    for (const e of ['baobab', 'teranga'] as const) {
+      const c = fighterSpots(cx, cz, e).corner, dist = Math.hypot(c.x - dk.x, c.z - dk.z);
+      expect(fighterDrumVolume(dist, true, false, false, FIGHTER_DRUMS)).toBeGreaterThan(1.1);
+      expect(fighterDrumVolume(dist, true, false, true, FIGHTER_DRUMS)).toBe(0);                   // sound off
+    }
+    const far = fighterSpots(cx, cz, 'teranga').corner;
+    expect(drumVolume(Math.hypot(far.x - dk.x, far.z - dk.z), false, false)).toBeLessThan(0.9);    // the plain falloff would not
+    expect(fighterDrumVolume(60, false, false, false, FIGHTER_DRUMS)).toBe(0);                     // outside the walls: by distance
   });
 });

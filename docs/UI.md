@@ -41,6 +41,7 @@ phones. Animations only use `transform` and `opacity`; `prefers-reduced-motion` 
 | Place and time | `#place` (`#hubName`, `#clock`, `#placeTag`) | top centre (desktop, landscape); right of the wallet in portrait | the weekday and time (« Samedi · 15:00 », never a city day number) and a red « Gala ce soir » chip Friday–Sunday until the gala is over (inline; own line in portrait); in portrait only the hub's first name (« Pikine ») |
 | Phone | `#menuBtn` | 44 × 44, top right | opens the phone |
 | Goal hint | `#goal` (`.gi` `.gt` `.gd`) | pill under the wallet, two lines max | one suggestion at most; when there is a place to walk to, the badge becomes a compass arrow (turns with the camera) and the distance is shown; one line while a ride card (`.ridecard`) is on; hidden while seated watching an arena show (entrance, bout, result — `arenaShow.watching()`), back on standing up |
+| Moment card | `#toast > .mo` (`hud.moment`) | first in the toast column, the toasts under it; never over the action button or the joystick | icon, title, a few lines (a bout's recap, a new word on a gauge); tap anywhere or ✕ to dismiss, 6–12 s, two at most; five lines on a landscape phone |
 | Toasts | `#toast > .t` | top centre (portrait: under the HUD, y≈170), above sheets, never over the action area; under the arena show's card (`#galacard`) while it is on | three at most, newest on top; « part  part » becomes chips, amounts coloured; repeats refresh instead of stacking; `warn` toasts in red |
 | Focus ring (3D) | `worldMarkers` | sun ring on the ground under the focused target, sized by kind (person 0.62 m … vehicle 1.9 m) | grows in on focus change, breathes softly; hidden in menus, activities and scenes |
 | Bubble | `#wprompt > .wp` | above the target, with a tail | icon in a sun disc, verb, price chip, `E` keycap (desktop); greyed when unavailable; **tap it to act** |
@@ -91,6 +92,50 @@ for the old dark panel never vanish. Use the existing blocks — `.kv` (info car
   never covers « Courir »; the wallet chip uses the economy lane's `fcfaShort` (full amount as its accessible label).
 - Wolof glosses: HUD text is plain DOM text, resolved by the gloss observer (src/i18n/dom.ts) like any other text.
 - HUD buttons drop the focus after a tap or click, so Space/Enter (the game's action keys) never fire them twice.
+
+## Phone › Ce soir (src/arena/tonight.ts)
+
+The evening plans itself from what the game already knows. Nothing is invented: the page is a pure assembly
+(`tonightPage`, tests/tonight.test.ts) of live facts (`tonightFacts`). It is laid out as light cards of rows like
+Profil, with an icon, a line and its detail; « Y aller » (44 px) sits on the right.
+- **Ce soir à l'arène.**
+  - The card from the career's ladder (`billFor`), « Grand gala de lutte » (Friday–Sunday) or « Combat de quartier »,
+    « titre en jeu » when the belt is.
+  - The doors and the closing time.
+  - The ticket: in hand, or 1 000 F at the window with « Y aller ».
+  - On the card itself (the fighter's path; a gala place or the title from the career): « Tu combats ce soir contre … »
+    first, with no ticket row.
+  - Once tonight's gala is over: tomorrow's card.
+- **Y aller.**
+  - On foot with the distance to the gate.
+  - Ligne 23 to the « Arène » stop: fare, and the nearest stop served now to board at.
+  - The player's own moto / car: where it is parked, or « tu es dessus ».
+  - From another hub: « Va à Pikine » with a link to the Carte.
+  - Inside the walls: « Tu es à l'arène ».
+- **Après le combat.** The evening call's `afterPlace`, open when the gala ends, with its closing hour and its distance
+  from the arena (Pikine only).
+- **Aujourd'hui à <hub>.** The day's weather (`weatherAt`: a shower to come or going on, wet streets, an overcast
+  sky; nothing on a plain sunny day). Today's road events still to come (`roadEvents`), each with its hours and
+  distance.
+- **« Y aller ».** It closes the phone and sets the way-finding pin and the goal line (an invisible marker
+  `cesoir:<key>` in this hub, like the fighter's path).
+- **Debug.** `__dakar.tonight()`, `__dakar.tonightGo(key)`.
+
+## Follow camera (src/actors/camera.ts)
+
+Behind and above the player, never inside a wall or inside a tree's leaves:
+- **Walls.** The way from the head to the camera is sampled (12 points) against the walls near the player (a short list
+  refreshed every 2 m or second, not the whole hub). A wall cuts it short as before.
+- **Tight spot** (less than 3 m free behind, e.g. the ticket window or a counter at the player's back). Four times a
+  second at most, a few other views are tried: over the shoulder (higher), a three-quarter or side angle, from the front
+  three-quarter, lower. The one that frees the most room wins, with a small cost for a bigger turn. Standing, the
+  camera swings there smoothly. Walking, it only tilts, because a turn would bend the walk under the player's thumb. It
+  eases back behind 2 s later, or as soon as the plain view is clear again.
+- **Leaves.** Tree tops and palm fronds (`HubWorld.canopies`, from the builder's trees) block the camera like walls.
+  When they cut the way and hang high enough, the camera goes low under them rather than against the head.
+- **Who wins.** A drag of the view always wins: nothing changes for 0.8 s after it. A view set on purpose (`follow.pin()`,
+  the checks' `look`, `lookYaw`, `faceCamera`, `lookAtPlayer`) is kept until the player walks.
+- **Debug.** `__dakar.camInfo()` gives the free room, tight, lift and swinging; `__dakar.camInLeaves()` is never true.
 
 ## Checks
 

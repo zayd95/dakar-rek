@@ -26,8 +26,14 @@ export const phoneHooks: {
   wealth?: () => { assets: number; perHour: number; charges: number; polyvalence: string };
   /** Arena app: sporting profile (arena module; the career module adds rank, record, purses and attributes). */
   arenaProfile?: () => { label: string; value: string }[];
-  /** Profile app: Forme / Richesse / Réputation / Influence, 0–100 each with a word and a reason (career module). */
-  profileDims?: () => { label: string; score: number; level: string; note: string }[];
+  /**
+   * Profile app: Forme / Richesse / Réputation / Influence, 0–100 each with a word and a reason (career module), and
+   * the change since the last day played (« +6 depuis hier », '' when none; real saved values only).
+   */
+  profileDims?: () => { label: string; score: number; level: string; note: string; delta?: string }[];
+  /** « Ce soir » app: the evening's page (src/arena/tonight.ts), and « Y aller » toward one of its targets. */
+  tonight?: () => { title: string; rows: { icon: string; label: string; detail?: string; go?: string; open?: string }[] }[];
+  tonightGo?: (key: string) => void;
   /** Profile app: one line under the name (« Une vie à Dakar », « Lutteur · Undercards »). Never a class to pick. */
   profileHeadline?: () => string;
   /** People app: neighbours the player knows (NPC module). */

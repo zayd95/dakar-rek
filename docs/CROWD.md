@@ -16,7 +16,7 @@ is one reusable system. It runs the arena's stands, the fans arriving on fight e
 | `src/crowd/arrivals.ts` | `ArenaArrivals`: fans arriving by taxi and car rapide on fight evenings and walking to the queue. |
 | `src/crowd/streetPlan.ts` | Pure: the street's hour curves and budgets, the busy streets, the pavement lanes and places checked against the colliders, short routes round obstacles. |
 | `src/crowd/street.ts` | `StreetLife`: walkers, people waiting at the stops, groups chatting, the after-gala flow. |
-| `src/crowd/transportPeek.ts` | Which car rapides stand at which stops (read from the transport lane). |
+| `src/crowd/transportPeek.ts` | The transport lane's stop API as the crowd reads it: stops served now, cars standing there, how many get on. |
 | `src/crowd/module.ts` | The lane's module: runs the arrivals and the street, makes the crowds' full humanoids greetable, debug entries. |
 | `tests/crowd.test.ts`, `tests/street.test.ts` | 27 + 5 unit tests. The street tests build the real hubs in node (`tests/hubstub.ts`, a blank canvas). |
 | `scripts/check-crowd.mjs`, `scripts/check-street.mjs` | Browser checks (desktop medium, phone low), captures in `docs/screenshots/crowd/` and `docs/screenshots/street/`. |
@@ -151,9 +151,9 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
   - up the east road (heading +z), stopping before the street.
 
   Each taxi drops 2–4 fans (1–2 on a card night) on the pavement, waits about 4 s, and drives on.
-- **Car rapide**: each time a Ligne 23 car rapide pulls in at its « Arène » stop, 4–7 fans step down (2–3 on a card night).
-  The transport lane's vehicles are read through its debug entry (`lines()`); a small public accessor such as
-  `transport.dwellingAt(stopId)` would be cleaner.
+- **Car rapide**: each time a car rapide pulls in at an « Arène » stop that is served (`transport.served`), 4–7 fans step
+  down at its rear door (`transport.dwellingAt`; 2–3 on a card night). On fight evenings that is the evening route
+  `23s`'s stop on the arena's west side: the day route's stop is parked.
 - **The walk**: every fan walks on the pavement and the closed street to the tail of the queue lane, where the exterior's
   queue takes over. No path crosses the arena block or the écurie block (unit-tested).
 - **Bodies**: up to 10, 18 or 26 walkers at low, medium or high quality. They are instanced walking figures with ground
@@ -195,15 +195,25 @@ It costs 3 draw calls (standing figures, silhouettes, ground shadows) plus 10 pe
 - **Waiting at the car rapide stops**: people stand on the back half of the pavement, either side of the shelter. The
   shelter, its bench, its pole and the stop's own waiting humanoids keep the middle.
   - Half of them chat with a neighbour.
-  - When a car rapide pulls in, two or three of them walk to the door and get on, and one or two step off and walk away.
+  - When a car rapide pulls in (`transport.dwellingAt(stopId)`: the car, its rear door, the seconds it still waits), the
+    nearest two or three walk to its door and get on one after the other, and one or two step off and walk away.
+  - Only the stops served now hold people (`transport.served(stopId)`). From 16 h to midnight Ligne 23 takes its evening
+    route `23s` round the arena: the day route's stops are parked and empty, and only the served stops count against
+    the street's pool.
   - Nobody waits after the last car (23:15) or before 5:30.
 - **Groups chatting** gather in front of the shops, kiosks and stalls, mostly in the evening when the heat drops. Each
   group is a ring of four on the back of the pavement. They take turns talking with their hands (the `chat` mood) and
   break up after a few minutes.
 - **After the gala** (Pikine), the spectators come out:
   - The arena lane's outflow brings them out of the gate to both ends of the street and the side corners.
-  - The street crowd takes them on from there: to the nearest car rapide stop (the Arène stop takes six more), to the
-    taxi corners, or home along the streets.
+  - The street crowd takes them on from there: to the nearest served car rapide stop, to the taxi corners, or home
+    along the streets.
+  - **Riding home**: half of those near it head for the `23s` « Arène » stop, where a crowd waits in two rows beside
+    the shelter (`crowdSlots`, up to 18). Each car that pulls in takes the front of the crowd, nearest the door first,
+    one after the other (`BOARD_GAP`, 0.45 s apart), up to the car's fill: the line's share of the seats
+    (`LineDef.fill`: 0.85 on gala nights) and never more than can climb in before it leaves (`boardCount`). Nobody gets
+    off there after the gala. The transport lane always keeps seats free, so the player can squeeze in.
+  - The arena lane's outflow (exterior.ts) also heads only for the served stops (`transport.served`).
   - At the taxi corners they wait, and taxis come for them (`ArenaArrivals` pick-ups).
   - The flow starts when the after-gala window opens (`streetAt` 'after', the gala seen to the end or closing time) on
     an evening the arena's street was alive. Fans stop arriving at that moment.
@@ -224,6 +234,8 @@ It costs 3 draw calls (standing figures, silhouettes, ground shadows) plus 10 pe
   - The groups on the busy streets are the first to gather.
 - **The street lives around the player**: stops and groups fill within 90, 120 or 150 m (low, medium, high). Elsewhere
   they would be beyond the crowd's far range anyway.
+- **The walkers come first**: they keep up to 45 % of the pool (`WALKERS_KEEP`) when the hour asks for that many; the
+  groups give way next, then the stops. A hub with many stops or group spots never ends up with an empty pavement.
 - **Never through walls or furniture.** Lanes and places are checked against the colliders, and every straight walk (to a
   stop, into a car, across a crossing) goes round stalls and barriers with `routeClear`.
   - `tests/street.test.ts` runs the Pikine street for two and a half minutes of evening rush and checks every person
@@ -252,7 +264,8 @@ It costs 3 draw calls (standing figures, silhouettes, ground shadows) plus 10 pe
 - `scripts/check-street.mjs`:
   - the Pikine main street at 18:45 and Sandaga at 8:00;
   - people getting on and off a car rapide;
-  - the after-gala flow;
+  - only the served stops holding people on a fight evening (the evening route `23s`, not the parked day route);
+  - the after-gala flow to the `23s` « Arène » stop, and the crowd there boarding a car rapide in turns;
   - empty streets at 3 h;
   - nobody inside a collider;
   - draw calls and errors.
