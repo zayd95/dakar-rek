@@ -17,6 +17,12 @@ import { GALA, type Street } from './program';
 export const MOTO_FEE = 100;
 export const MOTO_FEE_COUNTER = 'arena_moto_day';
 export const paidTonight = (counters: Record<string, number>, day: number) => counters[MOTO_FEE_COUNTER] === day;
+/**
+ * The gardien's focus bias (metres, src/interact/system.ts pickTarget). While his fee is due for the player's moto in the
+ * parking, he is the one the player came to see: facing him, he wins the focus over the moto standing beside him (its
+ * target sits on its nearest edge, so it is often closer). Once paid, a word with him only: the moto first, to ride away.
+ */
+export const gardienBias = (feeDue: boolean) => (feeDue ? -0.5 : 0);
 
 /** Space between two motos side by side in a row (a Jakarta is 0.84 m wide). */
 export const SLOT_GAP = 1.1;
