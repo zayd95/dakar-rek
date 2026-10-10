@@ -281,7 +281,9 @@ It costs 3 draw calls (standing figures, silhouettes, ground shadows) plus 10 pe
 
   - Pikine's commuters fill the car rapide stops, its evenings are spent outside, and so are the students' at Fann.
   - The villas of Almadies keep their people indoors.
-  - Stops on a busy street (Sandaga's, the Arène and Marché stops on the main street) hold two more people.
+  - Stops on a busy street (Sandaga's, the Arène and Marché stops on the main street) hold two more people, and so does
+    the evening route's « Arène » stop by the arena on fight evenings. On a phone (life within 90 m) it is the only
+    served stop near the main street at 18:45, so it carries the street's waiting crowd.
   - The groups on the busy streets are the first to gather.
 - **The street lives around the player**: stops and groups fill within 90, 120 or 150 m (low, medium, high). Elsewhere
   they would be beyond the crowd's far range anyway.
