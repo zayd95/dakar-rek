@@ -102,8 +102,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await d(() => window.__dakar.arena.speed(6));
   await page.waitForFunction(() => ['result', 'leaving', 'over'].includes(window.__dakar.arena.info().phase), null, { timeout: 300000 }).catch(() => {});
   await d(() => window.__dakar.arena.speed(1));
-  const res = await d(() => window.__dakar.arena.info());
-  note(label, 'result', { phase: res.phase, winner: res.bout?.winner ?? res.result ?? null, toast: document.getElementById?.('toast')?.textContent ?? null });
+  const res = await d(() => ({ ...window.__dakar.arena.info(), toast: document.getElementById('toast')?.textContent ?? null }));
+  note(label, 'result', { phase: res.phase, winner: res.bout?.winner ?? res.result ?? null, toast: res.toast });
   check(`${label}: the bout reaches its result`, ['result', 'leaving', 'over'].includes(res.phase), res.phase);
   await shot('07-result');
 
