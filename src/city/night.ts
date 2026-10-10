@@ -166,7 +166,7 @@ class VehicleLights {
       t.g.getWorldPosition(this.v);
       if (Math.hypot(this.v.x - t.x, this.v.z - t.z) > 0.02) t.moved = 0; else t.moved += dt;
       t.x = this.v.x; t.z = this.v.z;
-      if (this.lit.length < MAX_VEHICLES && vehicleLit(night, t.moved) && shown(t.g) && Math.hypot(t.x - cam.x, t.z - cam.z) < 140) this.lit.push(t);
+      if (this.lit.length < MAX_VEHICLES && vehicleLit(night, t.moved) && shown(t.g, root) && Math.hypot(t.x - cam.x, t.z - cam.z) < 140) this.lit.push(t);
     }
     if (!this.lit.length) { this.pts.visible = false; this.pts.geometry.setDrawRange(0, 0); }
   }
@@ -194,7 +194,8 @@ class VehicleLights {
   count() { let n = 0; for (const t of this.tracked.values()) if (t.moved < LIGHTS_KEEP) n++; return { tracked: this.tracked.size, moving: n, lit: this.lit.length, lamps: this.pts.visible ? this.pts.geometry.drawRange.count : 0 }; }
   dispose() { this.pts.geometry.dispose(); (this.pts.material as THREE.Material).dispose(); this.group.removeFromParent(); }
 }
-const shown = (o: THREE.Object3D | null) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
+/** Shown, and still under `root` (a vehicle taken away since the last scan shows nothing). */
+const shown = (o: THREE.Object3D | null, root: THREE.Object3D) => { for (let p = o; p; p = p.parent) { if (!p.visible) return false; if (p === root) return true; } return false; };
 
 // ------------------------------------------------------------------ the arena's floodlights
 class ArenaFlood {
