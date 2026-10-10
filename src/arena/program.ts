@@ -10,7 +10,7 @@
  * Names are the game's fictional cast and écuries (Babacar of Baobab, Lamine of Teranga): no real wrestler, écurie,
  * promoter or brand. No ritual or religious text anywhere in the show — drums, dances and the crowd.
  */
-import { GATE_HALF, TIER_DEPTH, TIERS, inGate, tierRadius, tierTop } from '../world/geew';
+import { TIER_DEPTH, TIERS, standOpen, tierRadius, tierTop } from '../world/geew';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -44,9 +44,10 @@ export function fillAt(hour: number): number {
 
 /** How full the stands get, by graphics quality (instanced spectators are cheap; real humanoids next to you are not). */
 export const DENSITY: Record<Quality, { crowdShare: number; near: number }> = {
-  low: { crowdShare: 0.42, near: 0 },
-  medium: { crowdShare: 0.68, near: 4 },
-  high: { crowdShare: 0.86, near: 8 },
+  // the stands' crowd is instanced (src/crowd: a handful of draw calls whatever the size), so even phones get full tiers
+  low: { crowdShare: 0.7, near: 0 },
+  medium: { crowdShare: 0.84, near: 4 },
+  high: { crowdShare: 0.92, near: 8 },
 };
 
 // ------------------------------------------------------------------ stand seats
@@ -67,7 +68,7 @@ export function standSeats(cx: number, cz: number, prefix = 'arena:stand'): Stan
     const r = seatRadius(t), n = Math.floor((2 * Math.PI * r) / SEAT_GAP);
     for (let i = 0; i < n; i++) {
       const a = ((i + 0.5) / n) * Math.PI * 2;
-      if (inGate(a, GATE_HALF + 0.05)) continue;
+      if (!standOpen(a)) continue;                                             // not in the gate, an aisle or the wrestlers' tunnel
       out.push({ id: `${prefix}:${t}:${i}`, tier: t, a, x: cx + Math.sin(a) * r, z: cz + Math.cos(a) * r, top: tierTop(t), yaw: a + Math.PI });
     }
   }

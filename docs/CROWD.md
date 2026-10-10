@@ -1,0 +1,189 @@
+# Crowd and social events
+
+Wave 3 of the signature spec (§6 crowd LOD, §37 crowd and social events), built for Habib's evening: work in the
+afternoon, a moto or the car rapide to Pikine, the fight at the arena with a full house, then on to La Vague. The crowd
+is one reusable system; the arena's stands and the fans arriving on fight evenings use it now, La Vague's dance floor can
+plug in without new code.
+
+## Files
+
+| File | What it holds |
+| --- | --- |
+| `src/crowd/reactions.ts` | Pure, no Three.js: the six reactions, a member's reaction state, who joins in, the rig poses (and the arm maths shared by every level of detail), the dance mood, excitement per group. |
+| `src/crowd/rig.ts` | The instanced figures (mid: 12–14 boxes, far: 5–6) and the one shared material whose vertex shader poses arms, legs and upper body from a few numbers per instance. |
+| `src/crowd/crowd.ts` | `Crowd`: slots, presence, groups, `react`, `setMood`, levels of detail, the full humanoids next to the player, ground shadows, stats. |
+| `src/crowd/arenaStands.ts` | `ArenaStands`: the arena's stands on the crowd (drop-in for the old `StandCrowd`), sections and sides, the gala's moments. |
+| `src/crowd/arrivals.ts` | `ArenaArrivals`: fans arriving by taxi and car rapide on fight evenings and walking to the queue. |
+| `src/crowd/module.ts` | The lane's module: runs the arrivals, debug entries. |
+| `tests/crowd.test.ts` | 27 unit tests. |
+| `scripts/check-crowd.mjs` | Browser check (desktop medium, phone low), captures in `docs/screenshots/crowd/`. |
+
+The arena lane's `src/arena/module.ts` builds `ArenaStands` instead of `StandCrowd`. It passes the side of the wrestler
+walking in and of the winner, fills the stands less for a weekday card, and feeds the camera every frame.
+`src/arena/crowd.ts` (StandCrowd) is no longer imported, and the arena lane can delete it.
+
+## The crowd
+
+```ts
+const crowd = new Crowd(slots, { quality, near?, nearRadius?, nearNeedsFocus?, seed?, name?, look?, blobs?, fidget? });
+crowd.fill(n, skip?)                   // the first n slots (in the order given), minus those `skip` names
+crowd.setPresent(id, on)               // or one by one
+crowd.move(id, x, y, z, yaw, speed)    // walkers: speed > 0.2 m/s walks (legs and arms swing)
+crowd.react(group, kind, { share?, seconds?, origin?, speed? })   // → how many join in
+crowd.setMood(group, 'dance' | 'rest', bpm?)
+crowd.giveFlag(id, colour)              // waved whenever the arms go up
+crowd.calm(group?); crowd.level(group?)                          // excitement 0–1, for the sound
+crowd.setFocus(x, z | null, yaw?); crowd.setCamera(camera); crowd.update(dt, animate)
+crowd.stats(); crowd.drawCalls(); crowd.dispose()
+```
+
+- **Slots**: `{ id, x, y, z, yaw, seated, tags }`. `y` is the sitting surface for seated slots (hips) and the ground for
+  standing ones. Tags are the groups (`'all'` is implicit).
+- **The crowd never touches the seat registry**: the owner marks the seats it gives the crowd, as the arena does with its
+  `arena-crowd` occupant, and never gives it the player's seat.
+- **Looks**: a Dakar mix (tees and trousers, boubous, dresses with a headwrap). Each member keeps its shirt, trousers and
+  skin across every level of detail. The owner can pass `look` (the arena dresses supporters in their écurie's colour).
+
+### Levels of detail (quality-scaled)
+
+| Quality | Full humanoids | Mid figures within | Far silhouettes within | Beyond |
+| --- | --- | --- | --- | --- |
+| low | 0 | 14 m | 90 m | not drawn |
+| medium | 4 | 34 m | 150 m | not drawn |
+| high | 8 | 64 m | 220 m | not drawn |
+
+- **Near**: the city's own humanoids and clips (Sit, Idle, Celebrate, Walk, Dance_A/B), given to the members nearest the
+  focus (the player's seat, in front first) or the camera. Where no clip has the gesture (clapping, fists at the chin,
+  hands on the head, pumping), their arms are posed after the mixer with the same maths as the figures, blended in and
+  out. They are marked `noLod`, so the city's crowd LOD leaves them alone. Off-screen bodies are neither drawn nor
+  animated. At most two new bodies are made per half second.
+- **Mid**: rigged instanced figures, one draw call per posture (seated, standing) for the whole crowd.
+- **Far**: silhouettes, one draw call per posture.
+- **Cost**: a full stand of about 400 people costs 4 draw calls plus 10 per near humanoid, and no shadow pass. The rigged
+  figures cast no shadow. Street crowds can ask for `blobs`, a soft round shadow under each standing figure, which costs
+  one more draw call. Per-instance buffers are uploaded only on frames where something changes: a reaction starts or
+  ends, a pose eases, someone moves, or the LOD changes.
+
+## Reactions — `crowd.react(group, kind)`
+
+| Kind | Seated people | Pose | Rank | Share · seconds |
+| --- | --- | --- | --- | --- |
+| `applause` | stay seated | clapping in front of the chest | 2 | 0.7 · 3.5 |
+| `shout` | stand | fists pumping, leaning in | 3 | 0.5 · 2.4 |
+| `standUp` | stand | craning forward | 2 | 0.6 · 4 |
+| `grab` | stay seated | leaning in, fists at the chin | 1 | 0.55 · 2.2 |
+| `fall` | stand | leap up, hands on the head | 4 | 0.85 · 3.5 |
+| `celebrate` | stand | arms up and waving, hopping | 5 | 0.85 · 6 |
+
+**Who joins in:**
+
+- Each member joins in with probability share × keenness (0.6–1.4); `share: 1` means everyone.
+- Members start after a stagger, so a reaction ripples rather than jolts. With `origin`, the ripple also spreads out from
+  that point at `speed` m/s.
+- Each member holds the reaction for its duration ×0.75–1.25, then settles back.
+- A stronger reaction (higher rank) replaces a weaker one. A weaker one is refused while a stronger one still has more
+  than 0.6 s to run.
+
+**Dance mood:** `setMood(group, 'dance', bpm)` makes a group dance between reactions, one hop per beat with the arms
+pumping in turn. Near bodies play Dance_A or Dance_B.
+
+**Between reactions:**
+
+- People are of different heights.
+- A few calm people at a time fidget for 2–6 s: they talk with their hands, lean in or sit back. The default rate is 3 %
+  of the crowd starting each second; `fidget: 0` turns it off. A fidget never counts as cheering, and a reaction ends it.
+- Members given a flag (`giveFlag`) wave it from the left hand whenever their arms are up (shouting, celebrating). The
+  flag sits exactly where the figure's hand is drawn (`handLocal`, the rig's maths on the CPU). All flags together cost
+  one draw call.
+
+## The arena's stands — `ArenaStands`
+
+It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, nearCount, { quality })`, `group`, `taken()`,
+`present`, `cheering`, `fill`, `react(share, seconds)`, `setNear`, `cull` and `update`. On top of that it adds
+`react(group, kind)`, `moment(m, { side, winner })`, `level()` and `stats()`.
+
+**Groups** follow the stand sections of the arena interior lane (`src/world/geew.ts` SECTIONS, with seats only where
+`standOpen`):
+
+- `sec:A` … `sec:H`: one reaction unit each.
+- `left`: Babacar's (Baobab) supporters in B and C, the +x side he walks to. They wear green more often.
+- `right`: Lamine's (Teranga) supporters in F and G. They wear red more often.
+- `ends`: the mixed sections A and H by the wrestlers' tunnel, D and E by the public gate.
+- `tier0`–`tier2` and `ringside` (tier 0).
+
+**The gala's moments** (`momentPlan`):
+
+| Moment | Reactions |
+| --- | --- |
+| entrance (side) | his side shouts (0.75), the ends applaud (0.6), the other side applauds politely (0.4); the ripple starts at the tunnel mouth |
+| clinch (the wrestlers grab) | everyone tenses (0.55), a few shout (0.1) |
+| fall (projection) | everyone leaps up, hands on the head (0.85) |
+| decision | everyone stands (0.6) |
+| result (winner) | the winner's side celebrates (0.92, 7 s), the ends applaud (0.7), the losing side mostly keeps its hands on its head (the fall outranks applause) |
+
+**Fill:**
+
+- The Friday–Sunday gala fills the stands, and a weekday card fills them to 55 % (`eveningSize`, the same rule as the
+  street outside).
+- The crowd's sound follows its excitement (`level()`).
+- Since the crowd costs a handful of draw calls whatever its size, `DENSITY` (src/arena/program.ts) now takes 70 / 84 / 92 %
+  of the seats on low / medium / high (it was 42 / 68 / 86 %). That still leaves free seats for the player.
+- One supporter in eight in B–C and F–G brought the écurie's flag (green or red).
+
+## Fans arriving on fight evenings — `ArenaArrivals`
+
+- **Taxis**: while a bout is on (`arenaExterior.active()`) and the player is within 150 m of the gate, a taxi pulls in
+  every 13 s on a gala night and every 32 s on a card night, alternating between two corners:
+  - down the west road (heading −z, right lane), stopping before the street;
+  - up the east road (heading +z), stopping before the street.
+
+  Each taxi drops 2–4 fans (1–2 on a card night) on the pavement, waits about 4 s, and drives on.
+- **Car rapide**: each time a Ligne 23 car rapide pulls in at its « Arène » stop, 4–7 fans step down (2–3 on a card night).
+  The transport lane's vehicles are read through its debug entry (`lines()`); a small public accessor such as
+  `transport.dwellingAt(stopId)` would be cleaner.
+- **The walk**: every fan walks on the pavement and the closed street to the tail of the queue lane, where the exterior's
+  queue takes over. No path crosses the arena block or the écurie block (unit-tested).
+- **Bodies**: up to 10, 18 or 26 walkers at low, medium or high quality. They are instanced walking figures with ground
+  shadows; the nearest 0, 2 or 3 are full humanoids.
+
+## La Vague's dancers (plug-in, no change pushed to the venues lane)
+
+The club (`src/venues/club.ts`, local lane/w1-venues e398136, tag `la-vague-final`) has 4/7/10 cast dancers on its floor
+spots and a beat of about 124 bpm (`t / 0.485`). To fill the edge of the floor and the terrace with a cheap crowd that
+dances on the same beat and answers the player:
+
+```ts
+const ring: CrowdSlot[] = edgeSpots.map(([x, z], i) => ({ id: `vague${i}`, ...at(x, z), y: G0, yaw: faceFloor(x, z), seated: false, tags: ['floor'] }));
+const floor = new Crowd(ring, { quality: q, near: 0, name: 'la-vague', blobs: false });
+group.add(floor.group);
+floor.setMood('all', 'dance', 124);
+// each frame: floor.fill(Math.round(ring.length * crowdShare(clubCrowd(h)))); floor.setCamera(ctx.camera); floor.update(dt, inClubOrNear);
+// a good dance: floor.react('all', 'applause', { share: 0.6 }); the contest won: floor.react('all', 'celebrate', { share: 1 });
+```
+
+The same mood serves the sabar dancers by the arena gate and the dancers at a wedding.
+
+## Shops
+
+The customer flow (enter → browse → buy → leave) belongs to the shops lane through the city's ambient people
+(`src/social/ambientLife.ts`, `src/world/shopFlow.ts`, docs/SHOPS.md), so there is no second crowd there. A shop seen from
+far away could use `Crowd` silhouettes if ever needed.
+
+## Debug and checks
+
+- `__dakar.crowds.list()`: every live crowd with present, reacting, standing, near/mid/far/hidden, the kinds shown,
+  level and draw calls.
+- `__dakar.crowds.react(name, group, kind)` triggers a reaction.
+- `__dakar.arrivals.info()` and `__dakar.arrivals.taxi(r)`.
+- `__dakar.arena.info().crowd` now carries `level` and `lod` (the stats).
+- `scripts/check-crowd.mjs`:
+  - a taxi drop, a car rapide group and the fans reaching the queue;
+  - seated with full stands on a Friday;
+  - the LOD tiers and their draw calls;
+  - each reaction by its group;
+  - seated people standing for a fall but not for applause;
+  - the entrance making his side shout;
+  - the frame's draw calls, shader compilation and page errors.
+
+  Run it under the shared lock:
+  `flock /tmp/dakar-browser.lock node scripts/check-crowd.mjs http://localhost:PORT/ docs/screenshots/crowd`.

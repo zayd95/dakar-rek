@@ -6,17 +6,18 @@ import type { WrestlerLook } from '../core/types';
 import { Batch, signTexture } from '../world/batch';
 import { Humanoid, Wrestler, humanoidReady, randomLook, type Clip } from '../actors/humanoid';
 import { rng } from '../core/rng';
-import { arenaExterior } from './exterior';
+import { arenaExterior, eveningSize } from './exterior';
+import { arenaFighter } from './fighter';
 import * as P from '../activity/primitives';
 import { Percussion, crowdCheer } from '../lamb/audio';
 import { STYLES } from '../lamb/rules';
-import { WALL_R } from '../world/geew';
+import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
   BILL, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
   fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketsChecked, type Moment, type ShowPhase, type Street,
 } from './program';
-import { StandCrowd } from './crowd';
+import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
 import { GalaCard } from './card';
 
@@ -50,7 +51,8 @@ class ArenaEvening {
   readonly group = new THREE.Group();
   readonly cx: number; readonly cz: number; readonly gz: number;
   readonly seats: Seat[] = [];
-  readonly crowd: StandCrowd;
+  /** The stands' crowd (src/crowd, docs/CROWD.md): full bodies next to the player, rigged figures, far silhouettes. */
+  readonly crowd: ArenaStands;
   readonly cap: number;
   phase: ShowPhase = 'idle';
   t = 0;
@@ -86,12 +88,13 @@ class ArenaEvening {
     // ---------------------------------------------------------------- the tiers' places, shared by the crowd and the player
     const defs = standSeats(cx, a.cz, `${hub.id}:arena:stand`);
     for (const d of defs) {
-      const s: Seat = { id: d.id, x: d.x, z: d.z, top: d.top, yaw: d.yaw, kind: 'stand', space: 'street', occupant: null, reach: 3.4 };
+      // offered from the ring side and from the aisles (src/world/geew.ts); standing up leads into the nearest aisle
+      const s: Seat = { id: d.id, x: d.x, z: d.z, top: d.top, yaw: d.yaw, kind: 'stand', space: 'street', occupant: null, reach: 3.4, exits: standExits(cx, a.cz, d.a, d.tier) };
       ctx.seats.add(s); this.seats.push(s);
     }
     const order = fillOrder(defs.length, 7).map(i => defs[i]);
     this.cap = Math.round(defs.length * D.crowdShare);
-    this.crowd = new StandCrowd(order.slice(0, this.cap), D.near);
+    this.crowd = new ArenaStands(order.slice(0, this.cap), D.near, { quality: ctx.quality() });
     this.group.add(this.crowd.group);
 
     // ---------------------------------------------------------------- the ticket window by the gate
@@ -161,7 +164,7 @@ class ArenaEvening {
     const inNow = !seat && this.inside(me.x, me.z);
     this.stopT = Math.max(0, this.stopT - dt);
     if (inNow && !this.wasInside && ticketsChecked(hour, galaDone, event) && ctx.mode() === 'play') {
-      if (!hasTicket(counters, day)) {                               // turned back at the gate, toward the street
+      if (!hasTicket(counters, day) && !arenaFighter.pending()) {   // a wrestler of tonight needs no ticket                               // turned back at the gate, toward the street
         ctx.player.place(this.cx, this.gz - 1.6, Math.PI);
         if (this.stopT <= 0) { ctx.toast(ARENA.stop()); this.stopT = 3; }
         this.wasInside = false;
@@ -194,6 +197,7 @@ class ArenaEvening {
     this.crowd.group.visible = near;
     const seatId = seat?.id ?? null;
     if (seatId !== this.nearSeat) { this.nearSeat = seatId; this.crowd.setNear(seat?.x ?? 0, seat ? seat.z : null, seat?.yaw ?? 0); }
+    if (near) this.crowd.cull(ctx.camera);                                    // LOD by distance to the camera, seated or not
     this.crowd.update(dt, near);
     this.card.show(this.phase === 'idle' || this.phase === 'over' ? null : {
       title: 'Gala de làmb · Arène de Pikine',
@@ -204,12 +208,14 @@ class ArenaEvening {
   /** How many of the crowd's places are taken now. */
   crowdTarget(): number {
     switch (this.phase) {
-      case 'filling': case 'entrance': case 'bout': case 'result': return this.cap;
+      case 'filling': case 'entrance': case 'bout': case 'result': return Math.round(this.cap * this.sizeShare());
       case 'leaving': return Math.round(this.cap * Math.max(0, 1 - this.t / SHOW.leaving));
       case 'over': return 0;
-      default: return this.street === 'doors' ? Math.round(this.cap * fillAt(this.ctx.hour())) : 0;
+      default: return this.street === 'doors' ? Math.round(this.cap * this.sizeShare() * fillAt(this.ctx.hour())) : 0;
     }
   }
+  /** Full stands for the Friday–Sunday gala, a neighbourhood crowd for a weekday card (as the street outside). */
+  private sizeShare() { return eveningSize(this.day(), Math.max(this.ctx.hour(), 17)) === 'gala' ? 1 : 0.55; }
   private syncCrowd() {
     const seats = this.ctx.seats;
     this.crowd.fill(this.crowdTarget(), id => { const s = seats.get(id); return !!s && !!s.occupant && s.occupant !== CROWD; });
@@ -220,9 +226,11 @@ class ArenaEvening {
     }
   }
 
-  private react(m: Moment, sound = true) {
-    const r = REACTION[m]; this.crowd.react(r.share, r.seconds);
-    if (sound) crowdCheer(Math.min(4, r.seconds), m === 'clinch' ? 0.1 : 0.2);
+  /** The stands react to a moment (src/crowd/arenaStands.ts momentPlan): `side`, the wrestler walking in or winning. */
+  private react(m: Moment, side: StandSide | null = null, sound = true) {
+    const r = REACTION[m];
+    this.crowd.moment(m, m === 'result' ? { winner: side } : { side });
+    if (sound) crowdCheer(Math.min(4, r.seconds), (m === 'clinch' ? 0.1 : 0.2) * (0.7 + 0.5 * this.crowd.level()));
   }
   private say(key: string, line: string) { if (this.told.has(key)) return; this.told.add(key); this.ctx.toast(line); }
 
@@ -245,7 +253,7 @@ class ArenaEvening {
       const winner = !r || !r.winner ? null : r.winner === 'player' ? BILL.left.name : BILL.right.name;
       this.result = ARENA.result(winner, (r?.outcome ?? 'egalite') as 'projection' | 'decision' | 'egalite' | 'abandon');
       ctx.toast(this.result);
-      this.react('result');
+      this.react('result', !r || !r.winner ? null : r.winner === 'player' ? 'left' : 'right');
     } else if (phase === 'leaving') {
       this.bout?.dispose(); this.bout = null;
     } else if (phase === 'over') {
@@ -261,26 +269,25 @@ class ArenaEvening {
 
   private startEntrance() {
     if (!humanoidReady()) return;
-    const q = this.ctx.quality(), cx = this.cx, cz = this.cz, gz = this.gz;
+    const q = this.ctx.quality(), cx = this.cx, cz = this.cz;
     const walker = (h: Humanoid, fx: number, fz: number, tx: number, tz: number, t0: number, t1: number, end: Clip) => {
       h.group.position.set(fx, 0.1, fz); this.group.add(h.group);
       this.entrance.push({ h, from: new V3(fx, 0.1, fz), to: new V3(tx, 0.1, tz), t0, t1, end });
     };
     const lw = new Wrestler(0x5b3420); lw.setLook(LEFT_LOOK, 'B');
     const rw = new Wrestler(0x4e2e1c); rw.setLook(RIGHT_LOOK, 'A');
-    walker(lw, cx + 0.8, gz + 1, cx + 3, cz, 0.5, 6.5, 'Dance_A');
-    walker(rw, cx - 0.8, gz + 1, cx - 3, cz, 3.5, 9.5, 'Dance_B');
+    // the wrestlers come out of their tunnel opposite the public gate (src/world/geew.ts TUNNEL_*), down the runner
+    const tz = cz + TUNNEL_MOUTH_R + 2.5;
+    walker(lw, cx + 0.8, tz, cx + 3, cz, 0.5, 6.5, 'Dance_A');
+    walker(rw, cx - 0.8, tz, cx - 3, cz, 3.5, 9.5, 'Dance_B');
     const followers = q === 'low' ? 0 : q === 'medium' ? 1 : 2;
     const R = rng(77);
     for (const [side, t0] of [[1, 0.9], [-1, 3.9]] as const) for (let k = 0; k < followers; k++) {
       const h = new Humanoid({ ...randomLook(R), style: 'boubou', female: false });
-      walker(h, cx + side * (1.6 + k * 0.7), gz + 0.2 - k * 0.8, cx + side * (4.4 + k * 0.9), cz - 3.2 - k * 0.6, t0, t0 + 6, 'Celebrate');
+      walker(h, cx + side * (1.0 + k * 0.5), tz + 0.8 + k * 0.8, cx + side * (4.4 + k * 0.9), cz + 3.2 + k * 0.6, t0, t0 + 6, 'Celebrate');
     }
-    for (let k = 0; k < (q === 'low' ? 1 : 2); k++) {             // two drummers by the gate, inside
-      const h = new Humanoid(randomLook(R)); h.hold = 'Talk'; h.group.position.set(cx - 5 + k * 1.1, 0.1, cz - 13.5); h.group.rotation.y = 0.3;
-      this.group.add(h.group); this.insideCast.push(h);
-    }
-    this.drums.start(116);
+    // the drums of the evening are the drummers' deck by the tunnel (src/arena/interior.ts), heard by distance through
+    // src/arena/exteriorAudio.ts all evening: no second group or second rhythm here
   }
   private updateEntrance(dt: number) {
     const t = this.t;
@@ -292,7 +299,7 @@ class ArenaEvening {
       w.h.group.rotation.y = walking || k === 0 ? dir : Math.atan2(this.cx - w.h.group.position.x, this.cz - w.h.group.position.z);
       if (w.h instanceof Wrestler) {
         w.h.play(walking ? 'Entrance_Walk' : k >= 1 ? (t > SHOW.entrance - 1.6 ? 'Prep' : w.end) : 'Idle'); w.h.update(dt);
-        if (k >= 1 && !this.told.has(`arrived:${w.end}`)) { this.told.add(`arrived:${w.end}`); this.react('entrance'); }
+        if (k >= 1 && !this.told.has(`arrived:${w.end}`)) { this.told.add(`arrived:${w.end}`); this.react('entrance', w.end === 'Dance_A' ? 'left' : 'right'); }
       } else { w.h.hold = walking ? null : w.end; w.h.animate(dt, walking ? 1.4 : 0); }
     }
     if (t > 0.5) this.say('walk-left', ARENA.entrance(BILL.left.name, BILL.left.ecurie));
@@ -348,7 +355,7 @@ class ArenaEvening {
       street: this.street, event: eventDay(day, this.ctx.hour()), day, phase: this.phase, t: Math.round(this.t * 10) / 10, speed: this.speed,
       ticket: hasTicket(counters, day), galaDone: counters[GALA_DONE_COUNTER] === day,
       seat: seat?.id ?? null, seatsTotal: this.seats.length, seatsFree: this.seats.filter(s => !s.occupant).length,
-      crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering },
+      crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering, level: Math.round(this.crowd.level() * 100) / 100, lod: this.crowd.stats() },
       entrance: this.entrance.length, bout: this.bout?.info() ?? null, result: this.result, card: this.card.text,
       gate: { x: this.cx, z: this.gz }, centre: { x: this.cx, z: this.cz },
     };
