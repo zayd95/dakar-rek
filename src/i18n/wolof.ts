@@ -124,6 +124,7 @@ export const LEXICON: readonly Lex[] = [
   L('géew', 'le cercle de l’arène', ['lamb', 'word']),
   L('ngemb', 'pagne de lutteur', ['lamb', 'word']),
   L('Daan naa', 'j’ai gagné', ['lamb']),
+  L('Daan na', 'il a gagné', ['lamb']),
   // Weather and heat
   L('Dafa tàng', 'il fait chaud', ['weather', 'chat']),
   L('Dafa sedd', 'il fait frais', ['weather']),
