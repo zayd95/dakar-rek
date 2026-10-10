@@ -93,6 +93,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     // under the shell's roof the goods are in shade anyway: no shadow pass for them (the bank and the juice bar keep theirs)
     const s = buildShopInterior(type, { w, d }, seedOf(`${c.hub}:${key}`), { detail: c.shopDetail ?? (lite ? 'low' : 'medium'), at: { x, z, y: FLOOR }, id: `${c.hub}:shop:${key}`, height: 3.68, shadows: false, ...o });
     s.group.userData.shop = { key: `${c.hub}:city:${key}`, type, anchors: s.anchors, bounds: s.bounds, budget: s.budget };
+    s.group.userData.shopColliders = s.colliders;                 // the customers plan their way around them (src/game/shops.ts)
     if (c.add) c.add(s.group); else s.dispose();
     c.colliders.push(...s.colliders); c.seats.push(...s.seats);
     return s;
