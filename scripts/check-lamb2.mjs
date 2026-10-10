@@ -130,12 +130,14 @@ async function friendlyMenu(page) {
   if (st?.stagger !== 'opponent') st = null;
   check('balance at zero: the opponent staggers (« vacille »)', st?.stagger === 'opponent' && st.score.player.staggers >= 1, st ? { staggers: st.score.player.staggers, balance: st.balance } : 'no stagger');
   if (st) {
-    await shot(page, 'desktop-stagger');
     const label = await page.evaluate(() => document.querySelector('[data-k=aiopen]')?.textContent ?? '');
-    if (st.dist > 1.45) await closeIn(page, 1.4);
-    await page.evaluate(() => window.__dakar.duelGrab());
-    const cl = await until(page, i => !i || i.phase !== 'fight', null, 20000);
-    check('a grab on a staggered opponent goes straight into the empoignade', /VACILLE/.test(label) && cl?.phase === 'clinch' && cl.clinch.by === 'player', { label, phase: cl?.phase, by: cl?.clinch?.by });
+    // grab at once while he staggers (the player may still be recovering from his strike: press until it takes)
+    const cl = await until(page, i => !i || i.phase !== 'fight' || i.stagger !== 'opponent', async i => {
+      if (i.dist > 1.45) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); }
+    }, 20000);
+    await page.keyboard.up('KeyD');
+    await shot(page, 'desktop-clinch-entry');
+    check('a grab on a staggered opponent goes straight into the empoignade, with a strong grip (step 2)', /VACILLE/.test(label) && cl?.phase === 'clinch' && cl.clinch.by === 'player' && cl.clinch.entry === 'stagger' && cl.clinch.grip >= 40, { label, phase: cl?.phase, clinch: cl?.clinch });
   }
 
   // the guard: the opponent's strikes are absorbed for endurance

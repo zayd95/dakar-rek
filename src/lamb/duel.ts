@@ -736,7 +736,7 @@ export class LambDuel {
       // step 2: who grabbed, from what, with what balance → the grip each holds
       const other = by === this.me ? this.ai : this.me, g = entryGrip(entry, by, other);
       this.entry = entry; this.grip = by === this.me ? g : -g;
-      text = `${ENTRY_TEXT[entry]} · ${gripWords(this.grip)}`;
+      text = `${ENTRY_TEXT[entry]} !`;                                        // the grip is told under the bar
     }
     for (const f of [this.me, this.ai]) { f.strike = null; f.stagger = 0; f.recover = 0; f.dodge = 0; }
     this.aiReact = null; this.aiGuardHold = 0;
