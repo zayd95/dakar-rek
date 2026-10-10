@@ -33,6 +33,7 @@ import { arenaExteriorModule } from '../arena/exterior';
 import { arenaInteriorModule } from '../arena/interior';
 import { postersModule } from '../arena/posters';
 import { fighterModule } from '../arena/fighter';
+import { bakkModule } from '../arena/bakk';
 import { eveningCallModule } from '../arena/eveningCall';
 import { worldMarkers } from '../ui/worldMarkers';
 import { crowdModule } from '../crowd/module';
@@ -188,7 +189,7 @@ export type LambEvent =
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
 export const MODULES: GameModule[] = [
-  wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule,
+  wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   eveningCallModule,    // the evening's call to the arena and the goal line to it (src/arena/eveningCall.ts)
   shopsModule,          // shops lane: walk-in cafés, night glow, showroom; customers are ambientLife's (docs/SHOPS.md)

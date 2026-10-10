@@ -8,7 +8,8 @@ import { Humanoid, Wrestler, humanoidReady, type Clip } from '../actors/humanoid
 import { arenaExterior, eveningSize } from './exterior';
 import { arenaFighter } from './fighter';
 import * as P from '../activity/primitives';
-import { Percussion, crowdCheer } from '../lamb/audio';
+import { Percussion, crowdCheer, paChime } from '../lamb/audio';
+import { hasGestured } from './exteriorAudio';
 import { STYLES } from '../lamb/rules';
 import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
@@ -18,17 +19,20 @@ import {
 } from './program';
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
+import { PRELIM, PRELIM_TYPICAL, prelimFill, prelimName, undercardFor, type Prelim } from './undercard';
 import { GalaCard } from './card';
 import { FightNightPeople } from './people';
 import { TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, seatRefusal, ticketLabel, ticketSheet, whereLine, type Tribune } from './tickets';
 import { decorMaterial, honneurPlate, tribuneDecor } from './ticketsDecor';
+import { EntranceCeremony } from './entrance';
 import { posters } from './posters';
 import { recordGalaResult } from '../social/fightTalk';
 
 /**
  * A fight evening inside the Pikine arena (docs/ARENA_VISIT.md): the ticket is bought at the window by the gate (price
  * shown before paying, paid once for the evening), the controller lets ticket holders in, the player takes a free place
- * on the tiers (« S'asseoir »), the stands fill, the wrestlers make their entrance with drums and dances, the existing
+ * on the tiers (« S'asseoir »), the stands fill while short preliminary bouts of young wrestlers run (src/arena/undercard.ts),
+ * the main event's wrestlers make their entrance with drums and dances, the existing
  * làmb duel is played by two NPC wrestlers of the game's cast, the crowd reacts, the result is announced and the stands
  * empty. The street outside the walls (vendors, queue, fans, drummers) belongs to src/arena/exterior.ts (another lane).
  *
@@ -51,6 +55,7 @@ let dayOverride: number | null = null;
 const SEAT_ZOOM = 0.74;
 const V3 = THREE.Vector3;
 
+/** A wrestler walking from the tunnel to his mark (the preliminaries' walk-in: no ceremony). */
 interface Walker { h: Humanoid; from: THREE.Vector3; to: THREE.Vector3; t0: number; t1: number; end: Clip }
 /** How the evening's bout ended, as the show tells it (and as friends share it: src/arena/together.ts). */
 export type ShowOutcome = 'projection' | 'decision' | 'egalite' | 'abandon';
@@ -77,8 +82,20 @@ class ArenaEvening {
   private catchUpTo = 0;
   private hubId: string;
   private own: { dispose(): void }[] = [];
-  private entrance: Walker[] = [];
+  /** The wrestlers' entrance as a ceremony: tunnel, bàkk on the sand, corner, ring (src/arena/entrance.ts). */
+  private ceremony: EntranceCeremony | null = null;
   private bout: WatchedBout | null = null;
+  /** The evening's preliminaries, the one running now (`pi`), its wrestlers walking in, its bout, the show time its
+   *  bout ended at (−1 while it runs), what each ended with; the stands' share when the show began. */
+  private prelims: Prelim[] = [];
+  private pi = 0;
+  private pWalk: Walker[] = [];
+  private pBout: WatchedBout | null = null;
+  private pEnded = -1;
+  private pResults: string[] = [];
+  private fillStart = 0;
+  /** When each phase (and each preliminary) began, on the real clock: the evening's timeline (debug `arena.timeline`). */
+  private marks: { phase: string; at: number }[] = [];
   private drums = new Percussion();
   private card: GalaCard;
   /** The referee and officials, the drummers, the vendors in the stands, the wrestlers' entourages (src/arena/people.ts). */
@@ -241,15 +258,16 @@ class ArenaEvening {
     if (this.phase === 'idle' && seat && this.street === 'doors') this.go('filling');
     if (this.phase !== 'idle' && this.phase !== 'over' && this.phase !== 'leaving' && this.phase !== 'result' && !seat
       && Math.hypot(ctx.player.pos.x - this.cx, ctx.player.pos.z - this.cz) > WALL_R + 8) this.abort();
-    if (this.phase !== 'idle' && this.phase !== 'over' && this.phase !== 'bout') this.t += dt * this.speed;
+    if (this.phase !== 'idle' && this.phase !== 'over' && this.phase !== 'bout' && this.phase !== 'prelims') this.t += dt * this.speed;
     switch (this.phase) {
-      case 'filling': if (this.t >= SHOW.filling) this.go('entrance'); break;
-      case 'entrance': this.updateEntrance(dt * this.speed); if (this.t >= SHOW.entrance) this.go('bout'); break;
+      case 'filling': if (this.t >= SHOW.filling) this.go(this.prelims.length ? 'prelims' : 'entrance'); break;
+      case 'prelims': this.updatePrelim(dt * this.speed); break;
+      case 'entrance': this.ceremony?.update(this.t, dt * this.speed); if (this.t >= SHOW.entrance) this.go('bout'); break;
       case 'bout': if (this.bout) { this.bout.advance(dt * this.speed); this.t = this.bout.time; if (this.bout.over) this.go('result'); } break;
       case 'result': if (this.t >= SHOW.result) this.go('leaving'); break;
       case 'leaving': if (this.t >= SHOW.leaving) this.go('over'); break;
     }
-    this.people.update(dt, this.phase, this.t, this.street, dt * (this.phase === 'bout' ? 1 : this.speed));
+    this.people.update(dt, this.phase, this.t, this.street, dt * (this.phase === 'bout' ? 1 : this.speed), billFor(this.day()));
     // the stands fill with the evening and empty after the gala
     this.fillT -= dt;
     if (this.fillT <= 0) { this.fillT = 0.4; this.syncCrowd(); }
@@ -259,8 +277,11 @@ class ArenaEvening {
     if (seatId !== this.nearSeat) { this.nearSeat = seatId; this.crowd.setNear(seat?.x ?? 0, seat ? seat.z : null, seat?.yaw ?? 0); }
     if (near) this.crowd.cull(ctx.camera);                                    // LOD by distance to the camera, seated or not
     this.crowd.update(dt, near);
-    const bill = this.phase === 'idle' || this.phase === 'over' ? null : billFor(this.day());
-    this.card.show(!bill ? null : {
+    const bill = this.phase === 'idle' || this.phase === 'over' ? null : billFor(this.day()), pre = this.phase === 'prelims' ? this.prelims[this.pi] : null;
+    this.card.show(!bill ? null : pre ? {
+      title: 'Gala de làmb · Préliminaires',
+      sub: `Préliminaires ${this.pi + 1}/${this.prelims.length} · ${prelimName(pre.left)} – ${prelimName(pre.right)}`,
+    } : {
       title: bill.title ? 'Gala de làmb · Combat pour le titre' : 'Gala de làmb · Arène de Pikine',
       sub: `${SHOW_LABEL[this.phase]} · ${bill.left.name} (${ecurieLabel(bill.left.ecurie)}) – ${bill.right.name} (${ecurieLabel(bill.right.ecurie)})`,
     });
@@ -269,12 +290,17 @@ class ArenaEvening {
   /** How many of the crowd's places are taken now. */
   crowdTarget(): number {
     switch (this.phase) {
-      case 'filling': case 'entrance': case 'bout': case 'result': return Math.round(this.cap * this.sizeShare());
+      // the stands fill during the preliminaries, nearly full when the main event's wrestlers walk in
+      case 'filling': return Math.round(this.cap * this.sizeShare() * this.startShare());
+      case 'prelims': return Math.round(this.cap * this.sizeShare() * prelimFill(this.startShare(), this.pi, this.prelims.length, this.t / PRELIM_TYPICAL));
+      case 'entrance': case 'bout': case 'result': return Math.round(this.cap * this.sizeShare());
       case 'leaving': return Math.round(this.cap * Math.max(0, 1 - this.t / SHOW.leaving));
       case 'over': return 0;
       default: return this.street === 'doors' ? Math.round(this.cap * this.sizeShare() * fillAt(this.ctx.hour())) : 0;
     }
   }
+  /** The stands' share when the show began (the hour's fill, at least about a third). */
+  private startShare() { return Math.max(0.35, this.fillStart); }
   /** Full stands for the Friday–Sunday gala, a neighbourhood crowd for a weekday card (as the street outside). */
   private sizeShare() { return eveningSize(this.day(), Math.max(this.ctx.hour(), 17)) === 'gala' ? 1 : 0.55; }
   private syncCrowd() {
@@ -300,10 +326,18 @@ class ArenaEvening {
   go(phase: ShowPhase) {
     const { ctx } = this;
     this.phase = phase; this.t = 0; this.fillT = 0;                          // the stands follow the phase at once
+    if (phase === 'filling') this.marks = [];                                // the timeline starts when the show does
+    this.mark(phase);
+    if (phase !== 'prelims') this.clearPrelim();
     if (phase === 'filling') {
       this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0;
       const bill = billFor(this.day());
       this.say('bill', ARENA.bill(bill.left.name, bill.left.ecurie, bill.right.name, bill.right.ecurie));
+      // tonight's preliminaries: the same card on every device, by the evening's size, the main event's names kept out
+      this.prelims = undercardFor(this.hubId, this.day(), eveningSize(this.day(), Math.max(17, ctx.hour())), [bill.left.name, bill.right.name]);
+      this.pResults = []; this.pi = 0; this.fillStart = fillAt(ctx.hour());
+    } else if (phase === 'prelims') {
+      this.startPrelim(0);
     } else if (phase === 'entrance') {
       this.startEntrance();
     } else if (phase === 'bout') {
@@ -334,6 +368,101 @@ class ArenaEvening {
       ctx.toast(ARENA.over);
     }
   }
+  // ---------------------------------------------------------------- the preliminaries (src/arena/undercard.ts)
+  /** The i-th preliminary: the announcer names it, the two young wrestlers walk out of the tunnel to the ring. */
+  private startPrelim(i: number) {
+    this.clearPrelim();
+    this.pi = i; this.t = 0; this.pEnded = -1; this.catchUpTo = 0;
+    const p = this.prelims[i]; if (!p) return;
+    this.mark(`prelim ${i + 1}`);
+    // the announcer at the microphone, as for the main event's ceremony (src/arena/entrance.ts): one voice at a time, the
+    // previous result said 3.5 s before, the ceremony's first call 0.7 s into the entrance after the last one
+    if (!this.told.has(`prelim:${i}`) && hasGestured()) paChime();
+    this.say(`prelim:${i}`, ARENA.prelim(i + 1, this.prelims.length, prelimName(p.left), prelimName(p.right)));
+    if (!humanoidReady()) return;
+    const cx = this.cx, cz = this.cz, tz = cz + TUNNEL_MOUTH_R + 2.5;
+    const lw = new Wrestler(0x5b3420); lw.setLook(p.look, p.look.ngembPattern === 'bordure' ? 'B' : 'A');
+    const rw = new Wrestler(0x4e2e1c); rw.setLook({ ngembColor: STYLES[p.style].ngemb, ngembPattern: 'uni', accessories: [] }, 'A');
+    // a short walk to their marks (where the duel puts them), no dances: the ceremony is the main event's
+    for (const [h, sx, t0] of [[lw, 1, 0.2], [rw, -1, 0.7]] as const) {
+      h.group.position.set(cx + sx * 0.8, 0.1, tz); this.group.add(h.group);
+      this.pWalk.push({ h, from: new V3(cx + sx * 0.8, 0.1, tz), to: new V3(cx + sx * 3, 0.1, cz), t0, t1: PRELIM.walk - 0.5 + t0 * 0.4, end: 'Prep' });
+    }
+  }
+  /** One frame of the current preliminary: the walk-in, then its bout, then a short moment for the result. */
+  private updatePrelim(dt: number) {
+    const p = this.prelims[this.pi]; if (!p) { this.go('entrance'); return; }
+    if (!this.pBout) {
+      this.t += dt;
+      for (const w of this.pWalk) {
+        const k = THREE.MathUtils.clamp((this.t - w.t0) / (w.t1 - w.t0), 0, 1), walking = k > 0 && k < 1;
+        w.h.group.position.lerpVectors(w.from, w.to, k);
+        w.h.group.rotation.y = k < 1 ? Math.atan2(w.to.x - w.from.x, w.to.z - w.from.z) : Math.atan2(this.cx - w.h.group.position.x, this.cz - w.h.group.position.z);
+        if (w.h instanceof Wrestler) { w.h.play(walking ? 'Entrance_Walk' : k >= 1 ? w.end : 'Idle'); w.h.update(dt); }
+      }
+      if (this.t >= PRELIM.walk) this.startPrelimBout(p);
+      return;
+    }
+    if (this.pEnded < 0) {
+      this.pBout.advance(dt);
+      this.t = PRELIM.walk + this.pBout.time;
+      if (this.pBout.over) this.endPrelim(p);
+      return;
+    }
+    this.t += dt;
+    if (this.t >= this.pEnded + PRELIM.result) { if (this.pi + 1 < this.prelims.length) this.startPrelim(this.pi + 1); else this.go('entrance'); }
+  }
+  private startPrelimBout(p: Prelim) {
+    for (const w of this.pWalk) w.h.dispose(); this.pWalk = [];
+    this.t = PRELIM.walk;
+    const b = this.pBout = this.prelimBout(p);
+    // smaller reactions than the main event's: a murmur at a grab, part of the stands up at a fall
+    b.onMoment = (ph, info) => {
+      if (b.time < this.catchUpTo - 0.5) return;
+      if (ph === 'clinch') this.crowd.react('all', 'grab', { share: 0.08, seconds: 1.2 });
+      if (ph === 'fall') { this.crowd.react('all', info.outcome === 'projection' ? 'fall' : 'applause', { share: 0.3, seconds: 2.5 }); crowdCheer(1.6, 0.08 * (0.7 + 0.5 * this.crowd.level())); }
+    };
+    this.group.add(b.group);
+  }
+  /**
+   * The one way a preliminary's bout is made: the existing duel, AI against AI, seeded by `prelimSeed` (the same bout
+   * for everyone in the stands), a 30 s round, the young wrestler's style and level. Làmb 2.0 (avec frappe, ?lamb2)
+   * passes the pair here as WatchedBout's frappe bill when its lane is merged.
+   */
+  private prelimBout(p: Prelim): WatchedBout {
+    return new WatchedBout({ x: this.cx, z: this.cz }, p.look, p.seed, { style: { ...STYLES[p.style], name: p.right.name }, level: p.level, round: PRELIM.round });
+  }
+  private endPrelim(p: Prelim) {
+    this.pEnded = this.t;
+    const r = this.pBout?.result, how = (!r || r.outcome === 'entrainement' ? 'egalite' : r.outcome) as ShowOutcome;
+    const winner = !r || !r.winner ? null : r.winner === 'player' ? p.left.name : p.right.name;
+    const line = ARENA.prelimResult(winner, how);
+    this.pResults[this.pi] = line;
+    this.mark(`prelim ${this.pi + 1} result`);
+    if (this.pBout && this.pBout.time < this.catchUpTo - 0.5) return;           // passed on the way to a friend's show
+    this.ctx.toast(line);
+    this.crowd.react('all', 'applause', { share: 0.35, seconds: 2.5 });
+  }
+  private clearPrelim() {
+    for (const w of this.pWalk) w.h.dispose(); this.pWalk = [];
+    this.pBout?.dispose(); this.pBout = null; this.pEnded = -1;
+  }
+  /** Jump within the current preliminary to show time `t` (a friend further on): the seeded bout played up to it. */
+  private seekPrelim(t: number) {
+    const p = this.prelims[this.pi]; if (!p) return;
+    if (t < PRELIM.walk) { if (!this.pBout) this.t = Math.max(this.t, t); return; }
+    if (!this.pBout) this.startPrelimBout(p);
+    const b = this.pBout!;
+    if (this.pEnded < 0) { this.catchUpTo = t - PRELIM.walk; b.advance(Math.max(0, t - PRELIM.walk - b.time - b.pending)); }
+    else this.t = Math.max(this.t, t);
+  }
+  private mark(phase: string) { this.marks.push({ phase, at: performance.now() }); if (this.marks.length > 40) this.marks.shift(); }
+  /** The evening so far on the real clock: each phase and preliminary, when it began and how long it lasted (seconds). */
+  timeline() {
+    const m = this.marks, now = performance.now();
+    return m.map((x, k) => ({ phase: x.phase, from: Math.round((x.at - (m[0]?.at ?? x.at)) / 100) / 10, lasted: Math.round(((m[k + 1]?.at ?? now) - x.at) / 100) / 10 }));
+  }
+
   private resultLine(o: ShowResult) { return ARENA.result(o.winner ? billFor(this.day())[o.winner].name : null, o.outcome); }
 
   // ---------------------------------------------------------------- one show for friends (src/arena/together.ts)
@@ -341,14 +470,14 @@ class ArenaEvening {
   shared() {
     if (this.phase === 'idle' || this.phase === 'over') return null;
     const me = this.ctx.player.pos;
-    return { day: this.day(), phase: this.phase, t: this.t, result: this.outcome, here: !!this.seatedHere() || this.inside(me.x, me.z) };
+    return { day: this.day(), phase: this.phase, t: this.t, i: this.phase === 'prelims' ? this.pi : undefined, result: this.outcome, here: !!this.seatedHere() || this.inside(me.x, me.z) };
   }
   /**
    * Join a friend's show further on (their phase and time, and the result they saw): forward only, a running show
    * (filling … leaving). A player inside the walls during the doors whose own show has not started joins too. Each
    * phase in between is set up on the way (the entrance, the seeded bout played up to their second). True if it moved.
    */
-  follow(phase: ShowPhase, t: number, res?: ShowResult | null): boolean {
+  follow(phase: ShowPhase, t: number, res?: ShowResult | null, i?: number): boolean {
     const want = SHOW_PHASES.indexOf(phase), leaving = SHOW_PHASES.indexOf('leaving');
     if (want < 1 || want > leaving) return false;
     if (this.phase === 'idle') {
@@ -363,6 +492,15 @@ class ArenaEvening {
       this.adopted = res;
       if (this.outcome && differs) { this.outcome = res; this.result = this.resultLine(res); this.ctx.toast(this.result); }
     }
+    if (phase === 'prelims') {                                                 // which preliminary, then its time
+      if (!this.prelims.length) return false;
+      const k = Math.max(0, Math.min(this.prelims.length - 1, i ?? 0));
+      if (want === have && (k < this.pi || (k === this.pi && t - this.t < FOLLOW_SLACK))) return false;
+      for (let s = have + 1; s <= want; s++) this.go(SHOW_PHASES[s]);
+      if (k !== this.pi) this.startPrelim(k);
+      this.seekPrelim(t);
+      return true;
+    }
     if (want === have && t - this.t < FOLLOW_SLACK) return false;
     for (let k = have + 1; k <= want; k++) this.go(SHOW_PHASES[k]);
     if (this.phase === 'bout' && this.bout) { this.catchUpTo = t; this.bout.advance(Math.max(0, t - this.bout.time - this.bout.pending)); }
@@ -371,55 +509,30 @@ class ArenaEvening {
   }
 
   private abort() {
-    this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
+    this.clearPrelim(); this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
     this.phase = 'idle'; this.t = 0;
   }
 
   private startEntrance() {
-    if (!humanoidReady()) return;
-    const cx = this.cx, cz = this.cz;
-    const walker = (h: Humanoid, fx: number, fz: number, tx: number, tz: number, t0: number, t1: number, end: Clip) => {
-      h.group.position.set(fx, 0.1, fz); this.group.add(h.group);
-      this.entrance.push({ h, from: new V3(fx, 0.1, fz), to: new V3(tx, 0.1, tz), t0, t1, end });
-    };
-    const lw = new Wrestler(0x5b3420); lw.setLook(LEFT_LOOK, 'B');
-    const rw = new Wrestler(0x4e2e1c); rw.setLook(RIGHT_LOOK, 'A');
-    // the wrestlers come out of their tunnel opposite the public gate (src/world/geew.ts TUNNEL_*), down the runner
-    const tz = cz + TUNNEL_MOUTH_R + 2.5;
-    walker(lw, cx + 0.8, tz, cx + 3, cz, 0.5, 6.5, 'Dance_A');
-    walker(rw, cx - 0.8, tz, cx - 3, cz, 3.5, 9.5, 'Dance_B');
-    // their entourages walk out of the tunnel behind them (src/arena/people.ts); the drums of the evening are the
-    // drummers' group on its deck by the tunnel, heard by distance through src/arena/exteriorAudio.ts all evening
-  }
-  private updateEntrance(dt: number) {
-    const t = this.t;
-    for (const w of this.entrance) {
-      const k = THREE.MathUtils.clamp((t - w.t0) / (w.t1 - w.t0), 0, 1);
-      w.h.group.position.lerpVectors(w.from, w.to, k);
-      const dir = Math.atan2(w.to.x - w.from.x, w.to.z - w.from.z);
-      const walking = k > 0 && k < 1;
-      w.h.group.rotation.y = walking || k === 0 ? dir : Math.atan2(this.cx - w.h.group.position.x, this.cz - w.h.group.position.z);
-      if (w.h instanceof Wrestler) {
-        w.h.play(walking ? 'Entrance_Walk' : k >= 1 ? (t > SHOW.entrance - 1.6 ? 'Prep' : w.end) : 'Idle'); w.h.update(dt);
-        if (k >= 1 && !this.told.has(`arrived:${w.end}`)) { this.told.add(`arrived:${w.end}`); this.react('entrance', w.end === 'Dance_A' ? 'left' : 'right'); }
-      } else { w.h.hold = walking ? null : w.end; w.h.animate(dt, walking ? 1.4 : 0); }
-    }
-    const bill = billFor(this.day());
-    if (t > 0.5) this.say('walk-left', ARENA.entrance(bill.left.name, bill.left.ecurie));
-    if (t > 3.5) this.say('walk-right', ARENA.entrance(bill.right.name, bill.right.ecurie));
+    // the wrestlers come out of their tunnel opposite the public gate (src/world/geew.ts TUNNEL_*), do their bàkk on the
+    // sand, get ready in their corner, then come to the ring; their entourages and griots are src/arena/people.ts; the
+    // drums of the evening are the drummers' group on its deck, heard through src/arena/exteriorAudio.ts
+    this.ceremony?.dispose();
+    this.ceremony = new EntranceCeremony(this.ctx, this.group, this.cx, this.cz, billFor(this.day()), { left: LEFT_LOOK, right: RIGHT_LOOK }, who => this.react('entrance', who));
   }
   private clearEntrance() {
-    for (const w of this.entrance) w.h.dispose(); this.entrance = [];
+    this.ceremony?.dispose(); this.ceremony = null;
     this.drums.stop();
   }
 
   /** What the seat's camera looks at: the walking wrestlers, the bout, or the ring. */
   focus(out: THREE.Vector3) {
     if (this.phase === 'bout' && this.bout) return out.copy(this.bout.focus());
-    if (this.phase === 'entrance' && this.entrance.length) {
-      const ws = this.entrance.filter(w => w.h instanceof Wrestler);
-      out.set(0, 0, 0); for (const w of ws) out.add(w.h.group.position); return out.multiplyScalar(1 / ws.length).setY(1.2);
+    if (this.phase === 'prelims' && this.pBout) return out.copy(this.pBout.focus());
+    if (this.phase === 'prelims' && this.pWalk.length) {
+      out.set(0, 0, 0); for (const w of this.pWalk) out.add(w.h.group.position); return out.multiplyScalar(1 / this.pWalk.length).setY(1.2);
     }
+    if (this.phase === 'entrance' && this.ceremony?.focus(out, this.t)) return out;
     return out.set(this.cx, 1.0, this.cz);
   }
 
@@ -457,14 +570,16 @@ class ArenaEvening {
       ticket: hasTicket(counters, day), tribune: ticketTier(counters, day), galaDone: counters[GALA_DONE_COUNTER] === day,
       seat: seat?.id ?? null, seatsTotal: this.seats.length, seatsFree: this.seats.filter(s => !s.occupant).length,
       crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering, level: Math.round(this.crowd.level() * 100) / 100, lod: this.crowd.stats() },
-      entrance: this.entrance.length, bout: this.bout?.info() ?? null, result: this.result, card: this.card.text, people: this.people.debug(),
+      prelims: { n: this.prelims.length, i: this.pi, list: this.prelims.map(p => `${prelimName(p.left)} – ${prelimName(p.right)}`), seeds: this.prelims.map(p => p.seed),
+        stage: this.phase !== 'prelims' ? null : !this.pBout ? 'walk' : this.pEnded < 0 ? 'bout' : 'result', bout: this.pBout?.info() ?? null, walking: this.pWalk.length, results: [...this.pResults] },
+      entrance: this.ceremony?.wrestlers.length ?? 0, ceremony: this.phase === 'entrance' ? this.ceremony?.info(this.t) ?? null : null, bout: this.bout?.info() ?? null, result: this.result, card: this.card.text, people: this.people.debug(),
       gate: { x: this.cx, z: this.gz }, centre: { x: this.cx, z: this.cz },
     };
   }
 
   dispose() {
     if (this.fovSet) { this.ctx.camera.fov = this.baseFov; this.ctx.camera.updateProjectionMatrix(); this.fovSet = 0; }
-    this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
+    this.clearPrelim(); this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
     this.crowd.dispose(); this.card.dispose(); this.people.dispose();
     for (const s of this.seats) this.ctx.seats.release(s.id, CROWD);
     for (const o of this.own) o.dispose(); this.own = [];
@@ -482,10 +597,10 @@ let evening: ArenaEvening | null = null;
  * friends share it (src/arena/together.ts): where it is, joining a friend further on, the tiers. */
 export const arenaShow = {
   /** Seated on the tiers during the wrestlers' entrance, the bout or its result. */
-  watching: () => !!evening?.seatedHere() && (evening.phase === 'entrance' || evening.phase === 'bout' || evening.phase === 'result'),
+  watching: () => !!evening?.seatedHere() && (evening.phase === 'prelims' || evening.phase === 'entrance' || evening.phase === 'bout' || evening.phase === 'result'),
   /** This evening's show when one runs (filling … leaving): day, phase, time, result once known, player inside. */
   state: () => evening?.shared() ?? null,
-  follow: (phase: ShowPhase, t: number, res?: ShowResult | null) => evening?.follow(phase, t, res) ?? false,
+  follow: (phase: ShowPhase, t: number, res?: ShowResult | null, i?: number) => evening?.follow(phase, t, res, i) ?? false,
   /** The places on the tiers (shared registry seats), and whether a point is inside the walls. */
   seats: (): readonly Seat[] => evening?.seats ?? [],
   inside: (x: number, z: number) => evening?.inside(x, z) ?? false,
@@ -511,6 +626,8 @@ export const arenaModule: GameModule = {
       /** Faster show for the checks (the bout runs `n` duel steps per frame). */
       speed: (n = 1) => { if (evening) evening.speed = Math.max(1, Math.round(n)); },
       go: (phase: ShowPhase) => evening?.go(phase),
+      /** The evening so far on the real clock: each phase and preliminary, when it began, how long it lasted (s). */
+      timeline: () => evening?.timeline() ?? [],
       /** Shows or hides everything this module draws (the checks measure its own draw calls). */
       visible: (on = true) => { if (evening) { evening.group.visible = on; evening.peopleGroup.visible = on; } },
       /** Pretend the city day is `d` (null: the clock's), e.g. a fight evening. */

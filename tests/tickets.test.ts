@@ -4,7 +4,7 @@ import {
   whereLine, type Tribune,
 } from '../src/arena/tickets';
 import { honneurPlate, tribuneDecor } from '../src/arena/ticketsDecor';
-import { TICKET_COUNTER, TICKET_PRICE, hasTicket, standSeats, ticketTier } from '../src/arena/program';
+import { TICKET_COUNTER, TICKET_PRICE, fillOrder, hasTicket, standSeats, ticketTier } from '../src/arena/program';
 import { SECTIONS, PARAPET_R } from '../src/world/geew';
 import { arenaField } from '../src/arena/together';
 import { parseArena } from '../src/multiplayer/protocol';
@@ -74,6 +74,16 @@ describe('ticket tiers: who sits there', () => {
     }
     expect(TICKETS.honneur.crowd).toBeLessThan(TICKETS.couverte.crowd); expect(TICKETS.couverte.crowd).toBeLessThanOrEqual(TICKETS.populaire.crowd);
     expect(placeDraw('x')).toBe(placeDraw('x'));
+  });
+  it('as the stands fill along the preliminaries (to about 95 %), every tier fills in step, each to its own share', () => {
+    const order = fillOrder(seats.length, 7).map(i => seats[i]).filter(d => crowdMayTake(d.id, d.tribune));
+    for (const f of [0.35, 0.6, 0.95]) {
+      const taken = order.slice(0, Math.round(order.length * f));
+      for (const t of TRIBUNES) {
+        const share = taken.filter(s => s.tribune === t).length / of(t).length;
+        expect(Math.abs(share - f * TICKETS[t].crowd), `${t} at ${f}`).toBeLessThan(0.12);
+      }
+    }
   });
   it('the honneur rows are in their best: boubous and long dresses, never a tee-shirt, some guests in the officials\' colours', () => {
     let k = 1; const r = () => { k = (k * 16807) % 2147483647; return k / 2147483647; };
