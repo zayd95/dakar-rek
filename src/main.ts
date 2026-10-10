@@ -347,7 +347,7 @@ const ctx: GameCtx = {
 ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
 function actionSpec(a: Action): ActivitySpec {
-  return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined };
+  return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined, quiet: a.quiet };
 }
 
 function sitOn(seat: Seat, force = false) {

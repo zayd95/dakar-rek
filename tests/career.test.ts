@@ -17,8 +17,9 @@ describe('career: a fight night in the world', () => {
     expect(posterText(null, 'X', 3, 10).foot).toMatch(/Prochain gala/);
   });
   it('one line for the city posters: who beat whom', () => {
-    expect(resultText(b(), 'HabibDkr')).toBe('HabibDkr bat Gora (projection)');
-    expect(resultText(b({ res: 'D', how: 'décision' }), 'HabibDkr')).toBe('Gora bat HabibDkr (décision)');
+    expect(resultText(b(), 'HabibDkr')).toBe('HabibDkr bat Gora, victoire par chute');
+    expect(resultText(b({ res: 'D', how: 'décision' }), 'HabibDkr')).toBe('Gora bat HabibDkr, victoire aux points');
+    expect(resultText(b({ res: 'N', how: 'égalité' }), 'HabibDkr')).toBe('HabibDkr et Gora : match nul');
     expect(resultText(b({ res: 'A' }), 'HabibDkr')).toBeNull();
   });
   it('people outside talk about the result', () => {

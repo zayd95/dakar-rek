@@ -5,7 +5,10 @@ import { phoneHooks } from '../ui/phoneHooks';
 import { fcfa } from '../ui/hud';
 import { assetsOf, netWorth } from '../economy/assets';
 import { loadProfile } from '../multiplayer/client';
-import { FightNews } from './world';
+import { FightNews, resultText } from './world';
+import { arenaFighter } from '../arena/fighter';
+import { posters } from '../arena/posters';
+import { STYLES, rankedStyle, record } from '../lamb/rules';
 import {
   ATTRS, BOUTS_MAX, RUNGS, boutPoints, dimensions, fighterAttributes, purseOf, rankOf, recordLine, summary,
   type BoutEntry, type BoutRes, type CareerSave,
@@ -17,21 +20,31 @@ import {
  * profile card (Forme / Richesse / Réputation / Influence) and the arena app its record. Never asks for a career.
  */
 const DRILLS: Action[] = [
-  { id: 'drill_frappe', label: 'Sac de frappe', detail: 'Frappe et explosivité', seconds: 5, needs: { energie: -8, hygiene: -6 }, counter: 'entr_frappe',
+  { id: 'drill_frappe', label: 'Sac de frappe', detail: 'Frappe et explosivité', seconds: 5, icon: '🥊', needs: { energie: -8, hygiene: -6 }, counter: 'entr_frappe',
     requires: s => (s.data.needs.energie < 12 ? 'Trop fatigué' : null) },
-  { id: 'drill_saisies', label: 'Travail des saisies', detail: 'Technique et équilibre, avec un partenaire', seconds: 5, needs: { energie: -7, hygiene: -5, social: 2 }, counter: 'entr_saisies',
+  { id: 'drill_saisies', label: 'Travail des saisies', detail: 'Technique et équilibre, avec un partenaire', seconds: 5, icon: '🤼', needs: { energie: -7, hygiene: -5, social: 2 }, counter: 'entr_saisies',
     requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Parle d’abord à Coach Ablaye' : s.data.needs.energie < 12 ? 'Trop fatigué' : null) },
-  { id: 'drill_force', label: 'Gainage et pompes', detail: 'Force et explosivité', seconds: 5, needs: { energie: -9, hygiene: -5 }, counter: 'entr_force',
+  { id: 'drill_force', label: 'Gainage et pompes', detail: 'Force et explosivité', seconds: 5, icon: '💪', needs: { energie: -9, hygiene: -5 }, counter: 'entr_force',
     requires: s => (s.data.needs.energie < 12 ? 'Trop fatigué' : null) },
 ];
 
 /**
  * The open door to the arena: a ranked bout at the player's rung, offered at the arena and at the écurie to anyone
  * rested enough — no écurie card, no guided course first (those stay for the arena's regular « Combat classé »).
- * Named « Petit combat de quartier » on the first rung, « Combat du soir · <rang> » after.
+ * Named « Petit combat de quartier » on the first rung, « Combat du soir · <rang> » after. It does not start the duel
+ * at once: the fighter's evening begins (src/arena/fighter.ts: « Entrée des lutteurs » → tunnel → corner → ring → duel),
+ * against the ranked opponent of the moment (same rotation as the arena's « Combat classé »).
  */
-const PETIT: Action = { id: 'petit_combat', label: 'Petit combat de quartier', detail: 'Combat classé au premier palier · un cachet si tu combats', seconds: 0, special: 'combat_classe',
-  requires: s => (s.data.needs.energie < 20 ? 'Trop fatigué : repose-toi d’abord' : null) };
+const PETIT: Action = { id: 'petit_combat', label: 'Petit combat de quartier', detail: 'Combat classé au premier palier · un cachet si tu combats', seconds: 0, quiet: true, icon: '🤼',
+  steps: [{ label: 'Inscription', primitive: 'enter', then: () => signUp() }],
+  requires: s => (arenaFighter.pending() ? 'Ton combat de ce soir est déjà prévu' : s.data.needs.energie < 20 ? 'Trop fatigué : repose-toi d’abord' : null) };
+let ctxRef: GameCtx | null = null;
+/** Sign up for tonight's open bout: the fighter's path starts (the duel comes at the ring). */
+function signUp() {
+  const ctx = ctxRef; if (!ctx) return;
+  const r = record(ctx.state.data.counters, 'classe'), style = rankedStyle(r.v + r.d + r.n);
+  if (!arenaFighter.begin({ mode: 'classe', style, opponent: STYLES[style].name })) ctx.toast('Ton combat de ce soir est déjà prévu');
+}
 
 const RES_WORD: Record<BoutRes, string> = { V: 'Victoire', D: 'Défaite', N: 'Nul', A: 'Abandon' };
 let news: FightNews | null = null, labelT = 0;
@@ -70,6 +83,9 @@ export function recordBout(ctx: GameCtx, e: Extract<LambEvent, { kind: 'bout' }>
   if (res === 'D' && h2h.d >= 1 && h2h.bouts >= 1) lines.push(`Revanche à prendre contre ${e.opponent.name}`);
   c.best = Math.max(c.best, after.rung);
   if (news && res !== 'A') news.pending = { before, after, at: ctx.state.data.playedMs };
+  // the city's fight posters print the result for two days (src/arena/posters.ts)
+  const text = resultText(entry, playerName(ctx));
+  if (text) posters.setResult(entry.day, text);
   ctx.save();
   return lines;
 }
@@ -97,6 +113,7 @@ function arenaRows(ctx: GameCtx): { label: string; value: string }[] {
 export const careerModule: GameModule = {
   name: 'career',
   init(ctx) {
+    ctxRef = ctx;
     news = new FightNews(() => playerName(ctx));
     // The phone's arena app keeps its own rows (discipline, records by mode) after the career rows.
     const base = phoneHooks.arenaProfile;

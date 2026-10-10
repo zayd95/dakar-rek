@@ -104,21 +104,36 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
       await d(() => window.__dakar.act());
       await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
       await page.locator('#modal .item', { hasText: /Petit combat de quartier|Combat du soir/ }).first().click();
-      await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-      await page.locator('#modal .item', { hasText: 'Affronter' }).first().click();
-      const fought = await page.waitForFunction(() => window.__dakar.duelInfo(), null, T).then(() => true, () => false);
-      check(`${label}: the open bout starts a ranked bout the same evening`, fought);
-      if (fought) {
-        await d(() => window.__dakar.duelAbandon(true));
-        await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'result', null, T).catch(() => {});
-        await d(() => window.__dakar.duelFinish());
-        await page.waitForFunction(() => !window.__dakar.duelInfo(), null, T).catch(() => {});
+      // not the duel at once: the fighter's evening (« Entrée des lutteurs » → tunnel → corner → ring → duel)
+      const called = await page.waitForFunction(() => window.__dakar.fighter?.().phase === 'called', null, { timeout: 20000 }).then(() => true, () => false);
+      const fb = await d(() => window.__dakar.fighter?.());
+      check(`${label}: the open bout sends the player to the wrestlers' entrance (ranked, against the ranked opponent)`, called && fb.bout?.mode === 'classe' && !!fb.bout?.opponent, JSON.stringify(fb?.bout));
+      const sp = fb?.spots;
+      if (called && sp) {
+        await d(p => window.__dakar.place(p.x, p.z, Math.PI), sp.tunnel);
+        await page.waitForFunction(() => window.__dakar.fighter().phase === 'tunnel', null, { timeout: 20000 }).catch(() => {});
+        await d(p => window.__dakar.place(p.x, p.z, 0), sp.corner);
+        await page.waitForFunction(() => window.__dakar.fighter().phase === 'ring', null, { timeout: 60000 }).catch(() => {});
+        await d(p => window.__dakar.place(p.x, p.z, 0), sp.ring);
+        const fought = await page.waitForFunction(() => window.__dakar.duelInfo(), null, { timeout: 30000 }).then(() => true, () => false);
+        check(`${label}: at the ring the ranked bout starts, the same evening`, fought, JSON.stringify(await d(() => window.__dakar.fighter())));
+        if (fought) {
+          const n0 = (await career()).bouts.length;
+          await d(() => window.__dakar.duelAbandon(true));
+          await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'result', null, T).catch(() => {});
+          await d(() => window.__dakar.duelFinish());
+          await page.waitForFunction(() => !window.__dakar.duelInfo(), null, T).catch(() => {});
+          check(`${label}: the fighter's bout reaches the record`, (await career()).bouts.length === n0 + 1);
+        }
       }
+      await d(() => window.__dakar.fighterCancel?.());
     } else check(`${label}: Pikine has the arena`, false);
     // a win: the poster carries the name, people by the gate talk about it, the rank is said on the way out
     await d(() => window.__dakar.careerBout('classe', 'player', 1, 'projection', 'Pape'));
     await page.waitForFunction(() => /VAINQUEUR/.test(window.__dakar.poster()), null, { timeout: 15000 }).catch(() => {});
     check(`${label}: the arena's poster carries the winner's name`, /VAINQUEUR\|[^|]+\|a battu Pape/.test(await d(() => window.__dakar.poster())), await d(() => window.__dakar.poster()));
+    const city = await d(() => window.__dakar.posters?.() ?? null);
+    if (city) check(`${label}: the city's fight posters print the result`, JSON.stringify(city).includes('bat Pape, victoire par chute'), JSON.stringify(city).slice(0, 200));
     await d(() => { window.__dakar.state.data.playedMs += 10000; });
     await d(p => window.__dakar.place(p.x, p.z, Math.PI), spot(26 + 5, -3));
     const heard = await page.waitForFunction(() => /Un supporter/.test(document.getElementById('toast')?.textContent ?? ''), null, { timeout: 20000 }).then(() => true, () => false);

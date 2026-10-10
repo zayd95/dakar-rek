@@ -33,9 +33,10 @@ export function posterText(last: BoutEntry | null, name: string, today: number, 
 
 /** One line for the city's fight posters (« Dernier combat : <text> », src/arena/posters.ts): who beat whom, and how. */
 export function resultText(b: BoutEntry, name: string): string | null {
+  const how = b.how === 'projection' ? 'par chute' : 'aux points';
   if (b.res === 'A') return null;
-  if (b.res === 'V') return `${name} bat ${b.opp} (${b.how})`;
-  if (b.res === 'D') return `${b.opp} bat ${name} (${b.how})`;
+  if (b.res === 'V') return `${name} bat ${b.opp}, victoire ${how}`;
+  if (b.res === 'D') return `${b.opp} bat ${name}, victoire ${how}`;
   return `${name} et ${b.opp} : match nul`;
 }
 
