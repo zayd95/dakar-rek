@@ -71,8 +71,14 @@ structure of the arena interior (`src/world/arenaModules.ts`: `interiorSpots`, `
 - **The ring side is theirs.** The judges', officials' and press chairs are kept for them between two shows (`keep` on
   a Cast role): no passer-by of the ambient life and not the player sits at the ring side.
 - **Performance.** Their group (`arena_people`) is *not* `noLod`: the shared humanoid budget of the crowd LOD
-  (`src/actors/crowdLod.ts`) keeps the nearest as full bodies and swaps the far ones for cheap figures; what they carry
-  is one merged mesh each; they are drawn within 75 m of the camera.
+  (`src/actors/crowdLod.ts`, `src/social/ambientLife.ts`) keeps the nearest as full bodies and swaps the far ones for
+  cheap figures. Each person carries a weight in that budget (`LOD_PRIO`, set through the Cast's `setLodPrio` and the
+  body's `userData.lodPrio`): the people in the spotlight — the entourages walking in, the winner's people, a vendor
+  by the player, the player's own corner — count at their distance; the others as if 2.4 times farther, so on low and
+  medium they get a full body only within 15 m of the camera (from most seats: cheap figures). Behind the walls nobody
+  inside is drawn unless the camera is inside or by one of the two gates (`seenFrom`). What they carry is one merged
+  mesh each. This keeps the arena's own draw calls within the visit check's budget (desktop < 160 with the people;
+  on w4 they measured seat +154 and entrance +208 before).
 
 ## Code
 

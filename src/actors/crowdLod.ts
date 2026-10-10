@@ -155,7 +155,12 @@ export class ForeignBodies {
     const seen = this.seen; seen.clear();
     const walk = (o: THREE.Object3D) => {
       if (o.userData.noLod) return;
-      if (o.name === 'humanoid_v2') { seen.add(o); if (!this.known.has(o)) this.adopt(o, prioOf(o)); return; }
+      if (o.name === 'humanoid_v2') {
+        seen.add(o);
+        const known = this.known.get(o);
+        if (!known) this.adopt(o, prioOf(o)); else known.prio = prioOf(o);           // owners may change it (featured people)
+        return;
+      }
       for (const c of o.children) walk(c);
     };
     walk(root);

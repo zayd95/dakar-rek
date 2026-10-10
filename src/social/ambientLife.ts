@@ -688,6 +688,8 @@ export class AmbientLife implements GameModule {
 
   // ------------------------------------------------------------------ bodies and figures
   private prioOf(g: THREE.Object3D) {
+    // an owner may weigh its own people (src/arena/people.ts: those in the spotlight 1, the others farther back)
+    for (let p: THREE.Object3D | null = g; p; p = p.parent) if (typeof p.userData.lodPrio === 'number') return p.userData.lodPrio as number;
     for (let p: THREE.Object3D | null = g.parent; p; p = p.parent) if (p.name === 'npc_life') return 0.55;   // the recurring cast first
     return 1;
   }
