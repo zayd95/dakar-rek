@@ -390,7 +390,7 @@ export class AmbientLife implements GameModule {
    */
   private checkout(a: Actor): boolean {
     const spot = a.spot!, shop = spot.shop;
-    if (!shop || a.paid || spot.space !== 'street' || !shop.checkout.length) return false;
+    if (!shop || a.paid || !shop.checkout.length) return false;
     a.paid = true;
     const key = spot.id + '#checkout';
     let taken = this.slotsTaken.get(key);
@@ -469,10 +469,11 @@ export class AmbientLife implements GameModule {
     const queued = !spot.shop && !!act.serve && !!a.seat && spot.stands.length > 0 && this.takeQueue(a, spot);
     const to = queued ? { x: a.qx, z: a.qz } : this.approach(a);
     let path: Pt[] | null = null;
-    if (spot.shop && spot.space === 'street') {
-      // from the sidewalk to the shop's door, then around the furniture to the display or the chair
-      const door = spot.shop.door, from = this.sidewalkPoint(door, 14, 32), inner = spot.shop.path(door, to);
-      if (from && inner) { const outer = planPath(from, door, this.clear); if (this.pathOk(outer, 'street')) path = [...outer, ...inner.slice(1)]; }
+    if (spot.shop) {
+      // from the sidewalk (a room: its door) to the shop's door, then around the furniture to the display or the chair
+      const door = spot.shop.door, inner = spot.shop.path(door, to);
+      if (spot.space !== 'street') { if (inner && ctx.space() === spot.space) path = inner; }
+      else { const from = this.sidewalkPoint(door, 14, 32); if (from && inner) { const outer = planPath(from, door, this.clear); if (this.pathOk(outer, 'street')) path = [...outer, ...inner.slice(1)]; } }
       if (path) this.tally(spot.id, 'entered');
     } else if (spot.space !== 'street') {
       const ins = ctx.inside();
@@ -518,11 +519,14 @@ export class AmbientLife implements GameModule {
     if (a.act!.board) to = this.boardVehicle(a) ?? spot.boardAt ?? null;
     const start = wasSitting ? { x: a.ax, z: a.az } : { x: a.x, z: a.z };
     let path: Pt[] | null = null;
-    if (spot.shop && spot.space === 'street') {
-      // around the furniture to the shop's door, then out to the sidewalk
+    if (spot.shop) {
+      // around the furniture to the shop's door, then out to the sidewalk (a room: gone through the door)
       const door = spot.shop.door, inner = spot.shop.path(start, door);
-      to = this.sidewalkPoint(door, 16, 30);
-      if (inner && to) { const outer = planPath(door, to, this.clear); if (this.pathOk(outer, 'street')) path = [...inner, ...outer.slice(1)]; }
+      if (spot.space !== 'street') { to = door; path = inner; }
+      else {
+        to = this.sidewalkPoint(door, 16, 30);
+        if (inner && to) { const outer = planPath(door, to, this.clear); if (this.pathOk(outer, 'street')) path = [...inner, ...outer.slice(1)]; }
+      }
     } else if (spot.space !== 'street') { const ins = ctx.inside(); to = ins ? { x: ins.int.spawn.x, z: ins.int.spawn.z } : null; if (to) path = this.roomPath(start, to, spot.space); }
     else {
       to ??= this.sidewalkPoint(a, 16, 30);

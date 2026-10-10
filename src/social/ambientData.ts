@@ -91,6 +91,7 @@ export const LEGACY_TAGS: readonly { has: string; tags: readonly string[]; hours
   { has: ':maiga:', tags: ['eat', 'kiosk', 'maiga'], hours: [7, 22] },
   { has: ':cafe:', tags: ['cafe', 'eat', 'kiosk'], hours: [6, 22] },
   { has: ':restaurant:', tags: ['eat', 'kiosk'], hours: [11, 24] },
+  { has: ':garage:', tags: ['shop', 'garage'], hours: [8, 19] },
   { has: ':dibiterie:', tags: ['dibi'], hours: [11, 2] },
   { has: ':market', tags: ['market'], hours: [7, 20] },
   { has: ':station', tags: ['stop'] },

@@ -7,6 +7,7 @@ import { buildSpots } from '../src/social/ambientSpots';
 const SIZE: Record<ShopType, { w: number; d: number }> = {
   grocery: { w: 17, d: 8 }, phone: { w: 12, d: 8 }, clothing: { w: 12, d: 8 }, furniture: { w: 12, d: 8 }, pharmacy: { w: 12, d: 8 },
   cafe: { w: 9.4, d: 7.4 }, bank: { w: 31.6, d: 21.6 }, hardware: { w: 12, d: 8 }, craft: { w: 10, d: 8 }, beauty: { w: 17, d: 8 },
+  garage: { w: 14, d: 8 }, restaurant: { w: 12, d: 9 },
 };
 const inside = (cols: { x0: number; x1: number; z0: number; z1: number }[], p: { x: number; z: number }) => cols.some(c => p.x > c.x0 && p.x < c.x1 && p.z > c.z0 && p.z < c.z1);
 
@@ -21,7 +22,7 @@ describe('walking inside a stocked shop (src/world/shopFlow.ts)', () => {
           const route = paths.path(p, q);
           expect(route, `${type}: no way from ${JSON.stringify(p)} to ${JSON.stringify(q)}`).not.toBeNull();
           for (let k = 1; k < route!.length; k++) {
-            expect(paths.clear(route![k - 1], route![k])).toBe(true);
+            expect(paths.clear(route![k - 1], route![k]), `${type}: leg ${k} ${JSON.stringify(route![k - 1])} → ${JSON.stringify(route![k])} of ${JSON.stringify(p)} → ${JSON.stringify(q)}`).toBe(true);
             for (let t = 0; t <= 1; t += 0.1) {
               const m = { x: route![k - 1].x + (route![k].x - route![k - 1].x) * t, z: route![k - 1].z + (route![k].z - route![k - 1].z) * t };
               expect(inside(s.colliders, m), `${type}: through the furniture at ${m.x.toFixed(2)},${m.z.toFixed(2)}`).toBe(false);

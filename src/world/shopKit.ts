@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { KitBuilder, paintAtlas, seeded } from './kitGeometry';
 import { SH, SW, SCOL, SPLAIN, SUV, drawShopAtlas, shopSlot, type ShopKey } from './shopAtlas';
 import { buildFurniture, furnitureMaterials, type FurnitureId } from './furnitureKit';
+import { buildVehicle, vehicleMaterials, type VehicleKind } from '../actors/vehicleKit';
 import type { Collider } from './types';
 import type { Seat, SeatKind } from '../interact/seats';
 
@@ -20,11 +21,12 @@ import type { Seat, SeatKind } from '../interact/seats';
  * Local frame: centre of the footprint, open front (or door) toward +z, floor at y = 0. `at` places it in the world
  * (any yaw; colliders are the world AABBs). Words in the shop are generic (riz, lait, téléphonie…): no brand, no logo.
  */
-export type ShopType = 'grocery' | 'phone' | 'clothing' | 'furniture' | 'pharmacy' | 'cafe' | 'bank' | 'hardware' | 'craft' | 'beauty';
-export const SHOP_TYPES: readonly ShopType[] = ['grocery', 'phone', 'clothing', 'furniture', 'pharmacy', 'cafe', 'bank', 'hardware', 'craft', 'beauty'];
+export type ShopType = 'grocery' | 'phone' | 'clothing' | 'furniture' | 'pharmacy' | 'cafe' | 'bank' | 'hardware' | 'craft' | 'beauty' | 'garage' | 'restaurant';
+export const SHOP_TYPES: readonly ShopType[] = ['grocery', 'phone', 'clothing', 'furniture', 'pharmacy', 'cafe', 'bank', 'hardware', 'craft', 'beauty', 'garage', 'restaurant'];
 export const SHOP_TYPE_NAME: Record<ShopType, string> = {
   grocery: 'Boutique · alimentation', phone: 'Téléphonie · réparation', clothing: 'Couture · prêt-à-porter', furniture: 'Meubles · maison',
   pharmacy: 'Santé · soins', cafe: 'Café · jus', bank: 'Banque · agence', hardware: 'Quincaillerie', craft: 'Artisanat', beauty: 'Beauté',
+  garage: 'Garage · atelier', restaurant: 'Restaurant',
 };
 export type ShopDetail = 'low' | 'medium' | 'high';
 /** Rectangle on the floor plan (local or world): x0 < x1, z0 < z1. */
@@ -76,6 +78,8 @@ export interface ShopInterior {
   anchors: ShopAnchors;
   /** World rectangle of the footprint. */
   bounds: ShopRect;
+  /** Middle of the open front (or of the doorway), world. */
+  front: { x: number; z: number };
   budget: { drawCalls: number; tris: number };
   dispose(): void;
 }
@@ -122,6 +126,8 @@ class Room {
   readonly browse: ShopSpot[] = [];
   readonly staff: ShopSpot[] = [];
   readonly furn: { id: FurnitureId; x: number; z: number; rotY: number }[] = [];
+  /** Kit vehicles standing in the shop (a garage's motorbikes for sale, the car on the lift): merged at build time. */
+  readonly veh: { kind: VehicleKind; seed: number; x: number; y: number; z: number; rotY: number }[] = [];
   /** Lanes the plan keeps clear (counter front, the keeper's corridor, the aisle, the doorway). */
   readonly keep: ShopRect[] = [];
   readonly xl: number; readonly xr: number; readonly zb: number;
@@ -330,6 +336,16 @@ class Room {
       this.b.blob(0.09, x, y + 0.2, zf - 0.12, 0x8a5a3a, [0.9, 1.15, 0.95]);
       this.b.blob(0.11, x, y + 0.25, zf - 0.14, this.pick([0x1a1414, 0x3a2418, 0x6b3a1e]), [1.05, 0.9, 1.05]);
     }
+  }
+
+  /** A kit vehicle at (x, z) facing rotY (its nose toward local +z of that turn), standing at height y. */
+  vehicle(kind: VehicleKind, seed: number, x: number, z: number, rotY: number, y = 0, solid = true): boolean {
+    const sp = buildVehicle(kind, { seed, lod: 'near', driver: false, passengers: false }).spec;
+    const f = this.foot(x, z, sp.width + 0.1, sp.length + 0.1, rotY);
+    if (!this.ok(f)) return false;
+    this.veh.push({ kind, seed, x, y, z, rotY });
+    if (solid) this.solid(f, Math.min(2.4, sp.height + y));
+    return true;
   }
 
   // ---------------------------------------------------------------- furniture of the trade
@@ -567,6 +583,8 @@ interface Style {
   /** Wall behind the counter: a pegboard instead of shelves (phone accessories, tools). */
   peg?: ShopKey;
   sides?: 'behind' | 'both';
+  /** The way behind the counter starts right at its end (a workshop: the bay takes the rest of the floor). */
+  aisleNext?: boolean;
   onCounter(R: Room, x0: number, x1: number, z: number, h: number, v: number): void;
   floor(R: Room, Z: Zones, v: number): void;
   posters?: ShopKey[];
@@ -574,7 +592,67 @@ interface Style {
 
 const U = (dp: number, h: number, levels: number, frame: number, board: number, back: number): UnitStyle => ({ dp, h, levels, frame, board, back });
 
-const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank'>, Style> = {
+const garageFill: Fill = (R, lvl, levels, x0, x1, y, zf, dp, gap, u) => {
+  if (!R.full(lvl, levels)) return R.strip(x0, x1, y, zf, gap, 'sParts');
+  if (lvl === 0) {                                                                       // tyres standing on the bottom board
+    const r = Math.min(0.27, gap / 2 - 0.02);
+    for (let x = x0 + r; x < x1 - r; x += r * 2 + 0.03) R.b.cyl('z', r, r, 0.18, x, y + r, zf - 0.12, 0xffffff, 10, { pos: true, neg: false, capPaint: 0x2b2b2e, side: SUV.tyre });
+  } else if ((lvl + u) % 2) R.bottles(x0, x1, y, zf, gap, ['oil0', 'oil1', 'oil0'], 0.06, 0.24);
+  else R.stacks(x0, x1, y, zf, dp, gap, 'sParts', 10, [0.22, 0.32], 0xb08d5e);
+};
+
+const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank' | 'restaurant'>, Style> = {
+  garage: {
+    counter: 'left', aisleNext: true, body: 0x5b6168, top: 0x6b4a2e, panel: 'pnlGarage', peg: 'pegTools',
+    unit: U(0.5, 2.4, 4, C.steel, 0x7d858d, 0xd8d2c2), back: garageFill, side: garageFill,
+    onCounter(R, x0, x1, z, h) {
+      R.b.box(0.2, 0.12, 0.16, x0 + 0.3, h, z - 0.12, C.steel); R.b.box(0.32, 0.06, 0.1, x0 + 0.3, h + 0.12, z - 0.12, 0x3a4048);   // the vice
+      R.b.box(0.55, 0.24, 0.28, x0 + 1.05, h, z - 0.12, C.red); R.b.box(0.55, 0.03, 0.28, x0 + 1.05, h + 0.24, z - 0.12, 0x8a1a1a);   // toolbox
+      R.b.cyl('y', 0.2, 0.2, 0.09, (x0 + x1) / 2 + 0.35, h + 0.045, z + 0.05, 0x9aa0a6, 10, { pos: true, neg: false, capPaint: 0x5b6168 });   // a wheel rim
+      R.bottles(x1 - 1.4, x1 - 0.9, h, z + 0.15, 0.4, ['oil0'], 0.06, 0.24);
+      for (let k = 0; k < 3; k++) R.b.beam([x0 + 1.6 + k * 0.12, h + 0.01, z + 0.15], [x0 + 1.72 + k * 0.12, h + 0.01, z - 0.12], 0.025, 0.012, C.chrome);   // spanners
+    },
+    floor(R, Z) {
+      // the bay: a two-post lift with a customer's car up, motorbikes for sale nose to the street
+      const bay = Z.middle, bw = bay.x1 - bay.x0, bd = bay.z1 - bay.z0;
+      if (bw > 2.6 && bd > 4.8) {
+        const car = buildVehicle('sedan', { seed: 3141, lod: 'near', driver: false, passengers: false }).spec;
+        const hw = car.width / 2 + 0.32, cx = bay.x1 - hw - 0.25, cz = bay.z0 + 2.45;
+        if (R.ok(R.foot(cx, cz, car.width + 0.9, car.length + 0.2))) {
+          for (const sx of [-1, 1]) {
+            R.b.box(0.28, 2.7, 0.3, cx + sx * hw, 0, cz, 0x2f6fb3); R.b.box(0.5, 0.06, 0.5, cx + sx * hw, 0, cz, 0x2b2f36);
+            for (const dz of [-0.9, 0.9]) R.b.beam([cx + sx * hw, 0.95, cz], [cx + sx * (car.width / 2 - 0.35), 0.98, cz + dz], 0.08, 0.06, 0xf2c230);
+            R.solid(R.foot(cx + sx * hw, cz, 0.4, 0.4), 2.7);
+          }
+          R.vehicle('sedan', 3141, cx, cz, 0, 1.0, false);
+          R.solid(R.foot(cx, cz, car.width, car.length), 0.9);                               // nobody walks under it
+          R.browse.push({ x: cx - hw - 0.7, z: cz, yaw: PI / 2 });
+          if (R.det) {                                                                    // a jack and a drain tray under the car
+            R.b.box(0.5, 0.02, 0.4, cx, 0.01, cz + 0.3, 0x3a3d44);
+            R.b.box(0.3, 0.25, 0.6, cx - 0.4, 0, cz - 1.4, C.red);
+          }
+        }
+        const mz = bay.z1 - 1.75, mx = bay.x0 + 0.45;
+        let shown = 0;
+        for (let k = 0; k < 2; k++) if (mx + k * 1.05 + 0.4 < cx - hw - 0.3 && R.vehicle('moto', 7000 + k * 13, mx + k * 1.05, mz, 0)) {
+          shown++;
+          R.b.box(0.04, 0.6, 0.04, mx + k * 1.05 + 0.38, 0, mz + 0.85, C.chrome);
+          R.b.box(0.3, 0.2, 0.03, mx + k * 1.05 + 0.38, 0.6, mz + 0.85, C.white, { pz: { rect: SUV.tag } });   // its price card
+        }
+        if (shown) R.browse.push({ x: mx + (shown - 1) * 0.52, z: bay.z1 - 0.2, yaw: PI });
+      }
+      // tyres and oil drums behind the bench
+      const t = Z.behind;
+      for (let k = 0; k < 2; k++) {
+        const x = t.x0 + 0.4 + k * 0.7, z = t.z0 + 0.4;
+        if (!R.ok(R.foot(x, z, 0.62, 0.62))) continue;
+        for (let n = 0; n < (R.det ? 5 : 3); n++) R.b.cyl('y', 0.3, 0.3, 0.19, x, 0.095 + n * 0.19, z, 0xffffff, 12, { pos: true, neg: false, capPaint: 0x2b2b2e, side: SUV.tyre });
+        R.solid(R.foot(x, z, 0.62, 0.62), 1);
+      }
+      const dx = t.x1 - 0.35, dz = t.z0 + 0.35;
+      if (R.ok(R.foot(dx, dz, 0.6, 0.6))) { R.b.cyl('y', 0.29, 0.29, 0.88, dx, 0.44, dz, 0x2f6fb3, 12, { pos: true, neg: false, capPaint: 0x2b2f36 }); R.b.cyl('y', 0.3, 0.3, 0.04, dx, 0.6, dz, 0x1f4a7a, 12, { pos: false, neg: false }); R.solid(R.foot(dx, dz, 0.6, 0.6), 0.9); }
+    },
+  },
   grocery: {
     counter: 'left', body: 0x2a6f6d, top: 0x9a6a3e, panel: 'pnlGrocery',
     unit: U(0.45, 2.5, 5, C.frame, C.board, C.back), back: groceryFill, side: groceryFill,
@@ -831,7 +909,7 @@ function counterShop(R: Room, st: Style, v: number): Plan {
   else { const cw = clamp(W * 0.4, 1.8, 7), cm = -W * 0.23; x0 = cm - cw / 2; x1 = cm + cw / 2; }
   const cxm = (x0 + x1) / 2;
   const corZ0 = cz - cd / 2 - 1.75, corZ1 = cz - cd / 2;
-  const ax0 = st.counter === 'left' ? Math.max(W / 2 - 3.4, x1 + 0.3) : x1 + 0.3, ax1 = Math.min(xr - 0.6, ax0 + 1.4);
+  const ax0 = st.counter === 'left' && !st.aisleNext ? Math.max(W / 2 - 3.4, x1 + 0.3) : x1 + 0.3, ax1 = Math.min(xr - 0.6, ax0 + 1.4);
   const aisle = rect(ax0, ax1, corZ0, D / 2);
   R.keep.push(rect(x0 - 0.15, ax1, corZ0, corZ1), aisle, rect(x0, x1, corZ1 + cd, D / 2), rect(-0.3, 1.3, D / 2 - 1.1, D / 2));
   // counter, till and what is on it
@@ -846,7 +924,6 @@ function counterShop(R: Room, st: Style, v: number): Plan {
     R.panel((xl + pegX1) / 2, 1.75, R.zb + 0.005, 0, pl, Math.min(1.5, R.H - 2.2), st.peg);
     R.run('back', xl, pegX1, { ...u, h: 0.9, levels: 1 }, st.back, 2.4, 1, 0.9);
     R.run('back', pegX1 + 0.05, xr, u, st.back);
-    R.browse.push({ x: (xl + pegX1) / 2, z: corZ1 - 0.4, yaw: PI });
   } else R.run('back', xl, xr, u, st.back);
   const sz0 = zb + u.dp + 0.05;
   R.run('left', sz0, st.sides === 'both' ? D / 2 - 0.4 : corZ0 - 0.05, side, st.side);
@@ -860,6 +937,7 @@ function counterShop(R: Room, st: Style, v: number): Plan {
     cz, x0, x1, ch, cd,
   };
   if (st.counter !== 'left') { Z.middle = rect(ax1 + 0.2, xr - 0.2, sz0 + 0.1, cz + 0.6); Z.island = rect(ax1 + 0.2, xr - 1.2, cz + 0.6, D / 2 - 0.5); }
+  if (st.aisleNext) { Z.middle = rect(ax1 + 0.3, xr - 0.15, sz0 + 0.15, D / 2 - 0.25); Z.island = rect(0, 0, 0, 0); }
   st.floor(R, Z, v);
   if (!R.browse.length) R.browse.push({ x: (ax0 + ax1) / 2, z: corZ0 + 0.3, yaw: PI });   // the back shelves, from the aisle
   // light and decor
@@ -911,6 +989,52 @@ function cafePlan(R: Room): Plan {
   const spot = { x: 0, z: cz + cd / 2 + 0.6, yaw: PI };
   return { counter: spot, till: { x: x1 - 0.4, z: cz, yaw: PI, y: ch + 0.8 }, keeper: { x: 0, z: cz - cd / 2 - 0.5, yaw: 0 },
     queue: [spot, { x: 0, z: Math.min(D / 2 - 0.3, spot.z + 0.8), yaw: PI }, { x: 0.3, z: Math.min(D / 2 - 0.3, spot.z + 1.6), yaw: PI }], door: { x: 0, z: D / 2 - 0.5, yaw: PI } };
+}
+
+/**
+ * Restaurant: the kitchen behind a wall at the back with its pass (plates under heat lamps), the cash desk on the left
+ * in front of it, tables with their chairs filling the room, the menu on the wall and a painting of the sea.
+ */
+function restaurantPlan(R: Room): Plan {
+  const { W, D, xl, xr, zb, b } = R;
+  const kz = zb + 1.2, cd = 0.6, ch = 1.05;                                            // kitchen wall's front face
+  const x0 = xl + 0.45, x1 = x0 + clamp(W * 0.2, 1.8, 2.6), cz = kz + 1.05, cxm = (x0 + x1) / 2;
+  // the lanes: in front of the desk, behind it from its right end, from the door to the desk
+  R.keep.push(rect(x0, x1, cz + cd / 2, cz + cd / 2 + 2.0), rect(x1 + 0.1, x1 + 1.1, kz, cz + cd / 2 + 2.0), rect(x0 - 0.1, x1 + 1.1, kz, cz - cd / 2),
+    rect(-0.8, 0.8, D / 2 - 1.4, D / 2), rect(x0, 0.8, cz + cd / 2 + 1.2, cz + cd / 2 + 2.4));
+  // kitchen wall with the pass and a door, the kitchen glimpsed through them
+  const pw = Math.min(2.8, W * 0.3), px = (x1 + xr) / 2 - 0.4, dx0 = xr - 1.5, dx1 = xr - 0.5;
+  const wall = (a: number, c: number, y0: number, y1: number) => { if (c - a > 0.01) b.box(c - a, y1 - y0, 0.2, (a + c) / 2, y0, kz - 0.1, 0xe9e1d0); };
+  wall(xl, px - pw / 2, 0, R.H); wall(px + pw / 2, dx0, 0, R.H); wall(dx1, xr, 0, R.H); wall(dx0, dx1, 2.2, R.H);
+  wall(px - pw / 2, px + pw / 2, 0, 1.0); wall(px - pw / 2, px + pw / 2, 1.95, R.H);
+  b.box(pw + 0.2, 0.05, 0.5, px, 1.0, kz + 0.05, C.chrome);                               // the pass shelf
+  b.decal([px, 1.48, kz - 0.18], [1, 0, 0], [0, 1, 0], pw - 0.1, 0.9, SUV.pass);
+  for (let k = 0; k < 3; k++) b.cyl('y', 0.13, 0.13, 0.02, px - pw / 2 + 0.5 + k * (pw - 1) / 2, 1.06, kz + 0.1, C.white, 10, { pos: SUV.plate, neg: false });
+  b.box(0.9, 0.9, 0.6, px - 0.6, 0, zb + 0.4, C.chrome); b.box(0.9, 0.9, 0.6, px + 0.5, 0, zb + 0.4, C.dark);     // stove and worktop behind
+  R.solid(rect(xl, xr, zb - 0.05, kz), R.H);
+  R.staff.push({ x: px, z: kz + 0.55, yaw: PI });                                        // the waiter at the pass
+  // the cash desk
+  R.counter(x0, x1, cz, cd, ch, 0x0c4a6e, 0xd9c4a0, 'pnlResto');
+  R.till(x1 - 0.35, cz - 0.1, ch);
+  R.b.box(0.6, 0.12, 0.3, x0 + 0.45, ch, cz - 0.08, 0xb48c5c); for (let k = 0; k < 3; k++) R.b.cyl('x', 0.035, 0.035, 0.5, x0 + 0.45, ch + 0.15, cz - 0.16 + k * 0.08, 0xd9a050, 6);   // bread
+  R.panel(xl + 0.002, 2.1, cz + 0.2, PI / 2, 1.3, 0.98, 'menuResto');
+  R.panel(xr - 0.002, 1.8, (kz + D / 2) / 2, -PI / 2, 2.0, 1.0, 'seaview');
+  // tables and chairs, packed in the room around the lanes
+  const per = R.det === 2 ? 4 : 2;
+  for (let zz = kz + 1.6; zz < D / 2 - 1.0; zz += 2.35) for (let xx = xl + 1.4; xx < xr - 1.0; xx += 2.4) {
+    if (!R.ok(rect(xx - 1.1, xx + 1.1, zz - (per > 2 ? 1.1 : 0.55), zz + (per > 2 ? 1.1 : 0.55)))) continue;
+    R.table(xx, zz, 0.9, 0.9, 0.75, C.white, C.woodDark);
+    b.decal([xx, 0.756, zz], [1, 0, 0], [0, 0, -1], 0.9, 0.9, SUV.cloth2);
+    if (R.r() < 0.6) b.cyl('y', 0.13, 0.13, 0.02, xx - 0.2, 0.76, zz + 0.15, C.white, 10, { pos: SUV.plate, neg: false });
+    R.chair(xx - 0.72, zz, PI / 2, 0x8b5a32); R.chair(xx + 0.72, zz, -PI / 2, 0x8b5a32);
+    if (per > 2) { R.chair(xx, zz - 0.72, 0, 0x8b5a32); R.chair(xx, zz + 0.72, PI, 0x8b5a32); }
+  }
+  if (R.det) { R.plant(xl + 0.4, D / 2 - 0.5, 1); R.plant(xr - 0.4, D / 2 - 0.5, 1); }
+  for (let i = 0; i < Math.max(2, Math.round(W / 4)); i++) R.tube(-W / 2 + (i + 0.5) * (W / Math.max(2, Math.round(W / 4))), (kz + D / 2) / 2);
+  if (R.det === 2) R.fan(0, (kz + D / 2) / 2 + 1);
+  const spot = { x: cxm, z: cz + cd / 2 + 0.62, yaw: PI };
+  return { counter: spot, till: { x: x1 - 0.35, z: cz, yaw: PI, y: ch + 0.8 }, keeper: { x: cxm, z: cz - cd / 2 - 0.45, yaw: 0 },
+    queue: [spot, { x: cxm + 0.75, z: spot.z + 0.6, yaw: PI - 0.4 }, { x: cxm + 1.5, z: spot.z + 1.0, yaw: PI - 0.6 }], door: { x: 0, z: D / 2 - 0.5, yaw: PI } };
 }
 
 /** Bank hall: guichets behind glass, the back office, a queue lane between posts, rows of waiting chairs. */
@@ -989,7 +1113,7 @@ function shell(R: Room) {
 }
 
 // ------------------------------------------------------------------------------------------------------------ API
-const TYPE_SEED: Record<ShopType, number> = { grocery: 1, phone: 2, clothing: 3, furniture: 4, pharmacy: 5, cafe: 6, bank: 7, hardware: 8, craft: 9, beauty: 10 };
+const TYPE_SEED: Record<ShopType, number> = { grocery: 1, phone: 2, clothing: 3, furniture: 4, pharmacy: 5, cafe: 6, bank: 7, hardware: 8, craft: 9, beauty: 10, garage: 11, restaurant: 12 };
 const ONE = new THREE.Vector3(1, 1, 1), UP = new THREE.Vector3(0, 1, 0);
 
 /**
@@ -1001,7 +1125,7 @@ export function buildShopInterior(type: ShopType, footprint: { w: number; d: num
   const det = ({ low: 0, medium: 1, high: 2 } as const)[o.detail ?? 'high'];
   const R = new Room(W, D, H, det, seeded(seed * 7919 + TYPE_SEED[type] * 104729), o.reserve ?? [], o.id ?? `shop:${type}`);
   if (o.shell) shell(R);
-  const plan = type === 'cafe' ? cafePlan(R) : type === 'bank' ? bankPlan(R) : counterShop(R, type === 'craft' ? { ...STYLES.craft, back: craftFill(o.variant ?? 0), side: craftFill(o.variant ?? 0) } : STYLES[type], o.variant ?? 0);
+  const plan = type === 'cafe' ? cafePlan(R) : type === 'bank' ? bankPlan(R) : type === 'restaurant' ? restaurantPlan(R) : counterShop(R, type === 'craft' ? { ...STYLES.craft, back: craftFill(o.variant ?? 0), side: craftFill(o.variant ?? 0) } : STYLES[type], o.variant ?? 0);
 
   // meshes: the atlas body, its glass, the showroom's furniture
   const M = shopMaterials();
@@ -1009,7 +1133,24 @@ export function buildShopInterior(type: ShopType, footprint: { w: number; d: num
   const geos: THREE.BufferGeometry[] = [];
   const add = (g: THREE.BufferGeometry, m: THREE.Material, shadow: boolean) => { const mesh = new THREE.Mesh(g, m); mesh.castShadow = shadow && o.shadows !== false; mesh.receiveShadow = true; group.add(mesh); geos.push(g); };
   add(R.b.build(), M.body, true);
-  if (R.g.triangles) add(R.g.build(), M.glass, false);
+  const vBodies: THREE.BufferGeometry[] = [], vGlass: THREE.BufferGeometry[] = [];
+  for (const v of R.veh) {
+    const vg = buildVehicle(v.kind, { seed: v.seed, lod: 'near', driver: false, passengers: false }).group;
+    const m = new THREE.Matrix4().compose(new THREE.Vector3(v.x, v.y, v.z), new THREE.Quaternion().setFromAxisAngle(UP, v.rotY), ONE);
+    vg.traverse(o => {
+      const mesh = o as THREE.Mesh; if (!mesh.isMesh) return;
+      if (mesh.name === 'body') { const g = mesh.geometry.clone(); g.applyMatrix4(m); vBodies.push(g); }
+      else if (mesh.name === 'glass') { const g = mesh.geometry.clone(); g.deleteAttribute('wheel'); g.applyMatrix4(m); vGlass.push(g); }
+    });
+  }
+  const shopGlass = R.g.triangles ? R.g.build() : null;
+  const glassParts = [...(shopGlass ? [shopGlass] : []), ...vGlass];
+  if (glassParts.length) {
+    const merged = glassParts.length > 1 ? mergeGeometries(glassParts.map(g => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'color', 'uv'].includes(k)) g.deleteAttribute(k); return g; }), false) : glassParts[0];
+    if (merged) add(merged, M.glass, false);
+    if (glassParts.length > 1) for (const g of glassParts) g.dispose();
+  }
+  if (vBodies.length) { const merged = mergeGeometries(vBodies, false); for (const g of vBodies) g.dispose(); if (merged) add(merged, vehicleMaterials().body, true); }
   if (R.furn.length) {
     const parts = R.furn.map(f => {
       const mesh = buildFurniture(f.id).group.children[0] as THREE.Mesh, g = mesh.geometry.clone();
@@ -1040,9 +1181,24 @@ export function buildShopInterior(type: ShopType, footprint: { w: number; d: num
       queue: plan.queue.map(spot), browse: R.browse.map(spot), door: spot(plan.door),
     },
     bounds: box(rect(-W / 2, W / 2, -D / 2, D / 2)),
+    front: w(0, D / 2),
     budget: { drawCalls: group.children.length, tris },
     dispose() { group.removeFromParent(); for (const g of geos) g.dispose(); },
   };
+}
+
+/**
+ * The pavement `out` m in front of a stocked shop's open front, found among the hub's stocked shops by its place key
+ * (src/world/city.ts stores `userData.shop`); null when that shop is not stocked. Other lanes that placed things by a
+ * shop's sheet use it now that the sheet stands at the counter inside (the old sheet stood 1.7 m out).
+ */
+export function stockedShopFront(root: THREE.Object3D, key: string, out = 1.7): { x: number; z: number } | null {
+  let hit: { front?: { x: number; z: number }; bounds: ShopRect } | null = null;
+  root.traverse(o => { if (!hit && o.userData.shop?.key === key) hit = o.userData.shop; });
+  const h = hit as { front?: { x: number; z: number }; bounds: ShopRect } | null;
+  if (!h?.front) return null;
+  const cx = (h.bounds.x0 + h.bounds.x1) / 2, cz = (h.bounds.z0 + h.bounds.z1) / 2, dx = h.front.x - cx, dz = h.front.z - cz, d = Math.hypot(dx, dz) || 1;
+  return { x: h.front.x + (dx / d) * out, z: h.front.z + (dz / d) * out };
 }
 
 /** Draw-call-free check used by tests and the showroom: a local copy of a placed point (inverse of `at`). */

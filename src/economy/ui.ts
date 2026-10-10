@@ -45,6 +45,8 @@ const clock = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); ret
 
 export class Economy {
   private world: HubWorld | null = null;
+  /** The shop the furniture catalogue was last opened from (its title). */
+  private shopAt: string | undefined;
   private marker = new THREE.Group();
   private ringMat = new THREE.MeshBasicMaterial({ color: 0xffc83d, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, fog: false });
   private beamMat = new THREE.MeshBasicMaterial({ color: 0xffc83d, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
@@ -261,7 +263,9 @@ export class Economy {
    * The six starter pieces: the quincaillerie stall (Pikine) or the debug home list. Purchases are delivered to the home
    * the player lives in and set up there (src/economy/assets.ts); the full catalogue is at Keur Meubles (estate.ts).
    */
-  openShop(fromPhone = false) {
+  /** `where`: the shop it is opened from (« Maison Dakar » → « Maison Dakar · meubles »); the stall by the Maïga by default. */
+  openShop(fromPhone = false, where?: string) {
+    if (where !== undefined) this.shopAt = where;
     const s = this.s, home = specOfAsset(currentHome(s)).name;
     const items: MenuItem[] = FURNITURE.map(f => {
       const mine = owns(s, f.id), why = cannotBuy(s, f.id);
@@ -271,7 +275,8 @@ export class Economy {
     const html = `<div class="kv">${owned.length ? 'Dans ta chambre : ' + owned.map(f => esc(f.name)).join(', ') : 'Ta chambre est encore vide.'}<br>${esc(homeGoalLine(s))}</div>
       <div class="draft">Livré chez toi (${esc(home)}). Plus de choix à Keur Meubles, Cité Jàmm. ${esc(LOCAL_NOTE)}</div>`;
     this.d.menu();
-    this.d.hud.openMenu(fromPhone ? 'Ma chambre · meubles' : 'Quincaillerie · meubles', `${owned.length}/${FURNITURE.length} meubles · portefeuille ${fcfa(s.wallet)}`, items, html);
+    const at = this.shopAt && !/meubles/i.test(this.shopAt) ? `${this.shopAt} · meubles` : 'Quincaillerie · meubles';
+    this.d.hud.openMenu(fromPhone ? 'Ma chambre · meubles' : at, `${owned.length}/${FURNITURE.length} meubles · portefeuille ${fcfa(s.wallet)}`, items, html);
   }
 
   /** What a piece costs and brings, before the one confirmation (owner's rule: no surprise after paying). */
