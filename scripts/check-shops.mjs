@@ -53,7 +53,7 @@ async function pick(page, re) {
   await idle(page);
   await d(page, () => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, { timeout: 8000 }).catch(() => {});
-  const item = page.locator('#modal .item', { hasText: re }).first();
+  const item = page.locator('#modal').getByRole('button', { name: re }).first();   // the accessible name: the row's icon is aria-hidden
   if (!(await item.count())) { await d(page, () => document.querySelector('#modal .item.close')?.click()); return false; }
   return item;
 }
