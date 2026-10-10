@@ -6,6 +6,7 @@ import type { WrestlerLook } from '../core/types';
 import { Batch, signTexture } from '../world/batch';
 import { Humanoid, Wrestler, humanoidReady, randomLook, type Clip } from '../actors/humanoid';
 import { rng } from '../core/rng';
+import { arenaExterior } from './exterior';
 import * as P from '../activity/primitives';
 import { Percussion, crowdCheer } from '../lamb/audio';
 import { STYLES } from '../lamb/rules';
@@ -32,14 +33,9 @@ import { GalaCard } from './card';
  */
 const CROWD = 'arena-crowd';
 /**
- * TODO(arena exterior, at integration): src/arena/exterior.ts (lane/w2-arena-life) shares the fight evenings with the
- * street outside. Wire both ways so the two sides always agree:
- *   import { arenaExterior } from './exterior';
- *   const eventDay = (day: number, hour: number) => arenaExterior.isEventDay(day, hour);   // galas on its fight evenings
- *   // in arenaModule.hubLoaded, after `evening = …`:
- *   arenaExterior.schedule(evening ? () => !!evening?.showing() : null);                     // street alive while a gala runs
- * (Registering `boutOn` instead keeps a gala every evening and the street alive every evening, which the exterior's
- * check reads as « a normal Thursday must be quiet ».) Until then a gala can be watched every evening.
+ * A bout every evening (Habib's evening goal: work → ride → fight → La Vague in one session): a small neighbourhood card on
+ * weekdays, the big gala Friday–Sunday. The street outside (src/arena/exterior.ts) follows the arena: hubLoaded registers
+ * `boutOn` with `arenaExterior.schedule`, and the exterior sizes its crowd by `eveningSize` (fewer fans on weekdays).
  */
 const eventDay = (_day: number, _hour: number) => true;
 /** Debug: the city day the evening uses (the checks pick a fight evening). */
@@ -379,6 +375,7 @@ export const arenaModule: GameModule = {
   hubLoaded(ctx, hub) {
     evening?.dispose(); evening = null;
     if (hub.arena && hub.id === 'pikine') evening = new ArenaEvening(ctx, hub);
+    arenaExterior.schedule(evening ? (d, h) => !!evening?.boutOn(d, h) : null);       // the street lives whenever a bout is on
   },
   update(_ctx, dt) { evening?.update(dt); },
   camera(ctx, dt, drag) { return evening ? evening.camera(ctx.camera, dt, drag) : false; },
