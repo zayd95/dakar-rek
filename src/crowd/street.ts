@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { GameCtx } from '../game/modules';
-import type { HubWorld } from '../world/types';
+import type { Collider, HubWorld } from '../world/types';
 import { rng } from '../core/rng';
 import { linesOf } from '../transport/lines';
 import { placeStops, type StopSite } from '../transport/stops';
@@ -61,6 +61,9 @@ export class StreetLife {
   private groups: GroupRt[] = [];
   private corners: { slots: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; door: Pt }[] = [];
   private ready = false;
+  /** The hub's colliders, plus the arena's queue lane while fans queue in it (street walkers keep out). */
+  private cols: Collider[];
+  private closedQueue = false;
   private prepT = 1.2;
   private rand = rng(1709);
   private q: CrowdQuality;
@@ -83,6 +86,7 @@ export class StreetLife {
 
   constructor(private ctx: GameCtx, hub: HubWorld, private arrivals: ArenaArrivals | null = null) {
     this.hub = hub;
+    this.cols = hub.colliders;
     this.q = ctx.quality();
     this.ground = (x, z) => 0.1 + hub.heightAt(x, z);
     const B = STREET_BUDGET[this.q], busy = HUB_STREETS[hub.id]?.busy ?? [];
@@ -189,7 +193,7 @@ export class StreetLife {
   private toLane(a: Agent) {
     this.release(a);
     for (const n of this.nearLanes(a.x, a.z)) {
-      const l = this.lanes[n.lane], p = this.lanePt(l, n.t, 0), route = routeClear(a, p, this.hub.colliders);
+      const l = this.lanes[n.lane], p = this.lanePt(l, n.t, 0), route = routeClear(a, p, this.cols);
       if (!route) continue;
       const fwd = this.rand() < 0.5;
       this.walkTo(a, route, () => this.walkOn(a, n.lane, n.t, fwd));
@@ -204,7 +208,7 @@ export class StreetLife {
     const a = this.free(); if (!a) return false;
     for (let k = 0; k < 6; k++) {
       const lane = this.pickLane(), l = this.lanes[lane], t = this.rand() * l.len, p = this.lanePt(l, t, 0);
-      if (this.seen(p.x, p.z)) continue;
+      if (this.seen(p.x, p.z) || (this.closedQueue && !clearWalk(p.x, p.z, p.x, p.z, this.cols, 0.3))) continue;
       this.walkOn(a, lane, t, this.rand() < 0.5);
       a.x = p.x; a.z = p.z; this.show(a);
       return true;
@@ -216,7 +220,7 @@ export class StreetLife {
     const s = this.stops[si], i = s.taken.indexOf(null); if (i < 0) return false;
     const slot = s.slots[i];
     let route: Pt[] | null = null, tries = 0;
-    const near = this.agents.find(a => a.role === 'walk' && !a.path && Math.hypot(a.x - slot.x, a.z - slot.z) < 22 && tries++ < 3 && !!(route = routeClear(a, slot, this.hub.colliders)));
+    const near = this.agents.find(a => a.role === 'walk' && !a.path && Math.hypot(a.x - slot.x, a.z - slot.z) < 22 && tries++ < 3 && !!(route = routeClear(a, slot, this.cols)));
     const a = near ?? this.free(); if (!a) return false;
     if (!near && this.seen(slot.x, slot.z)) return false;
     s.taken[i] = a; a.stop = si; a.spot = slot; a.stay = 40 + this.rand() * 120;
@@ -230,7 +234,7 @@ export class StreetLife {
     const g = this.groups[gi], i = g.taken.indexOf(null); if (i < 0) return false;
     const spot = g.ring[i];
     let route: Pt[] | null = null, tries = 0;
-    const near = this.agents.find(a => a.role === 'walk' && !a.path && Math.hypot(a.x - spot.x, a.z - spot.z) < 20 && tries++ < 3 && !!(route = routeClear(a, spot, this.hub.colliders)));
+    const near = this.agents.find(a => a.role === 'walk' && !a.path && Math.hypot(a.x - spot.x, a.z - spot.z) < 20 && tries++ < 3 && !!(route = routeClear(a, spot, this.cols)));
     const a = near ?? this.free(); if (!a) return false;
     if (!near && this.seen(spot.x, spot.z)) return false;
     g.taken[i] = a; a.group = gi; a.spot = spot; a.stay = 60 + this.rand() * 240;
@@ -243,6 +247,13 @@ export class StreetLife {
   // ---------------------------------------------------------------- every frame
   update(dt: number) {
     if (!this.ready) { this.prepT -= dt; if (this.prepT > 0) return; this.prepare(); }
+    // while fans queue at the arena gate, the queue lane is theirs: street walkers go round or turn back
+    const closed = !!this.hub.arena && arenaExterior.active() && !afterGalaWindow(this.ctx);
+    if (closed !== this.closedQueue) {
+      this.closedQueue = closed;
+      const q = gateOf(this.hub.arena!).queue;
+      this.cols = closed ? [...this.hub.colliders, { x0: q.x - q.half - 0.6, x1: q.x + q.half + 0.6, z0: q.z1 - 1.2, z1: q.z0 + 0.5, h: 1 }] : this.hub.colliders;
+    }
     const cam = this.ctx.camera;
     cam.updateMatrixWorld();
     this.frustum.setFromProjectionMatrix(this.pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
@@ -300,7 +311,7 @@ export class StreetLife {
       const s = this.stops[si];
       let board = 2 + Math.floor(this.rand() * 2) + (this.leaving > 0 && key.endsWith(':arene') ? 4 : 0);
       for (const a of s.taken) if (a && board > 0 && a.role === 'stop' && !a.path) {
-        const route = routeClear(a, s.door, this.hub.colliders); if (!route) continue;
+        const route = routeClear(a, s.door, this.cols); if (!route) continue;
         board--; this.counts.boarded++;
         this.walkTo(a, route, () => this.hide(a), 1.4);
       }
@@ -340,16 +351,16 @@ export class StreetLife {
     this.leaving--; this.counts.left++;
     // they come from where the arena lane's outflow leaves the gate's street (its ends and the corners), else the queue's tail
     const from = OUTFLOW_ENDS(g)[Math.floor(this.rand() * 4)];
-    const p0 = clearWalk(from.x, from.z, from.x, from.z, this.hub.colliders, 0.3) ? from : { x: g.x, z: g.queue.z1 - 0.3 };
+    const p0 = clearWalk(from.x, from.z, from.x, from.z, this.cols, 0.3) ? from : { x: g.x, z: g.queue.z1 - 0.3 };
     a.x = p0.x + (this.rand() - 0.5) * 2; a.z = p0.z + (this.rand() - 0.5) * 2; a.yaw = Math.PI; a.role = 'walk';
-    if (!clearWalk(a.x, a.z, a.x, a.z, this.hub.colliders, 0.3)) { a.x = p0.x; a.z = p0.z; }
+    if (!clearWalk(a.x, a.z, a.x, a.z, this.cols, 0.3)) { a.x = p0.x; a.z = p0.z; }
     this.show(a);
     const u = this.rand();
     const stop = this.stops.map((s, i) => ({ i, d: Math.hypot(s.site.x - a.x, s.site.z - a.z) })).filter(s => s.d < 90).sort((x, y) => x.d - y.d)[0]?.i ?? -1;
     if (u < 0.4 && stop >= 0) {                                          // the car rapide home
       const arene = stop, s = this.stops[arene], i = s.taken.indexOf(null);
       if (i >= 0) {
-        const slot = s.slots[i], route = routeClear(a, slot, this.hub.colliders);
+        const slot = s.slots[i], route = routeClear(a, slot, this.cols);
         if (!route) { this.toLane(a); return; }
         s.taken[i] = a; a.stop = arene; a.spot = slot; a.stay = 400;
         this.walkTo(a, route, () => { a.role = 'stop'; a.speed = 0; a.x = slot.x; a.z = slot.z; a.yaw = slot.yaw; this.crowd.setMemberMood(a.id, 'chat'); this.place(a); });
@@ -365,7 +376,7 @@ export class StreetLife {
         a.role = 'pickup'; this.counts.taxi++;
         const cab = this.arrivals.cabRoutes[ci], via = cab.walk.length > 1 ? [...cab.walk.slice(0, -1)].reverse() : [];
         const pts: Pt[] = []; let from: Pt = a;
-        for (const p of [...via, slot]) { const leg = routeClear(from, p, this.hub.colliders); if (!leg) { c.taken[i] = null; this.toLane(a); return; } pts.push(...leg); from = p; }
+        for (const p of [...via, slot]) { const leg = routeClear(from, p, this.cols); if (!leg) { c.taken[i] = null; this.toLane(a); return; } pts.push(...leg); from = p; }
         this.walkTo(a, pts, () => { a.speed = 0; a.x = slot.x; a.z = slot.z; a.yaw = slot.yaw; this.place(a); });
         return;
       }
@@ -386,7 +397,7 @@ export class StreetLife {
     if (a.role === 'pickup') {
       // into the taxi when it stands at the corner
       const ci = a.corner;
-      if (ci >= 0 && this.arrivals?.pickingUp(ci)) { this.walkTo(a, routeClear(a, this.corners[ci].door, this.hub.colliders) ?? [this.corners[ci].door], () => this.hide(a), 1.4); return; }
+      if (ci >= 0 && this.arrivals?.pickingUp(ci)) { this.walkTo(a, routeClear(a, this.corners[ci].door, this.cols) ?? [this.corners[ci].door], () => this.hide(a), 1.4); return; }
       return;
     }
     if (a.role !== 'walk') return;
@@ -394,6 +405,9 @@ export class StreetLife {
     a.t += (a.fwd ? 1 : -1) * a.speed * dt;
     if (a.t < 0 || a.t > l.len) { this.cross(a); return; }
     const p = this.lanePt(l, a.t, a.side);
+    if (this.closedQueue && !clearWalk(p.x, p.z, p.x, p.z, this.cols, 0.25) && clearWalk(a.x, a.z, a.x, a.z, this.cols, 0.25)) {
+      a.t -= (a.fwd ? 1 : -1) * a.speed * dt; a.fwd = !a.fwd; return;          // the queue is in the way: back the other way
+    }
     a.x = p.x; a.z = p.z; a.yaw = Math.atan2((l.bx - l.ax) * (a.fwd ? 1 : -1), (l.bz - l.az) * (a.fwd ? 1 : -1));
     this.place(a);
   }
@@ -407,7 +421,7 @@ export class StreetLife {
     let u = this.rand() * sum, pick = opts[0];
     for (let i = 0; i < opts.length; i++) { u -= w[i]; if (u <= 0) { pick = opts[i]; break; } }
     const nl = this.lanes[pick.lane], start = pick.forward ? { x: nl.ax, z: nl.az } : { x: nl.bx, z: nl.bz };
-    const via = routeClear(a, start, this.hub.colliders) ?? (clearWalk(a.x, a.z, node.x, node.z, this.hub.colliders) && clearWalk(node.x, node.z, start.x, start.z, this.hub.colliders) ? [node, start] : null);
+    const via = routeClear(a, start, this.cols) ?? (clearWalk(a.x, a.z, node.x, node.z, this.cols) && clearWalk(node.x, node.z, start.x, start.z, this.cols) ? [node, start] : null);
     if (!via) { a.fwd = !a.fwd; a.t = Math.max(0, Math.min(l.len, a.t)); return; }
     this.walkTo(a, via, () => this.walkOn(a, pick.lane, pick.forward ? 0 : nl.len, pick.forward), a.speed);
   }
@@ -426,7 +440,7 @@ export class StreetLife {
   where() { return this.agents.filter(a => a.role !== 'off').map(a => ({ id: a.id, role: a.role, x: a.x, z: a.z, moving: !!a.path || a.role === 'walk' })); }
   /** Debug: people inside a wall, a stall or furniture right now (must stay 0). */
   blocked() {
-    return this.agents.filter(a => a.role !== 'off' && this.hub.colliders.some(c => a.x > c.x0 - 0.1 && a.x < c.x1 + 0.1 && a.z > c.z0 - 0.1 && a.z < c.z1 + 0.1)).map(a => `${a.id} ${a.role} ${a.x.toFixed(1)},${a.z.toFixed(1)}`);
+    return this.agents.filter(a => a.role !== 'off' && this.cols.some(c => a.x > c.x0 - 0.1 && a.x < c.x1 + 0.1 && a.z > c.z0 - 0.1 && a.z < c.z1 + 0.1)).map(a => `${a.id} ${a.role} ${a.x.toFixed(1)},${a.z.toFixed(1)}`);
   }
   /** Debug: start the after-gala flow now. */
   leaveNow(n = 20) { this.leaving = n; this.leaveT = 0; }
