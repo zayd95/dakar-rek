@@ -112,6 +112,8 @@ class Exterior {
   /** Arriving and queueing, or pouring out after the gala (src/arena/exteriorRules.ts exteriorPhase). */
   phase: ExteriorPhase = 'quiet';
   private exitQueue: Fan[] = [];
+  /** People who left so far tonight: every third one stops for a last bissap (not left to chance). */
+  private leavers = 0;
   private emitT = 0;
   private dests: Pt[] = [];
   private vendorsH: { h: Humanoid; clip: Clip }[] = [];
@@ -231,7 +233,7 @@ class Exterior {
     const q = this.g.queue, R = this.rand, path: Step[] = [];
     if (fromGate || (Math.abs(f.x - q.x) < q.half && f.z > q.z1 - 0.3)) path.push({ x: q.x + (R() - 0.5) * 3, z: q.z1 - 0.8 });
     const dest = this.dests[Math.floor(R() * this.dests.length)] ?? { x: q.x + 34, z: q.z1 };
-    if (R() < 0.3) {
+    if (this.leavers++ % 3 === 0) {
       const s = stallFronts(this.arena).reduce((b, p) => (Math.hypot(p.x - dest.x, p.z - dest.z) < Math.hypot(b.x - dest.x, b.z - dest.z) ? p : b));
       path.push({ x: s.x + (R() - 0.5) * 1.4, z: s.z - 0.2 - R() * 0.6, wait: 3 + R() * 3 });
     }

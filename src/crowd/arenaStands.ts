@@ -134,7 +134,10 @@ export class ArenaStands {
   level(group = 'all') { return this.crowd.level(group); }
 
   /** Full humanoids on the crowd seats nearest to (x, z) (the player's seat), those in front first; null: none. */
-  setNear(x: number, z: number | null, yaw = 0) { this.crowd.setFocus(x, z, z === null ? null : yaw); }
+  setNear(x: number, z: number | null, yaw = 0) {
+    this.crowd.setFocus(x, z, z === null ? null : yaw);
+    this.crowd.setClearView(z === null ? null : { x, z, yaw });               // nobody right beside or in front of the player
+  }
   /** The camera of this frame (LOD distances; near bodies outside the view are skipped). */
   cull(cam: THREE.Camera) { this.crowd.setCamera(cam); }
   update(dt: number, animate: boolean) { this.crowd.update(dt, animate); }
