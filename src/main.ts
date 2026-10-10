@@ -839,17 +839,26 @@ function progressMeta() {
 
 // ------------------------------------------------------------------ main loop
 let last = performance.now(), statsT = 0;
+/**
+ * Debug profiler (?debug: `__dakar.perfOn(true)`, then `__dakar.perf()`): milliseconds per system and per module of the
+ * frame loop, smoothed, for the evening performance budget (scripts/check-perf-evening.mjs). Off: one boolean test.
+ */
+let profOn = false;
+const prof = new Map<string, number>();
+const profMark = (name: string, t0: number) => { const v = performance.now() - t0; const o = prof.get(name); prof.set(name, o === undefined ? v : o * 0.92 + v * 0.08); };
 function frame(now: number) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (document.hidden || !world) return;
+  const tFrame = profOn ? performance.now() : 0;
 
   if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (legacyRun) legacyRun.stop(); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
   if (input.takeAction() && ((mode === 'play' && interactions.focus) || activities.running || legacyRun)) hud.onAction();
   activities.update(dt);
   { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
-  for (const m of MODULES) m.update?.(ctx, dt);
+  if (profOn) for (const m of MODULES) { const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }
+  else for (const m of MODULES) m.update?.(ctx, dt);
 
   const drag = input.takeDrag();
   drag.yaw += input.rotateKey() * dt * 1.8;
@@ -893,9 +902,13 @@ function frame(now: number) {
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
     if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
   } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
+  let tSys = profOn ? performance.now() : 0;
   npcLife.update(dt, pos, freeCam?.p ?? camera.position);
+  if (profOn) { profMark('npcLife', tSys); tSys = performance.now(); }
   crowd?.update(dt); traffic?.update(dt); life?.update(dt); world.tick(dt);
+  if (profOn) { profMark('walkers+traffic+life+world', tSys); tSys = performance.now(); }
   ambient?.update(dt, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90);
+  if (profOn) { profMark('ambient(npc.ts)', tSys); tSys = performance.now(); }
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
   const space = presenceSpace();
@@ -920,7 +933,9 @@ function frame(now: number) {
   if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state), ev = eveningLine(ctx, sg?.id === 'ibou_welcome'); eveningTarget = ev?.target ?? null; guideNpc = !ev && sg && 'npc' in sg ? sg.npc : null; guideJob = !ev && sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' ? walkingHint() ?? (ev ? withBearing(ev.text, ev.target) : null) ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
+  if (profOn) { profMark('rest of update', tSys); tSys = performance.now(); }
   renderer.render(scene, camera);
+  if (profOn) { profMark('render (CPU)', tSys); profMark('frame (JS)', tFrame); }
 }
 
 // ------------------------------------------------------------------ start
@@ -953,6 +968,26 @@ if (DEBUG) {
     act() { hud.onAction(); },
     drawCalls: () => renderer.info.render.calls,
     tris: () => renderer.info.render.triangles,
+    /** Debug profiler: on/off, and the smoothed milliseconds per system and module (see the main loop). */
+    perfOn(on = true) { profOn = on; if (on) prof.clear(); },
+    perf: () => Object.fromEntries([...prof].map(([k, v]) => [k, Math.round(v * 1000) / 1000])),
+    /**
+     * Draw calls and triangles of this view, and each top-level group's share (the frame rendered again with that group
+     * hidden; shadows included). For the evening performance budget.
+     */
+    renderBreakdown() {
+      const measure = () => { renderer.render(scene, camera); return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; };
+      const base = measure(), by: Record<string, { calls: number; tris: number }> = {};
+      const groups = [...extra.children, ...scene.children.filter(c => c !== extra)];
+      for (const g of groups) {
+        if (!g.visible) continue;
+        g.visible = false; const m = measure(); g.visible = true;
+        const key = g.name || g.type, o = by[key] ?? (by[key] = { calls: 0, tris: 0 });
+        o.calls += base.calls - m.calls; o.tris += base.tris - m.tris;
+      }
+      measure();
+      return { base, by };
+    },
     nearestInteractable: () => nearest?.name ?? null,
     focus: () => { const t = interactions.focus; return t ? { id: t.id, name: t.name, kind: t.kind, space: t.space, primary: interactions.primary(t)?.label ?? null, all: interactions.all(t).map(a => a.label) } : null; },
     seated: () => seated?.id ?? null,

@@ -43,7 +43,7 @@ export const ARRIVALS = {
   /** Walkers at most, per quality. */
   pool: { low: 10, medium: 18, high: 26 } as Record<CrowdQuality, number>,
   /** Full humanoids among them (the nearest). */
-  near: { low: 0, medium: 2, high: 3 } as Record<CrowdQuality, number>,
+  near: { low: 0, medium: 1, high: 2 } as Record<CrowdQuality, number>,
   /** Seconds between taxis (gala / card). */
   taxiEvery: { gala: 13, card: 32 },
   /** Fans per taxi and per car rapide stop (gala / card). */
@@ -88,6 +88,8 @@ export class ArenaArrivals {
   private rapideWalk: Pt[] = [];
   private ground: (x: number, z: number) => number;
   private quality: CrowdQuality;
+  /** Not drawn (the player is inside the arena's walls): they keep arriving, unseen. */
+  hidden = false;
   /** Debug: the arrivals' clock runs this many times faster (the checks on slow renderers). */
   speed = 1;
   /** Fans dropped so far (taxi, car rapide), for the checks. */
@@ -174,7 +176,7 @@ export class ArenaArrivals {
     const me = this.ctx.player.pos, near = Math.hypot(me.x - this.gate.x, me.z - this.gate.z) < ARRIVALS.range;
     // fans come while the evening fills; once the after-gala window opens the exterior pours out instead
     this.active = arenaExterior.active() && near && !afterGalaWindow(this.ctx);
-    this.crowd.group.visible = near;
+    this.crowd.group.visible = near && !this.hidden;
     const size = this.evening();
     if (this.active) {
       this.taxiT -= dt;
@@ -226,6 +228,7 @@ export class ArenaArrivals {
       if (c.s >= len) { c.state = 'off'; c.g.visible = false; return; }
     }
     const z = r.z0 + dir * c.s;
+    c.g.visible = !this.hidden;
     c.g.position.set(r.x, this.ground(r.x, z) - 0.02, z);
     c.g.rotation.y = dir > 0 ? 0 : Math.PI;
     animateVehicle(c.g, c.v, 0, dt);

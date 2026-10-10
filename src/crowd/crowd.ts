@@ -429,6 +429,9 @@ export class Crowd {
     const h = new Humanoid(personLook(m.look));
     h.group.userData.noLod = true;
     cullHumanoid(h.group);
+    // no shadow pass for the crowd's full bodies (it doubles their ten draw calls): the stands are under the roof's
+    // shade, and on the street the crowd's round ground shadow sits under them like under the figures
+    h.group.traverse(o => { if ((o as THREE.Mesh).isMesh) o.castShadow = false; });
     const root = h.group.children.find(c => c.name === 'Scene') ?? h.group.children[0];
     const bones: NearBody['bones'] = [];
     for (const [s, side] of [['L', 1], ['R', -1]] as const) {

@@ -1,4 +1,6 @@
-import type { GameModule } from '../game/modules';
+import type { GameCtx, GameModule } from '../game/modules';
+import type { HubWorld } from '../world/types';
+import { WALL_H, WALL_R } from '../world/geew';
 import { LIVE_CROWDS } from './crowd';
 import { ArenaArrivals } from './arrivals';
 import { StreetLife } from './street';
@@ -6,6 +8,12 @@ import { REACTION_KINDS, type ReactionKind } from './reactions';
 
 let arrivals: ArenaArrivals | null = null;
 let street: StreetLife | null = null;
+let hubNow: HubWorld | null = null;
+/** The camera is inside the arena's walls (on the tiers, in the ring): the street outside cannot be seen. */
+export function insideArena(ctx: GameCtx, hub: HubWorld | null): boolean {
+  const a = hub?.arena, c = ctx.camera.position;
+  return !!a && Math.hypot(c.x - a.cx, c.z - a.cz) < WALL_R - 0.3 && c.y < WALL_H + 3;
+}
 
 /**
  * The crowd lane's module (docs/CROWD.md). Owners make their own crowds (the arena's stands in src/arena/module.ts); this
@@ -20,15 +28,19 @@ export const crowdModule: GameModule = {
   hubLoaded(ctx, hub) {
     arrivals?.dispose(); arrivals = null;
     street?.dispose(); street = null;
+    hubNow = hub;
     if (hub.arena && hub.id === 'pikine') arrivals = new ArenaArrivals(ctx, hub);
     street = new StreetLife(ctx, hub, arrivals);
   },
   update(ctx, dt) {
-    // the street's people are out there: hidden in a làmb scene or inside an interior (they keep living)
-    const away = ctx.mode() === 'scene' || !!ctx.inside();
-    if (street) street.crowd.group.visible = !away;
+    // the street's people are out there: hidden in a làmb scene, inside an interior or inside the arena's walls (they
+    // keep living; the walls hide them anyway and the frame saves their draw calls)
+    const enclosed = insideArena(ctx, hubNow);
+    const away = ctx.mode() === 'scene' || !!ctx.inside() || enclosed;
     arrivals?.update(dt);
     street?.update(dt);
+    if (street) street.crowd.group.visible = !away;
+    if (arrivals) arrivals.hidden = enclosed;
   },
   debug: () => ({
     street: {
