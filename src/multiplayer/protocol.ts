@@ -5,7 +5,9 @@ export const PROTOCOL_VERSION = 1;
 export const ROOM_CAPACITY = 24;
 export const MAX_ROOMS_PER_HUB = 128;
 export const SEND_INTERVAL_MS = 200;
-export const PRESENCE_CLIPS = ['Idle', 'Walk', 'Run', 'Talk', 'Sit', 'Stance', 'Dance_A', 'Dance_B', 'Celebrate', 'Prep', 'Entrance_Walk', 'Kneel'] as const;
+/** Poses a player may show to others (a narrow list: anything else closes the socket). Lie, SitFloor and Ride are the
+ * kit's held poses (a bed, a mat or cushion, a motorbike: src/actors/humanoid.ts POSES). */
+export const PRESENCE_CLIPS = ['Idle', 'Walk', 'Run', 'Talk', 'Sit', 'Stance', 'Dance_A', 'Dance_B', 'Celebrate', 'Prep', 'Entrance_Walk', 'Kneel', 'Lie', 'SitFloor', 'Ride'] as const;
 export type PresenceClip = typeof PRESENCE_CLIPS[number];
 export interface Move {
   type: 'move'; x: number; y: number; z: number; yaw: number; speed: number;

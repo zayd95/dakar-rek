@@ -301,11 +301,16 @@ let savedJson = null;
   await D(page, p => window.__dakar.place(p.x + 1.1, p.z, -Math.PI / 2), bp);
   check('phone: the bed offers « Dormir »', await focusIs(page, `^home:appart_jamm:${bed.uid}\\|Dormir`), JSON.stringify(await D(page, () => window.__dakar.focus())));
   await page.locator('#act').tap();
-  await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu dors', null, T).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu dors' && window.__dakar.clip() === 'Lie', null, T).catch(() => {});
+  const asleep = await D(page, () => ({ clip: window.__dakar.clip(), seat: window.__dakar.seated(), pos: window.__dakar.pos() }));
+  check('phone: asleep, lying along the floor mattress (Lie), on it', asleep.clip === 'Lie' && (asleep.seat ?? '').includes(bed.uid) && Math.hypot(asleep.pos.x - bp.x, asleep.pos.z - bp.z) < 0.2, JSON.stringify({ ...asleep, bed: bp }));
+  await D(page, p => window.__dakar.cam([p.x + 2.0, p.y + 1.8, p.z + 0.6], [p.x, p.y + 0.15, p.z]), asleep.pos);
   await settle(page, 600); await page.screenshot({ path: `${out}/phone-sleeping.png` });
+  await D(page, () => window.__dakar.cam(null));
   await page.waitForFunction(() => !window.__dakar.activity(), null, { timeout: 90000 }).catch(() => {});
   check('phone: a night on the floor mattress restores energy', (await D(page, () => window.__dakar.state.data.needs.energie)) >= 70, await D(page, () => window.__dakar.state.data.needs.energie));
-  await D(page, () => window.__dakar.stand());
+  const awake = await D(page, () => ({ clip: window.__dakar.clip(), seat: window.__dakar.seated(), pos: window.__dakar.pos() }));
+  check('phone: awake, up beside the mattress (no longer lying)', awake.seat === null && awake.clip !== 'Lie' && Math.hypot(awake.pos.x - bp.x, awake.pos.z - bp.z) > 0.7, JSON.stringify({ ...awake, bed: bp }));
   // phone « Biens » by touch
   await D(page, () => window.__dakar.exit()); await page.waitForFunction(() => window.__dakar.pos().x < 900, null, T); await settle(page, 600);
   await page.locator('#menuBtn').tap(); await page.locator('#phone [data-app="biens"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
