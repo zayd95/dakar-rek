@@ -16,6 +16,17 @@ export const PRAYERS: readonly { id: string; label: string; hours: readonly [num
 const FRIDAY = 4, SATURDAY = 5, SUNDAY = 6;
 const WEEK = [0, 1, 2, 3, 4], NOT_SUNDAY = [0, 1, 2, 3, 4, 5];
 
+/**
+ * After a gala at Pikine (src/social/fightTalkModule.ts sets them on the night of a bout): the Dibi stays alive until
+ * about 1 h — a short queue at the grill and more tables of people eating and talking about the bout.
+ */
+export const AFTER_GALA_ACTS: readonly AmbientActivity[] = [
+  { id: 'dibi-apres-combat', label: 'Une dibi après le combat', at: ['dibi'], hours: [[22.5, 1.25]], pose: 'sit', clips: ['Sit'], stay: [45, 90], group: [2, 4], density: 4, open: true, prop: 'plate', serve: [8, 16] },
+  { id: 'file-grill', label: 'La file au grill après le combat', at: ['dibi'], hours: [[22.5, 1.25]], pose: 'stand', clips: ['Talk', 'Idle', 'Talk'], stay: [16, 32], group: [1, 2], density: 3, open: true },
+];
+/** How much busier the spots of the evening's event get (the Dibi after a gala). */
+export const AFTER_GALA_BOOST = 1.6;
+
 export const ACTIVITIES: readonly AmbientActivity[] = [
   // ------------------------------------------------------------------ eat
   { id: 'petit-dej', label: 'Petit-déjeuner (café Touba, pain, bouillie)', at: ['cafe', 'kiosk'], hours: [[6.5, 10.5]], pose: 'sit', clips: ['Sit'], stay: [35, 70], group: [1, 2], density: 3, open: true, prop: 'plate', serve: [6, 12] },
@@ -91,6 +102,7 @@ export const LEGACY_TAGS: readonly { has: string; tags: readonly string[]; hours
   { has: ':maiga:', tags: ['eat', 'kiosk', 'maiga'], hours: [7, 22] },
   { has: ':cafe:', tags: ['cafe', 'eat', 'kiosk'], hours: [6, 22] },
   { has: ':restaurant:', tags: ['eat', 'kiosk'], hours: [11, 24] },
+  { has: ':garage:', tags: ['shop', 'garage'], hours: [8, 19] },
   { has: ':dibiterie:', tags: ['dibi'], hours: [11, 2] },
   { has: ':market', tags: ['market'], hours: [7, 20] },
   { has: ':station', tags: ['stop'] },

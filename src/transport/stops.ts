@@ -159,6 +159,11 @@ export class StopPeople {
     this.dirty[i] = false;
   }
   resetAll() { this.riders.forEach((_, i) => this.resetStop(i)); }
+  /** Nobody at these stops (a line that does not run now): reset, hidden. */
+  hideAll() {
+    this.riders.forEach((list, i) => { if (this.dirty[i]) this.resetStop(i); for (const r of list) r.h.group.visible = false; });
+    this.version++;
+  }
 
   /**
    * `door(i)`: world point of the door of a vehicle standing at stop i with time left (null when none).

@@ -9,12 +9,12 @@ import type { SeatSpec } from './spec';
 const hash = (a: number, b: number) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
 
 /**
- * `n` fixed sets of NPC passengers (seat ids) for a vehicle spec, about half full, always leaving at least `free`
- * seats the player can take. Fixed sets keep the number of drawn variants (cached models) small.
+ * `n` fixed sets of NPC passengers (seat ids) for a vehicle spec, about `fill` full (half by default), always leaving
+ * at least `free` seats the player can take. Fixed sets keep the number of drawn variants (cached models) small.
  */
-export function passengerPatterns(seats: readonly SeatSpec[], n: number, salt = 1, free = 3): string[][] {
+export function passengerPatterns(seats: readonly SeatSpec[], n: number, salt = 1, free = 3, fill = 0.5): string[][] {
   return Array.from({ length: n }, (_, k) => {
-    const taken = seats.filter((_s, i) => hash(i + 1, k * 13 + salt) < 0.5);
+    const taken = seats.filter((_s, i) => hash(i + 1, k * 13 + salt) < fill);
     let open = seats.filter(s => !s.npcOnly && !taken.includes(s)).length;
     for (let i = taken.length - 1; i >= 0 && open < free; i--) if (!taken[i].npcOnly) { taken.splice(i, 1); open++; }
     return taken.map(s => s.id);

@@ -61,6 +61,8 @@ export function momentPlan(m: Moment, o: { side?: StandSide | null; winner?: Sta
 
 const GREENS = [0x1a7a44, 0x1f9d55, 0x15633a], REDS = [0xc8322a, 0xd9322b, 0xa82820];
 const N_QUALITY = (near: number): CrowdQuality => (near <= 0 ? 'low' : near <= 4 ? 'medium' : 'high');
+/** Full bodies next to the seated player at most, per preset (the evening budget, docs/PERF_EVENING.md). */
+export const STAND_NEAR: Record<CrowdQuality, number> = { low: 0, medium: 4, high: 6 };
 
 export class ArenaStands {
   readonly crowd: Crowd;
@@ -83,7 +85,7 @@ export class ArenaStands {
       return { id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, seated: true, tags: [side, ...(sec ? [`sec:${sec}`] : []), `tier${s.tier}`, ...(s.tier === 0 ? ['ringside'] : [])] };
     });
     this.crowd = new Crowd(slots, {
-      quality: o.quality ?? N_QUALITY(nearCount), near: nearCount, seed: o.seed ?? 23, name: 'arena-stands', nearRadius: 9, nearNeedsFocus: true,
+      quality: o.quality ?? N_QUALITY(nearCount), near: Math.min(nearCount, STAND_NEAR[o.quality ?? N_QUALITY(nearCount)]), seed: o.seed ?? 23, name: 'arena-stands', nearRadius: 9, nearNeedsFocus: true,
       look: (slot, r) => {
         const side = slot.tags?.[0];
         const look = defaultLook(r);

@@ -48,6 +48,10 @@ interface LineRt {
   calls: THREE.CanvasTexture[];
   /** A few fixed sets of NPC passengers (spec seat ids): each car takes one at every stop (bounded model variants). */
   patterns: string[][];
+  /** Running now (`LineDef.runs` on the shared clock); a parked variant's cars and waiting people are hidden. */
+  on: boolean;
+  /** Passenger sets by fill (`LineDef.fill`), made when first needed. */
+  fills: Map<number, string[][]>;
 }
 
 /** A short scripted walk (to the rear door, onto the pavement), timed on the real clock so it never outlasts a stop. */
@@ -124,8 +128,9 @@ export class TransportModule implements GameModule {
       ctx.extra.add(furniture.group);
       for (const s of sites) for (const seat of s.seats) ctx.seats.add(seat);
       const people = new StopPeople(sites, low ? 1 : 2, this.rand, o => ctx.extra.add(o));
-      const rt: LineRt = { def, spec, path, table, sites, vehicles, motions: vehicles.map(v => v.motion), arrivals: vehicles.map(v => v.arrivals), people, furniture, calls, patterns };
+      const rt: LineRt = { def, spec, path, table, sites, vehicles, motions: vehicles.map(v => v.motion), arrivals: vehicles.map(v => v.arrivals), people, furniture, calls, patterns, on: true, fills: new Map() };
       this.lines.push(rt);
+      this.setOn(rt, this.runs(rt));
       for (const site of sites) ctx.places.add(this.stopPlace(rt, site));
     }
   }
@@ -153,6 +158,9 @@ export class TransportModule implements GameModule {
     this.viewer.x = cam.x; this.viewer.z = cam.z;
     const now = this.clock();
     for (const rt of this.lines) {
+      const run = this.runs(rt);
+      if (run !== rt.on) this.setOn(rt, run);
+      if (!rt.on) continue;
       for (const v of rt.vehicles) v.update(this.timeOf(rt, v.index, now), dt, Math.hypot(v.pose.x - cam.x, v.pose.z - cam.z) < NEAR);
       rt.people?.update(dt, this.viewer, NEAR, i => this.doorAt(rt, i));
     }
@@ -196,8 +204,9 @@ export class TransportModule implements GameModule {
     this.ctx = ctx;
     return {
       transport: {
+        dwellingAt: (id: string) => this.dwellingAt(id), served: (id: string) => this.served(id),
         lines: () => this.lines.map(rt => ({
-          id: rt.def.id, number: rt.def.number, period: rt.table.period, fare: rt.def.fare,
+          id: rt.def.id, number: rt.def.number, period: rt.table.period, fare: rt.def.fare, on: rt.on,
           stops: rt.sites.map(s => ({ id: s.def.id, name: s.def.name, x: s.x, z: s.z, yaw: s.yaw, dx: s.dx, dz: s.dz, rx: s.rx, rz: s.rz, s: rt.table.stops[s.index].s, alight: alightPoint(s) })),
           vehicles: rt.vehicles.map(v => ({ id: v.id, x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, s: v.motion.s, v: v.motion.v, dwell: v.motion.dwell, dwellLeft: v.motion.dwellLeft, next: v.motion.next, eta: v.motion.eta,
             free: v.seats.filter(s => !s.occupant).length, seats: v.seats.map(s => ({ id: s.id, occupant: s.occupant })) })),
@@ -223,7 +232,7 @@ export class TransportModule implements GameModule {
   private waitingBodies() {
     let key = 0;                                              // versions only grow: their sum changes with any of them
     for (const l of this.lines) key += l.people?.version ?? 0;
-    if (key !== this.waitingKey) { this.waitingKey = key; this.waiting = this.lines.flatMap(l => l.people?.bodies() ?? []); }
+    if (key !== this.waitingKey) { this.waitingKey = key; this.waiting = this.lines.filter(l => l.on).flatMap(l => l.people?.bodies() ?? []); }
     return this.waiting;
   }
 
@@ -278,8 +287,59 @@ export class TransportModule implements GameModule {
   private shuffle(rt: LineRt, v: LineVehicle) {
     const mine = v.seats.findIndex(s => s.occupant === 'player'), mineId = mine >= 0 ? rt.spec.seats[mine].id : null;
     if (this.crowdFree !== null) { v.vehicle.setPassengers(rt.spec.seats.filter(s => !s.id.endsWith(this.crowdFree!) && s.id !== mineId).map(s => s.id)); return; }
-    const ok = rt.patterns.filter(p => !mineId || !p.includes(mineId));
+    const ok = this.patternsOf(rt).filter(p => !mineId || !p.includes(mineId));
     if (ok.length) v.vehicle.setPassengers(ok[Math.floor(this.rand() * ok.length)]);
+  }
+
+  // ---------------------------------------------------------------- public API (other lanes: the street crowd…)
+  private stopOf(stopId: string): { rt: LineRt; i: number } | null {
+    const [line, stop] = stopId.replace(/^stop:/, '').split(':');
+    const rt = this.lines.find(l => l.def.id === line), i = rt ? rt.sites.findIndex(s => s.def.id === stop) : -1;
+    return rt && i >= 0 ? { rt, i } : null;
+  }
+  /**
+   * The car rapide standing at a stop now — `stopId` is the stop's place id (`stop:<line>:<stop>`, e.g. `stop:23s:arene`)
+   * or `<line>:<stop>` — with its id, its rear door (world, where people get in and out) and the seconds it still waits;
+   * null when none is there or its line does not run now.
+   */
+  dwellingAt(stopId: string): { vehicle: string; x: number; z: number; left: number } | null {
+    const f = this.stopOf(stopId); if (!f || !f.rt.on) return null;
+    for (const v of f.rt.vehicles) {
+      if (v.motion.dwell !== f.i) continue;
+      const d = f.rt.spec.doors[0], p = v.world(d.x, d.z, { x: 0, z: 0 });
+      return { vehicle: v.id, x: p.x, z: p.z, left: v.motion.dwellLeft };
+    }
+    return null;
+  }
+  /** Is this stop served now? (Ligne 23's day stops are not on fight evenings, its evening stops not by day.) */
+  served(stopId: string): boolean { const f = this.stopOf(stopId); return !!f && f.rt.on; }
+
+  /**
+   * Does the line run now? Its own rule on the shared clock (Ligne 23 takes its evening route on fight evenings), and
+   * always while the player is getting on, riding or getting off one of its cars (the trip ends on the line it began).
+   */
+  private runs(rt: LineRt): boolean {
+    if (this.line === rt && (this.trip.phase === 'boarding' || this.trip.phase === 'riding' || this.trip.phase === 'alighting')) return true;
+    return rt.def.runs ? rt.def.runs(this.ctx.day(), this.ctx.hour()) : true;
+  }
+  private setOn(rt: LineRt, on: boolean) {
+    rt.on = on;
+    for (const v of rt.vehicles) v.group.visible = on;
+    if (!on) {
+      rt.people?.hideAll();
+      if (this.line === rt && this.trip.phase === 'waiting') this.stopWaiting(`Le ${rt.def.number} a changé de route : vois l’arrêt Arène les soirs de combat`);
+    }
+    this.waitingKey = -1;
+  }
+
+  /** The line's passenger sets now: half full, or fuller when the line says so (fight evenings), always seats left. */
+  private patternsOf(rt: LineRt): string[][] {
+    const fill = rt.def.fill?.(this.ctx.day(), this.ctx.hour());
+    if (fill === undefined) return rt.patterns;
+    const key = Math.round(fill * 100);
+    let p = rt.fills.get(key);
+    if (!p) { p = passengerPatterns(rt.spec.seats, 4, 23 + key, 2, fill); rt.fills.set(key, p); }
+    return p;
   }
 
   private stopPlace(rt: LineRt, site: StopSite) {
@@ -289,7 +349,7 @@ export class TransportModule implements GameModule {
       anchors: [{ id: 'stop', kind: 'spot', x: site.x, z: site.z, y: 3.0, radius: 2.8, bias: -0.4 }],   // the stop wins over the people waiting there, unless one stands right in front
     }, { board: () => this.wantBoard(rt, site.index) });
     const offers = place.offers.stop;
-    for (const o of offers) { o.visible = () => !waitingHere() && (this.trip.phase === 'idle' || this.trip.phase === 'waiting'); o.detail = `${rt.def.number} · ${rt.def.from} ⇄ ${rt.def.to} · ${fcfa(rt.def.fare)}`; }
+    for (const o of offers) { o.visible = () => rt.on && !waitingHere() && (this.trip.phase === 'idle' || this.trip.phase === 'waiting'); o.detail = `${rt.def.number} · ${rt.def.from} ⇄ ${rt.def.to} · ${fcfa(rt.def.fare)}`; }
     offers.push(
       { ...P.use({ id: 'annuler', label: 'Ne plus attendre', seconds: 0, visible: waitingHere, then: () => this.stopWaiting('Tu n’attends plus le car rapide') }), quiet: true },
       P.inspect({ id: 'horaires', label: 'Voir la ligne', detail: `${rt.def.number} · ${rt.def.from} ⇄ ${rt.def.to}`, then: () => this.openLine(rt, site) }),

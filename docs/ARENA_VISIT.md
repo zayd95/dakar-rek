@@ -21,8 +21,9 @@ drummers outside, event days, gate position) is another lane: `src/arena/exterio
   a car rapide seat), a slightly narrower field of view, the gaze following the action; drag looks around (±80°).
 - **Watch the gala** (starts once seated while the doors are open):
   1. *Les tribunes se remplissent* (3 s) — the bill is announced: Babacar (Baobab) – Lamine (Teranga).
-  2. *Entrée des lutteurs* (14 s) — the two wrestlers walk in from the gate with their people, drummers inside the
-     gate, drums (`Percussion`), dances; the crowd stands up and cheers.
+  2. *Entrée des lutteurs* (14 s) — the two wrestlers walk out of their tunnel, each with his entourage behind him; the
+     drummers' group plays on its deck (the evening's one rhythm, `src/arena/exteriorAudio.ts`), dances; the crowd
+     stands up and cheers (see *The people of fight night*).
   3. *Combat · lutte sans frappe* — the existing `LambDuel` in spectate mode (no player input, no duel HUD), the
      « player » side driven by an autopilot (`pilot()` in `program.ts`) that presses the same buttons a player has;
      the other side is the duel's own AI. The crowd reacts on clinches and falls.
@@ -35,6 +36,44 @@ drummers outside, event days, gate position) is another lane: `src/arena/exterio
 Names are the game's fictional cast and écuries; no real wrestler, écurie, promoter or brand. No ritual or religious
 text in the show: drums, dances and the crowd.
 
+## The people of fight night (Wave 3)
+
+`src/arena/people.ts` (`FightNightPeople`, driven by the arena evening) is every person inside the walls, on the venues'
+Cast and roles (`src/venues/cast.ts`): each one is shown only in the moments of the evening they belong to
+(`peopleMoment(phase, street)` → `PRESENT`), seated ones on real seats of the shared registry. Their places are the
+structure of the arena interior (`src/world/arenaModules.ts`: `interiorSpots`, `prepCorner` and `PREP_SIDE`, `WALKWAY_R`, the tunnel);
+`src/arena/interior.ts` draws nobody and keeps the debug view (`__dakar.arenaIn()`).
+
+| Who | Where | When |
+|---|---|---|
+| Officials (2 / 3 / 3 by quality) | at the officials' table under its canopy (+x side), on its chairs (`pikine:arena:officiel:i`) | from the set-up (16 h) until the crowd leaves |
+| The announcer (purple boubou) | standing by the table, talking | doors open → result |
+| Judges (2 / 3 / 5) | the folding chairs at the sandbags (`pikine:arena:juge:i`); the chair on the wrestlers' runner only on high | the gala: filling → result |
+| The referee (white shirt) | in the ring | filling and entrance; the duel (`LambDuel`) brings its own referee for the bout |
+| The drummers' group (3 / 5 / 6) | the drummers on their deck by the tunnel, behind their sabars; one or two dancers on the sand in front | the two middle drummers warm up while the doors are open; all play from the filling until the crowd leaves |
+| The press (1 / 2 / 2) and cameramen (0 / 1 / 2) | at the press table (`pikine:arena:presse:i`) and behind the cameras, −x side | doors open → result |
+| Vendors (1 / 2 / 3) — Sokhna (café Touba, bissap), Binta (water), Abdou (peanuts), with a kettle or a basin on the head | walking to and fro along the walkway in front of the parapet (two arcs, never into the public gate nor the tunnel); a call now and then (« Café Touba ! Café Touba chaud ! »), one vendor at a time and never over the entrance or the result | doors open → result |
+| A helper in each écurie's corner | by the buckets at the back of the corner | doors open → the crowd leaves |
+| Each wrestler's entourage (1 / 2 / 4 per side) — the écurie's flag first, the coach in a bazin boubou of the écurie's colour, helpers in its colour with a bucket | walk out of the tunnel behind their wrestler (left at 0.9 s, right at 3.9 s of the entrance), round in front of the drummers' deck, into their corner by its open side (those who arrive first go furthest, so nobody walks through another); wait there during the bout; the winner's run onto the sand through the gap in the boards by the tunnel and celebrate; back into the tunnel with the crowd | entrance → leaving |
+
+- **Each écurie in its corner.** The side of each écurie's preparation corner is read from `PREP_SIDE`
+  (`src/world/arenaModules.ts`, the one place that sets it, owned by the fighter's path); its people stand round the
+  mat's centre (`cornerSpots` in `people.ts`). Baobab's entourage walks in behind the left wrestler of the bill,
+  Teranga's behind the right one; the winner's run onto the sand.
+- **When the player fights tonight** (`src/arena/fighter.ts`, `arenaFighter.onCue`): from the tunnel on, the player's
+  écurie's people (and its corner helper) wait in its corner; when the player reaches it (`prep`) they gather round and
+  turn to them; they cheer as the player walks out to the ring (`walk-out`) and after the bout (`result`); they go
+  once the player is back outside (`exit`) or the bout is given up.
+- **Buying in the stands.** A vendor who passes within 3 m of the player stops for a few seconds, turns to them and
+  talks; « Sokhna · vendeuse » offers what she sells at the prices of the stalls outside (café Touba 150 F, bissap
+  300 F, water 50 F, peanuts 200 F), through the activity runner, counted with the evening's purchases
+  (`arene:achats`).
+- **The ring side is theirs.** The judges', officials' and press chairs are kept for them between two shows (`keep` on
+  a Cast role): no passer-by of the ambient life and not the player sits at the ring side.
+- **Performance.** Their group (`arena_people`) is *not* `noLod`: the shared humanoid budget of the crowd LOD
+  (`src/actors/crowdLod.ts`) keeps the nearest as full bodies and swaps the far ones for cheap figures; what they carry
+  is one merged mesh each; they are drawn within 75 m of the camera.
+
 ## Code
 
 | File | Role |
@@ -44,14 +83,17 @@ text in the show: drums, dances and the crowd.
 | `src/arena/crowd.ts` | `StandCrowd`: seated / standing figures as 4 `InstancedMesh`es, plus a few near-LOD humanoids around the player's seat. |
 | `src/arena/bout.ts` | `WatchedBout`: a `LambDuel` with `spectate: true`, driven by the autopilot. |
 | `src/arena/card.ts` | The gala card (title, phase, bill). |
+| `src/arena/people.ts` | `FightNightPeople`: every person inside the walls (officials, judges, announcer, referee, drummers, press, vendors, corner helpers, the entourages); layout, presence by moment and counts by quality are pure and tested in `tests/arenaPeople.test.ts`. |
+| `src/arena/interior.ts`, `src/world/arenaModules.ts` | The interior's structure (stands, aisles, tunnel, deck, media zone, corners) and its debug view `arenaIn()`; tested in `tests/arenaInterior.test.ts`. |
+| `src/venues/cast.ts` | The venues' Cast and roles (moments, seats, walks, cheers; `place`, `attach`, `keep`). |
 | `src/lamb/duel.ts` | Presentation only: `spectate` option (no key listeners, no HUD) and `axes()`. Rules unchanged. |
 | `src/interact/seats.ts` | `SeatKind` `'stand'`, optional per-seat `reach`. |
 | `src/i18n/lines.ts` | `ARENA` lines (ticket, welcome, stop, bill, entrance, result, over). |
 
 **Density** (`DENSITY` in `program.ts`): share of the tier places the crowd fills and near-LOD humanoids —
 low 42 % / 0, medium 68 % / 4, high 86 % / 8. The crowd is 4 instanced meshes whatever its size; the near-LOD
-humanoids sit in the row in front when there is one and are not drawn when out of view. The entrance cast follows the
-quality too (low: the two wrestlers and one drummer, no followers).
+humanoids sit in the row in front when there is one and are not drawn when out of view. The people at the ring side
+follow the quality too (below).
 
 **Integration point (exterior lane).** Until `src/arena/exterior.ts` is in integration a gala can be watched every
 evening (doors 17 h–23 h). The TODO at the top of `src/arena/module.ts` wires the shared rule: galas on
@@ -90,6 +132,9 @@ result, with clients only rendering it. A crowd-noise level shared by the group 
 ## Debug and checks
 
 `?debug` → `__dakar.arena.info()` (street, event, day, phase, t, ticket, seats, crowd, entrance, bout, result, gate,
+centre, people: moment, judges, officials, announcer, referee, drummers, drums, vendors, entourage, seats), `arena.cam()`, `arena.speed(n)` (fast-forward), `arena.go(phase)`, `arena.freeSeat(x, z)`, `arena.visible(on)`,
+`arena.day(d)`.
+
 centre), `arena.cam()`, `arena.speed(n)` (fast-forward), `arena.go(phase)`, `arena.freeSeat(x, z)`, `arena.visible(on)`,
 `arena.day(d)`; `together()` (the friend followed, jumps made, places held by friends, the presence field sent), `cheer(s)`.
 
@@ -101,3 +146,9 @@ cheer is seen by the other, and both get one result.
 the whole path on desktop (medium quality) and phone (low quality), captures in `docs/screenshots/arena-visit/`.
 Draw calls are measured at the gate, on the seat and during the entrance: the arena's own share (the same frame with
 everything `src/arena` draws hidden; budget desktop < 160, phone < 60) and the whole frame (desktop < 600, phone < 300).
+
+`flock /tmp/dakar-browser.lock node scripts/check-arena-people.mjs [baseUrl] [outDir] [--view=desktop|phone]` checks
+the people (desktop medium, phone low), captures in `docs/screenshots/arena-people/`: the officials and two drummers
+at doors-open, vendors walking, a vendor stopping and selling, the chairs kept, judges and referee at the filling, the
+drummers' group and the entourages walking in (whole-frame draw calls), the entourages in their corners during the
+bout, the winner's people on the sand, everyone gone after the gala.

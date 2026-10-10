@@ -45,6 +45,13 @@ export class People implements TargetSource {
   /** Another provider of bodies (a module's ambient people, passengers…): they can be greeted the same way. */
   addBodies(list: () => readonly Body[]) { this.more.push(list); }
 
+  private topic: ((name: string, seed: string) => string | null) | null = null;
+  /**
+   * What the city talks about today (src/social/fightTalk.ts: tonight's gala, its result): after a first greeting and
+   * in small talk, a person may bring it up (`fn` returns null when they don't, or when there is nothing to say).
+   */
+  setTopic(fn: ((name: string, seed: string) => string | null) | null) { this.topic = fn; }
+
   /** Forget who was met (hub change). */
   clear() { this.met.clear(); this.greeted.clear(); this.talks.clear(); this.hush(); }
 
@@ -64,14 +71,16 @@ export class People implements TargetSource {
         affordances: () => [
           greet({ id: 'saluer', label: 'Saluer', then: () => {
             this.face(b);
-            this.play(greetLines({ name: who, seed: b.id, hour: this.hour(), again: this.greeted.has(b.id) }));
+            const again = this.greeted.has(b.id), news = again ? null : this.topic?.(who, `${b.id}:greet`) ?? null;
+            this.play([...greetLines({ name: who, seed: b.id, hour: this.hour(), again }), ...(news ? [news] : [])]);
             this.greeted.add(b.id);
           } }),
           talk({ id: 'nom', label: known ? `Parler avec ${known}` : 'Demander son nom', then: () => {
             const name = nameFor(b.id, !!b.female); this.met.set(b.id, name); this.face(b);
             if (!known) { this.play(nameLines({ name, seed: b.id })); return; }
             const n = this.talks.get(b.id) ?? 0; this.talks.set(b.id, n + 1);
-            this.play(smallTalkLines({ name, seed: `${b.id}:${n}`, hour: this.hour() }));
+            const news = this.topic?.(name, `${b.id}:${n}`) ?? null;
+            this.play(news ? [news] : smallTalkLines({ name, seed: `${b.id}:${n}`, hour: this.hour() }));
           } }),
           ...(this.greeted.has(b.id) || known ? [greet({ id: 'aurevoir', label: 'Dire au revoir', then: () => {
             this.face(b);

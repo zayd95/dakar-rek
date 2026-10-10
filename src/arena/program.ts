@@ -114,7 +114,6 @@ export const billFor = (day: number): Bill => billSource?.(day) ?? BILL;
 export const reportMainEvent = (day: number, winnerId: string | null) => { mainEventSink?.(day, winnerId); };
 /** « Écurie Baobab », or « Indépendant ». */
 export const ecurieLabel = (e: string) => (e === 'indépendant' || !e ? 'Indépendant' : `Écurie ${e}`);
-
 /**
  * Seed of the evening's bout at a hub's arena on a city day: every device draws the same bout that evening, so friends
  * in the stands watch one bout and one result (src/arena/together.ts). Display only: no record or reward depends on it.
