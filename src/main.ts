@@ -41,7 +41,7 @@ import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './m
 import { Economy } from './economy/ui';
 import { pickupFrags } from './economy/jobs';
 import { Interactions } from './interact/system';
-import { Seats, seatClip, sitOriginY, type Seat } from './interact/seats';
+import { Seats, seatClip, sitOriginY, standSpots, type Seat } from './interact/seats';
 import { LegacySource } from './interact/legacy';
 import type { Target } from './interact/types';
 import { ActivityRunner } from './activity/runner';
@@ -295,6 +295,7 @@ const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
   sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
   clip: c => { if (playerBody) playerBody.hold = seated && (c === 'Sit' || !c) ? seatClip(seated) : c ?? null; },   // a step's Sit means « the seat's own pose » (lying on a bed…)
+  stand: () => standUp(),                                  // out of bed after sleeping (runner: a sleep step ends the seat)
   busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
   progress: (on, pct = 0, label = '') => hud.progress(on, pct, label, progressMeta()),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
@@ -360,8 +361,16 @@ function standUp(inPlace = false) {
   const s = seated; seats.release(s.id, 'player'); seated = null;
   if (playerBody && playerBody.hold === seatClip(s)) playerBody.hold = null;
   if (inPlace || !world) return;
-  let nx = s.x + Math.sin(s.yaw) * 0.7, nz = s.z + Math.cos(s.yaw) * 0.7;
-  [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
+  // the first free spot: in front of a chair; out of a bed by a side (or past its foot), never inside furniture or a wall
+  const cols = inside ? inside.int.colliders : world.colliders, r = inside ? 0.3 : 0.5;
+  let nx = s.x, nz = s.z, best = Infinity;
+  for (const p of standSpots(s)) {
+    const [x, z] = pushOut(p.x, p.z, r, cols);
+    const blocked = cols.some(c => x > c.x0 - r * 0.9 && x < c.x1 + r * 0.9 && z > c.z0 - r * 0.9 && z < c.z1 + r * 0.9);
+    const cost = Math.hypot(x - p.x, z - p.z) + (blocked ? 10 : 0);
+    if (cost < best - 1e-6) { best = cost; nx = x; nz = z; }
+  }
+  if (s.clip === 'Lie') facing = Math.atan2(nx - s.x, nz - s.z);                // out of bed, facing away from it
   pos.set(nx, 0.1 + (inside ? 0 : world.heightAt(nx, nz)), nz);
 }
 /** Registers the seats of the hub, its interiors and marks those already used by the ambient people. */
@@ -870,7 +879,8 @@ function frame(now: number) {
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
   const space = presenceSpace();
-  const clip = mode === 'play' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
+  // the body's own pose, also while an activity runs (asleep in bed, praying, dancing): a narrow list, anything else is Idle
+  const clip = mode !== 'scene' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
   presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
@@ -910,7 +920,7 @@ void start();
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
-    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size }),
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses() }),
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
