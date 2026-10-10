@@ -1,8 +1,9 @@
-// Headless checks of Làmb 2.0, step 1: the stand-up exchange of the « lutte avec frappe » (src/lamb/stand.ts,
+// Headless checks of Làmb 2.0, steps 1–3: the stand-up exchange of the « lutte avec frappe » (src/lamb/stand.ts,
 // docs/LAMB2.md), behind the `lamb2` flag. Desktop: the arena menu offers it with ?lamb2 · three states and no HP ·
 // a big strike out of reach misses and opens its author · a quick strike in reach takes balance and composure (or is
 // guarded, at an endurance cost) · the guard absorbs the opponent's strikes for endurance · a wrestler out of balance
-// staggers and a grab on him goes straight into the empoignade · the bout ends by projection, recap with the strikes,
+// staggers and a grab on him goes straight into the empoignade (grip) · in the empoignade, reading his move and
+// answering it wins the exchange, Casser breaks free, a wrestler out of balance goes down · recap with the strikes,
 // not counted in any record. Phone: no « avec frappe » without the flag, the five buttons fit, captures.
 // Usage: node scripts/check-lamb2.mjs [baseUrl] [outDir]   — run it under the shared lock (flock /tmp/dakar-browser.lock).
 // SwiftShader renders a few fps and the game clamps dt to 0.1 s, so every wait is on game state.
@@ -151,13 +152,39 @@ async function friendlyMenu(page) {
     check('guard: the opponent’s strike is absorbed (guarded) and counted', gd?.lastStrike?.by === 'opponent' && gd.lastStrike.result === 'guarded' && gd.score.player.guards >= 1, { phase: gd?.phase, last: gd?.lastStrike, guards: gd?.score?.player?.guards });
   }
 
-  // to the end: grab and push the empoignade (projection), recap with the strikes, not counted
+  // step 3: the empoignade is played — the buttons change, reading his move and answering it wins the exchange
+  const ANSWER = { push: 'pull', pull: 'pivot', pivot: 'push' };
+  const intoClinch = () => until(page, i => !i || i.phase !== 'fight', async i => {
+    if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); }
+  }, 60000).finally(() => page.keyboard.up('KeyD'));
+  let cl3 = await intoClinch();
+  const labels = await page.evaluate(() => [...document.querySelectorAll('.duel-btns button')].map(b => b.innerText.replace(/\s+/g, ' ').trim()));
+  check('empoignade: the five buttons become Pousser, Tirer, Pivoter, Casser (Projeter next)', cl3?.phase === 'clinch' && ['Pousser', 'Tirer', 'Pivoter', 'Casser'].every(w => labels.some(t => t.startsWith(w))), { phase: cl3?.phase, labels });
+  let read = null, seen = null;
+  const cx = await until(page, i => !i || i.phase === 'fall' || i.phase === 'result' || !!read, async i => {
+    if (i.phase === 'fight') { await intoClinch(); return; }
+    const c = i.clinch;
+    if (c.last?.winner === 'player' && c.last.result === 'counter') { read = i; return; }
+    if (c.move.opponent && !c.move.player) { seen = c.move.opponent; await page.evaluate(m => window.__dakar.duelMove(m), ANSWER[c.move.opponent]); }
+  }, 150000);
+  if (read) await shot(page, 'desktop-clinch-counter');
+  check('empoignade: reading his move and answering with the one that beats it wins the exchange (he slips)', !!read && read.balance.opponent < 100, read ? { last: read.clinch.last, balance: read.balance, grip: read.clinch.grip } : { phase: cx?.phase, seen, last: cx?.clinch?.last });
+  // breaking free when the grip allows it
+  let bf = await info(page);
+  if (bf?.phase === 'clinch') {
+    const before = bf.score.player.breaks;
+    bf = await until(page, i => !i || i.phase !== 'clinch', async i => { if (!i.clinch.move.player && i.clinch.grip > -30) await page.evaluate(() => window.__dakar.duelBreak()); }, 40000);
+    check('empoignade: breaking free (Casser) when the grip is not against you', bf?.phase === 'fight' && bf.score.player.breaks > before, { phase: bf?.phase, breaks: bf?.score?.player?.breaks });
+  }
+  // balance gone in the empoignade: he goes down
   const end = await until(page, i => !i || i.phase === 'fall' || i.phase === 'result', async i => {
-    if (i?.phase === 'clinch') { for (let k = 0; k < 3; k++) await page.evaluate(() => window.__dakar.duelGrab()); return; }
-    if (i?.phase === 'fight') { if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); } }
-  }, 200000);
+    if (i.phase === 'fight') { await intoClinch(); return; }
+    if (i.phase !== 'clinch') return;
+    await page.evaluate(() => window.__dakar.duelSet('opponent', { balance: 6 }));        // as after a few lost exchanges
+    if (!i.clinch.move.player) await page.evaluate(m => window.__dakar.duelMove(m), i.clinch.move.opponent ? ANSWER[i.clinch.move.opponent] : 'push');
+  }, 150000);
   await page.keyboard.up('KeyD');
-  check('the bout ends (projection after an empoignade, or the referee)', ['fall', 'result'].includes(end?.phase) && !!end.outcome, { phase: end?.phase, outcome: end?.outcome, winner: end?.winner });
+  check('the bout ends: a wrestler whose balance is gone in the empoignade goes down (projection)', ['fall', 'result'].includes(end?.phase) && end.outcome === 'projection' && end.winner === 'player', { phase: end?.phase, outcome: end?.outcome, winner: end?.winner });
   await wait(page, () => window.__dakar.duelInfo()?.phase === 'result', null, 60000);
   await page.waitForTimeout(400);
   const recap = await page.evaluate(() => document.querySelector('.duel-recap')?.textContent ?? '');

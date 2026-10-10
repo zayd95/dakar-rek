@@ -4,7 +4,10 @@ import {
   type StandState,
 } from '../src/lamb/stand';
 import { RULES, points, emptyScore } from '../src/lamb/rules';
-import { ENTRY_BONUS, clinchPower, entryGrip, gripWords } from '../src/lamb/clinch';
+import {
+  CLINCH, CLINCH_STYLES, ENTRY_BONUS, MOVES, answer, clinchDecide, clinchPower, entryGrip, exchange, gripWords, holdTick, holder, moveWindup, startMove, tryBreak,
+  type ClinchMove, type Holder,
+} from '../src/lamb/clinch';
 
 const fresh = (attrs = AVERAGE) => standState(attrs, 100);
 /** Runs `s` until its strike reaches the landing moment (returns the seconds it took). */
@@ -216,5 +219,70 @@ describe('làmb 2.0 · rules', () => {
     const s = emptyScore(); s.staggers = 2;
     expect(points(s, RULES.avec_frappe)).toBe(2);
     expect(points(s, RULES.sans_frappe)).toBe(0);
+  });
+});
+
+describe('làmb 2.0 · the empoignade is played (step 3)', () => {
+  const h = (balance = 100, attrs = AVERAGE, stamina = 100): Holder => holder({ stamina, balance, attrs });
+  const set = (x: Holder, kind: ClinchMove) => { expect(startMove(x, kind)).toBe(true); };
+  it('a triangle: pull beats push, pivot beats pull, push beats pivot — whoever lands first', () => {
+    for (const [win, lose] of [['pull', 'push'], ['pivot', 'pull'], ['push', 'pivot']] as const) {
+      const a = h(), b = h(); set(a, win); set(b, lose);
+      const e = exchange(a, b, 0);                                       // the winner's move lands
+      expect(e.result).toBe('counter'); expect(e.winner).toBe('a');
+      expect(b.balance).toBeLessThan(90); expect(a.balance).toBe(100);
+      const c = h(), d = h(); set(c, lose); set(d, win);
+      const f = exchange(c, d, 0);                                       // the loser's move lands into the answer
+      expect(f.winner).toBe('b'); expect(c.balance).toBeLessThan(90); expect(f.grip).toBeLessThan(0);
+    }
+  });
+  it('pulling a pusher is the strongest answer', () => {
+    const a = h(), b = h(); set(a, 'pull'); set(b, 'push');
+    const pullWin = exchange(a, b, 0).balance;
+    const c = h(), d = h(); set(c, 'push'); set(d, 'pivot');
+    expect(pullWin).toBeGreaterThan(exchange(c, d, 0).balance);
+  });
+  it('against a wrestler doing nothing every move gains a little; the push drives him back', () => {
+    const a = h(), b = h(); set(a, 'push');
+    const e = exchange(a, b, 0);
+    expect(e.result).toBe('drive'); expect(e.drive).toBeGreaterThan(0); expect(b.balance).toBeLessThan(100); expect(e.grip).toBeGreaterThan(0);
+    const c = h(), d = h(); set(c, 'pivot');
+    expect(exchange(c, d, 0).turn).not.toBe(0);
+  });
+  it('a clash of pushes goes to force, balance and grip; a better grip makes every move count more', () => {
+    const strong = h(100, { ...AVERAGE, force: 95 }), weak = h(); set(strong, 'push'); set(weak, 'push');
+    expect(exchange(strong, weak, 0).winner).toBe('a');
+    const a = h(), b = h(); set(a, 'push'); const lo = exchange(a, b, -60).balance;
+    const c = h(), d = h(); set(c, 'push'); const hi = exchange(c, d, 60).balance;
+    expect(hi).toBeGreaterThan(lo * 1.5);
+  });
+  it('moves cost endurance, set up for a moment (the body shows it), then land once', () => {
+    const a = h(); set(a, 'push');
+    expect(a.stamina).toBe(100 - MOVES.push.cost);
+    expect(startMove(a, 'pull')).toBe(false);
+    let t = 0; while (!holdTick(a, 0.01)) t += 0.01;
+    expect(t).toBeCloseTo(moveWindup('push', a), 1);
+    exchange(a, h(), 0);
+    expect(a.move).toBeNull(); expect(startMove(a, 'pull')).toBe(false);   // short pause after a move
+    const tired = h(100, AVERAGE, 3);
+    expect(startMove(tired, 'push')).toBe(false);
+  });
+  it('the hold drains both, balance comes back slowly', () => {
+    const a = h(40); for (let i = 0; i < 100; i++) holdTick(a, 0.01);
+    expect(a.stamina).toBeLessThan(100); expect(a.balance).toBeGreaterThan(40); expect(a.balance).toBeLessThan(50);
+  });
+  it('breaking free costs endurance and fails when the grip is clearly against you', () => {
+    const a = h(); expect(tryBreak(a, 0)).toBe(true); expect(a.stamina).toBe(100 - CLINCH.breakCost);
+    const b = h(); expect(tryBreak(b, -60)).toBe(false); expect(b.stamina).toBe(100 - CLINCH.breakMissCost);
+  });
+  it('the opponent reads a move and answers it with the one that beats it; it breaks free when dominated', () => {
+    const seq = (...xs: number[]) => { let i = 0; return () => xs[i++ % xs.length]; };
+    const me = h(), them = h(); set(them, 'push');
+    expect(clinchDecide(me, them, 0, CLINCH_STYLES.defensif, 1, 100, seq(0.1))).toBe('pull');
+    expect(answer('pull')).toBe('pivot');
+    expect(clinchDecide(h(), h(), -60, CLINCH_STYLES.defensif, 1, 100, seq(0.1))).toBe('break');
+    expect(clinchDecide(h(), h(), 0, CLINCH_STYLES.costaud, 1, 100, seq(0.1))).toBe('push');
+    expect(clinchDecide(h(), h(), 0, CLINCH_STYLES.partenaire, 1, 100, seq(0.1))).toBe('push');
+    expect(clinchDecide(h(), h(), 0, CLINCH_STYLES.rapide, 1, 100, seq(0.99))).toBe('pivot');
   });
 });

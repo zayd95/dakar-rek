@@ -24,6 +24,11 @@ export const AIMS = {
   big: { spine: [0, 1, 0.32], chest: [-0.12, 1, 0.45], upper_armR: [0.22, 0.2, 1], forearmR: [0.18, -0.08, 1], handR: [0.1, -0.15, 1], upper_armL: [0.45, -0.75, 0.3], forearmL: [0.2, -0.3, 0.9] } as Aim,
   /** Taking a clean hit: head and chest thrown back. */
   recoil: { spine: [0, 1, -0.28], chest: [0, 1, -0.42], neck: [0, 1, -0.35], head: [0, 1, -0.3] } as Aim,
+  /** In the empoignade: driving in, sitting back to pull, turning, and slipping when the balance goes. */
+  push: { spine: [0, 1, 0.45], chest: [0, 1, 0.55], head: [0, 1, 0.35] } as Aim,
+  pull: { spine: [0, 1, -0.35], chest: [0, 1, -0.3], head: [0, 1, -0.1] } as Aim,
+  pivot: { spine: [0.35, 1, 0.15], chest: [0.45, 1, 0.1], head: [0.25, 1, 0] } as Aim,
+  slip: { spine: [-0.3, 1, -0.3], chest: [-0.4, 1, -0.35], head: [-0.3, 1, -0.2] } as Aim,
   /** Staggering: off balance, leaning back and sideways, arms out. */
   stagger: { spine: [0.18, 1, -0.38], chest: [0.24, 1, -0.5], head: [0.2, 1, -0.2], upper_armL: [0.85, -0.45, -0.1], forearmL: [0.7, 0.2, 0.3], upper_armR: [-0.85, -0.3, 0.1], forearmR: [-0.6, 0.4, 0.4] } as Aim,
 } as const;
@@ -85,4 +90,10 @@ export class StrikeRig {
     if (s.hitAgo < 0.3) this.apply(AIMS.recoil, 1 - s.hitAgo / 0.3);
   }
   private last: 'quick' | 'big' | null = null;
+
+  /** The empoignade: the move being set up shows in the body (`w` 0–1); low balance makes him slip. */
+  hold(move: 'push' | 'pull' | 'pivot' | null, w: number, balance: number) {
+    if (move) this.apply(AIMS[move], w);
+    if (balance < 40) this.apply(AIMS.slip, (40 - balance) / 40);
+  }
 }

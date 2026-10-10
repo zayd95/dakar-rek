@@ -1011,6 +1011,7 @@ if (DEBUG) {
     duel() { startDuel('amical', 'costaud'); },
     duelStart(m: BoutMode = 'amical', style?: StyleId, discipline: Discipline = 'sans_frappe') { startDuel(m, style, undefined, discipline); },
     duelStrike(kind: 'quick' | 'big' = 'quick') { if (lambScene instanceof LambDuel) lambScene.pressStrike(kind); },
+    duelMove(kind: 'push' | 'pull' | 'pivot') { if (lambScene instanceof LambDuel) lambScene.pressMove(kind); },
     duelSet(side: 'player' | 'opponent', v: { balance?: number; composure?: number; stamina?: number }) { if (lambScene instanceof LambDuel) lambScene.debugSet(side, v); },
     duelInfo: () => (lambScene instanceof LambDuel ? lambScene.info() : null),
     duelGrab() { if (lambScene instanceof LambDuel) lambScene.pressGrab(); },

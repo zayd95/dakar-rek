@@ -8,8 +8,8 @@ l'arène, écurie, combats amicaux et classés) reste intacte à chaque étape.
 | Étape | Contenu | État |
 | --- | --- | --- |
 | 1 | Debout : distance et déplacement, frappe rapide / grosse frappe (la grosse ratée ouvre), garde avec un coût, équilibre et sang-froid au lieu d'une vie, « il vacille » | **jouable** (drapeau `lamb2`) |
-| 2 | Entrée dans le clinch : l'avantage de saisie dépend de l'équilibre et de l'ouverture | à faire |
-| 3 | Clinch jouable : pousser, tirer, pivoter, changer de prise, casser | à faire |
+| 2 | Entrée dans le clinch : l'avantage de saisie dépend de l'équilibre et de l'ouverture | **jouable** |
+| 3 | Clinch jouable : pousser, tirer, pivoter, casser ; la prise et l'équilibre bougent | **jouable** |
 | 4 | Équilibre / posture dans le clinch : on sent la position glisser | à faire |
 | 5 | Tentative de projection et contre | à faire |
 | 6 | Chute : posture, équilibre, contacts, force, réponse → ralenti court → arbitre → foule → résultat | à faire |
@@ -20,9 +20,10 @@ l'arène, écurie, combats amicaux et classés) reste intacte à chaque étape.
 « Avec frappe · Gora / Pape / Saliou ». Non compté dans les classements tant que la discipline est en construction
 (ses compteurs `lamb_af_*` sont réservés). Sans le drapeau, rien ne change.
 
-Commandes : déplacement (joystick, ZQSD/WASD/flèches), **Frappe** (J ou C), **Grosse frappe** (K ou V), **Saisir**
-(E/Espace), **Garde** maintenue (G/Maj), **Reculer** (X ; dans l'empoignade, X dégage comme avant). Sur téléphone, cinq
-boutons à droite.
+Commandes debout : déplacement (joystick, ZQSD/WASD/flèches), **Frappe** (J ou C), **Grosse frappe** (K ou V),
+**Saisir** (E/Espace), **Garde** maintenue (G/Maj), **Reculer** (X). Dans l'empoignade, les mêmes boutons deviennent
+**Pousser** (E/Espace), **Tirer** (G), **Pivoter** (J), **Casser** (X) ; **Projeter** (K) arrive à l'étape 5. Sur
+téléphone, cinq boutons à droite, qui changent de nom dans l'empoignade.
 
 ## Étape 1 — le combat debout (`src/lamb/stand.ts`)
 
@@ -65,9 +66,40 @@ poses du haut du corps posées sur la garde animée (`src/lamb/strikeRig.ts`) �
 pas la reproduction d'une technique réelle. Son sourd sur un coup, claquement sur une parade, souffle sur un raté ; la
 foule réagit aux grosses frappes et quand un lutteur vacille.
 
+## Étape 2 — l'entrée dans l'empoignade (`src/lamb/clinch.ts`)
+
+La façon dont une saisie devient une empoignade donne l'**avantage de saisie** (affiché en mots : égale, avantage,
+gros avantage) : saisie simple +0, saisie arrivée au bout de sa fenêtre +10, **sous la garde** +12 (mains hautes pour
+les frappes, le corps est ouvert), **sur une ouverture** +18, **pendant qu'il vacille** +32 ; plus 15 pour celui qui
+saisit, plus l'écart d'équilibre (×0,3), de Technique et de Force. Avec frappe, la garde arrête les frappes mais pas
+une saisie : **la frappe bat la saisie qui arrive, la garde bat la frappe, la saisie bat la garde** ; reculer fait
+rater les deux.
+
+## Étape 3 — l'empoignade se joue
+
+Trois mouvements, chacun **se voit dans le corps** pendant qu'il se prépare (penché en avant, assis en arrière,
+tourné), puis s'applique. Quand un mouvement arrive, ce que l'autre prépare à ce moment décide de l'échange :
+
+- **Tirer bat Pousser** (il pousse dans le vide : le pousseur perd beaucoup d'équilibre),
+- **Pivoter bat Tirer** (on tourne hors de sa traction),
+- **Pousser bat Pivoter** (on ne fait pas tourner un homme qui vous pousse),
+- même mouvement des deux côtés : la force (pousser), la technique (tirer), rien (pivoter) ;
+- contre un lutteur qui ne fait rien, chaque mouvement prend un peu d'équilibre ou de prise.
+
+Gagner un échange déplace aussi la **prise** (la barre de l'empoignade). Les effets grandissent avec la prise qu'on
+tient (jusqu'à ±50 %), l'attribut du mouvement (Force pour pousser, Technique pour tirer et pivoter) et diminuent avec
+l'Équilibre de celui qui subit. L'empoignade coûte 3 d'endurance par seconde à chacun, chaque mouvement 5 à 6 ;
+l'équilibre y revient lentement (5/s). **Casser** coûte 20 et ne marche pas si la prise est nettement contre soi.
+L'arbitre sépare une empoignade qui ne mène à rien après 9 s. **Un lutteur dont l'équilibre tombe à zéro dans
+l'empoignade va au sol** (l'étape 5 ajoutera la tentative de projection et le contre, l'étape 6 la chute elle-même).
+
+L'adversaire lit le mouvement du joueur et y répond par celui qui le bat (plus avec la Technique, moins quand il
+perd son sang-froid), casse quand sa prise est perdue, sinon joue son style : Gora pousse, Pape pivote, Saliou tire.
+
 ## Code et vérifications
 
 - `src/lamb/stand.ts` — règles pures du combat debout (testées : `tests/lamb2.test.ts`).
 - `src/lamb/duel.ts` — `discipline: 'avec_frappe'` branche le combat debout ; `'sans_frappe'` (par défaut) est inchangé.
-- `src/lamb/strikeRig.ts` — poses de frappe sur le squelette.
+- `src/lamb/clinch.ts` — entrée et empoignade (pures, testées dans `tests/lamb2.test.ts`).
+- `src/lamb/strikeRig.ts` — poses de frappe et d'empoignade sur le squelette.
 - `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/`.
