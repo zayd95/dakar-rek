@@ -11,7 +11,10 @@ modelled one by one. Brands are fictional; words on goods are generic (riz, lait
 - **Types**: `grocery`, `phone`, `clothing`, `furniture`, `pharmacy`, `cafe`, `bank`, `hardware`, `craft` (variants:
   baskets, leather and wood, painted pirogues and carved wood), `beauty`, `garage` (a workshop: bench and tools, a car on
   a two-post lift and motorbikes for sale — kit vehicles merged into the shop), `restaurant` (kitchen pass, cash desk,
-  tables with their chairs).
+  tables with their chairs), `showroom_cars` (a used-car showroom: saloons on lots nose to the front with a price card
+  each, the aisle to the salesman's desk at the back, the keys on a board behind him, a waiting bench, oil and parts;
+  `lots` says what stands on each lot — null leaves a lot to the module that sells that vehicle — and
+  `anchors.lots` gives each lot and its card).
 - **One plan for every size**: the counter (left, centred or a desk), the keeper's corridor behind it, the aisle, the
   customers' lane in front and the doorway are kept clear; shelf runs line the walls; the type then lays its floor
   displays (fridges, gondola, racks and mannequins, TV wall, glass cube of phones, sofa set from the furniture kit,
@@ -23,7 +26,8 @@ modelled one by one. Brands are fictional; words on goods are generic (riz, lait
   plus the showroom's furniture: **1–3 draw calls a shop**. Low paints whole shelf rows on single quads; Medium models
   the middle shelves; High all of them, within a triangle budget (13k for goods).
 - **Shell mode** (`shell: true`) builds the room too (tiled floor, walls with a doorway at +z, ceiling) for walk-in
-  interiors placed off the map.
+  interiors placed off the map; `shell: 'open'` builds a showroom's instead (back and side walls, ceiling, a header beam
+  over a front left wide open). `stockedShop(root, key)` finds a placed shop's anchors (`userData.shop`).
 
 Tests: `tests/shopFlow.test.ts` (paths inside every type, the shop spots of the city), `tests/shopKit.test.ts` (every type × footprint × quality × open/walk-in: draw calls, triangles, anchors inside,
 colliders inside, nothing standing on an anchor, the counter / keeper / displays reachable from the door, unique seats,
@@ -63,7 +67,7 @@ tallies how many entered, queued and paid per shop; `ambientRun(s)` fast-forward
 | Garage Modou (Pikine) | kiosk | facade only | **open workshop** (kit `garage` 13.75 × 8): Modou behind his bench (src/social/routines.ts, in by the bench aisle), tool pegboard, parts and oil, tyres, a car on the lift, two motorbikes for sale; the sheet, the mechanic's gesture job and the transport lane's motorbike corner untouched | mechanic's job (gestures), the motorbike at the corner; customers look at the motorbikes and pay at the bench |
 | Restaurant Le Pointe (Almadies) | kiosk | facade only | **walk-in dining room** (kit `restaurant` 12 × 9, shell): kitchen pass, cash desk with the menu, tables, the cashier and a waiter (greetable); the city's people sit, then pay at the desk | poisson grillé 3 500 F, jus de bissap 800 F (at the desk inside, and still at the sheet) |
 | Quincaillerie · meubles (by the Maïga du marché, Pikine) | economy lane | hand-built stall | unchanged (candidate for kit `hardware`) | furniture catalogue (titled after the shop it opens from: « Maison Dakar · meubles » at the mall) |
-| Voitures d'occasion · Ndiaye Auto (Plateau) | transport lane | kerb corner | unchanged; placed from the shop front of Dakar Réparation (`stockedShopFront`), not its sheet that moved inside | the used car |
+| Voitures d'occasion · Ndiaye Auto (Plateau) | transport lane | kerb corner (desk, two saloons at the kerb) | **used-car showroom** (kit `showroom_cars` 14 × 9, open on the road east of the shops block): three saloons on lots with price cards (the silver one for sale, drawn by the dealer, its card from the catalogue; the two others reserved / sold), Moussa Ndiaye behind his desk, the keys on the board, a waiting bench, a man shining the cars; the transport lane's purchase flow unchanged, sold at the desk, the car leaves its lot for the kerb outside the door | the used car (2 800 000 F) |
 
 Every stocked shop's sheet now stands at its counter (`anchors.counter`), so buying happens there through the same
 activity system as before; the keeper stands on `anchors.keeper` at every quality (Low thins out the customers only),

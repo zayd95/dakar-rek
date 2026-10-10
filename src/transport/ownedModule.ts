@@ -43,8 +43,17 @@ export interface DealerSite {
   delivery: Spot;
   /** Kerb kept clear of the hub's parked vehicles. */
   kerb: KerbZone[];
-  /** A small desk at the counter (the car dealer). */
+  /** A small desk at the counter (a dealer on the pavement). */
   desk?: Spot;
+  /**
+   * The display that IS the catalogue's vehicle (a showroom's lot, src/world/shopKit.ts `showroom_cars`): off the floor
+   * while the player owns it — the one bought is the one waiting outside — back if it is sold again.
+   */
+  forSale?: number;
+  /** Where that vehicle's price card stands (painted here: the catalogue's name and price). */
+  card?: Spot;
+  /** Vehicles on show in all, the shop's own included (a showroom's lots); default: the displays. */
+  lots?: number;
 }
 
 export interface OwnedDef {
@@ -127,7 +136,11 @@ export function kerbDealer(px: number, pz: number, o: { displays: { along: numbe
   };
 }
 
-interface Dealer { group: THREE.Group; site: DealerSite; sign: THREE.CanvasTexture | null; mats: THREE.Material[]; geos: THREE.BufferGeometry[] }
+interface Dealer {
+  group: THREE.Group; site: DealerSite; sign: THREE.CanvasTexture | null; card: THREE.CanvasTexture | null; mats: THREE.Material[]; geos: THREE.BufferGeometry[];
+  /** The vehicle for sale on the floor with its card, and its solid boxes (`forSale`). */
+  sale: { group: THREE.Group; cols: Collider[] } | null;
+}
 
 export class OwnedVehicleModule implements GameModule {
   readonly name: string;
@@ -196,6 +209,7 @@ export class OwnedVehicleModule implements GameModule {
    */
   private sync() {
     const s = this.ctx.state, a = this.def.asset;
+    this.showSale();
     if (!ownsVehicle(s, a)) {
       if (this.vehicle) { if (this.driving) this.getOff(false); this.setSolid(false); this.vehicle.dispose(); this.vehicle = null; unpark(s.data, a); }
       return;
@@ -268,7 +282,7 @@ export class OwnedVehicleModule implements GameModule {
     return {
       [this.def.key]: {
         info: () => ({ id: this.def.asset, name: this.label(), price: this.price(), owned: ownsVehicle(ctx.state, this.def.asset), asset: holding(ctx.state, this.def.asset) ?? null, record: parked(ctx.state.data, this.def.asset), here: !!this.vehicle, driving: this.driving, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, bumps: this.bumps, bought: this.bought,
-          dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.displays.length } : null,
+          dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.lots ?? this.dealer.site.displays.length, onSale: this.dealer.sale ? this.dealer.sale.group.visible : null, card: !!this.dealer.card } : null,
           space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
         card: () => this.card?.text ?? '',
@@ -287,11 +301,24 @@ export class OwnedVehicleModule implements GameModule {
     const mats: THREE.Material[] = [], geos: THREE.BufferGeometry[] = [];
     const mesh = (geo: THREE.BufferGeometry, mat: THREE.Material) => { geos.push(geo); mats.push(mat); const m = new THREE.Mesh(geo, mat); g.add(m); return m; };
     const drive = this.spec?.drive;
-    for (const s of site.displays) {
+    let sale: Dealer['sale'] = null, card: THREE.CanvasTexture | null = null;
+    site.displays.forEach((s, i) => {
       const b = buildVehicle(this.def.kit, { seed: s.seed, driver: false, passengers: false });
-      b.group.position.set(s.x, 0.12, s.z); b.group.rotation.y = s.yaw; g.add(b.group);
-      if (drive) hub.colliders.push(...footprint(drive, s.x, s.z, s.yaw, this.def.height));
-    }
+      b.group.position.set(s.x, 0.12, s.z); b.group.rotation.y = s.yaw;
+      const cols = drive ? footprint(drive, s.x, s.z, s.yaw, this.def.height) : [];
+      if (i !== site.forSale) { g.add(b.group); hub.colliders.push(...cols); return; }
+      // the one for sale (shown or not by showSale()), its price card on a stand at its nose
+      const sg = new THREE.Group(); sg.name = `${this.def.key}:for-sale`; sg.add(b.group); g.add(sg);
+      sale = { group: sg, cols };
+      if (!site.card) return;
+      card = cardTexture(this.label(), fcfa(this.price()), D.sign);
+      const c = site.card, white = new THREE.MeshLambertMaterial({ color: 0xf2f2ee }), chrome = new THREE.MeshLambertMaterial({ color: 0xc9cdd2 });
+      const pole = mesh(new THREE.BoxGeometry(0.03, 0.92, 0.03), chrome); pole.position.set(c.x, 0.12 + 0.46, c.z);
+      const back = mesh(new THREE.BoxGeometry(0.52, 0.36, 0.015), white); back.position.set(c.x, 0.12 + 1.08, c.z); back.rotation.y = c.yaw;
+      const face = mesh(new THREE.PlaneGeometry(0.5, 0.333), new THREE.MeshLambertMaterial({ map: card }));
+      face.position.set(c.x + Math.sin(c.yaw) * 0.009, 0.12 + 1.08, c.z + Math.cos(c.yaw) * 0.009); face.rotation.y = c.yaw;
+      for (const m of [pole, back, face]) { m.removeFromParent(); sg.add(m); }
+    });
     const sign = signTexture(D.sign);
     const sw = site.sign.w ?? 1.5, sh = sw / 3, top = 2.5 + sh;
     const pole = mesh(new THREE.BoxGeometry(0.08, top, 0.08), new THREE.MeshLambertMaterial({ color: 0x3b3f46 }));
@@ -305,11 +332,22 @@ export class OwnedVehicleModule implements GameModule {
       hub.colliders.push({ x0: site.desk.x - hx, x1: site.desk.x + hx, z0: site.desk.z - hz, z1: site.desk.z + hz, h: 1 });
     }
     ctx.extra.add(g);
-    this.dealer = { group: g, site, sign, mats, geos };
+    this.dealer = { group: g, site, sign, card, mats, geos, sale };
     ctx.places.add(shop({
       id: `${this.def.key}:dealer`, name: D.name, space: 'street', catalogue: D.catalogue,
       anchors: [{ id: 'till', kind: 'shop', x: site.counter.x, z: site.counter.z, y: 2.2, radius: 2.8, bias: -0.2 }],
     }, { browse: () => this.openCatalogue() }));
+  }
+
+  /**
+   * The vehicle for sale on its lot, with its card: there until the player owns it (the one bought is the one waiting
+   * outside); its solid boxes come and go with it.
+   */
+  private showSale() {
+    const s = this.dealer?.sale, cs = this.hub?.colliders; if (!s || !cs) return;
+    const on = !ownsVehicle(this.ctx.state, this.def.asset);
+    s.group.visible = on;
+    for (const c of s.cols) { const i = cs.indexOf(c); if (on && i < 0) cs.push(c); else if (!on && i >= 0) cs.splice(i, 1); }
   }
 
   private openCatalogue() {
@@ -462,7 +500,7 @@ export class OwnedVehicleModule implements GameModule {
     if (this.dealer) {
       for (const geo of this.dealer.geos) geo.dispose();
       for (const mat of this.dealer.mats) mat.dispose();
-      this.dealer.group.removeFromParent(); this.dealer.sign?.dispose(); this.dealer = null;
+      this.dealer.group.removeFromParent(); this.dealer.sign?.dispose(); this.dealer.card?.dispose(); this.dealer = null;
     }
     this.card?.show(null);
     this.hub = null;
@@ -495,6 +533,22 @@ export class OwnedVehicleModule implements GameModule {
     this.rideAff[0].label = this.leaving ? 'Tu t’arrêtes…' : this.def.text.getOff;
     return this.rideAff;
   }
+}
+
+/** The price card of the vehicle for sale, in the dealer's colours: its catalogue name and price (fictional names only). */
+function cardTexture(name: string, price: string, o: OwnedDef['dealer']['sign']): THREE.CanvasTexture | null {
+  if (typeof document === 'undefined') return null;
+  const cv = document.createElement('canvas'); cv.width = 240; cv.height = 160;
+  const c = cv.getContext('2d'); if (!c) return null;
+  c.fillStyle = o.band; c.fillRect(0, 0, 240, 160);
+  c.fillStyle = '#ffffff'; c.fillRect(6, 6, 228, 148);
+  c.fillStyle = o.bg; c.fillRect(6, 6, 228, 36);
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = o.band; c.font = '900 24px system-ui, sans-serif'; c.fillText('OCCASION', 120, 25, 216);
+  c.fillStyle = '#1d1f24'; c.font = '700 19px system-ui, sans-serif'; c.fillText(name, 120, 66, 216);
+  c.font = '900 34px system-ui, sans-serif'; c.fillText(price, 120, 106, 220);
+  c.fillStyle = o.bg; c.font = '800 15px system-ui, sans-serif'; c.fillText('À VENDRE · PRIX FIXE', 120, 140, 216);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 
 /** The dealer's sign, drawn in code (fictional names only). */

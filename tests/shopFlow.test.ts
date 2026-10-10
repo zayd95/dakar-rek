@@ -7,7 +7,7 @@ import { buildSpots } from '../src/social/ambientSpots';
 const SIZE: Record<ShopType, { w: number; d: number }> = {
   grocery: { w: 17, d: 8 }, phone: { w: 12, d: 8 }, clothing: { w: 12, d: 8 }, furniture: { w: 12, d: 8 }, pharmacy: { w: 12, d: 8 },
   cafe: { w: 9.4, d: 7.4 }, bank: { w: 31.6, d: 21.6 }, hardware: { w: 12, d: 8 }, craft: { w: 10, d: 8 }, beauty: { w: 17, d: 8 },
-  garage: { w: 14, d: 8 }, restaurant: { w: 12, d: 9 },
+  garage: { w: 14, d: 8 }, restaurant: { w: 12, d: 9 }, showroom_cars: { w: 14, d: 9 },
 };
 const inside = (cols: { x0: number; x1: number; z0: number; z1: number }[], p: { x: number; z: number }) => cols.some(c => p.x > c.x0 && p.x < c.x1 && p.z > c.z0 && p.z < c.z1);
 
