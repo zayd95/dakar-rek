@@ -39,6 +39,7 @@ import { crowdModule } from '../crowd/module';
 import { fightTalkModule } from '../social/fightTalkModule';
 import { careerModule } from '../career/module';
 import { togetherModule } from '../arena/together';
+import { arrivalModule } from '../arena/arrival';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -194,4 +195,5 @@ export const MODULES: GameModule[] = [
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)
   togetherModule,       // friends at the arena: seated together, one bout for the group (src/arena/together.ts)
+  arrivalModule,        // getting to the fight: the guarded moto parking, fans aboard the Ligne 23 (src/arena/arrival.ts)
 ];

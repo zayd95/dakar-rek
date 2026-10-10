@@ -9,6 +9,7 @@ import { arenaExterior, eveningSize } from '../arena/exterior';
 import { linesOf, stopOnLeg, KERB } from '../transport/lines';
 import { STOP_OFFSET } from '../transport/stops';
 import { dwellingNow, newArrivals } from './transportPeek';
+import { transport } from '../transport/module';
 import { Crowd, defaultLook, type CrowdQuality, type CrowdSlot } from './crowd';
 import { routeClear } from './streetPlan';
 import { GALA_DONE_COUNTER, streetAt } from '../arena/program';
@@ -93,7 +94,7 @@ export class ArenaArrivals {
   /** Debug: the arrivals' clock runs this many times faster (the checks on slow renderers). */
   speed = 1;
   /** Fans dropped so far (taxi, car rapide), for the checks. */
-  readonly dropped = { taxi: 0, rapide: 0, arrived: 0 };
+  readonly dropped = { taxi: 0, rapide: 0, arrived: 0, fans: 0 };
   active = false;
 
   constructor(private ctx: GameCtx, hub: HubWorld) {
@@ -239,7 +240,10 @@ export class ArenaArrivals {
     if (!this.rapideStop) return;
     const now = dwellingNow(this.ctx);
     for (const stop of newArrivals(this.dwelling, now)) if (stop.endsWith(':arene')) {
-      this.dropped.rapide += this.spawn(this.rapideStop, this.rapideWalk, this.span(ARRIVALS.perRapide[size]), 0.55);
+      // a car that carried fans in their écurie's colours (src/arena/arrival.ts) lets a few more off
+      const fans = transport.hasFans(stop.split(':')[0]);
+      const k = this.spawn(this.rapideStop, this.rapideWalk, this.span(ARRIVALS.perRapide[size]) + (fans ? 2 : 0), 0.55);
+      this.dropped.rapide += k; if (fans) this.dropped.fans += k;
     }
     this.dwelling = now;
   }

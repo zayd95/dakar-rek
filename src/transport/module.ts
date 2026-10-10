@@ -54,6 +54,12 @@ interface LineRt {
   fills: Map<number, string[][]>;
 }
 
+/**
+ * Fans aboard a line (src/arena/arrival.ts on fight evenings): passengers in these shirt colours on every leg towards
+ * `dest`; they get off there (the car pulls in with ordinary passengers), and the next ones get on at the other stops.
+ */
+export interface LineFans { colours: readonly number[]; dest: string }
+
 /** A short scripted walk (to the rear door, onto the pavement), timed on the real clock so it never outlasts a stop. */
 interface Walk { fx: number; fz: number; tx: number; tz: number; t0: number; ms: number; done: () => void }
 
@@ -82,6 +88,8 @@ export class TransportModule implements GameModule {
   private camMs = 0;
   /** Debug only (checks): seats left free when the vehicles are crowded on purpose. */
   private crowdFree: string | null = null;
+  /** Fans aboard, by line id (set by the arena on fight evenings). */
+  private fans = new Map<string, LineFans>();
 
   // ---------------------------------------------------------------- GameModule
   init(ctx: GameCtx) {
@@ -120,7 +128,7 @@ export class TransportModule implements GameModule {
         for (const s of v.seats) ctx.seats.add(s);
         v.vehicle.setPassengers(patterns[k % patterns.length]);
         ctx.seats.add(v.vehicle.driverSeat); v.vehicle.driverSeat.occupant = 'npc';      // the chauffeur
-        v.onArrive = () => this.shuffle(rt, v);
+        v.onArrive = i => this.arrive(rt, v, i);
         ctx.extra.add(v.group);
         return v;
       });
@@ -208,7 +216,9 @@ export class TransportModule implements GameModule {
         lines: () => this.lines.map(rt => ({
           id: rt.def.id, number: rt.def.number, period: rt.table.period, fare: rt.def.fare, on: rt.on,
           stops: rt.sites.map(s => ({ id: s.def.id, name: s.def.name, x: s.x, z: s.z, yaw: s.yaw, dx: s.dx, dz: s.dz, rx: s.rx, rz: s.rz, s: rt.table.stops[s.index].s, alight: alightPoint(s) })),
+          fans: this.fans.get(rt.def.id) ?? null,
           vehicles: rt.vehicles.map(v => ({ id: v.id, x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, s: v.motion.s, v: v.motion.v, dwell: v.motion.dwell, dwellLeft: v.motion.dwellLeft, next: v.motion.next, eta: v.motion.eta,
+            colours: v.vehicle.colours ? [...v.vehicle.colours] : null,
             free: v.seats.filter(s => !s.occupant).length, seats: v.seats.map(s => ({ id: s.id, occupant: s.occupant })) })),
         })),
         trip: () => ({ phase: this.trip.phase, line: this.line?.def.id ?? null, stop: this.trip.stop, vehicle: this.vehicle()?.id ?? null, alightAt: this.trip.alightAt, passed: this.trip.passed, seat: this.seat?.id ?? null, space: this.space(), view: this.cam.view, camera: this.cam.active, paid: this.paid }),
@@ -219,7 +229,7 @@ export class TransportModule implements GameModule {
         card: () => this.card?.text ?? '',
         safePlace: () => this.safePlace(),
         /** Checks: every passenger seat taken by NPCs except those ending with `free` (null: back to normal). */
-        crowd: (free: string | null) => { this.crowdFree = free; for (const rt of this.lines) for (const v of rt.vehicles) this.shuffle(rt, v); },
+        crowd: (free: string | null) => { this.crowdFree = free; for (const rt of this.lines) for (const v of rt.vehicles) this.shuffle(rt, v, v.vehicle.colours ?? undefined); },
         /** Show or hide everything the module draws (draw-call budget measurement). */
         show: (on: boolean) => { for (const rt of this.lines) { rt.furniture.group.visible = on; for (const v of rt.vehicles) v.group.visible = on; } },
       },
@@ -234,6 +244,29 @@ export class TransportModule implements GameModule {
     for (const l of this.lines) key += l.people?.version ?? 0;
     if (key !== this.waitingKey) { this.waitingKey = key; this.waiting = this.lines.filter(l => l.on).flatMap(l => l.people?.bodies() ?? []); }
     return this.waiting;
+  }
+
+  /**
+   * Fans aboard a line of this hub (null: ordinary passengers again). The cars take them at once on their way to
+   * `dest`, and at every stop but `dest` after that.
+   */
+  setFans(line: string, fans: LineFans | null) {
+    const was = this.fans.get(line);
+    if (!fans && !was) return;
+    if (fans && was && was.dest === fans.dest && was.colours.join() === fans.colours.join()) return;
+    if (fans) this.fans.set(line, fans); else this.fans.delete(line);
+    for (const rt of this.lines) if (rt.def.id === line) for (const v of rt.vehicles) {
+      const toDest = fans ? rt.sites[v.motion.dwell >= 0 ? v.motion.dwell : -1]?.def.id !== fans.dest : false;
+      v.vehicle.setPassengers(v.vehicle.passengers(), toDest ? fans!.colours : undefined);
+    }
+  }
+  /** Fans ride this line now (its cars pulling in at their stop let them off: src/crowd/arrivals.ts). */
+  hasFans(line: string) { return this.fans.has(line); }
+
+  /** A car pulled in at stop i: passengers get on and off; fans get off at their stop and others get on elsewhere. */
+  private arrive(rt: LineRt, v: LineVehicle, i: number) {
+    const fans = this.fans.get(rt.def.id), stop = rt.sites[i]?.def.id ?? '';
+    this.shuffle(rt, v, fans && stop !== fans.dest ? fans.colours : undefined);
   }
 
   /** Footprints of the line's cars (drive mode collides with them): centre, heading, half length and width. */
@@ -252,6 +285,7 @@ export class TransportModule implements GameModule {
       for (const t of rt.calls) t.dispose();
     }
     this.lines = []; this.hub = null; this.doorTargets.clear(); this.waitingKey = -1;
+    this.fans.clear();                                        // the new hub's cars start with ordinary passengers
   }
 
   private clock() { return this.ctx.now() / 1000 + this.warp; }
@@ -284,11 +318,11 @@ export class TransportModule implements GameModule {
    * At each stop some passengers get off and others get on: the car takes another of the line's passenger sets, never
    * one that would sit someone on the player's seat (the open cabin shows who sits where).
    */
-  private shuffle(rt: LineRt, v: LineVehicle) {
+  private shuffle(rt: LineRt, v: LineVehicle, colours?: readonly number[]) {
     const mine = v.seats.findIndex(s => s.occupant === 'player'), mineId = mine >= 0 ? rt.spec.seats[mine].id : null;
-    if (this.crowdFree !== null) { v.vehicle.setPassengers(rt.spec.seats.filter(s => !s.id.endsWith(this.crowdFree!) && s.id !== mineId).map(s => s.id)); return; }
+    if (this.crowdFree !== null) { v.vehicle.setPassengers(rt.spec.seats.filter(s => !s.id.endsWith(this.crowdFree!) && s.id !== mineId).map(s => s.id), colours); return; }
     const ok = this.patternsOf(rt).filter(p => !mineId || !p.includes(mineId));
-    if (ok.length) v.vehicle.setPassengers(ok[Math.floor(this.rand() * ok.length)]);
+    if (ok.length) v.vehicle.setPassengers(ok[Math.floor(this.rand() * ok.length)], colours);
   }
 
   // ---------------------------------------------------------------- public API (other lanes: the street crowd…)
