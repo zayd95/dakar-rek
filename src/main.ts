@@ -322,7 +322,7 @@ const ctx: GameCtx = {
   },
   mode: () => mode,
   setMode(m) { mode = m; input.enabled = m === 'play'; if (m !== 'play') input.reset(); },
-  menu(title, subtitle, items) { mode = 'menu'; input.enabled = false; hud.openMenu(title, subtitle, items); },
+  menu(title, subtitle, items, extraHtml) { mode = 'menu'; input.enabled = false; hud.openMenu(title, subtitle, items, extraHtml); },
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   addInterior(door, int) {
     if (!world) return;

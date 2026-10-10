@@ -62,7 +62,8 @@ export interface GameCtx {
   mode(): GameMode;
   /** 'menu' and 'busy' lock movement; 'play' gives it back. */
   setMode(m: GameMode): void;
-  menu(title: string, subtitle: string, items: MenuItem[]): void;
+  /** Bottom sheet of choices; `extraHtml` (trusted markup built by the module) goes between the subtitle and the list. */
+  menu(title: string, subtitle: string, items: MenuItem[], extraHtml?: string): void;
   toast(msg: string): void;
   save(): void;
   /**

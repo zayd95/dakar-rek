@@ -12,6 +12,8 @@ import { Cast, hideShoes, type Role } from './cast';
 import { conversation, counter, nightOf, relate, type Venue, type VenueEnv } from './venue';
 import { prayerAt, prayerPeaks } from './prayer';
 import { IMAM_BYE, imamGreeting, imamHelp, imamNews, imamTimes, type ImamCtx } from './talk';
+import { calligraphy, passage, type PassageId } from './quran';
+import { openQuranReader } from './quranReader';
 
 /**
  * The Grande Mosquée of the Médina (a block of the Plateau hub, src/world/sites.ts), calm and distinct: a walled
@@ -23,7 +25,8 @@ import { IMAM_BYE, imamGreeting, imamHelp, imamNews, imamTimes, type ImamCtx } f
  * Wash at the taps → leave the shoes at the door (they wait on the rack; the player is barefoot inside) → pray on a row
  * (kneeling, calm: no recitation is ever shown) or sit quietly → talk with the imam (everyday French and Wolof, no
  * religious text) → sweep the courtyard as a volunteer. No commerce. The rows fill up around the prayer times
- * (src/venues/prayer.ts, also the place's `peaks` for the NPC system). Reading stays disabled until a verified source.
+ * (src/venues/prayer.ts, also the place's `peaks` for the NPC system). Quranic text comes only from Tanzil's verified
+ * text, verbatim (src/venues/quran.ts): calligraphy panels on the hall's walls and a mushaf on its stand to read.
  *
  * Local frame (VenueKit): the 46 × 46 m block, front street toward +z.
  */
@@ -217,7 +220,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
       { id: 'cour', name: 'Balai de la cour', kind: 'spot', ...at(7.7, 14.6), y: 1.5, radius: 1.5 },
       { id: 'hall', name: 'Rangs de prière', kind: 'place', ...H(0, -1.2), y: 1.6, radius: 9, bias: 0.8, space: doorId },
       { id: 'imam', name: 'Imam Seck', kind: 'person', ...H(-2.2, -5.0), y: 1.5, radius: 1.6, space: doorId },
-      { id: 'shelf', name: 'Étagère de livres', kind: 'furniture', ...H(-9.0, 4.6), y: 1.8, radius: 1.4, space: doorId },
+      { id: 'shelf', name: 'Coran sur son support', kind: 'furniture', ...H(-8.9, 4.6), y: 0.9, radius: 1.4, space: doorId },
     ],
   }, {
     converse: () => talkImam(),
@@ -225,6 +228,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
     congregation: () => prayerAt(ctx.hour())?.name ?? null,
     prayReady: () => (washed ? null : 'Fais d’abord tes ablutions aux robinets de la cour'),
     done: a => { if (a === 'ablutions') washed = true; },
+    read: () => openQuranReader(ctx),
   });
   ctx.places.add(place);
 
@@ -284,7 +288,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
       congregation: prayerAt(ctx.hour())?.name ?? null,
       anchors: place.anchors.map(a => ({ id: a.id, x: a.x, z: a.z, space: a.space ?? place.space })),
       prayerSeats: rows.length, stools: stools.map(s => s.id), npcsStreet: streetCast.presentCount, npcsHall: hallCast.presentCount,
-      gate: at(0, 25.5), courtyard: at(0, 14), yaw,
+      gate: at(0, 25.5), courtyard: at(0, 14), yaw, quran: hall.quran,
     }),
   };
 }
@@ -401,6 +405,38 @@ function buildHall(env: VenueEnv, id: string, doorId: string, ox: number, oz: nu
   const rows: ReturnType<VenueKit['seat']>[] = [];
   for (let r = 0; r < 4; r++) for (let c = 0; c < 15; c++) rows.push(k.seat(`${id}:rang:${r}:${c}`, -6.3 + c * 0.9, -4.4 + r * 1.4, Math.PI, top, 'prayer', 'Kneel'));
   const imamSeat = k.seat(`${id}:imam`, -2.2, -6.2, 0, top, 'prayer', 'Kneel');
+  // Quranic calligraphy (verified Tanzil text, verbatim): high on the walls only, never at foot level
+  const quran: { id: PassageId; refs: string; lines: number; drawn: boolean }[] = [];
+  const writing = (pid: PassageId, w: number, h: number, x: number, y: number, z: number, rotY: number) => {
+    const p = passage(pid), c = calligraphy(p, w, h);
+    k.keep(c.texture);
+    const m = k.mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: c.texture }));
+    m.position.set(x, y, z); m.rotation.y = rotY;
+    quran.push({ id: pid, refs: p.verses.map(v => `${v.sura}:${v.aya}`).join(','), lines: c.lines, drawn: c.drawn });
+  };
+  writing('ikhlas', 3.4, 0.8, 0, F + 4.15, z0 + 0.03, 0);                     // cartouche above the mihrab's arch
+  writing('kursi', 4.6, 2.3, -6.0, F + 3.0, z0 + 0.02, 0);                    // framed Âyat al-Kursî, qibla wall, left of the mihrab
+  writing('bismillah', 3.0, 0.7, 0, F + 3.75, z1 - 0.02, Math.PI);            // over the door, seen when facing the way out
+  Wd.box(4.8, 2.5, 0.04, -6.0, F + 1.75, z0 + 0.02 - 0.03, 0x5e3a20);         // wooden frame behind the large panel
+  const tile2 = k.keep(tileTexture()); tile2.repeat.set(4.6 / 1.1, 2.3 / 1.1);   // its pair on the right: geometric tiles, no text
+  const pair = k.mesh(new THREE.PlaneGeometry(4.6, 2.3), new THREE.MeshLambertMaterial({ map: tile2 })); pair.position.set(6.0, F + 3.0, z0 + 0.02);
+  Wd.box(4.8, 2.5, 0.04, 6.0, F + 1.75, z0 + 0.02 - 0.03, 0x5e3a20);
+  // the mushaf, open on its folding stand (rahla) on a low table in front of the shelf: never on the floor
+  const TX = -9.05, TZ = 4.6, TY = F + 0.34;
+  Wd.box(0.46, 0.04, 0.66, TX, TY - 0.04, TZ, 0x6e4426);
+  for (const dx of [-0.19, 0.19]) for (const dz of [-0.28, 0.28]) Wd.box(0.04, TY - 0.04 - F, 0.04, TX + dx, F, TZ + dz, 0x5a3820);
+  k.solid(TX, TZ, 0.5, 0.7, 0.4);
+  const book = (w: number, h: number, d: number, side: number, lift: number, color: number, wood: boolean) => {
+    const g = new THREE.BoxGeometry(w, h, d);
+    g.translate(0, lift, side * d / 2); g.rotateX(-side * 0.3); g.rotateZ(-0.95);      // pages rise from the spine; far edge up, facing the reader (+x)
+    (wood ? Wd : Pl).geometry(g, color, TX, TY + 0.2, TZ);
+  };
+  for (const s of [-1, 1]) {
+    book(0.3, 0.012, 0.24, s, -0.02, 0x7a4a2a, true);                        // the stand's two carved boards
+    book(0.27, 0.008, 0.2, s, -0.006, 0x1f5f45, false);                      // green cover
+    book(0.25, 0.012, 0.19, s, 0.004, 0xf3ecd8, false);                      // pages
+    const leg = new THREE.BoxGeometry(0.025, 0.14, 0.03); leg.rotateX(s * 0.5); Wd.geometry(leg, 0x7a4a2a, TX + 0.05, TY + 0.06, TZ + s * 0.035);   // the crossed feet
+  }
   k.build(mats);
   const interactables: Interactable[] = [{ id: `${id}:sortir`, name: 'Sortir', kind: 'actions', x: ox, z: oz + z1 - 0.7, radius: 1.3, actions: [{ id: 'sortir', label: 'Sortir (remettre ses chaussures)', seconds: 0, special: 'exit' }] }];
   const int: Interior = {
@@ -412,7 +448,7 @@ function buildHall(env: VenueEnv, id: string, doorId: string, ox: number, oz: nu
   };
   const day = new THREE.Color(0xdcecf6), dusk = new THREE.Color(0x1d2a44);
   return {
-    int, rows, imamSeat, chairs, at,
+    int, rows, imamSeat, chairs, at, quran,
     update(h: number) { skyMat.color.copy(dusk).lerp(day, 1 - nightOf(h)); },
     dispose() { k.dispose(); root.removeFromParent(); },
   };
