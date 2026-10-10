@@ -115,9 +115,15 @@ class ArenaEvening {
       anchors: [{ id: 'guichet', name: 'Guichet · billets', kind: 'counter', x: bx, z: bz - 1.35, radius: 2.0 }],
       offers: { guichet: [P.handOver('buy', {
         id: 'billet', label: `Acheter un billet (${TICKET_PRICE.toLocaleString('fr-FR')} F)`, detail: 'Tribune populaire · valable toute la soirée',
-        requires: () => (hasTicket(ctx.state.data.counters, this.day()) ? 'Tu as déjà ton billet pour ce soir'
-          : eventDay(this.day(), ctx.hour()) ? null : 'Pas de gala ce soir'),
+        visible: () => !hasTicket(ctx.state.data.counters, this.day()),
+        requires: () => (eventDay(this.day(), ctx.hour()) ? null : 'Pas de gala ce soir'),
         then: () => this.confirmTicket(place),
+      }),
+      // ticket in hand: the window says so (no greyed « Acheter » with a red reason) and where to go next
+      P.inspect({
+        id: 'billet_ok', label: 'Billet en poche ✓', detail: 'Entrée par la porte de l’arène',
+        visible: () => hasTicket(ctx.state.data.counters, this.day()),
+        then: () => ctx.toast('Tu as déjà ton billet pour ce soir : entre par la porte de l’arène.'),
       })] },
     });
     this.card = new GalaCard(document.getElementById('ui') ?? document.body);

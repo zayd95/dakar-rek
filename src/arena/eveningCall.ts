@@ -4,14 +4,17 @@ import { WALL_R } from '../world/geew';
 import { fcfaText } from '../economy/format';
 import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, hasTicket, streetAt } from './program';
 import { eveningSize } from './exterior';
+import { FIGHT_DAYS, WEEKDAY_FR, weekday } from './exteriorRules';
 
 /**
  * The evening's call to the arena (Habib's evening, 10 Oct): nothing used to tell a player that a bout is on tonight.
  * - Around the doors (half an hour before), one word: « Ce soir à l'arène de Pikine : … · portes … · billet … », once per
  *   evening, remembered in the save (counter `arena_call_day`), never repeated after a reload.
- * - From an hour before the doors to the end of the bout, the goal line points to the arena's gate (arrow, distance) for a
- *   player without a ticket who is not already there: right after the welcome beat, before the economy steps and the
- *   other beats. Far away (> 120 m) or in another hub it names the car rapide (ligne 23, arrêt « Arène »).
+ * - From an hour before the doors to the end of the bout, the goal line leads the evening step by step: to the arena's
+ *   gate (arrow, distance; far away (> 120 m) or in another hub, the car rapide, ligne 23, arrêt « Arène »), then by the
+ *   gate to the ticket window, ticket in hand through the gate, inside the walls to a free place on the tiers; seated,
+ *   nothing. It comes before the economy steps and the other beats, and after the welcome beat only while the player has
+ *   earned nothing yet (`welcomeFirst`).
  * - Once the bout is over and the player has walked out, one place open at that hour to end the evening (the nearest
  *   Dibi or eatery), else nothing.
  * The window and the priority are pure (`eveningGoal`, unit-tested); main.ts only shows the result.
@@ -49,22 +52,31 @@ export interface EveningInput {
   gate: { dist: number; inside: boolean } | null;
   /** The after-bout suggestion was reached (or dismissed) tonight. */
   afterDone: boolean;
+  /** Seated on the arena's tiers. */
+  seated?: boolean;
 }
-export type EveningGoal = { kind: 'arena'; how: 'walk' | 'ride' | 'travel' } | { kind: 'after' } | null;
+export type EveningGoal = { kind: 'arena'; how: 'walk' | 'ride' | 'travel' } | { kind: 'ticket' } | { kind: 'enter' } | { kind: 'seat' } | { kind: 'after' } | null;
+/** Closer than this to the gate without a ticket, the goal line points to the ticket window beside it. */
+export const NEAR_GATE = 25;
 /** The goal of the evening, if any (pure). */
 export function eveningGoal(i: EveningInput): EveningGoal {
   if (i.welcome) return null;
-  if (i.hour >= GOAL_FROM && boutTonight(i.hour, i.galaDone) && !i.ticket) {
+  if (i.hour >= GOAL_FROM && boutTonight(i.hour, i.galaDone)) {
     if (!i.gate) return { kind: 'arena', how: 'travel' };
-    if (i.gate.inside || i.gate.dist < 8) return null;                        // already there
-    return { kind: 'arena', how: i.gate.dist > FAR ? 'ride' : 'walk' };
+    if (i.gate.inside) return i.ticket && !i.seated ? { kind: 'seat' } : null;  // a fighter inside needs no ticket
+    if (i.gate.dist > FAR) return { kind: 'arena', how: 'ride' };
+    if (i.ticket) return { kind: 'enter' };
+    return i.gate.dist < NEAR_GATE ? { kind: 'ticket' } : { kind: 'arena', how: 'walk' };
   }
   if (i.galaDone && !i.afterDone && i.hour >= GALA.setup && i.hour < GALA.close + 1 && i.gate && !i.gate.inside) return { kind: 'after' };   // walked out
   return null;
 }
-/** The words of the goal line (the caller adds the arrow and the distance). */
-export function goalText(g: NonNullable<EveningGoal>, place?: { name: string; close?: number }): string {
+/** The words of the goal line (the caller adds the arrow and the distance); `hour` for the ticket window's opening. */
+export function goalText(g: NonNullable<EveningGoal>, place?: { name: string; close?: number }, hour: number = GALA.doors): string {
   if (g.kind === 'after') return place ? `Après le combat : ${place.name}${place.close !== undefined ? `, ouvert jusqu’à ${place.close} h` : ''}` : '';
+  if (g.kind === 'ticket') return hour < GALA.doors ? `Le guichet ouvre à ${GALA.doors} h, à gauche de la porte` : `Ton billet au guichet, à gauche de la porte · ${fcfaText(TICKET_PRICE)}`;
+  if (g.kind === 'enter') return 'Billet en poche : entre par la porte de l’arène';
+  if (g.kind === 'seat') return 'Trouve une place libre sur les gradins';
   if (g.how === 'travel') return 'Combat ce soir à l’arène de Pikine : car rapide jusqu’à Pikine, puis ligne 23, arrêt « Arène »';
   if (g.how === 'ride') return 'Combat ce soir à l’arène (Pikine) : car rapide ligne 23, arrêt « Arène »';
   return 'Combat ce soir à l’arène (Pikine)';
@@ -84,13 +96,31 @@ export function afterPlace(places: readonly PlaceSpec[], hour: number, from: { x
 }
 
 let afterReached = -1;
+/**
+ * The welcome beat (Tonton Ibou) keeps the goal line only while the player has earned nothing yet: after a first pay
+ * (a delivery, a job), tonight's arena comes first and the welcome comes back once the evening is over.
+ */
+export const welcomeFirst = (welcomeOpen: boolean, d: { ledger: readonly { amount: number }[]; counters: Record<string, number> }) =>
+  welcomeOpen && !d.ledger.some(e => e.amount > 0) && !(d.counters.livraisons > 0);
+
+/**
+ * The place pill's second line: the weekday and the time (« Samedi · 15:00 »; a city day number means nothing to a
+ * player), and « Gala ce soir » on a fight day (Friday–Sunday) until tonight's gala is over.
+ */
+export function placeClock(day: number, hour: number, galaDone: boolean): { clock: string; tag: string | null } {
+  const wd = WEEKDAY_FR[weekday(day)], h = ((Math.floor(hour) % 24) + 24) % 24, m = Math.floor((hour - Math.floor(hour)) * 60);
+  const clock = `${wd[0].toUpperCase()}${wd.slice(1)} · ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  return { clock, tag: FIGHT_DAYS.includes(weekday(day)) && !galaDone && hour < GALA.close ? 'Gala ce soir' : null };
+}
+
 /** The goal line and its way-finding target for main.ts (the HUD's goal, ctx.guide()). */
 export function eveningLine(ctx: GameCtx, welcome: boolean): { text: string; target: { name: string; x: number; z: number } | null } | null {
   const w = ctx.world(); if (!w) return null;
   const day = ctx.day(), hour = ctx.hour(), counters = ctx.state.data.counters, here = ctx.inside()?.door ?? ctx.player.pos;
   const arena = w.arena, gateIt = arena ? w.interactables.find(i => i.id === `${w.id}:arena`) : undefined;
   const gate = arena && gateIt ? { dist: Math.hypot(gateIt.x - here.x, gateIt.z - here.z), inside: !ctx.inside() && Math.hypot(here.x - arena.cx, here.z - arena.cz) < WALL_R - 0.4 } : null;
-  const g = eveningGoal({ hour, galaDone: counters[GALA_DONE_COUNTER] === day, ticket: hasTicket(counters, day), welcome, gate, afterDone: afterReached === day });
+  const seated = ctx.player.seated()?.kind === 'stand';
+  const g = eveningGoal({ hour, galaDone: counters[GALA_DONE_COUNTER] === day, ticket: hasTicket(counters, day), welcome, gate, afterDone: afterReached === day, seated });
   if (!g) return null;
   if (g.kind === 'after') {
     const p = afterPlace(ctx.places.all(), hour, here); if (!p) return null;
@@ -98,6 +128,12 @@ export function eveningLine(ctx: GameCtx, welcome: boolean): { text: string; tar
     if (Math.hypot(a.x - here.x, a.z - here.z) < 4) { afterReached = day; return null; }
     return { text: goalText(g, { name: p.name, close: p.hours?.[1] }), target: { name: p.name, x: a.x, z: a.z } };
   }
+  if (g.kind === 'seat') return { text: goalText(g), target: null };
+  if (g.kind === 'ticket') {
+    const win = ctx.places.get(`${w.id}:arena:guichet`)?.anchors[0];
+    return { text: goalText(g, undefined, hour), target: win ? { name: 'Guichet · billets', x: win.x, z: win.z } : gateIt ? { name: 'Arène · làmb', x: gateIt.x, z: gateIt.z } : null };
+  }
+  if (g.kind === 'enter') return { text: goalText(g), target: gateIt ? { name: 'Arène · làmb', x: gateIt.x, z: gateIt.z } : null };
   if (g.how === 'travel' || !gateIt) return { text: goalText(g), target: null };
   const stop = g.how === 'ride' ? ctx.places.get(ARENA_STOP)?.anchors[0] : undefined;
   return { text: goalText(g), target: stop ? { name: 'Arrêt Arène · ligne 23', x: stop.x, z: stop.z } : { name: 'Arène · làmb', x: gateIt.x, z: gateIt.z } };

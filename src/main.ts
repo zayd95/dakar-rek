@@ -52,7 +52,8 @@ import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
 import { arenaShow } from './arena/module';
-import { eveningLine } from './arena/eveningCall';
+import { eveningLine, placeClock, welcomeFirst } from './arena/eveningCall';
+import { GALA_DONE_COUNTER } from './arena/program';
 import { GesturePlayer } from './ui/gesture';
 import { Stride } from './game/stride';
 import { StrideUi } from './ui/stride';
@@ -925,7 +926,7 @@ function frame(now: number) {
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
-  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state), ev = eveningLine(ctx, sg?.id === 'ibou_welcome'); eveningTarget = ev?.target ?? null; guideNpc = !ev && sg && 'npc' in sg ? sg.npc : null; guideJob = !ev && sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' && !arenaShow.watching() ? walkingHint() ?? (ev ? withBearing(ev.text, ev.target) : null) ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
+  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state), ev = eveningLine(ctx, welcomeFirst(sg?.id === 'ibou_welcome', state.data)); eveningTarget = ev?.target ?? null; guideNpc = !ev && sg && 'npc' in sg ? sg.npc : null; guideJob = !ev && sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' && !arenaShow.watching() ? walkingHint() ?? (ev ? withBearing(ev.text, ev.target) : null) ?? sg?.hint ?? null : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   renderer.render(scene, camera);
