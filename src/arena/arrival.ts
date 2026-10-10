@@ -17,7 +17,7 @@ import { arenaExterior, eveningSize } from './exterior';
 import { arenaShow } from './module';
 import { GALA_DONE_COUNTER, streetAt, type Street } from './program';
 import {
-  FAN_COLOURS, FAN_LINE, FAN_STOP, LOT_CAP, MOTO_FEE, MOTO_FEE_COUNTER, fansRide, inLot, lotCount, lotTaken, motoLot, paidTonight, type MotoLot,
+  FAN_COLOURS, FAN_LINE, FAN_STOP, LOT_CAP, MOTO_FEE, MOTO_FEE_COUNTER, fansRide, gardienBias, inLot, lotCount, lotTaken, motoLot, paidTonight, type MotoLot,
 } from './arrivalRules';
 
 /**
@@ -64,6 +64,8 @@ class Arrival {
   /** What the gardien said, for the checks. */
   said: string[] = [];
   private fansT = 0;
+  /** The gardien's anchor in the places registry (its focus bias follows the fee: gardienBias). */
+  private anchor = { id: 'gardien', name: 'Le gardien de motos', kind: 'person' as const, x: 0, z: 0, y: 2.1, radius: 2.6, bias: 0 };
 
   constructor(private ctx: GameCtx, hub: HubWorld) {
     this.lot = motoLot(hub.arena!);
@@ -109,7 +111,7 @@ class Arrival {
     // the gardien is a place of the shared registry: the fee (price first, paid once), a word with him
     ctx.places.add({
       id: `${hub.id}:arena:parking`, type: 'parking', name: 'Parking motos · Arène', space: 'street',
-      anchors: [{ id: 'gardien', name: 'Le gardien de motos', kind: 'person', x: this.lot.gardien.x, z: this.lot.gardien.z, y: 2.1, radius: 2.6 }],
+      anchors: [Object.assign(this.anchor, { x: this.lot.gardien.x, z: this.lot.gardien.z })],
       offers: { gardien: [
         P.handOver('buy', { id: 'garder', label: `Faire garder ta moto (${fcfaText(MOTO_FEE)})`, detail: 'Payés une fois pour la soirée', icon: '🏍️',
           visible: () => this.present() && !this.paid() && this.mineInLot(), then: () => this.confirm() }),
@@ -157,6 +159,7 @@ class Arrival {
     const me = ctx.player.pos, near = Math.hypot(me.x - this.lot.gardien.x, me.z - this.lot.gardien.z) < VIEW;
     this.group.visible = near;
     if (this.gardien) { this.gardien.group.visible = near && this.present(); if (this.gardien.group.visible) this.gardien.animate(dt, 0); }
+    this.anchor.bias = gardienBias(this.present() && !this.paid() && this.mineInLot());   // the fee due: he wins the focus when faced
 
     // the player's moto: getting off in the parking, riding away from it
     const riding = moto.ridden, parked = moto.parkedHere();
