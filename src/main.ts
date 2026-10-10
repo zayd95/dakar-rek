@@ -562,6 +562,12 @@ function startScene(kind: SceneKind, onDone?: () => void) {
  * or `localStorage['dakarrek.lamb2'] = '1'`. Without it the arena offers the sans-frappe bouts only, as before.
  */
 const LAMB2 = lamb2On();
+// with ?lamb2 the arena's and the écurie's bouts say which làmb they are
+if (LAMB2) for (const a of [...ACTIONS.arena, ...ACTIONS.ecurie]) {
+  if (a.id === 'combat') a.detail = 'Sans frappe ou avec frappe · choisis ton adversaire';
+  else if (a.id === 'combat_classe') a.detail = 'Lutte avec frappe · adversaire selon ton classement';
+  else if (a.id === 'combat_entrainement') a.detail = 'Leçon de la lutte avec frappe : frappes, garde, empoignade, projection · non classé';
+}
 /** Friendly bout: the player picks the opponent's style; the level follows the friendly record. */
 function openFriendly() {
   mode = 'menu';
@@ -589,11 +595,16 @@ function opponentPick(m: 'amical' | 'classe') { for (const x of MODULES) { const
 /** Ranked bout: the career's roster names the opponent (else the ranked record's style rotation and level). */
 function openRanked() {
   mode = 'menu';
-  const r = record(state.data.counters, 'classe'), pick = opponentPick('classe');
+  // with ?lamb2 the ranked bout is avec frappe: the same career ladder (points, purse), its own record (lamb_af_classe_*)
+  const discipline: Discipline = LAMB2 ? 'avec_frappe' : 'sans_frappe';
+  const r = record(state.data.counters, 'classe', discipline), pick = opponentPick('classe');
   const st = STYLES[(pick?.style as StyleId | undefined) ?? rankedStyle(r.v + r.d + r.n)] ?? STYLES.costaud, level = pick?.level ?? opponentLevel(r.v, r.d);
+  // avec frappe the opponent fights as himself (his style of the six, his level): the menu says who he is
+  const who = LAMB2 ? rosterOpponent(pick?.name ?? st.name, ctx.day()) : null, word = who ? STYLE_MAP[who.style].word : '';
+  const label = who ? `Affronter ${who.wrestler.name} · ${word[0].toUpperCase()}${word.slice(1)} · niveau ${who.level}` : `Affronter ${pick?.name ?? st.name} · ${st.label} · niveau ${level}`;
   hud.openMenu('Combat classé', `Classement local (cet appareil) · ${r.v} V · ${r.d} D · ${r.n} N`, [
-    { label: `Affronter ${pick?.name ?? st.name} · ${st.label} · niveau ${level}`, detail: st.hint, onPick: () => startDuel('classe', st.id) },
-  ], `<div class="draft">Lutte sans frappe · ${RULES_STATUS}. Un abandon est compté à part : ce n’est ni une victoire ni une défaite.</div>`);
+    { label, detail: st.hint, onPick: () => startDuel('classe', st.id, undefined, discipline) },
+  ], `<div class="draft">${RULES[discipline].label} · ${RULES_STATUS}. Un abandon est compté à part : ce n’est ni une victoire ni une défaite.</div>`);
 }
 
 /** Controlled bout against a local opponent: guided training at the écurie, friendly or ranked at the arena. */
