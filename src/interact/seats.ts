@@ -80,6 +80,8 @@ export class Seats implements TargetSource {
   }
   get(id: string) { return this.byId.get(id) ?? null; }
   inSpace(space: string): readonly Seat[] { return this.bySpace.get(space) ?? []; }
+  /** Every seat of every space (street, interiors, vehicles), e.g. for systems that seat NPCs anywhere. */
+  all(): Seat[] { return [...this.byId.values()]; }
   get size() { return this.byId.size; }
 
   occupy(id: string, who: string): boolean {

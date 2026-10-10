@@ -4,6 +4,7 @@ import type { Input } from '../core/input';
 import type { Hud, MenuItem } from '../ui/hud';
 import type { Interactions } from '../interact/system';
 import type { Seat, Seats } from '../interact/seats';
+import type { People } from '../interact/people';
 import type { ActivityRunner } from '../activity/runner';
 import type { Places } from '../activity/places';
 import type { Inventory } from '../activity/inventory';
@@ -18,6 +19,7 @@ import { transport } from '../transport/module';
 import { moto } from '../transport/motoModule';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
+import { ambientLife } from '../social/ambientLife';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -36,6 +38,8 @@ export interface GameCtx {
   input: Input;
   interactions: Interactions;
   seats: Seats;
+  /** « Saluer » / « Demander son nom » on anyone: modules showing people add their bodies (`people.addBodies`). */
+  people: People;
   places: Places;
   activities: ActivityRunner;
   inventory: Inventory;
@@ -115,4 +119,7 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [wolofModule, assetKitModule, transport, VenuesModule, moto, ESTATE_MODULE, arenaModule];
+export const MODULES: GameModule[] = [
+  wolofModule, assetKitModule, transport, VenuesModule, moto, ESTATE_MODULE, arenaModule,
+  ambientLife,          // NPC & social life lane, last: it populates the places and seats the others register (docs/NPC_LIFE.md)
+];
