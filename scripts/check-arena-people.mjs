@@ -81,7 +81,9 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const nJ = touch ? 2 : 3;
   check(`${label}: the gala begins — the judges sit at the sandbags and the referee waits in the ring`, p.judges === nJ && p.referee && p.seats.filter(s => /juge/.test(s.id) && s.occupant).length === nJ, p);
 
-  // 5. The entrance: each entourage walks in behind its wrestler; the whole drummers' group plays
+  // 5. The entrance: each entourage walks in behind its wrestler; the whole drummers' group plays (the preliminaries,
+  //    src/arena/undercard.ts, skipped: they bring no entourage)
+  await d(() => { const i = window.__dakar.arena.info(); if (i.phase === 'filling' || i.phase === 'prelims') window.__dakar.arena.go('entrance'); });
   await until(() => { const i = window.__dakar.arena.info(); return i.phase === 'entrance' && i.t > 5; });
   p = await people();
   const nDr = touch ? 3 : 5, nEn = touch ? 1 : 2;

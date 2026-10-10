@@ -21,6 +21,8 @@ drummers outside, event days, gate position) is another lane: `src/arena/exterio
   a car rapide seat), a slightly narrower field of view, the gaze following the action; drag looks around (±80°).
 - **Watch the gala** (starts once seated while the doors are open):
   1. *Les tribunes se remplissent* (3 s) — the bill is announced: Babacar (Baobab) – Lamine (Teranga).
+  1b. *Préliminaires* — short bouts between young wrestlers of the neighbourhoods, long before the main event, while the
+     stands fill (see *The preliminaries*).
   2. *Entrée des lutteurs* (14 s) — the two wrestlers walk out of their tunnel, each with his entourage behind him; the
      drummers' group plays on its deck (the evening's one rhythm, `src/arena/exteriorAudio.ts`), dances; the crowd
      stands up and cheers (see *The people of fight night*).
@@ -35,6 +37,48 @@ drummers outside, event days, gate position) is another lane: `src/arena/exterio
 
 Names are the game's fictional cast and écuries; no real wrestler, écurie, promoter or brand. No ritual or religious
 text in the show: drums, dances and the crowd.
+
+## The preliminaries (`src/arena/undercard.ts`)
+
+In a real làmb gala the stands fill while short preliminary bouts (« combats de préliminaires ») run between lesser
+wrestlers. A seated spectator no longer waits with nothing on the sand.
+
+- **How many:** two to four on a gala night (Friday–Sunday), one or two on a weekday card. The number and the names
+  come from the evening's seed, so everyone gets the same card that evening.
+- **Who:** generic young wrestlers of the neighbourhoods, « Modou (Thiaroye) – Assane (Yeumbeul) ». The names are a
+  first name and where he comes from, never a real wrestler, écurie or promoter, and never the main event's names.
+- **Each preliminary:**
+  - The announcer names it, « Préliminaires 1/3 : … contre … », and the gala card shows it.
+  - The two wrestlers walk from the tunnel to their marks in 5 s, with no dances; the ceremony is the main event's.
+  - They fight a short bout of the existing duel: AI against AI, a 30 s round, a young wrestler's style and level 1–2.
+    It is seeded by `prelimSeed(hub, day, i)` = `boutSeed(hub, day)` + 1 + i, so it is the same bout for the group.
+    It runs sans frappe for now: every preliminary goes through `prelimBout(pair)` in `module.ts`, which will pass the
+    pair avec frappe when the Làmb 2.0 lane (`?lamb2`) is merged.
+  - The stands react less than for the main event: a murmur at a grab, about a third up at a fall, applause at the
+    result. The result is announced, « Préliminaires : Modou l'emporte par chute. »
+- **The stands fill along the way:** from the hour's share when the show began (at least about a third) to 95% at the
+  end of the last preliminary. The main event's entrance then lands on full stands.
+- **Friends follow them** like the main bout. The presence field carries `i`, which preliminary, as an integer 0–5
+  validated by `parseMove`, and `t`, the time within it. ARENA_PHASES gets `prelims` between `filling` and `entrance`.
+
+**The timeline at 1×.** These are real seconds: show time runs on the frame clock, and a frame counts at most 0.1 s, so
+this holds from 10 frames a second up. `?debug` → `arena.timeline()` records each phase and preliminary on the real
+clock in the browser.
+
+| From sitting down | Phase | Lasts |
+| --- | --- | --- |
+| 0 s | *Les tribunes se remplissent* | 3 s |
+| 3 s | first preliminary: walk-in | 5 s |
+| 8 s | first preliminary: its bout | duel intro 2.2 s + up to 30 s (a fall ends it sooner) |
+| … | its result, then the next preliminary | 3.5 s; up to ~41 s per preliminary |
+| ≈ 1 min 25 s – 2 min 45 s (gala, 2–4); ≈ 45 s – 1 min 25 s (card, 1–2) | *Entrée des lutteurs*, stands ~95–100% | 14 s |
+| + 14 s | the main bout | duel intro 2.2 s + up to 90 s |
+| | *Résultat* | 7 s |
+| | *Le public rentre* | 9 s |
+
+The first preliminary is on the sand 3 s after sitting down, and its bout starts at 8 s, well under the minute asked
+for. A gala with three preliminaries and a main bout to time-out lasts about 4 minutes from sitting down to the empty
+stands.
 
 ## The people of fight night (Wave 3)
 
@@ -169,7 +213,7 @@ centre, people: moment, judges, officials, announcer, referee, drummers, drums, 
 `arena.day(d)`.
 
 centre), `arena.cam()`, `arena.speed(n)` (fast-forward), `arena.go(phase)`, `arena.freeSeat(x, z)`, `arena.visible(on)`,
-`arena.day(d)`; `together()` (the friend followed, jumps made, places held by friends, the presence field sent), `cheer(s)`.
+`arena.day(d)`, `arena.timeline()` (real seconds per phase and preliminary), `info().prelims` (the card, the one running, its stage and bout, the results); `together()` (the friend followed, jumps made, places held by friends, the presence field sent), `cheer(s)`.
 
 `npm run check:online` (scripts/check-multiplayer.mjs, CI) seats two clients side by side in the stands at 18 h: each
 sees the other seated (pose and height), the later one joins the earlier one's show (same bout phase within 3 s), a

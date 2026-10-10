@@ -286,6 +286,7 @@ class ArenaEvening {
   go(phase: ShowPhase) {
     const { ctx } = this;
     this.phase = phase; this.t = 0; this.fillT = 0;                          // the stands follow the phase at once
+    if (phase === 'filling') this.marks = [];                                // the timeline starts when the show does
     this.mark(phase);
     if (phase !== 'prelims') this.clearPrelim();
     if (phase === 'filling') {

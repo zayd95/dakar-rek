@@ -109,20 +109,36 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const sat = await d(() => ({ seated: window.__dakar.seated(), clip: window.__dakar.clip() }));
   check(`${label}: seated on the tier, seated pose`, /arena:stand/.test(sat.seated ?? '') && sat.clip === 'Sit', sat);
   await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, T).catch(() => {});
-  await page.waitForFunction(() => { const c = window.__dakar.arena.info().crowd; return c.present >= c.cap * 0.9; }, null, { timeout: 60000 }).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.arena.info().crowd.present > 0, null, { timeout: 60000 }).catch(() => {});
   await page.waitForTimeout(1200);
   const cam = await d(() => window.__dakar.arena.cam());
   const toRing = { x: C.x - cam.x, z: C.z - cam.z }, len = Math.hypot(toRing.x, toRing.z), dirLen = Math.hypot(cam.dx, cam.dz);
   check(`${label}: the view from the seat frames the ring`, (cam.dx * toRing.x + cam.dz * toRing.z) / (len * dirLen) > 0.85 && cam.y > 1.5, cam);
   const s1 = await info();
-  check(`${label}: the gala starts once seated; the crowd fills the tiers around you`, s1.phase !== 'idle' && s1.crowd.present >= s1.crowd.cap * 0.9 && s1.crowd.present > 50 && /Gala de làmb/.test(s1.card), { phase: s1.phase, ...s1.crowd });
+  check(`${label}: the gala starts once seated; people are already in the stands`, s1.phase !== 'idle' && s1.crowd.present > 30 && /Gala de làmb/.test(s1.card), { phase: s1.phase, ...s1.crowd });
   const dcSeat = await ownDc();
   await shot('3-seated');
 
-  // 6. The wrestlers' entrance: drums and dances, the crowd stands.
+  // 5b. The preliminaries (src/arena/undercard.ts): the announcer names the first one, two young wrestlers walk out,
+  //     a short seeded bout reaches its result while the stands fill; then on to the main event.
+  await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return i.phase === 'prelims' && i.prelims.stage === 'bout'; }, null, T).catch(() => {});
+  const pr1 = await info(), tl1 = await d(() => window.__dakar.arena.timeline());
+  check(`${label}: the preliminaries start soon after sitting down: the first bout on the sand, named on the card`,
+    pr1.phase === 'prelims' && pr1.prelims.n >= 1 && pr1.prelims.stage === 'bout' && !!pr1.prelims.bout && /Préliminaires 1\//.test(pr1.card), { prelims: pr1.prelims, card: pr1.card, timeline: tl1 });
+  await shot('3b-prelim');
+  await d(() => window.__dakar.arena.speed(6));
+  await page.waitForFunction(() => window.__dakar.arena.info().prelims.results.length >= 1, null, { timeout: 300000 }).catch(() => {});
+  await d(() => window.__dakar.arena.speed(1));
+  const pr2 = await info();
+  check(`${label}: the first preliminary reaches its result, announced; the stands fuller than at the start`,
+    /^Préliminaires : (.+ l’emporte (par chute|aux points)|match nul)\.$/.test(pr2.prelims.results[0] ?? '') && pr2.crowd.present > s1.crowd.present, { results: pr2.prelims.results, present: [s1.crowd.present, pr2.crowd.present], timeline: await d(() => window.__dakar.arena.timeline()) });
+  await d(() => window.__dakar.arena.go('entrance'));                       // the remaining preliminaries skipped: the main event
+
+  // 6. The wrestlers' entrance: drums and dances, the crowd stands (nearly full stands by now).
   await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return i.phase === 'entrance' && i.t > 6.8; }, null, T).catch(() => {});
   const e1 = await info();
   check(`${label}: the wrestlers make their entrance (two wrestlers and their people, drums)`, e1.phase === 'entrance' && e1.entrance >= 2, e1);
+  check(`${label}: the main event's entrance lands on nearly full stands`, e1.crowd.present >= e1.crowd.cap * 0.85, e1.crowd);
   await page.waitForFunction(() => window.__dakar.arena.info().crowd.cheering > 0, null, { timeout: 60000 }).catch(() => {});
   check(`${label}: the crowd reacts to the entrance`, (await info()).crowd.cheering > 0, (await info()).crowd);
   const dcShow = await ownDc();
