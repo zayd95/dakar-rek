@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { RIG_DIMS } from './reactions';
 
 /**
  * The crowd's instanced figures (docs/CROWD.md): low-poly people whose arms, legs and upper body are posed in the vertex
@@ -15,8 +16,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
  * 3 forearm and hand, 4 leg (swings at the hip). Instances: iArm (pitch, spread, yaw, elbow), iOsc (yawAmp, pitchAmp,
  * freq, phase), iMove (bounce, lean, walk, sideOff). The maths mirror reactions.ts armDirs (tested there).
  */
-export const SHOULDER_X = 0.245;
-export const UPPER_ARM = 0.3;
+export const SHOULDER_X = RIG_DIMS.shoulderX;
+export const UPPER_ARM = RIG_DIMS.upper;
 const SHOES = 0x2e2620, HAIR = 0x2a2220;
 type Tint = 'shirt' | 'skin' | 'legs' | number;
 const MARK: Record<'shirt' | 'skin' | 'legs', [number, number, number]> = { shirt: [1, 1, 1], skin: [0, 0, 0], legs: [1, 0, 0] };
@@ -45,7 +46,7 @@ const both = (f: (s: 1 | -1) => Box[]) => [...f(1), ...f(-1)];
 
 /** Seated: origin on the sitting surface under the hips, the legs over the edge in front (+z). */
 function midSeated(): Box[] {
-  const J = 0.63, H = 0.08;
+  const J = RIG_DIMS.seated.shoulder, H = RIG_DIMS.seated.hip;
   return [
     { w: 0.36, h: 0.16, d: 0.28, x: 0, y0: 0, z: -0.03, tint: 'legs', seg: 0 },
     ...both(s => [
@@ -53,7 +54,7 @@ function midSeated(): Box[] {
       { w: 0.13, h: 0.44, d: 0.13, x: s * 0.095, y0: -0.4, z: 0.38, tint: 'legs', seg: 0 },
       { w: 0.11, h: 0.07, d: 0.21, x: s * 0.095, y0: -0.47, z: 0.42, tint: SHOES, seg: 0 },
       { w: 0.1, h: UPPER_ARM, d: 0.11, x: s * SHOULDER_X, y0: J - UPPER_ARM, z: 0, tint: 'shirt', seg: 2, side: s, joint: J, hip: H },
-      { w: 0.085, h: 0.33, d: 0.095, x: s * SHOULDER_X, y0: J - UPPER_ARM - 0.33, z: 0, tint: 'skin', seg: 3, side: s, joint: J, hip: H },
+      { w: 0.085, h: RIG_DIMS.fore, d: 0.095, x: s * SHOULDER_X, y0: J - UPPER_ARM - RIG_DIMS.fore, z: 0, tint: 'skin', seg: 3, side: s, joint: J, hip: H },
     ]),
     { w: 0.38, h: 0.52, d: 0.22, x: 0, y0: 0.14, z: -0.02, tint: 'shirt', seg: 1, hip: H },
     { w: 0.19, h: 0.23, d: 0.21, x: 0, y0: 0.7, z: -0.01, tint: 'skin', seg: 1, hip: H },
@@ -62,7 +63,7 @@ function midSeated(): Box[] {
 }
 /** Standing: origin on the ground between the feet. */
 function midStanding(): Box[] {
-  const J = 1.44, H = 0.88;
+  const J = RIG_DIMS.standing.shoulder, H = RIG_DIMS.standing.hip;
   return [
     ...both(s => [
       { w: 0.15, h: 0.84, d: 0.17, x: s * 0.095, y0: 0.04, z: 0, tint: 'legs', seg: 4, side: s, joint: H },
@@ -78,22 +79,22 @@ function midStanding(): Box[] {
 }
 /** Far silhouettes: the same outline in six boxes (an arm is one box, so the elbow does not bend). */
 function farSeated(): Box[] {
-  const J = 0.63, H = 0.08;
+  const J = RIG_DIMS.seated.shoulder, H = RIG_DIMS.seated.hip, A = RIG_DIMS.farArm;
   return [
     { w: 0.34, h: 0.17, d: 0.5, x: 0, y0: 0, z: 0.17, tint: 'legs', seg: 0 },
     { w: 0.32, h: 0.44, d: 0.13, x: 0, y0: -0.42, z: 0.38, tint: 'legs', seg: 0 },
     { w: 0.38, h: 0.52, d: 0.22, x: 0, y0: 0.14, z: -0.02, tint: 'shirt', seg: 1, hip: H },
     { w: 0.19, h: 0.25, d: 0.21, x: 0, y0: 0.7, z: -0.01, tint: 'skin', seg: 1, hip: H },
-    ...both(s => [{ w: 0.1, h: 0.6, d: 0.11, x: s * SHOULDER_X, y0: J - 0.6, z: 0, tint: 'shirt' as Tint, seg: 2, side: s, joint: J, hip: H }]),
+    ...both(s => [{ w: 0.1, h: A, d: 0.11, x: s * SHOULDER_X, y0: J - A, z: 0, tint: 'shirt' as Tint, seg: 2, side: s, joint: J, hip: H }]),
   ];
 }
 function farStanding(): Box[] {
-  const J = 1.44, H = 0.88;
+  const J = RIG_DIMS.standing.shoulder, H = RIG_DIMS.standing.hip, A = RIG_DIMS.farArm;
   return [
     { w: 0.32, h: 0.9, d: 0.18, x: 0, y0: 0, z: 0, tint: 'legs', seg: 0 },
     { w: 0.38, h: 0.6, d: 0.22, x: 0, y0: 0.88, z: -0.02, tint: 'shirt', seg: 1, hip: H },
     { w: 0.19, h: 0.25, d: 0.21, x: 0, y0: 1.52, z: -0.01, tint: 'skin', seg: 1, hip: H },
-    ...both(s => [{ w: 0.1, h: 0.6, d: 0.11, x: s * SHOULDER_X, y0: J - 0.6, z: 0, tint: 'shirt' as Tint, seg: 2, side: s, joint: J, hip: H }]),
+    ...both(s => [{ w: 0.1, h: A, d: 0.11, x: s * SHOULDER_X, y0: J - A, z: 0, tint: 'shirt' as Tint, seg: 2, side: s, joint: J, hip: H }]),
   ];
 }
 
@@ -179,6 +180,36 @@ export function rigMaterial(): THREE.MeshLambertMaterial {
   };
   material.customProgramCacheKey = () => 'dakar-crowd-rig-v1';
   return material;
+}
+
+// ------------------------------------------------------------------ supporters' flags
+/** A small hand flag: the stick held at the origin along +y, the cloth (white: the instance colour) at the top. */
+export function flagGeometry(): THREE.BufferGeometry {
+  const paint = (g: THREE.BufferGeometry, hex: number) => {
+    const c = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) a.set([c.r, c.g, c.b], i * 3);
+    g.setAttribute('color', new THREE.BufferAttribute(a, 3)); g.deleteAttribute('uv');
+    return g;
+  };
+  const stick = new THREE.BoxGeometry(0.022, 0.8, 0.022); stick.translate(0, 0.25, 0);
+  const cloth = new THREE.BoxGeometry(0.4, 0.26, 0.012); cloth.translate(0.21, 0.5, 0);
+  const g = mergeGeometries([paint(stick, 0x4a3a2a), paint(cloth, 0xffffff)])!;
+  stick.dispose(); cloth.dispose();
+  return g;
+}
+let flagMat: THREE.MeshLambertMaterial | null = null;
+/** White vertices take the instance colour (the écurie's), the stick keeps its own. */
+export function flagMaterial() {
+  if (flagMat) return flagMat;
+  flagMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  flagMat.onBeforeCompile = sh => {
+    sh.vertexShader = sh.vertexShader.replace('#include <color_vertex>', `#include <color_vertex>
+#ifdef USE_INSTANCING_COLOR
+  vColor.xyz = (color.r > 0.99 && color.g > 0.99 && color.b > 0.99) ? instanceColor.xyz : color.xyz;
+#endif`);
+  };
+  flagMat.customProgramCacheKey = () => 'dakar-crowd-flag-v1';
+  return flagMat;
 }
 
 /** Floats per instance of each rig attribute. */

@@ -95,6 +95,12 @@ export class ArenaStands {
       },
     });
     this.crowd.group.name = 'arena_crowd';
+    // one supporter in eight brought the écurie's flag: it goes up with the arms
+    let k = 0;
+    for (const sl of slots) {
+      const side = sl.tags?.[0];
+      if ((side === 'left' || side === 'right') && ((k++ * 2654435761) >>> 0) % 8 === 0) this.crowd.giveFlag(sl.id, side === 'left' ? col.left : col.right);
+    }
   }
 
   get group(): THREE.Group { return this.crowd.group; }

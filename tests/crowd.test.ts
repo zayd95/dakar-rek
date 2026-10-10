@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
-  REACTIONS, REACTION_KINDS, REST_SIT, REST_STAND, armDirs, dancePose, easePose, offer, plan, poseFor, restState, standingFor, step, walkPose,
+  REACTIONS, REACTION_KINDS, REST_SIT, REST_STAND, armDirs, dancePose, easePose, fidgetPose, handLocal, offer, plan, poseFor, restState, standingFor, step, walkPose,
   type RigPose,
 } from '../src/crowd/reactions';
 import { SHOULDER_X, UPPER_ARM, figureBoxes, figureGeometry } from '../src/crowd/rig';
@@ -330,5 +330,53 @@ describe('dancing and arrivals', () => {
         expect(x > 7 && x < 53 && ((z > -53 && z < -7) || (z < -67 && z > -113))).toBe(false);
       }
     }
+  });
+});
+
+describe('stands polish', () => {
+  it('the hand position follows the rig: at the knees seated, above the head celebrating, higher with the hop', () => {
+    const knee = handLocal(REST_SIT, 1, 0, 0, false);
+    expect(knee[1]).toBeGreaterThan(0.1); expect(knee[1]).toBeLessThan(0.35); expect(knee[2]).toBeGreaterThan(0.3);
+    const up = REACTIONS.celebrate.up, f = up.freq;
+    const low = handLocal(up, 1, 0, 0, true), hop = handLocal(up, 1, (Math.PI / 2) / f, 0, true);
+    expect(low[1]).toBeGreaterThan(1.9);
+    expect(hop[1]).toBeGreaterThan(low[1] - 0.3 + up.bounce * 0.5);
+    const far = handLocal(up, 1, 0, 0, true, true);
+    expect(Math.abs(far[1] - low[1])).toBeLessThan(0.35);               // the silhouette's one-piece arm reaches about as high
+  });
+
+  it('fidgets are small: no standing up, arms stay low', () => {
+    for (const f of ['talk', 'lean', 'back'] as const) for (const standing of [false, true]) {
+      const p = fidgetPose(f, standing);
+      expect(p.pitch).toBeLessThan(1); expect(p.bounce).toBe(0); expect(Math.abs(p.lean)).toBeLessThan(0.25);
+    }
+  });
+
+  it('calm people fidget now and then without counting as cheering; flags go up with the arms', () => {
+    const c = new Crowd(slots(200), { quality: 'medium', seed: 9, fidget: 0.1 });
+    c.fill(200);
+    c.giveFlag('s0', 0x1a7a44); c.giveFlag('s1', 0xc8322a);
+    for (let k = 0; k < 8; k++) c.update(0.25);
+    const s1 = c.stats();
+    expect(s1.fidgeting).toBeGreaterThan(5);
+    expect(s1.reacting).toBe(0);
+    expect(s1.flagsUp).toBe(0);
+    c.react('all', 'celebrate', { share: 1 });
+    for (let k = 0; k < 8; k++) c.update(0.25);
+    expect(c.stats().flagsUp).toBe(2);
+    expect(c.stats().fidgeting).toBe(0);                                  // a reaction ends the fidget
+    c.dispose();
+  });
+
+  it('the arena gives some supporters a flag, none in the mixed end sections', () => {
+    const seats = standSeats(0, 0, 'flag:stand');
+    const s = new ArenaStands(seats, 0, { quality: 'high' });
+    s.fill(seats.length, () => false);
+    s.react('all', 'celebrate', { share: 1 });
+    for (let k = 0; k < 6; k++) s.update(0.25, true);
+    const up = s.stats().flagsUp, supporters = seats.filter(o => sideOf(o.a) !== 'ends').length;
+    expect(up).toBeGreaterThan(supporters / 12);
+    expect(up).toBeLessThan(supporters / 5);
+    s.dispose();
   });
 });

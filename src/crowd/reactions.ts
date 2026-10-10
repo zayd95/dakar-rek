@@ -113,12 +113,25 @@ export function calm(s: ReactState) { const was = !!s.kind; s.kind = null; s.lef
 /** Standing or seated now: people without a seat always stand; seated ones stand for some reactions. */
 export const standingFor = (seatedSlot: boolean, kind: ReactionKind | null) => !seatedSlot || (!!kind && REACTIONS[kind].stand);
 
-/** The pose to show: the reaction's, the walk, or rest. */
-export function poseFor(kind: ReactionKind | null, standing: boolean, speed = 0, mood: Mood = 'rest', bpm = 120): RigPose {
+/** The pose to show: the reaction's, the walk, the dance, a fidget, or rest. */
+export function poseFor(kind: ReactionKind | null, standing: boolean, speed = 0, mood: Mood = 'rest', bpm = 120, fidget: Fidget | null = null): RigPose {
   if (speed > 0.2) return walkPose(speed);
   if (kind) return standing ? REACTIONS[kind].up : REACTIONS[kind].sit;
   if (mood === 'dance' && standing) return dancePose(bpm);
+  if (fidget) return fidgetPose(fidget, standing);
   return standing ? REST_STAND : REST_SIT;
+}
+
+/** Small things people do between reactions, never counted as cheering: talking with the hands, leaning in, sitting back. */
+export type Fidget = 'talk' | 'lean' | 'back';
+export const FIDGETS: readonly Fidget[] = ['talk', 'lean', 'back'];
+export function fidgetPose(f: Fidget, standing: boolean): RigPose {
+  const base = standing ? REST_STAND : REST_SIT;
+  switch (f) {
+    case 'talk': return { ...base, pitch: standing ? 0.55 : 0.7, spread: 0.15, elbow: standing ? 1.4 : 1.3, pitchAmp: 0.18, freq: 5, sideOff: 1.2 };
+    case 'lean': return standing ? { ...base, lean: 0.1 } : { ...base, pitch: 0.55, elbow: 1.55, lean: 0.2 };
+    case 'back': return { ...base, lean: -0.08, pitch: standing ? 0.05 : 0.2, elbow: standing ? 0.1 : 0.6 };
+  }
 }
 
 /** What a member does between reactions: rest, or dance (a dance floor, sabar dancers by the drums). */
@@ -174,6 +187,24 @@ export function armDirs(p: RigPose, side: 1 | -1, t: number, phase: number): { u
   const a = armAngles(p, side, t, phase);
   const chain = (v: V) => rotY(rotX(rotZ(v, side * a.spread), -a.pitch), -side * a.yaw);
   return { upper: chain([0, -1, 0]), fore: chain(rotX([0, -1, 0], -a.elbow)) };
+}
+
+/** The rig's proportions (src/crowd/rig.ts builds the figures from them). */
+export const RIG_DIMS = {
+  shoulderX: 0.245, upper: 0.3, fore: 0.33, farArm: 0.6,
+  seated: { shoulder: 0.63, hip: 0.08 }, standing: { shoulder: 1.44, hip: 0.88 },
+} as const;
+/**
+ * Where a figure's hand is (character space, origin of the figure) at time t, as the vertex rig draws it: the arm, the
+ * upper body's lean about the hips, the hop. `far`: the silhouettes' one-piece arm.
+ */
+export function handLocal(p: RigPose, side: 1 | -1, t: number, phase: number, standing: boolean, far = false): V {
+  const d = armDirs(p, side, t, phase), D = standing ? RIG_DIMS.standing : RIG_DIMS.seated;
+  const v: V = far
+    ? [side * RIG_DIMS.shoulderX + RIG_DIMS.farArm * d.upper[0], D.shoulder + RIG_DIMS.farArm * d.upper[1], RIG_DIMS.farArm * d.upper[2]]
+    : [side * RIG_DIMS.shoulderX + RIG_DIMS.upper * d.upper[0] + RIG_DIMS.fore * d.fore[0], D.shoulder + RIG_DIMS.upper * d.upper[1] + RIG_DIMS.fore * d.fore[1], RIG_DIMS.upper * d.upper[2] + RIG_DIMS.fore * d.fore[2]];
+  const r = rotX([v[0], v[1] - D.hip, v[2]], p.lean);
+  return [r[0], r[1] + D.hip + p.bounce * Math.abs(Math.sin(t * p.freq + phase)), r[2]];
 }
 
 // ------------------------------------------------------------------ how loud a group is

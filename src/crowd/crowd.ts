@@ -4,10 +4,10 @@ import { cullHumanoid } from '../actors/crowdLod';
 import { SIT_HIPS } from '../interact/seats';
 import { rng } from '../core/rng';
 import {
-  Excitement, REACTIONS, armDirs, calm, easePose, offer, plan, poseFor, restState, standingFor, step,
-  type Mood, type ReactState, type ReactionKind, type RigPose,
+  Excitement, FIDGETS, REACTIONS, armDirs, calm, easePose, handLocal, offer, plan, poseFor, restState, standingFor, step,
+  type Fidget, type Mood, type ReactState, type ReactionKind, type RigPose,
 } from './reactions';
-import { RIG_ATTRS, crowdClock, figureGeometry, rigMaterial, tickClock, type FigureKind, type RigAttr } from './rig';
+import { RIG_ATTRS, crowdClock, figureGeometry, flagGeometry, flagMaterial, rigMaterial, tickClock, type FigureKind, type RigAttr } from './rig';
 
 /**
  * A reusable crowd (docs/CROWD.md), on top of the city's crowd LOD (src/actors/crowdLod.ts):
@@ -54,6 +54,8 @@ export interface CrowdOptions {
   look?: (slot: CrowdSlot, r: () => number) => CrowdLook;
   /** A soft round shadow under each standing figure (street crowds; one draw call). */
   blobs?: boolean;
+  /** Share of the calm members who start a small gesture each second (talking, leaning in, sitting back); 0: none. */
+  fidget?: number;
 }
 
 const SKINS = [0x3b2216, 0x4e2e1c, 0x5b3420, 0x6b3f25, 0x7a4a2c, 0x45291a];
@@ -94,6 +96,12 @@ interface Member {
   bpm: number;
   /** Index in the crowd (the near bodies' dance alternates two clips). */
   i: number;
+  /** Height factor (people are not all the same size). */
+  scale: number;
+  fidget: Fidget | null;
+  fidgetLeft: number;
+  /** Colour of the flag this supporter waves when the arms go up (null: none). */
+  flag: THREE.Color | null;
 }
 interface NearBody {
   h: Humanoid; m: Member; w: number; seen: boolean;
@@ -137,7 +145,8 @@ class Bucket {
   dispose() { this.mesh.geometry.dispose(); this.mesh.dispose(); }
 }
 
-const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _one = new THREE.Vector3(1, 1, 1), _up = new THREE.Vector3(0, 1, 0);
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _sc = new THREE.Vector3(1, 1, 1), _up = new THREE.Vector3(0, 1, 0);
+const _fq = new THREE.Quaternion(), _fw = new THREE.Quaternion(), _fd = new THREE.Vector3(), _fy = new THREE.Vector3(0, 1, 0);
 const _fr = new THREE.Frustum(), _pm = new THREE.Matrix4(), _sp = new THREE.Sphere(), _eye = new THREE.Vector3();
 const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qd = new THREE.Quaternion(), _qs = new THREE.Quaternion(), _qi = new THREE.Quaternion();
 const _va = new THREE.Vector3(), _vb = new THREE.Vector3();
@@ -164,6 +173,11 @@ export class Crowd {
   private lodT = 0;
   private nearT = 0;
   private blobs: THREE.InstancedMesh | null = null;
+  private flags: THREE.InstancedMesh | null = null;
+  private flagged: Member[] = [];
+  private fidgeting = new Set<Member>();
+  private fidgetRate: number;
+  private fidgetT = 0;
 
   constructor(slots: readonly CrowdSlot[], o: CrowdOptions) {
     this.name = o.name ?? 'crowd';
@@ -174,6 +188,7 @@ export class Crowd {
     this.lod = { ...L, near: Math.max(0, Math.min(16, o.near ?? L.near)) };
     this.nearRadius = o.nearRadius ?? 10;
     this.nearNeedsFocus = !!o.nearNeedsFocus;
+    this.fidgetRate = o.fidget ?? 0.03;
     const R = rng((o.seed ?? 17) * 7 + 3);
     for (const slot of slots) {
       const look = o.look ? o.look(slot, R) : defaultLook(R);
@@ -182,7 +197,8 @@ export class Crowd {
         slot, look, shirt: new THREE.Color(look.shirt), legs: new THREE.Color(look.legs), skin: new THREE.Color(look.skin),
         phase: R() * Math.PI * 2, temper: 0.6 + R() * 0.8, on: false, st: restState(), speed: 0,
         standing, pose, target: poseFor(null, standing), easing: false, lod: 0, matrix: new Float32Array(16), body: null,
-        mood: 'rest', bpm: 120, i: this.members.length,
+        mood: 'rest', bpm: 120, i: this.members.length, scale: (look.style === 'dress' ? 0.93 : 0.95) + R() * 0.09,
+        fidget: null, fidgetLeft: 0, flag: null,
       };
       this.place(m);
       this.members.push(m); this.byId.set(slot.id, m);
@@ -202,7 +218,7 @@ export class Crowd {
   private place(m: Member) {
     const s = m.slot;
     _p.set(s.x, s.y, s.z); _q.setFromAxisAngle(_up, s.yaw);
-    _m.compose(_p, _q, _one).toArray(m.matrix);
+    _m.compose(_p, _q, _sc.setScalar(m.scale)).toArray(m.matrix);
   }
 
   // ---------------------------------------------------------------- presence
@@ -269,6 +285,19 @@ export class Crowd {
       m.mood = mood; m.bpm = bpm; this.retarget(m);
     }
   }
+  /** This member waves a flag of `colour` whenever the arms go up (shouting, celebrating). */
+  giveFlag(id: string, colour: number) {
+    const m = this.byId.get(id); if (!m) return;
+    if (!m.flag) this.flagged.push(m);
+    m.flag = new THREE.Color(colour);
+    if (!this.flags) {
+      this.flags = new THREE.InstancedMesh(flagGeometry(), flagMaterial(), Math.max(1, this.members.length));
+      this.flags.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      this.flags.setColorAt(0, m.flag); this.flags.instanceColor!.setUsage(THREE.DynamicDrawUsage);
+      this.flags.count = 0; this.flags.frustumCulled = false; this.flags.name = 'crowd_flags';
+      this.group.add(this.flags);
+    }
+  }
   /** Everyone in the group settles back at once. */
   calm(group = 'all') {
     for (const m of this.members) if (group === 'all' || m.slot.tags?.includes(group)) if (calm(m.st)) this.retarget(m);
@@ -281,9 +310,10 @@ export class Crowd {
 
   private retarget(m: Member, snap = false) {
     const kind = m.on ? m.st.kind : null;
+    if ((kind || !m.on) && m.fidget) { m.fidget = null; this.fidgeting.delete(m); }
     const standing = standingFor(m.slot.seated, kind);
     if (standing !== m.standing) { m.standing = standing; this.layoutDirty = true; }
-    m.target = poseFor(kind, standing, m.speed, m.mood, m.bpm);
+    m.target = poseFor(kind, standing, m.speed, m.mood, m.bpm, m.fidget);
     if (snap) { Object.assign(m.pose, m.target); m.easing = false; } else m.easing = true;
   }
 
@@ -376,6 +406,7 @@ export class Crowd {
     tickClock(performance.now());
     this.excite.decay(dt);
     for (const m of this.members) if (m.on && step(m.st, dt)) this.retarget(m);
+    this.fidgets(dt);
     this.nearT -= dt;
     if (this.nearT <= 0) { this.nearT = 0.5; this.pickNear(); }
     this.lodT -= dt;
@@ -385,6 +416,46 @@ export class Crowd {
     for (const m of this.members) if (m.easing && m.on) { m.easing = easePose(m.pose, m.target, k); if (m.lod === 1 || m.lod === 2) posed = true; }
     if (this.layoutDirty || posed) this.write();
     for (const b of this.bodies) this.updateBody(b, dt, animate);
+    if (this.flags) this.waveFlags();
+  }
+
+  /** A few calm people at a time talk with their hands, lean in or sit back for a few seconds. */
+  private fidgets(dt: number) {
+    for (const m of this.fidgeting) {
+      m.fidgetLeft -= dt;
+      if (m.fidgetLeft <= 0) { m.fidget = null; this.fidgeting.delete(m); this.retarget(m); }
+    }
+    this.fidgetT -= dt;
+    if (this.fidgetT > 0 || !this.fidgetRate || !this.members.length) return;
+    this.fidgetT = 0.5;
+    const n = this.members.length * this.fidgetRate * 0.5;
+    let k = Math.floor(n) + (this.rand() < n % 1 ? 1 : 0);
+    for (let tries = 0; k > 0 && tries < k * 4; tries++) {
+      const m = this.members[Math.floor(this.rand() * this.members.length)];
+      if (!m.on || m.st.kind || m.st.next || m.fidget || m.speed > 0.2 || m.mood !== 'rest') continue;
+      m.fidget = FIDGETS[Math.floor(this.rand() * FIDGETS.length)]; m.fidgetLeft = 2 + this.rand() * 4;
+      this.fidgeting.add(m); this.retarget(m); k--;
+    }
+  }
+
+  /** Supporters with a flag wave it while their arms are up (the left hand, as the figure draws it). */
+  private waveFlags() {
+    const F = this.flags!, arr = F.instanceMatrix.array as Float32Array, t = crowdClock();
+    let n = 0;
+    for (const m of this.flagged) {
+      if (!m.on || (m.lod !== 1 && m.lod !== 2) || m.pose.pitch < 1.7) continue;
+      const far = m.lod === 1, h = handLocal(m.pose, 1, t, m.phase, m.standing, far), d = armDirs(m.pose, 1, t, m.phase);
+      const dir = far ? d.upper : d.fore;
+      _p.set(h[0], h[1], h[2]).applyMatrix4(_m.fromArray(m.matrix));
+      _q.setFromAxisAngle(_up, m.slot.yaw);
+      _fd.set(dir[0], dir[1], dir[2]).applyQuaternion(_q).normalize();
+      _fq.setFromUnitVectors(_fy, _fd).multiply(_fw.setFromAxisAngle(_fy, m.slot.yaw + Math.sin(t * 6 + m.phase) * 0.7));
+      _m.compose(_p, _fq, _sc.setScalar(m.scale)).toArray(arr, n * 16);
+      F.setColorAt(n, m.flag!);
+      n++;
+    }
+    F.count = n;
+    if (n) { F.instanceMatrix.needsUpdate = true; F.instanceColor!.needsUpdate = true; }
   }
 
   private write() {
@@ -419,7 +490,7 @@ export class Crowd {
     if (!animate) return;
     b.h.animate(dt, walking ? m.speed : 0);
     // the clip has no clapping, fists or hands on the head: pose the arms like the figure this body stands in for
-    const arms = !walking && !!kind && kind !== 'celebrate' && !(kind === 'standUp' && m.standing);
+    const arms = !walking && ((!!kind && kind !== 'celebrate' && !(kind === 'standUp' && m.standing)) || (!kind && !!m.fidget));
     b.w = THREE.MathUtils.clamp(b.w + (arms ? dt : -dt) * 4, 0, 1);
     if (b.w > 0) this.aimArms(b);
   }
@@ -435,7 +506,7 @@ export class Crowd {
   }
 
   stats() {
-    const out = { size: this.members.length, present: 0, reacting: 0, standing: 0, near: 0, mid: 0, far: 0, hidden: 0, kinds: {} as Record<string, number> };
+    const out = { size: this.members.length, present: 0, reacting: 0, standing: 0, near: 0, mid: 0, far: 0, hidden: 0, fidgeting: this.fidgeting.size, flagsUp: this.flags?.count ?? 0, kinds: {} as Record<string, number> };
     for (const m of this.members) {
       if (!m.on) continue;
       out.present++;
@@ -449,6 +520,8 @@ export class Crowd {
   drawCalls() {
     let n = 0;
     for (const b of Object.values(this.buckets)) if (b.mesh.count) n++;
+    if (this.blobs?.count) n++;
+    if (this.flags?.count) n++;
     for (const b of this.bodies) if (b.h.group.visible) n += 10;
     return n;
   }
@@ -458,6 +531,7 @@ export class Crowd {
     this.bodies = [];
     for (const b of Object.values(this.buckets)) b.dispose();
     this.blobs?.dispose();
+    if (this.flags) { this.flags.geometry.dispose(); this.flags.dispose(); }
     this.group.removeFromParent();
     LIVE_CROWDS.delete(this);
   }
