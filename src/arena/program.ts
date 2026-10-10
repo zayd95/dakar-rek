@@ -85,13 +85,16 @@ export function fillOrder(n: number, seed = 7): number[] {
 
 // ------------------------------------------------------------------ the show
 
-/** The gala, once the player is seated: entrance of the wrestlers → the bout → the result → the crowd leaves. */
-export const SHOW_PHASES = ['idle', 'filling', 'entrance', 'bout', 'result', 'leaving', 'over'] as const;
+/**
+ * The gala, once the player is seated: the stands fill → the preliminaries (src/arena/undercard.ts) → the main event's
+ * entrance → its bout → the result → the crowd leaves.
+ */
+export const SHOW_PHASES = ['idle', 'filling', 'prelims', 'entrance', 'bout', 'result', 'leaving', 'over'] as const;
 export type ShowPhase = typeof SHOW_PHASES[number];
-/** Seconds each phase lasts (the bout lasts as long as the duel does). */
-export const SHOW = { filling: 3, entrance: 14, result: 7, leaving: 9 } as const;
+/** Seconds of each part of the gala (the bout lasts as long as the duel does); the entrance is a ceremony (two bàkks, src/arena/ceremony.ts CEREMONY.end). */
+export const SHOW = { filling: 3, entrance: 33, result: 7, leaving: 9 } as const;
 export const SHOW_LABEL: Record<ShowPhase, string> = {
-  idle: 'Avant le gala', filling: 'Les tribunes se remplissent', entrance: 'Entrée des lutteurs', bout: 'Combat · lutte sans frappe',
+  idle: 'Avant le gala', filling: 'Les tribunes se remplissent', prelims: 'Préliminaires', entrance: 'Entrée des lutteurs', bout: 'Combat · lutte sans frappe',
   result: 'Résultat', leaving: 'Le public rentre', over: 'Gala terminé',
 };
 

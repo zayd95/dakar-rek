@@ -125,6 +125,12 @@ export const LEXICON: readonly Lex[] = [
   L('ngemb', 'pagne de lutteur', ['lamb', 'word']),
   L('Daan naa', 'j’ai gagné', ['lamb']),
   L('Daan na', 'il a gagné', ['lamb']),
+  // the wrestlers' entrance (src/arena/ceremony.ts): a boast about oneself, a chant, never against anyone
+  L('doole', 'force', ['lamb', 'word']),
+  L('Dama am doole', 'j’ai de la force', ['lamb', 'encourage']),
+  L('gaynde', 'lion', ['lamb', 'word']),
+  L('gox', 'quartier', ['word']),
+  L('Sama gox', 'mon quartier', ['family', 'chat']),
   // Weather and heat
   L('Dafa tàng', 'il fait chaud', ['weather', 'chat']),
   L('Dafa sedd', 'il fait frais', ['weather']),
