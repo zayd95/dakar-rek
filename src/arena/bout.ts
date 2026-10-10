@@ -5,6 +5,7 @@ import type { Input } from '../core/input';
 import type { WrestlerLook } from '../core/types';
 import { rng } from '../core/rng';
 import { pilot, type BoutView } from './program';
+import type { OpponentStyle } from '../lamb/rules';
 
 /** The bout's own time step: fixed, so a bout seeded alike plays out alike on every device (src/arena/together.ts). */
 export const BOUT_STEP = 1 / 60;
@@ -28,11 +29,16 @@ export class WatchedBout {
   private last = '';
   onMoment: (phase: string, info: ReturnType<LambDuel['info']>) => void = () => {};
 
-  constructor(origin: { x: number; z: number }, left: WrestlerLook, seed: number) {
+  /**
+   * `o`: a preliminary's opponent style (with the young wrestler's name) and level, and a shorter round (seconds);
+   * the main event keeps the defaults.
+   */
+  constructor(origin: { x: number; z: number }, left: WrestlerLook, seed: number, o: { style?: OpponentStyle; level?: number; round?: number } = {}) {
     this.rand = rng(seed);
     const steer = this.steer;
     const input = { enabled: false, move: () => ({ x: steer.x, y: steer.y }), takeAction: () => false } as unknown as Input;
-    this.duel = new LambDuel({ origin, look: left, input, crowdSize: 0, mode: 'amical', style: STYLES.rapide, level: 2, ring: 7.6, spectate: true, seed: (seed ^ 0x5bd1e995) >>> 0 });
+    this.duel = new LambDuel({ origin, look: left, input, crowdSize: 0, mode: 'amical', style: o.style ?? STYLES.rapide, level: o.level ?? 2, ring: 7.6, spectate: true, seed: (seed ^ 0x5bd1e995) >>> 0 });
+    if (o.round) this.duel.timeLeft = Math.min(this.duel.timeLeft, o.round);
   }
 
   get group(): THREE.Group { return this.duel.group; }

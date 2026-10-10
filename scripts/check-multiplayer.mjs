@@ -101,9 +101,9 @@ try {
     const seatA = await sitNear(a, centre.x + 15.5, centre.z + 6);
     check('arena: the first player takes a place in the stands', !!seatA, JSON.stringify(seatA));
     // the second one sits down later, once the first one's show is clearly ahead (past the stands filling, a couple of
-    // seconds into the wrestlers' entrance or further): the later one must join the earlier one's show, never by chance
-    const ahead = await a.waitForFunction(() => { const i = window.__dakar.arena.info(); return ['entrance', 'bout', 'result', 'leaving'].includes(i.phase) && (i.phase !== 'entrance' || i.t >= 2); }, null, { timeout: 120000 }).then(() => true).catch(() => false);
-    const aheadAt = await a.evaluate(() => { const i = window.__dakar.arena.info(); return [i.phase, i.t]; });
+    // seconds into the preliminaries or further): the later one must join the earlier one's show, never by chance
+    const ahead = await a.waitForFunction(() => { const i = window.__dakar.arena.info(); return ['prelims', 'entrance', 'bout', 'result', 'leaving'].includes(i.phase) && (i.phase !== 'prelims' || i.prelims.i > 0 || i.t >= 2); }, null, { timeout: 120000 }).then(() => true).catch(() => false);
+    const aheadAt = await a.evaluate(() => { const i = window.__dakar.arena.info(); return [i.phase, i.prelims.i, i.t]; });
     // the second one sees the first seated there (their place held on this device too), then sits beside them
     const heldOnB = await b.waitForFunction(([id, seat]) => window.__dakar.together().held[seat] === id, [ids.a, seatA.id], { timeout: 60000 }).then(() => true).catch(() => false);
     const seatB = await sitNear(b, seatA.x + 0.4, seatA.z - 0.4);
@@ -117,13 +117,17 @@ try {
     let same = null;
     for (const until = Date.now() + 180000; Date.now() < until && !same;) {
       const [ia, ib, tb] = [await a.evaluate(() => window.__dakar.arena.info()), await b.evaluate(() => window.__dakar.arena.info()), await b.evaluate(() => window.__dakar.together())];
-      if (tb.follows >= 1 && ia.phase === ib.phase && ['entrance', 'bout', 'result', 'leaving'].includes(ia.phase) && Math.abs(ia.t - ib.t) < 3) same = { a: [ia.phase, ia.t], b: [ib.phase, ib.t] };
+      // the same phase, the same preliminary when it is one of them (src/arena/undercard.ts), a couple of seconds apart
+      if (tb.follows >= 1 && ia.phase === ib.phase && ['prelims', 'entrance', 'bout', 'result', 'leaving'].includes(ia.phase) && (ia.phase !== 'prelims' || ia.prelims.i === ib.prelims.i) && Math.abs(ia.t - ib.t) < 3)
+        same = { a: [ia.phase, ia.prelims.i, ia.t], b: [ib.phase, ib.prelims.i, ib.t] };
       else await sleep(400);
     }
     const followed = await b.evaluate(() => window.__dakar.together());
     check('arena: the later one joined the earlier one\'s show: same phase and time', ahead && !!same && followed.follows >= 1, JSON.stringify({ aheadAt, same, followed }));
     check('arena: a seated player cheers (stands up, arms up) and the other sees it', await a.evaluate(() => window.__dakar.cheer(5)) && await seen(b, ids.a, 'Celebrate'));
     await b.screenshot({ path: 'shots/multiplayer/desktop-arena-together.png' });
+    // on to the main event (the first one skips the rest of the preliminaries; the second one follows)
+    await a.evaluate(() => { if (['filling', 'prelims'].includes(window.__dakar.arena.info().phase)) window.__dakar.arena.go('entrance'); });
     let result = null;
     for (const until = Date.now() + 240000; Date.now() < until && !result;) {
       const [ra, rb] = [await a.evaluate(() => window.__dakar.arena.info().result), await b.evaluate(() => window.__dakar.arena.info().result)];

@@ -76,6 +76,8 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => /arena:stand/.test(window.__dakar.seated() ?? ''), null, T).catch(() => {});
   await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, LONG).catch(() => {});
+  // the stands fill during the preliminaries (src/arena/undercard.ts): on to the main event's entrance, full stands
+  await d(() => window.__dakar.arena.go('entrance'));
   await page.waitForFunction(() => { const c = window.__dakar.arena.info().crowd; return c.present >= c.cap * 0.9; }, null, LONG).catch(() => {});
   const s1 = await stands(), i1 = await info();
   check(`${label}: seated on a fight evening, the stands are full`, /arena:stand/.test((await d(() => window.__dakar.seated())) ?? '') && s1 && s1.present >= i1.crowd.cap * 0.9 && s1.present > 100, { present: s1?.present, cap: i1.crowd.cap });
@@ -86,15 +88,15 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   check(`${label}: the whole crowd costs a handful of draw calls`, s1b.drawCalls <= 5 + nearWant * 10, { drawCalls: s1b.drawCalls });
   await shot('1-seated');
 
-  /** The show back to its full-stands part (filling → entrance → bout) when it has gone on to the result or the end. */
+  /** The show back to its full-stands part (the main event: entrance → bout) when it has gone on to the result or the end. */
   const fullStands = async () => {
     const ph = (await info()).phase;
-    if (!['filling', 'entrance', 'bout'].includes(ph)) await d(() => window.__dakar.arena.go('filling'));
-    await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return ['filling', 'entrance', 'bout'].includes(i.phase) && i.crowd.present >= i.crowd.cap * 0.9; }, null, LONG).catch(() => {});
+    if (!['entrance', 'bout'].includes(ph)) await d(() => window.__dakar.arena.go('entrance'));
+    await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return ['entrance', 'bout'].includes(i.phase) && i.crowd.present >= i.crowd.cap * 0.9; }, null, LONG).catch(() => {});
   };
 
   // 2. The gala's own moment first (it comes right after the stands fill): a wrestler walks in and his side shouts.
-  if (!['filling', 'entrance'].includes((await info()).phase)) await d(() => window.__dakar.arena.go('filling'));
+  if ((await info()).phase !== 'entrance') await d(() => window.__dakar.arena.go('entrance'));
   await page.waitForFunction(() => (window.__dakar.arena.info().crowd.lod.kinds.shout ?? 0) > 10, null, LONG).catch(() => {});
   const e = await info();
   check(`${label}: a wrestler walks in and his side rises to shout`, (e.crowd.lod.kinds.shout ?? 0) > 10 && e.crowd.cheering > 0, { phase: e.phase, kinds: e.crowd.lod.kinds, level: e.crowd.level });

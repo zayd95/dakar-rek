@@ -80,18 +80,18 @@ export function peopleMoment(phase: ShowPhase, street: Street): PeopleMoment {
 type Who = 'officials' | 'announcer' | 'judges' | 'referee' | 'drummers' | 'warmup' | 'vendors' | 'press' | 'camp' | 'entourage';
 /** Who is there at each moment (pure; tests/arenaPeople.test.ts). The duel brings its own referee for the bout and the result. */
 export const PRESENT: Record<Who, readonly PeopleMoment[]> = {
-  officials: ['setup', 'doors', 'filling', 'entrance', 'bout', 'result', 'leaving'],
-  announcer: ['doors', 'filling', 'entrance', 'bout', 'result'],
-  judges: ['filling', 'entrance', 'bout', 'result'],
+  officials: ['setup', 'doors', 'filling', 'prelims', 'entrance', 'bout', 'result', 'leaving'],
+  announcer: ['doors', 'filling', 'prelims', 'entrance', 'bout', 'result'],
+  judges: ['filling', 'prelims', 'entrance', 'bout', 'result'],
   referee: ['filling', 'entrance'],
-  drummers: ['filling', 'entrance', 'bout', 'result', 'leaving'],
+  drummers: ['filling', 'prelims', 'entrance', 'bout', 'result', 'leaving'],
   /** The first two drummers warm up while the doors are open. */
-  warmup: ['doors', 'filling', 'entrance', 'bout', 'result', 'leaving'],
-  vendors: ['doors', 'filling', 'entrance', 'bout', 'result'],
+  warmup: ['doors', 'filling', 'prelims', 'entrance', 'bout', 'result', 'leaving'],
+  vendors: ['doors', 'filling', 'prelims', 'entrance', 'bout', 'result'],
   /** The press and the cameramen, for the gala. */
-  press: ['doors', 'filling', 'entrance', 'bout', 'result'],
+  press: ['doors', 'filling', 'prelims', 'entrance', 'bout', 'result'],
   /** One helper of each écurie prepares its corner (water, buckets) from the doors. */
-  camp: ['doors', 'filling', 'entrance', 'bout', 'result', 'leaving'],
+  camp: ['doors', 'filling', 'prelims', 'entrance', 'bout', 'result', 'leaving'],
   /** They come in with their wrestler. */
   entourage: ['entrance', 'bout', 'result', 'leaving'],
 };

@@ -43,8 +43,9 @@ describe('fight night people: who is there when', () => {
     for (const p of ['filling', 'entrance', 'bout', 'result', 'leaving'] as ShowPhase[]) expect(peopleMoment(p, 'doors')).toBe(p);
   });
   it('the officials are there from the set-up, the judges for the show, the referee until the duel brings its own', () => {
-    expect(PRESENT.officials).toContain('setup'); expect(PRESENT.judges).toEqual(['filling', 'entrance', 'bout', 'result']);
+    expect(PRESENT.officials).toContain('setup'); expect(PRESENT.judges).toEqual(['filling', 'prelims', 'entrance', 'bout', 'result']);
     expect(PRESENT.referee).not.toContain('bout'); expect(PRESENT.referee).not.toContain('result');
+    expect(PRESENT.referee).not.toContain('prelims'); expect(PRESENT.entourage).not.toContain('prelims');      // the preliminaries' duels bring their referee; no entourage
     expect(PRESENT.warmup).toContain('doors'); expect(PRESENT.drummers).not.toContain('doors');            // two drummers warm up first
     expect(PRESENT.entourage).toEqual(['entrance', 'bout', 'result', 'leaving']);                          // they come in with their wrestler
     expect(PRESENT.camp).toContain('doors');                                                               // a helper readies each corner

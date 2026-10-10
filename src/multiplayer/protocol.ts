@@ -16,26 +16,30 @@ export interface Move {
   arena?: ArenaPresence;
 }
 /** The arena show's phases, in order (src/arena/program.ts ShowPhase), as sent in `arena.p`. */
-export const ARENA_PHASES = ['idle', 'filling', 'entrance', 'bout', 'result', 'leaving', 'over'] as const;
+export const ARENA_PHASES = ['idle', 'filling', 'prelims', 'entrance', 'bout', 'result', 'leaving', 'over'] as const;
+/** Preliminary bouts of an evening at most (src/arena/undercard.ts PRELIM_COUNT), as sent in `arena.i`. */
+export const ARENA_PRELIMS = 6;
 /** How a bout ended (src/lamb/duel.ts outcomes), as sent in `arena.o`. */
 export const ARENA_OUTCOMES = ['projection', 'decision', 'egalite', 'abandon'] as const;
 /**
  * A player's arena evening, so that friends inside the arena watch one bout: the city day `d`, the show's phase `p`
- * (index in ARENA_PHASES) and its time `t` in seconds, and once known the result: `w` 0 = no winner, 1 = the left
+ * (index in ARENA_PHASES) and its time `t` in seconds (during the preliminaries: `i`, which one, 0-based, and the time
+ * within it), and once known the main event's result: `w` 0 = no winner, 1 = the left
  * wrestler, 2 = the right one; `o` the outcome (index in ARENA_OUTCOMES). Display only — no money, record or reward
  * depends on it; each client aligns itself (server-authoritative timing comes later).
  */
-export interface ArenaPresence { d: number; p: number; t: number; w?: number; o?: number }
+export interface ArenaPresence { d: number; p: number; t: number; i?: number; w?: number; o?: number }
 const int = (v: unknown, lo: number, hi: number) => typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
 /** The `arena` field, or null when it is malformed (the whole move is then refused). */
 export function parseArena(value: unknown): ArenaPresence | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const v = value as Record<string, unknown>;
-  if (Object.keys(v).some(k => !['d', 'p', 't', 'w', 'o'].includes(k))) return null;
+  if (Object.keys(v).some(k => !['d', 'p', 't', 'i', 'w', 'o'].includes(k))) return null;
   if (!int(v.d, 1, 1_000_000) || !int(v.p, 0, ARENA_PHASES.length - 1) || typeof v.t !== 'number' || !Number.isFinite(v.t) || v.t < 0 || v.t > 900) return null;
+  if (v.i !== undefined && !int(v.i, 0, ARENA_PRELIMS - 1)) return null;
   if (v.w !== undefined && !int(v.w, 0, 2)) return null;
   if (v.o !== undefined && !int(v.o, 0, ARENA_OUTCOMES.length - 1)) return null;
-  return { d: v.d as number, p: v.p as number, t: Math.round((v.t as number) * 10) / 10, ...(v.w !== undefined ? { w: v.w as number } : {}), ...(v.o !== undefined ? { o: v.o as number } : {}) };
+  return { d: v.d as number, p: v.p as number, t: Math.round((v.t as number) * 10) / 10, ...(v.i !== undefined ? { i: v.i as number } : {}), ...(v.w !== undefined ? { w: v.w as number } : {}), ...(v.o !== undefined ? { o: v.o as number } : {}) };
 }
 /** Optional fields gameplay modules add to the player's presence (GameModule.presence), each validated in parseMove. */
 export type PresenceExtras = Pick<Move, 'arena'>;
