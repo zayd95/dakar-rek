@@ -1,0 +1,132 @@
+[
+  {
+    "name": "desktop: normal evening (jeudi 18 h): quiet outside the arena",
+    "ok": true,
+    "detail": "{\"event\":false,\"present\":0,\"vendors\":0}"
+  },
+  {
+    "name": "desktop: fight evening (samedi 18 h): the exterior comes alive",
+    "ok": true,
+    "detail": "{\"present\":33,\"drawn\":33,\"queue\":10,\"fans\":20,\"still\":13,\"quality\":\"high\"}"
+  },
+  {
+    "name": "desktop: density follows the graphics quality (high)",
+    "ok": true,
+    "detail": "20 fans"
+  },
+  {
+    "name": "desktop: vendors sell drinks, peanuts and brochettes, écurie scarves and flags, water (prices shown)",
+    "ok": true,
+    "detail": "Bissap glacé · 300, Café Touba · 150 | Cornet d’arachides grillées · 200, Brochettes · 1000 | Écharpe Baobab · 2000, Drapeau Baobab · 1500, Écharpe Teranga · 2000, Drapeau Teranga · 1500 | Sachet d’eau fraîche · 50"
+  },
+  {
+    "name": "desktop: the queue keeps moving through the gate (fans arrive, others go in)",
+    "ok": true,
+    "detail": "queue 10 → 10"
+  },
+  {
+    "name": "desktop: at the gate, the arena's entry is still the action",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:arena\",\"name\":\"Arène · làmb\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Arène · làmb\",\"all\":[\"Arène · làmb\",\"Faire son entrée\",\"Préparation avant le combat\",\"S’asseoir dans les tribunes\",\"Combat amical (non classé)\",\"Combat classé\"]}"
+  },
+  {
+    "name": "desktop: at « Bissap et café Touba », the first offer is Bissap glacé",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:arena-out:boissons:stall\",\"name\":\"Bissap et café Touba · Ndèye\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Bissap glacé\",\"all\":[\"Bissap glacé\",\"Café Touba\"]}"
+  },
+  {
+    "name": "desktop: Bissap glacé paid once (−300 F) and counted",
+    "ok": true,
+    "detail": "10000 → 9700, count 0 → 1"
+  },
+  {
+    "name": "desktop: at « Écharpes et drapeaux des écuries », the first offer is Écharpe Baobab",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:arena-out:supporters:stall\",\"name\":\"Écharpes et drapeaux des écuries · Aliou\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Écharpe Baobab\",\"all\":[\"Écharpe Baobab\",\"Drapeau Baobab\",\"Écharpe Teranga\",\"Drapeau Teranga\"]}"
+  },
+  {
+    "name": "desktop: Écharpe Baobab paid once (−2000 F) and counted",
+    "ok": true,
+    "detail": "9700 → 7700, count 1 → 2"
+  },
+  {
+    "name": "desktop: the Baobab scarf is in the inventory",
+    "ok": true,
+    "detail": "{\"echarpe_baobab\":1}"
+  },
+  {
+    "name": "desktop: back to a normal evening, quiet again",
+    "ok": true,
+    "detail": "{\"present\":0,\"drawn\":0,\"vendors\":0}"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: normal evening (jeudi 18 h): quiet outside the arena",
+    "ok": true,
+    "detail": "{\"event\":false,\"present\":0,\"vendors\":0}"
+  },
+  {
+    "name": "phone: fight evening (samedi 18 h): the exterior comes alive",
+    "ok": true,
+    "detail": "{\"present\":33,\"drawn\":33,\"queue\":10,\"fans\":20,\"still\":13,\"quality\":\"high\"}"
+  },
+  {
+    "name": "phone: density follows the graphics quality (high)",
+    "ok": true,
+    "detail": "20 fans"
+  },
+  {
+    "name": "phone: vendors sell drinks, peanuts and brochettes, écurie scarves and flags, water (prices shown)",
+    "ok": true,
+    "detail": "Bissap glacé · 300, Café Touba · 150 | Cornet d’arachides grillées · 200, Brochettes · 1000 | Écharpe Baobab · 2000, Drapeau Baobab · 1500, Écharpe Teranga · 2000, Drapeau Teranga · 1500 | Sachet d’eau fraîche · 50"
+  },
+  {
+    "name": "phone: the queue keeps moving through the gate (fans arrive, others go in)",
+    "ok": true,
+    "detail": "queue 10 → 10"
+  },
+  {
+    "name": "phone: at the gate, the arena's entry is still the action",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:arena\",\"name\":\"Arène · làmb\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Arène · làmb\",\"all\":[\"Arène · làmb\",\"Faire son entrée\",\"Préparation avant le combat\",\"S’asseoir dans les tribunes\",\"Combat amical (non classé)\",\"Combat classé\"]}"
+  },
+  {
+    "name": "phone: at « Bissap et café Touba », the first offer is Bissap glacé",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:arena-out:boissons:stall\",\"name\":\"Bissap et café Touba · Ndèye\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Bissap glacé\",\"all\":[\"Bissap glacé\",\"Café Touba\"]}"
+  },
+  {
+    "name": "phone: Bissap glacé paid once (−300 F) and counted",
+    "ok": true,
+    "detail": "10000 → 9700, count 0 → 1"
+  },
+  {
+    "name": "phone: at « Écharpes et drapeaux des écuries », the first offer is Écharpe Baobab",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:arena-out:supporters:stall\",\"name\":\"Écharpes et drapeaux des écuries · Aliou\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Écharpe Baobab\",\"all\":[\"Écharpe Baobab\",\"Drapeau Baobab\",\"Écharpe Teranga\",\"Drapeau Teranga\"]}"
+  },
+  {
+    "name": "phone: Écharpe Baobab paid once (−2000 F) and counted",
+    "ok": true,
+    "detail": "9700 → 7700, count 1 → 2"
+  },
+  {
+    "name": "phone: the Baobab scarf is in the inventory",
+    "ok": true,
+    "detail": "{\"echarpe_baobab\":1}"
+  },
+  {
+    "name": "phone: back to a normal evening, quiet again",
+    "ok": true,
+    "detail": "{\"present\":0,\"drawn\":0,\"vendors\":0}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

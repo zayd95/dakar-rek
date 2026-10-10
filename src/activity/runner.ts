@@ -28,6 +28,8 @@ export interface ActivityServices extends EffectHooks {
   sit(seat: Seat): boolean;
   /** Hold a clip on the player's body (null = back to normal). */
   clip(c: Clip | null): void;
+  /** Get the player up from their seat (out of bed after sleeping). */
+  stand?(): void;
   /** Movement lock while a timed step runs. */
   busy(on: boolean): void;
   progress(on: boolean, pct?: number, label?: string): void;
@@ -99,7 +101,7 @@ export class ActivityRunner {
     const c = this.cur; if (!c) return;
     this.cur = null;
     c.abort?.(); c.abort = undefined;
-    this.s.progress(false); this.s.busy(false); this.s.clip(this.seatPose());
+    this.s.progress(false); this.s.busy(false); this.wakeUp(c.spec); this.s.clip(this.seatPose());
     if (reason) this.s.toast(reason);
     this.onEnd(c.spec, false);
   }
@@ -146,7 +148,7 @@ export class ActivityRunner {
 
   private finish() {
     const c = this.cur!; this.cur = null;
-    this.s.progress(false); this.s.busy(false); this.s.clip(this.seatPose());
+    this.s.progress(false); this.s.busy(false); this.wakeUp(c.spec); this.s.clip(this.seatPose());
     if (!c.spec.quiet || c.notes.length) this.s.toast([c.spec.label + ' ✓', ...c.notes].join('  '));
     this.s.save();
     this.onEnd(c.spec, true);
@@ -156,6 +158,9 @@ export class ActivityRunner {
   private duration(step: Step): number {
     return step.gesture && !this.s.gesture ? (step.seconds ?? 3) : (step.seconds ?? 0);
   }
+
+  /** Sleeping ends out of bed, whether the night was finished or stopped: the player gets up beside it. */
+  private wakeUp(spec: ActivitySpec) { if (this.s.seated() && spec.steps.some(st => st.primitive === 'sleep')) this.s.stand?.(); }
 
   /** Back to the seat's own pose (Sit, Kneel on a prayer row…) or to normal when standing. */
   private seatPose(): Clip | null { const s = this.s.seated(); return s ? seatClip(s) : null; }

@@ -130,7 +130,8 @@ export const TYPE_LABEL: Record<FurnitureType, string> = {
   chair: 'Chaises et fauteuils', sofa: 'Canapés', bed: 'Lits', table: 'Tables', tv: 'Télés', radio: 'Musique', rug: 'Tapis', mirror: 'Miroirs',
   plant: 'Plantes', lamp: 'Lampes', wardrobe: 'Rangements', mattress: 'Literie', desk: 'Bureaux', kitchen: 'Cuisine',
 };
-export interface FurnitureSeat { x: number; z: number; top: number; yaw: number; kind: SeatKind }
+/** A place on a piece: `top` is the surface height; `clip` the pose held there (default Sit; beds: Lie, along the bed). */
+export interface FurnitureSeat { x: number; z: number; top: number; yaw: number; kind: SeatKind; clip?: 'Lie' }
 export interface FurnitureUse {
   id: string; label: string; seconds: number; needs: Partial<Needs>; counter?: string;
   /** Paid at the start (the ingredients of a meal cooked at home). */
@@ -169,7 +170,8 @@ const F = (x: Omit<FurnitureSpec, 'kind' | 'shop'> & { shop?: FurnitureSpec['sho
 const chairSeat = (top: number): FurnitureSeat[] => [{ x: 0, z: 0.04, top, yaw: 0, kind: 'chair' }];
 const sofaSeats = (n: number, len: number, top: number): FurnitureSeat[] =>
   Array.from({ length: n }, (_, i) => ({ x: n === 1 ? 0 : (i / (n - 1) - 0.5) * (len - 0.7), z: 0.08, top, yaw: 0, kind: 'sofa' as SeatKind }));
-const bedSeat = (w: number, top: number): FurnitureSeat[] => [{ x: w / 2 - 0.3, z: 0.1, top, yaw: Math.PI / 2, kind: 'bed' }];
+/** Lying along the bed: hips at the middle of the mattress, head on the pillow (−z), feet toward +z (`w` kept for the footprint). */
+const bedSeat = (_w: number, top: number): FurnitureSeat[] => [{ x: 0, z: 0.02, top, yaw: 0, kind: 'bed', clip: 'Lie' }];
 const L = ECONOMY.furniture;
 /** The starter pieces (first economy lane): same ids, prices and effects, sold at the quincaillerie and at Keur Meubles. */
 export const STARTER_FURNITURE = ['miroir', 'tapis', 'chaises', 'radio', 'matelas', 'tele'];

@@ -99,6 +99,18 @@ try {
       ws.addEventListener('error', () => { clearTimeout(timer); reject(new Error('WebSocket error')); }, { once: true });
     });
   }
+  // held poses travel: a player lying on a bed, sitting on a mat, kneeling or riding is drawn so; anything else is refused
+  const fatou = await connect({ hub: 'pikine', name: 'Fatou' });
+  for (const clip of ['Lie', 'SitFloor', 'Kneel', 'Ride']) {
+    fatou.ws.send(JSON.stringify({ type: 'move', x: -4, y: 0.62, z: -24, yaw: 0, speed: 0, space: 'street', clip }));
+    const seen = await b.waitForFunction(c => { const p = window.__dakar.presence(); return p.peers.some(x => x.name === 'Fatou' && x.clip === c) && Object.values(p.poses).includes(c); }, clip, { timeout: 30000 }).then(() => true).catch(() => false);
+    check(`remote pose shown: ${clip}`, seen, JSON.stringify(await b.evaluate(() => window.__dakar.presence().poses)));
+    if (clip === 'Lie') await b.screenshot({ path: 'shots/multiplayer/desktop-remote-lying.png' });
+  }
+  const refused = new Promise(resolve => fatou.ws.addEventListener('close', e => resolve(e.code), { once: true }));
+  fatou.ws.send(JSON.stringify({ type: 'move', x: -4, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Fall_Back' }));
+  check('server refuses a pose outside the list', await refused === 1008);
+  await b.waitForFunction(() => !window.__dakar.presence().peers.some(x => x.name === 'Fatou'), null, { timeout: 30000 }).catch(() => {});
   const joined = await Promise.all(Array.from({ length: 25 }, (_, i) => connect({ hub: 'pikine', name: `Guest ${i}` })));
   check('full room automatically opens another group', joined.some(s => s.welcome.room === 2) && joined.every(s => s.welcome.count <= 24));
   const invalid = joined.at(-1).ws;
