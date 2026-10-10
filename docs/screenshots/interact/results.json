@@ -1,0 +1,382 @@
+[
+  {
+    "name": "desktop: the hub has free street seats",
+    "ok": true,
+    "detail": "pikine:bench:0:0"
+  },
+  {
+    "name": "desktop: walking up to a bench focuses it with « S’asseoir »",
+    "ok": true,
+    "detail": "{\"id\":\"seat:pikine:bench:0:0\",\"name\":\"Banc\",\"kind\":\"seat\",\"space\":\"street\",\"primary\":\"S’asseoir\",\"all\":[\"S’asseoir\"]}"
+  },
+  {
+    "name": "desktop: a diegetic prompt floats above the seat",
+    "ok": true,
+    "detail": "🪑S’asseoirE"
+  },
+  {
+    "name": "desktop: the action sits the character on the bench",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:bench:0:0\",\"y\":0.09999999999999998,\"clip\":\"Sit\",\"focus\":{\"id\":\"self\",\"name\":\"Assis\",\"kind\":\"self\",\"space\":\"street\",\"primary\":\"Se lever\",\"all\":[\"Se lever\"]}}"
+  },
+  {
+    "name": "desktop: while seated the main action is « Se lever »",
+    "ok": true,
+    "detail": "{\"id\":\"self\",\"name\":\"Assis\",\"kind\":\"self\",\"space\":\"street\",\"primary\":\"Se lever\",\"all\":[\"Se lever\"]}"
+  },
+  {
+    "name": "desktop: moving stands up",
+    "ok": true,
+    "detail": "{\"seated\":null,\"clip\":\"Idle\",\"pos\":{\"x\":-99.15,\"y\":0.1,\"z\":-33.8,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}}"
+  },
+  {
+    "name": "desktop: walking up to a person offers « Saluer » and « Demander son nom »",
+    "ok": true,
+    "detail": "{\"id\":\"person:placed:0\",\"name\":\"Passant\",\"kind\":\"person\",\"space\":\"street\",\"primary\":\"Saluer\",\"all\":[\"Saluer\",\"Demander son nom\"]}"
+  },
+  {
+    "name": "desktop: greeting gets an answer",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: a place stays focused at its counter, with its own actions listed",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:city:mall-juice\",\"name\":\"Jus & Go\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Jus & Go\",\"all\":[\"Jus & Go\",\"Jus de bouye frais\",\"Bissap et sandwich\"]}"
+  },
+  {
+    "name": "desktop: « ⋯ » opens the target's actions with their icons",
+    "ok": true,
+    "detail": "👋Jus & Go | 🍽️Jus de bouye frais−500 F | 🍽️Bissap et sandwichServi à table, à l’ombre−1 000 F | Fermer"
+  },
+  {
+    "name": "desktop: the Maïga front offers « Entrer » and its meals",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:maiga:31\",\"name\":\"Maïga du marché\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Maïga du marché\",\"all\":[\"Maïga du marché\",\"Entrer\",\"Riz au poisson\",\"Mafé\",\"Livraisons Tiak Tiak\"]}"
+  },
+  {
+    "name": "desktop: the Maïga has seats (bench and chairs)",
+    "ok": true,
+    "detail": "5 seats"
+  },
+  {
+    "name": "desktop: sitting on the Maïga bench",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:maiga:bench:0\",\"clip\":\"Sit\"}"
+  },
+  {
+    "name": "desktop: ordering pays at the counter, then the plate is prepared",
+    "ok": true,
+    "detail": "{\"a\":{\"id\":\"riz\",\"step\":\"Préparation\",\"index\":0,\"t\":0.1,\"seconds\":2},\"wallet\":2500,\"seated\":null,\"btn\":\"✋ ArrêterPréparation\"}"
+  },
+  {
+    "name": "desktop: then the character sits at a free seat to eat",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:maiga:bench:2\",\"clip\":\"Sit\"}"
+  },
+  {
+    "name": "desktop: the meal feeds the character, who stays seated (« Se lever »)",
+    "ok": true,
+    "detail": "{\"faim\":69.80489333333335,\"seated\":\"pikine:maiga:bench:2\",\"meals\":1,\"focus\":\"Se lever\"}"
+  },
+  {
+    "name": "desktop: plateau: street seats (benches, stools, dibiterie, eatery fronts) never turn their back to a table",
+    "ok": true,
+    "detail": "45 seats, 16 with a plate spot "
+  },
+  {
+    "name": "desktop: corniche: street seats (benches, stools, dibiterie, eatery fronts) never turn their back to a table",
+    "ok": true,
+    "detail": "35 seats, 16 with a plate spot "
+  },
+  {
+    "name": "desktop: almadies: street seats (benches, stools, dibiterie, eatery fronts) never turn their back to a table",
+    "ok": true,
+    "detail": "36 seats, 16 with a plate spot "
+  },
+  {
+    "name": "desktop: pikine: street seats (benches, stools, dibiterie, eatery fronts) never turn their back to a table",
+    "ok": true,
+    "detail": "48 seats, 16 with a plate spot "
+  },
+  {
+    "name": "desktop: gargote: every chair faces its table",
+    "ok": true,
+    "detail": "10 seats "
+  },
+  {
+    "name": "desktop: gargote: after the plate is ready the character walks to a free seat",
+    "ok": true,
+    "detail": "{\"seat\":\"pikine:gargote:chair:2\",\"leg\":0,\"legs\":2,\"settle\":-1,\"x\":1079.44,\"z\":-1.23}"
+  },
+  {
+    "name": "desktop: gargote: seated facing the table, the ceebu in front",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:gargote:chair:2\",\"clip\":\"Sit\",\"seat\":{\"id\":\"pikine:gargote:chair:2\",\"x\":1078.89,\"z\":0.6,\"top\":0.53,\"yaw\":1.5707963267948966,\"kind\":\"chair\",\"occupant\":\"player\",\"table\":{\"x\":1079.45,\"y\":0.89,\"z\":0.6}},\"meal\":{\"prop\":\"ceebu\",\"x\":1079.45,\"y\":0.89,\"z\":0.6,\"bites\":0,\"lifting\":false},\"walked\":null}"
+  },
+  {
+    "name": "desktop: gargote: fed, still seated, the plate cleared",
+    "ok": true,
+    "detail": "{\"faim\":64.80088533333335,\"seated\":\"pikine:gargote:chair:2\",\"meal\":null,\"focus\":\"Se lever\"}"
+  },
+  {
+    "name": "desktop: gargote front (from the street): after the plate is ready the character walks to a free seat",
+    "ok": true,
+    "detail": "{\"seat\":\"pikine:gargote:32:bench:1:0\",\"leg\":0,\"legs\":2,\"settle\":-1,\"x\":77.91,\"z\":54.6}"
+  },
+  {
+    "name": "desktop: gargote front (from the street): seated facing the table, the ceebu in front",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:gargote:32:bench:1:0\",\"clip\":\"Sit\",\"seat\":{\"id\":\"pikine:gargote:32:bench:1:0\",\"x\":77.6,\"z\":55.7,\"top\":0.5700000000000001,\"yaw\":0,\"kind\":\"bench\",\"occupant\":\"player\",\"table\":{\"x\":77.6,\"y\":0.77,\"z\":56.25}},\"meal\":{\"prop\":\"ceebu\",\"x\":77.6,\"y\":0.77,\"z\":56.25,\"bites\":0,\"lifting\":false},\"walked\":null}"
+  },
+  {
+    "name": "desktop: gargote front (from the street): fed, still seated, the plate cleared",
+    "ok": true,
+    "detail": "{\"faim\":64.81466400000002,\"seated\":\"pikine:gargote:32:bench:1:0\",\"meal\":null,\"focus\":\"Se lever\"}"
+  },
+  {
+    "name": "desktop: dibiterie: after the plate is ready the character walks to a free seat",
+    "ok": true,
+    "detail": "{\"seat\":\"pikine:dibiterie:11:chair:23\",\"leg\":0,\"legs\":2,\"settle\":-1,\"x\":-18.12,\"z\":-49.41}"
+  },
+  {
+    "name": "desktop: dibiterie: seated facing the table, the dibi in front",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:dibiterie:11:chair:23\",\"clip\":\"Sit\",\"seat\":{\"id\":\"pikine:dibiterie:11:chair:23\",\"x\":-18.4,\"z\":-48.45,\"top\":0.61,\"yaw\":-1.5707963267948966,\"kind\":\"chair\",\"occupant\":\"player\",\"table\":{\"x\":-18.9,\"y\":0.88,\"z\":-48.650000000000006}},\"meal\":{\"prop\":\"dibi\",\"x\":-18.9,\"y\":0.88,\"z\":-48.65,\"bites\":0,\"lifting\":false},\"walked\":null}"
+  },
+  {
+    "name": "desktop: dibiterie: fed, still seated, the plate cleared",
+    "ok": true,
+    "detail": "{\"faim\":74.78622400000002,\"seated\":\"pikine:dibiterie:11:chair:23\",\"meal\":null,\"focus\":\"Se lever\"}"
+  },
+  {
+    "name": "desktop: fish market: after the plate is ready the character walks to a free seat",
+    "ok": true,
+    "detail": "{\"seat\":\"corniche:eat:0:0\",\"leg\":0,\"legs\":2,\"settle\":-1,\"x\":-98.03,\"z\":98.63}"
+  },
+  {
+    "name": "desktop: fish market: seated facing the table, the poisson in front",
+    "ok": true,
+    "detail": "{\"id\":\"corniche:eat:0:0\",\"clip\":\"Sit\",\"seat\":{\"id\":\"corniche:eat:0:0\",\"x\":-98.5,\"z\":101.75,\"top\":0.5700000000000001,\"yaw\":0,\"kind\":\"bench\",\"occupant\":\"player\",\"table\":{\"x\":-98.5,\"y\":0.77,\"z\":102.35}},\"meal\":{\"prop\":\"poisson\",\"x\":-98.5,\"y\":0.77,\"z\":102.35,\"bites\":0,\"lifting\":false},\"walked\":null}"
+  },
+  {
+    "name": "desktop: fish market: fed, still seated, the plate cleared",
+    "ok": true,
+    "detail": "{\"faim\":61.75733333333336,\"seated\":\"corniche:eat:0:0\",\"meal\":null,\"focus\":\"Se lever\"}"
+  },
+  {
+    "name": "desktop: « Se faire coiffer » is done seated",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:salon-chair\",\"clip\":\"Sit\",\"a\":{\"id\":\"coiffure\",\"step\":\"Se faire coiffer\",\"index\":0,\"t\":0,\"seconds\":4}}"
+  },
+  {
+    "name": "desktop: « Se poser à l’ombre » is done seated",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:bench:35:0\",\"clip\":\"Sit\",\"a\":{\"id\":\"banc\",\"step\":\"Se poser à l’ombre\",\"index\":0,\"t\":0,\"seconds\":4}}"
+  },
+  {
+    "name": "desktop: « Dormir » lies down on the bed",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:home:bed\",\"lying\":1,\"y\":0.79,\"a\":{\"id\":\"dormir\",\"step\":\"Dormir\",\"index\":0,\"t\":0,\"seconds\":5}}"
+  },
+  {
+    "name": "desktop: getting up from the bed stands on the floor",
+    "ok": true,
+    "detail": "{\"lying\":0,\"y\":0.1,\"seated\":null}"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: the hub has free street seats",
+    "ok": true,
+    "detail": "pikine:bench:0:0"
+  },
+  {
+    "name": "phone: walking up to a bench focuses it with « S’asseoir »",
+    "ok": true,
+    "detail": "{\"id\":\"seat:pikine:bench:0:0\",\"name\":\"Banc\",\"kind\":\"seat\",\"space\":\"street\",\"primary\":\"S’asseoir\",\"all\":[\"S’asseoir\"]}"
+  },
+  {
+    "name": "phone: a diegetic prompt floats above the seat",
+    "ok": true,
+    "detail": "🪑S’asseoirE"
+  },
+  {
+    "name": "phone: the action sits the character on the bench",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:bench:0:0\",\"y\":0.09999999999999998,\"clip\":\"Sit\",\"focus\":{\"id\":\"self\",\"name\":\"Assis\",\"kind\":\"self\",\"space\":\"street\",\"primary\":\"Se lever\",\"all\":[\"Se lever\"]}}"
+  },
+  {
+    "name": "phone: while seated the main action is « Se lever »",
+    "ok": true,
+    "detail": "{\"id\":\"self\",\"name\":\"Assis\",\"kind\":\"self\",\"space\":\"street\",\"primary\":\"Se lever\",\"all\":[\"Se lever\"]}"
+  },
+  {
+    "name": "phone: « Se lever » stands up",
+    "ok": true,
+    "detail": "{\"seated\":null,\"clip\":\"Idle\",\"pos\":{\"x\":-99.15,\"y\":0.1,\"z\":-33.8,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}}"
+  },
+  {
+    "name": "phone: walking up to a person offers « Saluer » and « Demander son nom »",
+    "ok": true,
+    "detail": "{\"id\":\"person:placed:0\",\"name\":\"Passant\",\"kind\":\"person\",\"space\":\"street\",\"primary\":\"Saluer\",\"all\":[\"Saluer\",\"Demander son nom\"]}"
+  },
+  {
+    "name": "phone: greeting gets an answer",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: a place stays focused at its counter, with its own actions listed",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:city:mall-juice\",\"name\":\"Jus & Go\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Jus & Go\",\"all\":[\"Jus & Go\",\"Jus de bouye frais\",\"Bissap et sandwich\"]}"
+  },
+  {
+    "name": "phone: « ⋯ » opens the target's actions with their icons",
+    "ok": true,
+    "detail": "👋Jus & Go | 🍽️Jus de bouye frais−500 F | 🍽️Bissap et sandwichServi à table, à l’ombre−1 000 F | Fermer"
+  },
+  {
+    "name": "phone: the Maïga front offers « Entrer » and its meals",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:maiga:31\",\"name\":\"Maïga du marché\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Maïga du marché\",\"all\":[\"Maïga du marché\",\"Entrer\",\"Riz au poisson\",\"Mafé\",\"Livraisons Tiak Tiak\"]}"
+  },
+  {
+    "name": "phone: the Maïga has seats (bench and chairs)",
+    "ok": true,
+    "detail": "5 seats"
+  },
+  {
+    "name": "phone: sitting on the Maïga bench",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:maiga:bench:0\",\"clip\":\"Idle\"}"
+  },
+  {
+    "name": "phone: ordering pays at the counter, then the plate is prepared",
+    "ok": true,
+    "detail": "{\"a\":{\"id\":\"riz\",\"step\":\"Préparation\",\"index\":0,\"t\":0.1,\"seconds\":2},\"wallet\":2500,\"seated\":null,\"btn\":\"✋ ArrêterPréparation\"}"
+  },
+  {
+    "name": "phone: then the character sits at a free seat to eat",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:maiga:bench:2\",\"clip\":\"Sit\"}"
+  },
+  {
+    "name": "phone: the meal feeds the character, who stays seated (« Se lever »)",
+    "ok": true,
+    "detail": "{\"faim\":69.80977866666669,\"seated\":\"pikine:maiga:bench:2\",\"meals\":1,\"focus\":\"Se lever\"}"
+  },
+  {
+    "name": "phone: plateau: street seats (benches, stools, dibiterie, eatery fronts) never turn their back to a table",
+    "ok": true,
+    "detail": "45 seats, 16 with a plate spot "
+  },
+  {
+    "name": "phone: corniche: street seats (benches, stools, dibiterie, eatery fronts) never turn their back to a table",
+    "ok": true,
+    "detail": "35 seats, 16 with a plate spot "
+  },
+  {
+    "name": "phone: almadies: street seats (benches, stools, dibiterie, eatery fronts) never turn their back to a table",
+    "ok": true,
+    "detail": "36 seats, 16 with a plate spot "
+  },
+  {
+    "name": "phone: pikine: street seats (benches, stools, dibiterie, eatery fronts) never turn their back to a table",
+    "ok": true,
+    "detail": "48 seats, 16 with a plate spot "
+  },
+  {
+    "name": "phone: gargote: every chair faces its table",
+    "ok": true,
+    "detail": "10 seats "
+  },
+  {
+    "name": "phone: gargote: after the plate is ready the character walks to a free seat",
+    "ok": true,
+    "detail": "{\"seat\":\"pikine:gargote:chair:2\",\"leg\":0,\"legs\":2,\"settle\":-1,\"x\":1079.44,\"z\":-1.23}"
+  },
+  {
+    "name": "phone: gargote: seated facing the table, the ceebu in front",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:gargote:chair:2\",\"clip\":\"Sit\",\"seat\":{\"id\":\"pikine:gargote:chair:2\",\"x\":1078.89,\"z\":0.6,\"top\":0.53,\"yaw\":1.5707963267948966,\"kind\":\"chair\",\"occupant\":\"player\",\"table\":{\"x\":1079.45,\"y\":0.89,\"z\":0.6}},\"meal\":{\"prop\":\"ceebu\",\"x\":1079.45,\"y\":0.89,\"z\":0.6,\"bites\":0,\"lifting\":false},\"walked\":null}"
+  },
+  {
+    "name": "phone: gargote: fed, still seated, the plate cleared",
+    "ok": true,
+    "detail": "{\"faim\":64.80222133333335,\"seated\":\"pikine:gargote:chair:2\",\"meal\":null,\"focus\":\"Se lever\"}"
+  },
+  {
+    "name": "phone: gargote front (from the street): after the plate is ready the character walks to a free seat",
+    "ok": true,
+    "detail": "{\"seat\":\"pikine:gargote:32:bench:1:0\",\"leg\":0,\"legs\":2,\"settle\":-1,\"x\":77.91,\"z\":54.6}"
+  },
+  {
+    "name": "phone: gargote front (from the street): seated facing the table, the ceebu in front",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:gargote:32:bench:1:0\",\"clip\":\"Sit\",\"seat\":{\"id\":\"pikine:gargote:32:bench:1:0\",\"x\":77.6,\"z\":55.7,\"top\":0.5700000000000001,\"yaw\":0,\"kind\":\"bench\",\"occupant\":\"player\",\"table\":{\"x\":77.6,\"y\":0.77,\"z\":56.25}},\"meal\":{\"prop\":\"ceebu\",\"x\":77.6,\"y\":0.77,\"z\":56.25,\"bites\":0,\"lifting\":false},\"walked\":null}"
+  },
+  {
+    "name": "phone: gargote front (from the street): fed, still seated, the plate cleared",
+    "ok": true,
+    "detail": "{\"faim\":64.81511466666669,\"seated\":\"pikine:gargote:32:bench:1:0\",\"meal\":null,\"focus\":\"Se lever\"}"
+  },
+  {
+    "name": "phone: dibiterie: after the plate is ready the character walks to a free seat",
+    "ok": true,
+    "detail": "{\"seat\":\"pikine:dibiterie:11:chair:23\",\"leg\":0,\"legs\":2,\"settle\":-1,\"x\":-18.12,\"z\":-49.41}"
+  },
+  {
+    "name": "phone: dibiterie: seated facing the table, the dibi in front",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:dibiterie:11:chair:23\",\"clip\":\"Sit\",\"seat\":{\"id\":\"pikine:dibiterie:11:chair:23\",\"x\":-18.4,\"z\":-48.45,\"top\":0.61,\"yaw\":-1.5707963267948966,\"kind\":\"chair\",\"occupant\":\"player\",\"table\":{\"x\":-18.9,\"y\":0.88,\"z\":-48.650000000000006}},\"meal\":{\"prop\":\"dibi\",\"x\":-18.9,\"y\":0.88,\"z\":-48.65,\"bites\":0,\"lifting\":false},\"walked\":null}"
+  },
+  {
+    "name": "phone: dibiterie: fed, still seated, the plate cleared",
+    "ok": true,
+    "detail": "{\"faim\":74.78666666666669,\"seated\":\"pikine:dibiterie:11:chair:23\",\"meal\":null,\"focus\":\"Se lever\"}"
+  },
+  {
+    "name": "phone: fish market: after the plate is ready the character walks to a free seat",
+    "ok": true,
+    "detail": "{\"seat\":\"corniche:eat:0:0\",\"leg\":0,\"legs\":2,\"settle\":-1,\"x\":-98.03,\"z\":98.63}"
+  },
+  {
+    "name": "phone: fish market: seated facing the table, the poisson in front",
+    "ok": true,
+    "detail": "{\"id\":\"corniche:eat:0:0\",\"clip\":\"Sit\",\"seat\":{\"id\":\"corniche:eat:0:0\",\"x\":-98.5,\"z\":101.75,\"top\":0.5700000000000001,\"yaw\":0,\"kind\":\"bench\",\"occupant\":\"player\",\"table\":{\"x\":-98.5,\"y\":0.77,\"z\":102.35}},\"meal\":{\"prop\":\"poisson\",\"x\":-98.5,\"y\":0.77,\"z\":102.35,\"bites\":0,\"lifting\":false},\"walked\":null}"
+  },
+  {
+    "name": "phone: fish market: fed, still seated, the plate cleared",
+    "ok": true,
+    "detail": "{\"faim\":61.75733333333336,\"seated\":\"corniche:eat:0:0\",\"meal\":null,\"focus\":\"Se lever\"}"
+  },
+  {
+    "name": "phone: « Se faire coiffer » is done seated",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:salon-chair\",\"clip\":\"Sit\",\"a\":{\"id\":\"coiffure\",\"step\":\"Se faire coiffer\",\"index\":0,\"t\":0,\"seconds\":4}}"
+  },
+  {
+    "name": "phone: « Se poser à l’ombre » is done seated",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:bench:35:0\",\"clip\":\"Sit\",\"a\":{\"id\":\"banc\",\"step\":\"Se poser à l’ombre\",\"index\":0,\"t\":0,\"seconds\":4}}"
+  },
+  {
+    "name": "phone: « Dormir » lies down on the bed",
+    "ok": true,
+    "detail": "{\"seated\":\"pikine:home:bed\",\"lying\":1,\"y\":0.79,\"a\":{\"id\":\"dormir\",\"step\":\"Dormir\",\"index\":0,\"t\":0,\"seconds\":5}}"
+  },
+  {
+    "name": "phone: getting up from the bed stands on the floor",
+    "ok": true,
+    "detail": "{\"lying\":0,\"y\":0.1,\"seated\":null}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

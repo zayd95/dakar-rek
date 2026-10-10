@@ -1,0 +1,337 @@
+[
+  {
+    "name": "desktop: ☰ opens the phone on the home screen",
+    "ok": true,
+    "detail": "{\"open\":true,\"screen\":\"home\",\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
+  },
+  {
+    "name": "desktop: status bar shows city time, home widget the FCFA balance",
+    "ok": true,
+    "detail": "03:22 4G | 💰 Solde 3 000 F"
+  },
+  {
+    "name": "desktop: hook apps shown only with their module",
+    "ok": true,
+    "detail": "quartier,travail,maison,habitants,arene,actus,sante,profil,horloge,meteo,calcul,aide,portefeuille,carte,carnet,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"maison\":true,\"habitants\":true}"
+  },
+  {
+    "name": "desktop: no movement while the phone is open",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: app portefeuille opens",
+    "ok": true,
+    "detail": "Portefeuille"
+  },
+  {
+    "name": "desktop: app carte opens",
+    "ok": true,
+    "detail": "Carte et déplacements"
+  },
+  {
+    "name": "desktop: app arene opens",
+    "ok": true,
+    "detail": "Arène"
+  },
+  {
+    "name": "desktop: app carnet opens",
+    "ok": true,
+    "detail": "Carnet"
+  },
+  {
+    "name": "desktop: app actus opens",
+    "ok": true,
+    "detail": "Actus · Dakar"
+  },
+  {
+    "name": "desktop: app sante opens",
+    "ok": true,
+    "detail": "Santé"
+  },
+  {
+    "name": "desktop: app profil opens",
+    "ok": true,
+    "detail": "Profil"
+  },
+  {
+    "name": "desktop: app horloge opens",
+    "ok": true,
+    "detail": "Horloge"
+  },
+  {
+    "name": "desktop: app meteo opens",
+    "ok": true,
+    "detail": "Météo"
+  },
+  {
+    "name": "desktop: app calcul opens",
+    "ok": true,
+    "detail": "Calculatrice"
+  },
+  {
+    "name": "desktop: app aide opens",
+    "ok": true,
+    "detail": "Aide"
+  },
+  {
+    "name": "desktop: app reglages opens",
+    "ok": true,
+    "detail": "Réglages"
+  },
+  {
+    "name": "desktop: map highlights the current hub and its places",
+    "ok": true,
+    "detail": "{\"here\":\"pikine\",\"hubs\":4}"
+  },
+  {
+    "name": "desktop: wallet shows game money and the ledger",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: back returns to the previous screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: sound toggles off and on (saved)",
+    "ok": true,
+    "detail": "[{\"i\":true,\"s\":\"off\"},{\"i\":false,\"s\":\"on\"}]"
+  },
+  {
+    "name": "desktop: camera sensitivity setting",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: new game asks for confirmation",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: save now",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: Escape closes the phone, then W moves the player",
+    "ok": true,
+    "detail": "moved 0.56"
+  },
+  {
+    "name": "desktop: M reopens on the last app",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: quality change inside the room keeps the player inside",
+    "ok": true,
+    "detail": "{\"x\":\"1001.1\",\"q\":\"medium\"}"
+  },
+  {
+    "name": "desktop: exit still leads to the street after the change",
+    "ok": true,
+    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\"}"
+  },
+  {
+    "name": "desktop: Messages tile closes the phone and calls its hook",
+    "ok": true,
+    "detail": "{\"msg\":1,\"open\":false,\"mode\":\"play\"}"
+  },
+  {
+    "name": "desktop: ledger and arena profile hooks are shown",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: __dakar.journal() opens the Carnet",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: Escape closes the Carnet",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop: new game after confirmation starts from a fresh save",
+    "ok": true,
+    "detail": "wallet 3000"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: ☰ opens the phone on the home screen",
+    "ok": true,
+    "detail": "{\"open\":true,\"screen\":\"home\",\"muted\":false,\"sensitivity\":1,\"quality\":\"low\",\"mode\":\"menu\"}"
+  },
+  {
+    "name": "phone: status bar shows city time, home widget the FCFA balance",
+    "ok": true,
+    "detail": "06:56 4G | 💰 Solde 3 000 F"
+  },
+  {
+    "name": "phone: hook apps shown only with their module",
+    "ok": true,
+    "detail": "quartier,travail,maison,habitants,arene,actus,sante,profil,horloge,meteo,calcul,aide,portefeuille,carte,carnet,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"maison\":true,\"habitants\":true}"
+  },
+  {
+    "name": "phone: no movement while the phone is open",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: app portefeuille opens",
+    "ok": true,
+    "detail": "Portefeuille"
+  },
+  {
+    "name": "phone: app carte opens",
+    "ok": true,
+    "detail": "Carte et déplacements"
+  },
+  {
+    "name": "phone: app arene opens",
+    "ok": true,
+    "detail": "Arène"
+  },
+  {
+    "name": "phone: app carnet opens",
+    "ok": true,
+    "detail": "Carnet"
+  },
+  {
+    "name": "phone: app actus opens",
+    "ok": true,
+    "detail": "Actus · Dakar"
+  },
+  {
+    "name": "phone: app sante opens",
+    "ok": true,
+    "detail": "Santé"
+  },
+  {
+    "name": "phone: app profil opens",
+    "ok": true,
+    "detail": "Profil"
+  },
+  {
+    "name": "phone: app horloge opens",
+    "ok": true,
+    "detail": "Horloge"
+  },
+  {
+    "name": "phone: app meteo opens",
+    "ok": true,
+    "detail": "Météo"
+  },
+  {
+    "name": "phone: app calcul opens",
+    "ok": true,
+    "detail": "Calculatrice"
+  },
+  {
+    "name": "phone: app aide opens",
+    "ok": true,
+    "detail": "Aide"
+  },
+  {
+    "name": "phone: app reglages opens",
+    "ok": true,
+    "detail": "Réglages"
+  },
+  {
+    "name": "phone: map highlights the current hub and its places",
+    "ok": true,
+    "detail": "{\"here\":\"pikine\",\"hubs\":4}"
+  },
+  {
+    "name": "phone: wallet shows game money and the ledger",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: back returns to the previous screen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: sound toggles off and on (saved)",
+    "ok": true,
+    "detail": "[{\"i\":true,\"s\":\"off\"},{\"i\":false,\"s\":\"on\"}]"
+  },
+  {
+    "name": "phone: camera sensitivity setting",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: new game asks for confirmation",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: save now",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: Escape closes the phone, then W moves the player",
+    "ok": true,
+    "detail": "moved 1.12"
+  },
+  {
+    "name": "phone: M reopens on the last app",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: quality change inside the room keeps the player inside",
+    "ok": true,
+    "detail": "{\"x\":\"1001.1\",\"q\":\"medium\"}"
+  },
+  {
+    "name": "phone: exit still leads to the street after the change",
+    "ok": true,
+    "detail": "{\"x\":-42,\"y\":0.1,\"z\":-54.5,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Ma chambre\"}"
+  },
+  {
+    "name": "phone: Messages tile closes the phone and calls its hook",
+    "ok": true,
+    "detail": "{\"msg\":1,\"open\":false,\"mode\":\"play\"}"
+  },
+  {
+    "name": "phone: ledger and arena profile hooks are shown",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: __dakar.journal() opens the Carnet",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: Escape closes the Carnet",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: opening the phone releases a held joystick",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: landscape device fits the screen",
+    "ok": true,
+    "detail": "{\"x\":22.71820068359375,\"y\":31.921005249023438,\"width\":693.1104736328125,\"height\":382.89234924316406}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

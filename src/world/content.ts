@@ -1,21 +1,38 @@
 import type { Action } from './types';
 import type { HubId } from '../core/types';
+import { order } from '../activity/primitives';
+import type { Primitive, SeatPick } from '../activity/types';
 
 const flag = (f: string) => (s: { data: { flags: string[] } }) => s.data.flags.includes(f);
 const noFlag = (f: string) => (s: { data: { flags: string[] } }) => !s.data.flags.includes(f);
 const FRIEND_FLAG: Record<string, string> = { pikine: 'mame_helped', plateau: 'fatou_friend' };
 const friendHere = (s: { data: { flags: string[]; hub: string } }) => !!FRIEND_FLAG[s.data.hub] && s.data.flags.includes(FRIEND_FLAG[s.data.hub]);
 const tired = (n: number) => (s: { data: { needs: { energie: number } } }) => (s.data.needs.energie < n ? 'Trop fatigué' : null);
+/**
+ * A dish or a drink served at the table: pay, it is prepared, the player walks to a free seat, sits and eats (the plate
+ * shows in front of them), and stays seated. Same steps everywhere (src/activity/primitives.ts `order`).
+ */
+export const served = (a: Omit<Action, 'steps' | 'seconds'> & { cost: number; prep?: number; eat?: number; drink?: boolean; prop?: string }): Action => {
+  const { prep = 2, eat = 4, drink, prop, ...rest } = a;
+  return { ...rest, seconds: prep + eat, steps: order({ id: a.id, label: a.label, price: a.cost, prep, eat, drink, prop: prop ?? a.id, needs: a.needs ?? {} }).steps };
+};
+
+/**
+ * An action done on a seat — a bench in the shade, the TV from the chair, the hairdresser's chair, sleep on the bed: the
+ * universal runner walks the player there, sits (or lies) them down, then applies the action's needs and counter.
+ */
+export const onSeat = (a: Action, seat: SeatPick, primitive: Primitive = 'sit'): Action =>
+  ({ ...a, steps: [{ label: a.label, primitive, seconds: a.seconds, seat, effects: { needs: a.needs, counters: a.counter ? { [a.counter]: 1 } : undefined } }] });
 
 export const ACTIONS: Record<string, Action[]> = {
   gargote: [
-    { id: 'ceebu', label: 'Ceebu jën', detail: 'Le plat du jour', cost: 1000, needs: { faim: 45, moral: 4 }, seconds: 3, counter: 'meals' },
-    { id: 'ami', label: 'Ceebu jën à prix d’ami', detail: 'On se souvient de ton aide', cost: 600, needs: { faim: 45, moral: 8, social: 4 }, seconds: 3, counter: 'meals', visible: friendHere },
-    { id: 'yassa', label: 'Yassa poulet', detail: 'Bien copieux', cost: 1500, needs: { faim: 60, moral: 6 }, seconds: 3, counter: 'meals' },
+    served({ id: 'ceebu', label: 'Ceebu jën', detail: 'Le plat du jour · servi à table', cost: 1000, needs: { faim: 45, moral: 4 }, counter: 'meals' }),
+    served({ id: 'ami', label: 'Ceebu jën à prix d’ami', detail: 'On se souvient de ton aide · servi à table', cost: 600, needs: { faim: 45, moral: 8, social: 4 }, counter: 'meals', visible: friendHere, prop: 'ceebu' }),
+    served({ id: 'yassa', label: 'Yassa poulet', detail: 'Bien copieux · servi à table', cost: 1500, needs: { faim: 60, moral: 6 }, counter: 'meals' }),
   ],
   restaurant: [
-    { id: 'poisson', label: 'Poisson grillé', detail: 'Face à l’océan', cost: 3500, needs: { faim: 55, moral: 12, social: 4 }, seconds: 3, counter: 'meals' },
-    { id: 'jus', label: 'Jus de bissap', cost: 800, needs: { faim: 8, moral: 8 }, seconds: 2 },
+    served({ id: 'poisson', label: 'Poisson grillé', detail: 'Face à l’océan · servi à table', cost: 3500, needs: { faim: 55, moral: 12, social: 4 }, counter: 'meals', prep: 3 }),
+    served({ id: 'jus', label: 'Jus de bissap', cost: 800, needs: { faim: 8, moral: 8 }, drink: true, prep: 1, eat: 2, prop: 'bissap' }),
   ],
   cafe: [
     { id: 'touba', label: 'Café Touba', detail: 'Épicé, bien serré', cost: 100, needs: { faim: 3, energie: 6, moral: 6, social: 2 }, seconds: 1.5, counter: 'cafes' },
@@ -42,20 +59,35 @@ export const ACTIONS: Record<string, Action[]> = {
   ],
   ecurie: [
     { id: 'entrainement', label: 'Entraînement avec l’écurie', detail: 'Échauffement, prises, sparring · Lutte +1', needs: { energie: -24, hygiene: -14, faim: -10, moral: 6 }, seconds: 0, counter: 'lutte', special: 'training', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Parle d’abord à Coach Ablaye' : s.data.needs.energie < 24 ? 'Trop fatigué' : null) },
-    { id: 'tenue', label: 'Tenue de lutte (ngemb, accessoires)', detail: 'Cosmétique uniquement · brouillon à valider', seconds: 0, special: 'outfit' },
-    { id: 'mbakkou', label: 'Mbakkou (danse)', detail: 'Emotes · mouvements provisoires à valider', seconds: 0, special: 'emote' },
+    { id: 'combat_entrainement', label: 'Entraînement guidé au combat (Coach Ablaye)', detail: 'Bouger, garde, saisie, empoignade, dégagement · non classé', seconds: 0, special: 'combat_entrainement', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Parle d’abord à Coach Ablaye' : s.data.needs.energie < 12 ? 'Trop fatigué' : null) },
+    { id: 'tenue', label: 'Tenue de lutte (ngemb, accessoires)', detail: 'Cosmétique uniquement', seconds: 0, special: 'outfit' },
+    { id: 'mbakkou', label: 'Mbakkou (danse)', detail: 'Danses de lutteur', seconds: 0, special: 'emote' },
   ],
   arena: [
-    { id: 'entree', label: 'Faire son entrée', detail: 'Entourage, sabar, foule · séquence provisoire', seconds: 0, special: 'entrance', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : null) },
-    { id: 'preparation', label: 'Préparation avant le combat', detail: 'Gestes provisoires, à valider', seconds: 0, special: 'prep', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : null) },
+    { id: 'entree', label: 'Faire son entrée', detail: 'Entourage, sabar, foule', seconds: 0, special: 'entrance', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : null) },
+    { id: 'preparation', label: 'Préparation avant le combat', detail: 'Gestes avant le combat', seconds: 0, special: 'prep', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : null) },
     { id: 'regarder', label: 'S’asseoir dans les tribunes', detail: 'Ambiance et sabar', needs: { social: 10, moral: 8 }, seconds: 0, special: 'watch' },
-    { id: 'combat', label: 'Combattre un adversaire', seconds: 0, requires: () => 'Bientôt : règles à valider (lutte simple ou avec frappe)' },
+    { id: 'combat', label: 'Combat amical (non classé)', detail: 'Lutte sans frappe · choisis ton adversaire', seconds: 0, special: 'combat', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : s.data.needs.energie < 20 ? 'Trop fatigué' : null) },
+    { id: 'combat_classe', label: 'Combat classé', detail: 'Lutte sans frappe · adversaire selon ton classement', seconds: 0, special: 'combat_classe', requires: s => (!s.data.flags.includes('ecurie_baobab') ? 'Il faut une écurie (Coach Ablaye)' : !(s.data.counters.lamb_skill ?? 0) ? 'Termine d’abord l’entraînement guidé à l’écurie' : s.data.needs.energie < 20 ? 'Trop fatigué' : null) },
+  ],
+  maiga: [
+    // Composed with the universal primitives: pay → the plate is prepared → sit on a free bench or chair → eat.
+    served({ id: 'riz', label: 'Riz au poisson', detail: 'Le moins cher du quartier · servi à table', cost: 500, needs: { faim: 40, moral: 2 }, counter: 'meals' }),
+    served({ id: 'mafe', label: 'Mafé', detail: 'Servi à table', cost: 700, needs: { faim: 45, moral: 4 }, counter: 'meals' }),
+  ],
+  dibiterie: [
+    served({ id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois, oignons et moutarde · servi à table', cost: 2000, needs: { faim: 55, moral: 10, social: 4 }, counter: 'meals', prep: 3 }),
+    { id: 'brochettes', label: 'Brochettes à emporter', cost: 1000, needs: { faim: 28, moral: 4 }, seconds: 2, counter: 'meals' },
+    onSeat({ id: 'attendre', label: 'S’asseoir sur le banc', detail: 'Regarder la rue, discuter', needs: { social: 8, moral: 4 }, seconds: 3 }, { kind: 'bench' }),
   ],
   ibou: [
     { id: 'parler', label: 'Discuter avec Tonton Ibou', needs: { social: 10, moral: 4 }, seconds: 3, counter: 'chats' },
     { id: 'attaya', label: 'Boire l’attaya ensemble', detail: '200 F le thé', cost: 200, needs: { social: 14, moral: 8 }, seconds: 4, counter: 'chats' },
   ],
 };
+
+/** Door action on enterable places (home, gargote): opens the walkable interior. */
+export const ENTER: Action = { id: 'entrer', label: 'Entrer', detail: 'Visiter l’intérieur', seconds: 0, special: 'enter' };
 
 export interface TravelLeg { cost: number; minutes: number }
 const legs: Record<string, TravelLeg> = {

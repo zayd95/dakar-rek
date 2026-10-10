@@ -6,21 +6,29 @@ export class Input {
   actionPressed = false;
   menuPressed = false;
   enabled = true;
+  private mouseDragging = false;
 
   constructor(el: HTMLElement) {
     addEventListener('keydown', e => {
+      if (e.code !== 'Escape' && e.target instanceof HTMLElement && e.target.closest('input,textarea,select,[contenteditable="true"]')) return;
       if (e.repeat) return;
       this.keys.add(e.code);
       if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') this.actionPressed = true;
       if (e.code === 'Escape' || e.code === 'KeyM') this.menuPressed = true;
     });
     addEventListener('keyup', e => this.keys.delete(e.code));
-    addEventListener('blur', () => this.keys.clear());
+    addEventListener('blur', () => this.reset());
+    addEventListener('visibilitychange', () => { if (document.hidden) this.reset(); });
+    addEventListener('focusin', e => { if (e.target instanceof HTMLElement && e.target.closest('input,textarea,select,[contenteditable="true"]')) this.reset(); });
     // Mouse drag rotates the camera.
-    let dragging = false;
-    el.addEventListener('mousedown', e => { dragging = true; e.preventDefault(); });
-    addEventListener('mouseup', () => (dragging = false));
-    addEventListener('mousemove', e => { if (dragging) { this.dragYaw -= e.movementX * 0.005; this.dragPitch += e.movementY * 0.003; } });
+    el.addEventListener('mousedown', e => { if (e.button !== 0 || !this.enabled) return; this.mouseDragging = true; e.preventDefault(); });
+    addEventListener('mouseup', () => (this.mouseDragging = false));
+    addEventListener('mousemove', e => { if (this.mouseDragging) { this.dragYaw -= e.movementX * 0.005; this.dragPitch += e.movementY * 0.003; } });
+  }
+
+  reset() {
+    this.keys.clear(); this.joy = { x: 0, y: 0 }; this.mouseDragging = false;
+    this.dragYaw = this.dragPitch = 0; this.actionPressed = this.menuPressed = false;
   }
 
   /** Movement vector in screen space: x right, y forward. Magnitude <= 1. */
@@ -36,7 +44,9 @@ export class Input {
     return l > 1 ? { x: x / l, y: y / l } : { x, y };
   }
   rotateKey(): number { return (this.keys.has('KeyQ') ? 1 : 0) - (this.keys.has('KeyR') ? 1 : 0); }
-  takeDrag() { const d = { yaw: this.dragYaw, pitch: this.dragPitch }; this.dragYaw = 0; this.dragPitch = 0; return d; }
+  /** Camera drag sensitivity (phone › Réglages): scales mouse and touch drags. */
+  sensitivity = 1;
+  takeDrag() { const d = { yaw: this.dragYaw * this.sensitivity, pitch: this.dragPitch * this.sensitivity }; this.dragYaw = 0; this.dragPitch = 0; return d; }
   takeAction() { const a = this.actionPressed; this.actionPressed = false; return a; }
   takeMenu() { const a = this.menuPressed; this.menuPressed = false; return a; }
 }

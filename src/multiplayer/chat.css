@@ -1,0 +1,65 @@
+#chatBtn { position:absolute; top:114px; right:10px; min-height:40px; padding:9px 12px; color:#e2e8f0; font:600 12px var(--font); cursor:pointer; display:flex; align-items:center; gap:5px; }
+#chatBtn:not([data-state="online"]) { color:#94a3b8; }
+#chatBtn[aria-expanded="true"] { border-color:var(--gold); }
+.chat-badge { font-style:normal; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:#ef4444; color:#fff; font:700 11px/18px var(--font); text-align:center; }
+.chat-badge:empty { display:none; }
+
+#chatPanel { position:absolute; right:10px; top:var(--chat-top, 162px); width:min(360px, calc(100vw - 20px)); max-height:max(260px, calc(100vh - var(--chat-top, 162px) - 110px - var(--kb, 0px)));
+  display:none; flex-direction:column; padding:8px; background:rgba(15,23,42,.88); color:#fff; font:13px var(--font); touch-action:pan-y; z-index:5; }
+#chatPanel.on { display:flex; }
+#chatPanel [hidden] { display:none !important; }
+.chat-head { display:flex; gap:6px; align-items:center; }
+.chat-tabs { display:flex; gap:4px; flex:1; }
+.chat-tabs button { flex:1; display:flex; align-items:center; justify-content:center; gap:4px; padding:8px 6px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:#cbd5e1; font:600 12.5px var(--font); cursor:pointer; }
+.chat-tabs button small { font-weight:500; color:#94a3b8; }
+.chat-tabs button.on { background:var(--gold); color:#1f2937; border-color:var(--gold); }
+.chat-tabs button.on small { color:#374151; }
+.chat-close { width:36px; height:36px; border-radius:10px; border:1px solid var(--line); background:transparent; color:#e2e8f0; font:400 22px/1 var(--font); cursor:pointer; flex:none; }
+.chat-banner { margin:6px 2px 0; font-size:11.5px; color:#94a3b8; }
+.chat-banner[data-state="offline"] { color:#fbbf24; }
+.chat-peer { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:6px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+.chat-back { width:32px; height:32px; border-radius:9px; border:1px solid var(--line); background:transparent; color:#fff; font:600 20px/1 var(--font); cursor:pointer; }
+.chat-peer-name { flex:1; min-width:90px; }
+.chat-peer-name b { display:block; font-size:14px; color:#6ee7b7; overflow-wrap:anywhere; }
+.chat-peer-name small { color:#94a3b8; font-size:11px; }
+.chat-actions { display:flex; gap:4px; }
+.chat-actions button, .chat-report-box button { padding:7px 9px; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:#e2e8f0; font:600 12px var(--font); cursor:pointer; }
+.chat-actions button.on { border-color:#f87171; color:#fecaca; }
+.chat-actions .chat-report.on { border-color:var(--gold); color:#fde68a; }
+.chat-report-box { flex-basis:100%; display:flex; flex-wrap:wrap; gap:4px; }
+.chat-report-box p { flex-basis:100%; margin:2px 0; color:#cbd5e1; font-size:11.5px; }
+.chat-log { list-style:none; margin:6px 0 0; padding:0 2px; overflow-y:auto; flex:1 1 auto; min-height:80px; overscroll-behavior:contain; user-select:text; -webkit-user-select:text; }
+.chat-log li { margin:0 0 7px; padding:6px 9px; border-radius:11px; background:rgba(255,255,255,.07); max-width:88%; }
+.chat-log li.mine { margin-left:auto; background:rgba(251,191,36,.16); }
+.chat-log li[data-status="failed"] { background:rgba(248,113,113,.16); }
+.chat-log li.chat-empty, .chat-people .chat-empty { background:none; color:#94a3b8; font-size:12px; max-width:none; }
+.chat-meta { font-size:11px; color:#94a3b8; }
+.chat-author { padding:0; border:0; background:none; color:#6ee7b7; font:700 11.5px var(--font); cursor:pointer; text-decoration:underline dotted; }
+b.chat-author { color:#fde68a; text-decoration:none; cursor:default; }
+.chat-text { margin:2px 0 0; font-size:14px; line-height:1.35; overflow-wrap:anywhere; white-space:pre-wrap; }
+.chat-status { display:block; margin-top:2px; font-size:10.5px; color:#94a3b8; text-align:right; }
+li[data-status="failed"] .chat-status { color:#fca5a5; }
+.chat-retry { margin-left:6px; padding:3px 8px; border-radius:8px; border:1px solid #fca5a5; background:transparent; color:#fecaca; font:600 11px var(--font); cursor:pointer; }
+.chat-people { overflow-y:auto; margin-top:6px; flex:1 1 auto; min-height:60px; }
+.chat-person-open { display:flex; align-items:center; gap:8px; width:100%; margin-bottom:5px; padding:10px 11px; border-radius:11px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:#fff; font:inherit; text-align:left; cursor:pointer; }
+.chat-person-open b { flex:1; color:#6ee7b7; overflow-wrap:anywhere; }
+.chat-person-open small { color:#94a3b8; font-size:11px; }
+.chat-compose { margin-top:6px; }
+.chat-react { display:flex; gap:4px; margin-bottom:6px; }
+.chat-react button { flex:1; padding:5px 0; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.06); font-size:17px; cursor:pointer; }
+.chat-row { display:flex; gap:6px; }
+#chatInput { flex:1; min-width:0; padding:10px 11px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.08); color:#fff; font:16px var(--font); user-select:text; -webkit-user-select:text; touch-action:auto; }
+#chatInput:focus { outline:2px solid rgba(251,191,36,.7); outline-offset:0; }
+.chat-send { padding:0 13px; border-radius:10px; border:0; background:var(--gold); color:#1f2937; font:800 13px var(--font); cursor:pointer; }
+.chat-count, .chat-note { display:block; font-size:10.5px; color:#94a3b8; margin-top:3px; }
+.chat-count:empty, .chat-note:empty { display:none; }
+.chat-note { color:#fbbf24; }
+
+/* Phone portrait: bottom sheet that rides above the on-screen keyboard. */
+@media (max-width:640px) and (orientation:portrait) {
+  #chatPanel { left:8px; right:8px; width:auto; top:auto; bottom:calc(8px + var(--kb, 0px) + env(safe-area-inset-bottom)); max-height:min(54vh, calc(100vh - var(--kb, 0px) - 120px)); }
+}
+/* Phone landscape: side panel on the full height. */
+@media (max-height:500px) and (orientation:landscape) {
+  #chatPanel { top:8px; bottom:calc(8px + var(--kb, 0px)); width:min(380px, 56vw); max-height:none; }
+}
