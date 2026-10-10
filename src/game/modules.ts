@@ -70,7 +70,8 @@ export interface GameCtx {
   mode(): GameMode;
   /** 'menu' and 'busy' lock movement; 'play' gives it back. */
   setMode(m: GameMode): void;
-  menu(title: string, subtitle: string, items: MenuItem[]): void;
+  /** Bottom sheet of choices; `extraHtml` (trusted markup built by the module) goes between the subtitle and the list. */
+  menu(title: string, subtitle: string, items: MenuItem[], extraHtml?: string): void;
   /**
    * The next-step place to walk to, in the current hub (way-finding marker and goal compass, src/ui/worldMarkers.ts):
    * the walking destination when one is set, else the person of the suggested story beat, else (first job) the nearest
