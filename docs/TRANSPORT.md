@@ -51,7 +51,7 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
 | `stops.ts` | Stop placement on the pavement (slides along the kerb when a wall or stall is in the way), merged street furniture (2 draw calls per hub), people waiting / boarding / getting off. |
 | `trip.ts` | `TripLogic`: wait → board → ride → request → alight, as pure logic. |
 | `camera.ts` | `PassengerCamera`: anchor views, smoothing relative to the vehicle (no lag), heading easing, drag, wall pull-in. |
-| `module.ts` | The `GameModule`: lines per hub, `stop` places, targets (door of a standing car, ride controls), boarding / alighting, ride card, debug API. |
+| `module.ts` | The `GameModule`: lines per hub, `stop` places (registered only while the line runs: Ligne 23's day stops step aside on fight evenings for the 23s, so a stop is never listed twice), targets (door of a standing car, ride controls), boarding / alighting, ride card, debug API. |
 | `ui.ts`, `transport.css` | The ride card (line number, state, next stop and countdown, stop requested). |
 
 ### Shared contracts touched (small, generic, documented)

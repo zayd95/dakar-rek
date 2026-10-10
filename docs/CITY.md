@@ -46,6 +46,31 @@ evening first, then the city's everyday density. No new map.
   gate road, so no trip is blocked; the decorative traffic takes another way (`trafficClosures.more`), and the scene is
   solid for a player driving or walking. The same events for everyone (the city day and the hub seed them).
 
+## The city at night
+
+`src/city/night.ts` draws it, `src/city/nightRules.ts` decides it (pure, `tests/night.test.ts`). It follows the sky's
+darkness (`nightOf(daylight(hour))`, the ramp main.ts already uses for the lamps and facades) and the shared clock, so
+everyone sees the same lamps out and the same floodlights on. Off indoors.
+
+- **Street lamps.** The hub's warm light pools and bulbs (`src/world/builder.ts`, one merged mesh each) get a colour
+  per lamp: a soft halo round each working bulb (one point-sprite draw call), each lamp its own warmth, about one in
+  fourteen out (dark pool, dim bulb) and one in twenty flickering (stutters and short cut-outs on its own rhythm). The
+  lamps on the way to the arena gate are all on and those round the arena brighter. No real lights.
+- **Vehicles.** Every kit vehicle under `ctx.extra` (traffic, car rapides, taxis, motos, the fight-evening flows, the
+  player's own) that moved in the last 20 s shows warm headlights and red tail lights (one point-sprite draw call for
+  up to 72 vehicles within 140 m; the kit's own lamp emissives light up as before). Parked ones stay dark. The sprites
+  are placed in `scene.onBeforeRender`, after the traffic moved, so they never trail the car.
+- **The arena.** From the doors (17 h) to just after the close (23 h 30), once dusk falls (from about 17 h 45, full
+  by 18 h 15): the four masts' heads blaze, faint beams fall onto the ring, a haze glows over the walls (seen from the
+  street round the arena) and the ring is washed in light. One real `SpotLight` (`arena_spot`, made once at start so
+  no material recompiles; not on the low setting) lights the ring and the stands; four draw calls for the rest.
+- **Shops and kiosks.** The stocked shops of the city (`userData.shop` with an open front) show a warm lit room behind
+  the front (inside faces of a box, additive) and a pool of light on the pavement; the kiosks, gargotes, cafés,
+  restaurants and the Dibi glow at their counter while they are open (`LEGACY_TAGS` hours: the cafés go dark at 22 h,
+  the Dibi stays lit until 2 h). The shops' sign glow is unchanged. Three draw calls.
+- **Budget.** About nine draw calls in all (fewer by day: everything hides), one real light. Debug:
+  `__dakar.night.info()`, `__dakar.night.force(night, hour?)` (null to follow the clock).
+
 ## Contracts touched
 
 - `GameCtx.travel(dest, at?, label?)`: go to another hub with a short fade; the caller charges any fare.
@@ -62,20 +87,26 @@ evening first, then the city's everyday density. No new map.
   `transport.served(stopId)` — whether the stop is served now (Ligne 23's day stops are not on fight evenings).
 - Groups under `ctx.extra` (draw-call breakdown): `arena_streets` (fight-evening vehicles, fans, parked cars),
   `weather` (`wet_roads`, `puddles`, `rain`), `street_vendors`, `road_events`, `taxi:rank` (sign), `taxi:waiting` and
-  `vehicle:<hub>:taxi:*` (taxis). Every humanoid added here is a `humanoid_v2` under `ctx.extra`, so the shared crowd
+  `vehicle:<hub>:taxi:*` (taxis), `night_lamps`, `night_vehicles`, `night_arena`, `night_shops` (the night; the light
+  `arena_spot` is on the scene). Every humanoid added here is a `humanoid_v2` under `ctx.extra`, so the shared crowd
   budget (`src/actors/crowdLod.ts` ForeignBodies) covers them.
 
 ## Checks
 
 - Unit: `tests/taxi.test.ts` (sides, fares, kerb spots, routes out and in, open lane paths, the evening line never
   crosses the queue), `tests/city.test.ts` (arena rush curves, card vs gala, fuller cars, weather days, showers and
-  drying, rain on the street, road events off everyone's routes and at fitting hours, vendors' hours).
+  drying, rain on the street, road events off everyone's routes and at fitting hours, vendors' hours),
+  `tests/night.test.ts` (lamps out and flickering, the floodlights' window on the clock, vehicle lights, shop washes,
+  kiosk hours; the module on the real Pikine hub: groups, draw calls, one light, all off by day).
 - Browser (run by the integrator's queue): `scripts/check-taxi.mjs` — 26/26 desktop + phone on 7cba20c; `scripts/check-city.mjs`
   — 25/26 on 7cba20c (one desktop drop-off missed after a long frame, fixed in 7b9aaac: a taxi now stops at the kerb
   even when a frame carries it past). Then: `scripts/check-taxi.mjs` (evening line and its Arène stop, no car through the queue, the rank, fare shown and
   paid once, the ride out, the front-seat view, into Almadies, out at Ngor, reload mid-ride), `scripts/check-city.mjs`
   (drop-offs and fans, vehicles on the road, parked cars, the evening line, draw calls at the peak, pick-ups after the
   bouts, an ordinary morning, a shower and the wet streets after it, a coffee from a vendor, today's road event).
+  `scripts/check-night.mjs` (not run yet: the floodlights on after dark and off by day, the spot light, lamps out and
+  flickering, lit shops and open kiosks, moving vehicles' lights, the night's draw calls, a street at night in the
+  quality's budget; screenshots from the street to the arena, the ring, a street).
 
 ## Not yet
 
@@ -83,3 +114,5 @@ evening first, then the city's everyday density. No new map.
 - No police interaction (a checkpoint is scenery that closes the road to the decorative traffic).
 - Taxis are for the player only (no NPC passengers seen getting in at the ranks); no clando shared rides yet.
 - Traffic lights do not exist, so vendors do not walk between cars at a red light.
+- At night the headlights are glowing sprites: they throw no light on the road ahead, and the lamps light the ground
+  only through their painted pools (no per-lamp real lights, by budget).
