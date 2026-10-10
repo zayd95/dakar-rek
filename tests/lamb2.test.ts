@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AVERAGE, STAND, STAND_STYLES, STRIKES, clinchStrength2, decide, free, k, land, react, reactDelay, standState, startStrike, tick, windupOf,
+  AVERAGE, STAND, STAND_STYLES, STRIKES, decide, free, k, land, react, reactDelay, standState, startStrike, tick, windupOf,
   type StandState,
 } from '../src/lamb/stand';
 import { RULES, points, emptyScore } from '../src/lamb/rules';
+import { ENTRY_BONUS, clinchPower, entryGrip, gripWords } from '../src/lamb/clinch';
 
 const fresh = (attrs = AVERAGE) => standState(attrs, 100);
 /** Runs `s` until its strike reaches the landing moment (returns the seconds it took). */
@@ -138,9 +139,10 @@ describe('làmb 2.0 · states over time', () => {
     expect(a.recover).toBeGreaterThan(0);
     expect(free(a)).toBe(false);
   });
-  it('balance carries into the empoignade', () => {
-    expect(clinchStrength2(0, 50, false, 100)).toBeGreaterThan(clinchStrength2(0, 50, false, 20));
-    expect(clinchStrength2(0, 50, false, 100) - clinchStrength2(0, 50, false, 0)).toBeCloseTo(2);
+  it('balance and grip carry into the empoignade, worth a few seconds of effort, never everything', () => {
+    expect(clinchPower(0, 50, 100, 0)).toBeGreaterThan(clinchPower(0, 50, 20, 0));
+    expect(clinchPower(0, 50, 100, 0) - clinchPower(0, 50, 0, 0)).toBeCloseTo(2);
+    expect(clinchPower(0, 50, 50, 80) - clinchPower(0, 50, 50, -80)).toBeCloseTo(6.4);
   });
 });
 
@@ -157,6 +159,10 @@ describe('làmb 2.0 · the opponent standing', () => {
     const shaky = fresh(); shaky.balance = 30;
     const d = decide({ me: fresh(), them: shaky, dist: 1.6, grabRange: 1.5 }, STAND_STYLES.costaud, 1, seq(0.4));
     expect(d.strike).toBe('big');
+  });
+  it('takes hold of a player hiding behind his guard', () => {
+    const turtle = fresh(); turtle.guard = true;
+    expect(decide({ me: fresh(), them: turtle, dist: 1.3, grabRange: 1.5 }, STAND_STYLES.costaud, 1, seq(0.2)).grab).toBe(true);
   });
   it('a quick style throws quick strikes, a defensive one guards; nobody acts while busy', () => {
     expect(decide({ me: fresh(), them: fresh(), dist: 1.5, grabRange: 1.5 }, STAND_STYLES.rapide, 1, seq(0.95, 0.2)).strike).toBe('quick');
@@ -179,6 +185,28 @@ describe('làmb 2.0 · the opponent standing', () => {
   });
   it('the training partner never strikes', () => {
     for (let i = 0; i < 20; i++) expect(decide({ me: fresh(), them: fresh(), dist: 1.2, grabRange: 1.5 }, STAND_STYLES.partenaire, 1, () => i / 20).strike).toBeNull();
+  });
+});
+
+describe('làmb 2.0 · entry into the empoignade (step 2)', () => {
+  const g = (balance = 100, attrs = AVERAGE) => ({ balance, attrs });
+  it('the one who grabs holds the better grip; more on an opening, most on a wrestler who staggers', () => {
+    const neutral = entryGrip('neutral', g(), g()), open = entryGrip('open', g(), g()), stag = entryGrip('stagger', g(), g(20));
+    expect(neutral).toBeGreaterThan(0);
+    expect(open).toBeGreaterThan(neutral);
+    expect(stag).toBeGreaterThan(open);
+    expect(stag).toBeLessThanOrEqual(80);
+    expect(ENTRY_BONUS.late).toBeLessThan(ENTRY_BONUS.open);
+    expect(entryGrip('guard', g(), g())).toBeGreaterThan(neutral);
+  });
+  it('balance, technique and force tilt it: a shaken grabber on a fresh technician can start behind', () => {
+    expect(entryGrip('neutral', g(30), g(100, { ...AVERAGE, technique: 100, force: 90 }))).toBeLessThan(0);
+    expect(entryGrip('neutral', g(100, { ...AVERAGE, technique: 90 }), g())).toBeGreaterThan(entryGrip('neutral', g(), g()));
+  });
+  it('is told in words, never as a number', () => {
+    expect(gripWords(60)).toMatch(/gros avantage pour toi/);
+    expect(gripWords(0)).toMatch(/égale/);
+    expect(gripWords(-20)).toMatch(/avantage pour lui/);
   });
 });
 

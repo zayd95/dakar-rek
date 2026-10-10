@@ -6,10 +6,11 @@ import { rng } from '../core/rng';
 import { castById } from '../social/cast';
 import { Percussion, crowdCheer, strikeSound } from './audio';
 import {
-  AVERAGE, STAND, STAND_STYLES, STRIKES, clinchStrength2, decide, free, land, react, reactDelay, standState, startStrike, tick,
+  AVERAGE, STAND, STAND_STYLES, STRIKES, decide, free, land, react, reactDelay, standState, startStrike, tick,
   type Attributes, type Reaction, type StandState, type StandStyle, type StrikeKind,
 } from './stand';
 import { StrikeRig } from './strikeRig';
+import { ENTRY_TEXT, clinchPower, entryGrip, gripWords, type Entry } from './clinch';
 import { inGate, tierRadius, tierTop, TIERS } from '../world/geew';
 import {
   RULES, RULES_STATUS, OUTCOME_TEXT, boutRewards, breakWindowOpen, clinchStrength, emptyScore, levelFactor, points, refereeDecision,
@@ -123,6 +124,9 @@ export class LambDuel {
   /** The opponent's pending answer to the player's strike, and how long it keeps its guard up. */
   private aiReact: { at: number; what: Reaction } | null = null;
   private aiGuardHold = 0;
+  /** Avec frappe: grip advantage in the empoignade, from the player's side (−100…100), and how it started. */
+  private grip = 0;
+  private entry: Entry = 'neutral';
 
   /** Last strike that landed (for the checks and the HUD). */
   lastStrike: { by: Side; kind: StrikeKind; result: string } | null = null;
@@ -226,11 +230,11 @@ export class LambDuel {
       .duel-bars b.low{background:#f97316}
       .duel-bars i.bal,.duel-bars i.cmp{height:5px;margin-top:2px}.duel-bars i.bal b{background:#38bdf8}.duel-bars i.cmp b{background:#f59e0b}
       .duel-bars i.bal b.low{background:#ef4444}
-      .duel-legend{position:absolute;top:calc(env(safe-area-inset-top,0px) + 100px);left:50%;transform:translateX(-50%);display:flex;gap:12px;font-size:10.5px;text-shadow:0 1px 3px #000;white-space:nowrap}
+      .duel-legend{position:absolute;top:calc(env(safe-area-inset-top,0px) + 110px);left:50%;transform:translateX(-50%);display:flex;gap:12px;font-size:10.5px;text-shadow:0 1px 3px #000;white-space:nowrap}
       .duel-legend span::before{content:'';display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:-1px}
       .duel-legend .e::before{background:#22c55e}.duel-legend .b::before{background:#38bdf8}.duel-legend .c::before{background:#f59e0b}
-      .duel-ui.frappe .duel-note{top:calc(env(safe-area-inset-top,0px) + 118px)}
-      .duel-ui.frappe .duel-step{top:calc(env(safe-area-inset-top,0px) + 138px)}
+      .duel-ui.frappe .duel-note{top:calc(env(safe-area-inset-top,0px) + 127px)}
+      .duel-ui.frappe .duel-step{top:calc(env(safe-area-inset-top,0px) + 146px)}
       .duel-note{position:absolute;top:calc(env(safe-area-inset-top,0px) + 104px);left:50%;transform:translateX(-50%);font-size:10.5px;opacity:.85;text-align:center;width:94vw;text-shadow:0 1px 3px #000}
       .duel-step{position:absolute;top:calc(env(safe-area-inset-top,0px) + 124px);left:50%;transform:translateX(-50%);width:min(92vw,440px);background:rgba(20,83,45,.85);border:1px solid #4ade80;border-radius:10px;padding:6px 10px;font-size:13px;text-align:center}
       .duel-step small{display:block;font-size:11px;color:#bbf7d0;margin-top:2px}
@@ -246,11 +250,12 @@ export class LambDuel {
       .duel-btns button[data-k=break]{right:9px;bottom:96px;width:70px;height:70px;background:#e5e7eb}
       .duel-btns button[data-k=break].hot{background:#4ade80;box-shadow:0 0 0 4px #bbf7d0,0 4px 14px rgba(0,0,0,.45)}
       .duel-btns button.on{transform:scale(.93);filter:brightness(.85)}
-      .duel-btns.frappe{width:236px;height:170px}
-      .duel-btns button[data-k=quick]{right:82px;bottom:84px;width:62px;height:62px;background:#fdba74;font-size:12px}
-      .duel-btns button[data-k=big]{right:166px;bottom:34px;width:66px;height:66px;background:#f87171;font-size:11.5px;line-height:1.05}
-      .duel-btns.frappe button[data-k=guard]{right:94px;bottom:2px;width:66px;height:66px}
-      .duel-btns.frappe button[data-k=break]{right:10px;bottom:96px;width:62px;height:62px}
+      .duel-btns.frappe{width:216px;height:156px}
+      .duel-btns.frappe button[data-k=grab]{width:84px;height:84px}
+      .duel-btns.frappe button[data-k=guard]{right:90px;bottom:0;width:62px;height:62px}
+      .duel-btns.frappe button[data-k=break]{right:8px;bottom:92px;width:60px;height:60px}
+      .duel-btns button[data-k=quick]{right:90px;bottom:70px;width:60px;height:60px;background:#fdba74;font-size:12px}
+      .duel-btns button[data-k=big]{right:156px;bottom:20px;width:60px;height:60px;background:#f87171;font-size:11px;line-height:1.05}
       .duel-confirm,.duel-recap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,.55);pointer-events:auto}
       .duel-confirm[hidden],.duel-recap[hidden],.duel-step[hidden],.duel-clinch[hidden]{display:none}
       .duel-confirm>div,.duel-recap>div{background:#0f172a;border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:16px;width:min(88vw,380px);max-height:86vh;overflow:auto}
@@ -311,7 +316,7 @@ export class LambDuel {
       const c = this.clinchState()!;
       cl.hidden = false;
       this.q('tug').style.width = `${Math.round(100 * c.share)}%`;
-      this.q('cl').textContent = c.losing ? (c.breakWindow ? 'Dégage maintenant !' : 'Tu perds l’empoignade : prépare Dégager') : 'Tu mènes : continue de taper Saisir';
+      this.q('cl').textContent = (this.frappe ? `${gripWords(this.grip)} · ` : '') + (c.losing ? (c.breakWindow ? 'Dégage maintenant !' : 'Tu perds l’empoignade : prépare Dégager') : 'Tu mènes : continue de taper Saisir');
       brk.classList.toggle('hot', c.losing && c.breakWindow);
     } else { cl.hidden = true; brk.classList.remove('hot'); }
   }
@@ -381,6 +386,13 @@ export class LambDuel {
   pressBreak() { this.breakPresses++; }
   /** Avec frappe: a quick or a big strike (same as the buttons). */
   pressStrike(kind: StrikeKind) { if (kind === 'big') this.bigPresses++; else this.quickPresses++; }
+  /** Checks only: set a wrestler's balance, composure or endurance (to reach a state without a long bout). */
+  debugSet(side: Side, v: { balance?: number; composure?: number; stamina?: number }) {
+    const f = side === 'player' ? this.me : this.ai;
+    if (v.balance !== undefined) f.balance = v.balance;
+    if (v.composure !== undefined) f.composure = v.composure;
+    if (v.stamina !== undefined) f.stamina = v.stamina;
+  }
   setGuard(on: boolean) { this.guardHeld = on; }
   /** World points on both wrestlers (feet, waist, head) for layout checks. */
   fighterPoints(): [number, number, number][] { return [this.me, this.ai].flatMap(f => [0.1, 1, 1.8].map(h => [f.pos.x, f.pos.y + h, f.pos.z] as [number, number, number])); }
@@ -393,7 +405,7 @@ export class LambDuel {
       stamina: { player: Math.round(this.me.stamina), opponent: Math.round(this.ai.stamina) },
       open: this.me.open > 0 ? 'player' : this.ai.open > 0 ? 'opponent' : null,
       windup: this.ai.windup > 0, dist: Math.round(this.me.pos.distanceTo(this.ai.pos) * 100) / 100,
-      clinch: c ? { by: c.by, losing: c.losing, breakWindow: c.breakWindow, share: Math.round(c.share * 100) / 100 } : null,
+      clinch: c ? { by: c.by, losing: c.losing, breakWindow: c.breakWindow, share: Math.round(c.share * 100) / 100, ...(this.frappe ? { grip: Math.round(this.grip), entry: this.entry } : {}) } : null,
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
       discipline: this.discipline,
       ...(this.frappe ? {
@@ -410,7 +422,7 @@ export class LambDuel {
   // ---------------------------------------------------------------- rules in motion
   private clinchState() {
     if (this.phase !== 'clinch' || !this.clinchBy) return null;
-    const strength = (f: Fighter) => this.frappe ? clinchStrength2(f.effort, f.stamina, this.clinchBy === f, f.balance) : clinchStrength(f.effort, f.stamina, this.clinchBy === f);
+    const strength = (f: Fighter) => this.frappe ? clinchPower(f.effort, f.stamina, f.balance, f === this.me ? this.grip : -this.grip) : clinchStrength(f.effort, f.stamina, this.clinchBy === f);
     const mine = strength(this.me), theirs = strength(this.ai);
     return { by: (this.clinchBy === this.me ? 'player' : 'opponent') as Side, mine, theirs, losing: mine < theirs, share: mine / Math.max(0.01, mine + theirs), breakWindow: breakWindowOpen(this.phaseT) };
   }
@@ -431,7 +443,7 @@ export class LambDuel {
     if (d > R.grabRange) { me.open = R.openingSeconds * 0.6; this.msg('Trop loin', 0.8); return; }
     me.score.grabs++;
     const tutorialGuard = this.stepId() !== null; // the training partner never blocks
-    if (!tutorialGuard && ai.guard && ai.open <= 0 && ai.windup <= 0) {
+    if (!tutorialGuard && !this.frappe && ai.guard && ai.open <= 0 && ai.windup <= 0) {
       me.open = R.openingSeconds; ai.score.guards++;
       this.msg('Bloqué ! Tu es exposé', 1);
       if (this.rand() < Math.min(0.9, this.style.counterChance * this.factor) && ai.stamina >= R.stamina.grabCost) { this.aiThink = 0.25; }
@@ -439,15 +451,17 @@ export class LambDuel {
     }
     if (ai.windup > 0) ai.windup = 0;                                              // grabbed before its own grab landed
     if (ai.strike && !ai.strike.landed) ai.strike = null;                         // grabbed while winding up a strike
-    this.startClinch(me, ai.open > 0 ? 'Saisie sur l’ouverture !' : 'Empoignade !');
+    // avec frappe, the guard is for strikes: hands up, the body is open to a grab
+    this.startClinch(me, ai.open > 0 ? 'Saisie sur l’ouverture !' : ai.stagger > 0 ? 'Saisi pendant qu’il vacille !' : 'Empoignade !',
+      ai.stagger > 0 ? 'stagger' : ai.open > 0 ? 'open' : this.frappe && ai.guard ? 'guard' : 'neutral');
   }
   /** Opponent grab: starts a windup, the player's response window (guard or dégagement cancels it). */
   private aiGrab() {
     const me = this.me, ai = this.ai;
     ai.stamina -= R.stamina.grabCost; ai.score.grabs++; ai.clip = 'Grab'; ai.busy = 0;
-    if (me.open > 0 || me.stagger > 0) { this.startClinch(ai, me.stagger > 0 ? 'Tu vacilles : il te saisit !' : 'Contre ! Il saisit ton ouverture'); return; }
+    if (me.open > 0 || me.stagger > 0) { this.startClinch(ai, me.stagger > 0 ? 'Tu vacilles : il te saisit !' : 'Contre ! Il saisit ton ouverture', me.stagger > 0 ? 'stagger' : 'open'); return; }
     ai.windup = R.responseWindow * this.style.windup;
-    this.msg('Il attaque ! Garde ou dégage !', ai.windup);
+    this.msg(this.frappe ? 'Il veut te saisir ! Recule ou frappe-le' : 'Il attaque ! Garde ou dégage !', ai.windup);
   }
   private responded(how: 'guard' | 'dodge') {
     const ai = this.ai;
@@ -593,13 +607,12 @@ export class LambDuel {
     }
     let d = ai.pos.distanceTo(me.pos);
 
-    // the opponent's grab in its response window (as sans frappe)
+    // the opponent's grab in its response window: step back or hit him (the guard does not stop a grab)
     if (ai.windup > 0) {
-      if (me.guard) this.responded('guard');
-      else {
+      {
         ai.windup = Math.max(0, ai.windup - dt);
         if (ai.windup <= 0) {
-          if (d <= R.grabRange + 0.3) this.startClinch(ai, 'Il t’a saisi ! Empoignade');
+          if (d <= R.grabRange + 0.3) this.startClinch(ai, 'Il t’a saisi ! Empoignade', 'late');
           else { ai.open = R.openingSeconds; this.msg('Il a raté ! Ouverture !', 1.1); }
         }
       }
@@ -613,7 +626,7 @@ export class LambDuel {
     // the opponent answers the player's strike (guard, step back, or a quick strike first)
     if (this.aiReact && (this.aiReact.at -= dt) <= 0) {
       const what = this.aiReact.what; this.aiReact = null;
-      if (what === 'guard' && free(ai) && ai.open <= 0) this.aiGuardHold = 0.6;
+      if (what === 'guard' && free(ai) && ai.open <= 0) this.aiGuardHold = 0.45;
       else if (what === 'back' && free(ai)) { ai.dodge = 0.3; this.aiGuardHold = 0; }
       else if (what === 'counter') { this.aiGuardHold = 0; startStrike(ai, 'quick'); }
     }
@@ -675,6 +688,11 @@ export class LambDuel {
     if (l.result === 'stagger') { a.score.staggers = (a.score.staggers ?? 0) + 1; crowdCheer(1.6, 0.14); }
     else if (l.result === 'hit' && l.kind === 'big') crowdCheer(0.9, 0.08);
     if (l.result === 'guarded') d.score.guards++;
+    if ((l.result === 'hit' || l.result === 'stagger') && d.windup > 0) {        // a clean hit stops a grab on its way
+      d.windup = 0; d.open = Math.max(d.open, R.openingSeconds * 0.6); a.score.guards++;
+      this.msg(mine ? 'Frappé pendant sa saisie : coupée !' : 'Il te frappe pendant ta saisie', 1.0);
+      return;
+    }
     const cut = l.interrupted ? ' · frappe coupée' : '';
     const text = mine
       ? { hit: l.kind === 'big' ? 'Grosse frappe touchée !' : 'Touché', stagger: `${name} vacille ! Saisis-le !`, guarded: l.kind === 'big' ? 'Paré : tu es ouvert !' : 'Paré par sa garde', miss: l.kind === 'big' ? 'Raté ! Tu es ouvert' : 'Dans le vide' }[l.result]
@@ -708,12 +726,18 @@ export class LambDuel {
     this.end(w ? 'decision' : 'egalite', w);
   }
 
-  private startClinch(by: Fighter, text: string) {
+  private startClinch(by: Fighter, text: string, entry: Entry = 'neutral') {
     const step = this.stepId();
     if (step === 'grab' && by === this.me) this.nextStep();
     this.phase = 'clinch'; this.phaseT = 0; this.clinchBy = by; this.aiBreakTried = -1;
     this.me.effort = 0; this.ai.effort = 0; this.me.guard = this.ai.guard = false;
     this.me.windup = this.ai.windup = 0; this.me.open = this.ai.open = 0; this.me.dodge = 0;
+    if (this.frappe) {
+      // step 2: who grabbed, from what, with what balance → the grip each holds
+      const other = by === this.me ? this.ai : this.me, g = entryGrip(entry, by, other);
+      this.entry = entry; this.grip = by === this.me ? g : -g;
+      text = `${ENTRY_TEXT[entry]} · ${gripWords(this.grip)}`;
+    }
     for (const f of [this.me, this.ai]) { f.strike = null; f.stagger = 0; f.recover = 0; f.dodge = 0; }
     this.aiReact = null; this.aiGuardHold = 0;
     this.msg(text, 0.9);

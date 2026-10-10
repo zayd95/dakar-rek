@@ -11,7 +11,9 @@
  * Strikes create openings rather than damage: a quick strike is safe but takes little balance; a big strike is
  * telegraphed and takes a lot, but a big strike that misses (or is guarded) leaves its author open. A clean hit
  * interrupts a strike being wound up, so the quick strike answers the big one. Guarding costs endurance (no recovery,
- * a drain while held, more on every strike absorbed) and slows the feet.
+ * a drain while held, more on every strike absorbed) and slows the feet — and the guard is for strikes only: hands up,
+ * the body is open to a grab. Strike beats a grab on its way, guard beats strikes, a grab beats the guard; stepping
+ * back makes both miss, for endurance and ground.
  *
  * Attributes (8, 0–100, 50 = average) shape every number by at most ±20 %: no attribute decides a bout on its own.
  */
@@ -173,11 +175,6 @@ export function tick(s: StandState, dt: number, regen: number): boolean {
   return false;
 }
 
-/** Strength in an empoignade with strikes: the sans-frappe strength plus the balance the wrestler brings into it. */
-export function clinchStrength2(effort: number, stamina: number, initiative: boolean, balance: number): number {
-  return effort + stamina / 40 + (initiative ? 1 : 0) + clamp(balance, 0, 100) / 50;
-}
-
 // ------------------------------------------------------------------ the opponent's stand-up decisions
 
 /** How a style fights standing (the opponent AI); `range` is the distance it tries to keep. */
@@ -206,7 +203,8 @@ export interface StandDecision { move: number; strike: StrikeKind | null; guard:
 
 /**
  * A stand-up decision of the opponent (`r` random numbers in [0, 1)). It keeps its range, strikes when in reach,
- * goes for big strikes when the player is shaken or open, grabs a staggered or open player, guards by style.
+ * goes for big strikes when the player is shaken or open, grabs a staggered or open player — or one hiding behind his
+ * guard —, guards by style.
  * `level` (0.9–1.3, the bout's difficulty) sharpens every choice a little.
  */
 export function decide(v: StandView, st: StandStyle, level: number, r: () => number): StandDecision {
@@ -216,6 +214,8 @@ export function decide(v: StandView, st: StandStyle, level: number, r: () => num
   if (!free(me) || me.open > 0) return o;
   const shaken = them.stagger > 0 || them.open > 0;
   if (shaken && dist <= v.grabRange && me.stamina > 30 && r() < Math.min(0.95, 0.55 * level)) { o.grab = true; return o; }
+  // a raised guard stops strikes, not a grab: against a turtle, close in and take hold
+  if (them.guard && dist <= v.grabRange && me.stamina > 30 && r() < Math.min(0.9, 0.45 * level)) { o.grab = true; return o; }
   const reachQ = dist <= STRIKES.quick.reach, reachB = dist <= STRIKES.big.reach;
   const pBig = st.big * level * (shaken ? 2.2 : them.balance < 45 ? 1.6 : 1);
   if (reachB && me.stamina > STRIKES.big.cost + 10 && r() < Math.min(0.9, pBig)) { o.strike = 'big'; return o; }
