@@ -1,10 +1,10 @@
-// Headless checks of Làmb 2.0, steps 1–5: the stand-up exchange of the « lutte avec frappe » (src/lamb/stand.ts,
+// Headless checks of Làmb 2.0, steps 1–6: the stand-up exchange of the « lutte avec frappe » (src/lamb/stand.ts,
 // docs/LAMB2.md), behind the `lamb2` flag. Desktop: the arena menu offers it with ?lamb2 · three states and no HP ·
 // a big strike out of reach misses and opens its author · a quick strike in reach takes balance and composure (or is
 // guarded, at an endurance cost) · the guard absorbs the opponent's strikes for endurance · a wrestler out of balance
 // staggers and a grab on him goes straight into the empoignade (grip) · in the empoignade, reading his move and
 // answering it wins the exchange, a lost grip makes the balance slip (felt on screen), Casser breaks free, a
-// throw on a wrestler who slips takes him down (desktop), his throw is countered with « Contrer » (phone) · recap with the strikes,
+// throw on a wrestler who slips takes him down, then the fall (slow-down, referee, crowd) (desktop), his throw is countered with « Contrer » (phone) · recap with the strikes,
 // not counted in any record. Phone: no « avec frappe » without the flag, the five buttons fit, captures.
 // Usage: node scripts/check-lamb2.mjs [baseUrl] [outDir]   — run it under the shared lock (flock /tmp/dakar-browser.lock).
 // SwiftShader renders a few fps and the game clamps dt to 0.1 s, so every wait is on game state.
@@ -201,6 +201,13 @@ async function friendlyMenu(page) {
   await page.keyboard.up('KeyD');
   const lt = end?.lastThrow;
   check('step 5: a throw on a wrestler who slips, with the grip, takes him down (projection)', ['fall', 'result'].includes(end?.phase) && end.outcome === 'projection' && end.winner === 'player' && lt?.by === 'player' && lt.result === 'fall' && sawAttempt, { phase: end?.phase, outcome: end?.outcome, winner: end?.winner, lastThrow: lt, sawAttempt });
+  // step 6: the fall — a short slow-down on him going down, the referee comes up and raises your arm, the stands explode
+  const slow = end?.phase === 'fall' && !!end.fall?.slow;
+  if (slow) await shot(page, 'desktop-fall-slow');
+  const fr = await until(page, i => !i || i.phase !== 'fall' || (i.fall?.arm && i.fall.cheered), null, 60000);
+  const fmsg = await page.evaluate(() => document.querySelector('.duel-msg')?.textContent ?? '');
+  if (fr?.phase === 'fall') await shot(page, 'desktop-fall-referee');
+  check('step 6: the fall — a short slow-down, the referee walks up and raises the winner’s arm, the stands explode, then the result', slow && fr?.phase === 'fall' && fr.fall.arm && fr.fall.cheered && fr.fall.referee < fr.fall.refereeFrom && /arbitre lève ton bras/.test(fmsg), { slow, fall: fr?.fall, msg: fmsg });
   await wait(page, () => window.__dakar.duelInfo()?.phase === 'result', null, 60000);
   await page.waitForTimeout(400);
   const recap = await page.evaluate(() => document.querySelector('.duel-recap')?.textContent ?? '');

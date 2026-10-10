@@ -108,6 +108,14 @@ export class LambDuel {
   private rand = rng(Date.now() & 0xffff);
   private crowd: Humanoid[] = [];
   private official: Humanoid | null = null;
+  /**
+   * Avec frappe, the fall (step 6): a short slow-down on the wrestler going down, the referee walking up from his side
+   * of the ring (towards the wrestlers' tunnel) to raise the winner's arm, the crowd's explosion, then the result.
+   */
+  private fallFx: { loser: Fighter; winner: Fighter; refFrom: THREE.Vector3; refTo: THREE.Vector3; cheered: boolean } | null = null;
+  private refRig: StrikeRig | null = null;
+  /** Moments of the bout for whoever listens (the stands react): the fall and the result. */
+  onMoment?: (m: 'fall' | 'result', winner: Side | null) => void;
   private drums = new Percussion();
   private ui: HTMLDivElement;
   private input: Input;
@@ -186,6 +194,7 @@ export class LambDuel {
       const ref = new Humanoid(this.mode === 'entrainement' && coach ? lookFromOutfit(coach.outfit) : { skin: 0x4e2e1c, style: 'tee', top: 0xf2f2ec, bottom: 0x1c1c1f, shoes: 0x1c1c1f });
       ref.hold = 'Idle'; ref.group.position.set(origin.x, 0.1, origin.z + Math.min(4.2, this.ring - 0.6)); ref.group.rotation.y = Math.PI;
       this.group.add(ref.group); this.official = ref;
+      if (this.frappe) this.refRig = new StrikeRig(ref);
     }
     // spectators on the tiers of the géew (dimensions in world/geew.ts)
     const r = rng(11);
@@ -396,8 +405,18 @@ export class LambDuel {
       stamina: { player: Math.round(this.me.stamina), opponent: Math.round(this.ai.stamina) },
       rewards: boutRewards({ mode: this.mode, outcome, winner }),
     };
-    if (outcome === 'projection' || outcome === 'decision' || outcome === 'egalite') { this.phase = 'fall'; this.phaseT = 0; }
-    else this.showRecap();
+    if (outcome === 'projection' || outcome === 'decision' || outcome === 'egalite') {
+      this.phase = 'fall'; this.phaseT = 0;
+      if (this.frappe && winner && this.official) {
+        const w = winner === 'player' ? this.me : this.ai, l = winner === 'player' ? this.ai : this.me;
+        // the referee comes up beside the winner, on the far side from the camera so he stays in view
+        const side = new THREE.Vector3(-(l.pos.z - w.pos.z), 0, l.pos.x - w.pos.x).normalize();
+        if (side.z < 0) side.multiplyScalar(-1);
+        this.fallFx = { loser: l, winner: w, refFrom: this.official.group.position.clone(), refTo: w.pos.clone().addScaledVector(side, 1.1).setY(this.official.group.position.y), cheered: false };
+        if (outcome === 'projection') { w.clip = 'Stance'; l.clip = 'Fall_Back'; }
+      }
+      this.onMoment?.('fall', winner);
+    } else this.showRecap();
   }
 
   private showRecap() {
@@ -464,6 +483,12 @@ export class LambDuel {
           posture: { player: posture(this.me.balance), opponent: posture(this.ai.balance) },
           attempt: this.attempt ? { by: this.attempt.by === this.me ? 'player' : 'opponent', t: Math.round(this.attempt.t * 100) / 100, counter: this.attempt.counter } : null } : {}) } : null,
       ...(this.frappe ? { lastThrow: this.lastThrow } : {}),
+      ...(this.phase === 'fall' && this.fallFx && this.official ? { fall: {
+        t: Math.round(this.phaseT * 100) / 100, slow: this.outcome === 'projection' && this.phaseT < 0.9, cheered: this.fallFx.cheered,
+        referee: Math.round(this.official.group.position.distanceTo(this.fallFx.winner.pos) * 100) / 100,
+        refereeFrom: Math.round(this.fallFx.refFrom.distanceTo(this.fallFx.winner.pos) * 100) / 100,
+        arm: this.phaseT > 1.8,
+      } } : {}),
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
       discipline: this.discipline,
       ...(this.frappe ? {
@@ -641,6 +666,17 @@ export class LambDuel {
       }
       if (this.msgHold <= 0) this.msg(c.losing ? 'Empoignade : il te pousse !' : 'Empoignade : pousse !');
       if (this.phaseT > R.clinchSeconds) this.resolveClinch(c.mine >= c.theirs);
+    } else if (this.phase === 'fall' && this.fallFx) {
+      const fx = this.fallFx, t = this.phaseT;
+      if (t > 0.9 && !fx.cheered) {                                            // the stands explode once he is down
+        fx.cheered = true; crowdCheer(3.2, 0.3);
+        for (const h of this.crowd) h.hold = 'Celebrate';
+      }
+      if (t > 1.3 && this.outcome === 'projection') fx.winner.clip = 'Celebrate';
+      const name = this.style.name;
+      this.msg(t < 1.1 ? (this.outcome === 'projection' ? (this.winner === 'player' ? 'Projection ! Il est au sol' : 'Tu es au sol…') : 'Temps !')
+        : this.winner === 'player' ? 'L’arbitre lève ton bras : victoire !' : `L’arbitre lève le bras de ${name}`);
+      if (t > 3.4) { this.onMoment?.('result', this.winner); this.showRecap(); }
     } else if (this.phase === 'fall') {
       if (this.outcome === 'projection') this.msg(this.winner === 'player' ? 'Il est à terre !' : 'Tu es à terre…');
       else this.msg(this.outcome === 'decision' ? `Temps ! Décision : ${this.winner === 'player' ? 'pour toi' : 'pour ' + this.style.name}` : 'Temps ! Égalité');
@@ -648,7 +684,8 @@ export class LambDuel {
     } else if (this.phase === 'result') {
       if (this.phaseT > 10) this.done = true;
     }
-    return this.frame(dt);
+    // the fall's first moment plays slowly
+    return this.frame(this.phase === 'fall' && this.fallFx && this.outcome === 'projection' && this.phaseT < 0.9 ? dt * 0.3 : dt);
   }
 
   // ---------------------------------------------------------------- avec frappe: the stand-up exchange (Làmb 2.0)
@@ -951,9 +988,20 @@ export class LambDuel {
       }
     }
     if (this.official) {
-      const mid0 = me.pos.clone().add(ai.pos).multiplyScalar(0.5);
-      this.official.group.rotation.y = Math.atan2(mid0.x - this.official.group.position.x, mid0.z - this.official.group.position.z);
-      this.official.animate(dt, 0);
+      const mid0 = me.pos.clone().add(ai.pos).multiplyScalar(0.5), fx = this.phase === 'fall' ? this.fallFx : null;
+      if (fx) {
+        // step 6: he walks up from his side of the ring, then raises the winner's arm
+        const k = THREE.MathUtils.clamp((this.phaseT - 0.6) / 1.2, 0, 1), o = this.official;
+        o.group.position.lerpVectors(fx.refFrom, fx.refTo, k * k * (3 - 2 * k));
+        const look = k < 1 ? fx.refTo : fx.winner.pos;
+        o.group.rotation.y = Math.atan2(look.x - o.group.position.x, look.z - o.group.position.z);
+        o.hold = k > 0 && k < 1 ? 'Walk' : 'Idle';
+        o.animate(dt, 0);
+        if (k >= 1) this.refRig?.apply({ upper_armL: [0.15, 1, 0.05], forearmL: [0.05, 1, 0], handL: [0, 1, 0] }, Math.min(1, (this.phaseT - 1.8) / 0.3));
+      } else {
+        this.official.group.rotation.y = Math.atan2(mid0.x - this.official.group.position.x, mid0.z - this.official.group.position.z);
+        this.official.animate(dt, 0);
+      }
     }
     for (const h of this.crowd) h.animate(dt, 0);
     this.draw();
@@ -965,6 +1013,12 @@ export class LambDuel {
     if (side.z > 0) side.multiplyScalar(-1);
     const portrait = innerWidth < innerHeight;
     const cam = mid.clone().addScaledVector(side, (portrait ? 8.5 : 6.5) + dist * (portrait ? 1.1 : 0.6)).setY(portrait ? 3.4 : 3.0);
+    if (this.phase === 'fall' && this.fallFx && this.outcome === 'projection' && this.phaseT < 1.2) {
+      // close and low on the wrestler going down, then back out for the referee
+      const down = this.fallFx.loser.pos, c = down.clone().addScaledVector(side, portrait ? 5 : 3.6).setY(1.5);
+      this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize(); this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);
+      return { cam: c, look: down.clone().setY(0.6) };
+    }
     // camera-relative movement axes
     this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize();
     this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);           // forward × up

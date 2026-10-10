@@ -12,7 +12,7 @@ l'arène, écurie, combats amicaux et classés) reste intacte à chaque étape.
 | 3 | Clinch jouable : pousser, tirer, pivoter, casser ; la prise et l'équilibre bougent | **jouable** |
 | 4 | Équilibre / posture dans le clinch : on sent la position glisser | **jouable** |
 | 5 | Tentative de projection et contre | **jouable** |
-| 6 | Chute : posture, équilibre, contacts, force, réponse → ralenti court → arbitre → foule → résultat | à faire |
+| 6 | Chute : posture, équilibre, contacts, force, réponse → ralenti court → arbitre → foule → résultat | **jouable** |
 
 ## Essayer
 
@@ -119,6 +119,16 @@ Pendant qu'elle se prépare, l'autre peut **Contrer** (8 d'endurance) : avec ass
 technique il la retourne et c'est le lanceur qui tombe ; sinon il la bloque seulement (le lanceur perd 10
 d'équilibre). L'adversaire tente sa projection quand la position est bonne (Gora plus que les autres) et voit venir
 celle du joueur selon sa lecture, sa Technique et son sang-froid.
+
+## Étape 6 — la chute
+
+Quand la chute décisive arrive (projection réussie, contre qui retourne, ou équilibre à zéro dans l'empoignade) :
+un **ralenti court** (0,9 s, caméra basse et proche sur le lutteur qui tombe), puis la caméra recule ;
+**l'arbitre** arrive de son côté du cercle (vers le tunnel des lutteurs) jusqu'à côté du vainqueur et **lui lève le
+bras** ; **la foule explose** (et les spectateurs de la scène se lèvent) ; le vainqueur célèbre ; puis le résultat.
+« L'arbitre lève ton bras : victoire ! » ou « L'arbitre lève le bras de Gora ». Au temps, pas de ralenti : l'arbitre
+lève le bras du vainqueur aux points. `LambDuel.onMoment('fall' | 'result', vainqueur)` est prévu pour que les
+tribunes de la soirée (lane foule) réagissent.
 
 ## Code et vérifications
 
