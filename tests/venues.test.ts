@@ -2,12 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { GameState } from '../src/core/state';
 import { newSave } from '../src/core/save';
 import { Seats, floorSeatTop, seatClip, sitOriginY, SIT_HIPS, type Seat } from '../src/interact/seats';
-import { ActivityRunner, type ActivityServices } from '../src/activity/runner';
+import { ActivityRunner, gesturePay, type ActivityServices } from '../src/activity/runner';
 import { Places, isPeak } from '../src/activity/places';
 import * as T from '../src/activity/templates';
 import type { Target } from '../src/interact/types';
 import { PRAYER_TIMES, prayerAt, nextPrayer, prayerPeaks, hourLabel } from '../src/venues/prayer';
-import { imamTimes, imamGreeting, ownerGreeting, ownerWork, ownerSpecial } from '../src/venues/talk';
+import { imamTimes, imamGreeting, ownerGreeting, ownerWork, ownerSpecial, programme, doormanGreeting, doormanRegulars, djContest, doormanAsk, clubberHello, clubberTonight, clubberBye } from '../src/venues/talk';
+import { unknownPhrases } from '../src/i18n/lines';
+import { G } from '../src/activity/gestures';
 import { COMPOSED_SITES, isComposed } from '../src/world/sites';
 
 function rig(space = 'street') {
@@ -219,5 +221,137 @@ describe('seats: floor places and their pose', () => {
     expect(isComposed('pikine', 'dibiterie:11')).toBe(true); expect(isComposed('plateau', 'mosque:11')).toBe(true);
     expect(isComposed('corniche', 'dibiterie:11')).toBe(false);
     for (const list of Object.values(COMPOSED_SITES)) for (const k of list!) expect(k).toMatch(/^(dibiterie|mosque):\d\d$/);
+  });
+});
+
+describe('club (La Vague): a night out with a reason to come back', () => {
+  const counters: Record<string, number> = {};
+  let hour = 23, day = 10;
+  const done: string[] = [];
+  const keys = T.clubCounters('al:club');
+  const hooks: T.PlaceHooks = { count: k => counters[k] ?? 0, hour: () => hour, day: () => day, converse: () => {}, tired: () => null,
+    done: a => { done.push(a); if (a === 'entree') counters[keys.paid] = T.clubNight(day, hour) + 1; if (a === 'concours') counters[keys.contestNight] = T.clubNight(day, hour) + 1; } };
+  const place = T.club({ id: 'al:club', name: 'La Vague', space: 'street', bar: { x: 8, z: 0, r: 4 }, anchors: [A('door', 0, 10), A('floor'), A('bar', 8), A('dj', 0, -5)] }, hooks);
+  const visible = (anchor: string) => place.offers[anchor].filter(o => !o.visible || o.visible()).map(o => o.id);
+  const offer = (anchor: string, id: string) => place.offers[anchor].find(o => o.id === id)!;
+  const reset = () => { for (const k of Object.keys(counters)) delete counters[k]; done.length = 0; hour = 23; day = 10; };
+
+  it('opens at night only (21 h–5 h), crowded after midnight, with a location chat; a night runs past midnight', () => {
+    expect(place.hours).toEqual([21, 5]); expect(place.chat).toBe(true); expect(place.type).toBe('club');
+    expect(isPeak(place, 1)).toBe(true); expect(isPeak(place, 21.5)).toBe(false);
+    expect(T.clubNight(10, 23)).toBe(10); expect(T.clubNight(11, 2)).toBe(10); expect(T.clubNight(11, 21)).toBe(11);
+    // closed by day: the sheet gives the reason
+    const r = rig(); const places = new Places(r.runner, () => 13); places.add(place);
+    const out: Target[] = []; places.collect('street', 0, 10, out);
+    expect(out[0].affordances()[0].disabled).toBe('Fermé · ouvre à 21 h');
+  });
+  it('a theme each night, a week of seven, one contest night; the programme starts tonight', () => {
+    expect(T.CLUB_THEMES).toHaveLength(7); expect(T.CLUB_THEMES.filter(t => t.contest)).toHaveLength(1);
+    const k = T.nightsToContest(10); expect(T.clubTheme(10 + k).contest).toBe(true); expect(k).toBeGreaterThanOrEqual(0);
+    expect(T.clubTheme(-3)).toBe(T.clubTheme(4));
+    const p = programme(10); expect(p).toHaveLength(7); expect(p[0]).toBe(`Ce soir · ${T.clubTheme(10).label}`); expect(p[1]).toMatch(/^Demain/);
+    expect(djContest({ night: 10, hour: 22, nights: 0, regularAt: 3, entry: 2000 })).toMatch(/Trois passages/);
+  });
+  it('the entry is paid once a night at the door; until then the floor, the bar and the DJ send you to the door', () => {
+    reset();
+    expect(visible('door')).toEqual(['payer', 'videur']);
+    expect(offer('door', 'payer').price).toBe(T.CLUB_ENTRY);
+    for (const [a, id] of [['floor', 'danser'], ['bar', 'bissap'], ['dj', 'morceau']] as const) expect(offer(a, id).requires!()).toBe('Paie l’entrée à la porte');
+    const r = rig(); r.runner.start(offer('door', 'payer')); run(r.runner, 2);
+    expect(r.state.wallet).toBe(10000 - T.CLUB_ENTRY); expect(done).toEqual(['entree']); expect(r.state.data.counters[keys.nights]).toBe(1);
+    counters[keys.nights] = 1;
+    expect(visible('door')).toEqual(['videur']);
+    expect(offer('floor', 'danser').requires!()).toBeNull(); expect(offer('bar', 'bissap').requires!()).toBeNull();
+    day = 11; hour = 21.5; expect(visible('door')).toEqual(['payer', 'videur']);             // the next night, pay again
+  });
+  it('after three nights the doorman lets a regular in free', () => {
+    reset(); counters[keys.nights] = T.CLUB_REGULAR;
+    expect(visible('door')).toEqual(['entree_habitue', 'videur']); expect(offer('door', 'entree_habitue').price).toBeUndefined();
+    expect(doormanGreeting({ night: 10, hour: 23, nights: 3, regularAt: 3, entry: 2000 })).toContain('Sama xarit');
+    expect(doormanRegulars({ night: 10, hour: 23, nights: 1, regularAt: 3, entry: 2000 })).toContain('Encore 2 soirées');
+  });
+  it('dancing is two timing gestures on the drum, the second faster, with the dance clips', () => {
+    reset(); counters[keys.paid] = 11;
+    const d = offer('floor', 'danser');
+    expect(d.steps.map(s => s.clip)).toEqual(['Dance_A', 'Dance_B']);
+    const g = d.steps.map(s => s.gesture!);
+    expect(g.every(x => x.kind === 'timing')).toBe(true);
+    expect((g[1] as { speed: number }).speed).toBeGreaterThan((g[0] as { speed: number }).speed);
+    expect(G.dance()).toMatchObject({ kind: 'timing', verb: 'Pas' });
+    expect(d.steps[1].effects).toMatchObject({ needs: { moral: 12, social: 10, energie: -8 }, counters: { [keys.dances]: 1 }, category: 'loisir' });
+    expect(d.detail).toContain(T.clubTheme(10).label);
+    const r = rig(); r.runner.start(d); run(r.runner, 10);
+    expect(r.runner.running).toBe(false); expect(r.clips).toContain('Dance_B'); expect(done).toEqual(['danse']);
+  });
+  it('the dance contest: the theme night only, after 23 h, three faster rounds, prize scaled by the dance, once a night', () => {
+    reset();
+    const night = T.nightsToContest(10) + 10; day = night; hour = 22; counters[keys.paid] = night + 1;
+    expect(visible('floor')).toEqual(['danser']);
+    hour = 23.5; expect(visible('floor')).toEqual(['danser', 'concours']);
+    day = night + 1; counters[keys.paid] = night + 2; expect(visible('floor')).toEqual(['danser']); day = night; counters[keys.paid] = night + 1;
+    const c = offer('floor', 'concours');
+    const speeds = c.steps.map(s => (s.gesture as { speed: number }).speed); expect(speeds).toEqual([...speeds].sort((a, b) => a - b));
+    const r = rig(); r.runner.start(c); run(r.runner, 20);
+    expect(r.state.wallet).toBe(10000 + T.CONTEST_ROUNDS.reduce((t, x) => t + gesturePay(x.prize, 0.6), 0));
+    expect(done).toEqual(['concours']);
+    expect(c.requires!()).toMatch(/déjà dansé au concours ce soir/);
+  });
+  it('the bar: juices of Dakar on a free stool near the counter (no alcohol); the DJ plays your song', () => {
+    reset(); counters[keys.paid] = 11;
+    expect(visible('bar')).toEqual([...T.CLUB_DRINKS.map(d => d.id), 'barman']);
+    for (const d of T.CLUB_DRINKS) expect(d.label).not.toMatch(/bière|vin|whisky|alcool/i);
+    expect(offer('bar', 'bissap').steps.find(s => s.primitive === 'sit')!.seat).toEqual({ near: { x: 8, z: 0 }, r: 4, kind: 'stool' });
+    const r = rig(); r.runner.start(offer('dj', 'morceau')); run(r.runner, 3);
+    expect(r.state.wallet).toBe(9500); expect(done).toEqual(['morceau']);
+  });
+});
+
+describe('club MVP: the fee before paying, table service, the crowd by the hour, the way out', () => {
+  const counters: Record<string, number> = {};
+  const done: string[] = []; let asked = 0;
+  const keys = T.clubCounters('al:club2');
+  const hooks: T.PlaceHooks = { count: k => counters[k] ?? 0, hour: () => 23.5, day: () => 10, enter: () => { asked++; }, done: a => { done.push(a); if (a === 'entree') counters[keys.paid] = 11; } };
+  const place = T.club({ id: 'al:club2', name: 'La Vague', space: 'al:venue:club', bar: { x: 8, z: 0 }, lounge: { x: -11, z: 0, r: 5 },
+    anchors: [A('door', 0, 10, { space: 'street' }), A('floor'), A('bar', 8), A('lounge', -9), A('exit', 0, 7)] }, hooks);
+  const visible = (anchor: string) => place.offers[anchor].filter(o => !o.visible || o.visible()).map(o => o.id);
+  it('« Entrer » asks first: the place shows the fee, nothing is paid until « payer » runs', () => {
+    expect(visible('door')).toEqual(['entree']);
+    const entree = place.offers.door.find(o => o.id === 'entree')!;
+    expect(entree.price).toBeUndefined(); expect(entree.detail).toMatch(/Entrée 2\s000\sF, une fois pour la nuit/);
+    const r = rig('street'); r.runner.start(entree); run(r.runner, 1);
+    expect(asked).toBe(1); expect(r.state.wallet).toBe(10000);
+    r.runner.start({ ...place.offers.door.find(o => o.id === 'payer')!, visible: undefined }); run(r.runner, 2);   // what the confirmation runs
+    expect(r.state.wallet).toBe(10000 - T.CLUB_ENTRY); expect(done).toEqual(['entree']); expect(visible('door')).toEqual([]);
+    expect(doormanAsk({ night: 10, hour: 23, nights: 0, regularAt: 3, entry: T.CLUB_ENTRY })).toMatch(/2\s000\sF, une seule fois pour toute la nuit/);
+  });
+  it('table service: sit at a free lounge table first, then the waiter brings the drink (bar prices)', () => {
+    const t = place.offers.lounge.find(o => o.id === 'table_bissap')!;
+    expect(t.price).toBe(T.CLUB_DRINKS[0].price);
+    expect(t.steps.map(s => s.primitive)).toEqual(['sit', 'wait', 'drink']);
+    expect(t.steps[0].seat).toEqual({ near: { x: -11, z: 0 }, r: 5, kind: 'bench' }); expect(t.steps[1].label).toBe(T.TABLE_SERVICE);
+    const r = rig('al:venue:club');
+    const bench: Seat = { id: 'b1', x: -11, z: 1, top: 0.6, yaw: 0, kind: 'bench', space: 'al:venue:club', occupant: null };
+    const npc: Seat = { ...bench, id: 'b0', z: 0, occupant: null };
+    r.seats.add(npc); r.seats.add(bench); r.seats.occupy('b0', 'club:lounge0');
+    r.at(-10, 0); r.runner.start(t); run(r.runner, 8);
+    expect(r.seated()?.id).toBe('b1');                                          // never the clubber's place
+    r.runner.start(place.offers.lounge.find(o => o.id === 'table_eau')!); run(r.runner, 1);
+    expect(r.seated()?.id).toBe('b1');                                          // a second drink: same table, no seat hopping
+  });
+  it('the crowd follows the hour: closed by day, early, building, the peak after midnight, thinning at dawn', () => {
+    expect([13, 21.5, 23.5, 1, 3.8, 5].map(T.clubCrowd)).toEqual(['closed', 'early', 'warm', 'peak', 'dawn', 'closed']);
+    expect(T.isEvening(1)).toBe(true); expect(isPeak(place, 1)).toBe(true); expect(isPeak(place, 22)).toBe(false);
+  });
+  it('« Sortir » by the gate hands over to the place', () => {
+    const out = place.offers.exit[0]; expect(out.primitive).toBe('exit');
+    const r = rig('al:venue:club'); r.runner.start(out); expect(done).toContain('sortie');
+  });
+  it('clubbers speak French with everyday Wolof from the lexicon', () => {
+    unknownPhrases.clear();
+    expect(clubberHello('Ndeye', 'early', true)).toMatch(/Na nga def \?/); expect(clubberHello('Ndeye', 'early', true)).toContain('Moi c’est Ndeye');
+    expect(clubberHello('Pape', 'dawn', false)).toContain('Dama sonn');
+    expect(clubberTonight(T.nightsToContest(10) + 10, 23.5)).toContain('Le concours a commencé');
+    expect(clubberBye('dawn')).toContain('Ñibbil ak jàmm');
+    expect([...unknownPhrases]).toEqual([]);
   });
 });
