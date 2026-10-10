@@ -402,6 +402,10 @@ describe('the seated player\'s view', () => {
     expect(kept).toBeGreaterThan(3);                                          // the row in front, the neighbours
     expect(kept).toBeLessThan(16);
     expect(up).toBeGreaterThan(order.length * 0.9);
+    // the neighbours right beside the player are not drawn at all (a head would fill the screen when the gaze turns)
+    const st = s.stats(), beside = order.filter(o => o.id !== mine.id && Math.hypot(o.x - mine.x, o.z - mine.z) < 1);
+    expect(beside.length).toBeGreaterThan(0);
+    expect(st.hidden).toBe(beside.length);
     s.setNear(0, null);                                                        // standing up again once the player leaves
     s.react('all', 'fall', { share: 1 });
     s.update(1, true);

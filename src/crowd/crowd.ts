@@ -152,7 +152,7 @@ const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qd = new THRE
 const _va = new THREE.Vector3(), _vb = new THREE.Vector3();
 
 /** The cleared view of a seated player: radius around them, and a strip ahead (length, half width), in metres. */
-export const CLEAR = { near: 1.3, ahead: 2.8, side: 0.5, widen: 0.4 } as const;
+export const CLEAR = { near: 1.3, ahead: 2.8, side: 0.5, widen: 0.4, hide: 1.0 } as const;
 
 /** Every crowd alive (the crowd module's debug entries list them). */
 export const LIVE_CROWDS = new Set<Crowd>();
@@ -348,6 +348,7 @@ export class Crowd {
     const was = new Set(this.members.filter(m => this.inClearView(m.slot.x, m.slot.z)));
     this.clear = v ? { x: v.x, z: v.z, fx: Math.sin(v.yaw), fz: Math.cos(v.yaw) } : null;
     for (const m of this.members) if (was.has(m) || this.inClearView(m.slot.x, m.slot.z)) this.retarget(m);
+    this.layoutDirty = true; this.nearT = 0;
   }
   /** Whether a member stands in the cleared view (pure geometry, exported for the tests through `inClearView`). */
   inClearView(x: number, z: number) {
@@ -356,6 +357,15 @@ export class Crowd {
     if (dx * dx + dz * dz < CLEAR.near * CLEAR.near) return true;
     const fwd = dx * c.fx + dz * c.fz, lat = Math.abs(-dx * c.fz + dz * c.fx);
     return fwd > 0 && fwd < CLEAR.ahead && lat < CLEAR.side + CLEAR.widen * fwd;
+  }
+  /**
+   * Right beside the seated player (within a metre: the neighbours on either side): not drawn at all, so a head and
+   * shoulder never fill the screen when the gaze follows the bout sideways. They keep their seats.
+   */
+  besideView(x: number, z: number) {
+    const c = this.clear; if (!c) return false;
+    const dx = x - c.x, dz = z - c.z;
+    return dx * dx + dz * dz < CLEAR.hide * CLEAR.hide;
   }
   /** The camera of this frame: LOD distances, and near bodies outside the view are neither drawn nor animated. */
   setCamera(cam: THREE.Camera) {
@@ -374,7 +384,7 @@ export class Crowd {
     const L = this.lod, mid2 = L.mid * L.mid, far2 = L.far * L.far, e = this.eye;
     for (const m of this.members) {
       let lod: Member['lod'];
-      if (!m.on) lod = 0;
+      if (!m.on || this.besideView(m.slot.x, m.slot.z)) lod = 0;
       else if (m.body) lod = 3;
       else if (!e) lod = L.mid > 0 ? 2 : 1;
       else {
@@ -393,7 +403,7 @@ export class Crowd {
       const r2 = this.nearRadius * this.nearRadius;
       const scored: { m: Member; s: number }[] = [];
       for (const m of this.members) {
-        if (!m.on) continue;
+        if (!m.on || this.besideView(m.slot.x, m.slot.z)) continue;
         const dx = m.slot.x - anchor.x, dz = m.slot.z - anchor.z, d2 = dx * dx + dz * dz;
         if (d2 > r2 || d2 < 0.04) continue;
         const d = Math.sqrt(d2);
