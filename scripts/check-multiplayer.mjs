@@ -90,6 +90,44 @@ try {
   await sleep(500);
   await fs.mkdir('shots/multiplayer', { recursive: true });
   await a.screenshot({ path: 'shots/multiplayer/phone-online.png' }); await b.screenshot({ path: 'shots/multiplayer/desktop-online.png' });
+  // friends at the arena (src/arena/together.ts): two players seated in the stands see each other seated, one cheers,
+  // and they watch one bout — the one who sat down later joins the show of the one already there, phase and second
+  {
+    const ids = { a: await a.evaluate(() => window.__dakar.presence().id), b: await b.evaluate(() => window.__dakar.presence().id) };
+    const day = await a.evaluate(() => window.__dakar.arena.info()?.day);
+    for (const page of [a, b]) await page.evaluate(d => { const D = window.__dakar; D.setHour(18); D.state.data.counters.arena_ticket_day = d; D.arena.speed(4); }, day);
+    const centre = await a.evaluate(() => window.__dakar.arena.info().centre);
+    const sitNear = (page, x, z) => page.evaluate(([x, z]) => { const D = window.__dakar, s = D.arena.freeSeat(x, z); return s && D.sit(s.id) === s.id ? s : null; }, [x, z]);
+    const seatA = await sitNear(a, centre.x + 15.5, centre.z + 6);
+    check('arena: the first player takes a place in the stands', !!seatA, JSON.stringify(seatA));
+    // the second one sees the first seated there (their place held on this device too), then sits beside them
+    const heldOnB = await b.waitForFunction(([id, seat]) => window.__dakar.together().held[seat] === id, [ids.a, seatA.id], { timeout: 60000 }).then(() => true).catch(() => false);
+    const seatB = await sitNear(b, seatA.x + 0.4, seatA.z - 0.4);
+    check('arena: the second player sees that place taken and sits beside them', heldOnB && !!seatB && seatB.id !== seatA.id, JSON.stringify({ heldOnB, seatB }));
+    const seen = async (page, id, clip) => page.waitForFunction(([id, clip]) => { const p = window.__dakar.presence(); return p.peers.some(x => x.id === id && x.clip === clip) && p.poses[id] === clip; }, [id, clip], { timeout: 60000 }).then(() => true).catch(() => false);
+    const both = [await seen(a, ids.b, 'Sit'), await seen(b, ids.a, 'Sit')];
+    const ys = await b.evaluate(id => window.__dakar.presence().peers.find(x => x.id === id)?.y, ids.a);
+    check('arena: each sees the other seated in the stands', both.every(Boolean) && Math.abs(ys - (seatA.top - 0.48)) < 0.05, JSON.stringify({ both, y: ys, top: seatA.top }));
+    // one show: both on the same phase within a couple of seconds, the later one having joined the earlier one's show
+    let same = null;
+    for (const until = Date.now() + 180000; Date.now() < until && !same;) {
+      const [ia, ib] = [await a.evaluate(() => window.__dakar.arena.info()), await b.evaluate(() => window.__dakar.arena.info())];
+      if (ia.phase === 'bout' && ib.phase === 'bout' && Math.abs(ia.t - ib.t) < 3) same = { a: [ia.phase, ia.t], b: [ib.phase, ib.t] };
+      else await sleep(400);
+    }
+    const followed = await b.evaluate(() => window.__dakar.together());
+    check('arena: both watch the same bout phase (the later one joined the earlier one)', !!same && followed.follows >= 1, JSON.stringify({ same, followed }));
+    check('arena: a seated player cheers (stands up, arms up) and the other sees it', await a.evaluate(() => window.__dakar.cheer(5)) && await seen(b, ids.a, 'Celebrate'));
+    await b.screenshot({ path: 'shots/multiplayer/desktop-arena-together.png' });
+    let result = null;
+    for (const until = Date.now() + 240000; Date.now() < until && !result;) {
+      const [ra, rb] = [await a.evaluate(() => window.__dakar.arena.info().result), await b.evaluate(() => window.__dakar.arena.info().result)];
+      if (ra && ra === rb) result = ra; else await sleep(500);
+    }
+    check('arena: one result for both', !!result, result ?? '');
+    for (const [page, x, z, yaw] of [[a, -6, -30, 0], [b, -3, -26, Math.PI]]) await page.evaluate(([x, z, yaw]) => { const D = window.__dakar; D.stand(); D.arena.speed(1); D.setHour(16); D.place(x, z, yaw); }, [x, z, yaw]);
+    await a.waitForFunction(() => window.__dakar.presence().peers.some(p => Math.abs(p.x + 3) < 0.2 && Math.abs(p.z + 26) < 0.2));
+  }
   function connect(params) {
     return new Promise((resolve, reject) => {
       const url = new URL('/api/presence', base); url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'; url.search = new URLSearchParams(params).toString();

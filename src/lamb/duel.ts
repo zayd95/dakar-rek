@@ -49,6 +49,8 @@ export interface DuelOptions {
    * moves it through `input.move()` in the duel's camera axes (`axes()`); the other side is the duel's opponent AI.
    */
   spectate?: boolean;
+  /** Seed of the opponent AI's draws (default: the clock). A watched bout seeded alike plays out alike everywhere. */
+  seed?: number;
 }
 export interface DuelResult {
   mode: BoutMode; outcome: BoutOutcome; winner: Side | null; seconds: number;
@@ -126,6 +128,7 @@ export class LambDuel {
     this.factor = opts.mode === 'entrainement' ? 1 : levelFactor(opts.level);
     this.timeLeft = opts.mode === 'entrainement' ? Infinity : R.roundSeconds;
     this.ring = opts.ring ?? 7.6;
+    if (opts.seed !== undefined) this.rand = rng(opts.seed);
     this.o = new THREE.Vector3(origin.x, 0.1, origin.z);
     const mk = (skin: number, l: WrestlerLook, x: number, max: number, regen: number): Fighter => {
       const w = wrestlerReady() ? new Wrestler(skin) : null;

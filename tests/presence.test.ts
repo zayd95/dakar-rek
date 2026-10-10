@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseMove, nickname, lookIndex, isHub } from '../src/multiplayer/protocol';
+import { parseMove, parseArena, nickname, lookIndex, isHub, ARENA_PHASES, ARENA_OUTCOMES } from '../src/multiplayer/protocol';
+import { SHOW_PHASES } from '../src/arena/program';
 
 const move = { type: 'move', x: 10, y: 0.1, z: -20, yaw: 0, speed: 5.6, space: 'street', clip: 'Walk' };
 describe('presence protocol', () => {
@@ -27,6 +28,23 @@ describe('presence protocol', () => {
   it('carries the held poses (lying on a bed, sitting on a mat, kneeling, riding) and nothing else', () => {
     for (const clip of ['Lie', 'SitFloor', 'Kneel', 'Ride', 'Sit', 'Dance_A']) expect(parseMove({ ...move, clip, speed: 0 }, 'pikine')?.clip).toBe(clip);
     for (const clip of ['Fall_Back', 'Grab', 'lie', 'LIE', 'Lie ', '', 'Lie;drop', 'constructor', '__proto__', 'toString', 3, null, ['Lie'], { name: 'Lie' }]) expect(parseMove({ ...move, clip }, 'pikine')).toBeNull();
+  });
+  it('carries the arena show friends share (day, phase, time, result codes) and nothing else in it', () => {
+    const seated = { ...move, clip: 'Sit', speed: 0 };
+    expect(parseMove({ ...seated, arena: { d: 12, p: 3, t: 41.26 } }, 'pikine')?.arena).toEqual({ d: 12, p: 3, t: 41.3 });
+    expect(parseMove({ ...seated, arena: { d: 12, p: 4, t: 2, w: 1, o: 0 } }, 'pikine')?.arena).toEqual({ d: 12, p: 4, t: 2, w: 1, o: 0 });
+    expect(parseMove(seated, 'pikine')).not.toHaveProperty('arena');                       // optional
+    expect(parseMove({ ...seated, clip: 'Celebrate' }, 'pikine')?.clip).toBe('Celebrate');   // « Encourager » from the stands
+    for (const arena of [null, 3, 'bout', [12, 3, 4], {}, { d: 12, p: 3 }, { d: 0, p: 3, t: 1 }, { d: 1.5, p: 3, t: 1 }, { d: 12, p: 7, t: 1 }, { d: 12, p: -1, t: 1 },
+      { d: 12, p: 3, t: -1 }, { d: 12, p: 3, t: 901 }, { d: 12, p: 3, t: NaN }, { d: 12, p: 3, t: '4' }, { d: 12, p: 3, t: 1, w: 3 }, { d: 12, p: 3, t: 1, o: 4 },
+      { d: 12, p: 3, t: 1, wallet: 500 }, { d: 12, p: 3, t: 1, record: { wins: 9 } }, { d: 12, p: 3, t: 1, __proto__: { x: 1 }, reward: 1 }]) {
+      expect(parseMove({ ...seated, arena }, 'pikine')).toBeNull();
+    }
+    expect(parseArena({ d: 1_000_001, p: 1, t: 0 })).toBeNull();
+  });
+  it('names the show phases and outcomes as the arena does', () => {
+    expect([...ARENA_PHASES]).toEqual([...SHOW_PHASES]);
+    expect([...ARENA_OUTCOMES]).toEqual(['projection', 'decision', 'egalite', 'abandon']);
   });
   it('normalises display names and restricts appearance and hub identifiers', () => {
     expect(nickname(' <b> Mame\n Diarra </b> ')).toBe('b Mame Diarra b');

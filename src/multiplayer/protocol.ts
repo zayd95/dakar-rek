@@ -37,6 +37,8 @@ export function parseArena(value: unknown): ArenaPresence | null {
   if (v.o !== undefined && !int(v.o, 0, ARENA_OUTCOMES.length - 1)) return null;
   return { d: v.d as number, p: v.p as number, t: Math.round((v.t as number) * 10) / 10, ...(v.w !== undefined ? { w: v.w as number } : {}), ...(v.o !== undefined ? { o: v.o as number } : {}) };
 }
+/** Optional fields gameplay modules add to the player's presence (GameModule.presence), each validated in parseMove. */
+export type PresenceExtras = Pick<Move, 'arena'>;
 /** `tag` is a stable public key derived server-side from a private device key: mute/block survive reconnects without revealing the key. */
 export interface Peer extends Move { id: string; name: string; look: number; tag?: string; updatedAt: number }
 export interface ChatMessage { type: 'chat'; id: string; from: string; name: string; tag?: string; channel: ChatChannel; text: string; at: number }
