@@ -14,7 +14,7 @@ import type { Outfit } from './character';
  * Clips: CMU motion capture retargeted (Walk, Run, Idle, Talk, Phone, Sit, Eat, Wave) and the v5 wrestling clips retargeted
  * (Stance, Grab, Fall_Back, Prep, Dance_A, Dance_B, Celebrate, Entrance_Walk). Status: TEMP v6 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Phone' | 'Wave' | 'Eat';
+export type Clip = 'Idle' | 'Idle_B' | 'Walk' | 'Walk_B' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Phone' | 'Wave' | 'Eat';
 export type { Style, Pattern, PersonLook } from '../core/look';
 export { randomLook } from '../core/look';
 import { FACE_KEYS, type PersonLook, type Pattern } from '../core/look';
@@ -180,7 +180,13 @@ type ShapeW = Record<(typeof SHAPES)[number], number>;
 const FACE_GAIN: Record<string, number> = { FaceNose: 1.8, FaceLips: 1.9, FaceJaw: 1.2, FaceEyes: 1.6, FaceLong: 0.9, FaceRound: 1.2 };
 /** Garments that move on their own (lag and a light breeze) below the hips / the head. */
 const SWAY_PARTS: Record<string, [number, number, number]> = { Cloth_Boubou: [0.95, 0.06, 1.3], Cloth_Skirt: [0.9, 0.06, 1.1], Hair_Braids: [1.6, 1.15, 1.2], Hair_Locs: [1.6, 1.25, 1.2], Ngemb_B: [0.8, 0.5, 1.0] };
-const _v = new THREE.Vector3(), _m = new THREE.Matrix4();
+const _v = new THREE.Vector3(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _x = new THREE.Vector3(1, 0, 0);
+/** Ground speed (m/s) at which each locomotion capture plays at 1x: the feet stay planted. */
+const NATURAL_SPEED: Partial<Record<string, number>> = { Walk: 1.07, Walk_B: 1.28, Run: 3.76 };
+/** Loops that start at a random point so nobody moves in step with their neighbour. */
+const RANDOM_START = new Set(['Idle', 'Idle_B', 'Walk', 'Walk_B', 'Run', 'Talk', 'Sit', 'Eat', 'Phone']);
+/** Relaxed hands: the MakeHuman rest hand is open and spread; curl the finger chains a little (radians about local X). */
+const CURL: [string, number][] = [['LeftFingerBase', 0.5], ['LeftHandFinger1', 0.55], ['RightFingerBase', 0.5], ['RightHandFinger1', 0.55], ['LThumb', 0.25], ['RThumb', 0.25]];
 
 export class Humanoid {
   readonly group = new THREE.Group();
@@ -201,6 +207,9 @@ export class Humanoid {
   private hipsOffset = new THREE.Vector3();
   private accessoryMeshes: THREE.Object3D[] = [];
   clipName: Clip | null = null;
+  /** Personal walk and idle (two captures each), so a crowd is not a row of clones. */
+  private walkClip: Clip = Math.random() < 0.5 ? 'Walk' : 'Walk_B';
+  private idleClip: Clip = Math.random() < 0.5 ? 'Idle' : 'Idle_B';
   /** When set, city movement does not change the clip (emotes, talking, sitting). */
   hold: Clip | null = null;
 
@@ -238,6 +247,7 @@ export class Humanoid {
       else if (m.name.startsWith('Brows')) m.material = brows;
       else if (m.name.startsWith('Lashes')) m.material = lashes;
     });
+    this.bones.get('Head')?.scale.setScalar(1.07);              // slightly larger head: stylized, reads friendlier
     this.mixer = new THREE.AnimationMixer(this.root);
     for (const c of T.clips) this.actions.set(c.name, this.mixer.clipAction(c));
     if (look) this.setLook(look);
@@ -256,7 +266,10 @@ export class Humanoid {
     if (l.beard != null) { vis.push('Beard'); this.beardMat.color.set(l.beard).multiplyScalar(1.6); }
     this.hairMat.color.set(l.hairColor ?? ((l.old ?? 0) > 0.6 ? 0x9a948c : 0x1c1617)).multiplyScalar(1.6);
     this.eyesMat.color.set(l.eyeColor ?? 0x9a8a80).multiplyScalar(1.06);
-    this.setShape(l.female ? 1 : 0, l.muscular ?? 0, l.heavy ?? 0, l.old ?? 0);
+    // Baseline build: nobody is stick-thin; sliders add on top.
+    const musc = Math.min(1, (l.female ? 0.12 : 0.3) + (l.muscular ?? 0) * 0.9);
+    const heavy = Math.min(1, 0.08 + (l.heavy ?? 0) * 0.92);
+    this.setShape(l.female ? 1 : 0, musc, heavy, l.old ?? 0);
     this.setFace(l.face ?? {});
     const set = (k: string, mat: THREE.Material) => { const m = this.parts.get(k); if (m) m.material = mat; vis.push(k); };
     const legs = l.legs === 'shorts' ? 'Cloth_Shorts' : 'Cloth_Trousers';
@@ -379,7 +392,7 @@ export class Humanoid {
     }
     const next = this.actions.get(name); if (!next) return;
     next.reset(); next.setLoop(THREE.LoopRepeat, Infinity); next.timeScale = 1;
-    if (offset) next.time = offset * next.getClip().duration;
+    if (offset || RANDOM_START.has(name)) next.time = (offset || Math.random()) * next.getClip().duration;
     next.fadeIn(fade).play();
     this.current?.fadeOut(fade);
     this.current = next; this.clipName = name;
@@ -388,6 +401,8 @@ export class Humanoid {
   private tick(dt: number) {
     this.mixer.update(dt);
     const hips = this.bones.get('Hips'); if (hips && this.hipsOffset.lengthSq() > 0) hips.position.add(this.hipsOffset);
+    for (const [n, a] of CURL) { const b = this.bones.get(n); if (b) b.quaternion.multiply(_q.setFromAxisAngle(_x, a)); }
+    this.tuckArms();
     this.applyLook(dt);
     this.blink(dt);
     this.updateSway(dt);
@@ -395,9 +410,10 @@ export class Humanoid {
   /** City locomotion: idle, walk or run from ground speed (m/s). */
   animate(dt: number, speed: number) {
     if (!this.hold) {
-      if (speed > 3) { this.play('Run', 0.15); if (this.current) this.current.timeScale = speed / 5.2; }
-      else if (speed > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = Math.max(0.6, speed / 1.35); }
-      else this.play('Idle', 0.25);
+      const clamp = THREE.MathUtils.clamp;
+      if (speed > 2.6) { this.play('Run', 0.2); if (this.current) this.current.timeScale = clamp(speed / NATURAL_SPEED.Run!, 0.75, 1.45); }
+      else if (speed > 0.2) { this.play(this.walkClip, 0.25); if (this.current) this.current.timeScale = clamp(speed / NATURAL_SPEED[this.walkClip]!, 0.55, 1.7); }
+      else this.play(this.idleClip, 0.3);
     } else this.play(this.hold, 0.2);
     this.tick(dt);
   }
@@ -412,6 +428,27 @@ export class Humanoid {
     if (t > 0.15) this.blinkT = 2 + Math.random() * 4;
   }
   update(dt: number) { this.tick(dt); }
+
+  /** Pulls the upper arms toward straight-down by the clip's factor: the CMU retargets leave the elbows out. */
+  private static TUCK: Partial<Record<Clip, [number, number]>> = { Idle: [0.3, 0.3], Walk: [0.22, 0.22], Run: [0.12, 0.12], Talk: [0.24, 0.24], Sit: [0.18, 0.18], Eat: [0.1, 0.12], Phone: [0.28, 0], Entrance_Walk: [0.18, 0.18] };
+  private static tq1 = new THREE.Quaternion(); private static tq2 = new THREE.Quaternion();
+  private static td = new THREE.Vector3(); private static tt = new THREE.Vector3(); private static tp = new THREE.Vector3();
+  private tuckArms() {
+    const k = Humanoid.TUCK[this.clipName ?? 'Idle']; if (!k) return;
+    for (const [side, f] of [['Left', k[0]], ['Right', k[1]]] as const) {
+      if (!f) continue;
+      const arm = this.bones.get(side + 'Arm'), fore = this.bones.get(side + 'ForeArm');
+      if (!arm || !fore) continue;
+      arm.updateWorldMatrix(true, false); fore.updateWorldMatrix(false, false);
+      const a = Humanoid.tp.setFromMatrixPosition(arm.matrixWorld);
+      const d = Humanoid.td.setFromMatrixPosition(fore.matrixWorld).sub(a).normalize();
+      if (d.y < -0.96) continue;                                   // already hanging straight
+      const t = Humanoid.tt.copy(d).multiplyScalar(1 - f); t.y -= f; t.normalize();
+      const q = Humanoid.tq1.setFromUnitVectors(d, t);             // world-space correction -> arm-local premultiply
+      const pw = arm.parent!.getWorldQuaternion(Humanoid.tq2);
+      arm.quaternion.premultiply(q.premultiply(pw.clone().invert()).multiply(pw));
+    }
+  }
 
   /** World point the head turns toward (neck + head share the turn), or null. Limited to ±70° yaw, ±25° pitch. */
   lookTarget: THREE.Vector3 | null = null;

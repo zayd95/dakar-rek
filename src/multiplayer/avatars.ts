@@ -30,7 +30,8 @@ export class RemoteAvatars {
       else a.body.group.position.lerp(target, 1 - Math.exp(-dt * 12));
       const yaw = a.body.group.rotation.y;
       a.body.group.rotation.y += Math.atan2(Math.sin(peer.yaw - yaw), Math.cos(peer.yaw - yaw)) * (1 - Math.exp(-dt * 12));
-      if (a.body instanceof Humanoid) a.body.hold = peer.clip;
+      // locomotion clips are picked from the speed (each body has its own walk); emotes and poses are held
+      if (a.body instanceof Humanoid) a.body.hold = peer.clip === 'Idle' || peer.clip === 'Walk' || peer.clip === 'Run' ? null : peer.clip;
       a.body.animate(dt, peer.speed);
       a.name.visible = Math.hypot(peer.x - local.x, peer.z - local.z) < 35;
       a.name.scale.set(labelHeight * 256 / 48, labelHeight, 1);

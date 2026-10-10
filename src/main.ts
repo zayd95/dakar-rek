@@ -57,9 +57,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 type Quality = 'low' | 'medium' | 'high';
 let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarrek.quality'); if (q === 'low' || q === 'medium' || q === 'high') return q; } catch { /* */ } return /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'medium' : 'high'; })();
 const QUAL = {
-  low: { pr: 1, shadow: 0, crowd: 8, traffic: 3, loiter: 6 },
-  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 5, loiter: 12 },
-  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 7, loiter: 18 },
+  low: { pr: 1, shadow: 0, crowd: 12, traffic: 5, loiter: 9 },
+  medium: { pr: 1.5, shadow: 1024, crowd: 20, traffic: 8, loiter: 16 },
+  high: { pr: 2, shadow: 2048, crowd: 28, traffic: 11, loiter: 24 },
 };
 
 const scene = new THREE.Scene();
@@ -124,6 +124,9 @@ let inside: { int: Interior; door: Interactable } | null = null;
 /** Debug only: fixed camera offset from the player (front portraits for visual review). */
 let loiterers: Loiterers | null = null;
 let camOverride: { dist: number; h: number; side: number } | null = null;
+/** Taxi hailing: the nearby free taxi this frame, and the one braking for the player. */
+let taxiNear: THREE.Group | null = null;
+let taxiCall: THREE.Group | null = null;
 const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
 const roomParam = Number(params.get('room'));
 const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
@@ -468,13 +471,29 @@ function openTravel() {
   hud.openMenu('Car rapide', 'Où va-t-on ? Le trajet coûte de l’argent et un peu de fatigue.', items);
 }
 
-function doTravel(dest: HubId) {
+function openTaxi() {
+  if (!world || !taxiCall) return;
+  mode = 'menu';
+  const here = world.id, car = taxiCall;
+  const items = HUB_IDS.filter(h => h !== here).map(h => {
+    const leg = travelLeg(here, h);
+    const cost = Math.round(leg.cost * 2.2 / 25) * 25, min = Math.max(4, Math.round(leg.minutes * 0.55));
+    const poor = !state.canAfford(cost);
+    return { label: HUB_NAMES[h], detail: poor ? 'Pas assez d’argent' : `Direct · ≈ ${min} min`, right: fcfa(cost), disabled: poor, onPick: () => { hud.closeModal(); doTravel(h, 'taxi'); } };
+  });
+  hud.openMenu('Taxi', 'Course directe — plus cher que le car rapide.', [...items,
+    { label: 'Laisser partir', onPick: () => { hud.closeModal(); traffic?.release(car); taxiCall = null; } }]);
+}
+
+function doTravel(dest: HubId, via: 'bus' | 'taxi' = 'bus') {
   if (!world) return;
   const leg = travelLeg(world.id, dest);
+  const cost = via === 'taxi' ? Math.round(leg.cost * 2.2 / 25) * 25 : leg.cost;
+  taxiCall = null;
   mode = 'busy'; input.enabled = false;
-  hud.fade(true, '🚌 ' + HUB_NAMES[dest]);
+  hud.fade(true, (via === 'taxi' ? '🚕 ' : '🚌 ') + HUB_NAMES[dest]);
   setTimeout(() => {
-    state.addMoney(-leg.cost); state.tick(leg.minutes * 60000 * 0.15); state.count('trips');
+    state.addMoney(-cost); state.tick(leg.minutes * 60000 * (via === 'taxi' ? 0.09 : 0.15)); state.count('trips');
     loadHub(dest);
     hud.fade(false);
     hud.toast('Arrivée : ' + HUB_NAMES[dest]);
@@ -519,7 +538,8 @@ function saveNow(): boolean {
 }
 
 hud.onAction = () => {
-  if (mode !== 'play' || !nearest) return;
+  if (mode !== 'play') return;
+  if (!nearest) { if (taxiNear && traffic) { taxiCall = taxiNear; taxiNear = null; traffic.hail(taxiCall, pos.x, pos.z); hud.toast('🚕 Taxi ! Il arrive…'); } return; }
   if (nearest.kind === 'travel') openTravel();
   else if (nearest.actions.length === 1 && nearest.actions[0].special === 'exit') exitInterior();
   else openActions(nearest);
@@ -538,7 +558,7 @@ function frame(now: number) {
   if (document.hidden || !world) return;
 
   if (input.takeMenu()) { if (hud.modalOpen) hud.closeModal(); else if (mode === 'play') openSystem(); }
-  if (input.takeAction() && mode === 'play' && nearest) hud.onAction();
+  if (input.takeAction() && mode === 'play' && (nearest || taxiNear)) hud.onAction();
 
   const drag = input.takeDrag();
   drag.yaw += input.rotateKey() * dt * 1.8;
@@ -552,7 +572,8 @@ function frame(now: number) {
     const fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
     const dx = fx * m.y + rx * m.x, dz = fz * m.y + rz * m.x;
     const mag = Math.min(1, Math.hypot(m.x, m.y));
-    const target = 5.6 * mag;
+    // walk by default (Sims-like); Shift or a full push on the stick runs
+    const target = (input.running() || mag > 0.95 && input.touchActive()) ? 4.4 * mag : 1.7 * Math.min(1, mag / 0.9);
     speed += (target - speed) * Math.min(1, dt * 12);
     if (mag > 0.05) {
       const want = Math.atan2(dx, dz);
@@ -584,12 +605,21 @@ function frame(now: number) {
   for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
   const space = presenceSpace();
-  const clip = mode === 'play' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
+  const own = playerBody?.clipName?.replace(/_B$/, '');
+  const clip = mode === 'play' && own && PRESENCE_CLIPS.includes(own as PresenceClip) ? own as PresenceClip : 'Idle';
   presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   findNearest();
+  // Hail a taxi from the roadside, like flagging one down on Independence Avenue.
+  taxiNear = !nearest && !inside && !lambScene && mode === 'play' && !taxiCall && traffic ? traffic.nearestTaxi(pos.x, pos.z) : null;
+  if (taxiCall && traffic) {
+    const d = Math.hypot(taxiCall.position.x - pos.x, taxiCall.position.z - pos.z);
+    if (d > 70 || (taxiCall.userData.served && mode === 'play')) { traffic.release(taxiCall); taxiCall = null; }
+    else if (mode === 'play' && d < 14 && traffic.speedOf(taxiCall) < 0.25) { taxiCall.userData.served = true; openTaxi(); }
+  }
   const beatHere = nearest?.npc ? availableBeat(nearest.npc, rel, state) : null;
-  hud.setPrompt(mode === 'play' && nearest ? nearest.name : null, nearest?.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined);
+  hud.setPrompt(mode === 'play' && nearest ? nearest.name : taxiCall && mode === 'play' ? 'Taxi…' : taxiNear ? 'Taxi' : null,
+    nearest ? (nearest.kind === 'travel' ? 'Voyager' : beatHere ? '★ Histoire · Appuyer / E' : undefined) : taxiCall ? 'Il s’arrête' : taxiNear ? 'Héler / E' : undefined);
 
   if (!lambScene) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
   if (camOverride && !lambScene) {
@@ -628,6 +658,7 @@ if (DEBUG) {
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
     lookYaw(y: number) { follow.yaw = y; },
     act() { hud.onAction(); },
+    taxi: () => ({ near: !!taxiNear, call: !!taxiCall, nearest: nearest?.id ?? null, d: traffic ? (g => g ? +Math.hypot(g.position.x - pos.x, g.position.z - pos.z).toFixed(1) : null)(traffic.nearestTaxi(pos.x, pos.z, 1e9)) : null }),
     drawCalls: () => renderer.info.render.calls,
     tris: () => renderer.info.render.triangles,
     nearestInteractable: () => nearest?.name ?? null,

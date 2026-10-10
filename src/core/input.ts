@@ -43,6 +43,10 @@ export class Input {
     const l = Math.hypot(x, y);
     return l > 1 ? { x: x / l, y: y / l } : { x, y };
   }
+  /** Shift held: run instead of walk. */
+  running(): boolean { return this.enabled && (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight')); }
+  /** A finger is on the virtual stick. */
+  touchActive(): boolean { return this.joy.x !== 0 || this.joy.y !== 0; }
   rotateKey(): number { return (this.keys.has('KeyQ') ? 1 : 0) - (this.keys.has('KeyR') ? 1 : 0); }
   takeDrag() { const d = { yaw: this.dragYaw, pitch: this.dragPitch }; this.dragYaw = 0; this.dragPitch = 0; return d; }
   takeAction() { const a = this.actionPressed; this.actionPressed = false; return a; }

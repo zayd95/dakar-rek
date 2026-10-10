@@ -24,7 +24,7 @@ export class Hud {
       <div id="sceneTag" class="card"></div>
       <div id="progress" class="card"><span id="progLabel"></span><div class="bar"><i id="progBar" style="width:0"></i></div></div>
       <div id="joy"><i></i></div>
-      <div id="hint" class="card">ZQSD/WASD ou flèches : marcher · glisser : caméra · E : action · Échap : menu</div>
+      <div id="hint" class="card">ZQSD/WASD ou flèches : marcher · Maj : courir · glisser : caméra · E : action · Échap : menu</div>
       <button id="act" class="off">Action</button>
       <div id="temp">Dakar Rek · Alpha</div>
       <div id="fade"></div>

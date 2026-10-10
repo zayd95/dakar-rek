@@ -26,13 +26,14 @@ export class Crowd {
     for (let n = 0; n < count; n++) {
       const e = pick(world.edges, rand);
       const c = humanoidReady() ? new Humanoid(randomLook(rand)) : new Character(pick(NPC_OUTFITS, rand));
+      if (c instanceof Humanoid) c.play('Walk', 0, rand());          // each walker on their own phase
       this.group.add(c.group);
       const prev = this.walkers[this.walkers.length - 1];
       if (prev && n % 3 === 2) {   // walking together: same street, side by side
         this.walkers.push({ char: c, ax: prev.ax, az: prev.az, bx: prev.bx, bz: prev.bz, t: prev.t, speed: prev.speed, lat: prev.lat + Math.sign(prev.lat) * -0.75, prev: '' });
         continue;
       }
-      this.walkers.push({ char: c, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 1.1 + rand() * 0.7, lat: (rand() < 0.5 ? -1 : 1) * (5.3 + rand() * 1.2), prev: '' });
+      this.walkers.push({ char: c, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 0.85 + rand() * 0.6, lat: (rand() < 0.5 ? -1 : 1) * (5.3 + rand() * 1.2), prev: '' });
     }
   }
   /** Keep the crowd around the player: walkers that drift too far are moved to a street 20–55 m away. */
@@ -68,7 +69,7 @@ export class Crowd {
   }
 }
 
-interface Car { g: THREE.Group; ax: number; az: number; bx: number; bz: number; t: number; speed: number; prev: string; lane: number }
+interface Car { g: THREE.Group; ax: number; az: number; bx: number; bz: number; t: number; speed: number; cur: number; held: boolean; to: { x: number; z: number } | null; prev: string; lane: number }
 
 /**
  * Decorative local traffic. VISUAL ONLY: it never collides with, blocks or affects the player, jobs or
@@ -82,18 +83,36 @@ export class DecorativeTraffic {
       const e = pick(world.edges, rand);
       const g = rand() < 0.35 ? makeCarRapide() : makeTaxi(pick([0xf0b800, 0xf2f2ec, 0xd9482b, 0x2f8fd1], rand));
       this.group.add(g);
-      this.cars.push({ g, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 5 + rand() * 3, prev: '', lane: 2.5 });
+      this.cars.push({ g, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 4 + rand() * 3, cur: 4, held: false, to: null, prev: '', lane: 2.5 });
     }
   }
   /** Car rapide groups in this traffic (they carry an apprentice on the step). */
   rapides() { return this.cars.map(c => c.g).filter(g => g.name.includes('car_rapide')); }
+  /** Nearest free taxi to (x, z) within maxD, or null. */
+  nearestTaxi(x: number, z: number, maxD = 45): THREE.Group | null {
+    let best: Car | null = null, bd = maxD;
+    for (const c of this.cars) {
+      if (!c.g.name.includes('taxi') || c.held || c.to) continue;
+      const d = Math.hypot(c.g.position.x - x, c.g.position.z - z);
+      if (d < bd) { bd = d; best = c; }
+    }
+    return best?.g ?? null;
+  }
+  /** The hailed taxi drives toward (x, z) — greedy at each corner — then brakes beside the caller. */
+  hail(g: THREE.Group, x: number, z: number) { const c = this.cars.find(c => c.g === g); if (c) c.to = { x, z }; }
+  release(g?: THREE.Group) { for (const c of this.cars) if (!g || c.g === g) { c.held = false; c.to = null; } }
+  speedOf(g: THREE.Group) { return this.cars.find(c => c.g === g)?.cur ?? 0; }
   update(dt: number) {
     for (const c of this.cars) {
+      if (c.to && !c.held && Math.hypot(c.g.position.x - c.to.x, c.g.position.z - c.to.z) < 14) c.held = true;   // arrived: pull over
+      c.cur = c.held ? Math.max(0, c.cur - 9 * dt) : Math.min(c.speed, c.cur + 3.5 * dt);
       const len = Math.hypot(c.bx - c.ax, c.bz - c.az);
-      c.t += (c.speed * dt) / len;
+      c.t += (c.cur * dt) / len;
       if (c.t >= 1) {
         const opts = neighbours(this.world, c.bx, c.bz).filter(n => nodeKey(n.x, n.z) !== c.prev);
-        const next = opts.length ? pick(opts, this.rand) : { x: c.ax, z: c.az };
+        const next = !opts.length ? { x: c.ax, z: c.az }
+          : c.to ? opts.reduce((a, b) => Math.hypot(a.x - c.to!.x, a.z - c.to!.z) < Math.hypot(b.x - c.to!.x, b.z - c.to!.z) ? a : b)
+          : pick(opts, this.rand);
         c.prev = nodeKey(c.bx, c.bz); c.ax = c.bx; c.az = c.bz; c.bx = next.x; c.bz = next.z; c.t = 0;
       }
       const l2 = Math.hypot(c.bx - c.ax, c.bz - c.az);
