@@ -276,7 +276,12 @@ export class Hud {
     const g = this.el.goal;
     g.classList.toggle('on', !!text);
     const arrow = !!text && ARROWS.includes(text[0]) && text[1] === ' ';
-    (g.querySelector('.gt') as HTMLElement).textContent = text ? (arrow ? text.slice(2) : text) : '';
+    // a distance at the end of the line (« … · 72 m ») goes to the right-hand slot, never wrapped away from its number
+    const { text: line, dist } = goalParts(text ? (arrow ? text.slice(2) : text) : '');
+    this.textDist = dist;
+    const gt = g.querySelector('.gt') as HTMLElement;
+    gt.textContent = line;
+    if (dist) { const sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = ' · '; gt.appendChild(sep); }   // read, not shown
     if (!this.guideOn) (g.querySelector('.gi') as HTMLElement).textContent = arrow ? text![0] : '➜';
     g.classList.toggle('walk', arrow || this.guideOn);
     this.paintGuideDistance();
@@ -300,10 +305,10 @@ export class Hud {
   private guideOn = false;
   private guideDeg = NaN;
   private guideDist = -1;
+  private textDist = '';
   private paintGuideDistance() {
-    const gd = this.el.goal.querySelector('.gd') as HTMLElement, text = this.goalKey;
-    const show = this.guideOn && this.guideDist >= 0 && !/\d+ m$/.test(text);
-    const v = show ? `${this.guideDist} m` : '';
+    const gd = this.el.goal.querySelector('.gd') as HTMLElement;
+    const v = this.guideOn && this.guideDist >= 0 ? `${this.guideDist} m` : this.textDist;
     if (gd.textContent !== v) gd.textContent = v;
   }
   /** Scene banner: makes training, entrance and combat clearly distinct; `stoppable` adds « Arrêter » (onSceneStop). */
@@ -399,4 +404,10 @@ export class Hud {
   openQuick(title: string, items: MenuItem[], subtitle = '') {
     this.sheet.open('quick', title, subtitle, items);
   }
+}
+
+/** A goal line split into its words and the distance at its end (« 72 m », shown in the right-hand slot), if any. */
+export function goalParts(text: string): { text: string; dist: string } {
+  const m = /\s·\s(\d+)\s?m$/.exec(text);
+  return m ? { text: text.slice(0, m.index), dist: `${m[1]} m` } : { text, dist: '' };
 }
