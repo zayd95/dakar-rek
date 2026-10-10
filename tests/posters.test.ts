@@ -21,6 +21,12 @@ describe('fight posters: what they say', () => {
     expect(l.when).toBe(`Demain ${GALA.doors} h · Arène de Pikine`);
     expect(l.tag).toBe('GRAND GALA DE LUTTE');
   });
+  it('once tonight\'s gala is over, the posters are crossed « soirée terminée » and announce tomorrow', () => {
+    const during = posterLines(3, 20, null, false), done = posterLines(3, 20, null, true), late = posterLines(3, GALA.close + 0.2, null, false);
+    expect(during.over).toBe(false); expect(during.when).toMatch(/^Ce soir/);
+    for (const l of [done, late]) { expect(l.over).toBe(true); expect(l.when).toMatch(/^Demain/); expect(l.tag).toBe('GRAND GALA DE LUTTE'); }   // Thursday → Friday's gala
+    expect(posterLines(4, 10, null, true).over).toBe(false);                   // a gala done yesterday does not cross this morning's posters
+  });
   it('the career lane prints the last result for two days', () => {
     posters.setResult(10, 'Babacar a battu Lamine');
     expect(posterLines(10, 12).result).toBe('Dernier combat : Babacar a battu Lamine');

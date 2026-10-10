@@ -3,7 +3,7 @@ import type { GameModule } from '../game/modules';
 import type { Collider, HubWorld, RoadEdge } from '../world/types';
 import { rng } from '../core/rng';
 import { WALL_R, inGate, inTunnel } from '../world/geew';
-import { BILL, GALA, TICKET_PRICE } from './program';
+import { BILL, GALA, GALA_DONE_COUNTER, TICKET_PRICE } from './program';
 import { eveningSize } from './exterior';
 
 /**
@@ -33,10 +33,14 @@ export const posters = {
   clearResult() { result = null; revision++; },
 };
 
-export interface PosterLines { tag: string; title: string; ecuries: string; when: string; price: string; result: string | null; big: boolean }
-/** What tonight's poster says (pure, unit-tested). */
-export function posterLines(day: number, hour: number, last: { day: number; text: string } | null = result): PosterLines {
-  const tonight = hour < GALA.close, d = tonight ? day : day + 1, big = eveningSize(d, GALA.doors) === 'gala';
+export interface PosterLines { tag: string; title: string; ecuries: string; when: string; price: string; result: string | null; big: boolean; over: boolean }
+/**
+ * What tonight's poster says (pure, unit-tested). Once tonight's gala is over (`done`: seen to the end) or at closing
+ * time, the poster is crossed « SOIRÉE TERMINÉE » and announces tomorrow's card.
+ */
+export function posterLines(day: number, hour: number, last: { day: number; text: string } | null = result, done = false): PosterLines {
+  const over = (done && hour >= GALA.setup) || hour >= GALA.close;
+  const tonight = !over, d = tonight ? day : day + 1, big = eveningSize(d, GALA.doors) === 'gala';
   return {
     tag: big ? 'GRAND GALA DE LUTTE' : 'COMBAT DE QUARTIER',
     title: `${BILL.left.name} – ${BILL.right.name}`.toUpperCase(),
@@ -44,7 +48,7 @@ export function posterLines(day: number, hour: number, last: { day: number; text
     when: `${tonight ? 'Ce soir' : 'Demain'} ${GALA.doors} h · Arène de Pikine`,
     price: `Entrée ${TICKET_PRICE.toLocaleString('fr-FR')} F`,
     result: last && day - last.day <= 2 ? `Dernier combat : ${last.text}` : null,
-    big,
+    big, over,
   };
 }
 
@@ -121,6 +125,12 @@ function drawPoster(l: PosterLines): HTMLCanvasElement {
     c.fillStyle = '#1b2a7a'; c.fillRect(0, 392, wd, 70);
     c.fillStyle = '#fff3d0'; fit(l.result, wd - 24, 22, 800); c.fillText(l.result, wd / 2, 427);
   }
+  if (l.over) {                                                          // tonight is over: crossed, tomorrow announced
+    c.save(); c.translate(wd / 2, 210); c.rotate(-0.32);
+    c.fillStyle = 'rgba(20, 20, 24, 0.86)'; c.fillRect(-wd * 0.75, -34, wd * 1.5, 68);
+    c.fillStyle = '#ffe7b0'; fit('SOIRÉE TERMINÉE', wd - 30, 38); c.fillText('SOIRÉE TERMINÉE', 0, 2);
+    c.restore();
+  }
   c.fillStyle = l.big ? '#a3231a' : '#0f5e6e'; c.fillRect(0, 476, wd, 28);
   c.fillStyle = '#fff3d0'; fit('LÀMB · LUTTE SÉNÉGALAISE', wd - 30, 16, 800); c.fillText('LÀMB · LUTTE SÉNÉGALAISE', wd / 2, 490);
   return cv;
@@ -167,12 +177,14 @@ export const postersModule: GameModule = {
   update(ctx, dt) {
     if (!tex) return;
     t -= dt; if (t > 0) return; t = 2;
-    const l = posterLines(ctx.day(), ctx.hour()), k = `${revision}|${l.tag}|${l.when}|${l.result}`;
+    const day = ctx.day(), l = posterLines(day, ctx.hour(), undefined, ctx.state.data.counters[GALA_DONE_COUNTER] === day);
+    const k = `${revision}|${l.tag}|${l.when}|${l.result}|${l.over}`;
     if (k !== key) { key = k; tex.image = drawPoster(l); tex.needsUpdate = true; }
   },
   debug: ctx => ({
     /** The posters of this hub and what they say. */
-    posters: () => ({ hub: hubId, count: spots.length, spots: spots.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), yaw: +s.yaw.toFixed(2) })), lines: posterLines(ctx.day(), ctx.hour()) }),
+    posters: () => ({ hub: hubId, count: spots.length, spots: spots.map(s => ({ x: +s.x.toFixed(2), z: +s.z.toFixed(2), yaw: +s.yaw.toFixed(2) })),
+      lines: posterLines(ctx.day(), ctx.hour(), undefined, ctx.state.data.counters[GALA_DONE_COUNTER] === ctx.day()), drawn: key }),
     postersResult: (day: number, text: string) => posters.setResult(day, text),
   }),
 };
