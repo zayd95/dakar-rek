@@ -285,7 +285,8 @@ export class LambDuel {
       .duel-btns.frappe button[data-k=guard]{right:90px;bottom:0;width:62px;height:62px}
       .duel-btns.frappe button[data-k=break]{right:8px;bottom:92px;width:60px;height:60px}
       .duel-btns button[data-k=quick]{right:90px;bottom:70px;width:60px;height:60px;background:#fdba74;font-size:12px}
-      .duel-btns button[data-k=big]{right:156px;bottom:20px;width:60px;height:60px;background:#f87171;font-size:11px;line-height:1.05}
+      .duel-btns button[data-k=big]{right:156px;bottom:20px;width:60px;height:60px;background:#f87171;font-size:12px;line-height:1.05}
+      @media (max-height:500px){.duel-ui.frappe .duel-msg{top:calc(env(safe-area-inset-top,0px) + 146px);font-size:22px}.duel-ui.frappe .duel-clinch{top:calc(env(safe-area-inset-top,0px) + 184px)}}
       .duel-confirm,.duel-recap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,.55);pointer-events:auto}
       .duel-confirm[hidden],.duel-recap[hidden],.duel-step[hidden],.duel-clinch[hidden]{display:none}
       .duel-confirm>div,.duel-recap>div{background:#0f172a;border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:16px;width:min(88vw,380px);max-height:86vh;overflow:auto}

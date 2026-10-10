@@ -72,6 +72,25 @@ async function friendlyMenu(page) {
   return page.evaluate(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent.replace(/\s+/g, ' ').trim()));
 }
 
+/**
+ * The duel's touch buttons: on screen, apart from each other, from the joystick and from any other control that is
+ * showing (action button, « Courir », the gesture card), labels readable (≥ 11 px, not cut).
+ */
+const layout = page => page.evaluate(() => {
+  const r = el => { const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; };
+  const shown = el => !!el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden' && el.getBoundingClientRect().width > 0;
+  const btns = [...document.querySelectorAll('.duel-btns button')].map(b => ({ k: b.dataset.k, text: b.innerText.replace(/\s+/g, ' ').trim(), font: parseFloat(getComputedStyle(b).fontSize), cut: b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 1, ...r(b) }));
+  const hit = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+  const others = ['joy', 'runBtn', 'act', 'actMore', 'gesture'].map(id => document.getElementById(id)).filter(shown).map(el => ({ k: el.id, ...r(el) }));
+  const overlaps = [];
+  for (let i = 0; i < btns.length; i++) for (let k = i + 1; k < btns.length; k++) if (hit(btns[i], btns[k])) overlaps.push(`${btns[i].k}/${btns[k].k}`);
+  for (const o of others) for (const b of btns) if (hit(b, o)) overlaps.push(`${b.k}/${o.k}`);
+  const inside = btns.every(b => b.l >= 0 && b.t >= 0 && b.r <= innerWidth && b.b <= innerHeight);
+  const unreadable = btns.filter(b => b.font < 11 || b.cut).map(b => `${b.k}:${b.font}px${b.cut ? ' cut' : ''}`);
+  return { n: btns.length, labels: btns.map(b => b.text), overlaps, inside, unreadable, others: others.map(o => o.k), bars: !!document.querySelector('[data-k=mebal]'), vw: innerWidth, vh: innerHeight };
+});
+const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unreadable.length === 0 && l.bars;
+
 // ------------------------------------------------------------------ desktop, with the flag
 {
   const { ctx, page, errors } = await open({ width: 1280, height: 720 }, false, true);
@@ -242,18 +261,8 @@ async function friendlyMenu(page) {
   await page.evaluate(() => window.__dakar.duelStart('amical', 'rapide', 'avec_frappe'));
   await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight');
   await page.waitForTimeout(600);
-  const lay = await page.evaluate(() => {
-    const r = el => { const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom }; };
-    const btns = [...document.querySelectorAll('.duel-btns button')].map(b => ({ k: b.dataset.k, ...r(b) }));
-    const joy = document.getElementById('joy'); const j = joy && getComputedStyle(joy).display !== 'none' ? r(joy) : null;
-    const hit = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
-    const overlaps = [];
-    for (let i = 0; i < btns.length; i++) for (let k = i + 1; k < btns.length; k++) if (hit(btns[i], btns[k])) overlaps.push(`${btns[i].k}/${btns[k].k}`);
-    if (j) for (const b of btns) if (hit(b, j)) overlaps.push(`${b.k}/joystick`);
-    const inside = btns.every(b => b.l >= 0 && b.t >= 0 && b.r <= innerWidth && b.b <= innerHeight);
-    return { n: btns.length, overlaps, inside, joy: j, bars: !!document.querySelector('[data-k=mebal]') };
-  });
-  check('phone: the five buttons fit on screen, apart from each other and from the joystick', lay.n === 5 && lay.inside && lay.overlaps.length === 0 && lay.bars, lay);
+  const lay = await layout(page);
+  check('phone 390×844: the five buttons fit, apart from each other, the joystick and any other control, labels readable', layoutOk(lay), lay);
   await strike(page, 'big');
   await wait(page, () => window.__dakar.duelInfo()?.strike?.player === 'big', null, 20000);
   await shot(page, 'phone-big-windup');
@@ -262,10 +271,11 @@ async function friendlyMenu(page) {
   await page.waitForTimeout(300);
   await shot(page, 'phone-exchange');
   // step 5 on the phone: he tries a throw, the button turns to « Contrer », and a steady counter turns it
-  let hot = false, label = '';
+  let hot = false, label = '', clinchLay = null;
   const ph = await until(page, i => !i || i.phase === 'fall' || i.phase === 'result', async i => {
     if (i.phase === 'fight') { if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); } return; }
     if (i.phase !== 'clinch') return;
+    if (!clinchLay) { clinchLay = await layout(page); await shot(page, 'phone-clinch'); }
     const at = i.clinch.attempt;
     if (at?.by === 'opponent') {
       if (!at.counter) {
@@ -280,7 +290,28 @@ async function friendlyMenu(page) {
   }, 150000);
   await page.keyboard.up('KeyD');
   check('phone, step 5: his throw turns the button into « Contrer », and the counter turns it (he goes down)', hot && /Contrer/.test(label) && ph?.lastThrow?.by === 'opponent' && ph.lastThrow.result === 'countered' && ph.winner === 'player', { hot, label, lastThrow: ph?.lastThrow, phase: ph?.phase, winner: ph?.winner });
+  check('phone 390×844, empoignade: Pousser, Tirer, Pivoter, Casser, Projeter — fit and readable', !!clinchLay && layoutOk(clinchLay) && ['Pousser', 'Tirer', 'Pivoter', 'Casser', 'Projeter'].every(w => clinchLay.labels.some(t => t.startsWith(w))), clinchLay);
   check('phone: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+  await ctx.close();
+}
+
+// ------------------------------------------------------------------ phone in landscape (844×390)
+{
+  const { ctx, page, errors } = await open({ width: 844, height: 390 }, true, false);
+  await page.evaluate(() => window.__dakar.duelStart('amical', 'defensif', 'avec_frappe'));
+  await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight');
+  await page.waitForTimeout(600);
+  const l1 = await layout(page);
+  check('phone 844×390: the five buttons fit, apart from each other, the joystick and any other control, labels readable', layoutOk(l1), l1);
+  await shot(page, 'phone-landscape-fight');
+  const cl = await until(page, i => !i || i.phase !== 'fight', async i => {
+    if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); }
+  }, 60000);
+  await page.keyboard.up('KeyD');
+  if (cl?.phase === 'clinch') { await page.waitForTimeout(300); await shot(page, 'phone-landscape-clinch'); }
+  const l2 = cl?.phase === 'clinch' ? await layout(page) : null;
+  check('phone 844×390, empoignade: relabelled buttons fit and read', !!l2 && layoutOk(l2) && l2.labels.some(t => t.startsWith('Pousser')), l2 ?? { phase: cl?.phase });
+  check('phone landscape: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
 
