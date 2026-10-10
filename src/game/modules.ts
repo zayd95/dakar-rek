@@ -22,6 +22,7 @@ import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
 import { ambientLife } from '../social/ambientLife';
 import { arenaExteriorModule } from '../arena/exterior';
+import { worldMarkers } from '../ui/worldMarkers';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -70,6 +71,12 @@ export interface GameCtx {
   /** 'menu' and 'busy' lock movement; 'play' gives it back. */
   setMode(m: GameMode): void;
   menu(title: string, subtitle: string, items: MenuItem[]): void;
+  /**
+   * The next-step place to walk to, in the current hub (way-finding marker and goal compass, src/ui/worldMarkers.ts):
+   * the walking destination when one is set, else the person of the suggested story beat, else (first job) the nearest
+   * Tiak Tiak pick-up; null when there is none.
+   */
+  guide(): { name: string; x: number; z: number } | null;
   toast(msg: string): void;
   save(): void;
   /**
@@ -123,5 +130,6 @@ export interface GameModule {
  */
 export const MODULES: GameModule[] = [
   wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE, arenaModule, arenaExteriorModule,
-  ambientLife,          // NPC & social life lane, last: it populates the places and seats the others register (docs/NPC_LIFE.md)
+  ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
+  worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
 ];
