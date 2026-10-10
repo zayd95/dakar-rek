@@ -56,7 +56,8 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   check(`${label}: Pikine: posters on the arena's wall and most of the others on the way to it`, onWall >= 4 && near >= p.count * 0.6, `${onWall} on the wall, ${near}/${p.count} within 160 m`);
   await d(([x, z]) => window.__dakar.place(x, z, 0), [cx, cz - WALL_R - 16]);
   await cam([cx - 9, 2.6, cz - WALL_R - 13], [cx - 2, 2.0, cz - WALL_R]); await shot('arena-wall-posters');
-  const day = await d(() => window.__dakar.arenaOut().day);
+  // the posters read the city clock's day: drop the evening override (Saturday, step 1) before reading it
+  const day = await d(() => { window.__dakar.arenaOutDay?.(null); return window.__dakar.arenaOut().day; });
   await d(dd => window.__dakar.postersResult(dd, 'Babacar a battu Lamine'), day);
   p = await d(() => window.__dakar.posters());
   check(`${label}: a result from the career lane is printed on the posters`, p.lines.result === 'Dernier combat : Babacar a battu Lamine', p.lines.result);

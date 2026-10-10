@@ -25,7 +25,9 @@ import { arenaExteriorModule } from '../arena/exterior';
 import { arenaInteriorModule } from '../arena/interior';
 import { postersModule } from '../arena/posters';
 import { fighterModule } from '../arena/fighter';
+import { eveningCallModule } from '../arena/eveningCall';
 import { worldMarkers } from '../ui/worldMarkers';
+import { crowdModule } from '../crowd/module';
 import { careerModule } from '../career/module';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
@@ -150,7 +152,8 @@ export type LambEvent =
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
 export const MODULES: GameModule[] = [
-  wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, postersModule, fighterModule,
+  wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, postersModule, fighterModule,
+  eveningCallModule,    // the evening's call to the arena and the goal line to it (src/arena/eveningCall.ts)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)

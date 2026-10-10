@@ -44,9 +44,10 @@ export function fillAt(hour: number): number {
 
 /** How full the stands get, by graphics quality (instanced spectators are cheap; real humanoids next to you are not). */
 export const DENSITY: Record<Quality, { crowdShare: number; near: number }> = {
-  low: { crowdShare: 0.42, near: 0 },
-  medium: { crowdShare: 0.68, near: 4 },
-  high: { crowdShare: 0.86, near: 8 },
+  // the stands' crowd is instanced (src/crowd: a handful of draw calls whatever the size), so even phones get full tiers
+  low: { crowdShare: 0.7, near: 0 },
+  medium: { crowdShare: 0.84, near: 4 },
+  high: { crowdShare: 0.92, near: 8 },
 };
 
 // ------------------------------------------------------------------ stand seats
