@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { GameCtx } from '../game/modules';
 import type { HubWorld } from '../world/types';
-import type { Seat } from '../interact/seats';
+import { SIT_HIPS, type Seat } from '../interact/seats';
 import type { TargetSource } from '../interact/types';
 import type { ActivitySpec } from '../activity/types';
 import { randomLook, type Clip, type PersonLook } from '../actors/humanoid';
@@ -10,47 +10,49 @@ import { Batch } from '../world/batch';
 import * as P from '../activity/primitives';
 import { tasteLine, waitLine } from '../i18n/lines';
 import { Cast, type Role } from '../venues/cast';
-import { WALL_R } from '../world/geew';
+import { ARENA_FLOOR, ECURIE_SIDES, WALKWAY_R, cornerSpots, interiorSpots } from '../world/arenaModules';
 import { ARENA_PURCHASES, ECURIES } from './exteriorRules';
 import type { Moment, Quality, ShowPhase, Street } from './program';
 
 /**
- * The people of a fight night inside the Pikine arena: the referee and the officials at the ring side (judges on their
- * folding chairs, the officials' table and its announcer), the drummers' group, vendors walking the front of the stands
- * (they stop by you and sell café Touba, water, peanuts), and each wrestler's entourage — coach, helpers, the écurie's
- * flag — who walk in with their wrestler, wait in their corner during the bout and run to the ring when theirs wins.
+ * Every person inside the walls of the Pikine arena on a fight night: the officials at their table and the announcer,
+ * the judges on their folding chairs at the sandbags, the referee in the ring, the drummers' group on its deck by the
+ * wrestlers' tunnel with its dancers, the press at their table and the cameramen, vendors walking the front of the stands
+ * (they stop by you and sell café Touba, bissap, water, peanuts), a helper in each écurie's preparation corner, and each
+ * wrestler's entourage — the flag, the coach, helpers — who walk out of the tunnel behind their wrestler, wait in their
+ * corner during the bout and run onto the sand when theirs wins.
  *
  * Built on the venues' Cast and roles (src/venues/cast.ts): every person is shown only in the moments of the evening
- * they belong to; the judges and officials sit on real seats of the shared registry that stay theirs between two shows
- * (no passer-by of src/social/ambientLife.ts, nor the player, sits at the ring side); walkers follow paths. They live outside the arena's `noLod` group, so the shared humanoid budget
- * (src/actors/crowdLod.ts) keeps the nearest as full bodies and swaps the far ones for cheap figures.
+ * they belong to; the officials, judges and press sit on real seats of the shared registry that stay theirs between two
+ * shows (no passer-by of src/social/ambientLife.ts, nor the player, sits at the ring side); walkers follow paths. They
+ * live outside the arena's `noLod` group, so the shared humanoid budget (src/actors/crowdLod.ts) keeps the nearest as
+ * full bodies and swaps the far ones for cheap figures.
  *
- * Positions follow the arena layout: the builder's judges' chairs and officials' table (src/world/builder.ts), and the
- * interior lane's contract for the drummers' stand, the écuries' preparation corners and the wrestlers' tunnel
- * (lane/w3-arena-interior, src/world/arenaModules.ts, src/world/geew.ts). When the drummers' stand is built there, its
- * spots replace `drumSpots()` and the drums drawn here (`DRUM_PROPS`) go.
+ * Positions come from the structure the builder draws (src/world/arenaModules.ts `interiorSpots`, `cornerSpots`): the
+ * drummers' deck, the officials' table, the press table and its cameras, the écuries' corners (each on its wrestler's
+ * side), the walkway in front of the stands, the tunnel.
  */
 const TAU = Math.PI * 2;
-/** Layout of the people (metres and angles from the arena centre; angles as atan2(x, z), the public gate at π). */
+/** Layout of the people (metres and angles from the arena centre; angles as atan2(x, z), the public gate at π, the tunnel at 0). */
 export const PEOPLE = {
-  /** The builder's judges' folding chairs at the sandbags, in the order they are taken. */
-  judges: { r: 9.9, angles: [Math.PI / 2, (3 * Math.PI) / 2, 0, Math.PI / 4, -Math.PI / 4] },
-  /** The builder's officials' table under its canopy (+x side) and its four chairs. */
-  table: { dx: 13.2, dz: 2, chairs: [-1.2, -0.4, 0.4, 1.2] },
-  /** The drummers' stand near the tunnel's mouth (interior lane). */
-  drums: { a: 0.42, r: 14.2 },
-  /** The écuries' preparation corners beside the tunnel: side +1 (+x) for the left wrestler, −1 for the right. */
-  corner: { a: 0.78, r: 13.4 },
+  /** The builder's judges' folding chairs at the sandbags, in the order they are taken (the one on the runner last). */
+  judges: { r: 9.9, angles: [Math.PI / 2, (3 * Math.PI) / 2, Math.PI / 4, -Math.PI / 4, 0] },
+  /** The drummers' group's dancers, on the sand in front of the deck. */
+  dancers: { a: [0.36, 0.48], r: 12.3 },
   /** The walkway in front of the parapet, the vendors' arcs: never through the public gate nor the tunnel. */
-  walk: { r: 16.8, arcs: [[0.62, 2.5], [-0.62, -2.5]] as [number, number][] },
+  walk: { r: WALKWAY_R, arcs: [[0.62, 2.5], [-0.62, -2.5]] as [number, number][] },
+  /**
+   * The entourages' way between the tunnel and their corner: out past the end of the tunnel's railings, round in front of
+   * the drummers' deck and its dancers, into the corner by its open side (the one facing the tunnel); onto the sand
+   * through the gap in the boards by the tunnel.
+   */
+  way: { out: { x: 1.0, z: 11.0 }, round: { a: 0.6, r: 11.5 }, side: { a: 0.64, r: 13.2 }, gap: { x: 1.3, z: 9.6 } },
 } as const;
-/** Draw the sabar drums here until the interior lane's drummers' stand is built. */
-export const DRUM_PROPS = true;
 /** How many of each by graphics quality (the shared humanoid budget keeps the nearest as full bodies). */
-export const PEOPLE_COUNT: Record<Quality, { judges: number; officials: number; drummers: number; vendors: number; entourage: number }> = {
-  low: { judges: 2, officials: 2, drummers: 3, vendors: 1, entourage: 1 },
-  medium: { judges: 3, officials: 3, drummers: 5, vendors: 2, entourage: 2 },
-  high: { judges: 5, officials: 3, drummers: 6, vendors: 3, entourage: 4 },
+export const PEOPLE_COUNT: Record<Quality, { judges: number; officials: number; drummers: number; vendors: number; entourage: number; camp: number; press: number; media: number }> = {
+  low: { judges: 2, officials: 2, drummers: 3, vendors: 1, entourage: 1, camp: 1, press: 1, media: 0 },
+  medium: { judges: 3, officials: 3, drummers: 5, vendors: 2, entourage: 2, camp: 1, press: 2, media: 1 },
+  high: { judges: 5, officials: 3, drummers: 6, vendors: 3, entourage: 4, camp: 1, press: 2, media: 2 },
 };
 
 /** The moment of the evening the people follow: the show's phase, else the street's state. */
@@ -59,8 +61,9 @@ export function peopleMoment(phase: ShowPhase, street: Street): PeopleMoment {
   if (phase !== 'idle' && phase !== 'over') return phase;
   return street === 'doors' ? 'doors' : street === 'setup' ? 'setup' : 'closed';
 }
-/** Who is there at each moment (pure; tests/arena.test.ts). The duel brings its own referee for the bout and the result. */
-export const PRESENT: Record<'officials' | 'announcer' | 'judges' | 'referee' | 'drummers' | 'warmup' | 'vendors' | 'entourage', readonly PeopleMoment[]> = {
+type Who = 'officials' | 'announcer' | 'judges' | 'referee' | 'drummers' | 'warmup' | 'vendors' | 'press' | 'camp' | 'entourage';
+/** Who is there at each moment (pure; tests/arenaPeople.test.ts). The duel brings its own referee for the bout and the result. */
+export const PRESENT: Record<Who, readonly PeopleMoment[]> = {
   officials: ['setup', 'doors', 'filling', 'entrance', 'bout', 'result', 'leaving'],
   announcer: ['doors', 'filling', 'entrance', 'bout', 'result'],
   judges: ['filling', 'entrance', 'bout', 'result'],
@@ -69,32 +72,60 @@ export const PRESENT: Record<'officials' | 'announcer' | 'judges' | 'referee' | 
   /** The first two drummers warm up while the doors are open. */
   warmup: ['doors', 'filling', 'entrance', 'bout', 'result', 'leaving'],
   vendors: ['doors', 'filling', 'entrance', 'bout', 'result'],
+  /** The press and the cameramen, for the gala. */
+  press: ['doors', 'filling', 'entrance', 'bout', 'result'],
+  /** One helper of each écurie prepares its corner (water, buckets) from the doors. */
+  camp: ['doors', 'filling', 'entrance', 'bout', 'result', 'leaving'],
+  /** They come in with their wrestler. */
   entourage: ['entrance', 'bout', 'result', 'leaving'],
 };
 const at = (list: readonly PeopleMoment[]) => (m: string) => list.includes(m as PeopleMoment);
 
 /** A point at angle `a` (atan2(x, z)) and radius `r` from the centre. */
 export const polar = (cx: number, cz: number, a: number, r: number) => ({ x: cx + Math.sin(a) * r, z: cz + Math.cos(a) * r });
-/** Where the drummers stand: a front row of four on the stand, then two behind; facing the ring. */
-export function drumSpots(cx: number, cz: number): { x: number; z: number; yaw: number }[] {
-  const { a, r } = PEOPLE.drums, tx = Math.cos(a), tz = -Math.sin(a), yaw = a + Math.PI;
-  const row = (rr: number, offsets: number[]) => offsets.map(o => { const c = polar(cx, cz, a, rr); return { x: c.x + tx * o, z: c.z + tz * o, yaw }; });
-  return [...row(r, [-1.275, -0.425, 0.425, 1.275]), ...row(r + 0.8, [-0.45, 0.45])];
+const facing = (cx: number, cz: number, p: { x: number; z: number }) => Math.atan2(cx - p.x, cz - p.z);
+
+export interface Spot { x: number; y: number; z: number; yaw: number; clip: Clip }
+/**
+ * The drummers' group in the order they come: the two middle drummers of the deck (they warm up at doors-open), the
+ * lead dancer on the sand, the two outer drummers, a second dancer.
+ */
+export function drummerSpots(cx: number, cz: number): Spot[] {
+  const deck = interiorSpots(cx, cz).filter(s => s.role === 'drummer');
+  const drum = (k: number): Spot => ({ x: deck[k].x, y: deck[k].y, z: deck[k].z, yaw: deck[k].yaw, clip: 'Talk' });
+  const dancer = (a: number, clip: Clip): Spot => { const p = polar(cx, cz, a, PEOPLE.dancers.r); return { ...p, y: ARENA_FLOOR, yaw: facing(cx, cz, p), clip }; };
+  return [drum(1), drum(2), dancer(PEOPLE.dancers.a[0], 'Dance_A'), drum(0), drum(3), dancer(PEOPLE.dancers.a[1], 'Dance_B')];
 }
-/** The way an écurie's people walk in: from the public gate along the inside of the ring side to their corner. */
+/** Where the k-th of a side's entourage waits in its corner (k 0 the coach, 1 a helper, 2 the flag, 3 a helper). */
+export const cornerSpot = (cx: number, cz: number, side: 1 | -1, k: number) => cornerSpots(cx, cz, side)[k];
+/** Where each écurie's corner helper stands, by the buckets at the back of the corner. */
+export const campSpot = (cx: number, cz: number, side: 1 | -1) => cornerSpots(cx, cz, side)[4];
+/** Their place in the file walking out of the tunnel: the flag first, then the coach, the helpers (so nobody crosses another in the corner). */
+const FILE = [1, 2, 0, 3];
+/**
+ * The way an écurie's people walk in: from the tunnel, behind their wrestler, out past the railings, round in front of
+ * the drummers' deck, into their corner by its open side.
+ */
 export function entouragePath(cx: number, cz: number, side: 1 | -1, k: number): { x: number; z: number }[] {
-  const s = side, gz = cz - WALL_R;
+  const s = side, w = PEOPLE.way, q = FILE[k] ?? k;
   return [
-    { x: cx + s * (1.4 + k * 0.55), z: gz + 0.8 - k * 0.6 },
-    polar(cx, cz, s * 2.55, 11.8),
-    polar(cx, cz, s * 1.57, 11.6),
+    { x: cx + s * (q % 2 ? 1.0 : 0.5), z: cz + 19.1 + q * 0.75 },
+    { x: cx + s * w.out.x, z: cz + w.out.z },
+    polar(cx, cz, s * w.round.a, w.round.r),
+    polar(cx, cz, s * w.side.a, w.side.r),
     cornerSpot(cx, cz, side, k),
   ];
 }
-/** Where the k-th person of a side's entourage waits in its corner. */
-export function cornerSpot(cx: number, cz: number, side: 1 | -1, k: number) {
-  const { a, r } = PEOPLE.corner;
-  return polar(cx, cz, side * a + ((k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.75) / r, r - (k > 2 ? 0.7 : 0));
+/** The winner's people from their corner onto the sand, through the gap in the boards by the tunnel. */
+export function celebratePath(cx: number, cz: number, side: 1 | -1, k: number): { x: number; z: number }[] {
+  const s = side, w = PEOPLE.way;
+  return [
+    polar(cx, cz, s * w.side.a, w.side.r),
+    polar(cx, cz, s * w.round.a, w.round.r),
+    { x: cx + s * w.out.x, z: cz + w.out.z },
+    { x: cx + s * w.gap.x, z: cz + w.gap.z },
+    { x: cx + s * (2.2 + (k % 2) * 0.8), z: cz - 0.8 + Math.floor(k / 2) * 0.9 },
+  ];
 }
 
 // ------------------------------------------------------------------ vendors walking the stands
@@ -128,20 +159,26 @@ export function walkArc(a: number, dir: 1 | -1, arc: readonly [number, number], 
 // ------------------------------------------------------------------ looks
 const REFEREE: PersonLook = { skin: 0x4e2e1c, style: 'tee', top: 0xf2f2ec, bottom: 0x1c1c1f, shoes: 0x1c1c1f };
 const OFFICIAL = (r: () => number): PersonLook => ({ skin: [0x3b2216, 0x4e2e1c, 0x5b3420][Math.floor(r() * 3)], style: 'boubou', top: [0xf2f2ec, 0x9cc8e8, 0x27407a][Math.floor(r() * 3)], hat: r() < 0.5 ? 'kufi' : undefined, hatColor: 0xf2f2ec, beard: r() < 0.5 ? 0x1a1414 : undefined, shoes: 0x3a2a1e, heavy: 0.3 });
-const DRUMMER = (r: () => number, lead: boolean): PersonLook => ({ ...randomLook(r), style: 'tee', top: lead ? 0xf4c20d : [0xd9322b, 0x1a9d54, 0xf2f2ec, 0x2f6fb3][Math.floor(r() * 4)], bottom: 0x2b2f3a, female: false, muscular: 0.4 });
+const DRUMMER = (r: () => number, dancer: boolean): PersonLook => ({ ...randomLook(r), style: dancer ? 'tee' : 'boubou', pattern: dancer ? 'uni' : 'wax', top: dancer ? 0xf4c20d : [0xd9322b, 0x1a9d54, 0xf2f2ec, 0x2f6fb3][Math.floor(r() * 4)], bottom: 0x2b2f3a, female: false, muscular: 0.4 });
+const PRESS = (r: () => number, dark: number): PersonLook => ({ ...randomLook(r), style: 'tee', top: dark, pattern: 'uni' });
 
 interface Side { side: 1 | -1; colour: number; ids: string[]; started: boolean }
 interface Walker { id: string; kind: VendorKind; arc: readonly [number, number]; a: number; dir: 1 | -1; pause: number; called: number }
+
+/** The fight night of the current hub (the arena interior's debug reads who is inside). */
+export const fightNight: { current: FightNightPeople | null } = { current: null };
 
 /** The fight night's people of one arena (one per hub with an arena; driven by the arena evening). */
 export class FightNightPeople {
   readonly group = new THREE.Group();
   readonly seats: Seat[] = [];
+  /** Debug: force the people of a fight night in (true: as if the doors were open) or out (false); null follows the evening. */
+  force: boolean | null = null;
   private cast: Cast | null;
   private moment: PeopleMoment | '' = '';
   private sides: Side[];
   private walkers: Walker[] = [];
-  private drumMesh: THREE.Mesh | null = null;
+  private roles: { id: string; who: string }[] = [];
   private own: { dispose(): void }[] = [];
   private won: 1 | -1 | 0 = 0;
   private t = 0;
@@ -150,49 +187,45 @@ export class FightNightPeople {
   private readonly sourceName: string;
 
   constructor(private ctx: GameCtx, hub: HubWorld, private cx: number, private cz: number) {
-    const q = ctx.quality(), N = PEOPLE_COUNT[q], R = rng(2026), id = `${hub.id}:arena`;
+    const q = ctx.quality(), N = PEOPLE_COUNT[q], R = rng(2026), id = `${hub.id}:arena`, F = ARENA_FLOOR;
     this.group.name = 'arena_people';
     this.sourceName = `${id}:vendeurs`;
-    const ground = (x: number, z: number) => 0.1 + hub.heightAt(x, z);
     const roles: Role[] = [];
-    const stand = (rid: string, look: PersonLook, x: number, z: number, yaw: number, clip: Clip, when: (m: string) => boolean, phase?: number): Role =>
-      ({ id: rid, look, x, z, y: ground(x, z), yaw, clip, when, ...(phase !== undefined ? { phase } : {}) });
+    const add = (r: Role, who: string) => { roles.push(r); this.roles.push({ id: r.id, who }); };
+    const stand = (rid: string, look: PersonLook, x: number, z: number, yaw: number, clip: Clip, when: (m: string) => boolean, y = F, phase?: number): Role =>
+      ({ id: rid, look, x, z, y, yaw, clip, when, ...(phase !== undefined ? { phase } : {}) });
+    /** A chair of the structure, as a seat of the registry kept for the role who sits there (`originY`: the sitter's origin). */
+    const chair = (sid: string, x: number, z: number, originY: number, yaw: number): Seat => {
+      const s: Seat = { id: sid, x, z, top: originY + SIT_HIPS, yaw, kind: 'chair', space: 'street', occupant: null };
+      ctx.seats.add(s); this.seats.push(s); return s;
+    };
+    const spots = interiorSpots(cx, cz);
 
     // ---------------------------------------------------------------- the officials: judges, the table, the announcer, the referee
-    const B = 0.14, chairTop = B + 0.45;
     PEOPLE.judges.angles.slice(0, N.judges).forEach((a, i) => {
       const p = polar(cx, cz, a, PEOPLE.judges.r);
-      const s: Seat = { id: `${id}:juge:${i}`, x: p.x, z: p.z, top: chairTop, yaw: a + Math.PI, kind: 'chair', space: 'street', occupant: null };
-      ctx.seats.add(s); this.seats.push(s);
-      roles.push({ id: `juge${i}`, look: OFFICIAL(R), seat: s, keep: true, when: at(PRESENT.judges) });
+      add({ id: `juge${i}`, look: OFFICIAL(R), seat: chair(`${id}:juge:${i}`, p.x, p.z, F + 0.45 - SIT_HIPS, a + Math.PI), keep: true, when: at(PRESENT.judges) }, 'judge');
     });
-    const tx = cx + PEOPLE.table.dx, tz = cz + PEOPLE.table.dz;
-    PEOPLE.table.chairs.slice(0, N.officials).forEach((dx, i) => {
-      const s: Seat = { id: `${id}:officiel:${i}`, x: tx + dx, z: tz + 0.8, top: chairTop, yaw: Math.PI, kind: 'chair', space: 'street', occupant: null };
-      ctx.seats.add(s); this.seats.push(s);
-      roles.push({ id: `officiel${i}`, look: OFFICIAL(R), seat: s, keep: true, when: at(PRESENT.officials) });
+    const table = spots.filter(s => s.role === 'official');
+    table.slice(0, N.officials).forEach((s, i) => {
+      add({ id: `officiel${i}`, look: OFFICIAL(R), seat: chair(`${id}:officiel:${i}`, s.x, s.z, s.y, s.yaw), keep: true, when: at(PRESENT.officials) }, 'official');
     });
-    roles.push(stand('annonceur', { ...OFFICIAL(R), style: 'boubou', top: 0x6b3fa0 }, tx - 2.2, tz - 0.4, -Math.PI / 2, 'Talk', at(PRESENT.announcer)));
-    roles.push(stand('arbitre', REFEREE, cx, cz + 2.4, Math.PI, 'Idle', at(PRESENT.referee)));
+    add(stand('annonceur', { ...OFFICIAL(R), style: 'boubou', top: 0x6b3fa0 }, table[0].x - 1.0, table[0].z - 1.2, -Math.PI / 2, 'Talk', at(PRESENT.announcer)), 'announcer');
+    add(stand('arbitre', REFEREE, cx, cz + 2.4, Math.PI, 'Idle', at(PRESENT.referee)), 'referee');
 
-    // ---------------------------------------------------------------- the drummers' group (the lead dances in front)
-    const spots = drumSpots(cx, cz).slice(0, N.drummers);
-    spots.forEach((s, k) => {
-      const lead = k === 0, front = lead ? polar(cx, cz, PEOPLE.drums.a, PEOPLE.drums.r - 1.3) : s;
-      roles.push(stand(`batteur${k}`, DRUMMER(R, lead), front.x, front.z, s.yaw, lead ? 'Dance_A' : 'Talk', at(k < 2 ? PRESENT.warmup : PRESENT.drummers), R()));
+    // ---------------------------------------------------------------- the drummers' group on its deck, its dancers on the sand
+    drummerSpots(cx, cz).slice(0, N.drummers).forEach((s, k) => {
+      const dancer = s.clip !== 'Talk';
+      add(stand(`batteur${k}`, DRUMMER(R, dancer), s.x, s.z, s.yaw, s.clip, at(k < 2 ? PRESENT.warmup : PRESENT.drummers), s.y, R()), dancer ? 'dancer' : 'drummer');
     });
-    if (DRUM_PROPS && spots.length > 1) {
-      const b = new Batch(), tow = (s: { x: number; z: number; yaw: number }, d: number) => ({ x: s.x + Math.sin(s.yaw) * d, z: s.z + Math.cos(s.yaw) * d });
-      for (const s of spots.slice(1)) {
-        const p = tow(s, 0.38), g = ground(p.x, p.z) - 0.1;
-        b.cyl(0.15, 0.1, 0.8, p.x, g, p.z, 0x7a4a24, 10);                    // a tall sabar, held against the hip
-        b.cyl(0.165, 0.165, 0.035, p.x, g + 0.8, p.z, 0xe8dcc0, 10);          // its skin
-        b.cyl(0.155, 0.155, 0.03, p.x, g + 0.55, p.z, 0xd9322b, 10);          // a painted band
-      }
-      const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
-      this.drumMesh = b.build(mat, true, true); this.own.push(mat);
-      if (this.drumMesh) { this.drumMesh.visible = false; this.group.add(this.drumMesh); this.own.push(this.drumMesh.geometry); }
-    }
+
+    // ---------------------------------------------------------------- the press at their table, the cameramen behind the cameras
+    spots.filter(s => s.role === 'press').slice(0, N.press).forEach((s, i) => {
+      add({ id: `presse${i}`, look: PRESS(R, 0x2b2f36), seat: chair(`${id}:presse:${i}`, s.x, s.z, s.y, s.yaw), keep: true, when: at(PRESENT.press) }, 'press');
+    });
+    spots.filter(s => s.role === 'media').slice(0, N.media).forEach((s, i) => {
+      add(stand(`camera${i}`, PRESS(R, 0x1c1c1e), s.x, s.z, s.yaw, 'Idle', at(PRESENT.press)), 'media');
+    });
 
     // ---------------------------------------------------------------- vendors walking the front of the stands
     const arcs = PEOPLE.walk.arcs;
@@ -200,29 +233,35 @@ export class FightNightPeople {
       const kind = STAND_VENDORS[k % STAND_VENDORS.length], arc = arcs[k % arcs.length];
       const a = k < arcs.length ? (arc[0] + arc[1]) / 2 : arc[1], p = polar(cx, cz, a, PEOPLE.walk.r);
       const look: PersonLook = { ...randomLook(R), female: kind.female, style: kind.female ? 'dress' : 'tee', hat: kind.female ? 'headwrap' : undefined };
-      roles.push(stand(`vendeur${k}`, look, p.x, p.z, a + Math.PI / 2, 'Walk', at(PRESENT.vendors)));
+      add(stand(`vendeur${k}`, look, p.x, p.z, a + Math.PI / 2, 'Walk', at(PRESENT.vendors)), 'vendor');
       this.walkers.push({ id: `vendeur${k}`, kind, arc, a, dir: k % 2 ? -1 : 1, pause: 0, called: -99 });
     }
 
-    // ---------------------------------------------------------------- each wrestler's entourage (coach, helpers, the flag)
-    this.sides = ([1, -1] as const).map((side, i) => {
-      const colour = ECURIES[i].colour, ids: string[] = [];
+    // ---------------------------------------------------------------- each écurie: a helper in its corner, its wrestler's entourage
+    this.sides = ECURIE_SIDES.map(({ side, colour }, i) => {
+      const ecurie = ECURIES[i].id, ids: string[] = [];
+      const helper = (): PersonLook => ({ ...randomLook(R), style: 'tee', top: colour, pattern: 'uni', bottom: 0x1c1c1f, female: false, muscular: 0.5 });
+      for (let k = 0; k < N.camp; k++) {
+        const c = campSpot(cx, cz, side);
+        add(stand(`${ecurie}_camp${k}`, helper(), c.x, c.z, c.yaw, 'Stance', at(PRESENT.camp)), 'camp');
+      }
       for (let k = 0; k < N.entourage; k++) {
         const p = entouragePath(cx, cz, side, k)[0];
         const look: PersonLook = k === 0
           ? { skin: 0x45291a, style: 'boubou', top: colour, accent: 0xf2f2ec, pattern: 'bazin', beard: 0x8a8580, hat: 'kufi', hatColor: 0xf2f2ec, shoes: 0x3a2a1e, heavy: 0.3 }
-          : { ...randomLook(R), style: 'tee', top: colour, bottom: 0x1c1c1f, female: false, muscular: 0.5 };
-        const rid = `${i ? 'teranga' : 'baobab'}${k}`; ids.push(rid);
-        roles.push(stand(rid, look, p.x, p.z, 0, k === 0 ? 'Talk' : 'Idle', at(PRESENT.entourage)));
+          : helper();
+        const rid = `${ecurie}${k}`; ids.push(rid);
+        add(stand(rid, look, p.x, p.z, Math.PI, k === 0 ? 'Talk' : 'Idle', at(PRESENT.entourage)), 'entourage');
       }
       return { side, colour, ids, started: false };
     });
 
     this.cast = new Cast(roles, ctx.seats, this.group, id + ':people');
-    // what they carry: a basin of water sachets or peanut cones on the head, a kettle of café Touba, a bucket, the flag
+    // what they carry: a kettle of café Touba, a basin of water sachets or peanut cones on the head, a bucket, the flag
     this.walkers.forEach(w => this.cast?.attach(w.id, this.carried(w.kind.key)));
     for (const s of this.sides) s.ids.forEach((rid, k) => { if (k === 1) this.cast?.attach(rid, this.bucket()); if (k === 2) this.cast?.attach(rid, this.flag(s.colour)); });
     ctx.extra.add(this.group);
+    fightNight.current = this;
 
     // ---------------------------------------------------------------- buying from a vendor who stops by you (seated or not)
     const source: TargetSource = {
@@ -271,13 +310,17 @@ export class FightNightPeople {
   update(dt: number, phase: ShowPhase, t: number, street: Street, showDt = dt) {
     const cast = this.cast; if (!cast) return;
     this.t += dt;
-    const m = peopleMoment(phase, street);
+    const m0 = peopleMoment(phase, street);
+    const m: PeopleMoment = this.force === null ? m0 : this.force ? (m0 === 'closed' || m0 === 'setup' ? 'doors' : m0) : 'closed';
     if (m !== this.moment) this.enter(m);
-    if (this.drumMesh) this.drumMesh.visible = PRESENT.drummers.includes(m as PeopleMoment);
-    // the entourages walk in behind their wrestler (left at 0.9 s, right at 3.9 s of the entrance)
+    // the entourages walk out of the tunnel behind their wrestler (left at 0.9 s, right at 3.9 s of the entrance)
+    const pace = Math.max(1, showDt / Math.max(dt, 1e-6));
     for (const s of this.sides) if (m === 'entrance' && !s.started && t >= (s.side > 0 ? 0.9 : 3.9)) {
       s.started = true;
-      s.ids.forEach((rid, k) => { const path = entouragePath(this.cx, this.cz, s.side, k); cast.place(rid, path[0].x, path[0].z, 0); cast.walkTo(rid, path.slice(1), this.faceRing(path[3]), k === 0 ? 'Talk' : 'Idle', 2.6 * Math.max(1, showDt / Math.max(dt, 1e-6))); });
+      s.ids.forEach((rid, k) => {
+        const path = entouragePath(this.cx, this.cz, s.side, k), end = path[path.length - 1];
+        cast.place(rid, path[0].x, path[0].z, Math.PI); cast.walkTo(rid, path.slice(1), facing(this.cx, this.cz, end), k === 0 ? 'Talk' : 'Idle', 2.6 * pace);
+      });
     }
     // vendors: back and forth along their arc, a stop by the player, a call now and then
     const me = this.ctx.player.pos;
@@ -307,21 +350,21 @@ export class FightNightPeople {
     if (m === 'filling' || m === 'closed' || m === 'doors' || m === 'setup') { this.won = 0; for (const s of this.sides) s.started = false; }
     // a jump straight into the bout (or the result): the entourages are already in their corners
     if ((m === 'bout' || m === 'result') && prev !== 'entrance' && prev !== 'bout') for (const s of this.sides) {
-      s.started = true; s.ids.forEach((rid, k) => { const c = cornerSpot(this.cx, this.cz, s.side, k); cast.place(rid, c.x, c.z, this.faceRing(c)); });
+      s.started = true; s.ids.forEach((rid, k) => { const c = cornerSpot(this.cx, this.cz, s.side, k); cast.place(rid, c.x, c.z, c.yaw); });
     }
+    // the gala is over: back into the tunnel, the way they came
     if (m === 'leaving') for (const s of this.sides) s.ids.forEach((rid, k) => {
-      const path = entouragePath(this.cx, this.cz, s.side, k).slice(0, 3).reverse();
-      cast.walkTo(rid, path, Math.PI, 'Idle', 2.2);
+      const path = entouragePath(this.cx, this.cz, s.side, k).slice(0, 4).reverse();
+      cast.walkTo(rid, path, 0, 'Idle', 2.6);
     });
   }
-  private faceRing(p: { x: number; z: number }) { return Math.atan2(this.cx - p.x, this.cz - p.z); }
 
-  /** The crowd's moments: the entourages and the lead drummer cheer. */
+  /** The crowd's moments: the entourages, the corner helpers and the dancers cheer. */
   react(m: Moment) {
     const cast = this.cast; if (!cast) return;
     const secs = m === 'fall' || m === 'result' ? 4 : 2;
-    for (const s of this.sides) s.ids.forEach(rid => { if (m !== 'clinch' || Math.random() < 0.5) cast.burst(rid, 'Celebrate', secs); });
-    if (m !== 'clinch') cast.burst('batteur0', 'Celebrate', secs);
+    for (const s of this.sides) s.ids.forEach(rid => { if (!cast.walking(rid) && (m !== 'clinch' || Math.random() < 0.5)) cast.burst(rid, 'Celebrate', secs); });
+    if (m !== 'clinch') for (const r of this.roles) if (r.who === 'dancer' || r.who === 'camp') cast.burst(r.id, 'Celebrate', secs);
   }
   /** The bout is won: the winner's people run onto the sand to him and celebrate; the others stay in their corner. */
   result(winner: 'left' | 'right' | null) {
@@ -329,26 +372,38 @@ export class FightNightPeople {
     this.won = winner === 'left' ? 1 : winner === 'right' ? -1 : 0;
     const s = this.sides.find(x => x.side === this.won); if (!s) return;
     s.ids.forEach((rid, k) => {
-      const to = { x: this.cx + s.side * (2.2 + (k % 2) * 0.8), z: this.cz - 0.8 + Math.floor(k / 2) * 0.9 };
-      cast.walkTo(rid, [polar(this.cx, this.cz, s.side * 1.2, 10.4), to], this.faceRing(to), 'Celebrate', 3.2);
+      const path = celebratePath(this.cx, this.cz, s.side, k), to = path[path.length - 1];
+      cast.walkTo(rid, path, facing(this.cx, this.cz, to), 'Celebrate', 3.2);
     });
+  }
+
+  /** Who is inside the walls now, by role (present, and drawn near the camera). */
+  inside() {
+    const c = this.cast, by: Record<string, number> = {}, drawnBy: Record<string, number> = {};
+    let present = 0, drawn = 0;
+    for (const r of this.roles) {
+      const w = c?.where(r.id); if (!w?.shown) continue;
+      present++; by[r.who] = (by[r.who] ?? 0) + 1;
+      if (w.drawn) { drawn++; drawnBy[r.who] = (drawnBy[r.who] ?? 0) + 1; }
+    }
+    return { moment: this.moment, shown: present > 0, people: present, drawn, by, drawnBy, total: this.roles.length };
   }
 
   debug() {
     const c = this.cast, w = (id: string) => c?.where(id) ?? null;
-    const shown = (ids: string[]) => ids.filter(id => w(id)?.shown).length;
-    const ids = (p: string, n: number) => Array.from({ length: n }, (_, i) => `${p}${i}`);
-    const q = PEOPLE_COUNT[this.ctx.quality()];
+    const n = (who: string) => this.roles.filter(r => r.who === who && w(r.id)?.shown).length;
     return {
       moment: this.moment, won: this.won,
-      judges: shown(ids('juge', q.judges)), officials: shown(ids('officiel', q.officials)), announcer: !!w('annonceur')?.shown, referee: !!w('arbitre')?.shown,
-      drummers: shown(ids('batteur', q.drummers)), drums: !!this.drumMesh?.visible, vendors: this.walkers.map(v => ({ id: v.id, ...w(v.id), a: Math.round(v.a * 100) / 100, pause: Math.max(0, Math.round(v.pause * 10) / 10) })),
+      judges: n('judge'), officials: n('official'), announcer: !!w('annonceur')?.shown, referee: !!w('arbitre')?.shown,
+      drummers: n('drummer') + n('dancer'), press: n('press') + n('media'), camp: n('camp'),
+      vendors: this.walkers.map(v => ({ id: v.id, ...w(v.id), a: Math.round(v.a * 100) / 100, pause: Math.max(0, Math.round(v.pause * 10) / 10) })),
       entourage: this.sides.map(s => ({ side: s.side, started: s.started, people: s.ids.map(id => ({ id, ...w(id), walking: !!c?.walking(id) })) })),
       seats: this.seats.map(s => ({ id: s.id, occupant: s.occupant })),
     };
   }
 
   dispose() {
+    if (fightNight.current === this) fightNight.current = null;
     this.ctx.interactions.remove(this.sourceName);
     this.cast?.dispose(); this.cast = null;
     for (const s of this.seats) this.ctx.seats.remove(s.id);

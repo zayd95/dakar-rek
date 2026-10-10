@@ -43,7 +43,8 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   let p = await people();
   const nOff = touch ? 2 : 3;
   check(`${label}: doors open — the officials are seated at their table and the announcer stands by it`, p.officials === nOff && p.announcer && p.seats.filter(s => /officiel/.test(s.id) && s.occupant).length === nOff, p);
-  check(`${label}: doors open — two drummers warm up; no judges, no referee, no entourage yet`, p.drummers === 2 && p.judges === 0 && !p.referee && p.entourage.every(e => e.people.every(x => !x.shown)), p);
+  check(`${label}: doors open — two drummers warm up on their deck, a helper readies each écurie's corner, the press is there; no judges, no referee, no entourage yet`,
+    p.drummers === 2 && p.camp === 2 && p.press === (touch ? 1 : 3) && p.judges === 0 && !p.referee && p.entourage.every(e => e.people.every(x => !x.shown)), p);
   const v0 = p.vendors.map(v => ({ ...v }));
   await page.waitForTimeout(4000);
   p = await people();
@@ -65,10 +66,10 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const w1 = await d(() => ({ w: window.__dakar.state.wallet, n: window.__dakar.state.data.counters['arene:achats'] ?? 0 }));
   check(`${label}: bought from the vendor at the stalls' price, counted with the evening's purchases`, [50, 150, 200].includes(w0.w - w1.w) && w1.n === w0.n + 1, { spent: w0.w - w1.w, purchases: w1.n });
 
-  // 3. The judges' and officials' chairs stay theirs, even before the judges come (no passer-by nor the player sits there)
-  const kept = await d(() => window.__dakar.seatsHere().filter(s => /arena:(juge|officiel)/.test(s.id)).map(s => ({ id: s.id, occupant: s.occupant })));
-  check(`${label}: the judges' and officials' chairs are kept for them (never a passer-by's or the player's)`,
-    kept.length === nOff + (touch ? 2 : 3) && kept.every(s => /^pikine:arena:people:(juge|officiel)/.test(s.occupant ?? '')), kept);
+  // 3. The judges', officials' and press chairs stay theirs, even before the judges come (no passer-by nor the player sits there)
+  const kept = await d(() => window.__dakar.seatsHere().filter(s => /arena:(juge|officiel|presse)/.test(s.id)).map(s => ({ id: s.id, occupant: s.occupant })));
+  check(`${label}: the judges', officials' and press chairs are kept for them (never a passer-by's or the player's)`,
+    kept.length === nOff + (touch ? 2 : 3) + (touch ? 1 : 2) && kept.every(s => /^pikine:arena:people:(juge|officiel|presse)/.test(s.occupant ?? '')), kept);
 
   // 4. Seated on the tiers, the gala: filling → the judges and the referee at the ring
   const ticketDay = (await info()).day;
@@ -85,22 +86,25 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await until(() => { const i = window.__dakar.arena.info(); return i.phase === 'entrance' && i.t > 5; });
   p = await people();
   const nDr = touch ? 3 : 5, nEn = touch ? 1 : 2;
-  check(`${label}: the entrance — the drummers' group plays (drums on), the entourages walk in`, p.drummers === nDr && p.drums && p.entourage.every(e => e.people.length === nEn) && p.entourage.some(e => e.started && e.people.some(x => x.walking)), p.entourage);
+  check(`${label}: the entrance — the drummers' group plays with its dancer(s), the entourages walk out of the tunnel behind their wrestler`,
+    p.drummers === nDr && p.entourage.every(e => e.people.length === nEn) && p.entourage.some(e => e.started && e.people.some(x => x.walking)), p.entourage);
   const dcAll = await (async () => { await frame(); const all = await d(() => window.__dakar.drawCalls()); await d(() => window.__dakar.arena.visible(false)); await frame(); const none = await d(() => window.__dakar.drawCalls()); await d(() => window.__dakar.arena.visible(true)); await frame(); return { all, arena: all - none }; })();
   check(`${label}: draw calls of the whole frame stay within budget during the entrance (${dcAll.all}, arena and its people +${dcAll.arena})`, dcAll.all < (touch ? 300 : 600), dcAll);
   await shot('3-entrance-seat');
-  await cam([C.x + 2, 4.5, C.z + 4], [C.x + 6.5, 1.0, C.z + 12.5]); await shot('4-drummers'); await d(() => window.__dakar.cam(null));
+  await cam([C.x - 4, 3.2, C.z + 4], [C.x + 1, 1.2, C.z + 15]); await shot('3b-tunnel');
+  await cam([C.x + 1.5, 3.2, C.z + 6], [C.x + 6.5, 1.0, C.z + 13]); await shot('4-drummers'); await d(() => window.__dakar.cam(null));
 
   // 6. The bout: the entourages in their corners, our referee gives way to the duel's own
   await d(() => window.__dakar.arena.speed(3));
   await until(() => window.__dakar.arena.info().phase === 'bout');
   await until(() => window.__dakar.arena.info().people.entourage.every(e => e.people.every(x => !x.walking)), null, 90000);
   p = await people();
-  const corner = (side, k) => { const a = side * 0.78 + ((k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.75) / 13.4, r = 13.4 - (k > 2 ? 0.7 : 0); return { x: C.x + Math.sin(a) * r, z: C.z + Math.cos(a) * r }; };
+  const CORNER = [[0, 12.95], [-0.78, 12.95], [0.78, 12.95], [-0.6, 13.6]];                     // src/world/arenaModules.ts cornerSpots
+  const corner = (side, k) => { const [o, r] = CORNER[k], a = side * (0.78 + o / r); return { x: C.x + Math.sin(a) * r, z: C.z + Math.cos(a) * r }; };
   const inCorner = p.entourage.every(e => e.people.every((x, k) => dist(x, corner(e.side, k)) < 0.5));
   check(`${label}: the bout — each entourage waits in its corner; the referee is the duel's`, (await info()).phase === 'bout' && inCorner && !p.referee && p.judges === nJ, p.entourage);
   await d(() => window.__dakar.arena.speed(1));
-  await cam([C.x - 2, 6, C.z - 4], [C.x + 6, 0.8, C.z + 9]); await shot('5-bout-corner'); await d(() => window.__dakar.cam(null));
+  await cam([C.x + 3, 3.6, C.z + 2], [C.x + 9.5, 0.9, C.z + 9.8]); await shot('5-bout-corner'); await d(() => window.__dakar.cam(null));
 
   // 7. The result: the winner's people run to the ring and celebrate
   await d(() => window.__dakar.arena.speed(6));
@@ -125,7 +129,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await page.waitForTimeout(1200);
   p = await people();
   check(`${label}: the gala is over — the officials, drummers, vendors and entourages are gone, their chairs kept for the next gala`,
-    p.moment === 'closed' && p.officials === 0 && p.judges === 0 && p.drummers === 0 && !p.drums && p.vendors.every(x => !x.shown) && p.entourage.every(e => e.people.every(x => !x.shown)) && p.seats.every(s => /^pikine:arena:people:/.test(s.occupant ?? '')), p);
+    p.moment === 'closed' && p.officials === 0 && p.judges === 0 && p.drummers === 0 && p.press === 0 && p.camp === 0 && p.vendors.every(x => !x.shown) && p.entourage.every(e => e.people.every(x => !x.shown)) && p.seats.every(s => /^pikine:arena:people:/.test(s.occupant ?? '')), p);
   check(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }

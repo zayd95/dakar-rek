@@ -10,7 +10,7 @@ import { arenaExterior } from './exterior';
 import * as P from '../activity/primitives';
 import { Percussion, crowdCheer } from '../lamb/audio';
 import { STYLES } from '../lamb/rules';
-import { WALL_R } from '../world/geew';
+import { TUNNEL_MOUTH_R, WALL_R } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
   BILL, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
@@ -267,17 +267,19 @@ class ArenaEvening {
 
   private startEntrance() {
     if (!humanoidReady()) return;
-    const cx = this.cx, cz = this.cz, gz = this.gz;
+    const cx = this.cx, cz = this.cz;
     const walker = (h: Humanoid, fx: number, fz: number, tx: number, tz: number, t0: number, t1: number, end: Clip) => {
       h.group.position.set(fx, 0.1, fz); this.group.add(h.group);
       this.entrance.push({ h, from: new V3(fx, 0.1, fz), to: new V3(tx, 0.1, tz), t0, t1, end });
     };
     const lw = new Wrestler(0x5b3420); lw.setLook(LEFT_LOOK, 'B');
     const rw = new Wrestler(0x4e2e1c); rw.setLook(RIGHT_LOOK, 'A');
-    walker(lw, cx + 0.8, gz + 1, cx + 3, cz, 0.5, 6.5, 'Dance_A');
-    walker(rw, cx - 0.8, gz + 1, cx - 3, cz, 3.5, 9.5, 'Dance_B');
-    // their entourages walk in behind them and the drummers' group plays: src/arena/people.ts
-    this.drums.start(116);
+    // the wrestlers come out of their tunnel opposite the public gate (src/world/geew.ts TUNNEL_*), down the runner
+    const tz = cz + TUNNEL_MOUTH_R + 2.5;
+    walker(lw, cx + 0.8, tz, cx + 3, cz, 0.5, 6.5, 'Dance_A');
+    walker(rw, cx - 0.8, tz, cx - 3, cz, 3.5, 9.5, 'Dance_B');
+    // their entourages walk out of the tunnel behind them (src/arena/people.ts); the drums of the evening are the
+    // drummers' group on its deck by the tunnel, heard by distance through src/arena/exteriorAudio.ts all evening
   }
   private updateEntrance(dt: number) {
     const t = this.t;

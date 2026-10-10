@@ -126,7 +126,7 @@ export class Cast {
   /** A standing role plays `clip` for `seconds`, then goes back to its own (the crowd cheers a good dancer). */
   burst(id: string, clip: Clip, seconds: number) { const e = this.list.find(x => x.r.id === id); if (!e || e.r.seat) return; e.h.hold = clip; this.cheer.set(id, seconds); }
   /** Where a role stands now (tests and debug). */
-  where(id: string) { const e = this.list.find(x => x.r.id === id); return e ? { x: e.h.group.position.x, z: e.h.group.position.z, shown: e.shown, clip: e.h.hold } : null; }
+  where(id: string) { const e = this.list.find(x => x.r.id === id); return e ? { x: e.h.group.position.x, z: e.h.group.position.z, shown: e.shown, drawn: e.h.group.visible, clip: e.h.hold } : null; }
 
   /** Bodies for the greeting system (src/interact/people.ts): street roles only. */
   bodies() {
