@@ -21,6 +21,8 @@ import { moto } from '../transport/motoModule';
 import { car } from '../transport/carModule';
 import { taxi } from '../transport/taxi';
 import { arenaStreetsModule } from '../city/arena';
+import { weatherModule } from '../city/weather';
+import { streetVendorsModule } from '../city/vendors';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
 import { ambientLife } from '../social/ambientLife';
@@ -138,7 +140,7 @@ export interface GameModule {
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
 export const MODULES: GameModule[] = [
-  wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaStreetsModule,
+  wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaStreetsModule, weatherModule, streetVendorsModule,
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
 ];

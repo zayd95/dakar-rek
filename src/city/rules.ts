@@ -44,3 +44,42 @@ export function dropInterval(rush: number, low: boolean): number {
 
 /** Cars parked round the arena on a fight evening, by graphics quality (none on low, like the hub's parked cars). */
 export const ARENA_PARKED: Record<'low' | 'medium' | 'high', number> = { low: 0, medium: 6, high: 12 };
+
+// ------------------------------------------------------------------ weather
+export type WeatherKind = 'sun' | 'overcast' | 'rain' | 'after';
+export interface Weather {
+  kind: WeatherKind;
+  /** Cloud cover 0–1 (the light dims and greys), rain 0–1 (streaks, fewer people out, slower traffic), wet ground 0–1. */
+  cloud: number; rain: number; wet: number;
+}
+const frac = (x: number) => x - Math.floor(x);
+const hashDay = (day: number, salt: number) => frac(Math.sin(Math.floor(day) * 91.7 + salt * 37.3) * 43758.5453);
+
+/**
+ * The day's weather, the same for every player (from the city day of the shared clock): most days are sunny, some are
+ * overcast, and about one day in six brings an afternoon shower (between noon and 5 pm, an hour or two), the streets
+ * staying wet for a while after — sometimes still on the way to the evening's bouts. Light on purpose: no forecast
+ * simulation, just enough for Dakar to change from one day to the next.
+ */
+export function weatherAt(day: number, hour: number): Weather {
+  const h = ((hour % 24) + 24) % 24, r = hashDay(day, 1);
+  if (r < 0.62) return { kind: 'sun', cloud: 0.05, rain: 0, wet: 0 };
+  if (r < 0.83) {                                                            // overcast, thickest in the afternoon
+    const c = 0.45 + 0.3 * Math.max(0, 1 - Math.abs(h - 15) / 6);
+    return { kind: 'overcast', cloud: c, rain: 0, wet: 0 };
+  }
+  const start = 12 + hashDay(day, 2) * 5, len = 1 + hashDay(day, 3);
+  const end = start + len, dryBy = end + 3;
+  const cloudy = h >= start - 1.5 && h < end + 0.75;
+  if (h >= start && h < end) {
+    const ramp = Math.min(1, (h - start) / 0.25, (end - h) / 0.25);         // the shower builds and stops within 15 min
+    return { kind: 'rain', cloud: 0.85, rain: Math.max(0.15, ramp), wet: 1 };
+  }
+  if (h >= end && h < dryBy) return { kind: 'after', cloud: cloudy ? 0.55 : 0.25, rain: 0, wet: 1 - (h - end) / (dryBy - end) };
+  return { kind: cloudy ? 'overcast' : 'sun', cloud: cloudy ? 0.6 : 0.15, rain: 0, wet: 0 };
+}
+
+/** What the weather does to the street: share of walkers and of cars out, and how fast the cars go. */
+export function weatherStreet(w: Weather): { walkers: number; traffic: number; speed: number } {
+  return { walkers: 1 - 0.65 * w.rain - 0.15 * w.wet * (1 - w.rain), traffic: 1 - 0.15 * w.rain, speed: 1 - 0.3 * w.rain - 0.1 * w.wet * (1 - w.rain) };
+}

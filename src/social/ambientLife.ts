@@ -5,6 +5,7 @@ import type { Body } from '../interact/people';
 import { seatClip, sitOriginY, type Seat } from '../interact/seats';
 import { Humanoid, humanoidReady, randomLook, type Clip, type PersonLook } from '../actors/humanoid';
 import { Impostors, ForeignBodies, cullHumanoid, ownerVisible, type Foreign } from '../actors/crowdLod';
+import { streetLevel } from '../actors/npc';
 import { hubLayout } from '../world/builder';
 import { rng } from '../core/rng';
 import { ROUTINES, currentPlan, resolvePlace, planPath, laneGraph, collidersClear, pathLength, type ClearFn } from './routines';
@@ -718,7 +719,8 @@ export class AmbientLife implements GameModule {
   /** Fewer walkers and cars late at night, the full street at rush hours (actors/npc.ts groups). */
   private thin(hour: number) {
     for (const g of this.ctx.extra.children) {
-      const f = g.name === 'crowd_walkers' ? curveAt(WALKERS_BY_HOUR, hour) : g.name === 'traffic' ? curveAt(TRAFFIC_BY_HOUR, hour) : -1;
+      // the hour's share, times the weather's (rain empties the pavements: src/city/living.ts)
+      const f = g.name === 'crowd_walkers' ? curveAt(WALKERS_BY_HOUR, hour) * streetLevel.walkers : g.name === 'traffic' ? curveAt(TRAFFIC_BY_HOUR, hour) * streetLevel.traffic : -1;
       if (f < 0) continue;
       const keep = Math.max(1, Math.round(g.children.length * f));
       g.children.forEach((c, i) => { c.visible = i < keep; });

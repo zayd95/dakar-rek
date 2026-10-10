@@ -19,6 +19,13 @@ function neighbours(w: HubWorld, x: number, z: number) {
   return out;
 }
 
+/**
+ * The weather's (and the road events') say on the street, set by the living city lane (src/city/living.ts): the share
+ * of walkers and cars out on top of the hour's (src/social/ambientLife.ts thins them by hour), and how fast the cars go
+ * (rain slows everyone down).
+ */
+export const streetLevel = { walkers: 1, traffic: 1, speed: 1 };
+
 /** Local background crowd: simulated on this phone only, never synchronised (design doc: Local atmosphere). */
 export class Crowd {
   group = new THREE.Group();
@@ -115,7 +122,7 @@ export class DecorativeTraffic {
     for (const c of this.cars) {
       if (shut && shut(c.ax, c.az, c.bx, c.bz)) this.reroute(c, shut);
       const len = Math.hypot(c.bx - c.ax, c.bz - c.az);
-      c.t += (c.speed * dt) / len;
+      c.t += (c.speed * streetLevel.speed * dt) / len;
       if (c.t >= 1) {
         const opts = neighbours(this.world, c.bx, c.bz).filter(n => nodeKey(n.x, n.z) !== c.prev && !(shut && shut(c.bx, c.bz, n.x, n.z)));
         const next = opts.length ? pick(opts, this.rand) : { x: c.ax, z: c.az };

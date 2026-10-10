@@ -10,6 +10,7 @@ import { ECURIES, gateOf, type ArenaGate } from '../arena/exteriorRules';
 import { eveningSize } from '../arena/exterior';
 import { rng } from '../core/rng';
 import { ARENA_PARKED, LEAVING_FROM, SIZE_SHARE, arenaArrivals, arenaDepartures, dropInterval, type EveningSize } from './rules';
+import { weatherNow } from './weather';
 
 /**
  * The streets round the Pikine arena on a fight evening (every evening: a small card on weekdays, the gala Friday to
@@ -145,7 +146,7 @@ export class ArenaStreets {
     this.checkT -= dt;
     if (this.checkT <= 0) { this.checkT = 2; this.updateParked(on, size); }
     const leaving = hour >= LEAVING_FROM;
-    const rush = on ? (leaving ? arenaDepartures(hour, size) : arenaArrivals(hour, size)) : 0;
+    const rush = (on ? (leaving ? arenaDepartures(hour, size) : arenaArrivals(hour, size)) : 0) * (1 - 0.35 * weatherNow.rain);
     // a new taxi or moto-taxi now and then
     this.spawnT -= dt;
     if (this.spawnT <= 0) {

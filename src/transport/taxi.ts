@@ -46,7 +46,7 @@ export function taxiSpec(): VehicleSpec {
   const toSeat = (s: VehicleSeat, drop = 0): SeatSpec => ({ id: s.id, x: s.x, y: s.top - drop, z: s.z, yaw: s.yaw, npcOnly: s.id !== 'front' });
   const driver = k.seats.find(s => s.kind === 'driver') ?? k.seats[0];
   const front = k.seats.find(s => s.id === 'front') ?? k.seats[1];
-  const chase = k.cameras.chase, eye = front.top + 0.62;
+  const chase = k.cameras.chase, eye = front.top + 0.76;
   const v3 = (p: readonly number[]): [number, number, number] => [p[0], p[1], p[2]];
   const spec: VehicleSpec = {
     id: 'taxi', name: 'Taxi', kind: 'taxi', length: k.length, width: k.width,
@@ -56,8 +56,8 @@ export function taxiSpec(): VehicleSpec {
     cameras: [
       { id: 'chase', label: 'Derrière le taxi', pos: v3(chase.pos), look: v3(chase.look), portrait: { pos: [chase.pos[0], chase.pos[1] + 2.2, chase.pos[2] - 3.4], look: [chase.look[0], chase.look[1] - 0.1, chase.look[2] + 4] } },
       // from the front seat, through the windscreen and the right-hand window (the pavement side)
-      { id: 'place', label: 'De ta place', pos: [front.x, eye, front.z + 0.05], look: [front.x - 2.8, eye - 0.25, front.z + 10], inside: true,
-        portrait: { pos: [front.x, eye + 0.02, front.z - 0.1], look: [front.x - 3.5, eye - 0.35, front.z + 9] } },
+      { id: 'place', label: 'De ta place', pos: [front.x, eye, front.z - 0.05], look: [front.x - 1.6, eye - 0.12, front.z + 12], inside: true,
+        portrait: { pos: [front.x, eye + 0.02, front.z - 0.15], look: [front.x - 2.2, eye - 0.2, front.z + 11] } },
       { id: 'haut', label: 'Vue d’en haut', pos: [0, 11, -12], look: [0, 0, 7], portrait: { pos: [0, 16, -14], look: [0, 0, 8] } },
     ],
     cabin: 'closed', sway: 0.7,

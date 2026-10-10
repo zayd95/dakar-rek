@@ -51,6 +51,7 @@ import { actionVerb } from './interact/legacy';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { weatherNow } from './city/weather';
 import { GesturePlayer } from './ui/gesture';
 import { Stride } from './game/stride';
 import { StrideUi } from './ui/stride';
@@ -79,9 +80,10 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 type Quality = 'low' | 'medium' | 'high';
 let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarrek.quality'); if (q === 'low' || q === 'medium' || q === 'high') return q; } catch { /* */ } return /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'medium' : 'high'; })();
 const QUAL = {
-  low: { pr: 1, shadow: 0, crowd: 8, traffic: 3 },
-  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 5 },
-  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 7 },
+  // traffic: the most cars on the road at rush hour (src/social/ambientLife.ts thins them by hour, the weather by rain)
+  low: { pr: 1, shadow: 0, crowd: 8, traffic: 4 },
+  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 7 },
+  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 10 },
 };
 
 const scene = new THREE.Scene();
@@ -176,15 +178,16 @@ function updateLighting(hour: number) {
   const isNight = hour < 6 || hour >= 19;
   sunDir.set(Math.cos(a) * 0.85, Math.sin(a) * 0.95, 0.42).normalize();
   sky.update(hour, sunDir, isNight ? 0 : 1, camera.position);
+  sky.overcast(weatherNow.cloud, isNight);                               // the day's weather (src/city/weather.ts)
   (scene.background as THREE.Color).copy(sky.horizon); (scene.fog as THREE.Fog).color.copy(sky.horizon);
-  (scene.fog as THREE.Fog).near = isNight ? 40 : 60; (scene.fog as THREE.Fog).far = isNight ? 240 : 320;
+  (scene.fog as THREE.Fog).near = (isNight ? 40 : 60) * (1 - 0.5 * weatherNow.rain); (scene.fog as THREE.Fog).far = (isNight ? 240 : 320) * (1 - 0.45 * weatherNow.rain);
   // Moonlight at night: cool, from high up, so streets still read.
   const ld = isNight ? new THREE.Vector3(-0.35, 0.85, 0.3).normalize() : new THREE.Vector3(sunDir.x, Math.max(0.22, sunDir.y), sunDir.z).normalize();
   sun.position.copy(pos).addScaledVector(ld, 90); sun.target.position.copy(pos);
-  sun.intensity = isNight ? 0.55 : 0.8 + 1.5 * d;
+  sun.intensity = (isNight ? 0.55 : 0.8 + 1.5 * d) * (1 - 0.6 * weatherNow.cloud);
   sun.color.set(isNight ? 0x9fb4ff : 0xfff1dc).lerp(new THREE.Color(0xffa45c), isNight ? 0 : low * 0.85);
   hemi.intensity = isNight ? 0.75 : 0.7 + 0.35 * d;
-  hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55));
+  hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55 - 0.25 * weatherNow.cloud));
   hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52);
   renderer.toneMappingExposure = isNight ? 1.3 : 1.0;
   if (inside) {
