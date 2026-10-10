@@ -94,6 +94,19 @@ Already composed:
   unlocked by shifts at that grill); a `ownership` hook is ready for the business lane. *Why return:* the special
   changes every city day, the regular's price after five meals, the next rung of the ladder, the evening crowd and
   attaya. Open 11 h–2 h (« Fermé · ouvre à 11 h », shutter down, cold grill); lively at night; location chat.
+  *At night* (`src/venues/dibiNight.ts`, wave 5: the place the evening ends, where the evening call sends players after
+  the gala): a bed of coals that glows at night (dull by day, cold when closed) and sparks (one point cloud, near the
+  camera only); the dibi master turns the brochettes on the grate one by one (Grab) — the grill job beside him is
+  unchanged; a ceiling of string lights zigzagging between the posts; a TV corner (three low benches round a low table
+  of the furniture kit) facing the TV that shows tonight's bout from the city's card (live 17 h – 23 h, then its replay,
+  with the arena's result once there is one — never an invented one); posters (tonight's card, « ouvert jusqu'à 2 h »,
+  the attaya); the menu board under the counter's fascia, drawn from the counter's own offers (dibi mouton · oignons,
+  moutarde, pain; brochettes; bissap; attaya; the pot); under the neem, the furniture kit's attaya set on its cushions:
+  « Une théière d'attaya sous le neem » (500 F, the evening, paid once, sits you on a free cushion). The city's people
+  sit and eat at every table, in the TV corner and on the cushions (the place's `area` claims the tables' seats);
+  someone makes the attaya and someone watches the TV in the evening. Draw calls: +3 by day, +4 at night (board, coals,
+  brochettes, furniture; sparks), the painted menu sign it replaces deducted; the whole Dibi is about 26 at night
+  without its people (`tests/dibiNight.test.ts`).
 - **The Grande Mosquée** (`src/venues/mosque.ts`, wave 1, Plateau): walled courtyard with two shade trees and benches
   for the elders, a covered row of ablution taps with low stools and plastic kettles, a portico of arches with the shoe
   racks, a white hall with green bands, a pale green dome and one minaret (green light ring at night). Ablutions seated at

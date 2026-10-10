@@ -121,7 +121,8 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
     if (!tags.length || !own.length) continue;
     const street = p.space === 'street';
     const cx = own.reduce((v, a) => v + a.x, 0) / own.length, cz = own.reduce((v, a) => v + a.z, 0) / own.length;
-    const seats = claim(s => s.space === p.space && (!street || own.some(a => Math.hypot(a.x - s.x, a.z - s.z) < 7)));
+    const area = p.area;
+    const seats = claim(s => s.space === p.space && (!street || own.some(a => Math.hypot(a.x - s.x, a.z - s.z) < 7) || (!!area && Math.hypot(area.x - s.x, area.z - s.z) <= area.r)));
     let st: StandSlot[] = own.flatMap(a => ring(a.x, a.z, 2.1, 6, 0.3));
     st = street ? stands(st) : st.filter(s => !own.some(a => Math.hypot(a.x - s.x, a.z - s.z) < ANCHOR_ROOM));
     let rows: StandSlot[] | undefined;

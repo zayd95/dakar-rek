@@ -99,7 +99,11 @@ function live<T extends ActivitySpec>(spec: T, detail: () => string | undefined)
  * late. With hooks it also offers the day's special, the regular's price, attaya in the evening, the owner and a talk
  * about the business (ownership system).
  */
-export function dibi(b: Base & { owner?: string; tables?: { x: number; z: number; r?: number }; peaks?: [number, number][] }, h: PlaceHooks = {}): PlaceSpec {
+/**
+ * `tables`: where the meals are eaten (the order sits you at the nearest free seat there; the city's people sit and eat
+ * there too: `area`). `attaya` (with an `attaya` anchor): the set and its cushions — a pot for the group, the evening.
+ */
+export function dibi(b: Base & { owner?: string; tables?: { x: number; z: number; r?: number }; peaks?: [number, number][]; attaya?: { x: number; z: number; r?: number } }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
   const keys = dibiCounters(b.id);
   const n = (k: string) => h.count?.(k) ?? 0;
@@ -115,10 +119,16 @@ export function dibi(b: Base & { owner?: string; tables?: { x: number; z: number
     const done = n(keys.grill), next = nextGrillRank(done);
     return next ? `${r.detail} · ${done}/${next.from} services avant « ${next.label} »` : r.detail;
   }));
+  const circle = b.attaya && b.anchors.some(a => a.id === 'attaya') ? b.attaya : null;
+  const pot = circle ? [P.order({ id: 'theiere', label: 'Une théière d’attaya sous le neem', detail: 'Trois verres pour la table · on prend le temps', price: 500, prep: 2, eat: 8, drink: true,
+    seat: { near: { x: circle.x, z: circle.z }, r: circle.r ?? 1.4, kind: 'floor' }, prop: 'attaya', needs: { social: 14, moral: 8 },
+    requires: () => (isEvening(hour()) ? null : 'L’attaya sous le neem, c’est le soir') })] : [];
   return { id: b.id, name: b.name, space: b.space, type: 'dibi', hours: [11, 2], chat: true, peaks: b.peaks ?? [[12.5, 14.5], [19, 1]],
-    anchors: [at('counter'), at('grill')], offers: {
+    ...(b.tables ? { area: { x: b.tables.x, z: b.tables.z, r: b.tables.r ?? 8 } } : {}),
+    anchors: [at('counter'), at('grill'), ...(circle ? [at('attaya')] : [])], offers: {
+      ...(circle ? { attaya: pot } : {}),
       counter: [
-        meal(P.order({ id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois, oignons et moutarde', price: 2000, prep: 4, eat: 5, seat, prop: 'dibi', needs: { faim: 55, moral: 10, social: 4 }, visible: () => !regular(), line: grilling, eatLine: tasteLine })),
+        meal(P.order({ id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois · oignons, moutarde et pain', price: 2000, prep: 4, eat: 5, seat, prop: 'dibi', needs: { faim: 55, moral: 10, social: 4 }, visible: () => !regular(), line: grilling, eatLine: tasteLine })),
         ...opt(h.count, meal(P.order({ id: 'dibi_habitue', label: 'Dibi mouton · prix d’habitué', detail: (b.owner ?? 'Le patron') + ' te fait le prix des habitués', price: 1500, prep: 3, eat: 5, seat, prop: 'dibi', needs: { faim: 55, moral: 14, social: 6 }, visible: regular }))),
         meal(P.order({ id: 'brochettes', label: 'Brochettes', detail: 'Trois brochettes et du pain', price: 1000, prep: 3, eat: 3, seat, prop: 'brochettes', needs: { faim: 28, moral: 4 }, line: grilling, eatLine: tasteLine })),
         ...(h.day ? DIBI_SPECIALS.map(d => live(meal(P.order({ id: 'jour_' + d.id, label: 'Plat du jour · ' + d.label, price: d.price, prep: 4, eat: 5, seat, prop: 'dibi', needs: { faim: d.faim, moral: 8 }, visible: () => dibiSpecial(h.day!()) === d })), () => 'Seulement aujourd’hui · demain, autre chose')) : []),
