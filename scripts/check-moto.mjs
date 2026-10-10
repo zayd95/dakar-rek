@@ -125,7 +125,13 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const job = (await d(() => window.__dakar.jobs())).find(j => !j.blocked);
   const n0 = await d(() => window.__dakar.state.data.counters.livraisons ?? 0);
   const run = job ? await d(id => window.__dakar.acceptJob(id, false), job.id) : null;
-  const goTo = async () => { const m = await d(() => window.__dakar.marker()); await d(p => window.__dakar.moto.place(p.x + 1.2, p.z, Math.PI / 2), m); return m; };
+  // ride up to the marker (placed there: the arrival is what is checked; the city's marker moves on the next frame)
+  let last = { x: 1e9, z: 1e9 };
+  const goTo = async () => {
+    await page.waitForFunction(l => { const m = window.__dakar.marker(); return m.visible && Math.hypot(m.x - l.x, m.z - l.z) > 1; }, last, { timeout: 60000 }).catch(() => {});
+    const m = await d(() => window.__dakar.marker()); last = { x: m.x, z: m.z };
+    await d(p => window.__dakar.moto.place(p.x + 1.2, p.z, Math.PI / 2), m); return m;
+  };
   if (run) await goTo();
   await page.waitForFunction(() => window.__dakar.activeJob()?.stage === 'deliver', null, { timeout: 60000 }).catch(() => {});
   const picked = await d(() => window.__dakar.activeJob());

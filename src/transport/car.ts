@@ -24,6 +24,9 @@ export function sedanSeed(color = SEDAN_SILVER): number {
   seeds.set(color, 1); return 1;
 }
 
+/** How much lower than the kit's seat top the player sits at the wheel (m). */
+export const DRIVER_DROP = 0.12;
+
 let cached: VehicleSpec | null = null;
 export function carSpec(): VehicleSpec {
   if (cached) return cached;
@@ -37,7 +40,8 @@ export function carSpec(): VehicleSpec {
     id: 'car', name: 'Berline', kind: 'car',
     length: k.length, width: k.width,
     seats: k.seats.filter(s => s.kind !== 'driver').map(toSeat),
-    driver: toSeat(driver),
+    // the player's humanoid sits taller than the kit's seated busts: 12 cm lower, the head stays under the roof
+    driver: { ...toSeat(driver), y: driver.top - DRIVER_DROP },
     doors: [{ id: door.id, x: door.board[0], z: door.board[2], outX: door.board[0] + 0.3, outZ: door.board[2] }],
     cameras: [
       // behind the car (the kit's chase anchor); on a phone held upright, higher and further back to see the road ahead

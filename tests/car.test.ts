@@ -26,6 +26,8 @@ describe('the used saloon', () => {
     expect(k.colors.body).toBe(SEDAN_SILVER);
     expect(spec.kind).toBe('car'); expect(spec.cabin).toBe('closed');
     expect(spec.driver.id).toBe('driver'); expect(spec.driver.x).toBeGreaterThan(0);        // +x = the car's left
+    // a seated humanoid (about 0.95 m from the seat to the top of the head) stays under the roof
+    expect(spec.driver.y + 0.95).toBeLessThan(k.height - 0.05);
     expect(spec.seats.length).toBe(4); expect(spec.seats.every(s => s.npcOnly)).toBe(true);
     expect(spec.doors[0].id).toBe('fl');
   });

@@ -126,8 +126,9 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => window.__dakar.car.info().driving, null, T).catch(() => {});
   let i2 = await info();
+  await page.waitForFunction(() => window.__dakar.clip() === 'Sit', null, { timeout: 30000 }).catch(() => {});
   const clip = await d(() => window.__dakar.clip());
-  check(`${label}: at the wheel: driver seat (seated), own interaction space, still in the street for the others, chase view`, i2.driving && /car:berline:driver$/.test(await d(() => window.__dakar.seated()) ?? '') && i2.space === 'plateau:car:berline' && i2.presence === 'street' && i2.camera && i2.view === 'chase' && !i2.solid && clip !== 'Ride',
+  check(`${label}: at the wheel: driver seat (seated), own interaction space, still in the street for the others, chase view`, i2.driving && /car:berline:driver$/.test(await d(() => window.__dakar.seated()) ?? '') && i2.space === 'plateau:car:berline' && i2.presence === 'street' && i2.camera && i2.view === 'chase' && !i2.solid && clip === 'Sit',
     JSON.stringify({ ...i2, clip }));
   await shot('4-in');
 
