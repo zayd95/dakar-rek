@@ -87,6 +87,48 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await page.screenshot({ path: `${out}/${label}-arena.png`, timeout: 120000 });
   await d(() => window.__dakar.phoneClose());
 
+  // 6b. A fight night in the world: the open bout for anyone, the poster, people outside, the rank on the way out.
+  if (await d(() => typeof window.__dakar.poster === 'function')) {
+    await d(() => { window.__dakar.setHour(18); window.__dakar.teleport('pikine'); });
+    await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine', null, T);
+    const arena = await d(() => window.__dakar.careerArena());
+    const spot = (r, side = 0) => ({ x: arena.cx + side, z: arena.cz - r });
+    // the arena's door: « Petit combat de quartier » is offered even without an écurie, and starts a real bout
+    await d(() => { const s = window.__dakar.state.data; s.flags = s.flags.filter(f => f !== 'ecurie_baobab'); s.needs.energie = 90; });
+    const door = (await d(() => window.__dakar.interactables())).find(i => i.id.endsWith(':arena'));
+    if (door) {
+      await d(p => window.__dakar.place(p.x, p.z - 1, 0), door);
+      await page.waitForFunction(() => /:arena$/.test(window.__dakar.focus()?.id ?? ''), null, T).catch(() => {});
+      const f = await d(() => window.__dakar.focus());
+      check(`${label}: the arena offers an open bout to anyone (« Combat du soir » / « Petit combat de quartier »)`, (f?.all ?? []).some(x => /Petit combat de quartier|Combat du soir/.test(x)), JSON.stringify(f?.all));
+      await d(() => window.__dakar.act());
+      await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
+      await page.locator('#modal .item', { hasText: /Petit combat de quartier|Combat du soir/ }).first().click();
+      await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
+      await page.locator('#modal .item', { hasText: 'Affronter' }).first().click();
+      const fought = await page.waitForFunction(() => window.__dakar.duelInfo(), null, T).then(() => true, () => false);
+      check(`${label}: the open bout starts a ranked bout the same evening`, fought);
+      if (fought) {
+        await d(() => window.__dakar.duelAbandon(true));
+        await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'result', null, T).catch(() => {});
+        await d(() => window.__dakar.duelFinish());
+        await page.waitForFunction(() => !window.__dakar.duelInfo(), null, T).catch(() => {});
+      }
+    } else check(`${label}: Pikine has the arena`, false);
+    // a win: the poster carries the name, people by the gate talk about it, the rank is said on the way out
+    await d(() => window.__dakar.careerBout('classe', 'player', 1, 'projection', 'Pape'));
+    await page.waitForFunction(() => /VAINQUEUR/.test(window.__dakar.poster()), null, { timeout: 15000 }).catch(() => {});
+    check(`${label}: the arena's poster carries the winner's name`, /VAINQUEUR\|[^|]+\|a battu Pape/.test(await d(() => window.__dakar.poster())), await d(() => window.__dakar.poster()));
+    await d(() => { window.__dakar.state.data.playedMs += 10000; });
+    await d(p => window.__dakar.place(p.x, p.z, Math.PI), spot(26 + 5, -3));
+    const heard = await page.waitForFunction(() => /Un supporter/.test(document.getElementById('toast')?.textContent ?? ''), null, { timeout: 20000 }).then(() => true, () => false);
+    check(`${label}: people outside the arena talk about the result`, heard, await d(() => document.getElementById('toast')?.textContent ?? ''));
+    await page.screenshot({ path: `${out}/${label}-poster.png`, timeout: 120000 });
+    await d(p => window.__dakar.place(p.x, p.z, Math.PI), spot(60, 6));
+    const said = await page.waitForFunction(() => /Classement/.test(document.getElementById('toast')?.textContent ?? ''), null, { timeout: 20000 }).then(() => true, () => false);
+    check(`${label}: the rank change is said on the way out`, said, await d(() => document.getElementById('toast')?.textContent ?? ''));
+  } else console.log(`${label}: fight-night checks skipped (build without them)`);
+
   // 6. The story persists: reload and everything is there.
   const n = (await career()).bouts.length;
   await page.reload(); await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);

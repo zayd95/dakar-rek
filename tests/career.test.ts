@@ -4,6 +4,23 @@ import {
   type BoutEntry,
 } from '../src/career/career';
 import { migrate, newSave } from '../src/core/save';
+import { posterText, crowdLine, NEWS_DAYS } from '../src/career/world';
+
+describe('career: a fight night in the world', () => {
+  const b = (o: Partial<BoutEntry> = {}): BoutEntry => ({ at: 1, day: 10, mode: 'classe', opp: 'Gora', style: 'Costaud', level: 1, res: 'V', how: 'projection', purse: 8250, pts: 22, ...o });
+  it('the poster carries the player’s recent result, then the gala’s bill, and the next fight evening', () => {
+    const win = posterText(b(), 'HabibDkr', 11, 12);
+    expect(win.tag).toBe('VAINQUEUR'); expect(win.title).toBe('HabibDkr'); expect(win.line).toMatch(/Gora/);
+    expect(posterText(b({ res: 'D' }), 'HabibDkr', 11, 12).title).toBe('Gora');
+    expect(posterText(b(), 'HabibDkr', 10 + NEWS_DAYS + 1, 12).tag).toBe('GALA');
+    expect(posterText(b({ res: 'A' }), 'HabibDkr', 10, 12).tag).toBe('GALA');
+    expect(posterText(null, 'X', 3, 10).foot).toMatch(/Prochain gala/);
+  });
+  it('people outside talk about the result', () => {
+    expect(crowdLine(b())).toMatch(/battu Gora/);
+    expect(crowdLine(b({ res: 'D' }))).toMatch(/revanche/);
+  });
+});
 
 const bout = (o: Partial<BoutEntry> = {}): BoutEntry => ({ at: 0, day: 1, mode: 'classe', opp: 'Gora', style: 'Costaud', level: 1, res: 'V', how: 'projection', purse: 0, pts: 0, ...o });
 const fmt = (n: number) => `${n} F`;

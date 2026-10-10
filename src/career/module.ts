@@ -4,6 +4,8 @@ import type { Action, HubWorld } from '../world/types';
 import { phoneHooks } from '../ui/phoneHooks';
 import { fcfa } from '../ui/hud';
 import { assetsOf, netWorth } from '../economy/assets';
+import { loadProfile } from '../multiplayer/client';
+import { FightNews } from './world';
 import {
   ATTRS, BOUTS_MAX, RUNGS, boutPoints, dimensions, fighterAttributes, purseOf, rankOf, recordLine, summary,
   type BoutEntry, type BoutRes, type CareerSave,
@@ -23,7 +25,17 @@ const DRILLS: Action[] = [
     requires: s => (s.data.needs.energie < 12 ? 'Trop fatigué' : null) },
 ];
 
+/**
+ * The open door to the arena: a ranked bout at the player's rung, offered at the arena and at the écurie to anyone
+ * rested enough — no écurie card, no guided course first (those stay for the arena's regular « Combat classé »).
+ * Named « Petit combat de quartier » on the first rung, « Combat du soir · <rang> » after.
+ */
+const PETIT: Action = { id: 'petit_combat', label: 'Petit combat de quartier', detail: 'Combat classé au premier palier · un cachet si tu combats', seconds: 0, special: 'combat_classe',
+  requires: s => (s.data.needs.energie < 20 ? 'Trop fatigué : repose-toi d’abord' : null) };
+
 const RES_WORD: Record<BoutRes, string> = { V: 'Victoire', D: 'Défaite', N: 'Nul', A: 'Abandon' };
+let news: FightNews | null = null, labelT = 0;
+const playerName = (ctx: GameCtx) => { let st: Storage | null = null; try { st = localStorage; } catch { /* blocked */ } return loadProfile(st, ctx.state.data.guestId).name; };
 const HOW: Record<string, string> = { projection: 'projection', decision: 'décision', egalite: 'égalité', abandon: 'abandon' };
 
 function career(ctx: GameCtx): CareerSave {
@@ -57,6 +69,7 @@ export function recordBout(ctx: GameCtx, e: Extract<LambEvent, { kind: 'bout' }>
   const h2h = summary(c.bouts.filter(b => b.opp === e.opponent.name));
   if (res === 'D' && h2h.d >= 1 && h2h.bouts >= 1) lines.push(`Revanche à prendre contre ${e.opponent.name}`);
   c.best = Math.max(c.best, after.rung);
+  if (news && res !== 'A') news.pending = { before, after, at: ctx.state.data.playedMs };
   ctx.save();
   return lines;
 }
@@ -84,6 +97,7 @@ function arenaRows(ctx: GameCtx): { label: string; value: string }[] {
 export const careerModule: GameModule = {
   name: 'career',
   init(ctx) {
+    news = new FightNews(() => playerName(ctx));
     // The phone's arena app keeps its own rows (discipline, records by mode) after the career rows.
     const base = phoneHooks.arenaProfile;
     phoneHooks.arenaProfile = () => [...arenaRows(ctx), ...(base?.() ?? [])];
@@ -96,13 +110,27 @@ export const careerModule: GameModule = {
       return s.bouts || s.ab ? `Lutteur · ${r.label}` : 'Une vie à Dakar';
     };
   },
-  hubLoaded(_ctx, hub: HubWorld) {
-    // The écurie drills sit with Coach Ablaye's session: same place, same sheet, the « ⋯ » quick actions.
+  hubLoaded(ctx, hub: HubWorld) {
+    // The écurie drills sit with Coach Ablaye's session: same place, same sheet, the « ⋯ » quick actions. The open
+    // ranked bout is offered at the écurie and at the arena.
     for (const it of hub.interactables) {
-      if (!it.actions.some(a => a.special === 'training')) continue;
-      const add = DRILLS.filter(d => !it.actions.some(a => a.id === d.id));
+      const ecurie = it.actions.some(a => a.special === 'training'), arena = it.actions.some(a => a.special === 'combat_classe' && a.id !== PETIT.id);
+      if (!ecurie && !arena) continue;
+      const add = [...(ecurie ? DRILLS : []), PETIT].filter(d => !it.actions.some(a => a.id === d.id));
       if (add.length) it.actions = [...it.actions, ...add];
     }
+    news?.hubLoaded(ctx, hub);
+  },
+  update(ctx, dt) {
+    const c = career(ctx);
+    labelT -= dt;
+    if (labelT <= 0) {                                       // the open bout's name and purse follow the rung
+      labelT = 1;
+      const r = rank(ctx);
+      PETIT.label = r.rung === 0 ? 'Petit combat de quartier' : `Combat du soir · ${r.label}`;
+      PETIT.detail = `Combat classé · cachet ${fcfa(purseOf('classe', 'V', r.rung, 1))} si tu gagnes, moins sinon`;
+    }
+    news?.update(ctx, dt, c.bouts.length ? c.bouts[c.bouts.length - 1] : null);
   },
   lamb(ctx, e) {
     if (e.kind === 'bout') return recordBout(ctx, e);
@@ -115,6 +143,8 @@ export const careerModule: GameModule = {
         line: recordLine(c.bouts, r.label, fcfa), dims: phoneHooks.profileDims?.() ?? [] };
     },
     /** Simulate the end of a bout through the same path as a real one (main.ts reports it the same way). */
+    poster: () => news?.text ?? '',
+    careerArena: () => ctx.world()?.arena ?? null,
     careerBout: (mode: 'amical' | 'classe', winner: 'player' | 'opponent' | null, level = 1, outcome: 'projection' | 'decision' | 'egalite' | 'abandon' = winner ? 'projection' : 'egalite', name = 'Gora') =>
       recordBout(ctx, { kind: 'bout', mode, outcome, winner, opponent: { name, style: 'costaud', label: 'Costaud' }, level }),
   }),
