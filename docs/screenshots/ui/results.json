@@ -35,6 +35,11 @@
     "detail": ""
   },
   {
+    "name": "desktop: action button clear of the « Courir » button",
+    "ok": true,
+    "detail": "{\"left\":0,\"top\":0,\"right\":0,\"bottom\":0,\"width\":0,\"height\":0}"
+  },
+  {
     "name": "desktop: the place sheet opens in menu mode",
     "ok": true,
     "detail": ""
@@ -42,7 +47,7 @@
   {
     "name": "desktop: sheet on the right, clear of the character in the centre",
     "ok": true,
-    "detail": "{\"left\":856,\"top\":585.5625,\"right\":1256,\"bottom\":776,\"width\":400,\"height\":190.4375}"
+    "detail": "{\"left\":856,\"top\":567.375,\"right\":1256,\"bottom\":776,\"width\":400,\"height\":208.625}"
   },
   {
     "name": "desktop: sheet rows are at least 44 px",
@@ -77,7 +82,7 @@
   {
     "name": "desktop: « ⋯ » shows the target's actions as tiles with prices",
     "ok": true,
-    "detail": "[\"👋Jus & Go\",\"🍽️Jus de bouye frais−500 F\",\"🍽️Bissap et sandwichPas assez d’argent−1 000 F\"]"
+    "detail": "[\"👋Jus & Go\",\"🍽️Jus de bouye frais−500 F\",\"🍽️Bissap et sandwichPas assez d’argent−1 000 F\"]"
   },
   {
     "name": "desktop: quick actions sit in the bottom-right thumb zone",
@@ -101,8 +106,8 @@
   },
   {
     "name": "desktop: progress pill above the « Arrêter » button",
-    "ok": false,
-    "detail": "⏳Riz au poissonPréparation · 1/20 % {\"left\":1006.5999755859375,\"top\":653.469970703125,\"right\":1261.4000244140625,\"bottom\":699.5299682617188,\"width\":254.800048828125,\"height\":46.05999755859375}"
+    "ok": true,
+    "detail": "⏳Riz au poissonPréparation · 1/281 % {\"left\":1004,\"top\":661,\"right\":1264,\"bottom\":708,\"width\":260,\"height\":47}"
   },
   {
     "name": "desktop: Escape stops the activity and gives the controls back",
@@ -192,7 +197,7 @@
   {
     "name": "phone: action button shows the verb with its icon, 60 px tall",
     "ok": true,
-    "detail": "142.90625×60 👋Jus & GoE"
+    "detail": "128.625×60 👋Jus & GoE"
   },
   {
     "name": "phone: « ⋯ » is a 44 px target above the action button",
@@ -205,6 +210,11 @@
     "detail": ""
   },
   {
+    "name": "phone: action button clear of the « Courir » button",
+    "ok": true,
+    "detail": "{\"left\":168,\"top\":752,\"right\":226,\"bottom\":810,\"width\":58,\"height\":58}"
+  },
+  {
     "name": "phone: the place sheet opens in menu mode",
     "ok": true,
     "detail": ""
@@ -212,7 +222,7 @@
   {
     "name": "phone: bottom sheet anchored at the bottom, at most ~56 % high",
     "ok": true,
-    "detail": "{\"left\":0,\"top\":646.5625,\"right\":390,\"bottom\":844,\"width\":390,\"height\":197.4375}"
+    "detail": "{\"left\":0,\"top\":628.375,\"right\":390,\"bottom\":844,\"width\":390,\"height\":215.625}"
   },
   {
     "name": "phone: sheet rows are at least 44 px",
@@ -252,7 +262,7 @@
   {
     "name": "phone: « ⋯ » shows the target's actions as tiles with prices",
     "ok": true,
-    "detail": "[\"👋Jus & Go\",\"🍽️Jus de bouye frais−500 F\",\"🍽️Bissap et sandwichPas assez d’argent−1 000 F\"]"
+    "detail": "[\"👋Jus & Go\",\"🍽️Jus de bouye frais−500 F\",\"🍽️Bissap et sandwichPas assez d’argent−1 000 F\"]"
   },
   {
     "name": "phone: quick actions sit in the bottom-right thumb zone",
@@ -276,8 +286,8 @@
   },
   {
     "name": "phone: progress pill above the « Arrêter » button",
-    "ok": false,
-    "detail": "⏳Riz au poissonPréparation · 1/20 % {\"left\":158.17999267578125,\"top\":697.469970703125,\"right\":371.82000732421875,\"bottom\":743.5299682617188,\"width\":213.6400146484375,\"height\":46.05999755859375}"
+    "ok": true,
+    "detail": "⏳Riz au poissonPréparation · 1/297 % {\"left\":156,\"top\":705,\"right\":374,\"bottom\":752,\"width\":218,\"height\":47}"
   },
   {
     "name": "phone: Escape stops the activity and gives the controls back",
@@ -322,7 +332,7 @@
   {
     "name": "phone: way-finding pin over the suggested person, distance in the hint",
     "ok": true,
-    "detail": "{\"m\":{\"focus\":false,\"focusAt\":null,\"pin\":true,\"pinAt\":{\"x\":-36,\"z\":-54.5}},\"ibou\":{\"id\":\"ibou\",\"hub\":\"pikine\",\"here\":true,\"x\":-36,\"z\":-54.5,\"y\":0.1,\"yaw\":3.14,\"act\":\"wait\",\"clip\":\"Idle\",\"walking\":false,\"paused\":false,\"sit\":false,\"key\":\"wait:ibou_welcome\",\"place\":\"devant ta chambre : il attend le nouveau voisin\",\"target\":{\"x\":-36,\"z\":-54.5},\"left\":0,\"it\":{\"x\":-36,\"z\":-54.5}},\"goal\":\"↑Parle à Tonton Ibou, devant ta chambre (Pikine).64 m\",\"gd\":\"64 m\"}"
+    "detail": "{\"m\":{\"focus\":true,\"focusAt\":{\"x\":-42,\"z\":-54.5},\"pin\":true,\"pinAt\":{\"x\":-36,\"z\":-54.5}},\"ibou\":{\"id\":\"ibou\",\"hub\":\"pikine\",\"here\":true,\"x\":-36,\"z\":-54.5,\"y\":0,\"yaw\":3.14,\"act\":\"wait\",\"clip\":\"Idle\",\"walking\":false,\"paused\":false,\"sit\":false,\"key\":\"wait:ibou_welcome\",\"place\":\"devant ta chambre : il attend le nouveau voisin\",\"target\":{\"x\":-36,\"z\":-54.5},\"left\":0,\"it\":{\"x\":0,\"z\":0}},\"goal\":\"↑Parle à Tonton Ibou, devant ta chambre (Pikine).6 m\",\"gd\":\"6 m\"}"
   },
   {
     "name": "phone: toasts stack, three at most",
@@ -332,7 +342,7 @@
   {
     "name": "phone: toasts stay clear of the action area",
     "ok": true,
-    "detail": "{\"left\":12,\"top\":170,\"right\":378,\"bottom\":365.09375,\"width\":366,\"height\":195.09375}"
+    "detail": "{\"left\":12,\"top\":170,\"right\":378,\"bottom\":405.3125,\"width\":366,\"height\":235.3125}"
   },
   {
     "name": "phone: a wallet change shows « +1 200 F »",
@@ -351,8 +361,8 @@
   },
   {
     "name": "phone: no page errors",
-    "ok": false,
-    "detail": "Failed to execute 'setPointerCapture' on 'Element': No active pointer with the given id is found."
+    "ok": true,
+    "detail": ""
   },
   {
     "name": "landscape: HUD chips do not overlap",
@@ -390,6 +400,11 @@
     "detail": ""
   },
   {
+    "name": "landscape: action button clear of the « Courir » button",
+    "ok": true,
+    "detail": "{\"left\":168,\"top\":298,\"right\":226,\"bottom\":356,\"width\":58,\"height\":58}"
+  },
+  {
     "name": "landscape: the place sheet opens in menu mode",
     "ok": true,
     "detail": ""
@@ -397,7 +412,7 @@
   {
     "name": "landscape: sheet on the right, clear of the character in the centre",
     "ok": true,
-    "detail": "{\"left\":434,\"top\":191.5625,\"right\":834,\"bottom\":382,\"width\":400,\"height\":190.4375}"
+    "detail": "{\"left\":434,\"top\":173.375,\"right\":834,\"bottom\":382,\"width\":400,\"height\":208.625}"
   },
   {
     "name": "landscape: sheet rows are at least 44 px",
@@ -432,7 +447,7 @@
   {
     "name": "landscape: « ⋯ » shows the target's actions as tiles with prices",
     "ok": true,
-    "detail": "[\"👋Jus & Go\",\"🍽️Jus de bouye frais−500 F\",\"🍽️Bissap et sandwichPas assez d’argent−1 000 F\"]"
+    "detail": "[\"👋Jus & Go\",\"🍽️Jus de bouye frais−500 F\",\"🍽️Bissap et sandwichPas assez d’argent−1 000 F\"]"
   },
   {
     "name": "landscape: quick actions sit in the bottom-right thumb zone",
@@ -456,8 +471,8 @@
   },
   {
     "name": "landscape: progress pill above the « Arrêter » button",
-    "ok": false,
-    "detail": "⏳Riz au poissonPréparation · 1/20 % {\"left\":647.278564453125,\"top\":243.47000122070312,\"right\":826.1744995117188,\"bottom\":289.5299987792969,\"width\":178.89593505859375,\"height\":46.05999755859375}"
+    "ok": true,
+    "detail": "⏳Riz au poissonPréparation · 1/297 % {\"left\":645.453125,\"top\":251,\"right\":828,\"bottom\":298,\"width\":182.546875,\"height\":47}"
   },
   {
     "name": "landscape: Escape stops the activity and gives the controls back",
