@@ -3,7 +3,7 @@ import type { GameCtx, GameModule } from '../game/modules';
 import { Humanoid, humanoidReady, randomLook, type PersonLook } from '../actors/humanoid';
 import { rng } from '../core/rng';
 import { SECTIONS } from '../world/geew';
-import { ARENA_FLOOR, WALKWAY_R, interiorSpots, type Spot, type SpotRole } from '../world/arenaModules';
+import { ARENA_FLOOR, PREP_SIDE, WALKWAY_R, interiorSpots, type Spot, type SpotRole } from '../world/arenaModules';
 import { ECURIES } from './exteriorRules';
 import { arenaExterior } from './exterior';
 
@@ -29,7 +29,7 @@ const LOOKS = (R: () => number): Record<SpotRole, (s: Spot) => PersonLook> => ({
   official: () => ({ ...randomLook(R), style: 'tee', top: 0x0f3d6e, pattern: 'uni', female: false }),
   press: () => ({ ...randomLook(R), style: 'tee', top: 0x2b2f36, pattern: 'uni' }),
   media: () => ({ ...randomLook(R), style: 'tee', top: 0x1c1c1e, pattern: 'uni' }),
-  camp: s => ({ ...randomLook(R), style: 'tee', top: s.side === -1 ? ECURIES[0].colour : ECURIES[1].colour, pattern: 'uni', female: false }),
+  camp: s => ({ ...randomLook(R), style: 'tee', top: s.side === PREP_SIDE.baobab ? ECURIES[0].colour : ECURIES[1].colour, pattern: 'uni', female: false }),
 });
 
 class Interior {

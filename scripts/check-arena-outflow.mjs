@@ -49,6 +49,8 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await page.waitForTimeout(4000); await shot('crowd-pouring-out');
   let maxStalls = 0, maxLeaving = 0;
   for (let k = 0; k < 24; k++) { const a = await info(); maxStalls = Math.max(maxStalls, a.atStalls); maxLeaving = Math.max(maxLeaving, a.leaving); await page.waitForTimeout(700); }
+  // the stall stops come with the walk (game time): on a slow machine, wait for one rather than sampling a few seconds
+  if (maxStalls < 1 && await until(() => window.__dakar.arenaOut().atStalls >= 1, null, 60000)) maxStalls = 1;
   const a2 = await info();
   check(`${label}: the stream walks off toward the stops, taxis and street ends`, maxLeaving >= 4 && a2.gone >= 2, `leaving up to ${maxLeaving}, gone ${a2.gone}, still inside ${a2.inside}`);
   check(`${label}: some stop for a last bissap at the stalls`, maxStalls >= 1 || a2.fans < 10, `${maxStalls} at the stalls at once`);
