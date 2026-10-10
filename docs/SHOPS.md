@@ -9,7 +9,9 @@ modelled one by one. Brands are fictional; words on goods are generic (riz, lait
 `{ group, colliders, seats, anchors, bounds, budget }`.
 
 - **Types**: `grocery`, `phone`, `clothing`, `furniture`, `pharmacy`, `cafe`, `bank`, `hardware`, `craft` (variants:
-  baskets, leather and wood, painted pirogues and carved wood), `beauty`.
+  baskets, leather and wood, painted pirogues and carved wood), `beauty`, `garage` (a workshop: bench and tools, a car on
+  a two-post lift and motorbikes for sale — kit vehicles merged into the shop), `restaurant` (kitchen pass, cash desk,
+  tables with their chairs).
 - **One plan for every size**: the counter (left, centred or a desk), the keeper's corridor behind it, the aisle, the
   customers' lane in front and the doorway are kept clear; shelf runs line the walls; the type then lays its floor
   displays (fridges, gondola, racks and mannequins, TV wall, glass cube of phones, sofa set from the furniture kit,
@@ -58,8 +60,10 @@ tallies how many entered, queued and paid per shop; `ambientRun(s)` fast-forward
 | Café Touba · Sandaga / Fann / Ngor / Parcelles | one per hub (kiosk) | **facade only** | **walk-in café** (`src/game/shops.ts`): « Entrer », a room stocked by kit `cafe` in shell mode, the menu at the counter inside, barista, a regular on a stool | Café Touba 100 F, stay and chat |
 | Gargotes, Maïgas, the starter room | all | walk-in interiors (`src/world/interiors.ts`) | unchanged | meals, rest |
 | Dibiteries, Grande Mosquée, Soumbédioune beach | — | venues lane (`src/venues`) | unchanged | — |
-| Restaurant Le Pointe (Almadies), Garage Modou (Pikine) | kiosks | facade only | **still facade only** (next batch: kit `cafe` / a garage type) | fish, bissap; garage jobs |
-| Quincaillerie · meubles (by the Maïga du marché, Pikine) | economy lane | hand-built stall | unchanged (candidate for kit `hardware`) | furniture catalogue |
+| Garage Modou (Pikine) | kiosk | facade only | **open workshop** (kit `garage` 13.75 × 8): Modou behind his bench (src/social/routines.ts, in by the bench aisle), tool pegboard, parts and oil, tyres, a car on the lift, two motorbikes for sale; the sheet, the mechanic's gesture job and the transport lane's motorbike corner untouched | mechanic's job (gestures), the motorbike at the corner; customers look at the motorbikes and pay at the bench |
+| Restaurant Le Pointe (Almadies) | kiosk | facade only | **walk-in dining room** (kit `restaurant` 12 × 9, shell): kitchen pass, cash desk with the menu, tables, the cashier and a waiter (greetable); the city's people sit, then pay at the desk | poisson grillé 3 500 F, jus de bissap 800 F (at the desk inside, and still at the sheet) |
+| Quincaillerie · meubles (by the Maïga du marché, Pikine) | economy lane | hand-built stall | unchanged (candidate for kit `hardware`) | furniture catalogue (titled after the shop it opens from: « Maison Dakar · meubles » at the mall) |
+| Voitures d'occasion · Ndiaye Auto (Plateau) | transport lane | kerb corner | unchanged; placed from the shop front of Dakar Réparation (`stockedShopFront`), not its sheet that moved inside | the used car |
 
 Every stocked shop's sheet now stands at its counter (`anchors.counter`), so buying happens there through the same
 activity system as before; the keeper stands on `anchors.keeper` at every quality (Low thins out the customers only),
