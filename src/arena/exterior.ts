@@ -122,7 +122,7 @@ class Exterior {
   setActive(on: boolean) {
     this.active = on; this.group.visible = on;
     if (on) this.fill();
-    for (const f of this.fans) if (!on) f.h.group.visible = false;
+    else for (const h of [...this.fans.map(f => f.h), ...this.still.map(s => s.h)]) h.group.visible = false;   // quiet: nobody drawn
   }
 
   /** Moves toward a point at the fan's pace; true when there. */
