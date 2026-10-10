@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import type { GameState } from '../core/state';
+import type { HubId } from '../core/types';
 import type { Input } from '../core/input';
 import type { Hud, MenuItem } from '../ui/hud';
 import type { Interactions } from '../interact/system';
@@ -17,6 +18,7 @@ import { assetKitModule } from './assetKit';
 import { transport } from '../transport/module';
 import { moto } from '../transport/motoModule';
 import { car } from '../transport/carModule';
+import { taxi } from '../transport/taxi';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
 import { ambientLife } from '../social/ambientLife';
@@ -79,6 +81,11 @@ export interface GameCtx {
   exit(): void;
   /** Set (or clear) the city's walking marker towards an interactable of the current hub (the places directory's marker). */
   walkTo(id: string | null): void;
+  /**
+   * Go to another hub: a short fade with `label`, the hub built (modules' hubLoaded run, a ride may seat the player in
+   * its vehicle there), the player at `at` or the hub's spawn. Charges nothing: the caller has taken any fare.
+   */
+  travel(dest: HubId, at?: { x: number; z: number; yaw: number }, label?: string): void;
 }
 
 /** A gameplay module: hooks are called by main.ts in this order every hub / frame. */
@@ -120,6 +127,6 @@ export interface GameModule {
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
 export const MODULES: GameModule[] = [
-  wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE,
+  wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE,
   ambientLife,          // NPC & social life lane, last: it populates the places and seats the others register (docs/NPC_LIFE.md)
 ];

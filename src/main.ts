@@ -339,6 +339,16 @@ const ctx: GameCtx = {
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
   walkTo: id => setDestination(id),
+  travel(dest, at, label) {
+    if (!world) return;
+    mode = 'busy'; input.enabled = false; input.reset();
+    hud.fade(true, label ?? HUB_NAMES[dest]);
+    setTimeout(() => {
+      loadHub(dest, at);
+      hud.fade(false);
+      mode = 'play'; input.enabled = true; saveNow();
+    }, 700);
+  },
 };
 ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
