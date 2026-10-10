@@ -91,9 +91,13 @@ try {
         .map(s => data.people.some(p => Math.hypot(p.x - s.anchors.keeper.x, p.z - s.anchors.keeper.z) < 0.3));
       check(`${label}: ${hub} keepers stand behind their counters`, kept.every(Boolean), kept.join(','));
       // spec §31: the city's people come in, browse, queue and pay at the counter, and leave — without the player
+      // the city's people build their spots a few frames after the hub load; Salon Awa belongs to its venue (src/venues)
+      await page.waitForFunction(() => window.__dakar.ambientShops().length > 0, null, T).catch(() => {});
       const spots = await d(page, () => window.__dakar.ambientShops());
-      check(`${label}: ${hub} every stocked shop is a spot of the city's people (door, displays, checkout line)`, spots.length === data.shops.length && spots.every(x => x.stands >= 1 && x.checkout >= 1),
-        spots.map(x => `${x.id.split(':').slice(3).join(':')} ${x.stands}/${x.checkout}`).join(' '));
+      const want = data.shops.filter(x => !(hub === 'pikine' && x.key.endsWith(':salon-tech'))).map(x => 'legacy:' + x.key.replace(/:craft-(\d)$/, ':craft:$1'));
+      const missing = want.filter(id => !spots.some(x => x.id === id && x.stands >= 1 && x.checkout >= 1));
+      check(`${label}: ${hub} every stocked shop is a spot of the city's people (door, displays, checkout line)`, missing.length === 0,
+        `${spots.map(x => `${x.id.split(':').slice(3).join(':')} ${x.stands}/${x.checkout}`).join(' ')}${missing.length ? ' · missing ' + missing.join(', ') : ''}`);
       const s = ['boutique', 'mall-style', 'craft-1'].map(k => data.shops.find(x => x.key.endsWith(':' + k))).find(Boolean) ?? data.shops[0];
       const b = s.bounds, cx = (b.x0 + b.x1) / 2, w = b.x1 - b.x0;
       await d(page, ([x, z]) => window.__dakar.place(x, z, Math.PI), [cx + w * 0.3, b.z1 + 6]);
