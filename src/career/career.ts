@@ -67,6 +67,10 @@ export interface CareerSave {
   best: number;
   /** Gala main events the player watched to the end: the city remembers their live result (src/career/roster.ts). */
   galas?: { day: number; winner: string | null }[];
+  /** Forme / Richesse / Réputation / Influence as last seen on each of the last city days (src/career/progress.ts). */
+  dims?: { day: number; s: [number, number, number, number] }[];
+  /** The best word (level 0–4) each dimension has reached: a new word is celebrated once. */
+  dimBest?: number[];
 }
 /** Bouts kept in the save: far beyond a season; the global counters keep the lifetime totals. */
 export const BOUTS_MAX = 300;
@@ -93,7 +97,14 @@ export function careerOf(v: unknown): CareerSave {
     const x = g as Record<string, unknown>;
     return [{ day: Math.max(0, Math.floor(num(x.day))), winner: typeof x.winner === 'string' ? str(x.winner, 20) : null }];
   }).slice(-60);
-  return { bouts, best: Math.min(RUNGS.length - 1, Math.max(0, Math.floor(num(r.best)))), galas };
+  const score = (x: unknown) => Math.max(0, Math.min(100, Math.round(num(x))));
+  const dims = (Array.isArray(r.dims) ? r.dims : []).flatMap(g => {
+    if (!g || typeof g !== 'object' || !Array.isArray((g as { s?: unknown }).s) || (g as { s: unknown[] }).s.length !== 4) return [];
+    const x = g as { day?: unknown; s: unknown[] };
+    return [{ day: Math.max(0, Math.floor(num(x.day))), s: x.s.map(score) as [number, number, number, number] }];
+  }).slice(-8);
+  const dimBest = Array.isArray(r.dimBest) && r.dimBest.length === 4 ? r.dimBest.map(v => Math.max(0, Math.min(4, Math.floor(num(v))))) : undefined;
+  return { bouts, best: Math.min(RUNGS.length - 1, Math.max(0, Math.floor(num(r.best)))), galas, ...(dims.length ? { dims } : {}), ...(dimBest ? { dimBest } : {}) };
 }
 
 export interface RecordSummary {
@@ -231,9 +242,13 @@ export function famePoints(bouts: readonly BoutEntry[], entrances = 0): number {
 
 // ------------------------------------------------------------------ the four dimensions (§2)
 
-export interface Dim { id: 'forme' | 'richesse' | 'reputation' | 'influence'; label: string; score: number; level: string; note: string }
+export type DimId = 'forme' | 'richesse' | 'reputation' | 'influence';
+export const DIM_IDS: readonly DimId[] = ['forme', 'richesse', 'reputation', 'influence'];
+export interface Dim { id: DimId; label: string; score: number; level: string; note: string }
 const sat = (x: number, k: number) => Math.round(100 * (1 - Math.exp(-Math.max(0, x) / k)));
-const pick = (s: number, words: string[]) => words[Math.min(words.length - 1, Math.floor(s / (100 / words.length)))];
+/** Which of a dimension's five words a score shows (0–4): one word per fifth of the gauge. */
+export const levelIndex = (s: number, n = 5) => Math.max(0, Math.min(n - 1, Math.floor(s / (100 / n))));
+const pick = (s: number, words: string[]) => words[levelIndex(s, words.length)];
 
 export interface DimInput {
   counters: Counters;
