@@ -12,6 +12,7 @@ import {
   VENDORS, weekday, WEEKDAY_FR, type ArenaGate,
 } from './exteriorRules';
 import { ExteriorAudio, listenForGesture } from './exteriorAudio';
+import { deckCentre } from '../world/arenaModules';
 
 /**
  * Outside the Pikine arena: on fight evenings the surroundings come alive — fans walking in
@@ -70,6 +71,7 @@ interface Still { h: Humanoid }
 
 let scheduled: ((day: number, hour: number) => boolean) | null = null;
 let gate: ArenaGate | null = null;
+let activeNow = false;
 
 /** The API shared with the arena visit (see the module comment). */
 /** Weekday evenings bring a small neighbourhood card (fewer fans); Friday–Sunday is the big gala (the full street). */
@@ -85,6 +87,8 @@ export const arenaExterior = {
   gate(): ArenaGate | null { return gate; },
   /** The arena's own bouts: the exterior is alive whenever `fn(day, hour)` is true (null removes it). */
   schedule(fn: ((day: number, hour: number) => boolean) | null) { scheduled = fn; },
+  /** Whether the fight evening is on in the current hub right now (debug overrides included): the interior follows it. */
+  active(): boolean { return activeNow; },
 };
 
 class Exterior {
@@ -289,7 +293,7 @@ function closeRoads(g: ArenaGate | null) {
 }
 function setActive(ctx: GameCtx, on: boolean) {
   if (!ext) return;
-  ext.setActive(on, eveningSize(dayOverride ?? ctx.day(), ctx.hour()));
+  ext.setActive(on, eveningSize(dayOverride ?? ctx.day(), ctx.hour())); activeNow = on;
   closeRoads(on ? ext.g : null);
   for (const p of vendorPlaces(ext.hub.id, ext.arena)) {
     if (on) ctx.places.add(p); else ctx.places.remove(p.id);
@@ -299,15 +303,17 @@ const eventNow = (ctx: GameCtx) => forced ?? arenaExterior.isEventDay(dayOverrid
 /** Loudness of the drums and of the murmur where the player stands (0 when the evening is quiet). */
 function loudness(ctx: GameCtx) {
   if (!ext?.active) return { drums: 0, murmur: 0 };
-  const p = ctx.player.pos, inside = !!ctx.inside(), muted = isMuted(), c = drumsCentre(ext.g);
-  return { drums: drumVolume(Math.hypot(p.x - c.x, p.z - c.z), inside, muted), murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
+  // one rhythm for the evening, as loud as the nearer drummers: the group by the gate or the deck inside, by the tunnel
+  const p = ctx.player.pos, inside = !!ctx.inside(), muted = isMuted(), c = drumsCentre(ext.g), dk = deckCentre(ext.arena.cx, ext.arena.cz);
+  const dist = Math.min(Math.hypot(p.x - c.x, p.z - c.z), Math.hypot(p.x - dk.x, p.z - dk.z));
+  return { drums: drumVolume(dist, inside, muted), murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
 }
 
 export const arenaExteriorModule: GameModule = {
   name: 'arenaExterior',
   init() { listenForGesture(); },
   hubLoaded(ctx, hub) {
-    ext?.dispose(); ext = null; gate = null;
+    ext?.dispose(); ext = null; gate = null; activeNow = false;
     closeRoads(null); audio.stop();                                     // a new hub: no closure, no drums
     if (!hub.arena) return;
     gate = gateOf(hub.arena);
