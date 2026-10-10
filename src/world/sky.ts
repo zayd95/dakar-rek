@@ -69,9 +69,9 @@ export class Sky {
   overcast(c: number, night: boolean) {
     if (c <= 0.06) return;
     const g = night ? GREY_NIGHT : GREY_DAY;
-    this.zenith.lerp(g, 0.75 * c); this.horizon.lerp(g, 0.6 * c);
+    this.zenith.lerp(g, 0.92 * c); this.horizon.lerp(g, 0.85 * c);
     (this.u.uZenith.value as THREE.Color).copy(this.zenith); (this.u.uHorizon.value as THREE.Color).copy(this.horizon);
-    (this.u.uHaze.value as THREE.Color).lerp(g, 0.6 * c);
+    (this.u.uHaze.value as THREE.Color).lerp(g, 0.85 * c);
     (this.u.uSunColor.value as THREE.Color).multiplyScalar(1 - 0.85 * c);
   }
   update(hour: number, sunDir: THREE.Vector3, sunVisible: number, camPos: THREE.Vector3) {

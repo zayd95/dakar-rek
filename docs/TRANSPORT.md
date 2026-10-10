@@ -132,6 +132,14 @@ away while the player is still on the way to the door, they get in at once.
   It stays parked there, solid, in that hub, across reloads (a reload while driving parks it where it was).
 - **Ownership:** the `clando` asset; `owned.ts` keeps where it is parked.
 
+## Fight evenings and taxis (lane `w3-city`)
+
+- Ligne 23 has an evening variant (`23s`, `LineDef.runs`) from 16 h to midnight, round the arena block with an « Arène »
+  stop by the arena's west side; the day route is parked meanwhile (cars and waiting people hidden, its stops offer no
+  boarding); a player on a car keeps it to the end of the trip. Evening cars are fuller (`LineDef.fill`).
+- Taxis between neighbourhoods (`taxi.ts`, `taxiRules.ts`): ranks, fare, the ride out, `ctx.travel`, the ride in, the
+  trip owed in the save until the player is out. See `docs/CITY.md`.
+
 ## Performance
 
 - One merged mesh + one sign mesh per hub for the stops; two car rapides per line (one on Low quality), each a kit

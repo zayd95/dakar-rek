@@ -204,6 +204,7 @@ export class TransportModule implements GameModule {
     this.ctx = ctx;
     return {
       transport: {
+        dwellingAt: (id: string) => this.dwellingAt(id), served: (id: string) => this.served(id),
         lines: () => this.lines.map(rt => ({
           id: rt.def.id, number: rt.def.number, period: rt.table.period, fare: rt.def.fare, on: rt.on,
           stops: rt.sites.map(s => ({ id: s.def.id, name: s.def.name, x: s.x, z: s.z, yaw: s.yaw, dx: s.dx, dz: s.dz, rx: s.rx, rz: s.rz, s: rt.table.stops[s.index].s, alight: alightPoint(s) })),
@@ -289,6 +290,29 @@ export class TransportModule implements GameModule {
     const ok = this.patternsOf(rt).filter(p => !mineId || !p.includes(mineId));
     if (ok.length) v.vehicle.setPassengers(ok[Math.floor(this.rand() * ok.length)]);
   }
+
+  // ---------------------------------------------------------------- public API (other lanes: the street crowd…)
+  private stopOf(stopId: string): { rt: LineRt; i: number } | null {
+    const [line, stop] = stopId.replace(/^stop:/, '').split(':');
+    const rt = this.lines.find(l => l.def.id === line), i = rt ? rt.sites.findIndex(s => s.def.id === stop) : -1;
+    return rt && i >= 0 ? { rt, i } : null;
+  }
+  /**
+   * The car rapide standing at a stop now — `stopId` is the stop's place id (`stop:<line>:<stop>`, e.g. `stop:23s:arene`)
+   * or `<line>:<stop>` — with its id, its rear door (world, where people get in and out) and the seconds it still waits;
+   * null when none is there or its line does not run now.
+   */
+  dwellingAt(stopId: string): { vehicle: string; x: number; z: number; left: number } | null {
+    const f = this.stopOf(stopId); if (!f || !f.rt.on) return null;
+    for (const v of f.rt.vehicles) {
+      if (v.motion.dwell !== f.i) continue;
+      const d = f.rt.spec.doors[0], p = v.world(d.x, d.z, { x: 0, z: 0 });
+      return { vehicle: v.id, x: p.x, z: p.z, left: v.motion.dwellLeft };
+    }
+    return null;
+  }
+  /** Is this stop served now? (Ligne 23's day stops are not on fight evenings, its evening stops not by day.) */
+  served(stopId: string): boolean { const f = this.stopOf(stopId); return !!f && f.rt.on; }
 
   /**
    * Does the line run now? Its own rule on the shared clock (Ligne 23 takes its evening route on fight evenings), and

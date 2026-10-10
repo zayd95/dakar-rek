@@ -170,7 +170,15 @@ export class ArenaStreets {
       if (f.state === 'wait') { f.t += dt; if (f.fans <= 0 || f.t > 12) { f.state = 'away'; this.stats.left++; } }
       this.place(f, dt);
     });
-    this.flows = this.flows.filter(f => { if (f.s < this.end - 3) return true; f.g.removeFromParent(); return false; });
+    // when the evening is over the fight traffic goes: out of sight at once, in sight it drives off
+    const cam = this.ctx.camera.position;
+    this.flows = this.flows.filter(f => {
+      const gone = f.s >= this.end - 3 || (!on && Math.hypot(f.g.position.x - cam.x, f.g.position.z - cam.z) > 50);
+      if (!on && !gone && f.state !== 'drive') f.state = 'away';
+      if (gone) f.g.removeFromParent();
+      return !gone;
+    });
+    if (!on) for (const fan of this.fans) if (fan.on && Math.hypot(fan.h.group.position.x - cam.x, fan.h.group.position.z - cam.z) > 50) { fan.on = false; fan.h.group.visible = false; fan.done?.(); fan.done = undefined; }
     for (const fan of this.fans) if (fan.on) this.walk(fan, dt);
   }
 

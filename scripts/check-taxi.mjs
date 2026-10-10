@@ -50,6 +50,10 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
     through += vs.filter(v => gate && Math.abs(v.x - gate.queue.x) < gate.queue.half + 2 && v.z < gate.queue.z0 + 1 && v.z > gate.queue.z1 - 1).length;
   }
   check(`${label}: no evening car rapide drives through the queue at the gate`, through === 0, `${through} sightings`);
+  const served = await d(() => ({ day: window.__dakar.transport.served('stop:23:arene'), eve: window.__dakar.transport.served('stop:23s:arene') }));
+  await page.waitForFunction(() => window.__dakar.transport.lines().find(l => l.id === '23s')?.stops.some(s => window.__dakar.transport.dwellingAt(`23s:${s.id}`)), null, { timeout: 120000 }).catch(() => {});
+  const dw = await d(() => window.__dakar.transport.lines().find(l => l.id === '23s').stops.map(s => window.__dakar.transport.dwellingAt(`stop:23s:${s.id}`)).find(Boolean) ?? null);
+  check(`${label}: the stops say whether they are served now and which car stands there (public API)`, served.eve && !served.day && !!dw?.vehicle && dw.left > 0, JSON.stringify({ served, dw }));
   await d(s => window.__dakar.place(s.x - s.rx * 0.6, s.z - s.rz * 0.6, Math.atan2(-s.rx, -s.rz)), arene);
   await page.waitForTimeout(1500);
   await shot('1-arene-stop');

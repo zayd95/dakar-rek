@@ -16,13 +16,13 @@ import { weatherAt, weatherStreet, type Weather } from './rules';
 export const weatherNow: Weather = { kind: 'sun', cloud: 0, rain: 0, wet: 0 };
 
 const STREAKS = { low: 160, medium: 360, high: 600 } as const;
-const BOX = { w: 36, h: 18 };
+const BOX = { w: 26, h: 14 };
 
 class WeatherView {
   readonly group = new THREE.Group();
-  private wetMat = new THREE.MeshBasicMaterial({ color: 0x0b0e14, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  private wetMat = new THREE.MeshBasicMaterial({ color: 0x080a10, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   private puddleMat = new THREE.MeshBasicMaterial({ color: 0xa9bccb, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
-  private rainMat = new THREE.LineBasicMaterial({ color: 0xc8d6e4, transparent: true, opacity: 0, depthWrite: false });
+  private rainMat = new THREE.LineBasicMaterial({ color: 0xe6eef8, transparent: true, opacity: 0, depthWrite: false });
   private wet: THREE.Mesh; private puddles: THREE.Mesh; private rain: THREE.LineSegments;
   private drops: Float32Array; private n: number;
   private rand = rng(777);
@@ -57,14 +57,14 @@ class WeatherView {
   private seed(i: number, c: { x: number; y: number; z: number }, anyHeight: boolean) {
     const x = c.x + (this.rand() - 0.5) * BOX.w, z = c.z + (this.rand() - 0.5) * BOX.w, y = c.y + (anyHeight ? this.rand() * BOX.h : BOX.h) - 4;
     const d = this.drops, o = i * 6;
-    d[o] = x; d[o + 1] = y; d[o + 2] = z; d[o + 3] = x + 0.05; d[o + 4] = y - 0.55; d[o + 5] = z + 0.08;
+    d[o] = x; d[o + 1] = y; d[o + 2] = z; d[o + 3] = x + 0.06; d[o + 4] = y - 0.95; d[o + 5] = z + 0.1;
   }
 
   apply(w: Weather, indoors: boolean) {
-    this.wetMat.opacity = 0.3 * w.wet;
-    this.puddleMat.opacity = 0.32 * w.wet;
+    this.wetMat.opacity = 0.42 * w.wet;
+    this.puddleMat.opacity = 0.4 * w.wet;
     this.wet.visible = this.puddles.visible = w.wet > 0.02;
-    this.rainMat.opacity = 0.42 * w.rain;
+    this.rainMat.opacity = 0.7 * w.rain;
     this.rain.visible = w.rain > 0.02 && !indoors;
   }
 

@@ -184,11 +184,11 @@ function updateLighting(hour: number) {
   // Moonlight at night: cool, from high up, so streets still read.
   const ld = isNight ? new THREE.Vector3(-0.35, 0.85, 0.3).normalize() : new THREE.Vector3(sunDir.x, Math.max(0.22, sunDir.y), sunDir.z).normalize();
   sun.position.copy(pos).addScaledVector(ld, 90); sun.target.position.copy(pos);
-  sun.intensity = (isNight ? 0.55 : 0.8 + 1.5 * d) * (1 - 0.6 * weatherNow.cloud);
+  sun.intensity = (isNight ? 0.55 : 0.8 + 1.5 * d) * (1 - 0.72 * weatherNow.cloud);
   sun.color.set(isNight ? 0x9fb4ff : 0xfff1dc).lerp(new THREE.Color(0xffa45c), isNight ? 0 : low * 0.85);
   hemi.intensity = isNight ? 0.75 : 0.7 + 0.35 * d;
   hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55 - 0.25 * weatherNow.cloud));
-  hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52);
+  hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52).multiplyScalar(1 - 0.35 * weatherNow.wet);
   renderer.toneMappingExposure = isNight ? 1.3 : 1.0;
   if (inside) {
     // indoors: the sun only comes through the shutters; the ceiling light does the work
