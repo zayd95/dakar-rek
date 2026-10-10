@@ -330,9 +330,32 @@ export class Hud {
       t.appendChild(s);
     });
     box.prepend(t);
-    const live = [...box.children].filter(c => !c.classList.contains('out'));
+    const live = [...box.children].filter(c => c.classList.contains('t') && !c.classList.contains('out'));
     for (const old of live.slice(3)) this.dropToast(old as HTMLElement);
     this.armToast(t, msg);
+  }
+  /**
+   * A moment card (progress made visible: a bout's recap, a new word on a gauge): icon, title and a few short lines, at
+   * the top of the toast column (the toasts stack under it), never over the action button or the joystick. A tap
+   * anywhere on it or on ✕ dismisses it; it leaves by itself after a few seconds. Two at most.
+   */
+  moment(m: { icon: string; title: string; lines: string[] }, ms = Math.min(12000, 6000 + 900 * m.lines.length)) {
+    const box = this.el.toast;
+    const c = document.createElement('div');
+    c.className = 'mo'; c.setAttribute('role', 'status');
+    const ic = document.createElement('i'); ic.className = 'mo-ic'; ic.setAttribute('aria-hidden', 'true'); ic.textContent = m.icon;
+    const tx = document.createElement('div'); tx.className = 'mo-tx';
+    const b = document.createElement('b'); b.textContent = m.title; tx.appendChild(b);
+    if (m.lines.length) { const ul = document.createElement('ul'); for (const l of m.lines) { const li = document.createElement('li'); li.textContent = l; ul.appendChild(li); } tx.appendChild(ul); }
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'mo-x'; x.setAttribute('aria-label', 'Fermer'); x.textContent = '✕';
+    c.append(ic, tx, x);
+    c.addEventListener('pointerdown', e => e.stopPropagation());
+    c.addEventListener('click', e => { e.stopPropagation(); (document.activeElement as HTMLElement | null)?.blur?.(); this.dropToast(c); });
+    box.appendChild(c);
+    const live = [...box.children].filter(k => k.classList.contains('mo') && !k.classList.contains('out'));
+    for (const old of live.slice(0, Math.max(0, live.length - 2))) this.dropToast(old as HTMLElement);
+    c.dataset.timer = String(window.setTimeout(() => this.dropToast(c), ms));
+    return c;
   }
   private armToast(t: HTMLElement, msg: string) {
     clearTimeout(Number(t.dataset.timer));

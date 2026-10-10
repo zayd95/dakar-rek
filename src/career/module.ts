@@ -18,6 +18,8 @@ import {
   GALA_RUNG, TITLE_IDLE_DAYS, TITLE_RUNG, beltOf, cardOf, galaBlock, isFightDay, ladderAt, mainEvent, opponentFor, placeOf, titleBout, wrestlerById,
   type Ladder, type Standing,
 } from './roster';
+import { boutRecap, deltaText, dimMoves, galaRecap, recordDay, scoresOf, sinceYesterday, stepsCrossed } from './progress';
+import type { Dim, DimId } from './career';
 
 /**
  * Career module (docs/CAREER.md): keeps the fight record from every finished bout, pays the purse of ranked bouts,
@@ -95,7 +97,7 @@ function signUp(kind?: 'gala' | 'title') {
 }
 
 const RES_WORD: Record<BoutRes, string> = { V: 'Victoire', D: 'Défaite', N: 'Nul', A: 'Abandon' };
-let news: FightNews | null = null, labelT = 0;
+let news: FightNews | null = null, labelT = 0, progT = 2;
 const playerName = (ctx: GameCtx) => { let st: Storage | null = null; try { st = localStorage; } catch { /* blocked */ } return loadProfile(st, ctx.state.data.guestId).name; };
 const HOW: Record<string, string> = { projection: 'projection', decision: 'décision', egalite: 'égalité', abandon: 'abandon' };
 
@@ -108,6 +110,43 @@ const relationsOf = (ctx: GameCtx) => Object.entries(ctx.state.data.rel).filter(
 const ventures = (ctx: GameCtx) => assetsOf(ctx.state, 'business').filter(a => a.how === 'owned').length + assetsOf(ctx.state, 'billboard').filter(a => a.how === 'owned').length;
 const belt = (ctx: GameCtx) => beltOf(ladder(ctx), ctx.day());
 const rank = (ctx: GameCtx) => rankOf(career(ctx).bouts, ctx.day(), belt(ctx));
+/** Forme / Richesse / Réputation / Influence now (src/career/career.ts dimensions). */
+const dimsOf = (ctx: GameCtx): Dim[] => dimensions({
+  counters: ctx.state.data.counters, netWorth: netWorth(ctx.state), relations: relationsOf(ctx), ventures: ventures(ctx),
+  bouts: career(ctx).bouts, rung: rank(ctx).rung,
+}, fcfa);
+const DIM_ICON: Record<DimId, string> = { forme: '💪', richesse: '💰', reputation: '⭐', influence: '🤝' };
+/**
+ * Progress made visible (src/career/progress.ts), every two seconds: today's scores kept in the save (the phone's
+ * « depuis hier »), and a small card the first time a gauge reaches a new word, with the reason.
+ */
+function tickProgress(ctx: GameCtx) {
+  const c = career(ctx), ds = dimsOf(ctx), s = scoresOf(ds);
+  c.dims = recordDay(c.dims ?? [], ctx.day(), s);
+  const st = stepsCrossed(c.dimBest, s);
+  c.dimBest = st.best;
+  for (const id of st.up) { const d = ds.find(x => x.id === id)!; ctx.hud.moment({ icon: DIM_ICON[id], title: `${d.label} : ${d.level}`, lines: [d.note] }); }
+}
+/**
+ * The spectator's recap after the main event watched to the end (fight evenings): the result, the belt, the winner's
+ * new place in the city's table (the ladder of `day` has not played tonight; the next day's has, with this result).
+ */
+function galaMoment(ctx: GameCtx, day: number, winner: string | null) {
+  const bill = billOf(ctx, day), before = ladder(ctx, day), after = ladder(ctx, day + 1);
+  const w = winner === bill.left.id ? bill.left : winner === bill.right.id ? bill.right : null, l = w ? (w === bill.left ? bill.right : bill.left) : null;
+  const placeIn = (lad: Ladder, id: string) => lad.table.findIndex(x => x.id === id) + 1;
+  // the belt (Sunday): taken by the winner, or kept by the champion who won (tonight's night is in the next day's ladder)
+  const belt = !w || after.title.holder !== w.id ? null : before.title.holder !== w.id ? { kind: 'won' as const, holder: w.name, defences: 0 }
+    : bill.title ? { kind: 'defended' as const, holder: w.name, defences: after.title.defences } : null;
+  const r = galaRecap({
+    winner: w ? { name: w.name, ecurie: w.ecurie } : null, loser: l ? { name: l.name, ecurie: l.ecurie } : null,
+    draw: w ? null : { a: bill.left.name, b: bill.right.name },
+    place: w ? { before: placeIn(before, w.id), after: placeIn(after, w.id) } : undefined, belt,
+  });
+  if (r.lines.length < 2) r.lines.push(`En tête : ${after.table.slice(0, 2).map(x => `${x.name} ${x.pts} pts`).join(' · ')}`);
+  ctx.hud.moment(r);
+}
+
 /** The bill of an evening for the posters and the arena show: the ladder's card, or the player's own title bout. */
 function billOf(ctx: GameCtx, day: number): Bill {
   const s = signed && signed.day === day && signed.kind === 'title' ? wrestlerById(signed.opp) : undefined;
@@ -126,7 +165,7 @@ export function recordBout(ctx: GameCtx, e: Extract<LambEvent, { kind: 'bout' }>
   if (e.mode === 'entrainement') return [];
   const c = career(ctx);
   const res: BoutRes = e.outcome === 'abandon' ? 'A' : e.winner === 'player' ? 'V' : e.winner === 'opponent' ? 'D' : 'N';
-  const before = rank(ctx), beltBefore = belt(ctx);
+  const before = rank(ctx), beltBefore = belt(ctx), dimsBefore = dimsOf(ctx), placeBefore = placeOf(ladder(ctx), before.score);
   // a gala place or a title bout signed up for tonight, against this wrestler
   const kind = signed && signed.day === ctx.day() && e.mode === 'classe' && wrestlerById(signed.opp)?.name === e.opponent.name ? signed.kind : undefined;
   if (e.mode === 'classe') signed = null;
@@ -153,6 +192,16 @@ export function recordBout(ctx: GameCtx, e: Extract<LambEvent, { kind: 'bout' }>
   // the city's fight posters print the result for two days (src/arena/posters.ts)
   const text = resultText(entry, playerName(ctx));
   if (text) posters.setResult(entry.day, text);
+  // the recap card: purse, rank, place in the city, belt, and what moved among the four gauges and why
+  const dimsAfter = dimsOf(ctx), st = stepsCrossed(c.dimBest, scoresOf(dimsAfter));
+  c.dimBest = st.best;                                       // a new word reached here is said in the recap, not twice
+  const beltNews = beltAfter.held && !beltBefore.held ? 'won' : beltBefore.held && !beltAfter.held ? 'lost' : beltAfter.held && beltAfter.defences > beltBefore.defences ? 'defended' : null;
+  ctx.hud.moment(boutRecap({
+    res, opp: e.opponent.name, how: res === 'V' && e.outcome === 'projection' ? 'par chute' : res === 'V' ? 'aux points' : '',
+    purse, pts, rungBefore: before, rungAfter: after, belt: beltNews,
+    place: e.mode === 'classe' ? { before: placeBefore, after: placeOf(ladder(ctx), after.score), of: ladder(ctx).table.length + 1 } : undefined,
+    moves: dimMoves(dimsBefore, dimsAfter, st.up),
+  }, fcfa));
   syncRecord(ctx);
   ctx.save();
   return lines;
@@ -195,16 +244,18 @@ export const careerModule: GameModule = {
       if (!isFightDay(day) || winner === 'player') return;
       const c = career(ctx);
       c.galas = [...(c.galas ?? []).filter(g => g.day !== day), { day, winner }].slice(-60);
+      galaMoment(ctx, day, winner);
       ctx.save();
     });
     syncRecord(ctx);
     // The phone's arena app keeps its own rows (discipline, records by mode) after the career rows.
     const base = phoneHooks.arenaProfile;
     phoneHooks.arenaProfile = () => [...arenaRows(ctx), ...(base?.() ?? [])];
-    phoneHooks.profileDims = () => dimensions({
-      counters: ctx.state.data.counters, netWorth: netWorth(ctx.state), relations: relationsOf(ctx), ventures: ventures(ctx),
-      bouts: career(ctx).bouts, rung: rank(ctx).rung,
-    }, fcfa).map(d => ({ label: d.label, score: d.score, level: d.level, note: d.note }));
+    // each gauge with its change since the last day played (real saved values; nothing when there is no earlier day)
+    phoneHooks.profileDims = () => {
+      const ds = dimsOf(ctx), since = sinceYesterday(career(ctx).dims ?? [], ctx.day(), scoresOf(ds));
+      return ds.map((d, i) => ({ label: d.label, score: d.score, level: d.level, note: d.note, delta: since ? deltaText(since.d[i], since.since) : '' }));
+    };
     phoneHooks.profileHeadline = () => {
       const r = rank(ctx), s = summary(career(ctx).bouts);
       return s.bouts || s.ab ? `Lutteur · ${r.label}` : 'Une vie à Dakar';
@@ -223,7 +274,8 @@ export const careerModule: GameModule = {
   },
   update(ctx, dt) {
     const c = career(ctx);
-    labelT -= dt;
+    labelT -= dt; progT -= dt;
+    if (progT <= 0) { progT = 2; tickProgress(ctx); }
     if (signed && (signed.day !== ctx.day() || !arenaFighter.pending())) signed = null;     // the evening went by, or given up
     if (labelT <= 0) {                                       // the bouts' names and purses follow the rung and the ladder
       labelT = 1;
@@ -245,7 +297,8 @@ export const careerModule: GameModule = {
     news?.update(ctx, dt, c.bouts.length ? c.bouts[c.bouts.length - 1] : null);
   },
   lamb(ctx, e) {
-    if (e.kind === 'bout') return recordBout(ctx, e);
+    // purse, rank and what moved are in the recap card (hud.moment): the result toast stays short
+    if (e.kind === 'bout') recordBout(ctx, e);
     return [];
   },
   /** Ranked bouts face the city's roster: tonight's signed-up gala or title opponent, else the closest on the ladder. */
