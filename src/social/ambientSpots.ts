@@ -278,9 +278,15 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
     const rule = street ? null : LEGACY_TAGS.find(r => space.includes(r.has));
     // a room of prayer rows (a venue mosque's hall): the congregation at prayer times
     const tags = list.every(s => s.kind === 'prayer') ? ['mosque'] : street ? ['bench'] : rule?.tags ?? ['indoor'];
+    // a walk-in room stocked by the shop kit (a café, the restaurant): in through its door, out after paying at the counter
+    const room = street ? undefined : inp.shops?.find(s => s.key === space);
     for (const s of list) taken.add(s.id);
+    const shop = room && (() => {
+      const k = room.anchors, paths = new ShopPaths(room.bounds, room.colliders);
+      return { door: k.door, checkout: k.queue.filter(p => paths.walkable(p)), path: (p: Pt, q: Pt) => paths.path(p, q) };
+    })();
     push({ id: `${street ? 'seats' : 'interior'}:${key}`, tags, space, x: list.reduce((v, s) => v + s.x, 0) / list.length, z: list.reduce((v, s) => v + s.z, 0) / list.length,
-      seats: list.map(s => s.id), hours: rule?.hours, source: street ? 'seats' : 'interior', prio: street ? 1.3 : 1 });
+      seats: list.map(s => s.id), hours: rule?.hours, source: street ? 'seats' : 'interior', prio: street ? 1.3 : 1, ...(shop ? { shop } : {}) });
   }
 
   // 5. street corners: a few pairs chatting on the sidewalk corners, away from the other spots

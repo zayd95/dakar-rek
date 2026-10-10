@@ -16,6 +16,8 @@ const SIZES: Record<ShopType, { w: number; d: number }[]> = {
   hardware: [{ w: 12, d: 8 }, { w: 8, d: 6 }],
   craft: [{ w: 10, d: 8 }],
   beauty: [{ w: 17, d: 8 }, { w: 8, d: 6 }],
+  garage: [{ w: 14, d: 8 }, { w: 12, d: 8 }],
+  restaurant: [{ w: 12, d: 9 }, { w: 10, d: 8 }],
 };
 const DETAILS: ShopDetail[] = ['low', 'medium', 'high'];
 const TRIS: Record<ShopDetail, number> = { low: 9000, medium: 14000, high: 20000 };
@@ -76,7 +78,7 @@ describe('shop interior kit', () => {
       expect(ok[1], 'keeper reachable').toBe(true);
       ok.slice(2).forEach((v, i) => expect(v, `spot ${i} reachable`).toBe(true));
       expect(a.queue[0]).toEqual(a.counter);
-      expect(a.browse.length).toBeGreaterThan(type === 'beauty' || type === 'pharmacy' || type === 'cafe' ? -1 : 0);
+      expect(a.browse.length).toBeGreaterThan(type === 'beauty' || type === 'pharmacy' || type === 'cafe' || type === 'restaurant' ? -1 : 0);
       // seats: unique ids, in the footprint, a sitting height
       expect(new Set(s.seats.map(x => x.id)).size).toBe(s.seats.length);
       for (const st of s.seats) { expect(inside(b, st)).toBe(true); expect(st.top).toBeGreaterThan(0.3); expect(st.top).toBeLessThan(0.9); expect(st.occupant).toBeNull(); }
@@ -128,6 +130,20 @@ describe('shop interior kit', () => {
     const reserve = [{ x0: 3.6, x1: 8.5, z0: -4, z1: 4 }];
     const s = buildShopInterior('beauty', { w: 17, d: 8 }, 1, { reserve });
     for (const c of s.colliders) expect(c.x1 <= 3.6 || c.x0 >= 8.5, JSON.stringify(c)).toBe(true);
+  });
+
+  it('Garage Modou: Modou walks in by the bench aisle to his place behind the bench (src/social/routines.ts GARAGE_IN)', () => {
+    for (const detail of DETAILS) {
+      // src/world/builder.ts: Pikine's garage kiosk, centre (102, −11.5), open toward +z, 13.75 × 8 inside
+      const s = buildShopInterior('garage', { w: 13.75, d: 8 }, 4242, { detail, at: { x: 102, z: -11.5, y: 0.12 } });
+      expect(Math.hypot(s.anchors.keeper.x - 98.84, s.anchors.keeper.z + 11.1)).toBeLessThan(0.05);
+      const path = [[102.6, -6], [102.6, -11.1], [98.84, -11.1]];
+      for (let n = 1; n < path.length; n++) for (let t = 0; t <= 1; t += 0.05) {
+        const p = { x: path[n - 1][0] * (1 - t) + path[n][0] * t, z: path[n - 1][1] * (1 - t) + path[n][1] * t };
+        expect(inCollider(s.colliders, p, 0.25), `${detail} blocked at ${p.x.toFixed(2)},${p.z.toFixed(2)}`).toBe(false);
+      }
+      expect(s.budget.drawCalls).toBe(3);                                             // atlas, glass (the cars' windows), the kit vehicles
+    }
   });
 
   it('keeps the routes of the shop people clear (Boutique Diallo and Atelier Ndeye, 17 m shells)', () => {

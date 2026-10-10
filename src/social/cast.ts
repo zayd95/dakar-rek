@@ -16,7 +16,7 @@ export interface CastMember {
 
 export const CAST: CastMember[] = [
   { id: 'ibou', name: 'Tonton Ibou', title: 'voisin', role: 'neighbour', hub: 'pikine', anchor: 'home', ox: 6, oz: 0, outfit: { top: 0xf2f2ec, bottom: 0xf2f2ec, skin: 0x5b3420, long: true, hat: 0xd9d2c4 } },
-  { id: 'modou', name: 'Modou', title: 'garagiste', role: 'employer', hub: 'pikine', anchor: 'garage', ox: -4, oz: 0, outfit: { top: 0x3c4a5c, bottom: 0x3c4a5c, skin: 0x6b3f25 } },
+  { id: 'modou', name: 'Modou', title: 'garagiste', role: 'employer', hub: 'pikine', anchor: 'garage', ox: -3.16, oz: -5.6, outfit: { top: 0x3c4a5c, bottom: 0x3c4a5c, skin: 0x6b3f25 } },
   { female: true, id: 'mame', name: 'Mame Diarra', title: 'cuisinière', role: 'vendor', hub: 'pikine', anchor: 'gargote', ox: 4, oz: 0, outfit: { top: 0xe58a2f, bottom: 0xe58a2f, skin: 0x7a4a2c, long: true, hat: 0xe7b82f } },
   { id: 'ablaye', name: 'Coach Ablaye', title: 'coach · écurie Baobab', role: 'coach', hub: 'pikine', anchor: 'ecurie', ox: -3, oz: -2, outfit: { top: 0x1a7a44, bottom: 0x2b2b33, skin: 0x4e2e1c } },
   { id: 'babacar', name: 'Babacar', title: 'lutteur · écurie Baobab', role: 'wrestler', hub: 'pikine', anchor: 'ecurie', ox: 3, oz: -3, outfit: { top: 0x5b3420, bottom: 0xf2f2ec, skin: 0x5b3420 } },

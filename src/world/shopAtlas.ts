@@ -6,7 +6,7 @@ import { atlasRect, type Rect } from './kitGeometry';
  * own, phone and TV screens (no real interface or programme), pegboards, a café menu, posters and counter panels, and
  * shelf strips (a whole row of goods painted on one quad, for Low quality). No logo, no real product, no inscription.
  */
-export const SW = 512, SH = 512;
+export const SW = 512, SH = 640;
 const PX = {
   plain: [0, 0, 16, 16], light: [0, 16, 16, 16], dark: [0, 32, 16, 16], mirror: [0, 48, 16, 16],
   pk0: [16, 0, 32, 32], pk1: [48, 0, 32, 32], pk2: [80, 0, 32, 32], pk3: [112, 0, 32, 32], pk4: [144, 0, 32, 32], pk5: [176, 0, 32, 32], pk6: [208, 0, 32, 32], pk7: [240, 0, 32, 32],
@@ -28,6 +28,10 @@ const PX = {
   sGrocery: [0, 416, 128, 32], sPharma: [128, 416, 128, 32], sHardware: [256, 416, 128, 32], sTech: [384, 416, 128, 32],
   sFabric: [0, 448, 128, 32], sHome: [128, 448, 128, 32], sBeauty: [256, 448, 128, 32], sCraft: [384, 448, 128, 32],
   sBottles: [0, 480, 128, 32], sFiles: [128, 480, 128, 32], sShoes: [256, 480, 128, 32], sBooks: [384, 480, 128, 32],
+  // garage and restaurant (10 Oct, lane w2-shops-2)
+  pnlGarage: [0, 512, 128, 32], sParts: [0, 544, 128, 32], oil0: [0, 576, 32, 32], oil1: [32, 576, 32, 32], tyre: [64, 576, 32, 32], plate: [96, 576, 32, 32],
+  menuResto: [128, 512, 128, 96], pnlResto: [256, 512, 128, 32], seaview: [256, 544, 128, 64], pass: [384, 512, 128, 64], checker: [384, 576, 64, 64], cloth2: [448, 576, 64, 64],
+  wood3: [0, 608, 128, 32],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 export type ShopKey = keyof typeof PX;
 export const SUV = Object.fromEntries(Object.entries(PX).map(([k, [x, y, w, h]]) => [k, atlasRect(x, y, w, h, SW, SH)])) as Record<ShopKey, Rect>;
@@ -43,6 +47,7 @@ export const SCOL: Partial<Record<ShopKey, number>> = {
   tin0: 0xd0312a, tin1: 0x2a5d9f, tin2: 0xf2efe6, tin3: 0x3f8b3a, bt0: 0xf1c232, bt1: 0x5fa8d8, bt2: 0x9c1f3a, bt3: 0xee7d22,
   ph0: 0xf4f4f2, ph1: 0xf4f4f2, ph2: 0xf4f4f2, ph3: 0xf4f4f2, sack0: 0xeeeae0, sack1: 0xb08d5e, paint0: 0xf2f2ee, paint1: 0x2f6fb3,
   wax0: 0xc2417f, wax1: 0x1f5aa8, wax2: 0xe8a322, wax3: 0x1a8a5a, wax4: 0x7a2fa0, wax5: 0xd9482b, bazin: 0x3a7bd5, leather: 0x7a4a26,
+  oil0: 0xd9a420, oil1: 0x2b2f36, tyre: 0x1d1d1f, plate: 0xf2f2ee,
 };
 
 type C2 = CanvasRenderingContext2D;
@@ -238,6 +243,36 @@ export function drawShopAtlas(c: C2, g: C2) {
   strip(c, 'sFiles', 14, (x, y, w, h, i) => { c.fillStyle = ['#145d5b', '#2f6fb3', '#c23a2e', '#f2c230', '#5b6168'][i % 5]; c.fillRect(x + 1, y + 5, w - 2, h - 8); c.fillStyle = '#f2f2ee'; c.fillRect(x + 2, y + 9, w - 4, 4); });
   strip(c, 'sShoes', 8, (x, y, w, h, i) => { c.fillStyle = ['#1d1f24', '#7a4a26', '#c2417f', '#f2f2ee', '#c9a043'][i % 5]; c.beginPath(); c.ellipse(x + w / 2 - 3, y + h - 8, 5, 4, 0, 0, Math.PI * 2); c.ellipse(x + w / 2 + 4, y + h - 8, 5, 4, 0, 0, Math.PI * 2); c.fill(); });
   strip(c, 'sBooks', 16, (x, y, w, h, i) => { c.fillStyle = GOODS[(i * 4) % GOODS.length]; c.fillRect(x + 1, y + 4 + (i % 3) * 2, w - 2, h - 7 - (i % 3) * 2); });
+  // garage: panel, a strip of parts boxes and cans, oil cans, a tyre's tread, a plate of grilled fish (restaurant)
+  panel(c, 'pnlGarage', '#2b2f36', '#f2c230', 'MÉCANIQUE · MOTOS');
+  strip(c, 'sParts', 10, (x, y, w, h, i) => { if (i % 3 === 2) { c.fillStyle = ['#d9a420', '#c23a2e', '#2b2f36'][i % 3]; c.fillRect(x + 2, y + 8, w - 4, h - 11); c.fillRect(x + w / 2 - 2, y + 4, 5, 4); } else { c.fillStyle = i % 2 ? '#b08d5e' : '#e6e6e6'; c.fillRect(x + 1, y + 10, w - 2, h - 13); c.fillStyle = '#c23a2e'; c.fillRect(x + 2, y + 13, w - 4, 3); } });
+  for (const [k, col, word] of [['oil0', '#d9a420', 'HUILE MOTEUR'], ['oil1', '#2b2f36', '2 TEMPS']] as [ShopKey, string, string][]) {
+    const [x, y] = P(k); c.fillStyle = col; c.fillRect(x, y, 32, 32); c.fillStyle = '#f2f2ee'; c.fillRect(x, y + 10, 32, 12); label(c, x, y + 16, 32, word, 5, '#1d1f24');
+  }
+  { const [x, y] = P('tyre'); c.fillStyle = '#1d1d1f'; c.fillRect(x, y, 32, 32); c.fillStyle = '#3a3a3e'; for (let k = 0; k < 32; k += 6) { c.fillRect(x + k, y, 3, 32); } }
+  { const [x, y] = P('plate'); c.fillStyle = '#f2f2ee'; c.beginPath(); c.arc(x + 16, y + 16, 15, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#b5652e'; c.beginPath(); c.ellipse(x + 15, y + 15, 10, 5, -0.4, 0, Math.PI * 2); c.fill(); c.fillStyle = '#f2c230'; c.beginPath(); c.arc(x + 23, y + 21, 3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#3f8b3a'; c.fillRect(x + 6, y + 20, 5, 3); }
+  // restaurant: the lit menu (its two dishes, the game's prices), the counter panel, a seaside painting, the kitchen pass
+  { const [x, y, w, h] = P('menuResto'); for (const ctx of [c, g]) { ctx.fillStyle = '#0c2a3e'; ctx.fillRect(x, y, w, h); ctx.strokeStyle = '#f2c230'; ctx.lineWidth = 3; ctx.strokeRect(x + 2, y + 2, w - 4, h - 4); }
+    label(c, x, y + 14, w, 'LA CARTE', 14, '#f2c230');
+    const rows: [string, string][] = [['Poisson grillé', '3 500'], ['Jus de bissap', '800']];
+    c.font = 'bold 10px sans-serif'; c.textBaseline = 'middle';
+    rows.forEach(([a, b], i) => { c.fillStyle = '#f1ece0'; c.textAlign = 'left'; c.fillText(a, x + 10, y + 36 + i * 16); c.textAlign = 'right'; c.fillStyle = '#f2c230'; c.fillText(b + ' F', x + w - 10, y + 36 + i * 16); });
+    label(c, x, y + 80, w, 'Face à l’océan', 9, '#9fc7dd', 'italic');
+    g.fillStyle = '#3a4a5a'; g.fillRect(x + 6, y + 6, w - 12, h - 12); }
+  panel(c, 'pnlResto', '#0c4a6e', '#f3f0ea', 'RESTAURANT');
+  { const [x, y, w, h] = P('seaview'); const gr = c.createLinearGradient(x, y, x, y + h); gr.addColorStop(0, '#f7b267'); gr.addColorStop(0.5, '#f4845f'); gr.addColorStop(0.52, '#2a6f97'); gr.addColorStop(1, '#14425e');
+    c.fillStyle = gr; c.fillRect(x, y, w, h); c.fillStyle = '#ffe9a8'; c.beginPath(); c.arc(x + 80, y + 32, 9, Math.PI, 0); c.fill();
+    c.fillStyle = '#3b2a1e'; c.beginPath(); c.moveTo(x + 18, y + 40); c.lineTo(x + 52, y + 40); c.lineTo(x + 46, y + 46); c.lineTo(x + 24, y + 46); c.fill();   // a pirogue on the sea
+    c.strokeStyle = '#8a5a32'; c.lineWidth = 6; c.strokeRect(x + 3, y + 3, w - 6, h - 6); }
+  { const [x, y, w, h] = P('pass'); for (const ctx of [c, g]) { ctx.fillStyle = '#2b2620'; ctx.fillRect(x, y, w, h); }
+    c.fillStyle = '#c9cdd2'; c.fillRect(x + 4, y + h - 14, w - 8, 10);                                     // the pass shelf, steel
+    for (let k = 0; k < 4; k++) { c.fillStyle = '#f2f2ee'; c.beginPath(); c.ellipse(x + 18 + k * 30, y + h - 16, 11, 4, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#b5652e'; c.fillRect(x + 12 + k * 30, y + h - 19, 12, 3); }
+    g.fillStyle = '#7a4a1a'; g.fillRect(x + 4, y + 4, w - 8, h - 24); }                                   // heat lamps over the pass
+  { const [x, y] = P('checker'); for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { c.fillStyle = (i + j) % 2 ? '#f2f2ee' : '#c23a2e'; c.fillRect(x + i * 8, y + j * 8, 8, 8); } }
+  { const [x, y] = P('cloth2'); c.fillStyle = '#f2f2ee'; c.fillRect(x, y, 64, 64); c.fillStyle = '#0c4a6e'; for (let k = 4; k < 64; k += 12) { c.fillRect(x + k, y, 3, 64); c.fillRect(x, y + k, 64, 3); } }
+  { const [x, y, w, h] = P('wood3'); c.fillStyle = '#b48c5c'; c.fillRect(x, y, w, h); c.fillStyle = '#9a744a'; for (let j = 0; j < h; j += 4) c.fillRect(x, y + j, w, 1.5); }
   // ceiling tube: glow
   g.fillStyle = '#fff4dc'; g.fillRect(0, 16, 16, 16);
 }

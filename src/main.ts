@@ -459,7 +459,7 @@ function runSpecial(a: Action) {
     case 'enter': if (nearest) enterInterior(nearest); break;
     case 'exit': exitInterior(); break;
     case 'jobs': economy.openJobs(nearest ?? undefined); break;
-    case 'shop': economy.openShop(); break;
+    case 'shop': economy.openShop(false, nearest?.name ?? ''); break;
     case 'business': economy.openBusiness(); break;
   }
 }
