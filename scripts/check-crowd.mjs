@@ -1,5 +1,5 @@
-// The reusable crowd in the arena's stands (src/crowd, docs/CROWD.md): seated on the tiers on a fight evening, the
-// stands full; the crowd's levels of detail (full bodies next to you, rigged figures, far silhouettes) and their draw
+// The reusable crowd on a fight evening (src/crowd, docs/CROWD.md): fans arriving by taxi and car rapide and walking to
+// the queue; seated on the tiers, the stands full; the crowd's levels of detail (full bodies next to you, rigged figures, far silhouettes) and their draw
 // calls; each group reaction (applause, shout, stand up, grab, fall, celebrate) shown and captured; the gala's own
 // moments (the entrance of each wrestler: his side shouts) reach the stands; no shader or page errors.
 // Desktop 1280×720 (medium) and phone 390×844 (low); captures in docs/screenshots/crowd.
@@ -41,6 +41,26 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await d(() => { const x = window.__dakar; if (!x.arenaOut || !x.arenaOutDay) return; const t = x.arenaOut().day, fri = t + ((4 - (((t % 7) + 7) % 7)) + 7) % 7; x.arenaOutDay(fri); x.arena.day(fri); });
   await page.waitForFunction(() => window.__dakar.arena.info()?.street === 'doors', null, T);
   const a0 = await info(), C = a0.centre;
+
+  // 0. Getting there: a taxi pulls in at the west corner and drops fans who walk to the queue; the car rapide lets a group off at « Arène ».
+  await d(() => window.__dakar.place(2.5, -28, Math.PI));
+  await page.waitForFunction(() => window.__dakar.arrivals.info()?.active, null, { timeout: 30000 }).catch(() => {});
+  const ar0 = await d(() => window.__dakar.arrivals.info());
+  await d(() => window.__dakar.arrivals.taxi(0));
+  await page.waitForFunction(() => window.__dakar.arrivals.info().dropped.taxi > 0, null, { timeout: 60000 }).catch(() => {});
+  await page.waitForTimeout(1800);
+  const ar1 = await d(() => window.__dakar.arrivals.info());
+  check(`${label}: on a fight evening a taxi pulls in by the arena and drops fans`, ar0?.active && ar1.dropped.taxi > ar0.dropped.taxi && ar1.crowd.present > 0, { active: ar0?.active, dropped: ar1.dropped, walking: ar1.walking, cabs: ar1.cabs });
+  await shot('0-taxi-fans');
+  const nextRapide = await d(() => window.__dakar.transport?.nextAt?.('23', 0) ?? null);
+  if (typeof nextRapide === 'number' && nextRapide > 2) await d(s => window.__dakar.transport.warp(s), nextRapide - 2);
+  await page.waitForFunction(r0 => window.__dakar.arrivals.info().dropped.rapide > r0, ar1.dropped.rapide, { timeout: 60000 }).catch(() => {});
+  const ar2 = await d(() => window.__dakar.arrivals.info());
+  check(`${label}: the Ligne 23 car rapide lets a group of fans off at « Arène »`, ar2.dropped.rapide > ar1.dropped.rapide, { next: nextRapide, dropped: ar2.dropped });
+  await page.waitForFunction(() => window.__dakar.arrivals.info().dropped.arrived > 0, null, { timeout: 60000 }).catch(() => {});
+  const ar3 = await d(() => window.__dakar.arrivals.info());
+  check(`${label}: the fans walk to the tail of the queue at the gate`, ar3.dropped.arrived > 0, { dropped: ar3.dropped, walking: ar3.walking });
+
   await d(day => { window.__dakar.state.data.counters.arena_ticket_day = day; }, a0.day);
   const seat = await d(c => window.__dakar.arena.freeSeat(c.x + 9, c.z - 14), C);
   const r = Math.hypot(seat.x - C.x, seat.z - C.z), k = (r - 2.3) / r;
