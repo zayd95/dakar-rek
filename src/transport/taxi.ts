@@ -66,6 +66,15 @@ export function taxiSpec(): VehicleSpec {
   return (cached = spec);
 }
 
+/** The taxi rank of a hub: its kerb spot and name (the road events keep off the taxis' roads: src/city/roadEvents.ts). */
+export function taxiRank(hub: Pick<HubWorld, 'id' | 'spawn'>): { spot: Spot; name: string } {
+  const ref = RANK_REF[hub.id];
+  if (ref) return { spot: kerbSpot(ref.x, ref.z), name: ref.name };
+  return { spot: kerbSpot(hub.spawn.x + 4, hub.spawn.z + 4), name: HUB_NAMES[hub.id] };
+}
+/** Where an arriving taxi lets its passenger out: past the waiting taxi of the rank. */
+export function taxiDrop(rank: Spot): Spot { return { x: rank.x + Math.sin(rank.yaw) * DROP_AHEAD, z: rank.z + Math.cos(rank.yaw) * DROP_AHEAD, yaw: rank.yaw }; }
+
 interface Rank { spot: Spot; name: string; taxi: Vehicle | null; solid: ReturnType<typeof footprint>; sign: THREE.Group }
 type Phase = 'depart' | 'transfer' | 'arrive' | 'leave';
 interface Ride { phase: Phase; from: HubId; dest: HubId; destName: string; v: Vehicle; path: Path; end: number; drop: number; s: number; speed: number; dwell: number; pose: Pose }
@@ -167,11 +176,7 @@ export class TaxiModule implements GameModule {
   }
 
   // ---------------------------------------------------------------- the rank
-  private rankSpot(hub: HubWorld): { spot: Spot; name: string } {
-    const ref = RANK_REF[hub.id];
-    if (ref) return { spot: kerbSpot(ref.x, ref.z), name: ref.name };
-    return { spot: kerbSpot(hub.spawn.x + 4, hub.spawn.z + 4), name: HUB_NAMES[hub.id] };
-  }
+  private rankSpot(hub: HubWorld): { spot: Spot; name: string } { return taxiRank(hub); }
   private destName(h: HubId) { return RANK_REF[h]?.name ?? HUB_NAMES[h]; }
 
   private buildRank(ctx: GameCtx, hub: HubWorld) {

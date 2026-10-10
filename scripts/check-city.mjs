@@ -1,6 +1,7 @@
-// Headless checks of the streets round the Pikine arena on a fight evening (src/city/arena.ts): taxis, clandos and
-// moto-taxis drop supporters at the kerb, the fans walk to the queue, cars park round the block, the evening car
-// rapide runs (fuller); after the bouts the crowd is picked up; in the morning the street is ordinary again.
+// Headless checks of the living city (src/city/): the streets round the Pikine arena on a fight evening (taxis, clandos
+// and moto-taxis drop supporters at the kerb, the fans walk to the queue, cars park round the block, the evening car
+// rapide runs, fuller; after the bouts the crowd is picked up; in the morning the street is ordinary again), the
+// weather (a shower, the wet streets after it), street vendors (a coffee bought at a crossroads) and today's road event.
 // Usage: node scripts/check-city.mjs [baseUrl] [outDir]   (needs a running build, e.g. `npx vite preview --port 4213`)
 // On a shared machine run browsers one at a time: flock /tmp/dakar-browser.lock node scripts/check-city.mjs …
 // ONLY=desktop or ONLY=phone runs one viewport.
@@ -66,6 +67,54 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const day = await d(() => window.__dakar.transport.lines());
   i = await info();
   check(`${label}: in the morning no fight traffic, Ligne 23 back on its day route`, i.flows.length === 0 && !!day.find(l => l.id === '23')?.on && !day.find(l => l.id === '23s')?.on, JSON.stringify({ flows: i.flows.length }));
+  // the weather: a shower greys the sky and empties the pavements; the streets stay wet after it
+  await d(() => { window.__dakar.teleport('plateau'); window.__dakar.setHour(15); window.__dakar.weather.force('rain'); });
+  await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.weather.now().rain > 0.9, null, T).catch(() => {});
+  await page.waitForTimeout(2500);
+  const wr = await d(() => { const w = window.__dakar.weather.now(); let rain = null; window.__dakar.three.scene.traverse(o => { if (o.name === 'rain') rain = o.visible; }); return { ...w, rainVisible: rain }; });
+  check(`${label}: a shower: rain streaks, wet roads, fewer people out, slower cars`, wr.rain > 0.9 && wr.rainVisible === true && wr.street.walkers < 0.5 && wr.street.speed < 1, JSON.stringify(wr));
+  await shot('4-rain');
+  await d(() => window.__dakar.weather.force('after'));
+  await page.waitForTimeout(2000);
+  const wa = await d(() => { let wet = null, rain = null; window.__dakar.three.scene.traverse(o => { if (o.name === 'wet_roads') wet = o.visible; if (o.name === 'rain') rain = o.visible; }); return { wet, rain }; });
+  check(`${label}: after the rain the roads stay wet (no more streaks)`, wa.wet === true && wa.rain === false, JSON.stringify(wa));
+  await shot('5-after-rain');
+  await d(() => window.__dakar.weather.force(null));
+
+  // street vendors: at the crossroads and stops at the busy hours, a quick purchase, paid once
+  await d(() => window.__dakar.setHour(8));
+  await d(() => window.__dakar.place(-118, 118, 0));                          // far from the spots: vendors set up out of sight
+  await page.waitForFunction(() => window.__dakar.vendors().some(v => v.on && v.kind === 'touba'), null, { timeout: 60000 }).catch(() => {});
+  const vs = await d(() => window.__dakar.vendors());
+  const touba = vs.find(v => v.on && v.kind === 'touba');
+  check(`${label}: in the morning vendors stand at the crossroads and stops (Touba coffee among them)`, vs.filter(v => v.on).length >= 2 && !!touba, JSON.stringify(vs.map(v => [v.kind, v.where, v.on])));
+  if (touba) {
+    const w0 = await d(() => window.__dakar.state.wallet);
+    await d(v => window.__dakar.place(v.x + Math.sin(v.yaw) * 1.8, v.z + Math.cos(v.yaw) * 1.8, v.yaw + Math.PI), touba);
+    await page.waitForFunction(() => /Café Touba/.test(window.__dakar.focus()?.name ?? ''), null, { timeout: 60000 }).catch(() => {});
+    const f = await d(() => window.__dakar.focus());
+    await shot('6-vendor');
+    await d(() => window.__dakar.act());
+    await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 60000 }).catch(() => {});
+    const w1 = await d(() => window.__dakar.state.wallet);
+    check(`${label}: a coffee from the Touba vendor, 100 F, paid once`, /Café Touba/.test(f?.name ?? '') && w0 - w1 === 100, JSON.stringify({ focus: f, w0, w1 }));
+  }
+
+  // road events: today's, on roads no trip uses; the decorative traffic takes another way
+  const evs = await d(() => window.__dakar.roadEvents());
+  if (evs.length) {
+    const ev = evs[0];
+    await d(h => window.__dakar.setHour(h), (ev.from + ev.to) / 2);
+    await d(() => window.__dakar.place(-118, 118, 0));
+    await page.waitForFunction(() => window.__dakar.roadEvents()[0]?.built, null, { timeout: 60000 }).catch(() => {});
+    const e2 = (await d(() => window.__dakar.roadEvents()))[0];
+    const mx = (e2.edge.ax + e2.edge.bx) / 2, mz = (e2.edge.az + e2.edge.bz) / 2, along = Math.abs(e2.edge.bx - e2.edge.ax) > 1;
+    await d(([x, z, a]) => window.__dakar.place(a ? x - 14 : x + 6.3, a ? z + 6.3 : z - 14, a ? Math.PI / 2 : 0), [mx, mz, along]);
+    await page.waitForTimeout(2500);
+    check(`${label}: today's road event (${e2.name}) is set up and closed to the passing traffic`, e2.built && e2.closed, JSON.stringify(e2));
+    await shot('7-road-event');
+  } else check(`${label}: road events for today`, false, 'none');
+
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
   await context.close();
 }

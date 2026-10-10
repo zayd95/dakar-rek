@@ -64,7 +64,14 @@ export class Crowd {
  * `closed` (segment ends → true when cars must keep off it) and puts it back to null. Cars already on a closed segment
  * turn up on an open one; the others never turn into it.
  */
-export const trafficClosures: { closed: ((ax: number, az: number, bx: number, bz: number) => boolean) | null } = { closed: null };
+export type Closure = (ax: number, az: number, bx: number, bz: number) => boolean;
+export const trafficClosures: { closed: Closure | null; more: Set<Closure> } = { closed: null, more: new Set() };
+/** The arena's closure and the road events' (src/city/roadEvents.ts) together, or null when the roads are all open. */
+function closures(): Closure | null {
+  const a = trafficClosures.closed, more = trafficClosures.more;
+  if (!more.size) return a;
+  return (ax, az, bx, bz) => (a?.(ax, az, bx, bz) ?? false) || [...more].some(f => f(ax, az, bx, bz));
+}
 let liveTraffic: DecorativeTraffic | null = null;
 /** Where the decorative cars are right now (checks). */
 export const trafficPositions = (): { x: number; z: number }[] => liveTraffic?.positions() ?? [];
@@ -118,7 +125,7 @@ export class DecorativeTraffic {
   /** Car rapide groups in this traffic (they carry an apprentice on the step). */
   rapides() { return this.cars.map(c => c.g).filter(g => g.name.includes('car_rapide')); }
   update(dt: number) {
-    const shut = trafficClosures.closed;
+    const shut = closures();
     for (const c of this.cars) {
       if (shut && shut(c.ax, c.az, c.bx, c.bz)) this.reroute(c, shut);
       const len = Math.hypot(c.bx - c.ax, c.bz - c.az);

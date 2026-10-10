@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { ARENA_PARKED, LEAVING_FROM, SIZE_SHARE, arenaArrivals, arenaDepartures, curve, dropInterval, weatherAt, weatherStreet } from '../src/city/rules';
 import { passengerPatterns } from '../src/transport/passengers';
 import { carRapideSpec } from '../src/transport/carRapide';
-import { LINES } from '../src/transport/lines';
+import { LINES, roadCentre } from '../src/transport/lines';
+import { activeAt, busyEdges, roadEvents } from '../src/city/roadEvents';
+import { vendorShare, vendorWorks, VENDOR_KINDS } from '../src/city/vendors';
 
 describe('the streets round the arena on a fight evening', () => {
   it('arrivals build from 16 h to a peak before the bouts, nobody comes in the morning', () => {
@@ -78,5 +80,48 @@ describe('the day\'s weather', () => {
     const rain = weatherStreet({ kind: 'rain', cloud: 0.85, rain: 1, wet: 1 }), dry = weatherStreet({ kind: 'sun', cloud: 0, rain: 0, wet: 0 });
     expect(rain.walkers).toBeLessThan(0.5); expect(rain.speed).toBeLessThan(dry.speed); expect(rain.traffic).toBeLessThan(1);
     expect(dry).toEqual({ walkers: 1, traffic: 1, speed: 1 });
+  });
+});
+
+describe('road events', () => {
+  const edges: { ax: number; az: number; bx: number; bz: number }[] = [];
+  for (let a = 0; a <= 4; a++) for (let b = 0; b <= 4; b++) {
+    if (a < 4) edges.push({ ax: roadCentre(a), az: roadCentre(b), bx: roadCentre(a + 1), bz: roadCentre(b) });
+    if (b < 4) edges.push({ ax: roadCentre(a), az: roadCentre(b), bx: roadCentre(a), bz: roadCentre(b + 1) });
+  }
+  const k = (e: { ax: number; az: number; bx: number; bz: number }) => { const a = `${e.ax},${e.az}`, b = `${e.bx},${e.bz}`; return a < b ? `${a}|${b}` : `${b}|${a}`; };
+
+  it('never block a road a car rapide, a taxi or the arena drop-off uses', () => {
+    for (const hub of ['pikine', 'plateau', 'corniche', 'almadies'] as const) {
+      const spawn = { x: 10, z: 10, yaw: 0 }, busy = busyEdges({ id: hub, spawn });
+      expect(busy.size).toBeGreaterThan(8);
+      for (let d = 0; d < 80; d++) for (const ev of roadEvents(hub, d, edges, busy, spawn)) expect(busy.has(k(ev.edge))).toBe(false);
+    }
+    // the Pikine gate road (the queue) is never chosen
+    const busy = busyEdges({ id: 'pikine', spawn: { x: 10, z: 10, yaw: 0 } });
+    expect(busy.has(k({ ax: 0, az: -60, bx: 60, bz: -60 }))).toBe(true);
+  });
+
+  it('the same events for everyone, a few hours each, at hours that fit the kind', () => {
+    const busy = busyEdges({ id: 'plateau', spawn: { x: 0, z: 0, yaw: 0 } });
+    expect(roadEvents('plateau', 12, edges, busy, { x: 0, z: 0 })).toEqual(roadEvents('plateau', 12, edges, busy, { x: 0, z: 0 }));
+    let n = 0;
+    for (let d = 0; d < 100; d++) for (const ev of roadEvents('plateau', d, edges, busy, { x: 0, z: 0 })) {
+      n++;
+      expect(ev.to - ev.from).toBeGreaterThan(1); expect(ev.to - ev.from).toBeLessThan(10);
+      if (ev.kind === 'checkpoint') expect(ev.from < 12 || ev.from >= 17).toBe(true);
+      if (ev.kind === 'bouchon') expect(activeAt(ev, 8) || activeAt(ev, 18)).toBe(true);
+    }
+    expect(n).toBeGreaterThan(100); expect(n).toBeLessThan(200);
+  });
+});
+
+describe('street vendors', () => {
+  it('work their hours, more of them at the busy hours, fewer in the rain', () => {
+    const touba = VENDOR_KINDS.find(v => v.key === 'touba')!;
+    expect(vendorWorks(touba, 7)).toBe(true); expect(vendorWorks(touba, 13)).toBe(false); expect(vendorWorks(touba, 19)).toBe(true);
+    expect(vendorShare(18, 0)).toBeGreaterThan(vendorShare(3, 0));
+    expect(vendorShare(18, 1)).toBeLessThan(vendorShare(18, 0) / 2);
+    for (const v of VENDOR_KINDS) for (const o of v.offers()) expect((o.price ?? 0) > 0 && (o.price ?? 0) <= 1000).toBe(true);
   });
 });

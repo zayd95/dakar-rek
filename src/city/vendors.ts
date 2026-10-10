@@ -165,6 +165,6 @@ export const streetVendorsModule: GameModule = {
     vendors.update(dt, ctx.hour(), ctx.camera.position);
   },
   debug: () => ({
-    vendors: () => vendors?.list.map(v => ({ id: v.place.id, kind: v.spot.kind.key, name: v.place.name, where: v.spot.where, x: v.spot.x, z: v.spot.z, on: v.on })) ?? [],
+    vendors: () => vendors?.list.map(v => ({ id: v.place.id, kind: v.spot.kind.key, name: v.place.name, where: v.spot.where, x: v.spot.x, z: v.spot.z, yaw: v.spot.yaw, on: v.on })) ?? [],
   }),
 };
