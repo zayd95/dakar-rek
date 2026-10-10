@@ -19,6 +19,8 @@ export interface ArenaKit {
   solid(x: number, z: number, w: number, d: number, h: number): void;
   /** A sign panel facing `rotY` (one small mesh each: keep them few). */
   sign(text: string, bg: string, fg: string, x: number, y: number, z: number, rotY: number, w: number, h: number): void;
+  /** A stepped climb the player can walk (heightAt): along the radial line at angle `a`, `half` metres either side. */
+  climb(c: Climb): void;
   /** Ground of the arena floor. */
   base: number;
   lite: boolean;
@@ -30,6 +32,8 @@ const TIER_COL = [0xd5cbb8, 0xc6bba6, 0xb7ab95];
 const BAND = [0x1a9d54, 0xf4c20d, 0xd9322b, 0x1e6fd9, 0x1a9d54, 0xf4c20d, 0xd9322b, 0x1e6fd9];
 const BOARD = [0xf2f2ec, 0x1e6fd9, 0xd9482b, 0x2f8f4e, 0xf4c20d, 0x0f3d6e];
 /** Seat places on a tier, every 0.62 m (the stand seats of the visit use the same gap). */
+/** Size of the stands' collider boxes (small, so that the diagonal aisles stay walkable). */
+const COL = 0.8;
 const SEAT_MARK = 0.62;
 
 /** Pieces of an arc between two angles at radius r, each at most `max` metres long. */
@@ -68,15 +72,15 @@ export function standSection(k: ArenaKit, cx: number, cz: number, s: StandSectio
       const m = at(cx, cz, p.a + (SEAT_MARK / 2) / (r - 0.25), r - 0.25);
       plain.flat(0.03, 0.75, m.x, top + 0.005, m.z, 0x8f8676, p.a);
     }
-    // colliders (axis-aligned boxes): smaller and set back on the first tier so the walkway in front of the parapet stays free
-    const size = t === 0 ? 1.5 : 2.6, rc = t === 0 ? r + 0.25 : r;
-    for (const p of arc(s.a0, s.a1, rc, size)) { const c = at(cx, cz, p.a, rc); k.solid(c.x, c.z, size, size, roofY(r)); }
+    // colliders: small axis-aligned boxes along the tier, kept clear of the aisles' climbing line and of the walkway
+    const m = (COL * Math.SQRT1_2 + 0.1) / r;                                          // margin from the section's ends
+    for (const p of arc(s.a0 + m, s.a1 - m, r, COL)) { const c = at(cx, cz, p.a, r); k.solid(c.x, c.z, COL, COL, roofY(r)); }
   }
 }
 
 /**
  * Stairs of an aisle: each tier's span is two steps (half way up, then the tier's top), from the walkway in front of the
- * parapet to the top tier, with a handrail on each side. A collider covers it (the stands are not walkable yet).
+ * parapet to the top tier, with handrail posts on each side. The player climbs them (`aisleProfile`, `climbHeight`).
  */
 export function aisleStairs(k: ArenaKit, cx: number, cz: number, a: number) {
   const { plain, concrete, base: B } = k;
@@ -88,8 +92,8 @@ export function aisleStairs(k: ArenaKit, cx: number, cz: number, a: number) {
     concrete.box(w, top, d, b.x, 0, b.z, 0xcfc6b2, a);
     for (const p of [f, b]) plain.box(w, 0.05, 0.08, p.x - Math.sin(a) * (d / 2 - 0.04), p === f ? (prev + top) / 2 : top, p.z - Math.cos(a) * (d / 2 - 0.04), 0xf4c20d, a);   // yellow nosing
     prev = top;
-    const cs = t === 0 ? 1.2 : 1.8, c = at(cx, cz, a, t === 0 ? r + 0.3 : r); k.solid(c.x, c.z, cs, cs, roofY(r));
   }
+  k.climb({ cx, cz, a, half: CLIMB_HALF, steps: aisleProfile(B) });
   // first step from the walkway, in the parapet's gap
   const s0 = at(cx, cz, a, PARAPET_R);
   concrete.box(2 * AISLE_HALF * PARAPET_R, 0.55, 0.5, s0.x, 0, s0.z, 0xcfc6b2, a);
@@ -310,3 +314,31 @@ export function interiorSpots(cx: number, cz: number): Spot[] {
 }
 /** The walkway between the crowd barrier and the parapet, where the vendors of the stands walk (radius). */
 export const WALKWAY_R = 16.78;
+
+// ------------------------------------------------------------------ climbing the aisles (pure)
+
+/** A stepped climb along a radial line: steps [from, to, height of the tread] in metres from the arena centre. */
+export interface Climb { cx: number; cz: number; a: number; half: number; steps: [number, number, number][] }
+/** How far either side of an aisle's centre line its steps carry the player (a little wider than the corridor). */
+export const CLIMB_HALF = 1.2;
+/** Tread heights up an aisle: the first step in the parapet's gap, then half way up and the top of each tier. */
+export function aisleProfile(base = ARENA_FLOOR): [number, number, number][] {
+  const out: [number, number, number][] = [[PARAPET_R - 0.25, tierRadius(0) - TIER_DEPTH / 2, 0.55]];
+  let prev = base;
+  for (let t = 0; t < TIERS; t++) {
+    const r = tierRadius(t), top = tierTop(t);
+    out.push([r - TIER_DEPTH / 2, r, (prev + top) / 2], [r, t === TIERS - 1 ? WALL_R : r + TIER_DEPTH / 2, top]);
+    prev = top;
+  }
+  return out;
+}
+/** Height of the tread under (x, z) if it is on this climb (feet at 0.1 above the ground, like the city's stairs), else null. */
+export function climbHeight(c: Climb, x: number, z: number): number | null {
+  const dx = x - c.cx, dz = z - c.cz, u = dx * Math.sin(c.a) + dz * Math.cos(c.a), v = dx * Math.cos(c.a) - dz * Math.sin(c.a);
+  if (Math.abs(v) > c.half) return null;
+  let h: number | null = null;
+  for (const [u0, u1, y] of c.steps) if (u >= u0 && u < u1) h = Math.max(h ?? 0, y - 0.1);
+  return h;
+}
+/** Centre of the drummers' deck (the inside drums' sound comes from there). */
+export const deckCentre = (cx: number, cz: number) => at(cx, cz, 0.42, 14.2);

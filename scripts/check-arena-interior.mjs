@@ -40,6 +40,8 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await d(() => { window.__dakar.teleport('pikine'); window.__dakar.setHour(19); window.__dakar.arenaOutDay(5); });
   await until(() => window.__dakar.pos().hub === 'pikine' && window.__dakar.arenaOut().gate && window.__dakar.arenaIn());
   const g = (await d(() => window.__dakar.arenaOut())).gate, cx = g.x, cz = g.z + WALL_R;
+  // tonight's ticket (the arena visit's controller turns back anyone inside the walls without one during the gala)
+  await d(() => { const a = window.__dakar.arena?.info?.(); if (a) window.__dakar.state.data.counters.arena_ticket_day = a.day; });
   await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [cx + 12, cz + 4]);
   const shown = await until(() => { const a = window.__dakar.arenaIn(); return a.shown && a.drawn >= 6; }, null, 60000);
   const inn = await d(() => window.__dakar.arenaIn());
@@ -56,6 +58,20 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await cam([cx - 7.5, 2.4, cz + 2.5], [cx - 13.4, 1.0, cz]); await shot('media-zone');
   await cam([cx + 7, 3.2, cz + WALL_R + 11], [cx, 2.6, cz + WALL_R]); await shot('fighters-gate');
   await d(() => window.__dakar.cam(null));
+
+  // the drums: one placeholder rhythm, loud by the deck inside (after a user gesture)
+  await page.keyboard.press('Shift');
+  await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [cx + 5.8, cz + 10.5]);
+  const drums = await until(() => { const a = window.__dakar.arenaOut().audio; return a.playing && a.want.drums > 0.8; }, null, 20000);
+  check(`${label}: by the drummers' deck the drums play loud (placeholder percussion, one rhythm)`, drums, JSON.stringify((await d(() => window.__dakar.arenaOut())).audio));
+
+  // climbing an aisle from the walkway to the top tier (section B's side of the aisle at +x)
+  const aa = Math.PI / 2, wr = 16.6;
+  await d(([x, z, y]) => window.__dakar.place(x, z, y), [cx + Math.sin(aa) * wr, cz + Math.cos(aa) * wr, aa]);
+  const climbed = await walk(() => window.__dakar.pos().y > 2.75, null, 40000);
+  const top = await d(() => window.__dakar.pos());
+  check(`${label}: an aisle can be climbed to the top tier`, climbed, `y ${top.y.toFixed(2)} at ${Math.hypot(top.x - cx, top.z - cz).toFixed(1)} m from the centre`);
+  await cam([cx + 19.6, 4.6, cz - 1.4], [cx + 2, 0.4, cz + 1]); await shot('top-of-aisle'); await d(() => window.__dakar.cam(null));
 
   // the morning: nobody inside
   await d(() => window.__dakar.setHour(11));                         // before the doors (a bout every evening since the merge)

@@ -8,7 +8,7 @@ import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { generatedTexture } from './textures';
 import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
-import { aisleStairs, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit } from './arenaModules';
+import { aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 import { isComposed, type Site } from './sites';
@@ -272,6 +272,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const rapides: THREE.Object3D[] = [];
   /** Climbable stairs: height rises linearly from y0 at x0 to y1 at x1, then stays at y1 until xEnd. */
   const ramps: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number; xEnd: number }[] = [];
+  /** Stepped climbs along radial lines (the arena's aisles, src/world/arenaModules.ts). */
+  const climbs: Climb[] = [];
   const addSign = (text: string, bg: string, fg: string, x: number, y: number, z: number, rotY: number, w = 6, h = 1.5) => {
     const tex = text.length > 18 ? signTexture(text, bg, fg, 768, 112) : signTexture(text, bg, fg);   // long names get a wider canvas so they never clip
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
@@ -874,7 +876,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           plain.box(0.6, 0.5, 0.03, x + Math.cos(a) * 0.32, B + 3.4, z - Math.sin(a) * 0.32, col, a);
         }
         const FLAG = [0x1a9d54, 0xf4c20d, 0xd9322b];
-        const kit: ArenaKit = { plain, concrete, base: B, lite, solid: solidC, sign: addSign };
+        const kit: ArenaKit = { plain, concrete, base: B, lite, solid: solidC, sign: addSign, climb: c => climbs.push(c) };
         SECTIONS.forEach((sec, i) => standSection(kit, cx, cz, sec, i));                // eight sections between the gaps
         for (const a of AISLES) aisleStairs(kit, cx, cz, a);                             // stairs up the aisles
         const wallR = WALL_R, wallH = WALL_H, wsegs = 40;
@@ -887,7 +889,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           plain.box(wSeg + 0.02, 0.3, 0.6, x, wallH - 0.1, z, 0xf1ead8, a);
           plain.box(wSeg + 0.02, 0.6, 0.56, x, 0, z, 0xa77a40, a);
           if (s % 3 === 0) plain.box(wSeg * 0.7, 1.4, 0.05, cx + Math.sin(a) * (wallR + 0.28), 1.3, cz + Math.cos(a) * (wallR + 0.28), FLAG[(s / 3) % 3], a); // painted banner
-          solidC(x, z, 3.6, 3.6, wallH);
+          // three small boxes just outside the wall line (big ones would reach into the top of the aisles)
+          for (const o of [-1.15, 0, 1.15]) { const ox = cx + Math.sin(a) * (wallR + 0.55) + Math.cos(a) * o, oz = cz + Math.cos(a) * (wallR + 0.55) - Math.sin(a) * o; solidC(ox, oz, 1.2, 1.2, wallH); }
         }
         // the stands' colliders come with the sections and the aisles (up to the roof: the follow camera stays under it)
         {                                                                               // roof over the stands (TEMP painted sheet metal)
@@ -1087,6 +1090,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs,
     tick,
     heightAt(x: number, z: number) {
+      for (const c of climbs) { const h = climbHeight(c, x, z); if (h !== null) return h; }
       for (const r of ramps) {
         if (z < r.z0 || z > r.z1 || x < r.x0 || x > r.xEnd) continue;
         return x >= r.x1 ? r.y1 : r.y0 + ((x - r.x0) / (r.x1 - r.x0)) * (r.y1 - r.y0);
