@@ -10,6 +10,7 @@ import { generatedTexture } from './textures';
 import { inGate, tierRadius, tierTop, TIERS, TIER_DEPTH, PARAPET_R, PARAPET_H, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
+import type { ShopDetail } from './shopKit';
 import { isComposed, type Site } from './sites';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
@@ -104,7 +105,7 @@ function lightPoolTexture() {
 }
 
 /** lite: Low quality — skips purely decorative props (roof clutter, AC units, laundry, zebra crossings, flowers). */
-export function buildHub(id: HubId, lite = false): HubWorld {
+export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubWorld {
   const sp = SPECS[id];
   const R = rng(sp.seed);
   const group = new THREE.Group();
@@ -993,7 +994,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const key = `${i},${j}`;
     const city = CITY_BLOCKS[id][key];
     if (city) {
-      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, seats, sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
+      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, seats, shopDetail, add: o => group.add(o), sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
       continue;
     }
     const s = sp.specials[key];

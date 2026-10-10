@@ -20,6 +20,7 @@ import { moto } from '../transport/motoModule';
 import { car } from '../transport/carModule';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
+import { shopsModule } from './shops';
 import { ambientLife } from '../social/ambientLife';
 import { arenaExteriorModule } from '../arena/exterior';
 import { worldMarkers } from '../ui/worldMarkers';
@@ -131,6 +132,7 @@ export interface GameModule {
  */
 export const MODULES: GameModule[] = [
   wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE, arenaModule, arenaExteriorModule,
+  shopsModule,          // shops lane: walk-in cafés, night glow, showroom; customers are ambientLife's (docs/SHOPS.md)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
 ];

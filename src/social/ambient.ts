@@ -91,6 +91,12 @@ export interface AmbientSpot {
   seatApproach?: Readonly<Record<string, Pt>>;
   /** PlaceSpec id when the spot comes from the Places registry. */
   place?: string;
+  /**
+   * A stocked shop (src/world/shopKit.ts, spec §31): people come in through `door`, do their activity at the displays
+   * (`stands`) or seats, then queue at `checkout` (the first place is at the counter) to pay before leaving; `path`
+   * walks them around the furniture inside.
+   */
+  shop?: { door: Pt; checkout: readonly StandSlot[]; path(a: Pt, b: Pt): Pt[] | null };
   /** Where the spot comes from (debug). */
   source: 'place' | 'legacy' | 'seats' | 'special' | 'sea' | 'corner' | 'interior';
 }
