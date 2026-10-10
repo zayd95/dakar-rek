@@ -94,7 +94,8 @@ try {
       const spots = await d(page, () => window.__dakar.ambientShops());
       check(`${label}: ${hub} every stocked shop is a spot of the city's people (door, displays, checkout line)`, spots.length === data.shops.length && spots.every(x => x.stands >= 1 && x.checkout >= 1),
         spots.map(x => `${x.id.split(':').slice(3).join(':')} ${x.stands}/${x.checkout}`).join(' '));
-      const s = data.shops.find(x => /boutique|mall-style|craft-1|bank/.test(x.key)), b = s.bounds, cx = (b.x0 + b.x1) / 2, w = b.x1 - b.x0;
+      const s = ['boutique', 'mall-style', 'craft-1'].map(k => data.shops.find(x => x.key.endsWith(':' + k))).find(Boolean) ?? data.shops[0];
+      const b = s.bounds, cx = (b.x0 + b.x1) / 2, w = b.x1 - b.x0;
       await d(page, ([x, z]) => window.__dakar.place(x, z, Math.PI), [cx + w * 0.3, b.z1 + 6]);
       await d(page, () => window.__dakar.ambientRun(240));
       const mine = (await d(page, () => window.__dakar.ambientShops())).find(x => x.id.endsWith(s.key.split(':city:')[1].replace(/-(\d)$/, ':$1')));
