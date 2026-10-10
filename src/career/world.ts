@@ -31,6 +31,14 @@ export function posterText(last: BoutEntry | null, name: string, today: number, 
   return { tag: 'GALA', title: `${BILL.left.name} – ${BILL.right.name}`, line: `Écuries ${BILL.left.ecurie} et ${BILL.right.ecurie}`, foot };
 }
 
+/** One line for the city's fight posters (« Dernier combat : <text> », src/arena/posters.ts): who beat whom, and how. */
+export function resultText(b: BoutEntry, name: string): string | null {
+  if (b.res === 'A') return null;
+  if (b.res === 'V') return `${name} bat ${b.opp} (${b.how})`;
+  if (b.res === 'D') return `${b.opp} bat ${name} (${b.how})`;
+  return `${name} et ${b.opp} : match nul`;
+}
+
 /** What someone outside the gate says about the player's recent bout (once per bout). */
 export function crowdLine(last: BoutEntry): string {
   if (last.res === 'V') return `Un supporter : « ${say('Waaw kay')} ! C’est toi qui as battu ${last.opp} ? Tout Pikine en parle. »`;

@@ -4,7 +4,7 @@ import {
   type BoutEntry,
 } from '../src/career/career';
 import { migrate, newSave } from '../src/core/save';
-import { posterText, crowdLine, NEWS_DAYS } from '../src/career/world';
+import { posterText, crowdLine, resultText, NEWS_DAYS } from '../src/career/world';
 
 describe('career: a fight night in the world', () => {
   const b = (o: Partial<BoutEntry> = {}): BoutEntry => ({ at: 1, day: 10, mode: 'classe', opp: 'Gora', style: 'Costaud', level: 1, res: 'V', how: 'projection', purse: 8250, pts: 22, ...o });
@@ -15,6 +15,11 @@ describe('career: a fight night in the world', () => {
     expect(posterText(b(), 'HabibDkr', 10 + NEWS_DAYS + 1, 12).tag).toBe('GALA');
     expect(posterText(b({ res: 'A' }), 'HabibDkr', 10, 12).tag).toBe('GALA');
     expect(posterText(null, 'X', 3, 10).foot).toMatch(/Prochain gala/);
+  });
+  it('one line for the city posters: who beat whom', () => {
+    expect(resultText(b(), 'HabibDkr')).toBe('HabibDkr bat Gora (projection)');
+    expect(resultText(b({ res: 'D', how: 'décision' }), 'HabibDkr')).toBe('Gora bat HabibDkr (décision)');
+    expect(resultText(b({ res: 'A' }), 'HabibDkr')).toBeNull();
   });
   it('people outside talk about the result', () => {
     expect(crowdLine(b())).toMatch(/battu Gora/);
