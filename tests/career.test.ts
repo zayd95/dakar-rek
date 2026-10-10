@@ -117,7 +117,7 @@ describe('career: no classes, progression read from what the player did', () => 
 
   it('the record persists in the save and survives malformed data', () => {
     const s = newSave();
-    expect(s.career).toEqual({ bouts: [], best: 0 });
+    expect(s.career).toEqual({ bouts: [], best: 0, galas: [] });
     s.career.bouts.push(bout({ purse: 8250 })); s.career.best = 1;
     const back = migrate(JSON.parse(JSON.stringify(s)))!;
     expect(back.career.bouts).toHaveLength(1);
@@ -125,8 +125,13 @@ describe('career: no classes, progression read from what the player did', () => 
     expect(back.career.best).toBe(1);
     // a save from before the career field starts with an empty record
     const old = JSON.parse(JSON.stringify(s)); delete old.career;
-    expect(migrate(old)!.career).toEqual({ bouts: [], best: 0 });
+    expect(migrate(old)!.career).toEqual({ bouts: [], best: 0, galas: [] });
     expect(careerOf({ bouts: [{ res: 'X' }, null, 3, bout()], best: 99 }).bouts).toHaveLength(1);
     expect(careerOf({ best: 99 }).best).toBe(RUNGS.length - 1);
+    // gala and title bouts keep their kind; the watched galas are kept, bounded and cleaned
+    const k = careerOf({ bouts: [bout({ kind: 'title' }), bout({ kind: 'gala' }), bout({ kind: 'x' } as never)], galas: [{ day: 4, winner: 'lamine' }, { day: 'x', winner: 3 }, null, ...Array.from({ length: 80 }, (_, i) => ({ day: i, winner: null }))] });
+    expect(k.bouts.map(b => b.kind)).toEqual(['title', 'gala', undefined]);
+    expect(k.galas).toHaveLength(60);
+    expect(careerOf({ galas: [{ day: 4, winner: 'lamine' }, { day: 'x', winner: 3 }] }).galas).toEqual([{ day: 4, winner: 'lamine' }, { day: 0, winner: null }]);
   });
 });

@@ -2,6 +2,7 @@ import type { Needs } from '../core/types';
 import type { Input } from '../core/input';
 import { Sheet, replay, type MenuItem } from './sheet';
 import { fcfaShort, fcfaText } from '../economy/format';
+import { glossed } from '../i18n/wolof';
 
 export type { MenuItem } from './sheet';
 
@@ -83,7 +84,7 @@ export class Hud {
           ${NEEDS.map(n => `<div class="nrow" data-row="${n.k}"><b aria-hidden="true">${n.icon}</b><span>${n.label}</span><i class="bar"><i></i></i><em></em></div>`).join('')}
         </div>
       </div>
-      <div id="place" class="card"><b id="hubName"></b><small id="clock"></small></div>
+      <div id="place" class="card"><b id="hubName"></b><small><span id="clock"></span><em id="placeTag"></em></small></div>
       <div id="menuBtn" class="card" role="button" tabindex="0" aria-label="Téléphone">${PHONE_SVG}</div>
       <div id="goal" class="card"><i class="gi" aria-hidden="true">➜</i><span class="gt"></span><em class="gd"></em></div>
       <div id="sceneTag" class="card"><span class="st"><b></b><small></small></span><button type="button" class="st-stop">✋ Arrêter</button></div>
@@ -99,7 +100,7 @@ export class Hud {
       <div id="toast" role="status" aria-live="polite"></div>
       <div id="fade"></div>
       <div id="modal"></div>`;
-    for (const id of ['stats', 'money', 'wallet', 'mood', 'place', 'hubName', 'clock', 'toast', 'progress', 'progTitle', 'progLabel', 'progPct', 'progBar', 'joy', 'act', 'actMore', 'wprompt', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag'])
+    for (const id of ['stats', 'money', 'wallet', 'mood', 'place', 'hubName', 'clock', 'placeTag', 'toast', 'progress', 'progTitle', 'progLabel', 'progPct', 'progBar', 'joy', 'act', 'actMore', 'wprompt', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag'])
       this.el[id] = root.querySelector('#' + id)!;
     root.querySelectorAll<HTMLElement>('.ring').forEach(r => this.rings.set(r.dataset.need as keyof Needs, r));
     root.querySelectorAll<HTMLElement>('.nrow').forEach(r => this.rows.set(r.dataset.row as keyof Needs, r));
@@ -211,10 +212,18 @@ export class Hud {
     s.raf = k < 1 ? requestAnimationFrame(this.tickWallet) : 0;
   };
 
-  setPlace(name: string, clock: string, night: boolean) {
-    const key = name + '|' + clock + '|' + night;
+  /**
+   * Place pill: the hub's name (on a phone only its first part, « Pikine »), the weekday and time, and an evening tag
+   * (« Gala ce soir ») when there is one.
+   */
+  setPlace(name: string, clock: string, night: boolean, tag: string | null = null) {
+    const key = name + '|' + clock + '|' + night + '|' + tag;
     if (key === this.placeKey) return; this.placeKey = key;
-    this.el.hubName.textContent = name; this.el.clock.textContent = (night ? '🌙 ' : '☀️ ') + clock;
+    const [head, ...rest] = name.split(' · ');
+    const more = document.createElement('span'); more.className = 'pl-more'; more.textContent = rest.length ? ' · ' + rest.join(' · ') : '';
+    this.el.hubName.replaceChildren(head, more);
+    this.el.clock.textContent = (night ? '🌙 ' : '☀️ ') + clock;
+    this.el.placeTag.textContent = tag ?? ''; this.el.placeTag.classList.toggle('on', !!tag);
   }
 
   // ---------------------------------------------------------------- contextual action
@@ -234,7 +243,7 @@ export class Hud {
     act.className = opt.stop ? 'stop' : opt.disabled ? 'dis' : '';
     act.innerHTML = `${icon ? `<i class="a-ic" aria-hidden="true">${esc(icon)}</i>` : ''}<span class="a-tx"><b>${esc(text)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>`
       + (price && !opt.stop ? `<em class="a-pr ${opt.cost ? 'cost' : 'gain'}">${price}</em>` : '') + '<kbd aria-hidden="true">E</kbd>';
-    act.setAttribute('aria-label', [text, sub, price].filter(Boolean).join(' · '));
+    act.setAttribute('aria-label', glossed([text, sub, price].filter(Boolean).join(' · ')));   // no invisible gloss marks read aloud
   }
   /** Diegetic bubble above the focused target (screen position in CSS pixels), or hidden. */
   setWorldPrompt(at: { x: number; y: number } | null, icon = '', label = '', opt: PromptOpts = {}) {

@@ -1,5 +1,5 @@
 import type { HubId } from '../core/types';
-import { nickname, lookIndex, PROTOCOL_VERSION, SEND_INTERVAL_MS, type Move, type Peer, type ServerMessage, type ChatMessage, type ChatAck } from './protocol';
+import { nickname, lookIndex, recordTag, PROTOCOL_VERSION, SEND_INTERVAL_MS, type Move, type Peer, type ServerMessage, type ChatMessage, type ChatAck } from './protocol';
 import type { ChatRequest, ReportRequest } from './chatRules';
 
 export type ConnectionState = 'solo' | 'connecting' | 'online' | 'reconnecting' | 'offline';
@@ -30,6 +30,14 @@ export class PresenceClient {
     this.retryAttempt = 0;
     if (this.enabled) this.open(); else this.setStatus('solo');
   }
+  /** Public sporting record shown under the name (« Undercards · 3-1 · Écurie Baobab »); sent once when it changes. */
+  record: string | undefined = undefined;
+  setRecord(rec: string | null) {
+    const next = rec ? recordTag(rec) : undefined;
+    if (next === this.record) return;
+    this.record = next;
+    if (this.status === 'online' && this.socket?.readyState === WebSocket.OPEN) { try { this.socket.send(JSON.stringify({ type: 'rec', rec: next ?? null })); } catch { /* sent again on reconnect (URL) */ } }
+  }
   setProfile(profile: Profile) {
     this.profile = { name: nickname(profile.name), look: lookIndex(profile.look) };
     if (this.hub && this.enabled) this.open();
@@ -57,6 +65,7 @@ export class PresenceClient {
     const url = new URL(this.endpoint || '/api/presence', location.href);
     url.protocol = url.protocol === 'https:' || url.protocol === 'wss:' ? 'wss:' : 'ws:';
     url.searchParams.set('hub', this.hub); url.searchParams.set('name', this.profile.name); url.searchParams.set('look', String(this.profile.look));
+    if (this.record) url.searchParams.set('rec', this.record);
     const key = deviceChatKey(); if (key) url.searchParams.set('key', key);
     if (this.requestedRoom) url.searchParams.set('room', String(this.requestedRoom));
     let ws: WebSocket;

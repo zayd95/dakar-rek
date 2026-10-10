@@ -14,7 +14,7 @@ import { STYLES } from '../lamb/rules';
 import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
-  BILL, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
+  billFor, ecurieLabel, reportMainEvent, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
   fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketsChecked, type Moment, type ShowPhase, type Street,
 } from './program';
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
@@ -119,9 +119,15 @@ class ArenaEvening {
       anchors: [{ id: 'guichet', name: 'Guichet · billets', kind: 'counter', x: bx, z: bz - 1.35, radius: 2.0 }],
       offers: { guichet: [P.handOver('buy', {
         id: 'billet', label: `Acheter un billet (${TICKET_PRICE.toLocaleString('fr-FR')} F)`, detail: 'Tribune populaire · valable toute la soirée',
-        requires: () => (hasTicket(ctx.state.data.counters, this.day()) ? 'Tu as déjà ton billet pour ce soir'
-          : eventDay(this.day(), ctx.hour()) ? null : 'Pas de gala ce soir'),
+        visible: () => !hasTicket(ctx.state.data.counters, this.day()),
+        requires: () => (eventDay(this.day(), ctx.hour()) ? null : 'Pas de gala ce soir'),
         then: () => this.confirmTicket(place),
+      }),
+      // ticket in hand: the window says so (no greyed « Acheter » with a red reason) and where to go next
+      P.inspect({
+        id: 'billet_ok', label: 'Billet en poche ✓', detail: 'Entrée par la porte de l’arène',
+        visible: () => hasTicket(ctx.state.data.counters, this.day()),
+        then: () => ctx.toast('Tu as déjà ton billet pour ce soir : entre par la porte de l’arène.'),
       })] },
     });
     this.card = new GalaCard(document.getElementById('ui') ?? document.body);
@@ -204,9 +210,10 @@ class ArenaEvening {
     if (seatId !== this.nearSeat) { this.nearSeat = seatId; this.crowd.setNear(seat?.x ?? 0, seat ? seat.z : null, seat?.yaw ?? 0); }
     if (near) this.crowd.cull(ctx.camera);                                    // LOD by distance to the camera, seated or not
     this.crowd.update(dt, near);
-    this.card.show(this.phase === 'idle' || this.phase === 'over' ? null : {
-      title: 'Gala de làmb · Arène de Pikine',
-      sub: `${SHOW_LABEL[this.phase]} · ${BILL.left.name} (${BILL.left.ecurie}) – ${BILL.right.name} (${BILL.right.ecurie})`,
+    const bill = this.phase === 'idle' || this.phase === 'over' ? null : billFor(this.day());
+    this.card.show(!bill ? null : {
+      title: bill.title ? 'Gala de làmb · Combat pour le titre' : 'Gala de làmb · Arène de Pikine',
+      sub: `${SHOW_LABEL[this.phase]} · ${bill.left.name} (${ecurieLabel(bill.left.ecurie)}) – ${bill.right.name} (${ecurieLabel(bill.right.ecurie)})`,
     });
   }
 
@@ -246,7 +253,8 @@ class ArenaEvening {
     this.phase = phase; this.t = 0; this.fillT = 0;                          // the stands follow the phase at once
     if (phase === 'filling') {
       this.told.clear(); this.result = '';
-      this.say('bill', ARENA.bill(BILL.left.name, BILL.left.ecurie, BILL.right.name, BILL.right.ecurie));
+      const bill = billFor(this.day());
+      this.say('bill', ARENA.bill(bill.left.name, bill.left.ecurie, bill.right.name, bill.right.ecurie));
     } else if (phase === 'entrance') {
       this.startEntrance();
     } else if (phase === 'bout') {
@@ -256,7 +264,9 @@ class ArenaEvening {
       this.group.add(this.bout.group);
     } else if (phase === 'result') {
       const r = this.bout?.result;
-      const winner = !r || !r.winner ? null : r.winner === 'player' ? BILL.left.name : BILL.right.name;
+      const bill = billFor(this.day()), side = !r || !r.winner ? null : r.winner === 'player' ? bill.left : bill.right;
+      const winner = side?.name ?? null;
+      if (r) reportMainEvent(this.day(), side?.id ?? null);              // the city's ladder remembers the main event the player watched
       this.result = ARENA.result(winner, (r?.outcome ?? 'egalite') as 'projection' | 'decision' | 'egalite' | 'abandon');
       this.people.result(!r || !r.winner ? null : r.winner === 'player' ? 'left' : 'right');
       ctx.toast(this.result);
@@ -303,8 +313,9 @@ class ArenaEvening {
         if (k >= 1 && !this.told.has(`arrived:${w.end}`)) { this.told.add(`arrived:${w.end}`); this.react('entrance', w.end === 'Dance_A' ? 'left' : 'right'); }
       } else { w.h.hold = walking ? null : w.end; w.h.animate(dt, walking ? 1.4 : 0); }
     }
-    if (t > 0.5) this.say('walk-left', ARENA.entrance(BILL.left.name, BILL.left.ecurie));
-    if (t > 3.5) this.say('walk-right', ARENA.entrance(BILL.right.name, BILL.right.ecurie));
+    const bill = billFor(this.day());
+    if (t > 0.5) this.say('walk-left', ARENA.entrance(bill.left.name, bill.left.ecurie));
+    if (t > 3.5) this.say('walk-right', ARENA.entrance(bill.right.name, bill.right.ecurie));
   }
   private clearEntrance() {
     for (const w of this.entrance) w.h.dispose(); this.entrance = [];
@@ -375,6 +386,12 @@ const LEFT_LOOK: WrestlerLook = { ngembColor: 'vert', ngembPattern: 'bordure', a
 const RIGHT_LOOK: WrestlerLook = { ngembColor: STYLES.rapide.ngemb, ngembPattern: 'uni', accessories: [] };
 
 let evening: ArenaEvening | null = null;
+
+/** The player's evening in the stands, for the HUD (main.ts hides the goal line while the show holds the eye). */
+export const arenaShow = {
+  /** Seated on the tiers during the wrestlers' entrance, the bout or its result. */
+  watching: () => !!evening?.seatedHere() && (evening.phase === 'entrance' || evening.phase === 'bout' || evening.phase === 'result'),
+};
 
 export const arenaModule: GameModule = {
   name: 'arena',

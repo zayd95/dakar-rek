@@ -58,15 +58,19 @@ export interface BoutEntry {
   how: string;
   /** Purse received (F CFA) and ladder points moved. */
   purse: number; pts: number;
+  /** A place on a gala card, or a title bout (absent: an ordinary bout). */
+  kind?: 'gala' | 'title';
 }
 export interface CareerSave {
   bouts: BoutEntry[];
   /** Best rung index ever reached (« ancien champion » survives a bad run). */
   best: number;
+  /** Gala main events the player watched to the end: the city remembers their live result (src/career/roster.ts). */
+  galas?: { day: number; winner: string | null }[];
 }
 /** Bouts kept in the save: far beyond a season; the global counters keep the lifetime totals. */
 export const BOUTS_MAX = 300;
-export const newCareer = (): CareerSave => ({ bouts: [], best: 0 });
+export const newCareer = (): CareerSave => ({ bouts: [], best: 0, galas: [] });
 
 const RES: BoutRes[] = ['V', 'D', 'N', 'A'];
 const num = (v: unknown, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -80,10 +84,16 @@ export function careerOf(v: unknown): CareerSave {
     if (!b || typeof b !== 'object') return [];
     const e = b as Record<string, unknown>;
     if (!RES.includes(e.res as BoutRes) || (e.mode !== 'amical' && e.mode !== 'classe') || !str(e.opp)) return [];
+    const kind: Pick<BoutEntry, 'kind'> = e.kind === 'gala' || e.kind === 'title' ? { kind: e.kind } : {};
     return [{ at: Math.max(0, num(e.at)), day: Math.max(0, Math.floor(num(e.day))), mode: e.mode, opp: str(e.opp), style: str(e.style), level: Math.min(9, Math.max(1, Math.round(num(e.level, 1)))),
-      res: e.res as BoutRes, how: str(e.how), purse: Math.max(0, Math.round(num(e.purse))), pts: Math.round(num(e.pts)) }];
+      res: e.res as BoutRes, how: str(e.how), purse: Math.max(0, Math.round(num(e.purse))), pts: Math.round(num(e.pts)), ...kind }];
   }).slice(-BOUTS_MAX);
-  return { bouts, best: Math.min(RUNGS.length - 1, Math.max(0, Math.floor(num(r.best)))) };
+  const galas = (Array.isArray(r.galas) ? r.galas : []).flatMap(g => {
+    if (!g || typeof g !== 'object') return [];
+    const x = g as Record<string, unknown>;
+    return [{ day: Math.max(0, Math.floor(num(x.day))), winner: typeof x.winner === 'string' ? str(x.winner, 20) : null }];
+  }).slice(-60);
+  return { bouts, best: Math.min(RUNGS.length - 1, Math.max(0, Math.floor(num(r.best)))), galas };
 }
 
 export interface RecordSummary {
@@ -130,7 +140,7 @@ export interface Rung {
   /** Base purse of a ranked bout at this rung (F CFA). */
   purse: number;
   /** Other conditions (ranked wins, opponents of a level, a title) and how to say what is missing. */
-  needs?: { rankedWins?: number; beatenLevel?: number; title?: boolean };
+  needs?: { rankedWins?: number; beatenLevel?: number; title?: boolean; defences?: number };
 }
 export const RUNGS: Rung[] = [
   { id: 'petits', label: 'Petits combats', min: 0, purse: 5_000 },
@@ -138,15 +148,16 @@ export const RUNGS: Rung[] = [
   { id: 'classes', label: 'Combats classés', min: 150, purse: 50_000, needs: { rankedWins: 3 } },
   { id: 'reputes', label: 'Adversaires réputés', min: 300, purse: 150_000, needs: { rankedWins: 6, beatenLevel: 3 } },
   { id: 'contender', label: 'Contender', min: 500, purse: 400_000, needs: { rankedWins: 10, beatenLevel: 5 } },
-  { id: 'champion', label: 'Champion', min: 800, purse: 1_000_000, needs: { title: true } },
-  { id: 'roi', label: 'Roi des Arènes', min: 1200, purse: 2_500_000, needs: { title: true } },
+  { id: 'champion', label: 'Champion', min: 500, purse: 1_000_000, needs: { title: true } },
+  { id: 'roi', label: 'Roi des Arènes', min: 1000, purse: 2_500_000, needs: { title: true, defences: 3 } },
 ];
 
 /**
  * Ladder points of one bout: ranked bouts count most and weigh the opponent's level; a defeat costs a little (less
  * against a stronger opponent) and never wipes a career; a friendly bout counts a little; an abandon costs a little.
  */
-export function boutPoints(mode: BoutMode, res: BoutRes, level: number, projection = false): number {
+export function boutPoints(mode: BoutMode, res: BoutRes, level: number, projection = false, kind?: 'gala' | 'title'): number {
+  if (kind && mode === 'classe') { const p = boutPoints(mode, res, level, projection); return p > 0 ? Math.round(p * (kind === 'title' ? 2 : 1.5)) : p; }
   const L = Math.max(1, Math.min(9, level));
   if (mode === 'amical') return res === 'V' ? 4 + L : res === 'N' ? 1 : res === 'D' ? -1 : -1;
   if (res === 'V') return 12 + 6 * L + (projection ? 4 : 0);
@@ -165,13 +176,20 @@ export interface Rank {
   score: number; rung: number; label: string;
   next: { label: string; missing: string } | null;
 }
-/** Rank from the record alone: points (opponents' quality, wins, defeats), regularity and the rungs' conditions. */
-export function rankOf(bouts: readonly BoutEntry[], today: number, titles = 0): Rank {
+/** The player's belt: held or not, and the defences won since it was won (src/career/roster.ts keeps who holds it). */
+export interface Belt { held: boolean; defences: number }
+/**
+ * Rank from the record: points (opponents' quality, wins, defeats), regularity and the rungs' conditions. Champion
+ * means holding the belt; Roi des Arènes, holding it with three defences won. Losing the belt drops the rank back to the
+ * points' rung (the best rung reached is kept apart).
+ */
+export function rankOf(bouts: readonly BoutEntry[], today: number, belt: Belt | number = { held: false, defences: 0 }): Rank {
+  const b: Belt = typeof belt === 'number' ? { held: belt > 0, defences: 0 } : belt;
   const pts = Math.max(0, bouts.reduce((t, b) => t + b.pts, 0));
   const score = pts + 3 * regularity(bouts, today);
   const rankedWins = bouts.filter(b => b.mode === 'classe' && b.res === 'V').length;
   const beaten = bouts.filter(b => b.mode === 'classe' && b.res === 'V').reduce((m, b) => Math.max(m, b.level), 0);
-  const ok = (r: Rung) => score >= r.min && (r.needs?.rankedWins ?? 0) <= rankedWins && (r.needs?.beatenLevel ?? 0) <= beaten && (!r.needs?.title || titles > 0);
+  const ok = (r: Rung) => score >= r.min && (r.needs?.rankedWins ?? 0) <= rankedWins && (r.needs?.beatenLevel ?? 0) <= beaten && (!r.needs?.title || b.held) && (r.needs?.defences ?? 0) <= b.defences;
   let rung = 0;
   for (let i = 1; i < RUNGS.length; i++) { if (ok(RUNGS[i])) rung = i; else break; }
   const nx = RUNGS[rung + 1];
@@ -182,15 +200,18 @@ export function rankOf(bouts: readonly BoutEntry[], today: number, titles = 0): 
     const w = (nx.needs?.rankedWins ?? 0) - rankedWins;
     if (w > 0) miss.push(`${w} victoire${w > 1 ? 's' : ''} classée${w > 1 ? 's' : ''}`);
     if ((nx.needs?.beatenLevel ?? 0) > beaten) miss.push(`battre un niveau ${nx.needs!.beatenLevel}`);
-    if (nx.needs?.title && titles <= 0) miss.push('un combat pour le titre (à venir)');
+    if (nx.needs?.title && !b.held) miss.push('gagner le titre au gala du dimanche');
+    const dl = (nx.needs?.defences ?? 0) - b.defences;
+    if (b.held && dl > 0) miss.push(`${dl} défense${dl > 1 ? 's' : ''} du titre`);
     next = { label: nx.label, missing: miss.join(' · ') || 'au prochain combat' };
   }
   return { score, rung, label: RUNGS[rung].label, next };
 }
 
 /** Purse of a ranked bout at a rung: a win pays more (and more against a stronger opponent), a defeat less, an abandon nothing. Friendly bouts pay nothing. */
-export function purseOf(mode: BoutMode, res: BoutRes, rung: number, level: number): number {
+export function purseOf(mode: BoutMode, res: BoutRes, rung: number, level: number, kind?: 'gala' | 'title'): number {
   if (mode !== 'classe' || res === 'A') return 0;
+  if (kind) return Math.round((purseOf(mode, res, rung, level) * (kind === 'title' ? 3 : 2)) / 250) * 250;
   const base = RUNGS[Math.max(0, Math.min(RUNGS.length - 1, rung))].purse;
   const k = res === 'V' ? 1.5 * (1 + 0.1 * Math.max(1, level)) : res === 'N' ? 1 : 0.6;
   return Math.round((base * k) / 250) * 250;
@@ -201,7 +222,8 @@ export function famePoints(bouts: readonly BoutEntry[], entrances = 0): number {
   let f = entrances * 3;
   for (const b of bouts) {
     const L = Math.max(1, b.level);
-    if (b.mode === 'classe') f += b.res === 'V' ? 8 + 3 * L + (b.how === 'projection' ? 3 : 0) : b.res === 'N' ? 3 : b.res === 'D' ? 2 : 0;
+    const big = b.kind === 'title' ? 3 : b.kind === 'gala' ? 2 : 1;
+    if (b.mode === 'classe') f += (b.res === 'V' ? 8 + 3 * L + (b.how === 'projection' ? 3 : 0) : b.res === 'N' ? 3 : b.res === 'D' ? 2 : 0) * big;
     else f += b.res === 'V' ? 2 + L : b.res === 'A' ? 0 : 1;
   }
   return f;
@@ -246,7 +268,18 @@ export function dimensions(d: DimInput, fmt: (n: number) => string): Dim[] {
   ];
 }
 
-/** One line other players can read later (presence): « 18 combats · 14 V · 4 D · Undercards · cachet record 25 000 F ». */
+/**
+ * The line other players read under the player's name (presence `rec`, src/multiplayer/protocol.ts recordTag): rung,
+ * ranked wins-defeats(-draws) and the écurie, e.g. « Undercards · 3-1 · Écurie Baobab »; null before the first ranked bout.
+ */
+export function publicRecord(bouts: readonly BoutEntry[], rankLabel: string, ecurie: string | null): string | null {
+  const s = summary(bouts.filter(b => b.mode === 'classe'));
+  if (!s.bouts) return null;
+  const k = (n: number) => Math.min(9999, n);
+  return [rankLabel, `${k(s.v)}-${k(s.d)}${s.n ? `-${k(s.n)}` : ''}`, ecurie ? `Écurie ${ecurie}` : ''].filter(Boolean).join(' · ');
+}
+
+/** One line for the phone's profile: « 18 combats · 14 V · 4 D · Undercards · cachet record 25 000 F ». */
 export function recordLine(bouts: readonly BoutEntry[], rankLabel: string, fmt: (n: number) => string): string {
   const s = summary(bouts);
   if (!s.bouts && !s.ab) return 'Pas encore de combat';
