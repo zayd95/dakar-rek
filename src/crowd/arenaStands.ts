@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import type { Moment, StandSeatDef } from '../arena/program';
+import { seatRadius, type Moment, type StandSeatDef } from '../arena/program';
+import { SECTIONS, TUNNEL_MOUTH_R } from '../world/geew';
 import { Crowd, defaultLook, type CrowdQuality, type CrowdSlot } from './crowd';
 import type { ReactionKind } from './reactions';
 
@@ -10,9 +11,11 @@ import type { ReactionKind } from './reactions';
  * reactions: the supporters of the wrestler walking in rise and shout while the others applaud, the whole arena tenses
  * at a grab and leaps at a fall, the winner's side celebrates and the rest applaud.
  *
- * Groups: 'all'; 'left' and 'right' — the supporters of BILL.left (seats on the +x half, the side the left wrestler
- * walks to) and BILL.right (−x half); 'ends' — the seats facing the gate and above it, mixed; 'tier0' – 'tier2';
- * 'ringside' (= tier0). Supporters wear their écurie's colour more often (Baobab green, Teranga red).
+ * Groups follow the stands' sections (src/world/geew.ts SECTIONS, A–H between the aisles, the tunnel and the gate):
+ * 'sec:A' … 'sec:H', one reaction unit each; 'left' — the supporters of BILL.left in sections B and C (the +x side, where
+ * the left wrestler walks to), 'right' — those of BILL.right in F and G; 'ends' — the mixed sections by the wrestlers'
+ * tunnel (A, H) and the public gate (D, E); 'tier0' – 'tier2'; 'ringside' (= tier0); 'all'. Supporters wear their
+ * écurie's colour more often (Baobab green, Teranga red). A wrestler's entrance ripples out from the tunnel mouth.
  */
 export type StandSide = 'left' | 'right';
 export interface ArenaStandsOptions {
@@ -22,10 +25,20 @@ export interface ArenaStandsOptions {
   seed?: number;
 }
 
-/** Which side a seat's supporters are on, from its angle around the ring (atan2(x, z), the gate at π). */
+const TAU = Math.PI * 2;
+/** The section (A–H) a place on the tiers is in, from its angle around the ring (atan2(x, z)); null in a gap. */
+export function sectionOf(a: number): string | null {
+  const x = ((a % TAU) + TAU) % TAU;
+  for (const s of SECTIONS) if ((x >= s.a0 && x <= s.a1) || (x + TAU >= s.a0 && x + TAU <= s.a1)) return s.id;
+  return null;
+}
+const SECTION_SIDE: Record<string, StandSide | 'ends'> = { A: 'ends', B: 'left', C: 'left', D: 'ends', E: 'ends', F: 'right', G: 'right', H: 'ends' };
+/** Which side a seat's supporters are on: B–C the left wrestler's, F–G the right one's, the end sections mixed. */
 export function sideOf(a: number): StandSide | 'ends' {
+  const sec = sectionOf(a);
+  if (sec) return SECTION_SIDE[sec] ?? 'ends';
   const s = Math.sin(a);
-  return s > 0.3 ? 'left' : s < -0.3 ? 'right' : 'ends';
+  return s > 0.5 ? 'left' : s < -0.5 ? 'right' : 'ends';
 }
 
 /** The reactions of each moment of the gala: [group, kind, share, seconds]. `side`: the wrestler concerned. */
@@ -52,14 +65,22 @@ const N_QUALITY = (near: number): CrowdQuality => (near <= 0 ? 'low' : near <= 4
 export class ArenaStands {
   readonly crowd: Crowd;
   private seats: StandSeatDef[];
+  /** Where the wrestlers come out of their tunnel (the entrance ripples from there). */
+  private tunnel: { x: number; z: number } | null = null;
 
   /** `seats`: the places the crowd may take (in fill order); `nearCount`: full humanoids next to the player. */
   constructor(seats: StandSeatDef[], nearCount: number, o: ArenaStandsOptions = {}) {
     this.seats = seats;
+    const s0 = seats[0];
+    if (s0) {                                                   // the ring's centre, back from a seat along its angle
+      const r = seatRadius(s0.tier), cx = s0.x - Math.sin(s0.a) * r, cz = s0.z - Math.cos(s0.a) * r;
+      this.tunnel = { x: cx, z: cz + TUNNEL_MOUTH_R };
+    }
     const col = o.colours ?? { left: GREENS[0], right: REDS[0] };
     const slots: CrowdSlot[] = seats.map(s => {
       const side = sideOf(s.a);
-      return { id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, seated: true, tags: [side, `tier${s.tier}`, ...(s.tier === 0 ? ['ringside'] : [])] };
+      const sec = sectionOf(s.a);
+      return { id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, seated: true, tags: [side, ...(sec ? [`sec:${sec}`] : []), `tier${s.tier}`, ...(s.tier === 0 ? ['ringside'] : [])] };
     });
     this.crowd = new Crowd(slots, {
       quality: o.quality ?? N_QUALITY(nearCount), near: nearCount, seed: o.seed ?? 23, name: 'arena-stands', nearRadius: 9, nearNeedsFocus: true,
@@ -99,7 +120,8 @@ export class ArenaStands {
   /** A moment of the gala: the right groups react the right way (momentPlan). */
   moment(m: Moment, o: { side?: StandSide | null; winner?: StandSide | null } = {}): number {
     let n = 0;
-    for (const [g, kind, share, seconds] of momentPlan(m, o)) n += this.crowd.react(g, kind, { share, seconds });
+    const origin = m === 'entrance' && this.tunnel ? this.tunnel : undefined;
+    for (const [g, kind, share, seconds] of momentPlan(m, o)) n += this.crowd.react(g, kind, { share, seconds, origin, speed: 22 });
     return n;
   }
   /** How loud the stands are (0–1), for the crowd's sound. */

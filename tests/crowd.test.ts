@@ -6,7 +6,8 @@ import {
 } from '../src/crowd/reactions';
 import { SHOULDER_X, UPPER_ARM, figureBoxes, figureGeometry } from '../src/crowd/rig';
 import { CROWD_LOD, Crowd, type CrowdSlot } from '../src/crowd/crowd';
-import { ArenaStands, momentPlan, sideOf } from '../src/crowd/arenaStands';
+import { ArenaStands, momentPlan, sectionOf, sideOf } from '../src/crowd/arenaStands';
+import { TUNNEL_MOUTH_R } from '../src/world/geew';
 import { fillOrder, standSeats } from '../src/arena/program';
 import { rng } from '../src/core/rng';
 
@@ -220,6 +221,32 @@ describe('arena stands', () => {
     expect(sideOf(Math.PI)).toBe('ends');
   });
 
+  it('every place on the tiers is in a section (A–H); B–C and F–G hold the two sides\' supporters', () => {
+    const count: Record<string, number> = {};
+    for (const o of seats) { const sec = sectionOf(o.a); expect(sec).not.toBeNull(); count[sec!] = (count[sec!] ?? 0) + 1; }
+    expect(Object.keys(count).sort().join('')).toBe('ABCDEFGH');
+    for (const o of seats) {
+      const sec = sectionOf(o.a)!, side = sideOf(o.a);
+      expect(side).toBe('BC'.includes(sec) ? 'left' : 'FG'.includes(sec) ? 'right' : 'ends');
+    }
+  });
+
+  it('a wrestler\'s entrance ripples out from the tunnel mouth', () => {
+    const s = new ArenaStands(order, 0, { quality: 'medium', seed: 4 });
+    s.fill(order.length, () => false);
+    const tunnelD = (id: string) => { const o = order.find(x => x.id === id)!; return Math.hypot(o.x, o.z - TUNNEL_MOUTH_R); };
+    s.moment('entrance', { side: 'left' });
+    const meanD = () => { let n = 0, t = 0; for (const o of order) if (s.crowd.reactionOf(o.id)) { n++; t += tunnelD(o.id); } return { n, d: t / Math.max(1, n) }; };
+    s.update(0.35, true);
+    const early = meanD();
+    s.update(2, true);
+    const late = meanD();
+    expect(early.n).toBeGreaterThan(5);
+    expect(late.n).toBeGreaterThan(early.n);
+    expect(early.d).toBeLessThan(late.d - 4);
+    s.dispose();
+  });
+
   it('turns the gala moments into group reactions', () => {
     expect(momentPlan('entrance', { side: 'left' }).map(r => r.slice(0, 2))).toEqual([['left', 'shout'], ['right', 'applause'], ['ends', 'applause']]);
     expect(momentPlan('clinch')[0].slice(0, 2)).toEqual(['all', 'grab']);
@@ -244,7 +271,7 @@ describe('arena stands', () => {
     const s = new ArenaStands(order, 0, { quality: 'medium' });
     s.fill(order.length, () => false);
     s.moment('entrance', { side: 'left' });
-    s.update(1.2, true);
+    s.update(2.2, true);                                             // the ripple from the tunnel has reached the gate
     const st = s.stats();
     expect(st.kinds.shout ?? 0).toBeGreaterThan(50);
     expect(st.kinds.applause ?? 0).toBeGreaterThan(30);
