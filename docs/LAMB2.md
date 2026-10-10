@@ -304,6 +304,34 @@ l'exercice demande.
   calculée par `fighterAttributes` — les mêmes valeurs que la fiche Profil (application Arène du téléphone).
 - Sans `?lamb2`, les exercices minutés sont inchangés.
 
+## La bascule (préparée, pas faite)
+
+Une seule constante décide : `LAMB2_DEFAULT` dans `src/lamb/flag.ts`, **false** aujourd'hui. La basculer à `true` (une
+ligne, plus le premier test de `tests/lamb2Flag.test.ts`) fait de Làmb 2.0 la lutte du jeu. Ensuite `?lamb1` dans
+l'adresse (ou `localStorage['dakarrek.lamb2'] = '0'`) force l'ancienne lutte ; `?lamb2` (ou `'1'`) force la nouvelle.
+L'adresse passe avant le choix enregistré, `?lamb1` avant `?lamb2` (`resolveLamb2`, testé).
+
+**Ce qui bascule** (tout ce qui lit `lamb2On()`) :
+
+- **Combat amical** : les six « Avec frappe » (Gora, Pape, Saliou, Ousmane, Malick, Daouda) s'ajoutent ; les combats
+  sans frappe du menu restent.
+- **Le chemin du lutteur** (Petit combat de quartier, Place au gala, Combat pour le titre) : avec frappe, contre
+  l'adversaire de la carrière lui-même ; les tribunes et l'annonceur réagissent à ses moments.
+- **L'écurie** : la séance de Coach Ablaye devient la leçon guidée avec frappe ; les trois exercices sont joués.
+- **La soirée regardée** : le combat principal et les préliminaires avec frappe, IA contre IA (manches de 30 s).
+- **Les bilans** : ces combats comptent dans `lamb_af_*` (et `combats`/`victoires`) ; la carrière reçoit
+  `discipline: 'avec_frappe'`.
+
+**Ce qui ne bascule pas** (à décider à part) : le menu « Combat classé » de l'arène reste sans frappe ; le classement de
+la ville mélange les deux disciplines dans un même bilan de saison ; le combat joueur contre joueur avec frappe
+(arbitrage serveur) n'existe pas.
+
+**Les vérifications** : sans `LAMB2=1`, les scripts chargent le jeu sans drapeau — après la bascule ils testeraient
+donc la lutte avec frappe. Pour garder la couverture sans frappe, ils devront charger `?lamb1` : `check-lamb` en entier,
+`check-arena-visit`, `check-evening` et `check-arena-fighter` sans `LAMB2`, et l'étape téléphone « sans le drapeau » de
+`check-lamb2`. **Les amis dans les tribunes** voient le même combat tant qu'ils ont le même réglage : la graine est la
+même, mais un ami en `?lamb1` verrait l'autre lutte.
+
 ## Décision à prendre (Habib) : quand la lutte avec frappe devient-elle la règle ?
 
 Aujourd'hui tout est derrière `?lamb2`. Ce qui est **prêt** : le combat debout, l'entrée et l'empoignade jouée, la
