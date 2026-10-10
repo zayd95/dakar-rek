@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CALL_FROM, FAR, GOAL_FROM, NEAR_GATE, afterPlace, boutTonight, callDue, callText, eveningGoal, goalText, placeClock, welcomeFirst, type EveningInput } from '../src/arena/eveningCall';
+import { CALL_FROM, FAR, GOAL_FROM, NEAR_GATE, afterPlace, boutTonight, callDue, callText, eveningGoal, fighterGoal, goalText, placeClock, welcomeFirst, type EveningInput } from '../src/arena/eveningCall';
 import { GALA } from '../src/arena/program';
 import type { PlaceSpec } from '../src/activity/places';
 
@@ -65,10 +65,24 @@ describe('the goal line toward the arena', () => {
   });
   it('after the bout, once outside: one place to end the evening (until it is reached)', () => {
     expect(at({ hour: 20.5, galaDone: true })).toEqual({ kind: 'after' });
-    expect(at({ hour: 20.5, galaDone: true, gate: { dist: 30, inside: true } })).toBeNull();   // still inside the walls
+    expect(at({ hour: 20.5, galaDone: true, gate: { dist: 30, inside: true } })).toEqual({ kind: 'leave' });   // still inside: out by the gate
+    expect(at({ hour: 20.5, galaDone: true, gate: { dist: 30, inside: true }, seated: true })).toBeNull();      // still in the stands
+    expect(goalText({ kind: 'leave' })).toBe('Le gala est fini : sors par la porte');
     expect(at({ hour: 20.5, galaDone: true, afterDone: true })).toBeNull();
     expect(at({ hour: 20.5, galaDone: true, welcome: true })).toBeNull();
     expect(goalText({ kind: 'after' }, { name: 'Dibiterie Chez Pathé', close: 2 })).toBe('Après le combat : Dibiterie Chez Pathé, ouvert jusqu’à 2 h');
+  });
+});
+
+describe('the fighter’s own evening on the goal line', () => {
+  it('a line for each leg of the path, nothing during the bout or without a bout', () => {
+    expect(fighterGoal('called')).toBe('Tu combats ce soir : entrée des lutteurs, derrière l’arène');
+    expect(fighterGoal('tunnel')).toMatch(/rejoins ton coin/);
+    expect(fighterGoal('prep')).toMatch(/prépare-toi/);
+    expect(fighterGoal('ring')).toMatch(/cercle/);
+    expect(fighterGoal('return')).toMatch(/tunnel des lutteurs/);
+    expect(fighterGoal('bout')).toBeNull();
+    expect(fighterGoal('idle')).toBeNull();
   });
 });
 
