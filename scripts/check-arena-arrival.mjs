@@ -4,6 +4,10 @@
 //   still there, ride away and he says goodbye (Wolof with its gloss, French);
 //   by car rapide: on a fight evening the Ligne 23 cars (evening route 23s) carry fans in their écurie's colours; ride
 //   from « Marché » to « Arène », get off with a group that walks to the queue.
+//   by car: far away the goal line and « Ce soir » suggest one's own car; at the wheel the goal points to the guarded car
+//   places on the side street east of the arena; the gardien du parking greets and asks 200 F (price first, paid once);
+//   the car goes into the place he keeps; after the gala the places empty, the car is still there, drive out forward
+//   and he says goodbye.
 // Usage: node scripts/check-arena-arrival.mjs [baseUrl] [outDir]   (needs a running build, e.g. `npx vite preview --port 4213`)
 // On a shared machine run browsers one at a time: flock /tmp/dakar-browser.lock node scripts/check-arena-arrival.mjs …
 // ONLY=desktop or ONLY=phone runs one viewport.
@@ -15,6 +19,8 @@ const out = process.argv[3] ?? 'docs/screenshots/arena-arrival';
 fs.mkdirSync(out, { recursive: true });
 const T = { timeout: 240000 };
 const results = []; let failed = 0;
+/** Game seconds of the after-gala emptying skipped at once (frames are slow on the test machine). */
+const LOT_SKIP = 90;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
@@ -155,6 +161,100 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
     req === ai && Math.hypot(p2.x - L.stops[ai].alight.x, p2.z - L.stops[ai].alight.z) < 0.8 && arr.dropped.rapide > dropped0.rapide && arr.dropped.fans > dropped0.fans && arr.walking > 0 && !after?.colours,
     JSON.stringify({ req, ai, p2, dropped: arr.dropped, walking: arr.walking, colours: after?.colours }));
   await shot('6-arene');
+
+  // 6. By car: the guarded places on the side street east of the arena (200 F, price first, paid once), the car found
+  //    again after the bout; far away, the goal line and « Ce soir » suggest the car
+  await d(dd => { window.__dakar.state.data.counters.arena_gala_day = dd - 1; window.__dakar.setHour(17.8); window.__dakar.state.data.wallet = 5000000; }, day);
+  await until(() => window.__dakar.carPark.info()?.present && window.__dakar.carPark.info().cars >= 1, null, 60000);
+  let c = await d(() => window.__dakar.carPark.info());
+  const cl = { gardien: c.gardien, reserved: c.reserved, ahead: c.ahead, area: c.area };
+  const onPlace = (s, p) => Math.hypot(s.x - p.x, s.z - p.z) < 0.5;
+  check(`${label}: the car places on the side street: the gardien, other cars (instanced), his place and the one in front kept free`,
+    c.present && c.slots === 6 && c.cars >= 1 && !c.taken.some(s => onPlace(s, cl.reserved) || onPlace(s, cl.ahead)) && c.drawCalls <= 6,
+    JSON.stringify({ street: c.street, cars: c.cars, slots: c.slots, drawCalls: c.drawCalls }));
+  // own a car, parked far from the arena (its parking record in Pikine, then the asset model delivers it there)
+  const geo2 = await d(() => window.__dakar.cityGeometry());
+  const clear = (x, z, r) => !geo2.colliders.some(k => x > k.x0 - r && x < k.x1 + r && z > k.z0 - r && z < k.z1 + r);
+  const farSpot = [[115.7, 40], [115.7, 30], [115.7, 45], [115.7, 25], [-115.7, 40], [-115.7, 30]].map(([x, z]) => ({ x, z }))
+    .find(p => clear(p.x, p.z, 2.8) && clear(p.x - Math.sign(p.x) * 1.9, p.z + 3.4, 0.5) && Math.hypot(p.x - gate.x, p.z - gate.z) > 125) ?? { x: 115.7, z: 40 };
+  await d(p => { const k = window.__dakar.state.data.counters; k['vehicle:clando:hub'] = 3; k['vehicle:clando:x'] = p.x; k['vehicle:clando:z'] = p.z; k['vehicle:clando:yaw'] = 0; window.__dakar.buyAsset('clando'); }, farSpot);
+  await until(() => window.__dakar.car.info().here, null, 60000);
+  await d(p => window.__dakar.place(p.x - Math.sign(p.x) * 1.9, p.z + 3.4, Math.PI), farSpot);
+  await until(() => /prends ta voiture/.test(window.__dakar.evening()?.text ?? ''), null, 30000);
+  const ev1 = await d(() => window.__dakar.evening());
+  const row = await d(() => window.__dakar.tonight().page.find(s => s.title === 'Y aller')?.rows.find(r => r.label === 'Ta voiture') ?? null);
+  check(`${label}: far away with one's own car: the goal line says take it (the pin on the car), « Ce soir » names the guarded car places and the price`,
+    /prends ta voiture/.test(ev1?.text ?? '') && ev1?.target?.name === 'Ta voiture' && /parking gardé à l’arène, 200\s?F/.test(row?.detail ?? '') && row?.go === 'car', JSON.stringify({ ev1, row, farSpot }));
+  // at the wheel: the goal line points to the car places
+  await d(p => window.__dakar.place(p.x - Math.sign(p.x) * 1.7, p.z, Math.sign(p.x) * Math.PI / 2), farSpot);
+  await until(() => window.__dakar.focus()?.name === 'Ta voiture', null, 30000);
+  await d(() => window.__dakar.act());                                                                           // « Monter (conducteur) »
+  await until(() => window.__dakar.car.info().driving, null, 30000);
+  await until(() => /parking voitures gardé/.test(window.__dakar.evening()?.text ?? ''), null, 30000);
+  const ev2 = await d(() => window.__dakar.evening());
+  check(`${label}: at the wheel, the goal line points to the guarded car places (200 F)`, /parking voitures gardé.*200\s?F/.test(ev2?.text ?? '') && ev2?.target?.name === 'Parking voitures · Arène', JSON.stringify(ev2));
+  // up the side street from the corner and into the place he keeps
+  await d(r => window.__dakar.car.place(r.x, r.z - 9, 0), cl.reserved);
+  await hold('KeyW', -1, z => window.__dakar.car.info().z > z, cl.reserved.z - 1.2, 8000);
+  let ci = await d(() => window.__dakar.car.info());
+  await d(([x, z]) => window.__dakar.car.place(x, z, 0), [cl.reserved.x, Math.min(Math.max(ci.z, cl.reserved.z - 2), cl.reserved.z + 2.5)]);   // stopped; a slow frame: the last metres
+  await d(() => window.__dakar.act());                                                                           // « Sortir de la voiture »
+  await until(() => !window.__dakar.car.info().driving && window.__dakar.carPark.info().said.length > 0, null, 30000);
+  c = await d(() => window.__dakar.carPark.info());
+  const csaid = async re => (await d(() => window.__dakar.carPark.info())).said.some(s => re.test(s));
+  check(`${label}: getting out there, the gardien du parking greets and names his price (Wolof with its gloss, French)`, c.inLot && !c.paid && await csaid(/Le gardien du parking : .*Jàmm nga am.*200\s?F la soirée/), JSON.stringify(c.said));
+  await shot('7-car-arrived');
+  // the gardien: « Faire garder ta voiture (200 F) », the price before paying, paid once; the car into his place
+  await d(g => window.__dakar.place(g.x - 0.2, g.z + 1.4, Math.PI), cl.gardien);
+  await until(() => /gardien/i.test(window.__dakar.focus()?.name ?? ''), null, 30000);
+  const f3 = await d(() => window.__dakar.focus());
+  check(`${label}: the gardien du parking offers to keep the car, the price on the button`, /Faire garder ta voiture/.test(f3?.primary ?? '') && /200/.test(f3?.primary ?? ''), JSON.stringify(f3));
+  const w2 = await d(() => window.__dakar.state.wallet), l2 = await d(() => window.__dakar.state.data.ledger.length);
+  await d(() => window.__dakar.act());
+  await until(() => /Payer/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, 30000);
+  const menu2 = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
+  check(`${label}: the car fee is shown before anything is paid`, /Payer 200\s?F/.test(menu2) && (await d(() => window.__dakar.state.wallet)) === w2, menu2.slice(0, 140));
+  await page.locator('#modal .item', { hasText: 'Payer' }).first().click();
+  await until(() => window.__dakar.carPark.info().paid, null, 60000);
+  await ready();
+  c = await d(() => window.__dakar.carPark.info());
+  const lines2 = await d(n => window.__dakar.state.data.ledger.slice(n), l2);
+  const rec = await d(() => window.__dakar.car.info().record);
+  check(`${label}: paid once (−200 F, one wallet line), the car in the place next to him, saved as its parking spot`,
+    c.paid && w2 - (await d(() => window.__dakar.state.wallet)) === 200 && lines2.length === 1 && !!c.mine && Math.hypot(c.mine.x - cl.reserved.x, c.mine.z - cl.reserved.z) < 0.05
+    && !!rec && Math.hypot(rec.x - cl.reserved.x, rec.z - cl.reserved.z) < 0.05 && await csaid(/200\s?F, jërëjëf/),
+    JSON.stringify({ lines: lines2, mine: c.mine, rec, reserved: cl.reserved }));
+  const f4 = await d(() => window.__dakar.focus());
+  check(`${label}: paid tonight: no second car fee, a word with him instead`, !(f4?.all ?? []).some(l => /Faire garder/.test(l)) && (f4?.all ?? []).includes('Saluer le gardien'), JSON.stringify(f4));
+  const walk = [{ x: cl.gardien.x, z: cl.gardien.z }, { x: cl.gardien.x, z: gate.z - 1.9 }, { x: gate.x + 1.5, z: gate.z - 1.9 }];
+  const steps = walk.slice(1).flatMap((b, k) => Array.from({ length: 30 }, (_, i) => ({ x: walk[k].x + (b.x - walk[k].x) * i / 29, z: walk[k].z + (b.z - walk[k].z) * i / 29 })));
+  check(`${label}: from the car places to the gate the way is clear and short`, !steps.some(inWall) && Math.hypot(cl.reserved.x - gate.x, cl.reserved.z - gate.z) < 30, `${Math.round(Math.hypot(cl.reserved.x - gate.x, cl.reserved.z - gate.z))} m`);
+  await d(g => { window.__dakar.cam([g.x + 9, 6, g.z - 9], [g.x + 1, 0.8, g.z + 6]); }, cl.gardien);
+  await shot('8-car-parking');
+  await d(() => window.__dakar.cam(null));
+  // after the gala: the places empty, the car is still in its place; drive out forward, he says goodbye
+  const carsBefore = (await d(() => window.__dakar.carPark.info())).cars;
+  await d(dd => { window.__dakar.state.data.counters.arena_gala_day = dd; }, day);
+  await until(() => window.__dakar.carPark.info().street === 'after', null, 30000);
+  await d(s => window.__dakar.carPark.skip(s), LOT_SKIP);
+  await until(n => window.__dakar.carPark.info().cars < n, carsBefore, 30000);
+  c = await d(() => window.__dakar.carPark.info());
+  check(`${label}: after the gala the car places empty, the player's car is still in its place, the gardien still there`,
+    c.cars < carsBefore && c.present && !!c.mine && Math.hypot(c.mine.x - cl.reserved.x, c.mine.z - cl.reserved.z) < 0.05, JSON.stringify({ carsBefore, now: c.cars, mine: c.mine }));
+  await d(r => window.__dakar.place(r.x - 1.7, r.z, Math.PI / 2), cl.reserved);
+  await until(() => window.__dakar.focus()?.name === 'Ta voiture', null, 30000);
+  await d(() => window.__dakar.act());
+  await until(() => window.__dakar.car.info().driving, null, 30000);
+  const bumps0 = (await d(() => window.__dakar.car.info())).bumps;
+  await hold('KeyW', -1, z => window.__dakar.car.info().z > z, cl.reserved.z + 2.5, 20000);                      // out forward: the place ahead is free
+  ci = await d(() => window.__dakar.car.info());
+  const pulled = ci.z > cl.reserved.z + 0.8 && ci.bumps === bumps0;
+  await d(a => window.__dakar.car.place(a.x1 + 0.6, a.z1 + 4, 0), cl.area);                                      // up the street
+  await until(() => window.__dakar.carPark.info().said.some(s => /Ñibbil ak jàmm/.test(s)), null, 30000);
+  check(`${label}: driving away, the gardien du parking says goodbye (Wolof with its gloss and French)`, pulled && await csaid(/Le gardien du parking : .*Ñibbil ak jàmm.*Ba ci kanam.*signe/),
+    JSON.stringify({ pulled, z: ci.z, bumps: ci.bumps - bumps0, said: (await d(() => window.__dakar.carPark.info())).said.slice(-2) }));
+  await d(() => window.__dakar.act());                                                                           // out of the car
+  await until(() => !window.__dakar.car.info().driving, null, 30000);
 
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
   await context.close();

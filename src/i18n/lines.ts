@@ -264,6 +264,18 @@ export const MOTO_GUARD = {
   bye: () => `${exchange(['Le gardien', ['Ñibbil ak jàmm !', 'Ba beneen yoon !']])} · Il te fait signe de la main.`,
 };
 
+/** The « gardien du parking » of the car places beside the arena (src/arena/carPark.ts): the same pattern. */
+export const CAR_GUARD = {
+  /** The player gets out in his places: his greeting, and the price before anything is paid. */
+  hello: (fee: number) => `${exchange(['Le gardien du parking', ['Jàmm nga am ?']])} · Parking voitures : ${price(fee)} la soirée, payés une fois.`,
+  /** Paid: « 200 F, jërëjëf ! Bul tiit. » and he waves the car into the place he keeps by him. */
+  paid: (fee: number) => `${exchange(['Le gardien du parking', [{ wo: `${price(fee)},` }, 'jërëjëf !', 'Bul tiit.']])} · Il range ta voiture à côté de lui.`,
+  /** Back on the same evening, already paid: he puts it in its place again. */
+  again: () => `${exchange(['Le gardien du parking', ['Dalal ak jàmm !']])} · Ta place t’attend : il range ta voiture.`,
+  /** Driving away: his goodbye. */
+  bye: () => `${exchange(['Le gardien du parking', ['Ñibbil ak jàmm !', 'Ba ci kanam !']])} · Il te fait signe de passer.`,
+};
+
 // ------------------------------------------------------------------ chat
 
 export type ChatPlace = 'street' | 'food' | 'market' | 'transport' | 'mosque' | 'club' | 'home';

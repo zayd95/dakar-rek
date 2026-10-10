@@ -54,6 +54,8 @@ evening first, then the city's everyday density. No new map.
   car pace) in `src/actors/npc.ts`; ambient life multiplies its hourly shares by it.
 - `Sky.overcast(c, night)` and the weather in `updateLighting` (main.ts).
 - `openLanePath` (open routes) in `src/transport/route.ts`.
+- The fight evening's parked cars round the arena block skip the guarded car places on the kerb east of the arena
+  (`src/arena/carParkRules.ts` `inCarLot`): the gardien du parking's cars stand there (src/arena/carPark.ts).
 
 ## For the other lanes
 

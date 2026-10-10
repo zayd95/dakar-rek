@@ -7,7 +7,8 @@ import { WALL_R } from '../world/geew';
 import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, billFor, ecurieLabel, hasTicket } from './program';
 import { eveningSize } from './exterior';
 import { WEEKDAY_FR, weekday } from './exteriorRules';
-import { afterPlace } from './eveningCall';
+import { FAR, afterPlace } from './eveningCall';
+import { CAR_FEE } from './carParkRules';
 import { arenaFighter } from './fighter';
 import { weatherAt } from '../city/rules';
 import { EVENT_NAMES, busyEdges, roadEvents, type RoadEventKind } from '../city/roadEvents';
@@ -22,7 +23,8 @@ import { careerTonight } from '../career/module';
  * « Ce soir » in the phone (Habib's evening): the evening plans itself from what the game already knows — tonight's card
  * at the Arène de Pikine (the career's ladder through `billFor`), the doors and the ticket, the player's own bout when
  * they are on the card; how to get there (on foot, Ligne 23 to the « Arène » stop, one's own moto or car), each with
- * « Y aller » (the way-finding pin and the goal line); a place still open after the bout (the evening call's
+ * « Y aller » (the way-finding pin and the goal line), one's car with its guarded places by the arena (200 F) when it is
+ * the way to go (far away, or at the wheel); a place still open after the bout (the evening call's
  * `afterPlace`); today's weather and road events in this hub (the city lane), one line each, only when there is one.
  * Nothing invented: the assembly is pure (`tonightPage`, unit-tested), the module only gathers the facts.
  */
@@ -107,8 +109,8 @@ export function tonightPage(i: TonightInput): TonightSection[] {
       if (i.ride) go.push({ icon: '🚐', label: 'Car rapide · Ligne 23, arrêt « Arène »', detail: `${fcfaText(i.ride.fare)} · monte à l’arrêt ${i.ride.stop}, à ${metres(i.ride.dist)}`, go: 'stop' });
     } else go.push({ icon: '🗺️', label: 'Va à Pikine', detail: `Tu es à ${i.hub} : change de quartier par la Carte, puis ligne 23, arrêt « Arène »`, open: 'carte' });
     if (!i.gate?.inside) for (const v of i.vehicles) {
-      if (v.riding) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: `${v.label} : tu es dessus`, detail: v.key === 'moto' ? 'Parking motos gardé à côté de l’entrée' : 'Gare-la près de l’arène' });
-      else if (v.dist !== null) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: v.label, detail: `Garée à ${metres(v.dist)}`, go: v.key });
+      if (v.riding) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: `${v.label} : tu es dessus`, detail: v.key === 'moto' ? 'Parking motos gardé à côté de l’entrée' : `Parking voitures gardé dans la rue sur le côté de l’arène · ${fcfaText(CAR_FEE)} la soirée` });
+      else if (v.dist !== null) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: v.label, detail: `Garée à ${metres(v.dist)}${v.key === 'car' && i.gate && i.gate.dist > FAR ? ` · parking gardé à l’arène, ${fcfaText(CAR_FEE)}` : ''}`, go: v.key });
       else if (v.hub) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: v.label, detail: `Garée à ${v.hub}` });
     }
     out.push({ title: 'Y aller', rows: go });

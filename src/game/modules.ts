@@ -42,6 +42,7 @@ import { careerModule } from '../career/module';
 import { tonightModule } from '../arena/tonight';
 import { togetherModule } from '../arena/together';
 import { arrivalModule } from '../arena/arrival';
+import { carParkModule } from '../arena/carPark';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -198,5 +199,6 @@ export const MODULES: GameModule[] = [
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)
   togetherModule,       // friends at the arena: seated together, one bout for the group (src/arena/together.ts)
   arrivalModule,        // getting to the fight: the guarded moto parking, fans aboard the Ligne 23 (src/arena/arrival.ts)
+  carParkModule,        // getting to the fight by car: the guarded car places on the arena's side street (src/arena/carPark.ts)
   tonightModule,        // the phone's « Ce soir »: tonight's card, getting there, after, the day's weather and roads (src/arena/tonight.ts)
 ];

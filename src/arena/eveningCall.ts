@@ -6,7 +6,9 @@ import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, hasTicket, streetAt } from './pr
 import { eveningSize } from './exterior';
 import { FIGHT_DAYS, WEEKDAY_FR, weekday } from './exteriorRules';
 import { MOTO_FEE, motoLot } from './arrivalRules';
+import { CAR_FEE, carLot } from './carParkRules';
 import { moto } from '../transport/motoModule';
+import { car } from '../transport/carModule';
 import { transport } from '../transport/module';
 
 /**
@@ -17,7 +19,9 @@ import { transport } from '../transport/module';
  *   gate (arrow, distance; far away (> 120 m) or in another hub, the car rapide, ligne 23, arrêt « Arène »), then by the
  *   gate to the ticket window, ticket in hand through the gate, inside the walls to a free place on the tiers; seated,
  *   nothing. A player whose own moto is in this hub and who is far is told to take it (the pin on the moto); riding it,
- *   the line points to the guarded moto parking by the gate (src/arena/arrival.ts), then on foot as above. It comes
+ *   the line points to the guarded moto parking by the gate (src/arena/arrival.ts), then on foot as above. The same
+ *   for one's own car (when both are here, the one nearer the player): take it when far, driving it, the guarded car
+ *   places on the arena's side street (src/arena/carPark.ts). It comes
  *   before the economy steps and the other beats, and after the welcome beat only while the player has earned nothing
  *   yet (`welcomeFirst`).
  * - Once the bout is over and the player has walked out, one place open at that hour to end the evening (the nearest
@@ -63,9 +67,16 @@ export interface EveningInput {
   seated?: boolean;
   /** The player's own moto in this hub: standing parked, or ridden now (absent / null: none here). */
   moto?: 'parked' | 'riding' | null;
+  /** The player's own car in this hub: standing parked, or driven now (absent / null: none here). */
+  car?: 'parked' | 'riding' | null;
+  /** Both standing parked here: the one nearer the player (absent: the moto). */
+  nearer?: 'moto' | 'car';
 }
-/** walk · ride (the car rapide) · travel (another hub) · moto (take your moto) · park (riding: to the moto parking). */
-export type EveningGoal = { kind: 'arena'; how: 'walk' | 'ride' | 'travel' | 'moto' | 'park' } | { kind: 'ticket' } | { kind: 'enter' } | { kind: 'seat' } | { kind: 'after' } | null;
+/**
+ * walk · ride (the car rapide) · travel (another hub) · moto (take your moto) · park (riding: to the moto parking) ·
+ * car (take your car) · carpark (driving: to the guarded car places).
+ */
+export type EveningGoal = { kind: 'arena'; how: 'walk' | 'ride' | 'travel' | 'moto' | 'park' | 'car' | 'carpark' } | { kind: 'ticket' } | { kind: 'enter' } | { kind: 'seat' } | { kind: 'after' } | null;
 /** Closer than this to the gate without a ticket, the goal line points to the ticket window beside it. */
 export const NEAR_GATE = 25;
 /** The goal of the evening, if any (pure). */
@@ -75,7 +86,11 @@ export function eveningGoal(i: EveningInput): EveningGoal {
     if (!i.gate) return { kind: 'arena', how: 'travel' };
     if (i.gate.inside) return i.ticket && !i.seated ? { kind: 'seat' } : null;  // a fighter inside needs no ticket
     if (i.moto === 'riding') return { kind: 'arena', how: 'park' };          // on one's moto: the guarded parking by the gate first
-    if (i.gate.dist > FAR) return { kind: 'arena', how: i.moto === 'parked' ? 'moto' : 'ride' };
+    if (i.car === 'riding') return { kind: 'arena', how: 'carpark' };        // at the wheel: the guarded car places first
+    if (i.gate.dist > FAR) {
+      const m = i.moto === 'parked', c = i.car === 'parked';
+      return { kind: 'arena', how: m && !(c && i.nearer === 'car') ? 'moto' : c ? 'car' : 'ride' };
+    }
     if (i.ticket) return { kind: 'enter' };
     return i.gate.dist < NEAR_GATE ? { kind: 'ticket' } : { kind: 'arena', how: 'walk' };
   }
@@ -92,6 +107,8 @@ export function goalText(g: NonNullable<EveningGoal>, place?: { name: string; cl
   if (g.how === 'ride') return 'Combat ce soir à l’arène (Pikine) : car rapide ligne 23, arrêt « Arène »';
   if (g.how === 'moto') return 'Combat ce soir à l’arène (Pikine) : prends ta moto, parking gardé à côté de l’entrée';
   if (g.how === 'park') return `Combat ce soir à l’arène : parking motos gardé à côté de l’entrée (${fcfaText(MOTO_FEE)})`;
+  if (g.how === 'car') return 'Combat ce soir à l’arène (Pikine) : prends ta voiture, parking gardé dans la rue sur le côté de l’arène';
+  if (g.how === 'carpark') return `Combat ce soir à l’arène : parking voitures gardé dans la rue sur le côté de l’arène (${fcfaText(CAR_FEE)})`;
   return 'Combat ce soir à l’arène (Pikine)';
 }
 /**
@@ -133,7 +150,9 @@ export function eveningLine(ctx: GameCtx, welcome: boolean): { text: string; tar
   const arena = w.arena, gateIt = arena ? w.interactables.find(i => i.id === `${w.id}:arena`) : undefined;
   const gate = arena && gateIt ? { dist: Math.hypot(gateIt.x - here.x, gateIt.z - here.z), inside: !ctx.inside() && Math.hypot(here.x - arena.cx, here.z - arena.cz) < WALL_R - 0.4 } : null;
   const seated = ctx.player.seated()?.kind === 'stand', mine = moto.ridden ? 'riding' : moto.parkedHere() ? 'parked' : null;
-  const g = eveningGoal({ hour, galaDone: counters[GALA_DONE_COUNTER] === day, ticket: hasTicket(counters, day), welcome, gate, afterDone: afterReached === day, seated, moto: mine });
+  const mp = moto.parkedHere(), cp = car.parkedHere(), myCar = car.ridden ? 'riding' : cp ? 'parked' : null;
+  const nearer = mp && cp ? (Math.hypot(cp.x - here.x, cp.z - here.z) < Math.hypot(mp.x - here.x, mp.z - here.z) ? 'car' : 'moto') : undefined;
+  const g = eveningGoal({ hour, galaDone: counters[GALA_DONE_COUNTER] === day, ticket: hasTicket(counters, day), welcome, gate, afterDone: afterReached === day, seated, moto: mine, car: myCar, nearer });
   if (!g) return null;
   if (g.kind === 'after') {
     const p = afterPlace(ctx.places.all(), hour, here); if (!p) return null;
@@ -150,6 +169,8 @@ export function eveningLine(ctx: GameCtx, welcome: boolean): { text: string; tar
   if (g.how === 'travel' || !gateIt) return { text: goalText(g), target: null };
   if (g.how === 'moto') { const p = moto.parkedHere(); return { text: goalText(g), target: p ? { name: 'Ta moto Jakarta', x: p.x, z: p.z } : null }; }
   if (g.how === 'park' && arena) { const lot = motoLot(arena); return { text: goalText(g), target: { name: 'Parking motos · Arène', x: lot.gardien.x, z: lot.gardien.z } }; }
+  if (g.how === 'car') { const p = car.parkedHere(); return { text: goalText(g), target: p ? { name: 'Ta voiture', x: p.x, z: p.z } : null }; }
+  if (g.how === 'carpark' && arena) { const lot = carLot(arena), s = lot.slots[lot.reserved]; return { text: goalText(g), target: { name: 'Parking voitures · Arène', x: s.x, z: s.z } }; }
   // the « Arène » stop served now: the evening route's (Ligne 23 round the arena block) from 16 h, else the day route's
   const stopId = transport.served(ARENA_STOP_EVENING) ? ARENA_STOP_EVENING : ARENA_STOP;
   const stop = g.how === 'ride' ? ctx.places.get(stopId)?.anchors[0] : undefined;

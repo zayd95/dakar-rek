@@ -240,6 +240,27 @@ Habib's evening: « prendre sa moto ou un Car Rapide ».
     prochaine).
   - The evening's goal line suggests the moto to a player who owns one in this hub and is far (pin on the moto).
     Once they are riding it points to the parking.
+- **By car** (`src/arena/carPark.ts`, rules in `src/arena/carParkRules.ts`). Six places at the kerb of the side street
+  east of the arena, on the arena's side, from the corner with the gate's street. They are off the queue lane (it
+  crosses the street in front of the gate) and off Ligne 23's evening route (`23s` runs down the arena's west side
+  and along its north side). A sign « PARKING VOITURES · GARDIEN » stands beside the first place.
+  - Getting out there, the « gardien du parking » greets the player and names his price, 200 F for the evening:
+    « Jàmm nga am ? » (tout va bien ?).
+  - « Faire garder ta voiture (200 F) » opens « Payer 200 F » before anything is paid. It is paid once per evening
+    (save counter `arena_car_day`, one wallet line through the runner).
+  - He puts the car in the place he keeps, the one nearest the gate: nothing behind it, and the place in front of it
+    stays free so the car pulls out forward. `ownedModule.moveParked` saves it like any parking spot, so it is found
+    again after the bout. Coming back the same evening costs nothing.
+  - The other cars are instanced, one body and one glass mesh per look: one look on low, two on medium, three on high
+    (≤ 2 / 4 / 6 draw calls, never the player's silver saloon). They are solid. They follow the moto parking's rule
+    (`lotCount`): two at most while the arena is set up, full on a gala night, fewer on a weekday card (cap by quality
+    2 / 3 / 4). They leave over 150 game seconds after the gala. The city lane's evening cars
+    (`src/city/arena.ts`) leave this stretch of kerb to him; they keep the far kerb and the north street.
+  - When the player drives away, he says « Ñibbil ak jàmm ! Ba ci kanam ! » (rentre bien · à plus tard).
+  - The goal line suggests the car to a player who owns one in this hub and is far (pin on the car); when both the
+    moto and the car stand here, the nearer one. At the wheel it points to the kept place. « Ce soir » adds
+    « parking gardé à l’arène, 200 F » to the car's row when the arena is far, and the car places with their price
+    when the player is driving.
 - **By car rapide.** While the arena is set up and its doors are open, the Ligne 23 cars of the evening route round
   the arena block (`23s`, 16 h – midnight, src/transport/lines.ts) carry fans in green and red: Baobab, Teranga, and
   a few in their own clothes. They ride on every leg towards « Arène ».
@@ -251,9 +272,13 @@ Habib's evening: « prendre sa moto ou un Car Rapide ».
     the queue's tail, two more when `transport.hasFans`. A player who rides along gets off with them.
 
 `?debug` → `__dakar.arrival.info()` (street, gardien, places, other motos, the player's moto, paid, what he said),
-`arrival.skip(sec)` (the after-gala emptying). `flock /tmp/dakar-browser.lock node scripts/check-arena-arrival.mjs
+`arrival.skip(sec)` (the after-gala emptying); `__dakar.carPark.info()` and `carPark.skip(sec)`, the same for the
+car places. `flock /tmp/dakar-browser.lock node scripts/check-arena-arrival.mjs
 [baseUrl] [outDir]` runs it on desktop and phone: ride in, greeting, price, pay once, the moto in his place, walk to the
 gate, rows emptying after the gala, ride away and the goodbye, fans aboard from « Marché », off at « Arène » with a group.
+Then by car: far away the goal line and « Ce soir » suggest it, at the wheel the goal points to the car places, the
+greeting and price, pay once, the car in his place (its parking record too), the way to the gate, the places emptying
+after the gala, out forward and the goodbye.
 
 ## Friends at the arena (`src/arena/together.ts`)
 

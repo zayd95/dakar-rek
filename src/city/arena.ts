@@ -8,6 +8,7 @@ import { arenaEvening, roadCentre } from '../transport/lines';
 import { clearKerb } from '../transport/passengers';
 import { ECURIES, gateOf, type ArenaGate } from '../arena/exteriorRules';
 import { eveningSize } from '../arena/exterior';
+import { carLot, inCarLot } from '../arena/carParkRules';
 import { rng } from '../core/rng';
 import { ARENA_PARKED, LEAVING_FROM, SIZE_SHARE, arenaArrivals, arenaDepartures, dropInterval, type EveningSize } from './rules';
 import { weatherNow } from './weather';
@@ -99,6 +100,7 @@ export class ArenaStreets {
       { a: { x: x1, z: z0 + 12 }, b: { x: x1, z: z1 - 12 } },                 // east side road (x = 60)
     ];
     const kinds: VehicleKind[] = ['sedan', 'taxi', 'sedan', 'pickup', 'suv', 'moto'];
+    const guarded = this.hub.arena ? carLot(this.hub.arena) : null;   // the guarded car places (src/arena/carPark.ts) are his
     for (const l of lanes) {
       const len = Math.hypot(l.b.x - l.a.x, l.b.z - l.a.z), dx = (l.b.x - l.a.x) / len, dz = (l.b.z - l.a.z) / len;
       for (let t = 0; t <= len; t += 6.5) for (const side of [1, -1]) {
@@ -107,6 +109,7 @@ export class ArenaStreets {
         const box: Collider = { x0: x - (Math.abs(dx) * hl + Math.abs(dz) * hw), x1: x + (Math.abs(dx) * hl + Math.abs(dz) * hw), z0: z - (Math.abs(dz) * hl + Math.abs(dx) * hw), z1: z + (Math.abs(dz) * hl + Math.abs(dx) * hw), h: 1.5 };
         if (this.hub.colliders.some(c => box.x0 < c.x1 && box.x1 > c.x0 && box.z0 < c.z1 && box.z1 > c.z0)) continue;
         if (this.hub.interactables.some(i => Math.hypot(i.x - x, i.z - z) < 5)) continue;
+        if (guarded && inCarLot(guarded, x, z)) continue;
         out.push({ x, z, yaw: Math.atan2(dx * side, dz * side), kind: kinds[Math.floor(R() * kinds.length)], seed: Math.floor(R() * 1e6), g: null, box });
       }
     }
