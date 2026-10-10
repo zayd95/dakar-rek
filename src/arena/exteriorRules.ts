@@ -106,6 +106,14 @@ const falloff = (dist: number, near: number, range: number) => (dist <= near ? 1
 export function drumVolume(dist: number, inside: boolean, muted: boolean): number {
   return inside || muted ? 0 : falloff(dist, DRUMS_NEAR, DRUMS_RANGE);
 }
+/**
+ * The drums heard by tonight's wrestler in his corner or walking out (`boost`, src/arena/exterior.ts FIGHTER_DRUMS):
+ * the drummers play for him, so inside the walls they carry over the whole arena, heard as if beside them and louder,
+ * whichever corner his écurie has (src/world/arenaModules.ts PREP_SIDE). Outside the walls: by distance, as always.
+ */
+export function fighterDrumVolume(dist: number, withinWalls: boolean, inside: boolean, muted: boolean, boost: number): number {
+  return drumVolume(withinWalls ? 0 : dist, inside, muted) * boost;
+}
 /** Loudness 0..1 of the crowd's murmur `dist` metres from the queue lane (softer and shorter-ranged than the drums). */
 export function murmurVolume(dist: number, inside: boolean, muted: boolean): number {
   return inside || muted ? 0 : falloff(dist, MURMUR_NEAR, MURMUR_RANGE);

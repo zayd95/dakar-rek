@@ -8,7 +8,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { trafficClosures, trafficPositions } from '../actors/npc';
 import { isMuted } from '../core/audioSettings';
 import {
-  ECURIES, crossesQueue, drummerAt, drumsCentre, drumVolume, gateOf, isFightEvening, murmurVolume, queueDistance, stallsOf, vendorPlaces,
+  ECURIES, crossesQueue, drummerAt, drumsCentre, drumVolume, fighterDrumVolume, gateOf, isFightEvening, murmurVolume, queueDistance, stallsOf, vendorPlaces,
   VENDORS, exteriorPhase, outflowDestinations, stallFronts, weekday, WEEKDAY_FR, type ArenaGate, type ExteriorPhase,
 } from './exteriorRules';
 import { GALA_DONE_COUNTER, streetAt } from './program';
@@ -18,6 +18,7 @@ import { arenaFighter } from './fighter';
 export const FIGHTER_DRUMS = 1.3;
 import { ExteriorAudio, listenForGesture } from './exteriorAudio';
 import { deckCentre } from '../world/arenaModules';
+import { WALL_R } from '../world/geew';
 
 /**
  * Outside the Pikine arena: on fight evenings the surroundings come alive — fans walking in
@@ -393,9 +394,12 @@ function loudness(ctx: GameCtx) {
   // one rhythm for the evening, as loud as the nearer drummers: the group by the gate or the deck inside, by the tunnel
   const p = ctx.player.pos, inside = !!ctx.inside(), muted = isMuted(), c = drumsCentre(ext.g), dk = deckCentre(ext.arena.cx, ext.arena.cz);
   const dist = Math.min(Math.hypot(p.x - c.x, p.z - c.z), Math.hypot(p.x - dk.x, p.z - dk.z));
-  // a wrestler of tonight in his corner or walking out: the drummers play louder for him (src/arena/fighter.ts)
-  const louder = arenaFighter.phase() === 'prep' || arenaFighter.phase() === 'ring' ? FIGHTER_DRUMS : 1;
-  return { drums: drumVolume(dist, inside, muted) * louder, murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
+  // a wrestler of tonight in his corner or walking out: the drummers play louder, for him (src/arena/fighter.ts), over the
+  // whole arena (his écurie's corner may be across the ring from their deck)
+  const moment = arenaFighter.phase() === 'prep' || arenaFighter.phase() === 'ring';
+  const within = Math.hypot(p.x - ext.arena.cx, p.z - ext.arena.cz) < WALL_R;
+  const drums = moment ? fighterDrumVolume(dist, within, inside, muted, FIGHTER_DRUMS) : drumVolume(dist, inside, muted);
+  return { drums, murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
 }
 
 export const arenaExteriorModule: GameModule = {
