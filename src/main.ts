@@ -51,6 +51,7 @@ import { actionVerb } from './interact/legacy';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { eveningLine } from './arena/eveningCall';
 import { GesturePlayer } from './ui/gesture';
 import { Stride } from './game/stride';
 import { StrideUi } from './ui/stride';
@@ -716,10 +717,13 @@ phoneHooks.openPlaces = openPlaces;
 
 /** Person of the suggested story beat, or « first delivery » (refreshed with the HUD, 4 times a second). */
 let guideNpc: string | null = null, guideJob = false;
+/** Tonight's arena (or what to do after the bout): the goal line's target while it leads (src/arena/eveningCall.ts). */
+let eveningTarget: { name: string; x: number; z: number } | null = null;
 /** Way-finding: the walking destination, else the suggested person (or the nearest Tiak Tiak pick-up for the first job) in this hub. */
 function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
   if (destination?.hub === world.id) { const it = world.interactables.find(i => i.id === destination!.id); if (it) return { name: it.name, x: it.x, z: it.z }; }
+  if (eveningTarget) return eveningTarget;
   if (guideJob) {
     const w = world, here = inside ? inside.door : pos;
     const ends = pickupFrags(w.id).map(f => w.interactables.find(i => i.id.startsWith(w.id + ':') && i.id.includes(f))).filter((i): i is Interactable => !!i);
@@ -728,6 +732,13 @@ function guideTarget(): { name: string; x: number; z: number } | null {
   }
   const w = guideNpc ? npcLife.where(guideNpc) : null;
   return w?.here && w.x !== undefined && w.z !== undefined ? { name: castById(guideNpc!)?.name ?? '', x: w.x, z: w.z } : null;
+}
+
+/** « ↗ text · 72 m » toward a target (the same arrow as the walking marker), or the text alone. */
+function withBearing(text: string, t: { x: number; z: number } | null): string {
+  if (!t || inside) return text;
+  const dx = t.x - pos.x, dz = t.z - pos.z, angle = Math.atan2(dx, dz) - follow.yaw;
+  return `${['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8]} ${text} · ${Math.round(Math.hypot(dx, dz))} m`;
 }
 
 function walkingHint(): string | null {
@@ -897,7 +908,7 @@ function frame(now: number) {
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
-  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state); guideNpc = sg && 'npc' in sg ? sg.npc : null; guideJob = sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' ? walkingHint() ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
+  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state), ev = eveningLine(ctx, sg?.id === 'ibou_welcome'); eveningTarget = ev?.target ?? null; guideNpc = !ev && sg && 'npc' in sg ? sg.npc : null; guideJob = !ev && sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' ? walkingHint() ?? (ev ? withBearing(ev.text, ev.target) : null) ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   renderer.render(scene, camera);
