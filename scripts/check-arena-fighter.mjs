@@ -57,7 +57,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await shot('tunnel-walk');
 
   // the corner: a short moment, the drums louder
-  await d(([x, z]) => window.__dakar.place(x, z, Math.atan2(cx - x, cz - z)), [s.corner.x, s.corner.z]);
+  await d(([x, z, ox, oz]) => window.__dakar.place(x, z, Math.atan2(ox - x, oz - z)), [s.corner.x, s.corner.z, cx, cz]);
   const prep = await until(() => window.__dakar.fighter().phase === 'prep', null, 15000);
   const drums = await d(() => window.__dakar.arenaOut().audio.want.drums);
   check(`${label}: in the écurie's corner: the moment before the bout, drums louder`, prep && drums > 1.1, `drums ${drums?.toFixed?.(2)}`);
