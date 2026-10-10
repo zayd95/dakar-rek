@@ -68,7 +68,9 @@ export function standSection(k: ArenaKit, cx: number, cz: number, s: StandSectio
       const m = at(cx, cz, p.a + (SEAT_MARK / 2) / (r - 0.25), r - 0.25);
       plain.flat(0.03, 0.75, m.x, top + 0.005, m.z, 0x8f8676, p.a);
     }
-    for (const p of arc(s.a0, s.a1, r, 2.6)) { const c = at(cx, cz, p.a, r); k.solid(c.x, c.z, 2.6, 2.6, roofY(r)); }
+    // colliders (axis-aligned boxes): smaller and set back on the first tier so the walkway in front of the parapet stays free
+    const size = t === 0 ? 1.5 : 2.6, rc = t === 0 ? r + 0.25 : r;
+    for (const p of arc(s.a0, s.a1, rc, size)) { const c = at(cx, cz, p.a, rc); k.solid(c.x, c.z, size, size, roofY(r)); }
   }
 }
 
@@ -86,7 +88,7 @@ export function aisleStairs(k: ArenaKit, cx: number, cz: number, a: number) {
     concrete.box(w, top, d, b.x, 0, b.z, 0xcfc6b2, a);
     for (const p of [f, b]) plain.box(w, 0.05, 0.08, p.x - Math.sin(a) * (d / 2 - 0.04), p === f ? (prev + top) / 2 : top, p.z - Math.cos(a) * (d / 2 - 0.04), 0xf4c20d, a);   // yellow nosing
     prev = top;
-    const c = at(cx, cz, a, r); k.solid(c.x, c.z, 1.8, 1.8, roofY(r));
+    const cs = t === 0 ? 1.2 : 1.8, c = at(cx, cz, a, t === 0 ? r + 0.3 : r); k.solid(c.x, c.z, cs, cs, roofY(r));
   }
   // first step from the walkway, in the parapet's gap
   const s0 = at(cx, cz, a, PARAPET_R);
@@ -265,3 +267,46 @@ function mergeAll(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
 }
 /** Front edge of the roof, for checks that frame the stands from the ring. */
 export const ROOF_EDGE_R = ROOF_FRONT_R;
+
+// ------------------------------------------------------------------ where the evening's people stand (pure)
+
+/** Height of the arena floor (the builder's ground slab under the sand: G + 0.02). */
+export const ARENA_FLOOR = 0.14;
+/** Hips above the seat top for the Sit clip (src/interact/seats.ts SIT_HIPS). */
+const SIT_HIPS = 0.48;
+export type SpotRole = 'drummer' | 'official' | 'press' | 'media' | 'camp';
+export interface Spot { role: SpotRole; x: number; y: number; z: number; yaw: number; clip: 'Idle' | 'Talk' | 'Stance' | 'Sit'; side?: -1 | 1 }
+/**
+ * Where the people of a fight evening stand or sit inside the walls, on the props the builder draws above: drummers on
+ * their deck, officials at their table, journalists at the press table and behind the cameras, each écurie's people in
+ * its corner. The arena interior module puts humanoids there; the tests check they stand on their props.
+ */
+export function interiorSpots(cx: number, cz: number): Spot[] {
+  const out: Spot[] = [], F = ARENA_FLOOR, seated = F + 0.45 - SIT_HIPS;
+  {                                                                                       // drummers on the deck
+    const a = 0.42, r = 14.2, c = at(cx, cz, a, r);
+    for (let n = 0; n < 4; n++) {
+      const o = (n - 1.5) * 0.85;
+      out.push({ role: 'drummer', x: c.x + Math.cos(a) * o + Math.sin(a) * 0.15, y: F + 0.3, z: c.z - Math.sin(a) * o + Math.cos(a) * 0.15, yaw: a + Math.PI, clip: 'Talk' });
+    }
+  }
+  {                                                                                       // officials at their table (+x)
+    const tx = cx + 13.2, tz = cz + 2;
+    for (let n = 0; n < 3; n++) out.push({ role: 'official', x: tx - 1.2 + n * 0.8, y: seated, z: tz + 0.8, yaw: Math.PI, clip: 'Sit' });
+  }
+  {                                                                                       // press table and cameras (−x)
+    const c = at(cx, cz, -Math.PI / 2, 13.4);
+    for (const dz of [-1.1, 1.1]) out.push({ role: 'press', x: c.x - 1.3, y: seated, z: c.z + dz, yaw: Math.PI / 2, clip: 'Sit' });
+    for (const dz of [-1.9, 2.0]) out.push({ role: 'media', x: c.x + 0.7, y: F, z: c.z + dz, yaw: Math.PI / 2, clip: 'Idle' });
+  }
+  for (const side of [-1, 1] as const) {                                                 // the écuries' corners
+    const a = side * 0.78, r = 13.6;
+    ([[-0.6, 0.2, 'Stance'], [0.6, 0.2, 'Talk'], [0, -0.4, 'Idle']] as const).forEach(([o, dr, clip]) => {
+      const p = at(cx, cz, a + o / r, r + dr);
+      out.push({ role: 'camp', x: p.x, y: F, z: p.z, yaw: a + Math.PI, clip, side });
+    });
+  }
+  return out;
+}
+/** The walkway between the crowd barrier and the parapet, where the vendors of the stands walk (radius). */
+export const WALKWAY_R = 16.78;

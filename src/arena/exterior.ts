@@ -70,6 +70,7 @@ interface Still { h: Humanoid }
 
 let scheduled: ((day: number, hour: number) => boolean) | null = null;
 let gate: ArenaGate | null = null;
+let activeNow = false;
 
 /** The API shared with the arena visit (see the module comment). */
 export const arenaExterior = {
@@ -79,6 +80,8 @@ export const arenaExterior = {
   gate(): ArenaGate | null { return gate; },
   /** The arena's own bouts: the exterior is alive whenever `fn(day, hour)` is true (null removes it). */
   schedule(fn: ((day: number, hour: number) => boolean) | null) { scheduled = fn; },
+  /** Whether the fight evening is on in the current hub right now (debug overrides included): the interior follows it. */
+  active(): boolean { return activeNow; },
 };
 
 class Exterior {
@@ -277,7 +280,7 @@ function closeRoads(g: ArenaGate | null) {
 }
 function setActive(ctx: GameCtx, on: boolean) {
   if (!ext) return;
-  ext.setActive(on);
+  ext.setActive(on); activeNow = on;
   closeRoads(on ? ext.g : null);
   for (const p of vendorPlaces(ext.hub.id, ext.arena)) {
     if (on) ctx.places.add(p); else ctx.places.remove(p.id);
@@ -295,7 +298,7 @@ export const arenaExteriorModule: GameModule = {
   name: 'arenaExterior',
   init() { listenForGesture(); },
   hubLoaded(ctx, hub) {
-    ext?.dispose(); ext = null; gate = null;
+    ext?.dispose(); ext = null; gate = null; activeNow = false;
     closeRoads(null); audio.stop();                                     // a new hub: no closure, no drums
     if (!hub.arena) return;
     gate = gateOf(hub.arena);
