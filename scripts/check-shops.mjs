@@ -131,7 +131,46 @@ try {
       visits.push({ hub: v.hub, type: v.type, walkedIn: walkedIn && atCounter, focused, drawCalls: draws, paid });
     }
 
-    // 3. Maison Dakar sells real furniture (the economy's catalogue), its sofa can be sat on
+    // 3. the café kiosk (a facade until now) is a walk-in café: « Entrer », walk to its counter, a Café Touba
+    for (const hub of label === 'desktop' ? ['corniche', 'pikine'] : ['plateau']) {
+      await d(page, h => window.__dakar.teleport(h), hub);
+      await page.waitForFunction(h => window.__dakar.pos().hub === h, hub, T);
+      await d(page, () => { const g = window.__dakar; g.setHour(9); g.cam(null); g.state.data.wallet = Math.max(g.state.data.wallet, 20000); });
+      const room = (await d(page, () => window.__dakar.shopRooms()))[0];
+      const door = room && (await d(page, () => window.__dakar.interactables())).find(i => i.id === room.door);
+      if (!room || !door) { check(`${label}: ${hub} has a walk-in café`, false); continue; }
+      let focused = false;
+      for (const [dx, dz] of [[0, 1.6], [0, -1.6], [0, 0]]) {
+        await d(page, ([p, dx, dz]) => window.__dakar.place(p.x + dx, p.z + dz, Math.atan2(-dx, -dz)), [door, dx, dz]);
+        focused = await page.waitForFunction(id => window.__dakar.focus()?.id === id, door.id, { timeout: 8000 }).then(() => true, () => false);
+        if (focused) break;
+      }
+      const enter = focused && await pick(page, /^Entrer/);
+      if (enter) await enter.click();
+      const inside = !!enter && await page.waitForFunction(() => window.__dakar.pos().x > 2000, null, { timeout: 15000 }).then(() => true, () => false);
+      check(`${label}: ${door.name} — « Entrer » leads into the café`, inside);
+      if (!inside) continue;
+      await page.waitForTimeout(600);
+      await shot(page, `${label}-cafe-kiosk-${hub}-inside`);
+      const walked = await walk(page, [{ x: room.anchors.counter.x, z: room.anchors.counter.z }], 0.45, 20000);
+      const atBar = await page.waitForFunction(id => window.__dakar.focus()?.id === id, `${door.id}:comptoir`, { timeout: 12000 }).then(() => true, () => false);
+      check(`${label}: walks up to the café's counter inside`, walked && atBar, JSON.stringify(await d(page, () => [window.__dakar.pos(), window.__dakar.focus()?.id])));
+      const item = atBar && await pick(page, /^Café Touba/);
+      let paid = null;
+      if (item) {
+        const before = await d(page, () => window.__dakar.state.wallet);
+        await item.click();
+        await idle(page);
+        paid = before - await d(page, () => window.__dakar.state.wallet);
+        await shot(page, `${label}-cafe-kiosk-${hub}-counter`);
+      }
+      check(`${label}: a Café Touba at the counter inside, paid once`, paid === 100, `${paid} F`);
+      visits.push({ hub, type: 'cafe (walk-in)', walkedIn: inside && walked, focused: atBar, paid, people: room.people });
+      await d(page, () => window.__dakar.exit());
+      await page.waitForFunction(() => window.__dakar.pos().x < 1000, null, { timeout: 15000 }).catch(() => {});
+    }
+
+    // 4. Maison Dakar sells real furniture (the economy's catalogue), its sofa can be sat on
     await d(page, () => window.__dakar.teleport('almadies'));
     await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies', null, T);
     const home = (await d(page, () => window.__dakar.shops())).find(x => x.key.endsWith(':mall-household'));
