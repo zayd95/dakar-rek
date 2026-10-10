@@ -96,7 +96,7 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
 {
   const { ctx, page, errors } = await open({ width: 1280, height: 720 }, false, true);
   const items = await friendlyMenu(page);
-  check('menu: with ?lamb2 the friendly bouts include « avec frappe » against each style', ['Gora', 'Pape', 'Saliou'].every(n => items.some(t => t.includes(`Avec frappe · ${n}`))) && items.some(t => /Gora · Costaud · niveau/.test(t)), items.join(' | '));
+  check('menu: with ?lamb2 the friendly bouts include « avec frappe » against each of the six styles', ['Gora', 'Pape', 'Saliou', 'Ousmane · Technicien', 'Malick · Bon frappeur', 'Daouda · Grand lutteur de saisie'].every(n => items.some(t => t.includes(`Avec frappe · ${n}`))) && items.some(t => /Gora · Costaud · niveau/.test(t)), items.join(' | '));
   await shot(page, 'desktop-menu');
   await page.evaluate(() => [...document.querySelectorAll('#modal .item')].find(b => /Avec frappe · Gora/.test(b.textContent))?.click());
   // the opponent as himself: who he is, in one line, before the bout (intro) and in the header

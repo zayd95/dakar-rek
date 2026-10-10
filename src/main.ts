@@ -29,7 +29,7 @@ import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './soci
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { LambDuel } from './lamb/duel';
 import { fighterAttributes } from './career/career';
-import { rosterOpponent } from './lamb/opponents';
+import { FRIENDLY_MORE, STYLE_MAP, rosterOpponent } from './lamb/opponents';
 import { lamb2On } from './lamb/flag';
 import { PARTNER, RULES, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type Discipline, type StyleId } from './lamb/rules';
 import { phoneHooks } from './ui/phoneHooks';
@@ -573,6 +573,13 @@ function openFriendly() {
     const st = STYLES[id];
     items.push({ label: `Avec frappe · ${st.name} · ${st.label}`, detail: 'Làmb 2.0, en construction : frappes, équilibre, empoignade. Bilan à part.', onPick: () => startDuel('amical', id, undefined, 'avec_frappe') });
   }
+  // avec frappe, the three other styles of the six each have their wrestler (src/lamb/opponents.ts)
+  if (LAMB2) for (const f of FRIENDLY_MORE) {
+    const o = rosterOpponent(f.name, ctx.day());
+    if (!o) continue;
+    const word = STYLE_MAP[o.style].word;
+    items.push({ label: `Avec frappe · ${o.wrestler.name} · ${word[0].toUpperCase()}${word.slice(1)}`, detail: `${f.hint} Bilan à part.`, onPick: () => startDuel('amical', o.wrestler.style, undefined, 'avec_frappe', o.wrestler.name) });
+  }
   hud.openMenu('Combat amical', `Non classé · niveau ${level} · ${RULES_STATUS}`, items,
     `<div class="draft">${LAMB2 ? 'Lutte sans frappe, ou avec frappe (essai)' : 'Lutte sans frappe'}. Adversaires fictifs. La tenue, les danses et les accessoires n’ont aucun effet sur le combat ; l’argent non plus.</div>`);
 }
@@ -589,7 +596,7 @@ function openRanked() {
 }
 
 /** Controlled bout against a local opponent: guided training at the écurie, friendly or ranked at the arena. */
-function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () => void, discipline: Discipline = 'sans_frappe') {
+function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () => void, discipline: Discipline = 'sans_frappe', named?: string) {
   if (lambScene) return;                                                       // one bout or scene at a time
   const at = boutMode === 'entrainement' ? world?.ecurie : world?.arena;
   if (!at) { hud.toast(boutMode === 'entrainement' ? 'L’entraînement a lieu à l’écurie de Pikine' : 'Les combats ont lieu à l’arène de Pikine'); mode = 'play'; return; }
@@ -603,6 +610,7 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () 
   // the career's roster names the opponent (a wrestler of the city's ladder, with their style and level)
   const pick = boutMode === 'entrainement' ? null : opponentPick(boutMode);
   if (pick) { style = { ...(STYLES[pick.style as StyleId] ?? style), name: pick.name }; level = pick.level; }
+  else if (named) style = { ...style, name: named };                          // a friendly avec frappe against a named wrestler
   // avec frappe, the player's attributes come from what he trained (src/career, data only); they shape numbers by ±20 % at most
   const attrs = discipline === 'avec_frappe' ? fighterAttributes(state.data.counters) : undefined;
   // avec frappe, a wrestler of the city's roster fights as himself: his style, his level, his season record (src/lamb/opponents.ts)
@@ -1095,7 +1103,7 @@ if (DEBUG) {
       return { len, hit: hit ? hit.distance : len };
     },
     duel() { startDuel('amical', 'costaud'); },
-    duelStart(m: BoutMode = 'amical', style?: StyleId, discipline: Discipline = 'sans_frappe') { startDuel(m, style, undefined, discipline); },
+    duelStart(m: BoutMode = 'amical', style?: StyleId, discipline: Discipline = 'sans_frappe', name?: string) { startDuel(m, style, undefined, discipline, name); },
     duelStrike(kind: 'quick' | 'big' = 'quick') { if (lambScene instanceof LambDuel) lambScene.pressStrike(kind); },
     duelMove(kind: 'push' | 'pull' | 'pivot') { if (lambScene instanceof LambDuel) lambScene.pressMove(kind); },
     /** In the empoignade, the big-strike button: « Projeter », or « Contrer » while he tries a throw. */

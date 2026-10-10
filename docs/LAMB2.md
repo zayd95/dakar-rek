@@ -17,7 +17,7 @@ l'arène, écurie, combats amicaux et classés) reste intacte à chaque étape.
 ## Comment jouer (Habib)
 
 **Lancer.** Ajoute `?lamb2` à l'adresse du jeu. À l'arène de Pikine : **Combat amical** → « Avec frappe · Gora », « … ·
-Pape » ou « … · Saliou ». Le soir, ton combat de la soirée (entrée des lutteurs → coin → cercle) se joue aussi avec
+Pape », « … · Saliou », « … · Ousmane », « … · Malick » ou « … · Daouda » (un lutteur pour chacun des six styles). Le soir, ton combat de la soirée (entrée des lutteurs → coin → cercle) se joue aussi avec
 frappe. **Pour apprendre** : l'Entraînement à l'écurie de Pikine devient la leçon guidée de Coach Ablaye (plus bas).
 Sans `?lamb2`, rien ne change.
 
@@ -222,6 +222,13 @@ les puissants plus que les défensifs) — la lutte reste le cœur, les frappes 
 l'équilibre revient un peu moins vite (12/s) pour que les échanges pèsent ; au temps, l'arbitre compte aussi les
 frappes nettes (1 point) et les déséquilibres (2 points).
 
+**Les préliminaires** (vague 5, `src/arena/undercard.ts`) se luttent aussi avec frappe, IA contre IA : la paire est
+le programme « frappe » du combat regardé (`prelimBout`). Les jeunes lutteurs du quartier (noms génériques, pas du
+classement) reçoivent chacun un style des six tiré de la graine du préliminaire (`prelimSeed`, `localPair`) — le même
+pour tous les spectateurs ; celui de droite garde le style de sa fiche (ses couleurs). Testé
+(`tests/lamb2Prelims.test.ts`) : même graine, même combat ; sur 60 soirées (181 préliminaires), tous finis dans leur
+manche de 30 s, 179 par projection.
+
 Le combat regardé est une **manche courte de 30 s** (`WATCHED_ROUND`) : avec la présentation et la chute, il est fini
 en 40 s au plus. Presque tous finissent avant, par une chute. Testé sur toutes les paires du classement
 (`tests/lamb2Styles.test.ts`, 132 paires × 3 soirs = 396 combats) : tous finis en 40 s ou moins, 394 par projection,
@@ -267,8 +274,8 @@ Ce qui **manque** avant d'en faire la lutte par défaut :
   de la ville (carrière) mélange encore les deux disciplines dans un même bilan de saison.
 - **Le multijoueur** : un combat joueur contre joueur avec frappe demande l'arbitrage serveur (spec §20), pas fait.
 - **L'équilibrage des styles** (spec §12) : les six styles sont écrits et chacun gagne et perd entre IA ; leur
-  difficulté contre un joueur reste à régler avec des parties réelles. Le combat amical ne propose encore que Gora,
-  Pape et Saliou (puissant, rapide, défensif) : ajouter Ousmane, Malick et Daouda pour essayer les trois autres ?
+  difficulté contre un joueur reste à régler avec des parties réelles (Ousmane et Daouda sont niveau 4 au combat
+  amical).
 
 Options : (a) garder « sans frappe » par défaut et proposer « avec frappe » à côté (amical, soirée) dès maintenant ;
 (b) basculer la soirée et l'entraînement par défaut d'abord, le classé ensuite ; (c) tout basculer d'un coup après
@@ -282,6 +289,7 @@ leçon montrent le mieux la nouvelle lutte, et le classé garde son bilan tant q
 - `src/lamb/clinch.ts` — entrée et empoignade (pures, testées dans `tests/lamb2.test.ts`).
 - `src/lamb/opponents.ts` — les lutteurs du classement en adversaires avec frappe (table des six styles → IA, niveau → attributs ; `ROSTER_STYLE6`).
 - `tests/lamb2Styles.test.ts` — les six styles, l'arbitre qui presse, la fatigue, toutes les paires IA contre IA en 40 s.
+- `tests/lamb2Prelims.test.ts` — les préliminaires avec frappe (styles tirés de la graine, déterminisme, durée) et les six adversaires du combat amical.
 - `src/lamb/lesson.ts` — la leçon de Coach Ablaye (étapes, ce qui les termine, ses phrases ; testée, y compris dans le duel sans navigateur).
 - `src/lamb/strikeRig.ts` — poses de frappe et d'empoignade sur le squelette.
 - `src/arena/bout.ts` — le combat regardé ; avec frappe, le duel joue les deux côtés (IA contre IA).
