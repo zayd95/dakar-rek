@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { seatRadius, type Moment, type StandSeatDef } from '../arena/program';
 import { SECTIONS, TUNNEL_MOUTH_R } from '../world/geew';
-import { Crowd, defaultLook, type CrowdQuality, type CrowdSlot } from './crowd';
+import { Crowd, defaultLook, type CrowdLook, type CrowdQuality, type CrowdSlot } from './crowd';
 import type { ReactionKind } from './reactions';
 
 /**
@@ -23,6 +23,8 @@ export interface ArenaStandsOptions {
   /** Colours the supporters of each side wear more often. */
   colours?: { left: number; right: number };
   seed?: number;
+  /** The look of a place's spectator, from the crowd's own (the arena dresses its honneur rows up): src/arena/tickets.ts. */
+  look?: (seat: StandSeatDef, base: CrowdLook, r: () => number) => CrowdLook;
 }
 
 const TAU = Math.PI * 2;
@@ -79,10 +81,11 @@ export class ArenaStands {
       this.tunnel = { x: cx, z: cz + TUNNEL_MOUTH_R };
     }
     const col = o.colours ?? { left: GREENS[0], right: REDS[0] };
+    const byId = new Map(seats.map(s => [s.id, s]));
     const slots: CrowdSlot[] = seats.map(s => {
       const side = sideOf(s.a);
       const sec = sectionOf(s.a);
-      return { id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, seated: true, tags: [side, ...(sec ? [`sec:${sec}`] : []), `tier${s.tier}`, ...(s.tier === 0 ? ['ringside'] : [])] };
+      return { id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, seated: true, tags: [side, ...(sec ? [`sec:${sec}`] : []), `tier${s.tier}`, ...(s.tier === 0 ? ['ringside'] : []), ...(s.tribune ? [`tribune:${s.tribune}`] : [])] };
     });
     this.crowd = new Crowd(slots, {
       quality: o.quality ?? N_QUALITY(nearCount), near: Math.min(nearCount, STAND_NEAR[o.quality ?? N_QUALITY(nearCount)]), seed: o.seed ?? 23, name: 'arena-stands', nearRadius: 9, nearNeedsFocus: true,
@@ -93,6 +96,7 @@ export class ArenaStands {
           const c = side === 'left' ? (r() < 0.6 ? col.left : GREENS[1 + Math.floor(r() * 2)]) : (r() < 0.6 ? col.right : REDS[1 + Math.floor(r() * 2)]);
           look.shirt = c; if (look.style === 'boubou') look.legs = c;
         }
+        if (o.look) { const seat = byId.get(slot.id); if (seat) return o.look(seat, look, r); }
         return look;
       },
     });

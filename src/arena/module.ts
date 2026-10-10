@@ -15,7 +15,7 @@ import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
   billFor, ecurieLabel, reportMainEvent, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
-  SHOW_PHASES, boutSeed, fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketsChecked, type Moment, type ShowPhase, type Street,
+  SHOW_PHASES, boutSeed, fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketTier, ticketsChecked, type Moment, type ShowPhase, type Street,
 } from './program';
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
@@ -24,6 +24,8 @@ import { localPair, rosterOpponent } from '../lamb/opponents';
 import { PRELIM, PRELIM_TYPICAL, prelimFill, prelimName, undercardFor, type Prelim } from './undercard';
 import { GalaCard } from './card';
 import { FightNightPeople } from './people';
+import { TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, seatRefusal, ticketLabel, ticketSheet, whereLine, type Tribune } from './tickets';
+import { decorMaterial, honneurPlate, tribuneDecor } from './ticketsDecor';
 import { EntranceCeremony } from './entrance';
 import { posters } from './posters';
 import { recordGalaResult } from '../social/fightTalk';
@@ -115,6 +117,16 @@ class ArenaEvening {
   private fovSet = 0;
   private look = new V3();
   private ground: (x: number, z: number) => number;
+  /** The ticket tier of each place on the tiers. */
+  private tribune = new Map<string, Tribune>();
+  tribuneOf(id: string): Tribune | null { return this.tribune.get(id) ?? null; }
+  /** Per tier: its places, those free, those the crowd holds. */
+  tribunes() {
+    const out = {} as Record<Tribune, { places: number; free: number; crowd: number }>;
+    for (const t of TRIBUNES) out[t] = { places: 0, free: 0, crowd: 0 };
+    for (const s of this.seats) { const o = out[this.tribune.get(s.id) ?? 'populaire']; o.places++; if (!s.occupant) o.free++; else if (s.occupant === CROWD) o.crowd++; }
+    return out;
+  }
 
   constructor(private ctx: GameCtx, hub: HubWorld) {
     const a = hub.arena!, D = DENSITY[ctx.quality()];
@@ -128,12 +140,25 @@ class ArenaEvening {
     const defs = standSeats(cx, a.cz, `${hub.id}:arena:stand`);
     for (const d of defs) {
       // offered from the ring side and from the aisles (src/world/geew.ts); standing up leads into the nearest aisle
-      const s: Seat = { id: d.id, x: d.x, z: d.z, top: d.top, yaw: d.yaw, kind: 'stand', space: 'street', occupant: null, reach: 3.4, exits: standExits(cx, a.cz, d.a, d.tier) };
+      // each place knows its section and its ticket tier: another ticket's places are shown greyed, with the reason
+      const s: Seat = { id: d.id, x: d.x, z: d.z, top: d.top, yaw: d.yaw, kind: 'stand', space: 'street', occupant: null, reach: 3.4, exits: standExits(cx, a.cz, d.a, d.tier),
+        section: d.section ?? undefined, label: TICKETS[d.tribune].seat ?? undefined, refuse: () => this.refusal(d.tribune) };
+      this.tribune.set(d.id, d.tribune);
       ctx.seats.add(s); this.seats.push(s);
     }
-    const order = fillOrder(defs.length, 7).map(i => defs[i]);
-    this.cap = Math.round(defs.length * D.crowdShare);
-    this.crowd = new ArenaStands(order.slice(0, this.cap), D.near, { quality: ctx.quality() });
+    // the crowd fills each tier its own way: the honneur rows stay roomy, their people in their best (src/arena/tickets.ts)
+    const order = fillOrder(defs.length, 7).map(i => defs[i]).filter(d => crowdMayTake(d.id, d.tribune));
+    this.cap = Math.round(order.length * D.crowdShare);
+    this.crowd = new ArenaStands(order.slice(0, this.cap), D.near, { quality: ctx.quality(), look: (seat, base, r) => (seat.tribune === 'honneur' ? honneurDress(base, r) : base) });
+    // the tiers seen: cushions on the couverte and honneur places, the couverte's canvas, the honneur rows' plate
+    {
+      const dm = decorMaterial(), m = tribuneDecor(cx, a.cz, defs).build(dm, true, true);
+      this.own.push(dm); if (m) { this.group.add(m); this.own.push(m.geometry); }
+      const pl = honneurPlate(cx, a.cz), tex = signTexture('TRIBUNE D’HONNEUR', '#f2f2ec', '#7a5a12', 512, 96);
+      const plate = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.48), new THREE.MeshLambertMaterial({ map: tex }));
+      plate.position.set(pl.x, 0.62, pl.z); plate.rotation.y = pl.yaw; this.group.add(plate);
+      this.own.push(plate.geometry, plate.material as THREE.Material, tex);
+    }
     this.group.add(this.crowd.group);
     this.people = new FightNightPeople(ctx, hub, this.cx, this.cz);
 
@@ -154,7 +179,7 @@ class ArenaEvening {
       id: `${hub.id}:arena:guichet`, type: 'ticket', name: 'Guichet · Arène de Pikine', space: 'street', hours: [GALA.doors, GALA.close],
       anchors: [{ id: 'guichet', name: 'Guichet · billets', kind: 'counter', x: bx, z: bz - 1.35, radius: 2.0 }],
       offers: { guichet: [P.handOver('buy', {
-        id: 'billet', label: `Acheter un billet (${TICKET_PRICE.toLocaleString('fr-FR')} F)`, detail: 'Tribune populaire · valable toute la soirée',
+        id: 'billet', label: `Acheter un billet (dès ${TICKET_PRICE.toLocaleString('fr-FR')} F)`, detail: 'Populaire, couverte ou d’honneur · valable toute la soirée',
         visible: () => !hasTicket(ctx.state.data.counters, this.day()),
         requires: () => (eventDay(this.day(), ctx.hour()) ? null : 'Pas de gala ce soir'),
         then: () => this.confirmTicket(place),
@@ -171,16 +196,26 @@ class ArenaEvening {
   }
 
   // ---------------------------------------------------------------- ticket
+  /** The window's sheet: the three tiers, each price shown on its own « Payer … »; one ticket for the evening. */
   private confirmTicket(place: string) {
     const { ctx } = this;
-    ctx.menu('Billet · gala de làmb', `Tribune populaire, ce soir : ${TICKET_PRICE.toLocaleString('fr-FR')} F, payés une fois pour toute la soirée.`, [
-      { label: `Payer ${TICKET_PRICE.toLocaleString('fr-FR')} F`, icon: '🎟️', detail: ctx.state.canAfford(TICKET_PRICE) ? 'Entrée par la porte, places libres sur les gradins' : 'Pas assez d’argent', disabled: !ctx.state.canAfford(TICKET_PRICE), onPick: () => {
-        ctx.hud.closeModal(); ctx.setMode('play');
-        ctx.activities.start(P.buy({ id: 'billet', label: 'Billet · gala de làmb', price: TICKET_PRICE, line: () => ARENA.ticket(TICKET_PRICE),
-          then: () => { ctx.state.data.counters[TICKET_COUNTER] = this.day(); } }), { place });
-      } },
+    ctx.menu('Billet · gala de làmb', ticketSheet(), [
+      ...TRIBUNES.map(t => {
+        const k = TICKETS[t], ok = ctx.state.canAfford(k.price);
+        return { label: `Payer ${k.price.toLocaleString('fr-FR')} F · ${k.label}`, icon: t === 'honneur' ? '⭐' : '🎟️', detail: ok ? `${k.detail} (${k.where})` : 'Pas assez d’argent', disabled: !ok, onPick: () => {
+          ctx.hud.closeModal(); ctx.setMode('play');
+          ctx.activities.start(P.buy({ id: 'billet', label: ticketLabel(t), price: k.price, line: () => ARENA.ticket(k.price),
+            then: () => { ctx.state.data.counters[TICKET_COUNTER] = this.day(); ctx.state.data.counters[TIER_COUNTER] = TRIBUNES.indexOf(t); } }), { place });
+        } };
+      }),
       { label: 'Annuler', icon: '↩️', onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); } },
     ]);
+  }
+  /** The controller's rule for a place of `t` (null: the player may sit there). Outside the gala's hours, nobody checks. */
+  private refusal(t: Tribune): string | null {
+    const day = this.day(), counters = this.ctx.state.data.counters;
+    if (!this.showing() && !ticketsChecked(this.ctx.hour(), counters[GALA_DONE_COUNTER] === day, eventDay(day, this.ctx.hour()))) return null;
+    return seatRefusal(ticketTier(counters, day), t);
   }
 
   // ---------------------------------------------------------------- every frame
@@ -216,7 +251,8 @@ class ArenaEvening {
         this.wasInside = false;
         return this.after(dt);
       }
-      ctx.toast(ARENA.welcome());
+      const t = ticketTier(counters, day);
+      ctx.toast(ARENA.welcome(t ? whereLine(t) : undefined));
     }
     this.wasInside = inNow || !!seat;
     this.after(dt);
@@ -579,7 +615,7 @@ class ArenaEvening {
     const seat = this.seatedHere(), counters = this.ctx.state.data.counters, day = this.day();
     return {
       street: this.street, event: eventDay(day, this.ctx.hour()), day, phase: this.phase, t: Math.round(this.t * 10) / 10, speed: this.speed,
-      ticket: hasTicket(counters, day), galaDone: counters[GALA_DONE_COUNTER] === day,
+      ticket: hasTicket(counters, day), tribune: ticketTier(counters, day), galaDone: counters[GALA_DONE_COUNTER] === day,
       seat: seat?.id ?? null, seatsTotal: this.seats.length, seatsFree: this.seats.filter(s => !s.occupant).length,
       crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering, level: Math.round(this.crowd.level() * 100) / 100, lod: this.crowd.stats() },
       prelims: { n: this.prelims.length, i: this.pi, list: this.prelims.map(p => `${prelimName(p.left)} – ${prelimName(p.right)}`), seeds: this.prelims.map(p => p.seed),
@@ -648,11 +684,15 @@ export const arenaModule: GameModule = {
       /** Pretend the city day is `d` (null: the clock's), e.g. a fight evening. */
       day: (d: number | null) => { dayOverride = d; },
       /** A free place on the tiers near (x, z) (for the checks). */
-      freeSeat: (x: number, z: number) => {
+      /** A free place on the tiers near (x, z), of a ticket tier if given (for the checks). */
+      freeSeat: (x: number, z: number, tribune?: Tribune) => {
         if (!evening) return null;
-        const free = evening.seats.filter(s => !s.occupant).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
-        return free ? { id: free.id, x: free.x, z: free.z, top: free.top, yaw: free.yaw } : null;
+        const ev = evening;
+        const free = ev.seats.filter(s => !s.occupant && (!tribune || ev.tribuneOf(s.id) === tribune)).sort((a, b) => Math.hypot(a.x - x, a.z - z) - Math.hypot(b.x - x, b.z - z))[0];
+        return free ? { id: free.id, x: free.x, z: free.z, top: free.top, yaw: free.yaw, section: free.section ?? null, tribune: ev.tribuneOf(free.id) } : null;
       },
+      /** The places of each ticket tier: how many, how many free, how many the crowd holds. */
+      tribunes: () => evening?.tribunes() ?? null,
     },
   }),
 };

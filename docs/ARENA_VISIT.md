@@ -9,15 +9,20 @@ drummers outside, event days, gate position) is another lane: `src/arena/exterio
 ## What a player can do
 
 - **Buy a ticket** at the « GUICHET · BILLETS » window, left of the gate (a place of the shared registry,
-  `pikine:arena:guichet`, open 17 h–23 h). « Acheter un billet (1 000 F) » shows the price and asks for confirmation
-  (« Payer 1 000 F » / « Annuler »). Paid once through the activity runner: one wallet line
-  « Billet · gala de làmb · Arène de Pikine », valid for the whole evening; a second purchase is refused
-  (« Tu as déjà ton billet pour ce soir »). Stored as a save counter (`arena_ticket_day`), no schema change.
+  `pikine:arena:guichet`, open 17 h–23 h). « Acheter un billet (dès 1 000 F) » opens the window's sheet with the three
+  tiers and their prices first (« Populaire 1 000 F · Tribune couverte 2 500 F · Tribune d’honneur 5 000 F »), one
+  « Payer … » per tier and « Annuler » (see *Ticket tiers*). Paid once through the activity runner: one wallet line
+  (« Billet · gala de làmb · Arène de Pikine », « Billet · gala de làmb · Tribune couverte · Arène de Pikine »…), valid
+  for the whole evening; a second purchase is refused (« Tu as déjà ton billet pour ce soir »). Stored as save
+  counters (`arena_ticket_day`, `arena_ticket_tier`), no schema change.
 - **Go through the gate.** Without a ticket the controller turns you back to the street (« Xaaral tuuti ! »); with one
-  he welcomes you (« Dalal ak jàmm ! »).
-- **Take a free place on the tiers.** Every place on the three tiers is a seat of the shared registry
-  (`kind: 'stand'`, « Place en tribune »), offered from the ring side (« S'asseoir »). Places the crowd holds are
-  taken; the player never gets one twice. The view is the spectator's own eyes on the seat (the body is hidden, as on
+  he welcomes you and says where your places are (« Dalal ak jàmm ! » · Billet Tribune couverte — ta place : sections
+  C, F et G.).
+- **Take a free place on the tiers of your ticket.** Every place on the three tiers is a seat of the shared registry
+  (`kind: 'stand'`, its `section`; « Place en tribune », « Place en tribune couverte », « Place d’honneur »), offered
+  from the ring side and the aisles (« S'asseoir »). Another tier's places show « S'asseoir » greyed with the reason
+  (« Ton billet est pour la tribune populaire (sections A, D, E et H, et le haut de la B) : cette place est en tribune
+  d’honneur. »). Places the crowd holds are taken; the player never gets one twice. The view is the spectator's own eyes on the seat (the body is hidden, as on
   a car rapide seat), a slightly narrower field of view, the gaze following the action; drag looks around (±80°).
 - **Watch the gala** (starts once seated while the doors are open):
   1. *Les tribunes se remplissent* (3 s) — the bill is announced: Babacar (Baobab) – Lamine (Teranga).
@@ -38,6 +43,30 @@ drummers outside, event days, gate position) is another lane: `src/arena/exterio
 
 Names are the game's fictional cast and écuries; no real wrestler, écurie, promoter or brand. No ritual or religious
 text in the show: drums, dances and the crowd.
+
+## Ticket tiers (Wave 5)
+
+`src/arena/tickets.ts` (pure, `tests/tickets.test.ts`) and `src/arena/ticketsDecor.ts`: three tiers on the stands that
+exist (sections A–H of `src/world/geew.ts`), a small item of the arena's economy where the player's wealth shows.
+
+| Tier | Price | Places | The crowd there |
+|---|---|---|---|
+| Populaire | 1 000 F | sections A, D, E, H (the ends, by the gate and the tunnel) and the top row of B (behind the officials' canopy) | full |
+| Tribune couverte | 2 500 F | sections C, F, G — the long sides of the ring, under a navy canvas awning hung from the roof's edge, navy cushions | 90 % |
+| Tribune d’honneur | 5 000 F | the two front rows of B, behind the officials' table, close to the ring: white cushions with backs and a gold edge, the plate « TRIBUNE D’HONNEUR » on the parapet; the fewest places | 45 %, in their best (grand boubous, long dresses), a third of them the officials' guests |
+
+- **The controller's rule**: a ticket opens its own tier's places only (`seatRefusal`), and only while the gate checks
+  tickets or a gala runs; the seat registry's `refuse` greys « S'asseoir » with the reason. A fighter of tonight
+  needs no ticket at the gate, but sits nowhere without one.
+- **The view from every tier**: the seat camera is the same everywhere (the spectator's eyes, the gaze following the
+  action). From the honneur rows the officials' canopy never hides the ring's centre (tested from every place; one
+  place loses sight of one wrestler's mark behind the canopy's trim), and the top row of B — whose view it does block
+  — is sold as Populaire.
+- **Who sits there**: the crowd lane's spectators (`src/crowd/arenaStands.ts`) take each tier's places by its share
+  (`crowdMayTake`) and dress through its new `look` option; each place's tier is a crowd group (`tribune:honneur`…).
+- **Friends** (`src/arena/together.ts`): each sits where their own ticket lets them; their place is held on the others'
+  devices from their position only. Nothing about tickets or money crosses the presence protocol (tested).
+- No brands: the plate, the canvas and the cushions are plain colours.
 
 ## The preliminaries (`src/arena/undercard.ts`)
 
@@ -174,6 +203,7 @@ wrestlers, the lines and the sound; the entourages and griots are `src/arena/peo
 | `src/arena/bout.ts` | `WatchedBout`: a `LambDuel` with `spectate: true`, driven by the autopilot. |
 | `src/arena/card.ts` | The gala card (title, phase, bill). |
 | `src/arena/people.ts` | `FightNightPeople`: every person inside the walls (officials, judges, announcer, referee, drummers, press, vendors, corner helpers, the entourages); layout, presence by moment and counts by quality are pure and tested in `tests/arenaPeople.test.ts`. |
+| `src/arena/tickets.ts`, `src/arena/ticketsDecor.ts` | Ticket tiers: prices, sections, the controller's rule, the crowd's share and dress per tier (pure, `tests/tickets.test.ts`); cushions, canvas and plate (one merged mesh). |
 | `src/arena/ceremony.ts`, `src/arena/entrance.ts`, `src/arena/bakk.ts` | The entrance as a ceremony: timings, places and lines (pure, `tests/ceremony.test.ts`), the wrestlers and cues of a gala, the player's own bàkk. |
 | `src/arena/interior.ts`, `src/world/arenaModules.ts` | The interior's structure (stands, aisles, tunnel, deck, media zone, corners) and its debug view `arenaIn()`; tested in `tests/arenaInterior.test.ts`. |
 | `src/venues/cast.ts` | The venues' Cast and roles (moments, seats, walks, cheers; `place`, `attach`, `keep`). |
