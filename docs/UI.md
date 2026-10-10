@@ -131,8 +131,13 @@ Behind and above the player, never inside a wall or inside a tree's leaves:
   three-quarter, lower. The one that frees the most room wins, with a small cost for a bigger turn. Standing, the
   camera swings there smoothly. Walking, it only tilts, because a turn would bend the walk under the player's thumb. It
   eases back behind 2 s later, or as soon as the plain view is clear again.
+- **Nothing at the lens.** The camera keeps `CAM_CLEAR` (0.9 m) of room around itself (`pullClear`). A trunk, a wall,
+  an awning or a parasol closer than that would fill the view, so the camera comes in front of it along its way.
+  Shop and stall awnings and the stalls' parasols are camera obstacles like tree tops, built as short cylinders in
+  `HubWorld.canopies`.
 - **Leaves.** Tree tops and palm fronds (`HubWorld.canopies`, from the builder's trees) block the camera like walls.
-  When they cut the way and hang high enough, the camera goes low under them rather than against the head.
+  Only when coming in front of them would leave less than 3 m behind the player (standing under the tree), the camera
+  goes low under them (0.55 m below the leaves), if they hang high enough, rather than against the head.
 - **Who wins.** A drag of the view always wins: nothing changes for 0.8 s after it. A view set on purpose (`follow.pin()`,
   the checks' `look`, `lookYaw`, `faceCamera`, `lookAtPlayer`) is kept until the player walks.
 - **Debug.** `__dakar.camInfo()` gives the free room, tight, lift and swinging; `__dakar.camInLeaves()` is never true.
