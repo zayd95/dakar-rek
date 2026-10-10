@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { seatRadius, type Moment, type StandSeatDef } from '../arena/program';
 import { SECTIONS, TUNNEL_MOUTH_R } from '../world/geew';
-import { Crowd, defaultLook, type CrowdQuality, type CrowdSlot } from './crowd';
+import { Crowd, type CrowdQuality, type CrowdSlot } from './crowd';
 import type { ReactionKind } from './reactions';
+import { standLook } from './looks';
+import { bannerPlan, companionPlan } from './standPlan';
 
 /**
  * The arena's stands on the reusable crowd (docs/CROWD.md): a drop-in for src/arena/crowd.ts StandCrowd (same
@@ -14,8 +16,15 @@ import type { ReactionKind } from './reactions';
  * Groups follow the stands' sections (src/world/geew.ts SECTIONS, A–H between the aisles, the tunnel and the gate):
  * 'sec:A' … 'sec:H', one reaction unit each; 'left' — the supporters of BILL.left in sections B and C (the +x side, where
  * the left wrestler walks to), 'right' — those of BILL.right in F and G; 'ends' — the mixed sections by the wrestlers'
- * tunnel (A, H) and the public gate (D, E); 'tier0' – 'tier2'; 'ringside' (= tier0); 'all'. Supporters wear their
- * écurie's colour more often (Baobab green, Teranga red). A wrestler's entrance ripples out from the tunnel mouth.
+ * tunnel (A, H) and the public gate (D, E); 'tier0' – 'tier2'; 'ringside' (= tier0); 'all'. A wrestler's entrance
+ * ripples out from the tunnel mouth.
+ *
+ * A làmb crowd's look (src/crowd/looks.ts, the same person on a seat every evening): wax boubous and dresses,
+ * headwraps, caps and kufis, invented football shirts; on the two sides most supporters wear their écurie's colour
+ * (Baobab green on B–C, Teranga red on F–G), one in six brought its flag, and a few at ringside hang its banner on the
+ * parapet (invented slogans in Wolof and French, src/crowd/banners.ts); the end sections are mixed. Children sit on a
+ * parent's lap here and there, and a few people stand at the barrier by the ring (src/crowd/standPlan.ts). During the
+ * bout's grabs the crowd leans in.
  */
 export type StandSide = 'left' | 'right';
 export interface ArenaStandsOptions {
@@ -79,29 +88,34 @@ export class ArenaStands {
       this.tunnel = { x: cx, z: cz + TUNNEL_MOUTH_R };
     }
     const col = o.colours ?? { left: GREENS[0], right: REDS[0] };
-    const slots: CrowdSlot[] = seats.map(s => {
-      const side = sideOf(s.a);
-      const sec = sectionOf(s.a);
-      return { id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, seated: true, tags: [side, ...(sec ? [`sec:${sec}`] : []), `tier${s.tier}`, ...(s.tier === 0 ? ['ringside'] : [])] };
-    });
+    const tags = (a: number, tier: number) => { const sec = sectionOf(a); return [sideOf(a), ...(sec ? [`sec:${sec}`] : []), `tier${tier}`, ...(tier === 0 ? ['ringside'] : [])]; };
+    const centre = this.tunnel ? { x: this.tunnel.x, z: this.tunnel.z - TUNNEL_MOUTH_R } : { x: 0, z: 0 };
+    // banners at ringside in the sides' sections, children on laps, people at the rail (pure plans, by seat id)
+    const holders = bannerPlan(seats, seatRadius(0));
+    const slots: CrowdSlot[] = seats.map(s => ({ id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, seated: true, tags: tags(s.a, s.tier), banner: holders.get(s.id) }));
+    const children = new Set<string>();
+    if (s0) for (const c of companionPlan(seats, centre.x, centre.z, holders)) {
+      const a = Math.atan2(c.x - centre.x, c.z - centre.z);
+      if (c.child) children.add(c.id);
+      slots.push({ id: c.id, x: c.x, y: c.y, z: c.z, yaw: c.yaw, seated: true, with: c.with, lap: c.kind === 'lap', upright: c.kind === 'rail',
+        tags: c.kind === 'rail' ? [...tags(a, 0), 'rail'] : (slots.find(x => x.id === c.with)?.tags ?? tags(a, 1)) });
+    }
     this.crowd = new Crowd(slots, {
       quality: o.quality ?? N_QUALITY(nearCount), near: Math.min(nearCount, STAND_NEAR[o.quality ?? N_QUALITY(nearCount)]), seed: o.seed ?? 23, name: 'arena-stands', nearRadius: 9, nearNeedsFocus: true,
-      look: (slot, r) => {
-        const side = slot.tags?.[0];
-        const look = defaultLook(r);
-        if ((side === 'left' || side === 'right') && look.style !== 'dress' && r() < 0.45) {
-          const c = side === 'left' ? (r() < 0.6 ? col.left : GREENS[1 + Math.floor(r() * 2)]) : (r() < 0.6 ? col.right : REDS[1 + Math.floor(r() * 2)]);
-          look.shirt = c; if (look.style === 'boubou') look.legs = c;
-        }
+      look: slot => {
+        const side = slot.tags?.[0] === 'left' || slot.tags?.[0] === 'right' ? slot.tags[0] : 'ends';
+        const look = standLook(slot.id, side, { child: children.has(slot.id) });
+        if (slot.banner !== undefined) look.height = 1;                       // the banner hangs exactly over the parapet
         return look;
       },
     });
     this.crowd.group.name = 'arena_crowd';
-    // one supporter in eight brought the écurie's flag: it goes up with the arms
+    // one supporter in six brought the écurie's flag: it goes up with the arms
     let k = 0;
     for (const sl of slots) {
       const side = sl.tags?.[0];
-      if ((side === 'left' || side === 'right') && ((k++ * 2654435761) >>> 0) % 8 === 0) this.crowd.giveFlag(sl.id, side === 'left' ? col.left : col.right);
+      if (sl.with || (side !== 'left' && side !== 'right')) continue;
+      if (((k++ * 2654435761) >>> 0) % 6 === 0) this.crowd.giveFlag(sl.id, side === 'left' ? col.left : col.right);
     }
   }
 
@@ -127,6 +141,8 @@ export class ArenaStands {
   }
   /** A moment of the gala: the right groups react the right way (momentPlan). */
   moment(m: Moment, o: { side?: StandSide | null; winner?: StandSide | null } = {}): number {
+    // the grabs make the bout tense: people lean in on their knees until the fall, the decision or the result
+    this.crowd.setTension(m === 'clinch' ? 0.3 : 0);
     let n = 0;
     const origin = m === 'entrance' && this.tunnel ? this.tunnel : undefined;
     for (const [g, kind, share, seconds] of momentPlan(m, o)) n += this.crowd.react(g, kind, { share, seconds, origin, speed: 22 });
