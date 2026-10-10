@@ -83,7 +83,7 @@ export class Places implements TargetSource {
   }
 
   private affordance(p: PlaceSpec, s: ActivitySpec): Affordance {
-    const { cost, gain } = totals(s.price, s.steps);
+    const { cost, gain } = totals(s.price, s.steps, (m, c) => this.runner.payPreview(m, c));
     const closed = isOpen(p.hours, this.hour()) ? null : `Fermé · ouvre à ${p.hours![0]} h`;
     return { id: s.id, verb: s.primitive, label: s.label, icon: s.icon, detail: s.detail, cost: cost || undefined, gain: gain || undefined,
       disabled: closed ?? this.runner.blocked(s), run: () => { this.runner.start(s, { place: p.name }); } };

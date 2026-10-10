@@ -6,7 +6,8 @@ import type { Clip } from '../actors/humanoid';
  * Builders and venues register seats; the player (and later NPCs) occupy them. A seat is a target with « S'asseoir »
  * while it is free and the player is near it.
  */
-export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'vehicle' | 'prayer' | 'stand';
+/** 'floor': a floor cushion (attaya circles); with 'mat' and 'bed' these seats usually carry a floor pose in `clip`. 'stand': a place on the arena's tiers. */
+export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'floor' | 'vehicle' | 'prayer' | 'stand';
 
 export interface Seat {
   id: string;
@@ -28,8 +29,9 @@ export interface Seat {
    */
   locked?: boolean;
   /**
-   * Pose held by whoever sits here (player or NPC); default 'Sit'. Floor places use 'Kneel' (a prayer row, a mat):
-   * their `top` is then the floor height + SIT_HIPS, so the sitter's origin lands on the floor (see floorSeatTop).
+   * Pose held by whoever sits here (player or NPC); default 'Sit'. Floor places use 'Kneel' (a prayer row), 'SitFloor'
+   * (cross-legged on a mat, rug or cushion) or 'Lie' (on a bed: the mattress is the floor): their `top` is then the
+   * surface height + SIT_HIPS, so the sitter's origin lands on the surface (see floorSeatTop).
    */
   clip?: Clip;
   /**
@@ -70,6 +72,12 @@ export class Seats implements TargetSource {
     for (const s of this.bySpace.get(space) ?? []) this.byId.delete(s.id);
     this.bySpace.delete(space);
   }
+  /** Forget one seat (a piece of furniture moved or stored). */
+  remove(id: string) {
+    const s = this.byId.get(id); if (!s) return;
+    this.byId.delete(id);
+    const list = this.bySpace.get(s.space); if (list) this.bySpace.set(s.space, list.filter(x => x.id !== id));
+  }
   get(id: string) { return this.byId.get(id) ?? null; }
   inSpace(space: string): readonly Seat[] { return this.bySpace.get(space) ?? []; }
   get size() { return this.byId.size; }
@@ -97,13 +105,13 @@ export class Seats implements TargetSource {
       if (s.occupant || s.kind === 'vehicle' || Math.abs(s.x - x) > reach || Math.abs(s.z - z) > reach) continue;
       out.push({
         id: 'seat:' + s.id, name: SEAT_NAME[s.kind], kind: 'seat', space, x: s.x, z: s.z, y: s.top + 0.5, radius: reach, bias: 1,
-        affordances: () => [{ id: 'sit', verb: s.kind === 'bed' ? 'sleep' : 'sit', label: s.kind === 'bed' ? 'S’allonger' : 'S’asseoir', icon: s.kind === 'bed' ? '🛏️' : '🪑', run: () => this.onSit(s) }],
+        affordances: () => [{ id: 'sit', verb: s.kind === 'bed' ? 'sleep' : 'sit', label: s.kind === 'bed' ? 'S’allonger' : 'S’asseoir', icon: s.kind === 'bed' ? '🛏️' : s.kind === 'mat' || s.kind === 'floor' ? '🧘' : '🪑', run: () => this.onSit(s) }],
       });
     }
   }
 }
 
-const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', vehicle: 'Siège', prayer: 'Rang de prière', stand: 'Place en tribune' };
+const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', floor: 'Coussin', vehicle: 'Siège', prayer: 'Rang de prière', stand: 'Place en tribune' };
 
 /**
  * Seats along a bench of length `len` centred on (x, z), facing `yaw` (the bench back is behind the sitters).

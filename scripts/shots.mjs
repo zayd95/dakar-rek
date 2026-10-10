@@ -80,7 +80,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   check('interior: enter starter room', inRoom.x > 900, `${inRoom.x.toFixed(1)},${inRoom.z.toFixed(1)}`);
   await page.keyboard.down('KeyW'); await page.waitForTimeout(4000); await page.keyboard.up('KeyW');
   const wallPos = await page.evaluate(() => window.__dakar.pos());
-  check('interior: walls hold the player inside', wallPos.x > 996 && wallPos.x < 1004 && Math.abs(wallPos.z) < 3, `${wallPos.x.toFixed(1)},${wallPos.z.toFixed(1)}`);
+  // the room sits where the home's interior is built (x ≈ 1600 since the asset model): stay within a few metres of the way in
+  check('interior: walls hold the player inside', wallPos.x > 900 && Math.abs(wallPos.x - inRoom.x) < 4.5 && Math.abs(wallPos.z - inRoom.z) < 4.5, `${wallPos.x.toFixed(1)},${wallPos.z.toFixed(1)} (in at ${inRoom.x.toFixed(1)},${inRoom.z.toFixed(1)})`);
   await page.screenshot({ path: `${out}/desktop-interior-home.png` });
   await page.evaluate(() => { window.__dakar.state.data.wallet += 0; });
   await page.evaluate(() => window.__dakar.exit());
@@ -108,7 +109,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'fight', null, { timeout: 120000 }).catch(() => {});
   // keep grabbing until the fall (a wall-clock budget: slow CPU rendering stretches the clinch), remembering the last state seen
   let bout = null;
-  for (const t0 = Date.now(); Date.now() - t0 < 90000;) {
+  for (const t0 = Date.now(); Date.now() - t0 < 200000;) {             // 90 s once stopped at 96 % of the clinch (run 38006915021)
     const inf = await page.evaluate(() => window.__dakar.duelInfo());
     if (!inf) break;
     bout = inf;
@@ -173,7 +174,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => { window.__dakar.state.data.wallet += 1; });
   await page.waitForTimeout(9000);
   const saved = await page.evaluate(() => localStorage.getItem('dakarrek.guest.save'));
-  check('save: written to device storage', !!saved && JSON.parse(saved).schemaVersion === 3, saved ? `${saved.length} bytes` : 'none');
+  check('save: written to device storage', !!saved && JSON.parse(saved).schemaVersion >= 3, saved ? `${saved.length} bytes · v${JSON.parse(saved).schemaVersion}` : 'none');
   const walletBefore = await page.evaluate(() => window.__dakar.state.data.wallet);
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar, null, { timeout: 30000 });

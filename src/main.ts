@@ -51,6 +51,8 @@ import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
 import { GesturePlayer } from './ui/gesture';
+import { Stride } from './game/stride';
+import { StrideUi } from './ui/stride';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -154,7 +156,7 @@ const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: stor
   suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
 presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); };
 // Lot B economy (src/economy/*): Tiak Tiak deliveries, wallet history, starter-room furniture, phone hooks. Device-local.
-const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), refreshHome: () => refreshHomeInteriors(), walkTo: id => setDestination(id) });
+const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
 function presenceSpace() { return lambScene ? 'scene' : modulePresence() ?? moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
@@ -224,9 +226,10 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;
   for (const it of world.interactables) {
-    const kind = it.id.includes(':home:') ? 'home' : it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
+    // homes (the starter room included) are built by the ownership module through ctx.addInterior (src/economy/estate.ts)
+    const kind = it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
     if (!kind) continue;
-    const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id, kind === 'home' ? state.data.furniture : []); n++;
+    const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
   }
   registerSeats();
@@ -284,15 +287,20 @@ seats.onSit = s => sitOn(s);
 const inventory = new Inventory(state);
 /** Gestures of the trades: the hands-on part of a shift (serve, pass the tool, tighten, pull). */
 const gestures = new GesturePlayer(document.getElementById('ui')!);
+/** On foot, always free: walk, brisk walk, run while stamina lasts (fitness = « forme »). */
+const stride = new Stride(state);
+const strideUi = new StrideUi(document.getElementById('ui')!, stride);
 const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
   sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
-  clip: c => { if (playerBody) playerBody.hold = c ?? (seated ? seatClip(seated) : null); },
+  clip: c => { if (playerBody) playerBody.hold = seated && (c === 'Sit' || !c) ? seatClip(seated) : c ?? null; },   // a step's Sit means « the seat's own pose » (lying on a bed…)
   busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
   progress: (on, pct = 0, label = '') => hud.progress(on, pct, label),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   rel: (npc, d) => rel.change(PLAYER, npc, d), flag: f => { if (!state.data.flags.includes(f)) state.data.flags.push(f); },
   item: (id, d) => inventory.add(id, d), hasItem: (id, n) => inventory.has(id, n),
+  // polyvalence: the category of each activity is practised, and work pay is scaled by the variety (src/economy)
+  category: c => economy.practiseCategory(c), pay: (m, c) => economy.scalePay(m, c), payPreview: (m, c) => economy.previewPay(m, c),
   gesture: (g, label, done) => gestures.play(g, label, done),
 });
 const places = new Places(activities, () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat);
@@ -318,11 +326,19 @@ const ctx: GameCtx = {
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   addInterior(door, int) {
     if (!world) return;
-    world.group.add(int.group); int.group.visible = false; interiors.set(door.id, int);
+    const old = interiors.get(door.id);
+    if (old) {                                                        // a rebuilt room (upgrade…) replaces the one behind the door
+      if (seated && old.seats.some(s => s.id === seated!.id)) standUp(true);
+      for (const s of old.seats) seats.remove(s.id);
+      world.group.remove(old.group); disposeInterior(old);
+      if (inside?.int === old) inside.int = int;
+    }
+    world.group.add(int.group); int.group.visible = inside?.int === int; interiors.set(door.id, int);
     seats.addAll(int.seats.map(s => ({ ...s, space: spaceOf(door) })));
   },
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
+  walkTo: id => setDestination(id),
 };
 ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
@@ -392,7 +408,7 @@ function openActions(it: Interactable) {
   const visible = it.actions.filter(a => !a.visible || a.visible(state));
   const items = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(a.gain) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
+    return { label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
   });
   let subtitle = it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {
@@ -433,6 +449,7 @@ function runSpecial(a: Action) {
     case 'exit': exitInterior(); break;
     case 'jobs': economy.openJobs(nearest ?? undefined); break;
     case 'shop': economy.openShop(); break;
+    case 'business': economy.openBusiness(); break;
   }
 }
 
@@ -459,20 +476,6 @@ function enterInterior(door: Interactable) {
     pos.set(int.spawn.x, 0.1, int.spawn.z); facing = int.spawn.yaw; speed = 0; follow.snapBehind(facing);
     hud.fade(false); mode = 'play'; input.enabled = true;
   }, 350);
-}
-/** Rebuild the starter room after a furniture purchase; the player stays where they stand. */
-function refreshHomeInteriors() {
-  if (!world) return;
-  for (const [doorId, int] of interiors) {
-    if (int.kind !== 'home') continue;
-    const fresh = buildInterior('home', (int.bounds.x0 + int.bounds.x1) / 2, (int.bounds.z0 + int.bounds.z1) / 2, int.name, world.id, state.data.furniture);
-    fresh.group.visible = int.group.visible;
-    world.group.remove(int.group); disposeInterior(int); world.group.add(fresh.group); interiors.set(doorId, fresh);
-    if (inside?.int === int) inside.int = fresh;
-  }
-  if (seated?.space === 'home') standUp(true);
-  seats.clear('home');
-  for (const [doorId, int] of interiors) if (int.kind === 'home') seats.addAll(int.seats.map(s => ({ ...s, space: doorId.includes(':home:') ? 'home' : doorId })));
 }
 function exitInterior() {
   if (!inside) return;
@@ -632,15 +635,16 @@ function runAction(a: Action, npc?: string, it?: Interactable) {
     if (p < 1) { requestAnimationFrame(tick); return; }
     hud.progress(false);
     const entry = where && !where.startsWith(a.label) ? `${a.label} · ${where}` : a.label;   // wallet history line
+    const gain = economy.work(a, it);                       // records the activity (polyvalence) and scales the pay
     if (a.cost) state.addMoney(-a.cost, entry);
-    if (a.gain) state.addMoney(a.gain, entry);
+    if (gain) state.addMoney(gain, entry);
     if (a.needs) state.adjust(a.needs);
     if (a.counter) state.count(a.counter);
     if (npc) rel.change(PLAYER, npc, 1);
     state.count('actions');
     npcLife.afterAction(a, it ?? null);
     const bits = [a.label + ' ✓'];
-    if (a.gain) bits.push('+' + fcfa(a.gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
+    if (gain) bits.push('+' + fcfa(gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
     hud.toast(bits.join('  '));
     mode = 'play'; input.enabled = true; saveNow();
   };
@@ -775,6 +779,7 @@ function frame(now: number) {
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
   if (input.takeAction() && ((mode === 'play' && interactions.focus) || activities.running)) hud.onAction();
   activities.update(dt);
+  { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
   for (const m of MODULES) m.update?.(ctx, dt);
 
   const drag = input.takeDrag();
@@ -796,14 +801,16 @@ function frame(now: number) {
     const fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
     const dx = fx * m.y + rx * m.x, dz = fz * m.y + rz * m.x;
     const mag = Math.min(1, Math.hypot(m.x, m.y));
-    const target = 5.6 * mag;
-    speed += (target - speed) * Math.min(1, dt * 12);
+    const wantRun = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight') || strideUi.runToggle;
+    const target = stride.target(mag, wantRun, dt);
+    speed += (target - speed) * Math.min(1, dt * (target > speed ? 6 : 12));
     if (mag > 0.05) {
       const want = Math.atan2(dx, dz);
       facing += Math.atan2(Math.sin(want - facing), Math.cos(want - facing)) * Math.min(1, dt * 14);
       let nx = pos.x + (dx / (Math.hypot(dx, dz) || 1)) * speed * dt, nz = pos.z + (dz / (Math.hypot(dx, dz) || 1)) * speed * dt;
       [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
       const b = inside ? inside.int.bounds : world.bounds; nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1);
+      stride.moved(Math.hypot(nx - pos.x, nz - pos.z));
       pos.x = nx; pos.z = nz;
     } else speed *= 0.8;
     { const gy = 0.1 + (inside ? 0 : world.heightAt(pos.x, pos.z)); pos.y += (gy - pos.y) * Math.min(1, dt * 14); } // climb stairs smoothly
@@ -886,6 +893,8 @@ if (DEBUG) {
     clip: () => playerBody?.clipName ?? null,
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores } : null; },
     gesture: () => gestures.info(),
+    stride: () => ({ stamina: Math.round(stride.stamina), max: stride.maxStamina(), running: stride.running, winded: stride.winded, forme: stride.forme, speed, run: stride.runSpeed(), why: stride.whyNot(), toggle: strideUi.runToggle }),
+    strideToggle: (on: boolean) => { strideUi.runToggle = on; },
     /** Checks that test something else than the gesture itself finish it at once with this score. */
     gestureFinish: (score = 1) => gestures.finishNow(score),
     placeList: () => places.all().map(p => ({ id: p.id, type: p.type, name: p.name, space: p.space, anchors: p.anchors.map(a => a.id) })),

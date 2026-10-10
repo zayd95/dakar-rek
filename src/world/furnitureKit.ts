@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { KitBuilder, paintAtlas, type Paint, type Rect } from './kitGeometry';
 import { FW, FH, FUV, FPLAIN, drawFurnitureAtlas } from './furnitureAtlas';
-import type { Seat, SeatKind } from '../interact/seats';
+import { floorSeatTop, type Seat, type SeatKind } from '../interact/seats';
+import type { Clip } from '../actors/humanoid';
 import type { Primitive } from '../activity/types';
 
 /**
@@ -26,14 +27,22 @@ export const FURNITURE_TYPES: readonly FurnitureType[] = ['bed', 'sofa', 'armcha
 export type FurnitureId = `${FurnitureType}:${Tier}`;
 export const FURNITURE_IDS: readonly FurnitureId[] = FURNITURE_TYPES.flatMap(t => TIERS.map(r => `${t}:${r}` as FurnitureId));
 
-export interface FurnitureSeat { id: string; x: number; z: number; top: number; yaw: number; kind: SeatKind }
+/**
+ * A seat of a piece: `top` is the real height of the surface (seat, mattress, mat or cushion); `clip` the pose held
+ * there (default Sit; Lie on beds, SitFloor on mats, rugs and floor cushions). furnitureSeats() turns it into an
+ * interaction seat following src/interact/seats.ts (floor poses: top = surface + SIT_HIPS, origin on the surface).
+ */
+export interface FurnitureSeat { id: string; x: number; z: number; top: number; yaw: number; kind: SeatKind; clip?: Extract<Clip, 'Sit' | 'Lie' | 'SitFloor' | 'Kneel'> }
+/** Poses whose origin stands on the surface instead of 0.48 m under it. */
+const FLOOR_POSES = new Set<string>(['Lie', 'SitFloor', 'Kneel']);
 export interface FurnitureUse {
   /** Where the person is (stands, sits or lies), local, and which way they face (0 = +z). */
   x: number; z: number; yaw: number;
   verb: Primitive;
   /** French label for the action button. */
   label: string;
-  clip: 'Idle' | 'Sit' | 'Talk';
+  /** Body pose (Humanoid.hold): a seat's own clip (Lie on beds, SitFloor on mats and cushions), else Idle / Sit. */
+  clip: Extract<Clip, 'Idle' | 'Sit' | 'Talk' | 'Lie' | 'SitFloor' | 'Kneel'>;
   /** Seat taken while using it, when there is one. */
   seat?: string;
 }
@@ -96,9 +105,9 @@ const W = 0xffffff;
 interface Part { footprint: FurnitureSpec['footprint']; placement: FurnitureSpec['placement']; seats?: FurnitureSeat[]; use: FurnitureUse; walkable?: boolean }
 type Maker = (b: KitBuilder, g: KitBuilder) => Part;
 const legs4 = (b: KitBuilder, w: number, d: number, h: number, t: number, col: Paint, y0 = 0, z = 0) => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(t, h, t, sx * (w / 2 - t / 2), y0, z + sz * (d / 2 - t / 2), col); };
-const seatOf = (id: string, x: number, z: number, top: number, kind: SeatKind, yaw = 0): FurnitureSeat => ({ id, x, z, top, yaw, kind });
+const seatOf = (id: string, x: number, z: number, top: number, kind: SeatKind, yaw = 0, clip?: FurnitureSeat['clip']): FurnitureSeat => ({ id, x, z, top, yaw, kind, ...(clip ? { clip } : {}) });
 const standUse = (d: number, verb: Primitive, label: string, dist = 0.55): FurnitureUse => ({ x: 0, z: d / 2 + dist, yaw: Math.PI, verb, label, clip: 'Idle' });
-const sitUse = (s: FurnitureSeat, verb: Primitive, label: string): FurnitureUse => ({ x: s.x, z: s.z, yaw: s.yaw, verb, label, clip: 'Sit', seat: s.id });
+const sitUse = (s: FurnitureSeat, verb: Primitive, label: string): FurnitureUse => ({ x: s.x, z: s.z, yaw: s.yaw, verb, label, clip: s.clip ?? 'Sit', seat: s.id });
 /** Top face of a box painted with an atlas rect (prints, rugs, mats). */
 const topRect = (r: Rect) => ({ py: { rect: r } });
 
@@ -144,6 +153,14 @@ function couch(b: KitBuilder, tier: Tier, n: number): { w: number; d: number; h:
   for (let k = 0; k < n; k++) { const x = (k - (n - 1) / 2) * 0.7; b.slab(0.66, 0.1, d - 0.28, x, 0.43, 0.1, dimC(v, 1.12), { py: { rect: FUV.velvet } }); b.at(x, 0.5, -d / 2 + 0.25, 0, () => b.box(0.58, 0.4, 0.14, 0, 0, 0, C.cream, { pz: { rect: FUV.wax2 } }), -0.2); }
   return { w: w + 0.06, d: d + 0.05, h: 1.22, top };
 }
+/**
+ * Three floor cushions around an attaya set centred at z0 (front, left, right), each a cross-legged floor seat
+ * facing the set: the attaya circle. `cushion(x, z)` draws one; returns the seats (the front one makes the tea).
+ */
+function attayaCircle(z0: number, top: number, cushion: (x: number, z: number) => void): FurnitureSeat[] {
+  const spots: [string, number, number, number][] = [['front', 0, z0 + 0.52, Math.PI], ['left', -0.58, z0, Math.PI / 2], ['right', 0.58, z0, -Math.PI / 2]];
+  return spots.map(([id, x, z, yaw]) => { cushion(x, z); return seatOf(id, x, z, top, 'floor', yaw, 'SitFloor'); });
+}
 const perTier = (f: (t: Tier) => Maker): Record<Tier, Maker> => ({ basic: f('basic'), better: f('better'), premium: f('premium') });
 const dimC = (c: number, k: number) => new THREE.Color(c).multiplyScalar(k).getHex();
 
@@ -155,8 +172,8 @@ const MAKERS: Record<FurnitureType, Record<Tier, Maker>> = {
       b.slab(0.88, 0.1, 1.84, 0, 0.015, 0.03, C.foam, topRect(FUV.wax0));
       b.slab(0.5, 0.08, 0.3, 0, 0.115, -0.72, C.white);
       b.slab(0.86, 0.05, 0.4, 0, 0.115, 0.6, 0xd9482b, topRect(FUV.wax1));
-      const s = seatOf('bed', 0, 0.55, 0.13, 'mat');
-      return { footprint: { w: 1.0, d: 1.95, h: 0.2 }, placement: 'free', seats: [s], use: { x: 0, z: 0.1, yaw: 0, verb: 'sleep', label: 'Dormir', clip: 'Sit' } };
+      const s = seatOf('bed', 0, 0.02, 0.115, 'bed', 0, 'Lie');
+      return { footprint: { w: 1.0, d: 1.95, h: 0.2 }, placement: 'free', seats: [s], use: sitUse(s, 'sleep', 'Dormir') };
     },
     better: b => {
       legs4(b, 1.45, 2.05, 0.16, 0.07, C.varnish);
@@ -165,8 +182,8 @@ const MAKERS: Record<FurnitureType, Record<Tier, Maker>> = {
       b.slab(1.38, 0.2, 1.95, 0, 0.38, 0.02, C.foam, topRect(FUV.wax1));
       b.slab(0.6, 0.12, 0.34, -0.33, 0.58, -0.78, C.white); b.slab(0.6, 0.12, 0.34, 0.33, 0.58, -0.78, C.cream);
       b.slab(1.4, 0.06, 0.55, 0, 0.58, 0.62, 0x2f6fb3, topRect(FUV.wax0));
-      const s = seatOf('bed', 0.0, 0.72, 0.58, 'bed');
-      return { footprint: { w: 1.45, d: 2.05, h: 1.0 }, placement: 'wall', seats: [s], use: { x: 0, z: 0.1, yaw: 0, verb: 'sleep', label: 'Dormir', clip: 'Sit' } };
+      const s = seatOf('bed', 0, 0.02, 0.58, 'bed', 0, 'Lie');
+      return { footprint: { w: 1.45, d: 2.05, h: 1.0 }, placement: 'wall', seats: [s], use: sitUse(s, 'sleep', 'Dormir') };
     },
     premium: b => {
       const w = 1.85, d = 2.15;
@@ -180,8 +197,8 @@ const MAKERS: Record<FurnitureType, Record<Tier, Maker>> = {
       b.slab(w - 0.08, 0.3, d - 0.2, 0, 0.38, -0.04, C.cream);
       b.slab(w - 0.02, 0.05, d - 0.5, 0, 0.68, 0.16, 0x7a1424, { py: { rect: FUV.wax2 }, px: { rect: FUV.wax2 }, nx: { rect: FUV.wax2 }, pz: { rect: FUV.wax2 } });
       for (const sx of [-1, 1]) { b.slab(0.7, 0.16, 0.38, sx * 0.42, 0.68, -0.85, C.white); b.at(sx * 0.4, 0.76, -0.6, 0, () => b.box(0.46, 0.4, 0.12, 0, 0, 0, 0x9a2234, { pz: { rect: FUV.velvet } }), -0.35); }
-      const s = seatOf('bed', 0, 0.78, 0.7, 'bed');
-      return { footprint: { w: w + 0.16, d: d + 0.05, h: 1.9 }, placement: 'wall', seats: [s], use: { x: 0, z: 0.1, yaw: 0, verb: 'sleep', label: 'Dormir', clip: 'Sit' } };
+      const s = seatOf('bed', 0, 0.02, 0.72, 'bed', 0, 'Lie');
+      return { footprint: { w: w + 0.16, d: d + 0.05, h: 1.9 }, placement: 'wall', seats: [s], use: sitUse(s, 'sleep', 'Dormir') };
     },
   },
   // -------------------------------------------------------------------------------------------------- sofa / armchair
@@ -469,12 +486,12 @@ const MAKERS: Record<FurnitureType, Record<Tier, Maker>> = {
   },
   // -------------------------------------------------------------------------------------------------- rugs (walkable)
   rug: {
-    basic: b => { b.slab(1.6, 0.008, 1.1, 0, 0, 0, W, topRect(FUV.plasticMat)); const s = [seatOf('m0', -0.4, 0, 0.01, 'mat'), seatOf('m1', 0.4, 0, 0.01, 'mat')]; return { footprint: { w: 1.6, d: 1.1, h: 0.01 }, placement: 'floor', walkable: true, seats: s, use: sitUse(s[0], 'sit', 'S’asseoir sur la natte') }; },
-    better: b => { b.slab(2.0, 0.012, 1.4, 0, 0, 0, W, topRect(FUV.rug1)); const s = [seatOf('m0', -0.5, 0, 0.012, 'mat'), seatOf('m1', 0.5, 0, 0.012, 'mat')]; return { footprint: { w: 2.0, d: 1.4, h: 0.012 }, placement: 'floor', walkable: true, seats: s, use: sitUse(s[0], 'sit', 'S’asseoir sur le tapis') }; },
+    basic: b => { b.slab(1.6, 0.008, 1.1, 0, 0, 0, W, topRect(FUV.plasticMat)); const s = [seatOf('m0', -0.4, 0, 0.01, 'mat', 0, 'SitFloor'), seatOf('m1', 0.4, 0, 0.01, 'mat', 0, 'SitFloor')]; return { footprint: { w: 1.6, d: 1.1, h: 0.01 }, placement: 'floor', walkable: true, seats: s, use: sitUse(s[0], 'sit', 'S’asseoir sur la natte') }; },
+    better: b => { b.slab(2.0, 0.012, 1.4, 0, 0, 0, W, topRect(FUV.rug1)); const s = [seatOf('m0', -0.5, 0, 0.012, 'mat', 0, 'SitFloor'), seatOf('m1', 0.5, 0, 0.012, 'mat', 0, 'SitFloor')]; return { footprint: { w: 2.0, d: 1.4, h: 0.012 }, placement: 'floor', walkable: true, seats: s, use: sitUse(s[0], 'sit', 'S’asseoir sur le tapis') }; },
     premium: b => {
       b.slab(2.6, 0.025, 1.8, 0, 0, 0, 0x7a1424, topRect(FUV.rug2));
       for (const sx of [-1, 1]) for (let k = 0; k < 14; k++) b.box(0.05, 0.006, 0.012, sx * 1.325, 0, -0.84 + k * 0.13, 0xf0e1c0);
-      const s = [seatOf('m0', -0.6, 0, 0.025, 'mat'), seatOf('m1', 0.6, 0, 0.025, 'mat')];
+      const s = [seatOf('m0', -0.6, 0, 0.025, 'mat', 0, 'SitFloor'), seatOf('m1', 0.6, 0, 0.025, 'mat', 0, 'SitFloor')];
       return { footprint: { w: 2.7, d: 1.8, h: 0.025 }, placement: 'floor', walkable: true, seats: s, use: sitUse(s[0], 'sit', 'S’asseoir sur le tapis') };
     },
   },
@@ -556,9 +573,8 @@ const MAKERS: Record<FurnitureType, Record<Tier, Maker>> = {
       b.cyl('y', 0.12, 0.1, 0.16, 0, 0.08, z0, 0x3a3a3a, 10); b.cyl('y', 0.13, 0.12, 0.03, 0, 0.175, z0, 0x555555, 10); b.cyl('y', 0.1, 0.1, 0.005, 0, 0.19, z0, 0xff6a20, 8);
       b.cyl('y', 0.09, 0.1, 0.13, 0, 0.255, z0, C.enamel, 10); b.cyl('y', 0.04, 0.06, 0.04, 0, 0.34, z0, C.enamel, 8); b.beam([0.08, 0.27, z0], [0.17, 0.33, z0], 0.025, 0.025, C.enamel);
       b.cyl('y', 0.15, 0.15, 0.015, 0.25, 0.008, z0 + 0.12, C.alu, 12); for (let k = 0; k < 2; k++) b.cyl('y', 0.022, 0.018, 0.07, 0.2 + k * 0.08, 0.05, z0 + 0.12, 0xe8f4ff, 6);
-      legs4(b, 0.26, 0.26, 0.36, 0.035, C.raw, 0, 0.32); b.slab(0.3, 0.03, 0.3, 0, 0.36, 0.32, C.raw);
-      const s = seatOf('stool', 0, 0.32, 0.39, 'stool', Math.PI);
-      return { footprint: { w: 0.84, d: 0.98, h: 0.4 }, placement: 'free', seats: [s], use: sitUse(s, 'use', 'Préparer l’attaya') };
+      const seats = attayaCircle(z0, 0.012, (x, z) => b.slab(0.44, 0.012, 0.44, x, 0, z, W, topRect(FUV.natte)));
+      return { footprint: { w: 1.6, d: 1.1, h: 0.4 }, placement: 'free', seats, use: sitUse(seats[0], 'use', 'Préparer l’attaya') };
     },
     better: b => {
       const z0 = -0.2;
@@ -566,10 +582,8 @@ const MAKERS: Record<FurnitureType, Record<Tier, Maker>> = {
       b.cyl('y', 0.08, 0.09, 0.12, -0.06, 0.34, z0, C.alu, 10); b.cyl('y', 0.035, 0.05, 0.04, -0.06, 0.42, z0, C.alu, 8); b.beam([0.01, 0.35, z0], [0.1, 0.41, z0], 0.022, 0.022, C.alu);
       b.cyl('y', 0.2, 0.2, 0.015, 0.22, 0.008, z0 + 0.14, C.alu, 14); for (let k = 0; k < 4; k++) b.cyl('y', 0.022, 0.018, 0.07, 0.12 + (k % 2) * 0.09, 0.05, z0 + 0.08 + Math.floor(k / 2) * 0.1, 0xe8f4ff, 6);
       b.box(0.1, 0.08, 0.08, 0.36, 0.02, z0 + 0.14, 0xf2f2ec); for (let k = 0; k < 4; k++) b.blob(0.03, 0.3 + k * 0.025, 0.04, z0 + 0.25, 0x3a9a3a);
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(0.035, 0.38, 0.035, sx * 0.13, 0, 0.32 + sz * 0.13, C.varnish);
-      b.slab(0.32, 0.035, 0.32, 0, 0.38, 0.32, C.varnish);
-      const s = seatOf('stool', 0, 0.32, 0.415, 'stool', Math.PI);
-      return { footprint: { w: 0.86, d: 1.0, h: 0.45 }, placement: 'free', seats: [s], use: sitUse(s, 'use', 'Préparer l’attaya') };
+      const seats = attayaCircle(z0, 0.07, (x, z) => b.slab(0.46, 0.07, 0.46, x, 0, z, 0x1f5aa8, topRect(FUV.wax1)));
+      return { footprint: { w: 1.6, d: 1.12, h: 0.45 }, placement: 'free', seats, use: sitUse(seats[0], 'use', 'Préparer l’attaya') };
     },
     premium: b => {
       const z0 = -0.2;
@@ -579,9 +593,8 @@ const MAKERS: Record<FurnitureType, Record<Tier, Maker>> = {
       b.cyl('y', 0.08, 0.1, 0.13, -0.12, 0.42, z0, C.chrome, 12); b.cyl('y', 0.03, 0.06, 0.06, -0.12, 0.515, z0, C.chrome, 10); b.blob(0.02, -0.12, 0.555, z0, C.gold); b.beam([-0.04, 0.43, z0], [0.06, 0.5, z0], 0.022, 0.022, C.chrome);
       for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3; b.cyl('y', 0.024, 0.02, 0.08, 0.1 + Math.cos(a) * 0.1, 0.39, z0 + Math.sin(a) * 0.1, 0xe8f4ff, 6); }
       b.cyl('y', 0.09, 0.09, 0.2, 0.42, 0.1, z0 + 0.1, C.butane, 10); b.cyl('y', 0.08, 0.08, 0.03, 0.42, 0.215, z0 + 0.1, C.chrome, 8);
-      b.cyl('y', 0.17, 0.15, 0.38, 0, 0.19, 0.34, C.dark, 12); b.cyl('y', 0.18, 0.18, 0.06, 0, 0.41, 0.34, 0x9a2234, 12, { pos: FUV.velvet, neg: true });
-      const s = seatOf('stool', 0, 0.34, 0.44, 'stool', Math.PI);
-      return { footprint: { w: 1.04, d: 1.08, h: 0.6 }, placement: 'free', seats: [s], use: sitUse(s, 'use', 'Préparer l’attaya') };
+      const seats = attayaCircle(z0, 0.1, (x, z) => { b.slab(0.5, 0.1, 0.5, x, 0, z, 0x9a2234, { py: { rect: FUV.velvet } }); for (const [dx, dz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) b.blob(0.03, x + dx, 0.08, z + dz, C.gold); });
+      return { footprint: { w: 1.72, d: 1.18, h: 0.6 }, placement: 'free', seats, use: sitUse(seats[0], 'use', 'Préparer l’attaya') };
     },
   },
   // -------------------------------------------------------------------------------------------------- prayer mats (walkable)
@@ -628,11 +641,19 @@ export function buildFurniture(id: FurnitureId): FurnitureBuild {
   return { group, footprint: spec.footprint, seats: spec.seats, spec };
 }
 
-/** Seats of a placed piece as interaction seats (src/interact/seats.ts); `top` becomes the world height. */
+/**
+ * Seats of a placed piece as interaction seats (src/interact/seats.ts): world position and facing, and `top` in the
+ * seats' convention — the surface for chairs, the surface + SIT_HIPS for floor poses (Lie, SitFloor), so that
+ * sitOriginY(seat) stands the body on the mattress, mat or cushion; `clip` carries the pose (seatClip).
+ */
 export function furnitureSeats(obj: THREE.Object3D, spec: FurnitureSpec, space: string, prefix: string): Seat[] {
   obj.updateWorldMatrix(true, false);
   const q = obj.getWorldQuaternion(new THREE.Quaternion()), f = new THREE.Vector3(0, 0, 1).applyQuaternion(q), yaw = Math.atan2(f.x, f.z);
-  return spec.seats.map(s => { const v = new THREE.Vector3(s.x, s.top, s.z).applyMatrix4(obj.matrixWorld); return { id: `${prefix}:${s.id}`, x: v.x, z: v.z, top: v.y, yaw: yaw + s.yaw, kind: s.kind, space, occupant: null }; });
+  return spec.seats.map(s => {
+    const v = new THREE.Vector3(s.x, s.top, s.z).applyMatrix4(obj.matrixWorld);
+    const floor = !!s.clip && FLOOR_POSES.has(s.clip);
+    return { id: `${prefix}:${s.id}`, x: v.x, z: v.z, top: floor ? floorSeatTop(v.y) : v.y, yaw: yaw + s.yaw, kind: s.kind, space, occupant: null, ...(s.clip ? { clip: s.clip } : {}) };
+  });
 }
 /** The use anchor of a placed piece in world coordinates (x, z, facing yaw). */
 export function furnitureUseAt(obj: THREE.Object3D, spec: FurnitureSpec) {
