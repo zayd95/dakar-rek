@@ -1,0 +1,192 @@
+[
+  {
+    "name": "desktop: the Plateau has the used-car corner with cars on display",
+    "ok": true,
+    "detail": "{\"x\":113.8,\"z\":85.7,\"delivery\":{\"x\":115.7,\"z\":92.2,\"yaw\":0},\"displays\":2}"
+  },
+  {
+    "name": "desktop: the dealer counter offers its catalogue",
+    "ok": true,
+    "detail": "{\"id\":\"car:dealer:till\",\"name\":\"Voitures d’occasion · Ndiaye Auto\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Voir les articles\",\"all\":[\"Voir les articles\"]}"
+  },
+  {
+    "name": "desktop: the catalogue shows the used car with its catalogue price",
+    "ok": true,
+    "detail": "🚗Voiture d’occasionUne berline d’occasion · 5 places · se gare où tu la laisses2 800 000 F"
+  },
+  {
+    "name": "desktop: a confirmation shows the price and the wallet before paying",
+    "ok": true,
+    "detail": "Acheter la voiture d’occasion ?Prix : 2 800 000 F · Ton argent : 3 000 000 F✅Confirmer l’achatLivrée au bord du trottoir, prête à rouler−2 800 000 F↩️Pas mainte"
+  },
+  {
+    "name": "desktop: bought once: −price, one wallet line, delivered at the kerb",
+    "ok": true,
+    "detail": "{\"w0\":3000000,\"w1\":200000,\"lines\":[{\"at\":1791594819135,\"label\":\"Achat : Voiture d’occasion\",\"amount\":-2800000}],\"rec\":{\"asset\":\"clando\",\"hub\":\"plateau\",\"x\":115.7,\"z\":92.2,\"yaw\":0}}"
+  },
+  {
+    "name": "desktop: « Biens » lists the car once",
+    "ok": true,
+    "detail": "[\"🚗Voiture d’occasionà toi2 800 000 F\"]"
+  },
+  {
+    "name": "desktop: it cannot be bought twice",
+    "ok": true,
+    "detail": "item dis"
+  },
+  {
+    "name": "desktop: the parked car is solid (walking into it stops at its side)",
+    "ok": true,
+    "detail": "{\"solid\":true,\"lateral\":\"-1.39\",\"walked\":\"0.81\"}"
+  },
+  {
+    "name": "desktop: walking up to it offers « Monter (conducteur) »",
+    "ok": true,
+    "detail": "{\"id\":\"car:parked\",\"name\":\"Ta voiture\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Monter (conducteur)\",\"all\":[\"Monter (conducteur)\"]}"
+  },
+  {
+    "name": "desktop: at the wheel: driver seat (seated), own interaction space, still in the street for the others, chase view",
+    "ok": true,
+    "detail": "{\"id\":\"clando\",\"name\":\"Voiture d’occasion\",\"price\":2800000,\"owned\":true,\"asset\":{\"uid\":\"a2\",\"spec\":\"clando\",\"how\":\"owned\",\"since\":842.3280000001862,\"paid\":2800000,\"condition\":100,\"upgrades\":[],\"leased\":false},\"record\":{\"asset\":\"clando\",\"hub\":\"plateau\",\"x\":115.7,\"z\":92.2,\"yaw\":0},\"here\":true,\"driving\":true,\"x\":115.7,\"z\":92.2,\"yaw\":0,\"speed\":0,\"bumps\":0,\"bought\":1,\"dealer\":{\"x\":113.8,\"z\":85.7,\"delivery\":{\"x\":115.7,\"z\":92.2,\"yaw\":0},\"displays\":2},\"space\":\"plateau:car:berline\",\"presence\":\"street\",\"camera\":true,\"view\":\"chase\",\"solid\":false,\"clip\":\"Sit\"}"
+  },
+  {
+    "name": "desktop: the throttle moves the car and the card shows the speed",
+    "ok": true,
+    "detail": "6.2 m, 🚗Voiture d’occasion · 19 km/h↑ accélérer · ↓ freiner · ← → tourner"
+  },
+  {
+    "name": "desktop: steering right turns the car right",
+    "ok": true,
+    "detail": "0.00 → -0.35"
+  },
+  {
+    "name": "desktop: three views (behind, at the wheel, high above)",
+    "ok": true,
+    "detail": "volant haut chase"
+  },
+  {
+    "name": "desktop: driving into a wall stops the car against it (never inside)",
+    "ok": true,
+    "detail": "{\"wall\":{\"x\":101,\"z\":75.875},\"x\":100.99999766817679,\"z\":73.39946278348216,\"bumps\":1}"
+  },
+  {
+    "name": "desktop: « Sortir de la voiture »: on the pavement side, beside it, it stays parked there",
+    "ok": true,
+    "detail": "{\"me\":{\"x\":114.11,\"y\":0.1,\"z\":94.2,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null},\"car\":{\"x\":115.7,\"z\":94.2,\"yaw\":0},\"rec\":{\"asset\":\"clando\",\"hub\":\"plateau\",\"x\":115.7,\"z\":94.2,\"yaw\":0},\"solid\":true}"
+  },
+  {
+    "name": "desktop: after a reload the car is still parked where it was left",
+    "ok": true,
+    "detail": "{\"before\":{\"x\":115.7,\"z\":94.2},\"after\":{\"x\":115.7,\"z\":94.2}}"
+  },
+  {
+    "name": "desktop: reload mid-drive: parked where it was, standing beside it, not driving",
+    "ok": true,
+    "detail": "{\"mid\":{\"x\":115.7,\"z\":95.47007813827024},\"after\":{\"x\":115.7,\"z\":95.47},\"me3\":{\"x\":114.11,\"y\":0.1,\"z\":95.47007813827024,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null}}"
+  },
+  {
+    "name": "desktop: in another hub it is not there; back in the Plateau it waits where it was",
+    "ok": true,
+    "detail": "{\"away\":false,\"back\":{\"x\":115.7,\"z\":95.47}}"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: the Plateau has the used-car corner with cars on display",
+    "ok": true,
+    "detail": "{\"x\":113.8,\"z\":85.7,\"delivery\":{\"x\":115.7,\"z\":92.2,\"yaw\":0},\"displays\":2}"
+  },
+  {
+    "name": "phone: the dealer counter offers its catalogue",
+    "ok": true,
+    "detail": "{\"id\":\"car:dealer:till\",\"name\":\"Voitures d’occasion · Ndiaye Auto\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Voir les articles\",\"all\":[\"Voir les articles\"]}"
+  },
+  {
+    "name": "phone: the catalogue shows the used car with its catalogue price",
+    "ok": true,
+    "detail": "🚗Voiture d’occasionUne berline d’occasion · 5 places · se gare où tu la laisses2 800 000 F"
+  },
+  {
+    "name": "phone: a confirmation shows the price and the wallet before paying",
+    "ok": true,
+    "detail": "Acheter la voiture d’occasion ?Prix : 2 800 000 F · Ton argent : 3 000 000 F✅Confirmer l’achatLivrée au bord du trottoir, prête à rouler−2 800 000 F↩️Pas mainte"
+  },
+  {
+    "name": "phone: bought once: −price, one wallet line, delivered at the kerb",
+    "ok": true,
+    "detail": "{\"w0\":3000000,\"w1\":200000,\"lines\":[{\"at\":1791594942266,\"label\":\"Achat : Voiture d’occasion\",\"amount\":-2800000}],\"rec\":{\"asset\":\"clando\",\"hub\":\"plateau\",\"x\":115.7,\"z\":92.2,\"yaw\":0}}"
+  },
+  {
+    "name": "phone: « Biens » lists the car once",
+    "ok": true,
+    "detail": "[\"🚗Voiture d’occasionà toi2 800 000 F\"]"
+  },
+  {
+    "name": "phone: it cannot be bought twice",
+    "ok": true,
+    "detail": "item dis"
+  },
+  {
+    "name": "phone: the parked car is solid (walking into it stops at its side)",
+    "ok": true,
+    "detail": "{\"solid\":true,\"lateral\":\"-1.39\",\"walked\":\"0.81\"}"
+  },
+  {
+    "name": "phone: walking up to it offers « Monter (conducteur) »",
+    "ok": true,
+    "detail": "{\"id\":\"car:parked\",\"name\":\"Ta voiture\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Monter (conducteur)\",\"all\":[\"Monter (conducteur)\"]}"
+  },
+  {
+    "name": "phone: at the wheel: driver seat (seated), own interaction space, still in the street for the others, chase view",
+    "ok": true,
+    "detail": "{\"id\":\"clando\",\"name\":\"Voiture d’occasion\",\"price\":2800000,\"owned\":true,\"asset\":{\"uid\":\"a2\",\"spec\":\"clando\",\"how\":\"owned\",\"since\":833.4000000000005,\"paid\":2800000,\"condition\":100,\"upgrades\":[],\"leased\":false},\"record\":{\"asset\":\"clando\",\"hub\":\"plateau\",\"x\":115.7,\"z\":92.2,\"yaw\":0},\"here\":true,\"driving\":true,\"x\":115.7,\"z\":92.2,\"yaw\":0,\"speed\":0,\"bumps\":0,\"bought\":1,\"dealer\":{\"x\":113.8,\"z\":85.7,\"delivery\":{\"x\":115.7,\"z\":92.2,\"yaw\":0},\"displays\":2},\"space\":\"plateau:car:berline\",\"presence\":\"street\",\"camera\":true,\"view\":\"chase\",\"solid\":false,\"clip\":\"Sit\"}"
+  },
+  {
+    "name": "phone: the throttle moves the car and the card shows the speed",
+    "ok": true,
+    "detail": "6.2 m, 🚗Voiture d’occasion · 19 km/h↑ accélérer · ↓ freiner · ← → tourner"
+  },
+  {
+    "name": "phone: steering right turns the car right",
+    "ok": true,
+    "detail": "0.00 → -0.33"
+  },
+  {
+    "name": "phone: three views (behind, at the wheel, high above)",
+    "ok": true,
+    "detail": "volant haut chase"
+  },
+  {
+    "name": "phone: driving into a wall stops the car against it (never inside)",
+    "ok": true,
+    "detail": "{\"wall\":{\"x\":101,\"z\":75.875},\"x\":100.99999999662208,\"z\":73.61064061084208,\"bumps\":2}"
+  },
+  {
+    "name": "phone: « Sortir de la voiture »: on the pavement side, beside it, it stays parked there",
+    "ok": true,
+    "detail": "{\"me\":{\"x\":114.11,\"y\":0.1,\"z\":94.2,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null},\"car\":{\"x\":115.7,\"z\":94.2,\"yaw\":0},\"rec\":{\"asset\":\"clando\",\"hub\":\"plateau\",\"x\":115.7,\"z\":94.2,\"yaw\":0},\"solid\":true}"
+  },
+  {
+    "name": "phone: after a reload the car is still parked where it was left",
+    "ok": true,
+    "detail": "{\"before\":{\"x\":115.7,\"z\":94.2},\"after\":{\"x\":115.7,\"z\":94.2}}"
+  },
+  {
+    "name": "phone: reload mid-drive: parked where it was, standing beside it, not driving",
+    "ok": true,
+    "detail": "{\"mid\":{\"x\":115.7,\"z\":95.47007813827024},\"after\":{\"x\":115.7,\"z\":95.47},\"me3\":{\"x\":114.11,\"y\":0.1,\"z\":95.47007813827024,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null}}"
+  },
+  {
+    "name": "phone: in another hub it is not there; back in the Plateau it waits where it was",
+    "ok": true,
+    "detail": "{\"away\":false,\"back\":{\"x\":115.7,\"z\":95.47}}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

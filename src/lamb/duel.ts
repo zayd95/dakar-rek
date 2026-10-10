@@ -43,6 +43,12 @@ export interface DuelOptions {
   level: number;
   /** Radius the wrestlers stay within (arena ring 7.6, écurie sand 5). */
   ring?: number;
+  /**
+   * Two NPC wrestlers watched from the stands (the arena gala, src/arena): same rules, but no controls, no duel HUD and
+   * no keys. The module drives the « player » side with the same buttons (`pressGrab`, `setGuard`, `pressBreak`) and
+   * moves it through `input.move()` in the duel's camera axes (`axes()`); the other side is the duel's opponent AI.
+   */
+  spectate?: boolean;
 }
 export interface DuelResult {
   mode: BoutMode; outcome: BoutOutcome; winner: Side | null; seconds: number;
@@ -100,6 +106,7 @@ export class LambDuel {
   private msgHold = 0;
   private camRight = new THREE.Vector3(-1, 0, 0);
   private camFwd = new THREE.Vector3(0, 0, 1);
+  private spectate: boolean;
   private onKey = (e: KeyboardEvent) => {
     const down = e.type === 'keydown';
     if (e.code === 'KeyG' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') { this.guardHeld = down; this.ui.querySelector('[data-k=guard]')?.classList.toggle('on', down); }
@@ -115,7 +122,7 @@ export class LambDuel {
 
   constructor(opts: DuelOptions) {
     const { origin, look, input, crowdSize } = opts;
-    this.input = input; this.mode = opts.mode; this.style = opts.style; this.level = opts.level;
+    this.input = input; this.mode = opts.mode; this.style = opts.style; this.level = opts.level; this.spectate = !!opts.spectate;
     this.factor = opts.mode === 'entrainement' ? 1 : levelFactor(opts.level);
     this.timeLeft = opts.mode === 'entrainement' ? Infinity : R.roundSeconds;
     this.ring = opts.ring ?? 7.6;
@@ -147,8 +154,9 @@ export class LambDuel {
       this.group.add(h.group); this.crowd.push(h);
     }
     if (this.mode !== 'entrainement') this.drums.start(122);
-    addEventListener('keydown', this.onKey); addEventListener('keyup', this.onKey);
     this.ui = this.buildUi();
+    if (this.spectate) return;                                 // watched from the stands: no keys, no controls
+    addEventListener('keydown', this.onKey); addEventListener('keyup', this.onKey);
     input.enabled = true; input.takeAction();
   }
 
@@ -226,7 +234,7 @@ export class LambDuel {
     d.querySelector<HTMLButtonElement>('[data-k=abandon]')!.addEventListener('click', e => { (e.currentTarget as HTMLButtonElement).blur(); this.askAbandon(true); });
     d.querySelector('[data-k=yes]')!.addEventListener('click', () => this.abandon());
     d.querySelector('[data-k=no]')!.addEventListener('click', () => this.askAbandon(false));
-    document.body.appendChild(d); document.body.classList.add('induel');
+    if (!this.spectate) { document.body.appendChild(d); document.body.classList.add('induel'); }   // spectators keep the city HUD
     return d;
   }
 
@@ -321,6 +329,8 @@ export class LambDuel {
 
   // ---------------------------------------------------------------- debug/test hooks
   pressGrab() { this.grabTaps++; }
+  /** Screen axes of the duel's camera on the ground (where `input.move()` x and y point): right and forward. */
+  axes() { return { right: { x: this.camRight.x, z: this.camRight.z }, fwd: { x: this.camFwd.x, z: this.camFwd.z } }; }
   pressBreak() { this.breakPresses++; }
   setGuard(on: boolean) { this.guardHeld = on; }
   /** World points on both wrestlers (feet, waist, head) for layout checks. */

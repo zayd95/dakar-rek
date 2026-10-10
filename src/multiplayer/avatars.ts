@@ -42,6 +42,8 @@ export class RemoteAvatars {
   bodyOf(id: string): THREE.Object3D | null { return this.avatars.get(id)?.body.group ?? null; }
   clear() { for (const a of this.avatars.values()) this.drop(a); this.avatars.clear(); }
   get size() { return this.avatars.size; }
+  /** The clip each drawn peer's body is playing (checks: a peer lying on a bed is drawn lying). */
+  poses(): Record<string, string | null> { return Object.fromEntries([...this.avatars].map(([id, a]) => [id, a.body instanceof Humanoid ? a.body.clipName : null])); }
   private make(peer: Peer): Avatar {
     const body = humanoidReady() ? new Humanoid(avatarLook(peer.look)) : new Character({ ...PLAYER_OUTFIT, top: SHIRT_COLORS[peer.look] });
     body.group.name = `player:${peer.id}`; body.group.position.set(peer.x, peer.y, peer.z);

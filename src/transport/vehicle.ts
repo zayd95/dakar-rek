@@ -3,6 +3,7 @@ import type { HubId } from '../core/types';
 import type { Seat } from '../interact/seats';
 import { Apprentice } from '../actors/apprenti';
 import { humanoidReady } from '../actors/humanoid';
+import { animateVehicle } from '../actors/vehicleKit';
 import { newMotion, pullIn, type Motion, type Path, type Pose, type Timetable } from './route';
 import { seatToWorld, toWorld, type LocalPose, type VehicleSpec, type WorldPose } from './spec';
 
@@ -49,6 +50,7 @@ export class Vehicle {
   private tmp = { x: 0, z: 0 };
   private model: THREE.Object3D;
   private shown = '';
+  private ridden = false;
 
   constructor(readonly spec: VehicleSpec, readonly id: string, private bumpy = 1, private seed = 1) {
     this.group.name = 'vehicle:' + id;
@@ -56,7 +58,7 @@ export class Vehicle {
     this.body.rotation.order = 'YXZ';
     this.model = spec.build({ seed });
     this.body.add(this.model);
-    const seat = (s: { id: string }): Seat => ({ id: `${id}:${s.id}`, x: 0, z: 0, top: 0, yaw: 0, kind: 'vehicle', space: id, occupant: null, locked: true });
+    const seat = (s: { id: string; clip?: Seat['clip'] }): Seat => ({ id: `${id}:${s.id}`, x: 0, z: 0, top: 0, yaw: 0, kind: 'vehicle', space: id, occupant: null, locked: true, ...(s.clip ? { clip: s.clip } : {}) });
     this.seats = spec.seats.map(seat);
     this.driverSeat = seat(spec.driver);
   }
@@ -74,9 +76,30 @@ export class Vehicle {
     const drawn = this.spec.seats.filter((_s, i) => this.seats[i].occupant === 'npc').map(s => s.id), key = drawn.join('.');
     if (this.spec.cabin !== 'open' || key === this.shown) return;
     this.shown = key;
-    const next = this.spec.build({ seed: this.seed, seated: drawn });
-    this.body.remove(this.model); this.body.add(next); this.model = next;
+    this.swap(this.spec.build({ seed: this.seed, seated: drawn, ridden: this.ridden }));
   }
+  /**
+   * Wheels and steering of the kit model this frame (spin with `speed` m/s; `steer` −1 left … 1 right as in drive.ts),
+   * a motorbike leaning into the turn — the kit's animateVehicle, near model only. Returns the model's lean (rad).
+   */
+  animate(speed: number, steer: number, dt: number): number {
+    animateVehicle(this.model, speed, -steer * 0.6, dt);
+    return (this.model.userData.kitAnim as { lean?: number } | undefined)?.lean ?? 0;
+  }
+
+  /** The player takes / leaves the controls: the model is rebuilt only when that changes the look (a motorbike's stand). */
+  setRidden(on: boolean) {
+    if (on === this.ridden) return;
+    this.ridden = on;
+    this.swap(this.spec.build({ seed: this.seed, ridden: on }));
+  }
+
+  /** New model in place of the old one (geometry is the kit's, shared; only an animated copy of a material is its own). */
+  private swap(next: THREE.Object3D) {
+    this.body.remove(this.model); dropAnimated(this.model);
+    this.body.add(next); this.model = next;
+  }
+
   /** Spec ids of the passenger seats NPCs hold now. */
   passengers(): string[] { return this.spec.seats.filter((_, i) => this.seats[i].occupant === 'npc').map(s => s.id); }
 
@@ -97,7 +120,7 @@ export class Vehicle {
     this.group.rotation.y = yaw;
     this.body.position.y = this.bounce;
     const roll = this.yawRate * speed * 0.011 * sway;
-    this.body.rotation.z = Math.max(-0.06, Math.min(0.06, this.spec.drive?.lean ? -roll * 3 : roll));
+    this.body.rotation.z = this.spec.drive?.lean ? 0 : Math.max(-0.06, Math.min(0.06, roll));   // a two-wheeler's lean: animate()
     this.body.rotation.x = (Math.max(-0.035, Math.min(0.035, -accel * 0.012)) + Math.sin(travelled * 3.1) * 0.004 * k) * sway;
     for (let i = 0; i < this.seats.length; i++) seatToWorld(this.pose, this.spec.seats[i], this.seats[i], this.bounce);
     seatToWorld(this.pose, this.spec.driver, this.driverSeat, this.bounce);
@@ -106,7 +129,12 @@ export class Vehicle {
   /** World position of a local point (on the ground). */
   world(lx: number, lz: number, out = this.tmp) { return toWorld(this.pose, lx, lz, out); }
 
-  dispose() { this.group.removeFromParent(); }
+  dispose() { this.group.removeFromParent(); dropAnimated(this.model); }
+}
+
+/** Frees the body material copy animateVehicle gave a kit model (the rest is shared). */
+function dropAnimated(o: THREE.Object3D) {
+  o.traverse(c => { const m = (c as THREE.Mesh).material as THREE.Material | undefined; if ((c as THREE.Mesh).isMesh && m && !Array.isArray(m) && m.userData.kitAnimClone) m.dispose(); });
 }
 
 /**
@@ -176,6 +204,8 @@ export class LineVehicle {
     const rx = -Math.cos(this.p.yaw), rz = Math.sin(this.p.yaw);
     // easing towards the kerb turns the nose a little
     this.vehicle.place(this.p.x + rx * off, this.p.z + rz * off, this.p.yaw - Math.atan(off2 - off), m.v, m.a, m.s, dt);
+    // wheels turn, front wheels follow the corner (steering angle from the heading's rate over a ~3.5 m wheelbase)
+    if (near) this.vehicle.animate(m.v, -Math.atan((3.5 * this.vehicle.yawRate) / Math.max(m.v, 1)) / 0.6, dt);
     for (const i of this.arrivals) this.onArrive(i);
     this.updateCrew(dt, near);
   }

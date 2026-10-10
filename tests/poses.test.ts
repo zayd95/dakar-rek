@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { buildPoseClips, POSES, type PoseClip } from '../src/actors/humanoid';
-import { seatClip, sitOriginY, SIT_HIPS } from '../src/interact/seats';
+import { floorSeatTop, seatClip, sitOriginY, SIT_HIPS, Seats, standSpots, type Seat } from '../src/interact/seats';
+import { FURNITURE_SPECS } from '../src/economy/catalog';
+import { installFurnitureKit } from '../src/economy/furnitureKitAdapter';
+import { GameState } from '../src/core/state';
+import { newSave } from '../src/core/save';
+import { ActivityRunner, type ActivityServices } from '../src/activity/runner';
+import * as P from '../src/activity/primitives';
 import { buildFurniture, furnitureSeats } from '../src/world/furnitureKit';
 import { buildVehicle, vehicleSeats, vehicleSpec } from '../src/actors/vehicleKit';
 import { loadRig, posed } from './rig';
@@ -108,4 +114,64 @@ describe('procedural poses', () => {
     expect(seatClip(chair.seat)).toBe('Sit'); expect(sitOriginY(chair.seat)).toBeCloseTo(0.1 + chair.local.top - SIT_HIPS);
   });
 
+});
+
+describe('sleeping at home: lying along the bed, up beside it afterwards', () => {
+  installFurnitureKit();                                             // the catalogue's seat heights follow the kit models
+  const beds = FURNITURE_SPECS.filter(f => f.type === 'bed');
+  it('every catalogue bed is a lying place along it, hips at the middle, head toward the pillow (−z)', () => {
+    expect(beds.map(b => b.id)).toEqual(['matelas_sol', 'lit_bois', 'lit_king']);
+    for (const b of beds) {
+      expect(b.seats).toHaveLength(1);
+      const st = b.seats![0];
+      expect(st).toMatchObject({ x: 0, yaw: 0, kind: 'bed', clip: 'Lie' }); expect(Math.abs(st.z)).toBeLessThan(0.1);
+    }
+  });
+  it('the lying body stays on the mattress of each bed: head on the pillow side, feet before the foot of the bed', () => {
+    const p = pose('Lie');
+    for (const b of beds) {
+      const st = b.seats![0], surface = st.top;                      // a home seat: top = surface + SIT_HIPS (src/economy/estate.ts)
+      const seat = { top: floorSeatTop(surface) };
+      expect(sitOriginY(seat)).toBeCloseTo(surface);
+      for (const j of JOINTS) {
+        const v = p.pos(j);
+        expect(Math.abs(v.x + st.x), `${b.id} ${j} x`).toBeLessThan(b.w / 2);
+        expect(v.z + st.z, `${b.id} ${j} z`).toBeGreaterThan(-b.d / 2); expect(v.z + st.z, `${b.id} ${j} z`).toBeLessThan(b.d / 2);
+      }
+      expect(p.pos('head').z + st.z).toBeLessThan(-b.d / 2 + 0.6);   // the pillows lie in the first 0.6 m
+    }
+  });
+  it('getting up: in front of a chair, out of a bed by either side, else past its foot', () => {
+    const chair = standSpots({ x: 0, z: 0, yaw: 0 });
+    expect(chair).toHaveLength(1); expect(chair[0].z).toBeCloseTo(0.7);
+    const bed = standSpots({ x: 2, z: 3, yaw: Math.PI / 2, clip: 'Lie' });          // lying with the feet toward +x
+    expect(bed).toHaveLength(3);
+    expect(bed[0].x).toBeCloseTo(2); expect(Math.abs(bed[0].z - 3)).toBeCloseTo(1.25);   // beside the hips
+    expect(bed[1].x).toBeCloseTo(2); expect(bed[0].z + bed[1].z).toBeCloseTo(6);          // the other side
+    expect(bed[2].x).toBeCloseTo(3.7); expect(bed[2].z).toBeCloseTo(3);                   // past the foot
+  });
+  it('a night in bed lies the body down, and ends up beside the bed — finished or stopped', () => {
+    const rig = () => {
+      const state = new GameState(newSave()), seats = new Seats(); let seated: Seat | null = null; const clips: (string | null)[] = []; let stood = 0;
+      const bed: Seat = { id: 'lit', x: 0, z: 0, top: floorSeatTop(0.58), yaw: 0, kind: 'bed', space: 'home', occupant: null, clip: 'Lie' };
+      seats.add(bed);
+      const s: ActivityServices = { state, seats, space: () => 'home', player: () => ({ x: 1, z: 0 }), seated: () => seated,
+        sit: x => { if (!seats.occupy(x.id, 'player')) return false; seated = x; clips.push(seatClip(x)); return true; },
+        stand: () => { if (seated) seats.release(seated.id, 'player'); seated = null; stood++; },
+        clip: c => clips.push(c), busy: () => {}, progress: () => {}, toast: () => {}, save: () => {} };
+      return { runner: new ActivityRunner(s), state, clips, seated: () => seated, stood: () => stood };
+    };
+    const night = P.sleep({ id: 'dormir', label: 'Dormir', seat: 'lit', seconds: 6, energy: 60 });
+    const a = rig(); a.state.data.needs.energie = 20;
+    a.runner.start(night); a.runner.update(1);
+    expect(a.seated()?.id).toBe('lit'); expect(a.clips).toContain('Lie');                  // lying while asleep
+    for (let t = 0; t < 8; t += 0.25) a.runner.update(0.25);
+    expect(a.state.data.needs.energie).toBeGreaterThan(70); expect(a.seated()).toBeNull(); expect(a.stood()).toBe(1);
+    expect(a.clips.at(-1)).toBeNull();                                                      // back to normal, standing
+    const b = rig(); b.runner.start(night); b.runner.update(1); b.runner.cancel();
+    expect(b.seated()).toBeNull(); expect(b.stood()).toBe(1); expect(b.clips.at(-1)).toBeNull();
+    // other activities on a seat keep you there (a meal at a table)
+    const c = rig(); c.runner.start(P.use({ id: 'repos', label: 'Se reposer', seconds: 1, seat: 'lit' })); for (let t = 0; t < 2; t += 0.25) c.runner.update(0.25);
+    expect(c.seated()?.id).toBe('lit'); expect(c.stood()).toBe(0);
+  });
 });
