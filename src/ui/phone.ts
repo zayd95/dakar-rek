@@ -40,7 +40,7 @@ export interface PhoneContext {
   lock: (on: boolean) => void;
 }
 
-type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus';
+type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus' | 'cesoir';
 interface Tile { id: string; label: string; color: string; icon: string; screen?: ScreenId; hook?: () => (() => void) | undefined }
 
 const ICON: Record<string, string> = {
@@ -70,6 +70,7 @@ const LOOK: Record<string, { emoji: string; grad: string; short?: string }> = {
   affaires: { emoji: '🏢', grad: '#34d399,#047857' },
   biens: { emoji: '🔑', grad: '#fde68a,#b45309' },
   arene: { emoji: '🤼', grad: '#d8b4fe,#7e22ce' },
+  cesoir: { emoji: '🌆', grad: '#fda4af,#be123c', short: 'Ce soir' },
   carnet: { emoji: '📒', grad: '#fde68a,#d97706' },
   meteo: { emoji: '⛅', grad: '#7dd3fc,#1e40af' },
   sante: { emoji: '❤️', grad: '#fecdd3,#fb7185' },
@@ -95,6 +96,7 @@ const TILES: Tile[] = [
   { id: 'biens', label: 'Biens', color: '#b45309', icon: ICON.maison, hook: () => phoneHooks.openAssets },
   { id: 'habitants', label: 'Habitants', color: '#0d9488', icon: ICON.habitants, hook: () => phoneHooks.openPeople },
   { id: 'arene', label: 'Arène', color: '#9333ea', icon: ICON.arene, screen: 'arene' },
+  { id: 'cesoir', label: 'Ce soir', color: '#be123c', icon: ICON.arene, screen: 'cesoir' },
   { id: 'carnet', label: 'Carnet', color: '#475569', icon: ICON.carnet, screen: 'carnet' },
   { id: 'actus', label: 'Actus', color: '#c2410c', icon: ICON.carnet, screen: 'actus' },
   { id: 'sante', label: 'Santé', color: '#fb7185', icon: ICON.aide, screen: 'sante' },
@@ -108,7 +110,7 @@ const TILES: Tile[] = [
 
 const TITLES: Record<ScreenId, string> = {
   home: 'Téléphone', reglages: 'Réglages', aide: 'Aide', nouvelle: 'Nouvelle partie', carnet: 'Carnet',
-  portefeuille: 'Portefeuille', carte: 'Carte et déplacements', arene: 'Arène', meteo: 'Météo', calcul: 'Calculatrice', sante: 'Santé', profil: 'Profil', horloge: 'Horloge', actus: 'Actus · Dakar',
+  portefeuille: 'Portefeuille', carte: 'Carte et déplacements', arene: 'Arène', meteo: 'Météo', calcul: 'Calculatrice', sante: 'Santé', profil: 'Profil', horloge: 'Horloge', actus: 'Actus · Dakar', cesoir: 'Ce soir',
 };
 const QUALITY_LABEL: Record<Quality, string> = { low: 'Basse', medium: 'Moyenne', high: 'Haute' };
 const SENSITIVITY: [number, string][] = [[0.6, 'Lente'], [1, 'Normale'], [1.5, 'Rapide']];
@@ -253,6 +255,7 @@ export class Phone {
       case 'profil': s.innerHTML = this.profileHtml(); break;
       case 'horloge': s.innerHTML = this.clockHtml(); break;
       case 'actus': s.innerHTML = this.newsHtml(); break;
+      case 'cesoir': s.innerHTML = this.tonightHtml(); break;
     }
     this.bind();
   }
@@ -282,6 +285,16 @@ export class Phone {
       <div class="ph-rows"><div><span>Lever du soleil</span><em>06:00</em></div><div><span>Coucher du soleil</span><em>19:00</em></div>
         <div><span>Vent (alizé)</span><em>${wind} km/h</em></div><div><span>Humidité</span><em>${humid} %</em></div></div>
       <p class="ph-note">La météo suit le ciel de la ville : même heure pour tous les joueurs.</p>`;
+  }
+
+  /** « Ce soir » (src/arena/tonight.ts): light cards of rows, « Y aller » on the places the pin can lead to. */
+  private tonightHtml(): string {
+    const page = phoneHooks.tonight?.() ?? [];
+    if (!page.length) return '<p class="ph-note">Rien de prévu ce soir.</p>';
+    return `<div class="ph-tonight">${page.map(sec => `<h3>${esc(sec.title)}</h3><div class="ph-rows">${sec.rows.map(r => `<div>
+        <span><i aria-hidden="true">${esc(r.icon)}</i><span>${esc(r.label)}${r.detail ? `<small>${esc(r.detail)}</small>` : ''}</span></span>${r.go
+        ? `<button type="button" class="ph-go" data-go="${esc(r.go)}">Y aller</button>` : r.open ? `<button type="button" class="ph-go" data-open="${esc(r.open)}">Ouvrir</button>` : ''}</div>`).join('')}</div>`).join('')}</div>
+      <p class="ph-note">« Y aller » place le repère et la ligne d’objectif. Ce qui est écrit vient de la ville : même soirée pour tous.</p>`;
   }
 
   private healthHtml(): string {
@@ -446,6 +459,7 @@ export class Phone {
       if (hook) this.launch(hook); else if (tile.screen) this.go(tile.screen);
     }));
     s.querySelectorAll<HTMLElement>('[data-open]').forEach(b => b.addEventListener('click', () => this.go(b.dataset.open as ScreenId)));
+    s.querySelectorAll<HTMLElement>('[data-go]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.go!; this.launch(() => phoneHooks.tonightGo?.(k)); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-k]').forEach(b => b.addEventListener('click', () => this.calcKey(b.dataset.k!)));
     s.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
       const q = b.dataset.q as Quality;

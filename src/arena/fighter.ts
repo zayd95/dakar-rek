@@ -61,6 +61,8 @@ export const arenaFighter = {
   phase: () => phase,
   /** The player's corner (écurie side) while a bout is on its way. */
   corner: () => (bout && phase !== 'idle' ? bout.ecurie : null),
+  /** Tonight's opponent's name while a bout is on its way (null: none, or not named). */
+  opponent: () => (bout && phase !== 'idle' ? bout.opponent ?? null : null),
   /** Listen to the path's moments (the stands react, the entourage gathers…); returns the unsubscribe function. */
   onCue(fn: (c: FighterCue) => void) { listeners.add(fn); return () => { listeners.delete(fn); }; },
   /** Give up tonight's bout before it starts. */

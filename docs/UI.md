@@ -93,6 +93,34 @@ for the old dark panel never vanish. Use the existing blocks — `.kv` (info car
 - Wolof glosses: HUD text is plain DOM text, resolved by the gloss observer (src/i18n/dom.ts) like any other text.
 - HUD buttons drop the focus after a tap or click, so Space/Enter (the game's action keys) never fire them twice.
 
+## Phone › Ce soir (src/arena/tonight.ts)
+
+The evening plans itself from what the game already knows. Nothing is invented: the page is a pure assembly
+(`tonightPage`, tests/tonight.test.ts) of live facts (`tonightFacts`). It is laid out as light cards of rows like
+Profil, with an icon, a line and its detail; « Y aller » (44 px) sits on the right.
+- **Ce soir à l'arène.**
+  - The card from the career's ladder (`billFor`), « Grand gala de lutte » (Friday–Sunday) or « Combat de quartier »,
+    « titre en jeu » when the belt is.
+  - The doors and the closing time.
+  - The ticket: in hand, or 1 000 F at the window with « Y aller ».
+  - On the card itself (the fighter's path; a gala place or the title from the career): « Tu combats ce soir contre … »
+    first, with no ticket row.
+  - Once tonight's gala is over: tomorrow's card.
+- **Y aller.**
+  - On foot with the distance to the gate.
+  - Ligne 23 to the « Arène » stop: fare, and the nearest stop served now to board at.
+  - The player's own moto / car: where it is parked, or « tu es dessus ».
+  - From another hub: « Va à Pikine » with a link to the Carte.
+  - Inside the walls: « Tu es à l'arène ».
+- **Après le combat.** The evening call's `afterPlace`, open when the gala ends, with its closing hour and its distance
+  from the arena (Pikine only).
+- **Aujourd'hui à <hub>.** The day's weather (`weatherAt`: a shower to come or going on, wet streets, an overcast
+  sky; nothing on a plain sunny day). Today's road events still to come (`roadEvents`), each with its hours and
+  distance.
+- **« Y aller ».** It closes the phone and sets the way-finding pin and the goal line (an invisible marker
+  `cesoir:<key>` in this hub, like the fighter's path).
+- **Debug.** `__dakar.tonight()`, `__dakar.tonightGo(key)`.
+
 ## Follow camera (src/actors/camera.ts)
 
 Behind and above the player, never inside a wall or inside a tree's leaves:
