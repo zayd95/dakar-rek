@@ -20,6 +20,8 @@ import {
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
 import { GalaCard } from './card';
+import { posters } from './posters';
+import { recordGalaResult } from '../social/fightTalk';
 
 /**
  * A fight evening inside the Pikine arena (docs/ARENA_VISIT.md): the ticket is bought at the window by the gate (price
@@ -253,7 +255,13 @@ class ArenaEvening {
       const winner = !r || !r.winner ? null : r.winner === 'player' ? BILL.left.name : BILL.right.name;
       this.result = ARENA.result(winner, (r?.outcome ?? 'egalite') as 'projection' | 'decision' | 'egalite' | 'abandon');
       ctx.toast(this.result);
-      this.react('result', !r || !r.winner ? null : r.winner === 'player' ? 'left' : 'right');
+      const side = !r || !r.winner ? null : r.winner === 'player' ? 'left' : 'right';
+      this.react('result', side);
+      // the city talks about it that evening and the next day (src/social/fightTalk.ts), the posters print it
+      recordGalaResult(ctx.state.data.counters, this.day(), side, r?.outcome);
+      const won = side === 'left' ? BILL.left : side === 'right' ? BILL.right : null, lost = side === 'left' ? BILL.right : BILL.left;
+      posters.setResult(this.day(), won && r?.outcome !== 'egalite' && r?.outcome !== 'abandon'
+        ? `${won.name} bat ${lost.name}, victoire ${r?.outcome === 'projection' ? 'par chute' : 'aux points'}` : `${BILL.left.name} et ${BILL.right.name} : match nul`);
     } else if (phase === 'leaving') {
       this.bout?.dispose(); this.bout = null;
     } else if (phase === 'over') {

@@ -236,13 +236,15 @@ export function planDemand(spots: readonly AmbientSpot[], acts: readonly Ambient
   hour: number; dow: number; scale: number; px: number; pz: number; near: number; far: number; cap: number;
   /** Only spots of this space are planned ('street', or the interior the player is in: all of it counts as near). */
   space: string; seatKind: (id: string) => string | null;
+  /** An evening's event makes some spots busier (the Dibi after a gala): a factor per spot, 1 for the others. */
+  boost?: (s: AmbientSpot) => number;
 }): DemandRow[] {
   const rows: DemandRow[] = [];
   for (const s of spots) {
     if (s.space !== o.space) continue;
     const d = s.space === 'street' ? Math.hypot(s.x - o.px, s.z - o.pz) : 0;
     if (d > o.far) continue;
-    const k = d <= o.near ? 1 : 0.5;
+    const k = (d <= o.near ? 1 : 0.5) * (o.boost?.(s) ?? 1);
     // activities of one spot share its places: seats, standing places, rows (Friday prayer and daily prayer, chats)
     const used: Record<string, number> = {};
     for (const a of acts) {

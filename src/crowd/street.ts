@@ -40,6 +40,8 @@ interface Agent {
   spot: { x: number; z: number; yaw: number } | null; stop: number; group: number; corner: number;
   /** Seconds left in this place before moving on (people waiting have a bus to catch, groups break up). */
   stay: number;
+  /** Where a walker is heading along the lanes (the Dibi after the gala), or null: wandering. */
+  goal: Pt | null;
 }
 interface StopRt { site: StopSite; key: string; slots: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; door: Pt; busy: boolean }
 interface GroupRt { x: number; z: number; ring: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; on: boolean; w: number }
@@ -82,7 +84,9 @@ export class StreetLife {
   private standsMax = 0;
   private leaving = 0;
   private leaveT = 0;
-  readonly counts = { spawned: 0, boarded: 0, alighted: 0, left: 0, taxi: 0, recruited: 0 };
+  readonly counts = { spawned: 0, boarded: 0, alighted: 0, left: 0, taxi: 0, recruited: 0, dibi: 0 };
+  /** The hub's Dibi (where some spectators go on after the gala), or null. */
+  private dibi: Pt | null = null;
 
   constructor(private ctx: GameCtx, hub: HubWorld, private arrivals: ArenaArrivals | null = null) {
     this.hub = hub;
@@ -94,7 +98,7 @@ export class StreetLife {
     this.laneW = this.lanes.map(l => l.w * l.len);
     const slots: CrowdSlot[] = Array.from({ length: B.pool }, (_, i) => ({ id: `p${i}`, x: 0, y: 0.1, z: 0, yaw: 0, seated: false, tags: ['street'] }));
     this.crowd = new Crowd(slots, { quality: this.q, near: B.near, nearRadius: 9, name: 'street', seed: 61 + hub.id.length, blobs: true, fidget: 0.02 });
-    this.agents = slots.map(s => ({ id: s.id, role: 'off', x: 0, z: 0, yaw: 0, speed: 0, lane: 0, fwd: true, t: 0, side: 0, path: null, pi: 0, then: null, spot: null, stop: -1, group: -1, corner: -1, stay: 0 }));
+    this.agents = slots.map(s => ({ id: s.id, role: 'off', x: 0, z: 0, yaw: 0, speed: 0, lane: 0, fwd: true, t: 0, side: 0, path: null, pi: 0, then: null, spot: null, stop: -1, group: -1, corner: -1, stay: 0, goal: null }));
     ctx.extra.add(this.crowd.group);
   }
 
@@ -114,6 +118,10 @@ export class StreetLife {
     const fronts = [...hub.interactables.filter(i => !i.npc).map(i => ({ x: i.x, z: i.z })),
       ...this.ctx.places.all().filter(p => p.space === 'street' && /shop|stall|dibi|salon|cafe|market|gargote|maiga/.test(p.type)).flatMap(p => p.anchors.slice(0, 1))];
     const stopAvoid = this.stops.flatMap(s => [s.site, ...s.slots]);
+    // the Dibi: a place of type 'dibi' in the street (the venues lane's), else the builder's dibiterie kiosk
+    const dibiPlace = this.ctx.places.all().find(p => p.type === 'dibi' && p.space === 'street');
+    const kiosk = hub.interactables.find(i => /dibiterie/i.test(i.id) || /dibiterie/i.test(i.name));
+    this.dibi = dibiPlace?.anchors[0] ? { x: dibiPlace.anchors[0].x, z: dibiPlace.anchors[0].z } : kiosk ? { x: kiosk.x, z: kiosk.z } : null;
     for (const g of groupSpots(fronts, this.lanes, cols, [...avoid, ...stopAvoid])) {
       const n = this.nearLanes(g.x, g.z, 1)[0];
       this.groups.push({ ...g, taken: g.ring.map(() => null), on: false, w: n ? this.lanes[n.lane].w : 1 });
@@ -149,6 +157,7 @@ export class StreetLife {
   private show(a: Agent) { this.crowd.setPresent(a.id, true); this.place(a); this.counts.spawned++; }
   private hide(a: Agent) {
     this.release(a);
+    a.goal = null;
     a.role = 'off'; a.path = null; a.then = null; a.speed = 0;
     this.crowd.setPresent(a.id, false);
   }
@@ -388,7 +397,8 @@ export class StreetLife {
         return;
       }
     }
-    this.toLane(a);                                                    // home on foot
+    this.toLane(a);                                                    // home on foot, or on to the Dibi
+    if (this.dibi && u >= 0.7 && u < 0.86) a.goal = { ...this.dibi };
   }
 
   private step(a: Agent, dt: number) {
@@ -409,6 +419,12 @@ export class StreetLife {
     }
     if (a.role !== 'walk') return;
     const l = this.lanes[a.lane];
+    if (a.goal && Math.hypot(a.x - a.goal.x, a.z - a.goal.z) < 12) {
+      // arrived near the Dibi: in at its door (ambient life's customers take over inside)
+      const g = a.goal; a.goal = null; this.counts.dibi++;
+      this.walkTo(a, routeClear(a, g, this.cols) ?? [], () => this.hide(a), a.speed);
+      return;
+    }
     a.t += (a.fwd ? 1 : -1) * a.speed * dt;
     if (a.t < 0 || a.t > l.len) { this.cross(a); return; }
     const p = this.lanePt(l, a.t, a.side);
@@ -424,9 +440,16 @@ export class StreetLife {
     const l = this.lanes[a.lane], e = this.hub.edges[l.e], node = a.fwd ? { x: e.bx, z: e.bz } : { x: e.ax, z: e.az };
     const opts = lanesFrom(this.lanes, node.x, node.z).filter(o => !(o.lane === a.lane && o.forward !== a.fwd));
     if (!opts.length) { a.fwd = !a.fwd; a.t = Math.max(0, Math.min(l.len, a.t)); return; }
-    let sum = 0; const w = opts.map(o => { const v = this.lanes[o.lane].w ** 2; sum += v; return v; });
-    let u = this.rand() * sum, pick = opts[0];
-    for (let i = 0; i < opts.length; i++) { u -= w[i]; if (u <= 0) { pick = opts[i]; break; } }
+    let pick = opts[0];
+    if (a.goal) {
+      // heading somewhere: the lane whose far end comes closest to the goal
+      const g = a.goal, far = (o: { lane: number; forward: boolean }) => { const x = this.lanes[o.lane]; return o.forward ? { x: x.bx, z: x.bz } : { x: x.ax, z: x.az }; };
+      pick = opts.reduce((b, o) => { const p = far(o), q = far(b); return Math.hypot(p.x - g.x, p.z - g.z) < Math.hypot(q.x - g.x, q.z - g.z) ? o : b; });
+    } else {
+      let sum = 0; const w = opts.map(o => { const v = this.lanes[o.lane].w ** 2; sum += v; return v; });
+      let u = this.rand() * sum;
+      for (let i = 0; i < opts.length; i++) { u -= w[i]; if (u <= 0) { pick = opts[i]; break; } }
+    }
     const nl = this.lanes[pick.lane], start = pick.forward ? { x: nl.ax, z: nl.az } : { x: nl.bx, z: nl.bz };
     const via = routeClear(a, start, this.cols) ?? (clearWalk(a.x, a.z, node.x, node.z, this.cols) && clearWalk(node.x, node.z, start.x, start.z, this.cols) ? [node, start] : null);
     if (!via) { a.fwd = !a.fwd; a.t = Math.max(0, Math.min(l.len, a.t)); return; }
