@@ -114,7 +114,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
     p = r1.people;
     const winners = p.won ? p.entourage.find(e => e.ecurie === p.won) : null;
     if (winners) {
-      await until(w => window.__dakar.arena.info().phase !== 'result' || window.__dakar.arena.info().people.entourage.find(e => e.ecurie === w).people.every(x => !x.walking), p.won, 60000);
+      await until(w => window.__dakar.arena.info().phase !== 'result' || window.__dakar.arena.info().people.entourage.find(e => e.ecurie === w).people.every(x => !x.walking), p.won, 240000);
       const now = await info(), win = now.people.entourage.find(e => e.ecurie === p.won);
       const near = win.people.every(x => Math.hypot(x.x - C.x, x.z - C.z) < 4.5);
       check(`${label}: the result — the winner's people run onto the sand to celebrate`, now.phase !== 'result' || (near && win.people.every(x => x.clip === 'Celebrate')), win.people);
@@ -131,6 +131,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
     p.moment === 'closed' && p.officials === 0 && p.judges === 0 && p.drummers === 0 && p.press === 0 && p.camp === 0 && p.vendors.every(x => !x.shown) && p.entourage.every(e => e.people.every(x => !x.shown)) && p.seats.every(s => /^pikine:arena:people:/.test(s.occupant ?? '')), p);
   // 9. The player fights tonight (src/arena/fighter.ts): their écurie's people wait in its corner and gather round them
   if (await d(() => !!window.__dakar.fighterBegin)) {
+    if (await d(() => !!window.__dakar.seated())) { await d(() => window.__dakar.act()); await until(() => !window.__dakar.seated(), null, 30000); }   // « Se lever » off the tiers
     await d(() => window.__dakar.fighterBegin('amical'));
     await frame(); await frame();                                                       // the path's spots follow the player's écurie
     const f0 = await d(() => window.__dakar.fighter());

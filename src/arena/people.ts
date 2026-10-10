@@ -430,7 +430,7 @@ export class FightNightPeople {
     const s = this.sides.find(x => x.ecurie === this.won); if (!s) return;
     s.ids.forEach((rid, k) => {
       const path = celebratePath(this.cx, this.cz, s.side, k), to = path[path.length - 1];
-      cast.walkTo(rid, path, facing(this.cx, this.cz, to), 'Celebrate', 3.2);
+      cast.walkTo(rid, path, facing(this.cx, this.cz, to), 'Celebrate', 4.5);                 // running: there well within the result's 7 s
     });
   }
 

@@ -6,7 +6,7 @@ import { ECURIES, VENDORS } from '../src/arena/exteriorRules';
 import { RING_R, PARAPET_R, WALL_R, TUNNEL_MOUTH_R, inGate, inTunnel } from '../src/world/geew';
 import { ARENA_FLOOR, PREP_SIDE, drummersStand, interiorSpots, mediaZone, prepCorner, prepCornerCentre, tunnel, type ArenaKit } from '../src/world/arenaModules';
 import { Batch } from '../src/world/batch';
-import type { ShowPhase } from '../src/arena/program';
+import { SHOW, type ShowPhase } from '../src/arena/program';
 import type { ActivitySpec } from '../src/activity/types';
 
 const C = { x: 100, z: -40 };
@@ -123,6 +123,10 @@ describe('fight night people: where they stand', () => {
       expect(r(end)).toBeLessThan(RING_R - 4);
       for (const j of judges) for (let i = 0; i + 1 < path.length; i++) expect(segDist(j, path[i], path[i + 1])).toBeGreaterThan(1.0);
       expect(dist(path[0], entouragePath(C.x, C.z, side, k)[3])).toBeLessThan(1e-9);                    // out of the corner by its open side
+      // running (4.5 m/s) they are there well before the result's end
+      let len = dist(cornerSpot(C.x, C.z, side, k), path[0]);
+      for (let i = 0; i + 1 < path.length; i++) len += dist(path[i], path[i + 1]);
+      expect(len / 4.5).toBeLessThan(SHOW.result - 1.5);
     }
   });
   it('vendors walk to and fro along the walkway in front of the parapet, never into the gate or the tunnel', () => {
