@@ -59,6 +59,37 @@ evening (doors 17 h–23 h). The TODO at the top of `src/arena/module.ts` wires 
 so the street stays alive while a gala runs. The ambient NPCs (`src/social/ambientSpots.ts`) never take the tiers'
 places (`kind: 'stand'`), and the arena's group is `userData.noLod` (its bodies are never swapped for far figures).
 
+## Getting there (`src/arena/arrival.ts`, rules in `src/arena/arrivalRules.ts`)
+
+Habib's evening: « prendre sa moto ou un Car Rapide ».
+
+- **By moto.** A guarded parking sits on the sand east of the gate, off the queue lane and the drummers. It has two
+  rows (13 places) with a sign « PARKING MOTOS · GARDIEN ».
+  - Getting off there, the « gardien de motos » greets the player and names his price, 100 F for the evening.
+  - « Faire garder ta moto (100 F) » opens « Payer 100 F » before anything is paid. It is paid once per evening
+    (save counter `arena_moto_day`, one wallet line through the runner).
+  - He puts the moto in the place he keeps next to him. `ownedModule.moveParked` saves it like any parking spot, so
+    it is found again after the bout. Coming back the same evening costs nothing.
+  - The other motos are instanced (three looks, ≤ 3 draw calls) and solid. Two stand there while the arena is set up.
+    The rows fill as the doors open, full by 19 h on a gala night and about half on a weekday card (cap by quality
+    6 / 10 / 12). They empty over 150 game seconds after the gala.
+  - When the player rides away, the gardien says « Ñibbil ak jàmm ! Ba beneen yoon ! » (rentre bien · à la
+    prochaine).
+  - The evening's goal line suggests the moto to a player who owns one in this hub and is far (pin on the moto).
+    Once they are riding it points to the parking.
+- **By car rapide.** While the arena is set up and its doors are open, the Ligne 23 cars carry fans in green and red
+  (Baobab, Teranga, a few in their own clothes) on every leg towards « Arène ».
+  - These are the transport's own passengers: `transport.setFans(line, { colours, dest })` and the car rapide kit's
+    `colours`.
+  - They get off at « Arène », where the car pulls in with ordinary passengers. `transport.onStop` tells the
+    arrivals lane (`src/crowd/arrivals.ts`, no more polling), which walks a group to the queue's tail, two more when
+    the car carried fans. A player who rides along gets off with them.
+
+`?debug` → `__dakar.arrival.info()` (street, gardien, places, other motos, the player's moto, paid, what he said),
+`arrival.skip(sec)` (the after-gala emptying). `flock /tmp/dakar-browser.lock node scripts/check-arena-arrival.mjs
+[baseUrl] [outDir]` runs it on desktop and phone: ride in, greeting, price, pay once, the moto in his place, walk to the
+gate, rows emptying after the gala, ride away and the goodbye, fans aboard from « Rue 10 », off at « Arène » with a group.
+
 ## Friends at the arena (`src/arena/together.ts`)
 
 Players in the same hub group watch the gala together. Everything goes through presence: positions, poses and one

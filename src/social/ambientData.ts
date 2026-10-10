@@ -83,6 +83,7 @@ export const PLACE_TAGS: Readonly<Record<string, readonly string[]>> = {
   mosque: ['mosque'], stop: ['stop'], station: ['stop'], beach: ['landing', 'fishmarket'], market: ['market'],
   shop: ['shop'], salon: ['salon'], club: ['club'], bank: ['bank'], square: ['square', 'attaya'],
   home: [], plot: [], billboard: [],
+  parking: [],             // the arena's moto parking: its gardien is the only one standing there (src/arena/arrival.ts)
 };
 
 /** Legacy content of the hub builders (interactable id fragment → tags, opening hours). Checked in order. */

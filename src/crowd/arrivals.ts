@@ -8,7 +8,7 @@ import { ECURIES, gateOf, type ArenaGate } from '../arena/exteriorRules';
 import { arenaExterior, eveningSize } from '../arena/exterior';
 import { linesOf, stopOnLeg, KERB } from '../transport/lines';
 import { STOP_OFFSET } from '../transport/stops';
-import { transport } from '../transport/module';
+import { transport, type StopEvent } from '../transport/module';
 import { Crowd, defaultLook, type CrowdQuality, type CrowdSlot } from './crowd';
 
 /**
@@ -66,13 +66,12 @@ export class ArenaArrivals {
   private gate: ArenaGate;
   private rand = rng(808);
   private taxiT = 4;
-  private rapideT = 0;
-  private dwelling = new Set<string>();
   private rapideStop: Pt | null = null;
+  private unsubscribe: () => void;
   private ground: (x: number, z: number) => number;
   private quality: CrowdQuality;
   /** Fans dropped so far (taxi, car rapide), for the checks. */
-  readonly dropped = { taxi: 0, rapide: 0, arrived: 0 };
+  readonly dropped = { taxi: 0, rapide: 0, arrived: 0, fans: 0 };
   active = false;
 
   constructor(private ctx: GameCtx, hub: HubWorld) {
@@ -100,6 +99,8 @@ export class ArenaArrivals {
       const p = stopOnLeg(line, stop), rx = -p.dz, rz = p.dx;              // right of the direction of travel
       this.rapideStop = { x: p.x + rx * (STOP_OFFSET - 0.6), z: p.z + rz * (STOP_OFFSET - 0.6) };
     }
+    // each car that pulls in at « Arène » lets a group off (the transport's stop events: no polling)
+    this.unsubscribe = transport.onStop(e => this.rapideIn(e));
   }
 
   private evening(): 'gala' | 'card' { return eveningSize(this.ctx.day(), Math.max(17, this.ctx.hour())); }
@@ -147,8 +148,6 @@ export class ArenaArrivals {
     if (this.active) {
       this.taxiT -= dt;
       if (this.taxiT <= 0) { this.taxiT = ARRIVALS.taxiEvery[size] * (0.7 + this.rand() * 0.6); this.taxi(); }
-      this.rapideT -= dt;
-      if (this.rapideT <= 0) { this.rapideT = 0.5; this.watchRapide(size); }
     }
     for (const c of this.cabs) this.driveCab(c, dt);
     // the walkers: along their path to the queue's tail, where the exterior's queue takes over
@@ -191,21 +190,16 @@ export class ArenaArrivals {
     animateVehicle(c.g, c.v, 0, dt);
   }
 
-  /** The car rapide at the « Arène » stop: a group steps down each time one pulls in (read from the transport lane). */
-  private watchRapide(size: 'gala' | 'card') {
-    if (!this.rapideStop) return;
-    const lines = (transport.debug(this.ctx).transport as { lines?: () => { id: string; stops: { id: string }[]; vehicles: { id: string; dwell: number }[] }[] } | undefined)?.lines?.();
-    if (!lines) return;
-    const now = new Set<string>();
-    for (const l of lines) {
-      const i = l.stops.findIndex(s => s.id === 'arene'); if (i < 0) continue;
-      for (const v of l.vehicles) if (v.dwell === i) now.add(v.id);
-    }
-    for (const id of now) if (!this.dwelling.has(id)) {
-      const tail = { x: this.gate.x, z: this.gate.queue.z1 - 0.35 };
-      this.dropped.rapide += this.spawn(this.rapideStop, [{ x: tail.x - 3.7, z: tail.z }, tail], this.span(ARRIVALS.perRapide[size]), 0.55);
-    }
-    this.dwelling = now;
+  /**
+   * A car rapide pulled in at the « Arène » stop (transport.onStop): a group steps down and walks to the queue, with the
+   * player when they ride along. A car that carried fans in their écurie's colours (src/arena/arrival.ts) lets a few more off.
+   */
+  private rapideIn(e: StopEvent) {
+    if (!this.active || !this.rapideStop || e.stop !== 'arene') return;
+    const tail = { x: this.gate.x, z: this.gate.queue.z1 - 0.35 };
+    const n = this.span(ARRIVALS.perRapide[this.evening()]) + (e.fans ? 2 : 0);
+    const k = this.spawn(this.rapideStop, [{ x: tail.x - 3.7, z: tail.z }, tail], n, 0.55);
+    this.dropped.rapide += k; if (e.fans) this.dropped.fans += k;
   }
 
   info() {
@@ -217,6 +211,7 @@ export class ArenaArrivals {
   }
 
   dispose() {
+    this.unsubscribe();
     for (const c of this.cabs) c.g.removeFromParent();
     this.cabs = [];
     this.crowd.dispose();
