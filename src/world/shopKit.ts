@@ -830,14 +830,18 @@ const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank' | 'restaurant' | 'showroo
   hardware: {
     counter: 'left', body: 0x2b2f36, top: 0x8b6a47, panel: 'pnlHardware', peg: 'pegTools',
     unit: U(0.5, 2.5, 4, C.steel, 0x7d858d, 0xd8d2c2), back: hardwareFill, side: hardwareFill,
-    onCounter(R, x0, x1, z, h) {
-      R.b.box(0.4, 0.12, 0.25, x0 + 0.5, h, z - 0.15, 0x7d858d); R.b.box(0.3, 0.1, 0.2, x0 + 1.0, h, z - 0.1, C.yellow);
+    onCounter(R, x0, x1, z, h, v) {
+      if (v === 1) {                                                                       // « · meubles »: folded rugs and a small radio
+        R.b.box(0.5, 0.06, 0.35, x0 + 0.5, h, z - 0.12, 0xb5452b); R.b.box(0.5, 0.05, 0.35, x0 + 0.5, h + 0.06, z - 0.12, 0xf2d16b);
+        R.b.box(0.34, 0.2, 0.14, x0 + 1.05, h, z - 0.12, 0x2b2b33); R.b.cyl('z', 0.05, 0.05, 0.01, x0 + 0.97, h + 0.1, z - 0.045, 0x9aa0a6, 8, { pos: true, neg: false });
+        R.b.beam([x0 + 1.17, h + 0.2, z - 0.15], [x0 + 1.25, h + 0.42, z - 0.17], 0.01, 0.01, C.chrome);
+      } else { R.b.box(0.4, 0.12, 0.25, x0 + 0.5, h, z - 0.15, 0x7d858d); R.b.box(0.3, 0.1, 0.2, x0 + 1.0, h, z - 0.1, C.yellow); }
       R.b.cyl('z', 0.08, 0.08, 0.06, x1 - 1.0, h + 0.08, z - 0.1, C.red, 10);
     },
-    floor(R, Z) {
+    floor(R, Z, v) {
       R.sacks(Z.behind.x0 + 0.6, Z.behind.z0 + 0.5, PI / 2, R.det ? 4 : 2, 'sack1');
-      // pipes on brackets along the right wall, buckets and coils
-      const rz0 = Z.right.z0 + 0.2, rz1 = Math.min(Z.right.z1 - 0.8, rz0 + 3.2);
+      // pipes on brackets along the right wall, buckets and coils (shorter in « · meubles »: the furniture follows them)
+      const rz0 = Z.right.z0 + 0.2, rz1 = Math.min(Z.right.z1 - 0.8, rz0 + (v === 1 ? 1.6 : 3.2));
       if (rz1 - rz0 > 1 && R.ok(rect(Z.right.x1 - 0.5, Z.right.x1, rz0, rz1))) {
         for (const y of [0.5, 1.1, 1.7]) R.b.box(0.45, 0.04, 0.05, Z.right.x1 - 0.22, y, (rz0 + rz1) / 2, C.steel);
         for (let k = 0; k < (R.det ? 9 : 4); k++) R.b.cyl('z', 0.04, 0.04, rz1 - rz0, Z.right.x1 - 0.1 - (k % 3) * 0.12, 0.58 + Math.floor(k / 3) * 0.6, (rz0 + rz1) / 2, [C.white, 0x9aa0a6, 0x2f6fb3][k % 3], 6, { pos: true, neg: true });
@@ -854,7 +858,24 @@ const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank' | 'restaurant' | 'showroo
           R.solid(f, 0.9); R.browse.push({ x: ix, z: iz + 1.0, yaw: PI });
         }
       }
-      if (R.det === 2) {                                                                   // a ladder leaning on the right wall
+      if (v === 1) {
+        // « Quincaillerie · meubles » (Pikine): along the right wall after the pipes, the furniture it sells — monobloc
+        // chairs stacked, a rolled mattress standing, a mirror leaning on the wall
+        const fx = Z.right.x1 - 0.3, z0 = rz1 + 0.45, cols = C.plastic;
+        if (Z.right.z1 - z0 > 1.6 && R.ok(rect(fx - 0.3, Z.right.x1, z0 - 0.3, z0 + 1.65))) {
+          for (let k = 0; k < (R.det ? 5 : 3); k++) {
+            R.b.box(0.46, 0.05, 0.44, fx, 0.45 + k * 0.08, z0, cols[k % 4]); R.b.box(0.04, 0.42, 0.44, fx + 0.2 - k * 0.02, 0.5 + k * 0.08, z0, cols[k % 4]);
+          }
+          R.b.box(0.42, 0.45, 0.4, fx, 0, z0, 0xe8e8e8);
+          R.b.cyl('y', 0.22, 0.22, 1.5, fx, 0.75, z0 + 0.7, 0x2f6fb3, 10, { pos: true, neg: false, capPaint: 0xf2f2ee });
+          for (const y of [0.35, 0.75, 1.15]) R.b.cyl('y', 0.225, 0.225, 0.06, fx, y, z0 + 0.7, 0xf2f2ee, 10, { pos: false, neg: false });
+          R.b.box(0.06, 1.3, 0.6, Z.right.x1 - 0.05, 0.15, z0 + 1.35, 0x6e4426);
+          R.panel(Z.right.x1 - 0.085, 0.8, z0 + 1.35, -PI / 2, 0.5, 1.15, 'mirror');
+          R.solid(rect(fx - 0.27, Z.right.x1, z0 - 0.27, z0 + 1.65), 1.2);
+          R.browse.push({ x: fx - 1.0, z: z0 + 0.7, yaw: PI / 2 });
+        }
+      }
+      if (R.det === 2 && v !== 1) {                                                        // a ladder leaning on the right wall
         const lx = Z.right.x1, lz = Z.right.z1 - 0.45, f = R.foot(lx - 0.3, lz, 0.6, 0.5);
         if (R.ok(f)) {
           for (const dz of [-0.2, 0.2]) R.b.beam([lx - 0.6, 0, lz + dz], [lx - 0.05, 2.4, lz + dz], 0.05, 0.05, 0xb48c5c);

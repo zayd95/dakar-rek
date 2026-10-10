@@ -4,7 +4,8 @@ import type { HubId } from '../core/types';
 import { fcfa, type Hud, type MenuItem } from '../ui/hud';
 import { phoneHooks } from '../ui/phoneHooks';
 import type { Action, HubWorld, Interactable } from '../world/types';
-import { Batch, signTexture } from '../world/batch';
+import type { ShopDetail } from '../world/shopKit';
+import { buildQuincaillerie } from './stall';
 import { HUB_NAMES } from '../world/content';
 import { ECONOMY } from './config';
 import { ROUTES, acceptJob, cancelJob, completeJob, deliveryLimitMs, offers, payNow, pickUp, pickupFrags, remainingMs, routeById, routePay, whyNot, type Completion, type Route } from './jobs';
@@ -83,15 +84,15 @@ export class Economy {
   private get s() { return this.d.state; }
 
   // ---------------------------------------------------------------- hub dressing
-  /** Add the delivery action at pick-up points and, in Pikine, the furniture stall. Called after each hub build. */
-  decorateHub(world: HubWorld) {
+  /** Add the delivery action at pick-up points and, in Pikine, the furniture shop. Called after each hub build. */
+  decorateHub(world: HubWorld, detail?: ShopDetail) {
     this.world = world;
     for (const frag of pickupFrags(world.id)) {
       const it = this.placeOf(frag);
       if (it && !it.actions.includes(JOBS_ACTION)) it.actions = [...it.actions, JOBS_ACTION];
     }
     for (const it of world.interactables) if (it.id.startsWith(world.id + ':city:bank') && !it.actions.includes(BUSINESS_ACTION)) it.actions = [...it.actions, BUSINESS_ACTION];
-    if (world.id === 'pikine') this.buildShop(world);
+    if (world.id === 'pikine') this.buildShop(world, detail);
   }
 
   private placeOf(frag: string): Interactable | undefined {
@@ -103,29 +104,13 @@ export class Economy {
     return a && b && this.world?.id === r.hub ? Math.hypot(a.x - b.x, a.z - b.z) : null;
   }
 
-  /** "Quincaillerie · meubles": a covered stall beside the Maïga du marché, facing the street. */
-  private buildShop(world: HubWorld) {
+  /**
+   * "Quincaillerie · meubles": a small shop of the kit on the Maïga du marché's lot, beside it (src/economy/stall.ts);
+   * its sheet at the counter opens the same furniture catalogue.
+   */
+  private buildShop(world: HubWorld, detail?: ShopDetail) {
     const m = this.placeOf(':maiga:'); if (!m) return;
-    const sx = m.x + 8.5, sz = m.z - 2.9, G = 0.12;
-    const b = new Batch();
-    for (const [dx, dz] of [[-1.7, -0.75], [1.7, -0.75], [-1.7, 0.75], [1.7, 0.75]]) b.box(0.08, 2.4, 0.08, sx + dx, G, sz + dz, 0x6b5a4a);
-    b.box(3.8, 0.06, 2.0, sx, G + 2.4, sz, 0x1e6fd9); b.box(3.8, 0.25, 0.04, sx, G + 2.2, sz + 1.0, 0x1e6fd9);
-    b.box(2.6, 0.8, 0.7, sx, G, sz - 0.25, 0x8b6a47); b.box(2.7, 0.05, 0.8, sx, G + 0.8, sz - 0.25, 0x6b4a2e);
-    b.cyl(0.2, 0.2, 1.0, sx - 0.6, G + 0.85, sz - 0.3, 0x2f6fb3, 10, [0, 0, Math.PI / 2]);            // rolled mattress
-    b.box(0.5, 0.06, 0.35, sx + 0.35, G + 0.85, sz - 0.35, 0xb5452b); b.box(0.5, 0.05, 0.35, sx + 0.35, G + 0.91, sz - 0.35, 0xf2d16b); // folded rugs
-    b.box(0.34, 0.2, 0.14, sx + 0.95, G + 0.85, sz - 0.3, 0x2b2b33);                                    // radio
-    b.box(0.06, 1.2, 0.55, sx - 1.5, G, sz + 0.25, 0x6e4426); b.box(0.02, 1.05, 0.44, sx - 1.46, G + 0.08, sz + 0.25, 0xc8dce6); // mirror
-    const cols = [0x2a8fd1, 0xf2f2ee, 0x1a9d54, 0xd9322b];
-    for (let k = 0; k < 4; k++) {                                                                         // stacked monobloc chairs
-      b.box(0.46, 0.05, 0.44, sx + 1.25, G + 0.45 + k * 0.08, sz + 0.3, cols[k]); b.box(0.46, 0.42, 0.04, sx + 1.25, G + 0.5 + k * 0.08, sz + 0.1 - k * 0.02, cols[k]);
-    }
-    b.box(0.46, 0.45, 0.4, sx + 1.25, G, sz + 0.3, 0xe8e8e8);
-    const mesh = b.build(new THREE.MeshLambertMaterial({ vertexColors: true }), true, true); if (mesh) world.group.add(mesh);
-    const tex = signTexture('QUINCAILLERIE · MEUBLES', '#1f2937', '#fde68a', 768, 112);
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 0.55), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0 }));
-    sign.position.set(sx, G + 2.75, sz + 1.03); world.group.add(sign); world.signs.push(sign);
-    world.colliders.push({ x0: sx - 1.8, z0: sz - 0.85, x1: sx + 1.8, z1: sz + 0.55, h: 1.2 });
-    world.interactables.push({ id: `${world.id}:shop:meubles`, name: 'Quincaillerie · meubles', kind: 'actions', x: sx, z: sz + 2.4, radius: 2.6, actions: [SHOP_ACTION] });
+    buildQuincaillerie(world, m, SHOP_ACTION, detail);
   }
 
   // ---------------------------------------------------------------- deliveries and the jobs app
