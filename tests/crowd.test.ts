@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
-  REACTIONS, REACTION_KINDS, REST_SIT, REST_STAND, armDirs, easePose, offer, plan, poseFor, restState, standingFor, step, walkPose,
+  REACTIONS, REACTION_KINDS, REST_SIT, REST_STAND, armDirs, dancePose, easePose, offer, plan, poseFor, restState, standingFor, step, walkPose,
   type RigPose,
 } from '../src/crowd/reactions';
 import { SHOULDER_X, UPPER_ARM, figureBoxes, figureGeometry } from '../src/crowd/rig';
@@ -10,6 +10,9 @@ import { ArenaStands, momentPlan, sectionOf, sideOf } from '../src/crowd/arenaSt
 import { TUNNEL_MOUTH_R } from '../src/world/geew';
 import { fillOrder, standSeats } from '../src/arena/program';
 import { rng } from '../src/core/rng';
+import { cabRoutes } from '../src/crowd/arrivals';
+import { gateOf } from '../src/arena/exteriorRules';
+import { KERB } from '../src/transport/lines';
 
 const FORE = 0.33;
 /** Where the hand ends up (character space), from the shoulder of a figure whose shoulder is at height `j`. */
@@ -290,5 +293,42 @@ describe('arena stands', () => {
     expect(celebrating).toBeGreaterThan(100);
     expect(s.level()).toBeGreaterThan(0.5);
     s.dispose();
+  });
+});
+
+describe('dancing and arrivals', () => {
+  it('a dancing group hops on the beat between reactions, and celebrates when asked', () => {
+    const p = dancePose(124);
+    expect(p.bounce).toBeGreaterThan(0.04);
+    expect(Math.PI / p.freq).toBeCloseTo(60 / 124, 6);              // one hop (|sin| period) per beat
+    const c = new Crowd(slots(6).map(s => ({ ...s, seated: false })), { quality: 'medium' });
+    c.fill(6);
+    c.setMood('all', 'dance', 124);
+    c.update(0.1);
+    expect(c.stats().standing).toBe(6);
+    expect(c.react('all', 'celebrate', { share: 1 })).toBe(6);
+    c.dispose();
+  });
+
+  it('taxis drop fans on the pavement at the two corners nearest the gate; every walk ends at the queue tail', () => {
+    const g = gateOf({ cx: 30, cz: -30 }), tail = { x: g.x, z: g.queue.z1 - 0.35 };
+    const routes = cabRoutes(g);
+    expect(routes.length).toBe(2);
+    for (const r of routes) {
+      const dir = Math.sign(r.z1 - r.z0), roadX = Math.round(r.x / 60) * 60;
+      // driving on the right: heading -z the lane is on +x of the centre line, heading +z on -x
+      expect(Math.sign(r.x - roadX)).toBe(dir < 0 ? 1 : -1);
+      expect(Math.abs(r.alight.x - roadX)).toBeGreaterThan(KERB);         // on the pavement
+      expect(Math.abs(r.alight.x - roadX)).toBeLessThan(KERB + 2);
+      expect((r.zs - r.z0) * dir).toBeGreaterThan(0);
+      expect((r.z1 - r.zs) * dir).toBeGreaterThan(0);
+      expect(r.walk[r.walk.length - 1]).toEqual(tail);
+      // the arena block (x 7-53, z -53 to -7) and the block south of the street (z -113 to -67) are never crossed
+      const pts = [r.alight, ...r.walk];
+      for (let i = 1; i < pts.length; i++) for (let k = 0; k <= 20; k++) {
+        const x = pts[i - 1].x + (pts[i].x - pts[i - 1].x) * k / 20, z = pts[i - 1].z + (pts[i].z - pts[i - 1].z) * k / 20;
+        expect(x > 7 && x < 53 && ((z > -53 && z < -7) || (z < -67 && z > -113))).toBe(false);
+      }
+    }
   });
 });

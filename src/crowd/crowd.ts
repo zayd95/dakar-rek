@@ -5,7 +5,7 @@ import { SIT_HIPS } from '../interact/seats';
 import { rng } from '../core/rng';
 import {
   Excitement, REACTIONS, armDirs, calm, easePose, offer, plan, poseFor, restState, standingFor, step,
-  type ReactState, type ReactionKind, type RigPose,
+  type Mood, type ReactState, type ReactionKind, type RigPose,
 } from './reactions';
 import { RIG_ATTRS, crowdClock, figureGeometry, rigMaterial, tickClock, type FigureKind, type RigAttr } from './rig';
 
@@ -52,6 +52,8 @@ export interface CrowdOptions {
   seed?: number;
   name?: string;
   look?: (slot: CrowdSlot, r: () => number) => CrowdLook;
+  /** A soft round shadow under each standing figure (street crowds; one draw call). */
+  blobs?: boolean;
 }
 
 const SKINS = [0x3b2216, 0x4e2e1c, 0x5b3420, 0x6b3f25, 0x7a4a2c, 0x45291a];
@@ -88,6 +90,10 @@ interface Member {
   lod: 0 | 1 | 2 | 3;
   matrix: Float32Array;
   body: NearBody | null;
+  mood: Mood;
+  bpm: number;
+  /** Index in the crowd (the near bodies' dance alternates two clips). */
+  i: number;
 }
 interface NearBody {
   h: Humanoid; m: Member; w: number; seen: boolean;
@@ -157,6 +163,7 @@ export class Crowd {
   private layoutDirty = true;
   private lodT = 0;
   private nearT = 0;
+  private blobs: THREE.InstancedMesh | null = null;
 
   constructor(slots: readonly CrowdSlot[], o: CrowdOptions) {
     this.name = o.name ?? 'crowd';
@@ -175,6 +182,7 @@ export class Crowd {
         slot, look, shirt: new THREE.Color(look.shirt), legs: new THREE.Color(look.legs), skin: new THREE.Color(look.skin),
         phase: R() * Math.PI * 2, temper: 0.6 + R() * 0.8, on: false, st: restState(), speed: 0,
         standing, pose, target: poseFor(null, standing), easing: false, lod: 0, matrix: new Float32Array(16), body: null,
+        mood: 'rest', bpm: 120, i: this.members.length,
       };
       this.place(m);
       this.members.push(m); this.byId.set(slot.id, m);
@@ -182,6 +190,12 @@ export class Crowd {
     const max = Math.max(1, slots.length);
     this.buckets = { midSeated: new Bucket('midSeated', max), midStanding: new Bucket('midStanding', max), farSeated: new Bucket('farSeated', max), farStanding: new Bucket('farStanding', max) };
     for (const b of Object.values(this.buckets)) this.group.add(b.mesh);
+    if (o.blobs) {
+      this.blobs = new THREE.InstancedMesh(blobGeometry(), blobMaterial(), max);
+      this.blobs.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      this.blobs.count = 0; this.blobs.frustumCulled = false; this.blobs.renderOrder = 1; this.blobs.name = 'crowd_blobs';
+      this.group.add(this.blobs);
+    }
     LIVE_CROWDS.add(this);
   }
 
@@ -248,6 +262,13 @@ export class Crowd {
     if (group !== 'all') this.excite.add('all', REACTIONS[kind].voice * n / Math.max(1, this.present));
     return n;
   }
+  /** What a group does between reactions: rest, or dance on a beat of `bpm` (the near bodies dance their clips). */
+  setMood(group: string, mood: Mood, bpm = 120) {
+    for (const m of this.members) if (group === 'all' || m.slot.tags?.includes(group)) {
+      if (m.mood === mood && m.bpm === bpm) continue;
+      m.mood = mood; m.bpm = bpm; this.retarget(m);
+    }
+  }
   /** Everyone in the group settles back at once. */
   calm(group = 'all') {
     for (const m of this.members) if (group === 'all' || m.slot.tags?.includes(group)) if (calm(m.st)) this.retarget(m);
@@ -262,7 +283,7 @@ export class Crowd {
     const kind = m.on ? m.st.kind : null;
     const standing = standingFor(m.slot.seated, kind);
     if (standing !== m.standing) { m.standing = standing; this.layoutDirty = true; }
-    m.target = poseFor(kind, standing, m.speed);
+    m.target = poseFor(kind, standing, m.speed, m.mood, m.bpm);
     if (snap) { Object.assign(m.pose, m.target); m.easing = false; } else m.easing = true;
   }
 
@@ -375,6 +396,15 @@ export class Crowd {
       else if (m.lod === 1) (m.standing ? B.farStanding : B.farSeated).add(m);
     }
     for (const b of Object.values(B)) b.finish();
+    if (this.blobs) {
+      let n = 0;
+      const arr = this.blobs.instanceMatrix.array as Float32Array;
+      for (const m of this.members) {
+        if (!m.on || !m.standing || m.lod === 0) continue;
+        arr.set(m.matrix, n * 16); arr[n * 16 + 13] += 0.03; n++;
+      }
+      this.blobs.count = n; if (n) this.blobs.instanceMatrix.needsUpdate = true;
+    }
   }
 
   private updateBody(b: NearBody, dt: number, animate: boolean) {
@@ -383,7 +413,8 @@ export class Crowd {
     if (!g.visible) return;
     const walking = m.speed > 0.2, kind = m.st.kind;
     g.position.set(s.x, m.standing ? s.y : s.y - SIT_HIPS, s.z); g.rotation.y = s.yaw;
-    const clip: Clip | null = walking ? null : !m.standing ? 'Sit' : kind === 'celebrate' ? 'Celebrate' : 'Idle';
+    const dancing = !kind && m.mood === 'dance' && m.standing;
+    const clip: Clip | null = walking ? null : !m.standing ? 'Sit' : kind === 'celebrate' ? 'Celebrate' : dancing ? (m.i % 2 ? 'Dance_B' : 'Dance_A') : 'Idle';
     b.h.hold = clip;
     if (!animate) return;
     b.h.animate(dt, walking ? m.speed : 0);
@@ -426,9 +457,17 @@ export class Crowd {
     for (const b of this.bodies) this.dropBody(b);
     this.bodies = [];
     for (const b of Object.values(this.buckets)) b.dispose();
+    this.blobs?.dispose();
     this.group.removeFromParent();
     LIVE_CROWDS.delete(this);
   }
+}
+
+// ---------------------------------------------------------------- ground shadows (shared)
+let blobGeo: THREE.BufferGeometry | null = null, blobMat: THREE.MeshBasicMaterial | null = null;
+function blobGeometry() { return (blobGeo ??= new THREE.CircleGeometry(0.34, 14).rotateX(-Math.PI / 2)); }
+function blobMaterial() {
+  return (blobMat ??= new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
 }
 
 /** Turn `bone` (its +Y axis, head to tail) towards `dir` (character space), blended by w from the clip's pose. */
