@@ -40,7 +40,7 @@ export interface PhoneContext {
   lock: (on: boolean) => void;
 }
 
-type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus' | 'cesoir';
+type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus' | 'cesoir' | 'lutteurs';
 interface Tile { id: string; label: string; color: string; icon: string; screen?: ScreenId; hook?: () => (() => void) | undefined }
 
 const ICON: Record<string, string> = {
@@ -110,7 +110,7 @@ const TILES: Tile[] = [
 
 const TITLES: Record<ScreenId, string> = {
   home: 'Téléphone', reglages: 'Réglages', aide: 'Aide', nouvelle: 'Nouvelle partie', carnet: 'Carnet',
-  portefeuille: 'Portefeuille', carte: 'Carte et déplacements', arene: 'Arène', meteo: 'Météo', calcul: 'Calculatrice', sante: 'Santé', profil: 'Profil', horloge: 'Horloge', actus: 'Actus · Dakar', cesoir: 'Ce soir',
+  portefeuille: 'Portefeuille', carte: 'Carte et déplacements', arene: 'Arène', meteo: 'Météo', calcul: 'Calculatrice', sante: 'Santé', profil: 'Profil', horloge: 'Horloge', actus: 'Actus · Dakar', cesoir: 'Ce soir', lutteurs: 'Lutteurs',
 };
 const QUALITY_LABEL: Record<Quality, string> = { low: 'Basse', medium: 'Moyenne', high: 'Haute' };
 const SENSITIVITY: [number, string][] = [[0.6, 'Lente'], [1, 'Normale'], [1.5, 'Rapide']];
@@ -256,6 +256,7 @@ export class Phone {
       case 'horloge': s.innerHTML = this.clockHtml(); break;
       case 'actus': s.innerHTML = this.newsHtml(); break;
       case 'cesoir': s.innerHTML = this.tonightHtml(); break;
+      case 'lutteurs': s.innerHTML = this.lutteursHtml(); break;
     }
     this.bind();
   }
@@ -285,6 +286,21 @@ export class Phone {
       <div class="ph-rows"><div><span>Lever du soleil</span><em>06:00</em></div><div><span>Coucher du soleil</span><em>19:00</em></div>
         <div><span>Vent (alizé)</span><em>${wind} km/h</em></div><div><span>Humidité</span><em>${humid} %</em></div></div>
       <p class="ph-note">La météo suit le ciel de la ville : même heure pour tous les joueurs.</p>`;
+  }
+
+  /** Arena › Lutteurs: one light card per roster wrestler (portrait from his look, season, belt, last results, « Suivre »). */
+  private lutteursHtml(): string {
+    const list = phoneHooks.lutteurs?.() ?? [];
+    if (!list.length) return '<p class="ph-note">Les lutteurs de la ville apparaîtront ici.</p>';
+    const RES = { V: 'V', D: 'D', N: 'N' } as const;
+    return `<div class="ph-lts">${list.map(w => `<section class="ph-lt" id="lt-${esc(w.id)}">
+        <div class="lt-head"><i class="lt-pic">${w.portrait}</i><span><b>${esc(w.name)}</b><small>${esc(w.ecurie)} · ${esc(w.style)} · ${esc(w.level)}</small></span>
+          <button type="button" class="lt-follow${w.followed ? ' on' : ''}" data-follow="${esc(w.id)}" aria-pressed="${w.followed}">${w.followed ? '★ Suivi' : '☆ Suivre'}</button></div>
+        <div class="lt-stats"><span><b>${w.place}${w.place === 1 ? 'er' : 'e'}</b><small>classement</small></span><span><b>${w.pts}</b><small>points</small></span><span><b>${w.v}-${w.d}${w.n ? `-${w.n}` : ''}</b><small>saison</small></span></div>
+        ${w.belt ? `<p class="lt-belt">🏆 ${esc(w.belt)}</p>` : ''}
+        ${w.last.length ? `<ul class="lt-last">${w.last.map(r => `<li><i class="r${r.res}">${RES[r.res]}</i>${esc(r.vs)}<small>${r.title ? 'titre · ' : r.main ? 'combat principal · ' : ''}jour ${r.day}</small></li>`).join('')}</ul>` : '<p class="lt-none">Pas encore combattu cette saison</p>'}
+      </section>`).join('')}</div>
+      <p class="ph-note">Suivre un lutteur : « Ce soir » et l’annonce du soir te disent quand il combat, et la carte d’après-gala son résultat. Rien à gagner : juste le plaisir de suivre.</p>`;
   }
 
   /** « Ce soir » (src/arena/tonight.ts): light cards of rows, « Y aller » on the places the pin can lead to. */
@@ -446,7 +462,14 @@ export class Phone {
       { label: 'Entraînements', value: String(c.lutte ?? 0) },
       ...(phoneHooks.arenaProfile?.() ?? []),
     ];
+    // the city's table (career module): each wrestler's row opens his card in « Lutteurs »
+    const table = phoneHooks.cityTable?.();
+    const tableHtml = table ? `<h3>Classement de la ville · saison ${table.season}</h3><div class="ph-rows ph-table">${table.rows.map(r => r.id
+      ? `<button type="button" data-lutteur="${esc(r.id)}"><b>${r.place}</b><span>${esc(r.name)}<small>${esc(r.sub)}</small></span><em>${r.pts} pts ›</em></button>`
+      : `<div class="you"><b>${r.place}</b><span>${esc(r.name)}<small>${esc(r.sub)}</small></span><em>${r.pts} pts</em></div>`).join('')}</div>` : '';
     return `<div class="ph-rows">${rows.map(r => `<div><span>${esc(r.label)}</span><em>${esc(r.value)}</em></div>`).join('')}</div>
+      ${phoneHooks.lutteurs ? '<button type="button" class="ph-btn" data-open="lutteurs">Lutteurs de la ville<small>Fiches, saison, derniers résultats · suivre un lutteur</small></button>' : ''}
+      ${tableHtml}
       ${d.flags.includes('ecurie_baobab') ? '' : '<p class="ph-note">Pour rejoindre une écurie, va voir Coach Ablaye à l’écurie Baobab, à Pikine.</p>'}
       <p class="ph-note">Lutte sans frappe : règles Dakar Rek. La lutte avec frappe arrive ensuite.</p>`;
   }
@@ -459,6 +482,18 @@ export class Phone {
       if (hook) this.launch(hook); else if (tile.screen) this.go(tile.screen);
     }));
     s.querySelectorAll<HTMLElement>('[data-open]').forEach(b => b.addEventListener('click', () => this.go(b.dataset.open as ScreenId)));
+    s.querySelectorAll<HTMLElement>('[data-lutteur]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.lutteur!;
+      this.go('lutteurs');
+      this.screenEl.querySelector(`#lt-${CSS.escape(id)}`)?.scrollIntoView({ block: 'start' });
+    }));
+    s.querySelectorAll<HTMLButtonElement>('[data-follow]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.follow!, now = phoneHooks.follow?.(b.classList.contains('on') ? null : id) ?? null;
+      s.querySelectorAll<HTMLButtonElement>('[data-follow]').forEach(x => {          // in place: the list keeps its scroll
+        const on = x.dataset.follow === now;
+        x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); x.textContent = on ? '★ Suivi' : '☆ Suivre';
+      });
+    }));
     s.querySelectorAll<HTMLElement>('[data-go]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.go!; this.launch(() => phoneHooks.tonightGo?.(k)); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-k]').forEach(b => b.addEventListener('click', () => this.calcKey(b.dataset.k!)));
     s.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {

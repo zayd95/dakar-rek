@@ -11,13 +11,14 @@
  * promoter or brand. No ritual or religious text anywhere in the show — drums, dances and the crowd.
  */
 import { TIER_DEPTH, TIERS, standOpen, tierRadius, tierTop } from '../world/geew';
+import { TICKETS, sectionAt, ticketTribune, tribuneOf, type Tribune } from './tickets';
 
 export type Quality = 'low' | 'medium' | 'high';
 
 /** Hours of the fight evening (city clock). */
 export const GALA = { setup: 16, doors: 17, close: 23 } as const;
-/** Entry ticket, paid once at the window and valid for the whole evening (game balance, provisional). */
-export const TICKET_PRICE = 1000;
+/** Entry ticket, paid once at the window and valid for the whole evening: the « Populaire », the cheapest of the three (src/arena/tickets.ts). */
+export const TICKET_PRICE = TICKETS.populaire.price;
 /** Counter of the save that holds the city day the last ticket was bought for (no save schema change). */
 export const TICKET_COUNTER = 'arena_ticket_day';
 /** Counter of the save that holds the city day whose gala the player has seen to the end. */
@@ -34,6 +35,8 @@ export function streetAt(hour: number, galaDoneToday: boolean, eventDay = true):
 /** The gate checks tickets while the doors are open (and the gala of the day is not over). */
 export const ticketsChecked = (hour: number, galaDoneToday: boolean, eventDay = true) => streetAt(hour, galaDoneToday, eventDay) === 'doors';
 export const hasTicket = (counters: Record<string, number>, day: number) => (counters[TICKET_COUNTER] ?? -1) === day;
+/** The tier of the evening's ticket (src/arena/tickets.ts), or null without one. */
+export const ticketTier = (counters: Record<string, number>, day: number): Tribune | null => ticketTribune(counters, hasTicket(counters, day));
 
 /** Share of the stands' crowd seats taken at this hour of a gala evening (0 before the doors, full by 19 h). */
 export function fillAt(hour: number): number {
@@ -52,7 +55,11 @@ export const DENSITY: Record<Quality, { crowdShare: number; near: number }> = {
 
 // ------------------------------------------------------------------ stand seats
 
-export interface StandSeatDef { id: string; tier: number; a: number; x: number; z: number; top: number; yaw: number }
+export interface StandSeatDef {
+  id: string; tier: number; a: number; x: number; z: number; top: number; yaw: number;
+  /** Its section (A–H, src/world/geew.ts SECTIONS) and the ticket tier whose places they are (src/arena/tickets.ts). */
+  section: string | null; tribune: Tribune;
+}
 /** Gap between two places on a tier (shoulder room). */
 export const SEAT_GAP = 0.62;
 /** Where the hips go on a tier: just behind its front edge, legs hanging over the edge toward the ring. */
@@ -69,7 +76,8 @@ export function standSeats(cx: number, cz: number, prefix = 'arena:stand'): Stan
     for (let i = 0; i < n; i++) {
       const a = ((i + 0.5) / n) * Math.PI * 2;
       if (!standOpen(a)) continue;                                             // not in the gate, an aisle or the wrestlers' tunnel
-      out.push({ id: `${prefix}:${t}:${i}`, tier: t, a, x: cx + Math.sin(a) * r, z: cz + Math.cos(a) * r, top: tierTop(t), yaw: a + Math.PI });
+      const section = sectionAt(a);
+      out.push({ id: `${prefix}:${t}:${i}`, tier: t, a, x: cx + Math.sin(a) * r, z: cz + Math.cos(a) * r, top: tierTop(t), yaw: a + Math.PI, section, tribune: tribuneOf(section, t) });
     }
   }
   return out;
@@ -114,6 +122,13 @@ let mainEventSink: ((day: number, winnerId: string | null) => void) | null = nul
  */
 export function setBillSource(card: (day: number) => Bill | null, result?: (day: number, winnerId: string | null) => void) { billSource = card; mainEventSink = result ?? null; }
 export const billFor = (day: number): Bill => billSource?.(day) ?? BILL;
+/** The wrestler the player follows, when he fights on `day` in the evening's main event: the career module answers. */
+export interface Followed { name: string; vs: string }
+let followSource: ((day: number) => Followed | null) | null = null;
+export function setFollowSource(fn: ((day: number) => Followed | null) | null) { followSource = fn; }
+export const followedOn = (day: number): Followed | null => followSource?.(day) ?? null;
+/** « Ton lutteur Gora combat ce soir contre Pape » */
+export const followedLine = (f: Followed) => `Ton lutteur ${f.name} combat ce soir contre ${f.vs}`;
 export const reportMainEvent = (day: number, winnerId: string | null) => { mainEventSink?.(day, winnerId); };
 /** « Écurie Baobab », or « Indépendant ». */
 export const ecurieLabel = (e: string) => (e === 'indépendant' || !e ? 'Indépendant' : `Écurie ${e}`);

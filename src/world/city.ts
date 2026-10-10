@@ -7,6 +7,7 @@ import { CITY_ACTIONS as A } from './cityContent';
 import { benchSeats, type Seat } from '../interact/seats';
 import { say } from '../i18n/wolof';
 import { buildShopInterior, type ShopDetail, type ShopInterior, type ShopOptions, type ShopType } from './shopKit';
+import { sedanSeed, SEDAN_BLUE, SEDAN_WHITE } from '../transport/car';
 
 export type CityBlock = 'soumbedioune' | 'mall' | 'bank' | 'square' | 'shops';
 /** Compact, stylised geography within the existing four hubs. Never displaces an existing landmark. */
@@ -17,6 +18,8 @@ export const CITY_BLOCKS: Record<HubId, Record<string, CityBlock>> = {
   pikine: { '0,1': 'bank', '0,3': 'shops', '1,3': 'square' },
 };
 export const BAY = { z0: 64, z1: 116, shoreX: -155, railX: -133.55 };
+/** Ndiaye Auto's showroom in the Plateau (its stocked-shop key): src/transport/carModule.ts sells the car from its desk. */
+export const NDIAYE_AUTO = 'plateau:showroom:ndiaye-auto';
 
 export interface CityContext {
   hub: HubId; lite: boolean;
@@ -41,6 +44,7 @@ const FLOOR = 0.12, WHITE = 0xf2e9d6, WOOD = 0x8c6542, DARK = 0x253d43;
 const FISHER: PersonLook = { skin: 0x633a24, style: 'tee', top: 0x236da0, bottom: 0x31404d, hat: 'kufi', hatColor: 0xf4c443, shoes: 0x242b27, muscular: 0.4 };
 const VENDOR: PersonLook = { skin: 0x78452b, style: 'dress', top: 0xd66532, bottom: 0xd66532, female: true, pattern: 'wax', accent: 0xeee1b0, hat: 'headwrap', hatColor: 0xe8b734 };
 const TELLER: PersonLook = { ...FISHER, top: WHITE, bottom: DARK, hat: null };
+const SALESMAN: PersonLook = { ...FISHER, skin: 0x4e2e1c, top: 0xeef2f6, bottom: 0x1b2a3a, hat: null, muscular: 0.2 };
 /** Stable seed of a shop from its id (same goods on the shelves every visit). */
 const seedOf = (k: string) => { let h = 2166136261; for (let i = 0; i < k.length; i++) h = Math.imul(h ^ k.charCodeAt(i), 16777619); return (h >>> 0) % 100000 + 1; };
 
@@ -244,6 +248,25 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     const right = stock('salon-tech', pikine ? 'beauty' : 'phone', cx + 11, cz - 10, 17, 8, pikine ? { reserve: [{ x0: 3.4, x1: 8.6, z0: -4.2, z1: 4.2 }] } : {});
     place('salon-tech', pikine ? 'Salon Awa' : 'Dakar Réparation', pikine ? cx + 11 : right.anchors.counter.x, pikine ? cz - 4.3 : right.anchors.counter.z, pikine ? A.salon : A.tech, pikine ? `${say('Toogal')}. Aujourd’hui, tout le quartier parle de la ${say('làmb')} et de l’arène.` : 'Téléphones, accessoires, commandes : il y a toujours de quoi s’occuper.', 3);
     keeper(right.anchors.keeper, pikine ? VENDOR : FISHER);
+    if (!pikine) {
+      // Ndiaye Auto: a used-car showroom open on the road east of the block — saloons on their lots with price cards, the
+      // salesman at his desk at the back, the keys on the board behind him. The first lot is the catalogue's « Voiture
+      // d'occasion »: the dealer draws it there and sells it from the desk (src/transport/carModule.ts), the other two
+      // are taken (reserved, sold).
+      const at = { x: cx + 17.5, z: cz + 4, y: FLOOR, yaw: Math.PI / 2 }, W = 14, D = 9;
+      const show = buildShopInterior('showroom_cars', { w: W, d: D }, seedOf(NDIAYE_AUTO), {
+        detail: c.shopDetail ?? (lite ? 'low' : 'medium'), at, id: `${c.hub}:shop:ndiaye-auto`, height: 3.6, shell: 'open', shadows: false,
+        lots: [null, { kind: 'sedan', seed: sedanSeed(SEDAN_WHITE) }, { kind: 'sedan', seed: sedanSeed(SEDAN_BLUE) }],
+      });
+      show.group.userData.shop = { key: NDIAYE_AUTO, type: 'showroom_cars', anchors: show.anchors, bounds: show.bounds, budget: show.budget, front: show.front };
+      show.group.userData.shopColliders = show.colliders;
+      if (c.add) c.add(show.group); else show.dispose();
+      c.colliders.push(...show.colliders); c.seats.push(...show.seats);
+      sign('NDIAYE AUTO · VOITURES D’OCCASION', at.x + D / 2 + 0.06, at.z, '#1b2a7a', 3.37, W - 3, Math.PI / 2);
+      keeper(show.anchors.keeper, SALESMAN);
+      const st = show.anchors.staff[0]; if (st) person(st.x, st.z, st.yaw, 'Idle', { ...SALESMAN, top: 0x1b2a7a, bottom: 0x2b2f36 });
+      c.pool(at.x + 2, at.z, 6);
+    }
     bench(cx - 11, cz + 11); bench(cx + 11, cz + 11);
     c.tree(cx, cz + 14, 1.7); c.pool(cx - 11, cz - 3, 6); c.pool(cx + 11, cz - 3, 6);
     return;

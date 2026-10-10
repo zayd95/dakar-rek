@@ -49,6 +49,11 @@ export function cornerSides(bill: { left: Fighter; right: Fighter }): Record<Who
   if (r) return { left: (-PREP_SIDE[r]) as 1 | -1, right: PREP_SIDE[r] };
   return { left: 1, right: -1 };
 }
+/**
+ * The stands of a wrestler of the bill: those by his corner (Baobab's sections, 'left', on the +x side; Teranga's,
+ * 'right', on the −x side: src/crowd/arenaStands.ts), so a wrestler in the Teranga corner is cheered from there.
+ */
+export const standsOf = (bill: { left: Fighter; right: Fighter }, who: Who): Who => (cornerSides(bill)[who] > 0 ? 'left' : 'right');
 /** The colour a wrestler's people wear: his écurie's, else a neutral one (an independent). */
 export const ECURIE_COLOUR: Record<'baobab' | 'teranga', number> = { baobab: 0x1a7a44, teranga: 0xc8322a };
 export const colourOf = (f: Fighter) => { const e = ecurieId(f.ecurie); return e ? ECURIE_COLOUR[e] : 0x2f6fb3; };

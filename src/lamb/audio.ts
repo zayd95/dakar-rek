@@ -75,6 +75,21 @@ export class Percussion {
   stop() { clearInterval(this.timer); this.playing = false; }
 }
 
+/** Làmb 2.0: the sound of a strike landing — a dull thud on a hit, a slap on a guard, a short swish on a miss. */
+export function strikeSound(kind: 'quick' | 'big', result: 'hit' | 'stagger' | 'guarded' | 'miss') {
+  const c = ac(); if (!c) return;
+  const t = c.currentTime + 0.01, big = kind === 'big';
+  if (result === 'hit' || result === 'stagger') hit(c, t, big ? 62 : 85, big ? 0.22 : 0.12, big ? 0.7 : 0.45, true);
+  else if (result === 'guarded') hit(c, t, big ? 160 : 240, 0.07, big ? 0.4 : 0.25, true);
+  else {
+    const len = Math.floor(c.sampleRate * 0.12), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.sin((Math.PI * i) / len);
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    f.type = 'bandpass'; f.frequency.value = big ? 700 : 1100; n.buffer = buf; g.gain.value = big ? 0.18 : 0.1;
+    n.connect(f).connect(g).connect(out()); n.start(t);
+  }
+}
+
 /** Crowd swell: filtered noise with a short envelope. */
 export function crowdCheer(seconds = 2.5, level = 0.18) {
   const c = ac(); if (!c) return;

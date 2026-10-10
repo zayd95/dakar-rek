@@ -43,7 +43,7 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
 | `drive.ts` | Drive mode as pure logic: stick → throttle / steering, bicycle model, braking then reverse, coasting, collisions (a row of footprint circles front to back: stops at walls, slides along them, creeps out if left touching). |
 | `ownedModule.ts` | `OwnedVehicleModule(def)`: one owned, drivable vehicle — dealer corner (shop recipe, price → confirmation → paid once, delivered at the kerb), get in / drive / get out (beside it; a car: on the pavement side), solid when parked, parked where left and saved per hub, the kit's camera views, speed card, debug API `__dakar.<key>`. `kerbDealer()` lays a dealer out on the pavement of the nearest road. |
 | `moto.ts`, `motoModule.ts` | The Jakarta motorbike: kit spec + drive handling (leans); its def — the dealer corner at Garage Modou (Pikine). |
-| `car.ts`, `carModule.ts` | The used car (catalogue `clando`, a kit `sedan`) + car handling (no lean, wider turning circle, faster); its def — « Voitures d’occasion · Ndiaye Auto » on the Plateau pavement beside Dakar Réparation. |
+| `car.ts`, `carModule.ts` | The used car (catalogue `clando`, a kit `sedan`) + car handling (no lean, wider turning circle, faster); its def — « Voitures d’occasion · Ndiaye Auto », the Plateau's used-car showroom (shop kit `showroom_cars`, src/world/city.ts): sold from the salesman's desk, the car for sale on the first lot, delivered at the kerb outside the door. |
 | `owned.ts` | Where each owned vehicle is parked, keyed to its catalogue id: counters `vehicle:<asset>:hub|x|z|yaw`. Ownership itself is the asset model (`src/economy/assets.ts`). `migrateOwned()` moves saves from the earlier flag (`asset:vehicle:moto_jakarta`) to the `jakarta` asset at what was paid. |
 | `route.ts` | Pure math: `lanePath` (right-hand lane around road-grid nodes, rounded corners), `Path` (arc length, smooth heading, projection, curvature), `Timetable` (speed profile with corner speeds, acceleration, braking, rest and dwell at every stop; deterministic and periodic), `pullIn` (to the kerb at stops). |
 | `lines.ts` | Line data (loop nodes, stops by leg + metres, fare, fleet, calls) and the French / Wolof lines (draft for review). |
@@ -51,7 +51,7 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
 | `stops.ts` | Stop placement on the pavement (slides along the kerb when a wall or stall is in the way), merged street furniture (2 draw calls per hub), people waiting / boarding / getting off. |
 | `trip.ts` | `TripLogic`: wait → board → ride → request → alight, as pure logic. |
 | `camera.ts` | `PassengerCamera`: anchor views, smoothing relative to the vehicle (no lag), heading easing, drag, wall pull-in. |
-| `module.ts` | The `GameModule`: lines per hub, `stop` places, targets (door of a standing car, ride controls), boarding / alighting, ride card, debug API. |
+| `module.ts` | The `GameModule`: lines per hub, `stop` places (registered only while the line runs: Ligne 23's day stops step aside on fight evenings for the 23s, so a stop is never listed twice), targets (door of a standing car, ride controls), boarding / alighting, ride card, debug API. |
 | `ui.ts`, `transport.css` | The ride card (line number, state, next stop and countdown, stop requested). |
 
 ### Shared contracts touched (small, generic, documented)
@@ -114,12 +114,21 @@ away while the player is still on the way to the door, they get in at once.
 
 ## Personal mobility: the used saloon
 
-- **Buy:** « Voitures d’occasion · Ndiaye Auto » (fictional) on the Plateau, on the pavement of the road east of the
-  shops block, beside Dakar Réparation: a desk, a sign « OCCASIONS », two saloons on display at the kerb. « Voir les
-  articles » lists the catalogue's « Voiture d’occasion » (`clando`, **2 800 000 F**) with its price; a confirmation
-  shows the price and the wallet; « Confirmer l’achat » pays once through the asset model (wallet line « Achat :
-  Voiture d’occasion »), listed in « Biens ». The silver saloon is delivered at the kerb, facing the traffic of that
-  side.
+- **Buy:** « Voitures d’occasion · Ndiaye Auto » (fictional) on the Plateau: a small used-car showroom open on the road
+  east of the shops block (shop kit `showroom_cars` 14 × 9, open front, src/world/city.ts), beside Dakar Réparation.
+  Three saloons on their lots, nose to the street, each with its price card: the silver one is the catalogue's car,
+  drawn by the dealer with its card painted from the catalogue (« OCCASION · Voiture d’occasion · 2 800 000 F »), the
+  white and the blue are already taken (« RÉSERVÉE », « VENDUE »). The salesman (Moussa Ndiaye) stands behind his desk
+  at the back, the keys on a board behind him; a waiting bench, a shelf of oil and parts; the pole sign « OCCASIONS »
+  stays on the pavement by the corner. At the desk, « Voir les articles » lists the catalogue's « Voiture d’occasion »
+  (`clando`, **2 800 000 F**) with its price; a confirmation shows the price and the wallet; « Confirmer l’achat » pays
+  once through the asset model (wallet line « Achat : Voiture d’occasion »), listed in « Biens ». The silver saloon
+  leaves its lot (lot and card empty while you own it; back if you sell it) and waits at the kerb outside the door,
+  facing the traffic of that side; the salesman hands over the keys: « Elle t’attend devant la porte. Jërëjëf (merci) !
+  Ñibbil ak jàmm (rentre bien) ! ». The dealer site (`carDealer`) reads the showroom's anchors (`stockedShop`): the
+  desk's customer spot is the counter, `lots[0]` the display for sale (`forSale`, `card`); `kerbDealer` still lays out
+  the delivery, the kerb kept clear and the pole sign from the showroom's front. Without the showroom it falls back to
+  the old pavement corner.
 - **Drive:** « Monter (conducteur) » sits the player on the driver seat (left-hand drive). Same controls as the
   motorbike, car numbers: about 60 km/h flat out (motorbike 45), slower to pick up and to stop, a 5.6 m turning radius
   (motorbike 3.2), no lean (the body rolls a little out of the corners). Collisions as for the motorbike, on a
@@ -145,8 +154,9 @@ away while the player is still on the way to the door, they get in at once.
 - One merged mesh + one sign mesh per hub for the stops; two car rapides per line (one on Low quality), each a kit
   vehicle (1–3 draw calls, LOD; its NPC passengers are part of the same mesh) + its apprenti; people at stops drawn and
   animated only within 70 m of the camera (one waiting person per stop on Low). The motorbike and the car are one kit
-  vehicle each (2–3 draw calls near, 1 far); the car dealer adds two kit saloons, a desk and a sign (about 9 draw calls
-  near it, fewer kit cars parked there).
+  vehicle each (2–3 draw calls near, 1 far); the car dealer adds the saloon for sale, its price card and the pole sign
+  (about 7 draw calls near it); the showroom itself is one shop of the kit (3 draw calls: atlas, glass, the two kit
+  saloons merged).
 - No per-frame allocations in the vehicle / route / seat updates (preallocated poses, motions and arrival lists).
 - Measured by `scripts/check-transport.mjs` 6 m from a stop with a car standing there: **+15 to +16 draw calls** for the
   line's cars and stops with the kit (Pikine desktop 411 with / 395 without; Plateau phone portrait 359 / 344); the
@@ -171,8 +181,9 @@ away while the player is still on the way to the door, they get in at once.
   confirmation with price and wallet, paid once through the asset model, listed once in « Biens », not twice, get on
   (Ride pose), ride, steer, stop at a wall (never inside), a Tiak Tiak pick-up and hand-over while riding, get off
   beside it, reload (parked, owned once, charged once; and mid-ride), another hub and back. Screenshots in `docs/screenshots/moto/`.
-- `scripts/check-car.mjs` (desktop keys, phone joystick; Plateau): dealer catalogue with the price, confirmation with
-  price and wallet, paid once and delivered at the kerb, not twice, the parked car is solid, « Monter (conducteur) »,
+- `scripts/check-car.mjs` (desktop keys, phone joystick; Plateau): Ndiaye Auto's showroom (cars on display, the one for
+  sale on its lot with its card), dealer catalogue at the desk with the price, confirmation with price and wallet, paid
+  once and delivered at the kerb outside the door, the salesman's keys line (Wolof glossed), the lot left empty, not twice, the parked car is solid, « Monter (conducteur) »,
   drive, steer, brake, the three views, stop at a wall (never inside), « Sortir de la voiture » on the pavement side,
   reload (parked, and mid-drive), another hub and back. Screenshots in `docs/screenshots/car/`.
 - Last run (10 Oct, on integration 57bc29c + the car, desktop and phone): motorbike **36/36** (asset model, « Biens »

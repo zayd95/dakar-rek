@@ -25,6 +25,7 @@ import { arenaStreetsModule } from '../city/arena';
 import { weatherModule } from '../city/weather';
 import { streetVendorsModule } from '../city/vendors';
 import { roadEventsModule } from '../city/roadEvents';
+import { nightModule } from '../city/night';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
 import { shopsModule } from './shops';
@@ -182,8 +183,12 @@ export interface GameModule {
 /** What main.ts reports when a làmb bout or an écurie session ends (GameModule.lamb). */
 export type LambEvent =
   | { kind: 'bout'; mode: 'entrainement' | 'amical' | 'classe'; outcome: 'projection' | 'decision' | 'egalite' | 'abandon' | 'entrainement';
-      winner: 'player' | 'opponent' | null; opponent: { name: string; style: string; label: string }; level: number }
-  | { kind: 'training'; scene: 'training' | 'entrance' | 'prep' | 'watch' | 'celebration' };
+      winner: 'player' | 'opponent' | null; opponent: { name: string; style: string; label: string }; level: number;
+      /** 'avec_frappe' for a Làmb 2.0 bout (src/lamb/stand.ts); absent or 'sans_frappe' otherwise. */
+      discipline?: 'sans_frappe' | 'avec_frappe' }
+  | { kind: 'training'; scene: 'training' | 'entrance' | 'prep' | 'watch' | 'celebration' }
+  /** Làmb 2.0: a moment of the player's own bout as it happens (the stands react): the fall, then the result. */
+  | { kind: 'moment'; moment: 'fall' | 'result'; winner: 'player' | 'opponent' | null; outcome: 'projection' | 'decision' | 'egalite' | 'abandon' | 'entrainement' };
 
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
@@ -191,6 +196,7 @@ export type LambEvent =
 export const MODULES: GameModule[] = [
   wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
+  nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)
   eveningCallModule,    // the evening's call to the arena and the goal line to it (src/arena/eveningCall.ts)
   shopsModule,          // shops lane: walk-in cafés, night glow, showroom; customers are ambientLife's (docs/SHOPS.md)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)

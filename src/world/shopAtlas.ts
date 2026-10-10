@@ -1,12 +1,12 @@
 import { atlasRect, type Rect } from './kitGeometry';
 
 /**
- * Paint atlas of the shop interior kit (512 × 512 colour, 128 × 128 glow), drawn in code: product cartons, tins, bottle
+ * Paint atlas of the shop interior kit (512 × 704 colour, 128 × 176 glow), drawn in code: product cartons, tins, bottle
  * labels, sacks and medicine boxes with GENERIC words only (riz, sucre, lait, huile… never a brand), wax prints of our
  * own, phone and TV screens (no real interface or programme), pegboards, a café menu, posters and counter panels, and
  * shelf strips (a whole row of goods painted on one quad, for Low quality). No logo, no real product, no inscription.
  */
-export const SW = 512, SH = 640;
+export const SW = 512, SH = 704;
 const PX = {
   plain: [0, 0, 16, 16], light: [0, 16, 16, 16], dark: [0, 32, 16, 16], mirror: [0, 48, 16, 16],
   pk0: [16, 0, 32, 32], pk1: [48, 0, 32, 32], pk2: [80, 0, 32, 32], pk3: [112, 0, 32, 32], pk4: [144, 0, 32, 32], pk5: [176, 0, 32, 32], pk6: [208, 0, 32, 32], pk7: [240, 0, 32, 32],
@@ -32,6 +32,9 @@ const PX = {
   pnlGarage: [0, 512, 128, 32], sParts: [0, 544, 128, 32], oil0: [0, 576, 32, 32], oil1: [32, 576, 32, 32], tyre: [64, 576, 32, 32], plate: [96, 576, 32, 32],
   menuResto: [128, 512, 128, 96], pnlResto: [256, 512, 128, 32], seaview: [256, 544, 128, 64], pass: [384, 512, 128, 64], checker: [384, 576, 64, 64], cloth2: [448, 576, 64, 64],
   wood3: [0, 608, 128, 32],
+  // the car showroom (10 Oct, lane w2-car-dealer): the keys board, price cards, the desk panel, its floor, a poster
+  keys: [0, 640, 96, 64], carCard0: [96, 640, 60, 40], carCard1: [156, 640, 60, 40], carCard2: [216, 640, 60, 40],
+  pnlCars: [276, 640, 128, 32], floorShow: [404, 640, 64, 64], posterCars: [468, 640, 44, 64],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 export type ShopKey = keyof typeof PX;
 export const SUV = Object.fromEntries(Object.entries(PX).map(([k, [x, y, w, h]]) => [k, atlasRect(x, y, w, h, SW, SH)])) as Record<ShopKey, Rect>;
@@ -273,6 +276,37 @@ export function drawShopAtlas(c: C2, g: C2) {
   { const [x, y] = P('checker'); for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { c.fillStyle = (i + j) % 2 ? '#f2f2ee' : '#c23a2e'; c.fillRect(x + i * 8, y + j * 8, 8, 8); } }
   { const [x, y] = P('cloth2'); c.fillStyle = '#f2f2ee'; c.fillRect(x, y, 64, 64); c.fillStyle = '#0c4a6e'; for (let k = 4; k < 64; k += 12) { c.fillRect(x + k, y, 3, 64); c.fillRect(x, y + k, 64, 3); } }
   { const [x, y, w, h] = P('wood3'); c.fillStyle = '#b48c5c'; c.fillRect(x, y, w, h); c.fillStyle = '#9a744a'; for (let j = 0; j < h; j += 4) c.fillRect(x, y + j, w, 1.5); }
+  // car showroom: the board of keys behind the salesman (numbered tags), price cards (the other cars are taken), the desk
+  // panel with the dealer's (fictional) name, large light floor tiles, a poster
+  { const [x, y, w, h] = P('keys'); c.fillStyle = '#6b4a2e'; c.fillRect(x, y, w, h); c.fillStyle = '#c9a77a'; c.fillRect(x + 3, y + 3, w - 6, h - 6);
+    const tags = ['#d0312a', '#2f6fb3', '#f2c230', '#2e9b57', '#f2f2ee', '#e8822c'];
+    for (let j = 0; j < 3; j++) for (let i = 0; i < 6; i++) {
+      const kx = x + 10 + i * 15, ky = y + 9 + j * 19, n = j * 6 + i;
+      c.fillStyle = '#5b6168'; c.fillRect(kx - 1, ky - 3, 2, 3);                                   // the hook
+      if (n === 4 || n === 13) continue;                                                          // two keys out (on a test drive)
+      c.strokeStyle = '#9aa0a6'; c.lineWidth = 1.2; c.beginPath(); c.arc(kx, ky + 2, 2.5, 0, Math.PI * 2); c.stroke();   // the ring
+      c.fillStyle = '#c9cdd2'; c.fillRect(kx - 1, ky + 4, 2, 6);                                   // the key
+      c.fillStyle = tags[(i + j) % tags.length]; c.fillRect(kx + 2, ky + 3, 5, 7);                 // its tag
+      c.fillStyle = '#1d1f24'; c.font = 'bold 4px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(String(n + 1), kx + 4.5, ky + 6.5);
+    } }
+  const card = (k: ShopKey, top: string, price: string, band: string | null, bandCol: string) => {
+    const [x, y, w, h] = P(k); c.fillStyle = '#f2c230'; c.fillRect(x, y, w, h); c.fillStyle = '#ffffff'; c.fillRect(x + 2, y + 2, w - 4, h - 4);
+    c.fillStyle = '#1b2a7a'; c.fillRect(x + 2, y + 2, w - 4, 9); label(c, x, y + 6.5, w, top, 6, '#f2c230');
+    label(c, x, y + 20, w, price, price.length > 8 ? 8 : 9, '#1d1f24');
+    if (band) { c.fillStyle = bandCol; c.fillRect(x + 2, y + h - 12, w - 4, 10); label(c, x, y + h - 7, w, band, 7, '#ffffff'); }
+    else { label(c, x, y + h - 8, w, 'BON ÉTAT', 6, '#1b2a7a'); }
+  };
+  card('carCard0', 'OCCASION', 'À VENDRE', null, '');
+  card('carCard1', 'OCCASION', '3 400 000 F', 'RÉSERVÉE', '#c8322a');
+  card('carCard2', 'OCCASION', '4 100 000 F', 'VENDUE', '#2e6b30');
+  panel(c, 'pnlCars', '#1b2a7a', '#f2c230', 'NDIAYE AUTO · OCCASIONS');
+  { const [x, y] = P('floorShow'); for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) { c.fillStyle = (i + j) % 2 ? '#e4e5e2' : '#dcdedb'; c.fillRect(x + i * 32, y + j * 32, 32, 32); }
+    c.fillStyle = '#b9bcb8'; for (let k = 0; k <= 64; k += 32) { c.fillRect(x + Math.min(k, 63), y, 1, 64); c.fillRect(x, y + Math.min(k, 63), 64, 1); }
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x + 4, y + 4, 10, 2); c.fillRect(x + 36, y + 36, 10, 2); }
+  { const [x, y, w, h] = P('posterCars'); c.fillStyle = '#1b2a7a'; c.fillRect(x, y, w, h); c.fillStyle = '#f2c230'; c.fillRect(x, y + h - 14, w, 14);
+    c.fillStyle = '#c9cdd2'; c.beginPath(); c.moveTo(x + 5, y + 30); c.lineTo(x + 12, y + 22); c.lineTo(x + 30, y + 22); c.lineTo(x + 39, y + 30); c.lineTo(x + 39, y + 36); c.lineTo(x + 5, y + 36); c.fill();   // a saloon
+    c.fillStyle = '#1d1f24'; c.beginPath(); c.arc(x + 13, y + 37, 3.5, 0, Math.PI * 2); c.arc(x + 31, y + 37, 3.5, 0, Math.PI * 2); c.fill();
+    label(c, x, y + 10, w, 'PRÊTE', 8, '#ffffff'); label(c, x, y + 50, w, 'À ROULER', 7, '#ffffff'); label(c, x, y + h - 7, w, 'CONTRÔLÉE', 6, '#1b2a7a'); }
   // ceiling tube: glow
   g.fillStyle = '#fff4dc'; g.fillRect(0, 16, 16, 16);
 }

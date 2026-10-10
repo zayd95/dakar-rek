@@ -1,7 +1,9 @@
-// An evening at the Pikine arena, end to end (src/arena): the ticket at the gate (price, confirmation, paid once) →
-// the controller → a free place on the tiers → the crowd → the wrestlers' entrance → the watched bout → the result →
-// the crowd leaves. (The street outside the walls is src/arena/exterior.ts, another lane.) Desktop 1280×720 and phone 390×844; captures in docs/screenshots/arena-visit.
+// An evening at the Pikine arena, end to end (src/arena): the ticket at the gate (three tiers, price, confirmation, paid
+// once) → the controller → a free place on the tiers of the ticket's own stands (another tier's places refused, with the
+// reason) → the crowd → the wrestlers' entrance → the watched bout → the result → the crowd leaves; then, on the next
+// evenings, a « Tribune couverte » and a « Tribune d'honneur » ticket, each bought and sat in (src/arena/tickets.ts). (The street outside the walls is src/arena/exterior.ts, another lane.) Desktop 1280×720 and phone 390×844; captures in docs/screenshots/arena-visit.
 // Usage: node scripts/check-arena-visit.mjs [baseUrl=http://localhost:4247/] [outDir=docs/screenshots/arena-visit] [--view=desktop|phone]
+// LAMB2=1: with ?lamb2 (the watched bout avec frappe: referee's arm, the stands at the fall); captures and results suffixed -lamb2.
 // Run it under the shared lock: flock /tmp/dakar-browser.lock node scripts/check-arena-visit.mjs …
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -9,6 +11,8 @@ import fs from 'node:fs';
 const args = process.argv.slice(2);
 const [base = 'http://localhost:4247/', out = 'docs/screenshots/arena-visit'] = args.filter(a => !a.startsWith('--'));
 const view = args.find(a => a.startsWith('--view='))?.slice(7) ?? 'all';
+// LAMB2=1: the game loads with ?lamb2 (Làmb 2.0): the watched gala bout is avec frappe; without it, nothing changes
+const L2 = process.env.LAMB2 === '1';
 fs.mkdirSync(out, { recursive: true });
 const T = { timeout: 180000 };
 const results = []; let failed = 0;
@@ -19,12 +23,13 @@ const browser = await chromium.launch({
 });
 const VIEWS = [['desktop', { width: 1280, height: 720 }, false, 'medium'], ['phone', { width: 390, height: 844 }, true, 'low']].filter(([l]) => view === 'all' || l === view);
 
-for (const [label, viewport, touch, quality] of VIEWS) {
+for (const [label0, viewport, touch, quality] of VIEWS) {
+  const label = L2 ? `${label0}-lamb2` : label0;
   const ctx = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch, deviceScaleFactor: 1 });
   await ctx.addInitScript(q => { if (!sessionStorage.getItem('arena-visit')) { localStorage.clear(); localStorage.setItem('dakarrek.quality', q); sessionStorage.setItem('arena-visit', '1'); } }, quality);
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 180000 });
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}${L2 ? '&lamb2' : ''}`, { timeout: 180000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.arena, null, T);
   const d = (fn, arg) => page.evaluate(fn, arg);
   const info = () => d(() => window.__dakar.arena.info());
@@ -72,17 +77,19 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await d(g => window.__dakar.place(g.x - 5.2, g.z - 4.35, Math.PI), G);
   await page.waitForFunction(() => /Guichet/.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
   const f = await d(() => window.__dakar.focus());
-  check(`${label}: the ticket window offers the ticket with its price`, /Acheter un billet \(1\s000 F\)/.test((f?.all ?? []).join(' | ').replace(/[  ]/g, ' ')), f);
+  check(`${label}: the ticket window offers the ticket with its price`, /Acheter un billet \(dès 1\s000 F\)/.test((f?.all ?? []).join(' | ').replace(/[  ]/g, ' ')), f);
   await idle(); await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on h2')?.textContent?.includes('Billet'), null, T).catch(() => {});
   const confirm = await d(() => ({ sub: document.querySelector('#modal.on p')?.textContent ?? '', items: [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent) }));
-  check(`${label}: the price is shown before paying`, /1\s000 F/.test(confirm.sub.replace(/[  ]/g, ' ')) && confirm.items.some(t => /Payer 1\s000 F/.test(t.replace(/[  ]/g, ' '))) && confirm.items.some(t => /Annuler/.test(t)), confirm);
+  const sp = s => s.replace(/[  ]/g, ' ');
+  check(`${label}: the three tiers' prices are shown before paying`, /Populaire 1 000 F · Tribune couverte 2 500 F · Tribune d’honneur 5 000 F/.test(sp(confirm.sub))
+    && ['Payer 1 000 F · Populaire', 'Payer 2 500 F · Tribune couverte', 'Payer 5 000 F · Tribune d’honneur'].every(w => confirm.items.some(t => sp(t).includes(w))) && confirm.items.some(t => /Annuler/.test(t)), confirm);
   await shot('2-ticket-confirm', false);
-  await page.locator('#modal.on .item', { hasText: 'Payer' }).first().click();
+  await page.locator('#modal.on .item', { hasText: 'Populaire' }).first().click();
   await page.waitForFunction(() => window.__dakar.arena.info().ticket, null, T).catch(() => {});
   await waitToast(/Le guichetier : « 1 000 F, jërëjëf ! »/);
-  const paid = await d(() => ({ wallet: window.__dakar.state.wallet, ledger: window.__dakar.state.data.ledger.at(-1), ticket: window.__dakar.arena.info().ticket }));
-  check(`${label}: paid once, wallet line « Billet · gala de làmb · Arène de Pikine »`, paid.ticket && wallet0 - paid.wallet === 1000 && /Billet · gala de làmb · Arène de Pikine/.test(paid.ledger?.label ?? ''), paid);
+  const paid = await d(() => ({ wallet: window.__dakar.state.wallet, ledger: window.__dakar.state.data.ledger.at(-1), ticket: window.__dakar.arena.info().ticket, tribune: window.__dakar.arena.info().tribune }));
+  check(`${label}: paid once, wallet line « Billet · gala de làmb · Arène de Pikine »`, paid.ticket && paid.tribune === 'populaire' && wallet0 - paid.wallet === 1000 && /Billet · gala de làmb · Arène de Pikine/.test(paid.ledger?.label ?? ''), paid);
   await idle(); await page.waitForTimeout(2800);
   await d(() => window.__dakar.act());
   const twice = await waitToast(/déjà ton billet/);
@@ -92,9 +99,18 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await d(g => window.__dakar.place(g.x, g.z - 2, 0), G);
   await page.waitForTimeout(800);
   await d(c => window.__dakar.place(c.x, c.z - 15, 0), C);
-  const welcomed = await waitToast(/Le contrôleur : « Dalal ak jàmm ! »/);
+  const welcomed = await waitToast(/Le contrôleur : « Dalal ak jàmm ! ».*sections A, D, E et H/);
   const inside = await d(() => window.__dakar.pos());
-  check(`${label}: with a ticket you walk in (« Dalal ak jàmm ! »)`, welcomed && Math.hypot(inside.x - C.x, inside.z - C.z) < 17, `${await toast()} · ${Math.hypot(inside.x - C.x, inside.z - C.z).toFixed(1)} m from the ring`);
+  check(`${label}: with a ticket you walk in (« Dalal ak jàmm ! », and where its places are)`, welcomed && Math.hypot(inside.x - C.x, inside.z - C.z) < 17, `${await toast()} · ${Math.hypot(inside.x - C.x, inside.z - C.z).toFixed(1)} m from the ring`);
+
+  // 4b. Another tier's place is refused, and the controller's rule says why
+  const near = async (s) => { const r = Math.hypot(s.x - C.x, s.z - C.z), k = (r - 2.3) / r; await d(([c, s, k]) => window.__dakar.place(c.x + (s.x - c.x) * k, c.z + (s.z - c.z) * k, s.yaw + Math.PI), [C, s, k]); };
+  const hon = await d(c => window.__dakar.arena.freeSeat(c.x + 18, c.z + 4, 'honneur'), C);
+  await near(hon);
+  await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat', null, { timeout: 30000 }).catch(() => {});
+  const refused = await d(() => window.__dakar.focus());
+  check(`${label}: a place of honneur is refused with a « Populaire » ticket, and the reason says where to sit`,
+    refused?.name === 'Place d’honneur' && !refused.primary && /billet est pour la tribune populaire.*sections A, D, E et H/.test(sp((refused.why ?? []).join(' '))), refused);
 
   // 5. A free place on the tiers: « S'asseoir », seated, the view faces the ring, the crowd around.
   const seat = await d(c => window.__dakar.arena.freeSeat(c.x + 9, c.z - 14), C);
@@ -102,7 +118,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await d(([c, s, k]) => window.__dakar.place(c.x + (s.x - c.x) * k, c.z + (s.z - c.z) * k, s.yaw + Math.PI), [C, seat, k]);
   await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat', null, T).catch(() => {});
   const fs1 = await d(() => window.__dakar.focus());
-  check(`${label}: a free place on the tiers is offered from the ring side (« S’asseoir »)`, fs1?.name === 'Place en tribune' && /asseoir/.test(fs1.primary ?? ''), fs1);
+  check(`${label}: a free place of the ticket's own stands is offered from the ring side (« S’asseoir »)`, fs1?.name === 'Place en tribune' && seat.tribune === 'populaire' && /asseoir/.test(fs1.primary ?? ''), { fs1, seat });
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => /arena:stand/.test(window.__dakar.seated() ?? ''), null, T).catch(() => {});
   await page.waitForFunction(() => window.__dakar.clip() === 'Sit', null, { timeout: 30000 }).catch(() => {});   // the pose blends in on the next frames
@@ -125,6 +141,9 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const pr1 = await info(), tl1 = await d(() => window.__dakar.arena.timeline());
   check(`${label}: the preliminaries start soon after sitting down: the first bout on the sand, named on the card`,
     pr1.phase === 'prelims' && pr1.prelims.n >= 1 && pr1.prelims.stage === 'bout' && !!pr1.prelims.bout && /Préliminaires 1\//.test(pr1.card), { prelims: pr1.prelims, card: pr1.card, timeline: tl1 });
+  // with ?lamb2 the preliminaries are fought avec frappe too (AI against AI, styles from the preliminary's seed); without it, sans frappe as before
+  check(`${label}: the preliminary is fought ${L2 ? 'avec frappe (prelims.frappe), AI against AI' : 'sans frappe, as before'}`,
+    pr1.prelims.frappe === L2 && pr1.prelims.bout?.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'), { frappe: pr1.prelims.frappe, discipline: pr1.prelims.bout?.discipline, identity: pr1.prelims.bout?.identity });
   await shot('3b-prelim');
   await d(() => window.__dakar.arena.speed(6));
   await page.waitForFunction(() => window.__dakar.arena.info().prelims.results.length >= 1, null, { timeout: 300000 }).catch(() => {});
@@ -147,7 +166,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   // 7. The bout: the existing duel played by the two wrestlers.
   await page.waitForFunction(() => window.__dakar.arena.info().phase === 'bout' && window.__dakar.arena.info().bout?.phase === 'fight', null, T).catch(() => {});
   const b1 = await info();
-  check(`${label}: the bout starts (lutte sans frappe, referee call, then the fight)`, b1.phase === 'bout' && !!b1.bout && b1.bout.mode === 'amical', b1.bout);
+  check(`${label}: the bout starts (${L2 ? 'avec frappe, the two billed wrestlers, AI against AI' : 'lutte sans frappe'}, referee call, then the fight)`, b1.phase === 'bout' && !!b1.bout && b1.bout.mode === 'amical' && b1.bout.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'), { phase: b1.bout?.phase, discipline: b1.bout?.discipline, identity: b1.bout?.identity });
   await page.waitForTimeout(2500);
   await shot('5-bout');
   await d(() => window.__dakar.arena.speed(6));
@@ -158,6 +177,12 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   if (r1.phase === 'result') {
     check(`${label}: the crowd cheers the result`, r1.crowd.cheering > 0, r1.crowd);
     await shot('6-result');
+  }
+  if (L2) {
+    // avec frappe: the referee raised the winner's arm, and at a fall the stands split (the winner's side celebrates)
+    const lb = (await info()).lastBout;
+    check(`${label}: avec frappe — the bout reached its result, the referee raised the winner's arm, the stands reacted to the fall`,
+      !!lb && lb.discipline === 'avec_frappe' && !!lb.outcome && (!lb.winner || lb.refereeRaised === true) && (lb.outcome !== 'projection' || (lb.fallSplit?.celebrate > 0 && lb.fallSplit?.heads > 0)), lb);
   }
 
   // 8. The crowd goes home.
@@ -172,6 +197,42 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   check(`${label}: after the gala the gate no longer checks tickets and the stands stay empty`, after.street === 'after' && after.crowd.present === 0, { street: after.street, crowd: after.crowd });
   await shot('7-after', false);
 
+  // 9. The next evenings: a « Tribune couverte » ticket, then a « Tribune d'honneur » one, each bought and sat in
+  for (const [k, t, word, price] of [[1, 'couverte', 'Tribune couverte', '2 500'], [2, 'honneur', 'Tribune d’honneur', '5 000']]) {
+    const day = a0.day + k;
+    await d(dd => { const x = window.__dakar; x.arenaOutDay?.(dd); x.arena.day(dd); window.__dakar.state.data.wallet = 10000; }, day);
+    await page.waitForFunction(() => window.__dakar.arena.info()?.street === 'doors' && !window.__dakar.arena.info().ticket, null, T).catch(() => {});
+    await d(g => window.__dakar.place(g.x - 5.2, g.z - 4.35, Math.PI), G);
+    await page.waitForFunction(() => /Guichet/.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
+    await idle(); await d(() => window.__dakar.act());
+    await page.waitForFunction(() => document.querySelector('#modal.on h2')?.textContent?.includes('Billet'), null, T).catch(() => {});
+    await page.locator('#modal.on .item', { hasText: word }).first().click();
+    await page.waitForFunction(tt => window.__dakar.arena.info().tribune === tt, t, T).catch(() => {});
+    await idle();
+    const bought = await d(() => ({ wallet: window.__dakar.state.wallet, ledger: window.__dakar.state.data.ledger.at(-1)?.label ?? '', tribune: window.__dakar.arena.info().tribune }));
+    check(`${label}: a « ${word} » ticket, ${price} F, paid once (wallet line « … · ${word} »)`, bought.tribune === t && 10000 - bought.wallet === Number(price.replace(' ', '')) && bought.ledger.includes(word), bought);
+    await d(g => window.__dakar.place(g.x, g.z - 2, 0), G); await page.waitForTimeout(800);
+    await d(c => window.__dakar.place(c.x, c.z - 15, 0), C);
+    const inT = await waitToast(new RegExp(`Dalal ak jàmm.*Billet ${word}`));
+    check(`${label}: the controller lets the « ${word} » ticket in and says where its places are`, inT, await toast());
+    const s = await d(([c, tt]) => window.__dakar.arena.freeSeat(tt === 'honneur' ? c.x + 18 : c.x - 18, tt === 'honneur' ? c.z + 4 : c.z - 2, tt), [C, t]);
+    await near(s);
+    await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat' && !!window.__dakar.focus()?.primary, null, { timeout: 30000 }).catch(() => {});
+    const fo = await d(() => window.__dakar.focus());
+    check(`${label}: a « ${word} » place is offered (« S’asseoir », section ${s?.section})`, s?.tribune === t && /asseoir/.test(fo?.primary ?? ''), { fo, s });
+    await d(() => window.__dakar.act());
+    await page.waitForFunction(() => /arena:stand/.test(window.__dakar.seated() ?? ''), null, T).catch(() => {});
+    await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, T).catch(() => {});
+    await page.waitForTimeout(1500);
+    const camT = await d(() => window.__dakar.arena.cam()), seatedT = await d(() => window.__dakar.seated());
+    const toR = { x: C.x - camT.x, z: C.z - camT.z }, lr = Math.hypot(toR.x, toR.z), ld = Math.hypot(camT.dx, camT.dz);
+    check(`${label}: seated in the « ${word} », the gala starts and the view frames the ring`, seatedT === s?.id && (camT.dx * toR.x + camT.dz * toR.z) / (lr * ld) > 0.85 && camT.y > 1.5, { seatedT, camT });
+    await shot(`9-${t}-seated`);
+    await d(() => window.__dakar.arena.go('over'));                              // the evening ends here (no second gala to watch)
+    await d(() => window.__dakar.act());                                          // « Se lever »
+    await page.waitForFunction(() => !window.__dakar.seated(), null, T).catch(() => {});
+  }
+
   const dc = { gate: dcExt, seat: dcSeat, entrance: dcShow };
   const own = Math.max(dcExt.own, dcSeat.own, dcShow.own), all = Math.max(dcExt.all, dcSeat.all, dcShow.all);
   check(`${label}: the arena's own draw calls stay small (gate +${dcExt.own}, seat +${dcSeat.own}, entrance +${dcShow.own})`, own < (touch ? 60 : 160), dc);
@@ -181,6 +242,6 @@ for (const [label, viewport, touch, quality] of VIEWS) {
 }
 
 await browser.close();
-fs.writeFileSync(`${out}/results${view === 'all' ? '' : '-' + view}.json`, JSON.stringify({ when: new Date().toISOString(), base, results }, null, 2));
+fs.writeFileSync(`${out}/results${L2 ? '-lamb2' : ''}${view === 'all' ? '' : '-' + view}.json`, JSON.stringify({ when: new Date().toISOString(), base, results }, null, 2));
 console.log(`\n${results.length - failed}/${results.length} arena visit checks passed`);
 process.exit(failed ? 1 : 0);

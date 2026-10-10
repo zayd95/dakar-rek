@@ -2,12 +2,13 @@ import type { GameCtx, GameModule } from '../game/modules';
 import { isOpen, type PlaceSpec } from '../activity/places';
 import { WALL_R } from '../world/geew';
 import { fcfaText } from '../economy/format';
-import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, hasTicket, streetAt } from './program';
+import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, followedLine, followedOn, hasTicket, streetAt } from './program';
 import { eveningSize } from './exterior';
 import { FIGHT_DAYS, WEEKDAY_FR, weekday } from './exteriorRules';
 import { MOTO_FEE, motoLot } from './arrivalRules';
 import { moto } from '../transport/motoModule';
 import { transport } from '../transport/module';
+import { arenaFighter, type FighterPhase } from './fighter';
 
 /**
  * The evening's call to the arena (Habib's evening, 10 Oct): nothing used to tell a player that a bout is on tonight.
@@ -65,7 +66,7 @@ export interface EveningInput {
   moto?: 'parked' | 'riding' | null;
 }
 /** walk · ride (the car rapide) · travel (another hub) · moto (take your moto) · park (riding: to the moto parking). */
-export type EveningGoal = { kind: 'arena'; how: 'walk' | 'ride' | 'travel' | 'moto' | 'park' } | { kind: 'ticket' } | { kind: 'enter' } | { kind: 'seat' } | { kind: 'after' } | null;
+export type EveningGoal = { kind: 'arena'; how: 'walk' | 'ride' | 'travel' | 'moto' | 'park' } | { kind: 'ticket' } | { kind: 'enter' } | { kind: 'seat' } | { kind: 'leave' } | { kind: 'after' } | null;
 /** Closer than this to the gate without a ticket, the goal line points to the ticket window beside it. */
 export const NEAR_GATE = 25;
 /** The goal of the evening, if any (pure). */
@@ -79,6 +80,7 @@ export function eveningGoal(i: EveningInput): EveningGoal {
     if (i.ticket) return { kind: 'enter' };
     return i.gate.dist < NEAR_GATE ? { kind: 'ticket' } : { kind: 'arena', how: 'walk' };
   }
+  if (i.galaDone && i.hour >= GALA.setup && i.hour < GALA.close + 1 && i.gate?.inside && !i.seated) return { kind: 'leave' };   // the gala is over: out by the gate
   if (i.galaDone && !i.afterDone && i.hour >= GALA.setup && i.hour < GALA.close + 1 && i.gate && !i.gate.inside) return { kind: 'after' };   // walked out
   return null;
 }
@@ -88,6 +90,7 @@ export function goalText(g: NonNullable<EveningGoal>, place?: { name: string; cl
   if (g.kind === 'ticket') return hour < GALA.doors ? `Le guichet ouvre à ${GALA.doors} h, à gauche de la porte` : `Ton billet au guichet, à gauche de la porte · ${fcfaText(TICKET_PRICE)}`;
   if (g.kind === 'enter') return 'Billet en poche : entre par la porte de l’arène';
   if (g.kind === 'seat') return 'Trouve une place libre sur les gradins';
+  if (g.kind === 'leave') return 'Le gala est fini : sors par la porte';
   if (g.how === 'travel') return 'Combat ce soir à l’arène de Pikine : car rapide jusqu’à Pikine, puis ligne 23, arrêt « Arène »';
   if (g.how === 'ride') return 'Combat ce soir à l’arène (Pikine) : car rapide ligne 23, arrêt « Arène »';
   if (g.how === 'moto') return 'Combat ce soir à l’arène (Pikine) : prends ta moto, parking gardé à côté de l’entrée';
@@ -126,9 +129,26 @@ export function placeClock(day: number, hour: number, galaDone: boolean): { cloc
   return { clock, tag: FIGHT_DAYS.includes(weekday(day)) && !galaDone && hour < GALA.close ? 'Gala ce soir' : null };
 }
 
+/**
+ * The goal line of the player's own bout (src/arena/fighter.ts), between the legs the walking marker already leads
+ * (gate, corner, ring): it never falls back to an unrelated beat in the middle of the fighter's evening. Null in the
+ * bout itself, and when no bout is on its way.
+ */
+export function fighterGoal(phase: FighterPhase): string | null {
+  switch (phase) {
+    case 'called': return 'Tu combats ce soir : entrée des lutteurs, derrière l’arène';
+    case 'tunnel': return 'Le tunnel des lutteurs : rejoins ton coin';
+    case 'prep': return 'Dans ton coin : prépare-toi, le combat arrive';
+    case 'ring': return 'C’est l’heure : avance jusqu’au cercle';
+    case 'return': return 'Retour par le tunnel des lutteurs';
+    default: return null;
+  }
+}
+
 /** The goal line and its way-finding target for main.ts (the HUD's goal, ctx.guide()). */
 export function eveningLine(ctx: GameCtx, welcome: boolean): { text: string; target: { name: string; x: number; z: number } | null } | null {
   const w = ctx.world(); if (!w) return null;
+  if (arenaFighter.pending()) { const t = fighterGoal(arenaFighter.phase()); return t ? { text: t, target: null } : null; }   // the fighter's own evening first
   const day = ctx.day(), hour = ctx.hour(), counters = ctx.state.data.counters, here = ctx.inside()?.door ?? ctx.player.pos;
   const arena = w.arena, gateIt = arena ? w.interactables.find(i => i.id === `${w.id}:arena`) : undefined;
   const gate = arena && gateIt ? { dist: Math.hypot(gateIt.x - here.x, gateIt.z - here.z), inside: !ctx.inside() && Math.hypot(here.x - arena.cx, here.z - arena.cz) < WALL_R - 0.4 } : null;
@@ -142,6 +162,7 @@ export function eveningLine(ctx: GameCtx, welcome: boolean): { text: string; tar
     return { text: goalText(g, { name: p.name, close: p.hours?.[1] }), target: { name: p.name, x: a.x, z: a.z } };
   }
   if (g.kind === 'seat') return { text: goalText(g), target: null };
+  if (g.kind === 'leave') return { text: goalText(g), target: gateIt ? { name: 'Sortie · Arène', x: gateIt.x, z: gateIt.z } : null };
   if (g.kind === 'ticket') {
     const win = ctx.places.get(`${w.id}:arena:guichet`)?.anchors[0];
     return { text: goalText(g, undefined, hour), target: win ? { name: 'Guichet · billets', x: win.x, z: win.z } : gateIt ? { name: 'Arène · làmb', x: gateIt.x, z: gateIt.z } : null };
@@ -164,6 +185,8 @@ export const eveningCallModule: GameModule = {
     if (ctx.mode() !== 'play') return;                                        // not over a menu or a scene
     counters[CALL_COUNTER] = day;
     ctx.toast(callText(eveningSize(day, GALA.doors)));
+    const f = followedOn(day);                                // the wrestler the player follows is on tonight's card
+    if (f) ctx.toast(followedLine(f));
     ctx.save();
   },
   debug: ctx => ({

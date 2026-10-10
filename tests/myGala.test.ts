@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PLAYER_SIDE, boutByClock, entranceByClock, mainCalledOff, mainDriver, myShowResult, playerCorner, playerMainBill, remoteCard, remoteMain } from '../src/arena/myGala';
 import { undercardFor } from '../src/arena/undercard';
-import { cornerSides, entranceCues, setRecordSource, griotLine, type Fighter } from '../src/arena/ceremony';
+import { cornerSides, entranceCues, setRecordSource, griotLine, standsOf, type Fighter } from '../src/arena/ceremony';
+import { standsSide } from '../src/arena/bakk';
 import { PREP_SIDE } from '../src/world/arenaModules';
 import { parseArena } from '../src/multiplayer/protocol';
 import { arenaField } from '../src/arena/together';
@@ -29,6 +30,15 @@ describe('the player\'s own gala night: the bill and the corners', () => {
       expect(cs.right).not.toBe(cs.left);
       if (me === 'Baobab') expect(c).toBe('baobab');                                   // a member takes his écurie's corner
     }
+  });
+  it('the stands by their corner cheer them, whichever side of the bill they are', () => {
+    // an independent against a Baobab man: the player takes the Teranga corner, the stands there are theirs
+    const bill = playerMainBill({ name: 'Moussa', ecurie: null }, ROSTER[1], false);
+    expect(playerCorner(bill)).toBe('teranga');
+    expect(standsOf(bill, 'left')).toBe(standsSide('teranga'));
+    expect(standsOf(bill, 'right')).toBe(standsSide('baobab'));
+    const member = playerMainBill({ name: 'Moussa', ecurie: 'Baobab' }, ROSTER[0], false);
+    expect(standsOf(member, 'left')).toBe(standsSide('baobab'));
   });
   it('their real result is the show\'s: their side is the left one', () => {
     expect(myShowResult('player', 'projection')).toEqual({ winner: 'left', outcome: 'projection' });

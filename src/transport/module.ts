@@ -7,6 +7,7 @@ import { People } from '../interact/people';
 import { stop as stopRecipe } from '../activity/templates';
 import * as P from '../activity/primitives';
 import type { ActivitySpec } from '../activity/types';
+import type { PlaceSpec } from '../activity/places';
 import { fcfa } from '../ui/hud';
 import { rng } from '../core/rng';
 import { lanePath, Path, Timetable, type Motion } from './route';
@@ -52,6 +53,9 @@ interface LineRt {
   on: boolean;
   /** Passenger sets by fill (`LineDef.fill`), made when first needed. */
   fills: Map<number, string[][]>;
+  /** The stops as places of the « stop » recipe: registered only while the line runs (a parked route has no stops). */
+  places: PlaceSpec[];
+  placesOn: boolean;
 }
 
 /**
@@ -136,10 +140,10 @@ export class TransportModule implements GameModule {
       ctx.extra.add(furniture.group);
       for (const s of sites) for (const seat of s.seats) ctx.seats.add(seat);
       const people = new StopPeople(sites, low ? 1 : 2, this.rand, o => ctx.extra.add(o));
-      const rt: LineRt = { def, spec, path, table, sites, vehicles, motions: vehicles.map(v => v.motion), arrivals: vehicles.map(v => v.arrivals), people, furniture, calls, patterns, on: true, fills: new Map() };
+      const rt: LineRt = { def, spec, path, table, sites, vehicles, motions: vehicles.map(v => v.motion), arrivals: vehicles.map(v => v.arrivals), people, furniture, calls, patterns, on: true, fills: new Map(), places: [], placesOn: false };
+      rt.places = sites.map(site => this.stopPlace(rt, site));
       this.lines.push(rt);
       this.setOn(rt, this.runs(rt));
-      for (const site of sites) ctx.places.add(this.stopPlace(rt, site));
     }
   }
 
@@ -359,6 +363,8 @@ export class TransportModule implements GameModule {
   private setOn(rt: LineRt, on: boolean) {
     rt.on = on;
     for (const v of rt.vehicles) v.group.visible = on;
+    // only a running line's stops are places (the street crowd waits there; the stop recipe offers boarding)
+    if (on !== rt.placesOn) { rt.placesOn = on; for (const p of rt.places) { if (on) this.ctx.places.add(p); else this.ctx.places.remove(p.id); } }
     if (!on) {
       rt.people?.hideAll();
       if (this.line === rt && this.trip.phase === 'waiting') this.stopWaiting(`Le ${rt.def.number} a changé de route : vois l’arrêt Arène les soirs de combat`);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
-  CARD_SHARE, FAN_COLOURS, LOT_CAP, LOT_EMPTIES, MOTO_FEE, MOTO_FEE_COUNTER, SLOT_GAP, fansRide, inLot, lotCount, lotOrder, lotTaken, motoLot, paidTonight,
+  CARD_SHARE, FAN_COLOURS, LOT_CAP, LOT_EMPTIES, MOTO_FEE, MOTO_FEE_COUNTER, SLOT_GAP, fansRide, gardienBias, inLot, lotCount, lotOrder, lotTaken, motoLot, paidTonight,
 } from '../src/arena/arrivalRules';
 import { ECURIES, drummerAt, gateOf, queueDistance, stallsOf } from '../src/arena/exteriorRules';
 import { eveningGoal, goalText, type EveningInput } from '../src/arena/eveningCall';
@@ -9,6 +9,8 @@ import { WALL_R } from '../src/world/geew';
 import { MOTO_GUARD, unknownPhrases } from '../src/i18n/lines';
 import { glossed } from '../src/i18n/wolof';
 import { buildVehicle } from '../src/actors/vehicleKit';
+import { pickTarget } from '../src/interact/system';
+import type { Target } from '../src/interact/types';
 
 const A = { cx: 30, cz: -30 };                    // the Pikine arena (world/builder.ts block 2,1)
 const lot = motoLot(A), gate = gateOf(A);
@@ -81,6 +83,28 @@ describe('the guarded moto parking by the arena', () => {
     expect(paid).toMatch(/^Le gardien : « 100 F, jërëjëf ! Amul solo\. » \(merci · pas de souci\)/);
     expect(again).toMatch(/« Dalal ak jàmm ! » \(bienvenue\)/);
     expect(bye).toBe('Le gardien : « Ñibbil ak jàmm ! Ba beneen yoon ! » (rentre bien · à la prochaine) · Il te fait signe de la main.');
+  });
+  it('facing the gardien while his fee is due, he has the focus, not the moto beside him; once paid, the moto first', () => {
+    // the moto's target sits on its body's nearest edge (src/transport/ownedModule.ts), the gardien's on him
+    const motoAt = (m: { x: number; z: number }, me: { x: number; z: number }): Target => ({
+      id: 'moto:parked', name: 'Ta moto Jakarta', kind: 'vehicle', space: 'street', radius: 1.8, bias: -0.2, affordances: () => [],
+      x: m.x + Math.max(-HALF_W, Math.min(HALF_W, me.x - m.x)), z: m.z + Math.max(-HALF_LEN, Math.min(HALF_LEN, me.z - m.z)),
+    });
+    const gardien = (due: boolean): Target => ({ id: 'gardien', name: 'Le gardien de motos', kind: 'person', space: 'street', x: lot.gardien.x, z: lot.gardien.z, radius: 2.6, bias: gardienBias(due), affordances: () => [] });
+    const s = lot.slots[lot.reserved];
+    // just off the moto (ridden in nose to the wall, short of its place), 1.3 m in front of him, facing him
+    const me = { x: lot.gardien.x, z: lot.gardien.z - 1.3 }, moto = { x: s.x, z: s.z - 1.4 };
+    for (const dz of [0, 0.4, 0.9]) {
+      const m = { x: moto.x, z: moto.z + dz };
+      expect(pickTarget([motoAt(m, me), gardien(true)], 'street', me.x, me.z, 0)?.id).toBe('gardien');
+      expect(pickTarget([motoAt(m, me), gardien(false)], 'street', me.x, me.z, 0)?.id).toBe('moto:parked');   // without the rule
+    }
+    // after the gala, paid: beside the moto in its place, to ride away
+    const by = { x: s.x - 1.0, z: s.z - 0.6 };
+    expect(pickTarget([motoAt(s, by), gardien(false)], 'street', by.x, by.z, 0)?.id).toBe('moto:parked');
+    // fee due but facing the moto right beside it: the moto
+    const side = { x: s.x - HALF_W - 0.5, z: s.z };
+    expect(pickTarget([motoAt(s, side), gardien(true)], 'street', side.x, side.z, Math.PI / 2)?.id).toBe('moto:parked');
   });
 });
 

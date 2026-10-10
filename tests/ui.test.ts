@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fcfa, splitIcon, toastParts } from '../src/ui/hud';
+import { fcfa, goalParts, splitIcon, toastParts } from '../src/ui/hud';
 import { priceClass } from '../src/ui/sheet';
 
 describe('UI helpers (docs/UI.md)', () => {
@@ -25,5 +25,11 @@ describe('UI helpers (docs/UI.md)', () => {
     expect(fcfa(1250000000).replace(/\s/g, ' ')).toBe('1 250 000 000 F');
     expect(toastParts('Achat ✓  ' + '−' + fcfa(25000))[1].amount).toBe('cost');
     expect(priceClass('+' + fcfa(1200))).toBe('gain');
+  });
+  it('the goal line: a distance at its end goes to its own slot (never wrapped from its number)', () => {
+    expect(goalParts('Billet en poche : entre par la porte de l’arène · 6 m')).toEqual({ text: 'Billet en poche : entre par la porte de l’arène', dist: '6 m' });
+    expect(goalParts('Après le combat : Dibiterie Chez Pathé, ouvert jusqu’à 2 h · 49 m')).toEqual({ text: 'Après le combat : Dibiterie Chez Pathé, ouvert jusqu’à 2 h', dist: '49 m' });
+    expect(goalParts('Parle à Tonton Ibou, devant ta chambre (Pikine).')).toEqual({ text: 'Parle à Tonton Ibou, devant ta chambre (Pikine).', dist: '' });
+    expect(goalParts('Ton billet au guichet · 1 000 F')).toEqual({ text: 'Ton billet au guichet · 1 000 F', dist: '' });
   });
 });
