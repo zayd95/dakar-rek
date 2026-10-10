@@ -41,7 +41,7 @@ text in the show: drums, dances and the crowd.
 `src/arena/people.ts` (`FightNightPeople`, driven by the arena evening) is every person inside the walls, on the venues'
 Cast and roles (`src/venues/cast.ts`): each one is shown only in the moments of the evening they belong to
 (`peopleMoment(phase, street)` → `PRESENT`), seated ones on real seats of the shared registry. Their places are the
-structure of the arena interior (`src/world/arenaModules.ts`: `interiorSpots`, `cornerSpots`, `WALKWAY_R`, the tunnel);
+structure of the arena interior (`src/world/arenaModules.ts`: `interiorSpots`, `prepCorner` and `PREP_SIDE`, `WALKWAY_R`, the tunnel);
 `src/arena/interior.ts` draws nobody and keeps the debug view (`__dakar.arenaIn()`).
 
 | Who | Where | When |
@@ -56,9 +56,14 @@ structure of the arena interior (`src/world/arenaModules.ts`: `interiorSpots`, `
 | A helper in each écurie's corner | by the buckets at the back of the corner | doors open → the crowd leaves |
 | Each wrestler's entourage (1 / 2 / 4 per side) — the écurie's flag first, the coach in a bazin boubou of the écurie's colour, helpers in its colour with a bucket | walk out of the tunnel behind their wrestler (left at 0.9 s, right at 3.9 s of the entrance), round in front of the drummers' deck, into their corner by its open side (those who arrive first go furthest, so nobody walks through another); wait there during the bout; the winner's run onto the sand through the gap in the boards by the tunnel and celebrate; back into the tunnel with the crowd | entrance → leaving |
 
-- **Each écurie on its wrestler's side.** Baobab (green) is the left wrestler of the bill, on the +x side of the ring;
-  Teranga (red) the right one, on −x. Their corners, banners and flags at the wrestlers' gate follow `ECURIE_SIDES`
-  (`src/world/arenaModules.ts`).
+- **Each écurie in its corner.** The side of each écurie's preparation corner is read from `PREP_SIDE`
+  (`src/world/arenaModules.ts`, the one place that sets it, owned by the fighter's path); its people stand round the
+  mat's centre (`cornerSpots` in `people.ts`). Baobab's entourage walks in behind the left wrestler of the bill,
+  Teranga's behind the right one; the winner's run onto the sand.
+- **When the player fights tonight** (`src/arena/fighter.ts`, `arenaFighter.onCue`): from the tunnel on, the player's
+  écurie's people (and its corner helper) wait in its corner; when the player reaches it (`prep`) they gather round and
+  turn to them; they cheer as the player walks out to the ring (`walk-out`) and after the bout (`result`); they go
+  once the player is back outside (`exit`) or the bout is given up.
 - **Buying in the stands.** A vendor who passes within 3 m of the player stops for a few seconds, turns to them and
   talks; « Sokhna · vendeuse » offers what she sells at the prices of the stalls outside (café Touba 150 F, bissap
   300 F, water 50 F, peanuts 200 F), through the activity runner, counted with the evening's purchases

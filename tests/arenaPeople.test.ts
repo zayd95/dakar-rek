@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PEOPLE, PEOPLE_COUNT, PRESENT, STAND_VENDORS, campSpot, celebratePath, cornerSpot, drummerSpots, entouragePath, peopleMoment, polar, walkArc,
+  PEOPLE, PEOPLE_COUNT, PRESENT, STAND_VENDORS, campSpot, celebratePath, cornerSpot, cornerSpots, drummerSpots, entouragePath, peopleMoment, polar, walkArc,
 } from '../src/arena/people';
-import { VENDORS } from '../src/arena/exteriorRules';
+import { ECURIES, VENDORS } from '../src/arena/exteriorRules';
 import { RING_R, PARAPET_R, WALL_R, TUNNEL_MOUTH_R, inGate, inTunnel } from '../src/world/geew';
-import { ARENA_FLOOR, ECURIE_SIDES, drummersStand, interiorSpots, mediaZone, prepCorner, tunnel, type ArenaKit } from '../src/world/arenaModules';
+import { ARENA_FLOOR, PREP_SIDE, drummersStand, interiorSpots, mediaZone, prepCorner, prepCornerCentre, tunnel, type ArenaKit } from '../src/world/arenaModules';
 import { Batch } from '../src/world/batch';
 import type { ShowPhase } from '../src/arena/program';
 import type { ActivitySpec } from '../src/activity/types';
@@ -27,7 +27,9 @@ const kit: ArenaKit = {
   sign: () => {}, climb: () => {},
 };
 tunnel(kit, C.x, C.z); mediaZone(kit, C.x, C.z); const deck = drummersStand(kit, C.x, C.z);
-for (const e of ECURIE_SIDES) prepCorner(kit, C.x, C.z, e.side, e.colour);
+/** Each écurie's corner, on the side PREP_SIDE gives it (src/world/arenaModules.ts: the one place that sets it). */
+const SIDES = ECURIES.map(e => ({ side: PREP_SIDE[e.id], colour: e.colour }));
+for (const e of SIDES) prepCorner(kit, C.x, C.z, e.side, e.colour);
 const hit = (p: { x: number; z: number }) => cols.some(c => p.x > c.x0 && p.x < c.x1 && p.z > c.z0 && p.z < c.z1);
 
 describe('fight night people: who is there when', () => {
@@ -77,7 +79,7 @@ describe('fight night people: where they stand', () => {
   });
   it('each entourage walks out of the tunnel to its own corner, round the deck and its dancers, clear of every prop', () => {
     const dancers = drummerSpots(C.x, C.z).filter(s => s.clip !== 'Talk');
-    for (const { side } of ECURIE_SIDES) for (let k = 0; k < PEOPLE_COUNT.high.entourage; k++) {
+    for (const { side } of SIDES) for (let k = 0; k < PEOPLE_COUNT.high.entourage; k++) {
       const path = entouragePath(C.x, C.z, side, k);
       expect(path).toHaveLength(5);
       expect(inTunnel(ang(path[0]), 0.12)).toBe(true); expect(r(path[0])).toBeGreaterThan(TUNNEL_MOUTH_R + 2); expect(r(path[0])).toBeLessThan(WALL_R);
@@ -90,8 +92,20 @@ describe('fight night people: where they stand', () => {
       for (const d of dancers) for (let i = 1; i + 1 < path.length; i++) expect(segDist(d, path[i], path[i + 1])).toBeGreaterThan(1.0);
     }
   });
+  it('each écurie\'s people stand in its corner, on the mat round its centre (where a fighting player waits), apart, facing the ring', () => {
+    expect(new Set(SIDES.map(e => e.side))).toEqual(new Set([1, -1]));
+    for (const { side } of SIDES) {
+      const spots = cornerSpots(C.x, C.z, side), centre = prepCornerCentre(C.x, C.z, side);
+      for (const p of spots) {
+        expect(hit(p)).toBe(false); expect(Math.sign(p.x - C.x)).toBe(side);
+        expect(dist(p, centre)).toBeLessThan(1.4); expect(dist(p, centre)).toBeGreaterThan(0.55);          // round the player, not on them
+        expect(Math.cos(p.yaw - Math.atan2(C.x - p.x, C.z - p.z))).toBeGreaterThan(0.99);
+      }
+      for (let a = 0; a < spots.length; a++) for (let b = a + 1; b < spots.length; b++) expect(dist(spots[a], spots[b])).toBeGreaterThan(0.6);
+    }
+  });
   it('in the corner nobody walks through another: those who arrive first go furthest', () => {
-    for (const { side } of ECURIE_SIDES) {
+    for (const { side } of SIDES) {
       const ks = [0, 1, 2, 3];
       // the order they leave the tunnel (nearest the mouth first) and how far their spot is from the corner's open side
       const lead = (k: number) => r(entouragePath(C.x, C.z, side, k)[0]);
@@ -104,7 +118,7 @@ describe('fight night people: where they stand', () => {
   });
   it('the winner\'s people run onto the sand through the gap by the tunnel, not over the judges', () => {
     const judges = PEOPLE.judges.angles.map(a => polar(C.x, C.z, a, PEOPLE.judges.r));
-    for (const { side } of ECURIE_SIDES) for (let k = 0; k < 4; k++) {
+    for (const { side } of SIDES) for (let k = 0; k < 4; k++) {
       const path = celebratePath(C.x, C.z, side, k), end = path[path.length - 1];
       expect(r(end)).toBeLessThan(RING_R - 4);
       for (const j of judges) for (let i = 0; i + 1 < path.length; i++) expect(segDist(j, path[i], path[i + 1])).toBeGreaterThan(1.0);

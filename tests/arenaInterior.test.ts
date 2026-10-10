@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   AISLES, AISLE_HALF, GATE_HALF, PARAPET_R, SECTIONS, STAND_GAPS, TUNNEL_A, TUNNEL_HALF, TUNNEL_MOUTH_R, WALL_R, angleDiff, inAisle, inGate, inTunnel,
-  standOpen, tierRadius,
+  standExits, standOpen, tierRadius, tierTop,
 } from '../src/world/geew';
 import { Batch } from '../src/world/batch';
 import {
-  ARENA_FLOOR, CLIMB_HALF, ECURIE_SIDES, WALKWAY_R, aisleProfile, aisleStairs, climbHeight, cornerSpots, drummersStand, fightersGate, interiorSpots, mediaZone,
-  prepCorner, standSection, tunnel, type ArenaKit, type Climb,
+  ARENA_FLOOR, CLIMB_HALF, WALKWAY_R, aisleProfile, aisleStairs, climbHeight, drummersStand, fightersGate, interiorSpots, mediaZone, prepCorner,
+  standSection, tunnel, type ArenaKit, type Climb,
 } from '../src/world/arenaModules';
-import { ECURIES } from '../src/arena/exteriorRules';
+import { standSeats } from '../src/arena/program';
 
 const TAU = Math.PI * 2;
 
@@ -52,7 +52,7 @@ describe('arena interior: modules', () => {
   for (const a of AISLES) aisleStairs(kit, cx, cz, a);
   tunnel(kit, cx, cz); fightersGate(kit, cx, cz); mediaZone(kit, cx, cz);
   const drums = drummersStand(kit, cx, cz);
-  const corners = ECURIE_SIDES.map(e => prepCorner(kit, cx, cz, e.side, e.colour));
+  prepCorner(kit, cx, cz, -1, 0x1a7a44); prepCorner(kit, cx, cz, 1, 0xc8322a);
   const hit = (x: number, z: number) => cols.some(c => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
 
   it('the stands and aisles are drawn and solid; the signs name the wrestlers\' entrance and the press', () => {
@@ -104,18 +104,23 @@ describe('arena interior: modules', () => {
     const steps = aisleProfile();
     for (let i = 1; i < steps.length; i++) { expect(steps[i][2]).toBeGreaterThan(steps[i - 1][2]); expect(steps[i][2] - steps[i - 1][2]).toBeLessThan(0.65); }
   });
-  it('each écurie\'s corner is on its wrestler\'s side: Baobab (the left wrestler, +x), Teranga (−x); its people stand in it, apart', () => {
-    expect(ECURIE_SIDES.map(e => e.colour)).toEqual(ECURIES.map(e => e.colour));
-    expect(ECURIE_SIDES.map(e => e.side)).toEqual([1, -1]);
-    ECURIE_SIDES.forEach((e, i) => {
-      expect(corners[i]).toEqual(cornerSpots(cx, cz, e.side));
-      for (const p of corners[i]) {
-        expect(Math.sign(p.x - cx)).toBe(e.side);
-        expect(hit(p.x, p.z)).toBe(false);
-        expect(Math.cos(p.yaw - Math.atan2(cx - p.x, cz - p.z))).toBeGreaterThan(0.99);              // facing the ring
-      }
-      for (let a = 0; a < corners[i].length; a++) for (let b = a + 1; b < corners[i].length; b++)
-        expect(Math.hypot(corners[i][a].x - corners[i][b].x, corners[i][a].z - corners[i][b].z)).toBeGreaterThan(0.6);
-    });
+  it('from an aisle, the places of every tier next to it can be taken, and standing up leads back into the aisle', () => {
+    const seats = standSeats(cx, cz, 't');
+    expect(seats.length).toBeGreaterThan(200);
+    for (const s of seats) {
+      const [exit] = standExits(cx, cz, s.a, s.tier);
+      // the exit is in an aisle, clear for the player, at the tier's height
+      const c = climbs.find(k => climbHeight(k, exit.x, exit.z) !== null)!;
+      expect(c, `seat ${s.id}`).toBeTruthy();
+      expect(climbHeight(c, exit.x, exit.z)! + 0.1).toBeCloseTo(tierTop(s.tier), 6);
+      expect(cols.every(k => Math.hypot(exit.x - Math.min(Math.max(exit.x, k.x0), k.x1), exit.z - Math.min(Math.max(exit.z, k.z0), k.z1)) >= 0.5)).toBe(true);
+    }
+    // the places nearest an aisle on its tier are within the seats' reach (3.4 m) of the aisle's tread
+    for (const al of AISLES) for (let t = 0; t < 3; t++) {
+      const [exit] = standExits(cx, cz, al, t);
+      const near = seats.filter(s => s.tier === t && Math.abs(angleDiff(s.a, al)) < 0.2);
+      expect(near.length).toBeGreaterThan(0);
+      expect(Math.min(...near.map(s => Math.hypot(s.x - exit.x, s.z - exit.z)))).toBeLessThan(3.4);
+    }
   });
 });

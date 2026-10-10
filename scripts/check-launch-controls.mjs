@@ -74,14 +74,19 @@ try {
   await page.waitForFunction(() => document.querySelector('#place').getBoundingClientRect().bottom <= document.querySelector('#presenceBtn').getBoundingClientRect().top);
   const place = await page.locator('#place').boundingBox(), presence = await page.locator('#presenceBtn').boundingBox();
   check('small-phone presence button does not cover the neighbourhood header', place.y + place.height <= presence.y);
-  await page.setViewportSize({ width: 844, height: 390 });
+  await page.setViewportSize({ width: 844, height: 390 }); await sleep(400);
+  // The light side sheet (src/ui/sheet.ts) shows almost the whole profile at 390 px — it overflows by a few pixels only —
+  // so its content is made taller than the screen here: what is tested is the touch scroll of the sheet itself.
+  const fit = await page.locator('#modal .panel').evaluate(el => ({ sh: el.scrollHeight, ch: el.clientHeight }));
+  await page.locator('#modal .panel').evaluate(el => { const s = document.createElement('div'); s.className = 'check-spacer'; s.style.height = '480px'; el.appendChild(s); });
   const panel = await page.locator('#modal .panel').boundingBox();
   const cdp = await ctx.newCDPSession(page);
   const tx = panel.x + panel.width / 2, ty = panel.y + panel.height - 25;
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: tx, y: ty }] });
   for (let i = 1; i <= 8; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: tx, y: ty - i * 20 }] }); await sleep(60); }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await sleep(500);
-  check('landscape profile panel scrolls with an actual touch gesture', (await page.locator('#modal .panel').evaluate(el => el.scrollTop)) > 20);
+  const scrolled = await page.locator('#modal .panel').evaluate(el => el.scrollTop);
+  check('landscape profile panel scrolls with an actual touch gesture', scrolled > 20, `scrollTop ${scrolled} · profile alone ${fit.sh}/${fit.ch} px`);
   await page.getByRole('button', { name: 'Fermer', exact: true }).tap();
   const recovery = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); contexts.push(recovery);
   await recovery.addInitScript(() => {

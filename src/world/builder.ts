@@ -8,7 +8,7 @@ import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { generatedTexture } from './textures';
 import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
-import { ECURIE_SIDES, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
+import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 import { isComposed, type Site } from './sites';
@@ -937,7 +937,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         // inside: the wrestlers' tunnel and their own gate, ringside media, the drummers' stand, the écuries' corners
         tunnel(kit, cx, cz); fightersGate(kit, cx, cz);
         mediaZone(kit, cx, cz); drummersStand(kit, cx, cz);
-        for (const e of ECURIE_SIDES) prepCorner(kit, cx, cz, e.side, e.colour);        // fictional écuries: Baobab (+x, its wrestler's side), Teranga (−x)
+        prepCorner(kit, cx, cz, PREP_SIDE.baobab, 0x1a7a44); prepCorner(kit, cx, cz, PREP_SIDE.teranga, 0xc8322a);   // fictional écuries Baobab and Teranga
         { const plates = sectionPlates(cx, cz, SECTIONS); if (plates) group.add(plates); }
         interactables.push({ id: `${id}:arena`, name: 'Arène · làmb', kind: 'actions', x: cx, z: cz - 24, radius: 5, actions: ACTIONS.arena });
         arenaInfo = { cx, cz, r: 19 };

@@ -26,12 +26,6 @@ export interface ArenaKit {
   lite: boolean;
 }
 const at = (cx: number, cz: number, a: number, r: number) => ({ x: cx + Math.sin(a) * r, z: cz + Math.cos(a) * r });
-/**
- * Which side of the ring each écurie has (fictional écuries of the game, src/arena/exteriorRules.ts ECURIES): its corner,
- * its banner and its flag at the wrestlers' gate follow its wrestler — Baobab is the left wrestler of the bill, who stands
- * on the +x side of the ring (src/arena/module.ts), Teranga the right one, on −x.
- */
-export const ECURIE_SIDES: readonly { side: -1 | 1; colour: number }[] = [{ side: 1, colour: 0x1a7a44 }, { side: -1, colour: 0xc8322a }];
 
 const TIER_COL = [0xd5cbb8, 0xc6bba6, 0xb7ab95];
 /** Riser bands and banners: neutral colours, a different one per section (no sponsor, no écurie on the stands). */
@@ -161,7 +155,7 @@ export function fightersGate(k: ArenaKit, cx: number, cz: number) {
   plain.box(2 * half + 3.0, 1.0, 0.9, cx, 3.8, gz, 0x7a3f1a);
   k.sign('ENTRÉE DES LUTTEURS', '#3b1d0b', '#ffd98a', cx, 4.3, gz + 0.47, 0, 4.4, 0.7);                // facing the street (+z)
   // the two écuries' flags at the gate (fictional écuries of the game: Baobab green, Teranga red)
-  for (const { side: sx, colour: col } of ECURIE_SIDES) {
+  for (const [sx, col] of [[-1, 0x1a7a44], [1, 0xc8322a]] as const) {
     const x = cx + sx * (half + 2.2), z = gz + 1.2;
     plain.box(0.07, 4.4, 0.07, x, B, z, 0x555555);
     plain.box(1.3, 0.85, 0.03, x + sx * 0.66, 3.3, z, col);
@@ -205,12 +199,16 @@ export function drummersStand(k: ArenaKit, cx: number, cz: number): { x: number;
   return spots;
 }
 
+/** Which side of the tunnel each écurie's preparation corner is on (−1: −x, +1: +x). One place to flip them. */
+export const PREP_SIDE: Record<'baobab' | 'teranga', -1 | 1> = { baobab: -1, teranga: 1 };
+/** Centre of a preparation corner's mat (where its wrestler gets ready). */
+export const prepCornerCentre = (cx: number, cz: number, side: -1 | 1) => at(cx, cz, side * 0.78, 13.6);
 /**
  * Preparation corner of one écurie at the ring side, beside the tunnel: a mat, a bench, water and buckets, a low fence
  * and a banner in the écurie's colour. Returns where its people stand.
  */
 export function prepCorner(k: ArenaKit, cx: number, cz: number, side: -1 | 1, colour: number): { x: number; z: number; yaw: number }[] {
-  const { plain, base: B } = k, a = side * CORNER.a, r = CORNER.r, c = at(cx, cz, a, r);
+  const { plain, base: B } = k, a = side * 0.78, r = 13.6, c = at(cx, cz, a, r), yaw = a + Math.PI;
   plain.flat(2.8, 2.2, c.x, B + 0.045, c.z, 0x6b5a46, a);                                  // woven mat
   const back = at(cx, cz, a, r + 1.2);
   plain.box(2.4, 0.45, 0.4, back.x, B, back.z, 0x8b6a47, a);                              // bench
@@ -231,7 +229,7 @@ export function prepCorner(k: ArenaKit, cx: number, cz: number, side: -1 | 1, co
   plain.box(2.2, 1.0, 0.03, bn.x, B + 1.45, bn.z, colour, a);
   plain.box(2.2, 0.12, 0.035, bn.x, B + 1.45, bn.z, 0xf2f2ec, a);
   k.solid(back.x, back.z, 2.0, 2.0, 0.5);
-  return cornerSpots(cx, cz, side);
+  return [-0.6, 0.6, 0].map((o, i) => { const p = at(cx, cz, a + o / r, r - (i === 2 ? 0.4 : -0.2)); return { x: p.x, z: p.z, yaw }; });
 }
 
 /** Section letters on the parapet, facing the ring: one mesh for the whole arena (letters from one small atlas). */
@@ -309,22 +307,14 @@ export function interiorSpots(cx: number, cz: number): Spot[] {
     for (const dz of [-1.1, 1.1]) out.push({ role: 'press', x: c.x - 1.3, y: seated, z: c.z + dz, yaw: Math.PI / 2, clip: 'Sit' });
     for (const dz of [-1.9, 2.0]) out.push({ role: 'media', x: c.x + 0.7, y: F, z: c.z + dz, yaw: Math.PI / 2, clip: 'Idle' });
   }
-  for (const side of [-1, 1] as const) cornerSpots(cx, cz, side).forEach((p, i) => {    // the écuries' corners
-    out.push({ role: 'camp', x: p.x, y: F, z: p.z, yaw: p.yaw, clip: i === 0 ? 'Talk' : i === 4 ? 'Stance' : 'Idle', side });
-  });
+  for (const side of [-1, 1] as const) {                                                 // the écuries' corners
+    const a = side * 0.78, r = 13.6;
+    ([[-0.6, 0.2, 'Stance'], [0.6, 0.2, 'Talk'], [0, -0.4, 'Idle']] as const).forEach(([o, dr, clip]) => {
+      const p = at(cx, cz, a + o / r, r + dr);
+      out.push({ role: 'camp', x: p.x, y: F, z: p.z, yaw: a + Math.PI, clip, side });
+    });
+  }
   return out;
-}
-/** Centre of an écurie's preparation corner (`prepCorner`): angle side · 0.78, radius 13.6. */
-export const CORNER = { a: 0.78, r: 13.6 } as const;
-/**
- * Where an écurie's people stand in its corner, on the mat between the front rail and the bench, facing the ring: a front
- * row of three (the coach in the middle, then either side), a back row of two by the buckets. Mirrored for the two sides.
- */
-export function cornerSpots(cx: number, cz: number, side: -1 | 1): { x: number; z: number; yaw: number }[] {
-  return ([[0, 12.95], [-0.78, 12.95], [0.78, 12.95], [-0.6, 13.6], [0.6, 13.6]] as const).map(([o, r]) => {
-    const p = at(cx, cz, side * (CORNER.a + o / r), r);
-    return { x: p.x, z: p.z, yaw: Math.atan2(cx - p.x, cz - p.z) };
-  });
 }
 /** The walkway between the crowd barrier and the parapet, where the vendors of the stands walk (radius). */
 export const WALKWAY_R = 16.78;

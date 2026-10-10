@@ -38,6 +38,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await d(() => { const x = window.__dakar; if (!x.arenaOut || !x.arenaOutDay) return; const t = x.arenaOut().day, fri = t + ((4 - (((t % 7) + 7) % 7)) + 7) % 7; x.arenaOutDay(fri); x.arena.day(fri); });
   await until(() => window.__dakar.arena.info()?.street === 'doors' && window.__dakar.arena.info().people.moment === 'doors');
   const a0 = await info(), C = a0.centre, G = a0.gate;
+  await d(dd => { window.__dakar.state.data.counters.arena_ticket_day = dd; }, a0.day);   // tonight's ticket (the visit's check buys it): the controller lets us in
   await d(c => window.__dakar.place(c.x - 4, c.z - 8, 0.6), C);                       // inside, on the ring side
   await page.waitForTimeout(1500);
   let p = await people();
@@ -46,7 +47,7 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   check(`${label}: doors open — two drummers warm up on their deck, a helper readies each écurie's corner, the press is there; no judges, no referee, no entourage yet`,
     p.drummers === 2 && p.camp === 2 && p.press === (touch ? 1 : 3) && p.judges === 0 && !p.referee && p.entourage.every(e => e.people.every(x => !x.shown)), p);
   const v0 = p.vendors.map(v => ({ ...v }));
-  await page.waitForTimeout(4000);
+  await until(v0 => window.__dakar.arena.info().people.vendors.some((v, i) => v.shown && Math.hypot(v.x - v0[i].x, v.z - v0[i].z) > 0.3), v0, 60000);
   p = await people();
   const moved = p.vendors.filter((v, i) => v.shown && dist(v, v0[i]) > 0.3).length;
   check(`${label}: vendors walk the front of the stands`, p.vendors.length === (touch ? 1 : 2) && p.vendors.every(v => v.shown) && moved >= 1, p.vendors);
@@ -72,8 +73,6 @@ for (const [label, viewport, touch, quality] of VIEWS) {
     kept.length === nOff + (touch ? 2 : 3) + (touch ? 1 : 2) && kept.every(s => /^pikine:arena:people:(juge|officiel|presse)/.test(s.occupant ?? '')), kept);
 
   // 4. Seated on the tiers, the gala: filling → the judges and the referee at the ring
-  const ticketDay = (await info()).day;
-  await d(dd => { window.__dakar.state.data.counters.arena_ticket_day = dd; }, ticketDay);       // the ticket itself is the visit check's
   const seat = await d(c => window.__dakar.arena.freeSeat(c.x + 9, c.z - 14), C);
   await d(s => window.__dakar.sit(s.id), seat);
   await until(() => /arena:stand/.test(window.__dakar.seated() ?? '') && window.__dakar.arena.info().phase !== 'idle');
@@ -113,10 +112,10 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const r1 = await info();
   if (r1.phase === 'result') {
     p = r1.people;
-    const winners = p.won ? p.entourage.find(e => e.side === p.won) : null;
+    const winners = p.won ? p.entourage.find(e => e.ecurie === p.won) : null;
     if (winners) {
-      await until(w => window.__dakar.arena.info().phase !== 'result' || window.__dakar.arena.info().people.entourage.find(e => e.side === w).people.every(x => !x.walking), p.won, 60000);
-      const now = await info(), win = now.people.entourage.find(e => e.side === p.won);
+      await until(w => window.__dakar.arena.info().phase !== 'result' || window.__dakar.arena.info().people.entourage.find(e => e.ecurie === w).people.every(x => !x.walking), p.won, 60000);
+      const now = await info(), win = now.people.entourage.find(e => e.ecurie === p.won);
       const near = win.people.every(x => Math.hypot(x.x - C.x, x.z - C.z) < 4.5);
       check(`${label}: the result — the winner's people run onto the sand to celebrate`, now.phase !== 'result' || (near && win.people.every(x => x.clip === 'Celebrate')), win.people);
       if (now.phase === 'result') { await cam([C.x - 5, 3.5, C.z - 6], [C.x, 1.0, C.z]); await shot('6-result'); await d(() => window.__dakar.cam(null)); }
@@ -130,6 +129,29 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   p = await people();
   check(`${label}: the gala is over — the officials, drummers, vendors and entourages are gone, their chairs kept for the next gala`,
     p.moment === 'closed' && p.officials === 0 && p.judges === 0 && p.drummers === 0 && p.press === 0 && p.camp === 0 && p.vendors.every(x => !x.shown) && p.entourage.every(e => e.people.every(x => !x.shown)) && p.seats.every(s => /^pikine:arena:people:/.test(s.occupant ?? '')), p);
+  // 9. The player fights tonight (src/arena/fighter.ts): their écurie's people wait in its corner and gather round them
+  if (await d(() => !!window.__dakar.fighterBegin)) {
+    await d(() => window.__dakar.fighterBegin('amical'));
+    await frame(); await frame();                                                       // the path's spots follow the player's écurie
+    const f0 = await d(() => window.__dakar.fighter());
+    const tun = f0.spots?.tunnel, cor = f0.spots?.corner;
+    if (tun && cor && f0.bout) {
+      await d(t => window.__dakar.place(t.x, t.z, Math.PI), tun);
+      await until(() => window.__dakar.fighter().phase === 'tunnel', null, 30000);
+      await d(c => window.__dakar.place(c.x, c.z + 0.05, Math.PI), cor);
+      await until(() => window.__dakar.fighter().phase === 'prep', null, 30000);
+      await until(e => window.__dakar.arena.info().people.entourage.find(x => x.ecurie === e).people.every(x => x.shown), f0.bout.ecurie, 20000);
+      p = await people();
+      const mine = p.entourage.find(e => e.ecurie === f0.bout.ecurie), other = p.entourage.find(e => e.ecurie !== f0.bout.ecurie);
+      check(`${label}: fighting tonight — in the corner, the écurie's people gather round the player and turn to them; the other écurie's stay away`,
+        p.fighter === f0.bout.ecurie && mine.people.every(x => x.shown && Math.hypot(x.x - cor.x, x.z - cor.z) < 1.5) && p.camp >= 1 && other.people.every(x => !x.shown), { fighter: p.fighter, corner: cor, mine: mine.people });
+      await cam([cor.x - Math.sign(cor.x - C.x) * 3.2, 2.6, cor.z - 3.4], [cor.x, 1.0, cor.z]); await shot('7-fighter-corner'); await d(() => window.__dakar.cam(null));
+      await d(() => window.__dakar.fighterCancel());
+      await until(() => !window.__dakar.arena.info().people.fighter, null, 20000);
+      p = await people();
+      check(`${label}: the bout given up, the corner empties again`, !p.fighter && p.entourage.every(e => e.people.every(x => !x.shown)), p.entourage);
+    } else check(`${label}: the fighter's path has its spots`, false, f0);
+  }
   check(`${label}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
