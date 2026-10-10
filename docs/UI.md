@@ -92,6 +92,22 @@ for the old dark panel never vanish. Use the existing blocks — `.kv` (info car
 - Wolof glosses: HUD text is plain DOM text, resolved by the gloss observer (src/i18n/dom.ts) like any other text.
 - HUD buttons drop the focus after a tap or click, so Space/Enter (the game's action keys) never fire them twice.
 
+## Follow camera (src/actors/camera.ts)
+
+Behind and above the player, never inside a wall or inside a tree's leaves:
+- **Walls.** The way from the head to the camera is sampled (12 points) against the walls near the player (a short list
+  refreshed every 2 m or second, not the whole hub). A wall cuts it short as before.
+- **Tight spot** (less than 3 m free behind, e.g. the ticket window or a counter at the player's back). Four times a
+  second at most, a few other views are tried: over the shoulder (higher), a three-quarter or side angle, from the front
+  three-quarter, lower. The one that frees the most room wins, with a small cost for a bigger turn. Standing, the
+  camera swings there smoothly. Walking, it only tilts, because a turn would bend the walk under the player's thumb. It
+  eases back behind 2 s later, or as soon as the plain view is clear again.
+- **Leaves.** Tree tops and palm fronds (`HubWorld.canopies`, from the builder's trees) block the camera like walls.
+  When they cut the way and hang high enough, the camera goes low under them rather than against the head.
+- **Who wins.** A drag of the view always wins: nothing changes for 0.8 s after it. A view set on purpose (`follow.pin()`,
+  the checks' `look`, `lookYaw`, `faceCamera`, `lookAtPlayer`) is kept until the player walks.
+- **Debug.** `__dakar.camInfo()` gives the free room, tight, lift and swinging; `__dakar.camInLeaves()` is never true.
+
 ## Checks
 
 `node scripts/check-ui.mjs <url> <outDir> [desktop,phone,landscape]` — HUD layout and touch targets, each closing path
