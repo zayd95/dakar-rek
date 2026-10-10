@@ -101,11 +101,46 @@ evening (doors 17 h–23 h). The TODO at the top of `src/arena/module.ts` wires 
 so the street stays alive while a gala runs. The ambient NPCs (`src/social/ambientSpots.ts`) never take the tiers'
 places (`kind: 'stand'`), and the arena's group is `userData.noLod` (its bodies are never swapped for far figures).
 
+## Friends at the arena (`src/arena/together.ts`)
+
+Players in the same hub group watch the gala together. Everything goes through presence: positions, poses and one
+optional field. No money, inventory, save, fight record, reward or outcome roll ever crosses the protocol.
+
+- **Seated together.** A remote player on a place in the stands is drawn seated there, from the protocol's `Sit` pose
+  and height. That place is taken on every other device too: the crowd's figure moves off it and nobody else can sit
+  on it. It is freed when the friend gets up or leaves. **Encourager** (a second action on the seated player,
+  `ctx.player.cheer`) stands the player up on the tier for 2.5 s with their arms up. It is sent as `Celebrate`, a
+  pose already on the whitelist.
+- **One bout for the group.** While a show runs (filling → leaving) and the player is inside the walls, presence
+  carries `arena: { d, p, t, w?, o? }`. That is the city day, the phase index (`ARENA_PHASES` = `SHOW_PHASES`), the
+  time in half-second steps, and once known the result (winner 0/1/2, outcome index). `parseMove` validates it: keys,
+  integer ranges, 0 ≤ t ≤ 900, and it refuses the whole move otherwise. The evening's bout is seeded by
+  `boutSeed(hub, day)` (the duel's opponent AI and the autopilot) and played in fixed 1/60 s steps
+  (`src/arena/bout.ts`), so every device plays the same bout.
+  - The friend furthest on (the earliest in) is the reference. A device behind by a phase, or by 1.5 s or more,
+    jumps forward to their phase and second. On the way it sets up the entrance, then plays the seeded bout up to that
+    second, at most 4 s of bout per frame. It also takes the result the friend saw if its own differs.
+  - A player inside the walls during the doors whose own show has not started joins the running one.
+- **Leaving is presence.** A friend who leaves the arena or the game stops sending the field. Their place is freed and
+  nobody follows them any more.
+
+**Later: a server-authoritative show.** The alignment is client-side, and a device that drifts never pulls others
+backwards. A floating-point difference between browsers could still make two devices' bouts diverge, in which case the
+reference's result is shown. The next step is a show clock kept by the room (`server/worker.ts`): start time, seed and
+result, with clients only rendering it. A crowd-noise level shared by the group could come with it.
+
 ## Debug and checks
 
 `?debug` → `__dakar.arena.info()` (street, event, day, phase, t, ticket, seats, crowd, entrance, bout, result, gate,
 centre, people: moment, judges, officials, announcer, referee, drummers, drums, vendors, entourage, seats), `arena.cam()`, `arena.speed(n)` (fast-forward), `arena.go(phase)`, `arena.freeSeat(x, z)`, `arena.visible(on)`,
 `arena.day(d)`.
+
+centre), `arena.cam()`, `arena.speed(n)` (fast-forward), `arena.go(phase)`, `arena.freeSeat(x, z)`, `arena.visible(on)`,
+`arena.day(d)`; `together()` (the friend followed, jumps made, places held by friends, the presence field sent), `cheer(s)`.
+
+`npm run check:online` (scripts/check-multiplayer.mjs, CI) seats two clients side by side in the stands at 18 h: each
+sees the other seated (pose and height), the later one joins the earlier one's show (same bout phase within 3 s), a
+cheer is seen by the other, and both get one result.
 
 `flock /tmp/dakar-browser.lock node scripts/check-arena-visit.mjs [baseUrl] [outDir] [--view=desktop|phone]` plays
 the whole path on desktop (medium quality) and phone (low quality), captures in `docs/screenshots/arena-visit/`.

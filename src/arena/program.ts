@@ -86,7 +86,8 @@ export function fillOrder(n: number, seed = 7): number[] {
 // ------------------------------------------------------------------ the show
 
 /** The gala, once the player is seated: entrance of the wrestlers → the bout → the result → the crowd leaves. */
-export type ShowPhase = 'idle' | 'filling' | 'entrance' | 'bout' | 'result' | 'leaving' | 'over';
+export const SHOW_PHASES = ['idle', 'filling', 'entrance', 'bout', 'result', 'leaving', 'over'] as const;
+export type ShowPhase = typeof SHOW_PHASES[number];
 /** Seconds each phase lasts (the bout lasts as long as the duel does). */
 export const SHOW = { filling: 3, entrance: 14, result: 7, leaving: 9 } as const;
 export const SHOW_LABEL: Record<ShowPhase, string> = {
@@ -113,6 +114,15 @@ export const billFor = (day: number): Bill => billSource?.(day) ?? BILL;
 export const reportMainEvent = (day: number, winnerId: string | null) => { mainEventSink?.(day, winnerId); };
 /** « Écurie Baobab », or « Indépendant ». */
 export const ecurieLabel = (e: string) => (e === 'indépendant' || !e ? 'Indépendant' : `Écurie ${e}`);
+/**
+ * Seed of the evening's bout at a hub's arena on a city day: every device draws the same bout that evening, so friends
+ * in the stands watch one bout and one result (src/arena/together.ts). Display only: no record or reward depends on it.
+ */
+export function boutSeed(hub: string, day: number): number {
+  let h = 2166136261;
+  for (const c of `${hub}:${day}`) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return h >>> 0;
+}
 
 /** How the crowd reacts to a moment of the bout (share of the seated crowd that stands, seconds). */
 export type Moment = 'entrance' | 'clinch' | 'fall' | 'decision' | 'result';
