@@ -68,6 +68,8 @@ export interface DuelOptions {
    * he fights standing and in the empoignade, and the line that says who he is (intro, header, recap).
    */
   opponent?: { attrs: Attributes; stand: StandStyle; clinch: ClinchStyle; line: string };
+  /** Seed of the opponent AI's draws (default: the clock). A watched bout seeded alike plays out alike everywhere. */
+  seed?: number;
 }
 export interface DuelResult {
   mode: BoutMode; outcome: BoutOutcome; winner: Side | null; seconds: number;
@@ -187,6 +189,7 @@ export class LambDuel {
     this.factor = opts.mode === 'entrainement' ? 1 : levelFactor(opts.level);
     this.timeLeft = opts.mode === 'entrainement' ? Infinity : R.roundSeconds;
     this.ring = opts.ring ?? 7.6;
+    if (opts.seed !== undefined) this.rand = rng(opts.seed);
     this.o = new THREE.Vector3(origin.x, 0.1, origin.z);
     const mk = (skin: number, l: WrestlerLook, x: number, max: number, regen: number, attrs: Attributes): Fighter => {
       const w = wrestlerReady() ? new Wrestler(skin) : null;

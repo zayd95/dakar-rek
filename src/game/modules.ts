@@ -12,6 +12,7 @@ import type { HubWorld, Interactable } from '../world/types';
 import type { Interior } from '../world/interiors';
 import type { Humanoid } from '../actors/humanoid';
 import type { FollowCamera } from '../actors/camera';
+import type { Peer, PresenceExtras } from '../multiplayer/protocol';
 import { wolofModule } from '../i18n/module';
 import { arenaModule } from '../arena/module';
 import { assetKitModule } from './assetKit';
@@ -29,6 +30,7 @@ import { eveningCallModule } from '../arena/eveningCall';
 import { worldMarkers } from '../ui/worldMarkers';
 import { crowdModule } from '../crowd/module';
 import { careerModule } from '../career/module';
+import { togetherModule } from '../arena/together';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -72,7 +74,11 @@ export interface GameCtx {
     /** `inPlace`: clear the seat without moving the player (before a door, a trip…). */
     standUp(inPlace?: boolean): void;
     place(x: number, z: number, yaw: number): void;
+    /** On a place in the arena's stands: up on the tier for a moment, arms up (others see it), then back down. */
+    cheer(seconds?: number): boolean;
   };
+  /** The other players of this hub's group (positions, poses and their optional fields only; empty offline). */
+  peers(): readonly Peer[];
   mode(): GameMode;
   /** 'menu' and 'busy' lock movement; 'play' gives it back. */
   setMode(m: GameMode): void;
@@ -148,6 +154,11 @@ export interface GameModule {
    * the duel's own rotation. Asked by main.ts when a friendly or ranked bout starts.
    */
   opponent?(ctx: GameCtx, mode: 'amical' | 'classe'): { name: string; style: string; level: number } | null;
+  /**
+   * Optional fields this module adds to the player's presence this frame (own fields only, each validated by the
+   * protocol's parseMove; never money, inventory or saves). Null or absent: nothing.
+   */
+  presence?(ctx: GameCtx): Partial<PresenceExtras> | null;
   /** Entries merged into window.__dakar (?debug) for the checks. */
   debug?(ctx: GameCtx): Record<string, unknown>;
 }
@@ -171,4 +182,5 @@ export const MODULES: GameModule[] = [
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)
+  togetherModule,       // friends at the arena: seated together, one bout for the group (src/arena/together.ts)
 ];

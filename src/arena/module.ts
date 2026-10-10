@@ -15,7 +15,7 @@ import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
   billFor, ecurieLabel, reportMainEvent, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
-  fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketsChecked, type Moment, type ShowPhase, type Street,
+  SHOW_PHASES, boutSeed, fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketsChecked, type Moment, type ShowPhase, type Street,
 } from './program';
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
@@ -32,7 +32,9 @@ import { GalaCard } from './card';
  * shared by the crowd and the player, never twice), the module camera hook (the view from the seat), the làmb duel
  * (rules untouched, src/arena/bout.ts) and the Wolof lines (src/i18n/lines.ts). Density follows the graphics quality.
  */
-const CROWD = 'arena-crowd';
+/** Occupant of the tiers' places taken by the crowd (src/arena/together.ts lets a friend's seat take over from it). */
+export const ARENA_CROWD = 'arena-crowd';
+const CROWD = ARENA_CROWD;
 /**
  * A bout every evening (Habib's evening goal: work → ride → fight → La Vague in one session): a small neighbourhood card on
  * weekdays, the big gala Friday–Sunday. The street outside (src/arena/exterior.ts) follows the arena: hubLoaded registers
@@ -46,6 +48,11 @@ const SEAT_ZOOM = 0.74;
 const V3 = THREE.Vector3;
 
 interface Walker { h: Humanoid; from: THREE.Vector3; to: THREE.Vector3; t0: number; t1: number; end: Clip }
+/** How the evening's bout ended, as the show tells it (and as friends share it: src/arena/together.ts). */
+export type ShowOutcome = 'projection' | 'decision' | 'egalite' | 'abandon';
+export interface ShowResult { winner: 'left' | 'right' | null; outcome: ShowOutcome }
+/** Seconds a friend's show may be ahead of this one before this one jumps to it. */
+export const FOLLOW_SLACK = 1.5;
 
 class ArenaEvening {
   readonly group = new THREE.Group();
@@ -59,6 +66,12 @@ class ArenaEvening {
   speed = 1;
   street: Street = 'quiet';
   result = '';
+  /** The bout's result once known (this device's bout, or the one a friend further on saw). */
+  outcome: ShowResult | null = null;
+  private adopted: ShowResult | null = null;
+  /** Bout time a catch-up is heading for (the stands do not react to the moments played on the way). */
+  private catchUpTo = 0;
+  private hubId: string;
   private own: { dispose(): void }[] = [];
   private entrance: Walker[] = [];
   private insideCast: Humanoid[] = [];
@@ -74,12 +87,11 @@ class ArenaEvening {
   private baseFov = 58;
   private fovSet = 0;
   private look = new V3();
-  private rand = rng(41);
   private ground: (x: number, z: number) => number;
 
   constructor(private ctx: GameCtx, hub: HubWorld) {
     const a = hub.arena!, D = DENSITY[ctx.quality()];
-    this.cx = a.cx; this.cz = a.cz; this.gz = a.cz - WALL_R;
+    this.cx = a.cx; this.cz = a.cz; this.gz = a.cz - WALL_R; this.hubId = hub.id;
     this.ground = (x, z) => 0.1 + hub.heightAt(x, z);
     const cx = this.cx, gz = this.gz;
     this.group.name = 'arena_evening';
@@ -182,11 +194,11 @@ class ArenaEvening {
     if (this.phase === 'idle' && seat && this.street === 'doors') this.go('filling');
     if (this.phase !== 'idle' && this.phase !== 'over' && this.phase !== 'leaving' && this.phase !== 'result' && !seat
       && Math.hypot(ctx.player.pos.x - this.cx, ctx.player.pos.z - this.cz) > WALL_R + 8) this.abort();
-    if (this.phase !== 'idle' && this.phase !== 'over') this.t += dt * (this.phase === 'bout' ? 1 : this.speed);
+    if (this.phase !== 'idle' && this.phase !== 'over' && this.phase !== 'bout') this.t += dt * this.speed;
     switch (this.phase) {
       case 'filling': if (this.t >= SHOW.filling) this.go('entrance'); break;
       case 'entrance': this.updateEntrance(dt * this.speed); if (this.t >= SHOW.entrance) this.go('bout'); break;
-      case 'bout': if (this.bout) { for (let k = 0; k < this.speed; k++) this.bout.update(dt); if (this.bout.over) this.go('result'); } break;
+      case 'bout': if (this.bout) { this.bout.advance(dt * this.speed); this.t = this.bout.time; if (this.bout.over) this.go('result'); } break;
       case 'result': if (this.t >= SHOW.result) this.go('leaving'); break;
       case 'leaving': if (this.t >= SHOW.leaving) this.go('over'); break;
     }
@@ -256,24 +268,25 @@ class ArenaEvening {
     const { ctx } = this;
     this.phase = phase; this.t = 0; this.fillT = 0;                          // the stands follow the phase at once
     if (phase === 'filling') {
-      this.told.clear(); this.result = '';
+      this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0;
       const bill = billFor(this.day());
       this.say('bill', ARENA.bill(bill.left.name, bill.left.ecurie, bill.right.name, bill.right.ecurie));
     } else if (phase === 'entrance') {
       this.startEntrance();
     } else if (phase === 'bout') {
       this.clearEntrance();
-      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, LEFT_LOOK, this.rand);
-      this.bout.onMoment = p => { if (p === 'clinch') this.react('clinch'); if (p === 'fall') this.react(this.bout?.info().outcome === 'projection' ? 'fall' : 'decision'); };
+      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, LEFT_LOOK, boutSeed(this.hubId, this.day()));
+      this.bout.onMoment = p => { if (this.bout && this.bout.time < this.catchUpTo - 0.5) return; if (p === 'clinch') this.react('clinch'); if (p === 'fall') this.react(this.bout?.info().outcome === 'projection' ? 'fall' : 'decision'); };
       this.group.add(this.bout.group);
     } else if (phase === 'result') {
       const r = this.bout?.result;
-      const bill = billFor(this.day()), side = !r || !r.winner ? null : r.winner === 'player' ? bill.left : bill.right;
-      const winner = side?.name ?? null;
-      if (r) reportMainEvent(this.day(), side?.id ?? null);              // the city's ladder remembers the main event the player watched
-      this.result = ARENA.result(winner, (r?.outcome ?? 'egalite') as 'projection' | 'decision' | 'egalite' | 'abandon');
+      const own: ShowResult | null = r ? { winner: !r.winner ? null : r.winner === 'player' ? 'left' : 'right', outcome: (r.outcome === 'entrainement' ? 'egalite' : r.outcome) as ShowOutcome } : null;
+      this.outcome = this.adopted ?? own ?? { winner: null, outcome: 'egalite' };
+      const side = this.outcome.winner ? billFor(this.day())[this.outcome.winner] : null;
+      if (r || this.adopted) reportMainEvent(this.day(), side?.id ?? null);   // the city's ladder remembers the main event the player watched
+      this.result = this.resultLine(this.outcome);
       ctx.toast(this.result);
-      this.react('result', !r || !r.winner ? null : r.winner === 'player' ? 'left' : 'right');
+      this.react('result', this.outcome.winner);
     } else if (phase === 'leaving') {
       this.bout?.dispose(); this.bout = null;
     } else if (phase === 'over') {
@@ -282,6 +295,45 @@ class ArenaEvening {
       ctx.toast(ARENA.over);
     }
   }
+  private resultLine(o: ShowResult) { return ARENA.result(o.winner ? billFor(this.day())[o.winner].name : null, o.outcome); }
+
+  // ---------------------------------------------------------------- one show for friends (src/arena/together.ts)
+  /** Where this evening's show is, for friends: null when none runs. `here`: the player is inside the walls or seated. */
+  shared() {
+    if (this.phase === 'idle' || this.phase === 'over') return null;
+    const me = this.ctx.player.pos;
+    return { day: this.day(), phase: this.phase, t: this.t, result: this.outcome, here: !!this.seatedHere() || this.inside(me.x, me.z) };
+  }
+  /**
+   * Join a friend's show further on (their phase and time, and the result they saw): forward only, a running show
+   * (filling … leaving). A player inside the walls during the doors whose own show has not started joins too. Each
+   * phase in between is set up on the way (the entrance, the seeded bout played up to their second). True if it moved.
+   */
+  follow(phase: ShowPhase, t: number, res?: ShowResult | null): boolean {
+    const want = SHOW_PHASES.indexOf(phase), leaving = SHOW_PHASES.indexOf('leaving');
+    if (want < 1 || want > leaving) return false;
+    if (this.phase === 'idle') {
+      const me = this.ctx.player.pos;
+      if (this.street !== 'doors' || !(this.seatedHere() || this.inside(me.x, me.z))) return false;
+      this.go('filling');
+    }
+    const have = SHOW_PHASES.indexOf(this.phase);
+    if (have < 1 || have > leaving || want < have) return false;
+    if (res) {
+      const differs = !this.outcome || this.outcome.winner !== res.winner || this.outcome.outcome !== res.outcome;
+      this.adopted = res;
+      if (this.outcome && differs) {
+        this.outcome = res; this.result = this.resultLine(res); this.ctx.toast(this.result);
+        reportMainEvent(this.day(), res.winner ? billFor(this.day())[res.winner].id : null);   // the result the group saw
+      }
+    }
+    if (want === have && t - this.t < FOLLOW_SLACK) return false;
+    for (let k = have + 1; k <= want; k++) this.go(SHOW_PHASES[k]);
+    if (this.phase === 'bout' && this.bout) { this.catchUpTo = t; this.bout.advance(Math.max(0, t - this.bout.time - this.bout.pending)); }
+    else this.t = Math.max(this.t, t);
+    return true;
+  }
+
   private abort() {
     this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
     this.phase = 'idle'; this.t = 0;
@@ -398,10 +450,21 @@ const RIGHT_LOOK: WrestlerLook = { ngembColor: STYLES.rapide.ngemb, ngembPattern
 
 let evening: ArenaEvening | null = null;
 
-/** The player's evening in the stands, for the HUD (main.ts hides the goal line while the show holds the eye). */
+/**
+ * The player's evening in the stands: for the HUD (main.ts hides the goal line while the show holds the eye), and the
+ * evening's show as friends share it (src/arena/together.ts): where it is, joining a friend further on, the tiers.
+ */
 export const arenaShow = {
   /** Seated on the tiers during the wrestlers' entrance, the bout or its result. */
   watching: () => !!evening?.seatedHere() && (evening.phase === 'entrance' || evening.phase === 'bout' || evening.phase === 'result'),
+  /** This evening's show when one runs (filling … leaving): day, phase, time, result once known, player inside. */
+  state: () => evening?.shared() ?? null,
+  follow: (phase: ShowPhase, t: number, res?: ShowResult | null) => evening?.follow(phase, t, res) ?? false,
+  /** The places on the tiers (shared registry seats), and whether a point is inside the walls. */
+  seats: (): readonly Seat[] => evening?.seats ?? [],
+  inside: (x: number, z: number) => evening?.inside(x, z) ?? false,
+  /** The city day of the evening (tickets and the gala are per day). */
+  day: () => evening?.day() ?? null,
 };
 
 export const arenaModule: GameModule = {

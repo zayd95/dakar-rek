@@ -39,7 +39,7 @@ import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { PresenceUi } from './multiplayer/ui';
 import { Phone } from './ui/phone';
 import { ChatUi } from './multiplayer/chat';
-import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
+import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { pickupFrags } from './economy/jobs';
 import { Interactions } from './interact/system';
@@ -269,6 +269,8 @@ function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, nu
 const interactions = new Interactions();
 const seats = new Seats();
 let seated: Seat | null = null;
+/** Seconds left standing up on a place in the stands, arms up (« Encourager »), before sitting back down. */
+let cheerT = 0;
 /** Space key shared by seats, targets and presence: 'street', 'home' (own room) or the interior's door id. */
 const spaceOf = (door: Interactable) => door.id.includes(':home:') ? 'home' : door.id;
 const interactSpace = () => moduleSpace() ?? (inside ? spaceOf(inside.door) : 'street');
@@ -284,7 +286,8 @@ interactions.add(new LegacySource({
 interactions.add(seats);
 interactions.add({ name: 'self', collect(space, x, z, out) {           // while seated: « Se lever » (not on a locked seat)
   if (!seated || seated.locked) return;
-  out.push({ id: 'self', name: 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() }] });
+  out.push({ id: 'self', name: 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() },
+    ...(seated?.kind === 'stand' ? [{ id: 'cheer', verb: 'dance' as const, label: 'Encourager', icon: '🙌', detail: 'Debout un instant, les bras en l’air', run: () => { cheer(); } }] : [])] });
 } });
 seats.onSit = s => sitOn(s);
 
@@ -325,7 +328,9 @@ const ctx: GameCtx = {
     pos, facing: () => facing, body: () => playerBody, seated: () => seated,
     sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace),
     place(x, z, yaw) { pos.set(x, 0.1 + (inside || !world ? 0 : world.heightAt(x, z)), z); facing = yaw; follow.snapBehind(yaw); },
+    cheer: s => cheer(s),
   },
+  peers: () => [...presence.peers.values()],
   mode: () => mode,
   setMode(m) { mode = m; input.enabled = m === 'play'; if (m !== 'play') input.reset(); },
   menu(title, subtitle, items, extraHtml) { mode = 'menu'; input.enabled = false; hud.openMenu(title, subtitle, items, extraHtml); },
@@ -358,15 +363,20 @@ function actionSpec(a: Action): ActivitySpec {
 
 function sitOn(seat: Seat, force = false) {
   if ((!force && mode !== 'play') || seated || !seats.occupy(seat.id, 'player')) return;
-  seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0;
+  seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0; cheerT = 0;
   pos.set(seat.x, sitOriginY(seat) + (inside ? 0 : 0), seat.z); facing = seat.yaw;
   if (playerBody) playerBody.hold = seatClip(seat);
+}
+/** On a place in the stands: up on the tier for a moment, arms up (others see Celebrate), then back on the seat. */
+function cheer(seconds = 2.5) {
+  if (!seated || seated.kind !== 'stand' || mode !== 'play') return false;
+  cheerT = Math.max(0.5, Math.min(6, seconds)); return true;
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
 function standUp(inPlace = false) {
   if (!seated) return;
-  const s = seated; seats.release(s.id, 'player'); seated = null;
-  if (playerBody && playerBody.hold === seatClip(s)) playerBody.hold = null;
+  const s = seated, cheering = cheerT > 0; seats.release(s.id, 'player'); seated = null; cheerT = 0;
+  if (playerBody && (playerBody.hold === seatClip(s) || (cheering && playerBody.hold === 'Celebrate'))) playerBody.hold = null;
   if (inPlace || !world) return;
   // the first free spot: in front of a chair; out of a bed by a side (or past its foot), never inside furniture or a wall
   const cols = inside ? inside.int.colliders : world.colliders, r = inside ? 0.3 : 0.5;
@@ -895,6 +905,7 @@ function frame(now: number) {
     const m = input.move();
     speed = 0;
     if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp();      // moving the stick stands up (not in a moving vehicle)
+    else if (cheerT > 0) { cheerT -= dt; pos.set(seated.x, seated.top + 0.1, seated.z); facing = seated.yaw; if (playerBody) playerBody.hold = 'Celebrate'; }   // up on the tier, arms up
     else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = seatClip(seated); }
     if (mode !== 'menu') state.tick(dt * 1000);
   } else if (mode === 'play') {
@@ -933,7 +944,9 @@ function frame(now: number) {
   const space = presenceSpace();
   // the body's own pose, also while an activity runs (asleep in bed, praying, dancing): a narrow list, anything else is Idle
   const clip = mode !== 'scene' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
-  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
+  // the modules' optional fields (the arena show friends share: src/arena/together.ts), validated by the protocol
+  const extras: Partial<PresenceExtras> = {}; for (const m of MODULES) Object.assign(extras, m.presence?.(ctx) ?? {});
+  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip, ...extras }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
@@ -991,6 +1004,8 @@ if (DEBUG) {
     seatsHere: () => seats.inSpace(interactSpace()).map(s => ({ id: s.id, x: s.x, z: s.z, top: s.top, yaw: s.yaw, kind: s.kind, occupant: s.occupant })),
     sit(id: string) { const s = seats.get(id); if (s) sitOn(s); return seated?.id ?? null; },
     stand() { standUp(); },
+    /** « Encourager » from a place in the stands (true if the player rose to cheer). */
+    cheer(s?: number) { return cheer(s); },
     more() { openMore(); },
     clip: () => playerBody?.clipName ?? null,
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores } : null; },
