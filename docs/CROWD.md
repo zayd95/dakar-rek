@@ -203,8 +203,11 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
 
   Each taxi drops 2–4 fans (1–2 on a card night) on the pavement, waits about 4 s, and drives on.
 - **Car rapide**: each time a car rapide pulls in at an « Arène » stop that is served (`transport.served`), 4–7 fans step
-  down at its rear door (`transport.dwellingAt`; 2–3 on a card night). On fight evenings that is the evening route
-  `23s`'s stop on the arena's west side: the day route's stop is parked.
+  down at its rear door (2–3 on a card night, two more when fans rode to this stop). The car is heard pulling in the
+  frame it happens (`transport.onArrival`), never missed on a slow frame; its door is `transport.dwellingAt`'s while it
+  stands there. On fight evenings that is the evening route `23s`'s stop on the arena's west side: the day route's stop
+  is parked. Fans aboard get off even if the gala ended during their ride, and the player's own car always lets its
+  group off (the walkers furthest along make room when the pool is full).
 - **The walk**: every fan walks on the pavement and the closed street to the tail of the queue lane, where the exterior's
   queue takes over. No path crosses the arena block or the écurie block (unit-tested).
 - **Bodies**: up to 10, 18 or 26 walkers at low, medium or high quality. They are instanced walking figures with ground

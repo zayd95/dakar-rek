@@ -8,8 +8,8 @@ import { ECURIES, gateOf, type ArenaGate } from '../arena/exteriorRules';
 import { arenaExterior, eveningSize } from '../arena/exterior';
 import { linesOf, stopOnLeg, KERB } from '../transport/lines';
 import { STOP_OFFSET } from '../transport/stops';
-import { dwellingAt, newArrivals, stopServed, type Dwell } from './transportPeek';
-import { transport } from '../transport/module';
+import { stopServed } from './transportPeek';
+import { transport, type StopArrival } from '../transport/module';
 import { Crowd, defaultLook, type CrowdQuality, type CrowdSlot } from './crowd';
 import { routeClear } from './streetPlan';
 import { GALA_DONE_COUNTER, streetAt } from '../arena/program';
@@ -31,7 +31,7 @@ export function afterGalaWindow(ctx: GameCtx): boolean {
  * player is far from the arena.
  */
 type Pt = { x: number; z: number };
-interface Walker { id: string; path: Pt[]; i: number; speed: number; on: boolean; x: number; z: number; /** Seconds before stepping off. */ wait: number }
+export interface Walker { id: string; path: Pt[]; i: number; speed: number; on: boolean; x: number; z: number; /** Seconds before stepping off. */ wait: number }
 interface Cab {
   g: THREE.Group; route: CabRoute; s: number; v: number; state: 'off' | 'in' | 'stop' | 'out'; t: number; drop: number; dropped: number;
   /** Picking people up after the gala (nobody gets out; it waits a little longer). */
@@ -71,6 +71,18 @@ export function cabRoutes(g: ArenaGate): CabRoute[] {
   ];
 }
 
+/** Metres a walker still has to go along its path. */
+const left = (w: Walker) => {
+  let d = 0, x = w.x, z = w.z;
+  for (let i = w.i + 1; i < w.path.length; i++) { d += Math.hypot(w.path[i].x - x, w.path[i].z - z); x = w.path[i].x; z = w.path[i].z; }
+  return d;
+};
+/** The `n` walkers on their way that are furthest along (least left to walk): they make room first. Pure. */
+export function furthestAlong<W extends Walker>(walkers: readonly W[], n: number): W[] {
+  if (n <= 0) return [];
+  return walkers.filter(w => w.on).sort((a, b) => left(a) - left(b)).slice(0, n);
+}
+
 export class ArenaArrivals {
   readonly crowd: Crowd;
   private walkers: Walker[] = [];
@@ -79,8 +91,9 @@ export class ArenaArrivals {
   private gate: ArenaGate;
   private rand = rng(808);
   private taxiT = 4;
-  private rapideT = 0;
-  private dwelling: ReadonlyMap<string, Dwell> = new Map();
+  /** Cars that pulled in at a stop since the last frame (transport.onArrival: none is missed on a slow frame). */
+  private pulledIn: StopArrival[] = [];
+  private unlisten: () => void;
   /** People waiting for a taxi at each route's corner (after the gala: src/crowd/street.ts sets it). */
   readonly demand = [0, 0];
   private pickupT = 0;
@@ -118,6 +131,7 @@ export class ArenaArrivals {
     });
     this.walkers = slots.map(s => ({ id: s.id, path: [], i: 0, speed: 1.3, on: false, x: 0, z: 0, wait: 0 }));
     ctx.extra.add(this.crowd.group);
+    this.unlisten = transport.onArrival(a => { if (a.key.endsWith(':arene')) this.pulledIn.push(a); });
     // the « Arène » stops (Ligne 23 by day, its evening route `23s` round the arena): where the passengers step down
     this.cols = hub.colliders;
     this.tail = { x: this.gate.x, z: this.gate.queue.z1 - 0.35 }; this.side = { x: this.tail.x - 3.7, z: this.tail.z };
@@ -137,8 +151,16 @@ export class ArenaArrivals {
   private evening(): 'gala' | 'card' { return eveningSize(this.ctx.day(), Math.max(17, this.ctx.hour())); }
   private span([a, b]: [number, number]) { return a + Math.floor(this.rand() * (b - a + 1)); }
 
-  /** Send `n` fans from `from` along `path` (they appear one after the other). Returns how many were free. */
-  spawn(from: Pt, path: Pt[], n: number, delay = 0.7): number {
+  /**
+   * Send `n` fans from `from` along `path` (they appear one after the other). Returns how many were free. `force`: the
+   * group of the player's own car always gets off — when the pool is short, the walkers furthest along (nearly at the
+   * queue) arrive at once and make room.
+   */
+  spawn(from: Pt, path: Pt[], n: number, delay = 0.7, force = false): number {
+    if (force) {
+      const short = n - this.walkers.filter(w => !w.on).length;
+      for (const w of furthestAlong(this.walkers, short)) { w.on = false; this.crowd.setPresent(w.id, false); this.dropped.arrived++; }
+    }
     let k = 0;
     for (const w of this.walkers) {
       if (k >= n) break;
@@ -190,9 +212,8 @@ export class ArenaArrivals {
     if (this.active) {
       this.taxiT -= dt;
       if (this.taxiT <= 0) { this.taxiT = ARRIVALS.taxiEvery[size] * (0.7 + this.rand() * 0.6); this.taxi(); }
-      this.rapideT -= dt;
-      if (this.rapideT <= 0) { this.rapideT = 0.5; this.watchRapide(size); }
     }
+    this.watchRapide(size, near);
     // after the gala: taxis come for the people waiting at the corners
     this.pickupT -= dt;
     if (this.pickupT <= 0 && near) {
@@ -244,23 +265,24 @@ export class ArenaArrivals {
   }
 
   /**
-   * A car rapide at an « Arène » stop (transport.dwellingAt; on fight evenings that is the evening route `23s`'s, the day
-   * route's stop being parked): a group steps down at its rear door each time one pulls in, and walks to the queue.
+   * A car rapide pulled in at an « Arène » stop (transport.onArrival, heard the frame it happens even on slow frames; on
+   * fight evenings that is the evening route `23s`'s stop, the day route's being parked): a group steps down at its rear
+   * door and walks to the queue — more when it carried fans to this stop. Fans aboard get off even when the street's
+   * phase changed during their ride; the player's own car always lets its group off (`spawn` with `force`).
    */
-  private watchRapide(size: 'gala' | 'card') {
-    if (!this.rapide.length) return;
-    const now = dwellingAt(this.rapide.map(r => r.key));
-    for (const key of newArrivals(this.dwelling, now)) {
-      const r = this.rapide.find(x => x.key === key), car = now.get(key);
-      if (!r || !car || !stopServed(key)) continue;
-      const door = { x: car.x, z: car.z };
+  private watchRapide(size: 'gala' | 'card', near: boolean) {
+    const evs = this.pulledIn.splice(0);
+    if (!near || !arenaExterior.active()) return;
+    for (const e of evs) {
+      const r = this.rapide.find(x => x.key === e.key);
+      if (!r || !stopServed(e.key) || (!this.active && !e.fans)) continue;
+      const live = transport.dwellingAt(e.key);
+      const door = live?.vehicle === e.vehicle ? { x: live.x, z: live.z } : r.stop;
       const walk = Math.hypot(door.x - r.stop.x, door.z - r.stop.z) < 1.5 ? r.walk : this.walkFrom(door);
-      // a car that carried fans in their écurie's colours (src/arena/arrival.ts) lets a few more off
-      const fans = transport.hasFans(key.split(':')[0]);
-      const k = this.spawn(door, walk, this.span(ARRIVALS.perRapide[size]) + (fans ? 2 : 0), 0.55);
-      this.dropped.rapide += k; if (fans) this.dropped.fans += k;
+      const mine = transport.ridingVehicle() === e.vehicle;
+      const k = this.spawn(door, walk, this.span(ARRIVALS.perRapide[size]) + (e.fans ? 2 : 0), 0.55, mine);
+      this.dropped.rapide += k; if (e.fans) this.dropped.fans += k;
     }
-    this.dwelling = now;
   }
 
   info() {
@@ -273,6 +295,7 @@ export class ArenaArrivals {
   }
 
   dispose() {
+    this.unlisten();
     for (const c of this.cabs) c.g.removeFromParent();
     this.cabs = [];
     this.crowd.dispose();

@@ -19,7 +19,7 @@ import { PassengerCamera } from './camera';
 import { TripLogic, MIN_STOP } from './trip';
 import { RideCard } from './ui';
 import type { CameraAnchor, VehicleSpec } from './spec';
-import { clearKerb, passengerPatterns, pickSeat, type KerbZone } from './passengers';
+import { clearKerb, fansAtStop, fansOnSet, passengerPatterns, pickSeat, type KerbZone, type LineFans } from './passengers';
 
 /**
  * Transport module (Wave 1: the car rapide passenger experience). Every hub has a car rapide line looping around its
@@ -62,7 +62,12 @@ interface LineRt {
  * Fans aboard a line (src/arena/arrival.ts on fight evenings): passengers in these shirt colours on every leg towards
  * `dest`; they get off there (the car pulls in with ordinary passengers), and the next ones get on at the other stops.
  */
-export interface LineFans { colours: readonly number[]; dest: string }
+export type { LineFans };
+/**
+ * A car pulled in at a stop (`key`: `<line>:<stop>`), heard by `transport.onArrival` the frame it happens — never missed
+ * on slow frames, unlike a look at who stands there now. `fans`: fans aboard rode to this stop and get off here.
+ */
+export interface StopArrival { key: string; vehicle: string; fans: boolean }
 
 /** A short scripted walk (to the rear door, onto the pavement), timed on the real clock so it never outlasts a stop. */
 interface Walk { fx: number; fz: number; tx: number; tz: number; t0: number; ms: number; done: () => void }
@@ -94,6 +99,9 @@ export class TransportModule implements GameModule {
   private crowdFree: string | null = null;
   /** Fans aboard, by line id (set by the arena on fight evenings). */
   private fans = new Map<string, LineFans>();
+  /** Fans aboard each car (by vehicle id): they ride to their stop even if the line's fans end meanwhile. */
+  private aboard = new Map<string, LineFans>();
+  private arrivalFns = new Set<(a: StopArrival) => void>();
 
   // ---------------------------------------------------------------- GameModule
   init(ctx: GameCtx) {
@@ -251,26 +259,43 @@ export class TransportModule implements GameModule {
   }
 
   /**
-   * Fans aboard a line of this hub (null: ordinary passengers again). The cars take them at once on their way to
-   * `dest`, and at every stop but `dest` after that.
+   * Fans aboard a line of this hub (null: no more get on; those aboard still ride to their stop and get off there). The
+   * cars take them at once on their way to `dest`, and at every stop but `dest` after that.
    */
   setFans(line: string, fans: LineFans | null) {
     const was = this.fans.get(line);
     if (!fans && !was) return;
     if (fans && was && was.dest === fans.dest && was.colours.join() === fans.colours.join()) return;
     if (fans) this.fans.set(line, fans); else this.fans.delete(line);
+    if (!fans) return;                                        // those aboard ride on to their stop (fansOnSet)
     for (const rt of this.lines) if (rt.def.id === line) for (const v of rt.vehicles) {
-      const toDest = fans ? rt.sites[v.motion.dwell >= 0 ? v.motion.dwell : -1]?.def.id !== fans.dest : false;
-      v.vehicle.setPassengers(v.vehicle.passengers(), toDest ? fans!.colours : undefined);
+      const at = v.motion.dwell >= 0 ? rt.sites[v.motion.dwell]?.def.id ?? null : null;
+      this.seatFans(v, fansOnSet(this.aboard.get(v.id) ?? null, fans, at));
     }
   }
   /** Fans ride this line now (its cars pulling in at their stop let them off: src/crowd/arrivals.ts). */
   hasFans(line: string) { return this.fans.has(line); }
+  /** Fans ride in this car now, towards their stop. */
+  carriesFans(vehicle: string) { return this.aboard.has(vehicle); }
+  /** Hear every car pulling in at a stop (see StopArrival); returns the way to stop listening. */
+  onArrival(fn: (a: StopArrival) => void): () => void { this.arrivalFns.add(fn); return () => { this.arrivalFns.delete(fn); }; }
+  /** The car the player is getting on, riding or getting off (its vehicle id), or null. */
+  ridingVehicle(): string | null {
+    const p = this.trip.phase;
+    return p === 'boarding' || p === 'riding' || p === 'alighting' ? this.vehicle()?.id ?? null : null;
+  }
+  private seatFans(v: LineVehicle, f: LineFans | null) {
+    if (f) this.aboard.set(v.id, f); else this.aboard.delete(v.id);
+    v.vehicle.setPassengers(v.vehicle.passengers(), f?.colours);
+  }
 
   /** A car pulled in at stop i: passengers get on and off; fans get off at their stop and others get on elsewhere. */
   private arrive(rt: LineRt, v: LineVehicle, i: number) {
-    const fans = this.fans.get(rt.def.id), stop = rt.sites[i]?.def.id ?? '';
-    this.shuffle(rt, v, fans && stop !== fans.dest ? fans.colours : undefined);
+    const stop = rt.sites[i]?.def.id ?? '', r = fansAtStop(this.aboard.get(v.id) ?? null, this.fans.get(rt.def.id) ?? null, stop);
+    if (r.aboard) this.aboard.set(v.id, r.aboard); else this.aboard.delete(v.id);
+    this.shuffle(rt, v, r.aboard?.colours);
+    const a: StopArrival = { key: `${rt.def.id}:${stop}`, vehicle: v.id, fans: r.off };
+    for (const fn of this.arrivalFns) fn(a);
   }
 
   /** Footprints of the line's cars (drive mode collides with them): centre, heading, half length and width. */
@@ -289,7 +314,7 @@ export class TransportModule implements GameModule {
       for (const t of rt.calls) t.dispose();
     }
     this.lines = []; this.hub = null; this.doorTargets.clear(); this.waitingKey = -1;
-    this.fans.clear();                                        // the new hub's cars start with ordinary passengers
+    this.fans.clear(); this.aboard.clear();                   // the new hub's cars start with ordinary passengers
   }
 
   private clock() { return this.ctx.now() / 1000 + this.warp; }

@@ -245,10 +245,15 @@ Habib's evening: « prendre sa moto ou un Car Rapide ».
   a few in their own clothes. They ride on every leg towards « Arène ».
   - These are the transport's own passengers: `transport.setFans(line, { colours, dest })` and the car rapide kit's
     `colours`.
-  - They get off at « Arène », where the car pulls in with ordinary passengers.
-  - The arrivals lane (`src/crowd/arrivals.ts`) sees the car pull in through the transport's one public stop API,
-    `transport.dwellingAt` (src/crowd/transportPeek.ts now reads it instead of the debug entry). It walks a group to
-    the queue's tail, two more when `transport.hasFans`. A player who rides along gets off with them.
+  - They get off at « Arène », where the car pulls in with ordinary passengers. Each car keeps the fans aboard until
+    their stop (`fansAtStop` / `fansOnSet`, src/transport/passengers.ts): if the street leaves its doors phase during
+    the ride (the gala over, a slow phone's clock), no more get on, but those aboard still ride to « Arène » and get off.
+  - The arrivals lane (`src/crowd/arrivals.ts`) hears each car pull in the frame it happens (`transport.onArrival`: its
+    key, the car, whether fans rode to this stop), so a slow frame never misses one — a look every half second at who
+    stands there could miss a whole stop on a phone at a few frames a second. It walks a group to the queue's tail, two
+    more when fans got off. The player's own car (`transport.ridingVehicle()`) always lets its group off: with the
+    walker pool full, the walkers furthest along (nearly at the queue) arrive at once and make room (`furthestAlong`).
+    A player who rides along gets off with them.
 
 `?debug` → `__dakar.arrival.info()` (street, gardien, places, other motos, the player's moto, paid, what he said),
 `arrival.skip(sec)` (the after-gala emptying). `flock /tmp/dakar-browser.lock node scripts/check-arena-arrival.mjs
