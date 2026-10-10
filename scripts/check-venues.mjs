@@ -138,6 +138,32 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await standAt(counterAt, counterYaw, /:counter$/);
   const fe = await d(() => window.__dakar.focus());
   check(`${label}: attaya after the meal, in the evening`, fe?.all.includes('Attaya après le repas'), fe?.all.join(' | '));
+  // the night layer (src/venues/dibiNight.ts): glowing coals and sparks, the dibi master turning the brochettes, tonight's
+  // bout on the TV, the menu at the counter with the counter's prices, the attaya pot under the neem
+  const n0 = (await venue('dibi')).night;
+  await page.waitForTimeout(4000 * SLOW);
+  const n1 = (await venue('dibi')).night;
+  check(`${label}: at night the coals glow and spark, and the dibi master keeps turning the brochettes`, n1.glow > 0.9 && n1.sparks && n1.brochettes && n1.flips > n0.flips,
+    JSON.stringify({ glow: n1.glow, sparks: n1.sparks, flips: [n0.flips, n1.flips] }));
+  const card = await d(() => window.__dakar.posters?.()?.lines ?? null);
+  check(`${label}: the TV shows tonight's bout, live (the city's card)`, n1.tv.live && (!card || n1.tv.names === card.title), JSON.stringify({ tv: n1.tv, card: card?.title }));
+  check(`${label}: the menu at the counter: dibi mouton (oignons, moutarde, pain), brochettes, bissap, attaya, the pot, at the counter's prices`,
+    ['dibi', 'brochettes', 'bissap', 'attaya', 'theiere'].every(id => n1.menu.some(r => r.id === id)) && n1.menu.find(r => r.id === 'dibi')?.price === 2000, JSON.stringify(n1.menu));
+  await cam(v, [-4.5, 2.2, 5.5], [-8.0, 0.9, 8.6]); await shot('dibi-night-grill');
+  await cam(v, [5.0, 2.0, 0.5], [10.5, 1.6, 3.4]); await shot('dibi-night-tv'); await d(() => window.__dakar.cam(null));
+  const potAt = anchor(v, 'attaya');
+  check(`${label}: under the neem, the attaya set offers its pot`, !!potAt && await standAt(potAt, v.yaw + Math.PI, /:attaya$/, 0.6) && (await d(() => window.__dakar.focus()?.primary)) === 'Une théière d’attaya sous le neem', JSON.stringify(await d(() => window.__dakar.focus())));
+  if (potAt) {
+    await d(() => { window.__dakar.state.data.wallet = 2000; });
+    const free = await d(() => window.__dakar.seatsHere().filter(s => s.id.includes(':attaya:') && !s.occupant).length);
+    await d(() => window.__dakar.act());
+    await until(() => window.__dakar.activity()?.step === 'Tu bois', null, 60000);
+    const pot = await d(() => ({ wallet: window.__dakar.state.wallet, seat: window.__dakar.seated(), clip: window.__dakar.clip(), a: window.__dakar.activity()?.id }));
+    check(`${label}: the pot is paid once (500 F) and you sit on a cushion of the attaya circle`, pot.wallet === 1500 && pot.a === 'theiere' && (free === 0 || (/:attaya:/.test(pot.seat ?? '') && pot.clip === 'SitFloor')), JSON.stringify({ ...pot, free }));
+    await cam(v, [3.0, 2.2, -4.6], [5.6, 0.4, -8.0]); await shot('dibi-night-attaya'); await d(() => window.__dakar.cam(null));
+    await until(() => !window.__dakar.activity(), null, 60000);
+    await d(() => window.__dakar.stand());
+  }
   await cam(v, [-17, 7.5, 19], [-2, 0.5, 0]); await shot('dibi-night-corner');
   await cam(v, [9, 2.4, 9], [-6, 1.0, -2]); await shot('dibi-night-inside'); await d(() => window.__dakar.cam(null));
   await d(() => window.__dakar.setHour(8));
