@@ -36,6 +36,8 @@ export interface PlaceHooks {
   tired?(energy: number): string | null;
   /** Mosque: name of the prayer the congregation gathers for right now (null outside the prayer windows). */
   congregation?(): string | null;
+  /** Mosque: open the mushaf on its stand (verified Quranic text, read only: no effect, no reward). */
+  read?(): void;
   /** Mosque: what to do first before praying (« ablutions in the courtyard »), or null when ready. */
   prayReady?(): string | null;
   /** One of the place's activities finished (the module reacts: ablutions done, a prop, a counter…). */
@@ -171,7 +173,13 @@ export function mosque(b: Base & { peaks?: [number, number][] }, h: PlaceHooks =
     // volunteering for the neighbourhood (not a religious practice): no money and no activity category, only the time spent with people
     offers.cour = [P.use({ id: 'balayer', primitive: 'work', label: 'Balayer la cour', detail: 'Bénévole · le quartier s’en souvient', seconds: 6, effects: { needs: { energie: -4, social: 4 }, counters: { mosquee_aide: 1 } } })];
   }
-  if (has('shelf')) { list.push(at('shelf')); offers.shelf = [P.use({ id: 'lire', label: 'Lire', icon: '📖', detail: 'Texte vérifié à venir', seconds: 0, requires: () => 'Pas encore disponible : texte vérifié à venir' })]; }
+  // reading the Quran is a practice: no effects, no counter, no category (the module only opens the text)
+  if (has('shelf')) {
+    list.push(at('shelf'));
+    offers.shelf = [h.read
+      ? P.inspect({ id: 'lire', label: 'Lire le Coran', icon: '📖', detail: 'Sourate Al-Fâtiha · texte vérifié (Tanzil)', then: () => h.read!() })
+      : P.use({ id: 'lire', label: 'Lire', icon: '📖', detail: 'Texte vérifié à venir', seconds: 0, requires: () => 'Pas encore disponible : texte vérifié à venir' })];
+  }
   return { id: b.id, name: b.name, space: b.space, type: 'mosque', peaks: b.peaks, anchors: list, offers };
 }
 

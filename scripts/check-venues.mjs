@@ -186,7 +186,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await d(() => window.__dakar.place(1600.4, 1.6, Math.PI));
   await until(() => /:hall$/.test(window.__dakar.focus()?.id ?? ''), null, 20000);
   const fh = await d(() => window.__dakar.focus());
-  check(`${label}: the rows offer prayer and a calm seat; reading waits for a verified text`, ['Prier', 'S’asseoir au calme'].every(x => fh?.all.includes(x)), fh?.all.join(' | '));
+  check(`${label}: the rows offer prayer and a calm seat`, ['Prier', 'S’asseoir au calme'].every(x => fh?.all.includes(x)), fh?.all.join(' | '));
   const b2 = await d(() => JSON.stringify({ n: window.__dakar.state.data.needs, w: window.__dakar.state.wallet, c: window.__dakar.state.data.counters }));
   await d(() => window.__dakar.act());
   await until(() => window.__dakar.activity()?.id === 'priere', null, 20000);
