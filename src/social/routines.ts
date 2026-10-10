@@ -316,6 +316,26 @@ const proj = (p: Pt, a: Pt, b: Pt): Pt => {
 };
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
 export type ClearFn = (a: Pt, b: Pt) => boolean;
+
+/**
+ * Straight segment test against a hub's solid objects (h > 0.3 m), with a 0.25 m margin. Objects containing an end point
+ * are the place itself (the bench, the counter) and are ignored. Make one per hub: planPath caches by function identity.
+ */
+export function collidersClear(cols: readonly { x0: number; z0: number; x1: number; z1: number; h: number }[]): ClearFn {
+  return (a, b) => {
+    const m = 0.25;
+    const len = Math.hypot(b.x - a.x, b.z - a.z), steps = Math.max(1, Math.ceil(len / 0.3));
+    const near = cols.filter(c => c.h > 0.3 && Math.max(a.x, b.x) > c.x0 - m && Math.min(a.x, b.x) < c.x1 + m && Math.max(a.z, b.z) > c.z0 - m && Math.min(a.z, b.z) < c.z1 + m
+      && !(a.x > c.x0 - 0.45 && a.x < c.x1 + 0.45 && a.z > c.z0 - 0.45 && a.z < c.z1 + 0.45)
+      && !(b.x > c.x0 - 0.45 && b.x < c.x1 + 0.45 && b.z > c.z0 - 0.45 && b.z < c.z1 + 0.45));
+    if (!near.length) return true;
+    for (let k = 0; k <= steps; k++) {
+      const t = k / steps, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+      if (near.some(c => x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m)) return false;
+    }
+    return true;
+  };
+}
 const edgeCache = new WeakMap<ClearFn, Map<string, boolean>>();
 
 /** Closest sidewalk entries for a point, nearest first, keeping only those reachable in a straight clear line. */

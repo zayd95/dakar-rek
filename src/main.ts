@@ -312,7 +312,7 @@ const people = interactions.add(new People(() => [
 ], activities, line => hud.toast(line), () => ({ x: pos.x, z: pos.z }))) as People;
 /** What gameplay modules (src/game/modules.ts) may use: the shared systems, the player and the hub. */
 const ctx: GameCtx = {
-  scene, camera, follow, extra, state, hud, input, interactions, seats, places, activities, inventory,
+  scene, camera, follow, extra, state, hud, input, interactions, seats, people, places, activities, inventory,
   quality: () => quality, world: () => world, inside: () => inside, space: () => interactSpace(),
   hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day, now: () => presence.serverNow(),
   player: {
