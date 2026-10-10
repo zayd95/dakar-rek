@@ -21,3 +21,45 @@ export const GATE_HALF = 0.3;
 export const inGate = (a: number, half = GATE_HALF) => Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < half;
 /** Rough standing figure, for sightline checks. */
 export const EYE = 1.55, HEAD = 1.75;
+
+// ------------------------------------------------------------------ sections, aisles, the wrestlers' tunnel
+// The stands are one section module repeated between aisles (src/world/arenaModules.ts draws them from these numbers).
+
+/** Signed angle difference a − b in (−π, π]. */
+export const angleDiff = (a: number, b: number) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+/** The wrestlers' tunnel: a passage through the stands opposite the public gate (+z, angle 0), to their own gate. */
+export const TUNNEL_A = 0, TUNNEL_HALF = 0.12;
+export const inTunnel = (a: number, half = TUNNEL_HALF) => Math.abs(angleDiff(a, TUNNEL_A)) < half;
+/** Aisles with stairs up the three tiers, between the sections (angles measured like the gate, as atan2(x, z)). */
+export const AISLES: readonly number[] = [Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (3 * Math.PI) / 2, (7 * Math.PI) / 4];
+/** Half the angular width of an aisle (about 2 m wide on the first tier: room to climb past the stands' colliders). */
+export const AISLE_HALF = 0.055;
+export const inAisle = (a: number, half = AISLE_HALF) => AISLES.some(x => Math.abs(angleDiff(a, x)) < half);
+/**
+ * Where a spectator place may be on the tiers: not in the gate, an aisle or the tunnel (with a little room either side).
+ * The stand seats of the arena visit and the crowd should use it, so nobody sits on a stair.
+ */
+export const standOpen = (a: number) => !inGate(a, GATE_HALF + 0.05) && !inAisle(a, AISLE_HALF + 0.02) && !inTunnel(a, TUNNEL_HALF + 0.04);
+/** Gaps in the ring of stands as [centre angle, half width]: the tunnel, the aisles, the public gate. */
+export const STAND_GAPS: readonly [number, number][] = ([[TUNNEL_A, TUNNEL_HALF], ...AISLES.map(a => [a, AISLE_HALF]), [Math.PI, GATE_HALF]] as [number, number][])
+  .sort((x, y) => x[0] - y[0]);
+/** A section of seats between two gaps, going round from the tunnel (A) through the gate (between D and E) to H. */
+export interface StandSection { id: string; a0: number; a1: number }
+export const SECTIONS: readonly StandSection[] = STAND_GAPS.map(([c, h], i) => {
+  const [nc, nh] = STAND_GAPS[(i + 1) % STAND_GAPS.length];
+  return { id: 'ABCDEFGH'[i], a0: c + h, a1: (i === STAND_GAPS.length - 1 ? nc + 2 * Math.PI : nc) - nh };
+});
+/** The aisle (never the gate or the tunnel) nearest to angle a. */
+export const nearestAisle = (a: number) => AISLES.reduce((best, x) => (Math.abs(angleDiff(a, x)) < Math.abs(angleDiff(a, best)) ? x : best), AISLES[0]);
+/**
+ * Where someone leaving a place on tier t at angle a stands: in the nearest aisle, on that tier's tread (its back half,
+ * at the tier's height); then, as a second choice, down on the walkway in front of the parapet.
+ */
+export function standExits(cx: number, cz: number, a: number, t: number): { x: number; z: number }[] {
+  const al = nearestAisle(a), u = tierRadius(t) + 0.2, w = 16.78;
+  return [{ x: cx + Math.sin(al) * u, z: cz + Math.cos(al) * u }, { x: cx + Math.sin(a) * w, z: cz + Math.cos(a) * w }];
+}
+/** The aisle stairs: two steps per tier, from the walkway in front of the parapet up to the top tier. */
+export const STEP_DEPTH = 0.65, STEP_RISE = 0.45;
+/** Where the tunnel opens on the ring side (the wrestlers come out here). */
+export const TUNNEL_MOUTH_R = 16.2;
