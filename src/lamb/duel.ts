@@ -154,6 +154,11 @@ export class LambDuel {
   private bigPresses = 0;
   /** The opponent's pending answer to the player's strike, and how long it keeps its guard up. */
   private aiReact: { at: number; what: Reaction } | null = null;
+  /**
+   * Checks only (debugHold): the opponent holds still — no decision, strike, grab, move, throw or counter — and so do
+   * the round's clock and the referee's separation, so a check sets up a position and plays it out alike every run.
+   */
+  private held = false;
   private aiGuardHold = 0;
   /** Avec frappe: grip advantage in the empoignade, from the player's side (−100…100), and how it started. */
   private grip = 0;
@@ -541,6 +546,13 @@ export class LambDuel {
     if (v.composure !== undefined) f.composure = v.composure;
     if (v.stamina !== undefined) f.stamina = v.stamina;
   }
+  /** Checks only: hold the opponent, the clock and the referee still (see `held`), or let them go again. */
+  debugHold(on: boolean) {
+    this.held = on;
+    if (on) { this.ai.move = null; this.ai.windup = 0; this.aiReact = null; this.aiGuardHold = 0; this.ai.guard = false; }
+  }
+  /** Checks only: the seconds left in the round (a long check's earlier steps do not eat the later ones' time). */
+  debugClock(seconds: number) { if (this.timeLeft !== Infinity) this.timeLeft = seconds; }
   setGuard(on: boolean) { this.guardHeld = on; }
   /** World points on both wrestlers (feet, waist, head) for layout checks. */
   fighterPoints(): [number, number, number][] { return [this.me, this.ai].flatMap(f => [0.1, 1, 1.8].map(h => [f.pos.x, f.pos.y + h, f.pos.z] as [number, number, number])); }
@@ -548,7 +560,7 @@ export class LambDuel {
     const c = this.phase === 'clinch' ? this.clinchState() : null;
     return {
       mode: this.mode, phase: this.phase, winner: this.winner, outcome: this.outcome, style: this.style.id, opponent: this.style.name, level: this.level,
-      timeLeft: this.timeLeft === Infinity ? null : Math.round(this.timeLeft * 10) / 10, paused: this.paused,
+      timeLeft: this.timeLeft === Infinity ? null : Math.round(this.timeLeft * 10) / 10, paused: this.paused, ...(this.held ? { held: true } : {}),
       step: this.mode === 'entrainement' ? (TUTORIAL[this.step]?.id ?? 'done') : null,
       stamina: { player: Math.round(this.me.stamina), opponent: Math.round(this.ai.stamina) },
       open: this.me.open > 0 ? 'player' : this.ai.open > 0 ? 'opponent' : null,
@@ -775,7 +787,7 @@ export class LambDuel {
   // ---------------------------------------------------------------- avec frappe: the stand-up exchange (Làmb 2.0)
   private fightFrappe(dt: number, taps: number, breaks: number, quick: number, big: number) {
     const me = this.me, ai = this.ai;
-    if (this.timeLeft !== Infinity) this.timeLeft -= dt;
+    if (this.timeLeft !== Infinity && !this.held) this.timeLeft -= dt;
     const m = this.auto ? { x: 0, y: 0 } : this.input.move();
     if (this.auto) ({ taps, breaks, quick, big } = this.autoStand(dt, ai.pos.distanceTo(me.pos)));
     me.guard = this.guardHeld && !me.strike && me.stagger <= 0 && me.open <= 0 && me.dodge <= 0 && me.busy <= 0;
@@ -811,6 +823,7 @@ export class LambDuel {
     if (this.phase !== 'fight') return;
 
     // the opponent answers the player's strike (guard, step back, or a quick strike first)
+    if (this.held) this.aiReact = null;
     if (this.aiReact && (this.aiReact.at -= dt) <= 0) {
       const what = this.aiReact.what; this.aiReact = null;
       if (what === 'guard' && free(ai) && ai.open <= 0) this.aiGuardHold = 0.45;
@@ -825,7 +838,7 @@ export class LambDuel {
         if (startStrike(ai, 'big')) this.msg('Il arme une grosse frappe : garde !', 0.8);
       }
       this.aiThink = 1;
-    } else if (this.aiThink <= 0 && free(ai) && ai.windup <= 0 && ai.open <= 0 && ai.busy <= 0) {
+    } else if (!this.held && this.aiThink <= 0 && free(ai) && ai.windup <= 0 && ai.open <= 0 && ai.busy <= 0) {
       const [a0, b0] = this.style.think; this.aiThink = a0 + this.rand() * (b0 - a0);
       const dec = decide({ me: ai, them: me, dist: d, grabRange: R.grabRange }, this.standStyle, this.factor, this.rand);
       if (dec.grab && ai.stamina >= R.stamina.grabCost) this.aiGrab();
@@ -865,7 +878,7 @@ export class LambDuel {
   // ---------------------------------------------------------------- avec frappe: the empoignade is played (Làmb 2.0, step 3)
   private clinchFrappe(dt: number, taps: number, breaks: number, quick: number, big: number, pull: boolean) {
     const me = this.me, ai = this.ai;
-    if (this.timeLeft !== Infinity) this.timeLeft -= dt;
+    if (this.timeLeft !== Infinity && !this.held) this.timeLeft -= dt;
     me.clip = ai.clip = 'Grab';
     if (this.auto) {
       const o = this.autoClinch(dt);
@@ -899,7 +912,7 @@ export class LambDuel {
     if (want && !startMove(me, want) && !me.move && me.recover <= 0) this.msg('Plus d’endurance', 0.7);
     // the opponent reads, answers, or plays its style — and throws when the position is good
     this.aiThink -= dt;
-    if (this.aiThink <= 0) {
+    if (!this.held && this.aiThink <= 0) {
       const [a0, b0] = this.clinchStyle.think; this.aiThink = a0 + this.rand() * (b0 - a0);
       if (wantsThrow(ai, me, -this.grip, this.clinchStyle, this.factor, this.rand)) { this.startThrow(ai); return; }
       const d = clinchDecide(ai, me, -this.grip, this.clinchStyle, this.factor, ai.composure, this.rand);
@@ -913,7 +926,7 @@ export class LambDuel {
     }
     // a wrestler whose balance is gone goes down (step 6 brings the throw attempt, the counter and the fall itself)
     if (me.balance <= 0 || ai.balance <= 0) { this.resolveClinch(ai.balance <= 0 && (me.balance > 0 || this.grip >= 0)); return; }
-    if (this.phaseT > CLINCH.maxSeconds) { this.separate(null, 0); this.msg('L’arbitre sépare les lutteurs', 1.2); return; }
+    if (this.phaseT > CLINCH.maxSeconds && !this.held) { this.separate(null, 0); this.msg('L’arbitre sépare les lutteurs', 1.2); return; }
     // step 4: the player feels the position going — words, the screen's edge, a low note when it gets serious
     const pm = posture(me.balance), po = posture(ai.balance);
     if (this.lesson && this.lessonHear({ k: 'posture', player: pm })) return;
@@ -934,7 +947,7 @@ export class LambDuel {
     by.stamina -= THROW.cost; me.move = ai.move = null;
     // the defender answers by AI when it is the opponent, or the autopilot's side (AI against AI)
     const def = by === me ? ai : me, viaAi = def === ai || !!this.auto;
-    const counters = viaAi && wantsCounter(def, def === ai ? this.clinchStyle : this.auto!.clinch, def === ai ? this.factor : this.autoFactor, def.composure, this.rand());
+    const counters = viaAi && !(this.held && def === ai) && wantsCounter(def, def === ai ? this.clinchStyle : this.auto!.clinch, def === ai ? this.factor : this.autoFactor, def.composure, this.rand());
     this.attempt = { by, t: 0, counter: false, counterAt: counters ? 0.2 + 0.15 * (1 - def.composure / 100) : Infinity };
     this.msg(by === me ? 'Tu tentes la projection…' : 'Il tente la projection ! Contre !', THROW.windup);
   }

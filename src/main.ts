@@ -1103,6 +1103,10 @@ if (DEBUG) {
     /** Coach Ablaye's lesson avec frappe: skip the current step (« Passer »). */
     duelLessonSkip() { if (lambScene instanceof LambDuel) lambScene.skipLessonStep(); },
     duelSet(side: 'player' | 'opponent', v: { balance?: number; composure?: number; stamina?: number; grip?: number }) { if (lambScene instanceof LambDuel) lambScene.debugSet(side, v); },
+    /** Checks only: hold the opponent, the round's clock and the referee still while a position is set up (avec frappe). */
+    duelHold(on: boolean) { if (lambScene instanceof LambDuel) lambScene.debugHold(on); },
+    /** Checks only: the seconds left in the round. */
+    duelClock(seconds: number) { if (lambScene instanceof LambDuel) lambScene.debugClock(seconds); },
     duelInfo: () => (lambScene instanceof LambDuel ? lambScene.info() : null),
     duelGrab() { if (lambScene instanceof LambDuel) lambScene.pressGrab(); },
     duelGuard(on: boolean) { if (lambScene instanceof LambDuel) lambScene.setGuard(on); },

@@ -180,6 +180,8 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
 
   // step 3: the empoignade is played — the buttons change, reading his move and answering it wins the exchange
   const ANSWER = { push: 'pull', pull: 'pivot', pivot: 'push' };
+  // the earlier steps took their time: give the empoignade steps a whole round, so the bell does not end it first
+  await page.evaluate(() => window.__dakar.duelClock(90));
   const intoClinch = () => until(page, i => !i || i.phase !== 'fight', async i => {
     if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); }
   }, 60000).finally(() => page.keyboard.up('KeyD'));
@@ -195,17 +197,22 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   }, 150000);
   if (read) await shot(page, 'desktop-clinch-counter');
   check('empoignade: reading his move and answering with the one that beats it wins the exchange (he slips)', !!read && read.balance.opponent < 100, read ? { last: read.clinch.last, balance: read.balance, grip: read.clinch.grip } : { phase: cx?.phase, seen, last: cx?.clinch?.last });
-  // step 4: a grip clearly against you wears your balance away — the screen, the bar and the words say so
+  // step 4: a grip clearly against you wears your balance away — the screen, the bar and the words say so.
+  // From here to the throw the opponent, the round's clock and the referee are held still (duelHold): no move, throw
+  // or counter of his, no bell, no separation — only the position set up works, alike on every run.
+  await page.evaluate(() => window.__dakar.duelHold(true));
   let sl = await info(page);
   if (sl?.phase === 'fight') sl = await intoClinch();
   if (sl?.phase === 'clinch') {
     const b0 = sl.balance.player;
-    await page.evaluate(() => window.__dakar.duelSet('player', { grip: -85, balance: Math.min(50, window.__dakar.duelInfo().balance.player) }));
+    await page.evaluate(() => { const d = window.__dakar; d.duelSet('opponent', { balance: 90 }); d.duelSet('player', { grip: -85, balance: Math.min(50, d.duelInfo().balance.player) }); });
     const sv = await until(page, i => !i || i.phase !== 'clinch' || i.clinch.posture.player !== 'stable', async () => page.evaluate(() => window.__dakar.duelSet('player', { grip: -85 })), 40000);
+    // the words come once an earlier message has had its moment
+    await wait(page, () => /glisses|tomber/.test(document.querySelector('.duel-msg')?.textContent ?? ''), null, 4000);
     const ui = await page.evaluate(() => ({ cls: document.querySelector('.duel-ui')?.className ?? '', msg: document.querySelector('.duel-msg')?.textContent ?? '', warn: !!document.querySelector('[data-k=mebal].warn') }));
     if (sv?.phase === 'clinch') await shot(page, 'desktop-clinch-slipping');
     check('empoignade: with his grip on you, your balance slips away and you feel it (edge of the screen, bar, words)', sv?.phase === 'clinch' && sv.clinch.posture.player !== 'stable' && sv.balance.player < Math.min(50, b0) && /slip|falling/.test(ui.cls) && ui.warn && /glisses|tomber/.test(ui.msg), { posture: sv?.clinch?.posture, balance: sv?.balance, ui });
-    await page.evaluate(() => window.__dakar.duelSet('player', { grip: 0, balance: 80 }));
+    await page.evaluate(() => window.__dakar.duelSet('player', { grip: 0, balance: 80, stamina: 100 }));
   }
   // breaking free when the grip allows it
   let bf = await info(page);
@@ -223,10 +230,11 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
     if (i.phase === 'fight') { await intoClinch(); return; }
     if (i.phase !== 'clinch') return;
     if (i.clinch.attempt) { if (i.clinch.attempt.by === 'player' && !sawAttempt) { sawAttempt = true; await shot(page, 'desktop-throw-attempt'); } return; }
-    await page.evaluate(() => window.__dakar.duelSet('opponent', { balance: 28, grip: -40 }));   // as after a few lost exchanges
+    await page.evaluate(() => { window.__dakar.duelSet('opponent', { balance: 28, grip: -40 }); window.__dakar.duelSet('player', { stamina: 100 }); });   // as after a few lost exchanges
     if (!i.clinch.move.player) await page.evaluate(() => window.__dakar.duelThrow());
   }, 150000);
   await page.keyboard.up('KeyD');
+  await page.evaluate(() => window.__dakar.duelHold(false));
   const lt = end?.lastThrow;
   check('step 5: a throw on a wrestler who slips, with the grip, takes him down (projection)', ['fall', 'result'].includes(end?.phase) && end.outcome === 'projection' && end.winner === 'player' && lt?.by === 'player' && lt.result === 'fall' && sawAttempt, { phase: end?.phase, outcome: end?.outcome, winner: end?.winner, lastThrow: lt, sawAttempt });
   // the stands react to your fall: your side celebrates, the other side and the ends hold their heads
