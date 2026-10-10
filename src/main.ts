@@ -28,7 +28,8 @@ import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { LambDuel } from './lamb/duel';
-import { fighterAttributes } from './career/career';
+import { ATTRS, fighterAttributes, type Counters } from './career/career';
+import { drillOfAction } from './lamb/drills';
 import { FRIENDLY_MORE, STYLE_MAP, rosterOpponent } from './lamb/opponents';
 import { lamb2On } from './lamb/flag';
 import { PARTNER, RULES, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type Discipline, type StyleId } from './lamb/rules';
@@ -645,6 +646,46 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () 
 }
 phoneHooks.arenaProfile = () => arenaProfileRows(state.data.counters, state.data.flags.includes('ecurie_baobab') ? 'Baobab (fictive)' : null);
 
+/** « Frappe 34 → 36 » for each fighter attribute (src/career/career.ts) that differs between two sets of counters. */
+const attrMoves = (from: Counters, to: Counters) => {
+  const a = fighterAttributes(from), b = fighterAttributes(to);
+  return ATTRS.filter(x => a[x.id] !== b[x.id]).map(x => `${x.label} ${a[x.id]} → ${b[x.id]}`);
+};
+/**
+ * An écurie drill, played (?lamb2): Coach Ablaye calls it, Babacar is the partner (src/lamb/drills.ts). A finished drill
+ * counts exactly as the timed drill does — its needs, its counter (the career's fighter attributes read it), the
+ * activity — whatever the score; an abandoned one counts nothing. The recap and the toast say the real attribute change.
+ */
+function startDrill(a: Action, npc?: string, it?: Interactable) {
+  if (lambScene) return;
+  const id = drillOfAction(a.id), at = world?.ecurie;
+  if (!id) return;
+  if (!at) { hud.toast('Les exercices ont lieu à l’écurie de Pikine'); mode = 'play'; return; }
+  hideProxy(); emoteT = 0; previewT = 0;
+  hud.closeModal();
+  mode = 'scene';
+  const c = state.data.counters, key = a.counter;
+  const notes = key ? attrMoves(c, { ...c, [key]: (c[key] ?? 0) + 1 }) : [];
+  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: 0, mode: 'entrainement', style: PARTNER, level: 1, ring: 5,
+    discipline: 'avec_frappe', attrs: fighterAttributes(c), drill: id, drillNotes: notes.length ? notes : ['Tes attributs ne bougent plus guère avec cet exercice'] });
+  duel.onDone = () => {
+    const r = duel.drillResult();
+    if (!r || r.outcome === 'abandon') { hud.toast('Exercice interrompu : rien n’est compté'); return; }
+    const before = { ...state.data.counters };
+    economy.work(a, it);                                    // records the activity, as the timed drill does
+    if (a.needs) state.adjust(a.needs);
+    if (a.counter) state.count(a.counter);
+    if (npc) rel.change(PLAYER, npc, 1);
+    state.count('actions');
+    npcLife.afterAction(a, it ?? null);
+    hud.toast([`${a.label} ✓ ${r.score}/${r.of}`, ...attrMoves(before, state.data.counters)].join('  '));
+  };
+  lambScene = duel;
+  extra.add(duel.group);
+  npcLife.setVisible(false);
+  hud.setScene(`Entraînement · ${a.label}`, `${RULES.avec_frappe.label} · ${RULES_STATUS}`);
+}
+
 /** Leave a làmb scene early (« Arrêter », Escape, the menu key): no reward, controls back. */
 function stopScene() {
   if (!(lambScene instanceof LambScene)) return;
@@ -715,6 +756,8 @@ function openJournal() { hud.closeModal(); phone.open('carnet'); }
 let legacyRun: { label: string; stop(): void } | null = null;
 
 function runAction(a: Action, npc?: string, it?: Interactable) {
+  // with ?lamb2 the écurie drills (src/career DRILLS) are played with the avec-frappe controls (src/lamb/drills.ts)
+  if (LAMB2 && drillOfAction(a.id)) { startDrill(a, npc, it); return; }
   const where = it?.name;
   if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
     activities.onEnd = (_s, done) => {                    // once: later activities (places, venues) must not replay this action's hooks
@@ -1109,6 +1152,11 @@ if (DEBUG) {
     },
     duel() { startDuel('amical', 'costaud'); },
     duelStart(m: BoutMode = 'amical', style?: StyleId, discipline: Discipline = 'sans_frappe', name?: string) { startDuel(m, style, undefined, discipline, name); },
+    /** Checks: start an écurie drill by its action id (drill_frappe, drill_saisies, drill_force) — played with ?lamb2. */
+    drillStart(actionId: string) {
+      const it = world?.interactables.find(i => i.actions.some(a => a.id === actionId)), a = it?.actions.find(x => x.id === actionId);
+      if (it && a) { nearest = it; runAction(a, it.npc, it); }
+    },
     duelStrike(kind: 'quick' | 'big' = 'quick') { if (lambScene instanceof LambDuel) lambScene.pressStrike(kind); },
     duelMove(kind: 'push' | 'pull' | 'pivot') { if (lambScene instanceof LambDuel) lambScene.pressMove(kind); },
     /** In the empoignade, the big-strike button: « Projeter », or « Contrer » while he tries a throw. */

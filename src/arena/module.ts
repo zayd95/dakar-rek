@@ -162,7 +162,9 @@ class ArenaEvening {
     // the crowd fills each tier its own way: the honneur rows stay roomy, their people in their best (src/arena/tickets.ts)
     const order = fillOrder(defs.length, 7).map(i => defs[i]).filter(d => crowdMayTake(d.id, d.tribune));
     this.cap = Math.round(order.length * D.crowdShare);
-    this.crowd = new ArenaStands(order.slice(0, this.cap), D.near, { quality: ctx.quality(), look: (seat, base, r) => (seat.tribune === 'honneur' ? honneurDress(base, r) : base) });
+    this.crowd = new ArenaStands(order.slice(0, this.cap), D.near, { quality: ctx.quality(), look: (seat, base, r) =>
+      // the honneur rows in their best (plain fine cloth over the crowd's own look: height, build, headwear kept)
+      seat.tribune === 'honneur' ? { ...base, ...honneurDress({ ...base, style: base.style === 'jersey' ? 'tee' : base.style }, r), print: 0 } : base });
     // the tiers seen: cushions on the couverte and honneur places, the couverte's canvas, the honneur rows' plate
     {
       const dm = decorMaterial(), m = tribuneDecor(cx, a.cz, defs).build(dm, true, true);

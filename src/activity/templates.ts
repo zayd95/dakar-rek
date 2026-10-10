@@ -1,7 +1,8 @@
 import type { Anchor, PlaceSpec } from './places';
 import * as P from './primitives';
-import type { ActivitySpec, SeatPick } from './types';
-import { apprentiLine, comeLine, haggler, hostSays, tasteLine, waitLine } from '../i18n/lines';
+import type { ActivitySpec, SeatPick, Step } from './types';
+import type { Needs } from '../core/types';
+import { apprentiLine, comeLine, haggler, hostSays, price, tasteLine, waitLine } from '../i18n/lines';
 import { G } from './gestures';
 
 /**
@@ -99,7 +100,11 @@ function live<T extends ActivitySpec>(spec: T, detail: () => string | undefined)
  * late. With hooks it also offers the day's special, the regular's price, attaya in the evening, the owner and a talk
  * about the business (ownership system).
  */
-export function dibi(b: Base & { owner?: string; tables?: { x: number; z: number; r?: number }; peaks?: [number, number][] }, h: PlaceHooks = {}): PlaceSpec {
+/**
+ * `tables`: where the meals are eaten (the order sits you at the nearest free seat there; the city's people sit and eat
+ * there too: `area`). `attaya` (with an `attaya` anchor): the set and its cushions — a pot for the group, the evening.
+ */
+export function dibi(b: Base & { owner?: string; tables?: { x: number; z: number; r?: number }; peaks?: [number, number][]; attaya?: { x: number; z: number; r?: number } }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
   const keys = dibiCounters(b.id);
   const n = (k: string) => h.count?.(k) ?? 0;
@@ -115,10 +120,16 @@ export function dibi(b: Base & { owner?: string; tables?: { x: number; z: number
     const done = n(keys.grill), next = nextGrillRank(done);
     return next ? `${r.detail} · ${done}/${next.from} services avant « ${next.label} »` : r.detail;
   }));
+  const circle = b.attaya && b.anchors.some(a => a.id === 'attaya') ? b.attaya : null;
+  const pot = circle ? [P.order({ id: 'theiere', label: 'Une théière d’attaya sous le neem', detail: 'Trois verres pour la table · on prend le temps', price: 500, prep: 2, eat: 8, drink: true,
+    seat: { near: { x: circle.x, z: circle.z }, r: circle.r ?? 1.4, kind: 'floor' }, prop: 'attaya', needs: { social: 14, moral: 8 },
+    requires: () => (isEvening(hour()) ? null : 'L’attaya sous le neem, c’est le soir') })] : [];
   return { id: b.id, name: b.name, space: b.space, type: 'dibi', hours: [11, 2], chat: true, peaks: b.peaks ?? [[12.5, 14.5], [19, 1]],
-    anchors: [at('counter'), at('grill')], offers: {
+    ...(b.tables ? { area: { x: b.tables.x, z: b.tables.z, r: b.tables.r ?? 8 } } : {}),
+    anchors: [at('counter'), at('grill'), ...(circle ? [at('attaya')] : [])], offers: {
+      ...(circle ? { attaya: pot } : {}),
       counter: [
-        meal(P.order({ id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois, oignons et moutarde', price: 2000, prep: 4, eat: 5, seat, prop: 'dibi', needs: { faim: 55, moral: 10, social: 4 }, visible: () => !regular(), line: grilling, eatLine: tasteLine })),
+        meal(P.order({ id: 'dibi', label: 'Dibi mouton', detail: 'Grillé au feu de bois · oignons, moutarde et pain', price: 2000, prep: 4, eat: 5, seat, prop: 'dibi', needs: { faim: 55, moral: 10, social: 4 }, visible: () => !regular(), line: grilling, eatLine: tasteLine })),
         ...opt(h.count, meal(P.order({ id: 'dibi_habitue', label: 'Dibi mouton · prix d’habitué', detail: (b.owner ?? 'Le patron') + ' te fait le prix des habitués', price: 1500, prep: 3, eat: 5, seat, prop: 'dibi', needs: { faim: 55, moral: 14, social: 6 }, visible: regular }))),
         meal(P.order({ id: 'brochettes', label: 'Brochettes', detail: 'Trois brochettes et du pain', price: 1000, prep: 3, eat: 3, seat, prop: 'brochettes', needs: { faim: 28, moral: 4 }, line: grilling, eatLine: tasteLine })),
         ...(h.day ? DIBI_SPECIALS.map(d => live(meal(P.order({ id: 'jour_' + d.id, label: 'Plat du jour · ' + d.label, price: d.price, prep: 4, eat: 5, seat, prop: 'dibi', needs: { faim: d.faim, moral: 8 }, visible: () => dibiSpecial(h.day!()) === d })), () => 'Seulement aujourd’hui · demain, autre chose')) : []),
@@ -247,13 +258,152 @@ export function fishingBeach(b: Base & { boat?: string }, h: PlaceHooks = {}): P
   } };
 }
 
-/** Night club: open at night, dance and drinks, a crowd. */
-export function club(b: Base): PlaceSpec {
+/** A club night runs from the evening to the morning: the hours before noon belong to the night before. */
+export const clubNight = (day: number, hour: number) => Math.floor(day) - (hour < 12 ? 1 : 0);
+/** One theme a night, the same for everyone, a week of seven: the doorman and the DJ give the week's programme. */
+export interface ClubTheme { id: string; label: string; detail: string; contest?: boolean }
+export const CLUB_THEMES: readonly ClubTheme[] = [
+  { id: 'mbalax', label: 'Soirée mbalax', detail: 'Le sabar et les guitares : le son de Dakar' },
+  { id: 'afro', label: 'Afro night', detail: 'Afrobeats et coupé-décalé jusqu’au matin' },
+  { id: 'rap', label: 'Rap galsen', detail: 'Le rap de Dakar, en wolof et en français' },
+  { id: 'salsa', label: 'Salsa dakaroise', detail: 'La salsa des grands orchestres de la ville' },
+  { id: 'zouk', label: 'Zouk et kizomba', detail: 'Les morceaux lents, on danse à deux' },
+  { id: 'sabar', label: 'Nuit du sabar · concours', detail: 'Les batteurs en live · concours de danse dès 23 h', contest: true },
+  { id: 'retro', label: 'Soirée rétro', detail: 'Les classiques des années 70 et 80' },
+];
+const mod = (n: number, m: number) => ((Math.floor(n) % m) + m) % m;
+export const clubTheme = (night: number) => CLUB_THEMES[mod(night, CLUB_THEMES.length)];
+/** Nights from `night` to the next contest night (0 = tonight). */
+export function nightsToContest(night: number): number {
+  for (let k = 0; k < CLUB_THEMES.length; k++) if (clubTheme(night + k).contest) return k;
+  return -1;
+}
+/** Entry at the door (paid once a night), nights out before the doorman lets a regular in free, the contest. */
+export const CLUB_ENTRY = 2000;
+export const CLUB_REGULAR = 3;
+export const CONTEST_FROM = 23;
+export const CONTEST_ROUNDS = [
+  { label: 'Premier passage', prize: 1500, rounds: 5, speed: 1.3, clip: 'Dance_A' },
+  { label: 'Deuxième passage', prize: 2000, rounds: 6, speed: 1.5, clip: 'Dance_B' },
+  { label: 'La finale', prize: 2500, rounds: 7, speed: 1.75, clip: 'Dance_A' },
+] as const;
+/** Save counters of one club: the night paid for (night + 1), nights out there, dances, contests and the contest's night (night + 1). */
+export const clubCounters = (placeId: string) => ({
+  paid: `club:${placeId}:nuit`, nights: `club:${placeId}:soirees`, dances: `club:${placeId}:danses`,
+  contests: `club:${placeId}:concours`, contestNight: `club:${placeId}:concours_nuit`, requests: `club:${placeId}:morceaux`,
+});
+/** Drinks of a dance terrace (no alcohol on the menu: the juices of Dakar, a fruit cocktail, water). */
+export const CLUB_DRINKS: readonly { id: string; label: string; detail?: string; price: number; needs: Partial<Needs> }[] = [
+  { id: 'bissap', label: 'Bissap glacé', price: 500, needs: { moral: 4, social: 3 } },
+  { id: 'bouye', label: 'Jus de bouye', detail: 'Le jus du fruit du baobab', price: 700, needs: { faim: 6, moral: 5, social: 3 } },
+  { id: 'gingembre', label: 'Jus de gingembre', detail: 'Ça pique, ça réveille', price: 700, needs: { energie: 6, moral: 4 } },
+  { id: 'cocktail', label: 'Cocktail de fruits maison', detail: 'Mangue, ananas, bissap · sans alcool', price: 1500, needs: { moral: 10, social: 6 } },
+  { id: 'eau', label: 'Eau fraîche', price: 300, needs: { energie: 3 } },
+];
+
+/** How full a club is by the hour: empty early, building before midnight, the peak after it, thinning at dawn. */
+export type ClubCrowd = 'closed' | 'early' | 'warm' | 'peak' | 'dawn';
+export function clubCrowd(h: number): ClubCrowd {
+  if (h >= 5 && h < 21) return 'closed';
+  if (h >= 21 && h < 23) return 'early';
+  if (h >= 23) return 'warm';
+  return h < 3.5 ? 'peak' : 'dawn';
+}
+/** Label of the step during which the waiter brings a drink to the table (the venue walks him over). */
+export const TABLE_SERVICE = 'Le serveur t’apporte ta boisson';
+
+/**
+ * Night club / dance terrace: open at night (21 h–5 h) with tonight's theme.
+ * - Door: « Entrer » shows the fee before anything is paid (`enter`: the place's own confirmation, which then runs the
+ *   « payer » offer, hidden on the sheet, as `{ ...payer, visible: undefined }`; without that hook « payer » is offered
+ *   directly). Paid once a night (`done('entree')` lets you
+ *   in); a regular, after `CLUB_REGULAR` nights, comes in free.
+ * - Floor: dancing is the shared timing gesture on the drum's beat (two steps, the second faster); on the contest night of
+ *   the week, a three-round contest after 23 h (prize scaled by how well each round is danced, once a night).
+ * - Bar: drinks on a free stool around `bar`; lounge: sit at a free table around `lounge` and the waiter brings it.
+ * - DJ: ask for a song; exit: « Sortir » by the gate (`done('sortie')`).
+ */
+export function club(b: Base & { bar?: { x: number; z: number; r?: number }; lounge?: { x: number; z: number; r?: number } }, h: PlaceHooks = {}): PlaceSpec {
   const at = anchors(b.anchors);
-  return { ...b, type: 'club', hours: [21, 5], chat: true, anchors: [at('floor'), at('bar')], offers: {
-    floor: [P.dance({ id: 'danser', label: 'Danser', seconds: 8 }), P.dance({ id: 'danser2', label: 'Danser (autre pas)', seconds: 8, clip: 'Dance_B' })],
-    bar: [P.order({ id: 'soda', label: 'Boisson fraîche', price: 1000, prep: 1, eat: 2, drink: true, seat: false, needs: { moral: 4, social: 4 } })],
-  } };
+  const has = (id: string) => b.anchors.some(a => a.id === id);
+  const keys = clubCounters(b.id);
+  const n = (k: string) => h.count?.(k) ?? 0;
+  const hour = () => h.hour?.() ?? 23;
+  const night = () => clubNight(h.day?.() ?? 0, hour());
+  const theme = () => clubTheme(night());
+  const admitted = () => !h.count || !has('door') || n(keys.paid) === night() + 1;
+  const regular = () => n(keys.nights) >= CLUB_REGULAR;
+  const inside = () => (admitted() ? null : 'Paie l’entrée à la porte');
+  const both = (a: () => string | null, c: () => string | null) => () => a() ?? c();
+  const stool: SeatPick = b.bar ? { near: { x: b.bar.x, z: b.bar.z }, r: b.bar.r ?? 4, kind: 'stool' } : 'near';
+  const late = () => hour() >= CONTEST_FROM || hour() < 5;
+  const soon = () => {
+    const k = nightsToContest(night());
+    return k === 0 ? (late() ? 'concours de danse en cours' : `concours de danse ce soir à ${CONTEST_FROM} h`) : `prochain concours dans ${k} nuit${k > 1 ? 's' : ''}`;
+  };
+  const dance = live<ActivitySpec>({
+    id: 'danser', primitive: 'dance', label: 'Danser', icon: P.ICONS.dance, requires: both(inside, () => h.tired?.(8) ?? null),
+    steps: [
+      { label: 'Le pas de base', primitive: 'dance', clip: 'Dance_A', gesture: G.dance(4, 1.1), seconds: 4 },
+      { label: 'Le pas du soir', primitive: 'dance', clip: 'Dance_B', gesture: G.dance(5, 1.35), seconds: 4,
+        effects: { needs: { moral: 12, social: 10, energie: -8 }, counters: { [keys.dances]: 1 }, category: 'loisir' }, then: () => h.done?.('danse') },
+    ],
+  }, () => `${theme().label} · danse sur le temps · ${soon()}`);
+  const last = CONTEST_ROUNDS.length - 1;
+  const contest = live<ActivitySpec>({
+    id: 'concours', primitive: 'dance', label: 'Concours de danse', icon: '🏆', visible: () => !!theme().contest && late(),
+    requires: both(inside, () => (n(keys.contestNight) === night() + 1 ? 'Tu as déjà dansé au concours ce soir · reviens la semaine prochaine' : h.tired?.(14) ?? null)),
+    steps: CONTEST_ROUNDS.map((r, i): Step => ({
+      label: r.label, primitive: 'dance', clip: r.clip, gesture: G.dance(r.rounds, r.speed), seconds: 4,
+      effects: { money: r.prize, ...(i === last ? { needs: { moral: 16, social: 12, energie: -14 }, counters: { [keys.contests]: 1 }, category: 'loisir' as const } : {}) },
+      ...(i === last ? { then: () => h.done?.('concours') } : {}),
+    })),
+  }, () => `Trois passages devant le public · jusqu’à ${price(Math.round(CONTEST_ROUNDS.reduce((t, r) => t + r.prize, 0) * 1.2))} selon ta danse`);
+  const offers: Record<string, ActivitySpec[]> = {
+    floor: [dance, contest],
+    bar: [
+      ...CLUB_DRINKS.map(d => P.order({ id: d.id, label: d.label, detail: d.detail, price: d.price, prep: 1, eat: 3, drink: true, seat: stool, needs: d.needs, requires: inside })),
+      ...opt(h.converse, P.talk({ id: 'barman', label: 'Parler au barman', requires: inside, then: () => h.converse!('barman') })),
+    ],
+  };
+  const list = [at('floor'), at('bar')];
+  if (has('lounge')) {
+    // table service: sit at a free table first, then the waiter brings the drink (same prices as the bar)
+    const lounge = b.lounge ?? at('lounge');
+    const table: SeatPick = { near: { x: lounge.x, z: lounge.z }, r: b.lounge?.r ?? 5, kind: 'bench' };
+    list.push(at('lounge'));
+    offers.lounge = CLUB_DRINKS.map((d): ActivitySpec => ({
+      id: 'table_' + d.id, primitive: 'order', label: `${d.label} · à table`, icon: P.ICONS.order, detail: 'Le serveur te l’apporte', price: d.price, requires: inside,
+      steps: [
+        { label: 'Tu t’installes', primitive: 'sit', seat: table },
+        { label: TABLE_SERVICE, primitive: 'wait', seconds: 3 },
+        { label: 'Tu bois', primitive: 'drink', seconds: 3, effects: { needs: { ...d.needs, social: (d.needs.social ?? 0) + 2 }, category: 'loisir' } },
+      ],
+    }));
+  }
+  if (has('dj')) {
+    list.push(at('dj'));
+    offers.dj = [
+      P.use({ id: 'morceau', primitive: 'buy', label: 'Demander un morceau', detail: 'Le DJ le passe juste après', price: 500, seconds: 2, requires: inside,
+        effects: { needs: { moral: 5, social: 3 }, counters: { [keys.requests]: 1 }, category: 'loisir' }, then: () => h.done?.('morceau') }),
+      ...opt(h.converse, P.talk({ id: 'dj', label: 'Parler au DJ', requires: inside, then: () => h.converse!('dj') })),
+    ];
+  }
+  if (has('exit')) { list.push(at('exit')); offers.exit = [P.handOver('exit', { id: 'sortir', label: 'Sortir', detail: 'Le videur te souhaite bonne nuit', then: () => h.done?.('sortie') })]; }
+  if (has('door')) {
+    list.push(at('door'));
+    const tonight = () => `Ce soir : ${theme().label} · ${theme().detail}`;
+    // the night counts once, when you come in (paid at the door, or free as a regular)
+    const come = (a: ActivitySpec) => { const s = a.steps[a.steps.length - 1]; s.effects = { ...s.effects, counters: { [keys.nights]: 1 }, category: 'loisir' }; return a; };
+    const asking = !!h.enter;
+    offers.door = [
+      ...opt(asking, live(P.enter({ id: 'entree', label: 'Entrer', visible: () => !admitted() && !regular(), then: () => h.enter!() }), () => `Entrée ${price(CLUB_ENTRY)}, une fois pour la nuit · ${tonight()}`)),
+      live(come(P.buy({ id: 'payer', label: 'Payer l’entrée', price: CLUB_ENTRY, visible: () => !asking && !admitted() && !regular(), then: () => h.done?.('entree') })), tonight),
+      live(come(P.use({ id: 'entree_habitue', primitive: 'enter', label: 'Entrer · habitué', seconds: 1, visible: () => !admitted() && regular(), then: () => h.done?.('entree') })), () => `Entrée offerte aux habitués · ${tonight()}`),
+      ...opt(h.converse, P.talk({ id: 'videur', label: 'Le programme de la semaine', then: () => h.converse!('videur') })),
+    ];
+  }
+  return { id: b.id, name: b.name, space: b.space, type: 'club', hours: [21, 5], chat: true, peaks: [[0, 3.5]], anchors: list, offers };
 }
 
 /**

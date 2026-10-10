@@ -256,6 +256,32 @@ boutons de l'étape (ou le joystick) sont **surlignés en vert**. À la fin, le 
 plus que l'effet d'entraînement existant (compétence de lutte +1). Sans `?lamb2`, l'entraînement sans frappe est
 inchangé.
 
+## Les exercices de l'écurie, joués
+
+Avec `?lamb2`, les trois exercices de l'écurie de la carrière (`src/career/module.ts`, dans « ⋯ » chez Coach Ablaye) ne
+sont plus une barre d'attente de 5 s : ce sont de **courts exercices joués** avec les commandes avec frappe, appelés par
+Coach Ablaye comme dans sa leçon (`src/lamb/drills.ts`). Babacar est le partenaire, lent (×1,8), et ne fait que ce que
+l'exercice demande.
+
+| Exercice | Ce qu'on fait | Appels | Compteur → attributs (règles de la carrière) |
+| --- | --- | --- | --- |
+| Sac de frappe | Babacar tient les paos : à « Rapide ! » une frappe rapide (J), à « Fort ! » une grosse (K), à temps et à portée | 8 | `entr_frappe` → Frappe, Explosivité |
+| Travail des saisies | dans l'empoignade, il arme lentement un mouvement : répondre avec celui qui le bat (Tirer bat Pousser…) | 6 | `entr_saisies` → Technique, Équilibre |
+| Gainage | dans l'empoignade, il pousse encore et encore : tenir en poussant avec lui, au moment où il pousse ; le souffle compte | 6 | `entr_force` → Force, Explosivité |
+
+- **Le score vient de ce que tu fais, jamais du hasard** : les appels sont une suite fixe (aucun tirage). Un appel est
+  réussi ou non (en retard, mauvaise réponse, trop loin, battu) ; une réponse sans appel est une faute (« Attends mon
+  appel »). Score = réussites − fautes (jamais sous 0), sur le nombre d'appels. Mot de fin de Coach Ablaye selon le
+  score : « Baax na ! », « Ndank ndank. » ou « Bul tiit ! » (avec leur traduction).
+- **Le gain d'attributs est celui de la carrière, sans nombre inventé** : un exercice terminé compte **une fois**, comme
+  l'exercice minuté (ses besoins, son compteur, l'activité), quel que soit le score ; abandonné (Échap), il ne compte
+  rien. La carrière lit le compteur (`fighterAttributes`) : chaque exercice rapporte un peu moins que le précédent,
+  jusqu'à 100 au plus. Il n'y a **pas de plafond par jour** dans les règles de la carrière : c'est l'énergie (chaque
+  exercice en coûte 7 à 9, il en faut 12) qui limite le nombre d'exercices dans une journée. Pas de série, pas de bonus.
+- **Ce qui change se voit** : le bilan de l'exercice et le message de fin donnent la vraie variation (« Frappe 34 → 36 »),
+  calculée par `fighterAttributes` — les mêmes valeurs que la fiche Profil (application Arène du téléphone).
+- Sans `?lamb2`, les exercices minutés sont inchangés.
+
 ## Décision à prendre (Habib) : quand la lutte avec frappe devient-elle la règle ?
 
 Aujourd'hui tout est derrière `?lamb2`. Ce qui est **prêt** : le combat debout, l'entrée et l'empoignade jouée, la
@@ -291,6 +317,7 @@ leçon montrent le mieux la nouvelle lutte, et le classé garde son bilan tant q
 - `tests/lamb2Styles.test.ts` — les six styles, l'arbitre qui presse, la fatigue, toutes les paires IA contre IA en 40 s.
 - `tests/lamb2Prelims.test.ts` — les préliminaires avec frappe (styles tirés de la graine, déterminisme, durée) et les six adversaires du combat amical.
 - `src/lamb/lesson.ts` — la leçon de Coach Ablaye (étapes, ce qui les termine, ses phrases ; testée, y compris dans le duel sans navigateur).
+- `src/lamb/drills.ts` — les exercices de l'écurie joués (appels, score, mots du coach ; `tests/lamb2Drills.test.ts`, y compris dans le duel sans navigateur). Point de contrôle : `__dakar.drillStart('drill_frappe' | 'drill_saisies' | 'drill_force')`.
 - `src/lamb/strikeRig.ts` — poses de frappe et d'empoignade sur le squelette.
 - `src/arena/bout.ts` — le combat regardé ; avec frappe, le duel joue les deux côtés (IA contre IA).
 - `scripts/check-arena-visit.mjs`, `scripts/check-evening.mjs` — avec `LAMB2=1` : le combat de la soirée avec frappe (arbitre, tribunes).

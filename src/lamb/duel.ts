@@ -11,6 +11,7 @@ import {
 } from './stand';
 import { StrikeRig } from './strikeRig';
 import { LESSON, advance, coachLine, feedback, hear, startLesson, stepNumber, type Lesson, type LessonEvent } from './lesson';
+import { DRILLS, callWord, drillFeedback, drillLine, drillScore, drillTick, drillVerdict, hearDrill, startDrill, type DrillEvent, type DrillId, type DrillRun } from './drills';
 import { utter } from '../i18n/lines';
 import {
   CLINCH, CLINCH_STYLES, ENTRY_TEXT, MOVES, THROW, clinchDecide, clinchPower, counterThrow, entryGrip, exchange, gripWords, holdTick, posture, startMove,
@@ -80,6 +81,12 @@ export interface DuelOptions {
   seed?: number;
   /** Seconds of the round before the referee's decision (default: the discipline's rules; a watched gala bout is shorter). */
   roundSeconds?: number;
+  /**
+   * Avec frappe at the écurie: one of the écurie drills, played (src/lamb/drills.ts), instead of Coach Ablaye's lesson.
+   * `drillNotes`: lines for the recap (what a finished drill moves, computed by the caller from the career's rules).
+   */
+  drill?: DrillId;
+  drillNotes?: string[];
 }
 export interface DuelResult {
   mode: BoutMode; outcome: BoutOutcome; winner: Side | null; seconds: number;
@@ -189,6 +196,10 @@ export class LambDuel {
   private coachText = '';
   private lessonT = 0;
   private lessonEnd = 0;
+  /** Avec frappe at the écurie: an écurie drill, played (src/lamb/drills.ts); its end's countdown; the recap's notes. */
+  private drill: DrillRun | null = null;
+  private drillEnd = 0;
+  private drillNotes: string[] = [];
   /** No DOM (unit tests of a watched bout): the duel runs without its HUD. */
   private headless = typeof document === 'undefined';
   /** Avec frappe: who the opponent is, in one line (« Gora, costaud indépendant, 7-2 »). */
@@ -225,7 +236,10 @@ export class LambDuel {
     this.standStyle = this.mode === 'entrainement' ? STAND_STYLES.partenaire : STAND_STYLES[this.style.id];
     this.clinchStyle = this.mode === 'entrainement' ? CLINCH_STYLES.partenaire : CLINCH_STYLES[this.style.id];
     if (this.frappe && opts.autopilot) { this.auto = opts.autopilot; this.autoFactor = levelFactor(opts.autopilot.level); }
-    if (this.frappe && this.mode === 'entrainement' && !this.spectate) { this.lesson = startLesson(); this.step = TUTORIAL.length; }
+    if (this.frappe && this.mode === 'entrainement' && !this.spectate) {
+      if (opts.drill) { this.drill = startDrill(opts.drill); this.drillNotes = opts.drillNotes ?? []; } else this.lesson = startLesson();
+      this.step = TUTORIAL.length;
+    }
     const who = this.frappe && this.mode !== 'entrainement' ? opts.opponent : undefined;
     if (who) { this.standStyle = who.stand; this.clinchStyle = who.clinch; this.identity = who.line; }
     this.factor = opts.mode === 'entrainement' ? 1 : levelFactor(opts.level);
@@ -243,7 +257,7 @@ export class LambDuel {
     // so the player starts at +x and is seen on the left, the opponent on the right
     this.me = mk(0x6b3f25, look, 3, this.auto?.style.staminaMax ?? R.stamina.max, this.auto?.style.staminaRegen ?? R.stamina.regen, opts.attrs ?? this.auto?.attrs ?? AVERAGE);
     this.ai = mk(0x3b2216, { ngembColor: this.style.ngemb, ngembPattern: this.mode === 'entrainement' ? 'bordure' : 'uni', accessories: [] }, -3, this.style.staminaMax, this.style.staminaRegen, who?.attrs ?? this.standStyle.attrs);
-    if (this.lesson) this.ai.slow = 1.8;                                   // the partner shows everything slowly
+    if (this.lesson || this.drill) this.ai.slow = 1.8;                     // the partner shows everything slowly
     if (wrestlerReady()) {
       // referee (arena) or Coach Ablaye (écurie) watching from the far side of the ring
       const coach = castById('ablaye');
@@ -419,6 +433,17 @@ export class LambDuel {
       const teach: string[] = show ? LESSON[l.step as keyof typeof LESSON].touch : [];
       for (const b of this.ui.querySelectorAll<HTMLElement>('.duel-btns button')) b.classList.toggle('teach', teach.includes(b.dataset.k ?? ''));
       document.getElementById('joy')?.classList.toggle('teach', teach.includes('joy'));
+    } else if (this.drill) {
+      const dr = this.drill, def = DRILLS[dr.id], show = this.phase !== 'result';
+      step.hidden = !show;
+      if (show) {
+        const s = drillScore(dr), n = Math.min(dr.next, def.calls.length);
+        const html = `<b>${def.title} · ${n}/${def.calls.length} · juste ${s.right}${s.faults ? ` · fautes ${s.faults}` : ''}</b><small>${document.body.classList.contains('touch') ? 'Boutons en vert' : def.keys}</small><em>${this.coachText}</em>`;
+        if (step.innerHTML !== html) step.innerHTML = html;
+      }
+      const teach: string[] = show ? def.touch : [];
+      for (const b of this.ui.querySelectorAll<HTMLElement>('.duel-btns button')) b.classList.toggle('teach', teach.includes(b.dataset.k ?? ''));
+      document.getElementById('joy')?.classList.toggle('teach', teach.includes('joy'));
     } else if (this.mode === 'entrainement' && this.step < TUTORIAL.length && this.phase !== 'result') {
       const s = TUTORIAL[this.step];
       step.hidden = false;
@@ -483,7 +508,7 @@ export class LambDuel {
       mode: this.mode, outcome, winner, seconds,
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
       stamina: { player: Math.round(this.me.stamina), opponent: Math.round(this.ai.stamina) },
-      rewards: boutRewards({ mode: this.mode, outcome, winner }),
+      rewards: this.drill ? this.drillRewards(outcome) : boutRewards({ mode: this.mode, outcome, winner }),
     };
     if (outcome === 'projection' || outcome === 'decision' || outcome === 'egalite') {
       this.phase = 'fall'; this.phaseT = 0;
@@ -587,6 +612,7 @@ export class LambDuel {
       score: { player: { ...this.me.score }, opponent: { ...this.ai.score } },
       discipline: this.discipline, identity: this.identity, ...(this.frappe ? { refereeRaised: this.refRaised } : {}),
       ...(this.lesson ? { lesson: { step: this.lesson.step, done: this.lesson.done, skipped: this.lesson.skipped } } : {}),
+      ...(this.drill ? { drill: { id: this.drill.id, t: Math.round(this.drill.t * 100) / 100, next: this.drill.next, open: this.drill.open ? { ...this.drill.open, want: DRILLS[this.drill.id].calls[this.drill.open.i].want } : null, results: [...this.drill.results], ...drillScore(this.drill), done: this.drill.done } } : {}),
       ...(this.frappe ? {
         balance: { player: Math.round(this.me.balance), opponent: Math.round(this.ai.balance) },
         composure: { player: Math.round(this.me.composure), opponent: Math.round(this.ai.composure) },
@@ -678,8 +704,11 @@ export class LambDuel {
       if (this.phaseT > lead + 2.2) { this.phase = 'fight'; this.phaseT = 0; this.msg(''); }
     } else if (this.lesson && this.lessonEnd > 0 && (this.lessonEnd -= dt) <= 0) {
       this.end('entrainement', null);                                       // the lesson is over: the training's recap
+    } else if (this.drill && this.drillEnd > 0 && (this.drillEnd -= dt) <= 0) {
+      this.end('entrainement', null);                                       // the drill is over: its recap
     } else if (this.phase === 'fight' && this.frappe) {
       if (this.lesson) this.lessonSetup();
+      if (this.drill) this.drillSetup();
       if ((this.phase as DuelPhase) === 'clinch') return this.frame(dt);              // the step was set up in the empoignade
       this.fightFrappe(dt, taps, breaks, quick, big);
     } else if (this.phase === 'fight') {
@@ -743,6 +772,7 @@ export class LambDuel {
       if (this.phase === 'fight' && this.timeLeft <= 0) this.timeUp();
     } else if (this.phase === 'clinch' && this.frappe) {
       if (this.lesson) this.lessonSetup();
+      if (this.drill) this.drillSetup();
       if ((this.phase as DuelPhase) === 'fight') return this.frame(dt);              // the step was set up standing
       this.clinchFrappe(dt, taps, breaks, quick, big, guardPress);
     } else if (this.phase === 'clinch') {
@@ -797,7 +827,8 @@ export class LambDuel {
     const me = this.me, ai = this.ai;
     if (this.timeLeft !== Infinity && !this.held) this.timeLeft -= dt;
     if (!this.held) this.standT += dt;
-    const urge = this.lesson ? 0 : urgeOf(this.standT);
+    if (this.drill) this.drillStep(dt);
+    const urge = this.lesson || this.drill ? 0 : urgeOf(this.standT);
     if (urge > 0 && !this.urged) { this.urged = true; this.msg('L’arbitre presse les lutteurs : saisissez-vous !', 1.2); }
     const m = this.auto ? { x: 0, y: 0 } : this.input.move();
     if (this.auto) ({ taps, breaks, quick, big } = this.autoStand(dt, ai.pos.distanceTo(me.pos)));
@@ -834,7 +865,7 @@ export class LambDuel {
     if (this.phase !== 'fight') return;
 
     // the opponent answers the player's strike (guard, step back, or a quick strike first)
-    if (this.held) this.aiReact = null;
+    if (this.held || this.drill) this.aiReact = null;
     if (this.aiReact && (this.aiReact.at -= dt) <= 0) {
       const what = this.aiReact.what; this.aiReact = null;
       if (what === 'guard' && free(ai) && ai.open <= 0) this.aiGuardHold = 0.45;
@@ -849,6 +880,8 @@ export class LambDuel {
         if (startStrike(ai, 'big')) this.msg('Il arme une grosse frappe : garde !', 0.8);
       }
       this.aiThink = 1;
+    } else if (this.drill) {
+      this.aiThink = 1;                                                     // the partner holds the pads, nothing more
     } else if (!this.held && this.aiThink <= 0 && free(ai) && ai.windup <= 0 && ai.open <= 0 && ai.busy <= 0) {
       const [a0, b0] = this.style.think; this.aiThink = a0 + this.rand() * (b0 - a0);
       const dec = decide({ me: ai, them: me, dist: d, grabRange: R.grabRange }, this.standStyle, this.factor, this.rand, urge);
@@ -913,6 +946,7 @@ export class LambDuel {
         if (!this.attempt && (this.lessonT += dt) > 1.6 && !ai.move && ai.recover <= 0) { this.lessonT = 0; this.startThrow(ai); return; }
       }
     }
+    if (this.drill) this.drillStep(dt);
     // step 5: a throw being attempted takes over the empoignade until it lands
     if (this.attempt) { this.throwStep(dt, big); return; }
     const want: ClinchMove | null = this.moveQueued ?? (taps > 0 ? 'push' : pull ? 'pull' : quick > 0 ? 'pivot' : null);
@@ -925,7 +959,7 @@ export class LambDuel {
     if (want && !startMove(me, want) && !me.move && me.recover <= 0) this.msg('Plus d’endurance', 0.7);
     // the opponent reads, answers, or plays its style — and throws when the position is good
     this.aiThink -= dt;
-    if (!this.held && this.aiThink <= 0) {
+    if (!this.held && !this.drill && this.aiThink <= 0) {
       const [a0, b0] = this.clinchStyle.think; this.aiThink = a0 + this.rand() * (b0 - a0);
       if (wantsThrow(ai, me, -this.grip, this.clinchStyle, this.factor, this.rand, this.lesson ? 0 : clinchUrge(this.phaseT))) { this.startThrow(ai); return; }
       const d = clinchDecide(ai, me, -this.grip, this.clinchStyle, this.factor, ai.composure, this.rand);
@@ -940,7 +974,7 @@ export class LambDuel {
     // a wrestler whose balance is gone goes down (step 6 brings the throw attempt, the counter and the fall itself)
     if (me.balance <= 0 || ai.balance <= 0) { this.resolveClinch(ai.balance <= 0 && (me.balance > 0 || this.grip >= 0)); return; }
     const going = posture(me.balance) === 'chute' || posture(ai.balance) === 'chute';
-    if (!this.held && this.phaseT > CLINCH.maxSeconds + (going ? CLINCH.graceSeconds : 0)) {
+    if (!this.held && !this.drill && this.phaseT > CLINCH.maxSeconds + (going ? CLINCH.graceSeconds : 0)) {
       this.separate(null, 0); this.msg('L’arbitre sépare les lutteurs', 1.2);
       // his patience is spent: back on their feet, he keeps pressing them to take hold again
       if (!this.lesson) { this.standT = URGE.after; this.urged = true; }
@@ -1033,6 +1067,58 @@ export class LambDuel {
   }
   private finishLesson() { this.coachText = coachLine('done'); this.msg(`${utter(['Baax na !'])} Leçon terminée`, 2.2); this.lessonEnd = 2.2; }
 
+  // ---------------------------------------------------------------- an écurie drill, played (src/lamb/drills.ts)
+  /** Sets the drill up once (the pads at a step in front, or the empoignade taken) and keeps it in its place. */
+  private drillSetup() {
+    const dr = this.drill!, def = DRILLS[dr.id];
+    if (dr.done) return;
+    if (def.in === 'clinch' && this.phase === 'fight') { this.startClinch(this.me, 'Empoignade !', 'neutral'); this.grip = 0; }
+    else if (def.in === 'fight' && this.phase === 'clinch' && !this.attempt) this.separate(null, 0);
+    if (dr.ready) return;
+    dr.ready = true;
+    this.me.stamina = this.me.max;                                          // a fresh start: the drill spends it
+    if (def.in === 'fight') {                                               // Babacar holds the pads a step in front
+      const dir = this.ai.pos.clone().sub(this.me.pos).setY(0); if (dir.lengthSq() < 1e-4) dir.set(-1, 0, 0); dir.normalize();
+      this.ai.pos.copy(this.me.pos).addScaledVector(dir, 1.35);
+    }
+    this.coachText = drillLine(dr.id);
+  }
+  /** The drill's clock: a call opens (the coach's word, or the partner's move), a call left unanswered closes. */
+  private drillStep(dt: number) {
+    const dr = this.drill!, ai = this.ai;
+    if (dr.done) return;
+    const { opened, closed } = drillTick(dr, dt);
+    if (closed) this.drillWord(closed);
+    if (opened) {
+      ai.stamina = ai.max; ai.balance = Math.max(ai.balance, 80); ai.composure = 100; ai.stagger = 0;
+      const word = callWord(opened.want);
+      if (word) this.msg(`Coach Ablaye : « ${word} »`, 0.8);
+      else { this.grip = 0; ai.move = null; ai.recover = 0; startMove(ai, opened.want as ClinchMove); }
+    }
+    if (dr.done) this.finishDrill();
+  }
+  private drillHear(e: DrillEvent) {
+    const dr = this.drill; if (!dr || dr.done) return;
+    const r = hearDrill(dr, e);
+    if (r) this.drillWord(r);
+  }
+  private drillWord(r: Parameters<typeof drillFeedback>[1]) {
+    const word = drillFeedback(this.drill!.id, r);
+    if (word) this.coachText = `Coach Ablaye : ${word}`;
+  }
+  private finishDrill() {
+    const v = drillVerdict(this.drill!);
+    this.coachText = v.line; this.msg(`Exercice terminé · ${v.score}/${v.of}`, 2.2); this.drillEnd = 2.2;
+  }
+  /** The drill's recap: its score, and what a finished drill moves (the caller's notes); nothing when abandoned. */
+  private drillRewards(outcome: BoutOutcome) {
+    if (outcome === 'abandon') return { needs: {}, coach: 0, lines: ['Exercice interrompu : rien n’est compté'] };
+    const s = drillScore(this.drill!);
+    return { needs: {}, coach: 0, lines: [`${DRILLS[this.drill!.id].title} : ${s.score}/${s.of} (juste ${s.right}, fautes ${s.faults}${s.falls ? `, chutes ${s.falls}` : ''})`, ...this.drillNotes] };
+  }
+  /** The drill's result (null before it ends): its score out of the calls. */
+  drillResult() { return this.drill && this.result ? { id: this.drill.id, ...drillScore(this.drill), outcome: this.result.outcome } : null; }
+
   /** Applies an exchange: grip, the pair's motion, words, the crowd. */
   private clinchExchange(a: Fighter, b: Fighter, e: Exchange) {
     const mine = a === this.me, sign = mine ? 1 : -1;
@@ -1046,6 +1132,7 @@ export class LambDuel {
     const winner: Side | null = e.winner === null ? null : (e.winner === 'a') === mine ? 'player' : 'opponent';
     this.lastExchange = { by: mine ? 'player' : 'opponent', move: e.move, against: e.against, winner, result: e.result };
     if (this.lesson && this.lessonHear({ k: 'exchange', winner, result: e.result })) return;
+    if (this.drill) this.drillHear({ k: 'exchange', by: mine ? 'player' : 'opponent', winner, result: e.result, move: e.move, against: e.against });
     // « Tu tires sur sa poussée : il glisse ! » — 2nd person is the 3rd plus « s » for these three verbs
     const NOUN: Record<ClinchMove, [string, string]> = { push: ['sa poussée', 'ta poussée'], pull: ['sa traction', 'ta traction'], pivot: ['son pivot', 'ton pivot'] };
     let text = '';
@@ -1114,6 +1201,7 @@ export class LambDuel {
     if (!free(me) || me.busy > 0) return;
     const wasGuard = me.guard; me.guard = false;
     if (!startStrike(me, kind)) { me.guard = wasGuard; if (me.stamina < STRIKES[kind].cost) this.msg('Plus d’endurance', 0.8); return; }
+    if (this.drill) this.drillHear({ k: 'swing', kind });
     const what = react(kind, ai, this.standStyle, this.factor, this.rand());
     this.aiReact = what === 'none' ? null : { at: reactDelay(kind, ai), what };
   }
@@ -1123,6 +1211,10 @@ export class LambDuel {
     const l = land(a, d, dist), mine = a === this.me, name = this.style.name;
     this.lastStrike = { by: mine ? 'player' : 'opponent', kind: l.kind, result: l.result };
     if (this.lesson) this.lessonHear({ k: 'strike', by: mine ? 'player' : 'opponent', kind: l.kind, result: l.result });
+    if (this.drill && mine) {
+      this.drillHear({ k: 'land', kind: l.kind, result: l.result });
+      d.balance = Math.max(d.balance, 80); d.stagger = 0; d.composure = 100;   // the pads take it
+    }
     strikeSound(l.kind, l.result);
     if (l.result === 'hit' || l.result === 'stagger') a.score.hits = (a.score.hits ?? 0) + 1;
     if (l.result === 'stagger') { a.score.staggers = (a.score.staggers ?? 0) + 1; crowdCheer(1.6, 0.14); }
@@ -1141,6 +1233,13 @@ export class LambDuel {
   }
 
   private resolveClinch(playerWins: boolean) {
+    if (this.drill) {
+      if (!playerWins) this.drillHear({ k: 'fall' });
+      this.msg(playerWins ? 'Il est au sol : on se relève.' : 'Tu es au sol… On se relève.', 1.2);
+      this.me.balance = Math.max(this.me.balance, 70); this.ai.balance = Math.max(this.ai.balance, 70); this.grip = 0;
+      this.me.move = this.ai.move = null;
+      return;
+    }
     if (this.lesson) {
       this.msg(playerWins ? 'Au sol ! On se relève.' : 'Tu es au sol… On se relève, on recommence.', 1.4);
       this.separate(null, 0);

@@ -11,6 +11,8 @@ import { Cast, type Role } from './cast';
 import { conversation, counter, nightOf, relate, type Venue, type VenueEnv } from './venue';
 import { OWNER_BYE, ownerGreeting, ownerNews, ownerSpecial, ownerWork, type OwnerCtx } from './talk';
 import { phoneHooks } from '../ui/phoneHooks';
+import { DibiNight, NIGHT } from './dibiNight';
+import { GALA_DONE_COUNTER } from '../arena/program';
 
 /**
  * A Dibi (dibiterie) on a lot of the hub (src/world/sites.ts), open-air in the Dakar way: a painted low wall on the two
@@ -19,6 +21,8 @@ import { phoneHooks } from '../ui/phoneHooks';
  * TV for the evening, a string of bulbs. Order at the counter (pay → the meat is grilled → sit at a free table → eat →
  * stay seated), help at the grill (a ladder of better-paid jobs), talk to the owner, come back for the day's special,
  * the regular's price and the evening attaya. Open 11 h–2 h; lively at night.
+ * At night (src/venues/dibiNight.ts): the coals glow and spark, the dibi master turns the brochettes, a ceiling of string
+ * lights, the TV corner showing tonight's bout, the menu board at the counter, posters, the attaya under the neem.
  *
  * Local frame (VenueKit): the lot is 22 × 22 m, front street toward +z, side street toward −x.
  */
@@ -83,7 +87,7 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   for (let n = 0; n < 6; n++) { Pl.box(0.02, 0.28, 0.02, -7.6 + n * 0.95, G0 + 1.98, -8.4, 0x9a9a9a); Pl.blob(0.2, -7.6 + n * 0.95, G0 + 1.72, -8.4, n % 2 ? 0x9c3a2e : 0xb24b3a, 1.7, 0); }
   Wd.cyl(0.32, 0.36, 0.85, -2.4, G0, -8.0, 0x8a6a48, 10); Pl.box(0.3, 0.03, 0.08, -2.35, G0 + 0.86, -8.0, 0xbfc3c6);
   Pl.box(1.4, 0.85, 0.7, -9.2, G0, -9.9, 0xf2f2ee); Pl.box(1.42, 0.05, 0.72, -9.2, G0 + 0.85, -9.9, 0xd8dde0);
-  k.sign('DIBI MOUTON · BROCHETTES · BISSAP', '#f6efd8', '#7c2d12', -4.8, G0 + 2.15, KZ0 + 0.22, 0, 5.2, 0.62);
+  // (the menu now hangs under the fascia, on the night layer's board, with the counter's own prices)
   k.sign('BOUCHERIE · DIBITERIE', style.sign, style.signFg, -3.6, G0 + 2.83, KZ1 + 0.85, 0, 5.4, 0.42);
   Pl.box(1.3, 0.05, 0.1, -4.8, G0 + 2.95, -8.2, 0xdddddd); Gl.box(1.2, 0.04, 0.06, -4.8, G0 + 2.9, -8.2, 0xeaf6ff);   // tube
   // the rolling shutter is down when the Dibi is closed
@@ -98,11 +102,8 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   for (let n = 0; n < 4; n++) Pl.box(2.82, 0.015, 0.82, GX, G0 + 0.15 + n * 0.15, GZ, 0xd8c8b4);       // mortar lines
   Pl.box(2.9, 0.18, 0.9, GX, G0 + 0.62, GZ, 0x2a2a2a);                                                // metal trough
   for (let n = 0; n < 13; n++) Pl.box(0.025, 0.025, 0.88, GX - 1.35 + n * 0.225, G0 + 0.86, GZ, 0xa8a8a8);   // grate
-  for (let n = 0; n < 9; n++) { Pl.box(0.24, 0.07, 0.16, GX - 1.1 + n * 0.28, G0 + 0.88, GZ - 0.18 + (n % 3) * 0.17, n % 2 ? 0x6b2e14 : 0x8a4a24); }
-  for (let n = 0; n < 6; n++) Pl.box(0.02, 0.02, 0.86, GX - 1.2 + n * 0.45, G0 + 0.93, GZ, 0xc8c8c8);  // skewers
+  // (the coals and the brochettes on the grate are the night layer's: src/venues/dibiNight.ts)
   k.solid(GX, GZ, 2.9, 0.95, 1);
-  const emberMat = k.keep(new THREE.MeshBasicMaterial({ color: 0xff6a1a }));
-  const embers = k.mesh(new THREE.BoxGeometry(2.6, 0.03, 0.72), emberMat); embers.position.set(GX, G0 + 0.82, GZ);
   const emberPool = glowQuad(k, 5, 5, 0xff7a2a, GX, G0 + 0.03, GZ - 0.6);
   const heat = glowQuad(k, 3.6, 1.8, 0xff8a3a, GX, G0 + 1.2, GZ, false);
   Pl.box(0.55, 0.75, 0.45, -10.2, G0, 9.9, 0xe8e4d8); Pl.box(0.5, 0.6, 0.42, -9.6, G0, 10.1, 0xece6da);     // charcoal sacks
@@ -126,8 +127,9 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   for (let x = SX0 + 0.3; x < SX1; x += 0.75) lightsB.sphere(0.06, x, G0 + 2.68 + Math.sin((x - SX0) * 0.5) * 0.05, SZ1 - 0.1, [0xfff1c8, 0xffd27a, 0xffe9b0][Math.round(x * 4) % 3]);
   for (let z = SZ0 + 0.4; z < SZ1; z += 0.75) lightsB.sphere(0.06, SX0 + 0.1, G0 + 2.68 + Math.sin(z * 0.5) * 0.05, z, [0xfff1c8, 0xffd27a, 0xffe9b0][Math.round(z * 4 + 99) % 3]);
   for (const x of [1.3, 7.6]) { Pl.box(1.3, 0.05, 0.1, x, G0 + 2.72, 2.1, 0xdddddd); lightsB.box(1.2, 0.04, 0.06, x, G0 + 2.67, 2.1, 0xeaf6ff); }
-  lightsB.box(0.06, 0.5, 0.86, 10.585, G0 + 1.95, 2.1, 0x34597a);                                       // TV screen
-  Pl.box(0.12, 0.6, 1.0, 10.66, G0 + 1.9, 2.1, 0x1d1d1f);
+  // the TV on the wall of the TV corner (its screen is the night layer's board: tonight's bout)
+  Pl.box(0.12, 0.64, 1.02, 10.66, NIGHT.tv.y - 0.32, NIGHT.tv.z, 0x1d1d1f); Pl.box(0.1, 0.1, 0.3, 10.73, NIGHT.tv.y - 0.42, NIGHT.tv.z, 0x3d4047);
+  const nl = new DibiNight(k, id, { place: site.name, owner: style.owner, lite, rand: R, lights: lightsB });
   const lightsMat = k.keep(new THREE.MeshBasicMaterial({ vertexColors: true }));
   const lights = lightsB.build(lightsMat, false, false)!; k.group.add(lights); k.keep(lights.geometry);
   const shedPool = glowQuad(k, 13, 15, 0xffc27a, (SX0 + SX1) / 2, G0 + 0.02, (SZ0 + SZ1) / 2);
@@ -203,7 +205,10 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     anchors: [
       { id: 'counter', name: `Comptoir · ${style.owner}`, kind: 'counter', ...at(-4.8, -5.35), y: 1.9, radius: 2.4 },
       { id: 'grill', name: 'Grill', kind: 'spot', ...at(-6.0, 7.7), y: 1.7, radius: 1.8 },
+      // the attaya set under the neem (the night layer's): a pot for the group, the evening
+      { id: 'attaya', name: 'Attaya sous le neem', kind: 'spot', ...at(NIGHT.attayaAnchor.x, NIGHT.attayaAnchor.z), y: 1.3, radius: 1.8 },
     ],
+    attaya: { ...at(NIGHT.attaya.x, NIGHT.attaya.z), r: 1.4 },
   }, {
     converse: () => talkOwner(),
     // « Parler affaires »: the ownership module's sheet (src/economy/estate.ts), when it is installed
@@ -214,6 +219,7 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   place.anchors.push({ id: 'lavabo', name: 'Lave-mains', kind: 'spot', ...at(-9.3, 4.6), y: 1.3, radius: 1.3 });
   place.offers.lavabo = [P.use({ id: 'mains', primitive: 'wash', label: 'Se laver les mains', detail: 'La bouilloire et la bassine, avant de manger', seconds: 2, effects: { needs: { hygiene: 6 } } })];
   ctx.places.add(place);
+  nl.setMenu(place.offers);                                                     // the board shows the counter's own prices
   // the place's identity (deliveries, routines, directory) now stands at the entrance and describes the venue
   const it = site.interactable ? world.interactables.find(i => i.id === site.interactable) : undefined;
   if (it) {
@@ -235,6 +241,9 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     { id: 'c6', look: look(), seat: S(`${id}:P2:0`), when: m => m === 'evening' && !lite },
     { id: 'c7', look: look(), seat: waiting[0], when: m => m === 'evening' },
     { id: 'c8', look: look(), ...at(-3.2, -5.0), yaw: yaw + Math.PI + 0.3, clip: 'Talk', when: m => m === 'evening' && !lite },
+    // the night: someone making the attaya under the neem, someone in the TV corner watching the bout
+    { id: 'th', look: look(), seat: S(`${id}:attaya:left`), when: m => m === 'evening' && !lite },
+    { id: 'tv', look: look(), seat: S(`${id}:tv-o:1`), when: m => m === 'evening' },
   ];
   const cast = new Cast(roles, ctx.seats, ctx.extra, id);
   env.addPeople(() => cast.bodies());
@@ -267,7 +276,9 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     if (m !== moment) { moment = m; cast.setMoment(m); shutter.visible = !open; }
     // embers flicker; the glow carries at night; bulbs, tubes and TV only when open
     const f = open ? 0.78 + 0.22 * Math.sin(t * 7.3) * Math.sin(t * 2.9 + 1) : 0.08;
-    emberMat.color.setRGB(f, 0.36 * f + 0.04, 0.06 * f + 0.02);
+    // the night layer: coals and sparks, the brochettes turned by the dibi master, the TV and the board
+    const cam = k.local(ctx.camera.position.x, ctx.camera.position.z);
+    if (nl.update(dt, { open, night, hour: h, day: ctx.day(), done: (ctx.state.data.counters[GALA_DONE_COUNTER] ?? -1) === ctx.day(), camera: cam })) cast.burst('cook', 'Grab', 0.7);
     (emberPool.material as THREE.MeshBasicMaterial).opacity = open ? (0.18 + 0.6 * night) * f : 0;
     (heat.material as THREE.MeshBasicMaterial).opacity = open ? (0.05 + 0.28 * night) * f : 0;
     (shedPool.material as THREE.MeshBasicMaterial).opacity = open ? 0.55 * night : 0;
@@ -282,7 +293,8 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     // the dish or the glass in front of the player while eating at this Dibi
     const cur = ctx.activities.current, seat = ctx.player.seated();
     for (const [pid, mesh] of Object.entries(PROPS)) {
-      const on = !!cur && cur.step.prop === pid && !!seat && k.seats.includes(seat);
+      // (on the attaya cushions the set itself is the prop)
+      const on = !!cur && cur.step.prop === pid && !!seat && k.seats.includes(seat) && seat.kind !== 'floor';
       mesh.visible = on;
       if (on) { mesh.position.set(seat!.x + Math.sin(seat!.yaw) * 0.55, G0 + 0.85, seat!.z + Math.cos(seat!.yaw) * 0.55); mesh.rotation.y = seat!.yaw; }
     }
@@ -301,6 +313,7 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
       smoke: smoke.on, shutter: shutter.visible, entrance: at(-1.6, 12.6), inside: at(-1.6, 7.5), yaw,
       counters: { meals: counter(ctx, keys.meals), grill: counter(ctx, keys.grill) },
       prop: Object.entries(PROPS).find(([, m]) => m.visible)?.[0] ?? null,
+      night: nl.debug(), cook: cast.where('cook'),
     }),
   };
 }
