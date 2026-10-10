@@ -233,7 +233,7 @@ class ArenaEvening {
   // ---------------------------------------------------------------- the show
   go(phase: ShowPhase) {
     const { ctx } = this;
-    this.phase = phase; this.t = 0;
+    this.phase = phase; this.t = 0; this.fillT = 0;                          // the stands follow the phase at once
     if (phase === 'filling') {
       this.told.clear(); this.result = '';
       this.say('bill', ARENA.bill(BILL.left.name, BILL.left.ecurie, BILL.right.name, BILL.right.ecurie));

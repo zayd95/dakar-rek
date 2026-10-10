@@ -109,12 +109,13 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const sat = await d(() => ({ seated: window.__dakar.seated(), clip: window.__dakar.clip() }));
   check(`${label}: seated on the tier, seated pose`, /arena:stand/.test(sat.seated ?? '') && sat.clip === 'Sit', sat);
   await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, T).catch(() => {});
+  await page.waitForFunction(() => { const c = window.__dakar.arena.info().crowd; return c.present >= c.cap * 0.9; }, null, { timeout: 60000 }).catch(() => {});
   await page.waitForTimeout(1200);
   const cam = await d(() => window.__dakar.arena.cam());
   const toRing = { x: C.x - cam.x, z: C.z - cam.z }, len = Math.hypot(toRing.x, toRing.z), dirLen = Math.hypot(cam.dx, cam.dz);
   check(`${label}: the view from the seat frames the ring`, (cam.dx * toRing.x + cam.dz * toRing.z) / (len * dirLen) > 0.85 && cam.y > 1.5, cam);
   const s1 = await info();
-  check(`${label}: the gala starts once seated; the crowd fills the tiers around you`, s1.phase !== 'idle' && s1.crowd.present >= s1.crowd.cap * 0.9 && s1.crowd.present > 50 && /Gala de làmb/.test(s1.card), s1.crowd);
+  check(`${label}: the gala starts once seated; the crowd fills the tiers around you`, s1.phase !== 'idle' && s1.crowd.present >= s1.crowd.cap * 0.9 && s1.crowd.present > 50 && /Gala de làmb/.test(s1.card), { phase: s1.phase, ...s1.crowd });
   const dcSeat = await ownDc();
   await shot('3-seated');
 
