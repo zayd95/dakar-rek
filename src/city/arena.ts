@@ -165,7 +165,12 @@ export class ArenaStreets {
       const target = Math.max(0, limit);
       f.speed += Math.sign(target - f.speed) * Math.min(Math.abs(target - f.speed), (target > f.speed ? ACCEL : DECEL * 2) * dt);
       f.s += f.speed * dt;
-      if (f.state === 'drive' && f.s >= this.dropS - 0.4 && f.speed < 0.3) { f.state = f.fans > 0 && !leaving ? 'drop' : leaving ? 'wait' : 'away'; f.t = 0; if (f.state === 'wait') this.callFans(f); }
+      // at the kerb: it stops there (even if a long frame carried it a little past), lets its fans out or waits for them
+      if (f.state === 'drive' && f.s >= this.dropS - 0.4 && (f.fans > 0 || leaving)) {
+        f.s = Math.min(f.s, this.dropS); f.speed = 0;
+        f.state = leaving ? 'wait' : 'drop'; f.t = 0;
+        if (f.state === 'wait') this.callFans(f);
+      } else if (f.state === 'drive' && f.s >= this.dropS - 0.4) f.state = 'away';
       if (f.state === 'drop') { f.t += dt; if (f.t > 0.6) this.letOut(f); }
       if (f.state === 'wait') { f.t += dt; if (f.fans <= 0 || f.t > 12) { f.state = 'away'; this.stats.left++; } }
       this.place(f, dt);

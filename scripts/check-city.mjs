@@ -70,6 +70,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   // the weather: a shower greys the sky and empties the pavements; the streets stay wet after it
   await d(() => { window.__dakar.teleport('plateau'); window.__dakar.setHour(15); window.__dakar.weather.force('rain'); });
   await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.weather.now().rain > 0.9, null, T).catch(() => {});
+  await d(() => window.__dakar.place(-2, 40, 0));                               // on the road, looking down it (no tree in the way)
   await page.waitForTimeout(2500);
   const wr = await d(() => { const w = window.__dakar.weather.now(); let rain = null; window.__dakar.three.scene.traverse(o => { if (o.name === 'rain') rain = o.visible; }); return { ...w, rainVisible: rain }; });
   check(`${label}: a shower: rain streaks, wet roads, fewer people out, slower cars`, wr.rain > 0.9 && wr.rainVisible === true && wr.street.walkers < 0.5 && wr.street.speed < 1, JSON.stringify(wr));
