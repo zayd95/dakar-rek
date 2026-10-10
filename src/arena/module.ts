@@ -10,6 +10,7 @@ import { arenaFighter } from './fighter';
 import * as P from '../activity/primitives';
 import { Percussion, crowdCheer } from '../lamb/audio';
 import { STYLES } from '../lamb/rules';
+import { rosterLook } from '../career/roster';
 import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
@@ -272,7 +273,7 @@ class ArenaEvening {
       this.startEntrance();
     } else if (phase === 'bout') {
       this.clearEntrance();
-      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, LEFT_LOOK, boutSeed(this.hubId, this.day()));
+      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, rosterLook(billFor(this.day()).left.id)?.look ?? LEFT_LOOK, boutSeed(this.hubId, this.day()));
       this.bout.onMoment = p => { if (this.bout && this.bout.time < this.catchUpTo - 0.5) return; if (p === 'clinch') this.react('clinch'); if (p === 'fall') this.react(this.bout?.info().outcome === 'projection' ? 'fall' : 'decision'); };
       this.group.add(this.bout.group);
     } else if (phase === 'result') {
@@ -346,8 +347,10 @@ class ArenaEvening {
       h.group.position.set(fx, 0.1, fz); this.group.add(h.group);
       this.entrance.push({ h, from: new V3(fx, 0.1, fz), to: new V3(tx, 0.1, tz), t0, t1, end });
     };
-    const lw = new Wrestler(0x5b3420); lw.setLook(LEFT_LOOK, 'B');
-    const rw = new Wrestler(0x4e2e1c); rw.setLook(RIGHT_LOOK, 'A');
+    // the evening's two wrestlers in their own colours (src/career/roster.ts rosterLook: the phone's portraits use the same)
+    const bill = billFor(this.day()), L = rosterLook(bill.left.id), R = rosterLook(bill.right.id);
+    const lw = new Wrestler(L?.skin ?? 0x5b3420); lw.setLook(L?.look ?? LEFT_LOOK, 'B');
+    const rw = new Wrestler(R?.skin ?? 0x4e2e1c); rw.setLook(R?.look ?? RIGHT_LOOK, 'A');
     // the wrestlers come out of their tunnel opposite the public gate (src/world/geew.ts TUNNEL_*), down the runner
     const tz = cz + TUNNEL_MOUTH_R + 2.5;
     walker(lw, cx + 0.8, tz, cx + 3, cz, 0.5, 6.5, 'Dance_A');

@@ -111,6 +111,13 @@ let mainEventSink: ((day: number, winnerId: string | null) => void) | null = nul
  */
 export function setBillSource(card: (day: number) => Bill | null, result?: (day: number, winnerId: string | null) => void) { billSource = card; mainEventSink = result ?? null; }
 export const billFor = (day: number): Bill => billSource?.(day) ?? BILL;
+/** The wrestler the player follows, when he fights on `day` (main event or undercard): the career module answers. */
+export interface Followed { name: string; vs: string; main: boolean }
+let followSource: ((day: number) => Followed | null) | null = null;
+export function setFollowSource(fn: ((day: number) => Followed | null) | null) { followSource = fn; }
+export const followedOn = (day: number): Followed | null => followSource?.(day) ?? null;
+/** « Ton lutteur Gora combat ce soir contre Pape » (« en lever de rideau » outside the main event). */
+export const followedLine = (f: Followed) => `Ton lutteur ${f.name} combat ce soir contre ${f.vs}${f.main ? '' : ' (en lever de rideau)'}`;
 export const reportMainEvent = (day: number, winnerId: string | null) => { mainEventSink?.(day, winnerId); };
 /** « Écurie Baobab », or « Indépendant ». */
 export const ecurieLabel = (e: string) => (e === 'indépendant' || !e ? 'Indépendant' : `Écurie ${e}`);

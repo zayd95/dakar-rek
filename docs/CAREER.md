@@ -96,6 +96,23 @@ Daouda 4, Assane 3, Birame 2) and independents (Gora 2, Ndiaga 2, Pape 1, Saliou
 - **Posters and the arena show** name the evening's real card through `setBillSource` (src/arena/program.ts `billFor`);
   « Combat pour le titre » on Sundays, the player's own name when they are signed up for the title.
 
+## Lutteurs: the wrestlers' cards (phone › Arène)
+
+- **The season's log.** `Ladder.log` keeps every bout of the season as the city saw it: day, the two wrestlers (or
+  the player), the result, main event, title. Each wrestler's season record is exactly his bouts in it (unit-tested).
+- **His look.** `rosterLook(id)`: écurie Baobab in green with a border, Teranga in the écurie's ochre, independents by
+  style (rouge rayé, indigo, noir en damier), a skin, and placeholder accessories by level. The arena's entrance and
+  the watched bout dress the evening's wrestlers in it. His phone portrait (`portraitSvg`, an inline SVG silhouette,
+  no canvas, no 3D) is drawn from the same data.
+- **His card.** `wrestlerCard`: name, écurie, style, level word (Débutant → Vedette), place, season record and
+  points, the belt with its defences, and his last five results (newest first, « combat principal », « titre »).
+  The arena app shows « Lutteurs de la ville », the twelve cards in table order.
+- **The city's table.** Every wrestler, and the player at their place. Each row opens that wrestler's card.
+- **Suivre.** One wrestler followed (`career.fav`). No reward, just following:
+  - when he fights tonight (main event, or « en lever de rideau » in the undercard: `fightsTonight`), the evening call
+    adds « Ton lutteur Gora combat ce soir contre Pape » and « Ce soir » shows it first;
+  - after a gala watched to the end, the recap card gives his result (`resultOn`, from the next day's ladder).
+
 ## Public record (presence `rec`)
 
 Other players read a short line under the player's name: « Undercards · 3-1 · Écurie Baobab » (rung · ranked wins-defeats

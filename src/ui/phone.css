@@ -183,3 +183,33 @@ button.ph-wid { cursor:pointer; }
 .ph-tonight .ph-rows small { margin-top:1px; line-height:1.35; }
 .ph-go { flex:none; min-height:44px; padding:0 14px; border:0; border-radius:999px; background:#e9f1ff; color:#0050b8; font:600 14px/1 var(--ph-font); cursor:pointer; }
 .ph-go:active { background:#d6e4ff; }
+/* Arena › the city's table: each wrestler's row opens his card */
+.ph-table > button, .ph-table > div { display:flex; align-items:center; gap:12px; width:100%; min-height:48px; padding:6px 16px; border:0; background:var(--ios-card); color:var(--ios-ink); font:inherit; font-size:15px; text-align:left; }
+.ph-table > button:active { background:#e5e5ea; }
+.ph-table > * + * { box-shadow:0 -.5px 0 var(--ios-sep), inset 16px 0 0 var(--ios-card); }
+.ph-table b { flex:none; width:22px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--ios-sub); }
+.ph-table span { flex:1; min-width:0; }
+.ph-table em { flex:none; font-style:normal; color:var(--ios-sub); font-size:14px; font-variant-numeric:tabular-nums; }
+.ph-table .you { background:#fff7e0; } .ph-table .you b, .ph-table .you em { color:#8a5a00; }
+/* Arena › Lutteurs: one light card per wrestler */
+.ph-lts { display:grid; gap:10px; }
+.ph-lt { padding:12px 14px; border-radius:12px; background:var(--ios-card); color:var(--ios-ink); scroll-margin-top:8px; }
+.lt-head { display:flex; align-items:center; gap:12px; }
+.lt-pic { flex:none; width:52px; height:52px; border-radius:14px; overflow:hidden; background:#f4efe6; }
+.lt-pic svg { display:block; width:100%; height:100%; }
+.lt-head > span { flex:1; min-width:0; }
+.lt-head b { display:block; font-size:17px; font-weight:600; }
+.lt-head small { display:block; margin-top:1px; font-size:12.5px; color:var(--ios-sub); }
+.lt-follow { flex:none; min-height:44px; padding:0 12px; border:0; border-radius:999px; background:#eef0f4; color:#3a3a40; font:600 13.5px/1 var(--ph-font); cursor:pointer; }
+.lt-follow.on { background:#fff1c2; color:#7a4f00; }
+.lt-stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-top:10px; text-align:center; }
+.lt-stats span { padding:6px 4px; border-radius:10px; background:var(--ios-bg); }
+.lt-stats b { display:block; font-size:16px; font-weight:600; font-variant-numeric:tabular-nums; }
+.lt-stats small { display:block; font-size:11.5px; color:var(--ios-sub); }
+.lt-belt { margin:8px 0 0; font-size:13.5px; font-weight:600; color:#7a4f00; }
+.lt-last { margin:8px 0 0; padding:0; list-style:none; display:grid; gap:4px; }
+.lt-last li { display:flex; align-items:baseline; gap:8px; font-size:14px; }
+.lt-last li small { margin-left:auto; font-size:12px; color:var(--ios-sub); white-space:nowrap; }
+.lt-last i { flex:none; display:inline-grid; place-items:center; width:20px; height:20px; border-radius:6px; font-style:normal; font-size:11.5px; font-weight:700; color:#fff; }
+.lt-last i.rV { background:#15803d; } .lt-last i.rD { background:#b91c1c; } .lt-last i.rN { background:#6b7280; }
+.lt-none { margin:8px 0 0; font-size:13px; color:var(--ios-sub); }
