@@ -60,3 +60,26 @@ export function clearKerb(root: THREE.Object3D, colliders: Collider[], zones: re
   }
   return removed;
 }
+
+// ------------------------------------------------------------------ fans aboard (fight evenings)
+/** Fans aboard a car: their shirt colours, and the stop they ride to (src/arena/arrival.ts sets a line's on fight evenings). */
+export interface LineFans { colours: readonly number[]; dest: string }
+
+/**
+ * Who rides a car after it pulls in at `stop` (pure): the fans aboard get off at their own stop (`off`) and nowhere else,
+ * whatever the line does meanwhile (the arena's street may leave its doors phase mid-ride: those aboard still ride to
+ * their stop); the line's fans of now (`line`, null when none) get on at every stop but theirs.
+ */
+export function fansAtStop(aboard: LineFans | null, line: LineFans | null, stop: string): { off: boolean; aboard: LineFans | null } {
+  const off = !!aboard && aboard.dest === stop;
+  if (line && stop !== line.dest) return { off, aboard: line };
+  return { off, aboard: aboard && !off ? aboard : null };
+}
+/**
+ * A line's fans change (pure): with fans, every car takes them at once unless it stands at their stop now (they just got
+ * off there); without, the cars keep those already aboard until their stop.
+ */
+export function fansOnSet(aboard: LineFans | null, line: LineFans | null, dwellingAt: string | null): LineFans | null {
+  if (!line) return aboard;
+  return dwellingAt === line.dest ? null : line;
+}
