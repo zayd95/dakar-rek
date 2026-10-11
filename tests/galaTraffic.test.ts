@@ -147,6 +147,27 @@ describe('the jam: a moto filters through, a car does not', () => {
     }
     expect(moto.halfWidth).toBeCloseTo(0.42); expect(car.halfWidth).toBeCloseTo(0.89);
   });
+  it('in the jam as it moves: while the gate’s side goes both gaps are clear from the tail to past the front; while the jam goes, its turning cars may cross them by the front (a moto waits)', () => {
+    for (const q of ['medium', 'high'] as const) {
+      const tl = new G.JamTimeline(geo, 'in', SEED, q, 1000, () => G.JAM_DEPTH[q]);
+      let gate = 0, jamBlocked = 0;
+      for (let t = 1000; t < 1500; t += 0.5) {
+        tl.advance(t);
+        if (t < 1040) continue;                                                                    // the jam formed
+        const cars = tl.at(t), go = G.agentPhase(t, SEED).go, tail = Math.max(geo.front, ...cars.filter(c => c.state === 'queue').map(c => c.x + c.hl));
+        for (const z of [geo.gapIn, geo.gapOut]) {
+          let stopper: string | null = null;
+          for (let x = tail + 6; x > geo.front - 3 && !stopper; x -= 0.2) {
+            const c = cars.find(car => hits(moto, x, z, -Math.PI / 2, blockedBy([car])));
+            if (c) stopper = c.state;
+          }
+          if (go === 'gate') { gate++; expect(stopper).toBeNull(); }
+          else if (stopper) { jamBlocked++; expect(stopper).toBe('away'); }                       // only a car turning away, never a standing one
+        }
+      }
+      expect(gate).toBeGreaterThan(500); expect(jamBlocked).toBeGreaterThan(50);
+    }
+  });
   it('drive mode: the moto rides straight through either gap, the car stops at the tail on every line', () => {
     for (const q of QUALITIES) {
       const cars = G.jamLayout(geo, G.JAM_DEPTH[q], 'in', SEED, q), tail = Math.max(...cars.map(c => c.x + c.hl));
@@ -364,14 +385,17 @@ describe('the gala road on the Pikine hub', () => {
       // drive mode stops at the jam: through the live footprints, a moto passes in a gap, a car does not
       const obst: Box[] = []; transport.obstacles(obst);
       expect(obst.length).toBeGreaterThan(5);
-      expect(api.probe('moto', geo.gapIn).passed).toBe(true); expect(api.probe('moto', geo.gapOut).passed).toBe(true);
+      for (let k = 0; k < 60 && !(api.info().agent.go === 'gate' && api.info().agent.left > 4); k++) run(0.5);   // while the gate's side goes
+      const pm = api.probe('moto', geo.gapIn);
+      expect(pm.passed).toBe(true); expect(pm.go).toBe('gate'); expect(api.probe('moto', geo.gapOut).passed).toBe(true);
       for (const z of [geo.columns[0], geo.gapIn, j.z, geo.gapOut, geo.columns[2]]) expect(api.probe('car', z).passed).toBe(false);
       // a weekday card: smaller
       api.size('card'); run(60);
       i = api.info();
       expect(i.jam.columns.every((n: number) => n <= G.jamDepth(1, quality, 'card'))).toBe(true);
       // after the bouts: the jam faces east, taxis at the rank
-      api.size('gala'); api.force('out'); run(70);
+      api.size('gala'); api.force('out'); run(40);
+      for (let k = 0; k < 120 && !(api.info().jam.standing > 0 && api.info().rank.length > 0); k++) run(1);   // fed from the parking as the jam's side goes
       i = api.info();
       expect(i.dir).toBe('out'); expect(i.jam.faces).toBeCloseTo(Math.PI / 2);
       expect(i.rank.length).toBeGreaterThan(0);

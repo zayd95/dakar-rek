@@ -86,7 +86,10 @@ the doors are open, leaving after the result, nothing on a quiet evening.
 - **Filtering.** The gaps between the columns are 1.46–1.70 m: a Jakarta (0.84 m) rides through either gap, a car
   (1.78 m) fits through none (`filterLanes`). The jam's cars near the player are solid for drive mode through
   `transport.addObstacles` (the same box test as the car rapides), so the player's moto filters through and their car
-  stops at the tail. On foot the jam is scenery, like the rest of the decorative traffic.
+  stops at the tail. While the agent lets the gate's side go, both gaps are clear from the tail to past the front. While
+  the jam goes, its front cars turning north cross the gaps by the front, so a moto waits beside them, as the
+  moto-taxis do (tests/galaTraffic.test.ts « in the jam as it moves »). On foot the jam is scenery, like the rest of
+  the decorative traffic.
 - **Moto-taxis.** Jakarta moto-taxis, each with a fan on the back, ride in along the north gap (`motoRoute`,
   `motoTrip`), wait beside the front cars while the jam goes, and cross the junction north of the agent to a drop-off on
   the gate road's north lane, east of the stalls and the moto parking. There the fan steps off and walks to the queue's
@@ -126,7 +129,16 @@ the doors are open, leaving after the result, nothing on a quiet evening.
   moto and a car find, the moto-taxis, the rank, the riders, the counts (fans off and on, horns, whistles) and the draw
   calls. `gala.force('in' | 'out' | null)` sets the mode (undefined: follow the street again). `gala.size('gala' |
   'card' | null)` sets the size. `gala.probe('moto' | 'car', z)` drives drive mode's own step straight through the jam
-  as it stands. Browser check: `scripts/check-gala-traffic.mjs` (not run yet).
+  as it stands, and says the agent's phase and what stopped it. `info().lanes` reads the gaps from the cars standing or
+  driving in along their column. Browser check: `scripts/check-gala-traffic.mjs`, first run 42/46 on 4459056; all four
+  failures were the check reading on a slow renderer, fixed in fix/w5-gala-gaps.
+  - It read the gaps before the cars had driven in.
+  - It probed while the jam turned.
+  - It rode the moto from the tail in one go, so it ran into the jam's turn: game time runs far behind the shared
+    clock there.
+
+  The check now waits for the jam to stand, probes while the gate's side goes, and stops beside the front cars before
+  riding on with the agent.
 
 ## The city at night
 

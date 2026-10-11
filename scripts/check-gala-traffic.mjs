@@ -71,7 +71,9 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   // 2. In the jam's window: three columns kerb to kerb at the quality's depth, two gaps for a moto, none for a car
   const mid = (s.window[0] + s.window[1]) / 2;
   await d(h => window.__dakar.setHour(h), mid);
-  const full = await until(d0 => window.__dakar.gala.info().jam.columns.every(n => n >= d0), DEPTH[quality], 90000);
+  // every column at the quality's depth, and its cars arrived (on a fixed debug hour the jam starts empty: the cars
+  // drive in from the edge for ~10 s of game time, much longer on a slow renderer)
+  const full = await until(d0 => { const g = window.__dakar.gala.info(); return g.jam.columns.every(n => n >= d0) && g.jam.standing >= 3 * d0 - 3; }, DEPTH[quality], 180000);
   s = await info();
   check(`${label}: the jam in its window (${s.window.map(h => h.toFixed(2)).join('–')} h): 3 columns of ${DEPTH[quality]} (${quality})`, full && s.depth === DEPTH[quality] && s.jam.columns.length === 3, JSON.stringify({ columns: s.jam.columns, depth: s.depth, level: s.level, coming: s.jam.coming }));
   check(`${label}: two gaps a moto fits through, none for a car`, s.lanes.moto.length === 2 && s.lanes.car.length === 0 && Math.abs(s.lanes.moto[0] - geo.gapIn) < 0.2 && Math.abs(s.lanes.moto[1] - geo.gapOut) < 0.2, JSON.stringify(s.lanes));
@@ -95,14 +97,18 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   const inGap = s.motos.filter(m => m.x > geo.front + 2 && m.x < 130);
   check(`${label}: moto-taxis in the jam ride its gaps`, inGap.every(m => Math.abs(m.z - geo.gapIn) < 0.2 || Math.abs(m.z - geo.gapOut) < 0.2), JSON.stringify(inGap));
 
-  // 5. A car does not fit: drive mode's own step through the jam as it stands, on every line
-  const probes = await d(([zs, g]) => ({ car: zs.map(z => window.__dakar.gala.probe('car', z)), moto: g.map(z => window.__dakar.gala.probe('moto', z)) }), [[geo.columns[0], geo.gapIn, j.z, geo.gapOut, geo.columns[2]], [geo.gapIn, geo.gapOut]]);
-  check(`${label}: a car stops at the jam's tail on every line, a moto passes in both gaps (drive mode's probe)`, probes.car.every(p => p && !p.passed) && probes.moto.every(p => p && p.passed), JSON.stringify(probes));
+  // 5. A car does not fit: drive mode's own step through the jam as it stands, on every line. Probed while the agent
+  // lets the gate's side go: while the jam goes, its front cars turn across both gaps by the front and a moto waits.
+  await until(() => { const a = window.__dakar.gala.info().agent; return a.go === 'gate' && a.left > 4; }, null, 60000);
+  const probes = await d(([zs, g]) => ({ moto: g.map(z => window.__dakar.gala.probe('moto', z)), car: zs.map(z => window.__dakar.gala.probe('car', z)) }), [[geo.columns[0], geo.gapIn, j.z, geo.gapOut, geo.columns[2]], [geo.gapIn, geo.gapOut]]);
+  const brief = p => p && `${p.kind}@${p.z}: ${p.passed ? 'passed' : `stopped at x ${p.x.toFixed(1)} by ${p.stoppedBy}`} (${p.go} ${p.left} s)`;
+  check(`${label}: a car stops at the jam's tail on every line, a moto passes in both gaps (drive mode's probe)`, probes.car.every(p => p && !p.passed) && probes.moto.every(p => p && p.passed), [...probes.moto, ...probes.car].map(brief).join(' | '));
 
-  // 6. The player's own moto through the north gap (when the gate's side goes: no car turning across)
+  // 6. The player's own moto through the north gap: along the jam to beside its front cars, then — as the agent lets the
+  // gate's side go (no car turning across) — on past them. The agent's cycle runs on the shared clock, the moto on game
+  // time (at most 0.1 s a frame): on a slow renderer a straight ride from the tail could run into the jam's turn.
   await d(() => window.__dakar.buyAsset('jakarta'));
   await until(() => window.__dakar.moto.info().here, null, 60000);
-  await until(() => { const a = window.__dakar.gala.info().agent; return a.go === 'gate' && a.left > 11; }, null, 60000);
   s = await info();
   const tail = Math.max(geo.front, ...s.jam.list.filter(c => c.state === 'queue').map(c => c.x + c.hl));
   await d(([x, z]) => { window.__dakar.moto.place(x, z, -Math.PI / 2); window.__dakar.place(x, z + 1.1, -Math.PI / 2); }, [tail + 7, geo.gapIn]);
@@ -110,9 +116,15 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await d(() => window.__dakar.act());
   await until(() => window.__dakar.moto.info().driving, null, 30000);
   const b0 = (await d(() => window.__dakar.moto.info())).bumps;
-  await hold('KeyW', -1, x => window.__dakar.moto.info().x < x, geo.front - 0.5, 60000);
-  const m = await d(() => window.__dakar.moto.info());
-  check(`${label}: the player's moto filters through the north gap past the jam's front`, m.x < geo.front && Math.abs(m.z - geo.gapIn) < 0.6 && m.bumps - b0 <= 1, JSON.stringify({ x: m.x, z: m.z, from: tail + 7, front: geo.front, bumps: m.bumps - b0 }));
+  await hold('KeyW', -1, x => window.__dakar.moto.info().x < x, geo.front + 15, 90000);                      // along the jam…
+  await hold('KeyS', 1, () => Math.abs(window.__dakar.moto.info().speed) < 0.3, null, 30000);                  // …braking to a stop beside its front cars
+  const m1 = await d(() => window.__dakar.moto.info());
+  await until(() => { const a = window.__dakar.gala.info().agent; return a.go === 'gate' && a.left > 12; }, null, 60000);
+  const b1 = (await d(() => window.__dakar.moto.info())).bumps;
+  await hold('KeyW', -1, x => window.__dakar.moto.info().x < x, geo.front - 0.5, 60000);                      // on past them
+  const m = await d(() => window.__dakar.moto.info()), a2 = (await info()).agent;
+  check(`${label}: the player's moto filters through the north gap past the jam's front`, m1.x > geo.front && m1.x < geo.front + 12 && m.x < geo.front && Math.abs(m.z - geo.gapIn) < 0.6 && m.bumps - b0 <= 1,
+    JSON.stringify({ x: m.x, z: m.z, from: tail + 7, front: geo.front, alongBumps: b1 - b0, pastBumps: m.bumps - b1, beside: m1.x, agent: a2 }));
   await shot('3-filtering');
   await d(() => window.__dakar.act());                                                                          // off the moto
   await until(() => !window.__dakar.moto.info().driving, null, 30000);
