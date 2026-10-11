@@ -173,8 +173,9 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   // 6. Into a wall: the shop's back wall, 2.5 m ahead. It stops against it, never inside.
   const wall = await d(() => {
     const g = window.__dakar.cityGeometry(), shop = window.__dakar.interactables().find(i => i.id === 'plateau:city:salon-tech');
-    // the shop's back wall: the long thin collider behind its counter
-    const w = g.colliders.filter(c => c.x1 - c.x0 > 10 && c.z1 - c.z0 < 0.5 && Math.abs((c.x0 + c.x1) / 2 - shop.x) < 1 && c.z1 < shop.z).sort((a, b) => b.z1 - a.z1)[0];
+    // the shop's back wall: the long thin collider behind its counter, spanning it (the counter is no longer centred in
+    // the shop since the stocked shops: Dakar Réparation's sits 4 m left of the 17 m wall's middle)
+    const w = g.colliders.filter(c => c.x1 - c.x0 > 10 && c.z1 - c.z0 < 0.5 && c.x0 + 2 < shop.x && shop.x < c.x1 - 2 && c.z1 < shop.z).sort((a, b) => b.z1 - a.z1)[0];
     return w ? { x: shop.x, z: w.z0 } : null;
   });
   if (wall) await d(w => window.__dakar.car.place(w.x, w.z - 5, 0), wall);
