@@ -464,7 +464,7 @@ export class Humanoid {
     this.lx = o.x; this.lz = o.z;
     // how much work this body gets (ANIM_LOD): where it was last drawn, seen or not
     const m = this.group.matrixWorld.elements, wasNear = this.near;
-    const lod = this.fullRate ? 0 : animLod(m[12], m[13], m[14], this.group.scale.x, this.group.visible && this.root.visible, wasNear);
+    const lod = this.fullRate ? 0 : animLod(m[12], m[13], m[14], this.group.scale.x, this.drawn(), wasNear);
     if (lod === ANIM_LOD.unseen) this.gaitW = 0;                             // nobody sees it go: no fade needed
     this.near = lod === 0;
     if (held) { this.play(held, 0.2); this.gaitW = Math.max(0, this.gaitW - dt / 0.2); }
@@ -498,6 +498,12 @@ export class Humanoid {
       if (this.gaitRig === undefined) this.gaitRig = GaitRig.from(this.root);
       this.gaitRig?.apply(this.gait!, w);
     }
+  }
+  /** Drawn as far as its owners are concerned: its skinned scene (a far figure may stand in for it), its group and every parent. */
+  private drawn() {
+    if (!this.root.visible) return false;
+    for (let p: THREE.Object3D | null = this.group; p; p = p.parent) if (!p.visible) return false;
+    return true;
   }
   /** Keeps the pose the mixer just set (the bones' rotations and positions). */
   private savePose() {
