@@ -34,5 +34,22 @@ export function takeGear(s: GameState, id: string): WearSpec | null {
   setWorn(s, id);
   return sp;
 }
+/**
+ * Scarves and flags bought at the arena's stall before « Couleurs du Géew » were inventory items with the same ids as
+ * the pieces now (`echarpe_<écurie>`, `drapeau_<écurie>`: integration/living-dakar and older saves). Without this they
+ * would be lost for good: not in « Biens », not wearable, and the stall would sell them again. Each becomes the owned
+ * piece it is now (one of each, at the price paid), off the inventory; nothing is put on. Run once when the game starts
+ * (src/arena/supporters.ts); returns the ids taken over.
+ */
+export function adoptStallItems(s: GameState): string[] {
+  const inv = s.data.inventory, out: string[] = [];
+  for (const sp of WEAR) {
+    if (!((inv[sp.id] ?? 0) >= 1)) continue;
+    delete inv[sp.id];
+    if (holds(s, sp.id)) continue;
+    addOwned(s, sp.id, sp.price ?? 0); out.push(sp.id);
+  }
+  return out;
+}
 /** The presence field for a worn piece (null: nothing worn). */
 export const fanOf = (sp: WearSpec | null): FanPresence | null => (sp ? { e: sp.ecurie, k: sp.item } : null);

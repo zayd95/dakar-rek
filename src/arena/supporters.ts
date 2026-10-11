@@ -1,7 +1,7 @@
 import type { GameModule } from '../game/modules';
 import { WEAR } from '../economy/catalog';
 import { addOwned, holds } from '../economy/assets';
-import { fanOf, setWorn, worn } from '../economy/wear';
+import { adoptStallItems, fanOf, setWorn, worn } from '../economy/wear';
 import { answersCheer, dressFan, raisesFlag, sectionEcurie } from './supporterGear';
 import { arenaShow } from './module';
 
@@ -23,6 +23,7 @@ let unlisten: (() => void) | null = null;
 export const supportersModule: GameModule = {
   name: 'supporters',
   init(ctx) {
+    adoptStallItems(ctx.state);                                       // an older save's stall scarves and flags (src/economy/wear.ts)
     unlisten?.();
     // the flag goes up with the arms when the stands cheer the player's wrestler
     unlisten = arenaShow.listen((moment, side) => {

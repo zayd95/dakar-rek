@@ -4,7 +4,7 @@ import { Input } from './core/input';
 import { GameState } from './core/state';
 import { cityTimeAt, daylight } from './core/clock';
 import { clamp, lerp, rng } from './core/rng';
-import { loadSave, writeSave, clearSave, newSave } from './core/save';
+import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
 import { buildHub } from './world/builder';
@@ -250,8 +250,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   registerSeats();
   places.clear(); people.clear();
   for (const m of MODULES) m.hubLoaded?.(ctx, world);
-  const requested = at ?? world.spawn, bounds = world.bounds;
-  const p = requested.x >= bounds.x0 && requested.x <= bounds.x1 && requested.z >= bounds.z0 && requested.z <= bounds.z1 ? requested : world.spawn;
+  const p = resumeSpot(at, world.bounds, world.spawn);                  // a spot outside this hub (an old save, a bad teleport): its spawn
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
   follow.snapBehind(facing);
   state.place(id, p.x, p.z, p.yaw);
