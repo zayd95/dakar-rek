@@ -36,6 +36,16 @@ Sans `?lamb2`, rien ne change.
 | Casser (se dégager) | X | **Casser** |
 | Projeter / Contrer | K | **Projeter** — devient **Contrer** (vert) quand il tente sa projection |
 
+**L'écran du duel** (le balisage est celui de `src/lamb/duel.ts` ; sa mise en page sur téléphone est dans
+`src/ui/style.css`, section « the Làmb 2.0 duel HUD ») : quatre jauges, aucune barre de vie. Chaque barre porte son nom
+(« Endurance », « Équilibre », « Sang-froid », avec sa couleur) dans le panneau de chaque lutteur ; dans l'empoignade, la
+**Prise** a son panneau (« toi » en vert à gauche, « lui » en rouge à droite, ses mots dessous). En portrait, les
+jauges sous le titre, le message et la prise au-dessus des combattants ; en paysage, les jauges dans la ligne du haut
+entre le titre et le chrono, la fiche de la leçon ou de l'exercice à gauche, le message et la prise dans la colonne
+entre cette fiche et les boutons, la ligne des règles en bas de cette colonne. Rien ne passe sous les boutons ni sous le
+joystick (vérifié en 390×844, 844×390, 360×640 et 667×375) ; sur un téléphone de 360 px, le joystick est un peu plus
+petit pendant le duel pour laisser « Grosse frappe » libre.
+
 **Debout.** Trois barres par lutteur : endurance (vert), équilibre (bleu), sang-froid (orange) — pas de vie. La frappe
 rapide est sûre ; la grosse prend beaucoup d'équilibre mais, ratée ou parée, elle t'ouvre. Une frappe rapide qui
 touche coupe sa grosse frappe. La garde arrête les frappes mais pas une saisie : contre un adversaire qui se garde,
@@ -256,6 +266,27 @@ en 40 s au plus. Presque tous finissent avant, par une chute. Testé sur toutes 
 (`tests/lamb2Styles.test.ts`, 132 paires × 3 soirs = 396 combats) : tous finis en 40 s ou moins, 394 par projection,
 1 décision, 1 égalité ; le plus long 36 s, la moitié en moins de 17 s ; chaque style gagne et perd.
 
+## Le combat de la soirée du joueur, avec frappe
+
+Quand le joueur est lui-même le combat de la soirée (une place au gala ou le combat pour le titre, la carrière ;
+`src/arena/myGala.ts`, docs/ARENA_VISIT.md « The player's own gala night »), son combat au cercle passe par le chemin
+du lutteur (`ctx.startBout`) : avec `?lamb2`, il se lutte **avec frappe**, contre l'adversaire de l'affiche, lui-même
+(son style des six, son niveau, son bilan : `rosterOpponent`). Rien de la simulation du duel n'est changé pour cela ;
+l'arène n'utilise que ses crochets :
+
+- `LambDuel.onMoment` → `GameModule.lamb` (`kind: 'moment'`) : les frappes, le déséquilibre (« … vacille ! »), la chute
+  et le bras de l'arbitre passent par le même plan que ci-dessus (« Ton combat de gala, avec frappe »), du côté des
+  tribunes de son coin ; le moment `result`, lui, est laissé au spectacle ;
+- la fin du combat (`kind: 'bout'`) devient le résultat du spectacle (`myShowResult`) : aucun combat regardé n'est
+  simulé ce soir-là ; la fête qui suit est celle de son propre combat (`ownNightParty` : les tribunes de son coin
+  dansent ou se rassoient, les tambours, les mots, avec sa vraie affiche ; pas de fête pour un abandon) ;
+- la carte du gala dit « Combat · lutte avec frappe · <son nom> (…) – <adversaire> (…) » pendant son combat
+  (`showLabel`) ; le combat regardé avec frappe le dit aussi.
+
+Les amis dans les tribunes ne voient pas le duel simulé : son nom (« Combat en cours : <nom> »), sa position dans le
+cercle en garde, puis son vrai résultat (champ de présence `arena.m`). Vérifié avec `LAMB2=1
+scripts/check-arena-fighter.mjs` (discipline du duel, carte).
+
 ## La leçon de Coach Ablaye, avec frappe
 
 Avec `?lamb2`, l'**Entraînement** de l'écurie (Coach Ablaye, Babacar en partenaire) devient une leçon guidée de la lutte
@@ -303,6 +334,59 @@ l'exercice demande.
 - **Ce qui change se voit** : le bilan de l'exercice et le message de fin donnent la vraie variation (« Frappe 34 → 36 »),
   calculée par `fighterAttributes` — les mêmes valeurs que la fiche Profil (application Arène du téléphone).
 - Sans `?lamb2`, les exercices minutés sont inchangés.
+
+## Équilibrage pour un nouveau joueur
+
+Habib jouera d'une **sauvegarde neuve** : après la leçon de Coach Ablaye, ses attributs sont ceux de la carrière
+(`fighterAttributes`, Force 20, Équilibre 21, Technique 23, le reste à 20–22). Trois joueurs sans écran
+(`tests/lamb2Pupil.ts`) jouent le vrai duel avec frappe, construit comme `startDuel`, par les mêmes commandes qu'une
+personne, en ne voyant que ce que montre l'écran :
+
+- **débutant** : réagit tard (0,45–0,8 s), se trompe souvent de réponse, appuie un peu au hasard ;
+- **correct** : 0,3–0,5 s, lit 7 mouvements sur 10, contre 6 projections sur 10 ;
+- **expert** : 0,18–0,3 s, lit 9 mouvements sur 10, choisit presque toujours le bon moment.
+
+Chacun affronte les six amicaux et les adversaires classés de niveau 1 à 3, 80 combats semés chacun. Victoires du joueur
+et durée médiane du combat, **avant → après** :
+
+| Adversaire | Débutant | Correct | Expert | Durée médiane |
+| --- | --- | --- | --- | --- |
+| Pape (rapide, niv. 1, amical) | 19 % → **45 %** | 38 % → 79 % | 80 % → 99 % | 12–16 s → 20–22 s |
+| Saliou (défensif, niv. 1, amical) | 5 % → 23 % | 6 % → 50 % | 64 % → 90 % | 14–21 s → 26–34 s |
+| Gora (costaud, niv. 2, amical) | 13 % → 24 % | 23 % → **50 %** | 61 % → 90 % | 12–17 s → 20–28 s |
+| Pathé (saisie, niv. 2, classé) | 18 % → 20 % | 38 % → **41 %** | 85 % → 88 % | 7–11 s → 13–21 s |
+| Birame (frappeur, niv. 2, classé) | 14 % → 45 % | 33 % → **78 %** | 40 % → 95 % | 12–16 s → 21–22 s |
+| Ndiaga (technique, niv. 2, classé) | 1 % → 10 % | 10 % → **31 %** | 49 % → 78 % | 11–20 s → 22–29 s |
+| Malick (frappeur, niv. 3, amical) | 3 % → **11 %** | 19 % → 23 % | 38 % → 46 % | 11–15 s → 12–17 s |
+| Assane (défensif, niv. 3, classé) | 1 % → **0 %** | 8 % → 8 % | 46 % → 39 % | 12–21 s → 15–21 s |
+| Ousmane (technique, niv. 4, amical) | 1 % → 3 % | 4 % → 4 % | 43 % → 38 % | 9–18 s → 10–18 s |
+| Daouda (saisie, niv. 4, amical) | 15 % → 10 % | 38 % → 38 % | 80 % → 83 % | 6–10 s → 6–10 s |
+
+**Les cibles** :
+
+- Le débutant contre l'amical le plus facile (Pape) : 30–45 % visés, **45 %** (il était à 19 %).
+- Le débutant contre le niveau 3 : rarement, **0–11 %**.
+- Le correct au niveau 2 : 50–60 % visés, **50 %** en moyenne (Gora 50, Pathé 41, Birame 78, Ndiaga 31 — les styles
+  comptent plus que le niveau).
+- L'expert gagne presque tout aux niveaux 1–2, **78–99 %**, pas tout.
+- Les combats de niveau 1–2 durent **20–34 s** (médiane ; 13–21 s contre Pathé, le grand lutteur de saisie).
+- **Hors cible** : contre les niveaux 3–4, un nouveau joueur perd vite (médiane 6–21 s). C'est l'empoignade qui décide :
+  saisi avec une mauvaise prise, il glisse et tombe en quelques secondes. Cela relève des règles (prise d'entrée,
+  glissade), pas de l'IA : non touché, à décider.
+
+**Ce qui a été réglé — seulement l'IA par niveau, dans les données de Làmb 2.0** (`AI_LEVEL`, `src/lamb/stand.ts`) :
+
+| Niveau | 1 | 2 | 3 | 4 | 5 |
+| --- | --- | --- | --- | --- | --- |
+| Appétit et lecture (`factor`, avant 0,9 / 1,0 / 1,1 / 1,2 / 1,3) | 0,46 | 0,46 | 0,85 | 1,0 | 1,15 |
+| Décisions plus lentes (`pace`) | ×1,95 | ×1,9 | ×1,15 | ×1,05 | ×1 |
+| Gestes plus lents à armer (`slow`) | ×1,95 | ×1,9 | ×1,15 | ×1,05 | ×1 |
+| Endurance (`breath`) | ×0,85 | ×0,85 | ×1 | ×1 | ×1 |
+
+Plus la lecture du style **technicien** dans l'empoignade, 0,65 → 0,55 (il reste celui qui lit le mieux). Ces réglages
+ne valent que pour **l'adversaire du joueur** ; les combats regardés (IA contre IA) et la lutte sans frappe gardent
+leurs réglages. La carrière (argent, points, attributs du joueur) et les règles du combat n'ont pas bougé. Gardé par
+`tests/lamb2Balance.test.ts` (bandes autour de ces cibles, mêmes graines).
 
 ## La bascule (préparée, pas faite)
 
@@ -376,6 +460,8 @@ leçon montrent le mieux la nouvelle lutte, et le classé garde son bilan tant q
 - `src/lamb/strikeRig.ts` — poses de frappe et d'empoignade sur le squelette.
 - `src/arena/bout.ts` — le combat regardé ; avec frappe, le duel joue les deux côtés (IA contre IA).
 - `scripts/check-arena-visit.mjs`, `scripts/check-evening.mjs` — avec `LAMB2=1` : le combat de la soirée avec frappe (arbitre, tribunes).
-- `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/`. Ses étapes 4–5
+- `scripts/check-arena-fighter.mjs` — avec `LAMB2=1` : le combat de la soirée du joueur (sa place au gala) avec frappe.
+- `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/` ; les jauges
+  nommées, la prise, et rien sous les boutons ni le joystick en 390×844, 844×390, 360×640 et 667×375. Ses étapes 4–5
   (glissade, projection) se jouent adversaire, chrono et arbitre tenus immobiles (`__dakar.duelHold`, `duelClock` ;
   même mise en place sans navigateur : `tests/lamb2Hold.test.ts`).

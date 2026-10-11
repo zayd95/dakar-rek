@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Batch } from '../world/batch';
 import { rng } from '../core/rng';
-import { randomLook, type Clip, type PersonLook } from '../actors/humanoid';
+import { randomLook, type PersonLook } from '../actors/humanoid';
 import { isOpen } from '../activity/places';
 import { CLUB_ENTRY, CLUB_REGULAR, TABLE_SERVICE, club as clubRecipe, clubCounters, clubCrowd, clubNight, clubTheme, nightsToContest, type ClubTheme } from '../activity/templates';
 import * as P from '../activity/primitives';
@@ -12,8 +12,10 @@ import type { Collider } from '../world/types';
 import { quote } from '../i18n/wolof';
 import { VenueKit, glowQuad } from './kit';
 import { Cast, type Role } from './cast';
+import { VagueCrowd } from '../crowd/clubCrowd';
+import { taxiDrop, taxiRank } from '../transport/taxi';
 import { conversation, counter, nightOf, relate, type Venue, type VenueEnv } from './venue';
-import { CLUBBER_NAMES, CLUB_BYE, barmanGreeting, barmanMenu, clubberBye, clubberDance, clubberHello, clubberRegulars, clubberTonight, djContest, djTalk, doormanAsk, doormanBye, doormanGreeting, doormanRegulars, doormanWelcome, programme, type ClubCtx, type ClubMoment } from './talk';
+import { CLUBBER_NAMES, CLUB_BYE, barmanGreeting, barmanMenu, clubberBye, clubberDance, clubberHello, clubberRegulars, clubberTonight, djContest, djDrop, djTalk, doormanAsk, doormanBye, doormanGreeting, doormanRegulars, doormanWelcome, programme, type ClubCtx, type ClubMoment } from './talk';
 
 /**
  * La Vague (Ngor, Almadies): a dance terrace on the north beach, open 21 h–5 h. A bamboo fence with one gate on the
@@ -21,9 +23,10 @@ import { CLUBBER_NAMES, CLUB_BYE, barmanGreeting, barmanMenu, clubberBye, clubbe
  * Inside: a lit dance floor (tiles that change colour on the beat), the DJ booth under a truss of coloured beams, a
  * thatched bar with stools (juices of Dakar, no alcohol), low benches by the fence, string lights and the sea behind.
  * Each night has a theme (a week of seven, the same for everyone); the « Nuit du sabar » holds a dance contest after
- * 23 h. Dancing is the shared timing gesture on the drum's beat; the crowd follows the hour (almost empty at 21 h,
- * building before midnight, the peak after it, thinning at dawn; more people with the graphics quality) and cheers a
- * good dancer. « Entrer » shows the fee before anything is paid. Inside, the terrace is its own presence space
+ * 23 h. Dancing is the shared timing gesture on the drum's beat; the crowd (src/crowd/clubCrowd.ts: a dense floor on
+ * instanced figures, 20 / 40 / 60 by quality) follows the hour (almost empty at 21 h, building before midnight, the peak
+ * after it with a short queue at the gate, thinning at dawn), dances on the DJ's beat, answers his drops and the songs
+ * you ask for, makes a ring round the contest and cheers a good dancer. « Entrer » shows the fee before anything is paid. Inside, the terrace is its own presence space
  * (`almadies:venue:club`: its location chat and quick phrases); the bar serves on the stools, the waiter brings drinks to
  * the lounge tables, clubbers have a word for you, « Sortir » by the gate. By day the gate is shut, the sign says when it opens.
  *
@@ -40,8 +43,6 @@ const W = 12, D = 9;                               // half extents of the terrac
 const FX = -3, FZ = -1.5, FW = 8, FD = 7;          // dance floor centre and size (1 m tiles)
 const BOOTH = { x: -3, z: -7.5, h: 0.45 };
 const GATE = 1.5;                                  // half width of the gate opening
-/** Dancers' spots on the floor (local), the first three come at opening, the rest after 22 h. */
-const SPOTS: [number, number][] = [[-4.8, -2.6], [-1.4, -2.8], [-3.0, 0.8], [-6.0, -0.6], [0.0, -0.8], [-5.6, 1.4], [-0.6, 1.5], [-3.2, -4.2], [-6.0, -4.0], [0.0, -4.2]];
 /** Colours of each theme's lights. */
 const PALETTE: Record<string, number[]> = {
   mbalax: [0xff8a1e, 0x1fbf5f, 0xffd23a], afro: [0xff2fa8, 0xff8a1e, 0x2fd8e8], rap: [0xe8312f, 0xf2f2f2, 0x2f6fff],
@@ -250,11 +251,7 @@ export function buildClub(env: VenueEnv): Venue {
       ]);
     }
   };
-  const cheer = (n: number) => {
-    const me = ctx.player.pos, near = dancers.map(d => ({ d, p: cast.where(d) })).filter(e => e.p?.shown)
-      .sort((a, b) => Math.hypot(a.p!.x - me.x, a.p!.z - me.z) - Math.hypot(b.p!.x - me.x, b.p!.z - me.z));
-    for (const e of near.slice(0, n)) cast.burst(e.d, 'Celebrate', 2.6);
-  };
+  const cheer = (n: number) => vague.cheer(ctx.player.pos, n);   // the dancers nearest the player
   const done = (a: string) => {
     const s = scoreNow();
     if (a === 'entree') {
@@ -266,14 +263,14 @@ export function buildClub(env: VenueEnv): Venue {
       else if (s < 0.45) queue(`Un danseur : ${quote('Ndank ndank')} · écoute le tambour`);
     } else if (a === 'concours') {
       ctx.state.data.counters[keys.contestNight] = night() + 1;
-      cheer(dancers.length);
+      cheer(16);
       if (s >= 0.9) { ctx.state.count(`${keys.contests}:victoires`); queue('DJ Mbaye : « Le gagnant de ce soir… c’est toi ! » · toute la terrasse applaudit'); }
       else queue(s >= 0.65 ? 'DJ Mbaye : « Deuxième place ! Rafet na ! » · reviens à la prochaine nuit du sabar' : 'DJ Mbaye : « Applaudissez-le ! » · la prochaine nuit du sabar, tu feras mieux');
     } else if (a === 'sortie') {
       const out = at(0, D + 2.4); ctx.player.place(out.x, out.z, site.yaw);
       queue(doormanBye(), 0.1);
     } else if (a === 'morceau') {
-      cast.burst('dj', 'Celebrate', 2.2); cheer(4);
+      cast.burst('dj', 'Celebrate', 2.2); vague.request(); cheer(4);   // the floor answers your song like a drop
       queue('DJ Mbaye : « Waaw kay ! Celui-là, c’est pour toi ! »', 0.1);
     }
   };
@@ -303,13 +300,7 @@ export function buildClub(env: VenueEnv): Venue {
   };
   ctx.places.add(place);
 
-  // ---------------------------------------------------------------- the people: doorman, barman, DJ, the crowd
-  const nDancers = q === 'low' ? 4 : q === 'medium' ? 7 : 10;
-  const dancers = SPOTS.slice(0, nDancers).map((_, i) => `danse${i}`);
-  const dancerRoles: Role[] = SPOTS.slice(0, nDancers).map(([x, z], i) => ({
-    id: `danse${i}`, look: randomLook(R), ...at(x, z), y: G0, yaw: site.yaw + Math.PI + (R() - 0.5) * 1.4, clip: (i % 2 ? 'Dance_B' : 'Dance_A') as Clip,
-    phase: R(), yieldR: 0.95, when: (m: string) => m === 'peak' || (m === 'warm' && i < Math.ceil(nDancers / 2)) || (m === 'early' && i < 1) || (m === 'dawn' && i < 2),
-  }));
+  // ---------------------------------------------------------------- the people: doorman, barman, DJ, waiter, clubbers to talk to
   const S = (list: Seat[], i: number) => list[i];
   /** Clubbers with a word for you: on stools, at the lounge tables, standing at a high table; named by their look. */
   interface Talker { role: Role; name: string; female: boolean }
@@ -331,12 +322,17 @@ export function buildClub(env: VenueEnv): Venue {
     { id: 'videur', look: DOORMAN, ...at(2.3, D + 1.0), yaw: site.yaw, clip: 'Idle', when: m => m !== 'closed' },
     { id: 'barman', look: BARMAN, ...at(10.75, -1.2), y: G0, yaw: site.yaw - Math.PI / 2, clip: 'Talk', when: m => m !== 'closed' },
     { id: 'dj', look: DJ, ...at(BOOTH.x, BOOTH.z - 0.1), y: G0 + BOOTH.h, yaw: site.yaw, clip: 'Dance_B', phase: 0.3, when: m => m !== 'closed' },
-    ...dancerRoles,
     { id: 'serveur', look: WAITER, ...at(WAITER_HOME.x, WAITER_HOME.z), y: G0, yaw: site.yaw - Math.PI / 2, clip: 'Idle', when: m => m !== 'closed' },
     ...talkers.map(t => t.role),
   ];
   const cast = new Cast(roles, ctx.seats, ctx.extra, id);
   env.addPeople(() => cast.bodies().filter(b => b.id.endsWith(':videur')));       // in the street: the doorman; inside, the clubbers below
+  // the crowd: the dance floor, people standing at the bar, the lounge's edge and the high table, the queue at the peak.
+  // Instanced figures (the nearest few full humanoids), the same night the same for everyone; they never stand on a player.
+  const vague = new VagueCrowd({ w: at, local: (x, z) => k.local(x, z), yaw: site.yaw }, q, ctx.extra);
+  const dropW = taxiDrop(taxiRank(world).spot), fromTaxi = k.local(dropW.x, dropW.z);      // they get out of a taxi at the Ngor rank
+  /** Near the club (terrace, gate, the street in front): the crowd steps aside for anyone here. */
+  const nearClub = (x: number, z: number) => { const l = k.local(x, z); return Math.abs(l.x) < W + 4 && l.z > -D - 2 && l.z < D + 14; };
 
   // ---------------------------------------------------------------- clubbers: a short exchange (French and everyday Wolof)
   const met = new Set<string>();
@@ -367,6 +363,7 @@ export function buildClub(env: VenueEnv): Venue {
 
   // ---------------------------------------------------------------- the night: moments, gate, lights on the beat
   let t = 0, moment = '', beat = -2, shut: boolean | null = null, progNight = Number.NaN;   // beat -1 = the closed pattern
+  let quiet = 0;                                     // seconds since the club last spoke: a drop's line never covers another
   let serving: unknown = null;
   const col = new THREE.Color();
   const paint = (theme: ClubTheme, b: number, open: boolean) => {
@@ -430,22 +427,31 @@ export function buildClub(env: VenueEnv): Venue {
     if (!table && serving) { serving = null; cast.walkTo('serveur', [at(WAITER_HOME.x, WAITER_HOME.z)], site.yaw - Math.PI / 2, 'Idle', 1.6); }
     const sp = ctx.space();
     cast.update(dt, ctx.camera.position, lite ? 45 : 70, sp === 'street' || sp === SPACE, ctx.player.pos);
-    for (let i = later.length - 1; i >= 0; i--) { later[i].t -= dt; if (later[i].t <= 0) { ctx.toast(later[i].line); later.splice(i, 1); } }
+    const P = ctx.player.pos, here = !ctx.inside() && nearClub(P.x, P.z), cp = ctx.camera.position;
+    const players = [...(here ? [{ x: P.x, z: P.z }] : []), ...ctx.peers().filter(p => (p.space === SPACE || p.space === 'street') && nearClub(p.x, p.z)).map(p => ({ x: p.x, z: p.z }))];
+    const seen = open && (sp === 'street' || sp === SPACE) && Math.hypot(cp.x - site.x, cp.z - site.z) < (lite ? 45 : 70) + 8;
+    const said = vague.update(dt, { night: night(), hour: h, moment: m, open, contest: !!theme.contest, t, from: fromTaxi, players, me: here ? P : null, camera: ctx.camera, visible: seen });
+    quiet += dt;
+    if (said === 'drop' && inClub && quiet > 5 && !later.length && !ctx.activities.current) { ctx.toast(djDrop(vague.dropIndex)); quiet = 0; }
+    for (let i = later.length - 1; i >= 0; i--) { later[i].t -= dt; if (later[i].t <= 0) { ctx.toast(later[i].line); later.splice(i, 1); quiet = 0; } }
   };
 
   return {
     id, type: 'club', name: place.name, places: [place], update,
     space: () => (inClub ? SPACE : null),
-    dispose() { ctx.interactions.remove('club-people'); cast.dispose(); k.dispose(); later.length = 0; inClub = false; },
-    debug: () => ({
-      id, type: 'club', name: place.name, origin: { x: site.x, z: site.z }, yaw: site.yaw, moment, open: isOpen(place.hours, ctx.hour()), space: inClub ? SPACE : null,
-      waiter: cast.where('serveur'), lounge: lounge.map(s => s.id), talkers: talkers.map(t => ({ id: t.role.id, ...cast.where(t.role.id)! })).filter(w => w.shown),
-      night: night(), theme: clubTheme(night()).id, contestIn: nightsToContest(night()), admitted: admitted(), gateShut: shut, rope: ropeMesh.visible, beams: beams.filter(b => b.visible).length,
-      anchors: place.anchors.map(a => ({ id: a.id, x: a.x, z: a.z, space: a.space ?? place.space })), seats: k.seats.map(s => s.id), stools: stools.map(s => s.id),
-      npcs: cast.presentCount, visibleNpcs: cast.shownCount, dancers: dancers.map(d => cast.where(d)),
-      entrance: at(0, D + 2.2), inside: at(0, D - 2.5), floor: at(FX, FZ),
-      counters: { paid: counter(ctx, keys.paid), nights: counter(ctx, keys.nights), dances: counter(ctx, keys.dances), contests: counter(ctx, keys.contests), contestNight: counter(ctx, keys.contestNight) },
-      tile: Array.from(tiles.slice(0, 4)),
-    }),
+    dispose() { ctx.interactions.remove('club-people'); cast.dispose(); vague.dispose(); k.dispose(); later.length = 0; inClub = false; },
+    debug: () => {
+      const crowd = vague.info(ctx.player.pos);
+      return {
+        id, type: 'club', name: place.name, origin: { x: site.x, z: site.z }, yaw: site.yaw, moment, open: isOpen(place.hours, ctx.hour()), space: inClub ? SPACE : null,
+        waiter: cast.where('serveur'), lounge: lounge.map(s => s.id), talkers: talkers.map(t => ({ id: t.role.id, ...cast.where(t.role.id)! })).filter(w => w.shown),
+        night: night(), theme: clubTheme(night()).id, contestIn: nightsToContest(night()), admitted: admitted(), gateShut: shut, rope: ropeMesh.visible, beams: beams.filter(b => b.visible).length,
+        anchors: place.anchors.map(a => ({ id: a.id, x: a.x, z: a.z, space: a.space ?? place.space })), seats: k.seats.map(s => s.id), stools: stools.map(s => s.id),
+        npcs: cast.presentCount + vague.present(), visibleNpcs: cast.shownCount + (crowd.drawCalls ? crowd.drawn.floor + crowd.drawn.stand + crowd.drawn.queue : 0), dancers: crowd.dancers, crowd,
+        entrance: at(0, D + 2.2), inside: at(0, D - 2.5), floor: at(FX, FZ),
+        counters: { paid: counter(ctx, keys.paid), nights: counter(ctx, keys.nights), dances: counter(ctx, keys.dances), contests: counter(ctx, keys.contests), contestNight: counter(ctx, keys.contestNight) },
+        tile: Array.from(tiles.slice(0, 4)),
+      };
+    },
   };
 }

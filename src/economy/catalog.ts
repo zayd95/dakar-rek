@@ -9,11 +9,11 @@ import { ECONOMY } from './config';
  * (src/economy/assets.ts). These are the game's own prices: the economy is virtual and uncapped (Habib, 9 Oct 2026),
  * so the ladders climb to hundreds of millions and billions. Every name, brand and place here is fictional.
  */
-export type AssetKind = 'home' | 'land' | 'billboard' | 'vehicle' | 'business' | 'furniture' | 'aircraft';
+export type AssetKind = 'home' | 'land' | 'billboard' | 'vehicle' | 'business' | 'furniture' | 'aircraft' | 'wear';
 export const KIND_LABEL: Record<AssetKind, string> = {
-  home: 'Logement', land: 'Terrain', billboard: 'Panneau publicitaire', vehicle: 'Véhicule', business: 'Affaire', furniture: 'Meuble', aircraft: 'Avion',
+  home: 'Logement', land: 'Terrain', billboard: 'Panneau publicitaire', vehicle: 'Véhicule', business: 'Affaire', furniture: 'Meuble', aircraft: 'Avion', wear: 'Couleurs de supporter',
 };
-export const KIND_ICON: Record<AssetKind, string> = { home: '🏠', land: '🟫', billboard: '🪧', vehicle: '🚗', business: '🏪', furniture: '🛋️', aircraft: '✈️' };
+export const KIND_ICON: Record<AssetKind, string> = { home: '🏠', land: '🟫', billboard: '🪧', vehicle: '🚗', business: '🏪', furniture: '🛋️', aircraft: '✈️', wear: '🧣' };
 
 export interface Upgrade {
   id: string; name: string; what: string; price: number;
@@ -264,10 +264,29 @@ export const FURNITURE_SPECS: FurnitureSpec[] = [
     use: { id: 'changer', label: 'Se changer', seconds: 2, needs: { hygiene: 10, moral: 10 } } }),
 ];
 
-export const ASSET_SPECS: AssetSpec[] = [...HOMES, ...LAND, ...BILLBOARDS, ...BUSINESSES, ...VEHICLES, ...AIRCRAFT, ...FURNITURE_SPECS];
+// ------------------------------------------------------------------ a supporter's colours (the arena's stall « Couleurs du Géew »)
+export type GearEcurie = 'baobab' | 'teranga';
+export type GearItem = 'scarf' | 'cap' | 'flag' | 'tee';
+/** Something to wear in an écurie's colours (src/economy/wear.ts): one of each, worn one at a time, seen by the others. */
+export interface WearSpec extends AssetSpec { kind: 'wear'; ecurie: GearEcurie; item: GearItem }
+const GEAR_KINDS: readonly { item: GearItem; id: string; name: string; what: string; price: number }[] = [
+  { item: 'scarf', id: 'echarpe', name: 'Écharpe', what: 'Autour du cou, dans la tribune comme en ville', price: 2_000 },
+  { item: 'cap', id: 'casquette', name: 'Casquette', what: 'Aux deux couleurs de l’écurie', price: 2_500 },
+  { item: 'flag', id: 'drapeau', name: 'Petit drapeau', what: 'Il se lève avec les bras quand la tribune crie', price: 1_500 },
+  { item: 'tee', id: 'maillot', name: 'Maillot', what: 'Le tee-shirt rayé de l’écurie', price: 4_000 },
+];
+/** Écuries of the game (fictional, src/arena/exteriorRules.ts ECURIES): Baobab green and yellow, Teranga red and white. */
+const GEAR_ECURIES: readonly { id: GearEcurie; name: string }[] = [{ id: 'baobab', name: 'Baobab' }, { id: 'teranga', name: 'Teranga' }];
+export const WEAR: WearSpec[] = GEAR_ECURIES.flatMap(e => GEAR_KINDS.map(k => ({
+  id: `${k.id}_${e.id}`, kind: 'wear' as const, ecurie: e.id, item: k.item, name: `${k.name} ${e.name}`, what: `${k.what} · écurie ${e.name}`, price: k.price,
+  where: 'Couleurs du Géew · Arène de Pikine',
+})));
+
+export const ASSET_SPECS: AssetSpec[] = [...HOMES, ...LAND, ...BILLBOARDS, ...BUSINESSES, ...VEHICLES, ...AIRCRAFT, ...FURNITURE_SPECS, ...WEAR];
 const BY_ID = new Map(ASSET_SPECS.map(s => [s.id, s]));
 export const specOf = (id: string): AssetSpec | undefined => BY_ID.get(id);
 export const homeSpec = (id: string): HomeSpec | undefined => { const s = BY_ID.get(id); return s?.kind === 'home' ? s as HomeSpec : undefined; };
 export const furnitureSpec = (id: string): FurnitureSpec | undefined => { const s = BY_ID.get(id); return s?.kind === 'furniture' ? s as FurnitureSpec : undefined; };
+export const wearSpec = (id: string): WearSpec | undefined => { const s = BY_ID.get(id); return s?.kind === 'wear' ? s as WearSpec : undefined; };
 /** The home whose street door is `doorId`. */
 export const homeByDoor = (doorId: string) => HOMES.find(h => h.home.door === doorId);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { FollowCamera, TIGHT_M, VIEW_TRIES, bestView, blocked, clearFraction, nearOccluders, underLeaves, viewPoint } from '../src/actors/camera';
+import { CAM_CLEAR, FollowCamera, TIGHT_M, VIEW_TRIES, bestView, blocked, clearFraction, crowded, nearOccluders, pullClear, underLeaves, viewPoint } from '../src/actors/camera';
 import type { Canopy, Collider } from '../src/world/types';
 
 const head = { x: 0, y: 1.5, z: 0 };
@@ -118,5 +118,36 @@ describe('follow camera: it moves away from a tight spot', () => {
     expect(cam.yaw).toBeCloseTo(0.4, 6);
     expect(cam.info).toMatchObject({ tight: false, lift: 0, swinging: false });
     expect(cam.info.free).toBeCloseTo(8, 1);
+  });
+});
+
+describe('follow camera: nothing right at the lens (a trunk, an awning, a parasol)', () => {
+  it('room around the lens: walls within CAM_CLEAR, leaves or an awning around or just above', () => {
+    const wall: Collider = { x0: 2, x1: 3, z0: -1, z1: 1, h: 4 };
+    expect(crowded(2 - CAM_CLEAR + 0.1, 3, 0, [wall], [])).toBe(true);
+    expect(crowded(2 - CAM_CLEAR - 0.1, 3, 0, [wall], [])).toBe(false);
+    const awning: Canopy = { x: 0, z: 0, r: 1.4, y0: 2.3, y1: 3.0 };
+    expect(crowded(1.4 + CAM_CLEAR - 0.1, 2.5, 0, [], [awning])).toBe(true);
+    expect(crowded(0, 1.6, 0, [], [awning])).toBe(false);                     // well under it
+    expect(crowded(0, 3.5, 0, [], [awning])).toBe(false);                     // well above it
+  });
+  it('the camera comes in front of what would fill the view', () => {
+    const behind = viewPoint(feet, 0, 0.36, 8);
+    const parasol: Canopy = { x: 0.5, z: -7.6, r: 1.4, y0: 3.4, y1: 4.0 };   // an awning right at the wanted spot, at the lens' height
+    const k = pullClear(head, behind, clearFraction(head, behind, [], [parasol]), [], [parasol]);
+    expect(k).toBeLessThan(1);
+    const p = { x: head.x + (behind.x - head.x) * k, y: head.y + (behind.y - head.y) * k, z: head.z + (behind.z - head.z) * k };
+    expect(crowded(p.x, p.y, p.z, [], [parasol])).toBe(false);
+    expect(pullClear(head, behind, 1, [], [])).toBe(1);                      // in the open: nothing changes
+  });
+  it('after the gala by a tree: the lens never sits against its trunk or in its leaves', () => {
+    const trunk: Collider = { x0: -1.6, x1: -1.0, z0: -6.3, z1: -5.7, h: 2.4 };
+    const top: Canopy = { x: -1.3, z: -6, r: 2.8, y0: 2.1, y1: 5.6 };
+    const cam = new FollowCamera(new THREE.PerspectiveCamera());
+    cam.snapBehind(0);
+    for (let i = 0; i < 90; i++) cam.update(1 / 30, feet, 0, { yaw: 0, pitch: 0 }, [trunk], false, false, undefined, undefined, [top]);
+    const p = cam.camera.position;
+    expect(crowded(p.x, p.y, p.z, [trunk], [top], CAM_CLEAR * 0.8)).toBe(false);
+    expect(blocked(p.x, p.y, p.z, [trunk], [top])).toBe(false);
   });
 });

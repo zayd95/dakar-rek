@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, placeDraw, seatRefusal, sectionAt, ticketLabel, ticketSheet, ticketTribune, tribuneOf,
-  whereLine, type Tribune,
+  TICKETS, TIER_COUNTER, TIER_NOTE, TRIBUNES, crowdMayTake, honneurDress, placeDraw, seatRefusal, sectionAt, ticketLabel, ticketSheet, ticketTribune,
+  tierRows, tribuneOf, whereLine, type Tribune,
 } from '../src/arena/tickets';
 import { honneurPlate, tribuneDecor } from '../src/arena/ticketsDecor';
 import { TICKET_COUNTER, TICKET_PRICE, fillOrder, hasTicket, standSeats, ticketTier } from '../src/arena/program';
@@ -23,6 +23,26 @@ describe('ticket tiers: prices', () => {
     expect(ticketLabel('populaire')).toBe('Billet · gala de làmb');                                // the wallet line as before
     expect(ticketLabel('honneur')).toBe('Billet · gala de làmb · Tribune d’honneur');
     for (const t of TRIBUNES) expect(`${TICKETS[t].label} ${TICKETS[t].detail}`).not.toMatch(/®|™|sponsor|VIP/i);   // no brands
+  });
+  it('the window\'s rows: the price first, then the tier, one short line on what it gets, « Payer » on the right', () => {
+    const sp = (s: string) => s.replace(/[\u00a0\u202f]/g, ' ');
+    const rows = tierRows(10000);
+    expect(rows.map(r => sp(r.label))).toEqual(['1 000 F · Populaire', '2 500 F · Tribune couverte', '5 000 F · Tribune d’honneur']);
+    expect(rows.map(r => r.tribune)).toEqual([...TRIBUNES]);
+    for (const r of rows) {
+      expect(r.right).toBe('Payer'); expect(r.disabled).toBe(false); expect(r.reason).toBeUndefined();
+      expect(r.detail).toBe(TIER_NOTE[r.tribune]);
+      expect(r.detail.length).toBeLessThanOrEqual(40);                                            // two lines at most on a phone
+      expect(r.detail).not.toMatch(/®|™|sponsor|VIP/i);
+    }
+  });
+  it('a tier the wallet cannot pay is greyed with what is missing; exactly the price is enough', () => {
+    const sp = (s: string) => s.replace(/[\u00a0\u202f]/g, ' ');
+    const at = (w: number) => tierRows(w).map(r => (r.disabled ? sp(r.reason!) : 'ok'));
+    expect(at(2500)).toEqual(['ok', 'ok', 'Il te manque 2 500 F']);
+    expect(at(1000)).toEqual(['ok', 'Il te manque 1 500 F', 'Il te manque 4 000 F']);
+    expect(at(400)).toEqual(['Il te manque 600 F', 'Il te manque 2 100 F', 'Il te manque 4 600 F']);
+    expect(at(5000)).toEqual(['ok', 'ok', 'ok']);
   });
   it('the evening\'s ticket keeps its tier in the save; a ticket from before the tiers is a « Populaire »', () => {
     expect(ticketTier({}, 12)).toBeNull();

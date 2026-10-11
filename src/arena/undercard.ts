@@ -57,12 +57,13 @@ const LEFT_NGEMB = ['blanc', 'vert', 'noir', 'indigo', 'rouge', 'ocre'] as const
 export function undercardFor(hub: string, day: number, size: 'gala' | 'card', avoid: readonly string[] = []): Prelim[] {
   const R = rng((boutSeed(hub, day) ^ 0x2545f491) >>> 0 || 1);
   const [lo, hi] = PRELIM_COUNT[size], n = lo + Math.floor(R() * (hi - lo + 1));
-  const names = PRELIM_NAMES.filter(x => !avoid.some(a => a.split(/\s+/)[0] === x));
   const pick = <T>(list: readonly T[]) => list[Math.floor(R() * list.length)];
   const used = new Set<string>(), out: Prelim[] = [];
+  // every draw from the whole list, whatever `avoid` says, so the card (its styles, levels, seeds) is the same on every
+  // device even when their main events differ (a friend's own gala night, src/arena/myGala.ts); only names follow
   const side = (): PrelimSide => {
-    let name = pick(names);
-    for (let k = 0; k < 20 && used.has(name); k++) name = pick(names);
+    let name: string = pick(PRELIM_NAMES);
+    for (let k = 0; k < 20 && used.has(name); k++) name = pick(PRELIM_NAMES);
     used.add(name);
     return { name, from: pick(PRELIM_FROM) };
   };
@@ -70,6 +71,16 @@ export function undercardFor(hub: string, day: number, size: 'gala' | 'card', av
     const left = side(), right = side(), style = pick(STYLE_IDS), level = 1 + Math.floor(R() * 2);
     const theirs = STYLES[style].ngemb, mine = LEFT_NGEMB.filter(c => c !== theirs);
     out.push({ i, left, right, style, level, look: { ngembColor: pick(mine), ngembPattern: R() < 0.5 ? 'bordure' : 'uni', accessories: [] }, seed: prelimSeed(hub, day, i) });
+  }
+  // the main event's first names kept out: each one taken becomes the next free name of the list
+  const kept = (x: string) => !avoid.some(a => a.split(/\s+/)[0] === x);
+  for (const p of out) for (const s of [p.left, p.right]) {
+    if (kept(s.name)) continue;
+    const at = PRELIM_NAMES.indexOf(s.name as typeof PRELIM_NAMES[number]);
+    for (let k = 1; k < PRELIM_NAMES.length; k++) {
+      const x = PRELIM_NAMES[(at + k) % PRELIM_NAMES.length];
+      if (kept(x) && !used.has(x)) { used.delete(s.name); used.add(x); s.name = x; break; }
+    }
   }
   return out;
 }

@@ -4,7 +4,7 @@ import { Input } from './core/input';
 import { GameState } from './core/state';
 import { cityTimeAt, daylight } from './core/clock';
 import { clamp, lerp, rng } from './core/rng';
-import { loadSave, writeSave, clearSave, newSave } from './core/save';
+import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
 import { buildHub } from './world/builder';
@@ -38,6 +38,7 @@ import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
+import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
 import { Phone } from './ui/phone';
 import { ChatUi } from './multiplayer/chat';
@@ -123,6 +124,7 @@ const isNewGame = !saved;
 const state = new GameState(saved ?? newSave());
 const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
+remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
 const rel = new Relations(state.data);
 const follow = new FollowCamera(camera);
 const player = new Character(PLAYER_OUTFIT);
@@ -169,7 +171,9 @@ presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.c
 const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
-function presenceSpace() { return lambScene ? 'scene' : modulePresence() ?? moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
+/** A bout at the arena (the duel in its ring): the others in the street still see the player there, in the ring. */
+const arenaDuel = () => lambScene instanceof LambDuel && lambScene.mode !== 'entrainement';
+function presenceSpace() { return lambScene ? (arenaDuel() ? 'street' : 'scene') : modulePresence() ?? moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
 /** A module's presence space when it differs from its interaction space (one's own motorbike: still in the street). */
 function modulePresence(): string | null { if (!ctxReady) return null; for (const m of MODULES) { const s = m.presenceSpace?.(ctx); if (s) return s; } return null; }
 /** A module's own space the player is in (a vehicle while riding: src/transport), or null. */
@@ -246,8 +250,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   registerSeats();
   places.clear(); people.clear();
   for (const m of MODULES) m.hubLoaded?.(ctx, world);
-  const requested = at ?? world.spawn, bounds = world.bounds;
-  const p = requested.x >= bounds.x0 && requested.x <= bounds.x1 && requested.z >= bounds.z0 && requested.z <= bounds.z1 ? requested : world.spawn;
+  const p = resumeSpot(at, world.bounds, world.spawn);                  // a spot outside this hub (an old save, a bad teleport): its spawn
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
   follow.snapBehind(facing);
   state.place(id, p.x, p.z, p.yaw);
@@ -386,7 +389,9 @@ function sitOn(seat: Seat, force = false) {
 /** On a place in the stands: up on the tier for a moment, arms up (others see Celebrate), then back on the seat. */
 function cheer(seconds = 2.5) {
   if (!seated || seated.kind !== 'stand' || mode !== 'play') return false;
-  cheerT = Math.max(0.5, Math.min(6, seconds)); return true;
+  cheerT = Math.max(0.5, Math.min(6, seconds));
+  if (ctxReady) for (const m of MODULES) m.cheered?.(ctx);           // the neighbours in one's own écurie's section answer (src/arena/supporters.ts)
+  return true;
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
 function standUp(inPlace = false) {
@@ -1037,7 +1042,10 @@ function frame(now: number) {
   const clip = mode !== 'scene' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
   // the modules' optional fields (the arena show friends share: src/arena/together.ts), validated by the protocol
   const extras: Partial<PresenceExtras> = {}; for (const m of MODULES) Object.assign(extras, m.presence?.(ctx) ?? {});
-  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip, ...extras }, now);
+  // fighting at the arena: where the player's wrestler stands in the ring, in a fighting stance (src/arena/myGala.ts)
+  const ring = arenaDuel() ? (lambScene as LambDuel).fighterPoints()[0] : null;
+  presence.publish(ring ? { type: 'move', x: ring[0], y: ring[1], z: ring[2], yaw: facing, speed: 0, space, clip: 'Stance', ...extras }
+    : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip, ...extras }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
@@ -1078,7 +1086,7 @@ void start();
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
-    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses() }),
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),

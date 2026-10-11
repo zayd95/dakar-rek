@@ -14,6 +14,26 @@ export interface Move {
   space: string; clip: PresenceClip;
   /** Where this player's arena evening is (optional; src/arena/together.ts). */
   arena?: ArenaPresence;
+  /** The écurie colours this player wears (optional; src/arena/supporters.ts). */
+  fan?: FanPresence;
+}
+/** Écuries a player can wear the colours of (src/economy/catalog.ts WEAR), 'none' for nothing. */
+export const FAN_SIDES = ['none', 'baobab', 'teranga'] as const;
+export type FanSide = typeof FAN_SIDES[number];
+/** What is worn in them: a scarf, a cap, a small flag, a tee. */
+export const FAN_ITEMS = ['scarf', 'cap', 'flag', 'tee'] as const;
+export type FanItem = typeof FAN_ITEMS[number];
+/**
+ * The supporter's colours others see on this player's avatar (the street, the stands): which écurie `e` and which item
+ * `k`. Display only: what it cost, what else is owned, the wallet never cross the protocol.
+ */
+export interface FanPresence { e: FanSide; k: FanItem }
+/** The `fan` field, or null when it is malformed (the whole move is then refused). */
+export function parseFan(value: unknown): FanPresence | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (Object.keys(v).length !== 2 || !(FAN_SIDES as readonly unknown[]).includes(v.e) || !(FAN_ITEMS as readonly unknown[]).includes(v.k)) return null;
+  return { e: v.e as FanSide, k: v.k as FanItem };
 }
 /** The arena show's phases, in order (src/arena/program.ts ShowPhase), as sent in `arena.p`. */
 export const ARENA_PHASES = ['idle', 'filling', 'prelims', 'entrance', 'bout', 'result', 'leaving', 'over'] as const;
@@ -24,25 +44,28 @@ export const ARENA_OUTCOMES = ['projection', 'decision', 'egalite', 'abandon'] a
 /**
  * A player's arena evening, so that friends inside the arena watch one bout: the city day `d`, the show's phase `p`
  * (index in ARENA_PHASES) and its time `t` in seconds (during the preliminaries: `i`, which one, 0-based, and the time
- * within it), and once known the main event's result: `w` 0 = no winner, 1 = the left
+ * within it), `m` = 1 when this player is tonight's main event themselves (src/arena/myGala.ts: friends then show
+ * their name and their own real result, never a simulated duel), and once known the main event's result: `w` 0 = no
+ * winner, 1 = the left (on a player's own night: they won)
  * wrestler, 2 = the right one; `o` the outcome (index in ARENA_OUTCOMES). Display only — no money, record or reward
  * depends on it; each client aligns itself (server-authoritative timing comes later).
  */
-export interface ArenaPresence { d: number; p: number; t: number; i?: number; w?: number; o?: number }
+export interface ArenaPresence { d: number; p: number; t: number; i?: number; m?: number; w?: number; o?: number }
 const int = (v: unknown, lo: number, hi: number) => typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
 /** The `arena` field, or null when it is malformed (the whole move is then refused). */
 export function parseArena(value: unknown): ArenaPresence | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const v = value as Record<string, unknown>;
-  if (Object.keys(v).some(k => !['d', 'p', 't', 'i', 'w', 'o'].includes(k))) return null;
+  if (Object.keys(v).some(k => !['d', 'p', 't', 'i', 'm', 'w', 'o'].includes(k))) return null;
   if (!int(v.d, 1, 1_000_000) || !int(v.p, 0, ARENA_PHASES.length - 1) || typeof v.t !== 'number' || !Number.isFinite(v.t) || v.t < 0 || v.t > 900) return null;
   if (v.i !== undefined && !int(v.i, 0, ARENA_PRELIMS - 1)) return null;
+  if (v.m !== undefined && v.m !== 1) return null;
   if (v.w !== undefined && !int(v.w, 0, 2)) return null;
   if (v.o !== undefined && !int(v.o, 0, ARENA_OUTCOMES.length - 1)) return null;
-  return { d: v.d as number, p: v.p as number, t: Math.round((v.t as number) * 10) / 10, ...(v.i !== undefined ? { i: v.i as number } : {}), ...(v.w !== undefined ? { w: v.w as number } : {}), ...(v.o !== undefined ? { o: v.o as number } : {}) };
+  return { d: v.d as number, p: v.p as number, t: Math.round((v.t as number) * 10) / 10, ...(v.i !== undefined ? { i: v.i as number } : {}), ...(v.m === 1 ? { m: 1 } : {}), ...(v.w !== undefined ? { w: v.w as number } : {}), ...(v.o !== undefined ? { o: v.o as number } : {}) };
 }
 /** Optional fields gameplay modules add to the player's presence (GameModule.presence), each validated in parseMove. */
-export type PresenceExtras = Pick<Move, 'arena'>;
+export type PresenceExtras = Pick<Move, 'arena' | 'fan'>;
 /** `tag` is a stable public key derived server-side from a private device key: mute/block survive reconnects without revealing the key. */
 export interface Peer extends Move { id: string; name: string; look: number; tag?: string; rec?: string; updatedAt: number }
 export interface ChatMessage { type: 'chat'; id: string; from: string; name: string; tag?: string; channel: ChatChannel; text: string; at: number }
@@ -97,5 +120,7 @@ export function parseMove(value: unknown, hub: HubId): Move | null {
   if (!PRESENCE_CLIPS.includes(v.clip as PresenceClip)) return null;
   const arena = v.arena === undefined ? undefined : parseArena(v.arena);
   if (arena === null) return null;
-  return { type: 'move', x, y, z, speed, yaw: Math.atan2(Math.sin(v.yaw as number), Math.cos(v.yaw as number)), space: v.space, clip: v.clip as PresenceClip, ...(arena ? { arena } : {}) };
+  const fan = v.fan === undefined ? undefined : parseFan(v.fan);
+  if (fan === null) return null;
+  return { type: 'move', x, y, z, speed, yaw: Math.atan2(Math.sin(v.yaw as number), Math.cos(v.yaw as number)), space: v.space, clip: v.clip as PresenceClip, ...(arena ? { arena } : {}), ...(fan ? { fan } : {}) };
 }

@@ -49,6 +49,11 @@ export function cornerSides(bill: { left: Fighter; right: Fighter }): Record<Who
   if (r) return { left: (-PREP_SIDE[r]) as 1 | -1, right: PREP_SIDE[r] };
   return { left: 1, right: -1 };
 }
+/**
+ * The stands of a wrestler of the bill: those by his corner (Baobab's sections, 'left', on the +x side; Teranga's,
+ * 'right', on the −x side: src/crowd/arenaStands.ts), so a wrestler in the Teranga corner is cheered from there.
+ */
+export const standsOf = (bill: { left: Fighter; right: Fighter }, who: Who): Who => (cornerSides(bill)[who] > 0 ? 'left' : 'right');
 /** The colour a wrestler's people wear: his écurie's, else a neutral one (an independent). */
 export const ECURIE_COLOUR: Record<'baobab' | 'teranga', number> = { baobab: 0x1a7a44, teranga: 0xc8322a };
 export const colourOf = (f: Fighter) => { const e = ecurieId(f.ecurie); return e ? ECURIE_COLOUR[e] : 0x2f6fb3; };
@@ -199,9 +204,22 @@ export function boastLine(f: Fighter, seed: string): string {
   ];
   return lines[seeded(`boast:${seed}:${f.id}`, lines.length)]();
 }
-/** The griot sings his wrestler's praises into the microphone: strength, écurie, neighbourhood. */
-export function griotLine(f: Fighter, seed: string): string {
-  const gox = goxOf(f), team = ecurieId(f.ecurie) ? `l’écurie ${f.ecurie}` : 'tout le quartier', lines = [
+/**
+ * The griot sings his wrestler's praises into the microphone: strength, écurie, neighbourhood; for the player on his
+ * own gala night (`rec`: his record from the career, never money), his strength, his neighbourhood and his wins in
+ * one breath — an unbeaten run said as such. Invented lines, the same for the same evening.
+ */
+export function griotLine(f: Fighter, seed: string, rec: WrestlerRecord | null = null): string {
+  const gox = goxOf(f), team = ecurieId(f.ecurie) ? `l’écurie ${f.ecurie}` : 'tout le quartier';
+  if (rec && rec.v > 0) {
+    const won = [
+      () => `${MIC} Le griot : ${f.name}, enfant de ${gox} ! Sa ${say('doole')} compte déjà ${plural(rec.v, 'victoire')} dans le ${say('géew')}, et tout ${gox} chante son nom !`,
+      () => `${MIC} Le griot : Enfant de ${gox}, ${plural(rec.v, 'combat')} ${rec.v > 1 ? 'gagnés' : 'gagné'} : la ${say('doole')} de ${f.name} ne se discute pas !`,
+      ...(rec.d === 0 ? [() => `${MIC} Le griot : ${f.name}, le ${say('gaynde')} de ${gox} ! ${plural(rec.v, 'victoire')}, pas une défaite : sa ${say('doole')} fait trembler le ${say('géew')} !`] : []),
+    ];
+    return won[seeded(`griot:rec:${seed}:${f.id}`, won.length)]();
+  }
+  const lines = [
     () => `${MIC} Le griot : ${f.name}, enfant de ${gox}, le bras fort de ${team} !`,
     () => `${MIC} Le griot : ${f.name} ! Sa ${say('doole')} fait trembler le ${say('géew')}, ${gox} est fier de lui !`,
     () => `${MIC} Le griot : Debout pour ${team} ! Voici ${f.name}, le ${say('gaynde')} de ${gox} !`,
@@ -226,10 +244,23 @@ export const answerLine = (stands: boolean) => `${stands ? 'Les tribunes de ton 
 
 /** Everything the entrance says or plays, in order: [time, what, side, text?]. */
 export type Cue = { t: number; kind: 'announce' | 'bakk' | 'boast' | 'griot' | 'chant' | 'drums'; who: Who; text?: string };
-export function entranceCues(bill: { left: Fighter; right: Fighter }, day: number, seed = String(day)): Cue[] {
+/**
+ * `player`: the side the player takes on his own gala night. He is already in his corner (the fighter's path), so his
+ * side is named, praised by his griot (his wins from the career) and chanted by his people from the corner; his own
+ * bàkk comes on his walk to the ring (src/arena/bakk.ts), so no bàkk, boast or drums are played for him here.
+ */
+export function entranceCues(bill: { left: Fighter; right: Fighter }, day: number, seed = String(day), o: { player?: Who } = {}): Cue[] {
   const out: Cue[] = [];
   for (const who of ['left', 'right'] as const) {
     const f = bill[who], T = CEREMONY[who];
+    if (o.player === who) {
+      out.push(
+        { t: who === 'left' ? T.out[0] + 0.2 : CEREMONY.left.bakk[1] + 0.1, kind: 'announce', who, text: announceLine(f, who, recordOf(f, day)) },
+        { t: T.bakk[0] + 0.6, kind: 'griot', who, text: griotLine(f, seed, recordOf(f, day)) },
+        { t: T.bakk[0] + 2.6, kind: 'chant', who, text: chantLine(f) },
+      );
+      continue;
+    }
     out.push(
       // the first one is named as he steps out; the second on his way, once the first one's bàkk is over (one voice at a time)
       { t: who === 'left' ? T.out[0] + 0.2 : CEREMONY.left.bakk[1] + 0.1, kind: 'announce', who, text: announceLine(f, who, recordOf(f, day)) },

@@ -10,8 +10,10 @@ drummers outside, event days, gate position) is another lane: `src/arena/exterio
 
 - **Buy a ticket** at the « GUICHET · BILLETS » window, left of the gate (a place of the shared registry,
   `pikine:arena:guichet`, open 17 h–23 h). « Acheter un billet (dès 1 000 F) » opens the window's sheet with the three
-  tiers and their prices first (« Populaire 1 000 F · Tribune couverte 2 500 F · Tribune d’honneur 5 000 F »), one
-  « Payer … » per tier and « Annuler » (see *Ticket tiers*). Paid once through the activity runner: one wallet line
+  tiers and their prices first (« Populaire 1 000 F · Tribune couverte 2 500 F · Tribune d’honneur 5 000 F »), then one
+  row per tier — its price first (« 2 500 F · Tribune couverte »), a line on what it gets, « Payer » — and « Annuler »;
+  a tier the wallet can't pay is greyed with what is missing (« Il te manque 1 500 F »; see *Ticket tiers* and
+  docs/UI.md *The ticket window on a phone*). Paid once through the activity runner: one wallet line
   (« Billet · gala de làmb · Arène de Pikine », « Billet · gala de làmb · Tribune couverte · Arène de Pikine »…), valid
   for the whole evening; a second purchase is refused (« Tu as déjà ton billet pour ce soir »). Stored as save
   counters (`arena_ticket_day`, `arena_ticket_tier`), no schema change.
@@ -56,7 +58,8 @@ exist (sections A–H of `src/world/geew.ts`), a small item of the arena's econo
 | Tribune d’honneur | 5 000 F | the two front rows of B, behind the officials' table, close to the ring: white cushions with backs and a gold edge, the plate « TRIBUNE D’HONNEUR » on the parapet; the fewest places | 45 %, in their best (grand boubous, long dresses), a third of them the officials' guests |
 
 - **The controller's rule**: a ticket opens its own tier's places only (`seatRefusal`), and only while the gate checks
-  tickets or a gala runs; the seat registry's `refuse` greys « S'asseoir » with the reason. A fighter of tonight
+  tickets or a gala runs; the seat registry's `refuse` greys « S'asseoir » with the reason: a grey focus ring under the
+  place, the reason in full in its bubble (kept on screen on a phone). A fighter of tonight
   needs no ticket at the gate, but sits nowhere without one.
 - **The view from every tier**: the seat camera is the same everywhere (the spectator's eyes, the gaze following the
   action). From the honneur rows the officials' canopy never hides the ring's centre (tested from every place; one
@@ -193,6 +196,83 @@ wrestlers, the lines and the sound; the entourages and griots are `src/arena/peo
   ceremony is rewarded (no money, need or counter). The wrestlers wear no accessories.
 - A show joined further on (a friend's, `follow`) sets the drums right and skips the lines it missed.
 
+## The player's own gala night (`src/arena/myGala.ts`, Wave 5)
+
+When the career gives the player a gala place (Adversaires réputés and up) or the title bout, and they sign up for it
+that evening, they are tonight's main event. The pure parts are in `src/arena/myGala.ts` (`tests/myGala.test.ts`).
+
+- **The bill names them.** `billOf` (`src/career/module.ts`) returns `playerMainBill`: the player on the left (their
+  écurie or « indépendant »), their opponent on the right, `title` for the belt. The posters, the gala card and the
+  ceremony all read it through `billFor`. Their corner is the one the ceremony gives their side (`playerCorner`, from
+  `cornerSides`), so the fighter's path, their people and the ceremony agree.
+- **The preliminaries run first.** The show starts once they are in the tunnel. Their corner is held
+  (`arenaFighter.hold`) while the stands fill, the preliminaries run and the ceremony names them. « Je suis prêt » skips
+  the rest of the preliminaries (« Plus d’attente : ton entrée commence. ») or, during the entrance, goes straight to the
+  walk-out. Signed up while this device's show already ran (seated first, then the gala place at the door,
+  `takeOver`): the filling or the preliminaries go on and their entrance follows; an entrance or a watched bout already
+  begun gives way to their entrance, from its start (nothing of that bout is recorded); after the main event, their
+  bout is an ordinary one.
+- **The show keeps their bill to the end.** The career forgets the sign-up once their bout is recorded; the show keeps
+  the bill it started with (`ownBill`) through the result and the crowd leaving, then forgets it.
+- **The ceremony is theirs.** On their side there is no NPC wrestler. The announcer names them with their real record
+  from the career (`setRecordSource('player')`: « … 7 victoires, 2 défaites, 1 nul »), their griot praises them in
+  invented lines (once they have wins: their strength, their neighbourhood and their wins in one breath, an unbeaten run
+  said as such; before: strength and neighbourhood, as for the roster) and their people chant. Their
+  people stay round them in their corner, in their écurie's colours (an independent's in the bill's neutral blue). The
+  opponent has the full ceremony. At 27.5 s they are released, walk out, and « Faire ton bàkk » is offered
+  (`src/arena/bakk.ts`, which does not name them a second time). The entrance lasts until they reach the ring; then
+  the fighter's path starts the duel.
+- **Their real result is the show's.** No watched bout is simulated. When their duel ends (`GameModule.lamb`, the
+  'bout' event), `myShowResult` makes it the show's result (their side is the left one), said the same way as on their
+  friends' devices (« Moussa l’emporte par chute ! », « Abandon : Moussa s’arrête là. », never « match nul » for an
+  abandon). With `?lamb2` their bout is fought avec frappe through the duel's own hooks (docs/LAMB2.md « Le combat de la
+  soirée du joueur »); the card then reads « Combat · lutte avec frappe ». The fête after it is the one of the player's
+  own bout (« La fête après la chute » below, `ownParty`: the stands by their corner, the drums, the lines; they keep
+  their own body), not the main event's carried tour. The career keeps the record,
+  the purse, the posters and the talk; the show does not report it to the ladder a second time. If they give up the
+  bout before it starts, the evening ends without a main event and without a made-up result
+  (« Le combat de la soirée n’aura pas lieu. »).
+- **The stands by their corner are theirs.** The show's reactions go to the stands by each wrestler's corner
+  (`standsOf`, from `cornerSides`). An independent player facing a Baobab man is in the Teranga corner, so the Teranga
+  sections rise for them. This holds for every evening's card, not only the player's.
+- **Friends in the stands see them, not a simulation.** Their presence adds `arena.m = 1` (validated by `parseArena`:
+  only the value 1, on the server too through `parseMove`). On a friend's device (`remoteMain`: this evening, inside the
+  walls, the smallest id if two):
+  - The bill line reads « Gala de làmb : Moussa est le combat de la soirée ! » (when they are known at the start).
+  - After the friend's preliminaries the card reads « Moussa, combat de la soirée », then « Entrée de Moussa », then
+    « Combat en cours : Moussa ».
+  - The friend's show waits after its preliminaries for the player's entrance, then for their bout (`mainDriver`:
+    their presence moves it on, never the friend's clock). No ceremony or duel is simulated for that side.
+  - At their entrance the announcer calls them: « 🎤 L’annonceur : Le combat de la soirée… voici Moussa !
+    (Adversaires réputés · 7-2 · Écurie Baobab) » — the bracket is their `rec` presence field exactly as the server
+    validated it, nothing more. The whole crowd stands and applauds (no side: their corner and their people are on their
+    own device), and the card's entourages wait in their corners instead of walking an entrance for nobody
+    (`FightNightPeople.quiet`).
+  - During the duel the player's avatar is published standing in the ring in a fighting stance (`main.ts`: presence
+    space 'street', the duel's position, `Stance`).
+  - The result is the one they send (`w`/`o`, the same field as any show), told as « Moussa l’emporte par chute ! ·
+    Le public : « Daan na ! » », « Moussa s’incline aux points. », « Match nul pour Moussa. » or « Abandon : Moussa
+    s’arrête là. ». The whole crowd applauds; nobody's corner runs onto the sand (`cheeredSide`). Nothing is recorded on
+    the friend's side: no ladder report, no posters, no talk.
+  - No money, purse, record numbers or reward crosses: only `m`, the phase and time, and the result codes (set once,
+    when their duel ends). Any other value of `m`, or any other key in `arena`, makes the server refuse the move
+    (`parseMove`, `tests/presence.test.ts`).
+- **The same preliminaries everywhere.** `undercardFor` draws every bout from the whole list of names, whatever the
+  main event is. A name that clashes with tonight's main event is swapped afterwards. Friends with different main
+  events (the player's own night, the ladder's card) therefore watch the same preliminaries, with the same styles,
+  levels and seeds.
+- **Limits.** The friend learns of the main event from the player's presence once their show has started (in the
+  tunnel); before that the friend's posters and bill line show the city's card. The two devices' preliminaries are
+  aligned by presence as before, but the player's own show never follows a friend's. Their opponent is not drawn on the
+  friends' side: only the player, in their fighting stance.
+- **Checks** (browser, queued by the integrator): `scripts/check-arena-fighter.mjs` (their night end to end on a
+  Saturday evening: bill and posters, the corner held through the preliminaries, the ceremony's lines, « Faire ton
+  bàkk », the duel, the presence move in the ring, the real result; `LAMB2=1`: avec frappe), `scripts/check-career.mjs`
+  (sign-up: bill, posters, corner, refusal of a second sign-up, the city's card back once given up). The friend's side
+  (a raw client as the main event, seen from the stands; the server refusing `m = 2`) is still to be added to
+  `scripts/check-multiplayer.mjs`, which is being reworked on the wave-5 candidate; until then it rests on the unit
+  tests (`tests/myGala.test.ts`, `tests/presence.test.ts`).
+
 ## La fête après la chute (Wave 5, `src/arena/celebration.ts`, `src/arena/party.ts`)
 
 The minute after a result is the night's signature moment. The result phase is now the fête: its plan is pure, and
@@ -248,6 +328,7 @@ section.
 | `src/arena/crowd.ts` | `StandCrowd`: seated / standing figures as 4 `InstancedMesh`es, plus a few near-LOD humanoids around the player's seat. |
 | `src/arena/bout.ts` | `WatchedBout`: a `LambDuel` with `spectate: true`, driven by the autopilot. |
 | `src/arena/card.ts` | The gala card (title, phase, bill). |
+| `src/arena/supporters.ts`, `src/arena/supporterGear.ts`, `src/economy/wear.ts` | Who supports whom: the écurie colours worn (body, presence field `fan`), the flag going up, the neighbours answering « Encourager »; pure rules tested in `tests/supporters.test.ts`. |
 | `src/arena/people.ts` | `FightNightPeople`: every person inside the walls (officials, judges, announcer, referee, drummers, press, vendors, corner helpers, the entourages); layout, presence by moment and counts by quality are pure and tested in `tests/arenaPeople.test.ts`. |
 | `src/arena/tickets.ts`, `src/arena/ticketsDecor.ts` | Ticket tiers: prices, sections, the controller's rule, the crowd's share and dress per tier (pure, `tests/tickets.test.ts`); cushions, canvas and plate (one merged mesh). |
 | `src/arena/ceremony.ts`, `src/arena/entrance.ts`, `src/arena/bakk.ts` | The entrance as a ceremony: timings, places and lines (pure, `tests/ceremony.test.ts`), the wrestlers and cues of a gala, the player's own bàkk. |
@@ -338,6 +419,49 @@ backwards. A floating-point difference between browsers could still make two dev
 reference's result is shown. The next step is a show clock kept by the room (`server/worker.ts`): start time, seed and
 result, with clients only rendering it. A crowd-noise level shared by the group could come with it.
 
+## Who supports whom: the écurie colours (`src/arena/supporters.ts`)
+
+« Rester dans l'arène avec d'autres joueurs » shows who supports whom. Everything here is cosmetic: no stat, need,
+money or reward comes from it.
+
+- **The stall.** « Couleurs du Géew » (an invented name), the exterior's stall 2 on the −x side of the gate, kept by
+  Aliou on fight evenings (`src/arena/exteriorRules.ts` VENDORS, `key: 'supporters'`). It sells, for each fictional
+  écurie, a scarf (2 000 F, haggled like the city's stalls), a cap (2 500 F), a small flag (1 500 F) and a tee
+  (4 000 F) — the catalogue's `wear` kind (`src/economy/catalog.ts` WEAR). Each row shows its price; picked, it is paid
+  once (`P.buy`, one wallet line « Écharpe Baobab »…), counted in `arene:achats`, and the piece is the player's and worn
+  at once (`takeGear`). One of each: a piece already owned is greyed with « Déjà à toi · à porter depuis « Biens » ».
+  The stall shows a rail of scarves, two tees and two pennants in both colours (merged into the drums' batch) under a
+  small sign.
+- **The colours** are the stands' (`src/crowd/looks.ts` ECURIE_LOOK): Baobab green 0x1a7a44 and yellow 0xf4c20d (the
+  `left` side, sections B–C), Teranga red 0xc8322a and white 0xf2f2ec (`right`, F–G). The exterior's fans' scarves and
+  flags share the same geometry (`src/arena/supporterGear.ts`).
+- **Owned and worn.** The pieces are assets (« Biens », kind « Couleurs de supporter »): the sheet of a piece says
+  « à toi · tu le portes » and offers « L'enlever » or « Le porter »; it can be resold like any good. One piece is
+  worn at a time (`src/economy/wear.ts`, counter `supporter_porte`); selling it takes it off.
+- **On the body** (`dressFan`, no new humanoid mesh), in the city and in the stands: the tee is the body's own tee in
+  the main colour striped with the accent; the cap is the body's own kufi mesh in the two colours, over the hair; the
+  scarf (ring, a tail on the chest, the end in the accent colour) sits on the `socket_neck` bone and the small flag in
+  the `handR` hand, placed every frame.
+- **The flag goes up.** Seated in the stands with a flag, when the crowd cheers the player's wrestler — his entrance,
+  a fall he wins, his victory (`arenaShow.listen`, `raisesFlag`) — the player rises for 2.5 s with the arms up, as with
+  « Encourager », and the flag with them.
+- **The neighbours answer.** Seated in their own écurie's section (B–C for Baobab, F–G for Teranga) wearing its
+  colours, « Encourager » makes the section shout with them: `arenaShow.react('sec:X', 'shout', { share: 0.75,
+  seconds: 2.5, origin: the player's place })`, the stands' own reaction rippling out from the place
+  (`answersCheer`). Elsewhere, or without the colours, « Encourager » stays the player alone.
+- **Other players see it** through one presence field, `fan: { e, k }`: `e` is `none`, `baobab` or `teranga`, `k` is
+  `scarf`, `cap`, `flag` or `tee` (`src/multiplayer/protocol.ts` parseFan). `parseMove` refuses the whole move if the
+  field has another key or value. No price, wallet or inventory crosses the protocol; the server relays the field
+  like the other validated ones. Remote avatars are dressed from it (`RemoteAvatars.dress`, main.ts), in the city and
+  seated in the stands.
+- **Draw calls.** A worn scarf or flag: +1 (one small mesh with vertex colours on the body), for the player and for
+  each drawn remote body wearing one; tee and cap: 0 (the body's own garments recoloured); the stall's sign: +1 on fight
+  evenings; the stall's display: 0 (merged into the exterior's drums batch).
+
+Debug: `__dakar.supporters()` (worn, owned, the presence field, what the body shows, the section and its écurie, the
+neighbours' answers, flags raised), `__dakar.supportersWear(id | null)` (checks only: owns the piece at 0 F and wears
+it), `__dakar.presence().gear` (what each drawn peer's body wears).
+
 ## Debug and checks
 
 `?debug` → `__dakar.arena.info()` (street, event, day, phase, t, ticket, seats, crowd, entrance, bout, result, gate,
@@ -357,7 +481,11 @@ and `info().ownParty` the fête after the player's own bout. `scripts/check-aren
 
 `npm run check:online` (scripts/check-multiplayer.mjs, CI) seats two clients side by side in the stands at 18 h: each
 sees the other seated (pose and height), the later one joins the earlier one's show (same bout phase within 3 s), a
-cheer is seen by the other, and both get one result.
+cheer is seen by the other, and both get one result. Before that, A wears a Baobab scarf: B sees `fan` on A's
+presence (no price, wallet or inventory key) and A's body with the scarf, in the street and seated in the stands;
+a raw client wearing a Teranga flag is drawn with it, and a `fan` field carrying a price is refused (1008).
+`scripts/check-arena-exterior.mjs` buys the Baobab scarf at « Couleurs du Géew » (−2 000 F once, owned, worn, on the
+body, in « Biens » with « tu le portes »).
 
 `flock /tmp/dakar-browser.lock node scripts/check-arena-visit.mjs [baseUrl] [outDir] [--view=desktop|phone]` plays
 the whole path on desktop (medium quality) and phone (low quality), captures in `docs/screenshots/arena-visit/`.

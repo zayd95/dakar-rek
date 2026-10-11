@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseMove, parseArena, nickname, lookIndex, isHub, recordTag, REC_RUNGS, REC_MAX, ARENA_PHASES, ARENA_OUTCOMES } from '../src/multiplayer/protocol';
+import { parseMove, parseArena, parseFan, nickname, lookIndex, isHub, recordTag, REC_RUNGS, REC_MAX, ARENA_PHASES, ARENA_OUTCOMES, FAN_SIDES, FAN_ITEMS } from '../src/multiplayer/protocol';
+import { WEAR } from '../src/economy/catalog';
 import { RUNGS, publicRecord } from '../src/career/career';
 import { SHOW_PHASES } from '../src/arena/program';
 
@@ -48,6 +49,34 @@ describe('presence protocol', () => {
     // which preliminary is running (src/arena/undercard.ts): a small index, only an integer
     expect(parseMove({ ...seated, arena: { d: 12, p: 2, t: 14.5, i: 1 } }, 'pikine')?.arena).toEqual({ d: 12, p: 2, t: 14.5, i: 1 });
     for (const i of [-1, 6, 1.5, '1', null]) expect(parseMove({ ...seated, arena: { d: 12, p: 2, t: 1, i } }, 'pikine')).toBeNull();
+  });
+  it('carries the écurie colours a player wears (écurie, item) and nothing else in it: no price, no inventory, no money', () => {
+    for (const e of ['baobab', 'teranga'] as const) for (const k of FAN_ITEMS) expect(parseMove({ ...move, fan: { e, k } }, 'pikine')?.fan).toEqual({ e, k });
+    expect(parseMove({ ...move, fan: { e: 'none', k: 'scarf' } }, 'pikine')?.fan).toEqual({ e: 'none', k: 'scarf' });   // the enum's « none »
+    expect(parseMove(move, 'pikine')).not.toHaveProperty('fan');                                          // optional
+    expect(parseMove({ ...move, clip: 'Sit', speed: 0, fan: { e: 'teranga', k: 'flag' }, arena: { d: 12, p: 3, t: 4 } }, 'pikine')).toMatchObject({ fan: { e: 'teranga', k: 'flag' }, arena: { d: 12, p: 3, t: 4 } });
+    for (const fan of [null, 1, 'baobab', ['baobab', 'scarf'], {}, { e: 'baobab' }, { k: 'scarf' }, { e: 'Baobab', k: 'scarf' }, { e: 'baobab', k: 'Scarf' }, { e: 'ndiambour', k: 'scarf' },
+      { e: 'baobab', k: 'boubou' }, { e: 'baobab', k: 'scarf', price: 2000 }, { e: 'baobab', k: 'scarf', owned: ['echarpe_baobab'] }, { e: 'baobab', k: 'scarf', wallet: 5 },
+      { e: 'baobab', k: 'scarf', __proto__: { x: 1 }, paid: 1 }, { e: 0, k: 0 }]) {
+      expect(parseMove({ ...move, fan }, 'pikine')).toBeNull();                                           // malformed: the move is refused
+    }
+    expect(parseFan({ e: 'teranga', k: 'tee' })).toEqual({ e: 'teranga', k: 'tee' });
+    // the protocol's lists are the catalogue's: every piece sold maps to one écurie and one item
+    for (const w of WEAR) { expect(FAN_SIDES).toContain(w.ecurie); expect(FAN_ITEMS).toContain(w.item); }
+  });
+  it('carries « tonight\'s main event is me » (arena.m, src/arena/myGala.ts): only the value 1, beside the result codes, nothing else', () => {
+    const fighting = { ...move, clip: 'Stance', speed: 0 };
+    // walking out, then in the ring in a fighting stance during their own duel
+    expect(parseMove({ ...move, arena: { d: 12, p: 3, t: 27.5, m: 1 } }, 'pikine')?.arena).toEqual({ d: 12, p: 3, t: 27.5, m: 1 });
+    expect(parseMove({ ...fighting, arena: { d: 12, p: 4, t: 3, m: 1 } }, 'pikine')).toMatchObject({ clip: 'Stance', arena: { d: 12, p: 4, t: 3, m: 1 } });
+    // their real result, set once when their duel ends: the same codes as any show (w 1 = they won, o = how)
+    expect(parseMove({ ...move, arena: { d: 12, p: 5, t: 0.5, m: 1, w: 1, o: 0 } }, 'pikine')?.arena).toEqual({ d: 12, p: 5, t: 0.5, m: 1, w: 1, o: 0 });
+    expect(parseMove({ ...move, arena: { d: 12, p: 5, t: 0, m: 1, w: 0, o: 3 } }, 'pikine')?.arena).toEqual({ d: 12, p: 5, t: 0, m: 1, w: 0, o: 3 });
+    expect(parseMove({ ...move, arena: { d: 12, p: 4, t: 3 } }, 'pikine')?.arena).not.toHaveProperty('m');                 // optional
+    for (const m of [0, 2, -1, 1.5, '1', true, null, [1], { v: 1 }]) expect(parseMove({ ...move, arena: { d: 12, p: 4, t: 3, m } }, 'pikine')).toBeNull();
+    // never money, a purse, a record or a name beside it: the whole move is refused (the server closes the socket)
+    for (const extra of [{ purse: 5000 }, { cachet: 1 }, { rec: '7-2' }, { v: 7, d: 12 }, { name: 'Moussa' }, { main: 1 }, { opp: 'gora' }])
+      expect(parseMove({ ...move, arena: { d: 12, p: 5, t: 0, m: 1, w: 1, o: 0, ...extra } }, 'pikine')).toBeNull();
   });
   it('names the show phases and outcomes as the arena does', () => {
     expect([...ARENA_PHASES]).toEqual([...SHOW_PHASES]);

@@ -135,8 +135,12 @@ Already composed:
   well each is danced, up to 7 200 F, once a night); « Sortir » by the gate. *Who:* Lamine the doorman (the week's
   programme, regulars), Saliou at the bar, the lounge waiter, DJ Mbaye, clubbers on stools, benches and at a high table
   with a short French/Wolof exchange (« Na nga def ? », « Dama sonn » at dawn, « Nanu dem ! », « Ñibbil ak jàmm »),
-  dancers who make room for you and cheer a good dance. *The hour:* almost empty at 21 h, building before midnight, the
-  peak after it, thinning at dawn (4 / 7 / 10 dancers by graphics quality); NPCs sit on real seats, never on yours.
+  a dense dance floor (20 / 40 / 60 dancers by graphics quality on the reusable crowd, the nearest few full humanoids,
+  docs/CROWD.md) dressed for a night out, dancing on the DJ's beat, arms up and a shout at his drops and at the song you
+  asked for, a ring round the contest after 23 h with a soloist in the middle in turn, people standing at the bar, the
+  lounge's edge and the high table; they step aside for you and your friends, never on anyone. *The hour:* almost empty
+  at 21 h, building before midnight, the peak after it with a short queue at the gate (people from the taxis at the Ngor
+  rank), thinning at dawn; NPCs sit on real seats, never on yours.
   *Why return:* a theme every night of a seven-night week (mbalax, afro, rap galsen, salsa, zouk, the sabar contest,
   retro) on the board by the gate; after three nights you are a regular and come in free. Inside, the terrace is its own
   presence space (`almadies:venue:club`, accepted by `parseMove`): its location chat and quick phrases (« Rafet na »).

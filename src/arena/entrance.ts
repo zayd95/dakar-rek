@@ -17,12 +17,18 @@ export class EntranceCeremony {
   private cues: Cue[];
   private next = 0;
 
+  /**
+   * `o.player`: the player's side on his own gala night (he is in his corner, he walks out himself): no wrestler is
+   * drawn for it and its cues are the announcer's, his griot's and his people's (ceremony.ts entranceCues).
+   */
   constructor(private ctx: GameCtx, parent: THREE.Object3D, private cx: number, private cz: number,
-    bill: { left: Fighter; right: Fighter }, looks: Record<Who, WrestlerLook>, private react: (who: Who) => void, skins: Partial<Record<Who, number>> = {}) {
-    this.cues = entranceCues(bill, ctx.day());
+    bill: { left: Fighter; right: Fighter }, looks: Record<Who, WrestlerLook>, private react: (who: Who) => void, skins: Partial<Record<Who, number>> = {},
+    o: { player?: Who } = {}) {
+    this.cues = entranceCues(bill, ctx.day(), String(ctx.day()), { player: o.player });
     if (!humanoidReady()) return;
     const cs = cornerSides(bill);
     for (const [who, skin, cut] of [['left', 0x5b3420, 'B'], ['right', 0x4e2e1c, 'A']] as const) {
+      if (who === o.player) continue;                                       // the player walks out himself
       const h = new Wrestler(skins[who] ?? skin); h.setLook(looks[who], cut);
       const plan = wrestlerPlan(cx, cz, who, cs[who]), p = plan[0].path[0];
       h.group.position.set(p.x, 0.1, p.z); parent.add(h.group);

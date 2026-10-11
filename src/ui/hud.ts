@@ -255,13 +255,22 @@ export class Hud {
       const changed = !!this.wpKey;
       this.wpKey = key;
       const wp = w.firstElementChild as HTMLElement;
-      wp.className = 'wp' + (opt.disabled ? ' dis' : '');
-      wp.innerHTML = `${icon ? `<i>${esc(icon)}</i>` : ''}<span>${esc(label)}</span>${price ? `<em class="${opt.cost ? 'cost' : 'gain'}">${price}</em>` : ''}<kbd>E</kbd>`;
+      // unavailable: the reason in full under the verb, where the eye already is (the button's line is cut short on a
+      // phone, « Ton billet est pour la tribune… »): the pill becomes a small card
+      const why = opt.disabled ?? '';
+      wp.className = 'wp' + (why ? ' dis why' : '');
+      wp.innerHTML = `${icon ? `<i>${esc(icon)}</i>` : ''}<span>${esc(label)}</span>${price ? `<em class="${opt.cost ? 'cost' : 'gain'}">${price}</em>` : ''}<kbd>E</kbd>${why ? `<small>${esc(why)}</small>` : ''}`;
+      this.wpHalf = why ? Math.min(140, innerWidth * 0.39) : 0;                    // half the card's max width (style.css)
       if (changed || !w.classList.contains('on')) replay(wp, 'pop');
     }
-    w.style.transform = `translate(${Math.round(at.x)}px,${Math.round(at.y)}px) translate(-50%,-100%)`;
+    // the card stays on screen (8 px margin) and its tail keeps pointing at the target
+    const { x, tail } = this.wpHalf ? bubbleX(at.x, this.wpHalf, innerWidth) : { x: at.x, tail: 0 };
+    if (tail !== this.wpTail) { this.wpTail = tail; (w.firstElementChild as HTMLElement).style.setProperty('--tail', `${tail}px`); }
+    w.style.transform = `translate(${Math.round(x)}px,${Math.round(at.y)}px) translate(-50%,-100%)`;
     w.classList.add('on');
   }
+  private wpHalf = 0;
+  private wpTail = 0;
   /** The action is unavailable: shake the button and say why. */
   deny(reason: string) {
     if (!this.el.act.classList.contains('off')) replay(this.el.act, 'deny');
@@ -345,13 +354,47 @@ export class Hud {
    * anywhere on it or on ✕ dismisses it; it leaves by itself after a few seconds. Two at most.
    */
   moment(m: { icon: string; title: string; lines: string[] }, ms = Math.min(12000, 6000 + 900 * m.lines.length)) {
+    return this.momentCard('mo', m.icon, m.title, tx => {
+      if (m.lines.length) { const ul = document.createElement('ul'); for (const l of m.lines) { const li = document.createElement('li'); li.textContent = l; ul.appendChild(li); } tx.appendChild(ul); }
+    }, ms);
+  }
+  /**
+   * The fighter's after-bout card (src/career/progress.ts `boutCard`): a moment card, larger — the result and who
+   * against; one row per thing that changed (what, where it stands now, the change in green or red, a short note); then
+   * « Ensuite » and the next bill or step. Same rules as a moment (first in the toast column, tap to dismiss, never over
+   * the action button or the joystick); it stays longer (16–24 s).
+   */
+  boutCard(card: { icon: string; title: string; sub: string; rows: { k: string; v: string; d?: string; tone?: string; note?: string }[]; next: string[] },
+    ms = Math.min(24000, 16000 + 1000 * card.rows.length)) {
+    const add = <K extends keyof HTMLElementTagNameMap>(parent: HTMLElement, tag: K, cls: string, text = '') => {
+      const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; parent.appendChild(e); return e;
+    };
+    return this.momentCard('mo bc', card.icon, card.title, tx => {
+      add(tx, 'small', 'bc-sub', card.sub);
+      const dl = add(tx, 'dl', 'bc-rows');
+      for (const r of card.rows) {
+        const row = add(dl, 'div', 'bc-r');
+        add(row, 'dt', '', r.k);
+        const dd = add(row, 'dd', '');
+        add(dd, 'span', 'bc-v', r.v);
+        if (r.note) add(dd, 'small', 'bc-note', r.note);
+        add(row, 'em', `bc-d ${r.tone ?? ''}`.trim(), r.d ?? '');
+      }
+      if (card.next.length) {
+        const nx = add(tx, 'div', 'bc-next');
+        add(nx, 'b', '', 'Ensuite');
+        for (const l of card.next) add(nx, 'span', '', l);
+      }
+    }, ms);
+  }
+  private momentCard(cls: string, icon: string, title: string, fill: (tx: HTMLElement) => void, ms: number) {
     const box = this.el.toast;
     const c = document.createElement('div');
-    c.className = 'mo'; c.setAttribute('role', 'status');
-    const ic = document.createElement('i'); ic.className = 'mo-ic'; ic.setAttribute('aria-hidden', 'true'); ic.textContent = m.icon;
+    c.className = cls; c.setAttribute('role', 'status');
+    const ic = document.createElement('i'); ic.className = 'mo-ic'; ic.setAttribute('aria-hidden', 'true'); ic.textContent = icon;
     const tx = document.createElement('div'); tx.className = 'mo-tx';
-    const b = document.createElement('b'); b.textContent = m.title; tx.appendChild(b);
-    if (m.lines.length) { const ul = document.createElement('ul'); for (const l of m.lines) { const li = document.createElement('li'); li.textContent = l; ul.appendChild(li); } tx.appendChild(ul); }
+    const b = document.createElement('b'); b.textContent = title; tx.appendChild(b);
+    fill(tx);
     const x = document.createElement('button'); x.type = 'button'; x.className = 'mo-x'; x.setAttribute('aria-label', 'Fermer'); x.textContent = '✕';
     c.append(ic, tx, x);
     c.addEventListener('pointerdown', e => e.stopPropagation());
@@ -404,6 +447,17 @@ export class Hud {
   openQuick(title: string, items: MenuItem[], subtitle = '') {
     this.sheet.open('quick', title, subtitle, items);
   }
+}
+
+/**
+ * Where the bubble's centre goes so a card of half-width `half` stays on a screen `width` wide (8 px margins), as close
+ * to the target's `x` as it can, and how far aside its tail moves to point at the target (at most `half − 16` px: the
+ * card stays readable first).
+ */
+export function bubbleX(x: number, half: number, width: number): { x: number; tail: number } {
+  const lo = half + 8, hi = width - half - 8;
+  const c = lo > hi ? width / 2 : Math.min(hi, Math.max(lo, x)), m = Math.max(0, half - 16);
+  return { x: c, tail: Math.round(Math.min(m, Math.max(-m, x - c))) };
 }
 
 /** A goal line split into its words and the distance at its end (« 72 m », shown in the right-hand slot), if any. */

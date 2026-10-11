@@ -11,6 +11,7 @@ import { posters } from '../arena/posters';
 import { STYLES } from '../lamb/rules';
 import { setBillSource, setFollowSource, type Bill } from '../arena/program';
 import { setRecordSource } from '../arena/ceremony';
+import { playerCorner, playerMainBill } from '../arena/myGala';
 import { portraitSvg } from './portrait';
 import {
   ATTRS, BOUTS_MAX, RUNGS, boutPoints, dimensions, fighterAttributes, publicRecord, purseOf, rankOf, recordLine, summary,
@@ -20,7 +21,7 @@ import {
   GALA_RUNG, TITLE_IDLE_DAYS, TITLE_RUNG, beltOf, cardOf, fightsTonight, wrestlerCard, galaBlock, isFightDay, ladderAt, mainEvent, opponentFor, placeOf, titleBout, wrestlerById,
   type Ladder, type Standing,
 } from './roster';
-import { boutRecap, deltaText, dimMoves, galaRecap, recordDay, scoresOf, sinceYesterday, stepsCrossed } from './progress';
+import { boutCard, boutRecap, deltaText, dimMoves, galaRecap, nextSteps, recordDay, scoresOf, sinceYesterday, stepsCrossed, type AfterBoutFacts, type BoutFacts } from './progress';
 import type { Dim, DimId } from './career';
 
 /**
@@ -97,7 +98,9 @@ function signUp(kind?: 'gala' | 'title') {
   const opp = kind === 'title' ? titleOffer(ctx)?.opp : kind === 'gala' ? galaOpponent(ctx) : rankedOpponent(ctx);
   if (!opp) { ctx.toast('Pas de combat pour le titre ouvert ce soir'); return; }
   signed = kind ? { day: ctx.day(), kind, opp: opp.id } : null;
-  if (!arenaFighter.begin({ mode: 'classe', style: opp.style, opponent: opp.name })) { signed = null; ctx.toast('Ton combat de ce soir est déjà prévu'); return; }
+  // a gala place or the title bout: the player is tonight's main event (the show's ceremony is theirs, src/arena/myGala.ts)
+  const main = kind ? { main: kind, corner: playerCorner(playerMainBill({ name: playerName(ctx), ecurie: ecurieOf(ctx) }, opp, kind === 'title')) } : {};
+  if (!arenaFighter.begin({ mode: 'classe', style: opp.style, opponent: opp.name, ...main })) { signed = null; ctx.toast('Ton combat de ce soir est déjà prévu'); return; }
   if (kind) ctx.toast(kind === 'title' ? `Combat pour le titre contre ${opp.name}, ce soir` : `Ta place au gala : contre ${opp.name}, ce soir`);
 }
 
@@ -155,10 +158,13 @@ function galaMoment(ctx: GameCtx, day: number, winner: string | null) {
   ctx.hud.moment(r);
 }
 
-/** The bill of an evening for the posters and the arena show: the ladder's card, or the player's own title bout. */
+/**
+ * The bill of an evening for the posters and the arena show: the ladder's card, or the player's own main event (a gala
+ * place or the title bout signed up for tonight).
+ */
 function billOf(ctx: GameCtx, day: number): Bill {
-  const s = signed && signed.day === day && signed.kind === 'title' ? wrestlerById(signed.opp) : undefined;
-  if (s) return { left: { id: 'player', name: playerName(ctx), ecurie: ecurieOf(ctx) ?? 'indépendant' }, right: { id: s.id, name: s.name, ecurie: s.ecurie ?? 'indépendant' }, title: true };
+  const s = signed && signed.day === day ? wrestlerById(signed.opp) : undefined;
+  if (s && signed) return playerMainBill({ name: playerName(ctx), ecurie: ecurieOf(ctx) }, s, signed.kind === 'title');
   return cardOf(ladder(ctx, day), day);
 }
 let recSent: string | null | undefined;
@@ -168,8 +174,11 @@ function syncRecord(ctx: GameCtx) {
   if (rec !== recSent) { recSent = rec; ctx.setPublicRecord(rec); }
 }
 
-/** Record one finished bout: points, purse (ranked), best rung; returns the toast lines. */
-export function recordBout(ctx: GameCtx, e: Extract<LambEvent, { kind: 'bout' }>): string[] {
+/**
+ * Record one finished bout: points, purse (ranked), best rung; returns the toast lines. `card`: show the fighter's
+ * after-bout card (a bout fought on the arena's fighter path) rather than the short recap.
+ */
+export function recordBout(ctx: GameCtx, e: Extract<LambEvent, { kind: 'bout' }>, card = arenaFighter.phase() === 'bout'): string[] {
   if (e.mode === 'entrainement') return [];
   const c = career(ctx);
   const res: BoutRes = e.outcome === 'abandon' ? 'A' : e.winner === 'player' ? 'V' : e.winner === 'opponent' ? 'D' : 'N';
@@ -204,15 +213,32 @@ export function recordBout(ctx: GameCtx, e: Extract<LambEvent, { kind: 'bout' }>
   const dimsAfter = dimsOf(ctx), st = stepsCrossed(c.dimBest, scoresOf(dimsAfter));
   c.dimBest = st.best;                                       // a new word reached here is said in the recap, not twice
   const beltNews = beltAfter.held && !beltBefore.held ? 'won' : beltBefore.held && !beltAfter.held ? 'lost' : beltAfter.held && beltAfter.defences > beltBefore.defences ? 'defended' : null;
-  ctx.hud.moment(boutRecap({
+  const facts: Omit<BoutFacts, 'moves'> = {
     res, opp: e.opponent.name, how: res === 'V' && e.outcome === 'projection' ? 'par chute' : res === 'V' ? 'aux points' : '',
     purse, pts, rungBefore: before, rungAfter: after, belt: beltNews,
     place: e.mode === 'classe' ? { before: placeBefore, after: placeOf(ladder(ctx), after.score), of: ladder(ctx).table.length + 1 } : undefined,
-    moves: dimMoves(dimsBefore, dimsAfter, st.up),
-  }, fcfa));
+  };
+  // a bout fought on the arena's fighter path (and the player's own gala main event): the after-bout card — the result,
+  // the palmarès, the place in the city, Réputation and Influence, the purse, then the next bill or step
+  if (card) ctx.hud.boutCard(afterBoutCard(ctx, facts, kind, e.discipline, dimsBefore, dimsAfter, st.up, beltAfter));
+  else ctx.hud.moment(boutRecap({ ...facts, moves: dimMoves(dimsBefore, dimsAfter, st.up) }, fcfa));
   syncRecord(ctx);
   ctx.save();
   return lines;
+}
+
+/**
+ * The fighter's after-bout card (src/career/progress.ts `boutCard`), from what `recordBout` read before and after the
+ * bout: the palmarès now, the four gauges before and after, the rank score, and the next step by the gala and title
+ * rules of tonight (`galaBlock`, the bout just fought no longer pending).
+ */
+function afterBoutCard(ctx: GameCtx, f: Omit<AfterBoutFacts, 'record' | 'gauges' | 'score' | 'next' | 'kind' | 'discipline'>, kind: 'gala' | 'title' | undefined,
+  discipline: string | undefined, dimsBefore: Dim[], dimsAfter: Dim[], up: readonly DimId[], beltNow: { held: boolean }) {
+  const s = summary(career(ctx).bouts), r = rank(ctx);
+  const gauges = dimsAfter.map(d => ({ id: d.id, label: d.label, before: dimsBefore.find(b => b.id === d.id)?.score ?? d.score, after: d.score, word: d.level, up: up.includes(d.id) }));
+  const open = (k: 'gala' | 'title') => !galaBlock(k, { day: ctx.day(), hour: ctx.hour(), pending: false, energie: ctx.state.data.needs.energie, foughtTonight: foughtTonight(ctx) });
+  const next = nextSteps({ day: ctx.day(), res: f.res, opp: f.opp, rung: r.rung, next: r.next, belt: beltNow, galaTonight: open('gala'), titleTonight: open('title') && !!titleOffer(ctx) });
+  return boutCard({ ...f, record: { v: s.v, d: s.d, n: s.n, ab: s.ab }, gauges, score: r.score, next, ...(kind ? { kind } : {}), ...(discipline ? { discipline } : {}) }, fcfa);
 }
 
 /** Rows for the phone's arena app: rank, record, rivalry, purses, attributes, last bouts. */
@@ -256,7 +282,10 @@ export const careerModule: GameModule = {
       ctx.save();
     });
     // the announcer of the wrestlers' entrance reads each one's season record from the city's ladder (src/arena/ceremony.ts)
-    setRecordSource((id, _name, day) => { const st = ladder(ctx, day).table.find(x => x.id === id); return st ? { v: st.v, d: st.d, n: st.n } : null; });
+    setRecordSource((id, _name, day) => {
+      if (id === 'player') { const s = summary(career(ctx).bouts); return s.bouts ? { v: s.v, d: s.d, n: s.n } : null; }   // their own record, on their gala night
+      const st = ladder(ctx, day).table.find(x => x.id === id); return st ? { v: st.v, d: st.d, n: st.n } : null;
+    });
     syncRecord(ctx);
     // the wrestler the player follows: tonight's card or undercard (the evening call and « Ce soir » say so)
     setFollowSource(day => {
@@ -354,7 +383,7 @@ export const careerModule: GameModule = {
     /** The city's ladder on a day (table, belt, the card) and tonight's sign-up (for the checks). */
     careerLadder: (day = ctx.day()) => { const l = ladder(ctx, day); return { table: l.table, title: l.title, season: l.season, card: billOf(ctx, day), signed, belt: belt(ctx), rank: rank(ctx) }; },
     careerSign: (kind?: 'gala' | 'title') => { signUp(kind); return signed; },
-    careerBout: (mode: 'amical' | 'classe', winner: 'player' | 'opponent' | null, level = 1, outcome: 'projection' | 'decision' | 'egalite' | 'abandon' = winner ? 'projection' : 'egalite', name = 'Gora') =>
-      recordBout(ctx, { kind: 'bout', mode, outcome, winner, opponent: { name, style: 'costaud', label: 'Costaud' }, level }),
+    careerBout: (mode: 'amical' | 'classe', winner: 'player' | 'opponent' | null, level = 1, outcome: 'projection' | 'decision' | 'egalite' | 'abandon' = winner ? 'projection' : 'egalite', name = 'Gora', card?: boolean) =>
+      recordBout(ctx, { kind: 'bout', mode, outcome, winner, opponent: { name, style: 'costaud', label: 'Costaud' }, level }, card),
   }),
 };

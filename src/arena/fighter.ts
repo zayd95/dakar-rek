@@ -17,7 +17,12 @@ import { PREP_SIDE, prepCornerCentre } from '../world/arenaModules';
 export type FighterPhase = 'idle' | 'called' | 'tunnel' | 'prep' | 'ring' | 'bout' | 'return';
 /** Moments others react to: sent to the gate, in the tunnel, in the corner, walking out to the ring, the bout, its result, out. */
 export type FighterCue = 'called' | 'tunnel' | 'prep' | 'walk-out' | 'bout' | 'result' | 'exit';
-export interface FighterBout { mode: 'amical' | 'classe'; style?: string; opponent?: string }
+/**
+ * `main`: the player is tonight's main event (a gala place or the title bout, src/career): the arena's show runs its
+ * preliminaries and the entrance ceremony around them (src/arena/module.ts, docs/ARENA_VISIT.md « The player's own
+ * gala »). `corner`: the écurie corner they take (default: Baobab's for a member, else Teranga's).
+ */
+export interface FighterBout { mode: 'amical' | 'classe'; style?: string; opponent?: string; main?: 'gala' | 'title'; corner?: 'baobab' | 'teranga' }
 
 /** Seconds in the corner before the cue to walk out (the player can say « Je suis prêt » sooner). */
 export const PREP_SECONDS = 8;
@@ -28,6 +33,11 @@ let phase: FighterPhase = 'idle';
 /** When the moment in the corner ends (real time: a short pause, whatever the frame rate). */
 let prepUntil = 0;
 const listeners = new Set<(cue: FighterCue) => void>();
+/**
+ * The moment in the corner can be held by the arena's show (the player's own gala: the preliminaries and the
+ * ceremony come first); « Je suis prêt » then asks the show to move on instead of walking out at once.
+ */
+let hold: { held: () => boolean; ready: () => void } | null = null;
 const cue = (c: FighterCue) => { for (const fn of listeners) fn(c); };
 
 /** Where the steps of the path are, for an arena centred on (cx, cz) and the player's corner. */
@@ -51,7 +61,7 @@ export const arenaFighter = {
   begin(b: Partial<FighterBout> = {}): boolean {
     const ctx = ctxRef; if (!ctx || (bout && phase !== 'idle')) return false;
     const member = ctx.state.data.flags.includes('ecurie_baobab');
-    bout = { mode: b.mode ?? 'classe', style: b.style, opponent: b.opponent, day: ctx.day(), ecurie: member ? 'baobab' : 'teranga', member };
+    bout = { mode: b.mode ?? 'classe', style: b.style, opponent: b.opponent, main: b.main, day: ctx.day(), ecurie: b.corner ?? (member ? 'baobab' : 'teranga'), member };
     refreshSpots(ctx);                                                        // the corner of this bout's écurie, now
     go(ctx, 'called');
     return true;
@@ -61,6 +71,10 @@ export const arenaFighter = {
   phase: () => phase,
   /** The player's corner (écurie side) while a bout is on its way. */
   corner: () => (bout && phase !== 'idle' ? bout.ecurie : null),
+  /** The player is tonight's main event (a gala place or the title bout) while that bout is on its way. */
+  main: () => (bout && phase !== 'idle' ? bout.main ?? null : null),
+  /** The arena's show holds the corner until the player's entrance (null: the usual short moment). */
+  hold(h: { held: () => boolean; ready: () => void } | null) { hold = h; },
   /** Tonight's opponent's name while a bout is on its way (null: none, or not named). */
   opponent: () => (bout && phase !== 'idle' ? bout.opponent ?? null : null),
   /** Listen to the path's moments (the stands react, the entourage gathers…); returns the unsubscribe function. */
@@ -85,7 +99,9 @@ function go(ctx: GameCtx, next: FighterPhase) {
       ctx.walkTo(id.corner); ctx.toast(`Le tunnel des lutteurs. Rejoins ${corner}.`); cue('tunnel'); break;
     case 'prep':
       ctx.walkTo(null); prepUntil = performance.now() + PREP_SECONDS * 1000;
-      ctx.toast('Ton entourage t’entoure, les tambours redoublent. Prépare-toi…'); cue('prep'); break;
+      ctx.toast(bout?.main ? 'Ton coin. Les préliminaires d’abord : ton entrée de gala vient ensuite (« Je suis prêt » pour avancer).'
+        : 'Ton entourage t’entoure, les tambours redoublent. Prépare-toi…');
+      cue('prep'); break;
     case 'ring':
       ctx.walkTo(id.ring); ctx.toast('C’est l’heure : avance jusqu’au cercle.'); cue('walk-out'); break;
     case 'bout': {
@@ -112,7 +128,7 @@ function places(hub: HubWorld, s: ReturnType<typeof fighterSpots>): PlaceSpec[] 
     ] } },
     { id: id.corner, type: 'fighters', name: 'Ton coin', space: 'street', anchors: [{ id: 'coin', kind: 'spot', x: s.corner.x, z: s.corner.z, radius: 2.2 }], offers: { coin: [
       P.use({ id: 'pret', label: 'Je suis prêt', detail: 'Aller au cercle tout de suite', seconds: 0.5, primitive: 'talk', visible: () => phase === 'prep',
-        then: () => { if (ctxRef) go(ctxRef, 'ring'); } }),
+        then: () => { if (hold?.held()) hold.ready(); else if (ctxRef) go(ctxRef, 'ring'); } }),
     ] } },
     { id: id.ring, type: 'fighters', name: 'Le cercle', space: 'street', anchors: [{ id: 'cercle', kind: 'spot', x: s.ring.x, z: s.ring.z, radius: 2.0 }], offers: { cercle: [
       P.enter({ id: 'combat', label: 'Entrer dans le cercle', detail: 'Le combat commence', visible: () => phase === 'ring', then: () => { if (ctxRef) go(ctxRef, 'bout'); } }),
@@ -152,7 +168,7 @@ export const fighterModule: GameModule = {
     switch (phase) {
       case 'called': if (s.inTunnel(p.x, p.z)) go(ctx, 'tunnel'); break;
       case 'tunnel': if (Math.hypot(p.x - s.corner.x, p.z - s.corner.z) < 2.2) go(ctx, 'prep'); break;
-      case 'prep': if (performance.now() >= prepUntil) go(ctx, 'ring'); break;
+      case 'prep': if (performance.now() >= prepUntil && !hold?.held()) go(ctx, 'ring'); break;
       case 'ring': if (Math.hypot(p.x - s.ring.x, p.z - s.ring.z) < 1.2 && ctx.mode() === 'play') go(ctx, 'bout'); break;
       case 'return': if (s.outside(p.x, p.z)) { bout = null; go(ctx, 'idle'); ctx.toast('Ba beneen yoon ! La soirée continue dehors.'); cue('exit'); } break;
     }

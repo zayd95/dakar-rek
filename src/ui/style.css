@@ -128,6 +128,23 @@ body.touch kbd { display:none; }
 #toast .mo-tx ul { margin:3px 0 0; padding:0; list-style:none; }
 #toast .mo-tx li { font-size:12.5px; font-weight:600; color:var(--ink-2); line-height:1.35; }
 #toast .mo-x { position:absolute; top:2px; right:2px; width:36px; height:36px; border:0; border-radius:50%; background:transparent; color:var(--ink-3); font-size:14px; cursor:pointer; }
+/* the fighter's after-bout card (hud.boutCard): the result, one row per thing that changed, « Ensuite » */
+#toast .mo.bc { width:min(420px, 100%); padding:12px 40px 12px 12px; }
+#toast .bc .mo-tx { flex:1; }
+#toast .bc .mo-tx > b { font-size:17px; letter-spacing:-.2px; }
+#toast .bc-sub { display:block; margin-top:1px; font-size:12.5px; font-weight:600; color:var(--ink-2); line-height:1.3; }
+#toast .bc-rows { margin:8px 0 0; padding:0; }
+#toast .bc-r { display:grid; grid-template-columns:minmax(76px, auto) 1fr auto; align-items:baseline; gap:2px 10px; padding:4px 0; border-top:1px solid var(--sep); }
+#toast .bc-r dt { font-size:12px; font-weight:650; color:var(--ink-2); }
+#toast .bc-r dd { margin:0; min-width:0; }
+#toast .bc-v { display:block; font-size:13.5px; font-weight:750; line-height:1.3; color:var(--ink); }
+#toast .bc-note { display:block; font-size:11.5px; font-weight:600; line-height:1.3; color:var(--ink-2); }
+#toast .bc-d { font-style:normal; font-size:12.5px; font-weight:800; white-space:nowrap; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+#toast .bc-d:empty { display:none; }
+#toast .bc-d.up { color:var(--gain); } #toast .bc-d.down { color:var(--warn); }
+#toast .bc-next { margin-top:6px; padding:7px 10px; border-radius:10px; background:#fff4d6; }
+#toast .bc-next b { display:block; font-size:11px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; color:#7a5a12; }
+#toast .bc-next span { display:block; font-size:13px; font-weight:700; line-height:1.35; color:var(--ink); }
 @keyframes moIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 @keyframes tIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 @keyframes tAgain { 50% { transform:scale(1.04); } }
@@ -137,7 +154,7 @@ body.touch kbd { display:none; }
 #ui > #wprompt.on { opacity:1; pointer-events:auto; cursor:pointer; }
 #wprompt .wp { position:relative; display:flex; align-items:center; gap:6px; margin-top:-9px; padding:4px 8px 4px 4px; border-radius:999px; background:var(--surface); color:var(--ink);
   font:700 13px/1 var(--font); white-space:nowrap; box-shadow:var(--shadow); transform-origin:50% 100%; }
-#wprompt .wp::after { content:''; position:absolute; left:50%; bottom:-5px; width:10px; height:10px; margin-left:-5px; background:var(--surface); transform:rotate(45deg); border-radius:0 0 2px 0; }
+#wprompt .wp::after { content:''; position:absolute; left:calc(50% + var(--tail, 0px)); bottom:-5px; width:10px; height:10px; margin-left:-5px; background:var(--surface); transform:rotate(45deg); border-radius:0 0 2px 0; }
 #wprompt .wp.pop { animation:pop .18s ease-out; }
 @keyframes pop { from { transform:scale(.86); opacity:.4; } }
 #wprompt i { display:grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--sun); font-style:normal; font-size:14px; }
@@ -145,6 +162,10 @@ body.touch kbd { display:none; }
 #wprompt em.gain { color:var(--gain); background:#e3f5ec; }
 #wprompt .wp.dis { color:var(--ink-3); } #wprompt .wp.dis i { background:var(--press); filter:grayscale(1); }
 #wprompt kbd { margin-left:1px; }
+/* unavailable: the reason in full under the verb (a card instead of a pill), kept on screen by hud.ts bubbleX: the max
+   width here is the one bubbleX assumes (half of it: min(140px, 39vw)); 12.5 px on the opaque surface, warn 6.6:1 */
+#wprompt .wp.why { flex-wrap:wrap; width:max-content; max-width:min(280px, 78vw); border-radius:14px; padding:5px 11px 8px 5px; white-space:normal; row-gap:3px; }
+#wprompt .wp.why small { flex-basis:100%; padding-left:32px; font:650 12.5px/1.3 var(--font); color:var(--warn); }
 
 /* ------------------------------------------------------------- action bar: « ⋯ » over the primary verb (bottom right) */
 #ui > #actbar { position:absolute; right:calc(16px + var(--sa-r)); bottom:calc(22px + var(--sa-b)); display:flex; flex-direction:column; align-items:flex-end; gap:10px; pointer-events:none; z-index:3; }
@@ -234,6 +255,9 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 #modal .item small { display:block; margin-top:2px; font-size:12.5px; font-weight:500; line-height:1.3; color:var(--ink-2); }
 #modal .item em { flex:none; font-style:normal; font-size:13.5px; font-weight:800; white-space:nowrap; color:var(--ink); font-variant-numeric:tabular-nums; }
 #modal .item em.gain { color:var(--gain); }
+/* « Payer » after a price said first in the label (the ticket window): a sun pill like the action button; grey when it can't be paid */
+#modal .item em.pay { padding:7px 13px; border-radius:999px; background:var(--sun); box-shadow:0 1px 0 var(--sun-deep); }
+#modal .item.dis em.pay { background:var(--surface-2); box-shadow:none; color:var(--ink-3); }
 #modal .item.dis { cursor:default; }
 #modal .item.dis .tx { color:var(--ink-3); }
 #modal .item.dis small { color:var(--warn); }
@@ -319,6 +343,9 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #place .pl-more { display:none; }
   #place em.on { display:table; margin:2px 0 0 auto; }
   #toast { top:calc(170px + var(--sa-t)); }
+  /* the after-bout card: a smaller icon leaves its rows the room they need */
+  #toast .bc .mo-ic { width:30px; height:30px; font-size:16px; }
+  #toast .mo.bc { gap:8px; padding-left:10px; }
   #act { max-width:calc(100vw - 190px); }
   /* the stride lane's « Courir » button sits right of the joystick (left 168 px, 58 px wide): keep clear of it */
   body.touch #act { max-width:calc(100vw - 248px - var(--sa-l) - var(--sa-r)); gap:7px; padding-right:12px; }
@@ -327,6 +354,9 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   /* the button is narrow here (≈ 140 px beside « Courir »): the verb takes two lines rather than « Ma cha… » */
   body.touch #act b { white-space:normal; overflow-wrap:break-word; hyphens:auto; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.1; }
   #progress { min-width:0; width:min(250px, calc(100vw - 172px)); }
+  /* a row whose price is said first in its label, then « Payer » (the ticket window): a little more room for the words */
+  #modal .item:has(em.pay) { gap:10px; padding-left:12px; padding-right:10px; }
+  #modal .item:has(em.pay) em.pay { padding:7px 11px; }
   #modal { background:rgba(8,12,20,.28); }
   #modal .sheet { left:0; right:0; bottom:var(--kb); width:auto; max-height:56%; border-radius:var(--r-sheet) var(--r-sheet) 0 0; padding-bottom:var(--sa-b); animation:shUp .22s ease-out; }
   #modal .sheet.tall { max-height:calc(100% - var(--sa-t) - 28px); }
@@ -352,6 +382,17 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   /* short screen: a moment card keeps its first five lines, so it and the toasts under it stay above the action column */
   #toast .mo-tx li:nth-child(n+6) { display:none; }
   #toast .mo { padding-top:8px; padding-bottom:8px; }
+  /* the after-bout card on a short screen: no icon, each note on its value's line, the first next step only; it ends
+     above the action column */
+  #toast .mo.bc { padding:7px 34px 7px 10px; }
+  #toast .bc .mo-ic, #toast .bc-next span + span { display:none; }
+  #toast .bc-v, #toast .bc-note { display:inline; } #toast .bc-note::before { content:' · '; }
+  #toast .bc .mo-tx > b { display:inline; font-size:15px; }
+  #toast .bc-sub { display:inline; } #toast .bc-sub::before { content:' · '; }
+  #toast .bc-rows { margin-top:3px; }
+  #toast .bc-r { grid-template-columns:minmax(70px, auto) 1fr auto; }
+  #toast .bc-r { padding:1px 0; }
+  #toast .bc-next { margin-top:4px; padding:4px 8px; }
   /* the trades' gesture card (src/ui/gesture.ts) is centred at the bottom, 52vw wide: the action column stays right of it */
   #act { max-width:calc(24vw - 20px - var(--sa-r)); }
   #progress { min-width:0; width:calc(24vw - 20px - var(--sa-r)); }
@@ -360,4 +401,62 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 }
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+}
+
+/* ------------------------------------------------------------- the Làmb 2.0 duel HUD (?lamb2; markup: src/lamb/duel.ts)
+   Four gauges and no life bar: each side's Endurance, Équilibre and Sang-froid named on its own bar (the colour of the
+   bar beside its name), and in the empoignade the Prise (« toi » on the left in green, « lui » on the right in red)
+   with its words under it. Readable on a phone in portrait and in landscape, never under the duel's buttons or the
+   joystick. Styles only: the duel's markup, numbers and rules stay src/lamb's. Every selector starts with body.induel
+   so it wins over the duel's own stylesheet, injected later in the page. */
+body.induel .duel-ui.frappe .duel-legend { display:none; }                                /* the names are on the bars */
+body.induel .duel-ui.frappe .duel-bars { top:calc(env(safe-area-inset-top,0px) + 54px); gap:8px; }
+body.induel .duel-ui.frappe .duel-bars > div { min-width:0; padding:5px 8px 7px; border-radius:12px; background:rgba(15,23,42,.82); }
+body.induel .duel-ui.frappe .duel-bars > div > span { display:block; font-size:12.5px; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.induel .duel-ui.frappe .duel-bars > div > i { position:relative; overflow:visible; height:8px; margin:5px 0 0 72px; }
+body.induel .duel-ui.frappe .duel-bars > div > i.bal, body.induel .duel-ui.frappe .duel-bars > div > i.cmp { height:7px; margin-top:6px; }
+body.induel .duel-ui.frappe .duel-bars > div > i > b { border-radius:4px; }
+body.induel .duel-ui.frappe .duel-bars > div > i::before { content:'Endurance'; position:absolute; right:calc(100% + 6px); top:50%; transform:translateY(-50%);
+  padding-left:5px; border-left:3px solid #22c55e; font:700 11px/1.1 system-ui,sans-serif; color:#e2e8f0; white-space:nowrap; }
+body.induel .duel-ui.frappe .duel-bars > div > i.bal::before { content:'Équilibre'; border-left-color:#38bdf8; }
+body.induel .duel-ui.frappe .duel-bars > div > i.cmp::before { content:'Sang-froid'; border-left-color:#f59e0b; }
+body.induel .duel-ui.frappe .duel-note { top:calc(env(safe-area-inset-top,0px) + 128px); font-size:11px; }
+body.induel .duel-ui.frappe .duel-step { top:calc(env(safe-area-inset-top,0px) + 148px); }
+body.induel .duel-ui.frappe .duel-msg { top:max(27%, calc(env(safe-area-inset-top,0px) + 236px)); }
+/* the Prise: a gauge panel like the others, « toi » / « lui » over its ends, its words in full under it */
+body.induel .duel-ui.frappe .duel-clinch { top:calc(max(27%, calc(env(safe-area-inset-top,0px) + 236px)) + 58px); width:min(88vw, 360px);
+  padding:6px 10px 8px; border-radius:12px; background:rgba(15,23,42,.82); }
+body.induel .duel-ui.frappe .duel-clinch > i { position:relative; overflow:visible; height:12px; margin-top:15px; }
+body.induel .duel-ui.frappe .duel-clinch > i > b { border-radius:4px 0 0 4px; }
+body.induel .duel-ui.frappe .duel-clinch > i::before, body.induel .duel-ui.frappe .duel-clinch > i::after { position:absolute; bottom:calc(100% + 4px); font:800 11px/1 system-ui,sans-serif; white-space:nowrap; }
+body.induel .duel-ui.frappe .duel-clinch > i::before { content:'Prise · toi'; left:0; color:#86efac; }
+body.induel .duel-ui.frappe .duel-clinch > i::after { content:'lui'; right:0; color:#fca5a5; }
+body.induel .duel-ui.frappe .duel-clinch > em { margin-top:6px; font-size:12.5px; font-weight:600; line-height:1.3; color:#f1f5f9; text-shadow:none; }
+/* Coach Ablaye's lesson or a drill (its card under the rules' line): the message and the Prise go under the card */
+body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-msg { top:calc(env(safe-area-inset-top,0px) + 290px); }
+body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-clinch { top:calc(env(safe-area-inset-top,0px) + 348px); }
+/* a narrow phone (360 px): the joystick a little smaller and closer to the edge, clear of « Grosse frappe » */
+@media (max-width:380px) and (orientation:portrait) {
+  body.induel.touch #joy { left:calc(12px + var(--sa-l)); bottom:calc(24px + var(--sa-b)); width:108px; height:108px; }
+}
+/* a phone in landscape: the gauges in the top row between the title and the timer; the lesson or drill card on the
+   left above the joystick; the message and the Prise in the column between the card and the duel's buttons; the
+   rules' line at the bottom of that column */
+@media (max-height:500px) and (orientation:landscape) {
+  body.induel .duel-ui.frappe .duel-head { flex:0 1 auto; max-width:22vw; }
+  body.induel .duel-ui.frappe .duel-timer { margin-left:auto; }
+  body.induel .duel-ui.frappe .duel-bars { top:calc(env(safe-area-inset-top,0px) + 6px); width:min(42vw, 440px); gap:6px; }
+  body.induel .duel-ui.frappe .duel-bars > div { padding:4px 8px 5px; }
+  body.induel .duel-ui.frappe .duel-bars > div > span { font-size:11.5px; }
+  body.induel .duel-ui.frappe .duel-bars > div > i { height:7px; margin:4px 0 0 64px; }
+  body.induel .duel-ui.frappe .duel-bars > div > i.bal, body.induel .duel-ui.frappe .duel-bars > div > i.cmp { height:6px; margin-top:4px; }
+  body.induel .duel-ui.frappe .duel-bars > div > i::before { font-size:10.5px; }
+  body.induel .duel-ui.frappe .duel-step { top:calc(env(safe-area-inset-top,0px) + 56px); left:max(10px, env(safe-area-inset-left,0px)); transform:none; width:min(24vw, 220px); }
+  /* the column: from the card's right edge (18 px + 24 vw) to the buttons' left edge (100 vw − 236 px), notches included */
+  body.induel .duel-ui.frappe .duel-msg, body.induel .duel-ui.frappe .duel-clinch, body.induel .duel-ui.frappe .duel-note {
+    left:calc(62vw - 109px + (var(--sa-l) - var(--sa-r)) / 2); width:min(calc(76vw - 262px - var(--sa-l) - var(--sa-r)), 360px); }
+  body.induel .duel-ui.frappe .duel-msg, body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-msg { top:calc(env(safe-area-inset-top,0px) + 64px); font-size:20px; }
+  body.induel .duel-ui.frappe .duel-clinch, body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-clinch { top:calc(env(safe-area-inset-top,0px) + 118px); }
+  body.induel .duel-ui.frappe .duel-clinch > em { font-size:12px; }
+  body.induel .duel-ui.frappe .duel-note { top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 6px); }
 }

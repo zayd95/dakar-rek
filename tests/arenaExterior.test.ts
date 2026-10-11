@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ARENA_PURCHASES, DRUMS_NEAR, DRUMS_RANGE, ECURIES, FIGHT_FROM, MURMUR_RANGE, crossesQueue, drumVolume, drumsCentre, gateOf, isFightEvening, murmurVolume,
-  exteriorPhase, nextFightEvening, outflowDestinations, queueDistance, stallFronts, stallsOf, vendorPlaces, weekday, WEEKDAY_FR,
+  exteriorPhase, nextFightEvening, outflowDestinations, queueDistance, stallFronts, stallsOf, vendorPlaces, weekday, WEEKDAY_FR, SUPPORTERS_STALL,
 } from '../src/arena/exteriorRules';
 import { arenaExterior } from '../src/arena/exterior';
 import { GALA, streetAt } from '../src/arena/program';
@@ -55,8 +55,9 @@ describe('arena exterior: gate, stalls, vendors', () => {
     expect(s).toHaveLength(4);
     for (const p of s) { expect(Math.hypot(p.x - arena.cx, p.z - arena.cz)).toBeGreaterThan(WALL_R); expect(Math.abs(p.x - g.x)).toBeGreaterThan(g.queue.half + 3); }
   });
-  it('vendors are places with prices: drinks, grilled food, écurie scarves and flags, water; each purchase counts', () => {
-    const places = vendorPlaces('pikine', arena);
+  it('vendors are places with prices: drinks, grilled food, the écuries\' colours, water; each purchase counts', () => {
+    const got: string[] = [];
+    const places = vendorPlaces('pikine', arena, { gear: id => got.push(id), owns: id => id === 'drapeau_teranga' });
     expect(places.map(p => p.id)).toEqual(['pikine:arena-out:boissons', 'pikine:arena-out:grillades', 'pikine:arena-out:supporters', 'pikine:arena-out:eau']);
     const offers = places.flatMap(p => p.offers.stall);
     for (const o of offers) {
@@ -65,9 +66,16 @@ describe('arena exterior: gate, stalls, vendors', () => {
     }
     const labels = offers.map(o => o.label);
     expect(labels).toEqual(expect.arrayContaining(['Bissap glacé', 'Café Touba', 'Cornet d’arachides grillées', 'Brochettes', 'Sachet d’eau fraîche']));
-    for (const e of ECURIES) {
-      const scarf = offers.find(o => o.id === 'echarpe_' + e.id)!;
-      expect(scarf.steps.find(s => s.effects?.items)?.effects?.items).toEqual({ ['echarpe_' + e.id]: 1 });
+    // the supporters' stall (invented name): a scarf, a cap, a small flag and a tee of each écurie; once paid, the piece
+    // is the player's and worn (the hook), one of each
+    expect(places[2].name).toBe(SUPPORTERS_STALL);
+    for (const e of ECURIES) for (const id of ['echarpe', 'casquette', 'drapeau', 'maillot'].map(k => `${k}_${e.id}`)) {
+      const o = offers.find(x => x.id === id)!;
+      expect(o.label).toContain(e.name);
+      expect(o.steps.some(s => s.effects?.items)).toBe(false);                               // no longer a bag item
+      o.steps.find(s => s.then)!.then!();
+      expect(got.at(-1)).toBe(id);
+      expect(o.requires!()).toBe(id === 'drapeau_teranga' ? 'Déjà à toi · à porter depuis « Biens »' : null);
     }
     // anchors stand on the street side of the stalls, away from the arena's own entry at the gate
     const g = gateOf(arena);

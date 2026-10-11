@@ -45,7 +45,7 @@ export function sectionOf(a: number): string | null {
   for (const s of SECTIONS) if ((x >= s.a0 && x <= s.a1) || (x + TAU >= s.a0 && x + TAU <= s.a1)) return s.id;
   return null;
 }
-const SECTION_SIDE: Record<string, StandSide | 'ends'> = { A: 'ends', B: 'left', C: 'left', D: 'ends', E: 'ends', F: 'right', G: 'right', H: 'ends' };
+export const SECTION_SIDE: Record<string, StandSide | 'ends'> = { A: 'ends', B: 'left', C: 'left', D: 'ends', E: 'ends', F: 'right', G: 'right', H: 'ends' };
 /** Which side a seat's supporters are on: B–C the left wrestler's, F–G the right one's, the end sections mixed. */
 export function sideOf(a: number): StandSide | 'ends' {
   const sec = sectionOf(a);

@@ -31,6 +31,24 @@ Only real saved values. No invented numbers and no streak counters.
     when one is reached (« Réputation : Connu du quartier ! »).
 
   The result toast stays short.
+- **After a bout on the arena's fighter path** (« Petit combat de quartier », « Combat du soir », a gala place, the
+  title bout — and the player's own gala main event, which takes the same path): one larger card instead of the recap,
+  the **after-bout card** (`boutCard`, `nextSteps`; `hud.boutCard`), once the duel's own result screen is closed:
+  - the result and who against (« Victoire » · « Gala · contre Gora · par chute · avec frappe »);
+  - **Palmarès**: the record now, with the bout just fought (« 4 V · 1 D · 0 N », « +1 V »; an abandon counts apart);
+  - **Classement**: the place in the city's table (« 11e sur 14 »), the rung or the new one (« Nouveau palier :
+    Undercards ! »), the place before (« était 13e »), the points the bout gave (« +28 pts »);
+  - **Réputation** and **Influence**, always: the word now and the change (« +8 », « = »), « Nouveau mot » when a word
+    is reached for the first time;
+  - **Cachet** with the Richesse it brought; **Forme** when it moved; **Ceinture** when it was won, kept or lost;
+  - **Ensuite**, two lines at most: a revenge after a defeat, then the belt to defend, the title to fight for, or a gala
+    place on the evening the rules open it (« ce soir » when `galaBlock` still lets a gala place in tonight, « demain
+    soir », « vendredi soir »), else the next rung and what it still asks (`rankOf(...).next`).
+
+  Every number is one the career's rules already gave, read before and after `recordBout`; nothing new is computed.
+  Gains are green, losses red. It stays 16–24 s, a tap dismisses it, it never covers the action button or the joystick;
+  on a landscape phone it drops its icon, puts the result and the opponent on one line and keeps the first next step only. Debug: `__dakar.careerBout(mode, winner,
+  level, outcome, name, true)` shows it for a simulated bout.
 - **After a gala watched to the end** (fight evenings): the result, the belt (taken or kept), and the winner's new place
   in the city's table (or the top two when nothing moved).
 - **A new word on a gauge:** a small card once, with the reason (the gauge's note). The best word reached per
@@ -88,13 +106,20 @@ Daouda 4, Assane 3, Birame 2) and independents (Gora 2, Ndiaga 2, Pape 1, Saliou
   champion. Name, style and level come from the roster (`GameModule.opponent`).
 - **Gala place** (« Place au gala · contre <nom> », at the arena, Friday–Sunday from 16 h, from Adversaires réputés):
   one gala bout an evening, against a wrestler a notch above (never one of the main event), through the fighter's path
-  (`arenaFighter.begin`). Purse × 2, positive points × 1.5, fame × 2. Entries carry `kind: 'gala'`.
+  (`arenaFighter.begin`). Purse × 2, positive points × 1.5, fame × 2. Entries carry `kind: 'gala'`. The player is then
+  tonight's main event (src/arena/myGala.ts, docs/ARENA_VISIT.md « The player's own gala night »): the bill and the
+  posters name them, the preliminaries run while their corner is held, the ceremony is theirs (the announcer reads
+  their record from `summary`, the griot sings their strength, their neighbourhood and their wins), their real result
+  is the show's, and friends in the stands see them through presence (`arena.m`), never a simulated duel.
 - **Title** (« Combat pour le titre », Sundays from 16 h, from Contender): against the champion, or the best wrestler for
   a vacant belt. Holding it, « Défendre la ceinture » against the best challenger. Purse × 3, positive points × 2,
   fame × 3, `kind: 'title'`. A belt the player does not put at stake for more than 14 days is vacant at the next Sunday,
   and the two best fight for it.
 - **Posters and the arena show** name the evening's real card through `setBillSource` (src/arena/program.ts `billFor`);
-  « Combat pour le titre » on Sundays, the player's own name when they are signed up for the title.
+  « Combat pour le titre » on Sundays, the player's own name when they are signed up for a gala place or the title
+  (`playerMainBill`: the player on the left). Given up before the bout, the sign-up is forgotten and the city's card
+  is the bill again. The arena's show keeps the player's bill to the end of their evening (the career forgets the
+  sign-up as soon as their bout is recorded).
 
 ## Lutteurs: the wrestlers' cards (phone › Arène)
 
