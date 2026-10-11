@@ -45,6 +45,8 @@ import {
 
 /** Drawn while the camera is within this distance of the junction. */
 const VIEW = 190;
+/** Seconds between two updates while nothing of the road is drawn. */
+export const OFF_EVERY = 0.5;
 /** Fans on the step are drawn within this distance (the apprenti's). */
 const NEAR = 70;
 /** Jam cars solid for drive mode within this distance of the player. */
@@ -72,6 +74,8 @@ class GalaTraffic {
   private riders: Rider[][] = [];
   private audio = new GalaAudio();
   private lastT = NaN;
+  /** Seconds since the last update while nothing of the road is drawn. */
+  private offT = 0;
   private lastGo: 'gate' | 'jam' | null = null;
   private outSince = NaN;
   private wasDir: RoadDir | null = null;
@@ -152,12 +156,16 @@ class GalaTraffic {
   }
 
   update(dt: number) {
-    const ctx = this.ctx, t = ctx.now() / 1000, hour = ctx.hour(), day = ctx.day();
-    const real = cityTimeAt(ctx.now()).hourFloat, fixed = Math.abs(hour - real) > 0.02 && Math.abs(Math.abs(hour - real) - 24) > 0.02;
-    const { dir, size } = this.mode(), seed = galaSeed(this.hub.id, day), q = this.quality;
-    const cam = ctx.camera.position, j = this.geo.junction;
+    const ctx = this.ctx, cam = ctx.camera.position, j = this.geo.junction;
     const draw = !ctx.inside() && !insideArena(ctx, this.hub) && Math.hypot(cam.x - j.x, cam.z - j.z) < VIEW;
     this.group.visible = draw;
+    // nothing of the road can be seen (indoors, inside the arena's walls, far away): its state follows the shared clock
+    // (events, horns, the moto-taxis' handovers are caught up from the last update) twice a second instead of every frame
+    if (!draw && !this.now.draw && (this.offT += dt) < OFF_EVERY) return;
+    this.offT = 0;
+    const t = ctx.now() / 1000, hour = ctx.hour(), day = ctx.day();
+    const real = cityTimeAt(ctx.now()).hourFloat, fixed = Math.abs(hour - real) > 0.02 && Math.abs(Math.abs(hour - real) - 24) > 0.02;
+    const { dir, size } = this.mode(), seed = galaSeed(this.hub.id, day), q = this.quality;
     // when the street turns to leaving: the outflow starts now (or at 22 h 24 when one arrives later on the clock)
     if (dir === 'out' && this.wasDir !== 'out') this.outSince = this.wasDir === null && !fixed && hour >= LEAVING_FROM ? t - (hour - LEAVING_FROM) * HOUR_S : t;
     this.wasDir = dir;

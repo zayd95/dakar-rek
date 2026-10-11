@@ -399,6 +399,18 @@ describe('the gala road on the Pikine hub', () => {
       i = api.info();
       expect(i.dir).toBe('out'); expect(i.jam.faces).toBeCloseTo(Math.PI / 2);
       expect(i.rank.length).toBeGreaterThan(0);
+      // the camera far away: nothing drawn, the road's state follows the clock twice a second; back near, at once
+      const near = camera.position.clone();
+      camera.position.set(j.x + 400, 6, j.z); camera.updateMatrixWorld();
+      run(1);
+      expect(api.info().draw).toBe(false);
+      const ticks: number[] = [];
+      for (let k = 0; k < 60; k++) { ms += 1000 / 30; galaTrafficModule.update!(ctx, 1 / 30); const t0 = api.info().t; if (ticks.at(-1) !== t0) ticks.push(t0); }
+      expect(ticks.length).toBeGreaterThanOrEqual(3); expect(ticks.length).toBeLessThanOrEqual(5);       // two seconds: ~4 updates
+      camera.position.copy(near); camera.updateMatrixWorld();
+      ms += 1000 / 30; galaTrafficModule.update!(ctx, 1 / 30);
+      i = api.info();
+      expect(i.draw).toBe(true); expect(i.t).toBeCloseTo(ms / 1000, 6); expect(i.jam.cars).toBeGreaterThan(0);
       // quiet: nothing drawn, the roads open again
       api.force(null); run(2);
       i = api.info();
