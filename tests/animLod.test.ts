@@ -122,6 +122,21 @@ describe('a humanoid under the level of detail', () => {
     expect(updates).toHaveBeenCalledTimes(30);
     expect(h.gaitInfo()).not.toBeNull();
   });
+  it('an owner turning a bone over the clip after animate (the apprentice on the grab bar) starts from the clip every frame', async () => {
+    setHumanoidView(cam);
+    const { h, updates } = await body(0, 12);                                  // out of view: few mixer updates
+    const arm = h.group.getObjectByName('upper_armR')!, prev = new THREE.Quaternion();
+    let skipped = 0;
+    for (let k = 0; k < 60; k++) {
+      const n = updates.mock.calls.length;
+      h.animate(1 / 60, 0); arm.rotateX(-2.4);
+      const same = Math.max(...arm.quaternion.toArray().map((v, i) => Math.abs(v - prev.toArray()[i])));
+      if (k > 0 && updates.mock.calls.length === n) { skipped++; expect(same).toBeLessThan(1e-9); }
+      else if (k > 0) expect(arm.quaternion.angleTo(prev)).toBeLessThan(0.3);          // the Idle clip barely moves
+      prev.copy(arm.quaternion);
+    }
+    expect(skipped).toBeGreaterThan(40);
+  });
   it('a body another rig poses after the mixer (fullRate) gets every frame wherever it is', async () => {
     setHumanoidView(cam);
     const { h, updates } = await body(0, 30);

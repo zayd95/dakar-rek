@@ -154,6 +154,9 @@ export function countCalls(scene: THREE.Scene, extra: THREE.Object3D, camera: TH
   return { calls: main, shadow: shade, by, byShadow };
 }
 
+/** The process's CPU time (ms), or wall time where there is no process (never in node). */
+const cpuNow = () => { const p = (globalThis as { process?: { cpuUsage(): { user: number; system: number } } }).process; if (!p) return performance.now(); const u = p.cpuUsage(); return (u.user + u.system) / 1000; };
+
 // ------------------------------------------------------------------ the host
 const VIEW: Record<Quality, { aspect: number; fov: number; portrait: boolean; shadows: boolean }> = {
   low: { aspect: 390 / 844, fov: 66, portrait: true, shadows: false },
@@ -321,6 +324,7 @@ export class PerfHost {
   frame(dt: number, times?: FrameTimes) {
     const ctx = this.ctx, S = this.sys, now = performance.now.bind(performance);
     this.now += dt * 1000;
+    const cpu0 = times ? cpuNow() : 0;
     S.view?.(this.camera);                                   // the camera as last rendered: the humanoids' animation detail
     const mark = (k: string, t0: number) => { if (times) times[k] = (times[k] ?? 0) + now() - t0; return now(); };
     S.activities.update(dt);
@@ -349,6 +353,7 @@ export class PerfHost {
     const d = S.daylight(this.hour), night = 1 - Math.min(1, Math.max(0, d * 3.2));
     this.world.lampGlow.visible = night > 0.3;
     t = mark('rest of update', t);
+    if (times) times['cpu'] = (times['cpu'] ?? 0) + cpuNow() - cpu0;     // the update's CPU time (preemption left out)
     // renderer.render: the scene's hook (the vehicle lamps), then every world matrix
     this.scene.onBeforeRender(null as never, this.scene, this.camera, null as never, null as never, null as never);
     this.scene.updateMatrixWorld();
@@ -372,6 +377,8 @@ export interface MomentResult {
   q: Quality; moment: MomentName; frames: number;
   /** Mean ms per frame of the update (all sections but the render prep), and per section. */
   update: number; sections: Record<string, number>;
+  /** The update's CPU time (ms a frame, the process's: steadier than wall time when other processes share the cores). */
+  cpu: number;
   /** Draw calls of the main pass (as the browser's `renderer.info`) and of the shadow pass, averaged over the measured
    *  frames (sampled), and the last sample's breakdown per group. */
   calls: number; shadow: number; by: Record<string, number>; byShadow: Record<string, number>;
@@ -401,8 +408,8 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
     }
     const sections: Record<string, number> = {};
     let update = 0;
-    for (const [k, v] of Object.entries(sum)) { sections[k] = v / n; if (!k.startsWith('render prep')) update += v / n; }
-    out.push({ q, moment, frames: n, update, sections, calls: calls / Math.max(1, samples), shadow: shadow / Math.max(1, samples), by, byShadow, arena: a0 ? { phase: a0.phase, street: a0.street } : null });
+    for (const [k, v] of Object.entries(sum)) { if (k === 'cpu') continue; sections[k] = v / n; if (!k.startsWith('render prep')) update += v / n; }
+    out.push({ q, moment, frames: n, update, cpu: (sum.cpu ?? 0) / n, sections, calls: calls / Math.max(1, samples), shadow: shadow / Math.max(1, samples), by, byShadow, arena: a0 ? { phase: a0.phase, street: a0.street } : null });
   };
   // 1. 17:30: the fans arrive and queue; the player in front of the gate
   for (let k = 0; k < warm; k++) host.frame(dt);

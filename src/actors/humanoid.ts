@@ -282,6 +282,8 @@ export const ANIM_LOD = {
   /** Mixer updates a second: in view between gaitNear and farFrom, in view beyond farFrom, out of view or hidden. */
   mid: 20, far: 10, unseen: 5,
 } as const;
+/** The rig's bones under a body's skinned scene (what the mixer poses). */
+function boneList(root: THREE.Object3D) { const out: THREE.Object3D[] = []; root.traverse(o => { if ((o as THREE.Bone).isBone) out.push(o); }); return out; }
 /** The camera of the frame (set by main.ts before the modules update; `on` false: every body animated in full). */
 const view = { on: false, x: 0, y: 0, z: 0, frustum: new THREE.Frustum() };
 let madeHumanoids = 0;
@@ -335,17 +337,19 @@ export class Humanoid {
   private gait: GaitState | null = null;
   private gaitRig: GaitRig | null | undefined;
   private gaitW = 1;
-  /**
-   * Every frame in full whatever the distance (ANIM_LOD): set for a body whose bones another rig turns after the mixer,
-   * which must then reset them every frame (src/lamb/strikeRig.ts).
-   */
+  /** Every frame in full whatever the distance (ANIM_LOD): the player's own body, the wrestlers of a bout avec frappe. */
   fullRate = false;
   /**
    * Animation level of detail: time the mixer still owes (s), time left before its next update in a slower tier, the
-   * gait in use last frame, the ground speed measured.
+   * gait in use last frame, the ground speed measured. On a frame without a mixer update the bones are set back to the
+   * mixer's last pose (`saved`): owners that turn a bone over the clip after `animate` (an apprentice's arm on the grab
+   * bar, the stands' clapping, the traffic agent's sweeping arm) start from the clip's pose every frame, as with the
+   * mixer, and never add up their turns.
    */
   private lag = 0; private due = 0;
   private near = true;
+  private bones: THREE.Object3D[] | null = null;
+  private saved: Float64Array | null = null;
   /** Its place in the slower tiers' rhythm (0–1), so that bodies made together do not all update on the same frame. */
   private phase = (madeHumanoids++ * 0.618034) % 1;
   private lx = NaN; private lz = NaN; private v = 0;
@@ -459,9 +463,8 @@ export class Humanoid {
     }
     this.lx = o.x; this.lz = o.z;
     // how much work this body gets (ANIM_LOD): where it was last drawn, seen or not
-    const m = this.group.matrixWorld.elements;
-    const lod = this.fullRate ? 0 : animLod(m[12], m[13], m[14], this.group.scale.x, this.group.visible && this.root.visible, this.near);
-    if (lod !== 0 && this.near) this.due = this.phase / lod;                 // into a slower tier: staggered with the others
+    const m = this.group.matrixWorld.elements, wasNear = this.near;
+    const lod = this.fullRate ? 0 : animLod(m[12], m[13], m[14], this.group.scale.x, this.group.visible && this.root.visible, wasNear);
     if (lod === ANIM_LOD.unseen) this.gaitW = 0;                             // nobody sees it go: no fade needed
     this.near = lod === 0;
     if (held) { this.play(held, 0.2); this.gaitW = Math.max(0, this.gaitW - dt / 0.2); }
@@ -484,14 +487,33 @@ export class Humanoid {
     // the mixer: every frame in full detail (and while the gait fades), else at the tier's rate with the time it owes
     this.lag += dt;
     if (lod !== 0 && this.gaitW <= 0) {
-      if ((this.due -= dt) > 0) return;                                      // not yet: the last pose stays
-      this.due = 1 / lod + Math.max(this.due, -0.5 / lod);
+      if (wasNear) this.due = this.phase / lod;                              // just slowed down: now, then staggered with the others
+      else if ((this.due -= dt) > 0) { this.restorePose(); return; }         // not yet: the mixer's last pose
+      else this.due = 1 / lod + Math.max(this.due, -0.5 / lod);
     }
     this.mixer.update(this.lag); this.lag = 0;
+    if (lod !== 0) this.savePose();
     const w = this.gait ? this.gaitW * this.gait.stand : 0;
     if (w > 0) {
       if (this.gaitRig === undefined) this.gaitRig = GaitRig.from(this.root);
       this.gaitRig?.apply(this.gait!, w);
+    }
+  }
+  /** Keeps the pose the mixer just set (the bones' rotations and positions). */
+  private savePose() {
+    const b = (this.bones ??= boneList(this.root)), s = (this.saved ??= new Float64Array(b.length * 7));
+    for (let i = 0, o = 0; i < b.length; i++, o += 7) {                       // (field by field: toArray is megamorphic, slow)
+      const q = b[i].quaternion, p = b[i].position;
+      s[o] = q.x; s[o + 1] = q.y; s[o + 2] = q.z; s[o + 3] = q.w; s[o + 4] = p.x; s[o + 5] = p.y; s[o + 6] = p.z;
+    }
+  }
+  /** Back to the pose the mixer last set: the bones an owner turned over it since are set back (the others are left alone). */
+  private restorePose() {
+    const b = this.bones, s = this.saved; if (!b || !s) return;
+    for (let i = 0, o = 0; i < b.length; i++, o += 7) {
+      const q = b[i].quaternion, p = b[i].position;
+      if (q.x !== s[o] || q.y !== s[o + 1] || q.z !== s[o + 2] || q.w !== s[o + 3]) q.set(s[o], s[o + 1], s[o + 2], s[o + 3]);
+      if (p.x !== s[o + 4] || p.y !== s[o + 5] || p.z !== s[o + 6]) p.set(s[o + 4], s[o + 5], s[o + 6]);
     }
   }
   /** The gait as computed this frame (checks: src/main.ts `__dakar.gait()`), or null while a pose is held. */
