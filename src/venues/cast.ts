@@ -82,7 +82,8 @@ export class Cast {
     for (const e of this.list) {
       if (this.walks.has(e.r.id)) this.step(e, dt);
       else if (player && e.r.yieldR && !e.r.seat) this.yieldTo(e, player, dt);
-      const p = e.h.group.getWorldPosition(WP);                              // roles may ride a moving parent (a pirogue)
+      // roles may ride a moving parent (a pirogue): its world matrix as last drawn (no walk up the parents every frame)
+      const g = e.h.group, p = g.parent ? WP.copy(g.position).applyMatrix4(g.parent.matrixWorld) : WP.copy(g.position);
       const vis = active && e.shown && Math.hypot(p.x - viewer.x, p.z - viewer.z) <= limit;
       e.h.group.visible = vis;
       if (vis) e.h.animate(dt, 0);
