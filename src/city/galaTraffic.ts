@@ -316,7 +316,14 @@ class GalaTraffic {
     }
   }
 
-  /** Run a vehicle straight through the jam as it stands now (drive mode's own step and box test): does it get past? */
+  /** The jam's cars standing or driving in along their column (not those let through, turning away). */
+  private onColumns() { return this.cars.filter(c => c.state !== 'away' && Math.abs(c.z - this.geo.columns[c.col]) < 1e-6); }
+
+  /**
+   * Run a vehicle straight through the jam as it stands now (drive mode's own step and box test): does it get past? A
+   * moto gets through either gap while the agent lets the gate's side go; while the jam goes, the front cars turning
+   * round to the north cross the gaps by the front and it waits (`go`, `stoppedBy` say so).
+   */
   probe(kind: 'moto' | 'car', z: number) {
     const d: DriveSpec | undefined = (kind === 'moto' ? motoSpec() : carSpec()).drive, w = this.hub;
     if (!d) return null;
@@ -330,11 +337,13 @@ class GalaTraffic {
       }
       return false;
     };
-    const tail = Math.max(this.geo.front, ...this.cars.filter(c => c.state === 'queue').map(c => c.x + c.hl));
+    const tail = Math.max(this.geo.front, ...this.onColumns().filter(c => c.x < 120).map(c => c.x + c.hl));
     const st = newDriveState(tail + 6, z, -Math.PI / 2);
     let bumps = 0;
     for (let k = 0; k < 30 * 25 && st.x > this.geo.front - 3; k++) if (driveStep(st, { throttle: 1, steer: 0 }, d, 1 / 30, blocked) && Math.abs(st.speed) < 0.5) bumps++;
-    return { kind, z, from: tail + 6, x: st.x, passed: st.x <= this.geo.front - 3, bumps };
+    const passed = st.x <= this.geo.front - 3, ph = agentPhase(this.now.t, this.now.seed);
+    const by = passed ? null : this.cars.reduce<JamNow | null>((b, c) => (!b || Math.hypot(c.x - st.x, c.z - st.z) < Math.hypot(b.x - st.x, b.z - st.z) ? c : b), null);
+    return { kind, z, from: tail + 6, x: st.x, passed, bumps, go: ph.go, left: Math.round(ph.left * 10) / 10, stoppedBy: by ? `${by.state} car of column ${by.col}` : null };
   }
 
   info() {
@@ -348,7 +357,8 @@ class GalaTraffic {
         columns: this.geo.columns.map((_, c) => tl ? tl.queue(c, this.now.t).length : 0), faces: standing.length ? Math.round(standing[0].yaw * 100) / 100 : null,
         list: this.cars.map(c => ({ col: c.col, kind: c.kind, state: c.state, x: Math.round(c.x * 10) / 10, z: Math.round(c.z * 10) / 10, yaw: Math.round(c.yaw * 100) / 100, hw: c.hw, hl: c.hl })),
       },
-      lanes: { moto: filterLanes(standing, this.geo.corridor, 0.42), car: filterLanes(standing, this.geo.corridor, 0.89) },
+      // the gaps along the road, from the cars standing or driving in along their column (each column filled from the edge)
+      lanes: { moto: filterLanes(this.onColumns(), this.geo.corridor, 0.42), car: filterLanes(this.onColumns(), this.geo.corridor, 0.89) },
       motos: this.motos.map(m => ({ i: m.m.i, dir: m.m.dir, x: Math.round(m.x * 10) / 10, z: Math.round(m.z * 10) / 10, pillion: m.pillion,
         state: this.now.t < m.m.holdIn ? 'in' : this.now.t < m.m.holdOut ? 'hold' : this.now.t < m.m.dropIn ? 'to-drop' : this.now.t < m.m.dropOut ? 'drop' : this.now.t < m.m.waitOut ? 'back' : 'out' })),
       rank: this.taxis,
