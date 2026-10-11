@@ -318,6 +318,9 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       if (alongX) plain.box(w / n + 0.01, 0.08, d, cx + off, y - 0.25, cz, c, 0); else plain.box(d, 0.08, w / n + 0.01, cx, y - 0.25, cz + off, c);
     }
     if (alongX) plain.box(w, 0.35, 0.06, cx, y - 0.6, cz + dir * d / 2, col); else plain.box(0.06, 0.35, w, cx + dir * d / 2, y - 0.6, cz, col);
+    // the camera keeps out of it like out of leaves: a row of short cylinders along its length
+    const r = d * 0.6, m = Math.max(1, Math.round(w / d));
+    for (let k = 0; k < m; k++) { const off = -w / 2 + (k + 0.5) * (w / m); canopies.push(alongX ? { x: cx + off, z: cz, r, y0: y - 0.7, y1: y } : { x: cx, z: cz + off, r, y0: y - 0.7, y1: y }); }
   };
   /** Rolling metal shutter of a ground-floor boutique, with a painted board above it. */
   const SHOP_BOARDS = [0xd9482b, 0xf4c20d, 0x1e6fd9, 0x2f8f4e, 0xe8742c, 0x6b3fa0];
@@ -654,6 +657,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     for (let n = 0; n < 4; n++) plain.box(0.3, 0.2, 0.3, x - 0.55 + n * 0.37, G + 0.8, z + (R() - 0.5) * 0.4, pick([0xe58a2f, 0xc4372b, 0x6aa84f, 0xf4c20d, 0xf2f2ec], R));
     plain.box(0.05, 2.2, 0.05, x + 0.9, G, z, 0x555555);
     plain.cyl(0.05, 1.3, 0.4, x + 0.9, G + 2.1, z, pick([0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e], R), 8);
+    canopies.push({ x: x + 0.9, z, r: 1.4, y0: G + 2.0, y1: G + 2.6 });                // the parasol: a camera obstacle
     plain.box(0.4, 0.4, 0.4, x - 1.3, G, z + 0.3, 0x3a5fa0);                          // stool
     solidC(x, z, 1.7, 1.0, 1);
   };

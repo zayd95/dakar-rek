@@ -36,6 +36,16 @@ Sans `?lamb2`, rien ne change.
 | Casser (se dégager) | X | **Casser** |
 | Projeter / Contrer | K | **Projeter** — devient **Contrer** (vert) quand il tente sa projection |
 
+**L'écran du duel** (le balisage est celui de `src/lamb/duel.ts` ; sa mise en page sur téléphone est dans
+`src/ui/style.css`, section « the Làmb 2.0 duel HUD ») : quatre jauges, aucune barre de vie. Chaque barre porte son nom
+(« Endurance », « Équilibre », « Sang-froid », avec sa couleur) dans le panneau de chaque lutteur ; dans l'empoignade, la
+**Prise** a son panneau (« toi » en vert à gauche, « lui » en rouge à droite, ses mots dessous). En portrait, les
+jauges sous le titre, le message et la prise au-dessus des combattants ; en paysage, les jauges dans la ligne du haut
+entre le titre et le chrono, la fiche de la leçon ou de l'exercice à gauche, le message et la prise dans la colonne
+entre cette fiche et les boutons, la ligne des règles en bas de cette colonne. Rien ne passe sous les boutons ni sous le
+joystick (vérifié en 390×844, 844×390, 360×640 et 667×375) ; sur un téléphone de 360 px, le joystick est un peu plus
+petit pendant le duel pour laisser « Grosse frappe » libre.
+
 **Debout.** Trois barres par lutteur : endurance (vert), équilibre (bleu), sang-froid (orange) — pas de vie. La frappe
 rapide est sûre ; la grosse prend beaucoup d'équilibre mais, ratée ou parée, elle t'ouvre. Une frappe rapide qui
 touche coupe sa grosse frappe. La garde arrête les frappes mais pas une saisie : contre un adversaire qui se garde,
@@ -398,6 +408,7 @@ leçon montrent le mieux la nouvelle lutte, et le classé garde son bilan tant q
 - `src/arena/bout.ts` — le combat regardé ; avec frappe, le duel joue les deux côtés (IA contre IA).
 - `scripts/check-arena-visit.mjs`, `scripts/check-evening.mjs` — avec `LAMB2=1` : le combat de la soirée avec frappe (arbitre, tribunes).
 - `scripts/check-arena-fighter.mjs` — avec `LAMB2=1` : le combat de la soirée du joueur (sa place au gala) avec frappe.
-- `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/`. Ses étapes 4–5
+- `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/` ; les jauges
+  nommées, la prise, et rien sous les boutons ni le joystick en 390×844, 844×390, 360×640 et 667×375. Ses étapes 4–5
   (glissade, projection) se jouent adversaire, chrono et arbitre tenus immobiles (`__dakar.duelHold`, `duelClock` ;
   même mise en place sans navigateur : `tests/lamb2Hold.test.ts`).

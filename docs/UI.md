@@ -42,13 +42,14 @@ phones. Animations only use `transform` and `opacity`; `prefers-reduced-motion` 
 | Phone | `#menuBtn` | 44 × 44, top right | opens the phone |
 | Goal hint | `#goal` (`.gi` `.gt` `.gd`) | pill under the wallet, two lines max | one suggestion at most; when there is a place to walk to, the badge becomes a compass arrow (turns with the camera) and the distance is shown; a distance at the end of a line (« … · 72 m ») always sits in the right-hand slot (never wrapped away from its number, the « · » kept for screen readers); one line while a ride card (`.ridecard`) is on; hidden while seated watching an arena show (entrance, bout, result — `arenaShow.watching()`), back on standing up |
 | Moment card | `#toast > .mo` (`hud.moment`) | first in the toast column, the toasts under it; never over the action button or the joystick | icon, title, a few lines (a bout's recap, a new word on a gauge); tap anywhere or ✕ to dismiss, 6–12 s, two at most; five lines on a landscape phone |
-| Toasts | `#toast > .t` | top centre (portrait: under the HUD, y≈170), above sheets, never over the action area; under the arena show's card (`#galacard`) while it is on | three at most, newest on top; « part  part » becomes chips, amounts coloured; repeats refresh instead of stacking; `warn` toasts in red |
-| Focus ring (3D) | `worldMarkers` | sun ring on the ground under the focused target, sized by kind (person 0.62 m … vehicle 1.9 m) | grows in on focus change, breathes softly; hidden in menus, activities and scenes |
-| Bubble | `#wprompt > .wp` | above the target, with a tail | icon in a sun disc, verb, price chip, `E` keycap (desktop); greyed when unavailable; **tap it to act** |
+| After-bout card | `#toast > .mo.bc` (`hud.boutCard`) | a larger moment card, first in the toast column (≤ 420 px; portrait: a 30 px icon) | after a bout on the arena's fighter path (docs/CAREER.md): the result and who against, rows `Palmarès` · `Classement` · `Réputation` · `Influence` · `Cachet` (· `Forme` · `Ceinture`) — what (12 px), where it stands now (13.5 px), the change in green or red, a short note — then « Ensuite » on a sun-tinted block; 16–24 s, tap anywhere or ✕ to dismiss; landscape phone: no icon, the result and the opponent on one line, notes inline, the first next step only |
+| Toasts | `#toast > .t` | top centre (portrait: under the HUD, y≈170), above sheets, never over the action area; under the arena show's card (`#galacard`) while it is on; the evening's matchup is on that card only (no toast repeating it) | three at most, newest on top; « part  part » becomes chips, amounts coloured; repeats refresh instead of stacking; `warn` toasts in red |
+| Focus ring (3D) | `worldMarkers` | sun ring on the ground under the focused target, sized by kind (person 0.62 m … vehicle 1.9 m) | grows in on focus change, breathes softly; grey (`#8e8e93`) when nothing can be done there now (every affordance disabled: another tier's place on the arena's stands, a closed counter); hidden in menus, activities and scenes |
+| Bubble | `#wprompt > .wp` | above the target, with a tail | icon in a sun disc, verb, price chip, `E` keycap (desktop); **tap it to act**. Unavailable (`.why`): greyed, and the pill becomes a small card with the reason in full under the verb (12.5 px, `--warn`), at most `min(280px, 78vw)` wide; `bubbleX` keeps the card 8 px inside the screen and moves its tail to keep pointing at the target (the action button's line is cut short on a phone) |
 | Action button | `#act` in `#actbar` | bottom right, ≥ 60 px tall, max 62 vw | sun pill: icon disc + verb (two lines on a touch phone in portrait, where the button is narrow beside « Courir ») + what/why line + price chip; `.dis` white with the reason in red (tap: shake + reason); `.stop` white « ✋ Arrêter » while something runs; hidden when nothing is in reach |
 | More | `#actMore` | 48 px circle above `#act` | opens the quick actions |
 | Quick actions | `#modal[data-kind=quick]` | icon grid (tiles ≥ 96 px) anchored bottom right above the button | every affordance of the target: icon, label, price; disabled tiles show their reason and shake when tapped |
-| Sheet | `#modal[data-kind=menu]` (`.sheet > .panel`) | phone portrait: bottom sheet, full width, ≤ 56 % high (drag the grabber up: almost full height), safe-area padding; phone landscape: right side, ≤ 86 %; desktop: 400 px card bottom right | grabber, sticky title, subtitle, extra content, inset grouped rows (≥ 54 px: icon tile, label, detail, right price, disabled reason in red); close: ✕, tap outside, Escape / M, swipe down (portrait) |
+| Sheet | `#modal[data-kind=menu]` (`.sheet > .panel`) | phone portrait: bottom sheet, full width, ≤ 56 % high (drag the grabber up: almost full height), safe-area padding; phone landscape: right side, ≤ 86 %; desktop: 400 px card bottom right | grabber, sticky title, subtitle, extra content, inset grouped rows (≥ 54 px: icon tile, label, detail, right price, disabled reason in red); a right column « Payer » (`em.pay`, after a price said first in the label) is a sun pill, grey on a disabled row, and its rows get a little more room in portrait; close: ✕, tap outside, Escape / M, swipe down (portrait) |
 | Progress | `#progress` | slim pill directly above `#act`, right-aligned | icon, activity title, step label · n/m, %, 4 px bar; the button below says « ✋ Arrêter » |
 | Joystick | `#joy` | 124 px, bottom left (touch only) | floating: a finger on the base drives it from its centre; anywhere else in the left 45 % moves the base under the finger |
 | Scene banner | `#sceneTag` | bottom centre during làmb scenes | « ✋ Arrêter » leaves the scene (no reward) |
@@ -93,6 +94,20 @@ for the old dark panel never vanish. Use the existing blocks — `.kv` (info car
 - Wolof glosses: HUD text is plain DOM text, resolved by the gloss observer (src/i18n/dom.ts) like any other text.
 - HUD buttons drop the focus after a tap or click, so Space/Enter (the game's action keys) never fire them twice.
 
+## The ticket window on a phone (src/arena/tickets.ts `tierRows`)
+
+The « Billet · gala de làmb » sheet, readable in portrait (390 × 844) without scrolling:
+- **One row per tier, the price first**: « 1 000 F · Populaire », « 2 500 F · Tribune couverte », « 5 000 F · Tribune
+  d’honneur » (15 px), then « Payer » on the right as a sun pill. The subtitle keeps the three prices in one line.
+- **A line on what each tier gets** under it (`TIER_NOTE`, ≤ 40 characters, two lines at most beside « Payer »): « Les
+  deux bouts du cercle, par la porte », « Grands côtés, sous la toile, coussins », « Premiers rangs, derrière les
+  officiels ».
+- **A tier the wallet can't pay** is greyed (icon, label, pill), its note replaced in red by what is missing (« Il te
+  manque 1 500 F »); tapped, it shakes and says it, and nothing is paid.
+- **On the stands**, another tier's place has a grey focus ring and its bubble gives the controller's reason in full
+  (`seatRefusal`, « Ton billet est pour la tribune populaire (…) : cette place est en tribune d’honneur. »); the same
+  reason is on the greyed action button and in the toast when it is tapped. `__dakar.focus().why` lists it.
+
 ## Phone › Ce soir (src/arena/tonight.ts)
 
 The evening plans itself from what the game already knows. Nothing is invented: the page is a pure assembly
@@ -131,11 +146,34 @@ Behind and above the player, never inside a wall or inside a tree's leaves:
   three-quarter, lower. The one that frees the most room wins, with a small cost for a bigger turn. Standing, the
   camera swings there smoothly. Walking, it only tilts, because a turn would bend the walk under the player's thumb. It
   eases back behind 2 s later, or as soon as the plain view is clear again.
+- **Nothing at the lens.** The camera keeps `CAM_CLEAR` (0.9 m) of room around itself (`pullClear`). A trunk, a wall,
+  an awning or a parasol closer than that would fill the view, so the camera comes in front of it along its way.
+  Shop and stall awnings and the stalls' parasols are camera obstacles like tree tops, built as short cylinders in
+  `HubWorld.canopies`.
 - **Leaves.** Tree tops and palm fronds (`HubWorld.canopies`, from the builder's trees) block the camera like walls.
-  When they cut the way and hang high enough, the camera goes low under them rather than against the head.
+  Only when coming in front of them would leave less than 3 m behind the player (standing under the tree), the camera
+  goes low under them (0.55 m below the leaves), if they hang high enough, rather than against the head.
 - **Who wins.** A drag of the view always wins: nothing changes for 0.8 s after it. A view set on purpose (`follow.pin()`,
   the checks' `look`, `lookYaw`, `faceCamera`, `lookAtPlayer`) is kept until the player walks.
 - **Debug.** `__dakar.camInfo()` gives the free room, tight, lift and swinging; `__dakar.camInLeaves()` is never true.
+
+## The Làmb 2.0 duel on a phone (?lamb2)
+
+The duel's HUD is built by `src/lamb/duel.ts` (its markup and its own dark styles); its phone layout is restyled from
+`src/ui/style.css` (« the Làmb 2.0 duel HUD », every selector under `body.induel` so it wins over the duel's stylesheet),
+without touching the duel's simulation:
+- **Four gauges, no life bar.** Each side's panel names its three bars on the bar itself — Endurance (green), Équilibre
+  (blue), Sang-froid (amber), 11 px with a stripe of the bar's colour — so the old legend line is hidden. In the
+  empoignade the **Prise** is a panel of its own: « Prise · toi » in green over the left end, « lui » in red over the
+  right end, the 12 px bar, its words in full under it (12.5 px, no shadow on a dark panel).
+- **Portrait.** The gauges under the title (≈ 54–120 px), the rules' line, the lesson or drill card, then the message
+  and the Prise above the wrestlers (under the card when one is shown, `.duel-step:not([hidden]) ~ …`).
+- **Landscape** (≤ 500 px high). The gauges in the top row between the title (≤ 22 vw) and the timer; the card on the
+  left above the joystick (≤ 24 vw); the message, the Prise and the rules' line in the column between that card and the
+  duel's buttons (`left: 62vw − 109px`, `width: min(76vw − 262px, 360px)`, shifted by the notches).
+- **Clear of the touch buttons.** Nothing of the HUD under the duel's five buttons or the joystick; on a 360 px phone
+  the joystick is 108 px and 12 px from the edge during the duel, clear of « Grosse frappe ».
+- Checked by `scripts/check-lamb2.mjs` (`gauges`): 390×844, 844×390, 360×640, 667×375, the fight and the empoignade.
 
 ## Checks
 

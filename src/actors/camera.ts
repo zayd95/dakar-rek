@@ -4,6 +4,11 @@ import type { Canopy, Collider } from '../world/types';
 
 /** Margin kept around a wall (m), and the closest the camera comes to the head when walls press in (share of the distance). */
 const PAD = 0.4, MIN_K = 0.12;
+/**
+ * Room kept around the camera itself (m): a trunk, a wall, an awning or a parasol closer than this to the lens fills the
+ * view, so the camera comes in front of it along its way (`pullClear`).
+ */
+export const CAM_CLEAR = 0.9;
 /** Outdoors, less free room than this behind the player (m) is « tight »: the camera looks for a better angle. */
 export const TIGHT_M = 3.0;
 /** Pitch range of the follow camera (rad); a lifted view may go a little higher, over the shoulder. */
@@ -47,19 +52,32 @@ export function bestView(free0: number, frees: readonly number[], tries: readonl
   });
   return best;
 }
+/** Something too close to the lens at (x, y, z): a wall within CAM_CLEAR, or leaves (an awning) within CAM_CLEAR around or just above. */
+export function crowded(x: number, y: number, z: number, colliders: readonly Collider[], canopies: readonly Canopy[], m = CAM_CLEAR): boolean {
+  for (const c of colliders) if (x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m && y < c.h + 0.5) return true;
+  for (const t of canopies) if (y > t.y0 - 0.5 && y < t.y1 + 0.3 && (x - t.x) ** 2 + (z - t.z) ** 2 < (t.r + m) ** 2) return true;
+  return false;
+}
+/** The share `k` brought in (by 1/24 steps, never under MIN_K) until the lens has CAM_CLEAR of room around it. */
+export function pullClear(from: P3, to: P3, k: number, colliders: readonly Collider[], canopies: readonly Canopy[]): number {
+  const at = (f: number) => [from.x + (to.x - from.x) * f, from.y + (to.y - from.y) * f, from.z + (to.z - from.z) * f] as const;
+  while (k > MIN_K && crowded(...at(k), colliders, canopies)) k = Math.max(MIN_K, k - 1 / 24);
+  return k;
+}
+
 /**
- * Under the trees: the same view lowered so that the way from the head stays under the leaves it passes beneath (a low
- * camera among the trunks rather than one pushed against the head), or null when the leaves hang too low for that.
+ * Under the trees: the same view lowered so that the way from the head stays well under the leaves it passes beneath (a
+ * low camera among the trunks rather than one pushed against the head), or null when the leaves hang too low for that.
  */
 export function underLeaves(from: P3, to: P3, canopies: readonly Canopy[]): P3 | null {
   const dx = to.x - from.x, dz = to.z - from.z, L2 = dx * dx + dz * dz;
   let top = Infinity;
   for (const t of canopies) {
     const u = L2 ? Math.max(0, Math.min(1, ((t.x - from.x) * dx + (t.z - from.z) * dz) / L2)) : 0;
-    if (Math.hypot(from.x + dx * u - t.x, from.z + dz * u - t.z) < t.r) top = Math.min(top, t.y0 - 0.15);
+    if (Math.hypot(from.x + dx * u - t.x, from.z + dz * u - t.z) < t.r) top = Math.min(top, t.y0 - 0.55);   // clear of crowded()
   }
   if (top === Infinity) return null;
-  return top >= from.y + 0.1 ? { x: to.x, y: Math.min(to.y, top), z: to.z } : null;
+  return top >= from.y + 0.05 ? { x: to.x, y: Math.min(to.y, top), z: to.z } : null;
 }
 
 /** Walls and canopies near (x, z) within `r` (the follow camera keeps such a short list instead of the whole hub's). */
@@ -139,9 +157,10 @@ export class FollowCamera {
       want.x = clamp(want.x, room.x0, room.x1); want.z = clamp(want.z, room.z0, room.z1); want.y = Math.min(want.y, 2.6);
     } else {
       const n = this.occluders(target, dist, colliders, canopies, dt);
-      k = clearFraction(from, want, n.c, n.t);
-      if (k < 1 && n.t.length && clearFraction(from, want, n.c, []) > k) {   // leaves cut the way: go under them if they hang high enough
-        const u = underLeaves(from, want, n.t), ku = u ? clearFraction(from, u, n.c, n.t) : 0;
+      k = pullClear(from, want, clearFraction(from, want, n.c, n.t), n.c, n.t);   // in front of what would fill the lens
+      // leaves cut the way so short that the head would fill the view: under them, when they hang high enough
+      if (k * dist < TIGHT_M && n.t.length && clearFraction(from, want, n.c, []) > k) {
+        const u = underLeaves(from, want, n.t), ku = u ? pullClear(from, u, clearFraction(from, u, n.c, n.t), n.c, n.t) : 0;
         if (u && ku > k) { want.set(u.x, u.y, u.z); k = ku; }
       }
       const free = k * dist, tight = free < TIGHT_M;

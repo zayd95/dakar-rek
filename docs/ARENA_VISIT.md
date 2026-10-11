@@ -10,8 +10,10 @@ drummers outside, event days, gate position) is another lane: `src/arena/exterio
 
 - **Buy a ticket** at the « GUICHET · BILLETS » window, left of the gate (a place of the shared registry,
   `pikine:arena:guichet`, open 17 h–23 h). « Acheter un billet (dès 1 000 F) » opens the window's sheet with the three
-  tiers and their prices first (« Populaire 1 000 F · Tribune couverte 2 500 F · Tribune d’honneur 5 000 F »), one
-  « Payer … » per tier and « Annuler » (see *Ticket tiers*). Paid once through the activity runner: one wallet line
+  tiers and their prices first (« Populaire 1 000 F · Tribune couverte 2 500 F · Tribune d’honneur 5 000 F »), then one
+  row per tier — its price first (« 2 500 F · Tribune couverte »), a line on what it gets, « Payer » — and « Annuler »;
+  a tier the wallet can't pay is greyed with what is missing (« Il te manque 1 500 F »; see *Ticket tiers* and
+  docs/UI.md *The ticket window on a phone*). Paid once through the activity runner: one wallet line
   (« Billet · gala de làmb · Arène de Pikine », « Billet · gala de làmb · Tribune couverte · Arène de Pikine »…), valid
   for the whole evening; a second purchase is refused (« Tu as déjà ton billet pour ce soir »). Stored as save
   counters (`arena_ticket_day`, `arena_ticket_tier`), no schema change.
@@ -56,7 +58,8 @@ exist (sections A–H of `src/world/geew.ts`), a small item of the arena's econo
 | Tribune d’honneur | 5 000 F | the two front rows of B, behind the officials' table, close to the ring: white cushions with backs and a gold edge, the plate « TRIBUNE D’HONNEUR » on the parapet; the fewest places | 45 %, in their best (grand boubous, long dresses), a third of them the officials' guests |
 
 - **The controller's rule**: a ticket opens its own tier's places only (`seatRefusal`), and only while the gate checks
-  tickets or a gala runs; the seat registry's `refuse` greys « S'asseoir » with the reason. A fighter of tonight
+  tickets or a gala runs; the seat registry's `refuse` greys « S'asseoir » with the reason: a grey focus ring under the
+  place, the reason in full in its bubble (kept on screen on a phone). A fighter of tonight
   needs no ticket at the gate, but sits nowhere without one.
 - **The view from every tier**: the seat camera is the same everywhere (the spectator's eyes, the gaze following the
   action). From the honneur rows the officials' canopy never hides the ring's centre (tested from every place; one

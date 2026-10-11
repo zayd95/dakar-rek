@@ -31,6 +31,24 @@ Only real saved values. No invented numbers and no streak counters.
     when one is reached (« Réputation : Connu du quartier ! »).
 
   The result toast stays short.
+- **After a bout on the arena's fighter path** (« Petit combat de quartier », « Combat du soir », a gala place, the
+  title bout — and the player's own gala main event, which takes the same path): one larger card instead of the recap,
+  the **after-bout card** (`boutCard`, `nextSteps`; `hud.boutCard`), once the duel's own result screen is closed:
+  - the result and who against (« Victoire » · « Gala · contre Gora · par chute · avec frappe »);
+  - **Palmarès**: the record now, with the bout just fought (« 4 V · 1 D · 0 N », « +1 V »; an abandon counts apart);
+  - **Classement**: the place in the city's table (« 11e sur 14 »), the rung or the new one (« Nouveau palier :
+    Undercards ! »), the place before (« était 13e »), the points the bout gave (« +28 pts »);
+  - **Réputation** and **Influence**, always: the word now and the change (« +8 », « = »), « Nouveau mot » when a word
+    is reached for the first time;
+  - **Cachet** with the Richesse it brought; **Forme** when it moved; **Ceinture** when it was won, kept or lost;
+  - **Ensuite**, two lines at most: a revenge after a defeat, then the belt to defend, the title to fight for, or a gala
+    place on the evening the rules open it (« ce soir » when `galaBlock` still lets a gala place in tonight, « demain
+    soir », « vendredi soir »), else the next rung and what it still asks (`rankOf(...).next`).
+
+  Every number is one the career's rules already gave, read before and after `recordBout`; nothing new is computed.
+  Gains are green, losses red. It stays 16–24 s, a tap dismisses it, it never covers the action button or the joystick;
+  on a landscape phone it drops its icon, puts the result and the opponent on one line and keeps the first next step only. Debug: `__dakar.careerBout(mode, winner,
+  level, outcome, name, true)` shows it for a simulated bout.
 - **After a gala watched to the end** (fight evenings): the result, the belt (taken or kept), and the winner's new place
   in the city's table (or the top two when nothing moved).
 - **A new word on a gauge:** a small card once, with the reason (the gauge's note). The best word reached per

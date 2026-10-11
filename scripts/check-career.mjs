@@ -50,6 +50,42 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     `${lad.card.left.name} – ${lad.card.right.name} · ceinture ${lad.title.holder}`);
   check(`${label}: the public record line under the name follows the ranked bouts`, new RegExp(`^${c2.rank.label} · 1-1( · Écurie \\p{L}+)?$`, 'u').test(c2.rec ?? ''), String(c2.rec));
 
+  // 2b. The fighter's after-bout card (a bout fought on the arena's fighter path; the debug bout asks for it): the result,
+  //     the palmarès, the place in the city, Réputation and Influence, the purse, then « Ensuite » — the numbers the
+  //     career's own rules gave, readable, clear of the action button and the joystick; a tap dismisses it.
+  const cb = await career();
+  await d(() => window.__dakar.careerBout('classe', 'player', 2, 'projection', 'Ndiaga', true));
+  await page.waitForFunction(() => !!document.querySelector('#toast .mo.bc:not(.out)'), null, { timeout: 10000 }).catch(() => {});
+  const ca = await career(), last = ca.bouts.at(-1);
+  const card = await d(() => {
+    const c = [...document.querySelectorAll('#toast .mo.bc:not(.out)')].pop(); if (!c) return null;
+    const r = c.getBoundingClientRect();
+    const hit = id => { const e = document.getElementById(id), b = e?.getBoundingClientRect(); return !!b && b.width > 0 && getComputedStyle(e).display !== 'none' && +getComputedStyle(e).opacity > 0.1 && b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; };
+    return { title: c.querySelector('.mo-tx > b')?.textContent ?? '', sub: c.querySelector('.bc-sub')?.textContent ?? '',
+      rows: [...c.querySelectorAll('.bc-r')].map(x => ({ k: x.querySelector('dt')?.textContent, v: x.querySelector('.bc-v')?.textContent, d: x.querySelector('.bc-d')?.textContent, note: x.querySelector('.bc-note')?.textContent ?? '', tone: x.querySelector('.bc-d')?.className })),
+      next: [...c.querySelectorAll('.bc-next span')].map(x => x.textContent), font: Math.min(...[...c.querySelectorAll('.bc-v, .bc-d, .bc-r dt')].map(x => parseFloat(getComputedStyle(x).fontSize))),
+      inView: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight, overAct: hit('act') || hit('actMore'), overJoy: hit('joy') };
+  });
+  const row = k => card?.rows.find(x => x.k === k);
+  const sp = t => (t ?? '').replace(/[  ]/g, ' ');
+  const rec = r => `${r.v} V · ${r.d} D · ${r.n} N${r.ab ? ` · ${r.ab} abandon${r.ab > 1 ? 's' : ''}` : ''}`;
+  check(`${label}: after a bout on the fighter's path, one card says the result and who against`, card?.title === 'Victoire' && /contre Ndiaga · par chute/.test(card.sub), JSON.stringify(card && { title: card.title, sub: card.sub }));
+  check(`${label}: the card's palmarès and place come from the career (record, points, place in the city)`,
+    row('Palmarès')?.v === rec(ca.record) && row('Palmarès')?.d === '+1 V'
+    && /^\d+(er|e) sur \d+$/.test(row('Classement')?.v ?? '') && row('Classement')?.d === `+${last.pts} pts` && /up/.test(row('Classement')?.tone ?? ''), JSON.stringify(card?.rows));
+  const gaugeOf = k => [cb.dims.find(x => x.label === k), ca.dims.find(x => x.label === k)];
+  const dd = k => { const [b, a] = gaugeOf(k), n = Math.round(a.score) - Math.round(b.score); return n ? `${n > 0 ? '+' : '−'}${Math.abs(n)}` : '='; };
+  check(`${label}: Réputation and Influence with their change (the gauges' own scores), the purse paid`,
+    row('Réputation')?.d === dd('Réputation') && row('Influence')?.d === dd('Influence') && sp(row('Cachet')?.v).replace(/\s/g, '') === `+${last.purse}F`,
+    JSON.stringify({ rows: card?.rows, rep: gaugeOf('Réputation'), inf: gaugeOf('Influence'), purse: last.purse }));
+  check(`${label}: « Ensuite »: the next bill or step`, (card?.next.length ?? 0) >= 1 && card.next.every(t => /^(Prochain palier|Place au gala|Combat pour le titre|Défendre la ceinture|Revanche)/.test(t)), JSON.stringify(card?.next));
+  check(`${label}: the card is readable (≥ 11.5 px) and on screen, clear of the action button and the joystick`, card && card.font >= 11.5 && card.inView && !card.overAct && !card.overJoy,
+    JSON.stringify(card && { font: card.font, inView: card.inView, overAct: card.overAct, overJoy: card.overJoy }));
+  await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-after-bout-card.png` });
+  await page.locator('#toast .mo.bc:not(.out)').last().click();
+  const gone = await page.waitForFunction(() => !document.querySelector('#toast .mo.bc:not(.out)'), null, { timeout: 5000 }).then(() => true, () => false);
+  check(`${label}: a tap dismisses the after-bout card`, gone);
+
   // 3. The real bout path: a ranked bout started and abandoned goes through main.ts into the record (no purse).
   await d(() => { window.__dakar.teleport('pikine'); });
   await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine', null, T);
@@ -61,7 +97,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await page.waitForFunction(() => !window.__dakar.sceneInfo?.() && !window.__dakar.duelInfo(), null, T).catch(() => {});
   const c3 = await career();
   const toast = await d(() => document.getElementById('toast')?.textContent ?? '');
-  check(`${label}: a real bout's end reaches the record (abandon, no purse)`, c3.bouts.length === 4 && c3.bouts[3].res === 'A' && c3.bouts[3].purse === 0, `${JSON.stringify(c3.bouts[3])} · ${toast}`);
+  check(`${label}: a real bout's end reaches the record (abandon, no purse)`, c3.bouts.length === 5 && c3.bouts[4].res === 'A' && c3.bouts[4].purse === 0, `${JSON.stringify(c3.bouts[4])} · ${toast}`);
 
   // 4. Écurie drills sit with Coach Ablaye's session and feed the attributes.
   const ecurie = (await d(() => window.__dakar.interactables())).find(i => i.id.endsWith(':ecurie'));
@@ -130,6 +166,10 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
           await d(() => window.__dakar.duelFinish());
           await page.waitForFunction(() => !window.__dakar.duelInfo(), null, T).catch(() => {});
           check(`${label}: the fighter's bout reaches the record`, (await career()).bouts.length === n0 + 1);
+          // on the fighter's path the bout ends on the after-bout card (here an abandon: counted apart in the palmarès)
+          const fc = await d(() => { const c = [...document.querySelectorAll('#toast .mo.bc:not(.out)')].pop(); return c ? { title: c.querySelector('.mo-tx > b')?.textContent, rows: [...c.querySelectorAll('.bc-r dt')].map(x => x.textContent), pal: c.querySelector('.bc-r .bc-d')?.textContent, next: c.querySelectorAll('.bc-next span').length } : null; });
+          check(`${label}: the fighter's bout ends on the after-bout card (result, palmarès, place, Réputation, Influence, next)`,
+            fc?.title === 'Abandon' && fc.pal === '+1 abandon' && ['Palmarès', 'Classement', 'Réputation', 'Influence'].every(k => fc.rows.includes(k)) && fc.next >= 1, JSON.stringify(fc));
         }
       }
       await d(() => window.__dakar.fighterCancel?.());

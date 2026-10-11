@@ -1,6 +1,7 @@
-// An evening at the Pikine arena, end to end (src/arena): the ticket at the gate (three tiers, price, confirmation, paid
-// once) → the controller → a free place on the tiers of the ticket's own stands (another tier's places refused, with the
-// reason) → the crowd → the wrestlers' entrance → the watched bout → the result → the crowd leaves; then, on the next
+// An evening at the Pikine arena, end to end (src/arena): the ticket at the gate (three tiers, price first, short of money the
+// tiers it can't pay greyed with what is missing, readable on a phone, confirmation, paid once) → the controller → a
+// free place on the tiers of the ticket's own stands (another tier's places refused, with the
+// reason: a grey ring, the reason in full in its bubble) → the crowd → the wrestlers' entrance → the watched bout → the result → the crowd leaves; then, on the next
 // evenings, a « Tribune couverte » and a « Tribune d'honneur » ticket, each bought and sat in (src/arena/tickets.ts). (The street outside the walls is src/arena/exterior.ts, another lane.) Desktop 1280×720 and phone 390×844; captures in docs/screenshots/arena-visit.
 // Usage: node scripts/check-arena-visit.mjs [baseUrl=http://localhost:4247/] [outDir=docs/screenshots/arena-visit] [--view=desktop|phone]
 // LAMB2=1: with ?lamb2 (the watched bout avec frappe: referee's arm, the stands at the fall); captures and results suffixed -lamb2.
@@ -33,6 +34,7 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.arena, null, T);
   const d = (fn, arg) => page.evaluate(fn, arg);
   const info = () => d(() => window.__dakar.arena.info());
+  const sp = s => s.replace(/[  ]/g, ' ');
   const toast = () => d(() => (document.getElementById('toast')?.textContent ?? '').replace(/[  ]/g, ' '));
   const waitToast = re => page.waitForFunction(src => new RegExp(src).test((document.getElementById('toast')?.textContent ?? '').replace(/[  ]/g, ' ')), re.source, { timeout: 60000 }).then(() => true, () => false);
   // keeps the toast on for the capture; the observer adds the class only when missing (re-adding it queues another mutation: endless loop)
@@ -73,17 +75,49 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   check(`${label}: without a ticket the controller turns you back`, stopped && back.z < G.z, `${await toast()} · z ${back.z.toFixed(1)} < gate ${G.z.toFixed(1)}`);
 
   // 3. The ticket: price shown, confirmation, paid once, wallet line.
-  const wallet0 = await d(() => window.__dakar.state.wallet);
   await d(g => window.__dakar.place(g.x - 5.2, g.z - 4.35, Math.PI), G);
   await page.waitForFunction(() => /Guichet/.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
   const f = await d(() => window.__dakar.focus());
   check(`${label}: the ticket window offers the ticket with its price`, /Acheter un billet \(dès 1\s000 F\)/.test((f?.all ?? []).join(' | ').replace(/[  ]/g, ' ')), f);
+  // 3a. Short of money (2 000 F): each tier's row says its price first, a line on what it gets, then « Payer »; the tiers
+  //     the wallet can't pay are greyed with what is missing, in red; tapping one says it and pays nothing. On a phone in
+  //     portrait the three rows fit the sheet: nothing cut, nothing to scroll sideways, no scrolling to reach them.
+  await d(() => { window.__dakar.state.data.wallet = 2000; });
+  await idle(); await d(() => window.__dakar.act());
+  await page.waitForFunction(() => document.querySelector('#modal.on h2')?.textContent?.includes('Billet'), null, T).catch(() => {});
+  await page.waitForTimeout(400);                                                     // the sheet's slide-in
+  const rows = await d(() => {
+    const panel = document.querySelector('#modal.on .panel'), pr = panel?.getBoundingClientRect();
+    return { wide: panel ? panel.scrollWidth > panel.clientWidth + 1 : true, scrolled: panel?.scrollTop ?? 0, rows: [...document.querySelectorAll('#modal.on .list .item')].slice(0, 3).map(b => {
+      const r = b.getBoundingClientRect(), em = b.querySelector('em'), tx = b.querySelector('.tx'), lb = b.querySelector('.lb'), sm = b.querySelector('small'), er = em?.getBoundingClientRect();
+      return { label: lb?.textContent ?? '', note: sm?.textContent ?? '', dis: b.classList.contains('dis'), pay: em ? `${em.className}:${em.textContent}` : '',
+        noteColor: sm ? getComputedStyle(sm).color : '', font: lb ? parseFloat(getComputedStyle(lb).fontSize) : 0, cut: tx ? tx.scrollWidth > tx.clientWidth + 1 : true,
+        seen: !!pr && r.top >= pr.top - 1 && r.bottom <= pr.bottom + 1 && r.left >= 0 && r.right <= innerWidth, payRight: !!er && er.left > r.left + r.width / 2 && er.right <= r.right, h: Math.round(r.height) };
+    }) };
+  });
+  const rs = rows.rows;
+  check(`${label}: the window's rows say the price first, a line on what each tier gets, then « Payer »`,
+    rs.length === 3 && ['1 000 F · Populaire', '2 500 F · Tribune couverte', '5 000 F · Tribune d’honneur'].every((w, i) => sp(rs[i].label) === w)
+    && rs.every(r => r.pay === 'pay:Payer' && r.payRight) && /deux bouts/.test(rs[0].note), rows);
+  check(`${label}: short of money, the tiers it can't pay are greyed with what is missing, in red`,
+    rs.map(r => r.dis).join() === 'false,true,true' && sp(rs[1].note) === 'Il te manque 500 F' && sp(rs[2].note) === 'Il te manque 3 000 F'
+    && rs.slice(1).every(r => r.noteColor === 'rgb(180, 35, 24)'), rs.map(r => [r.dis, r.note, r.noteColor]));
+  check(`${label}: the three rows are readable as they are (≥ 15 px, nothing cut, no sideways scroll, all in view, ≥ 54 px tall)`,
+    !rows.wide && rows.scrolled === 0 && rs.every(r => r.font >= 15 && !r.cut && r.seen && r.h >= 54), rows);
+  await shot('2-ticket-short', false);
+  await page.locator('#modal.on .item', { hasText: 'Tribune couverte' }).first().click();
+  const saidShort = await waitToast(/Il te manque 500 F/);
+  check(`${label}: a greyed tier tapped says what is missing and pays nothing`, saidShort && (await d(() => window.__dakar.state.wallet)) === 2000
+    && !(await d(() => window.__dakar.arena.info().ticket)) && (await d(() => !!document.querySelector('#modal.on'))), await toast());
+  await page.locator('#modal.on .item', { hasText: 'Annuler' }).first().click();
+  await page.waitForFunction(() => !document.querySelector('#modal.on'), null, T).catch(() => {});
+  await d(() => { window.__dakar.state.data.wallet = 5000; });
+  const wallet0 = await d(() => window.__dakar.state.wallet);
   await idle(); await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on h2')?.textContent?.includes('Billet'), null, T).catch(() => {});
   const confirm = await d(() => ({ sub: document.querySelector('#modal.on p')?.textContent ?? '', items: [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent) }));
-  const sp = s => s.replace(/[  ]/g, ' ');
   check(`${label}: the three tiers' prices are shown before paying`, /Populaire 1 000 F · Tribune couverte 2 500 F · Tribune d’honneur 5 000 F/.test(sp(confirm.sub))
-    && ['Payer 1 000 F · Populaire', 'Payer 2 500 F · Tribune couverte', 'Payer 5 000 F · Tribune d’honneur'].every(w => confirm.items.some(t => sp(t).includes(w))) && confirm.items.some(t => /Annuler/.test(t)), confirm);
+    && ['1 000 F · Populaire', '2 500 F · Tribune couverte', '5 000 F · Tribune d’honneur'].every(w => confirm.items.some(t => sp(t).includes(w) && /Payer/.test(t))) && confirm.items.some(t => /Annuler/.test(t)), confirm);
   await shot('2-ticket-confirm', false);
   await page.locator('#modal.on .item', { hasText: 'Populaire' }).first().click();
   await page.waitForFunction(() => window.__dakar.arena.info().ticket, null, T).catch(() => {});
@@ -111,6 +145,17 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   const refused = await d(() => window.__dakar.focus());
   check(`${label}: a place of honneur is refused with a « Populaire » ticket, and the reason says where to sit`,
     refused?.name === 'Place d’honneur' && !refused.primary && /billet est pour la tribune populaire.*sections A, D, E et H/.test(sp((refused.why ?? []).join(' '))), refused);
+  // the place is greyed in the world: a grey ring under it, and its bubble a small card with the reason in full, on screen
+  await page.waitForFunction(() => !!document.querySelector('#wprompt.on .wp.why small') && window.__dakar.uiMarkers().grey, null, { timeout: 15000 }).catch(() => {});
+  const card = await d(() => {
+    const wp = document.querySelector('#wprompt.on .wp.why'), sm = wp?.querySelector('small'), r = wp?.getBoundingClientRect();
+    return { why: sm?.textContent ?? '', color: sm ? getComputedStyle(sm).color : '', font: sm ? parseFloat(getComputedStyle(sm).fontSize) : 0,
+      inView: !!r && r.left >= 0 && r.right <= innerWidth && r.top >= 0, w: r ? Math.round(r.width) : 0, max: Math.min(280, innerWidth * 0.78), ring: window.__dakar.uiMarkers() };
+  });
+  check(`${label}: the refused place is greyed in the world (grey ring), its bubble gives the reason in full, legible and on screen`,
+    card.ring.grey && /billet est pour la tribune populaire.*cette place est en tribune d’honneur/.test(sp(card.why)) && card.color === 'rgb(180, 35, 24)'
+    && card.font >= 12 && card.inView && card.w <= card.max + 1, card);
+  await shot('3b-refused-seat', false);
 
   // 5. A free place on the tiers: « S'asseoir », seated, the view faces the ring, the crowd around.
   const seat = await d(c => window.__dakar.arena.freeSeat(c.x + 9, c.z - 14), C);

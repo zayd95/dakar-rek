@@ -70,6 +70,30 @@ export function seatRefusal(ticket: Tribune | null, seat: Tribune): string | nul
 export const whereLine = (t: Tribune) => `Billet ${TICKETS[t].label} — ta place : ${TICKETS[t].where}.`;
 /** The window's sheet: the three prices first, then « Payer … » for each, paid once for the evening. */
 export const ticketSheet = () => `${TRIBUNES.map(t => `${TICKETS[t].label} ${fcfa(TICKETS[t].price)}`).join(' · ')} — payé une fois pour toute la soirée.`;
+/**
+ * What each tier gets, in one short line under its price on the window's sheet (≤ 40 characters: two lines at most
+ * beside « Payer » on a phone in portrait). The longer `detail` stays for the docs and the Ce soir page.
+ */
+export const TIER_NOTE: Record<Tribune, string> = {
+  populaire: 'Les deux bouts du cercle, par la porte',
+  couverte: 'Grands côtés, sous la toile, coussins',
+  honneur: 'Premiers rangs, derrière les officiels',
+};
+/** One row of the window's sheet. */
+export interface TierRow { tribune: Tribune; label: string; detail: string; right: 'Payer'; disabled: boolean; reason?: string }
+/**
+ * The window's rows (pure; src/arena/module.ts `confirmTicket`): the price first, then the tier's name; its one-line
+ * note; « Payer » on the right (a sun pill, src/ui/sheet.ts `priceClass`). A tier the wallet cannot pay is greyed, its
+ * note replaced by the reason in red: what is missing (« Il te manque 1 500 F »).
+ */
+export function tierRows(wallet: number): TierRow[] {
+  return TRIBUNES.map(t => {
+    const k = TICKETS[t], short = k.price - wallet;
+    const row: TierRow = { tribune: t, label: `${fcfa(k.price)} · ${k.label}`, detail: TIER_NOTE[t], right: 'Payer', disabled: short > 0 };
+    if (short > 0) row.reason = `Il te manque ${fcfa(short)}`;
+    return row;
+  });
+}
 /** The wallet line of a ticket (the place is added by the runner). */
 export const ticketLabel = (t: Tribune) => (t === 'populaire' ? 'Billet · gala de làmb' : `Billet · gala de làmb · ${TICKETS[t].label}`);
 

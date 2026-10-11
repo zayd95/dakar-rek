@@ -30,7 +30,7 @@ import { GalaCard } from './card';
 import { FightNightPeople, PEOPLE_COUNT } from './people';
 import { partyLength, partyPlan, type PartyKind } from './celebration';
 import { ResultParty } from './party';
-import { TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, seatRefusal, ticketLabel, ticketSheet, whereLine, type Tribune } from './tickets';
+import { TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, seatRefusal, ticketLabel, ticketSheet, tierRows, whereLine, type Tribune } from './tickets';
 import { decorMaterial, honneurPlate, tribuneDecor } from './ticketsDecor';
 import { EntranceCeremony } from './entrance';
 import { CEREMONY, cornerSides, standsOf, type Fighter, type Who } from './ceremony';
@@ -232,13 +232,16 @@ class ArenaEvening {
   }
 
   // ---------------------------------------------------------------- ticket
-  /** The window's sheet: the three tiers, each price shown on its own « Payer … »; one ticket for the evening. */
+  /**
+   * The window's sheet: one row per tier, its price first, a line on what it gets, then « Payer »; a tier the wallet
+   * cannot pay greyed with what is missing (src/arena/tickets.ts `tierRows`). One ticket for the evening.
+   */
   private confirmTicket(place: string) {
     const { ctx } = this;
     ctx.menu('Billet · gala de làmb', ticketSheet(), [
-      ...TRIBUNES.map(t => {
-        const k = TICKETS[t], ok = ctx.state.canAfford(k.price);
-        return { label: `Payer ${k.price.toLocaleString('fr-FR')} F · ${k.label}`, icon: t === 'honneur' ? '⭐' : '🎟️', detail: ok ? `${k.detail} (${k.where})` : 'Pas assez d’argent', disabled: !ok, onPick: () => {
+      ...tierRows(ctx.state.wallet).map(r => {
+        const t = r.tribune, k = TICKETS[t];
+        return { label: r.label, detail: r.detail, right: r.right, reason: r.reason, icon: t === 'honneur' ? '⭐' : t === 'couverte' ? '⛱️' : '🎟️', disabled: r.disabled, onPick: () => {
           ctx.hud.closeModal(); ctx.setMode('play');
           ctx.activities.start(P.buy({ id: 'billet', label: ticketLabel(t), price: k.price, line: () => ARENA.ticket(k.price),
             then: () => { ctx.state.data.counters[TICKET_COUNTER] = this.day(); ctx.state.data.counters[TIER_COUNTER] = TRIBUNES.indexOf(t); } }), { place });
@@ -472,10 +475,10 @@ class ArenaEvening {
     if (phase !== 'result') this.endParty();
     if (phase === 'filling') {
       this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0; this.fallSplit = null; this.lastBout = null;
+      // the matchup is on the gala card from now on (it used to be said again in a toast under the card: once is enough),
+      // a friend's own main event too (« X, combat de la soirée » on the card)
       this.mine = this.myGala(); this.ownBill = this.mine ? billFor(this.day()) : null;
       const bill = this.bill();
-      if (this.remote && !this.mine) this.say('bill', ARENA.friendBill(this.remote.name));
-      else this.say('bill', ARENA.bill(bill.left.name, bill.left.ecurie, bill.right.name, bill.right.ecurie));
       // tonight's preliminaries: the same card on every device, by the evening's size, the main event's names kept out
       this.prelims = undercardFor(this.hubId, this.day(), eveningSize(this.day(), Math.max(17, ctx.hour())), [bill.left.name, bill.right.name]);
       this.pResults = []; this.pi = 0; this.fillStart = fillAt(ctx.hour());
