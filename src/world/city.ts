@@ -4,6 +4,7 @@ import type { PersonLook } from '../actors/humanoid';
 import type { Batch } from './batch';
 import type { Action, Collider, HubWorld, Interactable } from './types';
 import { CITY_ACTIONS as A } from './cityContent';
+import { onSeat } from './content';
 import { benchSeats, type Seat } from '../interact/seats';
 import { say } from '../i18n/wolof';
 import { buildShopInterior, type ShopDetail, type ShopInterior, type ShopOptions, type ShopType } from './shopKit';
@@ -68,6 +69,23 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     for (const side of [-1, 1]) b.box(0.16, 0.4, 0.6, x + Math.cos(yaw) * side * 1.25, FLOOR, z - Math.sin(yaw) * side * 1.25, DARK, yaw);
     b.box(3.2, 0.5, 0.1, x - Math.sin(yaw) * 0.32, 0.55, z - Math.cos(yaw) * 0.32, WOOD, yaw);
     solid(x, z, Math.abs(Math.cos(yaw)) * 3.2 + Math.abs(Math.sin(yaw)) * 0.7, Math.abs(Math.sin(yaw)) * 3.2 + Math.abs(Math.cos(yaw)) * 0.7, 0.7);
+  };
+  /** Low table between two plain benches facing it: street food eaten seated, the plates go on the table. */
+  const eatingSpot = (x: number, z: number) => {
+    box(1.8, 0.05, 0.75, x, z, WOOD, FLOOR + 0.6); for (const dx of [-0.75, 0.75]) box(0.08, 0.6, 0.08, x + dx, z, DARK);
+    solid(x, z, 1.8, 0.75, 0.7);
+    for (const side of [-1, 1]) {
+      const bz = z + side * 0.75;
+      box(1.8, 0.45, 0.35, x, bz, WOOD);
+      c.seats.push(...benchSeats(`${c.hub}:eat:${c.seats.length}`, x, bz, side < 0 ? 0 : Math.PI, FLOOR + 0.45, 'street', 1.8, 2)
+        .map(s => ({ ...s, table: { x: s.x, y: FLOOR + 0.65, z: z + side * 0.15 } })));
+    }
+  };
+  /** Low wooden stool facing `yaw` (players sit on it too). */
+  const stool = (x: number, z: number, yaw: number) => {
+    c.seats.push({ id: `${c.hub}:stool:${c.seats.length}`, x, z, top: FLOOR + 0.46, yaw, kind: 'stool', space: 'street', occupant: null });
+    box(0.42, 0.06, 0.42, x, z, WOOD, FLOOR + 0.4);
+    for (const [dx, dz] of [[-0.16, -0.16], [0.16, -0.16], [-0.16, 0.16], [0.16, 0.16]]) box(0.05, 0.4, 0.05, x + dx, z + dz, DARK);
   };
   const table = (x: number, z: number, w = 2.8, color = WOOD) => {
     box(w, 0.09, 1.2, x, z, color, 0.9);
@@ -147,6 +165,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     }
     sign('JËN · POISSON DU JOUR', cx - 8, cz + 7.55, '#24657b', 3.4, 15);
     place('fish-market', 'Marché au poisson', cx - 8, cz + 8.5, A.fish, `${say('Jën bu bees')} ! Le poisson du jour est sur les étals.`, 3.5);
+    eatingSpot(cx - 8, cz + 12.5);                                                   // the grilled fish is eaten here
     // Artisans along the street edge, behind the landing market.
     let craftAt = { x: cx, z: cz - 9 };
     for (let k = 0; k < 3; k++) {
@@ -285,6 +304,8 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
   b.sphere(0.17, cx + 11, 1.05, cz - 1, 0x426c60); // teapot and glasses
   for (let n = 0; n < 3; n++) b.cyl(0.06, 0.06, 0.12, cx + 10.55 + n * 0.25, 1, cz - 0.6, WHITE, 6);
   person(cx + 9.4, cz - 1, Math.PI / 2, 'Talk'); person(cx + 12.6, cz - 1, -Math.PI / 2, 'Talk');
+  // the two checkers players sit on stools at the ends of the table, facing the board
+  stool(cx - 12.7, cz - 1, Math.PI / 2); stool(cx - 9.3, cz - 1, -Math.PI / 2);
   person(cx - 12.7, cz - 1, Math.PI / 2, 'Sit'); person(cx - 9.3, cz - 1, -Math.PI / 2, 'Sit');
   person(cx + 11, cz + 8, -Math.PI / 2, 'Sit'); person(cx - 11, cz - 8, Math.PI / 2, 'Sit');
   sign(names[c.hub].toUpperCase(), cx, cz + 20, '#68432c', 3, 18);

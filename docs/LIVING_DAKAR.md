@@ -81,7 +81,14 @@ Composition examples:
 
 Already composed:
 
-- **The Maïga meals** (pay → the plate is prepared → sit on a free bench or chair → eat → stay seated).
+- **Every meal at a table** (`src/world/content.ts` `served`): the Maïga, the gargote (inside or on the benches out
+  front), the restaurant fronts, the old dibiterie kiosk, the Soumbédioune grilled fish (after the haggle) — pay → the
+  plate is prepared → the player walks round the tables to a free seat (`src/interact/approach.ts`) → sits facing the
+  table → the dish stands in front of them and empties spoonful by spoonful (`src/game/meals.ts`) → stays seated. Every
+  chair and bench faces its table (`scripts/check-interact.mjs` audits it).
+- **Actions done in the world** (`src/game/perform.ts`, gestures in `src/actors/gesture.ts`): crates carried to a pile
+  that grows, items worked from pile to pile by hand, a cup that empties at the lips, a run, pull-ups, washing at a
+  basin… (`scripts/check-perform.mjs`). Steps with a shared timing gesture (`G.*`) keep the gesture's own presentation.
 - **The Dibi** (`src/venues/dibi.ts`, wave 1): one open-air venue on the old dibiterie lots — « Chez Pathé » next to the
   starter home in Pikine and « de la Médina » on the Plateau (same plan, own owner and colours). Painted low walls on two
   streets, the charcoal grill smoking at the corner (embers glow at night), the butcher's counter under a concrete roof,

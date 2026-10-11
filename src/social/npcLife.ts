@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { GameState } from '../core/state';
 import type { Action, HubWorld, Interactable } from '../world/types';
-import { ACTIONS, HUB_NAMES } from '../world/content';
+import { ACTIONS, HUB_NAMES, served } from '../world/content';
 import { Character } from '../actors/character';
 import { Humanoid, humanoidReady, type Clip, type PersonLook } from '../actors/humanoid';
 import { fcfa, type Hud, type MenuItem } from '../ui/hud';
@@ -110,10 +110,12 @@ export class NpcLife {
       if (!extra.length) continue;
       const target = (p.place && world.interactables.find(i => i.id.startsWith(p.place!))) || world.interactables.find(i => i.npc === p.id);
       if (!target) continue;
-      target.actions = [...target.actions, ...extra.map(k => ({
-        id: k.id, label: k.label, detail: k.detail, cost: k.cost, needs: k.needs, seconds: k.seconds, counter: k.counter,
-        visible: k.flags.length ? (s: GameState) => k.flags.some(f => s.data.flags.includes(f)) : undefined,
-      }))];
+      target.actions = [...target.actions, ...extra.map((k): Action => {
+        const a = { id: k.id, label: k.label, detail: k.detail, cost: k.cost, needs: k.needs, counter: k.counter,
+          visible: k.flags.length ? (s: GameState) => k.flags.some(f => s.data.flags.includes(f)) : undefined };
+        // a plate or a drink is served at a table like the rest of the menu (same total time as the perk)
+        return k.served ? served({ ...a, cost: k.cost ?? 0, prep: 1, eat: Math.max(1, k.seconds - 1), ...k.served }) : { ...a, seconds: k.seconds };
+      })];
     }
   }
 

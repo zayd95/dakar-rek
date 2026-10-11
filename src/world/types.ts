@@ -76,6 +76,8 @@ export interface HubWorld {
   sites?: Site[];
   /** Tree tops and palm fronds the follow camera keeps out of (src/actors/camera.ts). */
   canopies?: Canopy[];
+  /** Roofs open on one side (the dibiterie): under one, the camera stays below `h` so the slab never hides the player. */
+  roofs?: Collider[];
   dispose(): void;
 }
 export interface RoadEdge { ax: number; az: number; bx: number; bz: number }
