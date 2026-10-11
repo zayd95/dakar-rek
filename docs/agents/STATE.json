@@ -1,30 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-11T19:29:00Z",
+  "updatedAt": "2026-10-11T19:36:06Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
-  "lease": {
-    "token": "cycle-20261011T1927Z-dkag015",
-    "owner": "producer_dkag015_1927",
-    "acquiredAt": "2026-10-11T19:29:00Z",
-    "expiresAt": "2026-10-11T20:29:00Z"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "DKAG-015",
-      "owner": "qa_dkag015_1927",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "391e8d0aaf331e9975845b6b30b3641dbc54dc7d",
-      "files": [
-        "docs/agents/operations/reports/DKAG-015-gameplay-review.md"
-      ],
-      "kind": "independent QA report only"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -133,7 +117,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-11T04:58:00Z"
+    "lastCompletedRunAt": "2026-10-11T19:36:06Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [
@@ -158,9 +142,11 @@
     "world_dkag018_2236",
     "qa_dkag018_final_0336",
     "gameplay_dkag019_resume_0437",
-    "qa_dkag019_resume_0437"
+    "qa_dkag019_resume_0437",
+    "gameplay_dkag015_1927",
+    "qa_dkag015_1927"
   ],
-  "nextAction": "Review DKAG-015 source 0de3c4a and exact push/PR CI; do not redo code",
+  "nextAction": "Read existing DKAG-015 push38168518669 and PR38168543352 at exact0de3c4a; independent QA must inspect browser logs before verified acceptance. Do not redo code while checks pending.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -298,24 +284,21 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-11-DKAG-019.md",
-    "completedAt": "2026-10-11T04:58:00Z",
-    "trigger": "scheduled autonomous run",
+    "entry": "docs/agents/operations/CYCLE-2026-10-11-DKAG-015.md",
+    "completedAt": "2026-10-11T19:36:06Z",
     "actualRunCompleted": true,
     "tasks": [
-      "DKAG-019",
-      "DKAG-018 requalification"
+      "DKAG-015"
     ],
-    "verifiedCandidates": [
-      "DKAG-018",
-      "DKAG-019"
+    "verifiedCandidates": [],
+    "reviewCandidates": [
+      "DKAG-015"
     ],
     "draftPullRequests": [
-      16,
-      18
+      19
     ],
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261011T043600Z-26b65565756a"
+    "leaseReleased": "cycle-20261011T1927Z-dkag015"
   },
   "protectedRefsLatest": [
     {
@@ -460,6 +443,44 @@
     "owner": "gameplay_dkag015_1927",
     "reviewer": "qa_dkag015_1927",
     "merged": false,
-    "deployed": false
+    "deployed": false,
+    "validation": {
+      "authorUnit": {
+        "passed": 33,
+        "total": 33
+      },
+      "authorBuild": "PASS",
+      "authorTypecheck": "PASS",
+      "authorBrowser": "local_not_run: Chromium absent",
+      "ci": {
+        "readAt": "2026-10-11T19:36:06Z",
+        "runs": [
+          {
+            "id": 38168543352,
+            "sha": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
+            "status": "in_progress",
+            "conclusion": null,
+            "event": "pull_request"
+          },
+          {
+            "id": 38168518669,
+            "sha": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
+            "status": "in_progress",
+            "conclusion": null,
+            "event": "push"
+          }
+        ]
+      },
+      "independentQa": "review: static and local tests pass; exact browser CI pending",
+      "independentUnit": {
+        "passed": 33,
+        "total": 33
+      },
+      "independentTypecheck": "PASS",
+      "independentServerTypecheck": "PASS",
+      "independentBuild": "PASS",
+      "independentBrowser": "local_not_run: Chromium absent"
+    },
+    "reviewReport": "docs/agents/operations/reports/DKAG-015-gameplay-review.md"
   }
 }

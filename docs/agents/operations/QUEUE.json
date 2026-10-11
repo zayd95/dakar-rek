@@ -386,7 +386,7 @@
         "authorTypecheck": "PASS",
         "authorBrowser": "local_not_run: Chromium absent",
         "ci": {
-          "readAt": "2026-10-11T19:34:00Z",
+          "readAt": "2026-10-11T19:36:06Z",
           "runs": [
             {
               "id": 38168543352,
@@ -403,7 +403,16 @@
               "event": "push"
             }
           ]
-        }
+        },
+        "independentQa": "review: static and local tests pass; exact browser CI pending",
+        "independentUnit": {
+          "passed": 33,
+          "total": 33
+        },
+        "independentTypecheck": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBuild": "PASS",
+        "independentBrowser": "local_not_run: Chromium absent"
       },
       "pullRequest": 19
     },
