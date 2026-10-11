@@ -136,3 +136,59 @@ road »):
 - To measure: `__dakar.renderBreakdown()` reports `gala_traffic`; `__dakar.gala.info().drawCalls` counts its meshes.
   `scripts/check-perf-evening.mjs` at 17:30 sees the thin queue and the moto-taxis. The jam's peak comes later
   (its window opens between 17:36 and 18:06): `setHour(18.5)` on a gala night shows it at its thickest.
+
+## Wave 5: the whole frame back inside the budget (`fix/w5-perf`)
+
+The wave-5 candidate (b17bfcb) went over the update budget at every moment of every preset, and over the low preset's
+calls after the gala (browser: low 6.48 / 7.43 / 6.93 ms, outflow 177 calls). What grew:
+
+- **Every humanoid computed its gait every frame** (src/actors/gait.ts), with the mixer, wherever it was: hidden ones
+  (their owner's, or those the shared budget swapped for a far figure), off-screen ones, far ones. The mixer also
+  evaluated 38 position and scale tracks a clip that only ever hold the rest pose.
+- **night.ts** scanned every object under `ctx.extra` for vehicles (92 % of them the bones and meshes of humanoids) and
+  read their world positions by walking up the parents, by day too.
+- **The gala road** computed its jam, moto-taxis and rank every frame where nothing of it is drawn.
+- **The show on the sand** (bout, fête, entrance) stayed drawn after the gala behind the walls (`arena_evening` 35 calls
+  at 23:00 on low), and its fête was played every frame.
+- **The spotlight people** (`arena_people`) kept their weight in the shared budget for up to 2 s after the bout began
+  (ambientLife cached it): 133–175 calls on high.
+- Smaller: the crowd rewrote all its instances each frame; the venues updated at full rate far away and the Dibi read its
+  board's text each frame; the watched bout posed its bodies and drew its HUD at every 1/60 s step; the career card was
+  computed several times a frame; a walker's sidewalk entries were searched again for each path; the posters' text
+  stepped down a pixel at a time; the cast and the exterior's scarves walked up the parents for world positions.
+
+What changed, all features kept (each commit on the branch has the details and its tests):
+
+| Change | Where |
+| --- | --- |
+| Animation level of detail (`ANIM_LOD`): in view within 30 m every frame with the gait; beyond, the clips alone with the mixer at 20 Hz (30–60 m) or 10 Hz (beyond); out of view 5 Hz; hidden 2 Hz. Time is owed, so loops and fades keep their pace; bodies are staggered; between updates the bones are set back to the mixer's pose. `fullRate` for the player and the strike rig. Static tracks stripped from the clips. | `src/actors/humanoid.ts`, `src/main.ts` (`setHumanoidView`) |
+| Vehicle lights idle by day; the scan skips humanoids; positions from the last world matrix; lamps re-sent only when they change | `src/city/night.ts` |
+| The gala road twice a second while nothing of it is drawn | `src/city/galaTraffic.ts` |
+| `arena_show`: the bout, the preliminaries and the entrance drawn only when the camera sees inside the walls; the fête behind the walls at 5 Hz | `src/arena/module.ts` |
+| The spotlight's weight read live by the shared budget; out of it when the bout starts | `src/social/ambientLife.ts`, `src/arena/people.ts` |
+| Crowd instances written in place between layout changes; only members with something to do visited | `src/crowd/crowd.ts` |
+| Venues beyond 90 m at 5 Hz; the Dibi's board read once a second | `src/venues/index.ts`, `src/venues/dibiNight.ts` |
+| The watched bout poses its bodies once a frame and draws no HUD | `src/lamb/duel.ts`, `src/arena/bout.ts` |
+| Caches: the career card per ladder and day; sidewalk entries per clear test; the walkers' queue check on a collider grid; the poster font size in a few measures | `src/career/module.ts`, `src/social/routines.ts`, `src/crowd/streetPlan.ts`, `src/arena/posters.ts` |
+| World positions from the last matrices (cast, scarves, apprentices) | `src/venues/cast.ts`, `src/arena/exterior.ts`, `src/main.ts` |
+
+**The whole frame in node:** `PERF=1 nice -n 19 npx vitest run tests/perf.frame.test.ts` (`tests/perfHost.ts`) runs every
+module and the main loop's systems through the browser check's three moments, with the main pass's draw calls per group
+as three.js would issue them (THREE.LOD levels, hidden groups, the shadow pass apart). `PERF_Q=low` picks presets,
+`PERF_OUT=file.json` saves the numbers. Node's update times are about 1/1.4 of the browser profiler's on this machine,
+and its call counts run a little higher than the browser's (190 against 177 at 23:00 on low before the change).
+
+Before → after on the same machine, run one after the other (600 frames a moment; update ms, main-pass draw calls on
+average with the most seen in brackets):
+
+| Preset | 17:30 arrivals | 19:00 bout | 23:00 outflow |
+| --- | --- | --- | --- |
+| low | 4.84 → 2.51 ms; 121 (137) → 119 (128) | 5.30 → 2.27 ms; 118 → 118 | 5.30 → 2.58 ms; 190 (209) → 167 (186) |
+| medium | 5.93 → 3.21 ms; 323 → 323 | 8.41 → 2.92 ms; 170 (223) → 163 (167) | 6.29 → 3.30 ms; 307 (344) → 273 (299) |
+| high | 6.21 → 3.78 ms; 405 → 406 | 9.29 → 3.27 ms; 194 (279) → 180 (189) | 7.84 → 4.31 ms; 394 (421) → 379 (400) |
+
+`arena_people` on high during the bout: at most 133 → 39 calls; `arena_evening` on low at 23:00: 33 → 7.
+
+For the browser check: look at bodies crossing 30 m from the camera (gait to clips), shadows of off-screen bodies on
+medium and high (5 Hz), the show when the camera looks in from a gate, and a seated or kneeling far figure (its pose
+is read at 2 Hz).
