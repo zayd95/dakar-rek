@@ -294,9 +294,11 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await until(() => !window.__dakar.activity() && (window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0) < 6 + 0, null, 60000);
   await until(() => !window.__dakar.activity(), null, 60000);
   const sold = await d(l0 => ({ w: window.__dakar.state.wallet, fish: window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0, save: JSON.parse(localStorage.getItem('dakarrek.guest.save') ?? '{}').inventory?.poisson ?? 0,   // schema v5: the save's own inventory (no longer counters inv:<id>)
-    lines: window.__dakar.state.data.ledger.slice(l0).map(l => [l.label, l.amount]) }), l0);
-  const saleLines = sold.lines.filter(([, a]) => a === 2400), ledgerSum = sold.lines.reduce((t, [, a]) => t + a, 0);
-  check(`${label}: selling 4 fish pays 2 400 F; the 2 left are saved in the inventory`,
+    mult: window.__dakar.business().mult, lines: window.__dakar.state.data.ledger.slice(l0).map(l => [l.label, l.amount]) }), l0);
+  // a sale is trade (category « commerce »): its money is scaled by polyvalence like work pay (src/economy/polyvalence.ts,
+  // +20 % for each other trade practised lately), so 4 × 600 F times the game's own multiplier
+  const saleLines = sold.lines.filter(([, a]) => a === Math.round(2400 * sold.mult)), ledgerSum = sold.lines.reduce((t, [, a]) => t + a, 0);
+  check(`${label}: selling 4 fish pays 2 400 F (× polyvalence); the 2 left are saved in the inventory`,
     saleLines.length === 1 && sold.w - w0 === ledgerSum && sold.fish === back.fish - 4 && sold.save === sold.fish, JSON.stringify({ ...sold, w0 }));
   await d(([p]) => window.__dakar.cam([p.x - 2.5, 2.4, p.z - 5.5], [p.x, 1.1, p.z]), [marketAt]); await shot('beach-mareyeuses'); await d(() => window.__dakar.cam(null));
   await d(() => window.__dakar.setHour(21));
