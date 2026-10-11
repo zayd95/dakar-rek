@@ -174,13 +174,16 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   const url = `${base}?debug${touch ? '&touch' : ''}`;
   const d = (fn, arg) => page.evaluate(fn, arg);
   const ready = () => page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
-  const goal = async () => { await page.waitForTimeout(700); return d(() => (document.getElementById('goal')?.classList.contains('on') ? document.getElementById('goal').textContent : '') ?? ''); };
+  // a few HUD refreshes, not a fixed wait: a slow renderer has few frames (main.ts hudTicks)
+  const settled = async (pg = page, n = 3) => { const t = await pg.evaluate(() => window.__dakar.hudTicks?.() ?? null); if (t === null) return pg.waitForTimeout(1200); await pg.waitForFunction(k => window.__dakar.hudTicks() >= k, t + n, T).catch(() => {}); };
+  const optional = t => t.match(/Facultatif.{0,40}/)?.[0] ?? `no « Facultatif » (${t.slice(0, 80)})`;   // the Carnet's optional part, for the report
+  const goal = async () => { await settled(); return d(() => (document.getElementById('goal')?.classList.contains('on') ? document.getElementById('goal').textContent : '') ?? ''); };
   const carnet = async () => { await d(() => window.__dakar.phone('carnet')); await page.waitForTimeout(300); const t = await d(() => document.querySelector('#phone .ph-screen')?.textContent ?? ''); await d(() => window.__dakar.phoneClose()); return t; };
   const shot = async name => { await page.waitForTimeout(300); await page.screenshot({ path: `${out}/${label}-goal-${name}.png` }); };
   await page.goto(url, { timeout: 120000 }); await ready();
   await d(() => window.__dakar.setHour(10));
   const g0 = await goal(), c0 = await carnet();
-  check(`${label}: a new game — « Parle à Tonton Ibou » on the goal line in Pikine, optional in the Carnet`, /Tonton Ibou/.test(g0) && /Facultatif/.test(c0) && /Parle à Tonton Ibou/.test(c0), `${g0} | ${c0.slice(0, 120)}`);
+  check(`${label}: a new game — « Parle à Tonton Ibou » on the goal line in Pikine, optional in the Carnet`, /Tonton Ibou/.test(g0) && /Facultatif/.test(c0) && /Parle à Tonton Ibou/.test(c0), `${g0} | Carnet: ${optional(c0)}`);
   await shot('1-fresh');
   // talk to him: « Discuter avec Tonton Ibou » from his sheet (not the ★ story row)
   const ibou = (await d(() => window.__dakar.interactables())).find(i => /Ibou/.test(i.name));
@@ -225,11 +228,11 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await p2.goto(url, { timeout: 120000 });
   await p2.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
   await p2.evaluate(() => { window.__dakar.setHour(10); window.__dakar.state.addMoney(1500, 'Livraison'); });
-  await p2.waitForTimeout(700);
+  await settled(p2);
   const g6 = await p2.evaluate(() => document.getElementById('goal')?.textContent ?? '');
   await p2.evaluate(() => window.__dakar.phone('carnet')); await p2.waitForTimeout(300);
   const c6 = await p2.evaluate(() => document.querySelector('#phone .ph-screen')?.textContent ?? '');
-  check(`${label}: not done — off the goal line after the first pay, still optional in the Carnet`, !/Tonton Ibou/.test(g6) && /Facultatif/.test(c6) && /Parle à Tonton Ibou/.test(c6), `${g6} | ${c6.slice(0, 120)}`);
+  check(`${label}: not done — off the goal line after the first pay, still optional in the Carnet`, !/Tonton Ibou/.test(g6) && /Facultatif/.test(c6) && /Parle à Tonton Ibou/.test(c6), `${g6} | Carnet: ${optional(c6)}`);
   await ctx2.close();
 }
 await browser.close();

@@ -19,8 +19,8 @@ import { arenaFighter, type FighterPhase } from './fighter';
  *   gate to the ticket window, ticket in hand through the gate, inside the walls to a free place on the tiers; seated,
  *   nothing. A player whose own moto is in this hub and who is far is told to take it (the pin on the moto); riding it,
  *   the line points to the guarded moto parking by the gate (src/arena/arrival.ts), then on foot as above. It comes
- *   before the economy steps and the other beats, and after the welcome beat only while the player has earned nothing
- *   yet (`welcomeFirst`).
+ *   before the economy steps and the other beats, Tonton Ibou's welcome included: main.ts asks with `welcome` false
+ *   since 11 Oct (src/game/goalLine.ts; the welcome is optional, never forced over tonight's gala).
  * - Once the bout is over and the player has walked out, one place open at that hour to end the evening (the nearest
  *   Dibi or eatery), else nothing.
  * The window and the priority are pure (`eveningGoal`, unit-tested); main.ts only shows the result.
@@ -54,7 +54,7 @@ export interface EveningInput {
   /** Tonight's bout was seen to the end (src/arena/program.ts GALA_DONE_COUNTER). */
   galaDone: boolean;
   ticket: boolean;
-  /** The welcome beat (Tonton Ibou) is still open: it stays first. */
+  /** A beat asked to stay first (main.ts never asks since 11 Oct: tonight's gala comes before Tonton Ibou's welcome). */
   welcome: boolean;
   /** In Pikine: distance to the arena's gate, and whether the player is inside the walls. Null: another hub. */
   gate: { dist: number; inside: boolean } | null;
@@ -112,13 +112,6 @@ export function afterPlace(places: readonly PlaceSpec[], hour: number, from: { x
 }
 
 let afterReached = -1;
-/**
- * The welcome beat (Tonton Ibou) keeps the goal line only while the player has earned nothing yet: after a first pay
- * (a delivery, a job), tonight's arena comes first and the welcome comes back once the evening is over.
- */
-export const welcomeFirst = (welcomeOpen: boolean, d: { ledger: readonly { amount: number }[]; counters: Record<string, number> }) =>
-  welcomeOpen && !d.ledger.some(e => e.amount > 0) && !(d.counters.livraisons > 0);
-
 /**
  * The place pill's second line: the weekday and the time (« Samedi · 15:00 »; a city day number means nothing to a
  * player), and « Gala ce soir » on a fight day (Friday–Sunday) until tonight's gala is over.
