@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { momentsToDrop } from '../src/ui/moments';
 
 /**
  * The after-bout card (hud.boutCard, src/ui/style.css) on a phone: the room it is given keeps it clear of the controls a
@@ -35,6 +36,25 @@ describe('the after-bout card keeps clear of the controls on a phone', () => {
     const gala = Number(/#ui:has\(#galacard\.on\) #toast \{ --tt:(\d+)px; top:calc\(\1px/.exec(css.slice(css.indexOf('@media (max-width:640px)')))![1]);
     for (const [h, t] of [[640, top], [640, gala], [844, top]]) expect(h - t - reserve).toBeGreaterThanOrEqual(200);   // the title and a few rows, then it scrolls
     expect(portrait.slice(0, portrait.indexOf('#toast .mo.bc'))).toMatch(/#toast \.mo \{[^}]*overflow-y:auto/);
+  });
+  it('it heads the toast column; in portrait the column itself ends above the controls (the same reserve) and clips the rest', () => {
+    expect(rule(css, '#toast .mo.bc')).toMatch(/order:-2/);                                     // before every other card and toast
+    expect(rule(css, '#toast .mo')).toMatch(/order:-1/);
+    const col = rule(portrait, '#toast');
+    const colCap = /max-height:calc\(100vh - var\(--tt\) - var\(--sa-t\) - (\d+)px - var\(--sa-b\)\); max-height:calc\(100dvh - var\(--tt\) - var\(--sa-t\) - \1px - var\(--sa-b\)\); overflow-y:clip/.exec(col);
+    const cardCap = /#toast \.mo \{ max-height:calc\(100vh - var\(--tt\) - var\(--sa-t\) - (\d+)px/.exec(portrait);
+    expect(colCap && cardCap).toBeTruthy();
+    expect(colCap![1]).toBe(cardCap![1]);
+    expect(portrait.slice(0, portrait.indexOf('#toast .mo.bc'))).toMatch(/#toast \.mo \{[^}]*flex-shrink:0/);   // it never shrinks for the toasts under it
+  });
+  it('two moment cards at most; the after-bout card replaces those before it and stays while others come', () => {
+    expect(momentsToDrop([])).toEqual([]);
+    expect(momentsToDrop([false, false])).toEqual([]);
+    expect(momentsToDrop([false, false, false])).toEqual([0]);
+    expect(momentsToDrop([false, false, true])).toEqual([0, 1]);                 // the bout's own card: the recaps go
+    expect(momentsToDrop([false, true])).toEqual([0]);
+    expect(momentsToDrop([true, false])).toEqual([]);
+    expect(momentsToDrop([true, false, false])).toEqual([1]);                   // the oldest of the others, not the bout card
   });
   it('on a phone on its side its column sits between « Courir » and the action column, and it ends on screen', () => {
     const col = rule(landscape, '#toast');
