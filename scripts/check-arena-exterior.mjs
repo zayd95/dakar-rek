@@ -58,7 +58,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const want = { low: 8, medium: 14, high: 20 }[s.quality];
   check(`${label}: density follows the graphics quality (${s.quality})`, s.fans === want, `${s.fans} fans`);
   check(`${label}: vendors sell drinks, peanuts and brochettes, écurie scarves and flags, water (prices shown)`,
-    ['Bissap glacé · 300', 'Café Touba · 150', 'Brochettes · 1000', 'Écharpe Baobab · 2000', 'Drapeau Teranga · 1500', 'Sachet d’eau fraîche · 50'].every(t => s.vendors.some(v => v.offers.includes(t))), s.vendors.map(v => v.offers.join(', ')).join(' | '));
+    ['Bissap glacé · 300', 'Café Touba · 150', 'Brochettes · 1000', 'Écharpe Baobab · 2000', 'Petit drapeau Teranga · 1500', 'Sachet d’eau fraîche · 50'].every(t => s.vendors.some(v => v.offers.includes(t))), s.vendors.map(v => v.offers.join(', ')).join(' | '));
   // the queue moves through the gate
   const q0 = await d(() => window.__dakar.arenaOut().queue);
   await page.waitForTimeout(6000 * Math.min(SLOW, 2));

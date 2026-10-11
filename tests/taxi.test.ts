@@ -81,15 +81,17 @@ describe('Ligne 23 on fight evenings', () => {
     expect(night.number).toBe(day.number);
   });
 
-  it('the day route passes the arena gate; the evening route never crosses the queue, and stops near it', () => {
+  it('neither the day route nor the evening route crosses the queue in front of the gate; both stop near it', () => {
     const lane = (l: typeof day) => lanePath(loopNodes(l), 2.0, 4.5);
     const crosses = (pts: { x: number; z: number }[]) => pts.some((p, i) => { const q = pts[(i + 1) % pts.length]; return crossesQueue(gate, p.x, p.z, q.x, q.z, 2); });
-    expect(crosses(lane(day))).toBe(true);
+    expect(crosses(lane(day))).toBe(false);                                     // the barriers stand there by day too (tests/gatePlaza.test.ts)
     expect(crosses(lane(night))).toBe(false);
-    const arene = night.stops.find(s => s.id === 'arene')!, nodes = loopNodes(night);
-    const a = nodes[arene.leg], b = nodes[arene.leg + 1], len = Math.hypot(b.x - a.x, b.z - a.z);
-    const at = { x: a.x + ((b.x - a.x) / len) * arene.at, z: a.z + ((b.z - a.z) / len) * arene.at };
-    expect(Math.hypot(at.x - gate.x, at.z - gate.z)).toBeLessThan(35);
-    expect(queueDistance(gate, at.x, at.z)).toBeGreaterThan(10);
+    for (const l of [day, night]) {
+      const arene = l.stops.find(s => s.id === 'arene')!, nodes = loopNodes(l);
+      const a = nodes[arene.leg], b = nodes[(arene.leg + 1) % nodes.length], len = Math.hypot(b.x - a.x, b.z - a.z);
+      const at = { x: a.x + ((b.x - a.x) / len) * arene.at, z: a.z + ((b.z - a.z) / len) * arene.at };
+      expect(Math.hypot(at.x - gate.x, at.z - gate.z)).toBeLessThan(35);
+      expect(queueDistance(gate, at.x, at.z)).toBeGreaterThan(10);
+    }
   });
 });

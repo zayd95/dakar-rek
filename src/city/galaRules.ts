@@ -47,7 +47,8 @@ export const COLUMN_GAP = 3.4;
  *   kerb (the pavements stay the walkers', src/crowd/streetPlan.ts PAVE), stopping short of the crossing (the walkers'
  *   lanes end 7.6 m from the junction).
  * - The two moto lanes through the jam: the north gap westbound, the south gap eastbound (driving on the right).
- * - The moto-taxis' drop-off on the gate road's north lane, east of the stalls and the moto parking's kerb.
+ * - The moto-taxis' drop-off on the gate road's north lane, east of the gate's pedestrian zone (src/arena/exteriorRules.ts
+ *   gatePlaza: the stalls, the barriers, the queue) and its U-turn too.
  * - The road north of the junction: the lanes the released cars and the taxis use, the taxis' kerb (the rank).
  */
 export interface GalaGeo {
@@ -80,7 +81,7 @@ export function galaGeo(a: { cx: number; cz: number }): GalaGeo {
   return {
     junction: { x: jx, z: jz }, corridor: [jz - KERB, jz + KERB], front, columns,
     gapIn: jz - COLUMN_GAP / 2, gapOut: jz + COLUMN_GAP / 2, hold: front + 1.2,
-    motoDrop: { x: a.cx + 18, z: jz - 2.6 }, motoStep: { x: a.cx + 18, z: jz - 4.4 },
+    motoDrop: { x: a.cx + 19.5, z: jz - 2.6 }, motoStep: { x: a.cx + 19.5, z: jz - 4.4 },
     southbound: jx - lane, northbound: jx + lane, kerb: jx - 4.3,
     rank: [{ x: jx - 4.3, z: jz - 22 }, { x: jx - 4.3, z: jz - 28.5 }, { x: jx - 4.3, z: jz - 35 }],
     agent: { x: jx, z: jz },

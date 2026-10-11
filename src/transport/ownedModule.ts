@@ -262,7 +262,7 @@ export class OwnedVehicleModule implements GameModule {
     if (ctx.player.seated()?.id !== m.driverSeat.id) { this.getOff(false); return; }   // taken off by a door, a trip…
     const mv = ctx.mode() === 'play' ? ctx.input.move() : { x: 0, y: 0 };
     const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : { throttle: mv.y, steer: mv.x };
-    transport.obstacles(this.obst);
+    transport.obstacles(this.obst, this.def.kit);
     const v0 = Math.abs(this.st.speed);
     const hit = driveStep(this.st, input, this.spec.drive, dt, this.blocked);
     if (hit && v0 > 0.5) this.bumps++;

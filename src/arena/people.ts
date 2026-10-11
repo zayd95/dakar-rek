@@ -519,7 +519,9 @@ export class FightNightPeople {
     ];
     if (c === 'tunnel' || c === 'prep') {
       for (const [rid, p] of people) cast.place(rid, p.x, p.z, c === 'prep' ? Math.atan2(me.x - p.x, me.z - p.z) : p.yaw);
-      if (c === 'prep' && s.ids[0]) cast.setClip(s.ids[0], 'Talk');
+      // standing in the corner as they would after walking to it (whatever they were doing: a fête still under way, a
+      // walk cut short), the first one talking to the player
+      for (const [rid, k] of this.members(s)) cast.setClip(rid, k === 'griot' || k === 0 ? 'Talk' : 'Idle');
       s.started = true;
     }
     if (c === 'walk-out' || c === 'result') this.cheerFighter(c === 'result' ? 4 : 3);
@@ -560,6 +562,7 @@ export class FightNightPeople {
   party(plan: PartyPlan, t: number, from: { x: number; z: number }) {
     const cast = this.cast; if (!cast || plan.kind !== 'main' || !plan.winner) return;
     const s = this.sides.find(x => x.who === plan.winner); if (!s) return;
+    if (this.fighter?.who === s.who) return;                                 // they are with the player in their corner now
     for (const [rid, role, start] of this.partyRoles(s, plan)) {
       const p = entourageAt(plan, t, this.cx, this.cz, from, start, role); if (!p) continue;
       cast.place(rid, p.x, p.z, p.yaw);

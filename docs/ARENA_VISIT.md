@@ -209,9 +209,11 @@ that evening, they are tonight's main event. The pure parts are in `src/arena/my
   Baobab's corner, where the hub was loaded, so a player in Teranga's corner (any independent) never had « Je suis
   prêt » and the marker led to the wrong corner.
 - **The preliminaries run first.** The show starts once they are in the tunnel. Their corner is held
-  (`arenaFighter.hold`) while the stands fill, the preliminaries run and the ceremony names them. « Je suis prêt » skips
-  the rest of the preliminaries (« Plus d’attente : ton entrée commence. ») or, during the entrance, goes straight to the
-  walk-out. Signed up while this device's show already ran (seated first, then the gala place at the door,
+  (`arenaFighter.hold`) while the stands fill, the preliminaries run and the ceremony names them. « Je suis prêt »
+  (`readyStep`, `afterPrelim`) lets the preliminary under way be fought to its end — the first one when the stands are
+  still filling — then their entrance comes instead of the next one (« Prêt : ton entrée vient après ce combat. », « Prêt :
+  un combat des préliminaires, puis ton entrée. »): the preliminaries still come first and no bout is cut off. During
+  the entrance, once the ceremony has named them, it goes straight to the walk-out. Signed up while this device's show already ran (seated first, then the gala place at the door,
   `takeOver`): the filling or the preliminaries go on and their entrance follows; an entrance or a watched bout already
   begun gives way to their entrance, from its start (nothing of that bout is recorded); after the main event, their
   bout is an ordinary one.
@@ -367,6 +369,10 @@ Habib's evening: « prendre sa moto ou un Car Rapide ».
   - The other motos are instanced (three looks, ≤ 3 draw calls) and solid. Two stand there while the arena is set up.
     The rows fill as the doors open, full by 19 h on a gala night and about half on a weekday card (cap by quality
     6 / 10 / 12). They empty over 150 game seconds after the gala.
+  - The parking's evening is the arena street's (`parkingStreet`): it counts while a bout is on or while the street is
+    alive. After a weekday card's gala, or at closing time, the gardien stays, the rows empty slowly and he says goodbye,
+    as on a gala night. Before this, the arena's schedule said no bout was on once the gala was over, so on Monday to
+    Thursday the street went 'quiet' at once and the gardien left.
   - When the player rides away, the gardien says « Ñibbil ak jàmm ! Ba beneen yoon ! » (rentre bien · à la
     prochaine).
   - The evening's goal line suggests the moto to a player who owns one in this hub and is far (pin on the moto).
@@ -499,4 +505,6 @@ everything `src/arena` draws hidden; budget desktop < 160, phone < 60) and the w
 the people (desktop medium, phone low), captures in `docs/screenshots/arena-people/`: the officials and two drummers
 at doors-open, vendors walking, a vendor stopping and selling, the chairs kept, judges and referee at the filling, the
 drummers' group and the entourages walking in (whole-frame draw calls), the entourages in their corners during the
-bout, the winner's people on the sand, everyone gone after the gala.
+bout, the winner's people on the sand, everyone gone after the gala. Once the fête has been checked, the rest of the
+result is skipped (`arena.go('leaving')`), and every later wait is on the show's own state. On a slow renderer, game time
+runs far behind wall time.

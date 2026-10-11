@@ -108,6 +108,27 @@ The « Billet · gala de làmb » sheet, readable in portrait (390 × 844) witho
   (`seatRefusal`, « Ton billet est pour la tribune populaire (…) : cette place est en tribune d’honneur. »); the same
   reason is on the greyed action button and in the toast when it is tapped. `__dakar.focus().why` lists it.
 
+## The goal line: here and now (src/game/goalLine.ts, src/social/beats.ts)
+
+`#goal` says one thing at most, and only what makes sense in this hub, at this hour, with the player's needs and money
+(`pickGoal`, in this order):
+1. the walking marker the player chose (« Les coins du quartier », « Y aller »);
+2. the fighter's own evening (entrance, corner, ring, the way out);
+3. a critical need met here (`needGoal`): energy under 15 → home to sleep if the player's home is in this hub (the bed
+   when inside), else the nearest free rest (« Se poser à l'ombre »), else energy they can pay for; hunger under 12 →
+   the nearest meal they can pay for. Walking never needs energy;
+4. tonight's gala (ticket, gate, seat, the way out, after the gala);
+5. the lead about this hub (`suggestionHere`): a person who lives here and is about, by day (7 h–22 h); a step of this
+   hub or of anywhere. The first job is the hub's own Tiak Tiak (Pikine, Plateau), else its « Petits boulots » — never
+   another hub's pick-up.
+
+**« Parle à Tonton Ibou ».** Talking to him in any way closes it (the ★ beat, « Discuter », the attaya:
+`welcomeByTalk`), with his recommendation; done, it is gone for good (the save's `beats`), also after a reload. An older
+save whose player already talked with him (a relation with him, no beat) finds it done on load (`settleWelcome`). Not
+done, it leads the goal line only in the first moments of a new game (nothing earned, no delivery, under 15 min:
+`welcomeEarly`), in Pikine, by day; otherwise it waits in the Carnet under « Facultatif ». Checks:
+`tests/goalLine.test.ts`, `scripts/check-life-loop.mjs` (step 8).
+
 ## Phone › Ce soir (src/arena/tonight.ts)
 
 The evening plans itself from what the game already knows. Nothing is invented: the page is a pure assembly

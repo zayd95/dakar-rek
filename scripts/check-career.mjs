@@ -57,15 +57,26 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await d(() => window.__dakar.careerBout('classe', 'player', 2, 'projection', 'Ndiaga', true));
   await page.waitForFunction(() => !!document.querySelector('#toast .mo.bc:not(.out)'), null, { timeout: 10000 }).catch(() => {});
   const ca = await career(), last = ca.bouts.at(-1);
-  const card = await d(() => {
+  // what a finger meets: for every control shown (the action button and « ⋯ », the joystick, « Courir », the progress
+  // pill), the card's box is clear of the control's, and the topmost element at the control's centre is not the card
+  const measure = () => d(() => {
     const c = [...document.querySelectorAll('#toast .mo.bc:not(.out)')].pop(); if (!c) return null;
-    const r = c.getBoundingClientRect();
-    const hit = id => { const e = document.getElementById(id), b = e?.getBoundingClientRect(); return !!b && b.width > 0 && getComputedStyle(e).display !== 'none' && +getComputedStyle(e).opacity > 0.1 && b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top; };
+    const r = c.getBoundingClientRect(), over = [];
+    for (const id of ['act', 'actMore', 'joy', 'runBtn', 'progress']) {
+      const e = document.getElementById(id); if (!e) continue;
+      const b = e.getBoundingClientRect(), st = getComputedStyle(e);
+      if (!b.width || !b.height || st.display === 'none' || st.visibility === 'hidden' || +st.opacity <= 0.1) continue;
+      const boxes = b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top;
+      const top = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+      if (boxes || (top && c.contains(top))) over.push(id);
+    }
     return { title: c.querySelector('.mo-tx > b')?.textContent ?? '', sub: c.querySelector('.bc-sub')?.textContent ?? '',
       rows: [...c.querySelectorAll('.bc-r')].map(x => ({ k: x.querySelector('dt')?.textContent, v: x.querySelector('.bc-v')?.textContent, d: x.querySelector('.bc-d')?.textContent, note: x.querySelector('.bc-note')?.textContent ?? '', tone: x.querySelector('.bc-d')?.className })),
       next: [...c.querySelectorAll('.bc-next span')].map(x => x.textContent), font: Math.min(...[...c.querySelectorAll('.bc-v, .bc-d, .bc-r dt')].map(x => parseFloat(getComputedStyle(x).fontSize))),
-      inView: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight, overAct: hit('act') || hit('actMore'), overJoy: hit('joy') };
+      inView: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight, over, overAct: over.includes('act') || over.includes('actMore'), overJoy: over.includes('joy'),
+      box: [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)], scrolls: c.scrollHeight > c.clientHeight + 1 };
   });
+  const card = await measure();
   const row = k => card?.rows.find(x => x.k === k);
   const sp = t => (t ?? '').replace(/[  ]/g, ' ');
   const rec = r => `${r.v} V · ${r.d} D · ${r.n} N${r.ab ? ` · ${r.ab} abandon${r.ab > 1 ? 's' : ''}` : ''}`;
@@ -79,8 +90,21 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     row('Réputation')?.d === dd('Réputation') && row('Influence')?.d === dd('Influence') && sp(row('Cachet')?.v).replace(/\s/g, '') === `+${last.purse}F`,
     JSON.stringify({ rows: card?.rows, rep: gaugeOf('Réputation'), inf: gaugeOf('Influence'), purse: last.purse }));
   check(`${label}: « Ensuite »: the next bill or step`, (card?.next.length ?? 0) >= 1 && card.next.every(t => /^(Prochain palier|Place au gala|Combat pour le titre|Défendre la ceinture|Revanche)/.test(t)), JSON.stringify(card?.next));
-  check(`${label}: the card is readable (≥ 11.5 px) and on screen, clear of the action button and the joystick`, card && card.font >= 11.5 && card.inView && !card.overAct && !card.overJoy,
-    JSON.stringify(card && { font: card.font, inView: card.inView, overAct: card.overAct, overJoy: card.overJoy }));
+  check(`${label}: the card is readable (≥ 11.5 px) and on screen, clear of the action button and the joystick`, card && card.font >= 11.5 && card.inView && !card.over.length,
+    JSON.stringify(card && { font: card.font, inView: card.inView, over: card.over, box: card.box, scrolls: card.scrolls }));
+  if (touch) {
+    // the same card on a small phone and on a phone on its side: still on screen, readable, clear of every control (it
+    // scrolls inside when taller than the room above the controls); then back to the phone's own size
+    const sizes = [];
+    for (const [width, height] of [[360, 640], [844, 390]]) {
+      await page.setViewportSize({ width, height }); await page.waitForTimeout(700);
+      const m = await measure();
+      sizes.push({ size: `${width}×${height}`, ...(m && { font: m.font, inView: m.inView, over: m.over, box: m.box, scrolls: m.scrolls }) });
+    }
+    await page.setViewportSize(viewport); await page.waitForTimeout(700);
+    check(`${label}: on a 360 × 640 phone and on its side (844 × 390) too, the card is readable, on screen and clear of the controls`,
+      sizes.every(m => m.font >= 11.5 && m.inView && Array.isArray(m.over) && !m.over.length), JSON.stringify(sizes));
+  }
   await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${label}-after-bout-card.png` });
   await page.locator('#toast .mo.bc:not(.out)').last().click();
   const gone = await page.waitForFunction(() => !document.querySelector('#toast .mo.bc:not(.out)'), null, { timeout: 5000 }).then(() => true, () => false);

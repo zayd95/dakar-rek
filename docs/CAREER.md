@@ -46,8 +46,11 @@ Only real saved values. No invented numbers and no streak counters.
     soir », « vendredi soir »), else the next rung and what it still asks (`rankOf(...).next`).
 
   Every number is one the career's rules already gave, read before and after `recordBout`; nothing new is computed.
-  Gains are green, losses red. It stays 16–24 s, a tap dismisses it, it never covers the action button or the joystick;
-  on a landscape phone it drops its icon, puts the result and the opponent on one line and keeps the first next step only. Debug: `__dakar.careerBout(mode, winner,
+  Gains are green, losses red. It stays 16–24 s, a tap dismisses it, it never covers the action button, the joystick
+  or « Courir »: in portrait it ends above the controls' row (164 px up, the safe area too) and scrolls inside when it
+  is taller (a 360 × 640 phone, the gala card on); on a landscape phone its column sits between « Courir » and the action
+  column, it drops its icon, puts the result and the opponent on one line and keeps the first next step only
+  (src/ui/style.css; the numbers kept in step with the controls by `tests/boutCardLayout.test.ts`). Debug: `__dakar.careerBout(mode, winner,
   level, outcome, name, true)` shows it for a simulated bout.
 - **After a gala watched to the end** (fight evenings): the result, the belt (taken or kept), and the winner's new place
   in the city's table (or the top two when nothing moved).

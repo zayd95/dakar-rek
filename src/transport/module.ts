@@ -35,6 +35,19 @@ const MOTION = { vmax: 9, vmin: 3.2, lateral: 2.6, accel: 1.5, decel: 2.2 };
 /** Camera distance within which the apprenti and the people at the stops are drawn and animated. */
 const NEAR = 70;
 
+/**
+ * Where a line's cars drive and stop in a hub (pure): the lane round its loop, its stops on the pavement, the arc length
+ * where each stop holds a car (its rear door level with the shelter), the timetable. The module builds its cars on it;
+ * tests sample it to keep every car out of the arena gate's pedestrian zone (tests/gatePlaza.test.ts).
+ */
+export function linePlan(def: LineDef, colliders: HubWorld['colliders'], door: { z: number }) {
+  const path = new Path(lanePath(loopNodes(def), LANE, CORNER));
+  const sites = placeStops(def, colliders);
+  const stopS = sites.map(s => path.project(s.x - s.rx * (STOP_OFFSET - LANE) - s.dx * door.z, s.z - s.rz * (STOP_OFFSET - LANE) - s.dz * door.z));
+  const table = new Timetable(path, stopS.map(s => ({ s, dwell: DWELL })), MOTION);
+  return { path, sites, stopS, table };
+}
+
 interface LineRt {
   def: LineDef;
   spec: VehicleSpec;
@@ -104,7 +117,7 @@ export class TransportModule implements GameModule {
   /** Fans aboard each car (by vehicle id): they ride to their stop even if the line's fans end meanwhile. */
   private aboard = new Map<string, LineFans>();
   private arrivalFns = new Set<(a: StopArrival) => void>();
-  private obstacleFns = new Set<(out: Footprint[]) => void>();
+  private obstacleFns = new Set<(out: Footprint[], kind?: string) => void>();
 
   // ---------------------------------------------------------------- GameModule
   init(ctx: GameCtx) {
@@ -124,12 +137,8 @@ export class TransportModule implements GameModule {
     const low = ctx.quality() === 'low';
     for (const def of linesOf(hub.id)) {
       const spec = carRapideSpec();
-      const path = new Path(lanePath(loopNodes(def), LANE, CORNER));
-      const sites = placeStops(def, hub.colliders);
-      const door = spec.doors[0];
       // each stop holds the vehicle where its rear door is level with the shelter
-      const stopS = sites.map(s => path.project(s.x - s.rx * (STOP_OFFSET - LANE) - s.dx * door.z, s.z - s.rz * (STOP_OFFSET - LANE) - s.dz * door.z));
-      const table = new Timetable(path, stopS.map(s => ({ s, dwell: DWELL })), MOTION);
+      const { path, sites, table } = linePlan(def, hub.colliders, spec.doors[0]);
       const calls = [...def.calls.map(callTexture), callTexture(SAY.depart)];
       const fleet = low ? 1 : def.fleet;
       const bumpy = hub.id === 'pikine' ? 1.7 : 1;
@@ -303,16 +312,17 @@ export class TransportModule implements GameModule {
 
   /**
    * Footprints of the line's cars (drive mode collides with them): centre, heading, half length and width; then those of
-   * the other systems' solid vehicles (`addObstacles`: the gala road's jam, src/city/galaTraffic.ts).
+   * the other systems' solid things (`addObstacles`: the gala road's jam, src/city/galaTraffic.ts; the gate's pedestrian
+   * zone for a car, src/arena/exterior.ts). `kind`: the kit kind of the vehicle asking ('moto', 'sedan'…).
    */
-  obstacles(out: Footprint[]) {
+  obstacles(out: Footprint[], kind?: string) {
     out.length = 0;
     for (const rt of this.lines) for (const v of rt.vehicles) out.push({ x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, hl: rt.spec.length / 2, hw: rt.spec.width / 2 });
-    for (const fn of this.obstacleFns) fn(out);
+    for (const fn of this.obstacleFns) fn(out, kind);
     return out;
   }
-  /** Another system's vehicles drive mode stops at (it pushes their footprints); returns the way to take them away. */
-  addObstacles(fn: (out: Footprint[]) => void): () => void { this.obstacleFns.add(fn); return () => { this.obstacleFns.delete(fn); }; }
+  /** Another system's things drive mode stops at (it pushes their footprints); returns the way to take them away. */
+  addObstacles(fn: (out: Footprint[], kind?: string) => void): () => void { this.obstacleFns.add(fn); return () => { this.obstacleFns.delete(fn); }; }
 
   // ---------------------------------------------------------------- lines, stops and passengers
   private clear() {

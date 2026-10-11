@@ -12,6 +12,20 @@ evening first, then the city's everyday density. No new map.
   west side, ~30 m from the gate; the day route is parked meanwhile (`LineDef.runs`, the shared clock: every client
   agrees; a player riding a car keeps it until they get off). The evening cars are fuller (`LineDef.fill`: 85 % of the
   seats on gala nights Friday–Sunday, 65 % on a weekday card), always with seats left for the player.
+- **The gate's pedestrian zone** (`gatePlaza` in src/arena/exteriorRules.ts) is the street in front of the gate with
+  both its pavements, between the stalls' outer edges with a margin, and the apron up to the gate. The world's crowd
+  barriers stand across that street at all hours, with the stalls and, on fight evenings, the drummers and the queue.
+  No vehicle drives or stops there, at any hour:
+  - neither Ligne 23 route takes that street (TRANSPORT.md);
+  - the decorative traffic never takes it, by day too (a permanent `trafficClosures.more` entry for the arena's hub);
+  - the evening flows, the arrivals' taxis and the gala road keep out;
+  - the player's car stops at the zone (`transport.obstacles(out, kind)`); their moto still reaches its guarded place
+    beside it.
+
+  The fans come from, and the crowd goes to, the pavement corners at the street's two ends (`streetEnds`), never a
+  junction's carriageway where Ligne 23 turns or the gala road's agent stands. `__dakar.arenaPlaza()` lists the zone
+  and the car rapides and decorative cars in it now (none). Checks: tests/gatePlaza.test.ts, and step 11 of
+  `scripts/check-gala-traffic.mjs` (each moment over a whole loop, with a look at the gate).
 - **The street.** Taxis, clandos and moto-taxis come along the arena's north road, queue at the kerb when it is busy
   (a visible jam), let their supporters out (in their écurie's colours) who walk on to the queue's tail; the moto-taxi's
   pillion steps off. After the main bout (from 22 h 24) they come back, wait at the kerb and the crowd walks out to

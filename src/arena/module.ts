@@ -34,7 +34,7 @@ import { TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, seatRefusa
 import { decorMaterial, honneurPlate, tribuneDecor } from './ticketsDecor';
 import { EntranceCeremony } from './entrance';
 import { CEREMONY, cornerSides, standsOf, type Fighter, type Who } from './ceremony';
-import { PLAYER_SIDE, boutByClock, cheeredSide, entranceByClock, mainCalledOff, mainDriver, myShowResult, remoteCard, takeOver } from './myGala';
+import { PLAYER_SIDE, afterPrelim, boutByClock, cheeredSide, entranceByClock, mainCalledOff, mainDriver, myShowResult, readyStep, remoteCard, takeOver } from './myGala';
 import type { LambEvent } from '../game/modules';
 import { posters } from './posters';
 import { recordGalaResult } from '../social/fightTalk';
@@ -122,6 +122,8 @@ class ArenaEvening {
   private mine = false;
   /** Their bill, kept for the whole evening (the career forgets the sign-up once their bout is recorded). */
   private ownBill: Bill | null = null;
+  /** « Je suis prêt » said before or during the preliminaries: their entrance comes after the one under way (myGala.ts readyStep). */
+  private readyAfter = false;
   remote: { id: string; name: string; rec?: string } | null = null;
   private offCue: () => void = () => {};
   private drums = new Percussion();
@@ -474,7 +476,7 @@ class ArenaEvening {
     if (phase !== 'prelims') this.clearPrelim();
     if (phase !== 'result') this.endParty();
     if (phase === 'filling') {
-      this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0; this.fallSplit = null; this.lastBout = null;
+      this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0; this.fallSplit = null; this.lastBout = null; this.readyAfter = false;
       // the matchup is on the gala card from now on (it used to be said again in a toast under the card: once is enough),
       // a friend's own main event too (« X, combat de la soirée » on the card)
       this.mine = this.myGala(); this.ownBill = this.mine ? billFor(this.day()) : null;
@@ -592,7 +594,10 @@ class ArenaEvening {
     this.t += dt;
     this.party?.update(this.t - this.pEnded, dt);                        // the preliminary's few seconds of fête
     // (a friend's own main event: their entrance comes when they say so, through their presence)
-    if (this.t >= this.pEnded + PRELIM.result) { if (this.pi + 1 < this.prelims.length) this.startPrelim(this.pi + 1); else if (entranceByClock(this.driver())) this.go('entrance'); }
+    if (this.t >= this.pEnded + PRELIM.result) {
+      const next = afterPrelim(this.pi + 1 < this.prelims.length, this.readyAfter, this.driver());   // (« Je suis prêt »: their entrance now)
+      if (next === 'next') this.startPrelim(this.pi + 1); else if (next === 'entrance') this.go('entrance');
+    }
   }
   private startPrelimBout(p: Prelim) {
     for (const w of this.pWalk) w.h.dispose(); this.pWalk = [];
@@ -670,9 +675,12 @@ class ArenaEvening {
   }
   /** « Je suis prêt » in their corner: on to their entrance (the rest of the preliminaries skipped), or to the walk-out. */
   private fighterReady() {
-    if (this.phase === 'idle' && this.street === 'doors') this.go('filling');
-    if (this.phase === 'filling' || this.phase === 'prelims') { this.go('entrance'); this.ctx.toast('Plus d’attente : ton entrée commence.'); }
-    else if (this.phase === 'entrance') this.t = Math.max(this.t, CEREMONY.ring[0]);
+    const step = readyStep(this.phase);
+    if (step === 'walk-out') { this.t = Math.max(this.t, CEREMONY.ring[0]); return; }
+    if (step !== 'after-prelim' || this.readyAfter) return;
+    if (this.phase === 'idle') { if (this.street !== 'doors') return; this.go('filling'); }
+    this.readyAfter = true;
+    this.ctx.toast(this.phase === 'prelims' && this.pBout ? 'Prêt : ton entrée vient après ce combat.' : 'Prêt : un combat des préliminaires, puis ton entrée.');
   }
   /** Their duel is over (the career recorded it): the show's result is theirs, real, as the friends will see it. */
   myBoutEnded(e: Extract<LambEvent, { kind: 'bout' }>) {
@@ -758,7 +766,7 @@ class ArenaEvening {
 
   private abort() {
     this.clearPrelim(); this.clearEntrance(); this.endParty(); this.bout?.dispose(); this.bout = null; this.drums.stop();
-    this.phase = 'idle'; this.t = 0; this.mine = false; this.ownBill = null;
+    this.phase = 'idle'; this.t = 0; this.mine = false; this.ownBill = null; this.readyAfter = false;
   }
 
   private startEntrance() {

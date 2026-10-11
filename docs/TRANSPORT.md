@@ -146,6 +146,14 @@ away while the player is still on the way to the door, they get in at once.
 - Ligne 23 has an evening variant (`23s`, `LineDef.runs`) from 16 h to midnight, round the arena block with an « Arène »
   stop by the arena's west side; the day route is parked meanwhile (cars and waiting people hidden, its stops offer no
   boarding); a player on a car keeps it to the end of the trip. Evening cars are fuller (`LineDef.fill`).
+- Neither route takes the street in front of the arena gate: the gate's pedestrian zone (`gatePlaza`,
+  src/arena/exteriorRules.ts), where crowd barriers stand across the street at all hours with stalls and drummers. The
+  day route used to loop round the four central blocks along that street, through the barriers, with its « Arène »
+  stop by a stall. It now loops round the same three blocks as the evening route, the other way round
+  (`DAY_LOOP`): Marché, Gare, Rue 10, Arène. Its « Arène » stop is on the arena's west road, across from the evening
+  one, a short walk from the gate. `linePlan(def, colliders, door)` (module.ts) is the route, the stops and the
+  timetable the cars drive. tests/gatePlaza.test.ts samples every car of both routes over a whole loop on the real
+  Pikine hub: none ever stands or drives in the zone.
 - Taxis between neighbourhoods (`taxi.ts`, `taxiRules.ts`): ranks, fare, the ride out, `ctx.travel`, the ride in, the
   trip owed in the save until the player is out. See `docs/CITY.md`.
 

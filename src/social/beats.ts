@@ -1,8 +1,8 @@
 import type { Needs } from '../core/types';
 import type { GameState } from '../core/state';
-import { Relations, PLAYER } from './relations';
+import { Relations, PLAYER, pairKey } from './relations';
 import { castById } from './cast';
-import { economyStep, type Step } from '../economy/progress';
+import { economyStep, stepHub, type Step } from '../economy/progress';
 import { furnitureCount } from '../economy/furniture';
 import { quote, say } from '../i18n/wolof';
 
@@ -214,18 +214,83 @@ export function availableBeat(npc: string, r: Relations, s: GameState): Beat | n
   return BEATS.find(b => b.npc === npc && !r.beatDone(b.id) && b.when(r, s)) ?? null;
 }
 
+// ------------------------------------------------------------------ Tonton Ibou's welcome: done once, optional otherwise
+
+export const WELCOME = 'ibou_welcome';
+/** Played time during which the welcome may lead the goal line of a new game (a quarter of an hour). */
+export const WELCOME_HUD_MS = 15 * 60_000;
 /**
- * The one suggested next step (at most one at a time; nothing is compulsory).
- * Order: Ibou's welcome, then Ibou's reactions to the first delivery / furniture, then the economic step
- * (src/economy/progress.ts), then the other beats.
+ * The first moments of a new game: nothing earned, no delivery, a quarter of an hour at most. Only then may the
+ * welcome lead the HUD's goal line (in Pikine, by day); afterwards it stays, optional, in the Carnet until done.
+ */
+export const welcomeEarly = (d: { ledger: readonly { amount: number }[]; counters: Record<string, number>; playedMs: number }) =>
+  !d.ledger.some(e => e.amount > 0) && !((d.counters.livraisons ?? 0) > 0) && d.playedMs < WELCOME_HUD_MS;
+/** The welcome when it is still to do (the Carnet lists it as optional), else null. */
+export const openWelcome = (r: Relations): Beat | null => (r.beatDone(WELCOME) ? null : BEATS[0]);
+/**
+ * « Parle à Tonton Ibou » is done by talking to him at all: the ★ beat, « Discuter », the attaya. Any other way of
+ * talking to him (the welcome still open) closes it as « D'abord je m'installe » would: his recommendations (Modou, Mame
+ * Diarra's deliveries) and his word. Returns his reply for the HUD, or null when there was nothing to close.
+ */
+export function welcomeByTalk(npc: string | undefined, r: Relations, s: GameState): string | null {
+  const b = BEATS[0];
+  if (npc !== b.npc || r.beatDone(b.id)) return null;
+  const c = b.choices.find(x => x.id === 'installer')!;
+  applyChoice(b, c, r, s);
+  return c.reply;
+}
+/**
+ * A save in which the player already talked with Ibou (a relation with him) but whose welcome was never marked done —
+ * saves from before talking counted: it is marked done once, on load, with its recommendation (no relation or need is
+ * given twice). True when it marked it.
+ */
+export function settleWelcome(r: Relations, s: GameState): boolean {
+  if (r.beatDone(WELCOME) || !((s.data.rel[pairKey(BEATS[0].npc, PLAYER)] ?? 0) > 0)) return false;   // a stored relation: they talked
+  s.data.beats[WELCOME] = 'installer';
+  r.set('reco_modou');
+  return true;
+}
+
+/** The leads in the order they are suggested (see `suggestion`). */
+function leads(r: Relations, s: GameState): (Beat | Step)[] {
+  const open = (b: Beat) => !r.beatDone(b.id) && b.when(r, s);
+  const welcome = BEATS[0], out: (Beat | Step)[] = [];
+  if (open(welcome) && welcomeEarly(s.data)) out.push(welcome);
+  out.push(...BEATS.filter(b => (b.id === 'ibou_tiak' || b.id === 'ibou_meuble') && open(b)));
+  const step = economyStep(s); if (step) out.push(step);
+  out.push(...BEATS.filter(b => b !== welcome && b.id !== 'ibou_tiak' && b.id !== 'ibou_meuble' && open(b)));
+  if (open(welcome) && !out.includes(welcome)) out.push(welcome);                     // optional, last
+  return out;
+}
+
+/**
+ * The one suggested next step (the Carnet's and the phone's « Prochaine piste »; nothing is compulsory).
+ * Order: Ibou's welcome during the first moments of a new game, then Ibou's reactions to the first delivery /
+ * furniture, then the economic step (src/economy/progress.ts), then the other beats; an open welcome comes last.
  */
 export function suggestion(r: Relations, s: GameState): Beat | Step | null {
-  const open = (b: Beat) => !r.beatDone(b.id) && b.when(r, s);
-  const welcome = BEATS[0];
-  if (open(welcome)) return welcome;
-  const ibou = BEATS.find(b => (b.id === 'ibou_tiak' || b.id === 'ibou_meuble') && open(b));
-  if (ibou) return ibou;
-  return economyStep(s) ?? BEATS.find(open) ?? null;
+  return leads(r, s)[0] ?? null;
+}
+/** The Carnet's « Prochaine piste »: the first lead that is not the (optional) welcome. */
+export function nextLead(r: Relations, s: GameState): Beat | Step | null {
+  return leads(r, s).find(x => x.id !== WELCOME) ?? null;
+}
+
+/** Hours (city clock) when the goal line sends the player to see someone: by day, people are about. */
+export const VISIT_HOURS: readonly [number, number] = [7, 22];
+/**
+ * The lead the HUD's goal line may show here and now (src/main.ts): the first one about this hub — a person who lives
+ * here (`castById(npc).hub`) and is about now (`present`, by day), a step of this hub or of anywhere
+ * (src/economy/progress.ts stepHub). Null when none makes sense here: the leads stay in the Carnet.
+ */
+export function suggestionHere(r: Relations, s: GameState, hub: string, hour: number, present: (npc: string) => boolean = () => true): Beat | Step | null {
+  const day = hour >= VISIT_HOURS[0] && hour < VISIT_HOURS[1];
+  for (const x of leads(r, s)) {
+    if ('npc' in x) { if (day && castById(x.npc)?.hub === hub && present(x.npc)) return x; continue; }
+    const h = stepHub(x, s);
+    if (!h || h === hub) return x;
+  }
+  return null;
 }
 
 export function applyChoice(beat: Beat, choice: Choice, r: Relations, s: GameState): string[] {
