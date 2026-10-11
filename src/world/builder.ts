@@ -592,7 +592,9 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     if (small) addSign('MAÏGA', bg, '#f1e6c8', cx + 1.3, G + 2.6, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 2.6, 0.7);
     else addSign(k.name.toUpperCase(), bg, '#fff7e0', cx, G + 3.55, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 7.2, 1.0);
     const px = cx, pz = south ? blockMin(k.j) + BLK + 1.5 : blockMin(k.j) - 1.5;
-    interactables.push({ id: `${id}:${k.kind}:${k.i}${k.j}`, name: k.name, kind: 'actions', x: px, z: pz, radius: 4.4, actions: k.kind === 'home' || k.kind === 'gargote' || k.kind === 'maiga' ? [ENTER, ...ACTIONS[k.kind]] : ACTIONS[k.kind] });
+    // eateries also serve at their front benches; the room's door only opens: the bed and the bucket are inside
+    const actions = k.kind === 'home' ? [ENTER] : k.kind === 'gargote' || k.kind === 'maiga' ? [ENTER, ...ACTIONS[k.kind]] : ACTIONS[k.kind];
+    interactables.push({ id: `${id}:${k.kind}:${k.i}${k.j}`, name: k.name, kind: 'actions', x: px, z: pz, radius: 4.4, actions });
     return { px, pz, south, cx };
   };
 

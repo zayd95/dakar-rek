@@ -234,7 +234,8 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     metal.cyl(0.4, 0.35, 0.18, ox + 1.2, 1.15, cz, 0x9aa0a6, 12);
     solid(ox - 0.5, cz, W - 3, 0.8, 1.1);
     interactables.push({ id: `${hub}:in:counter`, name, kind: 'actions', x: ox - 0.5, z: cz + 1.1, radius: 1.8, actions: ACTIONS.gargote });
-    const menu = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.0), new THREE.MeshLambertMaterial({ map: signTexture('CEEBU JËN · YASSA · MAFÉ', '#1f2a24', '#f6efd8', 512, 128) }));
+    // the board lists what the counter serves (ACTIONS.gargote); mafé is the Maïga's
+    const menu = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.0), new THREE.MeshLambertMaterial({ map: signTexture('CEEBU JËN · YASSA', '#1f2a24', '#f6efd8', 512, 128) }));
     menu.position.set(ox - 0.5, 2.1, z0 + 0.02); group.add(menu); signs.push(menu);
     // fridge with a lit glass door, water filter
     plain.box(0.8, 1.9, 0.7, x1 - 0.6, 0.1, z0 + 0.5, 0xf2f2ee); glow.box(0.6, 1.3, 0.01, x1 - 0.6, 0.6, z0 + 0.86, 0xd8ecf4);
