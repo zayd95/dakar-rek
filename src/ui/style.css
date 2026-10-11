@@ -387,8 +387,10 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #toast .mo.bc { padding:7px 34px 7px 10px; }
   #toast .bc .mo-ic, #toast .bc-next span + span { display:none; }
   #toast .bc-v, #toast .bc-note { display:inline; } #toast .bc-note::before { content:' · '; }
-  #toast .bc .mo-tx > b { font-size:15px; }
+  #toast .bc .mo-tx > b { display:inline; font-size:15px; }
+  #toast .bc-sub { display:inline; } #toast .bc-sub::before { content:' · '; }
   #toast .bc-rows { margin-top:3px; }
+  #toast .bc-r { grid-template-columns:minmax(70px, auto) 1fr auto; }
   #toast .bc-r { padding:1px 0; }
   #toast .bc-next { margin-top:4px; padding:4px 8px; }
   /* the trades' gesture card (src/ui/gesture.ts) is centred at the bottom, 52vw wide: the action column stays right of it */

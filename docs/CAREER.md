@@ -47,7 +47,7 @@ Only real saved values. No invented numbers and no streak counters.
 
   Every number is one the career's rules already gave, read before and after `recordBout`; nothing new is computed.
   Gains are green, losses red. It stays 16–24 s, a tap dismisses it, it never covers the action button or the joystick;
-  on a landscape phone it drops its icon and keeps the first next step only. Debug: `__dakar.careerBout(mode, winner,
+  on a landscape phone it drops its icon, puts the result and the opponent on one line and keeps the first next step only. Debug: `__dakar.careerBout(mode, winner,
   level, outcome, name, true)` shows it for a simulated bout.
 - **After a gala watched to the end** (fight evenings): the result, the belt (taken or kept), and the winner's new place
   in the city's table (or the top two when nothing moved).
