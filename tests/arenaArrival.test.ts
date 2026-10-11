@@ -11,6 +11,7 @@ import { glossed } from '../src/i18n/wolof';
 import { buildVehicle } from '../src/actors/vehicleKit';
 import { pickTarget } from '../src/interact/system';
 import type { Target } from '../src/interact/types';
+import { fansAtStop, fansOnSet, type LineFans } from '../src/transport/passengers';
 
 const A = { cx: 30, cz: -30 };                    // the Pikine arena (world/builder.ts block 2,1)
 const lot = motoLot(A), gate = gateOf(A);
@@ -129,6 +130,25 @@ describe('getting there: the goal line names the moto, the car rapide carries fa
     expect(fansRide('after')).toBe(false); expect(fansRide('quiet')).toBe(false);
     for (const e of ECURIES) expect(FAN_COLOURS).toContain(e.colour);
     expect(FAN_COLOURS.some(c => c < 0)).toBe(true);                                                     // a few in their own clothes
+  });
+  it('fans aboard ride to « Arène » and get off there, even if the street leaves its doors phase during the ride', () => {
+    const F: LineFans = { colours: FAN_COLOURS, dest: 'arene' };
+    // aboard from « Marché »: the line's fans get on at every stop but theirs
+    let car = fansOnSet(null, F, 'marche');
+    expect(car).toBe(F);
+    expect(fansAtStop(car, F, 'rue10')).toEqual({ off: false, aboard: F });
+    // the street turns (after the gala, a slow phone's clock): no more fans get on, those aboard ride on…
+    car = fansOnSet(car, null, null);
+    expect(car).toBe(F);
+    const gare = fansAtStop(car, null, 'gare');
+    expect(gare).toEqual({ off: false, aboard: F });
+    // …and get off at their stop, the car goes on without them
+    expect(fansAtStop(gare.aboard, null, 'arene')).toEqual({ off: true, aboard: null });
+    expect(fansAtStop(F, F, 'arene')).toEqual({ off: true, aboard: null });
+    // a car standing at « Arène » when the fans start riding does not take them there; one without fans lets none off
+    expect(fansOnSet(null, F, 'arene')).toBeNull();
+    expect(fansAtStop(null, null, 'arene')).toEqual({ off: false, aboard: null });
+    expect(fansAtStop(null, F, 'marche')).toEqual({ off: false, aboard: F });
   });
   it('the car rapide kit dresses its seated passengers in the given shirts (another cached model, same seats)', () => {
     const seated = ['b00', 'b01', 'b10', 'b11', 'b12'];

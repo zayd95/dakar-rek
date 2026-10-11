@@ -5,12 +5,15 @@ import * as THREE from 'three';
  * with an invented slogan in Wolof (CLAD) and its French. The écuries are the game's own (Baobab, Teranga); no real
  * wrestler, club or brand. One texture atlas (2 × 4 cells) for every banner of every crowd: the figures' shader picks
  * the cell (src/crowd/rig.ts), so banners cost no draw call of their own.
+ * Reviewed (CLAD orthography and the French): « du daanu » is the negative (« ne tombe pas »), « ndam » is the victory
+ * (« victoire »), « jàpp te daan » saisir et terrasser, « làmb ji » la lutte, « aada » la tradition; Baobab and Teranga
+ * are the écuries' names, kept as written.
  */
 export interface Banner { side: 'left' | 'right' | 'ends'; wo: string; fr: string; bg: number; fg: number; band: number }
 export const BANNERS: readonly Banner[] = [
   { side: 'left', wo: 'BAOBAB DU DAANU !', fr: 'Le Baobab ne tombe pas !', bg: 0x1a7a44, fg: 0xffffff, band: 0xf4c20d },
-  { side: 'left', wo: 'SUNU MBËR, SUNU NDAM', fr: 'Notre lutteur, notre gloire', bg: 0x15633a, fg: 0xf4c20d, band: 0xffffff },
-  { side: 'left', wo: 'BAOBAB, JÀMM AK NDAM', fr: 'Baobab : la paix et la gloire', bg: 0x1f9d55, fg: 0xffffff, band: 0xf4c20d },
+  { side: 'left', wo: 'SUNU MBËR, SUNU NDAM', fr: 'Notre lutteur, notre victoire', bg: 0x15633a, fg: 0xf4c20d, band: 0xffffff },
+  { side: 'left', wo: 'BAOBAB, JÀMM AK NDAM', fr: 'Baobab : la paix et la victoire', bg: 0x1f9d55, fg: 0xffffff, band: 0xf4c20d },
   { side: 'right', wo: 'TERANGA, SUNU KËR', fr: 'Teranga, notre maison', bg: 0xc8322a, fg: 0xffffff, band: 0x1c1c1f },
   { side: 'right', wo: 'JÀPP TE DAAN !', fr: 'Saisis et terrasse !', bg: 0xa82820, fg: 0xffffff, band: 0xf2f2ec },
   { side: 'right', wo: 'TERANGA, BUL TIIT !', fr: 'Teranga, n’aie pas peur !', bg: 0xd9322b, fg: 0x1c1c1f, band: 0xffffff },

@@ -123,9 +123,10 @@ export class StreetLife {
       // the arena's stop of the evening route takes the crowd riding home after the gala
       const crowd = site.def.id === 'arene' && !!line.fill;
       const slots = crowd ? crowdSlots(site, cols, avoid) : stopSlots(site, cols, avoid);
-      // on a busy street? (the centre line under the stop belongs to one of the hub's busy streets)
+      // on a busy street? (the centre line under the stop belongs to one of the hub's busy streets); the evening route's
+      // « Arène » stop is always one: the fight evening's stop, off the main street since Ligne 23 goes round the arena
       const cx = site.x - site.rx * 6.25, cz = site.z - site.rz * 6.25;
-      const busy = edgeWeight({ ax: cx - site.dx, az: cz - site.dz, bx: cx + site.dx, bz: cz + site.dz }, HUB_STREETS[hub.id]?.busy ?? []) > 1;
+      const busy = crowd || edgeWeight({ ax: cx - site.dx, az: cz - site.dz, bx: cx + site.dx, bz: cz + site.dz }, HUB_STREETS[hub.id]?.busy ?? []) > 1;
       const key = `${line.id}:${site.def.id}`;
       this.stops.push({ site, key, slots, taken: slots.map(() => null), door: { x: site.x - site.rx * 1.15, z: site.z - site.rz * 1.15 }, busy, crowd, served: stopServed(key) });
     }

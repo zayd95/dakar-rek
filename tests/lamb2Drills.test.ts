@@ -177,3 +177,14 @@ describe('làmb 2.0 · the drills inside the duel (headless)', () => {
     expect(duel.drillResult()).toBeNull();
   });
 });
+
+describe('làmb 2.0 · the checks’ drill answer hook', () => {
+  for (const id of DRILL_IDS) {
+    it(`${id}: answered right through the usual inputs as each call opens, every call scores`, () => {
+      const duel = drillDuel(id);
+      duel.debugDrillAnswer(true);
+      for (let k = 0; k < 60 * 60 && duel.phase !== 'result'; k++) duel.update(DT);
+      expect(duel.drillResult()).toMatchObject({ outcome: 'entrainement', right: DRILLS[id].calls.length, faults: 0, score: DRILLS[id].calls.length });
+    });
+  }
+});
