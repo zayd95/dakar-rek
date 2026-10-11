@@ -156,65 +156,80 @@ try {
   // a friend who is tonight's main event themselves (src/arena/myGala.ts): their presence says so (arena.m = 1). A raw
   // client plays them here (their own device, on a gala evening, is check-arena-fighter.mjs): the player in the stands
   // sees their name on the card, their entrance and « Combat en cours », never a simulated ceremony or duel, their pose in
-  // the ring and the real result they send; nothing of it is recorded here; the server refuses any other value for `m`
+  // the ring and the real result they send; nothing of it is recorded here; the server refuses any other value for `m`.
+  // Every step is reached through the show's own state (the debug API, the friend's presence), never by waiting on this
+  // device's game clock: on a slow runner it runs far behind the real one (the frame's dt is capped at 0.1 s).
   {
-    await b.waitForFunction(() => ['idle', 'over'].includes(window.__dakar.arena.info()?.phase), null, { timeout: 90000 }).catch(() => {});
+    const info = () => b.evaluate(() => window.__dakar.arena.info());
+    // a known state first: the evening before is closed (its result phase may still be running, the fête is long), then a
+    // fresh evening, the next day, its doors open
+    await b.evaluate(() => { const D = window.__dakar; D.stand(); if (!['idle', 'over'].includes(D.arena.info().phase)) D.arena.go('over'); });
+    const closed = await b.waitForFunction(() => ['idle', 'over'].includes(window.__dakar.arena.info()?.phase), null, { timeout: 30000 }).then(() => true).catch(() => false);
+    const day = (await info()).day + 1;
+    await b.evaluate(d => { const D = window.__dakar; D.arena.day(d); D.setHour(18); D.state.data.counters.arena_ticket_day = d; D.arena.speed(1); }, day);
+    const fresh = await b.waitForFunction(d => { const i = window.__dakar.arena.info(); return i.day === d && i.phase === 'idle' && i.street === 'doors' && !i.galaDone; }, day, { timeout: 30000 }).then(() => true).catch(() => false);
     await b.evaluate(() => {
       window.__toasts = []; const box = document.getElementById('toast');
       new MutationObserver(() => { for (const c of box.children) { const m = c.dataset?.msg; if (m && !window.__toasts.includes(m)) window.__toasts.push(m); } }).observe(box, { childList: true });
     });
-    const day = (await b.evaluate(() => window.__dakar.arena.info()?.day)) + 1;            // a fresh evening (the next day) on the second device
-    await b.evaluate(d => { const D = window.__dakar; D.arena.day(d); D.setHour(18); D.state.data.counters.arena_ticket_day = d; D.arena.speed(4); }, day);
-    const centre = await b.evaluate(() => window.__dakar.arena.info().centre);
+    const centre = (await info()).centre;
     const seatM = await b.evaluate(([x, z]) => { const D = window.__dakar, s = D.arena.freeSeat(x, z); return s && D.sit(s.id) === s.id ? s : null; }, [centre.x + 15.5, centre.z + 6]);
     const running = await b.waitForFunction(() => ['filling', 'prelims'].includes(window.__dakar.arena.info()?.phase), null, { timeout: 60000 }).then(() => true).catch(() => false);
-    check('arena, a friend\'s own gala: the player in the stands has a show running', !!seatM && running, JSON.stringify({ seat: seatM?.id, phase: await b.evaluate(() => window.__dakar.arena.info()?.phase) }));
+    const i0 = await info();
+    check('arena, a friend\'s own gala: the evening before closed, a fresh one starts with the player seated', closed && fresh && !!seatM && running && i0.prelims.n >= 1,
+      JSON.stringify({ closed, fresh, seat: seatM?.id, phase: i0.phase, day: i0.day, prelims: i0.prelims.n }));
     const REC = 'Adversaires réputés · 7-2 · Écurie Baobab';
     const ndiaga = await connect({ hub: 'pikine', name: 'Ndiaga', rec: REC });
     const nid = ndiaga.welcome.id;
     const send = (dx, dz, arena, clip = 'Idle') => ndiaga.ws.send(JSON.stringify({ type: 'move', x: centre.x + dx, y: 0.1, z: centre.z + dz, yaw: 0, speed: 0, space: 'street', clip, arena }));
-    // in their corner inside the walls: tonight's main event is them
-    send(6, 6, { d: day, p: 2, t: 0, i: 0, m: 1 });
+    // in their corner inside the walls, their own show past its last preliminary: tonight's main event is them
+    const last = i0.prelims.n - 1;
+    send(6, 6, { d: day, p: 2, t: 120, i: last, m: 1 });
     const known = await b.waitForFunction(id => window.__dakar.together().main === id && window.__dakar.arena.info().remote?.name === 'Ndiaga', nid, { timeout: 30000 }).then(() => true).catch(() => false);
-    const r0 = await b.evaluate(() => window.__dakar.arena.info().remote);
+    const r0 = (await info()).remote;
     check('arena, a friend\'s own gala: their presence makes them tonight\'s main event here, with their public record line', known && r0?.rec === REC, JSON.stringify(r0));
-    // the stands wait after their preliminaries for their entrance: never by this device's clock
-    const waiting = await b.waitForFunction(() => /Ndiaga, combat de la soirée/.test(window.__dakar.arena.info().card), null, { timeout: 180000 }).then(() => true).catch(() => false);
-    await sleep(4000);
-    const w1 = await b.evaluate(() => window.__dakar.arena.info());
-    check('arena, a friend\'s own gala: after the preliminaries the stands wait for their entrance', waiting && w1.phase === 'prelims', JSON.stringify({ phase: w1.phase, card: w1.card }));
-    // their entrance: the card and the announcer name them (with their public line), nobody is drawn walking out for them
-    send(4, 4, { d: day, p: 3, t: 0, m: 1 }, 'Walk');
+    // this show joins theirs past the last preliminary, then waits for their entrance: the card names them, and the
+    // show's own time goes on (a few more seconds) without its entrance starting
+    const waiting = await b.waitForFunction(() => /Ndiaga, combat de la soirée/.test(window.__dakar.arena.info().card), null, { timeout: 60000 }).then(() => true).catch(() => false);
+    const t0 = (await info()).t;
+    const onward = await b.waitForFunction(t0 => window.__dakar.arena.info().t >= t0 + 3 || window.__dakar.arena.info().phase !== 'prelims', t0, { timeout: 60000 }).then(() => true).catch(() => false);
+    const w1 = await info();
+    check('arena, a friend\'s own gala: after the preliminaries the stands wait for their entrance (not this device\'s clock)', waiting && onward && w1.phase === 'prelims' && w1.prelims.i === last && w1.t >= t0 + 3,
+      JSON.stringify({ phase: w1.phase, i: w1.prelims.i, t: [t0, w1.t], card: w1.card }));
+    // their entrance, 40 s in (past the ceremony's own 33 s): the card and the announcer name them (with their public
+    // line), nobody is drawn walking out for them, and this show does not go on to a bout by its clock
+    send(4, 4, { d: day, p: 3, t: 40, m: 1 }, 'Walk');
     const entered = await b.waitForFunction(() => window.__dakar.arena.info().phase === 'entrance', null, { timeout: 30000 }).then(() => true).catch(() => false);
-    await sleep(800);
-    const [e1, toastsB] = [await b.evaluate(() => window.__dakar.arena.info()), await b.evaluate(() => window.__toasts.slice())];
+    const heard = await b.waitForFunction(rec => window.__toasts.some(t => t.includes(`voici Ndiaga ! (${rec})`)), REC, { timeout: 15000 }).then(() => true).catch(() => false);
+    const [e1, toastsB] = [await info(), await b.evaluate(() => window.__toasts.slice())];
     check('arena, a friend\'s own gala: « Entrée de Ndiaga », the announcer calls them with their public line, no wrestler simulated, the card\'s people wait in their corners',
-      entered && /Entrée de Ndiaga/.test(e1.card) && !e1.ceremony && e1.entrance === 0 && e1.people?.quiet === true && toastsB.some(t => t.includes(`voici Ndiaga ! (${REC})`)),
+      entered && heard && /Entrée de Ndiaga/.test(e1.card) && !e1.ceremony && e1.entrance === 0 && e1.people?.quiet === true,
       JSON.stringify({ card: e1.card, ceremony: e1.ceremony, entrance: e1.entrance, quiet: e1.people?.quiet, toasts: toastsB.filter(t => /Ndiaga/.test(t)) }));
-    await sleep(10000);                                                                          // past the ceremony's own 33 s at speed 4
-    const e2 = await b.evaluate(() => window.__dakar.arena.info());
-    check('arena, a friend\'s own gala: their bout comes when they start it, not by this device\'s clock', e2.phase === 'entrance', e2.phase);
+    const te = e1.t;
+    await b.waitForFunction(te => window.__dakar.arena.info().t >= te + 2 || window.__dakar.arena.info().phase !== 'entrance', te, { timeout: 60000 }).catch(() => {});
+    const e2 = await info();
+    check('arena, a friend\'s own gala: past the ceremony\'s time their bout still waits for them (not this device\'s clock)', e2.phase === 'entrance' && e2.t >= 33, JSON.stringify({ phase: e2.phase, t: e2.t }));
     // their bout: in the ring in a fighting stance; the card says « Combat en cours : Ndiaga »; no duel is simulated here
     send(1.5, 0, { d: day, p: 4, t: 0, m: 1 }, 'Stance');
     const inBout = await b.waitForFunction(id => window.__dakar.arena.info().phase === 'bout' && window.__dakar.presence().peers.some(p => p.id === id && p.clip === 'Stance'), nid, { timeout: 30000 }).then(() => true).catch(() => false);
-    await sleep(800);
-    const [b1, pb] = [await b.evaluate(() => window.__dakar.arena.info()), await b.evaluate(id => { const p = window.__dakar.presence(); return { peer: p.peers.find(x => x.id === id), pose: p.poses[id] ?? null }; }, nid)];
+    const [b1, pb] = [await info(), await b.evaluate(id => { const p = window.__dakar.presence(); return { peer: p.peers.find(x => x.id === id), pose: p.poses[id] ?? null }; }, nid)];
     check('arena, a friend\'s own gala: « Combat en cours : Ndiaga », seen in the ring in a fighting stance, no duel simulated here',
-      inBout && /Combat en cours : Ndiaga/.test(b1.card) && b1.bout === null && Math.hypot(pb.peer.x - centre.x, pb.peer.z - centre.z) < 3,
+      inBout && /Combat en cours : Ndiaga/.test(b1.card) && b1.bout === null && !!pb.peer && Math.hypot(pb.peer.x - centre.x, pb.peer.z - centre.z) < 3,
       JSON.stringify({ card: b1.card, bout: b1.bout, pose: pb.pose, at: pb.peer && [+(pb.peer.x - centre.x).toFixed(2), +(pb.peer.z - centre.z).toFixed(2)] }));
     await b.screenshot({ path: 'shots/multiplayer/desktop-friend-main-event.png' });
     // their real result, as they send it, once: told here, applauded by the whole crowd, recorded nowhere on this device
     const galas0 = await b.evaluate(() => window.__dakar.state.data.career?.galas?.length ?? 0);
     send(1.5, 0, { d: day, p: 5, t: 0, m: 1, w: 1, o: 0 }, 'Celebrate');
     const told = await b.waitForFunction(() => /Ndiaga l’emporte par chute/.test(window.__dakar.arena.info().result), null, { timeout: 30000 }).then(() => true).catch(() => false);
-    const [r1, galas1] = [await b.evaluate(() => window.__dakar.arena.info()), await b.evaluate(() => window.__dakar.state.data.career?.galas?.length ?? 0)];
+    const [r1, galas1] = [await info(), await b.evaluate(() => window.__dakar.state.data.career?.galas?.length ?? 0)];
     check('arena, a friend\'s own gala: their real result as they sent it (« Ndiaga l’emporte par chute ! »), nobody\'s corner here runs onto the sand, nothing recorded here',
-      told && r1.people?.won === null && galas1 === galas0, JSON.stringify({ result: r1.result, won: r1.people?.won, galas: [galas0, galas1] }));
+      told && r1.people?.won === null && !r1.party && galas1 === galas0, JSON.stringify({ result: r1.result, phase: r1.phase, won: r1.people?.won, party: !!r1.party, galas: [galas0, galas1] }));
     // the field takes only the value 1: anything else closes the socket
     const refusedM = new Promise(resolve => ndiaga.ws.addEventListener('close', e => resolve(e.code), { once: true }));
     send(1.5, 0, { d: day, p: 5, t: 1, m: 2 });
     check('server refuses any other value for « tonight\'s main event » (arena.m = 2)', await refusedM === 1008);
-    await b.evaluate(() => { const D = window.__dakar; D.stand(); D.arena.speed(1); D.arena.day(null); D.setHour(16); D.place(-3, -26, Math.PI); });
+    // back to the street, this evening closed too (a known state for what follows)
+    await b.evaluate(() => { const D = window.__dakar; D.stand(); if (!['idle', 'over'].includes(D.arena.info().phase)) D.arena.go('over'); D.arena.day(null); D.arena.speed(1); D.setHour(16); D.place(-3, -26, Math.PI); });
     await a.waitForFunction(() => window.__dakar.presence().peers.some(p => Math.abs(p.x + 3) < 0.2 && Math.abs(p.z + 26) < 0.2));
   }
   function connect(params) {
