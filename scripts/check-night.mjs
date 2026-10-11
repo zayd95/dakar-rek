@@ -25,7 +25,9 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
   const d = (fn, arg) => page.evaluate(fn, arg);
   const info = () => d(() => window.__dakar.night.info());
-  const shot = async name => { await page.waitForTimeout(500); await page.screenshot({ path: `${out}/${label}-${name}.png` }); };
+  // a frame under the floodlights can take tens of seconds on the software renderer (SwiftShader): room for the capture,
+  // and its time in the log
+  const shot = async name => { await page.waitForTimeout(500); const t = Date.now(); await page.screenshot({ path: `${out}/${label}-${name}.png`, timeout: 180000 }); console.log(`shot ${label}-${name}: ${Date.now() - t} ms`); };
   const quality = await d(() => window.__dakar.quality?.() ?? 'medium');
 
   // a fight evening at Pikine, after dark: from the street corner, looking along the road to the arena
