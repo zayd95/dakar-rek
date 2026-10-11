@@ -156,16 +156,16 @@ export const cycleTime = (t: number, seed: number) => { const p = AGENT_CYCLE.pe
  * they cross the junction's east lane before the moto-taxis go again.
  */
 export const feedOpen = (t: number, seed: number) => { const u = cycleTime(t, seed); return u >= AGENT_CYCLE.gate && u < AGENT_CYCLE.gate + 4; };
-/** Seconds between two front cars of a column let through while the jam goes. */
-export const RELEASE_EVERY = 2.6;
+/** Seconds between two front cars of a column let through while the jam goes, and how many a column each time. */
+export const RELEASE_EVERY = 2.6, RELEASES = 2;
 /**
- * When the front car of column `col` goes (shared seconds), in cycle m: three times a column while the jam goes, the
- * columns in turn, the last one 3 s before the gate's side goes again (it is round the corner by then).
+ * When the front car of column `col` goes (shared seconds): twice a column while the jam goes, the columns in turn, the
+ * last one more than 5 s before the gate's side goes again (it is round the corner by then).
  */
 export function releaseTimes(col: number, seed: number, from: number, to: number): number[] {
   const p = AGENT_CYCLE.period, off = unit(seed, 3) * p, out: number[] = [];
   for (let m = Math.floor((from + off) / p) - 1; m * p - off <= to; m++) {
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < RELEASES; k++) {
       const r = m * p - off + AGENT_CYCLE.gate + 0.6 + 0.6 * col + RELEASE_EVERY * k;
       if (r > from && r <= to) out.push(r);
     }
@@ -510,7 +510,8 @@ export class JamTimeline {
   at(t: number): JamNow[] {
     const out: JamNow[] = [], dir = this.dir, yaw0 = dir === 'in' ? -Math.PI / 2 : Math.PI / 2, P: Pose = { x: 0, z: 0, yaw: 0 };
     this.geo.columns.forEach((z, c) => {
-      const recs = this.cols[c], q = this.queue(c, t);
+      const recs = this.cols[c], places = this.places(c, t);
+      let k = -1;
       for (const r of recs) {
         if (r.join > t) continue;
         const look = LOOK_OF(r.kind), base = { col: c, k: 0, kind: r.kind, z, yaw: yaw0, hl: look.l / 2, hw: look.w / 2, n: r.n };
@@ -522,7 +523,7 @@ export class JamTimeline {
           out.push({ ...base, x: P.x, z: P.z, yaw: P.yaw, state: 'away', v: Math.min(JAM_MOVE.cruise, JAM_MOVE.accel * (t - r.release)) });
           continue;
         }
-        const x = this.slotAt(c, r, t), k = q.indexOf(r);
+        const x = places.get(r.n)!; k++;
         if (t < r.arrive) {                                                    // coming: braking into its place
           const feed = this.route(this.key('feed', c, r.n), () => feedRoute(this.geo, dir, z, r.joinX));
           const left = cruiseToRestLeft(feed.length, JAM_MOVE.cruise, JAM_MOVE.brake, t - r.join);
@@ -537,6 +538,22 @@ export class JamTimeline {
         out.push({ ...base, k, x, state: 'queue', v: 0 });
       }
     });
+    return out;
+  }
+  /** `slotAt` for every car of column c standing or coming at time t, in one pass (by serial). */
+  private places(c: number, t: number): Map<number, number> {
+    const recs = this.cols[c], out = new Map<number, number>(), sgn = this.dir === 'in' ? 1 : -1, head = this.dir === 'in' ? this.geo.front : this.geo.front + OUT_SPAN;
+    let last: JamRec | null = null, d = 0;
+    for (const r of recs) if (r.release <= t && r.release > t - JAM_MOVE.creep) last = r;
+    for (const r of recs) {
+      if (r.join > t || r.release <= t) continue;
+      const now = head + sgn * (d + r.l / 2);
+      d += r.l + BUMPER;
+      // the cars let through are all ahead of those still there: the last one's place closes up behind it
+      if (!last || last.n > r.n) { out.set(r.n, now); continue; }
+      const was = now + sgn * (last.l + BUMPER);
+      out.set(r.n, was + (now - was) * smooth((t - last.release) / JAM_MOVE.creep));
+    }
     return out;
   }
   /**

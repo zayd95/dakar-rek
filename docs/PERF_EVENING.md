@@ -128,9 +128,10 @@ road »):
   under the shared humanoid budget (`humanoid_v2` under `ctx.extra`), so the frame's humanoid cap does not grow. The
   moto-taxis' fans walk in the arena arrivals' instanced pool: no new body.
 - JS: on the first frame the jam replays the evening's events (at most about six minutes of shared time, a few hundred
-  events). After that each frame computes the jam's cars (about 25 at the peak), the moto-taxis on their lattice and
-  the rank in closed form. That is well under 0.1 ms in node. Every vehicle's place is a function of the shared clock,
-  so nothing is integrated frame by frame and slow frames cost nothing extra.
+  events): about 4.5 ms once in node, at 18 h 36 on medium. After that each frame computes the jam's cars (about 25 at
+  the peak), the moto-taxis on their lattice and the rank in closed form, and fills the instances: about 0.06 ms a
+  frame in node (medium, the jam at its thickest). Every vehicle's place is a function of the shared clock, so
+  nothing is integrated frame by frame and slow frames cost nothing extra.
 - To measure: `__dakar.renderBreakdown()` reports `gala_traffic`; `__dakar.gala.info().drawCalls` counts its meshes.
   `scripts/check-perf-evening.mjs` at 17:30 sees the thin queue and the moto-taxis. The jam's peak comes later
   (its window opens between 17:36 and 18:06): `setHour(18.5)` on a gala night shows it at its thickest.

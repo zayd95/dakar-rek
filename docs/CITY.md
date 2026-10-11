@@ -62,7 +62,7 @@ the doors are open, leaving after the result, nothing on a quiet evening.
   5 / 4 / 3 cars a column at its thickest (high / medium / low). The pavements stay the walkers' (src/crowd/streetPlan.ts
   `PAVE`), and the cars stop short of the crossing. Each column is a timeline (`JamTimeline`): cars join its tail from
   the east edge, one a second at most, while the column is shorter than the jam's depth then. They are let through at
-  its front, three a column a cycle, only while the agent lets the jam go (`releaseTimes`). Events fall on whole
+  its front, two a column a cycle, only while the agent lets the jam go (`releaseTimes`). Events fall on whole
   seconds and on the release times of the shared clock, so the same cars stand in the same places whatever the frames.
   The front cars turn right, up the north road, away from the gate road (`releaseRoute`).
 - **The agent.** A traffic agent in a hi-vis vest stands in the junction's middle, clear of every lane, from 16 h 45 to

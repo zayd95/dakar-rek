@@ -98,13 +98,13 @@ describe('the junction: the agent', () => {
     expect(gate / (gate + jam)).toBeCloseTo(16 / 26, 1);
     expect(changes).toBeGreaterThanOrEqual(19); expect(changes).toBeLessThanOrEqual(21);
   });
-  it('lets the front cars through only while the jam goes: three a column a cycle, the last one 3 s before the gate’s side', () => {
+  it('lets the front cars through only while the jam goes: two a column a cycle, the last one 5 s before the gate’s side', () => {
     for (let c = 0; c < 3; c++) {
       const r = G.releaseTimes(c, SEED, 5000, 5000 + 26 * 10);
-      expect(r.length).toBe(30);
+      expect(r.length).toBe(10 * G.RELEASES);
       for (const t of r) {
         const u = G.cycleTime(t, SEED);
-        expect(u).toBeGreaterThanOrEqual(G.AGENT_CYCLE.gate); expect(u).toBeLessThanOrEqual(G.AGENT_CYCLE.period - 3);
+        expect(u).toBeGreaterThanOrEqual(G.AGENT_CYCLE.gate); expect(u).toBeLessThanOrEqual(G.AGENT_CYCLE.period - 5);
         expect(G.agentPhase(t, SEED).go).toBe('jam');
       }
       expect(G.releaseTimes(c, SEED, 5000, 5130)).toEqual(r.filter(t => t <= 5130));             // the same times, however asked
@@ -179,7 +179,7 @@ describe('the jam over the evening', () => {
       const cars = tl.at(t), h = t / 60;
       const q = [0, 1, 2].map(c => tl.queue(c, t).length);
       if (h > from + 0.3 && h < to - 0.3) peak = Math.max(peak, Math.min(...q));
-      if (h > to + 0.4) after = Math.max(after, ...q);
+      if (h > to + 1.2) after = Math.max(after, ...q);                                             // a few cycles to drain
       for (let c = 0; c < 3; c++) {
         const col = cars.filter(x => x.col === c && x.state !== 'away' && Math.abs(x.z - geo.columns[c]) < 1e-6).sort((p, r) => p.x - r.x);
         for (let i = 1; i < col.length; i++) expect(col[i].x - col[i - 1].x).toBeGreaterThan(col[i].hl + col[i - 1].hl - 0.05);
