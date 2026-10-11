@@ -468,7 +468,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   check(`${label}: at the booth, ask the DJ for a song`, await standAt(anchor(c, 'dj'), Math.PI, /venue:club:dj$/, 0.2), JSON.stringify(await d(() => window.__dakar.focus())));
   const w4 = await d(() => window.__dakar.state.wallet);
   await d(() => window.__dakar.act());
-  await until(() => !window.__dakar.activity() && window.__dakar.state.wallet < w4, null, 30000);
+  await until(w => !window.__dakar.activity() && window.__dakar.state.wallet < w, w4, 30000);   // (w4 lives here, not in the page: passed in)
   await until(() => /Waaw kay/.test(document.getElementById('toast')?.textContent ?? ''), null, 20000);
   check(`${label}: the song request (500 F) and the DJ's answer`, (await d(() => window.__dakar.state.wallet)) === w4 - 500 && /Waaw kay/.test(await toast()), await toast());
   vc = (await venue('club')).crowd;
