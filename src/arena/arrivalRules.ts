@@ -1,6 +1,6 @@
 import { WALL_R } from '../world/geew';
 import { ECURIES } from './exteriorRules';
-import { GALA, type Street } from './program';
+import { GALA, streetAt, type Street } from './program';
 
 /**
  * Getting to the fight (Habib's evening: « prendre sa moto ou un Car Rapide »), as rules: pure data and functions, no
@@ -23,6 +23,16 @@ export const paidTonight = (counters: Record<string, number>, day: number) => co
  * target sits on its nearest edge, so it is often closer). Once paid, a word with him only: the moto first, to ride away.
  */
 export const gardienBias = (feeDue: boolean) => (feeDue ? -0.5 : 0);
+
+/**
+ * The parking's evening (the gardien is there whenever it is not 'quiet'): the arena's street at this hour. The evening
+ * counts while a bout is on (`eventOn`: Friday–Sunday, or the arena's own schedule, which says no bout is on any more
+ * once the gala is over) and while the street is alive (`streetAlive`: the exterior arriving or pouring out). So after a
+ * weekday card's gala, or at closing time, the gardien stays, the rows empty slowly and he says goodbye, as on a gala
+ * night. Before, on a weekday, the end of the gala sent the street back to 'quiet' at once: no gardien, empty rows.
+ */
+export const parkingStreet = (hour: number, galaDone: boolean, eventOn: boolean, streetAlive: boolean): Street =>
+  streetAt(hour, galaDone, eventOn || streetAlive);
 
 /** Space between two motos side by side in a row (a Jakarta is 0.84 m wide). */
 export const SLOT_GAP = 1.1;

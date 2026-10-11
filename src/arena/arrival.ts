@@ -15,9 +15,9 @@ import { clearKerb } from '../transport/passengers';
 import { transport } from '../transport/module';
 import { arenaExterior, eveningSize } from './exterior';
 import { arenaShow } from './module';
-import { GALA_DONE_COUNTER, streetAt, type Street } from './program';
+import { GALA_DONE_COUNTER, type Street } from './program';
 import {
-  FAN_COLOURS, FAN_LINE, FAN_STOP, LOT_CAP, MOTO_FEE, MOTO_FEE_COUNTER, fansRide, gardienBias, inLot, lotCount, lotTaken, motoLot, paidTonight, type MotoLot,
+  FAN_COLOURS, FAN_LINE, FAN_STOP, LOT_CAP, MOTO_FEE, MOTO_FEE_COUNTER, fansRide, gardienBias, inLot, lotCount, lotTaken, motoLot, paidTonight, parkingStreet, type MotoLot,
 } from './arrivalRules';
 
 /**
@@ -154,7 +154,7 @@ class Arrival {
 
   update(dt: number) {
     const { ctx } = this, day = this.day(), hour = ctx.hour(), counters = ctx.state.data.counters;
-    const street = streetAt(hour, counters[GALA_DONE_COUNTER] === day, arenaExterior.isEventDay(day, hour));
+    const street = parkingStreet(hour, counters[GALA_DONE_COUNTER] === day, arenaExterior.isEventDay(day, hour), arenaExterior.active());
     if (street === 'after' && this.street !== 'after') { this.afterT = 0; this.afterFrom = this.lastCount; }
     if (street === 'after') this.afterT += dt;
     this.street = street;
