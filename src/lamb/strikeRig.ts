@@ -44,6 +44,7 @@ export class StrikeRig {
   private guardW = 0;
 
   constructor(h: Humanoid) {
+    h.fullRate = true;                                  // its bones are turned after the mixer: reset by it every frame
     this.root = h.group.children.find(c => c.name === 'Scene') ?? h.group.children[0] ?? h.group;
     for (const b of ORDER) { const o = this.root.getObjectByName(b); if (o) this.bones.set(b, o); }
   }

@@ -36,7 +36,7 @@ const pointsMat = (size: number) => new THREE.PointsMaterial({ size, map: glowTe
 const additive = (o: THREE.MeshBasicMaterialParameters) => new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, ...o });
 
 // ------------------------------------------------------------------ street lamps
-interface Lamp { i: number; x: number; z: number; state: LampState; warm: number; seed: number; first: number; bulb: number[] }
+interface Lamp { i: number; x: number; z: number; state: LampState; warm: number; seed: number; first: number; bulb: number[]; shown: number }
 class StreetLamps {
   readonly group = new THREE.Group();
   readonly lamps: Lamp[] = [];
@@ -81,7 +81,7 @@ class StreetLamps {
       for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) for (const v of near.get(`${Math.round(p.x) + dx},${Math.round(p.z) + dz}`) ?? []) {
         if (Math.abs(bpos!.getX(v) - p.x) < 0.45 && Math.abs(bpos!.getZ(v) - p.z) < 0.45) bulb.push(v);
       }
-      const lamp: Lamp = { i: this.lamps.length, x: p.x, z: p.z, state: lampState(p.x, p.z, keep), warm: lampWarmth(p.x, p.z, nearArena), seed: spotHash(p.x, p.z, 3) * 10, first: p.first, bulb };
+      const lamp: Lamp = { i: this.lamps.length, x: p.x, z: p.z, state: lampState(p.x, p.z, keep), warm: lampWarmth(p.x, p.z, nearArena), seed: spotHash(p.x, p.z, 3) * 10, first: p.first, bulb, shown: -1 };
       this.lamps.push(lamp);
       if (lamp.state === 'flicker') this.flick.push(lamp);
       this.setLamp(lamp, lamp.state === 'out' ? 0 : lamp.warm);
@@ -115,11 +115,17 @@ class StreetLamps {
     this.halo.visible = night > 0.3;
     if (!this.halo.visible || !this.flick.length) return;
     this.t += dt;
+    // a flickering lamp is steady most of the time (flicker): its colours are written, and the hub's whole pool and bulb
+    // attributes sent to the GPU again, only on the frames its brightness changes
+    let changed = false;
     for (const l of this.flick) {
       const b = flicker(this.t, l.seed) * l.warm;
+      if (b === l.shown) continue;
+      l.shown = b; changed = true;
       this.setLamp(l, b);
       const i = l.i; this.haloCol[i * 3] = WARM.r * b; this.haloCol[i * 3 + 1] = WARM.g * b; this.haloCol[i * 3 + 2] = WARM.b * b;
     }
+    if (!changed) return;
     this.poolColors!.needsUpdate = true; if (this.bulbColors) this.bulbColors.needsUpdate = true;
     (this.halo.geometry.attributes.color as THREE.BufferAttribute).needsUpdate = true;
   }
@@ -145,30 +151,42 @@ class VehicleLights {
     this.pts = new THREE.Points(g, pointsMat(0.95)); this.pts.name = 'vehicle_lamps'; this.pts.frustumCulled = false;
     this.group.add(this.pts);
   }
-  /** Finds the kit vehicles under `root` (traffic, car rapides, taxis, the fight-evening flows, owned vehicles). */
+  /**
+   * Finds the kit vehicles under `root` (traffic, car rapides, taxis, the fight-evening flows, owned vehicles). The
+   * people under it are not walked into (nine nodes in ten under ctx.extra are the humanoids' bones and meshes).
+   */
+  private seen = new Set<THREE.Object3D>();
   private scan(root: THREE.Object3D) {
-    const seen = new Set<THREE.Object3D>();
+    const seen = this.seen; seen.clear();
     const walk = (o: THREE.Object3D) => {
       const spec = o.userData.vehicleSpec as VehicleSpec | undefined;
       if (spec) { seen.add(o); if (!this.tracked.has(o)) { o.getWorldPosition(this.v); this.tracked.set(o, { g: o, spec, x: this.v.x, z: this.v.z, moved: 1e9 }); } return; }
+      if (o.name === 'humanoid_v2') return;
       for (const c of o.children) walk(c);
     };
     walk(root);
-    for (const k of [...this.tracked.keys()]) if (!seen.has(k)) this.tracked.delete(k);
+    for (const k of this.tracked.keys()) if (!seen.has(k)) this.tracked.delete(k);
   }
   private lit: Tracked[] = [];
+  /** Seconds spent in daylight without tracking (added to every vehicle's time since it moved when the dusk comes). */
+  private idle = 0;
   /** Which vehicles show their lights (moving lately, shown, within 140 m); called from the module's update. */
   update(dt: number, night: number, root: THREE.Object3D, cam: THREE.Vector3) {
+    this.lit.length = 0;
+    if (!vehicleLit(night, 0)) {                                             // daylight (or indoors): no lights, nothing to track
+      this.idle += dt; this.pts.visible = false; this.pts.geometry.setDrawRange(0, 0);
+      return;
+    }
+    if (this.idle > 0) { for (const t of this.tracked.values()) t.moved += this.idle; this.idle = 0; this.scanT = 0; }
     this.scanT -= dt;
     if (this.scanT <= 0) { this.scanT = 1; this.scan(root); }
-    this.lit.length = 0;
     for (const t of this.tracked.values()) {
       if (!t.g.visible) { t.moved += dt; continue; }                       // hidden (a pooled proxy, a parked line): dark, no matrix work
-      t.g.getWorldPosition(this.v);
+      const e = t.g.matrixWorld.elements, x = e[12], z = e[14];             // where it was drawn last frame
       // moving, or standing with its engine running (`userData.engineOn`: the gala road's jam)
-      if (Math.hypot(this.v.x - t.x, this.v.z - t.z) > 0.02 || t.g.userData.engineOn) t.moved = 0; else t.moved += dt;
-      t.x = this.v.x; t.z = this.v.z;
-      if (this.lit.length < MAX_VEHICLES && vehicleLit(night, t.moved) && shown(t.g, root) && Math.hypot(t.x - cam.x, t.z - cam.z) < 140) this.lit.push(t);
+      if (Math.hypot(x - t.x, z - t.z) > 0.02 || t.g.userData.engineOn) t.moved = 0; else t.moved += dt;
+      t.x = x; t.z = z;
+      if (this.lit.length < MAX_VEHICLES && vehicleLit(night, t.moved) && Math.hypot(t.x - cam.x, t.z - cam.z) < 140 && shown(t.g, root)) this.lit.push(t);
     }
     if (!this.lit.length) { this.pts.visible = false; this.pts.geometry.setDrawRange(0, 0); }
   }

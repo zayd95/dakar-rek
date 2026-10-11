@@ -211,7 +211,7 @@ export class DibiNight {
   private readonly tex: THREE.CanvasTexture | null;
   private readonly tvUv: number;                     // first uv index of the TV quad
   private next = 1.2; private turn = 0; private frameT = 0; private frame = 0;
-  private boardKey = ''; private rows: MenuRow[] = [];
+  private boardKey = ''; private rows: MenuRow[] = []; private boardT = 0;
   private tv: TvLines = { tag: '', names: '', status: '', result: null, live: false };
   flips = 0;
   level = 0;
@@ -312,7 +312,7 @@ export class DibiNight {
   }
 
   /** The menu's rows (from the place's offers, once it exists). */
-  setMenu(offers: Record<string, readonly ActivitySpec[]>) { this.rows = menuRows(offers); this.boardKey = ''; }
+  setMenu(offers: Record<string, readonly ActivitySpec[]>) { this.rows = menuRows(offers); this.boardKey = ''; this.boardT = 0; }
 
   private placeSkewers() {
     const M = new THREE.Matrix4(), q = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1), one = new THREE.Vector3(1, 1, 1);
@@ -347,14 +347,18 @@ export class DibiNight {
     if (this.sparks.visible) this.stepSparks(dt);
     // the board: the menu, the posters and the TV (redrawn when what it says changes), lit a little at night
     this.frameT += dt;
-    const tv = tvLines(s.day, s.hour, s.done);
-    const key = `${tv.tag}|${tv.names}|${tv.status}|${tv.result}|${tv.live}|${this.rows.map(r => r.id + r.price).join(',')}`;
-    if (key !== this.boardKey && this.tex) {
-      this.boardKey = key; this.tv = tv;
-      const cv = document.createElement('canvas'); cv.width = CW; cv.height = CH;
-      const c = cv.getContext('2d'); if (c) drawBoard(c, { rows: this.rows, tv, place: this.o.place, owner: this.o.owner });
-      this.tex.image = cv; this.tex.needsUpdate = true;
-    } else if (key !== this.boardKey) { this.boardKey = key; this.tv = tv; }
+    // what the board and the TV say (tonight's card, live or the replay, the result): read again once a second
+    if ((this.boardT -= dt) <= 0) {
+      this.boardT = 1;
+      const tv = tvLines(s.day, s.hour, s.done);
+      const key = `${tv.tag}|${tv.names}|${tv.status}|${tv.result}|${tv.live}|${this.rows.map(r => r.id + r.price).join(',')}`;
+      if (key !== this.boardKey && this.tex) {
+        this.boardKey = key; this.tv = tv;
+        const cv = document.createElement('canvas'); cv.width = CW; cv.height = CH;
+        const c = cv.getContext('2d'); if (c) drawBoard(c, { rows: this.rows, tv, place: this.o.place, owner: this.o.owner });
+        this.tex.image = cv; this.tex.needsUpdate = true;
+      } else if (key !== this.boardKey) { this.boardKey = key; this.tv = tv; }
+    }
     this.boardMat.emissiveIntensity = s.open ? 0.15 + 0.55 * night : 0.04;
     // the TV: frames of the bout (0, 1, 0, 1, 2) while open, a dark screen when closed
     const seq = [0, 1, 0, 1, 2], slot = s.open ? seq[Math.floor(this.frameT / 1.6) % seq.length] : -1;

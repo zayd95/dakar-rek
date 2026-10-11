@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as THREE from 'three';
 import {
   ARENA_PURCHASES, DRUMS_NEAR, DRUMS_RANGE, ECURIES, FIGHT_FROM, MURMUR_RANGE, crossesQueue, drumVolume, drumsCentre, gateOf, isFightEvening, murmurVolume,
   exteriorPhase, nextFightEvening, outflowDestinations, queueDistance, stallFronts, stallsOf, vendorPlaces, weekday, WEEKDAY_FR, SUPPORTERS_STALL,
@@ -142,5 +143,22 @@ describe('arena exterior: the end of the evening', () => {
   it('the last customers stand on the street side of the four stalls', () => {
     const f = stallFronts({ cx: 100, cz: 50 }), s = stallsOf({ cx: 100, cz: 50 });
     f.forEach((p, i) => { expect(p.x).toBe(s[i].x); expect(p.z).toBeLessThan(s[i].z); });
+  });
+});
+
+describe('a fan\'s scarf and flag follow the body', () => {
+  it('the bone\'s point from its last drawn offset, carried with the body as it is now, is where the full matrix update puts it', async () => {
+    const { bodyPoint } = await import('../src/arena/exterior');
+    const parent = new THREE.Group(), body = new THREE.Group(), a = new THREE.Object3D(), bone = new THREE.Object3D();
+    parent.add(body); body.add(a); a.add(bone);
+    a.position.set(0, 0.9, 0.05); a.rotation.set(0.2, 0.1, -0.05); bone.position.set(0.12, 0.55, 0.08);
+    const want = new THREE.Vector3(), got = new THREE.Vector3();
+    for (const [x0, z0, y0, x1, z1, y1] of [[3, -4, 0.3, 3.04, -3.98, 0.35], [10, 2, 2.5, 9.97, 2.02, 2.1], [-7, 8, -1, -7, 8, -1]]) {
+      body.position.set(x0, 0.1, z0); body.rotation.y = y0; parent.updateMatrixWorld(true);   // as last drawn
+      body.position.set(x1, 0.1, z1); body.rotation.y = y1;                                   // moved this frame
+      bodyPoint(body, bone, got);
+      parent.updateMatrixWorld(true); bone.getWorldPosition(want);
+      expect(got.distanceTo(want)).toBeLessThan(1e-9);
+    }
   });
 });

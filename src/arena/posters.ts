@@ -105,10 +105,28 @@ export function arenaWallSpots(cx: number, cz: number, n = ARENA_WALL_POSTERS): 
   return out.sort((p, q) => (p.z - q.z));
 }
 
+/**
+ * The largest whole font size from `size` down to `min` at which a text is at most `max` wide (`width(s)`: its width at
+ * size s, growing with s), as stepping down one pixel at a time finds it — in two or three measures instead of one a
+ * pixel: the width is about proportional to the size, so the first guess is next to the answer.
+ */
+export function fitSize(width: (size: number) => number, max: number, size: number, min = 12): number {
+  const w0 = width(size);
+  if (w0 <= max || size <= min) return size;
+  let s = Math.max(min, Math.min(size - 1, Math.floor((size * max) / w0)));
+  while (s > min && width(s) > max) s--;
+  while (s + 1 < size && width(s + 1) <= max) s++;
+  return s;
+}
+
 function drawPoster(l: PosterLines): HTMLCanvasElement {
   const cv = document.createElement('canvas'); cv.width = 360; cv.height = 504;
   const c = cv.getContext('2d')!, wd = cv.width;
-  const fit = (text: string, max: number, size: number, weight = 900) => { c.font = `${weight} ${size}px system-ui, sans-serif`; while (c.measureText(text).width > max && size > 12) { size -= 1; c.font = `${weight} ${size}px system-ui, sans-serif`; } };
+  // (each font change and measure is slow in a 2D canvas: the result's redraw used to step a pixel at a time)
+  const fit = (text: string, max: number, size: number, weight = 900) => {
+    const font = (s: number) => `${weight} ${s}px system-ui, sans-serif`;
+    c.font = font(fitSize(s => { c.font = font(s); return c.measureText(text).width; }, max, size));
+  };
   c.fillStyle = l.big ? '#f4dfae' : '#e6eef0'; c.fillRect(0, 0, wd, 504);
   c.fillStyle = l.big ? '#a3231a' : '#0f5e6e'; c.fillRect(0, 0, wd, 96);
   c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff3d0';

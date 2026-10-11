@@ -27,7 +27,7 @@ import { lamb2On } from '../lamb/flag';
 import { localPair, rosterOpponent } from '../lamb/opponents';
 import { PRELIM, PRELIM_TYPICAL, prelimFill, prelimName, undercardFor, type Prelim } from './undercard';
 import { GalaCard } from './card';
-import { FightNightPeople, PEOPLE_COUNT } from './people';
+import { FightNightPeople, PEOPLE_COUNT, seenFrom } from './people';
 import { partyLength, partyPlan, type PartyKind } from './celebration';
 import { ResultParty } from './party';
 import { TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, seatRefusal, ticketLabel, ticketSheet, tierRows, whereLine, type Tribune } from './tickets';
@@ -76,6 +76,13 @@ export const FOLLOW_SLACK = 1.5;
 
 class ArenaEvening {
   readonly group = new THREE.Group();
+  /**
+   * The show on the sand (the wrestlers of the entrance, the preliminaries and the bout, the fête): behind the walls,
+   * drawn only when the camera can see inside them (from the tiers, the sand, or through a gate: src/arena/people.ts
+   * seenFrom). Seen from the street after the gala the walls hide it anyway; it is not drawn (nor are the bodies
+   * animated in full: src/actors/humanoid.ts ANIM_LOD).
+   */
+  readonly show = new THREE.Group();
   readonly cx: number; readonly cz: number; readonly gz: number;
   readonly seats: Seat[] = [];
   /** The stands' crowd (src/crowd, docs/CROWD.md): full bodies next to the player, rigged figures, far silhouettes. */
@@ -168,6 +175,7 @@ class ArenaEvening {
     const cx = this.cx, gz = this.gz;
     this.group.name = 'arena_evening';
     this.group.userData.noLod = true;                 // the show's bodies are never swapped for far figures (crowdLod.ts)
+    this.show.name = 'arena_show'; this.group.add(this.show);
 
     // ---------------------------------------------------------------- the tiers' places, shared by the crowd and the player
     const defs = standSeats(cx, a.cz, `${hub.id}:arena:stand`);
@@ -313,7 +321,7 @@ class ArenaEvening {
       case 'prelims': this.updatePrelim(dt * this.speed); break;
       case 'entrance': this.ceremony?.update(this.t, dt * this.speed); if (this.t >= SHOW.entrance && boutByClock(this.driver())) this.go('bout'); break;
       case 'bout': if (this.bout) { this.bout.advance(dt * this.speed); this.t = this.bout.time; if (this.bout.over) this.go('result'); } break;
-      case 'result': this.party?.update(this.t, dt * this.speed); if (this.t >= this.resultLen) this.go('leaving'); break;
+      case 'result': this.partyStep(dt * this.speed); if (this.t >= this.resultLen) this.go('leaving'); break;
       case 'leaving': if (this.t >= SHOW.leaving) this.go('over'); break;
     }
     // their bout given up before it started (src/arena/fighter.ts): no main event tonight, and no result made up
@@ -326,6 +334,7 @@ class ArenaEvening {
     if (this.fillT <= 0) { this.fillT = 0.4; this.syncCrowd(); }
     const near = Math.hypot(ctx.player.pos.x - this.cx, ctx.player.pos.z - this.cz) < 70;
     this.crowd.group.visible = near;
+    this.show.visible = ctx.space() === 'street' && seenFrom(this.cx, this.cz, ctx.camera.position);
     const seatId = seat?.id ?? null;
     if (seatId !== this.nearSeat) { this.nearSeat = seatId; this.crowd.setNear(seat?.x ?? 0, seat ? seat.z : null, seat?.yaw ?? 0); }
     if (near) this.crowd.cull(ctx.camera);                                    // LOD by distance to the camera, seated or not
@@ -436,7 +445,20 @@ class ArenaEvening {
     this.party = new ResultParty(this.ctx, plan, this.cx, this.cz, this.crowd, this.people, this.bout?.bodies() ?? { left: null, right: null });
     this.resultLen = partyLength(plan, SHOW.leaving);
   }
-  private endParty() { this.party?.dispose(); this.party = null; }
+  private endParty() { this.party?.dispose(); this.party = null; this.partyOwed = 0; }
+  /**
+   * One frame of the main event's fête. It is driven by the result's own time (a jump lands on the same picture, cues
+   * passed on the way are fired), so behind the walls — the player out in the street, the show not drawn — it is
+   * played five times a second with the time gone by; every frame whenever it can be seen.
+   */
+  private partyStep(dt: number) {
+    if (!this.party) return;
+    this.partyOwed += dt;
+    if (!this.show.visible && this.partyOwed < 0.2) return;
+    const d = this.partyOwed; this.partyOwed = 0;
+    this.party.update(this.t, d);
+  }
+  private partyOwed = 0;
 
   /** The evening's two wrestlers as themselves for a bout avec frappe (Làmb 2.0, ?lamb2 only), else null. */
   private frappeBill() {
@@ -510,7 +532,7 @@ class ArenaEvening {
           this.applyFrappe(frappePlan(m, side, { kind: o?.kind, outcome: b.duel.outcome ?? undefined, name: m === 'stagger' ? staggered : null }));
         };
       }
-      this.group.add(this.bout.group);
+      this.show.add(this.bout.group);
     } else if (phase === 'result') {
       if (this.led() && !this.adopted) { this.outcome = null; this.result = ''; return; }   // a friend's result is theirs to send
       const r = this.bout?.result, bi = this.bout?.info() as (Record<string, unknown> | undefined);
@@ -567,7 +589,7 @@ class ArenaEvening {
     const rw = new Wrestler(0x4e2e1c); rw.setLook({ ngembColor: STYLES[p.style].ngemb, ngembPattern: 'uni', accessories: [] }, 'A');
     // a short walk to their marks (where the duel puts them), no dances: the ceremony is the main event's
     for (const [h, sx, t0] of [[lw, 1, 0.2], [rw, -1, 0.7]] as const) {
-      h.group.position.set(cx + sx * 0.8, 0.1, tz); this.group.add(h.group);
+      h.group.position.set(cx + sx * 0.8, 0.1, tz); this.show.add(h.group);
       this.pWalk.push({ h, from: new V3(cx + sx * 0.8, 0.1, tz), to: new V3(cx + sx * 3, 0.1, cz), t0, t1: PRELIM.walk - 0.5 + t0 * 0.4, end: 'Prep' });
     }
   }
@@ -609,7 +631,7 @@ class ArenaEvening {
       if (ph === 'clinch') this.crowd.react('all', 'grab', { share: 0.08, seconds: 1.2 });
       if (ph === 'fall') { this.crowd.react('all', info.outcome === 'projection' ? 'fall' : 'applause', { share: 0.3, seconds: 2.5 }); crowdCheer(1.6, 0.08 * (0.7 + 0.5 * this.crowd.level())); }
     };
-    this.group.add(b.group);
+    this.show.add(b.group);
   }
   /**
    * The one way a preliminary's bout is made: the existing duel, AI against AI, seeded by `prelimSeed` (the same bout
@@ -784,7 +806,7 @@ class ArenaEvening {
       this.react('entrance', null);
       return;
     }
-    this.ceremony = new EntranceCeremony(this.ctx, this.group, this.cx, this.cz, bill, { left: L?.look ?? LEFT_LOOK, right: R?.look ?? RIGHT_LOOK },
+    this.ceremony = new EntranceCeremony(this.ctx, this.show, this.cx, this.cz, bill, { left: L?.look ?? LEFT_LOOK, right: R?.look ?? RIGHT_LOOK },
       who => this.react('entrance', who), { left: L?.skin, right: R?.skin }, this.mine ? { player: PLAYER_SIDE } : {});
   }
   private clearEntrance() {

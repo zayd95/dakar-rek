@@ -355,3 +355,15 @@ describe('club MVP: the fee before paying, table service, the crowd by the hour,
     expect([...unknownPhrases]).toEqual([]);
   });
 });
+
+describe('a venue far from the camera', () => {
+  it('is updated about five times a second with the time gone by, every frame again once near', async () => {
+    const { venueStep, FAR_EVERY } = await import('../src/venues');
+    let owed = 0, runs = 0, total = 0;
+    for (let k = 0; k < 60; k++) { const [run, o] = venueStep(owed, 1 / 30, true); owed = o; if (run !== null) { runs++; total += run; } }
+    expect(runs).toBeGreaterThanOrEqual(Math.floor(2 / (FAR_EVERY + 1 / 30))); expect(runs).toBeLessThanOrEqual(Math.ceil(2 / FAR_EVERY));
+    expect(total + owed).toBeCloseTo(2, 9);                                    // no time lost
+    const [run, after] = venueStep(owed, 1 / 30, false);                       // near again: at once, with what it was owed
+    expect(run).toBeCloseTo(owed + 1 / 30, 9); expect(after).toBe(0);
+  });
+});

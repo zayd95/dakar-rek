@@ -21,6 +21,28 @@ export { PRAYER_TIMES, prayerAt, nextPrayer, prayerPeaks } from './prayer';
  * src/activity/templates.ts + seats of the shared registry + the people who hold it. Everything is rebuilt per hub.
  */
 let venues: Venue[] = [];
+/**
+ * A venue farther than this from the camera (m), the player out in the street, is updated FAR_EVERY seconds with the
+ * time gone by (its people, embers, smoke, board and TV), not every frame: its people are not drawn beyond 45–70 m
+ * (src/venues/cast.ts), and nobody sees its embers flicker from there. Near it, or inside, every frame as before.
+ */
+export const VENUE_NEAR = 90, FAR_EVERY = 0.2;
+/** This frame's update for a venue owed `owed` seconds: the time to update it with (null: not yet), and what it is owed after. */
+export function venueStep(owed: number, dt: number, far: boolean): [number | null, number] {
+  const t = owed + dt;
+  return far && t < FAR_EVERY ? [null, t] : [t, 0];
+}
+/** Each venue's centre (its places' anchors) and the time it is owed while far. */
+const lag = new Map<Venue, { x: number; z: number; owed: number } | null>();
+function centreOf(v: Venue) {
+  let c = lag.get(v);
+  if (c === undefined) {
+    const pts = v.places.flatMap(p => p.anchors);
+    c = pts.length ? { x: pts.reduce((t, a) => t + a.x, 0) / pts.length, z: pts.reduce((t, a) => t + a.z, 0) / pts.length, owed: 0 } : null;
+    lag.set(v, c);
+  }
+  return c;
+}
 let mats: VenueMaterials | null = null;
 let bodies: (() => Body[])[] = [];
 let people: People | null = null;
@@ -28,7 +50,7 @@ let styleT = 0;
 
 function clear() {
   for (const v of venues) v.dispose();
-  venues = []; bodies = []; mats?.dispose(); mats = null; people?.clear();
+  venues = []; bodies = []; mats?.dispose(); mats = null; people?.clear(); lag.clear();
 }
 
 export const VenuesModule: GameModule = {
@@ -58,7 +80,14 @@ export const VenuesModule: GameModule = {
     if (styleT <= 0) { styleT = 0.5; const body = ctx.player.body(); if (body) applyStyle(body, ctx.state.data.counters); }
     if (!venues.length) return;
     mats?.setNight(nightOf(ctx.hour()));
-    for (const v of venues) v.update(dt);
+    const cam = ctx.camera.position, street = !ctx.inside();
+    for (const v of venues) {
+      const c = centreOf(v);
+      if (!c) { v.update(dt); continue; }
+      const [run, owed] = venueStep(c.owed, dt, street && !v.space?.() && Math.hypot(cam.x - c.x, cam.z - c.z) > VENUE_NEAR);
+      c.owed = owed;
+      if (run !== null) v.update(run);
+    }
   },
   spaceChanged(_ctx, space) { for (const v of venues) v.spaceChanged?.(space); },
   /** A venue the player is in that has its own space (La Vague's terrace): targets, seats, presence and chat. */

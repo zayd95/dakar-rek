@@ -291,3 +291,20 @@ describe('street life', () => {
     s.dispose();
   });
 });
+
+describe('the colliders in a grid (the walkers\' check while the queue lane is closed)', () => {
+  it('a point is blocked in the grid exactly when clearWalk from it to itself says so', async () => {
+    const { ColliderGrid } = await import('../src/crowd/streetPlan');
+    const { buildHub } = await import('../src/world/builder');
+    const hub = buildHub('pikine', true);
+    const grid = new ColliderGrid(hub.colliders);
+    let blocked = 0;
+    for (let i = 0; i < 6000; i++) {
+      const x = ((i * 7919) % 2600) / 10 - 130, z = ((i * 104729) % 2600) / 10 - 130, r = i % 2 ? 0.25 : 0.3;
+      const b = grid.blocked(x, z, r);
+      expect(b, `${x},${z}`).toBe(!clearWalk(x, z, x, z, hub.colliders, r));
+      if (b) blocked++;
+    }
+    expect(blocked).toBeGreaterThan(300);                                      // the sample does hit walls
+  });
+});

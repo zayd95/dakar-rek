@@ -165,8 +165,14 @@ function galaMoment(ctx: GameCtx, day: number, winner: string | null) {
 function billOf(ctx: GameCtx, day: number): Bill {
   const s = signed && signed.day === day ? wrestlerById(signed.opp) : undefined;
   if (s && signed) return playerMainBill({ name: playerName(ctx), ecurie: ecurieOf(ctx) }, s, signed.kind === 'title');
-  return cardOf(ladder(ctx, day), day);
+  // the arena asks for tonight's card several times a frame (the show, its people, the gala card): one per ladder and day
+  const l = ladder(ctx, day), byDay = cards.get(l) ?? cards.set(l, new Map()).get(l)!;
+  let c = byDay.get(day);
+  if (!c) { c = cardOf(l, day); byDay.set(day, c); }
+  return c;
 }
+/** Each ladder's cards by day (a ladder is rebuilt, a new key, whenever a bout or a gala result changes it). */
+const cards = new WeakMap<Ladder, Map<number, Bill>>();
 let recSent: string | null | undefined;
 /** The public line under the player's name for others (presence `rec`), sent when it changes. */
 function syncRecord(ctx: GameCtx) {

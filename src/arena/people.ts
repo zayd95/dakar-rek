@@ -477,6 +477,7 @@ export class FightNightPeople {
   /** A new moment of the evening: who is there, and where the entourages stand. */
   private enter(m: PeopleMoment) {
     const cast = this.cast!; const prev = this.moment; this.moment = m;
+    this.weighT = 0;                                                         // who is in the spotlight changes with the moment: now
     this.key = this.keyNow(); cast.setMoment(this.key);
     if (m === 'filling' || m === 'closed' || m === 'doors' || m === 'setup') { this.won = null; this.walked.clear(); for (const s of this.sides) s.started = false; }
     // the entrance begins: everyone waits in the tunnel, in file behind their wrestler
