@@ -25,7 +25,11 @@ import { preloadHumanoid, humanoidReady, Humanoid, randomLook, type Clip, type P
 import { castById } from './social/cast';
 import { NpcLife } from './social/npcLife';
 import { Relations, PLAYER } from './social/relations';
-import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
+import { BEATS, WELCOME, availableBeat, suggestion, suggestionHere, applyChoice, settleWelcome, welcomeByTalk, type Beat } from './social/beats';
+import { needGoal, pickGoal } from './game/goalLine';
+import { arenaFighter } from './arena/fighter';
+import { currentHome } from './economy/assets';
+import { homeSpec } from './economy/catalog';
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { LambDuel } from './lamb/duel';
 import { ATTRS, fighterAttributes, type Counters } from './career/career';
@@ -126,6 +130,7 @@ const presence = new PresenceClient(loadProfile(store, state.data.guestId), impo
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
 remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
 const rel = new Relations(state.data);
+settleWelcome(rel, state);                                   // a save whose player already talked with Ibou: his welcome is done
 const follow = new FollowCamera(camera);
 const player = new Character(PLAYER_OUTFIT);
 scene.add(player.group);
@@ -769,6 +774,11 @@ function openJournal() { hud.closeModal(); phone.open('carnet'); }
 /** A plain timed action in progress (content without steps): « Arrêter », Escape or the menu key stop it, without effects. */
 let legacyRun: { label: string; stop(): void } | null = null;
 
+/** Talking to Tonton Ibou in any way closes his welcome (« Parle à Tonton Ibou »): done once, gone for good. */
+function welcomed(npc?: string) {
+  const reply = welcomeByTalk(npc, rel, state);
+  if (reply) { hud.moment({ icon: '💬', title: 'Tonton Ibou', lines: [reply] }); saveNow(); }
+}
 function runAction(a: Action, npc?: string, it?: Interactable) {
   // with ?lamb2 the écurie drills (src/career DRILLS) are played with the avec-frappe controls (src/lamb/drills.ts)
   if (LAMB2 && drillOfAction(a.id)) { startDrill(a, npc, it); return; }
@@ -776,7 +786,7 @@ function runAction(a: Action, npc?: string, it?: Interactable) {
   if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
     activities.onEnd = (_s, done) => {                    // once: later activities (places, venues) must not replay this action's hooks
       activities.onEnd = () => {};
-      if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); }   // counters belong to the steps
+      if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); welcomed(npc); }   // counters belong to the steps
     };
     activities.start(actionSpec(a), { place: where });
     return;
@@ -802,6 +812,7 @@ function runAction(a: Action, npc?: string, it?: Interactable) {
     if (npc) rel.change(PLAYER, npc, 1);
     state.count('actions');
     npcLife.afterAction(a, it ?? null);
+    welcomed(npc);
     const bits = [a.label + ' ✓'];
     if (gain) bits.push('+' + fcfa(gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
     hud.toast(bits.join('  '));
@@ -851,6 +862,30 @@ phoneHooks.openPlaces = openPlaces;
 
 /** Person of the suggested story beat, or « first delivery » (refreshed with the HUD, 4 times a second). */
 let guideNpc: string | null = null, guideJob = false;
+/** Where a critical need is met here (src/game/goalLine.ts needGoal), while it leads the goal line. */
+let needTarget: { name: string; x: number; z: number } | null = null;
+/**
+ * The goal line here and now (src/game/goalLine.ts pickGoal): the walking marker, the fighter's evening, a critical
+ * need, tonight's gala, then the lead about this hub at this hour (src/social/beats.ts suggestionHere). Tonton Ibou's
+ * welcome leads only in Pikine, by day, in the first moments of a new game; otherwise it waits in the Carnet.
+ */
+function goalLine(hour: number): string | null {
+  if (!world) return null;
+  const here = suggestionHere(rel, state, world.id, hour, id => !!npcLife.where(id)?.here);
+  const ev = eveningLine(ctx, welcomeFirst(here?.id === WELCOME, state.data)), fighter = arenaFighter.pending();
+  const homeDoor = homeSpec(currentHome(state).spec)?.home.door ?? null;
+  const home = !inside && homeDoor ? world.interactables.find(i => i.id === homeDoor) ?? null : null;
+  const need = fighter ? null : needGoal({ needs: state.data.needs, wallet: state.wallet, here: pos, spots: inside ? inside.int.interactables : world.interactables, home });
+  const g = pickGoal({
+    walking: walkingHint(), fighter: fighter && ev ? withBearing(ev.text, ev.target) : null, need: need ? withBearing(need.text, need.target) : null,
+    evening: ev ? withBearing(ev.text, ev.target) : null, local: here?.hint ?? null,
+  });
+  eveningTarget = g && (g.kind === 'fighter' || g.kind === 'evening') ? ev?.target ?? null : null;
+  needTarget = g?.kind === 'need' ? need?.target ?? null : null;
+  guideNpc = g?.kind === 'local' && here && 'npc' in here ? here.npc : null;
+  guideJob = g?.kind === 'local' && here?.id === 'goal_tiak';
+  return g?.text ?? null;
+}
 /** Tonight's arena (or what to do after the bout): the goal line's target while it leads (src/arena/eveningCall.ts). */
 let eveningTarget: { name: string; x: number; z: number } | null = null;
 /** Way-finding: the walking destination, else the suggested person (or the nearest Tiak Tiak pick-up for the first job) in this hub. */
@@ -858,6 +893,7 @@ function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
   if (destination?.hub === world.id) { const it = world.interactables.find(i => i.id === destination!.id); if (it) return { name: it.name, x: it.x, z: it.z }; }
   if (eveningTarget) return eveningTarget;
+  if (needTarget) return needTarget;
   if (guideJob) {
     const w = world, here = inside ? inside.door : pos;
     const ends = pickupFrags(w.id).map(f => w.interactables.find(i => i.id.startsWith(w.id + ':') && i.id.includes(f))).filter((i): i is Interactable => !!i);
@@ -1061,7 +1097,7 @@ function frame(now: number) {
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
   statsT -= dt;
-  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state), ev = eveningLine(ctx, welcomeFirst(sg?.id === 'ibou_welcome', state.data)); eveningTarget = ev?.target ?? null; guideNpc = !ev && sg && 'npc' in sg ? sg.npc : null; guideJob = !ev && sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' && !arenaShow.watching() ? walkingHint() ?? (ev ? withBearing(ev.text, ev.target) : null) ?? sg?.hint ?? null : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
+  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); hud.setGoal(mode === 'play' && !arenaShow.watching() ? goalLine(hour) : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   if (profOn) { profMark('rest of update', tSys); tSys = performance.now(); }
