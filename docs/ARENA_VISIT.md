@@ -369,6 +369,10 @@ Habib's evening: « prendre sa moto ou un Car Rapide ».
   - The other motos are instanced (three looks, ≤ 3 draw calls) and solid. Two stand there while the arena is set up.
     The rows fill as the doors open, full by 19 h on a gala night and about half on a weekday card (cap by quality
     6 / 10 / 12). They empty over 150 game seconds after the gala.
+  - The parking's evening is the arena street's (`parkingStreet`): it counts while a bout is on or while the street is
+    alive. After a weekday card's gala, or at closing time, the gardien stays, the rows empty slowly and he says goodbye,
+    as on a gala night. Before this, the arena's schedule said no bout was on once the gala was over, so on Monday to
+    Thursday the street went 'quiet' at once and the gardien left.
   - When the player rides away, the gardien says « Ñibbil ak jàmm ! Ba beneen yoon ! » (rentre bien · à la
     prochaine).
   - The evening's goal line suggests the moto to a player who owns one in this hub and is far (pin on the moto).

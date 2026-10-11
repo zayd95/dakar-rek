@@ -110,7 +110,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await d(() => window.__dakar.arrival.skip(90));
   await until(n => window.__dakar.arrival.info().motos < n, before, 30000);
   a = await info();
-  check(`${label}: after the gala the parking empties, the player's moto is still in its place, the gardien still there`, a.motos < before && a.present && !!a.mine && Math.hypot(a.mine.x - lot.reserved.x, a.mine.z - lot.reserved.z) < 0.05, JSON.stringify({ before, now: a.motos, mine: a.mine }));
+  check(`${label}: after the gala the parking empties, the player's moto is still in its place, the gardien still there`, a.motos < before && a.present && !!a.mine && Math.hypot(a.mine.x - lot.reserved.x, a.mine.z - lot.reserved.z) < 0.05, JSON.stringify({ before, now: a.motos, mine: a.mine, street: a.street, present: a.present, day: a.day, weekday: ((a.day % 7) + 7) % 7 }));   // weekday 0 = Monday: a card evening
   await d(r => window.__dakar.place(r.x - 1.0, r.z - 0.6, 0), lot.reserved);
   await until(() => window.__dakar.focus()?.name === 'Ta moto Jakarta', null, 30000);
   await d(() => window.__dakar.act());

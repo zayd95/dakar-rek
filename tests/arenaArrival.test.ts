@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   CARD_SHARE, FAN_COLOURS, LOT_CAP, LOT_EMPTIES, MOTO_FEE, MOTO_FEE_COUNTER, SLOT_GAP, fansRide, gardienBias, inLot, lotCount, lotOrder, lotTaken, motoLot, paidTonight,
+  parkingStreet,
 } from '../src/arena/arrivalRules';
+import { stubCanvas } from './hubstub';
+import type { GameCtx } from '../src/game/modules';
+import type { HubWorld } from '../src/world/types';
 import { ECURIES, drummerAt, gateOf, queueDistance, stallsOf } from '../src/arena/exteriorRules';
 import { eveningGoal, goalText, type EveningInput } from '../src/arena/eveningCall';
 import { WALL_R } from '../src/world/geew';
@@ -58,6 +62,38 @@ describe('the guarded moto parking by the arena', () => {
     for (let i = 1; i < after.length; i++) expect(after[i]).toBeLessThanOrEqual(after[i - 1]);
     expect(after.at(-1)).toBe(0);
     for (const q of ['low', 'medium', 'high'] as const) expect(LOT_CAP[q]).toBeLessThan(lot.slots.length);
+  });
+  it('after a weekday card’s gala too (and at closing time) the gardien stays, the rows empty slowly, he says goodbye', () => {
+    // a weekday card: once its gala is over, the arena's schedule says no bout is on (eventOn false); the street pours out
+    expect(parkingStreet(20.5, true, false, true)).toBe('after');
+    expect(parkingStreet(23.3, false, false, true)).toBe('after');                                    // closing time
+    expect(parkingStreet(20.5, true, true, true)).toBe('after');                                      // a gala night, as before
+    expect(parkingStreet(18, false, true, true)).toBe('doors');
+    expect(parkingStreet(20.5, true, false, false)).toBe('quiet');                                    // no evening at all
+    expect(parkingStreet(12, false, false, false)).toBe('quiet'); expect(parkingStreet(0.5, true, false, true)).toBe('quiet');
+    expect(lotCount({ street: parkingStreet(20.5, true, false, true), size: 'card', hour: 20.5, cap: 10, after: { t: 30, from: 5 } })).toBeGreaterThan(0);
+  });
+  it('on the real street: a weekday card’s gala over, the exterior pours out, so the parking stays « after »', async () => {
+    stubCanvas();
+    const { arenaExterior, arenaExteriorModule } = await import('../src/arena/exterior');
+    const { GALA_DONE_COUNTER, streetAt } = await import('../src/arena/program');
+    const { buildHub } = await import('../src/world/builder');
+    const hub = buildHub('pikine', true) as HubWorld, day = 3, counters: Record<string, number> = { [GALA_DONE_COUNTER]: day };   // a Thursday
+    let hour = 20.5;
+    const ctx = {
+      quality: () => 'low', hour: () => hour, day: () => day, now: () => 0, extra: new THREE.Group(), camera: new THREE.PerspectiveCamera(), inside: () => null,
+      player: { pos: new THREE.Vector3(200, 0, 200) }, state: { data: { counters } }, places: { all: () => [], add() {}, remove() {} }, mode: () => 'play', toast() {},
+    } as unknown as GameCtx;
+    // the arena's own schedule (src/arena/module.ts boutOn): a bout is on while the street is set up or its doors open
+    arenaExterior.schedule((d, h) => { const s = streetAt(h, counters[GALA_DONE_COUNTER] === d); return s === 'setup' || s === 'doors'; });
+    arenaExteriorModule.hubLoaded!(ctx, hub);
+    arenaExteriorModule.update!(ctx, 0.1);
+    expect(arenaExterior.isEventDay(day, hour)).toBe(false);                                          // the bug's cause: no bout is « on »
+    expect(arenaExterior.phase()).toBe('outflow');
+    expect(parkingStreet(hour, true, arenaExterior.isEventDay(day, hour), arenaExterior.active())).toBe('after');
+    hour = 12; arenaExteriorModule.update!(ctx, 0.1);                                                 // the next day's noon: quiet
+    expect(parkingStreet(hour, false, arenaExterior.isEventDay(day, hour), arenaExterior.active())).toBe('quiet');
+    arenaExterior.schedule(null);
   });
   it('the other motos never take the reserved place, nor the player’s moto’s', () => {
     expect(lotOrder(lot)).not.toContain(lot.reserved);
