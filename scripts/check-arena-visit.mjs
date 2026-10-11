@@ -146,7 +146,7 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   check(`${label}: with a ticket you walk in (« Dalal ak jàmm ! », and where its places are)`, welcomed && Math.hypot(inside.x - C.x, inside.z - C.z) < 17, `${await toast()} · ${Math.hypot(inside.x - C.x, inside.z - C.z).toFixed(1)} m from the ring`);
 
   // 4b. Another tier's place is refused, and the controller's rule says why
-  const near = async (s) => { const r = Math.hypot(s.x - C.x, s.z - C.z), k = (r - 2.3) / r; await d(([c, s, k]) => window.__dakar.place(c.x + (s.x - c.x) * k, c.z + (s.z - c.z) * k, s.yaw + Math.PI), [C, s, k]); };
+  const near = async (s, gap = 2.3) => { const r = Math.hypot(s.x - C.x, s.z - C.z), k = (r - gap) / r; await d(([c, s, k]) => window.__dakar.place(c.x + (s.x - c.x) * k, c.z + (s.z - c.z) * k, s.yaw + Math.PI), [C, s, k]); };
   const hon = await d(c => window.__dakar.arena.freeSeat(c.x + 18, c.z + 4, 'honneur'), C);
   await near(hon);
   // a place another ticket is for keeps its « S’asseoir », greyed with the reason (src/interact/seats.ts refuse): nothing in it can be run
@@ -220,9 +220,16 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   await shot('4-entrance');
 
   // 7. The bout: the existing duel played by the two wrestlers.
-  await page.waitForFunction(() => window.__dakar.arena.info().phase === 'bout' && window.__dakar.arena.info().bout?.phase === 'fight', null, T).catch(() => {});
-  const b1 = await info();
-  check(`${label}: the bout starts (${L2 ? 'avec frappe, the two billed wrestlers, AI against AI' : 'lutte sans frappe'}, referee call, then the fight)`, b1.phase === 'bout' && !!b1.bout && b1.bout.mode === 'amical' && b1.bout.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'),
+  // the bout is read by the page on every frame: AI against AI avec frappe can clinch on the first frame of the fight and
+  // project from there, a « fight » too short for a poll from here to see on the software renderer
+  await d(() => {
+    window.__bout = null;
+    const look = () => { const i = window.__dakar.arena.info(); if (i.phase === 'bout' && i.bout && i.bout.phase !== 'intro' && i.bout.phase !== 'result') { window.__bout = { ...i.bout, arena: i.phase }; return; } requestAnimationFrame(look); };
+    requestAnimationFrame(look);
+  });
+  await page.waitForFunction(() => !!window.__bout, null, T).catch(() => {});
+  const b1 = { ...(await info()), bout: await d(() => window.__bout) };
+  check(`${label}: the bout starts (${L2 ? 'avec frappe, the two billed wrestlers, AI against AI' : 'lutte sans frappe'}, referee call, then the fight)`, !!b1.bout && b1.bout.mode === 'amical' && b1.bout.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'),
     { phase: b1.bout?.phase, discipline: b1.bout?.discipline, identity: b1.bout?.identity, arena: b1.phase, t: b1.t, lastBout: b1.lastBout, timeline: await d(() => window.__dakar.arena.timeline()) });
   await page.waitForTimeout(2500);
   await shot('5-bout');
@@ -243,7 +250,9 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   }
 
   // 8. The crowd goes home.
+  await d(() => window.__dakar.arena.speed(6));                                 // the result, then the leaving, on the slow clock
   await page.waitForFunction(() => window.__dakar.arena.info().phase === 'over', null, T).catch(() => {});
+  await d(() => window.__dakar.arena.speed(1));
   const o1 = await info();
   check(`${label}: the stands empty and the gala is over for tonight`, o1.phase === 'over' && o1.crowd.present === 0 && o1.galaDone && o1.street === 'after', { phase: o1.phase, crowd: o1.crowd, galaDone: o1.galaDone, street: o1.street });
   await d(() => window.__dakar.act());                                            // « Se lever »
@@ -273,9 +282,12 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
     const inT = await waitToast(new RegExp(`Dalal ak jàmm.*Billet ${word}`));
     check(`${label}: the controller lets the « ${word} » ticket in and says where its places are`, inT, await toast());
     const s = await d(([c, tt]) => window.__dakar.arena.freeSeat(tt === 'honneur' ? c.x + 18 : c.x - 18, tt === 'honneur' ? c.z + 4 : c.z - 2, tt), [C, t]);
-    await near(s);
-    // the focus is the nearest free place in reach of the ring side: often a place of the same stands a row below the one aimed at
-    await page.waitForFunction(() => { const f = window.__dakar.focus(); return f?.kind === 'seat' && !!f.primary && !f.why.length && /tribune|honneur/.test(f.name); }, null, { timeout: 60000 }).catch(() => {});
+    // the focus is the nearest free place in reach of the ring side: often a place of the same stands a row below the one
+    // aimed at; someone else in reach (a vendor at the ring side) can be nearer: then step closer to the stands, as a player would
+    for (const gap of [2.3, 1.7, 1.2]) {
+      await near(s, gap);
+      if (await page.waitForFunction(() => { const f = window.__dakar.focus(); return f?.kind === 'seat' && !!f.primary && !f.why.length && /tribune|honneur/.test(f.name); }, null, { timeout: 30000 }).then(() => true, () => false)) break;
+    }
     const fo = await d(() => window.__dakar.focus());
     const foT = fo?.name === 'Place d’honneur' ? 'honneur' : fo?.name === 'Place en tribune couverte' ? 'couverte' : fo?.name === 'Place en tribune' ? 'populaire' : null;
     check(`${label}: a « ${word} » place is offered (« S’asseoir », section ${s?.section})`, s?.tribune === t && foT === t && /asseoir/.test(fo?.primary ?? '') && !fo.why.length, { fo, s });
