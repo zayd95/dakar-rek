@@ -128,9 +128,20 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
     // Glosses hidden (Réglages › Langue): small talk without the French.
     await d(page, () => { window.__dakar.wolof.glosses(false); window.__dakar.setHour(9); });
     await page.waitForTimeout(2800);
+    // every toast shown from here is recorded: an exchange's lines can be gone before a poll on a slow renderer, and on a
+    // gala day the person may bring up tonight's bout (src/social/fightTalk.ts) in one line instead of the small talk
+    await d(page, () => {
+      const t = document.getElementById('toast'); window.__seen = []; window.__seenObs?.disconnect();
+      // each toast is its own element carrying its message (src/ui/hud.ts toast): the new ones are recorded one by one
+      const rec = muts => { for (const m of muts) for (const n of m.addedNodes) if (n.dataset?.msg) window.__seen.push(n.dataset.msg.replace(/[\u00a0\u202f]/g, ' ')); };
+      window.__seenObs = new MutationObserver(rec); if (t) window.__seenObs.observe(t, { childList: true });
+    });
     const talked = await runVerb(page, 'Parler avec') || await runVerb(page, 'Demander son nom');   // (if a walker took the focus)
-    const plain = talked && await waitToast(page, /^[^()]+ : « [^»()]+ » · [^()]+ : « [^»()]+ »$/);
-    check(`${label}: with glosses hidden the Wolof small talk stands alone`, plain, await toast(page));
+    const SPOKEN = /^[^()]+ : « [^»()]+ »( · [^()]+ : « [^»()]+ »)?$/;
+    const heard = talked && await page.waitForFunction(src => window.__seen.some(s => new RegExp(src).test(s)), SPOKEN.source, { timeout: 20000 }).then(() => true, () => false);
+    const seen = await d(page, () => { window.__seenObs?.disconnect(); return window.__seen; });
+    const glossed = seen.filter(s => / : « /.test(s) && /\(/.test(s));
+    check(`${label}: with glosses hidden the Wolof small talk stands alone`, heard && !glossed.length, JSON.stringify({ talked, seen }));
     await shot(page, `${label}-talk-no-gloss`);
     await d(page, () => window.__dakar.wolof.glosses(true));
   }
