@@ -64,6 +64,20 @@ describe('presence protocol', () => {
     // the protocol's lists are the catalogue's: every piece sold maps to one écurie and one item
     for (const w of WEAR) { expect(FAN_SIDES).toContain(w.ecurie); expect(FAN_ITEMS).toContain(w.item); }
   });
+  it('carries « tonight\'s main event is me » (arena.m, src/arena/myGala.ts): only the value 1, beside the result codes, nothing else', () => {
+    const fighting = { ...move, clip: 'Stance', speed: 0 };
+    // walking out, then in the ring in a fighting stance during their own duel
+    expect(parseMove({ ...move, arena: { d: 12, p: 3, t: 27.5, m: 1 } }, 'pikine')?.arena).toEqual({ d: 12, p: 3, t: 27.5, m: 1 });
+    expect(parseMove({ ...fighting, arena: { d: 12, p: 4, t: 3, m: 1 } }, 'pikine')).toMatchObject({ clip: 'Stance', arena: { d: 12, p: 4, t: 3, m: 1 } });
+    // their real result, set once when their duel ends: the same codes as any show (w 1 = they won, o = how)
+    expect(parseMove({ ...move, arena: { d: 12, p: 5, t: 0.5, m: 1, w: 1, o: 0 } }, 'pikine')?.arena).toEqual({ d: 12, p: 5, t: 0.5, m: 1, w: 1, o: 0 });
+    expect(parseMove({ ...move, arena: { d: 12, p: 5, t: 0, m: 1, w: 0, o: 3 } }, 'pikine')?.arena).toEqual({ d: 12, p: 5, t: 0, m: 1, w: 0, o: 3 });
+    expect(parseMove({ ...move, arena: { d: 12, p: 4, t: 3 } }, 'pikine')?.arena).not.toHaveProperty('m');                 // optional
+    for (const m of [0, 2, -1, 1.5, '1', true, null, [1], { v: 1 }]) expect(parseMove({ ...move, arena: { d: 12, p: 4, t: 3, m } }, 'pikine')).toBeNull();
+    // never money, a purse, a record or a name beside it: the whole move is refused (the server closes the socket)
+    for (const extra of [{ purse: 5000 }, { cachet: 1 }, { rec: '7-2' }, { v: 7, d: 12 }, { name: 'Moussa' }, { main: 1 }, { opp: 'gora' }])
+      expect(parseMove({ ...move, arena: { d: 12, p: 5, t: 0, m: 1, w: 1, o: 0, ...extra } }, 'pikine')).toBeNull();
+  });
   it('names the show phases and outcomes as the arena does', () => {
     expect([...ARENA_PHASES]).toEqual([...SHOW_PHASES]);
     expect([...ARENA_OUTCOMES]).toEqual(['projection', 'decision', 'egalite', 'abandon']);

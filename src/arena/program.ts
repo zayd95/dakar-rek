@@ -105,6 +105,8 @@ export const SHOW_LABEL: Record<ShowPhase, string> = {
   idle: 'Avant le gala', filling: 'Les tribunes se remplissent', prelims: 'Préliminaires', entrance: 'Entrée des lutteurs', bout: 'Combat · lutte sans frappe',
   result: 'Résultat', leaving: 'Le public rentre', over: 'Gala terminé',
 };
+/** The card's phase label: a bout fought avec frappe (Làmb 2.0, ?lamb2) says so. */
+export const showLabel = (phase: ShowPhase, frappe = false) => (phase === 'bout' && frappe ? 'Combat · lutte avec frappe' : SHOW_LABEL[phase]);
 
 /** The evening's bout: the game's own cast, fictional écuries. */
 export const BILL = {

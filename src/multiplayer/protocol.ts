@@ -44,22 +44,25 @@ export const ARENA_OUTCOMES = ['projection', 'decision', 'egalite', 'abandon'] a
 /**
  * A player's arena evening, so that friends inside the arena watch one bout: the city day `d`, the show's phase `p`
  * (index in ARENA_PHASES) and its time `t` in seconds (during the preliminaries: `i`, which one, 0-based, and the time
- * within it), and once known the main event's result: `w` 0 = no winner, 1 = the left
+ * within it), `m` = 1 when this player is tonight's main event themselves (src/arena/myGala.ts: friends then show
+ * their name and their own real result, never a simulated duel), and once known the main event's result: `w` 0 = no
+ * winner, 1 = the left (on a player's own night: they won)
  * wrestler, 2 = the right one; `o` the outcome (index in ARENA_OUTCOMES). Display only — no money, record or reward
  * depends on it; each client aligns itself (server-authoritative timing comes later).
  */
-export interface ArenaPresence { d: number; p: number; t: number; i?: number; w?: number; o?: number }
+export interface ArenaPresence { d: number; p: number; t: number; i?: number; m?: number; w?: number; o?: number }
 const int = (v: unknown, lo: number, hi: number) => typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
 /** The `arena` field, or null when it is malformed (the whole move is then refused). */
 export function parseArena(value: unknown): ArenaPresence | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const v = value as Record<string, unknown>;
-  if (Object.keys(v).some(k => !['d', 'p', 't', 'i', 'w', 'o'].includes(k))) return null;
+  if (Object.keys(v).some(k => !['d', 'p', 't', 'i', 'm', 'w', 'o'].includes(k))) return null;
   if (!int(v.d, 1, 1_000_000) || !int(v.p, 0, ARENA_PHASES.length - 1) || typeof v.t !== 'number' || !Number.isFinite(v.t) || v.t < 0 || v.t > 900) return null;
   if (v.i !== undefined && !int(v.i, 0, ARENA_PRELIMS - 1)) return null;
+  if (v.m !== undefined && v.m !== 1) return null;
   if (v.w !== undefined && !int(v.w, 0, 2)) return null;
   if (v.o !== undefined && !int(v.o, 0, ARENA_OUTCOMES.length - 1)) return null;
-  return { d: v.d as number, p: v.p as number, t: Math.round((v.t as number) * 10) / 10, ...(v.i !== undefined ? { i: v.i as number } : {}), ...(v.w !== undefined ? { w: v.w as number } : {}), ...(v.o !== undefined ? { o: v.o as number } : {}) };
+  return { d: v.d as number, p: v.p as number, t: Math.round((v.t as number) * 10) / 10, ...(v.i !== undefined ? { i: v.i as number } : {}), ...(v.m === 1 ? { m: 1 } : {}), ...(v.w !== undefined ? { w: v.w as number } : {}), ...(v.o !== undefined ? { o: v.o as number } : {}) };
 }
 /** Optional fields gameplay modules add to the player's presence (GameModule.presence), each validated in parseMove. */
 export type PresenceExtras = Pick<Move, 'arena' | 'fan'>;

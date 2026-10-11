@@ -256,6 +256,27 @@ en 40 s au plus. Presque tous finissent avant, par une chute. Testé sur toutes 
 (`tests/lamb2Styles.test.ts`, 132 paires × 3 soirs = 396 combats) : tous finis en 40 s ou moins, 394 par projection,
 1 décision, 1 égalité ; le plus long 36 s, la moitié en moins de 17 s ; chaque style gagne et perd.
 
+## Le combat de la soirée du joueur, avec frappe
+
+Quand le joueur est lui-même le combat de la soirée (une place au gala ou le combat pour le titre, la carrière ;
+`src/arena/myGala.ts`, docs/ARENA_VISIT.md « The player's own gala night »), son combat au cercle passe par le chemin
+du lutteur (`ctx.startBout`) : avec `?lamb2`, il se lutte **avec frappe**, contre l'adversaire de l'affiche, lui-même
+(son style des six, son niveau, son bilan : `rosterOpponent`). Rien de la simulation du duel n'est changé pour cela ;
+l'arène n'utilise que ses crochets :
+
+- `LambDuel.onMoment` → `GameModule.lamb` (`kind: 'moment'`) : les frappes, le déséquilibre (« … vacille ! »), la chute
+  et le bras de l'arbitre passent par le même plan que ci-dessus (« Ton combat de gala, avec frappe »), du côté des
+  tribunes de son coin ; le moment `result`, lui, est laissé au spectacle ;
+- la fin du combat (`kind: 'bout'`) devient le résultat du spectacle (`myShowResult`) : aucun combat regardé n'est
+  simulé ce soir-là ; la fête qui suit est celle de son propre combat (`ownNightParty` : les tribunes de son coin
+  dansent ou se rassoient, les tambours, les mots, avec sa vraie affiche ; pas de fête pour un abandon) ;
+- la carte du gala dit « Combat · lutte avec frappe · <son nom> (…) – <adversaire> (…) » pendant son combat
+  (`showLabel`) ; le combat regardé avec frappe le dit aussi.
+
+Les amis dans les tribunes ne voient pas le duel simulé : son nom (« Combat en cours : <nom> »), sa position dans le
+cercle en garde, puis son vrai résultat (champ de présence `arena.m`). Vérifié avec `LAMB2=1
+scripts/check-arena-fighter.mjs` (discipline du duel, carte).
+
 ## La leçon de Coach Ablaye, avec frappe
 
 Avec `?lamb2`, l'**Entraînement** de l'écurie (Coach Ablaye, Babacar en partenaire) devient une leçon guidée de la lutte
@@ -376,6 +397,7 @@ leçon montrent le mieux la nouvelle lutte, et le classé garde son bilan tant q
 - `src/lamb/strikeRig.ts` — poses de frappe et d'empoignade sur le squelette.
 - `src/arena/bout.ts` — le combat regardé ; avec frappe, le duel joue les deux côtés (IA contre IA).
 - `scripts/check-arena-visit.mjs`, `scripts/check-evening.mjs` — avec `LAMB2=1` : le combat de la soirée avec frappe (arbitre, tribunes).
+- `scripts/check-arena-fighter.mjs` — avec `LAMB2=1` : le combat de la soirée du joueur (sa place au gala) avec frappe.
 - `scripts/check-lamb2.mjs` — navigateur (bureau + téléphone), captures dans `docs/screenshots/lamb2/`. Ses étapes 4–5
   (glissade, projection) se jouent adversaire, chrono et arbitre tenus immobiles (`__dakar.duelHold`, `duelClock` ;
   même mise en place sans navigateur : `tests/lamb2Hold.test.ts`).

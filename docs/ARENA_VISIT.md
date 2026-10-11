@@ -193,6 +193,83 @@ wrestlers, the lines and the sound; the entourages and griots are `src/arena/peo
   ceremony is rewarded (no money, need or counter). The wrestlers wear no accessories.
 - A show joined further on (a friend's, `follow`) sets the drums right and skips the lines it missed.
 
+## The player's own gala night (`src/arena/myGala.ts`, Wave 5)
+
+When the career gives the player a gala place (Adversaires réputés and up) or the title bout, and they sign up for it
+that evening, they are tonight's main event. The pure parts are in `src/arena/myGala.ts` (`tests/myGala.test.ts`).
+
+- **The bill names them.** `billOf` (`src/career/module.ts`) returns `playerMainBill`: the player on the left (their
+  écurie or « indépendant »), their opponent on the right, `title` for the belt. The posters, the gala card and the
+  ceremony all read it through `billFor`. Their corner is the one the ceremony gives their side (`playerCorner`, from
+  `cornerSides`), so the fighter's path, their people and the ceremony agree.
+- **The preliminaries run first.** The show starts once they are in the tunnel. Their corner is held
+  (`arenaFighter.hold`) while the stands fill, the preliminaries run and the ceremony names them. « Je suis prêt » skips
+  the rest of the preliminaries (« Plus d’attente : ton entrée commence. ») or, during the entrance, goes straight to the
+  walk-out. Signed up while this device's show already ran (seated first, then the gala place at the door,
+  `takeOver`): the filling or the preliminaries go on and their entrance follows; an entrance or a watched bout already
+  begun gives way to their entrance, from its start (nothing of that bout is recorded); after the main event, their
+  bout is an ordinary one.
+- **The show keeps their bill to the end.** The career forgets the sign-up once their bout is recorded; the show keeps
+  the bill it started with (`ownBill`) through the result and the crowd leaving, then forgets it.
+- **The ceremony is theirs.** On their side there is no NPC wrestler. The announcer names them with their real record
+  from the career (`setRecordSource('player')`: « … 7 victoires, 2 défaites, 1 nul »), their griot praises them in
+  invented lines (once they have wins: their strength, their neighbourhood and their wins in one breath, an unbeaten run
+  said as such; before: strength and neighbourhood, as for the roster) and their people chant. Their
+  people stay round them in their corner, in their écurie's colours (an independent's in the bill's neutral blue). The
+  opponent has the full ceremony. At 27.5 s they are released, walk out, and « Faire ton bàkk » is offered
+  (`src/arena/bakk.ts`, which does not name them a second time). The entrance lasts until they reach the ring; then
+  the fighter's path starts the duel.
+- **Their real result is the show's.** No watched bout is simulated. When their duel ends (`GameModule.lamb`, the
+  'bout' event), `myShowResult` makes it the show's result (their side is the left one), said the same way as on their
+  friends' devices (« Moussa l’emporte par chute ! », « Abandon : Moussa s’arrête là. », never « match nul » for an
+  abandon). With `?lamb2` their bout is fought avec frappe through the duel's own hooks (docs/LAMB2.md « Le combat de la
+  soirée du joueur »); the card then reads « Combat · lutte avec frappe ». The fête after it is the one of the player's
+  own bout (« La fête après la chute » below, `ownParty`: the stands by their corner, the drums, the lines; they keep
+  their own body), not the main event's carried tour. The career keeps the record,
+  the purse, the posters and the talk; the show does not report it to the ladder a second time. If they give up the
+  bout before it starts, the evening ends without a main event and without a made-up result
+  (« Le combat de la soirée n’aura pas lieu. »).
+- **The stands by their corner are theirs.** The show's reactions go to the stands by each wrestler's corner
+  (`standsOf`, from `cornerSides`). An independent player facing a Baobab man is in the Teranga corner, so the Teranga
+  sections rise for them. This holds for every evening's card, not only the player's.
+- **Friends in the stands see them, not a simulation.** Their presence adds `arena.m = 1` (validated by `parseArena`:
+  only the value 1, on the server too through `parseMove`). On a friend's device (`remoteMain`: this evening, inside the
+  walls, the smallest id if two):
+  - The bill line reads « Gala de làmb : Moussa est le combat de la soirée ! » (when they are known at the start).
+  - After the friend's preliminaries the card reads « Moussa, combat de la soirée », then « Entrée de Moussa », then
+    « Combat en cours : Moussa ».
+  - The friend's show waits after its preliminaries for the player's entrance, then for their bout (`mainDriver`:
+    their presence moves it on, never the friend's clock). No ceremony or duel is simulated for that side.
+  - At their entrance the announcer calls them: « 🎤 L’annonceur : Le combat de la soirée… voici Moussa !
+    (Adversaires réputés · 7-2 · Écurie Baobab) » — the bracket is their `rec` presence field exactly as the server
+    validated it, nothing more. The whole crowd stands and applauds (no side: their corner and their people are on their
+    own device), and the card's entourages wait in their corners instead of walking an entrance for nobody
+    (`FightNightPeople.quiet`).
+  - During the duel the player's avatar is published standing in the ring in a fighting stance (`main.ts`: presence
+    space 'street', the duel's position, `Stance`).
+  - The result is the one they send (`w`/`o`, the same field as any show), told as « Moussa l’emporte par chute ! ·
+    Le public : « Daan na ! » », « Moussa s’incline aux points. », « Match nul pour Moussa. » or « Abandon : Moussa
+    s’arrête là. ». The whole crowd applauds; nobody's corner runs onto the sand (`cheeredSide`). Nothing is recorded on
+    the friend's side: no ladder report, no posters, no talk.
+  - No money, purse, record numbers or reward crosses: only `m`, the phase and time, and the result codes (set once,
+    when their duel ends). Any other value of `m`, or any other key in `arena`, makes the server refuse the move
+    (`parseMove`, `tests/presence.test.ts`).
+- **The same preliminaries everywhere.** `undercardFor` draws every bout from the whole list of names, whatever the
+  main event is. A name that clashes with tonight's main event is swapped afterwards. Friends with different main
+  events (the player's own night, the ladder's card) therefore watch the same preliminaries, with the same styles,
+  levels and seeds.
+- **Limits.** The friend learns of the main event from the player's presence once their show has started (in the
+  tunnel); before that the friend's posters and bill line show the city's card. The two devices' preliminaries are
+  aligned by presence as before, but the player's own show never follows a friend's. Their opponent is not drawn on the
+  friends' side: only the player, in their fighting stance.
+- **Checks** (browser, queued by the integrator): `scripts/check-arena-fighter.mjs` (their night end to end on a
+  Saturday evening: bill and posters, the corner held through the preliminaries, the ceremony's lines, « Faire ton
+  bàkk », the duel, the presence move in the ring, the real result; `LAMB2=1`: avec frappe), `scripts/check-career.mjs`
+  (sign-up: bill, posters, corner, refusal of a second sign-up, the city's card back once given up). The friend's side
+  (a raw client as the main event, seen from the stands; the server refusing `m = 2`) is still to be added to
+  `scripts/check-multiplayer.mjs`, which is being reworked on the wave-5 candidate; until then it rests on the unit
+  tests (`tests/myGala.test.ts`, `tests/presence.test.ts`).
+
 ## La fête après la chute (Wave 5, `src/arena/celebration.ts`, `src/arena/party.ts`)
 
 The minute after a result is the night's signature moment. The result phase is now the fête: its plan is pure, and

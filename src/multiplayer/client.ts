@@ -42,6 +42,8 @@ export class PresenceClient {
     this.profile = { name: nickname(profile.name), look: lookIndex(profile.look) };
     if (this.hub && this.enabled) this.open();
   }
+  /** The last move this device published (sent when online), for the checks: what friends receive. */
+  get lastPublished(): Move | null { return this.latest; }
   publish(move: Move, now = performance.now()) {
     this.latest = move;
     if (this.status !== 'online' || this.socket?.readyState !== WebSocket.OPEN || now - this.lastSentAt < SEND_INTERVAL_MS) return;

@@ -2,6 +2,7 @@ import type { GameCtx, GameModule } from '../game/modules';
 import type { Seat } from '../interact/seats';
 import { ARENA_OUTCOMES, ARENA_PHASES, ARENA_PRELIMS, type ArenaPresence, type Peer } from '../multiplayer/protocol';
 import { ARENA_CROWD, FOLLOW_SLACK, arenaShow, type ShowResult } from './module';
+import { remoteMain } from './myGala';
 
 /**
  * Friends at the arena: the stands and the bout shared over the presence protocol. Only positions, poses and one
@@ -12,7 +13,8 @@ import { ARENA_CROWD, FOLLOW_SLACK, arenaShow, type ShowResult } from './module'
  *   them, and it is freed when they get up or leave. « Encourager » (main.ts) makes a seated player stand up for a
  *   moment with their arms up (Celebrate), and everyone sees it.
  * - One bout for the group: while a show runs and the player is inside the walls, presence carries
- *   `arena: { d, p, t, i?, w?, o? }` (city day, phase, time, which preliminary, and the result once known).
+ *   `arena: { d, p, t, i?, m?, w?, o? }` (city day, phase, time, which preliminary, `m` = 1 when they are tonight's
+ *   main event themselves — src/arena/myGala.ts — and the result once known).
  *   The preliminaries (src/arena/undercard.ts) are followed the same way, each one seeded by `prelimSeed`.
  *   The evening's bout is seeded by
  *   (hub, day) and played in fixed steps (src/arena/bout.ts), so every device plays the same bout. The friend furthest
@@ -68,18 +70,19 @@ export function resultOf(w?: number, o?: number): ShowResult | null {
 }
 
 /** This device's `arena` presence field for a running show (null when there is nothing to share). */
-export function arenaField(st: { day: number; phase: string; t: number; i?: number; result: ShowResult | null; here: boolean } | null): ArenaPresence | null {
+export function arenaField(st: { day: number; phase: string; t: number; i?: number; result: ShowResult | null; here: boolean; main?: boolean } | null): ArenaPresence | null {
   if (!st || !st.here || !Number.isInteger(st.day) || st.day < 1 || st.day > 1_000_000) return null;
   const p = ARENA_PHASES.indexOf(st.phase as typeof ARENA_PHASES[number]);
   if (p < FILLING || p > LEAVING) return null;
   // half-second steps: a seated friend sends about two updates a second, not one per frame
   const a: ArenaPresence = { d: st.day, p, t: Math.min(900, Math.max(0, Math.floor(st.t * 2) / 2)) };
   if (st.phase === 'prelims' && st.i !== undefined && Number.isInteger(st.i) && st.i >= 0 && st.i < ARENA_PRELIMS) a.i = st.i;   // which preliminary
+  if (st.main) a.m = 1;                                                     // tonight's main event is this player (src/arena/myGala.ts)
   return st.result ? { ...a, ...resultCodes(st.result) } : a;
 }
 
 /** What this device made of its friends, for the checks: who it follows, which places they hold. */
-const view = { ref: null as string | null, follows: 0, held: {} as Record<string, string> };
+const view = { ref: null as string | null, follows: 0, held: {} as Record<string, string>, main: null as string | null };
 let tick = 0;
 
 /** Friends' shows of the same evening, inside the walls, with their time now (their last time + the time since). */
@@ -119,7 +122,12 @@ export const togetherModule: GameModule = {
     const peers = ctx.peers();
     holdSeats(peers);
     const day = arenaShow.day(); if (day === null) { view.ref = null; return; }
+    // a friend fighting tonight's main event: their name on the card, their own duel and result (src/arena/myGala.ts)
+    const main = remoteMain(peers, day, p => p.space === 'street' && arenaShow.inside(p.x, p.z));
+    arenaShow.setRemote(main ? { id: main.id, name: main.name, ...(main.rec ? { rec: main.rec } : {}) } : null);
+    view.main = main?.id ?? null;
     const st = arenaShow.state();
+    if (st?.main) { view.ref = null; return; }                                // on their own gala night, the player leads
     const local = st ? { p: ARENA_PHASES.indexOf(st.phase), t: st.t, i: st.i } : { p: 0, t: 0 };
     const ref = peers.length ? reference(local, friendShows(ctx, peers, day)) : null;
     view.ref = ref?.id ?? null;
@@ -128,6 +136,6 @@ export const togetherModule: GameModule = {
   presence() { const a = arenaField(arenaShow.state()); return a ? { arena: a } : null; },
   debug: () => ({
     /** Friends at the arena: the friend followed (null: this device leads), jumps made, places held by friends. */
-    together: () => ({ ref: view.ref, follows: view.follows, held: { ...view.held }, field: arenaField(arenaShow.state()) }),
+    together: () => ({ ref: view.ref, follows: view.follows, held: { ...view.held }, main: view.main, field: arenaField(arenaShow.state()) }),
   }),
 };

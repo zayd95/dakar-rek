@@ -1,6 +1,7 @@
 // Career checks (docs/CAREER.md): a bout's result means something — kept in the record, a purse for ranked bouts, the
 // rank moving — the écurie drills feed the attributes, the phone shows the four gauges and the arena record, and it
-// all survives a reload. Desktop and phone portrait.
+// all survives a reload; a gala place makes the player tonight's main event (the bill and the posters name them; given
+// up, the city's card is back). Desktop and phone portrait.
 // Usage: node scripts/check-career.mjs [baseUrl] [outDir]   (needs a running build, e.g. `npx vite preview --port 4216`)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -156,6 +157,47 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   check(`${label}: the record survives a reload`, c6.bouts.length === n && c6.record.rival?.name === 'Gora', `${c6.bouts.length}/${n}`);
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
   await ctx.close();
+
+  // 7. A gala place makes the player tonight's main event (src/arena/myGala.ts): the bill, the posters and the phone's
+  // « Ce soir » name them against their opponent, their corner is the one the ceremony gives their side; given up, the
+  // city's card comes back. A fresh life on a gala evening: the city clock at the start of a Saturday (offline, the
+  // clock is the device's; one city day = 24 real minutes).
+  {
+    const ME = 'Moussa';
+    const at = (() => { const E = Date.UTC(2026, 9, 6), D = 24 * 60 * 1000; let day = Math.floor((Date.now() - E) / D) + 2; while (day % 7 !== 5) day++; return E + (day - 1) * D + 60000; })();
+    const gctx = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch, deviceScaleFactor: 1 });
+    await gctx.addInitScript(([at, me]) => {
+      try { localStorage.setItem('dakarrek.quality', 'low'); localStorage.setItem('dakarrek.presence.profile', JSON.stringify({ name: me, look: 0 })); } catch { /* private mode */ }
+      const real = Date.now.bind(Date), off = at - real(); Date.now = () => real() + off;
+    }, [at, ME]);
+    const gp = await gctx.newPage();
+    const gerr = []; gp.on('pageerror', e => gerr.push(e.message));
+    await gp.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 120000 });
+    await gp.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.careerSign, null, T);
+    const g = (fn, arg) => gp.evaluate(fn, arg);
+    await g(() => { window.__dakar.teleport('pikine'); });
+    await gp.waitForFunction(() => window.__dakar.pos().hub === 'pikine', null, T);
+    await g(() => { const D = window.__dakar; D.setHour(19); D.state.data.needs.energie = 90; });
+    const before = await g(() => window.__dakar.careerLadder());
+    const signedG = await g(() => window.__dakar.careerSign('gala'));
+    const [lg, fg, pg] = [await g(() => window.__dakar.careerLadder()), await g(() => window.__dakar.fighter()), await g(() => window.__dakar.posters?.() ?? null)];
+    const opp = fg.bout?.opponent, oppEc = lg.card.right.ecurie;
+    check(`${label}: a gala place: the bill names the player against their opponent (no belt), the fighter's path is their main event`,
+      signedG?.kind === 'gala' && lg.card.left.id === 'player' && lg.card.left.name === ME && lg.card.right.name === opp && !lg.card.title && fg.bout?.main === 'gala' && fg.phase === 'called',
+      JSON.stringify({ signed: signedG, card: lg.card, bout: fg.bout }));
+    check(`${label}: the city's posters print their bill tonight`, !pg || pg.lines.title.startsWith(ME.toUpperCase()), JSON.stringify(pg?.lines));
+    // their corner: never their opponent's écurie's (an independent facing a Baobab man takes Teranga's, and the reverse)
+    check(`${label}: their corner is the one the ceremony gives their side`, fg.bout?.ecurie !== (oppEc === 'Baobab' ? 'baobab' : oppEc === 'Teranga' ? 'teranga' : '-'), JSON.stringify({ corner: fg.bout?.ecurie, opponent: lg.card.right }));
+    const again = await g(() => window.__dakar.careerSign('gala')), toastG = await g(() => document.getElementById('toast')?.textContent ?? '');
+    check(`${label}: a second sign-up the same evening is refused`, JSON.stringify(again) === JSON.stringify(signedG) && /déjà prévu/.test(toastG) && (await g(() => window.__dakar.fighter())).bout?.opponent === opp, toastG.slice(0, 160));
+    // given up before the arena: the sign-up is forgotten, the city's card is back on the bill and the posters
+    await g(() => window.__dakar.fighterCancel());
+    const back = await gp.waitForFunction(() => window.__dakar.careerLadder().card.left.id !== 'player', null, { timeout: 20000 }).then(() => true, () => false);
+    const la = await g(() => window.__dakar.careerLadder());
+    check(`${label}: given up, the sign-up is forgotten and the city's card is the bill again`, back && !la.signed && la.card.left.id === before.card.left.id && la.card.right.id === before.card.right.id, JSON.stringify(la.card));
+    check(`${label}: no page errors (gala evening)`, gerr.length === 0, gerr.join(' | '));
+    await gctx.close();
+  }
 }
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));
