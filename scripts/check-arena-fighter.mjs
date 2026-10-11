@@ -150,7 +150,11 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await d(p => window.__dakar.place(p.x, p.z, Math.PI), gs.tunnel);
   const showOn = await until(() => window.__dakar.fighter().phase === 'tunnel' && ['filling', 'prelims'].includes(window.__dakar.arena.info()?.phase), null, 20000);
   const g0 = await d(() => window.__dakar.arena.info());
-  check(`${label}: in the tunnel the show starts, on their own night (mine)`, showOn && g0.mine === true && !g0.remote, JSON.stringify({ phase: g0.phase, mine: g0.mine, fighter: (await fi()).phase }));
+  // the walking marker and « Ton coin » are their corner, the one the bill gives them (an independent: not Baobab's)
+  const coinAt = (await d(() => window.__dakar.interactables())).find(i => i.id === 'pikine:arena:coin');
+  check(`${label}: in the tunnel the show starts, on their own night (mine); the marker leads to their corner`,
+    showOn && g0.mine === true && !g0.remote && !!coinAt && Math.hypot(coinAt.x - gs.corner.x, coinAt.z - gs.corner.z) < 0.01 && fb.bout?.ecurie === (lad.card.right.ecurie === 'Baobab' ? 'teranga' : fb.bout?.ecurie),
+    JSON.stringify({ phase: g0.phase, mine: g0.mine, fighter: (await fi()).phase, corner: fb.bout?.ecurie, marker: coinAt && [coinAt.x, coinAt.z], spot: [gs.corner.x, gs.corner.z] }));
   // their corner: held while the preliminaries run (well past the usual 8 s), their people round them
   await d(([x, z, ox, oz]) => window.__dakar.place(x, z, Math.atan2(ox - x, oz - z)), [gs.corner.x, gs.corner.z, cx, cz]);
   const inCorner = await until(() => window.__dakar.fighter().phase === 'prep', null, 15000);
@@ -171,7 +175,11 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   check(`${label}: « Je suis prêt »: their entrance, after the preliminaries; only their opponent is drawn walking out, the card names them`,
     readyG && entr && iPre >= 0 && iPre < iEnt && (g2.ceremony?.wrestlers ?? []).every(w => w.who === 'right') && new RegExp(`Entrée des lutteurs · ${ME} `).test(g2.card) && (await fi()).phase === 'prep',
     JSON.stringify({ timeline: tl.map(x => x.phase), wrestlers: g2.ceremony?.wrestlers?.map(w => w.who), card: g2.card }));
-  // the ceremony names them, then they walk out: « Faire ton bàkk » offered on the way to the ring
+  // the ceremony names them (the announcer, their griot, their people: its first seconds), then « Je suis prêt » again goes
+  // straight to the walk-out (the opponent's bàkk is not waited for: the device's game clock may run far behind the real one)
+  await until(me => (window.__toasts ?? []).some(t => t.startsWith(`L’entourage de ${me}`)), ME, 40000);
+  const readyOut = await until(() => window.__dakar.fighter().phase === 'ring' || (/pikine:arena:coin/.test(window.__dakar.focus()?.id ?? '') && window.__dakar.focus()?.primary === 'Je suis prêt'), null, 15000);
+  if (readyOut && (await fi()).phase === 'prep') await d(() => window.__dakar.act());
   const walkOut = await until(() => window.__dakar.fighter().phase === 'ring', null, 40000);
   const [bk, said2] = [await d(() => window.__dakar.bakk()), await toasts()];
   const announced = said2.find(t => /L’annonceur : À ma gauche/.test(t) && t.includes(`${ME} !`)) ?? '', griot = said2.find(t => /Le griot/.test(t) && t.includes(ME)) ?? '';

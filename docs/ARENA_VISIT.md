@@ -204,7 +204,10 @@ that evening, they are tonight's main event. The pure parts are in `src/arena/my
 - **The bill names them.** `billOf` (`src/career/module.ts`) returns `playerMainBill`: the player on the left (their
   écurie or « indépendant »), their opponent on the right, `title` for the belt. The posters, the gala card and the
   ceremony all read it through `billFor`. Their corner is the one the ceremony gives their side (`playerCorner`, from
-  `cornerSides`), so the fighter's path, their people and the ceremony agree.
+  `cornerSides`), so the fighter's path, their people and the ceremony agree. « Ton coin » (with « Je suis prêt ») and
+  the walking marker move to that corner when the bout begins (`refreshSpots` → `placeSpots`): before, they stayed in
+  Baobab's corner, where the hub was loaded, so a player in Teranga's corner (any independent) never had « Je suis
+  prêt » and the marker led to the wrong corner.
 - **The preliminaries run first.** The show starts once they are in the tunnel. Their corner is held
   (`arenaFighter.hold`) while the stands fill, the preliminaries run and the ceremony names them. « Je suis prêt » skips
   the rest of the preliminaries (« Plus d’attente : ton entrée commence. ») or, during the entrance, goes straight to the
