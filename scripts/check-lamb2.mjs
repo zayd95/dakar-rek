@@ -214,10 +214,13 @@ const gaugesOk = (g, clinch = false) => g.named && !g.lifeBar && !g.legend && g.
   if (g?.phase === 'clinch') g = await until(page, i => !i || i.phase !== 'clinch', async () => page.evaluate(() => window.__dakar.duelBreak()), 30000);
   if (g?.phase === 'fight') {
     await page.evaluate(() => window.__dakar.duelGuard(true));
-    const gd = await until(page, i => !i || i.phase !== 'fight' || (i.lastStrike?.by === 'opponent' && i.lastStrike.result === 'guarded'), async i => { if (i?.phase === 'fight' && i.dist > 1.7) await page.keyboard.down('KeyD'); else await page.keyboard.up('KeyD'); }, 90000);
+    // a guard counted during this step is the absorbed strike; the opponent may grab right after it (the slower level 1–2
+    // AI often does), so the strike read last can already be another one by the time the wait ends
+    const guards0 = g.score?.player?.guards ?? 0;
+    const gd = await until(page, i => !i || i.phase !== 'fight' || (i.score?.player?.guards ?? 0) > guards0 || (i.lastStrike?.by === 'opponent' && i.lastStrike.result === 'guarded'), async i => { if (i?.phase === 'fight' && i.dist > 1.7) await page.keyboard.down('KeyD'); else await page.keyboard.up('KeyD'); }, 90000);
     await page.keyboard.up('KeyD');
     await page.evaluate(() => window.__dakar.duelGuard(false));
-    check('guard: the opponent’s strike is absorbed (guarded) and counted', gd?.lastStrike?.by === 'opponent' && gd.lastStrike.result === 'guarded' && gd.score.player.guards >= 1, { phase: gd?.phase, last: gd?.lastStrike, guards: gd?.score?.player?.guards });
+    check('guard: the opponent’s strike is absorbed (guarded) and counted', (gd?.score?.player?.guards ?? 0) > guards0, { phase: gd?.phase, last: gd?.lastStrike, guards: [guards0, gd?.score?.player?.guards] });
   }
 
   // step 3: the empoignade is played — the buttons change, reading his move and answering it wins the exchange
