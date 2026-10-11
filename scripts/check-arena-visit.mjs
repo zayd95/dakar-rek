@@ -304,8 +304,10 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
     check(`${label}: seated in the « ${word} », the gala starts and the view frames the ring`, `seat:${seatedT}` === fo?.id && (camT.dx * toR.x + camT.dz * toR.z) / (lr * ld) > 0.85 && camT.y > 1.5, { seatedT, camT });
     await shot(`9-${t}-seated`);
     await d(() => window.__dakar.arena.go('over'));                              // the evening ends here (no second gala to watch)
-    await d(() => window.__dakar.act());                                          // « Se lever »
+    // « Se lever » only when seated (a failed step above must not press on whatever else is in reach), and no sheet left open
+    if (await d(() => !!window.__dakar.seated())) await d(() => window.__dakar.act());
     await page.waitForFunction(() => !window.__dakar.seated(), null, T).catch(() => {});
+    await d(() => document.querySelector('#modal.on .item.close')?.click());
   }
 
   const dc = { gate: dcExt, seat: dcSeat, entrance: dcShow };
