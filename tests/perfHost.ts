@@ -78,8 +78,10 @@ function stubDom() {
 
 // ------------------------------------------------------------------ the humanoid, parsed in node
 let humanoid = false;
-async function loadHumanoid() {
+/** Loads the shipped humanoid through the game's own preloadHumanoid (the GLB has no textures: it parses in node). */
+export async function loadHumanoid() {
   if (humanoid) return;
+  stubDom();
   const { preloadHumanoid, humanoidReady } = await import('../src/actors/humanoid');
   const bytes = readFileSync(new URL('../public/assets/character_v4.glb', import.meta.url));
   const g = globalThis as unknown as { fetch: (u: unknown) => Promise<Response> };
@@ -274,6 +276,7 @@ export class PerfHost {
     for (const m of this.modules) m.init?.(ctx);
     const H = M.humanoid;
     const body = new H.Humanoid(H.randomLook(rand)); this.scene.add(body.group);
+    (body as { fullRate?: boolean }).fullRate = true;                       // main.ts: the player's own body, always in full
     // loadHub: the walkers, the traffic, the apprentices, the placed people, the cast, the seats, then the modules
     const crowd = new M.npc.Crowd(world, rand, QUAL[q].crowd), traffic = new M.npc.DecorativeTraffic(world, rand, QUAL[q].traffic);
     this.extra.add(crowd.group, traffic.group);
