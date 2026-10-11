@@ -230,6 +230,10 @@ export function suggestion(r: Relations, s: GameState): Beat | Step | null {
 }
 
 export function applyChoice(beat: Beat, choice: Choice, r: Relations, s: GameState): string[] {
+  // A choice that keeps the beat open (« je repasserai ») can be picked again: its effects count the first time only,
+  // so postponing again and again does not farm relationship points.
+  const once = `beat_${beat.id}_${choice.id}`;
+  if (choice.completes === false) { if (s.data.counters[once]) return []; s.count(once); }
   const notes = applyEffects(choice.effects, r, s, beat.title);
   if (choice.completes !== false) s.data.beats[beat.id] = choice.id;
   return notes;
