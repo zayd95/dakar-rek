@@ -68,6 +68,8 @@ export type { LineFans };
  * on slow frames, unlike a look at who stands there now. `fans`: fans aboard rode to this stop and get off here.
  */
 export interface StopArrival { key: string; vehicle: string; fans: boolean }
+/** A vehicle's footprint for drive mode: centre, heading, half length and half width. */
+export interface Footprint { x: number; z: number; yaw: number; hl: number; hw: number }
 
 /** A short scripted walk (to the rear door, onto the pavement), timed on the real clock so it never outlasts a stop. */
 interface Walk { fx: number; fz: number; tx: number; tz: number; t0: number; ms: number; done: () => void }
@@ -102,6 +104,7 @@ export class TransportModule implements GameModule {
   /** Fans aboard each car (by vehicle id): they ride to their stop even if the line's fans end meanwhile. */
   private aboard = new Map<string, LineFans>();
   private arrivalFns = new Set<(a: StopArrival) => void>();
+  private obstacleFns = new Set<(out: Footprint[]) => void>();
 
   // ---------------------------------------------------------------- GameModule
   init(ctx: GameCtx) {
@@ -298,12 +301,18 @@ export class TransportModule implements GameModule {
     for (const fn of this.arrivalFns) fn(a);
   }
 
-  /** Footprints of the line's cars (drive mode collides with them): centre, heading, half length and width. */
-  obstacles(out: { x: number; z: number; yaw: number; hl: number; hw: number }[]) {
+  /**
+   * Footprints of the line's cars (drive mode collides with them): centre, heading, half length and width; then those of
+   * the other systems' solid vehicles (`addObstacles`: the gala road's jam, src/city/galaTraffic.ts).
+   */
+  obstacles(out: Footprint[]) {
     out.length = 0;
     for (const rt of this.lines) for (const v of rt.vehicles) out.push({ x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, hl: rt.spec.length / 2, hw: rt.spec.width / 2 });
+    for (const fn of this.obstacleFns) fn(out);
     return out;
   }
+  /** Another system's vehicles drive mode stops at (it pushes their footprints); returns the way to take them away. */
+  addObstacles(fn: (out: Footprint[]) => void): () => void { this.obstacleFns.add(fn); return () => { this.obstacleFns.delete(fn); }; }
 
   // ---------------------------------------------------------------- lines, stops and passengers
   private clear() {

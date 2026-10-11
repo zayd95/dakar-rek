@@ -107,3 +107,30 @@ changed between the two runs; the changes above save draw calls and humanoid ani
   - `--measure` on the build before (7da7342);
   - `--measure` on this head;
   - without `--measure` to assert the budgets.
+
+## The gala-night road (city lane, `src/city/galaTraffic.ts`)
+
+The approach to the arena from the east adds one group, `gala_traffic`, to the evening (docs/CITY.md « The gala-night
+road »):
+
+| Preset | Draw calls at most | What |
+| --- | --- | --- |
+| low | 6 | 2 car looks × (body + glass) + 2 moto-taxi looks; no shadow |
+| medium | 6 | the same |
+| high | 8 + 3 | 3 car looks × 2 + 2 moto-taxi looks, and the 3 car bodies in the shadow pass |
+
+- Every vehicle of the road is an instance of these meshes: the jam (up to 15 / 12 / 9 standing, a few coming and
+  going), the moto-taxis (about 7 / 5 / 3 at the rush), the rank taxis after the bouts (the taxi look). A mesh with no
+  instance is hidden. Nothing is drawn beyond 190 m from the junction, indoors, or from inside the arena's walls.
+- The headlights come from night.ts's existing point sprites (`night_vehicles`, one call): each instance has an
+  empty proxy object carrying the kit's spec, so there is no new call.
+- Humanoids: the traffic agent and the fans on the 23s cars' steps (at most 4 on medium and high, 1 on low). They sit
+  under the shared humanoid budget (`humanoid_v2` under `ctx.extra`), so the frame's humanoid cap does not grow. The
+  moto-taxis' fans walk in the arena arrivals' instanced pool: no new body.
+- JS: on the first frame the jam replays the evening's events (at most about six minutes of shared time, a few hundred
+  events). After that each frame computes the jam's cars (about 25 at the peak), the moto-taxis on their lattice and
+  the rank in closed form. That is well under 0.1 ms in node. Every vehicle's place is a function of the shared clock,
+  so nothing is integrated frame by frame and slow frames cost nothing extra.
+- To measure: `__dakar.renderBreakdown()` reports `gala_traffic`; `__dakar.gala.info().drawCalls` counts its meshes.
+  `scripts/check-perf-evening.mjs` at 17:30 sees the thin queue and the moto-taxis. The jam's peak comes later
+  (its window opens between 17:36 and 18:06): `setHour(18.5)` on a gala night shows it at its thickest.

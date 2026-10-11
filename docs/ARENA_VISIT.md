@@ -287,6 +287,9 @@ Habib's evening: « prendre sa moto ou un Car Rapide ».
     prochaine).
   - The evening's goal line suggests the moto to a player who owns one in this hub and is far (pin on the moto).
     Once they are riding it points to the parking.
+  - Coming in from the east on a gala night, the road to the parking runs into the jam at the arena block's
+    north-east junction, where a traffic agent holds it and lets it go. The moto filters through the gaps between the
+    jam's columns; a car does not fit (docs/CITY.md « The gala-night road »).
 - **By car rapide.** While the arena is set up and its doors are open, the Ligne 23 cars of the evening route round
   the arena block (`23s`, 16 h – midnight, src/transport/lines.ts) carry fans in green and red: Baobab, Teranga, and
   a few in their own clothes. They ride on every leg towards « Arène ».

@@ -25,6 +25,7 @@ import { arenaStreetsModule } from '../city/arena';
 import { weatherModule } from '../city/weather';
 import { streetVendorsModule } from '../city/vendors';
 import { roadEventsModule } from '../city/roadEvents';
+import { galaTrafficModule } from '../city/galaTraffic';
 import { nightModule } from '../city/night';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
@@ -201,6 +202,7 @@ export type LambEvent =
 export const MODULES: GameModule[] = [
   wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
+  galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)
   nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)
   eveningCallModule,    // the evening's call to the arena and the goal line to it (src/arena/eveningCall.ts)
   shopsModule,          // shops lane: walk-in cafés, night glow, showroom; customers are ambientLife's (docs/SHOPS.md)
