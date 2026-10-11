@@ -105,7 +105,8 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   check(`${label}: the three rows are readable as they are (≥ 15 px, nothing cut, no sideways scroll, all in view, ≥ 54 px tall)`,
     !rows.wide && rows.scrolled === 0 && rs.every(r => r.font >= 15 && !r.cut && r.seen && r.h >= 54), rows);
   await shot('2-ticket-short', false);
-  await page.locator('#modal.on .item', { hasText: 'Tribune couverte' }).first().click();
+  // a greyed row is aria-disabled, which Playwright's actionability refuses to click; a finger or a mouse still taps it
+  await page.locator('#modal.on .item', { hasText: 'Tribune couverte' }).first().click({ force: true });
   const saidShort = await waitToast(/Il te manque 500 F/);
   check(`${label}: a greyed tier tapped says what is missing and pays nothing`, saidShort && (await d(() => window.__dakar.state.wallet)) === 2000
     && !(await d(() => window.__dakar.arena.info().ticket)) && (await d(() => !!document.querySelector('#modal.on'))), await toast());
