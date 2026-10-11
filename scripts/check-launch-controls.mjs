@@ -107,7 +107,8 @@ try {
   });
   const recovered = await recovery.newPage(); recovered.on('pageerror', e => errors.push(e.message));
   await recovered.goto(`${base}?debug&touch`);
-  await recovered.waitForFunction(() => window.__dakar?.pos().hub);
+  // a second page booting while the first one still renders on the same CPU (as in check-multiplayer.mjs): room to boot
+  await recovered.waitForFunction(() => window.__dakar?.pos().hub, null, { timeout: 120000 });
   const restored = await recovered.evaluate(() => ({ p: window.__dakar.pos(), money: window.__dakar.state.wallet }));
   check('an old off-map save recovers in the city without losing money', Math.abs(restored.p.x) < 200 && Math.abs(restored.p.z) < 200 && restored.money === 7777);
   await page.setViewportSize({ width: 390, height: 844 });
