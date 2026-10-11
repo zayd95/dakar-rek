@@ -11,22 +11,9 @@
     "acquiredAt": "2026-10-11T19:29:00Z",
     "expiresAt": "2026-10-11T20:29:00Z"
   },
-  "activeCodeTask": "DKAG-015",
+  "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [
-    {
-      "task": "DKAG-015",
-      "owner": "gameplay_dkag015_1927",
-      "branch": "codex/agents/dkag-015-place-summary",
-      "baseCommit": "84311a716fa722cd20b4e725a72fd15f60511291",
-      "files": [
-        "src/ui/placeSummary.ts",
-        "tests/place-summary.test.ts",
-        "src/main.ts",
-        "scripts/check-city-life.mjs",
-        "docs/agents/reports/DKAG-015-gameplay.md"
-      ]
-    },
     {
       "task": "DKAG-015",
       "owner": "qa_dkag015_1927",
@@ -149,7 +136,9 @@
     "lastCompletedRunAt": "2026-10-11T04:58:00Z"
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [],
+  "reviewTasks": [
+    "DKAG-015"
+  ],
   "activeSessions": [],
   "completedSessions": [
     "activation_producer",
@@ -171,7 +160,7 @@
     "gameplay_dkag019_resume_0437",
     "qa_dkag019_resume_0437"
   ],
-  "nextAction": "DKAG-015 isolated directory summary implementation then independent QA and exact CI",
+  "nextAction": "Review DKAG-015 source 0de3c4a and exact push/PR CI; do not redo code",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [

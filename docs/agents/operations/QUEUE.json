@@ -341,8 +341,8 @@
       "id": "DKAG-015",
       "role": "gameplay",
       "kind": "implementation",
-      "status": "active",
-      "sourceCommit": "84311a716fa722cd20b4e725a72fd15f60511291",
+      "status": "review",
+      "sourceCommit": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
       "proposedBranch": "codex/agents/dkag-015-place-summary",
       "proposedFiles": [
         "src/ui/placeSummary.ts",
@@ -375,7 +375,17 @@
       "reviewAllowedFiles": [
         "docs/agents/operations/reports/DKAG-015-gameplay-review.md"
       ],
-      "reviewReport": "docs/agents/operations/reports/DKAG-015-gameplay-review.md"
+      "reviewReport": "docs/agents/operations/reports/DKAG-015-gameplay-review.md",
+      "ownerState": "source frozen; awaiting independent QA and exact CI",
+      "validation": {
+        "authorUnit": {
+          "passed": 33,
+          "total": 33
+        },
+        "authorBuild": "PASS",
+        "authorTypecheck": "PASS",
+        "authorBrowser": "local_not_run: Chromium absent"
+      }
     },
     {
       "id": "DKAG-016",
