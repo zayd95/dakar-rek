@@ -4,6 +4,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 
 const base = process.argv[2] ?? 'http://127.0.0.1:5188/';
 const evidence = 'docs/evidence/v1-core';
+// Browser runners can render the same movement at a much lower frame rate than local Chrome.
+// Keep navigation bounded while allowing the real input path enough time to cover the asserted distance.
+const navigationTimeoutMs = 10_000;
 await mkdir(evidence, { recursive: true });
 const checks = [], errors = [];
 const check = (name, ok) => { checks.push({ name, ok }); console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}`); assert.ok(ok, name); };
@@ -88,7 +91,7 @@ try {
       await page.waitForFunction(expected => window.__dakar.nearestInteractable() !== expected, 'Arène · làmb');
       const arenaStart = await page.evaluate(() => window.__dakar.pos());
       await page.keyboard.down('w');
-      try { await page.waitForFunction(expected => window.__dakar.nearestInteractable() === expected, 'Arène · làmb', { timeout: 3000 }); }
+      try { await page.waitForFunction(expected => window.__dakar.nearestInteractable() === expected, 'Arène · làmb', { timeout: navigationTimeoutMs }); }
       finally { await page.keyboard.up('w'); }
       const arenaEnd = await page.evaluate(() => window.__dakar.pos());
       console.log('Desktop arena navigation:', JSON.stringify({ arenaStart, arenaEnd }));
@@ -98,7 +101,7 @@ try {
       await page.waitForFunction(expected => window.__dakar.nearestInteractable() !== expected, 'Annonces · arène');
       const boardStart = await page.evaluate(() => window.__dakar.pos());
       await page.keyboard.down('w');
-      try { await page.waitForFunction(expected => window.__dakar.nearestInteractable() === expected, 'Annonces · arène', { timeout: 3000 }); }
+      try { await page.waitForFunction(expected => window.__dakar.nearestInteractable() === expected, 'Annonces · arène', { timeout: navigationTimeoutMs }); }
       finally { await page.keyboard.up('w'); }
       const boardEnd = await page.evaluate(() => window.__dakar.pos());
       console.log('Desktop board navigation:', JSON.stringify({ boardStart, boardEnd }));
@@ -137,7 +140,7 @@ try {
     const x = joy.x + joy.width / 2, y = joy.y + joy.height / 2;
     await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 1, radiusX: 1, radiusY: 1, force: 1 }] });
     await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: joy.y + 5, id: 1, radiusX: 1, radiusY: 1, force: 1 }] });
-    try { await phone.waitForFunction(name => window.__dakar.nearestInteractable() === name, expected, { timeout: 3000 }); }
+    try { await phone.waitForFunction(name => window.__dakar.nearestInteractable() === name, expected, { timeout: navigationTimeoutMs }); }
     finally { await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); }
   };
   const touchStart = await phone.evaluate(() => window.__dakar.pos());
