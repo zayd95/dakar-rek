@@ -111,6 +111,12 @@ function callsOf(o: Drawable, mainPass: boolean): number {
   if (Array.isArray(mats)) { let n = 0; for (const g of geo.groups) n += one(mats[g.materialIndex ?? 0], g); return n; }
   return one(mats, null);
 }
+/** What the renderer's projectObject does to a THREE.LOD it reaches (visible, on the camera's layers): picks the level. */
+function updateLods(o: THREE.Object3D, camera: THREE.Camera) {
+  if (!o.visible) return;
+  if ((o as THREE.LOD).isLOD && (o as THREE.LOD).autoUpdate && o.layers.test(camera.layers)) (o as THREE.LOD).update(camera);
+  for (const c of o.children) updateLods(c, camera);
+}
 function cameraFrustum(cam: THREE.Camera) {
   cam.updateMatrixWorld();
   _proj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
@@ -130,7 +136,8 @@ export function countCalls(scene: THREE.Scene, extra: THREE.Object3D, camera: TH
     if (!o.visible) return;
     t = top(o, t);
     if (o.layers.test(camera.layers)) {
-      if ((o as THREE.Sprite).isSprite) {
+      if ((o as THREE.LOD).isLOD) { if ((o as THREE.LOD).autoUpdate) (o as THREE.LOD).update(camera); }
+      else if ((o as THREE.Sprite).isSprite) {
         if ((!o.frustumCulled || mainF.intersectsSprite(o as THREE.Sprite)) && ((o as THREE.Sprite).material as THREE.Material).visible) { main++; by[key(t)] = (by[key(t)] ?? 0) + 1; }
       } else if ((o as THREE.Mesh).isMesh || (o as THREE.Points).isPoints || (o as THREE.Line).isLine) {
         if (!o.frustumCulled || mainF.intersectsObject(o)) { const n = callsOf(o as Drawable, true); main += n; if (n) by[key(t)] = (by[key(t)] ?? 0) + n; }
@@ -354,9 +361,10 @@ export class PerfHost {
     this.world.lampGlow.visible = night > 0.3;
     t = mark('rest of update', t);
     if (times) times['cpu'] = (times['cpu'] ?? 0) + cpuNow() - cpu0;     // the update's CPU time (preemption left out)
-    // renderer.render: the scene's hook (the vehicle lamps), then every world matrix
-    this.scene.onBeforeRender(null as never, this.scene, this.camera, null as never, null as never, null as never);
+    // renderer.render: every world matrix, the scene's hook (the vehicle lamps), the LODs' levels for this camera
     this.scene.updateMatrixWorld();
+    this.scene.onBeforeRender(null as never, this.scene, this.camera, null as never, null as never, null as never);
+    updateLods(this.scene, this.camera);
     if (times) times['render prep (not update)'] = (times['render prep (not update)'] ?? 0) + now() - t;
   }
 
