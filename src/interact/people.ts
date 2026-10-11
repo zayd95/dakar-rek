@@ -49,11 +49,19 @@ export class People implements TargetSource {
     }
   }
 
+  /** Turns to the player for the exchange, then back to what they were doing (the grill, the stall, the counter). */
   private face(b: Body) {
-    const me = this.player(), p = b.obj.position;
-    if (!b.seated) b.obj.rotation.y = Math.atan2(me.x - p.x, me.z - p.z);
-    const h = b.h; if (!h || b.seated) return;
-    const before = h.hold; h.hold = 'Talk';
-    setTimeout(() => { if (h.hold === 'Talk') h.hold = before; }, 2600);
+    if (b.seated) return;
+    const me = this.player(), o = b.obj, h = b.h;
+    const u = o.userData as { rest?: { yaw: number; hold: Humanoid['hold'] }; restT?: ReturnType<typeof setTimeout> };
+    u.rest ??= { yaw: o.rotation.y, hold: h?.hold ?? null };          // kept from the first greeting if greeted again
+    clearTimeout(u.restT);
+    o.rotation.y = Math.atan2(me.x - o.position.x, me.z - o.position.z);
+    if (h) h.hold = 'Talk';
+    u.restT = setTimeout(() => {
+      const r = u.rest; delete u.rest; if (!r) return;
+      o.rotation.y = r.yaw;
+      if (h && h.hold === 'Talk') h.hold = r.hold;
+    }, 2600);
   }
 }
