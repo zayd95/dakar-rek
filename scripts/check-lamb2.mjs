@@ -326,6 +326,7 @@ const gaugesOk = (g, clinch = false) => g.named && !g.lifeBar && !g.legend && g.
   const g1 = await gauges(page);
   check('phone 390×844: the gauges named on their bars (Endurance, Équilibre, Sang-froid), no life bar, nothing under the buttons or the joystick', gaugesOk(g1), g1);
   await shot(page, 'phone-gauges');
+  await page.evaluate(() => window.__dakar.duelSet('opponent', { balance: 100, composure: 100, stamina: 100 }));   // the exchange is for the pictures
   await strike(page, 'big');
   await wait(page, () => window.__dakar.duelInfo()?.strike?.player === 'big', null, 20000);
   await shot(page, 'phone-big-windup');
@@ -333,7 +334,9 @@ const gaugesOk = (g, clinch = false) => g.named && !g.lifeBar && !g.legend && g.
   await strike(page, 'quick');
   await page.waitForTimeout(300);
   await shot(page, 'phone-exchange');
-  // step 5 on the phone: he tries a throw, the button turns to « Contrer », and a steady counter turns it
+  // step 5 on the phone: he tries a throw, the button turns to « Contrer », and a steady counter turns it. The exchange
+  // above can knock a level 1–2 opponent down (src/lamb/stand.ts AI_LEVEL): he is back on his feet for the step
+  if (await page.evaluate(() => window.__dakar.duelInfo()?.phase === 'fight')) await page.evaluate(() => window.__dakar.duelSet('opponent', { balance: 100, composure: 100, stamina: 100 }));
   let hot = false, label = '', clinchLay = null, clinchG = null;
   const ph = await until(page, i => !i || i.phase === 'fall' || i.phase === 'result', async i => {
     if (i.phase === 'fight') { if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); } return; }
@@ -352,7 +355,7 @@ const gaugesOk = (g, clinch = false) => g.named && !g.lifeBar && !g.legend && g.
     await page.evaluate(() => window.__dakar.duelSet('player', { balance: 22, grip: -45 }));     // as if he had the upper hand: bait the throw
   }, 150000);
   await page.keyboard.up('KeyD');
-  check('phone, step 5: his throw turns the button into « Contrer », and the counter turns it (he goes down)', hot && /Contrer/.test(label) && ph?.lastThrow?.by === 'opponent' && ph.lastThrow.result === 'countered' && ph.winner === 'player', { hot, label, lastThrow: ph?.lastThrow, phase: ph?.phase, winner: ph?.winner });
+  check('phone, step 5: his throw turns the button into « Contrer », and the counter turns it (he goes down)', hot && /Contrer/.test(label) && ph?.lastThrow?.by === 'opponent' && ph.lastThrow.result === 'countered' && ph.winner === 'player', { hot, label, lastThrow: ph?.lastThrow, phase: ph?.phase, winner: ph?.winner, outcome: ph?.outcome });
   check('phone 390×844, empoignade: Pousser, Tirer, Pivoter, Casser, Projeter — fit and readable', !!clinchLay && layoutOk(clinchLay) && ['Pousser', 'Tirer', 'Pivoter', 'Casser', 'Projeter'].every(w => clinchLay.labels.some(t => t.startsWith(w))), clinchLay);
   check('phone 390×844, empoignade: the Prise named (« toi » / « lui »), its words readable, the four gauges clear of the buttons', !!clinchG && gaugesOk(clinchG, true), clinchG);
   check('phone: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
