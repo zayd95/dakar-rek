@@ -93,6 +93,9 @@ for the old dark panel never vanish. Use the existing blocks — `.kv` (info car
   never covers « Courir »; the wallet chip uses the economy lane's `fcfaShort` (full amount as its accessible label).
 - Wolof glosses: HUD text is plain DOM text, resolved by the gloss observer (src/i18n/dom.ts) like any other text.
 - HUD buttons drop the focus after a tap or click, so Space/Enter (the game's action keys) never fire them twice.
+- No target is focused while a sheet is up; the action button (or E) pressed right after it closes — « Annuler » at the
+  arena's window, then the window again — picks the focus itself if no frame has yet (src/interact/system.ts `current`),
+  so the press is never lost on a slow renderer. Checks: tests/interact.test.ts, scripts/check-arena-visit.mjs.
 
 ## The ticket window on a phone (src/arena/tickets.ts `tierRows`)
 

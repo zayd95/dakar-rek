@@ -966,7 +966,8 @@ hud.onAction = () => {
   if (activities.running) { activities.cancel('Arrêté'); return; }
   if (legacyRun) { legacyRun.stop(); return; }
   if (mode !== 'play') return;
-  const a = interactions.primary();
+  // right after a sheet closed the frame may not have picked the focus again yet: pick it now (src/interact/system.ts current)
+  const a = interactions.primary(lambScene ? null : interactions.current(interactSpace(), pos.x, pos.z, facing));
   if (a && !a.disabled) a.run(); else if (a?.disabled) hud.deny(a.disabled);
 };
 hud.onMore = () => openMore();
@@ -1021,7 +1022,7 @@ function frameStep(now: number, dt: number, draw = true) {
 
   if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (legacyRun) legacyRun.stop(); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
-  if (input.takeAction() && ((mode === 'play' && interactions.focus) || activities.running || legacyRun)) hud.onAction();
+  if (input.takeAction() && (mode === 'play' || activities.running || legacyRun)) hud.onAction();   // the focus: picked by onAction if no frame has yet
   activities.update(dt);
   { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
   if (profOn) for (const m of MODULES) { const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }

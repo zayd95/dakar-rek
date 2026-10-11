@@ -114,13 +114,20 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   await page.waitForFunction(() => !document.querySelector('#modal.on'), null, T).catch(() => {});
   await d(() => { window.__dakar.state.data.wallet = 5000; });
   const wallet0 = await d(() => window.__dakar.state.wallet);
-  await idle(); await d(() => window.__dakar.act());
-  await page.waitForFunction(() => document.querySelector('#modal.on h2')?.textContent?.includes('Billet'), null, T).catch(() => {});
+  // back at the window after « Annuler »: in play, the window focused again (the frame picks the focus; the button picks
+  // it too if no frame has yet, src/interact/system.ts current), then the button reopens its sheet
+  await idle();
+  await page.waitForFunction(() => window.__dakar.pos().mode === 'play' && /Guichet/.test(window.__dakar.focus()?.name ?? ''), null, { timeout: 60000 }).catch(() => {});
+  await d(() => window.__dakar.act());
+  const reopened = await page.waitForFunction(() => document.querySelector('#modal.on h2')?.textContent?.includes('Billet'), null, { timeout: 60000 }).then(() => true, () => false);
+  const uiState = () => d(() => ({ mode: window.__dakar.pos().mode, focus: window.__dakar.focus()?.name ?? null, primary: window.__dakar.focus()?.primary ?? null, activity: window.__dakar.activity()?.step ?? null,
+    modal: !!document.querySelector('#modal.on'), title: document.querySelector('#modal h2')?.textContent ?? null, phone: !!document.querySelector('#phone.on'), act: document.getElementById('act')?.textContent ?? '' }));
   const confirm = await d(() => ({ sub: document.querySelector('#modal.on p')?.textContent ?? '', items: [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent) }));
+  check(`${label}: after « Annuler », the window's sheet opens again`, reopened, reopened ? '' : await uiState());
   check(`${label}: the three tiers' prices are shown before paying`, /Populaire 1 000 F · Tribune couverte 2 500 F · Tribune d’honneur 5 000 F/.test(sp(confirm.sub))
     && ['1 000 F · Populaire', '2 500 F · Tribune couverte', '5 000 F · Tribune d’honneur'].every(w => confirm.items.some(t => sp(t).includes(w) && /Payer/.test(t))) && confirm.items.some(t => /Annuler/.test(t)), confirm);
   await shot('2-ticket-confirm', false);
-  await page.locator('#modal.on .item', { hasText: 'Populaire' }).first().click();
+  await page.locator('#modal.on .item', { hasText: 'Populaire' }).first().click({ timeout: reopened ? 30000 : 5000 }).catch(async () => console.log(`NOTE ${label} · no « Populaire » row to pay: ${JSON.stringify(await uiState())}`));
   await page.waitForFunction(() => window.__dakar.arena.info().ticket, null, T).catch(() => {});
   await waitToast(/Le guichetier : « 1 000 F, jërëjëf ! »/);
   const paid = await d(() => ({ wallet: window.__dakar.state.wallet, ledger: window.__dakar.state.data.ledger.at(-1), ticket: window.__dakar.arena.info().ticket, tribune: window.__dakar.arena.info().tribune }));
