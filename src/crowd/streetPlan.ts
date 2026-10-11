@@ -144,6 +144,27 @@ export function clearWalk(ax: number, az: number, bx: number, bz: number, cols: 
 }
 
 /**
+ * The colliders of a hub in a grid of `cell`-metre squares: whether a point is blocked (as `clearWalk` from a point to
+ * itself) without going through the hub's hundreds of colliders. For a list that does not change while it is used.
+ */
+export class ColliderGrid {
+  private cells = new Map<number, Collider[]>();
+  constructor(cols: readonly Collider[], private cell = 8, private rMax = 0.5) {
+    for (const c of cols) {
+      const i0 = Math.floor((c.x0 - rMax) / cell), i1 = Math.floor((c.x1 + rMax) / cell), j0 = Math.floor((c.z0 - rMax) / cell), j1 = Math.floor((c.z1 + rMax) / cell);
+      if ((i1 - i0 + 1) * (j1 - j0 + 1) > 4096) continue;                     // (never: no collider spans a kilometre)
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const k = key(i, j), l = this.cells.get(k); if (l) l.push(c); else this.cells.set(k, [c]); }
+    }
+  }
+  /** Within `r` (at most the grid's rMax) of a collider. */
+  blocked(x: number, z: number, r: number): boolean {
+    const l = this.cells.get(key(Math.floor(x / this.cell), Math.floor(z / this.cell)));
+    return !!l && blockedAt(x, z, Math.min(r, this.rMax), l);
+  }
+}
+const key = (i: number, j: number) => (i + 4096) * 8192 + (j + 4096);
+
+/**
  * A walk from a to b clear of colliders: straight, or with one or two turns (round a stall, a barrier, a corner).
  * Returns the waypoints after a (b last), or null when no such simple route exists.
  */

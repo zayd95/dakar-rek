@@ -12,7 +12,7 @@ import { carRapideSpec } from '../transport/carRapide';
 import { afterGalaWindow, type ArenaArrivals } from './arrivals';
 import { ambientLife } from '../social/ambientLife';
 import {
-  BUSY_STOP_EXTRA, HUB_STREETS, PAVE, crowdSlots, edgeWeight, STREET_BUDGET, clearWalk, groupSpots, lanesFrom, pavementLanes, routeClear, stopSlots, streetTargets, type Lane,
+  BUSY_STOP_EXTRA, ColliderGrid, HUB_STREETS, PAVE, crowdSlots, edgeWeight, STREET_BUDGET, clearWalk, groupSpots, lanesFrom, pavementLanes, routeClear, stopSlots, streetTargets, type Lane,
 } from './streetPlan';
 
 /**
@@ -75,6 +75,8 @@ export class StreetLife {
   /** The hub's colliders, plus the arena's queue lane while fans queue in it (street walkers keep out). */
   private cols: Collider[];
   private closedQueue = false;
+  /** The colliders while the queue lane is closed, in a grid (a walker's step tests two points a frame). */
+  private colGrid: ColliderGrid | null = null;
   private prepT = 1.2;
   private rand = rng(1709);
   private q: CrowdQuality;
@@ -283,6 +285,7 @@ export class StreetLife {
       this.closedQueue = closed;
       const q = gateOf(this.hub.arena!).queue;
       this.cols = closed ? [...this.hub.colliders, { x0: q.x - q.half - 0.6, x1: q.x + q.half + 0.6, z0: q.z1 - 1.2, z1: q.z0 + 0.5, h: 1 }] : this.hub.colliders;
+      this.colGrid = closed ? new ColliderGrid(this.cols) : null;              // the walkers' check, every frame while it is closed
     }
     const cam = this.ctx.camera;
     cam.updateMatrixWorld();
@@ -461,7 +464,8 @@ export class StreetLife {
     a.t += (a.fwd ? 1 : -1) * a.speed * dt;
     if (a.t < 0 || a.t > l.len) { this.cross(a); return; }
     const p = this.lanePt(l, a.t, a.side);
-    if (this.closedQueue && !clearWalk(p.x, p.z, p.x, p.z, this.cols, 0.25) && clearWalk(a.x, a.z, a.x, a.z, this.cols, 0.25)) {
+    const grid = this.colGrid;
+    if (this.closedQueue && grid && grid.blocked(p.x, p.z, 0.25) && !grid.blocked(a.x, a.z, 0.25)) {
       a.t -= (a.fwd ? 1 : -1) * a.speed * dt; a.fwd = !a.fwd; return;          // the queue is in the way: back the other way
     }
     a.x = p.x; a.z = p.z; a.yaw = Math.atan2((l.bx - l.ax) * (a.fwd ? 1 : -1), (l.bz - l.az) * (a.fwd ? 1 : -1));
