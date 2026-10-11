@@ -619,8 +619,8 @@
       "role": "gameplay",
       "kind": "ci_harness_implementation",
       "status": "active",
-      "owner": "gameplay_dkag019_0347",
-      "reviewer": "qa_dkag019_0347",
+      "owner": "gameplay_dkag019_resume_0437",
+      "reviewer": "qa_dkag019_resume_0437",
       "branch": "codex/agents/dkag-019-ci-navigation-determinism",
       "baseCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
       "allowedFiles": [
@@ -640,8 +640,8 @@
         "Exact same-source push and PR runs both success",
         "Independent QA reviews diff and logs before DKAG-018 requalification"
       ],
-      "ownerState": "commissioned",
-      "controlBriefCommit": "8ae64ed4cc1c33d8446ec8bd2020309c2222e0fc"
+      "ownerState": "replacement author commissioned after prior usage-limit termination",
+      "controlBriefCommit": "991a52359ad0e634b146654cc6af20a62b085cba"
     }
   ]
 }

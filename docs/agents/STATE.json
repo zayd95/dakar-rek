@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-11T04:36:00Z",
+  "updatedAt": "2026-10-11T04:38:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
@@ -18,15 +18,15 @@
   "reservations": [
     {
       "task": "DKAG-019",
-      "owner": "gameplay_dkag019_0347",
-      "reviewer": "qa_dkag019_0347",
+      "owner": "gameplay_dkag019_resume_0437",
+      "reviewer": "qa_dkag019_resume_0437",
       "branch": "codex/agents/dkag-019-ci-navigation-determinism",
       "baseCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
       "allowedFiles": [
         "scripts/check-v1-core.mjs",
         "docs/agents/reports/DKAG-019-ci-navigation.md"
       ],
-      "acquiredAt": "2026-10-09T03:47:00Z"
+      "acquiredAt": "2026-10-11T04:38:00Z"
     }
   ],
   "externalWork": [
@@ -141,8 +141,8 @@
     "DKAG-018"
   ],
   "activeSessions": [
-    "gameplay_dkag019_0347",
-    "qa_dkag019_0347"
+    "gameplay_dkag019_resume_0437",
+    "qa_dkag019_resume_0437"
   ],
   "completedSessions": [
     "activation_producer",
@@ -162,7 +162,7 @@
     "world_dkag018_2236",
     "qa_dkag018_final_0336"
   ],
-  "nextAction": "DKAG-019 author makes the existing navigation harness deterministic only; distinct QA requires exact green push and PR before DKAG-018 can be requalified.",
+  "nextAction": "Replacement Gameplay author implements bounded DKAG-019 harness-only fix on unchanged base; distinct QA prepares and reviews exact same-source push and PR.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
