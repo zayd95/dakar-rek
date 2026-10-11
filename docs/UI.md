@@ -111,7 +111,7 @@ The « Billet · gala de làmb » sheet, readable in portrait (390 × 844) witho
 ## The goal line: here and now (src/game/goalLine.ts, src/social/beats.ts)
 
 `#goal` says one thing at most, and only what makes sense in this hub, at this hour, with the player's needs and money
-(`pickGoal`, in this order):
+(`goalNow`, the composition main.ts applies; `pickGoal`, in this order):
 1. the walking marker the player chose (« Les coins du quartier », « Y aller »);
 2. the fighter's own evening (entrance, corner, ring, the way out);
 3. a critical need met here (`needGoal`): energy under 15 → home to sleep if the player's home is in this hub (the bed
@@ -125,9 +125,15 @@ The « Billet · gala de làmb » sheet, readable in portrait (390 × 844) witho
 **« Parle à Tonton Ibou ».** Talking to him in any way closes it (the ★ beat, « Discuter », the attaya:
 `welcomeByTalk`), with his recommendation; done, it is gone for good (the save's `beats`), also after a reload. An older
 save whose player already talked with him (a relation with him, no beat) finds it done on load (`settleWelcome`). Not
-done, it leads the goal line only in the first moments of a new game (nothing earned, no delivery, under 15 min:
-`welcomeEarly`), in Pikine, by day; otherwise it waits in the Carnet under « Facultatif ». Checks:
-`tests/goalLine.test.ts`, `scripts/check-life-loop.mjs` (step 8).
+done, it is a lead (5.) only in the first moments of a new game (nothing earned, no delivery, under 15 min:
+`welcomeEarly`), in Pikine, by day — never over tonight's gala; otherwise it waits in the Carnet under « Facultatif »,
+even when nothing else fits here (the goal line then stays empty). Checks: `tests/goalLine.test.ts`,
+`scripts/check-life-loop.mjs` (step 8), `scripts/check-evening.mjs` (17.6 h after the afternoon's deliveries).
+
+**When it refreshes** (`hudDue`): every 250 ms of wall time — on a slow renderer every frame, where the game's clock
+(0.1 s a frame at most) used to leave the line three frames behind — and at once in another hub, a room or at a set
+hour, so a line about the hub just left never lingers. The checks wait for `__dakar.hudTicks()` to move, not for a
+fixed delay.
 
 ## Phone › Ce soir (src/arena/tonight.ts)
 

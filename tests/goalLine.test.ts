@@ -5,8 +5,10 @@ import { newSave, migrate } from '../src/core/save';
 import { Relations, PLAYER } from '../src/social/relations';
 import { BEATS, WELCOME, WELCOME_HUD_MS, applyChoice, nextLead, openWelcome, settleWelcome, suggestion, suggestionHere, welcomeByTalk, welcomeEarly } from '../src/social/beats';
 import { economyStep, stepHub } from '../src/economy/progress';
+import { acceptJob, completeJob } from '../src/economy/jobs';
 import { journalView } from '../src/ui/journal';
-import { HUNGRY, TIRED, needGoal, pickGoal, type GoalSpot } from '../src/game/goalLine';
+import { HUD_EVERY_MS, HUNGRY, TIRED, goalNow, hudDue, hudSpace, needGoal, pickGoal, type GoalSpot, type Lead } from '../src/game/goalLine';
+import { eveningGoal, goalText } from '../src/arena/eveningCall';
 import { CITY_ACTIONS } from '../src/world/cityContent';
 import { ACTIONS } from '../src/world/content';
 
@@ -62,6 +64,28 @@ describe('Tonton Ibou\'s welcome: done once, gone for good', () => {
     const late = fresh(); late.s.data.playedMs = WELCOME_HUD_MS;                            // a quarter of an hour without a word to him
     expect(suggestionHere(late.r, late.s, 'pikine', 10)?.id).not.toBe(WELCOME);
     expect(carnet(late.r, late.s)).toMatch(/Facultatif/);
+  });
+  it('not done, past the first moments: never the goal line\'s fallback, even in Pikine by day with only Ibou about', () => {
+    const { s, r } = fresh();
+    s.addMoney(1500, 'Livraison');
+    s.data.jobs.active = { runId: 'r1', routeId: 'pl_fatou_market', hub: 'plateau', stage: 'pickup', pay: 1200, startedMs: 0, limitMs: 0 };   // a run in the Plateau
+    const ibouOnly = (id: string) => id === 'ibou';
+    expect(stepHub(economyStep(s)!, s)).toBe('plateau');                                    // the step is not about Pikine
+    expect(suggestionHere(r, s, 'pikine', 15, ibouOnly)).toBeNull();                        // nothing here: an empty line, not the welcome
+    expect(suggestion(r, s)?.id).not.toBe(WELCOME);
+    expect(carnet(r, s)).toMatch(/Facultatif.*Parle à Tonton Ibou/s);
+  });
+  it('check-evening\'s afternoon: three paid deliveries, then 17.6 h in Pikine — tonight\'s gala, never the welcome', () => {
+    const { s, r } = fresh();
+    for (let i = 0; i < 3; i++) { const j = acceptJob(s, 'pk_mame_boutique', true, 600_000); expect(j).not.toBeNull(); expect(completeJob(s, j!.runId)?.paid).toBeGreaterThan(0); }
+    expect(welcomeEarly(s.data)).toBe(false);
+    const here = suggestionHere(r, s, 'pikine', 17.6);
+    expect(here?.id).toBe('ibou_tiak');                                                     // Ibou heard of the first delivery
+    expect(pickGoal({ evening: 'Combat ce soir à l’arène (Pikine)', local: here?.hint })).toEqual({ kind: 'evening', text: 'Combat ce soir à l’arène (Pikine)' });
+    // and a brand-new player at 17.6 h: the welcome leads the local leads, the gala still comes first
+    const n = fresh();
+    expect(suggestionHere(n.r, n.s, 'pikine', 17.6)?.id).toBe(WELCOME);
+    expect(pickGoal({ evening: 'Combat ce soir à l’arène (Pikine)', local: suggestionHere(n.r, n.s, 'pikine', 17.6)?.hint })?.kind).toBe('evening');
   });
   it('an old save whose player already talked with Ibou (a relation with him, no beat): marked done on load, once, nothing given twice', () => {
     const old = migrate({ schemaVersion: 2, wallet: 900, hub: 'pikine', rel: { 'ibou|player': 3 }, beats: {}, flags: [] })!;
@@ -132,5 +156,74 @@ describe('the goal line: the player\'s needs and money', () => {
     expect(pickGoal({ evening: 'Ce soir à l’arène', local: 'Parle à Tonton Ibou' })?.kind).toBe('evening');   // tonight's gala before a visit
     expect(pickGoal({ local: 'l' })?.kind).toBe('local');
     expect(pickGoal({})).toBeNull();
+  });
+});
+
+describe('the goal line as main.ts applies it (goalNow, hudDue)', () => {
+  // the same spots as above: the Almadies' square, juice bar and couture shop
+  const spots: GoalSpot[] = [
+    { id: 'almadies:city:square', name: 'Place des voisins · Ngor', x: 40, z: 10, actions: CITY_ACTIONS.square },
+    { id: 'almadies:city:mall-juice', name: 'Jus & Go', x: 10, z: 0, actions: CITY_ACTIONS.juice },
+  ];
+  const gate = { name: 'Arène · làmb', x: 0, z: 66 };
+  /** Tonight's line as eveningCall gives it (eveningLine = eveningGoal + goalText; gate null: another hub). */
+  const evening = (hour: number, inPikine: boolean): Lead | null => {
+    const g = eveningGoal({ hour, galaDone: false, ticket: false, welcome: false, gate: inPikine ? { dist: 66, inside: false } : null, afterDone: false });
+    return g ? { text: goalText(g, undefined, hour), target: inPikine ? gate : null } : null;
+  };
+  const bearing = (t: string, at: { x: number; z: number } | null) => (at ? `${t} · ${Math.round(Math.hypot(at.x, at.z))} m` : t);
+
+  it('check-life-loop step 8: talked to Ibou, reloaded, then the Almadies at 10 h with 58 F and 0 % energy — rest on the square, nothing about Pikine', () => {
+    const { s, r } = fresh();
+    welcomeByTalk('ibou', r, s);
+    const back = reload(s); back.s.data.hub = 'almadies'; back.s.data.wallet = 58; back.s.data.needs.energie = 0;
+    const here = suggestionHere(back.r, back.s, 'almadies', 10);
+    const need = needGoal({ needs: back.s.data.needs, wallet: back.s.wallet, here: { x: 0, z: 0 }, spots, home: null });
+    const g = goalNow({ walking: null, fighter: false, evening: evening(10, false), need, here, bearing })!;
+    expect(g.kind).toBe('need');
+    expect(g.text).toMatch(/^Fatigué : Se poser à l’ombre — Place des voisins · Ngor · \d+ m$/);
+    expect(g.target?.name).toBe('Place des voisins · Ngor');
+    expect(g.text).not.toMatch(/\(Pikine\)|Tonton Ibou|Mame Diarra/);
+    // rested: the line about this hub (its own paid services), still nothing about Pikine
+    const rested = goalNow({ walking: null, fighter: false, evening: evening(10, false), need: null, here, bearing });
+    expect(rested?.text ?? '').not.toMatch(/\(Pikine\)|Tonton Ibou|Mame Diarra/);
+  });
+  it('check-evening: three deliveries in Pikine, 17.6 h — « Combat ce soir à l’arène (Pikine) », the pin on the gate; a brand-new player too', () => {
+    for (const paid of [true, false]) {
+      const { s, r } = fresh();
+      if (paid) for (let i = 0; i < 3; i++) { const j = acceptJob(s, 'pk_mame_boutique', true, 600_000)!; completeJob(s, j.runId); }
+      const g = goalNow({ walking: null, fighter: false, evening: evening(17.6, true), need: null, here: suggestionHere(r, s, 'pikine', 17.6), bearing })!;
+      expect(g).toMatchObject({ kind: 'evening', text: 'Combat ce soir à l’arène (Pikine) · 66 m', target: gate, npc: null, job: false });
+    }
+  });
+  it('in another hub at the gala hour: tonight\'s gala by car rapide, without a pin in this hub; a critical need first', () => {
+    const { s, r } = fresh('almadies'); welcomeByTalk('ibou', r, s);
+    const ev = evening(17.6, false);
+    expect(goalNow({ walking: null, fighter: false, evening: ev, need: null, here: suggestionHere(r, s, 'almadies', 17.6), bearing })).toMatchObject({ kind: 'evening', target: null });
+    expect(ev?.text).toMatch(/car rapide/);
+    const tired = needGoal({ needs: { faim: 50, energie: 0, moral: 50, social: 50, hygiene: 50 }, wallet: 58, here: { x: 0, z: 0 }, spots, home: null });
+    expect(goalNow({ walking: null, fighter: false, evening: ev, need: tired, here: null, bearing })?.kind).toBe('need');
+  });
+  it('the first moments, by day in Pikine: the welcome as the local lead, the way-finding on Ibou; the first job: the pick-up', () => {
+    const { s, r } = fresh();
+    expect(goalNow({ walking: null, fighter: false, evening: evening(10, true), need: null, here: suggestionHere(r, s, 'pikine', 10) })).toMatchObject({ kind: 'local', npc: 'ibou', job: false, target: null });
+    welcomeByTalk('ibou', r, s);
+    expect(goalNow({ walking: null, fighter: false, evening: null, need: null, here: suggestionHere(r, s, 'pikine', 10) })).toMatchObject({ kind: 'local', npc: null, job: true });
+    const after = fresh(); after.s.addMoney(1500, 'Livraison');                              // check-life-loop's first pay, not done
+    expect(goalNow({ walking: null, fighter: false, evening: null, need: null, here: suggestionHere(after.r, after.s, 'pikine', 10) })?.text).not.toMatch(/Tonton Ibou/);
+  });
+  it('the fighter\'s own evening: no need comes before his bout\'s legs; the walking marker the player chose comes first of all', () => {
+    const tired = { text: 'Fatigué : Se poser à l’ombre — Place', target: { name: 'Place', x: 1, z: 1 } };
+    const ev = { text: 'Tu combats ce soir : entrée des lutteurs, derrière l’arène', target: null };
+    expect(goalNow({ walking: null, fighter: true, evening: ev, need: tired, here: null })).toMatchObject({ kind: 'fighter', target: null });
+    expect(goalNow({ walking: 'Y aller', fighter: true, evening: ev, need: tired, here: null })?.kind).toBe('walking');
+    expect(goalNow({ walking: null, fighter: false, evening: null, need: null, here: null })).toBeNull();
+  });
+  it('the HUD refreshes 4 times a second of wall time (every frame on a slow renderer) and at once in another hub, a room, a set hour', () => {
+    const out = hudSpace('pikine', false, null);
+    expect(hudDue(1000, 900, out, out)).toBe(false);
+    expect(hudDue(900 + HUD_EVERY_MS, 900, out, out)).toBe(true);
+    expect(hudDue(5000, 0, out, out)).toBe(true);                                            // one slow frame: refreshed, not three frames later
+    for (const k of [hudSpace('almadies', false, null), hudSpace('pikine', true, null), hudSpace('pikine', false, 10)]) expect(hudDue(901, 900, k, out)).toBe(true);
   });
 });

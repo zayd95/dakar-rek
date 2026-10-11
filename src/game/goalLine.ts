@@ -11,10 +11,43 @@ import { fcfaText } from '../economy/format';
  * Nothing else: a lead about another hub stays in the Carnet, and Tonton Ibou's welcome only leads in the first moments
  * of a new game (src/social/beats.ts welcomeEarly).
  */
+/**
+ * When the HUD (wallet, needs, goal line, place pill) refreshes: every `HUD_EVERY_MS` of wall time — on a slow renderer
+ * (a few frames a second) every frame, not every third: the game's own clock advances 0.1 s a frame at most — and at once
+ * when the space changes (another hub, a room, the debug hour), so a line about the hub just left never lingers.
+ */
+export const HUD_EVERY_MS = 250;
+export const hudSpace = (hub: string, inside: boolean, hour: number | null) => `${hub}|${inside ? 'in' : 'out'}|${hour ?? ''}`;
+export const hudDue = (now: number, lastAt: number, space: string, lastSpace: string) => space !== lastSpace || now - lastAt >= HUD_EVERY_MS;
+
 export type GoalKind = 'walking' | 'fighter' | 'need' | 'evening' | 'local';
 export function pickGoal(g: Partial<Record<GoalKind, string | null>>): { kind: GoalKind; text: string } | null {
   for (const kind of ['walking', 'fighter', 'need', 'evening', 'local'] as const) { const t = g[kind]; if (t) return { kind, text: t }; }
   return null;
+}
+
+type Spot = { name: string; x: number; z: number };
+/** A line with where it leads (the pin, the arrow and distance). */
+export interface Lead { text: string; target: Spot | null }
+/** What the goal line shows now, where its pin goes, and who or what the way-finding follows. */
+export interface GoalNow { kind: GoalKind; text: string; target: Spot | null; npc: string | null; job: boolean }
+/**
+ * The goal line as main.ts applies it (every HUD refresh): the walking marker; the fighter's own evening (his bout's
+ * legs, no need comes before them); a critical need met here; tonight's gala (eveningCall's line, never held back for a
+ * beat); the lead about this hub (src/social/beats.ts suggestionHere). `bearing` adds the arrow and the distance.
+ */
+export function goalNow(o: {
+  walking: string | null; fighter: boolean; evening: Lead | null; need: Lead | null;
+  here: { id: string; hint: string; npc?: string } | null; bearing?: (text: string, target: Spot | null) => string;
+}): GoalNow | null {
+  const b = o.bearing ?? ((t: string) => t), need = o.fighter ? null : o.need, ev = o.evening;
+  const g = pickGoal({
+    walking: o.walking, fighter: o.fighter && ev ? b(ev.text, ev.target) : null, need: need ? b(need.text, need.target) : null,
+    evening: !o.fighter && ev ? b(ev.text, ev.target) : null, local: o.here?.hint ?? null,
+  });
+  if (!g) return null;
+  const target = g.kind === 'fighter' || g.kind === 'evening' ? ev?.target ?? null : g.kind === 'need' ? need?.target ?? null : null;
+  return { ...g, target, npc: g.kind === 'local' ? o.here?.npc ?? null : null, job: g.kind === 'local' && o.here?.id === 'goal_tiak' };
 }
 
 /** Energy under this: running stops at 12 (src/game/stride.ts) and every paid service needs more — rest first. */

@@ -26,8 +26,8 @@ import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById } from './social/cast';
 import { NpcLife } from './social/npcLife';
 import { Relations, PLAYER } from './social/relations';
-import { BEATS, WELCOME, availableBeat, suggestion, suggestionHere, applyChoice, settleWelcome, welcomeByTalk, type Beat } from './social/beats';
-import { needGoal, pickGoal } from './game/goalLine';
+import { BEATS, availableBeat, suggestion, suggestionHere, applyChoice, settleWelcome, welcomeByTalk, type Beat } from './social/beats';
+import { goalNow, hudDue, hudSpace, needGoal } from './game/goalLine';
 import { arenaFighter } from './arena/fighter';
 import { currentHome } from './economy/assets';
 import { homeSpec } from './economy/catalog';
@@ -62,7 +62,7 @@ import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
 import { arenaShow } from './arena/module';
-import { eveningLine, placeClock, welcomeFirst } from './arena/eveningCall';
+import { eveningLine, placeClock } from './arena/eveningCall';
 import { GALA_DONE_COUNTER } from './arena/program';
 import { weatherNow } from './city/weather';
 import { GesturePlayer } from './ui/gesture';
@@ -861,30 +861,30 @@ function openPlaces() {
 }
 phoneHooks.openPlaces = openPlaces;
 
-/** Person of the suggested story beat, or « first delivery » (refreshed with the HUD, 4 times a second). */
+/** Person of the suggested story beat, or « first delivery » (refreshed with the HUD: src/game/goalLine.ts hudDue). */
 let guideNpc: string | null = null, guideJob = false;
+/** HUD refreshes so far (src/game/goalLine.ts hudDue; the checks wait on it rather than on a fixed delay). */
+let hudTicks = 0;
 /** Where a critical need is met here (src/game/goalLine.ts needGoal), while it leads the goal line. */
 let needTarget: { name: string; x: number; z: number } | null = null;
 /**
- * The goal line here and now (src/game/goalLine.ts pickGoal): the walking marker, the fighter's evening, a critical
+ * The goal line here and now (src/game/goalLine.ts goalNow): the walking marker, the fighter’s evening, a critical
  * need, tonight's gala, then the lead about this hub at this hour (src/social/beats.ts suggestionHere). Tonton Ibou's
- * welcome leads only in Pikine, by day, in the first moments of a new game; otherwise it waits in the Carnet.
+ * welcome is such a lead only in Pikine, by day, in the first moments of a new game (never over tonight's gala);
+ * otherwise it waits in the Carnet.
  */
 function goalLine(hour: number): string | null {
   if (!world) return null;
   const here = suggestionHere(rel, state, world.id, hour, id => !!npcLife.where(id)?.here);
-  const ev = eveningLine(ctx, welcomeFirst(here?.id === WELCOME, state.data)), fighter = arenaFighter.pending();
+  const ev = eveningLine(ctx, false), fighter = arenaFighter.pending();   // tonight's gala before any lead, the welcome too
   const homeDoor = homeSpec(currentHome(state).spec)?.home.door ?? null;
   const home = !inside && homeDoor ? world.interactables.find(i => i.id === homeDoor) ?? null : null;
   const need = fighter ? null : needGoal({ needs: state.data.needs, wallet: state.wallet, here: pos, spots: inside ? inside.int.interactables : world.interactables, home });
-  const g = pickGoal({
-    walking: walkingHint(), fighter: fighter && ev ? withBearing(ev.text, ev.target) : null, need: need ? withBearing(need.text, need.target) : null,
-    evening: ev ? withBearing(ev.text, ev.target) : null, local: here?.hint ?? null,
-  });
-  eveningTarget = g && (g.kind === 'fighter' || g.kind === 'evening') ? ev?.target ?? null : null;
-  needTarget = g?.kind === 'need' ? need?.target ?? null : null;
-  guideNpc = g?.kind === 'local' && here && 'npc' in here ? here.npc : null;
-  guideJob = g?.kind === 'local' && here?.id === 'goal_tiak';
+  const g = goalNow({ walking: walkingHint(), fighter, evening: ev, need, here, bearing: withBearing });
+  eveningTarget = g && (g.kind === 'fighter' || g.kind === 'evening') ? g.target : null;
+  needTarget = g?.kind === 'need' ? g.target : null;
+  guideNpc = g?.npc ?? null;
+  guideJob = !!g?.job;
   return g?.text ?? null;
 }
 /** Tonight's arena (or what to do after the bout): the goal line's target while it leads (src/arena/eveningCall.ts). */
@@ -1000,7 +1000,7 @@ function progressMeta() {
 }
 
 // ------------------------------------------------------------------ main loop
-let last = performance.now(), statsT = 0;
+let last = performance.now(), hudAt = -Infinity, hudKey = '';
 /**
  * Debug profiler (?debug: `__dakar.perfOn(true)`, then `__dakar.perf()`): milliseconds per system and per module of the
  * frame loop, smoothed, for the evening performance budget (scripts/check-perf-evening.mjs). Off: one boolean test.
@@ -1102,8 +1102,8 @@ function frameStep(now: number, dt: number, draw = true) {
   }
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
-  statsT -= dt;
-  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); hud.setGoal(mode === 'play' && !arenaShow.watching() ? goalLine(hour) : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
+  const hk = hudSpace(world.id, !!inside, hourOverride);
+  if (hudDue(now, hudAt, hk, hudKey)) { hudAt = now; hudKey = hk; hudTicks++; hud.setStats(state.wallet, state.data.needs, state.mood()); hud.setGoal(mode === 'play' && !arenaShow.watching() ? goalLine(hour) : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   if (profOn) { profMark('rest of update', tSys); tSys = performance.now(); }
@@ -1183,6 +1183,7 @@ if (DEBUG) {
     travelTo: (h: HubId) => doTravel(h),
     rel, beats: () => ({ ...state.data.beats }), flags: () => [...state.data.flags],
     suggestion: () => suggestion(rel, state)?.id ?? null,
+    hudTicks: () => hudTicks,
     playBeat(id: string, choice: string) { const b = BEATS.find(x => x.id === id)!; const c = b.choices.find(x => x.id === choice)!; return applyChoice(b, c, rel, state); },
     npcWhere: (id: string) => npcLife.where(id), npcSheet: (id: string) => npcLife.sheet(id),
     npcSettle: () => npcLife.settle(), npcAudit: () => npcLife.audit(), npcSlots: (h: number) => npcLife.slotsAt(h), people: () => npcLife.openPeople(),

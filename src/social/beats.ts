@@ -281,11 +281,13 @@ export const VISIT_HOURS: readonly [number, number] = [7, 22];
 /**
  * The lead the HUD's goal line may show here and now (src/main.ts): the first one about this hub — a person who lives
  * here (`castById(npc).hub`) and is about now (`present`, by day), a step of this hub or of anywhere
- * (src/economy/progress.ts stepHub). Null when none makes sense here: the leads stay in the Carnet.
+ * (src/economy/progress.ts stepHub). Null when none makes sense here: the leads stay in the Carnet. The open welcome
+ * past the first moments is never one of them, not even when nothing else fits here: it waits in the Carnet.
  */
 export function suggestionHere(r: Relations, s: GameState, hub: string, hour: number, present: (npc: string) => boolean = () => true): Beat | Step | null {
-  const day = hour >= VISIT_HOURS[0] && hour < VISIT_HOURS[1];
+  const day = hour >= VISIT_HOURS[0] && hour < VISIT_HOURS[1], early = welcomeEarly(s.data);
   for (const x of leads(r, s)) {
+    if (x.id === WELCOME && !early) continue;                                            // optional: the Carnet's, not the HUD's
     if ('npc' in x) { if (day && castById(x.npc)?.hub === hub && present(x.npc)) return x; continue; }
     const h = stepHub(x, s);
     if (!h || h === hub) return x;

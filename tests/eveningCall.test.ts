@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CALL_FROM, FAR, GOAL_FROM, NEAR_GATE, afterPlace, boutTonight, callDue, callText, eveningGoal, fighterGoal, goalText, placeClock, welcomeFirst, type EveningInput } from '../src/arena/eveningCall';
+import { CALL_FROM, FAR, GOAL_FROM, NEAR_GATE, afterPlace, boutTonight, callDue, callText, eveningGoal, fighterGoal, goalText, placeClock, type EveningInput } from '../src/arena/eveningCall';
 import { GALA } from '../src/arena/program';
 import type { PlaceSpec } from '../src/activity/places';
 
@@ -47,14 +47,9 @@ describe('the goal line toward the arena', () => {
     expect(goalText({ kind: 'enter' })).toBe('Billet en poche : entre par la porte de l’arène');
     expect(goalText({ kind: 'seat' })).toBe('Trouve une place libre sur les gradins');
   });
-  it('the welcome beat stays first only while the player has earned nothing yet', () => {
+  it('a beat asked to come first holds the evening back (main.ts never asks: tonight’s gala outranks the welcome, tests/goalLine.test.ts)', () => {
     expect(at({ hour: 17.6, welcome: true })).toBeNull();
-    const fresh = { ledger: [], counters: {} }, spent = { ledger: [{ amount: -1000 }], counters: {} };
-    expect(welcomeFirst(true, fresh)).toBe(true);
-    expect(welcomeFirst(true, spent)).toBe(true);                                     // spending is not earning
-    expect(welcomeFirst(true, { ledger: [{ amount: 2200 }], counters: {} })).toBe(false);   // a first pay: tonight's arena first
-    expect(welcomeFirst(true, { ledger: [], counters: { livraisons: 1 } })).toBe(false);
-    expect(welcomeFirst(false, fresh)).toBe(false);
+    expect(at({ hour: 17.6, welcome: false })).toEqual({ kind: 'arena', how: 'walk' });
   });
   it('far away or in another hub, the car rapide is named', () => {
     expect(at({ hour: 17.6, gate: { dist: FAR + 1, inside: false } })).toEqual({ kind: 'arena', how: 'ride' });
