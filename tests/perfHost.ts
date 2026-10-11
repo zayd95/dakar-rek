@@ -397,7 +397,7 @@ export interface MomentResult {
  * The browser check's evening (scripts/check-perf-evening.mjs) in node: 17:30 in front of the gate, 19:00 seated on the
  * tiers during the main bout, 23:00 in front of the gate after standing up. `frames` measured per moment at `dt`.
  */
-export async function runEvening(q: Quality, o: { frames?: number; dt?: number; warm?: number } = {}): Promise<MomentResult[]> {
+export async function runEvening(q: Quality, o: { frames?: number; dt?: number; warm?: number; around?: (moment: MomentName, at: 'start' | 'end') => void } = {}): Promise<MomentResult[]> {
   const frames = o.frames ?? 300, dt = o.dt ?? 1 / 30, warm = o.warm ?? 240;
   const host = new PerfHost(q);
   await host.load({ x: 18, z: -66.3, yaw: 0.75 }, 17.5);
@@ -410,10 +410,12 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
     const sum: FrameTimes = {};
     let calls = 0, shadow = 0, samples = 0, by: Record<string, number> = {}, byShadow: Record<string, number> = {}, n = 0;
     const a0 = arena.info();
+    o.around?.(moment, 'start');
     for (; n < frames && (n % 10 || still()); n++) {
       host.frame(dt, sum);
       if (n % 10 === 9) { const c = host.calls(); calls += c.calls; shadow += c.shadow; samples++; by = c.by; byShadow = c.byShadow; }
     }
+    o.around?.(moment, 'end');
     const sections: Record<string, number> = {};
     let update = 0;
     for (const [k, v] of Object.entries(sum)) { if (k === 'cpu') continue; sections[k] = v / n; if (!k.startsWith('render prep')) update += v / n; }
