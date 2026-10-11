@@ -131,6 +131,8 @@ export const standingFor = (seatedSlot: boolean, kind: ReactionKind | null) => !
 /** The pose to show: the reaction's, the walk, the dance, a fidget, or rest. */
 export function poseFor(kind: ReactionKind | null, standing: boolean, speed = 0, mood: Mood = 'rest', bpm = 120, fidget: Fidget | null = null): RigPose {
   if (speed > 0.2) return walkPose(speed);
+  // a dancer who dances harder (a drop at the club) keeps to the music's tempo
+  if (kind === 'dance' && mood === 'dance' && standing) return { ...REACTIONS.dance.up, freq: (Math.PI * bpm) / 60 };
   if (kind) return standing ? REACTIONS[kind].up : REACTIONS[kind].sit;
   if (mood === 'dance' && standing) return dancePose(bpm);
   if (fidget) return fidgetPose(fidget, standing);

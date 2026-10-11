@@ -117,6 +117,16 @@ export function djTalk(c: ClubCtx): string {
   if (t.contest) return c.hour >= CONTEST_FROM || c.hour < 5 ? 'DJ Mbaye : « Le concours a commencé ! Monte sur la piste, les batteurs t’attendent. »' : `DJ Mbaye : « Ce soir, ${t.label} ! Les batteurs arrivent, le concours commence à ${CONTEST_FROM} h. »`;
   return `DJ Mbaye : « Ce soir, ${t.label} : ${t.detail.charAt(0).toLowerCase()}${t.detail.slice(1)}. Nanu dem ! »`;
 }
+/** The DJ's drops (src/crowd/clubPlan.ts dropAt): the floor raises its arms and shouts with him. One line per drop of the night. */
+export function djDrop(k: number): string {
+  const lines = [
+    'DJ Mbaye : « Nanu dem ! Les mains en l’air ! » · toute la piste lève les bras',
+    `DJ Mbaye : « La Vague, vous êtes là ? » · la piste répond ${quote('Waaw kay')}`,
+    'DJ Mbaye : « Attention… le son arrive ! » · la piste saute avec le tambour',
+    'DJ Mbaye : « Plus fort, Ngor ! » · les bras se lèvent, la piste crie',
+  ];
+  return lines[((k % lines.length) + lines.length) % lines.length];
+}
 export function djContest(c: ClubCtx): string {
   const k = nightsToContest(c.night), top = CONTEST_ROUNDS.reduce((s, r) => s + r.prize, 0);
   const rule = `Trois passages sur le tambour, chacun plus rapide. Mieux tu tiens le temps, plus tu gagnes : jusqu’à ${Math.round(top * 1.2)} F.`;
