@@ -717,6 +717,9 @@ export class AmbientLife implements GameModule {
       const e = f.g.matrixWorld.elements;
       if (outside(e[12], e[14])) { f.lod = 0; f.root.visible = false; continue; }
       f.d = Math.hypot(e[12] - cam.x, e[14] - cam.z);
+      // an owner's weight as it is now (the arena's people leave the spotlight when the bout starts: not 2 s later, at
+      // the next scan, while a dozen full bodies stay drawn)
+      f.prio = this.prioOf(f.g);
       const c = slot(); c.a = null; c.f = f; c.full = f.lod === 2; c.d = f.d * f.prio * (c.full ? 0.85 : 1);
     }
     const view = this.view; view.length = 0;
