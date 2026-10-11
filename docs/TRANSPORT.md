@@ -166,11 +166,22 @@ away while the player is still on the way to the door, they get in at once.
   (about 7 draw calls near it); the showroom itself is one shop of the kit (3 draw calls: atlas, glass, the two kit
   saloons merged).
 - No per-frame allocations in the vehicle / route / seat updates (preallocated poses, motions and arrival lists).
+- People getting on and off (`Vehicle.setPassengers`, each stop, and the fans of a fight evening in their écurie's shirts) swap the
+  car rapide's model for the kit's variant with those people. The kit builds the cabin once per livery and each passenger
+  apart (a head by seat and look, a shirt by seat and colour) and joins the pieces: about 0.5 ms a new set, no builder pass
+  over the whole car, no material of its own (docs/PERF_EVENING.md, « the transport hitch »).
 - Measured by `scripts/check-transport.mjs` 6 m from a stop with a car standing there: **+15 to +16 draw calls** for the
   line's cars and stops with the kit (Pikine desktop 411 with / 395 without; Plateau phone portrait 359 / 344); the
   people waiting at the stops are counted in both.
 
 ## Checks
+
+- `tests/transport.boarding.test.ts`: a variant joined from the cabin and its passengers has the very triangles, bounds and
+  spec of the same variant built in one pass (`bake: 'whole'`); the cabin and the far model are built once per livery
+  whatever the passengers and the shirts; a set seen again is the same geometry; no material of its own per passenger set or
+  shirt; one geometry per new set.
+- `tests/perf.transport.test.ts`: no builder pass over a cabin while the cars pull in at stop after stop on the real Pikine hub;
+  `PERF=1` times `module:transport` frame by frame over thousands of frames (and the browser check's 90-frame window).
 
 - `tests/transport.test.ts`: lane path and sampling, timetable (dwell, speeds, monotonic, periodic, next stop / ETA),
   seat transforms, camera anchors and wall pull-in, trip logic (board, ride past, request, alight, slow frames,
