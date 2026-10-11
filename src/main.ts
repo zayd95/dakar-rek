@@ -1079,7 +1079,8 @@ function frameStep(now: number, dt: number, draw = true) {
   if (profOn) { profMark('walkers+traffic+life+world', tSys); tSys = performance.now(); }
   ambient?.update(dt, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90);
   if (profOn) { profMark('ambient(npc.ts)', tSys); tSys = performance.now(); }
-  for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
+  // (where each apprentice was drawn last frame: no walk up the moving car's parents for a distance)
+  for (const a of apprentices) { const wp = tmpV.setFromMatrixPosition(a.h.group.matrixWorld); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
   for (const h of debugPeople) h.animate(dt, 0);
   const space = presenceSpace();
   // the body's own pose, also while an activity runs (asleep in bed, praying, dancing): a narrow list, anything else is Idle
