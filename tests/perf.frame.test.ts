@@ -30,5 +30,10 @@ describe('the frame on a gala evening (node)', () => {
     if (env.PERF_OUT) writeFileSync(env.PERF_OUT, JSON.stringify({ when: new Date().toISOString(), frames: FRAMES, rows: all }, null, 1));
     expect(all.length).toBe(PRESETS.length * 3);
     for (const r of all) { expect(r.update).toBeGreaterThan(0); expect(r.calls).toBeGreaterThan(10); }
+    // seated on the tiers the bout is drawn; from the street after it the walls hide the show, and it is not drawn
+    for (const r of all.filter(x => x.moment === '19:00 bout')) expect(r.show).toBe(true);
+    for (const r of all.filter(x => x.moment === '23:00 outflow')) { expect(r.arena?.phase).toBe('result'); expect(r.show).toBe(false); }
+    // the phone's frame (main pass, as the browser counts it) within its budget at every moment
+    for (const r of all.filter(x => x.q === 'low')) expect(r.calls).toBeLessThanOrEqual(180);
   }, 600000);
 });

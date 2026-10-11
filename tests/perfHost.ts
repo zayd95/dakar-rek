@@ -393,6 +393,8 @@ export interface MomentResult {
   /** The most draw calls of the main pass seen on a sample, and per group (a moment's spike: a body budget catching up). */
   callsMax: number; byMax: Record<string, number>;
   arena: { phase: string; street: string } | null;
+  /** The arena's show on the sand (arena_show) drawn at the end of the moment (null: no such group). */
+  show: boolean | null;
 }
 
 /**
@@ -426,7 +428,9 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
     const sections: Record<string, number> = {};
     let update = 0;
     for (const [k, v] of Object.entries(sum)) { if (k === 'cpu') continue; sections[k] = v / n; if (!k.startsWith('render prep')) update += v / n; }
-    out.push({ q, moment, frames: n, update, cpu: (sum.cpu ?? 0) / n, sections, calls: calls / Math.max(1, samples), shadow: shadow / Math.max(1, samples), by, byShadow, callsMax, byMax, arena: a0 ? { phase: a0.phase, street: a0.street } : null });
+    const show = host.scene.getObjectByName('arena_show');
+    out.push({ q, moment, frames: n, update, cpu: (sum.cpu ?? 0) / n, sections, calls: calls / Math.max(1, samples), shadow: shadow / Math.max(1, samples), by, byShadow, callsMax, byMax,
+      arena: a0 ? { phase: a0.phase, street: a0.street } : null, show: show ? show.visible : null });
   };
   // 1. 17:30: the fans arrive and queue; the player in front of the gate
   for (let k = 0; k < warm; k++) host.frame(dt);

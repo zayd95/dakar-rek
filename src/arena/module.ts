@@ -321,7 +321,7 @@ class ArenaEvening {
       case 'prelims': this.updatePrelim(dt * this.speed); break;
       case 'entrance': this.ceremony?.update(this.t, dt * this.speed); if (this.t >= SHOW.entrance && boutByClock(this.driver())) this.go('bout'); break;
       case 'bout': if (this.bout) { this.bout.advance(dt * this.speed); this.t = this.bout.time; if (this.bout.over) this.go('result'); } break;
-      case 'result': this.party?.update(this.t, dt * this.speed); if (this.t >= this.resultLen) this.go('leaving'); break;
+      case 'result': this.partyStep(dt * this.speed); if (this.t >= this.resultLen) this.go('leaving'); break;
       case 'leaving': if (this.t >= SHOW.leaving) this.go('over'); break;
     }
     // their bout given up before it started (src/arena/fighter.ts): no main event tonight, and no result made up
@@ -445,7 +445,20 @@ class ArenaEvening {
     this.party = new ResultParty(this.ctx, plan, this.cx, this.cz, this.crowd, this.people, this.bout?.bodies() ?? { left: null, right: null });
     this.resultLen = partyLength(plan, SHOW.leaving);
   }
-  private endParty() { this.party?.dispose(); this.party = null; }
+  private endParty() { this.party?.dispose(); this.party = null; this.partyOwed = 0; }
+  /**
+   * One frame of the main event's fête. It is driven by the result's own time (a jump lands on the same picture, cues
+   * passed on the way are fired), so behind the walls — the player out in the street, the show not drawn — it is
+   * played five times a second with the time gone by; every frame whenever it can be seen.
+   */
+  private partyStep(dt: number) {
+    if (!this.party) return;
+    this.partyOwed += dt;
+    if (!this.show.visible && this.partyOwed < 0.2) return;
+    const d = this.partyOwed; this.partyOwed = 0;
+    this.party.update(this.t, d);
+  }
+  private partyOwed = 0;
 
   /** The evening's two wrestlers as themselves for a bout avec frappe (Làmb 2.0, ?lamb2 only), else null. */
   private frappeBill() {
