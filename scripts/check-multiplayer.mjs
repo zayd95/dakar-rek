@@ -39,8 +39,12 @@ try {
     }); contexts.push(ctx);
     await ctx.addInitScript(i => { localStorage.setItem('dakarrek.quality', 'low'); localStorage.setItem('dakarrek.presence.profile', JSON.stringify({ name: i ? 'Awa' : 'Moussa', look: i ? 1 : 0 })); }, i);
     const page = await ctx.newPage(); page.on('pageerror', e => pageErrors.push(e.message));
+    const t0 = Date.now();
     await page.goto(`${base}?debug${i === 0 ? '&touch' : ''}`);
-    await page.waitForFunction(() => window.__dakar?.presence().status === 'online', null, { timeout: 30000 });
+    // The second page boots while the first one renders on the same CPU (software WebGL): on a 2-core runner its world
+    // build alone took 39 s. Booting is not what is checked here, so it gets room; the time is logged to watch it.
+    await page.waitForFunction(() => window.__dakar?.presence().status === 'online', null, { timeout: 120000 });
+    console.log(`page ${i} online after ${Date.now() - t0} ms`);
   }
   const [a, b] = contexts.map(c => c.pages()[0]);
   await a.waitForFunction(() => window.__dakar.presence().peers.length === 1);
