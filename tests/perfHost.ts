@@ -390,6 +390,8 @@ export interface MomentResult {
   /** Draw calls of the main pass (as the browser's `renderer.info`) and of the shadow pass, averaged over the measured
    *  frames (sampled), and the last sample's breakdown per group. */
   calls: number; shadow: number; by: Record<string, number>; byShadow: Record<string, number>;
+  /** The most draw calls of the main pass seen on a sample, and per group (a moment's spike: a body budget catching up). */
+  callsMax: number; byMax: Record<string, number>;
   arena: { phase: string; street: string } | null;
 }
 
@@ -408,18 +410,23 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
   /** `frames` frames (fewer when `still` stops holding: the bout's own frames only). */
   const measure = (moment: MomentName, still: () => boolean = () => true) => {
     const sum: FrameTimes = {};
-    let calls = 0, shadow = 0, samples = 0, by: Record<string, number> = {}, byShadow: Record<string, number> = {}, n = 0;
+    let calls = 0, shadow = 0, samples = 0, by: Record<string, number> = {}, byShadow: Record<string, number> = {}, n = 0, callsMax = 0;
+    const byMax: Record<string, number> = {};
     const a0 = arena.info();
     o.around?.(moment, 'start');
     for (; n < frames && (n % 10 || still()); n++) {
       host.frame(dt, sum);
-      if (n % 10 === 9) { const c = host.calls(); calls += c.calls; shadow += c.shadow; samples++; by = c.by; byShadow = c.byShadow; }
+      if (n % 10 === 9) {
+        const c = host.calls(); calls += c.calls; shadow += c.shadow; samples++; by = c.by; byShadow = c.byShadow;
+        callsMax = Math.max(callsMax, c.calls);
+        for (const [k, v] of Object.entries(c.by)) byMax[k] = Math.max(byMax[k] ?? 0, v);
+      }
     }
     o.around?.(moment, 'end');
     const sections: Record<string, number> = {};
     let update = 0;
     for (const [k, v] of Object.entries(sum)) { if (k === 'cpu') continue; sections[k] = v / n; if (!k.startsWith('render prep')) update += v / n; }
-    out.push({ q, moment, frames: n, update, cpu: (sum.cpu ?? 0) / n, sections, calls: calls / Math.max(1, samples), shadow: shadow / Math.max(1, samples), by, byShadow, arena: a0 ? { phase: a0.phase, street: a0.street } : null });
+    out.push({ q, moment, frames: n, update, cpu: (sum.cpu ?? 0) / n, sections, calls: calls / Math.max(1, samples), shadow: shadow / Math.max(1, samples), by, byShadow, callsMax, byMax, arena: a0 ? { phase: a0.phase, street: a0.street } : null });
   };
   // 1. 17:30: the fans arrive and queue; the player in front of the gate
   for (let k = 0; k < warm; k++) host.frame(dt);

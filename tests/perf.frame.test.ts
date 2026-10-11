@@ -16,8 +16,8 @@ const FRAMES = Number(env.PERF_FRAMES ?? (PERF ? 600 : 30));
 const round = (x: number, d = 2) => Math.round(x * 10 ** d) / 10 ** d;
 function print(r: MomentResult) {
   const top = Object.entries(r.sections).sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => `${k} ${round(v)}`).join(', ');
-  const groups = Object.entries(r.by).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k} ${v}`).join(', ');
-  console.log(`${r.q} ${r.moment}: update ${round(r.update)} ms (cpu ${round(r.cpu)}), ${round(r.calls, 1)} calls (+ shadow pass ${round(r.shadow, 1)}), ${r.frames} frames, arena ${r.arena?.phase}/${r.arena?.street}\n   by system: ${top}\n   by group: ${groups}`);
+  const groups = Object.entries(r.by).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k} ${v}${(r.byMax[k] ?? v) > v ? ` (max ${r.byMax[k]})` : ''}`).join(', ');
+  console.log(`${r.q} ${r.moment}: update ${round(r.update)} ms (cpu ${round(r.cpu)}), ${round(r.calls, 1)} calls (max ${r.callsMax}) (+ shadow pass ${round(r.shadow, 1)}), ${r.frames} frames, arena ${r.arena?.phase}/${r.arena?.street}\n   by system: ${top}\n   by group: ${groups}`);
 }
 
 describe('the frame on a gala evening (node)', () => {
