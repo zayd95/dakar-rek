@@ -134,6 +134,33 @@ export function wearsSide(l: CrowdLook, side: 'left' | 'right'): boolean {
   return s.includes(l.shirt) || hat;
 }
 
+// ------------------------------------------------------------------ a night out (La Vague)
+/** Dressed for the night: crisp shirts in deep or bright colours, white and black. */
+export const NIGHT_SHIRTS = [0xf2f2ec, 0x1c1c1f, 0x7a1f3d, 0x1f3f8a, 0x0f6e6e, 0xd9b44a, 0xc2417f, 0x6b3fa0, 0xe8742c, 0x9cc8e8] as const;
+/** Fitted boubous of a night out: bright bazin. */
+export const NIGHT_BAZIN = [0xf2f2ec, 0x1f3f8a, 0x7a1f3d, 0xd9b44a, 0x0f6e6e, 0x6b3fa0, 0xe8742c] as const;
+/**
+ * Someone on La Vague's floor (`id` and the night: the same person that night, another mix the next): more dresses
+ * (wax or bright, a headwrap now and then, never on everyone), crisp shirts, fitted boubous, a few caps, a rare football
+ * shirt; everything invented, no brand.
+ */
+export function nightLook(id: string, night: number): CrowdLook {
+  const r = lookRng(`${id}:nuit:${night}`), base = defaultLook(r, NIGHT_SHIRTS), u = r();
+  if (u < 0.38) {                                                          // a dress for the night
+    const wax = r() < 0.55, [ground, motif] = pick(WAX, r), c = wax ? ground : pick(NIGHT_SHIRTS, r);
+    const wrap = r() < 0.3 ? pick(NIGHT_SHIRTS, r) : null;
+    return { ...base, style: 'dress', shirt: c, legs: c, wrap, head: wrap !== null ? 'wrap' : 'hair', headColour: wrap ?? HAIR, print: wax ? 1 + Math.floor(r() * 3) : 0, accent: motif,
+      height: span(r, 0.92, 1.0), build: span(r, 0.9, 1.06) };
+  }
+  if (u < 0.56) {                                                          // a fitted boubou
+    const c = pick(NIGHT_BAZIN, r), wax = r() < 0.25, [, motif] = pick(WAX, r);
+    return { ...base, style: 'boubou', shirt: c, legs: c, wrap: null, head: r() < 0.15 ? 'kufi' : 'hair', headColour: r() < 0.15 ? 0xf2f2ec : HAIR, print: wax ? 1 + Math.floor(r() * 3) : 0, accent: motif };
+  }
+  if (u < 0.6 && base.style === 'jersey') return base;                     // a rare football shirt
+  const cap = r() < 0.12;                                                  // a shirt and trousers, a cap here and there
+  return { ...base, style: 'tee', shirt: pick(NIGHT_SHIRTS, r), legs: pick(TROUSERS, r), wrap: null, head: cap ? 'cap' : 'hair', headColour: cap ? pick(CAPS, r) : HAIR, print: 0, accent: 0 };
+}
+
 // ------------------------------------------------------------------ what the figures draw
 /** The headwear's height on the figure (a factor of the crown box: 0.16 m) and whether it has a brim. */
 export function headShape(l: CrowdLook): { crown: number; brim: boolean; colour: number } {

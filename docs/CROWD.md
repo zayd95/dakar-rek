@@ -3,13 +3,13 @@
 Wave 3 of the signature spec (§6 crowd LOD, §37 crowd and social events), built for Habib's evening: work in the
 afternoon, a moto or the car rapide to Pikine, the fight at the arena with a full house, then on to La Vague. The crowd
 is one reusable system. It runs the arena's stands, the fans arriving on fight evenings, and the street life of every hub
-(spec §23: more people, each with a reason to be there). La Vague's dance floor can plug in without new code.
+(spec §23: more people, each with a reason to be there), and La Vague's night: its dance floor, bar and queue.
 
 ## Files
 
 | File | What it holds |
 | --- | --- |
-| `src/crowd/reactions.ts` | Pure, no Three.js: the six reactions, a member's reaction state, who joins in, the rig poses (and the arm maths shared by every level of detail), the dance mood, excitement per group. |
+| `src/crowd/reactions.ts` | Pure, no Three.js: the eight reactions, a member's reaction state, who joins in, the rig poses (and the arm maths shared by every level of detail), the dance mood, excitement per group. |
 | `src/crowd/rig.ts` | The instanced figures (mid: 14–16 boxes, far: 7–8) and the one shared material whose vertex shader poses arms, legs and upper body and shapes the look (headwear, build, prints, banners, upright legs) from a few numbers per instance. |
 | `src/crowd/looks.ts` | Pure: how people look (styles, wax prints, invented football shirts, headwear, height, build), the same person per seat, the two écuries' colours. |
 | `src/crowd/banners.ts` | The supporters' banners: invented slogans in Wolof and French, one shared texture atlas. |
@@ -20,8 +20,10 @@ is one reusable system. It runs the arena's stands, the fans arriving on fight e
 | `src/crowd/streetPlan.ts` | Pure: the street's hour curves and budgets, the busy streets, the pavement lanes and places checked against the colliders, short routes round obstacles. |
 | `src/crowd/street.ts` | `StreetLife`: walkers, people waiting at the stops, groups chatting, the after-gala flow. |
 | `src/crowd/transportPeek.ts` | The transport lane's stop API as the crowd reads it: stops served now, cars standing there, how many get on. |
+| `src/crowd/clubPlan.ts` | Pure: La Vague's night (places on the floor, the contest's ring, the soloists, the DJ's drops, the queue at the gate, budgets by quality and hour). |
+| `src/crowd/clubCrowd.ts` | `VagueCrowd`: La Vague's crowd on `Crowd`, run by `src/venues/club.ts`. |
 | `src/crowd/module.ts` | The lane's module: runs the arrivals and the street, makes the crowds' full humanoids greetable, debug entries. |
-| `tests/crowd.test.ts`, `tests/street.test.ts`, `tests/standLooks.test.ts` | Unit tests. The street tests build the real hubs in node (`tests/hubstub.ts`, a blank canvas). |
+| `tests/crowd.test.ts`, `tests/street.test.ts`, `tests/standLooks.test.ts`, `tests/clubCrowd.test.ts` | Unit tests. The street tests build the real hubs in node (`tests/hubstub.ts`, a blank canvas). |
 | `scripts/check-crowd.mjs`, `scripts/check-street.mjs` | Browser checks (desktop medium, phone low), captures in `docs/screenshots/crowd/` and `docs/screenshots/street/`. |
 
 The arena lane's `src/arena/module.ts` builds `ArenaStands` instead of `StandCrowd`. It passes the side of the wrestler
@@ -234,22 +236,96 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
 - **Bodies**: up to 10, 18 or 26 walkers at low, medium or high quality. They are instanced walking figures with ground
   shadows; the nearest 0, 2 or 3 are full humanoids.
 
-## La Vague's dancers (plug-in, no change pushed to the venues lane)
+## La Vague's night — `VagueCrowd`
 
-The club (`src/venues/club.ts`, local lane/w1-venues e398136, tag `la-vague-final`) has 4/7/10 cast dancers on its floor
-spots and a beat of about 124 bpm (`t / 0.485`). To fill the edge of the floor and the terrace with a cheap crowd that
-dances on the same beat and answers the player:
+The club (`src/venues/club.ts`, Almadies, on Ngor's beach) used to cast 4, 7 or 10 dancers as full humanoids. It now
+runs `VagueCrowd` (`src/crowd/clubCrowd.ts`), with the plan in `src/crowd/clubPlan.ts`. The club keeps everything else:
+- the door fee shown first, then the rope;
+- the bar's stools and the barman;
+- the lounge's table service with the waiter (juices, no alcohol);
+- the clubbers you can talk to, the DJ, the contest and the exit.
 
-```ts
-const ring: CrowdSlot[] = edgeSpots.map(([x, z], i) => ({ id: `vague${i}`, ...at(x, z), y: G0, yaw: faceFloor(x, z), seated: false, tags: ['floor'] }));
-const floor = new Crowd(ring, { quality: q, near: 0, name: 'la-vague', blobs: false });
-group.add(floor.group);
-floor.setMood('all', 'dance', 124);
-// each frame: floor.fill(Math.round(ring.length * crowdShare(clubCrowd(h)))); floor.setCamera(ctx.camera); floor.update(dt, inClubOrNear);
-// a good dance: floor.react('all', 'applause', { share: 0.6 }); the contest won: floor.react('all', 'celebrate', { share: 1 });
-```
+All positions below are in the club's local frame (VenueKit), the gate toward +z.
 
-The same mood serves the sabar dancers by the arena gate and the dancers at a wedding.
+- **The dance floor**: 20, 40 or 60 dancers at low, medium or high quality, on a jittered 0.8 m grid over the floor's
+  tiles.
+  - The middle fills first, so a thin night still gathers round the DJ.
+  - The player's « Danser » spot (1.3 m round the middle) stays clear.
+  - Most dancers face the booth, some face each other.
+  - They are instanced figures. The nearest 0, 3 or 4 to the player are full humanoids, under the crowd's shared budget.
+- **On the beat**: the floor's mood is `dance` at the club's tempo (one beat every 0.485 s, about 124 bpm,
+  `VAGUE_BPM`).
+  - The `dance` reaction, when they dance harder, keeps to that tempo: `poseFor` uses the member's bpm when its mood is
+    `dance`.
+  - The arena's fête keeps its own tempo.
+- **The DJ's drops** (`dropAt`): from 21 h to 5 h, in each three-quarters of an hour of the city's clock (about 45 s of
+  play), three windows in four have a drop, at a time the night sets.
+  - About 70% of the floor raise their arms (`celebrate`) and about 30% shout.
+  - 3.6 s later, three in five dance harder for 10 s.
+  - The DJ says a line (`djDrop` in `src/venues/talk.ts`) when the player is on the terrace.
+  - The first drop heard after arriving is the next one, never one that has already played.
+- **A song request** (« morceau », 500 F): the floor answers like a drop, and the dancers nearest the player cheer.
+- **A good dance**: the 3 dancers nearest the player cheer. When the contest is danced, the 16 nearest cheer.
+- **The sabar night's contest** (`clubTheme(night).contest`, from 23 h): every dancer walks to a place in a ring round
+  the floor's middle.
+  - The ring has up to four rows at 2.0, 2.75, 3.5 and 4.25 m. The inner row fills first and no place takes two people.
+  - The outer row keeps to the floor's width.
+  - Every other quarter of an hour, one of the inner row steps into the middle and dances harder (`soloAt`). Nobody
+    steps in while a player stands there.
+  - The ring claps in turns, every 3.5 s.
+- **Looks for a night out** (`nightLook(id, night)` in `src/crowd/looks.ts`), the same person all night and another
+  outfit the next night:
+  - about 38% dresses, wax or bright, some with a headwrap;
+  - about 18% fitted bazin boubous, some wax, a few kufis;
+  - otherwise crisp shirts and trousers, a cap now and then (about 6% overall), and a rare invented football shirt.
+  - Everything is invented, with no brand.
+- **By the hour** (the club's `clubCrowd(h)` curve):
+
+  | Moment | Hours | Floor | Bar, edge and table |
+  | --- | --- | --- | --- |
+  | Closed | by day | nobody, nothing drawn | nobody |
+  | Early | 21–23 h | 15% | 34% |
+  | Warm | 23–24 h | 55% | 67% |
+  | Peak | 0–3.5 h | full | full |
+  | Dawn | 3.5–5 h | 35% | 50% |
+
+- **The queue at the peak**: 3, 5 or 7 places along the fence, left of the rope (the doorman stands right of it).
+  - People get out of a taxi at the Ngor rank (`taxiDrop(taxiRank(hub).spot)`) and walk to the tail.
+  - The queue moves up one place every 6 s, and the one at the head goes in past the rope.
+  - It is a conveyor of a few figures (`queuePool`: places + 5). A figure is never taken by two people at once.
+  - The walk from the rank is clear of the street's solids, and the way in goes through the gate's opening (both
+    unit-tested).
+  - No car rapide stops near La Vague, so `transport.onArrival` is not used here.
+- **Standing at the bar, the lounge's edge and the high table**: 6, 9 or 11 figures that chat.
+  - At the bar they stand between the stools, facing the counter.
+  - At the lounge's edge they stand by the floor, facing the dancers. They are at least 0.75 m from the waiter's way to
+    every table place.
+  - At the high table by the bar they stand round it. The other high table keeps the clubbers you can talk to.
+  - They take no seat, so the player and the NPCs keep every stool and bench place.
+- **Never on a player**: the crowd steps aside to stay 0.75 m from the local player and from every friend.
+  - Friends count when they are on the terrace (`almadies:venue:club`) or in the street in front of it.
+  - When there is no room, that figure is not drawn.
+  - Friends see each other dance through the existing presence poses (`Dance_A`/`Dance_B` in `PRESENCE_CLIPS`).
+- **Determinism**: per hub and night, from `hashId('vague-floor:<night>')`, the night's looks and the city's clock. Two
+  players on the same night see the same places, faces, drops and soloists.
+- **Cost**:
+  - Away from the club (camera beyond 45 m on low, 70 m otherwise), or by day, the crowd is not drawn and nothing
+    moves.
+  - On the terrace it costs 1–2 draw calls on low and 2–3 on medium or high, for the whole room: standing figures at
+    mid and far LOD, plus ground shadows on medium and high.
+  - The full humanoids near the player add about 10 each, so 0, 30 or 40 at most.
+  - Before, the 4, 7 or 10 cast dancers cost about 40, 70 or 100 by the same count.
+  - Members that do not move are not rewritten.
+
+Debug: `__dakar.venues()` → the club's `crowd`:
+- the planned counts by kind, and `drawn` by kind;
+- `ring`, `solo`, `drops`, `requests`;
+- `near` and `drawCalls`;
+- `dancers`, the 8 nearest the player, each with `clip` `Celebrate` while cheering;
+- `queuers` (local positions);
+- `minToPlayer`, `minToPlayers`.
+
+`npcs` counts the cast plus the crowd's planned people.
 
 ## Shops
 
