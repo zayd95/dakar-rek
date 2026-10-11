@@ -18,6 +18,34 @@ Not in scope: onboarding, police, BRT, advanced construction, new districts, car
 
 ---
 
+## 0. Habib's two mandatory corrections (2026-10-11): acceptance criteria for UI V2
+
+These two override anything below that says otherwise. Both are validation criteria (§6): UI V2 is not done until
+they pass on desktop, phone portrait and phone landscape.
+
+**A. Free travel between neighbourhoods, on foot.**
+- The player can always go home or reach another neighbourhood on foot, even with 0 F and 0 % energy.
+- No energy condition to walk. The plan's earlier option (b) asked for « energy ≥ 10 »; that condition is removed.
+  Today nothing in the game gates walking on energy: only running stops below 12 (`src/game/stride.ts`
+  `RUN_MIN_ENERGY`), and that stays.
+- No « one free trip per day » limit. Option (a), the apprentice's once-a-day dépanne, is dropped.
+- Until the roads between neighbourhoods are fully built, each neighbourhood's exits offer a free « Aller à pied »
+  transition with a simulated travel time (§4.3).
+- Free rest stays available to recover (« Se poser à l'ombre », the bed at home), but it is never required to move.
+
+**B. The 👁️ button is always reachable.**
+- It stays independent of the dock (Carte · Personnes · Téléphone · Vues) and is never one of its entries.
+- It stays visible while walking, driving, interacting, during activities and during playable combats (the Làmb duel
+  avec and sans frappe, the lesson, the drills).
+- Immersion mode (MIN) hides only non-essential elements. It keeps the essential combat controls (duel buttons, joystick,
+  « Abandonner », the gauges the duel needs), movement controls (joystick, « Courir », the vehicle's controls) and
+  interaction controls (`#act`, « ⋯ », « Arrêter », « Descendre »).
+- During a non-interactive cinematic (the entrance ceremony, `LambScene` training and celebration, a door fade), the
+  player keeps an obvious way to get their controls back when it ends: the controls come back by themselves at its end,
+  and the eye is on screen at that moment.
+- Losing focus (`blur`, `visibilitychange`, a phone call, switching apps) and resuming touch afterwards are checked in
+  every state above, with the HUD hidden and shown.
+
 ## 1. What exists, and its role in V2
 
 ### 1.1 `src/ui`
@@ -139,7 +167,7 @@ Everything else is a change to an existing piece.
   | Desktop | Dark pill, bottom centre, 4 × 44 px icons with short labels on hover-free text, `bottom: 16px` | No joystick. `#stamina` moves to `bottom: 84px`; `#temp` moves top right under the social cluster. |
   | Phone, landscape | Bottom centre, between the joystick plus « Courir » (≤ 226 px) and the action column (≥ 76 vw) | The free span is about 400 px at 844 wide. |
   | Phone, portrait | Bottom centre, just above the controls row, `bottom: calc(var(--sa-b) + 140px)` | The bottom 130 px are taken by the joystick, « Courir » and the action button. While the joystick is held, the dock shrinks to 32 px icons at 60 % opacity (hit area kept at 44 px through padding) and comes back 1 s after release. |
-  | All | Hidden in `busy` / `scene`, during the gesture card, the placer, the duel and the phone | `body.inscene`, `body.induel`, `body.sheet-open` already exist. |
+  | All (the dock; never the eye, §0 B) | Hidden in `busy` / `scene`, during the gesture card, the placer, the duel and the phone | `body.inscene`, `body.induel`, `body.sheet-open` already exist. |
 
 - **The plan (new, `mapPlan.ts`).**
   - The current hub drawn as SVG text from data already there: the block grid (`BLK`/`PITCH`/`ROAD` from
@@ -173,6 +201,8 @@ See §3 for its state machine.
     place fall through to the joystick or camera drag, which is the intended behaviour.
   - The eye's z-order is 19, just under `#modal`. With a sheet open, the dimmed backdrop covers it and closing the sheet
     is the way back. That way it never fights the sheet's « tap outside ».
+  - In a playable duel the eye stays on screen (§0 B): its place must not cover a duel button or the gauges, and its
+    z-order must sit above the duel's layer (30) while staying clear of its controls. `body.induel` must not hide it.
   - Toasts: info toasts are hidden under `ui-min`; `warn` toasts (refusals, « Pas assez d'argent ») still show, because
     they are answers to the player's own action.
 
@@ -262,8 +292,9 @@ See §3 for its state machine.
 - **Risks:**
   - `#goal`'s top is computed for each orientation. Collapsing must not move `#toast`, which is positioned by `top`, not
     by flow.
-  - The duel hides `#stats`, `#place`, `#goal` and `#menuBtn`. `#dock` and `#eye` are added to that list in the duel's
-    rule, through `style.css` (`body.induel #dock, body.induel #eye { display: none }`), so src/lamb is not touched.
+  - The duel hides `#stats`, `#place`, `#goal` and `#menuBtn`. `#dock` is added to that list through `style.css`
+    (`body.induel #dock { display: none }`), so src/lamb is not touched. `#eye` is NOT hidden in the duel (§0 B): it
+    stays on screen, clear of the duel's buttons and gauges, and MIN there hides only the city HUD left around them.
 
 ### 2.5 Point 6: contextual actions
 
@@ -315,15 +346,21 @@ hidden by MIN.
 | MIN | M | phone opens (MIN kept) | Explicit request: the phone shows. On close, back to MIN. |
 | MIN | an interaction opens a sheet (shop, ticket, people) | sheet shows (MIN kept) | The sheet is an answer to the player. Closing it returns to MIN, with control restored by the existing MutationObserver. |
 | MIN | a target comes into reach, an activity runs, a vehicle is boarded | MIN | `#act` appears for that target, « Arrêter » or « Descendre ». `#joy` keeps appearing under the finger and `#runBtn` while moving (touch). |
-| MIN | duel or làmb scene starts | MIN (eye hidden by `body.induel` / `inscene`) | The scene's own controls (duel buttons, « Abandonner », « ✋ Arrêter ») are the way out. At its end the eye shows again in MIN. |
+| MIN | a playable duel starts (avec or sans frappe, the lesson, a drill) | MIN, eye visible | §0 B: the eye stays on screen. MIN keeps the duel's buttons, joystick, « Abandonner » and the gauges the duel needs; it hides only the city HUD around them. Tapping the eye brings back the rest. |
+| SHOWN or MIN | a non-interactive cinematic starts (entrance ceremony, `LambScene` training or celebration, door fade) | same state | The scene's « ✋ Arrêter » stays where the scene has one. At the scene's end the controls come back by themselves (`mode` play, `input.enabled`), and the eye is on screen. |
+| SHOWN or MIN | `blur` / `visibilitychange` / app switch, then back | same state | `hud.resetTouch` and `Input.reset` run; the next touch drives the joystick or the camera at once, with the HUD hidden or shown. |
 | any | page reload | SHOWN | Not persisted, so nobody comes back to a bare screen without knowing why. |
 | MIN | 0 interactions for a long time | MIN | No auto-restore. The eye is always on screen, so none is needed. |
 
 The invariants are what the checks assert:
-1. In `play`, `busy` and `vehicle` the eye is visible, on screen, ≥ 44 px, and not covered by any HUD element.
+1. In `play`, `busy`, `vehicle`, during activities and in a playable duel, the eye is visible, on screen, ≥ 44 px,
+   and not covered by any HUD element (§0 B).
 2. MIN never changes `mode` or `input.enabled`: it is CSS only.
 3. Under MIN a touch on any hidden element's place reaches the joystick or the camera drag.
 4. Every state above has its way back in the table.
+5. After any cinematic ends, `mode` is play, `input.enabled` is true and the eye is on screen.
+6. After a `blur` and back, a new touch moves the player within the frame-based window of `check-launch-controls.mjs`,
+   in SHOWN and in MIN.
 
 ---
 
@@ -383,11 +420,18 @@ The invariants are what the checks assert:
   voisins · 120 m ». It names the nearest place in this hub with a rest action, with the way-finding target. In the
   home hub it says « Dors dans ta chambre ». `goal_tiak` names the hub's own pick-up, or Petits boulots when the hub has
   no Tiak Tiak.
-- **For hole 2, two options (Habib chooses):**
-  - **(a) recommended:** « Se faire dépanner par l'apprenti », a free car rapide ride once per city day when the
-    wallet can't pay the leg. It is stored in a counter (`depanne_day`, no schema change), takes the usual duration, and
-    the apprentice gets a line.
-  - **(b)** « À pied » at no cost: 3 × the duration, energy ≥ 10 required, the needs drained by the time.
+- **For hole 2, Habib's decision (§0 A): « Aller à pied », free, unlimited, with no energy condition.**
+  - **Where:**
+    - an « Aller à pied » point at each exit of the neighbourhood, where its main roads leave the hub's bounds;
+    - the same choice in the gare's travel sheet and in Carte, for every other neighbourhood and « Rentrer chez moi ».
+  - **Cost:** 0 F, at any wallet and any energy, including 0 F and 0 %. There is no daily limit and no counter.
+  - **Simulated travel time:** while the roads between neighbourhoods are not built, the transition is a fade with a
+    card « À pied vers Pikine · ~40 min », its length from the leg's distance at walking pace (longer than the car
+    rapide). The player then arrives at the destination's matching entrance.
+    - The needs tick as for that time, as they would anywhere; energy is clamped at 0 and never blocks the trip.
+    - It can be cancelled before it starts, never left half-way.
+  - **Rest stays free and optional:** the goal line can suggest « Se poser à l'ombre » when energy is low, but the trip
+    is offered whatever the energy.
 - **For hole 3.** The refusal of tired work appends the place: « Repose-toi avant ce service · Place des voisins, « Se
   poser à l'ombre » ». Santé lists the hub's rest spot.
 - **For hole 4 (optional, Habib).** On a public bench or chair (not vehicle, not stand seats), energie +1 every
@@ -411,8 +455,8 @@ These fixes come first in the order (§7, step 1): they are logic, unit-testable
   The phone (40), gesture (30), duel (30) and fade (25) stay above them all.
 - **Safe areas.** Every new element uses `--sa-*`. The portrait dock lift is computed from the controls row, not a
   fixed number.
-- **Duel HUD.** `body.induel` already hides the city HUD. The dock and eye join that rule in `style.css`; src/lamb is
-  not touched.
+- **Duel HUD.** `body.induel` already hides the city HUD. The dock joins that rule in `style.css`; the eye does not
+  (§0 B: visible in playable combats, never over the duel's controls). src/lamb is not touched.
 - **Arena seats.** The seat camera is the arena's; Vues only reports it. The goal and gala card rules already exist.
 - **Vehicles.**
   - Views map to existing anchors.
@@ -428,6 +472,8 @@ These fixes come first in the order (§7, step 1): they are logic, unit-testable
 | Validation | Script |
 | --- | --- |
 | Dock, eye always recoverable, the three views, touch resuming, moving with the HUD hidden | new steps in `check-ui.mjs`: desktop, phone portrait, phone landscape, plus a `visualViewport` resize |
+| §0 A: on foot between neighbourhoods at 0 F and 0 % energy, home and elsewhere, no daily limit | vitest (the travel rule: cost 0, no energy floor, no counter); `check-life-loop.mjs` (the Almadies case: 58 F and 0 %, then 0 F and 0 %, walks home to Pikine, twice in one day); `check-transport.mjs` and `check-phone.mjs` (the « Aller à pied » entries) |
+| §0 B: the eye visible while walking, driving, interacting, in activities and in playable duels; MIN keeps the essential controls; controls back after a cinematic; blur then touch | `check-ui.mjs`, `check-lamb2.mjs` (LAMB2=1), `check-arena-fighter.mjs`, `check-arena-visit.mjs`, `check-launch-controls.mjs`, on desktop, phone portrait and phone landscape |
 | Interactions near buildings and NPCs | `check-interact.mjs`, `check-npc.mjs` |
 | Interiors and roofs | `check-ownership.mjs` (homes, Aménager), `check-shops.mjs`, `check-venues.mjs` |
 | Saves and travel | `check-phone.mjs` (Carte), `check-transport.mjs`, `check-taxi.mjs`, `check-car.mjs`, `check-moto.mjs` |
@@ -447,10 +493,10 @@ the DOM only on change, as the HUD does now.
 
 | # | Step | Files | Checks to queue | Budget |
 | --- | --- | --- | --- | --- |
-| 1 | **Playability holes** (§4.3): needs-first goal; dépanne or à pied; refusal names the rest place; (optional) bench rest | `economy/progress.ts` or `social/beats.ts` (goal), `main.ts` `openTravel`/`doTravel`, `cityContent.ts` `energy()`, `phone.ts` Santé | vitest (pure goal and travel rules); `check-life-loop.mjs`, `check-economy.mjs`, `check-transport.mjs`, `check-phone.mjs` | 0 draw calls; < 0.01 ms (the goal runs at 4 Hz) |
+| 1 | **Playability holes** (§4.3): needs-first goal; « Aller à pied » between neighbourhoods (free, unlimited, no energy condition, §0 A); refusal names the rest place; (optional) bench rest | `economy/progress.ts` or `social/beats.ts` (goal), `main.ts` `openTravel`/`doTravel`, `cityContent.ts` `energy()`, `phone.ts` Santé | vitest (pure goal and travel rules); `check-life-loop.mjs`, `check-economy.mjs`, `check-transport.mjs`, `check-phone.mjs` | 0 draw calls; < 0.01 ms (the goal runs at 4 Hz) |
 | 2 | **Dark skin** (tokens and every component, no layout change) | `style.css`, `phone.css`, `gesture.css`, `stride.css`, `multiplayer/*.css`, `transport.css`, `economy.css` | `check-ui.mjs` (contrast and targets), `check-phone.mjs`, `shots-ui.mjs` before / after | 0 / 0 |
 | 3 | **Dock** (four entries; phone button removed; desktop, landscape, portrait; shrink while moving) plus Personnes' two segments | `hud.ts`, `main.ts`, `npcLife.ts`, `style.css` | `check-ui.mjs` (dock steps), `check-phone.mjs`, `check-chat.mjs`, `check-npc.mjs`, `check-lamb2.mjs` (duel hides it) | 0 / ≤ 0.05 ms |
-| 4 | **Eye** (state machine §3, H, Escape, the critical chip) | `hud.ts`, `main.ts`, `worldMarkers.ts`, `multiplayer/avatars.ts`, `style.css` | `check-ui.mjs` (MIN: walk, run, drive, interact, every way out, touch after blur), `check-interact.mjs`, `check-transport.mjs` | 0 / ≤ 0.05 ms |
+| 4 | **Eye** (state machine §3, H, Escape, the critical chip; visible in duels, activities and vehicles; the cinematic and focus-loss rows, §0 B) | `hud.ts`, `main.ts`, `worldMarkers.ts`, `multiplayer/avatars.ts`, `style.css` | `check-ui.mjs` (MIN: walk, run, drive, interact, every way out, touch after blur), `check-lamb2.mjs` (LAMB2=1: the eye in the duel, MIN keeps the duel's controls), `check-arena-visit.mjs` (after the entrance ceremony), `check-launch-controls.mjs` (blur then touch, SHOWN and MIN), `check-interact.mjs`, `check-transport.mjs` | 0 / ≤ 0.05 ms |
 | 5 | **Smart HUD** (cartouche weather, social cluster, collapsible goal, no overlap with `visualViewport`) | `hud.ts`, `main.ts`, `style.css`, `multiplayer/ui.ts`, `chat.css` | `check-ui.mjs`, `check-chat.mjs`, `check-arena-visit.mjs` (gala card and toasts), `check-taxi.mjs` (ride card) | 0 / ≤ 0.05 ms |
 | 6 | **Vues: first person and the switch** (on foot; body hidden; near plane; transitions; vehicles mapped to their anchors) | `ui/views.ts` (new), `main.ts`, `transport/*` (anchor lookup), `arena/module.ts` (context) | `check-ui.mjs` (views), `check-interact.mjs` (near walls and NPCs), `check-ownership.mjs` and `check-shops.mjs` (interiors), `check-car.mjs`, `check-moto.mjs`, `check-arena-visit.mjs` (seat), `check-perf-evening.mjs` | first person ≤ third person + 5 draw calls (body hidden saves 3–8; near-LOD capped); JS ≤ 0.1 ms |
 | 7 | **Vues: high view** (outdoor orbit, zoom, line-of-sight ring; indoor room from above with ceilings hidden) | `ui/views.ts`, `worldMarkers.ts`, the interior builders (ceiling tags) | `check-ui.mjs`, `check-ownership.mjs`, `check-shops.mjs`, `check-venues.mjs`, `check-perf-evening.mjs` with a « high view » moment on each preset | ≤ the preset's total (low 180, medium 300, high 420); if over, cap the altitude per preset (low 25 m). Shadows stay ±60 m around the player. JS ≤ 0.1 ms; ceilings +1 draw call for the visible interior only |
@@ -462,10 +508,15 @@ move draw calls; both are measured before they are queued for the others.
 
 ---
 
-## 8. Questions for Habib
+## 8. Decisions
 
-1. Free travel: **(a) the apprentice's dépanne** (once per city day when broke) or **(b) à pied** (long and tiring)?
-2. Public benches resting a little (hole 4): yes or no?
-3. The phone in portrait: is a dock 140 px up from the bottom, above the controls row, acceptable? The alternative is a
-   vertical mini-dock on the right edge, at the cost of a little of the camera-drag zone.
-4. The eye in the top-right corner (where the phone button is today): agreed?
+1. Free travel: **decided by Habib (§0 A)**: « Aller à pied », free, unlimited, no energy condition, from the exits of
+   each neighbourhood, with a simulated travel time. Neither the dépanne nor option (b)'s energy floor.
+2. Public benches resting a little (hole 4): optional and low priority. Free rest already exists (« Se poser à
+   l'ombre », the bed), and it must never be required to move.
+3. The phone in portrait (integrator):
+   - Default: the dock at the bottom centre between the thumb zones, icons only, shrinking while the stick is held.
+   - Fallback: if the four icons don't fit between the joystick and the action column at 360 px, use the row 140 px up.
+   - Either way, the checks assert no overlap with the joystick, « Courir », the actions and the toasts.
+4. The eye: on the top-right edge, never in the dock, never over the presence/social cluster, and visible in the
+   states of §0 B.
