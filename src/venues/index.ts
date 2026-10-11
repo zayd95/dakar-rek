@@ -5,6 +5,7 @@ import { buildDibi } from './dibi';
 import { buildMosque } from './mosque';
 import { buildBeach } from './beach';
 import { buildSalon } from './salon';
+import { buildClub, CLUB_SITE, shiftClubDay } from './club';
 import { applyStyle } from './style';
 import { nightOf, type Venue, type VenueEnv } from './venue';
 import { PRAYER_TIMES, nextPrayer, prayerAt } from './prayer';
@@ -14,7 +15,8 @@ export { PRAYER_TIMES, prayerAt, nextPrayer, prayerPeaks } from './prayer';
 /**
  * Venues (docs/LIVING_DAKAR.md): real places composed from the shared framework on the sites the hub builder leaves
  * free (src/world/sites.ts) — the Dibi of Pikine and of the Médina, the Grande Mosquée — and on city blocks that
- * already exist (Soumbédioune's pirogue and mareyeuses, Salon Awa's chairs). Each venue = procedural geometry
+ * already exist (Soumbédioune's pirogue and mareyeuses, Salon Awa's chairs), and on open ground (La Vague, the dance
+ * terrace on Ngor's beach). Each venue = procedural geometry
  * in a few merged draw calls + a place (anchors, offers, hours, peaks, chat) built by a recipe of
  * src/activity/templates.ts + seats of the shared registry + the people who hold it. Everything is rebuilt per hub.
  */
@@ -42,12 +44,14 @@ export const VenuesModule: GameModule = {
     // Soumbédioune's beach is a city block of the hub: the venue joins it through the places it already has
     const landing = hub.interactables.find(i => i.id === `${hub.id}:city:soumbedioune`), market = hub.interactables.find(i => i.id === `${hub.id}:city:fish-market`);
     const salon = hub.interactables.find(i => i.id === `${hub.id}:city:salon-tech` && i.name === 'Salon Awa');
-    if (!sites.length && !(landing && market) && !salon) return;
+    const club = !!CLUB_SITE[hub.id];
+    if (!sites.length && !(landing && market) && !salon && !club) return;
     mats = new VenueMaterials();
     const env: VenueEnv = { ctx, mats, lite: ctx.quality() === 'low', addPeople: f => bodies.push(f) };
     for (const s of sites) venues.push(s.kind === 'mosque' ? buildMosque(env, s) : buildDibi(env, s));
     if (landing && market) venues.push(buildBeach(env, landing, market));
     if (salon) venues.push(buildSalon(env, salon));
+    if (club) venues.push(buildClub(env));
   },
   update(ctx, dt) {
     styleT -= dt;                                                            // the salon's cut and beard stay on the player in every hub
@@ -57,8 +61,11 @@ export const VenuesModule: GameModule = {
     for (const v of venues) v.update(dt);
   },
   spaceChanged(_ctx, space) { for (const v of venues) v.spaceChanged?.(space); },
+  /** A venue the player is in that has its own space (La Vague's terrace): targets, seats, presence and chat. */
+  space() { for (const v of venues) { const s = v.space?.(); if (s) return s; } return null; },
   debug: () => ({
     venues: () => venues.map(v => v.debug()),
+    clubShift: (n: number) => shiftClubDay(n),
     prayer: (h: number) => ({ now: prayerAt(h)?.name ?? null, next: nextPrayer(h).name, times: PRAYER_TIMES.map(p => [p.name, p.hour]) }),
   }),
 };

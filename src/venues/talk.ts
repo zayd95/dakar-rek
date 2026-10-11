@@ -1,5 +1,7 @@
-import { DIBI_SPECIALS, GRILL_LADDER, dibiSpecial, grillRank, isEvening, nextGrillRank } from '../activity/templates';
+import { CLUB_DRINKS, CONTEST_FROM, CONTEST_ROUNDS, DIBI_SPECIALS, GRILL_LADDER, clubTheme, dibiSpecial, grillRank, isEvening, nextGrillRank, nightsToContest } from '../activity/templates';
 import { PRAYER_TIMES, hourLabel, nextPrayer, prayerAt } from './prayer';
+import { quote } from '../i18n/wolof';
+import { price } from '../i18n/lines';
 
 /**
  * Short everyday exchanges with the people who hold a venue (Dibi owner, imam): French with everyday Wolof (CLAD
@@ -86,3 +88,67 @@ export function mareyeuseSea(hour: number): string {
   return '« Le soir, la houle monte. Les derniers bateaux rentrent, il faudra attendre demain matin. »';
 }
 export const MAREYEUSE_BYE = '« Jërëjëf, ba ëllëg ! »';
+
+// ------------------------------------------------------------------ Dance terrace (La Vague, Ngor)
+export interface ClubCtx { night: number; hour: number; nights: number; regularAt: number; entry: number }
+const when = (k: number) => (k === 0 ? 'Ce soir' : k === 1 ? 'Demain' : `Dans ${k} nuits`);
+/** The week's programme from tonight: « Ce soir · Soirée mbalax », « Demain · Afro night »… */
+export const programme = (night: number, n = 7) => Array.from({ length: n }, (_, k) => `${when(k)} · ${clubTheme(night + k).label}`);
+
+export function doormanGreeting(c: ClubCtx): string {
+  const t = clubTheme(c.night).label;
+  if (c.nights >= c.regularAt) return `Lamine : « Sama xarit ! Dalal ak jàmm. Ce soir, c’est ${t}. Pour toi, l’entrée est offerte. »`;
+  if (c.nights > 0) return `Lamine : « Te revoilà ! Ce soir, c’est ${t}. L’entrée, c’est ${price(c.entry)}, comme d’habitude. »`;
+  return `Lamine : « Dalal ak jàmm à La Vague ! Ce soir, c’est ${t}. L’entrée, c’est ${price(c.entry)}, et tu danses jusqu’au matin. »`;
+}
+export function doormanRegulars(c: ClubCtx): string {
+  if (c.nights >= c.regularAt) return '« Tu es un habitué maintenant : tu entres sans payer. C’est la teraanga de La Vague. »';
+  const left = c.regularAt - c.nights;
+  return `« Les habitués entrent sans payer. Encore ${left} soirée${left > 1 ? 's' : ''} ici et je te reconnaîtrai à la porte. »`;
+}
+/** What the doorman says when you come in (paid or as a regular); `nights` counts tonight. */
+export function doormanWelcome(c: ClubCtx): string {
+  if (c.nights === c.regularAt) return 'Lamine : « Sama xarit ! À partir de maintenant, l’entrée est pour moi. »';
+  if (c.nights > c.regularAt) return 'Lamine : « Dalal ak jàmm ! Entre, entre. »';
+  return 'Lamine : « Rafet na ! Bonne soirée, la piste est à toi. »';
+}
+export function djTalk(c: ClubCtx): string {
+  const t = clubTheme(c.night);
+  if (t.contest) return c.hour >= CONTEST_FROM || c.hour < 5 ? 'DJ Mbaye : « Le concours a commencé ! Monte sur la piste, les batteurs t’attendent. »' : `DJ Mbaye : « Ce soir, ${t.label} ! Les batteurs arrivent, le concours commence à ${CONTEST_FROM} h. »`;
+  return `DJ Mbaye : « Ce soir, ${t.label} : ${t.detail.charAt(0).toLowerCase()}${t.detail.slice(1)}. Nanu dem ! »`;
+}
+export function djContest(c: ClubCtx): string {
+  const k = nightsToContest(c.night), top = CONTEST_ROUNDS.reduce((s, r) => s + r.prize, 0);
+  const rule = `Trois passages sur le tambour, chacun plus rapide. Mieux tu tiens le temps, plus tu gagnes : jusqu’à ${Math.round(top * 1.2)} F.`;
+  return k === 0 ? `« C’est ce soir, à partir de ${CONTEST_FROM} h. ${rule} »` : `« La nuit du sabar, c’est ${k === 1 ? 'demain' : `dans ${k} nuits`}. ${rule} »`;
+}
+export const barmanGreeting = (nights: number) => (nights > 2 ? 'Saliou : « Sama xarit ! Comme d’habitude, un bissap bien glacé ? »' : 'Saliou : « Dalal ak jàmm ! Ici, rien que des jus maison et de l’eau bien fraîche. »');
+export const barmanMenu = () => `« ${CLUB_DRINKS.map(d => `${d.label.toLowerCase()} ${d.price} F`).join(', ')}. Le bouye, c’est le jus du baobab : goûte, neex na ! »`;
+export const CLUB_BYE = '« Ba beneen yoon ! Ñibbil ak jàmm. »';
+/** At the door, before anything is paid: the fee, once for the night. */
+export function doormanAsk(c: ClubCtx): string {
+  const t = clubTheme(c.night).label;
+  return `Lamine : « Ce soir, c’est ${t}. L’entrée, c’est ${price(c.entry)}, une seule fois pour toute la nuit : tu peux sortir et revenir. »`;
+}
+export const doormanBye = () => `Lamine : ${quote('Ñibbil ak jàmm')} · « Reviens quand tu veux. »`;
+
+// ------------------------------------------------------------------ clubbers at La Vague (short exchanges)
+export type ClubMoment = 'early' | 'warm' | 'peak' | 'dawn';
+export const CLUBBER_NAMES = { f: ['Ndeye', 'Mariama', 'Astou', 'Khady', 'Bineta'], m: ['Pape', 'Cheikh', 'Moussa', 'Alioune', 'Babacar'] } as const;
+export function clubberHello(who: string, m: ClubMoment, first: boolean): string {
+  const intro = first ? `Moi c’est ${who}. ` : '';
+  if (m === 'dawn') return `${who} : ${quote('Dama sonn')} · « ${intro}On a dansé toute la nuit ! Bientôt le premier car rapide. »`;
+  if (m === 'early') return `${who} : ${quote(first ? 'Na nga def ?' : 'Lu bees ?')} · « ${intro}C’est encore calme : ici, ça commence vraiment après minuit. »`;
+  return `${who} : ${quote(first ? 'Na nga def ?' : 'Lu bees ?')} · « ${intro}Ça chauffe ce soir ! »`;
+}
+export function clubberTonight(night: number, hour: number): string {
+  const t = clubTheme(night), k = nightsToContest(night);
+  const contest = t.contest ? (hour >= CONTEST_FROM || hour < 5 ? 'Le concours a commencé, monte sur la piste !' : `Le concours commence à ${CONTEST_FROM} h, tu tentes ?`) : `Le concours de danse, c’est la nuit du sabar : ${k === 1 ? 'demain' : `dans ${k} nuits`}.`;
+  return `« Ce soir, c’est ${t.label}. ${contest} »`;
+}
+export function clubberRegulars(nights: number, regularAt: number): string {
+  if (nights >= regularAt) return '« Lamine te connaît maintenant : tu entres sans payer, comme nous. »';
+  return `« Moi je viens chaque semaine. Après ${regularAt} soirées, Lamine te laisse entrer sans payer. »`;
+}
+export const clubberDance = () => `${quote('Nanu dem')} · « Je te retrouve sur la piste ! »`;
+export const clubberBye = (m: ClubMoment) => (m === 'dawn' ? quote('Ñibbil ak jàmm') : quote('Ba beneen yoon'));

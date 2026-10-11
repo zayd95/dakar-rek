@@ -4,7 +4,7 @@ import { phoneHooks } from '../ui/phoneHooks';
 import { fcfaText } from '../economy/format';
 import { HUB_NAMES } from '../world/content';
 import { WALL_R } from '../world/geew';
-import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, billFor, ecurieLabel, hasTicket } from './program';
+import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, billFor, ecurieLabel, followedLine, followedOn, hasTicket, type Followed } from './program';
 import { eveningSize } from './exterior';
 import { WEEKDAY_FR, weekday } from './exteriorRules';
 import { afterPlace } from './eveningCall';
@@ -40,6 +40,8 @@ export interface TonightInput {
   ticket: boolean;
   /** Tonight's gala seen to the end. */
   galaDone: boolean;
+  /** The wrestler the player follows, when he fights tonight (main event or undercard). */
+  followed?: Followed | null;
   /** The player's own bout tonight (the fighter's path): the opponent, and a gala place or the title. */
   fighter: { opponent: string | null; kind: 'gala' | 'title' | null } | null;
   /** The hub the player is in, and in Pikine the distance to the gate (null elsewhere) and whether inside the walls. */
@@ -92,6 +94,7 @@ export function tonightPage(i: TonightInput): TonightSection[] {
       const what = i.fighter.kind === 'title' ? 'Combat pour le titre' : i.fighter.kind === 'gala' ? 'Ta place au gala' : 'Ton combat du soir';
       arena.push({ icon: '🥊', label: `Tu combats ce soir${i.fighter.opponent ? ` contre ${i.fighter.opponent}` : ''}`, detail: `${what} · entrée des lutteurs, derrière l’arène (pas besoin de billet)` });
     }
+    if (i.followed) arena.push({ icon: '⭐', label: followedLine(i.followed), detail: 'Le combat principal de la soirée' });
     arena.push({ icon: '🤼', label: `${i.bill.left.name} – ${i.bill.right.name}`, detail: `${SIZE[i.size]}${i.bill.title ? ' · titre en jeu' : ''} · ${sides(i.bill)}` });
     arena.push({ icon: '🚪', label: i.hour < GALA.doors ? `Portes à ${GALA.doors} h` : 'Portes ouvertes', detail: `Arène de Pikine · jusqu’à ${GALA.close} h` });
     if (!i.fighter) arena.push(i.ticket ? { icon: '🎟️', label: 'Ton billet : en poche ✓', detail: 'Entrée par la porte de l’arène' }
@@ -173,6 +176,7 @@ export function tonightFacts(ctx: GameCtx): TonightInput & { targets: Record<str
     day, hour, size: eveningSize(day, GALA.doors), bill: b, tomorrow: { ...t, size: eveningSize(day + 1, GALA.doors) },
     ticket: hasTicket(c, day), galaDone: c[GALA_DONE_COUNTER] === day,
     fighter: pending ? { opponent: arenaFighter.opponent(), kind: ft?.kind ?? null } : null,
+    followed: followedOn(day),
     hub: w ? hubShort(w.id) : 'Dakar', gate,
     ride: stop ? { stop: stop.name, dist: stop.d, fare: LINES.find(l => stop.id.startsWith(`stop:${l.id}:`))?.fare ?? 150 } : null,
     vehicles,

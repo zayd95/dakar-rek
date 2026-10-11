@@ -28,7 +28,11 @@ import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { LambDuel } from './lamb/duel';
-import { PARTNER, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type StyleId } from './lamb/rules';
+import { ATTRS, fighterAttributes, type Counters } from './career/career';
+import { drillOfAction } from './lamb/drills';
+import { FRIENDLY_MORE, STYLE_MAP, rosterOpponent } from './lamb/opponents';
+import { lamb2On } from './lamb/flag';
+import { PARTNER, RULES, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type Discipline, type StyleId } from './lamb/rules';
 import { phoneHooks } from './ui/phoneHooks';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
@@ -219,6 +223,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   setGrainEnabled(quality !== 'low');                     // procedural surface noise is the main per-pixel cost
   extra.clear();
   world = buildHub(id, quality === 'low', quality);
+  economy.decorateHub(world, quality);                   // before the placed people: the quincaillerie's keeper is one of them
   scene.add(world.group);
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
   extra.add(crowd.group, traffic.group);
@@ -228,7 +233,6 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   life?.dispose(); life = world.monument ? new MonumentLife(world.monument, rand, QUAL[quality].crowd) : null;
   if (life) extra.add(life.group);
   npcLife.load(world, extra);                            // recurring cast on their daily routines
-  economy.decorateHub(world);
   interiors = new Map(); inside = null; follow.indoor = false; scene.remove(roomLight);
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;
@@ -354,7 +358,8 @@ const ctx: GameCtx = {
   exit: () => exitInterior(),
   walkTo: id => setDestination(id),
   setPublicRecord: rec => presence.setRecord(rec),
-  startBout(m, style, after) { if (lambScene || !world?.arena) return false; startDuel(m, style as StyleId | undefined, after); return !!lambScene; },
+  // the fighter's evening (src/arena/fighter.ts) plays avec frappe when Làmb 2.0 is on (?lamb2); otherwise as before
+  startBout(m, style, after) { if (lambScene || !world?.arena) return false; startDuel(m, style as StyleId | undefined, after, LAMB2 ? 'avec_frappe' : 'sans_frappe'); return !!lambScene; },
   travel(dest, at, label) {
     if (!world) return;
     mode = 'busy'; input.enabled = false; input.reset();
@@ -485,7 +490,8 @@ function runSpecial(a: Action) {
     case 'watch': startScene('watch', () => { if (a.needs) state.adjust(a.needs); }); break;
     case 'combat': openFriendly(); break;
     case 'combat_classe': openRanked(); break;
-    case 'combat_entrainement': startDuel('entrainement'); break;
+    // with ?lamb2, Coach Ablaye's session is the guided lesson avec frappe (src/lamb/lesson.ts); otherwise as before
+    case 'combat_entrainement': startDuel('entrainement', undefined, undefined, LAMB2 ? 'avec_frappe' : 'sans_frappe'); break;
     case 'outfit': openOutfit(); break;
     case 'emote': openEmotes(); break;
     case 'enter': if (nearest) enterInterior(nearest); break;
@@ -551,14 +557,32 @@ function startScene(kind: SceneKind, onDone?: () => void) {
 }
 
 // ------------------------------------------------------------------ làmb bouts (provisional rules, no strikes; see src/lamb/rules.ts)
+/**
+ * Làmb 2.0 (« lutte avec frappe », src/lamb/stand.ts) is built step by step behind this flag: `?lamb2` in the address,
+ * or `localStorage['dakarrek.lamb2'] = '1'`. Without it the arena offers the sans-frappe bouts only, as before.
+ */
+const LAMB2 = lamb2On();
 /** Friendly bout: the player picks the opponent's style; the level follows the friendly record. */
 function openFriendly() {
   mode = 'menu';
   const r = record(state.data.counters, 'amical'), level = opponentLevel(r.v, r.d);
-  hud.openMenu('Combat amical', `Non classé · niveau ${level} · ${RULES_STATUS}`, STYLE_IDS.map(id => {
+  const items = STYLE_IDS.map(id => {
     const st = STYLES[id];
     return { label: `${st.name} · ${st.label} · niveau ${level}`, detail: st.hint, onPick: () => startDuel('amical', id) };
-  }), `<div class="draft">Lutte sans frappe. Adversaires fictifs. La tenue, les danses et les accessoires n’ont aucun effet sur le combat ; l’argent non plus.</div>`);
+  });
+  if (LAMB2) for (const id of STYLE_IDS) {
+    const st = STYLES[id];
+    items.push({ label: `Avec frappe · ${st.name} · ${st.label}`, detail: 'Làmb 2.0, en construction : frappes, équilibre, empoignade. Bilan à part.', onPick: () => startDuel('amical', id, undefined, 'avec_frappe') });
+  }
+  // avec frappe, the three other styles of the six each have their wrestler (src/lamb/opponents.ts)
+  if (LAMB2) for (const f of FRIENDLY_MORE) {
+    const o = rosterOpponent(f.name, ctx.day());
+    if (!o) continue;
+    const word = STYLE_MAP[o.style].word;
+    items.push({ label: `Avec frappe · ${o.wrestler.name} · ${word[0].toUpperCase()}${word.slice(1)}`, detail: `${f.hint} Bilan à part.`, onPick: () => startDuel('amical', o.wrestler.style, undefined, 'avec_frappe', o.wrestler.name) });
+  }
+  hud.openMenu('Combat amical', `Non classé · niveau ${level} · ${RULES_STATUS}`, items,
+    `<div class="draft">${LAMB2 ? 'Lutte sans frappe, ou avec frappe (essai)' : 'Lutte sans frappe'}. Adversaires fictifs. La tenue, les danses et les accessoires n’ont aucun effet sur le combat ; l’argent non plus.</div>`);
 }
 /** The opponent a module (the career's roster) names for a bout of this mode, if any. */
 function opponentPick(m: 'amical' | 'classe') { for (const x of MODULES) { const p = x.opponent?.(ctx, m); if (p) return p; } return null; }
@@ -573,7 +597,7 @@ function openRanked() {
 }
 
 /** Controlled bout against a local opponent: guided training at the écurie, friendly or ranked at the arena. */
-function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () => void) {
+function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () => void, discipline: Discipline = 'sans_frappe', named?: string) {
   if (lambScene) return;                                                       // one bout or scene at a time
   const at = boutMode === 'entrainement' ? world?.ecurie : world?.arena;
   if (!at) { hud.toast(boutMode === 'entrainement' ? 'L’entraînement a lieu à l’écurie de Pikine' : 'Les combats ont lieu à l’arène de Pikine'); mode = 'play'; return; }
@@ -587,27 +611,78 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () 
   // the career's roster names the opponent (a wrestler of the city's ladder, with their style and level)
   const pick = boutMode === 'entrainement' ? null : opponentPick(boutMode);
   if (pick) { style = { ...(STYLES[pick.style as StyleId] ?? style), name: pick.name }; level = pick.level; }
-  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level, ring: boutMode === 'entrainement' ? 5 : 7.6 });
+  else if (named) style = { ...style, name: named };                          // a friendly avec frappe against a named wrestler
+  // avec frappe, the player's attributes come from what he trained (src/career, data only); they shape numbers by ±20 % at most
+  const attrs = discipline === 'avec_frappe' ? fighterAttributes(state.data.counters) : undefined;
+  // avec frappe, a wrestler of the city's roster fights as himself: his style, his level, his season record (src/lamb/opponents.ts)
+  const who = discipline === 'avec_frappe' && boutMode !== 'entrainement' ? rosterOpponent(style.name, ctx.day(), (state.data as { career?: Parameters<typeof rosterOpponent>[2] }).career) : null;
+  if (who) { style = { ...(STYLES[who.wrestler.style as StyleId] ?? style), name: who.wrestler.name }; level = who.level; }
+  const opponent = who ? { attrs: who.attrs, stand: who.stand, clinch: who.clinch, line: who.line } : undefined;
+  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level, ring: boutMode === 'entrainement' ? 5 : 7.6, discipline, attrs, opponent });
   duel.onDone = () => {
     // only a finished bout counts; a bout cut short without a result (e.g. leaving the hub) records nothing
     const r = duel.result; if (!r) return;
     state.adjust(r.rewards.needs);
-    for (const [k, v] of Object.entries(recordIncrements(r))) state.count(k, v);
+    // each discipline keeps its own record (avec frappe: `lamb_af_*`); the global combats/victoires count both
+    for (const [k, v] of Object.entries(recordIncrements(r, discipline))) state.count(k, v);
     if (r.rewards.coach) rel.change(PLAYER, 'ablaye', r.rewards.coach);
     const n = state.data.counters;
     // the career (src/career) keeps the record, pays the purse and moves the rank: its lines join the result toast
-    const notes = MODULES.flatMap(m => m.lamb?.(ctx, { kind: 'bout', mode: r.mode, outcome: r.outcome, winner: r.winner, opponent: { name: style.name, style: style.id, label: style.label }, level }) ?? []);
+    const notes = MODULES.flatMap(m => m.lamb?.(ctx, { kind: 'bout', mode: r.mode, outcome: r.outcome, winner: r.winner, opponent: { name: style.name, style: style.id, label: style.label }, level, discipline }) ?? []);
+    if (discipline === 'avec_frappe') notes.unshift('Lutte avec frappe');
     hud.toast([r.mode === 'entrainement' ? (r.outcome === 'abandon' ? 'Entraînement interrompu' : `Entraînement terminé ✓  Compétence ${n.lamb_skill ?? 0}`)
       : r.outcome === 'abandon' ? 'Abandon enregistré (à part des défaites)'
       : r.winner === 'player' ? `Victoire ! (${n.victoires ?? 0} au total)` : r.winner === 'opponent' ? 'Défaite. Coach Ablaye : « On retourne à l’entraînement. »' : 'Match nul', ...notes].join('  '));
   };
   if (after) { const recorded = duel.onDone; duel.onDone = () => { recorded?.(); after(); }; }   // a module's next step (ctx.startBout)
+  // avec frappe: the bout's moments go to the modules as they happen (the arena's stands react to the fall and the result)
+  duel.onMoment = (m, w) => { for (const mod of MODULES) mod.lamb?.(ctx, { kind: 'moment', moment: m, winner: w, outcome: duel.outcome ?? 'decision' }); };
   lambScene = duel;
   extra.add(duel.group);
   npcLife.setVisible(false);
-  hud.setScene(boutMode === 'entrainement' ? 'Entraînement · combat' : 'Combat · làmb', `Lutte sans frappe · ${RULES_STATUS}`);
+  hud.setScene(boutMode === 'entrainement' ? 'Entraînement · combat' : 'Combat · làmb', `${RULES[discipline].label} · ${RULES_STATUS}`);
 }
 phoneHooks.arenaProfile = () => arenaProfileRows(state.data.counters, state.data.flags.includes('ecurie_baobab') ? 'Baobab (fictive)' : null);
+
+/** « Frappe 34 → 36 » for each fighter attribute (src/career/career.ts) that differs between two sets of counters. */
+const attrMoves = (from: Counters, to: Counters) => {
+  const a = fighterAttributes(from), b = fighterAttributes(to);
+  return ATTRS.filter(x => a[x.id] !== b[x.id]).map(x => `${x.label} ${a[x.id]} → ${b[x.id]}`);
+};
+/**
+ * An écurie drill, played (?lamb2): Coach Ablaye calls it, Babacar is the partner (src/lamb/drills.ts). A finished drill
+ * counts exactly as the timed drill does — its needs, its counter (the career's fighter attributes read it), the
+ * activity — whatever the score; an abandoned one counts nothing. The recap and the toast say the real attribute change.
+ */
+function startDrill(a: Action, npc?: string, it?: Interactable) {
+  if (lambScene) return;
+  const id = drillOfAction(a.id), at = world?.ecurie;
+  if (!id) return;
+  if (!at) { hud.toast('Les exercices ont lieu à l’écurie de Pikine'); mode = 'play'; return; }
+  hideProxy(); emoteT = 0; previewT = 0;
+  hud.closeModal();
+  mode = 'scene';
+  const c = state.data.counters, key = a.counter;
+  const notes = key ? attrMoves(c, { ...c, [key]: (c[key] ?? 0) + 1 }) : [];
+  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: 0, mode: 'entrainement', style: PARTNER, level: 1, ring: 5,
+    discipline: 'avec_frappe', attrs: fighterAttributes(c), drill: id, drillNotes: notes.length ? notes : ['Tes attributs ne bougent plus guère avec cet exercice'] });
+  duel.onDone = () => {
+    const r = duel.drillResult();
+    if (!r || r.outcome === 'abandon') { hud.toast('Exercice interrompu : rien n’est compté'); return; }
+    const before = { ...state.data.counters };
+    economy.work(a, it);                                    // records the activity, as the timed drill does
+    if (a.needs) state.adjust(a.needs);
+    if (a.counter) state.count(a.counter);
+    if (npc) rel.change(PLAYER, npc, 1);
+    state.count('actions');
+    npcLife.afterAction(a, it ?? null);
+    hud.toast([`${a.label} ✓ ${r.score}/${r.of}`, ...attrMoves(before, state.data.counters)].join('  '));
+  };
+  lambScene = duel;
+  extra.add(duel.group);
+  npcLife.setVisible(false);
+  hud.setScene(`Entraînement · ${a.label}`, `${RULES.avec_frappe.label} · ${RULES_STATUS}`);
+}
 
 /** Leave a làmb scene early (« Arrêter », Escape, the menu key): no reward, controls back. */
 function stopScene() {
@@ -679,6 +754,8 @@ function openJournal() { hud.closeModal(); phone.open('carnet'); }
 let legacyRun: { label: string; stop(): void } | null = null;
 
 function runAction(a: Action, npc?: string, it?: Interactable) {
+  // with ?lamb2 the écurie drills (src/career DRILLS) are played with the avec-frappe controls (src/lamb/drills.ts)
+  if (LAMB2 && drillOfAction(a.id)) { startDrill(a, npc, it); return; }
   const where = it?.name;
   if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
     activities.onEnd = (_s, done) => {                    // once: later activities (places, venues) must not replay this action's hooks
@@ -1024,7 +1101,7 @@ if (DEBUG) {
       return { base, by };
     },
     nearestInteractable: () => nearest?.name ?? null,
-    focus: () => { const t = interactions.focus; return t ? { id: t.id, name: t.name, kind: t.kind, space: t.space, primary: interactions.primary(t)?.label ?? null, all: interactions.all(t).map(a => a.label) } : null; },
+    focus: () => { const t = interactions.focus; return t ? { id: t.id, name: t.name, kind: t.kind, space: t.space, primary: interactions.primary(t)?.label ?? null, all: interactions.all(t).map(a => a.label), why: interactions.all(t).filter(a => a.disabled).map(a => a.disabled) } : null; },
     seated: () => seated?.id ?? null,
     seatsHere: () => seats.inSpace(interactSpace()).map(s => ({ id: s.id, x: s.x, z: s.z, top: s.top, yaw: s.yaw, kind: s.kind, occupant: s.occupant })),
     sit(id: string) { const s = seats.get(id); if (s) sitOn(s); return seated?.id ?? null; },
@@ -1069,7 +1146,23 @@ if (DEBUG) {
       return { len, hit: hit ? hit.distance : len };
     },
     duel() { startDuel('amical', 'costaud'); },
-    duelStart(m: BoutMode = 'amical', style?: StyleId) { startDuel(m, style); },
+    duelStart(m: BoutMode = 'amical', style?: StyleId, discipline: Discipline = 'sans_frappe', name?: string) { startDuel(m, style, undefined, discipline, name); },
+    /** Checks: start an écurie drill by its action id (drill_frappe, drill_saisies, drill_force) — played with ?lamb2. */
+    drillStart(actionId: string) {
+      const it = world?.interactables.find(i => i.actions.some(a => a.id === actionId)), a = it?.actions.find(x => x.id === actionId);
+      if (it && a) { nearest = it; runAction(a, it.npc, it); }
+    },
+    duelStrike(kind: 'quick' | 'big' = 'quick') { if (lambScene instanceof LambDuel) lambScene.pressStrike(kind); },
+    duelMove(kind: 'push' | 'pull' | 'pivot') { if (lambScene instanceof LambDuel) lambScene.pressMove(kind); },
+    /** In the empoignade, the big-strike button: « Projeter », or « Contrer » while he tries a throw. */
+    duelThrow() { if (lambScene instanceof LambDuel) lambScene.pressStrike('big'); },
+    /** Coach Ablaye's lesson avec frappe: skip the current step (« Passer »). */
+    duelLessonSkip() { if (lambScene instanceof LambDuel) lambScene.skipLessonStep(); },
+    duelSet(side: 'player' | 'opponent', v: { balance?: number; composure?: number; stamina?: number; grip?: number }) { if (lambScene instanceof LambDuel) lambScene.debugSet(side, v); },
+    /** Checks only: hold the opponent, the round's clock and the referee still while a position is set up (avec frappe). */
+    duelHold(on: boolean) { if (lambScene instanceof LambDuel) lambScene.debugHold(on); },
+    /** Checks only: the seconds left in the round. */
+    duelClock(seconds: number) { if (lambScene instanceof LambDuel) lambScene.debugClock(seconds); },
     duelInfo: () => (lambScene instanceof LambDuel ? lambScene.info() : null),
     duelGrab() { if (lambScene instanceof LambDuel) lambScene.pressGrab(); },
     duelGuard(on: boolean) { if (lambScene instanceof LambDuel) lambScene.setGuard(on); },

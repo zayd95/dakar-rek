@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { KitBuilder, paintAtlas, seeded } from './kitGeometry';
 import { SH, SW, SCOL, SPLAIN, SUV, drawShopAtlas, shopSlot, type ShopKey } from './shopAtlas';
 import { buildFurniture, furnitureMaterials, type FurnitureId } from './furnitureKit';
-import { buildVehicle, vehicleMaterials, type VehicleKind } from '../actors/vehicleKit';
+import { buildVehicle, vehicleMaterials, vehicleSpec, type VehicleKind } from '../actors/vehicleKit';
 import type { Collider } from './types';
 import type { Seat, SeatKind } from '../interact/seats';
 
@@ -21,18 +21,22 @@ import type { Seat, SeatKind } from '../interact/seats';
  * Local frame: centre of the footprint, open front (or door) toward +z, floor at y = 0. `at` places it in the world
  * (any yaw; colliders are the world AABBs). Words in the shop are generic (riz, lait, téléphonie…): no brand, no logo.
  */
-export type ShopType = 'grocery' | 'phone' | 'clothing' | 'furniture' | 'pharmacy' | 'cafe' | 'bank' | 'hardware' | 'craft' | 'beauty' | 'garage' | 'restaurant';
-export const SHOP_TYPES: readonly ShopType[] = ['grocery', 'phone', 'clothing', 'furniture', 'pharmacy', 'cafe', 'bank', 'hardware', 'craft', 'beauty', 'garage', 'restaurant'];
+export type ShopType = 'grocery' | 'phone' | 'clothing' | 'furniture' | 'pharmacy' | 'cafe' | 'bank' | 'hardware' | 'craft' | 'beauty' | 'garage' | 'restaurant' | 'showroom_cars';
+export const SHOP_TYPES: readonly ShopType[] = ['grocery', 'phone', 'clothing', 'furniture', 'pharmacy', 'cafe', 'bank', 'hardware', 'craft', 'beauty', 'garage', 'restaurant', 'showroom_cars'];
 export const SHOP_TYPE_NAME: Record<ShopType, string> = {
   grocery: 'Boutique · alimentation', phone: 'Téléphonie · réparation', clothing: 'Couture · prêt-à-porter', furniture: 'Meubles · maison',
   pharmacy: 'Santé · soins', cafe: 'Café · jus', bank: 'Banque · agence', hardware: 'Quincaillerie', craft: 'Artisanat', beauty: 'Beauté',
-  garage: 'Garage · atelier', restaurant: 'Restaurant',
+  garage: 'Garage · atelier', restaurant: 'Restaurant', showroom_cars: 'Voitures · occasions',
 };
 export type ShopDetail = 'low' | 'medium' | 'high';
 /** Rectangle on the floor plan (local or world): x0 < x1, z0 < z1. */
 export interface ShopRect { x0: number; x1: number; z0: number; z1: number }
 /** A spot on the floor and the way a person there faces (game yaw: forward = sin / cos). */
 export interface ShopSpot { x: number; z: number; yaw: number }
+/** A car showroom's lot: where a vehicle stands (its nose toward `yaw`), and its price card on a stand at the nose. */
+export interface ShopLot extends ShopSpot { card: ShopSpot }
+/** What stands on a showroom lot: a kit vehicle, or null — the module that sells it draws it there (the one bought leaves). */
+export type ShopLotVehicle = { kind: VehicleKind; seed: number } | null;
 export interface ShopAnchors {
   /** Where a customer stands to buy, facing the counter: the shop's place anchor. */
   counter: ShopSpot;
@@ -48,11 +52,16 @@ export interface ShopAnchors {
   browse: ShopSpot[];
   /** Just inside the entrance, facing in. */
   door: ShopSpot;
+  /** A car showroom's lots, the first nearest the aisle (`showroom_cars`). */
+  lots?: ShopLot[];
 }
 export interface ShopOptions {
   detail?: ShopDetail;
-  /** Build the room too (tiled floor, walls with a doorway at +z, ceiling): a walkable interior placed off-map. */
-  shell?: boolean;
+  /**
+   * Build the room too (tiled floor, walls with a doorway at +z, ceiling): a walkable interior placed off-map. 'open':
+   * back and side walls inside the footprint, the ceiling and a header beam across a front left wide open (a showroom).
+   */
+  shell?: boolean | 'open';
   /** World placement of the local origin (y: floor height) and yaw of the local +z. */
   at?: { x: number; z: number; y?: number; yaw?: number };
   /** Prefix of the seat ids. */
@@ -67,6 +76,8 @@ export interface ShopOptions {
   height?: number;
   /** Cast shadows (default true); a shop under its own roof can skip the shadow pass. */
   shadows?: boolean;
+  /** `showroom_cars`: what stands on each lot, in order (default: three kit saloons). */
+  lots?: readonly ShopLotVehicle[];
 }
 export interface ShopInterior {
   type: ShopType;
@@ -563,7 +574,7 @@ const filesFill: Fill = (R, lvl, levels, x0, x1, y, zf, dp, gap) => {
 
 // ------------------------------------------------------------------------------------------------------------ plans
 interface Plan {
-  counter: ShopSpot; till: ShopSpot & { y: number }; keeper: ShopSpot; queue: ShopSpot[]; door: ShopSpot;
+  counter: ShopSpot; till: ShopSpot & { y: number }; keeper: ShopSpot; queue: ShopSpot[]; door: ShopSpot; lots?: ShopLot[];
 }
 interface Zones {
   /** Behind the keeper's corridor, left of the counter's end. */
@@ -601,7 +612,7 @@ const garageFill: Fill = (R, lvl, levels, x0, x1, y, zf, dp, gap, u) => {
   else R.stacks(x0, x1, y, zf, dp, gap, 'sParts', 10, [0.22, 0.32], 0xb08d5e);
 };
 
-const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank' | 'restaurant'>, Style> = {
+const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank' | 'restaurant' | 'showroom_cars'>, Style> = {
   garage: {
     counter: 'left', aisleNext: true, body: 0x5b6168, top: 0x6b4a2e, panel: 'pnlGarage', peg: 'pegTools',
     unit: U(0.5, 2.4, 4, C.steel, 0x7d858d, 0xd8d2c2), back: garageFill, side: garageFill,
@@ -819,14 +830,18 @@ const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank' | 'restaurant'>, Style> =
   hardware: {
     counter: 'left', body: 0x2b2f36, top: 0x8b6a47, panel: 'pnlHardware', peg: 'pegTools',
     unit: U(0.5, 2.5, 4, C.steel, 0x7d858d, 0xd8d2c2), back: hardwareFill, side: hardwareFill,
-    onCounter(R, x0, x1, z, h) {
-      R.b.box(0.4, 0.12, 0.25, x0 + 0.5, h, z - 0.15, 0x7d858d); R.b.box(0.3, 0.1, 0.2, x0 + 1.0, h, z - 0.1, C.yellow);
+    onCounter(R, x0, x1, z, h, v) {
+      if (v === 1) {                                                                       // « · meubles »: folded rugs and a small radio
+        R.b.box(0.5, 0.06, 0.35, x0 + 0.5, h, z - 0.12, 0xb5452b); R.b.box(0.5, 0.05, 0.35, x0 + 0.5, h + 0.06, z - 0.12, 0xf2d16b);
+        R.b.box(0.34, 0.2, 0.14, x0 + 1.05, h, z - 0.12, 0x2b2b33); R.b.cyl('z', 0.05, 0.05, 0.01, x0 + 0.97, h + 0.1, z - 0.045, 0x9aa0a6, 8, { pos: true, neg: false });
+        R.b.beam([x0 + 1.17, h + 0.2, z - 0.15], [x0 + 1.25, h + 0.42, z - 0.17], 0.01, 0.01, C.chrome);
+      } else { R.b.box(0.4, 0.12, 0.25, x0 + 0.5, h, z - 0.15, 0x7d858d); R.b.box(0.3, 0.1, 0.2, x0 + 1.0, h, z - 0.1, C.yellow); }
       R.b.cyl('z', 0.08, 0.08, 0.06, x1 - 1.0, h + 0.08, z - 0.1, C.red, 10);
     },
-    floor(R, Z) {
+    floor(R, Z, v) {
       R.sacks(Z.behind.x0 + 0.6, Z.behind.z0 + 0.5, PI / 2, R.det ? 4 : 2, 'sack1');
-      // pipes on brackets along the right wall, buckets and coils
-      const rz0 = Z.right.z0 + 0.2, rz1 = Math.min(Z.right.z1 - 0.8, rz0 + 3.2);
+      // pipes on brackets along the right wall, buckets and coils (shorter in « · meubles »: the furniture follows them)
+      const rz0 = Z.right.z0 + 0.2, rz1 = Math.min(Z.right.z1 - 0.8, rz0 + (v === 1 ? 1.6 : 3.2));
       if (rz1 - rz0 > 1 && R.ok(rect(Z.right.x1 - 0.5, Z.right.x1, rz0, rz1))) {
         for (const y of [0.5, 1.1, 1.7]) R.b.box(0.45, 0.04, 0.05, Z.right.x1 - 0.22, y, (rz0 + rz1) / 2, C.steel);
         for (let k = 0; k < (R.det ? 9 : 4); k++) R.b.cyl('z', 0.04, 0.04, rz1 - rz0, Z.right.x1 - 0.1 - (k % 3) * 0.12, 0.58 + Math.floor(k / 3) * 0.6, (rz0 + rz1) / 2, [C.white, 0x9aa0a6, 0x2f6fb3][k % 3], 6, { pos: true, neg: true });
@@ -843,7 +858,24 @@ const STYLES: Record<Exclude<ShopType, 'cafe' | 'bank' | 'restaurant'>, Style> =
           R.solid(f, 0.9); R.browse.push({ x: ix, z: iz + 1.0, yaw: PI });
         }
       }
-      if (R.det === 2) {                                                                   // a ladder leaning on the right wall
+      if (v === 1) {
+        // « Quincaillerie · meubles » (Pikine): along the right wall after the pipes, the furniture it sells — monobloc
+        // chairs stacked, a rolled mattress standing, a mirror leaning on the wall
+        const fx = Z.right.x1 - 0.3, z0 = rz1 + 0.45, cols = C.plastic;
+        if (Z.right.z1 - z0 > 1.6 && R.ok(rect(fx - 0.3, Z.right.x1, z0 - 0.3, z0 + 1.65))) {
+          for (let k = 0; k < (R.det ? 5 : 3); k++) {
+            R.b.box(0.46, 0.05, 0.44, fx, 0.45 + k * 0.08, z0, cols[k % 4]); R.b.box(0.04, 0.42, 0.44, fx + 0.2 - k * 0.02, 0.5 + k * 0.08, z0, cols[k % 4]);
+          }
+          R.b.box(0.42, 0.45, 0.4, fx, 0, z0, 0xe8e8e8);
+          R.b.cyl('y', 0.22, 0.22, 1.5, fx, 0.75, z0 + 0.7, 0x2f6fb3, 10, { pos: true, neg: false, capPaint: 0xf2f2ee });
+          for (const y of [0.35, 0.75, 1.15]) R.b.cyl('y', 0.225, 0.225, 0.06, fx, y, z0 + 0.7, 0xf2f2ee, 10, { pos: false, neg: false });
+          R.b.box(0.06, 1.3, 0.6, Z.right.x1 - 0.05, 0.15, z0 + 1.35, 0x6e4426);
+          R.panel(Z.right.x1 - 0.085, 0.8, z0 + 1.35, -PI / 2, 0.5, 1.15, 'mirror');
+          R.solid(rect(fx - 0.27, Z.right.x1, z0 - 0.27, z0 + 1.65), 1.2);
+          R.browse.push({ x: fx - 1.0, z: z0 + 0.7, yaw: PI / 2 });
+        }
+      }
+      if (R.det === 2 && v !== 1) {                                                        // a ladder leaning on the right wall
         const lx = Z.right.x1, lz = Z.right.z1 - 0.45, f = R.foot(lx - 0.3, lz, 0.6, 0.5);
         if (R.ok(f)) {
           for (const dz of [-0.2, 0.2]) R.b.beam([lx - 0.6, 0, lz + dz], [lx - 0.05, 2.4, lz + dz], 0.05, 0.05, 0xb48c5c);
@@ -1092,9 +1124,103 @@ function bankPlan(R: Room): Plan {
   return { counter: spot, till: { x: mid, z: cz, yaw: PI, y: ch + 1.0 }, keeper: { x: mid, z: cz - cd / 2 - 0.5, yaw: 0 }, queue, door: { x: mid, z: D / 2 - 0.6, yaw: PI } };
 }
 
-/** The room itself for a walkable interior: tiled floor, plastered walls with a doorway at +z, ceiling. */
-function shell(R: Room) {
+/** What a showroom shows when nobody says (a silver, a white and a blue saloon of the kit). */
+const SHOWROOM_LOTS: readonly ShopLotVehicle[] = [{ kind: 'sedan', seed: 18 }, { kind: 'sedan', seed: 7 }, { kind: 'sedan', seed: 1 }];
+/** The price card of each lot the kit fills: for sale, then the ones already taken (reserved, sold). */
+const LOT_CARDS: readonly ShopKey[] = ['carCard0', 'carCard1', 'carCard2'];
+
+/**
+ * Used-car showroom: saloons on lots nose to the street (white lines on a light tiled floor, a price card on a stand at
+ * each nose), the aisle up the middle to the salesman's desk at the back, the keys on a board behind him, a waiting
+ * bench with brochures, a shelf of oil and parts. Lots given as null are left for the module that sells that vehicle
+ * (src/transport/ownedModule.ts draws it and its card there, so the one bought can leave the floor): no car, no card.
+ */
+function showroomPlan(R: Room, lots: readonly ShopLotVehicle[], floor: boolean): Plan {
+  const { W, D, xl, xr, zb, b } = R;
+  const sp = vehicleSpec('sedan', { seed: 1, driver: false, passengers: false });
+  // the cars' noses 0.9 m from the front (0.6 in a shallow room), the desk as far back as leaves 1.1 m in front of it
+  const cw = sp.width + 0.1, nose = D / 2 - (D >= 8.8 ? 0.9 : 0.6), cz = nose - sp.length / 2, rear = cz - sp.length / 2 - 0.05, ah = 1.3;
+  const dd = 0.75, dh = 0.78, deskZ = clamp(rear - 1.1 - dd / 2, zb + 1.175, zb + 1.35), front = deskZ + dd / 2, back = deskZ - dd / 2;
+  // the lanes: the aisle from the street, the customers' side of the desk, the salesman's way round it to his place
+  R.keep.push(rect(-ah, ah, rear, D / 2), rect(-ah, ah, front, rear), rect(1.0, 1.9, zb, rear), rect(-1.1, 1.9, zb, back));
+  if (floor) for (let x = -W / 2; x < W / 2 - 0.01; x += 2) for (let z = -D / 2; z < D / 2 - 0.01; z += 2) {
+    const w = Math.min(2, W / 2 - x), d = Math.min(2, D / 2 - z);
+    b.decal([x + w / 2, 0.003, z + d / 2], [1, 0, 0], [0, 0, -1], w, d, SUV.floorShow);
+  }
+  // the lots: beside the aisle on each side, then further left when the floor is wide enough
+  const out: ShopLot[] = [];
+  const at = [-(ah + 0.2 + cw / 2), ah + 0.2 + cw / 2, -(ah + 0.2 + cw / 2) - (cw + 1.15)];
+  for (let k = 0; k < Math.min(lots.length, at.length); k++) {
+    const x = at[k];
+    if (x - cw / 2 < xl + 0.05 || x + cw / 2 > xr - 0.05) continue;
+    for (const s of [-1, 1]) b.box(0.05, 0.004, sp.length + 0.4, x + s * (cw / 2 + 0.1), 0.004, cz, C.white);   // its white lines
+    const sx = x + 0.55, sz = Math.min(D / 2 - 0.5, nose + 0.35), v = lots[k];
+    if (v && R.vehicle(v.kind, v.seed, x, cz, 0)) {
+      b.cyl('y', 0.12, 0.12, 0.02, sx, 0.01, sz, C.steel, 8);
+      b.box(0.03, 0.92, 0.03, sx, 0, sz, C.chrome);
+      b.box(0.52, 0.36, 0.015, sx, 0.9, sz, C.white);
+      R.panel(sx, 1.08, sz + 0.008, 0, 0.5, 0.333, LOT_CARDS[k % LOT_CARDS.length]);
+      R.solid(R.foot(sx, sz, 0.24, 0.24), 1.3);
+    }
+    out.push({ x, z: cz, yaw: 0, card: { x: sx, z: sz, yaw: 0 } });
+    // a customer looks at it from the aisle (the far one from the gap beside it)
+    R.browse.push(k === 2 ? { x: x + cw / 2 + 0.575, z: cz, yaw: -PI / 2 } : { x: x - Math.sign(x) * (cw / 2 + 0.5), z: cz + 0.6, yaw: Math.sign(x) * PI / 2 });
+  }
+  // the salesman's desk: the dealer's panel in front, his screen, papers and a set of keys; the client's chair
+  R.counter(-1.0, 1.0, deskZ, dd, dh, 0x1b2a7a, 0xe6e6e6, 'pnlCars');
+  b.box(0.06, 0.12, 0.06, 0.45, dh, deskZ - 0.12, C.dark); b.box(0.52, 0.32, 0.03, 0.45, dh + 0.12, deskZ - 0.12, C.black, { nz: { rect: SUV.screen2 } });
+  b.box(0.32, 0.015, 0.24, -0.45, dh, deskZ + 0.05, C.white); b.beam([-0.25, dh + 0.02, deskZ + 0.1], [-0.12, dh + 0.02, deskZ + 0.02], 0.012, 0.012, C.blue);
+  b.box(0.025, 0.012, 0.07, -0.02, dh, deskZ + 0.2, C.chrome); b.box(0.045, 0.008, 0.05, -0.02, dh, deskZ + 0.27, C.yellow);   // the keys to hand over
+  R.chair(-0.75, front + 0.45, PI, 0x2b2f36);
+  // the keys on their board behind him, the clock above, a poster on the wall
+  const kx = 1.35;
+  b.box(1.02, 0.7, 0.03, kx, 1.2, zb + 0.015, C.woodDark);
+  R.panel(kx, 1.55, zb + 0.03, 0, 0.96, 0.64, 'keys');
+  if (R.det) R.panel(0, R.H - 0.6, zb + 0.005, 0, 0.36, 0.36, 'clock');
+  R.panel(xl - 0.008, 1.7, Math.min(rear - 0.8, zb + 1.6), PI / 2, 0.6, 0.87, 'posterCars');
+  // waiting: a bench facing the cars, a low table with brochures, a plant
+  const bx = Math.max(xl + 1.0, (xl - 1.1) / 2);
+  if (R.bench(bx, zb + 0.35, 0, 3, 0x1b2a7a) && R.det && R.table(bx, zb + 1.05, 1.0, 0.45, 0.42, 0xe6e6e6, C.steel)) {
+    for (let k = 0; k < 3; k++) b.box(0.21, 0.01 + k * 0.004, 0.28, bx - 0.3 + k * 0.3, 0.42, zb + 1.05, [C.white, 0xf2c230, 0x1b2a7a][k]);
+  }
+  R.plant(xl + 0.35, zb + 0.35, 0.9);
+  // oil and parts on a shelf at the back right, tyres and a plant by the right wall
+  const units = R.run('back', 2.0, xr, U(0.45, 2.0, 4, C.steel, 0x7d858d, 0xd8d2c2), garageFill);
+  if (units) R.browse.push({ x: (2.0 + xr) / 2, z: zb + 0.45 + 0.7, yaw: PI });
+  const r1 = out.find(l => l.x > 0);
+  if (r1) {
+    R.staff.push({ x: r1.x + cw / 2 + 0.45, z: cz, yaw: -PI / 2 });                     // someone shining the cars
+    const tx = xr - 0.45, tz = cz + 1.0;
+    if (tx - 0.35 > r1.x + cw / 2 + 0.9 && R.ok(R.foot(tx, tz, 0.62, 0.62))) {
+      for (let n = 0; n < (R.det ? 4 : 2); n++) b.cyl('y', 0.3, 0.3, 0.19, tx, 0.095 + n * 0.19, tz, 0xffffff, 12, { pos: true, neg: false, capPaint: 0x2b2b2e, side: SUV.tyre });
+      R.solid(R.foot(tx, tz, 0.62, 0.62), 1);
+    }
+    if (xr - (r1.x + cw / 2) > 1.6) R.plant(xr - 0.4, D / 2 - 0.5, 1.1);
+  }
+  const nt = Math.max(2, Math.round(W / 3.5));
+  for (let i = 0; i < nt; i++) { R.tube(-W / 2 + (i + 0.5) * (W / nt), cz); R.tube(-W / 2 + (i + 0.5) * (W / nt), deskZ + 0.6); }
+  const spot = { x: 0, z: front + 0.62, yaw: PI };
+  return { counter: spot, till: { x: 0.6, z: deskZ, yaw: PI, y: dh + 0.9 }, keeper: { x: 0, z: back - 0.5, yaw: 0 },
+    queue: [spot, { x: 0.5, z: spot.z + 0.75, yaw: PI - 0.4 }, { x: -0.4, z: spot.z + 1.5, yaw: PI + 0.3 }], door: { x: 0, z: D / 2 - 0.5, yaw: PI }, lots: out };
+}
+
+/**
+ * The room itself for a walkable interior: tiled floor, plastered walls with a doorway at +z, ceiling. `open`: a
+ * showroom's shell instead — back and side walls inside the footprint, the ceiling, a header beam over the open front.
+ */
+function shell(R: Room, open = false) {
   const { W, D, H, b } = R, T = 0.2, door = 1.6;
+  if (open) {
+    const t = 0.14, wall = 0xf2f2ee;
+    b.box(W, H, t, 0, 0, -D / 2 + t / 2, wall);
+    for (const s of [-1, 1]) b.box(t, H, D, s * (W / 2 - t / 2), 0, 0, wall);
+    b.box(W - 2 * t, 0.12, 0.02, 0, 0, -D / 2 + t + 0.01, 0x9a8a72);
+    b.slab(W + 0.3, 0.25, D + 0.3, 0, H, 0, 0xf4efe6);
+    b.box(W, 0.7, 0.25, 0, H - 0.7, D / 2 - 0.125, 0x2b2f36);
+    R.solid(rect(-W / 2, W / 2, -D / 2, -D / 2 + t), H);
+    R.solid(rect(-W / 2, -W / 2 + t, -D / 2, D / 2), H); R.solid(rect(W / 2 - t, W / 2, -D / 2, D / 2), H);
+    return;
+  }
   for (let x = -W / 2; x < W / 2 - 0.01; x += 2) for (let z = -D / 2; z < D / 2 - 0.01; z += 2) {
     const w = Math.min(2, W / 2 - x), d = Math.min(2, D / 2 - z);
     b.decal([x + w / 2, 0.004, z + d / 2], [1, 0, 0], [0, 0, -1], w, d, SUV.tiles);
@@ -1113,7 +1239,7 @@ function shell(R: Room) {
 }
 
 // ------------------------------------------------------------------------------------------------------------ API
-const TYPE_SEED: Record<ShopType, number> = { grocery: 1, phone: 2, clothing: 3, furniture: 4, pharmacy: 5, cafe: 6, bank: 7, hardware: 8, craft: 9, beauty: 10, garage: 11, restaurant: 12 };
+const TYPE_SEED: Record<ShopType, number> = { grocery: 1, phone: 2, clothing: 3, furniture: 4, pharmacy: 5, cafe: 6, bank: 7, hardware: 8, craft: 9, beauty: 10, garage: 11, restaurant: 12, showroom_cars: 13 };
 const ONE = new THREE.Vector3(1, 1, 1), UP = new THREE.Vector3(0, 1, 0);
 
 /**
@@ -1124,8 +1250,9 @@ export function buildShopInterior(type: ShopType, footprint: { w: number; d: num
   const W = footprint.w, D = footprint.d, H = o.height ?? 3.6;
   const det = ({ low: 0, medium: 1, high: 2 } as const)[o.detail ?? 'high'];
   const R = new Room(W, D, H, det, seeded(seed * 7919 + TYPE_SEED[type] * 104729), o.reserve ?? [], o.id ?? `shop:${type}`);
-  if (o.shell) shell(R);
-  const plan = type === 'cafe' ? cafePlan(R) : type === 'bank' ? bankPlan(R) : type === 'restaurant' ? restaurantPlan(R) : counterShop(R, type === 'craft' ? { ...STYLES.craft, back: craftFill(o.variant ?? 0), side: craftFill(o.variant ?? 0) } : STYLES[type], o.variant ?? 0);
+  if (o.shell) shell(R, o.shell === 'open');
+  const plan = type === 'cafe' ? cafePlan(R) : type === 'bank' ? bankPlan(R) : type === 'restaurant' ? restaurantPlan(R)
+    : type === 'showroom_cars' ? showroomPlan(R, o.lots ?? SHOWROOM_LOTS, o.shell !== true) : counterShop(R, type === 'craft' ? { ...STYLES.craft, back: craftFill(o.variant ?? 0), side: craftFill(o.variant ?? 0) } : STYLES[type], o.variant ?? 0);
 
   // meshes: the atlas body, its glass, the showroom's furniture
   const M = shopMaterials();
@@ -1179,6 +1306,7 @@ export function buildShopInterior(type: ShopType, footprint: { w: number; d: num
     anchors: {
       counter: spot(plan.counter), till: { ...spot(plan.till), y: y + plan.till.y }, keeper: spot(plan.keeper), staff: R.staff.map(spot),
       queue: plan.queue.map(spot), browse: R.browse.map(spot), door: spot(plan.door),
+      ...(plan.lots ? { lots: plan.lots.map(l => ({ ...spot(l), card: spot(l.card) })) } : {}),
     },
     bounds: box(rect(-W / 2, W / 2, -D / 2, D / 2)),
     front: w(0, D / 2),
@@ -1193,12 +1321,19 @@ export function buildShopInterior(type: ShopType, footprint: { w: number; d: num
  * shop's sheet use it now that the sheet stands at the counter inside (the old sheet stood 1.7 m out).
  */
 export function stockedShopFront(root: THREE.Object3D, key: string, out = 1.7): { x: number; z: number } | null {
-  let hit: { front?: { x: number; z: number }; bounds: ShopRect } | null = null;
-  root.traverse(o => { if (!hit && o.userData.shop?.key === key) hit = o.userData.shop; });
-  const h = hit as { front?: { x: number; z: number }; bounds: ShopRect } | null;
+  const h = stockedShop(root, key);
   if (!h?.front) return null;
   const cx = (h.bounds.x0 + h.bounds.x1) / 2, cz = (h.bounds.z0 + h.bounds.z1) / 2, dx = h.front.x - cx, dz = h.front.z - cz, d = Math.hypot(dx, dz) || 1;
   return { x: h.front.x + (dx / d) * out, z: h.front.z + (dz / d) * out };
+}
+
+/** What a stocked shop keeps on its group (`userData.shop`: src/world/city.ts, src/world/builder.ts, src/game/shops.ts). */
+export interface StockedShop { key: string; type: ShopType; anchors: ShopAnchors; bounds: ShopRect; front?: { x: number; z: number }; room?: boolean }
+/** A hub's stocked shop by its key (its anchors: a showroom's lots, the salesman's desk…), or null. */
+export function stockedShop(root: THREE.Object3D, key: string): StockedShop | null {
+  let hit: StockedShop | null = null;
+  root.traverse(o => { if (!hit && o.userData.shop?.key === key) hit = o.userData.shop as StockedShop; });
+  return hit;
 }
 
 /** Draw-call-free check used by tests and the showroom: a local copy of a placed point (inverse of `at`). */

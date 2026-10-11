@@ -25,6 +25,9 @@ describe('presence protocol', () => {
     expect(parseMove({ ...move, space: 'plateau:venue:mosque:11:salle' }, 'pikine')).toBeNull();
     for (const bad of ['plateau:venue:mosque:11', 'plateau:venue:mosque:1:salle', 'plateau:venue:mosque:11:salle:x', 'plateau:venue:dibiterie:12:salle']) expect(parseMove({ ...move, space: bad }, 'plateau')).toBeNull();
     expect(parseMove({ ...move, space: 'plateau:venue:mosque:11:salle', clip: 'Kneel', speed: 0 }, 'plateau')?.clip).toBe('Kneel');   // kneeling on a row
+    expect(parseMove({ ...move, space: 'almadies:venue:club', clip: 'Dance_A' }, 'almadies')?.space).toBe('almadies:venue:club');   // La Vague's terrace, dancing
+    expect(parseMove({ ...move, space: 'almadies:venue:club' }, 'plateau')).toBeNull();
+    for (const bad of ['almadies:venue:club:x', 'almadies:venue:clubs', 'almadies:venue:club:11']) expect(parseMove({ ...move, space: bad }, 'almadies')).toBeNull();
   });
   it('carries the held poses (lying on a bed, sitting on a mat, kneeling, riding) and nothing else', () => {
     for (const clip of ['Lie', 'SitFloor', 'Kneel', 'Ride', 'Sit', 'Dance_A']) expect(parseMove({ ...move, clip, speed: 0 }, 'pikine')?.clip).toBe(clip);
@@ -36,12 +39,15 @@ describe('presence protocol', () => {
     expect(parseMove({ ...seated, arena: { d: 12, p: 4, t: 2, w: 1, o: 0 } }, 'pikine')?.arena).toEqual({ d: 12, p: 4, t: 2, w: 1, o: 0 });
     expect(parseMove(seated, 'pikine')).not.toHaveProperty('arena');                       // optional
     expect(parseMove({ ...seated, clip: 'Celebrate' }, 'pikine')?.clip).toBe('Celebrate');   // « Encourager » from the stands
-    for (const arena of [null, 3, 'bout', [12, 3, 4], {}, { d: 12, p: 3 }, { d: 0, p: 3, t: 1 }, { d: 1.5, p: 3, t: 1 }, { d: 12, p: 7, t: 1 }, { d: 12, p: -1, t: 1 },
+    for (const arena of [null, 3, 'bout', [12, 3, 4], {}, { d: 12, p: 3 }, { d: 0, p: 3, t: 1 }, { d: 1.5, p: 3, t: 1 }, { d: 12, p: 8, t: 1 }, { d: 12, p: -1, t: 1 },
       { d: 12, p: 3, t: -1 }, { d: 12, p: 3, t: 901 }, { d: 12, p: 3, t: NaN }, { d: 12, p: 3, t: '4' }, { d: 12, p: 3, t: 1, w: 3 }, { d: 12, p: 3, t: 1, o: 4 },
       { d: 12, p: 3, t: 1, wallet: 500 }, { d: 12, p: 3, t: 1, record: { wins: 9 } }, { d: 12, p: 3, t: 1, __proto__: { x: 1 }, reward: 1 }]) {
       expect(parseMove({ ...seated, arena }, 'pikine')).toBeNull();
     }
     expect(parseArena({ d: 1_000_001, p: 1, t: 0 })).toBeNull();
+    // which preliminary is running (src/arena/undercard.ts): a small index, only an integer
+    expect(parseMove({ ...seated, arena: { d: 12, p: 2, t: 14.5, i: 1 } }, 'pikine')?.arena).toEqual({ d: 12, p: 2, t: 14.5, i: 1 });
+    for (const i of [-1, 6, 1.5, '1', null]) expect(parseMove({ ...seated, arena: { d: 12, p: 2, t: 1, i } }, 'pikine')).toBeNull();
   });
   it('names the show phases and outcomes as the arena does', () => {
     expect([...ARENA_PHASES]).toEqual([...SHOW_PHASES]);

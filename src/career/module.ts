@@ -9,13 +9,15 @@ import { FightNews, resultText } from './world';
 import { arenaFighter } from '../arena/fighter';
 import { posters } from '../arena/posters';
 import { STYLES } from '../lamb/rules';
-import { setBillSource, type Bill } from '../arena/program';
+import { setBillSource, setFollowSource, type Bill } from '../arena/program';
+import { setRecordSource } from '../arena/ceremony';
+import { portraitSvg } from './portrait';
 import {
   ATTRS, BOUTS_MAX, RUNGS, boutPoints, dimensions, fighterAttributes, publicRecord, purseOf, rankOf, recordLine, summary,
   type BoutEntry, type BoutRes, type CareerSave,
 } from './career';
 import {
-  GALA_RUNG, TITLE_IDLE_DAYS, TITLE_RUNG, beltOf, cardOf, galaBlock, isFightDay, ladderAt, mainEvent, opponentFor, placeOf, titleBout, wrestlerById,
+  GALA_RUNG, TITLE_IDLE_DAYS, TITLE_RUNG, beltOf, cardOf, fightsTonight, wrestlerCard, galaBlock, isFightDay, ladderAt, mainEvent, opponentFor, placeOf, titleBout, wrestlerById,
   type Ladder, type Standing,
 } from './roster';
 import { boutRecap, deltaText, dimMoves, galaRecap, recordDay, scoresOf, sinceYesterday, stepsCrossed } from './progress';
@@ -147,6 +149,9 @@ function galaMoment(ctx: GameCtx, day: number, winner: string | null) {
     place: w ? { before: placeIn(before, w.id), after: placeIn(after, w.id) } : undefined, belt,
   });
   if (r.lines.length < 2) r.lines.push(`En tête : ${after.table.slice(0, 2).map(x => `${x.name} ${x.pts} pts`).join(' · ')}`);
+  // the wrestler the player follows, when he was in this main event
+  const fav = career(ctx).fav, fw = fav ? wrestlerById(fav) : undefined;
+  if (fw && (bill.left.id === fw.id || bill.right.id === fw.id)) r.lines.push(!w ? `Ton lutteur ${fw.name} : match nul` : w.id === fw.id ? `Ton lutteur ${fw.name} a gagné !` : `Ton lutteur ${fw.name} a perdu`);
   ctx.hud.moment(r);
 }
 
@@ -219,7 +224,7 @@ function arenaRows(ctx: GameCtx): { label: string; value: string }[] {
   if (r.next) rows.push({ label: `Prochain palier : ${r.next.label}`, value: r.next.missing });
   // the city's ladder: where the player stands among the roster, the belt, tonight's card
   const l = ladder(ctx), day = ctx.day(), place = placeOf(l, r.score), b = belt(ctx);
-  rows.push({ label: `Classement de la ville · saison ${l.season + 1}`, value: `${place}${place === 1 ? 'er' : 'e'} sur ${l.table.length + 1} · en tête : ${l.table.slice(0, 2).map(s => `${s.name} ${s.pts}`).join(', ')}` });
+  rows.push({ label: `Ta place en ville · saison ${l.season + 1}`, value: `${place}${place === 1 ? 'er' : 'e'} sur ${l.table.length + 1}` });   // the whole table is below, linking to each card
   const holder = l.title.holder === 'player' ? 'toi' : l.title.holder ? wrestlerById(l.title.holder)?.name ?? '—' : 'vacante';
   const held = l.title.holder && l.title.holder !== 'player' && l.title.defences ? ` · ${l.title.defences} défense${l.title.defences > 1 ? 's' : ''}` : '';
   rows.push({ label: 'Ceinture', value: b.held ? `à toi · ${b.defences} défense${b.defences > 1 ? 's' : ''} · à remettre en jeu avant le jour ${l.title.last + TITLE_IDLE_DAYS}` : `${holder}${held}` });
@@ -250,7 +255,33 @@ export const careerModule: GameModule = {
       galaMoment(ctx, day, winner);
       ctx.save();
     });
+    // the announcer of the wrestlers' entrance reads each one's season record from the city's ladder (src/arena/ceremony.ts)
+    setRecordSource((id, _name, day) => { const st = ladder(ctx, day).table.find(x => x.id === id); return st ? { v: st.v, d: st.d, n: st.n } : null; });
     syncRecord(ctx);
+    // the wrestler the player follows: tonight's card or undercard (the evening call and « Ce soir » say so)
+    setFollowSource(day => {
+      const f = career(ctx).fav, w = f ? wrestlerById(f) : undefined; if (!w) return null;
+      const t = fightsTonight(ladder(ctx, day), day, w.id);
+      return t ? { name: w.name, ...t } : null;
+    });
+    // « Lutteurs » in the arena app: one card per roster wrestler, the city's table linking to them, « Suivre »
+    phoneHooks.lutteurs = () => {
+      const l = ladder(ctx), you = playerName(ctx), fav = career(ctx).fav ?? null;
+      return l.table.flatMap(s => { const c = wrestlerCard(l, s.id, you); return c ? [{ ...c, portrait: portraitSvg(c.id, c.skin, c.look, `Portrait de ${c.name}`), followed: c.id === fav }] : []; });
+    };
+    phoneHooks.cityTable = () => {
+      const l = ladder(ctx), r = rank(ctx), place = placeOf(l, r.score), rows: { id: string | null; place: number; name: string; pts: number; sub: string }[] = [];
+      l.table.forEach((s, i) => rows.push({ id: s.id, place: i + 1, name: s.name, pts: s.pts, sub: `${s.v} V · ${s.d} D${s.n ? ` · ${s.n} N` : ''}${l.title.holder === s.id ? ' · champion' : ''}` }));
+      rows.splice(place - 1, 0, { id: null, place, name: 'Toi', pts: r.score, sub: r.label });
+      return { season: l.season + 1, rows: rows.map((x, i) => ({ ...x, place: i + 1 })) };
+    };
+    phoneHooks.follow = id => {
+      const c = career(ctx), w = id ? wrestlerById(id) : undefined;
+      if (w && c.fav !== w.id) { c.fav = w.id; ctx.toast(`Tu suis ${w.name} : « Ce soir » et l’annonce du soir te diront quand il combat`); }
+      else { const old = c.fav ? wrestlerById(c.fav)?.name : null; delete c.fav; if (old) ctx.toast(`Tu ne suis plus ${old}`); }
+      ctx.save();
+      return c.fav ?? null;
+    };
     // The phone's arena app keeps its own rows (discipline, records by mode) after the career rows.
     const base = phoneHooks.arenaProfile;
     phoneHooks.arenaProfile = () => [...arenaRows(ctx), ...(base?.() ?? [])];

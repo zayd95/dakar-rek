@@ -120,6 +120,7 @@ export const LEGACY_TAGS: readonly { has: string; tags: readonly string[]; hours
   { has: ':city:boutique', tags: ['shop'], hours: [7, 22] },
   { has: ':city:salon-tech', tags: ['shop', 'salon'], hours: [9, 21] },
   { has: ':city:craft', tags: ['shop'], hours: [9, 19] },
+  { has: ':shop:meubles', tags: ['shop'], hours: [8, 20] },
 ];
 
 /**
