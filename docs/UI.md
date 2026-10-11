@@ -157,6 +157,24 @@ Behind and above the player, never inside a wall or inside a tree's leaves:
   the checks' `look`, `lookYaw`, `faceCamera`, `lookAtPlayer`) is kept until the player walks.
 - **Debug.** `__dakar.camInfo()` gives the free room, tight, lift and swinging; `__dakar.camInLeaves()` is never true.
 
+## The Làmb 2.0 duel on a phone (?lamb2)
+
+The duel's HUD is built by `src/lamb/duel.ts` (its markup and its own dark styles); its phone layout is restyled from
+`src/ui/style.css` (« the Làmb 2.0 duel HUD », every selector under `body.induel` so it wins over the duel's stylesheet),
+without touching the duel's simulation:
+- **Four gauges, no life bar.** Each side's panel names its three bars on the bar itself — Endurance (green), Équilibre
+  (blue), Sang-froid (amber), 11 px with a stripe of the bar's colour — so the old legend line is hidden. In the
+  empoignade the **Prise** is a panel of its own: « Prise · toi » in green over the left end, « lui » in red over the
+  right end, the 12 px bar, its words in full under it (12.5 px, no shadow on a dark panel).
+- **Portrait.** The gauges under the title (≈ 54–120 px), the rules' line, the lesson or drill card, then the message
+  and the Prise above the wrestlers (under the card when one is shown, `.duel-step:not([hidden]) ~ …`).
+- **Landscape** (≤ 500 px high). The gauges in the top row between the title (≤ 22 vw) and the timer; the card on the
+  left above the joystick (≤ 24 vw); the message, the Prise and the rules' line in the column between that card and the
+  duel's buttons (`left: 62vw − 109px`, `width: min(76vw − 262px, 360px)`, shifted by the notches).
+- **Clear of the touch buttons.** Nothing of the HUD under the duel's five buttons or the joystick; on a 360 px phone
+  the joystick is 108 px and 12 px from the edge during the duel, clear of « Grosse frappe ».
+- Checked by `scripts/check-lamb2.mjs` (`gauges`): 390×844, 844×390, 360×640, 667×375, the fight and the empoignade.
+
 ## Checks
 
 `node scripts/check-ui.mjs <url> <outDir> [desktop,phone,landscape]` — HUD layout and touch targets, each closing path

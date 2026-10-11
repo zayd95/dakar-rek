@@ -400,3 +400,61 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }
+
+/* ------------------------------------------------------------- the Làmb 2.0 duel HUD (?lamb2; markup: src/lamb/duel.ts)
+   Four gauges and no life bar: each side's Endurance, Équilibre and Sang-froid named on its own bar (the colour of the
+   bar beside its name), and in the empoignade the Prise (« toi » on the left in green, « lui » on the right in red)
+   with its words under it. Readable on a phone in portrait and in landscape, never under the duel's buttons or the
+   joystick. Styles only: the duel's markup, numbers and rules stay src/lamb's. Every selector starts with body.induel
+   so it wins over the duel's own stylesheet, injected later in the page. */
+body.induel .duel-ui.frappe .duel-legend { display:none; }                                /* the names are on the bars */
+body.induel .duel-ui.frappe .duel-bars { top:calc(env(safe-area-inset-top,0px) + 54px); gap:8px; }
+body.induel .duel-ui.frappe .duel-bars > div { min-width:0; padding:5px 8px 7px; border-radius:12px; background:rgba(15,23,42,.82); }
+body.induel .duel-ui.frappe .duel-bars > div > span { display:block; font-size:12.5px; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.induel .duel-ui.frappe .duel-bars > div > i { position:relative; overflow:visible; height:8px; margin:5px 0 0 72px; }
+body.induel .duel-ui.frappe .duel-bars > div > i.bal, body.induel .duel-ui.frappe .duel-bars > div > i.cmp { height:7px; margin-top:6px; }
+body.induel .duel-ui.frappe .duel-bars > div > i > b { border-radius:4px; }
+body.induel .duel-ui.frappe .duel-bars > div > i::before { content:'Endurance'; position:absolute; right:calc(100% + 6px); top:50%; transform:translateY(-50%);
+  padding-left:5px; border-left:3px solid #22c55e; font:700 11px/1.1 system-ui,sans-serif; color:#e2e8f0; white-space:nowrap; }
+body.induel .duel-ui.frappe .duel-bars > div > i.bal::before { content:'Équilibre'; border-left-color:#38bdf8; }
+body.induel .duel-ui.frappe .duel-bars > div > i.cmp::before { content:'Sang-froid'; border-left-color:#f59e0b; }
+body.induel .duel-ui.frappe .duel-note { top:calc(env(safe-area-inset-top,0px) + 128px); font-size:11px; }
+body.induel .duel-ui.frappe .duel-step { top:calc(env(safe-area-inset-top,0px) + 148px); }
+body.induel .duel-ui.frappe .duel-msg { top:max(27%, calc(env(safe-area-inset-top,0px) + 236px)); }
+/* the Prise: a gauge panel like the others, « toi » / « lui » over its ends, its words in full under it */
+body.induel .duel-ui.frappe .duel-clinch { top:calc(max(27%, calc(env(safe-area-inset-top,0px) + 236px)) + 58px); width:min(88vw, 360px);
+  padding:6px 10px 8px; border-radius:12px; background:rgba(15,23,42,.82); }
+body.induel .duel-ui.frappe .duel-clinch > i { position:relative; overflow:visible; height:12px; margin-top:15px; }
+body.induel .duel-ui.frappe .duel-clinch > i > b { border-radius:4px 0 0 4px; }
+body.induel .duel-ui.frappe .duel-clinch > i::before, body.induel .duel-ui.frappe .duel-clinch > i::after { position:absolute; bottom:calc(100% + 4px); font:800 11px/1 system-ui,sans-serif; white-space:nowrap; }
+body.induel .duel-ui.frappe .duel-clinch > i::before { content:'Prise · toi'; left:0; color:#86efac; }
+body.induel .duel-ui.frappe .duel-clinch > i::after { content:'lui'; right:0; color:#fca5a5; }
+body.induel .duel-ui.frappe .duel-clinch > em { margin-top:6px; font-size:12.5px; font-weight:600; line-height:1.3; color:#f1f5f9; text-shadow:none; }
+/* Coach Ablaye's lesson or a drill (its card under the rules' line): the message and the Prise go under the card */
+body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-msg { top:calc(env(safe-area-inset-top,0px) + 290px); }
+body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-clinch { top:calc(env(safe-area-inset-top,0px) + 348px); }
+/* a narrow phone (360 px): the joystick a little smaller and closer to the edge, clear of « Grosse frappe » */
+@media (max-width:380px) and (orientation:portrait) {
+  body.induel.touch #joy { left:calc(12px + var(--sa-l)); bottom:calc(24px + var(--sa-b)); width:108px; height:108px; }
+}
+/* a phone in landscape: the gauges in the top row between the title and the timer; the lesson or drill card on the
+   left above the joystick; the message and the Prise in the column between the card and the duel's buttons; the
+   rules' line at the bottom of that column */
+@media (max-height:500px) and (orientation:landscape) {
+  body.induel .duel-ui.frappe .duel-head { flex:0 1 auto; max-width:22vw; }
+  body.induel .duel-ui.frappe .duel-timer { margin-left:auto; }
+  body.induel .duel-ui.frappe .duel-bars { top:calc(env(safe-area-inset-top,0px) + 6px); width:min(42vw, 440px); gap:6px; }
+  body.induel .duel-ui.frappe .duel-bars > div { padding:4px 8px 5px; }
+  body.induel .duel-ui.frappe .duel-bars > div > span { font-size:11.5px; }
+  body.induel .duel-ui.frappe .duel-bars > div > i { height:7px; margin:4px 0 0 64px; }
+  body.induel .duel-ui.frappe .duel-bars > div > i.bal, body.induel .duel-ui.frappe .duel-bars > div > i.cmp { height:6px; margin-top:4px; }
+  body.induel .duel-ui.frappe .duel-bars > div > i::before { font-size:10.5px; }
+  body.induel .duel-ui.frappe .duel-step { top:calc(env(safe-area-inset-top,0px) + 56px); left:max(10px, env(safe-area-inset-left,0px)); transform:none; width:min(24vw, 220px); }
+  /* the column: from the card's right edge (18 px + 24 vw) to the buttons' left edge (100 vw − 236 px), notches included */
+  body.induel .duel-ui.frappe .duel-msg, body.induel .duel-ui.frappe .duel-clinch, body.induel .duel-ui.frappe .duel-note {
+    left:calc(62vw - 109px + (var(--sa-l) - var(--sa-r)) / 2); width:min(calc(76vw - 262px - var(--sa-l) - var(--sa-r)), 360px); }
+  body.induel .duel-ui.frappe .duel-msg, body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-msg { top:calc(env(safe-area-inset-top,0px) + 64px); font-size:20px; }
+  body.induel .duel-ui.frappe .duel-clinch, body.induel .duel-ui.frappe .duel-step:not([hidden]) ~ .duel-clinch { top:calc(env(safe-area-inset-top,0px) + 118px); }
+  body.induel .duel-ui.frappe .duel-clinch > em { font-size:12px; }
+  body.induel .duel-ui.frappe .duel-note { top:auto; bottom:calc(env(safe-area-inset-bottom,0px) + 6px); }
+}

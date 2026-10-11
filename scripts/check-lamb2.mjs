@@ -6,7 +6,9 @@
 // answering it wins the exchange, a lost grip makes the balance slip (felt on screen), Casser breaks free, a
 // throw on a wrestler who slips takes him down, then the fall (slow-down, referee, crowd) (desktop), his throw is countered with « Contrer » (phone) · recap with the strikes,
 // not counted in any record. Phone: no « avec frappe » without the flag, the five buttons fit, Coach Ablaye's lesson
-// (his word, the buttons highlighted step by step, « Passer »), captures.
+// (his word, the buttons highlighted step by step, « Passer »), captures. The gauges (src/ui/style.css): each named on
+// its bar, the Prise with « toi » / « lui », readable and clear of the buttons and the joystick on 390×844, 844×390,
+// 360×640 and 667×375.
 // Usage: node scripts/check-lamb2.mjs [baseUrl] [outDir]   — run it under the shared lock (flock /tmp/dakar-browser.lock).
 // SwiftShader renders a few fps and the game clamps dt to 0.1 s, so every wait is on game state.
 import { chromium } from 'playwright';
@@ -91,6 +93,46 @@ const layout = page => page.evaluate(() => {
   return { n: btns.length, labels: btns.map(b => b.text), overlaps, inside, unreadable, others: others.map(o => o.k), bars: !!document.querySelector('[data-k=mebal]'), vw: innerWidth, vh: innerHeight };
 });
 const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unreadable.length === 0 && l.bars;
+/**
+ * The duel's gauges (src/ui/style.css restyles the markup of src/lamb/duel.ts): each side's three bars named on the bar
+ * (Endurance, Équilibre, Sang-froid, ≥ 10.5 px, the bar ≥ 6 px tall and ≥ 56 px long), in the Prise panel « toi » and
+ * « lui » over the bar and its words (≥ 12 px); no life bar; every block on screen, apart from each other, never under
+ * the duel's buttons or the joystick (the message: its words, not its full-width box).
+ */
+const gauges = page => page.evaluate(() => {
+  const r = el => { const b = el.getBoundingClientRect(); return { l: Math.round(b.left), t: Math.round(b.top), r: Math.round(b.right), b: Math.round(b.bottom) }; };
+  const shown = el => !!el && !el.hidden && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0;
+  const hit = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+  const pseudo = (el, w) => { const c = getComputedStyle(el, w); return { text: c.content.replace(/^"|"$/g, ''), font: parseFloat(c.fontSize) }; };
+  const sides = ['me', 'ai'].map(k => {
+    const panel = document.querySelector(`[data-k=${k}bar]`);
+    const bars = [...(panel?.querySelectorAll(':scope > i') ?? [])].map(i => ({ ...pseudo(i, '::before'), h: Math.round(i.getBoundingClientRect().height), w: Math.round(i.getBoundingClientRect().width), roomLeft: Math.round(i.getBoundingClientRect().left - panel.getBoundingClientRect().left) }));
+    return { k, box: panel ? r(panel) : null, bars };
+  });
+  const named = sides.every(sd => sd.bars.map(b => b.text).join(',') === 'Endurance,Équilibre,Sang-froid' && sd.bars.every(b => b.font >= 10.5 && b.h >= 6 && b.w >= 56 && b.roomLeft >= 56));
+  const cl = document.querySelector('.duel-clinch'), clOn = shown(cl), tug = cl?.querySelector(':scope > i');
+  const prise = clOn ? { left: pseudo(tug, '::before').text, right: pseudo(tug, '::after').text, words: cl.querySelector('em')?.textContent ?? '', font: parseFloat(getComputedStyle(cl.querySelector('em')).fontSize), h: Math.round(tug.getBoundingClientRect().height) } : null;
+  const msg = document.querySelector('.duel-msg'), rg = document.createRange(); rg.selectNodeContents(msg);
+  const mr = rg.getBoundingClientRect(), msgBox = msg.textContent && mr.width > 0 ? { l: Math.round(mr.left), t: Math.round(mr.top), r: Math.round(mr.right), b: Math.round(mr.bottom) } : null;
+  const blocks = [
+    ...sides.filter(sd => sd.box).map(sd => ({ k: `${sd.k}bar`, ...sd.box })),
+    ...[['note', '.duel-note'], ['step', '.duel-step'], ['clinch', '.duel-clinch'], ['head', '.duel-head'], ['timer', '.duel-timer'], ['abandon', '.duel-ab']].map(([k, q]) => [k, document.querySelector(q)]).filter(([, el]) => shown(el)).map(([k, el]) => ({ k, ...r(el) })),
+    ...(msgBox ? [{ k: 'msg', ...msgBox }] : []),
+  ];
+  const controls = [...[...document.querySelectorAll('.duel-btns button')].map(b => ({ k: b.dataset.k, ...r(b) })), ...(shown(document.getElementById('joy')) ? [{ k: 'joy', ...r(document.getElementById('joy')) }] : [])];
+  const clashes = [];
+  for (const b of blocks) for (const c of controls) if (hit(b, c)) clashes.push(`${b.k}/${c.k}`);
+  for (let i = 0; i < blocks.length; i++) for (let j = i + 1; j < blocks.length; j++) {
+    const a = blocks[i], b = blocks[j];
+    if (['head', 'timer', 'abandon'].includes(a.k) && ['head', 'timer', 'abandon'].includes(b.k)) continue;   // the duel's own top row
+    if (hit(a, b)) clashes.push(`${a.k}/${b.k}`);
+  }
+  const off = blocks.filter(b => b.l < 0 || b.t < 0 || b.r > innerWidth || b.b > innerHeight).map(b => b.k);
+  const lifeBar = /\bPV\b|points de vie|\bHP\b|barre de vie/i.test(document.querySelector('.duel-ui')?.textContent ?? '');
+  return { vw: innerWidth, vh: innerHeight, named, sides, prise, clashes, off, lifeBar, legend: shown(document.querySelector('.duel-legend')) };
+});
+const gaugesOk = (g, clinch = false) => g.named && !g.lifeBar && !g.legend && g.clashes.length === 0 && g.off.length === 0
+  && (!clinch || (!!g.prise && g.prise.left === 'Prise · toi' && g.prise.right === 'lui' && /^Prise : /.test(g.prise.words) && g.prise.font >= 12 && g.prise.h >= 10));
 
 // ------------------------------------------------------------------ desktop, with the flag
 {
@@ -278,6 +320,9 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   await page.waitForTimeout(600);
   const lay = await layout(page);
   check('phone 390×844: the five buttons fit, apart from each other, the joystick and any other control, labels readable', layoutOk(lay), lay);
+  const g1 = await gauges(page);
+  check('phone 390×844: the gauges named on their bars (Endurance, Équilibre, Sang-froid), no life bar, nothing under the buttons or the joystick', gaugesOk(g1), g1);
+  await shot(page, 'phone-gauges');
   await strike(page, 'big');
   await wait(page, () => window.__dakar.duelInfo()?.strike?.player === 'big', null, 20000);
   await shot(page, 'phone-big-windup');
@@ -286,11 +331,11 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   await page.waitForTimeout(300);
   await shot(page, 'phone-exchange');
   // step 5 on the phone: he tries a throw, the button turns to « Contrer », and a steady counter turns it
-  let hot = false, label = '', clinchLay = null;
+  let hot = false, label = '', clinchLay = null, clinchG = null;
   const ph = await until(page, i => !i || i.phase === 'fall' || i.phase === 'result', async i => {
     if (i.phase === 'fight') { if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); } return; }
     if (i.phase !== 'clinch') return;
-    if (!clinchLay) { clinchLay = await layout(page); await shot(page, 'phone-clinch'); }
+    if (!clinchLay) { clinchLay = await layout(page); clinchG = await gauges(page); await shot(page, 'phone-clinch'); }
     const at = i.clinch.attempt;
     if (at?.by === 'opponent') {
       if (!at.counter) {
@@ -306,6 +351,7 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   await page.keyboard.up('KeyD');
   check('phone, step 5: his throw turns the button into « Contrer », and the counter turns it (he goes down)', hot && /Contrer/.test(label) && ph?.lastThrow?.by === 'opponent' && ph.lastThrow.result === 'countered' && ph.winner === 'player', { hot, label, lastThrow: ph?.lastThrow, phase: ph?.phase, winner: ph?.winner });
   check('phone 390×844, empoignade: Pousser, Tirer, Pivoter, Casser, Projeter — fit and readable', !!clinchLay && layoutOk(clinchLay) && ['Pousser', 'Tirer', 'Pivoter', 'Casser', 'Projeter'].every(w => clinchLay.labels.some(t => t.startsWith(w))), clinchLay);
+  check('phone 390×844, empoignade: the Prise named (« toi » / « lui »), its words readable, the four gauges clear of the buttons', !!clinchG && gaugesOk(clinchG, true), clinchG);
   check('phone: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
@@ -318,6 +364,8 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   await page.waitForTimeout(600);
   const l1 = await layout(page);
   check('phone 844×390: the five buttons fit, apart from each other, the joystick and any other control, labels readable', layoutOk(l1), l1);
+  const lg1 = await gauges(page);
+  check('phone 844×390: the gauges named on their bars in the top row, nothing under the buttons, the joystick or the title', gaugesOk(lg1), lg1);
   await shot(page, 'phone-landscape-fight');
   const cl = await until(page, i => !i || i.phase !== 'fight', async i => {
     if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); }
@@ -326,7 +374,31 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   if (cl?.phase === 'clinch') { await page.waitForTimeout(300); await shot(page, 'phone-landscape-clinch'); }
   const l2 = cl?.phase === 'clinch' ? await layout(page) : null;
   check('phone 844×390, empoignade: relabelled buttons fit and read', !!l2 && layoutOk(l2) && l2.labels.some(t => t.startsWith('Pousser')), l2 ?? { phase: cl?.phase });
+  const lg2 = cl?.phase === 'clinch' ? await gauges(page) : null;
+  check('phone 844×390, empoignade: the Prise named and readable, between the gauges and the buttons', !!lg2 && gaugesOk(lg2, true), lg2 ?? { phase: cl?.phase });
   check('phone landscape: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
+  await ctx.close();
+}
+
+// ------------------------------------------------------------------ small phones: 360×640 portrait, 667×375 landscape
+for (const vp of [{ width: 360, height: 640 }, { width: 667, height: 375 }]) {
+  const tag = `${vp.width}×${vp.height}`;
+  const { ctx, page, errors } = await open(vp, true, false);
+  await page.evaluate(() => window.__dakar.duelStart('amical', 'rapide', 'avec_frappe'));
+  await wait(page, () => window.__dakar.duelInfo()?.phase === 'fight');
+  await page.waitForTimeout(600);
+  const l = await layout(page), g = await gauges(page);
+  check(`small phone ${tag}: the five buttons fit, apart from each other and the joystick, labels readable`, layoutOk(l), l);
+  check(`small phone ${tag}: the gauges named on their bars, no life bar, nothing under the buttons or the joystick`, gaugesOk(g), g);
+  await shot(page, `phone-${tag}-fight`);
+  const c = await until(page, i => !i || i.phase !== 'fight', async i => {
+    if (i.dist > 1.4) await page.keyboard.down('KeyD'); else { await page.keyboard.up('KeyD'); await page.evaluate(() => window.__dakar.duelGrab()); }
+  }, 60000);
+  await page.keyboard.up('KeyD');
+  if (c?.phase === 'clinch') { await page.evaluate(() => window.__dakar.duelSet('player', { grip: 30 })); await page.waitForTimeout(300); await shot(page, `phone-${tag}-clinch`); }
+  const gc = c?.phase === 'clinch' ? await gauges(page) : null;
+  check(`small phone ${tag}, empoignade: the Prise named and readable, clear of the buttons and the joystick`, !!gc && gaugesOk(gc, true), gc ?? { phase: c?.phase });
+  check(`small phone ${tag}: no page errors`, errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
 
@@ -358,6 +430,8 @@ const layoutOk = l => l.n === 5 && l.inside && l.overlaps.length === 0 && l.unre
   const s3 = await read();
   await shot(page, 'phone-lesson-moves');
   check('lesson: in the empoignade, Pousser / Tirer / Pivoter are highlighted', s3.step === 'moves' && ['grab', 'guard', 'quick'].every(k => s3.teach.includes(k)), s3);
+  const lsg = await gauges(page);
+  check('lesson (phone 390×844): Coach Ablaye’s card, the message, the Prise and the gauges apart, clear of the buttons', gaugesOk(lsg, true), lsg);
   for (let k = 0; k < 5; k++) await page.evaluate(() => window.__dakar.duelLessonSkip());
   const end = await wait(page, () => window.__dakar.duelInfo()?.phase === 'result', null, 60000);
   const rec = await page.evaluate(() => ({ outcome: window.__dakar.duelInfo()?.outcome, recap: document.querySelector('.duel-recap')?.textContent ?? '' }));
