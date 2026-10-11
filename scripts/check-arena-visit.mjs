@@ -227,7 +227,11 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
     const look = () => { const i = window.__dakar.arena.info(); if (i.phase === 'bout' && i.bout && i.bout.phase !== 'intro' && i.bout.phase !== 'result') { window.__bout = { ...i.bout, arena: i.phase }; return; } requestAnimationFrame(look); };
     requestAnimationFrame(look);
   });
+  // the entrance ceremony lasts some 30 s of game time: minutes on the desktop's software renderer, so it runs at speed 6
+  // (as the preliminaries and the end do) until the bout's first frame is read
+  await d(() => window.__dakar.arena.speed(6));
   await page.waitForFunction(() => !!window.__bout, null, T).catch(() => {});
+  await d(() => window.__dakar.arena.speed(1));
   const b1 = { ...(await info()), bout: await d(() => window.__bout) };
   check(`${label}: the bout starts (${L2 ? 'avec frappe, the two billed wrestlers, AI against AI' : 'lutte sans frappe'}, referee call, then the fight)`, !!b1.bout && b1.bout.mode === 'amical' && b1.bout.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'),
     { phase: b1.bout?.phase, discipline: b1.bout?.discipline, identity: b1.bout?.identity, arena: b1.phase, t: b1.t, lastBout: b1.lastBout, timeline: await d(() => window.__dakar.arena.timeline()) });
@@ -286,7 +290,7 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
     // aimed at; someone else in reach (a vendor at the ring side) can be nearer: then step closer to the stands, as a player would
     for (const gap of [2.3, 1.7, 1.2]) {
       await near(s, gap);
-      if (await page.waitForFunction(() => { const f = window.__dakar.focus(); return f?.kind === 'seat' && !!f.primary && !f.why.length && /tribune|honneur/.test(f.name); }, null, { timeout: 30000 }).then(() => true, () => false)) break;
+      if (await page.waitForFunction(() => { const f = window.__dakar.focus(); return f?.kind === 'seat' && !!f.primary && !f.why.length && /tribune|honneur/.test(f.name); }, null, { timeout: 60000 }).then(() => true, () => false)) break;
     }
     const fo = await d(() => window.__dakar.focus());
     const foT = fo?.name === 'Place d’honneur' ? 'honneur' : fo?.name === 'Place en tribune couverte' ? 'couverte' : fo?.name === 'Place en tribune' ? 'populaire' : null;

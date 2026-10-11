@@ -10,7 +10,7 @@ import { SHOW, type ShowPhase } from '../src/arena/program';
 import { OUT_FILE, ROUTE, entourageIn, entourageToCorner, type Who } from '../src/arena/ceremony';
 import type { ActivitySpec } from '../src/activity/types';
 import { AMBIENT_BUDGET } from '../src/social/ambientData';
-import { LOD_PRIO, seenFrom } from '../src/arena/people';
+import { LOD_PRIO, seenFrom, vendorStops, VENDOR_STOP } from '../src/arena/people';
 
 const C = { x: 100, z: -40 };
 const r = (p: { x: number; z: number }) => Math.hypot(p.x - C.x, p.z - C.z);
@@ -144,6 +144,18 @@ describe('fight night people: where they stand', () => {
     }
     expect(PEOPLE.walk.r).toBeGreaterThan(16.4); expect(PEOPLE.walk.r).toBeLessThan(PARAPET_R);
     const p = polar(C.x, C.z, Math.PI / 2, 10); expect(p.x).toBeCloseTo(C.x + 10); expect(p.z).toBeCloseTo(C.z);
+  });
+  it('a vendor stops by the player a while, then walks on and does not stop again at once (never parked in front of them)', () => {
+    const { near, pause, again } = VENDOR_STOP;
+    expect(vendorStops(near - 1, 0, false, 99, 99)).toBe(true);                 // close, free, not called lately: a stop
+    expect(vendorStops(near + 0.5, 0, false, 99, 99)).toBe(false);              // too far
+    expect(vendorStops(1, 2, false, 99, 99)).toBe(false);                       // already stopped
+    expect(vendorStops(1, 0, true, 99, 99)).toBe(false);                        // the player is busy
+    expect(vendorStops(1, 0, false, 10, 99)).toBe(false);                       // right after the call
+    // a player who stays put: the stop ends, and the next one waits until `again` s after the last
+    expect(vendorStops(1, 0, false, 99, pause + 0.1)).toBe(false);
+    expect(vendorStops(1, 0, false, 99, again - 0.1)).toBe(false);
+    expect(vendorStops(1, 0, false, 99, again + 0.1)).toBe(true);
   });
   it('the vendors inside sell at the prices of the stalls outside', () => {
     const outside = new Map(VENDORS.flatMap(v => v.offers()).map((o: ActivitySpec) => [o.id, o.price]));

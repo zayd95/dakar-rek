@@ -192,7 +192,16 @@ const GRIOT = (r: () => number): PersonLook => ({ skin: [0x3b2216, 0x4e2e1c, 0x5
 interface Side { who: BillSide; fighter: Bill['left']; ecurie: Ecurie | null; cs: 1 | -1; colour: number; ids: string[]; griot: string | null; cloth: THREE.MeshLambertMaterial | null; started: boolean }
 /** An écurie's corner and the helper who readies it. */
 interface Camp { ecurie: Ecurie; side: 1 | -1; ids: string[] }
-interface Walker { id: string; kind: VendorKind; arc: readonly [number, number]; a: number; dir: 1 | -1; pause: number; called: number }
+interface Walker { id: string; kind: VendorKind; arc: readonly [number, number]; a: number; dir: 1 | -1; pause: number; called: number; stopped: number }
+/** A vendor stops by a player within `near` m for `pause` s, then walks on and does not stop again for `again` s. */
+export const VENDOR_STOP = { near: 3.0, pause: 7, again: 30, afterCall: 25 } as const;
+/**
+ * Whether a vendor `d` m from the player stops by them now: not while already stopped or the player is busy, not right
+ * after their call, and not again soon after a stop — else a vendor would stand for ever beside a player who stays put
+ * (no call during the entrance or the result), the nearest target in front of the places they came to sit on.
+ */
+export const vendorStops = (d: number, pause: number, busy: boolean, sinceCall: number, sinceStop: number) =>
+  d < VENDOR_STOP.near && pause <= 0 && !busy && sinceCall > VENDOR_STOP.afterCall && sinceStop > VENDOR_STOP.again;
 
 /** The fight night of the current hub (the arena interior's debug reads who is inside). */
 export const fightNight: { current: FightNightPeople | null } = { current: null };
@@ -281,7 +290,7 @@ export class FightNightPeople {
       const a = k < arcs.length ? (arc[0] + arc[1]) / 2 : arc[1], p = polar(cx, cz, a, PEOPLE.walk.r);
       const look: PersonLook = { ...randomLook(R), female: kind.female, style: kind.female ? 'dress' : 'tee', hat: kind.female ? 'headwrap' : undefined };
       add(stand(`vendeur${k}`, look, p.x, p.z, a + Math.PI / 2, 'Walk', at(PRESENT.vendors)), 'vendor');
-      this.walkers.push({ id: `vendeur${k}`, kind, arc, a, dir: k % 2 ? -1 : 1, pause: 0, called: -99 });
+      this.walkers.push({ id: `vendeur${k}`, kind, arc, a, dir: k % 2 ? -1 : 1, pause: 0, called: -99, stopped: -99 });
     }
 
     // ---------------------------------------------------------------- each écurie's corner: a helper readies it from the doors
@@ -431,7 +440,7 @@ export class FightNightPeople {
     for (const w of this.walkers) {
       const p = cast.where(w.id); if (!p?.shown) continue;
       const d = Math.hypot(p.x - me.x, p.z - me.z);
-      if (d < 3.0 && w.pause <= 0 && this.ctx.activities.current === null && this.t - w.called > 25) w.pause = 7;
+      if (vendorStops(d, w.pause, this.ctx.activities.current !== null, this.t - w.called, this.t - w.stopped)) { w.pause = VENDOR_STOP.pause; w.stopped = this.t; }
       if (d < 9 && this.t - w.called > 40 && this.t - this.lastCall > 20 && m !== 'entrance' && m !== 'result') {
         w.called = this.lastCall = this.t; this.ctx.toast(`${w.kind.seller} : ${w.kind.call}`);
       }
