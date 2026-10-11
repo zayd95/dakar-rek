@@ -1072,7 +1072,7 @@ void start();
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
-    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses() }),
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses(), move: presence.lastPublished }),
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),

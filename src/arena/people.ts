@@ -216,6 +216,11 @@ export class FightNightPeople {
   private roles: { id: string; who: string }[] = [];
   private own: { dispose(): void }[] = [];
   private won: BillSide | null = null;
+  /**
+   * A friend in the stands is tonight's main event (src/arena/myGala.ts): this card's wrestlers do not walk out, so their
+   * people wait in their corners through the entrance instead of walking it for nobody.
+   */
+  quiet = false;
   /** The player fighting tonight while their path is on (src/arena/fighter.ts): the side of the card whose people go with them, their écurie. */
   private fighter: { who: BillSide; ecurie: Ecurie } | null = null;
   private key = '';
@@ -406,7 +411,7 @@ export class FightNightPeople {
     // the griot singing; then into his corner behind him, in file
     const pace = Math.max(1, showDt / Math.max(dt, 1e-6));
     // (on the player's own gala night their people stay round them in their corner: they walk out themselves)
-    if (m === 'entrance') for (const s of this.sides) if (!this.ownNight(s)) for (const [rid, k] of this.members(s)) {
+    if (m === 'entrance' && !this.quiet) for (const s of this.sides) if (!this.ownNight(s)) for (const [rid, k] of this.members(s)) {
       const inKey = `${rid}:in`, cornerKey = `${rid}:corner`;
       if (t >= setOffIn(s.who, k) && !this.walked.has(inKey)) {
         this.walked.add(inKey);
@@ -476,10 +481,10 @@ export class FightNightPeople {
     // the entrance begins: everyone waits in the tunnel, in file behind their wrestler
     if (m === 'entrance') {
       this.walked.clear();
-      for (const s of this.sides) { if (this.ownNight(s)) continue; s.started = false; for (const [rid, k] of this.members(s)) { const p = entourageIn(this.cx, this.cz, s.who, k)[0]; cast.place(rid, p.x, p.z, Math.PI); } }
+      for (const s of this.sides) { if (this.ownNight(s) || this.quiet) continue; s.started = false; for (const [rid, k] of this.members(s)) { const p = entourageIn(this.cx, this.cz, s.who, k)[0]; cast.place(rid, p.x, p.z, Math.PI); } }
     }
-    // a jump straight into the bout (or the result): the entourages are already in their corners
-    if ((m === 'bout' || m === 'result') && prev !== 'entrance' && prev !== 'bout') for (const s of this.sides) {
+    // a jump straight into the bout (or the result), or a friend's own entrance: the entourages are already in their corners
+    if (((m === 'bout' || m === 'result') && prev !== 'entrance' && prev !== 'bout') || (m === 'entrance' && this.quiet)) for (const s of this.sides) {
       s.started = true; for (const [rid, k] of this.members(s)) { const c = this.cornerOf(s, k); cast.place(rid, c.x, c.z, c.yaw); }
     }
     // the gala is over: back into the tunnel, the way they came
@@ -562,7 +567,7 @@ export class FightNightPeople {
     const c = this.cast, w = (id: string) => c?.where(id) ?? null;
     const n = (who: string) => this.roles.filter(r => r.who === who && w(r.id)?.shown).length;
     return {
-      moment: this.moment, won: this.won,
+      moment: this.moment, won: this.won, quiet: this.quiet,
       judges: n('judge'), officials: n('official'), announcer: !!w('annonceur')?.shown, referee: !!w('arbitre')?.shown,
       drummers: n('drummer') + n('dancer'), press: n('press') + n('media'), camp: n('camp'),
       vendors: this.walkers.map(v => ({ id: v.id, ...w(v.id), a: Math.round(v.a * 100) / 100, pause: Math.max(0, Math.round(v.pause * 10) / 10) })),

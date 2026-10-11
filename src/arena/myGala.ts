@@ -64,3 +64,22 @@ export const mainCalledOff = (d: MainDriver, phase: string, fighterPhase: string
 
 /** What the gala card says while a friend fights their own main event: their name only (their duel is theirs). */
 export const remoteCard = (phase: string, name: string) => (phase === 'entrance' ? `Entrée de ${name}` : phase === 'bout' ? `Combat en cours : ${name}` : `${name}, combat de la soirée`);
+
+/**
+ * The player signs up for tonight's main event while this device's show already runs (seated first, then the gala
+ * place at the arena's door): 'keep' — the filling or the preliminaries go on, their entrance comes after; 'entrance'
+ * — the evening's entrance (or a bout already begun, never theirs) gives way to theirs, from its start; 'none' — the
+ * main event is already over here (result, the crowd leaving): their bout is an ordinary one after the gala.
+ */
+export function takeOver(phase: string): 'keep' | 'entrance' | 'none' {
+  if (phase === 'filling' || phase === 'prelims') return 'keep';
+  if (phase === 'entrance' || phase === 'bout') return 'entrance';
+  return 'none';
+}
+
+/**
+ * The side the stands and the entourages cheer at the entrance and the result: on a friend's night nobody's side here
+ * (their people and their corner are on their own device, and this device's card is not theirs), so the whole crowd
+ * applauds; otherwise the bill's side.
+ */
+export const cheeredSide = <S extends string>(d: MainDriver, side: S | null): S | null => (d === 'friend' ? null : side);

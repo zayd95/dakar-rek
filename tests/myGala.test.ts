@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PLAYER_SIDE, boutByClock, entranceByClock, mainCalledOff, mainDriver, myShowResult, playerCorner, playerMainBill, remoteCard, remoteMain } from '../src/arena/myGala';
+import { PLAYER_SIDE, boutByClock, cheeredSide, entranceByClock, mainCalledOff, mainDriver, myShowResult, playerCorner, playerMainBill, remoteCard, remoteMain, takeOver } from '../src/arena/myGala';
 import { undercardFor } from '../src/arena/undercard';
 import { fighterGoal } from '../src/arena/eveningCall';
 import { cornerSides, entranceCues, setRecordSource, griotLine, standsOf, type Fighter } from '../src/arena/ceremony';
 import { standsSide } from '../src/arena/bakk';
 import { PREP_SIDE } from '../src/world/arenaModules';
 import { parseArena } from '../src/multiplayer/protocol';
-import { arenaField } from '../src/arena/together';
+import { arenaField, resultCodes, resultOf } from '../src/arena/together';
+import { SHOW_LABEL, SHOW_PHASES, showLabel } from '../src/arena/program';
 import { ARENA, unknownPhrases } from '../src/i18n/lines';
 import { glossed } from '../src/i18n/wolof';
 import { arenaFighter, fighterModule, fighterSpots } from '../src/arena/fighter';
@@ -66,6 +67,38 @@ describe('the ceremony is theirs', () => {
     // without a record (a first bout) the griot praises strength and neighbourhood, as for the roster
     expect(griotLine(bill.left as Fighter, '40', null)).not.toMatch(/victoire/);
   });
+  it('the griot sings their strength, their neighbourhood and their record in one breath, an unbeaten run as such', () => {
+    unknownPhrases.clear();
+    const me = { id: 'player', name: 'Moussa', ecurie: 'Baobab' } as Fighter;
+    const seen = new Set<string>();
+    for (let d = 1; d <= 60; d++) for (const rec of [{ v: 7, d: 2, n: 1 }, { v: 1, d: 0, n: 0 }, { v: 4, d: 0, n: 1 }]) {
+      const line = g(griotLine(me, String(d), rec));
+      seen.add(line.replace(/\d+/g, '#'));
+      expect(line).toMatch(/^🎤 Le griot : /);
+      expect(line).toMatch(/Pikine/);                                              // their neighbourhood
+      expect(line).toMatch(/doole/);                                               // their strength
+      expect(line).toMatch(new RegExp(`${rec.v} (victoire|combat)`));              // their wins from the career
+      expect(line).not.toMatch(/1 combat gagnés|1 victoires/);                     // agreement with one win
+      if (/pas une défaite/.test(line)) expect(rec.d).toBe(0);                     // « unbeaten » only when it is true
+      expect(line).not.toMatch(/F\b|FCFA|cachet/);                                // never money
+    }
+    expect([...seen].some(l => /pas une défaite/.test(l))).toBe(true);
+    expect(seen.size).toBeGreaterThanOrEqual(3);
+    expect([...unknownPhrases]).toEqual([]);
+  });
+});
+
+describe('a sign-up while the show already runs, and the card avec frappe', () => {
+  it('the filling and the preliminaries go on; an entrance or a bout already begun gives way to theirs; after the main event, nothing', () => {
+    expect(['filling', 'prelims'].map(takeOver)).toEqual(['keep', 'keep']);
+    expect(['entrance', 'bout'].map(takeOver)).toEqual(['entrance', 'entrance']);
+    expect(['result', 'leaving', 'over', 'idle'].map(takeOver)).toEqual(['none', 'none', 'none', 'none']);
+  });
+  it('their main event fought avec frappe (?lamb2) says so on the card; every other phase reads as before', () => {
+    expect(showLabel('bout', true)).toBe('Combat · lutte avec frappe');
+    expect(showLabel('bout', false)).toBe(SHOW_LABEL.bout);
+    for (const p of SHOW_PHASES) if (p !== 'bout') expect(showLabel(p, true)).toBe(SHOW_LABEL[p]);
+  });
 });
 
 describe('friends see them through their presence, never a simulated duel', () => {
@@ -114,6 +147,28 @@ describe('friends see them through their presence, never a simulated duel', () =
         for (const n of names) expect(avoid).not.toContain(n);
       }
     }
+  });
+  it('their real result crosses as the show\'s codes and is read back as theirs on the friend\'s side', () => {
+    for (const [winner, outcome, won] of [['player', 'projection', true], ['opponent', 'decision', false], [null, 'egalite', null], [null, 'abandon', null]] as const) {
+      const sent = arenaField({ day: 40, phase: 'result', t: 0, result: myShowResult(winner, outcome), here: true, main: true })!;
+      expect(parseArena(sent)).toEqual(sent);
+      const back = resultOf(sent.w, sent.o)!;
+      expect(back).toEqual(myShowResult(winner, outcome));
+      expect(back.winner === PLAYER_SIDE ? true : back.winner ? false : null).toBe(won);
+      expect(resultCodes(back)).toEqual({ w: sent.w, o: sent.o });
+    }
+  });
+  it('on a friend\'s night the whole crowd applauds them: nobody\'s corner here is theirs', () => {
+    expect(cheeredSide(mainDriver(false, true), 'left')).toBeNull();
+    expect(cheeredSide(mainDriver(true, false), 'left')).toBe('left');
+    expect(cheeredSide(mainDriver(false, false), 'right')).toBe('right');
+  });
+  it('the announcer calls their entrance with their name and the public line their presence shows, nothing more', () => {
+    unknownPhrases.clear();
+    expect(ARENA.friendEntrance('Moussa')).toBe('🎤 L’annonceur : Le combat de la soirée… voici Moussa !');
+    expect(ARENA.friendEntrance('Moussa', null)).toBe('🎤 L’annonceur : Le combat de la soirée… voici Moussa !');
+    expect(ARENA.friendEntrance('Moussa', 'Adversaires réputés · 7-2 · Écurie Baobab')).toBe('🎤 L’annonceur : Le combat de la soirée… voici Moussa ! (Adversaires réputés · 7-2 · Écurie Baobab)');
+    expect([...unknownPhrases]).toEqual([]);
   });
   it('their result in the stands, from what they sent: won, lost, a draw, an abandon', () => {
     unknownPhrases.clear();

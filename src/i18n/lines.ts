@@ -247,9 +247,15 @@ export const ARENA = {
   prelim: (k: number, n: number, left: string, right: string) => `🎤 L’annonceur : Préliminaires ${k}/${n}, ${left} contre ${right} !`,
   /** A friend in the stands is tonight's main event (src/arena/myGala.ts): only their name, their bout is theirs. */
   friendBill: (name: string) => `Gala de làmb : ${name} est le combat de la soirée !`,
+  /**
+   * Their entrance, as the announcer calls it on a friend's device: their name and, when they show one, their public
+   * record line exactly as their presence carries it (`rec`, server-validated: a rung, a ranked record, an écurie);
+   * nothing more is known here.
+   */
+  friendEntrance: (name: string, rec?: string | null) => `🎤 L’annonceur : Le combat de la soirée… voici ${name} !${rec ? ` (${rec})` : ''}`,
   /** The player gave up their own main event before it started: the evening ends without it. */
   noMain: 'Le combat de la soirée n’aura pas lieu. Le public se lève.',
-  /** That friend's real result, as they sent it (won: true, lost: false, null: a draw or an abandon). */
+  /** The real result of a player's own main event, on their device and as friends receive it (won: true, lost: false, null: a draw or an abandon). */
   friendResult: (name: string, won: boolean | null, how: 'projection' | 'decision' | 'egalite' | 'abandon') =>
     how === 'abandon' ? `Abandon : ${name} s’arrête là.` : won === null || how === 'egalite' ? `Match nul pour ${name}.`
       : won ? `${name} l’emporte ${how === 'projection' ? 'par chute' : 'aux points'} ! · Le public : ${utter(['Daan na !'])}` : `${name} s’incline ${how === 'projection' ? 'par chute' : 'aux points'}.`,

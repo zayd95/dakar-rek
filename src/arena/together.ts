@@ -13,7 +13,8 @@ import { remoteMain } from './myGala';
  *   them, and it is freed when they get up or leave. « Encourager » (main.ts) makes a seated player stand up for a
  *   moment with their arms up (Celebrate), and everyone sees it.
  * - One bout for the group: while a show runs and the player is inside the walls, presence carries
- *   `arena: { d, p, t, i?, w?, o? }` (city day, phase, time, which preliminary, and the result once known).
+ *   `arena: { d, p, t, i?, m?, w?, o? }` (city day, phase, time, which preliminary, `m` = 1 when they are tonight's
+ *   main event themselves — src/arena/myGala.ts — and the result once known).
  *   The preliminaries (src/arena/undercard.ts) are followed the same way, each one seeded by `prelimSeed`.
  *   The evening's bout is seeded by
  *   (hub, day) and played in fixed steps (src/arena/bout.ts), so every device plays the same bout. The friend furthest
@@ -123,7 +124,7 @@ export const togetherModule: GameModule = {
     const day = arenaShow.day(); if (day === null) { view.ref = null; return; }
     // a friend fighting tonight's main event: their name on the card, their own duel and result (src/arena/myGala.ts)
     const main = remoteMain(peers, day, p => p.space === 'street' && arenaShow.inside(p.x, p.z));
-    arenaShow.setRemote(main ? { id: main.id, name: main.name } : null);
+    arenaShow.setRemote(main ? { id: main.id, name: main.name, ...(main.rec ? { rec: main.rec } : {}) } : null);
     view.main = main?.id ?? null;
     const st = arenaShow.state();
     if (st?.main) { view.ref = null; return; }                                // on their own gala night, the player leads

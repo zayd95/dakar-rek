@@ -206,14 +206,16 @@ export function boastLine(f: Fighter, seed: string): string {
 }
 /**
  * The griot sings his wrestler's praises into the microphone: strength, écurie, neighbourhood; for the player on his
- * own gala night (`rec`: his record from the career, wins only, never money), his wins too.
+ * own gala night (`rec`: his record from the career, never money), his strength, his neighbourhood and his wins in
+ * one breath — an unbeaten run said as such. Invented lines, the same for the same evening.
  */
 export function griotLine(f: Fighter, seed: string, rec: WrestlerRecord | null = null): string {
   const gox = goxOf(f), team = ecurieId(f.ecurie) ? `l’écurie ${f.ecurie}` : 'tout le quartier';
   if (rec && rec.v > 0) {
     const won = [
-      () => `${MIC} Le griot : ${f.name} ! ${plural(rec.v, 'victoire')} dans le ${say('géew')}, et tout ${gox} chante son nom !`,
-      () => `${MIC} Le griot : Enfant de ${gox}, ${plural(rec.v, 'combat')} gagnés : la ${say('doole')} de ${f.name} ne se discute pas !`,
+      () => `${MIC} Le griot : ${f.name}, enfant de ${gox} ! Sa ${say('doole')} compte déjà ${plural(rec.v, 'victoire')} dans le ${say('géew')}, et tout ${gox} chante son nom !`,
+      () => `${MIC} Le griot : Enfant de ${gox}, ${plural(rec.v, 'combat')} ${rec.v > 1 ? 'gagnés' : 'gagné'} : la ${say('doole')} de ${f.name} ne se discute pas !`,
+      ...(rec.d === 0 ? [() => `${MIC} Le griot : ${f.name}, le ${say('gaynde')} de ${gox} ! ${plural(rec.v, 'victoire')}, pas une défaite : sa ${say('doole')} fait trembler le ${say('géew')} !`] : []),
     ];
     return won[seeded(`griot:rec:${seed}:${f.id}`, won.length)]();
   }

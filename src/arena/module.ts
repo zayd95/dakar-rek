@@ -15,8 +15,8 @@ import { rosterLook } from '../career/roster';
 import { TUNNEL_MOUTH_R, WALL_R, standExits } from '../world/geew';
 import { ARENA } from '../i18n/lines';
 import {
-  billFor, ecurieLabel, reportMainEvent, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, SHOW_LABEL, TICKET_COUNTER, TICKET_PRICE,
-  SHOW_PHASES, boutSeed, fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketTier, ticketsChecked, type Moment, type ShowPhase, type Street,
+  billFor, ecurieLabel, reportMainEvent, DENSITY, GALA, GALA_DONE_COUNTER, REACTION, SHOW, TICKET_COUNTER, TICKET_PRICE, showLabel,
+  SHOW_PHASES, boutSeed, type Bill, fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketTier, ticketsChecked, type Moment, type ShowPhase, type Street,
 } from './program';
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
 import { WatchedBout } from './bout';
@@ -29,7 +29,7 @@ import { TICKETS, TIER_COUNTER, TRIBUNES, crowdMayTake, honneurDress, seatRefusa
 import { decorMaterial, honneurPlate, tribuneDecor } from './ticketsDecor';
 import { EntranceCeremony } from './entrance';
 import { CEREMONY, standsOf, type Who } from './ceremony';
-import { PLAYER_SIDE, boutByClock, entranceByClock, mainCalledOff, mainDriver, myShowResult, remoteCard } from './myGala';
+import { PLAYER_SIDE, boutByClock, cheeredSide, entranceByClock, mainCalledOff, mainDriver, myShowResult, remoteCard, takeOver } from './myGala';
 import type { LambEvent } from '../game/modules';
 import { posters } from './posters';
 import { recordGalaResult } from '../social/fightTalk';
@@ -113,7 +113,9 @@ class ArenaEvening {
    * on the card, their own duel and its result as they send it; nothing of it is simulated here.
    */
   private mine = false;
-  remote: { id: string; name: string } | null = null;
+  /** Their bill, kept for the whole evening (the career forgets the sign-up once their bout is recorded). */
+  private ownBill: Bill | null = null;
+  remote: { id: string; name: string; rec?: string } | null = null;
   private offCue: () => void = () => {};
   private drums = new Percussion();
   private card: GalaCard;
@@ -280,6 +282,8 @@ class ArenaEvening {
     const { ctx } = this, seat = this.seatedHere();
     // the show starts once the player is seated during the doors, or on their own gala night once they are in the tunnel
     if (this.phase === 'idle' && this.street === 'doors' && (seat || (this.myGala() && ['tunnel', 'prep'].includes(arenaFighter.phase())))) this.go('filling');
+    // signed up for tonight's main event while this show already ran (seated first, then the gala place at the door)
+    else if (!this.mine && this.showing() && this.myGala()) this.takeOver();
     if (this.phase !== 'idle' && this.phase !== 'over' && this.phase !== 'leaving' && this.phase !== 'result' && !seat
       && Math.hypot(ctx.player.pos.x - this.cx, ctx.player.pos.z - this.cz) > WALL_R + 8) this.abort();
     if (this.phase !== 'idle' && this.phase !== 'over' && this.phase !== 'bout' && this.phase !== 'prelims') this.t += dt * this.speed;
@@ -293,7 +297,7 @@ class ArenaEvening {
     }
     // their bout given up before it started (src/arena/fighter.ts): no main event tonight, and no result made up
     if (mainCalledOff(this.driver(), this.phase, arenaFighter.phase())) { this.ctx.toast(ARENA.noMain); this.go('leaving'); }
-    this.people.update(dt, this.phase, this.t, this.street, dt * (this.phase === 'bout' ? 1 : this.speed), billFor(this.day()));
+    this.people.update(dt, this.phase, this.t, this.street, dt * (this.phase === 'bout' ? 1 : this.speed), this.bill());
     // the stands fill with the evening and empty after the gala
     this.fillT -= dt;
     if (this.fillT <= 0) { this.fillT = 0.4; this.syncCrowd(); }
@@ -303,7 +307,7 @@ class ArenaEvening {
     if (seatId !== this.nearSeat) { this.nearSeat = seatId; this.crowd.setNear(seat?.x ?? 0, seat ? seat.z : null, seat?.yaw ?? 0); }
     if (near) this.crowd.cull(ctx.camera);                                    // LOD by distance to the camera, seated or not
     this.crowd.update(dt, near);
-    const bill = this.phase === 'idle' || this.phase === 'over' ? null : billFor(this.day()), pre = this.phase === 'prelims' ? this.prelims[this.pi] : null;
+    const bill = this.phase === 'idle' || this.phase === 'over' ? null : this.bill(), pre = this.phase === 'prelims' ? this.prelims[this.pi] : null;
     const waiting = this.led() && this.phase === 'prelims' && this.pi === this.prelims.length - 1 && this.pEnded >= 0 && this.t >= this.pEnded + PRELIM.result;
     const remote = this.remote && (waiting || this.phase === 'entrance' || this.phase === 'bout' || this.phase === 'result') ? this.remote : null;
     this.card.show(!bill ? null : remote ? { title: 'Gala de làmb · Arène de Pikine', sub: remoteCard(this.phase, remote.name) } : pre ? {
@@ -311,7 +315,7 @@ class ArenaEvening {
       sub: `Préliminaires ${this.pi + 1}/${this.prelims.length} · ${prelimName(pre.left)} – ${prelimName(pre.right)}`,
     } : {
       title: bill.title ? 'Gala de làmb · Combat pour le titre' : 'Gala de làmb · Arène de Pikine',
-      sub: `${SHOW_LABEL[this.phase]} · ${bill.left.name} (${ecurieLabel(bill.left.ecurie)}) – ${bill.right.name} (${ecurieLabel(bill.right.ecurie)})`,
+      sub: `${showLabel(this.phase, this.mine ? lamb2On() : !!this.bout?.frappe)} · ${bill.left.name} (${ecurieLabel(bill.left.ecurie)}) – ${bill.right.name} (${ecurieLabel(bill.right.ecurie)})`,
     });
   }
 
@@ -359,7 +363,7 @@ class ArenaEvening {
   /** The evening's two wrestlers as themselves for a bout avec frappe (Làmb 2.0, ?lamb2 only), else null. */
   private frappeBill() {
     if (!lamb2On()) return null;
-    const bill = billFor(this.day()), career = (this.ctx.state.data as { career?: Parameters<typeof rosterOpponent>[2] }).career;
+    const bill = this.bill(), career = (this.ctx.state.data as { career?: Parameters<typeof rosterOpponent>[2] }).career;
     const left = rosterOpponent(bill.left.name, this.day(), career), right = rosterOpponent(bill.right.name, this.day(), career);
     return left && right ? { left, right } : null;
   }
@@ -376,7 +380,7 @@ class ArenaEvening {
    * winning, cheered from the stands by his corner (standsOf).
    */
   private react(m: Moment, who: Who | null = null, sound = true) {
-    const r = REACTION[m], side: StandSide | null = who ? standsOf(billFor(this.day()), who) : null;
+    const r = REACTION[m], side: StandSide | null = who ? standsOf(this.bill(), who) : null;
     this.crowd.moment(m, m === 'result' ? { winner: side } : { side });
     this.people.react(m);
     if (sound) crowdCheer(Math.min(4, r.seconds), (m === 'clinch' ? 0.1 : 0.2) * (0.7 + 0.5 * this.crowd.level()));
@@ -392,8 +396,8 @@ class ArenaEvening {
     if (phase !== 'prelims') this.clearPrelim();
     if (phase === 'filling') {
       this.told.clear(); this.result = ''; this.outcome = null; this.adopted = null; this.catchUpTo = 0; this.fallSplit = null; this.lastBout = null;
-      const bill = billFor(this.day());
-      this.mine = this.myGala();
+      this.mine = this.myGala(); this.ownBill = this.mine ? billFor(this.day()) : null;
+      const bill = this.bill();
       if (this.remote && !this.mine) this.say('bill', ARENA.friendBill(this.remote.name));
       else this.say('bill', ARENA.bill(bill.left.name, bill.left.ecurie, bill.right.name, bill.right.ecurie));
       // tonight's preliminaries: the same card on every device, by the evening's size, the main event's names kept out
@@ -406,13 +410,13 @@ class ArenaEvening {
     } else if (phase === 'bout') {
       this.clearEntrance();
       if (this.mine || this.remote) return;                                    // the player's own duel, or a friend's: never simulated
-      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, rosterLook(billFor(this.day()).left.id)?.look ?? LEFT_LOOK, boutSeed(this.hubId, this.day()), { frappe: this.frappeBill() });
+      this.bout = new WatchedBout({ x: this.cx, z: this.cz }, rosterLook(this.bill().left.id)?.look ?? LEFT_LOOK, boutSeed(this.hubId, this.day()), { frappe: this.frappeBill() });
       this.bout.onMoment = (p, i) => {
         if (this.bout && this.bout.time < this.catchUpTo - 0.5) return;
         if (p === 'clinch') this.react('clinch');
         if (p !== 'fall') return;
         // avec frappe, a fall splits the stands: the winner's side celebrates, the other side holds its head
-        if (this.bout?.frappe && i.outcome === 'projection' && i.winner) this.fallReaction(standsOf(billFor(this.day()), i.winner === 'player' ? 'left' : 'right'));
+        if (this.bout?.frappe && i.outcome === 'projection' && i.winner) this.fallReaction(standsOf(this.bill(), i.winner === 'player' ? 'left' : 'right'));
         else this.react(i.outcome === 'projection' ? 'fall' : 'decision');
       };
       this.group.add(this.bout.group);
@@ -423,13 +427,15 @@ class ArenaEvening {
       const own: ShowResult | null = r ? { winner: !r.winner ? null : r.winner === 'player' ? 'left' : 'right', outcome: (r.outcome === 'entrainement' ? 'egalite' : r.outcome) as ShowOutcome } : null;
       this.outcome = this.adopted ?? own ?? { winner: null, outcome: 'egalite' };
       const side = this.outcome.winner, how = this.outcome.outcome;
-      const bill = billFor(this.day()), won = side ? bill[side] : null, lost = side === 'left' ? bill.right : bill.left;
+      const bill = this.bill(), won = side ? bill[side] : null, lost = side === 'left' ? bill.right : bill.left;
       // the city's ladder remembers the main event the player watched (a player's own bout is the career's, a friend's theirs)
       if ((r || this.adopted) && !this.mine && !this.remote) reportMainEvent(this.day(), won?.id ?? null);
       this.result = this.resultLine(this.outcome);
-      this.people.result(side);
+      // (a friend's own bout: the whole crowd applauds them, nobody's corner here runs onto the sand)
+      const cheered = cheeredSide(this.driver(), side);
+      this.people.result(cheered);
       ctx.toast(this.result);
-      this.react('result', side);
+      this.react('result', cheered);
       // the city talks about it that evening and the next day (src/social/fightTalk.ts), the posters print it; a
       // player's own bout is the career's to record (its record, the posters, the talk), a friend's is theirs
       if (this.mine || this.remote) return;
@@ -437,8 +443,10 @@ class ArenaEvening {
       posters.setResult(this.day(), won && how !== 'egalite' && how !== 'abandon'
         ? `${won.name} bat ${lost.name}, victoire ${how === 'projection' ? 'par chute' : 'aux points'}` : `${bill.left.name} et ${bill.right.name} : match nul`);
     } else if (phase === 'leaving') {
+      this.clearEntrance();                                                    // (a main event called off during its entrance)
       this.bout?.dispose(); this.bout = null;
     } else if (phase === 'over') {
+      this.mine = false; this.ownBill = null;                                  // (their night is over: a friend's may come next)
       ctx.state.data.counters[GALA_DONE_COUNTER] = this.day(); ctx.save();
       this.street = streetAt(ctx.hour(), true);                       // the gate stops checking tickets from now on
       ctx.toast(ARENA.over);
@@ -543,11 +551,15 @@ class ArenaEvening {
   }
 
   private resultLine(o: ShowResult) {
-    if (this.remote && !this.mine) return ARENA.friendResult(this.remote.name, o.winner === PLAYER_SIDE ? true : o.winner ? false : null, o.outcome);
-    return ARENA.result(o.winner ? billFor(this.day())[o.winner].name : null, o.outcome);
+    // a player's own main event, here or on a friend's device: said the same way on both, an abandon as such
+    const name = this.mine ? this.bill()[PLAYER_SIDE].name : this.remote?.name;
+    if (name) return ARENA.friendResult(name, o.winner === PLAYER_SIDE ? true : o.winner ? false : null, o.outcome);
+    return ARENA.result(o.winner ? this.bill()[o.winner].name : null, o.outcome);
   }
 
   // ---------------------------------------------------------------- the player's own gala night (src/arena/myGala.ts)
+  /** Tonight's bill as this show runs it: the player's own, kept from the start of their night, else the city's card. */
+  bill(): Bill { return this.mine && this.ownBill && this.showing() ? this.ownBill : billFor(this.day()); }
   /** The player fights tonight's main event (a gala place or the title bout), on their way to it. */
   myGala() { return !!arenaFighter.main() && billFor(this.day()).left.id === 'player'; }
   /** Their corner waits while the stands fill, the preliminaries run and the ceremony names them, up to the walk-out. */
@@ -571,12 +583,25 @@ class ArenaEvening {
   led() { return this.driver() === 'friend'; }
   private driver() { return mainDriver(this.mine, !!this.remote); }
   /** A friend in the stands is tonight's main event (src/arena/together.ts), or no longer (null). */
-  setRemote(r: { id: string; name: string } | null) {
+  setRemote(r: { id: string; name: string; rec?: string } | null) {
     if (this.mine) r = null;                                                  // on their own night, they lead
-    if (r?.id === this.remote?.id && r?.name === this.remote?.name) return;
+    this.people.quiet = !!r;                                                  // (no entrance walked for a wrestler who is not there)
+    if (r?.id === this.remote?.id && r?.name === this.remote?.name) { if (this.remote && r) this.remote.rec = r.rec; return; }
     this.remote = r;
     if (r && this.phase === 'entrance') this.clearEntrance();                // no simulated wrestlers for a friend's bout
     if (r && this.phase === 'bout' && this.bout) { this.bout.dispose(); this.bout = null; }
+  }
+  /**
+   * The player signed up for tonight's main event while this show already ran (myGala.ts takeOver): from now on the
+   * evening is theirs — the preliminaries go on, or the entrance starts again for them (a watched bout already begun
+   * is not theirs: it is dropped, nothing recorded); after the main event, their bout is an ordinary one.
+   */
+  private takeOver() {
+    const how = takeOver(this.phase); if (how === 'none') return;
+    this.mine = true; this.ownBill = billFor(this.day()); this.remote = null; this.people.quiet = false;
+    const b = this.bill();
+    this.ctx.toast(ARENA.bill(b.left.name, b.left.ecurie, b.right.name, b.right.ecurie));
+    if (how === 'entrance') { this.bout?.dispose(); this.bout = null; this.go('entrance'); }
   }
 
   // ---------------------------------------------------------------- one show for friends (src/arena/together.ts)
@@ -608,7 +633,7 @@ class ArenaEvening {
       if ((this.outcome || (this.led() && (this.phase === 'result' || this.phase === 'leaving'))) && differs) {
         this.outcome = res; this.result = this.resultLine(res); this.ctx.toast(this.result);
         // the result the group saw (never a player's own main event: the career's; nor a friend's: theirs)
-        if (!this.mine && !this.remote) reportMainEvent(this.day(), res.winner ? billFor(this.day())[res.winner].id : null);
+        if (!this.mine && !this.remote) reportMainEvent(this.day(), res.winner ? this.bill()[res.winner].id : null);
       }
     }
     if (phase === 'prelims') {                                                 // which preliminary, then its time
@@ -629,7 +654,7 @@ class ArenaEvening {
 
   private abort() {
     this.clearPrelim(); this.clearEntrance(); this.bout?.dispose(); this.bout = null; this.drums.stop();
-    this.phase = 'idle'; this.t = 0;
+    this.phase = 'idle'; this.t = 0; this.mine = false; this.ownBill = null;
   }
 
   private startEntrance() {
@@ -637,9 +662,16 @@ class ArenaEvening {
     // sand, get ready in their corner, then come to the ring; their entourages and griots are src/arena/people.ts; the
     // drums of the evening are the drummers' group on its deck, heard through src/arena/exteriorAudio.ts. The two
     // wrestlers wear their own colours (src/career/roster.ts rosterLook: the phone's portraits use the same).
-    const bill = billFor(this.day()), L = rosterLook(bill.left.id), R = rosterLook(bill.right.id);
-    this.ceremony?.dispose();
-    if (this.remote && !this.mine) return;                                     // a friend's own entrance: they walk out themselves
+    const bill = this.bill(), L = rosterLook(bill.left.id), R = rosterLook(bill.right.id);
+    this.ceremony?.dispose(); this.ceremony = null;
+    if (this.remote && !this.mine) {
+      // a friend's own entrance: they walk out themselves, from their corner to the ring (their presence); here the
+      // announcer calls their name and the public line they show (`rec`), and the whole crowd stands up for them
+      if (hasGestured()) paChime();
+      this.say('friendEntrance', ARENA.friendEntrance(this.remote.name, this.remote.rec));
+      this.react('entrance', null);
+      return;
+    }
     this.ceremony = new EntranceCeremony(this.ctx, this.group, this.cx, this.cz, bill, { left: L?.look ?? LEFT_LOOK, right: R?.look ?? RIGHT_LOOK },
       who => this.react('entrance', who), { left: L?.skin, right: R?.skin }, this.mine ? { player: PLAYER_SIDE } : {});
   }
@@ -690,6 +722,8 @@ class ArenaEvening {
     const seat = this.seatedHere(), counters = this.ctx.state.data.counters, day = this.day();
     return {
       street: this.street, event: eventDay(day, this.ctx.hour()), day, phase: this.phase, t: Math.round(this.t * 10) / 10, speed: this.speed,
+      /** The player's own gala night (src/arena/myGala.ts), or the friend who is tonight's main event here. */
+      mine: this.mine, remote: this.remote ? { ...this.remote } : null,
       ticket: hasTicket(counters, day), tribune: ticketTier(counters, day), galaDone: counters[GALA_DONE_COUNTER] === day,
       seat: seat?.id ?? null, seatsTotal: this.seats.length, seatsFree: this.seats.filter(s => !s.occupant).length,
       crowd: { cap: this.cap, present: this.crowd.present, cheering: this.crowd.cheering, level: Math.round(this.crowd.level() * 100) / 100, lod: this.crowd.stats() },
@@ -727,7 +761,7 @@ export const arenaShow = {
   state: () => evening?.shared() ?? null,
   follow: (phase: ShowPhase, t: number, res?: ShowResult | null, i?: number) => evening?.follow(phase, t, res, i) ?? false,
   /** A friend in the stands is tonight's main event (their presence), or none. */
-  setRemote: (r: { id: string; name: string } | null) => evening?.setRemote(r),
+  setRemote: (r: { id: string; name: string; rec?: string } | null) => evening?.setRemote(r),
   /** The places on the tiers (shared registry seats), and whether a point is inside the walls. */
   seats: (): readonly Seat[] => evening?.seats ?? [],
   inside: (x: number, z: number) => evening?.inside(x, z) ?? false,

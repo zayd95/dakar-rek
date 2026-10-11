@@ -88,13 +88,20 @@ Daouda 4, Assane 3, Birame 2) and independents (Gora 2, Ndiaga 2, Pape 1, Saliou
   champion. Name, style and level come from the roster (`GameModule.opponent`).
 - **Gala place** (« Place au gala · contre <nom> », at the arena, Friday–Sunday from 16 h, from Adversaires réputés):
   one gala bout an evening, against a wrestler a notch above (never one of the main event), through the fighter's path
-  (`arenaFighter.begin`). Purse × 2, positive points × 1.5, fame × 2. Entries carry `kind: 'gala'`.
+  (`arenaFighter.begin`). Purse × 2, positive points × 1.5, fame × 2. Entries carry `kind: 'gala'`. The player is then
+  tonight's main event (src/arena/myGala.ts, docs/ARENA_VISIT.md « The player's own gala night »): the bill and the
+  posters name them, the preliminaries run while their corner is held, the ceremony is theirs (the announcer reads
+  their record from `summary`, the griot sings their strength, their neighbourhood and their wins), their real result
+  is the show's, and friends in the stands see them through presence (`arena.m`), never a simulated duel.
 - **Title** (« Combat pour le titre », Sundays from 16 h, from Contender): against the champion, or the best wrestler for
   a vacant belt. Holding it, « Défendre la ceinture » against the best challenger. Purse × 3, positive points × 2,
   fame × 3, `kind: 'title'`. A belt the player does not put at stake for more than 14 days is vacant at the next Sunday,
   and the two best fight for it.
 - **Posters and the arena show** name the evening's real card through `setBillSource` (src/arena/program.ts `billFor`);
-  « Combat pour le titre » on Sundays, the player's own name when they are signed up for the title.
+  « Combat pour le titre » on Sundays, the player's own name when they are signed up for a gala place or the title
+  (`playerMainBill`: the player on the left). Given up before the bout, the sign-up is forgotten and the city's card
+  is the bill again. The arena's show keeps the player's bill to the end of their evening (the career forgets the
+  sign-up as soon as their bout is recorded).
 
 ## Lutteurs: the wrestlers' cards (phone › Arène)
 
