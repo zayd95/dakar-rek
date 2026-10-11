@@ -314,7 +314,7 @@ export class Phone {
     const t = cityTimeAt(this.ctx.now()), c = this.ctx.state.data.counters, w = this.ctx.state.wallet;
     const pool = [
       ['Pikine', 'La grand-place affiche complet pour l’attaya du soir.'], ['Soumbédioune', 'Belle pêche ce matin : les mareyeuses cherchent des bras.'],
-      ['Arène de Pikine', 'Combats amicaux ouverts à tous cette semaine.'], ['Plateau', 'La Banque Teranga cherche des coursiers pour livrer des dossiers.'],
+      ['Arène de Pikine', 'Combats amicaux cette semaine pour les lutteurs des écuries.'], ['Plateau', 'La Banque Teranga cherche des coursiers pour livrer des dossiers.'],
       ['Almadies', 'Le Dakar Life Mall reste ouvert tard ce week-end.'], ['Corniche', 'Les joggeurs envahissent les marches du Monument au lever du soleil.'],
       ['Tiak Tiak', 'Les livraisons à pied ont la cote à Pikine et au Plateau.'], ['Médina', 'L’Atelier Ndeye prépare les tenues d’un grand baptême.'],
       ['Car rapide', 'Les apprentis annoncent des départs toutes les dix minutes.'], ['Fann', 'Les étudiants révisent sur les bancs de la place.'],
