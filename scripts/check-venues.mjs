@@ -287,12 +287,17 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await d(() => window.__dakar.stand());
   // the mareyeuses buy the catch
   check(`${label}: at the fish market, the mareyeuses buy fish`, await standAt(marketAt, Math.PI, /:mareyeuses$/, 0.4), JSON.stringify(await d(() => window.__dakar.focus())));
-  const w0 = await d(() => window.__dakar.state.wallet);
+  // the wallet can move for other reasons while the sale runs (game time passes: a business's takings, a gift); the sale
+  // is judged by its own ledger line, and every line written meanwhile is printed
+  const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
   await d(() => window.__dakar.act());
   await until(() => !window.__dakar.activity() && (window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0) < 6 + 0, null, 60000);
   await until(() => !window.__dakar.activity(), null, 60000);
-  const sold = await d(() => ({ w: window.__dakar.state.wallet, fish: window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0, save: JSON.parse(localStorage.getItem('dakarrek.guest.save') ?? '{}').inventory?.poisson ?? 0 }));   // schema v5: the save's own inventory (no longer counters inv:<id>)
-  check(`${label}: selling 4 fish pays 2 400 F; the 2 left are saved in the inventory`, sold.w - w0 === 2400 && sold.fish === back.fish - 4 && sold.save === sold.fish, JSON.stringify(sold));
+  const sold = await d(l0 => ({ w: window.__dakar.state.wallet, fish: window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0, save: JSON.parse(localStorage.getItem('dakarrek.guest.save') ?? '{}').inventory?.poisson ?? 0,   // schema v5: the save's own inventory (no longer counters inv:<id>)
+    lines: window.__dakar.state.data.ledger.slice(l0).map(l => [l.label, l.amount]) }), l0);
+  const saleLines = sold.lines.filter(([, a]) => a === 2400), ledgerSum = sold.lines.reduce((t, [, a]) => t + a, 0);
+  check(`${label}: selling 4 fish pays 2 400 F; the 2 left are saved in the inventory`,
+    saleLines.length === 1 && sold.w - w0 === ledgerSum && sold.fish === back.fish - 4 && sold.save === sold.fish, JSON.stringify({ ...sold, w0 }));
   await d(([p]) => window.__dakar.cam([p.x - 2.5, 2.4, p.z - 5.5], [p.x, 1.1, p.z]), [marketAt]); await shot('beach-mareyeuses'); await d(() => window.__dakar.cam(null));
   await d(() => window.__dakar.setHour(21));
   await d(([p]) => window.__dakar.place(p.x, p.z, -Math.PI / 2), [boatAt]);
