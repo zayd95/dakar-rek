@@ -114,6 +114,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
   check(`${label}: serving everyone right pays the stall's full rate`, (await d(() => window.__dakar.state.wallet)) === 3000, String(await d(() => window.__dakar.state.wallet)));
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
+  await page.context().close();                       // this view's page stops rendering before the next one boots
 }
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));

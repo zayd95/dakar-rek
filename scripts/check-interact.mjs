@@ -132,6 +132,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     }
   }
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
+  await page.context().close();                       // this view's page stops rendering before the next one boots
 }
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));
