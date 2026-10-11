@@ -279,7 +279,9 @@ export class Economy {
   buy(id: string): boolean {
     const item = furnitureById(id), piece = item ? deliverFurniture(this.s, id) : null;
     if (!item || !piece) { this.d.hud.toast(cannotBuy(this.s, id) ?? 'Achat impossible'); return false; }
-    this.d.hud.toast(`Achat : ${item.name} ✓  −${fcfa(priceOf(id))} · livré chez toi${piece.at === null ? ' (rangé : pas de place)' : ''}`);
+    // the « bon matelas » goes on the room's own bed (never placed): it is not « stored for lack of room »
+    const where = id === 'matelas' ? 'sur ton lit' : `chez toi${piece.at === null ? ' (rangé : pas de place)' : ''}`;
+    this.d.hud.toast(`Achat : ${item.name} ✓  −${fcfa(priceOf(id))} · livré ${where}`);
     this.d.save();
     return true;
   }
