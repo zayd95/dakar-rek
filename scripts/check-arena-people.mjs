@@ -194,7 +194,8 @@ for (const [label, viewport, touch, quality] of VIEWS) {
         await d(() => window.__dakar.act());
         const went = await until(() => window.__dakar.bakk().running && window.__dakar.bakk().rhythm === 'bakk', null, 15000);
         await shot('8-player-bakk');
-        const over = await until(() => window.__dakar.bakk().done && !window.__dakar.bakk().running, null, 60000);
+        // the bàkk lasts its game time: some 60 frames on the desktop's software renderer were not enough (9335db7)
+        const over = await until(() => window.__dakar.bakk().done && !window.__dakar.bakk().running, null, 180000);
         const b = await d(() => window.__dakar.bakk());
         check(`${label}: the player's bàkk — a dance and a boast, their people cheer, then the drums go back`, went && over && b.rhythm === 'gala', b);
       }
