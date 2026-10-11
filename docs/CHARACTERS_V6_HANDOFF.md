@@ -47,5 +47,5 @@ and the new interaction/activity framework expects the v4 rig API. Steps below.
 - Paused by Habib to save quota. Sim Studio (creator) and onboarding: **not started**, on purpose.
 - Every version of the Blender generator/retarget scripts is in `assets-src/people_v6/all_scripts/`
   (latest: `garm_v10.py`, `specs_v7.py`, `asm_v4.py`, `helpers_v1.py`, `slim.mjs`; `anim_v*.py` retargeting).
-- The earlier local street/vehicle pass (15 commits never pushed, 8 Oct) is saved as tag
-  `archive/local-full-work-2026-10-08` — not merged anywhere.
+- The earlier local street/vehicle pass (15 commits never pushed, 8 Oct) is saved on branch
+  `lane/characters-v6-archive-fullwork` — not merged anywhere (tags are refused by the push proxy).
