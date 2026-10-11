@@ -118,6 +118,10 @@ interface Member {
   head: number; code: number; crown: number; brim: boolean; build: number;
   /** The slot this companion comes with, and the companions that come with this one. */
   parent: Member | null; kids: Member[];
+  /** Where the last full write put it: its bucket and index there, its round shadow's index (-1: none). */
+  bk: Bucket | null; bi: number; blob: number;
+  /** Moved since the last write (its matrix to copy in place). */
+  moved: boolean;
 }
 interface NearBody {
   h: Humanoid; m: Member; w: number; seen: boolean;
@@ -144,18 +148,35 @@ class Bucket {
     m.name = `crowd_${kind}`; m.userData.noLod = true;
     this.mesh = m;
   }
+  /** Changed in place since the last write: the matrices, the poses (src/crowd/crowd.ts Crowd.update). */
+  private movedN = false; private posedN = false;
   add(p: Member) {
-    const i = this.n++, A = this.attrs, q = p.pose;
+    const i = this.n++, A = this.attrs;
+    p.bk = this; p.bi = i;
     (this.mesh.instanceMatrix.array as Float32Array).set(p.matrix, i * 16);
     this.mesh.instanceColor!.setXYZ(i, p.shirt.r, p.shirt.g, p.shirt.b);
     A.iCols.setXYZW(i, p.look.skin, p.look.legs, p.head, p.look.accent ?? 0);                 // packed sRGB (rig.ts)
+    this.pose(i, p);
+    A.iLook.setXYZW(i, p.crown, (p.brim ? 1 : 0) + (p.slot.upright && !p.standing ? 2 : 0) + 4 * p.code, p.build, p.slot.banner !== undefined ? p.slot.banner + 1 : 0);
+  }
+  /** The member at `i` has a new pose (arms, gestures, bounce): only these attributes change. */
+  pose(i: number, p: Member) {
+    const A = this.attrs, q = p.pose;
     A.iArm.setXYZW(i, q.pitch, q.spread, q.yaw, q.elbow);
     A.iOsc.setXYZW(i, q.yawAmp, q.pitchAmp, q.freq, p.phase);
     A.iMove.setXYZW(i, q.bounce, q.lean, q.walk, q.sideOff);
-    A.iLook.setXYZW(i, p.crown, (p.brim ? 1 : 0) + (p.slot.upright && !p.standing ? 2 : 0) + 4 * p.code, p.build, p.slot.banner !== undefined ? p.slot.banner + 1 : 0);
+    this.posedN = true;
+  }
+  /** The member at `i` moved: only its matrix changes. */
+  move(i: number, p: Member) { (this.mesh.instanceMatrix.array as Float32Array).set(p.matrix, i * 16); this.movedN = true; }
+  /** Uploads what changed in place since the last write. */
+  flush() {
+    if (this.movedN) this.mesh.instanceMatrix.needsUpdate = true;
+    if (this.posedN) { this.attrs.iArm.needsUpdate = true; this.attrs.iOsc.needsUpdate = true; this.attrs.iMove.needsUpdate = true; }
+    this.movedN = this.posedN = false;
   }
   finish() {
-    this.mesh.count = this.n;
+    this.mesh.count = this.n; this.movedN = this.posedN = false;
     if (!this.n) return;
     this.mesh.instanceMatrix.needsUpdate = true; this.mesh.instanceColor!.needsUpdate = true;
     for (const a of Object.values(this.attrs)) a.needsUpdate = true;
@@ -192,7 +213,14 @@ export class Crowd {
   private focus: { x: number; z: number; yaw: number | null } | null = null;
   /** The seated player's view: nobody stands up right beside them or in front of them on the way to what they watch. */
   private clear: { x: number; z: number; fx: number; fz: number } | null = null;
+  /**
+   * Who sits where in the instanced meshes changed (someone came or left, stood up or sat down, changed level of
+   * detail): everything is written again. Otherwise a frame only rewrites, in place, the matrices of those who moved
+   * (walkers, supporters on the sand) and the poses of those who are easing into a new one.
+   */
   private layoutDirty = true;
+  private moving: Member[] = [];
+  private blobsMoved = false;
   private lodT = 0;
   private nearT = 0;
   private blobs: THREE.InstancedMesh | null = null;
@@ -226,7 +254,7 @@ export class Crowd {
         mood: 'rest', bpm: 120, i: this.members.length, scale: look.height ?? (look.style === 'dress' ? 0.93 : 0.95) + R() * 0.09,
         fidget: null, fidgetLeft: 0, flag: null,
         head: head.colour, code: printCode(look), crown: head.crown, brim: head.brim, build: look.build ?? 1,
-        parent: null, kids: [],
+        parent: null, kids: [], bk: null, bi: -1, blob: -1, moved: false,
       };
       this.place(m);
       this.members.push(m); this.byId.set(slot.id, m);
@@ -291,7 +319,7 @@ export class Crowd {
     const walking = speed > 0.2;
     if (walking !== m.speed > 0.2 || (walking && Math.abs(speed - m.speed) > 0.3)) { m.speed = speed; this.retarget(m); }
     m.speed = speed;
-    if (m.on) this.layoutDirty = true;
+    if (m.on && !m.moved) { m.moved = true; this.moving.push(m); }        // its matrix, copied in place this frame
   }
 
   // ---------------------------------------------------------------- reactions
@@ -512,10 +540,15 @@ export class Crowd {
     if (this.nearT <= 0) { this.nearT = 0.5; this.pickNear(); }
     this.lodT -= dt;
     if (this.lodT <= 0 || this.layoutDirty) { this.lodT = 0.25; this.assignLod(); }
-    let posed = false;
     const k = 1 - Math.exp(-dt * 7);
-    for (const m of this.members) if (m.easing && m.on) { m.easing = easePose(m.pose, m.target, k); if (m.lod === 1 || m.lod === 2) posed = true; }
-    if (this.layoutDirty || posed) this.write();
+    for (const m of this.members) if (m.easing && m.on) {
+      m.easing = easePose(m.pose, m.target, k);
+      if (!this.layoutDirty && (m.lod === 1 || m.lod === 2) && m.bk) m.bk.pose(m.bi, m);    // in place (a full write redoes it)
+    }
+    if (this.layoutDirty) this.write();
+    else this.writeMoves();
+    for (const m of this.moving) m.moved = false;
+    this.moving.length = 0;
     for (const b of this.bodies) this.updateBody(b, dt, animate);
     if (this.flags) this.waveFlags();
   }
@@ -582,6 +615,7 @@ export class Crowd {
     const B = this.buckets;
     for (const b of Object.values(B)) b.n = 0;
     for (const m of this.members) {
+      m.bk = null; m.bi = -1; m.blob = -1;
       if (m.lod === 2) (m.standing ? B.midStanding : B.midSeated).add(m);
       else if (m.lod === 1) (m.standing ? B.farStanding : B.farSeated).add(m);
     }
@@ -591,10 +625,20 @@ export class Crowd {
       const arr = this.blobs.instanceMatrix.array as Float32Array;
       for (const m of this.members) {
         if (!m.on || !m.standing || m.lod === 0) continue;
-        arr.set(m.matrix, n * 16); arr[n * 16 + 13] += 0.03; n++;
+        m.blob = n; arr.set(m.matrix, n * 16); arr[n * 16 + 13] += 0.03; n++;
       }
       this.blobs.count = n; if (n) this.blobs.instanceMatrix.needsUpdate = true;
     }
+  }
+  /** Same layout as the last write: the members who moved get their new matrix in place, poses are already in. */
+  private writeMoves() {
+    if (this.blobs) {
+      const arr = this.blobs.instanceMatrix.array as Float32Array;
+      for (const m of this.moving) if (m.blob >= 0) { arr.set(m.matrix, m.blob * 16); arr[m.blob * 16 + 13] += 0.03; this.blobsMoved = true; }
+      if (this.blobsMoved) { this.blobs.instanceMatrix.needsUpdate = true; this.blobsMoved = false; }
+    }
+    for (const m of this.moving) if (m.bk) m.bk.move(m.bi, m);
+    for (const b of Object.values(this.buckets)) b.flush();
   }
 
   private updateBody(b: NearBody, dt: number, animate: boolean) {
