@@ -230,6 +230,26 @@ export interface StandDecision { move: number; strike: StrikeKind | null; guard:
  * his preferred distance shrinks to a step, he reaches a little further for the grab. 0…1.
  */
 export const URGE = { after: 7, full: 14 } as const;
+
+/**
+ * The player's opponent avec frappe, by level (1–5) — a young wrestler of the neighbourhood at 1, the city's best at 5:
+ * `factor` multiplies his appetites (strikes, grabs, throws), his reading of the player's moves and his reactions;
+ * `pace` slows his decisions and `slow` what he does (his strikes, grabs, moves and throws take longer to set up, so a
+ * beginner can see them coming); `breath` is his endurance against his style's (a young wrestler is less fit). Levels 1
+ * and 2 are where a new player starts. Watched bouts between two AIs and the sans-frappe duel keep src/lamb/rules.ts
+ * levelFactor. Tuned by the balance pass for a new player (docs/LAMB2.md « Équilibrage », tests/lamb2Balance.test.ts).
+ */
+export const AI_LEVEL = {
+  factor: [0.46, 0.46, 0.85, 1.0, 1.15],
+  pace: [1.95, 1.9, 1.15, 1.05, 1],
+  slow: [1.95, 1.9, 1.15, 1.05, 1],
+  breath: [0.85, 0.85, 1, 1, 1],
+} as const;
+const lv = (level: number) => Math.max(1, Math.min(5, Math.round(level))) - 1;
+export const frappeFactor = (level: number) => AI_LEVEL.factor[lv(level)];
+export const frappePace = (level: number) => AI_LEVEL.pace[lv(level)];
+export const frappeSlow = (level: number) => AI_LEVEL.slow[lv(level)];
+export const frappeBreath = (level: number) => AI_LEVEL.breath[lv(level)];
 export const urgeOf = (secondsWithoutClinch: number) => Math.max(0, Math.min(1, (secondsWithoutClinch - URGE.after) / (URGE.full - URGE.after)));
 /** The distance a style keeps, pressed by the referee (`urge` 0…1). */
 export const rangeOf = (st: StandStyle, urge = 0) => st.range + (1.15 - st.range) * Math.max(0, Math.min(1, urge));
