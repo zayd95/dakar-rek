@@ -105,8 +105,16 @@ export class Humanoid {
   clipName: Clip | null = null;
   /** When set, city movement does not change the clip (emotes, talking, sitting). */
   hold: Clip | null = null;
-  /** Procedural gesture applied on top of the clip pose every frame (hand to mouth, comb, arms up…); every clip keys every bone, so it never accumulates. */
+  /**
+   * Procedural gesture applied on top of the clip pose every frame (hand to mouth, comb, arms up…). The mixer only
+   * writes a bone when the clip's value changed since the last frame (three's PropertyMixer), so a held pose would keep
+   * what the overlay did and a relative gesture (a bend, a nod) would add up frame after frame: the clip pose is put
+   * back before every mixer update (see `pose`).
+   */
   overlay: ((h: Humanoid, dt: number) => void) | null = null;
+  private bones: THREE.Object3D[] = [];
+  /** Clip pose (bone rotations and positions) saved before the last overlay, restored before the next mixer update. */
+  private clipPose: { q: THREE.Quaternion; p: THREE.Vector3 }[] | null = null;
 
   constructor(look?: PersonLook) {
     if (!template) throw new Error('character asset not loaded');
@@ -129,6 +137,7 @@ export class Humanoid {
     });
     this.mixer = new THREE.AnimationMixer(this.root);
     for (const c of template.clips) this.actions.set(c.name, this.mixer.clipAction(c));
+    this.root.traverse(o => { if ((o as THREE.Bone).isBone) this.bones.push(o); });
     if (look) this.setLook(look);
   }
 
@@ -211,9 +220,20 @@ export class Humanoid {
       else if (speed > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = Math.max(0.6, speed / 1.45); }
       else this.play('Idle', 0.25);
     } else this.play(this.hold, 0.2);
-    this.mixer.update(dt); this.overlay?.(this, dt);
+    this.pose(dt);
   }
-  update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
+  update(dt: number) { this.pose(dt); }
+
+  /** Clip pose, then the overlay on top of it (never on top of last frame's overlay). */
+  private pose(dt: number) {
+    const saved = this.clipPose;
+    if (saved) { this.bones.forEach((b, i) => { b.quaternion.copy(saved[i].q); b.position.copy(saved[i].p); }); if (!this.overlay) this.clipPose = null; }
+    this.mixer.update(dt);
+    if (!this.overlay) return;
+    const keep = this.clipPose ??= this.bones.map(() => ({ q: new THREE.Quaternion(), p: new THREE.Vector3() }));
+    this.bones.forEach((b, i) => { keep[i].q.copy(b.quaternion); keep[i].p.copy(b.position); });
+    this.overlay(this, dt);
+  }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
 }
 

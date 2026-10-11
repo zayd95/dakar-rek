@@ -24,10 +24,17 @@ async function hub(h) {
   await d(x => { window.__dakar.teleport(x); window.__dakar.setHour(10); }, h);
   await page.waitForFunction(x => window.__dakar.pos().hub === x && window.__dakar.pos().x < 900, h, T);
 }
-/** Frame the player from the side, `dist` m away. */
+/**
+ * Frame the player from `side` (radians from the way they face), `dist` m away, `h` m up; when a wall or a stall is in
+ * the way, the nearest angle with a clear view is taken instead.
+ */
 const frame = (dist = 3.6, side = 1.1, h = 1.8) => d(([dist, side, h]) => {
-  const D = window.__dakar, p = D.pos(), b = D.body(), a = (b?.group.rotation.y ?? 0) + side;
-  D.cam([p.x + Math.sin(a) * dist, p.y + h, p.z + Math.cos(a) * dist], [p.x, p.y + 0.9, p.z]);
+  const D = window.__dakar, p = D.pos(), y = D.body()?.group.rotation.y ?? 0, look = [p.x, p.y + 1.0, p.z];
+  const at = s => [p.x + Math.sin(y + s) * dist, p.y + h, p.z + Math.cos(y + s) * dist];
+  const open = c => { const a = D.sightline(c, look), b = D.sightline(look, c); return a.hit >= a.len - 0.3 && b.hit >= b.len - 0.3; };
+  const s = [side, -side, side + 0.5, -side - 0.5, side - 0.5, -side + 0.5, side + 1, -side - 1].find(s => open(at(s))) ?? side;
+  D.cam(at(s), look);
+  return s;
 }, [dist, side, h]);
 
 /**
@@ -35,8 +42,9 @@ const frame = (dist = 3.6, side = 1.1, h = 1.8) => d(([dist, side, h]) => {
  * `expect(first, later)` compares two readings of window.__dakar.performing() (or meal()).
  */
 const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
-async function act({ name, find, label, wait = 0.45, cam = [3.6, 1.1, 1.8], read = 'performing', expect, prep }) {
-  if (ONLY && !ONLY.includes(name)) return;
+/** `views`: more pictures at the same moment, { suffix: [dist, side, h] } (e.g. a side view of the posture). */
+async function act({ name, find, label, wait = 0.45, cam = [3.6, 1.1, 1.8], views = {}, read = 'performing', expect, prep }) {
+  if (ONLY && !ONLY.some(o => name === o || name.startsWith(o + '-'))) return;
   // nothing left open from the previous one
   await d(() => { document.querySelector('#modal.on .item.close')?.click(); });
   await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
@@ -48,8 +56,14 @@ async function act({ name, find, label, wait = 0.45, cam = [3.6, 1.1, 1.8], read
   await page.waitForFunction(id => !id || window.__dakar.focus()?.id === id, t.id ?? null, { timeout: 20000 }).catch(() => {});
   await d(() => window.__dakar.more());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const item = page.locator('#modal .item', { hasText: label }).first();
-  if (!(await item.count())) { check(`${name}: « ${label} » offered`, false, await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).join(' | '))); await d(() => document.querySelector('#modal .item.close')?.click()); return; }
+  // the entry whose own label is `label` (a place named « Café Touba · Fann » must not be taken for « Café Touba »)
+  const idx = await d(l => {
+    const items = [...document.querySelectorAll('#modal .item')], own = b => (b.querySelector('div')?.firstChild?.textContent ?? '').trim();
+    const i = items.findIndex(b => own(b) === l);
+    return i >= 0 ? i : items.findIndex(b => own(b).startsWith(l));
+  }, label);
+  const item = page.locator('#modal .item').nth(Math.max(0, idx));
+  if (idx < 0) { check(`${name}: « ${label} » offered`, false, await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).join(' | '))); await d(() => document.querySelector('#modal .item.close')?.click()); return; }
   const why = await item.evaluate(b => b.classList.contains('dis') ? b.textContent : '');
   await item.click();
   if (why) { check(`${name}: « ${label} » available`, false, why); await d(() => document.querySelector('#modal.on .item.close')?.click()); return; }
@@ -61,6 +75,7 @@ async function act({ name, find, label, wait = 0.45, cam = [3.6, 1.1, 1.8], read
   await frame(...cam); await page.waitForTimeout(350);
   await page.screenshot({ path: `${out}/${name}.png` });
   const later = await d(r => window.__dakar[r]?.() ?? null, read);
+  for (const [suffix, v] of Object.entries(views)) { await frame(...v); await page.waitForTimeout(250); await page.screenshot({ path: `${out}/${name}-${suffix}.png` }); }
   await d(() => window.__dakar.cam(null));
   check(`${name}: « ${label} » is performed in the world`, !!first && expect(first, later ?? {}), `${JSON.stringify(first)} → ${JSON.stringify(later)} ${typeof total === 'string' ? total : ''}`);
   await page.waitForFunction(() => !window.__dakar.activity(), null, { timeout: 180000 }).catch(() => {});

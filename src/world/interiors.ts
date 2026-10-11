@@ -169,7 +169,16 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     plain.box(0.7, 0.45, 0.25, x0 + 0.5, 0.1, z0 + 0.3, 0x2f4f86);
     metal.cyl(0.14, 0.11, 0.18, ox - 0.6, 0.1, z1 - 0.6, 0x555555, 10); metal.cyl(0.08, 0.1, 0.16, ox - 0.6, 0.28, z1 - 0.6, 0x9aa0a6, 8);
     for (let k = 0; k < 3; k++) plain.cyl(0.025, 0.02, 0.06, ox - 0.25 + k * 0.07, 0.1, z1 - 0.55, 0xe8f4ff, 6);
-    plain.cyl(0.14, 0.12, 0.32, x0 + 1.4, 0.1, z1 - 0.45, 0x2a8fd1, 10); plain.cyl(0.1, 0.12, 0.2, x0 + 1.75, 0.1, z1 - 0.4, 0x1a9d54, 8);
+    plain.cyl(0.1, 0.12, 0.2, x0 + 1.75, 0.1, z1 - 0.4, 0x1a9d54, 8);
+    {   // the bucket is open with water inside: washing takes the water from it (src/game/perform.ts finds it by name)
+      const blue = new THREE.MeshLambertMaterial({ color: 0x2a8fd1, side: THREE.DoubleSide });
+      const bucket = new THREE.Group(); bucket.name = 'wash-bucket'; bucket.userData = { h: 0.32, r: 0.14 };
+      const wall = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.32, 14, 1, true), blue); wall.position.y = 0.16;
+      const bottom = new THREE.Mesh(new THREE.CircleGeometry(0.12, 14), blue); bottom.rotation.x = -Math.PI / 2; bottom.position.y = 0.01;
+      const water = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.01, 14), new THREE.MeshLambertMaterial({ color: 0x8fd0f0, transparent: true, opacity: 0.85 }));
+      water.name = 'water'; water.position.y = 0.27;
+      wall.castShadow = true; bucket.add(wall, bottom, water); bucket.position.set(x0 + 1.4, 0.1, z1 - 0.45); group.add(bucket);
+    }
     interactables.push({ id: `${hub}:in:wash`, name: 'Seau et bouilloire', kind: 'actions', x: x0 + 1.55, z: z1 - 1.0, radius: 1.2, actions: ACTIONS.home.filter(a => a.id === 'laver') });
     // framed photos and a calendar (images left blank on purpose: no real people)
     for (const [x, c] of [[ox - 0.4, 0x7a5a3c], [ox + 0.4, 0x3d4a5c]] as const) { wood.box(0.45, 0.55, 0.03, x, 1.6, z0 + 0.02, c); plain.box(0.35, 0.45, 0.01, x, 1.65, z0 + 0.05, 0xd9d2c4); }
