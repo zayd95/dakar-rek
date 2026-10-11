@@ -107,8 +107,13 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.keyboard.press('Escape'); await waitPhone(false);
   await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 5000 }).catch(() => {});
   await page.evaluate(() => window.__dakar.place(-6, -30, 0));
-  const a = await pos();
-  await page.keyboard.down('KeyW'); await page.waitForTimeout(1200); await page.keyboard.up('KeyW');
+  // the game steps at most 0.1 s a frame (src/main.ts): on the software renderer 1.2 s can hold a single frame, so W is
+  // held for 1.2 s and at least 8 drawn frames (as in check-launch-controls)
+  await page.evaluate(() => { if (window.__frames === undefined) { window.__frames = 0; const f = () => { window.__frames++; requestAnimationFrame(f); }; requestAnimationFrame(f); } });
+  const a = await pos(), f0 = await page.evaluate(() => window.__frames);
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(1200);
+  await page.waitForFunction(f => window.__frames >= f, f0 + 8, { timeout: 60000 }).catch(() => {});
+  await page.keyboard.up('KeyW');
   const b = await pos();
   check(`${label}: Escape closes the phone, then W moves the player`, a.mode === 'play' && Math.hypot(b.x - a.x, b.z - a.z) > 0.5, `moved ${Math.hypot(b.x - a.x, b.z - a.z).toFixed(2)}`);
   // Escape/M open it again where it was left (navigation kept).
@@ -175,8 +180,10 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
     // Landscape.
     await page.setViewportSize({ width: 844, height: 390 });
     await page.evaluate(() => window.__dakar.phone('home')); await page.waitForTimeout(300);
-    const box = await page.locator('#phone .ph-device').boundingBox();
-    check('phone: landscape device fits the screen', box.height <= 390 && box.width <= 844 && box.width > box.height, JSON.stringify(box));
+    // measured once the handset's opening animation (a 20 px slide) has run
+    await page.waitForFunction(() => [...document.querySelectorAll('#phone, #phone *')].every(e => e.getAnimations().every(a => a.playState === 'finished')), null, { timeout: 30000 }).catch(() => {});
+    const box = await page.locator('#phone .ph-device').boundingBox(), dock = await page.locator('#phone .ph-dock').boundingBox();
+    check('phone: landscape device fits the screen, its dock in view', box.y + box.height <= 390 + 1 && box.width <= 844 && box.width > box.height && !!dock && dock.y + dock.height <= box.y + box.height, JSON.stringify({ box, dock }));
     await page.screenshot({ path: `${out}/phone-landscape-home.png` });
     await page.evaluate(() => window.__dakar.phone('reglages')); await page.waitForTimeout(200);
     await page.screenshot({ path: `${out}/phone-landscape-reglages.png` });

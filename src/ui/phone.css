@@ -165,13 +165,15 @@ button.ph-wid { cursor:pointer; }
   #phone { padding:6px max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left)); }
   .ph-stage { flex-direction:row; align-items:flex-start; width:min(820px, 100%); height:100%; }
   .ph-close { order:2; }
-  #phone .ph-device { padding:6px; border-radius:34px; } .ph-glass { border-radius:29px; }
-  .ph-status { height:34px; } .ph-island { width:90px; height:24px; }
-  .ph-lock { display:flex; align-items:baseline; gap:12px; padding:2px 6px 8px; } .ph-clock { font-size:34px; } .ph-lock small { margin:0; font-size:13px; }
-  .ph-widgets { margin-bottom:10px; }
-  .ph-grid { grid-template-columns:repeat(7,1fr); gap:10px 4px; }
+  /* the handset never outgrows the screen (the home scrolls past two rows); 8 tiles a row keep the dock in view */
+  #phone .ph-device { align-self:stretch; padding:6px; border-radius:34px; } .ph-glass { border-radius:29px; }
+  .ph-status { height:30px; } .ph-island { width:90px; height:22px; }
+  #phone[data-screen="home"] .ph-screen { padding:2px 18px 8px; }
+  .ph-lock { display:flex; align-items:baseline; gap:12px; padding:2px 6px 4px; } .ph-clock { font-size:34px; } .ph-lock small { margin:0; font-size:13px; }
+  .ph-widgets { margin-bottom:6px; }
+  .ph-grid { grid-template-columns:repeat(8,1fr); gap:6px 2px; }
   .ph-ico { width:46px; height:46px; border-radius:12px; } .ph-ico span { font-size:25px; }
-  .ph-dock { margin-top:10px; padding:8px; } .ph-dock .ph-ico { width:44px; height:44px; }
+  .ph-dock { margin-top:6px; padding:6px; } .ph-dock .ph-ico { width:44px; height:44px; }
   .ph-weather b { font-size:44px; } .ph-calc output { font-size:40px; } .ph-calc > div { grid-template-columns:repeat(8,1fr); gap:6px; }
 }
 @media (prefers-reduced-motion:reduce) { #phone .ph-device { animation:none; } }
