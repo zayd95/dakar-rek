@@ -12,6 +12,7 @@ import { ARENA, unknownPhrases } from '../src/i18n/lines';
 import { glossed } from '../src/i18n/wolof';
 import { arenaFighter, fighterModule, fighterSpots } from '../src/arena/fighter';
 import type { GameCtx } from '../src/game/modules';
+import type { PlaceSpec } from '../src/activity/places';
 
 const g = (s: string) => glossed(s, true).replace(/[  ]/g, ' ');
 const ROSTER = [{ id: 'gora', name: 'Gora Sène', ecurie: 'Teranga' }, { id: 'pape', name: 'Pape Diouf', ecurie: 'Baobab' }, { id: 'ali', name: 'Ali Ndoye', ecurie: null }];
@@ -209,6 +210,34 @@ describe('their corner waits for the preliminaries and the ceremony', () => {
     held = false; fighterModule.update!(ctx, 0.1);
     expect(arenaFighter.phase()).toBe('ring');                                                     // released: the walk-out
     expect(ready).toBe(0);
+    arenaFighter.cancel();
+  });
+  it('« Ton coin » and its « Je suis prêt » are in the corner the bout takes (Teranga for an independent), and so is the walking marker', () => {
+    const cx = 30, cz = -30, pos = { x: 0, y: 0, z: 0 };
+    const hub = { id: 'pikine', arena: { cx, cz, r: 19 }, interactables: [] as { id: string; x: number; z: number }[] };
+    const added = new Map<string, PlaceSpec>();
+    const ctx = {
+      state: { data: { flags: [] } }, day: () => 40, world: () => hub, toast: () => {}, walkTo: () => {},
+      player: { pos, place: (x: number, z: number) => { pos.x = x; pos.z = z; } }, mode: () => 'play', startBout: () => true,
+      places: { add: (p: PlaceSpec) => { added.set(p.id, p); return p; } },
+    } as unknown as GameCtx;
+    fighterModule.init!(ctx); fighterModule.hubLoaded!(ctx, hub as never);
+    const B = fighterSpots(cx, cz, 'baobab').corner, T = fighterSpots(cx, cz, 'teranga');
+    const coin = () => added.get('pikine:arena:coin')!.anchors[0], marker = () => hub.interactables.find(i => i.id === 'pikine:arena:coin')!;
+    expect([coin().x, coin().z, marker().x, marker().z]).toEqual([B.x, B.z, B.x, B.z]);         // no bout yet: as the hub was loaded
+    let ready = 0;
+    arenaFighter.hold({ held: () => true, ready: () => { ready++; } });
+    expect(arenaFighter.begin({ mode: 'classe', opponent: 'Pathé', main: 'gala', corner: 'teranga' })).toBe(true);
+    // the place, the marker and the path are the same corner: Teranga's
+    expect([coin().x, coin().z, marker().x, marker().z]).toEqual([T.corner.x, T.corner.z, T.corner.x, T.corner.z]);
+    expect(hub.interactables.filter(i => i.id === 'pikine:arena:coin')).toHaveLength(1);            // moved, not added twice
+    pos.x = T.tunnel.x; pos.z = T.tunnel.z; fighterModule.update!(ctx, 0.1);
+    pos.x = T.corner.x; pos.z = T.corner.z; fighterModule.update!(ctx, 0.1);
+    expect(arenaFighter.phase()).toBe('prep');
+    const pret = added.get('pikine:arena:coin')!.offers.coin.find(o => o.id === 'pret')!;
+    expect(pret.visible!()).toBe(true);                                                             // offered right where they stand
+    pret.steps[0].then!();
+    expect(ready).toBe(1);                                                                          // held: the show moves on to their entrance
     arenaFighter.cancel();
   });
 });

@@ -138,10 +138,26 @@ function places(hub: HubWorld, s: ReturnType<typeof fighterSpots>): PlaceSpec[] 
 
 let spots: ReturnType<typeof fighterSpots> | null = null;
 let spotsFor: 'baobab' | 'teranga' | null = null;
-/** The path's spots for the current bout's écurie (or Baobab's when no bout), in the current hub's arena. */
+/**
+ * The path's spots for the current bout's écurie (or Baobab's when no bout), in the current hub's arena. When the bout's
+ * corner differs from the one the hub was loaded with (an independent in Teranga's, the bill's corner on their own gala
+ * night), the walking markers and « Ton coin » (« Je suis prêt ») move there too: the path, the marker and the place
+ * are always the same corner.
+ */
 function refreshSpots(ctx: GameCtx) {
-  const a = ctx.world()?.arena, e = bout?.ecurie ?? 'baobab';
-  if (a && (!spots || spotsFor !== e)) { spots = fighterSpots(a.cx, a.cz, e); spotsFor = e; }
+  const w = ctx.world(), a = w?.arena, e = bout?.ecurie ?? 'baobab';
+  if (!w || !a || (spots && spotsFor === e)) return;
+  spots = fighterSpots(a.cx, a.cz, e); spotsFor = e;
+  placeSpots(ctx, w, spots);
+}
+/** The path's places and its invisible walking-marker targets (radius −1: never focused, never in the directory), here. */
+function placeSpots(ctx: GameCtx, hub: HubWorld, s: ReturnType<typeof fighterSpots>) {
+  const id = ids(hub.id);
+  for (const [k, p, name] of [['gate', s.gate, 'Entrée des lutteurs'], ['corner', s.corner, 'Ton coin'], ['ring', s.ring, 'Le cercle']] as const) {
+    const t = hub.interactables.find(i => i.id === id[k]);
+    if (t) { t.x = p.x; t.z = p.z; } else hub.interactables.push({ id: id[k], name, kind: 'actions', x: p.x, z: p.z, radius: -1, actions: [] });
+  }
+  for (const p of places(hub, s)) ctx.places.add(p);
 }
 
 export const fighterModule: GameModule = {
@@ -151,12 +167,7 @@ export const fighterModule: GameModule = {
     spots = null;
     if (!hub.arena) { if (bout && phase !== 'idle' && phase !== 'bout') phase = 'called'; return; }
     spots = fighterSpots(hub.arena.cx, hub.arena.cz, bout?.ecurie ?? 'baobab'); spotsFor = bout?.ecurie ?? 'baobab';
-    const id = ids(hub.id);
-    // invisible targets for the walking marker (radius −1: never focused, never in the places directory)
-    for (const [k, p, name] of [['gate', spots.gate, 'Entrée des lutteurs'], ['corner', spots.corner, 'Ton coin'], ['ring', spots.ring, 'Le cercle']] as const) {
-      hub.interactables.push({ id: id[k], name, kind: 'actions', x: p.x, z: p.z, radius: -1, actions: [] });
-    }
-    for (const p of places(hub, spots)) ctx.places.add(p);
+    placeSpots(ctx, hub, spots);
     if (bout && phase !== 'idle') go(ctx, phase === 'return' ? 'return' : 'called');
   },
   update(ctx) {
