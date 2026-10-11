@@ -37,6 +37,13 @@ const MAX_FANS = { low: 3, medium: 6, high: 9 } as const;
 /** Mix of who brings the fans (weights). */
 const MIX: [VehicleKind, number][] = [['taxi', 45], ['moto', 35], ['sedan', 20]];
 
+/**
+ * The fight-evening flows' lane: along the road in front of the arena's north side (z = −60), from the west edge to the
+ * drop-off, then round the corner down the arena's west side and on out of the map — never the stretch in front of the
+ * gate, the gate's pedestrian zone (src/arena/exteriorRules.ts gatePlaza; tests/gatePlaza.test.ts).
+ */
+export const streetFlowLane = (): Pt[] => openLanePath([{ x: -133, z: roadCentre(1) }, { x: roadCentre(2), z: roadCentre(1) }, { x: roadCentre(2), z: 133 }], 2.0, 9);
+
 let pillionSeed = 0;
 /** A moto-taxi seed whose kit model carries a pillion (the fan on the back), the same on every client. */
 export function motoWithPillion(): number {
@@ -66,11 +73,7 @@ export class ArenaStreets {
 
   constructor(private ctx: GameCtx, private hub: HubWorld, readonly gate: ArenaGate, private quality: 'low' | 'medium' | 'high') {
     this.group.name = 'arena_streets';
-    // along the road in front of the arena's north side (z = −60), from the west edge to the drop-off, then round the
-    // corner down the arena's west side and on out of the map (the stretch in front of the gate is closed)
-    const zRoad = roadCentre(1), xCorner = roadCentre(2);
-    const nodes: Pt[] = [{ x: -133, z: zRoad }, { x: xCorner, z: zRoad }, { x: xCorner, z: 133 }];
-    const lane = openLanePath(nodes, 2.0, 9);
+    const zRoad = roadCentre(1), lane = streetFlowLane();
     this.path = new Path(lane);
     this.end = this.path.at(lane.length - 1);
     this.dropS = this.path.project(DROP_X, zRoad + 2.0);

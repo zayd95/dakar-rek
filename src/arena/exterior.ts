@@ -9,7 +9,10 @@ import { isMuted } from '../core/audioSettings';
 import {
   ECURIES, crossesQueue, drummerAt, drumsCentre, drumVolume, fighterDrumVolume, gateOf, isFightEvening, murmurVolume, queueDistance, stallsOf, vendorPlaces,
   VENDORS, exteriorPhase, outflowDestinations, stallFronts, weekday, WEEKDAY_FR, type ArenaGate, type ExteriorPhase,
+  footprintInPlaza, gatePlaza, inPlaza, plazaClosure, plazaFootprints, streetEnds, type Rect,
 } from './exteriorRules';
+import { linesOf } from '../transport/lines';
+import { carRapideSpec } from '../transport/carRapide';
 import { GALA_DONE_COUNTER, streetAt } from './program';
 import { say } from '../i18n/wolof';
 import { arenaFighter } from './fighter';
@@ -114,8 +117,9 @@ class Exterior {
   constructor(ctx: GameCtx, readonly hub: HubWorld, readonly arena: { cx: number; cz: number }, readonly g: ArenaGate, quality: 'low' | 'medium' | 'high') {
     const d = EXTERIOR_DENSITY[quality], R = this.rand, q = g.queue;
     this.group.name = 'arena_exterior'; this.group.visible = false;
-    // walking in from both ends of the street in front of the gate, round the last barrier, into the lane
-    for (const sx of [-1, 1]) this.spawns.push([{ x: g.x + sx * 34, z: g.z - 8 }, { x: g.x + sx * 3.7, z: q.z1 - 0.35 }, { x: g.x, z: q.z1 - 0.35 }]);
+    // walking in from both ends of the street in front of the gate (the pavement corners: never a junction's carriageway),
+    // round the last barrier, into the lane
+    for (const e of streetEnds(g).filter(p => p.z < g.z - 8.3)) this.spawns.push([e, { x: g.x + Math.sign(e.x - g.x) * 3.7, z: q.z1 - 0.35 }, { x: g.x, z: q.z1 - 0.35 }]);
     const supporter = () => { const e = ECURIES[Math.floor(R() * ECURIES.length)]; return R() < 0.65 ? e : null; };
     const fanLook = (e = supporter()): PersonLook => { const l = randomLook(R); return e ? { ...l, top: e.colour, pattern: 'uni' } : l; };
     if (humanoidReady()) {
@@ -193,7 +197,7 @@ class Exterior {
   }
   private respawn(f: Fan, progress = 0) {
     const path = this.spawns[Math.floor(this.rand() * this.spawns.length)].map(p => ({ ...p }));
-    path[0].z += (this.rand() - 0.5) * 5;
+    path[0].x += (this.rand() - 0.5) * 3; path[0].z += (this.rand() - 0.5) * 1.2;   // along the pavement
     f.state = 'walk'; f.path = path.slice(1); f.x = path[0].x; f.z = path[0].z;
     if (progress > 0) { f.x += (path[1].x - path[0].x) * progress * 0.8; f.z += (path[1].z - path[0].z) * progress * 0.8; }
   }
@@ -366,6 +370,28 @@ let dayOverride: number | null = null;
 const audio = new ExteriorAudio();
 
 /** The road segments in front of the gate are closed to the decorative traffic while the queue is there. */
+/**
+ * The gate's pedestrian zone (src/arena/exteriorRules.ts gatePlaza), at all hours: the decorative traffic never takes the
+ * street segment through it (its barriers stand there by day too), and the player's car stops at it (their moto may
+ * still reach its guarded place beside it).
+ */
+let plaza: Rect[] | null = null;
+let plazaShut: ((ax: number, az: number, bx: number, bz: number) => boolean) | null = null;
+const plazaClosed = (ax: number, az: number, bx: number, bz: number) => plazaShut?.(ax, az, bx, bz) ?? false;
+function setPlaza(a: { cx: number; cz: number } | null) {
+  plaza = a ? gatePlaza(a) : null;
+  plazaShut = plaza ? plazaClosure(plaza) : null;
+  if (plaza) trafficClosures.more.add(plazaClosed); else trafficClosures.more.delete(plazaClosed);
+}
+/** Car rapides and decorative cars in the zone now (the checks: always none). */
+function plazaNow() {
+  if (!plaza) return null;
+  const { length, width } = carRapideSpec(), rects = plaza;
+  const rapides = linesOf(ext?.hub.id ?? 'pikine').flatMap(l => transport.lineCars(l.id).map(c => ({ line: l.id, id: c.id, x: c.x, z: c.z, yaw: c.yaw, inside: footprintInPlaza(rects, { x: c.x, z: c.z, yaw: c.yaw, hl: length / 2, hw: width / 2 }) })));
+  const cars = trafficPositions();
+  return { rects, rapides, rapidesInside: rapides.filter(r => r.inside).length, traffic: cars.length, trafficInside: cars.filter(c => inPlaza(rects, c.x, c.z, 1)).length, closed: !!plazaShut };
+}
+
 function closeRoads(g: ArenaGate | null) {
   if (!g) { trafficClosures.closed = null; return; }
   const memo = new Map<string, boolean>();
@@ -420,10 +446,14 @@ function loudness(ctx: GameCtx) {
 
 export const arenaExteriorModule: GameModule = {
   name: 'arenaExterior',
-  init() { listenForGesture(); },
+  init() {
+    listenForGesture();
+    transport.addObstacles((out, kind) => { if (plaza && kind && kind !== 'moto') out.push(...plazaFootprints(plaza)); });   // a car stops at the zone
+  },
   hubLoaded(ctx, hub) {
     ext?.dispose(); ext = null; gate = null; activeNow = false;
     closeRoads(null); audio.stop();                                     // a new hub: no closure, no drums
+    setPlaza(hub.arena);                                                // the gate's pedestrian zone, at all hours
     if (!hub.arena) return;
     gate = gateOf(hub.arena);
     ext = new Exterior(ctx, hub, hub.arena, gate, ctx.quality());
@@ -451,6 +481,7 @@ export const arenaExteriorModule: GameModule = {
         items: ext?.items() ?? null,
         audio: { ...audio.info(), want: loudness(ctx), muted: isMuted() },
         traffic: { cars: cars.length, inLane: g ? cars.filter(c => queueDistance(g, c.x, c.z) < 1.5).length : 0, closed: !!trafficClosures.closed },
+        plaza: plazaNow(),
         drums: g ? drumsCentre(g) : null,
         vendors: ctx.places.all().filter(p => p.id.includes(':arena-out:')).map(p => ({ id: p.id, name: p.name, anchor: p.anchors[0], offers: p.offers.stall.map(o => `${o.label} · ${o.price ?? 0}`) })) };
     },
@@ -459,5 +490,7 @@ export const arenaExteriorModule: GameModule = {
     /** With arenaOutForce(true): the end of the evening (the crowd pours out) instead of the arrivals. */
     arenaOutOutflow: (v: boolean) => { forcedOut = v; },
     arenaOutDay: (d: number | null) => { dayOverride = d; },
+    /** The gate's pedestrian zone and who is in it now: the car rapides (footprints) and the decorative cars (none, always). */
+    arenaPlaza: () => plazaNow(),
   }),
 };
