@@ -225,7 +225,8 @@ float crowdCode = floor(crowdFlags / 4.0);
     vec3 hp = vec3(0.0, aRig.w, 0.0);
     rigPos = hp + crowdRotX(rigPos - hp, iMove.y); rigNrm = crowdRotX(rigNrm, iMove.y);
   }
-  if (crowdPart < 3.5 || crowdPart > 4.5) rigPos.y += iMove.x * abs(sin(w));
+  // the hop; a supporter's banner is shaken with it (it only hops when they celebrate or dance)
+  rigPos.y += iMove.x * abs(sin(w));
 }
 if (crowdUpright) rigPos.y += ${UPRIGHT_LIFT.toFixed(3)};
 vCrowdP = position;

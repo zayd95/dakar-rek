@@ -38,7 +38,8 @@ export const standsSide = (ecurie: 'baobab' | 'teranga'): Who => (PREP_SIDE[ecur
 let offer = false, running = false, done = false, answered = false;
 let off: (() => void) | null = null;
 
-function playerFighter(ctx: GameCtx): Fighter {
+/** The player as a wrestler of the evening: his profile name (« Toi » without one) and his écurie. */
+export function playerFighter(ctx: GameCtx): Fighter {
   let st: Storage | null = null; try { st = localStorage; } catch { /* blocked */ }
   const name = loadProfile(st, ctx.state.data.guestId).name || 'Toi';
   return { id: 'player', name, ecurie: ctx.state.data.flags.includes('ecurie_baobab') ? 'Baobab' : 'indépendant' };

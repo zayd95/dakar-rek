@@ -9,8 +9,8 @@
  * The same body pose drives every level of detail: the instanced figures' vertex rig (src/crowd/rig.ts) and the arms of
  * the full humanoids next to the player (src/crowd/crowd.ts), so a person keeps the same gesture when the LOD changes.
  */
-export type ReactionKind = 'applause' | 'shout' | 'standUp' | 'grab' | 'fall' | 'celebrate';
-export const REACTION_KINDS: readonly ReactionKind[] = ['applause', 'shout', 'standUp', 'grab', 'fall', 'celebrate'];
+export type ReactionKind = 'applause' | 'shout' | 'standUp' | 'grab' | 'fall' | 'celebrate' | 'dance' | 'slump';
+export const REACTION_KINDS: readonly ReactionKind[] = ['applause', 'shout', 'standUp', 'grab', 'fall', 'celebrate', 'dance', 'slump'];
 
 /**
  * A pose of the crowd rig. Arms hang from the shoulders in the rest geometry; the rig turns each arm by `spread` (away
@@ -78,6 +78,21 @@ export const REACTIONS: Record<ReactionKind, ReactionDef> = {
     sit: P({ pitch: 2.75, spread: 0.4, elbow: 0.25, pitchAmp: 0.25, sideOff: 1.2, freq: 7 }),
     up: P({ pitch: 2.75, spread: 0.4, elbow: 0.25, pitchAmp: 0.25, sideOff: 1.2, freq: 7, bounce: 0.12 }),
   },
+  /**
+   * The fête after the fall (src/arena/celebration.ts): the winner's section dances to the sabar for a long while, arms
+   * up in turn (flags and banners go up with them), a hop on each beat, a step from foot to foot. Same rank as
+   * celebrate: the two take turns.
+   */
+  dance: {
+    share: 0.75, seconds: 20, stagger: 1.2, stand: true, rank: 5, voice: 0.85,
+    sit: P({ pitch: 2.05, spread: 0.35, elbow: 0.6, pitchAmp: 0.55, sideOff: Math.PI / 2, freq: 6.9 }),
+    up: P({ pitch: 2.05, spread: 0.35, elbow: 0.6, pitchAmp: 0.55, sideOff: Math.PI / 2, freq: 6.9, bounce: 0.09, walk: 0.14, lean: 0.05 }),
+  },
+  /**
+   * The losing side sits down quietly: elbows on the knees, head low, nothing more to cheer. It outranks everything, so
+   * nobody of that side stands up while the other side celebrates.
+   */
+  slump: { share: 0.9, seconds: 25, stagger: 1.5, stand: false, rank: 6, voice: 0, sit: P({ pitch: 0.55, elbow: 1.55, lean: 0.26 }), up: P({ pitch: 0.2, elbow: 0.5, lean: 0.14 }) },
 };
 
 // ------------------------------------------------------------------ one member's reaction

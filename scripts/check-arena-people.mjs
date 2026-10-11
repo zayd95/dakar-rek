@@ -116,7 +116,9 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await d(() => window.__dakar.arena.speed(1));
   await cam([C.x + 3, 3.6, C.z + 2], [C.x + 9.5, 0.9, C.z + 9.8]); await shot('5-bout-corner'); await d(() => window.__dakar.cam(null));
 
-  // 7. The result: the winner's people run to the ring and celebrate
+  // 7. The result: « la fête après la chute » (src/arena/celebration.ts) — the winner's people run onto the sand and carry
+  //    him round the ring (on foot on a phone), his supporters pour down and dance, the losing side sits down quietly, the
+  //    drums play the bàkk's rhythm; a draw is a calmer applause. Whatever happens, the crowd leaves within 90 s.
   await d(() => window.__dakar.arena.speed(6));
   await until(() => ['result', 'leaving', 'over'].includes(window.__dakar.arena.info().phase), null, 300000);
   await d(() => window.__dakar.arena.speed(1));
@@ -128,9 +130,23 @@ for (const [label, viewport, touch, quality] of VIEWS) {
       await until(w => window.__dakar.arena.info().phase !== 'result' || window.__dakar.arena.info().people.entourage.find(e => e.who === w).people.every(x => !x.walking), p.won, 240000);
       const now = await info(), win = now.people.entourage.find(e => e.who === p.won);
       const near = win.people.every(x => Math.hypot(x.x - C.x, x.z - C.z) < 4.5);
-      check(`${label}: the result — the winner's people run onto the sand to celebrate`, now.phase !== 'result' || (near && win.people.every(x => x.clip === 'Celebrate')), win.people);
-      if (now.phase === 'result') { await cam([C.x - 5, 3.5, C.z - 6], [C.x, 1.0, C.z]); await shot('6-result'); await d(() => window.__dakar.cam(null)); }
-    } else check(`${label}: the result — a draw: both entourages stay in their corners`, p.entourage.every(e => e.people.every(x => x.shown)), p);
+      // (sampled before the fête takes them round the ring at 5.4 s: src/arena/celebration.ts FETE.out)
+      check(`${label}: the result — the winner's people run onto the sand to celebrate`, now.phase !== 'result' || near || (now.party?.t ?? 0) > 5.4, { people: win.people, t: now.party?.t });
+      // the tour of the ring (game time: a slow renderer gets there later)
+      await until(() => { const a = window.__dakar.arena.info(); return a.phase !== 'result' || a.party?.part === 'tour'; }, null, 120000);
+      const f = await info(), party = f.party, kinds = f.crowd.lod.kinds ?? {};
+      check(`${label}: la fête — the winner carried round the ring${party?.lift ? ' on two shoulders' : ''}, his supporters dancing on the sand and in their stands, the losing side sitting quietly, the bàkk on the drums`,
+        f.phase !== 'result' || (!!party && party.part === 'tour' && (!party.lift || party.winnerAt.y > 0.5) && party.sand > 0 && (kinds.dance ?? 0) > 0 && (kinds.slump ?? 0) > 0 && party.rhythm === 'bakk' && party.loud),
+        { party, kinds });
+      if (f.phase === 'result') {
+        const w = party.winnerAt;
+        await cam([C.x - 7, 4.2, C.z - 9], [w.x, 1.4, w.z]); await shot('6-fete'); await d(() => window.__dakar.cam(null));
+      }
+    } else {
+      const f = await info();
+      check(`${label}: the result — a draw: both entourages stay in their corners, a calmer applause`, p.entourage.every(e => e.people.every(x => x.shown)) && (!f.party || (f.party.winner === null && !f.party.loud)), { party: f.party });
+    }
+    check(`${label}: the crowd leaves within 90 s of the result (the result phase, then the stands empty)`, r1.resultLen + 9 <= 90 && r1.resultLen >= 7, { resultLen: r1.resultLen });
   } else check(`${label}: the result phase was seen`, false, r1.phase);
 
   // 8. The evening ends: everybody goes; the chairs are free again

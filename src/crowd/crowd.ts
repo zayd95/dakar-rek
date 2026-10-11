@@ -52,6 +52,11 @@ export interface CrowdSlot {
   lap?: boolean;
   /** This person hangs a banner on the parapet in front of them (its index in src/crowd/banners.ts BANNERS). */
   banner?: number;
+  /**
+   * Shown only by its owner (`setPresent`), never by `fill`, and not counted in `present`: supporters who pour onto the
+   * sand after a win (src/crowd/arenaStands.ts), walking where the owner moves them.
+   */
+  manual?: boolean;
 }
 export interface CrowdOptions {
   quality: CrowdQuality;
@@ -251,7 +256,7 @@ export class Crowd {
   // ---------------------------------------------------------------- presence
   get size() { return this.members.length; }
   /** Members shown now (companions, children on laps and people at the rail, not counted). */
-  get present() { let n = 0; for (const m of this.members) if (m.on && !m.parent) n++; return n; }
+  get present() { let n = 0; for (const m of this.members) if (m.on && !m.parent && !m.slot.manual) n++; return n; }
   /** Members reacting now. */
   get reacting() { let n = 0; for (const m of this.members) if (m.on && m.st.kind) n++; return n; }
   slots(): CrowdSlot[] { return this.members.filter(m => m.on).map(m => m.slot); }
@@ -264,7 +269,7 @@ export class Crowd {
   fill(n: number, skip?: (id: string) => boolean) {
     let k = 0;
     for (const m of this.members) {
-      if (m.parent) continue;
+      if (m.parent || m.slot.manual) continue;
       const want = k < n && !skip?.(m.slot.id);
       if (k < n) k++;
       this.setOn(m, want);
@@ -310,6 +315,15 @@ export class Crowd {
     if (group !== 'all') this.excite.add('all', REACTIONS[kind].voice * n / Math.max(1, this.present));
     return n;
   }
+  /** One member reacts now for `seconds` (a supporter who has run onto the sand starts dancing). True if it took. */
+  reactOne(id: string, kind: ReactionKind, seconds: number): boolean {
+    const m = this.byId.get(id); if (!m?.on || m.speed > 0.2) return false;
+    if (!offer(m.st, kind, 0, seconds)) return false;
+    this.retarget(m);
+    return true;
+  }
+  /** One member settles back at once. */
+  calmOne(id: string) { const m = this.byId.get(id); if (m && calm(m.st)) this.retarget(m); }
   /** What a group does between reactions: rest, or dance on a beat of `bpm` (the near bodies dance their clips). */
   setMood(group: string, mood: Mood, bpm = 120) {
     for (const m of this.members) if (group === 'all' || m.slot.tags?.includes(group)) {
@@ -626,7 +640,7 @@ export class Crowd {
     for (const m of this.members) {
       if (!m.on) continue;
       // companions (children on laps, people at the rail) are counted apart: the rest is about the seats
-      if (m.parent) { out.companions++; if (m.lod) out.companionsDrawn++; continue; }
+      if (m.parent || m.slot.manual) { out.companions++; if (m.lod) out.companionsDrawn++; if (m.st.kind) out.kinds[m.st.kind] = (out.kinds[m.st.kind] ?? 0) + 1; continue; }
       out.present++;
       if (m.standing) out.standing++;
       if (m.st.kind) { out.reacting++; out.kinds[m.st.kind] = (out.kinds[m.st.kind] ?? 0) + 1; }

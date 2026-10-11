@@ -7,25 +7,26 @@
 // their presence (arena.m = 1, in the ring in a fighting stance). Desktop 1280×800 (medium) and phone 390×844 (low, touch).
 // The city clock is moved to the start of a Saturday (a gala evening, Friday–Sunday) for the whole page: the gala place
 // is only offered on fight evenings. The fighter's first path does not depend on the day.
-// LAMB2=1: with ?lamb2 their main event is fought avec frappe (labels and results suffixed -lamb2).
 // Usage: flock /tmp/dakar-browser.lock node scripts/check-arena-fighter.mjs [baseUrl] [outDir]. ONLY=desktop|phone.
+// LAMB2=1: with ?lamb2 the bout is avec frappe against the career's opponent as himself, and a knockdown in it is answered
+// by the stands and the announcer (« … vacille ! Il n’est pas tombé »); the player's own main event is fought avec
+// frappe too — captures and results in <outDir>-lamb2.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4234/';
-const out = process.argv[3] ?? 'docs/screenshots/arena-fighter';
+const L2 = process.env.LAMB2 === '1';
+const out = (process.argv[3] ?? 'docs/screenshots/arena-fighter') + (L2 ? '-lamb2' : '');
 fs.mkdirSync(out, { recursive: true });
 const SLOW = Number(process.env.SLOW ?? 3);
 const WALL_R = 21.7;
-const L2 = process.env.LAMB2 === '1';
 const ME = 'Moussa';
 const results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail: String(detail).slice(0, 300) }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${String(detail).slice(0, 300)}`); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
-for (const [label0, viewport, touch, quality] of [['desktop', { width: 1280, height: 800 }, false, 'medium'], ['phone', { width: 390, height: 844 }, true, 'low']]) {
-  if (process.env.ONLY && process.env.ONLY !== label0) continue;
-  const label = L2 ? `${label0}-lamb2` : label0;
+for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, height: 800 }, false, 'medium'], ['phone', { width: 390, height: 844 }, true, 'low']]) {
+  if (process.env.ONLY && process.env.ONLY !== label) continue;
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch });
   await context.addInitScript(([q, me]) => { try { localStorage.setItem('dakarrek.quality', q); localStorage.setItem('dakarrek.presence.profile', JSON.stringify({ name: me, look: 0 })); } catch { /* */ } }, [quality, ME]);
   // the city clock (src/core/clock.ts: one city day = 24 real minutes, day 1 = 2026-10-06 UTC) at the start of the next
@@ -85,6 +86,26 @@ for (const [label0, viewport, touch, quality] of [['desktop', { width: 1280, hei
   const bout = await until(() => window.__dakar.fighter().phase === 'bout' && !!window.__dakar.duelInfo(), null, 20000);
   check(`${label}: at the ring's edge the bout starts (the existing duel)`, bout, JSON.stringify(await d(() => window.__dakar.duelInfo())).slice(0, 160));
   await page.waitForTimeout(1500); await shot('bout');
+  if (L2) {
+    // Làmb 2.0: the main event is fought avec frappe; a knockdown is answered by the stands and the announcer, not as the fall
+    const b0 = await d(() => window.__dakar.duelInfo());
+    check(`${label}: with ?lamb2 the bout is avec frappe`, b0?.discipline === 'avec_frappe', JSON.stringify({ discipline: b0?.discipline, identity: b0?.identity }));
+    await until(() => window.__dakar.duelInfo()?.phase === 'fight', null, 30000);
+    await d(() => window.__dakar.duelHold(true));                          // he stands still: the set-up is the check's
+    let st = null;
+    for (const t0 = Date.now(); Date.now() - t0 < 60000 * SLOW;) {
+      st = await d(() => window.__dakar.duelInfo());
+      if (!st || st.phase !== 'fight' || st.stagger === 'opponent') break;
+      if (st.dist > 1.5) { await page.keyboard.down('KeyD'); await page.waitForTimeout(150); continue; }
+      await page.keyboard.up('KeyD');
+      await d(() => { window.__dakar.duelSet('opponent', { balance: 4 }); window.__dakar.duelSet('player', { stamina: 100 }); window.__dakar.duelStrike('quick'); });
+      await page.waitForTimeout(250);
+    }
+    await page.keyboard.up('KeyD');
+    const said = await until(() => /vacille ! Il n’est pas tombé/.test(document.getElementById('toast')?.textContent ?? ''), null, 15000);
+    check(`${label}: a knockdown (he staggers) — the announcer says he is still up, the bout goes on`, st?.stagger === 'opponent' && said, JSON.stringify({ stagger: st?.stagger, phase: st?.phase, toast: await d(() => document.getElementById('toast')?.textContent ?? '') }).slice(0, 300));
+    await shot('bout-knockdown');
+  }
   await d(() => window.__dakar.duelAbandon(true));
   const back = await until(() => !window.__dakar.duelInfo() && window.__dakar.fighter().phase === 'return', null, 60000);
   check(`${label}: after the result, back through the tunnel (marker on the wrestlers' gate)`, back && (await d(() => window.__dakar.destination())) === 'pikine:arena:lutteurs', (await fi()).phase);
@@ -175,6 +196,6 @@ for (const [label0, viewport, touch, quality] of [['desktop', { width: 1280, hei
   await context.close();
 }
 await browser.close();
-fs.writeFileSync(`${out}/results${L2 ? '-lamb2' : ''}.json`, JSON.stringify(results, null, 2));
+fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));
 console.log(`${results.length - failed}/${results.length} passed`);
 process.exit(failed ? 1 : 0);

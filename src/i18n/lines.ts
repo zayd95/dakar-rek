@@ -259,6 +259,8 @@ export const ARENA = {
   friendResult: (name: string, won: boolean | null, how: 'projection' | 'decision' | 'egalite' | 'abandon') =>
     how === 'abandon' ? `Abandon : ${name} s’arrête là.` : won === null || how === 'egalite' ? `Match nul pour ${name}.`
       : won ? `${name} l’emporte ${how === 'projection' ? 'par chute' : 'aux points'} ! · Le public : ${utter(['Daan na !'])}` : `${name} s’incline ${how === 'projection' ? 'par chute' : 'aux points'}.`,
+  /** Làmb 2.0, a bout avec frappe: a strike takes a wrestler's balance — he staggers, but it is not the fall that ends it. */
+  knockdown: (name: string) => `🎤 L’annonceur : ${name} vacille ! Il n’est pas tombé : le combat continue.`,
   /** A preliminary's result, short. */
   prelimResult: (winner: string | null, how: 'projection' | 'decision' | 'egalite' | 'abandon') =>
     winner === null || how === 'egalite' || how === 'abandon' ? 'Préliminaires : match nul.' : `Préliminaires : ${winner} l’emporte ${how === 'projection' ? 'par chute' : 'aux points'}.`,

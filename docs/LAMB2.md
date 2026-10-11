@@ -155,6 +155,28 @@ lève le bras du vainqueur aux points. Les **tribunes de la soirée** réagissen
 fête pendant que l'autre côté et les virages se lèvent, mains sur la tête ; au résultat, le plan de résultat des
 tribunes.
 
+### Ton combat de gala, avec frappe : les tribunes et l'annonceur
+
+Le chemin du lutteur (classement de la carrière → appelé à l'arène → « Entrée des lutteurs » → coin → cercle,
+`src/arena/fighter.ts`) se lutte **avec frappe** avec `?lamb2` (`ctx.startBout` → `startDuel(…, 'avec_frappe')`), contre
+l'adversaire désigné par la carrière, lui-même (son style, son niveau, sa ligne). Ses moments (`LambDuel.onMoment` :
+`strike`, `stagger`, `fall`, `arm`, `result`) passent par **un seul plan** (`src/arena/frappeMoments.ts`, testé),
+appliqué par le module de l'arène pour ton combat comme pour le combat regardé — les mêmes réactions de la foule, la même
+réaction à la chute (`fallSplit`) :
+
+- **frappe nette** : le côté de celui qui frappe crie (grosse frappe) ou applaudit un peu (frappe rapide) ;
+- **il vacille** (l'équivalent d'un knock-down) : le côté de celui qui a frappé se lève, les virages crient, et
+  l'annonceur : « Gora vacille ! Il n'est pas tombé : le combat continue. » (pas deux fois en six secondes) — ce n'est
+  **pas** la chute ;
+- **la chute qui finit le combat** : les tribunes se partagent (le côté du vainqueur fête, les autres mains sur la tête) ;
+  au temps, elles se lèvent ;
+- **l'arbitre lève le bras du vainqueur** : l'annonceur donne le résultat (« … l'emporte par projection ! · Le public :
+  « Daan na ! » ») ; puis le plan de résultat des tribunes.
+
+Au combat regardé, le résultat reste annoncé par la soirée elle-même (sa phase « résultat ») ; les frappes, les
+déséquilibres et la chute y sont les mêmes. Pas de moment à l'écurie (leçon, exercices). Vérification :
+`LAMB2=1 node scripts/check-arena-fighter.mjs` (combat avec frappe, un déséquilibre annoncé).
+
 ## Les lutteurs de la ville sont eux-mêmes
 
 Avec frappe, l'adversaire est **un lutteur du classement de la ville** (`src/career/roster.ts`, données de la lane
@@ -242,10 +264,12 @@ du lutteur (`ctx.startBout`) : avec `?lamb2`, il se lutte **avec frappe**, contr
 (son style des six, son niveau, son bilan : `rosterOpponent`). Rien de la simulation du duel n'est changé pour cela ;
 l'arène n'utilise que ses crochets :
 
-- `LambDuel.onMoment` → `GameModule.lamb` (`kind: 'moment'`) : à la chute, les tribunes de son coin fêtent ou se
-  tiennent la tête (`boutMoment`, le côté de son coin) ; le résultat, lui, est celui du spectacle ;
+- `LambDuel.onMoment` → `GameModule.lamb` (`kind: 'moment'`) : les frappes, le déséquilibre (« … vacille ! »), la chute
+  et le bras de l'arbitre passent par le même plan que ci-dessus (« Ton combat de gala, avec frappe »), du côté des
+  tribunes de son coin ; le moment `result`, lui, est laissé au spectacle ;
 - la fin du combat (`kind: 'bout'`) devient le résultat du spectacle (`myShowResult`) : aucun combat regardé n'est
-  simulé ce soir-là ;
+  simulé ce soir-là ; la fête qui suit est celle de son propre combat (`ownNightParty` : les tribunes de son coin
+  dansent ou se rassoient, les tambours, les mots, avec sa vraie affiche ; pas de fête pour un abandon) ;
 - la carte du gala dit « Combat · lutte avec frappe · <son nom> (…) – <adversaire> (…) » pendant son combat
   (`showLabel`) ; le combat regardé avec frappe le dit aussi.
 
@@ -301,6 +325,39 @@ l'exercice demande.
   calculée par `fighterAttributes` — les mêmes valeurs que la fiche Profil (application Arène du téléphone).
 - Sans `?lamb2`, les exercices minutés sont inchangés.
 
+## La bascule (préparée, pas faite)
+
+Une seule constante décide : `LAMB2_DEFAULT` dans `src/lamb/flag.ts`, **false** aujourd'hui. La basculer à `true` (une
+ligne, plus le premier test de `tests/lamb2Flag.test.ts`) fait de Làmb 2.0 la lutte du jeu. Ensuite `?lamb1` dans
+l'adresse (ou `localStorage['dakarrek.lamb2'] = '0'`) force l'ancienne lutte ; `?lamb2` (ou `'1'`) force la nouvelle.
+L'adresse passe avant le choix enregistré, `?lamb1` avant `?lamb2` (`resolveLamb2`, testé).
+
+**Ce qui bascule** (tout ce qui lit `lamb2On()`) :
+
+- **Combat amical** : les six « Avec frappe » (Gora, Pape, Saliou, Ousmane, Malick, Daouda) s'ajoutent ; les combats
+  sans frappe du menu restent.
+- **Le chemin du lutteur** (Petit combat de quartier, Place au gala, Combat pour le titre) : avec frappe, contre
+  l'adversaire de la carrière lui-même ; les tribunes et l'annonceur réagissent à ses moments.
+- **Le menu « Combat classé »** de l'arène : avec frappe, contre le lutteur du classement désigné par la carrière, lui-même
+  (« Affronter Ousmane · Technicien · niveau 4 »). Il compte au classement de la carrière **exactement** comme un combat
+  classé sans frappe (la même entrée `mode: 'classe'`, les mêmes points et le même cachet, `src/career/career.ts` ;
+  aucun champ ni nombre nouveau), et dans son propre bilan `lamb_af_classe_*`, comme les amicaux.
+- **L'écurie** : la séance de Coach Ablaye devient la leçon guidée avec frappe ; les trois exercices sont joués.
+- **La soirée regardée** : le combat principal et les préliminaires avec frappe, IA contre IA (manches de 30 s).
+- **Les bilans** : ces combats comptent dans `lamb_af_*` (et `combats`/`victoires`) ; la carrière reçoit
+  `discipline: 'avec_frappe'` (qu'elle n'enregistre pas : un combat classé est un combat classé).
+- Les descriptions des actions de l'arène et de l'écurie disent quelle lutte elles proposent.
+
+**Ce qui ne bascule pas** (à décider à part) : les combats amicaux sans frappe restent au menu ; le classement de la
+ville mélange les deux disciplines dans un même bilan de saison (voulu : mêmes points) ; le combat joueur contre joueur
+avec frappe (arbitrage serveur) n'existe pas.
+
+**Les vérifications** : sans `LAMB2=1`, les scripts chargent le jeu sans drapeau — après la bascule ils testeraient
+donc la lutte avec frappe. Pour garder la couverture sans frappe, ils devront charger `?lamb1` : `check-lamb` en entier,
+`check-arena-visit`, `check-evening` et `check-arena-fighter` sans `LAMB2`, et l'étape téléphone « sans le drapeau » de
+`check-lamb2`. **Les amis dans les tribunes** voient le même combat tant qu'ils ont le même réglage : la graine est la
+même, mais un ami en `?lamb1` verrait l'autre lutte.
+
 ## Décision à prendre (Habib) : quand la lutte avec frappe devient-elle la règle ?
 
 Aujourd'hui tout est derrière `?lamb2`. Ce qui est **prêt** : le combat debout, l'entrée et l'empoignade jouée, la
@@ -315,8 +372,8 @@ Ce qui **manque** avant d'en faire la lutte par défaut :
   est-elle jouable au pouce ?).
 - **Les animations** : frappes, empoignade et chute sont des poses provisoires posées sur le squelette (pas de vraie
   animation de projection ni de chute dirigée) — à remplacer par des animations Blender.
-- **Le classé** : le combat classé et le chemin du lutteur sont avec frappe seulement avec le drapeau ; le classement
-  de la ville (carrière) mélange encore les deux disciplines dans un même bilan de saison.
+- **Le classé** : le menu « Combat classé » et le chemin du lutteur sont avec frappe avec le drapeau, aux mêmes points
+  que sans frappe ; le classement de la ville (carrière) compte les deux disciplines dans un même bilan de saison.
 - **Le multijoueur** : un combat joueur contre joueur avec frappe demande l'arbitrage serveur (spec §20), pas fait.
 - **L'équilibrage des styles** (spec §12) : les six styles sont écrits et chacun gagne et perd entre IA ; leur
   difficulté contre un joueur reste à régler avec des parties réelles (Ousmane et Daouda sont niveau 4 au combat
