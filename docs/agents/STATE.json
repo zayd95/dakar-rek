@@ -1,30 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-11T20:28:00Z",
+  "updatedAt": "2026-10-11T20:31:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
-  "lease": {
-    "token": "cycle-20261011T2028Z-dkag015-qa",
-    "owner": "producer_dkag015_ci_2028",
-    "acquiredAt": "2026-10-11T20:28:00Z",
-    "expiresAt": "2026-10-11T21:28:00Z"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "DKAG-015",
-      "owner": "qa_dkag015_ci_2028",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "5d17a919cb38862065ac2f8f5debf8131a5a653d",
-      "files": [
-        "docs/agents/operations/reports/DKAG-015-gameplay-review.md"
-      ],
-      "kind": "independent exact CI log review only"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -107,7 +91,8 @@
     "DKAG-016",
     "DKAG-017",
     "DKAG-018",
-    "DKAG-019"
+    "DKAG-019",
+    "DKAG-015"
   ],
   "ci": {
     "aidaCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -133,15 +118,11 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-11T19:36:06Z"
+    "lastCompletedRunAt": "2026-10-11T20:31:00Z"
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [
-    "DKAG-015"
-  ],
-  "activeSessions": [
-    "qa_dkag015_ci_2028"
-  ],
+  "reviewTasks": [],
+  "activeSessions": [],
   "completedSessions": [
     "activation_producer",
     "activation_qa",
@@ -162,9 +143,10 @@
     "gameplay_dkag019_resume_0437",
     "qa_dkag019_resume_0437",
     "gameplay_dkag015_1927",
-    "qa_dkag015_1927"
+    "qa_dkag015_1927",
+    "qa_dkag015_ci_2028"
   ],
-  "nextAction": "Read existing DKAG-015 push38168518669 and PR38168543352 at exact0de3c4a; independent QA must inspect browser logs before verified acceptance. Do not redo code while checks pending.",
+  "nextAction": "No ready isolated task remains. Keep draft candidates unmerged; future integration with current Living Dakar requires a new explicit reservation and fresh base/conflict review.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -302,21 +284,21 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-11-DKAG-015.md",
-    "completedAt": "2026-10-11T19:36:06Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-11-DKAG-015-CI.md",
+    "completedAt": "2026-10-11T20:31:00Z",
+    "trigger": "scheduled autonomous run",
     "actualRunCompleted": true,
     "tasks": [
-      "DKAG-015"
+      "DKAG-015 CI review"
     ],
-    "verifiedCandidates": [],
-    "reviewCandidates": [
+    "verifiedCandidates": [
       "DKAG-015"
     ],
     "draftPullRequests": [
       19
     ],
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261011T1927Z-dkag015"
+    "leaseReleased": "cycle-20261011T2028Z-dkag015-qa"
   },
   "protectedRefsLatest": [
     {
@@ -457,11 +439,9 @@
     "sourceCommit": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
     "baseCommit": "84311a716fa722cd20b4e725a72fd15f60511291",
     "pullRequest": 19,
-    "status": "review",
+    "status": "verified",
     "owner": "gameplay_dkag015_1927",
-    "reviewer": "qa_dkag015_1927",
-    "merged": false,
-    "deployed": false,
+    "reviewer": "qa_dkag015_ci_2028",
     "validation": {
       "authorUnit": {
         "passed": 33,
@@ -471,25 +451,30 @@
       "authorTypecheck": "PASS",
       "authorBrowser": "local_not_run: Chromium absent",
       "ci": {
-        "readAt": "2026-10-11T19:36:06Z",
+        "readAt": "2026-10-11T20:31:00Z",
         "runs": [
           {
             "id": 38168543352,
-            "sha": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
-            "status": "in_progress",
-            "conclusion": null,
-            "event": "pull_request"
+            "event": "pull_request",
+            "jobId": 114556077792,
+            "artifactId": 11713311443,
+            "status": "completed",
+            "conclusion": "success",
+            "sha": "0de3c4a7980e413b867603c770dc45dd855ef3d6"
           },
           {
             "id": 38168518669,
+            "event": "push",
+            "jobId": 114556003538,
+            "artifactId": 11713561857,
+            "status": "completed",
+            "conclusion": "cancelled",
             "sha": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
-            "status": "in_progress",
-            "conclusion": null,
-            "event": "push"
+            "note": "all assertions including full suite PASS before exact 15-minute workflow timeout; not counted green"
           }
         ]
       },
-      "independentQa": "review: static and local tests pass; exact browser CI pending",
+      "independentQa": "READY: exact diff, local evidence and complete PR browser CI reviewed independently",
       "independentUnit": {
         "passed": 33,
         "total": 33
@@ -497,8 +482,13 @@
       "independentTypecheck": "PASS",
       "independentServerTypecheck": "PASS",
       "independentBuild": "PASS",
-      "independentBrowser": "local_not_run: Chromium absent"
+      "independentBrowser": {
+        "result": "PASS",
+        "scope": "Playwright Chromium desktop and phone viewport/touch; not physical phone"
+      }
     },
-    "reviewReport": "docs/agents/operations/reports/DKAG-015-gameplay-review.md"
+    "reviewReport": "docs/agents/operations/reports/DKAG-015-gameplay-review.md",
+    "merged": false,
+    "deployed": false
   }
 }
