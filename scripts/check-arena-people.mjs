@@ -149,10 +149,13 @@ for (const [label, viewport, touch, quality] of VIEWS) {
     check(`${label}: the crowd leaves within 90 s of the result (the result phase, then the stands empty)`, r1.resultLen + 9 <= 90 && r1.resultLen >= 7, { resultLen: r1.resultLen });
   } else check(`${label}: the result phase was seen`, false, r1.phase);
 
-  // 8. The evening ends: everybody goes; the chairs are free again
-  await d(() => window.__dakar.arena.speed(3));
-  await until(() => window.__dakar.arena.info().phase === 'over', null, 120000);
-  await page.waitForTimeout(1200);
+  // 8. The evening ends: everybody goes; the chairs are free again. The fête was seen above: the rest of the result
+  //    (about 56 s of show time) is skipped through the debug API, as the online check does; then the waits are on the
+  //    show's own state with room to spare (a slow renderer runs game time far behind wall time: dt ≤ 0.1 s a frame)
+  await d(() => { const a = window.__dakar.arena; if (a.info().phase === 'result') a.go('leaving'); a.speed(3); });
+  await until(() => window.__dakar.arena.info().phase === 'over', null, 300000);
+  await until(() => window.__dakar.arena.info().people.moment === 'closed', null, 60000);
+  await frame();
   p = await people();
   check(`${label}: the gala is over — the officials, drummers, vendors and entourages are gone, their chairs kept for the next gala`,
     p.moment === 'closed' && p.officials === 0 && p.judges === 0 && p.drummers === 0 && p.press === 0 && p.camp === 0 && p.vendors.every(x => !x.shown) && p.entourage.every(e => e.people.every(x => !x.shown)) && p.seats.every(s => /^pikine:arena:people:/.test(s.occupant ?? '')), p);
@@ -172,7 +175,8 @@ for (const [label, viewport, touch, quality] of VIEWS) {
       p = await people();
       const mine = p.entourage.find(e => e.who === p.fighter), other = p.entourage.find(e => e.who !== p.fighter);
       check(`${label}: fighting tonight — in the corner, the écurie's people gather round the player and turn to them; the other side's stay away`,
-        p.fighterEcurie === f0.bout.ecurie && !!mine && mine.people.every(x => x.shown && Math.hypot(x.x - cor.x, x.z - cor.z) < 1.5) && p.camp >= 1 && other.people.every(x => !x.shown), { fighter: p.fighter, corner: cor, mine: mine?.people });
+        p.fighterEcurie === f0.bout.ecurie && !!mine && mine.people.every(x => x.shown && Math.hypot(x.x - cor.x, x.z - cor.z) < 1.5 && (x.walking || x.clip !== 'Walk')) && p.camp >= 1 && other.people.every(x => !x.shown),
+        { phase: (await info()).phase, fighter: p.fighter, ecurie: [p.fighterEcurie, f0.bout.ecurie], camp: p.camp, corner: cor, mine: mine?.people, other: other?.people.map(x => ({ id: x.id, shown: x.shown })) });
       await cam([cor.x - Math.sign(cor.x - C.x) * 3.2, 2.6, cor.z - 3.4], [cor.x, 1.0, cor.z]); await shot('7-fighter-corner'); await d(() => window.__dakar.cam(null));
       // on cue, out of the corner towards the ring: « Faire ton bàkk » is offered (optional); the drums change, then go back
       await until(() => window.__dakar.fighter().phase === 'ring', null, 60000);

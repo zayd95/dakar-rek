@@ -113,10 +113,14 @@ export class Cast {
   }
   /** True while a role is still walking. */
   walking(id: string) { return this.walks.has(id); }
-  /** Put a standing role at a spot now (stops a walk): someone the venue moves itself, a vendor along the stands. */
+  /**
+   * Put a standing role at a spot now (stops a walk): someone the venue moves itself, a vendor along the stands. A walk
+   * cut short ends in the pose it would have ended in, never standing still with the walk playing.
+   */
   place(id: string, x: number, z: number, yaw: number, y?: number) {
     const e = this.list.find(v => v.r.id === id); if (!e || e.r.seat) return;
-    this.walks.delete(id); e.h.group.position.set(x, y ?? e.h.group.position.y, z); e.h.group.rotation.y = yaw;
+    const w = this.walks.get(id); if (w) { e.h.hold = w.clip; this.walks.delete(id); }
+    e.h.group.position.set(x, y ?? e.h.group.position.y, z); e.h.group.rotation.y = yaw;
   }
   /** Something carried by a role (a basin on the head, a flag, a bucket), in the body's own space. */
   attach(id: string, obj: THREE.Object3D) { const e = this.list.find(v => v.r.id === id); if (e) e.h.group.add(obj); }
