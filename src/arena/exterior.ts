@@ -84,6 +84,9 @@ export const arenaExterior = {
   schedule(fn: ((day: number, hour: number) => boolean) | null) { scheduled = fn; },
   /** Whether the fight evening is on in the current hub right now (debug overrides included): the interior follows it. */
   active(): boolean { return activeNow; },
+  /** The street's phase now and the evening's size (debug overrides included): the gala road follows them (src/city/galaTraffic.ts). */
+  phase(): ExteriorPhase { return ext?.phase ?? 'quiet'; },
+  size(): EveningSize | null { return ext && activeNow ? ext.size : null; },
 };
 
 class Exterior {

@@ -7,6 +7,8 @@ import { StreetLife } from './street';
 import { REACTION_KINDS, type ReactionKind } from './reactions';
 
 let arrivals: ArenaArrivals | null = null;
+/** The arena's arriving fans of this hub (their walker pool: the gala road's moto-taxis and taxis use it), or null. */
+export const arenaArrivalsNow = () => arrivals;
 let street: StreetLife | null = null;
 let hubNow: HubWorld | null = null;
 /** The camera is inside the arena's walls (on the tiers, in the ring): the street outside cannot be seen. */

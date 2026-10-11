@@ -39,7 +39,7 @@ const MIX: [VehicleKind, number][] = [['taxi', 45], ['moto', 35], ['sedan', 20]]
 
 let pillionSeed = 0;
 /** A moto-taxi seed whose kit model carries a pillion (the fan on the back), the same on every client. */
-function motoWithPillion(): number {
+export function motoWithPillion(): number {
   if (pillionSeed) return pillionSeed;
   for (let s = 1; s < 200; s++) {
     const a = buildVehicle('moto', { seed: s, driver: true, passengers: true, lod: 'near' }).spec.budget.near.tris;

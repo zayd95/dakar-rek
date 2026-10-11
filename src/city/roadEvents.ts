@@ -9,6 +9,7 @@ import { GRID, LINES, loopNodes, roadCentre } from '../transport/lines';
 import { routeIn, routeOut, type Side } from '../transport/taxiRules';
 import { taxiDrop, taxiRank } from '../transport/taxi';
 import { rng } from '../core/rng';
+import { galaGeo, galaRoads } from './galaRules';
 
 /**
  * Road events (spec §26): a generic system, not a police simulation. On some days a stretch of road holds a police
@@ -50,13 +51,19 @@ function gridEdges(pts: readonly { x: number; z: number }[]): string[] {
 }
 
 /** Roads somebody's trip depends on in this hub: the car rapide lines, the taxis in and out, the arena drop-off. */
-export function busyEdges(hub: Pick<HubWorld, 'id' | 'spawn'>): Set<string> {
+export function busyEdges(hub: Pick<HubWorld, 'id' | 'spawn'> & { arena?: HubWorld['arena'] }): Set<string> {
   const out = new Set<string>();
   for (const l of LINES.filter(l => l.hub === hub.id)) { const n = loopNodes(l); gridEdges([...n, n[0]]).forEach(k => out.add(k)); }
   const rank = taxiRank(hub).spot, drop = taxiDrop(rank);
   for (const side of ['x-', 'x+', 'z-', 'z+'] as Side[]) { gridEdges(routeOut(rank, side)).forEach(k => out.add(k)); gridEdges(routeIn(drop, side)).forEach(k => out.add(k)); }
   // Pikine: the fight-evening drop-off and the road in front of the arena gate (its queue)
   if (hub.id === 'pikine') gridEdges([{ x: roadCentre(0), z: roadCentre(1) }, { x: roadCentre(3), z: roadCentre(1) }]).concat(gridEdges([{ x: roadCentre(2), z: roadCentre(1) }, { x: roadCentre(2), z: roadCentre(GRID.nb) }])).forEach(k => out.add(k));
+  // Pikine: the gala road — the east approach and its jam, the north road (the agent's released cars, the taxis'
+  // rank), the road down the arena's east side (src/city/galaRules.ts galaRoads)
+  if (hub.id === 'pikine') {
+    const a = hub.arena ?? { cx: (roadCentre(2) + roadCentre(3)) / 2, cz: (roadCentre(1) + roadCentre(2)) / 2 };
+    for (const [p, q] of galaRoads(galaGeo(a))) gridEdges([p, q]).forEach(k => out.add(k));
+  }
   return out;
 }
 
