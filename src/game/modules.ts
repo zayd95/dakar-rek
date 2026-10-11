@@ -85,4 +85,7 @@ export interface GameModule {
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
-export const MODULES: GameModule[] = [meals, perform];
+/** Opening hours of content actions read the city clock (server time, debug override) through the state. */
+const clock: GameModule = { name: 'clock', init: ctx => { ctx.state.hour = ctx.hour; } };
+
+export const MODULES: GameModule[] = [clock, meals, perform];

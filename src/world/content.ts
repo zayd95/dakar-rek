@@ -2,12 +2,18 @@ import type { Action } from './types';
 import type { HubId } from '../core/types';
 import { order } from '../activity/primitives';
 import type { Primitive, SeatPick } from '../activity/types';
+import { isOpen } from '../activity/places';
+import type { GameState } from '../core/state';
 
 const flag = (f: string) => (s: { data: { flags: string[] } }) => s.data.flags.includes(f);
 const noFlag = (f: string) => (s: { data: { flags: string[] } }) => !s.data.flags.includes(f);
 const FRIEND_FLAG: Record<string, string> = { pikine: 'mame_helped', plateau: 'fatou_friend' };
 const friendHere = (s: { data: { flags: string[]; hub: string } }) => !!FRIEND_FLAG[s.data.hub] && s.data.flags.includes(FRIEND_FLAG[s.data.hub]);
 const tired = (n: number) => (s: { data: { needs: { energie: number } } }) => (s.data.needs.energie < n ? 'Trop fatigué' : null);
+type Req = (s: GameState) => string | null;
+/** Only during city hours [from, to): the person the player helps is there (their routine, src/social/routines.ts). */
+const during = (from: number, to: number, why: string): Req => s => (isOpen([from, to], s.hour()) ? null : why);
+const both = (a: Req, b: Req): Req => s => a(s) ?? b(s);
 /**
  * A dish or a drink served at the table: pay, it is prepared, the player walks to a free seat, sits and eats (the plate
  * shows in front of them), and stays seated. Same steps everywhere (src/activity/primitives.ts `order`).
@@ -24,6 +30,9 @@ export const served = (a: Omit<Action, 'steps' | 'seconds'> & { cost: number; pr
 export const onSeat = (a: Action, seat: SeatPick, primitive: Primitive = 'sit'): Action =>
   ({ ...a, steps: [{ label: a.label, primitive, seconds: a.seconds, seat, effects: { needs: a.needs, counters: a.counter ? { [a.counter]: 1 } : undefined } }] });
 
+const garage = during(7, 19, 'Garage fermé · Modou ouvre à 7 h');
+const morning = during(5, 12, 'La pirogue part le matin, entre 5 h et 12 h');
+
 export const ACTIONS: Record<string, Action[]> = {
   gargote: [
     served({ id: 'ceebu', label: 'Ceebu jën', detail: 'Le plat du jour · servi à table', cost: 1000, needs: { faim: 45, moral: 4 }, counter: 'meals' }),
@@ -39,19 +48,19 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'discuter', label: 'Rester discuter', detail: 'Gratuit', needs: { social: 12, moral: 4 }, seconds: 3 },
   ],
   market: [
-    { id: 'vendre', label: 'Vendre au marché (un service)', detail: '+2 500 F', gain: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: tired(22) },
+    { id: 'vendre', label: 'Vendre au marché (un service)', detail: '+2 500 F', gain: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: both(during(8, 18, 'L’étal est fermé · Adja revient à 8 h'), tired(22)) },
   ],
   gym: [
     { id: 'courir', label: 'Courir sur la Corniche', detail: 'Forme +1', needs: { energie: -20, moral: 10, hygiene: -10, faim: -8 }, seconds: 4, counter: 'forme', requires: tired(20) },
     { id: 'barres', label: 'Faire les barres', needs: { energie: -15, moral: 6, hygiene: -6 }, seconds: 3, counter: 'forme', requires: tired(15) },
   ],
   port: [
-    { id: 'pecheurs', label: 'Aider les pêcheurs', detail: '+3 500 F', gain: 3500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: tired(28), visible: noFlag('ousmane_trust') },
-    { id: 'pirogue', label: 'Pirogue du matin (recommandé par Ousmane)', detail: '+4 500 F', gain: 4500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: tired(28), visible: flag('ousmane_trust') },
+    { id: 'pecheurs', label: 'Aider les pêcheurs', detail: '+3 500 F', gain: 3500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: both(during(5, 18, 'Le quai est vide · les pêcheurs reviennent à 5 h'), tired(28)), visible: s => noFlag('ousmane_trust')(s) || !!morning(s) },   // once the morning pirogue has left, the quay still needs hands
+    { id: 'pirogue', label: 'Pirogue du matin (recommandé par Ousmane)', detail: '+4 500 F', gain: 4500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: both(morning, tired(28)), visible: flag('ousmane_trust') },
   ],
   garage: [
-    { id: 'meca', label: 'Aider le mécanicien', detail: '+2 000 F', gain: 2000, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: tired(18), visible: noFlag('modou_trust') },
-    { id: 'meca_conf', label: 'Travailler au garage (tarif de confiance)', detail: '+2 800 F · recommandé par Ibou', gain: 2800, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: tired(18), visible: flag('modou_trust') },
+    { id: 'meca', label: 'Aider le mécanicien', detail: '+2 000 F', gain: 2000, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: noFlag('modou_trust') },
+    { id: 'meca_conf', label: 'Travailler au garage (tarif de confiance)', detail: '+2 800 F · recommandé par Ibou', gain: 2800, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: flag('modou_trust') },
   ],
   home: [
     { id: 'dormir', label: 'Dormir', detail: 'Retrouver de l’énergie', needs: { energie: 70, faim: -10, moral: 4 }, seconds: 5 },
