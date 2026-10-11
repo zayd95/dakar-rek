@@ -26,6 +26,16 @@
         "scripts/check-city-life.mjs",
         "docs/agents/reports/DKAG-015-gameplay.md"
       ]
+    },
+    {
+      "task": "DKAG-015",
+      "owner": "qa_dkag015_1927",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "391e8d0aaf331e9975845b6b30b3641dbc54dc7d",
+      "files": [
+        "docs/agents/operations/reports/DKAG-015-gameplay-review.md"
+      ],
+      "kind": "independent QA report only"
     }
   ],
   "externalWork": [

@@ -371,7 +371,11 @@
       "owner": "gameplay_dkag015_1927",
       "reviewer": "qa_dkag015_1927",
       "controlBriefCommit": "d9f5c84267c560863c8bdc41d281d17d489c9d9a",
-      "decision": "Producer explicitly commissions separate candidate from exact closed PR9 head 84311a7; current protected wip 4cc788b still has generic directory detail. Only surgical openPlaces formatter integration permitted in main.ts; never copy main.ts from current wip or integrate other session changes. Candidate complements existing city code, not its reimplementation. Integration with Living Dakar deferred to its owner."
+      "decision": "Producer explicitly commissions separate candidate from exact closed PR9 head 84311a7; current protected wip 4cc788b still has generic directory detail. Only surgical openPlaces formatter integration permitted in main.ts; never copy main.ts from current wip or integrate other session changes. Candidate complements existing city code, not its reimplementation. Integration with Living Dakar deferred to its owner.",
+      "reviewAllowedFiles": [
+        "docs/agents/operations/reports/DKAG-015-gameplay-review.md"
+      ],
+      "reviewReport": "docs/agents/operations/reports/DKAG-015-gameplay-review.md"
     },
     {
       "id": "DKAG-016",
