@@ -659,7 +659,11 @@
           "runs": [],
           "readAt": "2026-10-11T04:41:00Z"
         }
-      }
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md",
+      "reviewAllowedFiles": [
+        "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md"
+      ]
     }
   ]
 }

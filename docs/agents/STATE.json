@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-11T04:41:00Z",
+  "updatedAt": "2026-10-11T04:55:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
@@ -15,7 +15,22 @@
   },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "task": "DKAG-019-finalization",
+      "owner": "codex-scheduled-coordinator",
+      "reviewer": "qa_dkag019_resume_0437",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "855d3e540dfa8dfc2b0fa113dd1653594cbe041a",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md",
+        "docs/agents/operations/CYCLE-2026-10-11-DKAG-019.md",
+        "docs/agents/STATE.json",
+        "docs/agents/operations/QUEUE.json"
+      ],
+      "acquiredAt": "2026-10-11T04:55:00Z"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
