@@ -68,7 +68,9 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
 
   // 3. the fight evening: climb an aisle, take a place on an upper tier, stand up into the aisle
   await d(() => { window.__dakar.setHour(19); window.__dakar.arenaOutDay(5); });
-  await d(() => { const a = window.__dakar.arena?.info?.(); if (a) window.__dakar.state.data.counters.arena_ticket_day = a.day; });
+  // the aisle climbed below (east, section F) leads to the « Tribune couverte »: a ticket of that tier
+  // (src/arena/tickets.ts TIER_COUNTER, index in TRIBUNES), else its places are greyed for a « Populaire »
+  await d(() => { const a = window.__dakar.arena?.info?.(); if (a) { const c = window.__dakar.state.data.counters; c.arena_ticket_day = a.day; c.arena_ticket_tier = 1; } });
   const aa = Math.PI / 2, wr = 16.6;
   await d(([x, z, y]) => window.__dakar.place(x, z, y), [cx + Math.sin(aa) * wr, cz + Math.cos(aa) * wr, aa]);
   await page.keyboard.down('KeyW');
@@ -77,7 +79,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   check(`${label}: the aisle climbed to the top tier`, climbed, JSON.stringify(await d(() => window.__dakar.pos())));
   const seatF = await until(() => /^seat:.*arena:stand/.test(window.__dakar.focus()?.id ?? ''), null, 20000);
   const f = await d(() => window.__dakar.focus());
-  check(`${label}: from the aisle, a place on the tiers is offered`, seatF && f.primary === 'S’asseoir', JSON.stringify(f));
+  check(`${label}: from the aisle, a place on the tiers is offered`, seatF && f.primary === 'S’asseoir' && !f.why?.length, JSON.stringify(f));
   await d(() => window.__dakar.act());
   const sat = await until(() => /arena:stand:[12]:/.test(window.__dakar.seated() ?? ''), null, 20000);
   check(`${label}: the player sits on an upper tier`, sat, String(await d(() => window.__dakar.seated())));
