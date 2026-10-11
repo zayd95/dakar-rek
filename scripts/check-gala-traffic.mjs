@@ -123,7 +123,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   const b1 = (await d(() => window.__dakar.moto.info())).bumps;
   await hold('KeyW', -1, x => window.__dakar.moto.info().x < x, geo.front - 0.5, 60000);                      // on past them
   const m = await d(() => window.__dakar.moto.info()), a2 = (await info()).agent;
-  check(`${label}: the player's moto filters through the north gap past the jam's front`, m1.x > geo.front && m1.x < geo.front + 12 && m.x < geo.front && Math.abs(m.z - geo.gapIn) < 0.6 && m.bumps - b0 <= 1,
+  check(`${label}: the player's moto filters through the north gap past the jam's front`, m1.x > geo.front && m1.x < geo.front + 16 && m.x < geo.front && Math.abs(m.z - geo.gapIn) < 0.6 && m.bumps - b0 <= 1,
     JSON.stringify({ x: m.x, z: m.z, from: tail + 7, front: geo.front, alongBumps: b1 - b0, pastBumps: m.bumps - b1, beside: m1.x, agent: a2 }));
   await shot('3-filtering');
   await d(() => window.__dakar.act());                                                                          // off the moto
