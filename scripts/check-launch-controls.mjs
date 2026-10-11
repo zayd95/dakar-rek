@@ -40,10 +40,13 @@ try {
     await page.locator(`#phone button[data-q="${quality}"]`).tap();
     await page.locator('#phone [data-nav="close"]').tap();
     await page.waitForFunction(() => !document.querySelector('#modal').classList.contains('on') && !document.querySelector('#phone').classList.contains('on'));
+    // The door's fade is a 350 ms timer (src/main.ts exitInterior): right after a quality rebuild the main thread can be
+    // busy for seconds on a software renderer (CI runner: still inside after 700 ms), so wait for the street, then judge.
+    const t0 = Date.now();
     await page.evaluate(() => window.__dakar.exit());
-    await sleep(700);
+    await page.waitForFunction(() => window.__dakar.pos().x < 900, null, { timeout: 20000 }).catch(() => {});
     const p = await page.evaluate(() => window.__dakar.pos());
-    check(`changing quality inside ${kind} keeps a working exit`, p.x < 900 && p.hub === 'pikine', JSON.stringify(p));
+    check(`changing quality inside ${kind} keeps a working exit`, p.x < 900 && p.hub === 'pikine', `${JSON.stringify(p)} after ${Date.now() - t0} ms`);
   }
 
   // A lost pointer/blur must not keep walking after returning to the game.
