@@ -94,11 +94,11 @@ body.touch kbd { display:none; }
 #ui .ridecard { margin-top:var(--sa-t); }
 /* the arena show's card (src/arena/card.ts, 118 px / 150 px on a phone) is on: the toasts stack under it, never over it */
 #ui .galacard { margin-top:var(--sa-t); }
-#ui:has(#galacard.on) #toast { top:calc(172px + var(--sa-t)); }
+#ui:has(#galacard.on) #toast { --tt:172px; top:calc(172px + var(--sa-t)); }
 /* on a phone the card's second line (the moment and both names) takes two lines rather than « Malick (Écurie Baobab) – A… » */
 @media (max-width:640px) and (orientation:portrait) {
   #ui #galacard small { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.3; }
-  #ui:has(#galacard.on) #toast { top:calc(222px + var(--sa-t)); }
+  #ui:has(#galacard.on) #toast { --tt:222px; top:calc(222px + var(--sa-t)); }
 }
 #goal .gi { flex:none; display:grid; place-items:center; width:22px; height:22px; border-radius:50%; background:var(--surface-2); color:var(--ink); font-style:normal; font-size:12px; font-weight:800; transition:transform .25s; }
 #goal.walk .gi { background:var(--sun); font-size:15px; }
@@ -108,7 +108,7 @@ body.touch kbd { display:none; }
 #goal .gt .sep { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
 /* ------------------------------------------------------------- toasts (stacked, top centre) */
-#toast { position:absolute; left:50%; top:calc(66px + var(--sa-t)); transform:translateX(-50%); width:min(460px, calc(100vw - 24px)); display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none; z-index:22; }
+#toast { --tt:66px; position:absolute; left:50%; top:calc(66px + var(--sa-t)); transform:translateX(-50%); width:min(460px, calc(100vw - 24px)); display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none; z-index:22; }
 #toast .t { max-width:100%; padding:8px 14px; border-radius:18px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); font-size:13.5px; font-weight:650; line-height:1.35; text-align:center; animation:tIn .2s ease-out; transition:opacity .2s, transform .2s; }
 #toast .t.warn { color:var(--warn); }
 #toast .t.warn::before { content:'⚠︎ '; }
@@ -342,7 +342,12 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   /* the hub's first name only (« Pikine »): one line, the time and the evening's tag under it */
   #place .pl-more { display:none; }
   #place em.on { display:table; margin:2px 0 0 auto; }
-  #toast { top:calc(170px + var(--sa-t)); }
+  #toast { --tt:170px; top:calc(170px + var(--sa-t)); }
+  /* a moment card — the after-bout card above all, the tallest — ends above the controls' row (the joystick, 154 px up;
+     « Courir »; the action column, about 144 px) and scrolls inside when it is taller (a 360 × 640 phone, the gala card
+     on): a finger on the controls never meets it. A tap still dismisses it. */
+  #toast .mo { max-height:calc(100vh - var(--tt) - var(--sa-t) - 164px - var(--sa-b)); max-height:calc(100dvh - var(--tt) - var(--sa-t) - 164px - var(--sa-b));
+    overflow-y:auto; overscroll-behavior:contain; }
   /* the after-bout card: a smaller icon leaves its rows the room they need */
   #toast .bc .mo-ic { width:30px; height:30px; font-size:16px; }
   #toast .mo.bc { gap:8px; padding-left:10px; }
@@ -378,7 +383,12 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #stats { top:calc(8px + var(--sa-t)); }
   #place { top:calc(8px + var(--sa-t)); }
   #goal { top:calc(80px + var(--sa-t)); }
-  #toast { top:calc(60px + var(--sa-t)); width:min(420px, calc(100vw - 340px)); }
+  /* the toast column between the joystick with « Courir » (up to 226 px from the left) and the action column (24 vw from
+     the right), centred in what is left: the controls sit at the bottom corners, so a moment card only has to end on
+     screen (and scrolls inside when it is taller) */
+  #toast { --tt:60px; top:calc(60px + var(--sa-t)); left:calc(236px + var(--sa-l)); right:calc(24vw + 6px + var(--sa-r)); width:auto; max-width:420px; margin:0 auto; transform:none; }
+  #toast .mo { max-height:calc(100vh - var(--tt) - var(--sa-t) - 8px - var(--sa-b)); max-height:calc(100dvh - var(--tt) - var(--sa-t) - 8px - var(--sa-b));
+    overflow-y:auto; overscroll-behavior:contain; }
   /* short screen: a moment card keeps its first five lines, so it and the toasts under it stay above the action column */
   #toast .mo-tx li:nth-child(n+6) { display:none; }
   #toast .mo { padding-top:8px; padding-bottom:8px; }
