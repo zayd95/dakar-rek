@@ -104,15 +104,23 @@ for (const [label, viewport, touch, quality] of VIEWS) {
     lw?.part === 'bakk' && cer.rhythm === 'bakk' && cer.cues >= 4 && [...lp.people, lp.griot].every(x => x && x.shown && !x.walking && Math.hypot(x.x - lw.x, x.z - lw.z) < 2.4), { cer, left: lp });
   if (lw) { await cam([lw.x - 3.5, 2.4, lw.z - 5], [lw.x, 1.1, lw.z]); await shot('4b-bakk'); await d(() => window.__dakar.cam(null)); }
 
-  // 6. The bout: the entourages in their corners, our referee gives way to the duel's own
+  // 6. The bout: the entourages in their corners, our referee gives way to the duel's own. The waits are on the show's
+  //    own state (a slow renderer runs game time far behind wall time): the rest of the entrance fast-forwarded, then, as
+  //    soon as the bout is on, back to its own pace so that it is still on when read
   await d(() => window.__dakar.arena.speed(3));
-  await until(() => window.__dakar.arena.info().phase === 'bout');
-  await until(() => window.__dakar.arena.info().people.entourage.every(e => e.people.every(x => !x.walking)), null, 90000);
+  const inBout = await until(() => {
+    const i = window.__dakar.arena.info();
+    if (i.phase === 'bout') window.__dakar.arena.speed(1);
+    return ['result', 'leaving', 'over'].includes(i.phase) || (i.phase === 'bout' && i.people.entourage.every(e => e.people.every(x => !x.walking)));
+  }, null, 360000);
   p = await people();
+  const b6 = await info();
   const CORNER = [[0, 12.95], [-0.78, 12.95], [0.78, 12.95], [-0.6, 13.6]];                     // src/world/arenaModules.ts cornerSpots
   const corner = (side, k) => { const [o, r] = CORNER[k], a = side * (0.78 + o / r); return { x: C.x + Math.sin(a) * r, z: C.z + Math.cos(a) * r }; };
-  const inCorner = p.entourage.every(e => e.people.every((x, k) => dist(x, corner(e.side, k)) < 0.5));
-  check(`${label}: the bout — each entourage waits in its corner; the referee is the duel's`, (await info()).phase === 'bout' && inCorner && !p.referee && p.judges === nJ, p.entourage);
+  const placed = p.entourage.flatMap(e => e.people.map((x, k) => ({ id: x.id, d: Math.round(dist(x, corner(e.side, k)) * 100) / 100, walking: x.walking, clip: x.clip })));
+  const inCorner = placed.every(x => x.d < 0.5 && !x.walking);
+  check(`${label}: the bout — each entourage waits in its corner; the referee is the duel's`, b6.phase === 'bout' && inCorner && !p.referee && p.judges === nJ,
+    { waited: inBout, phase: b6.phase, t: b6.t, inCorner, referee: p.referee, judges: `${p.judges}/${nJ}`, people: placed });
   await d(() => window.__dakar.arena.speed(1));
   await cam([C.x + 3, 3.6, C.z + 2], [C.x + 9.5, 0.9, C.z + 9.8]); await shot('5-bout-corner'); await d(() => window.__dakar.cam(null));
 
