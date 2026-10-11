@@ -32,7 +32,11 @@ export interface Reaction {
 }
 export interface Intro { to: string; when: Cond[]; flag: string; line: string }
 export interface Fact { when: Cond; text: string }
-export interface Perk { id: string; label: string; detail: string; cost?: number; needs: Partial<Needs>; seconds: number; counter?: string; flags: string[] }
+export interface Perk {
+  id: string; label: string; detail: string; cost?: number; needs: Partial<Needs>; seconds: number; counter?: string; flags: string[];
+  /** A plate or a drink: served at a table like the place's own menu (src/world/content.ts `served`), `prop` is the dish shown. */
+  served?: { prop: string; drink?: boolean };
+}
 
 export interface Profile {
   id: string; age: number; origin: string;
@@ -135,7 +139,7 @@ export const PROFILES: Profile[] = [
     humour: 'Menace de « mettre au travail » ceux qui reviennent trop souvent.',
     looks: { base: { skin: 0x7a4a2c, female: true, style: 'dress', top: 0xe58a2f, pattern: 'wax', accent: 0xf6e7c1, hat: 'headwrap', hatColor: 0xe7b82f, heavy: 0.6 } },
     place: 'pikine:gargote', menu: 'chat',
-    perk: { id: 'mame_habitue', label: 'Le plat de l’habitué', detail: 'Mame te reconnaît : une louche de plus', cost: 900, needs: { faim: 55, moral: 8, social: 4 }, seconds: 3, counter: 'meals', flags: ['regular_mame'] },
+    perk: { id: 'mame_habitue', label: 'Le plat de l’habitué', detail: 'Mame te reconnaît : une louche de plus', cost: 900, needs: { faim: 55, moral: 8, social: 4 }, seconds: 3, counter: 'meals', flags: ['regular_mame'], served: { prop: 'ceebu' } },
     reactions: [
       { when: { flag: 'mame_helped', regular: true }, line: 'Mon habitué ! Ta place est gardée, et la louche est plus généreuse pour toi.' },
       { when: { flag: 'mame_helped' }, line: 'Toi qui m’as porté la bonbonne ! Ici tu manges à prix d’ami, je n’oublie pas.' },
@@ -336,7 +340,7 @@ export const PROFILES: Profile[] = [
     humour: '« Chez Fatou, on ne repart jamais le ventre vide. »',
     looks: { base: { skin: 0x8a5a3a, female: true, style: 'dress', top: 0xc2417f, pattern: 'wax', accent: 0xffffff, hat: 'headwrap', hatColor: 0xc2417f, heavy: 0.3 } },
     place: 'plateau:gargote', menu: 'chat',
-    perk: { id: 'fatou_habitue', label: 'Plat et bissap de l’habitué', detail: 'Fatou ajoute le bissap', cost: 1000, needs: { faim: 48, moral: 10 }, seconds: 3, counter: 'meals', flags: ['regular_fatou'] },
+    perk: { id: 'fatou_habitue', label: 'Plat et bissap de l’habitué', detail: 'Fatou ajoute le bissap', cost: 1000, needs: { faim: 48, moral: 10 }, seconds: 3, counter: 'meals', flags: ['regular_fatou'], served: { prop: 'ceebu' } },
     reactions: [
       { when: { flag: 'fatou_friend', regular: true }, line: 'Les amis d’Adja mangent bien, et les habitués mangent encore mieux.' },
       { when: { hours: [21, 24] }, line: 'Le service est fini. Ce soir, c’est moi qui m’assieds.' },
@@ -422,7 +426,7 @@ export const PROFILES: Profile[] = [
     humour: '« Assieds-toi, mais ne me parle pas de travail. »',
     looks: { base: { skin: 0x6b3f25, female: true, style: 'dress', top: 0xf3f0ea, pattern: 'uni', accent: 0x0c4a6e, hair: 'puff' } },
     place: 'almadies:restaurant', menu: 'chat',
-    perk: { id: 'khady_maison', label: 'Bissap offert par la maison', detail: 'Pour les habitués du Pointe', needs: { faim: 6, moral: 8 }, seconds: 2, flags: ['regular_khady'] },
+    perk: { id: 'khady_maison', label: 'Bissap offert par la maison', detail: 'Pour les habitués du Pointe', needs: { faim: 6, moral: 8 }, seconds: 2, flags: ['regular_khady'], served: { prop: 'bissap', drink: true } },
     reactions: [
       { when: { flag: 'khady_trust', regular: true }, line: 'Mon meilleur serveur d’un soir ! Les clients demandent quand tu reviens.' },
       { when: { act: ['eat'] }, line: 'Ma seule pause de la journée. Assieds-toi, mais ne me parle pas de travail.' },
