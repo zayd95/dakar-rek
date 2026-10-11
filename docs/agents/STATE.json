@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-11T04:55:00Z",
+  "updatedAt": "2026-10-11T04:56:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
@@ -26,7 +26,8 @@
         "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md",
         "docs/agents/operations/CYCLE-2026-10-11-DKAG-019.md",
         "docs/agents/STATE.json",
-        "docs/agents/operations/QUEUE.json"
+        "docs/agents/operations/QUEUE.json",
+        "docs/agents/operations/ACTIVATION.json"
       ],
       "acquiredAt": "2026-10-11T04:55:00Z"
     }
