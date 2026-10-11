@@ -22,6 +22,7 @@ import { FollowCamera } from './actors/camera';
 import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, type Clip, type PersonLook } from './actors/humanoid';
+import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById } from './social/cast';
 import { NpcLife } from './social/npcLife';
 import { Relations, PLAYER } from './social/relations';
@@ -1007,9 +1008,14 @@ let last = performance.now(), statsT = 0;
 let profOn = false;
 const prof = new Map<string, number>();
 const profMark = (name: string, t0: number) => { const v = performance.now() - t0; const o = prof.get(name); prof.set(name, o === undefined ? v : o * 0.92 + v * 0.08); };
+/** ?debug: the game paused, advanced frame by frame by `__dakar.step` (scripts/check-gait.mjs). */
+let stepping = false;
 function frame(now: number) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (!stepping) frameStep(now, dt);
+}
+function frameStep(now: number, dt: number, draw = true) {
   if (document.hidden || !world) return;
   const tFrame = profOn ? performance.now() : 0;
 
@@ -1101,7 +1107,7 @@ function frame(now: number) {
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   if (profOn) { profMark('rest of update', tSys); tSys = performance.now(); }
-  renderer.render(scene, camera);
+  if (draw) renderer.render(scene, camera);
   if (profOn) { profMark('render (CPU)', tSys); profMark('frame (JS)', tFrame); }
 }
 
@@ -1241,6 +1247,22 @@ if (DEBUG) {
     look(yaw: number, pitch?: number) { follow.pin(); follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
     place(x: number, z: number, yaw: number) { pos.set(x, 0.1 + (world?.heightAt(x, z) ?? 0), z); facing = yaw; follow.snapBehind(yaw); },
     cam(p: [number, number, number] | null, t?: [number, number, number]) { freeCam = p && t ? { p: new THREE.Vector3(...p), t: new THREE.Vector3(...t) } : null; },
+    /** Pause the game loop (true) or let it run (false); while paused, `step(dt, n)` advances it by n frames of dt seconds. */
+    pause(on: boolean) { stepping = on; },
+    step(dt = 1 / 60, n = 1) { for (let i = 0; i < n; i++) frameStep(performance.now(), dt, false); return { x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed }; },
+    /** Draw the frame again (after `cam` while paused). */
+    render() { if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); } renderer.render(scene, camera); },
+    /** The player's gait (src/actors/gait.ts) and the soles' points in the world: heel and ball of each foot. */
+    gait() {
+      const b = playerBody; if (!b) return null;
+      b.group.updateMatrixWorld(true);
+      const sole = (side: 'L' | 'R') => {
+        const f = b.group.getObjectByName(`foot${side}`); if (!f) return null;
+        const p = (v: [number, number, number]) => new THREE.Vector3(...v).applyMatrix4(f.matrixWorld).toArray().map(n => +n.toFixed(4));
+        return { heel: p([...GAIT_SOLE.heel]), ball: p([...GAIT_SOLE.ball]) };
+      };
+      return { ...b.gaitInfo(), clip: b.clipName, hold: b.hold, L: sole('L'), R: sole('R') };
+    },
     meshStats() {
       const rows: { name: string; tris: number; visible: boolean }[] = [];
       world?.group.children.forEach((o, i) => { let t = 0; o.traverse(m => { const g = (m as THREE.Mesh).geometry; if (g) t += (g.index ? g.index.count : g.attributes.position.count) / 3; }); rows.push({ name: `${i}:${o.type}:${((o as THREE.Mesh).material as THREE.Material | undefined)?.type ?? ''}`, tris: Math.round(t), visible: o.visible }); });

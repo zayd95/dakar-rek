@@ -4,6 +4,8 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import type { WrestlerLook } from '../core/types';
 import { ACCESSORIES, ngembTexture, type Socket } from '../lamb/look';
 import type { Outfit } from './character';
+import { GaitState } from './gait';
+import { GaitRig } from './gaitRig';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -42,7 +44,7 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
     fixSitKnees(gltf.animations);
-    fixSitKnees(gltf.animations);
+    fixRunClip(gltf.animations);
     deriveKneel(gltf.animations);
     template = { scene: gltf.scene, clips: [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)] };
   } catch { /* box characters stay in use */ }
@@ -61,6 +63,24 @@ export function fixSitKnees(clips: THREE.AnimationClip[]) {
     const v = track.values;
     let backward = true;
     for (let i = 0; i < v.length; i += 4) if (v[i] > -0.3) backward = false;
+    if (!backward) continue;
+    for (let i = 0; i < v.length; i += 4) { v[i] = -v[i]; v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
+  }
+}
+
+/**
+ * The exported Run action bends the knees the wrong way (like Sit's: the shins rotate −X about the knee, so the legs
+ * fold backwards like a bird's) and leans the trunk back. Mirror those rotations. The gait (src/actors/gait.ts) drives
+ * the legs and the trunk whenever the body moves, so this only shows in the short cross-fades with held poses; a no-op
+ * once the Blender action is corrected and re-exported.
+ */
+export function fixRunClip(clips: THREE.AnimationClip[]) {
+  const run = clips.find(c => c.name === 'Run'); if (!run) return;
+  for (const track of run.tracks) {
+    if (!/^(shin\.?[LR]|spine|chest)\.quaternion$/.test(track.name)) continue;
+    const v = track.values;
+    let backward = true;
+    for (let i = 0; i < v.length; i += 4) if (v[i] > -0.02) backward = false;
     if (!backward) continue;
     for (let i = 0; i < v.length; i += 4) { v[i] = -v[i]; v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
   }
@@ -212,6 +232,9 @@ export function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xfff
   return new THREE.MeshLambertMaterial({ color: map ? 0xffffff : color, map, side: THREE.DoubleSide });
 }
 
+/** Clips that mean « on foot »: held by remote avatars and walking roles, they get the computed gait like a free body. */
+const LOCOMOTION: ReadonlySet<string> = new Set<Clip>(['Idle', 'Walk', 'Run']);
+
 const SOCKET_NODE: Record<Socket, string> = { armL: 'socket_armL', armR: 'socket_armR', waist: 'socket_waist', neck: 'socket_neck' };
 const CLOTH = ['Cloth_Tee', 'Cloth_Trousers', 'Cloth_Shorts', 'Cloth_Boubou', 'Cloth_DressTop', 'Cloth_Skirt', 'Cloth_Kufi', 'Cloth_Headwrap', 'Cloth_Shoes', 'Ngemb_A', 'Ngemb_B', 'Hair_Short', 'Hair_Puff', 'Beard'];
 
@@ -228,8 +251,12 @@ export class Humanoid {
   private morphed: THREE.Mesh[] = [];
   private accessoryMeshes: THREE.Object3D[] = [];
   clipName: Clip | null = null;
-  /** When set, city movement does not change the clip (emotes, talking, sitting). */
+  /** When set, city movement does not change the clip (emotes, talking, sitting). Idle, Walk and Run are not held: the gait runs. */
   hold: Clip | null = null;
+  /** On foot: the computed gait (src/actors/gait.ts) and its weight (0 while a pose is held). */
+  private gait: GaitState | null = null;
+  private gaitRig: GaitRig | null | undefined;
+  private gaitW = 1;
 
   constructor(look?: PersonLook) {
     if (!template) throw new Error('character asset not loaded');
@@ -324,14 +351,39 @@ export class Humanoid {
     this.current = next; this.clipName = name;
   }
 
-  /** City locomotion: idle, walk or run from ground speed (m/s). */
+  /**
+   * City locomotion. On foot (no held pose) the gait is computed from the body's own motion — its group's position and
+   * rotation.y, so call this after moving it — with `speed` (m/s) only saying whether the caller means a run: feet that
+   * stay where they are put down, cadence and step from the ground speed (src/actors/gait.ts). The Idle, Walk and Run
+   * clips stay underneath for the cross-fades with held poses (talking, sitting, emotes…), which the gait fades out for.
+   */
   animate(dt: number, speed: number) {
-    if (!this.hold) {
-      if (speed > 3) { this.play('Run', 0.15); if (this.current) this.current.timeScale = speed / 5.2; }
-      else if (speed > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = Math.max(0.6, speed / 1.45); }
+    const held = this.hold && !LOCOMOTION.has(this.hold) ? this.hold : null;
+    const o = this.group.position;
+    if (held) { this.play(held, 0.2); this.gaitW = Math.max(0, this.gaitW - dt / 0.2); }
+    else {
+      const g = (this.gait ??= new GaitState());
+      if (this.gaitW <= 0) g.reset(o.x, o.z, this.group.rotation.y, this.group.scale.x);        // back on foot from a held pose
+      g.update(dt, o.x, o.z, this.group.rotation.y, this.group.scale.x, speed);
+      if (g.moving) { this.play(g.run > 0.5 ? 'Run' : 'Walk', 0.2); if (this.current) this.current.timeScale = (g.p.cadence / 2) * this.current.getClip().duration; }
       else this.play('Idle', 0.25);
-    } else this.play(this.hold, 0.2);
+      this.gaitW = Math.min(1, this.gaitW + dt / 0.2);
+    }
     this.mixer.update(dt);
+    const w = this.gait ? this.gaitW * this.gait.stand : 0;
+    if (w > 0) {
+      if (this.gaitRig === undefined) this.gaitRig = GaitRig.from(this.root);
+      this.gaitRig?.apply(this.gait!, w);
+    }
+  }
+  /** The gait as computed this frame (checks: src/main.ts `__dakar.gait()`), or null while a pose is held. */
+  gaitInfo() {
+    const g = this.gait; if (!g || this.gaitW <= 0) return null;
+    return {
+      moving: g.moving, run: g.run, speed: g.v * this.group.scale.x, cadence: g.moving ? g.p.cadence : 0, step: g.moving ? g.p.step * this.group.scale.x : 0, duty: g.p.duty,
+      phase: g.phase, steps: g.steps, settles: g.settles, pelvis: g.py, clip: this.clipName,
+      feet: g.feet.map(f => ({ planted: f.planted, swing: f.swing, settle: f.settle, pitch: f.pitch, slipped: f.slipped })),
+    };
   }
   update(dt: number) { this.mixer.update(dt); }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
