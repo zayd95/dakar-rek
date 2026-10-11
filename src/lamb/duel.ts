@@ -441,26 +441,14 @@ export class LambDuel {
     const tl = this.timeLeft;
     this.q('timer').textContent = tl === Infinity ? '—' : `${Math.floor(Math.max(0, Math.ceil(tl)) / 60)}:${String(Math.max(0, Math.ceil(tl)) % 60).padStart(2, '0')}`;
     const step = this.q('step');
-    if (this.lesson) {
-      const l = this.lesson, show = !l.done && this.phase !== 'result';
-      step.hidden = !show;
-      if (show) {
-        const d = LESSON[l.step as keyof typeof LESSON], n = stepNumber(l.step);
-        const html = `<b>${n.n}/${n.of} · ${d.title}</b><small>${document.body.classList.contains('touch') ? 'Boutons en vert' : d.keys}</small><em>${this.coachText}</em><button data-k="skip" type="button">Passer</button>`;
+    if (this.lesson || this.drill) {
+      const card = this.stepCard(document.body.classList.contains('touch'));
+      step.hidden = !card;
+      if (card) {
+        const html = `<b>${card.head}</b><small>${card.keys}</small><em>${card.coach}</em>${card.skip ? '<button data-k="skip" type="button">Passer</button>' : ''}`;
         if (step.innerHTML !== html) step.innerHTML = html;
       }
-      const teach: string[] = show ? LESSON[l.step as keyof typeof LESSON].touch : [];
-      for (const b of this.ui.querySelectorAll<HTMLElement>('.duel-btns button')) b.classList.toggle('teach', teach.includes(b.dataset.k ?? ''));
-      document.getElementById('joy')?.classList.toggle('teach', teach.includes('joy'));
-    } else if (this.drill) {
-      const dr = this.drill, def = DRILLS[dr.id], show = this.phase !== 'result';
-      step.hidden = !show;
-      if (show) {
-        const s = drillScore(dr), n = Math.min(dr.next, def.calls.length);
-        const html = `<b>${def.title} · ${n}/${def.calls.length} · juste ${s.right}${s.faults ? ` · fautes ${s.faults}` : ''}</b><small>${document.body.classList.contains('touch') ? 'Boutons en vert' : def.keys}</small><em>${this.coachText}</em>`;
-        if (step.innerHTML !== html) step.innerHTML = html;
-      }
-      const teach: string[] = show ? def.touch : [];
+      const teach = card?.teach ?? [];
       for (const b of this.ui.querySelectorAll<HTMLElement>('.duel-btns button')) b.classList.toggle('teach', teach.includes(b.dataset.k ?? ''));
       document.getElementById('joy')?.classList.toggle('teach', teach.includes('joy'));
     } else if (this.mode === 'entrainement' && this.step < TUTORIAL.length && this.phase !== 'result') {
@@ -503,6 +491,28 @@ export class LambDuel {
   }
   private labelsClinch = false;
   private labelCounter = false;
+  /**
+   * The lesson's or the drill's card as it reads now: the step and its keys, Coach Ablaye's word, the buttons in green
+   * (`touch`: a phone, the keys give way to « Boutons en vert »). Taken from the state itself, so the card is never a
+   * frame behind it: a step not set up yet (at the bell, or right after « Passer ») already has his word for that step.
+   * Null: no card (no lesson or drill, the lesson over, or the recap).
+   */
+  stepCard(touch = false): { head: string; keys: string; coach: string; teach: string[]; skip: boolean } | null {
+    if (this.phase === 'result') return null;
+    if (this.lesson) {
+      const l = this.lesson; if (l.done) return null;
+      const d = LESSON[l.step as keyof typeof LESSON], n = stepNumber(l.step);
+      return { head: `${n.n}/${n.of} · ${d.title}`, keys: touch ? 'Boutons en vert' : d.keys, coach: l.ready ? this.coachText : coachLine(l.step), teach: [...d.touch], skip: true };
+    }
+    if (this.drill) {
+      const dr = this.drill, def = DRILLS[dr.id], s = drillScore(dr), n = Math.min(dr.next, def.calls.length);
+      return {
+        head: `${def.title} · ${n}/${def.calls.length} · juste ${s.right}${s.faults ? ` · fautes ${s.faults}` : ''}`,
+        keys: touch ? 'Boutons en vert' : def.keys, coach: dr.ready ? this.coachText : drillLine(dr.id), teach: [...def.touch], skip: false,
+      };
+    }
+    return null;
+  }
 
   // ---------------------------------------------------------------- abandon and recap
   private confirmOpen() { return !this.headless && !this.q('confirm').hidden; }
@@ -596,6 +606,7 @@ export class LambDuel {
     const l = this.lesson; if (!l || l.done || this.phase === 'result') return;
     advance(l, true);
     if (l.done) this.finishLesson();
+    this.draw();                                                           // the card shows the next step now, not a frame later
   }
   /** Checks only: set a wrestler's balance, composure or endurance (to reach a state without a long bout). */
   debugSet(side: Side, v: { balance?: number; composure?: number; stamina?: number; grip?: number }) {

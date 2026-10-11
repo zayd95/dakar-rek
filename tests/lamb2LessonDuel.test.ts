@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LambDuel } from '../src/lamb/duel';
 import { PARTNER } from '../src/lamb/rules';
+import { coachLine } from '../src/lamb/lesson';
 import type { Input } from '../src/core/input';
 
 /**
@@ -64,6 +65,31 @@ describe('làmb 2.0 · the lesson inside the duel (headless)', () => {
     const i = duel.info() as unknown as Info;
     expect(i.lesson.done).toBe(true); expect(i.lesson.skipped).toBe(10);
     expect(duel.phase).toBe('result'); expect(duel.result?.outcome).toBe('entrainement');
+    duel.dispose();
+  });
+  it('the card is never a frame behind: his word from the bell on, the next step right on « Passer »', () => {
+    const { duel } = lessonDuel();
+    // before the bell and on the very update the bout starts, step 1 already has his word (not one update later)
+    const c0 = duel.stepCard(true)!;
+    expect(c0).toMatchObject({ head: '1/10 · Approche-toi à distance de frappe', keys: 'Boutons en vert', coach: coachLine('distance'), teach: ['joy'], skip: true });
+    while (duel.phase === 'intro') duel.update(1 / 60);
+    expect(duel.phase).toBe('fight');
+    expect(duel.stepCard(true)).toMatchObject({ head: c0.head, coach: coachLine('distance'), teach: ['joy'] });
+    expect(duel.stepCard(false)!.keys).toBe('ZQSD/WASD/flèches');
+    // « Passer »: the next step, its word and its button at once, before any update
+    duel.skipLessonStep();
+    expect((duel.info() as unknown as Info).lesson.step).toBe('quick');
+    expect(duel.stepCard(true)).toMatchObject({ head: '2/10 · Frappe rapide', coach: coachLine('quick'), teach: ['quick'] });
+    duel.update(1 / 60);
+    expect(duel.stepCard(true)).toMatchObject({ head: '2/10 · Frappe rapide', coach: coachLine('quick'), teach: ['quick'] });
+    // a step in the empoignade: its buttons as soon as it is the step
+    for (let k = 0; k < 3; k++) duel.skipLessonStep();
+    expect(duel.stepCard(true)).toMatchObject({ head: '5/10 · Saisis-le : l’empoignade', coach: coachLine('grab') });
+    duel.skipLessonStep();
+    expect(duel.stepCard(true)!.teach.sort()).toEqual(['grab', 'guard', 'quick']);
+    // the lesson over: no card
+    for (let k = 0; k < 5; k++) duel.skipLessonStep();
+    expect(duel.stepCard(true)).toBeNull();
     duel.dispose();
   });
   it('without avec frappe the training is the sans-frappe tutorial, untouched', () => {
