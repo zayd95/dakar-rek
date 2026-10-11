@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DRILLS, DRILL_IDS, drillFeedback, drillOfAction, drillScore, drillTick, drillVerdict, hearDrill, startDrill, type DrillId, type DrillRun,
+  DRILLS, DRILL_IDS, drillFeedback, drillLine, drillOfAction, drillScore, drillTick, drillVerdict, hearDrill, startDrill, type DrillId, type DrillRun,
 } from '../src/lamb/drills';
 import { LambDuel } from '../src/lamb/duel';
 import { PARTNER } from '../src/lamb/rules';
@@ -168,6 +168,19 @@ describe('làmb 2.0 · the drills inside the duel (headless)', () => {
     (duel as unknown as { end(o: string, w: null): void }).end('abandon', null);
     expect(duel.drillResult()!.outcome).toBe('abandon');
     expect(duel.result!.rewards.lines).toEqual(['Exercice interrompu : rien n’est compté']);
+  });
+  it('the card is never a frame behind: his word and the calls counted from the bell on', () => {
+    for (const id of DRILL_IDS) {
+      const duel = drillDuel(id), def = DRILLS[id];
+      const want = { head: `${def.title} · 0/${def.calls.length} · juste 0`, keys: def.keys, coach: drillLine(id), teach: def.touch, skip: false };
+      expect(duel.stepCard(false)).toEqual(want);
+      while (duel.phase === 'intro') duel.update(DT);
+      expect(duel.phase).not.toBe('intro');
+      expect(duel.stepCard(false)).toEqual(want);                       // the update the bout starts on: already his word
+      expect(duel.stepCard(true)!.keys).toBe('Boutons en vert');
+      duel.dispose();
+    }
+    expect(drillLine('frappe')).toMatch(/^Coach Ablaye : «.+».*Rapide/);
   });
   it('without a drill, the écurie avec frappe is still Coach Ablaye’s lesson', () => {
     const input = { enabled: true, move: () => ({ x: 0, y: 0 }), takeAction: () => false } as unknown as Input;
