@@ -1,37 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-11T04:56:00Z",
+  "updatedAt": "2026-10-11T04:58:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
-  "lease": {
-    "token": "cycle-20261011T043600Z-26b65565756a",
-    "owner": "codex-scheduled-coordinator",
-    "acquiredAt": "2026-10-11T04:36:00Z",
-    "expiresAt": "2026-10-11T05:26:00Z",
-    "headAtAcquire": "991a52359ad0e634b146654cc6af20a62b085cba",
-    "purpose": "resume DKAG-019 on unchanged isolated task ref and independent QA"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "DKAG-019-finalization",
-      "owner": "codex-scheduled-coordinator",
-      "reviewer": "qa_dkag019_resume_0437",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "855d3e540dfa8dfc2b0fa113dd1653594cbe041a",
-      "allowedFiles": [
-        "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md",
-        "docs/agents/operations/CYCLE-2026-10-11-DKAG-019.md",
-        "docs/agents/STATE.json",
-        "docs/agents/operations/QUEUE.json",
-        "docs/agents/operations/ACTIVATION.json"
-      ],
-      "acquiredAt": "2026-10-11T04:55:00Z"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -112,7 +89,9 @@
     "DKAG-013",
     "DKAG-008",
     "DKAG-016",
-    "DKAG-017"
+    "DKAG-017",
+    "DKAG-018",
+    "DKAG-019"
   ],
   "ci": {
     "aidaCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
@@ -135,18 +114,14 @@
     "timingMode": "flexible_schedule",
     "timezone": "Africa/Dakar",
     "registeredAt": "2026-10-08T12:30:35.909469+00:00",
-    "firstAutonomousRunCompleted": false,
+    "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
-    "claudeNativeLoadVerified": false
+    "claudeNativeLoadVerified": false,
+    "lastCompletedRunAt": "2026-10-11T04:58:00Z"
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [
-    "DKAG-018",
-    "DKAG-019"
-  ],
-  "activeSessions": [
-    "qa_dkag019_resume_0437"
-  ],
+  "reviewTasks": [],
+  "activeSessions": [],
   "completedSessions": [
     "activation_producer",
     "activation_qa",
@@ -164,9 +139,10 @@
     "qa_animation_1707",
     "world_dkag018_2236",
     "qa_dkag018_final_0336",
-    "gameplay_dkag019_resume_0437"
+    "gameplay_dkag019_resume_0437",
+    "qa_dkag019_resume_0437"
   ],
-  "nextAction": "QA reviews frozen DKAG-019 SHA aae476b and requires both push and PR CI success on same tree before unblocking DKAG-018.",
+  "nextAction": "No ready isolated task remains. Keep draft candidates unmerged; future integration with current Living Dakar requires a new explicit reservation and fresh base/conflict review.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -304,19 +280,24 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-08-RESUME.md",
-    "completedAt": "2026-10-08T17:19:43Z",
-    "trigger": "user continuation",
-    "codeCandidates": 3,
+    "entry": "docs/agents/operations/CYCLE-2026-10-11-DKAG-019.md",
+    "completedAt": "2026-10-11T04:58:00Z",
+    "trigger": "scheduled autonomous run",
+    "actualRunCompleted": true,
+    "tasks": [
+      "DKAG-019",
+      "DKAG-018 requalification"
+    ],
     "verifiedCandidates": [
-      "DKAG-008"
+      "DKAG-018",
+      "DKAG-019"
     ],
-    "reviewCandidates": [
-      "DKAG-016",
-      "DKAG-017"
+    "draftPullRequests": [
+      16,
+      18
     ],
-    "protectedRefsUnchanged": true,
-    "leaseReleased": "resume-20261008T165500Z-5677b8b0fdd0"
+    "protectedRefsMutated": false,
+    "leaseReleased": "cycle-20261011T043600Z-26b65565756a"
   },
   "protectedRefsLatest": [
     {
@@ -361,14 +342,14 @@
     },
     {
       "name": "wip/visual-pass",
-      "sha": "00abf96efeadcc8bdb8d4c859eb1d0258b0978b7"
+      "sha": "4cc788b561d3c8dbca167e9042f2955cf4413807"
     }
   ],
   "worldCandidate": {
     "sourceCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
     "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
     "pullRequest": 16,
-    "status": "blocked_ci_harness",
+    "status": "verified",
     "owner": "world_dkag018_2236",
     "reviewer": "qa_dkag018_final_0336",
     "local": {
@@ -405,13 +386,16 @@
     ],
     "failure": "after place(), stale nearest target made state-driven loop resolve before movement; start=end",
     "correctionAttempt": 2,
-    "reviewReport": "docs/agents/operations/reports/DKAG-018-world-review.md"
+    "reviewReport": "docs/agents/operations/reports/DKAG-018-world-review.md",
+    "harnessCommit": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
+    "harnessPullRequest": 18,
+    "acceptedScope": "verified product candidate with separate exact-source green harness follow-up; not merged/deployed"
   },
   "ciHarnessCandidate": {
     "sourceCommit": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
     "baseCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
     "pullRequest": 18,
-    "status": "review",
+    "status": "verified",
     "owner": "gameplay_dkag019_resume_0437",
     "reviewer": "qa_dkag019_resume_0437",
     "local": {
@@ -426,6 +410,28 @@
       "browser": "local_not_run: Chrome absent"
     },
     "merged": false,
-    "deployed": false
+    "deployed": false,
+    "reviewReport": "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md",
+    "ci": [
+      {
+        "id": 38112260296,
+        "event": "push",
+        "status": "completed",
+        "conclusion": "success",
+        "sha": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
+        "jobId": 114390084378,
+        "artifactId": 11692795601
+      },
+      {
+        "id": 38112298129,
+        "event": "pull_request",
+        "status": "completed",
+        "conclusion": "success",
+        "sha": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
+        "jobId": 114390204066,
+        "artifactId": 11692825516,
+        "tree": "e27215c3895120a29342287fb1acf7557d0fb4d9"
+      }
+    ]
   }
 }

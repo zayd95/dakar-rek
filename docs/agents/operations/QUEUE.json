@@ -519,7 +519,7 @@
       "id": "DKAG-018",
       "role": "world",
       "kind": "implementation",
-      "status": "blocked",
+      "status": "done",
       "branch": "codex/agents/dkag-018-arena-billboard-offset",
       "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
       "allowedFiles": [
@@ -542,7 +542,7 @@
       "culturalStatus": "provisional geometry, no cultural certification",
       "owner": "world_dkag018_2236",
       "reviewer": "qa_dkag018_final_0336",
-      "ownerState": "correction 2 final frozen handoff",
+      "ownerState": "verified frozen handoff",
       "controlBriefCommit": "8495ac2ebe75aae8e56618ba91dd688ff5123d63",
       "dispatchBaseVerifiedAt": "2026-10-08T22:38:00Z",
       "sourceCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
@@ -555,7 +555,7 @@
         "authorBuild": "PASS",
         "authorServerTypecheck": "PASS",
         "authorBrowser": "container blocked; exact-source CI required",
-        "independentQa": "BLOCKED: product evidence positive, PR harness failure reproducible",
+        "independentQa": "READY after DKAG-019 exact green push+PR",
         "ci": {
           "runs": [
             {
@@ -611,14 +611,15 @@
       "reviewAllowedFiles": [
         "docs/agents/operations/reports/DKAG-018-world-review.md"
       ],
-      "blocker": "CI PR harness times out reproducibly at fixed 3s on identical tree; product path passes complete exact-source push CI. Two author corrections consumed.",
-      "reviewReport": "docs/agents/operations/reports/DKAG-018-world-review.md"
+      "reviewReport": "docs/agents/operations/reports/DKAG-018-world-review.md",
+      "resolvedBlocker": "DKAG-019 aae476b produced exact same-tree green push and PR CI",
+      "acceptedScope": "verified isolated product candidate via green harness follow-up; not merged/deployed"
     },
     {
       "id": "DKAG-019",
       "role": "gameplay",
       "kind": "ci_harness_implementation",
-      "status": "review",
+      "status": "done",
       "owner": "gameplay_dkag019_resume_0437",
       "reviewer": "qa_dkag019_resume_0437",
       "branch": "codex/agents/dkag-019-ci-navigation-determinism",
@@ -640,7 +641,7 @@
         "Exact same-source push and PR runs both success",
         "Independent QA reviews diff and logs before DKAG-018 requalification"
       ],
-      "ownerState": "completed frozen handoff",
+      "ownerState": "verified frozen handoff",
       "controlBriefCommit": "991a52359ad0e634b146654cc6af20a62b085cba",
       "sourceCommit": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
       "pullRequest": 18,
@@ -654,16 +655,44 @@
         "authorNodeCheck": "PASS",
         "authorDiffCheck": "PASS",
         "authorBrowser": "local_not_run: Chrome absent",
-        "independentQa": "in progress",
+        "independentQa": "READY",
         "ci": {
-          "runs": [],
-          "readAt": "2026-10-11T04:41:00Z"
-        }
+          "runs": [
+            {
+              "id": 38112260296,
+              "event": "push",
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
+              "jobId": 114390084378,
+              "artifactId": 11692795601
+            },
+            {
+              "id": 38112298129,
+              "event": "pull_request",
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
+              "jobId": 114390204066,
+              "artifactId": 11692825516,
+              "tree": "e27215c3895120a29342287fb1acf7557d0fb4d9"
+            }
+          ],
+          "readAt": "2026-10-11T04:58:00Z"
+        },
+        "independentUnit": {
+          "passed": 34,
+          "total": 34
+        },
+        "independentTypecheck": "PASS",
+        "independentBuild": "PASS",
+        "independentBrowser": "local_not_run: Chrome absent; exact CI used"
       },
       "reviewReport": "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md",
       "reviewAllowedFiles": [
         "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md"
-      ]
+      ],
+      "acceptedScope": "verified harness-only candidate; exact same-tree push and PR CI; not merged/deployed"
     }
   ]
 }
