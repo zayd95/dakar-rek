@@ -9,6 +9,13 @@ export class Batch {
   private geos: THREE.BufferGeometry[] = [];
   count = 0;
 
+  /** Add a custom surface (boat planks, fish…) to the same merged draw call. */
+  geometry(g: THREE.BufferGeometry, color: THREE.ColorRepresentation, x: number, y: number, z: number, yaw = 0) {
+    if (!g.attributes.normal) g.computeVertexNormals();
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    this.finish(g, color, x, y, z, yaw);
+  }
+
   private finish(g: THREE.BufferGeometry, color: THREE.ColorRepresentation, x: number, y: number, z: number, rotY = 0, rotX = 0, rotZ = 0) {
     g.rotateX(rotX); g.rotateZ(rotZ); g.rotateY(rotY); g.translate(x, y, z);
     const c = new THREE.Color(color);
@@ -23,8 +30,19 @@ export class Batch {
   /** Box with its base at y. */
   box(w: number, h: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0) {
     const g = new THREE.BoxGeometry(w, h, d);
+    // drop the bottom face (-y, indices 18..23): boxes stand on something, it is never seen
+    const idx = Array.from(g.index!.array); idx.splice(18, 6); g.setIndex(idx);
     g.translate(0, h / 2, 0);
     this.finish(g, color, x, y, z, rotY);
+  }
+  /** Box centred at height y keeping all six faces (seen from below: roofs, canopies), tilted by `tilt` about its own x axis. */
+  slab(w: number, h: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0, tilt = 0) {
+    this.finish(new THREE.BoxGeometry(w, h, d), color, x, y, z, rotY, tilt);
+  }
+  /** Flat horizontal quad (2 triangles) lying at height y: road markings, stripes, decals. */
+  flat(w: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0) {
+    const g = new THREE.PlaneGeometry(w, d);
+    this.finish(g, color, x, y, z, rotY, -Math.PI / 2);
   }
   /** Box whose side faces tile a window texture (storey/bay repeat); roof/underside sample plain wall. */
   facade(w: number, h: number, d: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, rotY = 0) {
@@ -46,6 +64,12 @@ export class Batch {
     g.translate(0, h / 2, 0);
     this.finish(g, color, x, y, z, rot[1], rot[0], rot[2]);
   }
+  /** Low-poly blob (tree canopy, sandbag, bush). sy squashes it vertically. */
+  blob(r: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, sy = 1, detail = 1) {
+    const g = new THREE.IcosahedronGeometry(r, detail);
+    g.scale(1, sy, 1);
+    this.finish(g, color, x, y, z);
+  }
   sphere(r: number, x: number, y: number, z: number, color: THREE.ColorRepresentation, half = false) {
     const g = half ? new THREE.SphereGeometry(r, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2) : new THREE.SphereGeometry(r, 12, 8);
     this.finish(g, color, x, y, z);
@@ -61,27 +85,35 @@ export class Batch {
   }
 }
 
-function canvasTex(draw: (c: CanvasRenderingContext2D) => void): THREE.CanvasTexture {
-  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
-  draw(cv.getContext('2d')!);
-  const t = new THREE.CanvasTexture(cv);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-  return t;
-}
-
-/** Facade texture: plain wall with one shuttered window per bay; emissive mask lights windows at night. */
+/**
+ * Facade texture (one storey × one bay): rendered plaster, a recessed window with frame, louvred shutters,
+ * sill with a drip stain, and the slab line between storeys. White-based so each building's vertex colour
+ * tints it. The emissive mask lights the window glass at night.
+ */
 export function facadeTextures() {
-  const map = canvasTex(c => {
-    c.fillStyle = '#fff'; c.fillRect(0, 0, 64, 64);
-    c.fillStyle = '#e4e1da'; c.fillRect(0, 60, 64, 4);          // storey line
-    c.fillStyle = '#3d4b5f'; c.fillRect(20, 16, 24, 28);        // window
-    c.fillStyle = '#8fa3b8'; c.fillRect(22, 18, 20, 11);        // glass glint
-    c.fillStyle = '#b9b2a6'; c.fillRect(18, 44, 28, 3);         // sill
+  const S = 128;
+  const mk = (draw: (c: CanvasRenderingContext2D) => void) => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = S; draw(cv.getContext('2d')!);
+    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+  };
+  const map = mk(c => {
+    c.fillStyle = '#fbfaf7'; c.fillRect(0, 0, S, S);
+    for (let i = 0; i < 900; i++) { const v = 235 + Math.floor(Math.random() * 20); c.fillStyle = `rgb(${v},${v - 2},${v - 6})`; c.fillRect(Math.random() * S, Math.random() * S, 2, 2); }
+    c.fillStyle = '#d9d3c7'; c.fillRect(0, S - 9, S, 9);                 // slab band between storeys
+    c.fillStyle = '#c9c1b2'; c.fillRect(0, S - 10, S, 2);
+    c.fillStyle = '#e6e1d8'; c.fillRect(34, 18, 60, 74);                 // window surround
+    c.fillStyle = '#26303d'; c.fillRect(40, 24, 48, 62);                 // recess / glass
+    c.fillStyle = '#5b6f86'; c.fillRect(42, 26, 20, 26); c.fillStyle = '#4a5c71'; c.fillRect(66, 26, 20, 26);
+    c.fillStyle = '#e9e5dd'; c.fillRect(63, 24, 3, 62); c.fillRect(40, 53, 48, 3); // mullions
+    for (const x of [22, 94]) {                                           // louvred shutters
+      c.fillStyle = '#8b8f8c'; c.fillRect(x, 24, 12, 62);
+      c.fillStyle = '#6d726f'; for (let y = 27; y < 84; y += 5) c.fillRect(x + 1, y, 10, 2);
+    }
+    c.fillStyle = '#cfc8ba'; c.fillRect(32, 90, 64, 5);                  // sill
+    const g = c.createLinearGradient(0, 95, 0, S - 10); g.addColorStop(0, 'rgba(120,110,95,0.35)'); g.addColorStop(1, 'rgba(120,110,95,0)');
+    c.fillStyle = g; c.fillRect(44, 95, 40, S - 105);                    // drip stain under the sill
   });
-  const glow = canvasTex(c => {
-    c.fillStyle = '#000'; c.fillRect(0, 0, 64, 64);
-    c.fillStyle = '#fff'; c.fillRect(21, 17, 22, 26);
-  });
+  const glow = mk(c => { c.fillStyle = '#000'; c.fillRect(0, 0, S, S); c.fillStyle = '#fff'; c.fillRect(42, 26, 44, 58); });
   return { map, glow };
 }
 
@@ -91,7 +123,7 @@ export function signTexture(text: string, bg: string, fg: string, w = 256, h = 6
   c.fillStyle = bg; c.fillRect(0, 0, w, h);
   c.strokeStyle = fg; c.lineWidth = 3; c.strokeRect(4, 4, w - 8, h - 8);
   c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
-  let size = 34; c.font = `800 ${size}px system-ui, sans-serif`;
+  let size = Math.round(h * 0.53); c.font = `800 ${size}px system-ui, sans-serif`;
   while (c.measureText(text).width > w - 24 && size > 12) { size -= 2; c.font = `800 ${size}px system-ui, sans-serif`; }
   c.fillText(text, w / 2, h / 2 + 2);
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;

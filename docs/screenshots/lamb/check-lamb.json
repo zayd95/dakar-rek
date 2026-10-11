@@ -1,0 +1,122 @@
+[
+  {
+    "name": "menu: arena offers friendly and ranked bouts with provisional rules",
+    "ok": true,
+    "extra": "Combat amical (non classé)Lutte sans frappe · choisis ton adversaire · règles provisoires à valider | Combat classéTermine d’abord l’entraînement guidé à l’écurie"
+  },
+  {
+    "name": "training: move step (keyboard, camera-relative)",
+    "ok": true,
+    "extra": "{\"step\":\"guard\",\"dist\":1.97}"
+  },
+  {
+    "name": "training: guard step (response window to a slow grab)",
+    "ok": true,
+    "extra": "{\"step\":\"grab\",\"score\":{\"guards\":1,\"grabs\":0,\"breaks\":0}}"
+  },
+  {
+    "name": "training: grab and empoignade steps",
+    "ok": true,
+    "extra": "{\"step\":\"break\"}"
+  },
+  {
+    "name": "training: dégagement step completes the tutorial",
+    "ok": true,
+    "extra": "{\"phase\":\"result\",\"outcome\":\"entrainement\",\"score\":{\"guards\":1,\"grabs\":1,\"breaks\":1}}"
+  },
+  {
+    "name": "training: unranked, skill counter only",
+    "ok": true,
+    "extra": "{\"lamb_skill\":1}"
+  },
+  {
+    "name": "friendly: bout won by grabbing (projection)",
+    "ok": true,
+    "extra": "{\"phase\":\"fall\",\"winner\":\"player\",\"outcome\":\"projection\"}"
+  },
+  {
+    "name": "recap: result, how it ended, endurance, rewards",
+    "ok": true,
+    "extra": "VictoireProjection au sol après une empoignade gagnée · Gora · Costaud · niveau 1\n      Combat amical (non classé)ToiGor"
+  },
+  {
+    "name": "friendly: recorded as a friendly win (global counters kept)",
+    "ok": true,
+    "extra": "{\"lamb_skill\":1,\"combats\":1,\"victoires\":1,\"lamb_amical_v\":1}"
+  },
+  {
+    "name": "response window: the opponent’s grab is announced before it lands",
+    "ok": true,
+    "extra": "{\"sawWindup\":true,\"phase\":\"clinch\"}"
+  },
+  {
+    "name": "dégagement: breaks a losing clinch at an endurance cost",
+    "ok": true,
+    "extra": "{\"phase\":\"fight\",\"breaks\":1,\"st\":[100,70]}"
+  },
+  {
+    "name": "abandon: confirm pauses the bout",
+    "ok": true,
+    "extra": "true"
+  },
+  {
+    "name": "abandon: recorded apart (not a defeat by projection, no winner, no reward)",
+    "ok": true,
+    "extra": "{\"outcome\":\"abandon\",\"winner\":null,\"c\":{\"lamb_skill\":1,\"combats\":1,\"victoires\":1,\"lamb_amical_v\":1,\"lamb_amical_ab\":1,\"lamb_abandons\":1},\"moral\":[84.01620643189169,82.01620643189169]}"
+  },
+  {
+    "name": "ranked: counters separate from friendly",
+    "ok": true,
+    "extra": "{\"style\":\"costaud\",\"level\":1,\"c\":{\"lamb_skill\":1,\"combats\":2,\"victoires\":2,\"lamb_amical_v\":1,\"lamb_amical_ab\":1,\"lamb_abandons\":1,\"lamb_classe_v\":1}}"
+  },
+  {
+    "name": "phone hook: arena profile rows",
+    "ok": true,
+    "extra": "[{\"label\":\"Discipline\",\"value\":\"Lutte sans frappe (Adaptation de jeu — provisoire, à valider)\"},{\"label\":\"Avec frappe\",\"value\":\"Pas encore disponible (règles à relire par un pratiquant)\"},{\"label\":\"Combats amicaux\",\"value\":\"1 V · 0 D · 0 N · 1 abandon\"},{\"label\":\"Combats classés\",\"value\":\"1 V · 0 D · 0 N\"},{\"label\":\"Niveau adverse (classé)\",\"value\":\"1\"},{\"label\":\"Compétence de lutte\",\"value\":\"1\"},{\"label\":\"Écurie\",\"value\":\"Baobab (fictive)\"}]"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "extra": ""
+  },
+  {
+    "name": "phone-portrait: Garde/Saisir/Dégager/Abandonner on screen, touch-sized, not covering the fighters",
+    "ok": true,
+    "extra": "{\"covered\":0,\"onScreen\":true,\"fit\":true,\"btns\":[\"abandon@285,8 95x40\",\"break@299,660 70x70\",\"guard@212,752 70x70\",\"grab@290,738 88x88\"],\"joy\":124}"
+  },
+  {
+    "name": "phone-portrait: touch Dégager (step back) costs endurance",
+    "ok": true,
+    "extra": "100 → 88"
+  },
+  {
+    "name": "phone-portrait: touch abandon flow (cancel resumes, confirm records an abandon)",
+    "ok": true,
+    "extra": "{\"lamb_amical_ab\":1,\"lamb_abandons\":1}"
+  },
+  {
+    "name": "phone-portrait: no page errors",
+    "ok": true,
+    "extra": ""
+  },
+  {
+    "name": "phone-landscape: Garde/Saisir/Dégager/Abandonner on screen, touch-sized, not covering the fighters",
+    "ok": true,
+    "extra": "{\"covered\":0,\"onScreen\":true,\"fit\":true,\"btns\":[\"abandon@739,8 95x40\",\"break@753,206 70x70\",\"guard@666,298 70x70\",\"grab@744,284 88x88\"],\"joy\":124}"
+  },
+  {
+    "name": "phone-landscape: touch Dégager (step back) costs endurance",
+    "ok": true,
+    "extra": "100 → 89"
+  },
+  {
+    "name": "phone-landscape: touch abandon flow (cancel resumes, confirm records an abandon)",
+    "ok": true,
+    "extra": "{\"lamb_amical_ab\":1,\"lamb_abandons\":1}"
+  },
+  {
+    "name": "phone-landscape: no page errors",
+    "ok": true,
+    "extra": ""
+  }
+]

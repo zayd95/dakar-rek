@@ -1,0 +1,9 @@
+/* Lot B economy: delivery line under the suggestion chip, wallet history rows. */
+#delivery { position:absolute; left:10px; top:196px; max-width:min(330px, 72vw); padding:6px 10px; font-size:12px; line-height:1.35; color:#fff; display:none; pointer-events:none; border-color:rgba(255,200,61,.55); }
+#delivery.on { display:block; }
+#delivery b { font-weight:700; }
+#delivery small { color:#fde68a; font-weight:600; font-size:11.5px; }
+#delivery.late small { color:#fca5a5; }
+body.inscene #delivery { display:none !important; }
+.ledger span small { display:block; color:#94a3b8; font-size:10.5px; }
+.ledger em.plus { color:var(--green); } .ledger em.minus { color:var(--red); }

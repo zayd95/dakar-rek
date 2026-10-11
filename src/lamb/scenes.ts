@@ -4,9 +4,11 @@ import type { WrestlerLook } from '../core/types';
 import { celebrate, crowdCheer, crowdIdle, danceA, danceB, drill, drum, prep } from './poses';
 import { Percussion, crowdCheer as cheerSound } from './audio';
 import { castById } from '../social/cast';
-import { Wrestler, wrestlerReady, type Clip } from '../actors/wrestler';
+import { Humanoid, Wrestler, wrestlerReady, randomLook, lookFromOutfit, type Clip } from '../actors/humanoid';
+import { rng } from '../core/rng';
+import { inGate, tierRadius, tierTop, TIERS } from '../world/geew';
 
-const CLIP_FOR = new Map<Pose, Clip>([[danceA, 'Dance_A'], [danceB, 'Dance_B'], [prep, 'Prep'], [drill, 'Stance'], [celebrate, 'Celebrate']]);
+const CLIP_FOR = new Map<Pose, Clip>([[danceA, 'Dance_A'], [danceB, 'Dance_B'], [prep, 'Prep'], [drill, 'Stance'], [celebrate, 'Celebrate'], [crowdCheer, 'Celebrate'], [crowdIdle, 'Idle'], [drum, 'Talk']]);
 
 /**
  * Arena and écurie scenes. Three distinct kinds — Entraînement (training), Entrée (entrance) and Combat —
@@ -18,7 +20,7 @@ export const SCENE_LABEL: Record<SceneKind, string> = {
   training: 'Entraînement · écurie', entrance: 'Entrée dans l’arène', prep: 'Préparation', celebration: 'Fête de l’écurie', watch: 'Tribunes',
 };
 
-interface Extra { w?: Wrestler; c: Character; pose: Pose | null; from?: THREE.Vector3; to?: THREE.Vector3; t0?: number; t1?: number; yaw?: number }
+interface Extra { w?: Humanoid; walking?: boolean; crowd?: boolean; c: Character; pose: Pose | null; from?: THREE.Vector3; to?: THREE.Vector3; t0?: number; t1?: number; yaw?: number }
 
 export interface SceneFrame { cam: THREE.Vector3; look: THREE.Vector3 }
 
@@ -30,6 +32,8 @@ export class LambScene {
   /** Set when the camera should jump instead of easing (scene start, debug time jumps). */
   snap = true;
   private extras: Extra[] = [];
+  /** Debug/checks: where the spectators stand, relative to the scene origin (radius, height, angle). */
+  crowdSpots() { return this.extras.filter(e => e.crowd).map(e => { const p = e.c.group.position; return { r: Math.hypot(p.x - this.o.x, p.z - this.o.z), y: p.y, a: Math.atan2(p.x - this.o.x, p.z - this.o.z) }; }); }
   private drums = new Percussion();
   private cheered = new Set<number>();
   private o: THREE.Vector3;
@@ -42,7 +46,7 @@ export class LambScene {
     const inArena = kind === 'entrance' || kind === 'prep' || kind === 'watch';
     if (kind !== 'watch') {
       player.setWrestler(look);
-      if (wrestlerReady()) { this.pw = new Wrestler(0x7a4a2c); this.pw.setLook(look, look.ngembPattern === 'bordure' ? 'B' : 'A'); this.group.add(this.pw.group); player.group.visible = false; }
+      if (wrestlerReady()) { this.pw = new Wrestler(0x6b3f25); this.pw.setLook(look, look.ngembPattern === 'bordure' ? 'B' : 'A'); this.group.add(this.pw.group); player.group.visible = false; }
     }
     if (inArena) this.addCrowd(kind === 'prep' ? crowdIdle : crowdCheer);
     if (kind === 'entrance' || kind === 'celebration' || kind === 'watch') this.addDrummers(kind === 'celebration' ? -6 : -10);
@@ -67,36 +71,47 @@ export class LambScene {
     if (kind === 'celebration') cheerSound(3, 0.16);
   }
 
-  private add(o: (typeof NPC_OUTFITS)[number], pose: Pose | null, dx: number, dz: number, walk?: { walk: true; dz: number }): Extra {
+  private rand = rng(7);
+  private add(o: (typeof NPC_OUTFITS)[number], pose: Pose | null, dx: number, dz: number, walk?: { walk: true; dz: number }, y = 0.1, crowd = false): Extra {
     const c = new Character(o);
-    c.group.position.set(this.o.x + dx, 0.1, this.o.z + dz);
-    const e: Extra = { c, pose };
-    if (walk) { e.from = c.group.position.clone(); e.to = new THREE.Vector3(this.o.x + dx, 0.1, this.o.z - 4 + walk.dz); e.t0 = 0.6; e.t1 = 6.6; }
+    c.group.position.set(this.o.x + dx, y, this.o.z + dz);
+    const e: Extra = { c, pose, crowd };
+    if (walk) { e.from = c.group.position.clone(); e.to = new THREE.Vector3(this.o.x + dx, 0.1, this.o.z - 4 + walk.dz); e.t0 = 0.6; e.t1 = 6.6; e.walking = true; }
     if (pose) c.setPose(pose);
     this.group.add(c.group); this.extras.push(e);
+    if (wrestlerReady()) {
+      // Blender humanoid stands in for the temporary box character.
+      const h = new Humanoid(crowd ? randomLook(this.rand) : lookFromOutfit(o));
+      h.play(walk ? 'Walk' : (pose && CLIP_FOR.get(pose)) || 'Idle', 0, this.rand());
+      h.group.position.copy(c.group.position); this.group.add(h.group); c.group.visible = false; e.w = h;
+    }
     return e;
   }
-  /** A wrestler extra: the Blender rig when loaded, else the temporary box character in wrestling attire. */
+  /** A wrestler extra: the Blender rig in ngemb when loaded, else the temporary box character in wrestling attire. */
   private wrestle(o: (typeof NPC_OUTFITS)[number], pose: Pose, dx: number, dz: number, look: WrestlerLook, yaw?: number): Extra {
     const e = this.add(o, pose, dx, dz);
     if (yaw !== undefined) e.yaw = yaw;
-    if (wrestlerReady()) {
-      const w = new Wrestler(o.skin); w.setLook(look, look.ngembPattern === 'bordure' ? 'B' : 'A'); w.play(CLIP_FOR.get(pose) ?? 'Idle', 0);
-      w.group.position.copy(e.c.group.position); this.group.add(w.group); e.c.group.visible = false; e.w = w;
-    } else e.c.setWrestler(look);
+    if (e.w) { e.w.setWrestler(look, look.ngembPattern === 'bordure' ? 'B' : 'A', o.skin); }
+    else e.c.setWrestler(look);
     return e;
   }
   private addCrowd(pose: Pose) {
+    // Spectators on the tiers of the géew (dimensions in world/geew.ts, drawn by world/builder.ts).
     for (let k = 0; k < this.crowdSize; k++) {
       const a = (k / this.crowdSize) * Math.PI * 2 + 0.12;
-      if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.25) continue; // keep the gate clear
-      const r = 16.5 + (k % 2) * 1.2;
-      const e = this.add(NPC_OUTFITS[k % NPC_OUTFITS.length], pose, Math.sin(a) * r, Math.cos(a) * r);
+      if (inGate(a)) continue; // keep the gate clear
+      const tier = k % TIERS;
+      const r = tierRadius(tier), y = tierTop(tier);
+      const e = this.add(NPC_OUTFITS[k % NPC_OUTFITS.length], pose, Math.sin(a) * r, Math.cos(a) * r, undefined, y, true);
       e.yaw = a + Math.PI;
     }
   }
   private addDrummers(dz: number) {
-    for (let k = 0; k < 4; k++) { const e = this.add(NPC_OUTFITS[(k + 3) % NPC_OUTFITS.length], drum, -9 + k * 1.2, dz); e.yaw = Math.PI / 2; }
+    for (let k = 0; k < 4; k++) {
+      const e = this.add(NPC_OUTFITS[(k + 3) % NPC_OUTFITS.length], drum, -9 + k * 1.2, dz); e.yaw = Math.PI / 2;
+      const d = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.12, 0.75, 10), new THREE.MeshLambertMaterial({ color: 0x8a5a2e }));
+      d.position.set(this.o.x - 9 + k * 1.2 + 0.35, 0.55, this.o.z + dz); d.rotation.z = 0.5; d.castShadow = true; this.group.add(d);
+    }
   }
 
   /** Advances the scene; positions the player and returns the camera framing. */
@@ -107,7 +122,8 @@ export class LambScene {
       if (e.from && e.to && e.t0 !== undefined && e.t1 !== undefined) {
         const k = THREE.MathUtils.clamp((t - e.t0) / (e.t1 - e.t0), 0, 1);
         e.c.group.position.lerpVectors(e.from, e.to, k); e.c.group.rotation.y = 0;
-        e.c.animate(dt, k > 0 && k < 1 ? 2.2 : 0);
+        if (e.w) { e.w.group.position.copy(e.c.group.position); e.w.group.rotation.y = 0; e.w.animate(dt, k > 0 && k < 1 ? 1.5 : 0); }
+        else e.c.animate(dt, k > 0 && k < 1 ? 2.2 : 0);
       } else {
         if (e.yaw !== undefined) e.c.group.rotation.y = e.yaw;
         else e.c.group.rotation.y = Math.atan2(p.position.x - e.c.group.position.x, p.position.z - e.c.group.position.z);

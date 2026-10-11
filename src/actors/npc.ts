@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { Character, NPC_OUTFITS } from './character';
+import { Humanoid, humanoidReady, randomLook } from './humanoid';
 import { makeTaxi, makeCarRapide } from './vehicles';
 import { pick } from '../core/rng';
 import type { HubWorld } from '../world/types';
 
-interface Walker { char: Character; ax: number; az: number; bx: number; bz: number; t: number; speed: number; lat: number; prev: string }
+interface Walker { char: { group: THREE.Group; animate(dt: number, speed: number): void }; ax: number; az: number; bx: number; bz: number; t: number; speed: number; lat: number; prev: string }
 
 const nodeKey = (x: number, z: number) => `${Math.round(x)},${Math.round(z)}`;
 
@@ -24,11 +25,13 @@ export class Crowd {
   constructor(private world: HubWorld, private rand: () => number, count = 14) {
     for (let n = 0; n < count; n++) {
       const e = pick(world.edges, rand);
-      const c = new Character(pick(NPC_OUTFITS, rand));
+      const c = humanoidReady() ? new Humanoid(randomLook(rand)) : new Character(pick(NPC_OUTFITS, rand));
       this.group.add(c.group);
-      this.walkers.push({ char: c, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 1.1 + rand() * 0.7, lat: (rand() < 0.5 ? -1 : 1) * (4.6 + rand() * 1.6), prev: '' });
+      this.walkers.push({ char: c, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 1.1 + rand() * 0.7, lat: (rand() < 0.5 ? -1 : 1) * (5.3 + rand() * 1.2), prev: '' });
     }
   }
+  /** Bodies for the interaction system (greet in passing). */
+  bodies() { return this.walkers.map((w, i) => ({ id: 'walker:' + i, h: w.char instanceof Humanoid ? w.char : null, obj: w.char.group })); }
   update(dt: number) {
     for (const w of this.walkers) {
       const len = Math.hypot(w.bx - w.ax, w.bz - w.az);
@@ -61,9 +64,11 @@ export class DecorativeTraffic {
       const e = pick(world.edges, rand);
       const g = rand() < 0.35 ? makeCarRapide() : makeTaxi(pick([0xf0b800, 0xf2f2ec, 0xd9482b, 0x2f8fd1], rand));
       this.group.add(g);
-      this.cars.push({ g, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 5 + rand() * 3, prev: '', lane: 3.6 });
+      this.cars.push({ g, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 5 + rand() * 3, prev: '', lane: 2.5 });
     }
   }
+  /** Car rapide groups in this traffic (they carry an apprentice on the step). */
+  rapides() { return this.cars.map(c => c.g).filter(g => g.name.includes('car_rapide')); }
   update(dt: number) {
     for (const c of this.cars) {
       const len = Math.hypot(c.bx - c.ax, c.bz - c.az);

@@ -1,0 +1,242 @@
+[
+ {
+  "name": "fresh save: first suggested beat is Ibou",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "fresh save: Ibou waits in front of the room",
+  "ok": true,
+  "extra": "-36,-54.5"
+ },
+ {
+  "name": "openNpc(ibou): story beat first, greeting in the subtitle",
+  "ok": true,
+  "extra": "★ Bienvenue au quartierHistoire | « Te voilà enfin ! Viens, que je te présente le quartier. » · Relation : connaissance (0)"
+ },
+ {
+  "name": "beat choice through the UI sets reco_modou",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "ibou at 8h: au café Touba des Parcelles",
+  "ok": true,
+  "extra": "-82.4,4.3 clip Seated seated true"
+ },
+ {
+  "name": "ibou at 8h: the player can talk to him there",
+  "ok": true,
+  "extra": "Tonton Ibou · voisin"
+ },
+ {
+  "name": "ibou at 12h: à la Boutique Diallo, chez Mamadou",
+  "ok": true,
+  "extra": "-104.5,82.6 clip Talk seated false"
+ },
+ {
+  "name": "ibou at 12h: the player can talk to him there",
+  "ok": true,
+  "extra": "Tonton Ibou · voisin"
+ },
+ {
+  "name": "ibou at 14.5h: à la Maïga du marché (déjeuner)",
+  "ok": true,
+  "extra": "79.2,-6.6 clip Seated seated true"
+ },
+ {
+  "name": "ibou at 14.5h: the player can talk to him there",
+  "ok": true,
+  "extra": "Tonton Ibou · voisin"
+ },
+ {
+  "name": "ibou at 20h: sur la grand-place, à l’attaya",
+  "ok": true,
+  "extra": "-19.6,90.6 clip Seated seated true"
+ },
+ {
+  "name": "ibou at 20h: the player can talk to him there",
+  "ok": true,
+  "extra": "Tonton Ibou · voisin"
+ },
+ {
+  "name": "ibou: four different places at 8h, 12h, 14h30, 20h",
+  "ok": true,
+  "extra": "-82.4,4.3 | -104.5,82.6 | 79.2,-6.6 | -19.6,90.6"
+ },
+ {
+  "name": "ibou walks to his next place when the hour changes",
+  "ok": true,
+  "extra": "Walk, 95.9 m left"
+ },
+ {
+  "name": "his interactable moves with him",
+  "ok": true,
+  "extra": "-82.4,-3.3"
+ },
+ {
+  "name": "Mame before: no regular greeting",
+  "ok": true,
+  "extra": "« Assieds-toi, mon enfant. Ça mange bien chez Mame Diarra. » · Relation : connaissance (0)"
+ },
+ {
+  "name": "after 3 visits/purchases Mame greets a regular",
+  "ok": true,
+  "extra": "« Encore toi ? Te voilà un habitué : ma cuisine te plaît, avoue. Comme d’habitude ? » · Relation : connaissance (+3)"
+ },
+ {
+  "name": "a regular can be introduced to someone (Mame → Mamadou)",
+  "ok": true,
+  "extra": "★ Un coup de mainHistoire / ★ Être présenté à Mamadou DialloUne connaissance de Mame Diarra / DiscuterPrendre des nouvelles / Fermer"
+ },
+ {
+  "name": "introduction unlocks the Peul trader’s beat",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "regular favour at her place (perk visible)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "attaya situation offered by Ibou on the grand-place",
+  "ok": true,
+  "extra": "★ L’attaya de la grand-placeSituation · le thé du soir / Discuter avec Tonton Ibou / Boire l’attaya ensemble200 F le thé−200 F / Fermer"
+ },
+ {
+  "name": "attaya text names Mamadou (present now)",
+  "ok": true,
+  "extra": "Sur la grand-place, Ibou fait chauffer la théière. « Assieds-toi, le premier verre est presque prêt. » Mamadou Diallo est là avec un paquet de sucre — « pour équilibrer, dit-il, Ibou sucre trop »."
+ },
+ {
+  "name": "attaya choice gives information (info_livraison)",
+  "ok": true,
+  "extra": "Mamadou baisse la voix : « Thierno ne peut pas quitter le comptoir et Mame Diarra attend son riz. Si tu as des bras, passe à la boutique. »"
+ },
+ {
+  "name": "Mamadou (Boutique Diallo) offers his beat",
+  "ok": true,
+  "extra": "★ Le riz de Mame DiarraHistoire | « Alors, ces sacs de riz ? Ils ne vont pas marcher tout seuls jusque chez Mame. » · Relation : connaissance (+6)"
+ },
+ {
+  "name": "Peul trader beat: delivery pays, trust and relation",
+  "ok": true,
+  "extra": "1500 F, rel 18"
+ },
+ {
+  "name": "Mamadou now introduces his niece Kadiatou (Fann)",
+  "ok": true,
+  "extra": "★ Être présenté à Kadiatou DialloUne connaissance de Mamadou Diallo / DiscuterPrendre des nouvelles / Fermer"
+ },
+ {
+  "name": "Maïga situation: text varies with who is there (Modou)",
+  "ok": true,
+  "extra": "Midi passé à la Maïga. Modou et Tonton Ibou sont sur le banc. Babacar retourne ses poches : « J’ai laissé mon argent à l’écurie… Mame Diarra me fait déjà crédit, je n’ose plus lui demander. »"
+ },
+ {
+  "name": "Maïga situation: paying costs 1 000 F, Babacar remembers",
+  "ok": true,
+  "extra": "rel 10"
+ },
+ {
+  "name": "Maïga situation: not twice the same day; Babacar now owes a favour",
+  "ok": true,
+  "extra": "« Je n’oublie pas le repas de la Maïga, hein. Je te revaudrai ça. » · Relation : sympathie (+10)"
+ },
+ {
+  "name": "the favour is a consequence (Babacar recommends you to Ablaye)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "People list shows known neighbours with where they are now",
+  "ok": true,
+  "extra": "Mamadou DialloBoutique Diallo · à la boutique (il mange derrière le comptoir) · sympathie / Tonton Ibouvoisin · à la Maïga du marché (déjeuner) · sympathie / Babacarlutteur · écurie Baobab · à la Maïga du marché · sympathie / Mame Diarracuisinière · à sa gargote (service) · connaissance"
+ },
+ {
+  "name": "People sheet: job, place now, relation, last memory",
+  "ok": true,
+  "extra": "Mame Diarra"
+ },
+ {
+  "name": "npcSheet(mamadou): draft sheet with routine and memory",
+  "ok": true,
+  "extra": "A noté ton nom « du bon côté » du carnet"
+ },
+ {
+  "name": "Kadiatou revises on a bench at Fann at 15h",
+  "ok": true,
+  "extra": "place des étudiants, avec ses fiches"
+ },
+ {
+  "name": "Kadiatou’s beat follows her uncle’s introduction",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "collective training on the Soumbédioune beach at 18h30",
+  "ok": true,
+  "extra": "sur la plage de Soumbédioune (entraînement collectif)"
+ },
+ {
+  "name": "Ndeye (Atelier Ndeye, Médina) offers her beat",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "pikine: routine paths clear of obstacles",
+  "ok": true,
+  "extra": "40 transitions, "
+ },
+ {
+  "name": "plateau: routine paths clear of obstacles",
+  "ok": true,
+  "extra": "15 transitions, "
+ },
+ {
+  "name": "corniche: routine paths clear of obstacles",
+  "ok": true,
+  "extra": "18 transitions, "
+ },
+ {
+  "name": "almadies: routine paths clear of obstacles",
+  "ok": true,
+  "extra": "9 transitions, "
+ },
+ {
+  "name": "desktop: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: first suggested beat is Ibou",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: beat choice sets reco_modou",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: ibou at 14.5h (à la Maïga du marché (déjeuner))",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: ibou at 20h (sur la grand-place, à l’attaya)",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: People list opens",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: no page errors",
+  "ok": true,
+  "extra": ""
+ }
+]
