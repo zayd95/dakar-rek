@@ -303,7 +303,9 @@ export class LambDuel {
   // ---------------------------------------------------------------- UI
   private buildUi(): HTMLDivElement {
     const d = document.createElement('div'); d.className = this.frappe ? 'duel-ui frappe' : 'duel-ui';
-    const title = { entrainement: 'Entraînement · Coach Ablaye', amical: 'Combat amical', classe: 'Combat classé' }[this.mode];
+    // short enough for the header's one line on a phone in portrait (the lesson and the drills avec frappe say which)
+    const title = this.lesson ? 'Leçon · Coach Ablaye' : this.drill ? 'Exercice · Coach Ablaye'
+      : { entrainement: 'Entraînement · Coach Ablaye', amical: 'Combat amical', classe: 'Combat classé' }[this.mode];
     const sub = this.mode === 'entrainement' ? 'Partenaire : Babacar · non classé' : this.identity ? `${this.identity} · niveau ${this.level}` : `${this.style.name} · ${this.style.label} · niveau ${this.level}`;
     const keys = document.body.classList.contains('touch') ? '' : this.frappe
       ? ' · J frappe · K grosse frappe · E/Espace saisir · G/Maj garde · X reculer/dégager · Échap abandonner'
