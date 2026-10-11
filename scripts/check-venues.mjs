@@ -291,7 +291,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await d(() => window.__dakar.act());
   await until(() => !window.__dakar.activity() && (window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0) < 6 + 0, null, 60000);
   await until(() => !window.__dakar.activity(), null, 60000);
-  const sold = await d(() => ({ w: window.__dakar.state.wallet, fish: window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0, save: JSON.parse(localStorage.getItem('dakarrek.guest.save') ?? '{}').counters?.['inv:poisson'] ?? 0 }));
+  const sold = await d(() => ({ w: window.__dakar.state.wallet, fish: window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0, save: JSON.parse(localStorage.getItem('dakarrek.guest.save') ?? '{}').inventory?.poisson ?? 0 }));   // schema v5: the save's own inventory (no longer counters inv:<id>)
   check(`${label}: selling 4 fish pays 2 400 F; the 2 left are saved in the inventory`, sold.w - w0 === 2400 && sold.fish === back.fish - 4 && sold.save === sold.fish, JSON.stringify(sold));
   await d(([p]) => window.__dakar.cam([p.x - 2.5, 2.4, p.z - 5.5], [p.x, 1.1, p.z]), [marketAt]); await shot('beach-mareyeuses'); await d(() => window.__dakar.cam(null));
   await d(() => window.__dakar.setHour(21));
