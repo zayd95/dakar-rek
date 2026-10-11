@@ -83,8 +83,10 @@ describe('làmb 2.0 · Technique: looks for the counters', () => {
   });
   it('reads the other’s move in the empoignade and answers it best', () => {
     expect(top(s => clinch(s).read)).toBe('technique');
-    const answered = (s: Style6) => rate(13, 2000, r => { const me = hold(s), them = hold('costaud'); them.move = { kind: 'push', t: 0 }; return clinchDecide(me, them, 0, clinch(s), 1, 100, r) === 'pull'; });
-    expect(top(answered)).toBe('technique');
+    // how much more often it plays the move that beats his push when it sees the push coming than when nothing comes
+    // (its own liking for that move taken out): its reading
+    const pulls = (s: Style6, seen: boolean) => rate(13, 2000, r => { const me = hold(s), them = hold('costaud'); if (seen) them.move = { kind: 'push', t: 0 }; return clinchDecide(me, them, 0, clinch(s), 1, 100, r) === 'pull'; });
+    expect(top(s => pulls(s, true) - pulls(s, false))).toBe('technique');
   });
 });
 

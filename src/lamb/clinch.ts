@@ -236,7 +236,7 @@ export const CLINCH_STYLES: Record<Style6 | 'partenaire', ClinchStyle> = {
   defensif: { prefer: { push: 0.2, pull: 0.55, pivot: 0.25 }, read: 0.5, think: [0.45, 0.85], breakFree: 0.35, throwChance: 0.3 },
   // Technique reads and answers best, turns and pulls; Bon frappeur wants out of the empoignade to strike again;
   // Grand lutteur de saisie is at home there: drives, throws, never lets go
-  technique: { prefer: { push: 0.15, pull: 0.4, pivot: 0.45 }, read: 0.65, think: [0.45, 0.8], breakFree: 0.25, throwChance: 0.35 },
+  technique: { prefer: { push: 0.15, pull: 0.4, pivot: 0.45 }, read: 0.55, think: [0.45, 0.8], breakFree: 0.25, throwChance: 0.35 },
   frappeur: { prefer: { push: 0.4, pull: 0.3, pivot: 0.3 }, read: 0.25, think: [0.5, 0.9], breakFree: 0.45, throwChance: 0.3 },
   saisie: { prefer: { push: 0.45, pull: 0.3, pivot: 0.25 }, read: 0.4, think: [0.4, 0.75], breakFree: 0.05, throwChance: 0.6 },
   partenaire: { prefer: { push: 0.6, pull: 0.2, pivot: 0.2 }, read: 0, think: [1.0, 1.4], breakFree: 0, throwChance: 0 },

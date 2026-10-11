@@ -6,7 +6,7 @@ import { rng } from '../core/rng';
 import { castById } from '../social/cast';
 import { Percussion, crowdCheer, strikeSound } from './audio';
 import {
-  AVERAGE, STAND, STAND_STYLES, STRIKES, URGE, decide, rangeOf, urgeOf, free, land, react, reactDelay, standState, startStrike, tick,
+  AVERAGE, STAND, STAND_STYLES, STRIKES, URGE, decide, frappeBreath, frappeFactor, frappePace, frappeSlow, rangeOf, urgeOf, free, land, react, reactDelay, standState, startStrike, tick,
   type Attributes, type Reaction, type StandState, type StandStyle, type StrikeKind,
 } from './stand';
 import { StrikeRig } from './strikeRig';
@@ -195,6 +195,8 @@ export class LambDuel {
   private autoSawStrike = false;
   private autoSawGrab = false;
   private autoStepIn = 0;
+  /** Avec frappe: how much slower than its style's pace the player's opponent decides (by level, frappePace). */
+  private pace = 1;
   /** Avec frappe: seconds standing since the last empoignade (the referee presses a bout that goes nowhere). */
   private standT = 0;
   private urged = false;
@@ -252,7 +254,10 @@ export class LambDuel {
     }
     const who = this.frappe && this.mode !== 'entrainement' ? opts.opponent : undefined;
     if (who) { this.standStyle = who.stand; this.clinchStyle = who.clinch; this.identity = who.line; }
-    this.factor = opts.mode === 'entrainement' ? 1 : levelFactor(opts.level);
+    // the player's opponent avec frappe by level (src/lamb/stand.ts AI_LEVEL); watched bouts and sans frappe as before
+    const vsPlayer = this.frappe && !this.auto && opts.mode !== 'entrainement';
+    this.factor = opts.mode === 'entrainement' ? 1 : vsPlayer ? frappeFactor(opts.level) : levelFactor(opts.level);
+    this.pace = vsPlayer ? frappePace(opts.level) : 1;
     this.round = opts.roundSeconds ?? R.roundSeconds;
     this.timeLeft = opts.mode === 'entrainement' ? Infinity : this.round;
     this.ring = opts.ring ?? 7.6;
@@ -266,8 +271,10 @@ export class LambDuel {
     // the camera stays on the -z side (gate side in the arena, open side at the écurie): screen right is world -x,
     // so the player starts at +x and is seen on the left, the opponent on the right
     this.me = mk(0x6b3f25, look, 3, this.auto?.style.staminaMax ?? R.stamina.max, this.auto?.style.staminaRegen ?? R.stamina.regen, opts.attrs ?? this.auto?.attrs ?? AVERAGE);
-    this.ai = mk(0x3b2216, { ngembColor: this.style.ngemb, ngembPattern: this.mode === 'entrainement' ? 'bordure' : 'uni', accessories: [] }, -3, this.style.staminaMax, this.style.staminaRegen, who?.attrs ?? this.standStyle.attrs);
+    const breath = vsPlayer ? frappeBreath(opts.level) : 1;                // a young wrestler is less fit (src/lamb/stand.ts AI_LEVEL)
+    this.ai = mk(0x3b2216, { ngembColor: this.style.ngemb, ngembPattern: this.mode === 'entrainement' ? 'bordure' : 'uni', accessories: [] }, -3, Math.round(this.style.staminaMax * breath), this.style.staminaRegen * breath, who?.attrs ?? this.standStyle.attrs);
     if (this.lesson || this.drill) this.ai.slow = 1.8;                     // the partner shows everything slowly
+    else if (vsPlayer && frappeSlow(opts.level) > 1) this.ai.slow = frappeSlow(opts.level);   // a young wrestler too, a little
     if (wrestlerReady()) {
       // referee (arena) or Coach Ablaye (écurie) watching from the far side of the ring
       const coach = castById('ablaye');
@@ -689,7 +696,7 @@ export class LambDuel {
     const me = this.me, ai = this.ai;
     ai.stamina -= R.stamina.grabCost; ai.score.grabs++; ai.clip = 'Grab'; ai.busy = 0;
     if (me.open > 0 || me.stagger > 0) { this.startClinch(ai, me.stagger > 0 ? 'Tu vacilles : il te saisit !' : 'Contre ! Il saisit ton ouverture', me.stagger > 0 ? 'stagger' : 'open'); return; }
-    ai.windup = R.responseWindow * this.style.windup;
+    ai.windup = R.responseWindow * this.style.windup * (ai.slow ?? 1);
     this.msg(this.frappe ? 'Il veut te saisir ! Recule ou frappe-le' : 'Il attaque ! Garde ou dégage !', ai.windup);
   }
   private responded(how: 'guard' | 'dodge') {
@@ -909,7 +916,7 @@ export class LambDuel {
     } else if (this.drill) {
       this.aiThink = 1;                                                     // the partner holds the pads, nothing more
     } else if (!this.held && this.aiThink <= 0 && free(ai) && ai.windup <= 0 && ai.open <= 0 && ai.busy <= 0) {
-      const [a0, b0] = this.style.think; this.aiThink = a0 + this.rand() * (b0 - a0);
+      const [a0, b0] = this.style.think; this.aiThink = (a0 + this.rand() * (b0 - a0)) * this.pace;
       const dec = decide({ me: ai, them: me, dist: d, grabRange: R.grabRange }, this.standStyle, this.factor, this.rand, urge);
       if (dec.grab && ai.stamina >= R.stamina.grabCost) this.aiGrab();
       else if (dec.strike) {
@@ -986,7 +993,7 @@ export class LambDuel {
     // the opponent reads, answers, or plays its style — and throws when the position is good
     this.aiThink -= dt;
     if (!this.held && !this.drill && this.aiThink <= 0) {
-      const [a0, b0] = this.clinchStyle.think; this.aiThink = a0 + this.rand() * (b0 - a0);
+      const [a0, b0] = this.clinchStyle.think; this.aiThink = (a0 + this.rand() * (b0 - a0)) * this.pace;
       if (wantsThrow(ai, me, -this.grip, this.clinchStyle, this.factor, this.rand, this.lesson ? 0 : clinchUrge(this.phaseT))) { this.startThrow(ai); return; }
       const d = clinchDecide(ai, me, -this.grip, this.clinchStyle, this.factor, ai.composure, this.rand);
       if (d === 'break') {
