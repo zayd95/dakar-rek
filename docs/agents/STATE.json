@@ -1,14 +1,33 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-11T04:58:00Z",
+  "updatedAt": "2026-10-11T19:29:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
-  "lease": null,
-  "activeCodeTask": null,
+  "lease": {
+    "token": "cycle-20261011T1927Z-dkag015",
+    "owner": "producer_dkag015_1927",
+    "acquiredAt": "2026-10-11T19:29:00Z",
+    "expiresAt": "2026-10-11T20:29:00Z"
+  },
+  "activeCodeTask": "DKAG-015",
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "task": "DKAG-015",
+      "owner": "gameplay_dkag015_1927",
+      "branch": "codex/agents/dkag-015-place-summary",
+      "baseCommit": "84311a716fa722cd20b4e725a72fd15f60511291",
+      "files": [
+        "src/ui/placeSummary.ts",
+        "tests/place-summary.test.ts",
+        "src/main.ts",
+        "scripts/check-city-life.mjs",
+        "docs/agents/reports/DKAG-015-gameplay.md"
+      ]
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -142,7 +161,7 @@
     "gameplay_dkag019_resume_0437",
     "qa_dkag019_resume_0437"
   ],
-  "nextAction": "No ready isolated task remains. Keep draft candidates unmerged; future integration with current Living Dakar requires a new explicit reservation and fresh base/conflict review.",
+  "nextAction": "DKAG-015 isolated directory summary implementation then independent QA and exact CI",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
