@@ -4,7 +4,6 @@ import type { HubWorld } from '../world/types';
 import { Humanoid, humanoidReady, randomLook, type Clip, type PersonLook } from '../actors/humanoid';
 import { rng } from '../core/rng';
 import { Batch } from '../world/batch';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { trafficClosures, trafficPositions } from '../actors/npc';
 import { isMuted } from '../core/audioSettings';
 import {
@@ -21,6 +20,10 @@ import { deckCentre } from '../world/arenaModules';
 import { WALL_R } from '../world/geew';
 import { transport } from '../transport/module';
 import { partyDrums } from './party';
+import { flagGeometry, gearColours, scarfGeometry } from './supporterGear';
+import { takeGear } from '../economy/wear';
+import { holds } from '../economy/assets';
+import { signTexture } from '../world/batch';
 
 /**
  * Outside the Pikine arena: on fight evenings the surroundings come alive — fans walking in
@@ -57,24 +60,6 @@ interface Fan {
   item: 'flag' | 'scarf' | null; hand: THREE.Object3D | null; neck: THREE.Object3D | null;
 }
 
-const paint = (g: THREE.BufferGeometry, hex: number) => {
-  const c = new THREE.Color(hex), n = g.attributes.position.count, a = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) a.set([c.r, c.g, c.b], i * 3);
-  g.setAttribute('color', new THREE.BufferAttribute(a, 3));
-  return g;
-};
-/** Supporter's scarf: round the neck, one end on the chest (white: the instance colour gives the écurie's). */
-function scarfGeometry() {
-  const ring = new THREE.TorusGeometry(0.1, 0.03, 5, 14); ring.rotateX(Math.PI / 2);
-  const tail = new THREE.BoxGeometry(0.08, 0.32, 0.016); tail.translate(0.05, -0.17, 0.1);
-  return mergeGeometries([paint(ring.toNonIndexed(), 0xffffff), paint(tail.toNonIndexed(), 0xffffff)])!;
-}
-/** Small hand flag: a stick held at the grip (origin) and a cloth at the top. */
-function flagGeometry() {
-  const stick = new THREE.BoxGeometry(0.022, 0.8, 0.022); stick.translate(0, 0.3, 0);
-  const cloth = new THREE.BoxGeometry(0.36, 0.24, 0.012); cloth.translate(0.19, 0.58, 0);
-  return mergeGeometries([paint(stick.toNonIndexed(), 0x4a3a2a), paint(cloth.toNonIndexed(), 0xffffff)])!;
-}
 const M4 = new THREE.Matrix4(), Q4 = new THREE.Quaternion(), P3 = new THREE.Vector3(), E3 = new THREE.Euler(), ONE = new THREE.Vector3(1, 1, 1);
 const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
 interface Still { h: Humanoid }
@@ -159,6 +144,23 @@ class Exterior {
         h.group.position.set(x, 0.1, z); h.group.rotation.y = Math.PI; this.group.add(h.group); this.still.push({ h });
         drums.cyl(0.17, 0.11, 0.78, x + 0.05, 0.1, z - 0.42, 0x7a4a24, 10);           // sabar body
         drums.cyl(0.18, 0.18, 0.04, x + 0.05, 0.88, z - 0.42, 0xe8dcc0, 10);          // skin
+      }
+      // the supporters' stall « Couleurs du Géew » (stall 2): a rail behind Aliou with the écuries' scarves and tees
+      // hanging from it, a small flag of each on the parasol (in the same merged mesh as the drums)
+      {
+        const s = stalls[2], z = s.z + 1.45, cols = [gearColours('baobab'), gearColours('teranga')];
+        for (const dx of [-0.85, 0.85]) drums.box(0.05, 1.9, 0.05, s.x + dx, 0.1, z, 0x5b4a3a);
+        drums.box(1.8, 0.04, 0.04, s.x, 1.95, z, 0x5b4a3a);
+        for (let n = 0; n < 6; n++) {
+          const c = cols[n % 2], x = s.x - 0.7 + n * 0.28;
+          if (n < 4) { drums.box(0.09, 0.6, 0.02, x, 1.33, z, c.main); drums.box(0.092, 0.07, 0.022, x, 1.27, z, c.accent); }   // scarves
+          else { drums.box(0.4, 0.5, 0.03, x + (n - 4) * 0.12, 1.38, z, c.main); for (let k = 0; k < 3; k++) drums.box(0.06, 0.5, 0.032, x + (n - 4) * 0.12 - 0.12 + k * 0.12, 1.38, z, c.accent); }   // tees
+        }
+        for (const [k, c] of cols.entries()) { drums.box(0.3, 0.2, 0.01, s.x + 0.9 + (k ? -0.32 : 0.02) + 0.15, 2.0 + k * 0.24, s.z, c.main); drums.box(0.3, 0.06, 0.012, s.x + 0.9 + (k ? -0.32 : 0.02) + 0.15, 2.0 + k * 0.24, s.z, c.accent); }
+        const tex = signTexture('COULEURS DU GÉEW', '#1a7a44', '#f4c20d', 512, 96);
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.32), new THREE.MeshLambertMaterial({ map: tex }));
+        sign.position.set(s.x, 2.17, z - 0.03); sign.rotation.y = Math.PI; sign.name = 'arena_supporters_sign';
+        this.group.add(sign);
       }
       const mesh = drums.build(new THREE.MeshLambertMaterial({ vertexColors: true }), true, false);
       if (mesh) this.group.add(mesh);
@@ -381,7 +383,12 @@ function setPhase(ctx: GameCtx, phase: ExteriorPhase) {
   ext.setPhase(phase, eveningSize(dayOverride ?? ctx.day(), ctx.hour()), outflowDestinations(ext.g, stopsOf(ctx)));
   const on = phase !== 'quiet'; activeNow = on;
   closeRoads(on ? ext.g : null);
-  for (const p of vendorPlaces(ext.hub.id, ext.arena)) {
+  // the supporters' stall: a piece paid there is the player's (« Biens ») and worn at once (src/economy/wear.ts)
+  const hooks = {
+    gear: (id: string) => { const sp = takeGear(ctx.state, id); if (sp) { ctx.toast(`Tu portes : ${sp.name} · en ville et dans la tribune ${sp.ecurie === 'baobab' ? 'B–C' : 'F–G'}`); ctx.save(); } },
+    owns: (id: string) => holds(ctx.state, id),
+  };
+  for (const p of vendorPlaces(ext.hub.id, ext.arena, hooks)) {
     if (on) ctx.places.add(p); else ctx.places.remove(p.id);
   }
 }

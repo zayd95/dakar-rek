@@ -19,6 +19,7 @@ import {
   SHOW_PHASES, boutSeed, fillAt, fillOrder, hasTicket, standSeats, streetAt, ticketTier, ticketsChecked, type Moment, type ShowPhase, type Street,
 } from './program';
 import { ArenaStands, type StandSide } from '../crowd/arenaStands';
+import type { ReactionKind } from '../crowd/reactions';
 import { WatchedBout } from './bout';
 import { frappePlan, type FrappeMoment } from './frappeMoments';
 import { playerFighter } from './bakk';
@@ -365,7 +366,7 @@ class ArenaEvening {
     for (const [g, kind, share, seconds] of p.react) this.crowd.react(g, kind, { share, seconds });
     if (p.split) this.fallReaction(p.split);
     if (p.moment === 'decision') this.react('decision');
-    else if (p.moment === 'result') this.crowd.moment('result', { winner: p.side });
+    else if (p.moment === 'result') { notifyMoment('result', p.side); this.crowd.moment('result', { winner: p.side }); }
     if (p.cheer > 0) crowdCheer(1.4, p.cheer * (0.7 + 0.5 * this.crowd.level()));
     // the announcer: one word at a time (a second knockdown within a few seconds is left to the stands)
     const now = performance.now();
@@ -405,6 +406,7 @@ class ArenaEvening {
   }
   /** A fall by projection: `side` (the winner's supporters) celebrates, the other side and the end sections hold their heads. */
   private fallReaction(side: StandSide) {
+    notifyMoment('fall', side);
     const celebrate = this.crowd.react(side, 'celebrate', { share: 0.9, seconds: 6 });
     const heads = this.crowd.react(side === 'left' ? 'right' : 'left', 'fall', { share: 0.85, seconds: 3.5 }) + this.crowd.react('ends', 'fall', { share: 0.7, seconds: 3.5 });
     this.fallSplit = { side, celebrate, heads };
@@ -414,6 +416,7 @@ class ArenaEvening {
   /** The stands react to a moment (src/crowd/arenaStands.ts momentPlan): `side`, the wrestler walking in or winning. */
   private react(m: Moment, side: StandSide | null = null, sound = true) {
     const r = REACTION[m];
+    notifyMoment(m, side);
     this.crowd.moment(m, m === 'result' ? { winner: side } : { side });
     this.people.react(m);
     if (sound) crowdCheer(Math.min(4, r.seconds), (m === 'clinch' ? 0.1 : 0.2) * (0.7 + 0.5 * this.crowd.level()));
@@ -446,7 +449,8 @@ class ArenaEvening {
         if (this.bout && this.bout.time < this.catchUpTo - 0.5) return;
         if (p === 'clinch') this.react('clinch');
         if (p !== 'fall' || this.bout?.frappe) return;                    // avec frappe, the duel's own moments (below)
-        this.react(i.outcome === 'projection' ? 'fall' : 'decision');
+        // the fall says who won it (the supporters' flags go up for their wrestler: src/arena/supporters.ts)
+        this.react(i.outcome === 'projection' ? 'fall' : 'decision', i.outcome === 'projection' && i.winner ? (i.winner === 'player' ? 'left' : 'right') : null);
       };
       // avec frappe, the same plan as the player's own bout: strikes, a knockdown (the announcer names who staggers) and
       // the fall that splits the stands; the result is the show's own (announced at its phase)
@@ -728,9 +732,17 @@ const RIGHT_LOOK: WrestlerLook = { ngembColor: STYLES.rapide.ngemb, ngembPattern
 
 let evening: ArenaEvening | null = null;
 
+/** Who listens to the stands' moments (the supporters' flags: src/arena/supporters.ts). */
+const momentListeners = new Set<(m: Moment, side: StandSide | null) => void>();
+function notifyMoment(m: Moment, side: StandSide | null) { for (const f of momentListeners) f(m, side); }
+
 /** The player's evening in the stands: for the HUD (main.ts hides the goal line while the show holds the eye) and as
  * friends share it (src/arena/together.ts): where it is, joining a friend further on, the tiers. */
 export const arenaShow = {
+  /** The stands react: a group of the crowd ('sec:B', 'left', 'all'…), a kind, from an origin (src/crowd/arenaStands.ts). How many join in. */
+  react: (group: string, kind: ReactionKind, o: { share?: number; seconds?: number; origin?: { x: number; z: number }; speed?: number } = {}) => evening?.crowd.react(group, kind, o) ?? 0,
+  /** Listen to the stands' moments: a wrestler's entrance, a fall (`side`: who won it), the result (`side`: the winner). */
+  listen(f: (m: Moment, side: StandSide | null) => void) { momentListeners.add(f); return () => { momentListeners.delete(f); }; },
   /** Seated on the tiers during the wrestlers' entrance, the bout or its result. */
   watching: () => !!evening?.seatedHere() && (evening.phase === 'prelims' || evening.phase === 'entrance' || evening.phase === 'bout' || evening.phase === 'result'),
   /** This evening's show when one runs (filling … leaving): day, phase, time, result once known, player inside. */

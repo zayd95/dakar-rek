@@ -3,6 +3,7 @@ import type { ActivitySpec } from '../activity/types';
 import * as P from '../activity/primitives';
 import { haggler, tasteLine, waitLine } from '../i18n/lines';
 import { WALL_R } from '../world/geew';
+import { WEAR } from '../economy/catalog';
 
 /**
  * Rules of the arena's surroundings (Pikine), shared with the arena visit: when the exterior comes alive, where the
@@ -57,7 +58,14 @@ const counted = (a: ActivitySpec): ActivitySpec => {
   return a;
 };
 
-export interface Vendor { key: string; name: string; seller: string; stall: number; offers: () => ActivitySpec[] }
+/**
+ * What a vendor's offers may ask the game (the supporters' stall: the piece becomes the player's and is worn, one of
+ * each). Without hooks (tests, a preview) the offers are the same, priced, and do nothing more once paid.
+ */
+export interface VendorHooks { gear?(id: string): void; owns?(id: string): boolean }
+export interface Vendor { key: string; name: string; seller: string; stall: number; offers: (h?: VendorHooks) => ActivitySpec[] }
+/** The supporters' stall (invented name): scarves, caps, small flags and tees of the two écuries. */
+export const SUPPORTERS_STALL = 'Couleurs du Géew';
 /** What is sold outside on a fight evening (prices are the game's own, like the rest of the city). */
 export const VENDORS: readonly Vendor[] = [
   { key: 'boissons', name: 'Bissap et café Touba', seller: 'Ndèye', stall: 0, offers: () => [
@@ -68,10 +76,10 @@ export const VENDORS: readonly Vendor[] = [
     P.order({ id: 'arachides', label: 'Cornet d’arachides grillées', detail: 'Encore chaudes', price: 200, prep: 1, eat: 3, seat: false, needs: { faim: 10, moral: 2 }, eatLine: tasteLine }),
     P.order({ id: 'brochettes', label: 'Brochettes', detail: 'Trois brochettes et du pain', price: 1000, prep: 3, eat: 4, seat: false, needs: { faim: 28, moral: 4 }, line: waitLine('Modou'), eatLine: tasteLine }),
   ] },
-  { key: 'supporters', name: 'Écharpes et drapeaux des écuries', seller: 'Aliou', stall: 2, offers: () => ECURIES.flatMap(e => [
-    P.buy({ id: 'echarpe_' + e.id, label: `Écharpe ${e.name}`, detail: `Aux couleurs de l’écurie ${e.name}`, price: 2000, items: { ['echarpe_' + e.id]: 1 }, haggle: haggler('buy', 2000, 'Aliou') }),
-    P.buy({ id: 'drapeau_' + e.id, label: `Drapeau ${e.name}`, detail: 'Pour la tribune', price: 1500, items: { ['drapeau_' + e.id]: 1 } }),
-  ]) },
+  // the price is shown on the row, paid once when picked; the piece is the player's (« Biens ») and worn (src/economy/wear.ts)
+  { key: 'supporters', name: SUPPORTERS_STALL, seller: 'Aliou', stall: 2, offers: h => ECURIES.flatMap(e => WEAR.filter(w => w.ecurie === e.id).map(w =>
+    P.buy({ id: w.id, label: w.name, detail: w.what, price: w.price ?? 0, then: () => h?.gear?.(w.id), requires: () => (h?.owns?.(w.id) ? 'Déjà à toi · à porter depuis « Biens »' : null),
+      ...(w.item === 'scarf' ? { haggle: haggler('buy', w.price ?? 0, 'Aliou') } : {}) }))) },
   { key: 'eau', name: 'Eau fraîche', seller: 'Fatou', stall: 3, offers: () => [
     P.order({ id: 'eau', label: 'Sachet d’eau fraîche', price: 50, prep: 0.5, eat: 1.5, drink: true, seat: false, needs: { moral: 1 } }),
   ] },
@@ -81,14 +89,14 @@ export const VENDORS: readonly Vendor[] = [
 export const vendorId = (hub: string, key: string) => `${hub}:arena-out:${key}`;
 
 /** The vendors as places of the shared registry (anchor on the street side of each stall). */
-export function vendorPlaces(hub: string, a: { cx: number; cz: number }): PlaceSpec[] {
+export function vendorPlaces(hub: string, a: { cx: number; cz: number }, hooks?: VendorHooks): PlaceSpec[] {
   const stalls = stallsOf(a);
   return VENDORS.map(v => {
     const s = stalls[v.stall];
     return {
       id: vendorId(hub, v.key), type: 'stall', name: v.name, space: 'street', chat: true,
       anchors: [{ id: 'stall', name: `${v.name} · ${v.seller}`, kind: 'shop', x: s.x, z: s.z - 1.15, y: 1.5, radius: 1.7 }],
-      offers: { stall: v.offers().map(counted) },
+      offers: { stall: v.offers(hooks).map(counted) },
     };
   });
 }

@@ -55,6 +55,14 @@ try {
   await a.evaluate(() => window.__dakar.place(-4, -30, 0));
   await b.waitForFunction(() => window.__dakar.presence().peers.some(p => p.name === 'Moussa' && Math.abs(p.x + 4) < 0.2 && Math.abs(p.z + 30) < 0.2));
   check('movement replicated', true);
+  // who supports whom (src/arena/supporters.ts): A wears the Baobab scarf, B sees it on A's avatar (presence `fan` only)
+  {
+    const idA = await a.evaluate(() => window.__dakar.presence().id);
+    await a.evaluate(() => window.__dakar.supportersWear('echarpe_baobab'));
+    const fanSeen = await b.waitForFunction(id => { const p = window.__dakar.presence(), peer = p.peers.find(x => x.id === id); return peer?.fan?.e === 'baobab' && peer.fan.k === 'scarf' && p.gear?.[id] === 'baobab:scarf'; }, idA, { timeout: 30000 }).then(() => true).catch(() => false);
+    const seen = await b.evaluate(id => { const p = window.__dakar.presence(); return { fan: p.peers.find(x => x.id === id)?.fan ?? null, keys: Object.keys(p.peers.find(x => x.id === id) ?? {}), gear: p.gear }; }, idA);
+    check('écurie colours: B sees the Baobab scarf A wears (presence fan, on the avatar), and no price or inventory with it', fanSeen && !seen.keys.some(k => /price|wallet|owned|inventory|assets/.test(k)), JSON.stringify(seen));
+  }
   await a.click('#presenceBtn'); await a.fill('#presenceName', 'Mame Moussa');
   check('typing a name keeps the menu open', await a.locator('#modal.on').count() === 1);
   await a.getByRole('button', { name: 'Enregistrer mon profil', exact: true }).click();
@@ -129,6 +137,10 @@ try {
     const followed = await b.evaluate(() => window.__dakar.together());
     check('arena: the later one joined the earlier one\'s show: same phase and time', ahead && !!same && followed.follows >= 1, JSON.stringify({ aheadAt, same, followed }));
     check('arena: a seated player cheers (stands up, arms up) and the other sees it', await a.evaluate(() => window.__dakar.cheer(5)) && await seen(b, ids.a, 'Celebrate'));
+    // in the stands too, B sees A's colours; A wears Baobab's: in a Baobab section (B–C) the neighbours answered the cheer
+    const sup = await a.evaluate(() => window.__dakar.supporters());
+    const colours = await b.waitForFunction(id => window.__dakar.presence().gear?.[id] === 'baobab:scarf', ids.a, { timeout: 30000 }).then(() => true).catch(() => false);
+    check('arena: B sees A\'s scarf in the stands; in Baobab\'s section « Encourager » made the neighbours answer', colours && (sup.sectionEcurie !== 'baobab' || sup.answered >= 1), JSON.stringify(sup));
     await b.screenshot({ path: 'shots/multiplayer/desktop-arena-together.png' });
     // on to the main event (the first one skips the rest of the preliminaries; the second one follows)
     await a.evaluate(() => { if (['filling', 'prelims'].includes(window.__dakar.arena.info().phase)) window.__dakar.arena.go('entrance'); });
@@ -158,6 +170,15 @@ try {
     check(`remote pose shown: ${clip}`, seen, JSON.stringify(await b.evaluate(() => window.__dakar.presence().poses)));
     if (clip === 'Lie') await b.screenshot({ path: 'shots/multiplayer/desktop-remote-lying.png' });
   }
+  // a remote player's colours travel as two words (écurie, item); B draws them on the avatar
+  fatou.ws.send(JSON.stringify({ type: 'move', x: -4, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Idle', fan: { e: 'teranga', k: 'flag' } }));
+  const flagSeen = await b.waitForFunction(() => { const p = window.__dakar.presence(), f = p.peers.find(x => x.name === 'Fatou'); return f?.fan?.e === 'teranga' && f.fan.k === 'flag' && p.gear?.[f.id] === 'teranga:flag'; }, null, { timeout: 30000 }).then(() => true).catch(() => false);
+  check('remote colours shown: a Teranga flag in Fatou\'s hand', flagSeen, JSON.stringify(await b.evaluate(() => window.__dakar.presence().gear)));
+  // anything else in that field (a price, what is owned) closes the socket
+  const ibou = await connect({ hub: 'pikine', name: 'Ibou' });
+  const priced = new Promise(resolve => ibou.ws.addEventListener('close', e => resolve(e.code), { once: true }));
+  ibou.ws.send(JSON.stringify({ type: 'move', x: -5, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Idle', fan: { e: 'baobab', k: 'scarf', price: 2000 } }));
+  check('server refuses the colours field with a price in it', await priced === 1008);
   const refused = new Promise(resolve => fatou.ws.addEventListener('close', e => resolve(e.code), { once: true }));
   fatou.ws.send(JSON.stringify({ type: 'move', x: -4, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Fall_Back' }));
   check('server refuses a pose outside the list', await refused === 1008);

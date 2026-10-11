@@ -14,6 +14,8 @@ export class RemoteAvatars {
   private avatars = new Map<string, Avatar>();
   /** Peers the local player blocked (chat module): their avatar is not drawn on this device. */
   hidden: (peer: Peer) => boolean = () => false;
+  /** Dresses a drawn peer's body from their presence fields every frame (the écurie colours: src/arena/supporterGear.ts). */
+  dress: (body: Humanoid, peer: Peer) => void = () => {};
   constructor(private presence: PresenceClient) { this.group.name = 'remote_players'; }
   update(dt: number, local: THREE.Vector3, space: string, maxBodies: number, camera: THREE.PerspectiveCamera, viewportHeight: number) {
     // Keep names at 28 screen pixels even when an indoor camera is close to another player.
@@ -34,6 +36,7 @@ export class RemoteAvatars {
       a.body.group.rotation.y += Math.atan2(Math.sin(peer.yaw - yaw), Math.cos(peer.yaw - yaw)) * (1 - Math.exp(-dt * 12));
       if (a.body instanceof Humanoid) a.body.hold = peer.clip;
       a.body.animate(dt, peer.speed);
+      if (a.body instanceof Humanoid) this.dress(a.body, peer);
       a.name.visible = Math.hypot(peer.x - local.x, peer.z - local.z) < 35;
       a.name.scale.set(labelHeight * 256 / 48, labelHeight * a.h / 48, 1);
     }
@@ -44,6 +47,8 @@ export class RemoteAvatars {
   get size() { return this.avatars.size; }
   /** The clip each drawn peer's body is playing (checks: a peer lying on a bed is drawn lying). */
   poses(): Record<string, string | null> { return Object.fromEntries([...this.avatars].map(([id, a]) => [id, a.body instanceof Humanoid ? a.body.clipName : null])); }
+  /** What each drawn peer's body wears in an écurie's colours ('baobab:scarf'…; null: nothing), for the checks. */
+  gear(): Record<string, string | null> { return Object.fromEntries([...this.avatars].map(([id, a]) => [id, (a.body.group.userData.fan as string | null | undefined) ?? null])); }
   private make(peer: Peer): Avatar {
     const body = humanoidReady() ? new Humanoid(avatarLook(peer.look)) : new Character({ ...PLAYER_OUTFIT, top: SHIRT_COLORS[peer.look] });
     body.group.name = `player:${peer.id}`; body.group.position.set(peer.x, peer.y, peer.z);

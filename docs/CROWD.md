@@ -158,6 +158,10 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
 - Since the crowd costs a handful of draw calls whatever its size, `DENSITY` (src/arena/program.ts) now takes 70 / 84 / 92 %
   of the seats on low / medium / high (it was 42 / 68 / 86 %). That still leaves free seats for the player.
 - One supporter in six in B–C and F–G brought the écurie's flag (green or red).
+- A player seated in their own écurie's section wearing its colours (bought at « Couleurs du Géew »,
+  `src/arena/supporters.ts`) gets an answer to « Encourager »: `react('sec:X', 'shout', { share: 0.75, seconds: 2.5,
+  origin })` from their place. A player's flag goes up on the moments of `momentPlan` that cheer their wrestler
+  (`arenaShow.listen`).
 
 **The stands' look** (credible stands, `src/crowd/looks.ts`, `src/crowd/standPlan.ts`):
 
