@@ -339,14 +339,25 @@ export function collidersClear(cols: readonly { x0: number; z0: number; x1: numb
 }
 const edgeCache = new WeakMap<ClearFn, Map<string, boolean>>();
 
-/** Closest sidewalk entries for a point, nearest first, keeping only those reachable in a straight clear line. */
+/**
+ * Closest sidewalk entries for a point, nearest first, keeping only those reachable in a straight clear line. Kept per
+ * `clear` and point, like the graph's open stretches (edgeCache): the ambient people come from the graph's corners and
+ * walk to the places' fixed spots, so the same few points come back all evening.
+ */
 function entries(p: Pt, clear: ClearFn, max = 3) {
+  let byPt = entryCache.get(clear);
+  if (!byPt) { byPt = new Map(); entryCache.set(clear, byPt); }
+  const key = `${p.x},${p.z},${max}`, hit = byPt.get(key);
+  if (hit) return hit;
   const g = laneGraph();
   const all = g.segs.map(([i, j]) => { const q = proj(p, g.nodes[i], g.nodes[j]); return { i, j, q, d: dist(p, q) }; }).sort((u, v) => u.d - v.d);
   const out: typeof all = [];
   for (const e of all) { if (e.d > 60 || out.length >= max) break; if (clear(p, e.q) && clear(g.nodes[e.i], e.q) && clear(e.q, g.nodes[e.j])) out.push(e); }
+  if (byPt.size > 4000) byPt.clear();
+  byPt.set(key, out);
   return out;
 }
+const entryCache = new WeakMap<ClearFn, Map<string, { i: number; j: number; q: Pt; d: number }[]>>();
 
 /**
  * Walking route from one spot to another: out through the spot's approach, along the sidewalk graph (Dijkstra),

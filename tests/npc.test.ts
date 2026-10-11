@@ -114,6 +114,17 @@ describe('places and walking', () => {
     for (let k = 1; k < path.length; k++) expect(blocked(path[k - 1], path[k])).toBe(true);
     expect(path.some(p => Math.abs(p.z + 65) < 0.01)).toBe(true);   // crossed to the other side of the road
   });
+  it('a walk asked again (the entries of its points kept per clear test) is the same walk, and calls the test far less', () => {
+    let calls = 0;
+    const blocked = (a: { x: number; z: number }, b: { x: number; z: number }) => { calls++; return !(Math.abs(a.z + 55) < 0.01 && Math.abs(b.z + 55) < 0.01 && Math.min(a.x, b.x) < 30 && Math.max(a.x, b.x) > 30); };
+    const first = planPath({ x: -36, z: -54.5 }, { x: 78, z: 54.5 }, blocked), n1 = calls;
+    calls = 0;
+    const again = planPath({ x: -36, z: -54.5 }, { x: 78, z: 54.5 }, blocked);
+    expect(again).toEqual(first);
+    expect(calls).toBeLessThan(n1);
+    // a new test (another hub) does not reuse them
+    expect(planPath({ x: -36, z: -54.5 }, { x: 78, z: 54.5 }, (a, b) => blocked(a, b))).toEqual(first);
+  });
   it('approach waypoints lead into a shop aisle', () => {
     const path = planPath({ x: -36, z: -54.5 }, { x: -105, z: 80.1, yaw: 0, sit: false, stool: false, approach: [[-95.5, 86], [-95.5, 79.6]] });
     expect(path.slice(-3)).toEqual([{ x: -95.5, z: 86 }, { x: -95.5, z: 79.6 }, { x: -105, z: 80.1 }]);
