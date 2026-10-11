@@ -149,10 +149,12 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   const near = async (s) => { const r = Math.hypot(s.x - C.x, s.z - C.z), k = (r - 2.3) / r; await d(([c, s, k]) => window.__dakar.place(c.x + (s.x - c.x) * k, c.z + (s.z - c.z) * k, s.yaw + Math.PI), [C, s, k]); };
   const hon = await d(c => window.__dakar.arena.freeSeat(c.x + 18, c.z + 4, 'honneur'), C);
   await near(hon);
-  await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat', null, { timeout: 30000 }).catch(() => {});
+  // a place another ticket is for keeps its « S’asseoir », greyed with the reason (src/interact/seats.ts refuse): nothing in it can be run
+  await page.waitForFunction(() => window.__dakar.focus()?.name === 'Place d’honneur', null, { timeout: 30000 }).catch(() => {});
   const refused = await d(() => window.__dakar.focus());
   check(`${label}: a place of honneur is refused with a « Populaire » ticket, and the reason says where to sit`,
-    refused?.name === 'Place d’honneur' && !refused.primary && /billet est pour la tribune populaire.*sections A, D, E et H/.test(sp((refused.why ?? []).join(' '))), refused);
+    refused?.name === 'Place d’honneur' && refused.all.length > 0 && refused.why.length === refused.all.length
+    && /billet est pour la tribune populaire.*sections A, D, E et H/.test(sp((refused.why ?? []).join(' '))), refused);
   // the place is greyed in the world: a grey ring under it, and its bubble a small card with the reason in full, on screen
   await page.waitForFunction(() => !!document.querySelector('#wprompt.on .wp.why small') && window.__dakar.uiMarkers().grey, null, { timeout: 15000 }).catch(() => {});
   const card = await d(() => {
@@ -169,7 +171,8 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   const seat = await d(c => window.__dakar.arena.freeSeat(c.x + 9, c.z - 14), C);
   const r = Math.hypot(seat.x - C.x, seat.z - C.z), k = (r - 2.3) / r;
   await d(([c, s, k]) => window.__dakar.place(c.x + (s.x - c.x) * k, c.z + (s.z - c.z) * k, s.yaw + Math.PI), [C, seat, k]);
-  await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat', null, T).catch(() => {});
+  // the frame after the move focuses the places in reach there: not the place d'honneur still focused from before the move
+  await page.waitForFunction(() => window.__dakar.focus()?.name === 'Place en tribune', null, { timeout: 60000 }).catch(() => {});
   const fs1 = await d(() => window.__dakar.focus());
   check(`${label}: a free place of the ticket's own stands is offered from the ring side (« S’asseoir »)`, fs1?.name === 'Place en tribune' && seat.tribune === 'populaire' && /asseoir/.test(fs1.primary ?? ''), { fs1, seat });
   await d(() => window.__dakar.act());
@@ -270,16 +273,18 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
     check(`${label}: the controller lets the « ${word} » ticket in and says where its places are`, inT, await toast());
     const s = await d(([c, tt]) => window.__dakar.arena.freeSeat(tt === 'honneur' ? c.x + 18 : c.x - 18, tt === 'honneur' ? c.z + 4 : c.z - 2, tt), [C, t]);
     await near(s);
-    await page.waitForFunction(() => window.__dakar.focus()?.kind === 'seat' && !!window.__dakar.focus()?.primary, null, { timeout: 30000 }).catch(() => {});
+    // the focus is the nearest free place in reach of the ring side: often a place of the same stands a row below the one aimed at
+    await page.waitForFunction(() => { const f = window.__dakar.focus(); return f?.kind === 'seat' && !!f.primary && !f.why.length && /tribune|honneur/.test(f.name); }, null, { timeout: 60000 }).catch(() => {});
     const fo = await d(() => window.__dakar.focus());
-    check(`${label}: a « ${word} » place is offered (« S’asseoir », section ${s?.section})`, s?.tribune === t && /asseoir/.test(fo?.primary ?? ''), { fo, s });
+    const foT = fo?.name === 'Place d’honneur' ? 'honneur' : fo?.name === 'Place en tribune couverte' ? 'couverte' : fo?.name === 'Place en tribune' ? 'populaire' : null;
+    check(`${label}: a « ${word} » place is offered (« S’asseoir », section ${s?.section})`, s?.tribune === t && foT === t && /asseoir/.test(fo?.primary ?? '') && !fo.why.length, { fo, s });
     await d(() => window.__dakar.act());
     await page.waitForFunction(() => /arena:stand/.test(window.__dakar.seated() ?? ''), null, T).catch(() => {});
     await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, T).catch(() => {});
     await page.waitForTimeout(1500);
     const camT = await d(() => window.__dakar.arena.cam()), seatedT = await d(() => window.__dakar.seated());
     const toR = { x: C.x - camT.x, z: C.z - camT.z }, lr = Math.hypot(toR.x, toR.z), ld = Math.hypot(camT.dx, camT.dz);
-    check(`${label}: seated in the « ${word} », the gala starts and the view frames the ring`, seatedT === s?.id && (camT.dx * toR.x + camT.dz * toR.z) / (lr * ld) > 0.85 && camT.y > 1.5, { seatedT, camT });
+    check(`${label}: seated in the « ${word} », the gala starts and the view frames the ring`, `seat:${seatedT}` === fo?.id && (camT.dx * toR.x + camT.dz * toR.z) / (lr * ld) > 0.85 && camT.y > 1.5, { seatedT, camT });
     await shot(`9-${t}-seated`);
     await d(() => window.__dakar.arena.go('over'));                              // the evening ends here (no second gala to watch)
     await d(() => window.__dakar.act());                                          // « Se lever »
