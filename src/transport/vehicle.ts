@@ -67,8 +67,10 @@ export class Vehicle {
 
   /**
    * NPC passengers: exactly these passenger seats (spec ids) are held by people; the others are freed, except the
-   * one the player holds. Open cabins draw them (the model is rebuilt from the kit's cached variants); `colours`:
-   * their shirts in turn (fans in their écurie's colours), else their own looks.
+   * one the player holds. Open cabins draw them: the model is swapped for the kit's variant of this cabin with these
+   * people (the cabin and each passenger are cached apart and joined, a fraction of a millisecond: nothing is built
+   * over again when people get on and off, and `colours` makes no material of its own, the shirts are in the vertices);
+   * `colours`: their shirts in turn (fans in their écurie's colours), else their own looks.
    */
   setPassengers(ids: readonly string[], colours?: readonly number[]) {
     this.spec.seats.forEach((s, i) => {

@@ -192,3 +192,61 @@ average with the most seen in brackets):
 For the browser check: look at bodies crossing 30 m from the camera (gait to clips), shadows of off-screen bodies on
 medium and high (5 Hz), the show when the camera looks in from a gate, and a seated or kneeling far figure (its pose
 is read at 2 Hz).
+
+## Wave 5: the transport hitch (`fix/w5-transport`)
+
+The browser check on the wave 5 candidate passed every moment but one: **low, 17:30 arrivals, 6.97 ms of update, of which
+`module:transport` 3.03 ms** (0.16–0.22 ms on earlier builds).
+
+**What the number is.** The profiler (`__dakar.perf()`, src/main.ts `profMark`) is a moving average, 92 % of the old
+value and 8 % of each new sample. A reading of 3 ms is not a steady cost: it is one frame of about 35 ms in the last
+dozen frames of the window (a frame of H ms adds 0.08·H and fades by 8 % a frame). A player feels that frame.
+
+**The cause.** The car rapide's cabin is open: the people holding seats are drawn in the vehicle's mesh. Every time the
+passengers change (each stop a car pulls in at, and the fans of a fight evening, who ride in their écurie's shirts),
+`Vehicle.setPassengers` asked the kit for the car rapide with those people, and every new (seats, shirts) pair was
+**a builder pass over the whole model** (2 000 triangles of cabin, rack, luggage, livery, plus the near glass and the far
+model, which does not even show anyone): 8 to 15 ms on this machine when the code is warm, 25 to 40 ms in the first
+passes of a process (cold JIT), and slower still in a browser busy rendering on the CPU. The sets are few (4 per fill, 3
+fills, with and without the fans' colours: about twenty variants in a session) but none is ready when the first car pulls in,
+and a gala evening starts them all within minutes. Not the cause: materials (the colours are in the vertices; the three kit materials
+are shared, tests/transport.boarding.test.ts checks it), the people at the stops (`StopPeople` builds its humanoids once, at the hub's load).
+
+**The fix** (`src/actors/vehicleKit.ts`, no change to what is drawn). The car rapide is built in pieces, cached apart:
+the cabin without anyone (once per livery, with its glass and its far model, which no longer depend on who is aboard), each head
+(seat and look) and each shirt (a seat in a colour: built once in white, then only a colour). A variant is those pieces
+copied into one buffer (the bounds from the pieces', no pass over the vertices): about 0.5 ms hot instead of 9–17.
+The first people to get on come at the same price as the next ones: everyone in his own look is made with the cabin, at the
+hub's load. `VehicleOpts.bake: 'whole'` still builds a variant in one pass; the tests compare both triangle by triangle
+(and the output was checked once against the previous kit's: 60 variants, the same triangles, bounds and spec).
+
+**Measured** (node, this machine under the integrator's load, `nice -n 19`; `module:transport` of the gala evening at the
+17:30 moment, 9 000 frames = 5 minutes of game time per preset, one fresh process each, as
+`PERF=1 npx vitest run tests/perf.transport.test.ts`):
+
+| Preset | mean ms | slowest frame after the first (cold) one | frames over 4 / 16 ms | profiler reading, worst of the run |
+| --- | --- | --- | --- | --- |
+| low | 0.076 → 0.070 | 15.0 → 3.8 | 7 → 1 / 0 → 0 | 0.70 → 0.39 |
+| medium | 0.115 → 0.100 | 24.3 → 4.3 | 11 → 2 / 4 → 0 | 1.78 → 0.28 |
+| high | 0.107 → 0.100 | 25.7 → 3.3 | 10 → 1 / 1 → 0 | 2.10 → 0.40 |
+
+The mean hardly moves (0.07–0.1 ms: the steady cost of the module was never the problem). The frames over 4 ms that
+remain are the first frame of the process (every humanoid's first animation), and a few at 2–4 ms. `setPassengers`
+itself: 8–34 ms a new variant before (median about 11), 1–3 ms after (in the frame: the join, the new shirt colours, the
+garbage; 0.5 ms on its own in a micro-benchmark, against 9.3 ms median for a pass over the whole model).
+
+The browser check's window, in a fresh process (`PERF_AT=<frame> PERF_Q=<preset>`, a car pulling in that many frames into the
+90 the profiler averages; the reading is the profiler's at the end): car in at frame 80, low / medium / high: reading
+0.66 / 0.51 / 1.55 ms → 0.12 / 0.29 / 0.25 ms; the arrival frame itself 9.5–17.3 ms → 2.0–8.2 ms (one outlier of 15 ms in
+nine runs, which did not come back in three reruns of the same case: 3.5, 2.0 and 5.3 ms). The browser cannot be measured from here; a
+3.03 ms reading needs about 35 ms in the last frames of the window, which is what the first passes of a process cost (25–40 ms
+in node), or two builds within a few frames (the fans boarding, then the car pulling in).
+
+**Not changed.** The first time a humanoid plays a clip (the apprentice stepping down at a stop, the people at a stop starting
+to walk) costs 1–5 ms, and about 10 ms for the first body of a process: it is the humanoid's own and the same for every body in the
+city, not the transport's. The kit's other vehicles keep their one-pass models (their passengers do not change while they run).
+
+**For the browser check:** the Ligne 23 car rapide at the « Arène » stop on a gala evening (17:30, low and medium): fans in green
+and red shirts get off, others get on, the heads and hats the same as before; the cars far from the camera (far model);
+`module:transport` over a few arrivals (`__dakar.perfOn()` and `perf()`). The first draw of each new passenger set uploads its buffer
+(about 370 kB) once, as before.

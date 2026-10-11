@@ -103,14 +103,22 @@ export interface VehicleOpts {
   /**
    * Exactly these seats get a baked passenger (overrides the seeded pattern; the driver still follows `driver`).
    * The transport lane uses it so the people drawn in a car rapide are the seats its passengers hold.
-   * Each distinct list is a cached geometry: callers keep to a few patterns.
+   * Each distinct list is one more cached body (the car rapide's cabin and its people are shared, see `bake`): callers
+   * still keep to a few patterns, a body is a few hundred kilobytes of buffers.
    */
   seated?: readonly string[];
   /**
    * Car rapide: shirts of the baked passengers, in turn (fans in their écurie's colours on a fight evening); a negative
-   * entry keeps that passenger's own look. Each distinct list is another cached geometry: callers keep to one or two.
+   * entry keeps that passenger's own look. Each distinct list is another cached body (only the shirts are built again):
+   * callers keep to one or two.
    */
   colours?: readonly number[];
+  /**
+   * How a model whose passengers change is put together (the car rapide, see Model.parts): 'parts' (default) joins the
+   * cached cabin and the cached passengers, 'whole' builds the variant in one builder pass. Same triangles either way
+   * (tests compare them); 'whole' is what every variant cost before.
+   */
+  bake?: 'parts' | 'whole';
   /** Baked driver / rider (default true; false for parked vehicles). */
   driver?: boolean;
   /** Motorbike without a baked rider: side stand down (default) or up (the player is riding it). */
@@ -240,12 +248,19 @@ const lookOf = (i: number, p: number): Look => {
 /** Seated bust (torso, head, hair or headwrap/cap), optionally with arms to a steering wheel or handlebar. */
 function person(b: KitBuilder, x: number, top: number, z: number, lk: Look, grips?: [V3, V3], yaw = 0) {
   if (yaw) { b.at(x, 0, z, yaw, () => person(b, 0, top, 0, lk)); return; }
-  b.box(0.36, 0.5, 0.21, x, top + 0.02, z - 0.03, lk.shirt);
+  torso(b, x, top, z, lk);
+  head(b, x, top, z, lk);
+  if (grips) arms(b, x, top, z, lk, grips);
+}
+// The bust in the pieces the car rapide caches apart (what the shirt's colour paints, and what it does not).
+const torso = (b: KitBuilder, x: number, top: number, z: number, lk: Look) => b.box(0.36, 0.5, 0.21, x, top + 0.02, z - 0.03, lk.shirt);
+function head(b: KitBuilder, x: number, top: number, z: number, lk: Look) {
   b.blob(0.105, x, top + 0.7, z, lk.skin, [0.9, 1.12, 1.0]);
   if (lk.hat !== null && lk.wrap) b.box(0.23, 0.11, 0.25, x, top + 0.74, z - 0.01, lk.hat);
   else b.box(0.2, 0.07, 0.22, x, top + 0.77, z - 0.015, lk.hat ?? 0x161210);
-  if (grips) [-1, 1].forEach((s, k) => b.beam([x + s * 0.18, top + 0.46, z - 0.02], grips[k], 0.075, 0.075, lk.shirt));
 }
+const arms = (b: KitBuilder, x: number, top: number, z: number, lk: Look, grips: [V3, V3]) =>
+  [-1, 1].forEach((s, k) => b.beam([x + s * 0.18, top + 0.46, z - 0.02], grips[k], 0.075, 0.075, lk.shirt));
 function tyre(b: KitBuilder, w: { x: number; y: number; z: number; r: number; width: number; steer?: boolean }, rim: Rect, seg = 12) {
   b.tag = [w.x, w.y, w.z, w.steer ? ANIM.spinSteer : ANIM.spin];               // spins (and steers) in the vertex shader
   b.cyl('x', w.r, w.r, w.width, w.x, w.y, w.z, TYRE, seg, w.x > 0 ? { pos: rim, neg: true, capPaint: TYRE } : { neg: rim, pos: true, capPaint: TYRE });
@@ -298,14 +313,25 @@ interface Layout {
   head: V3[]; tail: V3[]; controls: VehicleSpec['controls']; step?: VehicleSpec['step']; cargo?: VehicleSpec['cargo'];
   drive?: Partial<VehicleSpec['drive']>;
 }
+/** A cached piece of a model: what the key says it is, and how to build it, or which piece it is in another flat colour. */
+interface Piece { key: string; build?(b: KitBuilder): void; tint?: { of: Piece; colour: number } }
 interface Model {
   key: string; variant: number; colors: { body: number; accent: number }; layout: Layout;
   /** Seats with a baked person (reported in the spec). */
   occupied?: string[];
   speed: number; lod: number;
+  /** The whole near model, passengers included (one builder pass). */
   near(b: KitBuilder, g: KitBuilder): void;
   far(b: KitBuilder): void;
   beam(b: KitBuilder): void;
+  /**
+   * Models whose passengers change while the vehicle runs (the car rapide: people get on and off at every stop) are
+   * built in pieces: the cabin without anyone (cached by `key`), and each passenger apart (cached by its own key: the
+   * seat and the look). A variant is the cabin plus its passengers' vertices copied into one buffer, which costs
+   * a few tenths of a millisecond instead of a builder pass over the whole model (8 to 40 ms), and the far model, which
+   * shows nobody, is the same for every variant (`key` is the cabin's too).
+   */
+  parts?: { key: string; cabin(b: KitBuilder, g: KitBuilder): void; riders: Piece[]; everyone?: Piece[] };
 }
 type Pick = (r: () => number, o: VehicleOpts) => Model;
 const wheelSet = (x: number, r: number, width: number, zs: number[], steerZ: number): Wheel[] => zs.flatMap(z => [1, -1].map(s => ({ x: s * x, y: r, z, r, width, steer: z === steerZ })));
@@ -558,8 +584,21 @@ const pickCarRapide: Pick = (r, o) => {
   const occKey = people.map(q => q.s.id).join('.');
   const arches = [{ z: rz, r: ar, y: wr }, { z: fz, r: ar, y: wr }];
   const name = [UV.name0, UV.name1, UV.name2][livery], panel = [UV.panel0, UV.panel1, UV.panel2][livery];
+  /**
+   * One passenger (nothing else of the model depends on who is aboard): a seated bust, the driver's arms to the wheel. Two
+   * pieces, cached apart: the head and hair or headwrap, which only the seat and the look decide, and the torso (and the
+   * driver's sleeves), which take the shirt's colour: fans in their écurie's colours are the same heads in other shirts.
+   */
+  const grips = (s: VehicleSeat): [V3, V3] | undefined => (s.kind === 'driver' ? [[0.42, 1.42, 2.2], [0.68, 1.42, 2.2]] : undefined);
+  const heads = ({ s, lk }: { s: VehicleSeat; lk: Look }): Piece => ({ key: `carRapide|head|${s.id}|${lk.skin}|${lk.hat ?? '-'}|${lk.wrap ? 1 : 0}`, build: b => head(b, s.x, s.top, s.z, lk) });
+  // a shirt is one colour all over: built once per seat in white, then it is only a colour (a few floats, no builder pass)
+  const shirts = ({ s, lk }: { s: VehicleSeat; lk: Look }): Piece => {
+    const white: Piece = { key: `carRapide|shirt|${s.id}`, build: b => { const w = { ...lk, shirt: 0xffffff }, g = grips(s); torso(b, s.x, s.top, s.z, w); if (g) arms(b, s.x, s.top, s.z, w, g); } };
+    return { key: `${white.key}|${lk.shirt}`, tint: { of: white, colour: lk.shirt } };
+  };
+  const pieces = (q: { s: VehicleSeat; lk: Look }) => [heads(q), shirts(q)];
 
-  const near = (b: KitBuilder, g: KitBuilder) => {
+  const near = (b: KitBuilder, g: KitBuilder, aboard: boolean) => {
     b.shade = { lo: 0.7, y0: 0.3, h: 1.4 };
     // lower side plates with wheel arches (outer: yellow, inner: cream), wheel housings, floor
     for (const s of [1, -1]) {
@@ -615,7 +654,7 @@ const pickCarRapide: Pick = (r, o) => {
     b.at(0.55, 1.36, 2.18, 0, () => b.cyl('z', 0.2, 0.2, 0.03, 0, 0, 0, 0x151515, 10), -0.55);
     b.box(1.95, 1.05 - floor, 0.44, 0, floor, 1.8, CRC.BENCH); b.box(1.95, 0.55, 0.08, 0, 1.05, 1.54, CRC.BENCH);
     rows.forEach((z, k) => { const x0 = k === 0 ? 0.15 : -0.98, x1 = 0.98; b.box(x1 - x0, 0.98 - floor, 0.42, (x0 + x1) / 2, floor, z, CRC.BENCH); b.box(x1 - x0, 0.5, 0.07, (x0 + x1) / 2, 0.98, z - 0.25, CRC.BENCH); });
-    for (const { s, lk } of people) person(b, s.x, s.top, s.z, lk, s.kind === 'driver' ? [[0.42, 1.42, 2.2], [0.68, 1.42, 2.2]] : undefined);
+    if (aboard) for (const { s, lk } of people) person(b, s.x, s.top, s.z, lk, grips(s));
     // rear: walls around the open doorway, header with the nickname, lamps, window, open door, step, grab bars, ladder, bumpers
     const rw = (x0: number, x1: number, y0: number, y1: number, col = Y) => b.box(x1 - x0, y1 - y0, 0.05, (x0 + x1) / 2, y0, zr + 0.025, col, { pz: { paint: IN } });
     rw(-hw, hw, sill, floor, BL); rw(-hw, -0.76, floor, winTop); rw(0.16, hw, floor, winTop); rw(-hw, hw, winTop, roofY);
@@ -660,7 +699,14 @@ const pickCarRapide: Pick = (r, o) => {
     b.box(1.96, 0.3, 4.9, 0, 2.48, -0.4, rack); b.box(1.5, 0.35, 3.0, 0, 2.6, -0.6, 0x6b3fa0);
     for (const w of wheels) b.box(w.width, w.r * 1.8, w.r * 2, w.x, 0.02, w.z, TYRE);
   };
-  return { key: `carRapide|${livery}|${luggage}|${rack}|${occKey}${o.colours?.length ? `|${o.colours.map(c => c.toString(16)).join(',')}` : ''}`, occupied: people.map(q => q.s.id), variant: livery, colors: { body: Y, accent: BL }, layout, speed: 6, lod: 60, near, far, beam: b => beamQuad(b, zf + 0.3, 9, 2.0, 4.6) };
+  const cabin = `carRapide|${livery}|${luggage}|${rack}`;
+  return {
+    key: `${cabin}|${occKey}${o.colours?.length ? `|${o.colours.map(c => c.toString(16)).join(',')}` : ''}`, occupied: people.map(q => q.s.id), variant: livery, colors: { body: Y, accent: BL }, layout, speed: 6, lod: 60,
+    near: (b, g) => near(b, g, true), far, beam: b => beamQuad(b, zf + 0.3, 9, 2.0, 4.6),
+    // a passenger is what the seat and the look make of him (the shirt is the fan's colour when there are `colours`); everyone
+    // in his own look is made with the cabin, so that the first people to get on cost no more than the next ones
+    parts: { key: cabin, cabin: (b, g) => near(b, g, false), riders: people.flatMap(pieces), everyone: seats.flatMap(s => pieces({ s, lk: lookOf(seats.indexOf(s) + 2, p + livery * 5) })) },
+  };
 };
 
 // ------------------------------------------------------------------------------------------------------------ city bus
@@ -923,6 +969,7 @@ const PICK: Record<VehicleKind, Pick> = { carRapide: pickCarRapide, bus: pickBus
 const geoCache = new Map<string, { body: THREE.BufferGeometry; glass: THREE.BufferGeometry | null }>();
 const beamCache = new Map<VehicleKind, THREE.BufferGeometry>();
 const plainB = () => new KitBuilder(PLAIN_UV);
+const stats = { passes: 0, pieces: 0, joins: 0 };
 function geometryOf(key: string, build: (b: KitBuilder, g: KitBuilder) => void) {
   let hit = geoCache.get(key);
   if (!hit) {
@@ -931,9 +978,76 @@ function geometryOf(key: string, build: (b: KitBuilder, g: KitBuilder) => void) 
     build(b, g);
     hit = { body: b.build(), glass: g.triangles ? g.build() : null };
     geoCache.set(key, hit);
+    stats.passes++;
   }
   return hit;
 }
+/** A passenger on his own (his vertices only), by seat and look; shared by every variant that seats him so. */
+const pieceCache = new Map<string, THREE.BufferGeometry>();
+function pieceOf(r: Piece): THREE.BufferGeometry {
+  let hit = pieceCache.get(r.key);
+  if (!hit) {
+    if (r.tint) hit = tinted(pieceOf(r.tint.of), r.tint.colour);
+    else {
+      const b = plainB();
+      b.withTags = true;
+      r.build!(b);
+      hit = b.build();
+    }
+    pieceCache.set(r.key, hit);
+    stats.pieces++;
+  }
+  return hit;
+}
+/** The same vertices in one flat colour (the buffers but the colours are shared with `base`, which stays as it is). */
+function tinted(base: THREE.BufferGeometry, hex: number) {
+  const g = new THREE.BufferGeometry(), c = new THREE.Color(hex), n = base.attributes.color.count, out = new Float32Array(n * 3);
+  for (const name of Object.keys(base.attributes)) g.setAttribute(name, name === 'color' ? new THREE.BufferAttribute(out, 3) : base.attributes[name]);
+  for (let i = 0; i < n; i++) { out[3 * i] = c.r; out[3 * i + 1] = c.g; out[3 * i + 2] = c.b; }
+  g.boundingBox = base.boundingBox!.clone(); g.boundingSphere = base.boundingSphere!.clone();
+  return g;
+}
+/** One buffer per attribute holding each geometry's vertices in turn (the same attributes in all of them, non-indexed). */
+function joinGeometries(list: readonly THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  for (const name of Object.keys(list[0].attributes)) {
+    const size = (list[0].attributes[name] as THREE.BufferAttribute).itemSize;
+    let n = 0;
+    for (const x of list) n += x.attributes[name].array.length;
+    const out = new Float32Array(n);
+    let at = 0;
+    for (const x of list) { const a = x.attributes[name].array as Float32Array; out.set(a, at); at += a.length; }
+    g.setAttribute(name, new THREE.BufferAttribute(out, size));
+  }
+  // the bounds without a pass over the vertices (that loop is most of a join): the union of the parts' boxes, and the
+  // first part's (the cabin's) sphere when the others lie inside it, as passengers do. Else three's own pass, the same sphere.
+  const box = g.boundingBox = list[0].boundingBox!.clone();
+  for (let i = 1; i < list.length; i++) box.union(list[i].boundingBox!);
+  const first = list[0].boundingSphere!, r2 = first.radius * first.radius * (1 - 1e-9);
+  if (box.getCenter(_c).distanceToSquared(first.center) < 1e-12 && list.every((x, i) => i === 0 || corners(x.boundingBox!).every(v => v.distanceToSquared(first.center) <= r2))) g.boundingSphere = first.clone();
+  else g.computeBoundingSphere();
+  return g;
+}
+const _c = new THREE.Vector3(), _corners = Array.from({ length: 8 }, () => new THREE.Vector3());
+function corners(b: THREE.Box3) {
+  for (let i = 0; i < 8; i++) _corners[i].set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z);
+  return _corners;
+}
+/** Near geometry of a model built in pieces: the cabin (once) and its passengers (once each), joined (once per variant). */
+function nearOfParts(variant: string, parts: NonNullable<Model['parts']>) {
+  const key = variant + '|near';
+  let hit = geoCache.get(key);
+  if (!hit) {
+    const known = geoCache.has(parts.key + '|near'), cabin = geometryOf(parts.key + '|near', parts.cabin);
+    if (!known && parts.everyone) for (const r of parts.everyone) pieceOf(r);          // a new cabin: all its people in their own looks, now
+    hit = { body: parts.riders.length ? joinGeometries([cabin.body, ...parts.riders.map(pieceOf)]) : cabin.body, glass: cabin.glass };
+    geoCache.set(key, hit);
+    stats.joins++;
+  }
+  return hit;
+}
+/** Work done by the geometry cache so far (tests, debug): builder passes over a whole model, passengers built apart, variants joined. */
+export const kitBuildStats = () => ({ ...stats });
 const triCount = (g: THREE.BufferGeometry | null) => (g ? g.attributes.position.count / 3 : 0);
 const rnd = () => Math.floor(Math.random() * 0x7fffffff);
 
@@ -962,8 +1076,8 @@ export function buildVehicle(kind: VehicleKind, opts: VehicleOpts = {}): Vehicle
   const L = m.layout;
   const lodDistance = (opts.lodDistance ?? m.lod) * (opts.lite ? 0.65 : 1);
   const wantNear = opts.lod !== 'far', wantFar = opts.lod !== 'near';
-  const near = wantNear ? geometryOf(m.key + '|near', m.near) : null;
-  const far = wantFar ? geometryOf(m.key + '|far', b => m.far(b)) : null;
+  const near = wantNear ? (m.parts && opts.bake !== 'whole' ? nearOfParts(m.key, m.parts) : geometryOf(m.key + (m.parts ? '|whole' : '') + '|near', m.near)) : null;
+  const far = wantFar ? geometryOf((m.parts ? m.parts.key : m.key) + '|far', b => m.far(b)) : null;
   let beam = beamCache.get(kind);
   if (!beam) { const b = plainB(); m.beam(b); beam = b.build(); beamCache.set(kind, beam); }
 
