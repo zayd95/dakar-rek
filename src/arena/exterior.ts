@@ -65,6 +65,18 @@ interface Fan {
 
 const M4 = new THREE.Matrix4(), Q4 = new THREE.Quaternion(), P3 = new THREE.Vector3(), E3 = new THREE.Euler(), ONE = new THREE.Vector3(1, 1, 1);
 const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
+/**
+ * Where a bone of a fan's body is now, without updating the matrices of the whole chain above it (scene, groups, the
+ * rig's bones): its offset in the body's frame as last drawn, turned and carried with the body's group as it is now
+ * (a turn about y, the group under an unmoved parent). One frame behind for the bone's own motion in the clip.
+ */
+export function bodyPoint(group: THREE.Object3D, bone: THREE.Object3D, out: THREE.Vector3) {
+  const g = group.matrixWorld.elements, b = bone.matrixWorld.elements, k = Math.hypot(g[8], g[10]) || 1;
+  const c0 = g[10] / k, s0 = g[8] / k, dx = b[12] - g[12], dy = b[13] - g[13], dz = b[14] - g[14];
+  const lx = c0 * dx - s0 * dz, lz = s0 * dx + c0 * dz;                     // in the body's frame
+  const p = group.position, c1 = Math.cos(group.rotation.y), s1 = Math.sin(group.rotation.y);
+  return out.set(p.x + c1 * lx + s1 * lz, p.y + dy, p.z - s1 * lx + c1 * lz);
+}
 interface Still { h: Humanoid }
 
 let scheduled: ((day: number, hour: number) => boolean) | null = null;
@@ -334,7 +346,7 @@ class Exterior {
       this.scarves!.setMatrixAt(i, HIDDEN); this.flags!.setMatrixAt(i, HIDDEN);
       if (!show) return;
       const yaw = f.h.group.rotation.y, node = f.item === 'scarf' ? f.neck : f.hand;
-      if (node) { node.updateWorldMatrix(true, false); node.getWorldPosition(P3); }
+      if (node) bodyPoint(f.h.group, node, P3);
       else P3.set(f.x + (f.item === 'flag' ? Math.cos(yaw) * -0.22 : 0), f.item === 'flag' ? 1.0 : 1.45, f.z);
       if (f.item === 'scarf') { P3.y -= 0.03; Q4.setFromEuler(E3.set(0, yaw, 0)); this.scarves!.setMatrixAt(i, M4.compose(P3, Q4, ONE)); }
       else { Q4.setFromEuler(E3.set(0, yaw + Math.PI / 2, f.moving ? 0.25 : 0.1)); this.flags!.setMatrixAt(i, M4.compose(P3, Q4, ONE)); }
