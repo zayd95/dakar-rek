@@ -221,6 +221,11 @@ export class Crowd {
   private layoutDirty = true;
   private moving: Member[] = [];
   private blobsMoved = false;
+  /**
+   * The members with something to do this frame: a reaction shown or waiting for its stagger, or a pose being eased
+   * into. Everyone else sits (or stands) still, and the frame does not go through them (a thousand in the stands).
+   */
+  private live = new Set<Member>();
   private lodT = 0;
   private nearT = 0;
   private blobs: THREE.InstancedMesh | null = null;
@@ -337,7 +342,7 @@ export class Crowd {
       const r = p[i]; if (!r) continue;
       const m = list[i];
       const ripple = o.origin ? Math.hypot(m.slot.x - o.origin.x, m.slot.z - o.origin.z) / (o.speed ?? 30) : 0;
-      if (offer(m.st, kind, r.delay + ripple, r.seconds)) { n++; if (m.st.kind === kind && !m.st.next) this.retarget(m); }
+      if (offer(m.st, kind, r.delay + ripple, r.seconds)) { n++; this.live.add(m); if (m.st.kind === kind && !m.st.next) this.retarget(m); }
     }
     this.excite.add(group, REACTIONS[kind].voice * n / list.length);
     if (group !== 'all') this.excite.add('all', REACTIONS[kind].voice * n / Math.max(1, this.present));
@@ -405,6 +410,7 @@ export class Crowd {
     if ((kind || !m.on) && m.fidget) { m.fidget = null; this.fidgeting.delete(m); }
     const standing = standingFor(m.slot.seated, kind) && !(m.slot.seated && this.inClearView(m.slot.x, m.slot.z)) && !m.slot.lap;
     if (standing !== m.standing) { m.standing = standing; this.layoutDirty = true; }
+    this.live.add(m);
     m.target = poseFor(kind, standing, m.speed, m.mood, m.bpm, m.fidget);
     // at a grab some lean in further than others (the keen ones), at rest too when the bout is tense
     if (kind === 'grab' || m.fidget === 'lean') m.target = { ...m.target, lean: m.target.lean * (0.75 + (m.temper - 0.6) * 0.6) };
@@ -534,16 +540,19 @@ export class Crowd {
   update(dt: number, animate = true) {
     tickClock(performance.now());
     this.excite.decay(dt);
-    for (const m of this.members) if (m.on && step(m.st, dt)) this.retarget(m);
+    for (const m of this.live) if (m.on && step(m.st, dt)) this.retarget(m);
     this.fidgets(dt);
     this.nearT -= dt;
     if (this.nearT <= 0) { this.nearT = 0.5; this.pickNear(); }
     this.lodT -= dt;
     if (this.lodT <= 0 || this.layoutDirty) { this.lodT = 0.25; this.assignLod(); }
     const k = 1 - Math.exp(-dt * 7);
-    for (const m of this.members) if (m.easing && m.on) {
-      m.easing = easePose(m.pose, m.target, k);
-      if (!this.layoutDirty && (m.lod === 1 || m.lod === 2) && m.bk) m.bk.pose(m.bi, m);    // in place (a full write redoes it)
+    for (const m of this.live) {
+      if (m.easing && m.on) {
+        m.easing = easePose(m.pose, m.target, k);
+        if (!this.layoutDirty && (m.lod === 1 || m.lod === 2) && m.bk) m.bk.pose(m.bi, m);  // in place (a full write redoes it)
+      }
+      if (!m.on || (!m.easing && !m.st.kind && !m.st.next)) this.live.delete(m);         // still now: out of the frame's work
     }
     if (this.layoutDirty) this.write();
     else this.writeMoves();
