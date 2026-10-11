@@ -501,4 +501,6 @@ everything `src/arena` draws hidden; budget desktop < 160, phone < 60) and the w
 the people (desktop medium, phone low), captures in `docs/screenshots/arena-people/`: the officials and two drummers
 at doors-open, vendors walking, a vendor stopping and selling, the chairs kept, judges and referee at the filling, the
 drummers' group and the entourages walking in (whole-frame draw calls), the entourages in their corners during the
-bout, the winner's people on the sand, everyone gone after the gala.
+bout, the winner's people on the sand, everyone gone after the gala. Once the fête has been checked, the rest of the
+result is skipped (`arena.go('leaving')`), and every later wait is on the show's own state. On a slow renderer, game time
+runs far behind wall time.
