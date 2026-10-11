@@ -1,6 +1,7 @@
 import type { Needs } from '../core/types';
 import type { Input } from '../core/input';
 import { Sheet, replay, type MenuItem } from './sheet';
+import { momentsToDrop } from './moments';
 import { fcfaShort, fcfaText } from '../economy/format';
 import { glossed } from '../i18n/wolof';
 
@@ -361,8 +362,8 @@ export class Hud {
   /**
    * The fighter's after-bout card (src/career/progress.ts `boutCard`): a moment card, larger — the result and who
    * against; one row per thing that changed (what, where it stands now, the change in green or red, a short note); then
-   * « Ensuite » and the next bill or step. Same rules as a moment (first in the toast column, tap to dismiss, never over
-   * the action button or the joystick); it stays longer (16–24 s).
+   * « Ensuite » and the next bill or step. Same rules as a moment (tap to dismiss, never over the action button or the
+   * joystick), but it heads the toast column and the moment cards before it go; it stays longer (16–24 s).
    */
   boutCard(card: { icon: string; title: string; sub: string; rows: { k: string; v: string; d?: string; tone?: string; note?: string }[]; next: string[] },
     ms = Math.min(24000, 16000 + 1000 * card.rows.length)) {
@@ -400,8 +401,9 @@ export class Hud {
     c.addEventListener('pointerdown', e => e.stopPropagation());
     c.addEventListener('click', e => { e.stopPropagation(); (document.activeElement as HTMLElement | null)?.blur?.(); this.dropToast(c); });
     box.appendChild(c);
-    const live = [...box.children].filter(k => k.classList.contains('mo') && !k.classList.contains('out'));
-    for (const old of live.slice(0, Math.max(0, live.length - 2))) this.dropToast(old as HTMLElement);
+    // two at most; the after-bout card replaces the cards before it and stays while others come (src/ui/moments.ts)
+    const live = [...box.children].filter(k => k.classList.contains('mo') && !k.classList.contains('out')) as HTMLElement[];
+    for (const i of momentsToDrop(live.map(k => k.classList.contains('bc')))) this.dropToast(live[i]);
     c.dataset.timer = String(window.setTimeout(() => this.dropToast(c), ms));
     return c;
   }
