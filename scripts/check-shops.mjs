@@ -134,7 +134,10 @@ try {
       await page.waitForTimeout(300);
       const walkedIn = await walk(page, [{ x: door.x, z: door.z }]);
       await shot(page, `${label}-${v.type}-walk-in`);
-      const atCounter = walkedIn && await walk(page, [{ x: c.x, z: c.z }]);
+      // up to the counter along the customers' queue (its last place first), as a customer walks: a straight line from the
+      // door can cross the ticket kiosk or the queue's posts (the bank's « Accueil »)
+      const queuePath = [...(s.anchors.queue ?? []).slice(1).reverse(), c].map(p => ({ x: p.x, z: p.z }));
+      const atCounter = walkedIn && await walk(page, queuePath);
       check(`${label}: walks from the street into the ${v.type} shop up to its counter`, walkedIn && atCounter, JSON.stringify(await d(page, () => window.__dakar.pos())));
       if (!atCounter) await d(page, p => window.__dakar.place(p.x, p.z, p.yaw), c);
       await d(page, p => window.__dakar.lookYaw(p.yaw + 0.35), c);                // the counter, the keeper and the shelves behind
