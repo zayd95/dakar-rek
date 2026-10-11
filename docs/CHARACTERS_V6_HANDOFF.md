@@ -42,3 +42,10 @@ and the new interaction/activity framework expects the v4 rig API. Steps below.
 - Retarget with bone twist (hands/head still a bit stiff), idle variations, breathing.
 - Taxi ride check on a real device (the headless check reaches "Taxi… il arrive" only).
 - Cultural content stays **Unreviewed** until Habib and practitioners review it.
+
+## Paused (11 Oct, 14:47) — resume after wave 5 is validated
+- Paused by Habib to save quota. Sim Studio (creator) and onboarding: **not started**, on purpose.
+- Every version of the Blender generator/retarget scripts is in `assets-src/people_v6/all_scripts/`
+  (latest: `garm_v10.py`, `specs_v7.py`, `asm_v4.py`, `helpers_v1.py`, `slim.mjs`; `anim_v*.py` retargeting).
+- The earlier local street/vehicle pass (15 commits never pushed, 8 Oct) is saved as tag
+  `archive/local-full-work-2026-10-08` — not merged anywhere.
