@@ -36,8 +36,10 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? 
 for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]]) {
   if (only && only !== label) continue;
   const dir = `${out}/${label}`; fs.mkdirSync(dir, { recursive: true });
-  const page = await (await browser.newContext({ viewport, hasTouch: touch, isMobile: touch })).newPage();
+  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
+  const page = await context.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
+  try {
   await page.goto(`${base}?debug${touch ? '&touch' : ''}`, T);
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
   const d = (fn, arg) => page.evaluate(fn, arg);
@@ -46,6 +48,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   // helpers in the page: the player's body (the humanoid standing where the player is), its soles in the world, a touch stick
   await d(sole => {
     window.__gaitCheck = {
+      clock: 0,
       body() {
         const p = window.__dakar.pos(); let best = null, bd = 0.5;
         window.__dakar.three.scene.traverse(o => { if (o.name === 'humanoid_v2' && o.visible) { const dd = Math.hypot(o.position.x - p.x, o.position.z - p.z); if (dd < bd) { bd = dd; best = o; } } });
@@ -75,7 +78,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   };
   /** Advance the game: stepped (paused, exact) or in real time. */
   const advance = async seconds => {
-    if (stepped) await d(([dt, n]) => window.__dakar.step(dt, n), [DT, Math.max(1, Math.round(seconds / DT))]);
+    if (stepped) await d(([dt, n]) => { window.__dakar.step(dt, n); window.__gaitCheck.clock += dt * n; }, [DT, Math.max(1, Math.round(seconds / DT))]);
     else await page.waitForTimeout(seconds * 1000);
   };
   /** The camera around the player: front, side (the character's right) or back, 3.4 m away. */
@@ -92,24 +95,25 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   };
   /** Soles sampled every 1/60 s (stepped) or every frame (real time) for `seconds`. */
   const sample = async seconds => {
-    if (stepped) return d(([dt, n]) => { const o = []; for (let i = 0; i < n; i++) { window.__dakar.step(dt, 1); o.push(window.__gaitCheck.soles()); } return o; }, [DT, Math.round(seconds / DT)]);
-    return d(sec => new Promise(res => { const o = [], t0 = performance.now(); const f = () => { o.push(window.__gaitCheck.soles()); if (performance.now() - t0 < sec * 1000) requestAnimationFrame(f); else res(o); }; requestAnimationFrame(f); }), seconds);
+    if (stepped) return d(([dt, n]) => { const c = window.__gaitCheck, o = []; for (let i = 0; i < n; i++) { window.__dakar.step(dt, 1); o.push({ t: (c.clock += dt), ...c.soles() }); } return o; }, [DT, Math.round(seconds / DT)]);
+    return d(sec => new Promise(res => { const o = [], t0 = performance.now(); const f = () => { o.push({ t: performance.now() / 1000, ...window.__gaitCheck.soles() }); if (performance.now() - t0 < sec * 1000) requestAnimationFrame(f); else res(o); }; requestAnimationFrame(f); }), seconds);
   };
-  const slide = (frames, seconds) => {
-    const fr = frames.filter(Boolean), K = ['heelL', 'ballL', 'heelR', 'ballR'];
+  const slide = frames => {
+    const fr = frames.filter(f => f?.heelL), K = ['heelL', 'ballL', 'heelR', 'ballR'];
     if (!fr.length) return null;
     const ground = Math.min(...fr.flatMap(f => K.map(k => f[k][1])));
-    let total = 0, steps = 0, side = '', prevKey = '', prev = null, worst = 0, acc = 0, first = null, last = null;
+    let total = 0, steps = 0, side = '', prevKey = '', prev = null, worst = 0, acc = 0, first = null, last = null, t0 = 0, t1 = 0;
     for (const f of fr) {
       let key = K[0]; for (const k of K) if (f[k][1] < f[key][1]) key = k;
       const p = f[key], down = p[1] < ground + 0.015;
       if (down && key === prevKey && prev) { const dd = Math.hypot(p[0] - prev[0], p[2] - prev[2]); total += dd; acc += dd; }
-      if (down && key.slice(-1) !== side) { if (side) { steps++; worst = Math.max(worst, acc); last = p; } else first = p; acc = 0; side = key.slice(-1); }
+      if (down && key.slice(-1) !== side) { if (side) { steps++; worst = Math.max(worst, acc); last = p; t1 = f.t; } else { first = p; t0 = f.t; } acc = 0; side = key.slice(-1); }
       prevKey = down ? key : ''; prev = down ? p : null;
     }
+    worst = Math.max(worst, acc);                                                   // the last foot down too (stopping)
     const dist = first && last ? Math.hypot(last[0] - first[0], last[2] - first[2]) : 0;
     return { steps, slidePerStepCm: steps ? +((100 * total) / steps).toFixed(1) : null, slideWorstCm: +(100 * worst).toFixed(1),
-      cadenceSpm: +((steps / seconds) * 60).toFixed(0), stepM: steps ? +(dist / steps).toFixed(2) : null };
+      cadenceSpm: steps && t1 > t0 ? +((steps / (t1 - t0)) * 60).toFixed(0) : null, stepM: steps ? +(dist / steps).toFixed(2) : null };
   };
 
   // a long straight street in Pikine, facing along it (as scripts/check-stride.mjs)
@@ -132,7 +136,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     for (const view of ['front', 'side', 'back']) {
       for (let i = 0; i < 8; i++) { await shoot(`${gt.name}-${view}-${i}`, view, HEADING); await advance(T2 / 8); }
     }
-    const secs = 2.5, m = slide(await sample(secs), secs);
+    const secs = 2.5, m = slide(await sample(secs));
     const g1 = stepped ? await d(() => window.__dakar.gait()) : null;
     rep.gaits[gt.name] = { ...m, speed: await d(() => +window.__dakar.stride().speed.toFixed(2)), gait: g1 && { clip: g1.clip, run: +g1.run.toFixed(2), cadenceSpm: +(g1.cadence * 60).toFixed(0), stepM: +g1.step.toFixed(2), duty: +g1.duty.toFixed(2), slipped: g1.feet.map(f => +(f.slipped * 100).toFixed(1)) } };
     console.log(`${label} ${gt.label}:`, JSON.stringify(rep.gaits[gt.name]));
@@ -156,7 +160,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   for (let i = 0; i < 16; i++) { await shoot(`stop-${i}`, 'side', HEADING); stopFrames.push(...(await sample(1 / 15))); }
   stopFrames.push(...(await sample(1)));
   const after = await d(() => ({ speed: window.__dakar.stride().speed, gait: window.__dakar.gait?.() ?? null }));
-  rep.start = slide(startFrames, 14 / 15); rep.stop = { ...slide(stopFrames, 16 / 15 + 1), end: after.gait && { moving: after.gait.moving, feet: after.gait.feet.map(f => f.swing ? 'swing' : 'down') } };
+  rep.start = slide(startFrames); rep.stop = { ...slide(stopFrames), end: after.gait && { moving: after.gait.moving, feet: after.gait.feet.map(f => f.swing ? 'swing' : 'down') } };
   console.log(`${label} start:`, JSON.stringify(rep.start), 'stop:', JSON.stringify(rep.stop));
   if (stepped) {
     check(`${label}: starting from standing, no sliding`, rep.start && (rep.start.slidePerStepCm ?? 0) < 2.5, JSON.stringify(rep.start));
@@ -172,7 +176,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   for (let i = 0; i < 14; i++) { await shoot(`turn-${i}`, 'above', HEADING); turnFrames.push(...(await sample(1 / 12))); }
   turnFrames.push(...(await sample(1)));
   await stick(0);
-  rep.turn = slide(turnFrames, 14 / 12 + 1);
+  rep.turn = slide(turnFrames);
   console.log(`${label} turn 90° walking:`, JSON.stringify(rep.turn));
   if (stepped) check(`${label}: a 90° turn while walking: the planted foot pivots, no skating`, rep.turn && (rep.turn.slidePerStepCm ?? 0) < 2 && rep.turn.slideWorstCm < 5, JSON.stringify(rep.turn));
 
@@ -189,13 +193,18 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   }
   spotFrames.push(...(await sample(0.8)));
   const spotGait = await d(() => window.__dakar.gait?.() ?? null);
-  rep.turnOnSpot = { ...slide(spotFrames, 19 / 15 + 0.8), settles: spotGait?.settles ?? null };
+  rep.turnOnSpot = { ...slide(spotFrames), settles: spotGait?.settles ?? null };
   console.log(`${label} turn on the spot:`, JSON.stringify(rep.turnOnSpot));
   if (stepped) check(`${label}: turning on the spot: the feet step round (no moonwalk)`, (spotGait?.settles ?? 0) >= 2 && rep.turnOnSpot.slideWorstCm < 8, JSON.stringify(rep.turnOnSpot));
 
   await d(() => { window.__dakar.pause?.(false); window.__dakar.cam(null); });
   if (stepped) check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
   else rep.errors = errors;
+  } catch (e) { check(`${label}: the run went through`, false, String(e?.message ?? e).split('\n')[0]); }
+  finally {
+    await context.close();                                                          // nothing left rendering for the next view
+    fs.writeFileSync(`${out}/results.json`, JSON.stringify({ report, checks: results }, null, 2));
+  }
 }
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify({ report, checks: results }, null, 2));

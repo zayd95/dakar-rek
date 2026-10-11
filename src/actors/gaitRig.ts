@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RIG, solveKnee, type Foot, type GaitState } from './gait';
+import { GROUND, RIG, solveKnee, type Foot, type GaitState } from './gait';
 
 /**
  * Puts a GaitState (src/actors/gait.ts) on the shared humanoid's bones, after the mixer has posed them (clips stay the
@@ -18,10 +18,15 @@ const DIR1 = new THREE.Vector3(), DIR2 = new THREE.Vector3(), SOLE = new THREE.V
 const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0), ZERO = new THREE.Vector3();
 const E = new THREE.Euler(0, 0, 0, 'YXZ');
 const ANK = { x: 0, y: 0, z: 0 }, KNEE = { x: 0, y: 0, z: 0 };
-const TILT_C = Math.cos(RIG.footTilt), TILT_S = Math.sin(RIG.footTilt);
+const M4 = new THREE.Matrix4();
 
 export class GaitRig {
-  private constructor(private b: Record<BoneName, THREE.Object3D>, private rest: Record<BoneName, THREE.Quaternion>, private rootPos: THREE.Vector3) {}
+  /** Each foot's rest orientation in the character's space (sole level, pointing ahead): turned as a whole to the foot's frame. */
+  private footRest: { footL: THREE.Quaternion; footR: THREE.Quaternion };
+  private constructor(private b: Record<BoneName, THREE.Object3D>, private rest: Record<BoneName, THREE.Quaternion>, private rootPos: THREE.Vector3) {
+    const chain = (side: 'L' | 'R') => rest.root.clone().multiply(rest.hips).multiply(rest[`thigh${side}`]).multiply(rest[`shin${side}`]).multiply(rest[`foot${side}`]);
+    this.footRest = { footL: chain('L'), footR: chain('R') };
+  }
 
   /** The rig's bones under `root` (a clone of the humanoid, in its rest pose), or null when one is missing. */
   static from(root: THREE.Object3D): GaitRig | null {
@@ -89,11 +94,27 @@ export class GaitRig {
     HIP.copy(this.b[thigh].position).applyQuaternion(QH).add(PEL);
     ANK.x = f.ax; ANK.y = f.ay; ANK.z = f.az;
     const fx = Math.sin(f.yaw), fz = Math.cos(f.yaw);
+    this.solve(f, fx, fz);
+    // in the air, the sole keeps clear of the ground (the toes never drag): the ankle rises by what is missing
+    if (f.clear > 0) {
+      const low = Math.min(-RIG.heelToAnkle.z * SOLE.y - RIG.heelToAnkle.y * UPV.y, -RIG.ballToAnkle.z * SOLE.y - RIG.ballToAnkle.y * UPV.y);
+      const miss = GROUND + f.clear - (ANK.y + low);
+      if (miss > 0) { ANK.x = f.ax; ANK.y = f.ay + miss; ANK.z = f.az; this.solve(f, fx, fz); }
+    }
+    this.aim(thigh, QH, DIR1, w, QS);
+    this.aim(shin, QS, DIR2, w, QU);
+    // the foot: its rest orientation turned to the sole's frame (no roll: the sole stays flat across)
+    V2.crossVectors(UPV, SOLE).normalize();
+    M4.makeBasis(V2, UPV, SOLE);
+    QW.setFromRotationMatrix(M4).multiply(this.footRest[foot as 'footL' | 'footR']);
+    QL.copy(QU).invert().multiply(QW);
+    this.b[foot].quaternion.slerp(QL, w);
+  }
+  /** Knee by IK, the thigh's and the shin's directions, the sole's direction and its up (the ankle in ANK). */
+  private solve(f: Foot, fx: number, fz: number) {
     solveKnee(HIP.x, HIP.y, HIP.z, ANK, fx, fz, KNEE);
     DIR1.set(KNEE.x - HIP.x, KNEE.y - HIP.y, KNEE.z - HIP.z).normalize();
     DIR2.set(ANK.x - KNEE.x, ANK.y - KNEE.y, ANK.z - KNEE.z).normalize();
-    this.aim(thigh, QH, DIR1, w, QS);
-    this.aim(shin, QS, DIR2, w, QU);
     // the sole: over the ground at the foot's pitch, or (swinging) held at an angle against the shin
     const cp = Math.cos(f.pitch);
     SOLE.set(fx * cp, Math.sin(f.pitch), fz * cp);
@@ -103,12 +124,9 @@ export class GaitRig {
       V1.multiplyScalar(Math.cos(f.alpha)).addScaledVector(DIR2, Math.sin(f.alpha));
       SOLE.lerp(V1, f.shinW).normalize();
     }
-    // the foot bone points a little below the sole's line
     SIDE.set(fz, 0, -fx);
     UPV.crossVectors(SOLE, SIDE).normalize();
     if (UPV.equals(ZERO)) UPV.copy(Y);
-    V2.copy(SOLE).multiplyScalar(TILT_C).addScaledVector(UPV, TILT_S).normalize();
-    this.aim(foot, QU, V2, w, QW);
   }
 
   private arm(shoulder: BoneName, upper: BoneName, fore: BoneName, hand: BoneName, swing: number, elbow: number, w: number) {

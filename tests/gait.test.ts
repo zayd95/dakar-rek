@@ -9,7 +9,8 @@ import {
 import { GaitRig } from '../src/actors/gaitRig';
 
 const DT = 1 / 60;
-type Drive = (t: number) => { v: number; yaw?: number; inPlace?: boolean };
+/** Each frame: the speed, the body's facing, the way it moves when that is not where it faces (the player while turning). */
+type Drive = (t: number) => { v: number; yaw?: number; dir?: number; inPlace?: boolean };
 
 /** Drives a body (the rig in node, no meshes) with the gait, frame by frame, and records the soles' points in the world. */
 function walkRig(seconds: number, drive: Drive) {
@@ -28,7 +29,8 @@ function walkRig(seconds: number, drive: Drive) {
   for (let t = 0; t < seconds; t += DT) {
     const d = drive(t);
     if (d.yaw !== undefined) yaw = d.yaw;
-    if (!d.inPlace) { x += Math.sin(yaw) * d.v * DT; z += Math.cos(yaw) * d.v * DT; }
+    const dir = d.dir ?? yaw;
+    if (!d.inPlace) { x += Math.sin(dir) * d.v * DT; z += Math.cos(dir) * d.v * DT; }
     body.position.set(x, 0, z); body.rotation.y = yaw;
     g.update(DT, x, z, yaw, 1, d.v);
     mixer.update(DT);
@@ -43,6 +45,20 @@ function walkRig(seconds: number, drive: Drive) {
   return { frames, body, root };
 }
 
+/** The player's movement as src/main.ts makes it: the speed eased (6/s up, 12/s down), the body turning at 14/s towards the stick's way. */
+function player(input: (t: number) => { target: number; dir: number }): Drive {
+  let speed = 0, facing = 0, last = -1;
+  return t => {
+    if (t > last) {
+      const i = input(t); last = t;
+      speed += (i.target - speed) * Math.min(1, DT * (i.target > speed ? 6 : 12));
+      if (i.target > 0.05) facing += Math.atan2(Math.sin(i.dir - facing), Math.cos(i.dir - facing)) * Math.min(1, DT * 14);
+      return { v: speed, yaw: facing, dir: i.dir };
+    }
+    return { v: speed, yaw: facing };
+  };
+}
+
 /**
  * Sliding: each frame the lowest point of the soles carries the body when it is within 1.5 cm of the ground; while the
  * same point stays the support, its horizontal motion is sliding. Steps: the support changing feet.
@@ -50,15 +66,16 @@ function walkRig(seconds: number, drive: Drive) {
 function slide(frames: ReturnType<typeof walkRig>['frames'], from = 1.5) {
   const fr = frames.filter(f => f.t >= from), keys = ['heelL', 'ballL', 'heelR', 'ballR'];
   const ground = Math.min(...fr.flatMap(f => keys.map(k => f.pts[k].y)));
-  let total = 0, steps = 0, side = '', prevKey = '', prev: THREE.Vector3 | null = null, worst = 0, acc = 0;
+  let total = 0, steps = 0, side = '', prevKey = '', prev: THREE.Vector3 | null = null, worst = 0, acc = 0, t0 = 0, t1 = 0;
   for (const f of fr) {
     let key = keys[0]; for (const k of keys) if (f.pts[k].y < f.pts[key].y) key = k;
     const p = f.pts[key], down = p.y < ground + 0.015;
     if (down && key === prevKey && prev) { const d = Math.hypot(p.x - prev.x, p.z - prev.z); total += d; acc += d; }
-    if (down && key.slice(-1) !== side) { if (side) { steps++; worst = Math.max(worst, acc); } acc = 0; side = key.slice(-1); }
+    if (down && key.slice(-1) !== side) { if (side) { steps++; worst = Math.max(worst, acc); t1 = f.t; } else t0 = f.t; acc = 0; side = key.slice(-1); }
     prevKey = down ? key : ''; prev = down ? p : null;
   }
-  return { perStep: steps ? total / steps : 0, worst, steps, seconds: fr.length * DT };
+  // the cadence: steps over the time between the first and the last foot coming down
+  return { perStep: steps ? total / steps : 0, worst: Math.max(worst, acc), steps, spm: t1 > t0 ? (steps / (t1 - t0)) * 60 : 0 };
 }
 
 describe('the rig the gait is built for (public/assets/character_v4.glb)', () => {
@@ -145,7 +162,7 @@ describe('the gait on the rig: feet that stay put, smooth hips, joints that bend
       const s = slide(frames);
       expect(s.perStep).toBeLessThan(0.012);                                                          // < 1.2 cm a step (the old clips: 20–47 cm)
       expect(s.worst).toBeLessThan(0.02);
-      expect((s.steps / s.seconds) * 60).toBeGreaterThan(spm * 0.9); expect((s.steps / s.seconds) * 60).toBeLessThan(spm * 1.12);
+      expect(s.spm).toBeGreaterThan(spm * 0.95); expect(s.spm).toBeLessThan(spm * 1.08);
       for (const f of frames.filter(x => x.t > 1)) {
         for (let i = 0; i < 2; i++) {
           // the knee in front of the line from the hip to the ankle (never bent backwards)
@@ -175,6 +192,22 @@ describe('the gait on the rig: feet that stay put, smooth hips, joints that bend
     const { frames } = walkRig(4, t => ({ v: 1.4, yaw: t < 2 ? 0 : Math.min(Math.PI / 2, (t - 2) * 6) }));
     const s = slide(frames, 1);
     expect(s.perStep).toBeLessThan(0.012); expect(s.worst).toBeLessThan(0.03);
+  });
+  it('stopping from the brisk run at any moment of the stride (as scripts/check-gait.mjs): the last steps do not skid, the toes do not drag', () => {
+    for (let T1 = 1; T1 < 1.8; T1 += 0.08) {
+      const { frames } = walkRig(T1 + 2.5, player(t => ({ target: t < T1 ? 4.2 : 0, dir: 0 })));
+      const s = slide(frames, T1);
+      expect(s.worst, `stop at ${T1.toFixed(2)} s`).toBeLessThan(0.03);
+      const g = frames[frames.length - 1].g;
+      expect(g.moving).toBe(false); expect(g.feet.every(f => !f.swing)).toBe(true);
+    }
+  });
+  it('the stick turned 90° while walking (the steps go sideways while the body turns at 14/s): no skating at any moment of the stride', () => {
+    for (let T1 = 1; T1 < 2; T1 += 0.1) {
+      const { frames } = walkRig(T1 + 2.2, player(t => ({ target: 1.4, dir: t < T1 ? 0 : -Math.PI / 2 })));
+      const s = slide(frames, T1);
+      expect(s.perStep, `turn at ${T1.toFixed(2)} s`).toBeLessThan(0.015); expect(s.worst, `turn at ${T1.toFixed(2)} s`).toBeLessThan(0.035);
+    }
   });
   it('turning on the spot: the feet step round (no moonwalk), then stand under the hips', () => {
     const { frames } = walkRig(4, t => ({ v: 0, inPlace: true, yaw: t < 1 ? 0 : Math.min(Math.PI / 2, (t - 1) * 2.5) }));

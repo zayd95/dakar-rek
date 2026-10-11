@@ -116,7 +116,7 @@ export function walkParams(v: number, o: GaitParams = newParams()): GaitParams {
 export function runParams(v: number, o: GaitParams = newParams()): GaitParams {
   const w = Math.max(v, 1.5);
   o.cadence = 2.45 + 0.107 * w; o.step = w / o.cadence;
-  o.duty = clamp(((0.64 + 0.016 * w) / w) * o.cadence * 0.5, 0.16, 0.42);
+  o.duty = clamp(((0.64 + 0.016 * Math.min(w, 4.2)) / w) * o.cadence * 0.5, 0.15, 0.42);         // the stance travel stops growing past 4.2 m/s
   o.centre = -0.1 - 0.005 * w; o.width = 0.05 - 0.002 * w;
   o.heelStrike = Math.max(0, 8 - w) * DEG; o.footFlat = 0.2; o.heelOff = 0.4; o.toeOff = -(35 + 3 * w) * DEG;
   o.lift = 0; o.clear = 0; o.kick = 0.22 + 0.05 * w; o.drive = 0.12 + 0.03 * w; o.ankleSwing = 12 * DEG;
@@ -197,6 +197,12 @@ export class Foot {
   ax = 0; ay = 0; az = 0; yaw = 0; alpha = 0; shinW = 0; planted = true;
   /** Highest the hips may be for this leg to reach its ankle (last computed while planted, kept at toe-off). */
   lim = 1; limTo = 1;
+  /** Swinging: the spot it will land on, fixed on the ground (parent space) from mid-swing on. */
+  locked = false; wx = 0; wz = 0;
+  /** On the ground: the heel lifted (0…1) while the body turns over the foot, so it pivots on the ball. */
+  heelUp = 0;
+  /** Output: how high the sole must stay above the ground (m; swinging, mid-air). */
+  clear = 0;
   /** Checks: metres the contact point slid because the leg could not reach it. */
   slipped = 0;
   constructor(readonly side: 1 | -1) {}
@@ -285,11 +291,15 @@ export class GaitState {
     const p = this.p, v = this.v;
     if (v < 0.05) return 0;
     // how far behind the hips the ankle can be at toe-off (up on the ball), the hips as low as 0.85 m
-    const rise = 0.85 - (GROUND + ankleOffset(p.toeOff, OFF).y), behind = Math.sqrt(Math.max(0, REACH * REACH - rise * rise));
+    ankleOffset(p.toeOff, OFF);
+    const toZ = OFF.z, rise = 0.85 - (GROUND + OFF.y), behind = Math.sqrt(Math.max(0, REACH * REACH - rise * rise));
     let need = 0;
     for (const f of this.feet) {
       if (f.swing || f.lam >= p.duty) continue;
-      const left = f.ax * this.ux + f.az * this.uz + behind;                                // metres before it is out of reach
+      // the ankle at toe-off: the contact point (heel, or ball) carried back by the body, the foot rolled onto the ball
+      ankleOffset(f.pitch, OFF2);
+      const pivot = f.ax * this.ux + f.az * this.uz - OFF2.z, atToeOff = pivot + (f.pitch >= 0 ? RIG.heelToBall : 0) + toZ;
+      const left = atToeOff + behind;                                                       // metres the body may still go
       need = Math.max(need, ((p.duty - f.lam) * dt * v) / Math.max(0.02, left));
     }
     return need;
@@ -315,17 +325,17 @@ export class GaitState {
   }
   private liftOff(f: Foot, settle = false, dur = 0.3) {
     f.swing = true; f.settle = settle; f.lamTo = f.lam; f.s = 0; f.dur = dur;
-    f.x0 = f.ax; f.y0 = f.ay; f.z0 = f.az; f.p0 = f.pitch; f.yaw0 = f.yaw; f.limTo = f.lim;
+    f.x0 = f.ax; f.y0 = f.ay; f.z0 = f.az; f.p0 = f.pitch; f.yaw0 = f.yaw; f.limTo = f.lim; f.locked = false; f.heelUp = 0;
     f.tx = f.ax; f.ty = f.ay; f.tz = f.az; f.tyaw = f.yaw; f.tpitch = f.pitch;
     f.planted = false;
   }
-  /** Down: the heel's contact point under the ankle where it came down, `late` seconds ago (within this frame). */
-  private land(f: Foot, late = 0) {
-    f.swing = false; f.settle = false; f.planted = true; f.pitch = f.tpitch;
+  /** Down: the heel's contact point under the ankle where it came down (on its locked spot when it had one). */
+  private land(f: Foot) {
+    f.swing = false; f.settle = false; f.planted = true; f.pitch = f.tpitch; f.clear = 0; f.locked = false;
     ankleOffset(f.pitch, OFF);
     const off = f.pitch >= 0 ? OFF.z : OFF.z + RIG.heelToBall;
-    const sy = Math.sin(f.yaw), cy = Math.cos(f.yaw), back = this.v * late;
-    const hx = f.ax - sy * off - this.ux * back, hz = f.az - cy * off - this.uz * back;
+    const sy = Math.sin(f.yaw), cy = Math.cos(f.yaw);
+    const hx = f.ax - sy * off, hz = f.az - cy * off;
     f.hx = this.toParentX(hx, hz); f.hz = this.toParentZ(hx, hz); f.hyaw = this.yaw + f.yaw;
     this.steps++;
   }
@@ -342,9 +352,8 @@ export class GaitState {
     this.target(f, dt);
     this.swingPose(f);
     if (this.moving && !f.settle ? f.lam >= 1 : f.s >= 1) {
-      let late = 0;
-      if (this.moving && !f.settle) { f.lam -= 1; late = (f.lam * 2) / p.cadence; }
-      this.land(f, late);
+      if (this.moving && !f.settle) f.lam -= 1;
+      this.land(f);
       this.stance(f, dt);
     }
   }
@@ -354,6 +363,9 @@ export class GaitState {
     if (this.moving) f.pitch = stancePitch(f.lam / this.p.duty, this.p);
     else f.pitch *= Math.exp(-dt / 0.1);
     let yr = wrap(f.hyaw - this.yaw);
+    // turning far over a planted foot: the heel comes up a little and the foot pivots on the ball
+    f.heelUp = clamp(f.heelUp + (Math.abs(yr) > 0.55 ? dt : -dt) / 0.12, 0, 1);
+    if (f.heelUp > 0) f.pitch = Math.min(f.pitch, -0.14 * f.heelUp);
     if (Math.abs(yr) > 0.7) {
       // the body turned too far over it: the foot pivots, on the ball when the heel is up
       yr = Math.sign(yr) * 0.7;
@@ -367,7 +379,7 @@ export class GaitState {
     ankleOffset(f.pitch, OFF);
     const sy = Math.sin(yr), cy = Math.cos(yr);
     f.ax = this.toCharX(X, Z) + sy * OFF.z; f.az = this.toCharZ(X, Z) + cy * OFF.z; f.ay = GROUND + OFF.y;
-    f.alpha = 0; f.shinW = 0; f.planted = true;
+    f.alpha = 0; f.shinW = 0; f.planted = true; f.clear = 0;
   }
 
   /** Where a swinging foot comes down: ahead along the way when moving, back under its hip when stopping or settling. */
@@ -393,31 +405,39 @@ export class GaitState {
     const p = this.p, s = f.s, h = minJerk(s);
     const r = f.settle ? 0 : this.run;
     const lift = f.settle ? 0.04 : p.lift, clear = f.settle ? 0.015 : p.clear;
-    let x = lerp(f.x0, f.tx, h), z = lerp(f.z0, f.tz, h);
+    const tx = f.tx, tz = f.tz;
+    let x = lerp(f.x0, tx, h), z = lerp(f.z0, tz, h);
     let y = lerp(f.y0, f.ty, h) + lift * smoothstep(0, 0.25, s) * (1 - smoothstep(0.25, 0.65, s)) + clear * Math.sin(Math.PI * s);
     if (r > 0) {
       // cubic Bézier: up behind (the heel kicked up), then forward under the knee, then down onto the ground
       const u = s, iu = 1 - u, b0 = iu * iu * iu, b1 = 3 * iu * iu * u, b2 = 3 * iu * u * u, b3 = u * u * u;
-      const rz = b0 * f.z0 + b1 * (f.z0 + 0.08) + b2 * (f.tz + p.drive) + b3 * f.tz;
+      const rz = b0 * f.z0 + b1 * (f.z0 + 0.08) + b2 * (tz + p.drive) + b3 * tz;
       const ry = b0 * f.y0 + b1 * (f.y0 + p.kick) + b2 * (f.ty + p.kick * 0.45) + b3 * f.ty;
-      z = lerp(z, rz, r); y = lerp(y, ry, r); x = lerp(x, lerp(f.x0, f.tx, smoothstep(0, 1, s)), r);
+      z = lerp(z, rz, r); y = lerp(y, ry, r); x = lerp(x, lerp(f.x0, tx, smoothstep(0, 1, s)), r);
     }
-    if (this.moving && !f.settle) {
+    const walking = this.moving && !f.settle;
+    const Tsw = walking ? (Math.max(0.05, 1 - f.lamTo) * 2) / p.cadence : f.dur, v = walking ? this.v : 0;
+    if (walking) {
       // it leaves the ground and meets it at the ground's speed (no skid at toe-off or at the landing): it goes on back a
       // little after the toe-off and reaches a little ahead before coming back onto its spot
-      const Tsw = (Math.max(0.05, 1 - f.lamTo) * 2) / p.cadence, v = this.v;
-      const c0 = -(0.8 - 0.4 * r) * v * Tsw - 0.24 * r, c1 = -v * Tsw + 3 * p.drive * r;
+      const c0 = -(1 - 0.5 * r) * v * Tsw - 0.24 * r, c1 = -v * Tsw + 3 * p.drive * r;
       const s0 = 0.25, s1 = 0.7 + 0.1 * r;
       let d = 0;
       if (s < s0) { const q = s / s0; d += c0 * s0 * q * (1 - q) * (1 - q); }
       if (s > s1) { const q = (s - s1) / (1 - s1); d += c1 * (1 - s1) * q * q * (q - 1); }
       x += this.ux * d; z += this.uz * d;
     }
+    // the last stretch: the spot it lands on is fixed on the ground from s = 0.8 (where it would land if the body kept its
+    // pace); braking or turning meanwhile, it still comes down there, at the ground's speed
+    const lx = tx + this.ux * v * (1 - s) * Tsw, lz = tz + this.uz * v * (1 - s) * Tsw;
+    if (s >= 0.8 && !f.locked) { f.locked = true; f.wx = this.toParentX(lx, lz); f.wz = this.toParentZ(lx, lz); }
+    if (f.locked) { const w = smoothstep(0.8, 0.96, s); x += w * (this.toCharX(f.wx, f.wz) - lx); z += w * (this.toCharZ(f.wx, f.wz) - lz); }
     f.ax = x; f.ay = Math.max(y, GROUND + 0.06); f.az = z;
     f.yaw = lerp(f.yaw0, f.tyaw, h);
     f.pitch = lerp(f.p0, f.tpitch, smoothstep(0.15, 1, s));
     f.alpha = f.settle ? 0 : p.ankleSwing;
     f.shinW = f.settle ? 0 : smoothstep(0, 0.35, s) * (1 - smoothstep(0.7, 1, s));
+    f.clear = 0.022 * smoothstep(0, 0.12, s) * (1 - smoothstep(0.88, 1, s));          // the toes never drag
     f.planted = false;
   }
 
