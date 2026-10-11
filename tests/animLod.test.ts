@@ -59,14 +59,14 @@ describe('the animation level of detail', () => {
     setHumanoidView(null);
     expect(animLod(0, 0, 200, 1, false, false)).toBe(0);
   });
-  it('in view: everything up close, a slower mixer farther; out of view or hidden: the slowest', () => {
+  it('in view: everything up close, a slower mixer farther; out of view slower; hidden the slowest', () => {
     setHumanoidView(cam);
     expect(animLod(0, 0, -10, 1, true, false)).toBe(0);
     expect(animLod(2, 0, -ANIM_LOD.gaitNear + 1, 1, true, false)).toBe(0);
     expect(animLod(0, 0, -40, 1, true, false)).toBe(ANIM_LOD.mid);
     expect(animLod(0, 0, -90, 1, true, false)).toBe(ANIM_LOD.far);
     expect(animLod(0, 0, 10, 1, true, false)).toBe(ANIM_LOD.unseen);         // behind the camera
-    expect(animLod(0, 0, -10, 1, false, false)).toBe(ANIM_LOD.unseen);       // hidden, or a far figure stands in for it
+    expect(animLod(0, 0, -10, 1, false, false)).toBe(ANIM_LOD.hidden);       // hidden, or a far figure stands in for it
     // a body just out of the gait's reach keeps it a little longer (no flicker at the edge)
     const edge = -(ANIM_LOD.gaitNear + ANIM_LOD.gaitSlack / 2);
     expect(animLod(0, 0, edge, 1, true, true)).toBe(0);
@@ -115,7 +115,7 @@ describe('a humanoid under the level of detail', () => {
     const { h, updates } = await body(0, -8);
     h.group.children[0].visible = false;                                       // a far figure stands in for it
     run(h, 60);
-    expect(updates.mock.calls.length).toBeLessThanOrEqual(7);
+    expect(updates.mock.calls.length).toBeLessThanOrEqual(4);                  // about twice a second
     h.group.children[0].visible = true;
     updates.mockClear();
     run(h, 30, -1.3);
@@ -136,6 +136,19 @@ describe('a humanoid under the level of detail', () => {
       prev.copy(arm.quaternion);
     }
     expect(skipped).toBeGreaterThan(40);
+  });
+  it('hidden, the turns an owner adds over the clip are not undone every frame, but they are once it is drawn again', async () => {
+    setHumanoidView(cam);
+    const { h, updates } = await body(0, 12);
+    const arm = h.group.getObjectByName('upper_armR')!;
+    h.animate(1 / 60, 0); arm.rotateX(-2.4);
+    const ref = arm.quaternion.clone();                                        // the clip's pose, turned once
+    h.group.children[0].visible = false;
+    for (let k = 0; k < 29; k++) { h.animate(1 / 60, 0); arm.rotateX(-2.4); }
+    h.group.children[0].visible = true;
+    expect(updates.mock.calls.length).toBeLessThan(5);                         // (hidden: hardly updated)
+    h.animate(1 / 60, 0); arm.rotateX(-2.4);
+    expect(arm.quaternion.angleTo(ref)).toBeLessThan(0.3);                     // back to the clip's pose, turned once
   });
   it('a body another rig poses after the mixer (fullRate) gets every frame wherever it is', async () => {
     setHumanoidView(cam);

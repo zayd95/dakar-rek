@@ -279,8 +279,12 @@ export const ANIM_LOD = {
   gaitNear: 30, gaitSlack: 4,
   /** Beyond this distance (m) a body in view is « far ». */
   farFrom: 60,
-  /** Mixer updates a second: in view between gaitNear and farFrom, in view beyond farFrom, out of view or hidden. */
-  mid: 20, far: 10, unseen: 5,
+  /**
+   * Mixer updates a second: in view between gaitNear and farFrom, in view beyond farFrom, out of view (its shadow may
+   * still show on medium and high), hidden (nothing of it is drawn: the far figure standing in for it only needs to
+   * know whether it sits).
+   */
+  mid: 20, far: 10, unseen: 5, hidden: 2,
 } as const;
 /** The rig's bones under a body's skinned scene (what the mixer poses). */
 function boneList(root: THREE.Object3D) { const out: THREE.Object3D[] = []; root.traverse(o => { if ((o as THREE.Bone).isBone) out.push(o); }); return out; }
@@ -306,7 +310,7 @@ export function setHumanoidView(camera: THREE.Camera | null) {
  */
 export function animLod(x: number, y: number, z: number, k: number, drawn: boolean, near: boolean): number {
   if (!view.on) return 0;
-  if (!drawn) return ANIM_LOD.unseen;
+  if (!drawn) return ANIM_LOD.hidden;
   _bodyS.center.set(x, y + 0.95 * k, z); _bodyS.radius = 1.35 * k;                  // round the standing or seated body
   if (!view.frustum.intersectsSphere(_bodyS)) return ANIM_LOD.unseen;
   const dx = x - view.x, dy = y - view.y, dz = z - view.z, d2 = dx * dx + dy * dy + dz * dz;
@@ -465,7 +469,7 @@ export class Humanoid {
     // how much work this body gets (ANIM_LOD): where it was last drawn, seen or not
     const m = this.group.matrixWorld.elements, wasNear = this.near;
     const lod = this.fullRate ? 0 : animLod(m[12], m[13], m[14], this.group.scale.x, this.drawn(), wasNear);
-    if (lod === ANIM_LOD.unseen) this.gaitW = 0;                             // nobody sees it go: no fade needed
+    if (lod === ANIM_LOD.unseen || lod === ANIM_LOD.hidden) this.gaitW = 0;  // nobody sees it go: no fade needed
     this.near = lod === 0;
     if (held) { this.play(held, 0.2); this.gaitW = Math.max(0, this.gaitW - dt / 0.2); }
     else if (lod === 0 || this.gaitW > 0) {
@@ -488,7 +492,8 @@ export class Humanoid {
     this.lag += dt;
     if (lod !== 0 && this.gaitW <= 0) {
       if (wasNear) this.due = this.phase / lod;                              // just slowed down: now, then staggered with the others
-      else if ((this.due -= dt) > 0) { this.restorePose(); return; }         // not yet: the mixer's last pose
+      // not yet: the mixer's last pose (a hidden body is left as it is: its first update once drawn sets every bone)
+      else if ((this.due -= dt) > 0) { if (lod !== ANIM_LOD.hidden) this.restorePose(); return; }
       else this.due = 1 / lod + Math.max(this.due, -0.5 / lod);
     }
     this.mixer.update(this.lag); this.lag = 0;
