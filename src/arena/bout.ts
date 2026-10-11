@@ -86,7 +86,13 @@ export class WatchedBout {
   /** Plays `dt` more seconds of the bout in fixed steps (at most `maxSteps` in this call: the rest waits for the next). */
   advance(dt: number, maxSteps = 240) {
     this.acc += Math.max(0, dt);
-    for (let n = 0; n < maxSteps && this.acc >= BOUT_STEP - 1e-9 && !this.over; n++) { this.step(BOUT_STEP); this.acc -= BOUT_STEP; this.steps++; }
+    // the steps of this frame: the bodies posed once, after the last one (LambDuel.visual), not at every step
+    let ran = 0;
+    this.duel.visual = false;
+    try {
+      for (let n = 0; n < maxSteps && this.acc >= BOUT_STEP - 1e-9 && !this.over; n++) { this.step(BOUT_STEP); this.acc -= BOUT_STEP; this.steps++; ran++; }
+    } finally { this.duel.visual = true; }
+    if (ran) this.duel.poseBodies();
     if (this.over) this.acc = 0;
   }
   /** Time asked for but not played yet (a long catch-up spreads over a few frames). */

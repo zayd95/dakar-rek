@@ -417,13 +417,13 @@ export class LambDuel {
     if (hold <= 0 && this.msgHold > 0) return;
     if (hold > 0) this.msgHold = hold;
     this.said = text;
-    if (this.headless) return;
+    if (this.headless || this.spectate) return;                              // (a watched bout's HUD is never shown)
     const m = this.q('msg'); if (m.textContent !== text) m.textContent = text;
   }
   /** The last message shown (also without a HUD). */
   said = '';
   private draw() {
-    if (this.headless) return;
+    if (this.headless || this.spectate) return;                              // watched from the stands: its HUD is not on the page
     const me = this.me, ai = this.ai;
     const bar = (k: string, f: Fighter) => { const b = this.q(k); b.style.width = `${(100 * f.stamina) / f.max}%`; b.classList.toggle('low', f.stamina < R.stamina.grabCost); };
     bar('me', me); bar('ai', ai);
@@ -1369,6 +1369,24 @@ export class LambDuel {
     if (dist < 0.75 && this.phase === 'fight') { const push = gap.normalize().multiplyScalar((0.75 - dist) / 2); ai.pos.add(push); me.pos.sub(push); }
     me.facing = Math.atan2(ai.pos.x - me.pos.x, ai.pos.z - me.pos.z);
     ai.facing = Math.atan2(me.pos.x - ai.pos.x, me.pos.z - ai.pos.z);
+    this.poseDt += dt; this.gap = dist;
+    if (!this.visual) return this.view;
+    return this.poseBodies();
+  }
+
+  /**
+   * A watched bout (src/arena/bout.ts) plays its fixed steps several at a time when the frame is long: only the last
+   * one poses the bodies (`visual` false for the others, then `poseBodies` once, with the time of all of them). The
+   * player's own bout poses them every step, as always.
+   */
+  visual = true;
+  private poseDt = 0;
+  private gap = 0;
+  private view: { cam: THREE.Vector3; look: THREE.Vector3 } = { cam: new THREE.Vector3(), look: new THREE.Vector3() };
+  /** The wrestlers, the referee and the crowd posed for the time gone by since they last were; the camera's view. */
+  poseBodies(): { cam: THREE.Vector3; look: THREE.Vector3 } {
+    const me = this.me, ai = this.ai, dt = this.poseDt, dist = this.gap;
+    this.poseDt = 0;
     for (const f of [me, ai]) if (f.w) {
       f.w.group.position.copy(f.pos); f.w.group.rotation.y = f.facing; f.w.hold = f.clip; f.w.animate(dt, 0);
       if (f.rig && this.phase === 'fight') f.rig.pose(f, dt);
@@ -1409,12 +1427,12 @@ export class LambDuel {
       // close and low on the wrestler going down, then back out for the referee
       const down = this.fallFx.loser.pos, c = down.clone().addScaledVector(side, portrait ? 5 : 3.6).setY(1.5);
       this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize(); this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);
-      return { cam: c, look: down.clone().setY(0.6) };
+      return (this.view = { cam: c, look: down.clone().setY(0.6) });
     }
     // camera-relative movement axes
     this.camFwd.copy(side).multiplyScalar(-1).setY(0).normalize();
     this.camRight.set(-this.camFwd.z, 0, this.camFwd.x);           // forward × up
-    return { cam, look: mid.clone().setY(portrait ? 0.9 : 1.1) };
+    return (this.view = { cam, look: mid.clone().setY(portrait ? 0.9 : 1.1) });
   }
 
   dispose() {
