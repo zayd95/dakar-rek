@@ -354,6 +354,18 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     crowd[m] = (await venue('club')).npcs;
   }
   check(`${label}: the crowd: few early, more before midnight, the peak after it, fewer at dawn`, crowd.early < crowd.warm && crowd.warm < crowd.peak && crowd.dawn < crowd.peak, JSON.stringify(crowd));
+  // La Vague's crowd (src/crowd/clubCrowd.ts): at the peak the floor is full on instanced figures (20 / 40 / 60 by quality,
+  // a few draw calls), people queue outside the gate (from the taxis at the Ngor rank), nobody stands on the player
+  await d(() => window.__dakar.setHour(1));
+  await until(() => window.__dakar.venues().find(x => x.type === 'club').moment === 'peak');
+  const peakOk = await until(() => { const v = window.__dakar.venues().find(x => x.type === 'club').crowd; return v.drawn.floor >= v.budget.floor && v.queuers.length >= 2; }, null, 60000);
+  let vc = (await venue('club')).crowd;
+  check(`${label}: at the peak a full floor on a few draw calls (the nearest few as full bodies)`, peakOk && vc.floor === vc.budget.floor && vc.drawCalls > 0 && vc.drawCalls <= 3 + 10 * vc.near && vc.near <= vc.budget.near && vc.stand > 0,
+    JSON.stringify({ q: vc.quality, floor: vc.floor, drawn: vc.drawn, calls: vc.drawCalls, near: vc.near }));
+  check(`${label}: a short queue outside the gate at the peak, the crowd never on the player`, vc.queuers.length >= 2 && vc.queuers.every(p => p.z > 6) && vc.queuers.some(p => p.z > 9.5) && (vc.minToPlayer ?? 9) >= 0.69,
+    JSON.stringify({ queuers: vc.queuers.map(p => [+p.x.toFixed(1), +p.z.toFixed(1)]), min: vc.minToPlayer }));
+  await cam(c, [-1, 3.2, 17], [-3.5, 1, 9.5]); await shot('club-queue');
+  await cam(c, [5, 7.5, 7], [-3, 0.5, -2]); await shot('club-peak-floor'); await d(() => window.__dakar.cam(null));
   // the door at night: « Entrer » shows the fee first; paying is a second, explicit choice
   await d(() => window.__dakar.setHour(23.5));
   await until(() => window.__dakar.venues().find(x => x.type === 'club').moment === 'warm');
@@ -385,6 +397,12 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const cheered = await until(() => window.__dakar.venues().find(x => x.type === 'club').dancers.some(x => x?.clip === 'Celebrate') || /Rafet na/.test(document.getElementById('toast')?.textContent ?? ''), null, 30000);
   c = await venue('club');
   check(`${label}: a perfect dance counts and the crowd cheers`, c.counters.dances === 1 && cheered, `dances=${c.counters.dances}`);
+  // the sabar night after 23 h: the dancers make a ring round the contest; nobody stands on the player in the middle
+  const ringed = await until(() => { const v = window.__dakar.venues().find(x => x.type === 'club').crowd; return v.ring > 0 && v.ring === v.drawn.floor; }, null, 60000);
+  vc = (await venue('club')).crowd;
+  check(`${label}: the sabar night after 23 h: the floor makes a ring round the contest, the player has room`, ringed && vc.ring >= Math.min(12, vc.budget.floor) && (vc.minToPlayer ?? 9) >= 0.69 && vc.solo === -1,
+    JSON.stringify({ ring: vc.ring, drawn: vc.drawn, solo: vc.solo, min: vc.minToPlayer }));
+  await cam(c, [-3, 9, 4.5], [-3, 0, -1.5]); await shot('club-contest-ring'); await d(() => window.__dakar.cam(null));
   await cam(c, [1, 8, 21], [-2, 1, -3]); await shot('club-night-terrace');
   await cam(c, [3, 2.6, 2], [-3, 2.8, -7]); await shot('club-night-dj'); await d(() => window.__dakar.cam(null));
   // the contest of the sabar night, after 23 h: three rounds, faster each time
@@ -446,6 +464,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await until(() => !window.__dakar.activity() && window.__dakar.state.wallet < w4, null, 30000);
   await until(() => /Waaw kay/.test(document.getElementById('toast')?.textContent ?? ''), null, 20000);
   check(`${label}: the song request (500 F) and the DJ's answer`, (await d(() => window.__dakar.state.wallet)) === w4 - 500 && /Waaw kay/.test(await toast()), await toast());
+  vc = (await venue('club')).crowd;
+  check(`${label}: the floor answers the song like a drop (arms up, then they dance harder)`, vc.requests >= 1, JSON.stringify({ requests: vc.requests, drops: vc.drops, reacting: vc.reacting }));
   // the way out: « Sortir » by the gate puts you back in the street
   check(`${label}: « Sortir » by the gate`, await standAt(anchor(c, 'exit'), 0, /venue:club:exit$/, 0.3), JSON.stringify(await d(() => window.__dakar.focus())));
   await d(() => window.__dakar.act());

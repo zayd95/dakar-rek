@@ -335,6 +335,59 @@ l'exercice demande.
   calculée par `fighterAttributes` — les mêmes valeurs que la fiche Profil (application Arène du téléphone).
 - Sans `?lamb2`, les exercices minutés sont inchangés.
 
+## Équilibrage pour un nouveau joueur
+
+Habib jouera d'une **sauvegarde neuve** : après la leçon de Coach Ablaye, ses attributs sont ceux de la carrière
+(`fighterAttributes`, Force 20, Équilibre 21, Technique 23, le reste à 20–22). Trois joueurs sans écran
+(`tests/lamb2Pupil.ts`) jouent le vrai duel avec frappe, construit comme `startDuel`, par les mêmes commandes qu'une
+personne, en ne voyant que ce que montre l'écran :
+
+- **débutant** : réagit tard (0,45–0,8 s), se trompe souvent de réponse, appuie un peu au hasard ;
+- **correct** : 0,3–0,5 s, lit 7 mouvements sur 10, contre 6 projections sur 10 ;
+- **expert** : 0,18–0,3 s, lit 9 mouvements sur 10, choisit presque toujours le bon moment.
+
+Chacun affronte les six amicaux et les adversaires classés de niveau 1 à 3, 80 combats semés chacun. Victoires du joueur
+et durée médiane du combat, **avant → après** :
+
+| Adversaire | Débutant | Correct | Expert | Durée médiane |
+| --- | --- | --- | --- | --- |
+| Pape (rapide, niv. 1, amical) | 19 % → **45 %** | 38 % → 79 % | 80 % → 99 % | 12–16 s → 20–22 s |
+| Saliou (défensif, niv. 1, amical) | 5 % → 23 % | 6 % → 50 % | 64 % → 90 % | 14–21 s → 26–34 s |
+| Gora (costaud, niv. 2, amical) | 13 % → 24 % | 23 % → **50 %** | 61 % → 90 % | 12–17 s → 20–28 s |
+| Pathé (saisie, niv. 2, classé) | 18 % → 20 % | 38 % → **41 %** | 85 % → 88 % | 7–11 s → 13–21 s |
+| Birame (frappeur, niv. 2, classé) | 14 % → 45 % | 33 % → **78 %** | 40 % → 95 % | 12–16 s → 21–22 s |
+| Ndiaga (technique, niv. 2, classé) | 1 % → 10 % | 10 % → **31 %** | 49 % → 78 % | 11–20 s → 22–29 s |
+| Malick (frappeur, niv. 3, amical) | 3 % → **11 %** | 19 % → 23 % | 38 % → 46 % | 11–15 s → 12–17 s |
+| Assane (défensif, niv. 3, classé) | 1 % → **0 %** | 8 % → 8 % | 46 % → 39 % | 12–21 s → 15–21 s |
+| Ousmane (technique, niv. 4, amical) | 1 % → 3 % | 4 % → 4 % | 43 % → 38 % | 9–18 s → 10–18 s |
+| Daouda (saisie, niv. 4, amical) | 15 % → 10 % | 38 % → 38 % | 80 % → 83 % | 6–10 s → 6–10 s |
+
+**Les cibles** :
+
+- Le débutant contre l'amical le plus facile (Pape) : 30–45 % visés, **45 %** (il était à 19 %).
+- Le débutant contre le niveau 3 : rarement, **0–11 %**.
+- Le correct au niveau 2 : 50–60 % visés, **50 %** en moyenne (Gora 50, Pathé 41, Birame 78, Ndiaga 31 — les styles
+  comptent plus que le niveau).
+- L'expert gagne presque tout aux niveaux 1–2, **78–99 %**, pas tout.
+- Les combats de niveau 1–2 durent **20–34 s** (médiane ; 13–21 s contre Pathé, le grand lutteur de saisie).
+- **Hors cible** : contre les niveaux 3–4, un nouveau joueur perd vite (médiane 6–21 s). C'est l'empoignade qui décide :
+  saisi avec une mauvaise prise, il glisse et tombe en quelques secondes. Cela relève des règles (prise d'entrée,
+  glissade), pas de l'IA : non touché, à décider.
+
+**Ce qui a été réglé — seulement l'IA par niveau, dans les données de Làmb 2.0** (`AI_LEVEL`, `src/lamb/stand.ts`) :
+
+| Niveau | 1 | 2 | 3 | 4 | 5 |
+| --- | --- | --- | --- | --- | --- |
+| Appétit et lecture (`factor`, avant 0,9 / 1,0 / 1,1 / 1,2 / 1,3) | 0,46 | 0,46 | 0,85 | 1,0 | 1,15 |
+| Décisions plus lentes (`pace`) | ×1,95 | ×1,9 | ×1,15 | ×1,05 | ×1 |
+| Gestes plus lents à armer (`slow`) | ×1,95 | ×1,9 | ×1,15 | ×1,05 | ×1 |
+| Endurance (`breath`) | ×0,85 | ×0,85 | ×1 | ×1 | ×1 |
+
+Plus la lecture du style **technicien** dans l'empoignade, 0,65 → 0,55 (il reste celui qui lit le mieux). Ces réglages
+ne valent que pour **l'adversaire du joueur** ; les combats regardés (IA contre IA) et la lutte sans frappe gardent
+leurs réglages. La carrière (argent, points, attributs du joueur) et les règles du combat n'ont pas bougé. Gardé par
+`tests/lamb2Balance.test.ts` (bandes autour de ces cibles, mêmes graines).
+
 ## La bascule (préparée, pas faite)
 
 Une seule constante décide : `LAMB2_DEFAULT` dans `src/lamb/flag.ts`, **false** aujourd'hui. La basculer à `true` (une
