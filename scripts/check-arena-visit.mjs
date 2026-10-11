@@ -222,7 +222,8 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   // 7. The bout: the existing duel played by the two wrestlers.
   await page.waitForFunction(() => window.__dakar.arena.info().phase === 'bout' && window.__dakar.arena.info().bout?.phase === 'fight', null, T).catch(() => {});
   const b1 = await info();
-  check(`${label}: the bout starts (${L2 ? 'avec frappe, the two billed wrestlers, AI against AI' : 'lutte sans frappe'}, referee call, then the fight)`, b1.phase === 'bout' && !!b1.bout && b1.bout.mode === 'amical' && b1.bout.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'), { phase: b1.bout?.phase, discipline: b1.bout?.discipline, identity: b1.bout?.identity });
+  check(`${label}: the bout starts (${L2 ? 'avec frappe, the two billed wrestlers, AI against AI' : 'lutte sans frappe'}, referee call, then the fight)`, b1.phase === 'bout' && !!b1.bout && b1.bout.mode === 'amical' && b1.bout.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'),
+    { phase: b1.bout?.phase, discipline: b1.bout?.discipline, identity: b1.bout?.identity, arena: b1.phase, t: b1.t, lastBout: b1.lastBout, timeline: await d(() => window.__dakar.arena.timeline()) });
   await page.waitForTimeout(2500);
   await shot('5-bout');
   await d(() => window.__dakar.arena.speed(6));
