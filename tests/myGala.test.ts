@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PLAYER_SIDE, boutByClock, cheeredSide, entranceByClock, mainCalledOff, mainDriver, myShowResult, playerCorner, playerMainBill, remoteCard, remoteMain, takeOver } from '../src/arena/myGala';
+import { PLAYER_SIDE, afterPrelim, boutByClock, cheeredSide, readyStep, entranceByClock, mainCalledOff, mainDriver, myShowResult, playerCorner, playerMainBill, remoteCard, remoteMain, takeOver } from '../src/arena/myGala';
 import { undercardFor } from '../src/arena/undercard';
 import { fighterGoal } from '../src/arena/eveningCall';
 import { cornerSides, entranceCues, setRecordSource, griotLine, standsOf, type Fighter } from '../src/arena/ceremony';
@@ -86,6 +86,24 @@ describe('the ceremony is theirs', () => {
     expect([...seen].some(l => /pas une défaite/.test(l))).toBe(true);
     expect(seen.size).toBeGreaterThanOrEqual(3);
     expect([...unknownPhrases]).toEqual([]);
+  });
+});
+
+describe('« Je suis prêt » in their corner: the preliminaries still come first', () => {
+  it('before or during the preliminaries, the one under way (or the first) is fought to its end, then their entrance; during it, the walk-out', () => {
+    expect(['idle', 'filling', 'prelims'].map(readyStep)).toEqual(['after-prelim', 'after-prelim', 'after-prelim']);
+    expect(readyStep('entrance')).toBe('walk-out');
+    expect(['bout', 'result', 'leaving', 'over'].map(readyStep)).toEqual(['none', 'none', 'none', 'none']);
+  });
+  it('after a preliminary: the next one, unless they said they are ready; never by the clock on a friend\'s night', () => {
+    const mine = mainDriver(true, false), clock = mainDriver(false, false), friend = mainDriver(false, true);
+    expect(afterPrelim(true, false, mine)).toBe('next');
+    expect(afterPrelim(true, true, mine)).toBe('entrance');             // ready: no more preliminaries, their entrance
+    expect(afterPrelim(false, false, mine)).toBe('entrance');           // the last one
+    expect(afterPrelim(true, true, clock)).toBe('next');                // only their own night listens to « Je suis prêt »
+    expect(afterPrelim(false, false, clock)).toBe('entrance');
+    expect(afterPrelim(false, false, friend)).toBe('wait');             // their friend's entrance comes from their presence
+    expect(afterPrelim(true, false, friend)).toBe('next');
   });
 });
 
