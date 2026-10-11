@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-11T04:38:00Z",
+  "updatedAt": "2026-10-11T04:41:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
@@ -13,22 +13,9 @@
     "headAtAcquire": "991a52359ad0e634b146654cc6af20a62b085cba",
     "purpose": "resume DKAG-019 on unchanged isolated task ref and independent QA"
   },
-  "activeCodeTask": "DKAG-019",
+  "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "DKAG-019",
-      "owner": "gameplay_dkag019_resume_0437",
-      "reviewer": "qa_dkag019_resume_0437",
-      "branch": "codex/agents/dkag-019-ci-navigation-determinism",
-      "baseCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
-      "allowedFiles": [
-        "scripts/check-v1-core.mjs",
-        "docs/agents/reports/DKAG-019-ci-navigation.md"
-      ],
-      "acquiredAt": "2026-10-11T04:38:00Z"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -138,10 +125,10 @@
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [
-    "DKAG-018"
+    "DKAG-018",
+    "DKAG-019"
   ],
   "activeSessions": [
-    "gameplay_dkag019_resume_0437",
     "qa_dkag019_resume_0437"
   ],
   "completedSessions": [
@@ -160,9 +147,10 @@
     "qa_ibou_1701",
     "qa_animation_1707",
     "world_dkag018_2236",
-    "qa_dkag018_final_0336"
+    "qa_dkag018_final_0336",
+    "gameplay_dkag019_resume_0437"
   ],
-  "nextAction": "Replacement Gameplay author implements bounded DKAG-019 harness-only fix on unchanged base; distinct QA prepares and reviews exact same-source push and PR.",
+  "nextAction": "QA reviews frozen DKAG-019 SHA aae476b and requires both push and PR CI success on same tree before unblocking DKAG-018.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -402,5 +390,26 @@
     "failure": "after place(), stale nearest target made state-driven loop resolve before movement; start=end",
     "correctionAttempt": 2,
     "reviewReport": "docs/agents/operations/reports/DKAG-018-world-review.md"
+  },
+  "ciHarnessCandidate": {
+    "sourceCommit": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
+    "baseCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+    "pullRequest": 18,
+    "status": "review",
+    "owner": "gameplay_dkag019_resume_0437",
+    "reviewer": "qa_dkag019_resume_0437",
+    "local": {
+      "unit": {
+        "passed": 34,
+        "total": 34
+      },
+      "typecheck": "PASS",
+      "build": "PASS",
+      "nodeCheck": "PASS",
+      "diffCheck": "PASS",
+      "browser": "local_not_run: Chrome absent"
+    },
+    "merged": false,
+    "deployed": false
   }
 }
