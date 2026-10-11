@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-09T03:47:00Z",
+  "updatedAt": "2026-10-11T04:36:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
   "lease": {
-    "token": "cycle-20261009T033600Z-c4137dc972bf",
+    "token": "cycle-20261011T043600Z-26b65565756a",
     "owner": "codex-scheduled-coordinator",
-    "acquiredAt": "2026-10-09T03:36:00Z",
-    "expiresAt": "2026-10-09T04:26:00Z",
-    "headAtAcquire": "8ae64ed4cc1c33d8446ec8bd2020309c2222e0fc",
-    "purpose": "independent final QA and durable resolution for DKAG-018 mixed exact-source CI"
+    "acquiredAt": "2026-10-11T04:36:00Z",
+    "expiresAt": "2026-10-11T05:26:00Z",
+    "headAtAcquire": "991a52359ad0e634b146654cc6af20a62b085cba",
+    "purpose": "resume DKAG-019 on unchanged isolated task ref and independent QA"
   },
   "activeCodeTask": "DKAG-019",
   "maxConcurrentCodeTasks": 1,
@@ -216,9 +216,9 @@
     "deployed": false
   },
   "recovery": {
-    "previousToken": "cycle-20261008T223600Z-38176862ca6b",
-    "reason": "Lease expired after final author handoff. Task branch stable at 17108c2 since 2026-10-08T22:52Z; author explicitly stopped; prior QA terminated on usage limit; no prior writer present in current execution. Final push/PR CI reconciled before takeover.",
-    "confirmedAt": "2026-10-09T03:36:00Z"
+    "previousToken": "cycle-20261009T033600Z-c4137dc972bf",
+    "reason": "Prior DKAG-019 author terminated on usage limit without a commit. Task ref remains exactly at registered base 17108c2; PR16 and completed CI are unchanged; current agent inventory has no writer. External Living Dakar refs advanced independently and remain untouched.",
+    "confirmedAt": "2026-10-11T04:36:00Z"
   },
   "combatCandidate": {
     "sourceCommit": "55def6b14e7cdf47d9ca0e0885a6e5950219c920",
