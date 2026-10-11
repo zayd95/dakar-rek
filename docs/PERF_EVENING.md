@@ -123,7 +123,8 @@ road »):
   going), the moto-taxis (about 7 / 5 / 3 at the rush), the rank taxis after the bouts (the taxi look). A mesh with no
   instance is hidden. Nothing is drawn beyond 190 m from the junction, indoors, or from inside the arena's walls.
 - The headlights come from night.ts's existing point sprites (`night_vehicles`, one call): each instance has an
-  empty proxy object carrying the kit's spec, so there is no new call.
+  empty proxy object carrying the kit's spec, so there is no new call. The proxies are pooled (70 / 84 / 136 by
+  quality); night.ts now skips a hidden one before any matrix work.
 - Humanoids: the traffic agent and the fans on the 23s cars' steps (at most 4 on medium and high, 1 on low). They sit
   under the shared humanoid budget (`humanoid_v2` under `ctx.extra`), so the frame's humanoid cap does not grow. The
   moto-taxis' fans walk in the arena arrivals' instanced pool: no new body.

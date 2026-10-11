@@ -100,7 +100,8 @@ the doors are open, leaving after the result, nothing on a quiet evening.
   (`busyEdges` → `galaRoads`). There is no parking on the jam's stretch or at the rank's kerb (`clearKerb`).
 - **Night.** Each vehicle shown has an invisible proxy carrying the kit's spec, so src/city/night.ts lights its
   headlights and tail lights. The jam's are marked `userData.engineOn`: standing in the jam with the engine running,
-  they keep their lights.
+  they keep their lights. night.ts skips a hidden vehicle (a pooled proxy not in use, a parked line) before any
+  matrix work.
 - **Cost.** Each car look is one instanced mesh for its body and one for its glass. The taxi is always a look; low and
   medium have 2 looks, high has 3. The moto-taxis are one mesh with the fan and one without. The rank taxis share the
   taxi look. At most 6 draw calls on low and medium, 8 on high plus 3 in its shadow pass (only high's car bodies cast a

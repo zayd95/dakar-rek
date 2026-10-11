@@ -163,6 +163,7 @@ class VehicleLights {
     if (this.scanT <= 0) { this.scanT = 1; this.scan(root); }
     this.lit.length = 0;
     for (const t of this.tracked.values()) {
+      if (!t.g.visible) { t.moved += dt; continue; }                       // hidden (a pooled proxy, a parked line): dark, no matrix work
       t.g.getWorldPosition(this.v);
       // moving, or standing with its engine running (`userData.engineOn`: the gala road's jam)
       if (Math.hypot(this.v.x - t.x, this.v.z - t.z) > 0.02 || t.g.userData.engineOn) t.moved = 0; else t.moved += dt;
