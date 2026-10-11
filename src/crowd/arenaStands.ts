@@ -5,6 +5,8 @@ import { Crowd, type CrowdLook, type CrowdQuality, type CrowdSlot } from './crow
 import type { ReactionKind } from './reactions';
 import { standLook } from './looks';
 import { bannerPlan, companionPlan } from './standPlan';
+import { SAND_FANS, sandFanAt, type PartyPlan } from '../arena/celebration';
+import { ARENA_FLOOR } from '../world/arenaModules';
 
 /**
  * The arena's stands on the reusable crowd (docs/CROWD.md): a drop-in for src/arena/crowd.ts StandCrowd (same
@@ -64,8 +66,9 @@ export function momentPlan(m: Moment, o: { side?: StandSide | null; winner?: Sta
     case 'fall': return [['all', 'fall', 0.85, 3.5]];
     case 'decision': return [['all', 'standUp', 0.6, 3.5]];
     case 'result':
+      // the winner's side celebrates, the ends applaud, the losing side sits down quietly (src/arena/celebration.ts goes on)
       return o.winner
-        ? [[o.winner, 'celebrate', 0.92, 7], ['ends', 'applause', 0.7, 4], [other(o.winner), 'applause', 0.35, 3]]
+        ? [[o.winner, 'celebrate', 0.92, 7], ['ends', 'applause', 0.7, 4], [other(o.winner), 'slump', 0.85, 8]]
         : [['all', 'applause', 0.7, 4]];
   }
 }
@@ -80,6 +83,11 @@ export class ArenaStands {
   private seats: StandSeatDef[];
   /** Where the wrestlers come out of their tunnel (the entrance ripples from there). */
   private tunnel: { x: number; z: number } | null = null;
+  /** The ring's centre. */
+  private centre = { x: 0, z: 0 };
+  /** The supporters who pour onto the sand when their side wins (the crowd's own figures, shown only then). */
+  private sand: Record<StandSide, string[]> = { left: [], right: [] };
+  private dancing = new Set<string>();
 
   /** `seats`: the places the crowd may take (in fill order); `nearCount`: full humanoids next to the player. */
   constructor(seats: StandSeatDef[], nearCount: number, o: ArenaStandsOptions = {}) {
@@ -92,7 +100,7 @@ export class ArenaStands {
     const col = o.colours ?? { left: GREENS[0], right: REDS[0] };
     const byId = new Map(seats.map(s => [s.id, s]));
     const tags = (a: number, tier: number, tribune?: string) => { const sec = sectionOf(a); return [sideOf(a), ...(sec ? [`sec:${sec}`] : []), `tier${tier}`, ...(tier === 0 ? ['ringside'] : []), ...(tribune ? [`tribune:${tribune}`] : [])]; };
-    const centre = this.tunnel ? { x: this.tunnel.x, z: this.tunnel.z - TUNNEL_MOUTH_R } : { x: 0, z: 0 };
+    const centre = this.centre = this.tunnel ? { x: this.tunnel.x, z: this.tunnel.z - TUNNEL_MOUTH_R } : { x: 0, z: 0 };
     // banners at ringside in the sides' sections, children on laps, people at the rail (pure plans, by seat id)
     const holders = bannerPlan(seats, seatRadius(0));
     const slots: CrowdSlot[] = seats.map(s => ({ id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, seated: true, tags: tags(s.a, s.tier, s.tribune), banner: holders.get(s.id) }));
@@ -102,6 +110,11 @@ export class ArenaStands {
       if (c.child) children.add(c.id);
       slots.push({ id: c.id, x: c.x, y: c.y, z: c.z, yaw: c.yaw, seated: true, with: c.with, lap: c.kind === 'lap', upright: c.kind === 'rail',
         tags: c.kind === 'rail' ? [...tags(a, 0), 'rail'] : (slots.find(x => x.id === c.with)?.tags ?? tags(a, 1)) });
+    }
+    // the side's supporters who run onto the sand after a win (src/arena/celebration.ts), off until then
+    if (s0) for (const side of ['left', 'right'] as const) for (let k = 0; k < SAND_FANS[o.quality ?? N_QUALITY(nearCount)]; k++) {
+      const id = `sable:${side}:${k}`; this.sand[side].push(id);
+      slots.push({ id, x: centre.x, y: ARENA_FLOOR, z: centre.z, yaw: 0, seated: false, manual: true, tags: [side, 'sand', `sand:${side}`] });
     }
     this.crowd = new Crowd(slots, {
       quality: o.quality ?? N_QUALITY(nearCount), near: Math.min(nearCount, STAND_NEAR[o.quality ?? N_QUALITY(nearCount)]), seed: o.seed ?? 23, name: 'arena-stands', nearRadius: 9, nearNeedsFocus: true,
@@ -154,6 +167,26 @@ export class ArenaStands {
   }
   /** How loud the stands are (0–1), for the crowd's sound. */
   level(group = 'all') { return this.crowd.level(group); }
+
+  /**
+   * The fête after a win (src/arena/celebration.ts) at time `t` of the result: the winner's supporters run down onto the
+   * sand, dance there while he is carried round, and go back up. Null: nobody on the sand.
+   */
+  party(plan: PartyPlan | null, t: number): number {
+    let on = 0;
+    for (const side of ['left', 'right'] as const) this.sand[side].forEach((id, k) => {
+      const f = plan && plan.winner === side ? sandFanAt(plan, t, this.centre.x, this.centre.z, k) : null;
+      if (!f?.on) { this.crowd.setPresent(id, false); this.dancing.delete(id); return; }
+      on++;
+      this.crowd.setPresent(id, true);
+      this.crowd.move(id, f.x, ARENA_FLOOR, f.z, f.yaw, f.speed);
+      if (f.dance && !this.dancing.has(id) && this.crowd.reactOne(id, 'dance', 40)) this.dancing.add(id);
+      if (!f.dance && this.dancing.has(id)) { this.dancing.delete(id); this.crowd.calmOne(id); }
+    });
+    return on;
+  }
+  /** The supporters on the sand now (for the checks). */
+  sandNow() { return [...this.sand.left, ...this.sand.right].filter(id => this.crowd.has(id)).length; }
 
   /** Full humanoids on the crowd seats nearest to (x, z) (the player's seat), those in front first; null: none. */
   setNear(x: number, z: number | null, yaw = 0) {

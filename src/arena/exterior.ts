@@ -19,6 +19,7 @@ import { ExteriorAudio, listenForGesture } from './exteriorAudio';
 import { deckCentre } from '../world/arenaModules';
 import { WALL_R } from '../world/geew';
 import { transport } from '../transport/module';
+import { partyDrums } from './party';
 import { flagGeometry, gearColours, scarfGeometry } from './supporterGear';
 import { takeGear } from '../economy/wear';
 import { holds } from '../economy/assets';
@@ -407,7 +408,8 @@ function loudness(ctx: GameCtx) {
   const dist = Math.min(Math.hypot(p.x - c.x, p.z - c.z), Math.hypot(p.x - dk.x, p.z - dk.z));
   // a wrestler of tonight in his corner or walking out: the drummers play louder, for him (src/arena/fighter.ts), over the
   // whole arena (his écurie's corner may be across the ring from their deck)
-  const moment = arenaFighter.phase() === 'prep' || arenaFighter.phase() === 'ring';
+  // …and during the fête after a win (src/arena/party.ts), for the winner
+  const moment = arenaFighter.phase() === 'prep' || arenaFighter.phase() === 'ring' || partyDrums.loud;
   const within = Math.hypot(p.x - ext.arena.cx, p.z - ext.arena.cz) < WALL_R;
   const drums = moment ? fighterDrumVolume(dist, within, inside, muted, FIGHTER_DRUMS) : drumVolume(dist, inside, muted);
   return { drums, murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };

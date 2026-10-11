@@ -127,7 +127,9 @@ class Arrival {
   present() { return this.street !== 'quiet'; }
   paid() { return paidTonight(this.ctx.state.data.counters, this.day()); }
   private mineInLot() { const p = moto.parkedHere(); return !!p && inLot(this.lot, p.x, p.z); }
-  private say(line: string) { this.said.push(line); if (this.said.length > 8) this.said.shift(); this.ctx.toast(line); }
+  private say(line: string) { this.heard(line); this.ctx.toast(line); }
+  /** A line of his the player heard through another channel (the payment's own line, shown by the activity runner). */
+  private heard(line: string) { this.said.push(line); if (this.said.length > 8) this.said.shift(); }
 
   /** Price first (« Payer 100 F »), then paid through the runner; he puts the moto in its place. */
   private confirm() {
@@ -136,7 +138,7 @@ class Arrival {
       { label: `Payer ${fcfaText(MOTO_FEE)}`, icon: '🏍️', detail: can ? 'Il la range à côté de lui' : 'Pas assez d’argent', disabled: !can, onPick: () => {
         ctx.hud.closeModal(); ctx.setMode('play');
         ctx.activities.start(P.buy({ id: 'parking', label: 'Parking moto · Arène', price: MOTO_FEE, line: () => MOTO_GUARD.paid(MOTO_FEE),
-          then: () => { ctx.state.data.counters[MOTO_FEE_COUNTER] = this.day(); this.stow(); ctx.save(); } }), { place: 'Arène de Pikine' });
+          then: () => { ctx.state.data.counters[MOTO_FEE_COUNTER] = this.day(); this.heard(MOTO_GUARD.paid(MOTO_FEE)); this.stow(); ctx.save(); } }), { place: 'Arène de Pikine' });
       } },
       { label: 'Annuler', icon: '↩️', onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); } },
     ]);

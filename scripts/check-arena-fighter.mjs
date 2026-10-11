@@ -3,11 +3,14 @@
 // the ring's edge, the existing duel (abandoned here: the duel's own checks cover the bout), then back out through the
 // tunnel. Desktop 1280×800 (medium) and phone 390×844 (low, touch).
 // Usage: flock /tmp/dakar-browser.lock node scripts/check-arena-fighter.mjs [baseUrl] [outDir]. ONLY=desktop|phone.
+// LAMB2=1: with ?lamb2 the bout is avec frappe against the career's opponent as himself, and a knockdown in it is answered
+// by the stands and the announcer (« … vacille ! Il n’est pas tombé ») — captures and results suffixed -lamb2.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4234/';
-const out = process.argv[3] ?? 'docs/screenshots/arena-fighter';
+const L2 = process.env.LAMB2 === '1';
+const out = (process.argv[3] ?? 'docs/screenshots/arena-fighter') + (L2 ? '-lamb2' : '');
 fs.mkdirSync(out, { recursive: true });
 const SLOW = Number(process.env.SLOW ?? 3);
 const WALL_R = 21.7;
@@ -21,7 +24,7 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await context.addInitScript(q => { try { localStorage.setItem('dakarrek.quality', q); } catch { /* */ } }, quality);
   const page = await context.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 120000 });
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}${L2 ? '&lamb2' : ''}`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.fighter, null, { timeout: 120000 * SLOW });
   const d = (fn, arg) => page.evaluate(fn, arg);
   const until = (fn, arg, timeout = 60000) => page.waitForFunction(fn, arg, { timeout: timeout * SLOW, polling: 250 }).then(() => true).catch(() => false);
@@ -72,6 +75,26 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   const bout = await until(() => window.__dakar.fighter().phase === 'bout' && !!window.__dakar.duelInfo(), null, 20000);
   check(`${label}: at the ring's edge the bout starts (the existing duel)`, bout, JSON.stringify(await d(() => window.__dakar.duelInfo())).slice(0, 160));
   await page.waitForTimeout(1500); await shot('bout');
+  if (L2) {
+    // Làmb 2.0: the main event is fought avec frappe; a knockdown is answered by the stands and the announcer, not as the fall
+    const b0 = await d(() => window.__dakar.duelInfo());
+    check(`${label}: with ?lamb2 the bout is avec frappe`, b0?.discipline === 'avec_frappe', JSON.stringify({ discipline: b0?.discipline, identity: b0?.identity }));
+    await until(() => window.__dakar.duelInfo()?.phase === 'fight', null, 30000);
+    await d(() => window.__dakar.duelHold(true));                          // he stands still: the set-up is the check's
+    let st = null;
+    for (const t0 = Date.now(); Date.now() - t0 < 60000 * SLOW;) {
+      st = await d(() => window.__dakar.duelInfo());
+      if (!st || st.phase !== 'fight' || st.stagger === 'opponent') break;
+      if (st.dist > 1.5) { await page.keyboard.down('KeyD'); await page.waitForTimeout(150); continue; }
+      await page.keyboard.up('KeyD');
+      await d(() => { window.__dakar.duelSet('opponent', { balance: 4 }); window.__dakar.duelSet('player', { stamina: 100 }); window.__dakar.duelStrike('quick'); });
+      await page.waitForTimeout(250);
+    }
+    await page.keyboard.up('KeyD');
+    const said = await until(() => /vacille ! Il n’est pas tombé/.test(document.getElementById('toast')?.textContent ?? ''), null, 15000);
+    check(`${label}: a knockdown (he staggers) — the announcer says he is still up, the bout goes on`, st?.stagger === 'opponent' && said, JSON.stringify({ stagger: st?.stagger, phase: st?.phase, toast: await d(() => document.getElementById('toast')?.textContent ?? '') }).slice(0, 300));
+    await shot('bout-knockdown');
+  }
   await d(() => window.__dakar.duelAbandon(true));
   const back = await until(() => !window.__dakar.duelInfo() && window.__dakar.fighter().phase === 'return', null, 60000);
   check(`${label}: after the result, back through the tunnel (marker on the wrestlers' gate)`, back && (await d(() => window.__dakar.destination())) === 'pikine:arena:lutteurs', (await fi()).phase);

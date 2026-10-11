@@ -51,6 +51,8 @@ crowd.stats(); crowd.drawCalls(); crowd.dispose()
     at the rail cost no extra draw call. They stand up for reactions as usual.
   - `lap`: never stands, and is not drawn while the person it sits on stands.
   - `banner`: this person hangs that banner on the parapet in front of them.
+  - `manual`: shown only by the owner (`setPresent`), never by `fill`, and not counted. Used for the supporters who pour
+    onto the sand after a win (`reactOne(id, kind, s)` and `calmOne(id)` handle one person).
 - **The crowd never touches the seat registry**: the owner marks the seats it gives the crowd, as the arena does with its
   `arena-crowd` occupant, and never gives it the player's seat.
 - **Looks** (`src/crowd/looks.ts`): a Dakar mix. Each member keeps the same look across every level of detail, and the
@@ -96,6 +98,11 @@ crowd.stats(); crowd.drawCalls(); crowd.dispose()
 | `grab` | stay seated | leaning in, fists at the chin | 1 | 0.55 · 2.2 |
 | `fall` | stand | leap up, hands on the head | 4 | 0.85 · 3.5 |
 | `celebrate` | stand | arms up and waving, hopping | 5 | 0.85 · 6 |
+| `dance` | stand | dancing to the sabar: arms up in turn (flags up), a hop on the beat, foot to foot | 5 | 0.75 · 20 |
+| `slump` | stay seated | elbows on the knees, head low (the losing side after a win) | 6 | 0.9 · 25 |
+
+`dance` and `slump` came with the fête after a win (`src/arena/celebration.ts`). `slump` outranks everything, so the
+losing side stays seated while the other side celebrates. A banner's holder shakes it when they hop.
 
 **Who joins in:**
 
@@ -141,7 +148,7 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
 | clinch (the wrestlers grab) | everyone tenses (0.55), a few shout (0.1) |
 | fall (projection) | everyone leaps up, hands on the head (0.85) |
 | decision | everyone stands (0.6) |
-| result (winner) | the winner's side celebrates (0.92, 7 s), the ends applaud (0.7), the losing side mostly keeps its hands on its head (the fall outranks applause) |
+| result (winner) | the winner's side celebrates (0.92, 7 s), the ends applaud (0.7), the losing side sits down quietly (`slump`, 0.85); then the fête (below) |
 
 **Fill:**
 
@@ -188,6 +195,16 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
   - The figures carry 2 more boxes (mid) and 2 (far), and the rig uses 15 vertex attributes, under WebGL's 16.
   - In node, the stands' update rose from about 0.10 ms to 0.12–0.17 ms a frame at 19:00 (`tests/perf.evening.test.ts`).
 
+**The fête after a win** (`ArenaStands.party(plan, t)`, plan in `src/arena/celebration.ts`):
+
+- The winner's side dances (`dance`) and waves its flags; its banners are shaken.
+- The losing side sits down (`slump`), and the ends applaud.
+- 4, 8 or 12 of the winner's supporters (low / medium / high) run down from the walkway onto the sand.
+  - They are standing slots of the same crowd, shown only then.
+  - They dance inside the winner's tour of the ring, on their side and off the judges, and go back up before it ends.
+- Draw calls are unchanged: at rest the stands are still two, and at the peak five, as before. The supporters on the
+  sand use the standing figures that the celebrating side already draws.
+
 **The seated player's view** (`setNear` → `Crowd.setClearView`):
 
 - The neighbours within 1 m of the player's seat are not drawn at all. A head that close fills the screen when the gaze
@@ -207,8 +224,11 @@ It is a drop-in for `StandCrowd` and keeps the same calls: constructor `(seats, 
 
   Each taxi drops 2–4 fans (1–2 on a card night) on the pavement, waits about 4 s, and drives on.
 - **Car rapide**: each time a car rapide pulls in at an « Arène » stop that is served (`transport.served`), 4–7 fans step
-  down at its rear door (`transport.dwellingAt`; 2–3 on a card night). On fight evenings that is the evening route
-  `23s`'s stop on the arena's west side: the day route's stop is parked.
+  down at its rear door (2–3 on a card night, two more when fans rode to this stop). The car is heard pulling in the
+  frame it happens (`transport.onArrival`), never missed on a slow frame; its door is `transport.dwellingAt`'s while it
+  stands there. On fight evenings that is the evening route `23s`'s stop on the arena's west side: the day route's stop
+  is parked. Fans aboard get off even if the gala ended during their ride, and the player's own car always lets its
+  group off (the walkers furthest along make room when the pool is full).
 - **The walk**: every fan walks on the pavement and the closed street to the tail of the queue lane, where the exterior's
   queue takes over. No path crosses the arena block or the écurie block (unit-tested).
 - **Bodies**: up to 10, 18 or 26 walkers at low, medium or high quality. They are instanced walking figures with ground
@@ -285,7 +305,9 @@ It costs 3 draw calls (standing figures, silhouettes, ground shadows) plus 10 pe
 
   - Pikine's commuters fill the car rapide stops, its evenings are spent outside, and so are the students' at Fann.
   - The villas of Almadies keep their people indoors.
-  - Stops on a busy street (Sandaga's, the Arène and Marché stops on the main street) hold two more people.
+  - Stops on a busy street (Sandaga's, the Arène and Marché stops on the main street) hold two more people, and so does
+    the evening route's « Arène » stop by the arena on fight evenings. On a phone (life within 90 m) it is the only
+    served stop near the main street at 18:45, so it carries the street's waiting crowd.
   - The groups on the busy streets are the first to gather.
 - **The street lives around the player**: stops and groups fill within 90, 120 or 150 m (low, medium, high). Elsewhere
   they would be beyond the crowd's far range anyway.
