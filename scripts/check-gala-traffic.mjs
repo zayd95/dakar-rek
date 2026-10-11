@@ -4,7 +4,9 @@
 // player's own moto ridden through the north gap past the tail, drive mode's probe of a car stopping at the tail, a
 // moto-taxi's fan stepping off and walking to the queue, fans on the Ligne 23 cars' step, horns, the lights at night,
 // a weekday card at about 40 %, the outflow after the result (the jam facing east, taxis at the corner's rank, fans
-// walking out to them), quiet the next morning, the draw calls and the errors.
+// walking out to them), the car rapides kept off the gate's pedestrian zone over a whole loop by day, as the fans
+// arrive, at the gala and as the crowd leaves (with a look at the gate each time), quiet the next morning, the draw
+// calls and the errors.
 // Desktop 1280×720 (medium) and phone 390×844 (low, touch). Every wait is for a state, never a fixed time: SwiftShader
 // may run the game at a few frames a second.
 // Usage: flock /tmp/dakar-browser.lock node scripts/check-gala-traffic.mjs [baseUrl] [outDir]  (needs a running build,
@@ -158,7 +160,31 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   const r0 = s.rank.find(r => r.waiting) ?? s.rank[0];
   if (r0) { await d(([p, q]) => window.__dakar.cam(p, q), [[r0.x - 8, 4, r0.z + 12], [r0.x, 1, r0.z - 2]]); await shot('6-rank'); await d(() => window.__dakar.cam(null)); }
 
-  // 11. The next morning: nothing on the road, the roads open again
+  // 11. Car rapides keep off the gate's pedestrian zone (src/arena/exteriorRules.ts gatePlaza: the barriers, the queue,
+  // the stalls, the drummers) over a whole loop of their timetable: Ligne 23 by day; 23s as the fans arrive, at the gala's
+  // peak and as the crowd leaves. The decorative cars never in it either. A look at the gate from the street each time.
+  const gateNow = (await d(() => window.__dakar.arenaOut())).gate;
+  for (const [moment, hour] of [['by day', 10], ['arrivals', 17.5], ['the gala', 20.5], ['the crowd leaving', 23.2]]) {
+    await d(h => { const D = window.__dakar; D.arenaOutDay(5); D.setHour(h); }, hour);
+    await until(() => (window.__dakar.arenaPlaza()?.rapides.length ?? 0) > 0, null, 30000);
+    let samples = 0, inside = 0, traffic = 0, worst = null;
+    const lines = new Set();
+    for (let k = 0; k < 45; k++) {                                                                   // 45 × 3 s of the line clock: a whole loop
+      const p = await d(() => window.__dakar.arenaPlaza());
+      for (const r of p.rapides) { samples++; lines.add(r.line); if (r.inside) { inside++; worst ??= r; } }
+      traffic += p.trafficInside;
+      await d(() => window.__dakar.transport.warp(3)); await frame();
+    }
+    check(`${label}: ${moment} (${hour} h): no car rapide in the gate's pedestrian zone over a whole loop (${samples} positions of ${[...lines].join(', ')}), no decorative car`,
+      inside === 0 && traffic === 0 && samples >= 40 && (hour < 16 ? lines.has('23') : lines.has('23s')), JSON.stringify({ inside, traffic, worst, lines: [...lines] }));
+    await d(([gx, gz]) => window.__dakar.cam([gx - 3, 4.6, gz - 27], [gx, 1.5, gz - 2]), [gateNow.x, gateNow.z]);
+    await shot(`7-gate-${String(hour).replace('.', 'h')}`);
+    await d(() => window.__dakar.cam(null));
+  }
+  const plaza = await d(() => window.__dakar.arenaPlaza());
+  check(`${label}: the zone covers the queue lane and both sides of the street in front of the gate`, plaza && plaza.closed && plaza.rects.some(r => r.x0 < gateNow.x - 12 && r.x1 > gateNow.x + 12 && r.z0 < gateNow.z - 15 && r.z1 > gateNow.z - 3), JSON.stringify(plaza?.rects));
+
+  // 12. The next morning: nothing on the road, the roads open again
   await d(() => { const D = window.__dakar; D.arenaOutDay(null); D.setHour(9); });
   const quiet = await until(() => { const g = window.__dakar.gala.info(); return g.dir === null && g.jam.cars === 0 && g.drawCalls === 0 && !g.closed; }, null, 30000);
   check(`${label}: the next morning the road is quiet and open`, quiet, JSON.stringify(await info()).slice(0, 300));
