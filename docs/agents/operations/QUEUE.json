@@ -384,8 +384,28 @@
         },
         "authorBuild": "PASS",
         "authorTypecheck": "PASS",
-        "authorBrowser": "local_not_run: Chromium absent"
-      }
+        "authorBrowser": "local_not_run: Chromium absent",
+        "ci": {
+          "readAt": "2026-10-11T19:34:00Z",
+          "runs": [
+            {
+              "id": 38168543352,
+              "sha": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
+              "status": "in_progress",
+              "conclusion": null,
+              "event": "pull_request"
+            },
+            {
+              "id": 38168518669,
+              "sha": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
+              "status": "in_progress",
+              "conclusion": null,
+              "event": "push"
+            }
+          ]
+        }
+      },
+      "pullRequest": 19
     },
     {
       "id": "DKAG-016",

@@ -451,5 +451,15 @@
         "tree": "e27215c3895120a29342287fb1acf7557d0fb4d9"
       }
     ]
+  },
+  "gameplayCandidate": {
+    "sourceCommit": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
+    "baseCommit": "84311a716fa722cd20b4e725a72fd15f60511291",
+    "pullRequest": 19,
+    "status": "review",
+    "owner": "gameplay_dkag015_1927",
+    "reviewer": "qa_dkag015_1927",
+    "merged": false,
+    "deployed": false
   }
 }
