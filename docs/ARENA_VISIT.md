@@ -209,9 +209,11 @@ that evening, they are tonight's main event. The pure parts are in `src/arena/my
   Baobab's corner, where the hub was loaded, so a player in Teranga's corner (any independent) never had « Je suis
   prêt » and the marker led to the wrong corner.
 - **The preliminaries run first.** The show starts once they are in the tunnel. Their corner is held
-  (`arenaFighter.hold`) while the stands fill, the preliminaries run and the ceremony names them. « Je suis prêt » skips
-  the rest of the preliminaries (« Plus d’attente : ton entrée commence. ») or, during the entrance, goes straight to the
-  walk-out. Signed up while this device's show already ran (seated first, then the gala place at the door,
+  (`arenaFighter.hold`) while the stands fill, the preliminaries run and the ceremony names them. « Je suis prêt »
+  (`readyStep`, `afterPrelim`) lets the preliminary under way be fought to its end — the first one when the stands are
+  still filling — then their entrance comes instead of the next one (« Prêt : ton entrée vient après ce combat. », « Prêt :
+  un combat des préliminaires, puis ton entrée. »): the preliminaries still come first and no bout is cut off. During
+  the entrance, once the ceremony has named them, it goes straight to the walk-out. Signed up while this device's show already ran (seated first, then the gala place at the door,
   `takeOver`): the filling or the preliminaries go on and their entrance follows; an entrance or a watched bout already
   begun gives way to their entrance, from its start (nothing of that bout is recorded); after the main event, their
   bout is an ordinary one.

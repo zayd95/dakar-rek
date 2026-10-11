@@ -59,6 +59,21 @@ export const mainDriver = (mine: boolean, remote: boolean): MainDriver => (mine 
 export const entranceByClock = (d: MainDriver) => d !== 'friend';
 /** The show goes on by itself from the entrance into the bout (when the ceremony's time is up). */
 export const boutByClock = (d: MainDriver) => d === 'clock';
+/**
+ * « Je suis prêt » in their corner, on their own gala night, by the show's phase: before or during the preliminaries,
+ * 'after-prelim' — the preliminary under way (or the first one, when the stands are still filling) is fought to its end,
+ * then their entrance comes instead of the next one: the preliminaries still come first, no bout is cut off in the
+ * middle; during their entrance, 'walk-out' — straight to it (the ceremony has named them); otherwise nothing.
+ */
+export function readyStep(phase: string): 'after-prelim' | 'walk-out' | 'none' {
+  if (phase === 'idle' || phase === 'filling' || phase === 'prelims') return 'after-prelim';
+  return phase === 'entrance' ? 'walk-out' : 'none';
+}
+/** After a preliminary's result: the next preliminary, their entrance (they said they are ready, or it was the last), or wait (a friend's night). */
+export function afterPrelim(hasNext: boolean, ready: boolean, d: MainDriver): 'next' | 'entrance' | 'wait' {
+  if (hasNext && !(ready && d === 'mine')) return 'next';
+  return entranceByClock(d) ? 'entrance' : 'wait';
+}
 /** The player gave up their own bout before it started (their path back to idle in the entrance or the bout): no main event. */
 export const mainCalledOff = (d: MainDriver, phase: string, fighterPhase: string) => d === 'mine' && (phase === 'entrance' || phase === 'bout') && fighterPhase === 'idle';
 

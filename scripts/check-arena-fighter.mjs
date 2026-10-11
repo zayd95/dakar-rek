@@ -107,6 +107,10 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
     await shot('bout-knockdown');
   }
   await d(() => window.__dakar.duelAbandon(true));
+  // the duel's result screen closes by itself after 10 s of game time, which a slow device may take minutes to reach:
+  // close it as the player does (« Continuer »)
+  await until(() => window.__dakar.duelInfo()?.phase === 'result', null, 30000);
+  await d(() => window.__dakar.duelFinish());
   const back = await until(() => !window.__dakar.duelInfo() && window.__dakar.fighter().phase === 'return', null, 60000);
   check(`${label}: after the result, back through the tunnel (marker on the wrestlers' gate)`, back && (await d(() => window.__dakar.destination())) === 'pikine:arena:lutteurs', (await fi()).phase);
   // the after-bout card (src/career/progress.ts boutCard): one card with the result, the palmarès (an abandon counts
@@ -165,16 +169,22 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
     inCorner && fh.phase === 'prep' && ['filling', 'prelims'].includes(g1.phase) && said1.some(t => /préliminaires d’abord/.test(t)) && g1.people?.fighter === 'left' && mySide?.wrestler === ME,
     JSON.stringify({ fighter: fh.phase, show: g1.phase, prelims: g1.prelims?.i, people: { fighter: g1.people?.fighter, side: mySide?.wrestler } }));
   await d(([p, t]) => window.__dakar.cam(p, t), [[gs.corner.x + (cx - gs.corner.x) * 0.45, 2.6, gs.corner.z - 3.5], [gs.corner.x, 1.0, gs.corner.z]]); await shot('my-gala-corner'); await d(() => window.__dakar.cam(null));
-  // « Je suis prêt »: the rest of the preliminaries skipped, their entrance starts (the ceremony faster for the check)
-  await d(() => window.__dakar.arena.speed(4));
+  // « Je suis prêt »: the preliminary under way (or the first one, the stands still filling) is fought to its end, then
+  // their entrance instead of the next one (the show faster for the check: 8 steps a frame, the ceremony's lines still
+  // said one by one)
+  await d(() => window.__dakar.arena.speed(8));
   const readyG = await until(() => /pikine:arena:coin/.test(window.__dakar.focus()?.id ?? '') && window.__dakar.focus()?.primary === 'Je suis prêt', null, 15000);
+  // which preliminary is under way when they say it (the first one while the stands still fill)
+  const at0 = await d(() => window.__dakar.arena.info()), want = at0.phase === 'prelims' ? at0.prelims.i + 1 : 1;
   if (readyG) await d(() => window.__dakar.act());
-  const entr = await until(() => window.__dakar.arena.info().phase === 'entrance', null, 15000);
-  const g2 = await d(() => window.__dakar.arena.info()), tl = await d(() => window.__dakar.arena.timeline());
-  const iPre = tl.findIndex(x => /^prelim/.test(x.phase)), iEnt = tl.findIndex(x => x.phase === 'entrance');
-  check(`${label}: « Je suis prêt »: their entrance, after the preliminaries; only their opponent is drawn walking out, the card names them`,
-    readyG && entr && iPre >= 0 && iPre < iEnt && (g2.ceremony?.wrestlers ?? []).every(w => w.who === 'right') && new RegExp(`Entrée des lutteurs · ${ME} `).test(g2.card) && (await fi()).phase === 'prep',
-    JSON.stringify({ timeline: tl.map(x => x.phase), wrestlers: g2.ceremony?.wrestlers?.map(w => w.who), card: g2.card }));
+  const said0 = (await toasts()).some(t => /^Prêt : /.test(t));
+  const entr = await until(me => { const i = window.__dakar.arena.info(); return i.phase === 'entrance' && i.card.includes(`Entrée des lutteurs · ${me} `); }, ME, 60000);
+  const g2 = await d(() => window.__dakar.arena.info()), tl = await d(() => window.__dakar.arena.timeline()), nPre = g2.prelims?.n ?? 0;
+  const iEnt = tl.findIndex(x => x.phase === 'entrance'), fought = tl.slice(0, Math.max(0, iEnt)).filter(x => /^prelim \d+ result$/.test(x.phase)).length;
+  check(`${label}: « Je suis prêt »: the preliminary under way fought to its end, then their entrance (not the rest); only their opponent walks out, the card names them`,
+    readyG && (said0 || (await toasts()).some(t => /^Prêt : /.test(t))) && entr && fought >= 1 && tl[iEnt - 1]?.phase === `prelim ${want} result` && fought === want
+    && (g2.ceremony?.wrestlers ?? []).every(w => w.who === 'right') && (await fi()).phase === 'prep',
+    JSON.stringify({ at: [at0.phase, at0.prelims?.i], want, timeline: tl.map(x => x.phase), prelims: nPre, wrestlers: g2.ceremony?.wrestlers?.map(w => w.who), card: g2.card }));
   // the ceremony names them (the announcer, their griot, their people: its first seconds), then « Je suis prêt » again goes
   // straight to the walk-out (the opponent's bàkk is not waited for: the device's game clock may run far behind the real one)
   await until(me => (window.__toasts ?? []).some(t => t.startsWith(`L’entourage de ${me}`)), ME, 40000);
@@ -190,7 +200,9 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await d(() => window.__dakar.arena.speed(1));
   // the ring: their duel, against their opponent; the show is in its bout and simulates nothing
   await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [gs.ring.x, gs.ring.z + 0.3]);
-  const duelOn = await until(() => window.__dakar.fighter().phase === 'bout' && !!window.__dakar.duelInfo() && window.__dakar.arena.info().phase === 'bout', null, 20000);
+  // (the gala card follows the show at its next frame: waited for too)
+  const duelOn = await until(me => window.__dakar.fighter().phase === 'bout' && !!window.__dakar.duelInfo() && window.__dakar.arena.info().phase === 'bout'
+    && new RegExp(`lutte (avec|sans) frappe · ${me} `).test(window.__dakar.arena.info().card), ME, 20000);
   await page.waitForTimeout(1200);
   const [di, g3, tg3, mv3] = [await d(() => window.__dakar.duelInfo()), await d(() => window.__dakar.arena.info()), await d(() => window.__dakar.together()), await d(() => window.__dakar.presence().move)];
   check(`${label}: at the ring their duel starts against ${opp} (${L2 ? 'avec frappe' : 'sans frappe'}); the show simulates no bout`,
