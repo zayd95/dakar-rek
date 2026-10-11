@@ -28,6 +28,7 @@ import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './soci
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { LambDuel } from './lamb/duel';
 import { phoneHooks } from './ui/phoneHooks';
+import { placeSummary } from './ui/placeSummary';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
@@ -515,7 +516,7 @@ function openPlaces() {
   const places = world.interactables.filter(i => i.id.includes(':city:')).sort((a, b) => Math.hypot(a.x - pos.x, a.z - pos.z) - Math.hypot(b.x - pos.x, b.z - pos.z));
   hud.openMenu('Les coins du quartier', HUB_NAMES[world.id], [
     ...(destination ? [{ label: 'Retirer le repère', onPick: () => { destination = null; hud.closeModal(); } }] : []),
-    ...places.map(it => ({ label: it.name, detail: `${Math.round(Math.hypot(it.x - (inside?.door.x ?? pos.x), it.z - (inside?.door.z ?? pos.z)))} m à pied · ${it.actions.some(a => a.gain) ? 'petits services rémunérés' : 'se retrouver'}`, onPick: () => {
+    ...places.map(it => ({ label: it.name, detail: `${Math.round(Math.hypot(it.x - (inside?.door.x ?? pos.x), it.z - (inside?.door.z ?? pos.z)))} m à pied · ${placeSummary(it.actions, state)}`, onPick: () => {
       destination = { id: it.id, hub: world!.id }; hud.closeModal(); hud.toast('Repère : ' + it.name);
     } })),
   ]);
