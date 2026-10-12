@@ -420,12 +420,21 @@ function sitOn(seat: Seat, force = false) {
  * for the player on the way. False when no free spot beside it can be reached. The frame loop moves the player
  * while `approach` is set (mode 'busy').
  */
+/** Without a walking route to a seat, closer than this the player still sits down on it (m). */
+const SIT_HERE = 3.5;
 function goSit(seat: Seat): boolean {
   if (seated?.id === seat.id) return true;
   if (seated) standUp();
   if (!world || approach || !seats.occupy(seat.id, 'player')) return false;
-  const path = approachPath(pos, seat, inside ? inside.int.colliders : world.colliders, inside ? 0.3 : 0.5, inside ? inside.int.bounds : world.bounds);
-  if (!path) { seats.release(seat.id, 'player'); return false; }
+  // a boat's or a vehicle's seat is boarded, not walked round; with no route but already beside it (a stool at a tap,
+  // a place in a prayer row, a salon chair inside its own furniture), the player sits down where they are
+  const path = seat.kind === 'vehicle' ? null : approachPath(pos, seat, inside ? inside.int.colliders : world.colliders, inside ? 0.3 : 0.5, inside ? inside.int.bounds : world.bounds);
+  if (!path) {
+    seats.release(seat.id, 'player');
+    if (seat.kind !== 'vehicle' && Math.hypot(seat.x - pos.x, seat.z - pos.z) > SIT_HERE) return false;
+    sitOn(seat, true);
+    return seated?.id === seat.id;
+  }
   approach = { seat, path, i: 0, t: 0, settle: -1 };
   hideProxy(); emoteT = 0; previewT = 0; player.setPose(null);
   if (playerBody) playerBody.hold = null;

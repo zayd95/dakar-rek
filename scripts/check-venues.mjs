@@ -323,6 +323,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await until(() => !!document.querySelector('#modal.on'), null, 10000);
   await pick('Coiffure afro');
   await until(() => window.__dakar.activity()?.id === 'afro', null, 20000);
+  await until(() => (window.__dakar.seated() ?? '').includes('venue:salon:fauteuil'), null, 20000);   // after the few steps to the chair
   const cut = await d(() => ({ seat: window.__dakar.seated(), wallet: window.__dakar.state.wallet }));
   check(`${label}: « Coiffure afro » is paid and you sit in the free chair`, (cut.seat ?? '').includes('venue:salon:fauteuil') && cut.wallet === 2500, JSON.stringify(cut));
   await d(() => window.__dakar.portrait(2.6, 1.6, 1.1)); await shot('salon-cut'); await d(() => window.__dakar.portrait(0));
