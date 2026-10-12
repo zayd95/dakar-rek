@@ -84,7 +84,10 @@ export class ShopPaths {
     const cells: Pt[] = [];
     for (let c = goal; c >= 0; c = from[c]) { cells.push(this.pt(Math.floor(c / this.nz), c % this.nz)); if (c === s0) break; }
     cells.reverse();
-    // string-pulling: keep a corner only where the straight line to the next one would cross the furniture
+    return this.pull(cells, a, b);
+  }
+  /** String-pulling: keep a corner only where the straight line to the next one would cross the furniture. */
+  private pull(cells: readonly Pt[], a: Pt, b: Pt): Pt[] {
     const out: Pt[] = [a];
     let anchor = a;
     for (let k = 0; k < cells.length; k++) {
@@ -93,5 +96,63 @@ export class ShopPaths {
     }
     out.push(b);
     return out;
+  }
+
+  /** Shortest-path trees grown from a few fixed points (a yard's gaps, the places of a counter's queue): one search for all the walks from there. */
+  private readonly trees = new Map<string, { s: number; g: Float32Array; from: Int32Array } | null>();
+  private grow(a: Pt) {
+    const key = `${a.x.toFixed(2)},${a.z.toFixed(2)}`;
+    if (this.trees.has(key)) return this.trees.get(key)!;
+    const s = this.snap(a);
+    let tree: { s: number; g: Float32Array; from: Int32Array } | null = null;
+    if (s) {
+      const N = this.nx * this.nz, g = new Float32Array(N).fill(Infinity), from = new Int32Array(N).fill(-1), closed = new Uint8Array(N);
+      const hc: number[] = [], hk: number[] = [];                             // a binary heap of (cost, cell)
+      const push = (c: number, k: number) => {
+        let i = hc.length; hc.push(c); hk.push(k);
+        while (i > 0) { const p = (i - 1) >> 1; if (hc[p] <= c) break; hc[i] = hc[p]; hk[i] = hk[p]; i = p; }
+        hc[i] = c; hk[i] = k;
+      };
+      const pop = () => {
+        const k0 = hk[0], c = hc.pop()!, k = hk.pop()!, n = hc.length;
+        if (n) { let i = 0; for (;;) { let l = 2 * i + 1; if (l >= n) break; if (l + 1 < n && hc[l + 1] < hc[l]) l++; if (hc[l] >= c) break; hc[i] = hc[l]; hk[i] = hk[l]; i = l; } hc[i] = c; hk[i] = k; }
+        return k0;
+      };
+      const s0 = s[0] * this.nz + s[1];
+      g[s0] = 0; push(0, s0);
+      while (hc.length) {
+        const cur = pop();
+        if (closed[cur]) continue; closed[cur] = 1;
+        const ci = Math.floor(cur / this.nz), cj = cur % this.nz;
+        for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+          if (!di && !dj) continue;
+          const ni = ci + di, nj = cj + dj;
+          if (!this.ok(ni, nj) || (di && dj && (!this.ok(ci + di, cj) || !this.ok(ci, cj + dj)))) continue;
+          const n = ni * this.nz + nj, cost = g[cur] + (di && dj ? Math.SQRT2 : 1);
+          if (cost < g[n]) { g[n] = cost; from[n] = cur; push(cost, n); }
+        }
+      }
+      tree = { s: s0, g, from };
+    }
+    if (this.trees.size >= 24) this.trees.delete(this.trees.keys().next().value!);    // (a few fixed points; never the start of every walk)
+    this.trees.set(key, tree);
+    return tree;
+  }
+  /** The tree from `a` grown now (a yard's gap, when the spots are built: not in the frame of the first person to come through). */
+  prepare(a: Pt) { this.grow(a); }
+  /**
+   * `path(a, b)` for a walk that starts at one of a few fixed points: the tree of shortest routes from `a` is grown once and every `b`
+   * is read from it (a search for each was 2-5 ms, with a Dibi's people coming and going all evening). The same routes, string-pulled alike.
+   */
+  treePath(a: Pt, b: Pt): Pt[] | null {
+    if (this.clear(a, b)) return [a, b];
+    const t = this.grow(a), e = this.snap(b);
+    if (!t || !e) return null;
+    const goal = e[0] * this.nz + e[1];
+    if (t.g[goal] === Infinity) return null;
+    const cells: Pt[] = [];
+    for (let c = goal; c >= 0; c = t.from[c]) { cells.push(this.pt(Math.floor(c / this.nz), c % this.nz)); if (c === t.s) break; }
+    cells.reverse();
+    return this.pull(cells, a, b);
   }
 }
