@@ -93,7 +93,10 @@ export const PAVE = { kerb: 5, back: 7, walk: 5.35, wait: 6.3 } as const;
 /** No lane inside the crossings: lanes start and end this far from the nodes. */
 export const CROSSING = 7.6;
 
-const blockedAt = (x: number, z: number, r: number, cols: readonly Collider[]) => cols.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r);
+const blockedAt = (x: number, z: number, r: number, cols: readonly Collider[]) => {
+  for (let i = 0; i < cols.length; i++) { const c = cols[i]; if (x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r) return true; }
+  return false;
+};
 
 /** A pavement lane: one side (±1, the right of a→b) of a road edge, at a distance from its centre line. */
 export interface Lane { e: number; side: 1 | -1; off: number; ax: number; az: number; bx: number; bz: number; len: number; w: number }

@@ -44,8 +44,10 @@ const blockMin = (i: number) => -HALF + ROAD + i * PITCH;
 /** Interaction anchors keep this much room: an ambient person never stands where the player acts. */
 export const ANCHOR_ROOM = 1.8;
 
-const inside = (cols: readonly Collider[], x: number, z: number, m = 0.3) =>
-  cols.some(c => c.h > 0.3 && x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m);
+const inside = (cols: readonly Collider[], x: number, z: number, m = 0.3) => {
+  for (let i = 0; i < cols.length; i++) { const c = cols[i]; if (c.h > 0.3 && x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m) return true; }
+  return false;
+};
 
 /**
  * Street furniture seats the builders draw but do not register yet (ids `<hub-ish anchor id>:amb:…`). Lots a registered

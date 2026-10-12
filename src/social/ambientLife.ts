@@ -352,7 +352,12 @@ export class AmbientLife implements GameModule {
     const cols = this.colsFor(s.space), fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
     for (const [ox, oz] of [[fx, fz], [fz, -fx], [-fz, fx], [-fx, -fz]]) {
       const x = s.x + ox * 0.62, z = s.z + oz * 0.62;
-      if (!cols.some(c => c.h > 0.3 && x > c.x0 - 0.2 && x < c.x1 + 0.2 && z > c.z0 - 0.2 && z < c.z1 + 0.2 && !(s.x > c.x0 && s.x < c.x1 && s.z > c.z0 && s.z < c.z1))) { a.ax = x; a.az = z; return; }
+      let blocked = false;
+      for (let i = 0; i < cols.length && !blocked; i++) {
+        const c = cols[i];
+        blocked = c.h > 0.3 && x > c.x0 - 0.2 && x < c.x1 + 0.2 && z > c.z0 - 0.2 && z < c.z1 + 0.2 && !(s.x > c.x0 && s.x < c.x1 && s.z > c.z0 && s.z < c.z1);
+      }
+      if (!blocked) { a.ax = x; a.az = z; return; }
     }
     a.ax = s.x + fx * 0.62; a.az = s.z + fz * 0.62;
   }
