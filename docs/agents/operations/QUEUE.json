@@ -763,7 +763,7 @@
       "id": "DKAG-020",
       "role": "gameplay",
       "kind": "compatibility_implementation",
-      "status": "active",
+      "status": "review",
       "branch": "codex/agents/dkag-020-place-summary-current",
       "baseCommit": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
       "allowedFiles": [
@@ -792,7 +792,25 @@
       "controlBriefCommit": "541bc60de5f7fc1da6ce182f729f984bbca849a4",
       "reviewAllowedFiles": [
         "docs/agents/operations/reports/DKAG-020-gameplay-review.md"
-      ]
+      ],
+      "sourceCommit": "9632c7666cf76dbd23a8de4b50d44c31fe85e07e",
+      "ownerState": "source frozen; awaiting independent QA and exact CI",
+      "validation": {
+        "authorUnit": {
+          "passed": 128,
+          "total": 128
+        },
+        "authorFormatter": {
+          "passed": 6,
+          "total": 6
+        },
+        "authorTypecheck": "PASS",
+        "authorServerTypecheck": "PASS",
+        "authorBuild": "PASS",
+        "authorNodeCheck": "PASS",
+        "authorDiffCheck": "PASS",
+        "authorBrowser": "local_not_run: browser reserved to exact CI"
+      }
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T01:28:00Z",
+  "updatedAt": "2026-10-12T01:34:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
@@ -11,22 +11,9 @@
     "acquiredAt": "2026-10-12T01:28:00Z",
     "expiresAt": "2026-10-12T02:28:00Z"
   },
-  "activeCodeTask": "DKAG-020",
+  "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [
-    {
-      "task": "DKAG-020",
-      "owner": "gameplay_dkag020_0128",
-      "branch": "codex/agents/dkag-020-place-summary-current",
-      "baseCommit": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
-      "files": [
-        "src/ui/placeSummary.ts",
-        "tests/place-summary.test.ts",
-        "src/main.ts",
-        "scripts/check-city-life.mjs",
-        "docs/agents/reports/DKAG-020-gameplay.md"
-      ]
-    },
     {
       "task": "DKAG-020",
       "owner": "qa_dkag020_0128",
@@ -150,7 +137,9 @@
     "lastCompletedRunAt": "2026-10-11T20:31:00Z"
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [],
+  "reviewTasks": [
+    "DKAG-020"
+  ],
   "activeSessions": [
     "gameplay_dkag020_0128",
     "qa_dkag020_0128"
@@ -178,7 +167,7 @@
     "qa_dkag015_1927",
     "qa_dkag015_ci_2028"
   ],
-  "nextAction": "Implement DKAG-020 isolated forward-port at exact current wip snapshot, then independent QA and exact CI; never mutate wip/visual-pass.",
+  "nextAction": "Review frozen DKAG-020 source9632c76 and exact push/PR CI; do not redo code.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
