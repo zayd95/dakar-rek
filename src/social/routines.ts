@@ -323,16 +323,22 @@ export type ClearFn = (a: Pt, b: Pt) => boolean;
  * are the place itself (the bench, the counter) and are ignored. Make one per hub: planPath caches by function identity.
  */
 export function collidersClear(cols: readonly { x0: number; z0: number; x1: number; z1: number; h: number }[]): ClearFn {
+  const m = 0.25, near: { x0: number; z0: number; x1: number; z1: number }[] = [];            // (the objects in the way: one list for all the calls)
   return (a, b) => {
-    const m = 0.25;
-    const len = Math.hypot(b.x - a.x, b.z - a.z), steps = Math.max(1, Math.ceil(len / 0.3));
-    const near = cols.filter(c => c.h > 0.3 && Math.max(a.x, b.x) > c.x0 - m && Math.min(a.x, b.x) < c.x1 + m && Math.max(a.z, b.z) > c.z0 - m && Math.min(a.z, b.z) < c.z1 + m
-      && !(a.x > c.x0 - 0.45 && a.x < c.x1 + 0.45 && a.z > c.z0 - 0.45 && a.z < c.z1 + 0.45)
-      && !(b.x > c.x0 - 0.45 && b.x < c.x1 + 0.45 && b.z > c.z0 - 0.45 && b.z < c.z1 + 0.45));
-    if (!near.length) return true;
+    const ax = a.x, az = a.z, bx = b.x, bz = b.z;
+    const xhi = Math.max(ax, bx), xlo = Math.min(ax, bx), zhi = Math.max(az, bz), zlo = Math.min(az, bz);
+    let n = 0;
+    for (let i = 0; i < cols.length; i++) {
+      const c = cols[i];
+      if (c.h > 0.3 && xhi > c.x0 - m && xlo < c.x1 + m && zhi > c.z0 - m && zlo < c.z1 + m
+        && !(ax > c.x0 - 0.45 && ax < c.x1 + 0.45 && az > c.z0 - 0.45 && az < c.z1 + 0.45)
+        && !(bx > c.x0 - 0.45 && bx < c.x1 + 0.45 && bz > c.z0 - 0.45 && bz < c.z1 + 0.45)) near[n++] = c;
+    }
+    if (!n) return true;
+    const len = Math.hypot(bx - ax, bz - az), steps = Math.max(1, Math.ceil(len / 0.3));
     for (let k = 0; k <= steps; k++) {
-      const t = k / steps, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
-      if (near.some(c => x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m)) return false;
+      const t = k / steps, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+      for (let j = 0; j < n; j++) { const c = near[j]; if (x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m) return false; }
     }
     return true;
   };
@@ -359,8 +365,12 @@ function entries(p: Pt, clear: ClearFn, max = 3) {
 }
 const entryCache = new WeakMap<ClearFn, Map<string, { i: number; j: number; q: Pt; d: number }[]>>();
 
-/** The sidewalk graph as one `clear` test leaves it: its open stretches with their lengths, made once per test (see edgeCache). */
-interface OpenGraph { pts: Pt[]; adj: { j: number; w: number }[][] }
+/**
+ * The sidewalk graph as one `clear` test leaves it: a node's open stretches with their lengths, made the first time a search
+ * reaches the node (and each stretch tested once per test, see edgeCache), so the first long route of an evening does not
+ * test the whole city at once.
+ */
+interface OpenGraph { pts: Pt[]; at(i: number): { j: number; w: number }[] }
 const openGraphs = new WeakMap<ClearFn, OpenGraph>();
 function openGraph(clear: ClearFn): OpenGraph {
   let og = openGraphs.get(clear);
@@ -370,7 +380,8 @@ function openGraph(clear: ClearFn): OpenGraph {
     let open = edgeCache.get(clear);
     if (!open) { open = new Map(); edgeCache.set(clear, open); }
     const ok = (i: number, j: number) => { const k = i < j ? `${i}-${j}` : `${j}-${i}`; let v = open!.get(k); if (v === undefined) { v = clear(g.nodes[i], g.nodes[j]); open!.set(k, v); } return v; };
-    og = { pts: g.nodes, adj: g.adj.map((js, i) => js.filter(j => ok(i, j)).map(j => ({ j, w: dist(g.nodes[i], g.nodes[j]) }))) };
+    const adj: ({ j: number; w: number }[] | undefined)[] = new Array(g.nodes.length);
+    og = { pts: g.nodes, at: i => (adj[i] ??= g.adj[i].filter(j => ok(i, j)).map(j => ({ j, w: dist(g.nodes[i], g.nodes[j]) }))) };
     openGraphs.set(clear, og);
   }
   return og;
@@ -415,10 +426,10 @@ export function planPath(from: Spot | Pt, to: Spot | Pt, clear: ClearFn = () => 
     const og = openGraph(clear), N = og.pts.length;
     const extra: Pt[] = [], extraAdj: { j: number; w: number }[][] = [], own = new Map<number, { j: number; w: number }[]>();
     const ptOf = (k: number) => (k < N ? og.pts[k] : extra[k - N]);
-    const listOf = (k: number) => (k < N ? own.get(k) ?? og.adj[k] : extraAdj[k - N]);
+    const listOf = (k: number) => (k < N ? own.get(k) ?? og.at(k) : extraAdj[k - N]);
     const push = (i: number, e: { j: number; w: number }) => {
       if (i >= N) { extraAdj[i - N].push(e); return; }
-      let l = own.get(i); if (!l) { l = og.adj[i].slice(); own.set(i, l); }
+      let l = own.get(i); if (!l) { l = og.at(i).slice(); own.set(i, l); }
       l.push(e);
     };
     const add = (p: Pt) => { extra.push(p); extraAdj.push([]); return N + extra.length - 1; };
@@ -445,6 +456,19 @@ export function planPath(from: Spot | Pt, to: Spot | Pt, clear: ClearFn = () => 
     if (D[T0] < Infinity) { const chain: Pt[] = []; for (let k = prev[T0]; k >= 0 && k !== S0; k = prev[k]) chain.unshift(ptOf(k)); mid = chain; }
   }
   return simplify([...out, ...mid, ...inn]);
+}
+
+/**
+ * A few routes planned over the sidewalks with a test of their own (nothing is kept, the hub's test is not touched): the
+ * first long route of an evening finds the code cold, which costs 10-25 ms in one frame; made while the hub loads it costs
+ * nobody a frame.
+ */
+export function warmPaths(cols: readonly { x0: number; z0: number; x1: number; z1: number; h: number }[]) {
+  const clear = collidersClear(cols), g = laneGraph(), n = g.nodes.length;
+  for (let k = 0; k < 8; k++) {
+    const a = g.nodes[(k * 37) % n], b = g.nodes[(k * 61 + 17) % n];
+    planPath({ x: a.x + 1.2, z: a.z - 0.8 }, { x: b.x - 1.1, z: b.z + 0.9 }, clear);
+  }
 }
 
 function simplify(pts: Pt[]): Pt[] {

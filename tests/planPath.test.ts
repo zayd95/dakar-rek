@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collidersClear, laneGraph, planPath, type ClearFn } from '../src/social/routines';
+import { collidersClear, laneGraph, planPath, warmPaths, type ClearFn } from '../src/social/routines';
 
 /**
  * The route between two spots over the sidewalk graph: the graph's open stretches are made once per clear test and the
@@ -105,5 +105,78 @@ describe('planPath', () => {
     const first = planPath(a, b, clear);
     for (let k = 0; k < 20; k++) planPath(spot(), spot(), clear);
     expect(planPath(a, b, clear)).toEqual(first);
+  });
+});
+
+/** The straight-segment test as it was written first (a filter, then a `some` at each step): the allocation-free one answers alike. */
+function firstClear(cols: readonly { x0: number; z0: number; x1: number; z1: number; h: number }[]): ClearFn {
+  return (a, b) => {
+    const m = 0.25;
+    const len = Math.hypot(b.x - a.x, b.z - a.z), steps = Math.max(1, Math.ceil(len / 0.3));
+    const near = cols.filter(c => c.h > 0.3 && Math.max(a.x, b.x) > c.x0 - m && Math.min(a.x, b.x) < c.x1 + m && Math.max(a.z, b.z) > c.z0 - m && Math.min(a.z, b.z) < c.z1 + m
+      && !(a.x > c.x0 - 0.45 && a.x < c.x1 + 0.45 && a.z > c.z0 - 0.45 && a.z < c.z1 + 0.45)
+      && !(b.x > c.x0 - 0.45 && b.x < c.x1 + 0.45 && b.z > c.z0 - 0.45 && b.z < c.z1 + 0.45));
+    if (!near.length) return true;
+    for (let k = 0; k <= steps; k++) {
+      const t = k / steps, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+      if (near.some(c => x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m)) return false;
+    }
+    return true;
+  };
+}
+
+describe('collidersClear', () => {
+  let seed = 777; const r = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+
+  it('answers as the first implementation did, for segments of every length among boxes of every height', () => {
+    const cols = Array.from({ length: 300 }, () => { const x = -90 + r() * 180, z = -90 + r() * 180; return { x0: x, z0: z, x1: x + 0.2 + r() * 6, z1: z + 0.2 + r() * 6, h: r() < 0.2 ? 0.2 : 0.4 + r() * 2.5 }; });
+    const was = firstClear(cols), now = collidersClear(cols);
+    let blocked = 0, free = 0;
+    for (let k = 0; k < 4000; k++) {
+      const a = { x: -90 + r() * 180, z: -90 + r() * 180 }, len = r() < 0.5 ? r() * 4 : r() * 60, yaw = r() * Math.PI * 2;
+      const b = { x: a.x + Math.sin(yaw) * len, z: a.z + Math.cos(yaw) * len };
+      const want = was(a, b);
+      expect(now(a, b), `segment ${k}`).toBe(want);
+      if (want) free++; else blocked++;
+    }
+    expect(blocked).toBeGreaterThan(300); expect(free).toBeGreaterThan(300);        // (both answers were given a good many times)
+  });
+
+  it('reads the list it was given at each call (colliders come and go during an evening)', () => {
+    const cols: { x0: number; z0: number; x1: number; z1: number; h: number }[] = [];
+    const clear = collidersClear(cols), a = { x: 0, z: 0 }, b = { x: 10, z: 0 };
+    expect(clear(a, b)).toBe(true);
+    cols.push({ x0: 4, z0: -1, x1: 6, z1: 1, h: 1.5 });
+    expect(clear(a, b)).toBe(false);
+    cols.pop();
+    expect(clear(a, b)).toBe(true);
+  });
+});
+
+describe('the open sidewalk graph, made as the searches reach it', () => {
+  it('the first route tests the stretches it comes to, not the whole city', () => {
+    const g = laneGraph();
+    let calls = 0;
+    const clear: ClearFn = () => { calls++; return true; };
+    // two spots on neighbouring blocks: the search stops at the target, long before it has seen every node
+    const a = { x: g.nodes[0].x + 1, z: g.nodes[0].z + 1 }, b = { x: g.nodes[5].x - 1, z: g.nodes[5].z + 1 };
+    planPath(a, b, clear);
+    expect(calls).toBeGreaterThan(0);
+    expect(calls).toBeLessThan(g.segs.length / 2);
+    // and a second route over the same ground tests nothing already tested (the answer of each stretch is kept per test)
+    const first = calls;
+    planPath(a, b, clear);
+    expect(calls).toBeLessThanOrEqual(first + 8);                                    // (only the entries of its own end points, if new)
+  });
+
+  it('warmPaths plans a few routes and keeps nothing for the hub', () => {
+    const cols = [{ x0: -30, z0: -40, x1: -20, z1: -38, h: 2 }];
+    expect(() => warmPaths(cols)).not.toThrow();
+    expect(() => warmPaths([])).not.toThrow();
+    const clear = collidersClear(cols);
+    let calls = 0;
+    const counted: ClearFn = (p, q) => { calls++; return clear(p, q); };
+    planPath({ x: -50, z: 30 }, { x: 60, z: -30 }, counted);
+    expect(calls).toBeGreaterThan(5);                                                // (the hub's own test still did its work)
   });
 });

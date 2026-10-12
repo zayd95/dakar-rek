@@ -11,7 +11,7 @@ import { WALL_R } from '../world/geew';
 import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import { rng } from '../core/rng';
 import { len2 } from '../core/math';
-import { ROUTINES, currentPlan, resolvePlace, planPath, laneGraph, collidersClear, pathLength, type ClearFn } from './routines';
+import { ROUTINES, currentPlan, resolvePlace, planPath, laneGraph, collidersClear, pathLength, warmPaths, type ClearFn } from './routines';
 import { ACTIVITIES, AMBIENT_BUDGET, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR, type AmbientQuality } from './ambientData';
 import { planDemand, chooseSeat, curveAt, dayOfWeek, keepsPlace, seatCapacity, isNpcOccupant, STAND_ON, type AmbientActivity, type AmbientSpot, type LookKind, type Pt, type SeatLike } from './ambient';
 import { buildSpots, furnitureSeats } from './ambientSpots';
@@ -57,6 +57,9 @@ const CAST_ROOM = 0.7;
 const WALK: [number, number] = [1.15, 1.45];
 const SPORT = [0xd9322b, 0x1a9d54, 0xf4c20d, 0x2f6fb3, 0xf2f2ec, 0x222428, 0xe8742c];
 const BOUBOU = [0xf2f2ec, 0x9cc8e8, 0x27407a, 0xe8e2d4, 0x1f7a44, 0xd9b44a, 0xf6f1e3];
+
+/** The sidewalk routing has run once on this page (see warmPaths). */
+let warmed = false;
 
 export class AmbientLife implements GameModule {
   readonly name = 'ambient-life';
@@ -183,6 +186,7 @@ export class AmbientLife implements GameModule {
     // the shops stocked by the shop kit (src/world/city.ts): their door, displays, counter queue and furniture
     const shops: ShopInfo[] = [];
     w.group.traverse(o => { const u = o.userData.shop; if (u) shops.push({ key: u.key, type: u.type, anchors: u.anchors, bounds: u.bounds, colliders: (o.userData.shopColliders as Collider[] | undefined) ?? [], room: !!u.room }); });
+    if (!warmed) { warmed = true; warmPaths(w.colliders); }                                    // (the first long route of the evening is not the code's first run)
     this.spots = buildSpots({ places: ctx.places.all(), seats: ctx.seats.all(), interactables: w.interactables, layout: hubLayout(w.id), colliders: w.colliders, people, arena: w.arena, doors, lite: ctx.quality() === 'low', shops });
     this.spotById = new Map(this.spots.map(s => [s.id, s]));
     for (const a of this.actors) if (a.state !== 'off' && a.spot && this.spotById.get(a.spot.id) !== a.spot) {
