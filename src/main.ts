@@ -365,6 +365,7 @@ const ctx: GameCtx = {
     cheer: s => cheer(s),
   },
   peers: () => [...presence.peers.values()],
+  ballNet: { self: () => (presence.status === 'online' ? presence.id : ''), send: b => presence.sendBall(b), listen: fn => { presence.onBall = fn; } },
   mode: () => mode,
   setMode(m) { mode = m; input.enabled = m === 'play'; if (m !== 'play') input.reset(); },
   menu(title, subtitle, items, extraHtml) { mode = 'menu'; input.enabled = false; hud.openMenu(title, subtitle, items, extraHtml); },

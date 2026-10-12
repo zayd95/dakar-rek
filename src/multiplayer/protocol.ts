@@ -71,13 +71,46 @@ export interface Peer extends Move { id: string; name: string; look: number; tag
 export interface ChatMessage { type: 'chat'; id: string; from: string; name: string; tag?: string; channel: ChatChannel; text: string; at: number }
 export interface ChatAck { type: 'chat-ack'; id: string; ok: boolean; reason?: ChatFailure; delivered?: number; duplicate?: boolean; at?: number }
 export type ServerMessage =
-  | { type: 'welcome'; version: number; id: string; hub: HubId; room: number; count: number; time: number; peers: Peer[] }
+  | { type: 'welcome'; version: number; id: string; hub: HubId; room: number; count: number; time: number; peers: Peer[]; features?: string[] }
   | { type: 'peer'; peer: Peer }
   | { type: 'leave'; id: string; count: number }
   | { type: 'count'; count: number }
   | ChatMessage
   | ChatAck
-  | { type: 'report-ack'; target: string; ok: boolean };
+  | { type: 'report-ack'; target: string; ok: boolean }
+  | BallRelay;
+
+/**
+ * The kickabout ball of a pitch (src/game/kickabout.ts), additive to protocol v1: a server that relays it says so in
+ * `welcome.features` ('ball'); clients that do not know the type ignore it. Pitch space (metres from the centre spot,
+ * src/game/footballSim.ts PITCH): position `x z h`, velocity `vx vz vh`, `n` the goal whose net holds it (−1, 0, 1);
+ * `t` the server time (ms) of the sender's last touch — its claim, the latest touch owns the ball — and `a` the server
+ * time of this sample. Display only: no score, money or reward depends on it.
+ */
+export interface BallWire { type: 'ball'; x: number; z: number; h: number; vx: number; vz: number; vh: number; n: -1 | 0 | 1; t: number; a: number }
+/** A ball state as relayed to the others of the room: who sent it (`from`, stamped by the server). */
+export interface BallRelay extends BallWire { from: string }
+export const BALL_FEATURE = 'ball';
+/** Ball bounds (the curb round the grass, the net's roof) and the fastest a ball may go (m/s): anything faster is refused. */
+export const BALL_LIMITS = { ex: 22, ez: 17, hMax: 6, vMax: 45, vhMax: 20 } as const;
+const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const clampN = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
+/**
+ * A ball state from the wire, clamped to the pitch (positions) and rounded, or null when malformed or absurd (a non-finite
+ * number, a speed beyond `vMax`, times more than a day off `now`). Unknown keys are dropped.
+ */
+export function parseBall(value: unknown, now: number): BallWire | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (v.type !== 'ball' || !['x', 'z', 'h', 'vx', 'vz', 'vh', 't', 'a'].every(k => fin(v[k]))) return null;
+  if (v.n !== -1 && v.n !== 0 && v.n !== 1) return null;
+  const vx = v.vx as number, vz = v.vz as number, vh = v.vh as number, t = v.t as number, a = v.a as number;
+  if (Math.hypot(vx, vz) > BALL_LIMITS.vMax || Math.abs(vh) > BALL_LIMITS.vhMax) return null;
+  if (Math.abs(t - now) > 86_400_000 || Math.abs(a - now) > 86_400_000 || t > a + 1000) return null;
+  const L = BALL_LIMITS, r3 = (x: number) => Math.round(x * 1000) / 1000;
+  return { type: 'ball', x: r3(clampN(v.x as number, -L.ex, L.ex)), z: r3(clampN(v.z as number, -L.ez, L.ez)), h: r3(clampN(v.h as number, 0, L.hMax)),
+    vx: r3(vx), vz: r3(vz), vh: r3(vh), n: v.n, t: Math.round(t), a: Math.round(a) };
+}
 
 export function isHub(value: unknown): value is HubId { return HUB_IDS.includes(value as HubId); }
 export function nickname(value: unknown): string {
