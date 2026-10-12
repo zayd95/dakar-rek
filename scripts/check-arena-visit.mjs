@@ -255,7 +255,9 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
 
   // 8. The crowd goes home.
   await d(() => window.__dakar.arena.speed(6));                                 // the result, then the leaving, on the slow clock
-  await page.waitForFunction(() => window.__dakar.arena.info().phase === 'over', null, T).catch(() => {});
+  // avec frappe the result phase holds the whole fête after the fall (src/arena/celebration.ts): at about a frame a second
+  // on the desktop's software renderer, 180 s at speed 6 ended with the stands still full at the start of « leaving »
+  await page.waitForFunction(() => window.__dakar.arena.info().phase === 'over', null, { timeout: 480000 }).catch(() => {});
   await d(() => window.__dakar.arena.speed(1));
   const o1 = await info();
   check(`${label}: the stands empty and the gala is over for tonight`, o1.phase === 'over' && o1.crowd.present === 0 && o1.galaDone && o1.street === 'after', { phase: o1.phase, crowd: o1.crowd, galaDone: o1.galaDone, street: o1.street });
