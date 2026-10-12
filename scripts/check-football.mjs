@@ -138,9 +138,9 @@ check('the ball and the nets cost at most 4 draw calls', perf.every(r => r.footb
 // 8. far from the pitch: no match, no cost
 await d(() => window.__dakar.cam(null));
 await d(p => window.__dakar.place(p.x + 150, p.z + 60, 0), pitch);
-await page.waitForTimeout(1500);
+await page.waitForFunction(() => !window.__dakar.football().near, null, { timeout: 90000 }).catch(() => {});
 await d(() => window.__dakar.perfOn(true));
-await page.waitForTimeout(1500);
+await d(() => new Promise(res => { let k = 0; const fr = () => (++k > 20 ? res() : requestAnimationFrame(fr)); requestAnimationFrame(fr); }));
 const far = { info: await info(), perf: await d(() => window.__dakar.perf()) };
 await d(() => window.__dakar.perfOn(false));
 check('far from the pitch the match is put away (the people roam as before) and costs next to nothing', !far.info.near && !far.info.active && (far.perf['module:football'] ?? 0) < 0.02, { near: far.info.near, active: far.info.active, ms: far.perf['module:football'] });
