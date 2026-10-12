@@ -1,23 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T18:38:00Z",
+  "updatedAt": "2026-10-12T19:36:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261012T1935Z-watch",
-    "owner": "producer_watch_1935",
-    "acquiredAt": "2026-10-12T19:35:00Z",
-    "expiresAt": "2026-10-12T20:05:00Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "917e05ff7a1564bc39aa394ae35e3d000e3578ab",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-12-1935-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -131,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-12T18:38:00Z",
+    "lastCompletedRunAt": "2026-10-12T19:36:00Z",
     "lastVerifiedAt": "2026-10-12T18:38:00Z"
   },
   "productionMutationsAuthorized": false,
@@ -163,7 +151,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "Resume exact candidatee563301 CI and external integration progression; inspect full wave-specific logs and distinct final acceptance. No ready implementation; do not duplicate other-session postgala fix.",
+  "nextAction": "Await external integration of postgala follow-up and inspect exact final wave-specific checks/reviewer acceptance. No registered ready source task; do not duplicate other-session fix.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -301,15 +289,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-1836-WATCH.md",
-    "completedAt": "2026-10-12T18:38:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-1935-WATCH.md",
+    "completedAt": "2026-10-12T19:36:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_1836",
+    "owner": "producer_watch_1935",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261012T1836Z-watch"
+    "leaseReleased": "cycle-20261012T1935Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +559,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-12T18:38:00Z",
+    "checkedAt": "2026-10-12T19:36:00Z",
     "status": "candidate_followup_not_integrated",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -591,18 +579,24 @@
     },
     "missing": [
       "Latest candidate e563301 follow-up commits not integrated in integration8c3270b",
-      "Latest candidate GitHub CI pending and Workers Builds failed without diagnostic output",
-      "Complete final wave-specific browser/performance logs and distinct final reviewer acceptance at common SHA not inspected; PR17 reviews empty"
+      "Latest candidate Workers Builds failure without diagnostic output remains",
+      "Full final wave-specific performance/outflow browser evidence and distinct reviewer acceptance at common SHA missing; standard CI does not invoke these wave-specific checks"
     ],
     "authority": "read-only external wave; never mutate other-session refs",
     "candidateCi": {
       "runId": 38291649871,
       "jobId": 114952920845,
-      "status": "in_progress",
-      "conclusion": null,
+      "status": "completed",
+      "conclusion": "success",
       "sha": "e5633011555cab012de02453dd7ce32995b6ae10",
       "cloudflareConclusion": "failure",
-      "cloudflareBuildId": "d711fa77-41ca-489b-91eb-8d5949637712"
+      "cloudflareBuildId": "d711fa77-41ca-489b-91eb-8d5949637712",
+      "testsPassed": 1358,
+      "testsSkipped": 2,
+      "testFilesPassed": 105,
+      "artifactId": 11767184415,
+      "digest": "sha256:675d6f8464c06779be93b7ec14f9f7a308f00012f2dab052da25e97532b3a5bc",
+      "logsReadAt": "2026-10-12T19:36:00Z"
     },
     "externalPortChecks": {
       "pullRequest": 21,
