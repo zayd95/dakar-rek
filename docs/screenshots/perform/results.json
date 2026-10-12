@@ -1,0 +1,112 @@
+[
+  {
+    "name": "carry-crates: « Débarquer les caisses » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"debarquement:0\",\"kind\":\"carry\",\"moved\":0,\"of\":3,\"trip\":0.05,\"carrying\":false,\"onHead\":false,\"leg\":1.11,\"walked\":0} → {\"key\":\"debarquement:0\",\"kind\":\"carry\",\"moved\":2,\"of\":3,\"trip\":0.4,\"carrying\":true,\"onHead\":true,\"leg\":1.11,\"walked\":0.77} "
+  },
+  {
+    "name": "clean-fish: « Aider au nettoyage » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"poisson-service:0\",\"kind\":\"handwork\",\"done\":0,\"left\":4,\"of\":4,\"surface\":true,\"walk\":1.11} → {\"key\":\"poisson-service:0\",\"kind\":\"handwork\",\"done\":2,\"left\":1,\"of\":4,\"surface\":true,\"walk\":1.11} "
+  },
+  {
+    "name": "run-corniche: « Courir » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"courir:0\",\"kind\":\"run\",\"metres\":0,\"line\":10} → {\"key\":\"courir:0\",\"kind\":\"run\",\"metres\":7,\"line\":10} "
+  },
+  {
+    "name": "pull-ups-corniche: « Faire les barres » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"barres:0\",\"kind\":\"pullups\",\"reps\":0} → {\"key\":\"barres:0\",\"kind\":\"pullups\",\"reps\":1} "
+  },
+  {
+    "name": "cafe-touba-corniche: « Café Touba » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"touba:0\",\"kind\":\"drink\",\"left\":0.93,\"raised\":false} → {\"key\":\"touba:0\",\"kind\":\"drink\",\"left\":0.2,\"raised\":true} "
+  },
+  {
+    "name": "cafe-touba-plateau: « Café Touba » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"touba:0\",\"kind\":\"drink\",\"left\":0.93,\"raised\":false} → {\"key\":\"touba:0\",\"kind\":\"drink\",\"left\":0.26,\"raised\":true} "
+  },
+  {
+    "name": "market-sell-plateau: « Vendre au marché » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"vendre:0\",\"kind\":\"handwork\",\"done\":0,\"left\":3,\"of\":3,\"surface\":true,\"walk\":1.67} → {\"key\":\"vendre:0\",\"kind\":\"handwork\",\"done\":1,\"left\":1,\"of\":3,\"surface\":true,\"walk\":1.67} "
+  },
+  {
+    "name": "cafe-touba-almadies: « Café Touba » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"touba:0\",\"kind\":\"drink\",\"left\":0.93,\"raised\":false} → {\"key\":\"touba:0\",\"kind\":\"drink\",\"left\":0.2,\"raised\":true} "
+  },
+  {
+    "name": "port-crates-almadies: « Aider les pêcheurs » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"pecheurs:0\",\"kind\":\"carry\",\"moved\":0,\"of\":2,\"trip\":0.05,\"carrying\":false,\"onHead\":false,\"leg\":1.11,\"walked\":0} → {\"key\":\"pecheurs:0\",\"kind\":\"carry\",\"moved\":1,\"of\":2,\"trip\":0.4,\"carrying\":true,\"onHead\":true,\"leg\":1.11,\"walked\":0.78} "
+  },
+  {
+    "name": "garage-pikine: « Aider le mécanicien » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"meca:0\",\"kind\":\"handwork\",\"done\":0,\"left\":4,\"of\":4,\"surface\":false,\"walk\":0} → {\"key\":\"meca:0\",\"kind\":\"handwork\",\"done\":2,\"left\":1,\"of\":4,\"surface\":false,\"walk\":0} "
+  },
+  {
+    "name": "cafe-touba-pikine: « Café Touba » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"touba:0\",\"kind\":\"drink\",\"left\":0.93,\"raised\":false} → {\"key\":\"touba:0\",\"kind\":\"drink\",\"left\":0.2,\"raised\":true} "
+  },
+  {
+    "name": "juice: « Jus de bouye » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"bouye:0\",\"kind\":\"drink\",\"left\":0.95,\"raised\":false} → {\"key\":\"bouye:0\",\"kind\":\"drink\",\"left\":0.2,\"raised\":true} "
+  },
+  {
+    "name": "gallery-walk: « Faire le tour » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"galerie:0\",\"kind\":\"look\",\"stops\":0} → {\"key\":\"galerie:0\",\"kind\":\"look\",\"stops\":2} "
+  },
+  {
+    "name": "bread: « Pain et lait » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"pain-lait:0\",\"kind\":\"eat\",\"left\":0.95,\"raised\":false} → {\"key\":\"pain-lait:0\",\"kind\":\"eat\",\"left\":0.25,\"raised\":true} "
+  },
+  {
+    "name": "stock: « Aider à ranger le stock » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"boutique-stock:0\",\"kind\":\"carry\",\"moved\":0,\"of\":2,\"trip\":0.05,\"carrying\":false,\"onHead\":false,\"leg\":1.11,\"walked\":0} → {\"key\":\"boutique-stock:0\",\"kind\":\"carry\",\"moved\":1,\"of\":2,\"trip\":0.65,\"carrying\":false,\"onHead\":false,\"leg\":1.11,\"walked\":0.95} "
+  },
+  {
+    "name": "haircut: « Se faire coiffer » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"coiffure:0\",\"kind\":\"haircut\",\"barber\":true,\"cuts\":0} → {\"key\":\"coiffure:0\",\"kind\":\"haircut\",\"barber\":true,\"cuts\":4} "
+  },
+  {
+    "name": "attaya: « Partager l’attaya » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"attaya-place:0\",\"kind\":\"drink\",\"left\":0.97,\"raised\":false} → {\"key\":\"attaya-place:0\",\"kind\":\"drink\",\"left\":0.59,\"raised\":true} "
+  },
+  {
+    "name": "dames: « Regarder la partie de dames » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"dames:0\",\"kind\":\"watch\"} → {\"key\":\"dames:0\",\"kind\":\"watch\"} "
+  },
+  {
+    "name": "gargote-eat: « Ceebu jën » is performed in the world",
+    "ok": true,
+    "detail": "{\"prop\":\"ceebu\",\"x\":77.6,\"y\":0.77,\"z\":56.25,\"bites\":0,\"lifting\":false} → {\"prop\":\"ceebu\",\"x\":77.6,\"y\":0.77,\"z\":56.25,\"bites\":1,\"lifting\":false} "
+  },
+  {
+    "name": "wash: « Se laver » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"laver:0\",\"kind\":\"wash\",\"water\":0.95,\"splashes\":0,\"bucket\":\"room\"} → {\"key\":\"laver:0\",\"kind\":\"wash\",\"water\":0.43,\"splashes\":1,\"bucket\":\"room\"} "
+  },
+  {
+    "name": "sleep: « Dormir » is performed in the world",
+    "ok": true,
+    "detail": "{\"key\":\"dormir:0\",\"kind\":\"sleep\",\"dark\":0} → {\"key\":\"dormir:0\",\"kind\":\"sleep\",\"dark\":0.82} "
+  },
+  {
+    "name": "no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]
