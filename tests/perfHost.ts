@@ -269,7 +269,7 @@ export class PerfHost {
   }
 
   /** Builds the hub and every module, as main.ts start() and loadHub() do. */
-  async load(at: { x: number; z: number; yaw: number }, hour: number) {
+  async load(at: { x: number; z: number; yaw: number }, hour: number, hub: 'pikine' | 'plateau' | 'corniche' = ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.PERF_HUB ?? 'pikine') as 'pikine') {
     const M = await (mods ??= loadModules());
     this.hour = hour;
     const q = this.q, rand = M.rng.rng(0x5eed);
@@ -287,7 +287,7 @@ export class PerfHost {
     const people = interactions.add(new M.people.People(() => [], activities, noop, () => ({ x: this.pos.x, z: this.pos.z }))) as GameCtx['people'];
     const inventory = new M.inventory.Inventory(state);
     const follow = new M.camera.FollowCamera(this.camera);
-    const world = this.world = M.builder.buildHub('pikine', q === 'low', q);
+    const world = this.world = M.builder.buildHub(hub, q === 'low', q);
     world.group.name ||= 'hub';                                            // (the breakdown's name for the hub's own meshes)
     this.scene.add(world.group);
     const moduleSpace = () => { for (const m of this.modules) { const s = m.space?.(this.ctx); if (s) return s; } return null; };

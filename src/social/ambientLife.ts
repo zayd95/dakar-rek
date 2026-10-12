@@ -73,6 +73,10 @@ const BOUBOU = [0xf2f2ec, 0x9cc8e8, 0x27407a, 0xe8e2d4, 0x1f7a44, 0xd9b44a, 0xf6
 /** The sidewalk routing has run once on this page (see warmPaths). */
 let warmed = false;
 
+const inYard = (y: { x0: number; x1: number; z0: number; z1: number }, p: Pt) => p.x > y.x0 && p.x < y.x1 && p.z > y.z0 && p.z < y.z1;
+/** The gaps of a fenced lot, the nearest to `p` first. */
+const gatesNear = (y: NonNullable<AmbientSpot['yard']>, p: Pt) => [...y.gates].sort((a, b) => len2(a.in.x - p.x, a.in.z - p.z) - len2(b.in.x - p.x, b.in.z - p.z));
+
 /** Two builds of a spot offer the activities the same places (what SpotPlan works out from). */
 function sameOffer(a: AmbientSpot, b: AmbientSpot) {
   const same = (u: readonly string[], v: readonly string[]) => u.length === v.length && u.every((x, i) => x === v[i]);
@@ -148,6 +152,8 @@ export class AmbientLife implements GameModule {
   private building: { gen: Generator<void, AmbientSpot[]>; sig: string } | null = null;
   /** What the frames have asked of the budgets (debug `ambientBudget`): the most path plans a frame took (the frames that settle everyone at once left out), the frames the last rebuild of the spots took. */
   private budget = { paths: 0, buildFrames: 0 };
+  /** Walks that found no clean way in, by spot (debug `ambientBudget`): a place a fence or furniture closes to the sidewalk shows here. */
+  private noWays: Record<string, number> = {};
   private snapped = false;
   private stats = { full: 0, mineFull: 0, foreignFull: 0, figures: 0, foreign: 0 };
   /** Stocked shops (spot.shop): how many came in through the door, joined the checkout line and paid at the counter. */
@@ -174,8 +180,9 @@ export class AmbientLife implements GameModule {
     this.foreign.clear(); this.reserved = []; this.castHolds = []; this.resKey = -1;
     this.loadFrame = this.frameNo; this.snapNext = true; this.sig = ''; this.owed.reset();
     this.building = null; this.leaving.length = 0; this.leaveAt = 0; this.plan = null; this.planCache = new WeakMap(); this.noWay.clear();
-    // (the periodic jobs start apart: with frames of a tenth of a second the half-second, one-second and two-second ones would all fall on the same frame)
-    this.lodT = 0; this.sigT = 0.7; this.thinT = 0.4; this.scanT = 0.9;
+    // (the first frame drawn thins the street and rations the other systems' people, then the periodic jobs go on apart: with frames of a
+    // tenth of a second the half-second, one-second and two-second ones would all fall on the same frame)
+    this.lodT = 0; this.sigT = 0.7; this.thinT = 0; this.scanT = 0; this.rationed = false;
     this.setQuality(ctx.quality());
   }
 
@@ -197,7 +204,12 @@ export class AmbientLife implements GameModule {
     }
     if (this.sceneHold) { this.sceneHold = false; this.group.visible = true; }
     // a few frames after the hub load: every module has registered its places and seats, the player is placed
-    if (!this.spots) { if (this.frameNo - this.loadFrame < 4) return; this.build(); }
+    if (!this.spots) {
+      // (meanwhile the street's walkers and traffic are thinned to the hour's share and the other systems' people rationed, from the first
+      // frame drawn: all of them drawn in full for those frames was twice the frame's draw calls)
+      if (this.frameNo - this.loadFrame < 4) { this.ration(ctx, dt, ctx.hour(), ctx.space()); return; }
+      this.build();
+    }
     this.prewarm();
     // inside the arena's walls the street's people are not drawn (lod() below drops them all): they go on at 4 Hz with the time gone by
     const owed = this.owed.step(dt, insideWalls(w.arena, ctx.camera.position) ? HIDDEN_EVERY : 0);
@@ -227,9 +239,16 @@ export class AmbientLife implements GameModule {
     for (const a of this.actors) if (a.state !== 'off' && this.inView(a, space)) this.step(a, dt, p);
     if (!this.snapped) this.budget.paths = Math.max(this.budget.paths, allowed - this.pathLeft);
     this.snapped = false;
+    this.ration(ctx, dt, hour, space);
+  }
+
+  /** The street thinned to the hour's share (1 Hz), the other systems' people found (0.5 Hz) and rationed (5 Hz), the figures drawn. */
+  private rationed = false;
+  private ration(ctx: GameCtx, dt: number, hour: number, space: string) {
     if ((this.thinT -= dt) <= 0) { this.thinT = 1; this.thin(hour); }
     if ((this.scanT -= dt) <= 0) { this.scanT = 2; this.foreign.scan(ctx.extra, g => this.prioOf(g)); }
     if ((this.lodT -= dt) <= 0) { this.lodT = 0.2; this.lod(space); }
+    if (!this.rationed) { this.rationed = true; this.thinT = 0.4; this.scanT = 0.9; }     // (the first run done at once; the next ones apart)
     this.draw(dt);
   }
 
@@ -379,7 +398,12 @@ export class AmbientLife implements GameModule {
         if (near && this.pathLeft <= 0) return;                    // the next frame
         const grp = pl.grp, a = this.spawnOne(r.spot, r.act, grp.i, !near, grp.first);
         if (near && this.missed !== 'actor' && this.missed !== 'place') { this.pathLeft--; pl.near--; }   // (a walk that fails costs a path too; no body or no place, none was planned)
-        if (!a) { pl.grp = null; if (near && this.missed !== 'actor') this.noWay.set(key, this.t + (this.missed === 'way' ? NO_WAY_S : NO_PLACE_S)); break; }
+        if (!a) {
+          pl.grp = null;
+          if (near && this.missed !== 'actor') this.noWay.set(key, this.t + (this.missed === 'way' ? NO_WAY_S : NO_PLACE_S));
+          if (this.missed === 'way') this.noWays[r.spot.id] = (this.noWays[r.spot.id] ?? 0) + 1;
+          break;
+        }
         grp.first ??= a; grp.i++;
         if (--grp.left <= 0) pl.grp = null;
       }
@@ -629,6 +653,8 @@ export class AmbientLife implements GameModule {
     } else if (spot.space !== 'street') {
       const ins = ctx.inside();
       if (ins && ctx.space() === spot.space) path = this.roomPath({ x: ins.int.spawn.x, z: ins.int.spawn.z }, to, spot.space);
+    } else if (spot.yard && inYard(spot.yard, to)) {
+      path = this.yardIn(spot.yard, to);                                                  // (a fenced lot: through a gap, round the tables)
     } else {
       const from = this.sidewalkPoint(to, 14, 32);
       if (from) { path = planPath(from, to, this.clear); if (!this.pathOk(path, 'street')) path = null; }
@@ -638,6 +664,27 @@ export class AmbientLife implements GameModule {
     a.waitT = queued ? act.serve![0] + this.rand() * (act.serve![1] - act.serve![0]) : 0;
     a.until += pathLength(path) / a.speed + a.waitT;
     return true;
+  }
+
+  /** In from the sidewalk through a gap of a fenced lot and round its furniture to `to`; null when no gap leads there. */
+  private yardIn(y: NonNullable<AmbientSpot['yard']>, to: Pt): Pt[] | null {
+    for (const g of gatesNear(y, to)) {
+      const inner = y.path(g.in, to); if (!inner) continue;
+      const from = this.sidewalkPoint(g.out, 14, 32); if (!from) continue;
+      const path = [...planPath(from, g.out, this.clear), ...inner];
+      if (this.pathOk(path, 'street')) return path;
+    }
+    return null;
+  }
+  /** Out of a fenced lot from `start` (round the furniture, through a gap) and away along the sidewalk; null when no gap leads out. */
+  private yardOut(y: NonNullable<AmbientSpot['yard']>, start: Pt): { path: Pt[]; to: Pt } | null {
+    for (const g of gatesNear(y, start)) {
+      const inner = y.path(start, g.in); if (!inner) continue;
+      const to = this.sidewalkPoint(g.out, 16, 30); if (!to) continue;
+      const path = [...inner, ...planPath(g.out, to, this.clear)];
+      if (this.pathOk(path, 'street')) return { path, to };
+    }
+    return null;
   }
 
   /** Where a walk ends before the activity: in front of the seat, or the place itself. */
@@ -686,8 +733,12 @@ export class AmbientLife implements GameModule {
       }
     } else if (spot.space !== 'street') { const ins = ctx.inside(); to = ins ? { x: ins.int.spawn.x, z: ins.int.spawn.z } : null; if (to) path = this.roomPath(start, to, spot.space); }
     else {
-      to ??= this.sidewalkPoint(a, 16, 30);
-      if (to) { path = planPath(start, to, this.clear); if (!this.pathOk(path, 'street')) path = null; }
+      const out = spot.yard && inYard(spot.yard, start) ? this.yardOut(spot.yard, start) : null;
+      if (out) { to = out.to; path = out.path; }
+      else {
+        to ??= this.sidewalkPoint(a, 16, 30);
+        if (to) { path = planPath(start, to, this.clear); if (!this.pathOk(path, 'street')) path = null; }
+      }
     }
     if (!to || !path) { this.off(a, false); return true; }
     a.path = path;
@@ -752,7 +803,9 @@ export class AmbientLife implements GameModule {
       this.pathLeft--;
       const from = { x: a.x, z: a.z }, to = this.approach(a);
       this.freeQueue(a);
-      const path = a.spot!.space === 'street' ? planPath(from, to, this.clear) : this.roomPath(from, to, a.spot!.space);
+      const yard = a.spot!.yard;
+      const path = a.spot!.space !== 'street' ? this.roomPath(from, to, a.spot!.space)
+        : (yard && inYard(yard, from) && inYard(yard, to) ? yard.path(from, to) : null) ?? planPath(from, to, this.clear);   // (round the tables of a fenced lot)
       if (!path || !this.pathOk(path, a.spot!.space)) { this.leave(a, true); return; }  // never through a wall: give up the meal
       a.path = path; a.seg = 0; a.state = 'in';
       return;
@@ -1063,7 +1116,7 @@ export class AmbientLife implements GameModule {
         return { id: s.id, tags: s.tags, stands: s.stands.length, checkout: s.shop!.checkout.length, seats: s.seats.length, now: by, ...(this.shopTally.get(s.id) ?? { entered: 0, queued: 0, paid: 0 }) };
       }),
       /** The most path plans one frame took, the frames the last rebuild of the spots took, whether one is under way (tests/outflowBudget.test.ts). */
-      ambientBudget: () => ({ ...this.budget, building: !!this.building, spots: this.spots?.length ?? 0, live: this.actors.filter(a => a.state !== 'off').length }),
+      ambientBudget: () => ({ ...this.budget, noWays: { ...this.noWays }, building: !!this.building, spots: this.spots?.length ?? 0, live: this.actors.filter(a => a.state !== 'off').length }),
       /** Full animated NPC humanoids drawn now (ambient + other systems), far figures, and the budget. */
       humanoids: () => this.humanoidCount(),
     };

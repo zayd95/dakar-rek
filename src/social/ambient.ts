@@ -98,6 +98,11 @@ export interface AmbientSpot {
    * walks them around the furniture inside.
    */
   shop?: { door: Pt; checkout: readonly StandSlot[]; path(a: Pt, b: Pt): Pt[] | null };
+  /**
+   * A fenced lot (a Dibi's yard, `PlaceSpec.yard`): its footprint, its gaps (`out` in the street, `in` inside the fence) and the
+   * way round its furniture between two points inside, or null when there is none. People go in and out through a gap.
+   */
+  yard?: { x0: number; z0: number; x1: number; z1: number; gates: readonly { out: Pt; in: Pt }[]; path(a: Pt, b: Pt): Pt[] | null };
   /** Where the spot comes from (debug). */
   source: 'place' | 'legacy' | 'seats' | 'special' | 'sea' | 'corner' | 'interior';
 }

@@ -100,6 +100,26 @@ export function dibiFrame(a: Pt) {
 const shopGrids = new WeakMap<ShopInfo, ShopPaths>();
 const pathsOf = (s: ShopInfo): ShopPaths => { let p = shopGrids.get(s); if (!p) { p = new ShopPaths(s.bounds, s.colliders); shopGrids.set(s, p); } return p; };
 
+/**
+ * A fenced lot's walking grid (`PlaceSpec.yard`: a Dibi's yard), made once like a shop's: the furniture and the fence of the lot (its
+ * walls and tables are in the hub's colliders), for walkers a little wider than the sampled routes' margin, so that a route round the tables
+ * is a route the clear test lets through.
+ */
+const yardGrids = new WeakMap<PlaceSpec, ShopPaths>();
+function yardOf(p: PlaceSpec, cols: readonly Collider[]): NonNullable<AmbientSpot['yard']> {
+  const y = p.yard!;
+  let paths = yardGrids.get(p);
+  if (!paths) {
+    const mine = cols.filter(c => c.h > 0.3 && c.x1 > y.x0 - 1 && c.x0 < y.x1 + 1 && c.z1 > y.z0 - 1 && c.z0 < y.z1 + 1);
+    paths = new ShopPaths({ x0: y.x0, x1: y.x1, z0: y.z0, z1: y.z1 }, mine, YARD_R);
+    yardGrids.set(p, paths);
+  }
+  const grid = paths;
+  return { x0: y.x0, x1: y.x1, z0: y.z0, z1: y.z1, gates: y.gates, path: (a, b) => grid.path(a, b) };
+}
+/** The margin round the furniture of a yard that its walkers keep (m): the route test leaves 0.25 m. */
+const YARD_R = 0.36;
+
 /** Build every spot of the hub at once. */
 export function buildSpots(inp: SpotInputs): AmbientSpot[] {
   const steps = buildSpotsSteps(inp);
@@ -147,7 +167,8 @@ export function* buildSpotsSteps(inp: SpotInputs): Generator<void, AmbientSpot[]
     let rows: StandSlot[] | undefined;
     const hall = p.type === 'mosque' ? own.find(a => a.id === 'hall') : undefined;
     if (hall) rows = prayerRows(hall.x, hall.z, 3, 6).filter(s => !street || (!inside(cols, s.x, s.z) && Math.hypot(s.x - hall.x, s.z - hall.z) >= 1));
-    push({ id: `place:${p.id}`, tags, space: p.space, x: cx, z: cz, seats, stands: st, rows, hours: p.hours, peaks: p.peaks, place: p.id, source: 'place' });
+    const yard = p.yard && street ? yardOf(p, cols) : undefined;
+    push({ id: `place:${p.id}`, tags, space: p.space, x: cx, z: cz, seats, stands: st, rows, hours: p.hours, peaks: p.peaks, place: p.id, source: 'place', yard });
     placeTagged.push({ tags, pts: street ? own : [] });
     yield;
   }
