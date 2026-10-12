@@ -599,8 +599,14 @@ export class Humanoid {
 }
 
 /** Wrestler: a humanoid in ngemb (used by arena and écurie scenes). */
+/**
+ * A wrestler on the sand (the bout, the preliminaries, the entrance ceremony, the écurie's scenes): always animated at
+ * every frame (`fullRate`). From the far stands the ring is more than ANIM_LOD.gaitNear away, where a body would drop to
+ * 20 mixer updates a second, and the wrestlers are what the player is watching: two to four bodies, a negligible cost.
+ */
 export class Wrestler extends Humanoid {
-  constructor(skin = 0x5b3420) { super(); this.setWrestler({ ngembColor: 'blanc', ngembPattern: 'uni', accessories: [] }, 'A', skin); }
+  constructor(skin = 0x5b3420) { super(); this.setWrestler({ ngembColor: 'blanc', ngembPattern: 'uni', accessories: [] }, 'A', skin); this.fullRate = true; }
+  override reset() { super.reset(); this.fullRate = true; }
   setLook(look: PersonLook | WrestlerLook, cut: 'A' | 'B' = 'A') {
     if ('ngembColor' in look) this.setWrestler(look, cut); else super.setLook(look);
   }
