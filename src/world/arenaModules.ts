@@ -326,7 +326,7 @@ export const WALKWAY_R = 16.78;
 // ------------------------------------------------------------------ climbing the aisles (pure)
 
 /** A stepped climb along a radial line: steps [from, to, height of the tread] in metres from the arena centre. */
-export interface Climb { cx: number; cz: number; a: number; half: number; steps: [number, number, number][] }
+export interface Climb { cx: number; cz: number; a: number; half: number; steps: [number, number, number][]; /** (worked out from the others at the first query) */ sa?: number; ca?: number; reach?: number }
 /** How far either side of an aisle's centre line its steps carry the player (a little wider than the corridor). */
 export const CLIMB_HALF = 1.2;
 /** Tread heights up an aisle: the first step in the parapet's gap, then half way up and the top of each tier. */
@@ -342,7 +342,11 @@ export function aisleProfile(base = ARENA_FLOOR): [number, number, number][] {
 }
 /** Height of the tread under (x, z) if it is on this climb (feet at 0.1 above the ground, like the city's stairs), else null. */
 export function climbHeight(c: Climb, x: number, z: number): number | null {
-  const dx = x - c.cx, dz = z - c.cz, u = dx * Math.sin(c.a) + dz * Math.cos(c.a), v = dx * Math.cos(c.a) - dz * Math.sin(c.a);
+  // (asked for every body of the street at every frame: the angle's sine and cosine once, and nothing beyond the last step's reach)
+  const dx = x - c.cx, dz = z - c.cz;
+  if (c.reach === undefined) { c.sa = Math.sin(c.a); c.ca = Math.cos(c.a); c.reach = Math.max(0, ...c.steps.map(s => Math.max(Math.abs(s[0]), Math.abs(s[1])))) + c.half; }
+  if (dx * dx + dz * dz > c.reach * c.reach) return null;
+  const sa = c.sa!, ca = c.ca!, u = dx * sa + dz * ca, v = dx * ca - dz * sa;
   if (Math.abs(v) > c.half) return null;
   let h: number | null = null;
   for (const [u0, u1, y] of c.steps) if (u >= u0 && u < u1) h = Math.max(h ?? 0, y - 0.1);

@@ -217,6 +217,13 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     count: c => counter(ctx, c), day: () => ctx.day(), hour: () => ctx.hour(),
     tired: e => ctx.state.data.needs.energie < e ? tiredReason() : null,
   });
+  // the lot is fenced by low walls with two gaps (the wide entrance on the front street, the side entrance): its people walk in
+  // through them and round the tables, not through the fence (the city's people: src/social/ambientLife.ts)
+  { const a = at(-10.9, -10.9), b = at(10.9, 10.9);
+    place.yard = { x0: Math.min(a.x, b.x), x1: Math.max(a.x, b.x), z0: Math.min(a.z, b.z), z1: Math.max(a.z, b.z), gates: [
+      { out: at(-2.3, 12.6), in: at(-2.3, 9.8) },                   // front street, between the posts at x = -5.2 and 0.6
+      { out: at(-12.6, 1.3), in: at(-9.8, 1.3) },                   // side street, between the posts at z = -0.6 and 3.2
+    ] }; }
   place.anchors.push({ id: 'lavabo', name: 'Lave-mains', kind: 'spot', ...at(-9.3, 4.6), y: 1.3, radius: 1.3 });
   place.offers.lavabo = [P.use({ id: 'mains', primitive: 'wash', label: 'Se laver les mains', detail: 'La bouilloire et la bassine, avant de manger', seconds: 2, effects: { needs: { hygiene: 6 } } })];
   ctx.places.add(place);

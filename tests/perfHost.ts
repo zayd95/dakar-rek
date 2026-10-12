@@ -229,6 +229,7 @@ export interface WindowReading { update: number; calls: number; sections: Record
 export const profEma = (ema: Record<string, number>, name: string, v: number) => { const o = ema[name]; ema[name] = o === undefined ? v : o * 0.92 + v * 0.08; };
 /** The window length of the browser check (about 90 frames). */
 export const WINDOW = 90;
+const SPLIT_REST = !!(globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.PERF_REST;
 
 export class PerfHost {
   readonly scene = new THREE.Scene();
@@ -251,7 +252,7 @@ export class PerfHost {
     crowd: { update(dt: number): void }; traffic: { update(dt: number): void }; life: { update(dt: number): void } | null;
     ambient: { update(dt: number, v: { x: number; z: number }, d: number): void };
     apprentices: { h: { group: THREE.Object3D }; update(dt: number, near: boolean): void }[];
-    interactions: { update(space: string, x: number, z: number, facing: number): unknown };
+    interactions: InstanceType<Mod['system']['Interactions']>;
     seats: InstanceType<Mod['seats']['Seats']>;
     activities: { update(dt: number): void };
     follow: InstanceType<Mod['camera']['FollowCamera']>;
@@ -268,7 +269,7 @@ export class PerfHost {
   }
 
   /** Builds the hub and every module, as main.ts start() and loadHub() do. */
-  async load(at: { x: number; z: number; yaw: number }, hour: number) {
+  async load(at: { x: number; z: number; yaw: number }, hour: number, hub: 'pikine' | 'plateau' | 'corniche' = ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.PERF_HUB ?? 'pikine') as 'pikine') {
     const M = await (mods ??= loadModules());
     this.hour = hour;
     const q = this.q, rand = M.rng.rng(0x5eed);
@@ -286,7 +287,7 @@ export class PerfHost {
     const people = interactions.add(new M.people.People(() => [], activities, noop, () => ({ x: this.pos.x, z: this.pos.z }))) as GameCtx['people'];
     const inventory = new M.inventory.Inventory(state);
     const follow = new M.camera.FollowCamera(this.camera);
-    const world = this.world = M.builder.buildHub('pikine', q === 'low', q);
+    const world = this.world = M.builder.buildHub(hub, q === 'low', q);
     world.group.name ||= 'hub';                                            // (the breakdown's name for the hub's own meshes)
     this.scene.add(world.group);
     const moduleSpace = () => { for (const m of this.modules) { const s = m.space?.(this.ctx); if (s) return s; } return null; };
@@ -306,6 +307,7 @@ export class PerfHost {
     this.modules = M.modules.MODULES;
     for (const m of this.modules) m.init?.(ctx);
     const H = M.humanoid;
+    (H as { setAnimShadows?: (on: boolean) => void }).setAnimShadows?.(VIEW[q].shadows);          // main.ts applyQuality
     const body = new H.Humanoid(H.randomLook(rand)); this.scene.add(body.group);
     (body as { fullRate?: boolean }).fullRate = true;                       // main.ts: the player's own body, always in full
     // loadHub: the walkers, the traffic, the apprentices, the placed people, the cast, the seats, then the modules
@@ -374,12 +376,25 @@ export class PerfHost {
     t = mark('walkers+traffic+life+world', t);
     { const run = pacer.step('placed', dt, hidden); if (run !== null) S.ambient.update(run, this.camera.position, this.q === 'low' ? 55 : 90); }
     t = mark('ambient(npc.ts)', t);
+    // (PERF_REST=1 times the parts of the rest of the update apart: `rest:<part>`)
+    const part = (k: string) => { if (SPLIT_REST) t = mark('rest:' + k, t); };
     { const run = pacer.step('apprentices', dt, hidden); if (run !== null) for (const a of S.apprentices) { const wp = a.h.group.getWorldPosition(new THREE.Vector3()); a.update(run, Math.hypot(wp.x - this.pos.x, wp.z - this.pos.z) < 22); } }
-    if (this.mode === 'play') S.interactions.update(ctx.space(), this.pos.x, this.pos.z, this.facing);
+    part('apprentices');
+    const focus = this.mode === 'play' ? S.interactions.update(ctx.space(), this.pos.x, this.pos.z, this.facing) : null;
+    // what main.ts asks for in the same stretch of the frame and the host did not: the modules' presence fields, the nearest place of the hub
+    // (findNearest), the prompt of the focus (showPrompt asks its affordances twice)
+    part('interactions');
+    { const extras: Record<string, unknown> = {}; for (const m of this.modules) Object.assign(extras, m.presence?.(ctx) ?? {}); }
+    part('presence');
+    { let best = 1e9; for (const it of this.world.interactables) { const dx = it.x - this.pos.x, dz = it.z - this.pos.z, d = dx * dx + dz * dz; if (d <= it.radius * it.radius && d < best) best = d; } }
+    part('findNearest');
+    if (focus) { S.interactions.primary(focus); S.interactions.all(focus); }
+    part('prompt');
     const drag = { yaw: 0, pitch: 0 };
     if (!this.modules.some(m => m.camera?.(ctx, dt, drag))) {
       S.follow.update(dt, this.pos, this.facing, drag, this.world.colliders, VIEW[this.q].portrait, this.speed > 0.5, undefined, (x, z) => this.world.heightAt(x, z), this.world.canopies);
     }
+    part('camera');
     // the lighting's share that changes what is drawn (main.ts updateLighting)
     const d = S.daylight(this.hour), night = 1 - Math.min(1, Math.max(0, d * 3.2));
     this.world.lampGlow.visible = night > 0.3;
@@ -434,22 +449,29 @@ export interface MomentResult {
  * The browser check's evening (scripts/check-perf-evening.mjs) in node: 17:30 in front of the gate, 19:00 seated on the
  * tiers during the main bout, 23:00 in front of the gate after standing up. `frames` measured per moment at `dt`.
  */
-export async function runEvening(q: Quality, o: { frames?: number; dt?: number; warm?: number; around?: (moment: MomentName, at: 'start' | 'end') => void; frame?: (moment: MomentName, n: number, times: FrameTimes) => void;
+export async function runEvening(q: Quality, o: { frames?: number; dt?: number; warm?: number; around?: (moment: MomentName, at: 'start' | 'end') => void; frame?: (moment: MomentName, n: number, times: FrameTimes, preempted: boolean) => void;
   /** Play the browser check's way: frames of 0.1 s (the loop caps dt at 0.1 and a software-rendered frame lasts longer), and the 19:00 window runs on past the end of the bout, as the check's 91 frames do. */
   browser?: boolean;
   /** Stop after this moment (a test of the first one needs not play the bout). */
   stopAfter?: MomentName;
   /** The city day of the evening (a Friday: the browser check takes the next one, and the day seeds the bout). */
-  day?: number } = {}): Promise<MomentResult[]> {
+  day?: number;
+  /** Measured frames of the last moment when they are not those of the others (the 23:00 window, read over several windows). */
+  framesLast?: number;
+  /** Frames between standing up at 23:00 and the first measured one (the browser check: `frames(30)`, the street's wait and `frames(20)`, so about 50-60). */
+  settle?: number;
+  /** Runs each measured frame through this function (a profile can tell the frames apart by the name of the function that wraps each of them). */
+  wrap?: (moment: MomentName, n: number, run: () => void) => void } = {}): Promise<MomentResult[]> {
   const keep = !!(globalThis as { process?: Proc }).process?.env.PERF_KEEP, frames = o.frames ?? 300, dt = o.dt ?? (o.browser ? 0.1 : 1 / 30), warm = o.warm ?? 240;
   const host = new PerfHost(q);
   await host.load({ x: 18, z: -66.3, yaw: 0.75 }, 17.5);
-  const out: MomentResult[] = [];
+  const out: MomentResult[] = [], framesAll = frames;
   type ArenaDbg = { info(): { phase: string; street: string; centre: { x: number; z: number }; day: number } | null; go(p: string): void; freeSeat(x: number, z: number): { id: string; x: number; z: number; yaw: number } | null; day(d: number | null): void };
   const arena = host.debug<ArenaDbg>('arena');
   arena.day(o.day ?? GALA_DAY);
   /** `frames` frames (fewer when `still` stops holding: the bout's own frames only). */
   const measure = (moment: MomentName, still: () => boolean = () => true) => {
+    const frames = moment === '23:00 outflow' ? o.framesLast ?? framesAll : framesAll;
     const sum: FrameTimes = {};
     let calls = 0, shadow = 0, samples = 0, by: Record<string, number> = {}, byShadow: Record<string, number> = {}, n = 0, callsMax = 0;
     const byMax: Record<string, number> = {};
@@ -460,8 +482,8 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
     o.around?.(moment, 'start');
     for (; n < frames && (n % 10 || still()); n++) {
       const one: FrameTimes = {};
-      host.frame(dt, one);
-      o.frame?.(moment, n, one);
+      if (o.wrap) o.wrap(moment, n, () => host.frame(dt, one)); else host.frame(dt, one);
+      o.frame?.(moment, n, one, host.preempted);
       if (host.preempted && !keep) skipped++;
       else { counted++; for (const [k, v] of Object.entries(one)) { sum[k] = (sum[k] ?? 0) + v; if (k !== 'cpu' && !k.startsWith('render prep')) profEma(ema, k, v); } }
       const last = n % WINDOW === WINDOW - 1;
@@ -507,7 +529,7 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
   host.stand();
   host.hour = 23;
   host.place(6, -66.3, 1.0);
-  for (let k = 0; k < Math.max(30, warm / 2); k++) host.frame(dt);
+  for (let k = 0; k < (o.settle ?? Math.max(30, warm / 2)); k++) host.frame(dt);
   measure('23:00 outflow');
   return out;
 }
