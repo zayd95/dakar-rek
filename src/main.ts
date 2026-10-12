@@ -1188,6 +1188,9 @@ function frameStep(now: number, dt: number, draw = true) {
 
 // ------------------------------------------------------------------ start
 resize(); applyQuality();
+/** The modules are initialised and the first hub is loaded (the debug API's trips wait for it). */
+let started = false, markStarted = () => {};
+const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
   await Promise.all([preloadAssets(), preloadHumanoid()]);
   for (const m of MODULES) m.init?.(ctx);
@@ -1196,6 +1199,7 @@ async function start() {
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
   if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
+  started = true; markStarted();
   requestAnimationFrame(frame);
 }
 void start();
@@ -1204,7 +1208,8 @@ if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
     presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
-    teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
+    // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
+    teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
     setHour(h: number | null) { hourOverride = h; },
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
