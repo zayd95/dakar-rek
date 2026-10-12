@@ -106,7 +106,7 @@ for (const h of ['corniche', 'plateau', 'almadies', 'pikine']) {
   }
   if (has.includes('garage')) await act({ name: `garage-${h}`, find: find(/:garage:/), label: 'Aider le mécanicien', wait: 0.6, cam: [2.6, 0.9, 1.6], views: SIDE, expect: (a, b) => a.kind === 'handwork' && b.done > a.done });
   if (has.includes('cafe')) await act({ name: `cafe-touba-${h}`, find: find(/:cafe:/), label: 'Café Touba', wait: 0.35, until: i => i.raised, cam: [2.1, 0.6, 1.6, 1.3], expect: (a, b) => a.kind === 'drink' && b.left < a.left });
-  if (has.includes('market')) await act({ name: `market-sell-${h}`, find: find(/:market$/), label: 'Vendre au marché', wait: 0.6, cam: [2.6, 0.9, 1.6], views: SIDE, expect: (a, b) => a.kind === 'handwork' && b.done > a.done });
+  if (has.includes('market')) await act({ name: `market-sell-${h}`, find: find(/:market$/), label: 'Vendre au marché', wait: 0.6, cam: [2.8, 0.9, 2.3], views: SIDE, expect: (a, b) => a.kind === 'handwork' && b.done > a.done && b.surface === true });
   if (has.includes('port')) await act({ name: `port-crates-${h}`, find: find(/:port$/), label: 'Aider les pêcheurs', wait: 0.5, until: i => i.onHead, cam: [5, 2.2, 2.6], expect: (a, b) => a.kind === 'carry' && b.moved > a.moved && a.leg > 0.5 });
 }
 // Almadies: Jus & Go (a juice in hand), the gallery walk
