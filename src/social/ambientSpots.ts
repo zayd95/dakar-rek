@@ -113,9 +113,10 @@ function yardOf(p: PlaceSpec, cols: readonly Collider[]): NonNullable<AmbientSpo
     const mine = cols.filter(c => c.h > 0.3 && c.x1 > y.x0 - 1 && c.x0 < y.x1 + 1 && c.z1 > y.z0 - 1 && c.z0 < y.z1 + 1);
     paths = new ShopPaths({ x0: y.x0, x1: y.x1, z0: y.z0, z1: y.z1 }, mine, YARD_R);
     yardGrids.set(p, paths);
+    for (const g of y.gates) paths.prepare(g.in);                              // (the routes from each gap are read from a tree grown now)
   }
   const grid = paths;
-  return { x0: y.x0, x1: y.x1, z0: y.z0, z1: y.z1, gates: y.gates, path: (a, b) => grid.path(a, b) };
+  return { x0: y.x0, x1: y.x1, z0: y.z0, z1: y.z1, gates: y.gates, path: (a, b) => grid.treePath(a, b) };
 }
 /** The margin round the furniture of a yard that its walkers keep (m): the route test leaves 0.25 m. */
 const YARD_R = 0.36;

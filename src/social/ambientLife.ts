@@ -679,7 +679,8 @@ export class AmbientLife implements GameModule {
   /** Out of a fenced lot from `start` (round the furniture, through a gap) and away along the sidewalk; null when no gap leads out. */
   private yardOut(y: NonNullable<AmbientSpot['yard']>, start: Pt): { path: Pt[]; to: Pt } | null {
     for (const g of gatesNear(y, start)) {
-      const inner = y.path(start, g.in); if (!inner) continue;
+      const back = y.path(g.in, start); if (!back) continue;                              // (the routes are read from the gap's tree: out is in, reversed)
+      const inner = back.slice().reverse();
       const to = this.sidewalkPoint(g.out, 16, 30); if (!to) continue;
       const path = [...inner, ...planPath(g.out, to, this.clear)];
       if (this.pathOk(path, 'street')) return { path, to };
