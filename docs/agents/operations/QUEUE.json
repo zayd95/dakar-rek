@@ -811,7 +811,7 @@
         "authorDiffCheck": "PASS",
         "authorBrowser": "local_not_run: browser reserved to exact CI",
         "ci": {
-          "readAt": "2026-10-12T01:35:00Z",
+          "readAt": "2026-10-12T01:36:00Z",
           "runs": [
             {
               "id": 38192271378,
@@ -828,9 +828,11 @@
               "conclusion": null
             }
           ]
-        }
+        },
+        "independentQa": "REVIEW: exact diff accepted statically; browser CI pending"
       },
-      "pullRequest": 20
+      "pullRequest": 20,
+      "reviewReport": "docs/agents/operations/reports/DKAG-020-gameplay-review.md"
     }
   ]
 }

@@ -1,30 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T01:35:00Z",
+  "updatedAt": "2026-10-12T01:36:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
-  "lease": {
-    "token": "cycle-20261012T0128Z-dkag020",
-    "owner": "producer_dkag020_0128",
-    "acquiredAt": "2026-10-12T01:28:00Z",
-    "expiresAt": "2026-10-12T02:28:00Z"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "DKAG-020",
-      "owner": "qa_dkag020_0128",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "541bc60de5f7fc1da6ce182f729f984bbca849a4",
-      "files": [
-        "docs/agents/operations/reports/DKAG-020-gameplay-review.md"
-      ],
-      "kind": "QA report only"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -134,16 +118,13 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-11T20:31:00Z"
+    "lastCompletedRunAt": "2026-10-12T01:36:00Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [
     "DKAG-020"
   ],
-  "activeSessions": [
-    "gameplay_dkag020_0128",
-    "qa_dkag020_0128"
-  ],
+  "activeSessions": [],
   "completedSessions": [
     "activation_producer",
     "activation_qa",
@@ -165,9 +146,11 @@
     "qa_dkag019_resume_0437",
     "gameplay_dkag015_1927",
     "qa_dkag015_1927",
-    "qa_dkag015_ci_2028"
+    "qa_dkag015_ci_2028",
+    "gameplay_dkag020_0128",
+    "qa_dkag020_0128"
   ],
-  "nextAction": "Review frozen DKAG-020 source9632c76 and exact push/PR CI; do not redo code.",
+  "nextAction": "Resume existing DKAG-020 runs38192271378 and38192251481 at exact9632c76; inspect browser logs/artifacts without redoing code, then accept or return a precise defect.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -305,21 +288,22 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-11-DKAG-015-CI.md",
-    "completedAt": "2026-10-11T20:31:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-DKAG-020.md",
+    "completedAt": "2026-10-12T01:36:00Z",
     "trigger": "scheduled autonomous run",
     "actualRunCompleted": true,
     "tasks": [
-      "DKAG-015 CI review"
+      "DKAG-020"
     ],
-    "verifiedCandidates": [
-      "DKAG-015"
+    "verifiedCandidates": [],
+    "reviewCandidates": [
+      "DKAG-020"
     ],
     "draftPullRequests": [
-      19
+      20
     ],
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261011T2028Z-dkag015-qa"
+    "leaseReleased": "cycle-20261012T0128Z-dkag020"
   },
   "protectedRefsLatest": [
     {
