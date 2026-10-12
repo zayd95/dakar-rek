@@ -9,12 +9,12 @@ import type { SeatSpec } from './spec';
 const hash = (a: number, b: number) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
 
 /**
- * `n` fixed sets of NPC passengers (seat ids) for a vehicle spec, about half full, always leaving at least `free`
- * seats the player can take. Fixed sets keep the number of drawn variants (cached models) small.
+ * `n` fixed sets of NPC passengers (seat ids) for a vehicle spec, about `fill` full (half by default), always leaving
+ * at least `free` seats the player can take. Fixed sets keep the number of drawn variants (cached models) small.
  */
-export function passengerPatterns(seats: readonly SeatSpec[], n: number, salt = 1, free = 3): string[][] {
+export function passengerPatterns(seats: readonly SeatSpec[], n: number, salt = 1, free = 3, fill = 0.5): string[][] {
   return Array.from({ length: n }, (_, k) => {
-    const taken = seats.filter((_s, i) => hash(i + 1, k * 13 + salt) < 0.5);
+    const taken = seats.filter((_s, i) => hash(i + 1, k * 13 + salt) < fill);
     let open = seats.filter(s => !s.npcOnly && !taken.includes(s)).length;
     for (let i = taken.length - 1; i >= 0 && open < free; i--) if (!taken[i].npcOnly) { taken.splice(i, 1); open++; }
     return taken.map(s => s.id);
@@ -59,4 +59,27 @@ export function clearKerb(root: THREE.Object3D, colliders: Collider[], zones: re
     if (c.h <= 2.6 && zones.some(zn => inLane(zn, cx, cz))) colliders.splice(i, 1);
   }
   return removed;
+}
+
+// ------------------------------------------------------------------ fans aboard (fight evenings)
+/** Fans aboard a car: their shirt colours, and the stop they ride to (src/arena/arrival.ts sets a line's on fight evenings). */
+export interface LineFans { colours: readonly number[]; dest: string }
+
+/**
+ * Who rides a car after it pulls in at `stop` (pure): the fans aboard get off at their own stop (`off`) and nowhere else,
+ * whatever the line does meanwhile (the arena's street may leave its doors phase mid-ride: those aboard still ride to
+ * their stop); the line's fans of now (`line`, null when none) get on at every stop but theirs.
+ */
+export function fansAtStop(aboard: LineFans | null, line: LineFans | null, stop: string): { off: boolean; aboard: LineFans | null } {
+  const off = !!aboard && aboard.dest === stop;
+  if (line && stop !== line.dest) return { off, aboard: line };
+  return { off, aboard: aboard && !off ? aboard : null };
+}
+/**
+ * A line's fans change (pure): with fans, every car takes them at once unless it stands at their stop now (they just got
+ * off there); without, the cars keep those already aboard until their stop.
+ */
+export function fansOnSet(aboard: LineFans | null, line: LineFans | null, dwellingAt: string | null): LineFans | null {
+  if (!line) return aboard;
+  return dwellingAt === line.dest ? null : line;
 }

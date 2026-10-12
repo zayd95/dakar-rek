@@ -8,8 +8,12 @@ import type { ShopAnchors, ShopRect } from './shopKit';
  * furniture on the grid planned here, over the shop's footprint and colliders (src/world/shopKit.ts). Pure: no Three.js.
  */
 export interface Pt { x: number; z: number }
-/** A stocked shop as the city's people see it: its place sheet key, kit anchors, footprint and colliders (world). */
-export interface ShopInfo { key: string; type: string; anchors: ShopAnchors; bounds: ShopRect; colliders: readonly Collider[] }
+/**
+ * A stocked shop as the city's people see it: its place sheet key, kit anchors, footprint and colliders (world).
+ * `room`: a walk-in room built off the map (a café, the restaurant: src/game/shops.ts), `key` being its street door;
+ * its people come from its seats in its own space, the street keeps the terrace out front.
+ */
+export interface ShopInfo { key: string; type: string; anchors: ShopAnchors; bounds: ShopRect; colliders: readonly Collider[]; room?: boolean }
 
 /** Grid path planner over a shop's footprint, for walkers of radius `r`. */
 export class ShopPaths {

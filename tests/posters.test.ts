@@ -66,3 +66,19 @@ describe('fight posters: where they go', () => {
     }
   });
 });
+
+describe('the poster text fitted to its width', () => {
+  it('finds the size stepping down a pixel at a time would, in a few measures', async () => {
+    const { fitSize } = await import('../src/arena/posters');
+    const step = (w: (s: number) => number, max: number, size: number, min = 12) => { while (w(size) > max && size > min) size--; return size; };
+    for (let n = 0; n < 400; n++) {
+      const per = 0.3 + (n % 37) * 0.04, jit = (n % 5) * 0.25, max = 60 + (n * 7) % 300, size = 14 + (n % 30);
+      let calls = 0;
+      const w = (s: number) => { calls++; return per * s * (6 + (n % 23)) + jit * (s % 3); };       // about proportional, with hinting
+      const want = step(w, max, size);
+      calls = 0;                                                                 // (stepping: up to one a pixel)
+      expect(fitSize(w, max, size), `n=${n}`).toBe(want);
+      expect(calls, `n=${n}`).toBeLessThanOrEqual(6);
+    }
+  });
+});

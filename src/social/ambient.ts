@@ -242,13 +242,15 @@ export function planDemand(spots: readonly AmbientSpot[], acts: readonly Ambient
   hour: number; dow: number; scale: number; px: number; pz: number; near: number; far: number; cap: number;
   /** Only spots of this space are planned ('street', or the interior the player is in: all of it counts as near). */
   space: string; seatKind: (id: string) => string | null;
+  /** An evening's event makes some spots busier (the Dibi after a gala): a factor per spot, 1 for the others. */
+  boost?: (s: AmbientSpot) => number;
 }): DemandRow[] {
   const rows: DemandRow[] = [];
   for (const s of spots) {
     if (s.space !== o.space) continue;
     const d = s.space === 'street' ? Math.hypot(s.x - o.px, s.z - o.pz) : 0;
     if (d > o.far) continue;
-    const k = d <= o.near ? 1 : 0.5;
+    const k = (d <= o.near ? 1 : 0.5) * (o.boost?.(s) ?? 1);
     // activities of one spot share its places: seats, standing places, rows (Friday prayer and daily prayer, chats)
     const used: Record<string, number> = {};
     for (const a of acts) {
@@ -262,6 +264,20 @@ export function planDemand(spots: readonly AmbientSpot[], acts: readonly Ambient
   let left = o.cap;
   for (const r of rows) { const n = Math.min(r.n, left); r.n = n; left -= n; }
   return rows.filter(r => r.n > 0);
+}
+
+/**
+ * After the spots are rebuilt (a place comes or goes: a street vendor's hours, a road event, a shop…), a person stays
+ * on the fresh spot of the same id when their seat is still one of its seats and their standing place, prayer-row place
+ * or queue place is still where it was. Nobody vanishes from Sandaga or from a prayer row because a vendor set up a
+ * tray down the street.
+ */
+export function keepsPlace(old: AmbientSpot, fresh: AmbientSpot, p: { seat: string | null; slot: number; slotRow: boolean; q: number; cq: boolean }): boolean {
+  const same = (u?: Pt, v?: Pt) => !!u && !!v && Math.hypot(u.x - v.x, u.z - v.z) < 0.05;
+  if (p.seat && !fresh.seats.includes(p.seat)) return false;
+  if (p.slot >= 0 && !same((p.slotRow ? old.rows : old.stands)?.[p.slot], (p.slotRow ? fresh.rows : fresh.stands)?.[p.slot])) return false;
+  if (p.q >= 0 && !same((p.cq ? old.shop?.checkout : old.stands)?.[p.q], (p.cq ? fresh.shop?.checkout : fresh.stands)?.[p.q])) return false;
+  return true;
 }
 
 /** Qibla from Dakar (≈ 58° east of north) as a game yaw: forward = (sin, cos), +x east, −z north. */

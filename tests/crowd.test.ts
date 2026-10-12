@@ -22,8 +22,8 @@ function hand(p: RigPose, side: 1 | -1, t = 0, phase = 0, j = 0.63) {
 }
 
 describe('crowd reactions', () => {
-  it('defines the six reactions, stronger ones ranked higher', () => {
-    expect([...REACTION_KINDS].sort()).toEqual(['applause', 'celebrate', 'fall', 'grab', 'shout', 'standUp']);
+  it('defines the reactions, stronger ones ranked higher', () => {
+    expect([...REACTION_KINDS].sort()).toEqual(['applause', 'celebrate', 'dance', 'fall', 'grab', 'shout', 'slump', 'standUp']);
     const r = (k: keyof typeof REACTIONS) => REACTIONS[k].rank;
     expect(r('celebrate')).toBeGreaterThan(r('fall'));
     expect(r('fall')).toBeGreaterThan(r('shout'));

@@ -1,7 +1,9 @@
 import type { Needs } from '../core/types';
 import type { Input } from '../core/input';
 import { Sheet, replay, type MenuItem } from './sheet';
+import { momentsToDrop } from './moments';
 import { fcfaShort, fcfaText } from '../economy/format';
+import { glossed } from '../i18n/wolof';
 
 export type { MenuItem } from './sheet';
 
@@ -83,7 +85,7 @@ export class Hud {
           ${NEEDS.map(n => `<div class="nrow" data-row="${n.k}"><b aria-hidden="true">${n.icon}</b><span>${n.label}</span><i class="bar"><i></i></i><em></em></div>`).join('')}
         </div>
       </div>
-      <div id="place" class="card"><b id="hubName"></b><small id="clock"></small></div>
+      <div id="place" class="card"><b id="hubName"></b><small><span id="clock"></span><em id="placeTag"></em></small></div>
       <div id="menuBtn" class="card" role="button" tabindex="0" aria-label="Téléphone">${PHONE_SVG}</div>
       <div id="goal" class="card"><i class="gi" aria-hidden="true">➜</i><span class="gt"></span><em class="gd"></em></div>
       <div id="sceneTag" class="card"><span class="st"><b></b><small></small></span><button type="button" class="st-stop">✋ Arrêter</button></div>
@@ -99,7 +101,7 @@ export class Hud {
       <div id="toast" role="status" aria-live="polite"></div>
       <div id="fade"></div>
       <div id="modal"></div>`;
-    for (const id of ['stats', 'money', 'wallet', 'mood', 'place', 'hubName', 'clock', 'toast', 'progress', 'progTitle', 'progLabel', 'progPct', 'progBar', 'joy', 'act', 'actMore', 'wprompt', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag'])
+    for (const id of ['stats', 'money', 'wallet', 'mood', 'place', 'hubName', 'clock', 'placeTag', 'toast', 'progress', 'progTitle', 'progLabel', 'progPct', 'progBar', 'joy', 'act', 'actMore', 'wprompt', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag'])
       this.el[id] = root.querySelector('#' + id)!;
     root.querySelectorAll<HTMLElement>('.ring').forEach(r => this.rings.set(r.dataset.need as keyof Needs, r));
     root.querySelectorAll<HTMLElement>('.nrow').forEach(r => this.rows.set(r.dataset.row as keyof Needs, r));
@@ -211,10 +213,18 @@ export class Hud {
     s.raf = k < 1 ? requestAnimationFrame(this.tickWallet) : 0;
   };
 
-  setPlace(name: string, clock: string, night: boolean) {
-    const key = name + '|' + clock + '|' + night;
+  /**
+   * Place pill: the hub's name (on a phone only its first part, « Pikine »), the weekday and time, and an evening tag
+   * (« Gala ce soir ») when there is one.
+   */
+  setPlace(name: string, clock: string, night: boolean, tag: string | null = null) {
+    const key = name + '|' + clock + '|' + night + '|' + tag;
     if (key === this.placeKey) return; this.placeKey = key;
-    this.el.hubName.textContent = name; this.el.clock.textContent = (night ? '🌙 ' : '☀️ ') + clock;
+    const [head, ...rest] = name.split(' · ');
+    const more = document.createElement('span'); more.className = 'pl-more'; more.textContent = rest.length ? ' · ' + rest.join(' · ') : '';
+    this.el.hubName.replaceChildren(head, more);
+    this.el.clock.textContent = (night ? '🌙 ' : '☀️ ') + clock;
+    this.el.placeTag.textContent = tag ?? ''; this.el.placeTag.classList.toggle('on', !!tag);
   }
 
   // ---------------------------------------------------------------- contextual action
@@ -234,7 +244,7 @@ export class Hud {
     act.className = opt.stop ? 'stop' : opt.disabled ? 'dis' : '';
     act.innerHTML = `${icon ? `<i class="a-ic" aria-hidden="true">${esc(icon)}</i>` : ''}<span class="a-tx"><b>${esc(text)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>`
       + (price && !opt.stop ? `<em class="a-pr ${opt.cost ? 'cost' : 'gain'}">${price}</em>` : '') + '<kbd aria-hidden="true">E</kbd>';
-    act.setAttribute('aria-label', [text, sub, price].filter(Boolean).join(' · '));
+    act.setAttribute('aria-label', glossed([text, sub, price].filter(Boolean).join(' · ')));   // no invisible gloss marks read aloud
   }
   /** Diegetic bubble above the focused target (screen position in CSS pixels), or hidden. */
   setWorldPrompt(at: { x: number; y: number } | null, icon = '', label = '', opt: PromptOpts = {}) {
@@ -246,13 +256,22 @@ export class Hud {
       const changed = !!this.wpKey;
       this.wpKey = key;
       const wp = w.firstElementChild as HTMLElement;
-      wp.className = 'wp' + (opt.disabled ? ' dis' : '');
-      wp.innerHTML = `${icon ? `<i>${esc(icon)}</i>` : ''}<span>${esc(label)}</span>${price ? `<em class="${opt.cost ? 'cost' : 'gain'}">${price}</em>` : ''}<kbd>E</kbd>`;
+      // unavailable: the reason in full under the verb, where the eye already is (the button's line is cut short on a
+      // phone, « Ton billet est pour la tribune… »): the pill becomes a small card
+      const why = opt.disabled ?? '';
+      wp.className = 'wp' + (why ? ' dis why' : '');
+      wp.innerHTML = `${icon ? `<i>${esc(icon)}</i>` : ''}<span>${esc(label)}</span>${price ? `<em class="${opt.cost ? 'cost' : 'gain'}">${price}</em>` : ''}<kbd>E</kbd>${why ? `<small>${esc(why)}</small>` : ''}`;
+      this.wpHalf = why ? Math.min(140, innerWidth * 0.39) : 0;                    // half the card's max width (style.css)
       if (changed || !w.classList.contains('on')) replay(wp, 'pop');
     }
-    w.style.transform = `translate(${Math.round(at.x)}px,${Math.round(at.y)}px) translate(-50%,-100%)`;
+    // the card stays on screen (8 px margin) and its tail keeps pointing at the target
+    const { x, tail } = this.wpHalf ? bubbleX(at.x, this.wpHalf, innerWidth) : { x: at.x, tail: 0 };
+    if (tail !== this.wpTail) { this.wpTail = tail; (w.firstElementChild as HTMLElement).style.setProperty('--tail', `${tail}px`); }
+    w.style.transform = `translate(${Math.round(x)}px,${Math.round(at.y)}px) translate(-50%,-100%)`;
     w.classList.add('on');
   }
+  private wpHalf = 0;
+  private wpTail = 0;
   /** The action is unavailable: shake the button and say why. */
   deny(reason: string) {
     if (!this.el.act.classList.contains('off')) replay(this.el.act, 'deny');
@@ -267,7 +286,12 @@ export class Hud {
     const g = this.el.goal;
     g.classList.toggle('on', !!text);
     const arrow = !!text && ARROWS.includes(text[0]) && text[1] === ' ';
-    (g.querySelector('.gt') as HTMLElement).textContent = text ? (arrow ? text.slice(2) : text) : '';
+    // a distance at the end of the line (« … · 72 m ») goes to the right-hand slot, never wrapped away from its number
+    const { text: line, dist } = goalParts(text ? (arrow ? text.slice(2) : text) : '');
+    this.textDist = dist;
+    const gt = g.querySelector('.gt') as HTMLElement;
+    gt.textContent = line;
+    if (dist) { const sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = ' · '; gt.appendChild(sep); }   // read, not shown
     if (!this.guideOn) (g.querySelector('.gi') as HTMLElement).textContent = arrow ? text![0] : '➜';
     g.classList.toggle('walk', arrow || this.guideOn);
     this.paintGuideDistance();
@@ -291,10 +315,10 @@ export class Hud {
   private guideOn = false;
   private guideDeg = NaN;
   private guideDist = -1;
+  private textDist = '';
   private paintGuideDistance() {
-    const gd = this.el.goal.querySelector('.gd') as HTMLElement, text = this.goalKey;
-    const show = this.guideOn && this.guideDist >= 0 && !/\d+ m$/.test(text);
-    const v = show ? `${this.guideDist} m` : '';
+    const gd = this.el.goal.querySelector('.gd') as HTMLElement;
+    const v = this.guideOn && this.guideDist >= 0 ? `${this.guideDist} m` : this.textDist;
     if (gd.textContent !== v) gd.textContent = v;
   }
   /** Scene banner: makes training, entrance and combat clearly distinct; `stoppable` adds « Arrêter » (onSceneStop). */
@@ -321,9 +345,67 @@ export class Hud {
       t.appendChild(s);
     });
     box.prepend(t);
-    const live = [...box.children].filter(c => !c.classList.contains('out'));
+    const live = [...box.children].filter(c => c.classList.contains('t') && !c.classList.contains('out'));
     for (const old of live.slice(3)) this.dropToast(old as HTMLElement);
     this.armToast(t, msg);
+  }
+  /**
+   * A moment card (progress made visible: a bout's recap, a new word on a gauge): icon, title and a few short lines, at
+   * the top of the toast column (the toasts stack under it), never over the action button or the joystick. A tap
+   * anywhere on it or on ✕ dismisses it; it leaves by itself after a few seconds. Two at most.
+   */
+  moment(m: { icon: string; title: string; lines: string[] }, ms = Math.min(12000, 6000 + 900 * m.lines.length)) {
+    return this.momentCard('mo', m.icon, m.title, tx => {
+      if (m.lines.length) { const ul = document.createElement('ul'); for (const l of m.lines) { const li = document.createElement('li'); li.textContent = l; ul.appendChild(li); } tx.appendChild(ul); }
+    }, ms);
+  }
+  /**
+   * The fighter's after-bout card (src/career/progress.ts `boutCard`): a moment card, larger — the result and who
+   * against; one row per thing that changed (what, where it stands now, the change in green or red, a short note); then
+   * « Ensuite » and the next bill or step. Same rules as a moment (tap to dismiss, never over the action button or the
+   * joystick), but it heads the toast column and the moment cards before it go; it stays longer (16–24 s).
+   */
+  boutCard(card: { icon: string; title: string; sub: string; rows: { k: string; v: string; d?: string; tone?: string; note?: string }[]; next: string[] },
+    ms = Math.min(24000, 16000 + 1000 * card.rows.length)) {
+    const add = <K extends keyof HTMLElementTagNameMap>(parent: HTMLElement, tag: K, cls: string, text = '') => {
+      const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; parent.appendChild(e); return e;
+    };
+    return this.momentCard('mo bc', card.icon, card.title, tx => {
+      add(tx, 'small', 'bc-sub', card.sub);
+      const dl = add(tx, 'dl', 'bc-rows');
+      for (const r of card.rows) {
+        const row = add(dl, 'div', 'bc-r');
+        add(row, 'dt', '', r.k);
+        const dd = add(row, 'dd', '');
+        add(dd, 'span', 'bc-v', r.v);
+        if (r.note) add(dd, 'small', 'bc-note', r.note);
+        add(row, 'em', `bc-d ${r.tone ?? ''}`.trim(), r.d ?? '');
+      }
+      if (card.next.length) {
+        const nx = add(tx, 'div', 'bc-next');
+        add(nx, 'b', '', 'Ensuite');
+        for (const l of card.next) add(nx, 'span', '', l);
+      }
+    }, ms);
+  }
+  private momentCard(cls: string, icon: string, title: string, fill: (tx: HTMLElement) => void, ms: number) {
+    const box = this.el.toast;
+    const c = document.createElement('div');
+    c.className = cls; c.setAttribute('role', 'status');
+    const ic = document.createElement('i'); ic.className = 'mo-ic'; ic.setAttribute('aria-hidden', 'true'); ic.textContent = icon;
+    const tx = document.createElement('div'); tx.className = 'mo-tx';
+    const b = document.createElement('b'); b.textContent = title; tx.appendChild(b);
+    fill(tx);
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'mo-x'; x.setAttribute('aria-label', 'Fermer'); x.textContent = '✕';
+    c.append(ic, tx, x);
+    c.addEventListener('pointerdown', e => e.stopPropagation());
+    c.addEventListener('click', e => { e.stopPropagation(); (document.activeElement as HTMLElement | null)?.blur?.(); this.dropToast(c); });
+    box.appendChild(c);
+    // two at most; the after-bout card replaces the cards before it and stays while others come (src/ui/moments.ts)
+    const live = [...box.children].filter(k => k.classList.contains('mo') && !k.classList.contains('out')) as HTMLElement[];
+    for (const i of momentsToDrop(live.map(k => k.classList.contains('bc')))) this.dropToast(live[i]);
+    c.dataset.timer = String(window.setTimeout(() => this.dropToast(c), ms));
+    return c;
   }
   private armToast(t: HTMLElement, msg: string) {
     clearTimeout(Number(t.dataset.timer));
@@ -367,4 +449,21 @@ export class Hud {
   openQuick(title: string, items: MenuItem[], subtitle = '') {
     this.sheet.open('quick', title, subtitle, items);
   }
+}
+
+/**
+ * Where the bubble's centre goes so a card of half-width `half` stays on a screen `width` wide (8 px margins), as close
+ * to the target's `x` as it can, and how far aside its tail moves to point at the target (at most `half − 16` px: the
+ * card stays readable first).
+ */
+export function bubbleX(x: number, half: number, width: number): { x: number; tail: number } {
+  const lo = half + 8, hi = width - half - 8;
+  const c = lo > hi ? width / 2 : Math.min(hi, Math.max(lo, x)), m = Math.max(0, half - 16);
+  return { x: c, tail: Math.round(Math.min(m, Math.max(-m, x - c))) };
+}
+
+/** A goal line split into its words and the distance at its end (« 72 m », shown in the right-hand slot), if any. */
+export function goalParts(text: string): { text: string; dist: string } {
+  const m = /\s·\s(\d+)\s?m$/.exec(text);
+  return m ? { text: text.slice(0, m.index), dist: `${m[1]} m` } : { text, dist: '' };
 }

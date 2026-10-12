@@ -3,7 +3,7 @@ import type { HubId } from '../core/types';
 import { rng, pick } from '../core/rng';
 import { Batch, facadeTextures, signTexture } from './batch';
 import { ACTIONS, ENTER } from './content';
-import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
+import type { Canopy, Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { generatedTexture } from './textures';
@@ -11,7 +11,7 @@ import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_
 import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
-import type { ShopDetail } from './shopKit';
+import { buildShopInterior, type ShopDetail } from './shopKit';
 import { isComposed, type Site } from './sites';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
@@ -111,6 +111,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   const R = rng(sp.seed);
   const group = new THREE.Group();
   const colliders: Collider[] = [];
+  const canopies: Canopy[] = [];
   const interactables: Interactable[] = [];
   const plain = new Batch(), fac = new Batch(), lampPosts = new Batch(), lampBulbs = new Batch();
   const glass = new Batch(), water = new Batch(), leaves = new Batch();
@@ -285,6 +286,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     const h = 6.2 * s;
     for (let k = 0; k < 2; k++) trunks.cyl(0.2 * s + (1 - k) * 0.06, 0.26 * s + (1 - k) * 0.06, h / 2 + 0.05, x, 0.1 + (k * h) / 2, z, k % 2 ? 0x9a7b55 : whitewash ? 0xf1eee6 : 0x8a6d4a, 5);
     const top = 0.1 + h;
+    canopies.push({ x, z, r: 3.3 * s, y0: top - 0.7 * s, y1: top + 0.3 * s });
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2 + R() * 0.5;
       const len = 3.4 * s;
@@ -298,10 +300,13 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     plain.cyl(0.22 * s, 0.32 * s, 2.6 * s, x, 0.1, z, 0x6e5a44, 6);
     plain.cyl(0.12 * s, 0.16 * s, 1.4 * s, x + 0.5 * s, 2.2 * s, z, 0x6e5a44, 5, [0, 0, -0.6]);
     const cols = flower ? [0xc8442c, 0xd9542f, 0x4a7a35] : [0x3f6e2e, 0x4c7d36, 0x365f28];
+    const top = { x, z, r: 0, y0: Infinity, y1: 0 };                  // the canopy's bounds, from its blobs (same random draws)
     for (let k = 0; k < 5; k++) {
-      const a = k * 1.3 + R(), r = k === 0 ? 0 : 1.3 * s;
-      leaves.blob((1.4 + R() * 0.6) * s, x + Math.sin(a) * r, (3.3 + R() * 0.8) * s, z + Math.cos(a) * r, cols[k % 3], 0.75, 0);
+      const a = k * 1.3 + R(), r = k === 0 ? 0 : 1.3 * s, br = (1.4 + R() * 0.6) * s, by = (3.3 + R() * 0.8) * s;
+      leaves.blob(br, x + Math.sin(a) * r, by, z + Math.cos(a) * r, cols[k % 3], 0.75, 0);
+      top.r = Math.max(top.r, r + br * 0.85); top.y0 = Math.min(top.y0, by - br * 0.75); top.y1 = Math.max(top.y1, by + br * 0.75);
     }
+    canopies.push(top);
     solidC(x, z, 0.6, 0.6, 2.4);
   };
   const awning = (cx: number, cz: number, w: number, d: number, y: number, col: number, alongX = true, dir = 1) => {
@@ -313,6 +318,9 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       if (alongX) plain.box(w / n + 0.01, 0.08, d, cx + off, y - 0.25, cz, c, 0); else plain.box(d, 0.08, w / n + 0.01, cx, y - 0.25, cz + off, c);
     }
     if (alongX) plain.box(w, 0.35, 0.06, cx, y - 0.6, cz + dir * d / 2, col); else plain.box(0.06, 0.35, w, cx + dir * d / 2, y - 0.6, cz, col);
+    // the camera keeps out of it like out of leaves: a row of short cylinders along its length
+    const r = d * 0.6, m = Math.max(1, Math.round(w / d));
+    for (let k = 0; k < m; k++) { const off = -w / 2 + (k + 0.5) * (w / m); canopies.push(alongX ? { x: cx + off, z: cz, r, y0: y - 0.7, y1: y } : { x: cx, z: cz + off, r, y0: y - 0.7, y1: y }); }
   };
   /** Rolling metal shutter of a ground-floor boutique, with a painted board above it. */
   const SHOP_BOARDS = [0xd9482b, 0xf4c20d, 0x1e6fd9, 0x2f8f4e, 0xe8742c, 0x6b3fa0];
@@ -564,9 +572,10 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
    */
   const dress = (x: number, z: number, place: () => void) => {
     if (!inSite(x, z)) { place(); return; }
-    const marks = [plain, leaves, trunks].map(b => b.mark()), n = colliders.length;
+    const marks = [plain, leaves, trunks].map(b => b.mark()), n = colliders.length, nc = canopies.length;
     place();
     [plain, leaves, trunks].forEach((b, i) => b.rollback(marks[i]));
+    canopies.splice(nc);
     for (const c of colliders.splice(n)) ghost(c.x0, c.z0, c.x1, c.z1, c.h);
   };
   const composedLot = (k: KioskSpec) => {
@@ -593,11 +602,19 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     const w = small ? 7 : 14, d = small ? 6 : 8, h = small ? 3.6 : 4.2;
     const cz = south ? L.z1 - d / 2 - 0.5 : L.z0 + d / 2 + 0.5, cx = L.cx;
     const col = k.kind === 'cafe' ? 0x6fa56a : k.kind === 'gargote' ? 0xe8a43c : k.kind === 'restaurant' ? 0xf3f0ea : k.kind === 'garage' ? 0x7f8a96 : k.kind === 'maiga' ? 0x6f9e98 : 0xe7b45a;
-    fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    // Garage Modou is an open workshop (the shop kit's 'garage': the bench, tools, a car on the lift, motorbikes for sale)
+    const workshop = k.kind === 'garage';
+    if (!workshop) fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    else {
+      for (const sx of [-1, 1]) plain.box(0.25, h, d, cx + sx * (w / 2 - 0.125), G - 0.02, cz, col);
+      plain.box(w, h, 0.25, cx, G - 0.02, cz - dir * (d / 2 - 0.125), col);
+      plain.box(w, 0.95, 0.25, cx, G + h - 0.97, cz + dir * (d / 2 - 0.125), shade(col, 0.9));   // the header over the opening
+      plain.box(w - 0.3, 0.02, d - 0.3, cx, G - 0.01, cz, 0x6b6e70);                            // oil-stained concrete floor
+    }
     plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
     parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.9), 0.6);
-    plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));
-    if (!small) {
+    if (!workshop) plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));
+    if (!small && !workshop) {
     awning(cx, cz + dir * (d / 2 + 1.2), w - 1, 2.4, 3.0, k.kind === 'cafe' ? 0x2f8f4e : k.kind === 'garage' ? 0x2d3748 : 0xd9482b, true, dir);
     plain.box(w - 3, 1, 0.8, cx, G, cz + dir * (d / 2 + 0.6), 0x7a5a3c);              // counter
     plain.box(w - 2.6, 0.08, 1.0, cx, G + 1, cz + dir * (d / 2 + 0.6), 0x5a3f2a);
@@ -608,6 +625,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       plain.box(2.2, 1.0, 0.03, cx - 1.5, G + 2.4, cz + dir * (d / 2 + 0.04), 0x4a4842);
       plain.box(1.6, 0.45, 0.4, cx + 1.6, G, cz + dir * (d / 2 + 0.9), 0x6b4a2e);
     }
+    if (workshop) awning(cx, cz + dir * (d / 2 + 1.2), w - 1, 2.4, 3.0, 0x2d3748, true, dir);
     if (k.kind === 'gargote' || k.kind === 'cafe' || k.kind === 'restaurant') {
       for (let n = 0; n < 3; n++) {                                                   // benches and a low table out front
         const bx = cx - 4 + n * 4, bz = cz + dir * (d / 2 + 3.2);
@@ -615,7 +633,15 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       }
     }
     if (k.kind === 'garage') for (let n = 0; n < 4; n++) plain.cyl(0.38, 0.38, 0.28, cx + 5 + (n % 2) * 0.2, G + n * 0.28, cz + dir * (d / 2 + 2.4), 0x1d1d1f, 10); // tyre stack
-    solidC(cx, cz, w, d + (small ? 0.2 : 1.4), h);
+    if (!workshop) solidC(cx, cz, w, d + (small ? 0.2 : 1.4), h);
+    else {
+      for (const sx of [-1, 1]) solidC(cx + sx * (w / 2 - 0.125), cz, 0.25, d, h);
+      solidC(cx, cz - dir * (d / 2 - 0.125), w, 0.25, h);
+      const kit = buildShopInterior('garage', { w: w - 0.25, d }, 4242, { detail: shopDetail ?? (lite ? 'low' : 'medium'), at: { x: cx, z: cz, y: G, yaw: dir > 0 ? 0 : Math.PI }, id: `${id}:garage:${k.i}${k.j}`, height: h - 0.3, shadows: false });
+      kit.group.userData.shop = { key: `${id}:${k.kind}:${k.i}${k.j}`, type: 'garage', anchors: kit.anchors, bounds: kit.bounds, budget: kit.budget };
+      kit.group.userData.shopColliders = kit.colliders;
+      group.add(kit.group); colliders.push(...kit.colliders); seats.push(...kit.seats);
+    }
     const bg = k.kind === 'maiga' ? '#3f4f4a' : k.kind === 'cafe' ? '#14532d' : k.kind === 'gargote' ? '#7c2d12' : k.kind === 'restaurant' ? '#0c4a6e' : k.kind === 'garage' ? '#1f2937' : '#78350f';
     // painted sign board flush on the facade, between the awning and the roof
     if (small) addSign('MAÏGA', bg, '#f1e6c8', cx + 1.3, G + 2.6, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 2.6, 0.7);
@@ -631,6 +657,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     for (let n = 0; n < 4; n++) plain.box(0.3, 0.2, 0.3, x - 0.55 + n * 0.37, G + 0.8, z + (R() - 0.5) * 0.4, pick([0xe58a2f, 0xc4372b, 0x6aa84f, 0xf4c20d, 0xf2f2ec], R));
     plain.box(0.05, 2.2, 0.05, x + 0.9, G, z, 0x555555);
     plain.cyl(0.05, 1.3, 0.4, x + 0.9, G + 2.1, z, pick([0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e], R), 8);
+    canopies.push({ x: x + 0.9, z, r: 1.4, y0: G + 2.0, y1: G + 2.6 });                // the parasol: a camera obstacle
     plain.box(0.4, 0.4, 0.4, x - 1.3, G, z + 0.3, 0x3a5fa0);                          // stool
     solidC(x, z, 1.7, 1.0, 1);
   };
@@ -1088,7 +1115,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   };
 
   return {
-    id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs,
+    id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs, canopies,
     tick,
     heightAt(x: number, z: number) {
       for (const c of climbs) { const h = climbHeight(c, x, z); if (h !== null) return h; }

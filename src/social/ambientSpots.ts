@@ -44,8 +44,10 @@ const blockMin = (i: number) => -HALF + ROAD + i * PITCH;
 /** Interaction anchors keep this much room: an ambient person never stands where the player acts. */
 export const ANCHOR_ROOM = 1.8;
 
-const inside = (cols: readonly Collider[], x: number, z: number, m = 0.3) =>
-  cols.some(c => c.h > 0.3 && x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m);
+const inside = (cols: readonly Collider[], x: number, z: number, m = 0.3) => {
+  for (let i = 0; i < cols.length; i++) { const c = cols[i]; if (c.h > 0.3 && x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m) return true; }
+  return false;
+};
 
 /**
  * Street furniture seats the builders draw but do not register yet (ids `<hub-ish anchor id>:amb:…`). Lots a registered
@@ -121,7 +123,8 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
     if (!tags.length || !own.length) continue;
     const street = p.space === 'street';
     const cx = own.reduce((v, a) => v + a.x, 0) / own.length, cz = own.reduce((v, a) => v + a.z, 0) / own.length;
-    const seats = claim(s => s.space === p.space && (!street || own.some(a => Math.hypot(a.x - s.x, a.z - s.z) < 7)));
+    const area = p.area;
+    const seats = claim(s => s.space === p.space && (!street || own.some(a => Math.hypot(a.x - s.x, a.z - s.z) < 7) || (!!area && Math.hypot(area.x - s.x, area.z - s.z) <= area.r)));
     let st: StandSlot[] = own.flatMap(a => ring(a.x, a.z, 2.1, 6, 0.3));
     st = street ? stands(st) : st.filter(s => !own.some(a => Math.hypot(a.x - s.x, a.z - s.z) < ANCHOR_ROOM));
     let rows: StandSlot[] | undefined;
@@ -141,8 +144,9 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
     const base = { space: 'street', hours: rule.hours, source: 'legacy' as const };
     const id = `legacy:${a.id}`;
     // a shop stocked by the shop kit (the three Soumbédioune workshops share the 'craft' sheet): in through the door,
-    // the displays, then the counter
-    const stocked = inp.shops?.filter(s => s.key === a.id || s.key.startsWith(a.id + '-')) ?? [];
+    // the displays, then the counter. Not a walk-in room (a café, the restaurant): its door keeps the terrace out front
+    // here, and the room inside is the spot of its seats (4. below), in the room's own space.
+    const stocked = inp.shops?.filter(s => !s.room && (s.key === a.id || s.key.startsWith(a.id + '-'))) ?? [];
     if (stocked.length) {
       for (const s of stocked) {
         const k = s.anchors, b = s.bounds, paths = new ShopPaths(b, s.colliders);
@@ -278,9 +282,15 @@ export function buildSpots(inp: SpotInputs): AmbientSpot[] {
     const rule = street ? null : LEGACY_TAGS.find(r => space.includes(r.has));
     // a room of prayer rows (a venue mosque's hall): the congregation at prayer times
     const tags = list.every(s => s.kind === 'prayer') ? ['mosque'] : street ? ['bench'] : rule?.tags ?? ['indoor'];
+    // a walk-in room stocked by the shop kit (a café, the restaurant): in through its door, out after paying at the counter
+    const room = street ? undefined : inp.shops?.find(s => s.key === space);
     for (const s of list) taken.add(s.id);
+    const shop = room && (() => {
+      const k = room.anchors, paths = new ShopPaths(room.bounds, room.colliders);
+      return { door: k.door, checkout: k.queue.filter(p => paths.walkable(p)), path: (p: Pt, q: Pt) => paths.path(p, q) };
+    })();
     push({ id: `${street ? 'seats' : 'interior'}:${key}`, tags, space, x: list.reduce((v, s) => v + s.x, 0) / list.length, z: list.reduce((v, s) => v + s.z, 0) / list.length,
-      seats: list.map(s => s.id), hours: rule?.hours, source: street ? 'seats' : 'interior', prio: street ? 1.3 : 1 });
+      seats: list.map(s => s.id), hours: rule?.hours, source: street ? 'seats' : 'interior', prio: street ? 1.3 : 1, ...(shop ? { shop } : {}) });
   }
 
   // 5. street corners: a few pairs chatting on the sidewalk corners, away from the other spots

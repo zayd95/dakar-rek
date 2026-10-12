@@ -5,6 +5,7 @@ import { makeCarRapide } from './vehicles';
 import { animateVehicle, buildVehicle, type VehicleKind } from './vehicleKit';
 import { pick } from '../core/rng';
 import type { HubWorld } from '../world/types';
+import { len2 } from '../core/math';
 
 interface Walker { char: { group: THREE.Group; animate(dt: number, speed: number): void }; ax: number; az: number; bx: number; bz: number; t: number; speed: number; lat: number; prev: string }
 
@@ -18,6 +19,13 @@ function neighbours(w: HubWorld, x: number, z: number) {
   }
   return out;
 }
+
+/**
+ * The weather's (and the road events') say on the street, set by the living city lane (src/city/living.ts): the share
+ * of walkers and cars out on top of the hour's (src/social/ambientLife.ts thins them by hour), and how fast the cars go
+ * (rain slows everyone down).
+ */
+export const streetLevel = { walkers: 1, traffic: 1, speed: 1 };
 
 /** Local background crowd: simulated on this phone only, never synchronised (design doc: Local atmosphere). */
 export class Crowd {
@@ -36,14 +44,14 @@ export class Crowd {
   bodies() { return this.walkers.map((w, i) => ({ id: 'walker:' + i, h: w.char instanceof Humanoid ? w.char : null, obj: w.char.group })); }
   update(dt: number) {
     for (const w of this.walkers) {
-      const len = Math.hypot(w.bx - w.ax, w.bz - w.az);
+      const len = len2(w.bx - w.ax, w.bz - w.az);
       w.t += (w.speed * dt) / len;
       if (w.t >= 1) {
         const opts = neighbours(this.world, w.bx, w.bz).filter(n => nodeKey(n.x, n.z) !== w.prev);
         const next = opts.length ? pick(opts, this.rand) : { x: w.ax, z: w.az };
         w.prev = nodeKey(w.bx, w.bz); w.ax = w.bx; w.az = w.bz; w.bx = next.x; w.bz = next.z; w.t = 0;
       }
-      const l2 = Math.hypot(w.bx - w.ax, w.bz - w.az);
+      const l2 = len2(w.bx - w.ax, w.bz - w.az);
       const dx = (w.bx - w.ax) / l2 || 0, dz = (w.bz - w.az) / l2 || 0;
       const x = w.ax + (w.bx - w.ax) * w.t - dz * w.lat, z = w.az + (w.bz - w.az) * w.t + dx * w.lat;
       w.char.group.position.set(x, 0.1, z); w.char.group.rotation.y = Math.atan2(dx, dz);
@@ -57,7 +65,14 @@ export class Crowd {
  * `closed` (segment ends → true when cars must keep off it) and puts it back to null. Cars already on a closed segment
  * turn up on an open one; the others never turn into it.
  */
-export const trafficClosures: { closed: ((ax: number, az: number, bx: number, bz: number) => boolean) | null } = { closed: null };
+export type Closure = (ax: number, az: number, bx: number, bz: number) => boolean;
+export const trafficClosures: { closed: Closure | null; more: Set<Closure> } = { closed: null, more: new Set() };
+/** The arena's closure and the road events' (src/city/roadEvents.ts) together, or null when the roads are all open. */
+function closures(): Closure | null {
+  const a = trafficClosures.closed, more = trafficClosures.more;
+  if (!more.size) return a;
+  return (ax, az, bx, bz) => (a?.(ax, az, bx, bz) ?? false) || [...more].some(f => f(ax, az, bx, bz));
+}
 let liveTraffic: DecorativeTraffic | null = null;
 /** Where the decorative cars are right now (checks). */
 export const trafficPositions = (): { x: number; z: number }[] => liveTraffic?.positions() ?? [];
@@ -111,17 +126,17 @@ export class DecorativeTraffic {
   /** Car rapide groups in this traffic (they carry an apprentice on the step). */
   rapides() { return this.cars.map(c => c.g).filter(g => g.name.includes('car_rapide')); }
   update(dt: number) {
-    const shut = trafficClosures.closed;
+    const shut = closures();
     for (const c of this.cars) {
       if (shut && shut(c.ax, c.az, c.bx, c.bz)) this.reroute(c, shut);
-      const len = Math.hypot(c.bx - c.ax, c.bz - c.az);
-      c.t += (c.speed * dt) / len;
+      const len = len2(c.bx - c.ax, c.bz - c.az);
+      c.t += (c.speed * streetLevel.speed * dt) / len;
       if (c.t >= 1) {
         const opts = neighbours(this.world, c.bx, c.bz).filter(n => nodeKey(n.x, n.z) !== c.prev && !(shut && shut(c.bx, c.bz, n.x, n.z)));
         const next = opts.length ? pick(opts, this.rand) : { x: c.ax, z: c.az };
         c.prev = nodeKey(c.bx, c.bz); c.ax = c.bx; c.az = c.bz; c.bx = next.x; c.bz = next.z; c.t = 0;
       }
-      const l2 = Math.hypot(c.bx - c.ax, c.bz - c.az);
+      const l2 = len2(c.bx - c.ax, c.bz - c.az);
       const dx = (c.bx - c.ax) / l2 || 0, dz = (c.bz - c.az) / l2 || 0;
       c.g.position.set(c.ax + (c.bx - c.ax) * c.t - dz * c.lane, 0.08, c.az + (c.bz - c.az) * c.t + dx * c.lane);
       c.g.rotation.y = Math.atan2(dx, dz);

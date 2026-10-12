@@ -231,7 +231,7 @@ export const ARENA = {
   /** Le guichetier : « 1 000 F, jërëjëf ! » (merci) */
   ticket: (fare: number) => exchange(['Le guichetier', [{ wo: `${price(fare)},` }, 'jërëjëf !']]),
   /** At the gate with a ticket. */
-  welcome: () => `${exchange(['Le contrôleur', ['Dalal ak jàmm !']])} · Les tribunes sont de chaque côté.`,
+  welcome: (where?: string) => `${exchange(['Le contrôleur', ['Dalal ak jàmm !']])} · ${where ?? 'Les tribunes sont de chaque côté.'}`,
   /** At the gate without one. */
   stop: () => `${exchange(['Le contrôleur', ['Xaaral tuuti !']])} · Il faut un billet : le guichet est à gauche de la porte.`,
   /** The announcer, when the gala starts. */
@@ -243,8 +243,41 @@ export const ARENA = {
     winner === null || how === 'egalite' || how === 'abandon'
       ? 'Temps ! Match nul : l’arbitre ne départage pas les deux lutteurs.'
       : `${winner} l’emporte ${how === 'projection' ? 'par projection' : 'à la décision de l’arbitre'} ! · Le public : ${utter(['Daan na !'])}`,
+  /** The announcer names a preliminary bout (src/arena/undercard.ts): « Préliminaires 1/3 : Modou (Thiaroye) contre … ». */
+  prelim: (k: number, n: number, left: string, right: string) => `🎤 L’annonceur : Préliminaires ${k}/${n}, ${left} contre ${right} !`,
+  /** A friend in the stands is tonight's main event (src/arena/myGala.ts): only their name, their bout is theirs. */
+  friendBill: (name: string) => `Gala de làmb : ${name} est le combat de la soirée !`,
+  /**
+   * Their entrance, as the announcer calls it on a friend's device: their name and, when they show one, their public
+   * record line exactly as their presence carries it (`rec`, server-validated: a rung, a ranked record, an écurie);
+   * nothing more is known here.
+   */
+  friendEntrance: (name: string, rec?: string | null) => `🎤 L’annonceur : Le combat de la soirée… voici ${name} !${rec ? ` (${rec})` : ''}`,
+  /** The player gave up their own main event before it started: the evening ends without it. */
+  noMain: 'Le combat de la soirée n’aura pas lieu. Le public se lève.',
+  /** The real result of a player's own main event, on their device and as friends receive it (won: true, lost: false, null: a draw or an abandon). */
+  friendResult: (name: string, won: boolean | null, how: 'projection' | 'decision' | 'egalite' | 'abandon') =>
+    how === 'abandon' ? `Abandon : ${name} s’arrête là.` : won === null || how === 'egalite' ? `Match nul pour ${name}.`
+      : won ? `${name} l’emporte ${how === 'projection' ? 'par chute' : 'aux points'} ! · Le public : ${utter(['Daan na !'])}` : `${name} s’incline ${how === 'projection' ? 'par chute' : 'aux points'}.`,
+  /** Làmb 2.0, a bout avec frappe: a strike takes a wrestler's balance — he staggers, but it is not the fall that ends it. */
+  knockdown: (name: string) => `🎤 L’annonceur : ${name} vacille ! Il n’est pas tombé : le combat continue.`,
+  /** A preliminary's result, short. */
+  prelimResult: (winner: string | null, how: 'projection' | 'decision' | 'egalite' | 'abandon') =>
+    winner === null || how === 'egalite' || how === 'abandon' ? 'Préliminaires : match nul.' : `Préliminaires : ${winner} l’emporte ${how === 'projection' ? 'par chute' : 'aux points'}.`,
   /** The end of the evening. */
   over: 'Le gala est fini : le public rentre, la rue se vide.',
+};
+
+/** The « gardien de motos » by the arena's gate (src/arena/arrival.ts): French narration, his Wolof with its gloss. */
+export const MOTO_GUARD = {
+  /** The player gets off in his parking: his greeting, and the price before anything is paid. */
+  hello: (fee: number) => `${exchange(['Le gardien', ['Na nga def ?']])} · Parking motos : ${price(fee)} la soirée, payés une fois.`,
+  /** Paid: « 100 F, jërëjëf ! » and he puts the moto in the place he keeps by him. */
+  paid: (fee: number) => `${exchange(['Le gardien', [{ wo: `${price(fee)},` }, 'jërëjëf !', 'Amul solo.']])} · Il range ta moto à côté de lui.`,
+  /** Back on the same evening, already paid: he puts it in its place again. */
+  again: () => `${exchange(['Le gardien', ['Dalal ak jàmm !']])} · Ta place t’attend : il range ta moto.`,
+  /** Riding away: his goodbye. */
+  bye: () => `${exchange(['Le gardien', ['Ñibbil ak jàmm !', 'Ba beneen yoon !']])} · Il te fait signe de la main.`,
 };
 
 // ------------------------------------------------------------------ chat

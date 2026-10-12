@@ -4,7 +4,7 @@ import { Input } from './core/input';
 import { GameState } from './core/state';
 import { cityTimeAt, daylight } from './core/clock';
 import { clamp, lerp, rng } from './core/rng';
-import { loadSave, writeSave, clearSave, newSave } from './core/save';
+import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
 import { buildHub } from './world/builder';
@@ -21,23 +21,34 @@ import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
-import { preloadHumanoid, humanoidReady, Humanoid, randomLook, type Clip, type PersonLook } from './actors/humanoid';
+import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
+import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById } from './social/cast';
 import { NpcLife } from './social/npcLife';
 import { Relations, PLAYER } from './social/relations';
-import { BEATS, availableBeat, suggestion, applyChoice, type Beat } from './social/beats';
+import { BEATS, availableBeat, suggestion, suggestionHere, applyChoice, settleWelcome, welcomeByTalk, type Beat } from './social/beats';
+import { goalNow, hudDue, hudSpace, needGoal } from './game/goalLine';
+import { Pacer, hiddenEvery } from './game/pace';
+import { arenaFighter } from './arena/fighter';
+import { currentHome } from './economy/assets';
+import { homeSpec } from './economy/catalog';
 import { LambScene, SCENE_LABEL, type SceneKind } from './lamb/scenes';
 import { LambDuel } from './lamb/duel';
-import { PARTNER, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type StyleId } from './lamb/rules';
+import { ATTRS, fighterAttributes, type Counters } from './career/career';
+import { drillOfAction } from './lamb/drills';
+import { FRIENDLY_MORE, STYLE_MAP, rosterOpponent } from './lamb/opponents';
+import { lamb2On } from './lamb/flag';
+import { PARTNER, RULES, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type Discipline, type StyleId } from './lamb/rules';
 import { phoneHooks } from './ui/phoneHooks';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
 import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
+import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
 import { Phone } from './ui/phone';
 import { ChatUi } from './multiplayer/chat';
-import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip } from './multiplayer/protocol';
+import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { pickupFrags } from './economy/jobs';
 import { Interactions } from './interact/system';
@@ -51,7 +62,10 @@ import { actionVerb } from './interact/legacy';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
-import { eveningLine } from './arena/eveningCall';
+import { arenaShow } from './arena/module';
+import { eveningLine, placeClock } from './arena/eveningCall';
+import { GALA_DONE_COUNTER } from './arena/program';
+import { weatherNow } from './city/weather';
 import { GesturePlayer } from './ui/gesture';
 import { Stride } from './game/stride';
 import { StrideUi } from './ui/stride';
@@ -80,9 +94,10 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 type Quality = 'low' | 'medium' | 'high';
 let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarrek.quality'); if (q === 'low' || q === 'medium' || q === 'high') return q; } catch { /* */ } return /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'medium' : 'high'; })();
 const QUAL = {
-  low: { pr: 1, shadow: 0, crowd: 8, traffic: 3 },
-  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 5 },
-  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 7 },
+  // traffic: the most cars on the road at rush hour (src/social/ambientLife.ts thins them by hour, the weather by rain)
+  low: { pr: 1, shadow: 0, crowd: 8, traffic: 4 },
+  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 7 },
+  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 10 },
 };
 
 const scene = new THREE.Scene();
@@ -115,7 +130,9 @@ const isNewGame = !saved;
 const state = new GameState(saved ?? newSave());
 const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
+remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
 const rel = new Relations(state.data);
+settleWelcome(rel, state);                                   // a save whose player already talked with Ibou: his welcome is done
 const follow = new FollowCamera(camera);
 const player = new Character(PLAYER_OUTFIT);
 scene.add(player.group);
@@ -161,7 +178,9 @@ presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.c
 const economy = new Economy({ state, hud, scene, menu: () => { mode = 'menu'; }, save: () => !!world && saveNow(), walkTo: id => setDestination(id) });
 /** The one walking marker of the city (see openPlaces): a place of the current hub, or nothing. */
 function setDestination(id: string | null) { destination = id && world ? { id, hub: world.id } : null; }
-function presenceSpace() { return lambScene ? 'scene' : modulePresence() ?? moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
+/** A bout at the arena (the duel in its ring): the others in the street still see the player there, in the ring. */
+const arenaDuel = () => lambScene instanceof LambDuel && lambScene.mode !== 'entrainement';
+function presenceSpace() { return lambScene ? (arenaDuel() ? 'street' : 'scene') : modulePresence() ?? moduleSpace() ?? (inside ? inside.door.id.includes(':home:') ? 'home' : inside.door.id : 'street'); }
 /** A module's presence space when it differs from its interaction space (one's own motorbike: still in the street). */
 function modulePresence(): string | null { if (!ctxReady) return null; for (const m of MODULES) { const s = m.presenceSpace?.(ctx); if (s) return s; } return null; }
 /** A module's own space the player is in (a vehicle while riding: src/transport), or null. */
@@ -177,16 +196,17 @@ function updateLighting(hour: number) {
   const isNight = hour < 6 || hour >= 19;
   sunDir.set(Math.cos(a) * 0.85, Math.sin(a) * 0.95, 0.42).normalize();
   sky.update(hour, sunDir, isNight ? 0 : 1, camera.position);
+  sky.overcast(weatherNow.cloud, isNight);                               // the day's weather (src/city/weather.ts)
   (scene.background as THREE.Color).copy(sky.horizon); (scene.fog as THREE.Fog).color.copy(sky.horizon);
-  (scene.fog as THREE.Fog).near = isNight ? 40 : 60; (scene.fog as THREE.Fog).far = isNight ? 240 : 320;
+  (scene.fog as THREE.Fog).near = (isNight ? 40 : 60) * (1 - 0.5 * weatherNow.rain); (scene.fog as THREE.Fog).far = (isNight ? 240 : 320) * (1 - 0.45 * weatherNow.rain);
   // Moonlight at night: cool, from high up, so streets still read.
   const ld = isNight ? new THREE.Vector3(-0.35, 0.85, 0.3).normalize() : new THREE.Vector3(sunDir.x, Math.max(0.22, sunDir.y), sunDir.z).normalize();
   sun.position.copy(pos).addScaledVector(ld, 90); sun.target.position.copy(pos);
-  sun.intensity = isNight ? 0.55 : 0.8 + 1.5 * d;
+  sun.intensity = (isNight ? 0.55 : 0.8 + 1.5 * d) * (1 - 0.72 * weatherNow.cloud);
   sun.color.set(isNight ? 0x9fb4ff : 0xfff1dc).lerp(new THREE.Color(0xffa45c), isNight ? 0 : low * 0.85);
   hemi.intensity = isNight ? 0.75 : 0.7 + 0.35 * d;
-  hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55));
-  hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52);
+  hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55 - 0.25 * weatherNow.cloud));
+  hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52).multiplyScalar(1 - 0.35 * weatherNow.wet);
   renderer.toneMappingExposure = isNight ? 1.3 : 1.0;
   if (inside) {
     // indoors: the sun only comes through the shutters; the ceiling light does the work
@@ -207,6 +227,7 @@ const rand = rng(Date.now() & 0xffff);
 
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   activities.cancel(); standUp(true);
+  pacer.reset();
   for (const a of apprentices) a.dispose();          // detach them before the hub geometry is freed
   apprentices = [];
   ambient?.dispose(); ambient = null;
@@ -214,6 +235,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   setGrainEnabled(quality !== 'low');                     // procedural surface noise is the main per-pixel cost
   extra.clear();
   world = buildHub(id, quality === 'low', quality);
+  economy.decorateHub(world, quality);                   // before the placed people: the quincaillerie's keeper is one of them
   scene.add(world.group);
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
   extra.add(crowd.group, traffic.group);
@@ -223,7 +245,6 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   life?.dispose(); life = world.monument ? new MonumentLife(world.monument, rand, QUAL[quality].crowd) : null;
   if (life) extra.add(life.group);
   npcLife.load(world, extra);                            // recurring cast on their daily routines
-  economy.decorateHub(world);
   interiors = new Map(); inside = null; follow.indoor = false; scene.remove(roomLight);
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
   let n = 0;
@@ -237,8 +258,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   registerSeats();
   places.clear(); people.clear();
   for (const m of MODULES) m.hubLoaded?.(ctx, world);
-  const requested = at ?? world.spawn, bounds = world.bounds;
-  const p = requested.x >= bounds.x0 && requested.x <= bounds.x1 && requested.z >= bounds.z0 && requested.z <= bounds.z1 ? requested : world.spawn;
+  const p = resumeSpot(at, world.bounds, world.spawn);                  // a spot outside this hub (an old save, a bad teleport): its spawn
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
   follow.snapBehind(facing);
   state.place(id, p.x, p.z, p.yaw);
@@ -266,6 +286,8 @@ function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, nu
 const interactions = new Interactions();
 const seats = new Seats();
 let seated: Seat | null = null;
+/** Seconds left standing up on a place in the stands, arms up (« Encourager »), before sitting back down. */
+let cheerT = 0;
 /** Space key shared by seats, targets and presence: 'street', 'home' (own room) or the interior's door id. */
 const spaceOf = (door: Interactable) => door.id.includes(':home:') ? 'home' : door.id;
 const interactSpace = () => moduleSpace() ?? (inside ? spaceOf(inside.door) : 'street');
@@ -281,7 +303,8 @@ interactions.add(new LegacySource({
 interactions.add(seats);
 interactions.add({ name: 'self', collect(space, x, z, out) {           // while seated: « Se lever » (not on a locked seat)
   if (!seated || seated.locked) return;
-  out.push({ id: 'self', name: 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() }] });
+  out.push({ id: 'self', name: 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() },
+    ...(seated?.kind === 'stand' ? [{ id: 'cheer', verb: 'dance' as const, label: 'Encourager', icon: '🙌', detail: 'Debout un instant, les bras en l’air', run: () => { cheer(); } }] : [])] });
 } });
 seats.onSit = s => sitOn(s);
 
@@ -322,7 +345,9 @@ const ctx: GameCtx = {
     pos, facing: () => facing, body: () => playerBody, seated: () => seated,
     sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace),
     place(x, z, yaw) { pos.set(x, 0.1 + (inside || !world ? 0 : world.heightAt(x, z)), z); facing = yaw; follow.snapBehind(yaw); },
+    cheer: s => cheer(s),
   },
+  peers: () => [...presence.peers.values()],
   mode: () => mode,
   setMode(m) { mode = m; input.enabled = m === 'play'; if (m !== 'play') input.reset(); },
   menu(title, subtitle, items, extraHtml) { mode = 'menu'; input.enabled = false; hud.openMenu(title, subtitle, items, extraHtml); },
@@ -343,7 +368,19 @@ const ctx: GameCtx = {
   enter(doorId) { const it = world?.interactables.find(i => i.id === doorId); if (it) enterInterior(it); },
   exit: () => exitInterior(),
   walkTo: id => setDestination(id),
-  startBout(m, style, after) { if (lambScene || !world?.arena) return false; startDuel(m, style as StyleId | undefined, after); return !!lambScene; },
+  setPublicRecord: rec => presence.setRecord(rec),
+  // the fighter's evening (src/arena/fighter.ts) plays avec frappe when Làmb 2.0 is on (?lamb2); otherwise as before
+  startBout(m, style, after) { if (lambScene || !world?.arena) return false; startDuel(m, style as StyleId | undefined, after, LAMB2 ? 'avec_frappe' : 'sans_frappe'); return !!lambScene; },
+  travel(dest, at, label) {
+    if (!world) return;
+    mode = 'busy'; input.enabled = false; input.reset();
+    hud.fade(true, label ?? HUB_NAMES[dest]);
+    setTimeout(() => {
+      loadHub(dest, at);
+      hud.fade(false);
+      mode = 'play'; input.enabled = true; saveNow();
+    }, 700);
+  },
 };
 ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
@@ -353,15 +390,22 @@ function actionSpec(a: Action): ActivitySpec {
 
 function sitOn(seat: Seat, force = false) {
   if ((!force && mode !== 'play') || seated || !seats.occupy(seat.id, 'player')) return;
-  seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0;
+  seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0; cheerT = 0;
   pos.set(seat.x, sitOriginY(seat) + (inside ? 0 : 0), seat.z); facing = seat.yaw;
   if (playerBody) playerBody.hold = seatClip(seat);
+}
+/** On a place in the stands: up on the tier for a moment, arms up (others see Celebrate), then back on the seat. */
+function cheer(seconds = 2.5) {
+  if (!seated || seated.kind !== 'stand' || mode !== 'play') return false;
+  cheerT = Math.max(0.5, Math.min(6, seconds));
+  if (ctxReady) for (const m of MODULES) m.cheered?.(ctx);           // the neighbours in one's own écurie's section answer (src/arena/supporters.ts)
+  return true;
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
 function standUp(inPlace = false) {
   if (!seated) return;
-  const s = seated; seats.release(s.id, 'player'); seated = null;
-  if (playerBody && playerBody.hold === seatClip(s)) playerBody.hold = null;
+  const s = seated, cheering = cheerT > 0; seats.release(s.id, 'player'); seated = null; cheerT = 0;
+  if (playerBody && (playerBody.hold === seatClip(s) || (cheering && playerBody.hold === 'Celebrate'))) playerBody.hold = null;
   if (inPlace || !world) return;
   // the first free spot: in front of a chair; out of a bed by a side (or past its foot), never inside furniture or a wall
   const cols = inside ? inside.int.colliders : world.colliders, r = inside ? 0.3 : 0.5;
@@ -403,10 +447,10 @@ function openMore() {
 let nearest: Interactable | null = null;
 function findNearest() {
   nearest = null; if (!world) return;
-  let best = 1e9;
+  let best = 1e9;                                              // (squares: this runs every frame over all the hub's places)
   for (const it of inside ? inside.int.interactables : world.interactables) {
-    const d = Math.hypot(it.x - pos.x, it.z - pos.z);
-    if (d <= it.radius && d < best) { best = d; nearest = it; }
+    const dx = it.x - pos.x, dz = it.z - pos.z, d = dx * dx + dz * dz;
+    if (d <= it.radius * it.radius && d < best) { best = d; nearest = it; }
   }
 }
 
@@ -459,13 +503,14 @@ function runSpecial(a: Action) {
     case 'watch': startScene('watch', () => { if (a.needs) state.adjust(a.needs); }); break;
     case 'combat': openFriendly(); break;
     case 'combat_classe': openRanked(); break;
-    case 'combat_entrainement': startDuel('entrainement'); break;
+    // with ?lamb2, Coach Ablaye's session is the guided lesson avec frappe (src/lamb/lesson.ts); otherwise as before
+    case 'combat_entrainement': startDuel('entrainement', undefined, undefined, LAMB2 ? 'avec_frappe' : 'sans_frappe'); break;
     case 'outfit': openOutfit(); break;
     case 'emote': openEmotes(); break;
     case 'enter': if (nearest) enterInterior(nearest); break;
     case 'exit': exitInterior(); break;
     case 'jobs': economy.openJobs(nearest ?? undefined); break;
-    case 'shop': economy.openShop(); break;
+    case 'shop': economy.openShop(false, nearest?.name ?? ''); break;
     case 'business': economy.openBusiness(); break;
   }
 }
@@ -525,26 +570,58 @@ function startScene(kind: SceneKind, onDone?: () => void) {
 }
 
 // ------------------------------------------------------------------ làmb bouts (provisional rules, no strikes; see src/lamb/rules.ts)
+/**
+ * Làmb 2.0 (« lutte avec frappe », src/lamb/stand.ts) is built step by step behind this flag: `?lamb2` in the address,
+ * or `localStorage['dakarrek.lamb2'] = '1'`. Without it the arena offers the sans-frappe bouts only, as before.
+ */
+const LAMB2 = lamb2On();
+// with ?lamb2 the arena's and the écurie's bouts say which làmb they are
+if (LAMB2) for (const a of [...ACTIONS.arena, ...ACTIONS.ecurie]) {
+  if (a.id === 'combat') a.detail = 'Sans frappe ou avec frappe · choisis ton adversaire';
+  else if (a.id === 'combat_classe') a.detail = 'Lutte avec frappe · adversaire selon ton classement';
+  else if (a.id === 'combat_entrainement') a.detail = 'Leçon de la lutte avec frappe : frappes, garde, empoignade, projection · non classé';
+}
 /** Friendly bout: the player picks the opponent's style; the level follows the friendly record. */
 function openFriendly() {
   mode = 'menu';
   const r = record(state.data.counters, 'amical'), level = opponentLevel(r.v, r.d);
-  hud.openMenu('Combat amical', `Non classé · niveau ${level} · ${RULES_STATUS}`, STYLE_IDS.map(id => {
+  const items = STYLE_IDS.map(id => {
     const st = STYLES[id];
     return { label: `${st.name} · ${st.label} · niveau ${level}`, detail: st.hint, onPick: () => startDuel('amical', id) };
-  }), `<div class="draft">Lutte sans frappe. Adversaires fictifs. La tenue, les danses et les accessoires n’ont aucun effet sur le combat ; l’argent non plus.</div>`);
+  });
+  if (LAMB2) for (const id of STYLE_IDS) {
+    const st = STYLES[id];
+    items.push({ label: `Avec frappe · ${st.name} · ${st.label}`, detail: 'Làmb 2.0, en construction : frappes, équilibre, empoignade. Bilan à part.', onPick: () => startDuel('amical', id, undefined, 'avec_frappe') });
+  }
+  // avec frappe, the three other styles of the six each have their wrestler (src/lamb/opponents.ts)
+  if (LAMB2) for (const f of FRIENDLY_MORE) {
+    const o = rosterOpponent(f.name, ctx.day());
+    if (!o) continue;
+    const word = STYLE_MAP[o.style].word;
+    items.push({ label: `Avec frappe · ${o.wrestler.name} · ${word[0].toUpperCase()}${word.slice(1)}`, detail: `${f.hint} Bilan à part.`, onPick: () => startDuel('amical', o.wrestler.style, undefined, 'avec_frappe', o.wrestler.name) });
+  }
+  hud.openMenu('Combat amical', `Non classé · niveau ${level} · ${RULES_STATUS}`, items,
+    `<div class="draft">${LAMB2 ? 'Lutte sans frappe, ou avec frappe (essai)' : 'Lutte sans frappe'}. Adversaires fictifs. La tenue, les danses et les accessoires n’ont aucun effet sur le combat ; l’argent non plus.</div>`);
 }
-/** Ranked bout: the opponent is assigned by the ranked record (style rotation, level from wins and defeats). */
+/** The opponent a module (the career's roster) names for a bout of this mode, if any. */
+function opponentPick(m: 'amical' | 'classe') { for (const x of MODULES) { const p = x.opponent?.(ctx, m); if (p) return p; } return null; }
+/** Ranked bout: the career's roster names the opponent (else the ranked record's style rotation and level). */
 function openRanked() {
   mode = 'menu';
-  const r = record(state.data.counters, 'classe'), level = opponentLevel(r.v, r.d), st = STYLES[rankedStyle(r.v + r.d + r.n)];
+  // with ?lamb2 the ranked bout is avec frappe: the same career ladder (points, purse), its own record (lamb_af_classe_*)
+  const discipline: Discipline = LAMB2 ? 'avec_frappe' : 'sans_frappe';
+  const r = record(state.data.counters, 'classe', discipline), pick = opponentPick('classe');
+  const st = STYLES[(pick?.style as StyleId | undefined) ?? rankedStyle(r.v + r.d + r.n)] ?? STYLES.costaud, level = pick?.level ?? opponentLevel(r.v, r.d);
+  // avec frappe the opponent fights as himself (his style of the six, his level): the menu says who he is
+  const who = LAMB2 ? rosterOpponent(pick?.name ?? st.name, ctx.day()) : null, word = who ? STYLE_MAP[who.style].word : '';
+  const label = who ? `Affronter ${who.wrestler.name} · ${word[0].toUpperCase()}${word.slice(1)} · niveau ${who.level}` : `Affronter ${pick?.name ?? st.name} · ${st.label} · niveau ${level}`;
   hud.openMenu('Combat classé', `Classement local (cet appareil) · ${r.v} V · ${r.d} D · ${r.n} N`, [
-    { label: `Affronter ${st.name} · ${st.label} · niveau ${level}`, detail: st.hint, onPick: () => startDuel('classe', st.id) },
-  ], `<div class="draft">Lutte sans frappe · ${RULES_STATUS}. Un abandon est compté à part : ce n’est ni une victoire ni une défaite.</div>`);
+    { label, detail: st.hint, onPick: () => startDuel('classe', st.id, undefined, discipline) },
+  ], `<div class="draft">${RULES[discipline].label} · ${RULES_STATUS}. Un abandon est compté à part : ce n’est ni une victoire ni une défaite.</div>`);
 }
 
 /** Controlled bout against a local opponent: guided training at the écurie, friendly or ranked at the arena. */
-function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () => void) {
+function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () => void, discipline: Discipline = 'sans_frappe', named?: string) {
   if (lambScene) return;                                                       // one bout or scene at a time
   const at = boutMode === 'entrainement' ? world?.ecurie : world?.arena;
   if (!at) { hud.toast(boutMode === 'entrainement' ? 'L’entraînement a lieu à l’écurie de Pikine' : 'Les combats ont lieu à l’arène de Pikine'); mode = 'play'; return; }
@@ -552,30 +629,84 @@ function startDuel(boutMode: BoutMode = 'amical', styleId?: StyleId, after?: () 
   hud.closeModal();
   mode = 'scene';
   const rec = boutMode === 'entrainement' ? null : record(state.data.counters, boutMode);
-  const style = boutMode === 'entrainement' ? PARTNER : STYLES[styleId ?? (boutMode === 'classe' ? rankedStyle(rec!.v + rec!.d + rec!.n) : 'costaud')];
+  let style = boutMode === 'entrainement' ? PARTNER : STYLES[styleId ?? (boutMode === 'classe' ? rankedStyle(rec!.v + rec!.d + rec!.n) : 'costaud')];
   const crowd = boutMode === 'entrainement' ? 0 : quality === 'low' ? 12 : quality === 'medium' ? 18 : 24;
-  const level = rec ? opponentLevel(rec.v, rec.d) : 1;
-  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level, ring: boutMode === 'entrainement' ? 5 : 7.6 });
+  let level = rec ? opponentLevel(rec.v, rec.d) : 1;
+  // the career's roster names the opponent (a wrestler of the city's ladder, with their style and level)
+  const pick = boutMode === 'entrainement' ? null : opponentPick(boutMode);
+  if (pick) { style = { ...(STYLES[pick.style as StyleId] ?? style), name: pick.name }; level = pick.level; }
+  else if (named) style = { ...style, name: named };                          // a friendly avec frappe against a named wrestler
+  // avec frappe, the player's attributes come from what he trained (src/career, data only); they shape numbers by ±20 % at most
+  const attrs = discipline === 'avec_frappe' ? fighterAttributes(state.data.counters) : undefined;
+  // avec frappe, a wrestler of the city's roster fights as himself: his style, his level, his season record (src/lamb/opponents.ts)
+  const who = discipline === 'avec_frappe' && boutMode !== 'entrainement' ? rosterOpponent(style.name, ctx.day(), (state.data as { career?: Parameters<typeof rosterOpponent>[2] }).career) : null;
+  if (who) { style = { ...(STYLES[who.wrestler.style as StyleId] ?? style), name: who.wrestler.name }; level = who.level; }
+  const opponent = who ? { attrs: who.attrs, stand: who.stand, clinch: who.clinch, line: who.line } : undefined;
+  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: crowd, mode: boutMode, style, level, ring: boutMode === 'entrainement' ? 5 : 7.6, discipline, attrs, opponent });
   duel.onDone = () => {
     // only a finished bout counts; a bout cut short without a result (e.g. leaving the hub) records nothing
     const r = duel.result; if (!r) return;
     state.adjust(r.rewards.needs);
-    for (const [k, v] of Object.entries(recordIncrements(r))) state.count(k, v);
+    // each discipline keeps its own record (avec frappe: `lamb_af_*`); the global combats/victoires count both
+    for (const [k, v] of Object.entries(recordIncrements(r, discipline))) state.count(k, v);
     if (r.rewards.coach) rel.change(PLAYER, 'ablaye', r.rewards.coach);
     const n = state.data.counters;
     // the career (src/career) keeps the record, pays the purse and moves the rank: its lines join the result toast
-    const notes = MODULES.flatMap(m => m.lamb?.(ctx, { kind: 'bout', mode: r.mode, outcome: r.outcome, winner: r.winner, opponent: { name: style.name, style: style.id, label: style.label }, level }) ?? []);
+    const notes = MODULES.flatMap(m => m.lamb?.(ctx, { kind: 'bout', mode: r.mode, outcome: r.outcome, winner: r.winner, opponent: { name: style.name, style: style.id, label: style.label }, level, discipline }) ?? []);
+    if (discipline === 'avec_frappe') notes.unshift('Lutte avec frappe');
     hud.toast([r.mode === 'entrainement' ? (r.outcome === 'abandon' ? 'Entraînement interrompu' : `Entraînement terminé ✓  Compétence ${n.lamb_skill ?? 0}`)
       : r.outcome === 'abandon' ? 'Abandon enregistré (à part des défaites)'
       : r.winner === 'player' ? `Victoire ! (${n.victoires ?? 0} au total)` : r.winner === 'opponent' ? 'Défaite. Coach Ablaye : « On retourne à l’entraînement. »' : 'Match nul', ...notes].join('  '));
   };
   if (after) { const recorded = duel.onDone; duel.onDone = () => { recorded?.(); after(); }; }   // a module's next step (ctx.startBout)
+  // avec frappe: the bout's moments go to the modules as they happen (the arena's stands react to the fall and the result)
+  duel.onMoment = (m, w, o) => { for (const mod of MODULES) mod.lamb?.(ctx, { kind: 'moment', moment: m, winner: w, outcome: duel.outcome ?? 'decision', strike: o?.kind, opponent: style.name }); };
   lambScene = duel;
   extra.add(duel.group);
   npcLife.setVisible(false);
-  hud.setScene(boutMode === 'entrainement' ? 'Entraînement · combat' : 'Combat · làmb', `Lutte sans frappe · ${RULES_STATUS}`);
+  hud.setScene(boutMode === 'entrainement' ? 'Entraînement · combat' : 'Combat · làmb', `${RULES[discipline].label} · ${RULES_STATUS}`);
 }
 phoneHooks.arenaProfile = () => arenaProfileRows(state.data.counters, state.data.flags.includes('ecurie_baobab') ? 'Baobab (fictive)' : null);
+
+/** « Frappe 34 → 36 » for each fighter attribute (src/career/career.ts) that differs between two sets of counters. */
+const attrMoves = (from: Counters, to: Counters) => {
+  const a = fighterAttributes(from), b = fighterAttributes(to);
+  return ATTRS.filter(x => a[x.id] !== b[x.id]).map(x => `${x.label} ${a[x.id]} → ${b[x.id]}`);
+};
+/**
+ * An écurie drill, played (?lamb2): Coach Ablaye calls it, Babacar is the partner (src/lamb/drills.ts). A finished drill
+ * counts exactly as the timed drill does — its needs, its counter (the career's fighter attributes read it), the
+ * activity — whatever the score; an abandoned one counts nothing. The recap and the toast say the real attribute change.
+ */
+function startDrill(a: Action, npc?: string, it?: Interactable) {
+  if (lambScene) return;
+  const id = drillOfAction(a.id), at = world?.ecurie;
+  if (!id) return;
+  if (!at) { hud.toast('Les exercices ont lieu à l’écurie de Pikine'); mode = 'play'; return; }
+  hideProxy(); emoteT = 0; previewT = 0;
+  hud.closeModal();
+  mode = 'scene';
+  const c = state.data.counters, key = a.counter;
+  const notes = key ? attrMoves(c, { ...c, [key]: (c[key] ?? 0) + 1 }) : [];
+  const duel = new LambDuel({ origin: { x: at.cx, z: at.cz }, look: state.data.wrestler, input, crowdSize: 0, mode: 'entrainement', style: PARTNER, level: 1, ring: 5,
+    discipline: 'avec_frappe', attrs: fighterAttributes(c), drill: id, drillNotes: notes.length ? notes : ['Tes attributs ne bougent plus guère avec cet exercice'] });
+  duel.onDone = () => {
+    const r = duel.drillResult();
+    if (!r || r.outcome === 'abandon') { hud.toast('Exercice interrompu : rien n’est compté'); return; }
+    const before = { ...state.data.counters };
+    economy.work(a, it);                                    // records the activity, as the timed drill does
+    if (a.needs) state.adjust(a.needs);
+    if (a.counter) state.count(a.counter);
+    if (npc) rel.change(PLAYER, npc, 1);
+    state.count('actions');
+    npcLife.afterAction(a, it ?? null);
+    hud.toast([`${a.label} ✓ ${r.score}/${r.of}`, ...attrMoves(before, state.data.counters)].join('  '));
+  };
+  lambScene = duel;
+  extra.add(duel.group);
+  npcLife.setVisible(false);
+  hud.setScene(`Entraînement · ${a.label}`, `${RULES.avec_frappe.label} · ${RULES_STATUS}`);
+}
 
 /** Leave a làmb scene early (« Arrêter », Escape, the menu key): no reward, controls back. */
 function stopScene() {
@@ -646,12 +777,19 @@ function openJournal() { hud.closeModal(); phone.open('carnet'); }
 /** A plain timed action in progress (content without steps): « Arrêter », Escape or the menu key stop it, without effects. */
 let legacyRun: { label: string; stop(): void } | null = null;
 
+/** Talking to Tonton Ibou in any way closes his welcome (« Parle à Tonton Ibou »): done once, gone for good. */
+function welcomed(npc?: string) {
+  const reply = welcomeByTalk(npc, rel, state);
+  if (reply) { hud.moment({ icon: '💬', title: 'Tonton Ibou', lines: [reply] }); saveNow(); }
+}
 function runAction(a: Action, npc?: string, it?: Interactable) {
+  // with ?lamb2 the écurie drills (src/career DRILLS) are played with the avec-frappe controls (src/lamb/drills.ts)
+  if (LAMB2 && drillOfAction(a.id)) { startDrill(a, npc, it); return; }
   const where = it?.name;
   if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
     activities.onEnd = (_s, done) => {                    // once: later activities (places, venues) must not replay this action's hooks
       activities.onEnd = () => {};
-      if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); }   // counters belong to the steps
+      if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); welcomed(npc); }   // counters belong to the steps
     };
     activities.start(actionSpec(a), { place: where });
     return;
@@ -677,6 +815,7 @@ function runAction(a: Action, npc?: string, it?: Interactable) {
     if (npc) rel.change(PLAYER, npc, 1);
     state.count('actions');
     npcLife.afterAction(a, it ?? null);
+    welcomed(npc);
     const bits = [a.label + ' ✓'];
     if (gain) bits.push('+' + fcfa(gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
     hud.toast(bits.join('  '));
@@ -724,8 +863,32 @@ function openPlaces() {
 }
 phoneHooks.openPlaces = openPlaces;
 
-/** Person of the suggested story beat, or « first delivery » (refreshed with the HUD, 4 times a second). */
+/** Person of the suggested story beat, or « first delivery » (refreshed with the HUD: src/game/goalLine.ts hudDue). */
 let guideNpc: string | null = null, guideJob = false;
+/** HUD refreshes so far (src/game/goalLine.ts hudDue; the checks wait on it rather than on a fixed delay). */
+let hudTicks = 0;
+/** Where a critical need is met here (src/game/goalLine.ts needGoal), while it leads the goal line. */
+let needTarget: { name: string; x: number; z: number } | null = null;
+/**
+ * The goal line here and now (src/game/goalLine.ts goalNow): the walking marker, the fighter’s evening, a critical
+ * need, tonight's gala, then the lead about this hub at this hour (src/social/beats.ts suggestionHere). Tonton Ibou's
+ * welcome is such a lead only in Pikine, by day, in the first moments of a new game (never over tonight's gala);
+ * otherwise it waits in the Carnet.
+ */
+function goalLine(hour: number): string | null {
+  if (!world) return null;
+  const here = suggestionHere(rel, state, world.id, hour, id => !!npcLife.where(id)?.here);
+  const ev = eveningLine(ctx, false), fighter = arenaFighter.pending();   // tonight's gala before any lead, the welcome too
+  const homeDoor = homeSpec(currentHome(state).spec)?.home.door ?? null;
+  const home = !inside && homeDoor ? world.interactables.find(i => i.id === homeDoor) ?? null : null;
+  const need = fighter ? null : needGoal({ needs: state.data.needs, wallet: state.wallet, here: pos, spots: inside ? inside.int.interactables : world.interactables, home });
+  const g = goalNow({ walking: walkingHint(), fighter, evening: ev, need, here, bearing: withBearing });
+  eveningTarget = g && (g.kind === 'fighter' || g.kind === 'evening') ? g.target : null;
+  needTarget = g?.kind === 'need' ? g.target : null;
+  guideNpc = g?.npc ?? null;
+  guideJob = !!g?.job;
+  return g?.text ?? null;
+}
 /** Tonight's arena (or what to do after the bout): the goal line's target while it leads (src/arena/eveningCall.ts). */
 let eveningTarget: { name: string; x: number; z: number } | null = null;
 /** Way-finding: the walking destination, else the suggested person (or the nearest Tiak Tiak pick-up for the first job) in this hub. */
@@ -733,6 +896,7 @@ function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
   if (destination?.hub === world.id) { const it = world.interactables.find(i => i.id === destination!.id); if (it) return { name: it.name, x: it.x, z: it.z }; }
   if (eveningTarget) return eveningTarget;
+  if (needTarget) return needTarget;
   if (guideJob) {
     const w = world, here = inside ? inside.door : pos;
     const ends = pickupFrags(w.id).map(f => w.interactables.find(i => i.id.startsWith(w.id + ':') && i.id.includes(f))).filter((i): i is Interactable => !!i);
@@ -804,7 +968,8 @@ hud.onAction = () => {
   if (activities.running) { activities.cancel('Arrêté'); return; }
   if (legacyRun) { legacyRun.stop(); return; }
   if (mode !== 'play') return;
-  const a = interactions.primary();
+  // right after a sheet closed the frame may not have picked the focus again yet: pick it now (src/interact/system.ts current)
+  const a = interactions.primary(lambScene ? null : interactions.current(interactSpace(), pos.x, pos.z, facing));
   if (a && !a.disabled) a.run(); else if (a?.disabled) hud.deny(a.disabled);
 };
 hud.onMore = () => openMore();
@@ -838,18 +1003,35 @@ function progressMeta() {
 }
 
 // ------------------------------------------------------------------ main loop
-let last = performance.now(), statsT = 0;
+let last = performance.now(), hudAt = -Infinity, hudKey = '';
+/**
+ * Debug profiler (?debug: `__dakar.perfOn(true)`, then `__dakar.perf()`): milliseconds per system and per module of the
+ * frame loop, smoothed, for the evening performance budget (scripts/check-perf-evening.mjs). Off: one boolean test.
+ */
+let profOn = false;
+/** What the street's systems are owed while the arena's walls hide them (src/game/pace.ts). */
+const pacer = new Pacer();
+const prof = new Map<string, number>();
+const profMark = (name: string, t0: number) => { const v = performance.now() - t0; const o = prof.get(name); prof.set(name, o === undefined ? v : o * 0.92 + v * 0.08); };
+/** ?debug: the game paused, advanced frame by frame by `__dakar.step` (scripts/check-gait.mjs). */
+let stepping = false;
 function frame(now: number) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  if (!stepping) frameStep(now, dt);
+}
+function frameStep(now: number, dt: number, draw = true) {
   if (document.hidden || !world) return;
+  const tFrame = profOn ? performance.now() : 0;
+  setHumanoidView(camera);                                 // far, unseen and hidden bodies get less animation work (ANIM_LOD)
 
   if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (legacyRun) legacyRun.stop(); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
-  if (input.takeAction() && ((mode === 'play' && interactions.focus) || activities.running || legacyRun)) hud.onAction();
+  if (input.takeAction() && (mode === 'play' || activities.running || legacyRun)) hud.onAction();   // the focus: picked by onAction if no frame has yet
   activities.update(dt);
   { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
-  for (const m of MODULES) m.update?.(ctx, dt);
+  if (profOn) for (const m of MODULES) { const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }
+  else for (const m of MODULES) m.update?.(ctx, dt);
 
   const drag = input.takeDrag();
   drag.yaw += input.rotateKey() * dt * 1.8;
@@ -863,6 +1045,7 @@ function frame(now: number) {
     const m = input.move();
     speed = 0;
     if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp();      // moving the stick stands up (not in a moving vehicle)
+    else if (cheerT > 0) { cheerT -= dt; pos.set(seated.x, seated.top + 0.1, seated.z); facing = seated.yaw; if (playerBody) playerBody.hold = 'Celebrate'; }   // up on the tier, arms up
     else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = seatClip(seated); }
     if (mode !== 'menu') state.tick(dt * 1000);
   } else if (mode === 'play') {
@@ -893,22 +1076,36 @@ function frame(now: number) {
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
     if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
   } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
-  npcLife.update(dt, pos, freeCam?.p ?? camera.position);
-  crowd?.update(dt); traffic?.update(dt); life?.update(dt); world.tick(dt);
-  ambient?.update(dt, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90);
-  for (const a of apprentices) { const wp = a.h.group.getWorldPosition(tmpV); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
+  let tSys = profOn ? performance.now() : 0;
+  // inside the arena's walls (on the tiers) the street's cast, walkers, traffic and placed people cannot be seen: they go on
+  // at 4 Hz with the time gone by
+  const hidden = hiddenEvery(world.arena, camera.position);
+  { const run = pacer.step('cast', dt, hidden); if (run !== null) npcLife.update(run, pos, freeCam?.p ?? camera.position); }
+  if (profOn) { profMark('npcLife', tSys); tSys = performance.now(); }
+  { const run = pacer.step('walkers', dt, hidden); if (run !== null) { crowd?.update(run); traffic?.update(run); life?.update(run); } }
+  world.tick(dt);
+  if (profOn) { profMark('walkers+traffic+life+world', tSys); tSys = performance.now(); }
+  { const run = pacer.step('placed', dt, hidden); if (run !== null) ambient?.update(run, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90); }
+  if (profOn) { profMark('ambient(npc.ts)', tSys); tSys = performance.now(); }
+  // (where each apprentice was drawn last frame: no walk up the moving car's parents for a distance)
+  { const run = pacer.step('apprentices', dt, hidden); if (run !== null) for (const a of apprentices) { const wp = tmpV.setFromMatrixPosition(a.h.group.matrixWorld); a.update(run, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); } }
   for (const h of debugPeople) h.animate(dt, 0);
   const space = presenceSpace();
   // the body's own pose, also while an activity runs (asleep in bed, praying, dancing): a narrow list, anything else is Idle
   const clip = mode !== 'scene' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
-  presence.publish({ type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip }, now);
+  // the modules' optional fields (the arena show friends share: src/arena/together.ts), validated by the protocol
+  const extras: Partial<PresenceExtras> = {}; for (const m of MODULES) Object.assign(extras, m.presence?.(ctx) ?? {});
+  // fighting at the arena: where the player's wrestler stands in the ring, in a fighting stance (src/arena/myGala.ts)
+  const ring = arenaDuel() ? (lambScene as LambDuel).fighterPoints()[0] : null;
+  presence.publish(ring ? { type: 'move', x: ring[0], y: ring[1], z: ring[2], yaw: facing, speed: 0, space, clip: 'Stance', ...extras }
+    : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip, ...extras }, now);
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
   const focus = mode === 'play' && !lambScene ? interactions.update(interactSpace(), pos.x, pos.z, facing) : (interactions.focus = null);
   economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
 
-  if (!lambScene && !MODULES.some(m => m.camera?.(ctx, dt, drag))) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z));
+  if (!lambScene && !MODULES.some(m => m.camera?.(ctx, dt, drag))) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z), inside ? undefined : world.canopies);
   if (camOverride && !lambScene) {
     const a = facing + camOverride.side;
     camera.position.set(pos.x + Math.sin(a) * camOverride.dist, camOverride.h, pos.z + Math.cos(a) * camOverride.dist);
@@ -916,11 +1113,13 @@ function frame(now: number) {
   }
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
-  statsT -= dt;
-  if (statsT <= 0) { statsT = 0.25; hud.setStats(state.wallet, state.data.needs, state.mood()); const sg = suggestion(rel, state), ev = eveningLine(ctx, sg?.id === 'ibou_welcome'); eveningTarget = ev?.target ?? null; guideNpc = !ev && sg && 'npc' in sg ? sg.npc : null; guideJob = !ev && sg?.id === 'goal_tiak'; hud.setGoal(mode === 'play' ? walkingHint() ?? (ev ? withBearing(ev.text, ev.target) : null) ?? sg?.hint ?? null : null); hud.setPlace(HUB_NAMES[world.id], hourOverride === null ? ct.label : `Jour ${ct.day} · ${String(Math.floor(hour)).padStart(2, '0')}:00`, hour < 6 || hour >= 19); }
+  const hk = hudSpace(world.id, !!inside, hourOverride);
+  if (hudDue(now, hudAt, hk, hudKey)) { hudAt = now; hudKey = hk; hudTicks++; hud.setStats(state.wallet, state.data.needs, state.mood()); hud.setGoal(mode === 'play' && !arenaShow.watching() ? goalLine(hour) : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
-  renderer.render(scene, camera);
+  if (profOn) { profMark('rest of update', tSys); tSys = performance.now(); }
+  if (draw) renderer.render(scene, camera);
+  if (profOn) { profMark('render (CPU)', tSys); profMark('frame (JS)', tFrame); }
 }
 
 // ------------------------------------------------------------------ start
@@ -928,7 +1127,7 @@ resize(); applyQuality();
 async function start() {
   await Promise.all([preloadAssets(), preloadHumanoid()]);
   for (const m of MODULES) m.init?.(ctx);
-  if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); scene.add(playerBody.group); player.group.visible = false; }
+  if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false; }
   const startHub = invitedHub ?? state.data.hub;
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
@@ -940,7 +1139,7 @@ void start();
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
-    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses() }),
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
@@ -949,16 +1148,38 @@ if (DEBUG) {
     cityGeometry: () => world ? { bounds: world.bounds, colliders: world.colliders, people: world.people } : null,
     places: openPlaces,
     destination: () => destination?.id ?? null,
-    lookYaw(y: number) { follow.yaw = y; },
+    lookYaw(y: number) { follow.pin(); follow.yaw = y; },
     act() { hud.onAction(); },
     drawCalls: () => renderer.info.render.calls,
     tris: () => renderer.info.render.triangles,
+    /** Debug profiler: on/off, and the smoothed milliseconds per system and module (see the main loop). */
+    perfOn(on = true) { profOn = on; if (on) prof.clear(); },
+    perf: () => Object.fromEntries([...prof].map(([k, v]) => [k, Math.round(v * 1000) / 1000])),
+    /**
+     * Draw calls and triangles of this view, and each top-level group's share (the frame rendered again with that group
+     * hidden; shadows included). For the evening performance budget.
+     */
+    renderBreakdown() {
+      const measure = () => { renderer.render(scene, camera); return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; };
+      const base = measure(), by: Record<string, { calls: number; tris: number }> = {};
+      const groups = [...extra.children, ...scene.children.filter(c => c !== extra)];
+      for (const g of groups) {
+        if (!g.visible) continue;
+        g.visible = false; const m = measure(); g.visible = true;
+        const key = g.name || g.type, o = by[key] ?? (by[key] = { calls: 0, tris: 0 });
+        o.calls += base.calls - m.calls; o.tris += base.tris - m.tris;
+      }
+      measure();
+      return { base, by };
+    },
     nearestInteractable: () => nearest?.name ?? null,
-    focus: () => { const t = interactions.focus; return t ? { id: t.id, name: t.name, kind: t.kind, space: t.space, primary: interactions.primary(t)?.label ?? null, all: interactions.all(t).map(a => a.label) } : null; },
+    focus: () => { const t = interactions.focus; return t ? { id: t.id, name: t.name, kind: t.kind, space: t.space, primary: interactions.primary(t)?.label ?? null, all: interactions.all(t).map(a => a.label), why: interactions.all(t).filter(a => a.disabled).map(a => a.disabled) } : null; },
     seated: () => seated?.id ?? null,
     seatsHere: () => seats.inSpace(interactSpace()).map(s => ({ id: s.id, x: s.x, z: s.z, top: s.top, yaw: s.yaw, kind: s.kind, occupant: s.occupant })),
     sit(id: string) { const s = seats.get(id); if (s) sitOn(s); return seated?.id ?? null; },
     stand() { standUp(); },
+    /** « Encourager » from a place in the stands (true if the player rose to cheer). */
+    cheer(s?: number) { return cheer(s); },
     more() { openMore(); },
     clip: () => playerBody?.clipName ?? null,
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores } : null; },
@@ -973,6 +1194,7 @@ if (DEBUG) {
     travelTo: (h: HubId) => doTravel(h),
     rel, beats: () => ({ ...state.data.beats }), flags: () => [...state.data.flags],
     suggestion: () => suggestion(rel, state)?.id ?? null,
+    hudTicks: () => hudTicks,
     playBeat(id: string, choice: string) { const b = BEATS.find(x => x.id === id)!; const c = b.choices.find(x => x.id === choice)!; return applyChoice(b, c, rel, state); },
     npcWhere: (id: string) => npcLife.where(id), npcSheet: (id: string) => npcLife.sheet(id),
     npcSettle: () => npcLife.settle(), npcAudit: () => npcLife.audit(), npcSlots: (h: number) => npcLife.slotsAt(h), people: () => npcLife.openPeople(),
@@ -980,10 +1202,14 @@ if (DEBUG) {
     scene(kind: SceneKind) { const a = [...ACTIONS.arena, ...ACTIONS.ecurie].find(x => x.special === kind); if (a) runSpecial(a); else startScene(kind); },
     wrestlerReady: () => humanoidReady(),
     body: () => playerBody,
-    faceCamera() { follow.yaw = facing + Math.PI; },
+    faceCamera() { follow.pin(); follow.yaw = facing + Math.PI; },
     portrait(dist = 2.2, h = 1.5, side = 0.35) { camOverride = dist > 0 ? { dist, h, side } : null; },
     addPeople(n = 6) { if (!world) return; for (let k = 0; k < n; k++) { const h = new Humanoid(randomLookDbg()); h.group.position.set(pos.x + Math.sin(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2), 0.1, pos.z + Math.cos(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2)); h.group.rotation.y = facing + Math.PI; h.hold = k % 3 === 0 ? 'Talk' : 'Idle'; extra.add(h.group); debugPeople.push(h); } },
     sceneInfo: () => (lambScene ? { kind: lambScene.kind, t: lambScene.t } : null),
+    /** The follow camera's last frame: free room behind the player (m), tight, extra pitch, swinging, occluders near. */
+    camInfo: () => ({ ...follow.info, yaw: follow.yaw, x: camera.position.x, y: camera.position.y, z: camera.position.z }),
+    /** Whether the camera sits inside a tree's leaves now (it never should). */
+    camInLeaves: () => !!world?.canopies?.some(t => camera.position.y > t.y0 && camera.position.y < t.y1 && Math.hypot(camera.position.x - t.x, camera.position.z - t.z) < t.r),
     sceneCrowd: () => (lambScene instanceof LambScene ? lambScene.crowdSpots() : []),
     /** Distance from a to the first world surface on the segment a→b (equals the segment length when nothing is in the way). */
     sightline(a: [number, number, number], b: [number, number, number]) {
@@ -993,7 +1219,25 @@ if (DEBUG) {
       return { len, hit: hit ? hit.distance : len };
     },
     duel() { startDuel('amical', 'costaud'); },
-    duelStart(m: BoutMode = 'amical', style?: StyleId) { startDuel(m, style); },
+    duelStart(m: BoutMode = 'amical', style?: StyleId, discipline: Discipline = 'sans_frappe', name?: string) { startDuel(m, style, undefined, discipline, name); },
+    /** Checks: answer each call of the drill being played right, as it opens (see LambDuel.debugDrillAnswer). */
+    duelDrillAnswer(on = true) { if (lambScene instanceof LambDuel) lambScene.debugDrillAnswer(on); },
+    /** Checks: start an écurie drill by its action id (drill_frappe, drill_saisies, drill_force) — played with ?lamb2. */
+    drillStart(actionId: string) {
+      const it = world?.interactables.find(i => i.actions.some(a => a.id === actionId)), a = it?.actions.find(x => x.id === actionId);
+      if (it && a) { nearest = it; runAction(a, it.npc, it); }
+    },
+    duelStrike(kind: 'quick' | 'big' = 'quick') { if (lambScene instanceof LambDuel) lambScene.pressStrike(kind); },
+    duelMove(kind: 'push' | 'pull' | 'pivot') { if (lambScene instanceof LambDuel) lambScene.pressMove(kind); },
+    /** In the empoignade, the big-strike button: « Projeter », or « Contrer » while he tries a throw. */
+    duelThrow() { if (lambScene instanceof LambDuel) lambScene.pressStrike('big'); },
+    /** Coach Ablaye's lesson avec frappe: skip the current step (« Passer »). */
+    duelLessonSkip() { if (lambScene instanceof LambDuel) lambScene.skipLessonStep(); },
+    duelSet(side: 'player' | 'opponent', v: { balance?: number; composure?: number; stamina?: number; grip?: number }) { if (lambScene instanceof LambDuel) lambScene.debugSet(side, v); },
+    /** Checks only: hold the opponent, the round's clock and the referee still while a position is set up (avec frappe). */
+    duelHold(on: boolean) { if (lambScene instanceof LambDuel) lambScene.debugHold(on); },
+    /** Checks only: the seconds left in the round. */
+    duelClock(seconds: number) { if (lambScene instanceof LambDuel) lambScene.debugClock(seconds); },
     duelInfo: () => (lambScene instanceof LambDuel ? lambScene.info() : null),
     duelGrab() { if (lambScene instanceof LambDuel) lambScene.pressGrab(); },
     duelGuard(on: boolean) { if (lambScene instanceof LambDuel) lambScene.setGuard(on); },
@@ -1012,15 +1256,31 @@ if (DEBUG) {
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
     enter(kind: 'home' | 'gargote') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
     exit() { exitInterior(); },
-    look(yaw: number, pitch?: number) { follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
+    look(yaw: number, pitch?: number) { follow.pin(); follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
     place(x: number, z: number, yaw: number) { pos.set(x, 0.1 + (world?.heightAt(x, z) ?? 0), z); facing = yaw; follow.snapBehind(yaw); },
     cam(p: [number, number, number] | null, t?: [number, number, number]) { freeCam = p && t ? { p: new THREE.Vector3(...p), t: new THREE.Vector3(...t) } : null; },
+    /** Pause the game loop (true) or let it run (false); while paused, `step(dt, n)` advances it by n frames of dt seconds. */
+    pause(on: boolean) { stepping = on; },
+    step(dt = 1 / 60, n = 1) { for (let i = 0; i < n; i++) frameStep(performance.now(), dt, false); return { x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed }; },
+    /** Draw the frame again (after `cam` while paused). */
+    render() { if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); } renderer.render(scene, camera); },
+    /** The player's gait (src/actors/gait.ts) and the soles' points in the world: heel and ball of each foot. */
+    gait() {
+      const b = playerBody; if (!b) return null;
+      b.group.updateMatrixWorld(true);
+      const sole = (side: 'L' | 'R') => {
+        const f = b.group.getObjectByName(`foot${side}`); if (!f) return null;
+        const p = (v: [number, number, number]) => new THREE.Vector3(...v).applyMatrix4(f.matrixWorld).toArray().map(n => +n.toFixed(4));
+        return { heel: p([...GAIT_SOLE.heel]), ball: p([...GAIT_SOLE.ball]) };
+      };
+      return { ...b.gaitInfo(), clip: b.clipName, hold: b.hold, L: sole('L'), R: sole('R') };
+    },
     meshStats() {
       const rows: { name: string; tris: number; visible: boolean }[] = [];
       world?.group.children.forEach((o, i) => { let t = 0; o.traverse(m => { const g = (m as THREE.Mesh).geometry; if (g) t += (g.index ? g.index.count : g.attributes.position.count) / 3; }); rows.push({ name: `${i}:${o.type}:${((o as THREE.Mesh).material as THREE.Material | undefined)?.type ?? ''}`, tris: Math.round(t), visible: o.visible }); });
       return rows.sort((a, b) => b.tris - a.tris).slice(0, 12);
     },
-    lookAtPlayer(dist = 4, yawOff = Math.PI) { follow.yaw = facing + yawOff; void dist; },
+    lookAtPlayer(dist = 4, yawOff = Math.PI) { follow.pin(); follow.yaw = facing + yawOff; void dist; },
     ...economy.debug(),
   };
   for (const m of MODULES) Object.assign((window as unknown as { __dakar: Record<string, unknown> }).__dakar, m.debug?.(ctx));

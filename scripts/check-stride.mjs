@@ -49,6 +49,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   const st = await d(() => ({ wallet: window.__dakar.state.wallet, forme: window.__dakar.state.data.counters.forme ?? 0, course: window.__dakar.state.data.counters.course_m ?? 0 }));
   check(`${label}: breath comes back standing still; running cost nothing and counted the distance`, !rested.winded && st.wallet === 1234 && st.course > 20, JSON.stringify({ rested, st }));
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
+  await page.context().close();                       // this view's page stops rendering before the next one boots
 }
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));

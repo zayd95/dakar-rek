@@ -30,7 +30,15 @@ async function open(label, viewport, touch) {
 const d = (page, fn, arg) => page.evaluate(fn, arg);
 const closeModal = page => d(page, () => document.querySelector('#modal')?.classList.remove('on'));
 const modal = page => d(page, () => ({ open: document.querySelector('#modal').classList.contains('on'), title: document.querySelector('#modal h2')?.textContent ?? '', sub: document.querySelector('#modal p')?.textContent ?? '', items: [...document.querySelectorAll('#modal .item')].map(b => b.textContent) }));
-const clickItem = async (page, re) => { await page.locator('#modal .item', { hasText: re }).first().click(); await page.waitForTimeout(250); };
+/**
+ * A sheet row by its label: rows start with their icon (« <i class=ic> »), so an anchored pattern is matched against the
+ * label (`.lb`) and, for rows without one, against the whole row.
+ */
+const clickItem = async (page, re) => {
+  const row = page.locator('#modal .item');
+  await row.filter({ has: page.locator('.lb', { hasText: re }) }).or(row.filter({ hasText: re })).first().click();
+  await page.waitForTimeout(250);
+};
 /** Teleport into the NPC's hub at a given hour, with the player far away so the NPC finishes walking on its own. */
 async function goHour(page, hub, hour, id, far) {
   await d(page, ([hub, hour, far]) => { const g = window.__dakar; g.cam(null); g.setHour(hour); if (g.pos().hub !== hub) g.teleport(hub, far[0], far[1], 0); else g.place(far[0], far[1], 0); }, [hub, hour, far]);

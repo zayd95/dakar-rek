@@ -168,6 +168,9 @@ export class ActivityRunner {
   private pickSeat(p: SeatPick): Seat | null {
     const space = this.s.space(), me = this.s.player();
     if (typeof p === 'string') return p === 'near' ? (this.s.seated() ?? this.s.seats.nearestFree(space, me.x, me.z, 8)) : this.s.seats.get(p);
+    // already sitting on a seat that fits (a second drink at the same stool or table): stay there
+    const cur = this.s.seated();
+    if (cur && cur.space === space && (!p.kind || cur.kind === p.kind) && Math.hypot(cur.x - p.near.x, cur.z - p.near.z) <= (p.r ?? 6)) return cur;
     const list = this.s.seats.inSpace(space).filter(s => !s.occupant && (!p.kind || s.kind === p.kind) && Math.hypot(s.x - p.near.x, s.z - p.near.z) <= (p.r ?? 6));
     list.sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z));
     return list[0] ?? null;

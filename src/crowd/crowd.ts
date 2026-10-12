@@ -8,6 +8,8 @@ import {
   type Fidget, type Mood, type ReactState, type ReactionKind, type RigPose,
 } from './reactions';
 import { RIG_ATTRS, crowdClock, figureGeometry, flagGeometry, flagMaterial, rigMaterial, tickClock, type FigureKind, type RigAttr } from './rig';
+import { defaultLook, headShape, printCode, type CrowdLook } from './looks';
+export { defaultLook, type CrowdLook } from './looks';
 
 /**
  * A reusable crowd (docs/CROWD.md), on top of the city's crowd LOD (src/actors/crowdLod.ts):
@@ -39,8 +41,23 @@ export interface CrowdSlot {
   seated: boolean;
   /** Groups this place belongs to ('all' is implicit). */
   tags?: readonly string[];
+  /**
+   * A companion of another slot (its id): shown when that one is, not counted in `fill` or `present` (a child on a
+   * parent's lap, someone standing at the rail who came with a spectator).
+   */
+  with?: string;
+  /** A seated slot drawn standing at rest (at the rail): the seated figure, upright; it stands up for reactions as usual. */
+  upright?: boolean;
+  /** On the companion's lap: never stands, and is not drawn while the person it sits on stands. */
+  lap?: boolean;
+  /** This person hangs a banner on the parapet in front of them (its index in src/crowd/banners.ts BANNERS). */
+  banner?: number;
+  /**
+   * Shown only by its owner (`setPresent`), never by `fill`, and not counted in `present`: supporters who pour onto the
+   * sand after a win (src/crowd/arenaStands.ts), walking where the owner moves them.
+   */
+  manual?: boolean;
 }
-export interface CrowdLook { shirt: number; legs: number; skin: number; style: 'tee' | 'boubou' | 'dress'; wrap: number | null }
 export interface CrowdOptions {
   quality: CrowdQuality;
   /** Full humanoids at most (default: the quality's). */
@@ -58,28 +75,23 @@ export interface CrowdOptions {
   fidget?: number;
 }
 
-const SKINS = [0x3b2216, 0x4e2e1c, 0x5b3420, 0x6b3f25, 0x7a4a2c, 0x45291a];
-const SHIRTS = [0xf2f2ec, 0xd9322b, 0x1a9d54, 0xf4c20d, 0x2f6fb3, 0x27407a, 0xe8742c, 0x6b3fa0, 0x9cc8e8, 0x7a1f3d, 0x222428, 0x1f7a44, 0xe8e2d4];
-const TROUSERS = [0x2b2f3a, 0x3d4a5c, 0x1c1c1f, 0x6b5a45, 0x4a3f35, 0xd8d0bf];
-const DRESSES = [0xe58a2f, 0xc2417f, 0x1f7a44, 0x2f6fb3, 0xd9322b, 0x6b3fa0, 0xf4c20d];
-const pick = <T,>(a: readonly T[], r: () => number) => a[Math.floor(r() * a.length)];
-/** A Dakar crowd's mix: tees and trousers, boubous, dresses with a headwrap. */
-export function defaultLook(r: () => number, shirts: readonly number[] = SHIRTS): CrowdLook {
-  const skin = pick(SKINS, r), u = r();
-  if (u < 0.3) { const c = pick(DRESSES, r); return { style: 'dress', shirt: c, legs: c, skin, wrap: r() < 0.6 ? pick(DRESSES, r) : null }; }
-  if (u < 0.52) { const c = pick(shirts, r); return { style: 'boubou', shirt: c, legs: c, skin, wrap: null }; }
-  return { style: 'tee', shirt: pick(shirts, r), legs: pick(TROUSERS, r), skin, wrap: null };
-}
-function personLook(l: CrowdLook): PersonLook {
-  if (l.style === 'dress') return { skin: l.skin, female: true, style: 'dress', top: l.shirt, pattern: 'uni', hat: l.wrap !== null ? 'headwrap' : null, hatColor: l.wrap ?? undefined, shoes: 0x6b4a2e };
-  if (l.style === 'boubou') return { skin: l.skin, style: 'boubou', top: l.shirt, bottom: l.legs, pattern: 'uni', shoes: 0x3a2a1e };
-  return { skin: l.skin, style: 'tee', top: l.shirt, bottom: l.legs, pattern: 'uni', shoes: 0x2e2620 };
+/** The same person as a full humanoid (near the player): headwear, prints and build carried over. */
+export function personLook(l: CrowdLook): PersonLook {
+  const h = headShape(l), head = l.head ?? (l.wrap !== null ? 'wrap' : 'hair');
+  const hat = head === 'wrap' ? 'headwrap' as const : head === 'kufi' || head === 'cap' ? 'kufi' as const : null;
+  const pattern = l.print && l.print <= 3 ? 'wax' as const : l.print ? 'rayure' as const : l.style === 'boubou' ? 'bazin' as const : 'uni' as const;
+  const heavy = Math.max(0, Math.min(1, ((l.build ?? 1) - 1) * 4));
+  const common = { skin: l.skin, pattern, accent: l.accent, hat, hatColor: hat ? h.colour : undefined, heavy, hair: head === 'none' ? 'none' as const : undefined };
+  if (l.style === 'dress') return { ...common, female: true, style: 'dress', top: l.shirt, shoes: 0x6b4a2e };
+  if (l.style === 'boubou') return { ...common, style: 'boubou', top: l.shirt, bottom: l.legs, shoes: 0x3a2a1e };
+  return { ...common, style: 'tee', top: l.shirt, bottom: l.legs, shoes: 0x2e2620 };
 }
 
 interface Member {
   slot: CrowdSlot;
   look: CrowdLook;
-  shirt: THREE.Color; legs: THREE.Color; skin: THREE.Color;
+  /** The shirt (the instance colour); skin, trousers and headwear go packed in iCols (rig.ts). */
+  shirt: THREE.Color;
   phase: number;
   /** Keenness: how readily this person joins in (0.6–1.4). */
   temper: number;
@@ -102,9 +114,19 @@ interface Member {
   fidgetLeft: number;
   /** Colour of the flag this supporter waves when the arms go up (null: none). */
   flag: THREE.Color | null;
+  /** Headwear colour (0xRRGGBB), the print's code, the crown's height factor, a brim, the build (looks.ts). */
+  head: number; code: number; crown: number; brim: boolean; build: number;
+  /** The slot this companion comes with, and the companions that come with this one. */
+  parent: Member | null; kids: Member[];
+  /** Where the last full write put it: its bucket and index there, its round shadow's index (-1: none). */
+  bk: Bucket | null; bi: number; blob: number;
+  /** Moved since the last write (its matrix to copy in place). */
+  moved: boolean;
 }
 interface NearBody {
   h: Humanoid; m: Member; w: number; seen: boolean;
+  /** Greeted by the player (src/interact/people.ts turns the body and holds Talk): seconds left facing them. */
+  greet: number; greetYaw: number;
   root: THREE.Object3D;
   bones: { upper: THREE.Object3D; fore: THREE.Object3D; side: 1 | -1 }[];
 }
@@ -126,18 +148,35 @@ class Bucket {
     m.name = `crowd_${kind}`; m.userData.noLod = true;
     this.mesh = m;
   }
+  /** Changed in place since the last write: the matrices, the poses (src/crowd/crowd.ts Crowd.update). */
+  private movedN = false; private posedN = false;
   add(p: Member) {
-    const i = this.n++, A = this.attrs, q = p.pose;
+    const i = this.n++, A = this.attrs;
+    p.bk = this; p.bi = i;
     (this.mesh.instanceMatrix.array as Float32Array).set(p.matrix, i * 16);
     this.mesh.instanceColor!.setXYZ(i, p.shirt.r, p.shirt.g, p.shirt.b);
-    A.iSkin.setXYZ(i, p.skin.r, p.skin.g, p.skin.b);
-    A.iLegs.setXYZ(i, p.legs.r, p.legs.g, p.legs.b);
+    A.iCols.setXYZW(i, p.look.skin, p.look.legs, p.head, p.look.accent ?? 0);                 // packed sRGB (rig.ts)
+    this.pose(i, p);
+    A.iLook.setXYZW(i, p.crown, (p.brim ? 1 : 0) + (p.slot.upright && !p.standing ? 2 : 0) + 4 * p.code, p.build, p.slot.banner !== undefined ? p.slot.banner + 1 : 0);
+  }
+  /** The member at `i` has a new pose (arms, gestures, bounce): only these attributes change. */
+  pose(i: number, p: Member) {
+    const A = this.attrs, q = p.pose;
     A.iArm.setXYZW(i, q.pitch, q.spread, q.yaw, q.elbow);
     A.iOsc.setXYZW(i, q.yawAmp, q.pitchAmp, q.freq, p.phase);
     A.iMove.setXYZW(i, q.bounce, q.lean, q.walk, q.sideOff);
+    this.posedN = true;
+  }
+  /** The member at `i` moved: only its matrix changes. */
+  move(i: number, p: Member) { (this.mesh.instanceMatrix.array as Float32Array).set(p.matrix, i * 16); this.movedN = true; }
+  /** Uploads what changed in place since the last write. */
+  flush() {
+    if (this.movedN) this.mesh.instanceMatrix.needsUpdate = true;
+    if (this.posedN) { this.attrs.iArm.needsUpdate = true; this.attrs.iOsc.needsUpdate = true; this.attrs.iMove.needsUpdate = true; }
+    this.movedN = this.posedN = false;
   }
   finish() {
-    this.mesh.count = this.n;
+    this.mesh.count = this.n; this.movedN = this.posedN = false;
     if (!this.n) return;
     this.mesh.instanceMatrix.needsUpdate = true; this.mesh.instanceColor!.needsUpdate = true;
     for (const a of Object.values(this.attrs)) a.needsUpdate = true;
@@ -174,15 +213,30 @@ export class Crowd {
   private focus: { x: number; z: number; yaw: number | null } | null = null;
   /** The seated player's view: nobody stands up right beside them or in front of them on the way to what they watch. */
   private clear: { x: number; z: number; fx: number; fz: number } | null = null;
+  /**
+   * Who sits where in the instanced meshes changed (someone came or left, stood up or sat down, changed level of
+   * detail): everything is written again. Otherwise a frame only rewrites, in place, the matrices of those who moved
+   * (walkers, supporters on the sand) and the poses of those who are easing into a new one.
+   */
   private layoutDirty = true;
+  private moving: Member[] = [];
+  private blobsMoved = false;
+  /**
+   * The members with something to do this frame: a reaction shown or waiting for its stagger, or a pose being eased
+   * into. Everyone else sits (or stands) still, and the frame does not go through them (a thousand in the stands).
+   */
+  private live = new Set<Member>();
   private lodT = 0;
   private nearT = 0;
   private blobs: THREE.InstancedMesh | null = null;
   private flags: THREE.InstancedMesh | null = null;
   private flagged: Member[] = [];
   private fidgeting = new Set<Member>();
+  private chatters = new Set<Member>();
   private fidgetRate: number;
   private fidgetT = 0;
+  /** Share of the calm members leaning forward on their knees at a time (the bout's tense moments); 0: none. */
+  private tension = 0;
 
   constructor(slots: readonly CrowdSlot[], o: CrowdOptions) {
     this.name = o.name ?? 'crowd';
@@ -197,16 +251,22 @@ export class Crowd {
     const R = rng((o.seed ?? 17) * 7 + 3);
     for (const slot of slots) {
       const look = o.look ? o.look(slot, R) : defaultLook(R);
-      const standing = !slot.seated, pose = { ...poseFor(null, standing) };
+      const standing = !slot.seated, pose = { ...poseFor(null, standing) }, head = headShape(look);
       const m: Member = {
-        slot, look, shirt: new THREE.Color(look.shirt), legs: new THREE.Color(look.legs), skin: new THREE.Color(look.skin),
+        slot, look, shirt: new THREE.Color(look.shirt),
         phase: R() * Math.PI * 2, temper: 0.6 + R() * 0.8, on: false, st: restState(), speed: 0,
         standing, pose, target: poseFor(null, standing), easing: false, lod: 0, matrix: new Float32Array(16), body: null,
-        mood: 'rest', bpm: 120, i: this.members.length, scale: (look.style === 'dress' ? 0.93 : 0.95) + R() * 0.09,
+        mood: 'rest', bpm: 120, i: this.members.length, scale: look.height ?? (look.style === 'dress' ? 0.93 : 0.95) + R() * 0.09,
         fidget: null, fidgetLeft: 0, flag: null,
+        head: head.colour, code: printCode(look), crown: head.crown, brim: head.brim, build: look.build ?? 1,
+        parent: null, kids: [], bk: null, bi: -1, blob: -1, moved: false,
       };
       this.place(m);
       this.members.push(m); this.byId.set(slot.id, m);
+    }
+    for (const m of this.members) {
+      const p = m.slot.with ? this.byId.get(m.slot.with) : undefined;
+      if (p && p !== m) { m.parent = p; p.kids.push(m); }
     }
     const max = Math.max(1, slots.length);
     this.buckets = { midSeated: new Bucket('midSeated', max), midStanding: new Bucket('midStanding', max), farSeated: new Bucket('farSeated', max), farStanding: new Bucket('farStanding', max) };
@@ -228,17 +288,21 @@ export class Crowd {
 
   // ---------------------------------------------------------------- presence
   get size() { return this.members.length; }
-  /** Members shown now. */
-  get present() { let n = 0; for (const m of this.members) if (m.on) n++; return n; }
+  /** Members shown now (companions, children on laps and people at the rail, not counted). */
+  get present() { let n = 0; for (const m of this.members) if (m.on && !m.parent && !m.slot.manual) n++; return n; }
   /** Members reacting now. */
   get reacting() { let n = 0; for (const m of this.members) if (m.on && m.st.kind) n++; return n; }
   slots(): CrowdSlot[] { return this.members.filter(m => m.on).map(m => m.slot); }
   has(id: string) { return !!this.byId.get(id)?.on; }
 
-  /** Show the first `n` slots (in the order given), except those `skip` names (a seat the player or someone else holds). */
+  /**
+   * Show the first `n` slots (in the order given), except those `skip` names (a seat the player or someone else holds).
+   * Companions come and go with theirs.
+   */
   fill(n: number, skip?: (id: string) => boolean) {
     let k = 0;
     for (const m of this.members) {
+      if (m.parent || m.slot.manual) continue;
       const want = k < n && !skip?.(m.slot.id);
       if (k < n) k++;
       this.setOn(m, want);
@@ -246,6 +310,7 @@ export class Crowd {
   }
   setPresent(id: string, on: boolean) { const m = this.byId.get(id); if (m) this.setOn(m, on); }
   private setOn(m: Member, on: boolean) {
+    for (const k of m.kids) this.setOn(k, on);
     if (m.on === on) return;
     m.on = on; this.layoutDirty = true;
     if (!on) { calm(m.st); m.speed = 0; this.retarget(m, true); }
@@ -259,7 +324,7 @@ export class Crowd {
     const walking = speed > 0.2;
     if (walking !== m.speed > 0.2 || (walking && Math.abs(speed - m.speed) > 0.3)) { m.speed = speed; this.retarget(m); }
     m.speed = speed;
-    if (m.on) this.layoutDirty = true;
+    if (m.on && !m.moved) { m.moved = true; this.moving.push(m); }        // its matrix, copied in place this frame
   }
 
   // ---------------------------------------------------------------- reactions
@@ -277,17 +342,28 @@ export class Crowd {
       const r = p[i]; if (!r) continue;
       const m = list[i];
       const ripple = o.origin ? Math.hypot(m.slot.x - o.origin.x, m.slot.z - o.origin.z) / (o.speed ?? 30) : 0;
-      if (offer(m.st, kind, r.delay + ripple, r.seconds)) { n++; if (m.st.kind === kind && !m.st.next) this.retarget(m); }
+      if (offer(m.st, kind, r.delay + ripple, r.seconds)) { n++; this.live.add(m); if (m.st.kind === kind && !m.st.next) this.retarget(m); }
     }
     this.excite.add(group, REACTIONS[kind].voice * n / list.length);
     if (group !== 'all') this.excite.add('all', REACTIONS[kind].voice * n / Math.max(1, this.present));
     return n;
   }
+  /** One member reacts now for `seconds` (a supporter who has run onto the sand starts dancing). True if it took. */
+  reactOne(id: string, kind: ReactionKind, seconds: number): boolean {
+    const m = this.byId.get(id); if (!m?.on || m.speed > 0.2) return false;
+    if (!offer(m.st, kind, 0, seconds)) return false;
+    this.retarget(m);
+    return true;
+  }
+  /** One member settles back at once. */
+  calmOne(id: string) { const m = this.byId.get(id); if (m && calm(m.st)) this.retarget(m); }
   /** What a group does between reactions: rest, or dance on a beat of `bpm` (the near bodies dance their clips). */
   setMood(group: string, mood: Mood, bpm = 120) {
     for (const m of this.members) if (group === 'all' || m.slot.tags?.includes(group)) {
       if (m.mood === mood && m.bpm === bpm) continue;
-      m.mood = mood; m.bpm = bpm; this.retarget(m);
+      m.mood = mood; m.bpm = bpm;
+      if (mood === 'chat') this.chatters.add(m); else this.chatters.delete(m);
+      this.retarget(m);
     }
   }
   /** This member waves a flag of `colour` whenever the arms go up (shouting, celebrating). */
@@ -303,6 +379,18 @@ export class Crowd {
       this.group.add(this.flags);
     }
   }
+  /** One member's mood (a person joining a group chat, leaving it for a walk). */
+  setMemberMood(id: string, mood: Mood, bpm = 120) {
+    const m = this.byId.get(id); if (!m || (m.mood === mood && m.bpm === bpm)) return;
+    m.mood = mood; m.bpm = bpm;
+    if (mood === 'chat') this.chatters.add(m); else this.chatters.delete(m);
+    this.retarget(m);
+  }
+  /**
+   * The bout's tense moments: about `share` of the calm members lean forward, elbows on their knees, a few seconds each,
+   * others taking over (0: back to the usual small gestures).
+   */
+  setTension(share: number) { this.tension = Math.max(0, Math.min(0.6, share)); }
   /** Everyone in the group settles back at once. */
   calm(group = 'all') {
     for (const m of this.members) if (group === 'all' || m.slot.tags?.includes(group)) if (calm(m.st)) this.retarget(m);
@@ -312,13 +400,20 @@ export class Crowd {
   /** The reaction a member shows now (null: at rest or absent). */
   reactionOf(id: string): ReactionKind | null { const m = this.byId.get(id); return m?.on ? m.st.kind : null; }
   standingNow(id: string): boolean { return !!this.byId.get(id)?.standing; }
+  /** How a member looks (null: no such slot). */
+  lookOf(id: string): CrowdLook | null { return this.byId.get(id)?.look ?? null; }
+  /** Whether a member is drawn now (any level of detail). */
+  drawn(id: string): boolean { const m = this.byId.get(id); return !!m && m.on && m.lod > 0; }
 
   private retarget(m: Member, snap = false) {
     const kind = m.on ? m.st.kind : null;
     if ((kind || !m.on) && m.fidget) { m.fidget = null; this.fidgeting.delete(m); }
-    const standing = standingFor(m.slot.seated, kind) && !(m.slot.seated && this.inClearView(m.slot.x, m.slot.z));
+    const standing = standingFor(m.slot.seated, kind) && !(m.slot.seated && this.inClearView(m.slot.x, m.slot.z)) && !m.slot.lap;
     if (standing !== m.standing) { m.standing = standing; this.layoutDirty = true; }
+    this.live.add(m);
     m.target = poseFor(kind, standing, m.speed, m.mood, m.bpm, m.fidget);
+    // at a grab some lean in further than others (the keen ones), at rest too when the bout is tense
+    if (kind === 'grab' || m.fidget === 'lean') m.target = { ...m.target, lean: m.target.lean * (0.75 + (m.temper - 0.6) * 0.6) };
     if (snap) { Object.assign(m.pose, m.target); m.easing = false; } else m.easing = true;
   }
 
@@ -375,6 +470,8 @@ export class Crowd {
     for (const m of this.members) {
       let lod: Member['lod'];
       if (!m.on || this.besideView(m.slot.x, m.slot.z)) lod = 0;
+      else if (m.slot.lap && m.parent?.standing) lod = 0;                       // the parent is up: the child is not drawn
+      else if (m.slot.upright && !m.standing && this.inClearView(m.slot.x, m.slot.z)) lod = 0;
       else if (m.body) lod = 3;
       else if (!e) lod = L.mid > 0 ? 2 : 1;
       else {
@@ -393,7 +490,8 @@ export class Crowd {
       const r2 = this.nearRadius * this.nearRadius;
       const scored: { m: Member; s: number }[] = [];
       for (const m of this.members) {
-        if (!m.on || this.besideView(m.slot.x, m.slot.z)) continue;
+        // full bodies for the seated adults only (a child, someone at the rail or a banner's holder stays a figure)
+        if (!m.on || this.besideView(m.slot.x, m.slot.z) || m.parent || m.look.child || m.slot.banner !== undefined) continue;
         const dx = m.slot.x - anchor.x, dz = m.slot.z - anchor.z, d2 = dx * dx + dz * dz;
         if (d2 > r2 || d2 < 0.04) continue;
         const d = Math.sqrt(d2);
@@ -417,6 +515,9 @@ export class Crowd {
     const h = new Humanoid(personLook(m.look));
     h.group.userData.noLod = true;
     cullHumanoid(h.group);
+    // no shadow pass for the crowd's full bodies (it doubles their ten draw calls): the stands are under the roof's
+    // shade, and on the street the crowd's round ground shadow sits under them like under the figures
+    h.group.traverse(o => { if ((o as THREE.Mesh).isMesh) o.castShadow = false; });
     const root = h.group.children.find(c => c.name === 'Scene') ?? h.group.children[0];
     const bones: NearBody['bones'] = [];
     for (const [s, side] of [['L', 1], ['R', -1]] as const) {
@@ -424,7 +525,7 @@ export class Crowd {
       if (upper && fore) bones.push({ upper, fore, side });
     }
     this.group.add(h.group);
-    const b: NearBody = { h, m, w: 0, seen: true, root, bones };
+    const b: NearBody = { h, m, w: 0, seen: true, root, bones, greet: 0, greetYaw: 0 };
     m.body = b; m.lod = 3; this.layoutDirty = true;
     return b;
   }
@@ -439,16 +540,24 @@ export class Crowd {
   update(dt: number, animate = true) {
     tickClock(performance.now());
     this.excite.decay(dt);
-    for (const m of this.members) if (m.on && step(m.st, dt)) this.retarget(m);
+    for (const m of this.live) if (m.on && step(m.st, dt)) this.retarget(m);
     this.fidgets(dt);
     this.nearT -= dt;
     if (this.nearT <= 0) { this.nearT = 0.5; this.pickNear(); }
     this.lodT -= dt;
     if (this.lodT <= 0 || this.layoutDirty) { this.lodT = 0.25; this.assignLod(); }
-    let posed = false;
     const k = 1 - Math.exp(-dt * 7);
-    for (const m of this.members) if (m.easing && m.on) { m.easing = easePose(m.pose, m.target, k); if (m.lod === 1 || m.lod === 2) posed = true; }
-    if (this.layoutDirty || posed) this.write();
+    for (const m of this.live) {
+      if (m.easing && m.on) {
+        m.easing = easePose(m.pose, m.target, k);
+        if (!this.layoutDirty && (m.lod === 1 || m.lod === 2) && m.bk) m.bk.pose(m.bi, m);  // in place (a full write redoes it)
+      }
+      if (!m.on || (!m.easing && !m.st.kind && !m.st.next)) this.live.delete(m);         // still now: out of the frame's work
+    }
+    if (this.layoutDirty) this.write();
+    else this.writeMoves();
+    for (const m of this.moving) m.moved = false;
+    this.moving.length = 0;
     for (const b of this.bodies) this.updateBody(b, dt, animate);
     if (this.flags) this.waveFlags();
   }
@@ -460,8 +569,26 @@ export class Crowd {
       if (m.fidgetLeft <= 0) { m.fidget = null; this.fidgeting.delete(m); this.retarget(m); }
     }
     this.fidgetT -= dt;
-    if (this.fidgetT > 0 || !this.fidgetRate || !this.members.length) return;
+    if (this.fidgetT > 0 || !this.members.length) return;
     this.fidgetT = 0.5;
+    // people chatting take turns talking with their hands
+    for (const m of this.chatters) {
+      if (!m.on || m.st.kind || m.st.next || m.fidget || m.speed > 0.2 || this.rand() > 0.22) continue;
+      m.fidget = 'talk'; m.fidgetLeft = 1.2 + this.rand() * 1.8;
+      this.fidgeting.add(m); this.retarget(m);
+    }
+    if (this.tension > 0) {                                         // the bout is tense: people lean in, elbows on their knees
+      const want = this.members.length * this.tension;
+      let have = 0;
+      for (const m of this.fidgeting) if (m.fidget === 'lean') have++;
+      for (let tries = 0, k = Math.min(12, Math.ceil((want - have) * 0.35)); k > 0 && tries < k * 4; tries++) {
+        const m = this.members[Math.floor(this.rand() * this.members.length)];
+        if (!m.on || m.st.kind || m.st.next || m.fidget || m.speed > 0.2 || m.mood !== 'rest' || m.slot.upright) continue;
+        m.fidget = 'lean'; m.fidgetLeft = 3 + this.rand() * 4;
+        this.fidgeting.add(m); this.retarget(m); k--;
+      }
+    }
+    if (!this.fidgetRate) return;
     const n = this.members.length * this.fidgetRate * 0.5;
     let k = Math.floor(n) + (this.rand() < n % 1 ? 1 : 0);
     for (let tries = 0; k > 0 && tries < k * 4; tries++) {
@@ -497,6 +624,7 @@ export class Crowd {
     const B = this.buckets;
     for (const b of Object.values(B)) b.n = 0;
     for (const m of this.members) {
+      m.bk = null; m.bi = -1; m.blob = -1;
       if (m.lod === 2) (m.standing ? B.midStanding : B.midSeated).add(m);
       else if (m.lod === 1) (m.standing ? B.farStanding : B.farSeated).add(m);
     }
@@ -506,10 +634,20 @@ export class Crowd {
       const arr = this.blobs.instanceMatrix.array as Float32Array;
       for (const m of this.members) {
         if (!m.on || !m.standing || m.lod === 0) continue;
-        arr.set(m.matrix, n * 16); arr[n * 16 + 13] += 0.03; n++;
+        m.blob = n; arr.set(m.matrix, n * 16); arr[n * 16 + 13] += 0.03; n++;
       }
       this.blobs.count = n; if (n) this.blobs.instanceMatrix.needsUpdate = true;
     }
+  }
+  /** Same layout as the last write: the members who moved get their new matrix in place, poses are already in. */
+  private writeMoves() {
+    if (this.blobs) {
+      const arr = this.blobs.instanceMatrix.array as Float32Array;
+      for (const m of this.moving) if (m.blob >= 0) { arr.set(m.matrix, m.blob * 16); arr[m.blob * 16 + 13] += 0.03; this.blobsMoved = true; }
+      if (this.blobsMoved) { this.blobs.instanceMatrix.needsUpdate = true; this.blobsMoved = false; }
+    }
+    for (const m of this.moving) if (m.bk) m.bk.move(m.bi, m);
+    for (const b of Object.values(this.buckets)) b.flush();
   }
 
   private updateBody(b: NearBody, dt: number, animate: boolean) {
@@ -517,9 +655,12 @@ export class Crowd {
     g.visible = m.on && b.seen;
     if (!g.visible) return;
     const walking = m.speed > 0.2, kind = m.st.kind;
-    g.position.set(s.x, m.standing ? s.y : s.y - SIT_HIPS, s.z); g.rotation.y = s.yaw;
+    // the player greeted this person (People set Talk and turned them): standing still, they face the player a moment
+    if (b.h.hold === 'Talk' && b.greet <= 0 && !walking && m.standing) { b.greet = 2.6; b.greetYaw = g.rotation.y; }
+    b.greet = Math.max(0, b.greet - dt);
+    g.position.set(s.x, m.standing ? s.y : s.y - SIT_HIPS, s.z); g.rotation.y = b.greet > 0 ? b.greetYaw : s.yaw;
     const dancing = !kind && m.mood === 'dance' && m.standing;
-    const clip: Clip | null = walking ? null : !m.standing ? 'Sit' : kind === 'celebrate' ? 'Celebrate' : dancing ? (m.i % 2 ? 'Dance_B' : 'Dance_A') : 'Idle';
+    const clip: Clip | null = walking ? null : !m.standing ? 'Sit' : b.greet > 0 ? 'Talk' : kind === 'celebrate' ? 'Celebrate' : dancing ? (m.i % 2 ? 'Dance_B' : 'Dance_A') : 'Idle';
     b.h.hold = clip;
     if (!animate) return;
     b.h.animate(dt, walking ? m.speed : 0);
@@ -539,10 +680,20 @@ export class Crowd {
     }
   }
 
+  /**
+   * The full humanoids of this crowd as people of the street (src/interact/people.ts): the player can greet the
+   * spectator next to them or a passer-by, like anyone in the city.
+   */
+  people(): { id: string; obj: THREE.Object3D; h: Humanoid; female: boolean; seated: boolean; bias: number }[] {
+    return this.bodies.filter(b => b.m.on).map(b => ({ id: `crowd:${this.name}:${b.m.slot.id}`, obj: b.h.group, h: b.h, female: b.m.look.style === 'dress', seated: !b.m.standing, bias: 0.8 }));
+  }
+
   stats() {
-    const out = { size: this.members.length, present: 0, reacting: 0, standing: 0, near: 0, mid: 0, far: 0, hidden: 0, fidgeting: this.fidgeting.size, flagsUp: this.flags?.count ?? 0, kinds: {} as Record<string, number> };
+    const out = { size: this.members.length, present: 0, companions: 0, companionsDrawn: 0, reacting: 0, standing: 0, near: 0, mid: 0, far: 0, hidden: 0, fidgeting: this.fidgeting.size, flagsUp: this.flags?.count ?? 0, kinds: {} as Record<string, number> };
     for (const m of this.members) {
       if (!m.on) continue;
+      // companions (children on laps, people at the rail) are counted apart: the rest is about the seats
+      if (m.parent || m.slot.manual) { out.companions++; if (m.lod) out.companionsDrawn++; if (m.st.kind) out.kinds[m.st.kind] = (out.kinds[m.st.kind] ?? 0) + 1; continue; }
       out.present++;
       if (m.standing) out.standing++;
       if (m.st.kind) { out.reacting++; out.kinds[m.st.kind] = (out.kinds[m.st.kind] ?? 0) + 1; }

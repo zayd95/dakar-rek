@@ -32,9 +32,12 @@ export interface SheetHooks {
   opened(): void;
 }
 
-/** CSS class of a right-column string: gains in green, costs in ink, anything else neutral. */
+/**
+ * CSS class of a right-column string: gains in green, costs in ink, « Payer » (the row's price is in its label, said
+ * first) a sun pill like the action button, anything else neutral.
+ */
 export function priceClass(right: string): string {
-  return /^\+/.test(right) ? 'gain' : /^[−-]\s?\d/.test(right) ? 'cost' : '';
+  return /^\+/.test(right) ? 'gain' : /^[−-]\s?\d/.test(right) ? 'cost' : /^Payer\b/.test(right) ? 'pay' : '';
 }
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text?: string): HTMLElementTagNameMap[K] => {

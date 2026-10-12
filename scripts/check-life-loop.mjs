@@ -1,5 +1,6 @@
 // The life loop, played end to end on a NEW game: start small → meet people → work → earn → eat → rest → buy and
-// furnish the room → reload and find everything again. Grows with each integration (docs/NUIT_2026-10-09.md).
+// furnish the room → reload and find everything again; then « Parle à Tonton Ibou » and the goal line here and now (a
+// fresh game, talking to him, a reload, another hub, an older save). Grows with each integration (docs/NUIT_2026-10-09.md).
 // Usage: node scripts/check-life-loop.mjs [baseUrl] [outDir]   (needs a running build, e.g. `npx vite preview --port 4208`)
 // Long walks are shortened with `place()` next to the target; every interaction itself goes through the game's own
 // action button, menus and activity runner.
@@ -106,11 +107,17 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await page.waitForFunction(() => window.__dakar.pos().x > 900 && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   const bed = (await d(() => window.__dakar.roomInteractables())).find(i => /dormir|lit|bed|natte/i.test(i.id + i.name));
   if (bed) {
+    // a sheet left open by an earlier step (a story beat, a toast's sheet) must not be taken for the bed's
+    await d(() => { document.querySelector('#modal.on .item.close')?.click(); document.querySelector('#modal')?.classList.remove('on'); });
     await d(p => window.__dakar.place(p.x, p.z + 0.4, Math.PI), bed);
-    await page.waitForTimeout(800);
+    await page.waitForFunction(() => /dormir|lit|bed|natte/i.test(JSON.stringify(window.__dakar.focus() ?? {})), null, { timeout: 30000 }).catch(() => {});
     const f = await d(() => window.__dakar.focus());
     await d(() => window.__dakar.act());
-    if (await d(() => !!document.querySelector('#modal.on'))) await pickItem('Dormir');
+    if (await d(() => !!document.querySelector('#modal.on'))) {
+      const sheet = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
+      if (/Dormir/.test(sheet)) await pickItem('Dormir');
+      else console.log(`NOTE ${label}: the sheet at the bed has no « Dormir »: ${sheet.slice(0, 200)} · focus ${JSON.stringify(f)}`);
+    }
     // lying along the bed while asleep (the kit's Lie pose on the bed's seat), not sitting on its edge
     await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu dors' && window.__dakar.clip() === 'Lie', null, T).catch(() => {});
     const asleep = await d(() => ({ clip: window.__dakar.clip(), seat: window.__dakar.seated(), y: window.__dakar.pos().y, step: window.__dakar.activity()?.step }));
@@ -154,6 +161,79 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await shot('07-reloaded');
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
   await context.close();
+}
+// 8. « Parle à Tonton Ibou » (Habib, 11 Oct) and the goal line here and now (src/social/beats.ts, src/game/goalLine.ts):
+//    a new game shows it in Pikine by day and lists it as optional in the Carnet; talking to him in any way (here
+//    « Discuter ») closes it for good, also after a reload; another hub's goal line never sends the player to Pikine,
+//    and a critical need leads it there with what the hub offers; not done, it leaves the HUD after the first pay but
+//    stays optional in the Carnet; an older save whose player already talked with him finds it done.
+for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]]) {
+  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
+  const page = await context.newPage();
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  const url = `${base}?debug${touch ? '&touch' : ''}`;
+  const d = (fn, arg) => page.evaluate(fn, arg);
+  const ready = () => page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
+  // a few HUD refreshes, not a fixed wait: a slow renderer has few frames (main.ts hudTicks)
+  const settled = async (pg = page, n = 3) => { const t = await pg.evaluate(() => window.__dakar.hudTicks?.() ?? null); if (t === null) return pg.waitForTimeout(1200); await pg.waitForFunction(k => window.__dakar.hudTicks() >= k, t + n, T).catch(() => {}); };
+  const optional = t => t.match(/Facultatif.{0,40}/)?.[0] ?? `no « Facultatif » (${t.slice(0, 80)})`;   // the Carnet's optional part, for the report
+  const goal = async () => { await settled(); return d(() => (document.getElementById('goal')?.classList.contains('on') ? document.getElementById('goal').textContent : '') ?? ''); };
+  const carnet = async () => { await d(() => window.__dakar.phone('carnet')); await page.waitForTimeout(300); const t = await d(() => document.querySelector('#phone .ph-screen')?.textContent ?? ''); await d(() => window.__dakar.phoneClose()); return t; };
+  const shot = async name => { await page.waitForTimeout(300); await page.screenshot({ path: `${out}/${label}-goal-${name}.png` }); };
+  await page.goto(url, { timeout: 120000 }); await ready();
+  await d(() => window.__dakar.setHour(10));
+  const g0 = await goal(), c0 = await carnet();
+  check(`${label}: a new game — « Parle à Tonton Ibou » on the goal line in Pikine, optional in the Carnet`, /Tonton Ibou/.test(g0) && /Facultatif/.test(c0) && /Parle à Tonton Ibou/.test(c0), `${g0} | Carnet: ${optional(c0)}`);
+  await shot('1-fresh');
+  // talk to him: « Discuter avec Tonton Ibou » from his sheet (not the ★ story row)
+  const ibou = (await d(() => window.__dakar.interactables())).find(i => /Ibou/.test(i.name));
+  if (ibou) {
+    await d(p => window.__dakar.place(p.x, p.z + 1.2, Math.PI), ibou);
+    await page.waitForFunction(() => /Ibou/.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
+    await d(() => window.__dakar.act());
+    await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
+    await page.locator('#modal.on .item', { hasText: 'Discuter avec Tonton Ibou' }).first().click();
+    await page.waitForFunction(() => !!window.__dakar.state.data.beats.ibou_welcome && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
+  }
+  const g1 = await goal(), c1 = await carnet(), b1 = await d(() => ({ beat: window.__dakar.state.data.beats.ibou_welcome ?? null, sug: window.__dakar.suggestion(), reco: window.__dakar.state.data.flags.includes('reco_modou') }));
+  check(`${label}: talking to him (« Discuter ») closes it — gone from the goal line and the Carnet`, !!ibou && b1.beat === 'installer' && b1.reco && b1.sug !== 'ibou_welcome' && !/Tonton Ibou/.test(g1) && !/Facultatif/.test(c1), `${JSON.stringify(b1)} · ${g1}`);
+  await shot('2-talked');
+  await page.reload({ timeout: 120000 }); await ready(); await d(() => window.__dakar.setHour(10));
+  const g2 = await goal(), b2 = await d(() => ({ beat: window.__dakar.state.data.beats.ibou_welcome ?? null, sug: window.__dakar.suggestion() }));
+  check(`${label}: after a reload it stays done`, b2.beat === 'installer' && b2.sug !== 'ibou_welcome' && !/Tonton Ibou/.test(g2), `${JSON.stringify(b2)} · ${g2}`);
+  // another hub: nothing about Pikine; a critical need leads with what this hub offers (Almadies: rest on the square, for free)
+  await d(() => { window.__dakar.teleport('almadies'); window.__dakar.setHour(10); });
+  await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies', null, T).catch(() => {});
+  const g3 = await goal();
+  check(`${label}: in another hub the goal line never sends the player to Pikine`, !/\(Pikine\)|Tonton Ibou|Mame Diarra/.test(g3), g3);
+  await d(() => { const s = window.__dakar.state; s.data.needs.energie = 0; s.data.wallet = 58; });
+  const g4 = await goal();
+  check(`${label}: 58 F and 0 % energy at the Almadies: the goal line says where to rest for free`, /Fatigué/.test(g4) && /Place des voisins/.test(g4), g4);
+  await shot('3-almadies-tired');
+  // an older save whose player talked with Ibou (a relation, no beat): done on load
+  // (the in-memory state too: leaving the page saves it over the stored one)
+  await d(() => {
+    const old = x => { delete x.beats.ibou_welcome; x.rel['ibou|player'] = 3; x.flags = x.flags.filter(f => f !== 'reco_modou'); return x; };
+    old(window.__dakar.state.data);
+    const k = 'dakarrek.guest.save'; localStorage.setItem(k, JSON.stringify(old(JSON.parse(localStorage.getItem(k)))));
+  });
+  await page.reload({ timeout: 120000 }); await ready();
+  const b5 = await d(() => ({ beat: window.__dakar.state.data.beats.ibou_welcome ?? null, reco: window.__dakar.state.data.flags.includes('reco_modou') }));
+  check(`${label}: an older save in which he was already spoken to finds the welcome done`, b5.beat === 'installer' && b5.reco, JSON.stringify(b5));
+  check(`${label}: goal line — no page errors`, errors.length === 0, errors.join(' | '));
+  await context.close();
+  // not done: after a first pay it leaves the goal line, but stays optional in the Carnet
+  const ctx2 = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
+  const p2 = await ctx2.newPage();
+  await p2.goto(url, { timeout: 120000 });
+  await p2.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
+  await p2.evaluate(() => { window.__dakar.setHour(10); window.__dakar.state.addMoney(1500, 'Livraison'); });
+  await settled(p2);
+  const g6 = await p2.evaluate(() => document.getElementById('goal')?.textContent ?? '');
+  await p2.evaluate(() => window.__dakar.phone('carnet')); await p2.waitForTimeout(300);
+  const c6 = await p2.evaluate(() => document.querySelector('#phone .ph-screen')?.textContent ?? '');
+  check(`${label}: not done — off the goal line after the first pay, still optional in the Carnet`, !/Tonton Ibou/.test(g6) && /Facultatif/.test(c6) && /Parle à Tonton Ibou/.test(c6), `${g6} | Carnet: ${optional(c6)}`);
+  await ctx2.close();
 }
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));

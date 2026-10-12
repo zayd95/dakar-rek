@@ -3,7 +3,7 @@ import type { GameCtx } from '../game/modules';
 import type { HubWorld } from '../world/types';
 import { WALL_R } from '../world/geew';
 import { say } from '../i18n/wolof';
-import { BILL } from '../arena/program';
+import { billFor, ecurieLabel } from '../arena/program';
 import { WEEKDAY_FR, nextFightEvening } from '../arena/exteriorRules';
 import type { BoutEntry, Rank } from './career';
 
@@ -28,7 +28,11 @@ export function posterText(last: BoutEntry | null, name: string, today: number, 
     if (last.res === 'D') return { tag: 'REVANCHE ?', title: last.opp, line: `a battu ${name} · ${last.how}`, foot };
     return { tag: 'MATCH NUL', title: `${name} – ${last.opp}`, line: 'égalité · la revanche est attendue', foot };
   }
-  return { tag: 'GALA', title: `${BILL.left.name} – ${BILL.right.name}`, line: `Écuries ${BILL.left.ecurie} et ${BILL.right.ecurie}`, foot };
+  const bill = billFor(nx.day);                            // the evening's real card from the city's ladder (src/career/roster.ts)
+  return {
+    tag: bill.title ? 'TITRE EN JEU' : 'GALA', title: `${bill.left.name} – ${bill.right.name}`,
+    line: `${ecurieLabel(bill.left.ecurie)} contre ${ecurieLabel(bill.right.ecurie)}`, foot,
+  };
 }
 
 /** One line for the city's fight posters (« Dernier combat : <text> », src/arena/posters.ts): who beat whom, and how. */

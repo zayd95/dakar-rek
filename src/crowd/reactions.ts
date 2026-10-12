@@ -9,8 +9,8 @@
  * The same body pose drives every level of detail: the instanced figures' vertex rig (src/crowd/rig.ts) and the arms of
  * the full humanoids next to the player (src/crowd/crowd.ts), so a person keeps the same gesture when the LOD changes.
  */
-export type ReactionKind = 'applause' | 'shout' | 'standUp' | 'grab' | 'fall' | 'celebrate';
-export const REACTION_KINDS: readonly ReactionKind[] = ['applause', 'shout', 'standUp', 'grab', 'fall', 'celebrate'];
+export type ReactionKind = 'applause' | 'shout' | 'standUp' | 'grab' | 'fall' | 'celebrate' | 'dance' | 'slump';
+export const REACTION_KINDS: readonly ReactionKind[] = ['applause', 'shout', 'standUp', 'grab', 'fall', 'celebrate', 'dance', 'slump'];
 
 /**
  * A pose of the crowd rig. Arms hang from the shoulders in the rest geometry; the rig turns each arm by `spread` (away
@@ -78,6 +78,21 @@ export const REACTIONS: Record<ReactionKind, ReactionDef> = {
     sit: P({ pitch: 2.75, spread: 0.4, elbow: 0.25, pitchAmp: 0.25, sideOff: 1.2, freq: 7 }),
     up: P({ pitch: 2.75, spread: 0.4, elbow: 0.25, pitchAmp: 0.25, sideOff: 1.2, freq: 7, bounce: 0.12 }),
   },
+  /**
+   * The fête after the fall (src/arena/celebration.ts): the winner's section dances to the sabar for a long while, arms
+   * up in turn (flags and banners go up with them), a hop on each beat, a step from foot to foot. Same rank as
+   * celebrate: the two take turns.
+   */
+  dance: {
+    share: 0.75, seconds: 20, stagger: 1.2, stand: true, rank: 5, voice: 0.85,
+    sit: P({ pitch: 2.05, spread: 0.35, elbow: 0.6, pitchAmp: 0.55, sideOff: Math.PI / 2, freq: 6.9 }),
+    up: P({ pitch: 2.05, spread: 0.35, elbow: 0.6, pitchAmp: 0.55, sideOff: Math.PI / 2, freq: 6.9, bounce: 0.09, walk: 0.14, lean: 0.05 }),
+  },
+  /**
+   * The losing side sits down quietly: elbows on the knees, head low, nothing more to cheer. It outranks everything, so
+   * nobody of that side stands up while the other side celebrates.
+   */
+  slump: { share: 0.9, seconds: 25, stagger: 1.5, stand: false, rank: 6, voice: 0, sit: P({ pitch: 0.55, elbow: 1.55, lean: 0.26 }), up: P({ pitch: 0.2, elbow: 0.5, lean: 0.14 }) },
 };
 
 // ------------------------------------------------------------------ one member's reaction
@@ -116,6 +131,8 @@ export const standingFor = (seatedSlot: boolean, kind: ReactionKind | null) => !
 /** The pose to show: the reaction's, the walk, the dance, a fidget, or rest. */
 export function poseFor(kind: ReactionKind | null, standing: boolean, speed = 0, mood: Mood = 'rest', bpm = 120, fidget: Fidget | null = null): RigPose {
   if (speed > 0.2) return walkPose(speed);
+  // a dancer who dances harder (a drop at the club) keeps to the music's tempo
+  if (kind === 'dance' && mood === 'dance' && standing) return { ...REACTIONS.dance.up, freq: (Math.PI * bpm) / 60 };
   if (kind) return standing ? REACTIONS[kind].up : REACTIONS[kind].sit;
   if (mood === 'dance' && standing) return dancePose(bpm);
   if (fidget) return fidgetPose(fidget, standing);
@@ -134,8 +151,11 @@ export function fidgetPose(f: Fidget, standing: boolean): RigPose {
   }
 }
 
-/** What a member does between reactions: rest, or dance (a dance floor, sabar dancers by the drums). */
-export type Mood = 'rest' | 'dance';
+/**
+ * What a member does between reactions: rest, dance (a dance floor, sabar dancers by the drums), or chat (a group in
+ * front of a shop, people waiting together: they take turns talking with their hands).
+ */
+export type Mood = 'rest' | 'dance' | 'chat';
 /** Dancing on the beat: one hop per beat, the arms pumping in turn, a small step. */
 export function dancePose(bpm: number): RigPose {
   return P({ pitch: 1.1, spread: 0.3, elbow: 1.3, pitchAmp: 0.5, sideOff: Math.PI / 2, bounce: 0.07, lean: 0.06, walk: 0.12, freq: (Math.PI * bpm) / 60 });

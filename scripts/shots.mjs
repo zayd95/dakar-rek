@@ -99,7 +99,9 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   check('dibiterie: walk in from the street', /Dibiterie/.test(dib.near ?? '') || /dibiterie:/.test(dib.focus ?? '') || (dib.dist !== null && dib.dist < 5), `${dib.z.toFixed(1)} ${dib.near ?? dib.focus ?? `${dib.dist?.toFixed(1)} m from the Dibi`}`);
   // Maïga: enter and find the counter
   await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.enter('maiga'); });
-  await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 8000 }).catch(() => {});
+  // the door's 350 ms fade runs after the hub's rebuild; on a CI runner's software renderer that rebuild and its first
+  // frame have held the main thread past 8 s (f4b843b): the wait is room for the machine, not what is checked
+  await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 30000 }).catch(() => {});
   const mg = await page.evaluate(() => window.__dakar.pos());
   check('maiga: enter the narrow room', mg.x > 900, `${mg.x.toFixed(1)} ${mg.near}`);
   await page.evaluate(() => window.__dakar.exit());

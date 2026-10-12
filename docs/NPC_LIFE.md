@@ -46,6 +46,10 @@ passengers) count as characters on seats, so the free-seat share holds for every
 - **Mosque.** Rows of people facing the qibla during the five prayer windows (the venues' times, `src/venues/prayer.ts`):
   standing on the forecourt, kneeling on the hall's prayer rows; more on Friday; no text, no recitation, not offered a
   conversation.
+- **Places that come and go.** The spots are rebuilt whenever a place is added or removed (a street vendor's hours, a
+  shop, a road event). People stay through a rebuild when their spot keeps its id and their seat, standing place,
+  prayer-row place or queue place is still where it was (`keepsPlace`): a market crowd or a prayer row does not vanish
+  because a vendor set up a tray down the street.
 - **Focus.** Ambient people rank after places, the cast and seats in reach (focus bias 3 m): a passer-by never hides
   the counter or Tonton Ibou; someone alone can be greeted.
 - **Player first at the counter.** Standing places keep 1.8 m from every interaction anchor, so the player's focus never
@@ -85,6 +89,36 @@ calls, at most 9 full NPC bodies (budget 12).
 Frame times above were measured on a shared 4-core machine while other lanes ran browsers (load average 10–30): they are
 noise-level evidence only; draw calls, triangles and humanoid counts do not depend on the load. `scripts/perf-npc.mjs`
 holds the browser lock when re-run (`flock /tmp/dakar-browser.lock node scripts/perf-npc.mjs <url> <label> <out.json>`).
+
+## Fight talk: the city around the bout
+
+The city's people react to the evening's bout. It is built from the systems that already exist:
+`src/social/fightTalk.ts` (pure, tested in `tests/fightTalk.test.ts`) and `src/social/fightTalkModule.ts`.
+
+- **Before a gala** (Friday–Sunday, 8 h–19 h), a person greeted anywhere in the city may anticipate it: « Ce soir il y a
+  gala à Pikine : Babacar contre Lamine ! ». A weekday neighbourhood card is only talked about in Pikine (12 h–19 h).
+- **After the bout, that evening and the next day**, people talk about the result the city really saw:
+  - the gala's result, which the arena records in the save's counters when the bout ends (`recordGalaResult`) and also
+    prints on the posters;
+  - or the player's own bout, from the career's record, which comes first.
+
+  A fall is told as a fall (« Daan na ! Babacar a mis Lamine au sol ce soir ! »), a decision as a decision, a draw as a
+  draw. No record means no result line: nothing is ever invented.
+- **On a day without a bout and without a recent result**, nothing changes.
+- **Who says it.** Everyone `ctx.people` knows (ambient life, the street crowd, the Dibi's customers, the passengers).
+  After a first greeting, about half of them add the line; in small talk, the line replaces the usual exchange. The
+  choice is seeded per person and per exchange. `People.setTopic` is the hook.
+- **Language.** French with everyday Wolof from the lexicon (Waaw kay, Daan na, Rafet na, Ndank ndank, Bul tiit,
+  Lu bees ?), glossed, with the game's typography.
+- **The Dibi after the gala** (Pikine, from the end of the gala to about 1 h, on a night the arena's street was alive or a
+  gala result was recorded):
+  - ambient life gets `AFTER_GALA_ACTS`: a short queue at the grill and more tables of people eating and talking;
+  - the Dibi spots are 1.6× busier (`ambientLife.setEvent`);
+  - about one leaving spectator in six walks from the outflow to the Dibi along the pavements
+    (`src/crowd/street.ts`, a walker with a goal).
+- **Debug**:
+  - `__dakar.fightTalk.line(name, seed)`: what a person would say now;
+  - `__dakar.fightTalk.state()`: tonight's card, the recorded result, whether the Dibi night is on.
 
 ## Checks
 

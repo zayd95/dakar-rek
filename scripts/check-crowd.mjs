@@ -56,7 +56,9 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   const ar1 = await d(() => window.__dakar.arrivals.info());
   check(`${label}: on a fight evening a taxi pulls in by the arena and drops fans`, ar0?.active && ar1.dropped.taxi > ar0.dropped.taxi && ar1.crowd.present > 0, { active: ar0?.active, dropped: ar1.dropped, walking: ar1.walking, cabs: ar1.cabs });
   await shot('0-taxi-fans');
-  const nextRapide = await d(() => window.__dakar.transport?.nextAt?.('23', 0) ?? null);
+  // fight evenings: Ligne 23's day route is parked, its evening route 23s calls at the arena (« Arène » is its stop 0 too)
+  const rapideLine = await d(() => window.__dakar.transport?.lines?.().find(l => l.id.startsWith('23') && l.on)?.id ?? '23s');
+  const nextRapide = await d(r => window.__dakar.transport?.nextAt?.(r, 0) ?? null, rapideLine);
   if (typeof nextRapide === 'number' && nextRapide > 2) await d(s => window.__dakar.transport.warp(s), nextRapide - 2);
   await page.waitForFunction(r0 => window.__dakar.arrivals.info().dropped.rapide > r0, ar1.dropped.rapide, LONG).catch(() => {});
   const ar2 = await d(() => window.__dakar.arrivals.info());
@@ -74,6 +76,8 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => /arena:stand/.test(window.__dakar.seated() ?? ''), null, T).catch(() => {});
   await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, LONG).catch(() => {});
+  // the stands fill during the preliminaries (src/arena/undercard.ts): on to the main event's entrance, full stands
+  await d(() => window.__dakar.arena.go('entrance'));
   await page.waitForFunction(() => { const c = window.__dakar.arena.info().crowd; return c.present >= c.cap * 0.9; }, null, LONG).catch(() => {});
   const s1 = await stands(), i1 = await info();
   check(`${label}: seated on a fight evening, the stands are full`, /arena:stand/.test((await d(() => window.__dakar.seated())) ?? '') && s1 && s1.present >= i1.crowd.cap * 0.9 && s1.present > 100, { present: s1?.present, cap: i1.crowd.cap });
@@ -84,15 +88,15 @@ for (const [label, viewport, touch, quality] of VIEWS) {
   check(`${label}: the whole crowd costs a handful of draw calls`, s1b.drawCalls <= 5 + nearWant * 10, { drawCalls: s1b.drawCalls });
   await shot('1-seated');
 
-  /** The show back to its full-stands part (filling → entrance → bout) when it has gone on to the result or the end. */
+  /** The show back to its full-stands part (the main event: entrance → bout) when it has gone on to the result or the end. */
   const fullStands = async () => {
     const ph = (await info()).phase;
-    if (!['filling', 'entrance', 'bout'].includes(ph)) await d(() => window.__dakar.arena.go('filling'));
-    await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return ['filling', 'entrance', 'bout'].includes(i.phase) && i.crowd.present >= i.crowd.cap * 0.9; }, null, LONG).catch(() => {});
+    if (!['entrance', 'bout'].includes(ph)) await d(() => window.__dakar.arena.go('entrance'));
+    await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return ['entrance', 'bout'].includes(i.phase) && i.crowd.present >= i.crowd.cap * 0.9; }, null, LONG).catch(() => {});
   };
 
   // 2. The gala's own moment first (it comes right after the stands fill): a wrestler walks in and his side shouts.
-  if (!['filling', 'entrance'].includes((await info()).phase)) await d(() => window.__dakar.arena.go('filling'));
+  if ((await info()).phase !== 'entrance') await d(() => window.__dakar.arena.go('entrance'));
   await page.waitForFunction(() => (window.__dakar.arena.info().crowd.lod.kinds.shout ?? 0) > 10, null, LONG).catch(() => {});
   const e = await info();
   check(`${label}: a wrestler walks in and his side rises to shout`, (e.crowd.lod.kinds.shout ?? 0) > 10 && e.crowd.cheering > 0, { phase: e.phase, kinds: e.crowd.lod.kinds, level: e.crowd.level });

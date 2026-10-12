@@ -7,6 +7,7 @@ import { People } from '../interact/people';
 import { stop as stopRecipe } from '../activity/templates';
 import * as P from '../activity/primitives';
 import type { ActivitySpec } from '../activity/types';
+import type { PlaceSpec } from '../activity/places';
 import { fcfa } from '../ui/hud';
 import { rng } from '../core/rng';
 import { lanePath, Path, Timetable, type Motion } from './route';
@@ -17,8 +18,9 @@ import { placeStops, buildStops, StopPeople, STOP_OFFSET, type StopSite } from '
 import { PassengerCamera } from './camera';
 import { TripLogic, MIN_STOP } from './trip';
 import { RideCard } from './ui';
+import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import type { CameraAnchor, VehicleSpec } from './spec';
-import { clearKerb, passengerPatterns, pickSeat, type KerbZone } from './passengers';
+import { clearKerb, fansAtStop, fansOnSet, passengerPatterns, pickSeat, type KerbZone, type LineFans } from './passengers';
 
 /**
  * Transport module (Wave 1: the car rapide passenger experience). Every hub has a car rapide line looping around its
@@ -34,6 +36,19 @@ const MOTION = { vmax: 9, vmin: 3.2, lateral: 2.6, accel: 1.5, decel: 2.2 };
 /** Camera distance within which the apprenti and the people at the stops are drawn and animated. */
 const NEAR = 70;
 
+/**
+ * Where a line's cars drive and stop in a hub (pure): the lane round its loop, its stops on the pavement, the arc length
+ * where each stop holds a car (its rear door level with the shelter), the timetable. The module builds its cars on it;
+ * tests sample it to keep every car out of the arena gate's pedestrian zone (tests/gatePlaza.test.ts).
+ */
+export function linePlan(def: LineDef, colliders: HubWorld['colliders'], door: { z: number }) {
+  const path = new Path(lanePath(loopNodes(def), LANE, CORNER));
+  const sites = placeStops(def, colliders);
+  const stopS = sites.map(s => path.project(s.x - s.rx * (STOP_OFFSET - LANE) - s.dx * door.z, s.z - s.rz * (STOP_OFFSET - LANE) - s.dz * door.z));
+  const table = new Timetable(path, stopS.map(s => ({ s, dwell: DWELL })), MOTION);
+  return { path, sites, stopS, table };
+}
+
 interface LineRt {
   def: LineDef;
   spec: VehicleSpec;
@@ -48,7 +63,27 @@ interface LineRt {
   calls: THREE.CanvasTexture[];
   /** A few fixed sets of NPC passengers (spec seat ids): each car takes one at every stop (bounded model variants). */
   patterns: string[][];
+  /** Running now (`LineDef.runs` on the shared clock); a parked variant's cars and waiting people are hidden. */
+  on: boolean;
+  /** Passenger sets by fill (`LineDef.fill`), made when first needed. */
+  fills: Map<number, string[][]>;
+  /** The stops as places of the « stop » recipe: registered only while the line runs (a parked route has no stops). */
+  places: PlaceSpec[];
+  placesOn: boolean;
 }
+
+/**
+ * Fans aboard a line (src/arena/arrival.ts on fight evenings): passengers in these shirt colours on every leg towards
+ * `dest`; they get off there (the car pulls in with ordinary passengers), and the next ones get on at the other stops.
+ */
+export type { LineFans };
+/**
+ * A car pulled in at a stop (`key`: `<line>:<stop>`), heard by `transport.onArrival` the frame it happens — never missed
+ * on slow frames, unlike a look at who stands there now. `fans`: fans aboard rode to this stop and get off here.
+ */
+export interface StopArrival { key: string; vehicle: string; fans: boolean }
+/** A vehicle's footprint for drive mode: centre, heading, half length and half width. */
+export interface Footprint { x: number; z: number; yaw: number; hl: number; hw: number }
 
 /** A short scripted walk (to the rear door, onto the pavement), timed on the real clock so it never outlasts a stop. */
 interface Walk { fx: number; fz: number; tx: number; tz: number; t0: number; ms: number; done: () => void }
@@ -78,6 +113,12 @@ export class TransportModule implements GameModule {
   private camMs = 0;
   /** Debug only (checks): seats left free when the vehicles are crowded on purpose. */
   private crowdFree: string | null = null;
+  /** Fans aboard, by line id (set by the arena on fight evenings). */
+  private fans = new Map<string, LineFans>();
+  /** Fans aboard each car (by vehicle id): they ride to their stop even if the line's fans end meanwhile. */
+  private aboard = new Map<string, LineFans>();
+  private arrivalFns = new Set<(a: StopArrival) => void>();
+  private obstacleFns = new Set<(out: Footprint[], kind?: string) => void>();
 
   // ---------------------------------------------------------------- GameModule
   init(ctx: GameCtx) {
@@ -92,17 +133,14 @@ export class TransportModule implements GameModule {
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
     this.ctx = ctx;
+    this.owed.reset();
     this.clear();
     this.hub = hub;
     const low = ctx.quality() === 'low';
     for (const def of linesOf(hub.id)) {
       const spec = carRapideSpec();
-      const path = new Path(lanePath(loopNodes(def), LANE, CORNER));
-      const sites = placeStops(def, hub.colliders);
-      const door = spec.doors[0];
       // each stop holds the vehicle where its rear door is level with the shelter
-      const stopS = sites.map(s => path.project(s.x - s.rx * (STOP_OFFSET - LANE) - s.dx * door.z, s.z - s.rz * (STOP_OFFSET - LANE) - s.dz * door.z));
-      const table = new Timetable(path, stopS.map(s => ({ s, dwell: DWELL })), MOTION);
+      const { path, sites, table } = linePlan(def, hub.colliders, spec.doors[0]);
       const calls = [...def.calls.map(callTexture), callTexture(SAY.depart)];
       const fleet = low ? 1 : def.fleet;
       const bumpy = hub.id === 'pikine' ? 1.7 : 1;
@@ -116,7 +154,7 @@ export class TransportModule implements GameModule {
         for (const s of v.seats) ctx.seats.add(s);
         v.vehicle.setPassengers(patterns[k % patterns.length]);
         ctx.seats.add(v.vehicle.driverSeat); v.vehicle.driverSeat.occupant = 'npc';      // the chauffeur
-        v.onArrive = () => this.shuffle(rt, v);
+        v.onArrive = i => this.arrive(rt, v, i);
         ctx.extra.add(v.group);
         return v;
       });
@@ -124,9 +162,10 @@ export class TransportModule implements GameModule {
       ctx.extra.add(furniture.group);
       for (const s of sites) for (const seat of s.seats) ctx.seats.add(seat);
       const people = new StopPeople(sites, low ? 1 : 2, this.rand, o => ctx.extra.add(o));
-      const rt: LineRt = { def, spec, path, table, sites, vehicles, motions: vehicles.map(v => v.motion), arrivals: vehicles.map(v => v.arrivals), people, furniture, calls, patterns };
+      const rt: LineRt = { def, spec, path, table, sites, vehicles, motions: vehicles.map(v => v.motion), arrivals: vehicles.map(v => v.arrivals), people, furniture, calls, patterns, on: true, fills: new Map(), places: [], placesOn: false };
+      rt.places = sites.map(site => this.stopPlace(rt, site));
       this.lines.push(rt);
-      for (const site of sites) ctx.places.add(this.stopPlace(rt, site));
+      this.setOn(rt, this.runs(rt));
     }
   }
 
@@ -147,12 +186,22 @@ export class TransportModule implements GameModule {
     return alightPoint(rt.sites[i] ?? rt.sites[0]);
   }
 
+  /** What the cars and the stops' people are owed while the arena's walls hide them (src/game/pace.ts). */
+  private owed = new Pace();
   update(ctx: GameCtx, dt: number) {
     if (!this.lines.length || ctx.inside()) return;
     const cam = ctx.camera.position;
+    // inside the arena's walls, with no trip under way, the line is out of sight: its cars run on the clock (their place is a
+    // function of the time), its people and its arrivals follow at 4 Hz
+    const run = this.owed.step(dt, this.trip.phase === 'idle' && insideWalls(this.hub?.arena, cam) ? HIDDEN_EVERY : 0);
+    if (run === null) return;
+    dt = run;
     this.viewer.x = cam.x; this.viewer.z = cam.z;
     const now = this.clock();
     for (const rt of this.lines) {
+      const run = this.runs(rt);
+      if (run !== rt.on) this.setOn(rt, run);
+      if (!rt.on) continue;
       for (const v of rt.vehicles) v.update(this.timeOf(rt, v.index, now), dt, Math.hypot(v.pose.x - cam.x, v.pose.z - cam.z) < NEAR);
       rt.people?.update(dt, this.viewer, NEAR, i => this.doorAt(rt, i));
     }
@@ -196,10 +245,13 @@ export class TransportModule implements GameModule {
     this.ctx = ctx;
     return {
       transport: {
+        dwellingAt: (id: string) => this.dwellingAt(id), served: (id: string) => this.served(id),
         lines: () => this.lines.map(rt => ({
-          id: rt.def.id, number: rt.def.number, period: rt.table.period, fare: rt.def.fare,
+          id: rt.def.id, number: rt.def.number, period: rt.table.period, fare: rt.def.fare, on: rt.on,
           stops: rt.sites.map(s => ({ id: s.def.id, name: s.def.name, x: s.x, z: s.z, yaw: s.yaw, dx: s.dx, dz: s.dz, rx: s.rx, rz: s.rz, s: rt.table.stops[s.index].s, alight: alightPoint(s) })),
+          fans: this.fans.get(rt.def.id) ?? null,
           vehicles: rt.vehicles.map(v => ({ id: v.id, x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, s: v.motion.s, v: v.motion.v, dwell: v.motion.dwell, dwellLeft: v.motion.dwellLeft, next: v.motion.next, eta: v.motion.eta,
+            colours: v.vehicle.colours ? [...v.vehicle.colours] : null,
             free: v.seats.filter(s => !s.occupant).length, seats: v.seats.map(s => ({ id: s.id, occupant: s.occupant })) })),
         })),
         trip: () => ({ phase: this.trip.phase, line: this.line?.def.id ?? null, stop: this.trip.stop, vehicle: this.vehicle()?.id ?? null, alightAt: this.trip.alightAt, passed: this.trip.passed, seat: this.seat?.id ?? null, space: this.space(), view: this.cam.view, camera: this.cam.active, paid: this.paid }),
@@ -210,7 +262,7 @@ export class TransportModule implements GameModule {
         card: () => this.card?.text ?? '',
         safePlace: () => this.safePlace(),
         /** Checks: every passenger seat taken by NPCs except those ending with `free` (null: back to normal). */
-        crowd: (free: string | null) => { this.crowdFree = free; for (const rt of this.lines) for (const v of rt.vehicles) this.shuffle(rt, v); },
+        crowd: (free: string | null) => { this.crowdFree = free; for (const rt of this.lines) for (const v of rt.vehicles) this.shuffle(rt, v, v.vehicle.colours ?? undefined); },
         /** Show or hide everything the module draws (draw-call budget measurement). */
         show: (on: boolean) => { for (const rt of this.lines) { rt.furniture.group.visible = on; for (const v of rt.vehicles) v.group.visible = on; } },
       },
@@ -223,16 +275,63 @@ export class TransportModule implements GameModule {
   private waitingBodies() {
     let key = 0;                                              // versions only grow: their sum changes with any of them
     for (const l of this.lines) key += l.people?.version ?? 0;
-    if (key !== this.waitingKey) { this.waitingKey = key; this.waiting = this.lines.flatMap(l => l.people?.bodies() ?? []); }
+    if (key !== this.waitingKey) { this.waitingKey = key; this.waiting = this.lines.filter(l => l.on).flatMap(l => l.people?.bodies() ?? []); }
     return this.waiting;
   }
 
-  /** Footprints of the line's cars (drive mode collides with them): centre, heading, half length and width. */
-  obstacles(out: { x: number; z: number; yaw: number; hl: number; hw: number }[]) {
+  /**
+   * Fans aboard a line of this hub (null: no more get on; those aboard still ride to their stop and get off there). The
+   * cars take them at once on their way to `dest`, and at every stop but `dest` after that.
+   */
+  setFans(line: string, fans: LineFans | null) {
+    const was = this.fans.get(line);
+    if (!fans && !was) return;
+    if (fans && was && was.dest === fans.dest && was.colours.join() === fans.colours.join()) return;
+    if (fans) this.fans.set(line, fans); else this.fans.delete(line);
+    if (!fans) return;                                        // those aboard ride on to their stop (fansOnSet)
+    for (const rt of this.lines) if (rt.def.id === line) for (const v of rt.vehicles) {
+      const at = v.motion.dwell >= 0 ? rt.sites[v.motion.dwell]?.def.id ?? null : null;
+      this.seatFans(v, fansOnSet(this.aboard.get(v.id) ?? null, fans, at));
+    }
+  }
+  /** Fans ride this line now (its cars pulling in at their stop let them off: src/crowd/arrivals.ts). */
+  hasFans(line: string) { return this.fans.has(line); }
+  /** Fans ride in this car now, towards their stop. */
+  carriesFans(vehicle: string) { return this.aboard.has(vehicle); }
+  /** Hear every car pulling in at a stop (see StopArrival); returns the way to stop listening. */
+  onArrival(fn: (a: StopArrival) => void): () => void { this.arrivalFns.add(fn); return () => { this.arrivalFns.delete(fn); }; }
+  /** The car the player is getting on, riding or getting off (its vehicle id), or null. */
+  ridingVehicle(): string | null {
+    const p = this.trip.phase;
+    return p === 'boarding' || p === 'riding' || p === 'alighting' ? this.vehicle()?.id ?? null : null;
+  }
+  private seatFans(v: LineVehicle, f: LineFans | null) {
+    if (f) this.aboard.set(v.id, f); else this.aboard.delete(v.id);
+    v.vehicle.setPassengers(v.vehicle.passengers(), f?.colours);
+  }
+
+  /** A car pulled in at stop i: passengers get on and off; fans get off at their stop and others get on elsewhere. */
+  private arrive(rt: LineRt, v: LineVehicle, i: number) {
+    const stop = rt.sites[i]?.def.id ?? '', r = fansAtStop(this.aboard.get(v.id) ?? null, this.fans.get(rt.def.id) ?? null, stop);
+    if (r.aboard) this.aboard.set(v.id, r.aboard); else this.aboard.delete(v.id);
+    this.shuffle(rt, v, r.aboard?.colours);
+    const a: StopArrival = { key: `${rt.def.id}:${stop}`, vehicle: v.id, fans: r.off };
+    for (const fn of this.arrivalFns) fn(a);
+  }
+
+  /**
+   * Footprints of the line's cars (drive mode collides with them): centre, heading, half length and width; then those of
+   * the other systems' solid things (`addObstacles`: the gala road's jam, src/city/galaTraffic.ts; the gate's pedestrian
+   * zone for a car, src/arena/exterior.ts). `kind`: the kit kind of the vehicle asking ('moto', 'sedan'…).
+   */
+  obstacles(out: Footprint[], kind?: string) {
     out.length = 0;
     for (const rt of this.lines) for (const v of rt.vehicles) out.push({ x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, hl: rt.spec.length / 2, hw: rt.spec.width / 2 });
+    for (const fn of this.obstacleFns) fn(out, kind);
     return out;
   }
+  /** Another system's things drive mode stops at (it pushes their footprints); returns the way to take them away. */
+  addObstacles(fn: (out: Footprint[], kind?: string) => void): () => void { this.obstacleFns.add(fn); return () => { this.obstacleFns.delete(fn); }; }
 
   // ---------------------------------------------------------------- lines, stops and passengers
   private clear() {
@@ -242,7 +341,8 @@ export class TransportModule implements GameModule {
       rt.people?.dispose(); rt.furniture.dispose();
       for (const t of rt.calls) t.dispose();
     }
-    this.lines = []; this.hub = null; this.doorTargets.clear(); this.waitingKey = -1;
+    this.lines = []; this.hub = null; this.doorTargets.clear(); this.waitingKey = -1; this.stops.clear();
+    this.fans.clear(); this.aboard.clear();                   // the new hub's cars start with ordinary passengers
   }
 
   private clock() { return this.ctx.now() / 1000 + this.warp; }
@@ -275,11 +375,81 @@ export class TransportModule implements GameModule {
    * At each stop some passengers get off and others get on: the car takes another of the line's passenger sets, never
    * one that would sit someone on the player's seat (the open cabin shows who sits where).
    */
-  private shuffle(rt: LineRt, v: LineVehicle) {
+  private shuffle(rt: LineRt, v: LineVehicle, colours?: readonly number[]) {
     const mine = v.seats.findIndex(s => s.occupant === 'player'), mineId = mine >= 0 ? rt.spec.seats[mine].id : null;
-    if (this.crowdFree !== null) { v.vehicle.setPassengers(rt.spec.seats.filter(s => !s.id.endsWith(this.crowdFree!) && s.id !== mineId).map(s => s.id)); return; }
-    const ok = rt.patterns.filter(p => !mineId || !p.includes(mineId));
-    if (ok.length) v.vehicle.setPassengers(ok[Math.floor(this.rand() * ok.length)]);
+    if (this.crowdFree !== null) { v.vehicle.setPassengers(rt.spec.seats.filter(s => !s.id.endsWith(this.crowdFree!) && s.id !== mineId).map(s => s.id), colours); return; }
+    const ok = this.patternsOf(rt).filter(p => !mineId || !p.includes(mineId));
+    if (ok.length) v.vehicle.setPassengers(ok[Math.floor(this.rand() * ok.length)], colours);
+  }
+
+  // ---------------------------------------------------------------- public API (other lanes: the street crowd…)
+  /** The stops asked for by id, found once (the street crowd asks for them all every second): cleared with the lines. */
+  private stops = new Map<string, { rt: LineRt; i: number } | null>();
+  private stopOf(stopId: string): { rt: LineRt; i: number } | null {
+    let f = this.stops.get(stopId);
+    if (f === undefined) {
+      const [line, stop] = stopId.replace(/^stop:/, '').split(':');
+      const rt = this.lines.find(l => l.def.id === line), i = rt ? rt.sites.findIndex(s => s.def.id === stop) : -1;
+      f = rt && i >= 0 ? { rt, i } : null;
+      if (this.lines.length) this.stops.set(stopId, f);                     // (not before the lines are made: a stop asked for early is found later)
+    }
+    return f;
+  }
+  /**
+   * The car rapide standing at a stop now — `stopId` is the stop's place id (`stop:<line>:<stop>`, e.g. `stop:23s:arene`)
+   * or `<line>:<stop>` — with its id, its rear door (world, where people get in and out) and the seconds it still waits;
+   * null when none is there or its line does not run now.
+   */
+  dwellingAt(stopId: string): { vehicle: string; x: number; z: number; left: number } | null {
+    const f = this.stopOf(stopId); if (!f || !f.rt.on) return null;
+    for (const v of f.rt.vehicles) {
+      if (v.motion.dwell !== f.i) continue;
+      const d = f.rt.spec.doors[0], p = v.world(d.x, d.z, { x: 0, z: 0 });
+      return { vehicle: v.id, x: p.x, z: p.z, left: v.motion.dwellLeft };
+    }
+    return null;
+  }
+  /** Is this stop served now? (Ligne 23's day stops are not on fight evenings, its evening stops not by day.) */
+  served(stopId: string): boolean { const f = this.stopOf(stopId); return !!f && f.rt.on; }
+  /**
+   * The cars of a line running now (src/city/galaTraffic.ts puts fans on their rear step and sounds their horns): the
+   * body that sways with the road (attach riders to it), where the car is, its heading, how fast, standing at a stop,
+   * fans aboard.
+   */
+  lineCars(line: string): { id: string; index: number; body: THREE.Object3D; x: number; z: number; yaw: number; v: number; dwell: boolean; fans: boolean }[] {
+    const rt = this.lines.find(l => l.def.id === line);
+    if (!rt?.on) return [];
+    return rt.vehicles.map(v => ({ id: v.id, index: v.index, body: v.vehicle.body, x: v.pose.x, z: v.pose.z, yaw: v.pose.yaw, v: v.motion.v, dwell: v.motion.dwell >= 0, fans: this.aboard.has(v.id) }));
+  }
+
+  /**
+   * Does the line run now? Its own rule on the shared clock (Ligne 23 takes its evening route on fight evenings), and
+   * always while the player is getting on, riding or getting off one of its cars (the trip ends on the line it began).
+   */
+  private runs(rt: LineRt): boolean {
+    if (this.line === rt && (this.trip.phase === 'boarding' || this.trip.phase === 'riding' || this.trip.phase === 'alighting')) return true;
+    return rt.def.runs ? rt.def.runs(this.ctx.day(), this.ctx.hour()) : true;
+  }
+  private setOn(rt: LineRt, on: boolean) {
+    rt.on = on;
+    for (const v of rt.vehicles) v.group.visible = on;
+    // only a running line's stops are places (the street crowd waits there; the stop recipe offers boarding)
+    if (on !== rt.placesOn) { rt.placesOn = on; for (const p of rt.places) { if (on) this.ctx.places.add(p); else this.ctx.places.remove(p.id); } }
+    if (!on) {
+      rt.people?.hideAll();
+      if (this.line === rt && this.trip.phase === 'waiting') this.stopWaiting(`Le ${rt.def.number} a changé de route : vois l’arrêt Arène les soirs de combat`);
+    }
+    this.waitingKey = -1;
+  }
+
+  /** The line's passenger sets now: half full, or fuller when the line says so (fight evenings), always seats left. */
+  private patternsOf(rt: LineRt): string[][] {
+    const fill = rt.def.fill?.(this.ctx.day(), this.ctx.hour());
+    if (fill === undefined) return rt.patterns;
+    const key = Math.round(fill * 100);
+    let p = rt.fills.get(key);
+    if (!p) { p = passengerPatterns(rt.spec.seats, 4, 23 + key, 2, fill); rt.fills.set(key, p); }
+    return p;
   }
 
   private stopPlace(rt: LineRt, site: StopSite) {
@@ -289,7 +459,7 @@ export class TransportModule implements GameModule {
       anchors: [{ id: 'stop', kind: 'spot', x: site.x, z: site.z, y: 3.0, radius: 2.8, bias: -0.4 }],   // the stop wins over the people waiting there, unless one stands right in front
     }, { board: () => this.wantBoard(rt, site.index) });
     const offers = place.offers.stop;
-    for (const o of offers) { o.visible = () => !waitingHere() && (this.trip.phase === 'idle' || this.trip.phase === 'waiting'); o.detail = `${rt.def.number} · ${rt.def.from} ⇄ ${rt.def.to} · ${fcfa(rt.def.fare)}`; }
+    for (const o of offers) { o.visible = () => rt.on && !waitingHere() && (this.trip.phase === 'idle' || this.trip.phase === 'waiting'); o.detail = `${rt.def.number} · ${rt.def.from} ⇄ ${rt.def.to} · ${fcfa(rt.def.fare)}`; }
     offers.push(
       { ...P.use({ id: 'annuler', label: 'Ne plus attendre', seconds: 0, visible: waitingHere, then: () => this.stopWaiting('Tu n’attends plus le car rapide') }), quiet: true },
       P.inspect({ id: 'horaires', label: 'Voir la ligne', detail: `${rt.def.number} · ${rt.def.from} ⇄ ${rt.def.to}`, then: () => this.openLine(rt, site) }),

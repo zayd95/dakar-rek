@@ -1,5 +1,6 @@
 // Checks of the arena's interior (src/world/arenaModules.ts, src/arena/interior.ts): stands of eight sections with aisles
-// and stairs, the wrestlers' tunnel and their own gate, the ringside zones, the evening's people inside the walls, walking
+// and stairs, the wrestlers' tunnel and their own gate, the ringside zones, the evening's people inside the walls
+// (src/arena/people.ts; their own check is scripts/check-arena-people.mjs), walking
 // in through both gates, draw calls from a seat. Desktop 1280×800 (medium quality) and phone 390×844 (low quality, touch).
 // Usage: flock /tmp/dakar-browser.lock node scripts/check-arena-interior.mjs [baseUrl] [outDir]   (needs a running build,
 // e.g. `npx vite preview --port 4216`). ONLY=desktop|phone narrows a run.
@@ -45,7 +46,9 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [cx + 12, cz + 4]);
   const shown = await until(() => { const a = window.__dakar.arenaIn(); return a.shown && a.drawn >= 6; }, null, 60000);
   const inn = await d(() => window.__dakar.arenaIn());
-  check(`${label}: fight evening: the people inside the walls are there (${quality})`, shown && inn.by.drummer >= 2 && inn.by.official >= 2 && inn.by.camp >= 4 && inn.by.vendor >= 1 && (inn.by.media ?? 0) + (inn.by.press ?? 0) >= 2, JSON.stringify(inn));
+  // doors open: the officials at their table, two drummers warming up on the deck, a helper in each écurie's corner, the
+  // press, a vendor on the walkway (the judges, the referee and the entourages come with the gala: check-arena-people)
+  check(`${label}: fight evening: the people inside the walls are there (${quality})`, shown && inn.by.drummer >= 2 && inn.by.official >= 2 && inn.by.camp >= 2 && inn.by.vendor >= 1 && (inn.by.media ?? 0) + (inn.by.press ?? 0) >= 1, JSON.stringify(inn));
 
   // the stands: eight sections, aisles with stairs, the tunnel opposite the gate — from the ring and from a seat
   await cam([cx - 3, 1.8, cz - 6], [cx + 12, 3.2, cz + 13]); await shot('stands-from-ring');

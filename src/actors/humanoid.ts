@@ -4,6 +4,8 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import type { WrestlerLook } from '../core/types';
 import { ACCESSORIES, ngembTexture, type Socket } from '../lamb/look';
 import type { Outfit } from './character';
+import { GaitState } from './gait';
+import { GaitRig } from './gaitRig';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -42,10 +44,40 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
     fixSitKnees(gltf.animations);
-    fixSitKnees(gltf.animations);
+    fixRunClip(gltf.animations);
     deriveKneel(gltf.animations);
-    template = { scene: gltf.scene, clips: [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)] };
+    const clips = [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)];
+    stripStaticTracks(gltf.scene, clips);
+    template = { scene: gltf.scene, clips };
   } catch { /* box characters stay in use */ }
+}
+
+/**
+ * Drops the position and scale tracks that hold the bone's rest value in every clip. The GLB keys all 20 bones'
+ * translation, rotation and scale in all its clips, but only the root and the hips ever move: the other 38 position and
+ * scale tracks repeat the rest pose, and the mixer evaluated and blended them for every body, every frame. Without them
+ * the bones keep their rest values (the same pose). Rotation tracks are all kept: the gait (src/actors/gaitRig.ts) and the
+ * strike rig (src/lamb/strikeRig.ts) turn bones after the mixer and rely on it to set them back each frame. A track some
+ * clip moves (the hips, the root in Kneel) is kept in every clip. Returns how many tracks were dropped.
+ */
+export function stripStaticTracks(scene: THREE.Object3D, clips: THREE.AnimationClip[], eps = 1e-5): number {
+  const keep = new Set<string>();
+  for (const c of clips) for (const t of c.tracks) {
+    const dot = t.name.lastIndexOf('.'), node = t.name.slice(0, dot), prop = t.name.slice(dot + 1);
+    if (prop !== 'position' && prop !== 'scale') { keep.add(t.name); continue; }
+    const o = scene.getObjectByName(node), rest = o ? (prop === 'position' ? o.position : o.scale).toArray() : null;
+    const n = t.getValueSize(), v = t.values;
+    let still = !!rest && n === 3;
+    for (let i = 0; still && i < v.length; i++) if (Math.abs(v[i] - rest![i % n]) > eps) still = false;
+    if (!still) keep.add(t.name);
+  }
+  let dropped = 0;
+  for (const c of clips) {
+    const before = c.tracks.length;
+    c.tracks = c.tracks.filter(t => keep.has(t.name));
+    dropped += before - c.tracks.length;
+  }
+  return dropped;
 }
 
 /**
@@ -61,6 +93,24 @@ export function fixSitKnees(clips: THREE.AnimationClip[]) {
     const v = track.values;
     let backward = true;
     for (let i = 0; i < v.length; i += 4) if (v[i] > -0.3) backward = false;
+    if (!backward) continue;
+    for (let i = 0; i < v.length; i += 4) { v[i] = -v[i]; v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
+  }
+}
+
+/**
+ * The exported Run action bends the knees the wrong way (like Sit's: the shins rotate −X about the knee, so the legs
+ * fold backwards like a bird's) and leans the trunk back. Mirror those rotations. The gait (src/actors/gait.ts) drives
+ * the legs and the trunk whenever the body moves, so this only shows in the short cross-fades with held poses; a no-op
+ * once the Blender action is corrected and re-exported.
+ */
+export function fixRunClip(clips: THREE.AnimationClip[]) {
+  const run = clips.find(c => c.name === 'Run'); if (!run) return;
+  for (const track of run.tracks) {
+    if (!/^(shin\.?[LR]|spine|chest)\.quaternion$/.test(track.name)) continue;
+    const v = track.values;
+    let backward = true;
+    for (let i = 0; i < v.length; i += 4) if (v[i] > -0.02) backward = false;
     if (!backward) continue;
     for (let i = 0; i < v.length; i += 4) { v[i] = -v[i]; v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
   }
@@ -205,11 +255,79 @@ function fabric(base: number, accent: number, pattern: Pattern): THREE.Texture |
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(3, 3); t.flipY = false; fabricCache.set(key, t); return t;
 }
-function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xffffff): THREE.Material {
+export function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xffffff): THREE.Material {
   // Double-sided like the Blender materials: some cloth faces point inward and would otherwise vanish.
   if (pattern === 'bazin') return new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.05, side: THREE.DoubleSide }); // bazin's sheen
   const map = fabric(color, accent, pattern);
   return new THREE.MeshLambertMaterial({ color: map ? 0xffffff : color, map, side: THREE.DoubleSide });
+}
+
+/** Clips that mean « on foot »: held by remote avatars and walking roles, they get the computed gait like a free body. */
+const LOCOMOTION: ReadonlySet<string> = new Set<Clip>(['Idle', 'Walk', 'Run']);
+
+// ---------------------------------------------------------------- animation level of detail
+/**
+ * How much animation work a body gets from where the camera is (docs/PERF_EVENING.md). Close to the camera and in view:
+ * all of it, every frame — the mixer, and on foot the computed gait (src/actors/gait.ts). Farther, or out of the view,
+ * or hidden (by its owner, or swapped for a far figure by the shared humanoid budget, src/actors/crowdLod.ts): the
+ * Walk, Run and Idle clips as they played before the gait, the mixer at a lower rate (its time accumulates, so loops
+ * and cross-fades keep their pace). A body whose bones are turned after the mixer by another rig (the strike rig of a
+ * bout avec frappe) sets `fullRate` and always gets every frame.
+ */
+export const ANIM_LOD = {
+  /** The gait within this distance of the camera (m); a body leaving it keeps the gait to `gaitNear + gaitSlack`. */
+  gaitNear: 30, gaitSlack: 4,
+  /** Beyond this distance (m) a body in view is « far ». */
+  farFrom: 60,
+  /**
+   * Mixer updates a second: in view between gaitNear and farFrom, in view beyond farFrom, out of view (its shadow may
+   * still show on medium and high), hidden (nothing of it is drawn: the far figure standing in for it only needs to
+   * know whether it sits).
+   */
+  mid: 20, far: 10, unseen: 5, hidden: 2,
+} as const;
+/** The rig's bones under a body's skinned scene (what the mixer poses). */
+function boneList(root: THREE.Object3D) { const out: THREE.Object3D[] = []; root.traverse(o => { if ((o as THREE.Bone).isBone) out.push(o); }); return out; }
+/** The camera of the frame (set by main.ts before the modules update; `on` false: every body animated in full). */
+const view = { on: false, x: 0, y: 0, z: 0, frustum: new THREE.Frustum() };
+let madeHumanoids = 0;
+const _viewM = new THREE.Matrix4(), _bodyS = new THREE.Sphere();
+/** The squared distance from the camera of the body `animLod` just looked at when it is drawn and in view, else −1. */
+let seenD2 = -1;
+/**
+ * The details of a face (the eyes, the brows, the lips: four meshes, four draw calls on a body that otherwise costs six)
+ * are shown to a body within this distance of the camera (m) and put away beyond it plus FACE_SLACK: at 14 m they are
+ * a pixel or two tall (the eye whites are 11 cm wide). The head stays, in its skin. Bodies animated at every frame
+ * whatever their distance (the player's, the wrestlers of a strike rig: `fullRate`) keep them.
+ */
+export const FACE_NEAR = 14, FACE_SLACK = 1.5;
+/**
+ * The camera as it was last rendered (its matrices are up to date after the render): the bodies' animation detail this
+ * frame. Null switches the level of detail off.
+ */
+export function setHumanoidView(camera: THREE.Camera | null) {
+  if (!camera) { view.on = false; return; }
+  camera.updateMatrixWorld();                                                // (the frames the debug steps without drawing)
+  _viewM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  view.frustum.setFromProjectionMatrix(_viewM);
+  const e = camera.matrixWorld.elements;
+  view.x = e[12]; view.y = e[13]; view.z = e[14]; view.on = true;
+}
+/**
+ * The detail for a body at world (x, y, z) of scale `k`, drawn or not: 0 for everything every frame, else the mixer's
+ * rate (updates a second) without the gait. `near`: it had the gait last frame (it keeps it a little farther).
+ */
+export function animLod(x: number, y: number, z: number, k: number, drawn: boolean, near: boolean): number {
+  seenD2 = -1;
+  if (!view.on) return 0;
+  if (!drawn) return ANIM_LOD.hidden;
+  _bodyS.center.set(x, y + 0.95 * k, z); _bodyS.radius = 1.35 * k;                  // round the standing or seated body
+  if (!view.frustum.intersectsSphere(_bodyS)) return ANIM_LOD.unseen;
+  const dx = x - view.x, dy = y - view.y, dz = z - view.z, d2 = dx * dx + dy * dy + dz * dz;
+  seenD2 = d2;
+  const g = ANIM_LOD.gaitNear + (near ? ANIM_LOD.gaitSlack : 0);
+  if (d2 < g * g) return 0;
+  return d2 < ANIM_LOD.farFrom * ANIM_LOD.farFrom ? ANIM_LOD.mid : ANIM_LOD.far;
 }
 
 const SOCKET_NODE: Record<Socket, string> = { armL: 'socket_armL', armR: 'socket_armR', waist: 'socket_waist', neck: 'socket_neck' };
@@ -222,14 +340,37 @@ export class Humanoid {
   private current: THREE.AnimationAction | null = null;
   private root: THREE.Object3D;
   private parts = new Map<string, THREE.Mesh>();
+  /** The meshes of the face's details (eyes, brows, lips) and whether they are shown (FACE_NEAR). */
+  private face: THREE.Mesh[] = [];
+  private faceOn = true;
   private skinMat: THREE.MeshLambertMaterial;
   private lipsMat = new THREE.MeshLambertMaterial({ color: 0x3a1a12 });
   private beardMat = new THREE.MeshLambertMaterial({ color: 0x1a1414 });
   private morphed: THREE.Mesh[] = [];
   private accessoryMeshes: THREE.Object3D[] = [];
   clipName: Clip | null = null;
-  /** When set, city movement does not change the clip (emotes, talking, sitting). */
+  /** When set, city movement does not change the clip (emotes, talking, sitting). Idle, Walk and Run are not held: the gait runs. */
   hold: Clip | null = null;
+  /** On foot: the computed gait (src/actors/gait.ts) and its weight (0 while a pose is held). */
+  private gait: GaitState | null = null;
+  private gaitRig: GaitRig | null | undefined;
+  private gaitW = 1;
+  /** Every frame in full whatever the distance (ANIM_LOD): the player's own body, the wrestlers of a bout avec frappe. */
+  fullRate = false;
+  /**
+   * Animation level of detail: time the mixer still owes (s), time left before its next update in a slower tier, the
+   * gait in use last frame, the ground speed measured. On a frame without a mixer update the bones are set back to the
+   * mixer's last pose (`saved`): owners that turn a bone over the clip after `animate` (an apprentice's arm on the grab
+   * bar, the stands' clapping, the traffic agent's sweeping arm) start from the clip's pose every frame, as with the
+   * mixer, and never add up their turns.
+   */
+  private lag = 0; private due = 0;
+  private near = true;
+  private bones: THREE.Object3D[] | null = null;
+  private saved: Float64Array | null = null;
+  /** Its place in the slower tiers' rhythm (0–1), so that bodies made together do not all update on the same frame. */
+  private phase = (madeHumanoids++ * 0.618034) % 1;
+  private lx = NaN; private lz = NaN; private v = 0;
 
   constructor(look?: PersonLook) {
     if (!template) throw new Error('character asset not loaded');
@@ -242,6 +383,7 @@ export class Humanoid {
       if (!m.isMesh) return;
       m.castShadow = true; m.frustumCulled = false;
       const key = CLOTH.find(n => m.name.startsWith(n));
+      if (/^Head\w*_\d+$/.test(m.name)) this.face.push(m);
       if (m.morphTargetDictionary) this.morphed.push(m);
       const src = m.material as THREE.MeshStandardMaterial;
       if (key) { this.parts.set(key, m); if (key.startsWith('Hair_')) m.material = hair; if (key === 'Beard') m.material = this.beardMat; }
@@ -324,14 +466,100 @@ export class Humanoid {
     this.current = next; this.clipName = name;
   }
 
-  /** City locomotion: idle, walk or run from ground speed (m/s). */
+  /**
+   * City locomotion. On foot (no held pose) the gait is computed from the body's own motion — its group's position and
+   * rotation.y, so call this after moving it — with `speed` (m/s) only saying whether the caller means a run: feet that
+   * stay where they are put down, cadence and step from the ground speed (src/actors/gait.ts). The Idle, Walk and Run
+   * clips stay underneath for the cross-fades with held poses (talking, sitting, emotes…), which the gait fades out for.
+   */
   animate(dt: number, speed: number) {
-    if (!this.hold) {
-      if (speed > 3) { this.play('Run', 0.15); if (this.current) this.current.timeScale = speed / 5.2; }
-      else if (speed > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = Math.max(0.6, speed / 1.45); }
+    const held = this.hold && !LOCOMOTION.has(this.hold) ? this.hold : null;
+    const o = this.group.position;
+    // the ground speed from the body's own motion (a jump is not a step): the clips' pace while the gait is not computed
+    if (dt > 0) {
+      const sx = o.x - this.lx, sz = o.z - this.lz, step = Math.sqrt(sx * sx + sz * sz);
+      this.v = step < Math.max(0.5, 10 * dt) ? this.v + (step / dt - this.v) * Math.min(1, dt / 0.15) : 0;
+    }
+    this.lx = o.x; this.lz = o.z;
+    // how much work this body gets (ANIM_LOD): where it was last drawn, seen or not
+    const m = this.group.matrixWorld.elements, wasNear = this.near;
+    const lod = this.fullRate ? 0 : animLod(m[12], m[13], m[14], this.group.scale.x, this.drawn(), wasNear);
+    if (!this.fullRate && seenD2 >= 0) this.showFace(seenD2);
+    if (lod === ANIM_LOD.unseen || lod === ANIM_LOD.hidden) this.gaitW = 0;  // nobody sees it go: no fade needed
+    this.near = lod === 0;
+    if (held) { this.play(held, 0.2); this.gaitW = Math.max(0, this.gaitW - dt / 0.2); }
+    else if (lod === 0 || this.gaitW > 0) {
+      const g = (this.gait ??= new GaitState());
+      if (this.gaitW <= 0) g.reset(o.x, o.z, this.group.rotation.y, this.group.scale.x);        // back on foot from a held pose
+      g.update(dt, o.x, o.z, this.group.rotation.y, this.group.scale.x, speed);
+      if (g.moving) { this.play(g.run > 0.5 ? 'Run' : 'Walk', 0.2); if (this.current) this.current.timeScale = (g.p.cadence / 2) * this.current.getClip().duration; }
       else this.play('Idle', 0.25);
-    } else this.play(this.hold, 0.2);
-    this.mixer.update(dt);
+      // in reach of the gait it fades in; out of it (far, out of view, hidden) it fades out, then the clips walk alone
+      this.gaitW = lod === 0 ? Math.min(1, this.gaitW + dt / 0.2) : Math.max(0, this.gaitW - dt / 0.25);
+    } else {
+      // the clips alone, as they played before the gait: their pace from the caller's speed or the measured one
+      const s = Math.max(speed, this.v);
+      if (this.hold) this.play(this.hold, 0.2);
+      else if (s > 3) { this.play('Run', 0.15); if (this.current) this.current.timeScale = s / 5.2; }
+      else if (s > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = Math.max(0.6, s / 1.45); }
+      else this.play('Idle', 0.25);
+    }
+    // the mixer: every frame in full detail (and while the gait fades), else at the tier's rate with the time it owes
+    this.lag += dt;
+    if (lod !== 0 && this.gaitW <= 0) {
+      if (wasNear) this.due = this.phase / lod;                              // just slowed down: now, then staggered with the others
+      // not yet: the mixer's last pose (a hidden body is left as it is: its first update once drawn sets every bone)
+      else if ((this.due -= dt) > 0) { if (lod !== ANIM_LOD.hidden) this.restorePose(); return; }
+      else this.due = 1 / lod + Math.max(this.due, -0.5 / lod);
+    }
+    this.mixer.update(this.lag); this.lag = 0;
+    if (lod !== 0) this.savePose();
+    const w = this.gait ? this.gaitW * this.gait.stand : 0;
+    if (w > 0) {
+      if (this.gaitRig === undefined) this.gaitRig = GaitRig.from(this.root);
+      this.gaitRig?.apply(this.gait!, w);
+    }
+  }
+  /** The face's details for a body `d2` (squared m) from the camera: shown within FACE_NEAR, put away beyond FACE_NEAR + FACE_SLACK. */
+  private showFace(d2: number) {
+    const on = d2 < (this.faceOn ? FACE_NEAR + FACE_SLACK : FACE_NEAR) ** 2;
+    if (on === this.faceOn) return;
+    this.faceOn = on;
+    for (const m of this.face) m.visible = on;
+  }
+  /** Whether the face's details are shown now (checks). */
+  faceShown() { return this.faceOn; }
+  /** Drawn as far as its owners are concerned: its skinned scene (a far figure may stand in for it), its group and every parent. */
+  private drawn() {
+    if (!this.root.visible) return false;
+    for (let p: THREE.Object3D | null = this.group; p; p = p.parent) if (!p.visible) return false;
+    return true;
+  }
+  /** Keeps the pose the mixer just set (the bones' rotations and positions). */
+  private savePose() {
+    const b = (this.bones ??= boneList(this.root)), s = (this.saved ??= new Float64Array(b.length * 7));
+    for (let i = 0, o = 0; i < b.length; i++, o += 7) {                       // (field by field: toArray is megamorphic, slow)
+      const q = b[i].quaternion, p = b[i].position;
+      s[o] = q.x; s[o + 1] = q.y; s[o + 2] = q.z; s[o + 3] = q.w; s[o + 4] = p.x; s[o + 5] = p.y; s[o + 6] = p.z;
+    }
+  }
+  /** Back to the pose the mixer last set: the bones an owner turned over it since are set back (the others are left alone). */
+  private restorePose() {
+    const b = this.bones, s = this.saved; if (!b || !s) return;
+    for (let i = 0, o = 0; i < b.length; i++, o += 7) {
+      const q = b[i].quaternion, p = b[i].position;
+      if (q.x !== s[o] || q.y !== s[o + 1] || q.z !== s[o + 2] || q.w !== s[o + 3]) q.set(s[o], s[o + 1], s[o + 2], s[o + 3]);
+      if (p.x !== s[o + 4] || p.y !== s[o + 5] || p.z !== s[o + 6]) p.set(s[o + 4], s[o + 5], s[o + 6]);
+    }
+  }
+  /** The gait as computed this frame (checks: src/main.ts `__dakar.gait()`), or null while a pose is held. */
+  gaitInfo() {
+    const g = this.gait; if (!g || this.gaitW <= 0) return null;
+    return {
+      moving: g.moving, run: g.run, speed: g.v * this.group.scale.x, cadence: g.moving ? g.p.cadence : 0, step: g.moving ? g.p.step * this.group.scale.x : 0, duty: g.p.duty,
+      phase: g.phase, steps: g.steps, settles: g.settles, pelvis: g.py, clip: this.clipName,
+      feet: g.feet.map(f => ({ planted: f.planted, swing: f.swing, settle: f.settle, pitch: f.pitch, slipped: f.slipped })),
+    };
   }
   update(dt: number) { this.mixer.update(dt); }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }

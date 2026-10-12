@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import type { GameModule } from '../game/modules';
+import type { GameCtx, GameModule } from '../game/modules';
 import type { Collider, HubWorld, RoadEdge } from '../world/types';
 import { rng } from '../core/rng';
 import { WALL_R, inGate, inTunnel } from '../world/geew';
-import { BILL, GALA, GALA_DONE_COUNTER, TICKET_PRICE } from './program';
+import { GALA, GALA_DONE_COUNTER, TICKET_PRICE, billFor, ecurieLabel } from './program';
 import { eveningSize } from './exterior';
+import { insideWalls } from '../game/pace';
 
 /**
  * Fight posters (« a big fight is visible in Dakar before you even reach the arena »): tonight's card pasted on street
@@ -14,7 +15,8 @@ import { eveningSize } from './exterior';
  * shop signs. The career lane prints the last winner through `posters.setResult(day, text)`; its own big poster by the
  * gate is kept clear (POSTER_KEEP_CLEAR).
  *
- * Wrestlers and écuries are the game's fictional cast (src/arena/program.ts BILL); no real promoter, sponsor or brand.
+ * Wrestlers and écuries are the game's fictional cast (src/arena/program.ts billFor: the career's ladder, else BILL); no real
+ * promoter, sponsor or brand.
  */
 
 /** Posters per hub: Pikine gets the most, with a share of them on the way to the arena (within NEAR_ARENA m). */
@@ -41,10 +43,11 @@ export interface PosterLines { tag: string; title: string; ecuries: string; when
 export function posterLines(day: number, hour: number, last: { day: number; text: string } | null = result, done = false): PosterLines {
   const over = (done && hour >= GALA.setup) || hour >= GALA.close;
   const tonight = !over, d = tonight ? day : day + 1, big = eveningSize(d, GALA.doors) === 'gala';
+  const bill = billFor(d);                                   // the card of the city's ladder (src/career/roster.ts) or the fixed bill
   return {
     tag: big ? 'GRAND GALA DE LUTTE' : 'COMBAT DE QUARTIER',
-    title: `${BILL.left.name} – ${BILL.right.name}`.toUpperCase(),
-    ecuries: `Écurie ${BILL.left.ecurie} · Écurie ${BILL.right.ecurie}`,
+    title: `${bill.left.name} – ${bill.right.name}`.toUpperCase(),
+    ecuries: bill.title ? `Combat pour le titre · ${ecurieLabel(bill.left.ecurie)} · ${ecurieLabel(bill.right.ecurie)}` : `${ecurieLabel(bill.left.ecurie)} · ${ecurieLabel(bill.right.ecurie)}`,
     when: `${tonight ? 'Ce soir' : 'Demain'} ${GALA.doors} h · Arène de Pikine`,
     price: `Entrée ${TICKET_PRICE.toLocaleString('fr-FR')} F`,
     result: last && day - last.day <= 2 ? `Dernier combat : ${last.text}` : null,
@@ -103,10 +106,32 @@ export function arenaWallSpots(cx: number, cz: number, n = ARENA_WALL_POSTERS): 
   return out.sort((p, q) => (p.z - q.z));
 }
 
-function drawPoster(l: PosterLines): HTMLCanvasElement {
+/**
+ * The largest whole font size from `size` down to `min` at which a text is at most `max` wide (`width(s)`: its width at
+ * size s, growing with s), as stepping down one pixel at a time finds it — in two or three measures instead of one a
+ * pixel: the width is about proportional to the size, so the first guess is next to the answer.
+ */
+export function fitSize(width: (size: number) => number, max: number, size: number, min = 12): number {
+  const w0 = width(size);
+  if (w0 <= max || size <= min) return size;
+  let s = Math.max(min, Math.min(size - 1, Math.floor((size * max) / w0)));
+  while (s > min && width(s) > max) s--;
+  while (s + 1 < size && width(s + 1) <= max) s++;
+  return s;
+}
+
+/**
+ * The poster drawn in three steps (a canvas' text is the slow part of a frame: each font change and measure, and the first
+ * time a font is used in a page), one step a frame; the canvas is handed over once it is whole.
+ */
+function* drawPoster(l: PosterLines): Generator<void, HTMLCanvasElement> {
   const cv = document.createElement('canvas'); cv.width = 360; cv.height = 504;
   const c = cv.getContext('2d')!, wd = cv.width;
-  const fit = (text: string, max: number, size: number, weight = 900) => { c.font = `${weight} ${size}px system-ui, sans-serif`; while (c.measureText(text).width > max && size > 12) { size -= 1; c.font = `${weight} ${size}px system-ui, sans-serif`; } };
+  // (each font change and measure is slow in a 2D canvas: the result's redraw used to step a pixel at a time)
+  const fit = (text: string, max: number, size: number, weight = 900) => {
+    const font = (s: number) => `${weight} ${s}px system-ui, sans-serif`;
+    c.font = font(fitSize(s => { c.font = font(s); return c.measureText(text).width; }, max, size));
+  };
   c.fillStyle = l.big ? '#f4dfae' : '#e6eef0'; c.fillRect(0, 0, wd, 504);
   c.fillStyle = l.big ? '#a3231a' : '#0f5e6e'; c.fillRect(0, 0, wd, 96);
   c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#fff3d0';
@@ -115,10 +140,12 @@ function drawPoster(l: PosterLines): HTMLCanvasElement {
   c.fillStyle = '#1a7a44'; c.fillRect(18, 116, wd / 2 - 24, 120);
   c.fillStyle = '#c8322a'; c.fillRect(wd / 2 + 6, 116, wd / 2 - 24, 120);
   c.fillStyle = '#ffffff'; fit('VS', 60, 40); c.fillText('VS', wd / 2, 176);
+  yield;
   const [a, b] = l.title.split(' – ');
   fit(a, wd / 2 - 40, 34); c.fillText(a, wd / 4 + 2, 176);
   fit(b, wd / 2 - 40, 34); c.fillText(b, (3 * wd) / 4 - 2, 176);
   c.fillStyle = '#3a2a14'; fit(l.ecuries, wd - 30, 21, 700); c.fillText(l.ecuries, wd / 2, 264);
+  yield;
   c.fillStyle = l.big ? '#a3231a' : '#0f5e6e'; fit(l.when, wd - 24, 26); c.fillText(l.when, wd / 2, 316);
   c.fillStyle = '#3a2a14'; fit(l.price, wd - 30, 22, 700); c.fillText(l.price, wd / 2, 356);
   if (l.result) {
@@ -158,12 +185,20 @@ function posterMesh(spots: PosterSpot[], mat: THREE.Material): THREE.Mesh {
 
 let mesh: THREE.Mesh | null = null, tex: THREE.CanvasTexture | null = null, spots: PosterSpot[] = [];
 let key = '', t = 0, hubId = '';
+/** A redraw under way (one step a frame) and the key of what it draws. */
+let job: Generator<void, HTMLCanvasElement> | null = null, jobKey = '';
+
+/** What tonight's poster says now, and the key of it (a new key is a new picture). */
+function linesNow(ctx: GameCtx): [PosterLines, string] {
+  const day = ctx.day(), l = posterLines(day, ctx.hour(), undefined, ctx.state.data.counters[GALA_DONE_COUNTER] === day);
+  return [l, `${revision}|${l.tag}|${l.title}|${l.ecuries}|${l.when}|${l.result}|${l.over}`];
+}
 
 export const postersModule: GameModule = {
   name: 'posters',
   hubLoaded(ctx, hub) {
     if (mesh) { mesh.removeFromParent(); mesh.geometry.dispose(); (mesh.material as THREE.Material).dispose(); }
-    tex?.dispose(); mesh = null; tex = null; key = ''; hubId = hub.id;
+    tex?.dispose(); mesh = null; tex = null; key = ''; hubId = hub.id; job = null;
     if (typeof document === 'undefined') return;
     spots = [...(hub.arena ? arenaWallSpots(hub.arena.cx, hub.arena.cz) : []), ...wallSpots(hub, POSTER_COUNT[hub.id] ?? 6)];
     if (!spots.length) return;
@@ -173,13 +208,26 @@ export const postersModule: GameModule = {
     mesh = posterMesh(spots, mat);
     ctx.extra.add(mesh);
     hub.signs.push(mesh);                                                     // night glow with the shop signs (main.ts)
+    // the first picture at once (the hub is loading anyway); the later ones when a poster is in sight
+    const [l, k] = linesNow(ctx);
+    const run = drawPoster(l); let step = run.next();
+    while (!step.done) step = run.next();
+    tex.image = step.value; tex.needsUpdate = true; key = k;
   },
   update(ctx, dt) {
     if (!tex) return;
-    t -= dt; if (t > 0) return; t = 2;
-    const day = ctx.day(), l = posterLines(day, ctx.hour(), undefined, ctx.state.data.counters[GALA_DONE_COUNTER] === day);
-    const k = `${revision}|${l.tag}|${l.when}|${l.result}|${l.over}`;
-    if (k !== key) { key = k; tex.image = drawPoster(l); tex.needsUpdate = true; }
+    // a redraw under way goes on, a step a frame, and the canvas is handed over once whole
+    if (job) {
+      const step = job.next();
+      if (step.done) { tex.image = step.value; tex.needsUpdate = true; key = jobKey; job = null; }
+      return;
+    }
+    t -= dt; if (t > 0) return; t = 1;
+    // from inside the arena's walls no poster is in sight (the six on its outer wall face the street): a result printed
+    // during the bout is drawn once the player is out, not in the middle of it
+    if (insideWalls(ctx.world()?.arena, ctx.camera.position)) return;
+    const [l, k] = linesNow(ctx);
+    if (k !== key) { jobKey = k; job = drawPoster(l); }
   },
   debug: ctx => ({
     /** The posters of this hub and what they say. */

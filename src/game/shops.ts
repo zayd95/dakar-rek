@@ -12,9 +12,10 @@ import { buildShopInterior, setShopNight, SHOP_TYPES, type ShopDetail, type Shop
 /**
  * Shops: the city's open-front shops are stocked by the hub builder from the shop kit (src/world/city.ts →
  * src/world/shopKit.ts) — their places, counters and keepers come with the hub. This module
- *  - turns the café kiosks of the four hubs (Café Touba, facades until now) into walk-in cafés: « Entrer » on their
- *    sheet, a room stocked by the same kit (shell mode) off the map, the café's own menu at the inside counter, the
- *    barista behind it and a regular on a stool;
+ *  - turns the café kiosks of the four hubs (Café Touba) and the Restaurant Le Pointe (Almadies), facades until now, into
+ *    walk-in rooms: « Entrer » on their sheet, a room stocked by the same kit (shell mode) off the map, their own menu at
+ *    the inside counter, the barista (a regular on a stool) or the cashier and a waiter; the city's people come in,
+ *    sit, pay at the counter and leave (the rooms are shop spots of src/social/ambientLife.ts); the staff can be greeted;
  *  - (customers: the city's ambient people come in through each stocked shop's door, browse at its displays, queue and
  *    pay at its counter, and leave — src/social/ambientLife.ts on the kit's anchors, paths from src/world/shopFlow.ts);
  *  - lights tubes, screens and fridges at night;
@@ -23,8 +24,13 @@ import { buildShopInterior, setShopNight, SHOP_TYPES, type ShopDetail, type Shop
  */
 const BARISTA: PersonLook = { skin: 0x5b3420, style: 'tee', top: 0x14532d, bottom: 0x2b2f3a, shoes: 0x1d1d1f, hat: 'kufi', hatColor: 0xf2f2ec };
 const REGULAR: PersonLook = { skin: 0x6b3f25, style: 'boubou', top: 0xe8decb, pattern: 'bazin', hat: 'kufi', hatColor: 0x1c1c1f };
+const CASHIER: PersonLook = { skin: 0x6b3f25, style: 'dress', top: 0x0c4a6e, bottom: 0x0c4a6e, female: true, hat: 'headwrap', hatColor: 0xf3f0ea, shoes: 0x2b2b33 };
+const WAITER: PersonLook = { skin: 0x4e2e1c, style: 'tee', top: 0xf3f0ea, bottom: 0x1d1f24, shoes: 0x1d1d1f };
 /** Kiosk kinds that get a walk-in room, and the kit type that stocks it. */
-const WALK_IN: { frag: string; type: ShopType; w: number; d: number }[] = [{ frag: ':cafe:', type: 'cafe', w: 9, d: 7 }];
+const WALK_IN: { frag: string; type: ShopType; w: number; d: number; line: string }[] = [
+  { frag: ':cafe:', type: 'cafe', w: 9, d: 7, line: 'Au comptoir. Café Touba bien serré, ou on reste discuter.' },
+  { frag: ':restaurant:', type: 'restaurant', w: 12, d: 9, line: 'Bienvenue au Pointe. Le poisson du jour sort du grill, la mer est juste là.' },
+];
 const ROOM_X = 3400, ROOM_GAP = 30;                 // off the map, past the homes (src/economy/estate.ts: 1600 + 60 i) and the mosque hall
 
 interface Room { door: Interactable; shop: ShopInterior; cast: Cast | null }
@@ -41,6 +47,10 @@ const seedOf = (k: string) => { let h = 2166136261; for (let i = 0; i < k.length
 
 export const shopsModule: GameModule = {
   name: 'shops',
+  init(ctx) {
+    // the staff of the walk-in rooms can be greeted like anyone (in their room's space)
+    ctx.people.addBodies(() => rooms.flatMap(r => r.cast ? r.cast.bodies().map(b => ({ ...b, space: r.door.id })) : []));
+  },
   hubLoaded(ctx, hub) {
     clearShowroom();
     for (const r of rooms) { r.cast?.dispose(); r.shop.dispose(); }
@@ -55,8 +65,8 @@ export const shopsModule: GameModule = {
       const a = shop.anchors, b = shop.bounds;
       const interactables: Interactable[] = [
         { id: `${it.id}:sortir`, name: 'Sortir', kind: 'actions', x: a.door.x, z: a.door.z + 0.2, radius: 1.2, actions: [{ id: 'sortir', label: 'Sortir', seconds: 0, special: 'exit' }] },
-        // the café's own menu, now at its counter inside
-        { id: `${it.id}:comptoir`, name: it.name, kind: 'actions', x: a.counter.x, z: a.counter.z, radius: 2.2, actions: it.actions.slice(), description: 'Au comptoir. Café Touba bien serré, ou on reste discuter.' },
+        // the place's own menu, now at its counter inside
+        { id: `${it.id}:comptoir`, name: it.name, kind: 'actions', x: a.counter.x, z: a.counter.z, radius: 2.2, actions: it.actions.slice(), description: spec.line },
       ];
       const int: Interior = {
         kind: 'venue', name: it.name, group: shop.group, colliders: shop.colliders, interactables, seats: shop.seats,
@@ -66,11 +76,16 @@ export const shopsModule: GameModule = {
         light: new THREE.Vector3(ox, 2.6, oz), lightColor: 0xfff1d8,
       };
       it.actions = [ENTER, ...it.actions];
+      // the city's people use the room as a shop spot (src/social/ambientSpots.ts): its door, seats, checkout line
+      shop.group.userData.shop = { key: it.id, type: spec.type, anchors: a, bounds: b, budget: shop.budget, room: true };
+      shop.group.userData.shopColliders = shop.colliders;
       ctx.addInterior(it, int);
-      // the barista behind the counter, a regular on a stool (the interior's seats are registered in the door's space)
-      const stool = shop.seats.find(s => s.kind === 'stool');
-      const roles: Role[] = [{ id: 'barista', look: BARISTA, x: a.keeper.x, z: a.keeper.z, yaw: a.keeper.yaw, y: 0.1, clip: 'Idle', when: () => true }];
-      if (stool && ctx.quality() !== 'low') roles.push({ id: 'habitue', look: REGULAR, seat: { ...stool, space: it.id }, when: () => true });
+      // the café: the barista behind the counter, a regular on a stool; the restaurant: the cashier and a waiter at the pass
+      // (the interior's seats are registered in the door's space)
+      const roles: Role[] = [{ id: spec.type === 'cafe' ? 'barista' : 'caisse', look: spec.type === 'cafe' ? BARISTA : CASHIER, x: a.keeper.x, z: a.keeper.z, yaw: a.keeper.yaw, y: 0.1, clip: 'Idle', when: () => true }];
+      const stool = shop.seats.find(s => s.kind === 'stool'), waiter = a.staff[0];
+      if (spec.type === 'cafe' && stool && ctx.quality() !== 'low') roles.push({ id: 'habitue', look: REGULAR, seat: { ...stool, space: it.id }, when: () => true });
+      if (spec.type === 'restaurant' && waiter) roles.push({ id: 'serveur', look: WAITER, x: waiter.x, z: waiter.z, yaw: waiter.yaw, y: 0.1, clip: 'Idle', when: () => true });
       const cast = new Cast(roles, ctx.seats, ctx.extra, `${it.id}:salle`);       // world coordinates; shown only inside
       cast.setMoment('open');
       rooms.push({ door: it, shop, cast });

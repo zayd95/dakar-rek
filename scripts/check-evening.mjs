@@ -1,7 +1,7 @@
 // Habib's evening (10 Oct): a new player works in the afternoon, gets to the arena, watches the bout from the stands, then
 // looks for what comes next (La Vague, Almadies). Plays the chain on the integrated build and records what a player meets
 // on the way: guidance, distances, waits, prices, crowd, what is empty. Usage:
-//   flock /tmp/dakar-browser.lock node scripts/check-evening.mjs [baseUrl] [outDir]      (ONLY=desktop|phone)
+//   flock /tmp/dakar-browser.lock node scripts/check-evening.mjs [baseUrl] [outDir]      (ONLY=desktop|phone, LAMB2=1: with ?lamb2)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -9,25 +9,36 @@ const base = process.argv[2] ?? 'http://localhost:4212/';
 const out = process.argv[3] ?? 'docs/screenshots/evening';
 fs.mkdirSync(out, { recursive: true });
 const T = { timeout: 360000 };
+// LAMB2=1: the game loads with ?lamb2 (Làmb 2.0): the watched bout is avec frappe; without it, nothing changes
+const L2 = process.env.LAMB2 === '1';
 const results = [], notes = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
 const note = (label, k, v) => { notes.push({ view: label, k, v }); console.log(`NOTE ${label} · ${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
-for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 844 }, true]]) {
-  if (process.env.ONLY && process.env.ONLY !== label) continue;
+for (const [label0, viewport, touch] of [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 844 }, true]]) {
+  if (process.env.ONLY && process.env.ONLY !== label0) continue;
+  const label = L2 ? `${label0}-lamb2` : label0;
   const page = await (await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch })).newPage();   // fresh storage: a new game
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 120000 });
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}${L2 ? '&lamb2' : ''}`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.arena, null, T);
   const d = (fn, arg) => page.evaluate(fn, arg);
   const shot = async name => { await page.waitForTimeout(700); try { await page.screenshot({ path: `${out}/${label}-${name}.png`, timeout: 240000 }); } catch (e) { console.log(`NOTE: capture ${name} skipped`); } };
   const idle = () => page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   const goal = () => d(() => document.getElementById('goal')?.textContent ?? '');
+  // the HUD (goal line) refreshes 4 times a second of game time, at most 0.1 s a frame: on a slow renderer (the phone
+  // run) a fixed wait read the line from before a change — wait for a few refreshes instead (main.ts hudTicks)
+  const hudSettled = async (n = 3) => {
+    const t = await d(() => window.__dakar.hudTicks?.() ?? null);
+    if (t === null) return page.waitForTimeout(1200);
+    await page.waitForFunction(k => window.__dakar.hudTicks() >= k, t + n, T).catch(() => {});
+  };
   const t0 = Date.now(), wall = () => Math.round((Date.now() - t0) / 1000);
 
   // 1. Afternoon, new game: where am I, what does the game suggest?
   await d(() => window.__dakar.setHour(15));
+  await hudSettled();
   const start = await d(() => ({ hub: window.__dakar.pos().hub, wallet: window.__dakar.state.wallet, guide: window.__dakar.guide?.() ?? null }));
   note(label, 'start', { ...start, goal: await goal() });
   check(`${label}: a new game starts in Pikine with a next step`, start.hub === 'pikine' && (await goal()).length > 4);
@@ -47,10 +58,11 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
 
   // 3. Late afternoon: does anything point the player to tonight's bout?
   await d(() => window.__dakar.setHour(17.6));
-  await page.waitForTimeout(1200);
+  await hudSettled();
   const hint = await d(() => ({ goal: document.getElementById('goal')?.textContent ?? '', toast: document.getElementById('toast')?.textContent ?? '', guide: window.__dakar.guide?.() ?? null, out: window.__dakar.arenaOut?.() ?? null, arena: window.__dakar.arena.info(), evening: window.__dakar.evening?.() ?? null }));
   note(label, 'towards the evening', { goal: hint.goal, toast: hint.toast, evening: hint.evening?.text ?? null, guide: hint.guide?.name ?? null, street: hint.arena?.street, size: hint.out?.size, event: hint.out?.event });
-  // the evening's call (src/arena/eveningCall.ts): a word at the doors, then the goal line (after the welcome beat)
+  // the evening's call (src/arena/eveningCall.ts): a word at the doors, then the goal line (before any lead, Tonton
+  // Ibou's welcome included: src/game/goalLine.ts)
   check(`${label}: at 17.6 h the goal or the evening's call points to the arena`, /arène/i.test(hint.goal + ' ' + hint.toast), JSON.stringify({ goal: hint.goal, toast: hint.toast }));
   check(`${label}: tonight there is a bout at the arena (every evening)`, !!hint.out?.event || hint.arena?.street !== 'quiet', JSON.stringify({ street: hint.arena?.street, event: hint.out?.event }));
   await shot('02-before-the-bout');
@@ -95,6 +107,9 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const tWait = Date.now();
   await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, T).catch(() => {});
   note(label, 'wait for the show to start (wall s)', Math.round((Date.now() - tWait) / 1000));
+  // the preliminaries (src/arena/undercard.ts, checked in check-arena-visit) skipped: on to the main event
+  await page.waitForFunction(() => ['prelims', 'entrance'].includes(window.__dakar.arena.info().phase), null, T).catch(() => {});
+  await d(() => { if (window.__dakar.arena.info().phase === 'prelims') window.__dakar.arena.go('entrance'); });
   await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return i.phase === 'entrance'; }, null, T).catch(() => {});
   await shot('05-entrance');
   await page.waitForFunction(() => window.__dakar.arena.info().phase === 'bout', null, T).catch(() => {});
@@ -107,6 +122,10 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const res = await d(() => ({ ...window.__dakar.arena.info(), toast: document.getElementById('toast')?.textContent ?? null }));
   note(label, 'result', { phase: res.phase, winner: res.bout?.winner ?? res.result ?? null, toast: res.toast });
   check(`${label}: the bout reaches its result`, ['result', 'leaving', 'over'].includes(res.phase), res.phase);
+  const lb = res.lastBout;
+  check(`${label}: the watched bout is ${L2 ? 'avec frappe (Làmb 2.0)' : 'sans frappe, as before'}`, lb?.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'), JSON.stringify(lb));
+  if (L2) check(`${label}: avec frappe — the referee raised the winner's arm and the stands reacted to the fall`,
+    !!lb?.outcome && (!lb.winner || lb.refereeRaised === true) && (lb.outcome !== 'projection' || (lb.fallSplit?.celebrate > 0 && lb.fallSplit?.heads > 0)), JSON.stringify(lb));
   await shot('07-result');
 
   // 7. After the bout: what next? (La Vague is in Almadies — its lane is not integrated yet)
@@ -117,7 +136,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   note(label, 'after the bout', after);
   // walked out of the gate: one place open at that hour to end the evening (src/arena/eveningCall.ts), else nothing
   const gOut = await d(() => window.__dakar.arena.info().gate ?? window.__dakar.arenaOut().gate);
-  if (gOut) { await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [gOut.x, gOut.z - 7]); await page.waitForTimeout(1200); }
+  if (gOut) { await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [gOut.x, gOut.z - 7]); await hudSettled(); }
   const next = await d(() => ({ goal: document.getElementById('goal')?.textContent ?? '', evening: window.__dakar.evening?.() ?? null }));
   note(label, 'after the bout, outside the gate', { goal: next.goal, suggestion: next.evening?.text ?? null, target: next.evening?.target?.name ?? null });
   await shot('08-after');

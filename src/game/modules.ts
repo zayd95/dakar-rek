@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import type { GameState } from '../core/state';
+import type { HubId } from '../core/types';
 import type { Input } from '../core/input';
 import type { Hud, MenuItem } from '../ui/hud';
 import type { Interactions } from '../interact/system';
@@ -12,12 +13,20 @@ import type { HubWorld, Interactable } from '../world/types';
 import type { Interior } from '../world/interiors';
 import type { Humanoid } from '../actors/humanoid';
 import type { FollowCamera } from '../actors/camera';
+import type { Peer, PresenceExtras } from '../multiplayer/protocol';
 import { wolofModule } from '../i18n/module';
 import { arenaModule } from '../arena/module';
 import { assetKitModule } from './assetKit';
 import { transport } from '../transport/module';
 import { moto } from '../transport/motoModule';
 import { car } from '../transport/carModule';
+import { taxi } from '../transport/taxi';
+import { arenaStreetsModule } from '../city/arena';
+import { weatherModule } from '../city/weather';
+import { streetVendorsModule } from '../city/vendors';
+import { roadEventsModule } from '../city/roadEvents';
+import { galaTrafficModule } from '../city/galaTraffic';
+import { nightModule } from '../city/night';
 import { VenuesModule } from '../venues';
 import { ESTATE_MODULE } from '../economy/estate';
 import { shopsModule } from './shops';
@@ -26,10 +35,16 @@ import { arenaExteriorModule } from '../arena/exterior';
 import { arenaInteriorModule } from '../arena/interior';
 import { postersModule } from '../arena/posters';
 import { fighterModule } from '../arena/fighter';
+import { bakkModule } from '../arena/bakk';
 import { eveningCallModule } from '../arena/eveningCall';
 import { worldMarkers } from '../ui/worldMarkers';
 import { crowdModule } from '../crowd/module';
+import { fightTalkModule } from '../social/fightTalkModule';
 import { careerModule } from '../career/module';
+import { tonightModule } from '../arena/tonight';
+import { supportersModule } from '../arena/supporters';
+import { togetherModule } from '../arena/together';
+import { arrivalModule } from '../arena/arrival';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -73,7 +88,11 @@ export interface GameCtx {
     /** `inPlace`: clear the seat without moving the player (before a door, a trip…). */
     standUp(inPlace?: boolean): void;
     place(x: number, z: number, yaw: number): void;
+    /** On a place in the arena's stands: up on the tier for a moment, arms up (others see it), then back down. */
+    cheer(seconds?: number): boolean;
   };
+  /** The other players of this hub's group (positions, poses and their optional fields only; empty offline). */
+  peers(): readonly Peer[];
   mode(): GameMode;
   /** 'menu' and 'busy' lock movement; 'play' gives it back. */
   setMode(m: GameMode): void;
@@ -101,6 +120,16 @@ export interface GameCtx {
   startBout(mode: 'amical' | 'classe', style?: string, after?: () => void): boolean;
   /** Set (or clear) the city's walking marker towards an interactable of the current hub (the places directory's marker). */
   walkTo(id: string | null): void;
+  /**
+   * What other players may read about this player under their name (presence `rec`, validated by the server):
+   * a short line such as « Undercards · 3-1 · Écurie Baobab », or null for nothing. The career module sets it.
+   */
+  setPublicRecord(rec: string | null): void;
+  /**
+   * Go to another hub: a short fade with `label`, the hub built (modules' hubLoaded run, a ride may seat the player in
+   * its vehicle there), the player at `at` or the hub's spawn. Charges nothing: the caller has taken any fare.
+   */
+  travel(dest: HubId, at?: { x: number; z: number; yaw: number }, label?: string): void;
 }
 
 /** A gameplay module: hooks are called by main.ts in this order every hub / frame. */
@@ -139,6 +168,18 @@ export interface GameModule {
    * result toast (purse, rank). The career module (src/career) keeps the record from it.
    */
   lamb?(ctx: GameCtx, e: LambEvent): string[] | void;
+  /**
+   * Who the player faces in a làmb bout of this mode (the career's roster: name, duel style, level), or null to keep
+   * the duel's own rotation. Asked by main.ts when a friendly or ranked bout starts.
+   */
+  opponent?(ctx: GameCtx, mode: 'amical' | 'classe'): { name: string; style: string; level: number } | null;
+  /**
+   * Optional fields this module adds to the player's presence this frame (own fields only, each validated by the
+   * protocol's parseMove; never money, inventory or saves). Null or absent: nothing.
+   */
+  presence?(ctx: GameCtx): Partial<PresenceExtras> | null;
+  /** The player chose « Encourager » on a place in the stands and rose (arms up). */
+  cheered?(ctx: GameCtx): void;
   /** Entries merged into window.__dakar (?debug) for the checks. */
   debug?(ctx: GameCtx): Record<string, unknown>;
 }
@@ -146,17 +187,33 @@ export interface GameModule {
 /** What main.ts reports when a làmb bout or an écurie session ends (GameModule.lamb). */
 export type LambEvent =
   | { kind: 'bout'; mode: 'entrainement' | 'amical' | 'classe'; outcome: 'projection' | 'decision' | 'egalite' | 'abandon' | 'entrainement';
-      winner: 'player' | 'opponent' | null; opponent: { name: string; style: string; label: string }; level: number }
-  | { kind: 'training'; scene: 'training' | 'entrance' | 'prep' | 'watch' | 'celebration' };
+      winner: 'player' | 'opponent' | null; opponent: { name: string; style: string; label: string }; level: number;
+      /** 'avec_frappe' for a Làmb 2.0 bout (src/lamb/stand.ts); absent or 'sans_frappe' otherwise. */
+      discipline?: 'sans_frappe' | 'avec_frappe' }
+  | { kind: 'training'; scene: 'training' | 'entrance' | 'prep' | 'watch' | 'celebration' }
+  /**
+   * Làmb 2.0: a moment of the player's own bout as it happens (the stands and the announcer react): a clean strike, a
+   * knockdown (« vacille »), the fall that ends it, the referee raising the winner's arm, the result. `winner`: for a
+   * strike or a knockdown, the one who landed it; `strike`: its kind; `opponent`: the opponent's name.
+   */
+  | { kind: 'moment'; moment: 'strike' | 'stagger' | 'fall' | 'arm' | 'result'; winner: 'player' | 'opponent' | null; outcome: 'projection' | 'decision' | 'egalite' | 'abandon' | 'entrainement';
+      strike?: 'quick' | 'big'; opponent?: string };
 
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
 export const MODULES: GameModule[] = [
-  wolofModule, assetKitModule, transport, VenuesModule, moto, car, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, postersModule, fighterModule,
+  wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
+  arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
+  galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)
+  nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)
   eveningCallModule,    // the evening's call to the arena and the goal line to it (src/arena/eveningCall.ts)
   shopsModule,          // shops lane: walk-in cafés, night glow, showroom; customers are ambientLife's (docs/SHOPS.md)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)
+  togetherModule,       // friends at the arena: seated together, one bout for the group (src/arena/together.ts)
+  arrivalModule,        // getting to the fight: the guarded moto parking, fans aboard the Ligne 23 (src/arena/arrival.ts)
+  tonightModule,        // the phone's « Ce soir »: tonight's card, getting there, after, the day's weather and roads (src/arena/tonight.ts)
+  supportersModule,     // who supports whom: the écurie colours worn, seen by the others, the stands answering (src/arena/supporters.ts)
 ];

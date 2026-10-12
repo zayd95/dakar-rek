@@ -16,6 +16,17 @@ export const PRAYERS: readonly { id: string; label: string; hours: readonly [num
 const FRIDAY = 4, SATURDAY = 5, SUNDAY = 6;
 const WEEK = [0, 1, 2, 3, 4], NOT_SUNDAY = [0, 1, 2, 3, 4, 5];
 
+/**
+ * After a gala at Pikine (src/social/fightTalkModule.ts sets them on the night of a bout): the Dibi stays alive until
+ * about 1 h — a short queue at the grill and more tables of people eating and talking about the bout.
+ */
+export const AFTER_GALA_ACTS: readonly AmbientActivity[] = [
+  { id: 'dibi-apres-combat', label: 'Une dibi après le combat', at: ['dibi'], hours: [[22.5, 1.25]], pose: 'sit', clips: ['Sit'], stay: [45, 90], group: [2, 4], density: 4, open: true, prop: 'plate', serve: [8, 16] },
+  { id: 'file-grill', label: 'La file au grill après le combat', at: ['dibi'], hours: [[22.5, 1.25]], pose: 'stand', clips: ['Talk', 'Idle', 'Talk'], stay: [16, 32], group: [1, 2], density: 3, open: true },
+];
+/** How much busier the spots of the evening's event get (the Dibi after a gala). */
+export const AFTER_GALA_BOOST = 1.6;
+
 export const ACTIVITIES: readonly AmbientActivity[] = [
   // ------------------------------------------------------------------ eat
   { id: 'petit-dej', label: 'Petit-déjeuner (café Touba, pain, bouillie)', at: ['cafe', 'kiosk'], hours: [[6.5, 10.5]], pose: 'sit', clips: ['Sit'], stay: [35, 70], group: [1, 2], density: 3, open: true, prop: 'plate', serve: [6, 12] },
@@ -83,6 +94,7 @@ export const PLACE_TAGS: Readonly<Record<string, readonly string[]>> = {
   mosque: ['mosque'], stop: ['stop'], station: ['stop'], beach: ['landing', 'fishmarket'], market: ['market'],
   shop: ['shop'], salon: ['salon'], club: ['club'], bank: ['bank'], square: ['square', 'attaya'],
   home: [], plot: [], billboard: [],
+  parking: [],             // the arena's moto parking: its gardien is the only one standing there (src/arena/arrival.ts)
 };
 
 /** Legacy content of the hub builders (interactable id fragment → tags, opening hours). Checked in order. */
@@ -91,6 +103,7 @@ export const LEGACY_TAGS: readonly { has: string; tags: readonly string[]; hours
   { has: ':maiga:', tags: ['eat', 'kiosk', 'maiga'], hours: [7, 22] },
   { has: ':cafe:', tags: ['cafe', 'eat', 'kiosk'], hours: [6, 22] },
   { has: ':restaurant:', tags: ['eat', 'kiosk'], hours: [11, 24] },
+  { has: ':garage:', tags: ['shop', 'garage'], hours: [8, 19] },
   { has: ':dibiterie:', tags: ['dibi'], hours: [11, 2] },
   { has: ':market', tags: ['market'], hours: [7, 20] },
   { has: ':station', tags: ['stop'] },
@@ -107,17 +120,34 @@ export const LEGACY_TAGS: readonly { has: string; tags: readonly string[]; hours
   { has: ':city:boutique', tags: ['shop'], hours: [7, 22] },
   { has: ':city:salon-tech', tags: ['shop', 'salon'], hours: [9, 21] },
   { has: ':city:craft', tags: ['shop'], hours: [9, 19] },
+  { has: ':shop:meubles', tags: ['shop'], hours: [8, 20] },
 ];
+
+/**
+ * What a full animated humanoid costs the main pass: a draw call for each mesh it shows (body, head, the four details of
+ * the face, hair, shirt, trousers, shoes — about ten) while it is in view, whatever it is doing.
+ */
+export const BODY_CALLS = 10;
+/**
+ * The most draw calls the street's full bodies may take together, all of them in view, by graphics quality: a share of
+ * the evening budget's calls (scripts/check-perf-evening.mjs BUDGET.calls: 180 / 300 / 420, docs/PERF_EVENING.md), the
+ * rest being the hub, the vehicles, the instanced crowds, the arena and the bodies of the crowd lane (`userData.noLod`,
+ * a few near the player). The cap on bodies is `bodiesFor` of it. A frame can draw all of them at once (the nearest ones
+ * first: the shared budget swaps the farthest for the cheap figure), and the check counts the frame it falls on.
+ */
+export const BODY_CALL_BUDGET = { low: 100, medium: 160, high: 260 } as const;
+export const bodiesFor = (calls: number) => Math.floor(calls / BODY_CALLS);
 
 /**
  * Budget per graphics quality. `population`: ambient people simulated at once (walking included); `bodies`: pooled
  * animated humanoids for them; `full`: distance under which a person gets a full animated body; `far`: distance under
  * which the others get the cheap instanced figure; `totalFull`: cap on ALL animated non-player humanoids of the street
- * (ambient people, walkers, placed people, the cast…), the nearest first; `scale`: density factor.
+ * (ambient people, walkers, placed people, the cast…), the nearest first — BODY_CALL_BUDGET / BODY_CALLS; `scale`:
+ * density factor.
  */
 export const AMBIENT_BUDGET = {
-  low: { population: 26, bodies: 6, full: 26, far: 70, totalFull: 12, scale: 0.6, near: 60, plan: 110 },
-  medium: { population: 44, bodies: 10, full: 36, far: 95, totalFull: 20, scale: 0.85, near: 70, plan: 130 },
-  high: { population: 64, bodies: 14, full: 50, far: 120, totalFull: 30, scale: 1, near: 80, plan: 150 },
+  low: { population: 26, bodies: 6, full: 26, far: 70, totalFull: bodiesFor(BODY_CALL_BUDGET.low), scale: 0.6, near: 60, plan: 110 },
+  medium: { population: 44, bodies: 10, full: 36, far: 95, totalFull: bodiesFor(BODY_CALL_BUDGET.medium), scale: 0.85, near: 70, plan: 130 },
+  high: { population: 64, bodies: 14, full: 50, far: 120, totalFull: bodiesFor(BODY_CALL_BUDGET.high), scale: 1, near: 80, plan: 150 },
 } as const;
 export type AmbientQuality = keyof typeof AMBIENT_BUDGET;

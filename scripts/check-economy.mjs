@@ -219,9 +219,13 @@ let savedJson = null;
   await page.screenshot({ path: `${out}/desktop-room-after-all-east.png` });
   await D(page, () => window.__dakar.cam(null));
   await goNear(page, ox - 0.25, -0.6, -Math.PI / 2, 'Lit · bon matelas');
-  await D(page, () => window.__dakar.act()); await page.waitForTimeout(300);
+  // the action button acts on the interaction focus (not on the nearest place): wait for the bed to be it, in play
+  await page.waitForFunction(() => window.__dakar.focus()?.name === 'Lit · bon matelas' && window.__dakar.pos().mode === 'play', null, { timeout: 15000 }).catch(() => {});
+  const bedAt = await D(page, () => ({ mode: window.__dakar.pos().mode, near: window.__dakar.pos().near, focus: window.__dakar.focus(), activity: window.__dakar.activity()?.id ?? null }));
+  await D(page, () => window.__dakar.act());
+  await page.waitForFunction(() => /bon matelas/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => {});
   const bedMenu = await D(page, () => document.querySelector('#modal.on')?.textContent ?? '');
-  check('bed now offers the better sleep', /bon matelas/.test(bedMenu), bedMenu.slice(0, 80));
+  check('bed now offers the better sleep', /bon matelas/.test(bedMenu), /bon matelas/.test(bedMenu) ? bedMenu.slice(0, 80) : JSON.stringify({ ...bedAt, menu: bedMenu.slice(0, 80) }));
   await closeModal(page); await page.waitForTimeout(200);
   await outside(page);
 

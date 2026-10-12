@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  activityLevel, capacity, chooseSeat, curveAt, dayOfWeek, fits, inHours, isNpcOccupant, planDemand, prayerRows, ring, pair,
+  activityLevel, capacity, chooseSeat, curveAt, dayOfWeek, fits, inHours, isNpcOccupant, keepsPlace, planDemand, prayerRows, ring, pair,
   seatCapacity, wanted, QIBLA_YAW, KEEP_FREE, type AmbientSpot, type SeatLike,
 } from '../src/social/ambient';
 import { ACTIVITIES, AMBIENT_BUDGET, LEGACY_TAGS, PLACE_TAGS, PRAYERS, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR } from '../src/social/ambientData';
@@ -324,5 +324,27 @@ describe('ambient life: places and seats of the venue and transport lanes', () =
     expect(furnitureSeats([old], layout, []).length).toBeGreaterThan(0);
     const venue: PlaceSpec = { id: 'dibi-pikine', type: 'dibi', name: 'Dibi', space: 'street', anchors: [{ id: 'counter', kind: 'counter', x: -16, z: -44 }], offers: {} };
     expect(furnitureSeats([old], layout, [], [venue])).toHaveLength(0);
+  });
+});
+
+describe('spots rebuilt while people are there (a street vendor sets up, a road event, a shop)', () => {
+  const rows = prayerRows(0, 0, 2, 4), stands = ring(10, 0, 1, 4);
+  const mosque = spot('special:mosque', ['mosque'], { rows, stands, seats: ['s1'] });
+  const who = (o: Partial<{ seat: string | null; slot: number; slotRow: boolean; q: number; cq: boolean }> = {}) => ({ seat: null, slot: -1, slotRow: false, q: -1, cq: false, ...o });
+  it('people keep their prayer-row place, standing place, seat or queue place when the spot comes back the same', () => {
+    const fresh = spot('special:mosque', ['mosque'], { rows: rows.map(r => ({ ...r })), stands: stands.map(r => ({ ...r })), seats: ['s1', 's2'] });
+    expect(keepsPlace(mosque, fresh, who({ slot: 5, slotRow: true }))).toBe(true);
+    expect(keepsPlace(mosque, fresh, who({ slot: 2 }))).toBe(true);
+    expect(keepsPlace(mosque, fresh, who({ seat: 's1' }))).toBe(true);
+    expect(keepsPlace(mosque, fresh, who({ q: 1 }))).toBe(true);
+    expect(keepsPlace(mosque, fresh, who())).toBe(true);                  // walking in or out, nothing held
+  });
+  it('they leave when their place is gone or moved', () => {
+    const moved = spot('special:mosque', ['mosque'], { rows: rows.map(r => ({ ...r, x: r.x + 0.5 })), stands: stands.slice(0, 2), seats: ['s2'] });
+    expect(keepsPlace(mosque, moved, who({ slot: 5, slotRow: true }))).toBe(false);
+    expect(keepsPlace(mosque, moved, who({ slot: 3 }))).toBe(false);
+    expect(keepsPlace(mosque, moved, who({ seat: 's1' }))).toBe(false);
+    expect(keepsPlace(mosque, moved, who({ q: 2 }))).toBe(false);
+    expect(keepsPlace(mosque, moved, who({ q: 0, cq: true }))).toBe(false);   // no checkout line here
   });
 });

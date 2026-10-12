@@ -1,6 +1,7 @@
 // UI checks (docs/UI.md): HUD layout and touch targets, every way of closing a sheet gives the controls back, quick
 // actions with disabled reasons, activities and plain timed actions and làmb scenes can be stopped, the focus ring and
-// the way-finding pin, stacked toasts, the wallet animation. Desktop, phone portrait and phone landscape.
+// the way-finding pin, stacked toasts, the wallet animation, the after-bout card clear of the controls. Desktop, phone
+// portrait and phone landscape.
 // Usage: node scripts/check-ui.mjs [baseUrl] [outDir] [views]   (needs a running build, e.g. `npx vite preview --port 4211`)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -225,6 +226,24 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   check(`${label}: toasts stay clear of the action area`, !overlap(tb, ab), JSON.stringify(tb));
   await d(() => { window.__dakar.state.data.wallet += 1200; });
   check(`${label}: a wallet change shows « +1 200 F »`, await page.waitForFunction(() => /\+1\s200\sF/.test(document.querySelector('#wallet .mfx')?.textContent ?? ''), null, { timeout: 5000 }).then(() => true, () => false));
+
+  // 10b. The fighter's after-bout card (hud.boutCard; the debug bout asks for it): first in the toast column, on screen,
+  //      readable, never over the action column, the joystick or « Courir » — in portrait and on a landscape phone too.
+  await d(() => window.__dakar.careerBout('classe', 'player', 2, 'projection', 'Ndiaga', true));
+  await page.waitForFunction(() => !!document.querySelector('#toast .mo.bc:not(.out)'), null, { timeout: 10000 }).catch(() => {});
+  await settle();
+  const bc = await rect('#toast .mo.bc:not(.out)');
+  const bcText = await d(() => { const c = document.querySelector('#toast .mo.bc:not(.out)'); return c ? { title: c.querySelector('.mo-tx > b')?.textContent, rows: [...c.querySelectorAll('.bc-r dt')].map(x => x.textContent), next: c.querySelectorAll('.bc-next span').length,
+    font: Math.min(...[...c.querySelectorAll('.bc-v, .bc-d:not(:empty), .bc-r dt, .bc-next span')].filter(x => x.getBoundingClientRect().width > 0).map(x => parseFloat(getComputedStyle(x).fontSize))) } : null; });
+  const near = [];
+  for (const s of ['#act', '#actMore', '#joy', '#runBtn', '#progress']) { const r = await rect(s); if (r?.width && bc && overlap(bc, r) && (await d(q => { const e = document.querySelector(q); const st = getComputedStyle(e); return st.display !== 'none' && +st.opacity > 0.1; }, s))) near.push(s); }
+  check(`${label}: the after-bout card shows the result, Palmarès, Classement, Réputation, Influence and « Ensuite »`,
+    bcText?.title === 'Victoire' && ['Palmarès', 'Classement', 'Réputation', 'Influence', 'Cachet'].every(k => bcText.rows.includes(k)) && bcText.next >= 1, JSON.stringify(bcText));
+  check(`${label}: the after-bout card is on screen, readable (≥ 11.5 px), clear of the action column, the joystick and « Courir »`,
+    !!bc && bc.left >= 0 && bc.top >= 0 && bc.right <= viewport.width && bc.bottom <= viewport.height && bcText.font >= 11.5 && near.length === 0, JSON.stringify({ bc, font: bcText?.font, near }));
+  await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-after-bout-card.png` });
+  await page.locator('#toast .mo.bc:not(.out)').last().click();
+  check(`${label}: a tap dismisses the after-bout card`, await page.waitForFunction(() => !document.querySelector('#toast .mo.bc:not(.out)'), null, { timeout: 5000 }).then(() => true, () => false));
 
   // 11. The profile sheet (text field, swatches) scrolls with a real touch drag when it is taller than the screen.
   if (touch) {

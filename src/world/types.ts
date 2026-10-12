@@ -39,6 +39,8 @@ export interface Interactable {
   npc?: string;
 }
 export interface Collider { x0: number; z0: number; x1: number; z1: number; h: number }
+/** A tree top seen by the follow camera: a vertical cylinder of leaves (centre, radius, bottom and top heights). */
+export interface Canopy { x: number; z: number; r: number; y0: number; y1: number }
 
 export interface HubWorld {
   id: HubId;
@@ -72,6 +74,8 @@ export interface HubWorld {
   seats: Seat[];
   /** Lots and blocks left to a gameplay module (src/world/sites.ts, composed by src/venues). */
   sites?: Site[];
+  /** Tree tops and palm fronds the follow camera keeps out of (src/actors/camera.ts). */
+  canopies?: Canopy[];
   dispose(): void;
 }
 export interface RoadEdge { ax: number; az: number; bx: number; bz: number }

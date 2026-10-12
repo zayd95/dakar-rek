@@ -1,6 +1,8 @@
 // Headless checks of the player's car (src/transport/carModule.ts on src/transport/ownedModule.ts): buy the used
-// car (« Voiture d'occasion », the catalogue's `clando`) at the Plateau dealer (price shown, then confirmed, paid once
-// through the asset model, listed in « Biens », delivered at the kerb), walk around it (it is
+// car (« Voiture d'occasion », the catalogue's `clando`) at Ndiaye Auto, the Plateau's used-car showroom (the cars on
+// their lots, the silver one for sale with its price card; at the salesman's desk: price shown, then confirmed, paid
+// once through the asset model, listed in « Biens »; the car leaves its lot for the kerb outside the door, the
+// salesman hands over the keys with a line in Wolof), walk around it (it is
 // solid when parked), « Monter (conducteur) », drive with the keys (desktop) or the joystick (phone), the three views,
 // never through a wall, « Sortir de la voiture » on the pavement side, find it parked after a reload (also mid-drive)
 // and after a trip to another hub.
@@ -62,11 +64,18 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await d(() => { window.__dakar.teleport('plateau'); window.__dakar.setHour(10); window.__dakar.state.data.wallet = 3000000; });
   await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.car.info().dealer, null, T);
   const i0 = await info(), dealer = i0.dealer, price = i0.price;
-  check(`${label}: the Plateau has the used-car corner with cars on display`, !!dealer && dealer.displays === 2, JSON.stringify(dealer));
+  check(`${label}: the Plateau has Ndiaye Auto's showroom: cars on display, the one for sale on its lot with its price card`, !!dealer && dealer.displays >= 2 && dealer.onSale === true && dealer.card === true, JSON.stringify(dealer));
   // the road is on the side of the delivery spot: stand on the pavement between the counter and the kerb
   const toRoad = Math.sign(dealer.delivery.x - dealer.x) || 1;
 
-  // 1. The dealer: « Voir les articles », the price before confirming, then paid once.
+  // 0. The showroom from the pavement (the cars on their lots, the desk at the back).
+  if (dealer) {
+    await d(([p, q]) => window.__dakar.cam([q.x + 1.5, 3.2, q.z + 7.5], [p.x + 2.5, 1.0, p.z - 1]), [dealer, dealer.delivery]);
+    await shot('0-showroom');
+    await d(() => window.__dakar.cam(null));
+  }
+
+  // 1. The dealer: « Voir les articles » at the desk, the price before confirming, then paid once.
   await d(([p, s]) => window.__dakar.place(p.x + s * 0.7, p.z + 0.4, -s * Math.PI / 2), [dealer, toRoad]);
   await page.waitForFunction(() => /Occasion/i.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
   const f1 = await d(() => window.__dakar.focus());
@@ -90,6 +99,12 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const rec = bought.record;
   check(`${label}: bought once: −price, one wallet line, delivered at the kerb`, bought.owned && bought.here && w0 - w1 === price && lines.length === 1 && /Voiture/.test(lines[0].label) && bought.bought === 1 && bought.asset?.paid === price
     && Math.hypot(rec.x - dealer.delivery.x, rec.z - dealer.delivery.z) < 0.05 && Math.abs(roadDistance(rec.x, rec.z) - 4.3) < 0.2, JSON.stringify({ w0, w1, lines, rec }));
+  const keys = await page.waitForFunction(() => /clés/.test(document.querySelector('#toast')?.textContent ?? ''), null, { timeout: 8000 }).then(() => d(() => document.querySelector('#toast')?.textContent ?? ''), () => '');
+  check(`${label}: the salesman hands over the keys (Wolof with its French gloss); the car for sale has left its lot`, /clés/.test(keys) && /Jërëjëf/.test(keys) && /porte/.test(keys) && bought.dealer?.onSale === false,
+    JSON.stringify({ keys, onSale: bought.dealer?.onSale }));
+  await d(([p, q]) => window.__dakar.cam([q.x + 1.5, 3.2, q.z + 7.5], [p.x + 2.5, 1.0, p.z - 1]), [dealer, dealer.delivery]);
+  await shot('2b-delivered-outside');
+  await d(() => window.__dakar.cam(null));
   await ready();
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
@@ -158,8 +173,9 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   // 6. Into a wall: the shop's back wall, 2.5 m ahead. It stops against it, never inside.
   const wall = await d(() => {
     const g = window.__dakar.cityGeometry(), shop = window.__dakar.interactables().find(i => i.id === 'plateau:city:salon-tech');
-    // the shop's back wall: the long thin collider behind its counter
-    const w = g.colliders.filter(c => c.x1 - c.x0 > 10 && c.z1 - c.z0 < 0.5 && Math.abs((c.x0 + c.x1) / 2 - shop.x) < 1 && c.z1 < shop.z).sort((a, b) => b.z1 - a.z1)[0];
+    // the shop's back wall: the long thin collider behind its counter, spanning it (the counter is no longer centred in
+    // the shop since the stocked shops: Dakar Réparation's sits 4 m left of the 17 m wall's middle)
+    const w = g.colliders.filter(c => c.x1 - c.x0 > 10 && c.z1 - c.z0 < 0.5 && c.x0 + 2 < shop.x && shop.x < c.x1 - 2 && c.z1 < shop.z).sort((a, b) => b.z1 - a.z1)[0];
     return w ? { x: shop.x, z: w.z0 } : null;
   });
   if (wall) await d(w => window.__dakar.car.place(w.x, w.z - 5, 0), wall);

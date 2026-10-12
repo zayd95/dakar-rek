@@ -64,7 +64,10 @@ try {
     await ctx.addInitScript(i => { if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded', '1'); localStorage.setItem('dakarrek.quality', 'low'); localStorage.setItem('dakarrek.presence.profile', JSON.stringify({ name: i ? 'Awa' : 'Moussa', look: i ? 1 : 0 })); } }, i);
     const page = await ctx.newPage(); page.setDefaultTimeout(90000); page.on('pageerror', e => pageErrors.push(e.message));
     await page.goto(`${base}?debug${i === 0 ? '&touch' : ''}`);
-    await page.waitForFunction(() => window.__dakar?.presence().status === 'online' && window.__dakarChat, null, { timeout: 60000 });
+    // the second page boots while the first one renders on the same CPU (software WebGL): room to boot, as in check-multiplayer
+    const t0 = Date.now();
+    await page.waitForFunction(() => window.__dakar?.presence().status === 'online' && window.__dakarChat, null, { timeout: 120000 });
+    console.log(`page ${i} online after ${Date.now() - t0} ms`);
   }
   const [a, b] = contexts.map(c => c.pages()[0]);
   for (const page of [a, b]) await page.waitForFunction(() => window.__dakar.presence().peers.length === 1, null, { timeout: 90000 });

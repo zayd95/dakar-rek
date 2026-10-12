@@ -42,7 +42,7 @@ export function carRapideSpec(): VehicleSpec {
     sway: 1,
     // drive mode is not offered for the car rapide (the player rides it); the numbers document the minibus for later
     drive: { maxSpeed: 14, reverseSpeed: 3, accel: 1.6, brake: 4, turnRadius: 7.5, steer: 2.5, halfWidth: k.width / 2, halfLength: k.length / 2 },
-    build: o => buildVehicle('carRapide', { seed: o?.seed ?? 1, passengers: true, seated: o?.seated ?? [], driver: o?.driver !== false }).group,
+    build: o => buildVehicle('carRapide', { seed: o?.seed ?? 1, passengers: true, seated: o?.seated ?? [], driver: o?.driver !== false, colours: o?.colours }).group,
   };
   return (cached = spec);
 }

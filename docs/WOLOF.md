@@ -24,6 +24,7 @@ il salue ses clients en wolof.
 | Recettes de lieux (Dibi, gargote, mosquée, plage, arrêt) | Dibi : « Xaaral tuuti ! » pendant la grillade, « Neex na ! », le patron « Dalal ak jàmm ! Toogal. », « Kaay fi ! » au grill. Gargote : « Kaay lekk ! ». Mosquée : seulement « Salaam aleekum. » — « Maleekum salaam. Jàmm nga am ? ». Mareyeuses : le prix se discute avant d'acheter ou de vendre ; « Jën bu bees ! ». Pêcheurs : « Kaay fi ! Gaawal ! ». Arrêt : « Vers Colobane, Petersen » et l'apprenti « Colobane ! Nanu dem ! » | `src/activity/templates.ts` (utilisé par les lanes lieux / transport) |
 | Apprentis des cars rapides | Bulles : « Colobane ! Colobane ! », « Petersen ! Nanu dem ! », « Fan nga dem ? » | `src/actors/apprenti.ts` |
 | Lignes de car rapide (lane transport) | Aux arrêts : les terminus, « Fan nga dem ? », « Am na place ! », puis « Nanu dem ! » au départ. En route : L'apprenti : « 150 F, jërëjëf ! » ; Toi : « Apprenti, dinaa wàcc ci Marché ! » (je descends à Marché) ; « Ba beneen yoon ! » à la descente ; « Parler au voisin » : « Na nga def ? », « Salaam aleekum ! », « Dafa tàng ! », « Fan nga dem ? » et ta réponse | `src/transport/lines.ts` → `RIDE`, `rapideCalls` de `src/i18n/lines.ts` |
+| Entrée des lutteurs (arène) | Le bàkk de chaque lutteur, sur lui-même, jamais contre l'autre : « Dama am doole ! » (j’ai de la force), « Gaynde ! » (lion), « sama gox » (mon quartier) ; le griot au micro (« sa doole fait trembler le géew ») ; l'entourage : « Gaynde, gaynde ! » ; ton propre bàkk avant le cercle et la réponse des tribunes. Aucun texte religieux | `src/arena/ceremony.ts`, `src/arena/bakk.ts` |
 | Surnoms peints des cars rapides | TERAANGA, NDANK NDANK, JÀMM (mots du lexique, en capitales) | `src/actors/vehicleAtlas.ts` |
 | Gestes de métier (étal, garage) | La cliente : « Jox ma (donne-moi) un tas de tomates. », « Un kilo d'oignons, sama xarit (mon ami). », « Trois mangues bien mûres. Ñaata la ? » ; Modou : « Jox ma la clé de 13 ! », « Le tournevis, gaawal (dépêche-toi) ! », « Un chiffon, sama doom (mon enfant) : … » ; réponses « Jërëjëf ! » / « Déedéet, pas ça. » | `src/activity/gestures.ts`, `src/ui/gesture.ts` |
 | Chat de lieu (version en ligne) | Phrases rapides selon le lieu et l'heure : « Salaam aleekum », salutation de l'heure, « Jërëjëf », « Waaw », « Déedéet », « Amul solo », au revoir de l'heure, plus deux qui vont avec le lieu (« Neex na », « Dama suur » dans une gargote ; « Ñaata la ? », « Wàññi ko tuuti » au marché ; « Nanu dem », « Maa ngi ñëw » dans un car rapide ; « Lu bees ? », « Maa ngi ñëw » dans la rue). Mosquée : salutation, merci, au revoir seulement. Envoyées telles quelles, glose en info-bulle. Aucune modération ajoutée ; bloquer / muet / signaler inchangés | `src/multiplayer/chat.ts` |
@@ -35,7 +36,7 @@ il salue ses clients en wolof.
 
 ### Lexique : `src/i18n/wolof.ts`
 
-- `LEXICON` : 109 entrées `{ wo, fr, tags, reply?, known? }` en orthographe CLAD. Une phrase commence par une
+- `LEXICON` : 115 entrées `{ wo, fr, tags, reply?, known? }` en orthographe CLAD. Une phrase commence par une
   majuscule (« Na nga def ? »), un mot seul est en minuscules (« xaalis »). `fr` est la glose courte ; `reply` la
   réponse habituelle ; `known` marque ce que tout joueur connaît (« Salaam aleekum », « Maleekum salaam », « attaya »,
   « ceebu jën ») : dit sans glose.

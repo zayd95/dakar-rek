@@ -43,6 +43,10 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   // the gala is over (seen to the end): the crowd pours out of the gate
   const day = (await info()).day;
   await d(dd => { window.__dakar.state.data.counters.arena_gala_day = dd; }, day);
+  // the outflow's walks run on game time (dt capped at 0.1 s a frame): the frames drawn are counted from here, so a slow
+  // machine is waited for and reported, not mistaken for a crowd that does not leave
+  await d(() => { window.__of = 0; const f = () => { window.__of++; requestAnimationFrame(f); }; requestAnimationFrame(f); });
+  const t0 = Date.now();
   const out1 = await until(() => { const a = window.__dakar.arenaOut(); return a.phase === 'outflow' && a.queue === 0 && a.leaving >= 2; }, null, 30000);
   check(`${label}: the gala over, the queue dissolves and the crowd comes out of the gate`, out1, JSON.stringify(await info()).slice(0, 240));
   await d(([p, t]) => window.__dakar.cam(p, t), [[cx - 10, 4.2, g.z - 17], [cx, 1.2, g.z - 2]]);
@@ -51,8 +55,13 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   for (let k = 0; k < 24; k++) { const a = await info(); maxStalls = Math.max(maxStalls, a.atStalls); maxLeaving = Math.max(maxLeaving, a.leaving); await page.waitForTimeout(700); }
   // the stall stops come with the walk (game time): on a slow machine, wait for one rather than sampling a few seconds
   if (maxStalls < 1 && await until(() => window.__dakar.arenaOut().atStalls >= 1, null, 60000)) maxStalls = 1;
-  const a2 = await info();
-  check(`${label}: the stream walks off toward the stops, taxis and street ends`, maxLeaving >= 4 && a2.gone >= 2, `leaving up to ${maxLeaving}, gone ${a2.gone}, still inside ${a2.inside}`);
+  // reaching a stop or a street end takes game time too (dt is capped at 0.1 s a frame): wait for it on a slow renderer
+  // (the first two reach a street end or a stop after 15–25 s of game time, about 175–250 frames: up to 400 frames are
+  // allowed, however long they take to draw)
+  if ((await info()).gone < 2) await until(() => window.__dakar.arenaOut().gone >= 2 || window.__of >= 400, null, 600000);
+  const a2 = await info(), drawn = await d(() => window.__of), secs = (Date.now() - t0) / 1000;
+  check(`${label}: the stream walks off toward the stops, taxis and street ends`, maxLeaving >= 4 && a2.gone >= 2,
+    `leaving up to ${maxLeaving}, gone ${a2.gone}, still inside ${a2.inside} · ${drawn} frames in ${secs.toFixed(0)} s (${(drawn / secs).toFixed(1)} fps)`);
   check(`${label}: some stop for a last bissap at the stalls`, maxStalls >= 1 || a2.fans < 10, `${maxStalls} at the stalls at once`);
   await d(() => window.__dakar.cam(null));
 

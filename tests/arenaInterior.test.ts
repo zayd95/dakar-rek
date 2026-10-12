@@ -8,7 +8,6 @@ import {
   ARENA_FLOOR, CLIMB_HALF, WALKWAY_R, aisleProfile, aisleStairs, climbHeight, drummersStand, fightersGate, interiorSpots, mediaZone, prepCorner,
   standSection, tunnel, type ArenaKit, type Climb,
 } from '../src/world/arenaModules';
-import { INTERIOR_DENSITY } from '../src/arena/interior';
 import { standSeats } from '../src/arena/program';
 
 const TAU = Math.PI * 2;
@@ -123,10 +122,5 @@ describe('arena interior: modules', () => {
       expect(near.length).toBeGreaterThan(0);
       expect(Math.min(...near.map(s => Math.hypot(s.x - exit.x, s.z - exit.z)))).toBeLessThan(3.4);
     }
-  });
-  it('fewer people on lower quality', () => {
-    const total = (q: keyof typeof INTERIOR_DENSITY) => Object.values(INTERIOR_DENSITY[q]).reduce((a, b) => a + b, 0);
-    expect(total('low')).toBeLessThan(total('medium'));
-    expect(total('medium')).toBeLessThanOrEqual(total('high'));
   });
 });

@@ -85,7 +85,8 @@ export interface VehicleSpec {
    * there (open cabins); `ridden`: the player is at the controls (a motorbike's side stand is up). Instances may share
    * geometry and materials (userData.shared).
    */
-  build(o?: { seed?: number; seated?: readonly string[]; driver?: boolean; ridden?: boolean }): THREE.Object3D;
+  /** `colours`: shirts of the baked passengers in turn (fans aboard on a fight evening; the kit's VehicleOpts). */
+  build(o?: { seed?: number; seated?: readonly string[]; driver?: boolean; ridden?: boolean; colours?: readonly number[] }): THREE.Object3D;
 }
 
 /** A pose in the world (x, z on the ground plane, y the ground height under the vehicle). */

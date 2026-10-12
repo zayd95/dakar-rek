@@ -40,7 +40,7 @@ export interface PhoneContext {
   lock: (on: boolean) => void;
 }
 
-type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus';
+type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus' | 'cesoir' | 'lutteurs';
 interface Tile { id: string; label: string; color: string; icon: string; screen?: ScreenId; hook?: () => (() => void) | undefined }
 
 const ICON: Record<string, string> = {
@@ -70,6 +70,7 @@ const LOOK: Record<string, { emoji: string; grad: string; short?: string }> = {
   affaires: { emoji: '🏢', grad: '#34d399,#047857' },
   biens: { emoji: '🔑', grad: '#fde68a,#b45309' },
   arene: { emoji: '🤼', grad: '#d8b4fe,#7e22ce' },
+  cesoir: { emoji: '🌆', grad: '#fda4af,#be123c', short: 'Ce soir' },
   carnet: { emoji: '📒', grad: '#fde68a,#d97706' },
   meteo: { emoji: '⛅', grad: '#7dd3fc,#1e40af' },
   sante: { emoji: '❤️', grad: '#fecdd3,#fb7185' },
@@ -95,6 +96,7 @@ const TILES: Tile[] = [
   { id: 'biens', label: 'Biens', color: '#b45309', icon: ICON.maison, hook: () => phoneHooks.openAssets },
   { id: 'habitants', label: 'Habitants', color: '#0d9488', icon: ICON.habitants, hook: () => phoneHooks.openPeople },
   { id: 'arene', label: 'Arène', color: '#9333ea', icon: ICON.arene, screen: 'arene' },
+  { id: 'cesoir', label: 'Ce soir', color: '#be123c', icon: ICON.arene, screen: 'cesoir' },
   { id: 'carnet', label: 'Carnet', color: '#475569', icon: ICON.carnet, screen: 'carnet' },
   { id: 'actus', label: 'Actus', color: '#c2410c', icon: ICON.carnet, screen: 'actus' },
   { id: 'sante', label: 'Santé', color: '#fb7185', icon: ICON.aide, screen: 'sante' },
@@ -108,7 +110,7 @@ const TILES: Tile[] = [
 
 const TITLES: Record<ScreenId, string> = {
   home: 'Téléphone', reglages: 'Réglages', aide: 'Aide', nouvelle: 'Nouvelle partie', carnet: 'Carnet',
-  portefeuille: 'Portefeuille', carte: 'Carte et déplacements', arene: 'Arène', meteo: 'Météo', calcul: 'Calculatrice', sante: 'Santé', profil: 'Profil', horloge: 'Horloge', actus: 'Actus · Dakar',
+  portefeuille: 'Portefeuille', carte: 'Carte et déplacements', arene: 'Arène', meteo: 'Météo', calcul: 'Calculatrice', sante: 'Santé', profil: 'Profil', horloge: 'Horloge', actus: 'Actus · Dakar', cesoir: 'Ce soir', lutteurs: 'Lutteurs',
 };
 const QUALITY_LABEL: Record<Quality, string> = { low: 'Basse', medium: 'Moyenne', high: 'Haute' };
 const SENSITIVITY: [number, string][] = [[0.6, 'Lente'], [1, 'Normale'], [1.5, 'Rapide']];
@@ -253,6 +255,8 @@ export class Phone {
       case 'profil': s.innerHTML = this.profileHtml(); break;
       case 'horloge': s.innerHTML = this.clockHtml(); break;
       case 'actus': s.innerHTML = this.newsHtml(); break;
+      case 'cesoir': s.innerHTML = this.tonightHtml(); break;
+      case 'lutteurs': s.innerHTML = this.lutteursHtml(); break;
     }
     this.bind();
   }
@@ -284,6 +288,31 @@ export class Phone {
       <p class="ph-note">La météo suit le ciel de la ville : même heure pour tous les joueurs.</p>`;
   }
 
+  /** Arena › Lutteurs: one light card per roster wrestler (portrait from his look, season, belt, last results, « Suivre »). */
+  private lutteursHtml(): string {
+    const list = phoneHooks.lutteurs?.() ?? [];
+    if (!list.length) return '<p class="ph-note">Les lutteurs de la ville apparaîtront ici.</p>';
+    const RES = { V: 'V', D: 'D', N: 'N' } as const;
+    return `<div class="ph-lts">${list.map(w => `<section class="ph-lt" id="lt-${esc(w.id)}">
+        <div class="lt-head"><i class="lt-pic">${w.portrait}</i><span><b>${esc(w.name)}</b><small>${esc(w.ecurie)} · ${esc(w.style)} · ${esc(w.level)}</small></span>
+          <button type="button" class="lt-follow${w.followed ? ' on' : ''}" data-follow="${esc(w.id)}" aria-pressed="${w.followed}">${w.followed ? '★ Suivi' : '☆ Suivre'}</button></div>
+        <div class="lt-stats"><span><b>${w.place}${w.place === 1 ? 'er' : 'e'}</b><small>classement</small></span><span><b>${w.pts}</b><small>points</small></span><span><b>${w.v}-${w.d}${w.n ? `-${w.n}` : ''}</b><small>saison</small></span></div>
+        ${w.belt ? `<p class="lt-belt">🏆 ${esc(w.belt)}</p>` : ''}
+        ${w.last.length ? `<ul class="lt-last">${w.last.map(r => `<li><i class="r${r.res}">${RES[r.res]}</i>${esc(r.vs)}<small>${r.title ? 'titre · ' : r.main ? 'combat principal · ' : ''}jour ${r.day}</small></li>`).join('')}</ul>` : '<p class="lt-none">Pas encore combattu cette saison</p>'}
+      </section>`).join('')}</div>
+      <p class="ph-note">Suivre un lutteur : « Ce soir » et l’annonce du soir te disent quand il combat, et la carte d’après-gala son résultat. Rien à gagner : juste le plaisir de suivre.</p>`;
+  }
+
+  /** « Ce soir » (src/arena/tonight.ts): light cards of rows, « Y aller » on the places the pin can lead to. */
+  private tonightHtml(): string {
+    const page = phoneHooks.tonight?.() ?? [];
+    if (!page.length) return '<p class="ph-note">Rien de prévu ce soir.</p>';
+    return `<div class="ph-tonight">${page.map(sec => `<h3>${esc(sec.title)}</h3><div class="ph-rows">${sec.rows.map(r => `<div>
+        <span><i aria-hidden="true">${esc(r.icon)}</i><span>${esc(r.label)}${r.detail ? `<small>${esc(r.detail)}</small>` : ''}</span></span>${r.go
+        ? `<button type="button" class="ph-go" data-go="${esc(r.go)}">Y aller</button>` : r.open ? `<button type="button" class="ph-go" data-open="${esc(r.open)}">Ouvrir</button>` : ''}</div>`).join('')}</div>`).join('')}</div>
+      <p class="ph-note">« Y aller » place le repère et la ligne d’objectif. Ce qui est écrit vient de la ville : même soirée pour tous.</p>`;
+  }
+
   private healthHtml(): string {
     const n = this.ctx.state.data.needs as unknown as Record<string, number>;
     const NEEDS: [string, string, string, string][] = [['faim', 'Faim', '#f97316', 'Mange à une gargote, une dibiterie ou au mall.'], ['energie', 'Énergie', '#facc15', 'Dors dans ta chambre ou repose-toi à l’ombre.'],
@@ -301,7 +330,7 @@ export class Phone {
       ['Combats', c.combats ?? 0], ['Victoires', c.victoires ?? 0], ['Actions en ville', c.actions ?? 0], ['Meubles achetés', c.meubles ?? 0]];
     // What the player became, read from what they did (career module): four light gauges, never a class to pick.
     const dims = phoneHooks.profileDims?.() ?? [];
-    const dimsHtml = dims.length ? `<div class="ph-dims">${dims.map(d => `<div><span><b>${esc(d.label)}</b><small>${esc(d.note)}</small></span><em>${esc(d.level)}</em><i style="--v:${Math.max(0, Math.min(100, Math.round(d.score)))}"></i></div>`).join('')}</div>` : '';
+    const dimsHtml = dims.length ? `<div class="ph-dims">${dims.map(d => `<div><span><b>${esc(d.label)}</b><small>${esc(d.note)}</small></span><em>${esc(d.level)}${d.delta ? `<span class="dl ${d.delta.startsWith('+') ? 'up' : 'down'}">${esc(d.delta)}</span>` : ''}</em><i style="--v:${Math.max(0, Math.min(100, Math.round(d.score)))}"></i></div>`).join('')}</div>` : '';
     return `<div class="ph-profile"><i>🧑🏾</i><b>Toi</b><small>${esc(phoneHooks.profileHeadline?.() ?? '')}${phoneHooks.profileHeadline ? ' · ' : ''}${fcfa(this.ctx.state.wallet)} · humeur ${esc(this.ctx.state.mood())}</small></div>
       ${dimsHtml}
       <div class="ph-rows">${rows.map(([l, v]) => `<div><span>${l}</span><em>${typeof v === 'number' ? v.toLocaleString('fr-FR') : v}</em></div>`).join('')}</div>
@@ -433,7 +462,14 @@ export class Phone {
       { label: 'Entraînements', value: String(c.lutte ?? 0) },
       ...(phoneHooks.arenaProfile?.() ?? []),
     ];
+    // the city's table (career module): each wrestler's row opens his card in « Lutteurs »
+    const table = phoneHooks.cityTable?.();
+    const tableHtml = table ? `<h3>Classement de la ville · saison ${table.season}</h3><div class="ph-rows ph-table">${table.rows.map(r => r.id
+      ? `<button type="button" data-lutteur="${esc(r.id)}"><b>${r.place}</b><span>${esc(r.name)}<small>${esc(r.sub)}</small></span><em>${r.pts} pts ›</em></button>`
+      : `<div class="you"><b>${r.place}</b><span>${esc(r.name)}<small>${esc(r.sub)}</small></span><em>${r.pts} pts</em></div>`).join('')}</div>` : '';
     return `<div class="ph-rows">${rows.map(r => `<div><span>${esc(r.label)}</span><em>${esc(r.value)}</em></div>`).join('')}</div>
+      ${phoneHooks.lutteurs ? '<button type="button" class="ph-btn" data-open="lutteurs">Lutteurs de la ville<small>Fiches, saison, derniers résultats · suivre un lutteur</small></button>' : ''}
+      ${tableHtml}
       ${d.flags.includes('ecurie_baobab') ? '' : '<p class="ph-note">Pour rejoindre une écurie, va voir Coach Ablaye à l’écurie Baobab, à Pikine.</p>'}
       <p class="ph-note">Lutte sans frappe : règles Dakar Rek. La lutte avec frappe arrive ensuite.</p>`;
   }
@@ -446,6 +482,19 @@ export class Phone {
       if (hook) this.launch(hook); else if (tile.screen) this.go(tile.screen);
     }));
     s.querySelectorAll<HTMLElement>('[data-open]').forEach(b => b.addEventListener('click', () => this.go(b.dataset.open as ScreenId)));
+    s.querySelectorAll<HTMLElement>('[data-lutteur]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.lutteur!;
+      this.go('lutteurs');
+      this.screenEl.querySelector(`#lt-${CSS.escape(id)}`)?.scrollIntoView({ block: 'start' });
+    }));
+    s.querySelectorAll<HTMLButtonElement>('[data-follow]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.follow!, now = phoneHooks.follow?.(b.classList.contains('on') ? null : id) ?? null;
+      s.querySelectorAll<HTMLButtonElement>('[data-follow]').forEach(x => {          // in place: the list keeps its scroll
+        const on = x.dataset.follow === now;
+        x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); x.textContent = on ? '★ Suivi' : '☆ Suivre';
+      });
+    }));
+    s.querySelectorAll<HTMLElement>('[data-go]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.go!; this.launch(() => phoneHooks.tonightGo?.(k)); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-k]').forEach(b => b.addEventListener('click', () => this.calcKey(b.dataset.k!)));
     s.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
       const q = b.dataset.q as Quality;

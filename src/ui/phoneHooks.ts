@@ -26,8 +26,22 @@ export const phoneHooks: {
   wealth?: () => { assets: number; perHour: number; charges: number; polyvalence: string };
   /** Arena app: sporting profile (arena module; the career module adds rank, record, purses and attributes). */
   arenaProfile?: () => { label: string; value: string }[];
-  /** Profile app: Forme / Richesse / Réputation / Influence, 0–100 each with a word and a reason (career module). */
-  profileDims?: () => { label: string; score: number; level: string; note: string }[];
+  /**
+   * Profile app: Forme / Richesse / Réputation / Influence, 0–100 each with a word and a reason (career module), and
+   * the change since the last day played (« +6 depuis hier », '' when none; real saved values only).
+   */
+  profileDims?: () => { label: string; score: number; level: string; note: string; delta?: string }[];
+  /**
+   * Arena app › Lutteurs (career module): one card per roster wrestler (src/career/roster.ts wrestlerCard, with an SVG
+   * portrait), the city's table linking to them, and « Suivre » (one wrestler followed, or none: returns who is followed).
+   */
+  lutteurs?: () => { id: string; name: string; ecurie: string; style: string; level: string; v: number; d: number; n: number; pts: number; place: number;
+    belt: string | null; last: { day: number; vs: string; res: 'V' | 'D' | 'N'; main: boolean; title: boolean }[]; portrait: string; followed: boolean }[];
+  cityTable?: () => { season: number; rows: { id: string | null; place: number; name: string; pts: number; sub: string }[] };
+  follow?: (id: string | null) => string | null;
+  /** « Ce soir » app: the evening's page (src/arena/tonight.ts), and « Y aller » toward one of its targets. */
+  tonight?: () => { title: string; rows: { icon: string; label: string; detail?: string; go?: string; open?: string }[] }[];
+  tonightGo?: (key: string) => void;
   /** Profile app: one line under the name (« Une vie à Dakar », « Lutteur · Undercards »). Never a class to pick. */
   profileHeadline?: () => string;
   /** People app: neighbours the player knows (NPC module). */

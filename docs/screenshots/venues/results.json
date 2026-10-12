@@ -1,371 +1,727 @@
-{
- "note": "scripts/check-venues.mjs on 9 Oct 2026 (SwiftShader, loaded machine): desktop full run + phone Dibi from run 1; phone mosque, beach and salon from run 2 (run 1 stopped on a capture timeout, since made non-fatal).",
- "passed": 91,
- "total": 91,
- "checks": [
+[
   {
-   "name": "desktop: Pikine has its Dibi composed on the old dibiterie lot 21 seats",
-   "ok": true
+    "name": "desktop: Pikine has its Dibi composed on the old dibiterie lot",
+    "ok": true,
+    "detail": "21 seats"
   },
   {
-   "name": "desktop: walking in from the street, the Dibi greets you by its name {\"id\":\"pikine:dibiterie:11\",\"name\":\"Dibiterie Chez Pathé\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Dibiterie Chez Pathé\",\"all\":[\"Dibiterie Chez Pathé\",\"Livraisons Tiak Tiak\"]}",
-   "ok": true
+    "name": "desktop: walking in from the street, the Dibi greets you by its name",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:dibiterie:11\",\"name\":\"Dibiterie Chez Pathé\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Dibiterie Chez Pathé\",\"all\":[\"Dibiterie Chez Pathé\",\"Livraisons Tiak Tiak\"]}"
   },
   {
-   "name": "desktop: the place keeps its identity for deliveries and routines {\"id\":\"pikine:dibiterie:11\",\"name\":\"Dibiterie Chez Pathé\",\"x\":-15.599999999999998,\"z\":-51.3}",
-   "ok": true
+    "name": "desktop: the place keeps its identity for deliveries and routines",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:dibiterie:11\",\"name\":\"Dibiterie Chez Pathé\",\"x\":-15.599999999999998,\"z\":-51.3}"
   },
   {
-   "name": "desktop: the entrance is walkable all the way into the courtyard {\"x\":-14.799999999999999,\"y\":0.1,\"z\":-46.41999999999996,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}",
-   "ok": true
+    "name": "desktop: the entrance is walkable all the way into the courtyard",
+    "ok": true,
+    "detail": "{\"x\":-14.799999999999999,\"y\":0.1,\"z\":-46.42386757678466,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}"
   },
   {
-   "name": "desktop: standing at the counter focuses it ",
-   "ok": true
+    "name": "desktop: standing at the counter focuses it",
+    "ok": true,
+    "detail": ""
   },
   {
-   "name": "desktop: the counter offers dibi, brochettes, the day's special, bissap and Pathé Dibi mouton | Brochettes | Plat du jour · Dibi mouton · sauce oignons | Bissap frais | Parler à Pathé",
-   "ok": true
+    "name": "desktop: the counter offers dibi, brochettes, the day's special, bissap and Pathé",
+    "ok": true,
+    "detail": "Dibi mouton | Brochettes | Plat du jour · Dibi poulet | Bissap frais | Parler à Pathé"
   },
   {
-   "name": "desktop: the counter is solid (no walking through it) -13.2,-37.3 → -13.2,-36.3",
-   "ok": true
+    "name": "desktop: the counter is solid (no walking through it)",
+    "ok": true,
+    "detail": "-13.2,-37.3 → -13.2,-36.6"
   },
   {
-   "name": "desktop: « Dibi mouton » is paid at the counter, then grilled {\"a\":{\"id\":\"dibi\",\"step\":\"Préparation\",\"index\":0},\"wallet\":3000,\"seated\":null}",
-   "ok": true
+    "name": "desktop: « Dibi mouton » is paid at the counter, then grilled",
+    "ok": true,
+    "detail": "{\"a\":{\"id\":\"dibi\",\"step\":\"Préparation\",\"index\":0,\"scores\":[]},\"wallet\":3000,\"seated\":null}"
   },
   {
-   "name": "desktop: then you sit at a free table seat of the Dibi, with your dibi on the table pikine:venue:dibiterie:11:Bs:0 Sit dibi",
-   "ok": true
+    "name": "desktop: then you sit at a free table seat of the Dibi, with your dibi on the table",
+    "ok": true,
+    "detail": "pikine:venue:dibiterie:11:Bs:0 Sit dibi"
   },
   {
-   "name": "desktop: the meal feeds you, counts at this Dibi and you stay seated {\"faim\":84.75733333333335,\"seated\":\"pikine:venue:dibiterie:11:Bs:0\",\"focus\":\"Se lever\",\"meals\":1}",
-   "ok": true
+    "name": "desktop: the meal feeds you, counts at this Dibi and you stay seated",
+    "ok": true,
+    "detail": "{\"faim\":84.75733333333335,\"seated\":\"pikine:venue:dibiterie:11:Bs:0\",\"focus\":\"Se lever\",\"meals\":1}"
   },
   {
-   "name": "desktop: the meal is saved on the device [[\"repas:pikine:venue:dibiterie:11\",1]]",
-   "ok": true
+    "name": "desktop: the meal is saved on the device",
+    "ok": true,
+    "detail": "[[\"repas:pikine:venue:dibiterie:11\",1]]"
   },
   {
-   "name": "desktop: Pathé talks (Wolof greeting) and explains the grill ladder Pathé · Dibiterie Chez Pathé« Am na liggéey ! Viens au grill quand tu veux : aider au grill, c’est payé 900 F le service. »💬Prendre des nouvelles💼Demander du ",
-   "ok": true
+    "name": "desktop: Pathé talks (Wolof greeting) and explains the grill ladder",
+    "ok": true,
+    "detail": "Pathé · Dibiterie Chez Pathé« Am na liggéey ! Viens au grill quand tu veux : aider au grill, c’est payé 900 F le service. »💬Prendre des nouvelles💼Demander du "
   },
   {
-   "name": "desktop: the grill is a place to work {\"id\":\"pikine:venue:dibiterie:11:grill\",\"name\":\"Grill\",\"kind\":\"spot\",\"space\":\"street\",\"primary\":\"Aider au grill\",\"all\":[\"Aider au grill\"]}",
-   "ok": true
+    "name": "desktop: the grill is a place to work",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:venue:dibiterie:11:grill\",\"name\":\"Grill\",\"kind\":\"spot\",\"space\":\"street\",\"primary\":\"Aider au grill\",\"all\":[\"Aider au grill\"]}"
   },
   {
-   "name": "desktop: « Aider au grill » is offered with its pay and the next rung Aider au grill",
-   "ok": true
+    "name": "desktop: « Aider au grill » is offered with its pay and the next rung",
+    "ok": true,
+    "detail": "Aider au grill"
   },
   {
-   "name": "desktop: the player steps beside the cook and works the skewers {\"clip\":\"Talk\",\"step\":\"Aider au grill\"}",
-   "ok": true
+    "name": "desktop: the player steps beside the cook and works the skewers",
+    "ok": true,
+    "detail": "{\"clip\":\"Talk\",\"step\":\"Aider au grill\"}"
   },
   {
-   "name": "desktop: the shift pays, goes to the wallet history and counts toward the next rung +900 F « Aider au grill · Dibiterie Chez Pathé »",
-   "ok": true
+    "name": "desktop: the shift pays, goes to the wallet history and counts toward the next rung",
+    "ok": true,
+    "detail": "+1080 F « Aider au grill · Dibiterie Chez Pathé »"
   },
   {
-   "name": "desktop: lively at night (more clients) 10 people",
-   "ok": true
+    "name": "desktop: lively at night (more clients)",
+    "ok": true,
+    "detail": "10 people"
   },
   {
-   "name": "desktop: attaya after the meal, in the evening Dibi mouton | Brochettes | Plat du jour · Dibi mouton · sauce oignons | Bissap frais | Attaya après le repas | Parler à Pathé",
-   "ok": true
+    "name": "desktop: attaya after the meal, in the evening",
+    "ok": true,
+    "detail": "Dibi mouton | Brochettes | Plat du jour · Dibi poulet | Bissap frais | Attaya après le repas | Parler à Pathé"
   },
   {
-   "name": "desktop: closed in the morning, with the reason shown (shutter down, cold grill, nobody) « Fermé · ouvre à 11 h » shutter=true",
-   "ok": true
+    "name": "desktop: closed in the morning, with the reason shown (shutter down, cold grill, nobody)",
+    "ok": true,
+    "detail": "« Fermé · ouvre à 11 h » shutter=true"
   },
   {
-   "name": "desktop: the Plateau has its Grande Mosquée (courtyard, taps, prayer hall) 60 places, 7 taps",
-   "ok": true
+    "name": "desktop: the Plateau has its Grande Mosquée (courtyard, taps, prayer hall)",
+    "ok": true,
+    "detail": "60 places, 7 taps"
   },
   {
-   "name": "desktop: walking in through the gate into the courtyard {\"x\":-29.999999999999996,\"y\":0.1,\"z\":-47.9464799999999,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null}",
-   "ok": true
+    "name": "desktop: walking in through the gate into the courtyard",
+    "ok": true,
+    "detail": "{\"x\":-29.999999999999996,\"y\":0.1,\"z\":-48.323307575847345,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null}"
   },
   {
-   "name": "desktop: the taps are a place for ablutions {\"id\":\"plateau:venue:mosque:11:ablutions\",\"name\":\"Robinets des ablutions\",\"kind\":\"spot\",\"space\":\"street\",\"primary\":\"Faire ses ablutions\",\"all\":[\"Faire ses ablutions\"]}",
-   "ok": true
+    "name": "desktop: the taps are a place for ablutions",
+    "ok": true,
+    "detail": "{\"id\":\"plateau:venue:mosque:11:ablutions\",\"name\":\"Robinets des ablutions\",\"kind\":\"spot\",\"space\":\"street\",\"primary\":\"Faire ses ablutions\",\"all\":[\"Faire ses ablutions\"]}"
   },
   {
-   "name": "desktop: ablutions seated on the low stool in front of a tap {\"seat\":\"plateau:venue:mosque:11:robinet:3\",\"clip\":\"Sit\"}",
-   "ok": true
+    "name": "desktop: ablutions seated on the low stool in front of a tap",
+    "ok": true,
+    "detail": "{\"seat\":\"plateau:venue:mosque:11:robinet:3\",\"clip\":\"Sit\"}"
   },
   {
-   "name": "desktop: ablutions done — no reward of any kind ",
-   "ok": true
+    "name": "desktop: ablutions done — no reward of any kind",
+    "ok": true,
+    "detail": ""
   },
   {
-   "name": "desktop: at the door: « Entrer · laisser ses chaussures » {\"id\":\"plateau:venue:mosque:11:door\",\"name\":\"Salle de prière\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer · laisser ses chaussures\",\"all\":[\"Entrer · laisser ses chaussures\"]}",
-   "ok": true
+    "name": "desktop: at the door: « Entrer · laisser ses chaussures »",
+    "ok": true,
+    "detail": "{\"id\":\"plateau:venue:mosque:11:door\",\"name\":\"Salle de prière\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer · laisser ses chaussures\",\"all\":[\"Entrer · laisser ses chaussures\"]}"
   },
   {
-   "name": "desktop: inside the prayer hall, barefoot, the shoes wait on the rack {\"x\":1600.6,\"barefoot\":true}",
-   "ok": true
+    "name": "desktop: inside the prayer hall, barefoot, the shoes wait on the rack",
+    "ok": true,
+    "detail": "{\"x\":1600.6,\"barefoot\":true}"
   },
   {
-   "name": "desktop: the rows offer prayer and a calm seat; reading waits for a verified text Prier | S’asseoir au calme",
-   "ok": true
+    "name": "desktop: the rows offer prayer and a calm seat; reading waits for a verified text",
+    "ok": true,
+    "detail": "Prier | S’asseoir au calme"
   },
   {
-   "name": "desktop: prayer on a free place of a row, kneeling on the floor {\"seat\":\"plateau:venue:mosque:11:rang:3:7\",\"clip\":\"Kneel\",\"y\":0.09999999999999998}",
-   "ok": true
+    "name": "desktop: prayer on a free place of a row, kneeling on the floor",
+    "ok": true,
+    "detail": "{\"seat\":\"plateau:venue:mosque:11:rang:3:7\",\"clip\":\"Kneel\",\"y\":0.09999999999999998}"
   },
   {
-   "name": "desktop: prayer brings no reward (needs, money, counters unchanged) ",
-   "ok": true
+    "name": "desktop: prayer brings no reward (needs, money, counters unchanged)",
+    "ok": true,
+    "detail": ""
   },
   {
-   "name": "desktop: the imam can be greeted {\"id\":\"plateau:venue:mosque:11:imam\",\"name\":\"Imam Seck\",\"kind\":\"person\",\"space\":\"plateau:venue:mosque:11:salle\",\"primary\":\"Parler à l’imam\",\"all\":[\"Parler à l’imam\"]}",
-   "ok": true
+    "name": "desktop: the imam can be greeted",
+    "ok": true,
+    "detail": "{\"id\":\"plateau:venue:mosque:11:imam\",\"name\":\"Imam Seck\",\"kind\":\"person\",\"space\":\"plateau:venue:mosque:11:salle\",\"primary\":\"Parler à l’imam\",\"all\":[\"Parler à l’imam\"]}"
   },
   {
-   "name": "desktop: the imam answers in French and Wolof, with the prayer times Imam Seck« Fajar vers 6 h, Tisbaar vers 14 h, Takusaan vers 17 h, Timis vers 19 h 15, Gee vers 20 h 30. La prochaine : Tisbaar. »💬Prendre des nouvelles🕰️Les h",
-   "ok": true
+    "name": "desktop: the imam answers in French and Wolof, with the prayer times",
+    "ok": true,
+    "detail": "Imam Seck« Fajar vers 6 h, Tisbaar vers 14 h, Takusaan vers 17 h, Timis vers 19 h 15, Gee vers 20 h 30. La prochaine : Tisbaar. »💬Prendre des nouvelles🕰️Les h"
   },
   {
-   "name": "desktop: leaving the hall, shoes back on ",
-   "ok": true
+    "name": "desktop: leaving the hall, shoes back on",
+    "ok": true,
+    "detail": ""
   },
   {
-   "name": "desktop: at Tisbaar the congregation gathers 14 in the hall",
-   "ok": true
+    "name": "desktop: at Tisbaar the congregation gathers",
+    "ok": true,
+    "detail": "14 in the hall"
   },
   {
-   "name": "desktop: the Médina's Dibi is the same venue with its own owner Dibiterie de la Médina",
-   "ok": true
+    "name": "desktop: the Médina's Dibi is the same venue with its own owner",
+    "ok": true,
+    "detail": "Dibiterie de la Médina"
   },
   {
-   "name": "desktop: Soumbédioune has a pirogue ready to leave and the mareyeuses 2 fishermen",
-   "ok": true
+    "name": "desktop: Soumbédioune has a pirogue ready to leave and the mareyeuses",
+    "ok": true,
+    "detail": "2 fishermen"
   },
   {
-   "name": "desktop: walking up to the pirogue offers the trip (morning catch) {\"id\":\"corniche:venue:soumbedioune:pirogue\",\"name\":\"Pirogue des pêcheurs\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Partir avec les pêcheurs\",\"all\":[\"Partir avec les pêcheurs\"]}",
-   "ok": true
+    "name": "desktop: walking up to the pirogue offers the trip (morning catch)",
+    "ok": true,
+    "detail": "{\"id\":\"corniche:venue:soumbedioune:pirogue\",\"name\":\"Pirogue des pêcheurs\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Partir avec les pêcheurs\",\"all\":[\"Partir avec les pêcheurs\"]}"
   },
   {
-   "name": "desktop: aboard, the pirogue takes you out to sea off=25.2 step=Au large",
-   "ok": true
+    "name": "desktop: aboard, the pirogue takes you out to sea",
+    "ok": true,
+    "detail": "off=25.2 step=Au large"
   },
   {
-   "name": "desktop: back on the sand with the catch (6 fish in the morning), still aboard fish 0 → 6",
-   "ok": true
+    "name": "desktop: back on the sand with the catch (6 fish in the morning), still aboard",
+    "ok": true,
+    "detail": "fish 0 → 6"
   },
   {
-   "name": "desktop: at the fish market, the mareyeuses buy fish {\"id\":\"corniche:venue:soumbedioune:mareyeuses\",\"name\":\"Mareyeuses\",\"kind\":\"counter\",\"space\":\"street\",\"primary\":\"Vendre 4 poissons\",\"all\":[\"Vendre 4 poissons\",\"Vendre un poisson\",\"Acheter un poisson\",\"Discuter des prix\"]}",
-   "ok": true
+    "name": "desktop: at the fish market, the mareyeuses buy fish",
+    "ok": true,
+    "detail": "{\"id\":\"corniche:venue:soumbedioune:mareyeuses\",\"name\":\"Mareyeuses\",\"kind\":\"counter\",\"space\":\"street\",\"primary\":\"Vendre 4 poissons\",\"all\":[\"Vendre 4 poissons\",\"Vendre un poisson\",\"Acheter un poisson\",\"Discuter des prix\"]}"
   },
   {
-   "name": "desktop: selling 4 fish pays 2 400 F; the 2 left are saved in the inventory {\"w\":3400,\"fish\":2,\"save\":2}",
-   "ok": true
+    "name": "desktop: selling 4 fish pays 2 400 F; the 2 left are saved in the inventory",
+    "ok": true,
+    "detail": "{\"w\":3400,\"fish\":2,\"save\":2}"
   },
   {
-   "name": "desktop: no trips at night (the reason is shown) Fermé · ouvre à 6 h",
-   "ok": true
+    "name": "desktop: no trips at night (the reason is shown)",
+    "ok": true,
+    "detail": "Fermé · ouvre à 6 h"
   },
   {
-   "name": "desktop: Salon Awa has two styling chairs pikine:venue:salon:fauteuil:0 pikine:venue:salon:fauteuil:1",
-   "ok": true
+    "name": "desktop: Salon Awa has two styling chairs",
+    "ok": true,
+    "detail": "pikine:venue:salon:fauteuil:0 pikine:venue:salon:fauteuil:1"
   },
   {
-   "name": "desktop: walking into the shop, the chairs offer cuts and the beard Coupe courte | Coiffure afro | Crâne rasé | Barbe taillée | Rasage | Parler avec la coiffeuse",
-   "ok": true
+    "name": "desktop: walking into the shop, the chairs offer cuts and the beard",
+    "ok": true,
+    "detail": "Coupe courte | Coiffure afro | Crâne rasé | Barbe taillée | Rasage | Parler avec la coiffeuse"
   },
   {
-   "name": "desktop: « Coiffure afro » is paid and you sit in the free chair {\"seat\":\"pikine:venue:salon:fauteuil:1\",\"wallet\":2500}",
-   "ok": true
+    "name": "desktop: « Coiffure afro » is paid and you sit in the free chair",
+    "ok": true,
+    "detail": "{\"seat\":\"pikine:venue:salon:fauteuil:1\",\"wallet\":2500}"
   },
   {
-   "name": "desktop: the new cut shows on your character and is saved {\"short\":false,\"puff\":true,\"saved\":3}",
-   "ok": true
+    "name": "desktop: the new cut shows on your character and is saved",
+    "ok": true,
+    "detail": "{\"short\":false,\"puff\":true,\"saved\":3}"
   },
   {
-   "name": "desktop: no page errors ",
-   "ok": true
+    "name": "desktop: Ngor's beach has La Vague (door, floor, bar with 5 stools, lounge tables, DJ, exit)",
+    "ok": true,
+    "detail": "floor bar lounge dj exit door"
   },
   {
-   "name": "phone: Pikine has its Dibi composed on the old dibiterie lot 21 seats",
-   "ok": true
+    "name": "desktop: it is one of the neighbourhood's spots",
+    "ok": true,
+    "detail": ""
   },
   {
-   "name": "phone: walking in from the street, the Dibi greets you by its name {\"id\":\"pikine:dibiterie:11\",\"name\":\"Dibiterie Chez Pathé\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Dibiterie Chez Pathé\",\"all\":[\"Dibiterie Chez Pathé\",\"Livraisons Tiak Tiak\"]}",
-   "ok": true
+    "name": "desktop: by day it is closed: the gate is shut, nobody inside",
+    "ok": true,
+    "detail": "closed sabar npcs=0"
   },
   {
-   "name": "phone: the place keeps its identity for deliveries and routines {\"id\":\"pikine:dibiterie:11\",\"name\":\"Dibiterie Chez Pathé\",\"x\":-15.599999999999998,\"z\":-51.3}",
-   "ok": true
+    "name": "desktop: at the door by day the reason is shown (« Fermé · ouvre à 21 h »)",
+    "ok": true,
+    "detail": "Fermé · ouvre à 21 h"
   },
   {
-   "name": "phone: the entrance is walkable all the way into the courtyard {\"x\":-14.799999999999999,\"y\":0.1,\"z\":-46.41999999999996,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}",
-   "ok": true
+    "name": "desktop: the shut gate keeps you outside",
+    "ok": true,
+    "detail": "z=-134.25 gate at -135.00"
   },
   {
-   "name": "phone: standing at the counter focuses it ",
-   "ok": true
+    "name": "desktop: the crowd: few early, more before midnight, the peak after it, fewer at dawn",
+    "ok": true,
+    "detail": "{\"early\":6,\"warm\":13,\"peak\":21,\"dawn\":8}"
   },
   {
-   "name": "phone: the counter offers dibi, brochettes, the day's special, bissap and Pathé Dibi mouton | Brochettes | Plat du jour · Dibi mouton · sauce oignons | Bissap frais | Parler à Pathé",
-   "ok": true
+    "name": "desktop: at night the door offers « Entrer » and the week's programme",
+    "ok": true,
+    "detail": "Entrer | Le programme de la semaine"
   },
   {
-   "name": "phone: « Dibi mouton » is paid at the counter, then grilled {\"a\":{\"id\":\"dibi\",\"step\":\"Préparation\",\"index\":0},\"wallet\":3000,\"seated\":null}",
-   "ok": true
+    "name": "desktop: the fee is shown before anything is paid",
+    "ok": true,
+    "detail": "La Vague · entréeLamine : « Ce soir, c’est Nuit du sabar · concours. L’entrée, c’est 2 000 F, une seule fois pour toute la nuit : tu peux sortir et revenir. »🎟"
   },
   {
-   "name": "phone: then you sit at a free table seat of the Dibi, with your dibi on the table pikine:venue:dibiterie:11:Bs:0 Sit dibi",
-   "ok": true
+    "name": "desktop: paid once (2 000 F): the rope is lifted for the night",
+    "ok": true,
+    "detail": "wallet 20000 → 18000, rope false"
   },
   {
-   "name": "phone: the meal feeds you, counts at this Dibi and you stay seated {\"faim\":84.75955733333336,\"seated\":\"pikine:venue:dibiterie:11:Bs:0\",\"focus\":\"Se lever\",\"meals\":1}",
-   "ok": true
+    "name": "desktop: through the gate onto the terrace, its own space (chat and presence)",
+    "ok": true,
+    "detail": "{\"x\":-36,\"y\":0.1,\"z\":-138.2000007516193,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":null}"
   },
   {
-   "name": "phone: the meal is saved on the device [[\"repas:pikine:venue:dibiterie:11\",1]]",
-   "ok": true
+    "name": "desktop: on the floor « Danser » is offered, in the terrace's space",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:venue:club:floor\",\"name\":\"Piste de danse\",\"kind\":\"spot\",\"space\":\"almadies:venue:club\",\"primary\":\"Danser\",\"all\":[\"Danser\",\"Concours de danse\"]}"
   },
   {
-   "name": "phone: Pathé talks (Wolof greeting) and explains the grill ladder Pathé · Dibiterie Chez Pathé« Am na liggéey ! Viens au grill quand tu veux : aider au grill, c’est payé 900 F le service. »💬Prendre des nouvelles💼Demander du ",
-   "ok": true
+    "name": "desktop: dancing is a timing gesture on the drum while the body dances",
+    "ok": true,
+    "detail": "{\"g\":{\"kind\":\"timing\",\"label\":\"Le pas de base\",\"round\":0,\"rounds\":4,\"results\":[],\"cursor\":0.06050000000000001,\"zone\":[0.38492511264809465,0.6049251126480947],\"ask\":null,\"shown\":[],\"next\":null,\"pause\":false},\"clip\":\"Dance_A\",\"title\":\"Danse sur le temps du tambour\"}"
   },
   {
-   "name": "phone: the grill is a place to work {\"id\":\"pikine:venue:dibiterie:11:grill\",\"name\":\"Grill\",\"kind\":\"spot\",\"space\":\"street\",\"primary\":\"Aider au grill\",\"all\":[\"Aider au grill\"]}",
-   "ok": true
+    "name": "desktop: a perfect dance counts and the crowd cheers",
+    "ok": true,
+    "detail": "dances=1"
   },
   {
-   "name": "phone: « Aider au grill » is offered with its pay and the next rung Aider au grill",
-   "ok": true
+    "name": "desktop: the dance contest: three rounds danced perfectly win 7 200 F, once a night",
+    "ok": true,
+    "detail": "+7200 F, 3 gestures"
   },
   {
-   "name": "phone: the player steps beside the cook and works the skewers {\"clip\":\"Talk\",\"step\":\"Aider au grill\"}",
-   "ok": true
+    "name": "desktop: at the bar the juices are offered",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:venue:club:bar\",\"name\":\"Bar · La Vague\",\"kind\":\"counter\",\"space\":\"almadies:venue:club\",\"primary\":\"Bissap glacé\",\"all\":[\"Bissap glacé\",\"Jus de bouye\",\"Jus de gingembre\",\"Cocktail de fruits maison\",\"Eau fraîche\",\"Parler au barman\"]}"
   },
   {
-   "name": "phone: the shift pays, goes to the wallet history and counts toward the next rung +900 F « Aider au grill · Dibiterie Chez Pathé »",
-   "ok": true
+    "name": "desktop: bissap, bouye, a fruit cocktail (no alcohol), the barman",
+    "ok": true,
+    "detail": "Bissap glacé | Jus de bouye | Jus de gingembre | Cocktail de fruits maison | Eau fraîche | Parler au barman"
   },
   {
-   "name": "phone: lively at night (more clients) 10 people",
-   "ok": true
+    "name": "desktop: the drink seats you on a free stool (never a clubber's)",
+    "ok": true,
+    "detail": "{\"seat\":\"almadies:venue:club:tabouret:2\",\"taken\":[\"almadies:venue:club:tabouret:0\",\"almadies:venue:club:tabouret:3\"]}"
   },
   {
-   "name": "phone: attaya after the meal, in the evening Dibi mouton | Brochettes | Plat du jour · Dibi poulet | Bissap frais | Attaya après le repas | Parler à Pathé",
-   "ok": true
+    "name": "desktop: the lounge offers drinks served at the table",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:venue:club:lounge\",\"name\":\"Tables · service à table\",\"kind\":\"furniture\",\"space\":\"almadies:venue:club\",\"primary\":\"Bissap glacé · à table\",\"all\":[\"Bissap glacé · à table\",\"Jus de bouye · à table\",\"Jus de gingembre · à table\",\"Cocktail de fruits maison · à table\",\"Eau fraîche · à table\"]}"
   },
   {
-   "name": "phone: closed in the morning, with the reason shown (shutter down, cold grill, nobody) « Fermé · ouvre à 11 h » shutter=true",
-   "ok": true
+    "name": "desktop: at a free lounge place (never a clubber's), the waiter comes to the table",
+    "ok": true,
+    "detail": "{\"seat\":\"almadies:venue:club:banquette:-1:0\",\"taken\":[\"almadies:venue:club:banquette:-5:0\"],\"waiter\":{\"x\":-44.795224240125116,\"z\":-143.2346285605898,\"shown\":true,\"clip\":\"Walk\"}}"
   },
   {
-   "name": "phone: the Plateau has its Grande Mosquée (courtyard, taps, prayer hall) 60 places, 7 taps",
-   "ok": true
+    "name": "desktop: clubbers are around to talk to",
+    "ok": true,
+    "detail": "[{\"id\":\"bar0\",\"x\":-27.5,\"z\":-148.2,\"shown\":true,\"clip\":\"Sit\"},{\"id\":\"bar1\",\"x\":-27.5,\"z\":-143.4,\"shown\":true,\"clip\":\"Sit\"},{\"id\":\"lounge0\",\"x\":-47.1,\"z\":-148.2,\"shown\":true,\"clip\":\"Sit\"},{\"id\":\"debout0\",\"x\":-32,\"z\":-147,\"shown\":true,\"clip\":\"Talk\"}]"
   },
   {
-   "name": "phone: walking in through the gate into the courtyard {\"x\":-29.999999999999996,\"y\":0.1,\"z\":-48.04055999999996,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null}",
-   "ok": true
+    "name": "desktop: « Discuter » with a clubber: a short exchange with everyday Wolof",
+    "ok": true,
+    "detail": "Moussa · La VagueMoussa : « Na nga def ? » (comment ça va ?) · « Moi c’est Moussa. Ça chauffe ce soir ! »🎶La soirée🤝Tu viens souvent ?💃On danse ?👋JërëjëfFer"
   },
   {
-   "name": "phone: the taps are a place for ablutions {\"id\":\"plateau:venue:mosque:11:ablutions\",\"name\":\"Robinets des ablutions\",\"kind\":\"spot\",\"space\":\"street\",\"primary\":\"Faire ses ablutions\",\"all\":[\"Faire ses ablutions\"]}",
-   "ok": true
+    "name": "desktop: the clubber talks about tonight",
+    "ok": true,
+    "detail": "Moussa · La Vague« Ce soir, c’est Nuit du sabar · concours. Le concours a commencé, monte sur la piste ! »🎶La soirée🤝Tu viens souvent ?💃On danse ?👋JërëjëfFe"
   },
   {
-   "name": "phone: ablutions seated on the low stool in front of a tap {\"seat\":\"plateau:venue:mosque:11:robinet:3\",\"clip\":\"Sit\"}",
-   "ok": true
+    "name": "desktop: at the booth, ask the DJ for a song",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:venue:club:dj\",\"name\":\"DJ Mbaye\",\"kind\":\"person\",\"space\":\"almadies:venue:club\",\"primary\":\"Demander un morceau\",\"all\":[\"Demander un morceau\",\"Parler au DJ\"]}"
   },
   {
-   "name": "phone: ablutions done — no reward of any kind ",
-   "ok": true
+    "name": "desktop: the song request (500 F) and the DJ's answer",
+    "ok": true,
+    "detail": "DJ Mbaye : « Waaw kay ! Celui-là, c’est pour toi ! »"
   },
   {
-   "name": "phone: at the door: « Entrer · laisser ses chaussures » {\"id\":\"plateau:venue:mosque:11:door\",\"name\":\"Salle de prière\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer · laisser ses chaussures\",\"all\":[\"Entrer · laisser ses chaussures\"]}",
-   "ok": true
+    "name": "desktop: « Sortir » by the gate",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:venue:club:exit\",\"name\":\"Sortie\",\"kind\":\"door\",\"space\":\"almadies:venue:club\",\"primary\":\"Sortir\",\"all\":[\"Sortir\"]}"
   },
   {
-   "name": "phone: inside the prayer hall, barefoot, the shoes wait on the rack {\"x\":1600.6,\"barefoot\":true}",
-   "ok": true
+    "name": "desktop: back in the street (its space again), the doorman says goodnight",
+    "ok": true,
+    "detail": "Lamine : « Ñibbil ak jàmm » (rentre bien) · « Reviens quand tu veux. »"
   },
   {
-   "name": "phone: the rows offer prayer and a calm seat; reading waits for a verified text Prier | S’asseoir au calme",
-   "ok": true
+    "name": "desktop: by day you can always walk out through the gate",
+    "ok": true,
+    "detail": "{\"x\":-36,\"y\":0.1,\"z\":-133.23999530237947,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":null}"
   },
   {
-   "name": "phone: prayer on a free place of a row, kneeling on the floor {\"seat\":\"plateau:venue:mosque:11:rang:3:7\",\"clip\":\"Kneel\",\"y\":0.09999999999999998}",
-   "ok": true
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
   },
   {
-   "name": "phone: prayer brings no reward (needs, money, counters unchanged) ",
-   "ok": true
+    "name": "phone: Pikine has its Dibi composed on the old dibiterie lot",
+    "ok": true,
+    "detail": "21 seats"
   },
   {
-   "name": "phone: the imam can be greeted {\"id\":\"plateau:venue:mosque:11:imam\",\"name\":\"Imam Seck\",\"kind\":\"person\",\"space\":\"plateau:venue:mosque:11:salle\",\"primary\":\"Parler à l’imam\",\"all\":[\"Parler à l’imam\"]}",
-   "ok": true
+    "name": "phone: walking in from the street, the Dibi greets you by its name",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:dibiterie:11\",\"name\":\"Dibiterie Chez Pathé\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Dibiterie Chez Pathé\",\"all\":[\"Dibiterie Chez Pathé\",\"Livraisons Tiak Tiak\"]}"
   },
   {
-   "name": "phone: the imam answers in French and Wolof, with the prayer times Imam Seck« Fajar vers 6 h, Tisbaar vers 14 h, Takusaan vers 17 h, Timis vers 19 h 15, Gee vers 20 h 30. La prochaine : Tisbaar. »💬Prendre des nouvelles🕰️Les h",
-   "ok": true
+    "name": "phone: the place keeps its identity for deliveries and routines",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:dibiterie:11\",\"name\":\"Dibiterie Chez Pathé\",\"x\":-15.599999999999998,\"z\":-51.3}"
   },
   {
-   "name": "phone: leaving the hall, shoes back on ",
-   "ok": true
+    "name": "phone: the entrance is walkable all the way into the courtyard",
+    "ok": true,
+    "detail": "{\"x\":-14.799999999999999,\"y\":0.1,\"z\":-46.20986918968443,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":null}"
   },
   {
-   "name": "phone: at Tisbaar the congregation gathers 14 in the hall",
-   "ok": true
+    "name": "phone: standing at the counter focuses it",
+    "ok": true,
+    "detail": ""
   },
   {
-   "name": "phone: the Médina's Dibi is the same venue with its own owner Dibiterie de la Médina",
-   "ok": true
+    "name": "phone: the counter offers dibi, brochettes, the day's special, bissap and Pathé",
+    "ok": true,
+    "detail": "Dibi mouton | Brochettes | Plat du jour · Dibi poulet | Bissap frais | Parler à Pathé"
   },
   {
-   "name": "phone: Soumbédioune has a pirogue ready to leave and the mareyeuses 2 fishermen",
-   "ok": true
+    "name": "phone: « Dibi mouton » is paid at the counter, then grilled",
+    "ok": true,
+    "detail": "{\"a\":{\"id\":\"dibi\",\"step\":\"Préparation\",\"index\":0,\"scores\":[]},\"wallet\":3000,\"seated\":null}"
   },
   {
-   "name": "phone: walking up to the pirogue offers the trip (morning catch) {\"id\":\"corniche:venue:soumbedioune:pirogue\",\"name\":\"Pirogue des pêcheurs\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Partir avec les pêcheurs\",\"all\":[\"Partir avec les pêcheurs\"]}",
-   "ok": true
+    "name": "phone: then you sit at a free table seat of the Dibi, with your dibi on the table",
+    "ok": true,
+    "detail": "pikine:venue:dibiterie:11:Bs:0 Sit dibi"
   },
   {
-   "name": "phone: aboard, the pirogue takes you out to sea off=25.2 step=Au large",
-   "ok": true
+    "name": "phone: the meal feeds you, counts at this Dibi and you stay seated",
+    "ok": true,
+    "detail": "{\"faim\":84.75733333333335,\"seated\":\"pikine:venue:dibiterie:11:Bs:0\",\"focus\":\"Se lever\",\"meals\":1}"
   },
   {
-   "name": "phone: back on the sand with the catch (6 fish in the morning), still aboard fish 0 → 6",
-   "ok": true
+    "name": "phone: the meal is saved on the device",
+    "ok": true,
+    "detail": "[[\"repas:pikine:venue:dibiterie:11\",1]]"
   },
   {
-   "name": "phone: at the fish market, the mareyeuses buy fish {\"id\":\"corniche:venue:soumbedioune:mareyeuses\",\"name\":\"Mareyeuses\",\"kind\":\"counter\",\"space\":\"street\",\"primary\":\"Vendre 4 poissons\",\"all\":[\"Vendre 4 poissons\",\"Vendre un poisson\",\"Acheter un poisson\",\"Discuter des prix\"]}",
-   "ok": true
+    "name": "phone: Pathé talks (Wolof greeting) and explains the grill ladder",
+    "ok": true,
+    "detail": "Pathé · Dibiterie Chez Pathé« Am na liggéey ! Viens au grill quand tu veux : aider au grill, c’est payé 900 F le service. »💬Prendre des nouvelles💼Demander du "
   },
   {
-   "name": "phone: selling 4 fish pays 2 400 F; the 2 left are saved in the inventory {\"w\":3400,\"fish\":2,\"save\":2}",
-   "ok": true
+    "name": "phone: the grill is a place to work",
+    "ok": true,
+    "detail": "{\"id\":\"pikine:venue:dibiterie:11:grill\",\"name\":\"Grill\",\"kind\":\"spot\",\"space\":\"street\",\"primary\":\"Aider au grill\",\"all\":[\"Aider au grill\"]}"
   },
   {
-   "name": "phone: no trips at night (the reason is shown) Fermé · ouvre à 6 h",
-   "ok": true
+    "name": "phone: « Aider au grill » is offered with its pay and the next rung",
+    "ok": true,
+    "detail": "Aider au grill"
   },
   {
-   "name": "phone: Salon Awa has two styling chairs pikine:venue:salon:fauteuil:0 pikine:venue:salon:fauteuil:1",
-   "ok": true
+    "name": "phone: the player steps beside the cook and works the skewers",
+    "ok": true,
+    "detail": "{\"clip\":\"Talk\",\"step\":\"Aider au grill\"}"
   },
   {
-   "name": "phone: walking into the shop, the chairs offer cuts and the beard Coupe courte | Coiffure afro | Crâne rasé | Barbe taillée | Rasage | Parler avec la coiffeuse",
-   "ok": true
+    "name": "phone: the shift pays, goes to the wallet history and counts toward the next rung",
+    "ok": true,
+    "detail": "+1080 F « Aider au grill · Dibiterie Chez Pathé »"
   },
   {
-   "name": "phone: « Coiffure afro » is paid and you sit in the free chair {\"seat\":\"pikine:venue:salon:fauteuil:1\",\"wallet\":2500}",
-   "ok": true
+    "name": "phone: lively at night (more clients)",
+    "ok": true,
+    "detail": "10 people"
   },
   {
-   "name": "phone: the new cut shows on your character and is saved {\"short\":false,\"puff\":true,\"saved\":3}",
-   "ok": true
+    "name": "phone: attaya after the meal, in the evening",
+    "ok": true,
+    "detail": "Dibi mouton | Brochettes | Plat du jour · Dibi poulet | Bissap frais | Attaya après le repas | Parler à Pathé"
   },
   {
-   "name": "phone: no page errors ",
-   "ok": true
+    "name": "phone: closed in the morning, with the reason shown (shutter down, cold grill, nobody)",
+    "ok": true,
+    "detail": "« Fermé · ouvre à 11 h » shutter=true"
+  },
+  {
+    "name": "phone: the Plateau has its Grande Mosquée (courtyard, taps, prayer hall)",
+    "ok": true,
+    "detail": "60 places, 7 taps"
+  },
+  {
+    "name": "phone: walking in through the gate into the courtyard",
+    "ok": true,
+    "detail": "{\"x\":-29.999999999999996,\"y\":0.1,\"z\":-48.45999999876855,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null}"
+  },
+  {
+    "name": "phone: the taps are a place for ablutions",
+    "ok": true,
+    "detail": "{\"id\":\"plateau:venue:mosque:11:ablutions\",\"name\":\"Robinets des ablutions\",\"kind\":\"spot\",\"space\":\"street\",\"primary\":\"Faire ses ablutions\",\"all\":[\"Faire ses ablutions\"]}"
+  },
+  {
+    "name": "phone: ablutions seated on the low stool in front of a tap",
+    "ok": true,
+    "detail": "{\"seat\":\"plateau:venue:mosque:11:robinet:3\",\"clip\":\"Sit\"}"
+  },
+  {
+    "name": "phone: ablutions done — no reward of any kind",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: at the door: « Entrer · laisser ses chaussures »",
+    "ok": true,
+    "detail": "{\"id\":\"plateau:venue:mosque:11:door\",\"name\":\"Salle de prière\",\"kind\":\"door\",\"space\":\"street\",\"primary\":\"Entrer · laisser ses chaussures\",\"all\":[\"Entrer · laisser ses chaussures\"]}"
+  },
+  {
+    "name": "phone: inside the prayer hall, barefoot, the shoes wait on the rack",
+    "ok": true,
+    "detail": "{\"x\":1600.6,\"barefoot\":true}"
+  },
+  {
+    "name": "phone: the rows offer prayer and a calm seat; reading waits for a verified text",
+    "ok": true,
+    "detail": "Prier | S’asseoir au calme"
+  },
+  {
+    "name": "phone: prayer on a free place of a row, kneeling on the floor",
+    "ok": true,
+    "detail": "{\"seat\":\"plateau:venue:mosque:11:rang:3:7\",\"clip\":\"Kneel\",\"y\":0.09999999999999998}"
+  },
+  {
+    "name": "phone: prayer brings no reward (needs, money, counters unchanged)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: the imam can be greeted",
+    "ok": true,
+    "detail": "{\"id\":\"plateau:venue:mosque:11:imam\",\"name\":\"Imam Seck\",\"kind\":\"person\",\"space\":\"plateau:venue:mosque:11:salle\",\"primary\":\"Parler à l’imam\",\"all\":[\"Parler à l’imam\"]}"
+  },
+  {
+    "name": "phone: the imam answers in French and Wolof, with the prayer times",
+    "ok": true,
+    "detail": "Imam Seck« Fajar vers 6 h, Tisbaar vers 14 h, Takusaan vers 17 h, Timis vers 19 h 15, Gee vers 20 h 30. La prochaine : Tisbaar. »💬Prendre des nouvelles🕰️Les h"
+  },
+  {
+    "name": "phone: leaving the hall, shoes back on",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: at Tisbaar the congregation gathers",
+    "ok": true,
+    "detail": "14 in the hall"
+  },
+  {
+    "name": "phone: the Médina's Dibi is the same venue with its own owner",
+    "ok": true,
+    "detail": "Dibiterie de la Médina"
+  },
+  {
+    "name": "phone: Soumbédioune has a pirogue ready to leave and the mareyeuses",
+    "ok": true,
+    "detail": "2 fishermen"
+  },
+  {
+    "name": "phone: walking up to the pirogue offers the trip (morning catch)",
+    "ok": true,
+    "detail": "{\"id\":\"corniche:venue:soumbedioune:pirogue\",\"name\":\"Pirogue des pêcheurs\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Partir avec les pêcheurs\",\"all\":[\"Partir avec les pêcheurs\"]}"
+  },
+  {
+    "name": "phone: aboard, the pirogue takes you out to sea",
+    "ok": true,
+    "detail": "off=25.2 step=Au large"
+  },
+  {
+    "name": "phone: back on the sand with the catch (6 fish in the morning), still aboard",
+    "ok": true,
+    "detail": "fish 0 → 6"
+  },
+  {
+    "name": "phone: at the fish market, the mareyeuses buy fish",
+    "ok": true,
+    "detail": "{\"id\":\"corniche:venue:soumbedioune:mareyeuses\",\"name\":\"Mareyeuses\",\"kind\":\"counter\",\"space\":\"street\",\"primary\":\"Vendre 4 poissons\",\"all\":[\"Vendre 4 poissons\",\"Vendre un poisson\",\"Acheter un poisson\",\"Discuter des prix\"]}"
+  },
+  {
+    "name": "phone: selling 4 fish pays 2 400 F; the 2 left are saved in the inventory",
+    "ok": true,
+    "detail": "{\"w\":3400,\"fish\":2,\"save\":2}"
+  },
+  {
+    "name": "phone: no trips at night (the reason is shown)",
+    "ok": true,
+    "detail": "Fermé · ouvre à 6 h"
+  },
+  {
+    "name": "phone: Salon Awa has two styling chairs",
+    "ok": true,
+    "detail": "pikine:venue:salon:fauteuil:0 pikine:venue:salon:fauteuil:1"
+  },
+  {
+    "name": "phone: walking into the shop, the chairs offer cuts and the beard",
+    "ok": true,
+    "detail": "Coupe courte | Coiffure afro | Crâne rasé | Barbe taillée | Rasage | Parler avec la coiffeuse"
+  },
+  {
+    "name": "phone: « Coiffure afro » is paid and you sit in the free chair",
+    "ok": true,
+    "detail": "{\"seat\":\"pikine:venue:salon:fauteuil:1\",\"wallet\":2500}"
+  },
+  {
+    "name": "phone: the new cut shows on your character and is saved",
+    "ok": true,
+    "detail": "{\"short\":false,\"puff\":true,\"saved\":3}"
+  },
+  {
+    "name": "phone: Ngor's beach has La Vague (door, floor, bar with 5 stools, lounge tables, DJ, exit)",
+    "ok": true,
+    "detail": "floor bar lounge dj exit door"
+  },
+  {
+    "name": "phone: it is one of the neighbourhood's spots",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "phone: by day it is closed: the gate is shut, nobody inside",
+    "ok": true,
+    "detail": "closed sabar npcs=0"
+  },
+  {
+    "name": "phone: at the door by day the reason is shown (« Fermé · ouvre à 21 h »)",
+    "ok": true,
+    "detail": "Fermé · ouvre à 21 h"
+  },
+  {
+    "name": "phone: the shut gate keeps you outside",
+    "ok": true,
+    "detail": "z=-134.25 gate at -135.00"
+  },
+  {
+    "name": "phone: the crowd: few early, more before midnight, the peak after it, fewer at dawn",
+    "ok": true,
+    "detail": "{\"early\":6,\"warm\":13,\"peak\":21,\"dawn\":8}"
+  },
+  {
+    "name": "phone: at night the door offers « Entrer » and the week's programme",
+    "ok": true,
+    "detail": "Entrer | Le programme de la semaine"
+  },
+  {
+    "name": "phone: the fee is shown before anything is paid",
+    "ok": true,
+    "detail": "La Vague · entréeLamine : « Ce soir, c’est Nuit du sabar · concours. L’entrée, c’est 2 000 F, une seule fois pour toute la nuit : tu peux sortir et revenir. »🎟"
+  },
+  {
+    "name": "phone: paid once (2 000 F): the rope is lifted for the night",
+    "ok": true,
+    "detail": "wallet 20000 → 18000, rope false"
+  },
+  {
+    "name": "phone: through the gate onto the terrace, its own space (chat and presence)",
+    "ok": true,
+    "detail": "{\"x\":-36,\"y\":0.1,\"z\":-138.2000007516193,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":null}"
+  },
+  {
+    "name": "phone: on the floor « Danser » is offered, in the terrace's space",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:venue:club:floor\",\"name\":\"Piste de danse\",\"kind\":\"spot\",\"space\":\"almadies:venue:club\",\"primary\":\"Danser\",\"all\":[\"Danser\",\"Concours de danse\"]}"
+  },
+  {
+    "name": "phone: dancing is a timing gesture on the drum while the body dances",
+    "ok": true,
+    "detail": "{\"g\":{\"kind\":\"timing\",\"label\":\"Le pas de base\",\"round\":0,\"rounds\":4,\"results\":[],\"cursor\":0.06050000000000001,\"zone\":[0.5992555588146394,0.8192555588146394],\"ask\":null,\"shown\":[],\"next\":null,\"pause\":false},\"clip\":\"Dance_A\",\"title\":\"Danse sur le temps du tambour\"}"
+  },
+  {
+    "name": "phone: a perfect dance counts and the crowd cheers",
+    "ok": true,
+    "detail": "dances=1"
+  },
+  {
+    "name": "phone: the dance contest: three rounds danced perfectly win 7 200 F, once a night",
+    "ok": true,
+    "detail": "+7200 F, 3 gestures"
+  },
+  {
+    "name": "phone: at the bar the juices are offered",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:venue:club:bar\",\"name\":\"Bar · La Vague\",\"kind\":\"counter\",\"space\":\"almadies:venue:club\",\"primary\":\"Bissap glacé\",\"all\":[\"Bissap glacé\",\"Jus de bouye\",\"Jus de gingembre\",\"Cocktail de fruits maison\",\"Eau fraîche\",\"Parler au barman\"]}"
+  },
+  {
+    "name": "phone: bissap, bouye, a fruit cocktail (no alcohol), the barman",
+    "ok": true,
+    "detail": "Bissap glacé | Jus de bouye | Jus de gingembre | Cocktail de fruits maison | Eau fraîche | Parler au barman"
+  },
+  {
+    "name": "phone: the drink seats you on a free stool (never a clubber's)",
+    "ok": true,
+    "detail": "{\"seat\":\"almadies:venue:club:tabouret:2\",\"taken\":[\"almadies:venue:club:tabouret:0\",\"almadies:venue:club:tabouret:3\"]}"
+  },
+  {
+    "name": "phone: the lounge offers drinks served at the table",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:venue:club:lounge\",\"name\":\"Tables · service à table\",\"kind\":\"furniture\",\"space\":\"almadies:venue:club\",\"primary\":\"Bissap glacé · à table\",\"all\":[\"Bissap glacé · à table\",\"Jus de bouye · à table\",\"Jus de gingembre · à table\",\"Cocktail de fruits maison · à table\",\"Eau fraîche · à table\"]}"
+  },
+  {
+    "name": "phone: at a free lounge place (never a clubber's), the waiter comes to the table",
+    "ok": true,
+    "detail": "{\"seat\":\"almadies:venue:club:banquette:-1:0\",\"taken\":[\"almadies:venue:club:banquette:-5:0\"],\"waiter\":{\"x\":-44.795224240125116,\"z\":-143.2346285605898,\"shown\":true,\"clip\":\"Walk\"}}"
+  },
+  {
+    "name": "phone: clubbers are around to talk to",
+    "ok": true,
+    "detail": "[{\"id\":\"bar0\",\"x\":-27.5,\"z\":-148.2,\"shown\":true,\"clip\":\"Sit\"},{\"id\":\"bar1\",\"x\":-27.5,\"z\":-143.4,\"shown\":true,\"clip\":\"Sit\"},{\"id\":\"lounge0\",\"x\":-47.1,\"z\":-148.2,\"shown\":true,\"clip\":\"Sit\"},{\"id\":\"debout0\",\"x\":-32,\"z\":-147,\"shown\":true,\"clip\":\"Talk\"}]"
+  },
+  {
+    "name": "phone: « Discuter » with a clubber: a short exchange with everyday Wolof",
+    "ok": true,
+    "detail": "Moussa · La VagueMoussa : « Na nga def ? » (comment ça va ?) · « Moi c’est Moussa. Ça chauffe ce soir ! »🎶La soirée🤝Tu viens souvent ?💃On danse ?👋JërëjëfFer"
+  },
+  {
+    "name": "phone: the clubber talks about tonight",
+    "ok": true,
+    "detail": "Moussa · La Vague« Ce soir, c’est Nuit du sabar · concours. Le concours a commencé, monte sur la piste ! »🎶La soirée🤝Tu viens souvent ?💃On danse ?👋JërëjëfFe"
+  },
+  {
+    "name": "phone: at the booth, ask the DJ for a song",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:venue:club:dj\",\"name\":\"DJ Mbaye\",\"kind\":\"person\",\"space\":\"almadies:venue:club\",\"primary\":\"Demander un morceau\",\"all\":[\"Demander un morceau\",\"Parler au DJ\"]}"
+  },
+  {
+    "name": "phone: the song request (500 F) and the DJ's answer",
+    "ok": true,
+    "detail": "DJ Mbaye : « Waaw kay ! Celui-là, c’est pour toi ! »"
+  },
+  {
+    "name": "phone: « Sortir » by the gate",
+    "ok": true,
+    "detail": "{\"id\":\"almadies:venue:club:exit\",\"name\":\"Sortie\",\"kind\":\"door\",\"space\":\"almadies:venue:club\",\"primary\":\"Sortir\",\"all\":[\"Sortir\"]}"
+  },
+  {
+    "name": "phone: back in the street (its space again), the doorman says goodnight",
+    "ok": true,
+    "detail": "Lamine : « Ñibbil ak jàmm » (rentre bien) · « Reviens quand tu veux. »"
+  },
+  {
+    "name": "phone: by day you can always walk out through the gate",
+    "ok": true,
+    "detail": "{\"x\":-36,\"y\":0.1,\"z\":-133.23999530237947,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":null}"
+  },
+  {
+    "name": "phone: no page errors",
+    "ok": true,
+    "detail": ""
   }
- ]
-}
+]

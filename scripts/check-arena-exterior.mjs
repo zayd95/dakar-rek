@@ -58,7 +58,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const want = { low: 8, medium: 14, high: 20 }[s.quality];
   check(`${label}: density follows the graphics quality (${s.quality})`, s.fans === want, `${s.fans} fans`);
   check(`${label}: vendors sell drinks, peanuts and brochettes, écurie scarves and flags, water (prices shown)`,
-    ['Bissap glacé · 300', 'Café Touba · 150', 'Brochettes · 1000', 'Écharpe Baobab · 2000', 'Drapeau Teranga · 1500', 'Sachet d’eau fraîche · 50'].every(t => s.vendors.some(v => v.offers.includes(t))), s.vendors.map(v => v.offers.join(', ')).join(' | '));
+    ['Bissap glacé · 300', 'Café Touba · 150', 'Brochettes · 1000', 'Écharpe Baobab · 2000', 'Petit drapeau Teranga · 1500', 'Sachet d’eau fraîche · 50'].every(t => s.vendors.some(v => v.offers.includes(t))), s.vendors.map(v => v.offers.join(', ')).join(' | '));
   // the queue moves through the gate
   const q0 = await d(() => window.__dakar.arenaOut().queue);
   await page.waitForTimeout(6000 * Math.min(SLOW, 2));
@@ -123,8 +123,17 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     return after;
   };
   await buy('boissons', 'Bissap glacé', 300, 'buy-bissap');
-  const inv = await buy('supporters', 'Écharpe Baobab', 2000, 'buy-scarf');
-  check(`${label}: the Baobab scarf is in the inventory`, inv.inv.echarpe_baobab === 1, JSON.stringify(inv.inv));
+  await buy('supporters', 'Écharpe Baobab', 2000, 'buy-scarf');
+  // the supporters' stall « Couleurs du Géew » (src/economy/wear.ts, src/arena/supporters.ts): the scarf is the player's,
+  // listed in « Biens », worn on the body and in the presence field the others see
+  const sup = await d(() => window.__dakar.supporters());
+  check(`${label}: the Baobab scarf is yours and you wear it (body, presence field)`, sup.owned.includes('echarpe_baobab') && sup.worn === 'echarpe_baobab' && sup.body === 'baobab:scarf' && sup.field?.e === 'baobab' && sup.field?.k === 'scarf', JSON.stringify(sup));
+  const biens = await d(() => { window.__dakar.assetsApp(); return [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent ?? ''); });
+  await d(() => document.querySelector('#modal .item.close')?.click());
+  await until(() => window.__dakar.pos().mode === 'play', null, 10000);
+  check(`${label}: « Biens » lists the scarf, worn`, biens.some(t => /Écharpe Baobab/.test(t) && /tu le portes/.test(t)), JSON.stringify(biens.filter(t => /Écharpe|Casquette|drapeau|Maillot/.test(t))));
+  await d(([x, z]) => window.__dakar.place(x, z, Math.PI), [g.x - 12.5, g.z - 7.5]);
+  await shot('supporter-scarf');
 
   // the evening is over (the next morning): everyone gone, the stalls stop selling
   await d(() => { window.__dakar.arenaOutDay(3); window.__dakar.setHour(11); });

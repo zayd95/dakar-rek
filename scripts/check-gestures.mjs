@@ -106,14 +106,19 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   // 5. The market stall (Plateau): serve the customers before they leave.
   await d(() => { window.__dakar.teleport('plateau'); const s = window.__dakar.state; s.data.wallet = 0; s.data.needs.energie = 90; });
   await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau', null, T);
+  const l5 = await d(() => window.__dakar.state.data.ledger.length);
   await startAt(':market', 'Tenir l’étal');
   const g5 = await g();
   check(`${label}: at the stall a customer asks for something`, g5?.kind === 'choose' && g5.rounds === 6, JSON.stringify(g5));
   await shot('market');
   await playGesture(1);
   await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
-  check(`${label}: serving everyone right pays the stall's full rate`, (await d(() => window.__dakar.state.wallet)) === 3000, String(await d(() => window.__dakar.state.wallet)));
+  // work pay is scaled by polyvalence (src/economy/polyvalence.ts: +20 % for each other trade practised lately — the
+  // garage's, just before): the full rate is 3 000 F times the game's own multiplier
+  const paid5 = await d(l => ({ wallet: window.__dakar.state.wallet, mult: window.__dakar.business().mult, lines: window.__dakar.state.data.ledger.slice(l).map(e => [e.label, e.amount]) }), l5);
+  check(`${label}: serving everyone right pays the stall's full rate (× polyvalence)`, paid5.wallet === Math.round(3000 * paid5.mult), JSON.stringify(paid5));
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
+  await page.context().close();                       // this view's page stops rendering before the next one boots
 }
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));

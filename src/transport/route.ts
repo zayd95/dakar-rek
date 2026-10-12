@@ -53,6 +53,38 @@ export function lanePath(nodes: readonly Pt[], lane: number, round: number, samp
 }
 
 /**
+ * The lane along an open route of road nodes (a taxi from a rank out of the neighbourhood, into another one): like
+ * lanePath, every leg shifted `lane` metres to its right and the corners rounded, but the ends stay ends. Use it with
+ * Path and sample only up to `path.at(points.length - 1)` (Path closes its polylines; the closing leg is never driven).
+ */
+export function openLanePath(nodes: readonly Pt[], lane: number, round: number, samples = 6): Pt[] {
+  const n = nodes.length;
+  if (n < 2) throw new Error('openLanePath: a route needs at least two nodes');
+  const dir = (a: Pt, b: Pt) => { const l = Math.hypot(b.x - a.x, b.z - a.z) || 1; return { x: (b.x - a.x) / l, z: (b.z - a.z) / l }; };
+  const out: Pt[] = [];
+  const d0 = dir(nodes[0], nodes[1]), r0 = rightOf(d0.x, d0.z);
+  out.push({ x: nodes[0].x + r0.x * lane, z: nodes[0].z + r0.z * lane });
+  for (let i = 1; i < n - 1; i++) {
+    const p = nodes[i - 1], c = nodes[i], q = nodes[i + 1], di = dir(p, c), dout = dir(c, q);
+    const ri = rightOf(di.x, di.z), ro = rightOf(dout.x, dout.z);
+    const A = { x: c.x + ri.x * lane, z: c.z + ri.z * lane }, B = { x: c.x + ro.x * lane, z: c.z + ro.z * lane };
+    const cross = di.x * dout.z - di.z * dout.x;
+    if (Math.abs(cross) < 1e-6) { out.push(A); continue; }                               // straight on
+    const t = ((B.x - A.x) * dout.z - (B.z - A.z) * dout.x) / cross, C = { x: A.x + di.x * t, z: A.z + di.z * t };
+    const prev = out[out.length - 1], next = { x: q.x + ro.x * lane, z: q.z + ro.z * lane };
+    const r = Math.min(round, Math.hypot(C.x - prev.x, C.z - prev.z) / 2, Math.hypot(next.x - C.x, next.z - C.z) / 2);
+    const P = { x: C.x - di.x * r, z: C.z - di.z * r }, Q = { x: C.x + dout.x * r, z: C.z + dout.z * r };
+    for (let k = 0; k <= samples; k++) {
+      const u = k / samples, a = (1 - u) * (1 - u), b = 2 * (1 - u) * u, cc = u * u;
+      out.push({ x: a * P.x + b * C.x + cc * Q.x, z: a * P.z + b * C.z + cc * Q.z });
+    }
+  }
+  const dl = dir(nodes[n - 2], nodes[n - 1]), rl = rightOf(dl.x, dl.z);
+  out.push({ x: nodes[n - 1].x + rl.x * lane, z: nodes[n - 1].z + rl.z * lane });
+  return out;
+}
+
+/**
  * A closed polyline with cumulative arc lengths. sample(s) gives the position at arc length s (wrapping) and a heading
  * that follows the segment, blended with the neighbouring segment within `blend` metres of each vertex so the vehicle
  * does not snap from one segment's heading to the next.
