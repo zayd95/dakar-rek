@@ -116,6 +116,9 @@ for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, heig
   await d(() => window.__dakar.act());
   await until(() => window.__dakar.moto.info().driving, null, 30000);
   const b0 = (await d(() => window.__dakar.moto.info())).bumps;
+  // along the jam while the agent holds it (the gate's side going): when he lets the jam go, its cars move and the front
+  // ones turn across the gap — a moto held at full throttle into them bumps and is pushed back (phone, 9335db7: 13 bumps)
+  await until(() => { const a = window.__dakar.gala.info().agent; return a.go === 'gate' && a.left > 15; }, null, 90000);
   await hold('KeyW', -1, x => window.__dakar.moto.info().x < x, geo.front + 15, 90000);                      // along the jam…
   await hold('KeyS', 1, () => Math.abs(window.__dakar.moto.info().speed) < 0.3, null, 30000);                  // …braking to a stop beside its front cars
   const m1 = await d(() => window.__dakar.moto.info());
