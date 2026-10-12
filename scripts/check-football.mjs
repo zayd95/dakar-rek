@@ -55,8 +55,9 @@ const advance = (seconds, stop = 'false') => d(([s, stop, dt]) => {
   return { ...n, stopped: false };
 }, [seconds, stop, DT]);
 /** The camera at `at` looking at `look` (world), the frame drawn, a picture. */
-const shoot = async (name, at, look) => {
-  await d(([a, l]) => { window.__dakar.cam(a, l); window.__dakar.render(); }, [at, look]);
+const shoot = async (name, at, look, settle = 0) => {
+  // `settle`: frames stepped with the camera there first (the bodies' level of detail follows the camera)
+  await d(([a, l, n]) => { window.__dakar.cam(a, l); if (n) window.__dakar.step(1 / 30, n); window.__dakar.render(); }, [at, look, settle]);
   await page.screenshot({ path: `${out}/${name}.png` });
   await d(() => window.__dakar.cam(null));                         // the stepping goes on with the player's own camera
 };
@@ -103,7 +104,7 @@ if (f.phase === 'goal') {
   check('his teammates run to him and celebrate', mates.length >= 1 && cheering.length >= 2, { mates: mates.map(m => ({ id: m.id, cheer: m.cheer, clip: m.clip })), cheering: cheering.length });
   check('the spectators on the touchline cheer the goal', f.fans === 0 || f.fansCheering > 0, { fans: f.fans, cheering: f.fansCheering });
   const away = Math.atan2(s.x - pitch.x, s.z - pitch.z);
-  await shoot('3-celebration', [s.x - Math.sin(away) * 5.5 + 1.2, s.y + 2.1, s.z - Math.cos(away) * 5.5], [s.x, s.y + 1.0, s.z]);
+  await shoot('3-celebration', [s.x - Math.sin(away) * 5.5 + 1.2, s.y + 2.1, s.z - Math.cos(away) * 5.5], [s.x, s.y + 1.0, s.z], 8);
 } else check('a goal\'s celebration to watch', false, { phase: f.phase, goals: f.stats.goals });
 
 // 5. the restart from the centre spot

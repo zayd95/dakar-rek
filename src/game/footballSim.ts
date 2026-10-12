@@ -541,7 +541,7 @@ export class Match {
     const dist = hyp(gx - b.x, b.z);
     const angle = Math.abs(Math.atan2(PITCH.post - b.z, Math.abs(gx - b.x)) - Math.atan2(-PITCH.post - b.z, Math.abs(gx - b.x)));
     const pressure = this.pressure(p);
-    if (!p.keeper && ((dist < 14 && angle > 0.3) || (dist < 8 && angle > 0.16)) && this.rand() < 0.65 + 0.3 * p.skill) {
+    if (!p.keeper && ((dist < 15 && angle > 0.28) || (dist < 8 && angle > 0.16)) && this.rand() < 0.7 + 0.3 * p.skill) {
       // aim away from the keeper, at a corner, with some error
       const k = this.players.find(q => q.team !== p.team && q.keeper);
       const side = k ? (k.z > b.z * 0.1 ? -1 : 1) : this.rand() < 0.5 ? 1 : -1;
@@ -729,7 +729,7 @@ export class Match {
       const yaw = Math.atan2(-b.vx, -b.vz), latR = (x - p.x) * -Math.cos(yaw) + (z - p.z) * Math.sin(yaw), lat = z - p.z;
       const hands = h >= HANDS_FROM, need = hands ? Math.max(0, Math.abs(latR) - CONTACT.arms) : Math.abs(latR);
       const can = need <= 4.2 * Math.max(0, t - 0.2) && h < HANDS_H;
-      const odds = 0.82 - 0.22 * (Math.abs(lat) / 2.6) - 0.2 * Math.min(1, ballSpeed(b) / 22) + 0.15 * p.skill;
+      const odds = 0.7 - 0.25 * (Math.abs(lat) / 2.6) - 0.2 * Math.min(1, ballSpeed(b) / 22) + 0.15 * p.skill;
       if (can && this.rand() < odds) {
         const ix = x - b.vx, iz = z - b.vz, n = hyp(ix, iz) || 1;
         const sp = 2 + this.rand() * 3, away = this.rand() < 0.5 ? 1 : -1;
