@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BALL_R, CONTACT, Match, PITCH, REACH, ballPath, newBall, passSpeed, rollDistance, stepBall, type BallEvent } from '../src/game/footballSim';
+import { planDemand, type AmbientSpot } from '../src/social/ambient';
+import { ACTIVITIES, AMBIENT_BUDGET } from '../src/social/ambientData';
+import { buildSpots } from '../src/social/ambientSpots';
 
 /** Runs the ball alone for `seconds` in 1/60 s frames, the events collected. */
 function roll(b = newBall(), seconds = 10, ev: BallEvent[] = []) {
@@ -212,5 +215,34 @@ describe('football · a match', () => {
   it('the contact point is ahead of the body, beside the kicking foot', () => {
     const o = Match.contactPoint(0, 0, 0, 1, { x: 0, z: 0 });
     expect(o.z).toBeCloseTo(CONTACT.fwd); expect(o.x).toBeCloseTo(-CONTACT.side);   // facing +z, the right is −x
+  });
+});
+
+describe('football · the city brings the players and the spectators', () => {
+  const stands = Array.from({ length: 12 }, (_, k) => ({ x: -14 + k * 2.5, z: -17.8, yaw: 0 }));
+  const pitch: AmbientSpot = { id: 'special:pitch:0,0', tags: ['pitch'], space: 'street', x: 0, z: 0, seats: [], stands, area: [-17, -12, 17, 12], source: 'special' };
+  const plan = (scale: number, hour = 17.5, dow = 1) => planDemand([pitch], ACTIVITIES, { hour, dow, scale, px: 0, pz: -20, near: 70, far: 130, cap: 100, space: 'street', seatKind: () => null });
+  const count = (rows: ReturnType<typeof plan>, id: string) => rows.filter(r => r.act.id === id).reduce((s, r) => s + r.n, 0);
+
+  it('at 17:30 ten footballers whatever the graphics quality (a match needs its players); the spectators scale', () => {
+    for (const q of ['low', 'medium', 'high'] as const) expect(count(plan(AMBIENT_BUDGET[q].scale), 'foot')).toBe(10);
+    expect(count(plan(AMBIENT_BUDGET.low.scale), 'regarder-foot')).toBeLessThan(count(plan(1), 'regarder-foot'));
+    expect(count(plan(1), 'regarder-foot')).toBeGreaterThanOrEqual(3);
+  });
+
+  it('nobody on the pitch outside the match hours; the Sunday-morning match', () => {
+    expect(count(plan(1, 13), 'foot')).toBe(0);
+    expect(count(plan(1, 10, 6), 'foot-dimanche')).toBeGreaterThanOrEqual(10);
+  });
+
+  it('the pitch spot has standing places on both touchlines, beyond the grass, facing the pitch', () => {
+    const spots = buildSpots({ places: [], seats: [], interactables: [], layout: { specials: [{ kind: 'pitch', x: 0, z: 0 }], sea: null }, colliders: [], people: [], arena: null });
+    const s = spots.find(x => x.tags.includes('pitch'))!;
+    expect(s.area).toBeTruthy();
+    expect(s.stands.length).toBeGreaterThanOrEqual(20);
+    for (const t of s.stands) {
+      expect(Math.abs(t.z)).toBeGreaterThan(PITCH.ez);
+      expect(Math.cos(t.yaw) * -Math.sign(t.z)).toBeGreaterThan(0.9);          // looking toward the pitch
+    }
   });
 });
