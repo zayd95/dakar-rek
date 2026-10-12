@@ -9,6 +9,7 @@ import { runEvening, type MomentResult, type Quality } from './perfHost';
  * presets, PERF_FRAMES per moment, PERF_OUT=file.json to save them); without it, a short smoke on the low preset.
  * PERF_BROWSER=1 plays the browser check's way (frames of 0.1 s, the 19:00 window running on past the end of the bout) and
  * prints the check's readings: windows of 90 frames, the profiler's moving averages and the draw calls of the last frame.
+ * PERF_DAY=<n> picks the city day of the evening (a Friday is 4 mod 7; the day seeds the bout), PERF_STOP the last moment.
  * Frames during which the OS preempted the process (a busy machine) are left out of the timings; PERF_KEEP=1 keeps them.
  */
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {};
@@ -29,7 +30,7 @@ describe('the frame on a gala evening (node)', () => {
   it('runs every module through the three moments', async () => {
     const all: MomentResult[] = [];
     for (const q of PRESETS) {
-      const rows = await runEvening(q, { frames: FRAMES, warm: PERF ? 240 : 30, browser: BROWSER });
+      const rows = await runEvening(q, { frames: FRAMES, warm: PERF ? 240 : 30, browser: BROWSER, day: env.PERF_DAY ? Number(env.PERF_DAY) : undefined, stopAfter: env.PERF_STOP as never });
       for (const r of rows) { all.push(r); if (PERF) print(r); }
     }
     if (env.PERF_OUT) writeFileSync(env.PERF_OUT, JSON.stringify({ when: new Date().toISOString(), frames: FRAMES, rows: all }, null, 1));

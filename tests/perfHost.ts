@@ -438,14 +438,16 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
   /** Play the browser check's way: frames of 0.1 s (the loop caps dt at 0.1 and a software-rendered frame lasts longer), and the 19:00 window runs on past the end of the bout, as the check's 91 frames do. */
   browser?: boolean;
   /** Stop after this moment (a test of the first one needs not play the bout). */
-  stopAfter?: MomentName } = {}): Promise<MomentResult[]> {
+  stopAfter?: MomentName;
+  /** The city day of the evening (a Friday: the browser check takes the next one, and the day seeds the bout). */
+  day?: number } = {}): Promise<MomentResult[]> {
   const keep = !!(globalThis as { process?: Proc }).process?.env.PERF_KEEP, frames = o.frames ?? 300, dt = o.dt ?? (o.browser ? 0.1 : 1 / 30), warm = o.warm ?? 240;
   const host = new PerfHost(q);
   await host.load({ x: 18, z: -66.3, yaw: 0.75 }, 17.5);
   const out: MomentResult[] = [];
   type ArenaDbg = { info(): { phase: string; street: string; centre: { x: number; z: number }; day: number } | null; go(p: string): void; freeSeat(x: number, z: number): { id: string; x: number; z: number; yaw: number } | null; day(d: number | null): void };
   const arena = host.debug<ArenaDbg>('arena');
-  arena.day(GALA_DAY);
+  arena.day(o.day ?? GALA_DAY);
   /** `frames` frames (fewer when `still` stops holding: the bout's own frames only). */
   const measure = (moment: MomentName, still: () => boolean = () => true) => {
     const sum: FrameTimes = {};
@@ -496,6 +498,7 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
   for (let k = 0; k < 3000 && phase() !== 'bout'; k++) host.frame(dt);
   for (let k = 0; k < 20; k++) host.frame(dt);
   measure('19:00 bout', () => o.browser || arena.info()!.phase === 'bout');
+  if (o.stopAfter === '19:00 bout') return out;
   // 3. 23:00: the bout over (its result and fête under way: the outflow begins), up from the place, in front of the gate
   type Speed = (n: number) => void;
   host.debug<{ speed: Speed }>('arena').speed(10);
