@@ -57,10 +57,27 @@ rectangular blocks in different colours.
 
 - **In the game:** every hub comes from the same generator — a 4 × 4 grid of 46 m square blocks between 14 m roads
   (`src/world/builder.ts`: `BLK`, `ROAD`, `NB`) — varied by a building style per hub (dense, student, villa,
-  banlieue), palette, number of floors, ground colours and a few special blocks (arena, market, mosque, port…). Parcelles has no area of its own: a café of the Pikine hub carries
-  its name.
+  banlieue), palette, number of floors, ground colours and a few special blocks (arena, market, mosque, port…).
+  Parcelles has no area of its own: a café of the Pikine hub carries its name.
 - **Proposal:** start by validating **one convincing street in Pikine** — its layout, ground, buildings, courtyards
-  and the life in it — before extending the approach to other streets and neighbourhoods.
+  and the life in it, its conversations included — before extending the approach to other streets and
+  neighbourhoods.
+
+**Dakar Gist** is part of Street DNA, not a separate project (Habib, 12 Oct): a street is recognised by what is said
+in it as much as by its walls. The neighbourhood's conversations must sound like Dakar.
+
+- **Register:** the urban Wolof of Dakar — slang, humour, teasing — mixed with French the way people really mix them.
+  No academic Wolof, no artificial dialogue.
+- **Who:** the existing Wolof agent (the Wolof lane: `docs/WOLOF.md`, `src/i18n/wolof.ts`, `src/i18n/lines.ts`,
+  `scripts/check-wolof.mjs`). It proposes its own best approach.
+- **How:** a light workflow that reuses what exists — the greetings, names, small talk and news of passers-by
+  (`src/interact/people.ts`), the characters' sheets and lines (`src/social/`), the places' lines, the location
+  chat's quick phrases and the gloss setting — rather than a new system.
+- **Kept rules (`docs/WOLOF.md`):** Wolof only for now; no invented religious text; the chat stays free with its
+  protections.
+- **In the game:** contextual everyday Wolof in short lines — greetings by the hour, prices, thanks, place calls —
+  from a 115-entry lexicon, written in standard spelling. **Proposal:** the Gist register above, starting with the
+  first Pikine street.
 
 ### 2. Corniche V2
 
@@ -122,8 +139,8 @@ textures, no real brand, logo or product (`docs/ASSET_REGISTER.md`); they are no
 
 1. **Finish wave 5 and the animation integration** (in progress).
 2. **Lightweight NPC football**, using the existing movement architecture (proposal).
-3. **Dakar Street DNA** (one Pikine street first) and **Corniche V2**, as two distinct environmental milestones
-   (proposals).
+3. **Dakar Street DNA** (one Pikine street first, with its Dakar Gist conversations) and **Corniche V2**, as two
+   distinct environmental milestones (proposals).
 4. **Langaa Buri prototype**, once the movement and social systems it needs are stable (proposal).
 
 ## Where we stand (12 Oct)
@@ -139,7 +156,7 @@ player's way in.
 | **Friends at the Corniche** | Multiplayer presence and location-aware chat; greetings, names, regulars; jogging and pull-ups; sitting together at the arena (`src/arena/together.ts`). | Corniche V2 (decision 2): the plaza, the amphitheatre and the paths as places to meet and play; joining a friend's activity in one step. |
 | **Children playing Langaa Buri** | Children only in the arena crowds. | Children in the streets and Langaa Buri (decision 3). |
 | **Wrestlers training in Pikine** | The strongest part: écurie, guided training with Coach Ablaye, the career ladder, gala nights, the drills (`docs/CAREER.md`, `docs/LAMB2.md`); the écurie's wrestlers train 6 h 30–10 h and 16 h–19 h. | Training with them: the player joins the group session at its hours, not a solo drill. |
-| **Neighbourhoods you recognise** | One block generator for every hub. | Dakar Street DNA (decision 1), one Pikine street first. |
+| **Neighbourhoods you recognise** | One block generator for every hub; short everyday Wolof lines (`docs/WOLOF.md`). | Dakar Street DNA with Dakar Gist (decision 1), one Pikine street first. |
 | **Discovering new things** | Places and venues in four hubs, story beats, NPC routines, phone news, the Carnet. | Things that appear at their hour, places revealed by people, the Carnet keeping what you found. |
 | **Rewards** | FCFA; the làmb ladder and a ranking kept on the device. | Gems, achievements, cosmetics, collectibles, trophies; weekly verified leaderboards (decision 5). |
 
