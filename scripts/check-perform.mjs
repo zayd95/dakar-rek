@@ -96,7 +96,8 @@ await hub('corniche');
 await act({ name: 'carry-crates', find: find(/:city:soumbedioune$/), label: 'Débarquer les caisses', wait: 0.5, until: i => i.onHead, cam: [5, 1.4, 2.6], views: { close: [3, 0.9, 1.8] },
   expect: (a, b) => a.kind === 'carry' && b.moved > a.moved && a.leg > 0.5 });
 // a player who walked up to the stalls (2.6 m in front of the place, facing the tables): the work is done on a real table
-const nearStalls = () => { const i = window.__dakar.cityPlaces().find(i => /:city:fish-market$/.test(i.id)); return i && { id: i.id, x: i.x, z: i.z - 2.6, yaw: Math.PI }; };
+// (1 m to the side: on wave 5 the mareyeuses' counter, just west of there, takes the focus)
+const nearStalls = () => { const i = window.__dakar.cityPlaces().find(i => /:city:fish-market$/.test(i.id)); return i && { id: i.id, x: i.x + 1, z: i.z - 2.6, yaw: Math.PI }; };
 await act({ name: 'clean-fish', find: nearStalls, label: 'Aider au nettoyage', wait: 0.6, cam: [2.4, 0.8, 1.6], views: SIDE,
   expect: (a, b) => a.kind === 'handwork' && b.done > a.done && b.surface === true });
 // Gym, garage, café, market and port wherever they are
