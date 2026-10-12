@@ -5,11 +5,11 @@
       "ok": true,
       "detail": {
         "teams": [
-          2,
-          2
+          3,
+          3
         ],
         "waiting": 0,
-        "fans": 3,
+        "fans": 0,
         "quality": "low"
       }
     },
@@ -17,13 +17,13 @@
       "name": "the ball moves",
       "ok": true,
       "detail": {
-        "ballTravel": 65.4,
+        "ballTravel": 72.5,
         "ball": {
-          "x": -90.37,
+          "x": -94.17,
           "y": 0.27,
-          "z": 36.95,
+          "z": 32.9,
           "h": 0.11,
-          "speed": 1.21,
+          "speed": 3.68,
           "net": 0,
           "visible": true
         }
@@ -33,11 +33,11 @@
       "name": "the ball is drawn on the grass",
       "ok": true,
       "detail": {
-        "x": -90.37,
+        "x": -94.17,
         "y": 0.27,
-        "z": 36.95,
+        "z": 32.9,
         "h": 0.11,
-        "speed": 1.21,
+        "speed": 3.68,
         "net": 0,
         "visible": true
       }
@@ -46,27 +46,27 @@
       "name": "at the frame of a kick, the drawn foot is on the ball",
       "ok": true,
       "detail": {
-        "n": 47,
-        "t": 38.033,
-        "frame": 1139,
-        "who": 10,
+        "n": 37,
+        "t": 33.333,
+        "frame": 998,
+        "who": 6,
         "team": 1,
         "kind": "pass",
         "side": 1,
-        "x": -1.8634359357942372,
-        "z": -5.106023116038442,
+        "x": 1.6585680938190297,
+        "z": -3.5710170660575162,
         "h": 0.11,
-        "reach": 2.220446049250313e-16,
-        "speed": 5.2580789046966565,
-        "to": 4,
-        "foot": 0.0285
+        "reach": 0,
+        "speed": 4.493206596367171,
+        "to": 10,
+        "foot": 0.0283
       }
     },
     {
       "name": "a goal within 180 s of play",
       "ok": true,
       "detail": {
-        "t": 72.2,
+        "t": 74.83,
         "score": [
           0,
           1
@@ -76,7 +76,7 @@
         "saves": 0,
         "goals": [
           {
-            "t": 72.19999999999847,
+            "t": 74.83333333333165,
             "team": 1,
             "scorer": 10,
             "score": [
@@ -94,10 +94,10 @@
         "id": 10,
         "team": 1,
         "keeper": false,
-        "x": -104.47447714917726,
-        "z": 41.873346607168415,
+        "x": -105.08560127620126,
+        "z": 18.711447361451,
         "y": 0.155,
-        "yaw": -2.6280137187534764,
+        "yaw": -0.4216347250156174,
         "clip": null,
         "body": false,
         "kick": null,
@@ -110,14 +110,14 @@
       "detail": {
         "mates": [
           {
-            "id": 2,
-            "cheer": true,
-            "clip": null
-          },
-          {
             "id": 4,
             "cheer": true,
-            "clip": null
+            "clip": "Celebrate"
+          },
+          {
+            "id": 6,
+            "cheer": true,
+            "clip": "Celebrate"
           },
           {
             "id": 8,
@@ -142,12 +142,12 @@
       "detail": {
         "kickoffs": [
           {
-            "t": 5.43,
+            "t": 4.33,
             "dist": 0
           },
           {
-            "t": 85.37,
-            "dist": 0.99
+            "t": 87.93,
+            "dist": 1.02
           }
         ],
         "phase": "play"
@@ -157,47 +157,47 @@
       "name": "passes go from teammate to teammate",
       "ok": true,
       "detail": {
-        "passes": 38,
-        "completed": 28,
-        "intercepted": 9,
+        "passes": 42,
+        "completed": 27,
+        "intercepted": 14,
         "perMinute": {
-          "passes": 19,
-          "completed": 14,
-          "goals": 1,
-          "contacts": 64.5
+          "passes": 21,
+          "completed": 13.5,
+          "goals": 0.5,
+          "contacts": 69
         }
       }
     },
     {
       "name": "the foot (hands) is within 10 cm of the ball at every measured contact",
-      "ok": false,
+      "ok": true,
       "detail": {
-        "measured": 19,
-        "unmeasured": 110,
-        "median": 0.0288,
-        "p90": 0.0311,
-        "max": 0.0329,
-        "min": 0.0273,
+        "measured": 51,
+        "unmeasured": 87,
+        "median": 0.0298,
+        "p90": 0.0312,
+        "max": 0.0323,
+        "min": 0.0271,
         "byKind": {
           "touch": {
-            "n": 1,
-            "max": 0.0307,
-            "mean": 0.0307
+            "n": 6,
+            "max": 0.0323,
+            "mean": 0.0312
           },
           "trap": {
-            "n": 6,
-            "max": 0.0292,
-            "mean": 0.0283
+            "n": 19,
+            "max": 0.0322,
+            "mean": 0.0291
           },
           "tackle": {
-            "n": 5,
-            "max": 0.0311,
-            "mean": 0.0308
+            "n": 9,
+            "max": 0.0319,
+            "mean": 0.0306
           },
           "pass": {
-            "n": 7,
-            "max": 0.0329,
-            "mean": 0.0291
+            "n": 17,
+            "max": 0.032,
+            "mean": 0.0293
           },
           "shot": null,
           "save": null
@@ -206,11 +206,11 @@
     },
     {
       "name": "nearly every contact is measured on a drawn body",
-      "ok": false,
+      "ok": true,
       "detail": {
-        "measured": 19,
-        "unmeasured": 110,
-        "contacts": 129,
+        "measured": 51,
+        "unmeasured": 87,
+        "contacts": 138,
         "quality": "low"
       }
     },
@@ -219,16 +219,16 @@
       "ok": true,
       "detail": {
         "whiffs": 0,
-        "contacts": 129
+        "contacts": 138
       }
     },
     {
       "name": "the footballers' planted feet barely slide (the legs keep the pace)",
-      "ok": false,
+      "ok": true,
       "detail": {
-        "bodies": 0,
-        "steps": 0,
-        "slipped": 0
+        "bodies": 4,
+        "steps": 744,
+        "slipped": 3.5701687298561993
       }
     },
     {
@@ -242,23 +242,23 @@
       "detail": [
         {
           "label": "touchline, follow camera",
-          "calls": 54,
-          "football": 1,
-          "ambient": 7,
-          "frameMs": 84.8,
-          "footballMs": 0.114,
-          "ambientMs": 0.28,
-          "updateMs": 1.07
+          "calls": 78,
+          "football": 2,
+          "ambient": 31,
+          "frameMs": 102.5,
+          "footballMs": 0.118,
+          "ambientMs": 0.258,
+          "updateMs": 1.2
         },
         {
           "label": "elevated view",
           "calls": 45,
-          "football": 1,
+          "football": 2,
           "ambient": 1,
-          "frameMs": 76.3,
-          "footballMs": 0.136,
-          "ambientMs": 0.135,
-          "updateMs": 0.96
+          "frameMs": 73.3,
+          "footballMs": 0.216,
+          "ambientMs": 0.107,
+          "updateMs": 0.92
         }
       ]
     },
@@ -266,8 +266,8 @@
       "name": "the ball and the nets cost at most 4 draw calls",
       "ok": true,
       "detail": [
-        1,
-        1
+        2,
+        2
       ]
     },
     {
@@ -276,7 +276,7 @@
       "detail": {
         "near": false,
         "active": false,
-        "ms": 0.01
+        "ms": 0
       }
     },
     {
@@ -287,57 +287,57 @@
   ],
   "numbers": {
     "stats": {
-      "contacts": 129,
-      "touches": 21,
-      "traps": 42,
-      "tackles": 24,
-      "passes": 38,
-      "completed": 28,
-      "intercepted": 9,
-      "shots": 3,
-      "onTarget": 3,
-      "saves": 1,
-      "goals": 2,
-      "kickoffs": 3,
+      "contacts": 138,
+      "touches": 24,
+      "traps": 46,
+      "tackles": 25,
+      "passes": 42,
+      "completed": 27,
+      "intercepted": 14,
+      "shots": 1,
+      "onTarget": 1,
+      "saves": 0,
+      "goals": 1,
+      "kickoffs": 2,
       "outs": 0,
       "whiffs": 0,
       "posts": 0,
-      "celebrations": 2,
-      "ballTravel": 369.8
+      "celebrations": 1,
+      "ballTravel": 389.5
     },
     "perMinute": {
-      "passes": 19,
-      "completed": 14,
-      "goals": 1,
-      "contacts": 64.5
+      "passes": 21,
+      "completed": 13.5,
+      "goals": 0.5,
+      "contacts": 69
     },
     "contacts": {
-      "measured": 19,
-      "unmeasured": 110,
-      "median": 0.0288,
-      "p90": 0.0311,
-      "max": 0.0329,
-      "min": 0.0273,
+      "measured": 51,
+      "unmeasured": 87,
+      "median": 0.0298,
+      "p90": 0.0312,
+      "max": 0.0323,
+      "min": 0.0271,
       "byKind": {
         "touch": {
-          "n": 1,
-          "max": 0.0307,
-          "mean": 0.0307
+          "n": 6,
+          "max": 0.0323,
+          "mean": 0.0312
         },
         "trap": {
-          "n": 6,
-          "max": 0.0292,
-          "mean": 0.0283
+          "n": 19,
+          "max": 0.0322,
+          "mean": 0.0291
         },
         "tackle": {
-          "n": 5,
-          "max": 0.0311,
-          "mean": 0.0308
+          "n": 9,
+          "max": 0.0319,
+          "mean": 0.0306
         },
         "pass": {
-          "n": 7,
-          "max": 0.0329,
-          "mean": 0.0291
+          "n": 17,
+          "max": 0.032,
+          "mean": 0.0293
         },
         "shot": null,
         "save": null
@@ -345,32 +345,32 @@
     },
     "score": [
       0,
-      2
+      1
     ],
     "t": 120,
     "perf": [
       {
         "label": "touchline, follow camera",
-        "calls": 54,
-        "football": 1,
-        "ambient": 7,
-        "frameMs": 84.8,
-        "footballMs": 0.114,
-        "ambientMs": 0.28,
-        "updateMs": 1.07
+        "calls": 78,
+        "football": 2,
+        "ambient": 31,
+        "frameMs": 102.5,
+        "footballMs": 0.118,
+        "ambientMs": 0.258,
+        "updateMs": 1.2
       },
       {
         "label": "elevated view",
         "calls": 45,
-        "football": 1,
+        "football": 2,
         "ambient": 1,
-        "frameMs": 76.3,
-        "footballMs": 0.136,
-        "ambientMs": 0.135,
-        "updateMs": 0.96
+        "frameMs": 73.3,
+        "footballMs": 0.216,
+        "ambientMs": 0.107,
+        "updateMs": 0.92
       }
     ],
-    "far": 0.01,
+    "far": 0,
     "quality": "low"
   }
 }

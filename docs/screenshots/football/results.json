@@ -250,23 +250,23 @@
       "detail": [
         {
           "label": "touchline, follow camera",
-          "calls": 131,
+          "calls": 123,
           "football": 2,
           "ambient": 61,
-          "frameMs": 917.6,
-          "footballMs": 0.166,
-          "ambientMs": 3.615,
-          "updateMs": 5.28
+          "frameMs": 506.3,
+          "footballMs": 0.113,
+          "ambientMs": 0.714,
+          "updateMs": 2.1
         },
         {
           "label": "elevated view",
-          "calls": 99,
+          "calls": 105,
           "football": 2,
-          "ambient": 20,
-          "frameMs": 477.9,
-          "footballMs": 0.175,
-          "ambientMs": 0.637,
-          "updateMs": 2.02
+          "ambient": 32,
+          "frameMs": 479.5,
+          "footballMs": 0.113,
+          "ambientMs": 0.458,
+          "updateMs": 1.61
         }
       ]
     },
@@ -284,7 +284,7 @@
       "detail": {
         "near": false,
         "active": false,
-        "ms": 0.019
+        "ms": 0
       }
     },
     {
@@ -367,26 +367,26 @@
     "perf": [
       {
         "label": "touchline, follow camera",
-        "calls": 131,
+        "calls": 123,
         "football": 2,
         "ambient": 61,
-        "frameMs": 917.6,
-        "footballMs": 0.166,
-        "ambientMs": 3.615,
-        "updateMs": 5.28
+        "frameMs": 506.3,
+        "footballMs": 0.113,
+        "ambientMs": 0.714,
+        "updateMs": 2.1
       },
       {
         "label": "elevated view",
-        "calls": 99,
+        "calls": 105,
         "football": 2,
-        "ambient": 20,
-        "frameMs": 477.9,
-        "footballMs": 0.175,
-        "ambientMs": 0.637,
-        "updateMs": 2.02
+        "ambient": 32,
+        "frameMs": 479.5,
+        "footballMs": 0.113,
+        "ambientMs": 0.458,
+        "updateMs": 1.61
       }
     ],
-    "far": 0.019,
+    "far": 0,
     "quality": "high"
   }
 }
