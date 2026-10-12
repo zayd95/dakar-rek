@@ -14,10 +14,11 @@ const PRESETS = (env.PERF_Q ?? (PERF ? 'low,medium,high' : 'low')).split(',') as
 const FRAMES = Number(env.PERF_FRAMES ?? (PERF ? 600 : 30));
 
 const round = (x: number, d = 2) => Math.round(x * 10 ** d) / 10 ** d;
+const stat = (xs: number[]) => xs.length ? `${round(xs.reduce((a, b) => a + b, 0) / xs.length)} (max ${round(Math.max(...xs))}, n ${xs.length})` : 'none';
 function print(r: MomentResult) {
   const top = Object.entries(r.sections).sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => `${k} ${round(v)}`).join(', ');
   const groups = Object.entries(r.by).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => `${k} ${v}${(r.byMax[k] ?? v) > v ? ` (max ${r.byMax[k]})` : ''}`).join(', ');
-  console.log(`${r.q} ${r.moment}: update ${round(r.update)} ms (cpu ${round(r.cpu)}), ${round(r.calls, 1)} calls (max ${r.callsMax}) (+ shadow pass ${round(r.shadow, 1)}), ${r.frames} frames, arena ${r.arena?.phase}/${r.arena?.street}\n   by system: ${top}\n   by group: ${groups}`);
+  console.log(`${r.q} ${r.moment}: update ${round(r.update)} ms (cpu ${round(r.cpu)}), ${round(r.calls, 1)} calls (max ${r.callsMax}) (+ shadow pass ${round(r.shadow, 1)}), ${r.frames} frames, arena ${r.arena?.phase}/${r.arena?.street}\n   by system: ${top}\n   by group: ${groups}\n   check's reading (windows of 90 frames): update ${stat(r.windows.map(w => w.update))}; calls at the last frame ${stat(r.windows.map(w => w.calls))}; peak ${r.callsMax}`);
 }
 
 describe('the frame on a gala evening (node)', () => {

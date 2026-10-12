@@ -211,6 +211,13 @@ function inert<T>(own: Record<string, unknown> = {}): T {
 
 export interface FrameTimes { [section: string]: number }
 
+/** One window of the browser check: the sum of the sections' moving averages and the draw calls at its last frame. */
+export interface WindowReading { update: number; calls: number; sections: Record<string, number>; by: Record<string, number> }
+/** The main loop's profiler mark (src/main.ts `profMark`): a moving average, 92 % of the old value and 8 % of the new. */
+export const profEma = (ema: Record<string, number>, name: string, v: number) => { const o = ema[name]; ema[name] = o === undefined ? v : o * 0.92 + v * 0.08; };
+/** The window length of the browser check (about 90 frames). */
+export const WINDOW = 90;
+
 export class PerfHost {
   readonly scene = new THREE.Scene();
   readonly extra = new THREE.Group();
@@ -392,6 +399,10 @@ export interface MomentResult {
   calls: number; shadow: number; by: Record<string, number>; byShadow: Record<string, number>;
   /** The most draw calls of the main pass seen on a sample, and per group (a moment's spike: a body budget catching up). */
   callsMax: number; byMax: Record<string, number>;
+  /** The browser check's readings (scripts/check-perf-evening.mjs): windows of 90 frames, each with a profiler reset at
+   *  its start (`profMark`'s moving average: old × 0.92 + new × 0.08, the first sample taken whole), the update being the
+   *  sum of the sections' averages at its last frame, and the draw calls of that last frame. */
+  windows: WindowReading[];
   arena: { phase: string; street: string } | null;
   /** The arena's show on the sand (arena_show) drawn at the end of the moment (null: no such group). */
   show: boolean | null;
@@ -414,22 +425,30 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
     const sum: FrameTimes = {};
     let calls = 0, shadow = 0, samples = 0, by: Record<string, number> = {}, byShadow: Record<string, number> = {}, n = 0, callsMax = 0;
     const byMax: Record<string, number> = {};
+    const windows: WindowReading[] = [];
+    let ema: Record<string, number> = {};
     const a0 = arena.info();
     o.around?.(moment, 'start');
     for (; n < frames && (n % 10 || still()); n++) {
-      host.frame(dt, sum);
-      if (n % 10 === 9) {
-        const c = host.calls(); calls += c.calls; shadow += c.shadow; samples++; by = c.by; byShadow = c.byShadow;
+      const one: FrameTimes = {};
+      host.frame(dt, one);
+      for (const [k, v] of Object.entries(one)) { sum[k] = (sum[k] ?? 0) + v; if (k !== 'cpu' && !k.startsWith('render prep')) profEma(ema, k, v); }
+      const last = n % WINDOW === WINDOW - 1;
+      if (n % 5 === 4) {
+        const c = host.calls();
+        if (n % 10 === 9) { calls += c.calls; shadow += c.shadow; samples++; by = c.by; byShadow = c.byShadow; }
         callsMax = Math.max(callsMax, c.calls);
         for (const [k, v] of Object.entries(c.by)) byMax[k] = Math.max(byMax[k] ?? 0, v);
+        if (last) windows.push({ update: Object.values(ema).reduce((a, b) => a + b, 0), calls: c.calls, sections: { ...ema }, by: c.by });
       }
+      if (last) ema = {};                                    // the browser check clears the profiler before each window
     }
     o.around?.(moment, 'end');
     const sections: Record<string, number> = {};
     let update = 0;
     for (const [k, v] of Object.entries(sum)) { if (k === 'cpu') continue; sections[k] = v / n; if (!k.startsWith('render prep')) update += v / n; }
     const show = host.scene.getObjectByName('arena_show');
-    out.push({ q, moment, frames: n, update, cpu: (sum.cpu ?? 0) / n, sections, calls: calls / Math.max(1, samples), shadow: shadow / Math.max(1, samples), by, byShadow, callsMax, byMax,
+    out.push({ q, moment, frames: n, update, cpu: (sum.cpu ?? 0) / n, sections, calls: calls / Math.max(1, samples), shadow: shadow / Math.max(1, samples), by, byShadow, callsMax, byMax, windows,
       arena: a0 ? { phase: a0.phase, street: a0.street } : null, show: show ? show.visible : null });
   };
   // 1. 17:30: the fans arrive and queue; the player in front of the gate
