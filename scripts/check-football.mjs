@@ -32,7 +32,7 @@ await page.goto(`${base}?debug${Q === 'low' ? '&touch' : ''}`, { timeout: 120000
 await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.football, null, T);
 const d = (fn, arg) => page.evaluate(fn, arg);
 const info = () => d(() => window.__dakar.football());
-const quality = await d(() => window.__dakar.quality?.() ?? 'high');
+const quality = await d(() => window.__dakar.quality?.() ?? localStorage.getItem('dakarrek.quality') ?? 'high');
 
 // 17:30 at the Corniche, the player on the touchline at the halfway line, facing the pitch
 await d(() => { window.__dakar.setHour(17.5); window.__dakar.teleport('corniche'); });
@@ -55,12 +55,18 @@ const advance = (seconds, stop = 'false') => d(([s, stop, dt]) => {
   return { ...n, stopped: false };
 }, [seconds, stop, DT]);
 /** The camera at `at` looking at `look` (world), the frame drawn, a picture. */
-const shoot = async (name, at, look) => { await d(([a, l]) => { window.__dakar.cam(a, l); window.__dakar.render(); }, [at, look]); await page.screenshot({ path: `${out}/${name}.png` }); };
+const shoot = async (name, at, look) => {
+  await d(([a, l]) => { window.__dakar.cam(a, l); window.__dakar.render(); }, [at, look]);
+  await page.screenshot({ path: `${out}/${name}.png` });
+  await d(() => window.__dakar.cam(null));                         // the stepping goes on with the player's own camera
+};
 
 // 1. play starts: the ball moves, passes, contacts — a picture of the whole pitch from above a corner
 let n = await advance(25);
 f = await info();
 await shoot('1-elevated', [pitch.x - 26, 19, pitch.z - 33], [pitch.x + 1, 0, pitch.z + 1]);
+// (the bodies' level of detail follows the camera: back on the touchline, the far figures are only the farthest players)
+await d(() => window.__dakar.step(1 / 30, 8));
 check('the ball moves', f.stats.ballTravel > 25, { ballTravel: f.stats.ballTravel, ball: f.ball });
 check('the ball is drawn on the grass', f.ball.visible && f.ball.y > 0.2 && f.ball.y < 3.5, f.ball);
 
