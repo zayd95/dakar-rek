@@ -132,8 +132,9 @@ if (only !== 'chat') for (const [label, viewport, touch] of VIEWS) {
     // gala day the person may bring up tonight's bout (src/social/fightTalk.ts) in one line instead of the small talk
     await d(page, () => {
       const t = document.getElementById('toast'); window.__seen = []; window.__seenObs?.disconnect();
-      // each toast is its own element carrying its message (src/ui/hud.ts toast): the new ones are recorded one by one
-      const rec = muts => { for (const m of muts) for (const n of m.addedNodes) if (n.dataset?.msg) window.__seen.push(n.dataset.msg.replace(/[\u00a0\u202f]/g, ' ')); };
+      // each toast is its own element (src/ui/hud.ts toast): the new ones are recorded one by one, as displayed — its
+      // data-msg keeps the glosses between invisible marks, resolved only when the HUD draws it (src/i18n/wolof.ts glossed)
+      const rec = muts => { for (const m of muts) for (const n of m.addedNodes) if (n.dataset?.msg) window.__seen.push((n.textContent ?? '').replace(/[\u00a0\u202f]/g, ' ')); };
       window.__seenObs = new MutationObserver(rec); if (t) window.__seenObs.observe(t, { childList: true });
     });
     const talked = await runVerb(page, 'Parler avec') || await runVerb(page, 'Demander son nom');   // (if a walker took the focus)
