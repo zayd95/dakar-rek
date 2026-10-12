@@ -53,7 +53,20 @@ try {
     });
     check(`${label}: Corniche crossing connects to the fishing beach`, route.ok, JSON.stringify(route));
     await page.evaluate(() => { const d = window.__dakar; d.places(); });
-    await page.getByRole('button', { name: /^Soumbédioune · débarquement/ }).click();
+    const fishingEntry = page.getByRole('button', { name: /^Soumbédioune · débarquement/ });
+    const entryText = (await fishingEntry.textContent()).replace(/\s/g, ' ');
+    check(`${label}: directory previews actual job reward, duration and effects`, entryText.includes('+3 200 F') && entryText.includes('6 s') && entryText.includes('énergie −26') && entryText.includes('satiété −8'));
+    // Observe the real click/tap handler synchronously, before a frame can drain needs.
+    await fishingEntry.evaluate(button => {
+      const snapshot = () => JSON.stringify({ wallet: window.__dakar.state.wallet, needs: window.__dakar.state.data.needs, counters: window.__dakar.state.data.counters, save: localStorage.getItem('dakarrek.guest.save') });
+      button.addEventListener('click', () => {
+        const before = snapshot();
+        document.addEventListener('click', () => { window.__directoryEffect = { before, after: snapshot() }; }, { once: true });
+      }, { once: true, capture: true });
+    });
+    if (touch) await fishingEntry.tap(); else await fishingEntry.click();
+    const directoryEffect = await page.evaluate(() => window.__directoryEffect);
+    check(`${label}: choosing a directory marker has zero wallet, needs, counter or save effect`, directoryEffect.before === directoryEffect.after);
     await page.waitForFunction(() => document.querySelector('#goal').textContent.includes('Soumbédioune'));
     check(`${label}: directory sets a walking destination`, true);
     const fishing = await page.evaluate(() => window.__dakar.cityPlaces().find(p => p.id.endsWith(':soumbedioune')));
@@ -73,6 +86,20 @@ try {
     await page.evaluate(() => window.__dakar.act());
     check(`${label}: an exhausted player cannot take the fishing job`, await page.getByRole('button', { name: /^Débarquer les caisses de poisson/ }).getAttribute('class') === 'item dis');
     await page.getByRole('button', { name: 'Fermer', exact: true }).click();
+    await page.evaluate(() => window.__dakar.places());
+    check(`${label}: directory explains unavailable jobs`, (await fishingEntry.textContent()).includes('indisponible : Repose-toi avant ce service'));
+    const restText = await page.getByRole('button', { name: /^Place des étudiants/ }).first().textContent();
+    check(`${label}: directory previews rest`, restText.includes('Se poser à l’ombre') && restText.includes('énergie +10') && restText.includes('4 s'));
+    await page.getByRole('button', { name: 'Fermer', exact: true }).click();
+    const square = await page.evaluate(() => window.__dakar.cityPlaces().find(p => p.id.endsWith(':square')));
+    await page.evaluate(p => { const d = window.__dakar; d.place(p.x, p.z, 0); d.state.data.needs.energie = 20; }, square);
+    await page.waitForFunction(() => window.__dakar.nearestInteractable()?.startsWith('Place des étudiants'));
+    await page.evaluate(() => window.__dakar.act());
+    const restBefore = await page.evaluate(() => ({ wallet: window.__dakar.state.wallet, energy: window.__dakar.state.data.needs.energie }));
+    await page.getByRole('button', { name: /^Se poser à l’ombre/ }).click();
+    await page.waitForFunction(() => window.__dakar.pos().mode === 'play');
+    const restAfter = await page.evaluate(() => ({ wallet: window.__dakar.state.wallet, energy: window.__dakar.state.data.needs.energie }));
+    check(`${label}: existing rest restores energy without charging`, restAfter.wallet === restBefore.wallet && restAfter.energy - restBefore.energy > 9);
     await page.evaluate(() => { const d = window.__dakar; d.setHour(16); d.cam([-123, 16, 117], [-142, 1, 90]); });
     await page.waitForTimeout(500); await page.screenshot({ path: `${out}/${label}-soumbedioune-beach.jpg`, type: 'jpeg', quality: 88 });
     await page.evaluate(() => window.__dakar.cam([-61, 17, 113], [-93, 1, 86]));
@@ -80,6 +107,10 @@ try {
 
     await page.evaluate(() => { const d = window.__dakar; d.teleport('almadies'); d.place(30, 47, Math.PI); d.setHour(16); d.cam([65, 22, 62], [30, 2.5, 26]); });
     await page.waitForTimeout(500); await page.screenshot({ path: `${out}/${label}-mall.jpg`, type: 'jpeg', quality: 88 });
+    await page.evaluate(() => window.__dakar.places());
+    const foodText = (await page.getByRole('button', { name: /^Jus & Go/ }).textContent()).replace(/\s/g, ' ');
+    check(`${label}: directory previews food cost, duration and effects`, foodText.includes('Jus de bouye frais · −500 F · 2 s · satiété +10') && foodText.includes('énergie +5'));
+    await page.getByRole('button', { name: 'Fermer', exact: true }).click();
     const juice = await page.evaluate(() => window.__dakar.cityPlaces().find(p => p.id.endsWith(':mall-juice')));
     await page.evaluate(p => { const d = window.__dakar; d.cam(null); d.place(p.x, p.z, Math.PI); d.state.data.needs.faim = 30; }, juice);
     await page.waitForFunction(() => window.__dakar.nearestInteractable() === 'Jus & Go');
