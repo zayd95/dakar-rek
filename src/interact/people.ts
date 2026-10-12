@@ -53,15 +53,17 @@ export class People implements TargetSource {
   private face(b: Body) {
     if (b.seated) return;
     const me = this.player(), o = b.obj, h = b.h;
-    const u = o.userData as { rest?: { yaw: number; hold: Humanoid['hold'] }; restT?: ReturnType<typeof setTimeout> };
-    u.rest ??= { yaw: o.rotation.y, hold: h?.hold ?? null };          // kept from the first greeting if greeted again
-    clearTimeout(u.restT);
+    const r = this.resting.get(o) ?? { yaw: o.rotation.y, hold: h?.hold ?? null, timer: undefined };   // kept from the first greeting if greeted again
+    clearTimeout(r.timer);
     o.rotation.y = Math.atan2(me.x - o.position.x, me.z - o.position.z);
     if (h) h.hold = 'Talk';
-    u.restT = setTimeout(() => {
-      const r = u.rest; delete u.rest; if (!r) return;
+    r.timer = setTimeout(() => {
+      this.resting.delete(o);
       o.rotation.y = r.yaw;
       if (h && h.hold === 'Talk') h.hold = r.hold;
     }, 2600);
+    this.resting.set(o, r);
   }
+  /** What a greeted person was doing before turning to the player. */
+  private resting = new WeakMap<object, { yaw: number; hold: Humanoid['hold']; timer: ReturnType<typeof setTimeout> | undefined }>();
 }
