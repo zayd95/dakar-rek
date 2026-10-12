@@ -359,9 +359,51 @@ function entries(p: Pt, clear: ClearFn, max = 3) {
 }
 const entryCache = new WeakMap<ClearFn, Map<string, { i: number; j: number; q: Pt; d: number }[]>>();
 
+/** The sidewalk graph as one `clear` test leaves it: its open stretches with their lengths, made once per test (see edgeCache). */
+interface OpenGraph { pts: Pt[]; adj: { j: number; w: number }[][] }
+const openGraphs = new WeakMap<ClearFn, OpenGraph>();
+function openGraph(clear: ClearFn): OpenGraph {
+  let og = openGraphs.get(clear);
+  if (!og) {
+    const g = laneGraph();
+    // Sidewalk stretches blocked by something solid (a stall, a fence) are left out of the graph.
+    let open = edgeCache.get(clear);
+    if (!open) { open = new Map(); edgeCache.set(clear, open); }
+    const ok = (i: number, j: number) => { const k = i < j ? `${i}-${j}` : `${j}-${i}`; let v = open!.get(k); if (v === undefined) { v = clear(g.nodes[i], g.nodes[j]); open!.set(k, v); } return v; };
+    og = { pts: g.nodes, adj: g.adj.map((js, i) => js.filter(j => ok(i, j)).map(j => ({ j, w: dist(g.nodes[i], g.nodes[j]) }))) };
+    openGraphs.set(clear, og);
+  }
+  return og;
+}
+/** Dijkstra's working arrays, kept between calls (the graph's nodes and the few a route adds). */
+let dD = new Float64Array(0), dPrev = new Int32Array(0), dDone = new Uint8Array(0);
+/** The heap of (distance, node) the search takes the nearest from: the lowest distance, then the lowest node (the order a scan of the nodes would pick). */
+let hD: number[] = [], hK: number[] = [];
+const hLess = (a: number, b: number) => hD[a] < hD[b] || (hD[a] === hD[b] && hK[a] < hK[b]);
+function hPush(d: number, k: number) {
+  let i = hD.length; hD.push(d); hK.push(k);
+  while (i > 0) { const p = (i - 1) >> 1; if (!hLess(i, p)) break; [hD[i], hD[p]] = [hD[p], hD[i]]; [hK[i], hK[p]] = [hK[p], hK[i]]; i = p; }
+}
+function hPop(): number {
+  const top = hK[0], d = hD.pop()!, k = hK.pop()!;
+  if (hD.length) {
+    hD[0] = d; hK[0] = k;
+    for (let i = 0; ;) {
+      const l = 2 * i + 1, r = l + 1; let m = i;
+      if (l < hD.length && hLess(l, m)) m = l;
+      if (r < hD.length && hLess(r, m)) m = r;
+      if (m === i) break;
+      [hD[i], hD[m]] = [hD[m], hD[i]]; [hK[i], hK[m]] = [hK[m], hK[i]]; i = m;
+    }
+  }
+  return top;
+}
+
 /**
  * Walking route from one spot to another: out through the spot's approach, along the sidewalk graph (Dijkstra),
  * in through the destination's approach. `clear` tests a straight segment against the hub's colliders.
+ * (The graph's open stretches are made once per `clear`; a route adds its own few nodes and edges on top, copying only the
+ * lists it adds to; the search takes the nearest node from a heap — the same route, node for node, as scanning for it.)
  */
 export function planPath(from: Spot | Pt, to: Spot | Pt, clear: ClearFn = () => true): Pt[] {
   const fa = 'approach' in from ? from.approach : [], ta = 'approach' in to ? to.approach : [];
@@ -370,29 +412,37 @@ export function planPath(from: Spot | Pt, to: Spot | Pt, clear: ClearFn = () => 
   const s = out[out.length - 1], t = inn[0];
   let mid: Pt[] = [];
   if (!(dist(s, t) < 14 && clear(s, t))) {
-    const g = laneGraph();
-    // Sidewalk stretches blocked by something solid (a stall, a fence) are left out of the graph.
-    let open = edgeCache.get(clear);
-    if (!open) { open = new Map(); edgeCache.set(clear, open); }
-    const ok = (i: number, j: number) => { const k = i < j ? `${i}-${j}` : `${j}-${i}`; let v = open!.get(k); if (v === undefined) { v = clear(g.nodes[i], g.nodes[j]); open!.set(k, v); } return v; };
-    const pts: Pt[] = [...g.nodes], adj: { j: number; w: number }[][] = g.adj.map((js, i) => js.filter(j => ok(i, j)).map(j => ({ j, w: dist(g.nodes[i], g.nodes[j]) })));
-    const add = (p: Pt) => { pts.push(p); adj.push([]); return pts.length - 1; };
-    const edge = (i: number, j: number) => { const w = dist(pts[i], pts[j]); adj[i].push({ j, w }); adj[j].push({ j: i, w }); };
+    const og = openGraph(clear), N = og.pts.length;
+    const extra: Pt[] = [], extraAdj: { j: number; w: number }[][] = [], own = new Map<number, { j: number; w: number }[]>();
+    const ptOf = (k: number) => (k < N ? og.pts[k] : extra[k - N]);
+    const listOf = (k: number) => (k < N ? own.get(k) ?? og.adj[k] : extraAdj[k - N]);
+    const push = (i: number, e: { j: number; w: number }) => {
+      if (i >= N) { extraAdj[i - N].push(e); return; }
+      let l = own.get(i); if (!l) { l = og.adj[i].slice(); own.set(i, l); }
+      l.push(e);
+    };
+    const add = (p: Pt) => { extra.push(p); extraAdj.push([]); return N + extra.length - 1; };
+    const edge = (i: number, j: number) => { const w = dist(ptOf(i), ptOf(j)); push(i, { j, w }); push(j, { j: i, w }); };
     const S0 = add(s), T0 = add(t);
     const es = entries(s, clear).map(e => ({ ...e, k: add(e.q) })), et = entries(t, clear).map(e => ({ ...e, k: add(e.q) }));
     for (const e of es) { edge(S0, e.k); edge(e.k, e.i); edge(e.k, e.j); }
     for (const e of et) { edge(T0, e.k); edge(e.k, e.i); edge(e.k, e.j); }
     // Same block side: walk straight along it.
     for (const a of es) for (const b of et) if ((a.i === b.i && a.j === b.j) || (a.i === b.j && a.j === b.i)) edge(a.k, b.k);
-    const D = new Array(pts.length).fill(Infinity), prev = new Array(pts.length).fill(-1), done = new Array(pts.length).fill(false);
-    D[S0] = 0;
-    for (;;) {
-      let u = -1; for (let k = 0; k < pts.length; k++) if (!done[k] && D[k] < Infinity && (u < 0 || D[k] < D[u])) u = k;
-      if (u < 0 || u === T0) break;
-      done[u] = true;
-      for (const { j, w } of adj[u]) if (D[u] + w < D[j]) { D[j] = D[u] + w; prev[j] = u; }
+    const total = N + extra.length;
+    if (dD.length < total) { dD = new Float64Array(total); dPrev = new Int32Array(total); dDone = new Uint8Array(total); }
+    const D = dD, prev = dPrev, done = dDone;
+    D.fill(Infinity, 0, total); prev.fill(-1, 0, total); done.fill(0, 0, total);
+    hD.length = 0; hK.length = 0;
+    D[S0] = 0; hPush(0, S0);
+    while (hD.length) {
+      const u = hPop();
+      if (done[u]) continue;
+      if (u === T0) break;
+      done[u] = 1;
+      for (const { j, w } of listOf(u)) if (D[u] + w < D[j]) { D[j] = D[u] + w; prev[j] = u; hPush(D[j], j); }
     }
-    if (D[T0] < Infinity) { const chain: Pt[] = []; for (let k = prev[T0]; k >= 0 && k !== S0; k = prev[k]) chain.unshift(pts[k]); mid = chain; }
+    if (D[T0] < Infinity) { const chain: Pt[] = []; for (let k = prev[T0]; k >= 0 && k !== S0; k = prev[k]) chain.unshift(ptOf(k)); mid = chain; }
   }
   return simplify([...out, ...mid, ...inn]);
 }
