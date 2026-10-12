@@ -220,13 +220,23 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   }
   await d(() => { window.__dakar.teleport('pikine'); });
   await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine', null, T);
-  // Salon Awa: « Se faire coiffer » happens in the hairdresser's chair; the grand-place: « Se poser à l’ombre » on a bench
-  for (const [re, what, seatRe] of [[/:city:salon-tech$/, 'Se faire coiffer', /:salon-chair$/], [/:city:square$/, 'Se poser à l’ombre', /:bench:/]]) {
+  // Salon Awa: a cut happens in the hairdresser's chair (the venue's chairs, reached by walking into the shop);
+  // the grand-place: « Se poser à l’ombre » on a bench
+  const salon = await d(() => !!window.__dakar.venues?.().some(v => v.type === 'salon'));
+  const SALON = salon ? [/:city:salon-tech$/, 'Coupe courte', /venue:salon:fauteuil/] : [/:city:salon-tech$/, 'Se faire coiffer', /:salon-chair$/];
+  for (const [re, what, seatRe] of [SALON, [/:city:square$/, 'Se poser à l’ombre', /:bench:/]]) {
     const p = (await d(() => window.__dakar.cityPlaces())).find(i => re.test(i.id));
     if (!p) { check(`${label}: ${what}: place found`, false); continue; }
-    await d(() => { window.__dakar.state.data.wallet = 9000; });
-    await d(q => window.__dakar.place(q.x, q.z, Math.PI), p);
-    await page.waitForFunction(id => window.__dakar.focus()?.id === id, p.id, T).catch(() => {});
+    await d(() => { window.__dakar.state.data.wallet = 9000; window.__dakar.setHour(11); });
+    if (salon && /salon/.test(p.id)) {                  // in from the street door, walking up to the chairs
+      await d(q => window.__dakar.place(q.x + 3.6, q.z + 1.2, Math.PI), p);
+      await page.keyboard.down('KeyW');
+      await page.waitForFunction(() => /venue:salon:chair$/.test(window.__dakar.focus()?.id ?? ''), null, { timeout: 30000, polling: 200 }).catch(() => {});
+      await page.keyboard.up('KeyW');
+    } else {
+      await d(q => window.__dakar.place(q.x, q.z, Math.PI), p);
+      await page.waitForFunction(id => window.__dakar.focus()?.id === id, p.id, T).catch(() => {});
+    }
     await d(() => window.__dakar.more());
     await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
     await page.locator('#modal .item', { hasText: what }).first().click();

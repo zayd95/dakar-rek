@@ -101,7 +101,8 @@ for (const h of ['corniche', 'plateau', 'almadies', 'pikine']) {
   }
   if (has.includes('garage')) await act({ name: 'garage', find: find(/:garage:/), label: 'Aider le mécanicien', wait: 0.6, cam: [2.8, 1.0, 1.7], expect: (a, b) => a.kind === 'handwork' && b.done > a.done });
   if (has.includes('cafe')) await act({ name: 'cafe-touba', find: find(/:cafe:/), label: 'Café Touba', wait: 0.4, cam: [1.8, 0.7, 1.6], expect: (a, b) => a.kind === 'drink' && b.left < a.left });
-  if (has.includes('market')) await act({ name: 'market-sell', find: find(/:market$/), label: 'Vendre au marché', wait: 0.6, cam: [2.8, 1.0, 1.7], expect: (a, b) => a.kind === 'handwork' && b.done > a.done });
+  // the stall is played with the shared timing gesture (serve the customers before they leave, scripts/check-gestures.mjs)
+  if (has.includes('market')) await act({ name: 'market-sell', find: find(/:market$/), label: 'Tenir l’étal', wait: 0.3, cam: [2.8, 1.0, 1.7], read: 'gesture', expect: a => a.kind === 'choose' });
   if (has.includes('port')) await act({ name: 'port-crates', find: find(/:port$/), label: 'Aider les pêcheurs', wait: 0.55, cam: [6, 1.4, 3], expect: (a, b) => a.kind === 'carry' && b.moved > a.moved });
 }
 // Almadies: Jus & Go (a juice in hand), the gallery walk
