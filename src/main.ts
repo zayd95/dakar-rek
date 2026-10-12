@@ -1,6 +1,7 @@
 import './ui/style.css';
 import * as THREE from 'three';
 import { Input } from './core/input';
+import { fovFor } from './core/view';
 import { GameState } from './core/state';
 import { cityTimeAt, daylight } from './core/clock';
 import { clamp, lerp, rng } from './core/rng';
@@ -126,8 +127,20 @@ function applyQuality() {
   scene.traverse(o => { const m = (o as THREE.Mesh).material as THREE.Material | undefined; if (m) m.needsUpdate = true; });
   try { store?.setItem('dakarrek.quality', quality); } catch { /* */ }
 }
-function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.fov = innerWidth < innerHeight ? 66 : 58; camera.updateProjectionMatrix(); }
-addEventListener('resize', resize);
+let viewW = 0, viewH = 0, resizeQueued = 0;
+function resize() {
+  if (resizeQueued) { cancelAnimationFrame(resizeQueued); resizeQueued = 0; }
+  const w = innerWidth, h = innerHeight;
+  if (w === viewW && h === viewH) return;
+  viewW = w; viewH = h;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = fovFor(w, h); camera.updateProjectionMatrix();
+}
+/** Turning a phone: Safari reports the new size late on some rotations, and the visual viewport moves with the toolbars
+ *  — resize on the next frame after any of them, and once more when the rotation has settled. */
+const queueResize = () => { if (!resizeQueued) resizeQueued = requestAnimationFrame(resize); };
+addEventListener('resize', () => { resize(); queueResize(); });
+addEventListener('orientationchange', () => { queueResize(); setTimeout(queueResize, 350); });
+window.visualViewport?.addEventListener('resize', queueResize);
 
 // ------------------------------------------------------------------ game objects
 const input = new Input(canvas);
@@ -1205,6 +1218,7 @@ if (DEBUG) {
     presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
     setHour(h: number | null) { hourOverride = h; },
+    camera: () => ({ fov: camera.fov, aspect: Math.round(camera.aspect * 1000) / 1000, hfov: Math.round(2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) * 1800 / Math.PI) / 10 }),
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
     cityPlaces: () => world?.interactables.filter(i => i.id.includes(':city:')).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, radius: i.radius, actions: i.actions.map(a => ({ id: a.id, label: a.label, gain: a.gain, cost: a.cost })) })) ?? [],

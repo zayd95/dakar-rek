@@ -162,7 +162,7 @@ button.ph-wid { cursor:pointer; }
 }
 /* Landscape phones: a wide handset, compact home. */
 @media (orientation:landscape) and (max-height:560px) {
-  #phone { padding:6px max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left)); }
+  #phone { padding:max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
   .ph-stage { flex-direction:row; align-items:flex-start; width:min(820px, 100%); height:100%; }
   .ph-close { order:2; }
   /* the handset never outgrows the screen (the home scrolls past two rows); 8 tiles a row keep the dock in view */

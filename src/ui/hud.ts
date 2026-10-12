@@ -138,7 +138,9 @@ export class Hud {
         joyId = e.pointerId; joy.style.transform = '';
         const r = joy.getBoundingClientRect(); let cx = r.left + r.width / 2, cy = r.top + r.height / 2;
         if (Math.hypot(e.clientX - cx, e.clientY - cy) > r.width / 2 + 10) {
-          const h = r.width / 2 + 8, nx = Math.min(Math.max(e.clientX, h), innerWidth * 0.45), ny = Math.min(Math.max(e.clientY, h + 60), innerHeight - h);
+          // kept inside the safe areas (#ui is padded by them): in landscape the notch is on a side
+          const sa = getComputedStyle(joy.parentElement ?? document.body), saL = parseFloat(sa.paddingLeft) || 0, saB = parseFloat(sa.paddingBottom) || 0;
+          const h = r.width / 2 + 8, nx = Math.min(Math.max(e.clientX, h + saL), innerWidth * 0.45), ny = Math.min(Math.max(e.clientY, h + 60), innerHeight - h - saB);
           joy.style.transform = `translate(${Math.round(nx - cx)}px,${Math.round(ny - cy)}px)`; cx = nx; cy = ny;
         }
         joy.dataset.cx = String(cx); joy.dataset.cy = String(cy);
