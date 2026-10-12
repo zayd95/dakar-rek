@@ -296,7 +296,13 @@ export function* buildSpotsSteps(inp: SpotInputs): Generator<void, AmbientSpot[]
       const rows = prayerRows(sp.x, sp.z - 16.2, 4, 8).filter(s => !inside(cols, s.x, s.z, 0.25) && !anchors.some(a => Math.hypot(a.x - s.x, a.z - s.z) < 1.2));
       push({ id: `special:mosque:${sp.x},${sp.z}`, tags: ['mosque-yard'], space: 'street', x: sp.x, z: sp.z - 15, rows, stands: stands(ring(sp.x, sp.z - 13.2, 3.4, 8, PI / 8)), source: 'special' });
     }
-    if (sp.kind === 'pitch') push({ id: `special:pitch:${sp.x},${sp.z}`, tags: ['pitch'], space: 'street', x: sp.x, z: sp.z, area: [sp.x - 17, sp.z - 12, sp.x + 17, sp.z + 12], source: 'special' });
+    if (sp.kind === 'pitch') {
+      // the players roam the pitch (src/game/football.ts plays their match); people watch from both touchlines, beyond
+      // the curb of the grass (the ball never rolls into them), facing the play
+      const side: StandSlot[] = [];
+      for (let k = 0; k < 12; k++) for (const s of [-1, 1]) side.push({ x: sp.x - 14 + k * 2.55 + (s > 0 ? 1.1 : 0), z: sp.z + s * 17.8, yaw: s > 0 ? PI : 0 });
+      push({ id: `special:pitch:${sp.x},${sp.z}`, tags: ['pitch'], space: 'street', x: sp.x, z: sp.z, area: [sp.x - 17, sp.z - 12, sp.x + 17, sp.z + 12], stands: stands(side), source: 'special' });
+    }
   }
   const seg = (from: number, to: number) => { const out: [number, number][] = []; for (let a = from; a < to - 20; a += 60) out.push([a, Math.min(to, a + 60)]); return out; };
   if (inp.layout.sea === 'west') {

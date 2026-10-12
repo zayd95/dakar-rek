@@ -13,7 +13,7 @@ import type { HubWorld, Interactable } from '../world/types';
 import type { Interior } from '../world/interiors';
 import type { Humanoid } from '../actors/humanoid';
 import type { FollowCamera } from '../actors/camera';
-import type { Peer, PresenceExtras } from '../multiplayer/protocol';
+import type { BallRelay, BallWire, Peer, PresenceExtras } from '../multiplayer/protocol';
 import { wolofModule } from '../i18n/module';
 import { arenaModule } from '../arena/module';
 import { assetKitModule } from './assetKit';
@@ -47,6 +47,7 @@ import { togetherModule } from '../arena/together';
 import { arrivalModule } from '../arena/arrival';
 import { meals } from './meals';
 import { perform } from './perform';
+import { football } from './football';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -97,6 +98,12 @@ export interface GameCtx {
   };
   /** The other players of this hub's group (positions, poses and their optional fields only; empty offline). */
   peers(): readonly Peer[];
+  /**
+   * The room's kickabout ball (src/game/kickabout.ts): this player's presence id ('' when not online), send a ball state
+   * to the others (false when it is not relayed: offline, or a server without the 'ball' feature), the one handler for
+   * the others' states.
+   */
+  ballNet: { self(): string; send(b: BallWire): boolean; listen(fn: (m: BallRelay) => void): void };
   mode(): GameMode;
   /** 'menu' and 'busy' lock movement; 'play' gives it back. */
   setMode(m: GameMode): void;
@@ -217,6 +224,7 @@ export const MODULES: GameModule[] = [
   nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)
   eveningCallModule,    // the evening's call to the arena and the goal line to it (src/arena/eveningCall.ts)
   shopsModule,          // shops lane: walk-in cafés, night glow, showroom; customers are ambientLife's (docs/SHOPS.md)
+  football,             // NPC football on the Corniche's pitch: plays the ambient life's footballers, before it draws them (src/game/football.ts)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)
