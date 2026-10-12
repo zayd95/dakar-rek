@@ -858,23 +858,10 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-1935-WATCH.md",
-    "checkedAt": "2026-10-12T19:36:00Z",
-    "result": "e563301 exact standard CI now success:1358 passed/2 skipped, desktop/touch suite green; not integrated, Workers failure and final reception evidence remain.",
-    "owner": "producer_watch_1935",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "917e05ff7a1564bc39aa394ae35e3d000e3578ab",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-12-1935-WATCH.md"
-    ]
-  },
-  "registryWriter": {
-    "token": "cycle-20261012T2029Z-watch",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-2029-WATCH.md",
+    "checkedAt": "2026-10-12T20:30:00Z",
+    "result": "Fresh refs and exact check-runs unchanged; no ready implementation and wave5 readiness conditions still missing.",
     "owner": "producer_watch_2029",
-    "acquiredAt": "2026-10-12T20:29:29Z",
-    "expiresAt": "2026-10-12T20:59:29Z",
     "branch": "codex/agent-studio-active",
     "baseCommit": "026bcfb2d64d2bcb88c19e3b092e12367be96cf7",
     "allowedFiles": [
