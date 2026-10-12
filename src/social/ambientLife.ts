@@ -207,6 +207,15 @@ export class AmbientLife implements GameModule {
     const hour = ctx.hour();
     if (this.lastHour >= 0 && Math.abs(((hour - this.lastHour + 36) % 24) - 12) > 0.5) this.snapNext = true;  // hour jump (debug, travel)
     this.lastHour = hour;
+    // An hour jump (debug, travel) settles everybody at once, so on the places as they are now: the lines that run at this hour have
+    // put their stops in and the others taken theirs out (the transport module comes first in the frame), and the spots are made
+    // from them before the people are. Left to the one-second check below, the first population stood at the stops of the
+    // line that had just stopped running, and was sent off a moment later (a reading taken just after the jump found it
+    // at a half or a third, which one second's phase decided).
+    if (this.snapNext) {
+      for (let k = 0; k < 2 && (this.building || this.signature() !== this.sig); k++) { if (!this.building) this.startBuild(); this.buildSteps(Infinity); }
+      this.sigT = 1;
+    }
     if (this.building) { this.buildSteps(BUILD_STEPS); this.budget.buildFrames++; }
     else if ((this.sigT -= dt) <= 0) { this.sigT = 1; if (this.signature() !== this.sig) this.startBuild(); }
     if ((this.reconT -= dt) <= 0 || this.snapNext) { this.reconT = 0.5; this.snapped = this.snapNext; this.reconcile(this.snapNext); this.snapNext = false; }

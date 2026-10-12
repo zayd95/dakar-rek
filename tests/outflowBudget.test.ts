@@ -41,4 +41,26 @@ describe('the ambient life under its budgets', () => {
     expect(after.spots).toBeGreaterThanOrEqual(before.spots - 1);              // (the new place may stand in for a legacy one next to it)
     expect(after.paths).toBeLessThanOrEqual(1);
   }, 120000);
+
+  it('after an hour jump the people stand at the stops of the line that runs at that hour, not at those of the one that just stopped', async () => {
+    const host = new PerfHost('low');
+    await host.load({ x: 70, z: 64, yaw: 0 }, 7);
+    host.day = GALA_DAY;                                                    // a fight evening: Ligne 23 runs by day, its evening route 23s from 16 h
+    const ambient = host.debug<() => { hour: number; live: number; byTag: Record<string, number>; bySpot: Record<string, { n: number; tags: string[] }> }>('ambient');
+    for (let k = 0; k < 40; k++) host.frame(0.1);
+    /** People at the stops of the line `line` ('23' or '23s'), and at all the stops. */
+    const at = (line: string) => Object.entries(ambient().bySpot).filter(([id, s]) => s.tags.includes('stop') && id.startsWith(`place:stop:${line}:`)).reduce((n, [, s]) => n + s.n, 0);
+    const jump = (hour: number, frames: number) => { host.hour = hour; host.place(-26, 102, 0); for (let k = 0; k < frames; k++) host.frame(0.1); };
+    // (the check reads six frames after the jump; the minute after is the same population, not a different one)
+    const evening = [19, 7, 19, 7];
+    for (const h of evening) {
+      jump(h, 6);
+      const soon = { day: at('23'), evening: at('23s'), stops: ambient().byTag.stop ?? 0 };
+      for (let k = 0; k < 300; k++) host.frame(0.1);
+      const later = { day: at('23'), evening: at('23s'), stops: ambient().byTag.stop ?? 0 };
+      if (h === 7) { expect(soon.evening, 'by day nobody waits at the evening route\'s stops').toBe(0); expect(soon.day).toBeGreaterThanOrEqual(3); }
+      else { expect(soon.day, 'in the evening nobody waits at the day route\'s stops').toBe(0); expect(soon.evening).toBeGreaterThanOrEqual(3); }
+      expect(soon.stops, `${h} h: just after the jump the stops hold what they hold a minute later (${JSON.stringify(soon)} then ${JSON.stringify(later)})`).toBeGreaterThanOrEqual(Math.floor(later.stops * 0.6));
+    }
+  }, 120000);
 });
