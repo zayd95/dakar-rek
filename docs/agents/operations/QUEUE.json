@@ -758,6 +758,41 @@
         "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md"
       ],
       "acceptedScope": "verified harness-only candidate; exact same-tree push and PR CI; not merged/deployed"
+    },
+    {
+      "id": "DKAG-020",
+      "role": "gameplay",
+      "kind": "compatibility_implementation",
+      "status": "active",
+      "branch": "codex/agents/dkag-020-place-summary-current",
+      "baseCommit": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
+      "allowedFiles": [
+        "src/ui/placeSummary.ts",
+        "tests/place-summary.test.ts",
+        "src/main.ts",
+        "scripts/check-city-life.mjs",
+        "docs/agents/reports/DKAG-020-gameplay.md"
+      ],
+      "dependencies": [
+        "DKAG-015:verified"
+      ],
+      "basis": "Fresh GitHub inspection of current wip/visual-pass e6c678a on 2026-10-12: openPlaces still exposes only generic paid-service/meeting summary; DKAG-015 exact candidate is based on older closed PR9 and cannot be integrated directly without current-base conflict review.",
+      "authority": "Producer commissions isolated forward-port candidate only. Explicit externalReservation exception for separate branch from exact wip snapshot; never mutate wip/visual-pass or copy unrelated old main.ts. Preserve every current-base blob and behavior except surgical directory formatter integration and exact tests.",
+      "decision": "Fresh base/conflict review: main.ts openPlaces remains generic at e6c678a, no src/ui/placeSummary.ts exists. Port semantics, not old files. Current wip owner remains external; draft PR only, no merge/deploy.",
+      "acceptance": [
+        "Current-base directory advertises existing visible job/food/rest capabilities from actual Action data",
+        "Show actual cost/duration/effects and disabled reasons; omit invisible actions",
+        "Directory selection remains marker-only with zero wallet/need/counter/save effect",
+        "All current-base economy, save, animation, performance and activity behavior preserved",
+        "Meaningful formatter tests plus exact-source desktop/touch CI; independent QA"
+      ],
+      "culturalStatus": "fictional balance and French labels unverified",
+      "owner": "gameplay_dkag020_0128",
+      "reviewer": "qa_dkag020_0128",
+      "controlBriefCommit": "541bc60de5f7fc1da6ce182f729f984bbca849a4",
+      "reviewAllowedFiles": [
+        "docs/agents/operations/reports/DKAG-020-gameplay-review.md"
+      ]
     }
   ]
 }

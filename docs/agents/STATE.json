@@ -1,14 +1,43 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-11T20:31:00Z",
+  "updatedAt": "2026-10-12T01:28:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
-  "lease": null,
-  "activeCodeTask": null,
+  "lease": {
+    "token": "cycle-20261012T0128Z-dkag020",
+    "owner": "producer_dkag020_0128",
+    "acquiredAt": "2026-10-12T01:28:00Z",
+    "expiresAt": "2026-10-12T02:28:00Z"
+  },
+  "activeCodeTask": "DKAG-020",
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "task": "DKAG-020",
+      "owner": "gameplay_dkag020_0128",
+      "branch": "codex/agents/dkag-020-place-summary-current",
+      "baseCommit": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
+      "files": [
+        "src/ui/placeSummary.ts",
+        "tests/place-summary.test.ts",
+        "src/main.ts",
+        "scripts/check-city-life.mjs",
+        "docs/agents/reports/DKAG-020-gameplay.md"
+      ]
+    },
+    {
+      "task": "DKAG-020",
+      "owner": "qa_dkag020_0128",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "541bc60de5f7fc1da6ce182f729f984bbca849a4",
+      "files": [
+        "docs/agents/operations/reports/DKAG-020-gameplay-review.md"
+      ],
+      "kind": "QA report only"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -122,7 +151,10 @@
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
-  "activeSessions": [],
+  "activeSessions": [
+    "gameplay_dkag020_0128",
+    "qa_dkag020_0128"
+  ],
   "completedSessions": [
     "activation_producer",
     "activation_qa",
@@ -146,7 +178,7 @@
     "qa_dkag015_1927",
     "qa_dkag015_ci_2028"
   ],
-  "nextAction": "No ready isolated task remains. Keep draft candidates unmerged; future integration with current Living Dakar requires a new explicit reservation and fresh base/conflict review.",
+  "nextAction": "Implement DKAG-020 isolated forward-port at exact current wip snapshot, then independent QA and exact CI; never mutate wip/visual-pass.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
