@@ -4,7 +4,7 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import type { WrestlerLook } from '../core/types';
 import { ACCESSORIES, ngembTexture, type Socket } from '../lamb/look';
 import type { Outfit } from './character';
-import { GaitState } from './gait';
+import { GaitState, walkCadence } from './gait';
 import { GaitRig } from './gaitRig';
 import { joinNeck } from './neckJoin';
 
@@ -514,8 +514,8 @@ export class Humanoid {
       // the clips alone, as they played before the gait: their pace from the caller's speed or the measured one
       const s = Math.max(speed, this.v);
       if (this.hold) this.play(this.hold, 0.2);
-      else if (s > 3) { this.play('Run', 0.15); if (this.current) this.current.timeScale = s / 5.2; }
-      else if (s > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = Math.max(0.6, s / 1.45); }
+      else if (s > 3) { this.play('Run', 0.15); if (this.current) this.current.timeScale = ((2.45 + 0.107 * s) / 2) * this.current.getClip().duration; }
+      else if (s > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = (walkCadence(s) / 2) * this.current.getClip().duration; }   // the pace the gait keeps near: no change of stride at the LOD switch
       else this.play('Idle', 0.25);
     }
     // the mixer: every frame in full detail (and while the gait fades), else at the tier's rate with the time it owes

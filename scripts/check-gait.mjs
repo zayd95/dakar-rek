@@ -26,9 +26,8 @@ const report = {};
 const SOLE = { heel: [0, 0.0023, 0.1059], ball: [0, 0.1475, 0.0515] };
 const DT = 1 / 60;
 const GAITS = [
-  { name: 'walk', label: 'walk 1.4 m/s (light push)', stick: 1.4 / 2.2 * 0.6, spm: [105, 135] },
-  { name: 'walk-max', label: 'walk 2.2 m/s (light push, the walk\'s top)', stick: 0.595, spm: [145, 175] },
-  { name: 'brisk', label: 'brisk 4.2 m/s (full push: a light run)', keys: ['KeyW'], spm: [160, 190] },
+  { name: 'walk', label: 'walk 1.4 m/s (light push)', stick: 0.59, spm: [105, 135] },
+  { name: 'walk-max', label: 'brisk walk 2.2 m/s (full push: the default)', keys: ['KeyW'], spm: [145, 175] },
   { name: 'run', label: 'run 7 m/s (Shift / « Courir »)', keys: ['KeyW'], run: true, spm: [175, 215] },
 ];
 

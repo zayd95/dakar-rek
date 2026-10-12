@@ -88,6 +88,12 @@ const KEYS = Object.keys(newParams()) as (keyof GaitParams)[];
  * Walking: the step grows with the speed's square root or so (0.70 m at 1.4 m/s, 120 steps a minute; 0.82 m at
  * 2.2 m/s, 161 a minute), the double support shortens, the arms and the pelvis move more.
  */
+/** Steps per second of the walk at ground speed `v` (walkParams' cadence, without filling a GaitParams): the clips alone, far away, keep this pace. */
+export function walkCadence(v: number): number {
+  const w = clamp(v, 0, 2.6);
+  const step = w <= 1.4 ? 0.7 * Math.pow(w / 1.4, 0.55) : 0.7 + (0.12 * (w - 1.4)) / 0.8;
+  return Math.max(0.9, w / Math.max(0.01, step));
+}
 export function walkParams(v: number, o: GaitParams = newParams()): GaitParams {
   const w = clamp(v, 0, 2.6), k = Math.min(1, w / 1.4);
   const step = w <= 1.4 ? 0.7 * Math.pow(w / 1.4, 0.55) : 0.7 + (0.12 * (w - 1.4)) / 0.8;
@@ -96,7 +102,7 @@ export function walkParams(v: number, o: GaitParams = newParams()): GaitParams {
   o.centre = -0.05 * k; o.width = 0.085 - 0.01 * w;
   o.heelStrike = (6 + 9 * Math.min(1, w / 1.6)) * DEG; o.footFlat = 0.16; o.heelOff = 0.55 - 0.08 * Math.min(1, w / 2.2);
   o.toeOff = -(14 + 26 * Math.min(1, w / 1.8)) * DEG;
-  o.lift = 0.035 + 0.035 * Math.min(1, w / 1.6); o.clear = 0.022; o.kick = 0; o.drive = 0; o.ankleSwing = -6 * DEG;
+  o.lift = 0.04 + 0.04 * Math.min(1, w / 1.6); o.clear = 0.03; o.kick = 0; o.drive = 0; o.ankleSwing = -6 * DEG;
   o.sway = 0.03 - 0.005 * w;
   // the hips ride highest over the planted foot and lowest when both feet are down: as low as the legs need then
   const D = w * o.duty * (2 / o.cadence), zh = landingZ(w, o);
@@ -106,7 +112,7 @@ export function walkParams(v: number, o: GaitParams = newParams()): GaitParams {
   const top = 0.946, bottom = Math.min(top - 0.008, low);
   o.hipY = (top + bottom) / 2; o.bob = (top - bottom) / 2;
   o.yaw = (2 + 2.5 * k) * DEG; o.roll = (1.5 + 1.5 * k) * DEG; o.lean = (1.5 + 1.2 * w) * DEG;
-  o.arm = (5 + 10 * w / 1.4) * DEG; o.armBias = -4 * DEG; o.elbow = (10 + 4 * w) * DEG; o.elbowSwing = 12 * DEG;
+  o.arm = (10 + 15 * k + 2.5 * Math.max(0, w - 1.4)) * DEG; o.armBias = -4 * DEG; o.elbow = (10 + 4 * w) * DEG; o.elbowSwing = 12 * DEG;
   return o;
 }
 /**

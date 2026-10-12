@@ -4,7 +4,7 @@ import { loadRig, posed } from './rig';
 import { fixRunClip } from '../src/actors/humanoid';
 import { GAIT } from '../src/game/stride';
 import {
-  GaitState, GROUND, REACH, RIG, RUN_ABOVE, SOLE, WALK_BELOW, ankleOffset, gaitParams, landingZ, runParams, solveKnee, stancePitch, walkParams,
+  GaitState, GROUND, REACH, RIG, RUN_ABOVE, SOLE, WALK_BELOW, ankleOffset, gaitParams, landingZ, runParams, solveKnee, stancePitch, walkParams, walkCadence,
 } from '../src/actors/gait';
 import { GaitRig } from '../src/actors/gaitRig';
 
@@ -108,15 +108,25 @@ describe('the rig the gait is built for (public/assets/character_v4.glb)', () =>
   });
 });
 
+const DEG_ = Math.PI / 180;
 describe('speed → gait (cadence × step = speed, the clip chosen by the speed)', () => {
-  it('walks up to 2.3 m/s and runs above 2.6 m/s; the brisk default (4.2 m/s) is a light run', () => {
+  it('walks up to 2.3 m/s and runs above 2.6 m/s; the light push and the default W are walks, only Shift runs', () => {
     expect(WALK_BELOW).toBeLessThan(RUN_ABOVE);
-    expect(GAIT.walk).toBeLessThan(WALK_BELOW);
-    expect(GAIT.brisk).toBeGreaterThan(RUN_ABOVE); expect(GAIT.run).toBeGreaterThan(RUN_ABOVE);
+    expect(GAIT.walk).toBeLessThan(GAIT.brisk);
+    expect(GAIT.brisk).toBeLessThan(WALK_BELOW); expect(GAIT.run).toBeGreaterThan(RUN_ABOVE);
+  });
+  it('a walk that reads from a high camera: arms swing 20-30 degrees each way, the hips bob 2-5 cm, 2 steps a second at 1.4 m/s', () => {
+    const p = walkParams(1.4);
+    expect(p.arm / DEG_).toBeGreaterThan(20); expect(p.arm / DEG_).toBeLessThan(32);
+    expect(p.bob * 200).toBeGreaterThan(2); expect(p.bob * 200).toBeLessThan(5.5);
+    expect(p.cadence).toBeGreaterThan(1.9); expect(p.cadence).toBeLessThan(2.1);
+  });
+  it('the clips alone (far away) keep the pace of the gait (no change of stride at the LOD switch)', () => {
+    for (const v of [0.6, 1, 1.4, 1.8, 2.2, 2.6]) expect(walkCadence(v)).toBeCloseTo(walkParams(v).cadence, 9);
   });
   it('cadence and step follow the speed like a person\'s', () => {
     const at = (v: number) => { const p = gaitParams(v); return { spm: p.cadence * 60, step: p.step, duty: p.duty }; };
-    const w14 = at(1.4), w22 = at(GAIT.walk), r42 = at(GAIT.brisk), r70 = at(GAIT.run);
+    const w14 = at(1.4), w22 = at(2.2), r42 = at(4.2), r70 = at(7);
     expect(w14.spm).toBeCloseTo(120, 0); expect(w14.step).toBeCloseTo(0.7, 2); expect(w14.duty).toBeGreaterThan(0.55);
     expect(w22.spm).toBeGreaterThan(150); expect(w22.spm).toBeLessThan(170); expect(w22.step).toBeCloseTo(0.82, 2); expect(w22.duty).toBeGreaterThan(0.5);
     expect(r42.spm).toBeGreaterThan(168); expect(r42.spm).toBeLessThan(180); expect(r42.step).toBeCloseTo(1.45, 1); expect(r42.duty).toBeLessThan(0.3);
@@ -156,7 +166,7 @@ describe('speed → gait (cadence × step = speed, the clip chosen by the speed)
 });
 
 describe('the gait on the rig: feet that stay put, smooth hips, joints that bend the right way', () => {
-  for (const [label, v, spm] of [['walk 1.4 m/s', 1.4, 120], [`walk ${GAIT.walk} m/s`, GAIT.walk, 161], [`brisk ${GAIT.brisk} m/s`, GAIT.brisk, 174], [`run ${GAIT.run} m/s`, GAIT.run, 192]] as const) {
+  for (const [label, v, spm] of [['walk 1.4 m/s', 1.4, 120], ['walk 2.2 m/s (the default)', 2.2, 161], ['jog 4.2 m/s', 4.2, 174], ['run 7 m/s', 7, 192]] as const) {
     it(`${label}: no sliding, the cadence of the speed, the knees forward`, () => {
       const { frames } = walkRig(5, () => ({ v }));
       const s = slide(frames);

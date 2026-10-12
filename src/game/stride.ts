@@ -1,12 +1,12 @@
 import type { GameState } from '../core/state';
 
 /**
- * Getting around on foot — always free (0 F CFA): walk (a light push of the stick), brisk walk (the default), run
+ * Getting around on foot — always free (0 F CFA): walk (a light push of the stick, 1.4 m/s), brisk walk (the default, 2.2 m/s: a natural walk, no jogging), run
  * (Shift, or the « Courir » button on phones) while stamina lasts. Running far builds fitness (« forme », the same
  * counter as the open-air gym): more stamina and a slightly faster run. Running tires a little (énergie), and an
  * exhausted character cannot run.
  */
-export const GAIT = { walk: 2.2, brisk: 4.2, run: 7.0 } as const;
+export const GAIT = { walk: 1.4, brisk: 2.2, run: 7.0 } as const;
 /** Metres run for one point of fitness. */
 export const METRES_PER_FORME = 400;
 /** Below this energy the character is too tired to run. */
