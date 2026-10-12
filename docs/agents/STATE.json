@@ -1,16 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T03:40:00Z",
+  "updatedAt": "2026-10-12T04:29:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261012T0427Z-watch",
-    "owner": "producer_watch_0427",
-    "acquiredAt": "2026-10-12T04:27:00Z",
-    "expiresAt": "2026-10-12T04:57:00Z"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -124,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-12T03:40:00Z"
+    "lastCompletedRunAt": "2026-10-12T04:29:00Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
@@ -293,14 +288,13 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-WAVE5-WATCH.md",
-    "completedAt": "2026-10-12T03:40:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-0427-WATCH.md",
+    "completedAt": "2026-10-12T04:29:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "reviewCandidates": [],
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261012T0335Z-wave5-watch"
+    "leaseReleased": "cycle-20261012T0427Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -562,7 +556,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-12T03:40:00Z",
+    "checkedAt": "2026-10-12T04:29:00Z",
     "status": "not_ready",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "5558b756bbebb71ea4e618b4fffa11f4aca839db",
