@@ -35,9 +35,9 @@ export const ROLL = 1.2, DRAG = 0.015;
  * height up, HANDS_FROM): ahead, and to either side within `arms`; a lower ball he blocks with a foot.
  */
 export const CONTACT = { fwd: 0.34, side: 0.13, hands: 0.32, arms: 0.45 } as const;
-export const HANDS_FROM = 0.55;
+export const HANDS_FROM = 0.6;
 /** How far the ball may be from the contact point when the contact is due (m), and how high a foot (a keeper's hands) can meet it. */
-export const REACH = 0.3, FOOT_H = 0.6, HANDS_H = 2.3;
+export const REACH = 0.3, FOOT_H = 0.6, HANDS_H = 2.0;
 
 export type KickKind = 'touch' | 'trap' | 'tackle' | 'pass' | 'shot' | 'save';
 /** The leg's swing before the contact and the follow-through after it (s). */
@@ -422,6 +422,9 @@ export class Match {
 
   /** The phase's own business: the celebration, the fetch back to the centre, the end of a kick-off. */
   private phaseLogic(_dt: number) {
+    // a taker who left (the city's people come and go): another one
+    if ((this.phase === 'kickoff' || this.phase === 'restart') && !this.byId.has(this.taker))
+      this.taker = this.phase === 'kickoff' ? this.pickTaker(this.kickTeam) : this.nearest(this.kickTeam, this.ball.x, this.ball.z, true);
     if (this.phase === 'goal') {
       if (this.phaseT > 4.6) {
         const team = this.kickTeam, k = this.team(team).find(p => p.keeper);
@@ -430,7 +433,7 @@ export class Match {
         this.setPhase('fetch');
       }
     } else if (this.phase === 'fetch') {
-      if (this.phaseT > 12 || this.fetcher < 0) this.kickoff(this.kickTeam);   // never stuck: the taker goes and gets it
+      if (this.phaseT > 12 || !this.byId.has(this.fetcher)) this.kickoff(this.kickTeam);   // never stuck: the taker goes and gets it
     }
   }
 
