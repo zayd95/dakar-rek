@@ -30,7 +30,8 @@ export interface Action {
 export interface Interactable {
   id: string;
   name: string;
-  kind: 'actions' | 'travel';
+  /** 'walk': a way out of the neighbourhood on foot (src/world/walk.ts: « Partir à pied », free). */
+  kind: 'actions' | 'travel' | 'walk';
   x: number; z: number; radius: number;
   actions: Action[];
   /** Short greeting/context spoken by the host of this place. */

@@ -235,6 +235,65 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   check(`${label}: not done — off the goal line after the first pay, still optional in the Carnet`, !/Tonton Ibou/.test(g6) && /Facultatif/.test(c6) && /Parle à Tonton Ibou/.test(c6), `${g6} | Carnet: ${optional(c6)}`);
   await ctx2.close();
 }
+// 9. On foot between neighbourhoods (Habib, 11 Oct; docs/UI_V2_PLAN.md §0 A; src/world/walk.ts): at the Almadies with
+//    0 F and 0 % energy the player walks home to Pikine from the neighbourhood's way out, for free; comes back by phone ›
+//    Carte, and goes home again the same day (no limit); nothing paid, nothing counted, energy left at 0. Tired at a paid
+//    service, the refusal names where to rest; phone › Santé too.
+for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }, false], ['phone', { width: 390, height: 844 }, true]]) {
+  const context = await browser.newContext({ viewport, hasTouch: touch, isMobile: touch });
+  const page = await context.newPage();
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  const d = (fn, arg) => page.evaluate(fn, arg);
+  const ready = () => page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
+  const hubIs = h => page.waitForFunction(x => window.__dakar.pos().hub === x && window.__dakar.pos().mode === 'play', h, T).then(() => true, () => false);
+  const money = () => d(() => ({ wallet: window.__dakar.state.wallet, energie: window.__dakar.state.data.needs.energie, trips: window.__dakar.state.data.counters.trips ?? 0, ledger: window.__dakar.state.data.ledger.length }));
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 120000 }); await ready();
+  await d(() => { const x = window.__dakar; x.teleport('almadies'); x.setHour(10); x.state.data.wallet = 0; x.state.data.needs.energie = 0; });
+  await hubIs('almadies');
+  const m0 = await money();
+  // the tired refusal names the square: Style Rek's paid service with 0 % energy
+  const style = (await d(() => window.__dakar.cityPlaces())).find(p => /Style Rek/.test(p.name));
+  if (style) {
+    await d(p => window.__dakar.place(p.x, p.z + 1.2, Math.PI), style);
+    await page.waitForFunction(() => /Style Rek/.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
+    const why = (await d(() => window.__dakar.focus()?.why ?? [])).join(' | ');
+    check(`${label}: tired at a paid service, the refusal says where to rest (the square, for free)`, /Repose-toi avant ce service · Place des voisins · Ngor/.test(why) && /Se poser à l’ombre/.test(why), why);
+  } else check(`${label}: Style Rek is at the Almadies`, false);
+  await d(() => window.__dakar.phone('sante')); await page.waitForTimeout(300);
+  const sante = await d(() => document.querySelector('#phone .ph-screen')?.textContent ?? '');
+  check(`${label}: phone › Santé names the rest spot and says walking needs no energy`, /Place des voisins · Ngor/.test(sante) && /Marcher ne demande pas d’énergie/.test(sante), sante.slice(0, 160));
+  await d(() => window.__dakar.phoneClose());
+  // the way out toward Pikine (east), its sheet, « Rentrer chez moi à pied »
+  const way = (await d(() => window.__dakar.interactables())).find(i => i.id === 'almadies:walk:east');
+  check(`${label}: the Almadies has ways out on foot, none into the sea (north)`, !!way && !(await d(() => window.__dakar.interactables().some(i => i.id === 'almadies:walk:north'))), JSON.stringify(way));
+  if (way) {
+    await d(p => window.__dakar.place(p.x - 2, p.z, Math.PI / 2), way);   // 2 m before it, facing it (east)
+    await page.waitForFunction(() => /Sortie du quartier/.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
+    const f = await d(() => window.__dakar.focus());
+    check(`${label}: the way out offers « Partir à pied »`, /Partir à pied/.test(f?.primary ?? ''), JSON.stringify(f));
+    await d(() => window.__dakar.act());
+    await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
+    const rows = await d(() => [...document.querySelectorAll('#modal.on .item:not(.close)')].map(b => b.textContent));
+    check(`${label}: its sheet: home first, then the other neighbourhoods, all free`, /Rentrer chez moi à pied/.test(rows[0] ?? '') && rows.filter(r => /Gratuit/.test(r)).length >= 3 && !rows.some(r => /Pas assez/.test(r)), rows.join(' / '));
+    await page.locator('#modal.on .item', { hasText: 'Rentrer chez moi à pied' }).first().click();
+    const faded = await page.waitForFunction(() => /À pied vers Pikine/.test(document.getElementById('fade')?.textContent ?? ''), null, { timeout: 15000, polling: 50 }).then(() => true, () => false);
+    const home1 = await hubIs('pikine');
+    const p1 = await d(() => window.__dakar.pos()), m1 = await money();
+    check(`${label}: at 0 F and 0 % energy, home to Pikine on foot — the fade says where and how long, arrival at Pikine's west way out`, faded && home1 && p1.x < -100 && Math.abs(p1.z) < 3, JSON.stringify({ faded, home1, x: p1.x, z: p1.z }));
+    check(`${label}: nothing paid, nothing counted, energy left at 0`, m1.wallet === 0 && m1.energie === 0 && m1.trips === m0.trips && m1.ledger === m0.ledger, JSON.stringify({ m0, m1 }));
+  }
+  // back to the Almadies by phone › Carte, then home again the same day: no limit
+  await d(() => window.__dakar.phone('carte')); await page.waitForTimeout(300);
+  await page.locator('#phone [data-walk="almadies"]').first().click();
+  const back = await hubIs('almadies');
+  await d(() => window.__dakar.phone('carte')); await page.waitForTimeout(300);
+  await page.locator('#phone [data-walk="pikine"]').first().click();
+  const again = await hubIs('pikine');
+  const m2 = await money();
+  check(`${label}: back by phone › Carte, then home again the same day — free, no limit`, back && again && m2.wallet === 0 && m2.trips === m0.trips && m2.ledger === m0.ledger, JSON.stringify({ back, again, m2 }));
+  check(`${label}: on foot — no page errors`, errors.length === 0, errors.join(' | '));
+  await context.close();
+}
 await browser.close();
 fs.writeFileSync(`${out}/results.json`, JSON.stringify(results, null, 2));
 console.log(`\n${results.length - failed}/${results.length} life-loop checks passed`);

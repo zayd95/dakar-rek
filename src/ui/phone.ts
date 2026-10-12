@@ -18,6 +18,8 @@ import { journalView, esc } from './journal';
 import { glossesShown, setGlossesShown } from '../i18n/wolof';
 import { fcfa } from './hud';
 import { quietLog, ago } from './quiet';
+import { walkMinutes } from '../world/walk';
+import { restSpotHere } from '../game/rest';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -331,7 +333,8 @@ export class Phone {
 
   private healthHtml(): string {
     const n = this.ctx.state.data.needs as unknown as Record<string, number>;
-    const NEEDS: [string, string, string, string][] = [['faim', 'Faim', '#f97316', 'Mange à une gargote, une dibiterie ou au mall.'], ['energie', 'Énergie', '#facc15', 'Dors dans ta chambre ou repose-toi à l’ombre.'],
+    const rest = restSpotHere();
+    const NEEDS: [string, string, string, string][] = [['faim', 'Faim', '#f97316', 'Mange à une gargote, une dibiterie ou au mall.'], ['energie', 'Énergie', '#facc15', rest ? `Repose-toi ici : ${rest}. Marcher ne demande pas d’énergie.` : 'Dors dans ta chambre ou repose-toi à l’ombre. Marcher ne demande pas d’énergie.'],
       ['moral', 'Moral', '#a855f7', 'Retrouve des amis, l’attaya, la plage.'], ['social', 'Social', '#22c55e', 'Parle aux habitants, rejoins les places.'], ['hygiene', 'Hygiène', '#0ea5e9', 'Passe par ta chambre pour te laver.']];
     const ring = (v: number, c: string) => `<i class="ph-ring" style="--v:${Math.round(clamp01(v / 100) * 100)};--c:${c}"><b>${Math.round(v)}</b></i>`;
     return `<div class="ph-health"><small>Humeur</small><b>${esc(this.ctx.state.mood())}</b></div>
@@ -455,13 +458,16 @@ export class Phone {
 
   private mapHtml(): string {
     const here = this.ctx.hub();
-    return `<p class="ph-note">Pour changer de quartier, va à la gare des cars rapides du quartier : le trajet se paie et prend du temps.</p>
+    const home = phoneHooks.homeHub?.() ?? null, walk = !!phoneHooks.walkTo;
+    return `<p class="ph-note">Pour changer de quartier : à pied, gratuit et à toute heure, même sans argent ni énergie ; ou en car rapide à la gare, plus vite mais payant.</p>
+      ${walk && here && home && home !== here ? `<button type="button" class="ph-btn" data-walk="${home}">🚶 Rentrer chez moi à pied<small>${esc(HUB_NAMES[home].split(' · ')[0])} · ≈ ${walkMinutes(here, home)} min · gratuit</small></button>` : ''}
       ${phoneHooks.openPlaces ? '<button type="button" class="ph-btn" data-app="quartier">Choisir un repère à pied<small>Commerces, travail et lieux de rencontre du quartier</small></button>' : ''}
       ${[...HUB_IDS].sort((a, b) => Number(b === here) - Number(a === here)).map(h => {
         const leg = here && h !== here ? travelLeg(here, h) : null;
         const places = this.known[h];
         return `<section class="ph-hub ${h === here ? 'here' : ''}" data-hub="${h}">
-          <header><b>${esc(HUB_NAMES[h])}</b>${h === here ? '<em>Tu es ici</em>' : leg ? `<small>${fcfa(leg.cost)} · ≈ ${leg.minutes} min</small>` : ''}</header>
+          <header><b>${esc(HUB_NAMES[h])}</b>${h === here ? '<em>Tu es ici</em>' : leg ? `<small>Car rapide ${fcfa(leg.cost)} · ≈ ${leg.minutes} min</small>` : ''}</header>
+          ${walk && here && h !== here ? `<button type="button" class="ph-walk" data-walk="${h}">🚶 Y aller à pied · ≈ ${walkMinutes(here, h)} min · gratuit</button>` : ''}
           ${places?.length ? `<ul>${places.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '<p class="ph-note">Lieux à découvrir sur place.</p>'}
         </section>`;
       }).join('')}`;
@@ -511,6 +517,7 @@ export class Phone {
       });
     }));
     s.querySelectorAll<HTMLElement>('[data-go]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.go!; this.launch(() => phoneHooks.tonightGo?.(k)); }));
+    s.querySelectorAll<HTMLElement>('[data-walk]').forEach(b => b.addEventListener('click', () => { const h = b.dataset.walk as HubId; this.launch(() => phoneHooks.walkTo?.(h)); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-k]').forEach(b => b.addEventListener('click', () => this.calcKey(b.dataset.k!)));
     s.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
       const q = b.dataset.q as Quality;

@@ -138,6 +138,24 @@ placer) and a transition's fade. Checks: `tests/quiet.test.ts`, `tests/boutCardL
 landscape), `scripts/check-arena-visit.mjs` (seated at the entrance and the bout; desktop, portrait, landscape).
 Budget: DOM only, nothing per frame (the line, the log, the chip and the cards change on events).
 
+## On foot between neighbourhoods (docs/UI_V2_PLAN.md §0 A; src/world/walk.ts, src/game/rest.ts)
+
+Habib (11 Oct): the player can always go home or reach another neighbourhood on foot, at 0 F and 0 % energy, with no
+daily limit. Until the roads between neighbourhoods are built:
+- each neighbourhood has a way out on foot at the end of each middle road, on every side that is not the sea
+  (`kind: 'walk'`, « Sortie du quartier · à pied »; the button says « Partir à pied »); its sheet lists « Rentrer chez
+  moi à pied » first when home is elsewhere, then every other neighbourhood, nearest first, all « Gratuit »;
+- the gare's car-rapide sheet offers the same rows under the paid rides, and phone › Carte has « Y aller à pied » on
+  each neighbourhood and « Rentrer chez moi à pied » at the top;
+- the trip is a fade « 🚶 À pied vers Pikine · ≈ 105 min » (about three times the car rapide); the needs tick for that
+  time (energy stops at 0 and never blocks it), nothing is paid, nothing is counted; the player walks in at the
+  destination's way out facing where they came from, 8 m inside.
+- Where to rest is named: the tired refusal of paid work says « Repose-toi avant ce service · Place des voisins · Ngor :
+  « Se poser à l'ombre » » (the hub's free rest, or « ta chambre : « Dormir » » in the hub the player lives in), and
+  phone › Santé says the same. Walking never needs energy, and the tip says so.
+Checks: `tests/walk.test.ts`; `scripts/check-life-loop.mjs` step 9 (the Almadies at 0 F and 0 %: home on foot, back,
+and home again the same day; the refusal and Santé name the square).
+
 ## The goal line: here and now (src/game/goalLine.ts, src/social/beats.ts)
 
 `#goal` says one thing at most, and only what makes sense in this hub, at this hour, with the player's needs and money

@@ -2,8 +2,10 @@ import type { Action } from './types';
 import { say } from '../i18n/wolof';
 import { haggler, tasteLine } from '../i18n/lines';
 import { order, talkFirst } from '../activity/primitives';
+import { tiredReason } from '../game/rest';
 
-const energy = (amount: number): NonNullable<Action['requires']> => s => s.data.needs.energie < amount ? 'Repose-toi avant ce service' : null;
+/** Paid work needs some energy; the refusal says where to rest here (src/game/rest.ts). */
+const energy = (amount: number): NonNullable<Action['requires']> => s => s.data.needs.energie < amount ? tiredReason() : null;
 
 /** Fictional businesses; prices and short activities are game balance, not real offers. */
 export const CITY_ACTIONS = {

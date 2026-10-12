@@ -7,7 +7,7 @@ import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
-import { buildHub } from './world/builder';
+import { HALF, buildHub, hubLayout } from './world/builder';
 import { Sky } from './world/sky';
 import { setGrainEnabled } from './world/grain';
 import { buildInterior, disposeInterior, setInteriorDaylight, type Interior } from './world/interiors';
@@ -29,6 +29,8 @@ import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, suggestionHere, applyChoice, settleWelcome, welcomeByTalk, type Beat } from './social/beats';
 import { goalNow, hudDue, hudSpace, needGoal } from './game/goalLine';
 import { quietLog } from './ui/quiet';
+import { applyWalk, walkCard, walkMinutes, walkTargets, waysOut, wayToward } from './world/walk';
+import { restSpot, setRestSpot } from './game/rest';
 import { Pacer, hiddenEvery } from './game/pace';
 import { arenaFighter } from './arena/fighter';
 import { currentHome } from './economy/assets';
@@ -257,6 +259,8 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
     world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
   }
   registerSeats();
+  // where to rest here (the tired refusals and phone › Santé name it): the player's bed in their own hub, else the free rest
+  setRestSpot(restSpot(world.interactables, homeHub() === id ? 'ta chambre' : null));
   places.clear(); people.clear();
   for (const m of MODULES) m.hubLoaded?.(ctx, world);
   const p = resumeSpot(at, world.bounds, world.spawn);                  // a spot outside this hub (an old save, a bad teleport): its spawn
@@ -431,6 +435,7 @@ function registerSeats() {
 function legacyAction(it: Interactable) {
   nearest = it;
   if (it.kind === 'travel') openTravel();
+  else if (it.kind === 'walk') openWalk();
   else if (it.actions.length === 1 && it.actions[0].special === 'exit') exitInterior();
   else openActions(it);
 }
@@ -834,8 +839,50 @@ function openTravel() {
     const poor = !state.canAfford(leg.cost);
     return { label: HUB_NAMES[h], detail: poor ? 'Pas assez d’argent' : `≈ ${leg.minutes} min de route`, right: fcfa(leg.cost), disabled: poor, onPick: () => { hud.closeModal(); doTravel(h); } };
   });
-  hud.openMenu('Car rapide', 'Où va-t-on ? Le trajet coûte de l’argent et un peu de fatigue.', items);
+  // on foot too, free and at any energy (§0 A): the gare offers it under the paid rides
+  const walks = walkRows();
+  hud.openMenu('Car rapide', 'Où va-t-on ? Le car rapide se paie ; à pied, c’est gratuit, à toute heure.', [...items, ...walks]);
 }
+
+/** The neighbourhood the player lives in (their home's door is in it), null without a home. */
+function homeHub(): HubId | null {
+  const door = homeSpec(currentHome(state).spec)?.home.door;
+  return door ? (door.split(':')[0] as HubId) : null;
+}
+/** « Rentrer chez moi » first when home is elsewhere, then every other neighbourhood, nearest first: free. */
+function walkRows() {
+  if (!world) return [];
+  const here = world.id, home = homeHub();
+  const rows = walkTargets(here).map(t => ({ label: `À pied · ${HUB_NAMES[t.hub]}`, icon: '🚶', detail: `≈ ${t.minutes} min de marche · gratuit, à toute heure`, right: 'Gratuit', onPick: () => { hud.closeModal(); doWalk(t.hub); } }));
+  if (home && home !== here) rows.unshift({ label: 'Rentrer chez moi à pied', icon: '🏠', detail: `${HUB_NAMES[home]} · ≈ ${walkMinutes(here, home)} min · gratuit`, right: 'Gratuit', onPick: () => { hud.closeModal(); doWalk(home); } });
+  return rows;
+}
+/** A way out of the neighbourhood (« Partir à pied »): where to walk to. */
+function openWalk() {
+  if (!world) return;
+  mode = 'menu';
+  hud.openMenu('Partir à pied', 'Gratuit, à toute heure, même sans argent ni énergie : la marche prend du temps, c’est tout.', walkRows());
+}
+/**
+ * On foot to another neighbourhood (§0 A): a fade with where and how long, the needs tick for that time, nothing is paid
+ * or counted, then the player walks in at the destination's way out facing where they came from.
+ */
+function doWalk(dest: HubId) {
+  if (!world || dest === world.id) return;
+  const from = world.id, minutes = walkMinutes(from, dest);
+  mode = 'busy'; input.enabled = false;
+  hud.fade(true, walkCard(dest, minutes));
+  setTimeout(() => {
+    applyWalk(state, from, dest);
+    const way = wayToward(waysOut(hubLayout(dest).sea, HALF + 1), dest, from);   // 8 m in from the way out, facing in
+    loadHub(dest, way ? { x: way.x + Math.sin(way.yaw) * 8, z: way.z + Math.cos(way.yaw) * 8, yaw: way.yaw } : undefined);
+    hud.fade(false);
+    hud.toast(`Arrivée à pied : ${HUB_NAMES[dest]}`);
+    mode = 'play'; input.enabled = true; saveNow();
+  }, 1400);
+}
+phoneHooks.walkTo = doWalk;
+phoneHooks.homeHub = homeHub;
 
 function doTravel(dest: HubId) {
   if (!world) return;
@@ -947,7 +994,7 @@ function setQuality(q: Quality) {
 // ------------------------------------------------------------------ phone (settings and services; replaces the old system menu)
 const phone = new Phone({
   state, rel, input, hub: () => world?.id ?? null, now: () => presence.serverNow(),
-  places: () => world?.interactables.filter(i => !i.npc).map(i => i.name) ?? [],
+  places: () => world?.interactables.filter(i => !i.npc && i.kind !== 'walk').map(i => i.name) ?? [],
   quality: () => quality, setQuality, save: saveNow, toast: m => hud.toast(m),
   newGame: () => { clearSave(store); world = null; location.reload(); },   // world = null: no save on the way out
   lock: on => {

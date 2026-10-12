@@ -74,6 +74,7 @@ export class LegacySource implements TargetSource {
   /** The main button: same behaviour as before the contextual system, with a verb label. */
   private primary(it: Interactable, kind: TargetKind, own: Affordance[]): Affordance | null {
     const run = () => this.h.run(it);
+    if (it.kind === 'walk') return { id: 'walk', verb: 'travel', label: 'Partir à pied', detail: 'Gratuit, à toute heure', icon: '🚶', run };
     if (kind === 'vehicle') return { id: 'travel', verb: 'travel', label: 'Voyager', icon: '🚐', run };
     if (kind === 'door') return own[0] ?? null;
     if (kind === 'person') return { id: 'talk', verb: 'talk', label: this.h.talkLabel?.(it) ?? 'Parler', icon: '💬', run };
