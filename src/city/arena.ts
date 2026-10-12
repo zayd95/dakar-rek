@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { GameCtx, GameModule } from '../game/modules';
 import type { Collider, HubWorld } from '../world/types';
-import { animateVehicle, buildVehicle, type VehicleKind } from '../actors/vehicleKit';
+import { animateVehicle, buildVehicle, vehicleKey, type VehicleKind } from '../actors/vehicleKit';
 import { Humanoid, humanoidReady, randomLook, type PersonLook } from '../actors/humanoid';
 import { Path, openLanePath, pullIn, type Pose, type Pt } from '../transport/route';
 import { arenaEvening, roadCentre } from '../transport/lines';
@@ -11,6 +11,7 @@ import { eveningSize } from '../arena/exterior';
 import { rng } from '../core/rng';
 import { ARENA_PARKED, LEAVING_FROM, SIZE_SHARE, arenaArrivals, arenaDepartures, dropInterval, type EveningSize } from './rules';
 import { weatherNow } from './weather';
+import { WarmQueue } from '../game/warm';
 
 /**
  * The streets round the Pikine arena on a fight evening (every evening: a small card on weekdays, the gala Friday to
@@ -115,6 +116,32 @@ export class ArenaStreets {
     }
     // a deterministic order, so a card evening has the gala's first few
     return out.sort(() => R() - 0.5);
+  }
+
+  /**
+   * Lists in `queue` the models this evening's streets will make: the geometry of each taxi, sedan and moto-taxi the flow can
+   * bring (the paints and the people aboard are what tell two models apart: 2 + 9 + 3) and of the cars that park round the
+   * block, each made once (4-6 ms; 20-30 for the first of a process). The flow picks its seeds at random, so a new model used
+   * to be made in the frame its car first appeared: a spike in the middle of the evening, never twice the same.
+   */
+  warmInto(queue: WarmQueue) {
+    const seen = new Set<string>();
+    const make = (kind: VehicleKind, opts: { seed: number; driver: boolean; passengers: boolean }) => queue.add(() => {
+      const key = vehicleKey(kind, opts);
+      if (!seen.has(key)) { seen.add(key); buildVehicle(kind, opts); }
+    });
+    queue.add(() => {                                                         // the seeds are looked through once (20-35 µs each) for the models they pick
+      for (const [kind, n] of [['taxi', 40], ['sedan', 120]] as const) {
+        const found = new Map<string, number>();
+        for (let s = 1; s <= n; s++) { const k = vehicleKey(kind, { seed: s, driver: true, passengers: false }); if (!found.has(k)) found.set(k, s); }
+        for (const s of found.values()) make(kind, { seed: s, driver: true, passengers: false });
+      }
+    });
+    queue.add(() => {                                                         // the moto-taxis: with the fan on the back, without him, and leaving
+      const ps = motoWithPillion();
+      make('moto', { seed: ps, driver: true, passengers: true }); make('moto', { seed: ps, driver: true, passengers: false }); make('moto', { seed: ps + 1, driver: true, passengers: false });
+    });
+    for (const p of this.parked.slice(0, Math.round(ARENA_PARKED[this.quality] * SIZE_SHARE.gala))) make(p.kind, { seed: p.seed, driver: false, passengers: false });
   }
 
   /** Cars park round the block as the evening starts and leave after it, out of the camera's sight. */
@@ -269,15 +296,20 @@ let streets: ArenaStreets | null = null;
 /** Debug only: play the streets at this hour (the checks reach the arrivals and the departures). */
 let hourOverride: number | null = null;
 
+/** What the streets will make, ahead of the first car that needs it: two jobs a frame after the hub loads (ArenaStreets.warmInto). */
+const warm = new WarmQueue();
+
 export const arenaStreetsModule: GameModule = {
   name: 'arenaStreets',
   hubLoaded(ctx, hub) {
-    streets?.dispose(); streets = null;
+    streets?.dispose(); streets = null; warm.clear();
     if (!hub.arena) return;
     streets = new ArenaStreets(ctx, hub, gateOf(hub.arena), ctx.quality());
     ctx.extra.add(streets.group);
+    streets.warmInto(warm);
   },
   update(ctx, dt) {
+    warm.run(2, 8);
     if (!streets || ctx.inside()) return;
     streets.update(dt, ctx.day(), hourOverride ?? ctx.hour());
   },
