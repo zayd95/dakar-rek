@@ -334,3 +334,105 @@ roughly 25-50 µs of mixer and gait.
   the 23:00 window is the first of them), the car rapide's passenger changes (2-8 ms). They could be built ahead, a few a frame, after the
   hub's load.
 - The ambient life's half-second `reconcile` (spawns, leaves, demand: 2-4 ms in a frame at 23:00, 17 % of the frames).
+
+## Wave 5: the outflow (`fix/w5-outflow`)
+
+The headroom lane's candidate (441ab9f) read at 23:00 in the browser: low 4.33 ms (over its 4), 3.44, 3.60; medium 6.30 (over its 6; 4.83-5.05
+on the other runs). Not a mean that was too high but bursts that fell in the last twelve frames of the window (the reading is the profiler's
+moving average, 92 % old + 8 % new: one frame of 8 ms near the end adds 0.5 ms). The aim: the moment inside its budget on every run (low
+at most about 3.4 ms, medium about 5.1), nothing removed, nothing near the player drawn differently, the gameplay unchanged.
+
+**The bench** (`scripts/perf-outflow.mjs`, `tests/perf.outflow.test.ts`, node only: no browser). One process is one browser run (cold JIT and caches),
+the builds alternate on each city day, the reading is the check's (the profiler's moving average at the end of the window, the sections summed) and every
+frame's update is kept:
+
+```
+node scripts/perf-outflow.mjs run    --out DIR --build base=/path/to/old --build new=/path/to/new --q low --days 4,11,18,25 --settle 55 --frames 111
+node scripts/perf-outflow.mjs report --out DIR --q low --moment 23:00
+```
+
+`report` prints, per build, the first window's reading (the one the check takes: mean, p50, p90, worst), the reading of every window, the frames over
+4 and 8 ms (the OS-preempted ones counted apart) and the sections of the first window. `--settle` is the frames between standing up at 23:00 and the first
+measured one (the check's take 50-60; 90 shows a later window). `PERF_PROF=<moment>` writes a V8 CPU profile of that moment, `PERF_HEAP=<moment>` an allocation
+profile, `PERF_FRAMEPROF=<moment>` a profile in which each frame is a function of its own name, `PERF_REST=1` times the parts of the rest of the update apart. The host
+(`tests/perfHost.ts`) now also mirrors what main.ts asks in the stretch of the frame that it called `rest of update`: the modules' presence fields, `findNearest`, the prompt of the focus.
+
+**What the bursts were** (each measured in node in the frame it fell in, then taken out):
+
+| Burst | Where | What it was |
+| --- | --- | --- |
+| The half-second reconcile | `AmbientLife.reconcile` | The fight-talk module sets the Dibi's event every two seconds with an object of its own: `[...ACTIVITIES, ...event.acts]` was a new array each time, so what every spot offers every activity was worked out again for all of them (2-5 ms), and the demand plan allocated its rows. Then the people: up to five route searches in one frame (a walk in, a walk out, 0.4-3 ms each, the first of a kind up to 20), and the Dibi, which nobody can walk to at that hour, was asked again three times every half second (44 failed arrivals in 90 frames). |
+| People leaving | `AmbientLife.leave`, the checkout | Every person over a quota left in the same frame, each with its route search. |
+| The spots' rebuild | `buildSpots` | When a place opens or closes (a vendor at 22:xx) the registry's signature changes and all the spots were built again in one frame: 15-19 ms. |
+| First bodies | `AmbientLife`, `Crowd` | A full body is a skinned clone (2-8 ms), made in the frame a person first needed one: a new full body of the ambient life, a person of the street walking into the crowd's near circle. |
+| First vehicles | `ArenaStreets` | The first time each taxi, sedan, moto (with or without the fan on the back) and parked-car model was drawn: 4-6 ms each, 20-30 models, in the middle of the evening. |
+| Route search | `collidersClear`, `entries` | 769 colliders tested at 30 cm along every segment, the nearest sidewalk stretches sorted for every end of every route: 0.2-1 ms a route. |
+| Bodies nobody sees | `Humanoid.animate` | On low there is no shadow pass: a body out of the camera's view still ran its mixer at 5 Hz; a hidden one (a far figure stands in for it) at 2 Hz, to hold a pose that had not changed since the clip started. |
+| Smaller | `climbHeight`, `Impostors.addMatrix`, `curve`, `curveAt` | A sine and a cosine per body per frame, a matrix copy per figure, an iterator per call of the per-frame curves. |
+
+Of the multi-millisecond single events left in a section (35 in the final runs), 19 fell in a frame where the JS heap dropped: a young-generation collection
+(1-5 ms, now about every 80 frames; every 50 before) is attributed to whatever section runs.
+
+**What changed** (each commit has the details):
+
+| Change | Where |
+| --- | --- |
+| **A path budget.** One route search a frame (`PATHS_PER_FRAME`, more for a frame that covers more time); the reconcile only decides (`leaving`, `plan`), `work()` spends the budget: people sent off one after the other, arrivals one person at a time (a group keeps its leader), the checkout's wait and the cast's places not waiting (`force`). A spot nobody could walk to is not asked again for 8 s (3 s when it was the place that failed). Hour jumps and the far spots still settle everybody at once | `src/social/ambientLife.ts` |
+| **The event kept.** The same event (activities, tags, boost) is the same object: the plans stay. What a spot offers the activities (`SpotPlan`) is kept per spot and carried over a rebuild for the spots that did not change; `curveAt` and `planDemand` allocate nothing per call | `src/social/ambientLife.ts`, `src/social/ambient.ts` |
+| **The rebuild in steps.** `buildSpotsSteps` is a generator (it yields after each place, each legacy place, every eight seat groups, before the corners); `buildSpots` runs it to the end. The ambient life runs ten steps a frame (about four frames), people keep their spots until the new ones are there, the shops are found once per hub, a shop's paths are cached | `src/social/ambientSpots.ts`, `src/social/ambientLife.ts` |
+| **Bodies ahead.** The ambient life makes one pooled body a frame after the first build, until its budget; a crowd keeps the bodies of those who walked away (`Humanoid.reset()`, `setLook` dresses the next) and makes one spare a frame | `src/social/ambientLife.ts`, `src/crowd/crowd.ts`, `src/actors/humanoid.ts` |
+| **Models ahead.** `WarmQueue` (`src/game/warm.ts`): first-time jobs listed when a hub loads, a few a frame (two jobs, 8 ms). The arena's streets list every taxi, sedan, moto and parked-car model (`vehicleKey` says which model a seed picks without making it); done in 7 (low), 10 (medium) and 14 (high) frames after the hub loads | `src/city/arena.ts`, `src/actors/vehicleKit.ts` |
+| **Route search.** `collidersClear` keeps a flat copy of the tall boxes (looked at again once a frame: the epoch), finds with the slab method which of the 30 cm points can be inside which box and tests only those, with the very test of old; `entries` on typed arrays, the nearest taken as needed (same order, ties included). `tests/planPath.test.ts` keeps the first implementations as the reference | `src/social/routines.ts` |
+| **Animation nobody sees.** Without a shadow pass (low) a body out of the camera's view is a hidden one (`setAnimShadows`, set by `applyQuality`); a hidden body whose clip's pose has settled (0.3 s since the clip started) is not asked of the mixer until the clip changes or it is drawn again (then all the time it owes in one update) | `src/actors/humanoid.ts`, `src/main.ts` |
+| **Small things.** `climbHeight` keeps the sine and cosine and answers null beyond the last step; impostors write their arrays directly; `curve` without destructuring; the periodic jobs of the ambient life start apart (0, 0.7, 0.4, 0.9 s: with frames of a tenth of a second the half-second, one-second and two-second ones fell on the same frame) | `src/world/arenaModules.ts`, `src/actors/crowdLod.ts`, `src/city/rules.ts`, `src/social/ambientLife.ts` |
+
+Tests: `tests/outflow.test.ts` (the warm queue, `curveAt` and the cached demand plan against the first implementations, `buildSpotsSteps` against `buildSpots`, `climbHeight`,
+`vehicleKey` against the geometry a build shares, the crowd's spare bodies), `tests/outflowBudget.test.ts` (the whole hub from 21:00 to 23:00: at most one route search a frame, a place that opens
+is built in several frames and is then there), `tests/animLod.test.ts` (the hidden body left alone, back with all it owes; no shadow pass; `reset()` poses as a new body), `tests/planPath.test.ts`
+(`collidersClear` on segments along an axis, through thin boxes, per epoch).
+
+**Before → after**, same machine, same host, the two builds run one after the other for each city day (the reading at the end of the first window of each run: mean, 90th percentile,
+worst; every window: the three windows of the 23:00 run; frames over 4 / 8 ms of the update; the OS-preempted frames left out). 23:00 outflow, 12 city days at settle 55 and 6 (low) or 12 (medium) at settle 90; high 6 days:
+
+| Preset | Windows | Reading mean | p90 | worst | Every window: mean / p90 / worst | Frames > 4 ms | Frames > 8 ms |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| low | 18 | 3.21 → 2.53 | 3.80 → 3.19 | 4.16 → 3.21 | 2.83 / 3.36 / 4.16 → 2.50 / 3.03 / 3.23 | 10.4 % → 3.1 % | 7 → 5 |
+| medium | 24 | 4.16 → 3.86 | 4.91 → 4.84 | 5.29 → 5.27 | 3.95 / 4.79 / 5.33 → 3.62 / 4.50 / 5.27 | 40.9 % → 30.0 % | 74 → 15 |
+| high | 6 | 4.97 → 4.21 | 6.34 → 4.73 | 6.34 → 4.73 | 4.71 / 5.82 / 6.34 → 3.98 / 4.63 / 4.73 | 65.5 % → 40.6 % | 34 → 3 |
+
+The ambient life's share of the low reading went from 0.49 to 0.23 ms (medium 0.53 → 0.37), the exterior's from 0.26 to 0.16 (medium 0.48 → 0.36), the venues' 0.21 → 0.15, the crowd's 0.32 → 0.27 (medium 0.66 → 0.58);
+the walkers/traffic/life/world line 0.13 → 0.08. Node's readings are about those of the browser's profiler 1.2 times lower at 23:00 on low (the base read 3.2 mean, 4.16 worst here, 3.44-4.33 there).
+
+Not worse at the other moments (12 city days; first window; mean, p90, worst):
+
+| Preset | 17:30 arrivals | 19:00 bout |
+| --- | --- | --- |
+| low | 2.66 / 3.16 / 3.36 → 2.17 / 2.63 / 2.83 | 2.52 / 2.86 / 2.88 → 2.37 / 2.84 / 3.16 |
+| medium | 3.87 / 4.79 / 4.85 → 3.55 / 4.08 / 4.09 | 3.21 / 3.71 / 3.76 → 3.11 / 3.64 / 4.09 |
+| high (6 days) | 4.28 / 4.89 / 4.89 → 3.69 / 4.02 / 4.02 | 3.63 / 3.96 / 3.96 → 3.10 / 3.77 / 3.77 |
+
+(The 19:00 worst went up by 0.3 on low and medium in one run each: a single event in the bout's frames (the arena module, `walkers+traffic+life+world` 4.9 ms once), as many in the base's runs; the means went down.)
+
+**The rest of update.** The browser's `rest of update` read 0.63 then 1.31 ms at 23:00 on the same build (node: 0.26-0.35). The Pacer cannot be in it: outside the arena's walls `pacer.step` returns the frame's time at once, and
+the memoised clock is cheaper than the clock it replaced (`cityTimeAt` is called once a frame). What main.ts does in that stretch and the host did not, now mirrored (presence fields, `findNearest`, the prompt's affordances twice
+a frame), adds 0.03 ms in node; the HUD's goal line (refreshed every 250 ms of wall time, so at every frame of the check, whose frames last 0.2-1.4 s) was timed apart: 2 µs here, where the gala is not over, and a scan of the hub's places after it. What node cannot see is the DOM (the HUD, the bubble over the focus, the chat bubbles, the economy's panels) and the browser's own work in the frame. In node itself the section shows
+an isolated 3-9 ms event about once in 2000 frames (5 in the final runs, three of them in a frame with a young-generation collection) and no doubling. The doubling was not reproduced and is **not fixed**; what the browser check should look at is below.
+
+**For the browser check:**
+
+- `rest of update` at 23:00 (the player standing at the gate among the crowd, a focus on a person): the HUD's prompt and bubble are the only DOM written every frame there (`hud.setWorldPrompt`'s transform, `setPrompt` compares a key); if it doubles again, `PERF_REST=1`'s split names the parts to time in the browser's profiler.
+- People leaving the Dibi, the stops and the benches go one after the other (one a tenth of a second at the check's frame rate, one a frame at 60 fps): a crowd of six takes about 0.6 s to be all on its feet. A seated person asked to leave waits for its turn in place.
+- The spots' rebuild takes about four frames after a vendor opens or closes: people keep the old spots till then, the new ones appear at once.
+- A spot nobody can walk to (the Dibi at 23:00) is tried again every 8 s, not every half second: its customers come in fewer, later groups.
+- On low, a body out of the camera's view is not animated at all once its clip is settled: when the camera turns to it, it takes the pose it owes in that frame (a walker out of view has walked on in position; its stride is from the clip's phase).
+- The first seconds after a hub loads: the arena streets' models are made two jobs a frame (up to 10 ms a frame for 7-14 frames), one pooled ambient body and one spare crowd body a frame. They finish well before the 17:30 window's last frames (20 settled frames and 90 more).
+- A crowd's reused body is `reset()` and dressed again (`setLook`): faces, hair, clothes, shoes, skin colour and size should be those of the person, not of the one before; the faces' details beyond 14 m come back within 14 m as before.
+- Node cannot see: the DOM, canvas and texture uploads, shader compiles, the garbage collector of the browser's own heap, the rendering threads' share of the cores.
+
+**Not fixed.**
+
+- Medium. The mean fell by 7 % (8 % over every window), the frames over 8 ms from 74 to 15, but the 90th percentile and the worst of the first window did not move (4.84 / 5.27 against 4.91 / 5.29): they come from windows in which the whole frame is slow (the machine, the same in both builds) and from single events. What is left on medium is steady
+  cost, not bursts: the street crowd 0.58 ms (its near bodies' mixers and gait, `Crowd.update`, the routes of the people leaving), the exterior's 0.36 (fans walking out: 70 % of it is `Humanoid.animate`), the arena streets' 0.39, the
+  ambient life's 0.37, the rest of update 0.35. A body in full detail costs 25-50 µs a frame; the tiers update every frame at the check's 10 frames a second. Next: the gait's allocations (`gait.ts` `update`/`swingPose`/`target`: about 45 kB a frame of the 400 kB medium allocates), the iterators of the per-frame loops (about 44 kB), `motoTrip` (11 kB a frame, a trip rebuilt for each of 30 lattice slots), and the Euler synchronisation of every bone's quaternion (`onQuaternionChange`, 2-3 % of the frame).
+- Single events: `galaTraffic` (the jam's timeline, the riders on the car rapide's step: 3-5 ms, a few times an evening), `arenaExterior` (4-5 ms once), the car rapide's passenger changes (`transport`, 1.7-3 ms: each passenger set of each car is built the first time it is drawn; they could be listed in the `WarmQueue` as the arena streets' models are), a cold path of the focused target (`ui-world`, 12 ms seen once), `eveningCall` saving the game (7 ms, the once-an-evening call), the first plan after the Dibi's event starts (4 ms seen once, in the first reconcile: every spot's offer for the event's activities is worked out for the new array).
+- The browser's `rest of update` doubling (above).
