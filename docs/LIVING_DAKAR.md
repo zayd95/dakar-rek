@@ -1,5 +1,7 @@
 # Dakar Rek — a life inside Dakar (direction from 9 Oct 2026)
 
+> What these systems are for — the reasons players stay — is set out in [VISION.md](VISION.md) (« A Living Senegal », 12 Oct).
+
 Habib's brief, condensed. **Not "more scenery": turn Dakar Rek from an explorable 3D city into a living open-world life
 simulator.** Lagos Life showed the missing ingredient — *interaction density*: the player should rarely walk for long
 without something to enter, use, buy, ride, talk to, earn from, customise or join. Learn from the principle; never copy its
