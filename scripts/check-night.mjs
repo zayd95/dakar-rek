@@ -37,7 +37,8 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await page.waitForFunction(() => window.__dakar.night.info().flood.level > 0.9, null, { timeout: 60000 }).catch(() => {});
   let i = await info();
   check(`${label}: the arena's floodlights are on after dark on a fight evening`, i.flood.level > 0.9, JSON.stringify(i.flood));
-  check(`${label}: one real spot light over the ring (none on low)`, quality === 'low' ? i.spot === null : i.spot > 2, `${quality}: ${i.spot}`);
+  // the spot follows the floodlights (src/city/night.ts: 2.2 × level) and the wait above ends at level 0.9, i.e. ~1.98
+  check(`${label}: one real spot light over the ring (none on low)`, quality === 'low' ? i.spot === null : i.spot >= 1.95 && Math.abs(i.spot - 2.2 * i.flood.level) < 0.02, `${quality}: ${i.spot} at level ${i.flood.level}`);
   check(`${label}: street lamps found with their bulbs; a few out, a few flickering`, i.lamps.lamps > 20 && i.lamps.out > 0 && i.lamps.flicker > 0 && i.lamps.bulbsFound >= i.lamps.lamps * 0.8, JSON.stringify(i.lamps));
   check(`${label}: the city's shops are lit inside, the kiosks open at this hour glow`, i.shops.shops >= 1 && i.shops.open >= 1, JSON.stringify(i.shops));
   await shot('1-arena-from-the-street');
