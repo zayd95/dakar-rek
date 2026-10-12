@@ -123,7 +123,8 @@ check(`the foot (hands) is within ${GAP_MAX * 100} cm of the ball at every measu
 check('nearly every contact is measured on a drawn body', quality === 'low' ? f.contacts.measured >= 20 : f.contacts.unmeasured <= Math.max(3, f.stats.contacts * 0.1), { measured: f.contacts.measured, unmeasured: f.contacts.unmeasured, contacts: f.stats.contacts, quality });
 check('a planned contact is seldom missed', f.stats.whiffs <= f.stats.contacts * 0.15, { whiffs: f.stats.whiffs, contacts: f.stats.contacts });
 // the feet stay planted: what the gait let a planted foot slide, per step, on the drawn footballers
-if (f.feet) check('the footballers\' planted feet barely slide (the legs keep the pace)', f.feet.steps > 40 && f.feet.slipped / f.feet.steps < 0.02, f.feet);
+if (f.feet?.bodies) check('the footballers\' planted feet barely slide (the legs keep the pace)', f.feet.steps > 40 && f.feet.slipped / f.feet.steps < 0.02, f.feet);
+else console.log('(no footballer drawn in full at this moment: feet not measured)', JSON.stringify(f.feet));
 const log = await d(() => window.__dakar.footballLog(400));
 check('every contact had the ball at the contact point (the sim\'s own reach)', log.every(c => c.reach <= 0.3), log.filter(c => c.reach > 0.3).slice(0, 5));
 

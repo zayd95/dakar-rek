@@ -976,7 +976,8 @@ export class AmbientLife implements GameModule {
     view.sort(byD);
     let full = 0, mine = 0;
     for (const c of view) {
-      const d = c.a ? c.a.d : c.f!.d * c.f!.prio;
+      // (a driven person's weight also stretches its full-body distance: the footballers of a match come first, within the same caps)
+      const d = c.a ? c.a.d * (c.a.drive?.prio ?? 1) : c.f!.d * c.f!.prio;
       let lod: 0 | 1 | 2 = d < B.far ? 1 : 0;
       if (d < B.full && full < B.totalFull && (c.f || mine < B.bodies)) { lod = 2; full++; if (c.a) mine++; }
       if (c.a) c.a.lod = lod; else c.f!.lod = lod;
