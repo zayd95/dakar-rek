@@ -11,6 +11,7 @@ import { Relations } from './relations';
 import { BEATS, type Beat } from './beats';
 import { PROFILES, profileOf, type Perk, type Profile } from './profiles';
 import { ROUTINES, currentPlan, planPath, poseFor, resolvePlace, slotAt, pathLength, collidersClear, type Activity, type ClearFn, type PlaceSpec, type Routine, type Spot } from './routines';
+import { len2 } from '../core/math';
 import { greeting, hourStamp, introduction, applyIntroduction, isRegular, lastMemory, recordService, recordVisit, updateRegular, familiarity, REGULAR_AT } from './memory';
 import { SITUATIONS, choicesFor, favourFor, playSituation, sitCtx, situationFor, type Situation } from './situations';
 import { pick, quote, wo } from '../i18n/wolof';
@@ -126,20 +127,20 @@ export class NpcLife {
       const plan = currentPlan(n.r, hour, id => id in this.ctx.state.data.beats);
       if (plan.key !== n.key) this.retarget(n, hour, false);
       let speed = 0;
-      const dP = Math.hypot(player.x - n.x, player.z - n.z);
+      const dP = len2(player.x - n.x, player.z - n.z);
       if (n.walking) {
         n.paused = dP < STOP_R && this.group.visible;
         if (n.paused) { n.yaw = Math.atan2(player.x - n.x, player.z - n.z); n.clip = 'Talk'; }
         else {
           // Out of sight, people get on with their day: skip ahead until close to the player or arrived.
           let budget = 600;
-          while (n.walking && budget > 0 && Math.hypot(player.x - n.x, player.z - n.z) > FAR) { this.advance(n, 2); budget -= 2; }
+          while (n.walking && budget > 0 && len2(player.x - n.x, player.z - n.z) > FAR) { this.advance(n, 2); budget -= 2; }
           if (n.walking) { this.advance(n, SPEED * dt); speed = SPEED; n.clip = 'Walk'; }
         }
       }
       if (!n.walking) {
         n.x = n.spot.x; n.z = n.spot.z;
-        const partner = this.npcs.find(o => o !== n && !o.walking && Math.hypot(o.x - n.x, o.z - n.z) < 2.6);
+        const partner = this.npcs.find(o => o !== n && !o.walking && len2(o.x - n.x, o.z - n.z) < 2.6);
         const talking = dP < TALK_R ? 'player' : partner ? 'npc' : null;
         n.clip = poseFor(n.act, n.spot.sit, talking);
         if (n.spot.sit) n.yaw = n.spot.yaw;
@@ -151,7 +152,7 @@ export class NpcLife {
       n.body.group.position.set(n.x, 0.1 + (seated ? SIT_Y : 0) + (this.world.heightAt(n.x, n.z) || 0), n.z);
       n.body.group.rotation.y = n.yaw;
       n.it.x = n.x; n.it.z = n.z;
-      const far = Math.hypot(viewer.x - n.x, viewer.z - n.z) > 110;    // not drawn nor animated far from the camera
+      const far = (viewer.x - n.x) * (viewer.x - n.x) + (viewer.z - n.z) * (viewer.z - n.z) > 12100;    // not drawn nor animated far from the camera (110 m)
       n.body.group.visible = !far;
       if (far) continue;
       if (n.h) n.h.hold = n.clip === 'Walk' ? null : n.clip;
@@ -163,7 +164,7 @@ export class NpcLife {
     while (step > 0 && n.walking) {
       const a = n.path[n.seg], b = n.path[n.seg + 1];
       if (!b) { n.walking = false; break; }
-      const dx = b.x - n.x, dz = b.z - n.z, d = Math.hypot(dx, dz);
+      const dx = b.x - n.x, dz = b.z - n.z, d = len2(dx, dz);
       if (d <= step) { n.x = b.x; n.z = b.z; n.seg++; step -= d; if (n.seg >= n.path.length - 1) n.walking = false; }
       else { n.x += (dx / d) * step; n.z += (dz / d) * step; step = 0; }
       if (d > 0.01) n.yaw = Math.atan2(dx, dz);

@@ -10,6 +10,7 @@ import { hubLayout } from '../world/builder';
 import { WALL_R } from '../world/geew';
 import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import { rng } from '../core/rng';
+import { len2 } from '../core/math';
 import { ROUTINES, currentPlan, resolvePlace, planPath, laneGraph, collidersClear, pathLength, type ClearFn } from './routines';
 import { ACTIVITIES, AMBIENT_BUDGET, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR, type AmbientQuality } from './ambientData';
 import { planDemand, chooseSeat, curveAt, dayOfWeek, keepsPlace, seatCapacity, isNpcOccupant, STAND_ON, type AmbientActivity, type AmbientSpot, type LookKind, type Pt, type SeatLike } from './ambient';
@@ -152,7 +153,7 @@ export class AmbientLife implements GameModule {
     if ((this.sigT -= dt) <= 0) { this.sigT = 1; if (this.signature() !== this.sig) this.build(); }
     if ((this.reconT -= dt) <= 0 || this.snapNext) { this.reconT = 0.5; this.reconcile(this.snapNext); this.snapNext = false; }
     const space = ctx.space(), p = ctx.player.pos, pv = this.pv;
-    if (Math.hypot(p.x - pv.x, p.z - pv.z) > 3 || dt <= 0) { pv.vx = 0; pv.vz = 0; }   // teleport, door
+    if (len2(p.x - pv.x, p.z - pv.z) > 3 || dt <= 0) { pv.vx = 0; pv.vz = 0; }   // teleport, door
     else { const k = Math.min(1, dt * 6); pv.vx += ((p.x - pv.x) / dt - pv.vx) * k; pv.vz += ((p.z - pv.z) / dt - pv.vz) * k; }
     pv.x = p.x; pv.z = p.z;
     for (const a of this.actors) if (a.state !== 'off' && this.inView(a, space)) this.step(a, dt, p);
@@ -170,7 +171,7 @@ export class AmbientLife implements GameModule {
     // street furniture the builders draw without seats (kiosk benches, dibiterie chairs…), once per hub
     for (const s of furnitureSeats(w.interactables, hubLayout(w.id), ctx.seats.all(), ctx.places.all())) {
       ctx.seats.add({ ...s, kind: s.kind as Seat['kind'] });
-      for (const pp of w.people) if (pp.clip === 'Sit' && Math.hypot(pp.x - s.x, pp.z - s.z) < 0.5) ctx.seats.occupy(s.id, 'npc');
+      for (const pp of w.people) if (pp.clip === 'Sit' && len2(pp.x - s.x, pp.z - s.z) < 0.5) ctx.seats.occupy(s.id, 'npc');
     }
     const doors = w.rapides.map(car => { car.updateMatrixWorld(true); const v = car.localToWorld(new THREE.Vector3(-0.35, 0, -4.4)); return { x: v.x, z: v.z }; });
     const people: Pt[] = [];
@@ -206,9 +207,9 @@ export class AmbientLife implements GameModule {
       const s = resolvePlace(currentPlan(r, hour, id => id in ctx.state.data.beats).place, w.interactables);
       if (!s) continue;
       this.reserved.push({ x: s.x, z: s.z });
-      for (const a of this.actors) if (a.state === 'do' && !a.seat && a.spot?.space === 'street' && Math.hypot(a.tx - s.x, a.tz - s.z) < CAST_ROOM) this.leave(a);
+      for (const a of this.actors) if (a.state === 'do' && !a.seat && a.spot?.space === 'street' && len2(a.tx - s.x, a.tz - s.z) < CAST_ROOM) this.leave(a);
       if (!s.sit) continue;
-      const seat = ctx.seats.inSpace('street').find(x => Math.hypot(x.x - s.x, x.z - s.z) < 0.5);
+      const seat = ctx.seats.inSpace('street').find(x => len2(x.x - s.x, x.z - s.z) < 0.5);
       if (!seat) continue;
       if (seat.occupant?.startsWith('npc:amb:')) { const a = this.actors.find(x => x.key === seat.occupant); if (a) this.leave(a); }   // stands up for them
       if (ctx.seats.occupy(seat.id, 'npc:cast:' + r.id)) this.castHolds.push(seat.id);
@@ -291,7 +292,7 @@ export class AmbientLife implements GameModule {
   private claim(a: Actor, spot: AmbientSpot, act: AmbientActivity, mate: Actor | null): boolean {
     const ctx = this.ctx, inSpace = ctx.space() === spot.space;
     const nearPlayer = (x: number, z: number) => inSpace && this.playersSpot(x, z, PLAYER_ROOM);
-    const nearCast = (x: number, z: number) => spot.space === 'street' && this.reserved.some(r => Math.hypot(r.x - x, r.z - z) < CAST_ROOM);
+    const nearCast = (x: number, z: number) => spot.space === 'street' && this.reserved.some(r => len2(r.x - x, r.z - z) < CAST_ROOM);
     a.seat = null; a.slot = -1; a.slotRow = false; a.standOn = false; a.sitting = false; a.route = null;
     const seatList = (stand: boolean) => {
       const out: SeatLike[] = [];
@@ -333,9 +334,9 @@ export class AmbientLife implements GameModule {
    * is theirs.
    */
   private playersSpot(x: number, z: number, r: number) {
-    const p = this.ctx.player.pos, dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz);
+    const p = this.ctx.player.pos, dx = x - p.x, dz = z - p.z, d = len2(dx, dz);
     if (d < r) return true;
-    const v = this.pv, sp = Math.hypot(v.vx, v.vz);
+    const v = this.pv, sp = len2(v.vx, v.vz);
     return sp > 0.8 && d < 9 && (dx * v.vx + dz * v.vz) / (d * sp) > 0.82;
   }
 
@@ -447,7 +448,7 @@ export class AmbientLife implements GameModule {
       const s = slots[i];
       if (taken[i] !== null || nearPlayer(s.x, s.z) || nearCast(s.x, s.z)) continue;
       // rows fill from the front, a companion stands next to the first of the group, others pick at random
-      const d = row ? i : mate && mate.slot >= 0 ? Math.hypot(s.x - mate.tx, s.z - mate.tz) : this.rand();
+      const d = row ? i : mate && mate.slot >= 0 ? len2(s.x - mate.tx, s.z - mate.tz) : this.rand();
       if (d < bd) { bd = d; best = i; }
     }
     if (best < 0) return false;
@@ -508,9 +509,9 @@ export class AmbientLife implements GameModule {
     const fx = Math.sin(this.ctx.follow.yaw), fz = Math.cos(this.ctx.follow.yaw);
     let best: Pt | null = null, bs = Infinity;
     for (const n of laneGraph().nodes) {
-      const d = Math.hypot(n.x - to.x, n.z - to.z);
-      if (d < lo || d > hi || Math.hypot(n.x - p.x, n.z - p.z) < 12) continue;
-      const ahead = (n.x - cam.position.x) * fx + (n.z - cam.position.z) * fz > 0 && Math.hypot(n.x - p.x, n.z - p.z) < 40;
+      const d = len2(n.x - to.x, n.z - to.z);
+      if (d < lo || d > hi || len2(n.x - p.x, n.z - p.z) < 12) continue;
+      const ahead = (n.x - cam.position.x) * fx + (n.z - cam.position.z) * fz > 0 && len2(n.x - p.x, n.z - p.z) < 40;
       const s = (ahead ? 1 : 0) + this.rand() * 0.8;
       if (s < bs) { bs = s; best = n; }
     }
@@ -523,7 +524,7 @@ export class AmbientLife implements GameModule {
     const ctx = this.ctx, spot = a.spot!, p = ctx.player.pos;
     const wasSitting = a.sitting;
     this.releaseSeat(a); this.freeSlot(a); this.freeQueue(a);
-    const visible = spot.space === ctx.space() && (spot.space !== 'street' || Math.hypot(a.x - p.x, a.z - p.z) < SNAP_DIST);
+    const visible = spot.space === ctx.space() && (spot.space !== 'street' || len2(a.x - p.x, a.z - p.z) < SNAP_DIST);
     if (!visible || a.state === 'in' && a.lod < 2) { this.off(a, false); return; }
     let to: Pt | null = null;
     if (a.act!.board) to = this.boardVehicle(a) ?? spot.boardAt ?? null;
@@ -553,7 +554,7 @@ export class AmbientLife implements GameModule {
   private boardVehicle(a: Actor): Pt | null {
     const spot = a.spot!, ctx = this.ctx;
     for (const s of ctx.seats.all()) {
-      if (s.kind !== 'vehicle' || s.occupant || Math.hypot(s.x - spot.x, s.z - spot.z) > 14) continue;
+      if (s.kind !== 'vehicle' || s.occupant || len2(s.x - spot.x, s.z - spot.z) > 14) continue;
       // a vehicle keeps seats for players too: riders never take more than its capacity
       const cabin = ctx.seats.inSpace(s.space);
       if (cabin.filter(x => isNpcOccupant(x.occupant)).length >= seatCapacity(cabin.length)) continue;
@@ -611,7 +612,7 @@ export class AmbientLife implements GameModule {
     if (a.state === 'in' || a.state === 'out') {
       // someone stopping right in front of the player says hello instead of walking through
       // (once in a while: someone standing still on a sidewalk does not stop everybody for good)
-      const dP = Math.hypot(p.x - a.x, p.z - a.z);
+      const dP = len2(p.x - a.x, p.z - a.z);
       a.cool -= dt;
       if (act.pose !== 'route' && dP < 1.5 && a.cool <= 0 && a.spot!.space === this.ctx.space()) { a.pause = 1.6; a.cool = 7; }
       if (a.pause > 0) { a.pause -= dt; a.yaw = turn(a.yaw, Math.atan2(p.x - a.x, p.z - a.z), dt * 6); return; }
@@ -645,7 +646,7 @@ export class AmbientLife implements GameModule {
       return;
     }
     if (act.pose === 'route' && a.route) {
-      const r = a.route, len = Math.hypot(r.bx - r.ax, r.bz - r.az) || 1;
+      const r = a.route, len = len2(r.bx - r.ax, r.bz - r.az) || 1;
       if (a.pause > 0) { a.pause -= dt; return; }
       r.t += r.dir * a.speed * dt / len;
       if (r.t >= 1 || r.t <= 0) { r.t = Math.min(1, Math.max(0, r.t)); r.dir = r.dir > 0 ? -1 : 1; a.pause = 0.6 + this.rand(); }
@@ -655,7 +656,7 @@ export class AmbientLife implements GameModule {
     }
     if (act.pose === 'roam') {
       if (a.pause > 0) { a.pause -= dt; return; }
-      const dx = a.tx - a.x, dz = a.tz - a.z, d = Math.hypot(dx, dz);
+      const dx = a.tx - a.x, dz = a.tz - a.z, d = len2(dx, dz);
       if (d < 0.4) {
         const [x0, z0, x1, z1] = a.spot!.area!;
         a.tx = x0 + this.rand() * (x1 - x0); a.tz = z0 + this.rand() * (z1 - z0); a.pause = this.rand() < 0.4 ? 0.5 + this.rand() * 2 : 0;
@@ -668,7 +669,7 @@ export class AmbientLife implements GameModule {
     // vendors and talkers change gesture every few seconds
     a.x = a.tx; a.z = a.tz;
     if (act.pose === 'stand' && act.clips.length > 1 && (a.clipT -= dt) <= 0) { a.clipT = 4 + this.rand() * 6; a.clip = act.clips[Math.floor(this.rand() * act.clips.length)]; }
-    const dP = Math.hypot(p.x - a.x, p.z - a.z);
+    const dP = len2(p.x - a.x, p.z - a.z);
     const facePlayer = act.pose === 'stand' && dP < 2.8 && a.spot!.space === this.ctx.space();
     a.yaw = turn(a.yaw, facePlayer ? Math.atan2(p.x - a.x, p.z - a.z) : a.tyaw, dt * 4);
   }
@@ -678,7 +679,7 @@ export class AmbientLife implements GameModule {
     while (dist > 0) {
       const b = a.path[a.seg + 1];
       if (!b) return true;
-      const dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
+      const dx = b.x - a.x, dz = b.z - a.z, d = len2(dx, dz);
       if (d > 0.01) a.yaw = turn(a.yaw, Math.atan2(dx, dz), 0.35);
       if (d <= dist) { a.x = b.x; a.z = b.z; a.seg++; dist -= d; if (a.seg >= a.path.length - 1) return true; }
       else { a.x += dx / d * dist; a.z += dz / d * dist; dist = 0; }
@@ -688,7 +689,7 @@ export class AmbientLife implements GameModule {
 
   /** Point of a route at its progress, in a reused object (called every frame for joggers). */
   private routePoint(a: Actor) {
-    const r = a.route!, dx = r.bx - r.ax, dz = r.bz - r.az, len = Math.hypot(dx, dz) || 1, nx = -dz / len, nz = dx / len, o = this.rp;
+    const r = a.route!, dx = r.bx - r.ax, dz = r.bz - r.az, len = len2(dx, dz) || 1, nx = -dz / len, nz = dx / len, o = this.rp;
     o.x = r.ax + dx * r.t + nx * r.lat; o.z = r.az + dz * r.t + nz * r.lat; o.yaw = Math.atan2(dx * r.dir, dz * r.dir);
     return o;
   }
@@ -709,12 +710,12 @@ export class AmbientLife implements GameModule {
     // is drawn, ours or the other systems' (the exterior's fans, vendors and drummers) — docs/PERF_EVENING.md
     const ar = this.world?.arena ?? null;
     const enclosed = insideWalls(ar, cam);
-    const outside = (x: number, z: number) => enclosed && Math.hypot(x - ar!.cx, z - ar!.cz) > WALL_R + 0.3;
+    const outside = (x: number, z: number) => enclosed && len2(x - ar!.cx, z - ar!.cz) > WALL_R + 0.3;
     let n = 0;
     const slot = () => { if (n >= cand.length) cand.push({ d: 0, a: null, f: null, full: false }); return cand[n++]; };
     for (const a of this.actors) {
       if (a.state === 'off' || !this.inView(a, space) || outside(a.x, a.z)) { if (a.body) this.dropBody(a); a.lod = 0; continue; }
-      a.d = Math.hypot(a.x - cam.x, a.z - cam.z);
+      a.d = len2(a.x - cam.x, a.z - cam.z);
       const c = slot(); c.a = a; c.f = null; c.full = a.lod === 2; c.d = a.d * (c.full ? 0.85 : 1);
     }
     let foreignN = 0;
@@ -723,7 +724,7 @@ export class AmbientLife implements GameModule {
       foreignN++;
       const e = f.g.matrixWorld.elements;
       if (outside(e[12], e[14])) { f.lod = 0; f.root.visible = false; continue; }
-      f.d = Math.hypot(e[12] - cam.x, e[14] - cam.z);
+      f.d = len2(e[12] - cam.x, e[14] - cam.z);
       // an owner's weight as it is now (the arena's people leave the spotlight when the bout starts: not 2 s later, at
       // the next scan, while a dozen full bodies stay drawn)
       f.prio = this.prioOf(f.g);
@@ -784,7 +785,7 @@ export class AmbientLife implements GameModule {
     if (act.pose === 'route') return a.pause > 0 ? 'Idle' : a.speed > 2 ? 'Run' : 'Walk';
     if (act.pose === 'roam') return a.pause > 0 ? 'Idle' : 'Run';
     const p = this.ctx.player.pos;
-    if (act.pose === 'stand' && Math.hypot(p.x - a.x, p.z - a.z) < 2.8 && a.spot!.space === this.ctx.space()) return 'Talk';
+    if (act.pose === 'stand' && len2(p.x - a.x, p.z - a.z) < 2.8 && a.spot!.space === this.ctx.space()) return 'Talk';
     return a.clip;
   }
 

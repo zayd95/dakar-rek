@@ -184,9 +184,9 @@ class VehicleLights {
       if (!t.g.visible) { t.moved += dt; continue; }                       // hidden (a pooled proxy, a parked line): dark, no matrix work
       const e = t.g.matrixWorld.elements, x = e[12], z = e[14];             // where it was drawn last frame
       // moving, or standing with its engine running (`userData.engineOn`: the gala road's jam)
-      if (Math.hypot(x - t.x, z - t.z) > 0.02 || t.g.userData.engineOn) t.moved = 0; else t.moved += dt;
+      if ((x - t.x) * (x - t.x) + (z - t.z) * (z - t.z) > 0.0004 || t.g.userData.engineOn) t.moved = 0; else t.moved += dt;
       t.x = x; t.z = z;
-      if (this.lit.length < MAX_VEHICLES && vehicleLit(night, t.moved) && Math.hypot(t.x - cam.x, t.z - cam.z) < 140 && shown(t.g, root)) this.lit.push(t);
+      if (this.lit.length < MAX_VEHICLES && vehicleLit(night, t.moved) && (t.x - cam.x) * (t.x - cam.x) + (t.z - cam.z) * (t.z - cam.z) < 19600 && shown(t.g, root)) this.lit.push(t);
     }
     if (!this.lit.length) { this.pts.visible = false; this.pts.geometry.setDrawRange(0, 0); }
   }

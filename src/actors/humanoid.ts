@@ -477,7 +477,7 @@ export class Humanoid {
     const o = this.group.position;
     // the ground speed from the body's own motion (a jump is not a step): the clips' pace while the gait is not computed
     if (dt > 0) {
-      const step = Math.hypot(o.x - this.lx, o.z - this.lz);
+      const sx = o.x - this.lx, sz = o.z - this.lz, step = Math.sqrt(sx * sx + sz * sz);
       this.v = step < Math.max(0.5, 10 * dt) ? this.v + (step / dt - this.v) * Math.min(1, dt / 0.15) : 0;
     }
     this.lx = o.x; this.lz = o.z;

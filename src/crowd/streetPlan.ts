@@ -1,6 +1,7 @@
 import type { HubId } from '../core/types';
 import type { Collider, RoadEdge } from '../world/types';
 import { curveAt } from '../social/ambient';
+import { len2 } from '../core/math';
 
 /**
  * Street life with reasons (spec 10 Oct, §23 « ajouter des raisons pour lesquelles ils sont là »), as data and pure
@@ -56,9 +57,9 @@ export function edgeWeight(e: RoadEdge, busy: readonly BusyStreet[]): number {
 }
 const onSeg = (e: RoadEdge, ax: number, az: number, bx: number, bz: number) => {
   const inside = (x: number, z: number) => {
-    const dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz), t = ((x - ax) * dx + (z - az) * dz) / (L * L);
+    const dx = bx - ax, dz = bz - az, L = len2(dx, dz), t = ((x - ax) * dx + (z - az) * dz) / (L * L);
     const px = ax + dx * t, pz = az + dz * t;
-    return t >= -0.01 && t <= 1.01 && Math.hypot(x - px, z - pz) < 0.5;
+    return t >= -0.01 && t <= 1.01 && len2(x - px, z - pz) < 0.5;
   };
   return inside(e.ax, e.az) && inside(e.bx, e.bz);
 };
@@ -103,7 +104,7 @@ export interface Lane { e: number; side: 1 | -1; off: number; ax: number; az: nu
 export function pavementLanes(edges: readonly RoadEdge[], cols: readonly Collider[], busy: readonly BusyStreet[] = [], r = 0.32): Lane[] {
   const out: Lane[] = [];
   edges.forEach((e, i) => {
-    const L = Math.hypot(e.bx - e.ax, e.bz - e.az);
+    const L = len2(e.bx - e.ax, e.bz - e.az);
     if (L < CROSSING * 2 + 2) return;
     const dx = (e.bx - e.ax) / L, dz = (e.bz - e.az) / L, rx = -dz, rz = dx;
     for (const side of [1, -1] as const) {
@@ -126,8 +127,8 @@ export function pavementLanes(edges: readonly RoadEdge[], cols: readonly Collide
 export function lanesFrom(lanes: readonly Lane[], x: number, z: number, reach = CROSSING + 7.5): { lane: number; forward: boolean }[] {
   const out: { lane: number; forward: boolean }[] = [];
   lanes.forEach((l, i) => {
-    if (Math.hypot(l.ax - x, l.az - z) < reach) out.push({ lane: i, forward: true });
-    if (Math.hypot(l.bx - x, l.bz - z) < reach) out.push({ lane: i, forward: false });
+    if (len2(l.ax - x, l.az - z) < reach) out.push({ lane: i, forward: true });
+    if (len2(l.bx - x, l.bz - z) < reach) out.push({ lane: i, forward: false });
   });
   return out;
 }
@@ -138,7 +139,7 @@ export function clearWalk(ax: number, az: number, bx: number, bz: number, cols: 
   const x0 = Math.min(ax, bx) - r, x1 = Math.max(ax, bx) + r, z0 = Math.min(az, bz) - r, z1 = Math.max(az, bz) + r;
   const near = cols.filter(c => c.x1 > x0 && c.x0 < x1 && c.z1 > z0 && c.z0 < z1);
   if (!near.length) return true;
-  const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.5));
+  const n = Math.max(1, Math.ceil(len2(bx - ax, bz - az) / 0.5));
   for (let k = 0; k <= n; k++) if (blockedAt(ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n, r, near)) return false;
   return true;
 }
@@ -190,7 +191,7 @@ export function stopSlots(site: { x: number; z: number; dx: number; dz: number; 
   for (let k = 0; k < along.length && out.length < n; k++) {
     const a = along[k], r = k % 2 ? 0.15 : 0.35;
     const x = site.x + site.dx * a + site.rx * r, z = site.z + site.dz * a + site.rz * r;
-    if (blockedAt(x, z, 0.3, cols) || avoid.some(p => Math.hypot(p.x - x, p.z - z) < 1.1)) continue;
+    if (blockedAt(x, z, 0.3, cols) || avoid.some(p => len2(p.x - x, p.z - z) < 1.1)) continue;
     out.push({ x, z, yaw: site.yaw + (k % 3 === 2 ? (a > 0 ? -0.9 : 0.9) : 0) });   // most face the road, some their neighbour
   }
   return out;
@@ -207,7 +208,7 @@ export function crowdSlots(site: { x: number; z: number; dx: number; dz: number;
     for (const r of [0.15, 0.6]) {
       if (out.length >= n) break;
       const x = site.x + site.dx * a + site.rx * r, z = site.z + site.dz * a + site.rz * r;
-      if (blockedAt(x, z, 0.25, cols) || avoid.some(p => Math.hypot(p.x - x, p.z - z) < 1.1)) continue;
+      if (blockedAt(x, z, 0.25, cols) || avoid.some(p => len2(p.x - x, p.z - z) < 1.1)) continue;
       out.push({ x, z, yaw: site.yaw + (r > 0.3 ? (a > 0 ? -0.25 : 0.25) : 0) });   // the back row looks past the front row
     }
   }
@@ -233,7 +234,7 @@ export function groupSpots(fronts: readonly { x: number; z: number }[], lanes: r
     let best: { x: number; z: number; d: number } | null = null;
     for (const l of lanes) {
       const dx = l.bx - l.ax, dz = l.bz - l.az, t = Math.max(0, Math.min(1, ((f.x - l.ax) * dx + (f.z - l.az) * dz) / (l.len * l.len)));
-      const px = l.ax + dx * t, pz = l.az + dz * t, d = Math.hypot(f.x - px, f.z - pz);
+      const px = l.ax + dx * t, pz = l.az + dz * t, d = len2(f.x - px, f.z - pz);
       if (!best || d < best.d) {
         const back = (PAVE.wait - l.off) * 1, ux = dz / l.len, uz = -dx / l.len;       // (ux, uz): the right of a→b
         best = { x: px + ux * l.side * back, z: pz + uz * l.side * back, d };
@@ -241,8 +242,8 @@ export function groupSpots(fronts: readonly { x: number; z: number }[], lanes: r
     }
     if (!best || best.d > 14) continue;
     const people = ring(best.x, best.z, 4, 0.42, Math.PI / 4);
-    if (people.some(p => blockedAt(p.x, p.z, 0.2, cols)) || [...avoid, ...out].some(p => Math.hypot(p.x - best!.x, p.z - best!.z) < 2.2)) continue;
-    if (out.some(o => Math.hypot(o.x - best!.x, o.z - best!.z) < 6)) continue;
+    if (people.some(p => blockedAt(p.x, p.z, 0.2, cols)) || [...avoid, ...out].some(p => len2(p.x - best!.x, p.z - best!.z) < 2.2)) continue;
+    if (out.some(o => len2(o.x - best!.x, o.z - best!.z) < 6)) continue;
     out.push({ x: best.x, z: best.z, ring: people });
   }
   return out;

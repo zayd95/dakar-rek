@@ -46,7 +46,9 @@ export class Pacer {
 
 /** The camera is inside the arena's walls (on the tiers, in the ring): the street outside cannot be seen. */
 export function insideWalls(arena: { cx: number; cz: number } | null | undefined, cam: { x: number; y: number; z: number }): boolean {
-  return !!arena && Math.hypot(cam.x - arena.cx, cam.z - arena.cz) < WALL_R - 0.3 && cam.y < WALL_H + 3;
+  if (!arena) return false;
+  const dx = cam.x - arena.cx, dz = cam.z - arena.cz, r = WALL_R - 0.3;
+  return dx * dx + dz * dz < r * r && cam.y < WALL_H + 3;
 }
 
 /** The update interval of what the street outside does: every frame, or HIDDEN_EVERY while the camera is inside the walls. */

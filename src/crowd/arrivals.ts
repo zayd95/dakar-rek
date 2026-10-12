@@ -13,6 +13,7 @@ import { transport, type StopArrival } from '../transport/module';
 import { Crowd, defaultLook, type CrowdQuality, type CrowdSlot } from './crowd';
 import { routeClear } from './streetPlan';
 import { GALA_DONE_COUNTER, streetAt } from '../arena/program';
+import { len2 } from '../core/math';
 
 /**
  * The arena's street is in its after-gala window (the gala seen to the end, or closing time): the same rule the arena
@@ -74,7 +75,7 @@ export function cabRoutes(g: ArenaGate): CabRoute[] {
 /** Metres a walker still has to go along its path. */
 const left = (w: Walker) => {
   let d = 0, x = w.x, z = w.z;
-  for (let i = w.i + 1; i < w.path.length; i++) { d += Math.hypot(w.path[i].x - x, w.path[i].z - z); x = w.path[i].x; z = w.path[i].z; }
+  for (let i = w.i + 1; i < w.path.length; i++) { d += len2(w.path[i].x - x, w.path[i].z - z); x = w.path[i].x; z = w.path[i].z; }
   return d;
 };
 /** The `n` walkers on their way that are furthest along (least left to walk): they make room first. Pure. */
@@ -204,7 +205,7 @@ export class ArenaArrivals {
 
   update(dt: number) {
     dt *= this.speed;
-    const me = this.ctx.player.pos, near = Math.hypot(me.x - this.gate.x, me.z - this.gate.z) < ARRIVALS.range;
+    const me = this.ctx.player.pos, near = len2(me.x - this.gate.x, me.z - this.gate.z) < ARRIVALS.range;
     // fans come while the evening fills; once the after-gala window opens the exterior pours out instead
     this.active = arenaExterior.active() && near && !afterGalaWindow(this.ctx);
     this.crowd.group.visible = near && !this.hidden;
@@ -230,7 +231,7 @@ export class ArenaArrivals {
       if (!this.crowd.has(w.id)) this.crowd.setPresent(w.id, true);
       const to = w.path[w.i + 1];
       if (!to) { w.on = false; this.crowd.setPresent(w.id, false); this.dropped.arrived++; continue; }
-      const dx = to.x - w.x, dz = to.z - w.z, d = Math.hypot(dx, dz), stepLen = w.speed * dt;
+      const dx = to.x - w.x, dz = to.z - w.z, d = len2(dx, dz), stepLen = w.speed * dt;
       if (d <= stepLen) { w.x = to.x; w.z = to.z; w.i++; }
       else { w.x += (dx / d) * stepLen; w.z += (dz / d) * stepLen; }
       this.crowd.move(w.id, w.x, this.ground(w.x, w.z), w.z, Math.atan2(dx, dz), w.speed);
@@ -278,7 +279,7 @@ export class ArenaArrivals {
       if (!r || !stopServed(e.key) || (!this.active && !e.fans)) continue;
       const live = transport.dwellingAt(e.key);
       const door = live?.vehicle === e.vehicle ? { x: live.x, z: live.z } : r.stop;
-      const walk = Math.hypot(door.x - r.stop.x, door.z - r.stop.z) < 1.5 ? r.walk : this.walkFrom(door);
+      const walk = len2(door.x - r.stop.x, door.z - r.stop.z) < 1.5 ? r.walk : this.walkFrom(door);
       const mine = transport.ridingVehicle() === e.vehicle;
       const k = this.spawn(door, walk, this.span(ARRIVALS.perRapide[size]) + (e.fans ? 2 : 0), 0.55, mine);
       this.dropped.rapide += k; if (e.fans) this.dropped.fans += k;
