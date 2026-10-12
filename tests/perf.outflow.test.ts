@@ -22,6 +22,7 @@ const FRAMES = Number(env.PERF_FRAMES ?? (PERF ? 111 : 30));
 /** Frames of the 23:00 window (the others last as long as the browser check's: 20 to settle and 91 measured). */
 const FRAMES_LAST = Number(env.PERF_FRAMES_LAST ?? (PERF ? 270 : 30));
 const SETTLE = env.PERF_SETTLE ? Number(env.PERF_SETTLE) : undefined;
+/** PERF_WARM: frames before the 17:30 window (240): the paced systems' phases against the window's end move with it. */
 /** PERF_PROF=<moment prefix> writes a V8 CPU profile (100 µs samples) of that moment's frames to PERF_OUT + '.cpuprofile'. */
 const PROF = env.PERF_PROF;
 /** PERF_HEAP=<moment prefix> writes a V8 sampling heap profile (every allocation of that moment's frames, collected or not) to PERF_OUT + '.heapprofile'. */
@@ -58,7 +59,7 @@ describe('the outflow (node, as the browser reads it)', () => {
           else session.post('HeapProfiler.stopSampling', (_e: unknown, r: unknown) => { if (env.PERF_OUT) writeFileSync(env.PERF_OUT + '.heapprofile', JSON.stringify((r as { profile: unknown }).profile)); });
         }
       } : undefined,
-      frames: FRAMES, framesLast: FRAMES_LAST, warm: PERF ? 240 : 30, browser: true, day: DAY, settle: SETTLE,
+      frames: FRAMES, framesLast: FRAMES_LAST, warm: PERF ? Number(env.PERF_WARM ?? 240) : 30, browser: true, day: DAY, settle: SETTLE,
       frame: (moment: MomentName, _n: number, t: FrameTimes, pre: boolean) => {
         const tr = (traces[moment] ??= { upd: [], pre: [], cpu: [], heap: [], top: [] });
         tr.heap.push(Math.round(v8.getHeapStatistics().used_heap_size / 1024));
