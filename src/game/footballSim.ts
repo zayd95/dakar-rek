@@ -483,7 +483,7 @@ export class Match {
   }
 
   private go(p: Player, x: number, z: number, speed: number) {
-    p.tx = clamp(x, -PITCH.ex + 0.4, PITCH.ex - 0.4); p.tz = clamp(z, -PITCH.ez + 0.4, PITCH.ez - 0.4); p.ts = speed;
+    p.tx = clamp(x, -PITCH.ex - 0.6, PITCH.ex + 0.6); p.tz = clamp(z, -PITCH.ez - 0.6, PITCH.ez + 0.6); p.ts = speed;
   }
   /** Free to plan a new contact (the follow-through of the last one done). */
   private free(p: Player) { return !p.kick; }
@@ -541,7 +541,9 @@ export class Match {
     }
     const best = this.bestPass(p);
     const drib = this.dribbleDir(p);
-    const want = p.keeper ? -Infinity : pressure < 2.2 ? -0.6 : p.held > 2.5 ? 0.2 : drib.score + 1.2;
+    // under pressure, a long time on the ball, or deep in a corner: look for the pass (a cut-back)
+    const corner = Math.abs(b.x) > PITCH.hx - 4.5 && b.x * d > 0 && Math.abs(b.z) > PITCH.post + 1;
+    const want = p.keeper ? -Infinity : pressure < 2.2 || corner ? -0.6 : p.held > 2.5 ? 0.2 : drib.score + 1.2;
     if (best && (best.score > want || (this.rand() < 0.15 && best.score > 0.6))) return { kind: 'pass', to: best.p.id, dx: 0, dz: 0, tz: 0 };
     if (p.keeper && !best) {
       // no one free: a long ball up the pitch
@@ -596,7 +598,8 @@ export class Match {
       const qx = b.x + dx * 3, qz = b.z + dz * 3;
       let near = 6;
       for (const o of this.players) if (o.team !== p.team) near = Math.min(near, hyp(o.x - qx, o.z - qz));
-      const edge = Math.abs(qz) > PITCH.hz - 1.5 || Math.abs(qx) > PITCH.hx - 0.5 ? 4 : 0;
+      // never along a line out of play: the touchlines, the goal line beside the goal
+      const edge = Math.abs(qz) > PITCH.hz - 1.5 || Math.abs(qx) > PITCH.hx - 0.5 || (qx * d > PITCH.hx - 3 && Math.abs(qz) > PITCH.post + 1.5 && dx * d > 0 && Math.abs(qz) >= Math.abs(b.z) - 0.3) ? 4 : 0;
       const score = near * 0.6 - Math.abs(a) * 0.5 - edge;
       if (score > best.score) best = { dx, dz, score };
     }
@@ -637,7 +640,7 @@ export class Match {
     p.look = Math.atan2(b.x - p.x, b.z - p.z);
     if (!this.free(p) || p.think > 0) return;
     p.think = 0.35 + this.rand() * 0.3;
-    if (hyp(b.x - p.x, b.z - p.z) > 1.8 || this.rand() > 0.3 + 0.35 * p.skill) return;
+    if (hyp(b.x - p.x, b.z - p.z) > 1.8 || this.rand() > 0.2 + 0.25 * p.skill) return;
     // only when the ball is loose between two touches: his own next touch later than the tackle
     const k = ctl.kick;
     if (k && k.hit < 0 && k.left < 0.32) return;
@@ -799,7 +802,12 @@ export class Match {
     }
     const sp = ballSpeed(b), off = hyp(b.x - spot.x, b.z - spot.z);
     if (!this.free(p)) { this.go(p, b.x, b.z, 2); return; }
-    if (sp > 1.5) { if (this.planTrap(p)) return; this.go(p, p.ix, p.iz, p.pace); return; }
+    if (sp > 3) {
+      // still going: stop it, the first touch toward the spot
+      const ux = off > 0.5 ? (spot.x - b.x) / off : this.dir(p.team), uz = off > 0.5 ? (spot.z - b.z) / off : 0;
+      if (this.planKick(p, 'trap', ux, uz, Math.min(1.6, passSpeed(Math.max(0, off - 0.5), 0)), 0, -1, TRAP_T)) return;
+      this.go(p, p.ix, p.iz, p.pace); return;
+    }
     if (off > 1.0) {
       // play it onto the spot, gently
       if (this.planKick(p, 'touch', (spot.x - b.x) / off, (spot.z - b.z) / off, Math.min(4.5, passSpeed(off, 0)), 0, -1, [0.25, 0.35, 0.5, 0.7, 0.9])) return;
@@ -878,7 +886,7 @@ export class Match {
       if (this.ball.net && kind !== 'pass') return null;
       if (B.h > (kind === 'save' ? HANDS_H : FOOT_H)) continue;
       const X = this.bodyFor(p, kind, B.x, B.z, yaw, lat, V2);
-      if (Math.abs(X.x) > PITCH.ex - 0.3 || Math.abs(X.z) > PITCH.ez - 0.3) continue;
+      if (Math.abs(X.x) > PITCH.ex + 0.7 || Math.abs(X.z) > PITCH.ez + 0.7) continue;
       const need = hyp(X.x - p.x, X.z - p.z) / T;
       if (need > p.pace * 1.08 + 0.4) continue;
       const c = Math.abs(need - (kind === 'shot' || kind === 'pass' ? 0.75 : 1) * sp) + 0.6 * T;
@@ -943,7 +951,7 @@ export class Match {
     if (a > lim) { ax *= lim / a; az *= lim / a; }
     p.vx += ax; p.vz += az;
     p.x += p.vx * dt; p.z += p.vz * dt;
-    p.x = clamp(p.x, -PITCH.ex + 0.3, PITCH.ex - 0.3); p.z = clamp(p.z, -PITCH.ez + 0.3, PITCH.ez - 0.3);
+    p.x = clamp(p.x, -PITCH.ex - 0.8, PITCH.ex + 0.8); p.z = clamp(p.z, -PITCH.ez - 0.8, PITCH.ez + 0.8);
     const v = hyp(p.vx, p.vz), b = this.ball;
     const face = v > 1.3 ? Math.atan2(p.vx, p.vz) : p.look ?? Math.atan2(b.x - p.x, b.z - p.z);
     const rate = (v > 1.3 ? 9 : 5) * dt;

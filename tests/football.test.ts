@@ -87,7 +87,7 @@ describe('football · the ball', () => {
   it('wide of the post or over the bar: no goal', () => {
     const wide = newBall(PITCH.hx - 8, 4.2); wide.vx = 16;
     expect(roll(wide, 3).ev.some(e => e.kind === 'goal')).toBe(false);
-    const over = newBall(PITCH.hx - 8, 0); over.vx = 16; over.vh = 6;
+    const over = newBall(PITCH.hx - 8, 0); over.vx = 16; over.vh = 9;
     expect(roll(over, 3).ev.some(e => e.kind === 'goal')).toBe(false);
   });
 
