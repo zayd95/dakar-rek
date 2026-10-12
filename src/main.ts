@@ -5,6 +5,7 @@ import { GameState } from './core/state';
 import { cityTimeAt, daylight } from './core/clock';
 import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save';
+import { readTestParams } from './core/testParams';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
 import { buildHub } from './world/builder';
@@ -76,6 +77,7 @@ import { StrideUi } from './ui/stride';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
+const TEST = readTestParams(location.hostname, location.search);   // preview-only test links (src/core/testParams.ts)
 
 // ------------------------------------------------------------------ storage (guest save is device-local)
 let store: Storage | null = null;
@@ -133,6 +135,7 @@ const hud = new Hud(document.getElementById('ui')!, input);
 const saved = loadSave(store);
 const isNewGame = !saved;
 const state = new GameState(saved ?? newSave());
+if (TEST.money !== null && state.wallet < TEST.money) state.addMoney(TEST.money - state.wallet, 'Test');
 const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
 remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
@@ -166,7 +169,7 @@ const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
 /** Set once the module context (`ctx`, below) exists. */
 let ctxReady = false;
-let hourOverride: number | null = null;
+let hourOverride: number | null = TEST.hour;
 /** Walkable interiors of this hub, and the one the player is in. */
 let interiors = new Map<string, Interior>();
 let inside: { int: Interior; door: Interactable } | null = null;
