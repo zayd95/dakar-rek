@@ -210,16 +210,22 @@ const gaugesOk = (g, clinch = false) => g.named && !g.lifeBar && !g.legend && g.
   }
 
   // the guard: the opponent's strikes are absorbed for endurance
-  let g = await info(page);
-  if (g?.phase === 'clinch') g = await until(page, i => !i || i.phase !== 'clinch', async () => page.evaluate(() => window.__dakar.duelBreak()), 30000);
-  if (g?.phase === 'fight') {
+  // the opponent may grab before he strikes (an empoignade with no strike to guard): break it and guard again, a few times
+  let g, gd, guards0 = 0;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    g = await info(page);
+    if (g?.phase === 'clinch') g = await until(page, i => !i || i.phase !== 'clinch', async () => page.evaluate(() => window.__dakar.duelBreak()), 30000);
+    if (g?.phase !== 'fight') break;
     await page.evaluate(() => window.__dakar.duelGuard(true));
     // a guard counted during this step is the absorbed strike; the opponent may grab right after it (the slower level 1–2
     // AI often does), so the strike read last can already be another one by the time the wait ends
-    const guards0 = g.score?.player?.guards ?? 0;
-    const gd = await until(page, i => !i || i.phase !== 'fight' || (i.score?.player?.guards ?? 0) > guards0 || (i.lastStrike?.by === 'opponent' && i.lastStrike.result === 'guarded'), async i => { if (i?.phase === 'fight' && i.dist > 1.7) await page.keyboard.down('KeyD'); else await page.keyboard.up('KeyD'); }, 90000);
+    guards0 = g.score?.player?.guards ?? 0;
+    gd = await until(page, i => !i || i.phase !== 'fight' || (i.score?.player?.guards ?? 0) > guards0 || (i.lastStrike?.by === 'opponent' && i.lastStrike.result === 'guarded'), async i => { if (i?.phase === 'fight' && i.dist > 1.7) await page.keyboard.down('KeyD'); else await page.keyboard.up('KeyD'); }, 90000);
     await page.keyboard.up('KeyD');
     await page.evaluate(() => window.__dakar.duelGuard(false));
+    if ((gd?.score?.player?.guards ?? 0) > guards0 || gd?.phase !== 'clinch') break;
+  }
+  if (g?.phase === 'fight' || gd) {
     check('guard: the opponent’s strike is absorbed (guarded) and counted', (gd?.score?.player?.guards ?? 0) > guards0, { phase: gd?.phase, last: gd?.lastStrike, guards: [guards0, gd?.score?.player?.guards] });
   }
 
