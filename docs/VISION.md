@@ -98,7 +98,13 @@ textures, no real brand, logo or product (`docs/ASSET_REGISTER.md`); they are no
 - **Proposal, first:** believable NPC football on the existing field, built on the existing movement architecture
   and kept light. In order: synchronised ball contact (the foot meets the ball), passing, dribbling, shooting, goals
   and celebrations.
-- **Benchmark:** the MonkeyPost video Habib supplied, for natural movement and enjoyable play.
+- **Benchmark:** the MonkeyPost video Habib supplied (12 Oct; a 15 s screen recording of a post presenting a street
+  football game made in Nigeria), for natural movement and enjoyable play. What it shows: five-a-side on a painted
+  concrete court with small goals, between colourful houses and shops, people watching along the walls; an elevated
+  camera that reads the whole court, with closer shots at the goal; the ball kept at the players' feet; a scoreboard
+  with both teams, the score and a short match clock (2 min 30 s halves); a « GOAL! » moment naming the scorer; a
+  training mode; a street nickname and play-style tags for the player. A reference for feel and pace only — another
+  studio's game: learn from it, never copy its art, code or interface. It is not stored in the repository.
 - **Proposal, later:** playable navétanes, once the NPC football is convincing.
 
 ### 5. Rewards and rankings
