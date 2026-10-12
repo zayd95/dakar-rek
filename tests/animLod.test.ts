@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { loadRig } from './rig';
 import { loadHumanoid } from './perfHost';
-import { ANIM_LOD, animLod, buildPoseClips, deriveKneel, fixRunClip, fixSitKnees, setHumanoidView, stripStaticTracks } from '../src/actors/humanoid';
+import { ANIM_LOD, animLod, buildPoseClips, deriveKneel, fixRunClip, fixSitKnees, setAnimShadows, setHumanoidView, stripStaticTracks } from '../src/actors/humanoid';
 
 /** The clips as preloadHumanoid makes them (fixes, Kneel, the poses built in code), on their own copy of the rig. */
 function gameClips() {
@@ -149,6 +149,56 @@ describe('a humanoid under the level of detail', () => {
     expect(updates.mock.calls.length).toBeLessThan(5);                         // (hidden: hardly updated)
     h.animate(1 / 60, 0); arm.rotateX(-2.4);
     expect(arm.quaternion.angleTo(ref)).toBeLessThan(0.3);                     // back to the clip's pose, turned once
+  });
+  it('hidden, once the clip\'s pose is set the mixer is left alone; a new clip, or the body drawn again, wakes it with all the time owed', async () => {
+    setHumanoidView(cam);
+    const { h, updates } = await body(0, -8);
+    h.group.children[0].visible = false;
+    run(h, 90);                                                                // (a second and a half: well past the 0.3 s of a cross-fade)
+    const first = updates.mock.calls.length;
+    expect(first).toBeGreaterThanOrEqual(1);
+    run(h, 120);                                                               // two seconds more, hidden: the pose holds
+    expect(updates.mock.calls.length).toBe(first);
+    h.play('Sit');                                                             // another clip: it is posed again
+    run(h, 30);
+    const posed = updates.mock.calls.length;
+    expect(posed).toBeGreaterThan(first);
+    run(h, 120);
+    expect(updates.mock.calls.length).toBe(posed);
+    updates.mockClear();
+    h.group.children[0].visible = true;                                        // drawn again: updated at once, with everything it owes
+    h.group.updateMatrixWorld();
+    h.animate(1 / 60, 0);
+    expect(updates).toHaveBeenCalledTimes(1);
+    expect(updates.mock.calls[0][0] as number).toBeGreaterThan(2);
+  });
+  it('without a shadow pass (the phone preset) a body out of the camera\'s view is a hidden one; with it, it is only unseen', () => {
+    try {
+      setHumanoidView(cam);
+      setAnimShadows(false);
+      expect(animLod(0, 0, 10, 1, true, false)).toBe(ANIM_LOD.hidden);         // behind the camera
+      expect(animLod(0, 0, -10, 1, true, false)).toBe(0);                      // in view: as ever
+      setAnimShadows(true);
+      expect(animLod(0, 0, 10, 1, true, false)).toBe(ANIM_LOD.unseen);
+    } finally { setAnimShadows(true); }
+  });
+  it('reset: a body used and put back is as a body just made (no clip, rest pose, no gait), whose look can be changed', async () => {
+    setHumanoidView(cam);
+    const used = await body(0, -8), fresh = await body(0, -8);
+    used.h.play('Run'); run(used.h, 40, -3, 3);
+    used.h.play('Sit'); run(used.h, 20);
+    used.h.group.children[0].visible = false; run(used.h, 60);
+    used.h.reset();
+    used.h.group.position.set(0, 0.1, -8); used.h.group.updateMatrixWorld();
+    expect(used.h.clipName).toBe(fresh.h.clipName);
+    expect(used.h.gaitInfo()).toBeNull();
+    const act = (h: unknown) => (h as { mixer: THREE.AnimationMixer & { _actions: THREE.AnimationAction[] } }).mixer._actions.filter(a => a.isRunning()).length;
+    expect(act(used.h)).toBe(0);
+    for (const x of [used.h, fresh.h]) { x.group.children[0].visible = true; x.play('Idle'); x.animate(0.1, 0); x.group.updateMatrixWorld(true); }
+    for (const n of BONES) {
+      const a = used.h.group.getObjectByName(n)!.matrixWorld.elements, b = fresh.h.group.getObjectByName(n)!.matrixWorld.elements;
+      for (let i = 0; i < 16; i++) expect(Math.abs(a[i] - b[i]), `${n}[${i}]`).toBeLessThan(1e-5);
+    }
   });
   it('a body another rig poses after the mixer (fullRate) gets every frame wherever it is', async () => {
     setHumanoidView(cam);

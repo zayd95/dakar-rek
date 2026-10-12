@@ -203,6 +203,8 @@ export class Crowd {
   private byId = new Map<string, Member>();
   private buckets: Record<FigureKind, Bucket>;
   private bodies: NearBody[] = [];
+  /** Bodies given back by people who walked away from the player, ready for the next ones (see dropBody). */
+  private spare: Humanoid[] = [];
   private rand: () => number;
   private excite = new Excitement();
   private lod: { near: number; mid: number; far: number };
@@ -511,13 +513,25 @@ export class Crowd {
       this.bodies.push(this.makeBody(m)); made++;
     }
   }
-  private makeBody(m: Member): NearBody {
-    const h = new Humanoid(personLook(m.look));
+  /** A body of this crowd's own, made and prepared (a skinned clone and its mixer: 2-8 ms), dressed by the caller. */
+  private newBody(look?: PersonLook): Humanoid {
+    const h = new Humanoid(look);
     h.group.userData.noLod = true;
     cullHumanoid(h.group);
     // no shadow pass for the crowd's full bodies (it doubles their ten draw calls): the stands are under the roof's
     // shade, and on the street the crowd's round ground shadow sits under them like under the figures
     h.group.traverse(o => { if ((o as THREE.Mesh).isMesh) o.castShadow = false; });
+    return h;
+  }
+  /** One spare body a frame, until there are enough for the near ones (a person who walks into the near circle finds his body made). */
+  private warmBody() {
+    if (this.lod.near <= 0 || !humanoidReady() || this.spare.length + this.bodies.length >= this.lod.near + 1) return;
+    const h = this.newBody(); h.group.visible = false; this.spare.push(h);
+  }
+  private makeBody(m: Member): NearBody {
+    const look = personLook(m.look), spare = this.spare.pop();
+    const h = spare ?? this.newBody(look);
+    if (spare) spare.setLook(look);
     const root = h.group.children.find(c => c.name === 'Scene') ?? h.group.children[0];
     const bones: NearBody['bones'] = [];
     for (const [s, side] of [['L', 1], ['R', -1]] as const) {
@@ -529,10 +543,11 @@ export class Crowd {
     m.body = b; m.lod = 3; this.layoutDirty = true;
     return b;
   }
-  private dropBody(b: NearBody) {
+  private dropBody(b: NearBody, keep = true) {
     b.m.body = null; this.layoutDirty = true;
     b.h.group.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.isMesh) for (const mat of ([] as THREE.Material[]).concat(mesh.material)) mat.dispose(); });
-    b.h.dispose();
+    // the body is kept for the next person to come near (a few at most), not cloned again
+    if (keep && this.spare.length < this.lod.near + 2) { b.h.reset(); b.h.group.removeFromParent(); b.h.group.visible = false; this.spare.push(b.h); } else b.h.dispose();
   }
 
   // ---------------------------------------------------------------- every frame
@@ -544,6 +559,7 @@ export class Crowd {
     this.fidgets(dt);
     this.nearT -= dt;
     if (this.nearT <= 0) { this.nearT = 0.5; this.pickNear(); }
+    this.warmBody();
     this.lodT -= dt;
     if (this.lodT <= 0 || this.layoutDirty) { this.lodT = 0.25; this.assignLod(); }
     const k = 1 - Math.exp(-dt * 7);
@@ -712,8 +728,10 @@ export class Crowd {
   }
 
   dispose() {
-    for (const b of this.bodies) this.dropBody(b);
+    for (const b of this.bodies) this.dropBody(b, false);
     this.bodies = [];
+    for (const h of this.spare) h.dispose();
+    this.spare.length = 0;
     for (const b of Object.values(this.buckets)) b.dispose();
     this.blobs?.dispose();
     if (this.flags) { this.flags.geometry.dispose(); this.flags.dispose(); }

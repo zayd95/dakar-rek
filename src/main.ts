@@ -21,7 +21,7 @@ import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
-import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
+import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById } from './social/cast';
 import { NpcLife } from './social/npcLife';
@@ -115,6 +115,7 @@ const roomLight = new THREE.PointLight(0xffd9a0, 0, 9, 1.6);
 function applyQuality() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, QUAL[quality].pr));
   renderer.shadowMap.enabled = QUAL[quality].shadow > 0; sun.castShadow = QUAL[quality].shadow > 0;
+  setAnimShadows(QUAL[quality].shadow > 0);                 // (without a shadow pass a body out of the view is unseen: animated like a hidden one)
   if (QUAL[quality].shadow) { sun.shadow.mapSize.set(QUAL[quality].shadow, QUAL[quality].shadow); sun.shadow.map?.dispose(); sun.shadow.map = null; }
   scene.traverse(o => { const m = (o as THREE.Mesh).material as THREE.Material | undefined; if (m) m.needsUpdate = true; });
   try { store?.setItem('dakarrek.quality', quality); } catch { /* */ }
