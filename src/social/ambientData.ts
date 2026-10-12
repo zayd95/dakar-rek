@@ -124,14 +124,30 @@ export const LEGACY_TAGS: readonly { has: string; tags: readonly string[]; hours
 ];
 
 /**
+ * What a full animated humanoid costs the main pass: a draw call for each mesh it shows (body, head, the four details of
+ * the face, hair, shirt, trousers, shoes — about ten) while it is in view, whatever it is doing.
+ */
+export const BODY_CALLS = 10;
+/**
+ * The most draw calls the street's full bodies may take together, all of them in view, by graphics quality: a share of
+ * the evening budget's calls (scripts/check-perf-evening.mjs BUDGET.calls: 180 / 300 / 420, docs/PERF_EVENING.md), the
+ * rest being the hub, the vehicles, the instanced crowds, the arena and the bodies of the crowd lane (`userData.noLod`,
+ * a few near the player). The cap on bodies is `bodiesFor` of it. A frame can draw all of them at once (the nearest ones
+ * first: the shared budget swaps the farthest for the cheap figure), and the check counts the frame it falls on.
+ */
+export const BODY_CALL_BUDGET = { low: 100, medium: 160, high: 260 } as const;
+export const bodiesFor = (calls: number) => Math.floor(calls / BODY_CALLS);
+
+/**
  * Budget per graphics quality. `population`: ambient people simulated at once (walking included); `bodies`: pooled
  * animated humanoids for them; `full`: distance under which a person gets a full animated body; `far`: distance under
  * which the others get the cheap instanced figure; `totalFull`: cap on ALL animated non-player humanoids of the street
- * (ambient people, walkers, placed people, the cast…), the nearest first; `scale`: density factor.
+ * (ambient people, walkers, placed people, the cast…), the nearest first — BODY_CALL_BUDGET / BODY_CALLS; `scale`:
+ * density factor.
  */
 export const AMBIENT_BUDGET = {
-  low: { population: 26, bodies: 6, full: 26, far: 70, totalFull: 12, scale: 0.6, near: 60, plan: 110 },
-  medium: { population: 44, bodies: 10, full: 36, far: 95, totalFull: 20, scale: 0.85, near: 70, plan: 130 },
-  high: { population: 64, bodies: 14, full: 50, far: 120, totalFull: 30, scale: 1, near: 80, plan: 150 },
+  low: { population: 26, bodies: 6, full: 26, far: 70, totalFull: bodiesFor(BODY_CALL_BUDGET.low), scale: 0.6, near: 60, plan: 110 },
+  medium: { population: 44, bodies: 10, full: 36, far: 95, totalFull: bodiesFor(BODY_CALL_BUDGET.medium), scale: 0.85, near: 70, plan: 130 },
+  high: { population: 64, bodies: 14, full: 50, far: 120, totalFull: bodiesFor(BODY_CALL_BUDGET.high), scale: 1, near: 80, plan: 150 },
 } as const;
 export type AmbientQuality = keyof typeof AMBIENT_BUDGET;

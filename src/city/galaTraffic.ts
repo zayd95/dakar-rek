@@ -25,6 +25,7 @@ import {
   jamDepth, jamLevel, jamWindow, motoEvery, motoHandover, motoPillion, motoRoute, motoS, motoTrip, rankRoute, rankS, rankTaxis, rankVisit, rapideHorn, stepRiders, stepSpot,
   walkToMoto, walkToQueue, walkToRank, RANK_CYCLE, RAPIDE_HORN_SLOT, GALA_FLOWS, type GalaGeo, type JamKind, type JamNow, type MotoStops, type MotoTrip, type Pt, type Quality, type RoadDir,
 } from './galaRules';
+import { len2 } from '../core/math';
 
 /**
  * The gala-night road to the arena (Pikine), drawn from src/city/galaRules.ts on the shared clock — the same cars at
@@ -157,7 +158,7 @@ class GalaTraffic {
 
   update(dt: number) {
     const ctx = this.ctx, cam = ctx.camera.position, j = this.geo.junction;
-    const draw = !ctx.inside() && !insideArena(ctx, this.hub) && Math.hypot(cam.x - j.x, cam.z - j.z) < VIEW;
+    const draw = !ctx.inside() && !insideArena(ctx, this.hub) && len2(cam.x - j.x, cam.z - j.z) < VIEW;
     this.group.visible = draw;
     // nothing of the road can be seen (indoors, inside the arena's walls, far away): its state follows the shared clock
     // (events, horns, the moto-taxis' handovers are caught up from the last update) twice a second instead of every frame
@@ -250,12 +251,12 @@ class GalaTraffic {
 
     // solid for drive mode: the jam's cars near the player, and the agent
     const me = ctx.player.pos;
-    this.solid = this.cars.filter(c => Math.hypot(c.x - me.x, c.z - me.z) < SOLID).map(c => ({ x: c.x, z: c.z, yaw: c.yaw, hl: c.hl, hw: c.hw }));
+    this.solid = this.cars.filter(c => len2(c.x - me.x, c.z - me.z) < SOLID).map(c => ({ x: c.x, z: c.z, yaw: c.yaw, hl: c.hl, hw: c.hw }));
     if (on) this.solid.push({ x: this.geo.agent.x, z: this.geo.agent.z, yaw: 0, hl: 0.3, hw: 0.3 });
     this.lastT = t;
   }
 
-  private dist(p: Pt) { const me = this.ctx.player.pos; return Math.hypot(p.x - me.x, p.z - me.z); }
+  private dist(p: Pt) { const me = this.ctx.player.pos; return len2(p.x - me.x, p.z - me.z); }
 
   /** A moto-taxi at its drop-off: arriving, the fan on the back steps off and walks to the queue; leaving, one walks out to it. */
   private motoEvents(m: MotoTrip, t: number) {
@@ -264,16 +265,20 @@ class GalaTraffic {
       const at = motoHandover(m);
       if (this.lastT < at && at <= t && arr.spawn(this.geo.motoStep, walkToQueue(this.geo), 1, 0) > 0) this.stats.fansOut++;
     } else {
-      const path = walkToMoto(this.geo), at = motoHandover(m) - 1.5 - pathLength(this.geo.gateOut, path) / 1.35;
-      if (this.lastT < at && at <= t && arr.spawn(this.geo.gateOut, path, 1, 0) > 0) this.stats.fansIn++;
+      const w = (this.walkMoto ??= this.walkOf(walkToMoto(this.geo))), at = motoHandover(m) - 1.5 - w.len / 1.35;
+      if (this.lastT < at && at <= t && arr.spawn(this.geo.gateOut, w.path, 1, 0) > 0) this.stats.fansIn++;
     }
   }
   /** Two of the crowd walk out of the gate to a rank taxi, reaching it while it waits (they get in). */
   private rankEvents(slot: number, arrive: number, t: number) {
     const arr = arenaArrivalsNow(); if (!arr || !this.now.draw) return;
-    const path = walkToRank(this.geo, slot), at = arrive + 6 - pathLength(this.geo.gateOut, path) / 1.35;
-    if (this.lastT < at && at <= t) this.stats.fansIn += arr.spawn(this.geo.gateOut, path, 2, 0.8);
+    const w = (this.walkRank[slot] ??= this.walkOf(walkToRank(this.geo, slot))), at = arrive + 6 - w.len / 1.35;
+    if (this.lastT < at && at <= t) this.stats.fansIn += arr.spawn(this.geo.gateOut, w.path, 2, 0.8);
   }
+  /** The walks out of the gate to a moto-taxi or a rank taxi, and their lengths: the same all evening (the geometry is the hub's). */
+  private walkMoto: { path: Pt[]; len: number } | null = null;
+  private walkRank: ({ path: Pt[]; len: number } | undefined)[] = [];
+  private walkOf(path: Pt[]) { return { path, len: pathLength(this.geo.gateOut, path) }; }
 
   /** The Ligne 23 evening cars: fans on the rear step beside the apprenti, a toot on the way in. */
   private carRapides(dt: number, t: number, dir: RoadDir | null, size: 'gala' | 'card', seed: number, jump: boolean, draw: boolean) {
@@ -283,7 +288,7 @@ class GalaTraffic {
       const full = c.fans || dir === 'out';
       const riders = (this.riders[ci] ??= []);
       while (humanoidReady() && riders.length < stepRiders('gala', this.quality)) riders.push(this.rider(ci, riders.length));
-      const near = Math.hypot(c.x - cam.x, c.z - cam.z) < NEAR, close = Math.hypot(c.x - g.x, c.z - g.z) < 60;
+      const near = len2(c.x - cam.x, c.z - cam.z) < NEAR, close = len2(c.x - g.x, c.z - g.z) < 60;
       riders.forEach((r, k) => {
         if (r.h.group.parent !== c.body) c.body.add(r.h.group);
         const vis = !!step && k < want && full && near;
@@ -350,7 +355,7 @@ class GalaTraffic {
     let bumps = 0;
     for (let k = 0; k < 30 * 25 && st.x > this.geo.front - 3; k++) if (driveStep(st, { throttle: 1, steer: 0 }, d, 1 / 30, blocked) && Math.abs(st.speed) < 0.5) bumps++;
     const passed = st.x <= this.geo.front - 3, ph = agentPhase(this.now.t, this.now.seed);
-    const by = passed ? null : this.cars.reduce<JamNow | null>((b, c) => (!b || Math.hypot(c.x - st.x, c.z - st.z) < Math.hypot(b.x - st.x, b.z - st.z) ? c : b), null);
+    const by = passed ? null : this.cars.reduce<JamNow | null>((b, c) => (!b || len2(c.x - st.x, c.z - st.z) < len2(b.x - st.x, b.z - st.z) ? c : b), null);
     return { kind, z, from: tail + 6, x: st.x, passed, bumps, go: ph.go, left: Math.round(ph.left * 10) / 10, stoppedBy: by ? `${by.state} car of column ${by.col}` : null };
   }
 
@@ -390,7 +395,7 @@ class GalaTraffic {
 /** Length of a walk from `from` along `path`. */
 function pathLength(from: Pt, path: readonly Pt[]) {
   let d = 0, p = from;
-  for (const q of path) { d += Math.hypot(q.x - p.x, q.z - p.z); p = q; }
+  for (const q of path) { d += len2(q.x - p.x, q.z - p.z); p = q; }
   return d;
 }
 

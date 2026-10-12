@@ -1,5 +1,6 @@
 import { Humanoid, humanoidReady, randomLook } from './humanoid';
 import type { HubWorld } from '../world/types';
+import { len2 } from '../core/math';
 
 /** Local ambient residents, including short work routes on the fishing beach. */
 export class PlacedPeople {
@@ -16,11 +17,11 @@ export class PlacedPeople {
 
   update(dt: number, viewer: { x: number; z: number }, distanceLimit: number) {
     for (const e of this.entries) {
-      e.h.group.visible = Math.hypot(e.h.group.position.x - viewer.x, e.h.group.position.z - viewer.z) <= distanceLimit;
+      e.h.group.visible = len2(e.h.group.position.x - viewer.x, e.h.group.position.z - viewer.z) <= distanceLimit;
       if (!e.h.group.visible) continue;
       if (e.p.walkTo) {
         const dx = e.p.walkTo.x - e.p.x, dz = e.p.walkTo.z - e.p.z;
-        const distance = Math.hypot(dx, dz), travel = Math.max(0.1, distance / 1.1);
+        const distance = len2(dx, dz), travel = Math.max(0.1, distance / 1.1);
         const cycle = (travel + 2) * 2;
         e.phase = (e.phase + dt) % cycle;
         const returning = e.phase >= travel + 2;

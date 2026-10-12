@@ -9,6 +9,7 @@ import { buildClub, CLUB_SITE, shiftClubDay } from './club';
 import { applyStyle } from './style';
 import { nightOf, type Venue, type VenueEnv } from './venue';
 import { PRAYER_TIMES, nextPrayer, prayerAt } from './prayer';
+import { insideWalls } from '../game/pace';
 
 export { PRAYER_TIMES, prayerAt, nextPrayer, prayerPeaks } from './prayer';
 
@@ -81,10 +82,11 @@ export const VenuesModule: GameModule = {
     if (!venues.length) return;
     mats?.setNight(nightOf(ctx.hour()));
     const cam = ctx.camera.position, street = !ctx.inside();
+    const walled = insideWalls(ctx.world()?.arena, cam);                    // inside the arena's walls every venue is out of sight
     for (const v of venues) {
       const c = centreOf(v);
       if (!c) { v.update(dt); continue; }
-      const [run, owed] = venueStep(c.owed, dt, street && !v.space?.() && Math.hypot(cam.x - c.x, cam.z - c.z) > VENUE_NEAR);
+      const [run, owed] = venueStep(c.owed, dt, street && !v.space?.() && (walled || Math.hypot(cam.x - c.x, cam.z - c.z) > VENUE_NEAR));
       c.owed = owed;
       if (run !== null) v.update(run);
     }

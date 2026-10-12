@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Humanoid, humanoidReady, type Clip, type PersonLook } from '../actors/humanoid';
 import { seatClip, sitOriginY, type Seat, type Seats } from '../interact/seats';
+import { len2 } from '../core/math';
 
 /**
  * The people who make a venue live: the cook at the grill, the owner at the counter, the imam, clients at the tables,
@@ -84,7 +85,7 @@ export class Cast {
       else if (player && e.r.yieldR && !e.r.seat) this.yieldTo(e, player, dt);
       // roles may ride a moving parent (a pirogue): its world matrix as last drawn (no walk up the parents every frame)
       const g = e.h.group, p = g.parent ? WP.copy(g.position).applyMatrix4(g.parent.matrixWorld) : WP.copy(g.position);
-      const vis = active && e.shown && Math.hypot(p.x - viewer.x, p.z - viewer.z) <= limit;
+      const vis = active && e.shown && len2(p.x - viewer.x, p.z - viewer.z) <= limit;
       e.h.group.visible = vis;
       if (vis) e.h.animate(dt, 0);
     }
@@ -92,7 +93,7 @@ export class Cast {
   /** Step aside from the player (to `yieldR` from them), then back to the role's own spot. */
   private yieldTo(e: { r: Role; h: Humanoid }, p: { x: number; z: number }, dt: number) {
     const hx = e.r.x ?? 0, hz = e.r.z ?? 0, R = e.r.yieldR!;
-    const dx = hx - p.x, dz = hz - p.z, d = Math.hypot(dx, dz);
+    const dx = hx - p.x, dz = hz - p.z, d = len2(dx, dz);
     let tx = hx, tz = hz;
     if (d < R) { const ux = d < 1e-3 ? 1 : dx / d, uz = d < 1e-3 ? 0 : dz / d; tx = p.x + ux * R; tz = p.z + uz * R; }
     const g = e.h.group.position, a = Math.min(1, dt * 5);
@@ -103,7 +104,7 @@ export class Cast {
   private step(e: { r: Role; h: Humanoid }, dt: number) {
     const w = this.walks.get(e.r.id)!, g = e.h.group.position, to = w.path[0];
     if (!to) { e.h.hold = w.clip; e.h.group.rotation.y = w.yaw; this.walks.delete(e.r.id); return; }
-    const dx = to.x - g.x, dz = to.z - g.z, d = Math.hypot(dx, dz), s = w.speed * dt;
+    const dx = to.x - g.x, dz = to.z - g.z, d = len2(dx, dz), s = w.speed * dt;
     if (d <= s) { g.x = to.x; g.z = to.z; w.path.shift(); return; }
     g.x += (dx / d) * s; g.z += (dz / d) * s; e.h.group.rotation.y = Math.atan2(dx, dz); e.h.hold = 'Walk';
   }

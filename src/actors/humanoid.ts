@@ -292,6 +292,15 @@ function boneList(root: THREE.Object3D) { const out: THREE.Object3D[] = []; root
 const view = { on: false, x: 0, y: 0, z: 0, frustum: new THREE.Frustum() };
 let madeHumanoids = 0;
 const _viewM = new THREE.Matrix4(), _bodyS = new THREE.Sphere();
+/** The squared distance from the camera of the body `animLod` just looked at when it is drawn and in view, else −1. */
+let seenD2 = -1;
+/**
+ * The details of a face (the eyes, the brows, the lips: four meshes, four draw calls on a body that otherwise costs six)
+ * are shown to a body within this distance of the camera (m) and put away beyond it plus FACE_SLACK: at 14 m they are
+ * a pixel or two tall (the eye whites are 11 cm wide). The head stays, in its skin. Bodies animated at every frame
+ * whatever their distance (the player's, the wrestlers of a strike rig: `fullRate`) keep them.
+ */
+export const FACE_NEAR = 14, FACE_SLACK = 1.5;
 /**
  * The camera as it was last rendered (its matrices are up to date after the render): the bodies' animation detail this
  * frame. Null switches the level of detail off.
@@ -309,11 +318,13 @@ export function setHumanoidView(camera: THREE.Camera | null) {
  * rate (updates a second) without the gait. `near`: it had the gait last frame (it keeps it a little farther).
  */
 export function animLod(x: number, y: number, z: number, k: number, drawn: boolean, near: boolean): number {
+  seenD2 = -1;
   if (!view.on) return 0;
   if (!drawn) return ANIM_LOD.hidden;
   _bodyS.center.set(x, y + 0.95 * k, z); _bodyS.radius = 1.35 * k;                  // round the standing or seated body
   if (!view.frustum.intersectsSphere(_bodyS)) return ANIM_LOD.unseen;
   const dx = x - view.x, dy = y - view.y, dz = z - view.z, d2 = dx * dx + dy * dy + dz * dz;
+  seenD2 = d2;
   const g = ANIM_LOD.gaitNear + (near ? ANIM_LOD.gaitSlack : 0);
   if (d2 < g * g) return 0;
   return d2 < ANIM_LOD.farFrom * ANIM_LOD.farFrom ? ANIM_LOD.mid : ANIM_LOD.far;
@@ -329,6 +340,9 @@ export class Humanoid {
   private current: THREE.AnimationAction | null = null;
   private root: THREE.Object3D;
   private parts = new Map<string, THREE.Mesh>();
+  /** The meshes of the face's details (eyes, brows, lips) and whether they are shown (FACE_NEAR). */
+  private face: THREE.Mesh[] = [];
+  private faceOn = true;
   private skinMat: THREE.MeshLambertMaterial;
   private lipsMat = new THREE.MeshLambertMaterial({ color: 0x3a1a12 });
   private beardMat = new THREE.MeshLambertMaterial({ color: 0x1a1414 });
@@ -369,6 +383,7 @@ export class Humanoid {
       if (!m.isMesh) return;
       m.castShadow = true; m.frustumCulled = false;
       const key = CLOTH.find(n => m.name.startsWith(n));
+      if (/^Head\w*_\d+$/.test(m.name)) this.face.push(m);
       if (m.morphTargetDictionary) this.morphed.push(m);
       const src = m.material as THREE.MeshStandardMaterial;
       if (key) { this.parts.set(key, m); if (key.startsWith('Hair_')) m.material = hair; if (key === 'Beard') m.material = this.beardMat; }
@@ -462,13 +477,14 @@ export class Humanoid {
     const o = this.group.position;
     // the ground speed from the body's own motion (a jump is not a step): the clips' pace while the gait is not computed
     if (dt > 0) {
-      const step = Math.hypot(o.x - this.lx, o.z - this.lz);
+      const sx = o.x - this.lx, sz = o.z - this.lz, step = Math.sqrt(sx * sx + sz * sz);
       this.v = step < Math.max(0.5, 10 * dt) ? this.v + (step / dt - this.v) * Math.min(1, dt / 0.15) : 0;
     }
     this.lx = o.x; this.lz = o.z;
     // how much work this body gets (ANIM_LOD): where it was last drawn, seen or not
     const m = this.group.matrixWorld.elements, wasNear = this.near;
     const lod = this.fullRate ? 0 : animLod(m[12], m[13], m[14], this.group.scale.x, this.drawn(), wasNear);
+    if (!this.fullRate && seenD2 >= 0) this.showFace(seenD2);
     if (lod === ANIM_LOD.unseen || lod === ANIM_LOD.hidden) this.gaitW = 0;  // nobody sees it go: no fade needed
     this.near = lod === 0;
     if (held) { this.play(held, 0.2); this.gaitW = Math.max(0, this.gaitW - dt / 0.2); }
@@ -504,6 +520,15 @@ export class Humanoid {
       this.gaitRig?.apply(this.gait!, w);
     }
   }
+  /** The face's details for a body `d2` (squared m) from the camera: shown within FACE_NEAR, put away beyond FACE_NEAR + FACE_SLACK. */
+  private showFace(d2: number) {
+    const on = d2 < (this.faceOn ? FACE_NEAR + FACE_SLACK : FACE_NEAR) ** 2;
+    if (on === this.faceOn) return;
+    this.faceOn = on;
+    for (const m of this.face) m.visible = on;
+  }
+  /** Whether the face's details are shown now (checks). */
+  faceShown() { return this.faceOn; }
   /** Drawn as far as its owners are concerned: its skinned scene (a far figure may stand in for it), its group and every parent. */
   private drawn() {
     if (!this.root.visible) return false;

@@ -1,7 +1,7 @@
 import type { GameCtx, GameModule } from '../game/modules';
 import type { HubWorld } from '../world/types';
-import { WALL_H, WALL_R } from '../world/geew';
 import { LIVE_CROWDS } from './crowd';
+import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import { ArenaArrivals } from './arrivals';
 import { StreetLife } from './street';
 import { REACTION_KINDS, type ReactionKind } from './reactions';
@@ -13,9 +13,10 @@ let street: StreetLife | null = null;
 let hubNow: HubWorld | null = null;
 /** The camera is inside the arena's walls (on the tiers, in the ring): the street outside cannot be seen. */
 export function insideArena(ctx: GameCtx, hub: HubWorld | null): boolean {
-  const a = hub?.arena, c = ctx.camera.position;
-  return !!a && Math.hypot(c.x - a.cx, c.z - a.cz) < WALL_R - 0.3 && c.y < WALL_H + 3;
+  return insideWalls(hub?.arena, ctx.camera.position);
 }
+/** What the street and the arrivals are owed while the walls hide them (src/game/pace.ts). */
+const owed = new Pace();
 
 /**
  * The crowd lane's module (docs/CROWD.md). Owners make their own crowds (the arena's stands in src/arena/module.ts); this
@@ -28,6 +29,7 @@ export const crowdModule: GameModule = {
     ctx.people.addBodies(() => [...LIVE_CROWDS].filter(c => c.group.visible).flatMap(c => c.people()));
   },
   hubLoaded(ctx, hub) {
+    owed.reset();
     arrivals?.dispose(); arrivals = null;
     street?.dispose(); street = null;
     hubNow = hub;
@@ -39,10 +41,13 @@ export const crowdModule: GameModule = {
     // keep living; the walls hide them anyway and the frame saves their draw calls)
     const enclosed = insideArena(ctx, hubNow);
     const away = ctx.mode() === 'scene' || !!ctx.inside() || enclosed;
-    arrivals?.update(dt);
-    street?.update(dt);
     if (street) street.crowd.group.visible = !away;
     if (arrivals) arrivals.hidden = enclosed;
+    // inside the walls nothing of them is seen: they live on at 4 Hz, with the time gone by (a long frame does as much)
+    const run = owed.step(dt, enclosed ? HIDDEN_EVERY : 0);
+    if (run === null) return;
+    arrivals?.update(run);
+    street?.update(run);
   },
   debug: () => ({
     street: {

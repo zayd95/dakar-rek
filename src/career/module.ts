@@ -71,11 +71,14 @@ export const careerTonight = (): { kind: 'gala' | 'title'; opp: string } | null 
 
 /** The city's ladder on a day (src/career/roster.ts), kept until a bout or a watched gala changes it. */
 const ladders = new Map<number, Ladder>();
-let ladderSig = '';
+/** What the cached ladders were made from: the bouts and the watched galas (compared field by field, no string built: the arena asks every frame). */
+const ladderSig = { bouts: -1, at: 0, galas: 0, day: 0, winner: '' };
 function ladder(ctx: GameCtx, day = ctx.day()): Ladder {
   const c = career(ctx), last = c.bouts[c.bouts.length - 1];
-  const g = c.galas?.[c.galas.length - 1], sig = `${c.bouts.length}|${last?.at ?? 0}|${c.galas?.length ?? 0}|${g?.day ?? 0}|${g?.winner ?? ''}`;
-  if (sig !== ladderSig) { ladderSig = sig; ladders.clear(); }
+  const g = c.galas?.[c.galas.length - 1], S = ladderSig, at = last?.at ?? 0, galas = c.galas?.length ?? 0, gd = g?.day ?? 0, gw = g?.winner ?? '';
+  if (S.bouts !== c.bouts.length || S.at !== at || S.galas !== galas || S.day !== gd || S.winner !== gw) {
+    S.bouts = c.bouts.length; S.at = at; S.galas = galas; S.day = gd; S.winner = gw; ladders.clear();
+  }
   let l = ladders.get(day);
   if (!l) { if (ladders.size >= 4) ladders.clear(); l = ladderAt(day, c.bouts, c.galas ?? []); ladders.set(day, l); }
   return l;

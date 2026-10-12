@@ -250,3 +250,87 @@ city, not the transport's. The kit's other vehicles keep their one-pass models (
 and red shirts get off, others get on, the heads and hats the same as before; the cars far from the camera (far model);
 `module:transport` over a few arrivals (`__dakar.perfOn()` and `perf()`). The first draw of each new passenger set uploads its buffer
 (about 370 kB) once, as before.
+
+## Wave 5: headroom (`fix/w5-headroom`)
+
+The wave-5 candidate (784d959) passed the browser check, but not by much: low 19:00 bout 3.34 then 4.25 ms (over once), low
+23:00 3.6 and 3.85, low 17:30 3.3 (6.97 once, the transport hitch); medium 23:00 286 then 302 calls against 300. The aim of
+this lane was about 15 % to spare at every moment and preset (low at most about 3.4 ms), with nothing removed, the gameplay
+unchanged and nothing near the player drawn worse.
+
+**What the check's number is, and how node reproduces it** (`tests/perfHost.ts`, `PERF=1 PERF_BROWSER=1 nice -n 19 npx vitest run tests/perf.frame.test.ts`):
+
+- The loop caps `dt` at 0.1 s and a software-rendered frame lasts 0.2-1.4 s, so the check's frames are 0.1 s long. A bout
+  advances six 1/60 s steps a frame and the animation tiers of 20 and 10 Hz (`ANIM_LOD`) update at every frame: work that is
+  cheap per second at 60 fps weighs six times more per frame. `PERF_BROWSER=1` plays that way, with the 19:00 window running on past
+  the end of the bout (as the check's 91 frames do); the host reads the profiler as the check does (20 settled frames, then
+  windows of 90 frames, each section's moving average, the draw calls of the last frame) and leaves out frames during which
+  the OS preempted the process (`PERF_KEEP=1` keeps them).
+- The reading is the average at the end of the window: 92 % old + 8 % new at each frame, so the last twelve frames carry 63 % of it.
+  One frame of 20 ms near the end adds 1.6 ms to the reading; a one-time cost matters as much as the mean.
+- The bout lasts 8.3-10.5 s depending on the city day (it is seeded by hub and day; the check plays the next Friday, day = 4 mod 7,
+  `PERF_DAY=<n>`), so the 19:00 window usually ends in the result phase, with the fête starting. `PERF_STOP="19:00 bout"` stops
+  after that moment.
+- On this shared machine two identical runs differ by 0.3-0.5 ms in one reading. Compare builds interleaved, over several
+  days, as in the tables below. Node's update times are about those of the browser's profiler at the bout and 1.1-1.4 times
+  lower at 17:30 and 23:00 (the browser's rendering threads share the cores); node's call counts run higher (20-25 % on medium and high).
+
+What changed (each commit has the details and its tests):
+
+| Change | Where |
+| --- | --- |
+| **The street outside the walls at 4 Hz while the camera is inside them** (seated on the tiers, in the ring): its walkers, traffic and life, the cast, the placed people, the apprentices, the crowd module (street and arrivals), the exterior's fans and vendors, the venues, the car rapide line (when no trip), the ambient life and the arena's own party. Each is called every `HIDDEN_EVERY` = 0.25 s with the time gone by, as a long frame already does, and at every frame again the moment the camera leaves the walls | `src/game/pace.ts`, `src/main.ts` (`pacer`), `src/crowd/module.ts`, `src/arena/exterior.ts`, `src/venues/index.ts`, `src/transport/module.ts`, `src/social/ambientLife.ts`, `src/arena/module.ts` |
+| **Arena show: nothing rebuilt that does not change.** The watched bout's pilot reads a small view written in place (`LambDuel.pilotView`, no `info()` object at each of the six steps); the show hears of a phase change once; the gala card builds its text when it changes; the people and the stands follow at 4 Hz while the walls hide them from a player outside; a vendor's offers are built once | `src/lamb/duel.ts`, `src/arena/bout.ts`, `src/arena/module.ts`, `src/arena/people.ts`, `src/career/module.ts` |
+| **Draw calls.** The street's full bodies are capped by calls, not by a count: `BODY_CALL_BUDGET` 100 / 160 / 260 over `BODY_CALLS` 10, so 10 / 16 / 26 bodies (was 12 / 20 / 30); the farthest are swapped for the cheap figure first, as before. A body farther than 14 m from the camera puts away the details of its face (eyes, brows, lips: 4 of its 10 meshes, a pixel or two tall; the head stays in its skin) and shows them again within 14 m (hysteresis 1.5 m); the player's own body and the strike rig's keep them | `src/social/ambientData.ts`, `src/actors/humanoid.ts` |
+| **The first long route of the evening.** The first person to leave a spot asks for a route over the whole sidewalk graph: every stretch was tested against the hub's 778 colliders at once, on code that had never run (20-28 ms in one frame, at the end of the 17:30 window on every city day tried). The segment test is plain loops over one list (`collidersClear`, compared with the first implementation on 4000 segments); the open graph is made per node when a search first reaches it (the routes are the same node for node: `tests/planPath.test.ts` keeps the first implementation as the reference); eight routes are planned with a test of their own when the ambient life first builds its places (`warmPaths`). The ambient life's share of that frame: 20-26 ms → 4-5 ms | `src/social/routines.ts`, `src/social/ambientLife.ts` |
+| **planPath.** The open graph made once per clear test (not at each call), the nearest node taken from a heap (ordered by distance then node), a route copying only the lists it adds an edge to | `src/social/routines.ts` |
+| **Posters.** A new picture (a bout result, the evening's closing) is drawn in three steps, one a frame, and given to the texture once whole; the poll is once a second; while the camera is inside the walls (no poster in sight from there) a new picture waits. The first picture is still drawn when the hub loads | `src/arena/posters.ts` |
+| **Small things asked for at every frame.** The city clock keeps the time of a millisecond (its label is read lazily); `Math.hypot` (40-70 ns) replaced by `len2` in the per-frame distance loops; the gate's walks measured once; the stops found once per hub; the stands counted twice a second; `findNearest` and the follow camera's canopy test compare squares; collider scans of the street's planning without closures | `src/core/clock.ts`, `src/core/math.ts`, `src/city/galaTraffic.ts`, `src/transport/module.ts`, `src/crowd/*.ts`, `src/social/*.ts`, `src/main.ts` |
+| **The host.** `PERF_BROWSER`, `PERF_DAY`, `PERF_STOP`, `PERF_KEEP`, the check's windows and readings, the main loop's `Pacer` mirrored | `tests/perfHost.ts`, `tests/perf.frame.test.ts` |
+
+Before → after, same machine, builds run one after the other for each city day (low: 16 Fridays, one window of 111 frames each;
+medium and high: 4 Fridays), update ms of the frame on average, the check's reading (the profiler's moving average at the end of
+the first window: mean, then 90th percentile and worst), draw calls of the main pass at the last frame (most seen) and the most
+seen in any sampled frame:
+
+| Preset | Moment | Windows | Frame ms | Reading ms | Reading p90 / worst | Calls at the last frame | Peak calls |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| low | 17:30 arrivals | 16 | 2.93 → 2.53 | 2.72 → 2.33 | 3.57 / 3.73 → 2.75 / 2.82 | 117 (118) → 105 (108) | 131 → 115 |
+| low | 19:00 bout | 16 | 3.34 → 2.53 | 3.42 → 2.71 | 4.50 / 5.04 → 3.35 / 3.43 | 119 (120) → 99 (103) | 131 → 110 |
+| low | 23:00 outflow | 16 | 3.55 → 3.09 | 3.48 → 3.10 | 4.31 / 4.35 → 3.87 / 3.99 | 177 (178) → 145 (147) | 180 → 149 |
+| medium | 17:30 arrivals | 4 | 4.30 → 3.92 | 3.83 → 3.76 | worst 4.17 → 4.19 | 353 (362) → 253 (262) | 366 → 262 |
+| medium | 19:00 bout | 4 | 3.90 → 3.02 | 4.24 → 3.27 | worst 5.16 → 3.64 | 181 (192) → 152 (157) | 203 → 169 |
+| medium | 23:00 outflow | 4 | 4.71 → 4.16 | 4.54 → 3.95 | worst 4.85 → 4.20 | 299 (309) → 219 (225) | 315 → 231 |
+| high | 17:30 arrivals | 4 | 4.37 → 4.47 | 4.07 → 4.19 | worst 4.53 → 4.69 | 434 (452) → 322 (330) | 452 → 330 |
+| high | 19:00 bout | 4 | 4.44 → 3.42 | 4.74 → 3.44 | worst 5.88 → 3.82 | 220 (238) → 180 (190) | 262 → 202 |
+| high | 23:00 outflow | 4 | 5.38 → 4.72 | 5.02 → 4.53 | worst 5.77 → 4.83 | 385 (394) → 296 (306) | 405 → 321 |
+
+(The machine was busy during these runs: absolute values are higher than in a quiet run, where the bout on low read
+2.87 → 2.11 ms on average, worst of ten seeds 3.70 → 2.63.) What is left of the update, low,
+bout: `module:arena` 1.3 ms of 2.7 (the stands' crowd 0.4-0.5, the bout's advance 0.3, the fans on the sand 0.15, the party 0.1);
+23:00: the exterior's fans and vendors 0.4, the ambient life 0.4 (half of it in bursts: its half-second reconcile, the people leaving), the crowd
+module 0.3, the gala road 0.27, `module:arena` 0.29, the cast 0.22, the venues 0.19; every body in full detail within 30 m costs
+roughly 25-50 µs of mixer and gait.
+
+**For the browser check:**
+
+- Standing up from the tiers (the 23:00 moment): the paced systems catch up in the first frame outside the walls with what they are
+  owed (up to 0.3 s in one step); the walkers, the queue, the cars should look continuous.
+- Faces beyond 14 m: no eyes, brows or lips on a figure that walks away from the camera (they come back within 14 m); on a phone
+  (390 x 844, 58 degrees) a body at 14 m is about 100 px tall and an eye white 6 px wide.
+- Fewer full bodies in a dense street (10 / 16 / 26): the farthest of them are figures a little sooner.
+- The poster of the result appears 3 frames after the bout ends, and only once the camera is outside the walls.
+- One frame of about 10-25 ms, the fourth after the hub's load (`warmPaths`), where it was the first leaving person's frame.
+- Node cannot see: the browser's `rest of update` (0.65-0.8 ms there against 0.2 here: the DOM), canvas and texture uploads
+  (the posters' first picture), shader compiles, GC pauses, the rendering threads' share of the cores.
+
+**Not done.**
+
+- The stands' crowd (`Crowd.update` over the members that are easing, 0.4-0.5 ms at the bout) could update the far, instanced
+  members every other frame; the cheering waves would step at 30 Hz at 60 fps and 5 Hz in the check. The hidden animation tier
+  (34 bodies at 2 Hz on low at 23:00) could go to 1 Hz (about 0.08 ms).
+- Cold first runs of the same kind as the route's: the first play of a clip by a body (1-5 ms: the mixer binds its tracks), a new
+  vehicle variant of the arena streets' flow (4-6 ms: one each time a taxi, sedan or moto of a new colour spawns; the fixed frame 32 of
+  the 23:00 window is the first of them), the car rapide's passenger changes (2-8 ms). They could be built ahead, a few a frame, after the
+  hub's load.
+- The ambient life's half-second `reconcile` (spawns, leaves, demand: 2-4 ms in a frame at 23:00, 17 % of the frames).

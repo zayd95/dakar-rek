@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 import type { GameCtx, GameModule, GameMode } from '../src/game/modules';
 import type { HubWorld } from '../src/world/types';
 import type { Seat } from '../src/interact/seats';
+import { Pacer, hiddenEvery } from '../src/game/pace';
 
 export type Quality = 'low' | 'medium' | 'high';
 export const MOMENTS = ['17:30 arrivals', '19:00 bout', '23:00 outflow'] as const;
@@ -161,6 +162,17 @@ export function countCalls(scene: THREE.Scene, extra: THREE.Object3D, camera: TH
   return { calls: main, shadow: shade, by, byShadow };
 }
 
+type Proc = { cpuUsage(): { user: number; system: number }; resourceUsage?: () => { involuntaryContextSwitches: number }; env: Record<string, string | undefined> };
+/**
+ * Preemptions: how many times the OS took the process off its core against its will (a busy machine, other processes
+ * sharing the cores). A frame during which that happened carries milliseconds that are not its own; `PerfHost.frame`
+ * reports it (`preempted`) and the run leaves such frames out of its means and profiler averages (PERF_KEEP=1 keeps them).
+ */
+const preemptions: () => number = (() => {
+  const p = (globalThis as { process?: Proc }).process;
+  if (!p?.resourceUsage) return () => 0;
+  return () => p.resourceUsage!().involuntaryContextSwitches;
+})();
 /** The process's CPU time (ms), or wall time where there is no process (never in node). */
 const cpuNow = () => { const p = (globalThis as { process?: { cpuUsage(): { user: number; system: number } } }).process; if (!p) return performance.now(); const u = p.cpuUsage(); return (u.user + u.system) / 1000; };
 
@@ -211,12 +223,21 @@ function inert<T>(own: Record<string, unknown> = {}): T {
 
 export interface FrameTimes { [section: string]: number }
 
+/** One window of the browser check: the sum of the sections' moving averages and the draw calls at its last frame. */
+export interface WindowReading { update: number; calls: number; sections: Record<string, number>; by: Record<string, number> }
+/** The main loop's profiler mark (src/main.ts `profMark`): a moving average, 92 % of the old value and 8 % of the new. */
+export const profEma = (ema: Record<string, number>, name: string, v: number) => { const o = ema[name]; ema[name] = o === undefined ? v : o * 0.92 + v * 0.08; };
+/** The window length of the browser check (about 90 frames). */
+export const WINDOW = 90;
+
 export class PerfHost {
   readonly scene = new THREE.Scene();
   readonly extra = new THREE.Group();
   readonly camera: THREE.PerspectiveCamera;
   readonly shadowCam = new THREE.OrthographicCamera(-60, 60, 60, -60, 0.5, 220);
   readonly pos = new THREE.Vector3();
+  /** What the street's systems are owed while the arena's walls hide them (main.ts `pacer`). */
+  private readonly pacer = new Pacer();
   facing = 0; speed = 0;
   hour = 12; day = GALA_DAY;
   mode: GameMode = 'play';
@@ -329,7 +350,7 @@ export class PerfHost {
 
   /** One frame of main.ts frameStep (without input, presence, chat, the economy and the HUD). `times`: per section (ms). */
   frame(dt: number, times?: FrameTimes) {
-    const ctx = this.ctx, S = this.sys, now = performance.now.bind(performance);
+    const ctx = this.ctx, S = this.sys, now = performance.now.bind(performance), pre0 = preemptions();
     this.now += dt * 1000;
     const cpu0 = times ? cpuNow() : 0;
     S.view?.(this.camera);                                   // the camera as last rendered: the humanoids' animation detail
@@ -344,13 +365,16 @@ export class PerfHost {
     } else this.speed *= 0.8;
     if (body) { body.group.visible = true; body.group.position.copy(this.pos); body.group.rotation.y = this.facing; body.animate(dt, this.speed); }
     let t = now();
-    S.npcLife.update(dt, this.pos, this.camera.position);
+    // (the street's systems wait while the camera is inside the arena's walls: main.ts frameStep, src/game/pace.ts)
+    const hidden = hiddenEvery(this.world.arena, this.camera.position), pacer = this.pacer;
+    { const run = pacer.step('cast', dt, hidden); if (run !== null) S.npcLife.update(run, this.pos, this.camera.position); }
     t = mark('npcLife', t);
-    S.crowd.update(dt); S.traffic.update(dt); S.life?.update(dt); this.world.tick(dt);
+    { const run = pacer.step('walkers', dt, hidden); if (run !== null) { S.crowd.update(run); S.traffic.update(run); S.life?.update(run); } }
+    this.world.tick(dt);
     t = mark('walkers+traffic+life+world', t);
-    S.ambient.update(dt, this.camera.position, this.q === 'low' ? 55 : 90);
+    { const run = pacer.step('placed', dt, hidden); if (run !== null) S.ambient.update(run, this.camera.position, this.q === 'low' ? 55 : 90); }
     t = mark('ambient(npc.ts)', t);
-    for (const a of S.apprentices) { const wp = a.h.group.getWorldPosition(new THREE.Vector3()); a.update(dt, Math.hypot(wp.x - this.pos.x, wp.z - this.pos.z) < 22); }
+    { const run = pacer.step('apprentices', dt, hidden); if (run !== null) for (const a of S.apprentices) { const wp = a.h.group.getWorldPosition(new THREE.Vector3()); a.update(run, Math.hypot(wp.x - this.pos.x, wp.z - this.pos.z) < 22); } }
     if (this.mode === 'play') S.interactions.update(ctx.space(), this.pos.x, this.pos.z, this.facing);
     const drag = { yaw: 0, pitch: 0 };
     if (!this.modules.some(m => m.camera?.(ctx, dt, drag))) {
@@ -360,6 +384,7 @@ export class PerfHost {
     const d = S.daylight(this.hour), night = 1 - Math.min(1, Math.max(0, d * 3.2));
     this.world.lampGlow.visible = night > 0.3;
     t = mark('rest of update', t);
+    this.preempted = preemptions() > pre0;                 // (the update's own span: the render prep below is not timed as update)
     if (times) times['cpu'] = (times['cpu'] ?? 0) + cpuNow() - cpu0;     // the update's CPU time (preemption left out)
     // renderer.render: every world matrix, the scene's hook (the vehicle lamps), the LODs' levels for this camera
     this.scene.updateMatrixWorld();
@@ -367,6 +392,8 @@ export class PerfHost {
     updateLods(this.scene, this.camera);
     if (times) times['render prep (not update)'] = (times['render prep (not update)'] ?? 0) + now() - t;
   }
+  /** The last frame ran while the OS took the process off its core: its timings are not its own. */
+  preempted = false;
 
   /** The sun's (or the moon's) shadow camera of main.ts updateLighting, round the player; null on low (no shadow map). */
   shadowCamera(): THREE.Camera | null {
@@ -392,6 +419,12 @@ export interface MomentResult {
   calls: number; shadow: number; by: Record<string, number>; byShadow: Record<string, number>;
   /** The most draw calls of the main pass seen on a sample, and per group (a moment's spike: a body budget catching up). */
   callsMax: number; byMax: Record<string, number>;
+  /** The browser check's readings (scripts/check-perf-evening.mjs): windows of 90 frames, each with a profiler reset at
+   *  its start (`profMark`'s moving average: old × 0.92 + new × 0.08, the first sample taken whole), the update being the
+   *  sum of the sections' averages at its last frame, and the draw calls of that last frame. */
+  windows: WindowReading[];
+  /** Frames left out of the timings because the OS preempted the process during them. */
+  preempted: number;
   arena: { phase: string; street: string } | null;
   /** The arena's show on the sand (arena_show) drawn at the end of the moment (null: no such group). */
   show: boolean | null;
@@ -401,40 +434,58 @@ export interface MomentResult {
  * The browser check's evening (scripts/check-perf-evening.mjs) in node: 17:30 in front of the gate, 19:00 seated on the
  * tiers during the main bout, 23:00 in front of the gate after standing up. `frames` measured per moment at `dt`.
  */
-export async function runEvening(q: Quality, o: { frames?: number; dt?: number; warm?: number; around?: (moment: MomentName, at: 'start' | 'end') => void } = {}): Promise<MomentResult[]> {
-  const frames = o.frames ?? 300, dt = o.dt ?? 1 / 30, warm = o.warm ?? 240;
+export async function runEvening(q: Quality, o: { frames?: number; dt?: number; warm?: number; around?: (moment: MomentName, at: 'start' | 'end') => void; frame?: (moment: MomentName, n: number, times: FrameTimes) => void;
+  /** Play the browser check's way: frames of 0.1 s (the loop caps dt at 0.1 and a software-rendered frame lasts longer), and the 19:00 window runs on past the end of the bout, as the check's 91 frames do. */
+  browser?: boolean;
+  /** Stop after this moment (a test of the first one needs not play the bout). */
+  stopAfter?: MomentName;
+  /** The city day of the evening (a Friday: the browser check takes the next one, and the day seeds the bout). */
+  day?: number } = {}): Promise<MomentResult[]> {
+  const keep = !!(globalThis as { process?: Proc }).process?.env.PERF_KEEP, frames = o.frames ?? 300, dt = o.dt ?? (o.browser ? 0.1 : 1 / 30), warm = o.warm ?? 240;
   const host = new PerfHost(q);
   await host.load({ x: 18, z: -66.3, yaw: 0.75 }, 17.5);
   const out: MomentResult[] = [];
   type ArenaDbg = { info(): { phase: string; street: string; centre: { x: number; z: number }; day: number } | null; go(p: string): void; freeSeat(x: number, z: number): { id: string; x: number; z: number; yaw: number } | null; day(d: number | null): void };
   const arena = host.debug<ArenaDbg>('arena');
-  arena.day(GALA_DAY);
+  arena.day(o.day ?? GALA_DAY);
   /** `frames` frames (fewer when `still` stops holding: the bout's own frames only). */
   const measure = (moment: MomentName, still: () => boolean = () => true) => {
     const sum: FrameTimes = {};
     let calls = 0, shadow = 0, samples = 0, by: Record<string, number> = {}, byShadow: Record<string, number> = {}, n = 0, callsMax = 0;
     const byMax: Record<string, number> = {};
+    const windows: WindowReading[] = [];
+    let counted = 0, skipped = 0;
+    let ema: Record<string, number> = {};
     const a0 = arena.info();
     o.around?.(moment, 'start');
     for (; n < frames && (n % 10 || still()); n++) {
-      host.frame(dt, sum);
-      if (n % 10 === 9) {
-        const c = host.calls(); calls += c.calls; shadow += c.shadow; samples++; by = c.by; byShadow = c.byShadow;
+      const one: FrameTimes = {};
+      host.frame(dt, one);
+      o.frame?.(moment, n, one);
+      if (host.preempted && !keep) skipped++;
+      else { counted++; for (const [k, v] of Object.entries(one)) { sum[k] = (sum[k] ?? 0) + v; if (k !== 'cpu' && !k.startsWith('render prep')) profEma(ema, k, v); } }
+      const last = n % WINDOW === WINDOW - 1;
+      if (n % 5 === 4) {
+        const c = host.calls();
+        if (n % 10 === 9) { calls += c.calls; shadow += c.shadow; samples++; by = c.by; byShadow = c.byShadow; }
         callsMax = Math.max(callsMax, c.calls);
         for (const [k, v] of Object.entries(c.by)) byMax[k] = Math.max(byMax[k] ?? 0, v);
+        if (last) windows.push({ update: Object.values(ema).reduce((a, b) => a + b, 0), calls: c.calls, sections: { ...ema }, by: c.by });
       }
+      if (last) ema = {};                                    // the browser check clears the profiler before each window
     }
     o.around?.(moment, 'end');
     const sections: Record<string, number> = {};
     let update = 0;
-    for (const [k, v] of Object.entries(sum)) { if (k === 'cpu') continue; sections[k] = v / n; if (!k.startsWith('render prep')) update += v / n; }
+    for (const [k, v] of Object.entries(sum)) { if (k === 'cpu') continue; sections[k] = v / Math.max(1, counted); if (!k.startsWith('render prep')) update += v / Math.max(1, counted); }
     const show = host.scene.getObjectByName('arena_show');
-    out.push({ q, moment, frames: n, update, cpu: (sum.cpu ?? 0) / n, sections, calls: calls / Math.max(1, samples), shadow: shadow / Math.max(1, samples), by, byShadow, callsMax, byMax,
+    out.push({ q, moment, frames: n, update, cpu: (sum.cpu ?? 0) / Math.max(1, counted), preempted: skipped, sections, calls: calls / Math.max(1, samples), shadow: shadow / Math.max(1, samples), by, byShadow, callsMax, byMax, windows,
       arena: a0 ? { phase: a0.phase, street: a0.street } : null, show: show ? show.visible : null });
   };
   // 1. 17:30: the fans arrive and queue; the player in front of the gate
   for (let k = 0; k < warm; k++) host.frame(dt);
   measure('17:30 arrivals');
+  if (o.stopAfter === '17:30 arrivals') return out;
   // 2. 19:00: a ticket, a place on the tiers, the main bout (the preliminaries skipped, as the browser check does)
   host.hour = 19;
   const a0 = arena.info()!;
@@ -446,7 +497,8 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
   if (['filling', 'prelims'].includes(phase())) arena.go('entrance');
   for (let k = 0; k < 3000 && phase() !== 'bout'; k++) host.frame(dt);
   for (let k = 0; k < 20; k++) host.frame(dt);
-  measure('19:00 bout', () => arena.info()!.phase === 'bout');
+  measure('19:00 bout', () => o.browser || arena.info()!.phase === 'bout');
+  if (o.stopAfter === '19:00 bout') return out;
   // 3. 23:00: the bout over (its result and fête under way: the outflow begins), up from the place, in front of the gate
   type Speed = (n: number) => void;
   host.debug<{ speed: Speed }>('arena').speed(10);

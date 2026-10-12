@@ -74,7 +74,8 @@ export function underLeaves(from: P3, to: P3, canopies: readonly Canopy[]): P3 |
   let top = Infinity;
   for (const t of canopies) {
     const u = L2 ? Math.max(0, Math.min(1, ((t.x - from.x) * dx + (t.z - from.z) * dz) / L2)) : 0;
-    if (Math.hypot(from.x + dx * u - t.x, from.z + dz * u - t.z) < t.r) top = Math.min(top, t.y0 - 0.55);   // clear of crowded()
+    const ex = from.x + dx * u - t.x, ez = from.z + dz * u - t.z;
+    if (ex * ex + ez * ez < t.r * t.r) top = Math.min(top, t.y0 - 0.55);   // clear of crowded()
   }
   if (top === Infinity) return null;
   return top >= from.y + 0.05 ? { x: to.x, y: Math.min(to.y, top), z: to.z } : null;

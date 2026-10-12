@@ -18,6 +18,7 @@ import { placeStops, buildStops, StopPeople, STOP_OFFSET, type StopSite } from '
 import { PassengerCamera } from './camera';
 import { TripLogic, MIN_STOP } from './trip';
 import { RideCard } from './ui';
+import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import type { CameraAnchor, VehicleSpec } from './spec';
 import { clearKerb, fansAtStop, fansOnSet, passengerPatterns, pickSeat, type KerbZone, type LineFans } from './passengers';
 
@@ -132,6 +133,7 @@ export class TransportModule implements GameModule {
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
     this.ctx = ctx;
+    this.owed.reset();
     this.clear();
     this.hub = hub;
     const low = ctx.quality() === 'low';
@@ -184,9 +186,16 @@ export class TransportModule implements GameModule {
     return alightPoint(rt.sites[i] ?? rt.sites[0]);
   }
 
+  /** What the cars and the stops' people are owed while the arena's walls hide them (src/game/pace.ts). */
+  private owed = new Pace();
   update(ctx: GameCtx, dt: number) {
     if (!this.lines.length || ctx.inside()) return;
     const cam = ctx.camera.position;
+    // inside the arena's walls, with no trip under way, the line is out of sight: its cars run on the clock (their place is a
+    // function of the time), its people and its arrivals follow at 4 Hz
+    const run = this.owed.step(dt, this.trip.phase === 'idle' && insideWalls(this.hub?.arena, cam) ? HIDDEN_EVERY : 0);
+    if (run === null) return;
+    dt = run;
     this.viewer.x = cam.x; this.viewer.z = cam.z;
     const now = this.clock();
     for (const rt of this.lines) {
@@ -332,7 +341,7 @@ export class TransportModule implements GameModule {
       rt.people?.dispose(); rt.furniture.dispose();
       for (const t of rt.calls) t.dispose();
     }
-    this.lines = []; this.hub = null; this.doorTargets.clear(); this.waitingKey = -1;
+    this.lines = []; this.hub = null; this.doorTargets.clear(); this.waitingKey = -1; this.stops.clear();
     this.fans.clear(); this.aboard.clear();                   // the new hub's cars start with ordinary passengers
   }
 
@@ -374,10 +383,17 @@ export class TransportModule implements GameModule {
   }
 
   // ---------------------------------------------------------------- public API (other lanes: the street crowd…)
+  /** The stops asked for by id, found once (the street crowd asks for them all every second): cleared with the lines. */
+  private stops = new Map<string, { rt: LineRt; i: number } | null>();
   private stopOf(stopId: string): { rt: LineRt; i: number } | null {
-    const [line, stop] = stopId.replace(/^stop:/, '').split(':');
-    const rt = this.lines.find(l => l.def.id === line), i = rt ? rt.sites.findIndex(s => s.def.id === stop) : -1;
-    return rt && i >= 0 ? { rt, i } : null;
+    let f = this.stops.get(stopId);
+    if (f === undefined) {
+      const [line, stop] = stopId.replace(/^stop:/, '').split(':');
+      const rt = this.lines.find(l => l.def.id === line), i = rt ? rt.sites.findIndex(s => s.def.id === stop) : -1;
+      f = rt && i >= 0 ? { rt, i } : null;
+      if (this.lines.length) this.stops.set(stopId, f);                     // (not before the lines are made: a stop asked for early is found later)
+    }
+    return f;
   }
   /**
    * The car rapide standing at a stop now — `stopId` is the stop's place id (`stop:<line>:<stop>`, e.g. `stop:23s:arene`)

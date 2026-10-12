@@ -38,6 +38,7 @@ import { PLAYER_SIDE, afterPrelim, boutByClock, cheeredSide, entranceByClock, ma
 import type { LambEvent } from '../game/modules';
 import { posters } from './posters';
 import { recordGalaResult } from '../social/fightTalk';
+import { HIDDEN_EVERY, Pace } from '../game/pace';
 
 /**
  * A fight evening inside the Pikine arena (docs/ARENA_VISIT.md): the ticket is bought at the window by the gate (price
@@ -326,7 +327,13 @@ class ArenaEvening {
     }
     // their bout given up before it started (src/arena/fighter.ts): no main event tonight, and no result made up
     if (mainCalledOff(this.driver(), this.phase, arenaFighter.phase())) { this.ctx.toast(ARENA.noMain); this.go('leaving'); }
-    this.people.update(dt, this.phase, this.t, this.street, dt * (this.phase === 'bout' ? 1 : this.speed), this.bill());
+    // tonight's card, once for the frame (the people, the card and the stands ask for it)
+    const bill = this.phase === 'idle' || this.phase === 'over' ? null : this.bill();
+    // the show and the stands are seen from the tiers, the sand and through the gates; from the street (after the gala, before
+    // the doors) the walls hide them, and they go on at 4 Hz with the time gone by (src/game/pace.ts)
+    const seen = ctx.space() === 'street' && seenFrom(this.cx, this.cz, ctx.camera.position), every = seen || seat ? 0 : HIDDEN_EVERY;
+    const peopleDt = this.peoplePace.step(dt, every);
+    if (peopleDt !== null) this.people.update(peopleDt, this.phase, this.t, this.street, peopleDt * (this.phase === 'bout' ? 1 : this.speed), bill ?? this.bill());
     // the player's own bout won or lost: the stands, the drums and the lines for half a minute (the player walks out)
     if (this.ownFete) { this.ownT += dt; this.ownFete.update(this.ownT, dt); if (this.ownT >= this.ownFete.plan.length) { this.ownFete.dispose(); this.ownFete = null; } }
     // the stands fill with the evening and empty after the gala
@@ -334,22 +341,37 @@ class ArenaEvening {
     if (this.fillT <= 0) { this.fillT = 0.4; this.syncCrowd(); }
     const near = Math.hypot(ctx.player.pos.x - this.cx, ctx.player.pos.z - this.cz) < 70;
     this.crowd.group.visible = near;
-    this.show.visible = ctx.space() === 'street' && seenFrom(this.cx, this.cz, ctx.camera.position);
+    this.show.visible = seen;
     const seatId = seat?.id ?? null;
     if (seatId !== this.nearSeat) { this.nearSeat = seatId; this.crowd.setNear(seat?.x ?? 0, seat ? seat.z : null, seat?.yaw ?? 0); }
-    if (near) this.crowd.cull(ctx.camera);                                    // LOD by distance to the camera, seated or not
-    this.crowd.update(dt, near);
-    const bill = this.phase === 'idle' || this.phase === 'over' ? null : this.bill(), pre = this.phase === 'prelims' ? this.prelims[this.pi] : null;
+    const standsDt = this.standsPace.step(dt, every);
+    if (standsDt !== null) {
+      if (near) this.crowd.cull(ctx.camera);                                  // LOD by distance to the camera, seated or not
+      this.crowd.update(standsDt, near);
+    }
+    const pre = this.phase === 'prelims' ? this.prelims[this.pi] : null;
     const waiting = this.led() && this.phase === 'prelims' && this.pi === this.prelims.length - 1 && this.pEnded >= 0 && this.t >= this.pEnded + PRELIM.result;
     const remote = this.remote && (waiting || this.phase === 'entrance' || this.phase === 'bout' || this.phase === 'result') ? this.remote : null;
+    this.showCard(bill, pre, remote);
+  }
+
+  /** The gala card under the HUD's place name: its text is built only when what it says changes. */
+  private showCard(bill: Bill | null, pre: Prelim | null, remote: { name: string } | null) {
+    const frappe = this.mine ? lamb2On() : !!this.bout?.frappe, c = this.cardOf;
+    if (c && c.bill === bill && c.pre === pre && c.remote === remote && c.phase === this.phase && c.pi === this.pi && c.frappe === frappe) return;
+    this.cardOf = { bill, pre, remote, phase: this.phase, pi: this.pi, frappe };
     this.card.show(!bill ? null : remote ? { title: 'Gala de làmb · Arène de Pikine', sub: remoteCard(this.phase, remote.name) } : pre ? {
       title: 'Gala de làmb · Préliminaires',
       sub: `Préliminaires ${this.pi + 1}/${this.prelims.length} · ${prelimName(pre.left)} – ${prelimName(pre.right)}`,
     } : {
       title: bill.title ? 'Gala de làmb · Combat pour le titre' : 'Gala de làmb · Arène de Pikine',
-      sub: `${showLabel(this.phase, this.mine ? lamb2On() : !!this.bout?.frappe)} · ${bill.left.name} (${ecurieLabel(bill.left.ecurie)}) – ${bill.right.name} (${ecurieLabel(bill.right.ecurie)})`,
+      sub: `${showLabel(this.phase, frappe)} · ${bill.left.name} (${ecurieLabel(bill.left.ecurie)}) – ${bill.right.name} (${ecurieLabel(bill.right.ecurie)})`,
     });
   }
+  private cardOf: { bill: Bill | null; pre: Prelim | null; remote: { name: string } | null; phase: ShowPhase; pi: number; frappe: boolean } | null = null;
+  /** What the people and the stands are owed while the walls hide them. */
+  private peoplePace = new Pace();
+  private standsPace = new Pace();
 
   /** How many of the crowd's places are taken now. */
   crowdTarget(): number {
@@ -449,12 +471,12 @@ class ArenaEvening {
   /**
    * One frame of the main event's fête. It is driven by the result's own time (a jump lands on the same picture, cues
    * passed on the way are fired), so behind the walls — the player out in the street, the show not drawn — it is
-   * played five times a second with the time gone by; every frame whenever it can be seen.
+   * played four times a second with the time gone by; every frame whenever it can be seen.
    */
   private partyStep(dt: number) {
     if (!this.party) return;
     this.partyOwed += dt;
-    if (!this.show.visible && this.partyOwed < 0.2) return;
+    if (!this.show.visible && this.partyOwed < HIDDEN_EVERY) return;
     const d = this.partyOwed; this.partyOwed = 0;
     this.party.update(this.t, d);
   }

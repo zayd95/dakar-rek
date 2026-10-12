@@ -14,6 +14,7 @@ import { ambientLife } from '../social/ambientLife';
 import {
   BUSY_STOP_EXTRA, ColliderGrid, HUB_STREETS, PAVE, crowdSlots, edgeWeight, STREET_BUDGET, clearWalk, groupSpots, lanesFrom, pavementLanes, routeClear, stopSlots, streetTargets, type Lane,
 } from './streetPlan';
+import { len2 } from '../core/math';
 
 /**
  * Street life with reasons (docs/CROWD.md, spec §23), on the reusable crowd: people walking the pavements (more at the
@@ -93,7 +94,7 @@ export class StreetLife {
   // after the gala (Pikine)
   private eventWas = false;
   private eventSeen = false;
-  private standsMax = 0;
+  private standsMax = 0; private standsT = 0;
   private leaving = 0;
   private leaveT = 0;
   readonly counts = { spawned: 0, boarded: 0, alighted: 0, left: 0, taxi: 0, recruited: 0, dibi: 0 };
@@ -158,7 +159,7 @@ export class StreetLife {
 
   // ---------------------------------------------------------------- seeing and placing
   private seen(x: number, z: number) {
-    const me = this.ctx.player.pos, d = Math.hypot(x - me.x, z - me.z);
+    const me = this.ctx.player.pos, d = len2(x - me.x, z - me.z);
     if (d > STREET_RANGE.view) return false;
     if (d < STREET_RANGE.pop) return true;
     this.sp.center.set(x, 1, z);
@@ -195,19 +196,19 @@ export class StreetLife {
   /** A lane to spawn on: busy streets weigh more, lanes far from the player much less. */
   private pickLane(): number {
     const me = this.ctx.player.pos, life = STREET_BUDGET[this.q].life;
-    const w = this.lanes.map((l, i) => this.laneW[i] * (Math.hypot((l.ax + l.bx) / 2 - me.x, (l.az + l.bz) / 2 - me.z) < life ? 1 : 0.08));
+    const w = this.lanes.map((l, i) => this.laneW[i] * (len2((l.ax + l.bx) / 2 - me.x, (l.az + l.bz) / 2 - me.z) < life ? 1 : 0.08));
     let sum = 0; for (const v of w) sum += v;
     let u = this.rand() * sum;
     for (let i = 0; i < w.length; i++) { u -= w[i]; if (u <= 0) return i; }
     return w.length - 1;
   }
-  private alive(x: number, z: number) { const me = this.ctx.player.pos; return Math.hypot(x - me.x, z - me.z) < STREET_BUDGET[this.q].life; }
+  private alive(x: number, z: number) { const me = this.ctx.player.pos; return len2(x - me.x, z - me.z) < STREET_BUDGET[this.q].life; }
   /** The lanes nearest (x, z), nearest first, with the closest point on each. */
   private nearLanes(x: number, z: number, n = 4) {
     return this.lanes.map((l, i) => {
       const dx = l.bx - l.ax, dz = l.bz - l.az, t = Math.max(0, Math.min(l.len, ((x - l.ax) * dx + (z - l.az) * dz) / l.len));
       const p = this.lanePt(l, t, 0);
-      return { lane: i, t, d: Math.hypot(p.x - x, p.z - z) };
+      return { lane: i, t, d: len2(p.x - x, p.z - z) };
     }).sort((a, b) => a.d - b.d).slice(0, n);
   }
 
@@ -252,7 +253,7 @@ export class StreetLife {
     const s = this.stops[si], i = s.taken.indexOf(null); if (i < 0) return false;
     const slot = s.slots[i];
     let route: Pt[] | null = null, tries = 0;
-    const near = this.agents.find(a => a.role === 'walk' && !a.path && Math.hypot(a.x - slot.x, a.z - slot.z) < 22 && tries++ < 3 && !!(route = routeClear(a, slot, this.cols)));
+    const near = this.agents.find(a => a.role === 'walk' && !a.path && len2(a.x - slot.x, a.z - slot.z) < 22 && tries++ < 3 && !!(route = routeClear(a, slot, this.cols)));
     const a = near ?? this.free(); if (!a) return false;
     if (!near && this.seen(slot.x, slot.z)) return false;
     s.taken[i] = a; a.stop = si; a.spot = slot; a.stay = 40 + this.rand() * 120;
@@ -266,7 +267,7 @@ export class StreetLife {
     const g = this.groups[gi], i = g.taken.indexOf(null); if (i < 0) return false;
     const spot = g.ring[i];
     let route: Pt[] | null = null, tries = 0;
-    const near = this.agents.find(a => a.role === 'walk' && !a.path && Math.hypot(a.x - spot.x, a.z - spot.z) < 20 && tries++ < 3 && !!(route = routeClear(a, spot, this.cols)));
+    const near = this.agents.find(a => a.role === 'walk' && !a.path && len2(a.x - spot.x, a.z - spot.z) < 20 && tries++ < 3 && !!(route = routeClear(a, spot, this.cols)));
     const a = near ?? this.free(); if (!a) return false;
     if (!near && this.seen(spot.x, spot.z)) return false;
     g.taken[i] = a; a.group = gi; a.spot = spot; a.stay = 60 + this.rand() * 240;
@@ -354,7 +355,7 @@ export class StreetLife {
       const s = this.stops[si], car = now.get(key)!, door = { x: car.x, z: car.z };
       const waiting = s.taken.filter(a => a && a.role === 'stop' && !a.path) as Agent[];
       // nearest to the door first: the front of the crowd gets in
-      waiting.sort((p, q) => Math.hypot(p.x - door.x, p.z - door.z) - Math.hypot(q.x - door.x, q.z - door.z));
+      waiting.sort((p, q) => len2(p.x - door.x, p.z - door.z) - len2(q.x - door.x, q.z - door.z));
       const n = boardCount({ waiting: waiting.length, crowd: s.crowd, seats: this.carSeats, fill: lineFill(key, this.ctx.day(), this.ctx.hour()), left: car.left, r: this.rand() });
       let k = 0;
       for (const a of waiting) {
@@ -384,9 +385,10 @@ export class StreetLife {
     // the after-gala window opens (the gala seen to the end, or closing time) on an evening the arena's street was alive
     if (arenaExterior.active() && !afterGalaWindow(this.ctx)) this.eventSeen = true;
     const on = afterGalaWindow(this.ctx) && this.eventSeen;
-    for (const c of LIVE_CROWDS) if (c.name === 'arena-stands') this.standsMax = Math.max(this.standsMax, c.present);
+    // (how many the stands held, at most: counted twice a second, not every frame — `present` visits every place of the stands)
+    if ((this.standsT -= dt) <= 0) { this.standsT = 0.5; for (const c of LIVE_CROWDS) if (c.name === 'arena-stands') this.standsMax = Math.max(this.standsMax, c.present); }
     const me = this.ctx.player.pos, g = gateOf(this.hub.arena);
-    if (!this.eventWas && on && Math.hypot(me.x - g.x, me.z - g.z) < 160) {
+    if (!this.eventWas && on && len2(me.x - g.x, me.z - g.z) < 160) {
       const pool = STREET_BUDGET[this.q].pool;
       this.leaving = Math.round(Math.min(pool * 0.6, Math.max(this.standsMax * 0.16, this.q === 'low' ? 10 : 18)));
       this.leaveT = 0; this.standsMax = 0; this.eventSeen = false;
@@ -406,7 +408,7 @@ export class StreetLife {
     this.show(a);
     const u = this.rand();
     // the car rapide home: the nearest served stop, the evening route's « Arène » first (it holds a crowd)
-    const stop = this.stops.map((s, i) => ({ i, d: Math.hypot(s.site.x - a.x, s.site.z - a.z) * (s.crowd ? 0.5 : 1) }))
+    const stop = this.stops.map((s, i) => ({ i, d: len2(s.site.x - a.x, s.site.z - a.z) * (s.crowd ? 0.5 : 1) }))
       .filter(x => this.stops[x.i].served && x.d < 90).sort((x, y) => x.d - y.d)[0]?.i ?? -1;
     if (u < (stop >= 0 && this.stops[stop].crowd ? 0.5 : 0.4) && stop >= 0) {
       const arene = stop, s = this.stops[arene], i = s.taken.indexOf(null);
@@ -420,7 +422,7 @@ export class StreetLife {
       }
     }
     if (u >= 0.5 && u < 0.7 && this.corners.length && this.arrivals) {   // a taxi at a corner
-      const ci = this.corners.map((c, i) => ({ i, d: Math.hypot(c.door.x - a.x, c.door.z - a.z) })).sort((x, y) => x.d - y.d)[0].i;
+      const ci = this.corners.map((c, i) => ({ i, d: len2(c.door.x - a.x, c.door.z - a.z) })).sort((x, y) => x.d - y.d)[0].i;
       const c = this.corners[ci], i = c.taken.indexOf(null);
       if (i >= 0) {
         const slot = c.slots[i]; c.taken[i] = a; a.corner = ci; a.spot = slot; a.stay = 400;
@@ -441,7 +443,7 @@ export class StreetLife {
     if (a.path) {
       const to = a.path[a.pi + 1];
       if (!to) { a.path = null; const f = a.then; a.then = null; f?.(); this.place(a); return; }
-      const dx = to.x - a.x, dz = to.z - a.z, d = Math.hypot(dx, dz), s = a.speed * dt;
+      const dx = to.x - a.x, dz = to.z - a.z, d = len2(dx, dz), s = a.speed * dt;
       if (d <= s) { a.x = to.x; a.z = to.z; a.pi++; } else { a.x += (dx / d) * s; a.z += (dz / d) * s; }
       if (d > 0.01) a.yaw = Math.atan2(dx, dz);
       this.place(a);
@@ -455,7 +457,7 @@ export class StreetLife {
     }
     if (a.role !== 'walk') return;
     const l = this.lanes[a.lane];
-    if (a.goal && Math.hypot(a.x - a.goal.x, a.z - a.goal.z) < 12) {
+    if (a.goal && len2(a.x - a.goal.x, a.z - a.goal.z) < 12) {
       // arrived near the Dibi: in at its door (ambient life's customers take over inside)
       const g = a.goal; a.goal = null; this.counts.dibi++;
       this.walkTo(a, routeClear(a, g, this.cols) ?? [], () => this.hide(a), a.speed);
@@ -481,7 +483,7 @@ export class StreetLife {
     if (a.goal) {
       // heading somewhere: the lane whose far end comes closest to the goal
       const g = a.goal, far = (o: { lane: number; forward: boolean }) => { const x = this.lanes[o.lane]; return o.forward ? { x: x.bx, z: x.bz } : { x: x.ax, z: x.az }; };
-      pick = opts.reduce((b, o) => { const p = far(o), q = far(b); return Math.hypot(p.x - g.x, p.z - g.z) < Math.hypot(q.x - g.x, q.z - g.z) ? o : b; });
+      pick = opts.reduce((b, o) => { const p = far(o), q = far(b); return len2(p.x - g.x, p.z - g.z) < len2(q.x - g.x, q.z - g.z) ? o : b; });
     } else {
       let sum = 0; const w = opts.map(o => { const v = this.lanes[o.lane].w ** 2; sum += v; return v; });
       let u = this.rand() * sum;

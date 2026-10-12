@@ -21,12 +21,14 @@ export const FIGHTER_DRUMS = 1.3;
 import { ExteriorAudio, listenForGesture } from './exteriorAudio';
 import { deckCentre } from '../world/arenaModules';
 import { WALL_R } from '../world/geew';
+import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import { transport } from '../transport/module';
 import { partyDrums } from './party';
 import { flagGeometry, gearColours, scarfGeometry } from './supporterGear';
 import { takeGear } from '../economy/wear';
 import { holds } from '../economy/assets';
 import { signTexture } from '../world/batch';
+import { len2 } from '../core/math';
 
 /**
  * Outside the Pikine arena: on fight evenings the surroundings come alive — fans walking in
@@ -71,7 +73,7 @@ const HIDDEN = new THREE.Matrix4().makeScale(0, 0, 0);
  * (a turn about y, the group under an unmoved parent). One frame behind for the bone's own motion in the clip.
  */
 export function bodyPoint(group: THREE.Object3D, bone: THREE.Object3D, out: THREE.Vector3) {
-  const g = group.matrixWorld.elements, b = bone.matrixWorld.elements, k = Math.hypot(g[8], g[10]) || 1;
+  const g = group.matrixWorld.elements, b = bone.matrixWorld.elements, k = len2(g[8], g[10]) || 1;
   const c0 = g[10] / k, s0 = g[8] / k, dx = b[12] - g[12], dy = b[13] - g[13], dz = b[14] - g[14];
   const lx = c0 * dx - s0 * dz, lz = s0 * dx + c0 * dz;                     // in the body's frame
   const p = group.position, c1 = Math.cos(group.rotation.y), s1 = Math.sin(group.rotation.y);
@@ -258,7 +260,7 @@ class Exterior {
     if (fromGate || (Math.abs(f.x - q.x) < q.half && f.z > q.z1 - 0.3)) path.push({ x: q.x + (R() - 0.5) * 3, z: q.z1 - 0.8 });
     const dest = this.dests[Math.floor(R() * this.dests.length)] ?? { x: q.x + 34, z: q.z1 };
     if (this.leavers++ % 3 === 0) {
-      const s = stallFronts(this.arena).reduce((b, p) => (Math.hypot(p.x - dest.x, p.z - dest.z) < Math.hypot(b.x - dest.x, b.z - dest.z) ? p : b));
+      const s = stallFronts(this.arena).reduce((b, p) => (len2(p.x - dest.x, p.z - dest.z) < len2(b.x - dest.x, b.z - dest.z) ? p : b));
       path.push({ x: s.x + (R() - 0.5) * 1.4, z: s.z - 0.2 - R() * 0.6, wait: 3 + R() * 3 });
     }
     path.push({ x: dest.x + (R() - 0.5) * 3, z: dest.z + (R() - 0.5) * 3 });
@@ -267,7 +269,7 @@ class Exterior {
 
   /** Moves toward a point at the fan's pace; true when there. */
   private stepTo(f: Fan, p: Pt, dt: number, pace = 1): boolean {
-    const dx = p.x - f.x, dz = p.z - f.z, dist = Math.hypot(dx, dz);
+    const dx = p.x - f.x, dz = p.z - f.z, dist = len2(dx, dz);
     if (dist < 0.06) { f.moving = false; return true; }
     const s = Math.min(dist, f.speed * pace * dt);
     f.x += (dx / dist) * s; f.z += (dz / dist) * s; f.moving = true;
@@ -288,7 +290,7 @@ class Exterior {
       }
     }
     const first = this.phase === 'arrive' ? this.queue[0] : undefined;
-    if (first && this.gateT >= GATE_EVERY && Math.hypot(first.x - (this.slotAt(0).x + first.jitter), first.z - this.slotAt(0).z) < 0.3) {
+    if (first && this.gateT >= GATE_EVERY && len2(first.x - (this.slotAt(0).x + first.jitter), first.z - this.slotAt(0).z) < 0.3) {
       this.gateT = 0; this.queue.shift();
       first.state = 'enter'; first.slot = -1; first.path = [{ x: this.g.x, z: this.g.z + 2.2 }];
       this.queue.forEach((f, i) => { f.slot = i; });
@@ -326,31 +328,36 @@ class Exterior {
           f.moving = false;
           break;
       }
-      const vis = draw && f.state !== 'away' && f.state !== 'gone' && Math.hypot(f.x - viewer.x, f.z - viewer.z) <= VIEW;
+      const vis = draw && f.state !== 'away' && f.state !== 'gone' && len2(f.x - viewer.x, f.z - viewer.z) <= VIEW;
       f.h.group.visible = vis;
       if (vis) { f.h.group.position.set(f.x, 0.1, f.z); f.h.animate(dt, f.moving ? f.speed : 0); }
     }
-    this.placeItems();
+    if (draw || this.itemsOn) this.placeItems();                          // (hidden and already put away: nothing to write)
     for (const s of this.still) {
-      const p = s.h.group.position, vis = draw && Math.hypot(p.x - viewer.x, p.z - viewer.z) <= VIEW;
+      const p = s.h.group.position, vis = draw && len2(p.x - viewer.x, p.z - viewer.z) <= VIEW;
       s.h.group.visible = vis;
       if (vis) s.h.animate(dt, 0);
     }
   }
 
+  /** Some scarf or flag was put on a fan the last time (else they are all put away). */
+  private itemsOn = true;
   /** Scarves on the necks and flags in the right hands of the fans drawn this frame (hidden for the others). */
   private placeItems() {
     if (!this.scarves || !this.flags) return;
+    let any = false;
     this.fans.forEach((f, i) => {
       const show = f.h.group.visible && f.item;
       this.scarves!.setMatrixAt(i, HIDDEN); this.flags!.setMatrixAt(i, HIDDEN);
       if (!show) return;
+      any = true;
       const yaw = f.h.group.rotation.y, node = f.item === 'scarf' ? f.neck : f.hand;
       if (node) bodyPoint(f.h.group, node, P3);
       else P3.set(f.x + (f.item === 'flag' ? Math.cos(yaw) * -0.22 : 0), f.item === 'flag' ? 1.0 : 1.45, f.z);
       if (f.item === 'scarf') { P3.y -= 0.03; Q4.setFromEuler(E3.set(0, yaw, 0)); this.scarves!.setMatrixAt(i, M4.compose(P3, Q4, ONE)); }
       else { Q4.setFromEuler(E3.set(0, yaw + Math.PI / 2, f.moving ? 0.25 : 0.1)); this.flags!.setMatrixAt(i, M4.compose(P3, Q4, ONE)); }
     });
+    this.itemsOn = any;
     this.scarves.instanceMatrix.needsUpdate = true; this.flags.instanceMatrix.needsUpdate = true;
   }
 
@@ -380,6 +387,8 @@ let ext: Exterior | null = null;
 let forced: boolean | null = null;
 let dayOverride: number | null = null;
 const audio = new ExteriorAudio();
+/** What the street's fans are owed while the walls hide them. */
+const owed = new Pace();
 
 /** The road segments in front of the gate are closed to the decorative traffic while the queue is there. */
 /**
@@ -446,12 +455,12 @@ function loudness(ctx: GameCtx) {
   if (!ext?.active) return { drums: 0, murmur: 0 };
   // one rhythm for the evening, as loud as the nearer drummers: the group by the gate or the deck inside, by the tunnel
   const p = ctx.player.pos, inside = !!ctx.inside(), muted = isMuted(), c = drumsCentre(ext.g), dk = deckCentre(ext.arena.cx, ext.arena.cz);
-  const dist = Math.min(Math.hypot(p.x - c.x, p.z - c.z), Math.hypot(p.x - dk.x, p.z - dk.z));
+  const dist = Math.min(len2(p.x - c.x, p.z - c.z), len2(p.x - dk.x, p.z - dk.z));
   // a wrestler of tonight in his corner or walking out: the drummers play louder, for him (src/arena/fighter.ts), over the
   // whole arena (his écurie's corner may be across the ring from their deck)
   // …and during the fête after a win (src/arena/party.ts), for the winner
   const moment = arenaFighter.phase() === 'prep' || arenaFighter.phase() === 'ring' || partyDrums.loud;
-  const within = Math.hypot(p.x - ext.arena.cx, p.z - ext.arena.cz) < WALL_R;
+  const within = len2(p.x - ext.arena.cx, p.z - ext.arena.cz) < WALL_R;
   const drums = moment ? fighterDrumVolume(dist, within, inside, muted, FIGHTER_DRUMS) : drumVolume(dist, inside, muted);
   return { drums, murmur: murmurVolume(queueDistance(ext.g, p.x, p.z), inside, muted) };
 }
@@ -463,6 +472,7 @@ export const arenaExteriorModule: GameModule = {
     transport.addObstacles((out, kind) => { if (plaza && kind && kind !== 'moto') out.push(...plazaFootprints(plaza)); });   // a car stops at the zone
   },
   hubLoaded(ctx, hub) {
+    owed.reset();
     ext?.dispose(); ext = null; gate = null; activeNow = false;
     closeRoads(null); audio.stop();                                     // a new hub: no closure, no drums
     setPlaza(hub.arena);                                                // the gate's pedestrian zone, at all hours
@@ -476,10 +486,13 @@ export const arenaExteriorModule: GameModule = {
     const ph = phaseNow(ctx);
     if (ph !== ext.phase || (ph === 'arrive' && ext.size !== eveningSize(dayOverride ?? ctx.day(), ctx.hour()))) setPhase(ctx, ph);   // a gala night fills up
     if (ph === 'outflow' && !ext.lastCall && !ctx.inside()) {              // the vendors call the last customers
-      const p = ctx.player.pos, fronts = stallFronts(ext.arena), i = fronts.findIndex(s => Math.hypot(s.x - p.x, s.z - p.z) < 7);
+      const p = ctx.player.pos, fronts = stallFronts(ext.arena), i = fronts.findIndex(s => len2(s.x - p.x, s.z - p.z) < 7);
       if (i >= 0) { const v = VENDORS.find(x => x.stall === i)!; ext.lastCall = true; ctx.toast(`${v.seller} : « Les derniers avant de rentrer ! ${say('Ñibbil ak jàmm')} ! »`); }
     }
-    ext.update(dt, ctx.player.pos, !ctx.inside());
+    // inside the arena's walls the street cannot be seen: its fans and vendors go on at 4 Hz with the time gone by, drawn
+    // or animated by nobody (src/game/pace.ts); the drums and the murmur are heard, and follow the player every frame
+    const walled = insideWalls(ext.arena, ctx.camera.position), run = owed.step(dt, walled ? HIDDEN_EVERY : 0);
+    if (run !== null) ext.update(run, ctx.player.pos, !ctx.inside() && !walled);
     const v = loudness(ctx);
     audio.set(v.drums, v.murmur);
   },

@@ -109,6 +109,13 @@ const TUTORIAL = [
 ] as const;
 type StepId = (typeof TUTORIAL)[number]['id'];
 
+/** The few numbers of a duel a watched bout's pilot reads (`LambDuel.pilotView`). */
+export interface PilotView {
+  phase: string; dist: number; windup: boolean; open: 'player' | 'opponent' | null;
+  stamina: { player: number; opponent: number };
+  clinch: { losing: boolean; breakWindow: boolean } | null;
+}
+
 export class LambDuel {
   readonly kind = 'duel' as const;
   readonly group = new THREE.Group();
@@ -632,6 +639,27 @@ export class LambDuel {
   /** World points on both wrestlers (feet, waist, head) for layout checks. */
   /** The two wrestlers' bodies (null before the humanoid is loaded): the arena's fête moves them once the bout is over. */
   bodies(): { player: Wrestler | null; opponent: Wrestler | null } { return { player: this.me.w, opponent: this.ai.w }; }
+  /**
+   * What a watched bout's pilot reads of the duel (src/arena/bout.ts, six steps a long frame), written into `v`: the same
+   * values as `info()`'s phase, distance, windup, opening, endurance and empoignade, without building its whole object.
+   */
+  pilotView(v: PilotView): PilotView {
+    const me = this.me, ai = this.ai;
+    v.phase = this.phase;
+    v.dist = Math.round(me.pos.distanceTo(ai.pos) * 100) / 100;
+    v.windup = ai.windup > 0;
+    v.open = me.open > 0 ? 'player' : ai.open > 0 ? 'opponent' : null;
+    v.stamina.player = Math.round(me.stamina); v.stamina.opponent = Math.round(ai.stamina);
+    const c = this.phase === 'clinch' ? this.clinchState() : null;
+    v.clinch = c ? { losing: c.losing, breakWindow: c.breakWindow } : null;
+    return v;
+  }
+  /** Where the two wrestlers stand on the ground (x, z of the « player » side, then of the opponent), into `out`. */
+  fighterXZ(out: number[]): number[] {
+    const me = this.me.pos, ai = this.ai.pos;
+    out[0] = me.x; out[1] = me.z; out[2] = ai.x; out[3] = ai.z;
+    return out;
+  }
   fighterPoints(): [number, number, number][] { return [this.me, this.ai].flatMap(f => [0.1, 1, 1.8].map(h => [f.pos.x, f.pos.y + h, f.pos.z] as [number, number, number])); }
   info() {
     const c = this.phase === 'clinch' ? this.clinchState() : null;

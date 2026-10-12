@@ -18,6 +18,7 @@
  * under the hips on the ground of the rest pose. A foot's phase `lam` counts cycles since it last landed (0: it lands):
  * on the ground while lam < duty, swinging after. The two feet are half a cycle apart.
  */
+import { len2 } from '../core/math';
 
 /** The rig's legs and feet (public/assets/character_v4.glb, rest pose = Idle; checked against the GLB in tests/gait.test.ts). */
 export const RIG = {
@@ -256,13 +257,13 @@ export class GaitState {
    */
   update(dt: number, x: number, z: number, yaw: number, scale = 1, intent = 0) {
     if (!(dt > 0)) return;
-    const jump = Math.hypot(x - this.bx, z - this.bz);
+    const jump = len2(x - this.bx, z - this.bz);
     if (!this.ready || dt > 0.5 || jump > Math.max(0.5, 10 * dt)) this.reset(x, z, yaw, scale);       // a jump, not a step
     const a = 1 - Math.exp(-dt / 0.08);
     this.vx += ((x - this.bx) / dt - this.vx) * a; this.vz += ((z - this.bz) / dt - this.vz) * a;
     this.body(x, z, yaw, scale);
     const cvx = (this.vx * this.c - this.vz * this.s) / this.k, cvz = (this.vx * this.s + this.vz * this.c) / this.k;
-    const v = Math.hypot(cvx, cvz); this.v = v;
+    const v = len2(cvx, cvz); this.v = v;
     if (v > 0.05) { this.ux = cvx / v; this.uz = cvz / v; }
     // walk or run (with hysteresis), blended over 0.3 s
     const vs = Math.max(v, v > MOVE_FROM ? intent : 0);
@@ -446,7 +447,7 @@ export class GaitState {
     const [L, R] = this.feet;
     if (L.swing || R.swing) { this.wait = 0.08; return; }
     if ((this.wait -= dt) > 0) return;
-    const err = (f: Foot) => Math.hypot(f.ax - f.side * RIG.ankle.x, f.az - RIG.ankle.z) + 0.25 * Math.abs(f.yaw);
+    const err = (f: Foot) => len2(f.ax - f.side * RIG.ankle.x, f.az - RIG.ankle.z) + 0.25 * Math.abs(f.yaw);
     const eL = err(L), eR = err(R), f = eL >= eR ? L : R;
     if (Math.max(eL, eR) > 0.12) { this.liftOff(f, true, 0.3); this.settles++; }
   }
@@ -462,7 +463,7 @@ export class GaitState {
     const cr = Math.cos(this.proll), sr = Math.sin(this.proll), cyw = Math.cos(this.pyaw), syw = Math.sin(this.pyaw);
     for (const f of this.feet) {
       const hx = this.px + f.side * RIG.hipX * cr * cyw, hz = this.pz - f.side * RIG.hipX * cr * syw;
-      let dx = f.ax - hx, dz = f.az - hz, dh = Math.hypot(dx, dz);
+      let dx = f.ax - hx, dz = f.az - hz, dh = len2(dx, dz);
       const most = REACH * 0.97;
       if (dh > most && !f.swing) {
         // out of the leg's reach: the contact point gives (it slides) — counted for the checks
