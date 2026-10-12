@@ -436,7 +436,9 @@ export interface MomentResult {
  */
 export async function runEvening(q: Quality, o: { frames?: number; dt?: number; warm?: number; around?: (moment: MomentName, at: 'start' | 'end') => void; frame?: (moment: MomentName, n: number, times: FrameTimes) => void;
   /** Play the browser check's way: frames of 0.1 s (the loop caps dt at 0.1 and a software-rendered frame lasts longer), and the 19:00 window runs on past the end of the bout, as the check's 91 frames do. */
-  browser?: boolean } = {}): Promise<MomentResult[]> {
+  browser?: boolean;
+  /** Stop after this moment (a test of the first one needs not play the bout). */
+  stopAfter?: MomentName } = {}): Promise<MomentResult[]> {
   const keep = !!(globalThis as { process?: Proc }).process?.env.PERF_KEEP, frames = o.frames ?? 300, dt = o.dt ?? (o.browser ? 0.1 : 1 / 30), warm = o.warm ?? 240;
   const host = new PerfHost(q);
   await host.load({ x: 18, z: -66.3, yaw: 0.75 }, 17.5);
@@ -481,6 +483,7 @@ export async function runEvening(q: Quality, o: { frames?: number; dt?: number; 
   // 1. 17:30: the fans arrive and queue; the player in front of the gate
   for (let k = 0; k < warm; k++) host.frame(dt);
   measure('17:30 arrivals');
+  if (o.stopAfter === '17:30 arrivals') return out;
   // 2. 19:00: a ticket, a place on the tiers, the main bout (the preliminaries skipped, as the browser check does)
   host.hour = 19;
   const a0 = arena.info()!;
