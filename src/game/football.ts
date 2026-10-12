@@ -311,7 +311,7 @@ class Football implements GameModule {
       if (ev.kind === 'kickoff') this.kickoffs.push({ t: +m.t.toFixed(2), dist: +(ev.detail ?? 0) });
       if (ev.kind === 'goal' && ev.team !== undefined) {
         this.goals.push({ t: m.t, team: ev.team, scorer: ev.who ?? -1, score: [m.score[0], m.score[1]] });
-        for (const f of this.fans.values()) if (Math.random() < 0.8) f.cheer = 3.5 + Math.random() * 2.5;
+        for (const f of this.fans.values()) f.cheer = 5 + Math.random() * 1.5;            // the touchline is up for a few seconds
         const p = ctx.player.pos, pt = this.pitch!;
         if (ctx.mode() === 'play' && Math.hypot(p.x - pt.x, p.z - pt.z) < 45) ctx.toast(`But des ${KITS[ev.team].name} ! ${KITS[0].name} ${m.score[0]} – ${m.score[1]} ${KITS[1].name}`);
       }
