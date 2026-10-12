@@ -12,6 +12,18 @@ describe('city clock', () => {
     expect(cityTimeAt(CITY_EPOCH_MS + CITY_DAY_MS).day).toBe(2);
     expect(cityTimeAt(CITY_EPOCH_MS + CITY_DAY_MS / 2).hour).toBe(12);
   });
+  it('is made once for a millisecond (every module reads it, many times a frame), with its label built when read', () => {
+    const t = CITY_EPOCH_MS + 7 * CITY_DAY_MS + 7.25 * 60 * 1000;                      // day 8, 07:15
+    const a = cityTimeAt(t), b = cityTimeAt(t);
+    expect(b).toBe(a);
+    expect(a).toMatchObject({ day: 8, hour: 7, minute: 15, isNight: false });
+    expect(a.hourFloat).toBeCloseTo(7.25, 9);
+    expect(a.label).toBe('Jour 8 · 07:15');
+    const c = cityTimeAt(t + 1);
+    expect(c).not.toBe(a);                                                              // another millisecond: made again
+    expect(cityTimeAt(t)).toEqual(a);                                                   // and the first one asked again is the same time
+    expect(cityTimeAt(CITY_EPOCH_MS + 23.5 * 60 * 1000).label).toBe('Jour 1 · 23:30');
+  });
   it('has daylight at noon and none at midnight', () => {
     expect(daylight(12.5)).toBeGreaterThan(0.9);
     expect(daylight(0)).toBe(0);
