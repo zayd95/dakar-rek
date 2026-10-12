@@ -129,7 +129,7 @@ describe('speed → gait (cadence × step = speed, the clip chosen by the speed)
     const w14 = at(1.4), w22 = at(2.2), r42 = at(4.2), r70 = at(7);
     expect(w14.spm).toBeCloseTo(120, 0); expect(w14.step).toBeCloseTo(0.7, 2); expect(w14.duty).toBeGreaterThan(0.55);
     expect(w22.spm).toBeGreaterThan(150); expect(w22.spm).toBeLessThan(170); expect(w22.step).toBeCloseTo(0.82, 2); expect(w22.duty).toBeGreaterThan(0.5);
-    expect(r42.spm).toBeGreaterThan(168); expect(r42.spm).toBeLessThan(180); expect(r42.step).toBeCloseTo(1.45, 1); expect(r42.duty).toBeLessThan(0.3);
+    expect(r42.spm).toBeGreaterThan(168); expect(r42.spm).toBeLessThan(190); expect(r42.step).toBeCloseTo(1.4, 1); expect(r42.duty).toBeLessThan(0.3);
     expect(r70.spm).toBeGreaterThan(185); expect(r70.spm).toBeLessThan(200); expect(r70.step).toBeGreaterThan(2); expect(r70.duty).toBeLessThan(r42.duty);
     for (const v of [0.5, 1, 1.4, 1.8, 2.2, 3, 4.2, 5.5, 7, 7.8]) { const p = gaitParams(v); expect(p.cadence * p.step).toBeCloseTo(v, 6); }
     // slower walks: shorter steps and a lower cadence; faster runs: longer steps, a quicker cadence
@@ -139,7 +139,7 @@ describe('speed → gait (cadence × step = speed, the clip chosen by the speed)
   it('the run moves more than the walk: higher heel, bent elbows, more arm swing, more lean; less at a jog than flat out', () => {
     const w = gaitParams(1.4), j = gaitParams(4.2), r = gaitParams(7);
     expect(j.kick).toBeGreaterThan(0); expect(r.kick).toBeGreaterThan(j.kick);
-    expect(j.elbow).toBeGreaterThan(w.elbow + 1); expect(r.arm).toBeGreaterThan(j.arm); expect(j.arm).toBeGreaterThan(w.arm);
+    expect(j.elbow).toBeGreaterThan(w.elbow + 0.5); expect(r.arm).toBeGreaterThan(j.arm); expect(j.arm).toBeGreaterThan(w.arm);
     expect(r.lean).toBeGreaterThan(j.lean); expect(j.lean).toBeGreaterThan(w.lean);
     expect(Math.abs(j.bob)).toBeLessThan(0.035);                                                   // a light run, not bounding
   });
@@ -166,7 +166,7 @@ describe('speed → gait (cadence × step = speed, the clip chosen by the speed)
 });
 
 describe('the gait on the rig: feet that stay put, smooth hips, joints that bend the right way', () => {
-  for (const [label, v, spm] of [['walk 1.4 m/s', 1.4, 120], ['walk 2.2 m/s (the default)', 2.2, 161], ['jog 4.2 m/s', 4.2, 174], ['run 7 m/s', 7, 192]] as const) {
+  for (const [label, v, spm] of [['walk 1.4 m/s', 1.4, 120], ['walk 2.0 m/s (the default)', 2.0, 150], ['walk 2.2 m/s', 2.2, 161], ['jog 4.2 m/s', 4.2, 181], ['run 7 m/s', 7, 192]] as const) {
     it(`${label}: no sliding, the cadence of the speed, the knees forward`, () => {
       const { frames } = walkRig(5, () => ({ v }));
       const s = slide(frames);

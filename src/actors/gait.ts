@@ -115,21 +115,30 @@ export function walkParams(v: number, o: GaitParams = newParams()): GaitParams {
   o.arm = (10 + 15 * k + 2.5 * Math.max(0, w - 1.4)) * DEG; o.armBias = -4 * DEG; o.elbow = (10 + 4 * w) * DEG; o.elbowSwing = 12 * DEG;
   return o;
 }
+/** How much of a sprint the speed `w` is: 0 up to the jog (4.2 m/s), 1 from 6.5 m/s. */
+const sprintShare = (w: number) => smoothstep(4.2, 6.5, w);
+/** Steps per second of the run at ground speed `v` (runParams' cadence): the clips alone, far away, keep this pace. */
+export function runCadence(v: number): number {
+  const w = Math.max(v, 1.5);
+  return 2.45 + 0.107 * w + 0.05 * (1 - sprintShare(w));
+}
 /**
- * Running: 174 steps a minute and 1.45 m steps at 4.2 m/s (a light, relaxed run), 192 and 2.19 m at 7 m/s; a short
- * contact under the body (the foot lands just ahead of the hips, nearly flat), the heel kicked up behind, the knee
- * driven forward, elbows bent near 90°, the trunk leaning a little more with the speed.
+ * Running. The jog (4.2 m/s) is relaxed: 177 steps a minute with a 1.42 m step, a light bounce, the heel kicked up a little,
+ * elbows bent about 55° and the hands low, a slight lean. The sprint (6.5 m/s and up) is the full effort: 190+ steps a minute,
+ * 2.1 m steps, the heel kicked high behind, the knee driven forward, elbows near 90°, more lean. The two blend over 4.2-6.5 m/s.
+ * A short contact under the body (the foot lands just ahead of the hips, nearly flat).
  */
 export function runParams(v: number, o: GaitParams = newParams()): GaitParams {
-  const w = Math.max(v, 1.5);
-  o.cadence = 2.45 + 0.107 * w; o.step = w / o.cadence;
+  const w = Math.max(v, 1.5), sp = sprintShare(w);
+  o.cadence = runCadence(w); o.step = w / o.cadence;
   o.duty = clamp(((0.64 + 0.016 * Math.min(w, 4.2)) / w) * o.cadence * 0.5, 0.15, 0.42);         // the stance travel stops growing past 4.2 m/s
   o.centre = -0.1 - 0.005 * w; o.width = 0.05 - 0.002 * w;
   o.heelStrike = Math.max(0, 8 - w) * DEG; o.footFlat = 0.2; o.heelOff = 0.4; o.toeOff = -(35 + 3 * w) * DEG;
-  o.lift = 0; o.clear = 0; o.kick = 0.22 + 0.05 * w; o.drive = 0.12 + 0.03 * w; o.ankleSwing = 12 * DEG;
+  o.lift = 0; o.clear = 0; o.kick = lerp(0.1 + 0.05 * w, 0.22 + 0.05 * w, sp); o.drive = 0.12 + 0.03 * w; o.ankleSwing = 12 * DEG;
   o.hipY = 0.928; o.bob = -(0.016 + 0.003 * w); o.sway = 0.012;
-  o.yaw = (5 + 0.4 * w) * DEG; o.roll = 3 * DEG; o.lean = (3 + 0.9 * w) * DEG;
-  o.arm = (16 + 3.2 * w) * DEG; o.armBias = 2 * DEG; o.elbow = (74 + 2.2 * w) * DEG; o.elbowSwing = 14 * DEG;
+  o.yaw = (5 + 0.4 * w) * DEG; o.roll = 3 * DEG; o.lean = lerp(2 + 0.5 * w, 3 + 0.9 * w, sp) * DEG;
+  o.arm = lerp(20 + 1.5 * w, 16 + 3.2 * w, sp) * DEG; o.armBias = 2 * DEG;
+  o.elbow = lerp(52 + 1 * Math.min(w, 4.2), 74 + 2.2 * w, sp) * DEG; o.elbowSwing = lerp(8, 14, sp) * DEG;
   return o;
 }
 export function mixParams(a: GaitParams, b: GaitParams, t: number, o: GaitParams = newParams()): GaitParams {

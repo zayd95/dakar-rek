@@ -4,7 +4,7 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import type { WrestlerLook } from '../core/types';
 import { ACCESSORIES, ngembTexture, type Socket } from '../lamb/look';
 import type { Outfit } from './character';
-import { GaitState, walkCadence } from './gait';
+import { GaitState, runCadence, walkCadence } from './gait';
 import { GaitRig } from './gaitRig';
 import { joinNeck } from './neckJoin';
 
@@ -14,7 +14,7 @@ import { joinNeck } from './neckJoin';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
+export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
 export type PoseClip = 'Lie' | 'SitFloor' | 'Ride';
 export type Style = 'boubou' | 'tee' | 'dress';
@@ -47,6 +47,8 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     joinNeck(gltf.scene);                                    // the head joined to the body (src/actors/neckJoin.ts)
     fixSitKnees(gltf.animations);
     fixRunClip(gltf.animations);
+    deriveJog(gltf.animations);
+    widenWalk(gltf.animations);
     deriveKneel(gltf.animations);
     const clips = [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)];
     stripStaticTracks(gltf.scene, clips);
@@ -116,6 +118,38 @@ export function fixRunClip(clips: THREE.AnimationClip[]) {
     if (!backward) continue;
     for (let i = 0; i < v.length; i += 4) { v[i] = -v[i]; v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
   }
+}
+
+/** A quaternion track's swing about its mean turned by `k` (1: as it is, 0: held at the mean); in place. Allocation at load only. */
+function scaleSwing(values: ArrayLike<number> & { [i: number]: number }, k: number) {
+  const n = values.length / 4, out = new THREE.Quaternion(), mean = new THREE.Quaternion(), q = new THREE.Quaternion(), ref = new THREE.Quaternion(values[0], values[1], values[2], values[3]);
+  let x = 0, y = 0, z = 0, w = 0;
+  for (let i = 0; i < n; i++) { q.set(values[4 * i], values[4 * i + 1], values[4 * i + 2], values[4 * i + 3]); if (q.dot(ref) < 0) { q.x = -q.x; q.y = -q.y; q.z = -q.z; q.w = -q.w; } x += q.x; y += q.y; z += q.z; w += q.w; }
+  mean.set(x, y, z, w).normalize();
+  for (let i = 0; i < n; i++) {
+    q.set(values[4 * i], values[4 * i + 1], values[4 * i + 2], values[4 * i + 3]); if (q.dot(ref) < 0) { q.x = -q.x; q.y = -q.y; q.z = -q.z; q.w = -q.w; }
+    out.copy(mean).slerp(q, k); q.copy(out);
+    values[4 * i] = q.x; values[4 * i + 1] = q.y; values[4 * i + 2] = q.z; values[4 * i + 3] = q.w;
+  }
+}
+/**
+ * The far body (beyond the gait's reach, ANIM_LOD) plays the clips alone: at a jog the Run clip's legs and arms swing far
+ * wider than the computed gait's (foot spread 1.06 m against 0.69), so bodies would change stride as they cross 30 m. 'Jog' is
+ * the Run clip with the swing of the thighs, shins and arms turned down to the jog's.
+ */
+export function deriveJog(clips: THREE.AnimationClip[]) {
+  const run = clips.find(c => c.name === 'Run'); if (!run || clips.some(c => c.name === 'Jog')) return;
+  const jog = run.clone(); jog.name = 'Jog';
+  for (const t of jog.tracks) {
+    const m = /^(thigh|shin|upper_arm|forearm)\.?[LR]\.quaternion$/.exec(t.name); if (!m) continue;
+    scaleSwing(t.values, m[1] === 'thigh' ? 0.62 : m[1] === 'shin' ? 0.75 : 0.6);
+  }
+  clips.push(jog);
+}
+/** The Walk clip's thighs swing a little less than the gait's step needs (foot spread 0.52 m against 0.71): widened to match. */
+export function widenWalk(clips: THREE.AnimationClip[]) {
+  const walk = clips.find(c => c.name === 'Walk'); if (!walk) return;
+  for (const t of walk.tracks) if (/^thigh\.?[LR]\.quaternion$/.test(t.name)) scaleSwing(t.values, 1.3);
 }
 
 // ---------------------------------------------------------------- poses built in code (home and social life)
@@ -265,7 +299,7 @@ export function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xfff
 }
 
 /** Clips that mean « on foot »: held by remote avatars and walking roles, they get the computed gait like a free body. */
-const LOCOMOTION: ReadonlySet<string> = new Set<Clip>(['Idle', 'Walk', 'Run']);
+const LOCOMOTION: ReadonlySet<string> = new Set<Clip>(['Idle', 'Walk', 'Jog', 'Run']);
 
 // ---------------------------------------------------------------- animation level of detail
 /**
@@ -506,7 +540,7 @@ export class Humanoid {
       const g = (this.gait ??= new GaitState());
       if (this.gaitW <= 0) g.reset(o.x, o.z, this.group.rotation.y, this.group.scale.x);        // back on foot from a held pose
       g.update(dt, o.x, o.z, this.group.rotation.y, this.group.scale.x, speed);
-      if (g.moving) { this.play(g.run > 0.5 ? 'Run' : 'Walk', 0.2); if (this.current) this.current.timeScale = (g.p.cadence / 2) * this.current.getClip().duration; }
+      if (g.moving) { this.play(g.run > 0.5 ? (g.v < 5.5 ? 'Jog' : 'Run') : 'Walk', 0.2); if (this.current) this.current.timeScale = (g.p.cadence / 2) * this.current.getClip().duration; }
       else this.play('Idle', 0.25);
       // in reach of the gait it fades in; out of it (far, out of view, hidden) it fades out, then the clips walk alone
       this.gaitW = lod === 0 ? Math.min(1, this.gaitW + dt / 0.2) : Math.max(0, this.gaitW - dt / 0.25);
@@ -514,7 +548,7 @@ export class Humanoid {
       // the clips alone, as they played before the gait: their pace from the caller's speed or the measured one
       const s = Math.max(speed, this.v);
       if (this.hold) this.play(this.hold, 0.2);
-      else if (s > 3) { this.play('Run', 0.15); if (this.current) this.current.timeScale = ((2.45 + 0.107 * s) / 2) * this.current.getClip().duration; }
+      else if (s > 3) { this.play(s < 5.5 ? 'Jog' : 'Run', 0.15); if (this.current) this.current.timeScale = (runCadence(s) / 2) * this.current.getClip().duration; }
       else if (s > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = (walkCadence(s) / 2) * this.current.getClip().duration; }   // the pace the gait keeps near: no change of stride at the LOD switch
       else this.play('Idle', 0.25);
     }

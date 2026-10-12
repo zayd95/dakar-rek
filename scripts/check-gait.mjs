@@ -1,5 +1,5 @@
-// The player's gait (src/actors/gait.ts), desktop and phone: the walk (1.4 m/s and the light push's 2.2 m/s), the brisk
-// default (4.2 m/s) and the run (7 m/s), each as screenshot sequences from the front, the side and the back (8 frames a
+// The player's gait (src/actors/gait.ts), desktop and phone: the walk (1.4 m/s light push, 2.0 m/s
+// the default), the jog (4.2 m/s) and the sprint (7 m/s), each as screenshot sequences from the front, the side and the back (8 frames a
 // stride), then a start, a stop, a 90° turn while walking and a turn on the spot; and how much the feet slide: the sole's
 // lowest point carries the body while it is within 1.5 cm of the ground, its horizontal drift meanwhile is sliding, in cm
 // a step, with the cadence (steps a minute) and the step's length.
@@ -27,8 +27,9 @@ const SOLE = { heel: [0, 0.0023, 0.1059], ball: [0, 0.1475, 0.0515] };
 const DT = 1 / 60;
 const GAITS = [
   { name: 'walk', label: 'walk 1.4 m/s (light push)', stick: 0.59, spm: [105, 135] },
-  { name: 'walk-max', label: 'brisk walk 2.2 m/s (full push: the default)', keys: ['KeyW'], spm: [145, 175] },
-  { name: 'run', label: 'run 7 m/s (Shift / « Courir »)', keys: ['KeyW'], run: true, spm: [175, 215] },
+  { name: 'walk2', label: 'walk 2.0 m/s (full push: the default)', keys: ['KeyW'], spm: [135, 175] },
+  { name: 'jog', label: 'jog 4.2 m/s (Shift / « Courir »)', keys: ['KeyW'], level: 1, spm: [165, 195] },
+  { name: 'sprint', label: 'sprint 7 m/s (double-tapped Shift / « Courir » twice)', keys: ['KeyW'], level: 2, spm: [175, 215] },
 ];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
@@ -71,10 +72,9 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   }, SOLE);
   const stick = (mag, side = 0) => d(([m, s]) => window.__gaitCheck.stick(m, s), [mag, side]);
   const keys = async (list, down) => { for (const k of list) await (down ? page.keyboard.down(k) : page.keyboard.up(k)); };
-  const setRun = async on => {
-    if (touch) { const now = await d(() => window.__dakar.stride().toggle); if (now !== on) await page.locator('#runBtn').dispatchEvent('pointerdown'); }
-    else await (on ? page.keyboard.down('ShiftLeft') : page.keyboard.up('ShiftLeft'));
-  };
+  // the gait asked for (0 walk, 1 jog, 2 sprint): the button's / Shift's level, set directly (a double tap needs real frames between the presses)
+  const setRun = level => d(l => window.__dakar.strideToggle(l), level);
+
   /** Advance the game: stepped (paused, exact) or in real time. */
   const advance = async seconds => {
     if (stepped) await d(([dt, n]) => { window.__dakar.step(dt, n); window.__gaitCheck.clock += dt * n; }, [DT, Math.max(1, Math.round(seconds / DT))]);
@@ -127,11 +127,11 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
 
   for (const gt of GAITS) {
     await start();
-    if (gt.run) await setRun(true);
+    if (gt.level) await setRun(gt.level);
     if (gt.keys) await keys(gt.keys, true); else await stick(gt.stick);
     await advance(1.5);                                                              // up to speed
     const g0 = stepped ? await d(() => window.__dakar.gait()) : null;
-    const T2 = g0?.cadence ? 2 / g0.cadence : gt.run ? 0.63 : gt.keys ? 0.69 : 0.9;       // one stride (two steps)
+    const T2 = g0?.cadence ? 2 / g0.cadence : gt.level === 2 ? 0.63 : gt.level === 1 ? 0.67 : gt.keys ? 0.8 : 0.9;       // one stride (two steps)
     for (const view of ['front', 'side', 'back']) {
       for (let i = 0; i < 8; i++) { await shoot(`${gt.name}-${view}-${i}`, view, HEADING); await advance(T2 / 8); }
     }
@@ -144,17 +144,18 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
       check(`${label}: ${gt.label}: cadence of the speed (${gt.spm[0]}–${gt.spm[1]} steps a minute)`, m && m.cadenceSpm >= gt.spm[0] && m.cadenceSpm <= gt.spm[1], JSON.stringify(rep.gaits[gt.name].gait));
     }
     if (gt.keys) await keys(gt.keys, false); else await stick(0);
-    if (gt.run) await setRun(false);
+    if (gt.level) await setRun(0);
   }
 
   // start (standing → brisk), stop (brisk → standing), seen from the side, 1/15 s apart
   await start();
   await advance(0.5);
+  await setRun(1);                                                                // start and stop from a jog (the hardest case)
   await keys(['KeyW'], true);
   const startFrames = [];
   for (let i = 0; i < 14; i++) { await shoot(`start-${i}`, 'side', HEADING); startFrames.push(...(await sample(1 / 15))); }
   await advance(1.2);
-  await keys(['KeyW'], false);
+  await keys(['KeyW'], false); await setRun(0);
   const stopFrames = [];
   for (let i = 0; i < 16; i++) { await shoot(`stop-${i}`, 'side', HEADING); stopFrames.push(...(await sample(1 / 15))); }
   stopFrames.push(...(await sample(1)));
