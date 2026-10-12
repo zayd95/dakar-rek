@@ -1,23 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T20:30:00Z",
+  "updatedAt": "2026-10-12T21:36:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261012T2135Z-watch",
-    "owner": "producer_watch_2135",
-    "acquiredAt": "2026-10-12T21:34:51Z",
-    "expiresAt": "2026-10-12T22:04:51Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "40e903b708b91afb0f86bb883157d39263c7b003",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-12-2135-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -131,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-12T20:30:00Z",
+    "lastCompletedRunAt": "2026-10-12T21:36:00Z",
     "lastVerifiedAt": "2026-10-12T18:38:00Z"
   },
   "productionMutationsAuthorized": false,
@@ -301,15 +289,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-2029-WATCH.md",
-    "completedAt": "2026-10-12T20:30:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-2135-WATCH.md",
+    "completedAt": "2026-10-12T21:36:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_2029",
+    "owner": "producer_watch_2135",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261012T2029Z-watch"
+    "leaseReleased": "cycle-20261012T2135Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +559,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-12T20:30:00Z",
+    "checkedAt": "2026-10-12T21:36:00Z",
     "status": "candidate_followup_not_integrated",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -632,7 +620,7 @@
         "cloudflareConclusion": "failure",
         "cloudflareBuildId": "9c13ae9a-af4b-412b-ae51-75025c60bacf"
       },
-      "checkedAt": "2026-10-12T20:30:00Z"
+      "checkedAt": "2026-10-12T21:36:00Z"
     },
     "preview": {
       "status": "success",
