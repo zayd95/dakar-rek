@@ -471,12 +471,12 @@ class ArenaEvening {
   /**
    * One frame of the main event's fête. It is driven by the result's own time (a jump lands on the same picture, cues
    * passed on the way are fired), so behind the walls — the player out in the street, the show not drawn — it is
-   * played five times a second with the time gone by; every frame whenever it can be seen.
+   * played four times a second with the time gone by; every frame whenever it can be seen.
    */
   private partyStep(dt: number) {
     if (!this.party) return;
     this.partyOwed += dt;
-    if (!this.show.visible && this.partyOwed < 0.2) return;
+    if (!this.show.visible && this.partyOwed < HIDDEN_EVERY) return;
     const d = this.partyOwed; this.partyOwed = 0;
     this.party.update(this.t, d);
   }

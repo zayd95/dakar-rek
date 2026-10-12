@@ -94,7 +94,7 @@ export class StreetLife {
   // after the gala (Pikine)
   private eventWas = false;
   private eventSeen = false;
-  private standsMax = 0;
+  private standsMax = 0; private standsT = 0;
   private leaving = 0;
   private leaveT = 0;
   readonly counts = { spawned: 0, boarded: 0, alighted: 0, left: 0, taxi: 0, recruited: 0, dibi: 0 };
@@ -385,7 +385,8 @@ export class StreetLife {
     // the after-gala window opens (the gala seen to the end, or closing time) on an evening the arena's street was alive
     if (arenaExterior.active() && !afterGalaWindow(this.ctx)) this.eventSeen = true;
     const on = afterGalaWindow(this.ctx) && this.eventSeen;
-    for (const c of LIVE_CROWDS) if (c.name === 'arena-stands') this.standsMax = Math.max(this.standsMax, c.present);
+    // (how many the stands held, at most: counted twice a second, not every frame — `present` visits every place of the stands)
+    if ((this.standsT -= dt) <= 0) { this.standsT = 0.5; for (const c of LIVE_CROWDS) if (c.name === 'arena-stands') this.standsMax = Math.max(this.standsMax, c.present); }
     const me = this.ctx.player.pos, g = gateOf(this.hub.arena);
     if (!this.eventWas && on && len2(me.x - g.x, me.z - g.z) < 160) {
       const pool = STREET_BUDGET[this.q].pool;
