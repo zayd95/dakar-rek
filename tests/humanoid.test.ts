@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { fixSitKnees, deriveKneel, KNEEL_HIPS } from '../src/actors/humanoid';
+import { fixSitKnees, deriveKneel, deriveJog, widenWalk, KNEEL_HIPS } from '../src/actors/humanoid';
 
 /** Reads the skeleton and the Sit clip of the shipped character straight from the GLB bytes (no meshes, no textures). */
 function loadRig() {
@@ -89,5 +89,21 @@ describe('humanoid: kneeling on a floor place (prayer row)', () => {
     expect(pos('hips').y).toBeCloseTo(KNEEL_HIPS, 1);
     deriveKneel(clips);
     expect(clips.filter(c => c.name === 'Kneel')).toHaveLength(1);   // derived once
+  });
+});
+
+describe('humanoid: the far body\'s clips keep the near gait\'s swing', () => {
+  const swing = (t: THREE.KeyframeTrack) => { const q = [0, 1, 2].map(k => new THREE.Quaternion(t.values[4 * k], t.values[4 * k + 1], t.values[4 * k + 2], t.values[4 * k + 3])); return Math.max(q[0].angleTo(q[1]), q[1].angleTo(q[2]), q[0].angleTo(q[2])); };
+  const track = (name: string, amp: number) => new THREE.QuaternionKeyframeTrack(name, [0, 0.5, 1], [0, 0, 0, 1, Math.sin(amp / 2), 0, 0, Math.cos(amp / 2), 0, 0, 0, 1]);
+  it('Jog is the Run clip with a narrower swing (Run itself is left alone); Walk\'s thighs swing wider', () => {
+    const run = new THREE.AnimationClip('Run', 1, [track('thighL.quaternion', 1), track('forearmL.quaternion', 1), track('spine.quaternion', 1)]);
+    const walk = new THREE.AnimationClip('Walk', 1, [track('thighR.quaternion', 0.6), track('shinR.quaternion', 0.6)]);
+    const clips = [run, walk]; deriveJog(clips); widenWalk(clips);
+    const jog = clips.find(c => c.name === 'Jog')!;
+    expect(jog).toBeDefined(); expect(clips.filter(c => c.name === 'Jog').length).toBe(1);
+    expect(swing(jog.tracks[0])).toBeLessThan(swing(run.tracks[0]) * 0.8); expect(swing(jog.tracks[1])).toBeLessThan(swing(run.tracks[1]) * 0.8);
+    expect(swing(jog.tracks[2])).toBeCloseTo(swing(run.tracks[2]), 6);
+    expect(swing(walk.tracks[0])).toBeGreaterThan(0.6 * 1.1); expect(swing(walk.tracks[1])).toBeCloseTo(0.6, 3);
+    deriveJog(clips); expect(clips.filter(c => c.name === 'Jog').length).toBe(1);
   });
 });

@@ -1,5 +1,8 @@
+import { ShiftTap } from '../game/stride';
 export class Input {
   keys = new Set<string>();
+  /** Shift's presses: held jogs, double-tapped and held sprints (src/game/stride.ts). */
+  readonly shift = new ShiftTap();
   joy = { x: 0, y: 0 };
   /** accumulated camera yaw/pitch delta from drags */
   dragYaw = 0; dragPitch = 0;
@@ -13,10 +16,11 @@ export class Input {
       if (e.code !== 'Escape' && e.target instanceof HTMLElement && e.target.closest('input,textarea,select,[contenteditable="true"]')) return;
       if (e.repeat) return;
       this.keys.add(e.code);
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.shift.press(e.timeStamp / 1000);
       if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') this.actionPressed = true;
       if (e.code === 'Escape' || e.code === 'KeyM') this.menuPressed = true;
     });
-    addEventListener('keyup', e => this.keys.delete(e.code));
+    addEventListener('keyup', e => { this.keys.delete(e.code); if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !this.keys.has('ShiftLeft') && !this.keys.has('ShiftRight')) this.shift.release(); });
     addEventListener('blur', () => this.reset());
     addEventListener('visibilitychange', () => { if (document.hidden) this.reset(); });
     addEventListener('focusin', e => { if (e.target instanceof HTMLElement && e.target.closest('input,textarea,select,[contenteditable="true"]')) this.reset(); });

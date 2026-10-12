@@ -67,7 +67,7 @@ import { eveningLine, placeClock } from './arena/eveningCall';
 import { GALA_DONE_COUNTER } from './arena/program';
 import { weatherNow } from './city/weather';
 import { GesturePlayer } from './ui/gesture';
-import { Stride } from './game/stride';
+import { Stride, type RunLevel } from './game/stride';
 import { StrideUi } from './ui/stride';
 
 const params = new URLSearchParams(location.search);
@@ -154,6 +154,8 @@ const npcLife = new NpcLife({ hud, rel, state, clock: () => { const ct = cityTim
 const PLAYER_LOOK: PersonLook = avatarLook(presence.profile.look);
 let playerBody: Humanoid | null = null;
 const debugPeople: Humanoid[] = [];
+/** ?debug: bodies walking in a straight line at a set speed (the gait checks: near and far from the camera, ANIM_LOD). */
+const debugWalkers: { h: Humanoid; vx: number; vz: number; x0: number; z0: number; t: number; run: number }[] = [];
 const dbgRand = rng(42);
 const randomLookDbg = () => randomLook(dbgRand);
 let lambScene: LambScene | LambDuel | null = null;
@@ -1054,8 +1056,8 @@ function frameStep(now: number, dt: number, draw = true) {
     const fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
     const dx = fx * m.y + rx * m.x, dz = fz * m.y + rz * m.x;
     const mag = Math.min(1, Math.hypot(m.x, m.y));
-    const wantRun = input.keys.has('ShiftLeft') || input.keys.has('ShiftRight') || strideUi.runToggle;
-    const target = stride.target(mag, wantRun, dt);
+    const shiftLevel = input.shift.level(input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));       // Shift: jog; double-tapped and held: sprint
+    const target = stride.target(mag, Math.max(shiftLevel, strideUi.level) as RunLevel, dt);
     speed += (target - speed) * Math.min(1, dt * (target > speed ? 6 : 12));
     if (mag > 0.05) {
       const want = Math.atan2(dx, dz);
@@ -1091,6 +1093,7 @@ function frameStep(now: number, dt: number, draw = true) {
   // (where each apprentice was drawn last frame: no walk up the moving car's parents for a distance)
   { const run = pacer.step('apprentices', dt, hidden); if (run !== null) for (const a of apprentices) { const wp = tmpV.setFromMatrixPosition(a.h.group.matrixWorld); a.update(run, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); } }
   for (const h of debugPeople) h.animate(dt, 0);
+  for (const w of debugWalkers) { w.t += dt; const u = w.t % w.run; w.h.group.position.set(w.x0 + w.vx * u, 0.1, w.z0 + w.vz * u); w.h.group.updateMatrixWorld(true); w.h.animate(dt, Math.hypot(w.vx, w.vz)); }
   const space = presenceSpace();
   // the body's own pose, also while an activity runs (asleep in bed, praying, dancing): a narrow list, anything else is Idle
   const clip = mode !== 'scene' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
@@ -1185,8 +1188,8 @@ if (DEBUG) {
     clip: () => playerBody?.clipName ?? null,
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores } : null; },
     gesture: () => gestures.info(),
-    stride: () => ({ stamina: Math.round(stride.stamina), max: stride.maxStamina(), running: stride.running, winded: stride.winded, forme: stride.forme, speed, run: stride.runSpeed(), why: stride.whyNot(), toggle: strideUi.runToggle }),
-    strideToggle: (on: boolean) => { strideUi.runToggle = on; },
+    stride: () => ({ stamina: Math.round(stride.stamina), max: stride.maxStamina(), running: stride.running, sprinting: stride.sprinting, gait: stride.gait, winded: stride.winded, forme: stride.forme, speed, run: stride.runSpeed(), why: stride.whyNot(), toggle: strideUi.runToggle }),
+    strideToggle: (on: boolean | 0 | 1 | 2) => { strideUi.level = on === true ? 1 : on === false ? 0 : on; },
     /** Checks that test something else than the gesture itself finish it at once with this score. */
     gestureFinish: (score = 1) => gestures.finishNow(score),
     placeList: () => places.all().map(p => ({ id: p.id, type: p.type, name: p.name, space: p.space, anchors: p.anchors.map(a => a.id) })),
@@ -1205,6 +1208,10 @@ if (DEBUG) {
     body: () => playerBody,
     faceCamera() { follow.pin(); follow.yaw = facing + Math.PI; },
     portrait(dist = 2.2, h = 1.5, side = 0.35) { camOverride = dist > 0 ? { dist, h, side } : null; },
+    /** A body walking from (x, z) along `yaw` at `speed` m/s for `len` m, then again from the start. */
+    addWalker(x: number, z: number, yaw: number, speed: number, len = 60) { const h = new Humanoid({ ...randomLookDbg(), style: 'tee', hat: undefined, female: false }); h.group.rotation.y = yaw; extra.add(h.group); debugWalkers.push({ h, vx: Math.sin(yaw) * speed, vz: Math.cos(yaw) * speed, x0: x, z0: z, t: 0, run: len / speed }); return debugWalkers.length - 1; },
+    walkerPos: (i: number) => { const w = debugWalkers[i]; return w ? { x: w.h.group.position.x, z: w.h.group.position.z } : null; },
+    clearWalkers() { for (const w of debugWalkers) w.h.group.removeFromParent(); debugWalkers.length = 0; },
     addPeople(n = 6) { if (!world) return; for (let k = 0; k < n; k++) { const h = new Humanoid(randomLookDbg()); h.group.position.set(pos.x + Math.sin(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2), 0.1, pos.z + Math.cos(facing + 0.6 + k * 0.45) * (2.6 + (k % 2) * 1.2)); h.group.rotation.y = facing + Math.PI; h.hold = k % 3 === 0 ? 'Talk' : 'Idle'; extra.add(h.group); debugPeople.push(h); } },
     sceneInfo: () => (lambScene ? { kind: lambScene.kind, t: lambScene.t } : null),
     /** The follow camera's last frame: free room behind the player (m), tight, extra pitch, swinging, occluders near. */
