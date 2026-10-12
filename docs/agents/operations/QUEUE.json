@@ -763,7 +763,7 @@
       "id": "DKAG-020",
       "role": "gameplay",
       "kind": "compatibility_implementation",
-      "status": "review",
+      "status": "done",
       "branch": "codex/agents/dkag-020-place-summary-current",
       "baseCommit": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
       "allowedFiles": [
@@ -794,7 +794,7 @@
         "docs/agents/operations/reports/DKAG-020-gameplay-review.md"
       ],
       "sourceCommit": "9632c7666cf76dbd23a8de4b50d44c31fe85e07e",
-      "ownerState": "source frozen; complete PR CI success and push failure require independent log reconciliation",
+      "ownerState": "completed frozen handoff; independent QA READY with exact CI reconciliation",
       "validation": {
         "authorUnit": {
           "passed": 128,
@@ -811,28 +811,50 @@
         "authorDiffCheck": "PASS",
         "authorBrowser": "local_not_run: browser reserved to exact CI",
         "ci": {
-          "readAt": "2026-10-12T01:36:00Z",
+          "readAt": "2026-10-12T02:43:00Z",
           "runs": [
             {
               "id": 38192271378,
               "event": "pull_request",
+              "jobId": 114627363316,
+              "artifactId": 11722366741,
+              "artifactDigest": "sha256:dfef8951f8f892cbfd957cc5628e34c09a2a8a25e33fa2051ae504c6c7d1ad1d",
+              "status": "completed",
+              "conclusion": "success",
               "sha": "9632c7666cf76dbd23a8de4b50d44c31fe85e07e",
-              "status": "in_progress",
-              "conclusion": null
+              "note": "full unit/typecheck/build/check:city/check:online/check:launch success"
             },
             {
               "id": 38192251481,
               "event": "push",
+              "jobId": 114627304089,
+              "artifactId": 11722455497,
+              "artifactDigest": "sha256:1c54cf161d57e474c7e16d2a9a39bd2644dc020d224c9368e683548b69bb102b",
+              "status": "completed",
+              "conclusion": "failure",
               "sha": "9632c7666cf76dbd23a8de4b50d44c31fe85e07e",
-              "status": "in_progress",
-              "conclusion": null
+              "note": "real TimeoutError 30s in check:city rest wait; online/launch skipped; not counted green"
             }
           ]
         },
-        "independentQa": "REVIEW: exact diff accepted statically; browser CI pending"
+        "independentQa": "READY: exact diff and exact CI logs/artifacts reviewed independently",
+        "independentUnit": {
+          "passed": 128,
+          "total": 128,
+          "filesPassed": 13,
+          "filesTotal": 13
+        },
+        "independentTypecheck": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBuild": "PASS",
+        "independentBrowser": {
+          "result": "PASS",
+          "scope": "GitHub Actions Playwright Chromium desktop and phone viewport/touch; not physical phone; local_not_run"
+        }
       },
       "pullRequest": 20,
-      "reviewReport": "docs/agents/operations/reports/DKAG-020-gameplay-review.md"
+      "reviewReport": "docs/agents/operations/reports/DKAG-020-gameplay-review.md",
+      "acceptedScope": "verified isolated candidate on exact current Living Dakar base; complete PR CI green and push timing failure explicitly preserved; not merged/deployed"
     }
   ]
 }
