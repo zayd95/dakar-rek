@@ -854,6 +854,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       }
       case 'port': {
         plain.box(6, 0.4, 36, cx, B, bz - 8, 0x8b6a47);                                 // pier toward the sea
+        ramps.push({ x0: cx - 3, x1: cx - 3, z0: bz - 26, z1: bz + 10, y0: 0.4, y1: 0.4, xEnd: cx + 3 });   // walked on: feet on the planks (flat)
         for (let k = 0; k < 12; k++) plain.box(6.05, 0.05, 0.12, cx, B + 0.4, bz - 25 + k * 3, 0x6b4f33);
         const cols = [0x1e6fd9, 0xe7b82f, 0xd9482b, 0x2f8f4e];
         for (let k = 0; k < 5; k++) {
