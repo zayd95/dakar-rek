@@ -1,11 +1,16 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T02:43:00Z",
+  "updatedAt": "2026-10-12T02:46:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": null,
+  "lease": {
+    "token": "cycle-20261012T0246Z-registry-preserve",
+    "owner": "producer_registry_preserve_0246",
+    "acquiredAt": "2026-10-12T02:46:00Z",
+    "expiresAt": "2026-10-12T03:06:00Z"
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
