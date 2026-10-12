@@ -146,7 +146,7 @@ try {
     const B = await open({ viewport: { width: 640, height: 400 } }, { name: 'Awa', look: 1 });
     for (const p of [A, B]) await p.waitForFunction(() => window.__dakar.presence().status === 'online', null, T);
     await toPitch(A, [-6, 0, E]);
-    await toPitch(B, [5, 0, -E]);
+    await toPitch(B, [9, 0, -E]);
     for (const p of [A, B]) await p.waitForFunction(() => window.__dakar.presence().peers.some(x => x.space === 'street' && Math.abs(x.z) > 0), null, T);
     const room = await Promise.all([A, B].map(p => p.evaluate(() => window.__dakar.presence().room)));
     check('A and B in the same room at the pitch', room[0] === room[1] && room[0] > 0, { room });
@@ -172,7 +172,7 @@ try {
       moving.push(+Math.hypot(x - (x0 + (x1 - x0) * u), z - (z0 + (z1 - z0) * u)).toFixed(2));
     }
     check('the pass reaches B: B touched it, owns it on both screens', b1.owner === idB && a1.owner === idB && b1.stats.touches >= 1, { ownerA: a1.owner, ownerB: b1.owner, idB, touchesB: b1.stats.touches });
-    check('both screens agree where the ball is (at rest: within 0.3 m; rolling, at the same shared time: within 1 m)', gap < 0.3 && moving.length > 0 && Math.max(...moving) < 1.0, { rest: +gap.toFixed(3), rollingFrames: moving.length, fps: [tA, tB].map(t => { const r = t.filter(x => x[0] > passT && x[0] < passT + 3000); return r.length > 1 ? +((r.length - 1) / ((r[r.length - 1][0] - r[0][0]) / 1000)).toFixed(1) : 0; }), rollingMax: Math.max(...moving), rollingMedian: moving.sort((p, q) => p - q)[moving.length >> 1] });
+    check('both screens agree where the ball is (at rest: within 0.3 m; rolling, at the same shared time: within 1 m)', gap < 0.3 && moving.length >= 2 && Math.max(...moving) < 1.0, { rest: +gap.toFixed(3), rollingFrames: moving.length, fps: [tA, tB].map(t => { const r = t.filter(x => x[0] > passT && x[0] < passT + 3000); return r.length > 1 ? +((r.length - 1) / ((r[r.length - 1][0] - r[0][0]) / 1000)).toFixed(1) : 0; }), rollingMax: Math.max(...moving), rollingMedian: moving.sort((p, q) => p - q)[moving.length >> 1] });
     const pB = await B.evaluate(() => window.__dakar.pos());
     await shoot(B, '5-two-players-pass', [pB.x - 4, 2.6, pB.z - 6], [pB.x - 2, 0.5, pB.z]);
     // B turns to the far goal and shoots (F held)

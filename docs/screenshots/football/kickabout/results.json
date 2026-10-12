@@ -1,0 +1,285 @@
+{
+ "base": "http://127.0.0.1:38137/",
+ "when": "2026-10-12T21:57:59.895Z",
+ "passed": 18,
+ "total": 18,
+ "results": [
+  {
+   "name": "outside the match hours the kickabout ball waits on the pitch (no NPC match)",
+   "ok": true,
+   "detail": {
+    "on": true,
+    "match": false,
+    "ball": {
+     "x": -96.6,
+     "z": 30,
+     "h": 0.11,
+     "px": -6.6,
+     "pz": 0,
+     "speed": 0,
+     "net": 0
+    }
+   }
+  },
+  {
+   "name": "at the ball the action button reads « Tirer » (nobody to pass to), « Frapper fort » among the others",
+   "ok": true,
+   "detail": {
+    "id": "kickabout:ball",
+    "name": "Ballon",
+    "kind": "spot",
+    "space": "street",
+    "primary": "Tirer",
+    "all": [
+     "Tirer",
+     "Frapper fort"
+    ],
+    "why": []
+   }
+  },
+  {
+   "name": "the « Frappe » button shows at the ball",
+   "ok": true,
+   "detail": "on"
+  },
+  {
+   "name": "walking into the ball dribbles it: touches ahead, the ball goes up the pitch with the player",
+   "ok": true,
+   "detail": {
+    "touches": 5,
+    "ballX": 6.793,
+    "maxLead": 0.63,
+    "owner": "1945561d-8815-43d1-9578-f1c9298e64d9"
+   }
+  },
+  {
+   "name": "F held charges the shot (the button fills)",
+   "ok": true,
+   "detail": {
+    "hold": 0.7,
+    "button": "on charge"
+   }
+  },
+  {
+   "name": "the shot scores in the far goal: toast, a goal this session",
+   "ok": true,
+   "detail": {
+    "goals": 1,
+    "toast": "⚽ But ! Ton premier but cette session",
+    "log": [
+     {
+      "t": 1791842182450,
+      "what": "on"
+     },
+     {
+      "t": 1791842185922,
+      "what": "shot",
+      "detail": {
+       "power": 0.64,
+       "to": null
+      }
+     },
+     {
+      "t": 1791842185926,
+      "what": "goal",
+      "detail": {
+       "end": 1,
+       "by": "1945561d-8815-43d1-9578-f1c9298e64d9",
+       "mine": true
+      }
+     }
+    ],
+    "ball": {
+     "x": -69.764,
+     "z": 30,
+     "h": 0.602,
+     "px": 20.236,
+     "pz": 0,
+     "speed": 20.89,
+     "net": 1
+    }
+   }
+  },
+  {
+   "name": "the scorer celebrates",
+   "ok": true,
+   "detail": {
+    "celebrating": true
+   }
+  },
+  {
+   "name": "after a moment in the net the ball is back on the centre spot",
+   "ok": true,
+   "detail": {
+    "x": -90,
+    "z": 30,
+    "h": 0.11,
+    "px": 0,
+    "pz": 0,
+    "speed": 0,
+    "net": 0
+   }
+  },
+  {
+   "name": "far from the pitch the kickabout is off and costs nothing",
+   "ok": true,
+   "detail": {
+    "on": false,
+    "near": false
+   }
+  },
+  {
+   "name": "on a phone: « Frappe » above the action button (« Tirer »), inside the screen, not over it",
+   "ok": true,
+   "detail": {
+    "shown": true,
+    "inBar": "actbar",
+    "b": [
+     261,
+     646,
+     374,
+     694
+    ],
+    "act": [
+     271,
+     762,
+     374,
+     822
+    ],
+    "label": "⚽TirerBallonE"
+   }
+  },
+  {
+   "name": "held « Frappe » shoots on release, and it scores",
+   "ok": true,
+   "detail": {
+    "log": [
+     {
+      "t": 1791842193239,
+      "what": "on"
+     },
+     {
+      "t": 1791842194364,
+      "what": "shot",
+      "detail": {
+       "power": 0.48,
+       "to": null
+      }
+     },
+     {
+      "t": 1791842194382,
+      "what": "goal",
+      "detail": {
+       "end": 1,
+       "by": "c81b7771-083a-41dc-998c-bbef41f4797e",
+       "mine": true
+      }
+     }
+    ],
+    "goals": 1
+   }
+  },
+  {
+   "name": "A and B in the same room at the pitch",
+   "ok": true,
+   "detail": {
+    "room": [
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "name": "A at the ball, B ahead: the action button reads « Passer » (to Awa)",
+   "ok": true,
+   "detail": {
+    "focus": {
+     "id": "kickabout:ball",
+     "name": "Ballon",
+     "kind": "spot",
+     "space": "street",
+     "primary": "Passer",
+     "all": [
+      "Passer",
+      "Frapper fort"
+     ],
+     "why": []
+    },
+    "receiver": {
+     "id": "cc936fe1-2ed1-4b9e-9c8a-9414c90cffd4",
+     "name": "Awa",
+     "x": 9,
+     "z": 0
+    }
+   }
+  },
+  {
+   "name": "the pass reaches B: B touched it, owns it on both screens",
+   "ok": true,
+   "detail": {
+    "ownerA": "cc936fe1-2ed1-4b9e-9c8a-9414c90cffd4",
+    "ownerB": "cc936fe1-2ed1-4b9e-9c8a-9414c90cffd4",
+    "idB": "cc936fe1-2ed1-4b9e-9c8a-9414c90cffd4",
+    "touchesB": 1
+   }
+  },
+  {
+   "name": "both screens agree where the ball is (at rest: within 0.3 m; rolling, at the same shared time: within 1 m)",
+   "ok": true,
+   "detail": {
+    "rest": 0,
+    "rollingFrames": 9,
+    "fps": [
+     2.8,
+     3.1
+    ],
+    "rollingMax": 0.14,
+    "rollingMedian": 0.02
+   }
+  },
+  {
+   "name": "B shoots and scores; A sees B's goal (toast « But de Awa »)",
+   "ok": true,
+   "detail": {
+    "goalsB": 1,
+    "goalA": true,
+    "toastA": "⚽ But de Awa !",
+    "logA": [
+     {
+      "t": 1791842269695,
+      "what": "pass",
+      "detail": {
+       "power": 0,
+       "to": "cc936fe1-2ed1-4b9e-9c8a-9414c90cffd4"
+      }
+     },
+     {
+      "t": 1791842278075,
+      "what": "goal",
+      "detail": {
+       "end": 1,
+       "by": "cc936fe1-2ed1-4b9e-9c8a-9414c90cffd4",
+       "mine": false
+      }
+     }
+    ]
+   }
+  },
+  {
+   "name": "traffic stays light: B sent at most ~10 states a second",
+   "ok": true,
+   "detail": {
+    "sentA": 9,
+    "sentB": 7,
+    "receivedA": 7,
+    "receivedB": 9,
+    "droppedA": 0
+   }
+  },
+  {
+   "name": "no page error",
+   "ok": true,
+   "detail": []
+  }
+ ]
+}
