@@ -1,14 +1,30 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T01:36:00Z",
+  "updatedAt": "2026-10-12T02:36:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational_candidate_review",
-  "lease": null,
+  "lease": {
+    "token": "cycle-20261012T0236Z-dkag020-qa",
+    "owner": "producer_dkag020_ci_0236",
+    "acquiredAt": "2026-10-12T02:36:00Z",
+    "expiresAt": "2026-10-12T03:36:00Z"
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "task": "DKAG-020",
+      "owner": "qa_dkag020_ci_0236",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "7444c7593f080c06d4a77b9f6b49d62b9004e8b5",
+      "files": [
+        "docs/agents/operations/reports/DKAG-020-gameplay-review.md"
+      ],
+      "kind": "independent exact CI log review only"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -124,7 +140,9 @@
   "reviewTasks": [
     "DKAG-020"
   ],
-  "activeSessions": [],
+  "activeSessions": [
+    "qa_dkag020_ci_0236"
+  ],
   "completedSessions": [
     "activation_producer",
     "activation_qa",
