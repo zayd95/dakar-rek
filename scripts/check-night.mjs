@@ -70,7 +70,8 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await d(() => window.__dakar.place(-2, 40, 0));
   await page.waitForTimeout(2500);
   const sb = await d(() => window.__dakar.renderBreakdown());
-  check(`${label}: a street at night stays in the ${quality} budget`, sb.base.calls <= BUDGET[quality], `${sb.base.calls} draw calls (budget ${BUDGET[quality]})`);
+  const top = Object.entries(sb.by).sort((a, b) => b[1].calls - a[1].calls).slice(0, 12).map(([k, v]) => `${k} ${v.calls}`).join(', ');
+  check(`${label}: a street at night stays in the ${quality} budget`, sb.base.calls <= BUDGET[quality], `${sb.base.calls} draw calls (budget ${BUDGET[quality]}) · by group: ${top}`);
   await shot('3-street');
 
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
