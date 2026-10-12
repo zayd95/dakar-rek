@@ -134,3 +134,27 @@ export function forearmDir(h: Humanoid, side: 'L' | 'R', out = new THREE.Vector3
   w.getWorldPosition(out); f.getWorldPosition(A);
   return out.sub(A).normalize();
 }
+
+/**
+ * Puts the `side` ankle on `target` (world), the knee toward `pole` (a world direction: forward and up for a kick), with
+ * weight `w` — a foot to the ball (src/game/football.ts). Call `crouch` first when the other leg should bend too.
+ */
+export function legTo(h: Humanoid, side: 'L' | 'R', target: THREE.Vector3, pole: THREE.Vector3, w = 1) {
+  if (w > 0) limb(h, `thigh.${side}`, `shin.${side}`, `foot.${side}`, target, pole, Math.min(1, w));
+}
+
+/** The point of a foot that meets the ball, in the foot bone's frame: the middle of the instep (+y toward the toes, +z the sole). */
+export const STRIKE = [0, 0.1, 0.05] as const;
+/** World position of the foot's strike point (STRIKE). */
+export function footStrike(h: Humanoid, side: 'L' | 'R', out = new THREE.Vector3()) {
+  const f = h.bone(`foot.${side}`); if (!f) return bodyPoint(h, 0.3, 0.12, side === 'R' ? 0.12 : -0.12, out);
+  f.updateMatrixWorld(true);
+  return out.set(STRIKE[0], STRIKE[1], STRIKE[2]).applyMatrix4(f.matrixWorld);
+}
+
+/** Turns a foot so that it points (ankle → toes) along `dir` (world), blended by `w`: toes down for a strike, out for a side-foot pass. */
+export function pointFoot(h: Humanoid, side: 'L' | 'R', dir: THREE.Vector3, w = 1) {
+  const f = h.bone(`foot.${side}`); if (!f || w <= 0) return;
+  f.getWorldQuaternion(Q0);
+  aim(f, A.set(0, 1, 0).applyQuaternion(Q0), B.copy(dir), Math.min(1, w));
+}

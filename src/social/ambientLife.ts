@@ -27,6 +27,39 @@ import type { Collider } from '../world/types';
  * systems' humanoids (crowdLod.ts). Local to this device, like the walkers.
  */
 type State = 'off' | 'in' | 'wait' | 'do' | 'out' | 'ride';
+
+/**
+ * What a driver sets on a person it plays for a while (src/game/football.ts: the pitch's footballers and the people
+ * watching them). Only people doing their activity ('do') are driven; leaving, gone or walking in, they are the ambient
+ * life's again (the drive is cleared when they leave).
+ */
+export interface AmbientDrive {
+  /** The driver places the person (x, z, y, yaw) every frame; false: the activity's own pose does. */
+  move: boolean;
+  /** A clip held (Celebrate…), or null: on foot, the gait from the motion (standing still: Idle). */
+  hold: Clip | null;
+  /** Ground speed for the legs (m/s): above 2.6 they run. */
+  speed: number;
+  /** A gesture on top of the pose (a foot to the ball, a keeper's hands), or null. */
+  overlay: ((h: Humanoid, dt: number) => void) | null;
+  /** Where a person the driver does not move looks (a spectator following the ball), or null. */
+  look: number | null;
+  /** Its body is animated every frame (a contact measured on the bones), not every other frame farther away. */
+  every: boolean;
+  /** Weight on its distance when the full bodies are shared (< 1: a full body before others as far away). */
+  prio: number;
+}
+/** A person of the ambient life as a driver sees it (AmbientLife.people). */
+export interface AmbientPerson {
+  readonly key: string; readonly state: State;
+  readonly spot: AmbientSpot | null; readonly act: AmbientActivity | null;
+  x: number; z: number; y: number; yaw: number;
+  readonly look: PersonLook;
+  /** Its full body now, or null (a far figure, or not drawn). */
+  readonly body: Humanoid | null;
+  drive: AmbientDrive | null;
+}
+
 interface Actor {
   n: number; key: string; state: State; born: number;
   spot: AmbientSpot | null; act: AmbientActivity | null;
@@ -51,6 +84,8 @@ interface Actor {
   rec: Body;
   /** Asked to leave by a reconcile that has not yet found the frame's budget to send them off (see `leaving`). */
   exit: boolean;
+  /** Played by a driver while doing the activity (see AmbientDrive), else null. */
+  drive: AmbientDrive | null;
 }
 
 const SNAP_DIST = 45;        // spots farther than this fill and empty without walking (nobody sees them arrive)
@@ -424,6 +459,7 @@ export class AmbientLife implements GameModule {
       ax: 0, az: 0, sitY: 0.1, sitClip: 'Sit', path: [], seg: 0, speed: 1.3, until: 0, pause: 0, cool: 0, q: -1, qx: 0, qz: 0, qyaw: 0, waitT: 0, cq: false, paid: false, clipT: 0, tw: 0, twDir: 1, route: null, board: null,
       body: null, lod: 0, acc: 0, d: 0, rec: { id: 'amb:' + n, obj: new THREE.Object3D(), h: null, bias: 3 },   // focus after places, the cast and seats in reach: a passer-by never hides them
       exit: false,
+      drive: null,
     };
     this.actors.push(a);
     return a;
@@ -718,6 +754,7 @@ export class AmbientLife implements GameModule {
     const instant = !visible || a.state === 'in' && a.lod < 2;
     if (!instant) { if (this.pathLeft <= 0 && !force) return false; this.pathLeft--; }
     const wasSitting = a.sitting;
+    a.drive = null;                                                   // no longer played by a driver (src/game/football.ts)
     this.releaseSeat(a); this.freeSlot(a); this.freeQueue(a);
     if (instant) { this.off(a, false); return true; }
     let to: Pt | null = null;
@@ -771,7 +808,7 @@ export class AmbientLife implements GameModule {
     if (a.state === 'off') return;
     if (release || a.seat) this.releaseSeat(a);
     this.freeSlot(a); this.freeQueue(a);
-    a.state = 'off'; a.path.length = 0; a.route = null;
+    a.state = 'off'; a.path.length = 0; a.route = null; a.drive = null;
     if (a.body) this.dropBody(a);
     a.lod = 0;
   }
@@ -786,6 +823,8 @@ export class AmbientLife implements GameModule {
 
   private step(a: Actor, dt: number, p: THREE.Vector3) {
     const act = a.act!;
+    // played by a driver (src/game/football.ts): stays as long as it is played, then a little
+    if (a.state === 'do' && a.drive?.move) { if (a.until < this.t + 20) a.until = this.t + 20; return; }
     if (a.tw > 0) {                                                   // sitting down / standing up, half a second
       a.tw = Math.max(0, a.tw - dt * 2.2);
       const k = a.twDir > 0 ? 1 - a.tw : a.tw;                        // 0 standing in front of the seat … 1 seated
@@ -873,7 +912,7 @@ export class AmbientLife implements GameModule {
     if (act.pose === 'stand' && act.clips.length > 1 && (a.clipT -= dt) <= 0) { a.clipT = 4 + this.rand() * 6; a.clip = act.clips[Math.floor(this.rand() * act.clips.length)]; }
     const dP = len2(p.x - a.x, p.z - a.z);
     const facePlayer = act.pose === 'stand' && dP < 2.8 && a.spot!.space === this.ctx.space();
-    a.yaw = turn(a.yaw, facePlayer ? Math.atan2(p.x - a.x, p.z - a.z) : a.tyaw, dt * 4);
+    a.yaw = turn(a.yaw, facePlayer ? Math.atan2(p.x - a.x, p.z - a.z) : a.drive?.look ?? a.tyaw, dt * 4);
   }
 
   /** Moves along the path; true when the path is done. */
@@ -918,7 +957,7 @@ export class AmbientLife implements GameModule {
     for (const a of this.actors) {
       if (a.state === 'off' || !this.inView(a, space) || outside(a.x, a.z)) { if (a.body) this.dropBody(a); a.lod = 0; continue; }
       a.d = len2(a.x - cam.x, a.z - cam.z);
-      const c = slot(); c.a = a; c.f = null; c.full = a.lod === 2; c.d = a.d * (c.full ? 0.85 : 1);
+      const c = slot(); c.a = a; c.f = null; c.full = a.lod === 2; c.d = a.d * (c.full ? 0.85 : 1) * (a.drive?.prio ?? 1);
     }
     let foreignN = 0;
     for (const f of this.foreign.list) {
@@ -983,11 +1022,14 @@ export class AmbientLife implements GameModule {
 
   private dropBody(a: Actor) {
     const h = a.body; if (!h) return;
-    h.group.visible = false; h.hold = null;
+    h.group.visible = false; h.hold = null; h.overlay = null;
     this.freeBodies.push(h); a.body = null;
   }
 
   private clipOf(a: Actor): Clip {
+    const dv = a.state === 'do' ? a.drive : null;
+    if (dv?.hold) return dv.hold;
+    if (dv?.move) return dv.speed > 2.6 ? 'Run' : dv.speed > 0.3 ? 'Walk' : 'Idle';
     if (a.tw > 0 || a.sitting || a.state === 'ride') return a.sitClip;
     if (a.state === 'in' || a.state === 'out') return a.pause > 0 ? 'Talk' : 'Walk';
     if (a.state === 'wait') return a.cq && a.q > 0 ? 'Idle' : a.waitT % 5 < 3 ? 'Talk' : 'Idle';
@@ -1006,11 +1048,14 @@ export class AmbientLife implements GameModule {
       if (a.state === 'off' || a.lod === 0) continue;
       if (a.lod === 1 || !a.body) { imp.add(a.x, a.y, a.z, a.yaw, a.look.female ? 0.96 : 1, a.color, a.sitting || a.state === 'ride'); continue; }
       const h = a.body, clip = this.clipOf(a), moving = clip === 'Walk' || clip === 'Run';
+      const dv = a.state === 'do' ? a.drive : null;
       h.group.position.set(a.x, a.y, a.z); h.group.rotation.y = a.yaw;
       h.hold = moving ? null : clip;
+      h.overlay = dv?.overlay ?? null;
       a.acc += dt;
-      // distance-based animation rate: every frame up close, every other frame farther away
-      if (a.d < 16 || (this.frameNo + a.n) % 2 === 0) { h.animate(a.acc, moving ? (clip === 'Run' ? Math.max(3.2, a.speed) : a.speed) : 0); a.acc = 0; }
+      // distance-based animation rate: every frame up close, every other frame farther away (a driven contact: every frame)
+      const speed = dv?.move ? dv.speed : moving ? (clip === 'Run' ? Math.max(3.2, a.speed) : a.speed) : 0;
+      if (a.d < 16 || dv?.every || (this.frameNo + a.n) % 2 === 0) { h.animate(a.acc, speed); a.acc = 0; }
     }
     for (const f of this.foreign.list) if (f.lod === 1 && ownerVisible(f.g)) imp.addMatrix(f.g.matrixWorld, f.color, this.foreign.seated(f));
     imp.end();
@@ -1067,6 +1112,23 @@ export class AmbientLife implements GameModule {
     }
   }
 
+  // ------------------------------------------------------------------ drivers (src/game/football.ts)
+  /**
+   * The live people (walking in, doing their activity, leaving) of the spots and activities `where` accepts, in `out`
+   * (reused). A driver plays those doing their activity by setting their `drive` and moving them.
+   */
+  people(where: (spot: AmbientSpot, act: AmbientActivity) => boolean, out: AmbientPerson[] = []): AmbientPerson[] {
+    out.length = 0;
+    for (const a of this.actors) if (a.state !== 'off' && a.spot && a.act && where(a.spot, a.act)) out.push(a);
+    return out;
+  }
+  /** Dresses a person again (a team's kit): its far figure's colour and, when it has one, its body. */
+  restyle(p: AmbientPerson, look: PersonLook) {
+    const a = p as Actor;
+    a.look = look; a.color.setHex(look.top);
+    if (a.body) { a.body.setLook(look); this.bodyLook.set(a.body, look); }
+  }
+
   // ------------------------------------------------------------------ debug (window.__dakar, ?debug)
   private event: { acts: readonly AmbientActivity[]; tags: readonly string[]; boost: number } | null = null;
   /**
@@ -1091,7 +1153,7 @@ export class AmbientLife implements GameModule {
       /** Who is doing what where, the seat invariants and the humanoid budget. */
       ambient: () => this.summary(),
       ambientSpots: () => (this.spots ?? []).map(s => ({ id: s.id, tags: s.tags, space: s.space, x: +s.x.toFixed(1), z: +s.z.toFixed(1), seats: s.seats.length, stands: s.stands.length, rows: s.rows?.length ?? 0, route: !!s.route, source: s.source, place: s.place })),
-      ambientActors: () => this.actors.filter(a => a.state !== 'off').map(a => ({ id: a.rec.id, spot: a.spot!.id, act: a.act!.id, state: a.state, x: +a.x.toFixed(2), z: +a.z.toFixed(2), y: +a.y.toFixed(3), yaw: +a.yaw.toFixed(2), seat: a.seat, sitting: a.sitting, lod: a.lod, clip: a.body?.clipName ?? null, space: a.spot!.space })),
+      ambientActors: () => this.actors.filter(a => a.state !== 'off').map(a => ({ id: a.rec.id, spot: a.spot!.id, act: a.act!.id, state: a.state, x: +a.x.toFixed(2), z: +a.z.toFixed(2), y: +a.y.toFixed(3), yaw: +a.yaw.toFixed(2), seat: a.seat, sitting: a.sitting, lod: a.lod, clip: a.body?.clipName ?? null, space: a.spot!.space, driven: !!a.drive })),
       /** Day of the week override (0 = lundi … 6 = dimanche), null = the city calendar. */
       ambientDay: (d: number | null) => { this.dayOverride = d; this.snapNext = true; },
       /** Everyone walking reaches their place now; people leaving are gone (captures). */

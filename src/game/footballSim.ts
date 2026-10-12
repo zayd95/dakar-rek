@@ -30,8 +30,12 @@ export const BALL_R = 0.11;
 const GRAV = 9.81;
 /** Rolling: the grass's resistance (m/s²) plus the air's drag (× speed²); in the air, the drag only. */
 export const ROLL = 1.2, DRAG = 0.015;
-/** Where the ball is met: ahead of the body (m) and to the side of the kicking foot. A keeper's hands: ahead, any side within ARMS. */
-export const CONTACT = { fwd: 0.34, side: 0.13, hands: 0.32, arms: 0.85 } as const;
+/**
+ * Where the ball is met: ahead of the body (m) and to the side of the kicking foot. A keeper's hands (a ball from waist
+ * height up, HANDS_FROM): ahead, and to either side within `arms`; a lower ball he blocks with a foot.
+ */
+export const CONTACT = { fwd: 0.34, side: 0.13, hands: 0.32, arms: 0.45 } as const;
+export const HANDS_FROM = 0.55;
 /** How far the ball may be from the contact point when the contact is due (m), and how high a foot (a keeper's hands) can meet it. */
 export const REACH = 0.3, FOOT_H = 0.6, HANDS_H = 2.3;
 
@@ -169,6 +173,8 @@ export interface Kick {
   to: number;
   /** The ball where the contact is planned (refreshed every frame), the yaw the body has then; a save: the hands' offset to the side. */
   bx: number; bz: number; bh: number; yaw: number; lat: number;
+  /** A keeper's save with the hands (else the foot). */
+  hands: boolean;
   /** The frame of the contact (−1: not yet) and its entry in the log. */
   hit: number; log: number;
 }
@@ -716,7 +722,9 @@ export class Match {
       // the ball reaches the keeper's line at k: on target?
       const t = k * PATH_DT;
       if (Math.abs(z) > PITCH.post + 0.5 || h > PITCH.bar + 0.3 || t > 1.4) return;
-      const lat = z - p.z, need = Math.max(0, Math.abs(lat) - CONTACT.arms);
+      // the ball's offset to the keeper's right at its line, the body facing it
+      const yaw = Math.atan2(-b.vx, -b.vz), latR = (x - p.x) * -Math.cos(yaw) + (z - p.z) * Math.sin(yaw), lat = z - p.z;
+      const hands = h >= HANDS_FROM, need = hands ? Math.max(0, Math.abs(latR) - CONTACT.arms) : Math.abs(latR);
       const can = need <= 4.2 * Math.max(0, t - 0.2) && h < HANDS_H;
       const odds = 0.82 - 0.22 * (Math.abs(lat) / 2.6) - 0.2 * Math.min(1, ballSpeed(b) / 22) + 0.15 * p.skill;
       if (can && this.rand() < odds) {
@@ -724,7 +732,7 @@ export class Match {
         const sp = 2 + this.rand() * 3, away = this.rand() < 0.5 ? 1 : -1;
         const dx = (-b.vx / n) * 0.4 + away * 0.6 * 0, dz = clamp(lat, -1, 1) * 0.6 + away * 0.5;
         const m = hyp(dx, dz) || 1;
-        this.planKick(p, 'save', dx / m, dz / m, sp, 1.2 + this.rand() * 1.5, -1, [t], clamp(lat, -CONTACT.arms, CONTACT.arms));
+        this.planKick(p, 'save', dx / m, dz / m, sp, 1.2 + this.rand() * 1.5, -1, [t], hands ? clamp(latR, -CONTACT.arms, CONTACT.arms) : 0, latR >= 0 ? 1 : -1);
         if (p.kick) return;
       }
       // beaten: the dive falls short
@@ -878,14 +886,15 @@ export class Match {
    * The soonest of `times` (s from now) at which the body can be where it must be for the contact (the ball then at the
    * contact point, the body facing `yaw`) at a speed it can run; null if none.
    */
-  private feasible(p: Player, kind: KickKind, times: readonly number[], yaw: number, lat = 0): number | null {
+  private feasible(p: Player, kind: KickKind, times: readonly number[], yaw: number, lat = 0, side: 1 | -1 = p.foot): number | null {
     const sp = hyp(p.vx, p.vz);
     let best: number | null = null, cost = Infinity;
     for (const T of times) {
       const B = this.ballAt(T, V1);
       if (this.ball.net && kind !== 'pass') return null;
-      if (B.h > (kind === 'save' ? HANDS_H : FOOT_H)) continue;
-      const X = this.bodyFor(p, kind, B.x, B.z, yaw, lat, V2);
+      const hands = kind === 'save' && B.h >= HANDS_FROM;
+      if (B.h > (hands ? HANDS_H : FOOT_H)) continue;
+      const X = this.bodyFor(hands, side, B.x, B.z, yaw, lat, V2);
       if (Math.abs(X.x) > PITCH.ex + 0.7 || Math.abs(X.z) > PITCH.ez + 0.7) continue;
       const need = hyp(X.x - p.x, X.z - p.z) / T;
       if (need > p.pace * 1.08 + 0.4) continue;
@@ -895,17 +904,16 @@ export class Match {
     return best;
   }
 
-  /** Where the body must be for its contact point to be on (bx, bz) with this yaw. */
-  private bodyFor(p: Player, kind: KickKind, bx: number, bz: number, yaw: number, lat: number, out: { x: number; z: number }) {
+  /** Where the body must be for its contact point (a foot's, `side`; or the hands', `lat` to the right) to be on (bx, bz) with this yaw. */
+  private bodyFor(hands: boolean, side: number, bx: number, bz: number, yaw: number, lat: number, out: { x: number; z: number }) {
     const s = Math.sin(yaw), c = Math.cos(yaw);
-    if (kind === 'save') { out.x = bx - s * CONTACT.hands + c * lat; out.z = bz - c * CONTACT.hands - s * lat; return out; }
-    const side = p.foot;
+    if (hands) { out.x = bx - s * CONTACT.hands + c * lat; out.z = bz - c * CONTACT.hands - s * lat; return out; }
     out.x = bx - s * CONTACT.fwd + c * CONTACT.side * side; out.z = bz - c * CONTACT.fwd - s * CONTACT.side * side;
     return out;
   }
 
   /** Plans a contact (the soonest feasible of `times`); true if planned. */
-  private planKick(p: Player, kind: KickKind, dx: number, dz: number, speed: number, lift: number, to: number, times: readonly number[], lat = 0): boolean {
+  private planKick(p: Player, kind: KickKind, dx: number, dz: number, speed: number, lift: number, to: number, times: readonly number[], lat = 0, side: 1 | -1 = p.foot): boolean {
     if (!this.free(p)) return false;
     // the body's yaw at the contact: along the kick, or (a trap, a save) facing the ball; never turned round more than 2 rad
     let yaw = Math.atan2(dx, dz);
@@ -913,12 +921,12 @@ export class Match {
     if ((kind === 'trap' || kind === 'save') && ballSpeed(b) > 1) yaw = Math.atan2(-b.vx, -b.vz);
     const turn = wrap(yaw - p.yaw);
     if (kind !== 'save' && Math.abs(turn) > 2) yaw = p.yaw + Math.sign(turn) * 2;
-    const T = this.feasible(p, kind, times, yaw, lat);
+    const T = this.feasible(p, kind, times, yaw, lat, side);
     if (T === null) return false;
     const B = this.ballAt(T, V1);
     p.kick = {
-      kind, side: kind === 'save' ? (lat >= 0 ? 1 : -1) : p.foot, left: T, swing: Math.min(T, SWING[kind]), after: AFTER[kind],
-      dx, dz, speed, lift, to, bx: B.x, bz: B.z, bh: B.h, yaw, lat, hit: -1, log: -1,
+      kind, side, left: T, swing: Math.min(T, SWING[kind]), after: AFTER[kind],
+      dx, dz, speed, lift, to, bx: B.x, bz: B.z, bh: B.h, yaw, lat, hands: kind === 'save' && B.h >= HANDS_FROM, hit: -1, log: -1,
     };
     return true;
   }
@@ -932,7 +940,7 @@ export class Match {
       k.left -= dt;
       const B = this.ballAt(Math.max(0, k.left), V1);
       k.bx = B.x; k.bz = B.z; k.bh = B.h;
-      const X = this.bodyFor(p, k.kind, B.x, B.z, k.yaw, k.lat, V2);
+      const X = this.bodyFor(k.hands, k.side, B.x, B.z, k.yaw, k.lat, V2);
       const f = k.left <= 0 ? 1 : Math.min(1, dt / (k.left + dt));
       let sx = (X.x - p.x) * f, sz = (X.z - p.z) * f;
       const cap = (p.pace * 1.3 + 1) * dt, s = hyp(sx, sz);
@@ -983,7 +991,7 @@ export class Match {
       if (!k || k.hit >= 0 || k.left > 1e-6) continue;
       if (done) { p.kick = null; continue; }                             // someone else got there first
       let reach: number;
-      if (k.kind === 'save') {
+      if (k.hands) {
         const s = Math.sin(p.yaw), c = Math.cos(p.yaw);
         const hx = p.x + s * CONTACT.hands - c * k.lat, hz = p.z + c * CONTACT.hands + s * k.lat;
         reach = b.h <= HANDS_H ? hyp(b.x - hx, b.z - hz) : Infinity;
@@ -1002,7 +1010,7 @@ export class Match {
     const b = this.ball, prevPass = this.pass, prevTeam = this.lastTeam;
     const rec: ContactRec = { n: this.contactN++, t: +this.t.toFixed(3), frame: this.frame, who: p.id, team: p.team, kind: k.kind, side: k.side, x: b.x, z: b.z, h: b.h, reach, speed: k.speed, to: k.to, foot: null };
     this.log.push(rec); if (this.log.length > 600) this.log.splice(0, this.log.length - 600);
-    k.hit = this.frame; k.log = rec.n;
+    k.hit = this.frame; k.log = rec.n; k.bx = b.x; k.bz = b.z; k.bh = b.h;
     const st = this.stats;
     st.contacts++;
     // the pass before this contact: completed (a teammate) or lost (an opponent)
