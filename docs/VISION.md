@@ -118,8 +118,19 @@ textures, no real brand, logo or product (`docs/ASSET_REGISTER.md`); they are no
   centre spot. Every touch is planned so that the ball is at the body's contact point at that moment, and the leg's
   IK puts the instep on the ball at that frame (about 3 cm from the foot bone's middle to the ball's surface). The
   match is played only within 60 m of the player; farther away the people run about the pitch as before. The player
-  only watches (no joining, no controls). Yoff is part of the Almadies hub (« Almadies · Ngor · Yoff »), which has no
+  only watches the NPC match (no joining). Yoff is part of the Almadies hub (« Almadies · Ngor · Yoff »), which has no
   field yet.
+- **Kickabout (same lane; `src/game/kickabout.ts`, checked by `scripts/check-kickabout.mjs` and
+  `tests/kickabout.test.ts`):** whenever no NPC match is being played on the Corniche pitch, a ball (« Ballon ») waits
+  on the grass. Walking into it dribbles it (small touches ahead), the action button (E) passes it to the nearest other
+  online player in front, or kicks it straight ahead (« Tirer ») when nobody is there, and holding « Frappe » (F)
+  charges a shot that is released when the button or key is let go. A goal (the match's own goal geometry) brings a
+  toast, the scorer's celebration and a count for the session. During an NPC match the kickabout waits and the player
+  watches. In multiplayer the ball is shared by the room: whoever touched it last owns it and sends its state
+  (about 10 Hz while it moves, 1 Hz at rest) through the presence socket as an additive `ball` message (the server
+  says so in `welcome.features`; old clients ignore it). The server validates, clamps and rate-limits these messages,
+  and the other players extrapolate the state with the same physics. The latest touch, stamped with the server time,
+  claims the ball.
 - **Proposal, first:** believable NPC football on the existing field, built on the existing movement architecture
   and kept light. In order: synchronised ball contact (the foot meets the ball), passing, dribbling, shooting, goals
   and celebrations.
@@ -160,7 +171,7 @@ player's way in.
 
 | Reason to stay | In the game | Missing (proposals) |
 | --- | --- | --- |
-| **Football** | NPC football on the Corniche hub's pitch at match hours (lane `lane/npc-football`): ball, passes, goals, celebrations; the player watches. | Joining the match, then the navétanes (decision 4); a field in Yoff. |
+| **Football** | NPC football on the Corniche hub's pitch at match hours (lane `lane/npc-football`): ball, passes, goals, celebrations; the player watches. Outside the NPC match, a shared kickabout ball the player dribbles, passes to friends online and shoots. | Joining the match, then the navétanes (decision 4); a field in Yoff. |
 | **Friends at the Corniche** | Multiplayer presence and location-aware chat; greetings, names, regulars; jogging and pull-ups; sitting together at the arena (`src/arena/together.ts`). | Corniche V2 (decision 2): the plaza, the amphitheatre and the paths as places to meet and play; joining a friend's activity in one step. |
 | **Children playing Langaa Buri** | Children only in the arena crowds. | Children in the streets and Langaa Buri (decision 3). |
 | **Wrestlers training in Pikine** | The strongest part: écurie, guided training with Coach Ablaye, the career ladder, gala nights, the drills (`docs/CAREER.md`, `docs/LAMB2.md`); the écurie's wrestlers train 6 h 30–10 h and 16 h–19 h. | Training with them: the player joins the group session at its hours, not a solo drill. |

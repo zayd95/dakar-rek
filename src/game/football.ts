@@ -5,7 +5,11 @@ import type { Humanoid, PersonLook } from '../actors/humanoid';
 import { hubLayout } from '../world/builder';
 import { ambientLife, type AmbientDrive, type AmbientPerson } from '../social/ambientLife';
 import { bend, bodyPoint, crouch, footStrike, grip, legTo, pointFoot, reach } from '../actors/gesture';
-import { AFTER, BALL_R, Match, PITCH, ballSpeed, type ContactRec, type Kick, type KickKind, type Player } from './footballSim';
+import { AFTER, BALL_R, Match, PITCH, ballSpeed, type Ball, type ContactRec, type Kick, type KickKind, type Player } from './footballSim';
+import { HOLD_FULL, KICK_REACH, KickBall, type GoalNote } from './kickabout';
+import type { Target } from '../interact/types';
+import type { BallRelay } from '../multiplayer/protocol';
+import './kickabout.css';
 
 /**
  * NPC football on the pitch of the Corniche hub (docs/VISION.md, decision 4), played by the city's own people: the
@@ -23,8 +27,12 @@ import { AFTER, BALL_R, Match, PITCH, ballSpeed, type ContactRec, type Kick, typ
  *   away the people run about the pitch as before (the ambient life's own roaming) and this module costs one distance.
  *   Their bodies and far figures stay the ambient life's, under its shared budget (footballers come first).
  * - One ball and the two goals' nets: two draw calls.
+ * - Kickabout (src/game/kickabout.ts): when no NPC match is played (fewer than two a side), the same ball mesh is the
+ *   « Ballon » anyone may dribble, pass (the action button, E: to the nearest other player ahead, else a straight kick) and
+ *   shoot (« Frappe » held, F held: the power), shared with the room (last touch owns it). During an NPC match the player
+ *   watches: the kickabout waits, and the room's ball states are only kept (the last one) until it is back.
  */
-const NEAR = 60, NEAR_OUT = 66;
+const NEAR = 60, NEAR_OUT = 66, TRACK_N = 512;
 /** Top of the pitch's grass (world y, src/world/builder.ts `pitch`), the footballers' feet on it, the street's. */
 const GRASS = 0.16, FEET = 0.155, STREET = 0.1;
 const TEAM_MAX = 5;
@@ -126,8 +134,27 @@ class Football implements GameModule {
   private goals: { t: number; team: 0 | 1; scorer: number; score: [number, number] }[] = [];
   /** Kick-offs taken: the match time and the ball's distance from the centre spot. */
   private kickoffs: { t: number; dist: number }[] = [];
+  // ---- the kickabout (src/game/kickabout.ts)
+  private kb = new KickBall();
+  /** The kickabout is played this frame (near, in the street, no NPC match); the room's last state kept meanwhile. */
+  private kbOn = false; private pending: BallRelay | null = null;
+  /** The player's last position (pitch space) and smoothed velocity; the shot's hold (s, -1 none); « Frappe » held. */
+  private px = 0; private pz = 0; private pvx = 0; private pvz = 0; private hasP = false;
+  private hold = -1; private btnHeld = false; private shotBtn: HTMLButtonElement | null = null; private btnState = ''; private btnPct = -1;
+  /** Goals scored by this player this session; the celebration's time left; the pass receiver picked (4 Hz). */
+  private myGoals = 0; private celebrate = 0; private recv: { id: string; name: string; x: number; z: number } | null = null; private recvT = 0;
+  private peerCount = 0;
+  private kbTarget: Target | null = null;
+  private kbLog: { t: number; what: string; detail?: unknown }[] = [];
+  /** The checks: the simulated ball's last TRACK_N frames (shared time ms, x, z of pitch space), a ring with no allocation. */
+  private track = new Float64Array(TRACK_N * 3); private trackI = 0;
 
-  init(ctx: GameCtx) { this.ctx = ctx; }
+  init(ctx: GameCtx) {
+    this.ctx = ctx;
+    ctx.ballNet.listen(m => this.onBall(m));
+    ctx.interactions.add({ name: 'kickabout', collect: (space, x, z, out) => { const t = this.kbFocus(space, x, z); if (t) out.push(t); } });
+    this.makeShotButton();
+  }
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
     this.ctx = ctx;
@@ -135,7 +162,7 @@ class Football implements GameModule {
     this.gaps = []; this.goals = []; this.kickoffs = []; this.contactNow = null;
     const sp = hubLayout(hub.id).specials.find(s => s.kind === 'pitch');
     this.pitch = sp ? { x: sp.x, z: sp.z } : null;
-    this.match = null; this.ball = null;
+    this.match = null; this.ball = null; this.kbOn = false; this.pending = null; this.kb.place(); this.hasP = false; this.hold = -1; this.showShot(false);
     if (!sp) return;
     this.match = new Match(0x5eed + Math.floor(ctx.day()));
     const g = new THREE.Group(); g.name = 'football';
@@ -153,7 +180,8 @@ class Football implements GameModule {
     if (!on) { if (this.near) this.release(); return; }
     this.near = true;
     if ((this.syncT -= dt) <= 0) { this.syncT = 0.25; this.sync(); }
-    if (!this.active) return;
+    if (!this.active) { this.kickabout(ctx, dt); return; }
+    if (this.kbOn) this.kbOff();
     m.step(dt);
     this.events();
     this.place(dt);
@@ -172,6 +200,7 @@ class Football implements GameModule {
     for (const f of this.fans.values()) if (f.person.drive === f.drive) f.person.drive = null;
     this.entries.clear(); this.fans.clear();
     this.near = false; this.active = false;
+    if (this.kbOn) this.kbOff();
   }
 
   // ------------------------------------------------------------------ the players: from the city's people
@@ -190,7 +219,7 @@ class Football implements GameModule {
     const n0 = this.count(0), n1 = this.count(1), was = this.active;
     this.active = n0 >= 2 && n1 >= 2;
     for (const e of this.entries.values()) e.person.drive = this.active ? e.drive : null;
-    if (this.ball) this.ball.visible = this.active;
+    if (this.ball) this.ball.visible = true;                                   // the match's ball, or the kickabout's
     if (this.active && !was) {
       if (!this.started) { m.reset(0); this.started = true; }
       // the match picks up where the people are
@@ -290,16 +319,169 @@ class Football implements GameModule {
       d.every = !!d.overlay;
     }
     // the ball, rolling on its way
-    const ball = this.ball!;
-    ball.position.set(pt.x + b.x, GRASS + b.h, pt.z + b.z);
-    const sp = Math.hypot(b.vx, b.vz);
-    if (sp > 0.01) { AX.set(b.vz, 0, -b.vx).divideScalar(sp); QB.setFromAxisAngle(AX, (sp * dt) / BALL_R); ball.quaternion.premultiply(QB); }
+    this.drawBall(b, 0, 0, 0, dt);
     // spectators follow the ball, cheer a goal
     for (const f of this.fans.values()) {
       f.drive.look = Math.atan2(pt.x + b.x - f.person.x, pt.z + b.z - f.person.z);
       if (f.cheer > 0) f.cheer -= dt;
       f.drive.hold = f.cheer > 0 ? 'Celebrate' : null;
     }
+  }
+
+  /** The one ball mesh at a ball of pitch space (plus a drawn offset), rolling on its way. */
+  private drawBall(b: Ball, ox: number, oz: number, oh: number, dt: number) {
+    const ball = this.ball!, pt = this.pitch!;
+    ball.position.set(pt.x + b.x + ox, GRASS + Math.max(BALL_R, b.h + oh), pt.z + b.z + oz);
+    const sp = Math.hypot(b.vx, b.vz);
+    if (sp > 0.01) { AX.set(b.vz, 0, -b.vx).divideScalar(sp); QB.setFromAxisAngle(AX, (sp * dt) / BALL_R); ball.quaternion.premultiply(QB); }
+  }
+
+  // ------------------------------------------------------------------ the kickabout: the player's ball, shared with the room
+  private kickabout(ctx: GameCtx, dt: number) {
+    const pt = this.pitch!, kb = this.kb, self = ctx.ballNet.self(), now = ctx.now();
+    if (!this.kbOn) { this.kbOn = true; this.hasP = false; this.kb.at = 0; this.log('on'); }
+    if (this.pending) { const m = this.pending; this.pending = null; this.noteGoal(kb.receive(m, self, now)); }
+    // the player's motion (pitch space): a jump (a teleport, a door) is no motion
+    const x = ctx.player.pos.x - pt.x, z = ctx.player.pos.z - pt.z;
+    if (this.hasP && dt > 0) {
+      const vx = (x - this.px) / dt, vz = (z - this.pz) / dt, k = Math.min(1, dt * 12);
+      if (Math.hypot(vx, vz) > 12) { this.pvx = this.pvz = 0; } else { this.pvx += (vx - this.pvx) * k; this.pvz += (vz - this.pvz) * k; }
+    }
+    this.px = x; this.pz = z; this.hasP = true;
+    const playing = ctx.mode() === 'play' && !ctx.player.seated();
+    if (playing) kb.dribble(x, z, this.pvx, this.pvz, dt, self, now);
+    // the shot: « Frappe » or F held near the ball, struck on release with the power of the hold
+    const held = playing && (this.btnHeld || ctx.input.keys.has('KeyF'));
+    if (held && this.hold < 0 && kb.inReach(x, z)) this.hold = 0;
+    if (this.hold >= 0) {
+      if (held) this.hold += dt;
+      else { this.strike('shot', Math.min(1, this.hold / HOLD_FULL)); this.hold = -1; }
+    }
+    // the ball keeps the shared clock's pace even when frames are slow (the frame's dt is capped at 0.1 s): the room's
+    // screens then agree on where it rolls; stepped frames (the checks) are never slower than their dt
+    // (a state received since the last frame is already where it is now: only the time since then)
+    const real = kb.at > 0 ? Math.min(0.5, Math.max(0, (now - kb.at) / 1000)) : dt;
+    const bdt = kb.fresh ? real : Math.max(dt, real);
+    kb.fresh = false; kb.at = now;
+    this.noteGoal(kb.step(bdt, self, now));
+    // the room: the owner sends; someone new hears it at once
+    if ((this.recvT -= dt) <= 0) {
+      this.recvT = 0.25; this.recv = this.receiver();
+      const n = this.countPeers(); if (n > this.peerCount) kb.hurry(); this.peerCount = n;
+    }
+    const w = kb.outgoing(self, now);
+    if (w) kb.sent(now, ctx.ballNet.send(w));
+    if (this.celebrate > 0) {
+      this.celebrate -= dt;
+      const body = ctx.player.body();
+      if (this.celebrate <= 0 || Math.hypot(this.pvx, this.pvz) > 0.8) { if (body?.hold === 'Celebrate') body.hold = null; this.celebrate = 0; }
+    }
+    this.showShot(playing && !kb.ball.net && Math.hypot(kb.ball.x - x, kb.ball.z - z) < KICK_REACH + 1.2);
+    this.drawBall(kb.ball, kb.ox, kb.oz, kb.oh, dt);
+    const i = (this.trackI++ % TRACK_N) * 3; this.track[i] = now; this.track[i + 1] = kb.ball.x; this.track[i + 2] = kb.ball.z;
+  }
+
+  private countPeers() { let n = 0; for (const p of this.ctx.peers()) if (p.space === 'street') n++; return n; }
+  private log(what: string, detail?: unknown) { this.kbLog.push({ t: Math.round(this.ctx.now()), what, ...(detail !== undefined ? { detail } : {}) }); if (this.kbLog.length > 200) this.kbLog.shift(); }
+
+  /** The NPC match takes the pitch again (or the player left): the kickabout waits where its ball is. */
+  private kbOff() {
+    this.kbOn = false; this.hold = -1; this.showShot(false);
+    const body = this.ctx.player.body();
+    if (this.celebrate > 0 && body?.hold === 'Celebrate') body.hold = null;
+    this.celebrate = 0;
+    this.log('off');
+  }
+
+  private onBall(m: BallRelay) {
+    if (this.kbOn) this.noteGoal(this.kb.receive(m, this.ctx.ballNet.self(), this.ctx.now()));
+    else this.pending = m;                                                           // far, or a match on: the last one is kept
+  }
+
+  private noteGoal(g: GoalNote | null) {
+    if (!g) return;
+    const ctx = this.ctx;
+    if (g.mine) {
+      this.myGoals++;
+      ctx.toast(`⚽ But !  ${this.myGoals === 1 ? 'Ton premier but' : `${this.myGoals} buts`} cette session`);
+      const body = ctx.player.body();
+      if (body && !ctx.player.seated()) { body.hold = 'Celebrate'; this.celebrate = 2.4; }
+    } else {
+      const who = ctx.peers().find(p => p.id === g.by)?.name ?? 'Un joueur';
+      ctx.toast(`⚽ But de ${who} !`);
+    }
+    this.log('goal', { end: g.end, by: g.by, mine: g.mine });
+  }
+
+  /** The other player in front of the ball to pass to (pitch space, a little ahead of their run), or null. */
+  private receiver() {
+    const pt = this.pitch!, b = this.kb.ball, f = this.ctx.player.facing(), fx = Math.sin(f), fz = Math.cos(f);
+    let best: { id: string; name: string; x: number; z: number } | null = null, score = Infinity;
+    for (const p of this.ctx.peers()) {
+      if (p.space !== 'street') continue;
+      const x = p.x - pt.x + Math.sin(p.yaw) * p.speed * 0.5, z = p.z - pt.z + Math.cos(p.yaw) * p.speed * 0.5;
+      const dx = x - b.x, dz = z - b.z, d = Math.hypot(dx, dz);
+      if (d < 1.5 || d > 35 || Math.abs(x) > PITCH.ex || Math.abs(z) > PITCH.ez) continue;
+      const cos = (dx * fx + dz * fz) / d;
+      if (cos < 0.35) continue;                                                    // within about 70° of the facing
+      const sc = d * (2 - cos);
+      if (sc < score) { score = sc; best = { id: p.id, name: p.name, x, z }; }
+    }
+    return best;
+  }
+
+  /** A pass (to the receiver, else straight) or a shot by the player now. */
+  private strike(kind: 'pass' | 'shot', power: number) {
+    const ctx = this.ctx, kb = this.kb, pt = this.pitch;
+    if (!this.kbOn || !pt) return false;
+    const x = ctx.player.pos.x - pt.x, z = ctx.player.pos.z - pt.z;
+    const to = kind === 'pass' ? this.receiver() : null;
+    const ok = kb.kick(x, z, ctx.player.facing(), kind, power, to, ctx.ballNet.self(), ctx.now());
+    if (ok) this.log(kind, { power: +power.toFixed(2), to: to?.id ?? null });
+    return ok;
+  }
+
+  /** The ball as a target of the action button: « Passer » (a receiver ahead) or « Tirer »; « Frapper fort » in « ⋯ ». */
+  private kbFocus(space: string, x: number, z: number): Target | null {
+    if (!this.kbOn || space !== 'street' || !this.pitch) return null;
+    const pt = this.pitch, kb = this.kb;
+    if (!kb.inReach(x - pt.x, z - pt.z)) return null;
+    const t = this.kbTarget ?? (this.kbTarget = {
+      id: 'kickabout:ball', name: 'Ballon', kind: 'spot', space: 'street', x: 0, z: 0, y: 0.6, radius: KICK_REACH + 0.2, bias: -1,
+      affordances: () => {
+        const r = this.recv;
+        return [
+          r ? { id: 'pass', verb: 'use' as const, label: 'Passer', icon: '⚽', detail: `À ${r.name}`, run: () => { this.strike('pass', 0); } }
+            : { id: 'pass', verb: 'use' as const, label: 'Tirer', icon: '⚽', detail: 'Droit devant', run: () => { this.strike('pass', 0); } },
+          { id: 'shot', verb: 'use' as const, label: 'Frapper fort', icon: '🥅', detail: 'Maintiens « Frappe » ou F pour doser', run: () => { this.strike('shot', 0.7); } },
+        ];
+      },
+    });
+    t.x = pt.x + kb.ball.x; t.z = pt.z + kb.ball.z;
+    return t;
+  }
+
+  /** « Frappe »: a round button above the action button, held to charge the shot (additive: its own class). */
+  private makeShotButton() {
+    if (typeof document === 'undefined') return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'kick-shot'; b.id = 'kickShot';
+    b.innerHTML = '<i class="ks-fill" aria-hidden="true"></i><span class="ks-ic" aria-hidden="true">🥅</span><b>Frappe</b><kbd aria-hidden="true">F</kbd>';
+    if (typeof b.style?.setProperty !== 'function' || typeof b.addEventListener !== 'function') return;   // a host without a real DOM (node tests)
+    b.setAttribute('aria-label', 'Frappe : maintenir pour doser le tir');
+    b.addEventListener('pointerdown', e => { e.preventDefault(); this.btnHeld = true; try { b.setPointerCapture(e.pointerId); } catch { /* synthetic */ } });
+    const up = () => { this.btnHeld = false; b.blur(); };
+    for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(ev, up);
+    b.addEventListener('contextmenu', e => e.preventDefault());
+    this.shotBtn = b;
+  }
+  private showShot(on: boolean) {
+    const b = this.shotBtn; if (!b) return;
+    if (on && !b.isConnected) { const bar = document.getElementById('actbar'); if (!bar) return; bar.insertBefore(b, bar.firstChild); }
+    const st = on ? (this.hold >= 0 ? 'on charge' : 'on') : '';
+    if (st !== this.btnState) { this.btnState = st; b.className = `kick-shot ${st}`.trim(); if (!on) this.btnHeld = false; }
+    const pct = this.hold >= 0 ? Math.round(Math.min(1, this.hold / HOLD_FULL) * 20) * 5 : 0;
+    if (pct !== this.btnPct) { this.btnPct = pct; b.style.setProperty('--p', `${pct}%`); }
   }
 
   private groundY(x: number, z: number) { return Math.abs(x) <= PITCH.ex && Math.abs(z) <= PITCH.ez ? FEET : STREET; }
@@ -410,6 +592,21 @@ class Football implements GameModule {
   debug(): Record<string, unknown> {
     return {
       football: () => this.info(),
+      /** The kickabout: on, the ball (world and pitch space), who owns it, the receiver ahead, this session's goals, counts. */
+      kickabout: () => {
+        const pt = this.pitch, kb = this.kb, b = kb.ball; if (!pt) return null;
+        return { on: this.kbOn, matchActive: this.active, near: this.near, self: this.ctx.ballNet.self(), owner: kb.owner, touch: kb.touch,
+          ball: { x: +(pt.x + b.x).toFixed(3), z: +(pt.z + b.z).toFixed(3), h: +b.h.toFixed(3), px: +b.x.toFixed(3), pz: +b.z.toFixed(3), speed: +ballSpeed(b).toFixed(2), net: b.net },
+          drawn: this.ball ? { x: +this.ball.position.x.toFixed(3), z: +this.ball.position.z.toFixed(3), visible: this.ball.visible } : null,
+          pitch: { x: pt.x, z: pt.z }, receiver: this.recv, myGoals: this.myGoals, hold: +this.hold.toFixed(2), celebrating: this.celebrate > 0,
+          shotButton: this.btnState, stats: { ...kb.stats }, log: this.kbLog.slice(-20) };
+      },
+      /** The simulated kickabout ball's recent frames, oldest first: [shared time ms, x, z] (pitch space). */
+      kickaboutTrack: () => { const n = Math.min(this.trackI, TRACK_N), o: number[][] = []; for (let k = this.trackI - n; k < this.trackI; k++) { const i = (k % TRACK_N) * 3; o.push([this.track[i], +this.track[i + 1].toFixed(3), +this.track[i + 2].toFixed(3)]); } return o; },
+      /** The kickabout ball put at (x, z) of pitch space, at rest and nobody's. */
+      kickaboutPlace: (x = 0, z = 0) => { this.kb.place(x, z); return true; },
+      /** A pass or a shot by the player now, as the buttons do (false when the ball is out of reach). */
+      kickaboutStrike: (kind: 'pass' | 'shot' = 'pass', power = 0.6) => this.strike(kind, power),
       footballLog: (n = 30): ContactRec[] => this.match?.log.slice(-n) ?? [],
       /** A new match now: 0–0, the ball on the centre spot, the counts cleared. */
       footballReset: () => { this.match?.reset(0); this.started = true; this.gaps = []; this.goals = []; this.kickoffs = []; return !!this.match; },

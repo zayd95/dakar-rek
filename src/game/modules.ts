@@ -13,7 +13,7 @@ import type { HubWorld, Interactable } from '../world/types';
 import type { Interior } from '../world/interiors';
 import type { Humanoid } from '../actors/humanoid';
 import type { FollowCamera } from '../actors/camera';
-import type { Peer, PresenceExtras } from '../multiplayer/protocol';
+import type { BallRelay, BallWire, Peer, PresenceExtras } from '../multiplayer/protocol';
 import { wolofModule } from '../i18n/module';
 import { arenaModule } from '../arena/module';
 import { assetKitModule } from './assetKit';
@@ -98,6 +98,12 @@ export interface GameCtx {
   };
   /** The other players of this hub's group (positions, poses and their optional fields only; empty offline). */
   peers(): readonly Peer[];
+  /**
+   * The room's kickabout ball (src/game/kickabout.ts): this player's presence id ('' when not online), send a ball state
+   * to the others (false when it is not relayed: offline, or a server without the 'ball' feature), the one handler for
+   * the others' states.
+   */
+  ballNet: { self(): string; send(b: BallWire): boolean; listen(fn: (m: BallRelay) => void): void };
   mode(): GameMode;
   /** 'menu' and 'busy' lock movement; 'play' gives it back. */
   setMode(m: GameMode): void;
