@@ -25,16 +25,26 @@ const VISITS = [
 ];
 
 /** Walks the player (W held, camera turned toward each waypoint) through the points; true when the last one is reached. */
-async function walk(page, pts, tol = 0.45, timeout = 30000) {
+/**
+ * Walks the player through `pts` with W held, turning toward each point. The game steps at most 0.1 s a frame
+ * (src/main.ts), so on a loaded software renderer a walk lasts frames, not seconds: it gives up after twice the frames the
+ * distance needs at a slow walk (1.2 m/s, plus 60) — a player stuck against a wall still fails — or after 5 minutes.
+ */
+async function walk(page, pts, tol = 0.45, timeout = 300000) {
   const t0 = Date.now();
+  await d(page, () => { if (window.__frames === undefined) { window.__frames = 0; const f = () => { window.__frames++; requestAnimationFrame(f); }; requestAnimationFrame(f); } });
+  const start = await d(page, () => ({ ...window.__dakar.pos(), f: window.__frames }));
+  let len = 0, q = start;
+  for (const p of pts) { len += Math.hypot(p.x - q.x, p.z - q.z); q = p; }
+  const maxFrames = Math.ceil(len / 0.12) * 2 + 60;
   for (const p of pts) {
     await page.keyboard.down('KeyW');
     try {
       for (;;) {
-        const pos = await d(page, () => window.__dakar.pos());
+        const pos = await d(page, () => ({ ...window.__dakar.pos(), f: window.__frames }));
         const dx = p.x - pos.x, dz = p.z - pos.z;
         if (Math.hypot(dx, dz) < tol) break;
-        if (Date.now() - t0 > timeout) return false;
+        if (pos.f - start.f > maxFrames || Date.now() - t0 > timeout) return false;
         await d(page, y => window.__dakar.lookYaw(y), Math.atan2(dx, dz));
         await page.waitForTimeout(120);
       }
@@ -182,7 +192,7 @@ try {
       if (!inside) continue;
       await page.waitForTimeout(600);
       await shot(page, `${label}-cafe-kiosk-${hub}-inside`);
-      const walked = await walk(page, [{ x: room.anchors.counter.x, z: room.anchors.counter.z }], 0.45, 20000);
+      const walked = await walk(page, [{ x: room.anchors.counter.x, z: room.anchors.counter.z }], 0.45);
       const atBar = await page.waitForFunction(id => window.__dakar.focus()?.id === id, `${door.id}:comptoir`, { timeout: 12000 }).then(() => true, () => false);
       check(`${label}: walks up to the café's counter inside`, walked && atBar, JSON.stringify(await d(page, () => [window.__dakar.pos(), window.__dakar.focus()?.id])));
       const item = atBar && await pick(page, /^Café Touba/);
@@ -255,7 +265,7 @@ try {
           check(`${label}: people sit at Le Pointe's tables (then pay at the cash desk)`, !!diners && (diners.now.do ?? 0) + (diners.now.in ?? 0) + (diners.now.line ?? 0) + (diners.now.pay ?? 0) >= 1, JSON.stringify(diners));
           await page.waitForTimeout(600);
           await shot(page, `${label}-restaurant-inside`);
-          const walked = await walk(page, [{ x: room.anchors.counter.x, z: room.anchors.counter.z }], 0.45, 20000);
+          const walked = await walk(page, [{ x: room.anchors.counter.x, z: room.anchors.counter.z }], 0.45);
           const atDesk = await page.waitForFunction(id => window.__dakar.focus()?.id === id, `${door.id}:comptoir`, { timeout: 12000 }).then(() => true, () => false);
           check(`${label}: walks up to Le Pointe's cash desk`, walked && atDesk, JSON.stringify(await d(page, () => [window.__dakar.pos(), window.__dakar.focus()?.id])));
           const item = atDesk && await pick(page, /^Jus de bissap/);
