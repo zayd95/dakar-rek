@@ -320,7 +320,7 @@ function carry(e: Env, type: string): Perf {
       const { fwd: F, right: Rt } = bodyAxes(h, AX.f, AX.r);
       const chest = h.bone('chest'), head = h.bone('head');
       if (inHands && chest && head) {
-        const belly = chest.getWorldPosition(tmp).addScaledVector(F, 0.36).addScaledVector(UP, -0.36);
+        const belly = chest.getWorldPosition(tmp).addScaledVector(F, 0.34).addScaledVector(UP, -0.46);
         const top = head.getWorldPosition(tmp2).addScaledVector(UP, 0.2);
         const at = lift <= 1 ? slot.clone().lerp(belly, lift) : belly.lerp(top, lift - 1);
         inHands.obj.position.copy(at); inHands.obj.rotation.y = h.group.rotation.y;
@@ -347,9 +347,10 @@ function carry(e: Env, type: string): Perf {
  * place's own table is used when there is one close by, else a small work table is set up.
  */
 function handwork(e: Env, type: string): Perf {
-  const walkMax = Math.min(3.5, e.seconds * 0.4 * 1.6);
+  // a brisk walk to the stall, at most 45 % of the step (the rest is work)
+  const walkMax = Math.min(3.6, e.seconds * 0.45 * 1.8);
   const b = counterAt(e, walkMax) ?? workTable(e);
-  const walkT = b.own ? Math.hypot(b.stand.x - e.O.x, b.stand.z - e.O.z) / 1.6 : 0;
+  const walkT = b.own ? Math.hypot(b.stand.x - e.O.x, b.stand.z - e.O.z) / 1.8 : 0;
   const workT = Math.max(0.5, e.seconds - walkT - 0.15);
   const n = Math.max(3, Math.min(8, Math.round(workT * 1.1))), each = workT / n;
   const left = b.at.clone().addScaledVector(b.right, -0.3), right = b.at.clone().addScaledVector(b.right, 0.3);
@@ -493,13 +494,15 @@ function look(e: Env): Perf {
 function sip(e: Env, type: string, eat: boolean): Perf {
   const { obj, fill, other, long } = held(type); e.scene.add(obj); if (other) e.scene.add(other);
   const full = fill.scale.clone(), base = fill.position.clone();
+  // a whole number of sips (or bites) in the step, at least one even in a short one (a café Touba is 1.5 s)
+  const cycle = e.seconds / Math.max(1, Math.round(e.seconds / 2.4));
   let k = 0, raise = 0;
   e.move(e.O.x, e.O.z, e.f, 0);
   if (e.body) e.body.hold = 'Idle';
   return {
     update(t) {
       k = Math.min(1, t / e.seconds);
-      const c = (t % 2.4) / 2.4; raise = c < 0.4 ? 0 : c < 0.56 ? smooth((c - 0.4) / 0.16) : c < 0.82 ? 1 : 1 - smooth((c - 0.82) / 0.16);
+      const c = (t % cycle) / cycle; raise = c < 0.4 ? 0 : c < 0.56 ? smooth((c - 0.4) / 0.16) : c < 0.82 ? 1 : 1 - smooth((c - 0.82) / 0.16);
       if (eat) { const s = 1 - 0.65 * k; obj.scale.set(s, 1, 1); }
       else { fill.scale.y = full.y * Math.max(0.08, 1 - 0.9 * k); fill.position.y = base.y - (1 - fill.scale.y / full.y) * (type === 'coffee' ? 0.035 : 0.06); }
     },
