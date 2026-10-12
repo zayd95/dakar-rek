@@ -524,9 +524,11 @@ export class Hud {
   measureQuiet() {
     const zone = centreZone(innerWidth, innerHeight);
     const SKIP = '#modal, #fade, #wprompt, #joy, #toast, #toast > .sr, #gesture, #placer, #chatPanel, #placeMore';
-    const shown = (e: Element) => {
+    // `fading`: a line or card that is still fading in counts (its opacity is read on the last painted frame, which
+    // on a slow machine can still be 0 a second after it appeared); a fading-out one carries `.out`
+    const shown = (e: Element, fading = false) => {
       const cs = getComputedStyle(e), r = e.getBoundingClientRect();
-      return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.05 && r.width > 1 && r.height > 1 && !e.classList.contains('out') ? r : null;
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && (fading || Number(cs.opacity) > 0.05) && r.width > 1 && r.height > 1 && !e.classList.contains('out') ? r : null;
     };
     const list: { id: string; box: Rect }[] = [];
     for (const e of document.querySelectorAll('#ui > *, #toast > *')) {
@@ -538,8 +540,8 @@ export class Hud {
       list.push({ id: e.id ? '#' + e.id : '.' + [...e.classList].join('.'), box });
     }
     const over = list.filter(o => overlaps(o.box, zone)).map(o => o.id);
-    const lines = [...this.el.toast.querySelectorAll(':scope > .t:not(.out)')].filter(e => shown(e)).length;
-    const moments = [...this.el.toast.querySelectorAll(':scope > .mo:not(.out)')].filter(e => shown(e)).length;
+    const lines = [...this.el.toast.querySelectorAll(':scope > .t:not(.out)')].filter(e => shown(e, true)).length;
+    const moments = [...this.el.toast.querySelectorAll(':scope > .mo:not(.out)')].filter(e => shown(e, true)).length;
     return { w: innerWidth, h: innerHeight, zone, overlays: list, over, lines, moments, log: quietLog.unread, phone: !!document.querySelector('#phone.on'), sheet: this.sheet.isOpen };
   }
 
