@@ -1,16 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T05:39:00Z",
+  "updatedAt": "2026-10-12T06:49:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261012T0645Z-watch",
-    "owner": "producer_watch_0645",
-    "acquiredAt": "2026-10-12T06:45:00Z",
-    "expiresAt": "2026-10-12T07:15:00Z"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -124,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-12T05:39:00Z"
+    "lastCompletedRunAt": "2026-10-12T06:49:00Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
@@ -293,13 +288,13 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-0535-WATCH.md",
-    "completedAt": "2026-10-12T05:39:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-0645-WATCH.md",
+    "completedAt": "2026-10-12T06:49:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261012T0535Z-watch"
+    "leaseReleased": "cycle-20261012T0645Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -561,21 +556,21 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-12T05:39:00Z",
+    "checkedAt": "2026-10-12T06:49:00Z",
     "status": "not_ready",
     "candidateBranch": "lane/w5-candidate",
-    "candidateCommit": "626ac15ae5fec55ec1bdc13121eb92b5aa22c1cf",
+    "candidateCommit": "441ab9ff9171b8e20e0ee9135a67de0f13bcb68c",
     "integrationCommit": "e86660ad39b125525a5304e02fa7a17d2918cd79",
     "productionBranchCommit": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
     "notificationSent": false,
     "ci": {
-      "runId": 38203876379,
-      "jobId": 114662962927,
+      "runId": 38210315272,
+      "jobId": 114682783948,
       "conclusion": "success",
-      "testsPassed": 1292,
+      "testsPassed": 1332,
       "testsSkipped": 2,
-      "artifactId": 11727451260,
-      "digest": "sha256:5bf9d162cbc078ef51e21f55bcfe6c6986208ddfb4c9e5bd59e6ff1dfa5e5a86"
+      "artifactId": 11730360521,
+      "digest": "sha256:033047aea2722b0430ec711c5a7d86014c004bfed1a3d4438c779f5e9586edf4"
     },
     "missing": [
       "Wave 5 not integrated into integration/living-dakar",
