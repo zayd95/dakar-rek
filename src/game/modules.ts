@@ -206,7 +206,11 @@ export type LambEvent =
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
+/** Opening hours of content actions read the city clock (server time, debug override) through the state. */
+const clock: GameModule = { name: 'clock', init: ctx => { ctx.state.hour = ctx.hour; } };
+
 export const MODULES: GameModule[] = [
+  clock,                // the city hour for content actions' opening hours (src/world/content.ts `during`)
   wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)

@@ -4,12 +4,18 @@ import { order, trade } from '../activity/primitives';
 import { G } from '../activity/gestures';
 import { haggler } from '../i18n/lines';
 import type { Primitive, SeatPick } from '../activity/types';
+import { isOpen } from '../activity/places';
+import type { GameState } from '../core/state';
 
 const flag = (f: string) => (s: { data: { flags: string[] } }) => s.data.flags.includes(f);
 const noFlag = (f: string) => (s: { data: { flags: string[] } }) => !s.data.flags.includes(f);
 const FRIEND_FLAG: Record<string, string> = { pikine: 'mame_helped', plateau: 'fatou_friend' };
 const friendHere = (s: { data: { flags: string[]; hub: string } }) => !!FRIEND_FLAG[s.data.hub] && s.data.flags.includes(FRIEND_FLAG[s.data.hub]);
 const tired = (n: number) => (s: { data: { needs: { energie: number } } }) => (s.data.needs.energie < n ? 'Trop fatigué' : null);
+type Req = (s: GameState) => string | null;
+/** Only during city hours [from, to): the person the player helps is there (their routine, src/social/routines.ts). */
+const during = (from: number, to: number, why: string): Req => s => (isOpen([from, to], s.hour()) ? null : why);
+const both = (a: Req, b: Req): Req => s => a(s) ?? b(s);
 /**
  * A dish or a drink served at the table: pay, it is prepared, the player walks to a free seat, sits and eats (the plate
  * shows in front of them), and stays seated. Same steps everywhere (src/activity/primitives.ts `order`).
@@ -29,6 +35,8 @@ export const onSeat = (a: Action, seat: SeatPick, primitive: Primitive = 'sit'):
 /** Garage shift: hand Modou the tools he asks for, then tighten the wheel nuts in time. */
 const garageShift = (id: string, label: string, pay: number) => trade({ id, label, pay, needs: { energie: -18, hygiene: -14, faim: -6 }, counter: 'garage', category: 'artisanat', clip: 'Grab',
   parts: [{ label: 'Passer les outils', gesture: G.tools(4), share: 1 }, { label: 'Serrer les écrous', gesture: G.bolts(4), share: 1 }] });
+const garage = during(7, 19, 'Garage fermé · Modou ouvre à 7 h');
+const morning = during(5, 12, 'La pirogue part le matin, entre 5 h et 12 h');
 
 export const ACTIONS: Record<string, Action[]> = {
   gargote: [
@@ -46,7 +54,7 @@ export const ACTIONS: Record<string, Action[]> = {
   ],
   market: [
     // A shift at the stall: a customer opens by discussing the price (« Ñaata la ? », « Wàññi ko tuuti ! »), then serve them all.
-    { id: 'vendre', label: 'Tenir l’étal', detail: 'Servir les clientes · jusqu’à +3 000 F', gain: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: tired(22),
+    { id: 'vendre', label: 'Tenir l’étal', detail: 'Servir les clientes · jusqu’à +3 000 F', gain: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: both(during(8, 18, 'L’étal est fermé · Adja revient à 8 h'), tired(22)),
       steps: trade({ id: 'vendre', label: 'Tenir l’étal', pay: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, counter: 'marche', category: 'commerce', clip: 'Talk', line: haggler('sell', 1500, 'Une cliente'), parts: [{ label: 'Servir les clientes', gesture: G.stall(6) }] }).steps },
   ],
   gym: [
@@ -54,17 +62,18 @@ export const ACTIONS: Record<string, Action[]> = {
     { id: 'barres', label: 'Faire les barres', needs: { energie: -15, moral: 6, hygiene: -6 }, seconds: 3, counter: 'forme', requires: tired(15) },
   ],
   port: [
-    { id: 'pecheurs', label: 'Aider les pêcheurs', detail: 'Tirer la pirogue au rythme des vagues · jusqu’à +4 200 F', gain: 3500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: tired(28), visible: noFlag('ousmane_trust'),
+    // once the morning pirogue has left, the quay still needs hands
+    { id: 'pecheurs', label: 'Aider les pêcheurs', detail: 'Tirer la pirogue au rythme des vagues · jusqu’à +4 200 F', gain: 3500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: both(during(5, 18, 'Le quai est vide · les pêcheurs reviennent à 5 h'), tired(28)), visible: s => noFlag('ousmane_trust')(s) || !!morning(s as GameState),
       steps: trade({ id: 'pecheurs', label: 'Aider les pêcheurs', pay: 3500, needs: { energie: -28, hygiene: -12, faim: -10 }, counter: 'peche', category: 'peche', clip: 'Grab', parts: [{ label: 'Tirer la pirogue', gesture: G.haul() }] }).steps },
-    { id: 'pirogue', label: 'Pirogue du matin (recommandé par Ousmane)', detail: 'Tirer la pirogue · jusqu’à +5 400 F', gain: 4500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: tired(28), visible: flag('ousmane_trust'),
+    { id: 'pirogue', label: 'Pirogue du matin (recommandé par Ousmane)', detail: 'Tirer la pirogue · jusqu’à +5 400 F', gain: 4500, needs: { energie: -28, hygiene: -12, faim: -10 }, seconds: 4, counter: 'shifts', requires: both(morning, tired(28)), visible: flag('ousmane_trust'),
       steps: trade({ id: 'pirogue', label: 'Pirogue du matin', pay: 4500, needs: { energie: -28, hygiene: -12, faim: -10 }, counter: 'peche', category: 'peche', clip: 'Grab', parts: [{ label: 'Tirer la pirogue', gesture: G.haul(5) }] }).steps },
   ],
   garage: [
-    { id: 'meca', label: 'Aider le mécanicien', detail: 'Passer les outils, serrer les écrous · jusqu’à +2 400 F', gain: 2000, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: tired(18), visible: noFlag('modou_trust'),
+    { id: 'meca', label: 'Aider le mécanicien', detail: 'Passer les outils, serrer les écrous · jusqu’à +2 400 F', gain: 2000, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: noFlag('modou_trust'),
       steps: garageShift('meca', 'Aider le mécanicien', 2000).steps },
-    { id: 'meca_conf', label: 'Travailler au garage (tarif de confiance)', detail: 'Recommandé par Ibou · jusqu’à +3 360 F', gain: 2800, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: tired(18), visible: flag('modou_trust'),
+    { id: 'meca_conf', label: 'Travailler au garage (tarif de confiance)', detail: 'Recommandé par Ibou · jusqu’à +3 360 F', gain: 2800, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: flag('modou_trust'),
       steps: garageShift('meca_conf', 'Travailler au garage', 2800).steps },
-    { id: 'roue', label: 'Changer une roue', detail: 'Dans le bon ordre · jusqu’à +1 800 F', gain: 1500, needs: { energie: -12, hygiene: -10, faim: -4 }, seconds: 4, counter: 'shifts', requires: tired(12),
+    { id: 'roue', label: 'Changer une roue', detail: 'Dans le bon ordre · jusqu’à +1 800 F', gain: 1500, needs: { energie: -12, hygiene: -10, faim: -4 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(12)),
       steps: trade({ id: 'roue', label: 'Changer une roue', pay: 1500, needs: { energie: -12, hygiene: -10, faim: -4 }, counter: 'garage', category: 'artisanat', clip: 'Grab', parts: [{ label: 'Changer la roue', gesture: G.wheel() }] }).steps },
   ],
   home: [
