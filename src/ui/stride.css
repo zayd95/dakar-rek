@@ -24,3 +24,9 @@ body.touch #runBtn.hidden { display: none; }
 body.touch.chat-open #runBtn, body.touch.chat-open #stamina { display: none; }
 /* phones: above the joystick / « Courir » row so the label stays readable */
 body.touch #stamina { bottom: calc(env(safe-area-inset-bottom, 0px) + 116px); }
+/* phones in landscape (short screen): « Courir » beside the smaller joystick in the bottom-left corner (src/ui/style.css),
+   the gauge just above the bottom edge in the free middle */
+@media (max-height: 500px) and (orientation: landscape) {
+  body.touch #runBtn { left: calc(env(safe-area-inset-left, 0px) + 140px); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); }
+  body.touch #stamina { bottom: calc(env(safe-area-inset-bottom, 0px) + 34px); }
+}

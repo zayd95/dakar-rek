@@ -7,6 +7,9 @@ import { phoneHooks } from '../ui/phoneHooks';
 import { chatPlace, cityHour, quickChat } from '../i18n/lines';
 import './chat.css';
 
+/** The phone-in-landscape layout of the HUD (src/ui/style.css, same query). */
+const SHORT_LANDSCAPE = typeof matchMedia === 'function' ? matchMedia('(max-height: 500px) and (orientation: landscape)') : { matches: false };
+
 /**
  * Text chat over the presence connection: proximity (bubbles above characters) and private messages.
  * History, drafts, mute, block and the report log stay on this device. Player text is shown as written
@@ -319,8 +322,8 @@ export class ChatUi {
     this.form.append(reactions, this.phrases, row, this.counter, this.note);
     this.form.addEventListener('submit', e => { e.preventDefault(); const text = f.value; if (!text.trim()) return; this.send(text); f.value = ''; this.saveDraft(); });
     f.addEventListener('input', () => this.saveDraft());
-    f.addEventListener('focus', () => { this.focused = true; this.d.suspend(true); });
-    f.addEventListener('blur', () => { this.focused = false; this.d.suspend(false); });
+    f.addEventListener('focus', () => { this.focused = true; p.classList.add('typing'); this.d.suspend(true); });
+    f.addEventListener('blur', () => { this.focused = false; p.classList.remove('typing'); this.d.suspend(false); });
     p.append(head, this.banner, this.peerBar, this.log, this.people, this.form);
     this.log.setAttribute('aria-live', 'polite');
     const ui = document.getElementById('ui') ?? document.body;
@@ -355,8 +358,13 @@ export class ChatUi {
   private updateCounter() { const n = [...this.field.value].length; this.counter.textContent = n > CHAT_MAX_CHARS - 40 ? `${n}/${CHAT_MAX_CHARS}` : ''; }
   private layout() {
     const presenceBtn = document.getElementById('presenceBtn');
-    const top = presenceBtn ? presenceBtn.getBoundingClientRect().bottom + 8 : 66;
+    const p = presenceBtn?.getBoundingClientRect();
+    // a phone in landscape (short screen): « Chat » on the same row as « En ligne », just left of it, rather than a
+    // column of pills down the right edge of the view
+    const beside = !!p && p.width > 0 && SHORT_LANDSCAPE.matches;
+    const top = !p ? 66 : beside ? p.top : p.bottom + 8, right = beside ? `${Math.round(innerWidth - p.left + 6)}px` : '';
     if (this.button.style.top !== `${Math.round(top)}px`) this.button.style.top = `${Math.round(top)}px`;
+    if (this.button.style.right !== right) this.button.style.right = right;
     this.panel.style.setProperty('--chat-top', `${Math.round(this.button.getBoundingClientRect().bottom + 8)}px`);
   }
   private updateBadge() {
