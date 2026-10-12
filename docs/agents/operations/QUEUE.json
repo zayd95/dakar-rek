@@ -858,23 +858,10 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-2235-WATCH.md",
-    "checkedAt": "2026-10-12T22:35:00Z",
-    "result": "Refs/PR/check-runs re-read unchanged; no ready implementation and wave5 final acceptance not proved.",
-    "owner": "producer_watch_2235",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "1c61dc5773ad6ac7d788ae729d9278d4baa63dcf",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-12-2235-WATCH.md"
-    ]
-  },
-  "registryWriter": {
-    "token": "cycle-20261012T2328Z-watch",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-2328-WATCH.md",
+    "checkedAt": "2026-10-12T23:29:00Z",
+    "result": "External integration now contains latest wave5 candidate and newer walk/character fixes; preview success, new exact CI pending; no ready source task.",
     "owner": "producer_watch_2328",
-    "acquiredAt": "2026-10-12T23:27:32Z",
-    "expiresAt": "2026-10-12T23:57:32Z",
     "branch": "codex/agent-studio-active",
     "baseCommit": "37c4d1e22ea525b972f1aaf8f94d0dc7a328aca1",
     "allowedFiles": [
