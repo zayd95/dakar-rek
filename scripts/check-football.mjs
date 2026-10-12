@@ -7,6 +7,7 @@
 // calls, the football and ambient-life modules' milliseconds, the frame time (SwiftShader: compare builds, not phones).
 // The game is paused and stepped 1/30 s at a time (__dakar.pause, step, render): every reading is exact.
 // Usage: flock /tmp/dakar-browser.lock node scripts/check-football.mjs [baseUrl] [outDir]   (a running build, e.g. `npx vite preview --port 4221`)
+//        QUALITY=low … runs the low preset on a phone's viewport (the pictures and numbers of that preset).
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -21,9 +22,13 @@ const results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`); };
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
-const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+// QUALITY=low|medium|high: that graphics preset (low: a phone's viewport); default: the game's own choice
+const Q = process.env.QUALITY;
+const context = await browser.newContext(Q === 'low' ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true } : { viewport: { width: 1280, height: 720 } });
+if (Q) await context.addInitScript(q => { if (!sessionStorage.getItem('football-q')) { localStorage.setItem('dakarrek.quality', q); sessionStorage.setItem('football-q', '1'); } }, Q);
+const page = await context.newPage();
 const errors = []; page.on('pageerror', e => errors.push(e.message));
-await page.goto(`${base}?debug`, { timeout: 120000 });
+await page.goto(`${base}?debug${Q === 'low' ? '&touch' : ''}`, { timeout: 120000 });
 await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.football, null, T);
 const d = (fn, arg) => page.evaluate(fn, arg);
 const info = () => d(() => window.__dakar.football());
@@ -107,7 +112,8 @@ await advance(Math.max(0, 120 - f.t));
 f = await info();
 check('passes go from teammate to teammate', f.stats.completed >= 5, { passes: f.stats.passes, completed: f.stats.completed, intercepted: f.stats.intercepted, perMinute: f.perMinute });
 check(`the foot (hands) is within ${GAP_MAX * 100} cm of the ball at every measured contact`, f.contacts.measured >= 20 && f.contacts.max <= GAP_MAX, f.contacts);
-check('nearly every contact is measured on a drawn body', f.contacts.unmeasured <= Math.max(3, f.stats.contacts * 0.1), { measured: f.contacts.measured, unmeasured: f.contacts.unmeasured, contacts: f.stats.contacts });
+// (on low the shared budget has six full bodies: a touch by a far figure has no foot to measure)
+check('nearly every contact is measured on a drawn body', quality === 'low' ? f.contacts.measured >= 20 : f.contacts.unmeasured <= Math.max(3, f.stats.contacts * 0.1), { measured: f.contacts.measured, unmeasured: f.contacts.unmeasured, contacts: f.stats.contacts, quality });
 check('a planned contact is seldom missed', f.stats.whiffs <= f.stats.contacts * 0.15, { whiffs: f.stats.whiffs, contacts: f.stats.contacts });
 const log = await d(() => window.__dakar.footballLog(400));
 check('every contact had the ball at the contact point (the sim\'s own reach)', log.every(c => c.reach <= 0.3), log.filter(c => c.reach > 0.3).slice(0, 5));
