@@ -86,9 +86,15 @@ let savedJson = null;
   await closeModal(page);
 
   // a billion: compact in the HUD, full in the phone wallet
-  await D(page, () => window.__dakar.giveMoney(1250000000 - window.__dakar.state.wallet));
-  await page.waitForFunction(() => /Md/.test(document.querySelector('#money').textContent), null, { timeout: 15000 }).catch(() => {});   // the HUD refreshes 4×/s (slow frames here)
-  let mo = await money(page);
+  // a running cost can be paid between the top-up and the HUD's refresh (the compact form rounds down: « 1,24 Md »):
+  // top up again and wait for the card to show the exact billion, a few times
+  let mo;
+  for (let k = 0; k < 4; k++) {
+    await D(page, () => window.__dakar.giveMoney(1250000000 - window.__dakar.state.wallet));
+    await page.waitForFunction(() => /1,25.Md/.test(document.querySelector('#money').textContent), null, { timeout: 15000 }).catch(() => {});   // the HUD refreshes 4×/s (slow frames here)
+    mo = await money(page);
+    if (mo.wallet === 1250000000) break;
+  }
   check('HUD: 1 250 000 000 F shows as « 1,25 Md F » inside the stat card', mo.text === `1,25${NB}Md${NB}F` && mo.fits && mo.label === full(mo.wallet), `${mo.text} · ${mo.label}`);
   await page.screenshot({ path: `${out}/desktop-hud-billion.png` });
   await D(page, () => window.__dakar.phone('portefeuille')); await page.waitForTimeout(400);
