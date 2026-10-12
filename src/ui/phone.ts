@@ -17,6 +17,7 @@ import { phoneHooks } from './phoneHooks';
 import { journalView, esc } from './journal';
 import { glossesShown, setGlossesShown } from '../i18n/wolof';
 import { fcfa } from './hud';
+import { quietLog, ago } from './quiet';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -40,7 +41,7 @@ export interface PhoneContext {
   lock: (on: boolean) => void;
 }
 
-type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus' | 'cesoir' | 'lutteurs';
+type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus' | 'cesoir' | 'lutteurs' | 'notifs';
 interface Tile { id: string; label: string; color: string; icon: string; screen?: ScreenId; hook?: () => (() => void) | undefined }
 
 const ICON: Record<string, string> = {
@@ -61,6 +62,7 @@ const ICON: Record<string, string> = {
 /** Home-screen look of each app: an emoji glyph on a gradient tile (iOS-style). Unknown apps fall back to the line icon. */
 const LOOK: Record<string, { emoji: string; grad: string; short?: string }> = {
   messages: { emoji: '💬', grad: '#5df27e,#1fb84a' },
+  notifs: { emoji: '🔔', grad: '#fca5a5,#dc2626', short: 'Notifs' },
   portefeuille: { emoji: '💰', grad: '#fcd34d,#f59e0b' },
   carte: { emoji: '🗺️', grad: '#7dd3fc,#2563eb', short: 'Carte' },
   quartier: { emoji: '📍', grad: '#6ee7b7,#0f766e', short: 'Quartier' },
@@ -87,6 +89,7 @@ const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dima
 
 const TILES: Tile[] = [
   { id: 'messages', label: 'Messages', color: '#16a34a', icon: ICON.messages, hook: () => phoneHooks.openMessages },
+  { id: 'notifs', label: 'Notifications', color: '#dc2626', icon: ICON.messages, screen: 'notifs' },
   { id: 'portefeuille', label: 'Portefeuille', color: '#d97706', icon: ICON.portefeuille, screen: 'portefeuille' },
   { id: 'carte', label: 'Carte et déplacements', color: '#0284c7', icon: ICON.carte, screen: 'carte' },
   { id: 'quartier', label: 'Coins du quartier', color: '#0f766e', icon: ICON.quartier, hook: () => phoneHooks.openPlaces },
@@ -111,6 +114,7 @@ const TILES: Tile[] = [
 const TITLES: Record<ScreenId, string> = {
   home: 'Téléphone', reglages: 'Réglages', aide: 'Aide', nouvelle: 'Nouvelle partie', carnet: 'Carnet',
   portefeuille: 'Portefeuille', carte: 'Carte et déplacements', arene: 'Arène', meteo: 'Météo', calcul: 'Calculatrice', sante: 'Santé', profil: 'Profil', horloge: 'Horloge', actus: 'Actus · Dakar', cesoir: 'Ce soir', lutteurs: 'Lutteurs',
+  notifs: 'Notifications',
 };
 const QUALITY_LABEL: Record<Quality, string> = { low: 'Basse', medium: 'Moyenne', high: 'Haute' };
 const SENSITIVITY: [number, string][] = [[0.6, 'Lente'], [1, 'Normale'], [1.5, 'Rapide']];
@@ -257,6 +261,7 @@ export class Phone {
       case 'actus': s.innerHTML = this.newsHtml(); break;
       case 'cesoir': s.innerHTML = this.tonightHtml(); break;
       case 'lutteurs': s.innerHTML = this.lutteursHtml(); break;
+      case 'notifs': s.innerHTML = this.notifsHtml(); quietLog.markRead(); break;
     }
     this.bind();
   }
@@ -265,7 +270,9 @@ export class Phone {
     const hub = this.ctx.hub(), next = suggestion(this.ctx.rel, this.ctx.state), t = cityTimeAt(this.ctx.now());
     const tiles = TILES.filter(t => !t.hook || t.hook());
     const grid = tiles.filter(t => !DOCK.includes(t.id)), dock = tiles.filter(t => DOCK.includes(t.id));
+    const fresh = quietLog.unread ? quietLog.entries.slice(0, Math.min(2, quietLog.unread)) : [];
     return `<div class="ph-lock"><b class="ph-clock">${clock(t.hour, t.minute)}</b><small>${DAYS[(t.day - 1) % 7]} · Jour ${t.day}${hub ? ' · ' + esc(HUB_NAMES[hub].split(' · ')[0]) : ''}</small></div>
+      ${fresh.length ? `<button type="button" class="ph-notes" data-open="notifs" aria-label="Notifications : ${quietLog.unread} nouvelle${quietLog.unread > 1 ? 's' : ''}">${fresh.map(e => `<span>${esc(e.text)}</span>`).join('')}${quietLog.unread > fresh.length ? `<small>+ ${quietLog.unread - fresh.length} autre${quietLog.unread - fresh.length > 1 ? 's' : ''}</small>` : ''}</button>` : ''}
       <div class="ph-widgets">
         <button type="button" class="ph-wid" data-open="portefeuille"><small>💰 Solde</small><b>${fcfa(this.ctx.state.wallet)}</b></button>
         <div class="ph-wid"><small>➜ Prochaine piste</small><span>${next ? esc(next.hint) : 'Pas de piste en cours : la ville est à toi.'}</span></div>
@@ -274,6 +281,15 @@ export class Phone {
       <div class="ph-dock">${dock.map(t => appIcon(t, false)).join('')}</div>`;
   }
 
+  /**
+   * Notifications: the quiet log (src/ui/quiet.ts) — what the game noted without stopping the player (a purchase, a
+   * pay, a tip, an arrival), newest first. Opening it marks them seen (the badge on the phone button goes).
+   */
+  private notifsHtml(): string {
+    const list = quietLog.entries, now = Date.now(), unseen = quietLog.unread;
+    if (!list.length) return '<p class="ph-note">Rien de nouveau. Ce que le jeu note sans t’arrêter (achats, paies, conseils) arrive ici.</p>';
+    return `<ul class="ph-log">${list.map((e, i) => `<li class="${i < unseen ? 'new' : ''}${e.kind === 'warn' ? ' warn' : ''}"><span>${esc(e.text)}</span><small>${ago(now - e.at)}</small></li>`).join('')}</ul>`;
+  }
   private weatherHtml(): string {
     const t = cityTimeAt(this.ctx.now()), h = t.hourFloat;
     const temp = (hour: number) => Math.round(28.5 + 3 * Math.sin(((hour - 9) / 24) * Math.PI * 2));
@@ -520,10 +536,11 @@ const clock = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 /** One app icon: emoji on its gradient tile (or the fallback line icon), with its label under it in the grid. */
 function appIcon(t: Tile, label: boolean): string {
-  const look = LOOK[t.id];
+  const look = LOOK[t.id], n = t.id === 'notifs' ? quietLog.unread : 0;
+  const badge = n ? `<b class="ph-badge" aria-hidden="true">${n > 9 ? '9+' : n}</b>` : '';
   const tile = look ? `<i class="ph-ico" style="--g:linear-gradient(180deg,${look.grad})"><span>${look.emoji}</span></i>`
     : `<i class="ph-ico line" style="--g:${t.color}">${svg(t.icon)}</i>`;
-  return `<button type="button" class="ph-app" data-app="${t.id}" aria-label="${esc(t.label)}">${tile}${label ? `<span>${esc(look?.short ?? t.label)}</span>` : ''}</button>`;
+  return `<button type="button" class="ph-app" data-app="${t.id}" aria-label="${esc(t.label)}${n ? ` · ${n}` : ''}">${tile}${badge}${label ? `<span>${esc(look?.short ?? t.label)}</span>` : ''}</button>`;
 }
 
 function when(at: number): string {

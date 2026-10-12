@@ -38,12 +38,13 @@ phones. Animations only use `transform` and `opacity`; `prefers-reduced-motion` 
 | Component | Selector | Size / place | Behaviour |
 | --- | --- | --- | --- |
 | Wallet + needs | `#stats` (`#money`, `.ring`, `#mood`) | top left; wallet 17 px bold; five 24 px rings (faim 🍽️, énergie ⚡, moral = mood face, social 💬, hygiène 🚿) | tap/Enter opens labelled bars with % and the mood (remembered per device); a need under 25 % turns red and pulses; money changes count up and float « +1 200 F » / « −500 F » beside the wallet |
-| Place and time | `#place` (`#hubName`, `#clock`, `#placeTag`) | top centre (desktop, landscape); right of the wallet in portrait | the weekday and time (« Samedi · 15:00 », never a city day number) and a red « Gala ce soir » chip Friday–Sunday until the gala is over (inline; own line in portrait); in portrait only the hub's first name (« Pikine ») |
-| Phone | `#menuBtn` | 44 × 44, top right | opens the phone |
-| Goal hint | `#goal` (`.gi` `.gt` `.gd`) | pill under the wallet, two lines max | one suggestion at most; when there is a place to walk to, the badge becomes a compass arrow (turns with the camera) and the distance is shown; a distance at the end of a line (« … · 72 m ») always sits in the right-hand slot (never wrapped away from its number, the « · » kept for screen readers); one line while a ride card (`.ridecard`) is on; hidden while seated watching an arena show (entrance, bout, result — `arenaShow.watching()`), back on standing up |
-| Moment card | `#toast > .mo` (`hud.moment`) | first in the toast column, the toasts under it; never over the action button or the joystick | icon, title, a few lines (a bout's recap, a new word on a gauge); tap anywhere or ✕ to dismiss, 6–12 s, two at most; five lines on a landscape phone |
-| After-bout card | `#toast > .mo.bc` (`hud.boutCard`) | a larger moment card, first in the toast column (≤ 420 px; portrait: a 30 px icon) | after a bout on the arena's fighter path (docs/CAREER.md): the result and who against, rows `Palmarès` · `Classement` · `Réputation` · `Influence` · `Cachet` (· `Forme` · `Ceinture`) — what (12 px), where it stands now (13.5 px), the change in green or red, a short note — then « Ensuite » on a sun-tinted block; 16–24 s, tap anywhere or ✕ to dismiss; landscape phone: no icon, the result and the opponent on one line, notes inline, the first next step only |
-| Toasts | `#toast > .t` | top centre (portrait: under the HUD, y≈170), above sheets, never over the action area; under the arena show's card (`#galacard`) while it is on; the evening's matchup is on that card only (no toast repeating it) | three at most, newest on top; « part  part » becomes chips, amounts coloured; repeats refresh instead of stacking; `warn` toasts in red |
+| Place and time | `#place` (`#hubName`, `#clock`, `#placeTag`, `#placeEv`, `#placeMore`) | top centre (desktop, landscape); right of the wallet in portrait | the weekday and time (« Samedi · 15:00 », never a city day number) and a red « Gala ce soir » chip Friday–Sunday until the gala is over (inline; own line in portrait); in portrait only the hub's first name (« Pikine »). **The event of the moment** (src/ui/placeEvent.ts) under them: a tag (« LÀMB » red, a line's number sun, « CE SOIR » purple) and one short line, a second small line where there is room (not in portrait), a request in red; it replaces « Gala ce soir »; a tap opens the details under the chip (closes by itself after 10 s) |
+| Phone | `#menuBtn` (`.badge`) | 44 × 44, top right | opens the phone; a red badge counts the quiet log's unseen notices (read in the phone's Notifications) |
+| Goal hint | `#goal` (`.gi` `.gt` `.gd`) | pill under the wallet, two lines max | one suggestion at most; when there is a place to walk to, the badge becomes a compass arrow (turns with the camera) and the distance is shown; a distance at the end of a line (« … · 72 m ») always sits in the right-hand slot (never wrapped away from its number, the « · » kept for screen readers); hidden while seated watching an arena show (entrance, bout, result — `arenaShow.watching()`), back on standing up |
+| Moment card | `#toast > .mo` (`hud.moment`) | one at a time, at the side: on the right under the social buttons (desktop, ≤ min(360 px, 30 vw − 20 px)); on the left under the goal line (landscape phone, ≤ 30 vw); at the top left of the social buttons, ending above 33 % of the height (portrait); never over the middle, the action button or the joystick; taller than its room, it scrolls inside | icon, title, a few lines (a bout's recap, a new word on a gauge, Tonton Ibou's word); tap anywhere or ✕ to dismiss, 6–12 s; a new card replaces it; five lines on a landscape phone |
+| After-bout card | `#toast > .mo.bc` (`hud.boutCard`) | a moment card in the same place (portrait: a 30 px icon) | after a bout on the arena's fighter path (docs/CAREER.md): the result and who against, rows `Palmarès` · `Classement` · `Réputation` · `Influence` · `Cachet` (· `Forme` · `Ceinture`) — what (12 px), where it stands now (13.5 px), the change in green or red, a short note — then « Ensuite » on a sun-tinted block; 16–24 s, tap anywhere or ✕ to dismiss; it replaces the card on screen and a recap that comes meanwhile waits for it (two at most wait; older ones go to the quiet log); landscape phone: no icon, the result and the opponent on one line, notes inline, the first next step only |
+| The transient line | `#toast > .t` (`.say` / `.now`) | ONE at a time. `.say`, a spoken line: the subtitle, centred at the bottom above the controls (desktop 76 px up, ≤ 56 vw; portrait full width above the controls' row, three lines at most; landscape between « Courir » and the action column, two lines); `.now`, a refusal or the answer to the player's action: right above the action column; over an open sheet: at the top | `.say`: dark band, the speaker's name in sun, then the words; `.now`: « part  part » becomes chips, amounts coloured, `warn` in red; the next line replaces it; 2.6–7 s (time to read it); hidden from screen readers, who hear `#toast > .sr` |
+| Quiet log | `quietLog` (src/ui/quiet.ts) → phone › Notifications | not on screen | every other notice (purchases, pay, ledger lines, tips, arrivals, tonight's call): newest first, the last 60, the unseen ones bold with a dot; a badge on `#menuBtn` and on the app, the latest two on the phone's lock screen; opening Notifications marks them seen |
 | Focus ring (3D) | `worldMarkers` | sun ring on the ground under the focused target, sized by kind (person 0.62 m … vehicle 1.9 m) | grows in on focus change, breathes softly; grey (`#8e8e93`) when nothing can be done there now (every affordance disabled: another tier's place on the arena's stands, a closed counter); hidden in menus, activities and scenes |
 | Bubble | `#wprompt > .wp` | above the target, with a tail | icon in a sun disc, verb, price chip, `E` keycap (desktop); **tap it to act**. Unavailable (`.why`): greyed, and the pill becomes a small card with the reason in full under the verb (12.5 px, `--warn`), at most `min(280px, 78vw)` wide; `bubbleX` keeps the card 8 px inside the screen and moves its tail to keep pointing at the target (the action button's line is cut short on a phone) |
 | Action button | `#act` in `#actbar` | bottom right, ≥ 60 px tall, max 62 vw | sun pill: icon disc + verb (two lines on a touch phone in portrait, where the button is narrow beside « Courir ») + what/why line + price chip; `.dis` white with the reason in red (tap: shake + reason); `.stop` white « ✋ Arrêter » while something runs; hidden when nothing is in reach |
@@ -71,6 +72,13 @@ without steps: nothing paid, nothing applied) and a làmb scene (no reward). Due
 - `setPrompt(label, sub?, more?, { icon, cost, gain, disabled, stop })` and `setWorldPrompt(at, icon, label, { cost, gain, disabled })` — DOM touched only on change (they run every frame). A leading emoji in `label` still becomes the icon.
 - `progress(on, pct, label, { title, icon, step, steps })`, `deny(reason)`, `toast(msg, 'info' | 'warn')`,
   `setGuide({ angle, dist } | null)`, `setScene(label, note, stoppable)` + `onSceneStop`.
+- `toast(msg, kind)` is routed (src/ui/quiet.ts `route`): a spoken line → the subtitle; `warn`, or a message within
+  900 ms of the player's action (`markAct()`: the action button, E, a sheet's row) → the line by the action button;
+  anything else → the quiet log. Write spoken lines as « Speaker : « … » » (or after 🎤); a module never needs a card in
+  the middle of the screen: an ongoing event goes to `placeEvents.set(source, { tag, line, sub?, more?, alert?, tone })`
+  (src/ui/placeEvent.ts), a moment worth stopping for to `moment(…)`.
+- `measureQuiet()` (`__dakar.quiet()`): the middle of the screen, every HUD overlay's box, those over the middle, the
+  number of transient lines and moment cards — what the checks assert.
 - `GameCtx.guide()` (src/game/modules.ts): the next-step place in this hub — the walking destination, else the person of
   the suggested story beat, else (first job) the nearest Tiak Tiak pick-up.
 
@@ -110,6 +118,25 @@ The « Billet · gala de làmb » sheet, readable in portrait (390 × 844) witho
 - **On the stands**, another tier's place has a grey focus ring and its bubble gives the controller's reason in full
   (`seatRefusal`, « Ton billet est pour la tribune populaire (…) : cette place est en tribune d’honneur. »); the same
   reason is on the greyed action button and in the toast when it is tapped. `__dakar.focus().why` lists it.
+
+## A quiet screen (docs/UI_V2_PLAN.md §0 C; src/ui/quiet.ts, placeEvent.ts, moments.ts)
+
+Habib (12 Oct): « I can't follow the game because of too many pop-up messages on the screen. » The middle of the screen —
+the centred 40 % of the width, from 33 % to 62 % of the height (`centreZone`), where the player, the ring or the stage
+is — is never covered by the HUD while the player moves, watches a show or is seated, in every orientation:
+- what is said becomes ONE line: a subtitle at the bottom for spoken lines (the announcer, the griot, the controller,
+  the DJ, greetings), or a line by the action button for a refusal or the answer to what the player just did; the next
+  line replaces it;
+- everything else goes to the quiet log, read in the phone's Notifications (a badge on the phone button);
+- the gala card, the ride cards and tonight's call live in the place chip at the top (a tag and a line; tap for more);
+- moment cards come one at a time, at the side (the top in portrait);
+- the bubble over the focused target is hidden while seated (the action button still says « Se lever »).
+Not counted in the middle: what the player opened (a sheet, the phone, the chat, the needs panel, the event's details),
+what is anchored in the world (the bubble, name tags), the joystick, playable UIs (a duel, a trade's gesture, the
+placer) and a transition's fade. Checks: `tests/quiet.test.ts`, `tests/boutCardLayout.test.ts`, `scripts/check-ui.mjs`
+(steps 10, 10b, 12, 13: the street, a venue, the arena during the entrance and the bout; desktop, portrait,
+landscape), `scripts/check-arena-visit.mjs` (seated at the entrance and the bout; desktop, portrait, landscape).
+Budget: DOM only, nothing per frame (the line, the log, the chip and the cards change on events).
 
 ## The goal line: here and now (src/game/goalLine.ts, src/social/beats.ts)
 

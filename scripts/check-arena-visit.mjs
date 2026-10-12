@@ -3,7 +3,9 @@
 // free place on the tiers of the ticket's own stands (another tier's places refused, with the
 // reason: a grey ring, the reason in full in its bubble) → the crowd → the wrestlers' entrance → the watched bout → the result → the crowd leaves; then, on the next
 // evenings, a « Tribune couverte » and a « Tribune d'honneur » ticket, each bought and sat in (src/arena/tickets.ts). (The street outside the walls is src/arena/exterior.ts, another lane.) Desktop 1280×720 and phone 390×844; captures in docs/screenshots/arena-visit.
-// Usage: node scripts/check-arena-visit.mjs [baseUrl=http://localhost:4247/] [outDir=docs/screenshots/arena-visit] [--view=desktop|phone]
+// The quiet screen (docs/UI_V2_PLAN.md §0 C, Habib's screenshot): seated during the entrance and the bout, the gala in the place
+// chip, the announcer as one subtitle line, nothing over the middle of the screen — on a phone on its side too (landscape 844×390).
+// Usage: node scripts/check-arena-visit.mjs [baseUrl=http://localhost:4247/] [outDir=docs/screenshots/arena-visit] [--view=desktop|phone|landscape]
 // LAMB2=1: with ?lamb2 (the watched bout avec frappe: referee's arm, the stands at the fall); captures and results suffixed -lamb2.
 // Run it under the shared lock: flock /tmp/dakar-browser.lock node scripts/check-arena-visit.mjs …
 import { chromium } from 'playwright';
@@ -22,7 +24,7 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
 });
-const VIEWS = [['desktop', { width: 1280, height: 720 }, false, 'medium'], ['phone', { width: 390, height: 844 }, true, 'low']].filter(([l]) => view === 'all' || l === view);
+const VIEWS = [['desktop', { width: 1280, height: 720 }, false, 'medium'], ['phone', { width: 390, height: 844 }, true, 'low'], ['landscape', { width: 844, height: 390 }, true, 'low']].filter(([l]) => view === 'all' || l === view);
 
 for (const [label0, viewport, touch, quality] of VIEWS) {
   const label = L2 ? `${label0}-lamb2` : label0;
@@ -216,6 +218,12 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   check(`${label}: the main event's entrance lands on nearly full stands`, e1.crowd.present >= e1.crowd.cap * 0.85, e1.crowd);
   await page.waitForFunction(() => window.__dakar.arena.info().crowd.cheering > 0, null, { timeout: 60000 }).catch(() => {});
   check(`${label}: the crowd reacts to the entrance`, (await info()).crowd.cheering > 0, (await info()).crowd);
+  // the quiet screen at the entrance (Habib's screenshot): the gala in the place chip, the announcer one subtitle line
+  const said = await page.waitForFunction(() => /annonceur|griot/i.test(document.querySelector('#toast .t.say:not(.out)')?.textContent ?? ''), null, { timeout: 120000 }).then(() => true, () => false);
+  const qe = await d(() => ({ q: window.__dakar.quiet(), chip: document.querySelector('#place.ev #placeEv')?.textContent ?? '' }));
+  check(`${label}: the entrance, seated — the gala in the place chip, the announcer as one subtitle line, nothing over the middle of the screen`,
+    said && /LÀMB/.test(qe.chip) && qe.q.over.length === 0 && qe.q.lines <= 1 && qe.q.moments <= 1,
+    { said, chip: qe.chip, over: qe.q.overlays.filter(o => qe.q.over.includes(o.id)), zone: qe.q.zone, lines: qe.q.lines, moments: qe.q.moments });
   const dcShow = await ownDc();
   await shot('4-entrance');
 
@@ -236,6 +244,9 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
   check(`${label}: the bout starts (${L2 ? 'avec frappe, the two billed wrestlers, AI against AI' : 'lutte sans frappe'}, referee call, then the fight)`, !!b1.bout && b1.bout.mode === 'amical' && b1.bout.discipline === (L2 ? 'avec_frappe' : 'sans_frappe'),
     { phase: b1.bout?.phase, discipline: b1.bout?.discipline, identity: b1.bout?.identity, arena: b1.phase, t: b1.t, lastBout: b1.lastBout, timeline: await d(() => window.__dakar.arena.timeline()) });
   await page.waitForTimeout(2500);
+  const qb = await d(() => window.__dakar.quiet());
+  check(`${label}: the bout, seated — nothing over the middle of the screen, one line and one card at most`, qb.over.length === 0 && qb.lines <= 1 && qb.moments <= 1,
+    { over: qb.overlays.filter(o => qb.over.includes(o.id)), zone: qb.zone, lines: qb.lines, moments: qb.moments });
   await shot('5-bout');
   await d(() => window.__dakar.arena.speed(6));
   await page.waitForFunction(() => ['result', 'leaving', 'over'].includes(window.__dakar.arena.info().phase), null, { timeout: 300000 }).catch(() => {});

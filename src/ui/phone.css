@@ -58,6 +58,22 @@ button.ph-wid { cursor:pointer; }
 .ph-wid small { font-size:11px; font-weight:600; opacity:.85; }
 .ph-wid b { font-size:17px; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ph-wid span { font-size:12px; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+/* the latest notices of the quiet log on the lock screen (src/ui/quiet.ts), a tap opens Notifications */
+.ph-notes { display:flex; flex-direction:column; gap:3px; width:100%; margin:0 0 12px; padding:10px 12px; border:0; border-radius:18px; text-align:left; color:#fff; font-family:var(--ph-font); cursor:pointer;
+  background:rgba(255,255,255,.2); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:0 0 0 .5px rgba(255,255,255,.25) inset; }
+.ph-notes span { font-size:12.5px; font-weight:600; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.ph-notes small { font-size:11px; font-weight:600; opacity:.85; }
+.ph-badge { position:absolute; top:-5px; left:calc(50% + 16px); min-width:20px; height:20px; padding:0 6px; border-radius:10px; background:#ff3b30; color:#fff; font:700 12px/20px var(--ph-font); text-align:center; box-shadow:0 0 0 1.5px rgba(0,0,0,.15); }
+.ph-app { position:relative; }
+/* Notifications: newest first, unseen ones marked */
+.ph-log { margin:4px 0; padding:0; list-style:none; border-radius:14px; overflow:hidden; background:var(--ios-card); }
+.ph-log li { display:flex; flex-direction:column; gap:2px; padding:10px 14px; border-top:.5px solid rgba(60,60,67,.18); color:var(--ios-ink); }
+.ph-log li:first-child { border-top:0; }
+.ph-log li span { font-size:13.5px; line-height:1.35; }
+.ph-log li small { font-size:11.5px; color:var(--ios-sub); }
+.ph-log li.new span { font-weight:700; }
+.ph-log li.new::before { content:''; align-self:flex-start; width:8px; height:8px; margin:0 0 -10px -10px; border-radius:50%; background:#0a84ff; }
+.ph-log li.warn span { color:#b42318; }
 .ph-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px 4px; align-content:start; }
 .ph-app { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0; padding:0; border:0; background:none; color:#fff; font-family:var(--ph-font); cursor:pointer; }
 .ph-app > span { max-width:100%; font-size:11.5px; font-weight:500; line-height:1.15; text-shadow:0 1px 3px rgba(0,0,0,.35); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

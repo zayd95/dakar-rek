@@ -1,27 +1,25 @@
 import './transport.css';
+import { placeEvents } from '../ui/placeEvent';
 
-/** The ride card: line number, what is happening (waiting / riding), the next stop and its countdown. */
+/**
+ * The ride card: line number, what is happening (waiting / riding), the next stop and its countdown. It is no longer
+ * a card under the place name (Habib, 12 Oct; docs/UI_V2_PLAN.md §0 C 3): it collapses into the place chip at the top —
+ * the line's number and where it goes, the next stop on a second line where there is room, a request in red — and a
+ * tap shows the details (src/ui/placeEvent.ts, src/ui/hud.ts). One source per card (`id`): the car rapide, the taxi,
+ * the player's own car or moto.
+ */
 export class RideCard {
-  private el: HTMLElement;
-  private num: HTMLElement; private title: HTMLElement; private sub: HTMLElement; private req: HTMLElement;
+  private v: { num: string; title: string; sub: string; req?: string | null } | null = null;
   private last = '';
-  constructor(root: HTMLElement, id = 'ride') {
-    this.el = document.createElement('div');
-    this.el.id = id; this.el.className = 'card ridecard'; this.el.setAttribute('aria-live', 'polite');
-    this.el.innerHTML = '<span class="num"></span><div class="txt"><b></b><small></small><div class="req"></div></div>';
-    root.appendChild(this.el);
-    this.num = this.el.querySelector('.num')!; this.title = this.el.querySelector('b')!; this.sub = this.el.querySelector('small')!; this.req = this.el.querySelector('.req')!;
-  }
-  /** Shows the card (null hides it). Only touches the DOM when the text changed. */
+  constructor(_root: HTMLElement | null, private id = 'ride') {}
+  /** Shows the card (null hides it). Only notifies when the text changed. */
   show(v: { num: string; title: string; sub: string; req?: string | null } | null) {
     const key = v ? `${v.num}|${v.title}|${v.sub}|${v.req ?? ''}` : '';
     if (key === this.last) return;
-    this.last = key;
-    this.el.classList.toggle('on', !!v);
-    if (!v) return;
-    this.num.textContent = v.num; this.title.textContent = v.title; this.sub.textContent = v.sub;
-    this.req.textContent = v.req ?? ''; this.el.classList.toggle('req', !!v.req);
+    this.last = key; this.v = v;
+    placeEvents.set(this.id, v ? { tag: v.num, line: v.title, sub: v.sub, ...(v.req ? { alert: v.req } : {}), tone: 'ride' } : null);
   }
-  get text() { return this.el.classList.contains('on') ? this.el.textContent ?? '' : ''; }
-  dispose() { this.el.remove(); }
+  /** What the card says (debug `card()`, the checks). */
+  get text() { return this.v ? [this.v.num, this.v.title, this.v.sub, this.v.req ?? ''].filter(Boolean).join(' ') : ''; }
+  dispose() { this.show(null); }
 }

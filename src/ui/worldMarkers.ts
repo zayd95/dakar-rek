@@ -71,7 +71,9 @@ export function worldMarkers(): GameModule {
       }
     },
     debug: ctx => ({
-      uiToast: (m: string) => ctx.hud.toast(m),
+      uiToast: (m: string, kind: 'info' | 'warn' = 'info') => ctx.hud.toast(m, kind),
+      /** A moment card (the checks: one at a time, at the side). */
+      uiMoment: (title: string, lines: string[] = []) => { ctx.hud.moment({ icon: '⭐', title, lines }); },
       uiMarkers: () => ({ focus: focus.visible, focusAt: focus.visible ? { x: focus.position.x, z: focus.position.z } : null, grey: focus.visible && grey, pin: pin.visible, pinAt: pin.visible ? { x: pin.position.x, z: pin.position.z } : null }),
     }),
   };

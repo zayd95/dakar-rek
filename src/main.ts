@@ -28,6 +28,7 @@ import { NpcLife } from './social/npcLife';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, suggestionHere, applyChoice, settleWelcome, welcomeByTalk, type Beat } from './social/beats';
 import { goalNow, hudDue, hudSpace, needGoal } from './game/goalLine';
+import { quietLog } from './ui/quiet';
 import { Pacer, hiddenEvery } from './game/pace';
 import { arenaFighter } from './arena/fighter';
 import { currentHome } from './economy/assets';
@@ -965,6 +966,7 @@ function saveNow(): boolean {
 }
 
 hud.onAction = () => {
+  hud.markAct();                                           // what the game says next answers it (src/ui/quiet.ts)
   if (activities.running) { activities.cancel('Arrêté'); return; }
   if (legacyRun) { legacyRun.stop(); return; }
   if (mode !== 'play') return;
@@ -989,7 +991,7 @@ function showPrompt(t: Target | null) {
   if (!t || !a) { hud.setPrompt(null); hud.setWorldPrompt(null); return; }
   const all = interactions.all(t), opt = { icon: a.icon, cost: a.cost, gain: a.gain, disabled: a.disabled };
   hud.setPrompt(a.label, a.disabled ?? (a.label === t.name ? '' : t.name), all.length > 1, opt);
-  if (t.kind === 'self' || !world) { hud.setWorldPrompt(null); return; }
+  if (t.kind === 'self' || !world || seated) { hud.setWorldPrompt(null); return; }   // seated: the middle stays clear (§0 C)
   camera.updateMatrixWorld();
   promptV.set(t.x, (t.y ?? 1.9) + (inside ? 0 : world.heightAt(t.x, t.z)), t.z).project(camera);
   if (promptV.z > 1 || Math.abs(promptV.x) > 1.1 || Math.abs(promptV.y) > 1.1) { hud.setWorldPrompt(null); return; }
@@ -1195,6 +1197,10 @@ if (DEBUG) {
     rel, beats: () => ({ ...state.data.beats }), flags: () => [...state.data.flags],
     suggestion: () => suggestion(rel, state)?.id ?? null,
     hudTicks: () => hudTicks,
+    /** The quiet screen (docs/UI_V2_PLAN.md §0 C): the middle, the overlays over it, transient lines and moment cards. */
+    quiet: () => hud.measureQuiet(),
+    /** The quiet log (the phone's Notifications): unseen count and the latest entries. */
+    quietLog: () => ({ unread: quietLog.unread, entries: quietLog.entries.slice(0, 12).map(e => e.text) }),
     playBeat(id: string, choice: string) { const b = BEATS.find(x => x.id === id)!; const c = b.choices.find(x => x.id === choice)!; return applyChoice(b, c, rel, state); },
     npcWhere: (id: string) => npcLife.where(id), npcSheet: (id: string) => npcLife.sheet(id),
     npcSettle: () => npcLife.settle(), npcAudit: () => npcLife.audit(), npcSlots: (h: number) => npcLife.slotsAt(h), people: () => npcLife.openPeople(),
