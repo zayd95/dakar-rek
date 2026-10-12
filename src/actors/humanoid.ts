@@ -7,6 +7,7 @@ import type { Outfit } from './character';
 import { GaitState } from './gait';
 import { GaitRig } from './gaitRig';
 import { joinNeck } from './neckJoin';
+import { reshapeCharacter } from './proportions';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -45,6 +46,7 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
     joinNeck(gltf.scene);                                    // the head joined to the body (src/actors/neckJoin.ts)
+    reshapeCharacter(gltf.scene);                            // shorter neck, oval face with a jaw (src/actors/proportions.ts)
     fixSitKnees(gltf.animations);
     fixRunClip(gltf.animations);
     deriveKneel(gltf.animations);
