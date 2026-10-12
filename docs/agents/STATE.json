@@ -1,23 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T16:38:00Z",
+  "updatedAt": "2026-10-12T17:37:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261012T1735Z-watch",
-    "owner": "producer_watch_1735",
-    "acquiredAt": "2026-10-12T17:35:34Z",
-    "expiresAt": "2026-10-12T18:05:34Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "65d3960befa1a38f10be7687b369a0cffc2795a5",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-12-1735-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -131,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-12T16:38:00Z"
+    "lastCompletedRunAt": "2026-10-12T17:37:00Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
@@ -162,7 +150,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "Current wave5 integration8c3270b has green CI and successful preview. Await/inspect complete wave-specific final performance/reviewer evidence before readiness alert; no registered implementation ready.",
+  "nextAction": "Inspect final wave-specific performance and distinct reviewer acceptance at integration8c3270b; resume PR21 b62c239 exact pending CI without modifying external refs. No registered implementation ready.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -300,13 +288,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-1634-WATCH.md",
-    "completedAt": "2026-10-12T16:38:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-1735-WATCH.md",
+    "completedAt": "2026-10-12T17:37:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261012T1634Z-watch"
+    "leaseReleased": "cycle-20261012T1735Z-watch",
+    "owner": "producer_watch_1735",
+    "reviewer": null
   },
   "protectedRefsLatest": [
     {
@@ -568,7 +558,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-12T16:38:00Z",
+    "checkedAt": "2026-10-12T17:37:00Z",
     "status": "integrated_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "89977184edf0512d51552ac82e7c024de6127dcb",
@@ -587,8 +577,7 @@
       "digest": "sha256:86aa0edd14f46066c7f10d44a539d16c001b7bfb1285c73f8dde8cd4319ec4a6"
     },
     "missing": [
-      "Final full wave-specific browser/performance logs and distinct reviewer acceptance at integrated SHA not independently inspected",
-      "PR21 separate gameplay port Cloudflare preview remains failure; not a green replacement source"
+      "Final full wave-specific browser/performance logs and distinct reviewer acceptance at integrated SHA not independently inspected; PR17 reviews endpoint currently empty"
     ],
     "authority": "read-only external wave; never mutate other-session refs",
     "candidateCi": {
@@ -599,14 +588,26 @@
     },
     "externalPortChecks": {
       "pullRequest": 21,
-      "sha": "8ee7a5cdf3ca570164f93b1e64b03caad92a4695",
+      "sha": "b62c239f9ac3f4c0083f0c79ec5c2d32a2b91d57",
+      "baseSha": "8c3270b902db1c6f7e5cf26f9695e9fd0ac4b9f9",
       "githubRuns": [
-        38249181956,
-        38249177624
+        38282732436,
+        38282726760
       ],
-      "githubConclusion": "success",
-      "cloudflareConclusion": "failure",
-      "cloudflareBuildId": "9c13ae9a-af4b-412b-ae51-75025c60bacf"
+      "githubConclusion": "pending",
+      "cloudflareConclusion": "success",
+      "cloudflareBuildId": "4d1382e0-4d31-4153-8e31-7a188c1361b8",
+      "historicalPreviousSource": {
+        "pullRequest": 21,
+        "sha": "8ee7a5cdf3ca570164f93b1e64b03caad92a4695",
+        "githubRuns": [
+          38249181956,
+          38249177624
+        ],
+        "githubConclusion": "success",
+        "cloudflareConclusion": "failure",
+        "cloudflareBuildId": "9c13ae9a-af4b-412b-ae51-75025c60bacf"
+      }
     },
     "preview": {
       "status": "success",
