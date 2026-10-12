@@ -447,10 +447,10 @@ function openMore() {
 let nearest: Interactable | null = null;
 function findNearest() {
   nearest = null; if (!world) return;
-  let best = 1e9;
+  let best = 1e9;                                              // (squares: this runs every frame over all the hub's places)
   for (const it of inside ? inside.int.interactables : world.interactables) {
-    const d = Math.hypot(it.x - pos.x, it.z - pos.z);
-    if (d <= it.radius && d < best) { best = d; nearest = it; }
+    const dx = it.x - pos.x, dz = it.z - pos.z, d = dx * dx + dz * dz;
+    if (d <= it.radius * it.radius && d < best) { best = d; nearest = it; }
   }
 }
 
