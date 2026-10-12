@@ -51,7 +51,7 @@ describe('joinNeck: the head joined to the body', () => {
   });
 
   it('is applied once by the game (a second call on a fixed scene would lift again: the template is fixed at load only)', async () => {
-    const src = readFileSync(new URL('../src/actors/humanoid.ts', import.meta.url), 'utf8');
+    const src = readFileSync(new URL('../src/actors/humanoid.ts', import.meta.url)).toString('utf8');
     expect(src.match(/joinNeck\(/g)?.length).toBe(1);
   });
 });
