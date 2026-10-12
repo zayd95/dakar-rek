@@ -869,5 +869,18 @@
       "docs/agents/operations/QUEUE.json",
       "docs/agents/operations/CYCLE-2026-10-12-2235-WATCH.md"
     ]
+  },
+  "registryWriter": {
+    "token": "cycle-20261012T2328Z-watch",
+    "owner": "producer_watch_2328",
+    "acquiredAt": "2026-10-12T23:27:32Z",
+    "expiresAt": "2026-10-12T23:57:32Z",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "37c4d1e22ea525b972f1aaf8f94d0dc7a328aca1",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-12-2328-WATCH.md"
+    ]
   }
 }
