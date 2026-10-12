@@ -10,7 +10,7 @@ import * as THREE from 'three';
  * pose: the joint is inside the head from every angle, and stays there as the head nods or turns. Skinning, morph targets
  * (relative deltas), clips and draw calls are unchanged. Returns how many vertices moved.
  */
-export function joinNeck(scene: THREE.Object3D, { body = 'DR_Body', from = 1.62, lift = 0.05, widen = 0.12 } = {}): number {
+export function joinNeck(scene: THREE.Object3D, { body = 'DR_Body', from = 1.62, lift = 0.05, widen = 0.25 } = {}): number {
   let moved = 0;
   scene.traverse(o => {
     const m = o as THREE.SkinnedMesh;
