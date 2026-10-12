@@ -1,16 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T11:39:00Z",
+  "updatedAt": "2026-10-12T12:35:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261012T1232Z-watch",
-    "owner": "producer_watch_1232",
-    "acquiredAt": "2026-10-12T12:32:00Z",
-    "expiresAt": "2026-10-12T13:02:00Z"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -124,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-12T11:39:00Z"
+    "lastCompletedRunAt": "2026-10-12T12:35:00Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
@@ -293,13 +288,13 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-1135-WATCH.md",
-    "completedAt": "2026-10-12T11:39:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-1232-WATCH.md",
+    "completedAt": "2026-10-12T12:35:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261012T1135Z-watch"
+    "leaseReleased": "cycle-20261012T1232Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -561,26 +556,23 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-12T11:39:00Z",
-    "status": "not_ready",
+    "checkedAt": "2026-10-12T12:35:00Z",
+    "status": "integrated_validation_pending",
     "candidateBranch": "lane/w5-candidate",
-    "candidateCommit": "8d2859a2c0d57a7ae7180909bb7373cef26e5a8e",
-    "integrationCommit": "e86660ad39b125525a5304e02fa7a17d2918cd79",
+    "candidateCommit": "0a978b6e623f585abb652ba22373f0b0c9b982b8",
+    "integrationCommit": "90d0281fa689e14af686f030031a15db29cefed3",
     "productionBranchCommit": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
     "notificationSent": false,
     "ci": {
-      "runId": 38241851387,
-      "jobId": 114786141632,
-      "conclusion": "success",
-      "testsPassed": 1332,
-      "testsSkipped": 2,
-      "artifactId": 11743678138,
-      "digest": "sha256:7857eaaa62890ef87c5bf6d9180be75dc79621db6a42c607f3037c85784e4946"
+      "runId": 38247350495,
+      "status": "in_progress",
+      "conclusion": null,
+      "sha": "90d0281fa689e14af686f030031a15db29cefed3"
     },
     "missing": [
-      "Wave 5 not integrated into integration/living-dakar",
-      "No exact-candidate complete browser performance-budget acceptance proof found; existing CI lacks check:perf-evening",
-      "No complete wave-specific final reviewer acceptance at candidate SHA"
+      "Exact integrated-source CI38247350495 still in_progress",
+      "Final wave-specific performance/browser acceptance evidence at integration SHA not found",
+      "External PR21 notes unresolved night street draw calls, 23:00 outflow budget and NPC density after hour jump; owner fixes remain external"
     ],
     "authority": "read-only external wave; never mutate other-session refs"
   }
