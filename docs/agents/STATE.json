@@ -1,16 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T12:35:00Z",
+  "updatedAt": "2026-10-12T13:40:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261012T1337Z-watch",
-    "owner": "producer_watch_1337",
-    "acquiredAt": "2026-10-12T13:37:00Z",
-    "expiresAt": "2026-10-12T14:07:00Z"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -124,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-12T12:35:00Z"
+    "lastCompletedRunAt": "2026-10-12T13:40:00Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
@@ -155,7 +150,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "Continue read-only wave 5 watch: await external integration and exact-candidate performance/final QA evidence. No ready registered implementation remains; do not duplicate external wave fixes.",
+  "nextAction": "Resume current integration90d0281 and latest external candidate8997718 evidence read-only; await complete performance/final acceptance before alert. No ready registered implementation; do not duplicate external fixes.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -293,13 +288,13 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-1232-WATCH.md",
-    "completedAt": "2026-10-12T12:35:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-1337-WATCH.md",
+    "completedAt": "2026-10-12T13:40:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261012T1232Z-watch"
+    "leaseReleased": "cycle-20261012T1337Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -561,24 +556,35 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-12T12:35:00Z",
-    "status": "integrated_validation_pending",
+    "checkedAt": "2026-10-12T13:40:00Z",
+    "status": "integrated_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
-    "candidateCommit": "0a978b6e623f585abb652ba22373f0b0c9b982b8",
+    "candidateCommit": "89977184edf0512d51552ac82e7c024de6127dcb",
     "integrationCommit": "90d0281fa689e14af686f030031a15db29cefed3",
     "productionBranchCommit": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
     "notificationSent": false,
     "ci": {
       "runId": 38247350495,
-      "status": "in_progress",
-      "conclusion": null,
-      "sha": "90d0281fa689e14af686f030031a15db29cefed3"
+      "jobId": 114804470905,
+      "status": "completed",
+      "conclusion": "success",
+      "sha": "90d0281fa689e14af686f030031a15db29cefed3",
+      "testsPassed": 1332,
+      "testsSkipped": 2,
+      "artifactId": 11746923176,
+      "digest": "sha256:d21940f6222203d64a5d84b830d0efa53ab7e3b0da06f29ac9e1f9641859861a"
     },
     "missing": [
-      "Exact integrated-source CI38247350495 still in_progress",
-      "Final wave-specific performance/browser acceptance evidence at integration SHA not found",
-      "External PR21 notes unresolved night street draw calls, 23:00 outflow budget and NPC density after hour jump; owner fixes remain external"
+      "Final exact integrated-source browser performance/reviewer acceptance evidence not found",
+      "External latest candidate8997718 is not integrated and CI38255236714 is in_progress",
+      "PR21 still records unresolved night street/outflow/NPC density fixes owned externally"
     ],
-    "authority": "read-only external wave; never mutate other-session refs"
+    "authority": "read-only external wave; never mutate other-session refs",
+    "candidateCi": {
+      "runId": 38255236714,
+      "status": "in_progress",
+      "conclusion": null,
+      "sha": "89977184edf0512d51552ac82e7c024de6127dcb"
+    }
   }
 }
