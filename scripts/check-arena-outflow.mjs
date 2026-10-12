@@ -17,6 +17,10 @@ const check = (name, ok, detail = '') => { results.push({ name, ok: !!ok, detail
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 for (const [label, viewport, touch, quality] of [['desktop', { width: 1280, height: 800 }, false, 'medium'], ['phone', { width: 390, height: 844 }, true, 'low']]) {
   if (process.env.ONLY && process.env.ONLY !== label) continue;
+  // a city day lasts 24 real minutes (src/core/clock.ts) and the check holds the hour, not the day: a view that straddles
+  // the day's end sees the gala of « yesterday » and the street back in its arrivals. Start each view with ≥ 12 min left.
+  { const DAY = 24 * 60 * 1000, EPOCH = Date.UTC(2026, 9, 6), left = DAY - ((Date.now() - EPOCH) % DAY);
+    if (left < 12 * 60 * 1000) { console.log(`waiting ${Math.ceil(left / 1000)} s for the next city day`); await new Promise(r => setTimeout(r, left + 2000)); } }
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, hasTouch: touch, isMobile: touch });
   await context.addInitScript(q => { try { localStorage.setItem('dakarrek.quality', q); } catch { /* */ } }, quality);
   const page = await context.newPage();
