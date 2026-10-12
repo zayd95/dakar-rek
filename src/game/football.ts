@@ -457,6 +457,8 @@ class Football implements GameModule {
       goals: this.goals.slice(-10), kickoffs: this.kickoffs.slice(-10),
       scorer: m.scorer, celebrating: list.filter(e => e.team >= 0 && (m.get(e.id)?.cheer ?? 0) > 0).length,
       bodies: players.filter(p => p.body).length, players,
+      /** The drawn footballers' feet (src/actors/gait.ts): steps taken and metres a planted foot slid since their bodies were made. */
+      feet: list.reduce((o, e) => { const g = e.person.body?.gaitInfo(); if (g) { o.bodies++; o.steps += g.steps; o.slipped += g.feet.reduce((t, f) => t + f.slipped, 0); } return o; }, { bodies: 0, steps: 0, slipped: 0 }),
     };
   }
 }

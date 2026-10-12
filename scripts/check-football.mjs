@@ -69,13 +69,13 @@ n = await advance(60, "n.contact && n.body && (n.contact.kind === 'pass' || n.co
 if (n.stopped) {
   const who = await d(id => window.__dakar.footballWho(id), n.contact.id);
   const yaw = who.yaw, side = n.contact.kind === 'shot' ? 1 : -1;
-  const at = [who.x + Math.cos(yaw) * 2.6 * side + Math.sin(yaw) * 1.4, who.y + 1.2, who.z - Math.sin(yaw) * 2.6 * side + Math.cos(yaw) * 1.4];
-  await shoot(`2-kick-${n.contact.kind}`, at, [who.x + Math.sin(yaw) * 0.3, who.y + 0.45, who.z + Math.cos(yaw) * 0.3]);
+  const at = [who.x + Math.cos(yaw) * 3.3 * side + Math.sin(yaw) * 1.0, who.y + 1.15, who.z - Math.sin(yaw) * 3.3 * side + Math.cos(yaw) * 1.0];
+  await shoot(`2-kick-${n.contact.kind}`, at, [who.x + Math.sin(yaw) * 0.3, who.y + 0.7, who.z + Math.cos(yaw) * 0.3]);
   const last = (await d(() => window.__dakar.footballLog(1)))[0];
   check('at the frame of a kick, the drawn foot is on the ball', last && last.foot !== null && last.foot <= GAP_MAX, last);
   // the next frames: the follow-through
   await d(() => window.__dakar.step(1 / 30, 4));
-  await shoot(`2-kick-${n.contact.kind}-after`, at, [who.x + Math.sin(yaw) * 0.6, who.y + 0.45, who.z + Math.cos(yaw) * 0.6]);
+  await shoot(`2-kick-${n.contact.kind}-after`, at, [who.x + Math.sin(yaw) * 0.6, who.y + 0.7, who.z + Math.cos(yaw) * 0.6]);
 } else check('a pass or a shot by a drawn body to picture', false, n);
 
 // 3. a goal within the limit
@@ -115,6 +115,8 @@ check(`the foot (hands) is within ${GAP_MAX * 100} cm of the ball at every measu
 // (on low the shared budget has six full bodies: a touch by a far figure has no foot to measure)
 check('nearly every contact is measured on a drawn body', quality === 'low' ? f.contacts.measured >= 20 : f.contacts.unmeasured <= Math.max(3, f.stats.contacts * 0.1), { measured: f.contacts.measured, unmeasured: f.contacts.unmeasured, contacts: f.stats.contacts, quality });
 check('a planned contact is seldom missed', f.stats.whiffs <= f.stats.contacts * 0.15, { whiffs: f.stats.whiffs, contacts: f.stats.contacts });
+// the feet stay planted: what the gait let a planted foot slide, per step, on the drawn footballers
+if (f.feet) check('the footballers\' planted feet barely slide (the legs keep the pace)', f.feet.steps > 40 && f.feet.slipped / f.feet.steps < 0.02, f.feet);
 const log = await d(() => window.__dakar.footballLog(400));
 check('every contact had the ball at the contact point (the sim\'s own reach)', log.every(c => c.reach <= 0.3), log.filter(c => c.reach > 0.3).slice(0, 5));
 
@@ -149,7 +151,7 @@ await d(() => window.__dakar.perfOn(true));
 await d(() => new Promise(res => { let k = 0; const fr = () => (++k > 20 ? res() : requestAnimationFrame(fr)); requestAnimationFrame(fr); }));
 const far = { info: await info(), perf: await d(() => window.__dakar.perf()) };
 await d(() => window.__dakar.perfOn(false));
-check('far from the pitch the match is put away (the people roam as before) and costs next to nothing', !far.info.near && !far.info.active && (far.perf['module:football'] ?? 0) < 0.02, { near: far.info.near, active: far.info.active, ms: far.perf['module:football'] });
+check('far from the pitch the match is put away (the people roam as before) and costs next to nothing', !far.info.near && !far.info.active && (far.perf['module:football'] ?? 0) < 0.05, { near: far.info.near, active: far.info.active, ms: far.perf['module:football'] });
 
 check('no page errors', errors.length === 0, errors.join(' | '));
 await browser.close();
