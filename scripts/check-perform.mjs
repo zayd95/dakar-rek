@@ -71,8 +71,10 @@ async function act({ name, find, label, wait = 0.45, until = null, cam = [3.6, 1
   await page.waitForFunction(r => !!window.__dakar[r]?.(), read, { timeout: 120000 }).catch(() => {});
   const first = await d(r => window.__dakar[r]?.() ?? null, read);
   const total = await d(() => window.__dakar.activity()) ?? await d(() => `toast: ${document.getElementById('toast')?.textContent ?? ''} mode: ${window.__dakar.pos().mode}`);
-  // wait until `wait` of the step has gone by (game time), take the picture there
-  await page.waitForFunction(w => { const a = window.__dakar.activity(); return !a || (a.seconds > 0 && a.t >= w * a.seconds); }, wait, { timeout: 120000 }).catch(() => {});
+  // wait until `wait` of the step has gone by (game time), take the picture there (a gesture step has no fixed length:
+  // a moment is enough)
+  if (read === 'gesture') await page.waitForTimeout(1500);
+  else await page.waitForFunction(w => { const a = window.__dakar.activity(); return !a || (a.seconds > 0 && a.t >= w * a.seconds); }, wait, { timeout: 120000 }).catch(() => {});
   if (until) await page.waitForFunction(([r, f]) => { const i = window.__dakar[r]?.(); return !i || new Function('i', `return (${f})(i)`)(i); }, [read, until.toString()], { timeout: 30000 }).catch(() => {});
   await frame(...cam); await page.waitForTimeout(350);
   await page.screenshot({ path: `${out}/${name}.png` });
@@ -80,6 +82,7 @@ async function act({ name, find, label, wait = 0.45, until = null, cam = [3.6, 1
   for (const [suffix, v] of Object.entries(views)) { await frame(...v); await page.waitForTimeout(250); await page.screenshot({ path: `${out}/${name}-${suffix}.png` }); }
   await d(() => window.__dakar.cam(null));
   check(`${name}: « ${label} » is performed in the world`, !!first && expect(first, later ?? {}), `${JSON.stringify(first)} → ${JSON.stringify(later)} ${typeof total === 'string' ? total : ''}`);
+  if (read === 'gesture') await page.keyboard.press('Escape');      // the timing game waits for the player: stop it
   await page.waitForFunction(() => !window.__dakar.activity(), null, { timeout: 180000 }).catch(() => {});
   await d(() => window.__dakar.stand());
 }
@@ -118,7 +121,9 @@ await act({ name: 'gallery-walk', find: find(/:city:mall$/), label: 'Faire le to
 await hub('pikine');
 await act({ name: 'bread', find: find(/:city:boutique$/), label: 'Pain et lait', wait: 0.3, until: i => i.raised, cam: [2.1, 0.6, 1.6, 1.3], expect: (a, b) => a.kind === 'eat' && b.left < a.left });
 await act({ name: 'stock', find: find(/:city:boutique$/), label: 'Aider à ranger le stock', wait: 0.25, until: i => i.carrying && i.walked > 0.3, cam: [4.5, 1.3, 2.2], expect: (a, b) => a.kind === 'carry' && b.moved > a.moved && a.leg > 0.5 });
-await act({ name: 'haircut', find: find(/:city:salon-tech$/), label: 'Se faire coiffer', wait: 0.5, cam: [2.4, 1.6, 1.7], expect: (a, b) => a.kind === 'haircut' && a.barber && b.cuts > a.cuts });
+// (wave 5: the cut is the Salon Awa venue's chair, its stylist working behind you — scripts/check-venues.mjs)
+if (!(await d(() => window.__dakar.venues?.().some(v => v.type === 'salon'))))
+  await act({ name: 'haircut', find: find(/:city:salon-tech$/), label: 'Se faire coiffer', wait: 0.5, cam: [2.4, 1.6, 1.7], expect: (a, b) => a.kind === 'haircut' && a.barber && b.cuts > a.cuts });
 await act({ name: 'attaya', find: find(/:city:square$/), label: 'Partager l’attaya', wait: 0.3, until: i => i.raised, cam: [2.1, 0.6, 1.6, 1.3], expect: (a, b) => a.kind === 'drink' && b.left < a.left });
 await act({ name: 'dames', find: find(/:city:square$/), label: 'Regarder la partie de dames', wait: 0.5, cam: [3, 1.0, 1.8], expect: a => a.kind === 'watch' });
 await act({ name: 'gargote-eat', find: () => { const i = window.__dakar.interactables().find(i => /:gargote:/.test(i.id)); return i && { id: i.id, x: i.x, z: i.z }; },
