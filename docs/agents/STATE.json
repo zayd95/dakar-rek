@@ -1,23 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T17:37:00Z",
+  "updatedAt": "2026-10-12T18:38:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261012T1836Z-watch",
-    "owner": "producer_watch_1836",
-    "acquiredAt": "2026-10-12T18:36:00Z",
-    "expiresAt": "2026-10-12T19:06:00Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "b61122c1a4e29a7a672da4e0d5eacb35ac8ddbee",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-12-1836-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -131,7 +119,8 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-12T17:37:00Z"
+    "lastCompletedRunAt": "2026-10-12T18:38:00Z",
+    "lastVerifiedAt": "2026-10-12T18:38:00Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
@@ -162,7 +151,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "Inspect final wave-specific performance and distinct reviewer acceptance at integration8c3270b; resume PR21 b62c239 exact pending CI without modifying external refs. No registered implementation ready.",
+  "nextAction": "Resume exact candidatee563301 CI and external integration progression; inspect full wave-specific logs and distinct final acceptance. No ready implementation; do not duplicate other-session postgala fix.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -300,15 +289,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-1735-WATCH.md",
-    "completedAt": "2026-10-12T17:37:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-1836-WATCH.md",
+    "completedAt": "2026-10-12T18:38:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
+    "owner": "producer_watch_1836",
+    "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261012T1735Z-watch",
-    "owner": "producer_watch_1735",
-    "reviewer": null
+    "leaseReleased": "cycle-20261012T1836Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -570,10 +559,10 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-12T17:37:00Z",
-    "status": "integrated_final_acceptance_pending",
+    "checkedAt": "2026-10-12T18:38:00Z",
+    "status": "candidate_followup_not_integrated",
     "candidateBranch": "lane/w5-candidate",
-    "candidateCommit": "89977184edf0512d51552ac82e7c024de6127dcb",
+    "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
     "integrationCommit": "8c3270b902db1c6f7e5cf26f9695e9fd0ac4b9f9",
     "productionBranchCommit": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
     "notificationSent": false,
@@ -589,14 +578,19 @@
       "digest": "sha256:86aa0edd14f46066c7f10d44a539d16c001b7bfb1285c73f8dde8cd4319ec4a6"
     },
     "missing": [
-      "Final full wave-specific browser/performance logs and distinct reviewer acceptance at integrated SHA not independently inspected; PR17 reviews endpoint currently empty"
+      "Latest candidate e563301 follow-up commits not integrated in integration8c3270b",
+      "Latest candidate GitHub CI pending and Workers Builds failed without diagnostic output",
+      "Complete final wave-specific browser/performance logs and distinct final reviewer acceptance at common SHA not inspected; PR17 reviews empty"
     ],
     "authority": "read-only external wave; never mutate other-session refs",
     "candidateCi": {
-      "runId": 38255236714,
-      "status": "completed",
-      "conclusion": "success",
-      "sha": "89977184edf0512d51552ac82e7c024de6127dcb"
+      "runId": 38291649871,
+      "jobId": 114952920845,
+      "status": "in_progress",
+      "conclusion": null,
+      "sha": "e5633011555cab012de02453dd7ce32995b6ae10",
+      "cloudflareConclusion": "failure",
+      "cloudflareBuildId": "d711fa77-41ca-489b-91eb-8d5949637712"
     },
     "externalPortChecks": {
       "pullRequest": 21,
@@ -606,7 +600,7 @@
         38282732436,
         38282726760
       ],
-      "githubConclusion": "pending",
+      "githubConclusion": "success",
       "cloudflareConclusion": "success",
       "cloudflareBuildId": "4d1382e0-4d31-4153-8e31-7a188c1361b8",
       "historicalPreviousSource": {
@@ -619,7 +613,8 @@
         "githubConclusion": "success",
         "cloudflareConclusion": "failure",
         "cloudflareBuildId": "9c13ae9a-af4b-412b-ae51-75025c60bacf"
-      }
+      },
+      "checkedAt": "2026-10-12T18:38:00Z"
     },
     "preview": {
       "status": "success",

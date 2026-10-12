@@ -858,23 +858,10 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-1735-WATCH.md",
-    "checkedAt": "2026-10-12T17:37:00Z",
-    "result": "Fresh refs/CI reconciled; PR21 new source preview success with two CI pending. No ready task; wave5 final acceptance unproven.",
-    "owner": "producer_watch_1735",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "65d3960befa1a38f10be7687b369a0cffc2795a5",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-12-1735-WATCH.md"
-    ]
-  },
-  "registryWriter": {
-    "token": "cycle-20261012T1836Z-watch",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-1836-WATCH.md",
+    "checkedAt": "2026-10-12T18:38:00Z",
+    "result": "Candidate e563301 advances beyond integration; its CI pending and Cloudflare failed. PR21 exact CI now success. No ready task.",
     "owner": "producer_watch_1836",
-    "acquiredAt": "2026-10-12T18:36:00Z",
-    "expiresAt": "2026-10-12T19:06:00Z",
     "branch": "codex/agent-studio-active",
     "baseCommit": "b61122c1a4e29a7a672da4e0d5eacb35ac8ddbee",
     "allowedFiles": [
