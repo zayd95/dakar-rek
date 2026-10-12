@@ -32,7 +32,7 @@ import './kickabout.css';
  *   shoot (« Frappe » held, F held: the power), shared with the room (last touch owns it). During an NPC match the player
  *   watches: the kickabout waits, and the room's ball states are only kept (the last one) until it is back.
  */
-const NEAR = 60, NEAR_OUT = 66;
+const NEAR = 60, NEAR_OUT = 66, TRACK_N = 512;
 /** Top of the pitch's grass (world y, src/world/builder.ts `pitch`), the footballers' feet on it, the street's. */
 const GRASS = 0.16, FEET = 0.155, STREET = 0.1;
 const TEAM_MAX = 5;
@@ -146,6 +146,8 @@ class Football implements GameModule {
   private peerCount = 0;
   private kbTarget: Target | null = null;
   private kbLog: { t: number; what: string; detail?: unknown }[] = [];
+  /** The checks: the simulated ball's last TRACK_N frames (shared time ms, x, z of pitch space), a ring with no allocation. */
+  private track = new Float64Array(TRACK_N * 3); private trackI = 0;
 
   init(ctx: GameCtx) {
     this.ctx = ctx;
@@ -337,7 +339,7 @@ class Football implements GameModule {
   // ------------------------------------------------------------------ the kickabout: the player's ball, shared with the room
   private kickabout(ctx: GameCtx, dt: number) {
     const pt = this.pitch!, kb = this.kb, self = ctx.ballNet.self(), now = ctx.now();
-    if (!this.kbOn) { this.kbOn = true; this.hasP = false; this.log('on'); }
+    if (!this.kbOn) { this.kbOn = true; this.hasP = false; this.kb.at = 0; this.log('on'); }
     if (this.pending) { const m = this.pending; this.pending = null; this.noteGoal(kb.receive(m, self, now)); }
     // the player's motion (pitch space): a jump (a teleport, a door) is no motion
     const x = ctx.player.pos.x - pt.x, z = ctx.player.pos.z - pt.z;
@@ -355,7 +357,13 @@ class Football implements GameModule {
       if (held) this.hold += dt;
       else { this.strike('shot', Math.min(1, this.hold / HOLD_FULL)); this.hold = -1; }
     }
-    this.noteGoal(kb.step(dt, self, now));
+    // the ball keeps the shared clock's pace even when frames are slow (the frame's dt is capped at 0.1 s): the room's
+    // screens then agree on where it rolls; stepped frames (the checks) are never slower than their dt
+    // (a state received since the last frame is already where it is now: only the time since then)
+    const real = kb.at > 0 ? Math.min(0.5, Math.max(0, (now - kb.at) / 1000)) : dt;
+    const bdt = kb.fresh ? real : Math.max(dt, real);
+    kb.fresh = false; kb.at = now;
+    this.noteGoal(kb.step(bdt, self, now));
     // the room: the owner sends; someone new hears it at once
     if ((this.recvT -= dt) <= 0) {
       this.recvT = 0.25; this.recv = this.receiver();
@@ -370,6 +378,7 @@ class Football implements GameModule {
     }
     this.showShot(playing && !kb.ball.net && Math.hypot(kb.ball.x - x, kb.ball.z - z) < KICK_REACH + 1.2);
     this.drawBall(kb.ball, kb.ox, kb.oz, kb.oh, dt);
+    const i = (this.trackI++ % TRACK_N) * 3; this.track[i] = now; this.track[i + 1] = kb.ball.x; this.track[i + 2] = kb.ball.z;
   }
 
   private countPeers() { let n = 0; for (const p of this.ctx.peers()) if (p.space === 'street') n++; return n; }
@@ -592,6 +601,8 @@ class Football implements GameModule {
           pitch: { x: pt.x, z: pt.z }, receiver: this.recv, myGoals: this.myGoals, hold: +this.hold.toFixed(2), celebrating: this.celebrate > 0,
           shotButton: this.btnState, stats: { ...kb.stats }, log: this.kbLog.slice(-20) };
       },
+      /** The simulated kickabout ball's recent frames, oldest first: [shared time ms, x, z] (pitch space). */
+      kickaboutTrack: () => { const n = Math.min(this.trackI, TRACK_N), o: number[][] = []; for (let k = this.trackI - n; k < this.trackI; k++) { const i = (k % TRACK_N) * 3; o.push([this.track[i], +this.track[i + 1].toFixed(3), +this.track[i + 2].toFixed(3)]); } return o; },
       /** The kickabout ball put at (x, z) of pitch space, at rest and nobody's. */
       kickaboutPlace: (x = 0, z = 0) => { this.kb.place(x, z); return true; },
       /** A pass or a shot by the player now, as the buttons do (false when the ball is out of reach). */

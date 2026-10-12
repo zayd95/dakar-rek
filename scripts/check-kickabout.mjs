@@ -152,24 +152,27 @@ try {
     check('A and B in the same room at the pitch', room[0] === room[1] && room[0] > 0, { room });
     const idA = await A.evaluate(() => window.__dakar.presence().id), idB = await B.evaluate(() => window.__dakar.presence().id);
     await A.evaluate(() => window.__dakar.kickaboutPlace(-5.3, 0));
-    await A.waitForFunction(() => window.__dakar.kickabout().receiver, null, { timeout: 30000 }).catch(() => {});
+    await A.waitForFunction(() => window.__dakar.kickabout().receiver && window.__dakar.focus()?.primary === 'Passer', null, { timeout: 30000 }).catch(() => {});
     const fA = await A.evaluate(() => window.__dakar.focus());
     check('A at the ball, B ahead: the action button reads « Passer » (to Awa)', fA?.primary === 'Passer' && (await kick(A)).receiver?.id === idB, { focus: fA, receiver: (await kick(A)).receiver });
     await A.keyboard.press('KeyE');
     await A.waitForFunction(() => window.__dakar.kickabout().log.some(l => l.what === 'pass'), null, { timeout: 10000 }).catch(() => {});
-    // the ball on its way: both screens, sampled together
-    const moving = [];
-    for (let i = 0; i < 12; i++) {
-      const [a, b] = await Promise.all([kick(A), kick(B)]);
-      if (a.ball.speed > 0.5 || b.ball.speed > 0.5) moving.push(+Math.hypot(a.drawn.x - b.drawn.x, a.drawn.z - b.drawn.z).toFixed(2));
-      await sleep(150);
-    }
     await B.waitForFunction(id => { const k = window.__dakar.kickabout(); return k.owner === id && k.ball.speed < 0.3; }, idB, { timeout: 30000 }).catch(() => {});
     await sleep(1500);
     const [a1, b1] = await Promise.all([kick(A), kick(B)]);
     const gap = Math.hypot(a1.ball.x - b1.ball.x, a1.ball.z - b1.ball.z);
+    // the ball on its way, as both screens simulated it: B's frames against A's at the same shared time (interpolated)
+    const [tA, tB] = await Promise.all([A.evaluate(() => window.__dakar.kickaboutTrack()), B.evaluate(() => window.__dakar.kickaboutTrack())]);
+    const passT = a1.log.find(l => l.what === 'pass')?.t ?? 0, moving = [];
+    for (const [t, x, z] of tB) {
+      if (t < passT + 150) continue;                                    // B's first state arrives after the latency
+      const j = tA.findIndex(r => r[0] >= t); if (j <= 0) continue;
+      const [t0, x0, z0] = tA[j - 1], [t1, x1, z1] = tA[j], u = t1 > t0 ? (t - t0) / (t1 - t0) : 0;
+      if (Math.hypot(x1 - x0, z1 - z0) / Math.max(1e-3, (t1 - t0) / 1000) < 0.5) continue;    // only while it rolls
+      moving.push(+Math.hypot(x - (x0 + (x1 - x0) * u), z - (z0 + (z1 - z0) * u)).toFixed(2));
+    }
     check('the pass reaches B: B touched it, owns it on both screens', b1.owner === idB && a1.owner === idB && b1.stats.touches >= 1, { ownerA: a1.owner, ownerB: b1.owner, idB, touchesB: b1.stats.touches });
-    check('both screens agree where the ball is (at rest: within 0.3 m; rolling: within 1.5 m)', gap < 0.3 && (moving.length === 0 || Math.max(...moving) < 1.5), { rest: +gap.toFixed(3), rolling: moving });
+    check('both screens agree where the ball is (at rest: within 0.3 m; rolling, at the same shared time: within 1 m)', gap < 0.3 && moving.length > 0 && Math.max(...moving) < 1.0, { rest: +gap.toFixed(3), rollingFrames: moving.length, fps: [tA, tB].map(t => { const r = t.filter(x => x[0] > passT && x[0] < passT + 3000); return r.length > 1 ? +((r.length - 1) / ((r[r.length - 1][0] - r[0][0]) / 1000)).toFixed(1) : 0; }), rollingMax: Math.max(...moving), rollingMedian: moving.sort((p, q) => p - q)[moving.length >> 1] });
     const pB = await B.evaluate(() => window.__dakar.pos());
     await shoot(B, '5-two-players-pass', [pB.x - 4, 2.6, pB.z - 6], [pB.x - 2, 0.5, pB.z]);
     // B turns to the far goal and shoots (F held)

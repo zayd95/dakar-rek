@@ -111,6 +111,15 @@ describe('kickabout: dribble and kicks', () => {
     expect(k.owner).toBe('b');
   });
 
+  it('a slow frame does not let a fast ball through the body: it is met where it came closest', () => {
+    const k = new KickBall(); k.place(0, -3); k.ball.vz = 9;
+    let met = false;
+    for (let t = 0; t < 1.5 && !met; t += 0.4) { met = k.dribble(0, 0, 0, 0, 0.4, 'b', T0); k.step(0.4, 'b', T0); }
+    expect(met).toBe(true);
+    expect(k.ball.z).toBeLessThan(0.5);
+    expect(k.owner).toBe('b');
+  });
+
   it('a pass arrives at its receiver still rolling; out of reach nothing happens', () => {
     const k = new KickBall(); k.place(0, 0);
     expect(k.kick(0, -KICK_REACH - 0.5, 0, 'pass', 0, { x: 0, z: 12 }, 'a', T0)).toBe(false);

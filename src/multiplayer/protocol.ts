@@ -89,7 +89,7 @@ export type ServerMessage =
  */
 export interface BallWire { type: 'ball'; x: number; z: number; h: number; vx: number; vz: number; vh: number; n: -1 | 0 | 1; t: number; a: number }
 /** A ball state as relayed to the others of the room: who sent it (`from`, stamped by the server). */
-export interface BallRelay extends BallWire { from: string }
+export interface BallRelay extends BallWire { from: string; /** The server's time when it relayed it (ms). */ s?: number }
 export const BALL_FEATURE = 'ball';
 /** Ball bounds (the curb round the grass, the net's roof) and the fastest a ball may go (m/s): anything faster is refused. */
 export const BALL_LIMITS = { ex: 22, ez: 17, hMax: 6, vMax: 45, vhMax: 20 } as const;

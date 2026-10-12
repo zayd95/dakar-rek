@@ -64,6 +64,15 @@ export class PresenceClient {
     if (this.status !== 'online' || this.socket?.readyState !== WebSocket.OPEN) return false;
     try { this.socket.send(JSON.stringify(payload)); return true; } catch { return false; }
   }
+  /**
+   * A server time stamped on a live message is a lower bound of the clock offset (the message left before it arrived);
+   * the welcome's, read late by a busy page, is one too: the offset only rises towards the truth, by at most 5 s.
+   */
+  private refineClock(serverMs: unknown) {
+    if (typeof serverMs !== 'number' || !Number.isFinite(serverMs)) return;
+    const o = serverMs - Date.now();
+    if (o > this.clockOffset && o - this.clockOffset < 5000) this.clockOffset = o;
+  }
   serverNow() { return Date.now() + (this.status === 'online' ? this.clockOffset : 0); }
   private open() {
     this.stopSocket();
@@ -97,6 +106,7 @@ export class PresenceClient {
         }, 20000);
       } else if (message.type === 'peer') {
         if (message.peer.id !== this.id) this.peers.set(message.peer.id, message.peer);
+        this.refineClock(message.peer.updatedAt);
       } else if (message.type === 'leave') {
         this.peers.delete(message.id); this.count = message.count; this.onChange();
       } else if (message.type === 'count') { this.count = message.count; this.onChange(); }
@@ -105,6 +115,7 @@ export class PresenceClient {
       else if (message.type === 'report-ack') this.onReportAck(message.target, message.ok);
       else if (message.type === 'ball') {
         const from = (message as { from?: unknown }).from, b = parseBall(message, this.serverNow());
+        this.refineClock((message as { s?: unknown }).s);
         if (b && typeof from === 'string' && from !== this.id && this.peers.has(from)) this.onBall({ ...b, from });
       }
     };

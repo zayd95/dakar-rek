@@ -79,7 +79,11 @@ export class KickBall {
   goalT = -1;
   /** Counts for the checks. */
   stats = { touches: 0, kicks: 0, sent: 0, received: 0, taken: 0, dropped: 0, claims: 0, goals: 0, resets: 0 };
+  /** The shared time (ms) the ball's state is at (0: unknown), and whether a received state set it since the last frame. */
+  at = 0; fresh = false;
   private cool = 0;
+  /** Where the ball was at the start of its last move (pitch space): a slow frame's ball is caught on its way. */
+  private lx = 0; private lz = 0;
   /** After a kick, the kicker's body lets the ball go (s). */
   private free = 0;
   private sentAt = -Infinity; private urgent = false;
@@ -90,7 +94,7 @@ export class KickBall {
 
   /** The ball on the centre spot, nobody's. */
   place(x = 0, z = 0) {
-    const b = this.ball; b.x = x; b.z = z; b.h = BALL_R; b.vx = b.vz = b.vh = 0; b.net = 0;
+    const b = this.ball; b.x = x; b.z = z; b.h = BALL_R; this.lx = x; this.lz = z; b.vx = b.vz = b.vh = 0; b.net = 0;
     this.owner = ''; this.touch = 0; this.ox = this.oz = this.oh = 0; this.netT = 0; this.seenNet = 0; this.goalT = -1;
   }
 
@@ -108,6 +112,7 @@ export class KickBall {
    */
   step(dt: number, self: string, now: number): GoalNote | null {
     const ev = this.ev; ev.length = 0;
+    this.lx = this.ball.x; this.lz = this.ball.z;
     stepBall(this.ball, dt, ev);
     const k = Math.exp(-8 * dt); this.ox *= k; this.oz *= k; this.oh *= k;
     let goal: GoalNote | null = null;
@@ -133,8 +138,17 @@ export class KickBall {
     const b = this.ball;
     this.cool -= dt; this.free -= dt;
     if (b.h > DRIBBLE.maxH || b.net || this.free > 0) return false;
-    const dx = b.x - px, dz = b.z - pz, d = hyp(dx, dz), R = DRIBBLE.body + BALL_R;
-    if (d > R) return false;
+    const R = DRIBBLE.body + BALL_R;
+    // the ball's move since the last frame entering the body (a slow frame, a fast ball): met where it entered
+    const ax = this.lx - px, az = this.lz - pz, sx = b.x - this.lx, sz = b.z - this.lz, l2 = sx * sx + sz * sz;
+    const c0 = ax * ax + az * az - R * R;
+    if (c0 > 0 && l2 > 1e-8) {
+      const bq = ax * sx + az * sz, disc = bq * bq - l2 * c0;
+      if (disc >= 0) { const u = (-bq - Math.sqrt(disc)) / l2; if (u >= 0 && u <= 1) { b.x = this.lx + sx * u * 0.999; b.z = this.lz + sz * u * 0.999; } }
+    }
+    this.lx = b.x; this.lz = b.z;
+    const dx = b.x - px, dz = b.z - pz, d = hyp(dx, dz);
+    if (d > R + 1e-3) return false;
     const sp = hyp(vx, vz);
     let touched = false;
     if (sp > 0.6) {
@@ -189,17 +203,20 @@ export class KickBall {
    */
   receive(m: BallRelay, self: string, now: number): GoalNote | null {
     this.stats.received++;
+    // per sender: samples at least PEER_MIN_MS apart in its own time, never older than the last one (a burst that
+    // arrives together after a slow frame keeps its newest)
     const last = this.peerAt.get(m.from);
-    const at = performance.now();
-    if (last !== undefined && at - last < PEER_MIN_MS) { this.stats.dropped++; return null; }
+    if (last !== undefined && m.a - last < PEER_MIN_MS) { this.stats.dropped++; return null; }
     if (this.peerAt.size > 64) this.peerAt.clear();
-    this.peerAt.set(m.from, at);
+    this.peerAt.set(m.from, m.a);
     if (m.from === self || !newerTouch(this.owner, this.touch, m.from, m.t)) { this.stats.dropped++; return null; }
     this.stats.taken++;
     const b = this.ball, sx = b.x + this.ox, sz = b.z + this.oz, sh = b.h + this.oh;
+    this.lx = m.x; this.lz = m.z;
     b.x = m.x; b.z = m.z; b.h = Math.max(BALL_R, m.h); b.vx = m.vx; b.vz = m.vz; b.vh = m.vh; b.net = m.n;
     const age = clamp((now - m.a) / 1000, 0, EXTRAP_MAX);
     if (age > 0) stepBall(b, age);
+    this.at = now; this.fresh = true;
     if (m.t !== this.touch) this.goalT = -1;                         // a new touch since the goal (its owner's reset, or played on)
     this.owner = m.from; this.touch = m.t; this.urgent = false; this.free = 0;
     this.ox = sx - b.x; this.oz = sz - b.z; this.oh = sh - b.h;

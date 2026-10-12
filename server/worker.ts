@@ -132,7 +132,7 @@ export class CityRoom extends DurableObject<Env> {
     if (s.balls > BALL_ABUSE) { this.reject(ws, 1008); return; }
     if (s.balls > BALL_RATE || !s.peer || s.peer.space !== 'street') return;
     const b = parseBall(data, now); if (!b) return;
-    this.broadcast({ ...b, t: Math.min(b.t, now), a: Math.min(b.a, now), from: s.id }, ws);
+    this.broadcast({ ...b, t: Math.min(b.t, now), a: Math.min(b.a, now), from: s.id, s: now }, ws);
   }
   /** Proximity or private text. Validated, rate-limited and idempotent by message id; never an economic action. */
   private async chat(ws: WebSocket, s: Session, data: unknown, now: number) {
