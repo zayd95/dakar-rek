@@ -102,10 +102,12 @@ export class ChatUi {
     if (!this.d.enabled) return;
     this.opened = true; this.tab = tab; if (tab === 'dm') this.dmPeer = peer ?? this.dmPeer; this.reportFor = null;
     this.panel.classList.add('on'); this.button.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('chat-open');            // the floating « Courir » steps aside while the panel is open (src/ui/stride.css)
     this.dirty = true; this.render();
   }
   close() {
     this.opened = false; this.panel.classList.remove('on'); this.button.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('chat-open');
     if (document.activeElement === this.field) this.field.blur();
   }
 
