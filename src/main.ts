@@ -52,6 +52,7 @@ import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { pickupFrags } from './economy/jobs';
+import { activityOf } from './economy/polyvalence';
 import { Interactions } from './interact/system';
 import { Seats, seatClip, sitOriginY, standSpots, type Seat } from './interact/seats';
 import { approachPath } from './interact/approach';
@@ -397,8 +398,14 @@ const ctx: GameCtx = {
 };
 ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
-function actionSpec(a: Action): ActivitySpec {
-  return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined, quiet: a.quiet };
+/**
+ * Every content action runs through the universal runner: a composed one (Maïga meals…) with its own steps, a plain
+ * one as a single timed step whose pay is scaled by polyvalence (the step's category, src/economy/polyvalence.ts).
+ */
+function actionSpec(a: Action, it?: Interactable): ActivitySpec {
+  const verb = actionVerb(a)[0];
+  const steps = a.steps ?? [{ label: a.label, primitive: verb, seconds: a.seconds, effects: { money: a.gain, category: activityOf(a, it?.id) ?? undefined, needs: a.needs, counters: a.counter ? { [a.counter]: 1 } : undefined } }];
+  return { id: a.id, primitive: verb, label: a.label, detail: a.detail, price: a.cost, steps, requires: a.requires ? () => a.requires!(state) : undefined, quiet: a.quiet, plain: !a.steps };
 }
 
 function sitOn(seat: Seat, force = false) {
@@ -843,12 +850,6 @@ function playEmote(i: number) {
 /** The journal lives in the phone (Carnet app). */
 function openJournal() { hud.closeModal(); phone.open('carnet'); }
 
-/**
- * A plain timed action in progress (content without steps): « Arrêter », Escape or the menu key stop it, without effects.
- * Its id, verb, length, start and spot let src/game/perform.ts show it in the world.
- */
-let legacyRun: { label: string; id: string; verb: string; seconds: number; t0: number; at?: { x: number; z: number }; stop(): void } | null = null;
-
 /** Talking to Tonton Ibou in any way closes his welcome (« Parle à Tonton Ibou »): done once, gone for good. */
 function welcomed(npc?: string) {
   const reply = welcomeByTalk(npc, rel, state);
@@ -857,43 +858,12 @@ function welcomed(npc?: string) {
 function runAction(a: Action, npc?: string, it?: Interactable) {
   // with ?lamb2 the écurie drills (src/career DRILLS) are played with the avec-frappe controls (src/lamb/drills.ts)
   if (LAMB2 && drillOfAction(a.id)) { startDrill(a, npc, it); return; }
-  const where = it?.name;
-  if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
-    activities.onEnd = (_s, done) => {                    // once: later activities (places, venues) must not replay this action's hooks
-      activities.onEnd = () => {};
-      if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); welcomed(npc); }   // counters belong to the steps
-    };
-    activities.start(actionSpec(a), { place: where, at: it && { x: it.x, z: it.z } });
-    return;
-  }
-  mode = 'busy'; input.enabled = false;
-  const t0 = performance.now(), dur = a.seconds * 1000;
-  let stopped = false;
-  legacyRun = { label: a.label, id: a.id, verb: actionVerb(a)[0], seconds: a.seconds, t0, at: it && { x: it.x, z: it.z }, stop: () => { stopped = true; legacyRun = null; hud.progress(false); mode = 'play'; input.enabled = true; hud.toast('Arrêté'); } };
-  hud.progress(true, 0, a.label);
-  const tick = () => {
-    if (stopped) return;
-    const p = clamp((performance.now() - t0) / dur, 0, 1);
-    hud.progress(true, p, a.label);
-    if (p < 1) { requestAnimationFrame(tick); return; }
-    legacyRun = null;
-    hud.progress(false);
-    const entry = where && !where.startsWith(a.label) ? `${a.label} · ${where}` : a.label;   // wallet history line
-    const gain = economy.work(a, it);                       // records the activity (polyvalence) and scales the pay
-    if (a.cost) state.addMoney(-a.cost, entry);
-    if (gain) state.addMoney(gain, entry);
-    if (a.needs) state.adjust(a.needs);
-    if (a.counter) state.count(a.counter);
-    if (npc) rel.change(PLAYER, npc, 1);
-    state.count('actions');
-    npcLife.afterAction(a, it ?? null);
-    welcomed(npc);
-    const bits = [a.label + ' ✓'];
-    if (gain) bits.push('+' + fcfa(gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
-    hud.toast(bits.join('  '));
-    mode = 'play'; input.enabled = true; saveNow();
+  const where = it?.name && !it.name.startsWith(a.label) ? it.name : undefined;   // wallet history: « action · place »
+  activities.onEnd = (_s, done) => {                      // once: later activities (places, venues) must not replay this action's hooks
+    activities.onEnd = () => {};
+    if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); welcomed(npc); }   // counters belong to the steps
   };
-  requestAnimationFrame(tick);
+  activities.start(actionSpec(a, it), { place: where, at: it && { x: it.x, z: it.z } });
 }
 
 function openTravel() {
@@ -1038,7 +1008,6 @@ function saveNow(): boolean {
 
 hud.onAction = () => {
   if (activities.running) { activities.cancel('Arrêté'); return; }
-  if (legacyRun) { legacyRun.stop(); return; }
   if (mode !== 'play') return;
   // right after a sheet closed the frame may not have picked the focus again yet: pick it now (src/interact/system.ts current)
   const a = interactions.primary(lambScene ? null : interactions.current(interactSpace(), pos.x, pos.z, facing));
@@ -1056,7 +1025,7 @@ setInterval(() => { if (world && mode === 'play') saveNow(); }, 8000);
 const promptV = new THREE.Vector3();
 function showPrompt(t: Target | null) {
   const run = activities.current;
-  if (run || legacyRun) { hud.setPrompt('Arrêter', run ? run.step.label : legacyRun!.label, false, { icon: '✋', stop: true }); hud.setWorldPrompt(null); return; }
+  if (run) { hud.setPrompt('Arrêter', run.step.label, false, { icon: '✋', stop: true }); hud.setWorldPrompt(null); return; }
   const a = t ? interactions.primary(t) : null;
   if (!t || !a) { hud.setPrompt(null); hud.setWorldPrompt(null); return; }
   const all = interactions.all(t), opt = { icon: a.icon, cost: a.cost, gain: a.gain, disabled: a.disabled };
@@ -1099,9 +1068,9 @@ function frameStep(now: number, dt: number, draw = true) {
   const tFrame = profOn ? performance.now() : 0;
   setHumanoidView(camera);                                 // far, unseen and hidden bodies get less animation work (ANIM_LOD)
 
-  if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (legacyRun) legacyRun.stop(); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
+  if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
-  if (input.takeAction() && (mode === 'play' || activities.running || legacyRun)) hud.onAction();   // the focus: picked by onAction if no frame has yet
+  if (input.takeAction() && (mode === 'play' || activities.running)) hud.onAction();   // the focus: picked by onAction if no frame has yet
   activities.update(dt);
   { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
   if (profOn) for (const m of MODULES) { const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }

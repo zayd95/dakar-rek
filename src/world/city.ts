@@ -4,7 +4,6 @@ import type { PersonLook } from '../actors/humanoid';
 import type { Batch } from './batch';
 import type { Action, Collider, HubWorld, Interactable } from './types';
 import { CITY_ACTIONS as A } from './cityContent';
-import { onSeat } from './content';
 import { benchSeats, type Seat } from '../interact/seats';
 import { say } from '../i18n/wolof';
 import { buildShopInterior, type ShopDetail, type ShopInterior, type ShopOptions, type ShopType } from './shopKit';

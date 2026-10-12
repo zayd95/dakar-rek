@@ -136,9 +136,13 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   //    front → eat → stay seated. Gargote inside and out front, dibiterie, and the bed for sleeping.
   const audit = () => d(() => {
     const D = window.__dakar, geo = D.roomGeometry() ?? D.cityGeometry();
-    const tables = geo.colliders.filter(c => c.h <= 1.0 && (c.x1 - c.x0) * (c.z1 - c.z0) >= 0.6);
-    const under = (x, z) => tables.some(c => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
-    const bad = [], list = D.seatsHere();
+    const list = D.seatsHere(), inC = (c, x, z) => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1;
+    // a table: low, at least 0.4 m each way (not a wall), and used as one — a seat faces it or lays its plate on it
+    // (a low wall behind a bench or a sponsor board behind the judges' chairs is not a table)
+    const tables = geo.colliders.filter(c => c.h <= 1.0 && c.x1 - c.x0 >= 0.4 && c.z1 - c.z0 >= 0.4 && (c.x1 - c.x0) * (c.z1 - c.z0) >= 0.6)
+      .filter(c => list.some(s => (s.table && inC(c, s.table.x, s.table.z)) || inC(c, s.x + Math.sin(s.yaw) * 0.55, s.z + Math.cos(s.yaw) * 0.55)));
+    const under = (x, z) => tables.some(c => inC(c, x, z));
+    const bad = [];
     for (const s of list) {
       if (s.kind === 'bed') continue;
       const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
@@ -148,9 +152,12 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     return { n: list.length, plates: list.filter(s => s.table).length, bad };
   });
   const order = async (dish, where, seatRe, prop, shot) => {
-    await d(() => window.__dakar.more());
-    await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-    await page.locator('#modal .item', { hasText: dish }).first().click();
+    if ((await focus())?.primary === dish) await d(() => window.__dakar.act());          // the counter's own first action
+    else {
+      await d(() => window.__dakar.more());
+      await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
+      await page.locator('#modal .item', { hasText: dish }).first().click();
+    }
     await page.waitForFunction(() => window.__dakar.approach(), null, { timeout: 120000 }).catch(() => {});
     const walk = await d(() => window.__dakar.approach());
     await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu manges', null, { timeout: 180000 }).catch(() => {});
@@ -190,10 +197,14 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     await page.waitForFunction(() => /Gargote/.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
     await order('Ceebu jën', 'gargote front (from the street)', /:gargote:.*:bench:/, 'ceebu', 'gargote-front-eating');
   }
-  const dibi = (await d(() => window.__dakar.interactables())).find(i => /:dibiterie:/.test(i.id));
+  // the Dibi (a composed venue): stand at its counter, 0.6 m in front of it
+  const dibiV = await d(() => window.__dakar.venues?.().find(v => v.type === 'dibi') ?? null);
+  const counterA = dibiV?.anchors.find(a => a.id === 'counter');
+  const dibi = counterA ? { x: counterA.x - Math.sin(dibiV.yaw + Math.PI) * 0.6, z: counterA.z - Math.cos(dibiV.yaw + Math.PI) * 0.6, yaw: dibiV.yaw + Math.PI }
+    : (await d(() => window.__dakar.interactables())).find(i => /:dibiterie:/.test(i.id));
   if (dibi) {
-    await d(() => { window.__dakar.state.data.needs.faim = 20; });
-    await d(p => window.__dakar.place(p.x, p.z, 0), dibi);
+    await d(() => { const s = window.__dakar.state; s.data.wallet = Math.max(s.data.wallet ?? 0, 5000); s.data.needs.faim = 20; window.__dakar.setHour(12.5); });
+    await d(p => window.__dakar.place(p.x, p.z, p.yaw ?? 0), dibi);
     await page.waitForFunction(() => /:dibiterie:/.test(window.__dakar.focus()?.id ?? ''), null, T).catch(() => {});
     await order('Dibi mouton', 'dibiterie', /:dibiterie:/, 'dibi', 'dibiterie-eating');
   }

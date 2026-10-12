@@ -99,4 +99,6 @@ export interface ActivitySpec {
   visible?: () => boolean;
   /** No « ✓ » toast at the end (conversations and hand-overs speak for themselves). */
   quiet?: boolean;
+  /** A plain content action (one timed step, src/main.ts actionSpec): played in the world even without its own pose. */
+  plain?: boolean;
 }

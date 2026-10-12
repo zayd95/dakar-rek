@@ -33,9 +33,11 @@ const BY_ID: Record<string, [Kind, string?]> = {
   laver: ['wash'], ablutions: ['wash'], preparer: ['groom'], tapis: ['stretch'], radio: ['listen'], tele: ['tv'], dormir: ['sleep'], coiffure: ['haircut'],
 };
 
-function kindOf(id: string, step: Step, seated: boolean): [Kind, string?] | null {
+function kindOf(id: string, step: Step, seated: boolean, plain = false): [Kind, string?] | null {
+  if (step.gesture) return null;                                        // the shared timing gesture shows itself (src/activity/gestures.ts)
   const k = BY_ID[id];
   if (k) return k;
+  if (step.clip && !plain) return null;                                 // a venue's own pose (prayer, dance, a cook's Grab…): left to it
   if (step.primitive === 'sleep') return ['sleep'];
   if (seated) return null;                                              // meals at a table: src/game/meals.ts
   switch (step.primitive) {
@@ -46,7 +48,7 @@ function kindOf(id: string, step: Step, seated: boolean): [Kind, string?] | null
     case 'buy': case 'sell': return ['pay'];
     case 'wash': return ['wash'];
     case 'pray': case 'wait': return null;
-    default: return step.effects?.counters?.chats ? ['talk'] : ['watch'];
+    default: return !plain ? null : step.effects?.counters?.chats ? ['talk'] : ['watch'];
   }
 }
 
@@ -703,7 +705,7 @@ function stop(ctx: GameCtx) {
   cur.root.removeFromParent();
   cur.root.traverse(o => { const m = o as THREE.Mesh; if (m.geometry && !(o.parent instanceof THREE.Bone)) m.geometry.dispose(); });
   const b = ctx.player.body(); if (b) b.overlay = null;
-  ctx.player.drive(null);
+  ctx.player.drive?.(null);
   cur = null;
 }
 
@@ -712,9 +714,9 @@ const shown = (o: THREE.Object3D | null, root: THREE.Object3D) => { for (; o && 
 const grow = (c: Rect, m: number): Rect => ({ x0: c.x0 - m, z0: c.z0 - m, x1: c.x1 + m, z1: c.z1 + m });
 const within = (p: { x: number; z: number }, c: Rect) => p.x > c.x0 && p.x < c.x1 && p.z > c.z0 && p.z < c.z1;
 
-function begin(ctx: GameCtx, id: string, step: Step, at: { x: number; z: number } | undefined, key: string) {
+function begin(ctx: GameCtx, id: string, step: Step, at: { x: number; z: number } | undefined, key: string, plain = false) {
   const seated = !!ctx.player.seated();
-  const kind = kindOf(id, step, seated);
+  const kind = kindOf(id, step, seated, plain);
   if (!kind) return;
   const [k, type] = kind;
   if (seated && !['tv', 'sleep', 'haircut'].includes(k)) return;      // seated: the meal module does the rest
@@ -762,7 +764,7 @@ function begin(ctx: GameCtx, id: string, step: Step, at: { x: number; z: number 
       const v = last && dt > 0 ? Math.hypot(x - last.x, z - last.z) / dt : 0;
       last = { x, z };
       ctx.player.pos.set(x, env.ground(x, z), z);
-      ctx.player.drive({ speed: v > 0.15 ? v : 0, facing: yaw });
+      ctx.player.drive?.({ speed: v > 0.15 ? v : 0, facing: yaw });
     },
   };
   const perf: Perf = k === 'carry' ? carry(env, type ?? 'carton') : k === 'handwork' ? handwork(env, type ?? 'parts') : k === 'run' ? run(env)
@@ -780,12 +782,14 @@ export const perform: GameModule = {
   hubLoaded: ctx => { stop(ctx); if (barber) { barber.dispose(); barber = null; } },
   spaceChanged: ctx => stop(ctx),
   update(ctx, dt) {
-    const c = ctx.activities.current;
+    // a composed activity's step, or a plain content action (one timed step: shown even without its own pose)
+    const a = ctx.activities.current;
+    const c = a ? { id: a.spec.id, step: a.step, t: a.t, at: a.ctx.at, key: `${a.spec.id}:${a.index}`, walking: a.walking, plain: !!a.spec.plain } : null;
     const timed = c && !c.walking && (c.step.seconds ?? 0) > 0 && ctx.mode() === 'busy';
-    const key = c ? `${c.spec.id}:${c.index}` : '';
+    const key = c ? c.key : '';
     if (cur && (!timed || cur.key !== key)) stop(ctx);
     if (!timed || !c) return;
-    if (!cur) begin(ctx, c.spec.id, c.step, c.ctx.at, key);
+    if (!cur) begin(ctx, c.id, c.step, c.at, key, c.plain);
     if (!cur) return;
     cur.perf.update(c.t, dt);
   },

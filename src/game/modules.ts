@@ -93,7 +93,7 @@ export interface GameCtx {
     /** On a place in the arena's stands: up on the tier for a moment, arms up (others see it), then back down. */
     cheer(seconds?: number): boolean;
     /** While an activity holds the player ('busy'): walking speed for the legs and the way the body faces (null = stand still). */
-    drive(m: { speed: number; facing: number } | null): void;
+    drive?(m: { speed: number; facing: number } | null): void;
   };
   /** The other players of this hub's group (positions, poses and their optional fields only; empty offline). */
   peers(): readonly Peer[];

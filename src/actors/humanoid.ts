@@ -415,7 +415,6 @@ export class Humanoid {
     });
     this.mixer = new THREE.AnimationMixer(this.root);
     for (const c of template.clips) this.actions.set(c.name, this.mixer.clipAction(c));
-    this.root.traverse(o => { if ((o as THREE.Bone).isBone) this.bones.push(o); });
     if (look) this.setLook(look);
   }
 
@@ -623,6 +622,8 @@ export class Humanoid {
       feet: g.feet.map(f => ({ planted: f.planted, swing: f.swing, settle: f.settle, pitch: f.pitch, slipped: f.slipped })),
     };
   }
+  /** Clips only (scenes that drive a body themselves): the gesture overlay still goes on top. */
+  update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
 }
 
