@@ -75,9 +75,13 @@ export class KickBall {
   ox = 0; oz = 0; oh = 0;
   /** Seconds in a net; the last net a received state was in. */
   netT = 0; private seenNet: -1 | 0 | 1 = 0;
+  /** Seconds since the last goal (−1: none pending): the ball goes back to the centre spot even if it rolled out of the net. */
+  goalT = -1;
   /** Counts for the checks. */
   stats = { touches: 0, kicks: 0, sent: 0, received: 0, taken: 0, dropped: 0, claims: 0, goals: 0, resets: 0 };
   private cool = 0;
+  /** After a kick, the kicker's body lets the ball go (s). */
+  private free = 0;
   private sentAt = -Infinity; private urgent = false;
   private peerAt = new Map<string, number>();
   private ev: BallEvent[] = [];
@@ -87,7 +91,7 @@ export class KickBall {
   /** The ball on the centre spot, nobody's. */
   place(x = 0, z = 0) {
     const b = this.ball; b.x = x; b.z = z; b.h = BALL_R; b.vx = b.vz = b.vh = 0; b.net = 0;
-    this.owner = ''; this.touch = 0; this.ox = this.oz = this.oh = 0; this.netT = 0; this.seenNet = 0;
+    this.owner = ''; this.touch = 0; this.ox = this.oz = this.oh = 0; this.netT = 0; this.seenNet = 0; this.goalT = -1;
   }
 
   get moving() { const b = this.ball; return hyp(b.vx, b.vz, b.vh) > 0.02 || b.h > BALL_R + 1e-3; }
@@ -95,7 +99,7 @@ export class KickBall {
   /** This player touched the ball now: it is theirs, stamped later than any touch seen. */
   claim(self: string, now: number) {
     if (this.owner !== self) this.stats.claims++;
-    this.owner = self; this.touch = Math.max(Math.round(now), this.touch + 1); this.urgent = true;
+    this.owner = self; this.touch = Math.max(Math.round(now), this.touch + 1); this.urgent = true; this.goalT = -1;   // played on: no reset pending
   }
 
   /**
@@ -109,10 +113,12 @@ export class KickBall {
     let goal: GoalNote | null = null;
     for (const e of ev) if (e.kind === 'goal' && (this.owner === self || this.owner === '')) {
       this.stats.goals++; goal = { end: e.end, by: this.owner, mine: self !== '' ? this.owner === self : true };
-      this.urgent = true;
+      this.urgent = true; this.goalT = 0;
     }
     this.netT = this.ball.net ? this.netT + dt : 0;
-    if (this.ball.net && (this.netT > NET_ANY || (this.netT > NET_BACK && (this.owner === self || this.owner === '')))) {
+    if (this.goalT >= 0) this.goalT += dt;
+    const mine = this.owner === self || this.owner === '';
+    if (this.netT > NET_ANY || this.goalT > NET_ANY || (mine && (this.netT > NET_BACK || this.goalT > NET_BACK))) {
       this.place(); this.stats.resets++;
       this.claim(self, now);
     }
@@ -125,8 +131,8 @@ export class KickBall {
    */
   dribble(px: number, pz: number, vx: number, vz: number, dt: number, self: string, now: number): boolean {
     const b = this.ball;
-    this.cool -= dt;
-    if (b.h > DRIBBLE.maxH || b.net) return false;
+    this.cool -= dt; this.free -= dt;
+    if (b.h > DRIBBLE.maxH || b.net || this.free > 0) return false;
     const dx = b.x - px, dz = b.z - pz, d = hyp(dx, dz), R = DRIBBLE.body + BALL_R;
     if (d > R) return false;
     const sp = hyp(vx, vz);
@@ -171,7 +177,7 @@ export class KickBall {
       dx = d.x; dz = d.z; v = SHOT.v0 + (SHOT.v1 - SHOT.v0) * p; vh = SHOT.h0 + (SHOT.h1 - SHOT.h0) * p;
     }
     b.vx = dx * v; b.vz = dz * v; b.vh = vh; if (b.h < BALL_R) b.h = BALL_R;
-    this.cool = DRIBBLE.cool * 2;                                     // the kicker's next step does not stop it
+    this.free = 0.35;                                                 // the kicker's body does not stop it on its way
     this.stats.kicks++; this.claim(self, now);
     return true;
   }
@@ -194,12 +200,13 @@ export class KickBall {
     b.x = m.x; b.z = m.z; b.h = Math.max(BALL_R, m.h); b.vx = m.vx; b.vz = m.vz; b.vh = m.vh; b.net = m.n;
     const age = clamp((now - m.a) / 1000, 0, EXTRAP_MAX);
     if (age > 0) stepBall(b, age);
-    this.owner = m.from; this.touch = m.t; this.urgent = false;
+    if (m.t !== this.touch) this.goalT = -1;                         // a new touch since the goal (its owner's reset, or played on)
+    this.owner = m.from; this.touch = m.t; this.urgent = false; this.free = 0;
     this.ox = sx - b.x; this.oz = sz - b.z; this.oh = sh - b.h;
     if (hyp(this.ox, this.oz, this.oh) > SNAP) this.ox = this.oz = this.oh = 0;
     const goal: GoalNote | null = m.n !== 0 && this.seenNet === 0 ? { end: m.n, by: m.from, mine: false } : null;
     this.seenNet = m.n;
-    if (goal) this.stats.goals++;
+    if (goal) { this.stats.goals++; this.goalT = 0; }
     return goal;
   }
 
