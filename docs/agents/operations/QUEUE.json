@@ -809,8 +809,28 @@
         "authorBuild": "PASS",
         "authorNodeCheck": "PASS",
         "authorDiffCheck": "PASS",
-        "authorBrowser": "local_not_run: browser reserved to exact CI"
-      }
+        "authorBrowser": "local_not_run: browser reserved to exact CI",
+        "ci": {
+          "readAt": "2026-10-12T01:35:00Z",
+          "runs": [
+            {
+              "id": 38192271378,
+              "event": "pull_request",
+              "sha": "9632c7666cf76dbd23a8de4b50d44c31fe85e07e",
+              "status": "in_progress",
+              "conclusion": null
+            },
+            {
+              "id": 38192251481,
+              "event": "push",
+              "sha": "9632c7666cf76dbd23a8de4b50d44c31fe85e07e",
+              "status": "in_progress",
+              "conclusion": null
+            }
+          ]
+        }
+      },
+      "pullRequest": 20
     }
   ]
 }
