@@ -18,6 +18,7 @@ import { placeStops, buildStops, StopPeople, STOP_OFFSET, type StopSite } from '
 import { PassengerCamera } from './camera';
 import { TripLogic, MIN_STOP } from './trip';
 import { RideCard } from './ui';
+import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import type { CameraAnchor, VehicleSpec } from './spec';
 import { clearKerb, fansAtStop, fansOnSet, passengerPatterns, pickSeat, type KerbZone, type LineFans } from './passengers';
 
@@ -132,6 +133,7 @@ export class TransportModule implements GameModule {
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
     this.ctx = ctx;
+    this.owed.reset();
     this.clear();
     this.hub = hub;
     const low = ctx.quality() === 'low';
@@ -184,9 +186,16 @@ export class TransportModule implements GameModule {
     return alightPoint(rt.sites[i] ?? rt.sites[0]);
   }
 
+  /** What the cars and the stops' people are owed while the arena's walls hide them (src/game/pace.ts). */
+  private owed = new Pace();
   update(ctx: GameCtx, dt: number) {
     if (!this.lines.length || ctx.inside()) return;
     const cam = ctx.camera.position;
+    // inside the arena's walls, with no trip under way, the line is out of sight: its cars run on the clock (their place is a
+    // function of the time), its people and its arrivals follow at 4 Hz
+    const run = this.owed.step(dt, this.trip.phase === 'idle' && insideWalls(this.hub?.arena, cam) ? HIDDEN_EVERY : 0);
+    if (run === null) return;
+    dt = run;
     this.viewer.x = cam.x; this.viewer.z = cam.z;
     const now = this.clock();
     for (const rt of this.lines) {

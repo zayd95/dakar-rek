@@ -17,6 +17,7 @@ import { readFileSync } from 'node:fs';
 import type { GameCtx, GameModule, GameMode } from '../src/game/modules';
 import type { HubWorld } from '../src/world/types';
 import type { Seat } from '../src/interact/seats';
+import { Pacer, hiddenEvery } from '../src/game/pace';
 
 export type Quality = 'low' | 'medium' | 'high';
 export const MOMENTS = ['17:30 arrivals', '19:00 bout', '23:00 outflow'] as const;
@@ -235,6 +236,8 @@ export class PerfHost {
   readonly camera: THREE.PerspectiveCamera;
   readonly shadowCam = new THREE.OrthographicCamera(-60, 60, 60, -60, 0.5, 220);
   readonly pos = new THREE.Vector3();
+  /** What the street's systems are owed while the arena's walls hide them (main.ts `pacer`). */
+  private readonly pacer = new Pacer();
   facing = 0; speed = 0;
   hour = 12; day = GALA_DAY;
   mode: GameMode = 'play';
@@ -362,13 +365,16 @@ export class PerfHost {
     } else this.speed *= 0.8;
     if (body) { body.group.visible = true; body.group.position.copy(this.pos); body.group.rotation.y = this.facing; body.animate(dt, this.speed); }
     let t = now();
-    S.npcLife.update(dt, this.pos, this.camera.position);
+    // (the street's systems wait while the camera is inside the arena's walls: main.ts frameStep, src/game/pace.ts)
+    const hidden = hiddenEvery(this.world.arena, this.camera.position), pacer = this.pacer;
+    { const run = pacer.step('cast', dt, hidden); if (run !== null) S.npcLife.update(run, this.pos, this.camera.position); }
     t = mark('npcLife', t);
-    S.crowd.update(dt); S.traffic.update(dt); S.life?.update(dt); this.world.tick(dt);
+    { const run = pacer.step('walkers', dt, hidden); if (run !== null) { S.crowd.update(run); S.traffic.update(run); S.life?.update(run); } }
+    this.world.tick(dt);
     t = mark('walkers+traffic+life+world', t);
-    S.ambient.update(dt, this.camera.position, this.q === 'low' ? 55 : 90);
+    { const run = pacer.step('placed', dt, hidden); if (run !== null) S.ambient.update(run, this.camera.position, this.q === 'low' ? 55 : 90); }
     t = mark('ambient(npc.ts)', t);
-    for (const a of S.apprentices) { const wp = a.h.group.getWorldPosition(new THREE.Vector3()); a.update(dt, Math.hypot(wp.x - this.pos.x, wp.z - this.pos.z) < 22); }
+    { const run = pacer.step('apprentices', dt, hidden); if (run !== null) for (const a of S.apprentices) { const wp = a.h.group.getWorldPosition(new THREE.Vector3()); a.update(run, Math.hypot(wp.x - this.pos.x, wp.z - this.pos.z) < 22); } }
     if (this.mode === 'play') S.interactions.update(ctx.space(), this.pos.x, this.pos.z, this.facing);
     const drag = { yaw: 0, pitch: 0 };
     if (!this.modules.some(m => m.camera?.(ctx, dt, drag))) {

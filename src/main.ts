@@ -28,6 +28,7 @@ import { NpcLife } from './social/npcLife';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, suggestionHere, applyChoice, settleWelcome, welcomeByTalk, type Beat } from './social/beats';
 import { goalNow, hudDue, hudSpace, needGoal } from './game/goalLine';
+import { Pacer, hiddenEvery } from './game/pace';
 import { arenaFighter } from './arena/fighter';
 import { currentHome } from './economy/assets';
 import { homeSpec } from './economy/catalog';
@@ -226,6 +227,7 @@ const rand = rng(Date.now() & 0xffff);
 
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   activities.cancel(); standUp(true);
+  pacer.reset();
   for (const a of apprentices) a.dispose();          // detach them before the hub geometry is freed
   apprentices = [];
   ambient?.dispose(); ambient = null;
@@ -1007,6 +1009,8 @@ let last = performance.now(), hudAt = -Infinity, hudKey = '';
  * frame loop, smoothed, for the evening performance budget (scripts/check-perf-evening.mjs). Off: one boolean test.
  */
 let profOn = false;
+/** What the street's systems are owed while the arena's walls hide them (src/game/pace.ts). */
+const pacer = new Pacer();
 const prof = new Map<string, number>();
 const profMark = (name: string, t0: number) => { const v = performance.now() - t0; const o = prof.get(name); prof.set(name, o === undefined ? v : o * 0.92 + v * 0.08); };
 /** ?debug: the game paused, advanced frame by frame by `__dakar.step` (scripts/check-gait.mjs). */
@@ -1073,14 +1077,18 @@ function frameStep(now: number, dt: number, draw = true) {
     if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
   } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
   let tSys = profOn ? performance.now() : 0;
-  npcLife.update(dt, pos, freeCam?.p ?? camera.position);
+  // inside the arena's walls (on the tiers) the street's cast, walkers, traffic and placed people cannot be seen: they go on
+  // at 4 Hz with the time gone by
+  const hidden = hiddenEvery(world.arena, camera.position);
+  { const run = pacer.step('cast', dt, hidden); if (run !== null) npcLife.update(run, pos, freeCam?.p ?? camera.position); }
   if (profOn) { profMark('npcLife', tSys); tSys = performance.now(); }
-  crowd?.update(dt); traffic?.update(dt); life?.update(dt); world.tick(dt);
+  { const run = pacer.step('walkers', dt, hidden); if (run !== null) { crowd?.update(run); traffic?.update(run); life?.update(run); } }
+  world.tick(dt);
   if (profOn) { profMark('walkers+traffic+life+world', tSys); tSys = performance.now(); }
-  ambient?.update(dt, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90);
+  { const run = pacer.step('placed', dt, hidden); if (run !== null) ambient?.update(run, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90); }
   if (profOn) { profMark('ambient(npc.ts)', tSys); tSys = performance.now(); }
   // (where each apprentice was drawn last frame: no walk up the moving car's parents for a distance)
-  for (const a of apprentices) { const wp = tmpV.setFromMatrixPosition(a.h.group.matrixWorld); a.update(dt, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); }
+  { const run = pacer.step('apprentices', dt, hidden); if (run !== null) for (const a of apprentices) { const wp = tmpV.setFromMatrixPosition(a.h.group.matrixWorld); a.update(run, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); } }
   for (const h of debugPeople) h.animate(dt, 0);
   const space = presenceSpace();
   // the body's own pose, also while an activity runs (asleep in bed, praying, dancing): a narrow list, anything else is Idle

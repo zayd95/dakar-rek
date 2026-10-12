@@ -7,7 +7,8 @@ import { Humanoid, humanoidReady, randomLook, type Clip, type PersonLook } from 
 import { Impostors, ForeignBodies, cullHumanoid, ownerVisible, type Foreign } from '../actors/crowdLod';
 import { streetLevel } from '../actors/npc';
 import { hubLayout } from '../world/builder';
-import { WALL_H, WALL_R } from '../world/geew';
+import { WALL_R } from '../world/geew';
+import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import { rng } from '../core/rng';
 import { ROUTINES, currentPlan, resolvePlace, planPath, laneGraph, collidersClear, pathLength, type ClearFn } from './routines';
 import { ACTIVITIES, AMBIENT_BUDGET, TRAFFIC_BY_HOUR, WALKERS_BY_HOUR, type AmbientQuality } from './ambientData';
@@ -117,7 +118,7 @@ export class AmbientLife implements GameModule {
     this.world = hub; this.spots = null; this.spotById.clear(); this.slotsTaken.clear(); this.shopTally.clear();
     this.clear = collidersClear(hub.colliders);
     this.foreign.clear(); this.reserved = []; this.castHolds = []; this.resKey = -1;
-    this.loadFrame = this.frameNo; this.snapNext = true; this.sig = '';
+    this.loadFrame = this.frameNo; this.snapNext = true; this.sig = ''; this.owed.reset();
     this.scanT = 0; this.lodT = 0; this.thinT = 0;
     this.setQuality(ctx.quality());
   }
@@ -128,6 +129,8 @@ export class AmbientLife implements GameModule {
     this.snapNext = true;
   }
 
+  /** The time owed while the arena's walls hide the street (src/game/pace.ts). */
+  private owed = new Pace();
   update(ctx: GameCtx, dt: number) {
     this.t += dt; this.frameNo++;
     const w = this.world;
@@ -139,6 +142,10 @@ export class AmbientLife implements GameModule {
     if (this.sceneHold) { this.sceneHold = false; this.group.visible = true; }
     // a few frames after the hub load: every module has registered its places and seats, the player is placed
     if (!this.spots) { if (this.frameNo - this.loadFrame < 4) return; this.build(); }
+    // inside the arena's walls the street's people are not drawn (lod() below drops them all): they go on at 4 Hz with the time gone by
+    const owed = this.owed.step(dt, insideWalls(w.arena, ctx.camera.position) ? HIDDEN_EVERY : 0);
+    if (owed === null) return;
+    dt = owed;
     const hour = ctx.hour();
     if (this.lastHour >= 0 && Math.abs(((hour - this.lastHour + 36) % 24) - 12) > 0.5) this.snapNext = true;  // hour jump (debug, travel)
     this.lastHour = hour;
@@ -701,7 +708,7 @@ export class AmbientLife implements GameModule {
     // inside the arena's walls (seated on the tiers, in the ring) the street outside cannot be seen: nobody out there
     // is drawn, ours or the other systems' (the exterior's fans, vendors and drummers) — docs/PERF_EVENING.md
     const ar = this.world?.arena ?? null;
-    const enclosed = !!ar && Math.hypot(cam.x - ar.cx, cam.z - ar.cz) < WALL_R - 0.3 && cam.y < WALL_H + 3;
+    const enclosed = insideWalls(ar, cam);
     const outside = (x: number, z: number) => enclosed && Math.hypot(x - ar!.cx, z - ar!.cz) > WALL_R + 0.3;
     let n = 0;
     const slot = () => { if (n >= cand.length) cand.push({ d: 0, a: null, f: null, full: false }); return cand[n++]; };

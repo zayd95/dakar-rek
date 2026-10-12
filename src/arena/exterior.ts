@@ -21,6 +21,7 @@ export const FIGHTER_DRUMS = 1.3;
 import { ExteriorAudio, listenForGesture } from './exteriorAudio';
 import { deckCentre } from '../world/arenaModules';
 import { WALL_R } from '../world/geew';
+import { HIDDEN_EVERY, Pace, insideWalls } from '../game/pace';
 import { transport } from '../transport/module';
 import { partyDrums } from './party';
 import { flagGeometry, gearColours, scarfGeometry } from './supporterGear';
@@ -330,7 +331,7 @@ class Exterior {
       f.h.group.visible = vis;
       if (vis) { f.h.group.position.set(f.x, 0.1, f.z); f.h.animate(dt, f.moving ? f.speed : 0); }
     }
-    this.placeItems();
+    if (draw || this.itemsOn) this.placeItems();                          // (hidden and already put away: nothing to write)
     for (const s of this.still) {
       const p = s.h.group.position, vis = draw && Math.hypot(p.x - viewer.x, p.z - viewer.z) <= VIEW;
       s.h.group.visible = vis;
@@ -338,19 +339,24 @@ class Exterior {
     }
   }
 
+  /** Some scarf or flag was put on a fan the last time (else they are all put away). */
+  private itemsOn = true;
   /** Scarves on the necks and flags in the right hands of the fans drawn this frame (hidden for the others). */
   private placeItems() {
     if (!this.scarves || !this.flags) return;
+    let any = false;
     this.fans.forEach((f, i) => {
       const show = f.h.group.visible && f.item;
       this.scarves!.setMatrixAt(i, HIDDEN); this.flags!.setMatrixAt(i, HIDDEN);
       if (!show) return;
+      any = true;
       const yaw = f.h.group.rotation.y, node = f.item === 'scarf' ? f.neck : f.hand;
       if (node) bodyPoint(f.h.group, node, P3);
       else P3.set(f.x + (f.item === 'flag' ? Math.cos(yaw) * -0.22 : 0), f.item === 'flag' ? 1.0 : 1.45, f.z);
       if (f.item === 'scarf') { P3.y -= 0.03; Q4.setFromEuler(E3.set(0, yaw, 0)); this.scarves!.setMatrixAt(i, M4.compose(P3, Q4, ONE)); }
       else { Q4.setFromEuler(E3.set(0, yaw + Math.PI / 2, f.moving ? 0.25 : 0.1)); this.flags!.setMatrixAt(i, M4.compose(P3, Q4, ONE)); }
     });
+    this.itemsOn = any;
     this.scarves.instanceMatrix.needsUpdate = true; this.flags.instanceMatrix.needsUpdate = true;
   }
 
@@ -380,6 +386,8 @@ let ext: Exterior | null = null;
 let forced: boolean | null = null;
 let dayOverride: number | null = null;
 const audio = new ExteriorAudio();
+/** What the street's fans are owed while the walls hide them. */
+const owed = new Pace();
 
 /** The road segments in front of the gate are closed to the decorative traffic while the queue is there. */
 /**
@@ -463,6 +471,7 @@ export const arenaExteriorModule: GameModule = {
     transport.addObstacles((out, kind) => { if (plaza && kind && kind !== 'moto') out.push(...plazaFootprints(plaza)); });   // a car stops at the zone
   },
   hubLoaded(ctx, hub) {
+    owed.reset();
     ext?.dispose(); ext = null; gate = null; activeNow = false;
     closeRoads(null); audio.stop();                                     // a new hub: no closure, no drums
     setPlaza(hub.arena);                                                // the gate's pedestrian zone, at all hours
@@ -479,7 +488,10 @@ export const arenaExteriorModule: GameModule = {
       const p = ctx.player.pos, fronts = stallFronts(ext.arena), i = fronts.findIndex(s => Math.hypot(s.x - p.x, s.z - p.z) < 7);
       if (i >= 0) { const v = VENDORS.find(x => x.stall === i)!; ext.lastCall = true; ctx.toast(`${v.seller} : « Les derniers avant de rentrer ! ${say('Ñibbil ak jàmm')} ! »`); }
     }
-    ext.update(dt, ctx.player.pos, !ctx.inside());
+    // inside the arena's walls the street cannot be seen: its fans and vendors go on at 4 Hz with the time gone by, drawn
+    // or animated by nobody (src/game/pace.ts); the drums and the murmur are heard, and follow the player every frame
+    const walled = insideWalls(ext.arena, ctx.camera.position), run = owed.step(dt, walled ? HIDDEN_EVERY : 0);
+    if (run !== null) ext.update(run, ctx.player.pos, !ctx.inside() && !walled);
     const v = loudness(ctx);
     audio.set(v.drums, v.murmur);
   },
