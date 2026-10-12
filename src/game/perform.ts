@@ -729,7 +729,7 @@ function begin(ctx: GameCtx, id: string, step: Step, at: { x: number; z: number 
   const space = inside ? inside.int.group : w?.group ?? null;
   const bounds = inside ? inside.int.bounds : w?.bounds ?? null;
   let f = at && Math.hypot(at.x - p.x, at.z - p.z) > 0.3 ? angleTo(p, at) : ctx.player.facing();
-  if ((!at || Math.hypot(at.x - p.x, at.z - p.z) <= 0.3) && ['drink', 'eat', 'pay', 'talk'].includes(k)) {
+  if ((!at || Math.hypot(at.x - p.x, at.z - p.z) <= 0.3) && ['drink', 'eat', 'pay', 'talk', 'watch'].includes(k)) {
     // standing on the place's own spot: turn to its counter when there is one close by
     let best = 3;
     for (const c of near) {
@@ -753,8 +753,9 @@ function begin(ctx: GameCtx, id: string, step: Step, at: { x: number; z: number 
     floor(x, z) {
       const feet = env.ground(x, z);
       if (!space) return feet;
-      ray.set(V(x, feet + 0.45, z), DOWN); ray.far = 1.2;
-      const hit = ray.intersectObject(space, true).find(i => shown(i.object, space) && i.point.y < feet + 0.2);
+      // up to knee height: a deck or a pier the feet go through (not a collider) still carries the piles
+      ray.set(V(x, feet + 0.8, z), DOWN); ray.far = 1.5;
+      const hit = ray.intersectObject(space, true).find(i => shown(i.object, space) && i.point.y < feet + 0.5);
       return hit ? hit.point.y : feet;
     },
     // a collider the walk starts in (standing against a counter) only blocks if the walk goes into it
