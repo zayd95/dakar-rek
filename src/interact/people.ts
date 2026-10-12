@@ -70,21 +70,22 @@ export class People implements TargetSource {
         y: b.seated ? 1.6 : 2.15, radius: REACH, bias: b.bias ?? 0.3,
         affordances: () => [
           greet({ id: 'saluer', label: 'Saluer', then: () => {
-            this.face(b);
             const again = this.greeted.has(b.id), news = again ? null : this.topic?.(who, `${b.id}:greet`) ?? null;
-            this.play([...greetLines({ name: who, seed: b.id, hour: this.hour(), again }), ...(news ? [news] : [])]);
+            const lines = [...greetLines({ name: who, seed: b.id, hour: this.hour(), again }), ...(news ? [news] : [])];
+            this.face(b, lines.length); this.play(lines);
             this.greeted.add(b.id);
           } }),
           talk({ id: 'nom', label: known ? `Parler avec ${known}` : 'Demander son nom', then: () => {
-            const name = nameFor(b.id, !!b.female); this.met.set(b.id, name); this.face(b);
-            if (!known) { this.play(nameLines({ name, seed: b.id })); return; }
-            const n = this.talks.get(b.id) ?? 0; this.talks.set(b.id, n + 1);
-            const news = this.topic?.(name, `${b.id}:${n}`) ?? null;
-            this.play(news ? [news] : smallTalkLines({ name, seed: `${b.id}:${n}`, hour: this.hour() }));
+            const name = nameFor(b.id, !!b.female); this.met.set(b.id, name);
+            const n = this.talks.get(b.id) ?? 0;
+            if (known) this.talks.set(b.id, n + 1);
+            const news = known ? this.topic?.(name, `${b.id}:${n}`) ?? null : null;
+            const lines = !known ? nameLines({ name, seed: b.id }) : news ? [news] : smallTalkLines({ name, seed: `${b.id}:${n}`, hour: this.hour() });
+            this.face(b, lines.length); this.play(lines);
           } }),
           ...(this.greeted.has(b.id) || known ? [greet({ id: 'aurevoir', label: 'Dire au revoir', then: () => {
-            this.face(b);
-            this.play(farewellLines({ name: who, seed: b.id, hour: this.hour() }));
+            const lines = farewellLines({ name: who, seed: b.id, hour: this.hour() });
+            this.face(b, lines.length); this.play(lines);
             this.greeted.delete(b.id);
           } })] : []),
         ].map(spec => ({ id: spec.id, verb: spec.primitive, label: spec.label, icon: spec.icon, disabled: this.runner.blocked(spec), run: () => { this.runner.start(spec); } })),
@@ -99,11 +100,21 @@ export class People implements TargetSource {
   }
   private hush() { for (const t of this.timers) clearTimeout(t); this.timers = []; }
 
-  private face(b: Body) {
-    const me = this.player(), p = b.obj.position;
-    if (!b.seated) b.obj.rotation.y = Math.atan2(me.x - p.x, me.z - p.z);
-    const h = b.h; if (!h || b.seated) return;
-    const before = h.hold; h.hold = 'Talk';
-    setTimeout(() => { if (h.hold === 'Talk') h.hold = before; }, 2600);
+  /** Turns to the player for the exchange, for as long as its lines last, then back to what they were doing (the grill, the stall, the counter). */
+  private face(b: Body, lines = 1) {
+    if (b.seated) return;
+    const me = this.player(), o = b.obj, h = b.h;
+    const r = this.resting.get(o) ?? { yaw: o.rotation.y, hold: h?.hold ?? null, timer: undefined };   // kept from the first greeting if greeted again
+    clearTimeout(r.timer);
+    o.rotation.y = Math.atan2(me.x - o.position.x, me.z - o.position.z);
+    if (h) h.hold = 'Talk';
+    r.timer = setTimeout(() => {
+      this.resting.delete(o);
+      o.rotation.y = r.yaw;
+      if (h && h.hold === 'Talk') h.hold = r.hold;
+    }, Math.max(1, lines) * LINE_GAP_MS);
+    this.resting.set(o, r);
   }
+  /** What a greeted person was doing before turning to the player. */
+  private resting = new WeakMap<object, { yaw: number; hold: Humanoid['hold']; timer: ReturnType<typeof setTimeout> | undefined }>();
 }

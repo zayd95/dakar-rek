@@ -2,6 +2,7 @@ import type { Action } from './types';
 import { say } from '../i18n/wolof';
 import { haggler, tasteLine } from '../i18n/lines';
 import { order, talkFirst } from '../activity/primitives';
+import { onSeat, served } from './content';
 
 const energy = (amount: number): NonNullable<Action['requires']> => s => s.data.needs.energie < amount ? 'Repose-toi avant ce service' : null;
 
@@ -13,9 +14,9 @@ export const CITY_ACTIONS = {
     { id: 'quai', label: 'Prendre des nouvelles des pêcheurs', detail: `${say('Na nga def ?')} Ça a donné quoi aujourd’hui ?`, needs: { social: 14, moral: 6 }, seconds: 3, counter: 'chats' },
   ],
   fish: [
-    // Composed: the price is discussed at the stall (« Ñaata la ? »), the fish is grilled, eaten standing.
-    { id: 'poisson-frais', label: 'Commander du poisson grillé', detail: 'Poisson du jour, pain et citron', cost: 1200, needs: { faim: 42, moral: 7 }, seconds: 3, counter: 'meals',
-      steps: talkFirst(order({ id: 'poisson-frais', label: 'Commander du poisson grillé', price: 1200, prep: 1.5, eat: 3, seat: false, needs: { faim: 42, moral: 7 }, eatLine: tasteLine }), haggler('buy', 1200, 'La vendeuse'), 'On discute le prix').steps },
+    // Composed: the price is discussed at the stall (« Ñaata la ? »), the fish is grilled, then eaten at the table beside the market.
+    { id: 'poisson-frais', label: 'Commander du poisson grillé', detail: 'Poisson du jour, pain et citron · servi à table', cost: 1200, needs: { faim: 42, moral: 7 }, seconds: 3, counter: 'meals',
+      steps: talkFirst(order({ id: 'poisson-frais', label: 'Commander du poisson grillé', price: 1200, prep: 1.5, eat: 3, prop: 'poisson', needs: { faim: 42, moral: 7 }, eatLine: tasteLine }), haggler('buy', 1200, 'La vendeuse'), 'On discute le prix').steps },
     { id: 'poisson-service', label: 'Aider au nettoyage et à la vente', detail: 'Un service avec les mareyeuses · +2 200 F', gain: 2200, needs: { energie: -20, hygiene: -10, social: 5 }, seconds: 5, counter: 'shifts', requires: energy(20) },
   ],
   craft: [
@@ -48,7 +49,7 @@ export const CITY_ACTIONS = {
   ],
   juice: [
     { id: 'bouye', label: 'Jus de bouye frais', cost: 500, needs: { faim: 10, energie: 5, moral: 7 }, seconds: 2 },
-    { id: 'bissap', label: 'Bissap et sandwich', cost: 1000, needs: { faim: 30, moral: 6 }, seconds: 3, counter: 'meals' },
+    served({ id: 'bissap', label: 'Bissap et sandwich', detail: 'Servi à table, à l’ombre', cost: 1000, needs: { faim: 30, moral: 6 }, counter: 'meals', prep: 2, eat: 3, prop: 'sandwich' }),
   ],
   boutique: [
     // Composed: « Ñaata la ? » at the counter (no haggling over bread and milk), then breakfast standing.
@@ -64,6 +65,6 @@ export const CITY_ACTIONS = {
   square: [
     { id: 'attaya-place', label: 'Partager l’attaya', detail: `${say('Kaay naan attaya')} · prendre le temps ensemble`, cost: 100, needs: { social: 18, moral: 9, energie: 3 }, seconds: 4, counter: 'chats' },
     { id: 'dames', label: 'Regarder la partie de dames', detail: 'Les commentaires font partie du spectacle', needs: { social: 10, moral: 9 }, seconds: 3, counter: 'visits' },
-    { id: 'banc', label: 'Se poser à l’ombre', detail: 'Souffler et regarder la ville vivre', needs: { energie: 10, moral: 6 }, seconds: 4 },
+    onSeat({ id: 'banc', label: 'Se poser à l’ombre', detail: 'Souffler et regarder la ville vivre · sur un banc', needs: { energie: 10, moral: 6 }, seconds: 4 }, { kind: 'bench' }),
   ],
 } satisfies Record<string, Action[]>;

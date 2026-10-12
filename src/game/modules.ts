@@ -45,6 +45,8 @@ import { tonightModule } from '../arena/tonight';
 import { supportersModule } from '../arena/supporters';
 import { togetherModule } from '../arena/together';
 import { arrivalModule } from '../arena/arrival';
+import { meals } from './meals';
+import { perform } from './perform';
 
 export type GameMode = 'play' | 'menu' | 'busy' | 'scene';
 
@@ -90,6 +92,8 @@ export interface GameCtx {
     place(x: number, z: number, yaw: number): void;
     /** On a place in the arena's stands: up on the tier for a moment, arms up (others see it), then back down. */
     cheer(seconds?: number): boolean;
+    /** While an activity holds the player ('busy'): walking speed for the legs and the way the body faces (null = stand still). */
+    drive?(m: { speed: number; facing: number } | null): void;
   };
   /** The other players of this hub's group (positions, poses and their optional fields only; empty offline). */
   peers(): readonly Peer[];
@@ -202,7 +206,11 @@ export type LambEvent =
 /**
  * Installed modules. Each lane adds its module here (one import + one entry), so main.ts stays the host only.
  */
+/** Opening hours of content actions read the city clock (server time, debug override) through the state. */
+const clock: GameModule = { name: 'clock', init: ctx => { ctx.state.hour = ctx.hour; } };
+
 export const MODULES: GameModule[] = [
+  clock,                // the city hour for content actions' opening hours (src/world/content.ts `during`)
   wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)
@@ -216,4 +224,6 @@ export const MODULES: GameModule[] = [
   arrivalModule,        // getting to the fight: the guarded moto parking, fans aboard the Ligne 23 (src/arena/arrival.ts)
   tonightModule,        // the phone's « Ce soir »: tonight's card, getting there, after, the day's weather and roads (src/arena/tonight.ts)
   supportersModule,     // who supports whom: the écurie colours worn, seen by the others, the stands answering (src/arena/supporters.ts)
+  meals,                // table service: the plate in front of the seat, eaten spoonful by spoonful (src/game/meals.ts)
+  perform,              // actions done in the world: carrying, handwork, cups to the lips, washing… (src/game/perform.ts)
 ];

@@ -6,6 +6,7 @@ import { randomLook, type PersonLook } from '../actors/humanoid';
 import * as P from '../activity/primitives';
 import { dibi as dibiRecipe, dibiCounters, isEvening, REGULAR_MEALS } from '../activity/templates';
 import { isOpen } from '../activity/places';
+import type { Seat } from '../interact/seats';
 import { VenueKit, Smoke, glowQuad } from './kit';
 import { Cast, type Role } from './cast';
 import { conversation, counter, nightOf, relate, type Venue, type VenueEnv } from './venue';
@@ -136,13 +137,15 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
 
   // ---------------------------------------------------------------- tables and seats
   const seatIds: string[] = [];
+  /** A table seat: the dish goes on the table in front of it (Seat.table, laid by the table service, src/game/meals.ts). */
+  const served = (q: Seat, y: number) => { q.table = { x: q.x + Math.sin(q.yaw) * 0.55, y, z: q.z + Math.cos(q.yaw) * 0.55 }; return q.id; };
   const longTable = (name: string, x: number, z: number) => {
     Wd.box(2.6, 0.06, 0.8, x, G0 + 0.78, z, 0x8a6040);
     for (const dx of [-1.15, 1.15]) for (const dz of [-0.3, 0.3]) Wd.box(0.07, 0.78, 0.07, x + dx, G0, z + dz, 0x6b4a2e);
     for (const s of [-1, 1]) {
       Wd.box(2.6, 0.06, 0.34, x, G0 + 0.5, z + s * 0.75, 0x7a5434);
       for (const dx of [-1.1, 1.1]) Wd.box(0.06, 0.5, 0.3, x + dx, G0, z + s * 0.75, 0x6b4a2e);
-      seatIds.push(...k.bench(`${id}:${name}${s > 0 ? 'n' : 's'}`, x, z + s * 0.78, s > 0 ? Math.PI : 0, 2.6, 3, SEAT).map(q => q.id));
+      seatIds.push(...k.bench(`${id}:${name}${s > 0 ? 'n' : 's'}`, x, z + s * 0.78, s > 0 ? Math.PI : 0, 2.6, 3, SEAT).map(q => served(q, G0 + 0.84)));
     }
     k.solid(x, z, 2.7, 1.9, 0.9);
     // what is on the table: a napkin box, mustard, a bottle, a plate left by someone
@@ -155,7 +158,7 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
       const sx = x + s * 0.74, yawL = s > 0 ? -Math.PI / 2 : Math.PI / 2, cc = s > 0 ? 0x1a9d54 : col;
       Pl.box(0.46, 0.05, 0.44, sx, G0 + 0.46, z, cc); Pl.box(0.04, 0.42, 0.46, sx + s * 0.21, G0 + 0.5, z, cc);
       for (const dx of [-0.18, 0.18]) for (const dz of [-0.18, 0.18]) Pl.box(0.04, 0.46, 0.04, sx + dx, G0, z + dz, cc);
-      seatIds.push(k.seat(`${id}:${name}:${s > 0 ? 1 : 0}`, sx, z, yawL, SEAT, 'chair').id);
+      seatIds.push(served(k.seat(`${id}:${name}:${s > 0 ? 1 : 0}`, sx, z, yawL, SEAT, 'chair'), G0 + 0.82));
     }
     k.solid(x, z, 2.0, 0.9, 0.85);
     Pl.cyl(0.04, 0.04, 0.24, x + 0.2, G0 + 0.8, z + 0.15, 0xc4372b, 6);
@@ -256,13 +259,8 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
   env.addPeople(() => cast.bodies());
 
   // ---------------------------------------------------------------- what the player eats (the order's prop) and the grill stance
-  const props = new THREE.Group(); ctx.extra.add(props);
-  const propMesh = (fill: (b: Batch) => void) => { const b = new Batch(); fill(b); const m = b.build(mats.m.plain, false, false)!; m.visible = false; props.add(m); k.keep(m.geometry); return m; };
-  const PROPS: Record<string, THREE.Mesh> = {
-    dibi: propMesh(b => { b.box(0.42, 0.01, 0.34, 0, 0, 0, 0xc9a77a); for (let n = 0; n < 7; n++) b.box(0.07, 0.04, 0.05, -0.12 + (n % 4) * 0.08, 0.01, -0.06 + Math.floor(n / 4) * 0.09, n % 2 ? 0x6b2e14 : 0x8a4a24); for (let n = 0; n < 5; n++) b.box(0.05, 0.015, 0.02, 0.1 + (n % 2) * 0.04, 0.03, 0.06 - n * 0.03, 0xf0e6c8); b.box(0.04, 0.02, 0.04, -0.14, 0.01, 0.1, 0xe8b72f); }),
-    brochettes: propMesh(b => { b.cyl(0.15, 0.15, 0.012, 0, 0, 0, 0xf4f1e8, 10); for (let n = 0; n < 3; n++) { b.box(0.3, 0.012, 0.012, 0, 0.02, -0.06 + n * 0.06, 0xc8c8c8); for (let m = 0; m < 4; m++) b.box(0.045, 0.035, 0.035, -0.09 + m * 0.06, 0.02, -0.06 + n * 0.06, m % 2 ? 0x6b2e14 : 0x8a4a24); } b.box(0.16, 0.05, 0.07, 0.05, 0.012, 0.11, 0xe8c890); }),
-    attaya: propMesh(b => { b.cyl(0.025, 0.022, 0.08, 0, 0, 0, 0xe8f4ff, 6); b.cyl(0.022, 0.022, 0.03, 0, 0.05, 0, 0x8a5a1e, 6); b.cyl(0.06, 0.07, 0.12, 0.14, 0, 0.05, 0xb8bcc0, 8); }),
-  };
+  // The dish itself is laid on the table and eaten by the table service (src/game/meals.ts); the place only knows which.
+  let serving: string | null = null;
   let t = 0, moment = '';
 
   // ---------------------------------------------------------------- helping at the grill: step beside the cook, facing the fire
@@ -297,14 +295,9 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     if (roof) roof.visible = !(ctx.camera.position.y > G0 + 2.8 && me.x > SX0 - 1.2 && me.x < SX1 + 1.2 && me.z > SZ0 - 1.2 && me.z < SZ1 + 1.2);
     const street = ctx.space() === 'street';
     cast.update(dt, ctx.camera.position, lite ? 45 : 70, street);
-    // the dish or the glass in front of the player while eating at this Dibi
+    // the dish or the glass the player is having at this Dibi (on the attaya cushions the set itself is the prop)
     const cur = ctx.activities.current, seat = ctx.player.seated();
-    for (const [pid, mesh] of Object.entries(PROPS)) {
-      // (on the attaya cushions the set itself is the prop)
-      const on = !!cur && cur.step.prop === pid && !!seat && k.seats.includes(seat) && seat.kind !== 'floor';
-      mesh.visible = on;
-      if (on) { mesh.position.set(seat!.x + Math.sin(seat!.yaw) * 0.55, G0 + 0.85, seat!.z + Math.cos(seat!.yaw) * 0.55); mesh.rotation.y = seat!.yaw; }
-    }
+    serving = cur?.step.prop && seat && k.seats.includes(seat) && seat.kind !== 'floor' ? cur.step.prop : null;
     stance();
   };
   const smoke = new Smoke(new THREE.Vector3(...((): [number, number, number] => { const p = at(GX, GZ); return [p.x, G0 + 1.05, p.z]; })()), lite ? 3 : 6);
@@ -312,14 +305,14 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
 
   return {
     id, type: 'dibi', name: site.name, places: [place], update,
-    dispose() { cast.dispose(); smoke.dispose(); props.removeFromParent(); k.dispose(); },
+    dispose() { cast.dispose(); smoke.dispose(); k.dispose(); },
     debug: () => ({
       origin: { x: cx, z: cz }, id, type: 'dibi', name: site.name, owner: style.owner, moment, open: isOpen(place.hours, ctx.hour()),
       anchors: place.anchors.map(a => ({ id: a.id, x: a.x, z: a.z, space: a.space ?? place.space })),
       seats: k.seats.map(s => s.id), tables: seatIds.length, npcs: cast.presentCount, visibleNpcs: cast.shownCount,
       smoke: smoke.on, shutter: shutter.visible, entrance: at(-1.6, 12.6), inside: at(-1.6, 7.5), yaw,
       counters: { meals: counter(ctx, keys.meals), grill: counter(ctx, keys.grill) },
-      prop: Object.entries(PROPS).find(([, m]) => m.visible)?.[0] ?? null,
+      prop: serving,
       night: nl.debug(), cook: cast.where('cook'),
     }),
   };

@@ -44,6 +44,16 @@ describe('story beats', () => {
     play(r, s, 'modou_reco', 'plus_tard');
     expect(availableBeat('modou', r, s)?.id).toBe('modou_reco');
   });
+  it('postponing a beat again gives nothing more', () => {
+    const { s, r } = fresh();
+    play(r, s, 'ibou_welcome', 'oui');
+    play(r, s, 'modou_reco', 'plus_tard');
+    const once = r.level(PLAYER, 'modou');
+    for (let k = 0; k < 5; k++) play(r, s, 'modou_reco', 'plus_tard');
+    expect(r.level(PLAYER, 'modou')).toBe(once);
+    play(r, s, 'modou_reco', 'commencer');
+    expect(r.level(PLAYER, 'modou')).toBe(once + 12);
+  });
   it('a coach introduces a rival, then the écurie celebrates', () => {
     const { s, r } = fresh();
     play(r, s, 'ablaye_join', 'rejoindre');

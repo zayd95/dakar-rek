@@ -123,13 +123,16 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
   for (let k = 0; k < 3; k++) plain.box(0.14, 0.015, 0.8, fanX + Math.sin(k * 2.094) * 0.42, H - 0.36, fanZ + Math.cos(k * 2.094) * 0.42, 0xe8e8e8, k * 2.094);
   }
 
-  const chair = (x: number, z: number, rot: number, col = 0xf2f2ee) => {   // monobloc plastic chair
-    seats.push({ id: `${hub}:${kind}:chair:${seats.length}`, x: x + Math.sin(rot) * 0.04, z: z + Math.cos(rot) * 0.04, top: 0.53, yaw: rot, kind: 'chair', space: '', occupant: null });
+  /** Monobloc plastic chair facing `rot` (its back is behind the sitter); `table` = where the plate goes. Returns the seat id. */
+  const chair = (x: number, z: number, rot: number, col = 0xf2f2ee, table?: Seat['table']) => {
+    const id = `${hub}:${kind}:chair:${seats.length}`;
+    seats.push({ id, x: x + Math.sin(rot) * 0.04, z: z + Math.cos(rot) * 0.04, top: 0.53, yaw: rot, kind: 'chair', space: '', occupant: null, table });
     const c = Math.cos(rot), s = Math.sin(rot);
     plain.box(0.46, 0.05, 0.44, x, 0.48, z, col, rot);
     for (const [dx, dz] of [[-0.2, -0.18], [0.2, -0.18], [-0.2, 0.18], [0.2, 0.18]]) plain.box(0.04, 0.46, 0.04, x + dx * c + dz * s, 0.05, z - dx * s + dz * c, col);
     plain.box(0.46, 0.42, 0.04, x - 0.2 * s, 0.53, z - 0.2 * c, col, rot);
     solid(x, z, 0.5, 0.5, 0.9);
+    return id;
   };
 
   if (kind === 'home') {
@@ -156,7 +159,6 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     wood.box(1.0, 0.7, 0.5, x1 - 0.6, 0.1, oz + 0.7, 0x8b6a47);
     plain.cyl(0.07, 0.07, 0.3, x1 - 0.4, 0.8, oz + 0.75, 0xd9322b, 8); plain.cyl(0.05, 0.04, 0.08, x1 - 0.75, 0.8, oz + 0.65, 0xf2f2ec, 8);
     solid(x1 - 0.6, oz + 0.7, 1.0, 0.6, 1);
-    chair(x1 - 1.6, oz + 0.9, Math.PI / 2 + 0.3);
     plain.cyl(0.18, 0.2, 0.05, x0 + 0.5, 0.1, z1 - 0.5, 0x333333, 10); plain.cyl(0.02, 0.02, 1.1, x0 + 0.5, 0.15, z1 - 0.5, 0x333333, 4); plain.cyl(0.24, 0.24, 0.1, x0 + 0.5, 1.25, z1 - 0.45, 0xe8e8e8, 10, [Math.PI / 2, 0, 0]);
     // prayer mat, suitcase, ataya set on a small charcoal stove, plastic kettle and bucket for washing
     const mat = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.02, 1.2), new THREE.MeshLambertMaterial({ map: waxTexture('#1f5a3a', '#d4b24a', '#7a1f3d') }));
@@ -164,7 +166,16 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     plain.box(0.7, 0.45, 0.25, x0 + 0.5, 0.1, z0 + 0.3, 0x2f4f86);
     metal.cyl(0.14, 0.11, 0.18, ox - 0.6, 0.1, z1 - 0.6, 0x555555, 10); metal.cyl(0.08, 0.1, 0.16, ox - 0.6, 0.28, z1 - 0.6, 0x9aa0a6, 8);
     for (let k = 0; k < 3; k++) plain.cyl(0.025, 0.02, 0.06, ox - 0.25 + k * 0.07, 0.1, z1 - 0.55, 0xe8f4ff, 6);
-    plain.cyl(0.14, 0.12, 0.32, x0 + 1.4, 0.1, z1 - 0.45, 0x2a8fd1, 10); plain.cyl(0.1, 0.12, 0.2, x0 + 1.75, 0.1, z1 - 0.4, 0x1a9d54, 8);
+    plain.cyl(0.1, 0.12, 0.2, x0 + 1.75, 0.1, z1 - 0.4, 0x1a9d54, 8);
+    {   // the bucket is open with water inside: washing takes the water from it (src/game/perform.ts finds it by name)
+      const blue = new THREE.MeshLambertMaterial({ color: 0x2a8fd1, side: THREE.DoubleSide });
+      const bucket = new THREE.Group(); bucket.name = 'wash-bucket'; bucket.userData = { h: 0.32, r: 0.14 };
+      const wall = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.32, 14, 1, true), blue); wall.position.y = 0.16;
+      const bottom = new THREE.Mesh(new THREE.CircleGeometry(0.12, 14), blue); bottom.rotation.x = -Math.PI / 2; bottom.position.y = 0.01;
+      const water = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.01, 14), new THREE.MeshLambertMaterial({ color: 0x8fd0f0, transparent: true, opacity: 0.85 }));
+      water.name = 'water'; water.position.y = 0.27;
+      wall.castShadow = true; bucket.add(wall, bottom, water); bucket.position.set(x0 + 1.4, 0.1, z1 - 0.45); group.add(bucket);
+    }
     interactables.push({ id: `${hub}:in:wash`, name: 'Seau et bouilloire', kind: 'actions', x: x0 + 1.55, z: z1 - 1.0, radius: 1.2, actions: ACTIONS.home.filter(a => a.id === 'laver') });
     // framed photos and a calendar (images left blank on purpose: no real people)
     for (const [x, c] of [[ox - 0.4, 0x7a5a3c], [ox + 0.4, 0x3d4a5c]] as const) { wood.box(0.45, 0.55, 0.03, x, 1.6, z0 + 0.02, c); plain.box(0.35, 0.45, 0.01, x, 1.65, z0 + 0.05, 0xd9d2c4); }
@@ -187,9 +198,9 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     const top = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 3.6), cloth); top.position.set(tx, 0.84, oz - 0.3); group.add(top);
     for (const dz of [-1.6, 1.0]) wood.box(0.7, 0.72, 0.06, tx, 0.1, oz - 0.3 + dz, 0x6b4a2e);
     wood.box(0.35, 0.45, 3.2, tx - 0.75, 0.1, oz - 0.3, 0x7a5a3c);                                 // bench
-    seats.push(...benchSeats(`${hub}:${kind}:bench`, tx - 0.75, oz - 0.3, Math.PI / 2, 0.55, '', 3.2, 3));
+    seats.push(...benchSeats(`${hub}:${kind}:bench`, tx - 0.75, oz - 0.3, Math.PI / 2, 0.55, '', 3.2, 3).map(b => ({ ...b, table: { x: tx - 0.22, y: 0.86, z: b.z } })));
     colliders.push({ x0: tx - 0.95, z0: oz - 2.2, x1: x1, z1: oz + 1.6, h: 0.9 });
-    chair(tx - 0.2, oz + 2.0, Math.PI, 0xf2f2ee); chair(x0 + 0.8, oz + 1.6, Math.PI / 2 + 0.4, 0x2a6fb3);
+    chair(tx - 0.2, oz + 2.0, Math.PI, 0xf2f2ee, { x: tx - 0.2, y: 0.86, z: oz + 1.3 }); chair(x0 + 0.8, oz + 1.6, Math.PI / 2 + 0.4, 0x2a6fb3);
     // wall fan, soot on the ceiling and walls, peeling patches
     plain.box(0.1, 0.25, 0.1, x1 - 0.06, 2.3, oz - 2.8, 0x333333); plain.cyl(0.22, 0.22, 0.08, x1 - 0.2, 2.4, oz - 2.8, 0xd8d8d8, 10, [0, 0, Math.PI / 2]);
     for (let k = 0; k < 9; k++) {
@@ -206,7 +217,8 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
     metal.cyl(0.4, 0.35, 0.18, ox + 1.2, 1.15, cz, 0x9aa0a6, 12);
     solid(ox - 0.5, cz, W - 3, 0.8, 1.1);
     interactables.push({ id: `${hub}:in:counter`, name, kind: 'actions', x: ox - 0.5, z: cz + 1.1, radius: 1.8, actions: ACTIONS.gargote });
-    const menu = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.0), new THREE.MeshLambertMaterial({ map: signTexture('CEEBU JËN · YASSA · MAFÉ', '#1f2a24', '#f6efd8', 512, 128) }));
+    // the board lists what the counter serves (ACTIONS.gargote); mafé is the Maïga's
+    const menu = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.0), new THREE.MeshLambertMaterial({ map: signTexture('CEEBU JËN · YASSA', '#1f2a24', '#f6efd8', 512, 128) }));
     menu.position.set(ox - 0.5, 2.1, z0 + 0.02); group.add(menu); signs.push(menu);
     // fridge with a lit glass door, water filter
     plain.box(0.8, 1.9, 0.7, x1 - 0.6, 0.1, z0 + 0.5, 0xf2f2ee); glow.box(0.6, 1.3, 0.01, x1 - 0.6, 0.6, z0 + 0.86, 0xd8ecf4);
@@ -220,7 +232,9 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
       plain.box(0.06, 0.72, 0.06, tx, 0.1, tz, 0x555555);
       const top = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.8), cloth); top.position.set(tx, 0.84, tz); top.castShadow = true; group.add(top);
       solid(tx, tz, 1.2, 0.8, 0.9);
-      chair(tx - 0.85, tz, -Math.PI / 2, c % 2 ? 0x2a8fd1 : 0xf2f2ee); chair(tx + 0.85, tz, Math.PI / 2, c % 2 ? 0x2a8fd1 : 0xf2f2ee);
+      // one chair on each side, both facing the table (yaw = the way the sitter looks)
+      chair(tx - 0.85, tz, Math.PI / 2, c % 2 ? 0x2a8fd1 : 0xf2f2ee, { x: tx - 0.25, y: 0.89, z: tz });     // served on the plate laid there
+      chair(tx + 0.85, tz, -Math.PI / 2, c % 2 ? 0x2a8fd1 : 0xf2f2ee, { x: tx + 0.3, y: 0.86, z: tz - 0.15 });
       plain.cyl(0.12, 0.12, 0.03, tx - 0.25, 0.86, tz, 0xf4f1e8, 10); plain.cyl(0.04, 0.04, 0.15, tx + 0.3, 0.86, tz + 0.1, 0x6fbf6a, 6);
     }
     // TV on a wall bracket, posters

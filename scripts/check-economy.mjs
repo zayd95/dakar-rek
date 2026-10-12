@@ -154,7 +154,8 @@ let savedJson = null;
   const stockPay = await D(page, id => window.__dakar.servicePay(id, 'boutique-stock'), diallo.id);
   await D(page, () => window.__dakar.act()); await page.waitForTimeout(300);
   await pick(page, 'ranger le stock');
-  await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 20000 }).catch(() => {});
+  // the service is played in the world (to the shelves and back with the cartons): wait for its end
+  await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 120000 }).catch(() => {});
   const led2 = await D(page, () => window.__dakar.ledger());
   check('a city service (Boutique Diallo stock) is in the ledger, paid with the polyvalence bonus', stockPay > 1500 && led2[0]?.amount === stockPay && /Boutique Diallo/.test(led2[0].label), `${stockPay} · ${JSON.stringify(led2[0])}`);
 
