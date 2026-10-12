@@ -1,16 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T15:30:00Z",
+  "updatedAt": "2026-10-12T16:38:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261012T1634Z-watch",
-    "owner": "producer_watch_1634",
-    "acquiredAt": "2026-10-12T16:34:00Z",
-    "expiresAt": "2026-10-12T17:04:00Z"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -124,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-12T15:30:00Z"
+    "lastCompletedRunAt": "2026-10-12T16:38:00Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
@@ -155,7 +150,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "Resume integration8c3270b exact CI38269319710 and inspect final performance/reviewer evidence before readiness alert; no ready registered implementation, do not duplicate external work.",
+  "nextAction": "Current wave5 integration8c3270b has green CI and successful preview. Await/inspect complete wave-specific final performance/reviewer evidence before readiness alert; no registered implementation ready.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -293,13 +288,13 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-1528-WATCH.md",
-    "completedAt": "2026-10-12T15:30:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-12-1634-WATCH.md",
+    "completedAt": "2026-10-12T16:38:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261012T1528Z-watch"
+    "leaseReleased": "cycle-20261012T1634Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -561,8 +556,8 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-12T15:30:00Z",
-    "status": "integrated_validation_pending",
+    "checkedAt": "2026-10-12T16:38:00Z",
+    "status": "integrated_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "89977184edf0512d51552ac82e7c024de6127dcb",
     "integrationCommit": "8c3270b902db1c6f7e5cf26f9695e9fd0ac4b9f9",
@@ -570,14 +565,18 @@
     "notificationSent": false,
     "ci": {
       "runId": 38269319710,
-      "status": "in_progress",
-      "conclusion": null,
-      "sha": "8c3270b902db1c6f7e5cf26f9695e9fd0ac4b9f9"
+      "jobId": 114879359827,
+      "status": "completed",
+      "conclusion": "success",
+      "sha": "8c3270b902db1c6f7e5cf26f9695e9fd0ac4b9f9",
+      "testsPassed": 1355,
+      "testsSkipped": 2,
+      "artifactId": 11757433362,
+      "digest": "sha256:86aa0edd14f46066c7f10d44a539d16c001b7bfb1285c73f8dde8cd4319ec4a6"
     },
     "missing": [
-      "Exact current integrated-source CI38269319710 still in_progress",
-      "Full final reviewer acceptance and exact browser performance logs not independently inspected; merge message alone insufficient",
-      "PR21 Cloudflare preview remains completed/failure"
+      "Final full wave-specific browser/performance logs and distinct reviewer acceptance at integrated SHA not independently inspected",
+      "PR21 separate gameplay port Cloudflare preview remains failure; not a green replacement source"
     ],
     "authority": "read-only external wave; never mutate other-session refs",
     "candidateCi": {
@@ -596,6 +595,15 @@
       "githubConclusion": "success",
       "cloudflareConclusion": "failure",
       "cloudflareBuildId": "9c13ae9a-af4b-412b-ae51-75025c60bacf"
+    },
+    "preview": {
+      "status": "success",
+      "sha": "8c3270b902db1c6f7e5cf26f9695e9fd0ac4b9f9",
+      "buildId": "b8d9b179-9205-43c0-9ce4-3f5a92732424",
+      "deploymentId": "30223dad-616b-4d22-ab28-4100119b4a95",
+      "deployedAt": "2026-10-12T15:21:12.291Z",
+      "url": "https://30223dad-dakar-rek.habibjallow95.workers.dev",
+      "scope": "preview only; bot deployment record, not authenticated production attestation"
     }
   }
 }
