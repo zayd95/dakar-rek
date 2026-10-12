@@ -196,7 +196,7 @@ describe('football · a match', () => {
     for (let i = 0; i < 30 * 300 && m.stats.goals === 0; i++) m.step(1 / 30);
     expect(m.stats.goals).toBe(1);
     const team = 1 - m.kickTeam;
-    for (let i = 0; i < 30 * 4.5; i++) {
+    for (let i = 0; i < 30 * 5.8; i++) {
       m.step(1 / 30);
       const s = m.get(m.scorer);
       if (s && s.cheer > 0) saw = true;

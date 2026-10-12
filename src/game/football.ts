@@ -19,7 +19,7 @@ import { AFTER, BALL_R, Match, PITCH, ballSpeed, type ContactRec, type Kick, typ
  *   Before it, the leg swings back and through; after it, it follows through and gives the gait its leg back.
  * - The feet stay planted and the legs keep the pace: the bodies walk and run with the gait of src/actors/gait.ts, from
  *   their own motion (the match limits their acceleration and speed).
- * - Level of detail: the match is played only while the player (or the camera) is within NEAR metres of the pitch; far
+ * - Level of detail: the match is played only while the player is within NEAR metres of the pitch's grass; far
  *   away the people run about the pitch as before (the ambient life's own roaming) and this module costs one distance.
  *   Their bodies and far figures stay the ambient life's, under its shared budget (footballers come first).
  * - One ball and the two goals' nets: two draw calls.
@@ -124,13 +124,15 @@ class Football implements GameModule {
   private gaps: { kind: KickKind; gap: number; n: number }[] = [];
   private contactNow: { id: number; kind: KickKind; frame: number } | null = null;
   private goals: { t: number; team: 0 | 1; scorer: number; score: [number, number] }[] = [];
+  /** Kick-offs taken: the match time and the ball's distance from the centre spot. */
+  private kickoffs: { t: number; dist: number }[] = [];
 
   init(ctx: GameCtx) { this.ctx = ctx; }
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
     this.ctx = ctx;
     this.entries.clear(); this.fans.clear(); this.near = false; this.active = false; this.started = false;
-    this.gaps = []; this.goals = []; this.contactNow = null;
+    this.gaps = []; this.goals = []; this.kickoffs = []; this.contactNow = null;
     const sp = hubLayout(hub.id).specials.find(s => s.kind === 'pitch');
     this.pitch = sp ? { x: sp.x, z: sp.z } : null;
     this.match = null; this.ball = null;
@@ -146,7 +148,7 @@ class Football implements GameModule {
   update(ctx: GameCtx, dt: number) {
     const pt = this.pitch, m = this.match;
     if (!pt || !m) return;
-    const d = Math.min(this.edgeDist(ctx.player.pos.x, ctx.player.pos.z), this.edgeDist(ctx.camera.position.x, ctx.camera.position.z));
+    const d = this.edgeDist(ctx.player.pos.x, ctx.player.pos.z);
     const on = ctx.space() === 'street' && ctx.mode() !== 'scene' && d < (this.near ? NEAR_OUT : NEAR);
     if (!on) { if (this.near) this.release(); return; }
     this.near = true;
@@ -306,6 +308,7 @@ class Football implements GameModule {
     const m = this.match!, ctx = this.ctx;
     for (const ev of m.events) {
       if (ev.kind === 'contact' && ev.rec) this.contactNow = { id: ev.rec.who, kind: ev.rec.kind, frame: m.frame };
+      if (ev.kind === 'kickoff') this.kickoffs.push({ t: +m.t.toFixed(2), dist: +(ev.detail ?? 0) });
       if (ev.kind === 'goal' && ev.team !== undefined) {
         this.goals.push({ t: m.t, team: ev.team, scorer: ev.who ?? -1, score: [m.score[0], m.score[1]] });
         for (const f of this.fans.values()) if (Math.random() < 0.75) f.cheer = 1.8 + Math.random() * 1.6;
@@ -409,7 +412,15 @@ class Football implements GameModule {
       football: () => this.info(),
       footballLog: (n = 30): ContactRec[] => this.match?.log.slice(-n) ?? [],
       /** A new match now: 0–0, the ball on the centre spot, the counts cleared. */
-      footballReset: () => { this.match?.reset(0); this.started = true; this.gaps = []; this.goals = []; return !!this.match; },
+      footballReset: () => { this.match?.reset(0); this.started = true; this.gaps = []; this.goals = []; this.kickoffs = []; return !!this.match; },
+      /** Cheap, every frame: the match's frame and phase, a contact made this frame (and whether its body is drawn), the scorer celebrating. */
+      footballNow: () => {
+        const m = this.match; if (!m) return null;
+        const c = this.contactNow && this.contactNow.frame === m.frame ? this.contactNow : null;
+        const body = c ? !![...this.entries.values()].find(x => x.id === c.id)?.person.body : false;
+        const s = m.phase === 'goal' ? m.get(m.scorer) : null;
+        return { frame: m.frame, t: m.t, phase: m.phase, phaseT: m.phaseT, active: this.active, goals: m.stats.goals, contact: c, body, scorerCheer: !!s && s.cheer > 0 };
+      },
       /** The world position of a player of the match (by its id), or of the scorer / the last to touch the ball. */
       footballWho: (id?: number) => {
         const m = this.match, pt = this.pitch; if (!m || !pt) return null;
@@ -443,7 +454,7 @@ class Football implements GameModule {
         byKind: Object.fromEntries(['touch', 'trap', 'tackle', 'pass', 'shot', 'save'].map(k => { const v = this.gaps.filter(x => x.kind === k).map(x => x.gap); return [k, v.length ? { n: v.length, max: Math.max(...v), mean: +(v.reduce((s, x) => s + x, 0) / v.length).toFixed(4) } : null]; })) },
       contactNow: this.contactNow && this.contactNow.frame === m.frame ? this.contactNow : null,
       last: m.log.length ? m.log[m.log.length - 1] : null,
-      goals: this.goals.slice(-10),
+      goals: this.goals.slice(-10), kickoffs: this.kickoffs.slice(-10),
       scorer: m.scorer, celebrating: list.filter(e => e.team >= 0 && (m.get(e.id)?.cheer ?? 0) > 0).length,
       bodies: players.filter(p => p.body).length, players,
     };

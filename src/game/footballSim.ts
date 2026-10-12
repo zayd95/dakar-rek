@@ -426,7 +426,7 @@ export class Match {
     if ((this.phase === 'kickoff' || this.phase === 'restart') && !this.byId.has(this.taker))
       this.taker = this.phase === 'kickoff' ? this.pickTaker(this.kickTeam) : this.nearest(this.kickTeam, this.ball.x, this.ball.z, true);
     if (this.phase === 'goal') {
-      if (this.phaseT > 4.6) {
+      if (this.phaseT > 6) {
         const team = this.kickTeam, k = this.team(team).find(p => p.keeper);
         this.fetcher = k?.id ?? this.nearest(team, this.ball.x, this.ball.z);
         this.taker = this.pickTaker(team);
@@ -753,14 +753,14 @@ export class Match {
     if (p.team === team) {
       if (p === s) {
         // off toward the corner, then arms up
-        if (this.phaseT < 1.7) { const d = this.dir(team); this.go(p, d * 15, (p.z >= 0 ? 1 : -1) * 12, p.pace * 0.9); }
+        if (this.phaseT < 1.4) { const d = this.dir(team); this.go(p, d * 15, (p.z >= 0 ? 1 : -1) * 12, p.pace * 0.9); }
         else { this.go(p, p.x, p.z, 0); p.cheer = Math.max(p.cheer, 0.3); }
         return;
       }
       if (s && !p.keeper) {
         const a = (p.id * 2.39996) % TAU, tx = s.x + Math.sin(a) * 1.25, tz = s.z + Math.cos(a) * 1.25;
-        this.go(p, tx, tz, p.pace * 0.85);
-        if (hyp(p.x - s.x, p.z - s.z) < 2) p.cheer = Math.max(p.cheer, 0.3);
+        this.go(p, tx, tz, p.pace);
+        if (hyp(p.x - s.x, p.z - s.z) < 2.2) p.cheer = Math.max(p.cheer, 0.3);
         p.look = Math.atan2(s.x - p.x, s.z - p.z);
         return;
       }
