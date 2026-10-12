@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import { LambDuel } from '../lamb/duel';
+import { LambDuel, type PilotView } from '../lamb/duel';
 import { STYLES } from '../lamb/rules';
 import type { Input } from '../core/input';
 import type { WrestlerLook } from '../core/types';
 import { rng } from '../core/rng';
-import { pilot, type BoutView } from './program';
+import { pilot } from './program';
 import type { Opponent } from '../lamb/opponents';
 import type { OpponentStyle } from '../lamb/rules';
 
@@ -98,18 +98,25 @@ export class WatchedBout {
   /** Time asked for but not played yet (a long catch-up spreads over a few frames). */
   get pending() { return this.acc; }
 
+  /** What the pilot reads of the duel, and where the two stand: written in place at every step (six a long frame). */
+  private view: PilotView = { phase: '', dist: 0, windup: false, open: null, stamina: { player: 0, opponent: 0 }, clinch: null };
+  private xz: number[] = [0, 0, 0, 0];
+  /** The duel's phase changed since the last step: the show hears of it (the duel's whole `info()` is built only then). */
+  private moment() {
+    const phase = this.duel.phase;
+    if (phase !== this.last) { this.last = phase; this.onMoment(phase, this.duel.info()); }
+  }
+
   private step(dt: number) {
     if (this.frappe) {                                                       // AI against AI inside the duel
       this.duel.update(dt);
-      const now = this.duel.info();
-      if (now.phase !== this.last) { this.last = now.phase; this.onMoment(now.phase, now); }
+      this.moment();
       return;
     }
-    const v = this.duel.info() as unknown as BoutView;
+    const v = this.duel.pilotView(this.view);
     const o = pilot(v, this.rand(), dt);
     // approach the opponent: world direction → the duel's screen axes (how input.move() is read)
-    const pts = this.duel.fighterPoints(), me = { x: pts[1][0], z: pts[1][2] }, ai = { x: pts[4][0], z: pts[4][2] };
-    const dx = ai.x - me.x, dz = ai.z - me.z, len = Math.hypot(dx, dz) || 1, ax = this.duel.axes();
+    const p = this.duel.fighterXZ(this.xz), dx = p[2] - p[0], dz = p[3] - p[1], len = Math.hypot(dx, dz) || 1, ax = this.duel.axes();
     const wx = (dx / len) * o.approach, wz = (dz / len) * o.approach;
     this.steer.x = wx * ax.right.x + wz * ax.right.z; this.steer.y = wx * ax.fwd.x + wz * ax.fwd.z;
     this.duel.setGuard(o.guard);
@@ -117,8 +124,7 @@ export class WatchedBout {
     for (let k = 0; k < o.taps; k++) this.duel.pressGrab();
     if (o.brk) this.duel.pressBreak();
     this.duel.update(dt);
-    const now = this.duel.info();
-    if (now.phase !== this.last) { this.last = now.phase; this.onMoment(now.phase, now); }
+    this.moment();
   }
 
   dispose() { this.duel.dispose(); }

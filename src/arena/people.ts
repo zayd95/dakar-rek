@@ -192,7 +192,9 @@ const GRIOT = (r: () => number): PersonLook => ({ skin: [0x3b2216, 0x4e2e1c, 0x5
 interface Side { who: BillSide; fighter: Bill['left']; ecurie: Ecurie | null; cs: 1 | -1; colour: number; ids: string[]; griot: string | null; cloth: THREE.MeshLambertMaterial | null; started: boolean }
 /** An écurie's corner and the helper who readies it. */
 interface Camp { ecurie: Ecurie; side: 1 | -1; ids: string[] }
-interface Walker { id: string; kind: VendorKind; arc: readonly [number, number]; a: number; dir: 1 | -1; pause: number; called: number; stopped: number }
+interface Walker { id: string; kind: VendorKind; arc: readonly [number, number]; a: number; dir: 1 | -1; pause: number; called: number; stopped: number;
+  /** What this vendor sells, built the first time someone is in reach (the lines are the same every frame). */
+  specs?: ActivitySpec[] }
 /** A vendor stops by a player within `near` m for `pause` s, then walks on and does not stop again for `again` s. */
 export const VENDOR_STOP = { near: 3.0, pause: 7, again: 30, afterCall: 25 } as const;
 /**
@@ -350,7 +352,7 @@ export class FightNightPeople {
         for (const w of this.walkers) {
           const p = this.cast.where(w.id); if (!p?.shown) continue;
           if (Math.abs(p.x - x) > 3.2 || Math.abs(p.z - z) > 3.2) continue;
-          const specs = w.kind.offers(w.kind.seller).map(counted);
+          const specs = (w.specs ??= w.kind.offers(w.kind.seller).map(counted));   // (not rebuilt every frame the player is in reach)
           out.push({ id: `${id}:${w.id}`, name: `${w.kind.seller} · ${w.kind.female ? 'vendeuse' : 'vendeur'}`, kind: 'person', space, x: p.x, z: p.z, y: 2.1, radius: 3.2, bias: -3.5,
             affordances: () => specs.map(s => ({ id: s.id, verb: s.primitive, label: s.label, icon: s.icon, detail: s.detail, cost: s.price,
               disabled: ctx.activities.blocked(s), run: () => { w.pause = Math.max(w.pause, 6); ctx.activities.start(s, { place: 'Arène de Pikine' }); } })) });
