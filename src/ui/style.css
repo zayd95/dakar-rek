@@ -81,25 +81,36 @@ body.touch kbd { display:none; }
 /* the evening's tag (« Gala ce soir »): a small red chip after the time; on a phone it takes its own line */
 #place em { display:none; margin-left:6px; padding:1px 7px; border-radius:999px; background:#d9322b; color:#fff; font-style:normal; font-size:10.5px; font-weight:800; letter-spacing:.1px; vertical-align:1px; }
 #place em.on { display:inline-block; }
+/* the event of the moment (src/ui/placeEvent.ts: the gala, a ride, tonight's call) under the place and the time: its
+   tag and one short line; a tap opens the details under the chip (docs/UI_V2_PLAN.md §0 C 3). It says more than the
+   « Gala ce soir » tag, which it replaces. */
+#placeEv { display:none; align-items:center; gap:7px; margin-top:4px; max-width:100%; text-align:left; }
+#place.ev { pointer-events:auto; cursor:pointer; }
+#place.ev #placeEv { display:flex; }
+#place.ev em.on { display:none; }
+#placeEv .pev-tag { flex:none; padding:4px 6px; border-radius:7px; background:#d9322b; color:#fff; font:900 10.5px/1 var(--font); font-style:normal; letter-spacing:.3px; }
+#placeEv .pev-tag[data-tone="ride"] { background:#f4c20d; color:#1b2a7a; }
+#placeEv .pev-tag[data-tone="evening"] { background:#7e22ce; }
+#placeEv .pev-tx { min-width:0; display:flex; flex-direction:column; }
+#placeEv .pev-line { font-size:12px; font-weight:750; line-height:1.25; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#placeEv .pev-sub { margin-top:1px; font-size:11px; font-weight:600; line-height:1.25; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#placeEv .pev-sub:empty { display:none; }
+#place.alert #placeEv .pev-sub { color:var(--warn); font-weight:800; }
+#placeMore { display:none; margin-top:6px; padding-top:6px; border-top:1px solid var(--sep); text-align:left; font-size:12px; font-weight:600; line-height:1.35; color:var(--ink-2); white-space:normal; }
+#placeMore span { display:block; } #placeMore span:first-child { color:var(--ink); font-weight:750; } #placeMore .alert { color:var(--warn); font-weight:800; }
+#place.open #placeMore { display:block; }
+#place.open { max-width:min(460px, calc(100vw - 24px)); z-index:5; }
 #menuBtn { position:absolute; right:calc(10px + var(--sa-r)); top:calc(10px + var(--sa-t)); width:var(--tap); height:var(--tap); border-radius:13px; display:grid; place-items:center; cursor:pointer; color:var(--ink); z-index:2; }
 #menuBtn:active { transform:scale(.94); background:var(--press); }
+/* the quiet log's unseen notices (src/ui/quiet.ts): read in the phone's Notifications */
+#menuBtn .badge { position:absolute; top:-5px; right:-5px; min-width:19px; height:19px; padding:0 5px; border-radius:10px; background:#d9322b; color:#fff;
+  font:800 11px/19px var(--font); text-align:center; box-shadow:0 0 0 2px var(--surface); pointer-events:none; }
+#menuBtn .badge[hidden] { display:none; }
 
 /* ------------------------------------------------------------- goal hint (under the wallet) */
 #goal { position:absolute; left:calc(10px + var(--sa-l)); top:calc(84px + var(--sa-t)); max-width:min(320px, 62vw); padding:5px 10px 5px 5px; display:none; align-items:center; gap:7px;
   font-size:12px; font-weight:600; line-height:1.3; color:var(--ink-2); pointer-events:none; border-radius:999px; z-index:1; }
 #goal.on { display:flex; }
-/* a ride card (src/transport/ui.ts, under the goal line) is on: the goal keeps one line so the two never touch, and the
-   card follows the top safe area like the goal does */
-#ui:has(.ridecard.on) #goal .gt { -webkit-line-clamp:1; }
-#ui .ridecard { margin-top:var(--sa-t); }
-/* the arena show's card (src/arena/card.ts, 118 px / 150 px on a phone) is on: the toasts stack under it, never over it */
-#ui .galacard { margin-top:var(--sa-t); }
-#ui:has(#galacard.on) #toast { --tt:172px; top:calc(172px + var(--sa-t)); }
-/* on a phone the card's second line (the moment and both names) takes two lines rather than « Malick (Écurie Baobab) – A… » */
-@media (max-width:640px) and (orientation:portrait) {
-  #ui #galacard small { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.3; }
-  #ui:has(#galacard.on) #toast { --tt:222px; top:calc(222px + var(--sa-t)); }
-}
 #goal .gi { flex:none; display:grid; place-items:center; width:22px; height:22px; border-radius:50%; background:var(--surface-2); color:var(--ink); font-style:normal; font-size:12px; font-weight:800; transition:transform .25s; }
 #goal.walk .gi { background:var(--sun); font-size:15px; }
 #goal .gt { overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
@@ -107,19 +118,37 @@ body.touch kbd { display:none; }
 #goal .gd:empty { display:none; }
 #goal .gt .sep { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
-/* ------------------------------------------------------------- toasts (stacked, top centre) */
-#toast { --tt:66px; position:absolute; left:50%; top:calc(66px + var(--sa-t)); transform:translateX(-50%); width:min(460px, calc(100vw - 24px)); display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:none; z-index:22; }
-#toast .t { max-width:100%; padding:8px 14px; border-radius:18px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); font-size:13.5px; font-weight:650; line-height:1.35; text-align:center; animation:tIn .2s ease-out; transition:opacity .2s, transform .2s; }
+/* ------------------------------------------------------------- one line at a time, a moment card at the side (§0 C)
+   Nothing here covers the middle of the screen (src/ui/quiet.ts centreZone: the centred 40 % of the width, 33 %–62 %
+   of the height). #toast is only a frame for its children: one transient line (.t) and one moment card (.mo); the
+   messages read to screen readers sit in .sr, hidden. */
+#toast { position:fixed; inset:0; pointer-events:none; z-index:22; }
+#toast .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+#toast .t { position:absolute; box-sizing:border-box; padding:7px 14px; border-radius:16px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); font-size:13.5px; font-weight:650; line-height:1.35; animation:lnIn .2s ease-out; transition:opacity .2s; }
+/* a spoken line: the subtitle, centred at the bottom above the controls, the speaker's name first */
+#toast .t.say { left:50%; bottom:calc(76px + var(--sa-b)); transform:translateX(-50%); width:max-content; max-width:min(640px, 56vw); text-align:center;
+  background:rgba(17,17,20,.8); color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.25); }
+#toast .t.say .who { color:var(--sun); font-weight:800; }
+#toast .t.say .say-ic { font-style:normal; }
+/* a refusal, or the answer to what the player just did: one line by the action button */
+#toast .t.now { right:calc(16px + var(--sa-r)); bottom:calc(150px + var(--sa-b)); width:max-content; max-width:min(320px, 62vw); text-align:right; }
 #toast .t.warn { color:var(--warn); }
 #toast .t.warn::before { content:'⚠︎ '; }
-#toast .t.out { opacity:0; transform:translateY(-6px); }
-#toast .t.again { animation:tAgain .25s ease-out; }
+/* over a sheet the player opened: at the top, as before (the sheet covers the bottom) */
+body.sheet-open #toast .t { left:50%; right:auto; top:calc(66px + var(--sa-t)); bottom:auto; transform:translateX(-50%); width:max-content; max-width:min(460px, calc(100vw - 24px)); text-align:center; }
+#toast .t.out { opacity:0; }
+#toast .t.again { animation:lnAgain .25s ease-out; }                    /* opacity only: the centred line keeps its transform */
+@keyframes lnIn { from { opacity:0; } }
+@keyframes lnAgain { 50% { opacity:.55; } }
+#ui:has(#toast .t.say:not(.out)) #temp { opacity:0; }
 #toast .amt { display:inline-block; padding:0 7px; border-radius:999px; background:var(--surface-2); font-weight:800; font-variant-numeric:tabular-nums; }
 #toast .amt.gain { color:var(--gain); background:#e3f5ec; }
-/* moment cards (hud.moment: a bout's recap, a new word on a gauge): first in the toast column, the toasts stack under
-   them; the only part of the column that takes taps (tap anywhere on it to dismiss) */
-#toast .mo { order:-1; pointer-events:auto; position:relative; display:flex; align-items:flex-start; gap:10px; width:min(400px, 100%); box-sizing:border-box;
-  padding:10px 40px 11px 10px; border-radius:16px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); text-align:left; cursor:pointer;
+/* moment cards (hud.moment: a bout's recap, a new word on a gauge; hud.boutCard: the after-bout card): one at a time,
+   on the right under the social buttons, clear of the middle (30 vw wide at most) and of the action column; a tap
+   anywhere on it dismisses it; taller than its room, it scrolls inside */
+#toast .mo { position:absolute; right:calc(10px + var(--sa-r)); top:calc(162px + var(--sa-t)); pointer-events:auto; display:flex; align-items:flex-start; gap:10px;
+  width:min(360px, calc(30vw - 20px)); box-sizing:border-box; max-height:calc(100vh - 162px - 160px - var(--sa-t) - var(--sa-b)); max-height:calc(100dvh - 162px - 160px - var(--sa-t) - var(--sa-b));
+  overflow-y:auto; overscroll-behavior:contain; padding:10px 40px 11px 10px; border-radius:16px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); text-align:left; cursor:pointer;
   animation:moIn .28s ease-out; transition:opacity .2s, transform .2s; }
 #toast .mo.out { opacity:0; transform:translateY(-6px); }
 #toast .mo-ic { flex:none; display:grid; place-items:center; width:36px; height:36px; border-radius:50%; background:var(--sun); font-style:normal; font-size:19px; }
@@ -129,7 +158,7 @@ body.touch kbd { display:none; }
 #toast .mo-tx li { font-size:12.5px; font-weight:600; color:var(--ink-2); line-height:1.35; }
 #toast .mo-x { position:absolute; top:2px; right:2px; width:36px; height:36px; border:0; border-radius:50%; background:transparent; color:var(--ink-3); font-size:14px; cursor:pointer; }
 /* the fighter's after-bout card (hud.boutCard): the result, one row per thing that changed, « Ensuite » */
-#toast .mo.bc { order:-2; width:min(420px, 100%); padding:12px 40px 12px 12px; }   /* the after-bout card heads the column */
+#toast .mo.bc { padding:12px 40px 12px 12px; }
 #toast .bc .mo-tx { flex:1; }
 #toast .bc .mo-tx > b { font-size:17px; letter-spacing:-.2px; }
 #toast .bc-sub { display:block; margin-top:1px; font-size:12.5px; font-weight:600; color:var(--ink-2); line-height:1.3; }
@@ -147,7 +176,6 @@ body.touch kbd { display:none; }
 #toast .bc-next span { display:block; font-size:13px; font-weight:700; line-height:1.35; color:var(--ink); }
 @keyframes moIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 @keyframes tIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
-@keyframes tAgain { 50% { transform:scale(1.04); } }
 
 /* ------------------------------------------------------------- diegetic bubble above the focused target */
 #ui > #wprompt { position:absolute; left:0; top:0; pointer-events:none; opacity:0; transition:opacity .15s; will-change:transform; z-index:1; }
@@ -342,15 +370,17 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   /* the hub's first name only (« Pikine »): one line, the time and the evening's tag under it */
   #place .pl-more { display:none; }
   #place em.on { display:table; margin:2px 0 0 auto; }
-  /* the whole column ends above the controls' row (the joystick, 154 px up; « Courir »; the action column, about 144 px)
-     and clips what would go lower: whatever the cards and toasts stacked in it, a finger on the controls meets them */
-  #toast { --tt:170px; top:calc(170px + var(--sa-t));
-    max-height:calc(100vh - var(--tt) - var(--sa-t) - 164px - var(--sa-b)); max-height:calc(100dvh - var(--tt) - var(--sa-t) - 164px - var(--sa-b)); overflow-y:clip; }
-  /* a moment card — the after-bout card above all, the tallest, at the head of the column — fits that room and scrolls
-     inside when it is taller (a 360 × 640 phone, the gala card on); it never shrinks for the toasts under it. A tap
-     still dismisses it. */
-  #toast .mo { max-height:calc(100vh - var(--tt) - var(--sa-t) - 164px - var(--sa-b)); max-height:calc(100dvh - var(--tt) - var(--sa-t) - 164px - var(--sa-b));
-    overflow-y:auto; overscroll-behavior:contain; flex-shrink:0; }
+  /* the subtitle: the full width above the controls' row (the joystick, 154 px up; « Courir »; the action column), three
+     lines at most; a refusal by the action column */
+  #toast .t.say { left:calc(12px + var(--sa-l)); right:calc(12px + var(--sa-r)); bottom:calc(166px + var(--sa-b)); transform:none; width:auto; max-width:none;
+    font-size:13px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  #toast .t.now { bottom:calc(150px + var(--sa-b)); max-width:calc(100vw - 32px - var(--sa-l) - var(--sa-r)); }
+  /* a moment card: at the top, under the goal line and left of the social buttons, ending above the middle of the
+     screen (33 % of the height); taller, it scrolls inside. A tap dismisses it. */
+  #toast .mo { left:calc(10px + var(--sa-l)); right:calc(118px + var(--sa-r)); top:calc(128px + var(--sa-t)); width:auto;
+    max-height:calc(33vh - 132px - var(--sa-t)); max-height:calc(33dvh - 132px - var(--sa-t)); }
+  #placeEv { justify-content:flex-end; }
+  #placeEv .pev-sub { display:none; }                                       /* in the details: the chip is narrow here */
   /* the after-bout card: a smaller icon leaves its rows the room they need */
   #toast .bc .mo-ic { width:30px; height:30px; font-size:16px; }
   #toast .mo.bc { gap:8px; padding-left:10px; }
@@ -386,12 +416,15 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #stats { top:calc(8px + var(--sa-t)); }
   #place { top:calc(8px + var(--sa-t)); }
   #goal { top:calc(80px + var(--sa-t)); }
-  /* the toast column between the joystick with « Courir » (up to 226 px from the left) and the action column (24 vw from
-     the right), centred in what is left: the controls sit at the bottom corners, so a moment card only has to end on
-     screen (and scrolls inside when it is taller) */
-  #toast { --tt:60px; top:calc(60px + var(--sa-t)); left:calc(236px + var(--sa-l)); right:calc(24vw + 6px + var(--sa-r)); width:auto; max-width:420px; margin:0 auto; transform:none; }
-  #toast .mo { max-height:calc(100vh - var(--tt) - var(--sa-t) - 8px - var(--sa-b)); max-height:calc(100dvh - var(--tt) - var(--sa-t) - 8px - var(--sa-b));
-    overflow-y:auto; overscroll-behavior:contain; }
+  /* the subtitle at the bottom between the joystick with « Courir » (up to 226 px from the left) and the action column
+     (24 vw from the right), two lines at most; a refusal right above the action column */
+  #toast .t.say { left:calc(236px + var(--sa-l)); right:calc(24vw + 6px + var(--sa-r)); bottom:calc(8px + var(--sa-b)); transform:none; width:fit-content; max-width:none; margin:0 auto;
+    font-size:12.5px; padding:6px 12px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  #toast .t.now { max-width:calc(24vw + 4px); font-size:12.5px; }
+  /* a moment card: on the left under the goal line, 30 vw wide at most (clear of the middle), ending above the joystick */
+  #toast .mo { left:calc(10px + var(--sa-l)); right:auto; top:calc(118px + var(--sa-t)); width:calc(30vw - 20px - var(--sa-l));
+    max-height:calc(100vh - 118px - 164px - var(--sa-t) - var(--sa-b)); max-height:calc(100dvh - 118px - 164px - var(--sa-t) - var(--sa-b)); }
+  #ui #delivery { max-width:calc(30vw - 20px - var(--sa-l)); }              /* the delivery line too stays left of the middle */
   /* short screen: a moment card keeps its first five lines, so it and the toasts under it stay above the action column */
   #toast .mo-tx li:nth-child(n+6) { display:none; }
   #toast .mo { padding-top:8px; padding-bottom:8px; }

@@ -1,7 +1,8 @@
 // UI checks (docs/UI.md): HUD layout and touch targets, every way of closing a sheet gives the controls back, quick
 // actions with disabled reasons, activities and plain timed actions and làmb scenes can be stopped, the focus ring and
-// the way-finding pin, stacked toasts, the wallet animation, the after-bout card clear of the controls. Desktop, phone
-// portrait and phone landscape.
+// the way-finding pin, the quiet screen (docs/UI_V2_PLAN.md §0 C: notices in the quiet log, one transient line, one
+// moment card at the side, the middle clear — in the street, at a venue, at the arena during the entrance and the
+// bout), the wallet animation, the after-bout card clear of the controls. Desktop, phone portrait and phone landscape.
 // Usage: node scripts/check-ui.mjs [baseUrl] [outDir] [views]   (needs a running build, e.g. `npx vite preview --port 4211`)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -14,6 +15,9 @@ const T = { timeout: 90000 };
 const results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
 const overlap = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+/** The quiet screen (src/ui/hud.ts measureQuiet): nothing over the middle, one transient line and one card at most. */
+const quietOk = q => q.over.length === 0 && q.lines <= 1 && q.moments <= 1;
+const quietWhy = q => JSON.stringify({ over: q.overlays.filter(o => q.over.includes(o.id)), zone: q.zone, lines: q.lines, moments: q.moments });
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 const views = [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 844 }, true], ['landscape', { width: 844, height: 390 }, true]];
@@ -218,17 +222,39 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   check(`${label}: way-finding pin over the suggested person, distance in the hint`, g.m.pin && Math.hypot(g.m.pinAt.x - g.ibou.x, g.m.pinAt.z - g.ibou.z) < 0.5 && /\d+ m/.test(g.goal), JSON.stringify(g));
   await settle(); await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-guide.png` });
 
-  // 10. Toasts stack (three at most); a wallet change floats beside the wallet.
+  // 10. A quiet screen (docs/UI_V2_PLAN.md §0 C): notices go to the quiet log (a badge on the phone button), never on
+  //     screen; one transient line at most — a refusal by the action button, then a spoken line, the subtitle with the
+  //     speaker's name, replaces it; the middle stays clear; the phone's Notifications lists them and the badge goes;
+  //     a wallet change floats beside the wallet.
+  const log0 = await d(() => window.__dakar.quietLog().unread);
   await d(() => { for (const m of ['Un', 'Deux', 'Trois', 'Quatre', 'Cinq']) window.__dakar.uiToast(m); });
-  const live = await d(() => document.querySelectorAll('#toast .t:not(.out)').length);
-  check(`${label}: toasts stack, three at most`, live === 3, String(live));
-  const tb = await rect('#toast'), ab = await rect('#actbar');
-  check(`${label}: toasts stay clear of the action area`, !overlap(tb, ab), JSON.stringify(tb));
+  await page.waitForTimeout(400);
+  const n1 = await d(() => ({ q: window.__dakar.quiet(), badge: document.querySelector('#menuBtn .badge:not([hidden])')?.textContent ?? '' }));
+  check(`${label}: notices go to the quiet log — none on screen, a badge on the phone button`, n1.q.lines === 0 && n1.q.log >= Math.min(60, log0 + 5) && n1.badge !== '', JSON.stringify({ lines: n1.q.lines, log: n1.q.log, badge: n1.badge }));
+  await d(() => window.__dakar.uiToast('Pas assez d’argent', 'warn'));
+  await page.waitForTimeout(400);
+  const deny = await rect('#toast .t.now:not(.out)'), ab = await rect('#actbar');
+  check(`${label}: a refusal is one line by the action button, clear of it`, !!deny?.width && !overlap(deny, ab) && deny.right >= viewport.width * 0.7 && (await d(() => window.__dakar.quiet().lines)) === 1, JSON.stringify({ deny, ab }));
+  await d(() => window.__dakar.uiToast('Le contrôleur : « Xaaral tuuti ! » (attends un peu) · Il faut un billet : le guichet est à gauche de la porte.'));
+  await page.waitForTimeout(400);
+  const sub = await d(() => { const t = document.querySelector('#toast .t.say:not(.out)'); return t ? { who: t.querySelector('.who')?.textContent, text: t.textContent, box: (r => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom }))(t.getBoundingClientRect()) } : null; });
+  const q2 = await d(() => window.__dakar.quiet());
+  check(`${label}: a spoken line replaces it — one subtitle at the bottom, the speaker's name first`, sub?.who === 'Le contrôleur' && q2.lines === 1 && sub.box.top >= q2.zone.bottom, JSON.stringify({ sub, lines: q2.lines }));
+  check(`${label}: with the subtitle on, the middle of the screen stays clear`, quietOk(q2), quietWhy(q2));
+  await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-quiet-subtitle.png` });
+  await d(() => window.__dakar.phone('notifs'));
+  await page.waitForFunction(() => document.querySelector('#phone.on .ph-log'), null, { timeout: 15000 }).catch(() => {});
+  const notes = await d(() => ({ items: [...document.querySelectorAll('#phone .ph-log li span')].slice(0, 5).map(x => x.textContent), unread: window.__dakar.quietLog().unread, badge: !document.querySelector('#menuBtn .badge')?.hidden }));
+  check(`${label}: the phone's Notifications lists the notices, newest first, and the badge goes`, notes.items[0] === 'Cinq' && notes.items.includes('Un') && notes.unread === 0 && !notes.badge, JSON.stringify(notes));
+  await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-notifications.png` });
+  await d(() => window.__dakar.phoneClose());
   await d(() => { window.__dakar.state.data.wallet += 1200; });
   check(`${label}: a wallet change shows « +1 200 F »`, await page.waitForFunction(() => /\+1\s200\sF/.test(document.querySelector('#wallet .mfx')?.textContent ?? ''), null, { timeout: 5000 }).then(() => true, () => false));
 
-  // 10b. The fighter's after-bout card (hud.boutCard; the debug bout asks for it): first in the toast column, on screen,
-  //      readable, never over the action column, the joystick or « Courir » — in portrait and on a landscape phone too.
+  // 10b. The fighter's after-bout card (hud.boutCard; the debug bout asks for it): one card at a time, at the side (the
+  //      top in portrait), on screen, readable, never over the middle, the action column, the joystick or « Courir » —
+  //      in portrait and on a landscape phone too; a recap that comes meanwhile waits for it.
+  await d(() => window.__dakar.uiMoment('Un souvenir', ['Avant le combat']));
   await d(() => window.__dakar.careerBout('classe', 'player', 2, 'projection', 'Ndiaga', true));
   await page.waitForFunction(() => !!document.querySelector('#toast .mo.bc:not(.out)'), null, { timeout: 10000 }).catch(() => {});
   await settle();
@@ -241,9 +267,16 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
     bcText?.title === 'Victoire' && ['Palmarès', 'Classement', 'Réputation', 'Influence', 'Cachet'].every(k => bcText.rows.includes(k)) && bcText.next >= 1, JSON.stringify(bcText));
   check(`${label}: the after-bout card is on screen, readable (≥ 11.5 px), clear of the action column, the joystick and « Courir »`,
     !!bc && bc.left >= 0 && bc.top >= 0 && bc.right <= viewport.width && bc.bottom <= viewport.height && bcText.font >= 11.5 && near.length === 0, JSON.stringify({ bc, font: bcText?.font, near }));
+  await d(() => window.__dakar.uiMoment('Un autre souvenir', ['Pendant la carte']));
+  await page.waitForTimeout(400);
+  const q3 = await d(() => window.__dakar.quiet());
+  check(`${label}: one card at a time (the recap before it went, the one after waits), clear of the middle`,
+    q3.moments === 1 && !!(await d(() => document.querySelector('#toast .mo.bc:not(.out)'))) && quietOk(q3), quietWhy(q3));
   await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-after-bout-card.png` });
   await page.locator('#toast .mo.bc:not(.out)').last().click();
   check(`${label}: a tap dismisses the after-bout card`, await page.waitForFunction(() => !document.querySelector('#toast .mo.bc:not(.out)'), null, { timeout: 5000 }).then(() => true, () => false));
+  check(`${label}: then the recap that waited shows, alone`, await page.waitForFunction(() => /Un autre souvenir/.test(document.querySelector('#toast .mo:not(.out)')?.textContent ?? '') && window.__dakar.quiet().moments === 1, null, { timeout: 5000 }).then(() => true, () => false));
+  await d(() => document.querySelector('#toast .mo:not(.out)')?.click());
 
   // 11. The profile sheet (text field, swatches) scrolls with a real touch drag when it is taller than the screen.
   if (touch) {
@@ -263,6 +296,60 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
     await page.getByRole('button', { name: 'Fermer', exact: true }).tap();
     check(`${label}: closing the profile sheet gives the controls back`, await playAgain());
   }
+
+  // 12. A quiet screen while walking in the street and at a venue: the HUD, a spoken line and a moment card on, nothing
+  //     over the middle of the screen (the player is there).
+  await d(() => { window.__dakar.teleport('pikine', -6, -30, 0); window.__dakar.setHour(12); });
+  await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine', null, T);
+  await d(() => { window.__dakar.uiToast('🎤 Le griot : Pikine chante ce soir, tout le quartier est là !'); window.__dakar.uiMoment('Le quartier te connaît', ['Tonton Ibou a parlé de toi']); });
+  const walked = await walks();
+  const q4 = await d(() => window.__dakar.quiet());
+  check(`${label}: walking in the street (a subtitle and a card on), the middle stays clear`, walked && quietOk(q4), quietWhy(q4));
+  await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-quiet-street.png` });
+  await d(() => document.querySelector('#toast .mo:not(.out)')?.click());
+  const dibi = await d(() => window.__dakar.venues?.().find(v => v.type === 'dibi') ?? null);
+  if (dibi) {
+    const at = { x: dibi.origin.x + 2 * Math.sin(dibi.yaw), z: dibi.origin.z + 2 * Math.cos(dibi.yaw) };
+    await d(([p, y]) => window.__dakar.place(p.x, p.z, y), [at, dibi.yaw + Math.PI]);
+    await d(() => { window.__dakar.uiToast('Le grilleur : « Dalal ak jàmm ! » · assieds-toi, ça arrive'); window.__dakar.uiMoment('Dibiterie Chez Pathé', ['Ouvert jusqu’à 23 h']); });
+    await page.waitForTimeout(800);
+    const q5 = await d(() => window.__dakar.quiet());
+    check(`${label}: at a venue (the Dibi), a subtitle and a card on, the middle stays clear`, quietOk(q5), quietWhy(q5));
+    await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-quiet-venue.png` });
+    await d(() => document.querySelector('#toast .mo:not(.out)')?.click());
+  } else check(`${label}: at a venue — Pikine's Dibi is there`, false);
+
+  // 13. A quiet screen at the arena (Habib's screenshot: seated in the stands, a phone on its side): the gala in the place
+  //     chip (a tag and the moment), the announcer as one subtitle line, the middle clear — during the entrance and the
+  //     bout. A ticket is given (the window is check-arena-visit's).
+  await d(() => { const x = window.__dakar; x.teleport('pikine'); x.setHour(18); x.state.data.wallet = 5000; });
+  await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine' && !!window.__dakar.arena.info(), null, T);
+  await d(() => { const x = window.__dakar, t = x.arenaOut ? x.arenaOut().day : x.arena.info().day, fri = t + ((4 - (((t % 7) + 7) % 7)) + 7) % 7;
+    x.arenaOutDay?.(fri); x.arena.day(fri); const c = x.state.data.counters; c.arena_ticket_day = fri; c.arena_ticket_tier = 0; });
+  await page.waitForFunction(() => window.__dakar.arena.info()?.street === 'doors', null, T).catch(() => {});
+  const A = await d(() => window.__dakar.arena.info()), C = A.centre;
+  const seat = await d(c => window.__dakar.arena.freeSeat(c.x + 9, c.z - 14), C);
+  if (seat) {
+    const r = Math.hypot(seat.x - C.x, seat.z - C.z), k = (r - 2.3) / r;
+    await d(([c, s, k]) => window.__dakar.place(c.x + (s.x - c.x) * k, c.z + (s.z - c.z) * k, s.yaw + Math.PI), [C, seat, k]);
+    await page.waitForFunction(() => window.__dakar.focus()?.name === 'Place en tribune', null, { timeout: 60000 }).catch(() => {});
+    await d(() => window.__dakar.act());
+    await page.waitForFunction(() => /arena:stand/.test(window.__dakar.seated() ?? ''), null, T).catch(() => {});
+    await page.waitForFunction(() => window.__dakar.arena.info().phase !== 'idle', null, T).catch(() => {});
+    await d(() => window.__dakar.arena.go('entrance'));
+    const spoke = await page.waitForFunction(() => window.__dakar.arena.info().phase === 'entrance' && /annonceur|griot/i.test(document.querySelector('#toast .t.say:not(.out)')?.textContent ?? ''), null, { timeout: 180000 }).then(() => true, () => false);
+    const ent = await d(() => ({ q: window.__dakar.quiet(), chip: document.querySelector('#place.ev #placeEv')?.textContent ?? '', seated: window.__dakar.seated() }));
+    check(`${label}: at the arena, the entrance: the gala in the place chip, the announcer as one subtitle line`, spoke && /LÀMB/.test(ent.chip) && /Entrée des lutteurs/.test(ent.chip) && ent.q.lines === 1, JSON.stringify({ spoke, chip: ent.chip, lines: ent.q.lines }));
+    check(`${label}: at the arena, seated, the entrance: the middle of the screen stays clear`, /arena:stand/.test(ent.seated ?? '') && quietOk(ent.q), quietWhy(ent.q));
+    await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-quiet-arena-entrance.png` });
+    await d(() => window.__dakar.arena.speed(6));
+    await page.waitForFunction(() => { const i = window.__dakar.arena.info(); return i.phase === 'bout' && i.bout && i.bout.phase !== 'intro'; }, null, T).catch(() => {});
+    await d(() => window.__dakar.arena.speed(1));
+    await page.waitForTimeout(1500);
+    const bq = await d(() => ({ q: window.__dakar.quiet(), phase: window.__dakar.arena.info().phase }));
+    check(`${label}: at the arena, seated, the bout: the middle of the screen stays clear`, bq.phase === 'bout' && quietOk(bq.q), JSON.stringify({ phase: bq.phase }) + ' ' + quietWhy(bq.q));
+    await page.screenshot({ timeout: 120000, path: `${out}/check-${label}-quiet-arena-bout.png` });
+  } else check(`${label}: at the arena — a free place on the tiers`, false);
 
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
   await ctx.close();

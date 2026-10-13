@@ -7,6 +7,10 @@ export interface LedgerEntry { at: number; label: string; amount: number }
 export const phoneHooks: {
   /** Messages app (chat module). */
   openMessages?: () => void;
+  /** « Aller à pied » to a neighbourhood (main.ts doWalk: free, any energy, src/world/walk.ts). */
+  walkTo?: (hub: import('../core/types').HubId) => void;
+  /** The neighbourhood the player lives in (« Rentrer chez moi »), null without a home. */
+  homeHub?: () => import('../core/types').HubId | null;
   /** Wallet history (economy module). Local to the device until a server ledger exists. */
   ledger?: () => LedgerEntry[];
   /** Home app: where the player lives, its furniture, arranging it (ownership module). */

@@ -8,6 +8,7 @@ import { dibi as dibiRecipe, dibiCounters, isEvening, REGULAR_MEALS } from '../a
 import { isOpen } from '../activity/places';
 import { VenueKit, Smoke, glowQuad } from './kit';
 import { Cast, type Role } from './cast';
+import { tiredReason } from '../game/rest';
 import { conversation, counter, nightOf, relate, type Venue, type VenueEnv } from './venue';
 import { OWNER_BYE, ownerGreeting, ownerNews, ownerSpecial, ownerWork, type OwnerCtx } from './talk';
 import { phoneHooks } from '../ui/phoneHooks';
@@ -214,7 +215,7 @@ export function buildDibi(env: VenueEnv, site: Site): Venue {
     // « Parler affaires »: the ownership module's sheet (src/economy/estate.ts), when it is installed
     ownership: phoneHooks.openAsset ? id => phoneHooks.openAsset?.(id) : undefined,
     count: c => counter(ctx, c), day: () => ctx.day(), hour: () => ctx.hour(),
-    tired: e => ctx.state.data.needs.energie < e ? 'Repose-toi avant ce service' : null,
+    tired: e => ctx.state.data.needs.energie < e ? tiredReason() : null,
   });
   // the lot is fenced by low walls with two gaps (the wide entrance on the front street, the side entrance): its people walk in
   // through them and round the tables, not through the fence (the city's people: src/social/ambientLife.ts)
