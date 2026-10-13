@@ -1,46 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-12T23:29:00Z",
+  "updatedAt": "2026-10-13T00:31:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261013T0028Z-watch",
-    "owner": "producer_watch_0028",
-    "acquiredAt": "2026-10-13T00:28:00Z",
-    "expiresAt": "2026-10-13T00:58:00Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "5c830d2788ae4b2695120e15fcb86712e154cd9d",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-13-0028-WATCH.md",
-      "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "id": "WATCH-20261013-0028-QA",
-      "role": "qa",
-      "kind": "read_only_evidence_review",
-      "status": "active",
-      "owner": "qa_wave5_0028",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "5c830d2788ae4b2695120e15fcb86712e154cd9d",
-      "sourceCommit": "146c280168504ab1b963ab64e729bb09c05bfe8a",
-      "allowedFiles": [
-        "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md"
-      ],
-      "acceptance": [
-        "Inspect exact current integration CI logs and scope",
-        "Identify missing wave-specific controls and distinct final acceptance",
-        "No source edits, external ref mutation or self-approval; report evidence gaps honestly"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -151,8 +119,8 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-12T23:29:00Z",
-    "lastVerifiedAt": "2026-10-12T18:38:00Z"
+    "lastCompletedRunAt": "2026-10-13T00:31:00Z",
+    "lastVerifiedAt": "2026-10-13T00:29:00Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
@@ -183,7 +151,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "Resume integration146c280 exact CI38320419756 and complete final wave-specific reception evidence; no ready registered implementation and external fixes not to duplicate.",
+  "nextAction": "Obtain exact integrated source wave-specific browser/performance logs and final distinct acceptance; standard CI green independently verified. No ready registered implementation.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -321,15 +289,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-2328-WATCH.md",
-    "completedAt": "2026-10-12T23:29:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-13-0028-WATCH.md",
+    "completedAt": "2026-10-13T00:31:00Z",
     "actualRunCompleted": true,
-    "tasks": [],
+    "tasks": [
+      "WATCH-20261013-0028-QA"
+    ],
     "verifiedCandidates": [],
-    "owner": "producer_watch_2328",
-    "reviewer": null,
+    "owner": "producer_watch_0028",
+    "reviewer": "qa_wave5_0028",
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261012T2328Z-watch"
+    "leaseReleased": "cycle-20261013T0028Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -591,8 +561,8 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-12T23:29:00Z",
-    "status": "integrated_updated_source_ci_pending",
+    "checkedAt": "2026-10-13T00:31:00Z",
+    "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
     "integrationCommit": "146c280168504ab1b963ab64e729bb09c05bfe8a",
@@ -601,13 +571,18 @@
     "ci": {
       "runId": 38320419756,
       "jobId": 115046930164,
-      "status": "in_progress",
-      "conclusion": null,
-      "sha": "146c280168504ab1b963ab64e729bb09c05bfe8a"
+      "status": "completed",
+      "conclusion": "success",
+      "sha": "146c280168504ab1b963ab64e729bb09c05bfe8a",
+      "testsPassed": 1370,
+      "testsSkipped": 2,
+      "testFilesPassed": 107,
+      "artifactId": 11778904309,
+      "digest": "sha256:d55433fed23f34aeaa45d8b1376c53170c7294315978928f469dd3cc962429be"
     },
     "missing": [
-      "Current integrated source146c280 CI pending",
-      "Complete final wave-specific browser/performance and distinct reviewer acceptance at updated common SHA not inspected"
+      "Exact final browser performance/outflow and other lot-specific execution logs absent from inspected standard CI",
+      "Distinct final whole-wave acceptance and publication blocker verification not established"
     ],
     "authority": "read-only external wave; never mutate other-session refs",
     "candidateCi": {
@@ -677,6 +652,13 @@
         "url": "https://30223dad-dakar-rek.habibjallow95.workers.dev",
         "scope": "preview only; bot deployment record, not authenticated production attestation"
       }
+    },
+    "independentEvidenceReview": {
+      "reviewer": "qa_wave5_0028",
+      "status": "needs-decision",
+      "report": "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md",
+      "sourceCommit": "146c280168504ab1b963ab64e729bb09c05bfe8a",
+      "checkedAt": "2026-10-13T00:31:00Z"
     }
   }
 }

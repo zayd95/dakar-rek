@@ -858,23 +858,10 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-12-2328-WATCH.md",
-    "checkedAt": "2026-10-12T23:29:00Z",
-    "result": "External integration now contains latest wave5 candidate and newer walk/character fixes; preview success, new exact CI pending; no ready source task.",
-    "owner": "producer_watch_2328",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "37c4d1e22ea525b972f1aaf8f94d0dc7a328aca1",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-12-2328-WATCH.md"
-    ]
-  },
-  "registryWriter": {
-    "token": "cycle-20261013T0028Z-watch",
+    "entry": "docs/agents/operations/CYCLE-2026-10-13-0028-WATCH.md",
+    "checkedAt": "2026-10-13T00:31:00Z",
+    "result": "Exact common CI success and independent evidence QA; readiness incomplete.",
     "owner": "producer_watch_0028",
-    "acquiredAt": "2026-10-13T00:28:00Z",
-    "expiresAt": "2026-10-13T00:58:00Z",
     "branch": "codex/agent-studio-active",
     "baseCommit": "5c830d2788ae4b2695120e15fcb86712e154cd9d",
     "allowedFiles": [
@@ -888,7 +875,7 @@
     "id": "WATCH-20261013-0028-QA",
     "role": "qa",
     "kind": "read_only_evidence_review",
-    "status": "active",
+    "status": "needs-decision",
     "owner": "qa_wave5_0028",
     "branch": "codex/agent-studio-active",
     "baseCommit": "5c830d2788ae4b2695120e15fcb86712e154cd9d",
@@ -900,6 +887,8 @@
       "Inspect exact current integration CI logs and scope",
       "Identify missing wave-specific controls and distinct final acceptance",
       "No source edits, external ref mutation or self-approval; report evidence gaps honestly"
-    ]
+    ],
+    "report": "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md",
+    "completedAt": "2026-10-13T00:31:00Z"
   }
 }
