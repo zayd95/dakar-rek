@@ -290,7 +290,7 @@ export class ChatUi {
   private build() {
     const b = this.button;
     b.id = 'chatBtn'; b.className = 'card'; b.type = 'button'; b.setAttribute('aria-label', 'Discussion'); b.setAttribute('aria-expanded', 'false');
-    b.innerHTML = '<span aria-hidden="true">💬</span> Chat<i class="chat-badge"></i>';
+    b.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 5.5h15v10.5h-9l-4.5 3.5V16h-1.5z"/></svg><i class="chat-badge"></i>';
     b.addEventListener('pointerdown', e => e.stopPropagation());
     b.addEventListener('click', () => (this.opened ? this.close() : this.open()));
 
@@ -354,8 +354,8 @@ export class ChatUi {
   }
   private updateCounter() { const n = [...this.field.value].length; this.counter.textContent = n > CHAT_MAX_CHARS - 40 ? `${n}/${CHAT_MAX_CHARS}` : ''; }
   private layout() {
-    const presenceBtn = document.getElementById('presenceBtn');
-    const top = presenceBtn ? presenceBtn.getBoundingClientRect().bottom + 8 : 66;
+    const above = document.getElementById('menuBtn') ?? document.getElementById('presenceBtn');      // the chat button sits under the phone button
+    const top = above ? above.getBoundingClientRect().bottom + 8 : 66;
     if (this.button.style.top !== `${Math.round(top)}px`) this.button.style.top = `${Math.round(top)}px`;
     this.panel.style.setProperty('--chat-top', `${Math.round(this.button.getBoundingClientRect().bottom + 8)}px`);
   }

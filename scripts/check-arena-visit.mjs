@@ -103,7 +103,7 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
     && rs.every(r => r.pay === 'pay:Payer' && r.payRight) && /deux bouts/.test(rs[0].note), rows);
   check(`${label}: short of money, the tiers it can't pay are greyed with what is missing, in red`,
     rs.map(r => r.dis).join() === 'false,true,true' && sp(rs[1].note) === 'Il te manque 500 F' && sp(rs[2].note) === 'Il te manque 3 000 F'
-    && rs.slice(1).every(r => r.noteColor === 'rgb(180, 35, 24)'), rs.map(r => [r.dis, r.note, r.noteColor]));
+    && rs.slice(1).every(r => r.noteColor === 'rgb(255, 138, 128)'), rs.map(r => [r.dis, r.note, r.noteColor]));
   check(`${label}: the three rows are readable as they are (≥ 15 px, nothing cut, no sideways scroll, all in view, ≥ 54 px tall)`,
     !rows.wide && rows.scrolled === 0 && rs.every(r => r.font >= 15 && !r.cut && r.seen && r.h >= 54), rows);
   await shot('2-ticket-short', false);
@@ -165,7 +165,7 @@ for (const [label0, viewport, touch, quality] of VIEWS) {
       inView: !!r && r.left >= 0 && r.right <= innerWidth && r.top >= 0, w: r ? Math.round(r.width) : 0, max: Math.min(280, innerWidth * 0.78), ring: window.__dakar.uiMarkers() };
   });
   check(`${label}: the refused place is greyed in the world (grey ring), its bubble gives the reason in full, legible and on screen`,
-    card.ring.grey && /billet est pour la tribune populaire.*cette place est en tribune d’honneur/.test(sp(card.why)) && card.color === 'rgb(180, 35, 24)'
+    card.ring.grey && /billet est pour la tribune populaire.*cette place est en tribune d’honneur/.test(sp(card.why)) && card.color === 'rgb(255, 138, 128)'
     && card.font >= 12 && card.inView && card.w <= card.max + 1, card);
   await shot('3b-refused-seat', false);
 

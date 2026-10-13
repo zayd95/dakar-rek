@@ -1,90 +1,104 @@
-/* Dakar Rek UI (docs/UI.md). Light material, dark ink, no backdrop blur (the 3D view changes every frame: blurring
+/* Dakar Rek UI (docs/UI.md, UI V2). Dark skin: near-black cards, white ink, green accent #22c55e, no backdrop blur (the 3D view changes every frame: blurring
    it costs too much on modest phones). Tokens first; components below use only the tokens. */
+@font-face { font-family:"Inter"; font-weight:400 500; font-style:normal; font-display:swap; src:url(./fonts/inter-400.woff2) format("woff2"); }
+@font-face { font-family:"Inter"; font-weight:600 700; font-style:normal; font-display:swap; src:url(./fonts/inter-600.woff2) format("woff2"); }
+@font-face { font-family:"Inter"; font-weight:800 900; font-style:normal; font-display:swap; src:url(./fonts/inter-800.woff2) format("woff2"); }
 :root {
-  --font: -apple-system, "SF Pro Text", "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
-  /* surfaces */
-  --surface: rgba(255,255,255,.94);        /* HUD chips, bubble, toasts */
-  --surface-2: #f2f2f7;                    /* sheet background (grouped, like the phone's apps) */
-  --row: #fff;                             /* rows and cards inside a sheet */
-  --press: #e5e5ea;
-  /* ink (text on light) — contrast on #fff / on #f2f2f7 */
-  --ink: #111114;                          /* 18.9:1 / 16.9:1 */
-  --ink-2: #48484f;                        /*  9.0:1 /  8.1:1  secondary */
-  --ink-3: #6e6e73;                        /*  5.1:1 /  4.6:1  tertiary, disabled labels */
-  --sep: rgba(60,60,67,.16);
-  /* accents */
-  --sun: #ffc83d;                          /* primary action fill; ink on sun 12.2:1 */
-  --sun-deep: #f0a800;
-  --ocean: #0b6e8a;                        /* phone wallpaper teal; links 5.7:1 on #fff */
-  --gain: #047857;                         /* « +1 200 F » 5.5:1 on #fff */
-  --cost: #111114;                         /* « −500 F » (neutral: spending is not an error) */
-  --warn: #b42318;                         /* reasons « Pas assez d’argent » 6.5:1 on #fff */
-  --need-ok: #22c55e; --need-mid: #f59e0b; --need-low: #ef4444; --track: rgba(60,60,67,.14);
+  /* Inter, bundled (src/ui/fonts/: three Latin-only weights, 64 KB in all): no network font at runtime */
+  --font: "Inter", -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  /* surfaces: near-black, a little transparent (no backdrop blur: the 3D view changes every frame) */
+  --surface: rgba(13,16,21,.88);           /* HUD cards, bubble, toasts */
+  --surface-2: #181d24;                    /* sheet background (grouped, like the phone's apps) */
+  --row: #212832;                          /* rows and cards inside a sheet */
+  --press: #2c3541;
+  /* ink (text on dark): contrast on #0d1015 / on #181d24 / on #212832 */
+  --ink: #f5f7fa;                          /* 17.6:1 / 15.3:1 / 13.2:1 */
+  --ink-2: #b8c0cb;                        /* 10.2:1 /  8.9:1 /  7.7:1  secondary */
+  --ink-3: #8f98a5;                        /*  6.3:1 /  5.5:1 /  4.8:1  tertiary, disabled labels */
+  --sep: rgba(255,255,255,.1);
+  /* accents: green is the brand's (#22c55e), ink on it #052e16 */
+  --sun: #22c55e;                          /* primary action fill */
+  --sun-deep: #15803d;
+  --on-sun: #052e16;                       /* 7.9:1 on #22c55e */
+  --ocean: #38bdf8;
+  --gain: #4ade80;                         /* « +1 200 F » 9:1 on the cards */
+  --cost: #f5f7fa;                         /* « −500 F » (neutral: spending is not an error) */
+  --warn: #ff8a80;                         /* reasons « Pas assez d’argent » 7.6:1 on the cards */
+  --need-ok: #22c55e; --need-mid: #f59e0b; --need-low: #ef4444; --track: rgba(255,255,255,.14);
   /* shape */
-  --r-chip: 14px; --r-sheet: 20px; --tap: 44px;
-  --shadow: 0 1px 2px rgba(0,0,0,.10), 0 3px 12px rgba(0,0,0,.16);
-  --shadow-lg: 0 10px 34px rgba(0,0,0,.26), 0 1px 3px rgba(0,0,0,.12);
+  --r-chip: 18px; --r-sheet: 20px; --tap: 44px;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.38);
+  --shadow-lg: 0 10px 34px rgba(0,0,0,.5), 0 1px 3px rgba(0,0,0,.3);
+  --edge: 0 0 0 1px rgba(255,255,255,.07);
   --sa-t: env(safe-area-inset-top, 0px); --sa-r: env(safe-area-inset-right, 0px);
   --sa-b: env(safe-area-inset-bottom, 0px); --sa-l: env(safe-area-inset-left, 0px);
   /* legacy tokens (dark panels of other modules: chat panel, duel) — keep */
   --card: rgba(15,23,42,.72); --line: rgba(255,255,255,.16); --gold: #fbbf24; --green: #34d399; --red: #f87171;
 }
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html,body { margin:0; height:100%; overflow:hidden; background:#0b1530; font-family:var(--font); color:#fff; touch-action:none; user-select:none; -webkit-user-select:none; }
+html,body { margin:0; height:100%; overflow:hidden; background:#0b1530; -webkit-font-smoothing:antialiased; font-family:var(--font); color:#fff; touch-action:none; user-select:none; -webkit-user-select:none; }
 #c { position:fixed; inset:0; width:100%; height:100%; display:block; }
 #ui { position:fixed; inset:0; pointer-events:none; padding:var(--sa-t) var(--sa-r) var(--sa-b) var(--sa-l); color:var(--ink); }
 #ui > * { pointer-events:auto; }
 .card { background:var(--surface); color:var(--ink); border-radius:var(--r-chip); box-shadow:var(--shadow); }
-kbd { display:inline-block; min-width:18px; padding:2px 5px; border-radius:6px; background:var(--ink); color:#fff; font:700 10.5px/1.2 var(--font); text-align:center; }
+kbd { display:inline-block; min-width:18px; padding:2px 5px; border-radius:6px; background:rgba(255,255,255,.16); color:var(--ink); font:700 10.5px/1.2 var(--font); text-align:center; }
 body.touch kbd { display:none; }
 :focus-visible { outline:3px solid var(--ocean); outline-offset:2px; }
 
-/* ------------------------------------------------------------- wallet and needs (top left) */
-#stats { position:absolute; left:calc(10px + var(--sa-l)); top:calc(10px + var(--sa-t)); padding:7px 9px 8px; min-width:148px; max-width:min(46vw, 260px); cursor:pointer; z-index:3; }
-#wallet { position:relative; display:flex; align-items:baseline; justify-content:space-between; font-weight:800; font-size:17px; letter-spacing:-.2px; color:var(--ink); }
-#money { font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-#wallet::after { content:'▾'; font-size:11px; color:var(--ink-3); margin-left:6px; transition:transform .2s; }
-#stats.open #wallet::after { transform:rotate(180deg); }
+/* ------------------------------------------------------------- wallet and needs (top left): money, then Faim, Énergie, Humeur
+   as slim green bars; a tap on the card opens the two other needs (Social, Hygiène) with their percentages. */
+.card { box-shadow:var(--shadow), var(--edge); }
+.ico { flex:none; width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+#stats { position:absolute; left:calc(10px + var(--sa-l)); top:calc(10px + var(--sa-t)); padding:9px 11px 9px; width:fit-content; min-width:140px; max-width:min(46vw, 260px); cursor:pointer; z-index:3; }
+#wallet { position:relative; display:flex; align-items:center; justify-content:space-between; gap:8px; font-weight:800; font-size:17px; letter-spacing:-.3px; color:var(--ink); }
+#money { font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.15; }
+#topup { flex:none; position:relative; width:24px; height:24px; padding:0; border:0; border-radius:50%; background:var(--sun); color:var(--on-sun); display:grid; place-items:center; cursor:pointer; }
+#topup::before { content:''; position:absolute; inset:-10px; }                       /* the hit area: 44 px */
+#topup svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2.6; stroke-linecap:round; }
+#topup:active { transform:scale(.92); }
 #stats.bump-up { animation:bump .35s ease-out; } #stats.bump-down { animation:bump .35s ease-out; }
-@keyframes bump { 40% { transform:scale(1.05); } }
-.mfx { position:absolute; left:2px; top:-2px; font-size:13px; font-weight:800; white-space:nowrap; pointer-events:none; padding:1px 7px; border-radius:999px; background:#fff; box-shadow:var(--shadow); animation:mfx 1.7s ease-out forwards; }
+@keyframes bump { 40% { transform:scale(1.04); } }
+.mfx { position:absolute; left:2px; top:-2px; font-size:13px; font-weight:800; white-space:nowrap; pointer-events:none; padding:1px 7px; border-radius:999px; background:#0d1015; box-shadow:var(--shadow); animation:mfx 1.7s ease-out forwards; }
 .mfx.gain { color:var(--gain); } .mfx.cost { color:var(--warn); }
 @keyframes mfx { 0% { transform:translateY(8px); opacity:0; } 15% { transform:translateY(22px); opacity:1; } 70% { transform:translateY(26px); opacity:1; } 100% { transform:translateY(34px); opacity:0; } }
-.rings { display:flex; gap:4px; margin-top:5px; }
-.ring { --v:100; --c:var(--need-ok); position:relative; display:grid; place-items:center; width:24px; height:24px; border-radius:50%; font-style:normal;
-  background:conic-gradient(var(--c) calc(var(--v) * 1%), var(--track) 0); }
-.ring::before { content:''; position:absolute; inset:2.5px; border-radius:50%; background:#fff; }
-.ring b { position:relative; font-size:12px; line-height:1; font-weight:400; }
-.ring[data-level="mid"] { --c:var(--need-mid); }
-.ring[data-level="low"] { --c:var(--need-low); animation:lowpulse 1.6s ease-in-out infinite; }
-@keyframes lowpulse { 50% { transform:scale(1.12); } }
-.needs { display:none; margin-top:6px; }
-#stats.open { min-width:200px; }
-#stats.open .rings { display:none; }
-#stats.open .needs { display:block; }
-#mood { font-size:12px; font-weight:700; color:var(--ink-2); margin-bottom:4px; }
-.nrow { display:grid; grid-template-columns:18px 58px 1fr 36px; align-items:center; gap:4px; min-height:22px; font-size:12px; color:var(--ink-2); }
-.nrow b { font-weight:400; font-size:13px; text-align:center; }
-.nrow em { font-style:normal; font-weight:700; font-size:11.5px; text-align:right; color:var(--ink); font-variant-numeric:tabular-nums; }
+.needs { margin-top:7px; display:flex; flex-direction:column; gap:5px; }
+.nrow { display:grid; grid-template-columns:16px 42px 1fr; align-items:center; gap:6px; min-height:19px; font-size:11.5px; font-weight:500; color:var(--ink-2); }
+.nrow > svg { color:var(--ink-2); width:16px; height:16px; }
+.nrow em { display:none; font-style:normal; font-weight:700; font-size:11.5px; text-align:right; color:var(--ink); font-variant-numeric:tabular-nums; }
 .nrow .bar { display:block; height:6px; border-radius:3px; background:var(--track); overflow:hidden; }
-.nrow .bar > i { display:block; height:100%; background:var(--need-ok); transform-origin:left; transition:transform .3s; }
+.nrow .bar > i { display:block; height:100%; border-radius:3px; background:var(--need-ok); transform-origin:left; transition:transform .3s; }
 .nrow[data-level="mid"] .bar > i { background:var(--need-mid); } .nrow[data-level="low"] .bar > i { background:var(--need-low); }
 .nrow[data-level="low"] em { color:var(--warn); }
+.nrow.more { display:none; }
+/* Humeur: its word (« Bien ») at the end of the bar */
+.nrow[data-row="moral"] { grid-template-columns:16px 42px 1fr auto; }
+.nrow[data-row="moral"] em { display:block; font-size:11px; color:var(--ink); }
+#stats.open { min-width:210px; }
+#stats.open .nrow.more { display:grid; grid-template-columns:16px 42px 1fr 34px; }
+#stats.open .nrow em { display:block; }
+#stats.open .nrow[data-row="moral"] { grid-template-columns:16px 42px 1fr 34px; }
 /* generic bar (legacy content) */
 .bar { height:6px; background:var(--track); border-radius:4px; overflow:hidden; }
 .bar i { display:block; height:100%; background:var(--need-ok); transition:width .3s; }
 
-/* ------------------------------------------------------------- place and time, phone button */
-#place { position:absolute; left:50%; top:calc(10px + var(--sa-t)); transform:translateX(-50%); text-align:center; padding:6px 14px 7px; min-width:180px; max-width:44vw; pointer-events:none; z-index:2; }
-#place b { display:block; font-size:13.5px; font-weight:750; letter-spacing:-.1px; line-height:1.2; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-#place small { display:block; font-size:11.5px; font-weight:600; color:var(--ink-2); margin-top:1px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+/* ------------------------------------------------------------- place and time (top centre), phone button, online pill */
+#place { position:absolute; left:50%; top:calc(10px + var(--sa-t)); transform:translateX(-50%); display:grid; grid-template-columns:20px minmax(0, 1fr); column-gap:9px; align-items:center;
+  padding:9px 13px 10px 11px; min-width:150px; max-width:44vw; pointer-events:none; z-index:2; }
+#place .pl-pin { grid-row:1 / span 2; align-self:start; margin-top:2px; width:20px; height:20px; color:var(--ink-2); }
+#place .pl-name { grid-column:2; min-width:0; }
+#place b { display:block; font-size:15px; font-weight:800; letter-spacing:-.2px; line-height:1.2; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#place .pl-city { display:block; font-size:12.5px; font-weight:500; color:var(--ink-2); line-height:1.25; }
+#place .pl-time { grid-column:1 / -1; display:grid; grid-template-columns:20px minmax(0, 1fr); column-gap:9px; align-items:center; margin-top:6px; font-size:13.5px; font-weight:500; color:var(--ink-2); font-variant-numeric:tabular-nums; }
+#place .pl-time svg { width:20px; height:20px; color:var(--ink-2); }
+#place .pl-time .sun { display:none; } #place.day .pl-time .moon { display:none; } #place.day .pl-time .sun { display:block; }
+#place .pl-time > span { white-space:nowrap; }
 /* the evening's tag (« Gala ce soir »): a small red chip after the time; on a phone it takes its own line */
 #place em { display:none; margin-left:6px; padding:1px 7px; border-radius:999px; background:#d9322b; color:#fff; font-style:normal; font-size:10.5px; font-weight:800; letter-spacing:.1px; vertical-align:1px; }
 #place em.on { display:inline-block; }
 /* the event of the moment (src/ui/placeEvent.ts: the gala, a ride, tonight's call) under the place and the time: its
    tag and one short line; a tap opens the details under the chip (docs/UI_V2_PLAN.md §0 C 3). It says more than the
    « Gala ce soir » tag, which it replaces. */
-#placeEv { display:none; align-items:center; gap:7px; margin-top:4px; max-width:100%; text-align:left; }
+#placeEv { display:none; grid-column:1 / -1; align-items:center; gap:7px; margin-top:6px; max-width:100%; text-align:left; }
 #place.ev { pointer-events:auto; cursor:pointer; }
 #place.ev #placeEv { display:flex; }
 #place.ev em.on { display:none; }
@@ -92,27 +106,36 @@ body.touch kbd { display:none; }
 #placeEv .pev-tag[data-tone="ride"] { background:#f4c20d; color:#1b2a7a; }
 #placeEv .pev-tag[data-tone="evening"] { background:#7e22ce; }
 #placeEv .pev-tx { min-width:0; display:flex; flex-direction:column; }
-#placeEv .pev-line { font-size:12px; font-weight:750; line-height:1.25; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-#placeEv .pev-sub { margin-top:1px; font-size:11px; font-weight:600; line-height:1.25; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#placeEv .pev-line { font-size:12px; font-weight:700; line-height:1.25; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#placeEv .pev-sub { margin-top:1px; font-size:11px; font-weight:500; line-height:1.25; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #placeEv .pev-sub:empty { display:none; }
 #place.alert #placeEv .pev-sub { color:var(--warn); font-weight:800; }
-#placeMore { display:none; margin-top:6px; padding-top:6px; border-top:1px solid var(--sep); text-align:left; font-size:12px; font-weight:600; line-height:1.35; color:var(--ink-2); white-space:normal; }
-#placeMore span { display:block; } #placeMore span:first-child { color:var(--ink); font-weight:750; } #placeMore .alert { color:var(--warn); font-weight:800; }
+#placeMore { display:none; grid-column:1 / -1; margin-top:6px; padding-top:6px; border-top:1px solid var(--sep); text-align:left; font-size:12px; font-weight:500; line-height:1.35; color:var(--ink-2); white-space:normal; }
+#placeMore span { display:block; } #placeMore span:first-child { color:var(--ink); font-weight:700; } #placeMore .alert { color:var(--warn); font-weight:800; }
 #place.open #placeMore { display:block; }
 #place.open { max-width:min(460px, calc(100vw - 24px)); z-index:5; }
-#menuBtn { position:absolute; right:calc(10px + var(--sa-r)); top:calc(10px + var(--sa-t)); width:var(--tap); height:var(--tap); border-radius:13px; display:grid; place-items:center; cursor:pointer; color:var(--ink); z-index:2; }
+/* the phone: a square dark button under the online pill (the dock has « Téléphone » too) */
+#menuBtn { position:absolute; right:calc(10px + var(--sa-r)); top:calc(62px + var(--sa-t)); width:48px; height:48px; border-radius:15px; display:grid; place-items:center; cursor:pointer; color:var(--ink); z-index:2; }
+#menuBtn svg { width:24px; height:24px; }
 #menuBtn:active { transform:scale(.94); background:var(--press); }
 /* the quiet log's unseen notices (src/ui/quiet.ts): read in the phone's Notifications */
 #menuBtn .badge { position:absolute; top:-5px; right:-5px; min-width:19px; height:19px; padding:0 5px; border-radius:10px; background:#d9322b; color:#fff;
-  font:800 11px/19px var(--font); text-align:center; box-shadow:0 0 0 2px var(--surface); pointer-events:none; }
+  font:800 11px/19px var(--font); text-align:center; box-shadow:0 0 0 2px #0d1015; pointer-events:none; }
 #menuBtn .badge[hidden] { display:none; }
+/* online pill (src/multiplayer/ui.ts): « 👥 ● 466 en ligne » */
+#ui #presenceBtn { position:absolute; top:calc(10px + var(--sa-t)); right:calc(10px + var(--sa-r)); max-width:calc(100vw - 20px); min-height:var(--tap); padding:0 14px 0 11px; border:0; border-radius:999px; display:flex; align-items:center; gap:7px;
+  color:var(--ink); font:500 12.5px/1 var(--font); white-space:nowrap; cursor:pointer; z-index:2; }
+#presenceBtn .pr-ic { width:17px; height:17px; color:var(--ink-2); }
+#presenceBtn .pr-dot { flex:none; width:8px; height:8px; border-radius:50%; background:var(--ink-3); }
+#presenceBtn[data-state="online"] .pr-dot { background:var(--need-ok); box-shadow:0 0 0 3px rgba(34,197,94,.2); }
+#presenceBtn b { font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; }
 
 /* ------------------------------------------------------------- goal hint (under the wallet) */
 #goal { position:absolute; left:calc(10px + var(--sa-l)); top:calc(84px + var(--sa-t)); max-width:min(320px, 62vw); padding:5px 10px 5px 5px; display:none; align-items:center; gap:7px;
   font-size:12px; font-weight:600; line-height:1.3; color:var(--ink-2); pointer-events:none; border-radius:999px; z-index:1; }
 #goal.on { display:flex; }
 #goal .gi { flex:none; display:grid; place-items:center; width:22px; height:22px; border-radius:50%; background:var(--surface-2); color:var(--ink); font-style:normal; font-size:12px; font-weight:800; transition:transform .25s; }
-#goal.walk .gi { background:var(--sun); font-size:15px; }
+#goal.walk .gi { background:var(--sun); color:var(--on-sun); font-size:15px; }
 #goal .gt { overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 #goal .gd { flex:none; white-space:nowrap; font-style:normal; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; }
 #goal .gd:empty { display:none; }
@@ -124,10 +147,10 @@ body.touch kbd { display:none; }
    messages read to screen readers sit in .sr, hidden. */
 #toast { position:fixed; inset:0; pointer-events:none; z-index:22; }
 #toast .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
-#toast .t { position:absolute; box-sizing:border-box; padding:7px 14px; border-radius:16px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); font-size:13.5px; font-weight:650; line-height:1.35; animation:lnIn .2s ease-out; transition:opacity .2s; }
+#toast .t { position:absolute; box-sizing:border-box; padding:7px 14px; border-radius:16px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow), var(--edge); font-size:13.5px; font-weight:650; line-height:1.35; animation:lnIn .2s ease-out; transition:opacity .2s; }
 /* a spoken line: the subtitle, centred at the bottom above the controls, the speaker's name first */
 #toast .t.say { left:50%; bottom:calc(76px + var(--sa-b)); transform:translateX(-50%); width:max-content; max-width:min(640px, 56vw); text-align:center;
-  background:rgba(17,17,20,.8); color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.25); }
+  background:rgba(13,16,21,.86); color:#fff; box-shadow:var(--shadow), var(--edge); }
 #toast .t.say .who { color:var(--sun); font-weight:800; }
 #toast .t.say .say-ic { font-style:normal; }
 /* a refusal, or the answer to what the player just did: one line by the action button */
@@ -142,16 +165,16 @@ body.sheet-open #toast .t { left:50%; right:auto; top:calc(66px + var(--sa-t)); 
 @keyframes lnAgain { 50% { opacity:.55; } }
 #ui:has(#toast .t.say:not(.out)) #temp { opacity:0; }
 #toast .amt { display:inline-block; padding:0 7px; border-radius:999px; background:var(--surface-2); font-weight:800; font-variant-numeric:tabular-nums; }
-#toast .amt.gain { color:var(--gain); background:#e3f5ec; }
+#toast .amt.gain { color:var(--gain); background:rgba(34,197,94,.16); }
 /* moment cards (hud.moment: a bout's recap, a new word on a gauge; hud.boutCard: the after-bout card): one at a time,
    on the right under the social buttons, clear of the middle (30 vw wide at most) and of the action column; a tap
    anywhere on it dismisses it; taller than its room, it scrolls inside */
 #toast .mo { position:absolute; right:calc(10px + var(--sa-r)); top:calc(162px + var(--sa-t)); pointer-events:auto; display:flex; align-items:flex-start; gap:10px;
   width:min(360px, calc(30vw - 20px)); box-sizing:border-box; max-height:calc(100vh - 162px - 160px - var(--sa-t) - var(--sa-b)); max-height:calc(100dvh - 162px - 160px - var(--sa-t) - var(--sa-b));
-  overflow-y:auto; overscroll-behavior:contain; padding:10px 40px 11px 10px; border-radius:16px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); text-align:left; cursor:pointer;
+  overflow-y:auto; overscroll-behavior:contain; padding:10px 40px 11px 10px; border-radius:16px; background:var(--surface); color:var(--ink); box-shadow:var(--shadow), var(--edge); text-align:left; cursor:pointer;
   animation:moIn .28s ease-out; transition:opacity .2s, transform .2s; }
 #toast .mo.out { opacity:0; transform:translateY(-6px); }
-#toast .mo-ic { flex:none; display:grid; place-items:center; width:36px; height:36px; border-radius:50%; background:var(--sun); font-style:normal; font-size:19px; }
+#toast .mo-ic { flex:none; display:grid; place-items:center; width:36px; height:36px; border-radius:50%; background:rgba(34,197,94,.2); font-style:normal; font-size:19px; }
 #toast .mo-tx { min-width:0; }
 #toast .mo-tx b { display:block; font-size:14px; font-weight:800; line-height:1.25; }
 #toast .mo-tx ul { margin:3px 0 0; padding:0; list-style:none; }
@@ -171,52 +194,64 @@ body.sheet-open #toast .t { left:50%; right:auto; top:calc(66px + var(--sa-t)); 
 #toast .bc-d { font-style:normal; font-size:12.5px; font-weight:800; white-space:nowrap; color:var(--ink-2); font-variant-numeric:tabular-nums; }
 #toast .bc-d:empty { display:none; }
 #toast .bc-d.up { color:var(--gain); } #toast .bc-d.down { color:var(--warn); }
-#toast .bc-next { margin-top:6px; padding:7px 10px; border-radius:10px; background:#fff4d6; }
-#toast .bc-next b { display:block; font-size:11px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; color:#7a5a12; }
+#toast .bc-next { margin-top:6px; padding:7px 10px; border-radius:10px; background:rgba(255,200,61,.14); }
+#toast .bc-next b { display:block; font-size:11px; font-weight:800; letter-spacing:.3px; text-transform:uppercase; color:#ffd978; }
 #toast .bc-next span { display:block; font-size:13px; font-weight:700; line-height:1.35; color:var(--ink); }
 @keyframes moIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 @keyframes tIn { from { opacity:0; transform:translateY(-8px) scale(.98); } }
 
-/* ------------------------------------------------------------- diegetic bubble above the focused target */
+/* ------------------------------------------------------------- the world label of the focused place (one at a time)
+   A dark card: a green-bordered icon tile, the verb, a pin and where, the price in green; a thin leader line down to a
+   dot on the target. #wprompt is placed by main.ts so that its bottom edge (the dot) sits on the target. */
 #ui > #wprompt { position:absolute; left:0; top:0; pointer-events:none; opacity:0; transition:opacity .15s; will-change:transform; z-index:1; }
 #ui > #wprompt.on { opacity:1; pointer-events:auto; cursor:pointer; }
-#wprompt .wp { position:relative; display:flex; align-items:center; gap:6px; margin-top:-9px; padding:4px 8px 4px 4px; border-radius:999px; background:var(--surface); color:var(--ink);
-  font:700 13px/1 var(--font); white-space:nowrap; box-shadow:var(--shadow); transform-origin:50% 100%; }
-#wprompt .wp::after { content:''; position:absolute; left:calc(50% + var(--tail, 0px)); bottom:-5px; width:10px; height:10px; margin-left:-5px; background:var(--surface); transform:rotate(45deg); border-radius:0 0 2px 0; }
+#wprompt .wp { position:relative; display:flex; align-items:center; gap:10px; margin-bottom:34px; padding:7px 14px 7px 7px; border-radius:16px; background:var(--surface); color:var(--ink);
+  font:800 15px/1.2 var(--font); white-space:nowrap; box-shadow:var(--shadow), 0 0 0 1.5px rgba(255,255,255,.55); transform-origin:50% 100%; }
+/* the leader line and its dot */
+#wprompt .wp::after { content:''; position:absolute; left:calc(50% + var(--tail, 0px)); top:100%; width:2px; height:28px; margin-left:-1px; background:rgba(255,255,255,.92); box-shadow:0 0 0 .5px rgba(0,0,0,.35); }
+#wprompt .wp::before { content:''; position:absolute; left:calc(50% + var(--tail, 0px)); top:calc(100% + 24px); z-index:1; width:13px; height:13px; margin-left:-6.5px; border-radius:50%; background:#fff; box-shadow:0 0 0 2px rgba(0,0,0,.35), 0 1px 4px rgba(0,0,0,.5); }
 #wprompt .wp.pop { animation:pop .18s ease-out; }
-@keyframes pop { from { transform:scale(.86); opacity:.4; } }
-#wprompt i { display:grid; place-items:center; width:26px; height:26px; border-radius:50%; background:var(--sun); font-style:normal; font-size:14px; }
-#wprompt em { font-style:normal; font-size:12px; font-weight:800; padding:3px 6px; border-radius:999px; background:var(--surface-2); color:var(--cost); }
-#wprompt em.gain { color:var(--gain); background:#e3f5ec; }
-#wprompt .wp.dis { color:var(--ink-3); } #wprompt .wp.dis i { background:var(--press); filter:grayscale(1); }
-#wprompt kbd { margin-left:1px; }
-/* unavailable: the reason in full under the verb (a card instead of a pill), kept on screen by hud.ts bubbleX: the max
-   width here is the one bubbleX assumes (half of it: min(140px, 39vw)); 12.5 px on the opaque surface, warn 6.6:1 */
-#wprompt .wp.why { flex-wrap:wrap; width:max-content; max-width:min(280px, 78vw); border-radius:14px; padding:5px 11px 8px 5px; white-space:normal; row-gap:3px; }
-#wprompt .wp.why small { flex-basis:100%; padding-left:32px; font:650 12.5px/1.3 var(--font); color:var(--warn); }
+@keyframes pop { from { transform:scale(.9); opacity:.4; } }
+#wprompt .wp-tile { flex:none; display:grid; place-items:center; width:44px; height:44px; border-radius:12px; border:1.5px solid var(--sun); background:rgba(34,197,94,.14); font-style:normal; font-size:21px; }
+#wprompt .wp-tx { min-width:0; display:flex; flex-direction:column; gap:2px; }
+#wprompt .wp-t { font-size:15.5px; font-weight:800; letter-spacing:-.2px; line-height:1.15; overflow:hidden; text-overflow:ellipsis; }
+#wprompt .wp-loc { display:flex; align-items:center; gap:4px; font-size:12px; font-weight:500; color:var(--ink-2); line-height:1.2; overflow:hidden; text-overflow:ellipsis; }
+#wprompt .wp-loc svg { flex:none; width:12px; height:12px; }
+#wprompt .wp-pr { font-style:normal; font-size:15px; font-weight:800; color:var(--sun); font-variant-numeric:tabular-nums; line-height:1.15; }
+#wprompt .wp-pr:empty { display:none; }
+#wprompt kbd { flex:none; margin-left:2px; }
+#wprompt .wp.dis { color:var(--ink-3); } #wprompt .wp.dis .wp-tile { border-color:var(--ink-3); background:var(--press); filter:grayscale(1); }
+#wprompt .wp.dis .wp-pr { color:var(--ink-3); }
+/* unavailable: the reason in full under the verb (the card grows); kept on screen by hud.ts bubbleX; 12.5 px, warn 7:1 */
+#wprompt .wp.why { width:max-content; max-width:min(300px, 80vw); white-space:normal; }
+#wprompt .wp.why .wp-tx { flex:1; }
+#wprompt .wp.why small { display:block; margin-top:2px; font:600 12.5px/1.3 var(--font); color:var(--warn); }
 
 /* ------------------------------------------------------------- action bar: « ⋯ » over the primary verb (bottom right) */
 #ui > #actbar { position:absolute; right:calc(16px + var(--sa-r)); bottom:calc(22px + var(--sa-b)); display:flex; flex-direction:column; align-items:flex-end; gap:10px; pointer-events:none; z-index:3; }
 #actbar > button { pointer-events:auto; }
-#act { display:flex; align-items:center; gap:9px; min-height:60px; min-width:64px; max-width:min(62vw, 300px); padding:7px 16px 7px 7px; border:0; border-radius:999px; background:var(--sun); color:var(--ink);
+#act { display:flex; align-items:center; gap:9px; min-height:60px; min-width:64px; max-width:min(62vw, 300px); padding:7px 16px 7px 7px; border:0; border-radius:999px; background:var(--sun); color:var(--on-sun);
   font:inherit; text-align:left; cursor:pointer; box-shadow:0 2px 0 var(--sun-deep), var(--shadow); transition:opacity .18s, transform .18s; }
 #act:active { transform:translateY(2px); box-shadow:0 0 0 var(--sun-deep), var(--shadow); }
-#act .a-ic { flex:none; display:grid; place-items:center; width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,.75); font-style:normal; font-size:23px; }
+#act .a-ic { flex:none; display:grid; place-items:center; width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,.7); font-style:normal; font-size:23px; }
 #act .a-tx { min-width:0; display:flex; flex-direction:column; }
 #act b { font-size:15.5px; font-weight:800; letter-spacing:-.2px; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-#act small { font-size:11.5px; font-weight:650; color:rgba(17,17,20,.72); line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-#act .a-pr { flex:none; font-style:normal; font-size:12.5px; font-weight:800; padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.8); font-variant-numeric:tabular-nums; }
-#act .a-pr.gain { color:var(--gain); }
+#act small { font-size:11.5px; font-weight:600; color:rgba(5,46,22,.8); line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#act .a-pr { flex:none; font-style:normal; font-size:12.5px; font-weight:800; padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.85); color:var(--on-sun); font-variant-numeric:tabular-nums; }
+#act .a-pr.gain { color:#0b5a2a; }
 #act kbd { flex:none; margin-left:-2px; }
 #act.off { opacity:0; transform:scale(.85); pointer-events:none; }
-#act.dis { background:var(--surface); box-shadow:var(--shadow); }
+#act.dis { background:var(--surface); color:var(--ink); box-shadow:var(--shadow), var(--edge); }
+#act.stop { color:var(--ink); }
+#act.dis .a-pr, #act.stop .a-pr { color:var(--ink); background:var(--row); }
 #act.dis .a-ic { background:var(--surface-2); filter:grayscale(1); opacity:.7; }
 #act.dis b { color:var(--ink-3); } #act.dis small { color:var(--warn); }
-#act.stop { background:var(--surface); box-shadow:var(--shadow); }
-#act.stop .a-ic { background:#fde8e6; }
+#act.dis kbd, #act.stop kbd { background:rgba(255,255,255,.16); color:var(--ink); }
+#act.stop { background:var(--surface); box-shadow:var(--shadow), var(--edge); }
+#act.stop .a-ic { background:rgba(255,138,128,.2); }
 #act.deny { animation:deny .32s ease-in-out; }
 @keyframes deny { 20%, 60% { transform:translateX(-6px); } 40%, 80% { transform:translateX(6px); } }
-#actMore { width:48px; height:48px; border:0; border-radius:50%; background:var(--surface); color:var(--ink); font:800 20px/1 var(--font); box-shadow:var(--shadow); cursor:pointer; transition:opacity .18s, transform .18s; }
+#actMore { width:48px; height:48px; border:0; border-radius:50%; background:var(--surface); color:var(--ink); font:800 20px/1 var(--font); box-shadow:var(--shadow), var(--edge); cursor:pointer; transition:opacity .18s, transform .18s; }
 #actMore span { position:relative; top:-3px; }
 #actMore:active { background:var(--press); transform:scale(.94); }
 #actMore.off { opacity:0; transform:scale(.6); pointer-events:none; }
@@ -225,14 +260,14 @@ body.sheet-open #toast .t { left:50%; right:auto; top:calc(66px + var(--sa-t)); 
 #progress { position:absolute; right:calc(16px + var(--sa-r)); bottom:calc(92px + var(--sa-b)); width:min(260px, calc(100vw - 190px)); min-width:200px; display:none; grid-template-columns:auto 1fr auto; align-items:center; gap:8px;
   padding:6px 12px 9px 6px; border-radius:18px; background:var(--surface); box-shadow:var(--shadow); pointer-events:none; overflow:hidden; z-index:3; }
 #progress.on { display:grid; animation:tIn .2s ease-out; }
-#progress .pg-ic { display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:var(--sun); font-style:normal; font-size:16px; }
+#progress .pg-ic { display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:rgba(34,197,94,.2); font-style:normal; font-size:16px; }
 #progress .pg-tx { min-width:0; display:flex; flex-direction:column; }
 #progress b { font-size:13.5px; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #progress small { font-size:11.5px; font-weight:600; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #progress small:empty { display:none; }
 #progress em { font-style:normal; font-size:12px; font-weight:800; color:var(--ink-2); font-variant-numeric:tabular-nums; }
 #progress .pg-bar { position:absolute; left:0; right:0; bottom:0; height:4px; background:var(--track); }
-#progress .pg-bar i { display:block; height:100%; background:var(--sun-deep); transform:scaleX(0); transform-origin:left; }
+#progress .pg-bar i { display:block; height:100%; background:var(--sun); transform:scaleX(0); transform-origin:left; }
 
 /* ------------------------------------------------------------- joystick, keyboard hint, scene banner, fade */
 #joy { position:absolute; left:calc(26px + var(--sa-l)); bottom:calc(30px + var(--sa-b)); width:124px; height:124px; border-radius:50%; background:rgba(255,255,255,.14); border:2px solid rgba(255,255,255,.55); box-shadow:0 2px 10px rgba(0,0,0,.12); display:none; transition:background .15s; }
@@ -255,9 +290,9 @@ body.inscene #joy, body.inscene #act, body.inscene #goal, body.inscene #hint, bo
 body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 
 /* ------------------------------------------------------------- sheets (src/ui/sheet.ts) */
-#modal { position:fixed; inset:0; z-index:20; display:none; background:rgba(8,12,20,.22); --line:var(--sep); --kb:0px; }
+#modal { position:fixed; inset:0; z-index:20; display:none; background:rgba(4,6,10,.4); --line:var(--sep); --kb:0px; }
 #modal.on { display:block; }
-#modal .sheet { position:absolute; right:calc(24px + var(--sa-r)); bottom:calc(24px + var(--sa-b) + var(--kb)); width:min(400px, calc(100vw - 48px)); max-height:min(640px, calc(100% - 140px - var(--kb)));
+#modal .sheet { position:absolute; box-shadow:var(--shadow-lg), var(--edge); right:calc(24px + var(--sa-r)); bottom:calc(24px + var(--sa-b) + var(--kb)); width:min(400px, calc(100vw - 48px)); max-height:min(640px, calc(100% - 140px - var(--kb)));
   display:flex; flex-direction:column; border-radius:var(--r-sheet); background:var(--surface-2); color:var(--ink); box-shadow:var(--shadow-lg); overflow:hidden; animation:shCard .2s ease-out; transition:transform .2s; }
 #modal .sheet.drag { transition:none; }
 @keyframes shCard { from { opacity:0; transform:translateY(14px) scale(.98); } }
@@ -277,14 +312,14 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   font:inherit; text-align:left; cursor:pointer; }
 #modal .item + .item::before { content:''; position:absolute; top:0; right:0; left:14px; border-top:1px solid var(--sep); }
 #modal .list .item:has(.ic) + .item::before { left:62px; }
-#modal .item:hover { background:#fafafa; } #modal .item:active { background:var(--press); }
+#modal .item:hover { background:#29313c; } #modal .item:active { background:var(--press); }
 #modal .item .ic { flex:none; display:grid; place-items:center; width:36px; height:36px; border-radius:10px; background:var(--surface-2); font-style:normal; font-size:20px; }
 #modal .item .tx { flex:1; min-width:0; font-size:15px; font-weight:650; line-height:1.25; color:var(--ink); }
 #modal .item small { display:block; margin-top:2px; font-size:12.5px; font-weight:500; line-height:1.3; color:var(--ink-2); }
 #modal .item em { flex:none; font-style:normal; font-size:13.5px; font-weight:800; white-space:nowrap; color:var(--ink); font-variant-numeric:tabular-nums; }
 #modal .item em.gain { color:var(--gain); }
 /* « Payer » after a price said first in the label (the ticket window): a sun pill like the action button; grey when it can't be paid */
-#modal .item em.pay { padding:7px 13px; border-radius:999px; background:var(--sun); box-shadow:0 1px 0 var(--sun-deep); }
+#modal .item em.pay { padding:7px 13px; border-radius:999px; background:var(--sun); color:var(--on-sun); box-shadow:0 1px 0 var(--sun-deep); }
 #modal .item.dis em.pay { background:var(--surface-2); box-shadow:none; color:var(--ink-3); }
 #modal .item.dis { cursor:default; }
 #modal .item.dis .tx { color:var(--ink-3); }
@@ -295,8 +330,8 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 /* close « ✕ » (also .item.close for the checks): top right of the sheet, outside the scrolling panel */
 #modal .item.sh-x { position:absolute; top:6px; right:6px; left:auto; z-index:3; width:var(--tap); min-height:0; height:var(--tap); margin:0; padding:0; border:0; border-radius:50%; background:none;
   display:grid; place-items:center; color:var(--ink-2); font:700 14px/1 var(--font); cursor:pointer; }
-#modal .item.sh-x::before { content:''; position:absolute; inset:7px; border:0; border-radius:50%; background:rgba(60,60,67,.12); }
-#modal .item.sh-x:hover::before { background:rgba(60,60,67,.2); }
+#modal .item.sh-x::before { content:''; position:absolute; inset:7px; border:0; border-radius:50%; background:rgba(255,255,255,.1); }
+#modal .item.sh-x:hover::before { background:rgba(255,255,255,.18); }
 /* quick actions (« ⋯ »): icon grid near the thumb */
 #modal[data-kind="quick"] { background:rgba(8,12,20,.1); }
 #modal[data-kind="quick"] .sheet { right:calc(12px + var(--sa-r)); bottom:calc(96px + var(--sa-b)); width:min(352px, calc(100vw - 24px)); max-height:calc(100% - 130px - var(--sa-b) - var(--sa-t));
@@ -306,9 +341,9 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 #modal[data-kind="quick"] .sh-top { margin:0 -10px; padding:10px 52px 6px 14px; }
 #modal[data-kind="quick"] h2 { font-size:14px; color:var(--ink-2); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #modal[data-kind="quick"] .list { display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:8px; background:none; border-radius:0; overflow:visible; }
-#modal .item.tile { flex-direction:column; justify-content:flex-start; gap:5px; min-height:96px; padding:10px 6px 9px; border-radius:14px; text-align:center; box-shadow:0 1px 2px rgba(0,0,0,.06); }
+#modal .item.tile { flex-direction:column; justify-content:flex-start; gap:5px; min-height:96px; padding:10px 6px 9px; border-radius:14px; text-align:center; box-shadow:var(--edge); }
 #modal .item.tile::before { display:none; }
-#modal .item.tile .ic { width:44px; height:44px; border-radius:50%; background:#fff4d6; font-size:22px; }
+#modal .item.tile .ic { width:44px; height:44px; border-radius:50%; background:rgba(34,197,94,.16); font-size:22px; }
 #modal .item.tile .tx { flex:none; width:100%; font-size:12.5px; font-weight:700; line-height:1.2; }
 #modal .item.tile .lb { overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 #modal .item.tile:not(.dis) small { display:none; }
@@ -331,30 +366,27 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 #modal .panel p:not(.sh-sub) { margin:8px 4px 4px; font-size:12.5px; color:var(--ink-2); }
 #modal .seg { display:flex; gap:6px; margin-top:8px; }
 #modal .seg button { flex:1; min-height:var(--tap); padding:10px; border-radius:10px; border:0; background:var(--row); color:var(--ink); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
-#modal .seg button.on { background:var(--sun); font-weight:800; }
+#modal .seg button.on { background:var(--sun); color:var(--on-sun); font-weight:800; }
 #modal .swatches { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
 #modal .swatches button { min-height:36px; border:2px solid transparent; border-radius:10px; padding:6px 10px; font:600 12.5px var(--font); color:var(--ink); background:var(--row); cursor:pointer; }
 #modal .swatches button.on { border-color:var(--ink); }
-#modal .swatches i { display:inline-block; width:14px; height:14px; border-radius:4px; margin-right:6px; vertical-align:-2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
+#modal .swatches i { display:inline-block; width:14px; height:14px; border-radius:4px; margin-right:6px; vertical-align:-2px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25); }
 #modal input { width:100%; min-height:var(--tap); padding:11px 12px; border-radius:10px; border:1px solid var(--sep); background:var(--row); color:var(--ink); font:16px var(--font); user-select:text; -webkit-user-select:text; touch-action:auto; }
 #modal .panel label { display:block; font-size:13px; font-weight:600; color:var(--ink-2); }
 #modal .panel label input { margin-top:6px; }
-#modal #presenceLooks button { width:40px; height:40px; padding:0; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(0,0,0,.12); }
-#modal #presenceLooks button.on { box-shadow:0 0 0 2px #fff, 0 0 0 4px var(--ink); border-color:transparent; }
+#modal #presenceLooks button { width:40px; height:40px; padding:0; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(255,255,255,.2); }
+#modal #presenceLooks button.on { box-shadow:0 0 0 2px #181d24, 0 0 0 4px var(--ink); border-color:transparent; }
 
 /* ------------------------------------------------------------- other modules' HUD elements drawn as .card */
-#ui #presenceBtn { color:var(--ink-2); border:0; font-weight:700; }
-#ui #presenceBtn[data-state="online"] { color:var(--gain); }
-#ui #chatBtn { color:var(--ink); border:0; font-weight:700; }
-#ui #chatBtn:not([data-state="online"]) { color:var(--ink-3); }
+#ui #chatBtn { color:var(--ink); border:0; }
 #ui #delivery { color:var(--ink); border:0; box-shadow:inset 4px 0 0 var(--sun), var(--shadow); }
-#ui #delivery small { color:#8a5300; } #ui #delivery.late small { color:var(--warn); }
+#ui #delivery small { color:#ffcf70; } #ui #delivery.late small { color:var(--warn); }
 #ui #ride { color:var(--ink); border:0; } #ui #ride small { color:var(--ink-2); } #ui #ride .req { color:var(--warn); }
 /* furniture placement bar (src/economy/homeEditor.ts) */
 #ui #placer { color:var(--ink); border:0; }
 #ui #placer button { color:var(--ink); background:var(--surface-2); border-color:var(--sep); }
-#ui #placer [data-a="done"] { background:var(--green); color:#052e16; border-color:transparent; }
-#ui #placer .pl-items button.on, #ui #placer .pl-ctrl .go { background:var(--gold); color:#1f2937; border-color:transparent; }
+#ui #placer [data-a="done"] { background:var(--sun); color:var(--on-sun); border-color:transparent; }
+#ui #placer .pl-items button.on, #ui #placer .pl-ctrl .go { background:var(--sun); color:var(--on-sun); border-color:transparent; }
 #ui #placer .pl-status { color:var(--ink-2); } #ui #placer .pl-status.bad { color:var(--warn); } #ui #placer .pl-status.ok { color:var(--gain); }
 /* ownership confirmations (src/economy/estate.ts) inside a sheet */
 #modal .est-rows { background:var(--sep); }
@@ -363,10 +395,6 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
 
 /* ------------------------------------------------------------- portrait phones */
 @media (max-width:640px) and (orientation:portrait) {
-  #stats { padding:6px 8px 7px; min-width:0; }
-  #wallet { font-size:16px; }
-  #place { left:auto; right:calc(62px + var(--sa-r)); transform:none; text-align:right; min-width:0; max-width:calc(100vw - 234px); padding:6px 10px; }
-  #place b { font-size:12.5px; } #place small { font-size:11px; }
   /* the hub's first name only (« Pikine »): one line, the time and the evening's tag under it */
   #place .pl-more { display:none; }
   #place em.on { display:table; margin:2px 0 0 auto; }
@@ -379,7 +407,6 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
      screen (33 % of the height); taller, it scrolls inside. A tap dismisses it. */
   #toast .mo { left:calc(10px + var(--sa-l)); right:calc(118px + var(--sa-r)); top:calc(128px + var(--sa-t)); width:auto;
     max-height:calc(33vh - 132px - var(--sa-t)); max-height:calc(33dvh - 132px - var(--sa-t)); }
-  #placeEv { justify-content:flex-end; }
   #placeEv .pev-sub { display:none; }                                       /* in the details: the chip is narrow here */
   /* the after-bout card: a smaller icon leaves its rows the room they need */
   #toast .bc .mo-ic { width:30px; height:30px; font-size:16px; }
@@ -395,12 +422,12 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   /* a row whose price is said first in its label, then « Payer » (the ticket window): a little more room for the words */
   #modal .item:has(em.pay) { gap:10px; padding-left:12px; padding-right:10px; }
   #modal .item:has(em.pay) em.pay { padding:7px 11px; }
-  #modal { background:rgba(8,12,20,.28); }
+  #modal { background:rgba(4,6,10,.46); }
   #modal .sheet { left:0; right:0; bottom:var(--kb); width:auto; max-height:56%; border-radius:var(--r-sheet) var(--r-sheet) 0 0; padding-bottom:var(--sa-b); animation:shUp .22s ease-out; }
   #modal .sheet.tall { max-height:calc(100% - var(--sa-t) - 28px); }
   @keyframes shUp { from { transform:translateY(40%); opacity:.6; } }
   #modal .sh-top { padding-top:4px; touch-action:none; }
-  #modal .sh-grab { display:block; width:38px; height:5px; margin:2px auto 8px; border-radius:3px; background:rgba(60,60,67,.3); }
+  #modal .sh-grab { display:block; width:38px; height:5px; margin:2px auto 8px; border-radius:3px; background:rgba(255,255,255,.28); }
   #modal .item.sh-x { top:12px; }
   #modal[data-kind="quick"] .sheet { left:auto; right:calc(10px + var(--sa-r)); bottom:calc(96px + var(--sa-b)); width:min(352px, calc(100vw - 20px)); max-height:calc(100% - 140px - var(--sa-b)); border-radius:var(--r-sheet); padding-bottom:0; animation:shQuick .16s ease-out; }
   #modal[data-kind="quick"] .sh-top { padding-top:10px; }
@@ -408,8 +435,6 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #modal[data-kind="quick"] .item.sh-x { top:6px; }
 }
 @media (max-width:360px) and (orientation:portrait) {
-  .ring { width:22px; height:22px; } .ring b { font-size:11px; } .rings { gap:3px; }
-  #place { max-width:calc(100vw - 214px); }
 }
 /* ------------------------------------------------------------- landscape phones */
 @media (max-height:500px) and (orientation:landscape) {
@@ -445,6 +470,92 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   #modal .sheet { right:calc(10px + var(--sa-r)); bottom:calc(8px + var(--sa-b) + var(--kb)); width:min(400px, 56vw); max-height:min(86%, calc(100% - 16px - var(--kb))); }
   #modal[data-kind="quick"] .sheet { bottom:calc(8px + var(--sa-b)); max-height:calc(100% - 16px - var(--sa-b) - var(--sa-t)); width:min(440px, 56vw); }
 }
+/* ------------------------------------------------------------- the dock (UI V2 step 3): Carte · Personnes · Téléphone · Masquer
+   A dark rounded bar, icon over label. Desktop and landscape: bottom centre between the stick and the action column;
+   portrait: just above the controls row. Hidden in scenes, duels, gestures and the placer; under the sheets (z 4). */
+#dock { position:absolute; left:50%; bottom:calc(22px + var(--sa-b)); transform:translateX(-50%); display:flex; align-items:stretch; gap:2px; padding:6px 8px; border-radius:22px; z-index:4;
+  transition:opacity .2s, transform .2s; }
+#dock button { position:relative; flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; width:68px; min-height:56px; padding:6px 4px 5px; border:0; border-radius:16px;
+  background:none; color:var(--ink); font:500 11.5px/1.1 var(--font); cursor:pointer; }
+#dock button svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+#dock button:active { background:var(--press); }
+@media (pointer:fine) { #dock button:hover { background:rgba(255,255,255,.07); } }
+#dock .dk-dot { position:absolute; top:3px; right:19px; width:10px; height:10px; border-radius:50%; background:var(--sun); box-shadow:0 0 0 2px #0d1015; }
+#dock .dk-dot[hidden] { display:none; }
+#dock .dk-dot { animation:none; }
+/* the stick is held: the dock shrinks and fades (the hit area stays 44 px), and comes back after release */
+body:has(#joy.on) #dock { opacity:.55; transform:translateX(-50%) scale(.86); transform-origin:50% 100%; }
+body.inscene #dock, body.induel #dock, body:has(#gesture.on) #dock, #ui:has(#placer.on) #dock { display:none; }
+/* the eye: the way back from « Masquer » (the dock is hidden then), always on screen */
+#eye { position:absolute; left:50%; bottom:calc(22px + var(--sa-b)); transform:translateX(-50%); display:none; align-items:center; gap:8px; min-height:var(--tap); padding:0 18px 0 14px; border:0; border-radius:999px;
+  color:var(--ink); font:600 13px/1 var(--font); cursor:pointer; z-index:19; }
+#eye svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+#eye:active { background:var(--press); }
+body.ui-min #eye { display:flex; }
+body.ui-min.inscene #eye, body.ui-min.induel #eye { display:none; }
+/* the hidden state (MIN): the quiet screen. Controls, the action, the world label and the refusals stay; a critical need stays as a chip */
+body.ui-min #dock, body.ui-min #place, body.ui-min #menuBtn, body.ui-min #presenceBtn, body.ui-min #chatBtn, body.ui-min #goal, body.ui-min #hint, body.ui-min #temp,
+body.ui-min #toast .mo, body.ui-min #toast .t:not(.say):not(.warn), body.ui-min #ui #delivery, body.ui-min #stats:not(.crit) { visibility:hidden; pointer-events:none; }
+body.ui-min #stats.crit #wallet, body.ui-min #stats.crit .nrow:not([data-level="low"]) { display:none; }
+body.ui-min #stats.crit { min-width:0; }
+#stamina { bottom:calc(var(--sa-b) + 96px); }                       /* above the dock (desktop, landscape) */
+body.touch #stamina { bottom:calc(var(--sa-b) + 116px); }
+
+/* ------------------------------------------------------------- portrait phones: the top row is three cards (money and needs, the place, the online pill and the phone) */
+@media (max-width:640px) and (orientation:portrait) {
+  #stats { width:140px; min-width:0; padding:8px 10px 9px; }
+  #wallet { font-size:16px; }
+  #place { left:calc(156px + var(--sa-l)); right:calc(130px + var(--sa-r)); transform:none; min-width:0; max-width:none; padding:8px 10px 9px 9px; grid-template-columns:18px minmax(0, 1fr); column-gap:7px; }
+  #place .pl-pin, #place .pl-time svg { width:18px; height:18px; }
+  #place .pl-time { grid-template-columns:18px minmax(0, 1fr); column-gap:7px; font-size:13px; }
+  #place b { font-size:14.5px; } #place .pl-city { font-size:12px; }
+  /* the hub's first name only (« Pikine »): one line */
+  #place .pl-more { display:none; }
+  #place em.on { display:table; margin:2px 0 0; }
+  #ui #presenceBtn { padding:0 10px 0 8px; font-size:11.5px; gap:5px; } #presenceBtn .pr-ic { width:15px; height:15px; } #presenceBtn .pr-dot { width:7px; height:7px; }
+  #goal { top:calc(128px + var(--sa-t)); }
+  #dock { bottom:calc(166px + var(--sa-b)); }
+  #eye { bottom:calc(166px + var(--sa-b)); }
+  #toast .t.say { bottom:calc(236px + var(--sa-b)); }
+  #toast .t.now { bottom:calc(232px + var(--sa-b)); }
+  #toast .mo { top:calc(164px + var(--sa-t)); right:calc(118px + var(--sa-r)); max-height:calc(33vh - 170px - var(--sa-t)); max-height:calc(33dvh - 170px - var(--sa-t)); }
+  #wprompt .wp { font-size:14.5px; }
+}
+@media (max-width:360px) and (orientation:portrait) {
+  #stats { width:126px; padding:7px 8px 8px; }
+  #wallet { font-size:15px; } #topup { width:22px; height:22px; }
+  .nrow { gap:5px; font-size:11px; } .nrow, .nrow[data-row="moral"] { grid-template-columns:15px 40px 1fr; } .nrow[data-row="moral"] { grid-template-columns:15px 40px 1fr auto; }
+  #place { left:calc(142px + var(--sa-l)); right:calc(78px + var(--sa-r)); }
+  #presenceBtn .pr-lbl { display:none; }
+  #dock button { width:62px; }
+}
+@media (max-width:420px) and (orientation:portrait) { #dock button { width:64px; } }
+/* ------------------------------------------------------------- landscape phones */
+@media (max-height:500px) and (orientation:landscape) {
+  #stats { padding:7px 10px 8px; }
+  .needs { margin-top:5px; gap:3px; }
+  #place { padding:7px 12px 8px 10px; }
+  #place .pl-time { margin-top:3px; }
+  #dock { bottom:calc(8px + var(--sa-b)); padding:5px 7px; }
+  #dock button { width:64px; min-height:52px; }
+  #eye { bottom:calc(8px + var(--sa-b)); }
+  #toast .t.say { bottom:calc(76px + var(--sa-b)); }
+  #goal { top:calc(124px + var(--sa-t)); max-width:calc(30vw - 20px - var(--sa-l)); }
+  #toast .mo { top:calc(172px + var(--sa-t)); max-height:calc(100vh - 172px - 164px - var(--sa-t) - var(--sa-b)); max-height:calc(100dvh - 172px - 164px - var(--sa-t) - var(--sa-b)); }
+  #stamina, body.touch #stamina { bottom:calc(var(--sa-b) + 74px); }
+  #temp { display:none; }
+}
+/* a short and narrow screen (667 × 375): icons only, so the dock clears « Courir » and the stick */
+@media (max-height:500px) and (max-width:760px) and (orientation:landscape) {
+  #dock button { width:46px; min-height:46px; } #dock button span { display:none; }
+}
+/* the desktop: the dock is the one bar at the bottom; the build tag moves up with the top-right cluster's text */
+@media (min-width:641px) and (min-height:501px) {
+  #goal { top:calc(128px + var(--sa-t)); }
+  #toast .mo { top:calc(176px + var(--sa-t)); }
+  #toast .t.say { bottom:calc(98px + var(--sa-b)); }
+}
+
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
 }

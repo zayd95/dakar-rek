@@ -88,6 +88,36 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   const run = await rect('#runBtn');
   check(`${label}: action button clear of the « Courir » button`, !run?.width || !overlap(act, run), JSON.stringify(run));
 
+  // 2b. The dock (UI V2): four entries, icon over label, on screen, 44 px targets, clear of the stick, « Courir », the action
+  //     column and the top cards; « Masquer » hides the HUD and the eye brings it back (H too), without touching the mode.
+  const dock = await rect('#dock');
+  const entries = await d(() => [...document.querySelectorAll('#dock button')].map(b => { const r = b.getBoundingClientRect(); return { k: b.dataset.dock, text: b.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height), icon: !!b.querySelector('svg') }; }));
+  check(`${label}: the dock has four entries — Carte, Personnes, Téléphone, Masquer — icon over label`, entries.map(e => e.k).join() === 'carte,people,phone,hide' && entries.every(e => e.icon) && entries.map(e => e.text).join() === 'Carte,Personnes,Téléphone,Masquer', JSON.stringify(entries));
+  check(`${label}: dock entries are 44 px targets, the dock is on screen at the bottom centre`, entries.every(e => e.w >= 44 && e.h >= 44) && dock.left >= 0 && dock.right <= viewport.width && dock.bottom <= viewport.height && Math.abs((dock.left + dock.right) / 2 - viewport.width / 2) < 2, JSON.stringify(dock));
+  const others = {}; for (const sel of ['#act', '#actMore', '#joy', '#runBtn', '#stats', '#place', '#presenceBtn', '#menuBtn', '#chatBtn', '#goal']) others[sel] = await rect(sel);
+  const dockClash = Object.entries(others).filter(([, r]) => r?.width && overlap(dock, r)).map(([k]) => k);
+  check(`${label}: the dock overlaps nothing — stick, « Courir », action, cards`, dockClash.length === 0, dockClash.join(',') || JSON.stringify(dock));
+  const topClash = [['#stats', '#presenceBtn'], ['#place', '#presenceBtn'], ['#stats', '#place'], ['#presenceBtn', '#menuBtn'], ['#menuBtn', '#chatBtn']].filter(([x, y]) => others[x]?.width && others[y]?.width && overlap(others[x], others[y])).map(p => p.join('/'));
+  check(`${label}: the top cards (money and needs, place, online pill, phone) do not overlap`, topClash.length === 0, topClash.join(', '));
+  const modeBefore = await mode();
+  await d(() => document.querySelector('#dock [data-dock="hide"]').click());
+  const hidden = await d(() => { const vis = id => { const e = document.querySelector(id); if (!e) return false; const cs = getComputedStyle(e); return cs.visibility !== 'hidden' && cs.display !== 'none'; }; const r = document.getElementById('eye').getBoundingClientRect();
+    return { min: document.body.classList.contains('ui-min'), dock: vis('#dock'), place: vis('#place'), stats: vis('#stats'), eye: vis('#eye'), ew: r.width, eh: r.height, el: r.left, er: r.right, eb: r.bottom, act: vis('#act') }; });
+  check(`${label}: « Masquer » hides the dock and the cards and shows the eye (44 px, on screen); mode untouched`, hidden.min && !hidden.dock && !hidden.place && !hidden.stats && hidden.eye && hidden.ew >= 44 && hidden.eh >= 44 && hidden.el >= 0 && hidden.er <= viewport.width && hidden.eb <= viewport.height && (await mode()) === modeBefore, JSON.stringify(hidden));
+  check(`${label}: hidden, the action button and the world label stay`, (await d(() => document.getElementById('act').className)) !== 'off' && (await d(() => document.getElementById('wprompt').classList.contains('on'))) !== undefined && hidden.act !== undefined);
+  await d(() => document.getElementById('eye').click());
+  const shown = await d(() => ({ min: document.body.classList.contains('ui-min'), dock: getComputedStyle(document.getElementById('dock')).visibility, eye: getComputedStyle(document.getElementById('eye')).display }));
+  check(`${label}: the eye brings the interface back`, !shown.min && shown.dock === 'visible' && shown.eye === 'none', JSON.stringify(shown));
+  if (!touch) {
+    await page.keyboard.press('KeyH'); const h1 = await d(() => document.body.classList.contains('ui-min'));
+    await page.keyboard.press('Escape'); const h2 = await d(() => document.body.classList.contains('ui-min'));
+    check(`${label}: H hides the interface, Escape brings it back first (the phone stays shut)`, h1 && !h2 && !(await d(() => !!document.querySelector('#phone.on'))), JSON.stringify({ h1, h2 }));
+  }
+  await d(() => { document.querySelector('#dock [data-dock="carte"]').click(); });
+  check(`${label}: dock « Carte » opens the phone's Carte screen`, await page.waitForFunction(() => document.querySelector('#phone.on') && document.querySelector('#phone').dataset.screen === 'carte', null, T).then(() => true).catch(() => false));
+  await d(() => window.__dakar.phone('home')); await d(() => document.querySelector('#phone [data-nav="close"]')?.click());
+  await page.waitForFunction(() => !document.querySelector('#phone.on') && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
+
   // 3. Every way of closing a sheet gives the controls back.
   const openSheet = async () => { await d(() => window.__dakar.act()); await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {}); await settle(); return (await isOpen()) && (await mode()) === 'menu'; };
   check(`${label}: the place sheet opens in menu mode`, await openSheet());

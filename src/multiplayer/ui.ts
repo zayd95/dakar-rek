@@ -12,18 +12,15 @@ export class PresenceUi {
     this.button.addEventListener('pointerdown', e => e.stopPropagation());
     this.button.addEventListener('click', () => this.open());
     document.getElementById('ui')!.appendChild(this.button); this.update();
-    const place = document.getElementById('place');
-    if (place) {
-      const position = () => { this.button.style.top = `${Math.max(66, place.getBoundingClientRect().bottom + 8)}px`; };
-      if (typeof ResizeObserver !== 'undefined') new ResizeObserver(position).observe(place);
-      addEventListener('resize', position); position();
-    }
   }
   update() {
     const p = this.presence;
-    const label = p.status === 'online' ? `En ligne · ${p.count} ${p.count > 1 ? 'joueurs' : 'joueur'}`
-      : p.status === 'solo' ? 'Mode solo' : p.status === 'offline' ? 'Hors connexion' : p.status === 'reconnecting' ? 'Reconnexion…' : 'Connexion…';
-    this.button.textContent = label; this.button.dataset.state = p.status;
+    const text = p.status === 'solo' ? 'Mode solo' : p.status === 'offline' ? 'Hors connexion' : p.status === 'reconnecting' ? 'Reconnexion…' : 'Connexion…';
+    // « 👥 ● 466 en ligne »: the people icon, a green dot, the count and its word (the word goes on a very narrow phone)
+    this.button.innerHTML = '<svg class="pr-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.3"/><path d="M3 20c0-3.4 2.7-6 6-6s6 2.6 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.2c2.6.3 4.5 2.4 4.5 5.3"/></svg><i class="pr-dot"></i>'
+      + (p.status === 'online' ? `<span><b>${p.count}</b><span class="pr-lbl"> en ligne</span></span>` : `<span>${text}</span>`);
+    this.button.setAttribute('aria-label', p.status === 'online' ? `En ligne · ${p.count} ${p.count > 1 ? 'joueurs' : 'joueur'}. Multijoueur et profil` : `${text}. Multijoueur et profil`);
+    this.button.dataset.state = p.status;
     this.button.title = p.room ? `Groupe ${p.room} · Profil et invitation` : 'Profil et connexion';
   }
   private open() {

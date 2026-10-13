@@ -18,11 +18,29 @@ export type { MenuItem } from './sheet';
  * (docs/UI_V2_PLAN.md §0 C). Every setter called per frame only touches the DOM when its content changed.
  */
 
-const NEEDS: { k: keyof Needs; label: string; icon: string }[] = [
-  { k: 'faim', label: 'Faim', icon: '🍽️' }, { k: 'energie', label: 'Énergie', icon: '⚡' }, { k: 'moral', label: 'Moral', icon: '🙂' },
-  { k: 'social', label: 'Social', icon: '💬' }, { k: 'hygiene', label: 'Hygiène', icon: '🚿' },
+/** Line icons (24 × 24, stroke), the dock, the cards and the world label share them. */
+const LINE = (d: string, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+export const ICONS = {
+  map: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/>',
+  people: '<circle cx="9" cy="8" r="3.3"/><path d="M3 20c0-3.4 2.7-6 6-6s6 2.6 6 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.2c2.6.3 4.5 2.4 4.5 5.3"/>',
+  phone: '<rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><path d="M10.5 5.2h3"/><circle cx="12" cy="18.2" r=".6"/>',
+  eyeOff: '<path d="M3.5 3.5l17 17M10.6 5.1A9.7 9.7 0 0 1 12 5c5.2 0 8.7 4.3 9.7 7-.4 1.1-1.2 2.4-2.3 3.5M6.5 6.7C4.4 8.2 3 10.3 2.3 12c1 2.7 4.5 7 9.7 7 1.5 0 2.8-.4 4-1M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  eye: '<path d="M2.3 12S5.8 5 12 5s9.7 7 9.7 7-3.5 7-9.7 7S2.3 12 2.3 12z"/><circle cx="12" cy="12" r="3"/>',
+  pin: '<path d="M12 21.5s-6.8-5.8-6.8-11.3a6.8 6.8 0 0 1 13.6 0c0 5.5-6.8 11.3-6.8 11.3z"/><circle cx="12" cy="10" r="2.5"/>',
+  moon: '<path d="M20.5 14.2A8.5 8.5 0 1 1 9.8 3.5a6.8 6.8 0 0 0 10.7 10.7z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>',
+  food: '<path d="M6.5 3v6.5a2.5 2.5 0 0 0 5 0V3M9 3v18M17.5 21V3c-2.4 1.3-3.7 4-3.7 7.3V14h3.7"/>',
+  bolt: '<path d="M13.2 2.5 4.8 13.4h6.2l-.9 8.1 8.5-11.2h-6.1z"/>',
+  smile: '<circle cx="12" cy="12" r="9"/><path d="M8.3 14.3a4.5 4.5 0 0 0 7.4 0"/><path d="M9 9.6v.2M15 9.6v.2"/>',
+  chat: '<path d="M4.5 5.5h15v10.5h-9l-4.5 3.5V16h-1.5z"/>',
+  drop: '<path d="M12 3s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+};
+const NEEDS: { k: keyof Needs; label: string; icon: string; more?: boolean }[] = [
+  { k: 'faim', label: 'Faim', icon: ICONS.food }, { k: 'energie', label: 'Énergie', icon: ICONS.bolt }, { k: 'moral', label: 'Humeur', icon: ICONS.smile },
+  { k: 'social', label: 'Social', icon: ICONS.chat, more: true }, { k: 'hygiene', label: 'Hygiène', icon: ICONS.drop, more: true },
 ];
-const MOOD_FACE: Record<string, string> = { 'au top': '😄', bien: '🙂', bof: '😐', mal: '😟' };
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const ARROWS = '↑↗→↘↓↙←↖';
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 /** Full amount (menus, phone): « 1 250 000 000 F », exact at any size; the wallet chip shows the compact form (fcfaShort). */
@@ -53,6 +71,8 @@ export interface PromptOpts {
   disabled?: string | null;
   /** The running activity's « Arrêter » (white button, not the sun-coloured primary). */
   stop?: boolean;
+  /** The world label's location line (« Almadies, Dakar »). */
+  where?: string;
 }
 /** What the activity progress pill shows besides the step label. */
 export interface ProgressMeta { title?: string; icon?: string; step?: number; steps?: number }
@@ -60,11 +80,12 @@ export type ToastKind = 'info' | 'warn';
 
 export class Hud {
   private el: Record<string, HTMLElement> = {};
-  private rings = new Map<keyof Needs, HTMLElement>();
   private rows = new Map<keyof Needs, HTMLElement>();
   private needShown: Partial<Record<keyof Needs, number>> = {};
   private moodShown = '';
   private placeKey = '';
+  /** The hub's first name (« Almadies »): the world label's location line. */
+  hubHead = '';
   private promptKey = '';
   private wpKey = '';
   private progKey = '';
@@ -74,6 +95,10 @@ export class Hud {
   private sheet: Sheet;
   onAction: () => void = () => {};
   onMenu: () => void = () => {};
+  /** Dock « Carte » (the phone's Carte screen), « Personnes » (the chat panel, or the profile), and the wallet's « + ». */
+  onCarte: () => void = () => {};
+  onPeople: () => void = () => {};
+  onWallet: () => void = () => {};
   /** « ⋯ » next to the action button: the other actions of the focused target. */
   onMore: () => void = () => {};
   /** « Arrêter » on the scene banner (a làmb scene the player may leave). */
@@ -82,14 +107,12 @@ export class Hud {
   constructor(root: HTMLElement, private input: Input) {
     root.innerHTML = `
       <div id="stats" class="card" role="button" tabindex="0" aria-expanded="false" aria-label="Portefeuille et besoins">
-        <div id="wallet"><span id="money">0 F</span></div>
-        <div class="rings">${NEEDS.map(n => `<i class="ring" data-need="${n.k}" title="${n.label}"><b aria-hidden="true">${n.icon}</b></i>`).join('')}</div>
+        <div id="wallet"><span id="money">0 F</span><button id="topup" type="button" aria-label="Ouvrir le portefeuille">${LINE(ICONS.plus, '')}</button></div>
         <div class="needs">
-          <div id="mood"></div>
-          ${NEEDS.map(n => `<div class="nrow" data-row="${n.k}"><b aria-hidden="true">${n.icon}</b><span>${n.label}</span><i class="bar"><i></i></i><em></em></div>`).join('')}
+          ${NEEDS.map(n => `<div class="nrow${n.more ? ' more' : ''}" data-row="${n.k}">${LINE(n.icon)}<span>${n.label}</span><i class="bar"><i></i></i><em></em></div>`).join('')}
         </div>
       </div>
-      <div id="place" class="card"><b id="hubName"></b><small><span id="clock"></span><em id="placeTag"></em></small><span id="placeEv" aria-live="polite"><i class="pev-tag"></i><span class="pev-tx"><span class="pev-line"></span><small class="pev-sub"></small></span></span><div id="placeMore"></div></div>
+      <div id="place" class="card">${LINE(ICONS.pin, 'ico pl-pin')}<span class="pl-name"><b id="hubName"></b><span class="pl-city">Dakar</span></span><span class="pl-time">${LINE(ICONS.moon, 'ico moon')}${LINE(ICONS.sun, 'ico sun')}<span><span id="clock"></span><em id="placeTag"></em></span></span><span id="placeEv" aria-live="polite"><i class="pev-tag"></i><span class="pev-tx"><span class="pev-line"></span><small class="pev-sub"></small></span></span><div id="placeMore"></div></div>
       <div id="menuBtn" class="card" role="button" tabindex="0" aria-label="Téléphone">${PHONE_SVG}<b class="badge" hidden></b></div>
       <div id="goal" class="card"><i class="gi" aria-hidden="true">➜</i><span class="gt"></span><em class="gd"></em></div>
       <div id="sceneTag" class="card"><span class="st"><b></b><small></small></span><button type="button" class="st-stop">✋ Arrêter</button></div>
@@ -101,15 +124,21 @@ export class Hud {
         <button id="actMore" class="off" type="button" aria-label="Autres actions"><span aria-hidden="true">⋯</span></button>
         <button id="act" class="off" type="button">Action</button>
       </div>
+      <div id="dock" class="card" role="toolbar" aria-label="Menu">
+        <button type="button" data-dock="carte" aria-label="Carte">${LINE(ICONS.map, '')}<span>Carte</span></button>
+        <button type="button" data-dock="people" aria-label="Personnes">${LINE(ICONS.people, '')}<span>Personnes</span><i class="dk-dot" hidden></i></button>
+        <button type="button" data-dock="phone" aria-label="Téléphone">${LINE(ICONS.phone, '')}<span>Téléphone</span></button>
+        <button type="button" data-dock="hide" aria-label="Masquer l’interface">${LINE(ICONS.eyeOff, '')}<span>Masquer</span></button>
+      </div>
+      <button id="eye" class="card" type="button" aria-label="Afficher l’interface">${LINE(ICONS.eye, '')}<span>Afficher</span></button>
       <div id="temp">Dakar Rek · Alpha</div>
       <div id="toast"><div class="sr" role="status" aria-live="polite"></div></div>
       <div id="fade"></div>
       <div id="modal"></div>`;
-    for (const id of ['stats', 'money', 'wallet', 'mood', 'place', 'hubName', 'clock', 'placeTag', 'placeEv', 'placeMore', 'toast', 'progress', 'progTitle', 'progLabel', 'progPct', 'progBar', 'joy', 'act', 'actMore', 'wprompt', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag'])
+    for (const id of ['stats', 'money', 'wallet', 'mood', 'place', 'hubName', 'clock', 'placeTag', 'placeEv', 'placeMore', 'toast', 'progress', 'progTitle', 'progLabel', 'progPct', 'progBar', 'joy', 'act', 'actMore', 'wprompt', 'fade', 'modal', 'menuBtn', 'goal', 'sceneTag', 'dock', 'eye', 'topup'])
       this.el[id] = root.querySelector('#' + id)!;
     this.el.sr = this.el.toast.querySelector('.sr')!;
     this.el.badge = this.el.menuBtn.querySelector('.badge')!;
-    root.querySelectorAll<HTMLElement>('.ring').forEach(r => this.rings.set(r.dataset.need as keyof Needs, r));
     root.querySelectorAll<HTMLElement>('.nrow').forEach(r => this.rows.set(r.dataset.row as keyof Needs, r));
     this.sheet = new Sheet(this.el.modal, { deny: r => this.toast(r, 'warn'), opened: () => this.resetTouch(), picked: () => this.markAct() });
     // Tapped or clicked HUD buttons give the focus back: a focused button would also fire on Space/Enter, the game's action keys.
@@ -117,6 +146,21 @@ export class Hud {
     tap(this.el.act, () => this.onAction());
     tap(this.el.actMore, () => this.onMore());
     tap(this.el.menuBtn, () => this.onMenu());
+    tap(this.el.topup, () => { this.onWallet(); });
+    this.el.topup.addEventListener('click', e => e.stopPropagation());
+    this.el.dock.addEventListener('click', e => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('[data-dock]'); if (!b) return;
+      b.blur();
+      const k = b.dataset.dock;
+      if (k === 'carte') this.onCarte(); else if (k === 'people') this.onPeople(); else if (k === 'phone') this.onMenu(); else this.setMinimal(true);
+    });
+    tap(this.el.eye, () => this.setMinimal(false));
+    // H hides or shows the interface; Escape first brings it back (docs/UI_V2_PLAN.md §3)
+    addEventListener('keydown', e => {
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, [contenteditable]') || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.code === 'KeyH' && !e.repeat && this.input.enabled && !document.body.classList.contains('induel')) { e.preventDefault(); this.setMinimal(!this.minimal); }
+      else if (e.code === 'Escape' && this.minimal && !this.sheet.isOpen && !document.querySelector('#phone.on')) { e.preventDefault(); e.stopPropagation(); this.setMinimal(false); }
+    }, true);
     tap(this.el.wprompt, () => this.onAction());                                      // tap the bubble in the world = act
     this.el.sceneTag.querySelector('.st-stop')!.addEventListener('click', () => this.onSceneStop());
     this.el.stats.addEventListener('click', () => this.toggleNeeds());
@@ -142,7 +186,7 @@ export class Hud {
       if (!this.input.enabled) return;
       if (e.pointerType !== 'touch' && !document.body.classList.contains('touch')) return;
       const t = e.target as HTMLElement;
-      if (t.closest('#act,#actMore,#actbar,#menuBtn,#modal,#stats,#wprompt,#sceneTag,#place.ev')) return;
+      if (t.closest('#act,#actMore,#actbar,#menuBtn,#modal,#stats,#wprompt,#sceneTag,#place.ev,#dock,#eye')) return;
       if (e.clientX < innerWidth * 0.45 && joyId < 0) {
         // Floating stick: a finger on the base drives it from its centre; anywhere else in the left zone moves the base under the finger.
         joyId = e.pointerId; joy.style.transform = '';
@@ -178,25 +222,46 @@ export class Hud {
   /** Called a few times per second: animates wallet changes and only repaints the needs that moved. */
   setStats(wallet: number, needs: Needs, mood: string) {
     this.showWallet(wallet);
-    if (mood !== this.moodShown) {
-      this.moodShown = mood;
-      this.el.mood.textContent = `${MOOD_FACE[mood] ?? '🙂'} Humeur : ${mood}`;
-      (this.rings.get('moral')!.firstElementChild as HTMLElement).textContent = MOOD_FACE[mood] ?? '🙂';
-    }
+    let crit = false;
     for (const { k, label } of NEEDS) {
       const v = Math.round(Math.max(0, Math.min(100, needs[k])));
-      if (this.needShown[k] === v) continue;
-      this.needShown[k] = v;
-      const level = v < 25 ? 'low' : v < 50 ? 'mid' : 'ok';
-      const ring = this.rings.get(k)!, row = this.rows.get(k)!;
-      ring.style.setProperty('--v', String(v)); ring.dataset.level = level; ring.setAttribute('aria-label', `${label} ${v} %`);
-      row.dataset.level = level; (row.querySelector('.bar > i') as HTMLElement).style.transform = `scaleX(${v / 100})`;
-      (row.querySelector('em') as HTMLElement).textContent = `${v} %`;
+      if (v < 25) crit = true;
+      const row = this.rows.get(k)!;
+      if (this.needShown[k] !== v || (k === 'moral' && mood !== this.moodShown)) {
+        this.needShown[k] = v;
+        const level = v < 25 ? 'low' : v < 50 ? 'mid' : 'ok';
+        row.dataset.level = level; row.setAttribute('aria-label', `${label} ${v} %`);
+        (row.querySelector('.bar > i') as HTMLElement).style.transform = `scaleX(${v / 100})`;
+        (row.querySelector('em') as HTMLElement).textContent = k === 'moral' && !this.el.stats.classList.contains('open') ? cap(mood) : `${v} %`;
+      }
     }
+    if (mood !== this.moodShown) { this.moodShown = mood; this.paintMood(); }
+    this.el.stats.classList.toggle('crit', crit);
+    this.paintPeopleDot();
+  }
+  private paintMood() {
+    const em = this.rows.get('moral')!.querySelector('em') as HTMLElement;
+    em.textContent = this.el.stats.classList.contains('open') ? `${this.needShown.moral ?? 0} %` : cap(this.moodShown);
+  }
+  /** The green dot on « Personnes »: unread chat messages (src/multiplayer/chat.ts keeps the count in its button). */
+  private peopleDot = false;
+  private paintPeopleDot() {
+    const n = document.querySelector('#chatBtn .chat-badge')?.textContent ?? '';
+    const on = n !== '';
+    if (on === this.peopleDot) return; this.peopleDot = on;
+    (this.el.dock.querySelector('.dk-dot') as HTMLElement).hidden = !on;
+  }
+  /** « Masquer »: only what the player needs stays (docs/UI_V2_PLAN.md §3). CSS only: mode and input are untouched. */
+  get minimal() { return document.body.classList.contains('ui-min'); }
+  setMinimal(on: boolean) {
+    document.body.classList.toggle('ui-min', on);
+    if (on) { this.toggleEvent(false); this.el.stats.classList.remove('open'); (document.activeElement as HTMLElement | null)?.blur?.(); }
+    this.resetTouch();
   }
   private toggleNeeds(force?: boolean) {
     const open = this.el.stats.classList.toggle('open', force);
     this.el.stats.setAttribute('aria-expanded', String(open));
+    this.paintMood();
     try { localStorage.setItem('dakarrek.ui.needs', open ? 'open' : 'closed'); } catch { /* storage blocked */ }
   }
   /** Wallet: counts to the new amount and floats the difference (+/− F) beside it. */
@@ -233,7 +298,9 @@ export class Hud {
     const [head, ...rest] = name.split(' · ');
     const more = document.createElement('span'); more.className = 'pl-more'; more.textContent = rest.length ? ' · ' + rest.join(' · ') : '';
     this.el.hubName.replaceChildren(head, more);
-    this.el.clock.textContent = (night ? '🌙 ' : '☀️ ') + clock;
+    this.hubHead = head;
+    this.el.clock.textContent = clock.replace(/^(\p{L}{3})\p{L}*\s*·\s*/u, '$1 ');                  // « Samedi · 20:14 » → « Sam 20:14 »
+    this.el.place.classList.toggle('day', !night);
     this.el.placeTag.textContent = tag ?? ''; this.el.placeTag.classList.toggle('on', !!tag);
   }
   /** The event of the moment (src/ui/placeEvent.ts) under the place and the time: its tag and one short line. */
@@ -292,21 +359,24 @@ export class Hud {
     const w = this.el.wprompt;
     if (!at) { if (this.wpKey) { w.classList.remove('on'); this.wpKey = ''; } return; }
     const price = opt.cost ? signed(-opt.cost) : opt.gain ? signed(opt.gain) : '';
-    const key = [icon, label, price, opt.disabled ?? ''].join('|');
+    const key = [icon, label, price, opt.disabled ?? '', opt.where ?? ''].join('|');
     if (key !== this.wpKey) {
       const changed = !!this.wpKey;
       this.wpKey = key;
       const wp = w.firstElementChild as HTMLElement;
       // unavailable: the reason in full under the verb, where the eye already is (the button's line is cut short on a
-      // phone, « Ton billet est pour la tribune… »): the pill becomes a small card
+      // phone, « Ton billet est pour la tribune… »): the card grows
       const why = opt.disabled ?? '';
       wp.className = 'wp' + (why ? ' dis why' : '');
-      wp.innerHTML = `${icon ? `<i>${esc(icon)}</i>` : ''}<span>${esc(label)}</span>${price ? `<em class="${opt.cost ? 'cost' : 'gain'}">${price}</em>` : ''}<kbd>E</kbd>${why ? `<small>${esc(why)}</small>` : ''}`;
-      this.wpHalf = why ? Math.min(140, innerWidth * 0.39) : 0;                    // half the card's max width (style.css)
+      wp.innerHTML = `<i class="wp-tile" aria-hidden="true">${esc(icon || '•')}</i><span class="wp-tx"><span class="wp-t">${esc(label)}</span>`
+        + (opt.where ? `<span class="wp-loc">${LINE(ICONS.pin, '')}${esc(opt.where)}</span>` : '')
+        + (price && !why ? `<em class="wp-pr ${opt.cost ? 'cost' : 'gain'}">${price}</em>` : '')
+        + (why ? `<small>${esc(why)}</small>` : '') + `</span><kbd>E</kbd>`;
+      this.wpHalf = Math.min(wp.offsetWidth / 2, innerWidth / 2 - 8);                // half the card's width (measured once per change)
       if (changed || !w.classList.contains('on')) replay(wp, 'pop');
     }
-    // the card stays on screen (8 px margin) and its tail keeps pointing at the target
-    const { x, tail } = this.wpHalf ? bubbleX(at.x, this.wpHalf, innerWidth) : { x: at.x, tail: 0 };
+    // the card stays on screen (8 px margin) and its leader line keeps pointing at the target
+    const { x, tail } = bubbleX(at.x, this.wpHalf, innerWidth);
     if (tail !== this.wpTail) { this.wpTail = tail; (w.firstElementChild as HTMLElement).style.setProperty('--tail', `${tail}px`); }
     w.style.transform = `translate(${Math.round(x)}px,${Math.round(at.y)}px) translate(-50%,-100%)`;
     w.classList.add('on');

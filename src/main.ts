@@ -1027,6 +1027,9 @@ hud.onAction = () => {
 hud.onMore = () => openMore();
 hud.onSceneStop = () => stopScene();
 hud.onMenu = () => { if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); };
+hud.onCarte = () => { if (phone.isOpen || mode === 'play') phone.open('carte'); };
+hud.onWallet = () => { if (phone.isOpen || mode === 'play') phone.open('portefeuille'); };
+hud.onPeople = () => { const cb = document.getElementById('chatBtn'); if (cb) cb.click(); else if (mode === 'play') npcLife.openPeople(); };
 new MutationObserver(() => { if (!hud.modalOpen && !phone.isOpen && mode === 'menu') { mode = 'play'; input.enabled = true; } }).observe(document.getElementById('modal')!, { attributes: true });
 addEventListener('visibilitychange', () => { if (document.hidden && world) saveNow(); });
 addEventListener('pagehide', () => { if (world) saveNow(); });
@@ -1039,7 +1042,8 @@ function showPrompt(t: Target | null) {
   if (run || legacyRun) { hud.setPrompt('Arrêter', run ? run.step.label : legacyRun!.label, false, { icon: '✋', stop: true }); hud.setWorldPrompt(null); return; }
   const a = t ? interactions.primary(t) : null;
   if (!t || !a) { hud.setPrompt(null); hud.setWorldPrompt(null); return; }
-  const all = interactions.all(t), opt = { icon: a.icon, cost: a.cost, gain: a.gain, disabled: a.disabled };
+  const where = world ? `${t.name && t.name !== a.label ? t.name + ', ' : ''}${HUB_NAMES[world.id].split(' · ')[0]}${t.name && t.name !== a.label ? '' : ', Dakar'}` : '';
+  const all = interactions.all(t), opt = { icon: a.icon, cost: a.cost, gain: a.gain, disabled: a.disabled, where };
   hud.setPrompt(a.label, a.disabled ?? (a.label === t.name ? '' : t.name), all.length > 1, opt);
   if (t.kind === 'self' || !world || seated) { hud.setWorldPrompt(null); return; }   // seated: the middle stays clear (§0 C)
   camera.updateMatrixWorld();

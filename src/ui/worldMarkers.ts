@@ -4,14 +4,14 @@ import type { TargetKind } from '../interact/types';
 
 /**
  * World-space UI (docs/UI.md, « the world is the interface »):
- * - a sun-coloured ring on the ground under the focused target (person, seat, counter, door…), so what the action button
+ * - a green ring on the ground under the focused target (person, seat, counter, door…), so what the action button
  *   will act on is recognisable in the scene itself; grey when nothing can be done there now (another tier's place on
  *   the arena's stands, a closed counter: every affordance disabled), the bubble above saying why;
  * - a way-finding pin (beam + bobbing marker) over the next-step place (`ctx.guide()`), with the goal hint's compass
  *   (direction and distance) on the HUD.
  * Four meshes, one material each, no textures; hidden whenever the player is not free to walk (menus, activities, scenes).
  */
-const SUN = 0xffc83d;
+const SUN = 0x22c55e;
 /** The ring under a target where nothing can be done now (its reason is in the bubble and on the action button). */
 const GREY = 0x8e8e93;
 /** Ring radius (m) by target kind. */
@@ -64,7 +64,7 @@ export function worldMarkers(): GameModule {
       ctx.hud.setGuide(free || ctx.mode() === 'play' ? { angle: a, dist } : null);
       // the delivery lane draws its own marker on the same place while a parcel run is on
       const delivery = document.getElementById('delivery')?.classList.contains('on');
-      pin.visible = free && dist > 3.5 && !delivery;
+      pin.visible = free && dist > 3.5 && !delivery && !document.body.classList.contains('ui-min');
       if (pin.visible) {
         pin.position.set(g.x, ground(ctx, g.x, g.z), g.z);
         head.position.y = 3.1 + Math.sin(t * 3) * 0.22; head.rotation.y = t * 1.4;
