@@ -44,3 +44,6 @@ body.mm-on #delivery { top:calc(var(--mm-top) + var(--mm) + 56px); }
 #phone .fm-mark { margin-top:10px; text-align:center; background:var(--ios-blue); color:#fff; font-weight:600; }
 #phone .fm-mark.on { background:#e5e5ea; color:#c4271c; }
 #phone .fm-note { color:#0a7d33 !important; font-weight:600; }
+
+/* UI V2: the moment card at the top left (portrait phone, landscape) starts under the minimap */
+@media (max-width:640px) and (orientation:portrait) { body.mm-on #toast .mo { top:calc(var(--mm-top) + var(--mm) + 58px + var(--sa-t)); max-height:calc(100dvh - var(--mm-top) - var(--mm) - 58px - 170px - var(--sa-t) - var(--sa-b)); } }
