@@ -30,6 +30,8 @@ export interface SheetHooks {
   deny(reason: string): void;
   /** Called on every open (drop held keys and touches). */
   opened(): void;
+  /** A row was picked: what the game says right after is its answer (src/ui/quiet.ts route). */
+  picked?(): void;
 }
 
 /**
@@ -122,7 +124,7 @@ export class Sheet {
     if (it.disabled) {
       b.setAttribute('aria-disabled', 'true');
       b.addEventListener('click', () => { replay(b, 'deny'); this.hooks.deny(why || 'Indisponible'); });
-    } else b.addEventListener('click', () => it.onPick());
+    } else b.addEventListener('click', () => { this.hooks.picked?.(); it.onPick(); });
     return b;
   }
 

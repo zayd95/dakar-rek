@@ -9,6 +9,7 @@ import { MOTO_FEE, motoLot } from './arrivalRules';
 import { moto } from '../transport/motoModule';
 import { transport } from '../transport/module';
 import { arenaFighter, type FighterPhase } from './fighter';
+import { placeEvents, type PlaceEvent } from '../ui/placeEvent';
 
 /**
  * The evening's call to the arena (Habib's evening, 10 Oct): nothing used to tell a player that a bout is on tonight.
@@ -48,6 +49,20 @@ export function callText(size: 'gala' | 'card'): string {
 /** Whether the call is due now (once per evening). */
 export const callDue = (day: number, hour: number, galaDone: boolean, lastCall: number | undefined) =>
   hour >= CALL_FROM && boutTonight(hour, galaDone) && lastCall !== day;
+/**
+ * Tonight's call in the place chip (docs/UI_V2_PLAN.md §0 C 3), from the call until the street empties: a tag, what is
+ * on and the doors, then the ticket (or « Billet en poche »); the wrestler the player follows in the details. Null:
+ * nothing tonight any more. The gala's own card, once the show has a bill, comes before it in the chip.
+ */
+export function eveningEvent(hour: number, galaDone: boolean, size: 'gala' | 'card', ticket: boolean, followed: string | null): PlaceEvent | null {
+  if (!(hour >= CALL_FROM && boutTonight(hour, galaDone))) return null;
+  return {
+    tag: 'CE SOIR', line: `${size === 'gala' ? 'Grand gala de lutte' : 'Combat de quartier'} · portes ${GALA.doors} h`,
+    sub: ticket ? 'Billet en poche : entre par la porte de l’arène' : `Billet ${fcfaText(TICKET_PRICE)} au guichet, à gauche de la porte`,
+    ...(followed ? { more: [followed] } : {}), tone: 'evening',
+  };
+}
+let eventKey = '';
 
 export interface EveningInput {
   hour: number;
@@ -175,6 +190,14 @@ export const eveningCallModule: GameModule = {
   name: 'eveningCall',
   update(ctx) {
     const day = ctx.day(), hour = ctx.hour(), counters = ctx.state.data.counters;
+    // the call in the place chip: rebuilt only when it changes (the hour's crossing, the ticket, the gala's end)
+    const on = hour >= CALL_FROM && boutTonight(hour, counters[GALA_DONE_COUNTER] === day), ticket = hasTicket(counters, day);
+    const key = on ? `${day}|${ticket}` : '';
+    if (key !== eventKey) {
+      eventKey = key;
+      const f = on ? followedOn(day) : null;
+      placeEvents.set('evening', on ? eveningEvent(hour, false, eveningSize(day, GALA.doors), ticket, f ? followedLine(f) : null) : null);
+    }
     if (!callDue(day, hour, counters[GALA_DONE_COUNTER] === day, counters[CALL_COUNTER])) return;
     if (ctx.mode() !== 'play') return;                                        // not over a menu or a scene
     counters[CALL_COUNTER] = day;
