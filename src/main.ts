@@ -23,7 +23,7 @@ import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
-import { castById } from './social/cast';
+import { castById, CAST } from './social/cast';
 import { NpcLife } from './social/npcLife';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, suggestionHere, applyChoice, settleWelcome, welcomeByTalk, type Beat } from './social/beats';
@@ -47,6 +47,7 @@ import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
 import { Phone } from './ui/phone';
+import { mapBridge } from './ui/minimap';
 import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
@@ -956,6 +957,12 @@ const phone = new Phone({
     else if (hud.modalOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // an app opened a menu
   },
 });
+
+// the minimap and the phone's map (src/ui/minimap.ts): the game's walking marker, the phone, the contacts around
+mapBridge.walkTo = id => setDestination(id);
+mapBridge.destination = () => (destination && destination.hub === world?.id ? destination.id : null);
+mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
+mapBridge.friendsNow = () => CAST.filter(c => c.hub === world?.id && rel.level(c.id) >= 15).flatMap(c => { const w = npcLife.where(c.id); return w && w.here && w.x !== undefined && w.z !== undefined ? [{ id: c.id, name: c.name, x: w.x, z: w.z }] : []; });
 
 function saveNow(): boolean {
   // indoors, save the street position at the door: interiors are rebuilt on load

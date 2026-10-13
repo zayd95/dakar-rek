@@ -10,6 +10,8 @@ import type { HubId } from '../core/types';
 import { HUB_IDS } from '../core/types';
 import { cityTimeAt, CITY_DAY_MS } from '../core/clock';
 import { isMuted, setMuted } from '../core/audioSettings';
+import { mapBridge } from './minimap';
+import { fullMapHtml, mountFullMap } from './fullmap';
 import { HUB_NAMES, travelLeg } from '../world/content';
 import type { Relations } from '../social/relations';
 import { suggestion } from '../social/beats';
@@ -144,6 +146,8 @@ export class Phone {
   /** Navigation stack below the home screen; kept between openings. */
   private stack: ScreenId[] = [];
   private timer = 0;
+  /** Cleanup of the interactive map of the « Carte » screen (src/ui/fullmap.ts). */
+  private mapOff: (() => void) | null = null;
   /** Places seen in each hub, remembered on this device. */
   private known: Partial<Record<HubId, string[]>> = {};
 
@@ -200,7 +204,7 @@ export class Phone {
   close() {
     if (!this.isOpen) return;
     this.el.classList.remove('on'); this.el.setAttribute('aria-hidden', 'true');
-    clearInterval(this.timer);
+    clearInterval(this.timer); this.mapOff?.(); this.mapOff = null;
     if (document.activeElement instanceof HTMLElement && this.el.contains(document.activeElement)) document.activeElement.blur();
     this.ctx.lock(false);
   }
@@ -238,6 +242,7 @@ export class Phone {
     this.el.querySelector('.ph-back')!.textContent = this.stack.length > 1 ? TITLES[this.stack[this.stack.length - 2]] : 'Accueil';
     const s = this.screenEl;
     s.scrollTop = 0;
+    this.mapOff?.(); this.mapOff = null;
     switch (id) {
       case 'home': s.innerHTML = this.homeHtml(); break;
       case 'reglages': s.innerHTML = this.settingsHtml(); break;
@@ -247,7 +252,7 @@ export class Phone {
         <button type="button" class="ph-btn danger" data-act="wipe">Effacer et recommencer</button>`; break;
       case 'carnet': { const j = journalView(this.ctx.rel, this.ctx.state); s.innerHTML = `<p class="ph-sub">${esc(j.subtitle)}</p><div class="ph-journal">${j.html}</div>`; break; }
       case 'portefeuille': s.innerHTML = this.walletHtml(); break;
-      case 'carte': s.innerHTML = this.mapHtml(); break;
+      case 'carte': s.innerHTML = `${fullMapHtml()}<h3>Changer de quartier</h3>${this.mapHtml()}`; break;
       case 'arene': s.innerHTML = this.arenaHtml(); break;
       case 'meteo': s.innerHTML = this.weatherHtml(); break;
       case 'calcul': s.innerHTML = this.calcHtml(); break;
@@ -259,6 +264,7 @@ export class Phone {
       case 'lutteurs': s.innerHTML = this.lutteursHtml(); break;
     }
     this.bind();
+    if (id === 'carte') this.mapOff = mountFullMap(s);
   }
 
   private homeHtml(): string {
@@ -401,6 +407,8 @@ export class Phone {
       <p class="ph-note">Basse : plus fluide sur les petits téléphones. Le quartier est reconstruit, tu restes où tu es.</p>
       <h3>Son</h3>
       <button type="button" class="ph-toggle ${muted ? '' : 'on'}" data-act="sound" aria-pressed="${!muted}"><span>Son du jeu</span><em>${muted ? 'Coupé' : 'Activé'}</em></button>
+      <button type="button" class="ph-toggle ${mapBridge.enabled ? 'on' : ''}" data-act="minimap" aria-pressed="${mapBridge.enabled}"><span>Mini-carte</span><em>${mapBridge.enabled ? 'Affichée' : 'Masquée'}</em></button>
+      <p class="ph-note">Le petit rond en haut à gauche : où tu es, les lieux autour, le quartier et la rue.</p>
       <h3>Caméra</h3>
       <div class="seg">${SENSITIVITY.map(([v, l]) => `<button type="button" data-sens="${v}" class="${v === sens ? 'on' : ''}" aria-pressed="${v === sens}">${l}</button>`).join('')}</div>
       <p class="ph-note">Sensibilité quand tu glisses pour tourner la caméra.</p>
@@ -507,6 +515,7 @@ export class Phone {
       this.render();
     }));
     const act = (name: string, fn: () => void) => s.querySelector(`[data-act="${name}"]`)?.addEventListener('click', fn);
+    act('minimap', () => { mapBridge.setEnabled(!mapBridge.enabled); this.render(); });
     act('sound', () => { setMuted(!isMuted()); this.render(); });
     act('gloss', () => { setGlossesShown(!glossesShown()); this.render(); });
     act('save', () => this.ctx.toast(this.ctx.save() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'));
