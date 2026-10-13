@@ -20,10 +20,13 @@ export const STOP_BY_HOUR: Curve = [[0, 0], [5.5, 0], [6.5, 0.6], [7.75, 1], [9.
 export const CHAT_BY_HOUR: Curve = [[0, 0.05], [6, 0], [8, 0.2], [11, 0.35], [14, 0.3], [17, 0.75], [19, 1], [21.5, 0.8], [23, 0.3], [24, 0.05]];
 
 /** The crowd's size per quality: people at most, full humanoids among them (the nearest). */
-export const STREET_BUDGET: Record<Quality, { pool: number; near: number; groupMax: number; perStop: number; life: number }> = {
-  low: { pool: 48, near: 0, groupMax: 3, perStop: 3, life: 70 },
-  medium: { pool: 80, near: 1, groupMax: 6, perStop: 5, life: 90 },
-  high: { pool: 128, near: 2, groupMax: 9, perStop: 7, life: 110 },
+export const STREET_BUDGET: Record<Quality, { pool: number; near: number; groupMax: number; perStop: number; life: number; extra: number; scenes: number; cross: number; riders: number; peddlers: number; hail: number }> = {
+  // `extra`: more people in the pool for what the street DOES (scenes at the stalls, people hailing taxis, cyclists, peddlers):
+  // `scenes` of them at most at once in activity clusters, `cross` crossing the road, `riders` cyclists, `peddlers` with goods,
+  // `hail` waiting at the kerb for a taxi or a minibus. The walkers' targets above never count them.
+  low: { pool: 48, near: 0, groupMax: 3, perStop: 3, life: 70, extra: 20, scenes: 11, cross: 2, riders: 2, peddlers: 2, hail: 2 },
+  medium: { pool: 80, near: 1, groupMax: 6, perStop: 5, life: 90, extra: 30, scenes: 18, cross: 3, riders: 3, peddlers: 3, hail: 4 },
+  high: { pool: 128, near: 2, groupMax: 9, perStop: 7, life: 110, extra: 44, scenes: 28, cross: 5, riders: 5, peddlers: 5, hail: 6 },
 };
 /**
  * `life`: the street lives around the player — walkers mostly spawn, and stops and groups only fill, within this many

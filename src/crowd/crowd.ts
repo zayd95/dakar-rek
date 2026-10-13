@@ -106,6 +106,8 @@ interface Member {
   body: NearBody | null;
   mood: Mood;
   bpm: number;
+  /** Sitting on something the owner put there (a stool, a bicycle saddle) whatever the slot says. */
+  sit: boolean;
   /** Index in the crowd (the near bodies' dance alternates two clips). */
   i: number;
   /** Height factor (people are not all the same size). */
@@ -258,7 +260,7 @@ export class Crowd {
         slot, look, shirt: new THREE.Color(look.shirt),
         phase: R() * Math.PI * 2, temper: 0.6 + R() * 0.8, on: false, st: restState(), speed: 0,
         standing, pose, target: poseFor(null, standing), easing: false, lod: 0, matrix: new Float32Array(16), body: null,
-        mood: 'rest', bpm: 120, i: this.members.length, scale: look.height ?? (look.style === 'dress' ? 0.93 : 0.95) + R() * 0.09,
+        mood: 'rest', bpm: 120, sit: false, i: this.members.length, scale: look.height ?? (look.style === 'dress' ? 0.93 : 0.95) + R() * 0.09,
         fidget: null, fidgetLeft: 0, flag: null,
         head: head.colour, code: printCode(look), crown: head.crown, brim: head.brim, build: look.build ?? 1,
         parent: null, kids: [], bk: null, bi: -1, blob: -1, moved: false,
@@ -381,6 +383,11 @@ export class Crowd {
       this.group.add(this.flags);
     }
   }
+  /** Sit a member down on a stool or a saddle (the slot's y is then the sitting surface), or stand them up. */
+  setSeated(id: string, on: boolean) {
+    const m = this.byId.get(id); if (!m || m.sit === on) return;
+    m.sit = on; this.retarget(m);
+  }
   /** One member's mood (a person joining a group chat, leaving it for a walk). */
   setMemberMood(id: string, mood: Mood, bpm = 120) {
     const m = this.byId.get(id); if (!m || (m.mood === mood && m.bpm === bpm)) return;
@@ -410,7 +417,7 @@ export class Crowd {
   private retarget(m: Member, snap = false) {
     const kind = m.on ? m.st.kind : null;
     if ((kind || !m.on) && m.fidget) { m.fidget = null; this.fidgeting.delete(m); }
-    const standing = standingFor(m.slot.seated, kind) && !(m.slot.seated && this.inClearView(m.slot.x, m.slot.z)) && !m.slot.lap;
+    const standing = standingFor(m.slot.seated, kind) && !m.sit && !(m.slot.seated && this.inClearView(m.slot.x, m.slot.z)) && !m.slot.lap;
     if (standing !== m.standing) { m.standing = standing; this.layoutDirty = true; }
     this.live.add(m);
     m.target = poseFor(kind, standing, m.speed, m.mood, m.bpm, m.fidget);

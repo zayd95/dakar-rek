@@ -9,7 +9,7 @@ import type { HubId } from '../src/core/types';
 
 stubCanvas();
 
-describe('street dress: stalls, cantines, billboards and plates on the main roads', () => {
+describe('street dress: stalls, cantines, billboards and tea corners on the main roads', () => {
   for (const id of ['plateau', 'pikine'] as HubId[]) {
     it(`${id}: placed from the seed, off the stops and the crossings, solid pieces leave the pavement lanes of the busy streets`, () => {
       const hub = buildHub(id, true);
@@ -21,13 +21,14 @@ describe('street dress: stalls, cantines, billboards and plates on the main road
       expect(by('stall')).toBeGreaterThanOrEqual(Math.floor(N.stalls * 0.6));
       expect(by('cantine')).toBeGreaterThanOrEqual(1);
       expect(by('board')).toBeGreaterThanOrEqual(1);
-      expect(by('plate')).toBeGreaterThanOrEqual(2);
+      expect(by('tea')).toBeGreaterThanOrEqual(1);
+      expect(r.items.filter(i => i.kind === 'tea').every(i => !!i.spot && i.off !== undefined)).toBe(true);
       expect(r.mesh).not.toBeNull();
       expect(hub.colliders.length).toBeGreaterThan(colsBefore);
       // not on a stop's pavement
       for (const line of linesOf(id)) for (const def of line.stops) {
         const s = stopOnLeg(line, def);
-        for (const i of r.items) if (i.kind !== 'plate') expect(Math.hypot(i.x - s.x, i.z - s.z)).toBeGreaterThan(8);
+        for (const i of r.items) expect(Math.hypot(i.x - s.x, i.z - s.z)).toBeGreaterThan(8);
       }
       // the busy streets keep their pavement lanes
       const lanesAfter = pavementLanes(hub.edges, hub.colliders, HUB_STREETS[id].busy);

@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { GameModule } from './modules';
 import type { HubWorld } from '../world/types';
-import type { HubId } from '../core/types';
 import { rng } from '../core/rng';
 import { linesOf, stopOnLeg } from '../transport/lines';
 import { HUB_STREETS, edgeWeight } from '../crowd/streetPlan';
@@ -11,14 +10,15 @@ import { HUB_STREETS, edgeWeight } from '../crowd/streetPlan';
  * Dakar's street furniture on the main roads, merged into ONE draw call per hub (one atlas texture for every sign):
  * the occupied pavement (parasol stalls with a table and stool, the wooden « cantines » with a hand-painted sign, a
  * vendor's barrow of fruit at the kerb), a few roadside billboards (invented advertisers only, French and Wolof) and
- * the blue street-name plates at the corners. Placed from the hub seed, most along the busy streets, kept clear of
+ * a few tea corners (attaya: a tray, a kettle and low stools). There are no street-name plates: none of the Dakar
+ * programme's panels could be checked against a photograph, so none is drawn rather than guessed. Placed from the hub seed, most along the busy streets, kept clear of
  * crossings, stops, the car rapide station, places people use and the arena gate; every solid piece gets a collider
  * that leaves the pavement lanes of the street crowd (src/crowd/streetPlan.ts PAVE) free.
  */
 export const DRESS_COUNT = {
-  low: { stalls: 10, cantines: 5, barrows: 2, boards: 2, plates: 4 },
-  medium: { stalls: 16, cantines: 8, barrows: 3, boards: 3, plates: 6 },
-  high: { stalls: 22, cantines: 11, barrows: 4, boards: 5, plates: 8 },
+  low: { stalls: 10, cantines: 5, barrows: 2, boards: 2, tea: 3 },
+  medium: { stalls: 16, cantines: 8, barrows: 3, boards: 3, tea: 5 },
+  high: { stalls: 22, cantines: 11, barrows: 4, boards: 5, tea: 7 },
 } as const;
 
 // ------------------------------------------------------------------------------------------------ the sign atlas
@@ -40,14 +40,8 @@ const WALL: { t: string; s?: string; bg: string; fg: string }[] = [
   { t: 'COIFFURE', s: 'Hommes · Dames', bg: '#7b4a8a', fg: '#fdf3d8' },
   { t: 'CYBER · IMPRESSION', bg: '#2f2f35', fg: '#f4d35e' },
 ];
-const PLATES: Record<HubId, string[]> = {
-  plateau: ['RUE SANDAGA', 'RUE 11 × RUE 24', 'AV. DE LA LIBERTÉ', 'RUE DU MARCHÉ'],
-  pikine: ['GRAND-RUE DE PIKINE', 'RUE 22 · PIKINE', 'AV. DES PARCELLES', 'RUE DE L’ARÈNE'],
-  corniche: ['CORNICHE OUEST', 'RUE DU PHARE', 'ROUTE DE LA CORNICHE', 'RUE DES PÊCHEURS'],
-  almadies: ['ROUTE DES ALMADIES', 'RUE DES NGOR', 'AV. DU LITTORAL', 'RUE DES VILLAS'],
-};
 type Rect = [number, number, number, number];                       // u0, v0, u1, v1
-let atlas: { tex: THREE.CanvasTexture; glow: THREE.CanvasTexture; board: Rect[]; wall: Rect[]; plate: Record<string, Rect[]>; white: Rect } | null = null;
+let atlas: { tex: THREE.CanvasTexture; glow: THREE.CanvasTexture; board: Rect[]; wall: Rect[]; white: Rect } | null = null;
 const rectOf = (x: number, y: number, w: number, h: number): Rect => [x / AW, 1 - (y + h) / AH, (x + w) / AW, 1 - y / AH];
 function fit(c: CanvasRenderingContext2D, text: string, w: number, size: number, weight = 800) {
   c.font = `${weight} ${size}px system-ui, "Arial Narrow", sans-serif`;
@@ -59,7 +53,7 @@ function dressAtlas() {
   const c = cv.getContext('2d')!;
   c.fillStyle = '#fff'; c.fillRect(0, 0, AW, AH);
   c.textAlign = 'center'; c.textBaseline = 'middle';
-  const board: Rect[] = [], wall: Rect[] = [], plate: Record<string, Rect[]> = {};
+  const board: Rect[] = [], wall: Rect[] = [];
   BOARDS.forEach((b, i) => {
     const x = (i % 2) * 512, y = Math.floor(i / 2) * 256;
     c.fillStyle = b.bg; c.fillRect(x, y, 512, 256);
@@ -78,22 +72,12 @@ function dressAtlas() {
     else { fit(c, s.t, CELL.w - 28, 40); c.fillText(s.t, x + CELL.w / 2, y + CELL.h / 2 + 2); }
     wall.push(rectOf(x, y, CELL.w, CELL.h));
   });
-  let k = 0;
-  for (const hub of Object.keys(PLATES) as HubId[]) {
-    plate[hub] = PLATES[hub].map(t => {
-      const x = (k % 4) * CELL.w, y = 672 + Math.floor(k / 4) * CELL.h; k++;
-      c.fillStyle = '#1f5c9e'; c.fillRect(x, y, CELL.w, CELL.h);                                    // blue enamel plate, white letters
-      c.strokeStyle = '#f4f6f8'; c.lineWidth = 3; c.strokeRect(x + 4, y + 4, CELL.w - 8, CELL.h - 8);
-      c.fillStyle = '#f4f6f8'; fit(c, t, CELL.w - 26, 30); c.fillText(t, x + CELL.w / 2, y + CELL.h / 2 + 2);
-      return rectOf(x, y, CELL.w, CELL.h);
-    });
-  }
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
   // the night glow: the signs only (the plain parts of the pieces sample the white cell: black here)
   const cg = document.createElement('canvas'); cg.width = AW; cg.height = AH;
   const g2 = cg.getContext('2d')!; g2.drawImage(cv, 0, 0); g2.fillStyle = '#000'; g2.fillRect(992, 992, 32, 32);
   const glow = new THREE.CanvasTexture(cg); glow.colorSpace = THREE.SRGBColorSpace;
-  atlas = { tex, glow, board, wall, plate, white: rectOf(1000, 1000, 16, 16) };
+  atlas = { tex, glow, board, wall, white: rectOf(1000, 1000, 16, 16) };
   return atlas;
 }
 
@@ -145,16 +129,20 @@ class Pieces {
 const SUN = [0xe0a24a, 0xc8654a, 0x5f9aa8, 0x8bb26e, 0xe4cf9a, 0xb86a8c, 0xd9d2bc];     // sun-faded, not saturated
 const GOODS = [0xe58a2f, 0xb8372b, 0x6aa84f, 0xe8c24a, 0xefe9da, 0x7a4a2a];
 
-interface Spot { x: number; z: number; dx: number; dz: number; nx: number; nz: number; yaw: number }
+export interface Spot { x: number; z: number; dx: number; dz: number; nx: number; nz: number; yaw: number }
+/** A piece of dressing as the street crowd needs it: where, and the frame (the road's direction, towards the pavement, the offset from the centre line). */
+export interface StreetItem { kind: string; x: number; z: number; spot?: Spot; off?: number }
+/** A point of an item's frame: `a` along the street, `b` towards the back of the pavement from `off` (the centre line's offset). */
+export const itemAt = (it: StreetItem, off: number, a: number, b: number) => ({ x: it.spot!.x + it.spot!.nx * (off + b) + it.spot!.dx * a, z: it.spot!.z + it.spot!.nz * (off + b) + it.spot!.dz * a });
 
 /** The module: dresses the main roads of the hub that loads (one merged mesh and a few colliders). */
 let current: { mesh: THREE.Mesh | null; geo: THREE.BufferGeometry | null } | null = null;
 
-export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid: readonly { x: number; z: number }[] = []): { mesh: THREE.Mesh | null; items: { kind: string; x: number; z: number }[] } {
+export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid: readonly { x: number; z: number }[] = []): { mesh: THREE.Mesh | null; items: StreetItem[] } {
   const N = DRESS_COUNT[q], A = dressAtlas();
   const R = rng(0xd4c0 + hub.id.length * 313 + Math.round(hub.spawn.x * 7 - hub.spawn.z * 5));
   const P = new Pieces(A.white);
-  const items: { kind: string; x: number; z: number }[] = [];
+  const items: StreetItem[] = [];
   const busyStreets = HUB_STREETS[hub.id]?.busy ?? [];
   const gate = hub.arena ? { x: hub.arena.cx, z: hub.arena.cz - 30 } : null;
   const stops: { x: number; z: number }[] = [];
@@ -195,35 +183,36 @@ export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid:
   };
   /** Local frame helper: a piece at (a along, b towards the pavement back, y) of the spot at `off`. */
   const at = (s: Spot, off: number, a: number, b: number) => ({ x: s.x + s.nx * (off + b) + s.dx * a, z: s.z + s.nz * (off + b) + s.dz * a });
-  const place = (n: number, build: (s: Spot) => { r: { x0: number; x1: number; z0: number; z1: number }; h: number } | null, kind: string) => {
+  const place = (n: number, build: (s: Spot) => { r: { x0: number; x1: number; z0: number; z1: number }; h: number; keep?: { x0: number; x1: number; z0: number; z1: number }; off?: number } | null, kind: string) => {
     let done = 0, tries = 0;
     while (done < n && places.length && tries++ < n * 60) {
       const d = draw(done < n * 0.7); if (!d) break;
       const res = build(d.spot);
       if (!res) continue;
-      taken.push(res.r); hub.colliders.push({ ...res.r, h: res.h });
-      items.push({ kind, x: (res.r.x0 + res.r.x1) / 2, z: (res.r.z0 + res.r.z1) / 2 }); done++;
+      taken.push(res.keep ?? res.r); hub.colliders.push({ ...res.r, h: res.h });
+      items.push({ kind, x: (res.r.x0 + res.r.x1) / 2, z: (res.r.z0 + res.r.z1) / 2, spot: d.spot, off: res.off }); done++;
     }
   };
   const rot = (s: Spot) => Math.atan2(-s.nx, -s.nz);                       // facing the road
 
   // parasol stalls: a table with goods and a stool under a big parasol, at the back of the pavement
   place(N.stalls, s => {
-    const off = 6.5, f = foot(s, off, 1.7, 0.95);
-    if (!ok(f.cx, f.cz) || !free(f.r)) return null;
+    const off = 6.5, f = foot(s, off, 1.7, 0.95), room = foot(s, off, 3.2, 1.2);
+    if (!ok(f.cx, f.cz) || !free(room.r)) return null;
     const y = 0.12, yaw = rot(s), c1 = SUN[Math.floor(R() * SUN.length)], c2 = R() < 0.5 ? 0xf0ead8 : SUN[Math.floor(R() * SUN.length)];
     P.box(1.5, 0.78, 0.8, f.cx, y, f.cz, 0x8a6a48, yaw);
     for (let n = 0; n < 5; n++) { const p = at(s, off, -0.55 + n * 0.28, 0); P.box(0.24, 0.2, 0.26, p.x, y + 0.78, p.z, GOODS[Math.floor(R() * GOODS.length)], yaw); }
     const pole = at(s, off, 0.9, 0.35); P.cyl(0.035, 0.035, 2.3, pole.x, y, pole.z, 0x4a4a4a, 5);
     P.parasol(pole.x, y + 2.15, pole.z, 1.25, c1, c2);
     const st = at(s, off, -0.5, -0.8); P.box(0.36, 0.38, 0.36, st.x, y, st.z, 0x3a5fa0, yaw);
-    return { r: f.r, h: 1 };
+    const vs = at(s, off, 1.2, -0.05); P.box(0.34, 0.36, 0.34, vs.x, y, vs.z, 0x8a5a3a, yaw);        // the seller's own stool, at the table's end
+    return { r: f.r, h: 1, keep: room.r, off };
   }, 'stall');
 
   // cantines: a small painted wooden shop, its hand-painted sign on the front
   place(N.cantines, s => {
-    const off = 6.62, f = foot(s, off, 2.1, 1.1);
-    if (!ok(f.cx, f.cz, 14) || !free(f.r)) return null;
+    const off = 6.62, f = foot(s, off, 2.1, 1.1), room = foot(s, off, 4.2, 1.5);
+    if (!ok(f.cx, f.cz, 14) || !free(room.r)) return null;
     const y = 0.12, yaw = rot(s), body = SUN[Math.floor(R() * SUN.length)];
     P.box(1.9, 2.1, 1.1, f.cx, y, f.cz, body, yaw);
     const front = at(s, off, 0, -0.56), sign = A.wall[Math.floor(R() * A.wall.length)];
@@ -235,8 +224,8 @@ export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid:
 
   // a vendor's barrow of fruit at the road edge (two wheels, a pile, a parasol), clear of the pavement lane
   place(N.barrows, s => {
-    const off = 4.45, f = foot(s, off, 1.9, 0.75);
-    if (!ok(f.cx, f.cz, 14) || !free(f.r)) return null;
+    const off = 4.45, f = foot(s, off, 1.9, 0.75), room = foot(s, off, 4.6, 2.2);
+    if (!ok(f.cx, f.cz, 14) || !free(room.r)) return null;
     const y = 0.08, yaw = rot(s);
     P.box(1.5, 0.12, 0.7, f.cx, y + 0.55, f.cz, 0x7a5636, yaw);
     for (const sx of [-1, 1]) { const w = at(s, off, 0.1, sx * 0.4); P.cyl(0.3, 0.3, 0.07, w.x, y + 0.3, w.z, 0x222222, 10, Math.PI / 2, yaw); }
@@ -244,7 +233,7 @@ export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid:
     const h1 = at(s, off, -1.2, 0), h2 = at(s, off, -1.7, 0); P.box(0.7, 0.06, 0.06, h1.x, y + 0.85, h1.z, 0x5a3f26, yaw); P.box(0.04, 0.4, 0.04, h2.x, y + 0.5, h2.z, 0x5a3f26, yaw);
     const pole = at(s, off, 0.7, 0); P.cyl(0.03, 0.03, 1.9, pole.x, y + 0.6, pole.z, 0x4a4a4a, 5);
     P.parasol(pole.x, y + 2.4, pole.z, 1.05, 0xe4cf9a, 0xb8442e);
-    return { r: f.r, h: 0.9 };
+    return { r: f.r, h: 0.9, keep: room.r, off };
   }, 'barrow');
 
   // roadside billboards: two posts behind the pavement, the board facing the road (invented advertisers)
@@ -262,31 +251,18 @@ export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid:
     return { r: { x0: f.r.x0, x1: f.r.x0 + 0.001, z0: f.r.z0, z1: f.r.z0 + 0.001 }, h: 0.01 };
   }, 'board');
 
-  // street-name plates: a post at a pavement corner with a blue plate each way
-  const plates = A.plate[hub.id] ?? A.plate.plateau;
-  const corners: { x: number; z: number; d: number }[] = [];
-  for (const row of hub.nodes) for (const n of row) for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const x = n.x + sx * 6.4, z = n.z + sz * 6.4;
-    corners.push({ x, z, d: Math.hypot(x - hub.spawn.x, z - hub.spawn.z) + R() * 40 });
-  }
-  corners.sort((a, b) => a.d - b.d);
-  let np = 0;
-  for (const c of corners) {
-    if (np >= N.plates) break;
-    if (!ok(c.x, c.z, 0) ) continue;
-    const r = { x0: c.x - 0.12, x1: c.x + 0.12, z0: c.z - 0.12, z1: c.z + 0.12 };
-    if (!free(r) || items.some(i => Math.hypot(i.x - c.x, i.z - c.z) < 5)) continue;
-    const y = 0.12;
-    P.box(0.1, 2.9, 0.1, c.x, y, c.z, 0x4a4d52);
-    const rect = plates[np % plates.length];
-    // one plate along each road meeting at the corner (the plate's face looks along the road, towards whoever walks it)
-    P.board(1.0, 0.32, 0.04, c.x, y + 2.45, c.z + 0.07, 0xffffff, rect, 0);
-    P.board(1.0, 0.32, 0.04, c.x, y + 2.45, c.z - 0.07, 0xffffff, rect, Math.PI);
-    P.board(1.0, 0.32, 0.04, c.x + 0.07, y + 2.1, c.z, 0xffffff, plates[(np + 1) % plates.length], Math.PI / 2);
-    P.board(1.0, 0.32, 0.04, c.x - 0.07, y + 2.1, c.z, 0xffffff, plates[(np + 1) % plates.length], -Math.PI / 2);
-    taken.push(r); hub.colliders.push({ ...r, h: 2.9 }); items.push({ kind: 'plate', x: c.x, z: c.z }); np++;
-  }
-
+  // tea corners (attaya): a low tray with a kettle and little glasses on a crate, three stools round it, at the back of the pavement
+  place(N.tea, s => {
+    const off = 6.45, f = foot(s, off, 0.8, 0.8), room = foot(s, off, 2.8, 1.7);
+    if (!ok(f.cx, f.cz, 14) || !free(room.r)) return null;
+    const y = 0.12, yaw = rot(s);
+    P.box(0.7, 0.3, 0.7, f.cx, y, f.cz, 0x7a5636, yaw);                                      // the crate the tray stands on
+    P.box(0.6, 0.04, 0.6, f.cx, y + 0.3, f.cz, 0xc9c2b0, yaw);                                // the tray
+    P.cyl(0.09, 0.12, 0.2, f.cx, y + 0.34, f.cz, 0x9aa0a6, 7);                                // the teapot
+    for (const [a, b] of [[-0.2, -0.18], [0.2, -0.18], [0, 0.2]]) { const g = at(s, off, a, b); P.cyl(0.03, 0.03, 0.07, g.x, y + 0.34, g.z, 0xf1ead2, 5); }
+    for (const [a, b, k] of [[-0.95, 0, 0x3a5fa0], [0.95, 0, 0x8a5a3a], [0, -0.78, 0xb8442e]] as [number, number, number][]) { const t = at(s, off, a, b); P.box(0.34, 0.3, 0.34, t.x, y, t.z, k, yaw); }
+    return { r: f.r, h: 0.4, keep: room.r, off };
+  }, 'tea');
   if (!P.geos.length) return { mesh: null, items };
   const geo = mergeGeometries(P.geos, false)!;
   for (const g of P.geos) g.dispose();
@@ -306,7 +282,7 @@ export const streetDressModule: GameModule = {
     streetItems = r.items;
   },
   debug: ctx => ({
-    streetDress: () => streetItems,
+    streetDress: () => streetItems.map(i => ({ kind: i.kind, x: i.x, z: i.z })),
     /** What stands in a window of the hub (checks, tuning): the car rapides, the places, the low colliders. */
     streetBlockers(x0: number, x1: number, z0: number, z1: number) {
       const w = ctx.world()!, inb = (x: number, z: number) => x > x0 && x < x1 && z > z0 && z < z1;
@@ -319,4 +295,6 @@ export const streetDressModule: GameModule = {
     },
   }),
 };
-let streetItems: { kind: string; x: number; z: number }[] = [];
+let streetItems: StreetItem[] = [];
+/** The dressing of the hub that loaded (the street crowd puts its scenes at the stalls, the cantines and the tea corners). */
+export const streetItemsNow = (): readonly StreetItem[] => streetItems;

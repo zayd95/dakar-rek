@@ -196,8 +196,8 @@ describe('street life', () => {
     expect(i.roles.walk ?? 0).toBeGreaterThan(i.target.walkers * 0.7);
     expect(i.stops.reduce((n, st) => n + st.waiting, 0)).toBeGreaterThan(8);
     expect(i.groups).toBeGreaterThan(2);
-    expect(i.crowd.present).toBeLessThanOrEqual(STREET_BUDGET.high.pool);
-    expect(i.drawCalls).toBeLessThanOrEqual(4);
+    expect(i.crowd.present).toBeLessThanOrEqual(STREET_BUDGET.high.pool + STREET_BUDGET.high.extra);
+    expect(i.drawCalls).toBeLessThanOrEqual(6); // standing mid + far, blobs, and now the seated figures (stools, saddles)
     // the busy street gets more than its share: lanes of the main street hold more walkers than average
     s.dispose();
   });

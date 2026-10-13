@@ -130,7 +130,10 @@ export const standingFor = (seatedSlot: boolean, kind: ReactionKind | null) => !
 
 /** The pose to show: the reaction's, the walk, the dance, a fidget, or rest. */
 export function poseFor(kind: ReactionKind | null, standing: boolean, speed = 0, mood: Mood = 'rest', bpm = 120, fidget: Fidget | null = null): RigPose {
+  if (mood === 'ride' && !standing && !kind) return RIDE_POSE;
   if (speed > 0.2) return walkPose(speed);
+  if (mood === 'hail' && standing && !kind) return HAIL_POSE;
+  if (mood === 'sip' && !standing && !kind) return fidget ? fidgetPose(fidget, false) : SIP_POSE;
   // a dancer who dances harder (a drop at the club) keeps to the music's tempo
   if (kind === 'dance' && mood === 'dance' && standing) return { ...REACTIONS.dance.up, freq: (Math.PI * bpm) / 60 };
   if (kind) return standing ? REACTIONS[kind].up : REACTIONS[kind].sit;
@@ -155,7 +158,13 @@ export function fidgetPose(f: Fidget, standing: boolean): RigPose {
  * What a member does between reactions: rest, dance (a dance floor, sabar dancers by the drums), or chat (a group in
  * front of a shop, people waiting together: they take turns talking with their hands).
  */
-export type Mood = 'rest' | 'dance' | 'chat';
+export type Mood = 'rest' | 'dance' | 'chat' | 'ride' | 'hail' | 'sip';
+/** On a bicycle: seated, both hands forward on the handlebars, a little crouch. */
+export const RIDE_POSE: RigPose = P({ pitch: 1.05, spread: 0.12, elbow: 0.35, lean: 0.12 });
+/** Hailing a taxi: one arm held out and up (the figure's left arm swings, a slow wave). */
+export const HAIL_POSE: RigPose = P({ pitch: 2.35, spread: 0.3, elbow: 0.3, pitchAmp: 0.18, sideOff: 0, freq: 4 });
+/** Seated with a small glass of attaya in hand: forearm raised, a slow sip. */
+export const SIP_POSE: RigPose = P({ pitch: 0.7, spread: 0.12, elbow: 1.5, pitchAmp: 0.1, freq: 2.2, sideOff: 0 });
 /** Dancing on the beat: one hop per beat, the arms pumping in turn, a small step. */
 export function dancePose(bpm: number): RigPose {
   return P({ pitch: 1.1, spread: 0.3, elbow: 1.3, pitchAmp: 0.5, sideOff: Math.PI / 2, bounce: 0.07, lean: 0.06, walk: 0.12, freq: (Math.PI * bpm) / 60 });
