@@ -420,6 +420,14 @@ export class Humanoid {
    * until the clip changes or the body is drawn again (it then gets all the time it owes in one update).
    */
   private settled = false; private sinceSwitch = 0;
+  /**
+   * Procedural gesture applied on top of the clip pose every frame (hand to mouth, comb, arms up…: src/actors/gesture.ts).
+   * The mixer only writes a bone when the clip's value changed since the last frame (three's PropertyMixer), so a held
+   * pose would keep what the overlay did and a relative gesture (a bend, a nod) would add up frame after frame: the pose
+   * from before the overlay is put back first (see `withOverlay`).
+   */
+  overlay: ((h: Humanoid, dt: number) => void) | null = null;
+  private underOverlay: Float64Array | null = null;
 
   constructor(look?: PersonLook) {
     if (!template) throw new Error('character asset not loaded');
@@ -445,6 +453,9 @@ export class Humanoid {
     for (const c of template.clips) this.actions.set(c.name, this.mixer.clipAction(c));
     if (look) this.setLook(look);
   }
+
+  /** A rig bone (`hand.R`, `forearm.R`, `upper_arm.R`, `head`, `chest`…) for props and gestures. */
+  bone(name: string): THREE.Object3D | null { return this.root.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(name)) ?? null; }   // the loader drops the dots
 
   private show(names: string[]) { for (const [k, m] of this.parts) m.visible = names.includes(k); }
   private clearAccessories() { for (const a of this.accessoryMeshes) a.removeFromParent(); this.accessoryMeshes = []; }
@@ -523,6 +534,23 @@ export class Humanoid {
    * clips stay underneath for the cross-fades with held poses (talking, sitting, emotes…), which the gait fades out for.
    */
   animate(dt: number, speed: number) {
+    const b = (this.bones ??= boneList(this.root));
+    const under = this.underOverlay;
+    if (under) {                                                              // last frame's gesture off: the pose it was put on
+      for (let i = 0, o = 0; i < b.length; i++, o += 7) { b[i].quaternion.set(under[o], under[o + 1], under[o + 2], under[o + 3]); b[i].position.set(under[o + 4], under[o + 5], under[o + 6]); }
+      if (!this.overlay) this.underOverlay = null;
+    }
+    this.locomote(dt, speed);
+    if (!this.overlay) return;
+    const keep = (this.underOverlay ??= new Float64Array(b.length * 7));
+    for (let i = 0, o = 0; i < b.length; i++, o += 7) {
+      const q = b[i].quaternion, p = b[i].position;
+      keep[o] = q.x; keep[o + 1] = q.y; keep[o + 2] = q.z; keep[o + 3] = q.w; keep[o + 4] = p.x; keep[o + 5] = p.y; keep[o + 6] = p.z;
+    }
+    this.overlay(this, dt);
+  }
+
+  private locomote(dt: number, speed: number) {
     const held = this.hold && !LOCOMOTION.has(this.hold) ? this.hold : null;
     const o = this.group.position;
     // the ground speed from the body's own motion (a jump is not a step): the clips' pace while the gait is not computed
@@ -630,7 +658,8 @@ export class Humanoid {
       feet: g.feet.map(f => ({ planted: f.planted, swing: f.swing, settle: f.settle, pitch: f.pitch, slipped: f.slipped })),
     };
   }
-  update(dt: number) { this.mixer.update(dt); }
+  /** Clips only (scenes that drive a body themselves): the gesture overlay still goes on top. */
+  update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
 }
 

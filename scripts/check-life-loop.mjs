@@ -119,7 +119,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
       else console.log(`NOTE ${label}: the sheet at the bed has no « Dormir »: ${sheet.slice(0, 200)} · focus ${JSON.stringify(f)}`);
     }
     // lying along the bed while asleep (the kit's Lie pose on the bed's seat), not sitting on its edge
-    await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu dors' && window.__dakar.clip() === 'Lie', null, T).catch(() => {});
+    // (the player walks to the bed and lies down: the pose starts while settling, wait for the bed itself)
+    await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu dors' && window.__dakar.clip() === 'Lie' && !!window.__dakar.seated(), null, T).catch(() => {});
     const asleep = await d(() => ({ clip: window.__dakar.clip(), seat: window.__dakar.seated(), y: window.__dakar.pos().y, step: window.__dakar.activity()?.step }));
     check(`${label}: rest — asleep, the body lies along the bed`, asleep.clip === 'Lie' && /:lit$/.test(asleep.seat ?? '') && asleep.y > 0.5, JSON.stringify(asleep));
     await d(() => { const p = window.__dakar.pos(); window.__dakar.cam([p.x + 2.2, p.y + 1.9, p.z + 0.4], [p.x, p.y + 0.15, p.z]); });

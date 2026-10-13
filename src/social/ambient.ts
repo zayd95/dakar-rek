@@ -46,6 +46,11 @@ export interface AmbientActivity {
   seatKinds?: readonly string[];
   /** Share of a spot's seats left free for players (default KEEP_FREE; at least one seat stays free). */
   keepFree?: number;
+  /**
+   * A team activity (a match on the pitch): its head count does not shrink with the graphics quality — a match needs its
+   * players (src/game/football.ts plays them; the far ones are cheap figures like everybody else's).
+   */
+  fixed?: boolean;
   /** Walking/running speed along a route (m/s). */
   speed?: readonly [number, number];
   /** People leave by boarding the next vehicle (stops). */
@@ -304,7 +309,7 @@ export function planDemand(spots: readonly AmbientSpot[], acts: readonly Ambient
       if (a.open && !spotOpen(s, o.hour)) continue;
       const peak = s.peaks?.length ? (s.peaks.some(w => inHours(o.hour, w)) ? 1.4 : 0.85) : 1;
       let level = levels[f.ai]; if (level !== level) level = levels[f.ai] = activityLevel(a, o.hour, o.dow);
-      const v = a.density * weight * level * scale * peak;
+      const v = a.density * weight * level * (a.fixed ? k : scale) * peak;   // a team activity keeps its head count (`fixed`)
       if (v <= 0) continue;
       if (f.slot !== slotNow) { f.slot = slotNow; f.draw = hashStr(`${s.id}/${a.id}/${slotNow}`); }
       const base = Math.floor(v), n = Math.min(f.cap - used[f.res], base + (f.draw < v - base ? 1 : 0));

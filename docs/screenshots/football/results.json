@@ -1,0 +1,392 @@
+{
+  "results": [
+    {
+      "name": "the evening's footballers make two teams on the pitch at 17:30",
+      "ok": true,
+      "detail": {
+        "teams": [
+          5,
+          5
+        ],
+        "waiting": 0,
+        "fans": 4,
+        "quality": "high"
+      }
+    },
+    {
+      "name": "the ball moves",
+      "ok": true,
+      "detail": {
+        "ballTravel": 76.7,
+        "ball": {
+          "x": -94.29,
+          "y": 0.27,
+          "z": 33.35,
+          "h": 0.11,
+          "speed": 1.4,
+          "net": 0,
+          "visible": true
+        }
+      }
+    },
+    {
+      "name": "the ball is drawn on the grass",
+      "ok": true,
+      "detail": {
+        "x": -94.29,
+        "y": 0.27,
+        "z": 33.35,
+        "h": 0.11,
+        "speed": 1.4,
+        "net": 0,
+        "visible": true
+      }
+    },
+    {
+      "name": "at the frame of a kick, the drawn foot is on the ball",
+      "ok": true,
+      "detail": {
+        "n": 28,
+        "t": 28.533,
+        "frame": 852,
+        "who": 8,
+        "team": 1,
+        "kind": "pass",
+        "side": -1,
+        "x": -3.1506109332359897,
+        "z": 7.769064878631965,
+        "h": 0.11,
+        "reach": 8.881784197001252e-16,
+        "speed": 4.518558219033452,
+        "to": 10,
+        "foot": 0.0277
+      }
+    },
+    {
+      "name": "a goal within 180 s of play",
+      "ok": true,
+      "detail": {
+        "t": 37.07,
+        "score": [
+          0,
+          1
+        ],
+        "shots": 4,
+        "onTarget": 4,
+        "saves": 1,
+        "goals": [
+          {
+            "t": 37.066666666667125,
+            "team": 1,
+            "scorer": 6,
+            "score": [
+              0,
+              1
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "the scorer celebrates (Celebrate held)",
+      "ok": true,
+      "detail": {
+        "id": 6,
+        "team": 1,
+        "keeper": false,
+        "x": -107.12198019375347,
+        "z": 21.93765711097091,
+        "y": 0.155,
+        "yaw": -0.5899402636304636,
+        "clip": "Celebrate",
+        "body": true,
+        "kick": null,
+        "cheer": 0.3
+      }
+    },
+    {
+      "name": "his teammates run to him and celebrate",
+      "ok": true,
+      "detail": {
+        "mates": [
+          {
+            "id": 2,
+            "cheer": true,
+            "clip": "Celebrate"
+          },
+          {
+            "id": 8,
+            "cheer": true,
+            "clip": "Celebrate"
+          },
+          {
+            "id": 10,
+            "cheer": true,
+            "clip": "Celebrate"
+          }
+        ],
+        "cheering": 5
+      }
+    },
+    {
+      "name": "the spectators on the touchline cheer the goal",
+      "ok": true,
+      "detail": {
+        "fans": 4,
+        "cheering": 4
+      }
+    },
+    {
+      "name": "play restarts from the centre spot after the goal",
+      "ok": true,
+      "detail": {
+        "kickoffs": [
+          {
+            "t": 7.17,
+            "dist": 0
+          },
+          {
+            "t": 50.4,
+            "dist": 0.03
+          }
+        ],
+        "phase": "play"
+      }
+    },
+    {
+      "name": "passes go from teammate to teammate",
+      "ok": true,
+      "detail": {
+        "passes": 34,
+        "completed": 20,
+        "intercepted": 13,
+        "perMinute": {
+          "passes": 17,
+          "completed": 10,
+          "goals": 1,
+          "contacts": 61.98
+        }
+      }
+    },
+    {
+      "name": "the foot (hands) is within 10 cm of the ball at every measured contact",
+      "ok": true,
+      "detail": {
+        "measured": 124,
+        "unmeasured": 0,
+        "median": 0.0304,
+        "p90": 0.0316,
+        "max": 0.0358,
+        "min": 0.0265,
+        "byKind": {
+          "touch": {
+            "n": 20,
+            "max": 0.034,
+            "mean": 0.031
+          },
+          "trap": {
+            "n": 41,
+            "max": 0.0336,
+            "mean": 0.0298
+          },
+          "tackle": {
+            "n": 17,
+            "max": 0.0341,
+            "mean": 0.0311
+          },
+          "pass": {
+            "n": 34,
+            "max": 0.0318,
+            "mean": 0.0289
+          },
+          "shot": {
+            "n": 9,
+            "max": 0.0358,
+            "mean": 0.0316
+          },
+          "save": {
+            "n": 3,
+            "max": 0.0297,
+            "mean": 0.0296
+          }
+        }
+      }
+    },
+    {
+      "name": "nearly every contact is measured on a drawn body",
+      "ok": true,
+      "detail": {
+        "measured": 124,
+        "unmeasured": 0,
+        "contacts": 124,
+        "quality": "high"
+      }
+    },
+    {
+      "name": "a planned contact is seldom missed",
+      "ok": true,
+      "detail": {
+        "whiffs": 0,
+        "contacts": 124
+      }
+    },
+    {
+      "name": "the footballers' planted feet barely slide (the legs keep the pace)",
+      "ok": true,
+      "detail": {
+        "bodies": 7,
+        "steps": 2000,
+        "slipped": 4.841733509427298
+      }
+    },
+    {
+      "name": "every contact had the ball at the contact point (the sim's own reach)",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "near the pitch the frame stays in the high budget (420 draw calls)",
+      "ok": true,
+      "detail": [
+        {
+          "label": "touchline, follow camera",
+          "calls": 123,
+          "football": 2,
+          "ambient": 61,
+          "frameMs": 506.3,
+          "footballMs": 0.113,
+          "ambientMs": 0.714,
+          "updateMs": 2.1
+        },
+        {
+          "label": "elevated view",
+          "calls": 105,
+          "football": 2,
+          "ambient": 32,
+          "frameMs": 479.5,
+          "footballMs": 0.113,
+          "ambientMs": 0.458,
+          "updateMs": 1.61
+        }
+      ]
+    },
+    {
+      "name": "the ball and the nets cost at most 4 draw calls",
+      "ok": true,
+      "detail": [
+        2,
+        2
+      ]
+    },
+    {
+      "name": "far from the pitch the match is put away (the people roam as before) and costs next to nothing",
+      "ok": true,
+      "detail": {
+        "near": false,
+        "active": false,
+        "ms": 0
+      }
+    },
+    {
+      "name": "no page errors",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "numbers": {
+    "stats": {
+      "contacts": 124,
+      "touches": 20,
+      "traps": 41,
+      "tackles": 17,
+      "passes": 34,
+      "completed": 20,
+      "intercepted": 13,
+      "shots": 9,
+      "onTarget": 9,
+      "saves": 3,
+      "goals": 2,
+      "kickoffs": 3,
+      "outs": 0,
+      "whiffs": 0,
+      "posts": 0,
+      "celebrations": 2,
+      "ballTravel": 394
+    },
+    "perMinute": {
+      "passes": 17,
+      "completed": 10,
+      "goals": 1,
+      "contacts": 61.98
+    },
+    "contacts": {
+      "measured": 124,
+      "unmeasured": 0,
+      "median": 0.0304,
+      "p90": 0.0316,
+      "max": 0.0358,
+      "min": 0.0265,
+      "byKind": {
+        "touch": {
+          "n": 20,
+          "max": 0.034,
+          "mean": 0.031
+        },
+        "trap": {
+          "n": 41,
+          "max": 0.0336,
+          "mean": 0.0298
+        },
+        "tackle": {
+          "n": 17,
+          "max": 0.0341,
+          "mean": 0.0311
+        },
+        "pass": {
+          "n": 34,
+          "max": 0.0318,
+          "mean": 0.0289
+        },
+        "shot": {
+          "n": 9,
+          "max": 0.0358,
+          "mean": 0.0316
+        },
+        "save": {
+          "n": 3,
+          "max": 0.0297,
+          "mean": 0.0296
+        }
+      }
+    },
+    "score": [
+      1,
+      1
+    ],
+    "t": 120.03,
+    "perf": [
+      {
+        "label": "touchline, follow camera",
+        "calls": 123,
+        "football": 2,
+        "ambient": 61,
+        "frameMs": 506.3,
+        "footballMs": 0.113,
+        "ambientMs": 0.714,
+        "updateMs": 2.1
+      },
+      {
+        "label": "elevated view",
+        "calls": 105,
+        "football": 2,
+        "ambient": 32,
+        "frameMs": 479.5,
+        "footballMs": 0.113,
+        "ambientMs": 0.458,
+        "updateMs": 1.61
+      }
+    ],
+    "far": 0,
+    "quality": "high"
+  }
+}

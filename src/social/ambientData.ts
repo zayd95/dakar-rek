@@ -75,9 +75,15 @@ export const ACTIVITIES: readonly AmbientActivity[] = [
   { id: 'promenade', label: 'Marcher au bord de la mer', at: ['promenade', 'beachwalk'], hours: [[16.5, 22]], pose: 'route', clips: ['Walk'], speed: [0.95, 1.3], stay: [50, 110], group: [1, 2], density: 3,
     dayBoost: { [SUNDAY]: 1.7, [SATURDAY]: 1.3 } },
   { id: 'gym', label: 'Séance de sport en plein air', at: ['gym'], hours: [[6, 9.5], [17, 20.5]], pose: 'stand', clips: ['Stance', 'Celebrate', 'Stance'], stay: [50, 110], density: 4, look: 'sport' },
-  { id: 'foot', label: 'Partie de foot', at: ['pitch'], hours: [[17, 19.6]], pose: 'roam', clips: ['Run'], speed: [2.4, 3.6], stay: [80, 160], density: 8, look: 'sport',
-    dayBoost: { [SATURDAY]: 1.3, [SUNDAY]: 1.4 } },
-  { id: 'foot-dimanche', label: 'Match du dimanche matin', at: ['pitch'], hours: [[8.5, 12]], days: [SUNDAY], pose: 'roam', clips: ['Run'], speed: [2.4, 3.6], stay: [80, 160], density: 10, look: 'sport' },
+  // the players of the evening's match and of the Sunday-morning one: src/game/football.ts makes two teams of them (5 a
+  // side at most, the others wait on the touchline) and plays the match when the player is near; far away they run about
+  // the pitch as before. `fixed`: the same head count at every graphics quality.
+  { id: 'foot', label: 'Partie de foot', at: ['pitch'], hours: [[17, 19.6]], pose: 'roam', clips: ['Run'], speed: [2.4, 3.6], stay: [80, 160], density: 10, look: 'sport', fixed: true,
+    dayBoost: { [SATURDAY]: 1.2, [SUNDAY]: 1.2 } },
+  { id: 'foot-dimanche', label: 'Match du dimanche matin', at: ['pitch'], hours: [[8.5, 12]], days: [SUNDAY], pose: 'roam', clips: ['Run'], speed: [2.4, 3.6], stay: [80, 160], density: 11, look: 'sport', fixed: true },
+  { id: 'regarder-foot', label: 'Regarder le match au bord du terrain', at: ['pitch'], hours: [[17.2, 19.6]], pose: 'stand', clips: ['Idle', 'Talk', 'Idle'], stay: [50, 120], group: [1, 3], density: 5,
+    dayBoost: { [SATURDAY]: 1.4, [SUNDAY]: 1.4 } },
+  { id: 'regarder-foot-dimanche', label: 'Regarder le match du dimanche', at: ['pitch'], hours: [[8.7, 12]], days: [SUNDAY], pose: 'stand', clips: ['Idle', 'Talk', 'Idle'], stay: [50, 120], group: [1, 3], density: 6 },
   { id: 'lutte', label: 'Entraînement de lutte', at: ['ecurie'], hours: [[6.5, 10], [16, 19]], pose: 'stand', clips: ['Stance', 'Stance', 'Grab'], stay: [60, 140], group: [2, 2], density: 4, look: 'sport', days: NOT_SUNDAY },
   { id: 'plage', label: 'Sortie à la plage', at: ['beachwalk'], hours: [[10, 19]], days: [SATURDAY, SUNDAY], pose: 'stand', clips: ['Talk', 'Idle', 'Celebrate'], stay: [80, 180], group: [2, 4], density: 6,
     dayBoost: { [SATURDAY]: 0.6 } },

@@ -1,12 +1,15 @@
 import type { HubId, Needs, SaveData } from './types';
 import { clamp } from './rng';
 import { newSave, LEDGER_MAX, MONEY_MAX } from './save';
+import { cityTimeAt } from './clock';
 
 /** Personal played time drains needs; it only advances while the game is actively played. */
 const DRAIN_PER_PLAYED_MIN: Needs = { faim: 1.6, energie: 0.9, moral: 0, social: 0.8, hygiene: 0.6 };
 
 export class GameState {
   data: SaveData;
+  /** City hour 0–24, read by opening hours (src/world/content.ts `during`); the game wires the shared clock and the debug override. */
+  hour: () => number = () => cityTimeAt(Date.now()).hourFloat;
   constructor(data: SaveData = newSave()) { this.data = data; }
 
   get wallet() { return this.data.wallet; }

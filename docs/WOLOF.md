@@ -10,6 +10,11 @@ salutation, un merci, un mot du marché ou de l'attaya). **Pas de pulaar, de sé
 fiche peut dire en français qu'un personnage les parle en famille (« Pulaar en famille, wolof avec les clients »), mais
 il salue ses clients en wolof.
 
+**Décision de Habib (12 octobre 2026) — Dakar Gist.** Les conversations de quartier font partie du chantier
+Dakar Street DNA (`docs/VISION.md`, décision 1) : wolof urbain dakarois, argot, humour, taquineries et mélange naturel
+avec le français ; pas de wolof académique ni de dialogues artificiels. L'agent wolof propose sa meilleure approche,
+en réutilisant les systèmes existants. Aucun développement avant l'intégration de la vague 5.
+
 ## Ce que le joueur voit et entend
 
 | Où | Ce qui se dit | Fichier |
