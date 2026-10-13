@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { Character, NPC_OUTFITS } from './character';
 import { Humanoid, humanoidReady, randomLook } from './humanoid';
-import { makeTaxi, makeCarRapide } from './vehicles';
+import { makeCarRapide } from './vehicles';
+import { animateVehicle, buildVehicle, type VehicleKind } from './vehicleKit';
 import { pick } from '../core/rng';
 import type { HubWorld } from '../world/types';
+import { len2 } from '../core/math';
 
 interface Walker { char: { group: THREE.Group; animate(dt: number, speed: number): void }; ax: number; az: number; bx: number; bz: number; t: number; speed: number; lat: number; prev: string }
 
@@ -18,11 +20,19 @@ function neighbours(w: HubWorld, x: number, z: number) {
   return out;
 }
 
+/**
+ * The weather's (and the road events') say on the street, set by the living city lane (src/city/living.ts): the share
+ * of walkers and cars out on top of the hour's (src/social/ambientLife.ts thins them by hour), and how fast the cars go
+ * (rain slows everyone down).
+ */
+export const streetLevel = { walkers: 1, traffic: 1, speed: 1 };
+
 /** Local background crowd: simulated on this phone only, never synchronised (design doc: Local atmosphere). */
 export class Crowd {
   group = new THREE.Group();
   private walkers: Walker[] = [];
   constructor(private world: HubWorld, private rand: () => number, count = 14) {
+    this.group.name = 'crowd_walkers';                       // social/ambientLife.ts thins them out at night
     for (let n = 0; n < count; n++) {
       const e = pick(world.edges, rand);
       const c = humanoidReady() ? new Humanoid(randomLook(rand)) : new Character(pick(NPC_OUTFITS, rand));
@@ -34,14 +44,14 @@ export class Crowd {
   bodies() { return this.walkers.map((w, i) => ({ id: 'walker:' + i, h: w.char instanceof Humanoid ? w.char : null, obj: w.char.group })); }
   update(dt: number) {
     for (const w of this.walkers) {
-      const len = Math.hypot(w.bx - w.ax, w.bz - w.az);
+      const len = len2(w.bx - w.ax, w.bz - w.az);
       w.t += (w.speed * dt) / len;
       if (w.t >= 1) {
         const opts = neighbours(this.world, w.bx, w.bz).filter(n => nodeKey(n.x, n.z) !== w.prev);
         const next = opts.length ? pick(opts, this.rand) : { x: w.ax, z: w.az };
         w.prev = nodeKey(w.bx, w.bz); w.ax = w.bx; w.az = w.bz; w.bx = next.x; w.bz = next.z; w.t = 0;
       }
-      const l2 = Math.hypot(w.bx - w.ax, w.bz - w.az);
+      const l2 = len2(w.bx - w.ax, w.bz - w.az);
       const dx = (w.bx - w.ax) / l2 || 0, dz = (w.bz - w.az) / l2 || 0;
       const x = w.ax + (w.bx - w.ax) * w.t - dz * w.lat, z = w.az + (w.bz - w.az) * w.t + dx * w.lat;
       w.char.group.position.set(x, 0.1, z); w.char.group.rotation.y = Math.atan2(dx, dz);
@@ -50,38 +60,87 @@ export class Crowd {
   }
 }
 
+/**
+ * Road segments closed to the decorative traffic for a while (a fight evening's queue at the arena gate…): a module sets
+ * `closed` (segment ends → true when cars must keep off it) and puts it back to null. Cars already on a closed segment
+ * turn up on an open one; the others never turn into it.
+ */
+export type Closure = (ax: number, az: number, bx: number, bz: number) => boolean;
+export const trafficClosures: { closed: Closure | null; more: Set<Closure> } = { closed: null, more: new Set() };
+/** The arena's closure and the road events' (src/city/roadEvents.ts) together, or null when the roads are all open. */
+function closures(): Closure | null {
+  const a = trafficClosures.closed, more = trafficClosures.more;
+  if (!more.size) return a;
+  return (ax, az, bx, bz) => (a?.(ax, az, bx, bz) ?? false) || [...more].some(f => f(ax, az, bx, bz));
+}
+let liveTraffic: DecorativeTraffic | null = null;
+/** Where the decorative cars are right now (checks). */
+export const trafficPositions = (): { x: number; z: number }[] => liveTraffic?.positions() ?? [];
+
 interface Car { g: THREE.Group; ax: number; az: number; bx: number; bz: number; t: number; speed: number; prev: string; lane: number }
 
+/** Traffic mix per neighbourhood (weights): car rapides and motorbikes in Pikine, taxis and buses downtown, 4×4s and luxury cars in Almadies. */
+const TRAFFIC_MIX: Record<HubWorld['id'], [VehicleKind, number][]> = {
+  plateau: [['taxi', 30], ['carRapide', 15], ['bus', 12], ['sedan', 18], ['suv', 8], ['luxury', 5], ['moto', 8], ['pickup', 2], ['truck', 2]],
+  corniche: [['taxi', 25], ['carRapide', 15], ['bus', 10], ['sedan', 20], ['suv', 10], ['luxury', 8], ['moto', 10], ['pickup', 2]],
+  almadies: [['taxi', 20], ['sedan', 20], ['suv', 22], ['luxury', 18], ['moto', 8], ['carRapide', 6], ['bus', 4], ['pickup', 2]],
+  pikine: [['carRapide', 28], ['taxi', 20], ['moto', 20], ['sedan', 10], ['pickup', 8], ['truck', 6], ['bus', 5], ['suv', 3]],
+};
+/** Lateral offset from the road centre (right-hand traffic); parked vehicles stand at 4.3 m (src/game/parkedVehicles.ts). */
+const LANE: Partial<Record<VehicleKind, number>> = { moto: 3.0, bus: 2.6, truck: 2.6 };
+function pickKind(hub: HubWorld['id'], r: number): VehicleKind {
+  const mix = TRAFFIC_MIX[hub] ?? TRAFFIC_MIX.plateau, total = mix.reduce((a, [, w]) => a + w, 0);
+  let x = r * total;
+  for (const [k, w] of mix) { x -= w; if (x <= 0) return k; }
+  return mix[0][0];
+}
+
 /**
- * Decorative local traffic. VISUAL ONLY: it never collides with, blocks or affects the player, jobs or
- * anything saved. Traffic that matters will be shared, server-validated vehicles (design doc, Implementation decisions).
+ * Decorative local traffic, built from the vehicle kit (src/actors/vehicleKit.ts: 1–3 draw calls each, LOD).
+ * VISUAL ONLY: it never collides with, blocks or affects the player, jobs or anything saved. Traffic that matters will
+ * be shared, server-validated vehicles (design doc, Implementation decisions).
  */
 export class DecorativeTraffic {
   group = new THREE.Group();
   private cars: Car[] = [];
   constructor(private world: HubWorld, private rand: () => number, count = 6) {
+    this.group.name = 'traffic';                             // social/ambientLife.ts varies it by the hour
+    liveTraffic = this;
     for (let n = 0; n < count; n++) {
       const e = pick(world.edges, rand);
-      const g = rand() < 0.35 ? makeCarRapide() : makeTaxi(pick([0xf0b800, 0xf2f2ec, 0xd9482b, 0x2f8fd1], rand));
-      this.group.add(g);
-      this.cars.push({ g, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 5 + rand() * 3, prev: '', lane: 2.5 });
+      const kind = pickKind(world.id, rand()), seed = Math.floor(rand() * 1e6);
+      const v = kind === 'carRapide' ? { group: makeCarRapide({ seed }), speed: 6 } : (() => { const b = buildVehicle(kind, { seed }); return { group: b.group, speed: b.spec.speed }; })();
+      this.group.add(v.group);
+      this.cars.push({ g: v.group, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: v.speed * (0.85 + rand() * 0.3), prev: '', lane: LANE[kind] ?? 2.5 });
     }
+  }
+  /** Positions of the cars (checks). */
+  positions() { return this.cars.map(c => ({ x: c.g.position.x, z: c.g.position.z })); }
+  /** A car on a segment that just closed turns up on an open one (out of sight of the closure). */
+  private reroute(c: Car, shut: NonNullable<typeof trafficClosures.closed>) {
+    const open = this.world.edges.filter(e => !shut(e.ax, e.az, e.bx, e.bz));
+    if (!open.length) return;
+    const e = pick(open, this.rand);
+    c.ax = e.ax; c.az = e.az; c.bx = e.bx; c.bz = e.bz; c.t = this.rand(); c.prev = '';
   }
   /** Car rapide groups in this traffic (they carry an apprentice on the step). */
   rapides() { return this.cars.map(c => c.g).filter(g => g.name.includes('car_rapide')); }
   update(dt: number) {
+    const shut = closures();
     for (const c of this.cars) {
-      const len = Math.hypot(c.bx - c.ax, c.bz - c.az);
-      c.t += (c.speed * dt) / len;
+      if (shut && shut(c.ax, c.az, c.bx, c.bz)) this.reroute(c, shut);
+      const len = len2(c.bx - c.ax, c.bz - c.az);
+      c.t += (c.speed * streetLevel.speed * dt) / len;
       if (c.t >= 1) {
-        const opts = neighbours(this.world, c.bx, c.bz).filter(n => nodeKey(n.x, n.z) !== c.prev);
+        const opts = neighbours(this.world, c.bx, c.bz).filter(n => nodeKey(n.x, n.z) !== c.prev && !(shut && shut(c.bx, c.bz, n.x, n.z)));
         const next = opts.length ? pick(opts, this.rand) : { x: c.ax, z: c.az };
         c.prev = nodeKey(c.bx, c.bz); c.ax = c.bx; c.az = c.bz; c.bx = next.x; c.bz = next.z; c.t = 0;
       }
-      const l2 = Math.hypot(c.bx - c.ax, c.bz - c.az);
+      const l2 = len2(c.bx - c.ax, c.bz - c.az);
       const dx = (c.bx - c.ax) / l2 || 0, dz = (c.bz - c.az) / l2 || 0;
       c.g.position.set(c.ax + (c.bx - c.ax) * c.t - dz * c.lane, 0.08, c.az + (c.bz - c.az) * c.t + dx * c.lane);
       c.g.rotation.y = Math.atan2(dx, dz);
+      animateVehicle(c.g, c.speed, 0, dt);                                       // wheels turn (near models only)
     }
   }
 }

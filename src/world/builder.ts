@@ -3,13 +3,16 @@ import type { HubId } from '../core/types';
 import { rng, pick } from '../core/rng';
 import { Batch, facadeTextures, signTexture } from './batch';
 import { ACTIONS, ENTER } from './content';
-import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
+import type { Canopy, Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { generatedTexture } from './textures';
-import { inGate, tierRadius, tierTop, TIERS, TIER_DEPTH, PARAPET_R, PARAPET_H, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
+import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
+import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
+import { buildShopInterior, type ShopDetail } from './shopKit';
+import { isComposed, type Site } from './sites';
 import { benchSeats } from '../interact/seats';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
@@ -53,7 +56,9 @@ const SPECS: Record<HubId, HubSpec> = {
   pikine: {
     id: 'pikine', seed: 53, style: 'banlieue', ground: 0xd9b98a, road: 0xb79f78, walk: 0xcdb48a, blockGround: 0xc9a977,
     palette: [0x5fa8c9, 0x8fcf9a, 0xe7b45a, 0xe58aa0, 0xd9d2c4, 0x9c8fd1, 0xd96f4f, 0x7fb8a4], floors: [1, 2], palms: 5,
-    specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station' },
+    // '1,0' (across the street from the starter room): an open block where the ownership module builds the Cité Jàmm —
+    // Keur Meubles, the Résidence Jàmm, a family house, two plots and a billboard (src/economy/estate.ts)
+    specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station', '1,0': 'plaza' },
     kiosks: [
       { i: 1, j: 1, lot: 0, kind: 'home', name: 'Ma chambre' }, { i: 1, j: 1, lot: 1, kind: 'dibiterie', name: 'Dibiterie Chez Pathé' }, { i: 3, j: 2, lot: 2, kind: 'gargote', name: 'Gargote Mame Diarra' },
       { i: 0, j: 2, lot: 1, kind: 'cafe', name: 'Café Touba · Parcelles' }, { i: 3, j: 1, lot: 3, kind: 'garage', name: 'Garage Modou' }, { i: 3, j: 1, lot: 2, kind: 'maiga', name: 'Maïga du marché' },
@@ -102,11 +107,12 @@ function lightPoolTexture() {
 }
 
 /** lite: Low quality — skips purely decorative props (roof clutter, AC units, laundry, zebra crossings, flowers). */
-export function buildHub(id: HubId, lite = false): HubWorld {
+export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubWorld {
   const sp = SPECS[id];
   const R = rng(sp.seed);
   const group = new THREE.Group();
   const colliders: Collider[] = [];
+  const canopies: Canopy[] = [];
   const interactables: Interactable[] = [];
   const plain = new Batch(), fac = new Batch(), lampPosts = new Batch(), lampBulbs = new Batch();
   const glass = new Batch(), water = new Batch(), leaves = new Batch();
@@ -269,6 +275,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const rapides: THREE.Object3D[] = [];
   /** Climbable stairs: height rises linearly from y0 at x0 to y1 at x1, then stays at y1 until xEnd. */
   const ramps: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number; xEnd: number }[] = [];
+  /** Stepped climbs along radial lines (the arena's aisles, src/world/arenaModules.ts). */
+  const climbs: Climb[] = [];
   const addSign = (text: string, bg: string, fg: string, x: number, y: number, z: number, rotY: number, w = 6, h = 1.5) => {
     const tex = text.length > 18 ? signTexture(text, bg, fg, 768, 112) : signTexture(text, bg, fg);   // long names get a wider canvas so they never clip
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
@@ -279,6 +287,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const h = 6.2 * s;
     for (let k = 0; k < 2; k++) trunks.cyl(0.2 * s + (1 - k) * 0.06, 0.26 * s + (1 - k) * 0.06, h / 2 + 0.05, x, 0.1 + (k * h) / 2, z, k % 2 ? 0x9a7b55 : whitewash ? 0xf1eee6 : 0x8a6d4a, 5);
     const top = 0.1 + h;
+    canopies.push({ x, z, r: 3.3 * s, y0: top - 0.7 * s, y1: top + 0.3 * s });
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2 + R() * 0.5;
       const len = 3.4 * s;
@@ -292,10 +301,13 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     plain.cyl(0.22 * s, 0.32 * s, 2.6 * s, x, 0.1, z, 0x6e5a44, 6);
     plain.cyl(0.12 * s, 0.16 * s, 1.4 * s, x + 0.5 * s, 2.2 * s, z, 0x6e5a44, 5, [0, 0, -0.6]);
     const cols = flower ? [0xc8442c, 0xd9542f, 0x4a7a35] : [0x3f6e2e, 0x4c7d36, 0x365f28];
+    const top = { x, z, r: 0, y0: Infinity, y1: 0 };                  // the canopy's bounds, from its blobs (same random draws)
     for (let k = 0; k < 5; k++) {
-      const a = k * 1.3 + R(), r = k === 0 ? 0 : 1.3 * s;
-      leaves.blob((1.4 + R() * 0.6) * s, x + Math.sin(a) * r, (3.3 + R() * 0.8) * s, z + Math.cos(a) * r, cols[k % 3], 0.75, 0);
+      const a = k * 1.3 + R(), r = k === 0 ? 0 : 1.3 * s, br = (1.4 + R() * 0.6) * s, by = (3.3 + R() * 0.8) * s;
+      leaves.blob(br, x + Math.sin(a) * r, by, z + Math.cos(a) * r, cols[k % 3], 0.75, 0);
+      top.r = Math.max(top.r, r + br * 0.85); top.y0 = Math.min(top.y0, by - br * 0.75); top.y1 = Math.max(top.y1, by + br * 0.75);
     }
+    canopies.push(top);
     solidC(x, z, 0.6, 0.6, 2.4);
   };
   const awning = (cx: number, cz: number, w: number, d: number, y: number, col: number, alongX = true, dir = 1) => {
@@ -307,6 +319,9 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       if (alongX) plain.box(w / n + 0.01, 0.08, d, cx + off, y - 0.25, cz, c, 0); else plain.box(d, 0.08, w / n + 0.01, cx, y - 0.25, cz + off, c);
     }
     if (alongX) plain.box(w, 0.35, 0.06, cx, y - 0.6, cz + dir * d / 2, col); else plain.box(0.06, 0.35, w, cx + dir * d / 2, y - 0.6, cz, col);
+    // the camera keeps out of it like out of leaves: a row of short cylinders along its length
+    const r = d * 0.6, m = Math.max(1, Math.round(w / d));
+    for (let k = 0; k < m; k++) { const off = -w / 2 + (k + 0.5) * (w / m); canopies.push(alongX ? { x: cx + off, z: cz, r, y0: y - 0.7, y1: y } : { x: cx, z: cz + off, r, y0: y - 0.7, y1: y }); }
   };
   /** Rolling metal shutter of a ground-floor boutique, with a painted board above it. */
   const SHOP_BOARDS = [0xd9482b, 0xf4c20d, 0x1e6fd9, 0x2f8f4e, 0xe8742c, 0x6b3fa0];
@@ -551,7 +566,43 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const smokeAt: { x: number; y: number; z: number }[] = [];
   const people: HubWorld['people'] = [];
   const seats: HubWorld['seats'] = [];
-  const roofs: HubWorld['roofs'] = [];
+  /** Sites left to the venues module (src/world/sites.ts): ground only, plus the place's identity interactable. */
+  const sites: Site[] = [];
+  /**
+   * Footprint the replaced building had, kept as colliders only while the streets are dressed: random trees, palms and
+   * stalls test them, so the rest of the hub keeps exactly the same layout. Removed before the hub is returned.
+   */
+  const ghosts: Collider[] = [];
+  const ghost = (x0: number, z0: number, x1: number, z1: number, h: number) => { const c = { x0, z0, x1, z1, h }; ghosts.push(c); colliders.push(c); };
+  const inSite = (x: number, z: number) => sites.some(s => x > s.x0 - 0.3 && x < s.x1 + 0.3 && z > s.z0 - 0.3 && z < s.z1 + 0.3);
+  /**
+   * Street dressing that would fall inside a composed site is not drawn, but it draws its random numbers and keeps its
+   * collider as a ghost exactly as before, so every later tree, palm and stall of the hub stays where it was.
+   */
+  const dress = (x: number, z: number, place: () => void) => {
+    if (!inSite(x, z)) { place(); return; }
+    const marks = [plain, leaves, trunks].map(b => b.mark()), n = colliders.length, nc = canopies.length;
+    place();
+    [plain, leaves, trunks].forEach((b, i) => b.rollback(marks[i]));
+    canopies.splice(nc);
+    for (const c of colliders.splice(n)) ghost(c.x0, c.z0, c.x1, c.z1, c.h);
+  };
+  const composedLot = (k: KioskSpec) => {
+    const a = k.lot % 2, b = k.lot >> 1, L = lotRect(k.i, k.j, a, b), dir = b ? 1 : -1;
+    const key = `${k.kind}:${k.i}${k.j}`, itId = `${id}:${key}`;
+    sites.push({ key, kind: 'dibiterie', name: k.name, x0: L.x0, z0: L.z0, x1: L.x1, z1: L.z1, front: { x: 0, z: dir }, side: { x: a ? 1 : -1, z: 0 }, interactable: itId });
+    interactables.push({ id: itId, name: k.name, kind: 'actions', x: L.cx, z: dir > 0 ? L.z1 : L.z0, radius: 3, actions: [] });
+    // the old dibiterie's colliders (same numbers as dibiterie() above)
+    const w = 11, d = 7.5, h = 3.4, cx = L.cx, cz = dir > 0 ? L.z1 - d / 2 - 0.5 : L.z0 + d / 2 + 0.5;
+    const at = (t: number) => cz + dir * t, front = cz + dir * d / 2, back = cz - dir * d / 2;
+    const g = (x: number, z: number, gw: number, gd: number, gh: number) => ghost(x - gw / 2, z - gd / 2, x + gw / 2, z + gd / 2, gh);
+    g(cx - 2.5, at(d / 2 - 0.6), 2.0, 0.8, 1); g(cx + 2.4, at(-d / 2 + 1.4), 4.6, 1.2, 1.1); g(cx - w / 2 + 0.6, cz, 0.6, 3.4, 0.5);
+    g(cx - 1.2, at(-0.3), 1.2, 0.8, 0.8); g(cx + 1.4, at(1.5), 1.2, 0.8, 0.8);
+    ghost(cx - w / 2 - 0.3, Math.min(back, front), cx - w / 2 + 0.15, Math.max(back, front), h);
+    ghost(cx + w / 2 - 0.15, Math.min(back, front), cx + w / 2 + 0.3, Math.max(back, front), h);
+    g(cx, back, w, 0.4, h);
+  };
+  const roofs: Collider[] = [];
 
   const kioskAt = (k: KioskSpec) => {
     const L = lotRect(k.i, k.j, k.lot % 2, k.lot >> 1);
@@ -561,11 +612,19 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const w = small ? 7 : 14, d = small ? 6 : 8, h = small ? 3.6 : 4.2;
     const cz = south ? L.z1 - d / 2 - 0.5 : L.z0 + d / 2 + 0.5, cx = L.cx;
     const col = k.kind === 'cafe' ? 0x6fa56a : k.kind === 'gargote' ? 0xe8a43c : k.kind === 'restaurant' ? 0xf3f0ea : k.kind === 'garage' ? 0x7f8a96 : k.kind === 'maiga' ? 0x6f9e98 : 0xe7b45a;
-    fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    // Garage Modou is an open workshop (the shop kit's 'garage': the bench, tools, a car on the lift, motorbikes for sale)
+    const workshop = k.kind === 'garage';
+    if (!workshop) fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    else {
+      for (const sx of [-1, 1]) plain.box(0.25, h, d, cx + sx * (w / 2 - 0.125), G - 0.02, cz, col);
+      plain.box(w, h, 0.25, cx, G - 0.02, cz - dir * (d / 2 - 0.125), col);
+      plain.box(w, 0.95, 0.25, cx, G + h - 0.97, cz + dir * (d / 2 - 0.125), shade(col, 0.9));   // the header over the opening
+      plain.box(w - 0.3, 0.02, d - 0.3, cx, G - 0.01, cz, 0x6b6e70);                            // oil-stained concrete floor
+    }
     plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
     parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.9), 0.6);
-    plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));
-    if (!small) {
+    if (!workshop) plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));
+    if (!small && !workshop) {
     awning(cx, cz + dir * (d / 2 + 1.2), w - 1, 2.4, 3.0, k.kind === 'cafe' ? 0x2f8f4e : k.kind === 'garage' ? 0x2d3748 : 0xd9482b, true, dir);
     plain.box(w - 3, 1, 0.8, cx, G, cz + dir * (d / 2 + 0.6), 0x7a5a3c);              // counter
     plain.box(w - 2.6, 0.08, 1.0, cx, G + 1, cz + dir * (d / 2 + 0.6), 0x5a3f2a);
@@ -577,6 +636,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       plain.box(1.6, 0.45, 0.4, cx + 1.6, G, cz + dir * (d / 2 + 0.9), 0x6b4a2e);
       seats.push(...benchSeats(`${id}:${k.kind}:${k.i}${k.j}:bench`, cx + 1.6, cz + dir * (d / 2 + 0.9), dir > 0 ? 0 : Math.PI, G + 0.45, 'street', 1.6, 2));
     }
+    if (workshop) awning(cx, cz + dir * (d / 2 + 1.2), w - 1, 2.4, 3.0, 0x2d3748, true, dir);
     if (k.kind === 'gargote' || k.kind === 'cafe' || k.kind === 'restaurant') {
       for (let n = 0; n < 3; n++) {                                                   // benches and a low table out front
         const bx = cx - 4 + n * 4, bz = cz + dir * (d / 2 + 3.2);
@@ -586,7 +646,15 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       }
     }
     if (k.kind === 'garage') for (let n = 0; n < 4; n++) plain.cyl(0.38, 0.38, 0.28, cx + 5 + (n % 2) * 0.2, G + n * 0.28, cz + dir * (d / 2 + 2.4), 0x1d1d1f, 10); // tyre stack
-    solidC(cx, cz, w, d + (small ? 0.2 : 1.4), h);
+    if (!workshop) solidC(cx, cz, w, d + (small ? 0.2 : 1.4), h);
+    else {
+      for (const sx of [-1, 1]) solidC(cx + sx * (w / 2 - 0.125), cz, 0.25, d, h);
+      solidC(cx, cz - dir * (d / 2 - 0.125), w, 0.25, h);
+      const kit = buildShopInterior('garage', { w: w - 0.25, d }, 4242, { detail: shopDetail ?? (lite ? 'low' : 'medium'), at: { x: cx, z: cz, y: G, yaw: dir > 0 ? 0 : Math.PI }, id: `${id}:garage:${k.i}${k.j}`, height: h - 0.3, shadows: false });
+      kit.group.userData.shop = { key: `${id}:${k.kind}:${k.i}${k.j}`, type: 'garage', anchors: kit.anchors, bounds: kit.bounds, budget: kit.budget };
+      kit.group.userData.shopColliders = kit.colliders;
+      group.add(kit.group); colliders.push(...kit.colliders); seats.push(...kit.seats);
+    }
     const bg = k.kind === 'maiga' ? '#3f4f4a' : k.kind === 'cafe' ? '#14532d' : k.kind === 'gargote' ? '#7c2d12' : k.kind === 'restaurant' ? '#0c4a6e' : k.kind === 'garage' ? '#1f2937' : '#78350f';
     // painted sign board flush on the facade, between the awning and the roof
     if (small) addSign('MAÏGA', bg, '#f1e6c8', cx + 1.3, G + 2.6, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 2.6, 0.7);
@@ -604,6 +672,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     for (let n = 0; n < 4; n++) plain.box(0.3, 0.2, 0.3, x - 0.55 + n * 0.37, G + 0.8, z + (R() - 0.5) * 0.4, pick([0xe58a2f, 0xc4372b, 0x6aa84f, 0xf4c20d, 0xf2f2ec], R));
     plain.box(0.05, 2.2, 0.05, x + 0.9, G, z, 0x555555);
     plain.cyl(0.05, 1.3, 0.4, x + 0.9, G + 2.1, z, pick([0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e], R), 8);
+    canopies.push({ x: x + 0.9, z, r: 1.4, y0: G + 2.0, y1: G + 2.6 });                // the parasol: a camera obstacle
     plain.box(0.4, 0.4, 0.4, x - 1.3, G, z + 0.3, 0x3a5fa0);                          // stool
     solidC(x, z, 1.7, 1.0, 1);
   };
@@ -615,6 +684,13 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const B = G + 0.02;
     switch (kind) {
       case 'mosque': {
+        if (isComposed(id, `mosque:${i}${j}`)) {
+          for (const sx of [-1, 1]) tree(cx + sx * 9, cz - 15, 1.1);          // the forecourt's two shade trees stay
+          for (const sx of [-1, 1]) ghost(cx + sx * 15 - 1.6, cz - 9.6, cx + sx * 15 + 1.6, cz - 6.4, 26);   // old minarets and hall
+          ghost(cx - 13, cz - 9, cx + 13, cz + 13, 11);
+          sites.push({ key: `mosque:${i}${j}`, kind: 'mosque', name: 'Grande Mosquée', x0: bx, z0: bz, x1: bx + BLK, z1: bz + BLK, front: { x: 0, z: -1 } });
+          break;
+        }
         fac.facade(26, 11, 22, cx, B, cz + 2, 0xf6f3ea);
         plain.box(26.2, 0.7, 22.2, cx, B, cz + 2, 0xcfc7b4);
         plain.box(20, 1.2, 16, cx, 11.2, cz + 2, 0xe9e5d8);
@@ -652,8 +728,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       case 'station': {
         pave.box(26, 0.04, 14, cx, B, cz, 0x9a9488);
         for (let k = -2; k <= 2; k++) plain.box(0.2, 0.02, 5, cx - 3 + k * 0.01, B + 0.04, cz + k * 2.8, 0xe8e4d8, Math.PI / 2);
-        const cr = makeCarRapide(); cr.position.set(cx - 3, B, cz); cr.rotation.y = Math.PI / 2; group.add(cr);
-        const cr2 = makeCarRapide(); cr2.position.set(cx - 5, B, cz - 4.5); cr2.rotation.y = Math.PI / 2 + 0.08; group.add(cr2);
+        const cr = makeCarRapide({ seed: sp.seed * 7 + 1, driver: false }); cr.position.set(cx - 3, B, cz); cr.rotation.y = Math.PI / 2; group.add(cr);
+        const cr2 = makeCarRapide({ seed: sp.seed * 7 + 2, driver: false }); cr2.position.set(cx - 5, B, cz - 4.5); cr2.rotation.y = Math.PI / 2 + 0.08; group.add(cr2);
         rapides.push(cr, cr2);
         solidC(cx - 5, cz - 4.5, 6.6, 2.8, 2.4);
         plain.box(0.3, 4.5, 0.3, cx + 9, B, cz - 5, 0x444444);
@@ -778,6 +854,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       }
       case 'port': {
         plain.box(6, 0.4, 36, cx, B, bz - 8, 0x8b6a47);                                 // pier toward the sea
+        ramps.push({ x0: cx - 3, x1: cx - 3, z0: bz - 26, z1: bz + 10, y0: 0.4, y1: 0.4, xEnd: cx + 3 });   // walked on: feet on the planks (flat)
         for (let k = 0; k < 12; k++) plain.box(6.05, 0.05, 0.12, cx, B + 0.4, bz - 25 + k * 3, 0x6b4f33);
         const cols = [0x1e6fd9, 0xe7b82f, 0xd9482b, 0x2f8f4e];
         for (let k = 0; k < 5; k++) {
@@ -814,7 +891,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         const BOARD = [0xf2f2ec, 0x1e6fd9, 0xd9482b, 0x2f8f4e, 0xf4c20d, 0x0f3d6e];
         for (let s = 0; s < 26; s++) {                                                  // sponsor boards around the ring
           const a = ((s + 0.5) / 26) * Math.PI * 2;
-          if (gateGap(a, 0.36)) continue;
+          if (gateGap(a, 0.36) || inTunnel(a, 0.16)) continue;                       // the gate and the wrestlers' passage
           const x = cx + Math.sin(a) * 10.6, z = cz + Math.cos(a) * 10.6, col = BOARD[s % BOARD.length];
           plain.box(2.1, 0.75, 0.08, x, B, z, 0xf2f2ec, a);
           plain.box(1.9, 0.5, 0.02, x + Math.sin(a) * -0.05, B + 0.13, z + Math.cos(a) * -0.05, col, a);   // panel facing the ring
@@ -833,59 +910,33 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           for (const sz of [-1, 1]) plain.box(4.4, 0.35, 0.03, tx, B + 2.3, tz + sz * 1.7, 0xf4c20d);
           solidC(tx, tz, 3.2, 1.8, 0.9);
         }
-        for (let s = 0; s < 64; s++) {                                                  // metal crowd barriers in front of the parapet
-          const a = ((s + 0.5) / 64) * Math.PI * 2;
-          if (gateGap(a)) continue;
-          const r = 16.4, wSeg = (2 * Math.PI * r) / 64, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
-          plain.box(wSeg - 0.12, 0.05, 0.05, x, B + 1.0, z, 0xa9adb3, a);
-          plain.box(wSeg - 0.12, 0.05, 0.05, x, B + 0.25, z, 0xa9adb3, a);
-          for (let v = 0; v < 4; v++) { const o = (v / 3 - 0.5) * (wSeg - 0.2); plain.box(0.03, 0.8, 0.03, x + Math.cos(a) * o, B + 0.25, z - Math.sin(a) * o, 0xa9adb3, a); }
-        }
-        for (let s = 0; s < 48; s++) {                                                  // bannered parapet in front of the first tier
-          const a = ((s + 0.5) / 48) * Math.PI * 2;
-          if (gateGap(a)) continue;
-          const r = PARAPET_R, wSeg = (2 * Math.PI * r) / 48 + 0.05, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
-          plain.box(wSeg, PARAPET_H, 0.22, x, 0, z, 0xe9e4d8, a);
-          if (s % 2 === 0) plain.box(wSeg * 1.6, 0.62, 0.03, cx + Math.sin(a) * (r - 0.13), 0.24, cz + Math.cos(a) * (r - 0.13), BOARD[(s / 2) % BOARD.length], a);
-        }
+        // crowd barriers, the bannered parapet and the tiers: one stand-section module per section (src/world/arenaModules.ts)
         if (!lite) for (let s = 0; s < 10; s++) {                                       // feather flags along the barriers
           const a = ((s + 0.5) / 10) * Math.PI * 2 + 0.15;
-          if (gateGap(a, 0.5)) continue;
+          if (gateGap(a, 0.5) || inTunnel(a, 0.3)) continue;
           const x = cx + Math.sin(a) * 15.6, z = cz + Math.cos(a) * 15.6, col = BOARD[(s + 1) % BOARD.length];
           plain.box(0.05, 3.6, 0.05, x, B, z, 0x555555);
           plain.box(0.7, 2.6, 0.03, x + Math.cos(a) * 0.37, B + 0.8, z - Math.sin(a) * 0.37, col, a);
           plain.box(0.6, 0.5, 0.03, x + Math.cos(a) * 0.32, B + 3.4, z - Math.sin(a) * 0.32, col, a);
         }
-        const TIER_COL = [0xd5cbb8, 0xc6bba6, 0xb7ab95];
         const FLAG = [0x1a9d54, 0xf4c20d, 0xd9322b];
-        for (let t = 0; t < TIERS; t++) {                                               // raised tiers (TEMP concrete), one level only
-          const r = tierRadius(t), top = tierTop(t), segs = 48;
-          for (let s = 0; s < segs; s++) {
-            const a = ((s + 0.5) / segs) * Math.PI * 2;
-            if (gateGap(a)) continue;
-            const wSeg = (2 * Math.PI * r) / segs + 0.06;
-            concrete.box(wSeg, top, TIER_DEPTH, cx + Math.sin(a) * r, 0, cz + Math.cos(a) * r, TIER_COL[t], a);  // cast concrete (#11)
-            plain.box(wSeg, 0.12, 0.06, cx + Math.sin(a) * (r - 0.67), top - 0.18, cz + Math.cos(a) * (r - 0.67), FLAG[Math.floor(s / 4) % 3], a); // painted riser band
-            plain.box(wSeg, 0.06, 0.12, cx + Math.sin(a) * (r - 0.6), top, cz + Math.cos(a) * (r - 0.6), 0xe9e4d8, a);  // worn seat edge
-          }
-        }
+        const kit: ArenaKit = { plain, concrete, base: B, lite, solid: solidC, sign: addSign, climb: c => climbs.push(c) };
+        SECTIONS.forEach((sec, i) => standSection(kit, cx, cz, sec, i));                // eight sections between the gaps
+        for (const a of AISLES) aisleStairs(kit, cx, cz, a);                             // stairs up the aisles
         const wallR = WALL_R, wallH = WALL_H, wsegs = 40;
         for (let s = 0; s < wsegs; s++) {
           const a = ((s + 0.5) / wsegs) * Math.PI * 2;
-          if (gateGap(a)) continue;
+          if (gateGap(a) || inTunnel(a)) continue;                                     // the public gate and the wrestlers' gate
           const wSeg = (2 * Math.PI * wallR) / wsegs + 0.1;
           const x = cx + Math.sin(a) * wallR, z = cz + Math.cos(a) * wallR;
           plain.box(wSeg, wallH, 0.5, x, 0, z, 0xd9a45a, a);
           plain.box(wSeg + 0.02, 0.3, 0.6, x, wallH - 0.1, z, 0xf1ead8, a);
           plain.box(wSeg + 0.02, 0.6, 0.56, x, 0, z, 0xa77a40, a);
           if (s % 3 === 0) plain.box(wSeg * 0.7, 1.4, 0.05, cx + Math.sin(a) * (wallR + 0.28), 1.3, cz + Math.cos(a) * (wallR + 0.28), FLAG[(s / 3) % 3], a); // painted banner
-          solidC(x, z, 3.6, 3.6, wallH);
+          // three small boxes just outside the wall line (big ones would reach into the top of the aisles)
+          for (const o of [-1.15, 0, 1.15]) { const ox = cx + Math.sin(a) * (wallR + 0.55) + Math.cos(a) * o, oz = cz + Math.cos(a) * (wallR + 0.55) - Math.sin(a) * o; solidC(ox, oz, 1.2, 1.2, wallH); }
         }
-        // stands collide too (player cannot climb them); their height reaches the roof so the follow camera stays under it
-        for (let t = 0; t < TIERS; t++) for (let s = 0; s < 24; s++) {
-          const a = ((s + 0.5) / 24) * Math.PI * 2; if (gateGap(a)) continue;
-          const r = tierRadius(t); solidC(cx + Math.sin(a) * r, cz + Math.cos(a) * r, 2.6, 2.6, roofY(r));
-        }
+        // the stands' colliders come with the sections and the aisles (up to the roof: the follow camera stays under it)
         {                                                                               // roof over the stands (TEMP painted sheet metal)
           const segs = 40, rm = (ROOF_FRONT_R + ROOF_BACK_R) / 2, ym = (ROOF_FRONT_Y + ROOF_BACK_Y) / 2;
           const run = ROOF_BACK_R - ROOF_FRONT_R, rise = ROOF_FRONT_Y - ROOF_BACK_Y, tilt = Math.atan2(rise, run), depth = Math.hypot(run, rise);
@@ -927,6 +978,11 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           plain.box(0.4, 0.03, 0.3, bx2, B, bz2 - 0.9, 0xa8adb1); plain.box(0.4, 0.03, 0.3, bx2, B, bz2 + 0.9, 0xa8adb1);
         }
         for (const sx of [-1, 1]) for (let k2 = 0; k2 < 2; k2++) stall(cx + sx * (8 + k2 * 4.5), gzz - 4 - k2 * 1.5);
+        // inside: the wrestlers' tunnel and their own gate, ringside media, the drummers' stand, the écuries' corners
+        tunnel(kit, cx, cz); fightersGate(kit, cx, cz);
+        mediaZone(kit, cx, cz); drummersStand(kit, cx, cz);
+        prepCorner(kit, cx, cz, PREP_SIDE.baobab, 0x1a7a44); prepCorner(kit, cx, cz, PREP_SIDE.teranga, 0xc8322a);   // fictional écuries Baobab and Teranga
+        { const plates = sectionPlates(cx, cz, SECTIONS); if (plates) group.add(plates); }
         interactables.push({ id: `${id}:arena`, name: 'Arène · làmb', kind: 'actions', x: cx, z: cz - 24, radius: 5, actions: ACTIONS.arena });
         arenaInfo = { cx, cz, r: 19 };
         break;
@@ -963,7 +1019,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const key = `${i},${j}`;
     const city = CITY_BLOCKS[id][key];
     if (city) {
-      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, seats, sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
+      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, seats, shopDetail, add: o => group.add(o), sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
       continue;
     }
     const s = sp.specials[key];
@@ -971,7 +1027,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     for (let lot = 0; lot < 4; lot++) {
       const k = kioskLots.get(`${i},${j},${lot}`);
       if (k) {
-        if (k.kind === 'dibiterie') { dibiterie(k); continue; }
+        if (k.kind === 'dibiterie') { if (isComposed(id, `dibiterie:${k.i}${k.j}`)) composedLot(k); else dibiterie(k); continue; }
         const info = kioskAt(k);
         if (k.kind === 'home') {
           // Face the home at an angle: the camera stays on the street side and the first view shows the neighbourhood.
@@ -1020,7 +1076,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const x = along ? roadC(k) + s * treeOff : tt, z = along ? tt : roadC(k) + s * treeOff;
     if (Math.abs(x) > HALF - 4 || Math.abs(z) > HALF - 4 || blocked(x, z, 0.6)) continue;
     if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 2) continue;
-    if (sp.style === 'villa' || sp.style === 'student') palm(x, z, 0.9 + R() * 0.3); else tree(x, z, 0.9 + R() * 0.3, banlieue && R() < 0.2);
+    dress(x, z, () => { if (sp.style === 'villa' || sp.style === 'student') palm(x, z, 0.9 + R() * 0.3); else tree(x, z, 0.9 + R() * 0.3, banlieue && R() < 0.2); });
   }
   let placed = 0;
   while (placed < sp.palms) {
@@ -1030,7 +1086,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     placed++;
     if (sp.sea === 'west' && x < -HALF + 8) continue;
     if (blocked(x, z, 0.8)) continue;
-    palm(x, z, 0.9 + R() * 0.4);
+    dress(x, z, () => palm(x, z, 0.9 + R() * 0.4));
   }
   if (sp.sea === 'west') for (let z = -HALF + 6; z < HALF - 4; z += 9) { if (Math.abs(z - roadC(Math.round((z + HALF - ROAD / 2) / PITCH))) > ROAD / 2 + 1) palm(-HALF - 1.2, z, 1.15, true); } // whitewashed trunks
   if (sp.sea === 'north') for (let x = -HALF + 10; x < HALF - 6; x += 18) palm(x, -HALF - 3, 1.1);
@@ -1040,9 +1096,10 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const x = along ? roadC(k) + s * (ROAD / 2 + 1.6) : t, z = along ? t : roadC(k) + s * (ROAD / 2 + 1.6);
     if (Math.abs(x) > HALF - 4 || Math.abs(z) > HALF - 4 || blocked(x, z, 1.2)) continue;
     if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 3) continue;
-    stall(x, z);
+    dress(x, z, () => stall(x, z));
   }
 
+  for (const c of ghosts) colliders.splice(colliders.indexOf(c), 1);   // the venues module builds the real ones
   for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true],
     [asphalt, asphaltMat, false], [tileRoof, tileRoofMat, true], [tin, tinMat, true], [trunks, trunkMat, true], [concrete, concreteMat, true],
     [ringSand, ringSandMat, false], [terrazzo, terrazzoMat, false], [roofSheet, roofSheetMat, true]] as [Batch, THREE.Material, boolean][]) {
@@ -1074,16 +1131,31 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   };
 
   return {
-    id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs,
+    id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs, canopies,
     tick,
     heightAt(x: number, z: number) {
+      for (const c of climbs) { const h = climbHeight(c, x, z); if (h !== null) return h; }
       for (const r of ramps) {
         if (z < r.z0 || z > r.z1 || x < r.x0 || x > r.xEnd) continue;
         return x >= r.x1 ? r.y1 : r.y0 + ((x - r.x0) / (r.x1 - r.x0)) * (r.y1 - r.y0);
       }
       return 0;
     },
-    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
+    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites,
     dispose() { disposeGroup(group); },
+  };
+}
+
+/** Kind of a special block (landmark) of a hub. */
+export type SpecialKind = Special;
+/**
+ * Special blocks of a hub with their centres (mosque, market, station, pitch, gym, port…) and the side of the sea.
+ * Read by systems that populate the city around them (src/social/ambientSpots.ts); the geometry stays in buildHub.
+ */
+export function hubLayout(id: HubId): { specials: { kind: Special; x: number; z: number }[]; sea: 'west' | 'north' | null } {
+  const sp = SPECS[id];
+  return {
+    specials: Object.entries(sp.specials).map(([key, kind]) => { const [i, j] = key.split(',').map(Number); return { kind, x: blockMin(i) + BLK / 2, z: blockMin(j) + BLK / 2 }; }),
+    sea: sp.sea ?? null,
   };
 }

@@ -17,42 +17,77 @@ function ac(): AudioContext | null {
   return ctx;
 }
 const out = () => master!;
+/**
+ * A bus of its own under the master gain (silent until its gain is raised): a sound placed in the world (the drummers
+ * outside the arena…) gets its own loudness by distance. Null when audio is unavailable.
+ */
+export function audioBus(): { ctx: AudioContext; gain: GainNode } | null {
+  const c = ac(); if (!c) return null;
+  const g = c.createGain(); g.gain.value = 0; g.connect(out());
+  return { ctx: c, gain: g };
+}
 
-function hit(c: AudioContext, when: number, freq: number, decay: number, gain: number, slap = false) {
+function hit(c: AudioContext, when: number, freq: number, decay: number, gain: number, slap = false, dest: AudioNode = out()) {
   const o = c.createOscillator(), g = c.createGain();
   o.type = 'sine'; o.frequency.setValueAtTime(freq * (slap ? 1.8 : 1.2), when); o.frequency.exponentialRampToValueAtTime(freq, when + 0.04);
   g.gain.setValueAtTime(gain, when); g.gain.exponentialRampToValueAtTime(0.001, when + decay);
-  o.connect(g).connect(out()); o.start(when); o.stop(when + decay + 0.02);
+  o.connect(g).connect(dest); o.start(when); o.stop(when + decay + 0.02);
   if (slap) {
     const len = Math.floor(c.sampleRate * 0.05), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
     const n = c.createBufferSource(), ng = c.createGain(), f = c.createBiquadFilter();
     f.type = 'highpass'; f.frequency.value = 1800; n.buffer = buf; ng.gain.value = gain * 0.6;
-    n.connect(f).connect(ng).connect(out()); n.start(when);
+    n.connect(f).connect(ng).connect(dest); n.start(when);
   }
 }
 
-// Placeholder 16-step pattern: 1 = low tone, 2 = open, 3 = slap.
+// Placeholder 16-step patterns: 1 = low tone, 2 = open, 3 = slap. Neither transcribes a real sabar rhythm.
 const PATTERN = [1, 0, 3, 0, 2, 0, 3, 3, 1, 0, 3, 0, 2, 3, 0, 3];
+/** A denser, faster placeholder for a wrestler's bàkk (the drums change rhythm while he dances). */
+const BAKK_PATTERN = [3, 3, 1, 3, 2, 3, 3, 1, 3, 3, 1, 3, 2, 1, 3, 3];
+export type Rhythm = 'gala' | 'bakk';
+const RHYTHMS: Record<Rhythm, { pattern: number[]; tempo: number }> = { gala: { pattern: PATTERN, tempo: 1 }, bakk: { pattern: BAKK_PATTERN, tempo: 1.18 } };
 
 export class Percussion {
   private timer = 0; private step = 0; private next = 0;
+  private rhythmNow: Rhythm = 'gala';
   playing = false;
+  /** The rhythm being played (changed on the next step, without stopping). */
+  get rhythm() { return this.rhythmNow; }
+  setRhythm(r: Rhythm) { this.rhythmNow = r; }
+  /** `dest`: where the hits go (a bus of `audioBus()`), the master gain by default. */
+  constructor(private dest?: AudioNode) {}
   start(bpm = 118) {
     const c = ac(); if (!c || this.playing) return;
     this.playing = true; this.step = 0; this.next = c.currentTime + 0.05;
     const dur = 60 / bpm / 4;
     this.timer = window.setInterval(() => {
       while (this.next < c.currentTime + 0.12) {
-        const v = PATTERN[this.step % PATTERN.length];
-        if (v === 1) hit(c, this.next, 95, 0.25, 0.5);
-        if (v === 2) hit(c, this.next, 180, 0.18, 0.35);
-        if (v === 3) hit(c, this.next, 320, 0.08, 0.28, true);
-        this.next += dur; this.step++;
+        const r = RHYTHMS[this.rhythmNow], v = r.pattern[this.step % r.pattern.length];
+        const to = this.dest ?? out();
+        if (v === 1) hit(c, this.next, 95, 0.25, 0.5, false, to);
+        if (v === 2) hit(c, this.next, 180, 0.18, 0.35, false, to);
+        if (v === 3) hit(c, this.next, 320, 0.08, 0.28, true, to);
+        this.next += dur / r.tempo; this.step++;
       }
     }, 40);
   }
   stop() { clearInterval(this.timer); this.playing = false; }
+}
+
+/** Làmb 2.0: the sound of a strike landing — a dull thud on a hit, a slap on a guard, a short swish on a miss. */
+export function strikeSound(kind: 'quick' | 'big', result: 'hit' | 'stagger' | 'guarded' | 'miss') {
+  const c = ac(); if (!c) return;
+  const t = c.currentTime + 0.01, big = kind === 'big';
+  if (result === 'hit' || result === 'stagger') hit(c, t, big ? 62 : 85, big ? 0.22 : 0.12, big ? 0.7 : 0.45, true);
+  else if (result === 'guarded') hit(c, t, big ? 160 : 240, 0.07, big ? 0.4 : 0.25, true);
+  else {
+    const len = Math.floor(c.sampleRate * 0.12), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.sin((Math.PI * i) / len);
+    const n = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    f.type = 'bandpass'; f.frequency.value = big ? 700 : 1100; n.buffer = buf; g.gain.value = big ? 0.18 : 0.1;
+    n.connect(f).connect(g).connect(out()); n.start(t);
+  }
 }
 
 /** Crowd swell: filtered noise with a short envelope. */
@@ -65,4 +100,24 @@ export function crowdCheer(seconds = 2.5, level = 0.18) {
   const t = c.currentTime;
   g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(level, t + 0.4); g.gain.exponentialRampToValueAtTime(0.001, t + seconds);
   n.connect(f).connect(g).connect(out()); n.start(t);
+}
+
+/**
+ * The arena's public address before a line on the microphone (the announcer, a griot): two soft tones and a short
+ * hum. Synthesised placeholder; silent with the sound off.
+ */
+export function paChime(level = 0.05) {
+  const c = ac(); if (!c) return;
+  const t = c.currentTime;
+  for (const [f, at] of [[660, 0], [880, 0.22]] as const) {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t + at); g.gain.exponentialRampToValueAtTime(level, t + at + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.32);
+    o.connect(g).connect(out()); o.start(t + at); o.stop(t + at + 0.35);
+  }
+  const h = c.createOscillator(), hg = c.createGain();
+  h.type = 'sawtooth'; h.frequency.value = 110;
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400;
+  hg.gain.setValueAtTime(0.0001, t + 0.5); hg.gain.exponentialRampToValueAtTime(level * 0.25, t + 0.6); hg.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+  h.connect(lp).connect(hg).connect(out()); h.start(t + 0.5); h.stop(t + 1.35);
 }

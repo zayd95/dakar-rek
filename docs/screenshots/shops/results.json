@@ -1,0 +1,793 @@
+{
+  "base": "http://127.0.0.1:4215/",
+  "checkedAt": "2026-10-10T06:42:13.298Z",
+  "checks": [
+    {
+      "name": "desktop: pikine has stocked shops",
+      "ok": true,
+      "detail": "bank=bank boutique=grocery salon-tech=beauty"
+    },
+    {
+      "name": "desktop: pikine shops stay within 1–3 draw calls",
+      "ok": true,
+      "detail": "2,2,1"
+    },
+    {
+      "name": "desktop: pikine place sheets stand at the counters",
+      "ok": true,
+      "detail": "0.00,0.00"
+    },
+    {
+      "name": "desktop: pikine keepers stand behind their counters",
+      "ok": true,
+      "detail": "true,true"
+    },
+    {
+      "name": "desktop: pikine every stocked shop is a spot of the city's people (door, displays, checkout line)",
+      "ok": true,
+      "detail": "bank 1/7 boutique 4/3"
+    },
+    {
+      "name": "desktop: pikine people come into boutique, queue at the counter and pay on their own",
+      "ok": true,
+      "detail": "{\"id\":\"legacy:pikine:city:boutique\",\"tags\":[\"shop\"],\"stands\":4,\"checkout\":3,\"seats\":0,\"now\":{\"out\":1,\"do\":1,\"in\":1},\"entered\":5,\"queued\":4,\"paid\":4}"
+    },
+    {
+      "name": "desktop: plateau has stocked shops",
+      "ok": true,
+      "detail": "bank=bank boutique=clothing salon-tech=phone"
+    },
+    {
+      "name": "desktop: plateau shops stay within 1–3 draw calls",
+      "ok": true,
+      "detail": "2,1,2"
+    },
+    {
+      "name": "desktop: plateau place sheets stand at the counters",
+      "ok": true,
+      "detail": "0.00,0.00,0.00"
+    },
+    {
+      "name": "desktop: plateau keepers stand behind their counters",
+      "ok": true,
+      "detail": "true,true"
+    },
+    {
+      "name": "desktop: plateau every stocked shop is a spot of the city's people (door, displays, checkout line)",
+      "ok": true,
+      "detail": "bank 1/7 boutique 4/3 salon-tech 4/3"
+    },
+    {
+      "name": "desktop: plateau people come into boutique, queue at the counter and pay on their own",
+      "ok": true,
+      "detail": "{\"id\":\"legacy:plateau:city:boutique\",\"tags\":[\"shop\"],\"stands\":4,\"checkout\":3,\"seats\":0,\"now\":{\"in\":1,\"do\":1},\"entered\":4,\"queued\":4,\"paid\":4}"
+    },
+    {
+      "name": "desktop: almadies has stocked shops",
+      "ok": true,
+      "detail": "mall-tech=phone mall-style=clothing mall-household=furniture mall-juice=cafe"
+    },
+    {
+      "name": "desktop: almadies shops stay within 1–3 draw calls",
+      "ok": true,
+      "detail": "2,1,2,2"
+    },
+    {
+      "name": "desktop: almadies place sheets stand at the counters",
+      "ok": true,
+      "detail": "0.00,0.00,0.00,0.00"
+    },
+    {
+      "name": "desktop: almadies keepers stand behind their counters",
+      "ok": true,
+      "detail": "true,true,true,true"
+    },
+    {
+      "name": "desktop: almadies every stocked shop is a spot of the city's people (door, displays, checkout line)",
+      "ok": true,
+      "detail": "mall-tech 4/3 mall-style 4/3 mall-household 3/3 mall-juice 1/3"
+    },
+    {
+      "name": "desktop: almadies people come into mall-style, queue at the counter and pay on their own",
+      "ok": true,
+      "detail": "{\"id\":\"legacy:almadies:city:mall-style\",\"tags\":[\"shop\"],\"stands\":4,\"checkout\":3,\"seats\":0,\"now\":{\"in\":2,\"out\":2},\"entered\":4,\"queued\":4,\"paid\":4}"
+    },
+    {
+      "name": "desktop: corniche has stocked shops",
+      "ok": true,
+      "detail": "craft-0=craft craft-1=craft craft-2=craft"
+    },
+    {
+      "name": "desktop: corniche shops stay within 1–3 draw calls",
+      "ok": true,
+      "detail": "1,1,1"
+    },
+    {
+      "name": "desktop: corniche place sheets stand at the counters",
+      "ok": true,
+      "detail": "0.00,0.00,0.00"
+    },
+    {
+      "name": "desktop: corniche keepers stand behind their counters",
+      "ok": true,
+      "detail": "true,true,true"
+    },
+    {
+      "name": "desktop: corniche every stocked shop is a spot of the city's people (door, displays, checkout line)",
+      "ok": true,
+      "detail": "craft:0 1/3 craft:1 1/3 craft:2 1/3"
+    },
+    {
+      "name": "desktop: corniche people come into craft-1, queue at the counter and pay on their own",
+      "ok": true,
+      "detail": "{\"id\":\"legacy:corniche:city:craft:1\",\"tags\":[\"shop\"],\"stands\":1,\"checkout\":3,\"seats\":0,\"now\":{\"in\":1},\"entered\":2,\"queued\":2,\"paid\":2}"
+    },
+    {
+      "name": "desktop: walks from the street into the grocery shop up to its counter",
+      "ok": true,
+      "detail": "{\"x\":-104.63639924325845,\"y\":0.1,\"z\":82.35689665641742,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Boutique Diallo\"}"
+    },
+    {
+      "name": "desktop: at the grocery counter the shop is in focus",
+      "ok": true,
+      "detail": "{\"id\":\"pikine:city:boutique\",\"name\":\"Boutique Diallo\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Boutique Diallo\",\"all\":[\"Boutique Diallo\",\"Pain et lait\",\"Aider à ranger le stock\",\"Prendre des nouvelles de Mamadou\",\"Sucre et thé pour l’attaya\",\"Livraisons Tiak Tiak\"]}"
+    },
+    {
+      "name": "desktop: the grocery counter offers « Pain et lait »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: bought at the grocery counter, paid once",
+      "ok": true,
+      "detail": "400 F"
+    },
+    {
+      "name": "desktop: walks from the street into the cafe shop up to its counter",
+      "ok": true,
+      "detail": "{\"x\":44,\"y\":0.1,\"z\":35.599772878900254,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":\"Jus & Go\"}"
+    },
+    {
+      "name": "desktop: at the cafe counter the shop is in focus",
+      "ok": true,
+      "detail": "{\"id\":\"almadies:city:mall-juice\",\"name\":\"Jus & Go\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Jus & Go\",\"all\":[\"Jus & Go\",\"Jus de bouye frais\",\"Bissap et sandwich\"]}"
+    },
+    {
+      "name": "desktop: the cafe counter offers « Jus de bouye frais »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: bought at the cafe counter, paid once",
+      "ok": true,
+      "detail": "500 F"
+    },
+    {
+      "name": "desktop: walks from the street into the phone shop up to its counter",
+      "ok": true,
+      "detail": "{\"x\":13.309305801020047,\"y\":0.1,\"z\":20.301251288934697,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":\"Ndar Tech\"}"
+    },
+    {
+      "name": "desktop: at the phone counter the shop is in focus",
+      "ok": true,
+      "detail": "{\"id\":\"almadies:city:mall-tech\",\"name\":\"Ndar Tech\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Ndar Tech\",\"all\":[\"Ndar Tech\",\"Aider à préparer les commandes\",\"Discuter avec le réparateur\",\"Recharger son crédit\"]}"
+    },
+    {
+      "name": "desktop: the phone counter offers « Recharger son crédit »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: bought at the phone counter, paid once",
+      "ok": true,
+      "detail": "500 F"
+    },
+    {
+      "name": "desktop: walks from the street into the clothing shop up to its counter",
+      "ok": true,
+      "detail": "{\"x\":75.30390965922335,\"y\":0.1,\"z\":82.33819196594848,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":\"Atelier Ndeye · couture\"}"
+    },
+    {
+      "name": "desktop: at the clothing counter the shop is in focus",
+      "ok": true,
+      "detail": "{\"id\":\"plateau:city:boutique\",\"name\":\"Atelier Ndeye · couture\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Atelier Ndeye · couture\",\"all\":[\"Atelier Ndeye · couture\",\"Voir les tenues de lutte\",\"Aider à préparer une commande\",\"Acheter un pagne wax\",\"Livraisons Tiak Tiak\"]}"
+    },
+    {
+      "name": "desktop: the clothing counter offers « Acheter un pagne wax »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: bought at the clothing counter, paid once",
+      "ok": true,
+      "detail": "3000 F"
+    },
+    {
+      "name": "desktop: walks from the street into the bank shop up to its counter",
+      "ok": true,
+      "detail": "{\"x\":90,\"y\":0.1,\"z\":-37.62000469762553,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":\"Banque Teranga · Plateau\"}"
+    },
+    {
+      "name": "desktop: at the bank counter the shop is in focus",
+      "ok": true,
+      "detail": "{\"id\":\"plateau:city:bank\",\"name\":\"Banque Teranga · Plateau\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Banque Teranga · Plateau\",\"all\":[\"Banque Teranga · Plateau\",\"Livrer les dossiers de l’agence\",\"Parler de son projet au conseiller\",\"Investir dans une affaire\"]}"
+    },
+    {
+      "name": "desktop: the bank counter offers « Parler de son projet »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: Café Touba · Fann — « Entrer » leads into the café",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: walks up to the café's counter inside",
+      "ok": true,
+      "detail": "[{\"x\":3400,\"y\":0.1,\"z\":-0.5000734003200007,\"hub\":\"corniche\",\"mode\":\"play\",\"near\":\"Café Touba · Fann\"},\"corniche:cafe:12:comptoir\"]"
+    },
+    {
+      "name": "desktop: a Café Touba at the counter inside, paid once",
+      "ok": true,
+      "detail": "100 F"
+    },
+    {
+      "name": "desktop: Café Touba · Parcelles — « Entrer » leads into the café",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "desktop: walks up to the café's counter inside",
+      "ok": true,
+      "detail": "[{\"x\":3400,\"y\":0.1,\"z\":-0.5000734003200007,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Café Touba · Parcelles\"},\"pikine:cafe:02:comptoir\"]"
+    },
+    {
+      "name": "desktop: a Café Touba at the counter inside, paid once",
+      "ok": true,
+      "detail": "100 F"
+    },
+    {
+      "name": "desktop: Maison Dakar opens the furniture catalogue",
+      "ok": true,
+      "detail": "Quincaillerie · meubles"
+    },
+    {
+      "name": "desktop: no JavaScript errors",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: pikine has stocked shops",
+      "ok": true,
+      "detail": "bank=bank boutique=grocery salon-tech=beauty"
+    },
+    {
+      "name": "phone: pikine shops stay within 1–3 draw calls",
+      "ok": true,
+      "detail": "2,2,1"
+    },
+    {
+      "name": "phone: pikine place sheets stand at the counters",
+      "ok": true,
+      "detail": "0.00,0.00"
+    },
+    {
+      "name": "phone: pikine keepers stand behind their counters",
+      "ok": true,
+      "detail": "true,true"
+    },
+    {
+      "name": "phone: pikine every stocked shop is a spot of the city's people (door, displays, checkout line)",
+      "ok": true,
+      "detail": "bank 1/7 boutique 3/3"
+    },
+    {
+      "name": "phone: pikine people come into boutique, queue at the counter and pay on their own",
+      "ok": true,
+      "detail": "{\"id\":\"legacy:pikine:city:boutique\",\"tags\":[\"shop\"],\"stands\":3,\"checkout\":3,\"seats\":0,\"now\":{\"in\":1,\"out\":1},\"entered\":3,\"queued\":2,\"paid\":2}"
+    },
+    {
+      "name": "phone: plateau has stocked shops",
+      "ok": true,
+      "detail": "bank=bank boutique=clothing salon-tech=phone"
+    },
+    {
+      "name": "phone: plateau shops stay within 1–3 draw calls",
+      "ok": true,
+      "detail": "2,1,2"
+    },
+    {
+      "name": "phone: plateau place sheets stand at the counters",
+      "ok": true,
+      "detail": "0.00,0.00,0.00"
+    },
+    {
+      "name": "phone: plateau keepers stand behind their counters",
+      "ok": true,
+      "detail": "true,true"
+    },
+    {
+      "name": "phone: plateau every stocked shop is a spot of the city's people (door, displays, checkout line)",
+      "ok": true,
+      "detail": "bank 1/7 boutique 4/3 salon-tech 4/3"
+    },
+    {
+      "name": "phone: plateau people come into boutique, queue at the counter and pay on their own",
+      "ok": true,
+      "detail": "{\"id\":\"legacy:plateau:city:boutique\",\"tags\":[\"shop\"],\"stands\":4,\"checkout\":3,\"seats\":0,\"now\":{\"do\":1,\"in\":1,\"out\":1},\"entered\":5,\"queued\":4,\"paid\":4}"
+    },
+    {
+      "name": "phone: almadies has stocked shops",
+      "ok": true,
+      "detail": "mall-tech=phone mall-style=clothing mall-household=furniture mall-juice=cafe"
+    },
+    {
+      "name": "phone: almadies shops stay within 1–3 draw calls",
+      "ok": true,
+      "detail": "2,1,2,2"
+    },
+    {
+      "name": "phone: almadies place sheets stand at the counters",
+      "ok": true,
+      "detail": "0.00,0.00,0.00,0.00"
+    },
+    {
+      "name": "phone: almadies keepers stand behind their counters",
+      "ok": true,
+      "detail": "true,true,true,true"
+    },
+    {
+      "name": "phone: almadies every stocked shop is a spot of the city's people (door, displays, checkout line)",
+      "ok": true,
+      "detail": "mall-tech 4/3 mall-style 4/3 mall-household 3/3 mall-juice 1/3"
+    },
+    {
+      "name": "phone: almadies people come into mall-style, queue at the counter and pay on their own",
+      "ok": true,
+      "detail": "{\"id\":\"legacy:almadies:city:mall-style\",\"tags\":[\"shop\"],\"stands\":4,\"checkout\":3,\"seats\":0,\"now\":{\"out\":1,\"in\":1},\"entered\":2,\"queued\":2,\"paid\":2}"
+    },
+    {
+      "name": "phone: corniche has stocked shops",
+      "ok": true,
+      "detail": "craft-0=craft craft-1=craft craft-2=craft"
+    },
+    {
+      "name": "phone: corniche shops stay within 1–3 draw calls",
+      "ok": true,
+      "detail": "1,1,1"
+    },
+    {
+      "name": "phone: corniche place sheets stand at the counters",
+      "ok": true,
+      "detail": "0.00,0.00,0.00"
+    },
+    {
+      "name": "phone: corniche keepers stand behind their counters",
+      "ok": true,
+      "detail": "true,true,true"
+    },
+    {
+      "name": "phone: corniche every stocked shop is a spot of the city's people (door, displays, checkout line)",
+      "ok": true,
+      "detail": "craft:0 1/3 craft:1 1/3 craft:2 1/3"
+    },
+    {
+      "name": "phone: corniche people come into craft-1, queue at the counter and pay on their own",
+      "ok": true,
+      "detail": "{\"id\":\"legacy:corniche:city:craft:1\",\"tags\":[\"shop\"],\"stands\":1,\"checkout\":3,\"seats\":0,\"now\":{\"out\":1,\"in\":1},\"entered\":3,\"queued\":2,\"paid\":2}"
+    },
+    {
+      "name": "phone: walks from the street into the grocery shop up to its counter",
+      "ok": true,
+      "detail": "{\"x\":-104.6702000547749,\"y\":0.1,\"z\":82.34993305963532,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Boutique Diallo\"}"
+    },
+    {
+      "name": "phone: at the grocery counter the shop is in focus",
+      "ok": true,
+      "detail": "{\"id\":\"pikine:city:boutique\",\"name\":\"Boutique Diallo\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Boutique Diallo\",\"all\":[\"Boutique Diallo\",\"Pain et lait\",\"Aider à ranger le stock\",\"Prendre des nouvelles de Mamadou\",\"Sucre et thé pour l’attaya\",\"Livraisons Tiak Tiak\"]}"
+    },
+    {
+      "name": "phone: the grocery counter offers « Pain et lait »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: bought at the grocery counter, paid once",
+      "ok": true,
+      "detail": "400 F"
+    },
+    {
+      "name": "phone: walks from the street into the cafe shop up to its counter",
+      "ok": true,
+      "detail": "{\"x\":44,\"y\":0.1,\"z\":35.51996594225152,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":\"Jus & Go\"}"
+    },
+    {
+      "name": "phone: at the cafe counter the shop is in focus",
+      "ok": true,
+      "detail": "{\"id\":\"almadies:city:mall-juice\",\"name\":\"Jus & Go\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Jus & Go\",\"all\":[\"Jus & Go\",\"Jus de bouye frais\",\"Bissap et sandwich\"]}"
+    },
+    {
+      "name": "phone: the cafe counter offers « Jus de bouye frais »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: bought at the cafe counter, paid once",
+      "ok": true,
+      "detail": "500 F"
+    },
+    {
+      "name": "phone: walks from the street into the phone shop up to its counter",
+      "ok": true,
+      "detail": "{\"x\":13.633710577879702,\"y\":0.1,\"z\":20.424912387063472,\"hub\":\"almadies\",\"mode\":\"play\",\"near\":\"Ndar Tech\"}"
+    },
+    {
+      "name": "phone: at the phone counter the shop is in focus",
+      "ok": true,
+      "detail": "{\"id\":\"almadies:city:mall-tech\",\"name\":\"Ndar Tech\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Ndar Tech\",\"all\":[\"Ndar Tech\",\"Aider à préparer les commandes\",\"Discuter avec le réparateur\",\"Recharger son crédit\"]}"
+    },
+    {
+      "name": "phone: the phone counter offers « Recharger son crédit »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: bought at the phone counter, paid once",
+      "ok": true,
+      "detail": "500 F"
+    },
+    {
+      "name": "phone: walks from the street into the clothing shop up to its counter",
+      "ok": true,
+      "detail": "{\"x\":75.34919722716535,\"y\":0.1,\"z\":82.34823692134141,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":\"Atelier Ndeye · couture\"}"
+    },
+    {
+      "name": "phone: at the clothing counter the shop is in focus",
+      "ok": true,
+      "detail": "{\"id\":\"plateau:city:boutique\",\"name\":\"Atelier Ndeye · couture\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Atelier Ndeye · couture\",\"all\":[\"Atelier Ndeye · couture\",\"Voir les tenues de lutte\",\"Aider à préparer une commande\",\"Acheter un pagne wax\",\"Livraisons Tiak Tiak\"]}"
+    },
+    {
+      "name": "phone: the clothing counter offers « Acheter un pagne wax »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: bought at the clothing counter, paid once",
+      "ok": true,
+      "detail": "3000 F"
+    },
+    {
+      "name": "phone: walks from the street into the bank shop up to its counter",
+      "ok": true,
+      "detail": "{\"x\":90,\"y\":0.1,\"z\":-37.53846551213354,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":\"Banque Teranga · Plateau\"}"
+    },
+    {
+      "name": "phone: at the bank counter the shop is in focus",
+      "ok": true,
+      "detail": "{\"id\":\"plateau:city:bank\",\"name\":\"Banque Teranga · Plateau\",\"kind\":\"place\",\"space\":\"street\",\"primary\":\"Banque Teranga · Plateau\",\"all\":[\"Banque Teranga · Plateau\",\"Livrer les dossiers de l’agence\",\"Parler de son projet au conseiller\",\"Investir dans une affaire\"]}"
+    },
+    {
+      "name": "phone: the bank counter offers « Parler de son projet »",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: Café Touba · Sandaga — « Entrer » leads into the café",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: walks up to the café's counter inside",
+      "ok": true,
+      "detail": "[{\"x\":3400,\"y\":0.1,\"z\":-0.42904537650452707,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":\"Café Touba · Sandaga\"},\"plateau:cafe:32:comptoir\"]"
+    },
+    {
+      "name": "phone: a Café Touba at the counter inside, paid once",
+      "ok": true,
+      "detail": "100 F"
+    },
+    {
+      "name": "phone: Maison Dakar opens the furniture catalogue",
+      "ok": true,
+      "detail": "Quincaillerie · meubles"
+    },
+    {
+      "name": "phone: no JavaScript errors",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "results": {
+    "desktop": {
+      "perHub": {
+        "pikine": [
+          {
+            "key": "pikine:city:bank",
+            "type": "bank",
+            "drawCalls": 2,
+            "tris": 8460
+          },
+          {
+            "key": "pikine:city:boutique",
+            "type": "grocery",
+            "drawCalls": 2,
+            "tris": 13206
+          },
+          {
+            "key": "pikine:city:salon-tech",
+            "type": "beauty",
+            "drawCalls": 1,
+            "tris": 13387
+          }
+        ],
+        "plateau": [
+          {
+            "key": "plateau:city:bank",
+            "type": "bank",
+            "drawCalls": 2,
+            "tris": 8600
+          },
+          {
+            "key": "plateau:city:boutique",
+            "type": "clothing",
+            "drawCalls": 1,
+            "tris": 6078
+          },
+          {
+            "key": "plateau:city:salon-tech",
+            "type": "phone",
+            "drawCalls": 2,
+            "tris": 9922
+          }
+        ],
+        "almadies": [
+          {
+            "key": "almadies:city:mall-tech",
+            "type": "phone",
+            "drawCalls": 2,
+            "tris": 7846
+          },
+          {
+            "key": "almadies:city:mall-style",
+            "type": "clothing",
+            "drawCalls": 1,
+            "tris": 5190
+          },
+          {
+            "key": "almadies:city:mall-household",
+            "type": "furniture",
+            "drawCalls": 2,
+            "tris": 11798
+          },
+          {
+            "key": "almadies:city:mall-juice",
+            "type": "cafe",
+            "drawCalls": 2,
+            "tris": 2132
+          }
+        ],
+        "corniche": [
+          {
+            "key": "corniche:city:craft-0",
+            "type": "craft",
+            "drawCalls": 1,
+            "tris": 4500
+          },
+          {
+            "key": "corniche:city:craft-1",
+            "type": "craft",
+            "drawCalls": 1,
+            "tris": 5662
+          },
+          {
+            "key": "corniche:city:craft-2",
+            "type": "craft",
+            "drawCalls": 1,
+            "tris": 4484
+          }
+        ]
+      },
+      "visits": [
+        {
+          "hub": "pikine",
+          "type": "grocery",
+          "walkedIn": true,
+          "focused": true,
+          "drawCalls": 103,
+          "paid": 400
+        },
+        {
+          "hub": "almadies",
+          "type": "cafe",
+          "walkedIn": true,
+          "focused": true,
+          "drawCalls": 239,
+          "paid": 500
+        },
+        {
+          "hub": "almadies",
+          "type": "phone",
+          "walkedIn": true,
+          "focused": true,
+          "drawCalls": 137,
+          "paid": 500
+        },
+        {
+          "hub": "plateau",
+          "type": "clothing",
+          "walkedIn": true,
+          "focused": true,
+          "drawCalls": 157,
+          "paid": 3000
+        },
+        {
+          "hub": "plateau",
+          "type": "bank",
+          "walkedIn": true,
+          "focused": true,
+          "drawCalls": 86,
+          "paid": null
+        },
+        {
+          "hub": "corniche",
+          "type": "cafe (walk-in)",
+          "walkedIn": true,
+          "focused": true,
+          "paid": 100,
+          "people": 2
+        },
+        {
+          "hub": "pikine",
+          "type": "cafe (walk-in)",
+          "walkedIn": true,
+          "focused": true,
+          "paid": 100,
+          "people": 2
+        }
+      ],
+      "errors": []
+    },
+    "phone": {
+      "perHub": {
+        "pikine": [
+          {
+            "key": "pikine:city:bank",
+            "type": "bank",
+            "drawCalls": 2,
+            "tris": 5722
+          },
+          {
+            "key": "pikine:city:boutique",
+            "type": "grocery",
+            "drawCalls": 2,
+            "tris": 2528
+          },
+          {
+            "key": "pikine:city:salon-tech",
+            "type": "beauty",
+            "drawCalls": 1,
+            "tris": 1597
+          }
+        ],
+        "plateau": [
+          {
+            "key": "plateau:city:bank",
+            "type": "bank",
+            "drawCalls": 2,
+            "tris": 5722
+          },
+          {
+            "key": "plateau:city:boutique",
+            "type": "clothing",
+            "drawCalls": 1,
+            "tris": 3294
+          },
+          {
+            "key": "plateau:city:salon-tech",
+            "type": "phone",
+            "drawCalls": 2,
+            "tris": 2412
+          }
+        ],
+        "almadies": [
+          {
+            "key": "almadies:city:mall-tech",
+            "type": "phone",
+            "drawCalls": 2,
+            "tris": 2052
+          },
+          {
+            "key": "almadies:city:mall-style",
+            "type": "clothing",
+            "drawCalls": 1,
+            "tris": 2916
+          },
+          {
+            "key": "almadies:city:mall-household",
+            "type": "furniture",
+            "drawCalls": 2,
+            "tris": 2980
+          },
+          {
+            "key": "almadies:city:mall-juice",
+            "type": "cafe",
+            "drawCalls": 2,
+            "tris": 1274
+          }
+        ],
+        "corniche": [
+          {
+            "key": "corniche:city:craft-0",
+            "type": "craft",
+            "drawCalls": 1,
+            "tris": 1510
+          },
+          {
+            "key": "corniche:city:craft-1",
+            "type": "craft",
+            "drawCalls": 1,
+            "tris": 1600
+          },
+          {
+            "key": "corniche:city:craft-2",
+            "type": "craft",
+            "drawCalls": 1,
+            "tris": 1354
+          }
+        ]
+      },
+      "visits": [
+        {
+          "hub": "pikine",
+          "type": "grocery",
+          "walkedIn": true,
+          "focused": true,
+          "drawCalls": 63,
+          "paid": 400
+        },
+        {
+          "hub": "almadies",
+          "type": "cafe",
+          "walkedIn": true,
+          "focused": true,
+          "drawCalls": 76,
+          "paid": 500
+        },
+        {
+          "hub": "almadies",
+          "type": "phone",
+          "walkedIn": true,
+          "focused": true,
+          "drawCalls": 86,
+          "paid": 500
+        },
+        {
+          "hub": "plateau",
+          "type": "clothing",
+          "walkedIn": true,
+          "focused": true,
+          "drawCalls": 94,
+          "paid": 3000
+        },
+        {
+          "hub": "plateau",
+          "type": "bank",
+          "walkedIn": true,
+          "focused": true,
+          "drawCalls": 64,
+          "paid": null
+        },
+        {
+          "hub": "plateau",
+          "type": "cafe (walk-in)",
+          "walkedIn": true,
+          "focused": true,
+          "paid": 100,
+          "people": 1
+        }
+      ],
+      "errors": []
+    }
+  }
+}

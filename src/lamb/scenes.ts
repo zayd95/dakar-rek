@@ -6,7 +6,7 @@ import { Percussion, crowdCheer as cheerSound } from './audio';
 import { castById } from '../social/cast';
 import { Humanoid, Wrestler, wrestlerReady, randomLook, lookFromOutfit, type Clip } from '../actors/humanoid';
 import { rng } from '../core/rng';
-import { inGate, tierRadius, tierTop, TIERS } from '../world/geew';
+import { standOpen, tierRadius, tierTop, TIERS } from '../world/geew';
 
 const CLIP_FOR = new Map<Pose, Clip>([[danceA, 'Dance_A'], [danceB, 'Dance_B'], [prep, 'Prep'], [drill, 'Stance'], [celebrate, 'Celebrate'], [crowdCheer, 'Celebrate'], [crowdIdle, 'Idle'], [drum, 'Talk']]);
 
@@ -99,7 +99,7 @@ export class LambScene {
     // Spectators on the tiers of the géew (dimensions in world/geew.ts, drawn by world/builder.ts).
     for (let k = 0; k < this.crowdSize; k++) {
       const a = (k / this.crowdSize) * Math.PI * 2 + 0.12;
-      if (inGate(a)) continue; // keep the gate clear
+      if (!standOpen(a)) continue; // keep the gate, the aisles and the wrestlers' tunnel clear
       const tier = k % TIERS;
       const r = tierRadius(tier), y = tierTop(tier);
       const e = this.add(NPC_OUTFITS[k % NPC_OUTFITS.length], pose, Math.sin(a) * r, Math.cos(a) * r, undefined, y, true);

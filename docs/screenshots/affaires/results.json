@@ -1,0 +1,112 @@
+[
+ {
+  "name": "phone home shows the « Affaires » app",
+  "ok": true,
+  "extra": "portefeuille,carte,quartier,travail,affaires,maison,habitants,arene,carnet,aide,reglages"
+ },
+ {
+  "name": "the tile opens the Affaires menu (fresh save: first tier needs an activity)",
+  "ok": true,
+  "extra": "Table de bana-banaÀ débloquer : une première activité (livraison, petit boulot…)Bloqué"
+ },
+ {
+  "name": "picking a venture asks for confirmation",
+  "ok": true,
+  "extra": "Acheter : Table de bana-bana | Confirmer l’achatRapporte +480 F par heure en ville (polyvalence ×1,2)−50 000 F | Retour aux affaires"
+ },
+ {
+  "name": "bought the first venture: charged once, owned, ledger line",
+  "ok": true,
+  "extra": "64200 → 14200 · {\"bana\":1}"
+ },
+ {
+  "name": "back on the Affaires menu after buying: next unit ×1.15",
+  "ok": true,
+  "extra": "Table de bana-bana ×1+480 F/h chacune · +480 F/h en tout · il manque 43 300 F57 500 F"
+ },
+ {
+  "name": "income arrives on the in-game hour while playing (one ledger line)",
+  "ok": true,
+  "extra": "{\"at\":1791511871845,\"label\":\"Revenus · Table de bana-bana\",\"amount\":481}"
+ },
+ {
+  "name": "three in-game hours later: one batch for the three",
+  "ok": true,
+  "extra": "1444"
+ },
+ {
+  "name": "polyvalence shown: « 4 activités → revenus ×1,6 »",
+  "ok": true,
+  "extra": "Polyvalence : 4 activités → revenus ×1,6 · 640 F/h"
+ },
+ {
+  "name": "HUD: 1 250 000 000 F shows as « 1,25 Md F » inside the stat card",
+  "ok": true,
+  "extra": "1,25 Md F · 1 250 000 000 F"
+ },
+ {
+  "name": "phone wallet: the full amount on one line, with total wealth",
+  "ok": true,
+  "extra": "1 250 000 000 F"
+ },
+ {
+  "name": "every tier can be bought in order once unlocked (bana-bana → grande entreprise)",
+  "ok": true,
+  "extra": "{\"bana\":1,\"kiosque\":1,\"boutique\":1,\"car_rapide\":1,\"restaurant\":1,\"immeuble\":1,\"entreprise\":1} · ×2 · 13720200 F/h"
+ },
+ {
+  "name": "big ventures pay millions per in-game hour",
+  "ok": true,
+  "extra": "13720207"
+ },
+ {
+  "name": "Affaires lists all seven with income, total earned and wealth",
+  "ok": true,
+  "extra": "Grande entreprise ×1+10 800 000 F/h chacune · +10 800 000 F/h en tout · acheter1 150 000 000 F"
+ },
+ {
+  "name": "HUD stays compact and inside the card",
+  "ok": true,
+  "extra": "1,51 Md F"
+ },
+ {
+  "name": "Banque Teranga offers « Investir dans une affaire »",
+  "ok": true,
+  "extra": "Banque Teranga · Pikine"
+ },
+ {
+  "name": "reload: ventures, earnings, activities and wallet persisted (schema v4)",
+  "ok": true,
+  "extra": "1513920207 F · earned 13722132"
+ },
+ {
+  "name": "desktop: no page errors",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone HUD: compact amount inside the 138 px card",
+  "ok": true,
+  "extra": "1,51 Md F"
+ },
+ {
+  "name": "phone wallet: full amount on one line at 390 px",
+  "ok": true,
+  "extra": "1 513 920 207 F"
+ },
+ {
+  "name": "wallet → Affaires button opens the menu",
+  "ok": true,
+  "extra": "Affaires"
+ },
+ {
+  "name": "touch: a kiosque bought after confirmation",
+  "ok": true,
+  "extra": ""
+ },
+ {
+  "name": "phone: no page errors",
+  "ok": true,
+  "extra": ""
+ }
+]

@@ -20,6 +20,13 @@ export class Interactions {
     return this.focus;
   }
 
+  /**
+   * The focus for an action pressed now: the frame's, else picked here. No focus is kept while a sheet is up (main.ts),
+   * and the frame that picks it again may not have run yet when the button is pressed right after the sheet closes
+   * (« Annuler », then the window again: a slow renderer draws a few frames a second) — the action must not be lost.
+   */
+  current(space: string, x: number, z: number, facing: number): Target | null { return this.focus ?? this.update(space, x, z, facing); }
+
   /** The action the main button runs: the first affordance that is available. */
   primary(target: Target | null = this.focus): Affordance | null { return primaryOf(target); }
   /** All affordances of the focused target (for the context sheet). */

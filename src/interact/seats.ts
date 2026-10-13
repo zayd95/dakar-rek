@@ -1,11 +1,13 @@
 import type { Target, TargetSource } from './types';
+import type { Clip } from '../actors/humanoid';
 
 /**
  * One sit system for every seat in Dakar: benches, chairs, stools, sofas, beds, prayer rows, vehicle seats.
  * Builders and venues register seats; the player (and later NPCs) occupy them. A seat is a target with « S'asseoir »
  * while it is free and the player is near it.
  */
-export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'vehicle';
+/** 'floor': a floor cushion (attaya circles); with 'mat' and 'bed' these seats usually carry a floor pose in `clip`. 'stand': a place on the arena's tiers. */
+export type SeatKind = 'bench' | 'chair' | 'stool' | 'sofa' | 'bed' | 'mat' | 'floor' | 'vehicle' | 'prayer' | 'stand';
 
 export interface Seat {
   id: string;
@@ -20,6 +22,37 @@ export interface Seat {
   space: string;
   /** 'player', an NPC id, a remote player id, or null when free. */
   occupant: string | null;
+  /**
+   * Locked seat (a seat in a moving vehicle): moving the stick does not stand the player up and « Se lever » is not
+   * offered; the module owning the seat gives the way out (src/transport: « Descendre au prochain arrêt »). Seats may
+   * also move: main.ts places a seated player from the seat's x / top / z / yaw every frame.
+   */
+  locked?: boolean;
+  /**
+   * Pose held by whoever sits here (player or NPC); default 'Sit'. Floor places use 'Kneel' (a prayer row), 'SitFloor'
+   * (cross-legged on a mat, rug or cushion) or 'Lie' (on a bed: the mattress is the floor): their `top` is then the
+   * surface height + SIT_HIPS, so the sitter's origin lands on the surface (see floorSeatTop).
+   */
+  clip?: Clip;
+  /**
+   * How far the player may stand from the seat to take it (default 1.3 m). The arena's stands are out of the walkable
+   * floor (their tiers collide): their places are offered from the ring side, a few metres away.
+   */
+  reach?: number;
+  /**
+   * Where whoever stands up from here goes, in order of preference (default: in front of the seat). The arena's places
+   * on the tiers lead into the nearest aisle at their tier's height, then down to the ring side.
+   */
+  exits?: { x: number; z: number }[];
+  /** The section of the stands it is in (the arena's A–H), for the places that have one. */
+  section?: string;
+  /** Its own name on the « S'asseoir » target (« Place d'honneur »), instead of the kind's. */
+  label?: string;
+  /**
+   * Why the player may not take it now (a place for another ticket), or null: « S'asseoir » is then shown greyed with
+   * that reason. Others (the crowd, friends) are not concerned.
+   */
+  refuse?: () => string | null;
   /** Where a plate or a glass goes for someone sitting here (the table in front); absent = held on the lap. */
   table?: { x: number; y: number; z: number };
 }
@@ -28,6 +61,21 @@ export interface Seat {
 export const SIT_HIPS = 0.48;
 /** Character origin height for someone sitting on this seat. */
 export const sitOriginY = (s: Pick<Seat, 'top'>) => s.top - SIT_HIPS;
+/** `top` of a floor place (prayer row, mat) whose sitter kneels with their origin on a floor at `floorY`. */
+export const floorSeatTop = (floorY: number) => floorY + SIT_HIPS;
+/** The pose someone holds on this seat. */
+export const seatClip = (s: Pick<Seat, 'clip'>): Clip => s.clip ?? 'Sit';
+/**
+ * Where someone stands when they get up, best first: 0.7 m in front of a chair or a bench; out of a bed by either side
+ * (beside the hips, clear of the mattress), else past its foot. The caller keeps the first spot that is free.
+ */
+export function standSpots(s: Pick<Seat, 'x' | 'z' | 'yaw' | 'clip' | 'exits'>): { x: number; z: number }[] {
+  if (s.exits?.length) return s.exits;
+  const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw);
+  if (s.clip !== 'Lie') return [{ x: s.x + fx * 0.7, z: s.z + fz * 0.7 }];
+  const lx = Math.cos(s.yaw), lz = -Math.sin(s.yaw), side = 1.25;      // the lying body's left (+x of the character)
+  return [{ x: s.x + lx * side, z: s.z + lz * side }, { x: s.x - lx * side, z: s.z - lz * side }, { x: s.x + fx * 1.7, z: s.z + fz * 1.7 }];
+}
 
 const REACH = 1.3;
 
@@ -51,8 +99,16 @@ export class Seats implements TargetSource {
     for (const s of this.bySpace.get(space) ?? []) this.byId.delete(s.id);
     this.bySpace.delete(space);
   }
+  /** Forget one seat (a piece of furniture moved or stored). */
+  remove(id: string) {
+    const s = this.byId.get(id); if (!s) return;
+    this.byId.delete(id);
+    const list = this.bySpace.get(s.space); if (list) this.bySpace.set(s.space, list.filter(x => x.id !== id));
+  }
   get(id: string) { return this.byId.get(id) ?? null; }
   inSpace(space: string): readonly Seat[] { return this.bySpace.get(space) ?? []; }
+  /** Every seat of every space (street, interiors, vehicles), e.g. for systems that seat NPCs anywhere. */
+  all(): Seat[] { return [...this.byId.values()]; }
   get size() { return this.byId.size; }
 
   occupy(id: string, who: string): boolean {
@@ -73,16 +129,22 @@ export class Seats implements TargetSource {
 
   collect(space: string, x: number, z: number, out: Target[]) {
     for (const s of this.inSpace(space)) {
-      if (s.occupant || Math.abs(s.x - x) > REACH || Math.abs(s.z - z) > REACH) continue;
+      // vehicle seats are taken by boarding the vehicle (ride), never offered on their own
+      const reach = s.reach ?? REACH;
+      if (s.occupant || s.kind === 'vehicle' || Math.abs(s.x - x) > reach || Math.abs(s.z - z) > reach) continue;
       out.push({
-        id: 'seat:' + s.id, name: SEAT_NAME[s.kind], kind: 'seat', space, x: s.x, z: s.z, y: s.top + 0.5, radius: REACH, bias: 1,
-        affordances: () => [{ id: 'sit', verb: s.kind === 'bed' ? 'sleep' : 'sit', label: s.kind === 'bed' ? 'S’allonger' : 'S’asseoir', icon: s.kind === 'bed' ? '🛏️' : '🪑', run: () => this.onSit(s) }],
+        id: 'seat:' + s.id, name: s.label ?? SEAT_NAME[s.kind], kind: 'seat', space, x: s.x, z: s.z, y: s.top + 0.5, radius: reach, bias: 1,
+        affordances: () => {
+          const no = s.refuse?.() ?? null;
+          return [{ id: 'sit', verb: s.kind === 'bed' ? 'sleep' : 'sit', label: s.kind === 'bed' ? 'S’allonger' : 'S’asseoir', icon: s.kind === 'bed' ? '🛏️' : s.kind === 'mat' || s.kind === 'floor' ? '🧘' : '🪑',
+            disabled: no, run: () => { if (!s.refuse?.()) this.onSit(s); } }];
+        },
       });
     }
   }
 }
 
-const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', vehicle: 'Siège' };
+const SEAT_NAME: Record<SeatKind, string> = { bench: 'Banc', chair: 'Chaise', stool: 'Tabouret', sofa: 'Canapé', bed: 'Lit', mat: 'Natte', floor: 'Coussin', vehicle: 'Siège', prayer: 'Rang de prière', stand: 'Place en tribune' };
 
 /**
  * Seats along a bench of length `len` centred on (x, z), facing `yaw` (the bench back is behind the sitters).

@@ -4,7 +4,11 @@ import type { RemoteAvatars } from './avatars';
 import type { ChatAck, ChatMessage, Peer } from './protocol';
 import { cleanChatText, bubbleText, FAILURE_LABEL, CHAT_MAX_CHARS, CHAT_NEAR_RADIUS, REPORT_REASONS, type ChatChannel, type ChatFailure, type ReportReason } from './chatRules';
 import { phoneHooks } from '../ui/phoneHooks';
+import { chatPlace, cityHour, quickChat } from '../i18n/lines';
 import './chat.css';
+
+/** The phone-in-landscape layout of the HUD (src/ui/style.css, same query). */
+const SHORT_LANDSCAPE = typeof matchMedia === 'function' ? matchMedia('(max-height: 500px) and (orientation: landscape)') : { matches: false };
 
 /**
  * Text chat over the presence connection: proximity (bubbles above characters) and private messages.
@@ -50,6 +54,8 @@ export class ChatUi {
   private form = el('form', 'chat-compose');
   private field = el('input');
   private counter = el('small', 'chat-count');
+  private phrases = el('div', 'chat-phrases');
+  private phraseKey = '';
   private note = el('small', 'chat-note');
   private tabs: Record<'near' | 'dm', HTMLButtonElement> = { near: el('button'), dm: el('button') };
   private conversations = new Map<string, Entry[]>();
@@ -99,10 +105,12 @@ export class ChatUi {
     if (!this.d.enabled) return;
     this.opened = true; this.tab = tab; if (tab === 'dm') this.dmPeer = peer ?? this.dmPeer; this.reportFor = null;
     this.panel.classList.add('on'); this.button.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('chat-open');            // the floating « Courir » steps aside while the panel is open (src/ui/stride.css)
     this.dirty = true; this.render();
   }
   close() {
     this.opened = false; this.panel.classList.remove('on'); this.button.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('chat-open');
     if (document.activeElement === this.field) this.field.blur();
   }
 
@@ -110,7 +118,7 @@ export class ChatUi {
   update(_dt: number, camera: THREE.PerspectiveCamera, viewportHeight: number) {
     const now = performance.now();
     if (this.d.enabled && now - this.tickT > 250) { this.tickT = now; this.tick(); }
-    if (this.d.enabled && now - this.layoutT > 250) { this.layoutT = now; this.layout(); }
+    if (this.d.enabled && now - this.layoutT > 250) { this.layoutT = now; this.layout(); if (this.opened) this.renderPhrases(); }
     if (this.dirty && this.opened) this.render();
     this.updateBadge();
     const px = 2 / (Math.max(1, viewportHeight) * camera.projectionMatrix.elements[5]);
@@ -305,16 +313,17 @@ export class ChatUi {
 
     const reactions = el('div', 'chat-react');
     for (const r of REACTIONS) { const rb = el('button', '', r); rb.type = 'button'; rb.setAttribute('aria-label', `Envoyer ${r}`); rb.addEventListener('click', () => this.send(r)); reactions.appendChild(rb); }
+    this.renderPhrases();
     const row = el('div', 'chat-row');
     const f = this.field; f.id = 'chatInput'; f.type = 'text'; f.maxLength = CHAT_MAX_CHARS; f.autocomplete = 'off'; f.enterKeyHint = 'send';
     f.setAttribute('aria-label', 'Message'); f.spellcheck = true;
     const sendBtn = el('button', 'chat-send', 'Envoyer'); sendBtn.type = 'submit';
     row.append(f, sendBtn);
-    this.form.append(reactions, row, this.counter, this.note);
+    this.form.append(reactions, this.phrases, row, this.counter, this.note);
     this.form.addEventListener('submit', e => { e.preventDefault(); const text = f.value; if (!text.trim()) return; this.send(text); f.value = ''; this.saveDraft(); });
     f.addEventListener('input', () => this.saveDraft());
-    f.addEventListener('focus', () => { this.focused = true; this.d.suspend(true); });
-    f.addEventListener('blur', () => { this.focused = false; this.d.suspend(false); });
+    f.addEventListener('focus', () => { this.focused = true; p.classList.add('typing'); this.d.suspend(true); });
+    f.addEventListener('blur', () => { this.focused = false; p.classList.remove('typing'); this.d.suspend(false); });
     p.append(head, this.banner, this.peerBar, this.log, this.people, this.form);
     this.log.setAttribute('aria-live', 'polite');
     const ui = document.getElementById('ui') ?? document.body;
@@ -349,8 +358,13 @@ export class ChatUi {
   private updateCounter() { const n = [...this.field.value].length; this.counter.textContent = n > CHAT_MAX_CHARS - 40 ? `${n}/${CHAT_MAX_CHARS}` : ''; }
   private layout() {
     const presenceBtn = document.getElementById('presenceBtn');
-    const top = presenceBtn ? presenceBtn.getBoundingClientRect().bottom + 8 : 66;
+    const p = presenceBtn?.getBoundingClientRect();
+    // a phone in landscape (short screen): « Chat » on the same row as « En ligne », just left of it, rather than a
+    // column of pills down the right edge of the view
+    const beside = !!p && p.width > 0 && SHORT_LANDSCAPE.matches;
+    const top = !p ? 66 : beside ? p.top : p.bottom + 8, right = beside ? `${Math.round(innerWidth - p.left + 6)}px` : '';
     if (this.button.style.top !== `${Math.round(top)}px`) this.button.style.top = `${Math.round(top)}px`;
+    if (this.button.style.right !== right) this.button.style.right = right;
     this.panel.style.setProperty('--chat-top', `${Math.round(this.button.getBoundingClientRect().bottom + 8)}px`);
   }
   private updateBadge() {
@@ -386,6 +400,18 @@ export class ChatUi {
     this.field.placeholder = this.tab === 'near' ? 'Dire à proximité…' : `Message privé à ${this.dmPeer ? this.nameOf(this.dmPeer) : ''}…`;
     this.note.textContent = this.tab === 'dm' && this.dmPeer && !this.peerByKey(this.dmPeer) ? 'Hors ligne ou dans un autre groupe : le message ne partira pas.' : '';
     this.updateCounter();
+  }
+  /** Quick Wolof phrases for this place and hour (src/i18n/lines.ts: greeting of the hour, « Neex na » at a gargote,
+   * « Ñaata la ? » at the market…), sent as written like any message; the French gloss is the tooltip. */
+  private renderPhrases() {
+    const space = this.d.space(), list = quickChat(space, cityHour());
+    const key = list.map(q => q.wo).join('|');
+    if (key === this.phraseKey) return;
+    this.phraseKey = key; this.phrases.replaceChildren(); this.phrases.dataset.place = chatPlace(space);
+    for (const q of list) {
+      const qb = el('button', '', q.wo); qb.type = 'button'; qb.title = q.fr; qb.setAttribute('aria-label', `Envoyer « ${q.wo} » (${q.fr})`);
+      qb.addEventListener('click', () => this.send(q.wo)); this.phrases.appendChild(qb);
+    }
   }
   private renderLog(conv: string) {
     const list = this.conversations.get(conv) ?? [];
@@ -464,6 +490,7 @@ export class ChatUi {
         bubbles: [...this.bubbles].map(([owner, b]) => ({ owner, visible: b.sprite.visible, opacity: b.sprite.material.opacity, left: b.until - performance.now() / 1000 })),
         muted: [...this.muted.values()], blocked: [...this.blocked.values()], reports: this.reports.map(r => ({ name: r.name, reason: r.reason, server: r.server })),
         pending: this.pending.size, unread: Object.fromEntries(this.unread),
+        phrases: [...this.phrases.querySelectorAll('button')].map(b => b.textContent ?? ''), place: this.phrases.dataset.place ?? '',
       }),
       open: (tab: 'near' | 'dm') => this.open(tab), close: () => this.close(),
       bubbleSeconds: (s: number) => { this.bubbleSeconds = s; },

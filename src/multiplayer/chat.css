@@ -1,10 +1,10 @@
-#chatBtn { position:absolute; top:114px; right:10px; min-height:40px; padding:9px 12px; color:#e2e8f0; font:600 12px var(--font); cursor:pointer; display:flex; align-items:center; gap:5px; }
+#chatBtn { position:absolute; top:114px; right:calc(10px + env(safe-area-inset-right, 0px)); min-height:40px; padding:9px 12px; color:#e2e8f0; font:600 12px var(--font); cursor:pointer; display:flex; align-items:center; gap:5px; }
 #chatBtn:not([data-state="online"]) { color:#94a3b8; }
 #chatBtn[aria-expanded="true"] { border-color:var(--gold); }
 .chat-badge { font-style:normal; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:#ef4444; color:#fff; font:700 11px/18px var(--font); text-align:center; }
 .chat-badge:empty { display:none; }
 
-#chatPanel { position:absolute; right:10px; top:var(--chat-top, 162px); width:min(360px, calc(100vw - 20px)); max-height:max(260px, calc(100vh - var(--chat-top, 162px) - 110px - var(--kb, 0px)));
+#chatPanel { position:absolute; right:calc(10px + env(safe-area-inset-right, 0px)); top:var(--chat-top, 162px); width:min(360px, calc(100vw - 20px)); max-height:max(260px, calc(100vh - var(--chat-top, 162px) - 110px - var(--kb, 0px)));
   display:none; flex-direction:column; padding:8px; background:rgba(15,23,42,.88); color:#fff; font:13px var(--font); touch-action:pan-y; z-index:5; }
 #chatPanel.on { display:flex; }
 #chatPanel [hidden] { display:none !important; }
@@ -47,6 +47,8 @@ li[data-status="failed"] .chat-status { color:#fca5a5; }
 .chat-compose { margin-top:6px; }
 .chat-react { display:flex; gap:4px; margin-bottom:6px; }
 .chat-react button { flex:1; padding:5px 0; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.06); font-size:17px; cursor:pointer; }
+.chat-phrases { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
+.chat-phrases button { flex:1 0 auto; padding:5px 7px; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:#fff; font:600 12px var(--font); cursor:pointer; }
 .chat-row { display:flex; gap:6px; }
 #chatInput { flex:1; min-width:0; padding:10px 11px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.08); color:#fff; font:16px var(--font); user-select:text; -webkit-user-select:text; touch-action:auto; }
 #chatInput:focus { outline:2px solid rgba(251,191,36,.7); outline-offset:0; }
@@ -59,7 +61,13 @@ li[data-status="failed"] .chat-status { color:#fca5a5; }
 @media (max-width:640px) and (orientation:portrait) {
   #chatPanel { left:8px; right:8px; width:auto; top:auto; bottom:calc(8px + var(--kb, 0px) + env(safe-area-inset-bottom)); max-height:min(54vh, calc(100vh - var(--kb, 0px) - 120px)); }
 }
-/* Phone landscape: side panel on the full height. */
+/* Phone landscape: side panel on the full height, inside the notch's safe areas. */
 @media (max-height:500px) and (orientation:landscape) {
-  #chatPanel { top:8px; bottom:calc(8px + var(--kb, 0px)); width:min(380px, 56vw); max-height:none; }
+  #chatPanel { top:calc(8px + env(safe-area-inset-top, 0px)); bottom:calc(8px + max(var(--kb, 0px), env(safe-area-inset-bottom, 0px)));
+    width:min(380px, calc(56vw - env(safe-area-inset-right, 0px))); max-height:none; }
+  /* typing (keyboard up, little height left): the reactions and phrases step aside for the log and the field */
+  #chatPanel.typing .chat-react, #chatPanel.typing .chat-phrases { display:none; }
+  .chat-react button { padding:3px 0; font-size:15px; }
+  .chat-phrases button { padding:4px 7px; }
+  #chatInput { padding:8px 10px; }
 }

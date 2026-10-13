@@ -30,6 +30,7 @@ const SPECIAL_VERB: Partial<Record<NonNullable<Action['special']>, [Verb, string
 
 export function actionVerb(a: Action): [Verb, string] {
   if (a.special && SPECIAL_VERB[a.special]) { const [v, , icon] = SPECIAL_VERB[a.special]!; return [v, icon]; }
+  if (a.icon) return [a.steps ? 'enter' : 'use', a.icon];
   if (a.gain) return ['work', '💼'];
   if (a.needs?.faim && a.needs.faim > 0) return ['eat', '🍽️'];
   if (a.cost) return ['buy', '🛒'];

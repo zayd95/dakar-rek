@@ -4,6 +4,7 @@ import type { GameState } from '../core/state';
 import type { PersonLook } from '../actors/humanoid';
 import type { Seat } from '../interact/seats';
 import type { Step } from '../activity/types';
+import type { Site } from './sites';
 
 export interface Action {
   id: string;
@@ -20,7 +21,11 @@ export interface Action {
   /** Handled by a dedicated flow instead of the timed action (scenes, outfit, emotes). */
   /** Composed activity (src/activity): when present, the universal runner plays these steps (price = `cost`). */
   steps?: Step[];
-  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat' | 'combat_classe' | 'combat_entrainement' | 'jobs' | 'shop';
+  /** With `steps`: no « ✓ » toast at the end (a hand-over that starts another system says what happens itself). */
+  quiet?: boolean;
+  /** One emoji for buttons and sheets when the verb's default does not fit (« 🤼 » for a bout, « 🥊 » for a drill). */
+  icon?: string;
+  special?: 'entrance' | 'prep' | 'training' | 'outfit' | 'emote' | 'watch' | 'enter' | 'exit' | 'combat' | 'combat_classe' | 'combat_entrainement' | 'jobs' | 'shop' | 'business';
 }
 export interface Interactable {
   id: string;
@@ -34,6 +39,8 @@ export interface Interactable {
   npc?: string;
 }
 export interface Collider { x0: number; z0: number; x1: number; z1: number; h: number }
+/** A tree top seen by the follow camera: a vertical cylinder of leaves (centre, radius, bottom and top heights). */
+export interface Canopy { x: number; z: number; r: number; y0: number; y1: number }
 
 export interface HubWorld {
   id: HubId;
@@ -65,8 +72,12 @@ export interface HubWorld {
   ecurie: { cx: number; cz: number } | null;
   /** Every street seat of the hub (benches…): src/interact/seats.ts. */
   seats: Seat[];
+  /** Lots and blocks left to a gameplay module (src/world/sites.ts, composed by src/venues). */
+  sites?: Site[];
+  /** Tree tops and palm fronds the follow camera keeps out of (src/actors/camera.ts). */
+  canopies?: Canopy[];
   /** Roofs open on one side (the dibiterie): under one, the camera stays below `h` so the slab never hides the player. */
-  roofs: Collider[];
+  roofs?: Collider[];
   dispose(): void;
 }
 export interface RoadEdge { ax: number; az: number; bx: number; bz: number }

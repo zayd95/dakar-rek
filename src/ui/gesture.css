@@ -1,0 +1,40 @@
+/* Gestures of the trades (src/ui/gesture.ts): a compact card above the action area. */
+#gesture {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  width: min(440px, calc(100vw - 24px)); box-sizing: border-box; padding: 12px 14px 10px;
+  background: rgba(12, 22, 38, 0.92); color: #f8fafc; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); font: 600 14px/1.3 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  display: none; z-index: 30; touch-action: manipulation; user-select: none;
+}
+/* Shown at once (no fade): nothing to wait for, and no transition left half-way on a slow phone. */
+#gesture.on { display: block; }
+@media (pointer: coarse), (max-width: 700px) { #gesture { bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); } }
+@media (max-height: 500px) { #gesture { bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); width: min(400px, 52vw); } }
+#gesture.hit { box-shadow: 0 0 0 2px #22c55e, 0 10px 30px rgba(0, 0, 0, 0.35); }
+#gesture.miss { box-shadow: 0 0 0 2px #ef4444, 0 10px 30px rgba(0, 0, 0, 0.35); animation: gst-shake .25s; }
+.gst-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.gst-title { font-size: 15px; }
+.gst-fb { color: #fde68a; font-size: 14px; white-space: nowrap; }
+.gst-bar { position: relative; height: 34px; border-radius: 17px; background: linear-gradient(90deg, #7f1d1d33, #44403c66 30%, #44403c66 70%, #7f1d1d33); overflow: hidden; cursor: pointer; }
+.gst-zone { position: absolute; top: 0; bottom: 0; background: linear-gradient(180deg, #4ade80, #16a34a); border-radius: 10px; opacity: .9; }
+.gst-cursor { position: absolute; top: -2px; bottom: -2px; width: 6px; margin-left: -3px; background: #fff; border-radius: 3px; box-shadow: 0 0 8px #fff; }
+.gst-tap { display: block; width: 100%; margin-top: 8px; min-height: 48px; border: 0; border-radius: 14px; background: #f59e0b; color: #1c1917; font: 800 17px system-ui, sans-serif; cursor: pointer; }
+.gst-tap:active { transform: scale(.98); }
+.gst-ask { background: #fff; color: #1f2937; border-radius: 14px 14px 14px 4px; padding: 8px 10px; font-weight: 600; margin-bottom: 8px; }
+.gst-ask b { color: #b45309; margin-right: 2px; }
+.gst-patience { height: 4px; margin-top: 6px; border-radius: 2px; background: #e5e7eb; overflow: hidden; }
+.gst-patience i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #ef4444, #f59e0b 40%, #22c55e); }
+.gst-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.gst-opts.seq { grid-template-columns: 1fr; }
+.gst-opts button { position: relative; display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 6px 10px; border: 1px solid rgba(255, 255, 255, .14); border-radius: 12px; background: rgba(255, 255, 255, .08); color: #f8fafc; font: 600 14px system-ui, sans-serif; text-align: left; cursor: pointer; }
+.gst-opts button .ic { font-size: 22px; }
+.gst-opts button kbd { margin-left: auto; font: 600 11px system-ui; opacity: .45; }
+.gst-opts button.ok { background: #14532d; border-color: #22c55e; }
+.gst-opts button.ko { animation: gst-shake .25s; border-color: #ef4444; }
+.gst-opts button:disabled { opacity: .7; }
+.gst-dots { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+.gst-dots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, .22); }
+.gst-dots i.ok { background: #22c55e; }
+.gst-dots i.ko { background: #ef4444; }
+@media (pointer: fine) { .gst-opts button:hover { background: rgba(255, 255, 255, .16); } }
+@keyframes gst-shake { 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
