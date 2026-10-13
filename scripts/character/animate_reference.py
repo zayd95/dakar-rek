@@ -168,6 +168,61 @@ for name,source_name in clips.items():
                     if pb.rotation_quaternion.dot(q)<0: q.negate()
                     pb.rotation_quaternion=q
                     pb.keyframe_insert(data_path='rotation_quaternion',frame=f+1,group=bn)
+        if name in ('Sit','SitEnter','SitExit'):
+            # The library's mannequin holds its hands in front of its abdomen. Fit the captured
+            # arm pose to this body's lap instead, preserving its elbow pole and torso motion.
+            p=1 if name=='Sit' else f/frames if name=='SitEnter' else 1-f/frames
+            blend=max(0,min(1,(p-.35)/.65)); blend=blend*blend*(3-2*blend)
+            heads={}
+            for b in parents:
+                if b.parent:
+                    heads[b.name]=heads[b.parent.name]+desired[b.parent.name]@(b.parent.matrix_local.to_quaternion().inverted()@(b.head_local-b.parent.head_local))
+                else: heads[b.name]=b.head_local.copy()
+            for side,sign in (('Left',1),('Right',-1)):
+                sn,en,wn=['mixamorig:'+side+s for s in ('Arm','ForeArm','Hand')]
+                hn,kn=['mixamorig:'+side+s for s in ('UpLeg','Leg')]
+                shoulder,elbow,wrist=[heads[n] for n in (sn,en,wn)]
+                thigh=heads[kn]-heads[hn]
+                # Wrist sits above the trousers; palm thickness and the curled finger pads
+                # account for the remaining clearance (checked against the exported skin).
+                lap=heads[hn]+thigh*.45+Vector((0,0,.155))
+                goal=wrist.lerp(lap,blend)
+                # Lift the hand briefly as it reaches/releases the lap, avoiding the curled
+                # fingertips sweeping through fabric during the captured stand/sit transition.
+                goal.z += .06*math.sin(math.pi*blend)
+                direction=(goal-shoulder).normalized()
+                l1=(tgt.data.bones[en].head_local-tgt.data.bones[sn].head_local).length
+                l2=(tgt.data.bones[wn].head_local-tgt.data.bones[en].head_local).length
+                distance=min((goal-shoulder).length,(l1+l2)*.985)
+                old_direction=(wrist-shoulder).normalized()
+                pole=elbow-shoulder-old_direction*(elbow-shoulder).dot(old_direction)
+                pole-=direction*pole.dot(direction)
+                if pole.length<1e-6: pole=Vector((sign,0,0))-direction*direction.x*sign
+                pole.normalize()
+                along=(l1*l1-l2*l2+distance*distance)/(2*distance)
+                bent=shoulder+direction*along+pole*math.sqrt(max(0,l1*l1-along*along))
+                goal=shoulder+direction*distance
+                for bn,want in ((sn,(bent-shoulder).normalized()),(en,(goal-bent).normalized())):
+                    old=desired[bn]; desired[bn]=(old@Vector((0,1,0))).rotation_difference(want)@old
+                # Fingers point along the thigh, thumb toward the body, palm down. Calibrate
+                # from the actual finger spread so this doesn't depend on imported bone rolls.
+                hand=tgt.data.bones[wn]
+                index=tgt.data.bones[wn+'Index1']; pinky=tgt.data.bones[wn+'Pinky1']; middle=tgt.data.bones[wn+'Middle1']
+                longitudinal=(middle.head_local-hand.head_local).normalized()
+                across=index.head_local-pinky.head_local; across=(across-longitudinal*across.dot(longitudinal)).normalized()
+                restbasis=Matrix((across,longitudinal,across.cross(longitudinal))).transposed()
+                forward=Vector((thigh.x,thigh.y,0)).normalized()
+                inward=Vector((-sign,0,0)); inward=(inward-forward*inward.dot(forward)).normalized()
+                lapbasis=Matrix((inward,forward,inward.cross(forward))).transposed()
+                flat=(lapbasis@restbasis.inverted()).to_quaternion()@hand.matrix_local.to_quaternion()
+                desired[wn]=desired[wn].slerp(flat,blend)
+                for bn in (sn,en,wn):
+                    b=tgt.data.bones[bn]; pb=tgt.pose.bones[bn]
+                    restlocal=(b.parent.matrix_local.inverted()@b.matrix_local).to_quaternion()
+                    q=restlocal.inverted()@desired[b.parent.name].inverted()@desired[bn]
+                    if pb.rotation_quaternion.dot(q)<0: q.negate()
+                    pb.rotation_quaternion=q
+                    pb.keyframe_insert(data_path='rotation_quaternion',frame=f+1,group=bn)
         # Preserve measured vertical weight transfer, removing horizontal/root travel (game owns translation).
         source_hip=source.matrix_world@source.pose.bones['Hips' if captured else 'pelvis'].head
         if hipbase is None: hipbase=source_hip.z

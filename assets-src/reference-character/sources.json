@@ -35,7 +35,8 @@
     "license": "CC0",
     "sourceUrl": "https://quaternius.itch.io/universal-animation-library",
     "archiveSha256": "cc73fc4e495b82958207316596317a3f40b9fa38065bde1027937452da537724",
-    "gltfSha256": "69591853d817488edaa8fd9bf8fc1d821eaeaf789f8627b3cd23b41c4ed67997"
+    "gltfSha256": "69591853d817488edaa8fd9bf8fc1d821eaeaf789f8627b3cd23b41c4ed67997",
+    "adaptations": "Retargeted directions/rest rolls, measured stride/contact; seated arm IK with palms on thighs and lifted sit/stand hand trajectory."
   },
   "capture": {
     "sourceUrl": "https://mocap.cs.cmu.edu/",
@@ -51,7 +52,7 @@
   },
   "output": {
     "file": "public/assets/reference_character.glb",
-    "sha256": "277ae43c810ccb29b492d9be2574a304abaf1302995e6a59acf75cd71f926bc5",
-    "bytes": 1952572
+    "sha256": "0c88354a2c18a1b5f82e895fba5bd8706ae9caa0e2da1762ccee63c5d47b41f2",
+    "bytes": 1954596
   }
 }

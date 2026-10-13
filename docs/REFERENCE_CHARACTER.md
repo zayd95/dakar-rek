@@ -34,6 +34,19 @@ follow-camera change, while the other views use identical close-up cameras.
 Matching landscape before/after, side profiles and additional motion captures are in
 `screenshots/reference-character`. [Browser results](screenshots/reference-character/results.json).
 
+### Seated hand refinement
+
+The first reference candidate held its hands above the abdomen. The new retarget rests both palms
+on the thighs and lifts them slightly while sitting down or standing up to clear the trousers.
+Same mobile camera, bench and morning lighting below; the live calendar/HUD may differ.
+Before is the initial reference candidate at `b891586`, not V4.
+
+| Initial reference candidate | Relaxed lap contact |
+| --- | --- |
+| ![Before seated hands](screenshots/reference-character/seated-hands/before-portrait.png) | ![After seated hands](screenshots/reference-character/portrait-sit.png) |
+
+[Refinement browser results](screenshots/reference-character/seated-hands/results.json).
+
 ## Asset and motion
 
 The source is fresh licensed MakeHuman anatomy, a fitted CC0 garment, new authored hair/face details,
@@ -60,8 +73,9 @@ The preview profile retains nickname editing but offers no appearance swatches o
 
 ## Verification
 
-- Full suite: **1,396 passed, 2 skipped**, including seven actual GLB/runtime checks for skin weights,
-  individual finger joints, asset limits, moving clips, idle-loop closure, contact, bench fitting and cadence.
+- Full suite: **1,397 passed, 2 skipped**, including eight actual GLB/runtime checks for skin weights,
+  individual finger joints, asset limits, moving clips, idle-loop closure, contact, bench fitting, cadence,
+  and both hands' lap contact/fabric clearance through sitting down and standing up.
 - Client build and server typecheck passed; the existing large JS chunk warning remains.
 - Real game in Chrome mobile emulation, 390×844 and 844×390: one active 52-bone player, joystick
   movement and cancellation, walk/jog/sprint, turn, actual bench seating, fixed-look profile and clear

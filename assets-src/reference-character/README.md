@@ -43,6 +43,11 @@ interior floor; raised paths use the existing `heightAt` data. Seated bodies ret
 The legacy seat contract is butt contact at 0.48 m above the origin. This anatomy needs its pelvis at
 0.62 m for that contact, rather than putting the pelvis itself at 0.48 m. Sit transitions are one-shot;
 moving can interrupt the exit. `animations.json` records clip sources/durations/contact offsets.
+The seated arm retarget fits each wrist to its own thigh using a two-bone solve, preserves the
+captured elbow bend plane and torso motion, and calibrates palm orientation from the finger spread.
+Hands settle palm-down on the trousers. Entry/exit blend the fit and lift the hand briefly so curled
+fingertips clear the fabric. Exported skin-to-trouser clearance is tested through all three clips;
+this remains an adaptation of the licensed Quaternius capture, not a new capture source.
 
 ## Rebuild
 

@@ -96,6 +96,47 @@ describe('reference candidate: retargeted contact and motion', () => {
     expect(contact).toBeGreaterThan(.46); expect(contact).toBeLessThan(.50);
     expect(Math.min(...pose('Sit', .3, soles()).map(v => v.y))).toBeGreaterThan(.03);
   });
+  it('rests both hands on the lap and clears the trousers when sitting down or standing up', () => {
+    const a = mesh.geometry.attributes, index = mesh.geometry.index!;
+    const handBones = new Map(mesh.skeleton.bones.flatMap((b, i) => b.name.includes('Hand') ? [[i, b.name.includes('Left') ? 'Left' : 'Right'] as const] : []));
+    const hands: Record<string, number[]> = { Left: [], Right: [] }, pants = new Set<number>();
+    for (let i = 0; i < a.position.count; i++) {
+      if (a.position.getY(i) > .45 && a.position.getY(i) < 1.05 && a.color.getY(i) > a.color.getX(i) * 1.2) pants.add(i);
+      for (let k = 0; k < 4; k++) {
+        const side = handBones.get(a.skinIndex.getComponent(i, k));
+        if (side && a.skinWeight.getComponent(i, k) > .5) { hands[side].push(i); break; }
+      }
+    }
+    for (const ids of Object.values(hands)) expect(ids.length).toBeGreaterThan(500);
+    const faces: number[][] = [];
+    for (let i = 0; i < index.count; i += 3) {
+      const ids = [index.getX(i), index.getX(i + 1), index.getX(i + 2)];
+      if (ids.every(id => pants.has(id))) faces.push(ids);
+    }
+    const point = new THREE.Vector3(), nearestPoint = new THREE.Vector3(), normal = new THREE.Vector3();
+    for (const name of ['Sit', 'SitEnter', 'SitExit']) for (const fraction of [.1, .3, .5, .7, .9]) {
+      const mixer = new THREE.AnimationMixer(gltf.scene), action = mixer.clipAction(clip(name));
+      action.setLoop(THREE.LoopOnce, 1).play(); mixer.update(clip(name).duration * fraction);
+      gltf.scene.updateMatrixWorld(true); mesh.skeleton.update();
+      const triangles = faces.map(ids => new THREE.Triangle(...ids.map(i => mesh.getVertexPosition(i, new THREE.Vector3())) as [THREE.Vector3, THREE.Vector3, THREE.Vector3]));
+      for (const [side, ids] of Object.entries(hands)) {
+        let clearance = Infinity, penetration = 0;
+        for (const id of ids) {
+          mesh.getVertexPosition(id, point);
+          let distance = Infinity, signed = 0;
+          for (const face of triangles) {
+            face.closestPointToPoint(point, nearestPoint);
+            const d = point.distanceTo(nearestPoint);
+            if (d < distance) { distance = d; signed = face.getNormal(normal).dot(point.clone().sub(nearestPoint)); }
+          }
+          clearance = Math.min(clearance, distance); penetration = Math.min(penetration, signed);
+        }
+        expect(penetration, `${name} ${fraction} ${side}: fingertips through fabric`).toBeGreaterThan(-.003);
+        if (name === 'Sit') expect(clearance, `${side} hand/lap contact`).toBeLessThan(.008);
+      }
+      mixer.stopAllAction(); mixer.uncacheRoot(gltf.scene);
+    }
+  });
   it('plays movement from actual ground speed, holds a complete turn, and enters a seat', () => {
     const h = new Humanoid(undefined, { scene: gltf.scene, clips: gltf.animations });
     h.animate(1 / 60, 0);
