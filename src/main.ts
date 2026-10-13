@@ -1,5 +1,6 @@
 import './ui/style.css';
 import * as THREE from 'three';
+import { turnStep } from './core/turn';
 import { Input } from './core/input';
 import { GameState } from './core/state';
 import { cityTimeAt, daylight } from './core/clock';
@@ -1106,12 +1107,12 @@ function frameStep(now: number, dt: number, draw = true) {
     const dx = fx * m.y + rx * m.x, dz = fz * m.y + rz * m.x;
     const mag = Math.min(1, Math.hypot(m.x, m.y));
     const shiftLevel = input.shift.level(input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));       // Shift: jog; double-tapped and held: sprint
-    const target = stride.target(mag, Math.max(shiftLevel, strideUi.level) as RunLevel, dt);
+    let keep = 1;
+    if (mag > 0.05) { const t = turnStep(facing, Math.atan2(dx, dz), dt, speed); facing = t.facing; keep = t.keep; }   // turn first, pace follows the facing
+    const target = stride.target(mag, Math.max(shiftLevel, strideUi.level) as RunLevel, dt) * keep;
     speed += (target - speed) * Math.min(1, dt * (target > speed ? 6 : 12));
     if (mag > 0.05) {
-      const want = Math.atan2(dx, dz);
-      facing += Math.atan2(Math.sin(want - facing), Math.cos(want - facing)) * Math.min(1, dt * 14);
-      let nx = pos.x + (dx / (Math.hypot(dx, dz) || 1)) * speed * dt, nz = pos.z + (dz / (Math.hypot(dx, dz) || 1)) * speed * dt;
+      let nx = pos.x + Math.sin(facing) * speed * dt, nz = pos.z + Math.cos(facing) * speed * dt;      // along the body, not the raw stick
       [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
       const b = inside ? inside.int.bounds : world.bounds; nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1);
       stride.moved(Math.hypot(nx - pos.x, nz - pos.z));
