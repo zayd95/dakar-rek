@@ -969,5 +969,18 @@
       ],
       "ci": "exact check-runs completed success; no independent acceptance performed here"
     }
-  ]
+  ],
+  "registryWriter": {
+    "token": "cycle-20261013T2237Z-watch",
+    "owner": "producer_watch_2237",
+    "acquiredAt": "2026-10-13T22:36:17Z",
+    "expiresAt": "2026-10-13T23:06:17Z",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "287878cf9c204cf104a53c64957bc900362d628c",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-13-2237-WATCH.md"
+    ]
+  }
 }
