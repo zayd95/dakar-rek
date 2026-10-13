@@ -97,6 +97,8 @@ export class FollowCamera {
   yaw = 0; pitch = 0.36;
   /** Inside a room: shorter, lower camera. */
   indoor = false;
+  /** An authored character preview can use a closer outdoor follow distance. */
+  outdoorDistance: number | null = null;
   /** What the camera did last frame (for the checks): free room behind the player (m), tight, the extra pitch. */
   info = { free: 0, tight: false, lift: 0, swinging: false, near: 0 };
   private pos = new THREE.Vector3();
@@ -147,7 +149,7 @@ export class FollowCamera {
       const d = Math.atan2(Math.sin(this.swingTo - this.yaw), Math.cos(this.swingTo - this.yaw)), step = 2.4 * dt;
       if (Math.abs(d) <= step) { this.yaw = this.swingTo; this.swingTo = null; } else this.yaw += Math.sign(d) * step;
     }
-    const dist = this.indoor ? (portrait ? 4.6 : 4.0) : portrait ? 10.5 : 8;
+    const dist = this.indoor ? (portrait ? 4.6 : 4.0) : this.outdoorDistance ?? (portrait ? 10.5 : 8);
     if (this.indoor) { this.pitch = clamp(this.pitch, 0.5, 0.8); this.lift = this.liftTo = 0; }   // looking down into the room shows more of it
     this.lift += (this.liftTo - this.lift) * Math.min(1, dt * 3);
     const pitch = clamp(this.pitch + this.lift, PITCH_MIN, PITCH_LIFT_MAX);

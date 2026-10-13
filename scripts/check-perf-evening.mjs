@@ -45,8 +45,13 @@ for (const preset of presets) {
   await ctx.addInitScript(q => { if (!sessionStorage.getItem('perf-evening')) { localStorage.clear(); localStorage.setItem('dakarrek.quality', q); sessionStorage.setItem('perf-evening', '1'); } }, preset);
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 180000 });
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}${args.includes('--reference-character') ? '&reference-character' : ''}`, { timeout: 180000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.arena && window.__dakar.street, null, T);
+  if (args.includes('--reference-character')) {
+    await page.waitForFunction(() => !!window.__dakar.body(), null, T);
+    const rig = await page.evaluate(() => { let meshes = 0, bones = 0; window.__dakar.body().group.traverse(o => { if (o.isSkinnedMesh) { meshes++; bones = o.skeleton.bones.length; } }); return { meshes, bones }; });
+    check(`${preset}: reference player is active`, rig.meshes === 1 && rig.bones === 52, rig);
+  }
   const profiled = await page.evaluate(() => typeof window.__dakar.perfOn === 'function');
   const d = (fn, arg) => page.evaluate(fn, arg);
   const frames = n => d(n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); }), n);
@@ -123,6 +128,6 @@ for (const preset of presets) {
 
 await browser.close();
 fs.mkdirSync(outFile.split('/').slice(0, -1).join('/') || '.', { recursive: true });
-fs.writeFileSync(outFile, JSON.stringify({ when: new Date().toISOString(), base, budget: BUDGET, rows, results }, null, 2));
+fs.writeFileSync(outFile, JSON.stringify({ when: new Date().toISOString(), base, character: args.includes('--reference-character') ? 'reference' : 'integration', budget: BUDGET, rows, results }, null, 2));
 console.log(measureOnly ? `\nmeasured ${rows.length} moments` : `\n${results.length - failed}/${results.length} evening budget checks passed`);
 process.exit(failed && !measureOnly ? 1 : 0);

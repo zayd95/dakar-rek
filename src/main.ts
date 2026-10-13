@@ -7,7 +7,7 @@ import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
-import { HALF, buildHub, hubLayout } from './world/builder';
+import { HALF, buildHub, hubLayout, citySurfaceAt } from './world/builder';
 import { Sky } from './world/sky';
 import { setGrainEnabled } from './world/grain';
 import { buildInterior, disposeInterior, setInteriorDaylight, type Interior } from './world/interiors';
@@ -19,6 +19,7 @@ import { MonumentLife } from './actors/life';
 import { PlacedPeople } from './actors/placedPeople';
 import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
+import { preloadReferenceCharacter, referenceCharacter } from './actors/referenceCharacter';
 import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
@@ -75,6 +76,8 @@ import { StrideUi } from './ui/stride';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
+const REFERENCE_CHARACTER = params.has('reference-character');
+const referenceHour = Number(params.get('reference-hour'));
 
 // ------------------------------------------------------------------ storage (guest save is device-local)
 let store: Storage | null = null;
@@ -167,7 +170,7 @@ const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
 /** Set once the module context (`ctx`, below) exists. */
 let ctxReady = false;
-let hourOverride: number | null = null;
+let hourOverride: number | null = REFERENCE_CHARACTER && params.has('reference-hour') && Number.isFinite(referenceHour) && referenceHour >= 0 && referenceHour < 24 ? referenceHour : null;
 /** Walkable interiors of this hub, and the one the player is in. */
 let interiors = new Map<string, Interior>();
 let inside: { int: Interior; door: Interactable } | null = null;
@@ -176,7 +179,7 @@ let camOverride: { dist: number; h: number; side: number } | null = null;
 const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
 const roomParam = Number(params.get('room'));
 const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
-const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
+const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; }, REFERENCE_CHARACTER);
 const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: store, enabled: import.meta.env.VITE_MULTIPLAYER === 'true', local: () => pos, space: presenceSpace,
   suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
 presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); };
@@ -1126,7 +1129,15 @@ function frameStep(now: number, dt: number, draw = true) {
     if (previewT > 0) { previewT -= dt; if (previewT <= 0 && emoteT <= 0) hideProxy(); }
 
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
-    if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
+    if (playerBody) {
+      playerBody.group.visible = true; playerBody.group.position.copy(pos);
+      if (REFERENCE_CHARACTER && !seated) {
+        const raised = pos.y - .1;
+        const surface = inside ? .1 : raised > .001 ? raised : citySurfaceAt(pos.x, pos.z);
+        playerBody.group.position.y = surface - .035;
+      }
+      playerBody.group.rotation.y = facing; playerBody.animate(dt, speed);
+    }
   } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
   let tSys = profOn ? performance.now() : 0;
   // inside the arena's walls (on the tiers) the street's cast, walkers, traffic and placed people cannot be seen: they go on
@@ -1178,9 +1189,13 @@ function frameStep(now: number, dt: number, draw = true) {
 // ------------------------------------------------------------------ start
 resize(); applyQuality();
 async function start() {
-  await Promise.all([preloadAssets(), preloadHumanoid()]);
+  await Promise.all([preloadAssets(), preloadHumanoid(), REFERENCE_CHARACTER ? preloadReferenceCharacter() : Promise.resolve()]);
   for (const m of MODULES) m.init?.(ctx);
-  if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false; }
+  if (humanoidReady()) {
+    playerBody = new Humanoid(PLAYER_LOOK, REFERENCE_CHARACTER ? referenceCharacter() : undefined);
+    playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false;
+    if (REFERENCE_CHARACTER) follow.outdoorDistance = 6.5;
+  }
   const startHub = invitedHub ?? state.data.hub;
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
@@ -1259,6 +1274,7 @@ if (DEBUG) {
     scene(kind: SceneKind) { const a = [...ACTIONS.arena, ...ACTIONS.ecurie].find(x => x.special === kind); if (a) runSpecial(a); else startScene(kind); },
     wrestlerReady: () => humanoidReady(),
     body: () => playerBody,
+    motion: () => playerBody?.motionInfo() ?? null,
     faceCamera() { follow.pin(); follow.yaw = facing + Math.PI; },
     portrait(dist = 2.2, h = 1.5, side = 0.35) { camOverride = dist > 0 ? { dist, h, side } : null; },
     /** A body walking from (x, z) along `yaw` at `speed` m/s for `len` m, then again from the start. */

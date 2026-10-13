@@ -1,0 +1,113 @@
+{
+  "Idle": {
+    "source": "CMU 18_08 frames 130\u2013490 (relaxed-pose adaptation, closed loop)",
+    "duration": 3.0,
+    "frames": 181,
+    "hipRange": [
+      0.03039566040039063,
+      0.031183484792709354
+    ]
+  },
+  "Walk": {
+    "source": "Walk_Loop",
+    "duration": 1.3333333333333333,
+    "frames": 81,
+    "hipRange": [
+      0.005874845981597904,
+      0.07871513426303864
+    ],
+    "stanceSpeed": 1.315652266144753
+  },
+  "Jog": {
+    "source": "Jog_Fwd_Loop",
+    "duration": 0.9333333333333333,
+    "frames": 57,
+    "hipRange": [
+      -0.15762304268346092,
+      -0.013236082196235656
+    ],
+    "stanceSpeed": 3.1864169239997864
+  },
+  "Run": {
+    "source": "Sprint_Loop",
+    "duration": 0.6666666666666666,
+    "frames": 41,
+    "hipRange": [
+      -0.1361597728729248,
+      0.06271391451358796
+    ],
+    "stanceSpeed": 6.013797182589769
+  },
+  "Sit": {
+    "source": "Sitting_Idle_Loop",
+    "duration": 1.6666666666666667,
+    "frames": 101,
+    "hipRange": [
+      -0.3914409923553467,
+      -0.3914409923553467
+    ]
+  },
+  "SitEnter": {
+    "source": "Sitting_Enter",
+    "duration": 1.3,
+    "frames": 79,
+    "hipRange": [
+      -0.3914671956201544,
+      0.030232105528820705
+    ]
+  },
+  "SitExit": {
+    "source": "Sitting_Exit",
+    "duration": 1.0333333333333334,
+    "frames": 63,
+    "hipRange": [
+      -0.3914671956201544,
+      0.030232105528820705
+    ]
+  },
+  "Talk": {
+    "source": "Idle_Talking_Loop",
+    "duration": 2.933333333333333,
+    "frames": 177,
+    "hipRange": [
+      0.0372101104259491,
+      0.04452407717704773
+    ]
+  },
+  "Celebrate": {
+    "source": "Dance_Loop",
+    "duration": 1.0,
+    "frames": 61,
+    "hipRange": [
+      -0.051896743058193466,
+      0.014853753990105278
+    ]
+  },
+  "Kneel": {
+    "source": "Fixing_Kneeling",
+    "duration": 5.2,
+    "frames": 313,
+    "hipRange": [
+      -0.5223183139896798,
+      -0.021701910181851598
+    ]
+  },
+  "Ride": {
+    "source": "Driving_Loop",
+    "duration": 1.6666666666666667,
+    "frames": 101,
+    "hipRange": [
+      -0.37955616782135326,
+      -0.37955616782135326
+    ]
+  },
+  "Turn": {
+    "source": "CMU 13_26 frames 977\u20131121 (quarter turn)",
+    "duration": 1.2,
+    "frames": 73,
+    "hipRange": [
+      0.004816200435161594,
+      0.04840983808040619
+    ]
+  }
+}

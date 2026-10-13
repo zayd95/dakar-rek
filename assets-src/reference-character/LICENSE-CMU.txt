@@ -1,0 +1,16 @@
+CMU Graphics Lab Motion Capture Database
+https://mocap.cs.cmu.edu/
+Permission statement: https://mocap.cs.cmu.edu/faqs.php
+
+"The motion capture data may be copied, modified, or redistributed without permission."
+
+Credit: CMU Graphics Lab motion capture database, funded by NSF EIA-0196217.
+BVH conversion: Bruce Hahne / cgspeed, Daz-friendly release.
+The converter places no additional restrictions on the converted data:
+https://sites.google.com/a/cgspeed.com/cgspeed/motion-capture/the-daz-friendly-bvh-release-of-cmus-motion-capture-database/readmefirst-file-for-daz-friendly-primary-release
+
+This repository contains selected excerpts of 18_08 and 13_26, with the existing
+BVH hierarchy preserved and the frame count trimmed. The new rig's retargeting,
+relaxed standing adaptation, loop closure and contact corrections are documented
+in README.md and scripts/character/animate_reference.py. CMU's permission is
+distinct from the CC0 licenses of the anatomy, garment and Quaternius library.
