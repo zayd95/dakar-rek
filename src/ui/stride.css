@@ -24,3 +24,4 @@ body.touch #runBtn.hidden { display: none; }
 body.touch.chat-open #runBtn, body.touch.chat-open #stamina { display: none; }
 /* phones: above the joystick / « Courir » row so the label stays readable */
 body.touch #stamina { bottom: calc(env(safe-area-inset-bottom, 0px) + 116px); }
+body.touch #runBtn.sprint { background: #ef4444; border-color: #fecaca; color: #fff; }

@@ -89,7 +89,7 @@ try {
     check(`${label}: mall purchase debits once and feeds the player`, (await page.evaluate(() => window.__dakar.state.wallet)) === wallet - 500 && (await page.evaluate(() => window.__dakar.state.data.needs.faim)) > 39);
     if (!touch) {
       await page.evaluate(() => window.__dakar.place(30, 55, Math.PI));
-      // run (Shift) through the entrance: the default brisk walk is slower, and CI renders a frame every second or so
+      // jog (Shift) through the entrance: the default walk is slower, and CI renders a frame every second or so
       await page.keyboard.down('ShiftLeft'); await page.keyboard.down('KeyW');
       try { await page.waitForFunction(() => window.__dakar.pos().z < 46.5, null, { timeout: 60000 }); }
       finally { await page.keyboard.up('KeyW'); await page.keyboard.up('ShiftLeft'); }

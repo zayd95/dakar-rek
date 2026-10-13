@@ -1,5 +1,6 @@
-// On foot, always free: brisk walk by default, run with Shift (desktop) or the « Courir » toggle (phone), stamina gauge,
-// out of breath → brisk walk again, fitness from distance run. Usage: node scripts/check-stride.mjs [baseUrl] [outDir]
+// On foot, always free: a normal walk (2 m/s) by default, jog with Shift held (desktop) or « Courir » (phone), sprint with a
+// double-tapped Shift or « Courir » pressed again; the stamina gauge says « Footing » / « Sprint »; the sprint gives out into a
+// jog, then a walk; fitness from distance jogged and sprinted. Usage: node scripts/check-stride.mjs [baseUrl] [outDir]
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -24,24 +25,31 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await d(() => { window.__dakar.place(-42, -66, Math.PI / 2); window.__dakar.lookYaw(Math.PI / 2); });
   await page.waitForTimeout(600);
 
-  // brisk walk by default
+  // the normal walk by default
   await page.keyboard.down('KeyW');
-  await page.waitForFunction(() => window.__dakar.stride().speed > 3.8, null, T).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.stride().speed > 1.9, null, T).catch(() => {});
   const brisk = await S();
-  check(`${label}: holding forward walks briskly (free)`, brisk.speed > 3.8 && brisk.speed < 4.6 && !brisk.running, JSON.stringify(brisk));
-  // run
+  check(`${label}: holding forward walks at 2 m/s (free)`, brisk.speed > 1.9 && brisk.speed < 2.2 && !brisk.running, JSON.stringify(brisk));
+  // jog: Shift held / « Courir » once
   if (touch) await page.locator('#runBtn').dispatchEvent('pointerdown'); else await page.keyboard.down('ShiftLeft');
+  await page.waitForFunction(() => window.__dakar.stride().speed > 3.9, null, T).catch(() => {});
+  const jog = await S();
+  const gauge = await d(() => document.getElementById('stamina').classList.contains('on'));
+  const word = await d(() => document.querySelector('#stamina span').textContent);
+  check(`${label}: ${touch ? '« Courir »' : 'Shift'} jogs at 4.2 m/s, the gauge says « Footing »`, jog.gait === 'jog' && jog.speed > 3.9 && jog.speed < 4.5 && gauge && word === 'Footing', JSON.stringify({ jog, word }));
+  // sprint: a double-tapped Shift, held / « Courir » pressed again
+  if (touch) await page.locator('#runBtn').dispatchEvent('pointerdown');
+  else { await page.keyboard.up('ShiftLeft'); await page.keyboard.down('ShiftLeft'); await page.keyboard.up('ShiftLeft'); await page.keyboard.down('ShiftLeft'); }
   await page.waitForFunction(() => window.__dakar.stride().speed > 6.2, null, T).catch(() => {});
   const run = await S();
-  const gauge = await d(() => document.getElementById('stamina').classList.contains('on'));
-  check(`${label}: ${touch ? '« Courir »' : 'Shift'} runs, the stamina gauge shows`, run.running && run.speed > 6.2 && gauge, JSON.stringify(run));
+  const word2 = await d(() => document.querySelector('#stamina span').textContent);
+  check(`${label}: ${touch ? 'pressing « Courir » again' : 'a double-tapped Shift'} sprints, the gauge says « Sprint »`, run.sprinting && run.speed > 6.2 && word2 === 'Sprint', JSON.stringify({ run, word2 }));
   await page.screenshot({ path: `${out}/${label}-running.png` });
-  // out of breath
-  await d(() => { /* skip the long run: drain the stamina */ });
-  await page.waitForFunction(() => window.__dakar.stride().winded || window.__dakar.stride().stamina < 3, null, { timeout: 600000 }).catch(() => {});
-  await page.waitForFunction(() => window.__dakar.stride().speed < 4.8, null, T).catch(() => {});
+  // out of breath: the sprint gives out into a jog (a reserve), then a walk
+  await page.waitForFunction(() => window.__dakar.stride().winded, null, { timeout: 600000 }).catch(() => {});
+  await page.waitForFunction(() => !window.__dakar.stride().sprinting && window.__dakar.stride().speed < 4.8, null, T).catch(() => {});
   const tired = await S();
-  check(`${label}: out of breath, back to a brisk walk`, tired.winded && !tired.running && tired.speed < 4.8, JSON.stringify(tired));
+  check(`${label}: out of breath, the sprint falls back (to a jog, then a walk)`, tired.winded && !tired.sprinting && tired.speed < 4.8, JSON.stringify(tired));
   if (!touch) await page.keyboard.up('ShiftLeft');
   await page.keyboard.up('KeyW');
   await page.waitForFunction(() => !window.__dakar.stride().winded, null, { timeout: 300000 }).catch(() => {});
