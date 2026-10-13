@@ -29,6 +29,4 @@ body.touch #runBtn.sprint { background: #ef4444; border-color: #fecaca; color: #
    src/ui/style.css), bottom-aligned with the action button and never over it */
 @media (max-height:500px) and (orientation:landscape) {
   body.touch #runBtn { left:auto; right:calc(env(safe-area-inset-right, 0px) + 24vw + 14px); bottom:calc(env(safe-area-inset-bottom, 0px) + 22px); }
-  /* the toast column keeps clear of it too (a tall moment card reaches the bottom) */
-  body.touch #toast { right:calc(24vw + 80px + var(--sa-r)); }
 }
