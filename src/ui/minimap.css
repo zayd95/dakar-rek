@@ -17,7 +17,7 @@ body.mm-on #delivery { top:calc(var(--mm-top) + var(--mm) + 56px); }
    cards and the middle of the screen stays clear (only the nearest place is named, on one line: the district is in the
    place chip above) */
 @media (max-width:640px) and (orientation:portrait) {
-  #ui { --mm: 92px; --mm-top: 168px; }
+  #ui { --mm: 88px; --mm-top: 162px; }
   #minimap { left:auto; right:calc(10px + var(--sa-r)); max-width:150px; }
   #minimap .mm-name { text-align:right; max-width:150px; }
   #minimap .mm-name small { display:none; }

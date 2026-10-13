@@ -40,8 +40,8 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   let m = await mm();
   const box = await rect('#minimap .mm-disc');
   check(`${label}: the minimap is visible while playing`, m.on && !!box, JSON.stringify({ on: m.on, size: m.size }));
-  const sz = label === 'phone' ? [100, 130] : label === 'landscape' ? [80, 110] : [110, 150];
-  check(`${label}: it is round, ${sz[0]}-${sz[1]} px, top-left`, !!box && Math.abs(box.width - box.height) < 1 && box.width >= sz[0] && box.width <= sz[1] && box.left < 40 && box.top < 200, JSON.stringify(box));
+  const sz = label === 'phone' ? [84, 130] : label === 'landscape' ? [80, 110] : [110, 150];
+  check(`${label}: it is round, ${sz[0]}-${sz[1]} px, top corner`, !!box && Math.abs(box.width - box.height) < 1 && box.width >= sz[0] && box.width <= sz[1] && (box.left < 40 || (label === 'phone' && box.right > 390 - 40)) && box.top < 200, JSON.stringify(box));   // portrait phone: the right column (the left one keeps UI V2's cards)
   const others = ['#stats', '#menuBtn', '#joy', '#stamina', '#runBtn', '#actbar', '#hint', '#place'];
   const full = await rect('#minimap');
   const hits = [];
@@ -59,7 +59,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await page.waitForFunction(() => /Café Touba/.test(window.__dakar.minimap().street ?? ''), null, { timeout: 15000 }).catch(() => {});
   m = await mm();
   const labelText = await d(() => document.querySelector('#minimap .mm-name').innerText.replace(/\s+/g, ' '));
-  check(`${label}: it names the neighbourhood and the nearest place (from the game's places)`, m.district === 'Sandaga' && /Café Touba/.test(m.street) && /Sandaga/.test(labelText), labelText);
+  check(`${label}: it names the neighbourhood and the nearest place (from the game's places)`, m.district === 'Sandaga' && /Café Touba/.test(m.street) && (label === 'phone' || /Sandaga/.test(labelText)), labelText);   // portrait phone: the district is in the place chip, the label names only the place
   await d(() => window.__dakar.teleport('pikine', -42, -50, 0));
   await page.waitForFunction(() => window.__dakar.minimap().district === 'Pikine', null, { timeout: 15000 }).catch(() => {});
   m = await mm();
