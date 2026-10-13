@@ -5,10 +5,42 @@
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": null,
+  "lease": {
+    "token": "cycle-20261013T0028Z-watch",
+    "owner": "producer_watch_0028",
+    "acquiredAt": "2026-10-13T00:28:00Z",
+    "expiresAt": "2026-10-13T00:58:00Z",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "5c830d2788ae4b2695120e15fcb86712e154cd9d",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-13-0028-WATCH.md",
+      "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md"
+    ]
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "id": "WATCH-20261013-0028-QA",
+      "role": "qa",
+      "kind": "read_only_evidence_review",
+      "status": "active",
+      "owner": "qa_wave5_0028",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "5c830d2788ae4b2695120e15fcb86712e154cd9d",
+      "sourceCommit": "146c280168504ab1b963ab64e729bb09c05bfe8a",
+      "allowedFiles": [
+        "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md"
+      ],
+      "acceptance": [
+        "Inspect exact current integration CI logs and scope",
+        "Identify missing wave-specific controls and distinct final acceptance",
+        "No source edits, external ref mutation or self-approval; report evidence gaps honestly"
+      ]
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
