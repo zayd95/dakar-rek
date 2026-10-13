@@ -95,9 +95,9 @@ type Quality = 'low' | 'medium' | 'high';
 let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarrek.quality'); if (q === 'low' || q === 'medium' || q === 'high') return q; } catch { /* */ } return /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'medium' : 'high'; })();
 const QUAL = {
   // traffic: the most cars on the road at rush hour (src/social/ambientLife.ts thins them by hour, the weather by rain)
-  low: { pr: 1, shadow: 0, crowd: 8, traffic: 4 },
-  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 7 },
-  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 10 },
+  low: { pr: 1, shadow: 0, crowd: 8, traffic: 8 },
+  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 11 },
+  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 14 },
 };
 
 const scene = new THREE.Scene();

@@ -56,13 +56,19 @@ interface StopRt {
 }
 interface GroupRt { x: number; z: number; ring: { x: number; z: number; yaw: number }[]; taken: (Agent | null)[]; on: boolean; w: number }
 
-export const STREET_RANGE = { pop: 28, view: 70 };
+/**
+ * `pop`: nearer than this nobody appears or leaves in front of the player; `view`: beyond it (a figure of a few pixels)
+ * a walker is out of sight whatever the camera sees, so the crowd fills the streets as far as the camera looks.
+ */
+export const STREET_RANGE = { pop: 24, view: 46 };
 /**
  * Where the arena lane's outflow takes the spectators out of the gate's street (src/arena/exteriorRules.ts
  * outflowDestinations: both street ends and the side corners): the street crowd carries them on from there.
  */
 export const OUTFLOW_ENDS = (g: { x: number; z: number }) => [-1, 1].flatMap(sx => [{ x: g.x + sx * 34, z: g.z - 8 }, { x: g.x + sx * 25, z: g.z - 13 }]);
-const SPEED = [1.05, 1.55] as const;
+const SPEED = [1.2, 1.6] as const;
+/** Metres round the player within which the walkers keep: the street crowd is put where the camera looks. */
+const STAGE: Record<CrowdQuality, number> = { low: 58, medium: 72, high: 90 };
 
 export class StreetLife {
   readonly crowd: Crowd;
@@ -79,11 +85,15 @@ export class StreetLife {
   /** The colliders while the queue lane is closed, in a grid (a walker's step tests two points a frame). */
   private colGrid: ColliderGrid | null = null;
   private prepT = 1.2;
+  /** Seconds after the street is prepared during which people may be placed in sight (but not at the player's feet). */
+  private warm = 8;
   private rand = rng(1709);
   private q: CrowdQuality;
   private hub: HubWorld;
   private ground: (x: number, z: number) => number;
   private planT = 0;
+  /** Where the camera looks (a unit vector on the ground), refreshed every frame. */
+  private look = { x: 0, z: 1 };
   private busT = 0;
   private dwelling: ReadonlyMap<string, Dwell> = new Map();
   private carSeats = 0;
@@ -160,6 +170,7 @@ export class StreetLife {
   // ---------------------------------------------------------------- seeing and placing
   private seen(x: number, z: number) {
     const me = this.ctx.player.pos, d = len2(x - me.x, z - me.z);
+    if (this.warm > 0) return d < 12;                       // just arrived: the street is already full, the people were there
     if (d > STREET_RANGE.view) return false;
     if (d < STREET_RANGE.pop) return true;
     this.sp.center.set(x, 1, z);
@@ -195,13 +206,18 @@ export class StreetLife {
   }
   /** A lane to spawn on: busy streets weigh more, lanes far from the player much less. */
   private pickLane(): number {
-    const me = this.ctx.player.pos, life = STREET_BUDGET[this.q].life;
-    const w = this.lanes.map((l, i) => this.laneW[i] * (len2((l.ax + l.bx) / 2 - me.x, (l.az + l.bz) / 2 - me.z) < life ? 1 : 0.08));
+    const me = this.ctx.player.pos, stage = STAGE[this.q], f = this.look;
+    // the street's people gather where the camera looks: the lanes near the player weigh much more than the far ones
+    const w = this.lanes.map((l, i) => { const mx = (l.ax + l.bx) / 2 - me.x, mz = (l.az + l.bz) / 2 - me.z, d = len2(mx, mz);
+      const ahead = (mx * f.x + mz * f.z) / (d + 1) > 0.25 ? 2.2 : 1;                  // the lanes the camera looks along weigh more
+      return this.laneW[i] * (d < stage ? ahead / (1 + (d / 18) ** 2) : 0.003); });
     let sum = 0; for (const v of w) sum += v;
     let u = this.rand() * sum;
     for (let i = 0; i < w.length; i++) { u -= w[i]; if (u <= 0) return i; }
     return w.length - 1;
   }
+  /** Within the walkers' stage: the streets round the player, where the camera looks (those beyond are recalled). */
+  private onStage(x: number, z: number) { const me = this.ctx.player.pos; return len2(x - me.x, z - me.z) < STAGE[this.q]; }
   private alive(x: number, z: number) { const me = this.ctx.player.pos; return len2(x - me.x, z - me.z) < STREET_BUDGET[this.q].life; }
   /** The lanes nearest (x, z), nearest first, with the closest point on each. */
   private nearLanes(x: number, z: number, n = 4) {
@@ -215,7 +231,8 @@ export class StreetLife {
   /** Start walking a lane from a point on it. */
   private walkOn(a: Agent, lane: number, t: number, fwd: boolean) {
     a.role = 'walk'; a.lane = lane; a.t = t; a.fwd = fwd; a.speed = SPEED[0] + this.rand() * (SPEED[1] - SPEED[0]);
-    a.side = (this.rand() - 0.5) * 0.24;
+    // two opposing streams: each direction keeps to its own half of the pavement
+    a.side = (fwd ? -1 : 1) * (0.22 + this.rand() * 0.12) + (this.rand() - 0.5) * 0.1;
     this.crowd.setMemberMood(a.id, 'rest');
   }
   /** Walk straight through `pts`, then do `then`. */
@@ -242,12 +259,14 @@ export class StreetLife {
     for (let k = 0; k < 6; k++) {
       const lane = this.pickLane(), l = this.lanes[lane], t = this.rand() * l.len, p = this.lanePt(l, t, 0);
       if (this.seen(p.x, p.z) || (this.closedQueue && !clearWalk(p.x, p.z, p.x, p.z, this.cols, 0.3))) continue;
-      this.walkOn(a, lane, t, this.rand() < 0.5);
+      this.walkOn(a, lane, t, this.streamFwd(l));
       a.x = p.x; a.z = p.z; this.show(a);
       return true;
     }
     return false;
   }
+  /** Which way a new walker goes on a lane: the two pavements of a street carry opposite streams (most of the time). */
+  private streamFwd(l: Lane): boolean { return this.rand() < (l.side > 0 ? 0.88 : 0.12); }
   /** Someone comes to wait at a stop: a walker passing by, or someone out of sight already there. */
   private fillStop(si: number): boolean {
     const s = this.stops[si], i = s.taken.indexOf(null); if (i < 0) return false;
@@ -290,12 +309,14 @@ export class StreetLife {
     }
     const cam = this.ctx.camera;
     cam.updateMatrixWorld();
+    { const e = cam.matrixWorld.elements, lx = -e[8], lz = -e[10], l = Math.hypot(lx, lz) || 1; this.look.x = lx / l; this.look.z = lz / l; }
     this.frustum.setFromProjectionMatrix(this.pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
     this.planT -= dt;
     if (this.planT <= 0) { this.planT = 1; this.plan(); }
     this.busT -= dt;
     if (this.busT <= 0) { this.busT = 0.5; this.buses(); }
     this.afterGala(dt);
+    if (this.warm > 0) this.warm -= dt;
     for (const a of this.agents) if (a.role !== 'off') this.step(a, dt);
     const me = this.ctx.player.pos;
     this.crowd.setFocus(me.x, me.z, null);
@@ -333,11 +354,11 @@ export class StreetLife {
     if (this.arrivals) this.corners.forEach((c, ci) => { this.arrivals!.demand[ci] = c.taken.filter(a => a && a.role === 'pickup' && !a.path).length; });
     // walkers: out of sight in, out of sight out
     const walking = this.agents.filter(a => a.role === 'walk').length;
-    if (walking < t.walkers) for (let k = 0; k < Math.min(3, t.walkers - walking); k++) this.spawnWalker();
+    if (walking < t.walkers) for (let k = 0; k < Math.min(this.warm > 0 ? 12 : 3, t.walkers - walking); k++) this.spawnWalker();
     if (walking > t.walkers) for (const a of this.agents) if (a.role === 'walk' && !a.path && !this.seen(a.x, a.z)) { this.hide(a); break; }
     // walkers who wandered far from the player come back near them (out of sight both ways)
     let moved = 0;
-    for (const a of this.agents) if (moved < 3 && a.role === 'walk' && !a.path && !this.alive(a.x, a.z) && !this.seen(a.x, a.z)) { this.hide(a); this.spawnWalker(); moved++; }
+    for (const a of this.agents) if (moved < 3 && a.role === 'walk' && !a.path && !this.onStage(a.x, a.z) && !this.seen(a.x, a.z)) { this.hide(a); this.spawnWalker(); moved++; }
     // people who have waited long enough move on
     for (const a of this.agents) if ((a.role === 'stop' || a.role === 'group' || a.role === 'pickup') && !a.path && (a.stay -= 1) <= 0) { if (this.seen(a.x, a.z)) this.toLane(a); else this.hide(a); }
   }
@@ -485,7 +506,13 @@ export class StreetLife {
       const g = a.goal, far = (o: { lane: number; forward: boolean }) => { const x = this.lanes[o.lane]; return o.forward ? { x: x.bx, z: x.bz } : { x: x.ax, z: x.az }; };
       pick = opts.reduce((b, o) => { const p = far(o), q = far(b); return len2(p.x - g.x, p.z - g.z) < len2(q.x - g.x, q.z - g.z) ? o : b; });
     } else {
-      let sum = 0; const w = opts.map(o => { const v = this.lanes[o.lane].w ** 2; sum += v; return v; });
+      // the stream goes on straight across the crossing more often than it turns
+      const heading = { x: (l.bx - l.ax) * (a.fwd ? 1 : -1), z: (l.bz - l.az) * (a.fwd ? 1 : -1) };
+      let sum = 0; const w = opts.map(o => {
+        const x = this.lanes[o.lane], dir = { x: (x.bx - x.ax) * (o.forward ? 1 : -1), z: (x.bz - x.az) * (o.forward ? 1 : -1) };
+        const straight = (dir.x * heading.x + dir.z * heading.z) / (x.len * l.len) > 0.9 && x.side === l.side ? 4 : 1;
+        const v = x.w ** 2 * straight; sum += v; return v;
+      });
       let u = this.rand() * sum;
       for (let i = 0; i < opts.length; i++) { u -= w[i]; if (u <= 0) { pick = opts[i]; break; } }
     }

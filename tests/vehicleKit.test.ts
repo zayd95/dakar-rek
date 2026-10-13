@@ -61,7 +61,7 @@ describe('parked vehicles', () => {
     return { id: 'plateau', edges, colliders: [{ x0: -50, z0: -50, x1: -10, z1: -10, h: 9 }], interactables: [], rapides: [], seats: [], bounds: { x0: -127, x1: 127, z0: -127, z1: 127 }, spawn: { x: 0, z: 0, yaw: 0 } } as unknown as HubWorld;
   };
   it('follows the quality level, stays on the kerb lane, never overlaps and adds colliders', () => {
-    expect(PARKED_COUNT.low).toBe(0);
+    expect(PARKED_COUNT.low).toBeGreaterThan(0);
     expect(PARKED_COUNT.high).toBeGreaterThan(PARKED_COUNT.medium);
     const w = fakeWorld(), before = w.colliders.length;
     const g = placeParked(w, PARKED_COUNT.high);
@@ -73,10 +73,10 @@ describe('parked vehicles', () => {
       expect(a.x0 < b.x1 && a.x1 > b.x0 && a.z0 < b.z1 && a.z1 > b.z0).toBe(false);
     }
     for (const v of g.children) {
-      // every parked vehicle stands PARK_OFFSET (± 0.3 m for motorbikes) from a road centre line
+      // every parked vehicle stands PARK_OFFSET (± 0.3 m for motorbikes, 0.35 m more for those half on the pavement) from a road centre line
       const lx = ((v.position.x + 120) % 60 + 60) % 60, lz = ((v.position.z + 120) % 60 + 60) % 60;
       const off = Math.min(Math.abs(lx - PARK_OFFSET), Math.abs(60 - lx - PARK_OFFSET), Math.abs(lz - PARK_OFFSET), Math.abs(60 - lz - PARK_OFFSET));
-      expect(off).toBeLessThan(0.5);
+      expect(off).toBeLessThan(0.7);                          // (a share stands half on the pavement: 4.65 m)
       expect(v.userData.vehicleSpec.seats.length).toBeGreaterThan(0);
     }
     expect(placeParked(fakeWorld(), 0).children).toHaveLength(0);

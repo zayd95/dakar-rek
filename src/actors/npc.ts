@@ -6,6 +6,7 @@ import { animateVehicle, buildVehicle, type VehicleKind } from './vehicleKit';
 import { pick } from '../core/rng';
 import type { HubWorld } from '../world/types';
 import { len2 } from '../core/math';
+import { HUB_STREETS, edgeWeight } from '../crowd/streetPlan';
 
 interface Walker { char: { group: THREE.Group; animate(dt: number, speed: number): void }; ax: number; az: number; bx: number; bz: number; t: number; speed: number; lat: number; prev: string }
 
@@ -18,6 +19,26 @@ function neighbours(w: HubWorld, x: number, z: number) {
     else if (nodeKey(e.bx, e.bz) === nodeKey(x, z)) out.push({ x: e.ax, z: e.az });
   }
   return out;
+}
+
+/** An edge of the hub for a walker or a car to start on: the busy streets (the Sandaga block, the Pikine main street) weigh most, the streets round the spawn next. */
+function pickEdge(world: HubWorld, rand: () => number) {
+  const busy = HUB_STREETS[world.id]?.busy ?? [];
+  const w = world.edges.map(e => { const b = edgeWeight(e, busy); return b > 1 ? b : Math.hypot((e.ax + e.bx) / 2 - world.spawn.x, (e.az + e.bz) / 2 - world.spawn.z) < 90 ? 2 : 1; });
+  let sum = 0; for (const v of w) sum += v;
+  let u = rand() * sum;
+  for (let i = 0; i < w.length; i++) { u -= w[i]; if (u <= 0) return world.edges[i]; }
+  return world.edges[world.edges.length - 1];
+}
+
+/** At a crossing: the busy streets are taken more often than the side streets (the street's people and cars stay where it is busy). */
+function pickTurn(world: HubWorld, x: number, z: number, opts: { x: number; z: number }[], rand: () => number) {
+  const busy = HUB_STREETS[world.id]?.busy ?? [];
+  const w = opts.map(o => edgeWeight({ ax: x, az: z, bx: o.x, bz: o.z }, busy) > 1 ? 4 : 1);
+  let sum = 0; for (const v of w) sum += v;
+  let u = rand() * sum;
+  for (let i = 0; i < w.length; i++) { u -= w[i]; if (u <= 0) return opts[i]; }
+  return opts[opts.length - 1];
 }
 
 /**
@@ -34,7 +55,7 @@ export class Crowd {
   constructor(private world: HubWorld, private rand: () => number, count = 14) {
     this.group.name = 'crowd_walkers';                       // social/ambientLife.ts thins them out at night
     for (let n = 0; n < count; n++) {
-      const e = pick(world.edges, rand);
+      const e = pickEdge(world, rand);
       const c = humanoidReady() ? new Humanoid(randomLook(rand)) : new Character(pick(NPC_OUTFITS, rand));
       this.group.add(c.group);
       this.walkers.push({ char: c, ax: e.ax, az: e.az, bx: e.bx, bz: e.bz, t: rand(), speed: 1.1 + rand() * 0.7, lat: (rand() < 0.5 ? -1 : 1) * (5.3 + rand() * 1.2), prev: '' });
@@ -48,7 +69,7 @@ export class Crowd {
       w.t += (w.speed * dt) / len;
       if (w.t >= 1) {
         const opts = neighbours(this.world, w.bx, w.bz).filter(n => nodeKey(n.x, n.z) !== w.prev);
-        const next = opts.length ? pick(opts, this.rand) : { x: w.ax, z: w.az };
+        const next = opts.length ? pickTurn(this.world, w.bx, w.bz, opts, this.rand) : { x: w.ax, z: w.az };
         w.prev = nodeKey(w.bx, w.bz); w.ax = w.bx; w.az = w.bz; w.bx = next.x; w.bz = next.z; w.t = 0;
       }
       const l2 = len2(w.bx - w.ax, w.bz - w.az);
@@ -107,7 +128,7 @@ export class DecorativeTraffic {
     this.group.name = 'traffic';                             // social/ambientLife.ts varies it by the hour
     liveTraffic = this;
     for (let n = 0; n < count; n++) {
-      const e = pick(world.edges, rand);
+      const e = pickEdge(world, rand);
       const kind = pickKind(world.id, rand()), seed = Math.floor(rand() * 1e6);
       const v = kind === 'carRapide' ? { group: makeCarRapide({ seed }), speed: 6 } : (() => { const b = buildVehicle(kind, { seed }); return { group: b.group, speed: b.spec.speed }; })();
       this.group.add(v.group);
@@ -133,7 +154,7 @@ export class DecorativeTraffic {
       c.t += (c.speed * streetLevel.speed * dt) / len;
       if (c.t >= 1) {
         const opts = neighbours(this.world, c.bx, c.bz).filter(n => nodeKey(n.x, n.z) !== c.prev && !(shut && shut(c.bx, c.bz, n.x, n.z)));
-        const next = opts.length ? pick(opts, this.rand) : { x: c.ax, z: c.az };
+        const next = opts.length ? pickTurn(this.world, c.bx, c.bz, opts, this.rand) : { x: c.ax, z: c.az };
         c.prev = nodeKey(c.bx, c.bz); c.ax = c.bx; c.az = c.bz; c.bx = next.x; c.bz = next.z; c.t = 0;
       }
       const l2 = len2(c.bx - c.ax, c.bz - c.az);
