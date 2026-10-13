@@ -13,6 +13,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 import { buildShopInterior, type ShopDetail } from './shopKit';
 import { isComposed, type Site } from './sites';
+import { waysOut } from './walk';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -1113,6 +1114,9 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       p.s.scale.setScalar(0.5 + k * 1.8); m.opacity = 0.55 * (1 - k) * Math.min(1, k * 6);
     }
   };
+
+  // the ways out on foot (§0 A): where the middle roads leave the grid, on every side that is not the sea
+  for (const w of waysOut(sp.sea, HALF + 1)) interactables.push({ id: `${id}:walk:${w.side}`, name: 'Sortie du quartier · à pied', kind: 'walk', x: w.x, z: w.z, radius: 6, actions: [] });
 
   return {
     id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs, canopies,
