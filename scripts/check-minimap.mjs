@@ -76,7 +76,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const b = await mm();
   const pb = await d(() => { const c = document.querySelector('#minimap canvas'), g = c.getContext('2d'); return Array.from(g.getImageData(0, 0, c.width, c.height).data.filter((_, i) => i % 97 === 0)).join(','); });
   const dNorth = Math.abs(Math.atan2(Math.sin(b.north - a.north), Math.cos(b.north - a.north)));
-  check(`${label}: the map turns with the camera (north marker moves ${dNorth.toFixed(2)} rad, heading ${a.yaw.toFixed(2)} → ${b.yaw.toFixed(2)})`, Math.abs(Math.atan2(Math.sin(b.yaw - a.yaw), Math.cos(b.yaw - a.yaw))) > 1.2 && dNorth > 1.2 && pa !== pb);
+  check(`${label}: the map turns with the camera (north marker moves ${dNorth.toFixed(2)} rad, heading ${a.yaw.toFixed(2)} → ${b.yaw.toFixed(2)})`, Math.abs(Math.atan2(Math.sin(b.yaw - a.yaw), Math.cos(b.yaw - a.yaw))) > 1.0 && dNorth > 1.0 && pa !== pb);   // the camera eases toward lookYaw(1.9): on a slow renderer it is only part way after the wait, which is enough to see the map turn
   check(`${label}: the north marker is where north is (heading ${b.yaw.toFixed(2)})`, Math.abs(Math.atan2(Math.sin(b.north - Math.atan2(-Math.sin(b.yaw), -Math.cos(b.yaw))), Math.cos(b.north - Math.atan2(-Math.sin(b.yaw), -Math.cos(b.yaw))))) < 0.01);
 
   // ---- 4. zoom out when moving fast (a sweep of the player's position, like a ride), back in when still
