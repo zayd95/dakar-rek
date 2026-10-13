@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-13-0135-WATCH.md",
-    "checkedAt": "2026-10-13T01:36:00Z",
-    "result": "External integration advanced with UI V2 quiet screen/free walking; exact standard CI and preview success, final wave-specific acceptance missing.",
-    "owner": "producer_watch_0135",
+    "entry": "docs/agents/operations/CYCLE-2026-10-13-0228-WATCH.md",
+    "checkedAt": "2026-10-13T02:29:00Z",
+    "result": "Current refs/PR/check-runs unchanged; final wave-specific acceptance missing, no registered implementation ready.",
+    "owner": "producer_watch_0228",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "37b677c20f00815d6b8cc8dcedcfa4bb282ee588",
+    "baseCommit": "108b3b056907acfd3cc47d2db162090612c064cb",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-13-0135-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-13-0228-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -889,18 +889,5 @@
     ],
     "report": "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md",
     "completedAt": "2026-10-13T00:31:00Z"
-  },
-  "registryWriter": {
-    "token": "cycle-20261013T0228Z-watch",
-    "owner": "producer_watch_0228",
-    "acquiredAt": "2026-10-13T02:27:34Z",
-    "expiresAt": "2026-10-13T02:57:34Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "108b3b056907acfd3cc47d2db162090612c064cb",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-13-0228-WATCH.md"
-    ]
   }
 }
