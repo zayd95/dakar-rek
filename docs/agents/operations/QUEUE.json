@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-13-1230-WATCH.md",
-    "checkedAt": "2026-10-13T12:31:00Z",
-    "result": "Current refs and check-runs unchanged; PR17 has no final review or new acceptance; no source task ready.",
-    "owner": "producer_watch_1230",
+    "entry": "docs/agents/operations/CYCLE-2026-10-13-1330-WATCH.md",
+    "checkedAt": "2026-10-13T13:30:55Z",
+    "result": "Current refs/PR/check-runs unchanged; PR17 has no final review or new acceptance; no source task ready.",
+    "owner": "producer_watch_1330",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "9560258ea4fc90054ef7300fb80744352e22535d",
+    "baseCommit": "06f113970e9154da0a02c5817e0b37024d440227",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-13-1230-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-13-1330-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -889,18 +889,5 @@
     ],
     "report": "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md",
     "completedAt": "2026-10-13T00:31:00Z"
-  },
-  "registryWriter": {
-    "token": "cycle-20261013T1330Z-watch",
-    "owner": "producer_watch_1330",
-    "acquiredAt": "2026-10-13T13:29:50Z",
-    "expiresAt": "2026-10-13T13:59:50Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "06f113970e9154da0a02c5817e0b37024d440227",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-13-1330-WATCH.md"
-    ]
   }
 }
