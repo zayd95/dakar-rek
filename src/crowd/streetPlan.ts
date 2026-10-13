@@ -21,9 +21,9 @@ export const CHAT_BY_HOUR: Curve = [[0, 0.05], [6, 0], [8, 0.2], [11, 0.35], [14
 
 /** The crowd's size per quality: people at most, full humanoids among them (the nearest). */
 export const STREET_BUDGET: Record<Quality, { pool: number; near: number; groupMax: number; perStop: number; life: number }> = {
-  low: { pool: 36, near: 0, groupMax: 3, perStop: 3, life: 90 },
-  medium: { pool: 72, near: 1, groupMax: 6, perStop: 5, life: 120 },
-  high: { pool: 120, near: 2, groupMax: 9, perStop: 7, life: 150 },
+  low: { pool: 48, near: 0, groupMax: 3, perStop: 3, life: 70 },
+  medium: { pool: 80, near: 1, groupMax: 6, perStop: 5, life: 90 },
+  high: { pool: 128, near: 2, groupMax: 9, perStop: 7, life: 110 },
 };
 /**
  * `life`: the street lives around the player — walkers mostly spawn, and stops and groups only fill, within this many
@@ -75,7 +75,7 @@ export function streetTargets(hub: HubId, hour: number, q: Quality, stops: numbe
   const B = STREET_BUDGET[q], H = HUB_STREETS[hub], L = H?.level ?? 0.5;
   let perStop = Math.round(B.perStop * curveAt(STOP_BY_HOUR, hour) * Math.min(1, L + 0.2) * (H?.stops ?? 1));
   let groups = Math.min(groupSpots, Math.round(B.groupMax * curveAt(CHAT_BY_HOUR, hour) * L * (H?.groups ?? 1)));
-  const want = Math.round(B.pool * 0.62 * curveAt(WALK_BY_HOUR, hour) * L);
+  const want = Math.round(B.pool * 0.72 * curveAt(WALK_BY_HOUR, hour) * L);
   const room = B.pool - Math.min(want, Math.floor(B.pool * WALKERS_KEEP));
   const waitingOf = (p: number) => p * stops + (p > 0 ? BUSY_STOP_EXTRA * busyStops : 0);
   while (perStop > 0 && waitingOf(perStop) > room) perStop--;
@@ -111,7 +111,7 @@ export function pavementLanes(edges: readonly RoadEdge[], cols: readonly Collide
     if (L < CROSSING * 2 + 2) return;
     const dx = (e.bx - e.ax) / L, dz = (e.bz - e.az) / L, rx = -dz, rz = dx;
     for (const side of [1, -1] as const) {
-      for (const off of [PAVE.walk, 5.2, 5.55]) {
+      for (const off of [PAVE.walk, 5.2, 5.55, 5.95]) {
         let clear = true;
         for (let t = CROSSING; t <= L - CROSSING && clear; t += 0.8) {
           if (blockedAt(e.ax + dx * t + rx * side * off, e.az + dz * t + rz * side * off, r, cols)) clear = false;
