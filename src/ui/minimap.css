@@ -13,7 +13,17 @@ body.inscene #minimap, body.mm-off #minimap { display:none !important; }
 /* the delivery line (src/economy) sits under the minimap while it is shown */
 body.mm-on #delivery { top:calc(var(--mm-top) + var(--mm) + 56px); }
 @media (min-width:641px) and (min-height:501px) { #ui { --mm: 136px; --mm-top: 130px; } #minimap .mm-name b { font-size:16px; } }
-@media (max-width:640px) and (orientation:portrait) { #ui { --mm: 116px; --mm-top: 134px; } #minimap { left:calc(10px + var(--sa-l)); } }
+/* portrait phone: the minimap sits in the right column under the phone button, so the left column keeps UI V2's moment
+   cards and the middle of the screen stays clear (only the nearest place is named, on one line: the district is in the
+   place chip above) */
+@media (max-width:640px) and (orientation:portrait) {
+  #ui { --mm: 92px; --mm-top: 168px; }
+  #minimap { left:auto; right:calc(10px + var(--sa-r)); max-width:150px; }
+  #minimap .mm-name { text-align:right; max-width:150px; }
+  #minimap .mm-name small { display:none; }
+  #minimap .mm-name b { font-size:13px; -webkit-line-clamp:1; }
+  body.mm-on #delivery { top:196px; max-width:calc(100vw - var(--mm) - 34px); }
+}
 @media (max-height:500px) and (orientation:landscape) {
   #ui { --mm: 92px; --mm-top: 110px; }
   #minimap { left:calc(10px + var(--sa-l)); }
@@ -44,6 +54,3 @@ body.mm-on #delivery { top:calc(var(--mm-top) + var(--mm) + 56px); }
 #phone .fm-mark { margin-top:10px; text-align:center; background:var(--ios-blue); color:#fff; font-weight:600; }
 #phone .fm-mark.on { background:#e5e5ea; color:#c4271c; }
 #phone .fm-note { color:#0a7d33 !important; font-weight:600; }
-
-/* UI V2: the moment card at the top left (portrait phone, landscape) starts under the minimap */
-@media (max-width:640px) and (orientation:portrait) { body.mm-on #toast .mo { top:calc(var(--mm-top) + var(--mm) + 58px + var(--sa-t)); max-height:calc(100dvh - var(--mm-top) - var(--mm) - 58px - 170px - var(--sa-t) - var(--sa-b)); } }

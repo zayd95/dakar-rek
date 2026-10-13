@@ -81,8 +81,8 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
 
   // ---- 4. zoom out when moving fast (a sweep of the player's position, like a ride), back in when still
   const still = (await mm()).radius;
-  // (in the page, 0.4 m per frame along the avenue: 8-24 m/s whatever the frame rate; slow software rendering clamps the game's step)
-  const fast = await d(() => new Promise(done => { let n = 0; const step = () => { if (n++ > 120) { done(window.__dakar.minimap()); return; } window.__dakar.place(-100 + 0.4 * n, -0.5, Math.PI / 2); requestAnimationFrame(step); }; step(); }));
+  // (in the page, 0.8 m per frame along the avenue: 8 m/s even at the game's 10 fps step clamp, up to 48 m/s whatever the frame rate; slow software rendering clamps the game's step)
+  const fast = await d(() => new Promise(done => { let n = 0; const step = () => { if (n++ > 120) { done(window.__dakar.minimap()); return; } window.__dakar.place(-100 + 0.8 * n, -0.5, Math.PI / 2); requestAnimationFrame(step); }; step(); }));
   await settle(2500);
   const back = await mm();
   check(`${label}: it zooms out when moving fast and back in when still (${still} → ${fast.radius} m at ${fast.speed} m/s → ${back.radius})`, fast.radius > still + 20 && back.radius < fast.radius - 10);
