@@ -17,6 +17,7 @@ import type { BallRelay, BallWire, Peer, PresenceExtras } from '../multiplayer/p
 import { wolofModule } from '../i18n/module';
 import { arenaModule } from '../arena/module';
 import { assetKitModule } from './assetKit';
+import { streetDressModule } from './streetDress';
 import { transport } from '../transport/module';
 import { moto } from '../transport/motoModule';
 import { car } from '../transport/carModule';
@@ -38,6 +39,7 @@ import { fighterModule } from '../arena/fighter';
 import { bakkModule } from '../arena/bakk';
 import { eveningCallModule } from '../arena/eveningCall';
 import { worldMarkers } from '../ui/worldMarkers';
+import { minimapModule } from '../ui/minimap';
 import { crowdModule } from '../crowd/module';
 import { fightTalkModule } from '../social/fightTalkModule';
 import { careerModule } from '../career/module';
@@ -218,7 +220,7 @@ const clock: GameModule = { name: 'clock', init: ctx => { ctx.state.hour = ctx.h
 
 export const MODULES: GameModule[] = [
   clock,                // the city hour for content actions' opening hours (src/world/content.ts `during`)
-  wolofModule, assetKitModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
+  wolofModule, assetKitModule, streetDressModule, transport, VenuesModule, moto, car, taxi, ESTATE_MODULE, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)
   nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)
@@ -227,6 +229,7 @@ export const MODULES: GameModule[] = [
   football,             // NPC football on the Corniche's pitch: plays the ambient life's footballers, before it draws them (src/game/football.ts)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
+  minimapModule(),      // UI lane: the round minimap, top-left, and the data of the phone's full map (src/ui/minimap.ts)
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)
   togetherModule,       // friends at the arena: seated together, one bout for the group (src/arena/together.ts)
   arrivalModule,        // getting to the fight: the guarded moto parking, fans aboard the Ligne 23 (src/arena/arrival.ts)

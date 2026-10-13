@@ -1,5 +1,6 @@
 import './ui/style.css';
 import * as THREE from 'three';
+import { turnStep } from './core/turn';
 import { Input } from './core/input';
 import { fovFor } from './core/view';
 import { GameState } from './core/state';
@@ -25,7 +26,7 @@ import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
-import { castById } from './social/cast';
+import { castById, CAST } from './social/cast';
 import { NpcLife } from './social/npcLife';
 import { ROUTINES } from './social/routines';
 import { Relations, PLAYER } from './social/relations';
@@ -53,6 +54,8 @@ import { RemoteAvatars, avatarLook } from './multiplayer/avatars';
 import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
 import { Phone } from './ui/phone';
+import { mapBridge } from './ui/minimap';
+import { theme } from './ui/theme';
 import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
@@ -105,9 +108,9 @@ type Quality = 'low' | 'medium' | 'high';
 let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarrek.quality'); if (q === 'low' || q === 'medium' || q === 'high') return q; } catch { /* */ } return /Android|iPhone|iPad/i.test(navigator.userAgent) ? 'medium' : 'high'; })();
 const QUAL = {
   // traffic: the most cars on the road at rush hour (src/social/ambientLife.ts thins them by hour, the weather by rain)
-  low: { pr: 1, shadow: 0, crowd: 8, traffic: 4 },
-  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 7 },
-  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 10 },
+  low: { pr: 1, shadow: 0, crowd: 8, traffic: 8 },
+  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 9 },
+  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 12 },
 };
 
 const scene = new THREE.Scene();
@@ -1074,6 +1077,12 @@ const phone = new Phone({
   },
 });
 
+// the minimap and the phone's map (src/ui/minimap.ts): the game's walking marker, the phone, the contacts around
+mapBridge.walkTo = id => setDestination(id);
+mapBridge.destination = () => (destination && destination.hub === world?.id ? destination.id : null);
+mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
+mapBridge.friendsNow = () => CAST.filter(c => c.hub === world?.id && rel.level(c.id) >= 15).flatMap(c => { const w = npcLife.where(c.id); return w && w.here && w.x !== undefined && w.z !== undefined ? [{ id: c.id, name: c.name, x: w.x, z: w.z }] : []; });
+
 function saveNow(): boolean {
   // indoors, save the street position at the door: interiors are rebuilt on load
   // a module may hold the player somewhere they cannot resume (a moving vehicle): it gives a safe spot instead
@@ -1174,12 +1183,12 @@ function frameStep(now: number, dt: number, draw = true) {
     const dx = fx * m.y + rx * m.x, dz = fz * m.y + rz * m.x;
     const mag = Math.min(1, Math.hypot(m.x, m.y));
     const shiftLevel = input.shift.level(input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));       // Shift: jog; double-tapped and held: sprint
-    const target = stride.target(mag, Math.max(shiftLevel, strideUi.level) as RunLevel, dt);
+    let keep = 1;
+    if (mag > 0.05) { const t = turnStep(facing, Math.atan2(dx, dz), dt, speed); facing = t.facing; keep = t.keep; }   // turn first, pace follows the facing
+    const target = stride.target(mag, Math.max(shiftLevel, strideUi.level) as RunLevel, dt) * keep;
     speed += (target - speed) * Math.min(1, dt * (target > speed ? 6 : 12));
     if (mag > 0.05) {
-      const want = Math.atan2(dx, dz);
-      facing += Math.atan2(Math.sin(want - facing), Math.cos(want - facing)) * Math.min(1, dt * 14);
-      let nx = pos.x + (dx / (Math.hypot(dx, dz) || 1)) * speed * dt, nz = pos.z + (dz / (Math.hypot(dx, dz) || 1)) * speed * dt;
+      let nx = pos.x + Math.sin(facing) * speed * dt, nz = pos.z + Math.cos(facing) * speed * dt;      // along the body, not the raw stick
       [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
       const b = inside ? inside.int.bounds : world.bounds; nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1);
       stride.moved(Math.hypot(nx - pos.x, nz - pos.z));
@@ -1242,6 +1251,7 @@ function frameStep(now: number, dt: number, draw = true) {
   }
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
+  theme.follow(hour);
   const hk = hudSpace(world.id, !!inside, hourOverride);
   if (hudDue(now, hudAt, hk, hudKey)) { hudAt = now; hudKey = hk; hudTicks++; hud.setStats(state.wallet, state.data.needs, state.mood()); hud.setGoal(mode === 'play' && !arenaShow.watching() ? goalLine(hour) : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }

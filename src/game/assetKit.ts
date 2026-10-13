@@ -5,7 +5,7 @@ import type { GameModule } from './modules';
 import { furnitureRows, furnishedRooms, poseScene, rideScene } from './assetShowroom';
 import type { Humanoid } from '../actors/humanoid';
 import { rng } from '../core/rng';
-import { placeParked, PARKED_COUNT } from './parkedVehicles';
+import { ParkedBake, placeParked, PARKED_COUNT } from './parkedVehicles';
 import type { FurnitureId } from '../world/furnitureKit';
 import { animateVehicle, buildVehicle, scaleVehicleLods, setVehicleNight, VEHICLE_KINDS, type VehicleKind, type VehicleOpts } from '../actors/vehicleKit';
 
@@ -16,6 +16,7 @@ import { animateVehicle, buildVehicle, scaleVehicleLods, setVehicleNight, VEHICL
 let showroom: THREE.Group | null = null;
 let nightOverride: number | null = null;
 let posers: Humanoid[] = [];
+let parkedBake: ParkedBake | null = null;
 function clearShowroom() { if (showroom) { showroom.removeFromParent(); showroom = null; } for (const h of posers) h.dispose(); posers = []; }
 
 /** LOD distance factor per quality level: the far models take over closer on Low. */
@@ -25,13 +26,18 @@ export const assetKitModule: GameModule = {
   name: 'assetKit',
   hubLoaded(ctx, hub) {
     // parked vehicles along the kerbs: none on Low, more on High (density follows the graphics quality)
-    ctx.extra.add(placeParked(hub, PARKED_COUNT[ctx.quality()]));
+    const parked = placeParked(hub, PARKED_COUNT[ctx.quality()]);
+    ctx.extra.add(parked);
+    parkedBake?.dispose();
+    parkedBake = new ParkedBake(parked, { x: (hub.bounds.x0 + hub.bounds.x1) / 2, z: (hub.bounds.z0 + hub.bounds.z1) / 2 }, ctx.quality() !== 'low');
+    ctx.extra.add(parkedBake.group);
     // traffic and parked vehicles were just built: their far models take over closer on lower quality
     const k = KIT_LOD_SCALE[ctx.quality()];
     scaleVehicleLods(hub.group, k); scaleVehicleLods(ctx.extra, k);
   },
   update(ctx, dt) {
     for (const h of posers) h.animate(dt, 0);
+    parkedBake?.update();                                  // (after the modules' clearKerb: the merged meshes follow the vehicles left)
     const night = 1 - clamp(daylight(ctx.hour()) * 3.2, 0, 1);
     setVehicleNight(nightOverride ?? night);
   },

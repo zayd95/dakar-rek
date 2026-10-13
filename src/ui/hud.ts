@@ -1,5 +1,6 @@
 import type { Needs } from '../core/types';
 import type { Input } from '../core/input';
+import { stickMagnitude } from '../core/stick';
 import { Sheet, replay, type MenuItem } from './sheet';
 import { momentArrives, MOMENT_QUEUE, type MomentKind } from './moments';
 import { centreZone, lineMs, overlaps, quietLog, route, speechOf, type Rect } from './quiet';
@@ -173,7 +174,8 @@ export class Hud {
     let dx = e.clientX - cx, dy = e.clientY - cy; const l = Math.hypot(dx, dy);
     if (l > R) { dx = (dx / l) * R; dy = (dy / l) * R; }
     knob.style.transform = `translate(${dx}px,${dy}px)`;
-    this.input.joy = { x: dx / R, y: -dy / R };
+    const raw = Math.hypot(dx, dy) / R, gain = raw > 0 ? stickMagnitude(raw) / raw : 0;
+    this.input.joy = { x: (dx / R) * gain, y: (-dy / R) * gain };
   }
 
   // ---------------------------------------------------------------- wallet, needs, place

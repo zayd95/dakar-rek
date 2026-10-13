@@ -10,6 +10,10 @@ import type { HubId } from '../core/types';
 import { HUB_IDS } from '../core/types';
 import { cityTimeAt, CITY_DAY_MS } from '../core/clock';
 import { isMuted, setMuted } from '../core/audioSettings';
+import { mapBridge } from './minimap';
+import { theme, type ThemeMode } from './theme';
+import './theme.css';
+import { fullMapHtml, mountFullMap } from './fullmap';
 import { HUB_NAMES, travelLeg } from '../world/content';
 import type { Relations } from '../social/relations';
 import { suggestion } from '../social/beats';
@@ -150,6 +154,8 @@ export class Phone {
   /** Navigation stack below the home screen; kept between openings. */
   private stack: ScreenId[] = [];
   private timer = 0;
+  /** Cleanup of the interactive map of the « Carte » screen (src/ui/fullmap.ts). */
+  private mapOff: (() => void) | null = null;
   /** Places seen in each hub, remembered on this device. */
   private known: Partial<Record<HubId, string[]>> = {};
 
@@ -206,7 +212,7 @@ export class Phone {
   close() {
     if (!this.isOpen) return;
     this.el.classList.remove('on'); this.el.setAttribute('aria-hidden', 'true');
-    clearInterval(this.timer);
+    clearInterval(this.timer); this.mapOff?.(); this.mapOff = null;
     if (document.activeElement instanceof HTMLElement && this.el.contains(document.activeElement)) document.activeElement.blur();
     this.ctx.lock(false);
   }
@@ -244,6 +250,7 @@ export class Phone {
     this.el.querySelector('.ph-back')!.textContent = this.stack.length > 1 ? TITLES[this.stack[this.stack.length - 2]] : 'Accueil';
     const s = this.screenEl;
     s.scrollTop = 0;
+    this.mapOff?.(); this.mapOff = null;
     switch (id) {
       case 'home': s.innerHTML = this.homeHtml(); break;
       case 'reglages': s.innerHTML = this.settingsHtml(); break;
@@ -253,7 +260,7 @@ export class Phone {
         <button type="button" class="ph-btn danger" data-act="wipe">Effacer et recommencer</button>`; break;
       case 'carnet': { const j = journalView(this.ctx.rel, this.ctx.state); s.innerHTML = `<p class="ph-sub">${esc(j.subtitle)}</p><div class="ph-journal">${j.html}</div>`; break; }
       case 'portefeuille': s.innerHTML = this.walletHtml(); break;
-      case 'carte': s.innerHTML = this.mapHtml(); break;
+      case 'carte': s.innerHTML = `${fullMapHtml()}<h3>Changer de quartier</h3>${this.mapHtml()}`; break;
       case 'arene': s.innerHTML = this.arenaHtml(); break;
       case 'meteo': s.innerHTML = this.weatherHtml(); break;
       case 'calcul': s.innerHTML = this.calcHtml(); break;
@@ -266,6 +273,7 @@ export class Phone {
       case 'notifs': s.innerHTML = this.notifsHtml(); quietLog.markRead(); break;
     }
     this.bind();
+    if (id === 'carte') this.mapOff = mountFullMap(s);
   }
 
   private homeHtml(): string {
@@ -415,11 +423,17 @@ export class Phone {
   private settingsHtml(): string {
     const q = this.ctx.quality(), muted = isMuted(), sens = this.ctx.input.sensitivity, gloss = glossesShown();
     const c = this.ctx.state.data.counters;
-    return `<h3>Graphismes</h3>
+    const tm = theme.mode, TH: [ThemeMode, string][] = [['auto', 'Auto'], ['day', 'Jour'], ['night', 'Nuit']];
+    return `<h3>Apparence</h3>
+      <div class="seg">${TH.map(([k, l]) => `<button type="button" data-theme="${k}" class="${k === tm ? 'on' : ''}" aria-pressed="${k === tm}">${l}</button>`).join('')}</div>
+      <p class="ph-note">${tm === 'auto' ? 'Auto : l’écran s’assombrit avec la nuit de la ville (de 19 h à 6 h).' : tm === 'day' ? 'Jour : l’écran reste clair, même la nuit.' : 'Nuit : l’écran reste sombre, même en plein jour.'}</p>
+      <h3>Graphismes</h3>
       <div class="seg">${(['low', 'medium', 'high'] as Quality[]).map(k => `<button type="button" data-q="${k}" class="${k === q ? 'on' : ''}" aria-pressed="${k === q}">${QUALITY_LABEL[k]}</button>`).join('')}</div>
       <p class="ph-note">Basse : plus fluide sur les petits téléphones. Le quartier est reconstruit, tu restes où tu es.</p>
       <h3>Son</h3>
       <button type="button" class="ph-toggle ${muted ? '' : 'on'}" data-act="sound" aria-pressed="${!muted}"><span>Son du jeu</span><em>${muted ? 'Coupé' : 'Activé'}</em></button>
+      <button type="button" class="ph-toggle ${mapBridge.enabled ? 'on' : ''}" data-act="minimap" aria-pressed="${mapBridge.enabled}"><span>Mini-carte</span><em>${mapBridge.enabled ? 'Affichée' : 'Masquée'}</em></button>
+      <p class="ph-note">Le petit rond en haut à gauche : où tu es, les lieux autour, le quartier et la rue.</p>
       <h3>Caméra</h3>
       <div class="seg">${SENSITIVITY.map(([v, l]) => `<button type="button" data-sens="${v}" class="${v === sens ? 'on' : ''}" aria-pressed="${v === sens}">${l}</button>`).join('')}</div>
       <p class="ph-note">Sensibilité quand tu glisses pour tourner la caméra.</p>
@@ -524,12 +538,14 @@ export class Phone {
       if (q !== this.ctx.quality()) { this.ctx.setQuality(q); this.remember(); this.ctx.toast('Qualité : ' + QUALITY_LABEL[q]); }
       this.render();
     }));
+    s.querySelectorAll<HTMLButtonElement>('button[data-theme]').forEach(b => b.addEventListener('click', () => { theme.setMode(b.dataset.theme as ThemeMode); this.render(); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-sens]').forEach(b => b.addEventListener('click', () => {
       this.ctx.input.sensitivity = Number(b.dataset.sens);
       try { store()?.setItem(SENS_KEY, b.dataset.sens!); } catch { /* session only */ }
       this.render();
     }));
     const act = (name: string, fn: () => void) => s.querySelector(`[data-act="${name}"]`)?.addEventListener('click', fn);
+    act('minimap', () => { mapBridge.setEnabled(!mapBridge.enabled); this.render(); });
     act('sound', () => { setMuted(!isMuted()); this.render(); });
     act('gloss', () => { setGlossesShown(!glossesShown()); this.render(); });
     act('save', () => this.ctx.toast(this.ctx.save() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'));

@@ -1,0 +1,34 @@
+/* Night appearance of the interface (src/ui/theme.ts adds body.theme-night; Réglages > Apparence). Tokens first: the HUD
+   chips, sheets and toasts follow the tokens of style.css; the phone follows its own --ios-* tokens. The few yellow
+   surfaces keep dark ink. */
+body.theme-night {
+  --surface: rgba(28, 30, 36, .94); --surface-2: #1c1c1e; --row: #2c2c2e; --press: #3a3a3c;
+  --ink: #f5f5f7; --ink-2: #d1d1d6; --ink-3: #a1a1a6; --sep: rgba(235, 235, 245, .18);
+  --gain: #34d399; --cost: #f5f5f7; --warn: #ff8a80; --ocean: #4cc2e0; --track: rgba(235, 235, 245, .22);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .45), 0 3px 12px rgba(0, 0, 0, .55);
+  --shadow-lg: 0 10px 34px rgba(0, 0, 0, .6), 0 1px 3px rgba(0, 0, 0, .4);
+}
+/* yellow surfaces: dark ink on the sun, as by day */
+body.theme-night #act, body.theme-night #act b, body.theme-night #toast .mo-ic, body.theme-night #wprompt i, body.theme-night #progress .pg-ic,
+body.theme-night #goal.walk .gi, body.theme-night #modal .item em.pay, body.theme-night #modal .seg button.on { color: #111114; }
+body.theme-night #ui #delivery small { color: #fcd34d; }
+/* the phone */
+body.theme-night #phone { --ios-bg: #000; --ios-card: #1c1c1e; --ios-ink: #f5f5f7; --ios-sub: #98989f; --ios-sep: rgba(235, 235, 245, .18); }
+body.theme-night .ph-close { background: #2c2c2e; color: #f5f5f7; }
+body.theme-night #phone .seg { background: #1c1c1e; }
+body.theme-night #phone .seg button.on { background: #48484a; color: #fff; box-shadow: none; }
+body.theme-night .ph-toggle em { background: #39393d; }
+body.theme-night .ph-log li { border-top-color: rgba(235, 235, 245, .14); }
+body.theme-night .ph-walk { background: #12372a; color: #7ee2b8; }
+/* the full map (src/ui/fullmap.ts) */
+body.theme-night #phone .fm-chip { background: #2c2c2e; color: #a1a1a6; }
+body.theme-night #phone .fm-chip.on { background: #48484a; color: #fff; box-shadow: none; }
+body.theme-night #phone .fm-card p { color: #d1d1d6; }
+body.theme-night #phone .fm-mark.on { background: #3a3a3c; color: #ff8a80; }
+body.theme-night #phone .fm-note { color: #4ade80 !important; }
+/* hard-coded greys of the phone's screens */
+body.theme-night .ph-toggle.on em { background: #34c759; }
+body.theme-night #phone .ph-screen .kv, body.theme-night #phone .ph-screen .rel em, body.theme-night .ph-hub ul { color: #c7c7cc; }
+body.theme-night .ph-btn:active, body.theme-night .ph-table > button:active { background: #3a3a3c; }
+body.theme-night .ph-rows em.pos { color: #4ade80; } body.theme-night .ph-rows em.neg { color: #ff8a80; }
+body.theme-night .ph-ring { background: radial-gradient(closest-side, var(--ios-card) 74%, transparent 75%), conic-gradient(var(--c) calc(var(--v) * 1%), #3a3a3c 0); }
