@@ -38,8 +38,8 @@ export interface Effects {
 /** A spoken line: fixed, or picked afresh each time the step starts (Wolof exchanges from src/i18n/lines.ts). */
 export type Line = string | (() => string);
 
-/** Which seat a step uses: a seat id, the nearest free one in the place, or the nearest of a kind around a point. */
-export type SeatPick = string | 'near' | { near: { x: number; z: number }; r?: number; kind?: SeatKind };
+/** Which seat a step uses: a seat id, the nearest free one in the place, or the nearest of a kind (around a point). */
+export type SeatPick = string | 'near' | { near?: { x: number; z: number }; r?: number; kind?: SeatKind };
 
 /** An option of a « choose » gesture: a tool, an item on the stall, an ingredient. */
 export interface GestureOption { id: string; label: string; icon: string; /** What the person asks for it: « Passe-moi la clé de 13 ! » */ ask?: string }
@@ -80,6 +80,8 @@ export interface Step {
 export interface ActivityCtx {
   /** Place running the activity (for labels and props). */
   place?: string;
+  /** Where the activity happens (the counter, the stall, the person): the player turns to it and works there. */
+  at?: { x: number; z: number };
 }
 
 export interface ActivitySpec {
@@ -97,4 +99,6 @@ export interface ActivitySpec {
   visible?: () => boolean;
   /** No « ✓ » toast at the end (conversations and hand-overs speak for themselves). */
   quiet?: boolean;
+  /** A plain content action (one timed step, src/main.ts actionSpec): played in the world even without its own pose. */
+  plain?: boolean;
 }

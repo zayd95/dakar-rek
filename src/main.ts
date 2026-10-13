@@ -1,10 +1,12 @@
 import './ui/style.css';
 import * as THREE from 'three';
 import { Input } from './core/input';
+import { fovFor } from './core/view';
 import { GameState } from './core/state';
 import { cityTimeAt, daylight } from './core/clock';
 import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save';
+import { readTestParams } from './core/testParams';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
 import { HALF, buildHub, hubLayout } from './world/builder';
@@ -25,6 +27,7 @@ import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, s
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById } from './social/cast';
 import { NpcLife } from './social/npcLife';
+import { ROUTINES } from './social/routines';
 import { Relations, PLAYER } from './social/relations';
 import { BEATS, availableBeat, suggestion, suggestionHere, applyChoice, settleWelcome, welcomeByTalk, type Beat } from './social/beats';
 import { goalNow, hudDue, hudSpace, needGoal } from './game/goalLine';
@@ -54,8 +57,11 @@ import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { pickupFrags } from './economy/jobs';
+import { activityOf } from './economy/polyvalence';
 import { Interactions } from './interact/system';
 import { Seats, seatClip, sitOriginY, standSpots, type Seat } from './interact/seats';
+import { approachPath } from './interact/approach';
+import { reach, bodyPoint, mouth, bend, nod, grip } from './actors/gesture';
 import { LegacySource } from './interact/legacy';
 import type { Target } from './interact/types';
 import { ActivityRunner } from './activity/runner';
@@ -75,6 +81,7 @@ import { StrideUi } from './ui/stride';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
+const TEST = readTestParams(location.hostname, location.search);   // preview-only test links (src/core/testParams.ts)
 
 // ------------------------------------------------------------------ storage (guest save is device-local)
 let store: Storage | null = null;
@@ -123,8 +130,20 @@ function applyQuality() {
   scene.traverse(o => { const m = (o as THREE.Mesh).material as THREE.Material | undefined; if (m) m.needsUpdate = true; });
   try { store?.setItem('dakarrek.quality', quality); } catch { /* */ }
 }
-function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.fov = innerWidth < innerHeight ? 66 : 58; camera.updateProjectionMatrix(); }
-addEventListener('resize', resize);
+let viewW = 0, viewH = 0, resizeQueued = 0;
+function resize() {
+  if (resizeQueued) { cancelAnimationFrame(resizeQueued); resizeQueued = 0; }
+  const w = innerWidth, h = innerHeight;
+  if (w === viewW && h === viewH) return;
+  viewW = w; viewH = h;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = fovFor(w, h); camera.updateProjectionMatrix();
+}
+/** Turning a phone: Safari reports the new size late on some rotations, and the visual viewport moves with the toolbars
+ *  — resize on the next frame after any of them, and once more when the rotation has settled. */
+const queueResize = () => { if (!resizeQueued) resizeQueued = requestAnimationFrame(resize); };
+addEventListener('resize', () => { resize(); queueResize(); });
+addEventListener('orientationchange', () => { queueResize(); setTimeout(queueResize, 350); });
+window.visualViewport?.addEventListener('resize', queueResize);
 
 // ------------------------------------------------------------------ game objects
 const input = new Input(canvas);
@@ -132,6 +151,7 @@ const hud = new Hud(document.getElementById('ui')!, input);
 const saved = loadSave(store);
 const isNewGame = !saved;
 const state = new GameState(saved ?? newSave());
+if (TEST.money !== null && state.wallet < TEST.money) state.addMoney(TEST.money - state.wallet, 'Test');
 const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
 remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
@@ -167,7 +187,7 @@ const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
 /** Set once the module context (`ctx`, below) exists. */
 let ctxReady = false;
-let hourOverride: number | null = null;
+let hourOverride: number | null = TEST.hour;
 /** Walkable interiors of this hub, and the one the player is in. */
 let interiors = new Map<string, Interior>();
 let inside: { int: Interior; door: Interactable } | null = null;
@@ -296,6 +316,10 @@ const seats = new Seats();
 let seated: Seat | null = null;
 /** Seconds left standing up on a place in the stands, arms up (« Encourager »), before sitting back down. */
 let cheerT = 0;
+/** Walking to a seat before sitting (meals, « S’asseoir »): legs round the furniture, then a short sit-down. */
+let approach: { seat: Seat; path: { x: number; z: number }[]; i: number; t: number; settle: number; from?: { x: number; y: number; z: number; yaw: number } } | null = null;
+/** A gameplay module moving the player during an activity (carrying, running…): legs speed and facing. */
+let drive: { speed: number; facing: number } | null = null;
 /** Space key shared by seats, targets and presence: 'street', 'home' (own room) or the interior's door id. */
 const spaceOf = (door: Interactable) => door.id.includes(':home:') ? 'home' : door.id;
 const interactSpace = () => moduleSpace() ?? (inside ? spaceOf(inside.door) : 'street');
@@ -314,7 +338,7 @@ interactions.add({ name: 'self', collect(space, x, z, out) {           // while 
   out.push({ id: 'self', name: 'Assis', kind: 'self', space, x, z, radius: 1, bias: -1, affordances: () => [{ id: 'stand', verb: 'stand', label: 'Se lever', icon: '🧍', run: () => standUp() },
     ...(seated?.kind === 'stand' ? [{ id: 'cheer', verb: 'dance' as const, label: 'Encourager', icon: '🙌', detail: 'Debout un instant, les bras en l’air', run: () => { cheer(); } }] : [])] });
 } });
-seats.onSit = s => sitOn(s);
+seats.onSit = s => { if (mode === 'play' && !seated && goSit(s)) { mode = 'busy'; input.enabled = false; } };
 
 /** Universal activities (src/activity): one runner plays every composed activity; places compose the primitives. */
 const inventory = new Inventory(state);
@@ -325,10 +349,15 @@ const stride = new Stride(state);
 const strideUi = new StrideUi(document.getElementById('ui')!, stride);
 const activities = new ActivityRunner({
   state, seats, space: () => interactSpace(), player: () => ({ x: pos.x, z: pos.z }), seated: () => seated,
-  sit: s => { if (seated && seated.id !== s.id) standUp(true); sitOn(s, true); return seated?.id === s.id; },
+  sit: s => goSit(s), walking: () => approach !== null,   // walks round the tables to the seat first (src/interact/approach.ts)
   clip: c => { if (playerBody) playerBody.hold = seated && (c === 'Sit' || !c) ? seatClip(seated) : c ?? null; },   // a step's Sit means « the seat's own pose » (lying on a bed…)
   stand: () => standUp(),                                  // out of bed after sleeping (runner: a sleep step ends the seat)
-  busy: on => { if (on) { mode = 'busy'; input.enabled = false; } else if (mode === 'busy') { mode = 'play'; input.enabled = true; } },
+  busy: on => {
+    if (on) { mode = 'busy'; input.enabled = false; return; }
+    if (approach) { seats.release(approach.seat.id, 'player'); approach = null; speed = 0; }   // stopped on the way to the seat
+    drive = null;
+    if (mode === 'busy') { mode = 'play'; input.enabled = true; }
+  },
   progress: (on, pct = 0, label = '') => hud.progress(on, pct, label, progressMeta()),
   toast: m => hud.toast(m), save: () => { if (world) saveNow(); },
   rel: (npc, d) => rel.change(PLAYER, npc, d), flag: f => { if (!state.data.flags.includes(f)) state.data.flags.push(f); },
@@ -351,11 +380,12 @@ const ctx: GameCtx = {
   hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day, now: () => presence.serverNow(),
   player: {
     pos, facing: () => facing, body: () => playerBody, seated: () => seated,
-    sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace),
+    sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace), drive: m => { drive = m; },
     place(x, z, yaw) { pos.set(x, 0.1 + (inside || !world ? 0 : world.heightAt(x, z)), z); facing = yaw; follow.snapBehind(yaw); },
     cheer: s => cheer(s),
   },
   peers: () => [...presence.peers.values()],
+  ballNet: { self: () => (presence.status === 'online' ? presence.id : ''), send: b => presence.sendBall(b), listen: fn => { presence.onBall = fn; } },
   mode: () => mode,
   setMode(m) { mode = m; input.enabled = m === 'play'; if (m !== 'play') input.reset(); },
   menu(title, subtitle, items, extraHtml) { mode = 'menu'; input.enabled = false; hud.openMenu(title, subtitle, items, extraHtml); },
@@ -392,15 +422,72 @@ const ctx: GameCtx = {
 };
 ctxReady = true;
 /** A legacy action that declares steps runs through the universal runner (Maïga meals, …). */
-function actionSpec(a: Action): ActivitySpec {
-  return { id: a.id, primitive: actionVerb(a)[0], label: a.label, detail: a.detail, price: a.cost, steps: a.steps!, requires: a.requires ? () => a.requires!(state) : undefined, quiet: a.quiet };
+/**
+ * Every content action runs through the universal runner: a composed one (Maïga meals…) with its own steps, a plain
+ * one as a single timed step whose pay is scaled by polyvalence (the step's category, src/economy/polyvalence.ts).
+ */
+function actionSpec(a: Action, it?: Interactable): ActivitySpec {
+  const verb = actionVerb(a)[0];
+  const steps = a.steps ?? [{ label: a.label, primitive: verb, seconds: a.seconds, effects: { money: a.gain, category: activityOf(a, it?.id) ?? undefined, needs: a.needs, counters: a.counter ? { [a.counter]: 1 } : undefined } }];
+  return { id: a.id, primitive: verb, label: a.label, detail: a.detail, price: a.cost, steps, requires: a.requires ? () => a.requires!(state) : undefined, quiet: a.quiet, plain: !a.steps };
 }
 
 function sitOn(seat: Seat, force = false) {
   if ((!force && mode !== 'play') || seated || !seats.occupy(seat.id, 'player')) return;
+  approach = null;
   seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0; cheerT = 0;
   pos.set(seat.x, sitOriginY(seat) + (inside ? 0 : 0), seat.z); facing = seat.yaw;
   if (playerBody) playerBody.hold = seatClip(seat);
+}
+/**
+ * Walks the player to a seat, round tables and chairs (src/interact/approach.ts), then sits down: the seat is held
+ * for the player on the way. False when no free spot beside it can be reached. The frame loop moves the player
+ * while `approach` is set (mode 'busy').
+ */
+/** Without a walking route to a seat, closer than this the player still sits down on it (m). */
+const SIT_HERE = 3.5;
+function goSit(seat: Seat): boolean {
+  if (seated?.id === seat.id) return true;
+  if (seated) standUp();
+  if (!world || approach || !seats.occupy(seat.id, 'player')) return false;
+  // a boat's or a vehicle's seat is boarded, not walked round; with no route but already beside it (a stool at a tap,
+  // a place in a prayer row, a salon chair inside its own furniture), the player sits down where they are
+  const path = seat.kind === 'vehicle' ? null : approachPath(pos, seat, inside ? inside.int.colliders : world.colliders, inside ? 0.3 : 0.5, inside ? inside.int.bounds : world.bounds);
+  if (!path) {
+    seats.release(seat.id, 'player');
+    if (seat.kind !== 'vehicle' && Math.hypot(seat.x - pos.x, seat.z - pos.z) > SIT_HERE) return false;
+    sitOn(seat, true);
+    return seated?.id === seat.id;
+  }
+  approach = { seat, path, i: 0, t: 0, settle: -1 };
+  hideProxy(); emoteT = 0; previewT = 0; player.setPose(null);
+  if (playerBody) playerBody.hold = null;
+  return true;
+}
+const WALK_SPEED = 1.7;
+function stepApproach(dt: number) {
+  const a = approach!, last = a.path.length - 1; a.t += dt;
+  if (a.i < last && a.t < 12) {                                  // walk the legs to the spot beside the seat
+    const p = a.path[a.i], dx = p.x - pos.x, dz = p.z - pos.z, d = Math.hypot(dx, dz);
+    speed += (WALK_SPEED - speed) * Math.min(1, dt * 8);
+    const want = Math.atan2(dx, dz);
+    facing += Math.atan2(Math.sin(want - facing), Math.cos(want - facing)) * Math.min(1, dt * 10);
+    const step = Math.min(d, speed * dt);
+    if (d > 1e-4) { pos.x += (dx / d) * step; pos.z += (dz / d) * step; }
+    if (d - step < 0.05) a.i++;
+    pos.y = 0.1 + (inside || !world ? 0 : world.heightAt(pos.x, pos.z));
+    return;
+  }
+  // then turn to face the way the seat faces and sit down (or lie down on a bed) in 0.45 s
+  if (a.settle < 0) { a.settle = 0; a.from = { x: pos.x, y: pos.y, z: pos.z, yaw: facing }; if (playerBody) playerBody.hold = seatClip(a.seat); }
+  a.settle = Math.min(1, a.settle + dt / 0.45); speed = 0;
+  const k = a.settle * a.settle * (3 - 2 * a.settle), s = a.seat, f = a.from!;
+  pos.set(lerp(f.x, s.x, k), lerp(f.y, sitOriginY(s), k), lerp(f.z, s.z, k));
+  facing = f.yaw + Math.atan2(Math.sin(s.yaw - f.yaw), Math.cos(s.yaw - f.yaw)) * k;
+  if (a.settle >= 1) {
+    sitOn(s, true);
+    if (!activities.running && mode === 'busy') { mode = 'play'; input.enabled = true; }   // « S’asseoir » on its own
+  }
 }
 /** On a place in the stands: up on the tier for a moment, arms up (others see Celebrate), then back on the seat. */
 function cheer(seconds = 2.5) {
@@ -411,6 +498,7 @@ function cheer(seconds = 2.5) {
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
 function standUp(inPlace = false) {
+  if (approach) { seats.release(approach.seat.id, 'player'); approach = null; speed = 0; }
   if (!seated) return;
   const s = seated, cheering = cheerT > 0; seats.release(s.id, 'player'); seated = null; cheerT = 0;
   if (playerBody && (playerBody.hold === seatClip(s) || (cheering && playerBody.hold === 'Celebrate'))) playerBody.hold = null;
@@ -433,6 +521,19 @@ function registerSeats() {
   seats.addAll(world.seats);
   for (const [doorId, int] of interiors) seats.addAll(int.seats.map(s => ({ ...s, space: doorId.includes(':home:') ? 'home' : doorId })));
   for (const p of world.people) if (p.clip === 'Sit') seats.occupyNear('street', p.x, p.z, 'npc');
+}
+/** The routine characters sit on the same street benches as the player: their seats are held while they sit there. */
+function syncNpcSeats() {
+  if (!world) return;
+  const held = new Set<string>();
+  for (const r of ROUTINES) {
+    if (r.hub !== world.id) continue;
+    const w = npcLife.where(r.id);
+    if (!w?.here || !w.sit || w.x === undefined || w.z === undefined) continue;
+    const who = 'npc:' + r.id, s = seats.inSpace('street').find(x => x.occupant === who) ?? seats.occupyNear('street', w.x, w.z, who);
+    if (s && Math.hypot(s.x - w.x, s.z - w.z) <= 0.45) held.add(s.id);
+  }
+  for (const s of seats.inSpace('street')) if (s.occupant?.startsWith('npc:') && !held.has(s.id)) seats.release(s.id, s.occupant);
 }
 /** What the action button did before the contextual system (kept for places, people and stations). */
 function legacyAction(it: Interactable) {
@@ -783,9 +884,6 @@ function playEmote(i: number) {
 /** The journal lives in the phone (Carnet app). */
 function openJournal() { hud.closeModal(); phone.open('carnet'); }
 
-/** A plain timed action in progress (content without steps): « Arrêter », Escape or the menu key stop it, without effects. */
-let legacyRun: { label: string; stop(): void } | null = null;
-
 /** Talking to Tonton Ibou in any way closes his welcome (« Parle à Tonton Ibou »): done once, gone for good. */
 function welcomed(npc?: string) {
   const reply = welcomeByTalk(npc, rel, state);
@@ -794,43 +892,12 @@ function welcomed(npc?: string) {
 function runAction(a: Action, npc?: string, it?: Interactable) {
   // with ?lamb2 the écurie drills (src/career DRILLS) are played with the avec-frappe controls (src/lamb/drills.ts)
   if (LAMB2 && drillOfAction(a.id)) { startDrill(a, npc, it); return; }
-  const where = it?.name;
-  if (a.steps) {                                         // composed activity: pay → wait → sit → eat…
-    activities.onEnd = (_s, done) => {                    // once: later activities (places, venues) must not replay this action's hooks
-      activities.onEnd = () => {};
-      if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); welcomed(npc); }   // counters belong to the steps
-    };
-    activities.start(actionSpec(a), { place: where });
-    return;
-  }
-  mode = 'busy'; input.enabled = false;
-  const t0 = performance.now(), dur = a.seconds * 1000;
-  let stopped = false;
-  legacyRun = { label: a.label, stop: () => { stopped = true; legacyRun = null; hud.progress(false); mode = 'play'; input.enabled = true; hud.toast('Arrêté'); } };
-  hud.progress(true, 0, a.label);
-  const tick = () => {
-    if (stopped) return;
-    const p = clamp((performance.now() - t0) / dur, 0, 1);
-    hud.progress(true, p, a.label);
-    if (p < 1) { requestAnimationFrame(tick); return; }
-    legacyRun = null;
-    hud.progress(false);
-    const entry = where && !where.startsWith(a.label) ? `${a.label} · ${where}` : a.label;   // wallet history line
-    const gain = economy.work(a, it);                       // records the activity (polyvalence) and scales the pay
-    if (a.cost) state.addMoney(-a.cost, entry);
-    if (gain) state.addMoney(gain, entry);
-    if (a.needs) state.adjust(a.needs);
-    if (a.counter) state.count(a.counter);
-    if (npc) rel.change(PLAYER, npc, 1);
-    state.count('actions');
-    npcLife.afterAction(a, it ?? null);
-    welcomed(npc);
-    const bits = [a.label + ' ✓'];
-    if (gain) bits.push('+' + fcfa(gain)); if (a.cost) bits.push('−' + fcfa(a.cost));
-    hud.toast(bits.join('  '));
-    mode = 'play'; input.enabled = true; saveNow();
+  const where = it?.name && !it.name.startsWith(a.label) ? it.name : undefined;   // wallet history: « action · place »
+  activities.onEnd = (_s, done) => {                      // once: later activities (places, venues) must not replay this action's hooks
+    activities.onEnd = () => {};
+    if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); welcomed(npc); }   // counters belong to the steps
   };
-  requestAnimationFrame(tick);
+  activities.start(actionSpec(a, it), { place: where, at: it && { x: it.x, z: it.z } });
 }
 
 function openTravel() {
@@ -1018,7 +1085,6 @@ function saveNow(): boolean {
 hud.onAction = () => {
   hud.markAct();                                           // what the game says next answers it (src/ui/quiet.ts)
   if (activities.running) { activities.cancel('Arrêté'); return; }
-  if (legacyRun) { legacyRun.stop(); return; }
   if (mode !== 'play') return;
   // right after a sheet closed the frame may not have picked the focus again yet: pick it now (src/interact/system.ts current)
   const a = interactions.primary(lambScene ? null : interactions.current(interactSpace(), pos.x, pos.z, facing));
@@ -1036,7 +1102,7 @@ setInterval(() => { if (world && mode === 'play') saveNow(); }, 8000);
 const promptV = new THREE.Vector3();
 function showPrompt(t: Target | null) {
   const run = activities.current;
-  if (run || legacyRun) { hud.setPrompt('Arrêter', run ? run.step.label : legacyRun!.label, false, { icon: '✋', stop: true }); hud.setWorldPrompt(null); return; }
+  if (run) { hud.setPrompt('Arrêter', run.step.label, false, { icon: '✋', stop: true }); hud.setWorldPrompt(null); return; }
   const a = t ? interactions.primary(t) : null;
   if (!t || !a) { hud.setPrompt(null); hud.setWorldPrompt(null); return; }
   const all = interactions.all(t), opt = { icon: a.icon, cost: a.cost, gain: a.gain, disabled: a.disabled };
@@ -1056,6 +1122,8 @@ function progressMeta() {
 
 // ------------------------------------------------------------------ main loop
 let last = performance.now(), hudAt = -Infinity, hudKey = '';
+/** The routine characters' bench seats are re-held twice a second (syncNpcSeats). */
+let npcSeatT = 0;
 /**
  * Debug profiler (?debug: `__dakar.perfOn(true)`, then `__dakar.perf()`): milliseconds per system and per module of the
  * frame loop, smoothed, for the evening performance budget (scripts/check-perf-evening.mjs). Off: one boolean test.
@@ -1077,9 +1145,9 @@ function frameStep(now: number, dt: number, draw = true) {
   const tFrame = profOn ? performance.now() : 0;
   setHumanoidView(camera);                                 // far, unseen and hidden bodies get less animation work (ANIM_LOD)
 
-  if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (legacyRun) legacyRun.stop(); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
+  if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
-  if (input.takeAction() && (mode === 'play' || activities.running || legacyRun)) hud.onAction();   // the focus: picked by onAction if no frame has yet
+  if (input.takeAction() && (mode === 'play' || activities.running)) hud.onAction();   // the focus: picked by onAction if no frame has yet
   activities.update(dt);
   { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
   if (profOn) for (const m of MODULES) { const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }
@@ -1119,7 +1187,14 @@ function frameStep(now: number, dt: number, draw = true) {
     } else speed *= 0.8;
     { const gy = 0.1 + (inside ? 0 : world.heightAt(pos.x, pos.z)); pos.y += (gy - pos.y) * Math.min(1, dt * 14); } // climb stairs smoothly
     state.tick(dt * 1000);
-  } else if (mode === 'busy') { state.tick(dt * 1000); speed = 0; }
+  } else if (mode === 'busy') {
+    if (approach) stepApproach(dt);
+    else if (drive) {
+      speed += (drive.speed - speed) * Math.min(1, dt * 10);
+      facing += Math.atan2(Math.sin(drive.facing - facing), Math.cos(drive.facing - facing)) * Math.min(1, dt * 10);
+    } else speed = 0;
+    state.tick(dt * 1000);
+  }
   if (!lambScene) {
     if ((player.pose || proxy) && speed > 0.5) { player.setPose(null); emoteT = 0; previewT = 0; hideProxy(); }
     if (emoteT > 0) { emoteT -= dt; if (emoteT <= 0) { player.setPose(null); hideProxy(); } }
@@ -1134,6 +1209,7 @@ function frameStep(now: number, dt: number, draw = true) {
   const hidden = hiddenEvery(world.arena, camera.position);
   { const run = pacer.step('cast', dt, hidden); if (run !== null) npcLife.update(run, pos, freeCam?.p ?? camera.position); }
   if (profOn) { profMark('npcLife', tSys); tSys = performance.now(); }
+  if ((npcSeatT -= dt) <= 0) { npcSeatT = 0.5; syncNpcSeats(); }
   { const run = pacer.step('walkers', dt, hidden); if (run !== null) { crowd?.update(run); traffic?.update(run); life?.update(run); } }
   world.tick(dt);
   if (profOn) { profMark('walkers+traffic+life+world', tSys); tSys = performance.now(); }
@@ -1144,21 +1220,21 @@ function frameStep(now: number, dt: number, draw = true) {
   for (const h of debugPeople) h.animate(dt, 0);
   for (const w of debugWalkers) { w.t += dt; const u = w.t % w.run; w.h.group.position.set(w.x0 + w.vx * u, 0.1, w.z0 + w.vz * u); w.h.group.updateMatrixWorld(true); w.h.animate(dt, Math.hypot(w.vx, w.vz)); }
   const space = presenceSpace();
-  // the body's own pose, also while an activity runs (asleep in bed, praying, dancing): a narrow list, anything else is Idle
+  // the body's own pose, also while an activity runs (asleep in bed, praying, dancing, eating at a table): a narrow list, anything else is Idle
   const clip = mode !== 'scene' && playerBody?.clipName && PRESENCE_CLIPS.includes(playerBody.clipName as PresenceClip) ? playerBody.clipName as PresenceClip : 'Idle';
   // the modules' optional fields (the arena show friends share: src/arena/together.ts), validated by the protocol
   const extras: Partial<PresenceExtras> = {}; for (const m of MODULES) Object.assign(extras, m.presence?.(ctx) ?? {});
   // fighting at the arena: where the player's wrestler stands in the ring, in a fighting stance (src/arena/myGala.ts)
   const ring = arenaDuel() ? (lambScene as LambDuel).fighterPoints()[0] : null;
   presence.publish(ring ? { type: 'move', x: ring[0], y: ring[1], z: ring[2], yaw: facing, speed: 0, space, clip: 'Stance', ...extras }
-    : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' ? speed : 0, space, clip, ...extras }, now);
+    : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach || drive ? speed : 0, space, clip, ...extras }, now);   // walking to a seat or carrying: the legs move for others too
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
   const focus = mode === 'play' && !lambScene ? interactions.update(interactSpace(), pos.x, pos.z, facing) : (interactions.focus = null);
   economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
 
-  if (!lambScene && !MODULES.some(m => m.camera?.(ctx, dt, drag))) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z), inside ? undefined : world.canopies);
+  if (!lambScene && !MODULES.some(m => m.camera?.(ctx, dt, drag))) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z), inside ? undefined : world.canopies, inside ? [] : world.roofs ?? []);
   if (camOverride && !lambScene) {
     const a = facing + camOverride.side;
     camera.position.set(pos.x + Math.sin(a) * camOverride.dist, camOverride.h, pos.z + Math.cos(a) * camOverride.dist);
@@ -1177,6 +1253,9 @@ function frameStep(now: number, dt: number, draw = true) {
 
 // ------------------------------------------------------------------ start
 resize(); applyQuality();
+/** The modules are initialised and the first hub is loaded (the debug API's trips wait for it). */
+let started = false, markStarted = () => {};
+const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
   await Promise.all([preloadAssets(), preloadHumanoid()]);
   for (const m of MODULES) m.init?.(ctx);
@@ -1185,6 +1264,7 @@ async function start() {
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
   if (isNewGame) hud.toast('Bienvenue à Pikine ! Tonton Ibou t’attend devant ta chambre.');
+  started = true; markStarted();
   requestAnimationFrame(frame);
 }
 void start();
@@ -1193,8 +1273,10 @@ if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
     presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
-    teleport(hub: HubId, x?: number, z?: number, yaw = 0) { loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); },
+    // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
+    teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
     setHour(h: number | null) { hourOverride = h; },
+    camera: () => ({ fov: camera.fov, aspect: Math.round(camera.aspect * 1000) / 1000, hfov: Math.round(2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) * 1800 / Math.PI) / 10 }),
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
     cityPlaces: () => world?.interactables.filter(i => i.id.includes(':city:')).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, radius: i.radius, actions: i.actions.map(a => ({ id: a.id, label: a.label, gain: a.gain, cost: a.cost })) })) ?? [],
@@ -1228,19 +1310,24 @@ if (DEBUG) {
     nearestInteractable: () => nearest?.name ?? null,
     focus: () => { const t = interactions.focus; return t ? { id: t.id, name: t.name, kind: t.kind, space: t.space, primary: interactions.primary(t)?.label ?? null, all: interactions.all(t).map(a => a.label), why: interactions.all(t).filter(a => a.disabled).map(a => a.disabled) } : null; },
     seated: () => seated?.id ?? null,
-    seatsHere: () => seats.inSpace(interactSpace()).map(s => ({ id: s.id, x: s.x, z: s.z, top: s.top, yaw: s.yaw, kind: s.kind, occupant: s.occupant })),
+    approach: () => approach ? { seat: approach.seat.id, leg: approach.i, legs: approach.path.length, settle: +approach.settle.toFixed(2), x: +pos.x.toFixed(2), z: +pos.z.toFixed(2) } : null,
+    lying: () => (seated && seatClip(seated) === 'Lie' ? 1 : 0),
+    roomGeometry: () => inside ? { colliders: inside.int.colliders, bounds: inside.int.bounds } : null,
+    seatsHere: () => seats.inSpace(interactSpace()).map(s => ({ id: s.id, x: s.x, z: s.z, top: s.top, yaw: s.yaw, kind: s.kind, occupant: s.occupant, table: s.table ?? null })),
     sit(id: string) { const s = seats.get(id); if (s) sitOn(s); return seated?.id ?? null; },
     stand() { standUp(); },
     /** « Encourager » from a place in the stands (true if the player rose to cheer). */
     cheer(s?: number) { return cheer(s); },
     more() { openMore(); },
     clip: () => playerBody?.clipName ?? null,
-    activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores } : null; },
+    activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores, t: +c.t.toFixed(2), seconds: c.step.seconds ?? 0 } : null; },
     gesture: () => gestures.info(),
     stride: () => ({ stamina: Math.round(stride.stamina), max: stride.maxStamina(), running: stride.running, sprinting: stride.sprinting, gait: stride.gait, winded: stride.winded, forme: stride.forme, speed, run: stride.runSpeed(), why: stride.whyNot(), toggle: strideUi.runToggle }),
     strideToggle: (on: boolean | 0 | 1 | 2) => { strideUi.level = on === true ? 1 : on === false ? 0 : on; },
     /** Checks that test something else than the gesture itself finish it at once with this score. */
     gestureFinish: (score = 1) => gestures.finishNow(score),
+    /** Procedural arm and torso gestures on the player's body (src/actors/gesture.ts), for the checks. */
+    ik: { reach, bodyPoint, mouth, bend, nod, grip },
     placeList: () => places.all().map(p => ({ id: p.id, type: p.type, name: p.name, space: p.space, anchors: p.anchors.map(a => a.id) })),
     inventory: () => inventory.list(),
     roomInteractables: () => inside ? inside.int.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) : [],
@@ -1315,7 +1402,7 @@ if (DEBUG) {
     phoneInfo: () => phone.info(), phoneHooks: phone.hooks,
     emote(i = 0) { playEmote(i); },
     setLook(c: string, p: string, acc: string[]) { Object.assign(state.data.wrestler, { ngembColor: c, ngembPattern: p, accessories: acc }); },
-    enter(kind: 'home' | 'gargote') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
+    enter(kind: 'home' | 'gargote' | 'maiga') { const it = world?.interactables.find(i => i.id.includes(`:${kind}:`)); if (it) enterInterior(it); },
     exit() { exitInterior(); },
     look(yaw: number, pitch?: number) { follow.pin(); follow.yaw = yaw; if (pitch !== undefined) follow.pitch = pitch; },
     place(x: number, z: number, yaw: number) { pos.set(x, 0.1 + (world?.heightAt(x, z) ?? 0), z); facing = yaw; follow.snapBehind(yaw); },

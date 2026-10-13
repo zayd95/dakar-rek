@@ -299,7 +299,7 @@ export class PerfHost {
         pos: this.pos, facing: () => this.facing, body: () => this.sys?.body as never, seated: () => this.seated,
         sit: s => this.sit(s), standUp: () => this.stand(), place: (x, z, yaw) => this.place(x, z, yaw), cheer: () => false,
       },
-      peers: () => [], mode: () => this.mode, setMode: m => { this.mode = m; },
+      peers: () => [], ballNet: { self: () => '', send: () => false, listen: () => {} }, mode: () => this.mode, setMode: m => { this.mode = m; },
       menu: () => { /* a sheet would open: the player keeps playing here */ }, guide: () => null, toast: noop, save: noop,
       addInterior: (_door, int) => { world.group.add(int.group); int.group.visible = false; seats.addAll(int.seats.map(s => ({ ...s, space: _door.id }))); },
       enter: noop, exit: noop, startBout: () => false, walkTo: noop, setPublicRecord: noop, travel: noop,

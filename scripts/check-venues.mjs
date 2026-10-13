@@ -195,7 +195,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const before = await d(() => JSON.stringify({ n: window.__dakar.state.data.needs, w: window.__dakar.state.wallet, c: window.__dakar.state.data.counters }));
   await d(() => window.__dakar.act());
   await until(() => window.__dakar.activity()?.id === 'ablutions', null, 20000);
-  await until(() => window.__dakar.clip() === 'Sit', null, 30000);
+  // the player walks to the stool and sits down (the Sit pose starts while settling onto it): wait for the seat itself
+  await until(() => !!window.__dakar.seated() && window.__dakar.clip() === 'Sit', null, 30000);
   const wash = await d(() => ({ seat: window.__dakar.seated(), clip: window.__dakar.clip() }));
   check(`${label}: ablutions seated on the low stool in front of a tap`, (wash.seat ?? '').includes('robinet') && wash.clip === 'Sit', JSON.stringify(wash));
   await shot('mosque-ablutions');
@@ -219,7 +220,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const b2 = await d(() => JSON.stringify({ n: window.__dakar.state.data.needs, w: window.__dakar.state.wallet, c: window.__dakar.state.data.counters }));
   await d(() => window.__dakar.act());
   await until(() => window.__dakar.activity()?.id === 'priere', null, 20000);
-  await until(() => window.__dakar.clip() === 'Kneel', null, 30000);
+  await until(() => !!window.__dakar.seated() && window.__dakar.clip() === 'Kneel', null, 30000);
   const pr = await d(() => ({ seat: window.__dakar.seated(), clip: window.__dakar.clip(), y: window.__dakar.pos().y, seats: window.__dakar.seatsHere() }));
   const row = pr.seats.find(s => s.id === pr.seat);
   check(`${label}: prayer on a free place of a row, kneeling on the floor`, row?.kind === 'prayer' && row.occupant === 'player' && pr.clip === 'Kneel' && Math.abs(pr.y - 0.1) < 0.05, JSON.stringify({ seat: pr.seat, clip: pr.clip, y: pr.y }));
@@ -323,6 +324,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await until(() => !!document.querySelector('#modal.on'), null, 10000);
   await pick('Coiffure afro');
   await until(() => window.__dakar.activity()?.id === 'afro', null, 20000);
+  await until(() => (window.__dakar.seated() ?? '').includes('venue:salon:fauteuil'), null, 20000);   // after the few steps to the chair
   const cut = await d(() => ({ seat: window.__dakar.seated(), wallet: window.__dakar.state.wallet }));
   check(`${label}: « Coiffure afro » is paid and you sit in the free chair`, (cut.seat ?? '').includes('venue:salon:fauteuil') && cut.wallet === 2500, JSON.stringify(cut));
   await d(() => window.__dakar.portrait(2.6, 1.6, 1.1)); await shot('salon-cut'); await d(() => window.__dakar.portrait(0));

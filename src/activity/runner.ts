@@ -24,8 +24,10 @@ export interface ActivityServices extends EffectHooks {
   space(): string;
   player(): { x: number; z: number };
   seated(): Seat | null;
-  /** Sit the player on this seat; false if it could not. */
+  /** Sit the player on this seat (main.ts walks there first when it is not at hand); false if it cannot be reached. */
   sit(seat: Seat): boolean;
+  /** True while the player is still walking to the seat the current step asked for. */
+  walking?(): boolean;
   /** Hold a clip on the player's body (null = back to normal). */
   clip(c: Clip | null): void;
   /** Get the player up from their seat (out of bed after sleeping). */
@@ -42,10 +44,11 @@ export interface ActivityServices extends EffectHooks {
   save(): void;
 }
 
-interface Running { spec: ActivitySpec; ctx: ActivityCtx; i: number; t: number; notes: string[]; abort?: () => void; score?: number; scores: number[] }
+interface Running { spec: ActivitySpec; ctx: ActivityCtx; i: number; t: number; notes: string[]; abort?: () => void; score?: number; scores: number[]; walk?: boolean }
 
 /**
- * Plays any ActivitySpec: charge the price, then each step in order — take a seat if asked, hold a clip, show the
+ * Plays any ActivitySpec: charge the price, then each step in order — take a seat if asked (and wait while the player
+ * walks to it), hold a clip, show the
  * progress, apply the step's effects when it ends, run its follow-up. The player can stop at any moment (the price is
  * not refunded; effects of unfinished steps are not applied). One activity at a time.
  */
@@ -57,8 +60,9 @@ export class ActivityRunner {
   constructor(private s: ActivityServices) {}
 
   get running() { return this.cur !== null; }
-  get current(): { spec: ActivitySpec; step: Step; index: number; t: number; scores: number[] } | null {
-    const c = this.cur; return c ? { spec: c.spec, step: c.spec.steps[c.i], index: c.i, t: c.t, scores: [...c.scores] } : null;
+  /** The step running now; `walking` while the player is still on the way to the step's seat. */
+  get current(): { spec: ActivitySpec; step: Step; index: number; t: number; scores: number[]; ctx: ActivityCtx; walking: boolean } | null {
+    const c = this.cur; return c ? { spec: c.spec, step: c.spec.steps[c.i], index: c.i, t: c.t, scores: [...c.scores], ctx: c.ctx, walking: !!c.walk } : null;
   }
 
   /** Money an activity step would pay if done now (polyvalence…), for the prices shown before choosing. */
@@ -88,6 +92,7 @@ export class ActivityRunner {
   /** Advance by dt real seconds. */
   update(dt: number) {
     const c = this.cur; if (!c) return;
+    if (c.walk) { if (this.s.walking?.()) return; c.walk = false; this.begin(); return; }
     const step = c.spec.steps[c.i];
     if (c.abort) return;                                      // a gesture is being played: it ends the step itself
     const dur = this.duration(step);
@@ -111,9 +116,16 @@ export class ActivityRunner {
     if (c.i >= c.spec.steps.length) return this.finish();
     const step = c.spec.steps[c.i];
     if (step.seat) {
-      const seat = this.pickSeat(step.seat);
-      if (seat && this.s.seated()?.id !== seat.id) this.s.sit(seat);
+      const now = this.s.seated();
+      for (const seat of this.seatChoices(step.seat)) if (now?.id === seat.id || this.s.sit(seat)) break;   // unreachable: try the next one
+      if (this.s.walking?.()) { c.walk = true; this.s.busy(true); this.s.progress(true, 0, step.label); return; }
     }
+    this.begin();
+  }
+
+  /** The timed part of the current step (after the walk to its seat). */
+  private begin() {
+    const c = this.cur!, step = c.spec.steps[c.i];
     if (step.clip) this.s.clip(step.clip);
     const line = typeof step.line === 'function' ? step.line() : step.line;
     if (line) this.s.toast(line);
@@ -165,14 +177,17 @@ export class ActivityRunner {
   /** Back to the seat's own pose (Sit, Kneel on a prayer row…) or to normal when standing. */
   private seatPose(): Clip | null { const s = this.s.seated(); return s ? seatClip(s) : null; }
 
-  private pickSeat(p: SeatPick): Seat | null {
-    const space = this.s.space(), me = this.s.player();
-    if (typeof p === 'string') return p === 'near' ? (this.s.seated() ?? this.s.seats.nearestFree(space, me.x, me.z, 8)) : this.s.seats.get(p);
-    // already sitting on a seat that fits (a second drink at the same stool or table): stay there
-    const cur = this.s.seated();
-    if (cur && cur.space === space && (!p.kind || cur.kind === p.kind) && Math.hypot(cur.x - p.near.x, cur.z - p.near.z) <= (p.r ?? 6)) return cur;
-    const list = this.s.seats.inSpace(space).filter(s => !s.occupant && (!p.kind || s.kind === p.kind) && Math.hypot(s.x - p.near.x, s.z - p.near.z) <= (p.r ?? 6));
-    list.sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z));
-    return list[0] ?? null;
+  /**
+   * Seats that fit the pick, best first: the one the player already sits on (a second drink at the same stool or
+   * table: stay there), else the free ones nearest to the player (main.ts walks there; an unreachable one is skipped).
+   */
+  private seatChoices(p: SeatPick): Seat[] {
+    if (typeof p === 'string' && p !== 'near') { const s = this.s.seats.get(p); return s ? [s] : []; }
+    const o = p === 'near' ? {} : p, me = this.s.player(), now = this.s.seated(), space = this.s.space();
+    const at = o.near ?? me, r = o.r ?? (o.near ? 6 : 8);
+    const fits = (s: Seat) => (!o.kind || s.kind === o.kind) && Math.hypot(s.x - at.x, s.z - at.z) <= r;
+    if (now && now.space === space && fits(now)) return [now];
+    return this.s.seats.inSpace(space).filter(s => !s.occupant && fits(s))
+      .sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z)).slice(0, 6);
   }
 }
