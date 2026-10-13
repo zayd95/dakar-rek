@@ -86,7 +86,7 @@ export class StreetLife {
   private colGrid: ColliderGrid | null = null;
   private prepT = 1.2;
   /** Seconds after the street is prepared during which people may be placed in sight (but not at the player's feet). */
-  private warm = 8;
+  private warm = 6;
   private rand = rng(1709);
   private q: CrowdQuality;
   private hub: HubWorld;
@@ -354,7 +354,7 @@ export class StreetLife {
     if (this.arrivals) this.corners.forEach((c, ci) => { this.arrivals!.demand[ci] = c.taken.filter(a => a && a.role === 'pickup' && !a.path).length; });
     // walkers: out of sight in, out of sight out
     const walking = this.agents.filter(a => a.role === 'walk').length;
-    if (walking < t.walkers) for (let k = 0; k < Math.min(this.warm > 0 ? 12 : 3, t.walkers - walking); k++) this.spawnWalker();
+    if (walking < t.walkers) for (let k = 0; k < Math.min(this.warm > 0 ? 6 : 3, t.walkers - walking); k++) this.spawnWalker();
     if (walking > t.walkers) for (const a of this.agents) if (a.role === 'walk' && !a.path && !this.seen(a.x, a.z)) { this.hide(a); break; }
     // walkers who wandered far from the player come back near them (out of sight both ways)
     let moved = 0;

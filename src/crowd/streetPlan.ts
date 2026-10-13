@@ -22,7 +22,7 @@ export const CHAT_BY_HOUR: Curve = [[0, 0.05], [6, 0], [8, 0.2], [11, 0.35], [14
 /** The crowd's size per quality: people at most, full humanoids among them (the nearest). */
 export const STREET_BUDGET: Record<Quality, { pool: number; near: number; groupMax: number; perStop: number; life: number }> = {
   low: { pool: 48, near: 0, groupMax: 3, perStop: 3, life: 70 },
-  medium: { pool: 88, near: 1, groupMax: 6, perStop: 5, life: 90 },
+  medium: { pool: 80, near: 1, groupMax: 6, perStop: 5, life: 90 },
   high: { pool: 128, near: 2, groupMax: 9, perStop: 7, life: 110 },
 };
 /**

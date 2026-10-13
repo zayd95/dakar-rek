@@ -96,8 +96,8 @@ let quality: Quality = ((): Quality => { try { const q = store?.getItem('dakarre
 const QUAL = {
   // traffic: the most cars on the road at rush hour (src/social/ambientLife.ts thins them by hour, the weather by rain)
   low: { pr: 1, shadow: 0, crowd: 8, traffic: 8 },
-  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 11 },
-  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 14 },
+  medium: { pr: 1.5, shadow: 1024, crowd: 12, traffic: 9 },
+  high: { pr: 2, shadow: 2048, crowd: 16, traffic: 12 },
 };
 
 const scene = new THREE.Scene();
