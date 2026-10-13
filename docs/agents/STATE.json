@@ -1,23 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-13T15:37:48Z",
+  "updatedAt": "2026-10-13T16:35:44Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261013T1635Z-watch",
-    "owner": "producer_watch_1635",
-    "acquiredAt": "2026-10-13T16:34:21Z",
-    "expiresAt": "2026-10-13T17:04:21Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "42c87153058239f4ab2e8d2cddbcc32a187344a4",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-13-1635-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -131,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-13T15:37:48Z",
+    "lastCompletedRunAt": "2026-10-13T16:35:44Z",
     "lastVerifiedAt": "2026-10-13T00:29:00Z"
   },
   "productionMutationsAuthorized": false,
@@ -301,15 +289,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-13-1537-WATCH.md",
-    "completedAt": "2026-10-13T15:37:48Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-13-1635-WATCH.md",
+    "completedAt": "2026-10-13T16:35:44Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_1537",
+    "owner": "producer_watch_1635",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261013T1537Z-watch"
+    "leaseReleased": "cycle-20261013T1635Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +559,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-13T15:37:48Z",
+    "checkedAt": "2026-10-13T16:35:44Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -676,5 +664,85 @@
       "checkedAt": "2026-10-13T00:31:00Z",
       "appliesToCurrentSource": false
     }
-  }
+  },
+  "externalFollowups": [
+    {
+      "pr": 26,
+      "branch": "codex/v4-eye-fit",
+      "sha": "3bde71c40c6f31eed6740a9e5c45628c43a924ed",
+      "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+      "owner": "other session; never mutate",
+      "paths": [
+        "docs/V4_EYE_FIT.md",
+        "docs/screenshots/eyes/after/landscape-close.png",
+        "docs/screenshots/eyes/after/landscape-front.png",
+        "docs/screenshots/eyes/after/landscape-headwrap.png",
+        "docs/screenshots/eyes/after/landscape-profile.png",
+        "docs/screenshots/eyes/after/landscape-quarter.png",
+        "docs/screenshots/eyes/after/portrait-close.png",
+        "docs/screenshots/eyes/after/portrait-front.png",
+        "docs/screenshots/eyes/after/portrait-headwrap.png",
+        "docs/screenshots/eyes/after/portrait-profile.png",
+        "docs/screenshots/eyes/after/portrait-quarter.png",
+        "docs/screenshots/eyes/after/results.json",
+        "docs/screenshots/eyes/before/landscape-close.png",
+        "docs/screenshots/eyes/before/landscape-front.png",
+        "docs/screenshots/eyes/before/landscape-headwrap.png",
+        "docs/screenshots/eyes/before/landscape-profile.png",
+        "docs/screenshots/eyes/before/landscape-quarter.png",
+        "docs/screenshots/eyes/before/portrait-close.png",
+        "docs/screenshots/eyes/before/portrait-front.png",
+        "docs/screenshots/eyes/before/portrait-headwrap.png",
+        "docs/screenshots/eyes/before/portrait-profile.png",
+        "docs/screenshots/eyes/before/portrait-quarter.png",
+        "docs/screenshots/eyes/before/results.json",
+        "docs/screenshots/eyes/perf-low.json",
+        "scripts/shots-eyes.mjs",
+        "src/actors/eyes.ts",
+        "src/actors/humanoid.ts",
+        "tests/eyes.test.ts"
+      ],
+      "ci": "exact check-runs completed success; no independent acceptance performed here"
+    },
+    {
+      "pr": 25,
+      "branch": "codex/mobile-touch-controls",
+      "sha": "4244261b1006430051dd63b5aa4da48d041cbd58",
+      "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+      "owner": "other session; never mutate",
+      "paths": [
+        "docs/MOBILE_TAKEOVER_2026-10-13.md",
+        "docs/screenshots/mobile-controls/after/landscape-face.png",
+        "docs/screenshots/mobile-controls/after/landscape-run-selected.png",
+        "docs/screenshots/mobile-controls/after/landscape-street.png",
+        "docs/screenshots/mobile-controls/after/landscape-thumb-rest.png",
+        "docs/screenshots/mobile-controls/after/portrait-face.png",
+        "docs/screenshots/mobile-controls/after/portrait-run-selected.png",
+        "docs/screenshots/mobile-controls/after/portrait-street.png",
+        "docs/screenshots/mobile-controls/after/portrait-thumb-rest.png",
+        "docs/screenshots/mobile-controls/after/results.json",
+        "docs/screenshots/mobile-controls/after/small-face.png",
+        "docs/screenshots/mobile-controls/after/small-run-selected.png",
+        "docs/screenshots/mobile-controls/after/small-street.png",
+        "docs/screenshots/mobile-controls/after/small-thumb-rest.png",
+        "docs/screenshots/mobile-controls/before/landscape-face.png",
+        "docs/screenshots/mobile-controls/before/landscape-run-selected.png",
+        "docs/screenshots/mobile-controls/before/landscape-street.png",
+        "docs/screenshots/mobile-controls/before/landscape-thumb-rest.png",
+        "docs/screenshots/mobile-controls/before/portrait-face.png",
+        "docs/screenshots/mobile-controls/before/portrait-run-selected.png",
+        "docs/screenshots/mobile-controls/before/portrait-street.png",
+        "docs/screenshots/mobile-controls/before/portrait-thumb-rest.png",
+        "docs/screenshots/mobile-controls/before/results.json",
+        "docs/screenshots/mobile-controls/before/small-face.png",
+        "docs/screenshots/mobile-controls/before/small-run-selected.png",
+        "docs/screenshots/mobile-controls/before/small-street.png",
+        "docs/screenshots/mobile-controls/before/small-thumb-rest.png",
+        "docs/screenshots/mobile-controls/perf-low.json",
+        "scripts/check-mobile-controls.mjs",
+        "src/core/stick.ts"
+      ],
+      "ci": "exact check-runs completed success; no independent acceptance performed here"
+    }
+  ]
 }
