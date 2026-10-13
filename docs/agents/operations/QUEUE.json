@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-13-1733-WATCH.md",
-    "checkedAt": "2026-10-13T17:33:23Z",
-    "result": "Wave and external PR25/26 refs/checks unchanged; no final common acceptance; no source task ready.",
-    "owner": "producer_watch_1733",
+    "entry": "docs/agents/operations/CYCLE-2026-10-13-2237-WATCH.md",
+    "checkedAt": "2026-10-13T22:37:13Z",
+    "result": "External PR28 e7a601e exact standard CI green; integration/wip unchanged, no final common acceptance and no source task ready.",
+    "owner": "producer_watch_2237",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "b46f96d227d4060fd43ceb8e6313b25c0da170eb",
+    "baseCommit": "287878cf9c204cf104a53c64957bc900362d628c",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-13-1733-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-13-2237-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -970,17 +970,34 @@
       "ci": "exact check-runs completed success; no independent acceptance performed here"
     }
   ],
-  "registryWriter": {
-    "token": "cycle-20261013T2237Z-watch",
-    "owner": "producer_watch_2237",
-    "acquiredAt": "2026-10-13T22:36:17Z",
-    "expiresAt": "2026-10-13T23:06:17Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "287878cf9c204cf104a53c64957bc900362d628c",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-13-2237-WATCH.md"
-    ]
+  "externalReconciliation": {
+    "pr": 28,
+    "branch": "claude/reconcile-candidate",
+    "sha": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
+    "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+    "owner": "other session; never mutate",
+    "checkedAt": "2026-10-13T22:37:13Z",
+    "ci": [
+      {
+        "id": 115555018390,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/claude-reconcile-candidate/builds/a8444def-fc1c-4c9a-a5b4-5ac1f36f3d1b"
+      },
+      {
+        "id": 115554563645,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/38472406800/job/115554563645"
+      },
+      {
+        "id": 115554529894,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/38472397069/job/115554529894"
+      }
+    ],
+    "reviews": [],
+    "status": "isolated candidate; standard checks green, whole-wave reception not established"
   }
 }
