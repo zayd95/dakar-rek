@@ -1,23 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-13T05:28:00Z",
+  "updatedAt": "2026-10-13T06:35:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261013T0634Z-watch",
-    "owner": "producer_watch_0634",
-    "acquiredAt": "2026-10-13T06:33:40Z",
-    "expiresAt": "2026-10-13T07:03:40Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "627960af1cbef77ff80f2970571fb6a72a03bc06",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-13-0634-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -131,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-13T05:28:00Z",
+    "lastCompletedRunAt": "2026-10-13T06:35:00Z",
     "lastVerifiedAt": "2026-10-13T00:29:00Z"
   },
   "productionMutationsAuthorized": false,
@@ -301,15 +289,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-13-0527-WATCH.md",
-    "completedAt": "2026-10-13T05:28:00Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-13-0634-WATCH.md",
+    "completedAt": "2026-10-13T06:35:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_0527",
+    "owner": "producer_watch_0634",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261013T0527Z-watch"
+    "leaseReleased": "cycle-20261013T0634Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +559,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-13T05:28:00Z",
+    "checkedAt": "2026-10-13T06:35:00Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
