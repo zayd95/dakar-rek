@@ -8,6 +8,7 @@ import { GaitState, runCadence, walkCadence } from './gait';
 import { GaitRig } from './gaitRig';
 import { joinNeck } from './neckJoin';
 import { reshapeCharacter } from './proportions';
+import { fitEyes } from './eyes';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -46,6 +47,7 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
     joinNeck(gltf.scene);                                    // the head joined to the body (src/actors/neckJoin.ts)
+    fitEyes(gltf.scene);                                     // the iris lenses sit in the eye whites, not in front of them
     reshapeCharacter(gltf.scene);                            // shorter neck, oval face with a jaw (src/actors/proportions.ts)
     fixSitKnees(gltf.animations);
     fixRunClip(gltf.animations);
