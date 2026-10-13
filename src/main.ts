@@ -55,6 +55,7 @@ import { dressFan } from './arena/supporterGear';
 import { PresenceUi } from './multiplayer/ui';
 import { Phone } from './ui/phone';
 import { mapBridge } from './ui/minimap';
+import { theme } from './ui/theme';
 import { ChatUi } from './multiplayer/chat';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
@@ -1250,6 +1251,7 @@ function frameStep(now: number, dt: number, draw = true) {
   }
   const ct = cityTimeAt(presence.serverNow()); const hour = hourOverride ?? ct.hourFloat;
   updateLighting(hour);
+  theme.follow(hour);
   const hk = hudSpace(world.id, !!inside, hourOverride);
   if (hudDue(now, hudAt, hk, hudKey)) { hudAt = now; hudKey = hk; hudTicks++; hud.setStats(state.wallet, state.data.needs, state.mood()); hud.setGoal(mode === 'play' && !arenaShow.watching() ? goalLine(hour) : null); const pc = placeClock(ct.day, hourOverride === null ? hour : Math.floor(hour), state.data.counters[GALA_DONE_COUNTER] === ct.day); hud.setPlace(HUB_NAMES[world.id], pc.clock, hour < 6 || hour >= 19, pc.tag); }
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }

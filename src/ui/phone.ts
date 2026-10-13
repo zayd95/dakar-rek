@@ -11,6 +11,8 @@ import { HUB_IDS } from '../core/types';
 import { cityTimeAt, CITY_DAY_MS } from '../core/clock';
 import { isMuted, setMuted } from '../core/audioSettings';
 import { mapBridge } from './minimap';
+import { theme, type ThemeMode } from './theme';
+import './theme.css';
 import { fullMapHtml, mountFullMap } from './fullmap';
 import { HUB_NAMES, travelLeg } from '../world/content';
 import type { Relations } from '../social/relations';
@@ -421,7 +423,11 @@ export class Phone {
   private settingsHtml(): string {
     const q = this.ctx.quality(), muted = isMuted(), sens = this.ctx.input.sensitivity, gloss = glossesShown();
     const c = this.ctx.state.data.counters;
-    return `<h3>Graphismes</h3>
+    const tm = theme.mode, TH: [ThemeMode, string][] = [['auto', 'Auto'], ['day', 'Jour'], ['night', 'Nuit']];
+    return `<h3>Apparence</h3>
+      <div class="seg">${TH.map(([k, l]) => `<button type="button" data-theme="${k}" class="${k === tm ? 'on' : ''}" aria-pressed="${k === tm}">${l}</button>`).join('')}</div>
+      <p class="ph-note">${tm === 'auto' ? 'Auto : l’écran s’assombrit avec la nuit de la ville (de 19 h à 6 h).' : tm === 'day' ? 'Jour : l’écran reste clair, même la nuit.' : 'Nuit : l’écran reste sombre, même en plein jour.'}</p>
+      <h3>Graphismes</h3>
       <div class="seg">${(['low', 'medium', 'high'] as Quality[]).map(k => `<button type="button" data-q="${k}" class="${k === q ? 'on' : ''}" aria-pressed="${k === q}">${QUALITY_LABEL[k]}</button>`).join('')}</div>
       <p class="ph-note">Basse : plus fluide sur les petits téléphones. Le quartier est reconstruit, tu restes où tu es.</p>
       <h3>Son</h3>
@@ -532,6 +538,7 @@ export class Phone {
       if (q !== this.ctx.quality()) { this.ctx.setQuality(q); this.remember(); this.ctx.toast('Qualité : ' + QUALITY_LABEL[q]); }
       this.render();
     }));
+    s.querySelectorAll<HTMLButtonElement>('button[data-theme]').forEach(b => b.addEventListener('click', () => { theme.setMode(b.dataset.theme as ThemeMode); this.render(); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-sens]').forEach(b => b.addEventListener('click', () => {
       this.ctx.input.sensitivity = Number(b.dataset.sens);
       try { store()?.setItem(SENS_KEY, b.dataset.sens!); } catch { /* session only */ }
