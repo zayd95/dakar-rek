@@ -39,6 +39,7 @@ import { fighterModule } from '../arena/fighter';
 import { bakkModule } from '../arena/bakk';
 import { eveningCallModule } from '../arena/eveningCall';
 import { worldMarkers } from '../ui/worldMarkers';
+import { minimapModule } from '../ui/minimap';
 import { crowdModule } from '../crowd/module';
 import { fightTalkModule } from '../social/fightTalkModule';
 import { careerModule } from '../career/module';
@@ -228,6 +229,7 @@ export const MODULES: GameModule[] = [
   football,             // NPC football on the Corniche's pitch: plays the ambient life's footballers, before it draws them (src/game/football.ts)
   ambientLife,          // NPC & social life lane, after the places and seats the others register (docs/NPC_LIFE.md)
   worldMarkers(),       // UI lane: focus ring and way-finding pin, reads what the others registered (docs/UI.md)
+  minimapModule(),      // UI lane: the round minimap, top-left, and the data of the phone's full map (src/ui/minimap.ts)
   careerModule,         // career lane: fight record, ladder, purses, Forme / Richesse / Réputation / Influence (docs/CAREER.md)
   togetherModule,       // friends at the arena: seated together, one bout for the group (src/arena/together.ts)
   arrivalModule,        // getting to the fight: the guarded moto parking, fans aboard the Ligne 23 (src/arena/arrival.ts)
