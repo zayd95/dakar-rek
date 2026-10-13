@@ -28,6 +28,7 @@ export class StrideUi {
   }
 
   private setLevel(l: 0 | 1 | 2) {
+    this.idle = 0;
     this.level = l; this.btn.classList.toggle('on', l > 0); this.btn.classList.toggle('sprint', l === 2); this.btn.setAttribute('aria-pressed', String(l > 0));
     this.btn.querySelector('small')!.textContent = l === 2 ? 'Sprint' : l === 1 ? 'Footing' : 'Courir';
   }
