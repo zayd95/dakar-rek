@@ -331,6 +331,8 @@ export class OwnedVehicleModule implements GameModule {
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
         at: () => this.vehicle ? { x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active } : null,
         card: () => this.card?.text ?? '',
+        /** Checks: the bike's speed in m/s while it is ridden (the online check rides above the 6 m/s presence limit). */
+        boost: (v: number) => { if (this.driving) this.st.speed = v; },
         /** Checks: put the vehicle (and its driver) at a spot, stopped. */
         place: (x: number, z: number, yaw: number) => { if (!this.vehicle) return; this.st.x = x; this.st.z = z; this.st.yaw = yaw; this.st.speed = 0; this.vehicle.place(x, z, yaw, 0, 0, this.st.odo, 0); if (!this.driving) this.setSolid(true); },
       },

@@ -99,7 +99,31 @@ try {
   await b.waitForFunction(() => window.__dakar.tiak.at()?.speed > 8, null, { timeout: 25000 }).catch(async () => { console.log('RIDE STATE', JSON.stringify(await b.evaluate(() => ({ t: window.__dakar.tiak.at(), p: window.__dakar.pos(), status: window.__dakar.presence().status })))); });
   const rideSeen = await a.waitForFunction(() => { const p = window.__dakar.presence(); return p.peers.some(x => x.clip === 'Ride') && p.bikes === 1; }, null, { timeout: 20000 }).then(() => true).catch(() => false);
   check('a rider at speed stays online and the other player sees the rider on a bike', rideSeen, JSON.stringify(await a.evaluate(() => { const p = window.__dakar.presence(); return { peers: p.peers.map(x => [x.clip, x.speed]), bikes: p.bikes, status: p.status }; })));
+  // above the 6 m/s presence limit: the move stays valid (sent speed capped), the rider stays online and A still sees them on a bike
+  await b.evaluate(() => window.__dakar.tiak.boost(11));
+  const fast = [];
+  for (let i = 0; i < 8; i++) { await b.evaluate(() => window.__dakar.tiak.boost(11)); await sleep(250); fast.push(await b.evaluate(() => ({ bike: window.__dakar.tiak.at().speed, sent: window.__dakar.presence().move?.speed, status: window.__dakar.presence().status }))); }
+  check('riding above 6 m/s: bike speed > 8, sent speed capped at 6, still online', fast.some(f => f.bike > 8) && fast.every(f => f.sent <= 6 && f.status === 'online'), JSON.stringify(fast.slice(-2)));
+  const seenFast = await a.evaluate(() => { const p = window.__dakar.presence(); return { bikes: p.bikes, peers: p.peers.map(x => [x.clip, x.space, +x.speed.toFixed(1)]), status: p.status, visible: p.visible }; });
+  check('A sees B riding fast: Ride pose in the street, one bike drawn, A still online', seenFast.bikes === 1 && seenFast.peers.some(x => x[0] === 'Ride' && x[1] === 'street') && seenFast.status === 'online', JSON.stringify(seenFast));
+  await fs.mkdir('shots/multiplayer', { recursive: true }); await a.screenshot({ path: 'shots/multiplayer/other-player-riding.png' });
   await b.keyboard.up('KeyW');
+  // get off again (the next steps place both players on foot)
+  await b.keyboard.down('KeyS'); await b.waitForFunction(() => Math.abs(window.__dakar.tiak.at().speed) < 0.5, null, { timeout: 20000 }).catch(() => {}); await b.keyboard.up('KeyS');
+  await b.keyboard.press('KeyE');
+  await b.waitForFunction(() => window.__dakar.tiak.at()?.driving === false, null, { timeout: 15000 });
+  // a passenger in another vehicle (a car rapide) is not drawn on a bike for the other player
+  const L0 = (await b.evaluate(() => window.__dakar.transport.lines()))[0], st0 = L0.stops[0];
+  await b.evaluate(([x, z, yaw]) => { window.__dakar.setHour(10); window.__dakar.state.data.wallet = Math.max(window.__dakar.state.data.wallet, 2000); window.__dakar.place(x, z, yaw); }, [st0.x - st0.dx * 1.2, st0.z - st0.dz * 1.2, st0.yaw]);
+  await b.waitForTimeout(1200); await b.evaluate(() => window.__dakar.act());
+  await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'waiting', null, { timeout: 30000 });
+  const wait0 = await b.evaluate(([l, i]) => window.__dakar.transport.nextAt(l, i), [L0.id, 0]);
+  if (wait0 > 8) await b.evaluate(w => window.__dakar.transport.warp(w), wait0 - 6);
+  await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'riding', null, { timeout: 60000 });
+  await sleep(1500);
+  const inCar = await a.evaluate(() => { const p = window.__dakar.presence(); return { bikes: p.bikes, peers: p.peers.map(x => [x.clip, x.space]) }; });
+  check('a passenger in a car rapide is not drawn on a bike (B in the car, A in the street)', inCar.bikes === 0 && inCar.peers.some(x => /rapide/.test(x[1]) && x[0] === 'Sit'), JSON.stringify(inCar));
+  await b.evaluate(() => window.__dakar.teleport('pikine')); await b.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 30000 });
   const before = await a.evaluate(() => ({ id: window.__dakar.presence().id, wallet: window.__dakar.state.wallet }));
   await contexts[0].setOffline(true);
   await a.waitForFunction(() => window.__dakar.presence().status === 'offline');
