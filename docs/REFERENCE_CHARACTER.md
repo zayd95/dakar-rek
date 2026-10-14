@@ -51,14 +51,14 @@ Before is the initial reference candidate at `b891586`, not V4.
 ### Directional turns and capture calibration
 
 Standing turns now select a left or right stepping clip from the actual signed facing change. The
-left CMU capture is calibrated using its nonzero spine joint; the old zero-offset joint could not
-define facing. The right clip mirrors the calibrated deformation onto the opposite limbs.
+right CMU capture is calibrated using its nonzero spine joint; the old zero-offset joint could not
+define facing. The left clip mirrors the calibrated deformation onto the opposite limbs.
 Playback holds each turn and sit/stand transition on its final frame instead of looping it.
 
-The right-turn comparison below uses the same camera, location and morning lighting. Before is
+The turn comparison below uses the same camera, location and morning lighting. Before is
 the previous reference candidate at `2092f43`, whose single stepping clip was used for both directions.
 
-| Previous turn | Calibrated right turn |
+| Previous turn | Calibrated turn |
 | --- | --- |
 | ![Previous turn](screenshots/reference-character/directional-turns/before-portrait.png) | ![Right turn](screenshots/reference-character/portrait-turn-right.png) |
 

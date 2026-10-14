@@ -59,7 +59,7 @@ try {
     }
     const turning={};
     // End at the same facing/camera for both directions, making the stepping comparison readable.
-    for(const [direction,startYaw] of [['left',Math.PI],['right',0]]){
+    for(const [direction,startYaw] of [['left',0],['right',Math.PI]]){
       turning[direction]=await page.evaluate(startYaw=>{const d=window.__dakar;d.place(-42,-66,startYaw);d.step(1/60,90);d.place(-42,-66,Math.PI/2);d.portrait(3.2,1.2,.35);d.step(1/60,25);d.render();return d.clip();},startYaw);
       await page.screenshot({path:`${out}/${view}-turn${direction==='right'?'-right':''}.png`});
     }

@@ -75,10 +75,10 @@ turn_correction=corrections(turn_src,cmu_mapping,turn_align)
 clips={'Idle':'Idle_Loop','Walk':'Walk_Loop','Jog':'Jog_Fwd_Loop','Run':'Sprint_Loop',
        'Sit':'Sitting_Idle_Loop','SitEnter':'Sitting_Enter','SitExit':'Sitting_Exit',
        'Talk':'Idle_Talking_Loop','Celebrate':'Dance_Loop','Kneel':'Fixing_Kneeling','Ride':'Driving_Loop',
-       'TurnLeft':'Walk_Loop'}
+       'TurnRight':'Walk_Loop'}
 report={}; baked=[]
 for name,source_name in clips.items():
-    idle=name=='Idle'; turning=name=='TurnLeft'; captured=idle or turning
+    idle=name=='Idle'; turning=name=='TurnRight'; captured=idle or turning
     source=cmu if idle else turn_src if turning else src
     map_=cmu_mapping if captured else mapping; corr=cmu_correction if idle else turn_correction if turning else correction
     aln=cmu_align if idle else turn_align if turning else align
@@ -229,14 +229,14 @@ for name,source_name in clips.items():
         source_hip=source.matrix_world@source.pose.bones['Hips' if captured else 'pelvis'].head
         if hipbase is None: hipbase=source_hip.z
         hip=tgt.pose.bones['mixamorig:Hips']; dz=(source_hip.z-src.data.bones['pelvis'].head_local.z)*src_scale
-        if name in ('Idle','Walk','Jog','Run','TurnLeft','Talk','Celebrate'): dz=(source_hip.z-hipbase)*(src_scale if not captured else .0254)
+        if name in ('Idle','Walk','Jog','Run','TurnRight','Talk','Celebrate'): dz=(source_hip.z-hipbase)*(src_scale if not captured else .0254)
         # The seat contract is butt contact at .48 m, not a pelvis-bone position at .48 m.
         # This anatomy's seat surface is ~14 cm below the pelvis in the retargeted pose.
         if name=='Sit': dz=.62-tgt.data.bones['mixamorig:Hips'].head_local.z
         if name in ('SitEnter','SitExit'):
             p=f/frames if name=='SitEnter' else 1-f/frames
             dz += .07*(1-p)-.014*p
-        if name in ('Idle','Walk','Jog','Run','TurnLeft','Talk'):
+        if name in ('Idle','Walk','Jog','Run','TurnRight','Talk'):
             # FK of the actual shoe soles, not guessed ankle heights. Stance reaches local ground;
             # jog/sprint use these samples to adapt root height and preserve a short aerial phase.
             heads={}
@@ -282,12 +282,12 @@ for name,source_name in clips.items():
 # Mirror the calibrated capture's deformation onto the opposite limb, respecting each bone's
 # own rest roll. S R S preserves a proper rotation; simply negating local quaternion components
 # would be wrong for this rig's differing left/right rest axes.
-left=next(a for a in baked if a.name=='TurnLeft')
-samples=[]; tgt.animation_data.action=left
-for f in range(round(report['TurnLeft']['duration']*60)+1):
+captured_turn=next(a for a in baked if a.name=='TurnRight')
+samples=[]; tgt.animation_data.action=captured_turn
+for f in range(round(report['TurnRight']['duration']*60)+1):
     scene.frame_set(f+1)
     samples.append({b.name:(tgt.pose.bones[b.name].matrix.to_quaternion().copy(),tgt.pose.bones[b.name].location.copy()) for b in parents})
-right=bpy.data.actions.new('TurnRight'); right.use_fake_user=True; tgt.animation_data.action=right
+mirrored_turn=bpy.data.actions.new('TurnLeft'); mirrored_turn.use_fake_user=True; tgt.animation_data.action=mirrored_turn
 mirror=Matrix.Diagonal((-1,1,1))
 for f,sample in enumerate(samples):
     desired={}
@@ -307,7 +307,7 @@ for f,sample in enumerate(samples):
         if not b.parent:
             pb.location=b.matrix_local.to_3x3().inverted()@mirror@sourcebone.matrix_local.to_3x3()@location
             pb.keyframe_insert(data_path='location',frame=f+1,group=b.name)
-baked.append(right); report['TurnRight']={**report['TurnLeft'],'source':report['TurnLeft']['source']+'; mirrored deformation / swapped limbs'}
+baked.append(mirrored_turn); report['TurnLeft']={**report['TurnRight'],'source':report['TurnRight']['source']+'; mirrored deformation / swapped limbs'}
 
 # NLA export only these selected, retargeted clips. Original source rig/geometry never ships.
 tgt.animation_data.action=None

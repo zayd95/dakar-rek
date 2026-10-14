@@ -33,8 +33,10 @@ travel so game physics owns translation, and bakes at 60 Hz. This is a new retar
 gait. Idle uses an authored relaxed arm/body pose with attenuated captured motion and a closed
 three-second loop. CMU facing calibration uses the nonzero `Spine` joint; its `LowerBack` joint has
 zero offset from `Hips` and cannot define an up direction. The bake rejects degenerate bases.
-`TurnLeft` retains the captured lower-body stepping with a calm upper body; `TurnRight` mirrors its
+`TurnRight` retains the captured lower-body stepping with a calm upper body; `TurnLeft` mirrors its
 armature deformation and swaps limbs, respecting each bone's rest roll. Game yaw owns facing.
+The rig faces +Z in the game, with its left thigh on +X: positive game yaw turns anatomically left.
+The source capture's negative quarter-turn is therefore right, and its mirrored clip is left.
 Sole contact is measured from the actual shoe vertices, with bounded running flight and
 5 mm interpolation clearance. A two-bone solve adapts the source's ankle paths to this anatomy while
 preserving its knee bend plane, foot orientation and phase (walk ×1.35, jog ×0.48, sprint ×0.65).

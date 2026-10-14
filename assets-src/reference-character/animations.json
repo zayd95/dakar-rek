@@ -101,7 +101,7 @@
       -0.37955616782135326
     ]
   },
-  "TurnLeft": {
+  "TurnRight": {
     "source": "CMU 13_26 frames 977\u20131121 (quarter turn)",
     "duration": 1.2,
     "frames": 73,
@@ -110,7 +110,7 @@
       0.040864672362804416
     ]
   },
-  "TurnRight": {
+  "TurnLeft": {
     "source": "CMU 13_26 frames 977\u20131121 (quarter turn); mirrored deformation / swapped limbs",
     "duration": 1.2,
     "frames": 73,

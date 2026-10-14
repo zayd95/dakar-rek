@@ -67,18 +67,18 @@ describe('reference candidate: retargeted contact and motion', () => {
     expect(Math.max(...a.map((v, i) => v.distanceTo(middle[i])))).toBeGreaterThan(.001);
   });
   it('contains real movement and the requested states, including captured turns and sit transitions', () => {
-    for (const name of ['Idle', 'Walk', 'Jog', 'Run', 'TurnLeft', 'TurnRight', 'Sit', 'SitEnter', 'SitExit']) {
+    for (const name of ['Idle', 'Walk', 'Jog', 'Run', 'TurnRight', 'TurnLeft', 'Sit', 'SitEnter', 'SitExit']) {
       expect(clip(name), name).toBeDefined(); expect(clip(name).duration).toBeGreaterThan(.5);
     }
     const ids = soles();
-    for (const name of ['Walk', 'Jog', 'Run', 'TurnLeft', 'TurnRight']) {
+    for (const name of ['Walk', 'Jog', 'Run', 'TurnRight', 'TurnLeft']) {
       const a = pose(name, .05, ids), b = pose(name, clip(name).duration * .4, ids);
       expect(Math.max(...a.map((p, i) => p.distanceTo(b[i]))), name).toBeGreaterThan(.08);
     }
   });
   it('keeps standing/walking/turning soles within 7 mm of contact; running retains limited flight', () => {
     const ids = soles();
-    for (const name of ['Idle', 'Walk', 'TurnLeft', 'TurnRight', 'Jog', 'Run']) {
+    for (const name of ['Idle', 'Walk', 'TurnRight', 'TurnLeft', 'Jog', 'Run']) {
       const heights: number[] = [];
       for (let i = 0; i <= 40; i++) heights.push(Math.min(...pose(name, clip(name).duration * i / 40, ids).map(p => p.y)));
       expect(Math.min(...heights), name).toBeGreaterThan(.025);
@@ -89,7 +89,7 @@ describe('reference candidate: retargeted contact and motion', () => {
       } else expect(Math.max(...heights), name).toBeLessThan(.042);
     }
   });
-  it('mirrors the captured leg stepping to the opposite side for a right turn', () => {
+  it('mirrors the captured leg stepping to the opposite side for a left turn', () => {
     const sample = (name: string, t: number) => {
       const mixer = new THREE.AnimationMixer(gltf.scene), action = mixer.clipAction(clip(name));
       action.setLoop(THREE.LoopOnce, 1).play(); mixer.update(t); gltf.scene.updateMatrixWorld(true);
@@ -97,10 +97,10 @@ describe('reference candidate: retargeted contact and motion', () => {
       mixer.stopAllAction(); mixer.uncacheRoot(gltf.scene); return positions;
     };
     for (const t of [.01, .3, .6, 1.1]) {
-      const left = sample('TurnLeft', t), right = sample('TurnRight', t);
-      for (const [name, point] of left) if (/Leg|Foot|Toe/.test(name)) {
+      const captured = sample('TurnRight', t), mirrored = sample('TurnLeft', t);
+      for (const [name, point] of captured) if (/Leg|Foot|Toe/.test(name)) {
         const opposite = name.includes('Left') ? name.replace('Left', 'Right') : name.replace('Right', 'Left');
-        expect(right.get(opposite)!.distanceTo(point.clone().setX(-point.x)), `${name} at ${t}`).toBeLessThan(.002);
+        expect(mirrored.get(opposite)!.distanceTo(point.clone().setX(-point.x)), `${name} at ${t}`).toBeLessThan(.002);
       }
     }
   });
@@ -164,14 +164,14 @@ describe('reference candidate: retargeted contact and motion', () => {
       expect(cadence, `${name}: steps per second`).toBeLessThan(bounds[1]);
     }
     for (let i = 0; i < 90; i++) h.animate(1 / 60, 0);
-    h.group.rotation.y += Math.PI / 2; h.animate(1 / 60, 0); expect(h.clipName).toBe('TurnRight');
-    for (let i = 0; i < 30; i++) h.animate(1 / 60, 0);
-    expect(h.clipName).toBe('TurnRight');
-    for (let i = 0; i < 60; i++) h.animate(1 / 60, 0);
-    expect(h.clipName).toBe('Idle');
-    h.group.rotation.y -= Math.PI / 2; h.animate(1 / 60, 0); expect(h.clipName).toBe('TurnLeft');
+    h.group.rotation.y += Math.PI / 2; h.animate(1 / 60, 0); expect(h.clipName).toBe('TurnLeft');
     for (let i = 0; i < 30; i++) h.animate(1 / 60, 0);
     expect(h.clipName).toBe('TurnLeft');
+    for (let i = 0; i < 60; i++) h.animate(1 / 60, 0);
+    expect(h.clipName).toBe('Idle');
+    h.group.rotation.y -= Math.PI / 2; h.animate(1 / 60, 0); expect(h.clipName).toBe('TurnRight');
+    for (let i = 0; i < 30; i++) h.animate(1 / 60, 0);
+    expect(h.clipName).toBe('TurnRight');
     for (let i = 0; i < 60; i++) h.animate(1 / 60, 0);
     expect(h.clipName).toBe('Idle');
     h.hold = 'Sit'; h.animate(1 / 60, 0); expect(h.clipName).toBe('SitEnter');
@@ -182,7 +182,7 @@ describe('reference candidate: retargeted contact and motion', () => {
   });
   it('holds one-shot turns and seat transitions on their final frame instead of replaying', () => {
     const h = new Humanoid(undefined, { scene: gltf.scene, clips: gltf.animations });
-    for (const name of ['TurnLeft', 'TurnRight', 'SitEnter', 'SitExit'] as const) {
+    for (const name of ['TurnRight', 'TurnLeft', 'SitEnter', 'SitExit'] as const) {
       h.reset(); h.hold = name;
       for (let i = 0; i < Math.ceil(clip(name).duration * 60) + 30; i++) h.animate(1 / 60, 0);
       expect(h.motionInfo()!.time, name).toBeCloseTo(clip(name).duration, 5);

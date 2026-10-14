@@ -49,11 +49,11 @@
       "cmu-turn.bvh": "497c1bcbad22d3a31b5301fb6686786d1073b74c36aadd0597adf9965acae7ab",
       "cmu-idle.bvh": "970eeb068da8c18cb4ce1a4b83769c5be76f7989e3cb173fa95ae3581d008314"
     },
-    "adaptations": "Nonzero Spine joint defines CMU rest/pose facing; TurnLeft retains captured stepping with normalized yaw, TurnRight mirrors armature deformation and swaps limbs. Idle uses relaxed-pose attenuation and a closed envelope."
+    "adaptations": "Nonzero Spine joint defines CMU facing; TurnRight retains the negative-yaw capture, TurnLeft mirrors deformation and swaps limbs. Rig left thigh is +X and front is +Z, so positive game yaw is left. Idle uses relaxed-pose attenuation and a closed envelope."
   },
   "output": {
     "file": "public/assets/reference_character.glb",
-    "sha256": "98916b949149fcb6d783f3918b3cf4d0326180324f6761bbc4c0a000af42fd58",
+    "sha256": "b8e9fe5281134cde41204b88380472d16e3fd0d357f96e16e11426f129d86a3a",
     "bytes": 2003600
   }
 }

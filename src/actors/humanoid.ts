@@ -17,7 +17,7 @@ import referencePace from './referenceMotion.json';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'TurnLeft' | 'TurnRight' | 'Talk' | 'Sit' | 'SitEnter' | 'SitExit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
+export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'TurnRight' | 'TurnLeft' | 'Talk' | 'Sit' | 'SitEnter' | 'SitExit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
 export type PoseClip = 'Lie' | 'SitFloor' | 'Ride';
 export type Style = 'boubou' | 'tee' | 'dress';
@@ -426,7 +426,7 @@ export class Humanoid {
   private readonly reference: boolean;
   private referenceYaw = NaN;
   private referenceTurnTime = 0;
-  private referenceTurnClip: 'TurnLeft' | 'TurnRight' = 'TurnLeft';
+  private referenceTurnClip: 'TurnRight' | 'TurnLeft' = 'TurnRight';
   private referenceSitting = false;
   private referenceSeatTime = 0;
   private referenceSeatClip: 'SitEnter' | 'SitExit' = 'SitEnter';
@@ -527,7 +527,7 @@ export class Humanoid {
     const next = this.actions.get(name); if (!next) return;
     this.settled = false; this.sinceSwitch = 0;
     next.reset();
-    const once = this.reference && ['TurnLeft', 'TurnRight', 'SitEnter', 'SitExit'].includes(name);
+    const once = this.reference && ['TurnRight', 'TurnLeft', 'SitEnter', 'SitExit'].includes(name);
     next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, once ? 1 : Infinity);
     next.clampWhenFinished = once; next.timeScale = 1;
     if (offset) next.time = offset * next.getClip().duration;
@@ -614,7 +614,8 @@ export class Humanoid {
     }
     if (!sitting && (held || this.v > .2)) this.referenceSeatTime = 0;
     if (!held && this.v < .2 && Math.abs(turn) > .5 && this.referenceTurnTime <= 0) {
-      this.referenceTurnClip = turn > 0 ? 'TurnRight' : 'TurnLeft';
+      // This rig faces +Z with its left thigh on +X, so positive yaw turns toward its left.
+      this.referenceTurnClip = turn > 0 ? 'TurnLeft' : 'TurnRight';
       this.referenceTurnTime = this.actions.get(this.referenceTurnClip)?.getClip().duration ?? 0;
     }
     if (held || this.v > .2) this.referenceTurnTime = 0;
@@ -645,7 +646,7 @@ export class Humanoid {
     this.lag = 0; this.due = 0; this.near = true; this.settled = false; this.sinceSwitch = 0;
     this.lx = NaN; this.lz = NaN; this.v = 0; this.saved = null;
     this.referenceYaw = NaN; this.referenceTurnTime = 0;
-    this.referenceTurnClip = 'TurnLeft';
+    this.referenceTurnClip = 'TurnRight';
     this.referenceSitting = false; this.referenceSeatTime = 0;
     this.faceOn = true; for (const m of this.face) m.visible = true;
     this.group.position.set(0, 0, 0); this.group.rotation.set(0, 0, 0);
