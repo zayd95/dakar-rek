@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-0437-WATCH.md",
-    "checkedAt": "2026-10-14T04:37:03Z",
-    "result": "Common wave refs unchanged; external PR32 isolated with PR CI success and push pending, no ready registered source task.",
-    "owner": "producer_watch_0437",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-0536-WATCH.md",
+    "checkedAt": "2026-10-14T05:37:12Z",
+    "result": "Common wave refs unchanged; external PR32 advanced to 631e374 with exact PR/push/Workers checks success. No ready registered source task; distinct whole-wave acceptance remains missing.",
+    "owner": "producer_watch_0536",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "c06f6c7972d1a34812db4c5797b2d46d5ae1de96",
+    "baseCommit": "a0ff34aa4e7107a5e6d996b3b7d90ad7755d2734",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0437-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-14-0536-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -976,7 +976,7 @@
     "sha": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
     "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
     "owner": "other session; never mutate",
-    "checkedAt": "2026-10-14T04:37:03Z",
+    "checkedAt": "2026-10-14T05:37:12Z",
     "ci": [
       {
         "id": 115555018390,
@@ -1004,29 +1004,29 @@
     {
       "pr": 32,
       "branch": "feature/home-editor-ux",
-      "sha": "0a17a11c8b3900cdf6167883d0c6f0d60b3de7cc",
+      "sha": "631e3742507dd807acf6ec635721feebb43af056",
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Furnishing UX on mobile: orbit/zoom camera, drag to place, compact toolbar (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T04:37:03Z",
+      "checkedAt": "2026-10-14T05:37:12Z",
       "checks": [
         {
-          "id": 115677374072,
+          "id": 115683879753,
           "status": "completed",
           "conclusion": "success",
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-home-editor-ux/builds/ae566588-db5c-4a36-9451-9eec479ed19b"
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-home-editor-ux/builds/b2a46dbf-d090-48eb-99da-4b4803a615f2"
         },
         {
-          "id": 115677059634,
+          "id": 115683566951,
           "status": "completed",
           "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38510311761/job/115677059634"
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38512380303/job/115683566951"
         },
         {
-          "id": 115677024667,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38510300507/job/115677024667"
+          "id": 115683555539,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38512376971/job/115683555539"
         }
       ],
       "accepted": false
@@ -1038,7 +1038,7 @@
       "baseCommit": "ede516e599a74afe32a76201de10823570e88d85",
       "title": "Tiak moto: free basic bike, Monter anytime, mobile ride pad, courier box (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T04:37:03Z",
+      "checkedAt": "2026-10-14T05:37:12Z",
       "checks": [
         {
           "id": 115653633113,
@@ -1068,7 +1068,7 @@
       "baseCommit": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
       "title": "Test candidate: busy street + dynamic minimap on top of the reconcile candidate (do not merge)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T04:37:03Z",
+      "checkedAt": "2026-10-14T05:37:12Z",
       "checks": [
         {
           "id": 115604961651,
@@ -1098,7 +1098,7 @@
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T04:37:03Z",
+      "checkedAt": "2026-10-14T05:37:12Z",
       "checks": [
         {
           "id": 115643629637,
@@ -1121,18 +1121,5 @@
       ],
       "accepted": false
     }
-  ],
-  "registryWriter": {
-    "token": "cycle-20261014T0536Z-watch",
-    "owner": "producer_watch_0536",
-    "acquiredAt": "2026-10-14T05:36:06Z",
-    "expiresAt": "2026-10-14T06:06:06Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "a0ff34aa4e7107a5e6d996b3b7d90ad7755d2734",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0536-WATCH.md"
-    ]
-  }
+  ]
 }
