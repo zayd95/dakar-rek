@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-0034-WATCH.md",
-    "checkedAt": "2026-10-14T00:34:43Z",
-    "result": "Exact wave refs and PR28 e7a601e checks unchanged; no final reception or ready source task.",
-    "owner": "producer_watch_0034",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-0135-WATCH.md",
+    "checkedAt": "2026-10-14T01:35:05Z",
+    "result": "Wave refs and exact PR28 e7a601e checks unchanged; no final reception or source task ready. Transient missing response recovered by exact retry.",
+    "owner": "producer_watch_0135",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "9386f49fd9ca8662fc1228cba6252d66396ab9a9",
+    "baseCommit": "c10c1c78013003358d3a828ba17b6c1227fa0d55",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0034-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-14-0135-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -976,7 +976,7 @@
     "sha": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
     "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
     "owner": "other session; never mutate",
-    "checkedAt": "2026-10-14T00:34:43Z",
+    "checkedAt": "2026-10-14T01:35:05Z",
     "ci": [
       {
         "id": 115555018390,
@@ -999,18 +999,5 @@
     ],
     "reviews": [],
     "status": "isolated candidate; standard checks green, whole-wave reception not established"
-  },
-  "registryWriter": {
-    "token": "cycle-20261014T0135Z-watch",
-    "owner": "producer_watch_0135",
-    "acquiredAt": "2026-10-14T01:34:09Z",
-    "expiresAt": "2026-10-14T02:04:09Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "c10c1c78013003358d3a828ba17b6c1227fa0d55",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0135-WATCH.md"
-    ]
   }
 }
