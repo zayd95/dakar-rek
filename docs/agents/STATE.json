@@ -1,49 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T05:37:12Z",
+  "updatedAt": "2026-10-14T06:41:18Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261014T0636Z-qa-current",
-    "owner": "producer_0636",
-    "acquiredAt": "2026-10-14T06:36:07Z",
-    "expiresAt": "2026-10-14T07:06:07Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0636-QA.md",
-      "docs/agents/operations/reports/WAVE5-20261014-0636-QA.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "id": "WATCH-20261014-0636-QA",
-      "role": "qa",
-      "kind": "read_only_evidence_review",
-      "status": "review",
-      "owner": "qa_wave5_current_0636",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f",
-      "sourceCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
-      "allowedFiles": [
-        "docs/agents/operations/reports/WAVE5-20261014-0636-QA.md"
-      ],
-      "acceptance": [
-        "Reconcile true Wave5 scope/integration from current documents and commits",
-        "Read exact current source CI checkout/tests/typechecks/build/browser logs",
-        "Seek exact wave-specific performance/browser reports and final distinct acceptance",
-        "Report ready/needs-decision/blocked with evidence, no self-approval or source edits"
-      ],
-      "authority": "Read-only current-source evidence review; never mutate external refs",
-      "controlBriefCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -154,8 +119,8 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-14T05:37:12Z",
-    "lastVerifiedAt": "2026-10-13T00:29:00Z"
+    "lastCompletedRunAt": "2026-10-14T06:41:18Z",
+    "lastVerifiedAt": "2026-10-14T06:41:18Z"
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
@@ -186,7 +151,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "Inspect exact current0cbf0d4 final wave-specific evidence; preserve independent previous QA as historical, no ready registered source task and external UI work not to duplicate.",
+  "nextAction": "Obtain source-attributed wave-specific browser/performance logs and final acceptance from integration owner; PR17 current base conflict must be reconciled by external owner. Resume any registered ready source task; avoid duplicate PR28–32 work.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -324,15 +289,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-0536-WATCH.md",
-    "completedAt": "2026-10-14T05:37:12Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-0636-QA.md",
+    "completedAt": "2026-10-14T06:41:18Z",
     "actualRunCompleted": true,
-    "tasks": [],
+    "tasks": [
+      "WATCH-20261014-0636-QA"
+    ],
     "verifiedCandidates": [],
-    "owner": "producer_watch_0536",
-    "reviewer": null,
+    "owner": "producer_0636",
+    "reviewer": "qa_wave5_current_0636",
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261014T0536Z-watch"
+    "leaseReleased": "cycle-20261014T0636Z-qa-current"
   },
   "protectedRefsLatest": [
     {
@@ -594,7 +561,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-14T05:37:12Z",
+    "checkedAt": "2026-10-14T06:41:18Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -614,8 +581,8 @@
       "digest": "sha256:48303d65102527af4d227a5373cfe3a6749a85edc26875072d6658f405ac732c"
     },
     "missing": [
-      "Current0cbf0d4 exact full wave-specific browser/performance logs and final distinct acceptance not established",
-      "Previous independent review applies to146c280 only; source advanced with UI V2 steps0/1"
+      "Current source full wave-specific browser/performance logs not established by distinct QA",
+      "PR17 draft/reviews[] and mergeable=false/dirty require owner reconciliation and final acceptance"
     ],
     "authority": "read-only external wave; never mutate other-session refs",
     "candidateCi": {
@@ -692,12 +659,23 @@
       }
     },
     "independentEvidenceReview": {
-      "reviewer": "qa_wave5_0028",
+      "reviewer": "qa_wave5_current_0636",
       "status": "needs-decision",
-      "report": "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md",
-      "sourceCommit": "146c280168504ab1b963ab64e729bb09c05bfe8a",
-      "checkedAt": "2026-10-13T00:31:00Z",
-      "appliesToCurrentSource": false
+      "report": "docs/agents/operations/reports/WAVE5-20261014-0636-QA.md",
+      "sourceCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+      "checkedAt": "2026-10-14T06:41:18Z",
+      "appliesToCurrentSource": true
+    },
+    "publicationGate": {
+      "pr": 17,
+      "head": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+      "base": "7b951cad6b704f490c0efa715a5df6490446b814",
+      "mergeable": false,
+      "mergeableState": "dirty",
+      "draft": true,
+      "reviews": [],
+      "checkedAt": "2026-10-14T06:41:18Z",
+      "authority": "External owner only; no merge/deploy authorized"
     }
   },
   "externalFollowups": [
@@ -786,7 +764,7 @@
     "sha": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
     "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
     "owner": "other session; never mutate",
-    "checkedAt": "2026-10-14T05:37:12Z",
+    "checkedAt": "2026-10-14T06:41:18Z",
     "ci": [
       {
         "id": 115555018390,
@@ -818,7 +796,7 @@
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Furnishing UX on mobile: orbit/zoom camera, drag to place, compact toolbar (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T05:37:12Z",
+      "checkedAt": "2026-10-14T06:41:18Z",
       "checks": [
         {
           "id": 115683879753,
@@ -848,7 +826,7 @@
       "baseCommit": "ede516e599a74afe32a76201de10823570e88d85",
       "title": "Tiak moto: free basic bike, Monter anytime, mobile ride pad, courier box (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T05:37:12Z",
+      "checkedAt": "2026-10-14T06:41:18Z",
       "checks": [
         {
           "id": 115653633113,
@@ -878,7 +856,7 @@
       "baseCommit": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
       "title": "Test candidate: busy street + dynamic minimap on top of the reconcile candidate (do not merge)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T05:37:12Z",
+      "checkedAt": "2026-10-14T06:41:18Z",
       "checks": [
         {
           "id": 115604961651,
@@ -908,7 +886,7 @@
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T05:37:12Z",
+      "checkedAt": "2026-10-14T06:41:18Z",
       "checks": [
         {
           "id": 115643629637,

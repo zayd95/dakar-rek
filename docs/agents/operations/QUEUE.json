@@ -858,23 +858,24 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-0536-WATCH.md",
-    "checkedAt": "2026-10-14T05:37:12Z",
-    "result": "Common wave refs unchanged; external PR32 advanced to 631e374 with exact PR/push/Workers checks success. No ready registered source task; distinct whole-wave acceptance remains missing.",
-    "owner": "producer_watch_0536",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-0636-QA.md",
+    "checkedAt": "2026-10-14T06:41:18Z",
+    "result": "Independent exact-current QA completed needs-decision; standardCI green, wave-specific proofs incomplete, PR17 dirty gate confirmed.",
+    "owner": "producer_0636",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "a0ff34aa4e7107a5e6d996b3b7d90ad7755d2734",
+    "baseCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0536-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-14-0636-QA.md",
+      "docs/agents/operations/reports/WAVE5-20261014-0636-QA.md"
     ]
   },
   "evidenceReview": {
     "id": "WATCH-20261014-0636-QA",
     "role": "qa",
     "kind": "read_only_evidence_review",
-    "status": "review",
+    "status": "needs-decision",
     "owner": "qa_wave5_current_0636",
     "branch": "codex/agent-studio-active",
     "baseCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f",
@@ -889,7 +890,9 @@
       "Report ready/needs-decision/blocked with evidence, no self-approval or source edits"
     ],
     "authority": "Read-only current-source evidence review; never mutate external refs",
-    "controlBriefCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f"
+    "controlBriefCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f",
+    "report": "docs/agents/operations/reports/WAVE5-20261014-0636-QA.md",
+    "completedAt": "2026-10-14T06:41:18Z"
   },
   "externalFollowups": [
     {
@@ -977,7 +980,7 @@
     "sha": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
     "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
     "owner": "other session; never mutate",
-    "checkedAt": "2026-10-14T05:37:12Z",
+    "checkedAt": "2026-10-14T06:41:18Z",
     "ci": [
       {
         "id": 115555018390,
@@ -1009,7 +1012,7 @@
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Furnishing UX on mobile: orbit/zoom camera, drag to place, compact toolbar (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T05:37:12Z",
+      "checkedAt": "2026-10-14T06:41:18Z",
       "checks": [
         {
           "id": 115683879753,
@@ -1039,7 +1042,7 @@
       "baseCommit": "ede516e599a74afe32a76201de10823570e88d85",
       "title": "Tiak moto: free basic bike, Monter anytime, mobile ride pad, courier box (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T05:37:12Z",
+      "checkedAt": "2026-10-14T06:41:18Z",
       "checks": [
         {
           "id": 115653633113,
@@ -1069,7 +1072,7 @@
       "baseCommit": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
       "title": "Test candidate: busy street + dynamic minimap on top of the reconcile candidate (do not merge)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T05:37:12Z",
+      "checkedAt": "2026-10-14T06:41:18Z",
       "checks": [
         {
           "id": 115604961651,
@@ -1099,7 +1102,7 @@
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T05:37:12Z",
+      "checkedAt": "2026-10-14T06:41:18Z",
       "checks": [
         {
           "id": 115643629637,
@@ -1123,18 +1126,26 @@
       "accepted": false
     }
   ],
-  "registryWriter": {
-    "token": "cycle-20261014T0636Z-qa-current",
-    "owner": "producer_0636",
-    "acquiredAt": "2026-10-14T06:36:07Z",
-    "expiresAt": "2026-10-14T07:06:07Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0636-QA.md",
-      "docs/agents/operations/reports/WAVE5-20261014-0636-QA.md"
-    ]
-  }
+  "evidenceReviewHistory": [
+    {
+      "id": "WATCH-20261013-0028-QA",
+      "role": "qa",
+      "kind": "read_only_evidence_review",
+      "status": "needs-decision",
+      "owner": "qa_wave5_0028",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "5c830d2788ae4b2695120e15fcb86712e154cd9d",
+      "sourceCommit": "146c280168504ab1b963ab64e729bb09c05bfe8a",
+      "allowedFiles": [
+        "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md"
+      ],
+      "acceptance": [
+        "Inspect exact current integration CI logs and scope",
+        "Identify missing wave-specific controls and distinct final acceptance",
+        "No source edits, external ref mutation or self-approval; report evidence gaps honestly"
+      ],
+      "report": "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md",
+      "completedAt": "2026-10-13T00:31:00Z"
+    }
+  ]
 }
