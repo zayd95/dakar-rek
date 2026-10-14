@@ -1121,5 +1121,18 @@
       ],
       "accepted": false
     }
-  ]
+  ],
+  "registryWriter": {
+    "token": "cycle-20261014T0536Z-watch",
+    "owner": "producer_watch_0536",
+    "acquiredAt": "2026-10-14T05:36:06Z",
+    "expiresAt": "2026-10-14T06:06:06Z",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "a0ff34aa4e7107a5e6d996b3b7d90ad7755d2734",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-14-0536-WATCH.md"
+    ]
+  }
 }
