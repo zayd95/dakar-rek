@@ -999,5 +999,18 @@
     ],
     "reviews": [],
     "status": "isolated candidate; standard checks green, whole-wave reception not established"
+  },
+  "registryWriter": {
+    "token": "cycle-20261014T0337Z-watch",
+    "owner": "producer_watch_0337",
+    "acquiredAt": "2026-10-14T03:36:17Z",
+    "expiresAt": "2026-10-14T04:06:17Z",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "560ad3ee615197e734438734705356ddd52e6334",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-14-0337-WATCH.md"
+    ]
   }
 }
