@@ -10,13 +10,14 @@ import { addOwned, holds } from '../economy/assets';
  *   `vehicle:<asset>:hub|x|z|yaw`
  * No record yet (bought from « Biens », or never driven): it waits at its dealer's kerb.
  */
-export type VehicleAsset = 'jakarta' | 'clando';
+/** 'tiak': the courier's basic motorbike, lent by the Tiak Tiak depot of each hub: always available, never bought, never sold. */
+export type VehicleAsset = 'jakarta' | 'clando' | 'tiak';
 export interface Parked { asset: VehicleAsset; hub: HubId; x: number; z: number; yaw: number }
 
 const key = (id: VehicleAsset, f: string) => `vehicle:${id}:${f}`;
 
 /** The player owns it (the asset model's word). */
-export const ownsVehicle = (s: GameState, id: VehicleAsset) => holds(s, id);
+export const ownsVehicle = (s: GameState, id: VehicleAsset) => id === 'tiak' || holds(s, id);
 
 export function parked(data: SaveData, id: VehicleAsset): Parked | null {
   const c = data.counters, n = (f: string) => c[key(id, f)];
