@@ -317,8 +317,12 @@ function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, nu
 const interactions = new Interactions();
 const seats = new Seats();
 let seated: Seat | null = null;
+/** Where the player stood before sitting down on the seat (the spot beside it): standing up goes back there. */
+let sitOrigin: { id: string; x: number; z: number; yaw: number } | null = null;
 /** Seconds left standing up on a place in the stands, arms up (« Encourager »), before sitting back down. */
 let cheerT = 0;
+/** Getting up: the body rises from the seat to the spot it sat down from (or a free spot beside the seat) in 0.45 s, never a jump. */
+let rising: { from: THREE.Vector3; to: THREE.Vector3; yaw0: number; yaw1: number; t: number; last: THREE.Vector3 } | null = null;
 /** Walking to a seat before sitting (meals, « S’asseoir »): legs round the furniture, then a short sit-down. */
 let approach: { seat: Seat; path: { x: number; z: number }[]; i: number; t: number; settle: number; from?: { x: number; y: number; z: number; yaw: number } } | null = null;
 /** A gameplay module moving the player during an activity (carrying, running…): legs speed and facing. */
@@ -435,9 +439,13 @@ function actionSpec(a: Action, it?: Interactable): ActivitySpec {
   return { id: a.id, primitive: verb, label: a.label, detail: a.detail, price: a.cost, steps, requires: a.requires ? () => a.requires!(state) : undefined, quiet: a.quiet, plain: !a.steps };
 }
 
-function sitOn(seat: Seat, force = false) {
+function sitOn(seat: Seat, force = false, from?: { x: number; z: number; yaw: number }) {
   if ((!force && mode !== 'play') || seated || !seats.occupy(seat.id, 'player')) return;
-  approach = null;
+  approach = null; rising = null;
+  // where the player stood before: standing up goes back there (a walk to the seat gives its last spot; a sit from where
+  // one stands counts when that is right beside the seat)
+  const near = Math.hypot(pos.x - seat.x, pos.z - seat.z);
+  sitOrigin = from ? { id: seat.id, ...from } : near > 0.25 && near <= 2 && seat.kind !== 'vehicle' ? { id: seat.id, x: pos.x, z: pos.z, yaw: facing } : null;
   seated = seat; speed = 0; hideProxy(); emoteT = 0; previewT = 0; cheerT = 0;
   pos.set(seat.x, sitOriginY(seat) + (inside ? 0 : 0), seat.z); facing = seat.yaw;
   if (playerBody) playerBody.hold = seatClip(seat);
@@ -452,6 +460,7 @@ const SIT_HERE = 3.5;
 function goSit(seat: Seat): boolean {
   if (seated?.id === seat.id) return true;
   if (seated) standUp();
+  finishRising();                                              // from the spot it rose to, not from the old seat
   if (!world || approach || !seats.occupy(seat.id, 'player')) return false;
   // a boat's or a vehicle's seat is boarded, not walked round; with no route but already beside it (a stool at a tap,
   // a place in a prayer row, a salon chair inside its own furniture), the player sits down where they are
@@ -488,7 +497,7 @@ function stepApproach(dt: number) {
   pos.set(lerp(f.x, s.x, k), lerp(f.y, sitOriginY(s), k), lerp(f.z, s.z, k));
   facing = f.yaw + Math.atan2(Math.sin(s.yaw - f.yaw), Math.cos(s.yaw - f.yaw)) * k;
   if (a.settle >= 1) {
-    sitOn(s, true);
+    sitOn(s, true, { x: f.x, z: f.z, yaw: f.yaw });
     if (!activities.running && mode === 'busy') { mode = 'play'; input.enabled = true; }   // « S’asseoir » on its own
   }
 }
@@ -499,24 +508,48 @@ function cheer(seconds = 2.5) {
   if (ctxReady) for (const m of MODULES) m.cheered?.(ctx);           // the neighbours in one's own écurie's section answer (src/arena/supporters.ts)
   return true;
 }
-/** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
+/** Ends a rise at once (something else takes the player over: a new seat, a door, a trip). */
+function finishRising() { if (rising) { pos.copy(rising.to); facing = rising.yaw1; rising = null; } }
+/** One step of getting up: smooth from the seat to the spot, the legs take over (the Sit hold is already released). */
+function stepRising(dt: number) {
+  const r = rising!;
+  if (pos.distanceToSquared(r.last) > 1e-4) { rising = null; return; }        // moved by something else (a teleport, a door): not ours any more
+  r.t = Math.min(1, r.t + dt / 0.45); speed = 0;
+  const k = r.t * r.t * (3 - 2 * r.t);
+  pos.lerpVectors(r.from, r.to, k); r.last.copy(pos);
+  facing = r.yaw0 + Math.atan2(Math.sin(r.yaw1 - r.yaw0), Math.cos(r.yaw1 - r.yaw0)) * k;
+  if (r.t >= 1) rising = null;
+}
+/**
+ * Stand up from the seat (`inPlace`: just clear the state, e.g. before a door or a trip). The body returns to the spot it
+ * sat down from when that is still free, else to the first free spot round the seat (in front, beside, behind: a chair
+ * faces its table, so the front is often furniture), and gets there in 0.45 s, as the sit-down does.
+ */
 function standUp(inPlace = false) {
   if (approach) { seats.release(approach.seat.id, 'player'); approach = null; speed = 0; }
   if (!seated) return;
   const s = seated, cheering = cheerT > 0; seats.release(s.id, 'player'); seated = null; cheerT = 0;
   if (playerBody && (playerBody.hold === seatClip(s) || (cheering && playerBody.hold === 'Celebrate'))) playerBody.hold = null;
-  if (inPlace || !world) return;
-  // the first free spot: in front of a chair; out of a bed by a side (or past its foot), never inside furniture or a wall
+  const origin = sitOrigin && sitOrigin.id === s.id && Math.hypot(sitOrigin.x - s.x, sitOrigin.z - s.z) <= 2 ? sitOrigin : null;
+  sitOrigin = null;
+  if (inPlace || !world) { rising = null; return; }
+  // the first free spot: where it came from, in front of a chair, beside it, behind it; out of a bed by a side (or past its foot); never inside furniture or a wall
   const cols = inside ? inside.int.colliders : world.colliders, r = inside ? 0.3 : 0.5;
+  const fx = Math.sin(s.yaw), fz = Math.cos(s.yaw), lx = Math.cos(s.yaw), lz = -Math.sin(s.yaw);
+  const spots = [
+    ...(origin ? [{ x: origin.x, z: origin.z }] : []),
+    ...standSpots(s),
+    ...(s.exits?.length || s.clip === 'Lie' ? [] : [{ x: s.x + lx * 0.75, z: s.z + lz * 0.75 }, { x: s.x - lx * 0.75, z: s.z - lz * 0.75 }, { x: s.x - fx * 0.7, z: s.z - fz * 0.7 }]),
+  ];
   let nx = s.x, nz = s.z, best = Infinity;
-  for (const p of standSpots(s)) {
+  for (const [i, p] of spots.entries()) {
     const [x, z] = pushOut(p.x, p.z, r, cols);
     const blocked = cols.some(c => x > c.x0 - r * 0.9 && x < c.x1 + r * 0.9 && z > c.z0 - r * 0.9 && z < c.z1 + r * 0.9);
-    const cost = Math.hypot(x - p.x, z - p.z) + (blocked ? 10 : 0);
+    const cost = Math.hypot(x - p.x, z - p.z) + (blocked ? 10 : 0) + i * 0.02;       // a free spot in the list order wins; a pushed one only when none is free
     if (cost < best - 1e-6) { best = cost; nx = x; nz = z; }
   }
-  if (s.clip === 'Lie') facing = Math.atan2(nx - s.x, nz - s.z);                // out of bed, facing away from it
-  pos.set(nx, 0.1 + (inside ? 0 : world.heightAt(nx, nz)), nz);
+  const yaw1 = s.clip === 'Lie' ? Math.atan2(nx - s.x, nz - s.z) : facing;           // out of bed, facing away from it
+  rising = { from: pos.clone(), to: new THREE.Vector3(nx, 0.1 + (inside ? 0 : world.heightAt(nx, nz)), nz), yaw0: facing, yaw1, t: 0, last: pos.clone() };
 }
 /** Registers the seats of the hub, its interiors and marks those already used by the ambient people. */
 function registerSeats() {
@@ -1162,6 +1195,7 @@ function frameStep(now: number, dt: number, draw = true) {
   if (profOn) for (const m of MODULES) { const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }
   else for (const m of MODULES) m.update?.(ctx, dt);
 
+  if (rising && mode !== 'play') finishRising();                        // a door, a trip or a scene took over mid-rise
   const drag = input.takeDrag();
   drag.yaw += input.rotateKey() * dt * 1.8;
   if (lambScene) {
@@ -1177,6 +1211,9 @@ function frameStep(now: number, dt: number, draw = true) {
     else if (cheerT > 0) { cheerT -= dt; pos.set(seated.x, seated.top + 0.1, seated.z); facing = seated.yaw; if (playerBody) playerBody.hold = 'Celebrate'; }   // up on the tier, arms up
     else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = seatClip(seated); }
     if (mode !== 'menu') state.tick(dt * 1000);
+  } else if (mode === 'play' && rising) {
+    stepRising(dt);
+    state.tick(dt * 1000);
   } else if (mode === 'play') {
     const m = input.move();
     const fx = Math.sin(follow.yaw), fz = Math.cos(follow.yaw), rx = -Math.cos(follow.yaw), rz = Math.sin(follow.yaw);
@@ -1236,7 +1273,7 @@ function frameStep(now: number, dt: number, draw = true) {
   // fighting at the arena: where the player's wrestler stands in the ring, in a fighting stance (src/arena/myGala.ts)
   const ring = arenaDuel() ? (lambScene as LambDuel).fighterPoints()[0] : null;
   presence.publish(ring ? { type: 'move', x: ring[0], y: ring[1], z: ring[2], yaw: facing, speed: 0, space, clip: 'Stance', ...extras }
-    : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach || drive ? speed : 0, space, clip, ...extras }, now);   // walking to a seat or carrying: the legs move for others too
+    : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach || drive ? Math.min(speed, 6) : 0, space, clip, ...extras }, now);   // walking to a seat or carrying: the legs move for others too
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
@@ -1282,7 +1319,7 @@ void start();
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
     state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
-    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
+    presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, bikes: remoteAvatars.bikes, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
     // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
     setHour(h: number | null) { hourOverride = h; },
@@ -1325,7 +1362,11 @@ if (DEBUG) {
     roomGeometry: () => inside ? { colliders: inside.int.colliders, bounds: inside.int.bounds } : null,
     seatsHere: () => seats.inSpace(interactSpace()).map(s => ({ id: s.id, x: s.x, z: s.z, top: s.top, yaw: s.yaw, kind: s.kind, occupant: s.occupant, table: s.table ?? null })),
     sit(id: string) { const s = seats.get(id); if (s) sitOn(s); return seated?.id ?? null; },
+    /** Debug: « S'asseoir » as the player does it (walks round the furniture to the seat first). */
+    sitWalk(id: string) { const s = seats.get(id); if (!s || !goSit(s)) return false; mode = 'busy'; input.enabled = false; return true; },
     stand() { standUp(); },
+    /** Debug: where the player sat down from (the spot beside the seat), or null. */
+    sitOrigin: () => sitOrigin ? { x: +sitOrigin.x.toFixed(2), z: +sitOrigin.z.toFixed(2) } : null,
     /** « Encourager » from a place in the stands (true if the player rose to cheer). */
     cheer(s?: number) { return cheer(s); },
     more() { openMore(); },

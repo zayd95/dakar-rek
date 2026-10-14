@@ -483,7 +483,16 @@ class Estate {
       rows.push(['Revente', `tout de suite, ${Math.round(ECONOMY.property.saleShare * 100)} % de sa valeur`]);
     }
     this.confirm(`Acheter : ${sp.name.split(' · ')[0]}`, rows, 'Acheter', '−' + fcfa(sp.price!), cannotBuy(s, sp.id),
-      () => { if (buyAsset(s, sp.id)) this.done(`${sp.name.split(' · ')[0]} est à toi ✓  −${fcfa(sp.price!)}`, back); }, back);
+      () => {
+        const a = buyAsset(s, sp.id); if (!a) return;
+        this.ctx.toast(`${sp.name.split(' · ')[0]} est à toi ✓  −${fcfa(sp.price!)}`); this.ctx.save();
+        // New furniture goes to the home you live in: offer to move in right away so it does not land in the old room.
+        if (homeSpec(sp.id) && !cannotMoveIn(s, a.uid)) {
+          const n = furnitureIn(s, currentHome(s).uid).length;
+          this.confirm('Emménager maintenant ?', [['Tes meubles', n ? `les ${n} pièces te suivent` : 'tu les achèteras ici'], ['Sinon', 'les meubles achetés iront dans ton ancien logement']], 'Emménager', '',
+            null, () => { if (moveIn(s, a.uid, true)) this.done(`Tu habites maintenant : ${sp.name.split(' · ')[0]} ✓ · tes meubles ont suivi`, back); }, back);
+        } else back();
+      }, back);
   }
   private confirmRent(sp: AssetSpec) {
     const s = this.s, back = () => this.openSheet(sp.id);

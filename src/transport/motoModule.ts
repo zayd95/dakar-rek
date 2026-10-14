@@ -1,4 +1,5 @@
 import type { HubWorld, Interactable } from '../world/types';
+import { vehicleSpec } from '../actors/vehicleKit';
 import { motoSpec, jakartaSeed, MOTO_ASSET, MOTO_DETAIL } from './moto';
 import { OwnedVehicleModule, type DealerSite } from './ownedModule';
 
@@ -40,4 +41,48 @@ export const moto = new OwnedVehicleModule({
     welcome: 'Ta moto t’attend au bord de la route. Jërëjëf !', parked: 'Moto garée.', owned: 'Elle est déjà à toi',
   },
   exit: 'left', reach: 1.8,
+});
+
+// ------------------------------------------------------------------ the Tiak Tiak courier's bike (lent, free)
+
+/** A kit seed giving a motorbike that is not the red Jakarta (the lent bike looks different). */
+let tiakSeedCache = 0;
+export function tiakSeed(): number {
+  if (tiakSeedCache) return tiakSeedCache;
+  const red = vehicleSpec('moto', { seed: jakartaSeed(), driver: false, passengers: false }).colors.body;
+  for (let s = 1; s < 400; s++) {
+    const sp = vehicleSpec('moto', { seed: s, driver: false, passengers: false });
+    if (sp.variant < 10 && sp.colors.body !== red) return (tiakSeedCache = s);
+  }
+  return (tiakSeedCache = 2);
+}
+
+/**
+ * Where the lent bike waits in a hub: a few metres from where the player arrives, on free ground (clear of every
+ * collider by a metre, inside the hub), facing the way the player faces.
+ */
+export function tiakDepot(hub: HubWorld): { x: number; z: number; yaw: number } | null {
+  const sp = hub.spawn, b = hub.bounds, free = (x: number, z: number) =>
+    x > b.x0 + 2 && x < b.x1 - 2 && z > b.z0 + 2 && z < b.z1 - 2 && !hub.colliders.some(c => x > c.x0 - 1.2 && x < c.x1 + 1.2 && z > c.z0 - 1.2 && z < c.z1 + 1.2);
+  for (const r of [3, 4, 5.5, 7, 9]) {
+    for (let k = 0; k < 8; k++) {
+      const a = sp.yaw + Math.PI / 2 + (k * Math.PI) / 4, x = sp.x + Math.sin(a) * r, z = sp.z + Math.cos(a) * r;
+      if (free(x, z)) return { x, z, yaw: sp.yaw };
+    }
+  }
+  return null;
+}
+
+/**
+ * Tiak Tiak lends a basic motorbike in every hub: « Monter » at any time, no purchase, no delivery needed. It carries the
+ * courier's box with the run's parcel in it. The paid Jakarta above stays the bike to own. Same riding as every bike here.
+ */
+export const tiakMoto = new OwnedVehicleModule({
+  key: 'tiak', asset: 'tiak', detail: 'Prêtée par Tiak Tiak', icon: '🏍️', kit: 'moto',
+  seed: tiakSeed, spec: motoSpec, height: 1.1, space: 'moto:tiak',
+  loaner: { depot: tiakDepot }, box: true,
+  text: {
+    mine: 'Moto Tiak Tiak', getOn: 'Monter', getOff: 'Descendre', confirm: '', delivered: '', welcome: '', parked: 'Moto garée.', owned: 'Prêtée',
+  },
+  exit: 'left', reach: 2.2,
 });

@@ -12,6 +12,8 @@ import { RideCard } from './ui';
 import { driveStep, newDriveState, type DriveState } from './drive';
 import { assetsRevision, buyAsset, cannotBuy, holding } from '../economy/assets';
 import { specOf } from '../economy/catalog';
+import { buildCourierBox, type CourierBox } from './courierBox';
+import { ridePad } from './ridePad';
 import { migrateOwned, ownsVehicle, park, parked, unpark, type VehicleAsset } from './owned';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
@@ -71,11 +73,18 @@ export interface OwnedDef {
   height: number;
   /** Interaction space while driving: `<hub>:<space>`. */
   space: string;
-  dealer: {
+  dealer?: {
     hub: HubId; name: string; catalogue: string;
     site(hub: HubWorld): DealerSite | null;
     sign: { bg: string; band: string; title: string; sub: string; subColor: string };
   };
+  /**
+   * A lent vehicle (the Tiak depot's motorbike): no dealer and no price, it is in every hub where the player stands, at
+   * the spot returned here until they leave it somewhere (then it stays there, in that hub).
+   */
+  loaner?: { depot(hub: HubWorld): { x: number; z: number; yaw: number } | null };
+  /** A courier's box on the back; a parcel shows in it while a Tiak run is in hand. */
+  box?: boolean;
   text: {
     /** Name of the parked vehicle as a target (« Ta moto Jakarta »). */
     mine: string;
@@ -169,6 +178,10 @@ export class OwnedVehicleModule implements GameModule {
   private lean = 0;
   /** Asset model revision last looked at. */
   private rev = -1;
+  /** The courier's box on the back (a Tiak bike). */
+  private box: CourierBox | null = null;
+  /** Stepping up to the saddle (0.28 s) before the seat is taken: from where the player stood. */
+  private mounting: { t: number; fx: number; fz: number } | null = null;
 
   readonly def: OwnedDef;
   private readonly parkedTarget: Target;
@@ -187,6 +200,7 @@ export class OwnedVehicleModule implements GameModule {
     const ui = document.getElementById('ui');
     if (ui) this.card = new RideCard(ui, `${this.def.key}-card`);
     ctx.interactions.add(this.targets);
+    if (ui && this.def.kit === 'moto') ridePad.init(ui);
   }
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
@@ -194,13 +208,13 @@ export class OwnedVehicleModule implements GameModule {
     this.clear();
     this.hub = hub;
     this.spec = this.def.spec();
-    if (hub.id === this.def.dealer.hub) this.buildDealer(ctx, hub);
+    if (this.def.dealer && hub.id === this.def.dealer.hub) this.buildDealer(ctx, hub);
     migrateOwned(ctx.state);                                    // a save from before the asset model
     this.sync(); this.rev = assetsRevision();
   }
 
   /** Name and price from the catalogue. */
-  private label() { return specOf(this.def.asset)?.name ?? this.def.key; }
+  private label() { return specOf(this.def.asset)?.name ?? this.def.text.mine; }
   private price() { return specOf(this.def.asset)?.price ?? 0; }
 
   /**
@@ -216,7 +230,8 @@ export class OwnedVehicleModule implements GameModule {
     }
     if (this.vehicle || !this.hub) return;
     let p = parked(s.data, a);
-    if (!p && this.dealer) { p = { asset: a, hub: this.hub.id, ...this.dealer.site.delivery }; park(s.data, p); }
+    if (this.def.loaner && (!p || p.hub !== this.hub.id)) { const d = this.def.loaner.depot(this.hub); p = d ? { asset: a, hub: this.hub.id, ...d } : null; }   // lent: at this hub's depot until left elsewhere
+    else if (!p && this.dealer) { p = { asset: a, hub: this.hub.id, ...this.dealer.site.delivery }; park(s.data, p); }
     if (p && p.hub === this.hub.id) this.spawn(p.x, p.z, p.yaw);
   }
 
@@ -257,11 +272,21 @@ export class OwnedVehicleModule implements GameModule {
   update(ctx: GameCtx, dt: number) {
     const r = assetsRevision(); if (r !== this.rev && this.hub) { this.rev = r; this.sync(); }   // bought or sold in « Biens »
     const m = this.vehicle; if (!m || !this.spec?.drive) return;
+    if (this.box) this.box.parcel.visible = ctx.state.data.jobs.active?.stage === 'deliver';   // the run's parcel is in the box
     if (this.solidCheck) { this.solidCheck = false; this.setSolid(!this.driving); }
+    if (this.mounting) {
+      const g = this.mounting, st = m.driverSeat; g.t = Math.min(1, g.t + dt / 0.28);
+      const k = g.t * g.t * (3 - 2 * g.t);
+      ctx.player.place(g.fx + (st.x - g.fx) * k, g.fz + (st.z - g.fz) * k, this.st.yaw);
+      if (g.t >= 1) { this.mounting = null; this.mountNow(); }
+      return;
+    }
     if (!this.driving) return;
     if (ctx.player.seated()?.id !== m.driverSeat.id) { this.getOff(false); return; }   // taken off by a door, a trip…
     const mv = ctx.mode() === 'play' ? ctx.input.move() : { x: 0, y: 0 };
-    const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : { throttle: mv.y, steer: mv.x };
+    if (this.def.kit === 'moto') ridePad.show(this, Math.abs(this.st.speed) < 0.3 && !this.leaving, () => { if (Math.abs(this.st.speed) < 0.5) this.getOff(true); });
+    const throttle = ridePad.active ? ridePad.throttle : mv.y;               // touch: the buttons give gas and brake, the stick only steers
+    const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : { throttle, steer: mv.x };
     transport.obstacles(this.obst, this.def.kit);
     const v0 = Math.abs(this.st.speed);
     const hit = driveStep(this.st, input, this.spec.drive, dt, this.blocked);
@@ -304,7 +329,10 @@ export class OwnedVehicleModule implements GameModule {
           dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.lots ?? this.dealer.site.displays.length, onSale: this.dealer.sale ? this.dealer.sale.group.visible : null, card: !!this.dealer.card } : null,
           space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
+        at: () => this.vehicle ? { x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active } : null,
         card: () => this.card?.text ?? '',
+        /** Checks: the bike's speed in m/s while it is ridden (the online check rides above the 6 m/s presence limit). */
+        boost: (v: number) => { if (this.driving) this.st.speed = v; },
         /** Checks: put the vehicle (and its driver) at a spot, stopped. */
         place: (x: number, z: number, yaw: number) => { if (!this.vehicle) return; this.st.x = x; this.st.z = z; this.st.yaw = yaw; this.st.speed = 0; this.vehicle.place(x, z, yaw, 0, 0, this.st.odo, 0); if (!this.driving) this.setSolid(true); },
       },
@@ -313,7 +341,7 @@ export class OwnedVehicleModule implements GameModule {
 
   // ---------------------------------------------------------------- the dealer corner
   private buildDealer(ctx: GameCtx, hub: HubWorld) {
-    const D = this.def.dealer, site = D.site(hub);
+    const D = this.def.dealer!, site = D.site(hub);
     if (!site) return;
     clearKerb(ctx.extra, hub.colliders, site.kerb);
     const g = new THREE.Group(); g.name = `${this.def.key}:dealer`;
@@ -371,7 +399,7 @@ export class OwnedVehicleModule implements GameModule {
 
   private openCatalogue() {
     const ctx = this.ctx, mine = ownsVehicle(ctx.state, this.def.asset);
-    ctx.menu(this.def.dealer.name, 'Le prix est affiché avant de confirmer.', [{
+    ctx.menu(this.def.dealer!.name, 'Le prix est affiché avant de confirmer.', [{
       icon: this.def.icon, label: this.label(), detail: mine ? this.def.text.owned : this.def.detail, right: fcfa(this.price()), disabled: mine,
       onPick: () => this.confirm(),
     }]);
@@ -415,6 +443,8 @@ export class OwnedVehicleModule implements GameModule {
     m.place(x, z, yaw, 0, 0, 0, 0);
     this.ctx.seats.add(m.driverSeat);
     this.ctx.extra.add(m.group);
+    this.box?.dispose(); this.box = null;
+    if (this.def.box) { this.box = buildCourierBox(); this.box.group.position.set(0, 0.8, -this.spec.length / 2 + 0.2); (m.group.children[0] ?? m.group).add(this.box.group); }
     this.vehicle = m;
     this.setSolid(true);
     this.solidCheck = true;
@@ -431,7 +461,14 @@ export class OwnedVehicleModule implements GameModule {
     cs.push(...this.solid);
   }
 
+  /** « Monter »: from where the player stands the body steps to the saddle (a short glide), then takes the seat. */
   private getOn() {
+    const ctx = this.ctx, m = this.vehicle; if (!m || this.driving || this.mounting || ctx.activities.running) return;
+    const p = ctx.player.pos;
+    if (Math.hypot(m.driverSeat.x - p.x, m.driverSeat.z - p.z) > 0.7 && !ctx.player.seated()) { this.mounting = { t: 0, fx: p.x, fz: p.z }; return; }
+    this.mountNow();
+  }
+  private mountNow() {
     const ctx = this.ctx, m = this.vehicle; if (!m || this.driving || ctx.activities.running) return;
     ctx.player.standUp(true);
     m.place(this.st.x, this.st.z, this.st.yaw, 0, 0, this.st.odo, 0);
@@ -441,14 +478,14 @@ export class OwnedVehicleModule implements GameModule {
     this.setSolid(false);
     m.setRidden(true);
     this.cam.begin(ctx.camera, m.pose); this.camMs = 0;
-    ctx.toast(HINT);
+    if (!document.body.classList.contains('touch')) ctx.toast(HINT);          // touch: the pad's own labels say it
     this.refreshCard();
   }
 
   /** Off the vehicle, beside it; it stays parked there. `normal`: the player chose to get off. */
   private getOff(normal: boolean) {
     const ctx = this.ctx, m = this.vehicle; if (!m || !this.driving || !this.hub) return;
-    this.driving = false; this.leaving = false;
+    this.driving = false; this.leaving = false; ridePad.hide(this);
     if (ctx.player.seated()?.id === m.driverSeat.id) ctx.player.standUp(true);
     this.st.speed = 0;
     m.place(this.st.x, this.st.z, this.st.yaw, 0, 0, this.st.odo, 0);
@@ -515,7 +552,9 @@ export class OwnedVehicleModule implements GameModule {
   private clear() {
     if (this.driving) { this.driving = false; this.cam.end(); this.upright(); }
     this.setSolid(false);
+    this.mounting = null;
     this.vehicle?.dispose(); this.vehicle = null;
+    this.box?.dispose(); this.box = null; ridePad.hide(this);
     if (this.dealer) {
       for (const geo of this.dealer.geos) geo.dispose();
       for (const mat of this.dealer.mats) mat.dispose();
@@ -555,7 +594,7 @@ export class OwnedVehicleModule implements GameModule {
 }
 
 /** The price card of the vehicle for sale, in the dealer's colours: its catalogue name and price (fictional names only). */
-function cardTexture(name: string, price: string, o: OwnedDef['dealer']['sign']): THREE.CanvasTexture | null {
+function cardTexture(name: string, price: string, o: NonNullable<OwnedDef['dealer']>['sign']): THREE.CanvasTexture | null {
   if (typeof document === 'undefined') return null;
   const cv = document.createElement('canvas'); cv.width = 240; cv.height = 160;
   const c = cv.getContext('2d'); if (!c) return null;
@@ -571,7 +610,7 @@ function cardTexture(name: string, price: string, o: OwnedDef['dealer']['sign'])
 }
 
 /** The dealer's sign, drawn in code (fictional names only). */
-function signTexture(o: OwnedDef['dealer']['sign']): THREE.CanvasTexture | null {
+function signTexture(o: NonNullable<OwnedDef['dealer']>['sign']): THREE.CanvasTexture | null {
   if (typeof document === 'undefined') return null;
   const cv = document.createElement('canvas'); cv.width = 384; cv.height = 128;
   const c = cv.getContext('2d'); if (!c) return null;

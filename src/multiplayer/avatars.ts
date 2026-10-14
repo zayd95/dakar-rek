@@ -3,10 +3,11 @@ import { Humanoid, humanoidReady, type PersonLook } from '../actors/humanoid';
 import { Character, PLAYER_OUTFIT } from '../actors/character';
 import type { PresenceClient } from './client';
 import type { Peer } from './protocol';
+import { buildVehicle } from '../actors/vehicleKit';
 
 export const SHIRT_COLORS = [0x1a9d54, 0x2f6fb3, 0xd9482b, 0xf4c20d, 0x6b3fa0, 0xf2f2ec];
 export function avatarLook(index: number): PersonLook { return { skin: 0x6b3f25, style: 'tee', top: SHIRT_COLORS[index] ?? SHIRT_COLORS[0], accent: 0xf4c20d, pattern: 'uni', bottom: 0x3d4a5c, shoes: 0xf2f2ec }; }
-interface Avatar { body: Humanoid | Character; name: THREE.Sprite; texture: THREE.CanvasTexture; look: number; label: string; rec: string; h: number }
+interface Avatar { body: Humanoid | Character; name: THREE.Sprite; texture: THREE.CanvasTexture; look: number; label: string; rec: string; h: number; bike?: THREE.Group }
 
 /** Only the nearest visible players get an animated body; peers outside the view remain lightweight state. */
 export class RemoteAvatars {
@@ -35,6 +36,10 @@ export class RemoteAvatars {
       const yaw = a.body.group.rotation.y;
       a.body.group.rotation.y += Math.atan2(Math.sin(peer.yaw - yaw), Math.cos(peer.yaw - yaw)) * (1 - Math.exp(-dt * 12));
       if (a.body instanceof Humanoid) a.body.hold = peer.clip;
+      // astride a motorbike: others see the bike under the rider (the Ride pose alone would show someone floating)
+      if (peer.clip === 'Ride' && !a.bike) { a.bike = buildVehicle('moto', { seed: 7, driver: false, passengers: false }).group; this.group.add(a.bike); }
+      else if (peer.clip !== 'Ride' && a.bike) { this.disposeBike(a); }
+      if (a.bike) { a.bike.position.set(a.body.group.position.x, 0.12, a.body.group.position.z); a.bike.rotation.y = a.body.group.rotation.y; }
       a.body.animate(dt, peer.speed);
       if (a.body instanceof Humanoid) this.dress(a.body, peer);
       a.name.visible = Math.hypot(peer.x - local.x, peer.z - local.z) < 35;
@@ -45,6 +50,8 @@ export class RemoteAvatars {
   bodyOf(id: string): THREE.Object3D | null { return this.avatars.get(id)?.body.group ?? null; }
   clear() { for (const a of this.avatars.values()) this.drop(a); this.avatars.clear(); }
   get size() { return this.avatars.size; }
+  /** Peers drawn on a bike (checks). */
+  get bikes() { return [...this.avatars.values()].filter(a => a.bike).length; }
   /** The clip each drawn peer's body is playing (checks: a peer lying on a bed is drawn lying). */
   poses(): Record<string, string | null> { return Object.fromEntries([...this.avatars].map(([id, a]) => [id, a.body instanceof Humanoid ? a.body.clipName : null])); }
   /** What each drawn peer's body wears in an écurie's colours ('baobab:scarf'…; null: nothing), for the checks. */
@@ -64,7 +71,14 @@ export class RemoteAvatars {
     name.position.y = rec ? 2.45 : 2.35; body.group.add(name);
     return { body, name, texture, look: peer.look, label: peer.name, rec, h };
   }
+  private disposeBike(a: Avatar) {
+    if (!a.bike) return;
+    a.bike.removeFromParent();
+    a.bike.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) { m.geometry.dispose(); for (const mat of Array.isArray(m.material) ? m.material : [m.material]) mat.dispose(); } });
+    a.bike = undefined;
+  }
   private drop(a: Avatar) {
+    this.disposeBike(a);
     a.name.removeFromParent(); a.name.material.dispose(); a.texture.dispose();
     if (a.body instanceof Humanoid) {
       // Humanoid creates Lambert materials for these plain outfits; untouched Standard materials

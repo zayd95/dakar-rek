@@ -28,8 +28,8 @@ const DT = 1 / 60;
 const GAITS = [
   { name: 'walk', label: 'walk 1.4 m/s (light push)', stick: 0.59, spm: [105, 135] },
   { name: 'walk2', label: 'walk 2.0 m/s (full push: the default)', keys: ['KeyW'], spm: [135, 175] },
-  { name: 'jog', label: 'jog 4.2 m/s (Shift / « Courir »)', keys: ['KeyW'], level: 1, spm: [165, 195] },
-  { name: 'sprint', label: 'sprint 7 m/s (double-tapped Shift / « Courir » twice)', keys: ['KeyW'], level: 2, spm: [175, 215] },
+  { name: 'jog', label: 'jog 4.2 m/s (Shift / « Courir »)', keys: ['KeyW'], level: 1, spm: [172, 205] },
+  { name: 'sprint', label: 'sprint 7 m/s (double-tapped Shift / « Courir » twice)', keys: ['KeyW'], level: 2, spm: [185, 220] },
 ];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
@@ -120,7 +120,9 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   const start = async () => {
     await d(h => { const k = window.__dakar; k.pause?.(false); k.teleport('pikine'); k.setHour(10); k.state.data.needs.energie = 95; k.state.data.counters.forme = 60; void h; }, HEADING);
     await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine', null, T);
-    await d(h => { window.__dakar.place(-42, -66, h); window.__dakar.lookYaw(h); }, HEADING);
+    // a lane of the street with nothing solid on its first 40 m (stalls and parked cars stand on the pavements and kerbs)
+    const lane = await d(() => { const g = window.__dakar.cityGeometry(); for (const z of [-66, -64, -62, -60, -58, -56, -54, -68, -70]) if (!g.colliders.some(c => c.x1 > -43 && c.x0 < 0 && c.z1 > z - 0.9 && c.z0 < z + 0.9)) return z; return -66; });
+    await d(([h, z]) => { window.__dakar.place(-42, z, h); window.__dakar.lookYaw(h); }, [HEADING, lane]);
     await page.waitForTimeout(800);
     if (stepped) await d(() => window.__dakar.pause(true));
   };
