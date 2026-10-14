@@ -1,14 +1,40 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T14:36:47Z",
+  "updatedAt": "2026-10-14T15:37:08.396Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": null,
+  "lease": {
+    "token": "cycle-20261014T1532Z-pr33-qa",
+    "owner": "producer_pr33_1532",
+    "acquiredAt": "2026-10-14T15:37:08.396Z",
+    "expiresAt": "2026-10-14T16:20:00Z",
+    "baseCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
+    "scope": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-14-1532-PR33-QA.md"
+    ]
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "task": "WATCH-PR33-20261014-1532-QA",
+      "owner": "qa_pr33_1532",
+      "role": "qa",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
+      "sourceBranch": "feature/magic-land",
+      "sourceCommit": "e494be1e7d4e466918b81977dbbfbb1bda8b1b71",
+      "allowedFiles": [
+        "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
+      ],
+      "authority": "read-only external candidate QA; never mutate source branch"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,

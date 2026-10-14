@@ -1146,5 +1146,41 @@
       "report": "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md",
       "completedAt": "2026-10-13T00:31:00Z"
     }
-  ]
+  ],
+  "registryWriter": {
+    "token": "cycle-20261014T1532Z-pr33-qa",
+    "owner": "producer_pr33_1532",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-14-1532-PR33-QA.md"
+    ],
+    "acquiredAt": "2026-10-14T15:37:08.396Z"
+  },
+  "externalCandidateReview": {
+    "id": "WATCH-PR33-20261014-1532-QA",
+    "role": "qa",
+    "kind": "read_only_external_candidate_review",
+    "status": "active",
+    "owner": "qa_pr33_1532",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
+    "sourceBranch": "feature/magic-land",
+    "sourceCommit": "e494be1e7d4e466918b81977dbbfbb1bda8b1b71",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
+    ],
+    "acceptance": [
+      "Inspect PR33 exact diff and criteria at source SHA",
+      "Reconcile the success and failure checks at the exact SHA and read failing logs",
+      "Run relevant local tests in a fresh isolated checkout if feasible",
+      "Report ready/needs-decision/blocked without source edits or self-approval"
+    ],
+    "authority": "Read-only QA of other-session candidate; never mutate external refs",
+    "controlBriefCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
+    "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
+  }
 }
