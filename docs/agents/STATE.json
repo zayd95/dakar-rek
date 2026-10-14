@@ -1,22 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T23:28:07.799Z",
+  "updatedAt": "2026-10-14T23:28:30.907Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261014T2326Z-watch",
-    "owner": "producer_watch_2326",
-    "baseCommit": "46ba298c592520af68d115caf9f9a3b24dbfd71e",
-    "acquiredAt": "2026-10-14T23:28:07.799Z",
-    "expiresAt": "2026-10-15T00:05:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-2326-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -301,15 +290,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-2229-WATCH.md",
-    "completedAt": "2026-10-14T22:30:55.188Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-2326-WATCH.md",
+    "completedAt": "2026-10-14T23:28:30.907Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_2229",
+    "owner": "producer_watch_2326",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261014T2229Z-watch"
+    "leaseReleased": "cycle-20261014T2326Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +560,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-14T22:30:55.188Z",
+    "checkedAt": "2026-10-14T23:28:30.907Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -684,7 +673,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-14T22:30:55.188Z",
+      "checkedAt": "2026-10-14T23:28:30.907Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -974,14 +963,14 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-14T22:30:55.188Z",
+    "checkedAt": "2026-10-14T23:28:30.907Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
     "localTests": "local_not_run this cycle; documented Chromium EPERM not retried",
-    "delegation": "available; no new useful task",
+    "delegation": "available; no new useful assignment",
     "cloudflareAuthenticated": false
   }
 }
