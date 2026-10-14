@@ -1146,5 +1146,18 @@
       "report": "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md",
       "completedAt": "2026-10-13T00:31:00Z"
     }
-  ]
+  ],
+  "registryWriter": {
+    "token": "cycle-20261014T1036Z-watch",
+    "owner": "producer_watch_1036",
+    "acquiredAt": "2026-10-14T10:36:37Z",
+    "expiresAt": "2026-10-14T11:06:37.000Z",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "59d013bc652b0f2552a3087e9cdddb821bb0a505",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-14-1036-WATCH.md"
+    ]
+  }
 }
