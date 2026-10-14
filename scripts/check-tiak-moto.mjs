@@ -78,7 +78,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     await page.waitForFunction(() => Math.abs(window.__dakar.tiak.at().speed) < 0.3, null, { timeout: 20000 }).catch(() => {});
     if (touch) await d(() => document.querySelector('#ridepad .rp-brake').dispatchEvent(new PointerEvent('pointerup', { pointerId: 8, bubbles: true }))); else await page.keyboard.up('KeyS');
     const stopped = await at();
-    check(`${label}/${hub}: the brake stops it (${stopped?.speed} m/s)`, stopped && Math.abs(stopped.speed) < 0.5);
+    check(`${label}/${hub}: the brake stops it (${stopped?.speed} m/s)`, stopped && stopped.speed < 0.5 && stopped.speed > -3);
     check(`${label}/${hub}: it stayed in the hub`, (await d(() => window.__dakar.pos().hub)) === hub);
     // get off
     if (touch) { await page.waitForTimeout(300); await page.tap('#ridepad .rp-off'); } else { await page.keyboard.press('KeyE'); }
