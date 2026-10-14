@@ -476,7 +476,7 @@ export class OwnedVehicleModule implements GameModule {
     this.setSolid(false);
     m.setRidden(true);
     this.cam.begin(ctx.camera, m.pose); this.camMs = 0;
-    ctx.toast(document.body.classList.contains('touch') ? 'Joystick : tourner · vert : accélérer · rouge : freiner' : HINT);
+    if (!document.body.classList.contains('touch')) ctx.toast(HINT);          // touch: the pad's own labels say it
     this.refreshCard();
   }
 
