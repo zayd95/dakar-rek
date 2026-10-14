@@ -1,40 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T15:37:08.396Z",
+  "updatedAt": "2026-10-14T15:47:13.076Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261014T1532Z-pr33-qa",
-    "owner": "producer_pr33_1532",
-    "acquiredAt": "2026-10-14T15:37:08.396Z",
-    "expiresAt": "2026-10-14T16:20:00Z",
-    "baseCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-14-1532-PR33-QA.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "WATCH-PR33-20261014-1532-QA",
-      "owner": "qa_pr33_1532",
-      "role": "qa",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
-      "sourceBranch": "feature/magic-land",
-      "sourceCommit": "e494be1e7d4e466918b81977dbbfbb1bda8b1b71",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
-      ],
-      "authority": "read-only external candidate QA; never mutate source branch"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -146,7 +120,8 @@
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
     "lastCompletedRunAt": "2026-10-14T14:36:47Z",
-    "lastVerifiedAt": "2026-10-14T06:41:18Z"
+    "lastVerifiedAt": "2026-10-14T15:47:13.076Z",
+    "enabled": true
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
@@ -177,7 +152,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "Obtain source-attributed wave-specific browser/performance logs and final acceptance from integration owner; PR17 current base conflict must be reconciled by external owner. Resume any registered ready source task; avoid duplicate PR28–32 work.",
+  "nextAction": "PR33 author provides complete archived check-magicland evidence and reconciles the exact-SHA multiplayer timeout; independent QA rechecks. Resume registered source work only if a ready task appears.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -315,15 +290,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-1436-WATCH.md",
-    "completedAt": "2026-10-14T14:36:47Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-1532-PR33-QA.md",
+    "completedAt": "2026-10-14T15:47:13.076Z",
     "actualRunCompleted": true,
-    "tasks": [],
+    "tasks": [
+      "WATCH-PR33-20261014-1532-QA"
+    ],
     "verifiedCandidates": [],
-    "owner": "producer_watch_1436",
-    "reviewer": null,
+    "owner": "producer_pr33_1532",
+    "reviewer": "qa_pr33_1532",
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261014T1436Z-watch"
+    "leaseReleased": "cycle-20261014T1532Z-pr33-qa"
   },
   "protectedRefsLatest": [
     {
@@ -585,7 +562,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-14T14:36:47Z",
+    "checkedAt": "2026-10-14T15:47:13.076Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -698,7 +675,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-14T14:36:47Z",
+      "checkedAt": "2026-10-14T15:47:13.076Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -813,6 +790,50 @@
     "status": "isolated candidate; standard checks green, whole-wave reception not established"
   },
   "externalNewCandidates": [
+    {
+      "pr": 33,
+      "branch": "feature/magic-land",
+      "sha": "e494be1e7d4e466918b81977dbbfbb1bda8b1b71",
+      "baseCommit": "631e3742507dd807acf6ec635721feebb43af056",
+      "title": "Magic Land Lite on the Corniche (preview only)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-14T15:47:13.076Z",
+      "checks": [
+        {
+          "id": 115925714333,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-magic-land/builds/f7ec9815-daea-43bf-8231-eb66e9363ea1"
+        },
+        {
+          "id": 115924766140,
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38585077560/job/115924766140"
+        },
+        {
+          "id": 115924676586,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38585051940/job/115924676586"
+        }
+      ],
+      "accepted": false,
+      "review": {
+        "status": "needs-decision",
+        "reviewer": "qa_pr33_1532",
+        "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
+        "completedAt": "2026-10-14T15:47:13.076Z",
+        "local": {
+          "testsPassed": 1478,
+          "testsSkipped": 2,
+          "testFilesPassed": 120,
+          "typecheck": "success",
+          "build": "success",
+          "magicland": "partial"
+        }
+      }
+    },
     {
       "pr": 32,
       "branch": "feature/home-editor-ux",
@@ -935,14 +956,14 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-14T14:36:47Z",
+    "checkedAt": "2026-10-14T15:47:13.076Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
-    "shell": false,
-    "shellReason": "Selected environment failed: exec-server websocket connection; no exec_command tool callable",
-    "localTests": "local_not_run",
-    "delegation": "available; no new useful registered task",
+    "shell": true,
+    "shellReason": "exec_command restored; isolated exact-SHA QA executed",
+    "localTests": "1478 passed, 2 skipped; typecheck/build success; Magic Land browser scenario partial",
+    "delegation": "independent QA completed",
     "cloudflareAuthenticated": false
   }
 }

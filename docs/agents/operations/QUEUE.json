@@ -858,16 +858,18 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-1436-WATCH.md",
-    "checkedAt": "2026-10-14T14:36:47Z",
-    "result": "Refs/checks unchanged; no ready source task. Local shell unavailable due environment connection failure; GitHub/CAS functional.",
-    "owner": "producer_watch_1436",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-1532-PR33-QA.md",
+    "checkedAt": "2026-10-14T15:47:13.076Z",
+    "result": "Independent exact-SHA PR33 QA completed: local unit/type/build green, Magic Land scenario partial, one exact-SHA PR check remains red; needs-decision.",
+    "owner": "producer_pr33_1532",
+    "reviewer": "qa_pr33_1532",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "77ce492dc50215918d0d46145c8bc2d476451d2a",
+    "baseCommit": "b2175420b389ee140c6136f13fb2cc9a868b7987",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-1436-WATCH.md"
+      "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-14-1532-PR33-QA.md"
     ]
   },
   "evidenceReview": {
@@ -1004,6 +1006,50 @@
     "status": "isolated candidate; standard checks green, whole-wave reception not established"
   },
   "externalNewCandidates": [
+    {
+      "pr": 33,
+      "branch": "feature/magic-land",
+      "sha": "e494be1e7d4e466918b81977dbbfbb1bda8b1b71",
+      "baseCommit": "631e3742507dd807acf6ec635721feebb43af056",
+      "title": "Magic Land Lite on the Corniche (preview only)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-14T15:47:13.076Z",
+      "checks": [
+        {
+          "id": 115925714333,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-magic-land/builds/f7ec9815-daea-43bf-8231-eb66e9363ea1"
+        },
+        {
+          "id": 115924766140,
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38585077560/job/115924766140"
+        },
+        {
+          "id": 115924676586,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38585051940/job/115924676586"
+        }
+      ],
+      "accepted": false,
+      "review": {
+        "status": "needs-decision",
+        "reviewer": "qa_pr33_1532",
+        "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
+        "completedAt": "2026-10-14T15:47:13.076Z",
+        "local": {
+          "testsPassed": 1478,
+          "testsSkipped": 2,
+          "testFilesPassed": 120,
+          "typecheck": "success",
+          "build": "success",
+          "magicland": "partial"
+        }
+      }
+    },
     {
       "pr": 32,
       "branch": "feature/home-editor-ux",
@@ -1147,24 +1193,11 @@
       "completedAt": "2026-10-13T00:31:00Z"
     }
   ],
-  "registryWriter": {
-    "token": "cycle-20261014T1532Z-pr33-qa",
-    "owner": "producer_pr33_1532",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-14-1532-PR33-QA.md"
-    ],
-    "acquiredAt": "2026-10-14T15:37:08.396Z"
-  },
   "externalCandidateReview": {
     "id": "WATCH-PR33-20261014-1532-QA",
     "role": "qa",
     "kind": "read_only_external_candidate_review",
-    "status": "active",
+    "status": "needs-decision",
     "owner": "qa_pr33_1532",
     "branch": "codex/agent-studio-active",
     "baseCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
@@ -1181,6 +1214,13 @@
     ],
     "authority": "Read-only QA of other-session candidate; never mutate external refs",
     "controlBriefCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
-    "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
+    "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
+    "completedAt": "2026-10-14T15:47:13.076Z",
+    "verdict": "needs-decision",
+    "results": {
+      "localTests": "1478 passed, 2 skipped; typecheck/build success",
+      "magicland": "partial assertions passed; complete scenario not established",
+      "ci": "one success and one failure at exact SHA; PR check timeout preserved"
+    }
   }
 }
