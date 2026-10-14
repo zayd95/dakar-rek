@@ -9,14 +9,17 @@ import { say } from '../i18n/wolof';
 import { buildShopInterior, type ShopDetail, type ShopInterior, type ShopOptions, type ShopType } from './shopKit';
 import { sedanSeed, SEDAN_BLUE, SEDAN_WHITE } from '../transport/car';
 
-export type CityBlock = 'soumbedioune' | 'mall' | 'bank' | 'square' | 'shops';
+export type CityBlock = 'soumbedioune' | 'mall' | 'bank' | 'square' | 'shops' | 'magicland';
 /** Compact, stylised geography within the existing four hubs. Never displaces an existing landmark. */
 export const CITY_BLOCKS: Record<HubId, Record<string, CityBlock>> = {
-  corniche: { '0,3': 'soumbedioune', '2,3': 'square' },
+  // Magic Land Lite takes the block east of Soumbédioune across the road (the gate faces the fishing village)
+  corniche: { '0,3': 'soumbedioune', '1,3': 'magicland', '2,3': 'square' },
   plateau: { '3,1': 'bank', '1,3': 'square', '3,3': 'shops' },
   almadies: { '2,2': 'mall', '3,2': 'square' },
   pikine: { '0,1': 'bank', '0,3': 'shops', '1,3': 'square' },
 };
+/** Centre of the Magic Land block (src/venues/magicland.ts builds the rides, the facade and the kiosks here). */
+export const MAGIC = { hub: 'corniche' as HubId, cx: -23, cz: 97 };
 export const BAY = { z0: 64, z1: 116, shoreX: -155, railX: -133.55 };
 /** Ndiaye Auto's showroom in the Plateau (its stocked-shop key): src/transport/carModule.ts sells the car from its desk. */
 export const NDIAYE_AUTO = 'plateau:showroom:ndiaye-auto';
@@ -39,6 +42,7 @@ export interface CityContext {
 }
 
 /** Terrazzo floors sit just above the block ground slab (top at 0.13 m), so they neither z-fight with it nor hide under it. */
+const BLK_PARK = 45;
 const TERRAZZO_Y = 0.135, TERRAZZO = 0xe6dfd2;
 const FLOOR = 0.12, WHITE = 0xf2e9d6, WOOD = 0x8c6542, DARK = 0x253d43;
 const FISHER: PersonLook = { skin: 0x633a24, style: 'tee', top: 0x236da0, bottom: 0x31404d, hat: 'kufi', hatColor: 0xf4c443, shoes: 0x242b27, muscular: 0.4 };
@@ -176,6 +180,24 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     }
     place('craft', 'Ateliers de Soumbédioune', craftAt.x, craftAt.z, A.craft, 'Bienvenue à l’atelier. Chaque objet commence entre les mains de quelqu’un.', 3.4);
     bench(cx + 13, cz + 14); c.tree(cx + 17, cz + 16, 1.5); c.pool(cx - 8, cz + 4, 12);
+    return;
+  }
+
+  if (kind === 'magicland') {
+    // The ground, the promenade from the gate, benches, trees and the crowd; the rides and kiosks are the venues module's.
+    pave.box(BLK_PARK, 0.03, BLK_PARK, cx, 0.075, cz, 0xd8c9a8);
+    pave.box(30, 0.035, 6.4, cx - 8, 0.09, cz, 0xe3b79c);
+    for (let k = 0; k < 7; k++) pave.box(0.5, 0.037, 6.4, cx - 21 + k * 4.6, 0.095, cz, 0xcf9a7e);
+    for (const [bx, bz, yaw] of [[cx - 15, cz - 5.2, 0], [cx - 15, cz + 5.2, Math.PI], [cx - 6, cz + 5.2, Math.PI], [cx - 6, cz - 5.2, 0], [cx - 12, cz + 16, Math.PI], [cx + 17, cz + 3, -Math.PI / 2]] as const) bench(bx, bz, yaw);
+    for (const [tx, tz] of [[cx - 19, cz - 11], [cx - 19, cz + 11], [cx - 3, cz + 19], [cx + 19, cz - 18], [cx + 19, cz + 20], [cx - 1, cz - 20]] as const) c.tree(tx, tz, 1.3, tx > cx);
+    // visitors: some on the benches, some strolling between the gate, the wheel and the kiosks
+    person(cx - 15, cz - 5.0, 0, 'Sit'); person(cx - 15.7, cz + 5.0, Math.PI, 'Sit'); person(cx - 6, cz - 5.0, 0, 'Sit');
+    person(cx - 12, cz - 1, Math.PI / 2, 'Talk'); person(cx - 11, cz - 1.6, -Math.PI / 2, 'Talk'); person(cx - 3, cz + 2, 0, 'Idle');
+    person(cx - 20, cz + 1, Math.PI / 2, 'Idle', undefined, { x: cx - 4, z: cz - 2 });
+    person(cx - 5, cz - 3, Math.PI, 'Idle', undefined, { x: cx - 19, z: cz + 2 });
+    person(cx + 2, cz + 8, 0, 'Idle', undefined, { x: cx - 9, z: cz + 8 });
+    person(cx + 1, cz - 16, 0, 'Talk'); person(cx + 2.2, cz - 16.4, Math.PI, 'Talk'); person(cx - 9, cz + 8.5, 0, 'Talk');
+    for (const [px, pz, pr] of [[cx - 18, cz, 9], [cx - 6, cz, 9], [cx + 10, cz - 6, 11], [cx + 9, cz + 14, 9], [cx - 10, cz + 11, 7], [cx - 10, cz - 19, 8], [cx + 20, cz - 18, 6]] as const) c.pool(px, pz, pr);
     return;
   }
 
