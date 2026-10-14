@@ -1,22 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T19:33:57.271Z",
+  "updatedAt": "2026-10-14T19:35:06.183Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261014T1932Z-watch",
-    "owner": "producer_watch_1932",
-    "baseCommit": "a0d57297fa3e5416559445d890a0b75f366c8ddc",
-    "acquiredAt": "2026-10-14T19:33:57.271Z",
-    "expiresAt": "2026-10-14T20:10:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-1932-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -301,15 +290,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-1827-WATCH.md",
-    "completedAt": "2026-10-14T18:29:11.502Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-1932-WATCH.md",
+    "completedAt": "2026-10-14T19:35:06.183Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_1827",
+    "owner": "producer_watch_1932",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261014T1827Z-watch"
+    "leaseReleased": "cycle-20261014T1932Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +560,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-14T18:29:11.502Z",
+    "checkedAt": "2026-10-14T19:35:06.183Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -684,7 +673,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-14T18:29:11.502Z",
+      "checkedAt": "2026-10-14T19:35:06.183Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },

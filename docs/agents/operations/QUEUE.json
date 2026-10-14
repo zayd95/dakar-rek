@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-1827-WATCH.md",
-    "checkedAt": "2026-10-14T18:29:11.502Z",
-    "result": "Unchanged current refs/checks/reviews; no ready source task. PR33 browser blocked and wave5 needs-decision retained, no redundant rerun.",
-    "owner": "producer_watch_1827",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-1932-WATCH.md",
+    "checkedAt": "2026-10-14T19:35:06.183Z",
+    "result": "Current refs/checks/reviews unchanged; no ready task; existing independent reports retained without retry.",
+    "owner": "producer_watch_1932",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "8ef4e78d614e543912edba666422bb5bebf45c4a",
+    "baseCommit": "a0d57297fa3e5416559445d890a0b75f366c8ddc",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-1827-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-14-1932-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -1231,18 +1231,6 @@
     "overallVerdict": "needs-decision",
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
-    "lastReconciledAt": "2026-10-14T18:29:11.502Z"
-  },
-  "registryWriter": {
-    "token": "cycle-20261014T1932Z-watch",
-    "owner": "producer_watch_1932",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "a0d57297fa3e5416559445d890a0b75f366c8ddc",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-1932-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-14T19:33:57.271Z"
+    "lastReconciledAt": "2026-10-14T19:35:06.183Z"
   }
 }
