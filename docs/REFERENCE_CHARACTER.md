@@ -14,7 +14,7 @@ football/seated-meal divergence and completed older PRs were not imported into t
 
 Before uses a pinned export of that integration commit. Same 390×844 viewport, low quality, location,
 camera distances/angles and morning lighting; captures have no retouching. The street views show the
-follow-camera change, while the other views use identical close-up cameras.
+follow-camera change, while the other views use identical close-up cameras. Live calendar and NPCs may vary.
 
 | View | Current integration | Reference candidate |
 | --- | --- | --- |
@@ -28,7 +28,8 @@ follow-camera change, while the other views use identical close-up cameras.
 | Walk | ![Walk](screenshots/reference-character/landscape-walk.png) |
 | Jog | ![Jog](screenshots/reference-character/landscape-jog.png) |
 | Sprint | ![Sprint](screenshots/reference-character/landscape-sprint.png) |
-| Quarter-turn | ![Turn](screenshots/reference-character/landscape-turn.png) |
+| Left quarter-turn | ![Left turn](screenshots/reference-character/landscape-turn.png) |
+| Right quarter-turn | ![Right turn](screenshots/reference-character/landscape-turn-right.png) |
 | Actual city bench | ![Sit](screenshots/reference-character/portrait-sit.png) |
 
 Matching landscape before/after, side profiles and additional motion captures are in
@@ -47,6 +48,22 @@ Before is the initial reference candidate at `b891586`, not V4.
 
 [Refinement browser results](screenshots/reference-character/seated-hands/results.json).
 
+### Directional turns and capture calibration
+
+Standing turns now select a left or right stepping clip from the actual signed facing change. The
+left CMU capture is calibrated using its nonzero spine joint; the old zero-offset joint could not
+define facing. The right clip mirrors the calibrated deformation onto the opposite limbs.
+Playback holds each turn and sit/stand transition on its final frame instead of looping it.
+
+The right-turn comparison below uses the same camera, location and morning lighting. Before is
+the previous reference candidate at `2092f43`, whose single stepping clip was used for both directions.
+
+| Previous turn | Calibrated right turn |
+| --- | --- |
+| ![Previous turn](screenshots/reference-character/directional-turns/before-portrait.png) | ![Right turn](screenshots/reference-character/portrait-turn-right.png) |
+
+[Both-direction mobile results](screenshots/reference-character/directional-turns/results.json).
+
 ## Asset and motion
 
 The source is fresh licensed MakeHuman anatomy, a fitted CC0 garment, new authored hair/face details,
@@ -56,11 +73,11 @@ input hashes, reconstruction parameters, Blender source and rebuild steps are in
 
 | Mobile asset check | Result |
 | --- | --- |
-| Exported GLB | 1.95 MB, no bitmap textures |
+| Exported GLB | 2.00 MB, no bitmap textures; below the 2.5 MB asset cap |
 | Geometry | 18,067 triangles; one skinned mesh/material |
 | Rig | 52 bones, including three weighted joints per finger |
 | Stature | 1.78 m anatomical source, human proportions |
-| Requested motion | Idle, walk, jog, sprint, captured quarter-turn, sit; one-shot sit/stand transitions |
+| Requested motion | Idle, walk, jog, sprint, captured left/right quarter-turns, sit; one-shot sit/stand transitions |
 
 Quaternius motion and CMU captures are retargeted to this rig. The relaxed idle closes a three-second
 loop; locomotion adapts stride to human legs, preserves the captured knee pole/foot orientation, and
@@ -73,12 +90,12 @@ The preview profile retains nickname editing but offers no appearance swatches o
 
 ## Verification
 
-- Full suite: **1,397 passed, 2 skipped**, including eight actual GLB/runtime checks for skin weights,
+- Full suite: **1,399 passed, 2 skipped**, including ten actual GLB/runtime checks for skin weights,
   individual finger joints, asset limits, moving clips, idle-loop closure, contact, bench fitting, cadence,
-  and both hands' lap contact/fabric clearance through sitting down and standing up.
+  both hands' lap contact/fabric clearance, mirrored leg stepping and one-shot playback.
 - Client build and server typecheck passed; the existing large JS chunk warning remains.
 - Real game in Chrome mobile emulation, 390×844 and 844×390: one active 52-bone player, joystick
-  movement and cancellation, walk/jog/sprint, turn, actual bench seating, fixed-look profile and clear
+  movement and cancellation, walk/jog/sprint, automatic left/right turns, actual bench seating, fixed-look profile and clear
   central HUD; no page errors. Standing soles match 0.08 / 0.12 / 0.14 m road/sidewalk/block surfaces.
 - Low gala check: **11/11 passed**, including proof that the reference player is active. Existing budgets
   remain 180 draw calls / 4 ms JS update / 0.8 ms crowd update. [Measurement](perf/reference-character-low.json).

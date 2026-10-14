@@ -8,7 +8,7 @@ export const referenceCharacter = () => character;
 export async function preloadReferenceCharacter(base = import.meta.env.BASE_URL): Promise<void> {
   const gltf = await new GLTFLoader().loadAsync(`${base}assets/reference_character.glb`);
   const clips = gltf.animations;
-  for (const required of ['Idle', 'Walk', 'Jog', 'Run', 'Sit', 'Turn']) {
+  for (const required of ['Idle', 'Walk', 'Jog', 'Run', 'Sit', 'SitEnter', 'SitExit', 'TurnLeft', 'TurnRight']) {
     if (!clips.some(c => c.name === required)) throw new Error(`Reference character missing ${required}`);
   }
   character = { scene: gltf.scene, clips };

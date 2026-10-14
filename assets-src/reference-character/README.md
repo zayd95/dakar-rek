@@ -31,8 +31,11 @@ tee fit data/OBJ/material (text whitespace normalized, original hashes retained)
 `animate_reference.py` maps bone directions and rest rolls onto this rig, removes horizontal root
 travel so game physics owns translation, and bakes at 60 Hz. This is a new retarget, not V4's numerical
 gait. Idle uses an authored relaxed arm/body pose with attenuated captured motion and a closed
-three-second loop. Turn retains the captured lower-body stepping with a calm upper body; game yaw
-owns facing. Sole contact is measured from the actual shoe vertices, with bounded running flight and
+three-second loop. CMU facing calibration uses the nonzero `Spine` joint; its `LowerBack` joint has
+zero offset from `Hips` and cannot define an up direction. The bake rejects degenerate bases.
+`TurnLeft` retains the captured lower-body stepping with a calm upper body; `TurnRight` mirrors its
+armature deformation and swaps limbs, respecting each bone's rest roll. Game yaw owns facing.
+Sole contact is measured from the actual shoe vertices, with bounded running flight and
 5 mm interpolation clearance. A two-bone solve adapts the source's ankle paths to this anatomy while
 preserving its knee bend plane, foot orientation and phase (walk ×1.35, jog ×0.48, sprint ×0.65).
 Ground-speed retiming uses median backward sole speed during stance; the bake writes these measured
@@ -43,6 +46,9 @@ interior floor; raised paths use the existing `heightAt` data. Seated bodies ret
 The legacy seat contract is butt contact at 0.48 m above the origin. This anatomy needs its pelvis at
 0.62 m for that contact, rather than putting the pelvis itself at 0.48 m. Sit transitions are one-shot;
 moving can interrupt the exit. `animations.json` records clip sources/durations/contact offsets.
+Runtime selects a turn from the signed facing change and plays its full measured duration. Turns and
+sit/stand transitions use one-shot playback with the last frame held; the shared play helper preserves
+that mode instead of resetting these reference clips to looping.
 The seated arm retarget fits each wrist to its own thigh using a two-bone solve, preserves the
 captured elbow bend plane and torso motion, and calibrates palm orientation from the finger spread.
 Hands settle palm-down on the trousers. Entry/exit blend the fit and lift the hand briefly so curled

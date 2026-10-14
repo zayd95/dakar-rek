@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-13",
+  "generated": "2026-10-14",
   "integrationBase": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
   "toolchain": {
     "blender": "5.2.2 LTS",
@@ -48,11 +48,12 @@
     "beforeWhitespaceNormalization": {
       "cmu-turn.bvh": "497c1bcbad22d3a31b5301fb6686786d1073b74c36aadd0597adf9965acae7ab",
       "cmu-idle.bvh": "970eeb068da8c18cb4ce1a4b83769c5be76f7989e3cb173fa95ae3581d008314"
-    }
+    },
+    "adaptations": "Nonzero Spine joint defines CMU rest/pose facing; TurnLeft retains captured stepping with normalized yaw, TurnRight mirrors armature deformation and swaps limbs. Idle uses relaxed-pose attenuation and a closed envelope."
   },
   "output": {
     "file": "public/assets/reference_character.glb",
-    "sha256": "0c88354a2c18a1b5f82e895fba5bd8706ae9caa0e2da1762ccee63c5d47b41f2",
-    "bytes": 1954596
+    "sha256": "98916b949149fcb6d783f3918b3cf4d0326180324f6761bbc4c0a000af42fd58",
+    "bytes": 2003600
   }
 }

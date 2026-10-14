@@ -57,9 +57,12 @@ try {
       await page.keyboard.up('KeyW');
       await page.evaluate(()=>window.__dakar.step(1/60,90));
     }
-    const turning=await page.evaluate(()=>{const d=window.__dakar,b=d.body();d.place(-42,-66,Math.PI/2);d.step(1/60,90);b.hold='Turn';d.portrait(3.2,1.2,.35);d.step(1/60,25);d.render();return d.clip();});
-    await page.screenshot({path:`${out}/${view}-turn.png`});
-    await page.evaluate(()=>window.__dakar.body().hold=null);
+    const turning={};
+    // End at the same facing/camera for both directions, making the stepping comparison readable.
+    for(const [direction,startYaw] of [['left',Math.PI],['right',0]]){
+      turning[direction]=await page.evaluate(startYaw=>{const d=window.__dakar;d.place(-42,-66,startYaw);d.step(1/60,90);d.place(-42,-66,Math.PI/2);d.portrait(3.2,1.2,.35);d.step(1/60,25);d.render();return d.clip();},startYaw);
+      await page.screenshot({path:`${out}/${view}-turn${direction==='right'?'-right':''}.png`});
+    }
     const seat=await page.evaluate(()=>{const d=window.__dakar,s=d.seatsHere().find(s=>s.kind==='bench'&&!s.occupant);if(!s)throw new Error('No free bench');d.sit(s.id);d.portrait(3.2,.8,.4);d.step(1/60,90);d.render();return{id:d.seated(),top:s.top,clip:d.clip()};});
     await page.screenshot({path:`${out}/${view}-sit.png`});
     const metrics=await page.evaluate(()=>{const b=window.__dakar.body();let meshes=0,vertices=0,bones=0;b.group.traverse(o=>{if(o.isSkinnedMesh){meshes++;vertices+=o.geometry.attributes.position.count;bones=o.skeleton.bones.length;}});return{meshes,vertices,bones,clip:window.__dakar.clip(),clock:document.getElementById('place').textContent,calls:window.__dakar.three.renderer.info.render.calls,quiet:window.__dakar.quiet().over};});
@@ -71,4 +74,4 @@ try {
 }finally{await browser.close();}
 fs.writeFileSync(`${out}/results.json`,JSON.stringify(results,null,2));
 const expected={walk:'Walk',jog:'Jog',sprint:'Run'};
-if(results.some(r=>r.errors?.length||r.ground?.some(g=>Math.abs(g.error)>.007)||r.touch&&(r.touch.distance<1||r.touch.clip!=='Walk'||r.touch.stopped!=='Idle')||r.label&&r.clip!==expected[r.label]||r.metrics&&(!r.metrics.clock.includes('09:00')||!r.fixedProfile||r.metrics.meshes!==1||r.metrics.bones!==52||r.metrics.quiet.length||r.seat.clip!=='Sit'||r.turning!=='Turn')))process.exitCode=1;
+if(results.some(r=>r.errors?.length||r.ground?.some(g=>Math.abs(g.error)>.007)||r.touch&&(r.touch.distance<1||r.touch.clip!=='Walk'||r.touch.stopped!=='Idle')||r.label&&r.clip!==expected[r.label]||r.metrics&&(!r.metrics.clock.includes('09:00')||!r.fixedProfile||r.metrics.meshes!==1||r.metrics.bones!==52||r.metrics.quiet.length||r.seat.clip!=='Sit'||r.turning.left!=='TurnLeft'||r.turning.right!=='TurnRight')))process.exitCode=1;

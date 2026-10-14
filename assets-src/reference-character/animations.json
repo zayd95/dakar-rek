@@ -4,8 +4,8 @@
     "duration": 3.0,
     "frames": 181,
     "hipRange": [
-      0.03039566040039063,
-      0.031183484792709354
+      0.030492070913314823,
+      0.03209147214889527
     ]
   },
   "Walk": {
@@ -101,13 +101,22 @@
       -0.37955616782135326
     ]
   },
-  "Turn": {
+  "TurnLeft": {
     "source": "CMU 13_26 frames 977\u20131121 (quarter turn)",
     "duration": 1.2,
     "frames": 73,
     "hipRange": [
-      0.004816200435161594,
-      0.04840983808040619
+      0.012184422314167026,
+      0.040864672362804416
+    ]
+  },
+  "TurnRight": {
+    "source": "CMU 13_26 frames 977\u20131121 (quarter turn); mirrored deformation / swapped limbs",
+    "duration": 1.2,
+    "frames": 73,
+    "hipRange": [
+      0.012184422314167026,
+      0.040864672362804416
     ]
   }
 }

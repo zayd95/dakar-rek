@@ -5,20 +5,20 @@
       {
         "z": -66,
         "floor": 0.08,
-        "sole": 0.08000029259028343,
-        "error": 2.925902834322036e-7
+        "sole": 0.08000005956159369,
+        "error": 5.956159368492031e-8
       },
       {
         "z": -68,
         "floor": 0.12,
-        "sole": 0.12000035898106694,
-        "error": 3.589810669418769e-7
+        "sole": 0.11999983710669292,
+        "error": -1.6289330707908167e-7
       },
       {
         "z": -72,
         "floor": 0.14,
-        "sole": 0.14000035900357774,
-        "error": 3.590035777267797e-7
+        "sole": 0.13999935871843808,
+        "error": -6.412815619361023e-7
       }
     ]
   },
@@ -68,7 +68,10 @@
   },
   {
     "view": "portrait",
-    "turning": "Turn",
+    "turning": {
+      "left": "TurnLeft",
+      "right": "TurnRight"
+    },
     "seat": {
       "id": "pikine:bench:16:0",
       "top": 0.58,
@@ -79,8 +82,8 @@
       "vertices": 19936,
       "bones": 52,
       "clip": "Sit",
-      "clock": "Pikine · Guédiawaye · Parcelles☀️ Mardi · 09:00",
-      "calls": 46,
+      "clock": "Pikine · Guédiawaye · Parcelles☀️ Mercredi · 09:00",
+      "calls": 39,
       "quiet": []
     },
     "fixedProfile": true,
@@ -92,20 +95,20 @@
       {
         "z": -66,
         "floor": 0.08,
-        "sole": 0.08000035900190557,
-        "error": 3.5900190556437117e-7
+        "sole": 0.08000005956159369,
+        "error": 5.956159368492031e-8
       },
       {
         "z": -68,
         "floor": 0.12,
-        "sole": 0.12000033423893133,
-        "error": 3.3423893133766036e-7
+        "sole": 0.11999983710669292,
+        "error": -1.6289330707908167e-7
       },
       {
         "z": -72,
         "floor": 0.14,
-        "sole": 0.14000030327236587,
-        "error": 3.0327236585914186e-7
+        "sole": 0.13999935871843808,
+        "error": -6.412815619361023e-7
       }
     ]
   },
@@ -155,7 +158,10 @@
   },
   {
     "view": "landscape",
-    "turning": "Turn",
+    "turning": {
+      "left": "TurnLeft",
+      "right": "TurnRight"
+    },
     "seat": {
       "id": "pikine:bench:16:0",
       "top": 0.58,
@@ -166,7 +172,7 @@
       "vertices": 19936,
       "bones": 52,
       "clip": "Sit",
-      "clock": "Pikine · Guédiawaye · Parcelles☀️ Mardi · 09:00",
+      "clock": "Pikine · Guédiawaye · Parcelles☀️ Mercredi · 09:00",
       "calls": 90,
       "quiet": []
     },

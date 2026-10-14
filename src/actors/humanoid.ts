@@ -17,7 +17,7 @@ import referencePace from './referenceMotion.json';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Turn' | 'Talk' | 'Sit' | 'SitEnter' | 'SitExit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
+export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'TurnLeft' | 'TurnRight' | 'Talk' | 'Sit' | 'SitEnter' | 'SitExit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
 export type PoseClip = 'Lie' | 'SitFloor' | 'Ride';
 export type Style = 'boubou' | 'tee' | 'dress';
@@ -426,6 +426,7 @@ export class Humanoid {
   private readonly reference: boolean;
   private referenceYaw = NaN;
   private referenceTurnTime = 0;
+  private referenceTurnClip: 'TurnLeft' | 'TurnRight' = 'TurnLeft';
   private referenceSitting = false;
   private referenceSeatTime = 0;
   private referenceSeatClip: 'SitEnter' | 'SitExit' = 'SitEnter';
@@ -455,7 +456,6 @@ export class Humanoid {
     this.mixer = new THREE.AnimationMixer(this.root);
     for (const c of asset.clips) {
       const action = this.mixer.clipAction(c);
-      if (this.reference && ['Turn', 'SitEnter', 'SitExit'].includes(c.name)) { action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = true; }
       this.actions.set(c.name, action);
     }
     if (look) this.setLook(look);
@@ -526,7 +526,10 @@ export class Humanoid {
     if (this.clipName === name) return;
     const next = this.actions.get(name); if (!next) return;
     this.settled = false; this.sinceSwitch = 0;
-    next.reset(); next.setLoop(THREE.LoopRepeat, Infinity); next.timeScale = 1;
+    next.reset();
+    const once = this.reference && ['TurnLeft', 'TurnRight', 'SitEnter', 'SitExit'].includes(name);
+    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, once ? 1 : Infinity);
+    next.clampWhenFinished = once; next.timeScale = 1;
     if (offset) next.time = offset * next.getClip().duration;
     next.fadeIn(fade).play();
     this.current?.fadeOut(fade);
@@ -600,7 +603,7 @@ export class Humanoid {
     const moving = Number.isFinite(distance) && distance < Math.max(.5, 10 * dt);
     const groundSpeed = moving && dt > 0 ? distance / dt : 0;
     this.v += (groundSpeed - this.v) * (1 - Math.exp(-dt / .06));
-    const turn = Number.isFinite(this.referenceYaw) && dt > 0 ? Math.abs(Math.atan2(Math.sin(yaw - this.referenceYaw), Math.cos(yaw - this.referenceYaw))) / dt : 0;
+    const turn = Number.isFinite(this.referenceYaw) && dt > 0 ? Math.atan2(Math.sin(yaw - this.referenceYaw), Math.cos(yaw - this.referenceYaw)) / dt : 0;
     this.lx = p.x; this.lz = p.z; this.referenceYaw = yaw;
     const held = this.hold && this.actions.has(this.hold) ? this.hold : null;
     const sitting = held === 'Sit';
@@ -610,9 +613,12 @@ export class Humanoid {
       this.referenceSitting = sitting;
     }
     if (!sitting && (held || this.v > .2)) this.referenceSeatTime = 0;
-    if (!held && this.v < .2 && turn > .5 && this.referenceTurnTime <= 0) this.referenceTurnTime = 1.2;
+    if (!held && this.v < .2 && Math.abs(turn) > .5 && this.referenceTurnTime <= 0) {
+      this.referenceTurnClip = turn > 0 ? 'TurnRight' : 'TurnLeft';
+      this.referenceTurnTime = this.actions.get(this.referenceTurnClip)?.getClip().duration ?? 0;
+    }
     if (held || this.v > .2) this.referenceTurnTime = 0;
-    const name: Clip = this.referenceSeatTime > 0 ? this.referenceSeatClip : held ?? (this.v > 5.4 ? 'Run' : this.v > 2.5 ? 'Jog' : this.v > .2 ? 'Walk' : this.referenceTurnTime > 0 ? 'Turn' : 'Idle');
+    const name: Clip = this.referenceSeatTime > 0 ? this.referenceSeatClip : held ?? (this.v > 5.4 ? 'Run' : this.v > 2.5 ? 'Jog' : this.v > .2 ? 'Walk' : this.referenceTurnTime > 0 ? this.referenceTurnClip : 'Idle');
     this.referenceSeatTime = Math.max(0, this.referenceSeatTime - dt);
     this.referenceTurnTime = Math.max(0, this.referenceTurnTime - dt);
     this.play(name, .18);
@@ -639,6 +645,7 @@ export class Humanoid {
     this.lag = 0; this.due = 0; this.near = true; this.settled = false; this.sinceSwitch = 0;
     this.lx = NaN; this.lz = NaN; this.v = 0; this.saved = null;
     this.referenceYaw = NaN; this.referenceTurnTime = 0;
+    this.referenceTurnClip = 'TurnLeft';
     this.referenceSitting = false; this.referenceSeatTime = 0;
     this.faceOn = true; for (const m of this.face) m.visible = true;
     this.group.position.set(0, 0, 0); this.group.rotation.set(0, 0, 0);
