@@ -5,10 +5,45 @@
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": null,
+  "lease": {
+    "token": "cycle-20261014T0636Z-qa-current",
+    "owner": "producer_0636",
+    "acquiredAt": "2026-10-14T06:36:07Z",
+    "expiresAt": "2026-10-14T07:06:07Z",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-14-0636-QA.md",
+      "docs/agents/operations/reports/WAVE5-20261014-0636-QA.md"
+    ]
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "id": "WATCH-20261014-0636-QA",
+      "role": "qa",
+      "kind": "read_only_evidence_review",
+      "status": "review",
+      "owner": "qa_wave5_current_0636",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f",
+      "sourceCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+      "allowedFiles": [
+        "docs/agents/operations/reports/WAVE5-20261014-0636-QA.md"
+      ],
+      "acceptance": [
+        "Reconcile true Wave5 scope/integration from current documents and commits",
+        "Read exact current source CI checkout/tests/typechecks/build/browser logs",
+        "Seek exact wave-specific performance/browser reports and final distinct acceptance",
+        "Report ready/needs-decision/blocked with evidence, no self-approval or source edits"
+      ],
+      "authority": "Read-only current-source evidence review; never mutate external refs",
+      "controlBriefCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
