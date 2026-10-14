@@ -8,4 +8,4 @@ body.ridepad #ridepad { display: flex; }
 #ridepad .rp-off { display: none; order: -1; flex-basis: 100%; height: 48px; background: rgba(17, 24, 39, .88); font-size: 15px; }
 #ridepad.stopped .rp-off { display: block; }
 /* the pad takes the place of the action button while riding (a bike's only action is getting off) */
-body.ridepad #actbar { display: none; }
+body.ridepad #ui > #actbar { display: none; }
