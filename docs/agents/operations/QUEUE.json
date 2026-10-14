@@ -1194,23 +1194,23 @@
     }
   ],
   "externalCandidateReview": {
-    "id": "WATCH-PR33-20261014-1532-QA",
+    "id": "WATCH-PR33-20261014-1635-BROWSER",
     "role": "qa",
     "kind": "read_only_external_candidate_review",
-    "status": "needs-decision",
-    "owner": "qa_pr33_1532",
+    "status": "active",
+    "owner": "qa_pr33_browser_1635",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
+    "baseCommit": "427211bf92f511f7c999e884052756bb712ef5c3",
     "sourceBranch": "feature/magic-land",
     "sourceCommit": "e494be1e7d4e466918b81977dbbfbb1bda8b1b71",
     "allowedFiles": [
       "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
     ],
     "acceptance": [
-      "Inspect PR33 exact diff and criteria at source SHA",
-      "Reconcile the success and failure checks at the exact SHA and read failing logs",
-      "Run relevant local tests in a fresh isolated checkout if feasible",
-      "Report ready/needs-decision/blocked without source edits or self-approval"
+      "Execute the complete existing check-magicland.mjs at exact SHA in an isolated checkout without changing assertions",
+      "Record every assertion, exit code, browser limitation and capture result",
+      "Reconcile result with existing exact-SHA green/red checks",
+      "Return ready/needs-decision/blocked without source edits or self-approval"
     ],
     "authority": "Read-only QA of other-session candidate; never mutate external refs",
     "controlBriefCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
@@ -1222,5 +1222,18 @@
       "magicland": "partial assertions passed; complete scenario not established",
       "ci": "one success and one failure at exact SHA; PR check timeout preserved"
     }
+  },
+  "registryWriter": {
+    "token": "cycle-20261014T1635Z-pr33-browser",
+    "owner": "producer_pr33_1635",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "427211bf92f511f7c999e884052756bb712ef5c3",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-14-1635-PR33-BROWSER.md"
+    ],
+    "acquiredAt": "2026-10-14T16:37:01.146Z"
   }
 }
