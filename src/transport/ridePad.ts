@@ -21,7 +21,7 @@ export const ridePad = {
     offB = mk('rp-off', 'Descendre'); brakeB = mk('rp-brake', 'Frein'); gasB = mk('rp-gas', 'Accélérer');
     const hold = (b: HTMLButtonElement, set: (on: boolean) => void) => {
       const up = () => { set(false); b.classList.remove('down'); };
-      b.addEventListener('pointerdown', e => { e.preventDefault(); b.setPointerCapture?.(e.pointerId); set(true); b.classList.add('down'); });
+      b.addEventListener('pointerdown', e => { e.preventDefault(); try { b.setPointerCapture?.(e.pointerId); } catch { /* a synthetic or already released pointer: the buttons still work */ } set(true); b.classList.add('down'); });
       for (const t of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(t, up);
       b.addEventListener('contextmenu', e => e.preventDefault());
     };

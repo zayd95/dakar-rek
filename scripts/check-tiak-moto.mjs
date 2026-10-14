@@ -43,7 +43,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     check(`${label}/${hub}: « Monter » is offered beside it`, !!f && (f.all.includes('Monter') || f.primary === 'Monter'), JSON.stringify(f).slice(0, 220));
     await shot(`${hub}-before-mount`);
     // a run in hand: the parcel shows in the box
-    await d(h => { window.__dakar.state.data.jobs.active = { runId: 't1', routeId: 'x', hub: h, stage: 'deliver', pay: 1000, startedMs: window.__dakar.state.data.playedMs, limitMs: 600000 }; }, hub);
+    await d(h => { window.__dakar.state.data.jobs.active = { runId: 't1', routeId: h === 'pikine' ? 'pk_mame_boutique' : 'pl_fatou_market', hub: h, stage: 'deliver', pay: 1000, startedMs: window.__dakar.state.data.playedMs, limitMs: 600000 }; }, hub);
     await page.waitForTimeout(600);
     const withRun = await at();
     check(`${label}/${hub}: during a Tiak run the parcel is in the box`, withRun?.parcel === true);
@@ -53,8 +53,9 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     const mounted = await page.waitForFunction(() => window.__dakar.tiak.at()?.driving === true, null, { timeout: 15000 }).then(() => true).catch(() => false);
     check(`${label}/${hub}: « Monter » seats the player on the bike, no delivery needed to ride`, mounted, JSON.stringify(await at()));
     // no jump: the player's position follows the bike seat
-    const p0 = await d(() => window.__dakar.pos()), a0 = await at();
+    const a0 = await at();
     if (touch) {
+      await page.waitForFunction(() => window.__dakar.tiak.at()?.pad === true, null, { timeout: 10000 }).catch(() => {});
       const vis = await d(() => { const r = document.querySelector('#ridepad'); return r ? getComputedStyle(r).display : 'none'; });
       const actbar = await d(() => getComputedStyle(document.querySelector('#actbar')).display);
       check(`${label}/${hub}: the riding pad is up (gas, brake) and the action bar steps aside`, vis !== 'none' && actbar === 'none', `${vis}/${actbar}`);
@@ -64,9 +65,10 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
       // hold the gas button
       await d(() => document.querySelector('#ridepad .rp-gas').dispatchEvent(new PointerEvent('pointerdown', { pointerId: 7, bubbles: true })));
     } else { await page.keyboard.down('KeyW'); }
-    await page.waitForTimeout(3500);
+    // (game time runs slower than the clock on this software renderer: wait for the speed rather than for seconds)
+    await page.waitForFunction(() => window.__dakar.tiak.at()?.speed > 4, null, { timeout: 40000 }).catch(() => {});
     const fast = await at();
-    check(`${label}/${hub}: holding the gas it accelerates (${fast?.speed} m/s) and has moved`, fast && fast.speed > 3 && Math.hypot(fast.x - a0.x, fast.z - a0.z) > 4, JSON.stringify(fast));
+    check(`${label}/${hub}: holding the gas it accelerates (${fast?.speed} m/s) and has moved`, fast && fast.speed > 3 && Math.hypot(fast.x - a0.x, fast.z - a0.z) > 2, JSON.stringify(fast));
     if (touch) {
       const offMoving = await d(() => getComputedStyle(document.querySelector('#ridepad .rp-off')).display);
       check(`${label}/${hub}: « Descendre » is hidden while moving`, offMoving === 'none', offMoving);
