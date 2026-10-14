@@ -1,40 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T16:37:01.146Z",
+  "updatedAt": "2026-10-14T16:41:33.651Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261014T1635Z-pr33-browser",
-    "owner": "producer_pr33_1635",
-    "acquiredAt": "2026-10-14T16:37:01.146Z",
-    "expiresAt": "2026-10-14T17:25:00Z",
-    "baseCommit": "427211bf92f511f7c999e884052756bb712ef5c3",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-14-1635-PR33-BROWSER.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "WATCH-PR33-20261014-1635-BROWSER",
-      "owner": "qa_pr33_browser_1635",
-      "role": "qa",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "427211bf92f511f7c999e884052756bb712ef5c3",
-      "sourceBranch": "feature/magic-land",
-      "sourceCommit": "e494be1e7d4e466918b81977dbbfbb1bda8b1b71",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
-      ],
-      "authority": "read-only exact-SHA browser QA; never mutate source branch"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -178,7 +152,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "PR33 author provides complete archived check-magicland evidence and reconciles the exact-SHA multiplayer timeout; independent QA rechecks. Resume registered source work only if a ready task appears.",
+  "nextAction": "Run the existing exact-SHA Magic Land browser scenario in a Chromium-compatible runner and archive complete outputs/captures; then independent QA rechecks the red PR check.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -316,17 +290,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-1532-PR33-QA.md",
-    "completedAt": "2026-10-14T15:47:13.076Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-1635-PR33-BROWSER.md",
+    "completedAt": "2026-10-14T16:41:33.651Z",
     "actualRunCompleted": true,
     "tasks": [
-      "WATCH-PR33-20261014-1532-QA"
+      "WATCH-PR33-20261014-1635-BROWSER"
     ],
     "verifiedCandidates": [],
-    "owner": "producer_pr33_1532",
-    "reviewer": "qa_pr33_1532",
+    "owner": "producer_pr33_1635",
+    "reviewer": "qa_pr33_browser_1635",
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261014T1532Z-pr33-qa"
+    "leaseReleased": "cycle-20261014T1635Z-pr33-browser"
   },
   "protectedRefsLatest": [
     {
@@ -588,7 +562,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-14T15:47:13.076Z",
+    "checkedAt": "2026-10-14T16:41:33.651Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -701,7 +675,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-14T15:47:13.076Z",
+      "checkedAt": "2026-10-14T16:41:33.651Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -823,7 +797,7 @@
       "baseCommit": "631e3742507dd807acf6ec635721feebb43af056",
       "title": "Magic Land Lite on the Corniche (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T15:47:13.076Z",
+      "checkedAt": "2026-10-14T16:41:33.651Z",
       "checks": [
         {
           "id": 115925714333,
@@ -857,6 +831,15 @@
           "typecheck": "success",
           "build": "success",
           "magicland": "partial"
+        },
+        "browserSubreview": {
+          "status": "blocked",
+          "reviewer": "qa_pr33_browser_1635",
+          "completedAt": "2026-10-14T16:41:33.651Z",
+          "assertions": 0,
+          "captures": 0,
+          "reason": "Chromium socket() EPERM before page launch",
+          "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
         }
       }
     },
@@ -982,14 +965,14 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-14T15:47:13.076Z",
+    "checkedAt": "2026-10-14T16:41:33.651Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
-    "shellReason": "exec_command restored; isolated exact-SHA QA executed",
-    "localTests": "1478 passed, 2 skipped; typecheck/build success; Magic Land browser scenario partial",
-    "delegation": "independent QA completed",
+    "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
+    "localTests": "PR33 prior unit/type/build evidence retained; current full Magic Land browser run blocked before assertions",
+    "delegation": "independent browser QA completed with blocked verdict",
     "cloudflareAuthenticated": false
   }
 }

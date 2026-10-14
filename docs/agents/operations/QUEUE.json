@@ -858,18 +858,18 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-1532-PR33-QA.md",
-    "checkedAt": "2026-10-14T15:47:13.076Z",
-    "result": "Independent exact-SHA PR33 QA completed: local unit/type/build green, Magic Land scenario partial, one exact-SHA PR check remains red; needs-decision.",
-    "owner": "producer_pr33_1532",
-    "reviewer": "qa_pr33_1532",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-1635-PR33-BROWSER.md",
+    "checkedAt": "2026-10-14T16:41:33.651Z",
+    "result": "Independent exact-SHA browser QA blocked before assertions by Chromium socket EPERM; no source mutation and no fabricated functional result.",
+    "owner": "producer_pr33_1635",
+    "reviewer": "qa_pr33_browser_1635",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "b2175420b389ee140c6136f13fb2cc9a868b7987",
+    "baseCommit": "0253f1d250612c4e724daa63b89613f0dd88901a",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
       "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-14-1532-PR33-QA.md"
+      "docs/agents/operations/CYCLE-2026-10-14-1635-PR33-BROWSER.md"
     ]
   },
   "evidenceReview": {
@@ -1013,7 +1013,7 @@
       "baseCommit": "631e3742507dd807acf6ec635721feebb43af056",
       "title": "Magic Land Lite on the Corniche (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T15:47:13.076Z",
+      "checkedAt": "2026-10-14T16:41:33.651Z",
       "checks": [
         {
           "id": 115925714333,
@@ -1047,6 +1047,15 @@
           "typecheck": "success",
           "build": "success",
           "magicland": "partial"
+        },
+        "browserSubreview": {
+          "status": "blocked",
+          "reviewer": "qa_pr33_browser_1635",
+          "completedAt": "2026-10-14T16:41:33.651Z",
+          "assertions": 0,
+          "captures": 0,
+          "reason": "Chromium socket() EPERM before page launch",
+          "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
         }
       }
     },
@@ -1197,7 +1206,7 @@
     "id": "WATCH-PR33-20261014-1635-BROWSER",
     "role": "qa",
     "kind": "read_only_external_candidate_review",
-    "status": "active",
+    "status": "blocked",
     "owner": "qa_pr33_browser_1635",
     "branch": "codex/agent-studio-active",
     "baseCommit": "427211bf92f511f7c999e884052756bb712ef5c3",
@@ -1215,25 +1224,14 @@
     "authority": "Read-only QA of other-session candidate; never mutate external refs",
     "controlBriefCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
     "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
-    "completedAt": "2026-10-14T15:47:13.076Z",
-    "verdict": "needs-decision",
+    "completedAt": "2026-10-14T16:41:33.651Z",
+    "verdict": "blocked",
     "results": {
-      "localTests": "1478 passed, 2 skipped; typecheck/build success",
-      "magicland": "partial assertions passed; complete scenario not established",
-      "ci": "one success and one failure at exact SHA; PR check timeout preserved"
-    }
-  },
-  "registryWriter": {
-    "token": "cycle-20261014T1635Z-pr33-browser",
-    "owner": "producer_pr33_1635",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "427211bf92f511f7c999e884052756bb712ef5c3",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-14-1635-PR33-BROWSER.md"
-    ],
-    "acquiredAt": "2026-10-14T16:37:01.146Z"
+      "localBrowser": "0 assertions; 0 captures; Chromium socket() EPERM",
+      "ci": "unchanged: exact-SHA push success, PR failure, Workers preview success"
+    },
+    "overallVerdict": "needs-decision",
+    "nextOwner": "PR33 author/CI owner",
+    "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks."
   }
 }
