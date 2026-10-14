@@ -1,11 +1,22 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T17:37:27.252Z",
+  "updatedAt": "2026-10-14T18:28:35.925Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": null,
+  "lease": {
+    "token": "cycle-20261014T1827Z-watch",
+    "owner": "producer_watch_1827",
+    "baseCommit": "8ef4e78d614e543912edba666422bb5bebf45c4a",
+    "acquiredAt": "2026-10-14T18:28:35.925Z",
+    "expiresAt": "2026-10-14T19:05:00Z",
+    "scope": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-14-1827-WATCH.md"
+    ]
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],

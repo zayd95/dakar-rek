@@ -1232,5 +1232,17 @@
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
     "lastReconciledAt": "2026-10-14T17:37:27.252Z"
+  },
+  "registryWriter": {
+    "token": "cycle-20261014T1827Z-watch",
+    "owner": "producer_watch_1827",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "8ef4e78d614e543912edba666422bb5bebf45c4a",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-14-1827-WATCH.md"
+    ],
+    "acquiredAt": "2026-10-14T18:28:35.925Z"
   }
 }
