@@ -81,12 +81,12 @@ describe('placement', () => {
     expect(whyNot(appart, sofa, { x: 3.5, z: 0, rot: 0 }, [])).toBe('Contre le mur');
     expect(whyNot(appart, sofa, { x: -2.9, z: -2.6, rot: 0 }, [])).toBe('Gêné par un meuble de la maison');   // the kitchen counter
     expect(whyNot(appart, sofa, { x: appart.doorX, z: 2.8, rot: 0 }, [])).toBe('Laisse le passage libre');      // the door
-    expect(whyNot(appart, sofa, { x: 0, z: 0, rot: 0 }, [])).toBeNull();
-    const placed: Placed[] = [{ spec: sofa, at: { x: 0, z: 0, rot: 0 } }];
-    expect(whyNot(appart, table, { x: 0.3, z: 0.1, rot: 0 }, placed)).toBe('Gêné par un autre meuble');
-    expect(whyNot(appart, rug, { x: 0, z: 0.5, rot: 0 }, placed)).toBeNull();                                  // a rug under the sofa
+    expect(whyNot(appart, sofa, { x: 0, z: 1, rot: 0 }, [])).toBeNull();
+    const placed: Placed[] = [{ spec: sofa, at: { x: 0, z: 1, rot: 0 } }];
+    expect(whyNot(appart, table, { x: 0.3, z: 1.1, rot: 0 }, placed)).toBe('Gêné par un autre meuble');
+    expect(whyNot(appart, rug, { x: 0, z: 1.5, rot: 0 }, placed)).toBeNull();                                  // a rug under the sofa
     expect(whyNot(appart, rug, { x: appart.doorX, z: 2.5, rot: 0 }, [])).toBeNull();                          // and by the door
-    expect(whyNot(appart, rug, { x: 0.3, z: 0.5, rot: 0 }, [...placed, { spec: rug, at: { x: 0, z: 0.5, rot: 0 } }])).toBe('Gêné par un autre meuble');
+    expect(whyNot(appart, rug, { x: 0.3, z: 1.5, rot: 0 }, [...placed, { spec: rug, at: { x: 0, z: 1.5, rot: 0 } }])).toBe('Gêné par un autre meuble');
   });
   it('the starter pieces keep their usual spots in the starter room', () => {
     for (const id of ['radio', 'miroir', 'tapis', 'chaises', 'tele']) expect(autoPlace(room, furnitureSpec(id)!, [])).toEqual(room.defaults[id]);
@@ -293,5 +293,20 @@ describe('activities: polyvalence and religious practice', () => {
     expect(polyvalence(s)).toBe(before); expect(s.data.activities.known).toEqual([]);
     const old = migrate({ schemaVersion: 4, activities: { known: ['spirituel', 'social'], last: { spirituel: 0, social: 0 } } })!;
     expect(old.activities).toEqual({ known: ['social'], last: { social: 0 } });
+  });
+});
+
+describe('the F2 has two bedrooms', () => {
+  it('partitions exist only for the apartment, with two doorways kept free and walls nothing can stand on', async () => {
+    const { partitions, openPlan } = await import('../src/economy/placement');
+    expect(partitions('villa', 10, 8).walls).toEqual([]);
+    const P = partitions('apartment', 8, 6.5);
+    expect(P.rooms).toHaveLength(2); expect(P.gaps).toHaveLength(2);
+    const L = openPlan('apartment', 8, 6.5), bed = furnitureSpec('lit_double') ?? furnitureSpec('canape_wax')!;
+    // a piece cannot stand in a partition wall, and a bedroom takes a piece against its own wall
+    const w = P.walls[0];
+    expect(whyNot(L, bed, { x: (w.x0 + w.x1) / 2, z: w.z0, rot: 0 }, [])).not.toBeNull();
+    const r = P.rooms[0];
+    expect(whyNot(L, furnitureSpec('table_basse')!, { x: (r.x0 + r.x1) / 2 + 0.3, z: r.z0 + 0.6, rot: 0 }, [])).toBeNull();
   });
 });

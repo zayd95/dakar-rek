@@ -97,6 +97,8 @@ export class FollowCamera {
   yaw = 0; pitch = 0.36;
   /** Inside a room: shorter, lower camera. */
   indoor = false;
+  /** Indoors in a room open to the sky (a home, a rooftop): the camera may rise above the walls. */
+  roofless = false;
   /** What the camera did last frame (for the checks): free room behind the player (m), tight, the extra pitch. */
   info = { free: 0, tight: false, lift: 0, swinging: false, near: 0 };
   private pos = new THREE.Vector3();
@@ -147,15 +149,17 @@ export class FollowCamera {
       const d = Math.atan2(Math.sin(this.swingTo - this.yaw), Math.cos(this.swingTo - this.yaw)), step = 2.4 * dt;
       if (Math.abs(d) <= step) { this.yaw = this.swingTo; this.swingTo = null; } else this.yaw += Math.sign(d) * step;
     }
-    const dist = this.indoor ? (portrait ? 4.6 : 4.0) : portrait ? 10.5 : 8;
-    if (this.indoor) { this.pitch = clamp(this.pitch, 0.5, 0.8); this.lift = this.liftTo = 0; }   // looking down into the room shows more of it
+    const open = this.indoor && this.roofless;                 // a room without a roof: the camera rises above the walls and looks down into it
+    const dist = open ? (portrait ? 7.4 : 6.2) : this.indoor ? (portrait ? 4.6 : 4.0) : portrait ? 10.5 : 8;
+    if (this.indoor) { this.pitch = open ? clamp(this.pitch, 0.75, 1.15) : clamp(this.pitch, 0.5, 0.8); this.lift = this.liftTo = 0; }   // looking down into the room shows more of it
     this.lift += (this.liftTo - this.lift) * Math.min(1, dt * 3);
     const pitch = clamp(this.pitch + this.lift, PITCH_MIN, PITCH_LIFT_MAX);
     const v = viewPoint(target, this.yaw, pitch, dist), want = new THREE.Vector3(v.x, v.y, v.z);
     const from = new THREE.Vector3(target.x, target.y + 1.5, target.z);
     let k = 1;
     if (room) {
-      want.x = clamp(want.x, room.x0, room.x1); want.z = clamp(want.z, room.z0, room.z1); want.y = Math.min(want.y, 2.6);
+      const m = open ? 2.2 : 0;                               // over the walls when the room is open to the sky
+      want.x = clamp(want.x, room.x0 - m, room.x1 + m); want.z = clamp(want.z, room.z0 - m, room.z1 + m); want.y = Math.min(want.y, open ? 6.6 : 2.6);
     } else {
       const n = this.occluders(target, dist, colliders, canopies, dt);
       k = pullClear(from, want, clearFraction(from, want, n.c, n.t), n.c, n.t);   // in front of what would fill the lens

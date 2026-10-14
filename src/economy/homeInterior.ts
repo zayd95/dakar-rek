@@ -5,7 +5,7 @@ import { floorTileTexture, plasterTexture, generatedTexture } from '../world/tex
 import type { Interior } from '../world/interiors';
 import type { Collider, Interactable } from '../world/types';
 import type { HomeLevel, HomeSpec } from './catalog';
-import { openPlan } from './placement';
+import { openPlan, partitions } from './placement';
 
 /**
  * Interiors of the homes above the starter room (apartment, house, villa, luxury residence): one open room in the plan of
@@ -66,8 +66,17 @@ export function buildHomeInterior(h: HomeSpec, ox: number, oz: number, hub: stri
   plain.box(1.2, 2.2, 0.06, doorX, 0.1, z1 + 0.18, F.door); plain.box(0.1, 0.06, 0.1, doorX - 0.45, 1.1, z1 + 0.12, 0xd4b24a);
   colliders.push({ x0: x0 - 1, z0: z0 - 1, x1: x1 + 1, z1: z0, h: H }, { x0: x0 - 1, z0, x1: x0, z1: z1 + 1, h: H }, { x0: x1, z0, x1: x1 + 1, z1: z1 + 1, h: H }, { x0: x0 - 1, z0: z1, x1: x1 + 1, z1: z1 + 1, h: H });
   plain.box(W, 0.12, 0.08, ox, 0.1, z0 + 0.04, F.trim); plain.box(0.08, 0.12, D, x0 + 0.04, 0.1, oz, F.trim); plain.box(0.08, 0.12, D, x1 - 0.04, 0.1, oz, F.trim);
-  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.4, D + 0.4), addGrain(new THREE.MeshLambertMaterial({ color: 0xf4f1ea, emissive: 0x2a2824 }), 0.4, 2));
-  ceil.rotation.x = Math.PI / 2; ceil.position.set(ox, H + 0.1, oz); group.add(ceil);
+  // no ceiling: the camera looks down into the room (Interior.open)
+
+  // the F2's two bedrooms: waist-high partition walls (a cutaway: the camera looks down into them) with a doorway each, and a divider between them
+  const PT = partitions(level, W, D);
+  for (const r of PT.walls) { wall.box(r.x1 - r.x0, 1.4, r.z1 - r.z0, ox + (r.x0 + r.x1) / 2, 0.1, oz + (r.z0 + r.z1) / 2, F.lower); colliders.push({ x0: ox + r.x0, z0: oz + r.z0, x1: ox + r.x1, z1: oz + r.z1, h: H }); }
+  for (const g of PT.gaps) {
+    const gx = ox + (g.x0 + g.x1) / 2, gz = oz + PT.row;
+    plain.box(0.08, 1.5, 0.2, gx - (g.x1 - g.x0) / 2, 0.1, gz, F.trim); plain.box(0.08, 1.5, 0.2, gx + (g.x1 - g.x0) / 2, 0.1, gz, F.trim);
+  }
+  PT.rooms.forEach((r, i) => { const cx = ox + (r.x0 + r.x1) / 2;          // a little curtain and a lamp so each room reads as a bedroom
+    plain.box(0.5, 1.5, 0.04, cx + 0.5, 1.0, z0 + 0.12, i ? 0x6a8fd8 : 0xc2417f); });
 
   // windows on the north wall: louvred shutters, or tall glass for the villa and the residence (daylight behind)
   const nWin = Math.max(1, Math.floor((W - 3) / 3));
@@ -84,13 +93,6 @@ export function buildHomeInterior(h: HomeSpec, ox: number, oz: number, hub: stri
       plain.box(0.5, 1.5, 0.04, x - 0.75, 1.0, z0 + 0.15, level === 'house' ? 0x1a9d54 : 0xc2417f);
     }
   }
-  // lights: a ceiling fixture per 4 m (the room's point light is at the centre)
-  const fixtures = new Batch();
-  for (let fx = -1; fx <= 1; fx++) for (let fz = -1; fz <= 1; fz++) {
-    if (Math.abs(fx) * 4.5 > W / 2 || Math.abs(fz) * 3.5 > D / 2) continue;
-    fixtures.cyl(0.22, 0.22, 0.05, ox + fx * 4.5, H - 0.05, oz + fz * 3.5, 0xfff1d0, 12);
-  }
-
   // kitchen counter (west wall, north end): stove, sink, a fridge at the end
   const kz = -D / 2 + Math.min(2.6, D * 0.36), kx = x0 + 0.3, kLen = kz + D / 2;
   plain.box(0.6, 0.88, kLen - 0.7, kx, 0.1, oz - D / 2 + (kLen - 0.7) / 2 + 0.7, F.kitchen);
@@ -115,10 +117,9 @@ export function buildHomeInterior(h: HomeSpec, ox: number, oz: number, hub: stri
   for (const [b, m, cast] of [[floor, floorMat, false], [wall, M.wall, false], [plain, M.plain, true], [glow, M.glow, false], [sky, M.sky, false]] as [Batch, THREE.Material, boolean][]) {
     const mesh = b.build(m, true, cast); if (mesh) group.add(mesh);
   }
-  const fx = fixtures.build(M.glow, false, false); if (fx) { group.add(fx); ceiling.push(fx); }
   interactables.push({ id: `${hub}:in:door:${h.id}`, name: 'Sortir', kind: 'actions', x: doorX, z: z1 - 0.6, radius: 1.2, actions: [{ id: 'sortir', label: 'Sortir', seconds: 0, special: 'exit' }] });
   const int: Interior = {
-    kind: 'home', name: h.name, group, colliders, interactables, seats: [],
+    kind: 'home', name: h.name, group, colliders, interactables, seats: [], open: true,
     bounds: { x0: x0 + 0.3, x1: x1 - 0.3, z0: z0 + 0.3, z1: z1 - 0.3 },
     cameraBox: { x0: x0 + 0.15, x1: x1 - 0.15, z0: z0 + 0.15, z1: z1 - 0.15 },
     spawn: { x: doorX - 0.6, z: z1 - 1.3, yaw: Math.PI + 0.35 },

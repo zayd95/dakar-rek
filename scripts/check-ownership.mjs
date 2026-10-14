@@ -290,7 +290,7 @@ let savedJson = null;
   await page.locator('#placer [data-a="right"]').tap(); await page.locator('#placer [data-a="down"]').tap(); await settle(page, 300);
   let pi = await D(page, () => window.__dakar.placer.info());
   await page.screenshot({ path: `${out}/phone-placement.png` });
-  if (pi.why) { await D(page, () => window.__dakar.placer.moveTo(0, 0)); pi = await D(page, () => window.__dakar.placer.info()); }
+  if (pi.why) { await D(page, () => window.__dakar.placer.moveTo(0, 1.5)); pi = await D(page, () => window.__dakar.placer.info()); }
   await page.locator('#placer [data-a="put"]').tap(); await settle(page, 300);
   const bedAt = (await est(page)).assets.find(a => a.uid === bed.uid).at;
   check('phone: the bed moved and saved by touch', !!bedAt && Math.abs(bedAt.x - pi.pending.x) < 1e-6 && Math.abs(bedAt.z - pi.pending.z) < 1e-6, JSON.stringify(bedAt));
