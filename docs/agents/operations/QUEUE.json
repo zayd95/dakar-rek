@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-1735-WATCH.md",
-    "checkedAt": "2026-10-14T17:37:27.252Z",
-    "result": "Current refs/checks/reviews unchanged; no ready source task. Existing PR33 blocked browser evidence retained without retry; wave5 gate remains unmet.",
-    "owner": "producer_watch_1735",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-1827-WATCH.md",
+    "checkedAt": "2026-10-14T18:29:11.502Z",
+    "result": "Unchanged current refs/checks/reviews; no ready source task. PR33 browser blocked and wave5 needs-decision retained, no redundant rerun.",
+    "owner": "producer_watch_1827",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "ec9aaa5c9ce886f78d969107b92f15e1e91ad58a",
+    "baseCommit": "8ef4e78d614e543912edba666422bb5bebf45c4a",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-1735-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-14-1827-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -1011,7 +1011,7 @@
       "baseCommit": "631e3742507dd807acf6ec635721feebb43af056",
       "title": "Magic Land Lite on the Corniche (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T17:37:27.252Z",
+      "checkedAt": "2026-10-14T18:29:11.502Z",
       "checks": [
         {
           "id": 115925714333,
@@ -1064,7 +1064,7 @@
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Furnishing UX on mobile: orbit/zoom camera, drag to place, compact toolbar (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T17:37:27.252Z",
+      "checkedAt": "2026-10-14T18:29:11.502Z",
       "checks": [
         {
           "id": 115683879753,
@@ -1094,7 +1094,7 @@
       "baseCommit": "ede516e599a74afe32a76201de10823570e88d85",
       "title": "Tiak moto: free basic bike, Monter anytime, mobile ride pad, courier box (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T17:37:27.252Z",
+      "checkedAt": "2026-10-14T18:29:11.502Z",
       "checks": [
         {
           "id": 115653633113,
@@ -1124,7 +1124,7 @@
       "baseCommit": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
       "title": "Test candidate: busy street + dynamic minimap on top of the reconcile candidate (do not merge)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T17:37:27.252Z",
+      "checkedAt": "2026-10-14T18:29:11.502Z",
       "checks": [
         {
           "id": 115604961651,
@@ -1154,7 +1154,7 @@
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T17:37:27.252Z",
+      "checkedAt": "2026-10-14T18:29:11.502Z",
       "checks": [
         {
           "id": 115643629637,
@@ -1231,18 +1231,6 @@
     "overallVerdict": "needs-decision",
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
-    "lastReconciledAt": "2026-10-14T17:37:27.252Z"
-  },
-  "registryWriter": {
-    "token": "cycle-20261014T1827Z-watch",
-    "owner": "producer_watch_1827",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "8ef4e78d614e543912edba666422bb5bebf45c4a",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-1827-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-14T18:28:35.925Z"
+    "lastReconciledAt": "2026-10-14T18:29:11.502Z"
   }
 }
