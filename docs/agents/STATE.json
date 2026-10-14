@@ -1,22 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T17:36:39.216Z",
+  "updatedAt": "2026-10-14T17:37:27.252Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261014T1735Z-watch",
-    "owner": "producer_watch_1735",
-    "baseCommit": "ec9aaa5c9ce886f78d969107b92f15e1e91ad58a",
-    "acquiredAt": "2026-10-14T17:36:39.216Z",
-    "expiresAt": "2026-10-14T18:15:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-1735-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -301,17 +290,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-1635-PR33-BROWSER.md",
-    "completedAt": "2026-10-14T16:41:33.651Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-1735-WATCH.md",
+    "completedAt": "2026-10-14T17:37:27.252Z",
     "actualRunCompleted": true,
-    "tasks": [
-      "WATCH-PR33-20261014-1635-BROWSER"
-    ],
+    "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_pr33_1635",
-    "reviewer": "qa_pr33_browser_1635",
+    "owner": "producer_watch_1735",
+    "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261014T1635Z-pr33-browser"
+    "leaseReleased": "cycle-20261014T1735Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -573,7 +560,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-14T16:41:33.651Z",
+    "checkedAt": "2026-10-14T17:37:27.252Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -686,7 +673,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-14T16:41:33.651Z",
+      "checkedAt": "2026-10-14T17:37:27.252Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -808,7 +795,7 @@
       "baseCommit": "631e3742507dd807acf6ec635721feebb43af056",
       "title": "Magic Land Lite on the Corniche (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T16:41:33.651Z",
+      "checkedAt": "2026-10-14T17:37:27.252Z",
       "checks": [
         {
           "id": 115925714333,
@@ -861,7 +848,7 @@
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Furnishing UX on mobile: orbit/zoom camera, drag to place, compact toolbar (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T14:36:47Z",
+      "checkedAt": "2026-10-14T17:37:27.252Z",
       "checks": [
         {
           "id": 115683879753,
@@ -891,7 +878,7 @@
       "baseCommit": "ede516e599a74afe32a76201de10823570e88d85",
       "title": "Tiak moto: free basic bike, Monter anytime, mobile ride pad, courier box (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T14:36:47Z",
+      "checkedAt": "2026-10-14T17:37:27.252Z",
       "checks": [
         {
           "id": 115653633113,
@@ -921,7 +908,7 @@
       "baseCommit": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
       "title": "Test candidate: busy street + dynamic minimap on top of the reconcile candidate (do not merge)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T14:36:47Z",
+      "checkedAt": "2026-10-14T17:37:27.252Z",
       "checks": [
         {
           "id": 115604961651,
@@ -951,7 +938,7 @@
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T14:36:47Z",
+      "checkedAt": "2026-10-14T17:37:27.252Z",
       "checks": [
         {
           "id": 115643629637,
@@ -976,14 +963,14 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-14T16:41:33.651Z",
+    "checkedAt": "2026-10-14T17:37:27.252Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "PR33 prior unit/type/build evidence retained; current full Magic Land browser run blocked before assertions",
-    "delegation": "independent browser QA completed with blocked verdict",
+    "localTests": "local_not_run this cycle; no retry of documented Chromium socket EPERM",
+    "delegation": "available; no changed source or useful new specialist task",
     "cloudflareAuthenticated": false
   }
 }
