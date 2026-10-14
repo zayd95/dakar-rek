@@ -25,11 +25,16 @@ body.mm-on #delivery { top:calc(var(--mm-top) + var(--mm) + 56px); }
   #minimap .mm-name b { font-size:13px; -webkit-line-clamp:1; }
   body.mm-on #delivery { top:196px; max-width:calc(100vw - var(--mm) - 34px); }
 }
+/* landscape phone: small (72 px), high in the left column right under the wallet (far from the joystick and the left
+   thumb), the place alone on one line under it */
 @media (max-height:500px) and (orientation:landscape) {
-  #ui { --mm: 92px; --mm-top: 110px; }
-  #minimap { left:calc(10px + var(--sa-l)); }
-  #minimap .mm-name small { font-size:10.5px; } #minimap .mm-name b { font-size:12.5px; -webkit-line-clamp:1; }
-  body.mm-on #delivery { top:calc(var(--mm-top) + var(--mm) + 40px); }
+  #ui { --mm: 72px; --mm-top: 78px; }
+  #minimap { left:calc(10px + var(--sa-l)); max-width:130px; }
+  #minimap .mm-name { margin-top:3px; max-width:130px; }
+  #minimap .mm-name small { display:none; }
+  #minimap .mm-name b { font-size:11.5px; -webkit-line-clamp:1; white-space:nowrap; text-overflow:ellipsis; }
+  body.mm-on #delivery { top:calc(var(--mm-top) + var(--mm) + 28px); }
+}
 }
 
 /* ---- the phone's « Carte » screen (src/ui/fullmap.ts) */

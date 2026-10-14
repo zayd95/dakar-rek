@@ -85,21 +85,22 @@ export const newParams = (): GaitParams => ({
 const KEYS = Object.keys(newParams()) as (keyof GaitParams)[];
 
 /**
- * Walking: the step grows with the speed's square root or so (0.70 m at 1.4 m/s, 120 steps a minute; 0.82 m at
- * 2.2 m/s, 161 a minute), the double support shortens, the arms and the pelvis move more.
+ * Walking: the step grows with the speed's square root or so (0.70 m at 1.4 m/s, 120 steps a minute; 0.79 m at
+ * 2.2 m/s, 167 a minute), the double support shortens, the arms and the pelvis move more. The ankle's travel under the body
+ * is centred on the hips (the trailing leg used to reach 0.55 m behind them: legs too far apart, hip extension 34°).
  */
 /** Steps per second of the walk at ground speed `v` (walkParams' cadence, without filling a GaitParams): the clips alone, far away, keep this pace. */
 export function walkCadence(v: number): number {
   const w = clamp(v, 0, 2.6);
-  const step = w <= 1.4 ? 0.7 * Math.pow(w / 1.4, 0.55) : 0.7 + (0.12 * (w - 1.4)) / 0.8;
+  const step = w <= 1.4 ? 0.7 * Math.pow(w / 1.4, 0.55) : 0.7 + (0.09 * (w - 1.4)) / 0.8;
   return Math.max(0.9, w / Math.max(0.01, step));
 }
 export function walkParams(v: number, o: GaitParams = newParams()): GaitParams {
   const w = clamp(v, 0, 2.6), k = Math.min(1, w / 1.4);
-  const step = w <= 1.4 ? 0.7 * Math.pow(w / 1.4, 0.55) : 0.7 + (0.12 * (w - 1.4)) / 0.8;
+  const step = w <= 1.4 ? 0.7 * Math.pow(w / 1.4, 0.55) : 0.7 + (0.09 * (w - 1.4)) / 0.8;
   o.cadence = Math.max(0.9, w / Math.max(0.01, step)); o.step = w / o.cadence;
-  o.duty = 0.64 - 0.04 * w;
-  o.centre = -0.05 * k; o.width = 0.085 - 0.01 * w;
+  o.duty = 0.64 - 0.05 * w;
+  o.centre = 0.015 * k; o.width = 0.085 - 0.01 * w;
   o.heelStrike = (6 + 9 * Math.min(1, w / 1.6)) * DEG; o.footFlat = 0.16; o.heelOff = 0.55 - 0.08 * Math.min(1, w / 2.2);
   o.toeOff = -(14 + 26 * Math.min(1, w / 1.8)) * DEG;
   o.lift = 0.04 + 0.04 * Math.min(1, w / 1.6); o.clear = 0.03; o.kick = 0; o.drive = 0; o.ankleSwing = -6 * DEG;
@@ -120,7 +121,7 @@ const sprintShare = (w: number) => smoothstep(4.2, 6.5, w);
 /** Steps per second of the run at ground speed `v` (runParams' cadence): the clips alone, far away, keep this pace. */
 export function runCadence(v: number): number {
   const w = Math.max(v, 1.5);
-  return 2.45 + 0.107 * w + 0.05 * (1 - sprintShare(w));
+  return 2.62 + 0.115 * w + 0.05 * (1 - sprintShare(w));
 }
 /**
  * Running. The jog (4.2 m/s) is relaxed: 177 steps a minute with a 1.42 m step, a light bounce, the heel kicked up a little,
@@ -131,8 +132,8 @@ export function runCadence(v: number): number {
 export function runParams(v: number, o: GaitParams = newParams()): GaitParams {
   const w = Math.max(v, 1.5), sp = sprintShare(w);
   o.cadence = runCadence(w); o.step = w / o.cadence;
-  o.duty = clamp(((0.64 + 0.016 * Math.min(w, 4.2)) / w) * o.cadence * 0.5, 0.15, 0.42);         // the stance travel stops growing past 4.2 m/s
-  o.centre = -0.1 - 0.005 * w; o.width = 0.05 - 0.002 * w;
+  o.duty = clamp(((0.5 + 0.014 * Math.min(w, 4.2)) / w) * o.cadence * 0.5, 0.12, 0.42);         // the stance travel stops growing past 4.2 m/s
+  o.centre = -0.04 - 0.003 * w; o.width = 0.05 - 0.002 * w;
   o.heelStrike = Math.max(0, 8 - w) * DEG; o.footFlat = 0.2; o.heelOff = 0.4; o.toeOff = -(35 + 3 * w) * DEG;
   o.lift = 0; o.clear = 0; o.kick = lerp(0.1 + 0.05 * w, 0.22 + 0.05 * w, sp); o.drive = 0.12 + 0.03 * w; o.ankleSwing = 12 * DEG;
   o.hipY = 0.928; o.bob = -(0.016 + 0.003 * w); o.sway = 0.012;

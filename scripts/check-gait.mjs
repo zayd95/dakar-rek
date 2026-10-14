@@ -28,8 +28,8 @@ const DT = 1 / 60;
 const GAITS = [
   { name: 'walk', label: 'walk 1.4 m/s (light push)', stick: 0.59, spm: [105, 135] },
   { name: 'walk2', label: 'walk 2.0 m/s (full push: the default)', keys: ['KeyW'], spm: [135, 175] },
-  { name: 'jog', label: 'jog 4.2 m/s (Shift / « Courir »)', keys: ['KeyW'], level: 1, spm: [165, 195] },
-  { name: 'sprint', label: 'sprint 7 m/s (double-tapped Shift / « Courir » twice)', keys: ['KeyW'], level: 2, spm: [175, 215] },
+  { name: 'jog', label: 'jog 4.2 m/s (Shift / « Courir »)', keys: ['KeyW'], level: 1, spm: [172, 205] },
+  { name: 'sprint', label: 'sprint 7 m/s (double-tapped Shift / « Courir » twice)', keys: ['KeyW'], level: 2, spm: [185, 220] },
 ];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });

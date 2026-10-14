@@ -146,14 +146,14 @@ export function deriveJog(clips: THREE.AnimationClip[]) {
   const jog = run.clone(); jog.name = 'Jog';
   for (const t of jog.tracks) {
     const m = /^(thigh|shin|upper_arm|forearm)\.?[LR]\.quaternion$/.exec(t.name); if (!m) continue;
-    scaleSwing(t.values, m[1] === 'thigh' ? 0.62 : m[1] === 'shin' ? 0.75 : 0.6);
+    scaleSwing(t.values, m[1] === 'thigh' ? 0.5 : m[1] === 'shin' ? 0.68 : 0.6);
   }
   clips.push(jog);
 }
-/** The Walk clip's thighs swing a little less than the gait's step needs (foot spread 0.52 m against 0.71): widened to match. */
+/** The Walk clip's thighs swing a little less than the gait's step needs (foot spread 0.52 m against about 0.64): widened to match. */
 export function widenWalk(clips: THREE.AnimationClip[]) {
   const walk = clips.find(c => c.name === 'Walk'); if (!walk) return;
-  for (const t of walk.tracks) if (/^thigh\.?[LR]\.quaternion$/.test(t.name)) scaleSwing(t.values, 1.3);
+  for (const t of walk.tracks) if (/^thigh\.?[LR]\.quaternion$/.test(t.name)) scaleSwing(t.values, 1.2);
 }
 
 // ---------------------------------------------------------------- poses built in code (home and social life)
