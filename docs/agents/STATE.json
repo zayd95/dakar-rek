@@ -1,23 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T01:35:05Z",
+  "updatedAt": "2026-10-14T03:37:27Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261014T0337Z-watch",
-    "owner": "producer_watch_0337",
-    "acquiredAt": "2026-10-14T03:36:17Z",
-    "expiresAt": "2026-10-14T04:06:17Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "560ad3ee615197e734438734705356ddd52e6334",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0337-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -131,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-14T01:35:05Z",
+    "lastCompletedRunAt": "2026-10-14T03:37:27Z",
     "lastVerifiedAt": "2026-10-13T00:29:00Z"
   },
   "productionMutationsAuthorized": false,
@@ -301,15 +289,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-0135-WATCH.md",
-    "completedAt": "2026-10-14T01:35:05Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-0337-WATCH.md",
+    "completedAt": "2026-10-14T03:37:27Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_0135",
+    "owner": "producer_watch_0337",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261014T0135Z-watch"
+    "leaseReleased": "cycle-20261014T0337Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +559,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-14T01:35:05Z",
+    "checkedAt": "2026-10-14T03:37:27Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -763,7 +751,7 @@
     "sha": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
     "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
     "owner": "other session; never mutate",
-    "checkedAt": "2026-10-14T01:35:05Z",
+    "checkedAt": "2026-10-14T03:37:27Z",
     "ci": [
       {
         "id": 115555018390,
@@ -786,5 +774,97 @@
     ],
     "reviews": [],
     "status": "isolated candidate; standard checks green, whole-wave reception not established"
-  }
+  },
+  "externalNewCandidates": [
+    {
+      "pr": 31,
+      "branch": "feature/tiak-moto",
+      "sha": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+      "baseCommit": "ede516e599a74afe32a76201de10823570e88d85",
+      "title": "Tiak moto: free basic bike, Monter anytime, mobile ride pad, courier box (preview only)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-14T03:37:27Z",
+      "checks": [
+        {
+          "id": 115653633113,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-tiak-moto/builds/45e7080c-30c2-4ee2-a6c1-5514be35c7db"
+        },
+        {
+          "id": 115653348930,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38502780812/job/115653348930"
+        },
+        {
+          "id": 115653333382,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38502775781/job/115653333382"
+        }
+      ],
+      "accepted": false
+    },
+    {
+      "pr": 30,
+      "branch": "candidate/busy-map",
+      "sha": "ede516e599a74afe32a76201de10823570e88d85",
+      "baseCommit": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
+      "title": "Test candidate: busy street + dynamic minimap on top of the reconcile candidate (do not merge)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-14T03:37:27Z",
+      "checks": [
+        {
+          "id": 115604961651,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/candidate-busy-map/builds/265e7c08-ffa6-44f7-ac77-4dcfceaec05c"
+        },
+        {
+          "id": 115604288693,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38487412146/job/115604288693"
+        },
+        {
+          "id": 115604273533,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38487407541/job/115604273533"
+        }
+      ],
+      "accepted": false
+    },
+    {
+      "pr": 29,
+      "branch": "codex/reference-character",
+      "sha": "4ef13226e2829d65ea1a6916f9e2532e990d3880",
+      "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+      "title": "Preview one reference character with a new rig and natural retargeted motion",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-14T03:37:27Z",
+      "checks": [
+        {
+          "id": 115643629637,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/codex-reference-character/builds/92ae5f43-cc9d-4be8-acc2-8803202fdfae"
+        },
+        {
+          "id": 115643310789,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38499651299/job/115643310789"
+        },
+        {
+          "id": 115643296908,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38499646911/job/115643296908"
+        }
+      ],
+      "accepted": false
+    }
+  ]
 }
