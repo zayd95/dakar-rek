@@ -1,23 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T03:37:27Z",
+  "updatedAt": "2026-10-14T04:37:03Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261014T0437Z-watch",
-    "owner": "producer_watch_0437",
-    "acquiredAt": "2026-10-14T04:36:04Z",
-    "expiresAt": "2026-10-14T05:06:04Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "c06f6c7972d1a34812db4c5797b2d46d5ae1de96",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0437-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -131,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-14T03:37:27Z",
+    "lastCompletedRunAt": "2026-10-14T04:37:03Z",
     "lastVerifiedAt": "2026-10-13T00:29:00Z"
   },
   "productionMutationsAuthorized": false,
@@ -301,15 +289,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-0337-WATCH.md",
-    "completedAt": "2026-10-14T03:37:27Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-0437-WATCH.md",
+    "completedAt": "2026-10-14T04:37:03Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_0337",
+    "owner": "producer_watch_0437",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261014T0337Z-watch"
+    "leaseReleased": "cycle-20261014T0437Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +559,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-14T03:37:27Z",
+    "checkedAt": "2026-10-14T04:37:03Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -763,7 +751,7 @@
     "sha": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
     "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
     "owner": "other session; never mutate",
-    "checkedAt": "2026-10-14T03:37:27Z",
+    "checkedAt": "2026-10-14T04:37:03Z",
     "ci": [
       {
         "id": 115555018390,
@@ -789,13 +777,43 @@
   },
   "externalNewCandidates": [
     {
+      "pr": 32,
+      "branch": "feature/home-editor-ux",
+      "sha": "0a17a11c8b3900cdf6167883d0c6f0d60b3de7cc",
+      "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+      "title": "Furnishing UX on mobile: orbit/zoom camera, drag to place, compact toolbar (preview only)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-14T04:37:03Z",
+      "checks": [
+        {
+          "id": 115677374072,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-home-editor-ux/builds/ae566588-db5c-4a36-9451-9eec479ed19b"
+        },
+        {
+          "id": 115677059634,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38510311761/job/115677059634"
+        },
+        {
+          "id": 115677024667,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38510300507/job/115677024667"
+        }
+      ],
+      "accepted": false
+    },
+    {
       "pr": 31,
       "branch": "feature/tiak-moto",
       "sha": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "baseCommit": "ede516e599a74afe32a76201de10823570e88d85",
       "title": "Tiak moto: free basic bike, Monter anytime, mobile ride pad, courier box (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T03:37:27Z",
+      "checkedAt": "2026-10-14T04:37:03Z",
       "checks": [
         {
           "id": 115653633113,
@@ -825,7 +843,7 @@
       "baseCommit": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
       "title": "Test candidate: busy street + dynamic minimap on top of the reconcile candidate (do not merge)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T03:37:27Z",
+      "checkedAt": "2026-10-14T04:37:03Z",
       "checks": [
         {
           "id": 115604961651,
@@ -855,7 +873,7 @@
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T03:37:27Z",
+      "checkedAt": "2026-10-14T04:37:03Z",
       "checks": [
         {
           "id": 115643629637,
