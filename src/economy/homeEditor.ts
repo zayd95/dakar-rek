@@ -27,6 +27,9 @@ export interface HomeView {
   seatIds: string[];
 }
 const FLOOR = 0.1;
+/** Camera pitch presets (radians above the floor): the angled view that shows the walls, and straight down. */
+const ANGLED = 0.8, HIGH = 1.2, OVERHEAD = 1.53, MIN_PITCH = 0.42;
+const clampZoom = (z: number) => Math.min(1.6, Math.max(0.4, z));
 
 /**
  * Placement mode inside the player's home: pick a piece (a chip, or a tap on it), move it on a 25 cm grid (arrows, keys,
@@ -42,7 +45,15 @@ export class HomeEditor {
   private marker = footprintMarker();
   private ray = new THREE.Raycaster();
   private onKey = (e: KeyboardEvent) => this.key(e);
-  private onTap = (e: PointerEvent) => this.tap(e);
+  private onDown = (e: PointerEvent) => this.down(e);
+  private onMove = (e: PointerEvent) => this.moved(e);
+  private onUp = (e: PointerEvent) => this.up(e);
+  private onWheel = (e: WheelEvent) => { if (!this.view) return; e.preventDefault(); this.look.zoom = clampZoom(this.look.zoom * Math.exp(e.deltaY * 0.0012)); };
+  /** The room camera: orbit (yaw/pitch around the room), zoom (× the distance that fits the room), and the overhead preset. */
+  private look = { yaw: 0, pitch: HIGH, zoom: 1 };
+  private expanded = false;
+  private ptrs = new Map<number, { x: number; y: number }>();
+  private gest: { kind: 'orbit' | 'drag' | 'pinch'; x0: number; y0: number; t0: number; moved: boolean; grab?: { x: number; z: number }; d0?: number; zoom0?: number } | null = null;
 
   constructor(private ctx: GameCtx) {
     this.el = document.createElement('div'); this.el.id = 'placer'; this.el.className = 'card';
@@ -67,8 +78,11 @@ export class HomeEditor {
     v.furniture.add(this.marker);
     const first = this.items().find(f => f.at) ?? this.items()[0];
     this.select(first.uid);
+    this.look = { yaw: 0, pitch: HIGH, zoom: 1 }; this.ptrs.clear(); this.gest = null;
     addEventListener('keydown', this.onKey, true);
-    document.getElementById('c')?.addEventListener('pointerdown', this.onTap);
+    const c = document.getElementById('c');
+    c?.addEventListener('pointerdown', this.onDown); c?.addEventListener('pointermove', this.onMove); c?.addEventListener('pointerup', this.onUp); c?.addEventListener('pointercancel', this.onUp);
+    c?.addEventListener('wheel', this.onWheel, { passive: false });
     this.render();
     return true;
   }
@@ -79,8 +93,12 @@ export class HomeEditor {
     v.furniture.remove(this.marker);
     for (const c of v.ceiling) c.visible = true;
     this.view = null; this.sel = null; this.pending = null;
+    const me = this.ctx.player.body()?.group; if (me) me.visible = true;
     removeEventListener('keydown', this.onKey, true);
-    document.getElementById('c')?.removeEventListener('pointerdown', this.onTap);
+    const c = document.getElementById('c');
+    c?.removeEventListener('pointerdown', this.onDown); c?.removeEventListener('pointermove', this.onMove); c?.removeEventListener('pointerup', this.onUp); c?.removeEventListener('pointercancel', this.onUp);
+    c?.removeEventListener('wheel', this.onWheel);
+    this.ptrs.clear(); this.gest = null;
     document.body.classList.remove('placing');
     this.el.classList.remove('on');
     touchAssets();                                                     // every piece back where it is saved
@@ -127,10 +145,10 @@ export class HomeEditor {
     this.ghost = null;
     touchAssets();
   }
-  move(dx: number, dz: number) { if (this.pending) { this.pending = nudge(this.pending, dx, dz); this.render(); } }
-  rotate() { if (this.pending) { this.pending = turn(this.pending); this.render(); } }
+  move(dx: number, dz: number) { if (this.pending) { this.pending = nudge(this.pending, dx, dz); this.status(); } }
+  rotate() { if (this.pending) { this.pending = turn(this.pending); this.status(); } }
   /** Moves the selected piece to a point of the room (home coordinates), on the grid. */
-  moveTo(x: number, z: number) { if (this.pending) { this.pending = snap(x, z, this.pending.rot); this.render(); } }
+  moveTo(x: number, z: number) { if (this.pending) { this.pending = snap(x, z, this.pending.rot); this.status(); } }
   put(): boolean {
     const why = this.why();
     if (why || !this.sel || !this.pending) { this.ctx.toast(why ?? 'Choisis un meuble'); this.render(); return false; }
@@ -154,36 +172,96 @@ export class HomeEditor {
 
   info() {
     return {
-      open: this.isOpen, selected: this.sel, pending: this.pending ? { ...this.pending } : null, why: this.isOpen ? this.why() : null,
+      open: this.isOpen, selected: this.sel, gesture: this.gest?.kind ?? null, pointers: this.ptrs.size, cam: this.ctx.camera.position.toArray().map(n => +n.toFixed(2)), avatar: this.ctx.player.body()?.group.visible ?? null, pending: this.pending ? { ...this.pending } : null, why: this.isOpen ? this.why() : null,
       items: this.items().map(f => ({ uid: f.uid, spec: f.spec, at: f.at ? { ...f.at } : null })),
     };
   }
 
   // ---------------------------------------------------------------- camera, input, panel
-  /** The view from above the room while placing (the module's camera hook); false when the editor is closed. */
+  /** The room camera while placing (the module's camera hook): orbits the room, zooms, or looks straight down; false when closed. */
   camera(): boolean {
     const v = this.view; if (!v) return false;
-    const cam = this.ctx.camera, L = layoutOf(v.spec);
+    const cam = this.ctx.camera, L = layoutOf(v.spec), { yaw, pitch, zoom } = this.look;
+    const me = this.ctx.player.body()?.group; if (me) me.visible = false;                // the avatar would hide the room while decorating
     const tanV = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), tanH = tanV * cam.aspect;
     const portrait = cam.aspect < 1;
-    const dist = Math.max((L.w / 2 + 0.5) / tanH, (L.d / 2 + 0.8) / tanV) * (portrait ? 1.18 : 1.05);
-    const shift = L.d * (portrait ? 0.22 : 0.14);                         // the panel covers the bottom of the screen
-    cam.position.set(v.ox, FLOOR + dist, v.oz + shift + dist * 0.16);
-    cam.lookAt(v.ox, FLOOR, v.oz + shift);
+    const fit = Math.max((L.w / 2 + 0.5) / tanH, (L.d / 2 + 0.8) / tanV) * (portrait ? 1.12 : 1.2);
+    const dist = fit * zoom, shift = L.d * (portrait ? 0.07 : 0.14);          // lifts the room clear of the slim toolbar at the bottom edge
+    const tx = v.ox, ty = FLOOR, tz = v.oz + shift;
+    cam.position.set(tx + dist * Math.sin(yaw) * Math.cos(pitch), ty + dist * Math.sin(pitch), tz + dist * Math.cos(yaw) * Math.cos(pitch) + (pitch > 1.5 ? dist * 0.01 : 0));
+    cam.lookAt(tx, ty, tz);
     return true;
   }
-  private tap(e: PointerEvent) {
-    const v = this.view; if (!v) return;
-    const cam = this.ctx.camera, rect = (e.target as HTMLElement).getBoundingClientRect();
-    this.ray.setFromCamera(new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1), cam);
-    const hits = this.ray.intersectObjects([...v.pieces.values()].map(p => p.obj), true);
-    for (const h of hits) {
-      let o: THREE.Object3D | null = h.object; while (o && !o.userData.uid) o = o.parent;
-      if (o?.userData.uid && o.userData.uid !== this.sel) { this.select(o.userData.uid); return; }
-      if (o?.userData.uid) break;
-    }
+  /** Debug/checks: the orbit state, and a way to set it. */
+  cameraLook(set?: Partial<{ yaw: number; pitch: number; zoom: number }>) { if (set) { Object.assign(this.look, set); this.look.pitch = Math.min(OVERHEAD, Math.max(MIN_PITCH, this.look.pitch)); this.look.zoom = clampZoom(this.look.zoom); } return { ...this.look }; }
+  /** Checks: where the selected piece (or the room's centre when none) is on the screen, in client pixels. */
+  screenOf(uid?: string): { x: number; y: number } | null {
+    const v = this.view; if (!v) return null;
+    const obj = (uid ? v.pieces.get(uid)?.obj : null) ?? (this.sel ? v.pieces.get(this.sel)?.obj : null) ?? this.ghost; if (!obj) return null;
+    const p = new THREE.Vector3(obj.position.x, FLOOR + 0.3, obj.position.z).project(this.ctx.camera), r = document.getElementById('c')!.getBoundingClientRect();
+    return { x: r.left + (p.x + 1) / 2 * r.width, y: r.top + (1 - p.y) / 2 * r.height };
+  }
+  toggleView() { this.look.pitch = this.look.pitch > 1.45 ? ANGLED : OVERHEAD; this.look.yaw = 0; this.render(); }
+
+  // One finger: on a piece it drags it (the grab keeps its offset, snapped to the grid); anywhere else it orbits the room, and a
+  // short tap on the floor moves the piece there. Two fingers pinch to zoom (a drag in progress is dropped, never put).
+  private ndc(e: PointerEvent) { const r = (e.target as HTMLElement).getBoundingClientRect(); return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); }
+  private floorAt(e: PointerEvent): THREE.Vector3 | null {
+    this.ray.setFromCamera(this.ndc(e), this.ctx.camera);
     const p = new THREE.Vector3();
-    if (this.ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -FLOOR), p)) this.moveTo(p.x - v.ox, p.z - v.oz);
+    return this.ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -FLOOR), p) ? p : null;
+  }
+  /** The uid of the piece under the pointer (the ghost counts as the selected piece). */
+  private pieceAt(e: PointerEvent): string | null {
+    const v = this.view; if (!v) return null;
+    this.ray.setFromCamera(this.ndc(e), this.ctx.camera);
+    const objs = [...v.pieces.values()].map(p => p.obj); if (this.ghost) objs.push(this.ghost);
+    for (const h of this.ray.intersectObjects(objs, true)) {
+      let o: THREE.Object3D | null = h.object; while (o && !o.userData.uid && o !== this.ghost) o = o.parent;
+      if (o === this.ghost) return this.sel;
+      if (o?.userData.uid) return o.userData.uid as string;
+    }
+    return null;
+  }
+  private down(e: PointerEvent) {
+    const v = this.view; if (!v || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    this.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch { /* synthetic pointers */ }
+    if (this.ptrs.size >= 2) {
+      const [a, b] = [...this.ptrs.values()];
+      this.gest = { kind: 'pinch', x0: 0, y0: 0, t0: performance.now(), moved: true, d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, zoom0: this.look.zoom };
+      this.status(); return;
+    }
+    const hit = this.pieceAt(e);
+    if (hit) {
+      if (hit !== this.sel) this.select(hit);
+      const f = this.floorAt(e), p = this.pending;
+      this.gest = { kind: 'drag', x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false, grab: f && p ? { x: p.x - (f.x - v.ox), z: p.z - (f.z - v.oz) } : { x: 0, z: 0 } };
+    } else this.gest = { kind: 'orbit', x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false };
+  }
+  private moved(e: PointerEvent) {
+    const v = this.view, g = this.gest, prev = this.ptrs.get(e.pointerId); if (!v || !g || !prev) return;
+    prev.x = e.clientX; prev.y = e.clientY;
+    if (g.kind === 'pinch') {
+      if (this.ptrs.size < 2) return;
+      const [a, b] = [...this.ptrs.values()];
+      this.look.zoom = clampZoom(g.zoom0! * g.d0! / (Math.hypot(a.x - b.x, a.y - b.y) || 1)); return;
+    }
+    if (!g.moved && Math.hypot(e.clientX - g.x0, e.clientY - g.y0) < 8) return;
+    g.moved = true;
+    if (g.kind === 'orbit') {
+      const k = 0.0075, dx = e.clientX - g.x0, dy = e.clientY - g.y0; g.x0 = e.clientX; g.y0 = e.clientY;
+      this.look.yaw -= dx * k; this.look.pitch = Math.min(OVERHEAD, Math.max(MIN_PITCH, this.look.pitch + dy * k)); return;
+    }
+    const f = this.floorAt(e); if (f && g.grab) this.moveTo(f.x - v.ox + g.grab.x, f.z - v.oz + g.grab.z);
+  }
+  private up(e: PointerEvent) {
+    const v = this.view, g = this.gest; this.ptrs.delete(e.pointerId);
+    if (!v || !g) return;
+    if (g.kind === 'pinch') { if (this.ptrs.size < 2) this.gest = null; return; }
+    this.gest = null;
+    if (g.kind === 'drag') { if (g.moved && !this.why()) this.put(); return; }              // dropped where it fits: placed and saved
+    if (!g.moved && performance.now() - g.t0 < 400) { const f = this.floorAt(e); if (f) this.moveTo(f.x - v.ox, f.z - v.oz); }
   }
   private key(e: KeyboardEvent) {
     if (!this.view) return;
@@ -200,21 +278,36 @@ export class HomeEditor {
     if (!e.repeat || k.startsWith('Arrow')) fn();
   }
 
+  /** Status line and the Poser button state only: cheap enough to run on every drag step. */
+  private status() {
+    const v = this.view; if (!v) return;
+    const cur = this.items().find(f => f.uid === this.sel), fs = cur && furnitureSpec(cur.spec), why = this.why();
+    const st = this.el.querySelector<HTMLElement>('.pl-status'); if (!st) return;
+    st.className = `pl-status ${why ? 'bad' : 'ok'}`;
+    st.textContent = `${fs ? fs.emoji + ' ' + fs.name + ' · ' : ''}${why ?? (cur?.at ? 'bien placé ✓' : 'la place est libre ✓')}`;
+    this.el.querySelector('[data-a="put"]')?.classList.toggle('blocked', !!why);
+  }
   private render() {
     const v = this.view; if (!v) { this.el.classList.remove('on'); return; }
-    const items = this.items(), why = this.why();
-    const cur = items.find(f => f.uid === this.sel), fs = cur && furnitureSpec(cur.spec);
+    const items = this.items();
     const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-    this.el.innerHTML = `<div class="pl-head"><b>Aménager · ${esc(v.spec.name.split(' · ')[0])}</b><button type="button" data-a="done">Terminé</button></div>
-      <div class="pl-items">${items.map(f => { const s = furnitureSpec(f.spec)!; return `<button type="button" data-uid="${f.uid}" class="${f.uid === this.sel ? 'on' : ''} ${f.at ? '' : 'stored'}">${s.emoji} ${esc(s.name)}${f.at ? '' : '<small>rangé</small>'}</button>`; }).join('')}</div>
-      <div class="pl-ctrl">
-        <button type="button" data-a="left" aria-label="Gauche">◀</button><button type="button" data-a="up" aria-label="Haut">▲</button><button type="button" data-a="down" aria-label="Bas">▼</button><button type="button" data-a="right" aria-label="Droite">▶</button>
-        <button type="button" data-a="rot">⟳ Tourner</button><button type="button" data-a="put" class="go">Poser</button><button type="button" data-a="stash">Ranger</button>
+    this.el.innerHTML = `<small class="pl-status"></small>
+      <div class="pl-more">
+        <div class="pl-items">${items.map(f => { const s = furnitureSpec(f.spec)!; return `<button type="button" data-uid="${f.uid}" class="${f.uid === this.sel ? 'on' : ''} ${f.at ? '' : 'stored'}">${s.emoji} ${esc(s.name)}${f.at ? '' : '<small>rangé</small>'}</button>`; }).join('')}</div>
+        <div class="pl-pad"><button type="button" data-a="left" aria-label="Gauche">◀</button><button type="button" data-a="up" aria-label="Haut">▲</button><button type="button" data-a="down" aria-label="Bas">▼</button><button type="button" data-a="right" aria-label="Droite">▶</button></div>
       </div>
-      <small class="pl-status ${why ? 'bad' : 'ok'}">${fs ? esc(fs.name) + ' : ' : ''}${why ? esc(why) : 'la place est libre ✓'} · touche le sol pour le déplacer</small>`;
+      <div class="pl-bar">
+        <button type="button" data-a="more" aria-label="Liste des meubles" aria-expanded="${this.expanded}">☰</button>
+        <button type="button" data-a="rot">⟳<span>Tourner</span></button><button type="button" data-a="put" class="go">✓<span>Poser</span></button>
+        <button type="button" data-a="stash">📦<span>Ranger</span></button><button type="button" data-a="view">${this.look.pitch > 1.45 ? '🎥' : '⬇️'}<span>${this.look.pitch > 1.45 ? 'Angle' : 'Dessus'}</span></button>
+        <button type="button" data-a="done">Terminé</button>
+      </div>`;
+    this.el.classList.toggle('open', this.expanded);
     this.el.querySelectorAll<HTMLElement>('[data-uid]').forEach(b => b.addEventListener('click', () => this.select(b.dataset.uid!)));
-    const A: Record<string, () => void> = { done: () => this.close(), left: () => this.move(-1, 0), right: () => this.move(1, 0), up: () => this.move(0, -1), down: () => this.move(0, 1), rot: () => this.rotate(), put: () => this.put(), stash: () => this.stash() };
+    const A: Record<string, () => void> = { done: () => this.close(), left: () => this.move(-1, 0), right: () => this.move(1, 0), up: () => this.move(0, -1), down: () => this.move(0, 1), rot: () => this.rotate(), put: () => this.put(), stash: () => this.stash(),
+      view: () => this.toggleView(), more: () => { this.expanded = !this.expanded; this.el.classList.toggle('open', this.expanded); this.el.querySelector('[data-a="more"]')?.setAttribute('aria-expanded', String(this.expanded)); } };
     this.el.querySelectorAll<HTMLElement>('[data-a]').forEach(b => b.addEventListener('click', () => A[b.dataset.a!]?.()));
     this.el.classList.add('on');
+    this.status();
   }
 }

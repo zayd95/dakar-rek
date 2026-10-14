@@ -101,6 +101,7 @@ let savedJson = null;
   let pi = await D(page, () => window.__dakar.placer.info());
   check('the placement mode opens on the chair (camera above the room, panel)', pi.open && pi.selected === chair.uid, JSON.stringify(pi));
   await settle(page, 1200); await page.screenshot({ path: `${out}/desktop-placement-before.png` });
+  await page.locator('#placer [data-a="more"]').click(); await page.waitForTimeout(200);                // the arrows and the list sit in the toolbar's drawer
   for (const a of ['left', 'left', 'down', 'down', 'down', 'rot', 'rot']) { await page.locator(`#placer [data-a="${a}"]`).click(); await page.waitForTimeout(150); }
   pi = await D(page, () => window.__dakar.placer.info());
   check('arrows and « Tourner » move the chair on the grid (not saved yet)', pi.pending.rot === (chair.at.rot + 2) % 4 && Math.abs(pi.pending.x - (chair.at.x - 0.5)) < 1e-6 && Math.abs(pi.pending.z - (chair.at.z + 0.75)) < 1e-6 && JSON.stringify((await est(page)).assets.find(a => a.uid === chair.uid).at) === JSON.stringify(chair.at), JSON.stringify(pi.pending));
@@ -125,7 +126,7 @@ let savedJson = null;
   await D(page, s => window.__dakar.place(s.x + Math.sin(s.yaw) * 0.75, s.z + Math.cos(s.yaw) * 0.75, s.yaw + Math.PI), seat);
   check('walking up to the chair offers « S’asseoir »', await focusIs(page, `^seat:.*${chair.uid}:0\\|S’asseoir`), JSON.stringify(await D(page, () => window.__dakar.focus())));
   await D(page, () => window.__dakar.act());
-  await page.waitForFunction(() => window.__dakar.clip() === 'Sit', null, T).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.clip() === 'Sit' && window.__dakar.seated(), null, T).catch(() => {});
   const sat = await D(page, () => ({ seated: window.__dakar.seated(), y: window.__dakar.pos().y, clip: window.__dakar.clip() }));
   check('sitting on the chair at the right height', sat.seated === seat.id && sat.clip === 'Sit' && Math.abs(sat.y - (seat.top - 0.48)) < 0.05, JSON.stringify(sat));
   await D(page, st => window.__dakar.cam([st.x - 2.4, 2.3, st.z + 2.6], [st.x, 0.7, st.z]), seat); await settle(page, 1200);
@@ -284,6 +285,7 @@ let savedJson = null;
   check('phone: « Aménager » on the action button', await focusIs(page, '^home:self\\|Aménager'), JSON.stringify(await D(page, () => window.__dakar.focus())));
   await page.locator('#act').tap();
   await page.waitForFunction(() => document.querySelector('#placer.on'), null, T).catch(() => {});
+  if (!(await D(page, () => document.getElementById('placer').classList.contains('open')))) await page.locator('#placer [data-a="more"]').tap();   // the list and the arrows are in the drawer
   await page.locator(`#placer [data-uid="${bed.uid}"]`).tap(); await settle(page, 300);
   await page.locator('#placer [data-a="right"]').tap(); await page.locator('#placer [data-a="down"]').tap(); await settle(page, 300);
   let pi = await D(page, () => window.__dakar.placer.info());
@@ -301,7 +303,7 @@ let savedJson = null;
   await D(page, p => window.__dakar.place(p.x + 1.1, p.z, -Math.PI / 2), bp);
   check('phone: the bed offers « Dormir »', await focusIs(page, `^home:appart_jamm:${bed.uid}\\|Dormir`), JSON.stringify(await D(page, () => window.__dakar.focus())));
   await page.locator('#act').tap();
-  await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu dors' && window.__dakar.clip() === 'Lie', null, T).catch(() => {});
+  await page.waitForFunction(() => window.__dakar.activity()?.step === 'Tu dors' && window.__dakar.clip() === 'Lie' && window.__dakar.seated(), null, T).catch(() => {});
   const asleep = await D(page, () => ({ clip: window.__dakar.clip(), seat: window.__dakar.seated(), pos: window.__dakar.pos() }));
   check('phone: asleep, lying along the floor mattress (Lie), on it', asleep.clip === 'Lie' && (asleep.seat ?? '').includes(bed.uid) && Math.hypot(asleep.pos.x - bp.x, asleep.pos.z - bp.z) < 0.2, JSON.stringify({ ...asleep, bed: bp }));
   await D(page, p => window.__dakar.cam([p.x + 2.0, p.y + 1.8, p.z + 0.6], [p.x, p.y + 0.15, p.z]), asleep.pos);
@@ -309,6 +311,7 @@ let savedJson = null;
   await D(page, () => window.__dakar.cam(null));
   await page.waitForFunction(() => !window.__dakar.activity(), null, { timeout: 90000 }).catch(() => {});
   check('phone: a night on the floor mattress restores energy', (await D(page, () => window.__dakar.state.data.needs.energie)) >= 70, await D(page, () => window.__dakar.state.data.needs.energie));
+  await settle(page, 1200);                                                    // getting up is a short glide now (0.45 s), not a jump
   const awake = await D(page, () => ({ clip: window.__dakar.clip(), seat: window.__dakar.seated(), pos: window.__dakar.pos() }));
   check('phone: awake, up beside the mattress (no longer lying)', awake.seat === null && awake.clip !== 'Lie' && Math.hypot(awake.pos.x - bp.x, awake.pos.z - bp.z) > 0.7, JSON.stringify({ ...awake, bed: bp }));
   // phone « Biens » by touch
