@@ -89,6 +89,17 @@ try {
     await b.waitForFunction(() => window.__dakar.presence().peers.length === 1);
     check(`hub membership follows travel: ${hub}`, (await a.evaluate(() => window.__dakar.pos().hub)) === hub);
   }
+  // riding the free Tiak bike: the other player sees the rider astride a bike, still online while moving fast
+  await b.evaluate(() => window.__dakar.teleport('pikine')); await a.evaluate(() => window.__dakar.teleport('pikine'));
+  await b.waitForFunction(() => window.__dakar.tiak?.at(), null, { timeout: 60000 });
+  await b.evaluate(() => { const k = window.__dakar.tiak.at(); window.__dakar.place(k.x - Math.sin(k.yaw) * 1.6, k.z - Math.cos(k.yaw) * 1.6, k.yaw); });
+  await b.waitForTimeout(1200); await b.keyboard.press('KeyE');
+  await b.waitForFunction(() => window.__dakar.tiak.at()?.driving === true, null, { timeout: 15000 });
+  await b.keyboard.down('KeyW');
+  await b.waitForFunction(() => window.__dakar.tiak.at()?.speed > 8, null, { timeout: 25000 }).catch(async () => { console.log('RIDE STATE', JSON.stringify(await b.evaluate(() => ({ t: window.__dakar.tiak.at(), p: window.__dakar.pos(), status: window.__dakar.presence().status })))); });
+  const rideSeen = await a.waitForFunction(() => { const p = window.__dakar.presence(); return p.peers.some(x => x.clip === 'Ride') && p.bikes === 1; }, null, { timeout: 20000 }).then(() => true).catch(() => false);
+  check('a rider at speed stays online and the other player sees the rider on a bike', rideSeen, JSON.stringify(await a.evaluate(() => { const p = window.__dakar.presence(); return { peers: p.peers.map(x => [x.clip, x.speed]), bikes: p.bikes, status: p.status }; })));
+  await b.keyboard.up('KeyW');
   const before = await a.evaluate(() => ({ id: window.__dakar.presence().id, wallet: window.__dakar.state.wallet }));
   await contexts[0].setOffline(true);
   await a.waitForFunction(() => window.__dakar.presence().status === 'offline');
