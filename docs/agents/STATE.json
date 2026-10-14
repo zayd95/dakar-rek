@@ -1,23 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-14T07:37:16Z",
+  "updatedAt": "2026-10-14T08:37:02Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261014T0836Z-watch",
-    "owner": "producer_watch_0836",
-    "acquiredAt": "2026-10-14T08:36:16Z",
-    "expiresAt": "2026-10-14T09:06:16.000Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "6b056a72ea59a4797f92c03b0ed088f7bb83887a",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0836-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -131,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-14T07:37:16Z",
+    "lastCompletedRunAt": "2026-10-14T08:37:02Z",
     "lastVerifiedAt": "2026-10-14T06:41:18Z"
   },
   "productionMutationsAuthorized": false,
@@ -301,15 +289,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-0736-WATCH.md",
-    "completedAt": "2026-10-14T07:37:16Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-0836-WATCH.md",
+    "completedAt": "2026-10-14T08:37:02Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_0736",
+    "owner": "producer_watch_0836",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261014T0736Z-watch"
+    "leaseReleased": "cycle-20261014T0836Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +559,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-14T07:37:16Z",
+    "checkedAt": "2026-10-14T08:37:02Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -684,7 +672,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-14T07:37:16Z",
+      "checkedAt": "2026-10-14T08:37:02Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -774,7 +762,7 @@
     "sha": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
     "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
     "owner": "other session; never mutate",
-    "checkedAt": "2026-10-14T07:37:16Z",
+    "checkedAt": "2026-10-14T08:37:02Z",
     "ci": [
       {
         "id": 115555018390,
@@ -806,7 +794,7 @@
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Furnishing UX on mobile: orbit/zoom camera, drag to place, compact toolbar (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T07:37:16Z",
+      "checkedAt": "2026-10-14T08:37:02Z",
       "checks": [
         {
           "id": 115683879753,
@@ -836,7 +824,7 @@
       "baseCommit": "ede516e599a74afe32a76201de10823570e88d85",
       "title": "Tiak moto: free basic bike, Monter anytime, mobile ride pad, courier box (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T07:37:16Z",
+      "checkedAt": "2026-10-14T08:37:02Z",
       "checks": [
         {
           "id": 115653633113,
@@ -866,7 +854,7 @@
       "baseCommit": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
       "title": "Test candidate: busy street + dynamic minimap on top of the reconcile candidate (do not merge)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T07:37:16Z",
+      "checkedAt": "2026-10-14T08:37:02Z",
       "checks": [
         {
           "id": 115604961651,
@@ -896,7 +884,7 @@
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T07:37:16Z",
+      "checkedAt": "2026-10-14T08:37:02Z",
       "checks": [
         {
           "id": 115643629637,

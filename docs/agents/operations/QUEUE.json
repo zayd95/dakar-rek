@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-14-0736-WATCH.md",
-    "checkedAt": "2026-10-14T07:37:16Z",
-    "result": "Current refs and exact checks unchanged; independent QA applies to current common source and remains needs-decision. No ready registered source task.",
-    "owner": "producer_watch_0736",
+    "entry": "docs/agents/operations/CYCLE-2026-10-14-0836-WATCH.md",
+    "checkedAt": "2026-10-14T08:37:02Z",
+    "result": "Refs and exact check-runs unchanged; current independent QA still needs-decision. No ready source lot; external work preserved.",
+    "owner": "producer_watch_0836",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "c6b668a2cce42c24af142bcd2e2a524786cc410a",
+    "baseCommit": "6b056a72ea59a4797f92c03b0ed088f7bb83887a",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0736-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-14-0836-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -979,7 +979,7 @@
     "sha": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
     "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
     "owner": "other session; never mutate",
-    "checkedAt": "2026-10-14T07:37:16Z",
+    "checkedAt": "2026-10-14T08:37:02Z",
     "ci": [
       {
         "id": 115555018390,
@@ -1011,7 +1011,7 @@
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Furnishing UX on mobile: orbit/zoom camera, drag to place, compact toolbar (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T07:37:16Z",
+      "checkedAt": "2026-10-14T08:37:02Z",
       "checks": [
         {
           "id": 115683879753,
@@ -1041,7 +1041,7 @@
       "baseCommit": "ede516e599a74afe32a76201de10823570e88d85",
       "title": "Tiak moto: free basic bike, Monter anytime, mobile ride pad, courier box (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T07:37:16Z",
+      "checkedAt": "2026-10-14T08:37:02Z",
       "checks": [
         {
           "id": 115653633113,
@@ -1071,7 +1071,7 @@
       "baseCommit": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
       "title": "Test candidate: busy street + dynamic minimap on top of the reconcile candidate (do not merge)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T07:37:16Z",
+      "checkedAt": "2026-10-14T08:37:02Z",
       "checks": [
         {
           "id": 115604961651,
@@ -1101,7 +1101,7 @@
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T07:37:16Z",
+      "checkedAt": "2026-10-14T08:37:02Z",
       "checks": [
         {
           "id": 115643629637,
@@ -1146,18 +1146,5 @@
       "report": "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md",
       "completedAt": "2026-10-13T00:31:00Z"
     }
-  ],
-  "registryWriter": {
-    "token": "cycle-20261014T0836Z-watch",
-    "owner": "producer_watch_0836",
-    "acquiredAt": "2026-10-14T08:36:16Z",
-    "expiresAt": "2026-10-14T09:06:16.000Z",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "6b056a72ea59a4797f92c03b0ed088f7bb83887a",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-14-0836-WATCH.md"
-    ]
-  }
+  ]
 }
