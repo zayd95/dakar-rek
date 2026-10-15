@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-0526-WATCH.md",
-    "checkedAt": "2026-10-15T05:27:11.074Z",
-    "result": "Exact source/CI/reviews unchanged; retain independent PR34 needs-decision, PR33 blocked and Wave5 evidence gaps; no ready source task.",
-    "owner": "producer_watch_0526",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-0635-WATCH.md",
+    "checkedAt": "2026-10-15T06:36:39.210Z",
+    "result": "Current exact refs/PR/CI unchanged; no ready task; retained independent QA and external-owner blockers without duplicate work.",
+    "owner": "producer_watch_0635",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "a3941d9e21e41efd060086b8c57fca8d0f69483d",
+    "baseCommit": "354651e3a5a30090f63ef58394aaa96a37f54c18",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-0526-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-15-0635-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -1011,7 +1011,7 @@
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Port de Dakar: prototype Portwise / Three.js (opt-in, non-production)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-15T05:27:11.074Z",
+      "checkedAt": "2026-10-15T06:36:39.210Z",
       "draft": true,
       "accepted": false,
       "status": "needs-decision: PR CI success, exact push performance failure",
@@ -1096,7 +1096,7 @@
       "baseCommit": "631e3742507dd807acf6ec635721feebb43af056",
       "title": "Magic Land Lite on the Corniche (preview only)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-15T05:27:11.074Z",
+      "checkedAt": "2026-10-15T06:36:39.210Z",
       "checks": [
         {
           "id": 115925714333,
@@ -1316,7 +1316,7 @@
     "overallVerdict": "needs-decision",
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
-    "lastReconciledAt": "2026-10-15T05:27:11.074Z"
+    "lastReconciledAt": "2026-10-15T06:36:39.210Z"
   },
   "externalPortCandidateReview": {
     "id": "WATCH-PR34-20261015-0435-QA",
@@ -1382,18 +1382,6 @@
     },
     "nextOwner": "PR34 author/CI owner",
     "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
-    "lastReconciledAt": "2026-10-15T05:27:11.074Z"
-  },
-  "registryWriter": {
-    "token": "cycle-20261015T0635Z-watch",
-    "owner": "producer_watch_0635",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "354651e3a5a30090f63ef58394aaa96a37f54c18",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-0635-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-15T06:36:11.293Z"
+    "lastReconciledAt": "2026-10-15T06:36:39.210Z"
   }
 }
