@@ -858,16 +858,17 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-2036-WATCH.md",
-    "checkedAt": "2026-10-15T20:35:37Z",
-    "result": "PR29 source advanced; exact CI pending, keep review. No ready source task.",
-    "owner": "producer_watch_2036",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-2129-PR29.md",
+    "checkedAt": "2026-10-15T21:31:11Z",
+    "result": "PR29 independent delta QA completed needs-decision; general CI green, opt-in browser proof gap.",
+    "owner": "producer_2129",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "850d663ba8d7cf15d44dcf5d849cf14ce973d19e",
+    "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-2036-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-15-2129-PR29.md",
+      "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
     ]
   },
   "evidenceReview": {
@@ -1235,35 +1236,62 @@
     {
       "pr": 29,
       "branch": "codex/reference-character",
-      "sha": "c8b9a28961f2b5f8e359d60bc18ef65112a2ffeb",
+      "sha": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-15T20:35:37Z",
+      "checkedAt": "2026-10-15T21:31:11Z",
       "checks": [
         {
-          "id": 116656710109,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38803035327/job/116656710109"
+          "id": 116664596688,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/codex-reference-character/builds/475a6496-d2e6-47dc-bb4c-838bccf021cc"
         },
         {
-          "id": 116656687029,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/builds/548840a1-ae1f-4c80-8324-29f8db81470d"
+          "id": 116664148549,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38805200993/job/116664148549"
         },
         {
-          "id": 116656679519,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38803026857/job/116656679519"
+          "id": 116664100496,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38805192936/job/116664100496"
         }
       ],
       "accepted": false,
-      "previousSource": "4ef13226e2829d65ea1a6916f9e2532e990d3880",
-      "status": "review: new external seat-exit correction; exact CI pending",
-      "nextAction": "Resume exact c8b9a289 CI and independent review after completion; never mutate external branch."
+      "previousSource": "c8b9a28961f2b5f8e359d60bc18ef65112a2ffeb",
+      "status": "needs-decision: exact general CI green; opt-in browser proof not independent",
+      "nextAction": "External PR29 author supplies exact-checkout targeted script logs/captures; distinct QA, no external ref mutation.",
+      "review": {
+        "status": "needs-decision",
+        "reviewer": "qa_reference_2129",
+        "report": "docs/agents/operations/reports/PR29-20261015-2129-QA.md",
+        "completedAt": "2026-10-15T21:31:11Z",
+        "sourceCommit": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+        "local": "local_not_run",
+        "ci": {
+          "pushRun": 38805192936,
+          "pushJob": 116664100496,
+          "pushCheckout": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+          "prRun": 38805200993,
+          "prJob": 116664148549,
+          "prCheckout": "faaf627b5a429b84728582928ca3166cf3d1ecbd",
+          "tree": "69913d603b56b9da913cb8da9499f704ea88895a",
+          "testsPassed": 1399,
+          "testsSkipped": 2,
+          "testFiles": 110,
+          "typechecks": "success",
+          "build": "success",
+          "browser": "general city/online/launch success; targeted reference scripts absent"
+        },
+        "missing": [
+          "Independent exact-checkout seat-exit/prompts script execution and reviewed captures",
+          "Global art/provenance/physical device acceptance out of delta scope"
+        ]
+      }
     }
   ],
   "evidenceReviewHistory": [
@@ -1319,7 +1347,7 @@
     "overallVerdict": "needs-decision",
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
-    "lastReconciledAt": "2026-10-15T20:35:37Z"
+    "lastReconciledAt": "2026-10-15T21:31:11Z"
   },
   "externalPortCandidateReview": {
     "id": "WATCH-PR34-20261015-0435-QA",
@@ -1385,13 +1413,13 @@
     },
     "nextOwner": "PR34 author/CI owner",
     "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
-    "lastReconciledAt": "2026-10-15T20:35:37Z"
+    "lastReconciledAt": "2026-10-15T21:31:11Z"
   },
   "externalReferenceCandidateReview": {
     "id": "WATCH-PR29-20261015-2129-QA",
     "role": "qa",
     "kind": "read_only_external_delta_review",
-    "status": "active",
+    "status": "needs-decision",
     "owner": "qa_reference_2129",
     "branch": "codex/agent-studio-active",
     "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
@@ -1408,19 +1436,36 @@
       "Audit author JSON/script evidence for seat ownership/interruption/travel/contact and label overlap/touch, no unviewed screenshot claim",
       "Return bounded ready/needs-decision/blocked report with specific evidence gaps; no source edits or local Chromium retry"
     ],
-    "report": "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
-  },
-  "registryWriter": {
-    "token": "cycle-20261015T2129Z-pr29qa",
-    "owner": "producer_2129",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-2129-PR29.md",
-      "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
-    ],
-    "acquiredAt": "2026-10-15T21:28:47Z"
+    "report": "docs/agents/operations/reports/PR29-20261015-2129-QA.md",
+    "completedAt": "2026-10-15T21:31:11Z",
+    "verdict": "needs-decision",
+    "results": {
+      "status": "needs-decision",
+      "reviewer": "qa_reference_2129",
+      "report": "docs/agents/operations/reports/PR29-20261015-2129-QA.md",
+      "completedAt": "2026-10-15T21:31:11Z",
+      "sourceCommit": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+      "local": "local_not_run",
+      "ci": {
+        "pushRun": 38805192936,
+        "pushJob": 116664100496,
+        "pushCheckout": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+        "prRun": 38805200993,
+        "prJob": 116664148549,
+        "prCheckout": "faaf627b5a429b84728582928ca3166cf3d1ecbd",
+        "tree": "69913d603b56b9da913cb8da9499f704ea88895a",
+        "testsPassed": 1399,
+        "testsSkipped": 2,
+        "testFiles": 110,
+        "typechecks": "success",
+        "build": "success",
+        "browser": "general city/online/launch success; targeted reference scripts absent"
+      },
+      "missing": [
+        "Independent exact-checkout seat-exit/prompts script execution and reviewed captures",
+        "Global art/provenance/physical device acceptance out of delta scope"
+      ]
+    },
+    "nextOwner": "PR29 author / authorized browser runner then distinct QA"
   }
 }

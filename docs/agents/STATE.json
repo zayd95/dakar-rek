@@ -1,36 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-15T20:35:37Z",
+  "updatedAt": "2026-10-15T21:31:11Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261015T2129Z-pr29qa",
-    "owner": "producer_2129",
-    "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
-    "acquiredAt": "2026-10-15T21:28:47Z",
-    "expiresAt": "2026-10-15T22:00:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-2129-PR29.md",
-      "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_reference_2129",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
-      "sourceCommit": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -141,14 +119,12 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-15T20:35:37Z",
-    "lastVerifiedAt": "2026-10-15T04:37:58.471Z",
+    "lastCompletedRunAt": "2026-10-15T21:31:11Z",
+    "lastVerifiedAt": "2026-10-15T21:29:19Z",
     "enabled": true
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [
-    "WATCH-PR29-20261015-2129-QA"
-  ],
+  "reviewTasks": [],
   "activeSessions": [],
   "completedSessions": [
     "activation_producer",
@@ -174,9 +150,10 @@
     "qa_dkag015_ci_2028",
     "gameplay_dkag020_0128",
     "qa_dkag020_0128",
-    "qa_dkag020_ci_0236"
+    "qa_dkag020_ci_0236",
+    "qa_reference_2129"
   ],
-  "nextAction": "Resume PR29 c8b9a289 exact pending CI, then bounded independent QA of seat-exit delta; PR34/PR33/Wave5 owner gates unchanged.",
+  "nextAction": "PR29 author/authorized runner supplies exact76eb239 targeted reference scripts and captures for distinct QA; PR34/33/Wave5 gates unchanged.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -314,15 +291,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-2036-WATCH.md",
-    "completedAt": "2026-10-15T20:35:37Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-2129-PR29.md",
+    "completedAt": "2026-10-15T21:31:11Z",
     "actualRunCompleted": true,
-    "tasks": [],
+    "tasks": [
+      "WATCH-PR29-20261015-2129-QA"
+    ],
     "verifiedCandidates": [],
-    "owner": "producer_watch_2036",
-    "reviewer": null,
+    "owner": "producer_2129",
+    "reviewer": "qa_reference_2129",
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261015T2036Z-watch"
+    "leaseReleased": "cycle-20261015T2129Z-pr29qa"
   },
   "protectedRefsLatest": [
     {
@@ -584,7 +563,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-15T20:35:37Z",
+    "checkedAt": "2026-10-15T21:31:11Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -697,7 +676,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-15T20:35:37Z",
+      "checkedAt": "2026-10-15T21:31:11Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -1043,46 +1022,73 @@
     {
       "pr": 29,
       "branch": "codex/reference-character",
-      "sha": "c8b9a28961f2b5f8e359d60bc18ef65112a2ffeb",
+      "sha": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-15T20:35:37Z",
+      "checkedAt": "2026-10-15T21:31:11Z",
       "checks": [
         {
-          "id": 116656710109,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38803035327/job/116656710109"
+          "id": 116664596688,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/codex-reference-character/builds/475a6496-d2e6-47dc-bb4c-838bccf021cc"
         },
         {
-          "id": 116656687029,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/builds/548840a1-ae1f-4c80-8324-29f8db81470d"
+          "id": 116664148549,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38805200993/job/116664148549"
         },
         {
-          "id": 116656679519,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38803026857/job/116656679519"
+          "id": 116664100496,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38805192936/job/116664100496"
         }
       ],
       "accepted": false,
-      "previousSource": "4ef13226e2829d65ea1a6916f9e2532e990d3880",
-      "status": "review: new external seat-exit correction; exact CI pending",
-      "nextAction": "Resume exact c8b9a289 CI and independent review after completion; never mutate external branch."
+      "previousSource": "c8b9a28961f2b5f8e359d60bc18ef65112a2ffeb",
+      "status": "needs-decision: exact general CI green; opt-in browser proof not independent",
+      "nextAction": "External PR29 author supplies exact-checkout targeted script logs/captures; distinct QA, no external ref mutation.",
+      "review": {
+        "status": "needs-decision",
+        "reviewer": "qa_reference_2129",
+        "report": "docs/agents/operations/reports/PR29-20261015-2129-QA.md",
+        "completedAt": "2026-10-15T21:31:11Z",
+        "sourceCommit": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+        "local": "local_not_run",
+        "ci": {
+          "pushRun": 38805192936,
+          "pushJob": 116664100496,
+          "pushCheckout": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+          "prRun": 38805200993,
+          "prJob": 116664148549,
+          "prCheckout": "faaf627b5a429b84728582928ca3166cf3d1ecbd",
+          "tree": "69913d603b56b9da913cb8da9499f704ea88895a",
+          "testsPassed": 1399,
+          "testsSkipped": 2,
+          "testFiles": 110,
+          "typechecks": "success",
+          "build": "success",
+          "browser": "general city/online/launch success; targeted reference scripts absent"
+        },
+        "missing": [
+          "Independent exact-checkout seat-exit/prompts script execution and reviewed captures",
+          "Global art/provenance/physical device acceptance out of delta scope"
+        ]
+      }
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-15T20:35:37Z",
+    "checkedAt": "2026-10-15T21:31:11Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; fresh refs/check-runs reconciled",
-    "delegation": "available; PR29 exact CI pending, no duplicate code or new QA acceptance",
+    "localTests": "local_not_run; exact CI logs independently reviewed",
+    "delegation": "available; qa_reference_2129 completed independent delta review",
     "cloudflareAuthenticated": false
   }
 }
