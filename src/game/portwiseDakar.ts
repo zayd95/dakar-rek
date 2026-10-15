@@ -56,7 +56,7 @@ function containers(parent: THREE.Group, spots: { x: number; y: number; z: numbe
   parent.add(inst);
 }
 function makeShip() {
-  const ship = new THREE.Group(); ship.name = 'dakar-port-ship'; ship.position.set(219, 0, 5);
+  const ship = new THREE.Group(); ship.name = 'dakar-port-ship'; ship.position.set(208.5, 0, -6);
   const b = new Batch();
   b.box(15, 5, 69, 0, -1.7, 0, 0x24394e); b.box(14, 0.7, 64, 0, 3.2, 0, 0xd4cbb9);
   b.box(10, 5, 10, 0, 3.9, -28, 0xe8e7e1); b.box(10, 1.2, 10, 0, 3.7, 29, 0xc35c43);
@@ -66,6 +66,19 @@ function makeShip() {
     deck.push({ x: -5 + i * 3.2, y: 4.6 + ((i + j) % 4 === 0 ? 1.4 : 0), z: -22 + j * 3.7 });
   containers(ship, deck);
   return ship;
+}
+function makeFerryPier() {
+  const g = new THREE.Group(); g.name = 'dakar-port-ferry-pier';
+  const b = new Batch();
+  b.box(33, 0.2, 8, 215.5, 0.02, 44, 0x9a8f7b);                      // pier deck, x 199..232, z 40..48
+  for (let x = 202; x < 232; x += 6) for (const z of [39.8, 48.2]) b.box(0.3, 1.0, 0.3, x, 0.2, z, 0x4a3f33);
+  b.box(14, 2.6, 4.2, 224, -0.4, 53, 0xf1ece0);                       // ferry hull, alongside the pier
+  b.box(9, 2.2, 3.4, 224, 2.2, 53, 0xe8ecef); b.box(14.2, 0.4, 4.4, 224, 2.2, 53, 0x2f6f9f);
+  addBatch(g, b);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.9),
+    new THREE.MeshBasicMaterial({ map: signTexture('EMBARCADÈRE · GORÉE', '#16465f', '#f9df9f', 512, 80), side: THREE.DoubleSide }));
+  sign.position.set(200.8, 3.2, 44); sign.rotation.y = -Math.PI / 2; g.add(sign);
+  return g;
 }
 function makeCrane() {
   const group = new THREE.Group(); group.name = 'dakar-port-gantry'; group.position.set(188, 0, 5);
@@ -117,14 +130,21 @@ class PortScene {
     this.group.add(sign);
     const water = new THREE.Mesh(new THREE.PlaneGeometry(130, 160), new THREE.MeshLambertMaterial({ color: 0x246987 }));
     water.rotation.x = -Math.PI / 2; water.position.set(263, 0.07, 0); this.group.add(water);
-    this.group.add(makeShip(), this.crane.group);
+    this.group.add(makeShip(), this.crane.group, makeFerryPier());
+    const jetty = new Batch(); // jetée: breakwater closing the basin to the east (decor)
+    jetty.box(5, 2.2, 150, 322, 0.1, -5, 0x7d776d);
+    addBatch(this.group, jetty);
     const yard = [];
     for (let i = 0; i < 5; i++) for (let j = 0; j < 10; j++)
       yard.push({ x: 141 + i * 3.6, y: 0.9 + ((i + j) % 3) * 1.4, z: -66 + j * 4.5 });
     containers(this.group, yard);
     this.trucks.forEach(t => this.group.add(t));
-    hub.bounds.x1 = Math.max(hub.bounds.x1, 199);
-    hub.colliders.push({ x0: 198, x1: 199.5, z0: -75, z1: 75, h: 1.3 });
+    // Quay fence with a gap for the Gorée ferry pier (south môle): the only way onto the water side.
+    hub.colliders.push({ x0: 198, x1: 199.5, z0: -75, z1: 40, h: 1.3 });
+    hub.colliders.push({ x0: 198, x1: 199.5, z0: 48, z1: 75, h: 1.3 });
+    for (const [z0, z1] of [[39.6, 40], [48, 48.4]]) hub.colliders.push({ x0: 199.5, x1: 232, z0, z1, h: 1.3 });
+    hub.colliders.push({ x0: 231.6, x1: 232, z0: 40, z1: 48, h: 1.3 });
+    hub.bounds.x1 = 232;
     hub.colliders.push({ x0: 149, x1: 164, z0: 58, z1: 63, h: 4.3 });
     hub.colliders.push({ x0: 139, x1: 158, z0: -69, z1: -19, h: 5 });
     hub.interactables.push({ id: 'plateau:port:quai', name: 'Port Autonome de Dakar', kind: 'actions',

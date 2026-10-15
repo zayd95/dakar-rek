@@ -61,3 +61,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Géographie (recherche, 15 oct.)
+
+Le Port Autonome de Dakar longe la côte est du Plateau (baie de Hann) : zone sud avec môles I–III (marchandises, passagers, liaison Gorée), zone nord avec môles IV–VI/VIII et le terminal à conteneurs. La maquette garde donc la mer à l'est : navire accosté au quai (x≈200), portique et conteneurs sur le quai, jetée de fermeture au large, et une petite jetée sud avec embarcadère « Gorée » (seul accès à l'eau, le reste du quai est clos). Forme volontairement stylisée ; sources à confirmer sur portdakar.sn. `node scripts/check-port-walk.mjs` : marche route → arche → quai → embarcadère, collisions, budget (port seul ≈ 11 appels de rendu, ≈ 1,6 k triangles, mise à jour < 0,02 ms).
