@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { Batch } from '../world/batch';
+import { Batch, signTexture } from '../world/batch';
+import { isTestHost } from '../core/testParams';
 import type { HubWorld } from '../world/types';
 import type { GameModule } from './modules';
 
@@ -9,6 +10,7 @@ import type { GameModule } from './modules';
  * MIT © 2026 Portwise contributors (licence details in docs/PORTWISE_SPIKE.md).
  * Procedural geometry and deterministic timelines adapted to native Three.js.
  */
+export const PORT_VISIT_SPAWN = { x: 166, z: 37, yaw: 2.5 } as const;
 const COLORS = [0xd45e3c, 0x24486c, 0x577d6a, 0xc3a25f, 0xae433a, 0x627c8c];
 const material = () => new THREE.MeshLambertMaterial({ vertexColors: true });
 const unit = (n: number) => Math.max(0, Math.min(1, n));
@@ -103,7 +105,16 @@ class PortScene {
     b.box(2.5, 0.2, 145, 197.5, 0.14, 0, 0x8e8d85);
     for (let z = -65; z < 65; z += 10) b.box(1.5, 0.03, 0.3, 185, 0.18, z, 0xe4d09a);
     b.box(15, 4, 4, 156, 0.12, 60, 0x647a85);
+    // The entrance must be visible from the eastward Plateau road, not hidden behind the blocks.
+    b.box(0.45, 4.4, 0.45, 136, 0.12, -6.1, 0x286078);
+    b.box(0.45, 4.4, 0.45, 136, 0.12, 6.1, 0x286078);
+    b.box(0.55, 0.42, 12.8, 136, 4.45, 0, 0xe6ac49);
     addBatch(this.group, b);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(11.7, 1.4),
+      new THREE.MeshBasicMaterial({ map: signTexture('PORT AUTONOME DE DAKAR', '#16465f', '#f9df9f', 768, 112), side: THREE.DoubleSide }));
+    sign.rotation.y = -Math.PI / 2;
+    sign.position.set(135.66, 4.2, 0);
+    this.group.add(sign);
     const water = new THREE.Mesh(new THREE.PlaneGeometry(130, 160), new THREE.MeshLambertMaterial({ color: 0x246987 }));
     water.rotation.x = -Math.PI / 2; water.position.set(263, 0.07, 0); this.group.add(water);
     this.group.add(makeShip(), this.crane.group);
@@ -117,7 +128,7 @@ class PortScene {
     hub.colliders.push({ x0: 149, x1: 164, z0: 58, z1: 63, h: 4.3 });
     hub.colliders.push({ x0: 139, x1: 158, z0: -69, z1: -19, h: 5 });
     hub.interactables.push({ id: 'plateau:port:quai', name: 'Port Autonome de Dakar', kind: 'actions',
-      x: 135, z: 0, radius: 4, description: 'Observe les navires, les grues et les camions. Promenade libre.',
+      x: 132, z: 0, radius: 5, description: 'Entrée du terminal : avance vers les quais pour voir les navires, les grues et les camions.',
       actions: [{ id: 'voir_port', label: 'Observer les opérations', seconds: 1 }] });
   }
   update(seconds: number) {
@@ -138,17 +149,21 @@ class PortScene {
       if (obj.geometry) g.add(obj.geometry);
       if (obj.material) (Array.isArray(obj.material) ? obj.material : [obj.material]).forEach(x => m.add(x));
     });
-    g.forEach(x => x.dispose()); m.forEach(x => x.dispose()); this.group.removeFromParent();
+    g.forEach(x => x.dispose()); m.forEach(x => { (x as THREE.MeshBasicMaterial).map?.dispose(); x.dispose(); }); this.group.removeFromParent();
   }
 }
 let scene: PortScene | null = null;
-const enabled = () => typeof window !== 'undefined' && !!window.location?.search && new URLSearchParams(window.location.search).has('portPrototype');
+const previewParams = () => typeof window !== 'undefined' && !!window.location?.search && isTestHost(window.location.hostname)
+  ? new URLSearchParams(window.location.search) : null;
+const enabled = () => previewParams()?.has('portPrototype') ?? false;
 export const portwiseDakar: GameModule = {
   name: 'portwise-dakar',
   hubLoaded(ctx, hub) {
     scene?.dispose(); scene = null;
     if (!enabled() || hub.id !== 'plateau') return;
     scene = new PortScene(hub); ctx.extra.add(scene.group);
+    // Dedicated smoke-test arrival. Normal Plateau spawns and saved positions stay unchanged.
+    if (previewParams()?.has('portVisit')) hub.spawn = { ...PORT_VISIT_SPAWN };
   },
   update(ctx) { scene?.update(ctx.now() / 1000); },
   debug() { return { portPrototype: () => ({ enabled: !!scene, ships: scene ? 1 : 0, cranes: scene ? 1 : 0, containers: scene ? 50 : 0, trucks: scene ? 2 : 0, x: 135, z: 0 }) }; },
