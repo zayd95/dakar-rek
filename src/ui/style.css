@@ -180,6 +180,7 @@ body.sheet-open #toast .t { left:50%; right:auto; top:calc(66px + var(--sa-t)); 
 /* ------------------------------------------------------------- diegetic bubble above the focused target */
 #ui > #wprompt { position:absolute; left:0; top:0; pointer-events:none; opacity:0; transition:opacity .15s; will-change:transform; z-index:1; }
 #ui > #wprompt.on { opacity:1; pointer-events:auto; cursor:pointer; }
+#ui > #wprompt.over-player { opacity:0; pointer-events:none; transition:none; }
 #wprompt .wp { position:relative; display:flex; align-items:center; gap:6px; margin-top:-9px; padding:4px 8px 4px 4px; border-radius:999px; background:var(--surface); color:var(--ink);
   font:700 13px/1 var(--font); white-space:nowrap; box-shadow:var(--shadow); transform-origin:50% 100%; }
 #wprompt .wp::after { content:''; position:absolute; left:calc(50% + var(--tail, 0px)); bottom:-5px; width:10px; height:10px; margin-left:-5px; background:var(--surface); transform:rotate(45deg); border-radius:0 0 2px 0; }

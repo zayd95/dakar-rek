@@ -82,6 +82,24 @@ Matched 390×844 mobile camera, bench and morning lighting; before is `4ef1322`.
 
 [Both-orientation rise/control checks](screenshots/reference-character/stand-up/results.json).
 
+### Nearby labels leave the character clear
+
+After standing, the bench's **S’asseoir** bubble crossed the character's torso in both phone orientations.
+The reference preview now hides a world label immediately when it overlaps the projected body; the
+primary action remains available under the thumb. Clear labels stay fully inside the screen with an
+8 px margin, including the previously cut-off side view. Placement uses eight conservative bounds
+corners and cached label dimensions, without per-frame skinning, raycasts or layout reads.
+
+Matched camera, bench and morning lighting; before is `c8b9a28`. Model and motion are unchanged.
+
+| Previous label | Clear character / readable label |
+| --- | --- |
+| ![Torso covered](screenshots/reference-character/prompts/before/portrait-front.png) | ![Torso clear](screenshots/reference-character/prompts/after/portrait-front.png) |
+| ![Label clipped](screenshots/reference-character/prompts/before/portrait-side.png) | ![Label on screen](screenshots/reference-character/prompts/after/portrait-side.png) |
+
+[Both-orientation label/touch checks](screenshots/reference-character/prompts/after/results.json) verify
+front, side and back views against the actual deformed mesh, and use the real touch action to sit again.
+
 ## Asset and motion
 
 The source is fresh licensed MakeHuman anatomy, a fitted CC0 garment, new authored hair/face details,
@@ -116,6 +134,8 @@ The preview profile retains nickname editing but offers no appearance swatches o
   interruption and travel cleanup in both orientations. Actual blended shoe contact stays within
   1.2 cm of the ground (measured maximum about 9.7 mm); a completed rise returns directly to idle.
 - Client build and server typecheck passed; the existing large JS chunk warning remains.
+- Label refinement: 27 targeted character/UI/quiet-screen tests passed. Portrait and landscape browser
+  checks confirm no visible label/body overlap, readable side labels, working touch seating and no page errors.
 - Real game in Chrome mobile emulation, 390×844 and 844×390: one active 52-bone player, joystick
   movement and cancellation, walk/jog/sprint, automatic left/right turns, actual bench seating, fixed-look profile and clear
   central HUD; no page errors. Standing soles match 0.08 / 0.12 / 0.14 m road/sidewalk/block surfaces.
@@ -128,6 +148,7 @@ npm run build
 npm run typecheck:server
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character
 CHROMIUM=/path/to/chrome node scripts/check-reference-seat-exit.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/stand-up
+CHROMIUM=/path/to/chrome node scripts/check-reference-prompts.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/prompts/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4175/ docs/screenshots/reference-character/before --baseline
 CHROMIUM=/path/to/chrome node scripts/check-perf-evening.mjs http://127.0.0.1:4174/ docs/perf/reference-character-low.json --presets=low --reference-character
 ```

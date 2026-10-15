@@ -1056,6 +1056,24 @@ setInterval(() => { if (world && mode === 'play') saveNow(); }, 8000);
 
 /** Action button + diegetic prompt for the focused target. */
 const promptV = new THREE.Vector3();
+const promptCorner = new THREE.Vector3(), promptBody = { left: 0, top: 0, right: 0, bottom: 0 };
+/** Conservative human bounds, projected without skinning or raycasting every frame. */
+function referencePromptBody() {
+  if (!REFERENCE_CHARACTER || !playerBody?.group.visible) return undefined;
+  const p = playerBody.group.position, s = Math.sin(facing), c = Math.cos(facing);
+  promptBody.left = promptBody.top = Infinity; promptBody.right = promptBody.bottom = -Infinity;
+  for (let i = 0; i < 8; i++) {
+    const bx = i & 1 ? .38 : -.38, bz = i & 4 ? .22 : -.22;
+    promptCorner.set(p.x + bx * c + bz * s, p.y + (i & 2 ? 1.85 : 0), p.z - bx * s + bz * c).applyMatrix4(camera.matrixWorldInverse);
+    // A camera inside the bounds: leave the view clear rather than projecting behind its near plane.
+    if (promptCorner.z > -camera.near) return { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+    promptCorner.applyMatrix4(camera.projectionMatrix);
+    const x = (promptCorner.x * .5 + .5) * innerWidth, y = (-promptCorner.y * .5 + .5) * innerHeight;
+    promptBody.left = Math.min(promptBody.left, x); promptBody.right = Math.max(promptBody.right, x);
+    promptBody.top = Math.min(promptBody.top, y); promptBody.bottom = Math.max(promptBody.bottom, y);
+  }
+  return promptBody;
+}
 function showPrompt(t: Target | null) {
   const run = activities.current;
   if (run || legacyRun) { hud.setPrompt('Arrêter', run ? run.step.label : legacyRun!.label, false, { icon: '✋', stop: true }); hud.setWorldPrompt(null); return; }
@@ -1067,7 +1085,7 @@ function showPrompt(t: Target | null) {
   camera.updateMatrixWorld();
   promptV.set(t.x, (t.y ?? 1.9) + (inside ? 0 : world.heightAt(t.x, t.z)), t.z).project(camera);
   if (promptV.z > 1 || Math.abs(promptV.x) > 1.1 || Math.abs(promptV.y) > 1.1) { hud.setWorldPrompt(null); return; }
-  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, a.icon, a.label, opt);
+  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, a.icon, a.label, opt, referencePromptBody());
 }
 /** Title, icon and « step n/m » (timed steps) of the running activity, for the progress pill. */
 function progressMeta() {
