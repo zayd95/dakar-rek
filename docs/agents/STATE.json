@@ -1,22 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-15T02:31:17.838Z",
+  "updatedAt": "2026-10-15T03:31:23.189Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261015T0330Z-port-ci",
-    "owner": "producer_port_0330",
-    "baseCommit": "54ef89e2c0ac96c032d6a7d751cddd0ee33e7cdb",
-    "acquiredAt": "2026-10-15T03:30:22.409Z",
-    "expiresAt": "2026-10-15T04:05:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-0326-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -163,7 +152,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "Run the existing exact-SHA Magic Land browser scenario in a Chromium-compatible runner and archive complete outputs/captures; then independent QA rechecks the red PR check.",
+  "nextAction": "Reconcile PR34 corrected SHA CI, PR33 external-owner/browser blockers, and Wave5 final acceptance; do not duplicate external work.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -301,15 +290,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-0229-WATCH.md",
-    "completedAt": "2026-10-15T02:31:17.838Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-0326-WATCH.md",
+    "completedAt": "2026-10-15T03:31:23.189Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_0229",
+    "owner": "producer_port_0330",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261015T0229Z-watch"
+    "leaseReleased": "cycle-20261015T0330Z-port-ci"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +560,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-15T02:31:17.838Z",
+    "checkedAt": "2026-10-15T03:31:23.189Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -800,6 +789,51 @@
   },
   "externalNewCandidates": [
     {
+      "pr": 34,
+      "branch": "feature/portwise-dakar-spike",
+      "sha": "37ff20de47c3168a5a0b764cb837e17f5a8126c9",
+      "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+      "title": "Port de Dakar: prototype Portwise / Three.js (opt-in, non-production)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-15T03:31:23.189Z",
+      "draft": true,
+      "accepted": false,
+      "status": "author correction pending exact CI; not independently accepted",
+      "checks": [
+        {
+          "id": 116231526988,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/builds/17fec793-8c88-468a-b8bb-95793c9e1d9d"
+        },
+        {
+          "id": 116231526680,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38676600341/job/116231526680"
+        },
+        {
+          "id": 116231512900,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38676595880/job/116231512900"
+        }
+      ],
+      "previousFailure": {
+        "sha": "ff01495f0ec3d9582b66af1fdb6619afbbcbc9f7",
+        "jobId": 116231023217,
+        "checkoutSha": "8d55f6f373a1a9e89081e7048de1d962604bba87",
+        "testFilesFailed": 11,
+        "testsFailed": 18,
+        "testsPassed": 1462,
+        "testsSkipped": 2,
+        "error": "TypeError reading window.location.search in src/game/portwiseDakar.ts:145",
+        "logUrl": "https://github.com/zayd95/dakar-rek/actions/runs/38676442076/job/116231023217"
+      },
+      "correctionObserved": "Current external source adds optional window.location?.search guard; CI pending, not a verified fix.",
+      "nextAction": "Other-session author owns implementation; read new exact-SHA CI, then reserve distinct QA if stable. No duplicated port task."
+    },
+    {
       "pr": 33,
       "branch": "feature/magic-land",
       "sha": "e494be1e7d4e466918b81977dbbfbb1bda8b1b71",
@@ -974,14 +1008,14 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-15T02:31:17.838Z",
+    "checkedAt": "2026-10-15T03:31:23.189Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run this cycle; Chromium EPERM not retried",
-    "delegation": "available; no new useful assignment",
+    "localTests": "local_not_run this cycle; inspected real GitHub CI logs",
+    "delegation": "available; no dispatch while external author actively correcting",
     "cloudflareAuthenticated": false
   }
 }

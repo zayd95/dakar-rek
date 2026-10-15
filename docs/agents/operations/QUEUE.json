@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-0229-WATCH.md",
-    "checkedAt": "2026-10-15T02:31:17.838Z",
-    "result": "Current exact refs/checks/reviews unchanged; no ready task; independent QA and blockers retained without redundant execution.",
-    "owner": "producer_watch_0229",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-0326-WATCH.md",
+    "checkedAt": "2026-10-15T03:31:23.189Z",
+    "result": "New external PR34 failure diagnosed from actual CI; author already correcting on protected branch; current SHA pending.",
+    "owner": "producer_port_0330",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "383742b1ac91c02e2b557829023492f66c09aa05",
+    "baseCommit": "54ef89e2c0ac96c032d6a7d751cddd0ee33e7cdb",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-0229-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-15-0326-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -1004,6 +1004,51 @@
     "status": "isolated candidate; standard checks green, whole-wave reception not established"
   },
   "externalNewCandidates": [
+    {
+      "pr": 34,
+      "branch": "feature/portwise-dakar-spike",
+      "sha": "37ff20de47c3168a5a0b764cb837e17f5a8126c9",
+      "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+      "title": "Port de Dakar: prototype Portwise / Three.js (opt-in, non-production)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-15T03:31:23.189Z",
+      "draft": true,
+      "accepted": false,
+      "status": "author correction pending exact CI; not independently accepted",
+      "checks": [
+        {
+          "id": 116231526988,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/builds/17fec793-8c88-468a-b8bb-95793c9e1d9d"
+        },
+        {
+          "id": 116231526680,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38676600341/job/116231526680"
+        },
+        {
+          "id": 116231512900,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38676595880/job/116231512900"
+        }
+      ],
+      "previousFailure": {
+        "sha": "ff01495f0ec3d9582b66af1fdb6619afbbcbc9f7",
+        "jobId": 116231023217,
+        "checkoutSha": "8d55f6f373a1a9e89081e7048de1d962604bba87",
+        "testFilesFailed": 11,
+        "testsFailed": 18,
+        "testsPassed": 1462,
+        "testsSkipped": 2,
+        "error": "TypeError reading window.location.search in src/game/portwiseDakar.ts:145",
+        "logUrl": "https://github.com/zayd95/dakar-rek/actions/runs/38676442076/job/116231023217"
+      },
+      "correctionObserved": "Current external source adds optional window.location?.search guard; CI pending, not a verified fix.",
+      "nextAction": "Other-session author owns implementation; read new exact-SHA CI, then reserve distinct QA if stable. No duplicated port task."
+    },
     {
       "pr": 33,
       "branch": "feature/magic-land",
@@ -1231,18 +1276,6 @@
     "overallVerdict": "needs-decision",
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
-    "lastReconciledAt": "2026-10-15T02:31:17.838Z"
-  },
-  "registryWriter": {
-    "token": "cycle-20261015T0330Z-port-ci",
-    "owner": "producer_port_0330",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "54ef89e2c0ac96c032d6a7d751cddd0ee33e7cdb",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-0326-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-15T03:30:22.409Z"
+    "lastReconciledAt": "2026-10-15T03:31:23.189Z"
   }
 }
