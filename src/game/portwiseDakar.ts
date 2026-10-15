@@ -3,6 +3,9 @@ import { Batch, signTexture } from '../world/batch';
 import { isTestHost } from '../core/testParams';
 import type { HubWorld } from '../world/types';
 import type { GameModule } from './modules';
+import { Humanoid, humanoidReady, randomLook } from '../actors/humanoid';
+import type { GameState } from '../core/state';
+import type { Action, Interactable } from '../world/types';
 
 /**
  * Portwise-inspired terminal, opt-in only: ?portPrototype=1&hub=plateau
@@ -67,6 +70,18 @@ function makeShip() {
   containers(ship, deck);
   return ship;
 }
+/** Gorée on the horizon, south-east of the port: a low basalt island, the fort on its height, ochre and red houses. */
+function makeGoree() {
+  const g = new THREE.Group(); g.name = 'dakar-port-goree'; g.position.set(320, 0, 150);
+  const b = new Batch();
+  b.box(80, 3, 34, 0, -1, 0, 0x5b4a3c); b.box(26, 9, 22, -26, 0, -2, 0x5f5043);           // the island, its height to the south
+  b.box(18, 4, 14, -26, 8, -2, 0x9a8c74);                                                   // the fort on the height
+  const houses = [0xc8643c, 0xe0a85a, 0xb8483a, 0xe8c27a, 0xd9774a, 0xc95b4a, 0xe6b46a];
+  for (let i = 0; i < 12; i++) b.box(4 + (i % 3), 3 + (i % 2) * 2, 4, -6 + (i % 6) * 6.5, 1.8, -8 + Math.floor(i / 6) * 9, houses[i % houses.length]);
+  for (let i = 0; i < 5; i++) { b.box(0.5, 7, 0.5, 10 + i * 5, 1.8, 10, 0x6b5a3a); b.box(3.2, 0.8, 3.2, 10 + i * 5, 8.6, 10, 0x3f6b3a); }
+  addBatch(g, b);
+  return g;
+}
 function makeFerryPier() {
   const g = new THREE.Group(); g.name = 'dakar-port-ferry-pier';
   const b = new Batch();
@@ -110,7 +125,7 @@ class PortScene {
   readonly group = new THREE.Group();
   private crane = makeCrane();
   private trucks = [makeTruck(0xf0d6a0), makeTruck(0xc85e38)];
-  constructor(hub: HubWorld) {
+  constructor(hub: HubWorld, private state: GameState) {
     this.group.name = 'portwise-dakar-prototype';
     const b = new Batch();
     b.box(73, 0.12, 150, 164.5, 0.02, 0, 0xb8b1a1);
@@ -128,8 +143,9 @@ class PortScene {
     sign.rotation.y = -Math.PI / 2;
     sign.position.set(135.66, 4.2, 0);
     this.group.add(sign);
-    const water = new THREE.Mesh(new THREE.PlaneGeometry(130, 160), new THREE.MeshLambertMaterial({ color: 0x246987 }));
-    water.rotation.x = -Math.PI / 2; water.position.set(263, 0.07, 0); this.group.add(water);
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(700, 900), new THREE.MeshLambertMaterial({ color: 0x246987 }));
+    water.rotation.x = -Math.PI / 2; water.position.set(548, 0.07, 0); this.group.add(water);
+    this.group.add(makeGoree());
     this.group.add(makeShip(), this.crane.group, makeFerryPier());
     const jetty = new Batch(); // jetée: breakwater closing the basin to the east (decor)
     jetty.box(5, 2.2, 150, 322, 0.1, -5, 0x7d776d);
@@ -147,11 +163,27 @@ class PortScene {
     hub.bounds.x1 = 232;
     hub.colliders.push({ x0: 149, x1: 164, z0: 58, z1: 63, h: 4.3 });
     hub.colliders.push({ x0: 139, x1: 158, z0: -69, z1: -19, h: 5 });
+    hub.interactables.push(...portPlaces(() => this.state));
+    const stand = new Batch(); // the Touba coffee stand at the gate
+    stand.box(1.6, 1.0, 0.8, 129.6, 0.12, 10, 0x7a4b2a); stand.box(1.9, 0.08, 1.1, 129.6, 2.1, 10, 0xd8b04a);
+    for (const z of [9.5, 10.5]) stand.box(0.08, 2.0, 0.08, 128.9, 0.12, z, 0x3b3b3b);
+    addBatch(this.group, stand);
     hub.interactables.push({ id: 'plateau:port:quai', name: 'Port Autonome de Dakar', kind: 'actions',
       x: 132, z: 0, radius: 5, description: 'Entrée du terminal : avance vers les quais pour voir les navires, les grues et les camions.',
       actions: [{ id: 'voir_port', label: 'Observer les opérations', seconds: 1 }] });
   }
-  update(seconds: number) {
+  private people: Humanoid[] = [];
+  private placePeople() {
+    if (this.people.length || !humanoidReady()) return;
+    let k = 7; const R = () => ((k = (k * 16807) % 2147483647) / 2147483647);
+    // Mamadou the docker by the stacks, the passeur on the pier, the coffee seller at the gate
+    for (const [x, z, yaw, clip] of [[161, -16.6, 0, 'Idle'], [205, 46.6, Math.PI, 'Talk'], [130.4, 10, -Math.PI / 2, 'Talk']] as const) {
+      const h = new Humanoid(randomLook(R)); h.group.position.set(x, 0.12, z); h.group.rotation.y = yaw; h.hold = clip;
+      this.group.add(h.group); this.people.push(h);
+    }
+  }
+  update(seconds: number, dt = 0) {
+    this.placePeople(); for (const h of this.people) h.animate(dt, 0);
     const p = portCranePose(seconds);
     this.crane.trolley.position.x = p.x;
     this.crane.spreader.position.y = p.y + 0.8;
@@ -163,6 +195,7 @@ class PortScene {
     });
   }
   dispose() {
+    for (const h of this.people) h.dispose(); this.people = [];
     const g = new Set<THREE.BufferGeometry>(), m = new Set<THREE.Material>();
     this.group.traverse(o => {
       const obj = o as THREE.Mesh;
@@ -171,6 +204,51 @@ class PortScene {
     });
     g.forEach(x => x.dispose()); m.forEach(x => { (x as THREE.MeshBasicMaterial).map?.dispose(); x.dispose(); }); this.group.removeFromParent();
   }
+}
+const pick = (lines: string[]) => lines[Math.floor(Math.random() * lines.length)];
+const flagged = (s: GameState, f: string) => s.data.flags.includes(f);
+const talk = (who: string, line: () => string) => `${who} : « ${line()} »`;
+/** Port people as plain data on the existing action runner: a line when the step starts, needs, counters, flags. */
+export function portPlaces(state: () => GameState): Interactable[] {
+  const docker: Action[] = [
+    { id: 'parler_docker', label: 'Discuter avec le docker', detail: 'Il regarde les conteneurs en fumant', seconds: 3, steps: [{
+      label: 'Discussion', primitive: 'talk', seconds: 3, clip: 'Talk',
+      line: () => talk('Mamadou', () => flagged(state(), 'met_docker') ? pick(['Le bateau de ce matin venait de Tanger…', 'Y’a trop de monde qui veut entrer dans le port maintenant.', 'Les grues, elles s’arrêtent jamais. Nous non plus.'])
+        : 'Tu te perds pas, mon frère ? Ici c’est le vrai travail. Les conteneurs, c’est la vie de Dakar.'),
+      effects: { needs: { social: 8, moral: 3 }, counters: { chats: 1 }, flags: ['met_docker'] } }] },
+    { id: 'aider_caisse', label: 'Aider à pousser une caisse', detail: '+1 500 F · un peu de fatigue', gain: 1500, seconds: 4,
+      requires: s => (s.data.needs.energie < 20 ? 'Trop fatigué' : null), steps: [{
+      label: 'Pousser la caisse', primitive: 'work', seconds: 4, clip: 'Grab',
+      line: () => talk('Mamadou', () => 'Respect. T’es pas comme les touristes du Plateau. Tiens, 1 500 F. Va boire un Touba.'),
+      effects: { money: 1500, category: 'transport', needs: { energie: -18, hygiene: -6, faim: -5, moral: 4 }, counters: { shifts: 1 }, flags: ['helped_docker'] } }] },
+  ];
+  const goree: Action[] = [
+    { id: 'regarder_goree', label: 'Regarder vers Gorée', detail: 'L’île est là, juste en face', seconds: 3, steps: [{
+      label: 'Regarder la mer', primitive: 'inspect', seconds: 3,
+      line: 'Gorée… même quand on la voit tous les jours, ça fait quelque chose.',
+      effects: { needs: { moral: 10, social: 2 }, flags: ['seen_goree'] } }] },
+    { id: 'parler_passeur', label: 'Parler au passeur', detail: 'Il attend les passagers pour Gorée', seconds: 2.5, steps: [{
+      label: 'Discussion', primitive: 'talk', seconds: 2.5, clip: 'Talk',
+      line: () => talk('Le passeur', () => flagged(state(), 'seen_goree') ? 'Beaucoup de gens passent ici sans s’arrêter. Toi tu regardes. C’est bien.'
+        : 'Aujourd’hui la mer est calme. Une vingtaine de minutes et t’es de l’autre côté. Tu viens pour la Maison des Esclaves ou juste pour marcher ?'),
+      effects: { needs: { social: 6, moral: 4 }, counters: { chats: 1 } } }] },
+    { id: 'aller_goree', label: 'Prendre la chaloupe pour Gorée', detail: 'Bientôt disponible', seconds: 0,
+      requires: () => 'La chaloupe partira dans une prochaine version' },
+  ];
+  const cafe: Action[] = [
+    { id: 'touba_port', label: 'Boire un café Touba', detail: 'Bien fort, 100 F', cost: 100, seconds: 1.5, steps: [{
+      label: 'Café Touba', primitive: 'drink', seconds: 1.5, prop: 'cup',
+      line: 'Vendeur : « Café du port, mon frère. Ça réveille même les morts. »',
+      effects: { needs: { faim: 2, energie: 7, moral: 5, social: 2 }, counters: { cafes: 1 } } }] },
+  ];
+  return [
+    { id: 'plateau:port:docker', name: 'Mamadou (docker)', kind: 'actions', x: 161, z: -18, radius: 3.5, actions: docker,
+      description: 'Un docker en pause, près des piles de conteneurs.' },
+    { id: 'plateau:port:goree', name: 'Embarcadère Gorée', kind: 'actions', x: 206, z: 44, radius: 4, actions: goree,
+      description: 'Le passeur attend au bout de la jetée. Gorée est juste en face.' },
+    { id: 'plateau:port:cafe', name: 'Café Touba du Port', kind: 'actions', x: 132, z: 10, radius: 3, actions: cafe,
+      description: 'Un vendeur de café Touba à l’entrée du port.' },
+  ];
 }
 let scene: PortScene | null = null;
 const previewParams = () => typeof window !== 'undefined' && !!window.location?.search && isTestHost(window.location.hostname)
@@ -181,10 +259,10 @@ export const portwiseDakar: GameModule = {
   hubLoaded(ctx, hub) {
     scene?.dispose(); scene = null;
     if (!enabled() || hub.id !== 'plateau') return;
-    scene = new PortScene(hub); ctx.extra.add(scene.group);
+    scene = new PortScene(hub, ctx.state); ctx.extra.add(scene.group);
     // Dedicated smoke-test arrival. Normal Plateau spawns and saved positions stay unchanged.
     if (previewParams()?.has('portVisit')) hub.spawn = { ...PORT_VISIT_SPAWN };
   },
-  update(ctx) { scene?.update(ctx.now() / 1000); },
+  update(ctx, dt) { scene?.update(ctx.now() / 1000, dt); },
   debug() { return { portPrototype: () => ({ enabled: !!scene, ships: scene ? 1 : 0, cranes: scene ? 1 : 0, containers: scene ? 50 : 0, trucks: scene ? 2 : 0, x: 135, z: 0 }) }; },
 };

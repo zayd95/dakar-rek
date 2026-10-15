@@ -65,3 +65,11 @@ SOFTWARE.
 ## Géographie (recherche, 15 oct.)
 
 Le Port Autonome de Dakar longe la côte est du Plateau (baie de Hann) : zone sud avec môles I–III (marchandises, passagers, liaison Gorée), zone nord avec môles IV–VI/VIII et le terminal à conteneurs. La maquette garde donc la mer à l'est : navire accosté au quai (x≈200), portique et conteneurs sur le quai, jetée de fermeture au large, et une petite jetée sud avec embarcadère « Gorée » (seul accès à l'eau, le reste du quai est clos). Forme volontairement stylisée ; sources à confirmer sur portdakar.sn. `node scripts/check-port-walk.mjs` : marche route → arche → quai → embarcadère, collisions, budget (port seul ≈ 11 appels de rendu, ≈ 1,6 k triangles, mise à jour < 0,02 ms).
+
+## Vie du port (données seulement, runner d'actions existant)
+
+- **Mamadou (docker)**, près des piles : « Discuter » (social, moral, drapeau `met_docker`, répliques aléatoires ensuite) et « Aider à pousser une caisse » (+1 500 F, fatigue, refusé si énergie < 20, drapeau `helped_docker`).
+- **Embarcadère Gorée**, au bout de la jetée sud : « Regarder vers Gorée » (moral, drapeau `seen_goree`), « Parler au passeur » (réplique différente après avoir regardé), « Prendre la chaloupe » affiché « bientôt disponible ».
+- **Café Touba du Port**, à l'arche : 100 F.
+- Gorée est visible au sud-est, dans la brume (silhouette légère : île, fort, maisons).
+- `node scripts/check-port-life.mjs` joue ces actions dans le navigateur (téléphone).
