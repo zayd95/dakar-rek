@@ -1467,5 +1467,17 @@
       ]
     },
     "nextOwner": "PR29 author / authorized browser runner then distinct QA"
+  },
+  "registryWriter": {
+    "token": "cycle-20261015T2227Z-watch",
+    "owner": "producer_watch_2227",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "d2fb7907c55653e0e01edfada49c934ba34f09b4",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-15-2227-WATCH.md"
+    ],
+    "acquiredAt": "2026-10-15T22:26:36Z"
   }
 }
