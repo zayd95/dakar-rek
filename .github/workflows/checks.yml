@@ -19,6 +19,7 @@ jobs:
       - run: npm run typecheck:server
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - run: node scripts/check-port-preview.mjs
       - run: npm run check:city
       - run: npm run check:online
       - run: npm run check:launch
@@ -31,4 +32,5 @@ jobs:
             shots/launch-controls/
             shots/launch-gameplay/
             shots/city-life/
+            shots/port-preview/
           if-no-files-found: ignore

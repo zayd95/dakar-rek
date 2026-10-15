@@ -1318,7 +1318,7 @@ void start();
 
 if (DEBUG) {
   (window as unknown as Record<string, unknown>).__dakar = {
-    state, hubs: HUB_IDS, three: { scene, renderer, sky: sky.mesh },
+    state, hubs: HUB_IDS, three: { scene, renderer, camera, sky: sky.mesh },
     presence: () => ({ status: presence.status, id: presence.id, room: presence.room, count: presence.count, peers: [...presence.peers.values()], visible: remoteAvatars.size, bikes: remoteAvatars.bikes, poses: remoteAvatars.poses(), gear: remoteAvatars.gear(), move: presence.lastPublished }),
     // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
