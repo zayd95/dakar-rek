@@ -1277,5 +1277,39 @@
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
     "lastReconciledAt": "2026-10-15T03:31:23.189Z"
+  },
+  "externalPortCandidateReview": {
+    "id": "WATCH-PR34-20261015-0435-QA",
+    "role": "qa",
+    "kind": "read_only_external_candidate_review",
+    "status": "active",
+    "owner": "qa_port_0435",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
+    "sourceBranch": "feature/portwise-dakar-spike",
+    "sourceCommit": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR34-20261015-0435-QA.md"
+    ],
+    "controlBriefCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
+    "acceptance": [
+      "Read exact diff, document criteria, actual push/PR checkout/logs and artifacts metadata.",
+      "Determine whether original 18-test regression is fixed and classify present red CI.",
+      "Review opt-in/opt-out, scene lifecycle, collision and host restriction test coverage; do not claim browser tests from screenshots you have not seen.",
+      "Return independent ready/needs-decision/blocked report with exact evidence and limits; no source edits, CI changes, external refs or local browser retry."
+    ]
+  },
+  "registryWriter": {
+    "token": "cycle-20261015T0435Z-port-qa",
+    "owner": "producer_port_0435",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-15-0435-PORT-QA.md"
+    ],
+    "acquiredAt": "2026-10-15T04:36:34.023Z"
   }
 }
