@@ -1,48 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-15T03:31:23.189Z",
+  "updatedAt": "2026-10-15T04:37:58.471Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261015T0435Z-port-qa",
-    "owner": "producer_port_0435",
-    "baseCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
-    "acquiredAt": "2026-10-15T04:36:34.023Z",
-    "expiresAt": "2026-10-15T05:10:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-15-0435-PORT-QA.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "id": "WATCH-PR34-20261015-0435-QA",
-      "role": "qa",
-      "kind": "read_only_external_candidate_review",
-      "status": "active",
-      "owner": "qa_port_0435",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
-      "sourceBranch": "feature/portwise-dakar-spike",
-      "sourceCommit": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR34-20261015-0435-QA.md"
-      ],
-      "controlBriefCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
-      "acceptance": [
-        "Read exact diff, document criteria, actual push/PR checkout/logs and artifacts metadata.",
-        "Determine whether original 18-test regression is fixed and classify present red CI.",
-        "Review opt-in/opt-out, scene lifecycle, collision and host restriction test coverage; do not claim browser tests from screenshots you have not seen.",
-        "Return independent ready/needs-decision/blocked report with exact evidence and limits; no source edits, CI changes, external refs or local browser retry."
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -153,8 +119,8 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-14T14:36:47Z",
-    "lastVerifiedAt": "2026-10-14T15:47:13.076Z",
+    "lastCompletedRunAt": "2026-10-15T04:38:53.219Z",
+    "lastVerifiedAt": "2026-10-15T04:37:58.471Z",
     "enabled": true
   },
   "productionMutationsAuthorized": false,
@@ -186,7 +152,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "Reconcile PR34 corrected SHA CI, PR33 external-owner/browser blockers, and Wave5 final acceptance; do not duplicate external work.",
+  "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -324,15 +290,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-0326-WATCH.md",
-    "completedAt": "2026-10-15T03:31:23.189Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-0435-PORT-QA.md",
+    "completedAt": "2026-10-15T04:38:53.219Z",
     "actualRunCompleted": true,
-    "tasks": [],
+    "tasks": [
+      "WATCH-PR34-20261015-0435-QA"
+    ],
     "verifiedCandidates": [],
-    "owner": "producer_port_0330",
-    "reviewer": null,
+    "owner": "producer_port_0435",
+    "reviewer": "qa_port_0435",
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261015T0330Z-port-ci"
+    "leaseReleased": "cycle-20261015T0435Z-port-qa"
   },
   "protectedRefsLatest": [
     {
@@ -594,7 +562,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-15T03:31:23.189Z",
+    "checkedAt": "2026-10-15T04:37:58.471Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -707,7 +675,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-15T02:31:17.838Z",
+      "checkedAt": "2026-10-15T04:37:58.471Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -825,32 +793,32 @@
     {
       "pr": 34,
       "branch": "feature/portwise-dakar-spike",
-      "sha": "37ff20de47c3168a5a0b764cb837e17f5a8126c9",
+      "sha": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Port de Dakar: prototype Portwise / Three.js (opt-in, non-production)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-15T03:31:23.189Z",
+      "checkedAt": "2026-10-15T04:37:58.471Z",
       "draft": true,
       "accepted": false,
-      "status": "author correction pending exact CI; not independently accepted",
+      "status": "needs-decision: PR CI success, exact push performance failure",
       "checks": [
         {
-          "id": 116231526988,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/builds/17fec793-8c88-468a-b8bb-95793c9e1d9d"
+          "id": 116237722565,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-portwise-dakar-spike/builds/2f7e2dee-3ee4-4f38-a76e-320ef3845bb4"
         },
         {
-          "id": 116231526680,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38676600341/job/116231526680"
+          "id": 116237130828,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38678398718/job/116237130828"
         },
         {
-          "id": 116231512900,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38676595880/job/116231512900"
+          "id": 116237117966,
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38678394215/job/116237117966"
         }
       ],
       "previousFailure": {
@@ -864,8 +832,48 @@
         "error": "TypeError reading window.location.search in src/game/portwiseDakar.ts:145",
         "logUrl": "https://github.com/zayd95/dakar-rek/actions/runs/38676442076/job/116231023217"
       },
-      "correctionObserved": "Current external source adds optional window.location?.search guard; CI pending, not a verified fix.",
-      "nextAction": "Other-session author owns implementation; read new exact-SHA CI, then reserve distinct QA if stable. No duplicated port task."
+      "correctionObserved": "Initial window.location.search regression absent from new runs; PR browser smoke success, push medium draw-call budget failure remains.",
+      "nextAction": "External author/CI owner: reproduce tests/perf.calls.test.ts:34 (280 > 270), diagnose without weakening assertion, then distinct QA.",
+      "previousSource": "37ff20de47c3168a5a0b764cb837e17f5a8126c9",
+      "review": {
+        "status": "needs-decision",
+        "reviewer": "qa_port_0435",
+        "report": "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
+        "completedAt": "2026-10-15T04:38:53.219Z",
+        "sourceCommit": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+        "local": "local_not_run",
+        "prCI": {
+          "runId": 38678398718,
+          "jobId": 116237130828,
+          "checkoutSha": "9c45a62da6472fba7d172a1c57e76fc98d0501e6",
+          "tree": "ff64cbd41c2bcfdbaf014e0d8d01362eee18d75e",
+          "conclusion": "success",
+          "testsPassed": 1480,
+          "testsSkipped": 2,
+          "browser": "phone/desktop port arrival and opt-out PASS; images not visually reviewed"
+        },
+        "pushCI": {
+          "runId": 38678394215,
+          "jobId": 116237117966,
+          "checkoutSha": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+          "tree": "ff64cbd41c2bcfdbaf014e0d8d01362eee18d75e",
+          "conclusion": "failure",
+          "testsPassed": 1479,
+          "testsFailed": 1,
+          "testsSkipped": 2,
+          "error": "tests/perf.calls.test.ts:34:90; 17:30 medium draw calls 280 > 270; cause not established"
+        },
+        "artifact": {
+          "id": 11948481361,
+          "digest": "sha256:4815c96902cfe4ced13551ceb56928ae8ca78687dd1f5d5aea7638e8662cdc38"
+        },
+        "missing": [
+          "Walk from Plateau, water collision and pedestrian return",
+          "Hub change/return, duplicates and memory",
+          "Port low/medium/high budgets, camera/joystick/minimap",
+          "Physical Android/iPhone and geography review"
+        ]
+      }
     },
     {
       "pr": 33,
@@ -1042,14 +1050,14 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-15T03:31:23.189Z",
+    "checkedAt": "2026-10-15T04:37:58.471Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run this cycle; inspected real GitHub CI logs",
-    "delegation": "available; no dispatch while external author actively correcting",
+    "localTests": "local_not_run; independent reviewer inspected actual CI checkout/logs",
+    "delegation": "qa_port_0435 independently dispatched after durable reservation",
     "cloudflareAuthenticated": false
   }
 }

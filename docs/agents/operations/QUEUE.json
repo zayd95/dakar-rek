@@ -858,16 +858,18 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-0326-WATCH.md",
-    "checkedAt": "2026-10-15T03:31:23.189Z",
-    "result": "New external PR34 failure diagnosed from actual CI; author already correcting on protected branch; current SHA pending.",
-    "owner": "producer_port_0330",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-0435-PORT-QA.md",
+    "checkedAt": "2026-10-15T04:38:53.219Z",
+    "result": "Independent PR34 QA completed: original regression absent; PR green/same tree, push draw-call failure remains; needs-decision.",
+    "owner": "producer_port_0435",
+    "reviewer": "qa_port_0435",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "54ef89e2c0ac96c032d6a7d751cddd0ee33e7cdb",
+    "baseCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-0326-WATCH.md"
+      "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-15-0435-PORT-QA.md"
     ]
   },
   "evidenceReview": {
@@ -1007,32 +1009,32 @@
     {
       "pr": 34,
       "branch": "feature/portwise-dakar-spike",
-      "sha": "37ff20de47c3168a5a0b764cb837e17f5a8126c9",
+      "sha": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Port de Dakar: prototype Portwise / Three.js (opt-in, non-production)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-15T03:31:23.189Z",
+      "checkedAt": "2026-10-15T04:37:58.471Z",
       "draft": true,
       "accepted": false,
-      "status": "author correction pending exact CI; not independently accepted",
+      "status": "needs-decision: PR CI success, exact push performance failure",
       "checks": [
         {
-          "id": 116231526988,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/builds/17fec793-8c88-468a-b8bb-95793c9e1d9d"
+          "id": 116237722565,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-portwise-dakar-spike/builds/2f7e2dee-3ee4-4f38-a76e-320ef3845bb4"
         },
         {
-          "id": 116231526680,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38676600341/job/116231526680"
+          "id": 116237130828,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38678398718/job/116237130828"
         },
         {
-          "id": 116231512900,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38676595880/job/116231512900"
+          "id": 116237117966,
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38678394215/job/116237117966"
         }
       ],
       "previousFailure": {
@@ -1046,8 +1048,48 @@
         "error": "TypeError reading window.location.search in src/game/portwiseDakar.ts:145",
         "logUrl": "https://github.com/zayd95/dakar-rek/actions/runs/38676442076/job/116231023217"
       },
-      "correctionObserved": "Current external source adds optional window.location?.search guard; CI pending, not a verified fix.",
-      "nextAction": "Other-session author owns implementation; read new exact-SHA CI, then reserve distinct QA if stable. No duplicated port task."
+      "correctionObserved": "Initial window.location.search regression absent from new runs; PR browser smoke success, push medium draw-call budget failure remains.",
+      "nextAction": "External author/CI owner: reproduce tests/perf.calls.test.ts:34 (280 > 270), diagnose without weakening assertion, then distinct QA.",
+      "previousSource": "37ff20de47c3168a5a0b764cb837e17f5a8126c9",
+      "review": {
+        "status": "needs-decision",
+        "reviewer": "qa_port_0435",
+        "report": "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
+        "completedAt": "2026-10-15T04:38:53.219Z",
+        "sourceCommit": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+        "local": "local_not_run",
+        "prCI": {
+          "runId": 38678398718,
+          "jobId": 116237130828,
+          "checkoutSha": "9c45a62da6472fba7d172a1c57e76fc98d0501e6",
+          "tree": "ff64cbd41c2bcfdbaf014e0d8d01362eee18d75e",
+          "conclusion": "success",
+          "testsPassed": 1480,
+          "testsSkipped": 2,
+          "browser": "phone/desktop port arrival and opt-out PASS; images not visually reviewed"
+        },
+        "pushCI": {
+          "runId": 38678394215,
+          "jobId": 116237117966,
+          "checkoutSha": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+          "tree": "ff64cbd41c2bcfdbaf014e0d8d01362eee18d75e",
+          "conclusion": "failure",
+          "testsPassed": 1479,
+          "testsFailed": 1,
+          "testsSkipped": 2,
+          "error": "tests/perf.calls.test.ts:34:90; 17:30 medium draw calls 280 > 270; cause not established"
+        },
+        "artifact": {
+          "id": 11948481361,
+          "digest": "sha256:4815c96902cfe4ced13551ceb56928ae8ca78687dd1f5d5aea7638e8662cdc38"
+        },
+        "missing": [
+          "Walk from Plateau, water collision and pedestrian return",
+          "Hub change/return, duplicates and memory",
+          "Port low/medium/high budgets, camera/joystick/minimap",
+          "Physical Android/iPhone and geography review"
+        ]
+      }
     },
     {
       "pr": 33,
@@ -1282,7 +1324,7 @@
     "id": "WATCH-PR34-20261015-0435-QA",
     "role": "qa",
     "kind": "read_only_external_candidate_review",
-    "status": "active",
+    "status": "needs-decision",
     "owner": "qa_port_0435",
     "branch": "codex/agent-studio-active",
     "baseCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
@@ -1297,19 +1339,50 @@
       "Determine whether original 18-test regression is fixed and classify present red CI.",
       "Review opt-in/opt-out, scene lifecycle, collision and host restriction test coverage; do not claim browser tests from screenshots you have not seen.",
       "Return independent ready/needs-decision/blocked report with exact evidence and limits; no source edits, CI changes, external refs or local browser retry."
-    ]
-  },
-  "registryWriter": {
-    "token": "cycle-20261015T0435Z-port-qa",
-    "owner": "producer_port_0435",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-15-0435-PORT-QA.md"
     ],
-    "acquiredAt": "2026-10-15T04:36:34.023Z"
+    "completedAt": "2026-10-15T04:38:53.219Z",
+    "report": "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
+    "verdict": "needs-decision",
+    "results": {
+      "status": "needs-decision",
+      "reviewer": "qa_port_0435",
+      "report": "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
+      "completedAt": "2026-10-15T04:38:53.219Z",
+      "sourceCommit": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+      "local": "local_not_run",
+      "prCI": {
+        "runId": 38678398718,
+        "jobId": 116237130828,
+        "checkoutSha": "9c45a62da6472fba7d172a1c57e76fc98d0501e6",
+        "tree": "ff64cbd41c2bcfdbaf014e0d8d01362eee18d75e",
+        "conclusion": "success",
+        "testsPassed": 1480,
+        "testsSkipped": 2,
+        "browser": "phone/desktop port arrival and opt-out PASS; images not visually reviewed"
+      },
+      "pushCI": {
+        "runId": 38678394215,
+        "jobId": 116237117966,
+        "checkoutSha": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+        "tree": "ff64cbd41c2bcfdbaf014e0d8d01362eee18d75e",
+        "conclusion": "failure",
+        "testsPassed": 1479,
+        "testsFailed": 1,
+        "testsSkipped": 2,
+        "error": "tests/perf.calls.test.ts:34:90; 17:30 medium draw calls 280 > 270; cause not established"
+      },
+      "artifact": {
+        "id": 11948481361,
+        "digest": "sha256:4815c96902cfe4ced13551ceb56928ae8ca78687dd1f5d5aea7638e8662cdc38"
+      },
+      "missing": [
+        "Walk from Plateau, water collision and pedestrian return",
+        "Hub change/return, duplicates and memory",
+        "Port low/medium/high budgets, camera/joystick/minimap",
+        "Physical Android/iPhone and geography review"
+      ]
+    },
+    "nextOwner": "PR34 author/CI owner",
+    "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners."
   }
 }
