@@ -100,6 +100,25 @@ Matched camera, bench and morning lighting; before is `c8b9a28`. Model and motio
 [Both-orientation label/touch checks](screenshots/reference-character/prompts/after/results.json) verify
 front, side and back views against the actual deformed mesh, and use the real touch action to sit again.
 
+### Relaxed shoulders during locomotion
+
+The source mannequin's clavicle directions lifted this human rig's shoulders roughly 14–16 cm above
+its relaxed walking pose, hiding the neck. Walking, jogging and sprinting now use the authored sloping
+shoulders with 25% of the captured local shoulder articulation relative to the moving torso. The arms
+still swing: sampled upper-arm directions differ by less than 0.003° from the licensed motion, while
+leg-joint paths are identical. Geometry, rig and skin weights are unchanged.
+
+Matched mobile camera, motion phases and morning lighting; before is `76eb239`.
+
+| Previous walking posture | Relaxed shoulders |
+| --- | --- |
+| ![Raised shoulders](screenshots/reference-character/shoulders/before/portrait-walk-0.png) | ![Relaxed shoulders](screenshots/reference-character/shoulders/after/portrait-walk-0.png) |
+| ![Opposite step before](screenshots/reference-character/shoulders/before/portrait-walk-2.png) | ![Opposite step after](screenshots/reference-character/shoulders/after/portrait-walk-2.png) |
+
+[Portrait/landscape three-gait checks](screenshots/reference-character/shoulders/after/results.json)
+include four phase captures per gait. A full-cycle exported-joint regression checks relaxed shoulder
+height and continuing arm swing for walk, jog and sprint.
+
 ## Asset and motion
 
 The source is fresh licensed MakeHuman anatomy, a fitted CC0 garment, new authored hair/face details,
@@ -126,9 +145,10 @@ The preview profile retains nickname editing but offers no appearance swatches o
 
 ## Verification
 
-- Full suite: **1,399 passed, 2 skipped**, including ten actual GLB/runtime checks for skin weights,
+- Full suite: **1,400 passed, 2 skipped**, including eleven actual GLB/runtime checks for skin weights,
   individual finger joints, asset limits, moving clips, idle-loop closure, contact, bench fitting, cadence,
-  both hands' lap contact/fabric clearance, mirrored leg stepping and one-shot playback.
+  both hands' lap contact/fabric clearance, mirrored leg stepping, relaxed locomotion shoulders with
+  retained arm swing, and one-shot playback.
 - Sit/stand sole contact stays within 7 mm of its calibrated plane. Dedicated mobile checks cover
   every frame of a complete bench exit, seat ownership/release, repeated taps, first-frame touch
   interruption and travel cleanup in both orientations. Actual blended shoe contact stays within
@@ -149,6 +169,7 @@ npm run typecheck:server
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character
 CHROMIUM=/path/to/chrome node scripts/check-reference-seat-exit.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/stand-up
 CHROMIUM=/path/to/chrome node scripts/check-reference-prompts.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/prompts/after
+CHROMIUM=/path/to/chrome node scripts/check-reference-shoulders.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/shoulders/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4175/ docs/screenshots/reference-character/before --baseline
 CHROMIUM=/path/to/chrome node scripts/check-perf-evening.mjs http://127.0.0.1:4174/ docs/perf/reference-character-low.json --presets=low --reference-character
 ```

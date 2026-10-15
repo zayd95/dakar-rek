@@ -1,5 +1,5 @@
 {
-  "when": "2026-10-15T20:49:54.742Z",
+  "when": "2026-10-15T22:39:03.952Z",
   "base": "http://127.0.0.1:4174/",
   "character": "reference",
   "budget": {
@@ -23,61 +23,61 @@
     {
       "preset": "low",
       "moment": "17:30 arrivals",
-      "calls": 94,
-      "tris": 136825,
+      "calls": 106,
+      "tris": 140689,
       "frameMs": {
-        "median": 53,
-        "p90": 54.799999952316284
+        "median": 56,
+        "p90": 70.69999998807907
       },
-      "updateMs": 0.46,
-      "crowdMs": 0.066,
+      "updateMs": 0.65,
+      "crowdMs": 0.086,
       "perf": {
         "module:wolof": 0,
-        "module:assetKit": 0.003,
-        "module:transport": 0.026,
-        "module:venues": 0.027,
+        "module:assetKit": 0.002,
+        "module:transport": 0.021,
+        "module:venues": 0.041,
         "module:moto": 0,
         "module:car": 0,
-        "module:taxi": 0.001,
-        "module:estate": 0.001,
-        "module:arena": 0.013,
-        "module:arenaExterior": 0.089,
+        "module:taxi": 0,
+        "module:estate": 0,
+        "module:arena": 0.033,
+        "module:arenaExterior": 0.142,
         "module:arenaInterior": 0,
-        "module:crowd": 0.066,
+        "module:crowd": 0.086,
         "module:fight-talk": 0,
-        "module:posters": 0.006,
+        "module:posters": 0.003,
         "module:arenaFighter": 0,
-        "module:arenaBakk": 0.004,
-        "module:arenaStreets": 0.001,
-        "module:weather": 0.001,
+        "module:arenaBakk": 0,
+        "module:arenaStreets": 0.013,
+        "module:weather": 0,
         "module:streetVendors": 0.004,
-        "module:roadEvents": 0.002,
-        "module:galaTraffic": 0.041,
-        "module:night": 0,
-        "module:eveningCall": 0.005,
-        "module:shops": 0.001,
-        "module:ambient-life": 0.033,
-        "module:ui-world": 0.007,
-        "module:career": 0.003,
-        "module:arenaTogether": 0,
-        "module:arenaArrival": 0,
+        "module:roadEvents": 0.012,
+        "module:galaTraffic": 0.056,
+        "module:night": 0.007,
+        "module:eveningCall": 0,
+        "module:shops": 0,
+        "module:ambient-life": 0.058,
+        "module:ui-world": 0.001,
+        "module:career": 0.006,
+        "module:arenaTogether": 0.009,
+        "module:arenaArrival": 0.005,
         "module:tonight": 0,
-        "module:supporters": 0.002,
-        "npcLife": 0.011,
-        "walkers+traffic+life+world": 0.031,
-        "ambient(npc.ts)": 0,
-        "rest of update": 0.078,
-        "render (CPU)": 1.369,
-        "frame (JS)": 1.877
+        "module:supporters": 0.003,
+        "npcLife": 0.02,
+        "walkers+traffic+life+world": 0.016,
+        "ambient(npc.ts)": 0.008,
+        "rest of update": 0.105,
+        "render (CPU)": 1.745,
+        "frame (JS)": 2.452
       },
       "by": {
         "Group": {
-          "calls": 32,
-          "tris": 68262
+          "calls": 40,
+          "tris": 70262
         },
         "arena_exterior": {
-          "calls": 26,
-          "tris": 16332
+          "calls": 27,
+          "tris": 16652
         },
         "arena_moto_parking": {
           "calls": 9,
@@ -85,7 +85,7 @@
         },
         "gala_traffic": {
           "calls": 8,
-          "tris": 4416
+          "tris": 5846
         },
         "arena_evening": {
           "calls": 3,
@@ -103,6 +103,10 @@
           "calls": 2,
           "tris": 448
         },
+        "crowd:arena-arrivals": {
+          "calls": 2,
+          "tris": 98
+        },
         "crowd:street": {
           "calls": 2,
           "tris": 2744
@@ -113,11 +117,7 @@
         },
         "ambient_life": {
           "calls": 2,
-          "tris": 2352
-        },
-        "humanoid_v2": {
-          "calls": 1,
-          "tris": 18067
+          "tris": 2280
         }
       },
       "crowds": [
@@ -131,15 +131,15 @@
         },
         {
           "name": "arena-arrivals",
-          "present": 0,
+          "present": 1,
           "near": 0,
           "mid": 0,
-          "far": 0,
-          "drawCalls": 0
+          "far": 1,
+          "drawCalls": 2
         },
         {
           "name": "street",
-          "present": 29,
+          "present": 28,
           "near": 0,
           "mid": 0,
           "far": 28,
@@ -150,61 +150,61 @@
     {
       "preset": "low",
       "moment": "19:00 seated, bout",
-      "calls": 101,
-      "tris": 130927,
+      "calls": 107,
+      "tris": 128231,
       "frameMs": {
-        "median": 51.90000003576279,
-        "p90": 54
+        "median": 54.60000002384186,
+        "p90": 60.5
       },
-      "updateMs": 0.4,
-      "crowdMs": 0.01,
+      "updateMs": 0.66,
+      "crowdMs": 0.028,
       "perf": {
-        "module:wolof": 0,
-        "module:assetKit": 0.008,
-        "module:transport": 0.012,
-        "module:venues": 0.008,
-        "module:moto": 0.002,
+        "module:wolof": 0.002,
+        "module:assetKit": 0,
+        "module:transport": 0.025,
+        "module:venues": 0.022,
+        "module:moto": 0.001,
         "module:car": 0,
         "module:taxi": 0,
         "module:estate": 0,
-        "module:arena": 0.184,
-        "module:arenaExterior": 0.015,
+        "module:arena": 0.361,
+        "module:arenaExterior": 0.008,
         "module:arenaInterior": 0,
-        "module:crowd": 0.01,
-        "module:fight-talk": 0.006,
+        "module:crowd": 0.028,
+        "module:fight-talk": 0,
         "module:posters": 0,
-        "module:arenaFighter": 0,
+        "module:arenaFighter": 0.003,
         "module:arenaBakk": 0,
-        "module:arenaStreets": 0.007,
-        "module:weather": 0,
-        "module:streetVendors": 0,
-        "module:roadEvents": 0,
-        "module:galaTraffic": 0.002,
+        "module:arenaStreets": 0.023,
+        "module:weather": 0.001,
+        "module:streetVendors": 0.005,
+        "module:roadEvents": 0.001,
+        "module:galaTraffic": 0.008,
         "module:night": 0.021,
-        "module:eveningCall": 0.006,
-        "module:shops": 0,
-        "module:ambient-life": 0.025,
-        "module:ui-world": 0.004,
-        "module:career": 0.006,
-        "module:arenaTogether": 0,
-        "module:arenaArrival": 0,
+        "module:eveningCall": 0,
+        "module:shops": 0.004,
+        "module:ambient-life": 0.028,
+        "module:ui-world": 0.008,
+        "module:career": 0,
+        "module:arenaTogether": 0.002,
+        "module:arenaArrival": 0.004,
         "module:tonight": 0,
         "module:supporters": 0,
-        "npcLife": 0.001,
-        "walkers+traffic+life+world": 0,
+        "npcLife": 0,
+        "walkers+traffic+life+world": 0.014,
         "ambient(npc.ts)": 0,
-        "rest of update": 0.078,
-        "render (CPU)": 1.404,
-        "frame (JS)": 1.838
+        "rest of update": 0.087,
+        "render (CPU)": 1.703,
+        "frame (JS)": 2.417
       },
       "by": {
         "Group": {
-          "calls": 39,
-          "tris": 71003
+          "calls": 43,
+          "tris": 72003
         },
         "arena_evening": {
-          "calls": 27,
-          "tris": 46850
+          "calls": 30,
+          "tris": 43250
         },
         "arena_moto_parking": {
           "calls": 9,
@@ -240,7 +240,7 @@
         },
         "traffic": {
           "calls": 1,
-          "tris": 88
+          "tris": 80
         },
         "arena_people": {
           "calls": 1,
@@ -254,15 +254,15 @@
           "near": 0,
           "mid": 45,
           "far": 201,
-          "drawCalls": 4
+          "drawCalls": 5
         },
         {
           "name": "arena-arrivals",
-          "present": 6,
+          "present": 0,
           "near": 0,
           "mid": 0,
-          "far": 6,
-          "drawCalls": 2
+          "far": 0,
+          "drawCalls": 0
         },
         {
           "name": "street",
@@ -277,61 +277,61 @@
     {
       "preset": "low",
       "moment": "23:00 outflow",
-      "calls": 116,
-      "tris": 135792,
+      "calls": 113,
+      "tris": 133476,
       "frameMs": {
-        "median": 57.5,
-        "p90": 59.09999996423721
+        "median": 57.69999998807907,
+        "p90": 60.10000002384186
       },
-      "updateMs": 0.49,
-      "crowdMs": 0.033,
+      "updateMs": 0.56,
+      "crowdMs": 0.057,
       "perf": {
-        "module:wolof": 0,
-        "module:assetKit": 0.005,
-        "module:transport": 0.044,
-        "module:venues": 0.015,
-        "module:moto": 0,
+        "module:wolof": 0.002,
+        "module:assetKit": 0.001,
+        "module:transport": 0.058,
+        "module:venues": 0.042,
+        "module:moto": 0.001,
         "module:car": 0,
         "module:taxi": 0,
-        "module:estate": 0.002,
-        "module:arena": 0.028,
-        "module:arenaExterior": 0.069,
+        "module:estate": 0.001,
+        "module:arena": 0.018,
+        "module:arenaExterior": 0.058,
         "module:arenaInterior": 0,
-        "module:crowd": 0.033,
+        "module:crowd": 0.057,
         "module:fight-talk": 0,
-        "module:posters": 0.003,
+        "module:posters": 0.009,
         "module:arenaFighter": 0,
         "module:arenaBakk": 0,
-        "module:arenaStreets": 0.021,
+        "module:arenaStreets": 0.016,
         "module:weather": 0,
         "module:streetVendors": 0.008,
         "module:roadEvents": 0,
-        "module:galaTraffic": 0.047,
-        "module:night": 0.009,
+        "module:galaTraffic": 0.048,
+        "module:night": 0.008,
         "module:eveningCall": 0,
-        "module:shops": 0.001,
-        "module:ambient-life": 0.045,
-        "module:ui-world": 0.019,
-        "module:career": 0.004,
-        "module:arenaTogether": 0,
-        "module:arenaArrival": 0.003,
+        "module:shops": 0,
+        "module:ambient-life": 0.067,
+        "module:ui-world": 0.014,
+        "module:career": 0.003,
+        "module:arenaTogether": 0.002,
+        "module:arenaArrival": 0.01,
         "module:tonight": 0,
         "module:supporters": 0,
-        "npcLife": 0.019,
-        "walkers+traffic+life+world": 0.016,
+        "npcLife": 0.053,
+        "walkers+traffic+life+world": 0.025,
         "ambient(npc.ts)": 0,
-        "rest of update": 0.103,
-        "render (CPU)": 1.411,
-        "frame (JS)": 1.944
+        "rest of update": 0.063,
+        "render (CPU)": 1.708,
+        "frame (JS)": 2.35
       },
       "by": {
         "Group": {
-          "calls": 35,
-          "tris": 72971
+          "calls": 39,
+          "tris": 73971
         },
         "arena_exterior": {
-          "calls": 22,
-          "tris": 15280
+          "calls": 16,
+          "tris": 12744
         },
         "arena_moto_parking": {
           "calls": 11,
@@ -347,7 +347,7 @@
         },
         "gala_traffic": {
           "calls": 5,
-          "tris": 3728
+          "tris": 3960
         },
         "moto:dealer": {
           "calls": 4,
@@ -357,19 +357,19 @@
           "calls": 4,
           "tris": 3434
         },
-        "crowd:arena-arrivals": {
-          "calls": 3,
-          "tris": 840
-        },
         "crowd:street": {
           "calls": 3,
-          "tris": 3122
+          "tris": 3276
         },
         "night_shops": {
           "calls": 3,
           "tris": 64
         },
         "transport:stops:23": {
+          "calls": 2,
+          "tris": 448
+        },
+        "transport:stops:23s": {
           "calls": 2,
           "tris": 448
         }
@@ -387,16 +387,16 @@
           "name": "arena-arrivals",
           "present": 6,
           "near": 0,
-          "mid": 3,
-          "far": 3,
-          "drawCalls": 3
+          "mid": 0,
+          "far": 6,
+          "drawCalls": 2
         },
         {
           "name": "street",
-          "present": 31,
+          "present": 30,
           "near": 0,
-          "mid": 1,
-          "far": 30,
+          "mid": 3,
+          "far": 27,
           "drawCalls": 3
         }
       ]
@@ -415,20 +415,20 @@
       "name": "low 17:30 arrivals: draw calls ≤ 180",
       "ok": true,
       "detail": {
-        "calls": 94,
+        "calls": 106,
         "by": [
           [
             "Group",
             {
-              "calls": 32,
-              "tris": 68262
+              "calls": 40,
+              "tris": 70262
             }
           ],
           [
             "arena_exterior",
             {
-              "calls": 26,
-              "tris": 16332
+              "calls": 27,
+              "tris": 16652
             }
           ],
           [
@@ -442,7 +442,7 @@
             "gala_traffic",
             {
               "calls": 8,
-              "tris": 4416
+              "tris": 5846
             }
           ],
           [
@@ -459,34 +459,34 @@
       "name": "low 17:30 arrivals: JS update ≤ 4 ms",
       "ok": true,
       "detail": {
-        "updateMs": 0.46
+        "updateMs": 0.65
       }
     },
     {
       "name": "low 17:30 arrivals: the crowd lane's update ≤ 0.8 ms",
       "ok": true,
       "detail": {
-        "crowdMs": 0.066
+        "crowdMs": 0.086
       }
     },
     {
       "name": "low 19:00 seated, bout: draw calls ≤ 180",
       "ok": true,
       "detail": {
-        "calls": 101,
+        "calls": 107,
         "by": [
           [
             "Group",
             {
-              "calls": 39,
-              "tris": 71003
+              "calls": 43,
+              "tris": 72003
             }
           ],
           [
             "arena_evening",
             {
-              "calls": 27,
-              "tris": 46850
+              "calls": 30,
+              "tris": 43250
             }
           ],
           [
@@ -517,34 +517,34 @@
       "name": "low 19:00 seated, bout: JS update ≤ 4 ms",
       "ok": true,
       "detail": {
-        "updateMs": 0.4
+        "updateMs": 0.66
       }
     },
     {
       "name": "low 19:00 seated, bout: the crowd lane's update ≤ 0.8 ms",
       "ok": true,
       "detail": {
-        "crowdMs": 0.01
+        "crowdMs": 0.028
       }
     },
     {
       "name": "low 23:00 outflow: draw calls ≤ 180",
       "ok": true,
       "detail": {
-        "calls": 116,
+        "calls": 113,
         "by": [
           [
             "Group",
             {
-              "calls": 35,
-              "tris": 72971
+              "calls": 39,
+              "tris": 73971
             }
           ],
           [
             "arena_exterior",
             {
-              "calls": 22,
-              "tris": 15280
+              "calls": 16,
+              "tris": 12744
             }
           ],
           [
@@ -575,14 +575,14 @@
       "name": "low 23:00 outflow: JS update ≤ 4 ms",
       "ok": true,
       "detail": {
-        "updateMs": 0.49
+        "updateMs": 0.56
       }
     },
     {
       "name": "low 23:00 outflow: the crowd lane's update ≤ 0.8 ms",
       "ok": true,
       "detail": {
-        "crowdMs": 0.033
+        "crowdMs": 0.057
       }
     },
     {

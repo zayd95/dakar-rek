@@ -90,7 +90,7 @@ for name,source_name in clips.items():
     frames=max(2,round(duration*60))
     ta=bpy.data.actions.new('Reference_'+name); tgt.animation_data_create(); tgt.animation_data.action=ta
     for pb in tgt.pose.bones: pb.rotation_mode='QUATERNION'; pb.location=(0,0,0); pb.rotation_quaternion=(1,0,0,0)
-    hipbase=None; hipheights=[]; initial_world={}; contacts=[]
+    hipbase=None; hipheights=[]; initial_world={}; initial_shoulders={}; contacts=[]
     for f in range(frames+1):
         at=float(start)+f/frames*(end-start)
         scene.frame_set(math.floor(at),subframe=at%1)
@@ -104,6 +104,17 @@ for name,source_name in clips.items():
             if f==0: initial_world[b.name]=world.copy()
             captured_delta=world@initial_world[b.name].inverted()
             short=b.name.split(':')[-1]
+            if name in ('Walk','Jog','Run') and short in ('LeftShoulder','RightShoulder'):
+                # The source mannequin's near-horizontal clavicles become a permanent shrug on
+                # this sloping human shoulder girdle. Retarget local motion onto the authored
+                # relaxed clavicle, retaining a quarter of the capture's shoulder articulation.
+                # Work relative to the animated torso so its lean/twist is inherited once.
+                parentq=desired[b.parent.name]
+                local=parentq.inverted()@world
+                if f==0: initial_shoulders[b.name]=local.copy()
+                delta=local@initial_shoulders[b.name].inverted()
+                restlocal=(b.parent.matrix_local.inverted()@b.matrix_local).to_quaternion()
+                world=parentq@Quaternion().slerp(delta,.25)@restlocal
             # Retarget the capture onto an authored relaxed standing pose. Keep its subtle weight transfer,
             # rather than the source actor's looking-up/talking performance or game-ready combat stance.
             neutral=idle or (turning and short not in ('Hips','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftFoot','RightFoot','LeftToeBase','RightToeBase'))
@@ -268,6 +279,7 @@ for name,source_name in clips.items():
     ta.name=name; ta.use_fake_user=True; baked.append(ta)
     report[name]={'source':'CMU 18_08 frames 130–490 (relaxed-pose adaptation, closed loop)' if idle else 'CMU 13_26 frames 977–1121 (quarter turn)' if turning else source_name,'duration':duration,'frames':frames+1,'hipRange':[min(hipheights),max(hipheights)]}
     if name in ('Walk','Jog','Run'):
+        report[name]['shoulderMotion']='Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved'
         from statistics import median
         floor=min(c['bottom']+d for c,d in zip(contacts,hipheights)); velocities=[]
         for a,b,da,db in zip(contacts,contacts[1:],hipheights,hipheights[1:]):

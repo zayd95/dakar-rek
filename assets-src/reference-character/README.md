@@ -37,6 +37,10 @@ zero offset from `Hips` and cannot define an up direction. The bake rejects dege
 armature deformation and swaps limbs, respecting each bone's rest roll. Game yaw owns facing.
 The rig faces +Z in the game, with its left thigh on +X: positive game yaw turns anatomically left.
 The source capture's negative quarter-turn is therefore right, and its mirrored clip is left.
+Walking, jogging and sprinting calibrate the mannequin's near-horizontal clavicles to this anatomy's
+relaxed sloping shoulders. A quarter of the source's local shoulder articulation is retained relative
+to the animated torso, so lean/twist is inherited once. Captured upper-arm swing and all leg/root
+tracks are preserved; this removes the permanent shrug without freezing the arms.
 Sole contact is measured from the actual shoe vertices, with bounded running flight and
 5 mm interpolation clearance. A two-bone solve adapts the source's ankle paths to this anatomy while
 preserving its knee bend plane, foot orientation and phase (walk ×1.35, jog ×0.48, sprint ×0.65).

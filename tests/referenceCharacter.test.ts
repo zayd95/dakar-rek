@@ -59,6 +59,25 @@ describe('reference candidate: exported geometry and rig', () => {
 });
 
 describe('reference candidate: retargeted contact and motion', () => {
+  it('keeps locomotion shoulders below the neck while retaining arm swing through the whole cycle', () => {
+    for (const name of ['Walk', 'Jog', 'Run']) {
+      const mixer = new THREE.AnimationMixer(gltf.scene), action = mixer.clipAction(clip(name));
+      action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = true; action.play();
+      const swings: Record<string, number[]> = { Left: [], Right: [] };
+      for (let i = 0; i <= 80; i++) {
+        mixer.setTime(clip(name).duration * i / 80); gltf.scene.updateMatrixWorld(true);
+        for (const side of ['Left', 'Right']) {
+          const point = (part: string) => gltf.scene.getObjectByName(`mixamorig${side}${part}`)!.getWorldPosition(new THREE.Vector3());
+          const shoulder = point('Shoulder'), arm = point('Arm'), elbow = point('ForeArm');
+          expect(arm.y - shoulder.y, `${name} ${side}: raised shoulder`).toBeLessThan(-.04);
+          expect(arm.y - shoulder.y, `${name} ${side}: over-dropped shoulder`).toBeGreaterThan(-.18);
+          swings[side].push(elbow.z - arm.z);
+        }
+      }
+      for (const [side, values] of Object.entries(swings)) expect(Math.max(...values) - Math.min(...values), `${name} ${side}: arm swing`).toBeGreaterThan(.08);
+      mixer.stopAllAction(); mixer.uncacheRoot(gltf.scene);
+    }
+  });
   it('has a calm three-second idle that closes without a visible pose jump', () => {
     expect(clip('Idle').duration).toBeGreaterThan(3);
     const ids = Array.from({ length: mesh.geometry.getAttribute('position').count }, (_, i) => i);
