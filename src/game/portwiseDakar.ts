@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Batch, signTexture } from '../world/batch';
+import { bar, containerMap, hullShape, plan, roundRect, side } from './portModels';
 import { isTestHost } from '../core/testParams';
 import type { HubWorld } from '../world/types';
 import type { GameModule } from './modules';
@@ -47,9 +48,10 @@ function addBatch(parent: THREE.Group, b: Batch) {
   const mesh = b.build(material(), true, false);
   if (mesh) parent.add(mesh);
 }
-function containers(parent: THREE.Group, spots: { x: number; y: number; z: number }[]) {
-  const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(3, 1.35, 2.3), new THREE.MeshLambertMaterial({ color: 0xffffff }), spots.length);
-  const obj = new THREE.Object3D();
+const BOX = { l: 6, h: 2.6, w: 2.4 };
+function containers(parent: THREE.Group, spots: { x: number; y: number; z: number }[], yaw = 0) {
+  const inst = new THREE.InstancedMesh(new THREE.BoxGeometry(BOX.l, BOX.h, BOX.w), new THREE.MeshLambertMaterial({ color: 0xffffff, map: containerMap() }), spots.length);
+  const obj = new THREE.Object3D(); obj.rotation.y = yaw;
   spots.forEach((p, i) => {
     obj.position.set(p.x, p.y, p.z); obj.updateMatrix();
     inst.setMatrixAt(i, obj.matrix); inst.setColorAt(i, new THREE.Color(COLORS[(i + Math.floor(i / 7)) % COLORS.length]));
@@ -60,27 +62,36 @@ function containers(parent: THREE.Group, spots: { x: number; y: number; z: numbe
 }
 function makeShip() {
   const ship = new THREE.Group(); ship.name = 'dakar-port-ship'; ship.position.set(208.5, 0, -6);
-  const b = new Batch();
-  b.box(15, 5, 69, 0, -1.7, 0, 0x24394e); b.box(14, 0.7, 64, 0, 3.2, 0, 0xd4cbb9);
-  b.box(10, 5, 10, 0, 3.9, -28, 0xe8e7e1); b.box(10, 1.2, 10, 0, 3.7, 29, 0xc35c43);
-  addBatch(ship, b);
+  const body = new THREE.Group(); body.rotation.y = -Math.PI / 2; ship.add(body);   // built along x, bow +x; turned to lie along the quay (z)
+  const b = new Batch(), L = 70, B = 15;
+  plan(b, hullShape(L, B - 0.6, 20, 3), 2.2, 0xa23a30, 0, -1.7, 0, 0.12);           // red underwater body
+  plan(b, hullShape(L, B, 20, 3), 3.0, 0x35597a, 0, 0.5, 0, 0.14);                  // navy topsides, flared by the bevel
+  plan(b, hullShape(L - 1.4, B - 1.4, 19, 2.6), 0.25, 0xb9ae96, 0, 3.2, 0);          // main deck
+  b.box(L - 8, 0.9, 0.18, -2, 3.45, B / 2 - 0.55, 0x1b2c3d); b.box(L - 8, 0.9, 0.18, -2, 3.45, -B / 2 + 0.55, 0x1b2c3d);   // bulwarks
+  for (let i = 0; i < 6; i++) for (const z of [-1, 1]) b.box(0.9, 0.5, 1.2, 14 + i * 3, 3.45, z * 5.8, 0x6d737a);          // bow bollards
+  // accommodation at the stern: three stepped decks with window bands, wing bridge, funnel, mast
+  const x0 = -27;
+  plan(b, roundRect(11, 11, 1.2), 2.2, 0xeeeeea, x0, 3.45, 0, 0.1);
+  plan(b, roundRect(11.2, 11.2, 1.2), 0.7, 0x203c4a, x0, 4.3, 0);
+  plan(b, roundRect(9, 10, 1.2), 2.1, 0xeeeeea, x0 - 0.5, 5.65, 0, 0.1);
+  plan(b, roundRect(9.2, 10.2, 1.2), 0.7, 0x203c4a, x0 - 0.5, 6.4, 0);
+  plan(b, roundRect(6.5, 9, 1), 2.0, 0xeeeeea, x0 - 1, 7.75, 0, 0.1);
+  plan(b, roundRect(6.7, 9.2, 1), 0.8, 0x203c4a, x0 - 1, 8.35, 0);                  // bridge windows
+  b.box(7.2, 0.3, 14.5, x0 - 1, 9.75, 0, 0xe3e3df);                                // bridge wings
+  plan(b, roundRect(7.4, 9.4, 1.2), 0.25, 0xf4f4f0, x0 - 1, 9.75, 0, 0.08);
+  b.cyl(1.2, 1.5, 5, x0 - 6, 5.6, 0, 0xc8502c, 12); b.cyl(1.25, 1.25, 1.1, x0 - 6, 10.2, 0, 0x1d1f22, 12);   // funnel with black top
+  bar(b, [x0 - 1, 10, 0], [x0 - 1, 15, 0], 0.18, 0xdad8d2, 6); bar(b, [x0 - 1, 13.6, -1.8], [x0 - 1, 13.6, 1.8], 0.1, 0xdad8d2);   // mast
+  b.box(5, 0.9, 3, 25, 3.45, 0, 0x6b6a64);                                         // anchor deck at the bow
+  // cargo cranes' hatch coamings between the stacks
+  for (let i = 0; i < 6; i++) b.box(0.3, 0.5, 13, -14 + i * 6.4 + 3.2, 3.45, 0, 0x4d5560);
+  const mesh = b.build(material(), true, false); if (mesh) body.add(mesh);
   const deck = [];
-  for (let j = 0; j < 12; j++) for (let i = 0; i < 4; i++)
-    deck.push({ x: -5 + i * 3.2, y: 4.6 + ((i + j) % 4 === 0 ? 1.4 : 0), z: -22 + j * 3.7 });
-  containers(ship, deck);
+  for (let j = 0; j < 6; j++) for (let i = 0; i < 5; i++) {
+    const high = (i + j) % 3 === 0;
+    deck.push({ x: -16 + j * 6.4 + 3.2 - 0.2, y: 4.78, z: -5.5 + i * 2.75 }); if (high) deck.push({ x: -16 + j * 6.4 + 2.9, y: 7.4, z: -5.5 + i * 2.75 });
+  }
+  containers(body, deck.slice(0, 40));
   return ship;
-}
-/** Gorée on the horizon, south-east of the port: a low basalt island, the fort on its height, ochre and red houses. */
-function makeGoree() {
-  const g = new THREE.Group(); g.name = 'dakar-port-goree'; g.position.set(320, 0, 150);
-  const b = new Batch();
-  b.box(80, 3, 34, 0, -1, 0, 0x5b4a3c); b.box(26, 9, 22, -26, 0, -2, 0x5f5043);           // the island, its height to the south
-  b.box(18, 4, 14, -26, 8, -2, 0x9a8c74);                                                   // the fort on the height
-  const houses = [0xc8643c, 0xe0a85a, 0xb8483a, 0xe8c27a, 0xd9774a, 0xc95b4a, 0xe6b46a];
-  for (let i = 0; i < 12; i++) b.box(4 + (i % 3), 3 + (i % 2) * 2, 4, -6 + (i % 6) * 6.5, 1.8, -8 + Math.floor(i / 6) * 9, houses[i % houses.length]);
-  for (let i = 0; i < 5; i++) { b.box(0.5, 7, 0.5, 10 + i * 5, 1.8, 10, 0x6b5a3a); b.box(3.2, 0.8, 3.2, 10 + i * 5, 8.6, 10, 0x3f6b3a); }
-  addBatch(g, b);
-  return g;
 }
 /**
  * The Dakar–Gorée chaloupe, on the game clock (decor for now: it will carry the player once Gorée is built).
@@ -115,27 +126,45 @@ export function chaloupePose(hour: number) {
 function makeChaloupe() {
   const g = new THREE.Group(); g.name = 'dakar-port-chaloupe';
   const b = new Batch();
-  const W = 0xf4f3ee, GLASS = 0x1f4650, TRIM = 0x2f6f9f;
-  b.box(21, 2.4, 5.6, 0, -0.7, 0, W);                                            // hull
-  b.box(21.2, 0.25, 5.8, 0, 1.7, 0, W);                                          // main deck edge
-  b.box(2.6, 1.2, 3.4, 11.2, -0.2, 0, W);                                        // bow
-  b.box(12, 2.0, 5.2, 1, 1.9, 0, W); b.box(12.2, 1.05, 5.34, 1, 2.4, 0, GLASS);   // lower cabin and its window band
-  b.box(11, 0.3, 5.6, 1, 4.0, 0, W);                                             // overhanging deck roof
-  b.box(8, 1.7, 4.4, 1.5, 4.2, 0, W); b.box(8.2, 0.95, 4.5, 1.5, 4.55, 0, GLASS);  // upper wheelhouse
-  b.box(9.5, 0.3, 5.0, 1.5, 5.95, 0, W);                                         // wheelhouse roof, wide overhang
-  for (let i = 0; i < 4; i++) b.box(2.0, 0.7, 0.8, -2 + i * 2.4, 6.4, 1.2, 0xeeeeee);   // life rafts
-  b.box(0.5, 0.4, 0.5, 4, 6.25, 0, 0x8a8f94); b.box(1.6, 0.12, 0.3, 4, 6.7, 0, 0x8a8f94);  // radar
-  b.box(0.9, 0.7, 0.9, -1, 6.4, -1.5, 0xe9ebed);                                 // satcom dome
-  b.box(0.12, 1.0, 5.0, 8.1, 2.5, 0, 0xc72b2b);                                  // red LED strip on the cabin front
-  b.box(4.2, 0.05, 0.9, -9, 1.9, 2.0, 0x8c8c86);                                 // the gangway plank, pier side
-  for (const z of [-2.7, 2.7]) b.box(18, 0.9, 0.08, -2.5, 2.3, z, 0xdedede);     // rails
-  b.box(21.3, 0.18, 5.9, 0, 0.5, 0, TRIM);                                       // blue waterline stripe
+  const W = 0xf4f3ee, GLASS = 0x1d4650, BLUE = 0x2f6f9f;
+  plan(b, hullShape(22, 5.4, 7.5, 1.6), 2.4, W, 0, -0.7, 0, 0.12);                  // hull: pointed bow, rounded transom, flared by the bevel
+  plan(b, hullShape(22.4, 5.8, 7.5, 1.6), 0.22, BLUE, 0, 0.35, 0);                  // waterline stripe
+  plan(b, hullShape(21.4, 5.0, 7.0, 1.4), 0.3, 0xb7b0a0, 0, 1.78, 0);               // main deck planking
+  plan(b, roundRect(13.6, 4.8, 2.0), 2.0, W, 1.4, 2.0, 0, 0.1);                      // lower cabin, rounded ends
+  plan(b, roundRect(13.9, 4.95, 2.0), 0.95, GLASS, 1.4, 2.55, 0);                   // its window band
+  for (let x = -4.8; x <= 7.6; x += 1.55) for (const z of [-2.5, 2.5]) b.box(0.1, 0.95, 0.1, x, 2.55, z * 0.99, W);   // mullions
+  plan(b, roundRect(15.6, 5.8, 2.9), 0.22, W, 1.4, 4.0, 0, 0.16);                  // deck roof: sweeping overhang
+  plan(b, roundRect(8.6, 4.2, 1.7), 1.7, W, 2.2, 4.3, 0, 0.1);                       // wheelhouse
+  plan(b, roundRect(8.85, 4.35, 1.7), 0.85, GLASS, 2.2, 4.75, 0);                   // wheelhouse windows
+  plan(b, roundRect(10.4, 5.2, 2.4), 0.2, W, 2.2, 6.0, 0, 0.14);                    // upper roof
+  for (let i = 0; i < 4; i++) bar(b, [-1.7 + i * 1.4, 6.55, 1.5], [-0.5 + i * 1.4, 6.55, 1.5], 0.34, 0xf1efe9, 8);   // life rafts
+  for (let i = 0; i < 4; i++) bar(b, [-1.7 + i * 1.4, 6.55, -1.5], [-0.5 + i * 1.4, 6.55, -1.5], 0.34, 0xf1efe9, 8);
+  bar(b, [4.2, 6.2, 0], [4.2, 7.0, 0], 0.1, 0x8a8f94); bar(b, [3.4, 7.15, 0], [5.0, 7.15, 0], 0.07, 0x8a8f94);        // radar
+  b.sphere(0.5, 0.2, 6.65, -1.7, 0xeceef0, true); b.sphere(0.4, 1.4, 6.6, 1.9, 0xeceef0, true);                       // satcom domes
+  b.box(0.3, 0.45, 2.4, -2.2, 4.05, 3.02, 0xc72b2b); b.box(0.3, 0.45, 2.4, -2.2, 4.05, -3.02, 0xc72b2b);              // red LED boards under the overhang
+  for (let x = -9.5; x <= 9.5; x += 1.6) for (const z of [-2.55, 2.55]) bar(b, [x, 1.95, z], [x, 2.9, z], 0.035, 0xeceeef, 4);   // rail posts
+  for (const z of [-2.55, 2.55]) { bar(b, [-9.5, 2.9, z], [9.5, 2.9, z], 0.04, 0xeceeef, 4); bar(b, [-9.5, 2.45, z], [9.5, 2.45, z], 0.03, 0xeceeef, 4); }
+  bar(b, [-9.5, 2.9, -2.55], [-9.5, 2.9, 2.55], 0.04, 0xeceeef, 4);
+  bar(b, [-9, 0.45, -4.0], [-9, 1.95, -2.55], 0.4, 0x8c8c86, 4);                      // gangway to the pier (pier side is -z)
+  bar(b, [-6, 4.0, 2.4], [-6, 1.9, 2.4], 0.05, 0xdddddd, 4); bar(b, [-6, 4.0, -2.4], [-6, 1.9, -2.4], 0.05, 0xdddddd, 4);   // stern stairs rails
   const mesh = b.build(material(), true, false); if (mesh) g.add(mesh);
   const sign = (z: number, rot: number) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(7, 0.7), new THREE.MeshBasicMaterial({ map: signTexture('DAKAR · GORÉE', '#1f5a85', '#ffffff', 512, 56), side: THREE.DoubleSide }));
-    m.position.set(2, 0.7, z); m.rotation.y = rot; g.add(m);
+    m.position.set(4.2, 0.8, z); m.rotation.y = rot; g.add(m);
   };
-  sign(2.82, 0); sign(-2.82, Math.PI);
+  sign(2.88, 0); sign(-2.88, Math.PI);
+  return g;
+}
+/** Gorée on the horizon, south-east of the port: a low basalt island, the fort on its height, ochre and red houses. */
+function makeGoree() {
+  const g = new THREE.Group(); g.name = 'dakar-port-goree'; g.position.set(320, 0, 150);
+  const b = new Batch();
+  b.box(80, 3, 34, 0, -1, 0, 0x5b4a3c); b.box(26, 9, 22, -26, 0, -2, 0x5f5043);           // the island, its height to the south
+  b.box(18, 4, 14, -26, 8, -2, 0x9a8c74);                                                   // the fort on the height
+  const houses = [0xc8643c, 0xe0a85a, 0xb8483a, 0xe8c27a, 0xd9774a, 0xc95b4a, 0xe6b46a];
+  for (let i = 0; i < 12; i++) b.box(4 + (i % 3), 3 + (i % 2) * 2, 4, -6 + (i % 6) * 6.5, 1.8, -8 + Math.floor(i / 6) * 9, houses[i % houses.length]);
+  for (let i = 0; i < 5; i++) { b.box(0.5, 7, 0.5, 10 + i * 5, 1.8, 10, 0x6b5a3a); b.box(3.2, 0.8, 3.2, 10 + i * 5, 8.6, 10, 0x3f6b3a); }
+  addBatch(g, b);
   return g;
 }
 function makeFerryPier() {
@@ -151,27 +180,55 @@ function makeFerryPier() {
 }
 function makeCrane() {
   const group = new THREE.Group(); group.name = 'dakar-port-gantry'; group.position.set(188, 0, 5);
-  const b = new Batch();
-  for (const x of [-5, 5]) for (const z of [-4, 4]) b.box(0.7, 20, 0.7, x, 0, z, 0xc76437);
-  b.box(11, 1.2, 10, 0, 19.5, 0, 0xce713a);
-  b.box(43, 1, 1, 7, 20, -3, 0xdfa445); b.box(43, 1, 1, 7, 20, 3, 0xdfa445);
+  const b = new Batch(), ORG = 0xd0663a, YEL = 0xe3aa3f;
+  for (const z of [-4.2, 4.2]) {
+    bar(b, [-6.2, 0, z], [-4.6, 20, z], 0.38, ORG, 6); bar(b, [6.2, 0, z], [4.6, 20, z], 0.38, ORG, 6);       // splayed legs
+    bar(b, [-6.2, 0, z], [4.6, 20, z], 0.12, ORG); bar(b, [6.2, 0, z], [-4.6, 20, z], 0.12, ORG);              // X bracing
+    bar(b, [-5.4, 9.5, z], [5.4, 9.5, z], 0.2, ORG);                                                           // mid struts
+    b.box(14, 0.5, 0.9, 0, 0, z, 0x5b5f64);                                                                    // wheel bogies along the rail
+  }
+  for (const x of [-5.4, 5.4]) { bar(b, [x, 9.5, -4.2], [x, 9.5, 4.2], 0.2, ORG); bar(b, [x * 0.85, 19.6, -4.2], [x * 0.85, 19.6, 4.2], 0.24, ORG); }
+  plan(b, roundRect(12, 10.6, 0.8), 1.2, 0xd8d3c8, 0, 20, 0, 0.1);                                          // portal frame / machinery house
+  b.box(5, 2.2, 6, -3, 21.5, 0, 0xc9c4b8);
+  // lattice boom (landside tail to the seaward tip), two girders with zig-zag diagonals
+  for (const z of [-2.2, 2.2]) {
+    bar(b, [-14, 21.7, z], [37, 21.7, z], 0.22, YEL); bar(b, [-14, 20.6, z], [37, 20.6, z], 0.18, YEL);
+    for (let x = -14; x < 37; x += 3.4) { bar(b, [x, 20.6, z], [x + 1.7, 21.7, z], 0.07, YEL, 4); bar(b, [x + 1.7, 21.7, z], [x + 3.4, 20.6, z], 0.07, YEL, 4); }
+  }
+  for (let x = -14; x <= 37; x += 6.8) bar(b, [x, 20.6, -2.2], [x, 20.6, 2.2], 0.12, YEL, 4);
+  // A-frame pylon with stays to the boom tip and the tail
+  for (const z of [-2.2, 2.2]) bar(b, [0, 21.7, z], [0, 31, 0], 0.22, ORG);
+  bar(b, [0, 31, 0], [37, 21.7, -2.2], 0.07, 0x30343a, 4); bar(b, [0, 31, 0], [37, 21.7, 2.2], 0.07, 0x30343a, 4);
+  bar(b, [0, 31, 0], [-14, 21.7, -2.2], 0.07, 0x30343a, 4); bar(b, [0, 31, 0], [-14, 21.7, 2.2], 0.07, 0x30343a, 4);
+  b.box(1, 0.3, 1, 0, 31, 0, 0xc72b2b);                                                                      // aviation light
   addBatch(group, b);
   const trolley = new THREE.Group(); group.add(trolley);
-  const head = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.2, 2.4), new THREE.MeshLambertMaterial({ color: 0x3f5467 }));
-  head.position.y = 19.4; trolley.add(head);
+  const tb = new Batch();
+  plan(tb, roundRect(4.4, 3.4, 0.5), 1.1, 0x3f5467, 0, 18.9, 0, 0.06);                                       // trolley frame
+  plan(tb, roundRect(2.6, 2.4, 0.4), 1.5, 0xe9e6dc, 0, 17.4, 0, 0.05); plan(tb, roundRect(2.7, 2.5, 0.4), 0.7, 0x234a58, 0, 17.9, 0);   // operator cab and glass
+  const th = tb.build(material(), true, false); if (th) trolley.add(th);
   const cable = new THREE.Mesh(new THREE.BoxGeometry(0.07, 1, 0.07), new THREE.MeshBasicMaterial({ color: 0x23272c }));
-  const spreader = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.28, 2.5), new THREE.MeshLambertMaterial({ color: 0xd9a349 }));
-  const load = new THREE.Mesh(new THREE.BoxGeometry(3, 1.35, 2.3), new THREE.MeshLambertMaterial({ color: 0xb3483d }));
+  const spreader = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.3, 2.5), new THREE.MeshLambertMaterial({ color: 0xd9a349 }));
+  const load = new THREE.Mesh(new THREE.BoxGeometry(BOX.l, BOX.h, BOX.w), new THREE.MeshLambertMaterial({ color: 0xb3483d, map: containerMap() }));
   trolley.add(cable, spreader, load);
   return { group, trolley, cable, spreader, load };
 }
-function makeTruck(color: number) {
+const shade = (c: number) => new THREE.Color(c).multiplyScalar(0.8).getHex();
+function makeTruck(color: number, box: number) {
   const truck = new THREE.Group();
   const b = new Batch();
-  b.box(2.3, 1.8, 2.4, 0, 0.5, 2.2, color);
-  b.box(2.5, 1.1, 5, 0, 0.55, -1.6, 0x40474d);
-  b.box(2.35, 1.5, 4.4, 0, 1.5, -1.6, 0x4c7892);
-  for (const x of [-1.3, 1.3]) for (const z of [-3, 2]) b.box(0.25, 0.85, 0.9, x, 0.2, z, 0x242a2f);
+  b.box(2.2, 0.35, 8.2, 0, 0.55, -1.2, 0x30363b);                                    // chassis rails
+  side(b, [[-1.1, 0], [1.3, 0], [1.3, 1.1], [0.75, 1.25], [0.2, 2.55], [-0.95, 2.55], [-1.1, 2.4]], 2.4, color, 0, 0.7, 2.6);   // cab: hood, raked windscreen, roof
+  side(b, [[-0.7, 1.6], [0.3, 1.6], [0.15, 2.35], [-0.7, 2.35]], 2.46, 0x1f3d4c, 0, 0.7, 2.6);                                   // side windows
+  b.box(2.4, 0.3, 0.3, 0, 0.9, 3.95, 0x2b2f33);                                      // bumper
+  for (const x of [-0.8, 0.8]) b.box(0.4, 0.22, 0.1, x, 1.45, 3.9, 0xf2e29a);        // headlights
+  b.box(0.3, 0.9, 0.3, 1.2, 2.5, 2.4, 0x888e94);                                    // exhaust stack
+  b.cyl(0.9, 0.9, 0.25, 0, 0.9, -0.4, 0x23272b, 10);                                // fifth wheel
+  b.box(2.5, 0.28, 6.2, 0, 0.9, -4.6, 0x2b3035);                                    // trailer bed
+  b.box(2.4, 2.6, 5.9, 0, 1.18, -4.6, box);                                         // 20 ft container
+  for (const sx of [-1, 1]) for (let i = 0; i < 11; i++) b.box(0.07, 2.4, 0.12, sx * 1.22, 1.28, -7.4 + i * 0.52, shade(box));  // ribs
+  for (const [x, z] of [[-1.15, 3], [1.15, 3], [-1.15, -0.6], [1.15, -0.6], [-1.15, -5.5], [1.15, -5.5], [-1.15, -6.6], [1.15, -6.6]])
+    bar(b, [x - 0.15, 0.5, z], [x + 0.15, 0.5, z], 0.5, 0x1d2024, 10);              // wheels
   addBatch(truck, b);
   return truck;
 }
@@ -180,7 +237,7 @@ class PortScene {
   private crane = makeCrane();
   private chaloupe = makeChaloupe();
   private riders: Humanoid[] = [];
-  private trucks = [makeTruck(0xf0d6a0), makeTruck(0xc85e38)];
+  private trucks = [makeTruck(0xf0d6a0, 0x24486c), makeTruck(0xc85e38, 0xc3a25f)];
   constructor(hub: HubWorld, private state: GameState) {
     this.group.name = 'portwise-dakar-prototype';
     const b = new Batch();
@@ -188,7 +245,11 @@ class PortScene {
     b.box(70, 0.04, 6, 153, 0.14, 0, 0x6d7479); // walk from the Plateau's east road
     b.box(2.5, 0.2, 145, 197.5, 0.14, 0, 0x8e8d85);
     for (let z = -65; z < 65; z += 10) b.box(1.5, 0.03, 0.3, 185, 0.18, z, 0xe4d09a);
-    b.box(15, 4, 4, 156, 0.12, 60, 0x647a85);
+    b.box(15, 3.2, 5, 156, 0.12, 60, 0x647a85);                       // customs shed: walls, gable roof, loading doors
+    side(b, [[-2.9, 0], [2.9, 0], [2.9, 0.5], [0, 1.6], [-2.9, 0.5]], 15.6, 0x56626b, 156, 3.3, 60.2);
+    for (let i = 0; i < 4; i++) b.box(2.6, 2.4, 0.15, 150 + i * 4, 0.12, 57.4, 0x3f5160);
+    for (let z = -70; z <= 70; z += 14) { bar(b, [196.8, 0.14, z], [196.8, 0.65, z], 0.22, 0x2b2f33, 7); b.cyl(0.34, 0.3, 0.2, 196.8, 0.62, z, 0x3a3f44, 7); }   // bollards
+    for (const z of [-48, -14, 20, 56]) { bar(b, [193, 0.14, z], [193, 11, z], 0.16, 0x70777e, 6); b.box(2.4, 0.3, 0.6, 193, 11, z, 0xdde2e6); }   // flood-light masts
     // The entrance must be visible from the eastward Plateau road, not hidden behind the blocks.
     b.box(0.45, 4.4, 0.45, 136, 0.12, -6.1, 0x286078);
     b.box(0.45, 4.4, 0.45, 136, 0.12, 6.1, 0x286078);
@@ -207,9 +268,9 @@ class PortScene {
     jetty.box(5, 2.2, 150, 322, 0.1, -5, 0x7d776d);
     addBatch(this.group, jetty);
     const yard = [];
-    for (let i = 0; i < 5; i++) for (let j = 0; j < 10; j++)
-      yard.push({ x: 141 + i * 3.6, y: 0.9 + ((i + j) % 3) * 1.4, z: -66 + j * 4.5 });
-    containers(this.group, yard);
+    for (let i = 0; i < 10; i++) for (let j = 0; j < 5; j++)
+      yard.push({ x: 141 + i * 2.9, y: 1.42 + ((i + j) % 3 === 0 ? 2.6 : 0), z: -66 + j * 6.5 });
+    containers(this.group, yard, Math.PI / 2);
     this.trucks.forEach(t => this.group.add(t));
     // Quay fence with a gap for the Gorée ferry pier (south môle): the only way onto the water side.
     hub.colliders.push({ x0: 198, x1: 199.5, z0: -75, z1: 40, h: 1.3 });
@@ -218,7 +279,7 @@ class PortScene {
     hub.colliders.push({ x0: 231.6, x1: 232, z0: 40, z1: 48, h: 1.3 });
     hub.bounds.x1 = 232;
     hub.colliders.push({ x0: 149, x1: 164, z0: 58, z1: 63, h: 4.3 });
-    hub.colliders.push({ x0: 139, x1: 158, z0: -69, z1: -19, h: 5 });
+    hub.colliders.push({ x0: 139, x1: 169.5, z0: -70, z1: -35, h: 5 });
     hub.interactables.push(...portPlaces(() => this.state));
     const stand = new Batch(); // the Touba coffee stand at the gate
     stand.box(1.6, 1.0, 0.8, 129.6, 0.12, 10, 0x7a4b2a); stand.box(1.9, 0.08, 1.1, 129.6, 2.1, 10, 0xd8b04a);
@@ -241,17 +302,17 @@ class PortScene {
     this.riders.forEach((h, i) => {
       const queue = { x: 204 + (i % 3) * 0.9, z: 42.3 + Math.floor(i / 3) * 1.1 }, deck = { x: CHALOUPE_DOCK.x - 8.4 + i * 0.7, z: CHALOUPE_DOCK.z + 0.8 * (i % 2 ? 1 : -1) };
       const gang = { x: CHALOUPE_DOCK.x - 9, z: 49.2 }, at = (a: { x: number; z: number }, b: { x: number; z: number }, f: number) => ({ x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f });
-      let pos: { x: number; z: number } | null = null, y = 0.22;
+      let pos: { x: number; z: number } | null = null, y = 0.22; const climb = (t: number) => 0.22 + 1.73 * unit(t);
       const f = unit((c.f - i * 0.08) / 0.7);
       if (c.state === 'queue') pos = c.f < 1 || hour >= 6 ? queue : null;
-      else if (c.state === 'boarding') pos = f < 0.5 ? at(queue, gang, f * 2) : at(gang, deck, f * 2 - 1), y = f > 0.5 ? 1.1 : 0.22;
+      else if (c.state === 'boarding') pos = f < 0.5 ? at(queue, gang, f * 2) : at(gang, deck, f * 2 - 1), y = climb((f - 0.5) * 2);
       else if (c.state === 'sailing' || c.state === 'returning') { pos = { x: c.x, z: c.z }; }
-      else if (c.state === 'landing') pos = f < 0.5 ? at(deck, gang, f * 2) : at(gang, queue, f * 2 - 1), y = f < 0.5 ? 1.1 : 0.22;
+      else if (c.state === 'landing') pos = f < 0.5 ? at(deck, gang, f * 2) : at(gang, queue, f * 2 - 1), y = climb(1 - f * 2);
       h.group.visible = !!pos && c.visible && c.state !== 'idle';
       if (!pos) return;
       if (c.state === 'sailing' || c.state === 'returning') {                       // on the deck: ride along, turned with the boat
         const cs = Math.cos(ch.rotation.y), sn = Math.sin(ch.rotation.y), lx = deck.x - CHALOUPE_DOCK.x, lz = deck.z - CHALOUPE_DOCK.z;
-        h.group.position.set(c.x + lx * cs + lz * sn, 1.1, c.z - lx * sn + lz * cs); h.group.rotation.y = ch.rotation.y + Math.PI / 2;
+        h.group.position.set(c.x + lx * cs + lz * sn, 1.95, c.z - lx * sn + lz * cs); h.group.rotation.y = ch.rotation.y + Math.PI / 2;
       } else {
         const px = h.group.position.x, pz = h.group.position.z; h.group.position.set(pos.x, y, pos.z);
         if (Math.hypot(pos.x - px, pos.z - pz) > 0.002) h.group.rotation.y = Math.atan2(pos.x - px, pos.z - pz);
@@ -275,10 +336,10 @@ class PortScene {
     this.updateChaloupe(hour, dt);
     const p = portCranePose(seconds);
     this.crane.trolley.position.x = p.x;
-    this.crane.spreader.position.y = p.y + 0.8;
+    this.crane.spreader.position.y = p.y + 1.6;
     this.crane.load.position.y = p.y; this.crane.load.visible = p.carrying;
-    const len = Math.max(0.2, 19 - p.y);
-    this.crane.cable.scale.y = len; this.crane.cable.position.y = 19.3 - len / 2;
+    const len = Math.max(0.2, 18.9 - p.y - 1.6);
+    this.crane.cable.scale.y = len; this.crane.cable.position.y = 18.9 - len / 2;
     this.trucks.forEach((t, i) => {
       const s = portTruckPose(seconds, i * 17); t.position.set(s.x, 0.1, s.z); t.rotation.y = s.yaw;
     });

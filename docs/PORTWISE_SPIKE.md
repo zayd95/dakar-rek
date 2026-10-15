@@ -77,3 +77,7 @@ Le Port Autonome de Dakar longe la côte est du Plateau (baie de Hann) : zone su
 ## Chaloupe Dakar–Gorée (décor, sur l'horloge du jeu)
 
 Bateau blanc à deux ponts (d'après la photo de la nouvelle chaloupe : toit débordant, canots sur le toit, radar, bandeau LED rouge). Cycle de 2 h entre 6 h et 20 h : file d'attente de 5 passagers sur la jetée, embarquement, départ vers Gorée, absence, retour, débarquement. Hors horaires, elle reste à quai sans passagers. Pas encore de traversée jouable : elle viendra avec l'île de Gorée. `node scripts/check-port-chaloupe.mjs` ; planning testé dans `tests/portwiseDakar.test.ts`.
+
+## Formes réelles (passe « pas des boîtes »)
+
+`src/game/portModels.ts` : coques (plan extrudé avec étrave pointue et tableau arrière arrondi), ponts arrondis à toit débordant, tubes (rambardes, treillis, haubans, roues), profils latéraux (cabines de camion, pignon du hangar) et conteneurs 20 pieds ondulés (6 × 2,6 × 2,4 m), le tout fusionné en un seul dessin par objet. Chaloupe (2 ponts, canots, radar, rambardes, passerelle), cargo (coque rouge/bleue, château de poupe à trois niveaux, cheminée, mât), portique treillis avec pylône et haubans, camions-remorques avec conteneur, hangar à toit à deux pans, bollards et mâts d'éclairage. Budget : ≈ 12 appels de rendu, ≈ 10 k triangles pour le port. Prises de vue de jour : `node scripts/shoot-port.mjs '[["nom",[camx,camy,camz],[cibx,ciby,cibz]]]'`.
