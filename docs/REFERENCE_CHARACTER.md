@@ -64,6 +64,24 @@ the previous reference candidate at `2092f43`, whose single stepping clip was us
 
 [Both-direction mobile results](screenshots/reference-character/directional-turns/results.json).
 
+### Standing up without the jump
+
+Previously, pressing **Se lever** moved the player 0.85 m away from the bench while the body was still
+seated. Ordinary reference-character seats now keep their occupant while the captured rise eases toward
+the existing collision-safe stand spot. The first-frame displacement is 0 m; the largest measured step
+is 2.53 cm at 60 Hz. Joystick movement interrupts on its first frame, repeated taps do not restart the
+rise, and travel clears it. The seat is released when the player stands or interrupts the motion.
+The licensed sit/stand clips also use measured sole contact to remove up to 6 cm of foot float.
+
+Matched 390×844 mobile camera, bench and morning lighting; before is `4ef1322`.
+
+| Previous stand start | Connected rise |
+| --- | --- |
+| ![Before stand](screenshots/reference-character/stand-up/before/stand-start.png) | ![After stand](screenshots/reference-character/stand-up/portrait-stand-start.png) |
+| ![Before middle](screenshots/reference-character/stand-up/before/stand-middle.png) | ![After middle](screenshots/reference-character/stand-up/portrait-stand-middle.png) |
+
+[Both-orientation rise/control checks](screenshots/reference-character/stand-up/results.json).
+
 ## Asset and motion
 
 The source is fresh licensed MakeHuman anatomy, a fitted CC0 garment, new authored hair/face details,
@@ -93,6 +111,10 @@ The preview profile retains nickname editing but offers no appearance swatches o
 - Full suite: **1,399 passed, 2 skipped**, including ten actual GLB/runtime checks for skin weights,
   individual finger joints, asset limits, moving clips, idle-loop closure, contact, bench fitting, cadence,
   both hands' lap contact/fabric clearance, mirrored leg stepping and one-shot playback.
+- Sit/stand sole contact stays within 7 mm of its calibrated plane. Dedicated mobile checks cover
+  every frame of a complete bench exit, seat ownership/release, repeated taps, first-frame touch
+  interruption and travel cleanup in both orientations. Actual blended shoe contact stays within
+  1.2 cm of the ground (measured maximum about 9.7 mm); a completed rise returns directly to idle.
 - Client build and server typecheck passed; the existing large JS chunk warning remains.
 - Real game in Chrome mobile emulation, 390×844 and 844×390: one active 52-bone player, joystick
   movement and cancellation, walk/jog/sprint, automatic left/right turns, actual bench seating, fixed-look profile and clear
@@ -105,6 +127,7 @@ npm test
 npm run build
 npm run typecheck:server
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character
+CHROMIUM=/path/to/chrome node scripts/check-reference-seat-exit.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/stand-up
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4175/ docs/screenshots/reference-character/before --baseline
 CHROMIUM=/path/to/chrome node scripts/check-perf-evening.mjs http://127.0.0.1:4174/ docs/perf/reference-character-low.json --presets=low --reference-character
 ```

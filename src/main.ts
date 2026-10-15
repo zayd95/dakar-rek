@@ -297,6 +297,8 @@ function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, nu
 const interactions = new Interactions();
 const seats = new Seats();
 let seated: Seat | null = null;
+/** Ordinary reference-character seats retain their occupant while the captured stand-up finishes. */
+let referenceRise: { from: THREE.Vector3; to: THREE.Vector3; elapsed: number; duration: number; blend: number } | null = null;
 /** Seconds left standing up on a place in the stands, arms up (« Encourager »), before sitting back down. */
 let cheerT = 0;
 /** Space key shared by seats, targets and presence: 'street', 'home' (own room) or the interior's door id. */
@@ -413,11 +415,29 @@ function cheer(seconds = 2.5) {
   return true;
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
-function standUp(inPlace = false) {
+function standUp(inPlace = false, immediate = false) {
   if (!seated) return;
-  const s = seated, cheering = cheerT > 0; seats.release(s.id, 'player'); seated = null; cheerT = 0;
-  if (playerBody && (playerBody.hold === seatClip(s) || (cheering && playerBody.hold === 'Celebrate'))) playerBody.hold = null;
+  const s = seated, cheering = cheerT > 0, rising = referenceRise;
+  if (!inPlace && !immediate && REFERENCE_CHARACTER && playerBody && world && mode === 'play' && !cheering && !s.locked && seatClip(s) === 'Sit' && ['bench', 'chair', 'stool', 'sofa'].includes(s.kind)) {
+    if (rising) return; // repeated taps do not restart the clip or release the occupied seat
+    const to = standingPosition(s), duration = referenceCharacter()?.clips.find(c => c.name === 'SitExit')?.duration ?? 0;
+    if (duration > 0 && Math.hypot(to.x - pos.x, to.z - pos.z) <= 1.25) {
+      referenceRise = { from: pos.clone(), to, elapsed: 0, duration, blend: 0 };
+      playerBody.hold = 'SitExit';
+      return;
+    }
+  }
+  referenceRise = null;
+  seats.release(s.id, 'player'); seated = null; cheerT = 0;
+  if (playerBody && (rising || playerBody.hold === seatClip(s) || (cheering && playerBody.hold === 'Celebrate'))) playerBody.hold = null;
   if (inPlace || !world) return;
+  const to = rising?.to ?? standingPosition(s);
+  if (s.clip === 'Lie') facing = Math.atan2(to.x - s.x, to.z - s.z);
+  pos.copy(to);
+}
+/** Existing collision-safe exit selection, shared by immediate exits and the reference rise motion. */
+function standingPosition(s: Seat) {
+  if (!world) return pos.clone();
   // the first free spot: in front of a chair; out of a bed by a side (or past its foot), never inside furniture or a wall
   const cols = inside ? inside.int.colliders : world.colliders, r = inside ? 0.3 : 0.5;
   let nx = s.x, nz = s.z, best = Infinity;
@@ -427,8 +447,7 @@ function standUp(inPlace = false) {
     const cost = Math.hypot(x - p.x, z - p.z) + (blocked ? 10 : 0);
     if (cost < best - 1e-6) { best = cost; nx = x; nz = z; }
   }
-  if (s.clip === 'Lie') facing = Math.atan2(nx - s.x, nz - s.z);                // out of bed, facing away from it
-  pos.set(nx, 0.1 + (inside ? 0 : world.heightAt(nx, nz)), nz);
+  return new THREE.Vector3(nx, 0.1 + (inside ? 0 : world.heightAt(nx, nz)), nz);
 }
 /** Registers the seats of the hub, its interiors and marks those already used by the ambient people. */
 function registerSeats() {
@@ -1095,11 +1114,21 @@ function frameStep(now: number, dt: number, draw = true) {
     if (lambScene.snap) { camera.position.copy(f.cam); lambScene.snap = false; } else camera.position.lerp(f.cam, Math.min(1, dt * 3));
     camera.lookAt(f.look);
     if (lambScene.done) endScene();
-  } else if (seated && (mode === 'play' || mode === 'busy' || seated.locked)) {
+  } else if (seated && (mode === 'play' || mode === 'busy' || seated.locked || referenceRise)) {
     // the body follows its seat every frame (seats in vehicles move); the stick stands up, except on a locked seat
     const m = input.move();
     speed = 0;
-    if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp();      // moving the stick stands up (not in a moving vehicle)
+    if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp(false, true); // movement can interrupt the captured rise immediately
+    else if (referenceRise) {
+      const rise = referenceRise;
+      rise.elapsed = Math.min(rise.duration, rise.elapsed + dt);
+      // Lift off the seat before advancing to the free spot; camera/physics follow the same position.
+      const p = clamp((rise.elapsed / rise.duration - .2) / .8, 0, 1);
+      rise.blend = p * p * (3 - 2 * p);
+      pos.lerpVectors(rise.from, rise.to, rise.blend); facing = seated.yaw;
+      if (playerBody) playerBody.hold = 'SitExit';
+      if (rise.elapsed >= rise.duration) standUp(false, true);
+    }
     else if (cheerT > 0) { cheerT -= dt; pos.set(seated.x, seated.top + 0.1, seated.z); facing = seated.yaw; if (playerBody) playerBody.hold = 'Celebrate'; }   // up on the tier, arms up
     else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = seatClip(seated); }
     if (mode !== 'menu') state.tick(dt * 1000);
@@ -1131,10 +1160,10 @@ function frameStep(now: number, dt: number, draw = true) {
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
     if (playerBody) {
       playerBody.group.visible = true; playerBody.group.position.copy(pos);
-      if (REFERENCE_CHARACTER && !seated) {
+      if (REFERENCE_CHARACTER && (!seated || referenceRise)) {
         const raised = pos.y - .1;
         const surface = inside ? .1 : raised > .001 ? raised : citySurfaceAt(pos.x, pos.z);
-        playerBody.group.position.y = surface - .035;
+        playerBody.group.position.y = referenceRise ? THREE.MathUtils.lerp(referenceRise.from.y, surface - .035, referenceRise.blend) : surface - .035;
       }
       playerBody.group.rotation.y = facing; playerBody.animate(dt, speed);
     }

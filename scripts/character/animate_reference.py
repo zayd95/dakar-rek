@@ -233,10 +233,7 @@ for name,source_name in clips.items():
         # The seat contract is butt contact at .48 m, not a pelvis-bone position at .48 m.
         # This anatomy's seat surface is ~14 cm below the pelvis in the retargeted pose.
         if name=='Sit': dz=.62-tgt.data.bones['mixamorig:Hips'].head_local.z
-        if name in ('SitEnter','SitExit'):
-            p=f/frames if name=='SitEnter' else 1-f/frames
-            dz += .07*(1-p)-.014*p
-        if name in ('Idle','Walk','Jog','Run','TurnRight','Talk'):
+        if name in ('Idle','Walk','Jog','Run','TurnRight','Talk','SitEnter','SitExit'):
             # FK of the actual shoe soles, not guessed ankle heights. Stance reaches local ground;
             # jog/sprint use these samples to adapt root height and preserve a short aerial phase.
             heads={}
@@ -251,7 +248,7 @@ for name,source_name in clips.items():
                 positions=[heads[bn]+delta@(v-b.head_local) for v in points]
                 bottoms += [p.z for p in positions]
                 soles[bn]=[sum(p.y for p in positions)/len(positions),min(p.z for p in positions)]
-            if name not in ('Jog','Run'): dz=.035-min(bottoms)
+            if name not in ('Jog','Run'): dz=(.040 if name in ('SitEnter','SitExit') else .035)-min(bottoms)
             contacts.append({'dz':dz,'bottom':min(bottoms),'soles':soles})
         hip.location=hip.bone.matrix_local.to_3x3().inverted()@Vector((0,0,dz))
         hip.keyframe_insert(data_path='location',frame=f+1,group=hip.name)

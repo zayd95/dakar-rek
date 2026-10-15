@@ -56,6 +56,11 @@ captured elbow bend plane and torso motion, and calibrates palm orientation from
 Hands settle palm-down on the trousers. Entry/exit blend the fit and lift the hand briefly so curled
 fingertips clear the fabric. Exported skin-to-trouser clearance is tested through all three clips;
 this remains an adaptation of the licensed Quaternius capture, not a new capture source.
+Sit/stand root height now uses measured sole contact at 40 mm above the local origin, matching the
+bench's 100 mm origin and 140 mm ground. This replaces the estimated pelvis offsets that lifted the
+feet during the transition. The game eases ordinary seat exits toward the existing collision-safe
+stand spot over the exported clip duration, holding the seat until completion. Movement interrupts
+on its first frame; repeated stand taps do not restart the clip, and travel clears the pending rise.
 
 ## Rebuild
 

@@ -601,7 +601,9 @@ export class Humanoid {
     const p = this.group.position, yaw = this.group.rotation.y;
     const distance = Math.hypot(p.x - this.lx, p.z - this.lz);
     const moving = Number.isFinite(distance) && distance < Math.max(.5, 10 * dt);
-    const groundSpeed = moving && dt > 0 ? distance / dt : 0;
+    // The controlled seat exit translates the body, but isn't a walking stride. Letting that
+    // translation enter the gait filter briefly selected Walk as the stand-up finished.
+    const groundSpeed = moving && dt > 0 && this.hold !== 'SitExit' ? distance / dt : 0;
     this.v += (groundSpeed - this.v) * (1 - Math.exp(-dt / .06));
     const turn = Number.isFinite(this.referenceYaw) && dt > 0 ? Math.atan2(Math.sin(yaw - this.referenceYaw), Math.cos(yaw - this.referenceYaw)) / dt : 0;
     this.lx = p.x; this.lz = p.z; this.referenceYaw = yaw;

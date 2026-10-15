@@ -76,9 +76,9 @@ describe('reference candidate: retargeted contact and motion', () => {
       expect(Math.max(...a.map((p, i) => p.distanceTo(b[i]))), name).toBeGreaterThan(.08);
     }
   });
-  it('keeps standing/walking/turning soles within 7 mm of contact; running retains limited flight', () => {
+  it('keeps standing/walking/turning and sit/stand soles within 7 mm of contact; running retains limited flight', () => {
     const ids = soles();
-    for (const name of ['Idle', 'Walk', 'TurnRight', 'TurnLeft', 'Jog', 'Run']) {
+    for (const name of ['Idle', 'Walk', 'TurnRight', 'TurnLeft', 'SitEnter', 'SitExit', 'Jog', 'Run']) {
       const heights: number[] = [];
       for (let i = 0; i <= 40; i++) heights.push(Math.min(...pose(name, clip(name).duration * i / 40, ids).map(p => p.y)));
       expect(Math.min(...heights), name).toBeGreaterThan(.025);
@@ -86,7 +86,11 @@ describe('reference candidate: retargeted contact and motion', () => {
       if (name === 'Jog' || name === 'Run') {
         expect(Math.max(...heights), name).toBeGreaterThan(.07);
         expect(Math.max(...heights), name).toBeLessThan(.14);
-      } else expect(Math.max(...heights), name).toBeLessThan(.042);
+      } else {
+        const contact = name === 'SitEnter' || name === 'SitExit' ? .040 : .035;
+        expect(Math.min(...heights), name).toBeGreaterThan(contact - .007);
+        expect(Math.max(...heights), name).toBeLessThan(contact + .007);
+      }
     }
   });
   it('mirrors the captured leg stepping to the opposite side for a left turn', () => {

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-14",
+  "generated": "2026-10-15",
   "integrationBase": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
   "toolchain": {
     "blender": "5.2.2 LTS",
@@ -36,7 +36,7 @@
     "sourceUrl": "https://quaternius.itch.io/universal-animation-library",
     "archiveSha256": "cc73fc4e495b82958207316596317a3f40b9fa38065bde1027937452da537724",
     "gltfSha256": "69591853d817488edaa8fd9bf8fc1d821eaeaf789f8627b3cd23b41c4ed67997",
-    "adaptations": "Retargeted directions/rest rolls, measured stride/contact; seated arm IK with palms on thighs and lifted sit/stand hand trajectory."
+    "adaptations": "Retargeted directions/rest rolls, measured stride/contact; seated arm IK with palms on thighs and lifted sit/stand hand trajectory. Sit/stand root height follows measured shoe-sole contact instead of an estimated pelvis offset."
   },
   "capture": {
     "sourceUrl": "https://mocap.cs.cmu.edu/",
@@ -53,7 +53,7 @@
   },
   "output": {
     "file": "public/assets/reference_character.glb",
-    "sha256": "b8e9fe5281134cde41204b88380472d16e3fd0d357f96e16e11426f129d86a3a",
+    "sha256": "20b4065828dfea5f8637c34d74d24e9c8e2a7e948c5747096a8da29f5525d7dc",
     "bytes": 2003600
   }
 }
