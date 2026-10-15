@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-1934-WATCH.md",
-    "checkedAt": "2026-10-15T19:34:37Z",
-    "result": "Sources and evidence unchanged; no ready task; independent needs-decision retained.",
-    "owner": "producer_watch_1934",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-2036-WATCH.md",
+    "checkedAt": "2026-10-15T20:35:37Z",
+    "result": "PR29 source advanced; exact CI pending, keep review. No ready source task.",
+    "owner": "producer_watch_2036",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "2724658d09ea24883de2ed2d7ef95bf5b1b89b0a",
+    "baseCommit": "850d663ba8d7cf15d44dcf5d849cf14ce973d19e",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-1934-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-15-2036-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -1235,32 +1235,35 @@
     {
       "pr": 29,
       "branch": "codex/reference-character",
-      "sha": "4ef13226e2829d65ea1a6916f9e2532e990d3880",
+      "sha": "c8b9a28961f2b5f8e359d60bc18ef65112a2ffeb",
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T18:29:11.502Z",
+      "checkedAt": "2026-10-15T20:35:37Z",
       "checks": [
         {
-          "id": 115643629637,
-          "status": "completed",
-          "conclusion": "success",
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/codex-reference-character/builds/92ae5f43-cc9d-4be8-acc2-8803202fdfae"
+          "id": 116656710109,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38803035327/job/116656710109"
         },
         {
-          "id": 115643310789,
-          "status": "completed",
-          "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38499651299/job/115643310789"
+          "id": 116656687029,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/builds/548840a1-ae1f-4c80-8324-29f8db81470d"
         },
         {
-          "id": 115643296908,
-          "status": "completed",
-          "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38499646911/job/115643296908"
+          "id": 116656679519,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38803026857/job/116656679519"
         }
       ],
-      "accepted": false
+      "accepted": false,
+      "previousSource": "4ef13226e2829d65ea1a6916f9e2532e990d3880",
+      "status": "review: new external seat-exit correction; exact CI pending",
+      "nextAction": "Resume exact c8b9a289 CI and independent review after completion; never mutate external branch."
     }
   ],
   "evidenceReviewHistory": [
@@ -1316,7 +1319,7 @@
     "overallVerdict": "needs-decision",
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
-    "lastReconciledAt": "2026-10-15T19:34:37Z"
+    "lastReconciledAt": "2026-10-15T20:35:37Z"
   },
   "externalPortCandidateReview": {
     "id": "WATCH-PR34-20261015-0435-QA",
@@ -1382,18 +1385,6 @@
     },
     "nextOwner": "PR34 author/CI owner",
     "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
-    "lastReconciledAt": "2026-10-15T19:34:37Z"
-  },
-  "registryWriter": {
-    "token": "cycle-20261015T2036Z-watch",
-    "owner": "producer_watch_2036",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "850d663ba8d7cf15d44dcf5d849cf14ce973d19e",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-2036-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-15T20:35:01Z"
+    "lastReconciledAt": "2026-10-15T20:35:37Z"
   }
 }

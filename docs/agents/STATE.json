@@ -1,22 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-15T19:34:37Z",
+  "updatedAt": "2026-10-15T20:35:37Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261015T2036Z-watch",
-    "owner": "producer_watch_2036",
-    "baseCommit": "850d663ba8d7cf15d44dcf5d849cf14ce973d19e",
-    "acquiredAt": "2026-10-15T20:35:01Z",
-    "expiresAt": "2026-10-15T21:00:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-2036-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -130,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-15T19:34:37Z",
+    "lastCompletedRunAt": "2026-10-15T20:35:37Z",
     "lastVerifiedAt": "2026-10-15T04:37:58.471Z",
     "enabled": true
   },
@@ -163,7 +152,7 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236"
   ],
-  "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
+  "nextAction": "Resume PR29 c8b9a289 exact pending CI, then bounded independent QA of seat-exit delta; PR34/PR33/Wave5 owner gates unchanged.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -301,15 +290,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-1934-WATCH.md",
-    "completedAt": "2026-10-15T19:34:37Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-2036-WATCH.md",
+    "completedAt": "2026-10-15T20:35:37Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_1934",
+    "owner": "producer_watch_2036",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261015T1934Z-watch"
+    "leaseReleased": "cycle-20261015T2036Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +560,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-15T19:34:37Z",
+    "checkedAt": "2026-10-15T20:35:37Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -684,7 +673,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-15T19:34:37Z",
+      "checkedAt": "2026-10-15T20:35:37Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -1030,43 +1019,46 @@
     {
       "pr": 29,
       "branch": "codex/reference-character",
-      "sha": "4ef13226e2829d65ea1a6916f9e2532e990d3880",
+      "sha": "c8b9a28961f2b5f8e359d60bc18ef65112a2ffeb",
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-14T18:29:11.502Z",
+      "checkedAt": "2026-10-15T20:35:37Z",
       "checks": [
         {
-          "id": 115643629637,
-          "status": "completed",
-          "conclusion": "success",
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/codex-reference-character/builds/92ae5f43-cc9d-4be8-acc2-8803202fdfae"
+          "id": 116656710109,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38803035327/job/116656710109"
         },
         {
-          "id": 115643310789,
-          "status": "completed",
-          "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38499651299/job/115643310789"
+          "id": 116656687029,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/builds/548840a1-ae1f-4c80-8324-29f8db81470d"
         },
         {
-          "id": 115643296908,
-          "status": "completed",
-          "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38499646911/job/115643296908"
+          "id": 116656679519,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38803026857/job/116656679519"
         }
       ],
-      "accepted": false
+      "accepted": false,
+      "previousSource": "4ef13226e2829d65ea1a6916f9e2532e990d3880",
+      "status": "review: new external seat-exit correction; exact CI pending",
+      "nextAction": "Resume exact c8b9a289 CI and independent review after completion; never mutate external branch."
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-15T19:34:37Z",
+    "checkedAt": "2026-10-15T20:35:37Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
     "localTests": "local_not_run; fresh refs/check-runs reconciled",
-    "delegation": "available; no useful new assignment on unchanged sources/evidence",
+    "delegation": "available; PR29 exact CI pending, no duplicate code or new QA acceptance",
     "cloudflareAuthenticated": false
   }
 }
