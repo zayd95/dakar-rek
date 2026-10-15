@@ -1,22 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-15T02:30:49.356Z",
+  "updatedAt": "2026-10-15T02:31:17.838Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": {
-    "token": "cycle-20261015T0229Z-watch",
-    "owner": "producer_watch_0229",
-    "baseCommit": "383742b1ac91c02e2b557829023492f66c09aa05",
-    "acquiredAt": "2026-10-15T02:30:49.356Z",
-    "expiresAt": "2026-10-15T03:05:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-0229-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -301,15 +290,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-0126-WATCH.md",
-    "completedAt": "2026-10-15T01:27:24.792Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-0229-WATCH.md",
+    "completedAt": "2026-10-15T02:31:17.838Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_watch_0126",
+    "owner": "producer_watch_0229",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261015T0126Z-watch"
+    "leaseReleased": "cycle-20261015T0229Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -571,7 +560,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-15T01:27:24.792Z",
+    "checkedAt": "2026-10-15T02:31:17.838Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -684,7 +673,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-15T01:27:24.792Z",
+      "checkedAt": "2026-10-15T02:31:17.838Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -974,7 +963,7 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-15T01:27:24.792Z",
+    "checkedAt": "2026-10-15T02:31:17.838Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
