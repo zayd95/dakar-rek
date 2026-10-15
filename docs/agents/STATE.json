@@ -5,10 +5,32 @@
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": null,
+  "lease": {
+    "token": "cycle-20261015T2129Z-pr29qa",
+    "owner": "producer_2129",
+    "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
+    "acquiredAt": "2026-10-15T21:28:47Z",
+    "expiresAt": "2026-10-15T22:00:00Z",
+    "scope": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-15-2129-PR29.md",
+      "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
+    ]
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "owner": "qa_reference_2129",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
+      "sourceCommit": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
+      ]
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -124,7 +146,9 @@
     "enabled": true
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [],
+  "reviewTasks": [
+    "WATCH-PR29-20261015-2129-QA"
+  ],
   "activeSessions": [],
   "completedSessions": [
     "activation_producer",

@@ -1386,5 +1386,41 @@
     "nextOwner": "PR34 author/CI owner",
     "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
     "lastReconciledAt": "2026-10-15T20:35:37Z"
+  },
+  "externalReferenceCandidateReview": {
+    "id": "WATCH-PR29-20261015-2129-QA",
+    "role": "qa",
+    "kind": "read_only_external_delta_review",
+    "status": "active",
+    "owner": "qa_reference_2129",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
+    "sourceBranch": "codex/reference-character",
+    "sourceCommit": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+    "previousSource": "4ef13226e2829d65ea1a6916f9e2532e990d3880",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
+    ],
+    "controlBriefCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
+    "acceptance": [
+      "Inspect two new commits seat-exit and prompt overlap at exact current SHA",
+      "Read exact current push/PR checkout, tests/typechecks/build/browser logs; distinguish default CI from opt-in reference scripts",
+      "Audit author JSON/script evidence for seat ownership/interruption/travel/contact and label overlap/touch, no unviewed screenshot claim",
+      "Return bounded ready/needs-decision/blocked report with specific evidence gaps; no source edits or local Chromium retry"
+    ],
+    "report": "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
+  },
+  "registryWriter": {
+    "token": "cycle-20261015T2129Z-pr29qa",
+    "owner": "producer_2129",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-15-2129-PR29.md",
+      "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
+    ],
+    "acquiredAt": "2026-10-15T21:28:47Z"
   }
 }
