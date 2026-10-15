@@ -858,16 +858,17 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-2227-WATCH.md",
-    "checkedAt": "2026-10-15T22:27:07Z",
-    "result": "PR34 source advanced5758fcc7; exact CI pending, keep review; no ready source task.",
-    "owner": "producer_watch_2227",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-2335-PORT.md",
+    "checkedAt": "2026-10-15T23:36:36Z",
+    "result": "Independent PR34 QA found current push274>270 and PR online timeout; PR29 advanced3commits, exact checks green but no new acceptance.",
+    "owner": "producer_2335",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "d2fb7907c55653e0e01edfada49c934ba34f09b4",
+    "baseCommit": "1da43f63d6777ec2ab5829abaadbb8ead59ffd68",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-2227-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-15-2335-PORT.md",
+      "docs/agents/operations/reports/PR34-20261015-2335-QA.md"
     ]
   },
   "evidenceReview": {
@@ -1007,32 +1008,32 @@
     {
       "pr": 34,
       "branch": "feature/portwise-dakar-spike",
-      "sha": "5758fcc78c3422e4f5e7b8269b0128a14d0d8dc0",
+      "sha": "b3314813f816791a7960aafa3fdd658b10169088",
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Port de Dakar: prototype Portwise / Three.js (opt-in, non-production)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-15T22:27:07Z",
+      "checkedAt": "2026-10-15T23:36:36Z",
       "draft": true,
       "accepted": false,
-      "status": "review: external quay/ferry/breakwater update; exact CI pending",
+      "status": "needs-decision: exact push274>270 and PR online timeout",
       "checks": [
         {
-          "id": 116702425915,
+          "id": 116717083531,
           "status": "completed",
           "conclusion": "success",
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-portwise-dakar-spike/builds/20f337a3-82e9-415f-b12a-d632085afea6"
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-portwise-dakar-spike/builds/4e8907bf-cee8-404d-80da-93d6b3fd468f"
         },
         {
-          "id": 116701835928,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38816336438/job/116701835928"
+          "id": 116716682261,
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38820812280/job/116716682261"
         },
         {
-          "id": 116701813753,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38816330000/job/116701813753"
+          "id": 116716662731,
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38820805996/job/116716662731"
         }
       ],
       "previousFailure": {
@@ -1047,8 +1048,8 @@
         "logUrl": "https://github.com/zayd95/dakar-rek/actions/runs/38676442076/job/116231023217"
       },
       "correctionObserved": "Initial window.location.search regression absent from new runs; PR browser smoke success, push medium draw-call budget failure remains.",
-      "nextAction": "Resume5758fcc7 exact push/PR CI, independent delta QA including bounds/water, hub cleanup and perf assertions; prior failure not erased.",
-      "previousSource": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+      "nextAction": "External author/CI reproduces both exact failures, preserves assertions and provides specialized port logs; distinct QA.",
+      "previousSource": "5758fcc78c3422e4f5e7b8269b0128a14d0d8dc0",
       "previousReview": {
         "status": "needs-decision",
         "reviewer": "qa_port_0435",
@@ -1086,6 +1087,49 @@
           "Hub change/return, duplicates and memory",
           "Port low/medium/high budgets, camera/joystick/minimap",
           "Physical Android/iPhone and geography review"
+        ]
+      },
+      "review": {
+        "status": "needs-decision",
+        "reviewer": "qa_port_2335",
+        "report": "docs/agents/operations/reports/PR34-20261015-2335-QA.md",
+        "completedAt": "2026-10-15T23:36:36Z",
+        "sourceCommit": "b3314813f816791a7960aafa3fdd658b10169088",
+        "local": "local_not_run",
+        "pushCI": {
+          "runId": 38820805996,
+          "jobId": 116716662731,
+          "checkoutSha": "b3314813f816791a7960aafa3fdd658b10169088",
+          "testsPassed": 1480,
+          "testsFailed": 1,
+          "testsSkipped": 2,
+          "error": "perf.calls.test.ts:34:90; medium17:30 draw calls274>270"
+        },
+        "prCI": {
+          "runId": 38820812280,
+          "jobId": 116716682261,
+          "checkoutSha": "4cba9e11ea699c570f9272fb11d00ca1445cf114",
+          "testsPassed": 1481,
+          "testsSkipped": 2,
+          "typechecks": "success",
+          "build": "success",
+          "portPreview": "phone/desktop arrival+opt-out success",
+          "city": "success",
+          "online": "Timeout30000ms check-multiplayer.mjs:119:11",
+          "launch": "skipped"
+        },
+        "tree": "3277f2004f2709806a22086ca6fbcb5e573b62ce",
+        "artifact": {
+          "id": 12013676255,
+          "digest": "sha256:780f45b7b0a4c9d42483e6e0b231c64135851255f236ea813f66856eeed330d8"
+        },
+        "missing": [
+          "Targeted walk/life/chaloupe execution not in current CI",
+          "Independent hub return/collision/performance and device acceptance"
+        ],
+        "documentationIssues": [
+          "No salary/save mutation claims conflict with1500F action and persistent economic state",
+          "Historical1.6k and new10k triangle budgets unreconciled"
         ]
       }
     },
@@ -1235,36 +1279,36 @@
     {
       "pr": 29,
       "branch": "codex/reference-character",
-      "sha": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+      "sha": "5e953d2edace0fcc99feae722266d536d6a33e3f",
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-15T21:31:11Z",
+      "checkedAt": "2026-10-15T23:36:36Z",
       "checks": [
         {
-          "id": 116664596688,
+          "id": 116714928061,
           "status": "completed",
           "conclusion": "success",
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/codex-reference-character/builds/475a6496-d2e6-47dc-bb4c-838bccf021cc"
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/codex-reference-character/builds/4c6a5ffc-8bba-45bb-8c07-016c78273d6b"
         },
         {
-          "id": 116664148549,
+          "id": 116714155097,
           "status": "completed",
           "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38805200993/job/116664148549"
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38820049502/job/116714155097"
         },
         {
-          "id": 116664100496,
+          "id": 116714140184,
           "status": "completed",
           "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38805192936/job/116664100496"
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38820044891/job/116714140184"
         }
       ],
       "accepted": false,
-      "previousSource": "c8b9a28961f2b5f8e359d60bc18ef65112a2ffeb",
-      "status": "needs-decision: exact general CI green; opt-in browser proof not independent",
-      "nextAction": "External PR29 author supplies exact-checkout targeted script logs/captures; distinct QA, no external ref mutation.",
-      "review": {
+      "previousSource": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+      "status": "review: new shoulder/arm-carriage asset delta; exact checks green, independent current-delta QA pending",
+      "nextAction": "Independent review of3commit asset/motion delta after port incident; older76eb239 review remains historical.",
+      "previousReview": {
         "status": "needs-decision",
         "reviewer": "qa_reference_2129",
         "report": "docs/agents/operations/reports/PR29-20261015-2129-QA.md",
@@ -1471,7 +1515,7 @@
     "id": "WATCH-PR34-20261015-2335-QA",
     "role": "qa",
     "kind": "read_only_external_delta_review",
-    "status": "active",
+    "status": "needs-decision",
     "owner": "qa_port_2335",
     "branch": "codex/agent-studio-active",
     "baseCommit": "1da43f63d6777ec2ab5829abaadbb8ead59ffd68",
@@ -1487,19 +1531,52 @@
       "Inspect port delta models/quay/ferry and walk/preview checks, compare prior280>270 status honestly",
       "Return reproducible blockers and next external owner; no source edits, local Chromium retry or self-approval"
     ],
-    "report": "docs/agents/operations/reports/PR34-20261015-2335-QA.md"
-  },
-  "registryWriter": {
-    "token": "cycle-20261015T2335Z-portqa",
-    "owner": "producer_2335",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "1da43f63d6777ec2ab5829abaadbb8ead59ffd68",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-2335-PORT.md",
-      "docs/agents/operations/reports/PR34-20261015-2335-QA.md"
-    ],
-    "acquiredAt": "2026-10-15T23:34:31Z"
+    "report": "docs/agents/operations/reports/PR34-20261015-2335-QA.md",
+    "completedAt": "2026-10-15T23:36:36Z",
+    "verdict": "needs-decision",
+    "results": {
+      "status": "needs-decision",
+      "reviewer": "qa_port_2335",
+      "report": "docs/agents/operations/reports/PR34-20261015-2335-QA.md",
+      "completedAt": "2026-10-15T23:36:36Z",
+      "sourceCommit": "b3314813f816791a7960aafa3fdd658b10169088",
+      "local": "local_not_run",
+      "pushCI": {
+        "runId": 38820805996,
+        "jobId": 116716662731,
+        "checkoutSha": "b3314813f816791a7960aafa3fdd658b10169088",
+        "testsPassed": 1480,
+        "testsFailed": 1,
+        "testsSkipped": 2,
+        "error": "perf.calls.test.ts:34:90; medium17:30 draw calls274>270"
+      },
+      "prCI": {
+        "runId": 38820812280,
+        "jobId": 116716682261,
+        "checkoutSha": "4cba9e11ea699c570f9272fb11d00ca1445cf114",
+        "testsPassed": 1481,
+        "testsSkipped": 2,
+        "typechecks": "success",
+        "build": "success",
+        "portPreview": "phone/desktop arrival+opt-out success",
+        "city": "success",
+        "online": "Timeout30000ms check-multiplayer.mjs:119:11",
+        "launch": "skipped"
+      },
+      "tree": "3277f2004f2709806a22086ca6fbcb5e573b62ce",
+      "artifact": {
+        "id": 12013676255,
+        "digest": "sha256:780f45b7b0a4c9d42483e6e0b231c64135851255f236ea813f66856eeed330d8"
+      },
+      "missing": [
+        "Targeted walk/life/chaloupe execution not in current CI",
+        "Independent hub return/collision/performance and device acceptance"
+      ],
+      "documentationIssues": [
+        "No salary/save mutation claims conflict with1500F action and persistent economic state",
+        "Historical1.6k and new10k triangle budgets unreconciled"
+      ]
+    },
+    "nextOwner": "PR34 external author / CI"
   }
 }
