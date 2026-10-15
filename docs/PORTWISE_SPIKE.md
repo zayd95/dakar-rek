@@ -19,15 +19,15 @@ C'est une **maquette jouable de quartier**, pas encore une intégration validée
 
 Le module est enregistré mais **inactif** normalement. Activer dans une prévisualisation de la branche uniquement avec :
 
-`?debug&hub=plateau&portPrototype=1`
+`?debug&hub=plateau&portPrototype=1&portVisit=1`
 
-Le quai est accessible depuis le bord est du Plateau (entrée autour de x=135, z=0). Sans `portPrototype`, le module ne crée aucun objet, ne change aucune collision, aucun sol, aucune limite et aucun argent.
+Le test `portVisit=1` fait apparaître le joueur devant les grues (x=166, z=37) sur le Plateau, exclusivement en prévisualisation. Sans `portVisit`, rejoindre le port à pied par la route est du Plateau : arche signalée « PORT AUTONOME DE DAKAR » autour de x=136, z=0. Sans `portPrototype`, le module ne crée aucun objet, ne change aucune collision, aucun sol, aucune limite et aucun argent.
 
-Pour annuler l'essai, enlever `portPrototype=1` de l'URL. Aucun état n'est écrit en sauvegarde par ce module. Ne fusionner ni dans `release` ni dans `wip/visual-pass` et ne pas modifier les réglages Cloudflare.
+Pour annuler l'essai, enlever `portPrototype=1` de l'URL. Le module n'est activable que sur `localhost` et les hôtes Cloudflare de prévisualisation ; jamais sur le domaine de production. Aucun état n'est écrit en sauvegarde par ce module. Ne fusionner ni dans `release` ni dans `wip/visual-pass` et ne pas modifier les réglages Cloudflare.
 
 ## Contrôles nécessaires avant toute fusion
 
-1. `npm run typecheck` puis `npx vitest run tests/portwiseDakar.test.ts`.
+1. `npm run build`, `npx vitest run tests/portwiseDakar.test.ts`, puis `node scripts/check-port-preview.mjs` pour les arrivées et captures navigateur téléphone/ordinateur.
 2. Démarrer une prévisualisation **non-production** ; sur téléphone, Plateau normal sans le paramètre : scène inchangée.
 3. Avec le paramètre : marcher depuis le bord du Plateau jusqu'au quai ; vérifier 1 navire, 1 grue, 2 camions, conteneurs, collisions de l'eau, retour au quartier.
 4. Test de fermeture / changement de hub / retour au Plateau (pas de duplication d'objets ou de fuite mémoire).
