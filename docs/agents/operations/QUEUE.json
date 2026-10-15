@@ -858,17 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-2129-PR29.md",
-    "checkedAt": "2026-10-15T21:31:11Z",
-    "result": "PR29 independent delta QA completed needs-decision; general CI green, opt-in browser proof gap.",
-    "owner": "producer_2129",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-2227-WATCH.md",
+    "checkedAt": "2026-10-15T22:27:07Z",
+    "result": "PR34 source advanced5758fcc7; exact CI pending, keep review; no ready source task.",
+    "owner": "producer_watch_2227",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
+    "baseCommit": "d2fb7907c55653e0e01edfada49c934ba34f09b4",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-2129-PR29.md",
-      "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
+      "docs/agents/operations/CYCLE-2026-10-15-2227-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -1008,32 +1007,32 @@
     {
       "pr": 34,
       "branch": "feature/portwise-dakar-spike",
-      "sha": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+      "sha": "5758fcc78c3422e4f5e7b8269b0128a14d0d8dc0",
       "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
       "title": "Port de Dakar: prototype Portwise / Three.js (opt-in, non-production)",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-15T06:36:39.210Z",
+      "checkedAt": "2026-10-15T22:27:07Z",
       "draft": true,
       "accepted": false,
-      "status": "needs-decision: PR CI success, exact push performance failure",
+      "status": "review: external quay/ferry/breakwater update; exact CI pending",
       "checks": [
         {
-          "id": 116237722565,
+          "id": 116702425915,
           "status": "completed",
           "conclusion": "success",
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-portwise-dakar-spike/builds/2f7e2dee-3ee4-4f38-a76e-320ef3845bb4"
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-portwise-dakar-spike/builds/20f337a3-82e9-415f-b12a-d632085afea6"
         },
         {
-          "id": 116237130828,
-          "status": "completed",
-          "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38678398718/job/116237130828"
+          "id": 116701835928,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38816336438/job/116701835928"
         },
         {
-          "id": 116237117966,
-          "status": "completed",
-          "conclusion": "failure",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38678394215/job/116237117966"
+          "id": 116701813753,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38816330000/job/116701813753"
         }
       ],
       "previousFailure": {
@@ -1048,9 +1047,9 @@
         "logUrl": "https://github.com/zayd95/dakar-rek/actions/runs/38676442076/job/116231023217"
       },
       "correctionObserved": "Initial window.location.search regression absent from new runs; PR browser smoke success, push medium draw-call budget failure remains.",
-      "nextAction": "External author/CI owner: reproduce tests/perf.calls.test.ts:34 (280 > 270), diagnose without weakening assertion, then distinct QA.",
-      "previousSource": "37ff20de47c3168a5a0b764cb837e17f5a8126c9",
-      "review": {
+      "nextAction": "Resume5758fcc7 exact push/PR CI, independent delta QA including bounds/water, hub cleanup and perf assertions; prior failure not erased.",
+      "previousSource": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+      "previousReview": {
         "status": "needs-decision",
         "reviewer": "qa_port_0435",
         "report": "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
@@ -1347,7 +1346,7 @@
     "overallVerdict": "needs-decision",
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
-    "lastReconciledAt": "2026-10-15T21:31:11Z"
+    "lastReconciledAt": "2026-10-15T22:27:07Z"
   },
   "externalPortCandidateReview": {
     "id": "WATCH-PR34-20261015-0435-QA",
@@ -1413,7 +1412,7 @@
     },
     "nextOwner": "PR34 author/CI owner",
     "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
-    "lastReconciledAt": "2026-10-15T21:31:11Z"
+    "lastReconciledAt": "2026-10-15T22:27:07Z"
   },
   "externalReferenceCandidateReview": {
     "id": "WATCH-PR29-20261015-2129-QA",
@@ -1467,17 +1466,5 @@
       ]
     },
     "nextOwner": "PR29 author / authorized browser runner then distinct QA"
-  },
-  "registryWriter": {
-    "token": "cycle-20261015T2227Z-watch",
-    "owner": "producer_watch_2227",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "d2fb7907c55653e0e01edfada49c934ba34f09b4",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-2227-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-15T22:26:36Z"
   }
 }
