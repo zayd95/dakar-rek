@@ -142,7 +142,7 @@ class PortScene {
   }
 }
 let scene: PortScene | null = null;
-const enabled = () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('portPrototype');
+const enabled = () => typeof window !== 'undefined' && !!window.location?.search && new URLSearchParams(window.location.search).has('portPrototype');
 export const portwiseDakar: GameModule = {
   name: 'portwise-dakar',
   hubLoaded(ctx, hub) {
