@@ -42,3 +42,19 @@ describe('optional Portwise-inspired Dakar harbour', () => {
     expect(sawMovement).toBe(true);
   });
 });
+
+describe('chaloupe schedule', () => {
+  it('follows a 2 h cycle between 6 h and 20 h and is parked outside it', async () => {
+    const { chaloupePose, CHALOUPE_DOCK } = await import('../src/game/portwiseDakar');
+    expect(chaloupePose(3).state).toBe('idle');
+    expect(chaloupePose(22).state).toBe('idle');
+    expect(chaloupePose(6.05).state).toBe('queue');
+    expect(chaloupePose(6.22).state).toBe('boarding');
+    expect(chaloupePose(6.5).state).toBe('sailing');
+    expect(chaloupePose(7).visible).toBe(false);
+    expect(chaloupePose(7.5).state).toBe('returning');
+    expect(chaloupePose(7.8).state).toBe('landing');
+    const dock = chaloupePose(7.95); expect(dock.x).toBe(CHALOUPE_DOCK.x); expect(dock.z).toBe(CHALOUPE_DOCK.z);
+    expect(chaloupePose(8.05).state).toBe('queue');           // the next cycle starts on the even hour
+  });
+});

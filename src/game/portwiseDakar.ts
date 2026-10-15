@@ -82,13 +82,67 @@ function makeGoree() {
   addBatch(g, b);
   return g;
 }
+/**
+ * The Dakar–Gorée chaloupe, on the game clock (decor for now: it will carry the player once Gorée is built).
+ * A 2 h cycle between 6 h and 20 h: boarding at the pier, sailing out toward Gorée, away, coming back, landing.
+ */
+export const CHALOUPE_DOCK = { x: 224, z: 52.5 };
+const CH_OUT: [number, number][] = [[224, 52.5], [252, 57], [290, 100], [306, 124]];
+const CH_BACK: [number, number][] = [[306, 124], [292, 100], [262, 72], [236, 70], [214, 64], [216, 57], [224, 52.5]];
+function along(path: [number, number][], f: number) {
+  const len = path.slice(1).map((p, i) => Math.hypot(p[0] - path[i][0], p[1] - path[i][1])), total = len.reduce((a, b) => a + b, 0);
+  let d = unit(f) * total;
+  for (let i = 0; i < len.length; i++) {
+    if (d <= len[i] || i === len.length - 1) { const t = len[i] ? d / len[i] : 0, a = path[i], b = path[i + 1];
+      return { x: a[0] + (b[0] - a[0]) * t, z: a[1] + (b[1] - a[1]) * t, yaw: -Math.atan2(b[1] - a[1], b[0] - a[0]) }; }
+    d -= len[i];
+  }
+  return { x: path[0][0], z: path[0][1], yaw: 0 };
+}
+export type ChaloupeState = 'queue' | 'boarding' | 'sailing' | 'away' | 'returning' | 'landing' | 'idle';
+export function chaloupePose(hour: number) {
+  const dock = { x: CHALOUPE_DOCK.x, z: CHALOUPE_DOCK.z, yaw: 0 };
+  if (hour < 6 || hour >= 20) return { state: 'idle' as ChaloupeState, f: 0, visible: true, ...dock };
+  const p = (((hour - 6) % 2) + 2) % 2;
+  if (p < 0.15) return { state: 'queue' as ChaloupeState, f: p / 0.15, visible: true, ...dock };
+  if (p < 0.3) return { state: 'boarding' as ChaloupeState, f: (p - 0.15) / 0.15, visible: true, ...dock };
+  if (p < 0.65) return { state: 'sailing' as ChaloupeState, f: (p - 0.3) / 0.35, visible: true, ...along(CH_OUT, ease((p - 0.3) / 0.35)) };
+  if (p < 1.3) return { state: 'away' as ChaloupeState, f: 0, visible: false, x: 306, z: 124, yaw: 0 };
+  if (p < 1.7) return { state: 'returning' as ChaloupeState, f: (p - 1.3) / 0.4, visible: true, ...along(CH_BACK, ease((p - 1.3) / 0.4)) };
+  if (p < 1.85) return { state: 'landing' as ChaloupeState, f: (p - 1.7) / 0.15, visible: true, ...dock };
+  return { state: 'queue' as ChaloupeState, f: 1, visible: true, ...dock };
+}
+function makeChaloupe() {
+  const g = new THREE.Group(); g.name = 'dakar-port-chaloupe';
+  const b = new Batch();
+  const W = 0xf4f3ee, GLASS = 0x1f4650, TRIM = 0x2f6f9f;
+  b.box(21, 2.4, 5.6, 0, -0.7, 0, W);                                            // hull
+  b.box(21.2, 0.25, 5.8, 0, 1.7, 0, W);                                          // main deck edge
+  b.box(2.6, 1.2, 3.4, 11.2, -0.2, 0, W);                                        // bow
+  b.box(12, 2.0, 5.2, 1, 1.9, 0, W); b.box(12.2, 1.05, 5.34, 1, 2.4, 0, GLASS);   // lower cabin and its window band
+  b.box(11, 0.3, 5.6, 1, 4.0, 0, W);                                             // overhanging deck roof
+  b.box(8, 1.7, 4.4, 1.5, 4.2, 0, W); b.box(8.2, 0.95, 4.5, 1.5, 4.55, 0, GLASS);  // upper wheelhouse
+  b.box(9.5, 0.3, 5.0, 1.5, 5.95, 0, W);                                         // wheelhouse roof, wide overhang
+  for (let i = 0; i < 4; i++) b.box(2.0, 0.7, 0.8, -2 + i * 2.4, 6.4, 1.2, 0xeeeeee);   // life rafts
+  b.box(0.5, 0.4, 0.5, 4, 6.25, 0, 0x8a8f94); b.box(1.6, 0.12, 0.3, 4, 6.7, 0, 0x8a8f94);  // radar
+  b.box(0.9, 0.7, 0.9, -1, 6.4, -1.5, 0xe9ebed);                                 // satcom dome
+  b.box(0.12, 1.0, 5.0, 8.1, 2.5, 0, 0xc72b2b);                                  // red LED strip on the cabin front
+  b.box(4.2, 0.05, 0.9, -9, 1.9, 2.0, 0x8c8c86);                                 // the gangway plank, pier side
+  for (const z of [-2.7, 2.7]) b.box(18, 0.9, 0.08, -2.5, 2.3, z, 0xdedede);     // rails
+  b.box(21.3, 0.18, 5.9, 0, 0.5, 0, TRIM);                                       // blue waterline stripe
+  const mesh = b.build(material(), true, false); if (mesh) g.add(mesh);
+  const sign = (z: number, rot: number) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(7, 0.7), new THREE.MeshBasicMaterial({ map: signTexture('DAKAR · GORÉE', '#1f5a85', '#ffffff', 512, 56), side: THREE.DoubleSide }));
+    m.position.set(2, 0.7, z); m.rotation.y = rot; g.add(m);
+  };
+  sign(2.82, 0); sign(-2.82, Math.PI);
+  return g;
+}
 function makeFerryPier() {
   const g = new THREE.Group(); g.name = 'dakar-port-ferry-pier';
   const b = new Batch();
   b.box(33, 0.2, 8, 215.5, 0.02, 44, 0x9a8f7b);                      // pier deck, x 199..232, z 40..48
   for (let x = 202; x < 232; x += 6) for (const z of [39.8, 48.2]) b.box(0.3, 1.0, 0.3, x, 0.2, z, 0x4a3f33);
-  b.box(14, 2.6, 4.2, 224, -0.4, 53, 0xf1ece0);                       // ferry hull, alongside the pier
-  b.box(9, 2.2, 3.4, 224, 2.2, 53, 0xe8ecef); b.box(14.2, 0.4, 4.4, 224, 2.2, 53, 0x2f6f9f);
   addBatch(g, b);
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.9),
     new THREE.MeshBasicMaterial({ map: signTexture('EMBARCADÈRE · GORÉE', '#16465f', '#f9df9f', 512, 80), side: THREE.DoubleSide }));
@@ -124,6 +178,8 @@ function makeTruck(color: number) {
 class PortScene {
   readonly group = new THREE.Group();
   private crane = makeCrane();
+  private chaloupe = makeChaloupe();
+  private riders: Humanoid[] = [];
   private trucks = [makeTruck(0xf0d6a0), makeTruck(0xc85e38)];
   constructor(hub: HubWorld, private state: GameState) {
     this.group.name = 'portwise-dakar-prototype';
@@ -146,7 +202,7 @@ class PortScene {
     const water = new THREE.Mesh(new THREE.PlaneGeometry(700, 900), new THREE.MeshLambertMaterial({ color: 0x246987 }));
     water.rotation.x = -Math.PI / 2; water.position.set(548, 0.07, 0); this.group.add(water);
     this.group.add(makeGoree());
-    this.group.add(makeShip(), this.crane.group, makeFerryPier());
+    this.group.add(makeShip(), this.crane.group, makeFerryPier(), this.chaloupe);
     const jetty = new Batch(); // jetée: breakwater closing the basin to the east (decor)
     jetty.box(5, 2.2, 150, 322, 0.1, -5, 0x7d776d);
     addBatch(this.group, jetty);
@@ -173,6 +229,37 @@ class PortScene {
       actions: [{ id: 'voir_port', label: 'Observer les opérations', seconds: 1 }] });
   }
   private people: Humanoid[] = [];
+  /** The chaloupe follows the game clock; five passengers queue on the pier, walk aboard, ride, and walk off again. */
+  private updateChaloupe(hour: number, dt: number) {
+    if (!this.riders.length && humanoidReady()) {
+      let k = 21; const R = () => ((k = (k * 16807) % 2147483647) / 2147483647);
+      for (let i = 0; i < 5; i++) { const h = new Humanoid(randomLook(R)); h.group.visible = false; this.group.add(h.group); this.riders.push(h); }
+    }
+    const c = chaloupePose(hour), ch = this.chaloupe;
+    ch.visible = c.visible; ch.position.set(c.x, 0, c.z);
+    ch.rotation.y += (c.yaw - ch.rotation.y) * (c.state === 'sailing' || c.state === 'returning' ? Math.min(1, dt * 1.5) : 1);
+    this.riders.forEach((h, i) => {
+      const queue = { x: 204 + (i % 3) * 0.9, z: 42.3 + Math.floor(i / 3) * 1.1 }, deck = { x: CHALOUPE_DOCK.x - 8.4 + i * 0.7, z: CHALOUPE_DOCK.z + 0.8 * (i % 2 ? 1 : -1) };
+      const gang = { x: CHALOUPE_DOCK.x - 9, z: 49.2 }, at = (a: { x: number; z: number }, b: { x: number; z: number }, f: number) => ({ x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f });
+      let pos: { x: number; z: number } | null = null, y = 0.22;
+      const f = unit((c.f - i * 0.08) / 0.7);
+      if (c.state === 'queue') pos = c.f < 1 || hour >= 6 ? queue : null;
+      else if (c.state === 'boarding') pos = f < 0.5 ? at(queue, gang, f * 2) : at(gang, deck, f * 2 - 1), y = f > 0.5 ? 1.1 : 0.22;
+      else if (c.state === 'sailing' || c.state === 'returning') { pos = { x: c.x, z: c.z }; }
+      else if (c.state === 'landing') pos = f < 0.5 ? at(deck, gang, f * 2) : at(gang, queue, f * 2 - 1), y = f < 0.5 ? 1.1 : 0.22;
+      h.group.visible = !!pos && c.visible && c.state !== 'idle';
+      if (!pos) return;
+      if (c.state === 'sailing' || c.state === 'returning') {                       // on the deck: ride along, turned with the boat
+        const cs = Math.cos(ch.rotation.y), sn = Math.sin(ch.rotation.y), lx = deck.x - CHALOUPE_DOCK.x, lz = deck.z - CHALOUPE_DOCK.z;
+        h.group.position.set(c.x + lx * cs + lz * sn, 1.1, c.z - lx * sn + lz * cs); h.group.rotation.y = ch.rotation.y + Math.PI / 2;
+      } else {
+        const px = h.group.position.x, pz = h.group.position.z; h.group.position.set(pos.x, y, pos.z);
+        if (Math.hypot(pos.x - px, pos.z - pz) > 0.002) h.group.rotation.y = Math.atan2(pos.x - px, pos.z - pz);
+        else h.group.rotation.y = c.state === 'boarding' ? Math.PI / 2 : c.state === 'landing' ? -Math.PI / 2 : Math.PI / 2;
+      }
+      h.animate(dt, 0);
+    });
+  }
   private placePeople() {
     if (this.people.length || !humanoidReady()) return;
     let k = 7; const R = () => ((k = (k * 16807) % 2147483647) / 2147483647);
@@ -182,8 +269,10 @@ class PortScene {
       this.group.add(h.group); this.people.push(h);
     }
   }
-  update(seconds: number, dt = 0) {
+  info(hour: number) { const c = chaloupePose(hour); return { state: c.state, visible: this.chaloupe.visible, x: +this.chaloupe.position.x.toFixed(1), z: +this.chaloupe.position.z.toFixed(1), riders: this.riders.filter(h => h.group.visible).length }; }
+  update(seconds: number, hour: number, dt = 0) {
     this.placePeople(); for (const h of this.people) h.animate(dt, 0);
+    this.updateChaloupe(hour, dt);
     const p = portCranePose(seconds);
     this.crane.trolley.position.x = p.x;
     this.crane.spreader.position.y = p.y + 0.8;
@@ -195,7 +284,7 @@ class PortScene {
     });
   }
   dispose() {
-    for (const h of this.people) h.dispose(); this.people = [];
+    for (const h of [...this.people, ...this.riders]) h.dispose(); this.people = []; this.riders = [];
     const g = new Set<THREE.BufferGeometry>(), m = new Set<THREE.Material>();
     this.group.traverse(o => {
       const obj = o as THREE.Mesh;
@@ -232,8 +321,8 @@ export function portPlaces(state: () => GameState): Interactable[] {
       line: () => talk('Le passeur', () => flagged(state(), 'seen_goree') ? 'Beaucoup de gens passent ici sans s’arrêter. Toi tu regardes. C’est bien.'
         : 'Aujourd’hui la mer est calme. Une vingtaine de minutes et t’es de l’autre côté. Tu viens pour la Maison des Esclaves ou juste pour marcher ?'),
       effects: { needs: { social: 6, moral: 4 }, counters: { chats: 1 } } }] },
-    { id: 'aller_goree', label: 'Prendre la chaloupe pour Gorée', detail: 'Bientôt disponible', seconds: 0,
-      requires: () => 'La chaloupe partira dans une prochaine version' },
+    { id: 'aller_goree', label: 'Prendre la chaloupe pour Gorée', detail: 'Départs toutes les 2 h · décor pour l’instant', seconds: 0,
+      requires: () => 'La traversée sera ouverte avec l’île de Gorée' },
   ];
   const cafe: Action[] = [
     { id: 'touba_port', label: 'Boire un café Touba', detail: 'Bien fort, 100 F', cost: 100, seconds: 1.5, steps: [{
@@ -263,6 +352,6 @@ export const portwiseDakar: GameModule = {
     // Dedicated smoke-test arrival. Normal Plateau spawns and saved positions stay unchanged.
     if (previewParams()?.has('portVisit')) hub.spawn = { ...PORT_VISIT_SPAWN };
   },
-  update(ctx, dt) { scene?.update(ctx.now() / 1000, dt); },
-  debug() { return { portPrototype: () => ({ enabled: !!scene, ships: scene ? 1 : 0, cranes: scene ? 1 : 0, containers: scene ? 50 : 0, trucks: scene ? 2 : 0, x: 135, z: 0 }) }; },
+  update(ctx, dt) { scene?.update(ctx.now() / 1000, ctx.hour(), dt); },
+  debug() { return { chaloupe: (hour: number) => scene?.info(hour) ?? null, portPrototype: () => ({ enabled: !!scene, ships: scene ? 1 : 0, cranes: scene ? 1 : 0, containers: scene ? 50 : 0, trucks: scene ? 2 : 0, x: 135, z: 0 }) }; },
 };

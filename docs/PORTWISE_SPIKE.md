@@ -73,3 +73,7 @@ Le Port Autonome de Dakar longe la côte est du Plateau (baie de Hann) : zone su
 - **Café Touba du Port**, à l'arche : 100 F.
 - Gorée est visible au sud-est, dans la brume (silhouette légère : île, fort, maisons).
 - `node scripts/check-port-life.mjs` joue ces actions dans le navigateur (téléphone).
+
+## Chaloupe Dakar–Gorée (décor, sur l'horloge du jeu)
+
+Bateau blanc à deux ponts (d'après la photo de la nouvelle chaloupe : toit débordant, canots sur le toit, radar, bandeau LED rouge). Cycle de 2 h entre 6 h et 20 h : file d'attente de 5 passagers sur la jetée, embarquement, départ vers Gorée, absence, retour, débarquement. Hors horaires, elle reste à quai sans passagers. Pas encore de traversée jouable : elle viendra avec l'île de Gorée. `node scripts/check-port-chaloupe.mjs` ; planning testé dans `tests/portwiseDakar.test.ts`.
