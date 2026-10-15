@@ -187,7 +187,7 @@ npm run typecheck:server
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character
 CHROMIUM=/path/to/chrome node scripts/check-reference-seat-exit.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/stand-up
 CHROMIUM=/path/to/chrome node scripts/check-reference-prompts.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/prompts/after
-CHROMIUM=/path/to/chrome node scripts/check-reference-shoulders.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/shoulders/after
+CHROMIUM=/path/to/chrome node scripts/check-reference-shoulders.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/arm-carriage/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4175/ docs/screenshots/reference-character/before --baseline
 CHROMIUM=/path/to/chrome node scripts/check-perf-evening.mjs http://127.0.0.1:4174/ docs/perf/reference-character-low.json --presets=low --reference-character
 ```
