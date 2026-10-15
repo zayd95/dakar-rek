@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-1736-WATCH.md",
-    "checkedAt": "2026-10-15T17:36:34Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-1835-WATCH.md",
+    "checkedAt": "2026-10-15T18:35:47Z",
     "result": "Sources and evidence unchanged; no ready task; independent needs-decision retained.",
-    "owner": "producer_watch_1736",
+    "owner": "producer_watch_1835",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "f4b2e9e0dc472b8170eeb1825c3de2c24a4972cf",
+    "baseCommit": "4874f593548f453b72335d1f08f20308a4560d35",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-1736-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-15-1835-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -1316,7 +1316,7 @@
     "overallVerdict": "needs-decision",
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
-    "lastReconciledAt": "2026-10-15T17:36:34Z"
+    "lastReconciledAt": "2026-10-15T18:35:47Z"
   },
   "externalPortCandidateReview": {
     "id": "WATCH-PR34-20261015-0435-QA",
@@ -1382,18 +1382,6 @@
     },
     "nextOwner": "PR34 author/CI owner",
     "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
-    "lastReconciledAt": "2026-10-15T17:36:34Z"
-  },
-  "registryWriter": {
-    "token": "cycle-20261015T1835Z-watch",
-    "owner": "producer_watch_1835",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "4874f593548f453b72335d1f08f20308a4560d35",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-1835-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-15T18:35:09Z"
+    "lastReconciledAt": "2026-10-15T18:35:47Z"
   }
 }
