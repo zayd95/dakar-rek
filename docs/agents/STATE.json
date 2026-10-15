@@ -5,7 +5,18 @@
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": null,
+  "lease": {
+    "token": "cycle-20261015T0935Z-watch",
+    "owner": "producer_watch_0935",
+    "baseCommit": "659d1912383b62851b0f565e2666f6782fa2922b",
+    "acquiredAt": "2026-10-15T09:35:35.899Z",
+    "expiresAt": "2026-10-15T10:00:00Z",
+    "scope": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-15-0935-WATCH.md"
+    ]
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
