@@ -1383,5 +1383,17 @@
     "nextOwner": "PR34 author/CI owner",
     "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
     "lastReconciledAt": "2026-10-15T06:36:39.210Z"
+  },
+  "registryWriter": {
+    "token": "cycle-20261015T0727Z-watch",
+    "owner": "producer_watch_0727",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "625d22c0ef236ee58a29f1693be8355dcdbc3207",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-15-0727-WATCH.md"
+    ],
+    "acquiredAt": "2026-10-15T07:27:39.277Z"
   }
 }
