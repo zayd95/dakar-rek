@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-1134-WATCH.md",
-    "checkedAt": "2026-10-15T11:35:15.593Z",
-    "result": "Exact refs/CI unchanged; no ready task; existing independent QA and blockers retained.",
-    "owner": "producer_watch_1134",
+    "entry": "docs/agents/operations/CYCLE-2026-10-15-1236-WATCH.md",
+    "checkedAt": "2026-10-15T12:36:44.276Z",
+    "result": "Current refs/PR/CI unchanged; no ready task; existing independent QA and blockers preserved.",
+    "owner": "producer_watch_1236",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "83f9108f66391724546437eaeaf6197ca9105468",
+    "baseCommit": "4bd6dc1bd198fb62e13e07133153f63a7eb47b66",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-1134-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-15-1236-WATCH.md"
     ]
   },
   "evidenceReview": {
@@ -1316,7 +1316,7 @@
     "overallVerdict": "needs-decision",
     "nextOwner": "PR33 author/CI owner",
     "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
-    "lastReconciledAt": "2026-10-15T11:35:15.593Z"
+    "lastReconciledAt": "2026-10-15T12:36:44.276Z"
   },
   "externalPortCandidateReview": {
     "id": "WATCH-PR34-20261015-0435-QA",
@@ -1382,18 +1382,6 @@
     },
     "nextOwner": "PR34 author/CI owner",
     "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
-    "lastReconciledAt": "2026-10-15T11:35:15.593Z"
-  },
-  "registryWriter": {
-    "token": "cycle-20261015T1236Z-watch",
-    "owner": "producer_watch_1236",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "4bd6dc1bd198fb62e13e07133153f63a7eb47b66",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-1236-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-15T12:36:15.093Z"
+    "lastReconciledAt": "2026-10-15T12:36:44.276Z"
   }
 }
