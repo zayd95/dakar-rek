@@ -1466,5 +1466,40 @@
       ]
     },
     "nextOwner": "PR29 author / authorized browser runner then distinct QA"
+  },
+  "externalPortDeltaReview": {
+    "id": "WATCH-PR34-20261015-2335-QA",
+    "role": "qa",
+    "kind": "read_only_external_delta_review",
+    "status": "active",
+    "owner": "qa_port_2335",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "1da43f63d6777ec2ab5829abaadbb8ead59ffd68",
+    "sourceBranch": "feature/portwise-dakar-spike",
+    "sourceCommit": "b3314813f816791a7960aafa3fdd658b10169088",
+    "previousSource": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR34-20261015-2335-QA.md"
+    ],
+    "controlBriefCommit": "1da43f63d6777ec2ab5829abaadbb8ead59ffd68",
+    "acceptance": [
+      "Read exact push/PR failed logs and checkouts; classify failures without guessing",
+      "Inspect port delta models/quay/ferry and walk/preview checks, compare prior280>270 status honestly",
+      "Return reproducible blockers and next external owner; no source edits, local Chromium retry or self-approval"
+    ],
+    "report": "docs/agents/operations/reports/PR34-20261015-2335-QA.md"
+  },
+  "registryWriter": {
+    "token": "cycle-20261015T2335Z-portqa",
+    "owner": "producer_2335",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "1da43f63d6777ec2ab5829abaadbb8ead59ffd68",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-15-2335-PORT.md",
+      "docs/agents/operations/reports/PR34-20261015-2335-QA.md"
+    ],
+    "acquiredAt": "2026-10-15T23:34:31Z"
   }
 }
