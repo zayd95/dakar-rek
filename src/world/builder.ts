@@ -55,8 +55,10 @@ const SPECS: Record<HubId, HubSpec> = {
     spawnBlock: [1, 2],
   },
   pikine: {
-    id: 'pikine', seed: 53, style: 'banlieue', ground: 0xd9b98a, road: 0xb79f78, walk: 0xcdb48a, blockGround: 0xc9a977,
-    palette: [0x5fa8c9, 0x8fcf9a, 0xe7b45a, 0xe58aa0, 0xd9d2c4, 0x9c8fd1, 0xd96f4f, 0x7fb8a4], floors: [1, 2], palms: 5,
+    // heavy sand and dust, roads barely paved, a faded mix of paints and bare breeze block, almost no palms
+    id: 'pikine', seed: 53, style: 'banlieue', ground: 0xc49a6c, road: 0x9c7b55, walk: 0xb08960, blockGround: 0xa87d52,
+    palette: [0x5fa8c9, 0x8fcf9a, 0xe7b45a, 0xe58aa0, 0xd9d2c4, 0x9c8fd1, 0xd96f4f, 0x7fb8a4, 0xc4a574, 0xa67c52, 0x8b7355, 0x6b5344, 0xb85c38, 0x4a7043],
+    floors: [1, 2], palms: 2,
     // '1,0' (across the street from the starter room): an open block where the ownership module builds the Cité Jàmm —
     // Keur Meubles, the Résidence Jàmm, a family house, two plots and a billboard (src/economy/estate.ts)
     specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station', '1,0': 'plaza' },
@@ -231,7 +233,21 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     if (a < NB) edges.push({ ax: roadC(a), az: roadC(b), bx: roadC(a + 1), bz: roadC(b) });
     if (b < NB) edges.push({ ax: roadC(a), az: roadC(b), bx: roadC(a), bz: roadC(b + 1) });
   }
-  for (let k = 0; k <= NB; k++) {
+  const RP = rng(sp.seed * 7919 + 17);                               // Pikine's own dust and clutter (keeps R's sequence for the rest)
+  if (banlieue) for (let k = 0; k <= NB; k++) for (const along of [true, false]) {
+    for (const lane of [-2.6, -1.1, 1.1, 2.6]) {                      // worn tyre tracks, a little darker and wavering
+      for (let t = -HALF; t < HALF; t += 8) {
+        const w = 0.5 + RP() * 0.25, o = lane + (RP() - 0.5) * 0.35, len = 8.6 + RP() * 1.5;      // overlapping: one wavering track
+        if (along) plain.flat(w, len, roadC(k) + o, 0.083, t + 4, 0x93714c); else plain.flat(len, w, t + 4, 0.083, roadC(k) + o, 0x93714c);
+      }
+    }
+    for (let n = 0; n < 9; n++) {                                      // potholes and dried puddle stains
+      const t = -HALF + RP() * size, o = (RP() - 0.5) * (ROAD - 3), r = 0.45 + RP() * 0.8, x = along ? roadC(k) + o : t, z = along ? t : roadC(k) + o;
+      const g = new THREE.CircleGeometry(r, 14); g.rotateX(-Math.PI / 2); g.scale(1, 1, 0.55 + RP() * 0.45);
+      plain.geometry(g, RP() < 0.6 ? 0x7c5e3f : 0x86705a, x, 0.086, z, RP() * Math.PI);
+    }
+  }
+  for (let k = 0; k <= NB && !banlieue; k++) {
     for (let k2 = 0; k2 < NB; k2++) {
       // centre dashes between intersections only
       const t0 = roadC(k2) + ROAD / 2 + 2, t1 = roadC(k2 + 1) - ROAD / 2 - 2;
@@ -259,10 +275,20 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     const bx = blockMin(i), bz = blockMin(j), cx = bx + BLK / 2, cz = bz + BLK / 2, W = BLK + SIDEWALK * 2;
     (banlieue ? plain : pave).box(W, G - 0.01, W, cx, 0, cz, sp.walk);
     // curb stones
-    plain.box(W + 0.3, G + 0.02, 0.3, cx, 0, cz - W / 2, curbCol); plain.box(W + 0.3, G + 0.02, 0.3, cx, 0, cz + W / 2, curbCol);
-    plain.box(0.3, G + 0.02, W, cx - W / 2, 0, cz, curbCol); plain.box(0.3, G + 0.02, W, cx + W / 2, 0, cz, curbCol);
+    if (banlieue) {                                                    // broken kerbs: missing stones, uneven lengths
+      for (const [ax, az, horiz] of [[0, -W / 2, true], [0, W / 2, true], [-W / 2, 0, false], [W / 2, 0, false]] as const) {
+        for (let t = -W / 2; t < W / 2;) {
+          const len = Math.min(W / 2 - t, 2.5 + RP() * 5);
+          if (RP() > 0.28) { const m = t + len / 2, hh = G - 0.03 + RP() * 0.06; if (horiz) plain.box(len - 0.1, hh, 0.3, cx + m, 0, cz + az, curbCol); else plain.box(0.3, hh, len - 0.1, cx + ax, 0, cz + m, curbCol); }
+          t += len;
+        }
+      }
+    } else {
+      plain.box(W + 0.3, G + 0.02, 0.3, cx, 0, cz - W / 2, curbCol); plain.box(W + 0.3, G + 0.02, 0.3, cx, 0, cz + W / 2, curbCol);
+      plain.box(0.3, G + 0.02, W, cx - W / 2, 0, cz, curbCol); plain.box(0.3, G + 0.02, W, cx + W / 2, 0, cz, curbCol);
+    }
     (sp.style === 'dense' ? pave : plain).box(BLK, G + 0.01, BLK, cx, 0, cz, sp.blockGround);
-    if (banlieue) for (let n = 0; n < 5; n++) plain.blob(1.5 + R() * 2, bx - SIDEWALK + R() * (BLK + 4), G - 0.06, bz + (R() < 0.5 ? -1 : BLK + 1), 0xcfb88e, 0.05, 1); // drifted sand
+    if (banlieue) for (let n = 0; n < 11; n++) plain.blob(1.5 + RP() * 2.5, bx - SIDEWALK + RP() * (BLK + 4), G - 0.06, RP() < 0.5 ? bz + (RP() < 0.5 ? -1 : BLK + 1) : bz + RP() * BLK, RP() < 0.5 ? 0xcfb88e : 0xb89466, 0.05, 1); // drifted sand
   }
 
   const lotRect = (i: number, j: number, a: number, b: number) => {
@@ -403,26 +429,59 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     const L = lotRect(i, j, a, b);
     const faces = lotFaces(a, b);
     if (sp.style === 'banlieue') {
-      // Two small breeze-block houses inside a painted yard wall with a coloured metal gate.
-      for (let k = 0; k < 2; k++) {
-        const w = 8 + R() * 3, d = 8 + R() * 3, fl = 1 + (R() < 0.35 ? 1 : 0);
-        const cx = L.cx + (k ? 5.5 : -5.5), cz = L.cz + (R() - 0.5) * 6, h = fl * 3 + 0.3;
-        const col = pick(sp.palette, R);
-        fac.facade(w, h, d, cx, G - 0.02, cz, col);
-        plain.box(w + 0.4, 0.25, d + 0.4, cx, G + h - 0.02, cz, 0x9a968c);            // roof slab
-        parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.2, shade(col, 0.9), 0.5);
-        plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));          // splash band
-        if (R() < 0.6 && !lite) for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) plain.box(0.18, 1.0, 0.18, cx + sx * (w / 2 - 0.3), G + h + 0.2, cz + sz * (d / 2 - 0.3), 0x6b5a4a); // rebar stubs: the next floor, someday
-        if (R() < 0.5) plain.cyl(0.6, 0.6, 1.2, cx + (R() - 0.5) * 3, G + h + 0.22, cz + (R() - 0.5) * 3, 0x1d1f22, 10);
-        if (R() < 0.35) acUnit(cx + (R() - 0.5) * (w - 2), G + 2.2, cz + faces[1][1] * d / 2, 0, faces[1][1]);
-        solidC(cx, cz, w, d, h);
+      // Cramped self-built houses: one to three per yard, set askew, roofs bristling with rebar for the next floor,
+      // behind a low, uneven compound wall; the yard shows its clutter (breeze blocks, sand, a tin lean-to, washing).
+      const n = RP() < 0.18 ? 1 : RP() < 0.7 ? 2 : 3;
+      // [x offset, z offset, width range, depth range]: the houses fill most of the yard, a narrow court between them
+      const slots: [number, number, number, number, number, number][] = n === 1 ? [[0, 0, 12, 15, 11, 14]]
+        : n === 2 ? [[-5.4, (RP() - 0.5) * 3, 8, 10.2, 9, 14], [5.4, (RP() - 0.5) * 3, 8, 10.2, 9, 14]]
+        : [[-5.4, -4.8, 8, 10.2, 7, 9], [5.4, -4.6, 8, 10.2, 7, 9], [(RP() - 0.5) * 3, 5.8, 9, 13, 5.5, 7]];
+      for (const [ox, oz, w0, w1, d0, d1] of slots) {
+        const w = w0 + RP() * (w1 - w0), d = d0 + RP() * (d1 - d0), fl = RP() < 0.22 ? 2 : 1, h = fl * 2.75 + 0.2;
+        const lim = (c: number, half: number, lo: number, hi: number) => Math.min(hi - 1.2 - half, Math.max(lo + 1.2 + half, c));
+        const cx = lim(L.cx + ox + (RP() - 0.5) * 1.2, w / 2, L.x0, L.x1), cz = lim(L.cz + oz + (RP() - 0.5) * 1.6, d / 2, L.z0, L.z1);
+        const tilt = (RP() - 0.5) * 0.12, col = pick(sp.palette, RP), raw = RP() < 0.25;   // some never got their paint
+        fac.facade(w, h, d, cx, G - 0.02, cz, raw ? 0xb3ab9c : col, tilt);
+        plain.box(w + 0.35, 0.25, d + 0.35, cx, G + h - 0.02, cz, 0x8e8a80, tilt);       // flat roof slab
+        plain.box(w + 0.08, 0.6, d + 0.08, cx, G - 0.02, cz, shade(raw ? 0xb3ab9c : col, 0.62), tilt);   // dirt splash band
+        if (!lite) for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]]) if (RP() < 0.75)   // rebar: the next floor, someday
+          plain.box(0.16, 1.3 + RP() * 0.6, 0.16, cx + sx * (w / 2 - 0.25), G + h + 0.2, cz + sz * (d / 2 - 0.25), 0x5c4e3f);
+        if (RP() < 0.35) plain.cyl(0.7, 0.9, 1.1, cx + (RP() - 0.5) * 2, G + h + 0.22, cz + (RP() - 0.5) * 2, 0xb0b8c0, 8);   // water tank
+        else if (RP() < 0.4) plain.cyl(0.55, 0.55, 1.1, cx + (RP() - 0.5) * 2, G + h + 0.22, cz + (RP() - 0.5) * 2, 0x1d1f22, 10);
+        if (!lite && RP() < 0.4) tin.slab(w * 0.5, 0.06, 2.2, cx + (RP() - 0.5) * w * 0.3, G + h + 0.7, cz, 0x8a6a4a, tilt, 0.12);   // tin sheet weighed on the roof
+        if (RP() < 0.3) acUnit(cx + (RP() - 0.5) * (w - 2), G + 2.0, cz + faces[1][1] * d / 2, 0, faces[1][1]);
+        solidC(cx, cz, w + Math.abs(tilt) * d, d + Math.abs(tilt) * w, h);
       }
-      const wc = pick([0xd8c7a6, 0xe6d4b0, 0xc9b99a, 0xdcc2a0, 0xb8cfc0, 0xe2b9a6], R);
-      wall(L.x0 + 0.5, L.z0 + 0.5, L.x1 - 0.5, L.z1 - 0.5, wc, 2.1, R() < 0.4);
-      const [fx, fz] = faces[1];
-      gate(L.cx + (R() - 0.5) * 8, fz < 0 ? L.z0 + 0.5 : L.z1 - 0.5, fx, fz);
-      if (R() < 0.45) shopfront(L.cx + (R() < 0.5 ? -7 : 7), fz < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, fz);
-      if (R() < 0.35) tree(L.cx + (R() - 0.5) * 4, L.cz + (R() - 0.5) * 4, 0.9, R() < 0.3);
+      // the compound wall: low, uneven, patched, with a gap here and there (never on the gate side)
+      const [fx, fz] = faces[1], wc = pick([0xc2b08a, 0xb8a27c, 0xcdb894, 0xa8977a, 0xd2bd98, 0x9fae9a], RP);
+      const gx = L.cx + (RP() - 0.5) * 8, gz = fz < 0 ? L.z0 + 0.35 : L.z1 - 0.35;
+      for (const [x0, z0, x1, z1] of [[L.x0 + 0.35, L.z0 + 0.35, L.x1 - 0.35, L.z0 + 0.35], [L.x0 + 0.35, L.z1 - 0.35, L.x1 - 0.35, L.z1 - 0.35], [L.x0 + 0.35, L.z0 + 0.35, L.x0 + 0.35, L.z1 - 0.35], [L.x1 - 0.35, L.z0 + 0.35, L.x1 - 0.35, L.z1 - 0.35]]) {
+        const horiz = z0 === z1, front = horiz && Math.abs(z0 - gz) < 0.01, total = horiz ? x1 - x0 : z1 - z0;
+        for (let t = 0; t < total;) {
+          const len = Math.min(total - t, 2.5 + RP() * 4.5), m = t + len / 2, x = horiz ? x0 + m : x0, z = horiz ? z0 : z0 + m;
+          const atGate = front && Math.abs(x - gx) < 1.6 + len / 2;
+          if (!atGate && (front || RP() > 0.12)) {
+            const h = 0.9 + RP() * 0.55, c = RP() < 0.3 ? shade(wc, 0.85) : wc;
+            plain.box(horiz ? len : 0.3, h, horiz ? 0.3 : len, x, G - 0.02, z, c);
+            if (!lite && RP() < 0.5) plain.box(horiz ? len * 0.4 : 0.32, 0.4, horiz ? 0.32 : len * 0.4, x + (horiz ? (RP() - 0.5) * len * 0.5 : 0), G + 0.1 + RP() * (h - 0.5), z + (horiz ? 0 : (RP() - 0.5) * len * 0.5), 0xa59c8c);   // bare block patch
+          } else if (atGate) { /* the gate's opening */ }
+          t += len;
+        }
+      }
+      gate(gx, gz, fx, fz, 1.9);
+      if (RP() < 0.4) shopfront(L.cx + (RP() < 0.5 ? -7 : 7), fz < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, fz);
+      // yard clutter, seen over the low wall
+      const yx = () => L.cx + (RP() - 0.5) * 12, yz = () => L.cz + (RP() - 0.5) * 12;
+      if (RP() < 0.6) { const x = yx(), z = yz(); for (let k = 0; k < 3; k++) plain.box(1.8, 0.3, 1.2, x + (RP() - 0.5) * 0.3, G + k * 0.3, z, 0x9a8b72); }   // stacked breeze blocks
+      if (RP() < 0.45) plain.blob(1.3 + RP() * 0.6, yx(), G - 0.1, yz(), 0xc9a87c, 0.45, 1);          // sand pile
+      if (!lite && RP() < 0.35) { const x = yx(), z = yz(); tin.slab(2.6, 0.05, 2.0, x, G + 1.6, z, 0x7a5a3c, 0, 0.25); for (const sx of [-1.2, 1.2]) plain.box(0.1, 1.7, 0.1, x + sx, G, z + 0.9, 0x5a4636); }   // tin lean-to
+      if (!lite && RP() < 0.45) {                                                                     // washing line
+        const x = yx(), z = yz(), cols = [0xd94a4a, 0x2f6fbf, 0xf2c94c, 0xffffff, 0x3f9a5a, 0xd97cb0];
+        for (const sx of [-2, 2]) plain.box(0.06, 1.8, 0.06, x + sx, G, z, 0x5a4a3a);
+        plain.box(4, 0.03, 0.03, x, G + 1.75, z, 0x333333);
+        for (let k = 0; k < 4; k++) plain.box(0.5 + RP() * 0.3, 0.6 + RP() * 0.3, 0.03, x - 1.5 + k * 1.0, G + 1.0, z, pick(cols, RP));
+      }
+      if (RP() < 0.25) tree(L.cx + (RP() - 0.5) * 4, L.cz + (RP() - 0.5) * 4, 0.85, RP() < 0.3);
       return;
     }
     if (sp.style === 'villa') {
@@ -1039,6 +1098,20 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       buildLotBuilding(i, j, lot % 2, lot >> 1);
     }
   }
+  // Pikine: rusty tin fences and patched walls in the alleys between yards, off the grid's straight lines.
+  if (banlieue && !lite) {
+    const lotBlocks: [number, number][] = [];
+    for (let i = 0; i < NB; i++) for (let j = 0; j < NB; j++) if (!sp.specials[`${i},${j}`] && !CITY_BLOCKS[id][`${i},${j}`]) lotBlocks.push([i, j]);
+    const count = 8 + Math.floor(RP() * 5);
+    for (let n = 0; n < count && lotBlocks.length; n++) {
+      const [i, j] = lotBlocks[Math.floor(RP() * lotBlocks.length)], alongX = RP() < 0.5;
+      const mid = (alongX ? blockMin(j) : blockMin(i)) + LS + 1, at = (alongX ? blockMin(i) : blockMin(j)) + 2 + RP() * (BLK - 10);
+      const len = 3 + RP() * 5, yaw = (alongX ? 0 : Math.PI / 2) + (RP() - 0.5) * 0.25, h = 1.3 + RP() * 0.7;
+      const x = alongX ? at + len / 2 : mid + (RP() - 0.5) * 0.8, z = alongX ? mid + (RP() - 0.5) * 0.8 : at + len / 2;
+      if (RP() < 0.65) { tin.box(len, h, 0.06, x, G - 0.02, z, pick([0x9a6a44, 0x7f5a3e, 0x8a5f40, 0xa07850], RP), yaw); for (let k = 0; k <= 2; k++) plain.box(0.1, h + 0.1, 0.1, x + Math.cos(yaw) * (k - 1) * len / 2, G - 0.02, z - Math.sin(yaw) * (k - 1) * len / 2, 0x4e3e30); }
+      else plain.box(len, 0.9 + RP() * 0.6, 0.3, x, G - 0.02, z, pick([0xb8a27c, 0xa59c8c, 0xc2b08a], RP), yaw);
+    }
+  }
   const [si, sj] = sp.spawnBlock;
   if (id !== 'pikine') {
     const sx = blockMin(si) + BLK / 2, sz = blockMin(sj) + BLK / 2;
@@ -1092,7 +1165,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   if (sp.sea === 'west') for (let z = -HALF + 6; z < HALF - 4; z += 9) { if (Math.abs(z - roadC(Math.round((z + HALF - ROAD / 2) / PITCH))) > ROAD / 2 + 1) palm(-HALF - 1.2, z, 1.15, true); } // whitewashed trunks
   if (sp.sea === 'north') for (let x = -HALF + 10; x < HALF - 6; x += 18) palm(x, -HALF - 3, 1.1);
   // A few street vendors on the sidewalks.
-  for (let n = 0; n < (banlieue ? 8 : 5); n++) {
+  for (let n = 0; n < (banlieue ? 13 : 5); n++) {
     const k = Math.floor(R() * (NB + 1)), t = -HALF + 20 + R() * (size - 40), s = R() < 0.5 ? -1 : 1, along = R() < 0.5;
     const x = along ? roadC(k) + s * (ROAD / 2 + 1.6) : t, z = along ? t : roadC(k) + s * (ROAD / 2 + 1.6);
     if (Math.abs(x) > HALF - 4 || Math.abs(z) > HALF - 4 || blocked(x, z, 1.2)) continue;
