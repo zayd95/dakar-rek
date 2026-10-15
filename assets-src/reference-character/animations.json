@@ -16,8 +16,8 @@
       0.005874845981597904,
       0.07871513426303864
     ],
-    "stanceSpeed": 1.315652266144753,
-    "shoulderMotion": "Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved"
+    "shoulderMotion": "Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved",
+    "stanceSpeed": 1.315652266144753
   },
   "Jog": {
     "source": "Jog_Fwd_Loop",
@@ -27,8 +27,9 @@
       -0.15762304268346092,
       -0.013236082196235656
     ],
-    "stanceSpeed": 3.1864169239997864,
-    "shoulderMotion": "Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved"
+    "shoulderMotion": "Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved",
+    "armCarriage": "Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved",
+    "stanceSpeed": 3.1864169239997864
   },
   "Run": {
     "source": "Sprint_Loop",
@@ -38,8 +39,9 @@
       -0.1361597728729248,
       0.06271391451358796
     ],
-    "stanceSpeed": 6.013797182589769,
-    "shoulderMotion": "Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved"
+    "shoulderMotion": "Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved",
+    "armCarriage": "Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved",
+    "stanceSpeed": 6.013797182589769
   },
   "Sit": {
     "source": "Sitting_Idle_Loop",

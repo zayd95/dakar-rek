@@ -1,0 +1,20 @@
+{
+  "Jog": {
+    "sagittalDifferenceDegrees": 0.0034123243746418375,
+    "elbowBendDifferenceDegrees": 0.00006504380475169392,
+    "shoulderAndLegPositionDifference": 0,
+    "outwardRange": [
+      18.015815585961835,
+      21.183257607347894
+    ]
+  },
+  "Run": {
+    "sagittalDifferenceDegrees": 0.012390976973094207,
+    "elbowBendDifferenceDegrees": 0.00006380862414053981,
+    "shoulderAndLegPositionDifference": 0,
+    "outwardRange": [
+      12.738399248516092,
+      21.68994011972112
+    ]
+  }
+}

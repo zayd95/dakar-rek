@@ -105,7 +105,7 @@ front, side and back views against the actual deformed mesh, and use the real to
 The source mannequin's clavicle directions lifted this human rig's shoulders roughly 14–16 cm above
 its relaxed walking pose, hiding the neck. Walking, jogging and sprinting now use the authored sloping
 shoulders with 25% of the captured local shoulder articulation relative to the moving torso. The arms
-still swing: sampled upper-arm directions differ by less than 0.003° from the licensed motion, while
+still swing: that shoulder-only refinement kept upper-arm directions within 0.003° of the licensed motion, while
 leg-joint paths are identical. Geometry, rig and skin weights are unchanged.
 
 Matched mobile camera, motion phases and morning lighting; before is `76eb239`.
@@ -118,6 +118,24 @@ Matched mobile camera, motion phases and morning lighting; before is `76eb239`.
 [Portrait/landscape three-gait checks](screenshots/reference-character/shoulders/after/results.json)
 include four phase captures per gait. A full-cycle exported-joint regression checks relaxed shoulder
 height and continuing arm swing for walk, jog and sprint.
+
+### Closer arm carriage in jog and sprint
+
+The mannequin capture held the jogging upper arms 36–42° out from the torso. This refinement halves
+that outward angle, rotating each complete arm chain together. Jogging now measures about 18–21°,
+and sprinting about 13–22°. Forward/back swing differs by less than 0.02° and elbow bend by less than
+0.001°; shoulder and leg joint paths are unchanged. The arms keep their captured timing and wrist/finger
+motion. Walking retains the previous shoulder fix.
+
+Matched phone camera and gait phase; before is `2984e9d`.
+
+| Previous arm carriage | Closer arm carriage |
+| --- | --- |
+| ![Wide jog arms](screenshots/reference-character/shoulders/after/portrait-jog-0.png) | ![Closer jog arms](screenshots/reference-character/arm-carriage/after/portrait-jog-0.png) |
+| ![Wide sprint arms](screenshots/reference-character/shoulders/after/landscape-sprint-2.png) | ![Closer sprint arms](screenshots/reference-character/arm-carriage/after/landscape-sprint-2.png) |
+
+[Both-layout shoulder/arm checks](screenshots/reference-character/arm-carriage/after/results.json) ·
+[Measured motion preservation](screenshots/reference-character/arm-carriage/preservation.json).
 
 ## Asset and motion
 
@@ -145,7 +163,7 @@ The preview profile retains nickname editing but offers no appearance swatches o
 
 ## Verification
 
-- Full suite: **1,400 passed, 2 skipped**, including eleven actual GLB/runtime checks for skin weights,
+- Full suite: **1,401 passed, 2 skipped**, including twelve actual GLB/runtime checks for skin weights,
   individual finger joints, asset limits, moving clips, idle-loop closure, contact, bench fitting, cadence,
   both hands' lap contact/fabric clearance, mirrored leg stepping, relaxed locomotion shoulders with
   retained arm swing, and one-shot playback.

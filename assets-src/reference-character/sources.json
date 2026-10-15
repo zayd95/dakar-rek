@@ -36,7 +36,7 @@
     "sourceUrl": "https://quaternius.itch.io/universal-animation-library",
     "archiveSha256": "cc73fc4e495b82958207316596317a3f40b9fa38065bde1027937452da537724",
     "gltfSha256": "69591853d817488edaa8fd9bf8fc1d821eaeaf789f8627b3cd23b41c4ed67997",
-    "adaptations": "Retargeted directions/rest rolls, measured stride/contact; seated arm IK with palms on thighs and lifted sit/stand hand trajectory. Sit/stand root height follows measured shoe-sole contact instead of an estimated pelvis offset. Locomotion clavicles calibrated to the authored relaxed rest, retaining 25% of captured local articulation relative to the animated torso; captured arm swing preserved."
+    "adaptations": "Retargeted directions/rest rolls, measured stride/contact; seated arm IK with palms on thighs and lifted sit/stand hand trajectory. Sit/stand root height follows measured shoe-sole contact instead of an estimated pelvis offset. Locomotion clavicles calibrated to the authored relaxed rest, retaining 25% of captured local articulation relative to the animated torso; captured arm swing preserved. Jog/sprint outward upper-arm angle halved in the animated torso frame; whole-limb rotation preserves sagittal swing and elbow/wrist/finger articulation."
   },
   "capture": {
     "sourceUrl": "https://mocap.cs.cmu.edu/",
@@ -53,7 +53,7 @@
   },
   "output": {
     "file": "public/assets/reference_character.glb",
-    "sha256": "4176e17bbe8a68c79aa57206c3e6c9a75c75813a54c1e7c7bf8eb8e65bfcb469",
-    "bytes": 2001612
+    "sha256": "f02149bae8b2e701dbce5bc2bd58a7ab4e017acc1edbc6bc4f0130cb9fc8aac6",
+    "bytes": 2001468
   }
 }

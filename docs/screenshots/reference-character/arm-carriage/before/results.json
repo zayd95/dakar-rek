@@ -1,0 +1,82 @@
+[
+  {
+    "view": "portrait",
+    "ok": true,
+    "rows": [
+      {
+        "label": "walk",
+        "clip": "Walk",
+        "minimum": -0.1385619665230089,
+        "maximum": -0.10472791269642023,
+        "outwardMinimum": 13.705522738562507,
+        "outwardMaximum": 20.467411123236126,
+        "allClips": [
+          "Walk"
+        ]
+      },
+      {
+        "label": "jog",
+        "clip": "Jog",
+        "minimum": -0.15317452978226354,
+        "maximum": -0.06687043964509876,
+        "outwardMinimum": 36.016661856148794,
+        "outwardMaximum": 42.36248707310276,
+        "allClips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "sprint",
+        "clip": "Run",
+        "minimum": -0.1552442282628408,
+        "maximum": -0.05073436839194434,
+        "outwardMinimum": 25.38996881374889,
+        "outwardMaximum": 43.37821591824724,
+        "allClips": [
+          "Run"
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "view": "landscape",
+    "ok": true,
+    "rows": [
+      {
+        "label": "walk",
+        "clip": "Walk",
+        "minimum": -0.1385619665230089,
+        "maximum": -0.10472791269642023,
+        "outwardMinimum": 13.705522738562507,
+        "outwardMaximum": 20.467411123236126,
+        "allClips": [
+          "Walk"
+        ]
+      },
+      {
+        "label": "jog",
+        "clip": "Jog",
+        "minimum": -0.15317452978226354,
+        "maximum": -0.06687043964509876,
+        "outwardMinimum": 36.016661856148794,
+        "outwardMaximum": 42.36248707310276,
+        "allClips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "sprint",
+        "clip": "Run",
+        "minimum": -0.1552442282628408,
+        "maximum": -0.05073436839194434,
+        "outwardMinimum": 25.38996881374889,
+        "outwardMaximum": 43.37821591824724,
+        "allClips": [
+          "Run"
+        ]
+      }
+    ],
+    "errors": []
+  }
+]

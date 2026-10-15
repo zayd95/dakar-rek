@@ -41,6 +41,9 @@ Walking, jogging and sprinting calibrate the mannequin's near-horizontal clavicl
 relaxed sloping shoulders. A quarter of the source's local shoulder articulation is retained relative
 to the animated torso, so lean/twist is inherited once. Captured upper-arm swing and all leg/root
 tracks are preserved; this removes the permanent shrug without freezing the arms.
+Jog/sprint also halve the captured outward arm angle in the moving torso frame. The whole arm chain
+rotates together, keeping forward/back swing, elbow bend, wrist rotation and finger articulation.
+Walking and the relaxed shoulder correction retain their previous motion.
 Sole contact is measured from the actual shoe vertices, with bounded running flight and
 5 mm interpolation clearance. A two-bone solve adapts the source's ankle paths to this anatomy while
 preserving its knee bend plane, foot orientation and phase (walk ×1.35, jog ×0.48, sprint ×0.65).

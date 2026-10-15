@@ -5,10 +5,12 @@ import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { Humanoid } from '../src/actors/humanoid';
 
 const bytes = readFileSync(new URL('../public/assets/reference_character.glb', import.meta.url));
-let gltf: GLTF, mesh: THREE.SkinnedMesh;
+let gltf: GLTF, mesh: THREE.SkinnedMesh, restTorso: THREE.Quaternion;
 beforeAll(async () => {
   gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer, '');
   gltf.scene.traverse(o => { if ((o as THREE.SkinnedMesh).isSkinnedMesh) mesh = o as THREE.SkinnedMesh; });
+  gltf.scene.updateMatrixWorld(true);
+  restTorso = gltf.scene.getObjectByName('mixamorigSpine2')!.getWorldQuaternion(new THREE.Quaternion());
 });
 const clip = (name: string) => gltf.animations.find(a => a.name === name)!;
 const soles = () => {
@@ -59,6 +61,27 @@ describe('reference candidate: exported geometry and rig', () => {
 });
 
 describe('reference candidate: retargeted contact and motion', () => {
+  it('keeps jog/sprint arms near the torso without losing the forward/back swing', () => {
+    for (const name of ['Jog', 'Run']) {
+      const mixer = new THREE.AnimationMixer(gltf.scene), action = mixer.clipAction(clip(name));
+      action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = true; action.play();
+      const swings: Record<string, number[]> = { Left: [], Right: [] };
+      for (let i = 0; i <= 80; i++) {
+        mixer.setTime(clip(name).duration * i / 80); gltf.scene.updateMatrixWorld(true);
+        const upright = restTorso.clone().multiply(gltf.scene.getObjectByName('mixamorigSpine2')!.getWorldQuaternion(new THREE.Quaternion()).invert());
+        for (const [side, sign] of [['Left', 1], ['Right', -1]] as const) {
+          const point = (part: string) => gltf.scene.getObjectByName(`mixamorig${side}${part}`)!.getWorldPosition(new THREE.Vector3());
+          const direction = point('ForeArm').sub(point('Arm')).normalize().applyQuaternion(upright);
+          const outward = THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(direction.x * sign, -1, 1)));
+          expect(outward, `${name} ${side}: flared arm`).toBeLessThan(25);
+          expect(outward, `${name} ${side}: arm crossing torso`).toBeGreaterThan(3);
+          swings[side].push(Math.atan2(direction.z, -direction.y));
+        }
+      }
+      for (const values of Object.values(swings)) expect(Math.max(...values) - Math.min(...values)).toBeGreaterThan(.4);
+      mixer.stopAllAction(); mixer.uncacheRoot(gltf.scene);
+    }
+  });
   it('keeps locomotion shoulders below the neck while retaining arm swing through the whole cycle', () => {
     for (const name of ['Walk', 'Jog', 'Run']) {
       const mixer = new THREE.AnimationMixer(gltf.scene), action = mixer.clipAction(clip(name));

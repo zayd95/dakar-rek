@@ -1,7 +1,7 @@
 // Real locomotion on touch layouts: shoulder posture and matched quarter-cycle captures.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-const args=process.argv.slice(2),before=args.includes('--before');
+const args=process.argv.slice(2),before=args.includes('--before'),armBaseline=args.includes('--arm-baseline');
 const [base='http://127.0.0.1:4174/',out='/private/tmp/dakar-reference-shoulders']=args.filter(a=>!a.startsWith('--'));
 fs.mkdirSync(out,{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
@@ -20,13 +20,19 @@ try {
       await page.keyboard.down('KeyW');
       await page.evaluate(()=>window.__dakar.step(1/60,90));
       const samples=await page.evaluate(()=>{
-        const d=window.__dakar,b=d.body(),rows=[];
+        const d=window.__dakar,b=d.body(),rows=[];let mesh;b.group.traverse(o=>{if(o.isSkinnedMesh)mesh=o;});
+        const torso=b.group.getObjectByName('mixamorigSpine2'),restMatrix=mesh.skeleton.boneInverses[mesh.skeleton.bones.indexOf(torso)].clone().invert(),restTorso=torso.quaternion.clone();
+        restMatrix.decompose(b.group.position.clone(),restTorso,b.group.scale.clone());
         for(let i=0;i<100;i++) {
           d.step(1/120,1);b.group.updateMatrixWorld(true);
           const row={clip:d.clip(),time:d.motion().time};
+          const upright=restTorso.clone().multiply(torso.getWorldQuaternion(torso.quaternion.clone()).invert());
           for(const side of ['Left','Right']) {
             const shoulder=b.group.getObjectByName('mixamorig'+side+'Shoulder'),arm=b.group.getObjectByName('mixamorig'+side+'Arm');
             const p=b.group.position.clone(),q=p.clone();shoulder.getWorldPosition(p);arm.getWorldPosition(q);row[side]=q.y-p.y;
+            const elbow=b.group.getObjectByName('mixamorig'+side+'ForeArm').getWorldPosition(p.clone());
+            const direction=elbow.sub(q).normalize().applyQuaternion(upright);
+            row[side+'Outward']=Math.asin(Math.max(-1,Math.min(1,direction.x*(side==='Left'?1:-1))))*180/Math.PI;
           }
           rows.push(row);
         }
@@ -38,9 +44,9 @@ try {
         await page.screenshot({path:`${out}/${view}-${label}-${phase}.png`});
       }
       await page.keyboard.up('KeyW');await page.evaluate(()=>window.__dakar.step(1/60,120));
-      rows.push({label,clip,minimum:Math.min(...samples.flatMap(r=>[r.Left,r.Right])),maximum:Math.max(...samples.flatMap(r=>[r.Left,r.Right])),allClips:[...new Set(samples.map(r=>r.clip))]});
+      rows.push({label,clip,minimum:Math.min(...samples.flatMap(r=>[r.Left,r.Right])),maximum:Math.max(...samples.flatMap(r=>[r.Left,r.Right])),outwardMinimum:Math.min(...samples.flatMap(r=>[r.LeftOutward,r.RightOutward])),outwardMaximum:Math.max(...samples.flatMap(r=>[r.LeftOutward,r.RightOutward])),allClips:[...new Set(samples.map(r=>r.clip))]});
     }
-    const ok=rows.every(r=>r.allClips.length===1&&r.allClips[0]===r.clip&&(before?r.maximum>0:r.maximum<-.04&&r.minimum>-.18))&&!errors.length;
+    const ok=rows.every(r=>r.allClips.length===1&&r.allClips[0]===r.clip&&(before?r.maximum>0:r.maximum<-.04&&r.minimum>-.18)&&(before||r.label==='walk'||(armBaseline?r.outwardMaximum>30:r.outwardMaximum<25&&r.outwardMinimum>3)))&&!errors.length;
     results.push({view,ok,rows,errors});console.log(JSON.stringify(results.at(-1)));await c.close();
   }
 }finally{await browser.close();}

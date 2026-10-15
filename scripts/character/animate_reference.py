@@ -95,7 +95,7 @@ for name,source_name in clips.items():
         at=float(start)+f/frames*(end-start)
         scene.frame_set(math.floor(at),subframe=at%1)
         yawfix=heading_fix(source,aln,'LeftUpLeg','RightUpLeg','Spine','Hips') if captured else Quaternion()
-        desired={}
+        desired={}; arm_carry={}
         for b in parents:
             pb=tgt.pose.bones[b.name]; sn=map_.get(b.name.split(':')[-1]); sp=source.pose.bones.get(sn) if sn else None
             if sp and b.name in corr:
@@ -104,6 +104,22 @@ for name,source_name in clips.items():
             if f==0: initial_world[b.name]=world.copy()
             captured_delta=world@initial_world[b.name].inverted()
             short=b.name.split(':')[-1]
+            if name in ('Jog','Run'):
+                side='Left' if short.startswith('Left') else 'Right' if short.startswith('Right') else None
+                if short in ('LeftArm','RightArm'):
+                    # Bring the mannequin's flared arm plane toward this human's torso.
+                    # Keep sagittal swing and rotate the entire limb together, preserving
+                    # captured elbow bend, wrist orientation and finger articulation.
+                    spine=tgt.data.bones['mixamorig:Spine2']
+                    torso=desired[spine.name]@spine.matrix_local.to_quaternion().inverted()
+                    direction=torso.inverted()@(world@Vector((0,1,0)))
+                    sign=1 if side=='Left' else -1
+                    angle=math.asin(max(-1,min(1,direction.x*sign)))
+                    sagittal=Vector((0,direction.y,direction.z)).normalized()
+                    wanted=sagittal*math.cos(angle*.5)+Vector((sign*math.sin(angle*.5),0,0))
+                    arm_carry[side]=(torso@direction).rotation_difference(torso@wanted)
+                if side in arm_carry and (short.endswith('Arm') or 'Hand' in short):
+                    world=arm_carry[side]@world
             if name in ('Walk','Jog','Run') and short in ('LeftShoulder','RightShoulder'):
                 # The source mannequin's near-horizontal clavicles become a permanent shrug on
                 # this sloping human shoulder girdle. Retarget local motion onto the authored
@@ -280,6 +296,7 @@ for name,source_name in clips.items():
     report[name]={'source':'CMU 18_08 frames 130–490 (relaxed-pose adaptation, closed loop)' if idle else 'CMU 13_26 frames 977–1121 (quarter turn)' if turning else source_name,'duration':duration,'frames':frames+1,'hipRange':[min(hipheights),max(hipheights)]}
     if name in ('Walk','Jog','Run'):
         report[name]['shoulderMotion']='Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved'
+        if name in ('Jog','Run'): report[name]['armCarriage']='Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved'
         from statistics import median
         floor=min(c['bottom']+d for c,d in zip(contacts,hipheights)); velocities=[]
         for a,b,da,db in zip(contacts,contacts[1:],hipheights,hipheights[1:]):
