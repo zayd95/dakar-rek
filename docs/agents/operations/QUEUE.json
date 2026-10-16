@@ -1846,5 +1846,17 @@
     "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
     "note": "Proposal, not dispatch or file reservation; no automatic implementation",
     "lastReconciledAt": "2026-10-16T21:34:27Z"
+  },
+  "registryWriter": {
+    "token": "audit-20261016T2227Z-watch",
+    "owner": "producer_audit_2227",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "6305cb2795beb920a7951982d1bd44947342cb84",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-16-2227-WATCH.md"
+    ],
+    "acquiredAt": "2026-10-16T22:27:15Z"
   }
 }
