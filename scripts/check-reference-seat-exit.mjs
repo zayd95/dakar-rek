@@ -23,7 +23,8 @@ try {
         d.body().group.updateMatrixWorld(true);mesh.skeleton.update();const point=d.body().group.position.clone();let sole=Infinity;for(const v of ids){mesh.getVertexPosition(v,point);point.applyMatrix4(mesh.matrixWorld);sole=Math.min(sole,point.y);}
         rows.push({frame:i+1,sole,pos:d.pos(),clip:d.clip(),time:d.motion().time,seated:d.seated(),occupant:d.seatsHere().find(s=>s.id===id)?.occupant});
       }
-      return{before,rows};
+      const end=rows.at(-1).pos,floor=.5-d.sightline([end.x,.5,end.z],[end.x,-.3,end.z],true).hit;
+      return{before,rows,floor};
     });
     // Replay only for the matched captures; assertions above use every frame of the actual exit.
     await sit();await page.evaluate(()=>{window.__dakar.stand();window.__dakar.step(1/60,1);window.__dakar.render();});
@@ -44,9 +45,9 @@ try {
     await sit();
     const travel=await page.evaluate(()=>{const d=window.__dakar;d.stand();d.step(1/60,15);d.teleport('corniche',0,0,0);d.step(1/60,120);return{hub:d.pos().hub,seated:d.seated(),clip:d.clip()};});
     const points=[trajectory.before,...trajectory.rows.map(r=>r.pos)],steps=points.slice(1).map((p,i)=>Math.hypot(p.x-points[i].x,p.z-points[i].z));
-    const start=trajectory.rows[0],middle=trajectory.rows[25],end=trajectory.rows.at(-1),maxStep=Math.max(...steps),maxGroundError=Math.max(...trajectory.rows.slice(12).map(r=>Math.abs(r.sole-.14))); // selected city bench is on the 140 mm block slab
+    const start=trajectory.rows[0],middle=trajectory.rows[25],end=trajectory.rows.at(-1),maxStep=Math.max(...steps),maxGroundError=Math.max(...trajectory.rows.slice(12).map(r=>Math.abs(r.sole-trajectory.floor)));
     const ok=start.seated===id&&start.occupant==='player'&&start.clip==='SitExit'&&steps[0]<.01&&maxStep<.04&&maxGroundError<.012&&middle.clip==='SitExit'&&middle.seated===id&&trajectory.rows[21].time>trajectory.rows[19].time&&end.seated===null&&end.occupant===null&&end.clip==='Idle'&&trajectory.rows.slice(63).every(r=>r.clip==='Idle')&&interrupt.firstFrameSeated===null&&interrupt.seated===null&&interrupt.occupant===null&&interrupt.clip==='Walk'&&travel.hub==='corniche'&&travel.seated===null&&travel.clip==='Idle'&&!errors.length;
-    results.push({view,ok,firstStep:steps[0],maxStep,maxGroundError,postRiseClips:[...new Set(trajectory.rows.slice(63).map(r=>r.clip))],worstGround:trajectory.rows.slice(12).sort((a,b)=>Math.abs(b.sole-.14)-Math.abs(a.sole-.14))[0],start,middle,end,interrupt,travel,errors});
+    results.push({view,ok,firstStep:steps[0],maxStep,floor:trajectory.floor,maxGroundError,postRiseClips:[...new Set(trajectory.rows.slice(63).map(r=>r.clip))],worstGround:trajectory.rows.slice(12).sort((a,b)=>Math.abs(b.sole-trajectory.floor)-Math.abs(a.sole-trajectory.floor))[0],start,middle,end,interrupt,travel,errors});
     console.log(JSON.stringify(results.at(-1)));await c.close();
   }
 }finally{await browser.close();}

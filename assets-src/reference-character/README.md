@@ -50,7 +50,9 @@ preserving its knee bend plane, foot orientation and phase (walk ×1.35, jog ×0
 Ground-speed retiming uses median backward sole speed during stance; the bake writes these measured
 values to `src/actors/referenceMotion.json`, so runtime timing stays synchronized with the asset.
 In the game, the reference body aligns that contact level with roads, sidewalks, block slabs and the
-interior floor; raised paths use the existing `heightAt` data. Seated bodies retain the seat's origin.
+interior floor. A cache of visible low ground triangles handles sidewalk overlaps, curbs and sand;
+raised paths keep the existing `heightAt` data. This changes the reference render origin, with no new
+runtime skinning or scene raycasts. Seated bodies retain the seat's origin.
 
 The legacy seat contract is butt contact at 0.48 m above the origin. This anatomy needs its pelvis at
 0.62 m for that contact, rather than putting the pelvis itself at 0.48 m. Sit transitions are one-shot;
@@ -66,7 +68,8 @@ Hands settle palm-down on the trousers. Entry/exit blend the fit and lift the ha
 fingertips clear the fabric. Exported skin-to-trouser clearance is tested through all three clips;
 this remains an adaptation of the licensed Quaternius capture, not a new capture source.
 Sit/stand root height now uses measured sole contact at 40 mm above the local origin, matching the
-bench's 100 mm origin and 140 mm ground. This replaces the estimated pelvis offsets that lifted the
+authoring bench's 100 mm origin and 140 mm calibration plane. Runtime rises end at the measured
+street surface. This replaces the estimated pelvis offsets that lifted the
 feet during the transition. The game eases ordinary seat exits toward the existing collision-safe
 stand spot over the exported clip duration, holding the seat until completion. Movement interrupts
 on its first frame; repeated stand taps do not restart the clip, and travel clears the pending rise.

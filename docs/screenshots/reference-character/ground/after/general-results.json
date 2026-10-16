@@ -1,0 +1,194 @@
+[
+  {
+    "view": "portrait",
+    "ground": [
+      {
+        "z": -60,
+        "floor": 0.08500000089406967,
+        "sole": 0.08500010207183967,
+        "error": 1.0117776999551964e-7
+      },
+      {
+        "z": -66,
+        "floor": 0.10999999940395355,
+        "sole": 0.11000016931594399,
+        "error": 1.699119904358115e-7
+      },
+      {
+        "z": -68,
+        "floor": 0.14000000059604645,
+        "sole": 0.1399999433319179,
+        "error": -5.726412855011631e-8
+      },
+      {
+        "z": -72,
+        "floor": 0.15000000596046448,
+        "sole": 0.14999988737193246,
+        "error": -1.185885320220681e-7
+      }
+    ]
+  },
+  {
+    "view": "portrait",
+    "touch": {
+      "distance": 2.7000228532043735,
+      "clip": "Walk",
+      "stopped": "Idle"
+    }
+  },
+  {
+    "view": "portrait",
+    "label": "walk",
+    "clip": "Walk",
+    "speed": 1.9998476453039082,
+    "motion": {
+      "clip": "Walk",
+      "duration": 1.350000023841858,
+      "timeScale": 1.5199811772225722,
+      "time": 0.6228181308858219
+    }
+  },
+  {
+    "view": "portrait",
+    "label": "jog",
+    "clip": "Jog",
+    "speed": 4.199680055138208,
+    "motion": {
+      "clip": "Jog",
+      "duration": 0.949999988079071,
+      "timeScale": 1.3179411636378833,
+      "time": 0.6792535572624843
+    }
+  },
+  {
+    "view": "portrait",
+    "label": "sprint",
+    "clip": "Run",
+    "speed": 6.9994667585636785,
+    "motion": {
+      "clip": "Run",
+      "duration": 0.6833333373069763,
+      "timeScale": 1.1638542452593985,
+      "time": 0.00521854258172183
+    }
+  },
+  {
+    "view": "portrait",
+    "turning": {
+      "left": "TurnLeft",
+      "right": "TurnRight"
+    },
+    "seat": {
+      "id": "pikine:bench:16:0",
+      "top": 0.58,
+      "clip": "Sit"
+    },
+    "metrics": {
+      "meshes": 1,
+      "vertices": 19936,
+      "bones": 52,
+      "clip": "Sit",
+      "clock": "Pikine · Guédiawaye · Parcelles☀️ Samedi · 09:00Gala ce soir",
+      "calls": 39,
+      "quiet": []
+    },
+    "fixedProfile": true,
+    "errors": []
+  },
+  {
+    "view": "landscape",
+    "ground": [
+      {
+        "z": -60,
+        "floor": 0.08500000089406967,
+        "sole": 0.08499990476662239,
+        "error": -9.612744727993672e-8
+      },
+      {
+        "z": -66,
+        "floor": 0.10999999940395355,
+        "sole": 0.10999988457860777,
+        "error": -1.1482534578721726e-7
+      },
+      {
+        "z": -68,
+        "floor": 0.14000000059604645,
+        "sole": 0.13999945365074,
+        "error": -5.469453064343988e-7
+      },
+      {
+        "z": -72,
+        "floor": 0.15000000596046448,
+        "sole": 0.15000006552192474,
+        "error": 5.9561460263868327e-8
+      }
+    ]
+  },
+  {
+    "view": "landscape",
+    "touch": {
+      "distance": 2.7000228532043735,
+      "clip": "Walk",
+      "stopped": "Idle"
+    }
+  },
+  {
+    "view": "landscape",
+    "label": "walk",
+    "clip": "Walk",
+    "speed": 1.9998476453039082,
+    "motion": {
+      "clip": "Walk",
+      "duration": 1.350000023841858,
+      "timeScale": 1.5199811772225722,
+      "time": 0.6228181308858219
+    }
+  },
+  {
+    "view": "landscape",
+    "label": "jog",
+    "clip": "Jog",
+    "speed": 4.199680055138208,
+    "motion": {
+      "clip": "Jog",
+      "duration": 0.949999988079071,
+      "timeScale": 1.3179411636378833,
+      "time": 0.6792535572624843
+    }
+  },
+  {
+    "view": "landscape",
+    "label": "sprint",
+    "clip": "Run",
+    "speed": 6.9994667585636785,
+    "motion": {
+      "clip": "Run",
+      "duration": 0.6833333373069763,
+      "timeScale": 1.1638542452593985,
+      "time": 0.00521854258172183
+    }
+  },
+  {
+    "view": "landscape",
+    "turning": {
+      "left": "TurnLeft",
+      "right": "TurnRight"
+    },
+    "seat": {
+      "id": "pikine:bench:16:0",
+      "top": 0.58,
+      "clip": "Sit"
+    },
+    "metrics": {
+      "meshes": 1,
+      "vertices": 19936,
+      "bones": 52,
+      "clip": "Sit",
+      "clock": "Pikine · Guédiawaye · Parcelles☀️ Samedi · 09:00Gala ce soir",
+      "calls": 89,
+      "quiet": []
+    },
+    "fixedProfile": true,
+    "errors": []
+  }
+]

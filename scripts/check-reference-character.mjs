@@ -22,8 +22,9 @@ try {
         const d=window.__dakar,b=d.body();let mesh;b.group.traverse(o=>{if(o.isSkinnedMesh)mesh=o;});
         const ids=[],attr=mesh.geometry.attributes.position;for(let i=0;i<attr.count;i++)if(attr.getY(i)<.014)ids.push(i);
         const rows=[];
-        for(const [z,floor] of [[-66,.08],[-68,.12],[-72,.14]]){
+        for(const z of [-60,-66,-68,-72]){
           d.place(-42,z,Math.PI/2);d.step(1/60,120);b.group.updateMatrixWorld(true);mesh.skeleton.update();
+          const floor=.5-d.sightline([-42,.5,z],[-42,-.3,z],true).hit;
           const point=b.group.position.clone();let sole=Infinity;
           for(const i of ids){mesh.getVertexPosition(i,point);point.applyMatrix4(mesh.matrixWorld);sole=Math.min(sole,point.y);}
           rows.push({z,floor,sole,error:sole-floor});

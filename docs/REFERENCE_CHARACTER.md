@@ -178,6 +178,27 @@ Matched mobile camera and front/rear input sequence; before is `951d9ae`.
 [General mobile checks](screenshots/reference-character/transitions/after/general-results.json) ·
 [Bench exit checks](screenshots/reference-character/transitions/after/seat-results.json).
 
+### Shoes on the rendered street
+
+The earlier road-grid estimate placed the soles 3 cm below a sidewalk and about 7 cm below a sand drift.
+The reference player's height now uses the visible low ground triangles, cached once per hub in 8 m cells.
+This includes overlapping sidewalk slabs, curb stones, paint and sand. Point queries reuse that cache;
+raised paths retain their existing height data. Physics, collision, model geometry and baked motion are unchanged.
+
+The comparison uses pinned `a918c05`, with only a read-only visibility-aware measurement added to its debug
+probe. Both versions use the same location, camera, pose and daylight. Ground checks independently raycast
+visible geometry; the old checks compared the soles with guessed heights and missed this mismatch.
+
+| Previous contact | Rendered-ground contact |
+| --- | --- |
+| ![Sunken sneakers](screenshots/reference-character/ground/before/portrait-sand-shoes.png) | ![Sneakers on sand](screenshots/reference-character/ground/after/portrait-sand-shoes.png) |
+| ![Before body](screenshots/reference-character/ground/before/portrait-sidewalk-body.png) | ![Grounded body](screenshots/reference-character/ground/after/portrait-sidewalk-body.png) |
+
+[Before measurements](screenshots/reference-character/ground/before/results.json) ·
+[Both-orientation rendered-ground checks](screenshots/reference-character/ground/after/results.json) ·
+[General mobile checks](screenshots/reference-character/ground/after/general-results.json) ·
+[Bench exit checks](screenshots/reference-character/ground/after/seat-results.json).
+
 ## Asset and motion
 
 The source is fresh licensed MakeHuman anatomy, a fitted CC0 garment, new authored hair/face details,
@@ -204,23 +225,24 @@ The preview profile retains nickname editing but offers no appearance swatches o
 
 ## Verification
 
-- Full suite: **1,403 passed, 2 skipped**, including fourteen actual GLB/runtime checks for skin weights,
+- Full suite: **1,406 passed, 2 skipped**, including fourteen actual GLB/runtime checks for skin weights,
   individual finger joints, asset limits, moving clips, idle-loop closure, contact, bench fitting, cadence,
   both hands' lap contact/fabric clearance, mirrored leg stepping, relaxed locomotion shoulders with
-  retained arm swing, bounded full-cycle chest/shoulder motion, interrupted/reversed fade continuity, and one-shot playback.
+  retained arm swing, bounded full-cycle chest/shoulder motion, interrupted/reversed fade continuity, and one-shot playback. Three additional ground-index tests cover
+  overlapping surfaces, transformed slopes, visibility, bounds and cache reuse.
 - Sit/stand sole contact stays within 7 mm of its calibrated plane. Dedicated mobile checks cover
   every frame of a complete bench exit, seat ownership/release, repeated taps, first-frame touch
-  interruption and travel cleanup in both orientations. Actual blended shoe contact stays within
-  1.2 cm of the ground (measured maximum about 9.7 mm); a completed rise returns directly to idle.
+  interruption and travel cleanup in both orientations. After the initial 0.2 s lift-off blend, shoe contact stays within
+  1.2 cm of independently measured rendered ground (maximum about 1 cm); a completed rise returns directly to idle.
 - Client build and server typecheck passed; the existing large JS chunk warning remains.
 - Label refinement: 27 targeted character/UI/quiet-screen tests passed. Portrait and landscape browser
   checks confirm no visible label/body overlap, readable side labels, working touch seating and no page errors.
 - Real game in Chrome mobile emulation, 390×844 and 844×390: one active 52-bone player, joystick
   movement and cancellation, walk/jog/sprint, automatic left/right turns, actual bench seating, fixed-look profile and clear
-  central HUD; no page errors. Standing soles match 0.08 / 0.12 / 0.14 m road/sidewalk/block surfaces.
+  central HUD; no page errors. Standing soles are checked against independently raycast visible road/sidewalk/curb/block/sand surfaces.
 - Low gala check: **11/11 passed**, including proof that the reference player is active. Existing budgets
-  remain 180 draw calls / 4 ms JS update / 0.8 ms crowd update. Latest measured peaks: 116 calls,
-  0.46 ms JS and 0.079 ms crowd update. [Measurement](perf/reference-character-low.json).
+  remain 180 draw calls / 4 ms JS update / 0.8 ms crowd update. Latest measured peaks: 119 calls,
+  0.53 ms JS and 0.068 ms crowd update. [Measurement](perf/reference-character-low.json).
 
 ```sh
 npm test
@@ -230,6 +252,7 @@ CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0
 CHROMIUM=/path/to/chrome node scripts/check-reference-seat-exit.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/stand-up
 CHROMIUM=/path/to/chrome node scripts/check-reference-prompts.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/prompts/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-shoulders.mjs http://127.0.0.1:4174/ /private/tmp/reference-shoulders-current
+CHROMIUM=/path/to/chrome node scripts/check-reference-ground.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/ground/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-transitions.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/transitions/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-torso.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/calm-torso/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4175/ docs/screenshots/reference-character/before --baseline

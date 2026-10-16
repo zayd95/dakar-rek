@@ -84,14 +84,6 @@ function disposeGroup(g: THREE.Object3D) {
 const G = 0.12;
 const SIDEWALK = 2; // m of sidewalk between the carriageway and the block edge
 
-/** Rendered base surface for the reference player's sole alignment; raised paths use heightAt. */
-export function citySurfaceAt(x: number, z: number): number {
-  if (Math.abs(x) > HALF || Math.abs(z) > HALF) return -.02;
-  const nearRoad = (v: number) => Math.abs(v - (roadC(0) + Math.round((v - roadC(0)) / PITCH) * PITCH));
-  const distance = Math.min(nearRoad(x), nearRoad(z));
-  return distance < ROAD / 2 ? .08 : distance < ROAD / 2 + SIDEWALK ? G : G + .02;
-}
-
 const shade = (c: number, k: number) => new THREE.Color(c).multiplyScalar(k).getHex();
 
 /** Cylinder from point A to point B (radii r0 at A, r1 at B): limbs and leaning members built from primitives. */

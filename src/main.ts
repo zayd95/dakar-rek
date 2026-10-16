@@ -7,7 +7,8 @@ import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
-import { HALF, buildHub, hubLayout, citySurfaceAt } from './world/builder';
+import { HALF, buildHub, hubLayout } from './world/builder';
+import { groundSurfaceAt } from './world/groundSurface';
 import { Sky } from './world/sky';
 import { setGrainEnabled } from './world/grain';
 import { buildInterior, disposeInterior, setInteriorDaylight, type Interior } from './world/interiors';
@@ -147,6 +148,7 @@ const pos = new THREE.Vector3();
 const tmpV = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
+let referenceSurface: ReturnType<typeof groundSurfaceAt> | null = null;
 let destination: { id: string; hub: HubId } | null = null;
 let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, life: MonumentLife | null = null;
 let apprentices: Apprentice[] = [];
@@ -269,6 +271,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   setRestSpot(restSpot(world.interactables, homeHub() === id ? 'ta chambre' : null));
   places.clear(); people.clear();
   for (const m of MODULES) m.hubLoaded?.(ctx, world);
+  referenceSurface = REFERENCE_CHARACTER ? groundSurfaceAt(world.group, world.bounds) : null;
   const p = resumeSpot(at, world.bounds, world.spawn);                  // a spot outside this hub (an old save, a bad teleport): its spawn
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
   follow.snapBehind(facing);
@@ -1180,7 +1183,9 @@ function frameStep(now: number, dt: number, draw = true) {
       playerBody.group.visible = true; playerBody.group.position.copy(pos);
       if (REFERENCE_CHARACTER && (!seated || referenceRise)) {
         const raised = pos.y - .1;
-        const surface = inside ? .1 : raised > .001 ? raised : citySurfaceAt(pos.x, pos.z);
+        // A rising player's origin can still be inside the bench's low supports; use its free exit.
+        const ground = inside ? .1 : referenceSurface?.(referenceRise?.to.x ?? pos.x, referenceRise?.to.z ?? pos.z) ?? 0;
+        const surface = !inside && raised > .001 ? Math.max(raised, ground) : ground;
         playerBody.group.position.y = referenceRise ? THREE.MathUtils.lerp(referenceRise.from.y, surface - .035, referenceRise.blend) : surface - .035;
       }
       playerBody.group.rotation.y = facing; playerBody.animate(dt, speed);
@@ -1336,10 +1341,14 @@ if (DEBUG) {
     camInLeaves: () => !!world?.canopies?.some(t => camera.position.y > t.y0 && camera.position.y < t.y1 && Math.hypot(camera.position.x - t.x, camera.position.z - t.z) < t.r),
     sceneCrowd: () => (lambScene instanceof LambScene ? lambScene.crowdSpots() : []),
     /** Distance from a to the first world surface on the segment a→b (equals the segment length when nothing is in the way). */
-    sightline(a: [number, number, number], b: [number, number, number]) {
+    sightline(a: [number, number, number], b: [number, number, number], visibleOnly = false) {
       const A = new THREE.Vector3(...a), d = new THREE.Vector3(...b).sub(A), len = d.length();
       const rc = new THREE.Raycaster(A, d.normalize(), 0.05, len); rc.camera = camera;
-      const hit = world ? rc.intersectObject(world.group, true)[0] : undefined;
+      const hits = world ? rc.intersectObject(world.group, true) : [];
+      const hit = visibleOnly ? hits.find(h => {
+        for (let o: THREE.Object3D | null = h.object; o; o = o.parent) if (!o.visible) return false;
+        return true;
+      }) : hits[0];
       return { len, hit: hit ? hit.distance : len };
     },
     duel() { startDuel('amical', 'costaud'); },
