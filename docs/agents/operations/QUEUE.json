@@ -858,17 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-0935-FREEZE.md",
-    "checkedAt": "2026-10-16T09:37:12Z",
-    "result": "Freeze candidate unchanged; independent PR29 numerical gait fix accepted in limited scope, not whole candidate",
-    "owner": "producer_freeze_0935",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-1028-FREEZE.md",
+    "checkedAt": "2026-10-16T10:28:17Z",
+    "result": "No source/check/PR35-36 evidence change; freeze acceptance remains needs-decision; no redundant code or QA",
+    "owner": "producer_freeze_1028",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
+    "baseCommit": "912cf1f0df11ee8fa54bb48e19f5d397065b15dd",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR29-20261016-0935-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-16-0935-FREEZE.md"
+      "docs/agents/operations/CYCLE-2026-10-16-1028-FREEZE.md"
     ]
   },
   "evidenceReview": {
@@ -1646,7 +1645,7 @@
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
     "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
-    "lastReconciledAt": "2026-10-16T09:37:12Z"
+    "lastReconciledAt": "2026-10-16T10:28:17Z"
   },
   "currentRegressionReview": {
     "id": "STAB-20261016-0935-QA",
@@ -1696,17 +1695,5 @@
       },
       "targetedEvidence": "Author versioned JSON inspected, no embedded execution SHA; images/video not viewed; no independent targeted browser execution"
     }
-  },
-  "registryWriter": {
-    "token": "freeze-20261016T1028Z-watch",
-    "owner": "producer_freeze_1028",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "912cf1f0df11ee8fa54bb48e19f5d397065b15dd",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-1028-FREEZE.md"
-    ],
-    "acquiredAt": "2026-10-16T10:27:46Z"
   }
 }

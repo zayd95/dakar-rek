@@ -1,22 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-16T09:37:12Z",
+  "updatedAt": "2026-10-16T10:28:17Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "freeze-20261016T1028Z-watch",
-    "owner": "producer_freeze_1028",
-    "baseCommit": "912cf1f0df11ee8fa54bb48e19f5d397065b15dd",
-    "acquiredAt": "2026-10-16T10:27:46Z",
-    "expiresAt": "2026-10-16T10:50:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-1028-FREEZE.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -130,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-16T09:37:12Z",
+    "lastCompletedRunAt": "2026-10-16T10:28:17Z",
     "lastVerifiedAt": "2026-10-16T09:37:12Z",
     "enabled": true
   },
@@ -304,22 +293,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-0935-FREEZE.md",
-    "completedAt": "2026-10-16T09:37:12Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-1028-FREEZE.md",
+    "completedAt": "2026-10-16T10:28:17Z",
     "actualRunCompleted": true,
-    "tasks": [
-      "STAB-20261016-0935-QA"
-    ],
+    "tasks": [],
     "verifiedCandidates": [],
-    "verifiedDelta": {
-      "pr": 29,
-      "sha": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
-      "scope": "Numerical continuity of interrupted/reversed reference gait fades only; not global PR29/art/physical phone acceptance"
-    },
-    "owner": "producer_freeze_0935",
-    "reviewer": "qa_reference_0935",
+    "owner": "producer_freeze_1028",
+    "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "freeze-20261016T0935Z-qa"
+    "leaseReleased": "freeze-20261016T1028Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -581,7 +563,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-16T09:37:12Z",
+    "checkedAt": "2026-10-16T10:28:17Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -694,7 +676,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-16T09:37:12Z",
+      "checkedAt": "2026-10-16T10:28:17Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -1170,14 +1152,14 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-16T09:37:12Z",
+    "checkedAt": "2026-10-16T10:28:17Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; exact CI independently reviewed for PR29 delta; Chromium EPERM not retried",
-    "delegation": "qa_reference_0935 independent review completed",
+    "localTests": "local_not_run; unchanged exact stabilization refs and completed checks reconciled",
+    "delegation": "available; unchanged evidence, no redundant QA dispatch",
     "cloudflareAuthenticated": false
   },
   "stabilization": {
@@ -1227,6 +1209,6 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-16T09:37:12Z"
+    "lastReconciledAt": "2026-10-16T10:28:17Z"
   }
 }
