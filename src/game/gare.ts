@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { GameModule, GameCtx } from './modules';
 import { Humanoid, humanoidReady, randomLook } from '../actors/humanoid';
 import { PRAYER_TIMES, PRAYER_WINDOW } from '../venues/prayer';
+import { weatherNow } from '../city/weather';
 import type { GameState } from '../core/state';
 import type { Action, Interactable } from '../world/types';
 import { apprentiLine } from '../i18n/lines';
@@ -43,6 +44,18 @@ export function gareActions(state: () => GameState, hour: () => number) {
       label: 'Monter le colis', primitive: 'work', seconds: 6, clip: 'Grab',
       line: () => say('L’apprenti', 'Un, deux, trois… hop ! Attache bien la corde, grand !'),
       effects: { money: 1200, category: 'transport', needs: { energie: -22, hygiene: -8, faim: -7, moral: 3, social: 2 }, counters: { shifts: 1 }, flags: ['helped_gare'] } }] },
+    { id: 'sacs_pluie', label: 'Aider quelqu’un avec ses sacs', detail: 'Sous la pluie, à l’abri : +300 F', gain: 300, seconds: 4, visible: () => weatherNow.rain > 0.2 || weatherNow.wet > 0.5,
+      requires: s => (s.data.needs.energie < 12 ? 'Trop fatigué' : null), steps: [{
+      label: 'Porter les sacs', primitive: 'work', seconds: 4, clip: 'Grab',
+      line: () => say('Une dame', pick(['Mes sacs sont trempés, tu peux les mettre sous l’abri ? Dieureudieuf !', 'Attention, ça glisse ! Tiens, pour ta peine.', 'Ils ne veulent pas monter avec ça, avec la boue… aide-moi !'])),
+      effects: { money: 300, category: 'transport', needs: { energie: -8, hygiene: -6, social: 4, moral: 2 }, counters: { shifts: 1 }, flags: ['helped_gare'] } }] },
+  ];
+  const embourbe: Action[] = [
+    { id: 'pousser_car', label: 'Pousser le car', detail: 'Il est enlisé dans la boue : +400 F', gain: 400, seconds: 6, visible: () => weatherNow.wet > 0.5,
+      requires: s => (s.data.needs.energie < 22 ? 'Trop fatigué' : null), steps: [{
+      label: 'Pousser', primitive: 'work', seconds: 6, clip: 'Grab',
+      line: () => say('L’apprenti', pick(['Poussez ! Poussez ! Encore un coup, il sort !', 'Tous ensemble ! Un, deux, trois !', 'La boue, la boue… Merci, grand, tu as de la force !'])),
+      effects: { money: 400, category: 'transport', needs: { energie: -20, hygiene: -14, faim: -5, social: 5, moral: 2 }, counters: { shifts: 1 }, flags: ['helped_gare', 'pushed_car'] } }] },
   ];
   const vendeur: Action[] = [
     { id: 'eau_gare', label: 'Acheter un sachet d’eau', detail: 'Frais, 50 F', cost: 50, seconds: 1.5, steps: [{
@@ -73,7 +86,7 @@ export function gareActions(state: () => GameState, hour: () => number) {
       line: () => pick(['« Deux cents, pas un franc de plus ! » — « Alors prends le suivant, grand-mère ! »', '« Tu as dit Guédiawaye, pas Thiaroye ! » — « C’est la même route ! »', '« Ta valise, elle prend trois places ! » — « C’est mon trousseau, un peu de respect ! »']),
       effects: { needs: { social: 3 } } }] },
   ];
-  return { apprenti, bagages, vendeur, the, dispute };
+  return { apprenti, bagages, vendeur, the, dispute, embourbe };
 }
 
 /** Where things stand, from the station's own interaction (« Car rapide · changer de quartier » at the centre − 3, + 3.2). */
@@ -87,12 +100,13 @@ function placesAt(cx: number, cz: number, A: ReturnType<typeof gareActions>): In
   ];
 }
 
+const RAIN_NOISE = ['Le car est embourbé ! Encore ! Quelqu’un a une corde ?', 'Tout le monde se serre sous l’abri en grommelant : « Cette pluie, ça n’en finit pas ! »', 'Un chauffeur : « Pas question de partir avant que ça s’arrête ! »', 'L’apprenti crie dans la pluie : « Parcelles ! Ça passe encore ! »', 'On se plaint de la boue, de l’eau jusqu’aux chevilles, des cars qui n’arrivent pas.'];
 const NOISE = ['Klaxons, moteurs et cris : le gare ne dort jamais.', 'L’apprenti : « Parcelles ! Guédiawaye ! Plateau ! »', 'Un car klaxonne pour se frayer un passage.', 'Quelqu’un hurle un prix, quelqu’un d’autre le conteste.', 'Une porte de car claque, un sac tombe : « Doucement ! »'];
 
 /** How full the gare is at city hour h, 0…1: busiest in the early morning and the late afternoon (trapezoids with soft edges). */
-export function gareLevel(h: number): number {
+export function gareLevel(h: number, rain = 0): number {
   const bump = (a: number, b: number, c: number, d: number) => (h <= a || h >= d ? 0 : h < b ? (h - a) / (b - a) : h <= c ? 1 : (d - h) / (d - c));
-  return Math.max(bump(5.5, 6.5, 8.5, 9.5), bump(16.5, 17.5, 19, 20));
+  return Math.max(bump(5.5, 6.5, 8.5, 9.5), bump(16.5, 17.5, 19, 20), Math.min(1, rain * 1.2));   // and in the rain, whatever the hour: everyone under the shelter
 }
 /** The morning commute: this long after the Fajar congregation has left (its window ends at 6 h + PRAYER_WINDOW[1]) people walk from the mosque to the cars. */
 export const COMMUTE_FROM = PRAYER_TIMES[0].hour + PRAYER_WINDOW[1], COMMUTE_UNTIL = COMMUTE_FROM + 0.6;
@@ -108,7 +122,7 @@ class GareCrowd {
   private body(look = randomLook(Math.random)) { const h = new Humanoid(look); h.group.visible = false; this.group.add(h.group); return h; }
   update(ctx: GameCtx, dt: number) {
     if (!humanoidReady()) return;
-    const hour = ctx.hour(), d = Math.hypot(ctx.player.pos.x - this.cx, ctx.player.pos.z - this.cz), level = gareLevel(hour), near = d < 70;
+    const hour = ctx.hour(), d = Math.hypot(ctx.player.pos.x - this.cx, ctx.player.pos.z - this.cz), level = gareLevel(hour, weatherNow.rain), near = d < 70;
     const nearMosque = !!this.forecourt && Math.hypot(ctx.player.pos.x - this.forecourt.x, ctx.player.pos.z - this.forecourt.z) < 70;
     // more people when the gare is busy: the spots fill with the level, and are only built while someone is there to see them
     if (level > 0 && near && !this.extras.length) {
@@ -143,26 +157,62 @@ class GareCrowd {
   info() { return { extras: this.extras.filter(h => h.group.visible).length, commuters: this.commuters.length, walking: this.commuters.filter(c => c.i < c.path.length && c.t >= 0).length }; }
   dispose() { for (const h of [...this.extras, ...this.commuters.map(c => c.h)]) h.dispose(); this.extras = []; this.commuters = []; this.group.removeFromParent(); }
 }
+
+/** The rain on the gare: mud over the dust, standing water in the dips, two cars sunk in it (they lean and settle), and the stuck car's own place. */
+const STUCK = [2, 4], DIPS: [number, number, number][] = [[-12, -3, 2.9], [4, 12.5, 2.5], [-1, -17, 3.2], [14, 8, 2.2], [-15, 14, 2.6], [11, -9, 2.3], [-18, 3, 2.0], [8, -3, 1.8]];
+class GareWeather {
+  readonly group = new THREE.Group();
+  private mud: THREE.MeshBasicMaterial; private pools: THREE.MeshBasicMaterial;
+  private cars: { car: THREE.Object3D; y: number; rz: number; lean: number }[] = [];
+  private placed: Interactable | null = null;
+  constructor(cx: number, cz: number, private hub: { interactables: Interactable[]; rapides: THREE.Object3D[] }, private places: Interactable) {
+    this.group.name = 'pikine-gare-rain';
+    this.mud = new THREE.MeshBasicMaterial({ color: 0x4a3a2a, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    this.pools = new THREE.MeshBasicMaterial({ color: 0x8aa0ae, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+    const base = new THREE.PlaneGeometry(42, 38); base.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(base, this.mud); m.position.set(cx, 0.16, cz); m.renderOrder = 1; this.group.add(m);
+    const parts = DIPS.map(([dx, dz, r]) => { const g = new THREE.CircleGeometry(r, 14); g.rotateX(-Math.PI / 2); g.scale(1, 1, 0.65); g.translate(cx + dx, 0.17, cz + dz); return g.toNonIndexed(); });
+    const n = parts.reduce((t, g) => t + g.attributes.position.count, 0), pos = new Float32Array(n * 3); let o = 0;
+    for (const g of parts) { pos.set(g.attributes.position.array as Float32Array, o); o += g.attributes.position.count * 3; g.dispose(); }
+    const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pm = new THREE.Mesh(pg, this.pools); pm.renderOrder = 2; this.group.add(pm);
+    this.cars = STUCK.filter(k => hub.rapides[k]).map((k, i) => ({ car: hub.rapides[k], y: hub.rapides[k].position.y, rz: hub.rapides[k].rotation.z, lean: i ? -0.06 : 0.055 }));
+  }
+  update(dt: number) {
+    const wet = weatherNow.wet, sunk = Math.max(0, Math.min(1, (wet - 0.4) / 0.4));
+    this.mud.opacity = 0.5 * wet; this.pools.opacity = 0.55 * wet; this.group.visible = wet > 0.02;
+    for (const c of this.cars) { const f = Math.min(1, dt * 1.5); c.car.position.y += (c.y - 0.16 * sunk - c.car.position.y) * f; c.car.rotation.z += (c.rz + c.lean * sunk - c.car.rotation.z) * f; }
+    const on = sunk > 0.5;                                                                  // the stuck car's place exists only while it is stuck
+    if (on && !this.placed) { this.placed = this.places; this.hub.interactables.push(this.places); }
+    else if (!on && this.placed) { const i = this.hub.interactables.indexOf(this.places); if (i >= 0) this.hub.interactables.splice(i, 1); this.placed = null; }
+  }
+  info() { return { wet: +this.mud.opacity.toFixed(2), sunk: this.cars.map(c => +(c.y - c.car.position.y).toFixed(2)), stuckPlace: !!this.placed }; }
+  dispose() { const i = this.hub.interactables.indexOf(this.places); if (i >= 0) this.hub.interactables.splice(i, 1); this.mud.dispose(); this.pools.dispose(); this.group.traverse(o => { (o as THREE.Mesh).geometry?.dispose?.(); }); this.group.removeFromParent(); }
+}
+let rainView: GareWeather | null = null;
 let crowd: GareCrowd | null = null;
 let centre: { x: number; z: number } | null = null, nextNoise = 0, wasNear = false;
 export const gareModule: GameModule = {
   name: 'pikine-gare',
   hubLoaded(ctx, hub) {
-    crowd?.dispose(); crowd = null; centre = null; nextNoise = 0; wasNear = false;
+    rainView?.dispose(); rainView = null; crowd?.dispose(); crowd = null; centre = null; nextNoise = 0; wasNear = false;
     if (hub.id !== 'pikine') return;
     const st = hub.interactables.find(i => i.id === 'pikine:station'); if (!st) return;
     centre = { x: st.x + 3, z: st.z - 3.2 };
     const mosque = (hub.sites ?? []).find(x => x.key === 'mosque:33');
     crowd = new GareCrowd(centre.x, centre.z, mosque ? { x: (mosque.x0 + mosque.x1) / 2, z: mosque.z0 + 7 } : null); ctx.extra.add(crowd.group);
-    hub.interactables.push(...placesAt(centre.x, centre.z, gareActions(() => ctx.state, () => ctx.hour())));
+    const acts = gareActions(() => ctx.state, () => ctx.hour());
+    hub.interactables.push(...placesAt(centre.x, centre.z, acts));
+    rainView = new GareWeather(centre.x, centre.z, hub, { id: 'pikine:gare:embourbe', name: 'Car embourbé', kind: 'actions', x: centre.x - 5.4, z: centre.z - 9.8, radius: 3.4, actions: acts.embourbe, description: 'Un car enlisé dans la boue : tout le monde s’y met.' });
+    ctx.extra.add(rainView.group);
   },
-  debug: () => ({ gareCrowd: () => crowd?.info() ?? null }),
+  debug: () => ({ gareCrowd: () => crowd?.info() ?? null, gareRain: () => rainView?.info() ?? null }),
   update(ctx, dt) {
-    crowd?.update(ctx, dt);
+    crowd?.update(ctx, dt); rainView?.update(dt);
     if (!centre || ctx.world()?.id !== 'pikine' || ctx.mode() !== 'play' || ctx.space() !== 'street') return;
     const d = Math.hypot(ctx.player.pos.x - centre.x, ctx.player.pos.z - centre.z), near = d < 13, t = ctx.now() / 1000;
     if (near && !wasNear) nextNoise = t + 1.5;                       // the din greets you on arrival, then comes and goes
     wasNear = near;
-    if (near && t >= nextNoise) { ctx.toast(pick(NOISE)); nextNoise = t + 30 + Math.random() * 25; }
+    if (near && t >= nextNoise) { ctx.toast(pick(weatherNow.rain > 0.2 || weatherNow.wet > 0.5 ? RAIN_NOISE : NOISE)); nextNoise = t + 30 + Math.random() * 25; }
   },
 };

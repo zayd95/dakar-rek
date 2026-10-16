@@ -14,4 +14,10 @@ describe('the Pikine gare through the day', () => {
     expect(COMMUTE_UNTIL).toBeGreaterThan(COMMUTE_FROM);
     expect(gareLevel(COMMUTE_FROM)).toBe(1);                                  // and the gare is already full then
   });
+  it('fills up under the shelter when it rains, at any hour', () => {
+    expect(gareLevel(12.5, 0)).toBe(0);
+    expect(gareLevel(12.5, 1)).toBe(1);
+    expect(gareLevel(12.5, 0.4)).toBeGreaterThan(0.4);
+    expect(gareLevel(7.5, 0)).toBe(1);
+  });
 });
