@@ -858,16 +858,17 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-0835-FREEZE.md",
-    "checkedAt": "2026-10-16T08:35:34Z",
-    "result": "No stabilization source, PR35/36 body or CI change; independent freeze review remains needs-decision; no code or redundant QA dispatched.",
-    "owner": "producer_freeze_0835",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-0935-FREEZE.md",
+    "checkedAt": "2026-10-16T09:37:12Z",
+    "result": "Freeze candidate unchanged; independent PR29 numerical gait fix accepted in limited scope, not whole candidate",
+    "owner": "producer_freeze_0935",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "a47f23a842839f45dd1cc4118d02288f783f3b2a",
+    "baseCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-0835-FREEZE.md"
+      "docs/agents/operations/reports/PR29-20261016-0935-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-16-0935-FREEZE.md"
     ]
   },
   "evidenceReview": {
@@ -1645,13 +1646,13 @@
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
     "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
-    "lastReconciledAt": "2026-10-16T08:35:34Z"
+    "lastReconciledAt": "2026-10-16T09:37:12Z"
   },
   "currentRegressionReview": {
     "id": "STAB-20261016-0935-QA",
     "role": "qa",
     "kind": "regression_delta_review",
-    "status": "active",
+    "status": "done",
     "owner": "qa_reference_0935",
     "branch": "codex/agent-studio-active",
     "baseCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
@@ -1665,19 +1666,35 @@
       "Review actual interrupted/reversed gait fix diff and regression tests at a918c051 exact; distinguish ordinary avatars and reference scope",
       "Read current exact CI logs and checkout SHAs, types/build/city/online/launch; inspect committed before/after targeted JSON without claiming independent browser playback",
       "No Blender or asset generation, no source writes, no local Chromium retry; verdict ready/needs-decision/blocked for delta only, preserve previous art/device/global acceptance gaps"
-    ]
-  },
-  "registryWriter": {
-    "token": "freeze-20261016T0935Z-qa",
-    "owner": "producer_freeze_0935",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR29-20261016-0935-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-16-0935-FREEZE.md"
     ],
-    "acquiredAt": "2026-10-16T09:34:46Z"
+    "completedAt": "2026-10-16T09:37:12Z",
+    "result": {
+      "status": "ready-limited-delta",
+      "reviewer": "qa_reference_0935",
+      "report": "docs/agents/operations/reports/PR29-20261016-0935-QA.md",
+      "completedAt": "2026-10-16T09:37:12Z",
+      "sourceCommit": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
+      "previousSourceCommit": "951d9ae18988e90c8bf129107ce474d830549b9c",
+      "acceptedScope": "Numerical continuity of interrupted/reversed reference gait fades only; not global PR29/art/physical phone acceptance",
+      "local": "local_not_run",
+      "ci": {
+        "pushRun": 38877664537,
+        "pushJob": 116896511892,
+        "pushCheckout": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
+        "prRun": 38877669581,
+        "prJob": 116896528097,
+        "prCheckout": "5a9d6c4b7d94c6d9d1d278b030487f31308c973c",
+        "testFiles": 110,
+        "testsPassed": 1403,
+        "testsSkipped": 2,
+        "referenceTests": 14,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "targetedEvidence": "Author versioned JSON inspected, no embedded execution SHA; images/video not viewed; no independent targeted browser execution"
+    }
   }
 }

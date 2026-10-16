@@ -1,36 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-16T08:35:34Z",
+  "updatedAt": "2026-10-16T09:37:12Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "freeze-20261016T0935Z-qa",
-    "owner": "producer_freeze_0935",
-    "baseCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
-    "acquiredAt": "2026-10-16T09:34:46Z",
-    "expiresAt": "2026-10-16T10:00:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR29-20261016-0935-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-16-0935-FREEZE.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "STAB-20261016-0935-QA",
-      "owner": "qa_reference_0935",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
-      "files": [
-        "docs/agents/operations/reports/PR29-20261016-0935-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -141,14 +119,12 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-16T08:35:34Z",
-    "lastVerifiedAt": "2026-10-16T04:29:50Z",
+    "lastCompletedRunAt": "2026-10-16T09:37:12Z",
+    "lastVerifiedAt": "2026-10-16T09:37:12Z",
     "enabled": true
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [
-    "STAB-20261016-0935-QA"
-  ],
+  "reviewTasks": [],
   "activeSessions": [],
   "completedSessions": [
     "activation_producer",
@@ -317,15 +293,22 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-0835-FREEZE.md",
-    "completedAt": "2026-10-16T08:35:34Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-0935-FREEZE.md",
+    "completedAt": "2026-10-16T09:37:12Z",
     "actualRunCompleted": true,
-    "tasks": [],
+    "tasks": [
+      "STAB-20261016-0935-QA"
+    ],
     "verifiedCandidates": [],
-    "owner": "producer_freeze_0835",
-    "reviewer": null,
+    "verifiedDelta": {
+      "pr": 29,
+      "sha": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
+      "scope": "Numerical continuity of interrupted/reversed reference gait fades only; not global PR29/art/physical phone acceptance"
+    },
+    "owner": "producer_freeze_0935",
+    "reviewer": "qa_reference_0935",
     "protectedRefsMutated": false,
-    "leaseReleased": "freeze-20261016T0835Z-watch"
+    "leaseReleased": "freeze-20261016T0935Z-qa"
   },
   "protectedRefsLatest": [
     {
@@ -587,7 +570,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-16T08:35:34Z",
+    "checkedAt": "2026-10-16T09:37:12Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -700,7 +683,7 @@
       "mergeableState": "dirty",
       "draft": true,
       "reviews": [],
-      "checkedAt": "2026-10-15T23:36:36Z",
+      "checkedAt": "2026-10-16T09:37:12Z",
       "authority": "External owner only; no merge/deploy authorized"
     }
   },
@@ -1089,35 +1072,35 @@
     {
       "pr": 29,
       "branch": "codex/reference-character",
-      "sha": "5e953d2edace0fcc99feae722266d536d6a33e3f",
+      "sha": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-15T23:36:36Z",
+      "checkedAt": "2026-10-16T09:37:12Z",
       "checks": [
         {
-          "id": 116714928061,
+          "id": 116896991263,
           "status": "completed",
           "conclusion": "success",
-          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/codex-reference-character/builds/4c6a5ffc-8bba-45bb-8c07-016c78273d6b"
+          "url": "https://github.com/zayd95/dakar-rek/runs/116896991263"
         },
         {
-          "id": 116714155097,
+          "id": 116896528097,
           "status": "completed",
           "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38820049502/job/116714155097"
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38877669581/job/116896528097"
         },
         {
-          "id": 116714140184,
+          "id": 116896511892,
           "status": "completed",
           "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38820044891/job/116714140184"
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38877664537/job/116896511892"
         }
       ],
       "accepted": false,
-      "previousSource": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
-      "status": "review: new shoulder/arm-carriage asset delta; exact checks green, independent current-delta QA pending",
-      "nextAction": "Independent review of3commit asset/motion delta after port incident; older76eb239 review remains historical.",
+      "previousSource": "5e953d2edace0fcc99feae722266d536d6a33e3f",
+      "status": "limited gait regression delta verified; whole PR29 remains review",
+      "nextAction": "Visual/mobile acceptance by distinct reviewer on exact source; no feature or Blender",
       "previousReview": {
         "status": "needs-decision",
         "reviewer": "qa_reference_2129",
@@ -1144,18 +1127,46 @@
           "Independent exact-checkout seat-exit/prompts script execution and reviewed captures",
           "Global art/provenance/physical device acceptance out of delta scope"
         ]
+      },
+      "review": {
+        "status": "ready-limited-delta",
+        "reviewer": "qa_reference_0935",
+        "report": "docs/agents/operations/reports/PR29-20261016-0935-QA.md",
+        "completedAt": "2026-10-16T09:37:12Z",
+        "sourceCommit": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
+        "previousSourceCommit": "951d9ae18988e90c8bf129107ce474d830549b9c",
+        "acceptedScope": "Numerical continuity of interrupted/reversed reference gait fades only; not global PR29/art/physical phone acceptance",
+        "local": "local_not_run",
+        "ci": {
+          "pushRun": 38877664537,
+          "pushJob": 116896511892,
+          "pushCheckout": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
+          "prRun": 38877669581,
+          "prJob": 116896528097,
+          "prCheckout": "5a9d6c4b7d94c6d9d1d278b030487f31308c973c",
+          "testFiles": 110,
+          "testsPassed": 1403,
+          "testsSkipped": 2,
+          "referenceTests": 14,
+          "types": "success",
+          "build": "success",
+          "city": "success",
+          "online": "success",
+          "launch": "success"
+        },
+        "targetedEvidence": "Author versioned JSON inspected, no embedded execution SHA; images/video not viewed; no independent targeted browser execution"
       }
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-16T08:35:34Z",
+    "checkedAt": "2026-10-16T09:37:12Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; unchanged exact stabilization refs/check-runs reconciled",
-    "delegation": "available; no new assignment on unchanged stabilization evidence",
+    "localTests": "local_not_run; exact CI independently reviewed for PR29 delta; Chromium EPERM not retried",
+    "delegation": "qa_reference_0935 independent review completed",
     "cloudflareAuthenticated": false
   },
   "stabilization": {
@@ -1205,6 +1216,6 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-16T08:35:34Z"
+    "lastReconciledAt": "2026-10-16T09:37:12Z"
   }
 }
