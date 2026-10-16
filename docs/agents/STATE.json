@@ -1,22 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-16T06:28:25Z",
+  "updatedAt": "2026-10-16T07:28:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "freeze-20261016T0728Z-watch",
-    "owner": "producer_freeze_0728",
-    "baseCommit": "45ac5d91e4cf01145e53221c1fec07d1fbcb0165",
-    "acquiredAt": "2026-10-16T07:27:33Z",
-    "expiresAt": "2026-10-16T08:00:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-0728-FREEZE.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -130,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-16T06:28:25Z",
+    "lastCompletedRunAt": "2026-10-16T07:28:00Z",
     "lastVerifiedAt": "2026-10-16T04:29:50Z",
     "enabled": true
   },
@@ -304,15 +293,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-0628-FREEZE.md",
-    "completedAt": "2026-10-16T06:28:25Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-0728-FREEZE.md",
+    "completedAt": "2026-10-16T07:28:00Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_freeze_0628",
+    "owner": "producer_freeze_0728",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "freeze-20261016T0628Z-watch"
+    "leaseReleased": "freeze-20261016T0728Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -574,7 +563,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-16T06:28:25Z",
+    "checkedAt": "2026-10-16T07:28:00Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -1135,7 +1124,7 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-16T06:28:25Z",
+    "checkedAt": "2026-10-16T07:28:00Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
@@ -1192,6 +1181,6 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-16T06:28:25Z"
+    "lastReconciledAt": "2026-10-16T07:28:00Z"
   }
 }
