@@ -1645,13 +1645,13 @@
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
     "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
-    "lastReconciledAt": "2026-10-16T11:36:24Z"
+    "lastReconciledAt": "2026-10-16T12:39:38Z"
   },
   "currentRegressionReview": {
     "id": "STAB-20261016-1237-QA",
     "role": "qa",
     "kind": "regression_delta_review",
-    "status": "active",
+    "status": "done",
     "owner": "qa_ground_1237",
     "branch": "codex/agent-studio-active",
     "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
@@ -1665,7 +1665,36 @@
       "Review exact ground cache/runtime/regression tests and before/after author evidence; no invented browser visual review",
       "Read both exact CI checkout/logs types/build/city/online/launch; distinguish general technical vs numeric fix vs full candidate",
       "No Blender, feature/source mutation, local Chromium retry; return ready-limited or needs-decision with demonstrated issues and remaining gaps"
-    ]
+    ],
+    "completedAt": "2026-10-16T12:39:38Z",
+    "result": {
+      "status": "ready-limited-delta",
+      "reviewer": "qa_ground_1237",
+      "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+      "report": "docs/agents/operations/reports/PR29-20261016-1237-QA.md",
+      "completedAt": "2026-10-16T12:39:38Z",
+      "scope": "Numerical ground index and three unit regressions; no independent visual contact, global art/device/public launch acceptance",
+      "local": "local_not_run",
+      "ci": {
+        "pushRun": 38891979435,
+        "pushJob": 116943413420,
+        "pushCheckout": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+        "prRun": 38891987563,
+        "prJob": 116943438556,
+        "prCheckout": "9b7dfa3dcbf22a546c60a16c081e89537e3a511f",
+        "tree": "2c6139be45b98694a2a2af88da3fcf80e952e711",
+        "testsPassed": 1406,
+        "testsSkipped": 2,
+        "testFiles": 111,
+        "groundTests": 3,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "targetedEvidence": "Author JSON inspected; no execution SHA embedded, no independent browser replay/captures viewed"
+    }
   },
   "pendingExternalRegressionReview": {
     "pr": 29,
@@ -1693,30 +1722,57 @@
         "url": "https://github.com/zayd95/dakar-rek/actions/runs/38891979435/job/116943413420"
       }
     ],
-    "nextAction": "Resume exact ecbe629 checks next cycle without rewriting source; if completed, independently review ground-surface cache tests/runtime delta and evidence. No Blender/assets/features or other-session ref mutations."
+    "nextAction": "Independent targeted browser run with SHA and visual/mobile cache performance acceptance, no feature/source mutation for proof gap",
+    "ci": "completed success",
+    "review": {
+      "status": "ready-limited-delta",
+      "reviewer": "qa_ground_1237",
+      "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+      "report": "docs/agents/operations/reports/PR29-20261016-1237-QA.md",
+      "completedAt": "2026-10-16T12:39:38Z",
+      "scope": "Numerical ground index and three unit regressions; no independent visual contact, global art/device/public launch acceptance",
+      "local": "local_not_run",
+      "ci": {
+        "pushRun": 38891979435,
+        "pushJob": 116943413420,
+        "pushCheckout": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+        "prRun": 38891987563,
+        "prJob": 116943438556,
+        "prCheckout": "9b7dfa3dcbf22a546c60a16c081e89537e3a511f",
+        "tree": "2c6139be45b98694a2a2af88da3fcf80e952e711",
+        "testsPassed": 1406,
+        "testsSkipped": 2,
+        "testFiles": 111,
+        "groundTests": 3,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "targetedEvidence": "Author JSON inspected; no execution SHA embedded, no independent browser replay/captures viewed"
+    }
   },
   "producerAudit": {
     "owner": "producer_audit_1237",
-    "status": "active",
     "branch": "codex/agent-studio-active",
     "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
     "allowedFiles": [
       "docs/agents/operations/reports/FINISHED-LOTS-20261016.md"
     ],
-    "scope": "Read-only product gaps and save safety audit; proposals require explicit user approval before implementation"
-  },
-  "registryWriter": {
-    "token": "audit-20261016T1237Z",
-    "owner": "producer_audit_1237",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR29-20261016-1237-QA.md",
-      "docs/agents/operations/reports/FINISHED-LOTS-20261016.md",
-      "docs/agents/operations/CYCLE-2026-10-16-1237-AUDIT.md"
-    ],
-    "acquiredAt": "2026-10-16T12:36:34Z"
+    "status": "proposals_complete_awaiting_user_approval",
+    "completedAt": "2026-10-16T12:39:38Z",
+    "report": "docs/agents/operations/reports/FINISHED-LOTS-20261016.md",
+    "implementationAuthorized": false,
+    "proposedLots": [
+      "S0 save/ownership",
+      "A1 existing arena",
+      "M1 Magic Land Lite",
+      "T1 transport/Tiak",
+      "V1 daily life",
+      "E1 economy/home",
+      "L1 social venues",
+      "P1 port only if retained"
+    ]
   }
 }

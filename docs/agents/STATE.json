@@ -1,46 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-16T11:36:24Z",
+  "updatedAt": "2026-10-16T12:39:38Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261016T1237Z",
-    "owner": "producer_audit_1237",
-    "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
-    "acquiredAt": "2026-10-16T12:36:34Z",
-    "expiresAt": "2026-10-16T13:00:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR29-20261016-1237-QA.md",
-      "docs/agents/operations/reports/FINISHED-LOTS-20261016.md",
-      "docs/agents/operations/CYCLE-2026-10-16-1237-AUDIT.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "STAB-20261016-1237-QA",
-      "owner": "qa_ground_1237",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
-      "files": [
-        "docs/agents/operations/reports/PR29-20261016-1237-QA.md"
-      ]
-    },
-    {
-      "task": "PRODUCER-FINISHED-LOTS",
-      "owner": "producer_audit_1237",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
-      "files": [
-        "docs/agents/operations/reports/FINISHED-LOTS-20261016.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -151,14 +119,12 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-16T11:36:24Z",
-    "lastVerifiedAt": "2026-10-16T09:37:12Z",
+    "lastCompletedRunAt": "2026-10-16T12:39:38Z",
+    "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [
-    "STAB-20261016-1237-QA"
-  ],
+  "reviewTasks": [],
   "activeSessions": [],
   "completedSessions": [
     "activation_producer",
@@ -327,15 +293,23 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-1136-FREEZE.md",
-    "completedAt": "2026-10-16T11:36:24Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-1237-AUDIT.md",
+    "completedAt": "2026-10-16T12:39:38Z",
     "actualRunCompleted": true,
-    "tasks": [],
+    "tasks": [
+      "STAB-20261016-1237-QA",
+      "PRODUCER-FINISHED-LOTS"
+    ],
     "verifiedCandidates": [],
-    "owner": "producer_freeze_1136",
-    "reviewer": null,
+    "verifiedDelta": {
+      "pr": 29,
+      "sha": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+      "scope": "Numerical ground index and three unit regressions; no independent visual contact, global art/device/public launch acceptance"
+    },
+    "owner": "producer_audit_1237",
+    "reviewer": "qa_ground_1237",
     "protectedRefsMutated": false,
-    "leaseReleased": "freeze-20261016T1136Z-watch"
+    "leaseReleased": "audit-20261016T1237Z"
   },
   "protectedRefsLatest": [
     {
@@ -712,7 +686,8 @@
       "reviews": [],
       "checkedAt": "2026-10-16T11:36:24Z",
       "authority": "External owner only; no merge/deploy authorized"
-    }
+    },
+    "notificationPolicy": "Read-only technical tracking only; no go-live alert from green CI, superseded by quality mandate 2026-10-16"
   },
   "externalFollowups": [
     {
@@ -1103,7 +1078,7 @@
       "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
       "title": "Preview one reference character with a new rig and natural retargeted motion",
       "owner": "other session; never mutate or duplicate",
-      "checkedAt": "2026-10-16T11:36:24Z",
+      "checkedAt": "2026-10-16T12:39:38Z",
       "checks": [
         {
           "id": 116943857037,
@@ -1119,60 +1094,60 @@
         },
         {
           "id": 116943413420,
-          "status": "in_progress",
-          "conclusion": null,
+          "status": "completed",
+          "conclusion": "success",
           "url": "https://github.com/zayd95/dakar-rek/actions/runs/38891979435/job/116943413420"
         }
       ],
       "accepted": false,
       "previousSource": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
-      "status": "review: new rendered-ground sole alignment delta; exact CI pending, prior numerical gait acceptance historical",
-      "nextAction": "Resume exact ecbe629 checks next cycle without rewriting source; if completed, independently review ground-surface cache tests/runtime delta and evidence. No Blender/assets/features or other-session ref mutations.",
+      "status": "limited numerical ground-index delta verified; global PR29 remains review",
+      "nextAction": "Independent targeted browser run with SHA and visual/mobile cache performance acceptance, no feature/source mutation for proof gap",
       "previousReview": {
+        "status": "review",
+        "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+        "local": "local_not_run",
+        "reason": "One exact check still in_progress; no independent current-delta acceptance"
+      },
+      "review": {
         "status": "ready-limited-delta",
-        "reviewer": "qa_reference_0935",
-        "report": "docs/agents/operations/reports/PR29-20261016-0935-QA.md",
-        "completedAt": "2026-10-16T09:37:12Z",
-        "sourceCommit": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
-        "previousSourceCommit": "951d9ae18988e90c8bf129107ce474d830549b9c",
-        "acceptedScope": "Numerical continuity of interrupted/reversed reference gait fades only; not global PR29/art/physical phone acceptance",
+        "reviewer": "qa_ground_1237",
+        "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+        "report": "docs/agents/operations/reports/PR29-20261016-1237-QA.md",
+        "completedAt": "2026-10-16T12:39:38Z",
+        "scope": "Numerical ground index and three unit regressions; no independent visual contact, global art/device/public launch acceptance",
         "local": "local_not_run",
         "ci": {
-          "pushRun": 38877664537,
-          "pushJob": 116896511892,
-          "pushCheckout": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
-          "prRun": 38877669581,
-          "prJob": 116896528097,
-          "prCheckout": "5a9d6c4b7d94c6d9d1d278b030487f31308c973c",
-          "testFiles": 110,
-          "testsPassed": 1403,
+          "pushRun": 38891979435,
+          "pushJob": 116943413420,
+          "pushCheckout": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+          "prRun": 38891987563,
+          "prJob": 116943438556,
+          "prCheckout": "9b7dfa3dcbf22a546c60a16c081e89537e3a511f",
+          "tree": "2c6139be45b98694a2a2af88da3fcf80e952e711",
+          "testsPassed": 1406,
           "testsSkipped": 2,
-          "referenceTests": 14,
+          "testFiles": 111,
+          "groundTests": 3,
           "types": "success",
           "build": "success",
           "city": "success",
           "online": "success",
           "launch": "success"
         },
-        "targetedEvidence": "Author versioned JSON inspected, no embedded execution SHA; images/video not viewed; no independent targeted browser execution"
-      },
-      "review": {
-        "status": "review",
-        "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
-        "local": "local_not_run",
-        "reason": "One exact check still in_progress; no independent current-delta acceptance"
+        "targetedEvidence": "Author JSON inspected; no execution SHA embedded, no independent browser replay/captures viewed"
       }
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-16T11:36:24Z",
+    "checkedAt": "2026-10-16T12:39:38Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; current stabilization checks reconciled; new PR29 source CI pending",
-    "delegation": "available; no redundant dispatch, new PR29 CI pending",
+    "localTests": "local_not_run; exact PR29 CI and source independently reviewed; producer static save audit",
+    "delegation": "qa_ground_1237 completed independent bounded regression review",
     "cloudflareAuthenticated": false
   },
   "stabilization": {
@@ -1222,6 +1197,35 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-16T11:36:24Z"
+    "lastReconciledAt": "2026-10-16T12:39:38Z",
+    "qualityMandate": {
+      "date": "2026-10-16",
+      "target": "Approximately two hours voluntary engagement; not measured",
+      "noAutomaticFeatures": true,
+      "featureAgentsForbidden": true,
+      "approvalRequiredBeforeImplementation": true,
+      "technicalGreenIsNotPublicLaunch": true,
+      "completionProposal": "docs/agents/operations/reports/FINISHED-LOTS-20261016.md",
+      "states": [
+        "technically validated within named scope",
+        "complete game: not established",
+        "public launch ready: not established, explicit Habib approval required",
+        "production deployed: not attested"
+      ]
+    },
+    "saveSafetyAudit": {
+      "sourceCommit": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c",
+      "checkedAt": "2026-10-16T12:39:38Z",
+      "kind": "producer static review, not independently executed",
+      "files": [
+        "src/core/save.ts",
+        "tests/oldSaves.test.ts",
+        "tests/core.test.ts",
+        "tests/assets.test.ts"
+      ],
+      "report": "docs/agents/operations/reports/FINISHED-LOTS-20261016.md",
+      "status": "existing v3-v5 migration coverage identified; full browser roundtrip/storage-failure evidence remains pending",
+      "demonstratedDefect": null
+    }
   }
 }
