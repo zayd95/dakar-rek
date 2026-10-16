@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-0728-FREEZE.md",
-    "checkedAt": "2026-10-16T07:28:00Z",
-    "result": "No stabilization change: protected refs and PR35/36 unchanged, exact PR36 general checks success; targeted evidence gap unchanged.",
-    "owner": "producer_freeze_0728",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-0835-FREEZE.md",
+    "checkedAt": "2026-10-16T08:35:34Z",
+    "result": "No stabilization source, PR35/36 body or CI change; independent freeze review remains needs-decision; no code or redundant QA dispatched.",
+    "owner": "producer_freeze_0835",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "45ac5d91e4cf01145e53221c1fec07d1fbcb0165",
+    "baseCommit": "a47f23a842839f45dd1cc4118d02288f783f3b2a",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-0728-FREEZE.md"
+      "docs/agents/operations/CYCLE-2026-10-16-0835-FREEZE.md"
     ]
   },
   "evidenceReview": {
@@ -1645,18 +1645,6 @@
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
     "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
-    "lastReconciledAt": "2026-10-16T07:28:00Z"
-  },
-  "registryWriter": {
-    "token": "freeze-20261016T0835Z-watch",
-    "owner": "producer_freeze_0835",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "a47f23a842839f45dd1cc4118d02288f783f3b2a",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-0835-FREEZE.md"
-    ],
-    "acquiredAt": "2026-10-16T08:35:00Z"
+    "lastReconciledAt": "2026-10-16T08:35:34Z"
   }
 }
