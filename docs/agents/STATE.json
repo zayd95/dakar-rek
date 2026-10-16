@@ -1,36 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-16T12:39:38Z",
+  "updatedAt": "2026-10-16T13:37:44Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261016T1335Z-save",
-    "owner": "producer_save_1335",
-    "baseCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
-    "acquiredAt": "2026-10-16T13:34:40Z",
-    "expiresAt": "2026-10-16T14:00:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-16-1335-SAVE.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "task": "STAB-20261016-1335-QA",
-      "owner": "qa_save_1335",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
-      "files": [
-        "docs/agents/operations/reports/PR37-20261016-1335-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -141,14 +119,12 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-16T12:39:38Z",
+    "lastCompletedRunAt": "2026-10-16T13:37:44Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [
-    "STAB-20261016-1335-QA"
-  ],
+  "reviewTasks": [],
   "activeSessions": [],
   "completedSessions": [
     "activation_producer",
@@ -317,23 +293,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-1237-AUDIT.md",
-    "completedAt": "2026-10-16T12:39:38Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-1335-SAVE.md",
+    "completedAt": "2026-10-16T13:37:44Z",
     "actualRunCompleted": true,
     "tasks": [
-      "STAB-20261016-1237-QA",
-      "PRODUCER-FINISHED-LOTS"
+      "STAB-20261016-1335-QA"
     ],
     "verifiedCandidates": [],
-    "verifiedDelta": {
-      "pr": 29,
-      "sha": "ecbe6296eee8b476a6d6384326904cbe122352d3",
-      "scope": "Numerical ground index and three unit regressions; no independent visual contact, global art/device/public launch acceptance"
-    },
-    "owner": "producer_audit_1237",
-    "reviewer": "qa_ground_1237",
+    "owner": "producer_save_1335",
+    "reviewer": "qa_save_1335",
     "protectedRefsMutated": false,
-    "leaseReleased": "audit-20261016T1237Z"
+    "leaseReleased": "audit-20261016T1335Z-save"
   },
   "protectedRefsLatest": [
     {
@@ -1164,14 +1134,14 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-16T12:39:38Z",
+    "checkedAt": "2026-10-16T13:37:44Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; exact PR29 CI and source independently reviewed; producer static save audit",
-    "delegation": "qa_ground_1237 completed independent bounded regression review",
+    "localTests": "local_not_run; extracted clearSave V8 KV control-flow reproduction only",
+    "delegation": "qa_save_1335 independent source/CI review completed",
     "cloudflareAuthenticated": false
   },
   "stabilization": {
@@ -1221,7 +1191,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-16T12:39:38Z",
+    "lastReconciledAt": "2026-10-16T13:37:44Z",
     "qualityMandate": {
       "date": "2026-10-16",
       "target": "Approximately two hours voluntary engagement; not measured",
@@ -1239,7 +1209,7 @@
     },
     "saveSafetyAudit": {
       "sourceCommit": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c",
-      "checkedAt": "2026-10-16T12:39:38Z",
+      "checkedAt": "2026-10-16T13:37:44Z",
       "kind": "producer static review, not independently executed",
       "files": [
         "src/core/save.ts",
@@ -1248,8 +1218,73 @@
         "tests/assets.test.ts"
       ],
       "report": "docs/agents/operations/reports/FINISHED-LOTS-20261016.md",
-      "status": "existing v3-v5 migration coverage identified; full browser roundtrip/storage-failure evidence remains pending",
-      "demonstratedDefect": null
+      "status": "PR37 needs correction; not technically stabilized globally",
+      "demonstratedDefect": "New Game can delete v5 and resurrect legacy when marker write fails; statically demonstrated, extracted clearSave KV reproduction confirmed",
+      "currentCandidate": {
+        "status": "needs-decision",
+        "sourceCommit": "9ce15a51d2d7c5ac10d88eb279813d349bec29e4",
+        "reviewer": "qa_save_1335",
+        "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
+        "completedAt": "2026-10-16T13:37:44Z",
+        "local": "local_not_run; extracted clearSave V8 KV control-flow reproduction only",
+        "ci": {
+          "pushRun": 38903243471,
+          "pushJob": 116980397527,
+          "prRun": 38903335007,
+          "prJob": 116980697418,
+          "prCheckout": "3962c5d6be0af1586a87f21d682ee92cb4de9b3d",
+          "tree": "b5ebf148673b7a5928c5e67066039318553586ad",
+          "testsPassed": 1495,
+          "testsSkipped": 2,
+          "testFiles": 122,
+          "saveKeysTests": 13,
+          "types": "success",
+          "build": "success",
+          "city": "success",
+          "online": "success",
+          "launch": "success"
+        },
+        "defect": "New Game can delete v5 and resurrect legacy when marker write fails; statically demonstrated, extracted clearSave KV reproduction confirmed",
+        "targetedBrowser": "author claims only; save-compat not invoked in inspected CI",
+        "publicLaunchApproved": false
+      }
+    },
+    "launchFinalCandidate": {
+      "pr": 37,
+      "branch": "candidate/launch-final-20261016",
+      "sha": "9ce15a51d2d7c5ac10d88eb279813d349bec29e4",
+      "base": "wip/visual-pass",
+      "draft": true,
+      "accepted": false,
+      "review": {
+        "status": "needs-decision",
+        "sourceCommit": "9ce15a51d2d7c5ac10d88eb279813d349bec29e4",
+        "reviewer": "qa_save_1335",
+        "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
+        "completedAt": "2026-10-16T13:37:44Z",
+        "local": "local_not_run; extracted clearSave V8 KV control-flow reproduction only",
+        "ci": {
+          "pushRun": 38903243471,
+          "pushJob": 116980397527,
+          "prRun": 38903335007,
+          "prJob": 116980697418,
+          "prCheckout": "3962c5d6be0af1586a87f21d682ee92cb4de9b3d",
+          "tree": "b5ebf148673b7a5928c5e67066039318553586ad",
+          "testsPassed": 1495,
+          "testsSkipped": 2,
+          "testFiles": 122,
+          "saveKeysTests": 13,
+          "types": "success",
+          "build": "success",
+          "city": "success",
+          "online": "success",
+          "launch": "success"
+        },
+        "defect": "New Game can delete v5 and resurrect legacy when marker write fails; statically demonstrated, extracted clearSave KV reproduction confirmed",
+        "targetedBrowser": "author claims only; save-compat not invoked in inspected CI",
+        "publicLaunchApproved": false
+      },
+      "authority": "External source read-only; no merge/deploy"
     }
   }
 }

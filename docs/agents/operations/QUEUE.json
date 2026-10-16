@@ -1779,7 +1779,7 @@
     "id": "STAB-20261016-1335-QA",
     "role": "qa",
     "kind": "save_safety_regression_review",
-    "status": "active",
+    "status": "needs-decision",
     "owner": "qa_save_1335",
     "branch": "codex/agent-studio-active",
     "baseCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
@@ -1793,19 +1793,56 @@
       "Review actual key isolation migration/new-game/rollback/full storage/corruption diff and tests at9ce15 exact; preserve v3-v5 save integrity",
       "Verify actual exact CI checkout/totals and whether targeted save-compat/Pikine/life-loop/economy scripts execute in CI or author-only",
       "Inspect known failures without treating author baseline claims as independent reproduction; no merge/deploy/source mutation/Blender/local Chromium retry; distinguish technical delta vs full game/public launch"
-    ]
-  },
-  "registryWriter": {
-    "token": "audit-20261016T1335Z-save",
-    "owner": "producer_save_1335",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-16-1335-SAVE.md"
     ],
-    "acquiredAt": "2026-10-16T13:34:40Z"
+    "completedAt": "2026-10-16T13:37:44Z",
+    "result": {
+      "status": "needs-decision",
+      "sourceCommit": "9ce15a51d2d7c5ac10d88eb279813d349bec29e4",
+      "reviewer": "qa_save_1335",
+      "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
+      "completedAt": "2026-10-16T13:37:44Z",
+      "local": "local_not_run; extracted clearSave V8 KV control-flow reproduction only",
+      "ci": {
+        "pushRun": 38903243471,
+        "pushJob": 116980397527,
+        "prRun": 38903335007,
+        "prJob": 116980697418,
+        "prCheckout": "3962c5d6be0af1586a87f21d682ee92cb4de9b3d",
+        "tree": "b5ebf148673b7a5928c5e67066039318553586ad",
+        "testsPassed": 1495,
+        "testsSkipped": 2,
+        "testFiles": 122,
+        "saveKeysTests": 13,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "defect": "New Game can delete v5 and resurrect legacy when marker write fails; statically demonstrated, extracted clearSave KV reproduction confirmed",
+      "targetedBrowser": "author claims only; save-compat not invoked in inspected CI",
+      "publicLaunchApproved": false
+    }
+  },
+  "saveRegressionProposal": {
+    "id": "SAVE-NEWGAME-QUOTA",
+    "status": "approval_required",
+    "implementationAuthorized": false,
+    "sourceCommit": "9ce15a51d2d7c5ac10d88eb279813d349bec29e4",
+    "owner": "external author, or isolated correction task after explicit approval",
+    "proposedBranch": "codex/agents/save-newgame-quota",
+    "proposedFiles": [
+      "src/core/save.ts",
+      "src/main.ts",
+      "tests/saveKeys.test.ts"
+    ],
+    "criteria": [
+      "Marker write failure must not silently delete current progress then resurrect legacy",
+      "Explicit safe failure behavior before reload; preserve legacy bytes",
+      "Regression missing-marker/quota failure/removal possible, nominal migration and rollback unchanged",
+      "Exact CI and distinct QA at corrected SHA"
+    ],
+    "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
+    "note": "Proposal, not dispatch or file reservation; no automatic implementation"
   }
 }
