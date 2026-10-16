@@ -109,6 +109,7 @@ class GareCrowd {
   update(ctx: GameCtx, dt: number) {
     if (!humanoidReady()) return;
     const hour = ctx.hour(), d = Math.hypot(ctx.player.pos.x - this.cx, ctx.player.pos.z - this.cz), level = gareLevel(hour), near = d < 70;
+    const nearMosque = !!this.forecourt && Math.hypot(ctx.player.pos.x - this.forecourt.x, ctx.player.pos.z - this.forecourt.z) < 70;
     // more people when the gare is busy: the spots fill with the level, and are only built while someone is there to see them
     if (level > 0 && near && !this.extras.length) {
       this.extras = SPOTS.map(([dx, dz, yaw], k) => { const h = this.body(); h.group.position.set(this.cx + dx, 0.1, this.cz + dz); h.group.rotation.y = yaw; h.hold = k % 3 === 0 ? 'Talk' : null; return h; });
@@ -117,13 +118,14 @@ class GareCrowd {
     this.extras.forEach((h, k) => { const on = near && k < shown; h.group.visible = on; if (on) h.animate(dt, 0); });
     // after the Fajar congregation, some of its people walk to the cars (once a day, only if the player is around)
     const day = ctx.day();
-    if (this.forecourt && near && hour >= COMMUTE_FROM && hour < COMMUTE_UNTIL && day !== this.doneDay && !this.commuters.length) {
+    if (this.forecourt && (near || nearMosque) && hour >= COMMUTE_FROM && hour < COMMUTE_UNTIL && day !== this.doneDay && !this.commuters.length) {
       this.doneDay = day;
       const F = this.forecourt, doors = SPOTS.slice(0, 6);
       this.commuters = doors.map(([dx, dz], k) => {
         const h = this.body(), fx = F.x + (k - 2.5) * 1.1, fz = F.z + (k % 2) * 1.2;
         h.group.position.set(fx, 0.1, fz); h.hold = null; h.group.visible = true;
-        return { h, path: [{ x: 3, z: 12 + k * 0.5 }, { x: this.cx + 20, z: this.cz - 12 + k }, { x: this.cx + dx, z: this.cz + dz + 0.8 }], i: 0, wait: 22 + k * 3, t: -k * 1.4 };
+        // out of the gate, along the road, across to the gare
+        return { h, path: [{ x: F.x + (k - 2.5) * 0.4, z: F.z - 8 }, { x: F.x, z: 63.5 }, { x: 4, z: 63.5 }, { x: 4, z: this.cz - 12 + k }, { x: this.cx + 20, z: this.cz - 12 + k }, { x: this.cx + dx, z: this.cz + dz + 0.8 }], i: 0, wait: 14 + k * 3, t: -k * 1.4 };
       });
     }
     for (const c of this.commuters) {
@@ -131,9 +133,9 @@ class GareCrowd {
       if (c.t < 0) { c.h.animate(dt, 0); continue; }
       const p = c.h.group.position, tgt = c.path[c.i];
       if (tgt) {
-        const dx = tgt.x - p.x, dz = tgt.z - p.z, len = Math.hypot(dx, dz), step = 1.3 * dt;
+        const dx = tgt.x - p.x, dz = tgt.z - p.z, len = Math.hypot(dx, dz), step = 1.6 * dt;
         if (len <= step) { p.x = tgt.x; p.z = tgt.z; c.i++; } else { p.x += dx / len * step; p.z += dz / len * step; c.h.group.rotation.y = Math.atan2(dx, dz); }
-        c.h.animate(dt, 1.3);
+        c.h.animate(dt, 1.6);
       } else { c.wait -= dt; c.h.animate(dt, 0); if (c.wait <= 0) c.h.group.visible = false; }       // they climb aboard and are gone
     }
     if (this.commuters.length && this.commuters.every(c => !c.h.group.visible)) { for (const c of this.commuters) { c.h.group.removeFromParent(); c.h.dispose(); } this.commuters = []; }
@@ -150,8 +152,8 @@ export const gareModule: GameModule = {
     if (hub.id !== 'pikine') return;
     const st = hub.interactables.find(i => i.id === 'pikine:station'); if (!st) return;
     centre = { x: st.x + 3, z: st.z - 3.2 };
-    const mosque = (hub.sites ?? []).find(x => x.key === 'mosque:22');
-    crowd = new GareCrowd(centre.x, centre.z, mosque ? { x: (mosque.x0 + mosque.x1) / 2, z: mosque.z0 + 8 } : null); ctx.extra.add(crowd.group);
+    const mosque = (hub.sites ?? []).find(x => x.key === 'mosque:33');
+    crowd = new GareCrowd(centre.x, centre.z, mosque ? { x: (mosque.x0 + mosque.x1) / 2, z: mosque.z0 + 7 } : null); ctx.extra.add(crowd.group);
     hub.interactables.push(...placesAt(centre.x, centre.z, gareActions(() => ctx.state, () => ctx.hour())));
   },
   debug: () => ({ gareCrowd: () => crowd?.info() ?? null }),

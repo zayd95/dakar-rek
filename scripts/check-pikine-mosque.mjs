@@ -21,7 +21,7 @@ try {
   await page.waitForFunction(() => window.__dakar?.pos?.()?.hub === 'pikine', null, { timeout: 120000 });
   const mosque = await page.evaluate(() => ({ venues: window.__dakar.venues().map(v => ({ type: v.type, name: v.name })), sites: window.__dakar.interactables().filter(i => /mosque|mosqu/i.test(i.id + i.name)).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) }));
   console.log(JSON.stringify(mosque));
-  assert.ok(mosque.venues.some(v => v.type === 'mosque' && v.name === 'Mosquée du quartier'), 'the mosque venue is built in Pikine');
+  assert.ok(mosque.venues.some(v => v.type === 'mosque' && v.name === 'Mosquée de Pikine'), 'the mosque venue is built in Pikine');
   console.log('PASS the neighbourhood mosque is there');
   // the gare at the morning peak, then the commute from the mosque
   await page.evaluate(() => window.__dakar.teleport('pikine', -22, 26, 0)); await sleep(4000);

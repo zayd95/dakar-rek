@@ -61,7 +61,7 @@ const SPECS: Record<HubId, HubSpec> = {
     floors: [1, 2], palms: 2,
     // '1,0' (across the street from the starter room): an open block where the ownership module builds the Cité Jàmm —
     // Keur Meubles, the Résidence Jàmm, a family house, two plots and a billboard (src/economy/estate.ts)
-    specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station', '1,0': 'plaza', '2,2': 'mosque' },   // the neighbourhood mosque across the road from the gare
+    specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station', '1,0': 'plaza', '3,3': 'mosque' },   // the neighbourhood mosque: a quiet residential corner, away from the arena and the gare
     kiosks: [
       { i: 1, j: 1, lot: 0, kind: 'home', name: 'Ma chambre' }, { i: 1, j: 1, lot: 1, kind: 'dibiterie', name: 'Dibiterie Chez Pathé' }, { i: 3, j: 2, lot: 2, kind: 'gargote', name: 'Gargote Mame Diarra' },
       { i: 0, j: 2, lot: 1, kind: 'cafe', name: 'Café Touba · Parcelles' }, { i: 3, j: 1, lot: 3, kind: 'garage', name: 'Garage Modou' }, { i: 3, j: 1, lot: 2, kind: 'maiga', name: 'Maïga du marché' },
@@ -324,13 +324,13 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     leaves.blob(0.45 * s, x, top - 0.1, z, 0x6b5a2a, 1, 0);
   };
   /** Neem / flamboyant-style shade tree: short trunk, wide clumpy canopy. */
-  const tree = (x: number, z: number, s = 1, flower = false) => {
+  const tree = (x: number, z: number, s = 1, flower = false, rnd = R) => {
     plain.cyl(0.22 * s, 0.32 * s, 2.6 * s, x, 0.1, z, 0x6e5a44, 6);
     plain.cyl(0.12 * s, 0.16 * s, 1.4 * s, x + 0.5 * s, 2.2 * s, z, 0x6e5a44, 5, [0, 0, -0.6]);
     const cols = flower ? [0xc8442c, 0xd9542f, 0x4a7a35] : [0x3f6e2e, 0x4c7d36, 0x365f28];
     const top = { x, z, r: 0, y0: Infinity, y1: 0 };                  // the canopy's bounds, from its blobs (same random draws)
     for (let k = 0; k < 5; k++) {
-      const a = k * 1.3 + R(), r = k === 0 ? 0 : 1.3 * s, br = (1.4 + R() * 0.6) * s, by = (3.3 + R() * 0.8) * s;
+      const a = k * 1.3 + rnd(), r = k === 0 ? 0 : 1.3 * s, br = (1.4 + rnd() * 0.6) * s, by = (3.3 + rnd() * 0.8) * s;
       leaves.blob(br, x + Math.sin(a) * r, by, z + Math.cos(a) * r, cols[k % 3], 0.75, 0);
       top.r = Math.max(top.r, r + br * 0.85); top.y0 = Math.min(top.y0, by - br * 0.75); top.y1 = Math.max(top.y1, by + br * 0.75);
     }
@@ -735,6 +735,11 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
    */
   const pikineGare = (cx: number, cz: number, B: number) => {
     const GR = rng(sp.seed * 31 + 5);
+    {                                                                                          // the old station drew two stalls and two trees from the hub's random stream: draw them and drop them, so every street tree and vendor after the gare keeps its place
+      const pm = plain.mark(), lm = leaves.mark(), nc = colliders.length, nk = canopies.length;
+      stall(cx - 10, cz + 6); stall(cx + 3, cz - 6.5); tree(cx + 11, cz + 8, 1.1); tree(cx - 11, cz - 8, 1);
+      plain.rollback(pm); leaves.rollback(lm); colliders.length = nc; canopies.length = nk;
+    }
     const disc = (batch: Batch, r: number, x: number, z: number, col: number, y = B + 0.05, sq = 1) => {
       const g = new THREE.CircleGeometry(r, 12); g.rotateX(-Math.PI / 2); g.scale(1, 1, sq); batch.geometry(g, col, x, y, z, GR() * Math.PI);
     };
@@ -802,8 +807,8 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     for (const [dx, dz] of [[14, -12], [-1, 16], [17, 3], [-18, -3], [7, -17]] as const) { plain.box(0.6, 0.35, 0.4, cx + dx, B, cz + dz, 0x8b6a47, GR()); plain.box(0.5, 0.3, 0.38, cx + dx + 0.1, B + 0.35, cz + dz, 0x9a7a52, GR()); }
     for (let n = 0; n < 6; n++) plain.box(0.22, 0.34, 0.12, cx + (GR() - 0.5) * 30, B, cz + (GR() - 0.5) * 28, pick([0xf4c20d, 0xd9322b, 0x2f6fb3], GR));
     plain.box(1.6, 0.6, 1.2, cx + 18, B, cz + 14, 0xa89868, 0.4); plain.box(1.5, 0.12, 1.1, cx + 18, B + 0.6, cz + 14, 0xb8a878, 0.4);
-    stall(cx - 20, cz - 1); stall(cx + 11, cz - 15.5); stall(cx - 6, cz + 17);                       // vendors' stalls on the edges
-    tree(cx + 18, cz + 16, 1.1); tree(cx - 19, cz - 17, 1);
+    stall(cx - 20, cz - 1, GR); stall(cx + 11, cz - 15.5, GR); stall(cx - 6, cz + 17, GR);                       // vendors' stalls on the edges
+    tree(cx + 18, cz + 16, 1.1, false, GR); tree(cx - 19, cz - 17, 1, false, GR);
     interactables.push({ id: `${id}:station`, name: 'Car rapide · changer de quartier', kind: 'travel', x: cx - 3, z: cz + 3.2, radius: 4.8, actions: [] });   // the stop: same spot as the small station's
     // people: waiting standing groups, bag loaders at the rear doors, two arguments, vendors walking between the cars
     const stand = (x: number, z: number, yaw: number, clip: 'Idle' | 'Talk' = 'Idle') => people.push({ x, z, yaw, clip });
@@ -815,11 +820,11 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       people.push({ x: cx + x0, z: cz + z0, yaw: 0, clip: 'Talk', walkTo: { x: cx + x1, z: cz + z1 } });
   };
 
-  const stall = (x: number, z: number) => {
+  const stall = (x: number, z: number, rnd = R) => {
     plain.box(1.6, 0.8, 0.9, x, G, z, 0x8b6a47);
-    for (let n = 0; n < 4; n++) plain.box(0.3, 0.2, 0.3, x - 0.55 + n * 0.37, G + 0.8, z + (R() - 0.5) * 0.4, pick([0xe58a2f, 0xc4372b, 0x6aa84f, 0xf4c20d, 0xf2f2ec], R));
+    for (let n = 0; n < 4; n++) plain.box(0.3, 0.2, 0.3, x - 0.55 + n * 0.37, G + 0.8, z + (rnd() - 0.5) * 0.4, pick([0xe58a2f, 0xc4372b, 0x6aa84f, 0xf4c20d, 0xf2f2ec], rnd));
     plain.box(0.05, 2.2, 0.05, x + 0.9, G, z, 0x555555);
-    plain.cyl(0.05, 1.3, 0.4, x + 0.9, G + 2.1, z, pick([0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e], R), 8);
+    plain.cyl(0.05, 1.3, 0.4, x + 0.9, G + 2.1, z, pick([0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e], rnd), 8);
     canopies.push({ x: x + 0.9, z, r: 1.4, y0: G + 2.0, y1: G + 2.6 });                // the parasol: a camera obstacle
     plain.box(0.4, 0.4, 0.4, x - 1.3, G, z + 0.3, 0x3a5fa0);                          // stool
     solidC(x, z, 1.7, 1.0, 1);
@@ -832,11 +837,25 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     const B = G + 0.02;
     switch (kind) {
       case 'mosque': {
+        if (isComposed(id, `mosque:${i}${j}`) && id === 'pikine') {
+          // the neighbourhood mosque (src/venues/mosque.ts, modest): its courtyard on the north half of the block, houses on the south lots and on both sides
+          const MR = rng(sp.seed * 17 + i * 5 + j);
+          sites.push({ key: `mosque:${i}${j}`, kind: 'mosque', name: 'Mosquée de Pikine', x0: bx, z0: bz, x1: bx + BLK, z1: bz + 34, front: { x: 0, z: -1 } });
+          buildLotBuilding(i, j, 0, 1); buildLotBuilding(i, j, 1, 1);
+          for (const sx of [-1, 1]) {
+            const w = 5.6 + MR() * 1.2, d = 7 + MR() * 1.5, h = 2.95, x = cx + sx * 18.6, z = bz + 14 + MR() * 3, col = pick(sp.palette, MR);
+            fac.facade(w, h, d, x, G - 0.02, z, col); plain.box(w + 0.35, 0.25, d + 0.35, x, G + h - 0.02, z, 0x8e8a80); plain.box(w + 0.08, 0.6, d + 0.08, x, G - 0.02, z, shade(col, 0.62));
+            for (const [qx, qz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) if (MR() < 0.7) plain.box(0.16, 1.3, 0.16, x + qx * (w / 2 - 0.25), G + h + 0.2, z + qz * (d / 2 - 0.25), 0x5c4e3f);
+            solidC(x, z, w, d, h);
+          }
+          tree(cx - 15.5, bz + 6, 1.0, false, MR); tree(cx + 15.5, bz + 6, 1.1, false, MR);       // two neem trees by the road
+          break;
+        }
         if (isComposed(id, `mosque:${i}${j}`)) {
           for (const sx of [-1, 1]) tree(cx + sx * 9, cz - 15, 1.1);          // the forecourt's two shade trees stay
           for (const sx of [-1, 1]) ghost(cx + sx * 15 - 1.6, cz - 9.6, cx + sx * 15 + 1.6, cz - 6.4, 26);   // old minarets and hall
           ghost(cx - 13, cz - 9, cx + 13, cz + 13, 11);
-          sites.push({ key: `mosque:${i}${j}`, kind: 'mosque', name: id === 'pikine' ? 'Mosquée du quartier' : 'Grande Mosquée', x0: bx, z0: bz, x1: bx + BLK, z1: bz + BLK, front: { x: 0, z: -1 } });
+          sites.push({ key: `mosque:${i}${j}`, kind: 'mosque', name: id === 'pikine' ? 'Mosquée de Pikine' : 'Grande Mosquée', x0: bx, z0: bz, x1: bx + BLK, z1: bz + BLK, front: { x: 0, z: -1 } });
           break;
         }
         fac.facade(26, 11, 22, cx, B, cz + 2, 0xf6f3ea);
