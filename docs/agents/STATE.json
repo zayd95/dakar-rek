@@ -5,10 +5,42 @@
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": null,
+  "lease": {
+    "token": "audit-20261016T1237Z",
+    "owner": "producer_audit_1237",
+    "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
+    "acquiredAt": "2026-10-16T12:36:34Z",
+    "expiresAt": "2026-10-16T13:00:00Z",
+    "scope": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR29-20261016-1237-QA.md",
+      "docs/agents/operations/reports/FINISHED-LOTS-20261016.md",
+      "docs/agents/operations/CYCLE-2026-10-16-1237-AUDIT.md"
+    ]
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "task": "STAB-20261016-1237-QA",
+      "owner": "qa_ground_1237",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
+      "files": [
+        "docs/agents/operations/reports/PR29-20261016-1237-QA.md"
+      ]
+    },
+    {
+      "task": "PRODUCER-FINISHED-LOTS",
+      "owner": "producer_audit_1237",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
+      "files": [
+        "docs/agents/operations/reports/FINISHED-LOTS-20261016.md"
+      ]
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -124,7 +156,9 @@
     "enabled": true
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [],
+  "reviewTasks": [
+    "STAB-20261016-1237-QA"
+  ],
   "activeSessions": [],
   "completedSessions": [
     "activation_producer",

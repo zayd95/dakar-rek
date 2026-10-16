@@ -1648,53 +1648,24 @@
     "lastReconciledAt": "2026-10-16T11:36:24Z"
   },
   "currentRegressionReview": {
-    "id": "STAB-20261016-0935-QA",
+    "id": "STAB-20261016-1237-QA",
     "role": "qa",
     "kind": "regression_delta_review",
-    "status": "done",
-    "owner": "qa_reference_0935",
+    "status": "active",
+    "owner": "qa_ground_1237",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
-    "controlBriefCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
-    "sourceCommit": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
-    "previousSourceCommit": "951d9ae18988e90c8bf129107ce474d830549b9c",
+    "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
+    "controlBriefCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
+    "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+    "previousSourceCommit": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
     "allowedFiles": [
-      "docs/agents/operations/reports/PR29-20261016-0935-QA.md"
+      "docs/agents/operations/reports/PR29-20261016-1237-QA.md"
     ],
     "acceptance": [
-      "Review actual interrupted/reversed gait fix diff and regression tests at a918c051 exact; distinguish ordinary avatars and reference scope",
-      "Read current exact CI logs and checkout SHAs, types/build/city/online/launch; inspect committed before/after targeted JSON without claiming independent browser playback",
-      "No Blender or asset generation, no source writes, no local Chromium retry; verdict ready/needs-decision/blocked for delta only, preserve previous art/device/global acceptance gaps"
-    ],
-    "completedAt": "2026-10-16T09:37:12Z",
-    "result": {
-      "status": "ready-limited-delta",
-      "reviewer": "qa_reference_0935",
-      "report": "docs/agents/operations/reports/PR29-20261016-0935-QA.md",
-      "completedAt": "2026-10-16T09:37:12Z",
-      "sourceCommit": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
-      "previousSourceCommit": "951d9ae18988e90c8bf129107ce474d830549b9c",
-      "acceptedScope": "Numerical continuity of interrupted/reversed reference gait fades only; not global PR29/art/physical phone acceptance",
-      "local": "local_not_run",
-      "ci": {
-        "pushRun": 38877664537,
-        "pushJob": 116896511892,
-        "pushCheckout": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
-        "prRun": 38877669581,
-        "prJob": 116896528097,
-        "prCheckout": "5a9d6c4b7d94c6d9d1d278b030487f31308c973c",
-        "testFiles": 110,
-        "testsPassed": 1403,
-        "testsSkipped": 2,
-        "referenceTests": 14,
-        "types": "success",
-        "build": "success",
-        "city": "success",
-        "online": "success",
-        "launch": "success"
-      },
-      "targetedEvidence": "Author versioned JSON inspected, no embedded execution SHA; images/video not viewed; no independent targeted browser execution"
-    }
+      "Review exact ground cache/runtime/regression tests and before/after author evidence; no invented browser visual review",
+      "Read both exact CI checkout/logs types/build/city/online/launch; distinguish general technical vs numeric fix vs full candidate",
+      "No Blender, feature/source mutation, local Chromium retry; return ready-limited or needs-decision with demonstrated issues and remaining gaps"
+    ]
   },
   "pendingExternalRegressionReview": {
     "pr": 29,
@@ -1723,5 +1694,29 @@
       }
     ],
     "nextAction": "Resume exact ecbe629 checks next cycle without rewriting source; if completed, independently review ground-surface cache tests/runtime delta and evidence. No Blender/assets/features or other-session ref mutations."
+  },
+  "producerAudit": {
+    "owner": "producer_audit_1237",
+    "status": "active",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
+    "allowedFiles": [
+      "docs/agents/operations/reports/FINISHED-LOTS-20261016.md"
+    ],
+    "scope": "Read-only product gaps and save safety audit; proposals require explicit user approval before implementation"
+  },
+  "registryWriter": {
+    "token": "audit-20261016T1237Z",
+    "owner": "producer_audit_1237",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR29-20261016-1237-QA.md",
+      "docs/agents/operations/reports/FINISHED-LOTS-20261016.md",
+      "docs/agents/operations/CYCLE-2026-10-16-1237-AUDIT.md"
+    ],
+    "acquiredAt": "2026-10-16T12:36:34Z"
   }
 }
