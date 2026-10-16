@@ -858,17 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-0428-FREEZE.md",
-    "checkedAt": "2026-10-16T04:29:50Z",
-    "result": "Functional freeze enforced; exact release/Pikine/Tiak/PR36 CI independently audited; no demonstrated new bug; targeted Pikine/ownership proof missing.",
-    "owner": "producer_freeze_0428",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-0536-FREEZE.md",
+    "checkedAt": "2026-10-16T05:36:00Z",
+    "result": "Functional freeze unchanged; no new targeted Pikine/ownership evidence in PR36 body/comments; candidate exact general checks green; no new demonstrated bug.",
+    "owner": "producer_freeze_0536",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
+    "baseCommit": "c063701ff2cbfd5ea3b416e089d16cc9a705b3dd",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-0428-FREEZE.md",
-      "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
+      "docs/agents/operations/CYCLE-2026-10-16-0536-FREEZE.md"
     ]
   },
   "evidenceReview": {
@@ -1645,18 +1644,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure."
-  },
-  "registryWriter": {
-    "token": "freeze-20261016T0536Z-watch",
-    "owner": "producer_freeze_0536",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "c063701ff2cbfd5ea3b416e089d16cc9a705b3dd",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-0536-FREEZE.md"
-    ],
-    "acquiredAt": "2026-10-16T05:35:24Z"
+    "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
+    "lastReconciledAt": "2026-10-16T05:36:00Z"
   }
 }

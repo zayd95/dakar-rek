@@ -1,22 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-16T04:29:50Z",
+  "updatedAt": "2026-10-16T05:36:00Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "freeze-20261016T0536Z-watch",
-    "owner": "producer_freeze_0536",
-    "baseCommit": "c063701ff2cbfd5ea3b416e089d16cc9a705b3dd",
-    "acquiredAt": "2026-10-16T05:35:24Z",
-    "expiresAt": "2026-10-16T06:00:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-0536-FREEZE.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -130,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-16T04:29:50Z",
+    "lastCompletedRunAt": "2026-10-16T05:36:00Z",
     "lastVerifiedAt": "2026-10-16T04:29:50Z",
     "enabled": true
   },
@@ -304,17 +293,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-0428-FREEZE.md",
-    "completedAt": "2026-10-16T04:29:50Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-0536-FREEZE.md",
+    "completedAt": "2026-10-16T05:36:00Z",
     "actualRunCompleted": true,
-    "tasks": [
-      "STAB-20261016-0428-QA"
-    ],
+    "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_freeze_0428",
-    "reviewer": "qa_freeze_0428",
+    "owner": "producer_freeze_0536",
+    "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "freeze-20261016T0428Z-audit"
+    "leaseReleased": "freeze-20261016T0536Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -576,7 +563,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-16T04:29:50Z",
+    "checkedAt": "2026-10-16T05:36:00Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -1137,14 +1124,14 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-16T04:29:50Z",
+    "checkedAt": "2026-10-16T05:36:00Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; exact GitHub CI logs independently audited",
-    "delegation": "one independent stabilization QA completed; no feature agent",
+    "localTests": "local_not_run; unchanged exact stabilization refs/check-runs reconciled",
+    "delegation": "available; no new QA or feature agent on unchanged stabilization evidence",
     "cloudflareAuthenticated": false
   },
   "stabilization": {
@@ -1193,6 +1180,7 @@
         "draft": true
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
-    }
+    },
+    "lastReconciledAt": "2026-10-16T05:36:00Z"
   }
 }
