@@ -61,7 +61,7 @@ const SPECS: Record<HubId, HubSpec> = {
     floors: [1, 2], palms: 2,
     // '1,0' (across the street from the starter room): an open block where the ownership module builds the Cité Jàmm —
     // Keur Meubles, the Résidence Jàmm, a family house, two plots and a billboard (src/economy/estate.ts)
-    specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station', '1,0': 'plaza' },
+    specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station', '1,0': 'plaza', '2,2': 'mosque' },   // the neighbourhood mosque across the road from the gare
     kiosks: [
       { i: 1, j: 1, lot: 0, kind: 'home', name: 'Ma chambre' }, { i: 1, j: 1, lot: 1, kind: 'dibiterie', name: 'Dibiterie Chez Pathé' }, { i: 3, j: 2, lot: 2, kind: 'gargote', name: 'Gargote Mame Diarra' },
       { i: 0, j: 2, lot: 1, kind: 'cafe', name: 'Café Touba · Parcelles' }, { i: 3, j: 1, lot: 3, kind: 'garage', name: 'Garage Modou' }, { i: 3, j: 1, lot: 2, kind: 'maiga', name: 'Maïga du marché' },
@@ -836,7 +836,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
           for (const sx of [-1, 1]) tree(cx + sx * 9, cz - 15, 1.1);          // the forecourt's two shade trees stay
           for (const sx of [-1, 1]) ghost(cx + sx * 15 - 1.6, cz - 9.6, cx + sx * 15 + 1.6, cz - 6.4, 26);   // old minarets and hall
           ghost(cx - 13, cz - 9, cx + 13, cz + 13, 11);
-          sites.push({ key: `mosque:${i}${j}`, kind: 'mosque', name: 'Grande Mosquée', x0: bx, z0: bz, x1: bx + BLK, z1: bz + BLK, front: { x: 0, z: -1 } });
+          sites.push({ key: `mosque:${i}${j}`, kind: 'mosque', name: id === 'pikine' ? 'Mosquée du quartier' : 'Grande Mosquée', x0: bx, z0: bz, x1: bx + BLK, z1: bz + BLK, front: { x: 0, z: -1 } });
           break;
         }
         fac.facade(26, 11, 22, cx, B, cz + 2, 0xf6f3ea);

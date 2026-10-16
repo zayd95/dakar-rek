@@ -42,7 +42,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   const id = `${hub}:venue:${site.key}`;
   const cx = (site.x0 + site.x1) / 2, cz = (site.z0 + site.z1) / 2;
   const yaw = Math.atan2(site.front.x, site.front.z);
-  const k = new VenueKit({ x: cx, z: cz }, yaw);
+  const k = new VenueKit({ x: cx, z: cz }, yaw, 'street', 0, hub === 'pikine' ? 0.8 : 1);   // Pikine's is a neighbourhood mosque: the same venue, a fifth smaller
   const { plain: Pl, wall: Wa, paving: Pv, glow: Gl } = k.b;
   const R = rng(7713);
   const at = (lx: number, lz: number) => k.w(lx, lz);
@@ -67,7 +67,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   Wa.geometry(archPiece(5.0, 3.4, 0.7), WHITE, 0, G0 + 2.2, 22.75);                    // the gate arch
   Pl.box(5.95, 0.16, 0.86, 0, G0 + 5.58, 22.75, GREEN);                                  // coping
   Pl.geometry(archBand(2.5, 2.62, 0.74), GREEN, 0, G0 + 2.2, 22.75);
-  const signs = [k.sign('GRANDE MOSQUÉE', '#0f3d33', '#f3ecd0', 0, G0 + 5.1, 23.12, 0, 4.2, 0.62)];
+  const signs = [k.sign(site.name.toUpperCase(), '#0f3d33', '#f3ecd0', 0, G0 + 5.1, 23.12, 0, 4.2, 0.62)];
   // two shade trees stay from the hub (local ±9, 15); benches for the elders face the path
   const benchAt = (name: string, x: number, z: number, yawL: number) => {
     Pl.box(0.5, 0.06, 2.6, x, G0 + 0.5, z, 0x8c6542, 0); Pl.box(0.08, 0.5, 2.6, x - Math.sin(yawL) * 0.26, G0 + 0.52, z, 0x8c6542);

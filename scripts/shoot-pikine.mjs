@@ -20,7 +20,7 @@ try {
   await page.screenshot({ path: `${out}/${tag}-1-arrival.jpg`, type: 'jpeg', quality: 82 });
   const p = await page.evaluate(() => window.__dakar.pos());
   // residential blocks (2,2), (3,2), (2,3), (3,3) around the road x = 67
-  if (custom) { await page.evaluate(() => window.__dakar.teleport('pikine', -22, 37, 0)); await sleep(6000); }
+  if (custom) { await page.evaluate(([x, z]) => window.__dakar.teleport('pikine', x, z, 0), process.argv[5] ? JSON.parse(process.argv[5]) : [-22, 37]); await sleep(6000); }
   const views = [['2-street', [67, 2.6, 4], [67, 1.4, 60]], ['3-roofs', [36, 32, -6], [92, 0, 48]], ['4-yards', [64, 7, 26], [92, 0.5, 38]]];
   for (const [name, c, l] of custom ?? views) {
     const url = await page.evaluate(([c, l]) => { const d = window.__dakar.three, cam = d.camera; cam.position.set(...c); cam.lookAt(...l); cam.updateMatrixWorld(); d.renderer.render(d.scene, cam); return d.renderer.domElement.toDataURL('image/jpeg', 0.86); }, [c, l]);

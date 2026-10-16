@@ -22,7 +22,7 @@ export interface Site {
 
 /** Which sites the venues module composes in each hub. */
 export const COMPOSED_SITES: Partial<Record<HubId, readonly string[]>> = {
-  pikine: ['dibiterie:11'],
+  pikine: ['dibiterie:11', 'mosque:22'],
   plateau: ['dibiterie:12', 'mosque:11'],
 };
 export const isComposed = (hub: HubId, key: string) => !!COMPOSED_SITES[hub]?.includes(key);

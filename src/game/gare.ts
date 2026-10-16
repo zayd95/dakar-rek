@@ -1,4 +1,7 @@
-import type { GameModule } from './modules';
+import * as THREE from 'three';
+import type { GameModule, GameCtx } from './modules';
+import { Humanoid, humanoidReady, randomLook } from '../actors/humanoid';
+import { PRAYER_TIMES, PRAYER_WINDOW } from '../venues/prayer';
 import type { GameState } from '../core/state';
 import type { Action, Interactable } from '../world/types';
 import { apprentiLine } from '../i18n/lines';
@@ -86,17 +89,74 @@ function placesAt(cx: number, cz: number, A: ReturnType<typeof gareActions>): In
 
 const NOISE = ['Klaxons, moteurs et cris : le gare ne dort jamais.', 'L’apprenti : « Parcelles ! Guédiawaye ! Plateau ! »', 'Un car klaxonne pour se frayer un passage.', 'Quelqu’un hurle un prix, quelqu’un d’autre le conteste.', 'Une porte de car claque, un sac tombe : « Doucement ! »'];
 
+/** How full the gare is at city hour h, 0…1: busiest in the early morning and the late afternoon (trapezoids with soft edges). */
+export function gareLevel(h: number): number {
+  const bump = (a: number, b: number, c: number, d: number) => (h <= a || h >= d ? 0 : h < b ? (h - a) / (b - a) : h <= c ? 1 : (d - h) / (d - c));
+  return Math.max(bump(5.5, 6.5, 8.5, 9.5), bump(16.5, 17.5, 19, 20));
+}
+/** The morning commute: this long after the Fajar congregation has left (its window ends at 6 h + PRAYER_WINDOW[1]) people walk from the mosque to the cars. */
+export const COMMUTE_FROM = PRAYER_TIMES[0].hour + PRAYER_WINDOW[1], COMMUTE_UNTIL = COMMUTE_FROM + 0.6;
+
+const SPOTS: [number, number, number][] = [[-9.4, 1.3, 1.6], [-9.2, -1, 1.5], [-11.6, -4.2, 1.6], [-8.6, -6.2, 1.4], [-6.2, -11.4, 1.5], [-3.4, -11.6, 1.7],
+  [-15.2, 5.2, 1.5], [-15, 7.4, 1.6], [-4, 7.6, 3.1], [-1.5, 7.4, 3.0]];                                       // [dx, dz, yaw]: at the rear doors, a queue under the shelter
+class GareCrowd {
+  readonly group = new THREE.Group();
+  private extras: Humanoid[] = [];
+  private commuters: { h: Humanoid; path: { x: number; z: number }[]; i: number; wait: number; t: number }[] = [];
+  private doneDay = -1;
+  constructor(private cx: number, private cz: number, private forecourt: { x: number; z: number } | null) { this.group.name = 'pikine-gare-crowd'; }
+  private body(look = randomLook(Math.random)) { const h = new Humanoid(look); h.group.visible = false; this.group.add(h.group); return h; }
+  update(ctx: GameCtx, dt: number) {
+    if (!humanoidReady()) return;
+    const hour = ctx.hour(), d = Math.hypot(ctx.player.pos.x - this.cx, ctx.player.pos.z - this.cz), level = gareLevel(hour), near = d < 70;
+    // more people when the gare is busy: the spots fill with the level, and are only built while someone is there to see them
+    if (level > 0 && near && !this.extras.length) {
+      this.extras = SPOTS.map(([dx, dz, yaw], k) => { const h = this.body(); h.group.position.set(this.cx + dx, 0.1, this.cz + dz); h.group.rotation.y = yaw; h.hold = k % 3 === 0 ? 'Talk' : null; return h; });
+    }
+    const shown = Math.round(level * this.extras.length);
+    this.extras.forEach((h, k) => { const on = near && k < shown; h.group.visible = on; if (on) h.animate(dt, 0); });
+    // after the Fajar congregation, some of its people walk to the cars (once a day, only if the player is around)
+    const day = ctx.day();
+    if (this.forecourt && near && hour >= COMMUTE_FROM && hour < COMMUTE_UNTIL && day !== this.doneDay && !this.commuters.length) {
+      this.doneDay = day;
+      const F = this.forecourt, doors = SPOTS.slice(0, 6);
+      this.commuters = doors.map(([dx, dz], k) => {
+        const h = this.body(), fx = F.x + (k - 2.5) * 1.1, fz = F.z + (k % 2) * 1.2;
+        h.group.position.set(fx, 0.1, fz); h.hold = null; h.group.visible = true;
+        return { h, path: [{ x: 3, z: 12 + k * 0.5 }, { x: this.cx + 20, z: this.cz - 12 + k }, { x: this.cx + dx, z: this.cz + dz + 0.8 }], i: 0, wait: 22 + k * 3, t: -k * 1.4 };
+      });
+    }
+    for (const c of this.commuters) {
+      c.t += dt;
+      if (c.t < 0) { c.h.animate(dt, 0); continue; }
+      const p = c.h.group.position, tgt = c.path[c.i];
+      if (tgt) {
+        const dx = tgt.x - p.x, dz = tgt.z - p.z, len = Math.hypot(dx, dz), step = 1.3 * dt;
+        if (len <= step) { p.x = tgt.x; p.z = tgt.z; c.i++; } else { p.x += dx / len * step; p.z += dz / len * step; c.h.group.rotation.y = Math.atan2(dx, dz); }
+        c.h.animate(dt, 1.3);
+      } else { c.wait -= dt; c.h.animate(dt, 0); if (c.wait <= 0) c.h.group.visible = false; }       // they climb aboard and are gone
+    }
+    if (this.commuters.length && this.commuters.every(c => !c.h.group.visible)) { for (const c of this.commuters) { c.h.group.removeFromParent(); c.h.dispose(); } this.commuters = []; }
+  }
+  info() { return { extras: this.extras.filter(h => h.group.visible).length, commuters: this.commuters.length, walking: this.commuters.filter(c => c.i < c.path.length && c.t >= 0).length }; }
+  dispose() { for (const h of [...this.extras, ...this.commuters.map(c => c.h)]) h.dispose(); this.extras = []; this.commuters = []; this.group.removeFromParent(); }
+}
+let crowd: GareCrowd | null = null;
 let centre: { x: number; z: number } | null = null, nextNoise = 0, wasNear = false;
 export const gareModule: GameModule = {
   name: 'pikine-gare',
   hubLoaded(ctx, hub) {
-    centre = null; nextNoise = 0; wasNear = false;
+    crowd?.dispose(); crowd = null; centre = null; nextNoise = 0; wasNear = false;
     if (hub.id !== 'pikine') return;
     const st = hub.interactables.find(i => i.id === 'pikine:station'); if (!st) return;
     centre = { x: st.x + 3, z: st.z - 3.2 };
+    const mosque = (hub.sites ?? []).find(x => x.key === 'mosque:22');
+    crowd = new GareCrowd(centre.x, centre.z, mosque ? { x: (mosque.x0 + mosque.x1) / 2, z: mosque.z0 + 8 } : null); ctx.extra.add(crowd.group);
     hub.interactables.push(...placesAt(centre.x, centre.z, gareActions(() => ctx.state, () => ctx.hour())));
   },
-  update(ctx) {
+  debug: () => ({ gareCrowd: () => crowd?.info() ?? null }),
+  update(ctx, dt) {
+    crowd?.update(ctx, dt);
     if (!centre || ctx.world()?.id !== 'pikine' || ctx.mode() !== 'play' || ctx.space() !== 'street') return;
     const d = Math.hypot(ctx.player.pos.x - centre.x, ctx.player.pos.z - centre.z), near = d < 13, t = ctx.now() / 1000;
     if (near && !wasNear) nextNoise = t + 1.5;                       // the din greets you on arrival, then comes and goes
