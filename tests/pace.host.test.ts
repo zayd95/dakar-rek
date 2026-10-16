@@ -71,8 +71,10 @@ describe('the arena’s own show and stands, and the fans in the street', () => 
     const a = arena.info()!, C = a.centre;
     expect(out().drawn, 'the fans queueing at the gate are drawn').toBeGreaterThan(0);
 
-    // 45 m from the middle, to the north: the walls hide the show and the stands
-    host.place(C.x, C.z + 45, 0);
+    // 50 m from the middle, to the north: the walls hide the show and the stands. The follow camera sits ~10 m behind,
+    // toward the arena: it must stay farther than SEEN_FROM_GATE (14 m) from the north gate whatever the yard walls do
+    // (Pikine's low compound walls no longer pull it in, as the old 2.1 m walls did at 45 m)
+    host.place(C.x, C.z + 50, 0);
     for (let k = 0; k < 10; k++) host.frame(dt);
     stands.mockClear(); people.mockClear();
     for (let k = 0; k < 60; k++) host.frame(dt);

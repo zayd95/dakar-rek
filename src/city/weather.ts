@@ -4,6 +4,7 @@ import { streetLevel } from '../actors/npc';
 import { GRID, roadCentre } from '../transport/lines';
 import { rng } from '../core/rng';
 import { weatherAt, weatherStreet, type Weather } from './rules';
+import { readTestParams } from '../core/testParams';
 
 /**
  * A light weather layer (spec §25): sun, overcast, a shower, the wet streets after it — the day's weather comes from
@@ -101,10 +102,13 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
 let view: WeatherView | null = null;
 /** Debug only: force a weather (the checks see each kind). */
 let forced: Weather | null = null;
+const forcedOf = (kind: Weather['kind']): Weather => kind === 'rain' ? { kind, cloud: 0.85, rain: 1, wet: 1 } : kind === 'after' ? { kind, cloud: 0.4, rain: 0, wet: 0.9 } : kind === 'overcast' ? { kind, cloud: 0.7, rain: 0, wet: 0 } : { kind, cloud: 0.05, rain: 0, wet: 0 };
 
 export const weatherModule: GameModule = {
   name: 'weather',
   hubLoaded(ctx) {
+    const held = typeof window !== 'undefined' && window.location?.hostname ? readTestParams(window.location.hostname, window.location.search ?? '').weather : null;   // preview link: ?meteo=pluie
+    if (held && !forced) forced = forcedOf(held);
     view?.dispose();
     view = new WeatherView(ctx.quality());
     ctx.extra.add(view.group);
