@@ -3,7 +3,16 @@ import { ACTIVITY_IDS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
 
-export const SAVE_KEY = 'dakarrek.guest.save';
+/**
+ * Where the game keeps its save. Schema v5 lives under its own key and the key every older client wrote
+ * (`LEGACY_SAVE_KEY`: schemas 1 to 4, or a v5 test build) is only ever READ, once, to migrate it: an older client that
+ * is served again (a rollback) keeps reading and writing its own key and can never overwrite v5 progress. A future
+ * schema gets its own key the same way.
+ */
+export const SAVE_KEY = 'dakarrek.guest.save.v5';
+export const LEGACY_SAVE_KEY = 'dakarrek.guest.save';
+/** `migrated` once the legacy save was carried over, `declined` after a New Game: either way the legacy save is not read again. */
+export const LEGACY_DONE_KEY = 'dakarrek.guest.save.legacy';
 export const SCHEMA_VERSION = 5;
 /** Wallet history entries kept in the save, and completed delivery ids remembered (no double payment). */
 export const LEDGER_MAX = 100;
@@ -252,9 +261,24 @@ function wrestlerOf(v: unknown): WrestlerLook {
 export interface KV { getItem(k: string): string | null; setItem(k: string, v: string): void; removeItem(k: string): void }
 
 export function loadSave(store: KV | null): SaveData | null {
-  try { const s = store?.getItem(SAVE_KEY); return s ? migrate(JSON.parse(s)) : null; } catch { return null; }
+  if (!store) return null;
+  try {
+    const own = store.getItem(SAVE_KEY);
+    if (own) return migrate(JSON.parse(own));   // a v5 save wins for good, even when it cannot be read: nothing falls back to the legacy one
+    if (store.getItem(LEGACY_DONE_KEY)) return null;
+    const legacy = store.getItem(LEGACY_SAVE_KEY);
+    const data = legacy ? migrate(JSON.parse(legacy)) : null;
+    if (!data) return null;
+    // one-time migration, written at once so a second tab or a reload takes the v5 save; the legacy save is left untouched
+    try { store.setItem(SAVE_KEY, JSON.stringify(data)); store.setItem(LEGACY_DONE_KEY, 'migrated'); } catch { /* full or blocked storage: it is tried again at the next save */ }
+    return data;
+  } catch { return null; }
 }
 export function writeSave(store: KV | null, data: SaveData): boolean {
   try { store?.setItem(SAVE_KEY, JSON.stringify({ ...data, savedAt: Date.now() })); return !!store; } catch { return false; }
 }
-export function clearSave(store: KV | null) { try { store?.removeItem(SAVE_KEY); } catch { /* ignore */ } }
+/** New Game: forget the v5 save, and never carry the legacy one over again (it stays in the storage, for an older client). */
+export function clearSave(store: KV | null) {
+  try { store?.setItem(LEGACY_DONE_KEY, 'declined'); } catch { /* ignore */ }
+  try { store?.removeItem(SAVE_KEY); } catch { /* ignore */ }
+}

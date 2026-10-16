@@ -216,7 +216,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await d(() => {
     const old = x => { delete x.beats.ibou_welcome; x.rel['ibou|player'] = 3; x.flags = x.flags.filter(f => f !== 'reco_modou'); return x; };
     old(window.__dakar.state.data);
-    const k = 'dakarrek.guest.save'; localStorage.setItem(k, JSON.stringify(old(JSON.parse(localStorage.getItem(k)))));
+    const k = 'dakarrek.guest.save.v5'; localStorage.setItem(k, JSON.stringify(old(JSON.parse(localStorage.getItem(k)))));
   });
   await page.reload({ timeout: 120000 }); await ready();
   const b5 = await d(() => ({ beat: window.__dakar.state.data.beats.ibou_welcome ?? null, reco: window.__dakar.state.data.flags.includes('reco_modou') }));
