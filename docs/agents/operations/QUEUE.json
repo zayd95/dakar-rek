@@ -1646,5 +1646,17 @@
     },
     "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
     "lastReconciledAt": "2026-10-16T06:28:25Z"
+  },
+  "registryWriter": {
+    "token": "freeze-20261016T0728Z-watch",
+    "owner": "producer_freeze_0728",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "45ac5d91e4cf01145e53221c1fec07d1fbcb0165",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-16-0728-FREEZE.md"
+    ],
+    "acquiredAt": "2026-10-16T07:27:33Z"
   }
 }
