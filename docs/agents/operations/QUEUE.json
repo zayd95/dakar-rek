@@ -1646,5 +1646,38 @@
     },
     "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
     "lastReconciledAt": "2026-10-16T08:35:34Z"
+  },
+  "currentRegressionReview": {
+    "id": "STAB-20261016-0935-QA",
+    "role": "qa",
+    "kind": "regression_delta_review",
+    "status": "active",
+    "owner": "qa_reference_0935",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
+    "controlBriefCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
+    "sourceCommit": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
+    "previousSourceCommit": "951d9ae18988e90c8bf129107ce474d830549b9c",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR29-20261016-0935-QA.md"
+    ],
+    "acceptance": [
+      "Review actual interrupted/reversed gait fix diff and regression tests at a918c051 exact; distinguish ordinary avatars and reference scope",
+      "Read current exact CI logs and checkout SHAs, types/build/city/online/launch; inspect committed before/after targeted JSON without claiming independent browser playback",
+      "No Blender or asset generation, no source writes, no local Chromium retry; verdict ready/needs-decision/blocked for delta only, preserve previous art/device/global acceptance gaps"
+    ]
+  },
+  "registryWriter": {
+    "token": "freeze-20261016T0935Z-qa",
+    "owner": "producer_freeze_0935",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "5eaa254405ca392362bb4baecb992be445409f4c",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR29-20261016-0935-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-16-0935-FREEZE.md"
+    ],
+    "acquiredAt": "2026-10-16T09:34:46Z"
   }
 }
