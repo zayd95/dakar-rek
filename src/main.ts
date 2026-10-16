@@ -1280,6 +1280,7 @@ function frameStep(now: number, dt: number, draw = true) {
   const focus = mode === 'play' && !lambScene ? interactions.update(interactSpace(), pos.x, pos.z, facing) : (interactions.focus = null);
   economy.update(dt, pos, !!inside, mode === 'play' && !lambScene, inside ? inside.door : pos);
 
+  follow.roofless = !!inside?.int.open;
   if (!lambScene && !MODULES.some(m => m.camera?.(ctx, dt, drag))) follow.update(dt, pos, facing, drag, inside ? inside.int.colliders : world.colliders, innerHeight > innerWidth, speed > 0.5, inside ? inside.int.cameraBox : undefined, inside ? undefined : (x, z) => world!.heightAt(x, z), inside ? undefined : world.canopies, inside ? [] : world.roofs ?? []);
   if (camOverride && !lambScene) {
     const a = facing + camOverride.side;
