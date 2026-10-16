@@ -1774,5 +1774,38 @@
       "L1 social venues",
       "P1 port only if retained"
     ]
+  },
+  "currentSaveReview": {
+    "id": "STAB-20261016-1335-QA",
+    "role": "qa",
+    "kind": "save_safety_regression_review",
+    "status": "active",
+    "owner": "qa_save_1335",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
+    "controlBriefCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
+    "sourceCommit": "9ce15a51d2d7c5ac10d88eb279813d349bec29e4",
+    "previousSourceCommit": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR37-20261016-1335-QA.md"
+    ],
+    "acceptance": [
+      "Review actual key isolation migration/new-game/rollback/full storage/corruption diff and tests at9ce15 exact; preserve v3-v5 save integrity",
+      "Verify actual exact CI checkout/totals and whether targeted save-compat/Pikine/life-loop/economy scripts execute in CI or author-only",
+      "Inspect known failures without treating author baseline claims as independent reproduction; no merge/deploy/source mutation/Blender/local Chromium retry; distinguish technical delta vs full game/public launch"
+    ]
+  },
+  "registryWriter": {
+    "token": "audit-20261016T1335Z-save",
+    "owner": "producer_save_1335",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-16-1335-SAVE.md"
+    ],
+    "acquiredAt": "2026-10-16T13:34:40Z"
   }
 }

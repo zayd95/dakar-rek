@@ -5,10 +5,32 @@
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": null,
+  "lease": {
+    "token": "audit-20261016T1335Z-save",
+    "owner": "producer_save_1335",
+    "baseCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
+    "acquiredAt": "2026-10-16T13:34:40Z",
+    "expiresAt": "2026-10-16T14:00:00Z",
+    "scope": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-16-1335-SAVE.md"
+    ]
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "task": "STAB-20261016-1335-QA",
+      "owner": "qa_save_1335",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
+      "files": [
+        "docs/agents/operations/reports/PR37-20261016-1335-QA.md"
+      ]
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -124,7 +146,9 @@
     "enabled": true
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [],
+  "reviewTasks": [
+    "STAB-20261016-1335-QA"
+  ],
   "activeSessions": [],
   "completedSessions": [
     "activation_producer",
