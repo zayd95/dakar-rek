@@ -858,17 +858,17 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-1628-WATCH.md",
-    "checkedAt": "2026-10-16T16:28:20Z",
-    "owner": "producer_audit_1628",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-1737-WATCH.md",
+    "checkedAt": "2026-10-16T17:37:19Z",
+    "owner": "producer_audit_1737",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "b921252191a4b1d42355e99da8a0d9738b7ba40d",
+    "baseCommit": "cc5f2bcc43583623f27e111d415e080b82fcc4da",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-1628-WATCH.md"
+      "docs/agents/operations/CYCLE-2026-10-16-1737-WATCH.md"
     ],
-    "result": "Unchanged PR37 quota/New Game defect; no new correction or proof. Needs-decision and approval gates retained."
+    "result": "PR37 source/evidence unchanged; save defect and approval gates retained; no new notification"
   },
   "evidenceReview": {
     "id": "WATCH-20261014-0636-QA",
@@ -1823,7 +1823,7 @@
       "targetedBrowser": "author claims only; save-compat not invoked in inspected CI",
       "publicLaunchApproved": false
     },
-    "lastReconciledAt": "2026-10-16T16:28:20Z"
+    "lastReconciledAt": "2026-10-16T17:37:19Z"
   },
   "saveRegressionProposal": {
     "id": "SAVE-NEWGAME-QUOTA",
@@ -1845,18 +1845,6 @@
     ],
     "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
     "note": "Proposal, not dispatch or file reservation; no automatic implementation",
-    "lastReconciledAt": "2026-10-16T16:28:20Z"
-  },
-  "registryWriter": {
-    "token": "audit-20261016T1737Z-watch",
-    "owner": "producer_audit_1737",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "cc5f2bcc43583623f27e111d415e080b82fcc4da",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-1737-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-16T17:36:51Z"
+    "lastReconciledAt": "2026-10-16T17:37:19Z"
   }
 }
