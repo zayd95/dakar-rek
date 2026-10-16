@@ -47,6 +47,101 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   const R = rng(7713);
   const at = (lx: number, lz: number) => k.w(lx, lz);
 
+  const modest = hub === 'pikine';
+  let signs: THREE.Mesh[], benchW: ReturnType<VenueKit['bench']>, benchE: ReturnType<VenueKit['bench']>, lanternPool: THREE.Mesh[];
+  let stools: ReturnType<VenueKit['seat']>[], myShoesMesh: THREE.Mesh, neonMat: THREE.MeshBasicMaterial, facadeGlow: THREE.Mesh;
+  let TAP = { x: -19.9, z: 14.0 }, BROOM = { x: 7.7, z: 14.6 }, DOOR_Z = 7.0, OUT_Z = 8.0;                 // where the taps, the broom and the door are, in local coordinates
+  if (modest) {
+  // ---------------------------------------------------------------- the neighbourhood mosque of Pikine: small, plain, among houses
+  // A flat-roofed hall of plastered breeze block with a tin porch, one short square minaret with loudspeakers, a sand courtyard
+  // behind a low wall and an open gate, five taps under a tin sheet, two wooden benches. Nothing prestigious.
+  const MOD = { wall: 0xe6d9ba, band: 0xbfae8c, roof: 0xa7a193, trim: 0x3f7f5c, tin: 0x8a5f40, wood: 0x6b4a2e };
+  const HZ1 = 3.0, HZ0 = -7.0, HW = 6.5, HHm = 4.0;
+  const low = (x0: number, z0: number, x1: number, z1: number, h = 1.1) => {
+    const alongX = Math.abs(x1 - x0) > Math.abs(z1 - z0), mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, t = 0.28, w = alongX ? Math.abs(x1 - x0) : t, d = alongX ? t : Math.abs(z1 - z0);
+    Wa.box(w, h, d, mx, G0 - 0.02, mz, MOD.wall); Pl.box(w + 0.06, 0.1, d + 0.06, mx, G0 + h - 0.06, mz, MOD.band); k.solid(mx, mz, w, d, h);
+  };
+  low(-14, 14.5, -1.7, 14.5); low(1.7, 14.5, 14, 14.5); low(-14, -7.5, 14, -7.5); low(-14, -7.5, -14, 14.5); low(14, -7.5, 14, 14.5);
+  for (const sx of [-1, 1]) { Wa.box(0.55, 1.9, 0.55, sx * 1.95, G0 - 0.02, 14.5, MOD.wall); Pl.box(0.7, 0.14, 0.7, sx * 1.95, G0 + 1.85, 14.5, MOD.band); k.solid(sx * 1.95, 14.5, 0.55, 0.55, 1.9); }
+  Pl.box(4.0, 0.1, 0.1, 0, G0 + 2.45, 14.5, MOD.wood);                                          // a board hung between the pillars: the name, painted by hand
+  signs = [k.sign(site.name.toUpperCase(), '#35604b', '#f3ecd0', 0, G0 + 2.05, 14.58, 0, 3.4, 0.5)];
+  Pv.box(2.2, 0.012, 11.0, 0, G0 - 0.004, 8.5, 0xcdbf9b);                                       // a worn path from the gate to the porch
+  // the hall
+  const hc = (HZ0 + HZ1) / 2, hd = HZ1 - HZ0;
+  Wa.box(HW * 2, HHm, hd, 0, G0 - 0.02, hc, MOD.wall);
+  Pl.box(HW * 2 + 0.06, 0.6, hd + 0.06, 0, G0 - 0.02, hc, MOD.band);                           // dirt band
+  Pl.box(HW * 2 + 0.08, 0.16, hd + 0.08, 0, G0 + HHm - 0.75, hc, MOD.trim);                    // the only green: one thin stripe
+  Pl.box(HW * 2 + 0.3, 0.22, hd + 0.3, 0, G0 + HHm - 0.04, hc, MOD.roof);                       // flat roof slab
+  for (const [x0, z0, x1, z1] of [[-HW, HZ1, HW, HZ1], [-HW, HZ0, HW, HZ0], [-HW, HZ0, -HW, HZ1], [HW, HZ0, HW, HZ1]] as const) {
+    Wa.box(Math.abs(x1 - x0) || 0.25, 0.4, Math.abs(z1 - z0) || 0.25, (x0 + x1) / 2, G0 + HHm + 0.18, (z0 + z1) / 2, MOD.wall);                // roof parapet
+  }
+  k.solid(0, hc, HW * 2, hd, HHm);
+  const win = (x: number, z: number, faceYaw: number) => {
+    const fx = Math.sin(faceYaw) * 0.03, fz = Math.cos(faceYaw) * 0.03, g = new THREE.PlaneGeometry(0.85, 1.1); g.translate(0, 0.55, 0);
+    Pl.geometry(g, 0x23343a, x + fx, G0 + 1.3, z + fz, faceYaw);
+    const f = new THREE.PlaneGeometry(1.05, 0.1); Pl.geometry(f, MOD.trim, x + fx * 1.3, G0 + 1.25, z + fz * 1.3, faceYaw);
+    const grill = new THREE.PlaneGeometry(0.85, 0.05); Pl.geometry(grill, 0x4a4f55, x + fx * 1.6, G0 + 1.85, z + fz * 1.6, faceYaw);
+  };
+  for (const x of [-5, -3.4, 3.4, 5]) win(x, HZ1, 0);
+  for (const z of [0.5, -3, -5.8]) { win(-HW, z, -Math.PI / 2); win(HW, z, Math.PI / 2); }
+  const door = new THREE.PlaneGeometry(1.7, 2.4); door.translate(0, 1.2, 0);
+  Gl.geometry(door, 0x6a4a2a, 0, G0, HZ1 + 0.02, 0);                                             // the green-brown doors, open, warm light from the hall
+  for (const s of [-1, 1]) { Pl.box(0.1, 2.4, 0.9, s * 1.0, G0, HZ1 + 0.45, MOD.trim); Pl.box(0.16, 2.5, 0.16, s * 0.95, G0, HZ1 + 0.02, MOD.band); }
+  Pl.box(2.2, 0.16, 0.16, 0, G0 + 2.45, HZ1 + 0.02, MOD.band);
+  k.b.tin.slab(4.2, 0.06, 2.2, 0, G0 + 3.0, HZ1 + 1.1, MOD.tin, 0, 0.12);                          // a tin porch on wooden posts
+  for (const sx of [-1, 1]) { Pl.box(0.13, 3.0, 0.13, sx * 1.95, G0, HZ1 + 2.1, MOD.wood); k.solid(sx * 1.95, HZ1 + 2.1, 0.2, 0.2, 3); }
+  // shoe racks beside the door
+  const SHOES = [0x3a2a1e, 0xf2f2ec, 0x1c1c1f, 0x8a5a3a, 0xc4372b, 0x2f6fb3, 0xd9b44a, 0x6b4a2e];
+  const pair = (x: number, y: number, z: number, c: number, r = 0) => { for (const d of [-0.07, 0.07]) Pl.box(0.11, 0.06, 0.28, x + Math.cos(r) * d, y, z - Math.sin(r) * d, c, r); };
+  for (const s of [-1, 1]) {
+    const x = s * 3.0;
+    for (const y of [0, 0.4, 0.8]) Pl.box(1.5, 0.04, 0.4, x, G0 + y, HZ1 + 0.24, MOD.wood);
+    for (const dx of [-0.72, 0.72]) Pl.box(0.05, 0.9, 0.4, x + dx, G0, HZ1 + 0.24, MOD.wood);
+    for (let n = 0; n < 9; n++) if (R() < 0.75) pair(x - 0.55 + (n % 3) * 0.55, G0 + 0.04 + Math.floor(n / 3) * 0.4, HZ1 + 0.24, SHOES[Math.floor(R() * SHOES.length)]);
+    k.solid(x, HZ1 + 0.24, 1.5, 0.45, 1);
+  }
+  for (let n = 0; n < 5; n++) pair(-1.4 + n * 0.7, G0, HZ1 + 0.9 + (n % 2) * 0.25, SHOES[n % SHOES.length], (n % 3) * 0.3 - 0.3);
+  const myShoesB = new Batch(); for (const d of [-0.07, 0.07]) myShoesB.box(0.11, 0.07, 0.28, 1.5 + d, G0, HZ1 + 1.0, 0x2b2f3a, 0.15);
+  myShoesMesh = myShoesB.build(mats.m.plain, true, true)!; myShoesMesh.visible = false; k.group.add(myShoesMesh); k.keep(myShoesMesh.geometry);
+  // the minaret: one, short and square, with the loudspeakers
+  const MX = -9.6, MZ = -4.2;
+  Wa.box(2.0, 9.0, 2.0, MX, G0 - 0.02, MZ, MOD.wall); Pl.box(2.12, 0.3, 2.12, MX, G0 - 0.02, MZ, MOD.band);
+  for (const y of [3.4, 6.2]) Pl.box(2.08, 0.16, 2.08, MX, G0 + y, MZ, MOD.trim);
+  Pl.box(2.9, 0.2, 2.9, MX, G0 + 9.0, MZ, MOD.band);
+  for (const [dx, dz] of [[-1.35, -1.35], [1.35, -1.35], [-1.35, 1.35], [1.35, 1.35]]) { Pl.box(0.06, 0.8, 0.06, MX + dx, G0 + 9.2, MZ + dz, 0x4a4f55); Pl.box(0.34, 0.3, 0.3, MX + dx * 0.6, G0 + 9.9, MZ + dz * 0.6, 0x8a8f94); }
+  Wa.box(1.2, 1.3, 1.2, MX, G0 + 9.2, MZ, MOD.wall); Pl.cyl(0, 0.95, 1.2, MX, G0 + 10.5, MZ, MOD.trim, 4);
+  Pl.geometry(crescent(0.26), GOLD, MX, G0 + 11.95, MZ);
+  k.solid(MX, MZ, 2.0, 2.0, 9);
+  // five taps along the west wall under a tin sheet, low stools and plastic kettles
+  Wa.box(0.3, 1.1, 7.2, -12.6, G0 - 0.02, 6.0, MOD.wall); Pl.box(0.34, 0.08, 7.24, -12.6, G0 + 1.08, 6.0, MOD.band); k.solid(-12.6, 6.0, 0.34, 7.2, 1.15);
+  stools = [];
+  const KETTLES = [0xd9322b, 0x1a9d54, 0x2f6fb3, 0xf4c20d, 0xe8742c];
+  for (let n = 0; n < 5; n++) {
+    const z = 3.0 + n * 1.35;
+    Pl.cyl(0.03, 0.03, 0.18, -12.4, G0 + 0.72, z, GOLD, 6, [0, 0, Math.PI / 2]);
+    Pl.cyl(0.17, 0.2, 0.46, -11.6, G0, z, STONE, 10);
+    stools.push(k.seat(`${id}:robinet:${n}`, -11.6, z, -Math.PI / 2, 0.58, 'stool'));
+    Pl.cyl(0.1, 0.12, 0.22, -11.0, G0, z + 0.4, KETTLES[n], 8);
+  }
+  k.b.tin.slab(2.6, 0.06, 8.0, -11.7, G0 + 2.5, 6.0, 0x7a5a3c, 0, 0.1);
+  for (const z of [2.2, 9.8]) { Pl.box(0.1, 2.5, 0.1, -10.5, G0, z, MOD.wood); k.solid(-10.5, z, 0.14, 0.14, 2.5); }
+  // two wooden benches along the front wall, for the elders, facing the hall
+  const bench = (name: string, x: number) => {
+    Pl.box(2.4, 0.06, 0.5, x, G0 + 0.46, 12.0, MOD.wood); for (const dx of [-1, 1]) Pl.box(0.1, 0.46, 0.45, x + dx, G0, 12.0, 0x4a3426);
+    k.solid(x, 12.0, 2.4, 0.5, 0.6);
+    return k.bench(`${id}:${name}`, x, 12.0, Math.PI, 2.4, 2, 0.5);
+  };
+  benchW = bench('bancO', -8); benchE = bench('bancE', 8);
+  Pl.box(0.04, 1.4, 0.04, 6.3, G0, 8.0, 0x8a6a48);                                              // the courtyard broom leaning on the wall
+  // a few lanterns on wooden posts by the path
+  for (const sx of [-1, 1]) { Pl.box(0.1, 2.2, 0.1, sx * 1.6, G0, 10.5, MOD.wood); Gl.box(0.2, 0.26, 0.2, sx * 1.6, G0 + 2.2, 10.5, 0xfff0c8); k.solid(sx * 1.6, 10.5, 0.14, 0.14, 2.2); }
+  lanternPool = [glowQuad(k, 5, 5, 0xffd9a0, -1.6, G0 + 0.02, 10.5), glowQuad(k, 5, 5, 0xffd9a0, 1.6, G0 + 0.02, 10.5)];
+  const neonB = new Batch(); const ring = new THREE.TorusGeometry(1.7, 0.04, 4, 20); ring.rotateX(Math.PI / 2); neonB.geometry(ring, 0x5cffa0, MX, G0 + 9.15, MZ);
+  neonMat = k.keep(new THREE.MeshBasicMaterial({ vertexColors: true }));
+  const neon = neonB.build(neonMat, false, false)!; k.group.add(neon); k.keep(neon.geometry);
+  facadeGlow = glowQuad(k, 12, 4, 0xfff4dc, 0, G0 + 3, HZ1 + 0.6, false);
+  TAP = { x: -11.2, z: 6.0 }; BROOM = { x: 6.3, z: 8.4 }; DOOR_Z = HZ1 + 1.5; OUT_Z = HZ1 + 3.2;
+  } else {
   // ---------------------------------------------------------------- courtyard, enclosure, gate
   Pv.box(44.8, 0.012, 16.6, 0, G0 - 0.005, 14.3, 0xe6dfd0);                             // light paving
   Pv.box(3.2, 0.014, 13.4, 0, G0 - 0.004, 15.9, 0xc9bfae);                               // path from the gate to the portico
@@ -67,7 +162,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   Wa.geometry(archPiece(5.0, 3.4, 0.7), WHITE, 0, G0 + 2.2, 22.75);                    // the gate arch
   Pl.box(5.95, 0.16, 0.86, 0, G0 + 5.58, 22.75, GREEN);                                  // coping
   Pl.geometry(archBand(2.5, 2.62, 0.74), GREEN, 0, G0 + 2.2, 22.75);
-  const signs = [k.sign('GRANDE MOSQUÉE', '#0f3d33', '#f3ecd0', 0, G0 + 5.1, 23.12, 0, 4.2, 0.62)];
+  signs = [k.sign(site.name.toUpperCase(), '#0f3d33', '#f3ecd0', 0, G0 + 5.1, 23.12, 0, 4.2, 0.62)];
   // two shade trees stay from the hub (local ±9, 15); benches for the elders face the path
   const benchAt = (name: string, x: number, z: number, yawL: number) => {
     Pl.box(0.5, 0.06, 2.6, x, G0 + 0.5, z, 0x8c6542, 0); Pl.box(0.08, 0.5, 2.6, x - Math.sin(yawL) * 0.26, G0 + 0.52, z, 0x8c6542);
@@ -75,7 +170,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
     k.solid(x, z, 0.6, 2.6, 0.7);
     return k.bench(`${id}:${name}`, x + Math.sin(yawL) * 0.04, z, yawL, 2.6, 2, 0.6);
   };
-  const benchW = benchAt('bancO', -6.6, 15.0, Math.PI / 2), benchE = benchAt('bancE', 6.6, 15.0, -Math.PI / 2);
+  benchW = benchAt('bancO', -6.6, 15.0, Math.PI / 2); benchE = benchAt('bancE', 6.6, 15.0, -Math.PI / 2);
   // broom leaning on the east tree (the courtyard is swept by volunteers)
   Pl.cyl(0.02, 0.02, 1.4, 8.45, G0, 15.6, 0x8a6a48, 4, [0.25, 0, 0]); Pl.cyl(0.12, 0.03, 0.4, 8.45, G0, 15.95, 0xd9c48a, 6, [0.25, 0, 0]);
   // lanterns along the path
@@ -83,7 +178,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
     Pl.cyl(0.05, 0.07, 2.6, s * 2.6, G0, z, 0x2a3a35, 6); Pl.box(0.3, 0.4, 0.3, s * 2.6, G0 + 2.6, z, 0x2a3a35); Gl.box(0.22, 0.3, 0.22, s * 2.6, G0 + 2.65, z, 0xfff0c8);
     k.solid(s * 2.6, z, 0.2, 0.2, 2.6);
   }
-  const lanternPool = [glowQuad(k, 6, 6, 0xffd9a0, -2.6, G0 + 0.02, 11.5), glowQuad(k, 6, 6, 0xffd9a0, 2.6, G0 + 0.02, 11.5), glowQuad(k, 6, 6, 0xffd9a0, -2.6, G0 + 0.02, 18.5), glowQuad(k, 6, 6, 0xffd9a0, 2.6, G0 + 0.02, 18.5)];
+  lanternPool = [glowQuad(k, 6, 6, 0xffd9a0, -2.6, G0 + 0.02, 11.5), glowQuad(k, 6, 6, 0xffd9a0, 2.6, G0 + 0.02, 11.5), glowQuad(k, 6, 6, 0xffd9a0, -2.6, G0 + 0.02, 18.5), glowQuad(k, 6, 6, 0xffd9a0, 2.6, G0 + 0.02, 18.5)];
 
   // ---------------------------------------------------------------- ablution taps (west side of the courtyard)
   const TX = -21.75;
@@ -91,7 +186,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   for (let n = 0; n < 22; n++) Pl.box(0.01, 1.1, 0.01, TX + 0.2, G0, 8.6 + n * 0.5, 0xd2dcd6);                   // tile joints
   Pl.box(0.32, 0.02, 11.0, TX + 0.45, G0 + 0.005, 14.0, 0x6f7a76);                                                 // gutter
   k.solid(TX, 14.0, 0.4, 11.0, 1.2);
-  const stools: ReturnType<VenueKit['seat']>[] = [];
+  stools = [];
   const KETTLES = [0xd9322b, 0x1a9d54, 0x2f6fb3, 0xf4c20d, 0xe8742c, 0x6b3fa0, 0x1a9d54];
   for (let n = 0; n < 7; n++) {
     const z = 9.4 + n * 1.55;
@@ -154,7 +249,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   }
   for (let n = 0; n < 6; n++) pair(-2.2 + n * 0.85 + (n > 2 ? 0.9 : 0), G0, HZ1 + 0.95 + (n % 2) * 0.25, SHOES[n % SHOES.length], (n % 3) * 0.3 - 0.3);
   const myShoes = new Batch(); for (const d of [-0.07, 0.07]) myShoes.box(0.11, 0.07, 0.28, 1.95 + d, G0, HZ1 + 1.1, 0x2b2f3a, 0.15);
-  const myShoesMesh = myShoes.build(mats.m.plain, true, true)!; myShoesMesh.visible = false; k.group.add(myShoesMesh); k.keep(myShoesMesh.geometry);
+  myShoesMesh = myShoes.build(mats.m.plain, true, true)!; myShoesMesh.visible = false; k.group.add(myShoesMesh); k.keep(myShoesMesh.geometry);
   // drum, dome and finial; the mihrab's bulge at the back
   const DZ = -7.5;
   Wa.cyl(5.9, 5.9, 1.7, 0, G0 + HH + 0.25, DZ, WHITE, 16); Pl.cyl(5.95, 5.95, 0.25, 0, G0 + HH + 1.85, DZ, GREEN, 16);
@@ -181,9 +276,11 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   const neonB = new Batch();
   const ring = new THREE.TorusGeometry(2.0, 0.045, 4, 24); ring.rotateX(Math.PI / 2); neonB.geometry(ring, 0x5cffa0, MX, G0 + 19.78, MZ);
   const ring2 = new THREE.TorusGeometry(1.4, 0.04, 4, 20); ring2.rotateX(Math.PI / 2); neonB.geometry(ring2, 0x5cffa0, MX, G0 + 24.62, MZ);
-  const neonMat = k.keep(new THREE.MeshBasicMaterial({ vertexColors: true }));
+  neonMat = k.keep(new THREE.MeshBasicMaterial({ vertexColors: true }));
   const neon = neonB.build(neonMat, false, false)!; k.group.add(neon); k.keep(neon.geometry);
-  const facadeGlow = glowQuad(k, 26, 9, 0xfff4dc, 0, G0 + 4, HZ1 + 0.6, false);
+  facadeGlow = glowQuad(k, 26, 9, 0xfff4dc, 0, G0 + 4, HZ1 + 0.6, false);
+
+  }
 
   k.build(mats);
   ctx.extra.add(k.group);
@@ -192,7 +289,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
 
   // ---------------------------------------------------------------- the prayer hall (walkable interior)
   const doorId = `${id}:salle`;
-  const out = at(0, 8.0);
+  const out = at(0, OUT_Z);
   const doorIt: Interactable = { id: doorId, name: 'Salle de prière', kind: 'actions', x: out.x, z: out.z, radius: 0, actions: [{ id: 'entrer', label: 'Entrer', seconds: 0, special: 'enter' }] };
   world.interactables.push(doorIt);
   const hall = buildHall(env, id, doorId, 1600, 0);
@@ -215,9 +312,9 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   const place = mosqueRecipe({
     id, name: site.name, space: 'street', peaks: prayerPeaks(),
     anchors: [
-      { id: 'ablutions', name: 'Robinets des ablutions', kind: 'spot', ...at(-19.9, 14.0), y: 1.6, radius: 2.8 },
-      { id: 'door', name: 'Salle de prière', kind: 'door', ...at(0, 7.0), y: 2.4, radius: 2.0 },
-      { id: 'cour', name: 'Balai de la cour', kind: 'spot', ...at(7.7, 14.6), y: 1.5, radius: 1.5 },
+      { id: 'ablutions', name: 'Robinets des ablutions', kind: 'spot', ...at(TAP.x, TAP.z), y: 1.6, radius: 2.8 },
+      { id: 'door', name: 'Salle de prière', kind: 'door', ...at(0, DOOR_Z), y: 2.4, radius: 2.0 },
+      { id: 'cour', name: 'Balai de la cour', kind: 'spot', ...at(BROOM.x, BROOM.z), y: 1.5, radius: 1.5 },
       { id: 'hall', name: 'Rangs de prière', kind: 'place', ...H(0, -1.2), y: 1.6, radius: 9, bias: 0.8, space: doorId },
       { id: 'imam', name: 'Imam Seck', kind: 'person', ...H(-2.2, -5.0), y: 1.5, radius: 1.6, space: doorId },
       { id: 'shelf', name: 'Coran sur son support', kind: 'furniture', ...H(-8.9, 4.6), y: 0.9, radius: 1.4, space: doorId },
@@ -240,7 +337,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
     { id: 'ancien2', look: look(3), seat: benchE[1], when: m => m !== 'night' && !lite },
     { id: 'robinet1', look: look(5), seat: stools[1], when: prayer, barefoot: true },
     { id: 'robinet2', look: look(6), seat: stools[4], when: m => prayer(m) && !lite, barefoot: true },
-    { id: 'porche', look: look(7), ...at(-2.6, 7.1), yaw: yaw + Math.PI * 0.9, clip: 'Talk', when: prayer, barefoot: true },
+    { id: 'porche', look: look(7), ...at(-2.6, DOOR_Z + 0.1), yaw: yaw + Math.PI * 0.9, clip: 'Talk', when: prayer, barefoot: true },
   ];
   const streetCast = new Cast(street, ctx.seats, ctx.extra, id);
   env.addPeople(() => streetCast.bodies());

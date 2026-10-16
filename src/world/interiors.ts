@@ -32,6 +32,8 @@ export interface Interior {
   cameraBox: { x0: number; x1: number; z0: number; z1: number };
   spawn: { x: number; z: number; yaw: number };
   light: THREE.Vector3;
+  /** No ceiling (homes, rooftops): the camera rises above the walls and looks down into the room. */
+  open?: boolean;
   /** Light colour: warm bulb at home, cool tube in the gargote. */
   lightColor: number;
 }
@@ -102,8 +104,10 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
   plain.box(0.1, 0.06, 0.1, doorX - 0.45, 1.1, z1 + 0.12, 0xd4b24a);
   colliders.push({ x0: x0 - 1, z0: z0 - 1, x1: x1 + 1, z1: z0, h: H }, { x0: x0 - 1, z0, x1: x0, z1: z1 + 1, h: H }, { x0: x1, z0, x1: x1 + 1, z1: z1 + 1, h: H }, { x0: x0 - 1, z0: z1, x1: x1 + 1, z1: z1 + 1, h: H });
   // ceiling (faces down only)
-  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.4, D + 0.4), addGrain(new THREE.MeshLambertMaterial({ color: 0xf4f1ea, emissive: 0x2a2824 }), 0.4, 2));
-  ceil.rotation.x = Math.PI / 2; ceil.position.set(ox, H + 0.1, oz); group.add(ceil);
+  if (kind !== 'home') {                                     // a home has no roof for the camera: it looks down into the room
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.4, D + 0.4), addGrain(new THREE.MeshLambertMaterial({ color: 0xf4f1ea, emissive: 0x2a2824 }), 0.4, 2));
+    ceil.rotation.x = Math.PI / 2; ceil.position.set(ox, H + 0.1, oz); group.add(ceil);
+  }
   plain.box(W, 0.12, 0.08, ox, 0.1, z0 + 0.04, 0x8a7a6a); plain.box(0.08, 0.12, D, x0 + 0.04, 0.1, oz, 0x8a7a6a); plain.box(0.08, 0.12, D, x1 - 0.04, 0.1, oz, 0x8a7a6a); // skirting
   // window with blue louvred metal shutters on the north wall, daylight behind
   const win = (x: number, z: number) => {
@@ -114,11 +118,11 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
   };
   if (kind !== 'maiga') win(ox - W / 4, z0); if (kind === 'gargote') win(ox + W / 4, z0);
   // ceiling light: bulb at home, fluorescent tube in the gargote
-  if (kind !== 'gargote') { plain.cyl(0.02, 0.02, 0.3, ox, H - 0.2, oz, 0x222222, 4); glow.sphere(0.07, ox, H - 0.25, oz, 0xfff1c8); }
-  else { plain.box(1.3, 0.06, 0.12, ox, H - 0.08, oz, 0xdddddd); glow.box(1.2, 0.05, 0.06, ox, H - 0.13, oz, 0xeaf6ff); }
+  if (kind === 'maiga') { plain.cyl(0.02, 0.02, 0.3, ox, H - 0.2, oz, 0x222222, 4); glow.sphere(0.07, ox, H - 0.25, oz, 0xfff1c8); }
+  else if (kind === 'gargote') { plain.box(1.3, 0.06, 0.12, ox, H - 0.08, oz, 0xdddddd); glow.box(1.2, 0.05, 0.06, ox, H - 0.13, oz, 0xeaf6ff); }
   // ceiling fan (the Maïga has a small wall fan instead)
-  if (kind !== 'maiga') {
-  const fanX = kind === 'home' ? ox + 1.2 : ox - 2, fanZ = kind === 'home' ? oz : oz + 1;
+  if (kind === 'gargote') {
+  const fanX = ox - 2, fanZ = oz + 1;
   plain.cyl(0.03, 0.03, 0.4, fanX, H - 0.3, fanZ, 0x333333, 4); plain.cyl(0.12, 0.12, 0.1, fanX, H - 0.38, fanZ, 0xe8e8e8, 8);
   for (let k = 0; k < 3; k++) plain.box(0.14, 0.015, 0.8, fanX + Math.sin(k * 2.094) * 0.42, H - 0.36, fanZ + Math.cos(k * 2.094) * 0.42, 0xe8e8e8, k * 2.094);
   }
@@ -247,7 +251,7 @@ export function buildInterior(kind: InteriorKind, ox: number, oz: number, name: 
   }
   interactables.push({ id: `${hub}:in:door`, name: 'Sortir', kind: 'actions', x: doorX, z: z1 - 0.6, radius: 1.2, actions: [{ id: 'sortir', label: 'Sortir', seconds: 0, special: 'exit' }] });
   return {
-    kind, name, group, colliders, interactables, seats,
+    kind, name, group, colliders, interactables, seats, open: kind === 'home',
     bounds: { x0: x0 + 0.3, x1: x1 - 0.3, z0: z0 + 0.3, z1: z1 - 0.3 },
     cameraBox: { x0: x0 + 0.15, x1: x1 - 0.15, z0: z0 + 0.15, z1: z1 - 0.15 },
     spawn: { x: doorX - 0.6, z: oz - D * 0.06, yaw: Math.PI + 0.35 },

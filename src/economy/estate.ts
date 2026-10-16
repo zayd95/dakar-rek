@@ -605,6 +605,7 @@ class Estate {
       buyPiece: (id: string) => { const p = deliverFurniture(self.s, id); return p ? { uid: p.uid, at: p.at ?? null } : null; },
       homeView: () => { const v = this.viewInside(); return v ? { spec: v.spec.id, ox: v.ox, oz: v.oz, pieces: [...v.pieces.entries()].map(([uid, p]) => ({ uid, spec: p.spec, model: p.obj.name, x: p.obj.position.x, z: p.obj.position.z, yaw: p.obj.rotation.y })), seats: v.seatIds.map(id => this.ctx.seats.get(id)).filter(Boolean), colliders: v.int.colliders.length } : null; },
       placer: {
+        look: (set?: Partial<{ yaw: number; pitch: number; zoom: number }>) => self.editor.cameraLook(set), screenOf: (uid?: string) => self.editor.screenOf(uid),
         open: () => { const v = this.viewInside(); return v ? self.editor.open(v) : false; }, close: () => self.editor.close(), info: () => self.editor.info(),
         select: (uid: string) => self.editor.select(uid), move: (dx: number, dz: number) => self.editor.move(dx, dz), moveTo: (x: number, z: number) => self.editor.moveTo(x, z), rotate: () => self.editor.rotate(), put: () => self.editor.put(), stash: () => self.editor.stash(),
       },
@@ -645,5 +646,6 @@ export const ESTATE_MODULE: GameModule = {
   hubLoaded: (ctx, hub) => estate.hubLoaded(ctx, hub),
   update: (ctx, dt) => estate.update(ctx, dt),
   spaceChanged: () => estate.spaceChanged(),
+  camera: () => estate.camera(),                          // placement mode: the orbit camera (homeEditor.ts); false otherwise
   debug: () => estate.debug(),
 };

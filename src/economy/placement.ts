@@ -59,12 +59,29 @@ const STARTER_ROOM: HomeLayout = {
  * (north end), a shower corner in the north-east, the door in the south wall 1.3 m from the east corner.
  */
 export function openPlan(level: HomeLevel, w: number, d: number): HomeLayout {
-  const kz = Math.min(2.6, d * 0.36), doorX = w / 2 - 1.3;
+  const kz = Math.min(2.6, d * 0.36), doorX = w / 2 - 1.3, P = partitions(level, w, d);
   return {
     level, w, d, doorX,
-    blocks: [R(-w / 2, -d / 2, -w / 2 + 0.6, -d / 2 + kz), R(w / 2 - 1.2, -d / 2, w / 2, -d / 2 + 1.2)],
-    clear: [R(doorX - 0.7, d / 2 - 1.4, doorX + 0.7, d / 2), R(-w / 2 + 0.6, -d / 2, -w / 2 + 1.4, -d / 2 + kz), R(w / 2 - 1.2, -d / 2 + 1.2, w / 2, -d / 2 + 1.9)],
+    blocks: [R(-w / 2, -d / 2, -w / 2 + 0.6, -d / 2 + kz), R(w / 2 - 1.2, -d / 2, w / 2, -d / 2 + 1.2), ...P.walls],
+    clear: [R(doorX - 0.7, d / 2 - 1.4, doorX + 0.7, d / 2), R(-w / 2 + 0.6, -d / 2, -w / 2 + 1.4, -d / 2 + kz), R(w / 2 - 1.2, -d / 2 + 1.2, w / 2, -d / 2 + 1.9), ...P.gaps],
     defaults: {},
+  };
+}
+
+/**
+ * The F2 (level 'apartment') has two bedrooms in its north strip, between the kitchen counter and the shower: a wall along
+ * z = `row` with a doorway for each room and a divider between them. `walls` are what nothing can stand on (and what the
+ * shell draws and collides with), `gaps` the doorways kept free. Other levels are one open room.
+ */
+export function partitions(level: HomeLevel, w: number, d: number): { walls: Rect[]; gaps: Rect[]; row: number; rooms: Rect[] } {
+  if (level !== 'apartment') return { walls: [], gaps: [], row: 0, rooms: [] };
+  const T = 0.075, row = -d / 2 + 2.6, xa = -w / 2 + 0.7, xb = w / 2 - 1.2, mid = xa + (xb - xa) * 0.5;   // the rooms span xa … xb, the divider at mid
+  const doorA = xa + (mid - xa) * 0.5, doorB = mid + (xb - mid) * 0.5, G = 0.5;                            // doorways 1 m wide, centred in each room
+  return {
+    row,
+    walls: [R(xa, row - T, doorA - G, row + T), R(doorA + G, row - T, mid + T, row + T), R(mid - T, row - T, doorB - G, row + T), R(doorB + G, row - T, xb, row + T), R(mid - T, -d / 2, mid + T, row - T)],
+    gaps: [R(doorA - G, row - 0.5, doorA + G, row + 0.7), R(doorB - G, row - 0.5, doorB + G, row + 0.7)],
+    rooms: [R(xa, -d / 2, mid - T, row - T), R(mid + T, -d / 2, xb, row - T)],
   };
 }
 export const layoutOf = (h: HomeSpec): HomeLayout => (h.home.level === 'room' ? STARTER_ROOM : openPlan(h.home.level, h.home.w, h.home.d));

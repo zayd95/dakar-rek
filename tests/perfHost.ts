@@ -378,7 +378,7 @@ export class PerfHost {
     t = mark('ambient(npc.ts)', t);
     // (PERF_REST=1 times the parts of the rest of the update apart: `rest:<part>`)
     const part = (k: string) => { if (SPLIT_REST) t = mark('rest:' + k, t); };
-    { const run = pacer.step('apprentices', dt, hidden); if (run !== null) for (const a of S.apprentices) { const wp = a.h.group.getWorldPosition(new THREE.Vector3()); a.update(run, Math.hypot(wp.x - this.pos.x, wp.z - this.pos.z) < 22); } }
+    { const run = pacer.step('apprentices', dt, hidden); if (run !== null) for (const a of S.apprentices) { const wp = a.h.group.getWorldPosition(new THREE.Vector3()), d = Math.hypot(wp.x - this.pos.x, wp.z - this.pos.z); a.h.group.visible = d < 60; a.update(run, d < 22); } }   // (main.ts: Pikine's apprentices past 60 m are hidden)
     part('apprentices');
     const focus = this.mode === 'play' ? S.interactions.update(ctx.space(), this.pos.x, this.pos.z, this.facing) : null;
     // what main.ts asks for in the same stretch of the frame and the host did not: the modules' presence fields, the nearest place of the hub
