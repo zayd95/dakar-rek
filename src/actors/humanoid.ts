@@ -430,6 +430,9 @@ export class Humanoid {
   private referenceSitting = false;
   private referenceSeatTime = 0;
   private referenceSeatClip: 'SitEnter' | 'SitExit' = 'SitEnter';
+  private referenceBlend: { action: THREE.AnimationAction; from: number; to: number }[] = [];
+  private referenceBlendTime = 0;
+  private referenceBlendDuration = 0;
   constructor(look?: PersonLook, source?: CharacterTemplate) {
     this.reference = !!source;
     const asset = source ?? template;
@@ -526,14 +529,48 @@ export class Humanoid {
     if (this.clipName === name) return;
     const next = this.actions.get(name); if (!next) return;
     this.settled = false; this.sinceSwitch = 0;
-    next.reset();
     const once = this.reference && ['TurnRight', 'TurnLeft', 'SitEnter', 'SitExit'].includes(name);
     next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, once ? 1 : Infinity);
     next.clampWhenFinished = once; next.timeScale = 1;
-    if (offset) next.time = offset * next.getClip().duration;
-    next.fadeIn(fade).play();
-    this.current?.fadeOut(fade);
+    if (this.reference) this.blendReference(next, fade, offset);
+    else {
+      next.reset();
+      if (offset) next.time = offset * next.getClip().duration;
+      next.fadeIn(fade).play();
+      this.current?.fadeOut(fade);
+    }
     this.current = next; this.clipName = name;
+  }
+
+  /** Interrupted fades continue from the visible mix, including a gait already fading out. */
+  private blendReference(next: THREE.AnimationAction, duration: number, offset: number) {
+    this.referenceBlend.length = 0;
+    let continuing = false;
+    for (const action of this.actions.values()) {
+      const from = action.isScheduled() ? action.getEffectiveWeight() : 0;
+      if (action === next) continuing = from > 0 && !action.paused;
+      if (from > 0 || action === next) {
+        action.stopFading().setEffectiveWeight(from);
+        this.referenceBlend.push({ action, from, to: action === next ? 1 : 0 });
+      }
+    }
+    if (!continuing || offset) next.reset();
+    if (offset) next.time = offset * next.getClip().duration;
+    next.play();
+    this.referenceBlendTime = 0;
+    this.referenceBlendDuration = this.current ? Math.max(0, duration) : 0;
+    this.advanceReferenceBlend(0);
+  }
+
+  private advanceReferenceBlend(dt: number) {
+    if (!this.referenceBlend.length) return;
+    this.referenceBlendTime += dt;
+    const t = this.referenceBlendDuration > 0 ? Math.min(1, this.referenceBlendTime / this.referenceBlendDuration) : 1;
+    for (const { action, from, to } of this.referenceBlend) {
+      action.setEffectiveWeight(from + (to - from) * t);
+      if (t === 1 && to === 0) action.stop();
+    }
+    if (t === 1) this.referenceBlend.length = 0;
   }
 
   /**
@@ -630,7 +667,7 @@ export class Humanoid {
       const nominal = name === 'Walk' || name === 'Jog' || name === 'Run' ? referencePace[name] : 0;
       this.current.timeScale = nominal ? Math.max(.3, Math.min(2.3, this.v / nominal)) : 1;
     }
-    this.mixer.update(dt);
+    this.update(dt);
   }
   /** Current mixer timing for the motion checks; no controls or configuration UI. */
   motionInfo() {
@@ -650,6 +687,7 @@ export class Humanoid {
     this.referenceYaw = NaN; this.referenceTurnTime = 0;
     this.referenceTurnClip = 'TurnRight';
     this.referenceSitting = false; this.referenceSeatTime = 0;
+    this.referenceBlend.length = 0; this.referenceBlendTime = 0; this.referenceBlendDuration = 0;
     this.faceOn = true; for (const m of this.face) m.visible = true;
     this.group.position.set(0, 0, 0); this.group.rotation.set(0, 0, 0);
   }
@@ -694,7 +732,7 @@ export class Humanoid {
       feet: g.feet.map(f => ({ planted: f.planted, swing: f.swing, settle: f.settle, pitch: f.pitch, slipped: f.slipped })),
     };
   }
-  update(dt: number) { this.mixer.update(dt); }
+  update(dt: number) { if (this.reference) this.advanceReferenceBlend(dt); this.mixer.update(dt); }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
 }
 

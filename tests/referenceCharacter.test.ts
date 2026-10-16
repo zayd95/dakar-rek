@@ -245,6 +245,29 @@ describe('reference candidate: retargeted contact and motion', () => {
     h.hold = null; h.animate(1 / 60, 0); expect(h.clipName).toBe('SitExit');
     h.dispose();
   });
+  it('keeps the visible pose continuous when a gait fade is interrupted or reversed', () => {
+    const h = new Humanoid(undefined, { scene: gltf.scene, clips: gltf.animations });
+    const bones: THREE.Object3D[] = [];
+    h.group.traverse(o => { if ((o as THREE.Bone).isBone) bones.push(o); });
+    h.play('Idle', 0); h.update(.3);
+    h.play('Walk', .18); h.update(.06);
+    for (const name of ['Jog', 'Walk', 'Run', 'Idle', 'Walk'] as const) {
+      const before = bones.map(b => ({ q: b.quaternion.clone().normalize(), p: b.position.clone() }));
+      h.play(name, .18); h.update(0);
+      bones.forEach((b, i) => {
+        expect(b.quaternion.clone().normalize().angleTo(before[i].q), `${name} ${b.name}: pose pops at switch`).toBeLessThan(1e-6);
+        expect(b.position.distanceTo(before[i].p), `${name} ${b.name}: position pops at switch`).toBeLessThan(1e-7);
+      });
+      h.update(.04);
+    }
+    h.update(.3); h.reset(); h.play('Idle', 0); h.update(0);
+    const expected = pose('Idle', 0, soles());
+    let skin: THREE.SkinnedMesh | undefined;
+    h.group.traverse(o => { if ((o as THREE.SkinnedMesh).isSkinnedMesh) skin = o as THREE.SkinnedMesh; });
+    h.group.updateMatrixWorld(true); skin!.skeleton.update();
+    soles().forEach((id, i) => expect(skin!.getVertexPosition(id, new THREE.Vector3()).distanceTo(expected[i])).toBeLessThan(1e-6));
+    h.dispose();
+  });
   it('holds one-shot turns and seat transitions on their final frame instead of replaying', () => {
     const h = new Humanoid(undefined, { scene: gltf.scene, clips: gltf.animations });
     for (const name of ['TurnRight', 'TurnLeft', 'SitEnter', 'SitExit'] as const) {

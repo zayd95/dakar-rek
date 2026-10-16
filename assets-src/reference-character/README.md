@@ -57,7 +57,9 @@ The legacy seat contract is butt contact at 0.48 m above the origin. This anatom
 moving can interrupt the exit. `animations.json` records clip sources/durations/contact offsets.
 Runtime selects a turn from the signed facing change and plays its full measured duration. Turns and
 sit/stand transitions use one-shot playback with the last frame held; the shared play helper preserves
-that mode instead of resetting these reference clips to looping.
+that mode instead of resetting these reference clips to looping. Runtime gait fades continue from the
+visible weights when interrupted and preserve an already-playing incoming gait's phase. Completed
+fades stop the outgoing actions; exported motion is unchanged.
 The seated arm retarget fits each wrist to its own thigh using a two-bone solve, preserves the
 captured elbow bend plane and torso motion, and calibrates palm orientation from the finger spread.
 Hands settle palm-down on the trousers. Entry/exit blend the fit and lift the hand briefly so curled

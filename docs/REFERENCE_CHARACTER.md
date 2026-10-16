@@ -160,6 +160,24 @@ only on a few posed frames. Before is `5e953d2`.
 [Live full-cycle checks](screenshots/reference-character/calm-torso/after/results.json) ·
 [Identical geometry and 81 lower-body tracks](screenshots/reference-character/calm-torso/preservation.json).
 
+### Interrupted gait changes
+
+Starting a faster gait before the previous fade finished restarted the outgoing clip at full weight.
+Reselecting a gait that was still fading out also reset its animation phase. The reference character
+now continues from the currently visible mix and preserves an already-playing incoming gait's phase.
+Completed fades stop the old clips; the blend weights stay at a total of 1 during rapid speed changes.
+Actual mobile input previously reached a total weight of 1.35; it now stays at 1.
+Switching clips without advancing time changes bone rotation by less than 0.001° and position by
+less than 1 μm, including a fast reversal. The exported model and animation clips are unchanged.
+
+Matched mobile camera and front/rear input sequence; before is `951d9ae`.
+
+[Continuous before](screenshots/reference-character/transitions/before/continuous-transitions.webm) ·
+[Continuous after](screenshots/reference-character/transitions/after/continuous-transitions.webm) ·
+[Both-orientation transition checks](screenshots/reference-character/transitions/after/results.json) ·
+[General mobile checks](screenshots/reference-character/transitions/after/general-results.json) ·
+[Bench exit checks](screenshots/reference-character/transitions/after/seat-results.json).
+
 ## Asset and motion
 
 The source is fresh licensed MakeHuman anatomy, a fitted CC0 garment, new authored hair/face details,
@@ -186,10 +204,10 @@ The preview profile retains nickname editing but offers no appearance swatches o
 
 ## Verification
 
-- Full suite: **1,402 passed, 2 skipped**, including thirteen actual GLB/runtime checks for skin weights,
+- Full suite: **1,403 passed, 2 skipped**, including fourteen actual GLB/runtime checks for skin weights,
   individual finger joints, asset limits, moving clips, idle-loop closure, contact, bench fitting, cadence,
   both hands' lap contact/fabric clearance, mirrored leg stepping, relaxed locomotion shoulders with
-  retained arm swing, bounded full-cycle chest/shoulder motion, and one-shot playback.
+  retained arm swing, bounded full-cycle chest/shoulder motion, interrupted/reversed fade continuity, and one-shot playback.
 - Sit/stand sole contact stays within 7 mm of its calibrated plane. Dedicated mobile checks cover
   every frame of a complete bench exit, seat ownership/release, repeated taps, first-frame touch
   interruption and travel cleanup in both orientations. Actual blended shoe contact stays within
@@ -201,8 +219,8 @@ The preview profile retains nickname editing but offers no appearance swatches o
   movement and cancellation, walk/jog/sprint, automatic left/right turns, actual bench seating, fixed-look profile and clear
   central HUD; no page errors. Standing soles match 0.08 / 0.12 / 0.14 m road/sidewalk/block surfaces.
 - Low gala check: **11/11 passed**, including proof that the reference player is active. Existing budgets
-  remain 180 draw calls / 4 ms JS update / 0.8 ms crowd update. Latest measured peaks: 124 calls,
-  0.73 ms JS and 0.081 ms crowd update. [Measurement](perf/reference-character-low.json).
+  remain 180 draw calls / 4 ms JS update / 0.8 ms crowd update. Latest measured peaks: 116 calls,
+  0.46 ms JS and 0.079 ms crowd update. [Measurement](perf/reference-character-low.json).
 
 ```sh
 npm test
@@ -212,6 +230,7 @@ CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0
 CHROMIUM=/path/to/chrome node scripts/check-reference-seat-exit.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/stand-up
 CHROMIUM=/path/to/chrome node scripts/check-reference-prompts.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/prompts/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-shoulders.mjs http://127.0.0.1:4174/ /private/tmp/reference-shoulders-current
+CHROMIUM=/path/to/chrome node scripts/check-reference-transitions.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/transitions/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-torso.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/calm-torso/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4175/ docs/screenshots/reference-character/before --baseline
 CHROMIUM=/path/to/chrome node scripts/check-perf-evening.mjs http://127.0.0.1:4174/ docs/perf/reference-character-low.json --presets=low --reference-character
