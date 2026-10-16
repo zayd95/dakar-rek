@@ -14,7 +14,7 @@ const DESTINATIONS: Record<HubId, string[]> = {
   plateau: ['Colobane', 'Petersen', 'Médina', 'Pikine'],
   corniche: ['Fann', 'Mermoz', 'Ouakam', 'Liberté 6'],
   almadies: ['Ngor', 'Yoff', 'Ouakam', 'Parcelles'],
-  pikine: ['Petersen', 'Colobane', 'Thiaroye', 'Guédiawaye'],
+  pikine: ['Parcelles', 'Guédiawaye', 'Plateau', 'Thiaroye'],
 };
 const CALLS: Record<HubId, string[]> = Object.fromEntries(Object.entries(DESTINATIONS).map(([hub, d]) => [hub, apprentiCalls(d)])) as Record<HubId, string[]>;
 
