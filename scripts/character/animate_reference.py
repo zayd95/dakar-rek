@@ -95,7 +95,7 @@ for name,source_name in clips.items():
         at=float(start)+f/frames*(end-start)
         scene.frame_set(math.floor(at),subframe=at%1)
         yawfix=heading_fix(source,aln,'LeftUpLeg','RightUpLeg','Spine','Hips') if captured else Quaternion()
-        desired={}; arm_carry={}
+        desired={}; arm_carry={}; chest_carry=Quaternion()
         for b in parents:
             pb=tgt.pose.bones[b.name]; sn=map_.get(b.name.split(':')[-1]); sp=source.pose.bones.get(sn) if sn else None
             if sp and b.name in corr:
@@ -104,7 +104,22 @@ for name,source_name in clips.items():
             if f==0: initial_world[b.name]=world.copy()
             captured_delta=world@initial_world[b.name].inverted()
             short=b.name.split(':')[-1]
-            if name in ('Jog','Run'):
+            if name in ('Walk','Jog','Run'):
+                if short in ('Spine','Spine1','Spine2','Neck','Head'):
+                    # Retarget actual rotation from the mannequin's bind frame onto human
+                    # neutral anatomy, rather than copying its differently inclined spine axes.
+                    # Calm the capture's large chest twist/roll; keep a smaller counter-motion.
+                    oldworld=world.copy()
+                    source_rest=(aln@(source.matrix_world@source.data.bones[sn].matrix_local).to_quaternion())
+                    deformation=(aln@(source.matrix_world@sp.matrix).to_quaternion())@source_rest.inverted()
+                    amount=.2 if name=='Jog' else .25
+                    if short in ('Neck','Head'): amount*=.5
+                    world=Quaternion().slerp(deformation,amount)@b.matrix_local.to_quaternion()
+                    if short=='Spine2': chest_carry=world@oldworld.inverted()
+                elif 'Shoulder' in short or short.endswith('Arm') or 'Hand' in short:
+                    # The limb follows the corrected chest once. Keeping old world-space arm
+                    # keys here would swing the arms independently of the quieted torso.
+                    world=chest_carry@world
                 side='Left' if short.startswith('Left') else 'Right' if short.startswith('Right') else None
                 if short in ('LeftArm','RightArm'):
                     # Bring the mannequin's flared arm plane toward this human's torso.
@@ -123,14 +138,14 @@ for name,source_name in clips.items():
             if name in ('Walk','Jog','Run') and short in ('LeftShoulder','RightShoulder'):
                 # The source mannequin's near-horizontal clavicles become a permanent shrug on
                 # this sloping human shoulder girdle. Retarget local motion onto the authored
-                # relaxed clavicle, retaining a quarter of the capture's shoulder articulation.
+                # relaxed clavicle, retaining only subtle captured shoulder articulation.
                 # Work relative to the animated torso so its lean/twist is inherited once.
                 parentq=desired[b.parent.name]
                 local=parentq.inverted()@world
                 if f==0: initial_shoulders[b.name]=local.copy()
                 delta=local@initial_shoulders[b.name].inverted()
                 restlocal=(b.parent.matrix_local.inverted()@b.matrix_local).to_quaternion()
-                world=parentq@Quaternion().slerp(delta,.25)@restlocal
+                world=parentq@Quaternion().slerp(delta,.05)@restlocal
             # Retarget the capture onto an authored relaxed standing pose. Keep its subtle weight transfer,
             # rather than the source actor's looking-up/talking performance or game-ready combat stance.
             neutral=idle or (turning and short not in ('Hips','LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftFoot','RightFoot','LeftToeBase','RightToeBase'))
@@ -295,8 +310,8 @@ for name,source_name in clips.items():
     ta.name=name; ta.use_fake_user=True; baked.append(ta)
     report[name]={'source':'CMU 18_08 frames 130–490 (relaxed-pose adaptation, closed loop)' if idle else 'CMU 13_26 frames 977–1121 (quarter turn)' if turning else source_name,'duration':duration,'frames':frames+1,'hipRange':[min(hipheights),max(hipheights)]}
     if name in ('Walk','Jog','Run'):
-        report[name]['shoulderMotion']='Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved'
-        if name in ('Jog','Run'): report[name]['armCarriage']='Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved'
+        report[name]['shoulderMotion']='Human neutral spine + 20% jog / 25% walk-sprint bind-relative torso rotation, half that on neck/head; clavicles retain 5% local articulation; whole limbs follow corrected chest'
+        report[name]['armCarriage']='Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved'
         from statistics import median
         floor=min(c['bottom']+d for c,d in zip(contacts,hipheights)); velocities=[]
         for a,b,da,db in zip(contacts,contacts[1:],hipheights,hipheights[1:]):

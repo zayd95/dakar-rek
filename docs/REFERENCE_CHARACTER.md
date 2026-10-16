@@ -137,6 +137,29 @@ Matched phone camera and gait phase; before is `2984e9d`.
 [Both-layout shoulder/arm checks](screenshots/reference-character/arm-carriage/after/results.json) ·
 [Measured motion preservation](screenshots/reference-character/arm-carriage/preservation.json).
 
+### Calm chest and shoulder motion
+
+The earlier shoulder-height and arm-width checks missed a larger problem: the jogging chest twisted
+nearly 46° each way and rolled about 18°, making the shoulders swing open and throw backward.
+Locomotion now applies captured **bind-relative rotations** to this character's neutral spine and
+attenuates the torso motion. Whole arms follow that corrected chest, with subtle clavicle motion and
+closer walking arm carriage. Hips, legs, contact and cadence retain their existing paths.
+
+The complete-cycle regression bounds chest yaw below 12°, roll below 7° and fore/aft shoulder travel
+below 8 cm. Measured jogging yaw is about 9°; jog/sprint shoulder travel is about 5–6 cm.
+Continuous actual-game front/rear recordings accompany the mobile captures, rather than relying
+only on a few posed frames. Before is `5e953d2`.
+
+| Previous shoulder throw | Calm torso and shoulders |
+| --- | --- |
+| ![Previous rear jog](screenshots/reference-character/calm-torso/before/portrait-jog-rear.png) | ![Calm rear jog](screenshots/reference-character/calm-torso/after/portrait-jog-rear.png) |
+| ![Previous front walk](screenshots/reference-character/calm-torso/before/portrait-walk-front.png) | ![Calm front walk](screenshots/reference-character/calm-torso/after/portrait-walk-front.png) |
+
+[Continuous before](screenshots/reference-character/calm-torso/before/continuous-front-rear.webm) ·
+[Continuous after](screenshots/reference-character/calm-torso/after/continuous-front-rear.webm) ·
+[Live full-cycle checks](screenshots/reference-character/calm-torso/after/results.json) ·
+[Identical geometry and 81 lower-body tracks](screenshots/reference-character/calm-torso/preservation.json).
+
 ## Asset and motion
 
 The source is fresh licensed MakeHuman anatomy, a fitted CC0 garment, new authored hair/face details,
@@ -163,10 +186,10 @@ The preview profile retains nickname editing but offers no appearance swatches o
 
 ## Verification
 
-- Full suite: **1,401 passed, 2 skipped**, including twelve actual GLB/runtime checks for skin weights,
+- Full suite: **1,402 passed, 2 skipped**, including thirteen actual GLB/runtime checks for skin weights,
   individual finger joints, asset limits, moving clips, idle-loop closure, contact, bench fitting, cadence,
   both hands' lap contact/fabric clearance, mirrored leg stepping, relaxed locomotion shoulders with
-  retained arm swing, and one-shot playback.
+  retained arm swing, bounded full-cycle chest/shoulder motion, and one-shot playback.
 - Sit/stand sole contact stays within 7 mm of its calibrated plane. Dedicated mobile checks cover
   every frame of a complete bench exit, seat ownership/release, repeated taps, first-frame touch
   interruption and travel cleanup in both orientations. Actual blended shoe contact stays within
@@ -178,7 +201,8 @@ The preview profile retains nickname editing but offers no appearance swatches o
   movement and cancellation, walk/jog/sprint, automatic left/right turns, actual bench seating, fixed-look profile and clear
   central HUD; no page errors. Standing soles match 0.08 / 0.12 / 0.14 m road/sidewalk/block surfaces.
 - Low gala check: **11/11 passed**, including proof that the reference player is active. Existing budgets
-  remain 180 draw calls / 4 ms JS update / 0.8 ms crowd update. [Measurement](perf/reference-character-low.json).
+  remain 180 draw calls / 4 ms JS update / 0.8 ms crowd update. Latest measured peaks: 124 calls,
+  0.73 ms JS and 0.081 ms crowd update. [Measurement](perf/reference-character-low.json).
 
 ```sh
 npm test
@@ -187,7 +211,8 @@ npm run typecheck:server
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character
 CHROMIUM=/path/to/chrome node scripts/check-reference-seat-exit.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/stand-up
 CHROMIUM=/path/to/chrome node scripts/check-reference-prompts.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/prompts/after
-CHROMIUM=/path/to/chrome node scripts/check-reference-shoulders.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/arm-carriage/after
+CHROMIUM=/path/to/chrome node scripts/check-reference-shoulders.mjs http://127.0.0.1:4174/ /private/tmp/reference-shoulders-current
+CHROMIUM=/path/to/chrome node scripts/check-reference-torso.mjs http://127.0.0.1:4174/ docs/screenshots/reference-character/calm-torso/after
 CHROMIUM=/path/to/chrome node scripts/check-reference-character.mjs http://127.0.0.1:4175/ docs/screenshots/reference-character/before --baseline
 CHROMIUM=/path/to/chrome node scripts/check-perf-evening.mjs http://127.0.0.1:4174/ docs/perf/reference-character-low.json --presets=low --reference-character
 ```

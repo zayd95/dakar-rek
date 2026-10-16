@@ -16,7 +16,8 @@
       0.005874845981597904,
       0.07871513426303864
     ],
-    "shoulderMotion": "Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved",
+    "shoulderMotion": "Human neutral spine + 20% jog / 25% walk-sprint bind-relative torso rotation, half that on neck/head; clavicles retain 5% local articulation; whole limbs follow corrected chest",
+    "armCarriage": "Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved",
     "stanceSpeed": 1.315652266144753
   },
   "Jog": {
@@ -27,7 +28,7 @@
       -0.15762304268346092,
       -0.013236082196235656
     ],
-    "shoulderMotion": "Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved",
+    "shoulderMotion": "Human neutral spine + 20% jog / 25% walk-sprint bind-relative torso rotation, half that on neck/head; clavicles retain 5% local articulation; whole limbs follow corrected chest",
     "armCarriage": "Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved",
     "stanceSpeed": 3.1864169239997864
   },
@@ -39,7 +40,7 @@
       -0.1361597728729248,
       0.06271391451358796
     ],
-    "shoulderMotion": "Authored relaxed clavicle rest + 25% captured local articulation, relative to animated torso; arm swing preserved",
+    "shoulderMotion": "Human neutral spine + 20% jog / 25% walk-sprint bind-relative torso rotation, half that on neck/head; clavicles retain 5% local articulation; whole limbs follow corrected chest",
     "armCarriage": "Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved",
     "stanceSpeed": 6.013797182589769
   },

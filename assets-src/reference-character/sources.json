@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-15",
+  "generated": "2026-10-16",
   "integrationBase": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
   "toolchain": {
     "blender": "5.2.2 LTS",
@@ -36,7 +36,7 @@
     "sourceUrl": "https://quaternius.itch.io/universal-animation-library",
     "archiveSha256": "cc73fc4e495b82958207316596317a3f40b9fa38065bde1027937452da537724",
     "gltfSha256": "69591853d817488edaa8fd9bf8fc1d821eaeaf789f8627b3cd23b41c4ed67997",
-    "adaptations": "Retargeted directions/rest rolls, measured stride/contact; seated arm IK with palms on thighs and lifted sit/stand hand trajectory. Sit/stand root height follows measured shoe-sole contact instead of an estimated pelvis offset. Locomotion clavicles calibrated to the authored relaxed rest, retaining 25% of captured local articulation relative to the animated torso; captured arm swing preserved. Jog/sprint outward upper-arm angle halved in the animated torso frame; whole-limb rotation preserves sagittal swing and elbow/wrist/finger articulation."
+    "adaptations": "Source bind-relative spine/neck/head rotations applied to human neutral rest; torso motion retained at 20% jog / 25% walk-sprint, half on neck/head. Clavicles retain 5% local articulation; whole limbs follow corrected chest once, with outward upper-arm angle halved in its frame and captured sagittal swing/elbow/wrist/finger timing retained. Measured stride/contact and leg IK preserved. Seated arm IK rests palms on thighs, with lifted sit/stand hand trajectory. Sit/stand root height follows measured shoe-sole contact."
   },
   "capture": {
     "sourceUrl": "https://mocap.cs.cmu.edu/",
@@ -53,7 +53,7 @@
   },
   "output": {
     "file": "public/assets/reference_character.glb",
-    "sha256": "f02149bae8b2e701dbce5bc2bd58a7ab4e017acc1edbc6bc4f0130cb9fc8aac6",
-    "bytes": 2001468
+    "sha256": "c4d67ad5d317c050f5b8542d8d98e351d789c1844971cf951a4c5b6dc8225b98",
+    "bytes": 2006092
   }
 }

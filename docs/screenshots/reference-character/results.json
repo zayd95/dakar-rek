@@ -5,20 +5,20 @@
       {
         "z": -66,
         "floor": 0.08,
-        "sole": 0.07999999021619948,
-        "error": -9.783800519747032e-9
+        "sole": 0.08000010117776984,
+        "error": 1.0117776984286397e-7
       },
       {
         "z": -68,
         "floor": 0.12,
-        "sole": 0.11999990859465016,
-        "error": -9.140534983076432e-8
+        "sole": 0.12000016991199032,
+        "error": 1.699119903247892e-7
       },
       {
         "z": -72,
         "floor": 0.14,
-        "sole": 0.13999922352685534,
-        "error": -7.7647314467022e-7
+        "sole": 0.13999994273587135,
+        "error": -5.7264128661138614e-8
       }
     ]
   },
@@ -82,8 +82,8 @@
       "vertices": 19936,
       "bones": 52,
       "clip": "Sit",
-      "clock": "Pikine · Guédiawaye · Parcelles☀️ Mercredi · 09:00",
-      "calls": 40,
+      "clock": "Pikine · Guédiawaye · Parcelles☀️ Dimanche · 09:00Gala ce soir",
+      "calls": 41,
       "quiet": []
     },
     "fixedProfile": true,
@@ -95,20 +95,20 @@
       {
         "z": -66,
         "floor": 0.08,
-        "sole": 0.08000005956159369,
-        "error": 5.956159368492031e-8
+        "sole": 0.08000010117776984,
+        "error": 1.0117776984286397e-7
       },
       {
         "z": -68,
         "floor": 0.12,
-        "sole": 0.11999983710669292,
-        "error": -1.6289330707908167e-7
+        "sole": 0.12000016991199032,
+        "error": 1.699119903247892e-7
       },
       {
         "z": -72,
         "floor": 0.14,
-        "sole": 0.13999935871843808,
-        "error": -6.412815619361023e-7
+        "sole": 0.13999994273587135,
+        "error": -5.7264128661138614e-8
       }
     ]
   },
@@ -172,8 +172,8 @@
       "vertices": 19936,
       "bones": 52,
       "clip": "Sit",
-      "clock": "Pikine · Guédiawaye · Parcelles☀️ Mercredi · 09:00",
-      "calls": 91,
+      "clock": "Pikine · Guédiawaye · Parcelles☀️ Lundi · 09:00",
+      "calls": 94,
       "quiet": []
     },
     "fixedProfile": true,

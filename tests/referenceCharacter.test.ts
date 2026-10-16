@@ -61,6 +61,25 @@ describe('reference candidate: exported geometry and rig', () => {
 });
 
 describe('reference candidate: retargeted contact and motion', () => {
+  it('keeps the chest and shoulder girdle calm through complete locomotion loops', () => {
+    for (const name of ['Walk', 'Jog', 'Run']) {
+      const mixer = new THREE.AnimationMixer(gltf.scene), action = mixer.clipAction(clip(name));
+      action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = true; action.play();
+      const travel: Record<string, number[]> = { Left: [], Right: [] };
+      for (let i = 0; i <= 120; i++) {
+        mixer.setTime(clip(name).duration * i / 120); gltf.scene.updateMatrixWorld(true);
+        const chest = gltf.scene.getObjectByName('mixamorigSpine2')!;
+        const deformation = chest.getWorldQuaternion(new THREE.Quaternion()).multiply(restTorso.clone().invert());
+        const euler = new THREE.Euler().setFromQuaternion(deformation, 'YXZ');
+        expect(Math.abs(THREE.MathUtils.radToDeg(euler.y)), `${name}: chest throwing sideways`).toBeLessThan(12);
+        expect(Math.abs(THREE.MathUtils.radToDeg(euler.z)), `${name}: chest rocking`).toBeLessThan(7);
+        const hips = gltf.scene.getObjectByName('mixamorigHips')!.getWorldPosition(new THREE.Vector3());
+        for (const side of ['Left', 'Right']) travel[side].push(gltf.scene.getObjectByName(`mixamorig${side}Arm`)!.getWorldPosition(new THREE.Vector3()).z - hips.z);
+      }
+      for (const [side, values] of Object.entries(travel)) expect(Math.max(...values) - Math.min(...values), `${name} ${side}: shoulder throw`).toBeLessThan(.08);
+      mixer.stopAllAction(); mixer.uncacheRoot(gltf.scene);
+    }
+  });
   it('keeps jog/sprint arms near the torso without losing the forward/back swing', () => {
     for (const name of ['Jog', 'Run']) {
       const mixer = new THREE.AnimationMixer(gltf.scene), action = mixer.clipAction(clip(name));
