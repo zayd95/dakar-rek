@@ -4,6 +4,11 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import type { WrestlerLook } from '../core/types';
 import { ACCESSORIES, ngembTexture, type Socket } from '../lamb/look';
 import type { Outfit } from './character';
+import { GaitState, runCadence, walkCadence } from './gait';
+import { GaitRig } from './gaitRig';
+import { joinNeck } from './neckJoin';
+import { reshapeCharacter } from './proportions';
+import { fitEyes } from './eyes';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -11,7 +16,9 @@ import type { Outfit } from './character';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk';
+export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
+/** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
+export type PoseClip = 'Lie' | 'SitFloor' | 'Ride';
 export type Style = 'boubou' | 'tee' | 'dress';
 export type Pattern = 'uni' | 'wax' | 'bazin' | 'rayure';
 export interface PersonLook {
@@ -39,9 +46,46 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
       buf = u8.buffer;
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
+    joinNeck(gltf.scene);                                    // the head joined to the body (src/actors/neckJoin.ts)
+    fitEyes(gltf.scene);                                     // the iris lenses sit in the eye whites, not in front of them
+    reshapeCharacter(gltf.scene);                            // shorter neck, oval face with a jaw (src/actors/proportions.ts)
     fixSitKnees(gltf.animations);
-    template = { scene: gltf.scene, clips: gltf.animations };
+    fixRunClip(gltf.animations);
+    deriveJog(gltf.animations);
+    widenWalk(gltf.animations);
+    deriveKneel(gltf.animations);
+    const clips = [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)];
+    stripStaticTracks(gltf.scene, clips);
+    template = { scene: gltf.scene, clips };
   } catch { /* box characters stay in use */ }
+}
+
+/**
+ * Drops the position and scale tracks that hold the bone's rest value in every clip. The GLB keys all 20 bones'
+ * translation, rotation and scale in all its clips, but only the root and the hips ever move: the other 38 position and
+ * scale tracks repeat the rest pose, and the mixer evaluated and blended them for every body, every frame. Without them
+ * the bones keep their rest values (the same pose). Rotation tracks are all kept: the gait (src/actors/gaitRig.ts) and the
+ * strike rig (src/lamb/strikeRig.ts) turn bones after the mixer and rely on it to set them back each frame. A track some
+ * clip moves (the hips, the root in Kneel) is kept in every clip. Returns how many tracks were dropped.
+ */
+export function stripStaticTracks(scene: THREE.Object3D, clips: THREE.AnimationClip[], eps = 1e-5): number {
+  const keep = new Set<string>();
+  for (const c of clips) for (const t of c.tracks) {
+    const dot = t.name.lastIndexOf('.'), node = t.name.slice(0, dot), prop = t.name.slice(dot + 1);
+    if (prop !== 'position' && prop !== 'scale') { keep.add(t.name); continue; }
+    const o = scene.getObjectByName(node), rest = o ? (prop === 'position' ? o.position : o.scale).toArray() : null;
+    const n = t.getValueSize(), v = t.values;
+    let still = !!rest && n === 3;
+    for (let i = 0; still && i < v.length; i++) if (Math.abs(v[i] - rest![i % n]) > eps) still = false;
+    if (!still) keep.add(t.name);
+  }
+  let dropped = 0;
+  for (const c of clips) {
+    const before = c.tracks.length;
+    c.tracks = c.tracks.filter(t => keep.has(t.name));
+    dropped += before - c.tracks.length;
+  }
+  return dropped;
 }
 
 /**
@@ -62,6 +106,177 @@ export function fixSitKnees(clips: THREE.AnimationClip[]) {
   }
 }
 
+/**
+ * The exported Run action bends the knees the wrong way (like Sit's: the shins rotate −X about the knee, so the legs
+ * fold backwards like a bird's) and leans the trunk back. Mirror those rotations. The gait (src/actors/gait.ts) drives
+ * the legs and the trunk whenever the body moves, so this only shows in the short cross-fades with held poses; a no-op
+ * once the Blender action is corrected and re-exported.
+ */
+export function fixRunClip(clips: THREE.AnimationClip[]) {
+  const run = clips.find(c => c.name === 'Run'); if (!run) return;
+  for (const track of run.tracks) {
+    if (!/^(shin\.?[LR]|spine|chest)\.quaternion$/.test(track.name)) continue;
+    const v = track.values;
+    let backward = true;
+    for (let i = 0; i < v.length; i += 4) if (v[i] > -0.02) backward = false;
+    if (!backward) continue;
+    for (let i = 0; i < v.length; i += 4) { v[i] = -v[i]; v[i + 1] = -v[i + 1]; v[i + 2] = -v[i + 2]; }
+  }
+}
+
+/** A quaternion track's swing about its mean turned by `k` (1: as it is, 0: held at the mean); in place. Allocation at load only. */
+function scaleSwing(values: ArrayLike<number> & { [i: number]: number }, k: number) {
+  const n = values.length / 4, out = new THREE.Quaternion(), mean = new THREE.Quaternion(), q = new THREE.Quaternion(), ref = new THREE.Quaternion(values[0], values[1], values[2], values[3]);
+  let x = 0, y = 0, z = 0, w = 0;
+  for (let i = 0; i < n; i++) { q.set(values[4 * i], values[4 * i + 1], values[4 * i + 2], values[4 * i + 3]); if (q.dot(ref) < 0) { q.x = -q.x; q.y = -q.y; q.z = -q.z; q.w = -q.w; } x += q.x; y += q.y; z += q.z; w += q.w; }
+  mean.set(x, y, z, w).normalize();
+  for (let i = 0; i < n; i++) {
+    q.set(values[4 * i], values[4 * i + 1], values[4 * i + 2], values[4 * i + 3]); if (q.dot(ref) < 0) { q.x = -q.x; q.y = -q.y; q.z = -q.z; q.w = -q.w; }
+    out.copy(mean).slerp(q, k); q.copy(out);
+    values[4 * i] = q.x; values[4 * i + 1] = q.y; values[4 * i + 2] = q.z; values[4 * i + 3] = q.w;
+  }
+}
+/**
+ * The far body (beyond the gait's reach, ANIM_LOD) plays the clips alone: at a jog the Run clip's legs and arms swing far
+ * wider than the computed gait's (foot spread 1.06 m against 0.69), so bodies would change stride as they cross 30 m. 'Jog' is
+ * the Run clip with the swing of the thighs, shins and arms turned down to the jog's.
+ */
+export function deriveJog(clips: THREE.AnimationClip[]) {
+  const run = clips.find(c => c.name === 'Run'); if (!run || clips.some(c => c.name === 'Jog')) return;
+  const jog = run.clone(); jog.name = 'Jog';
+  for (const t of jog.tracks) {
+    const m = /^(thigh|shin|upper_arm|forearm)\.?[LR]\.quaternion$/.exec(t.name); if (!m) continue;
+    scaleSwing(t.values, m[1] === 'thigh' ? 0.5 : m[1] === 'shin' ? 0.68 : 0.6);
+  }
+  clips.push(jog);
+}
+/** The Walk clip's thighs swing a little less than the gait's step needs (foot spread 0.52 m against about 0.64): widened to match. */
+export function widenWalk(clips: THREE.AnimationClip[]) {
+  const walk = clips.find(c => c.name === 'Walk'); if (!walk) return;
+  for (const t of walk.tracks) if (/^thigh\.?[LR]\.quaternion$/.test(t.name)) scaleSwing(t.values, 1.2);
+}
+
+// ---------------------------------------------------------------- poses built in code (home and social life)
+/**
+ * Character space: origin on the surface under the hips, +z forward (toes), +x the character's left, +y up.
+ * Each pose gives the hips' height and orientation, and the direction each bone points to (its +Y axis, head to
+ * tail); bones without a direction keep their rest orientation relative to their parent. Heights are chosen so
+ * the body rests ON the surface the origin stands on: a mattress (Lie, head on the pillow), a mat, rug or floor
+ * cushion (SitFloor). Seats carry them in Seat.clip with top = surface + SIT_HIPS (src/interact/seats.ts floorSeatTop).
+ * Ride keeps the chair convention (origin SIT_HIPS under the saddle, like Sit): astride a motorbike, hands on the
+ * grips and feet on the pegs of the vehicle kit's 125 cc (spec.controls.grips / pegs).
+ */
+interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number]; aim: Record<string, [number, number, number]> }
+export const POSES: Record<PoseClip, PoseDef> = {
+  // on the back, head towards −z on the pillow, one knee raised, hands resting on the belly
+  Lie: {
+    hipsY: 0.13, hips: [-Math.PI / 2, 0, 0],
+    aim: {
+      spine: [0, 0, -1], chest: [0, 0.08, -1], neck: [0, 0.35, -1], head: [0, 0.4, -1],
+      upper_armL: [0.26, -0.04, 1], forearmL: [-0.8, 0.45, 0.4], handL: [-0.6, 0.2, 0.75],
+      upper_armR: [-0.26, -0.04, 1], forearmR: [0.8, 0.45, 0.4], handR: [0.6, 0.2, 0.75],
+      thighL: [0.12, 0.3, 1], shinL: [0.04, -0.33, 1], footL: [0.12, 0.95, 0.28],
+      thighR: [-0.08, 0, 1], shinR: [-0.03, 0, 1], footR: [-0.15, 0.95, 0.25],
+    },
+  },
+  // cross-legged on a mat, rug or cushion (attaya circles, floor seats), hands on the knees
+  SitFloor: {
+    hipsY: 0.14, hips: [0, 0, 0],
+    aim: {
+      spine: [0, 1, 0.1], chest: [0, 1, 0.12], neck: [0, 1, 0.06], head: [0, 1, 0],
+      thighL: [0.72, -0.05, 0.69], shinL: [-0.92, -0.06, 0.33], footL: [-0.75, -0.25, 0.3],
+      thighR: [-0.72, -0.05, 0.69], shinR: [0.92, 0.04, 0.2], footR: [0.75, -0.3, 0.2],
+      upper_armL: [0.27, -0.88, 0.42], forearmL: [0.39, -0.83, 0.39], handL: [0.2, -0.5, 0.85],
+      upper_armR: [-0.27, -0.88, 0.42], forearmR: [-0.39, -0.83, 0.39], handR: [-0.2, -0.5, 0.85],
+    },
+  },
+  // astride a two-wheeler: leaning forward, hands on the handlebar grips, knees against the tank, feet on the pegs
+  Ride: {
+    hipsY: 0.5, hips: [0, 0, 0],
+    aim: {
+      spine: [0, 1, 0.3], chest: [0, 1, 0.35], neck: [0, 1, 0.2], head: [0, 1, 0.05],
+      upper_armL: [0.27, -0.68, 0.68], forearmL: [0.24, -0.64, 0.73], handL: [0.1, -0.3, 1],
+      upper_armR: [-0.27, -0.68, 0.68], forearmR: [-0.24, -0.64, 0.73], handR: [-0.1, -0.3, 1],
+      thighL: [0.2, -0.35, 0.91], shinL: [-0.05, -0.9, -0.43], footL: [0.05, -0.2, 1],
+      thighR: [-0.2, -0.35, 0.91], shinR: [0.05, -0.9, -0.43], footR: [-0.05, -0.2, 1],
+    },
+  },
+};
+
+/**
+ * One-frame clips for POSES, solved from the rest pose of `scene` (the rig as GLTFLoader gives it). Every track of
+ * `like` (an existing clip, so cross-fades cover every bone) gets a value: the posed rotation where the pose aims the
+ * bone, the rest value otherwise; the hips also get their position.
+ */
+export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip[]): THREE.AnimationClip[] {
+  const like = clips.find(c => c.name === 'Idle') ?? clips[0];
+  const rootBone = scene.getObjectByName('root'), hipsBone = scene.getObjectByName('hips');
+  if (!like || !rootBone || !hipsBone) return [];
+  scene.updateMatrixWorld(true);
+  const sceneInv = new THREE.Matrix4().copy(scene.matrixWorld).invert();
+  const inScene = (o: THREE.Object3D) => { const m = new THREE.Matrix4().multiplyMatrices(sceneInv, o.matrixWorld), q = new THREE.Quaternion(); m.decompose(new THREE.Vector3(), q, new THREE.Vector3()); return q; };
+  const Y = new THREE.Vector3(0, 1, 0);
+  return (Object.keys(POSES) as PoseClip[]).map(name => {
+    const def = POSES[name];
+    const world = new Map<THREE.Object3D, THREE.Quaternion>(), local = new Map<THREE.Object3D, THREE.Quaternion>();
+    const parentQ = inScene(hipsBone.parent!);
+    const hq = new THREE.Quaternion().setFromEuler(new THREE.Euler(...def.hips, 'XYZ'));
+    world.set(hipsBone, hq); local.set(hipsBone, parentQ.clone().invert().multiply(hq));
+    const visit = (o: THREE.Object3D) => {
+      for (const c of o.children) {
+        const pw = world.get(o)!;
+        let w = pw.clone().multiply(c.quaternion);
+        const aim = def.aim[c.name];
+        if (aim) w = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(w), new THREE.Vector3(...aim).normalize()).multiply(w);
+        world.set(c, w); local.set(c, pw.clone().invert().multiply(w));
+        visit(c);
+      }
+    };
+    visit(hipsBone);
+    // hips position: in its parent's space, at (0, hipsY, hipsZ) in character space
+    const hp = new THREE.Vector3(0, def.hipsY, def.hipsZ ?? 0).applyMatrix4(scene.matrixWorld);
+    hipsBone.parent!.worldToLocal(hp);
+    const tracks = like.tracks.map(t => {
+      const [node, prop] = [t.name.slice(0, t.name.lastIndexOf('.')), t.name.slice(t.name.lastIndexOf('.') + 1)];
+      const o = scene.getObjectByName(node);
+      if (prop === 'quaternion') return new THREE.QuaternionKeyframeTrack(t.name, [0], (o && local.get(o) ? local.get(o)! : o?.quaternion ?? new THREE.Quaternion()).toArray());
+      if (prop === 'position' && o) return new THREE.VectorKeyframeTrack(t.name, [0], (o === hipsBone ? hp : o.position).toArray());
+      if (prop === 'scale' && o) return new THREE.VectorKeyframeTrack(t.name, [0], o.scale.toArray());
+      // anything else (morph weights…): hold the clip's first value
+      const n = t.getValueSize(), T = t.constructor as new (name: string, times: number[], values: number[]) => THREE.KeyframeTrack;
+      return new T(t.name, [0], Array.from(t.values.slice(0, n)));
+    });
+    return new THREE.AnimationClip(name, 1, tracks);
+  });
+}
+
+/**
+ * 'Kneel' (derived at load, no Blender export needed): seated on the heels on the floor — knees down in front, shins
+ * flat behind, the top of the feet on the ground, back straight, head slightly bowed, hands on the thighs (arms of the
+ * corrected Sit). Used by floor places (prayer rows, mats): the origin stays on the floor, the hips about 0.3 m above it.
+ * Angles: thigh 119° about X from the hips (29° below horizontal), knee 151° (shin pointing back), foot −6°.
+ */
+export const KNEEL_HIPS = 0.3;
+export function deriveKneel(clips: THREE.AnimationClip[]) {
+  if (clips.some(c => c.name === 'Kneel')) return;
+  const sit = clips.find(c => c.name === 'Sit'); if (!sit) return;
+  const kneel = sit.clone(); kneel.name = 'Kneel';
+  const rx = (deg: number) => [Math.sin((deg * Math.PI) / 360), 0, 0, Math.cos((deg * Math.PI) / 360)];
+  const pose: [RegExp, number[]][] = [
+    [/^root\.position$/, [0, KNEEL_HIPS - 0.95, 0]],                 // hips joint 0.95 m above the root at rest
+    [/^thigh\.?[LR]\.quaternion$/, rx(119)], [/^shin\.?[LR]\.quaternion$/, rx(151)], [/^foot\.?[LR]\.quaternion$/, rx(-6)],
+    [/^spine\.quaternion$/, rx(4)], [/^neck\.quaternion$/, rx(6)], [/^head\.quaternion$/, rx(6)],
+  ];
+  for (const track of kneel.tracks) {
+    const hit = pose.find(([re]) => re.test(track.name)); if (!hit) continue;
+    const v = hit[1], n = v.length;
+    const values = new Float32Array(track.values.length);
+    for (let i = 0; i < values.length; i++) values[i] = v[i % n];
+    track.values = values;
+  }
+  clips.push(kneel);
+}
+
 // ---------------------------------------------------------------- fabric textures (generic prints, own designs)
 const fabricCache = new Map<string, THREE.Texture>();
 function fabric(base: number, accent: number, pattern: Pattern): THREE.Texture | null {
@@ -80,11 +295,84 @@ function fabric(base: number, accent: number, pattern: Pattern): THREE.Texture |
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(3, 3); t.flipY = false; fabricCache.set(key, t); return t;
 }
-function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xffffff): THREE.Material {
+export function clothMat(color: number, pattern: Pattern = 'uni', accent = 0xffffff): THREE.Material {
   // Double-sided like the Blender materials: some cloth faces point inward and would otherwise vanish.
   if (pattern === 'bazin') return new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.05, side: THREE.DoubleSide }); // bazin's sheen
   const map = fabric(color, accent, pattern);
   return new THREE.MeshLambertMaterial({ color: map ? 0xffffff : color, map, side: THREE.DoubleSide });
+}
+
+/** Clips that mean « on foot »: held by remote avatars and walking roles, they get the computed gait like a free body. */
+const LOCOMOTION: ReadonlySet<string> = new Set<Clip>(['Idle', 'Walk', 'Jog', 'Run']);
+
+// ---------------------------------------------------------------- animation level of detail
+/**
+ * How much animation work a body gets from where the camera is (docs/PERF_EVENING.md). Close to the camera and in view:
+ * all of it, every frame — the mixer, and on foot the computed gait (src/actors/gait.ts). Farther, or out of the view,
+ * or hidden (by its owner, or swapped for a far figure by the shared humanoid budget, src/actors/crowdLod.ts): the
+ * Walk, Run and Idle clips as they played before the gait, the mixer at a lower rate (its time accumulates, so loops
+ * and cross-fades keep their pace). A body whose bones are turned after the mixer by another rig (the strike rig of a
+ * bout avec frappe) sets `fullRate` and always gets every frame.
+ */
+export const ANIM_LOD = {
+  /** The gait within this distance of the camera (m); a body leaving it keeps the gait to `gaitNear + gaitSlack`. */
+  gaitNear: 30, gaitSlack: 4,
+  /** Beyond this distance (m) a body in view is « far ». */
+  farFrom: 60,
+  /**
+   * Mixer updates a second: in view between gaitNear and farFrom, in view beyond farFrom, out of view (its shadow may
+   * still show on medium and high), hidden (nothing of it is drawn: the far figure standing in for it only needs to
+   * know whether it sits).
+   */
+  mid: 20, far: 10, unseen: 5, hidden: 2,
+} as const;
+/** The rig's bones under a body's skinned scene (what the mixer poses). */
+function boneList(root: THREE.Object3D) { const out: THREE.Object3D[] = []; root.traverse(o => { if ((o as THREE.Bone).isBone) out.push(o); }); return out; }
+/** The camera of the frame (set by main.ts before the modules update; `on` false: every body animated in full). */
+const view = { on: false, x: 0, y: 0, z: 0, frustum: new THREE.Frustum(), shadows: true };
+/**
+ * Whether the frame has a shadow pass (medium and high). Without it (the phone preset) a body out of the camera's view can
+ * be seen by nobody, and is animated like a hidden one; with it its shadow may still fall in the view.
+ */
+export function setAnimShadows(on: boolean) { view.shadows = on; }
+let madeHumanoids = 0;
+const _viewM = new THREE.Matrix4(), _bodyS = new THREE.Sphere();
+/** The squared distance from the camera of the body `animLod` just looked at when it is drawn and in view, else −1. */
+let seenD2 = -1;
+/**
+ * The details of a face (the eyes, the brows, the lips: four meshes, four draw calls on a body that otherwise costs six)
+ * are shown to a body within this distance of the camera (m) and put away beyond it plus FACE_SLACK: at 14 m they are
+ * a pixel or two tall (the eye whites are 11 cm wide). The head stays, in its skin. Bodies animated at every frame
+ * whatever their distance (the player's, the wrestlers of a strike rig: `fullRate`) keep them.
+ */
+export const FACE_NEAR = 14, FACE_SLACK = 1.5;
+/**
+ * The camera as it was last rendered (its matrices are up to date after the render): the bodies' animation detail this
+ * frame. Null switches the level of detail off.
+ */
+export function setHumanoidView(camera: THREE.Camera | null) {
+  if (!camera) { view.on = false; return; }
+  camera.updateMatrixWorld();                                                // (the frames the debug steps without drawing)
+  _viewM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  view.frustum.setFromProjectionMatrix(_viewM);
+  const e = camera.matrixWorld.elements;
+  view.x = e[12]; view.y = e[13]; view.z = e[14]; view.on = true;
+}
+/**
+ * The detail for a body at world (x, y, z) of scale `k`, drawn or not: 0 for everything every frame, else the mixer's
+ * rate (updates a second) without the gait. `near`: it had the gait last frame (it keeps it a little farther).
+ */
+export function animLod(x: number, y: number, z: number, k: number, drawn: boolean, near: boolean): number {
+  seenD2 = -1;
+  if (!view.on) return 0;
+  if (!drawn) return ANIM_LOD.hidden;
+  _bodyS.center.set(x, y + 0.95 * k, z); _bodyS.radius = 1.35 * k;                  // round the standing or seated body
+  if (!view.frustum.intersectsSphere(_bodyS)) return view.shadows ? ANIM_LOD.unseen : ANIM_LOD.hidden;
+  const dx = x - view.x, dy = y - view.y, dz = z - view.z, d2 = dx * dx + dy * dy + dz * dz;
+  seenD2 = d2;
+  const g = ANIM_LOD.gaitNear + (near ? ANIM_LOD.gaitSlack : 0);
+  if (d2 < g * g) return 0;
+  return d2 < ANIM_LOD.farFrom * ANIM_LOD.farFrom ? ANIM_LOD.mid : ANIM_LOD.far;
 }
 
 const SOCKET_NODE: Record<Socket, string> = { armL: 'socket_armL', armR: 'socket_armR', waist: 'socket_waist', neck: 'socket_neck' };
@@ -97,24 +385,51 @@ export class Humanoid {
   private current: THREE.AnimationAction | null = null;
   private root: THREE.Object3D;
   private parts = new Map<string, THREE.Mesh>();
+  /** The meshes of the face's details (eyes, brows, lips) and whether they are shown (FACE_NEAR). */
+  private face: THREE.Mesh[] = [];
+  private faceOn = true;
   private skinMat: THREE.MeshLambertMaterial;
   private lipsMat = new THREE.MeshLambertMaterial({ color: 0x3a1a12 });
   private beardMat = new THREE.MeshLambertMaterial({ color: 0x1a1414 });
   private morphed: THREE.Mesh[] = [];
   private accessoryMeshes: THREE.Object3D[] = [];
   clipName: Clip | null = null;
-  /** When set, city movement does not change the clip (emotes, talking, sitting). */
+  /** When set, city movement does not change the clip (emotes, talking, sitting). Idle, Walk and Run are not held: the gait runs. */
   hold: Clip | null = null;
+  /** On foot: the computed gait (src/actors/gait.ts) and its weight (0 while a pose is held). */
+  private gait: GaitState | null = null;
+  private gaitRig: GaitRig | null | undefined;
+  private gaitW = 1;
+  /** Every frame in full whatever the distance (ANIM_LOD): the player's own body, the wrestlers of a bout avec frappe. */
+  fullRate = false;
   /**
-   * Procedural gesture applied on top of the clip pose every frame (hand to mouth, comb, arms up…). The mixer only
-   * writes a bone when the clip's value changed since the last frame (three's PropertyMixer), so a held pose would keep
-   * what the overlay did and a relative gesture (a bend, a nod) would add up frame after frame: the clip pose is put
-   * back before every mixer update (see `pose`).
+   * Animation level of detail: time the mixer still owes (s), time left before its next update in a slower tier, the
+   * gait in use last frame, the ground speed measured. On a frame without a mixer update the bones are set back to the
+   * mixer's last pose (`saved`): owners that turn a bone over the clip after `animate` (an apprentice's arm on the grab
+   * bar, the stands' clapping, the traffic agent's sweeping arm) start from the clip's pose every frame, as with the
+   * mixer, and never add up their turns.
+   */
+  private lag = 0; private due = 0;
+  private near = true;
+  private bones: THREE.Object3D[] | null = null;
+  private saved: Float64Array | null = null;
+  /** Its place in the slower tiers' rhythm (0–1), so that bodies made together do not all update on the same frame. */
+  private phase = (madeHumanoids++ * 0.618034) % 1;
+  private lx = NaN; private lz = NaN; private v = 0;
+  /**
+   * Hidden (ANIM_LOD.hidden), a body's pose matters only through whether it sits (the far figure standing in for it): once the
+   * mixer has set the pose of the clip it plays, with the cross-fade over, the bones hold it, and the mixer is not asked again
+   * until the clip changes or the body is drawn again (it then gets all the time it owes in one update).
+   */
+  private settled = false; private sinceSwitch = 0;
+  /**
+   * Procedural gesture applied on top of the clip pose every frame (hand to mouth, comb, arms up…: src/actors/gesture.ts).
+   * The mixer only writes a bone when the clip's value changed since the last frame (three's PropertyMixer), so a held
+   * pose would keep what the overlay did and a relative gesture (a bend, a nod) would add up frame after frame: the pose
+   * from before the overlay is put back first (see `withOverlay`).
    */
   overlay: ((h: Humanoid, dt: number) => void) | null = null;
-  private bones: THREE.Object3D[] = [];
-  /** Clip pose (bone rotations and positions) saved before the last overlay, restored before the next mixer update. */
-  private clipPose: { q: THREE.Quaternion; p: THREE.Vector3 }[] | null = null;
+  private underOverlay: Float64Array | null = null;
 
   constructor(look?: PersonLook) {
     if (!template) throw new Error('character asset not loaded');
@@ -127,6 +442,7 @@ export class Humanoid {
       if (!m.isMesh) return;
       m.castShadow = true; m.frustumCulled = false;
       const key = CLOTH.find(n => m.name.startsWith(n));
+      if (/^Head\w*_\d+$/.test(m.name)) this.face.push(m);
       if (m.morphTargetDictionary) this.morphed.push(m);
       const src = m.material as THREE.MeshStandardMaterial;
       if (key) { this.parts.set(key, m); if (key.startsWith('Hair_')) m.material = hair; if (key === 'Beard') m.material = this.beardMat; }
@@ -137,7 +453,6 @@ export class Humanoid {
     });
     this.mixer = new THREE.AnimationMixer(this.root);
     for (const c of template.clips) this.actions.set(c.name, this.mixer.clipAction(c));
-    this.root.traverse(o => { if ((o as THREE.Bone).isBone) this.bones.push(o); });
     if (look) this.setLook(look);
   }
 
@@ -206,6 +521,7 @@ export class Humanoid {
   play(name: Clip, fade = 0.2, offset = 0) {
     if (this.clipName === name) return;
     const next = this.actions.get(name); if (!next) return;
+    this.settled = false; this.sinceSwitch = 0;
     next.reset(); next.setLoop(THREE.LoopRepeat, Infinity); next.timeScale = 1;
     if (offset) next.time = offset * next.getClip().duration;
     next.fadeIn(fade).play();
@@ -213,33 +529,151 @@ export class Humanoid {
     this.current = next; this.clipName = name;
   }
 
-  /** City locomotion: idle, walk or run from ground speed (m/s). */
+  /**
+   * City locomotion. On foot (no held pose) the gait is computed from the body's own motion — its group's position and
+   * rotation.y, so call this after moving it — with `speed` (m/s) only saying whether the caller means a run: feet that
+   * stay where they are put down, cadence and step from the ground speed (src/actors/gait.ts). The Idle, Walk and Run
+   * clips stay underneath for the cross-fades with held poses (talking, sitting, emotes…), which the gait fades out for.
+   */
   animate(dt: number, speed: number) {
-    if (!this.hold) {
-      if (speed > 3) { this.play('Run', 0.15); if (this.current) this.current.timeScale = speed / 5.2; }
-      else if (speed > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = Math.max(0.6, speed / 1.45); }
-      else this.play('Idle', 0.25);
-    } else this.play(this.hold, 0.2);
-    this.pose(dt);
-  }
-  update(dt: number) { this.pose(dt); }
-
-  /** Clip pose, then the overlay on top of it (never on top of last frame's overlay). */
-  private pose(dt: number) {
-    const saved = this.clipPose;
-    if (saved) { this.bones.forEach((b, i) => { b.quaternion.copy(saved[i].q); b.position.copy(saved[i].p); }); if (!this.overlay) this.clipPose = null; }
-    this.mixer.update(dt);
+    const b = (this.bones ??= boneList(this.root));
+    const under = this.underOverlay;
+    if (under) {                                                              // last frame's gesture off: the pose it was put on
+      for (let i = 0, o = 0; i < b.length; i++, o += 7) { b[i].quaternion.set(under[o], under[o + 1], under[o + 2], under[o + 3]); b[i].position.set(under[o + 4], under[o + 5], under[o + 6]); }
+      if (!this.overlay) this.underOverlay = null;
+    }
+    this.locomote(dt, speed);
     if (!this.overlay) return;
-    const keep = this.clipPose ??= this.bones.map(() => ({ q: new THREE.Quaternion(), p: new THREE.Vector3() }));
-    this.bones.forEach((b, i) => { keep[i].q.copy(b.quaternion); keep[i].p.copy(b.position); });
+    const keep = (this.underOverlay ??= new Float64Array(b.length * 7));
+    for (let i = 0, o = 0; i < b.length; i++, o += 7) {
+      const q = b[i].quaternion, p = b[i].position;
+      keep[o] = q.x; keep[o + 1] = q.y; keep[o + 2] = q.z; keep[o + 3] = q.w; keep[o + 4] = p.x; keep[o + 5] = p.y; keep[o + 6] = p.z;
+    }
     this.overlay(this, dt);
   }
+
+  private locomote(dt: number, speed: number) {
+    const held = this.hold && !LOCOMOTION.has(this.hold) ? this.hold : null;
+    const o = this.group.position;
+    // the ground speed from the body's own motion (a jump is not a step): the clips' pace while the gait is not computed
+    if (dt > 0) {
+      const sx = o.x - this.lx, sz = o.z - this.lz, step = Math.sqrt(sx * sx + sz * sz);
+      this.v = step < Math.max(0.5, 10 * dt) ? this.v + (step / dt - this.v) * Math.min(1, dt / 0.15) : 0;
+    }
+    this.lx = o.x; this.lz = o.z;
+    // how much work this body gets (ANIM_LOD): where it was last drawn, seen or not
+    const m = this.group.matrixWorld.elements, wasNear = this.near;
+    const lod = this.fullRate ? 0 : animLod(m[12], m[13], m[14], this.group.scale.x, this.drawn(), wasNear);
+    if (!this.fullRate && seenD2 >= 0) this.showFace(seenD2);
+    if (lod === ANIM_LOD.unseen || lod === ANIM_LOD.hidden) this.gaitW = 0;  // nobody sees it go: no fade needed
+    this.near = lod === 0;
+    if (held) { this.play(held, 0.2); this.gaitW = Math.max(0, this.gaitW - dt / 0.2); }
+    else if (lod === 0 || this.gaitW > 0) {
+      const g = (this.gait ??= new GaitState());
+      if (this.gaitW <= 0) g.reset(o.x, o.z, this.group.rotation.y, this.group.scale.x);        // back on foot from a held pose
+      g.update(dt, o.x, o.z, this.group.rotation.y, this.group.scale.x, speed);
+      if (g.moving) { this.play(g.run > 0.5 ? (g.v < 5.5 ? 'Jog' : 'Run') : 'Walk', 0.2); if (this.current) this.current.timeScale = (g.p.cadence / 2) * this.current.getClip().duration; }
+      else this.play('Idle', 0.25);
+      // in reach of the gait it fades in; out of it (far, out of view, hidden) it fades out, then the clips walk alone
+      this.gaitW = lod === 0 ? Math.min(1, this.gaitW + dt / 0.2) : Math.max(0, this.gaitW - dt / 0.25);
+    } else {
+      // the clips alone, as they played before the gait: their pace from the caller's speed or the measured one
+      const s = Math.max(speed, this.v);
+      if (this.hold) this.play(this.hold, 0.2);
+      else if (s > 3) { this.play(s < 5.5 ? 'Jog' : 'Run', 0.15); if (this.current) this.current.timeScale = (runCadence(s) / 2) * this.current.getClip().duration; }
+      else if (s > 0.25) { this.play('Walk', 0.2); if (this.current) this.current.timeScale = (walkCadence(s) / 2) * this.current.getClip().duration; }   // the pace the gait keeps near: no change of stride at the LOD switch
+      else this.play('Idle', 0.25);
+    }
+    // the mixer: every frame in full detail (and while the gait fades), else at the tier's rate with the time it owes
+    this.lag += dt; this.sinceSwitch += dt;
+    if (this.settled) {
+      if (lod === ANIM_LOD.hidden) return;                                   // the pose it holds is the clip's; the time keeps adding up
+      this.settled = false; this.due = 0;                                    // seen again: updated now, with all the time owed
+    }
+    if (lod !== 0 && this.gaitW <= 0) {
+      if (wasNear) this.due = this.phase / lod;                              // just slowed down: now, then staggered with the others
+      // not yet: the mixer's last pose (a hidden body is left as it is: its first update once drawn sets every bone)
+      else if ((this.due -= dt) > 0) { if (lod !== ANIM_LOD.hidden) this.restorePose(); return; }
+      else this.due = 1 / lod + Math.max(this.due, -0.5 / lod);
+    }
+    this.mixer.update(this.lag); this.lag = 0;
+    if (lod === ANIM_LOD.hidden && this.sinceSwitch >= 0.3) this.settled = true;      // (0.3 s: longer than any cross-fade)
+    if (lod !== 0) this.savePose();
+    const w = this.gait ? this.gaitW * this.gait.stand : 0;
+    if (w > 0) {
+      if (this.gaitRig === undefined) this.gaitRig = GaitRig.from(this.root);
+      this.gaitRig?.apply(this.gait!, w);
+    }
+  }
+  /**
+   * Back to the state of a body just made (its look aside: `setLook` dresses it again): no clip playing, no pose held, the
+   * gait and the animation level of detail forgotten. For an owner that keeps spare bodies instead of cloning a new skinned
+   * scene (2-8 ms) each time it needs one.
+   */
+  reset() {
+    this.mixer.stopAllAction();                                              // (the bones go back to their rest values)
+    this.current = null; this.clipName = null; this.hold = null;
+    this.gait = null; this.gaitRig = undefined; this.gaitW = 1; this.fullRate = false;     // (the gait's rig takes its rest rotations again at its first use, as a new body's does)
+    this.lag = 0; this.due = 0; this.near = true; this.settled = false; this.sinceSwitch = 0;
+    this.lx = NaN; this.lz = NaN; this.v = 0; this.saved = null;
+    this.faceOn = true; for (const m of this.face) m.visible = true;
+    this.group.position.set(0, 0, 0); this.group.rotation.set(0, 0, 0);
+  }
+  /** The face's details for a body `d2` (squared m) from the camera: shown within FACE_NEAR, put away beyond FACE_NEAR + FACE_SLACK. */
+  private showFace(d2: number) {
+    const on = d2 < (this.faceOn ? FACE_NEAR + FACE_SLACK : FACE_NEAR) ** 2;
+    if (on === this.faceOn) return;
+    this.faceOn = on;
+    for (const m of this.face) m.visible = on;
+  }
+  /** Whether the face's details are shown now (checks). */
+  faceShown() { return this.faceOn; }
+  /** Drawn as far as its owners are concerned: its skinned scene (a far figure may stand in for it), its group and every parent. */
+  private drawn() {
+    if (!this.root.visible) return false;
+    for (let p: THREE.Object3D | null = this.group; p; p = p.parent) if (!p.visible) return false;
+    return true;
+  }
+  /** Keeps the pose the mixer just set (the bones' rotations and positions). */
+  private savePose() {
+    const b = (this.bones ??= boneList(this.root)), s = (this.saved ??= new Float64Array(b.length * 7));
+    for (let i = 0, o = 0; i < b.length; i++, o += 7) {                       // (field by field: toArray is megamorphic, slow)
+      const q = b[i].quaternion, p = b[i].position;
+      s[o] = q.x; s[o + 1] = q.y; s[o + 2] = q.z; s[o + 3] = q.w; s[o + 4] = p.x; s[o + 5] = p.y; s[o + 6] = p.z;
+    }
+  }
+  /** Back to the pose the mixer last set: the bones an owner turned over it since are set back (the others are left alone). */
+  private restorePose() {
+    const b = this.bones, s = this.saved; if (!b || !s) return;
+    for (let i = 0, o = 0; i < b.length; i++, o += 7) {
+      const q = b[i].quaternion, p = b[i].position;
+      if (q.x !== s[o] || q.y !== s[o + 1] || q.z !== s[o + 2] || q.w !== s[o + 3]) q.set(s[o], s[o + 1], s[o + 2], s[o + 3]);
+      if (p.x !== s[o + 4] || p.y !== s[o + 5] || p.z !== s[o + 6]) p.set(s[o + 4], s[o + 5], s[o + 6]);
+    }
+  }
+  /** The gait as computed this frame (checks: src/main.ts `__dakar.gait()`), or null while a pose is held. */
+  gaitInfo() {
+    const g = this.gait; if (!g || this.gaitW <= 0) return null;
+    return {
+      moving: g.moving, run: g.run, speed: g.v * this.group.scale.x, cadence: g.moving ? g.p.cadence : 0, step: g.moving ? g.p.step * this.group.scale.x : 0, duty: g.p.duty,
+      phase: g.phase, steps: g.steps, settles: g.settles, pelvis: g.py, clip: this.clipName,
+      feet: g.feet.map(f => ({ planted: f.planted, swing: f.swing, settle: f.settle, pitch: f.pitch, slipped: f.slipped })),
+    };
+  }
+  /** Clips only (scenes that drive a body themselves): the gesture overlay still goes on top. */
+  update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
 }
 
 /** Wrestler: a humanoid in ngemb (used by arena and écurie scenes). */
+/**
+ * A wrestler on the sand (the bout, the preliminaries, the entrance ceremony, the écurie's scenes): always animated at
+ * every frame (`fullRate`). From the far stands the ring is more than ANIM_LOD.gaitNear away, where a body would drop to
+ * 20 mixer updates a second, and the wrestlers are what the player is watching: two to four bodies, a negligible cost.
+ */
 export class Wrestler extends Humanoid {
-  constructor(skin = 0x5b3420) { super(); this.setWrestler({ ngembColor: 'blanc', ngembPattern: 'uni', accessories: [] }, 'A', skin); }
+  constructor(skin = 0x5b3420) { super(); this.setWrestler({ ngembColor: 'blanc', ngembPattern: 'uni', accessories: [] }, 'A', skin); this.fullRate = true; }
+  override reset() { super.reset(); this.fullRate = true; }
   setLook(look: PersonLook | WrestlerLook, cut: 'A' | 'B' = 'A') {
     if ('ngembColor' in look) this.setWrestler(look, cut); else super.setLook(look);
   }

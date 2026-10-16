@@ -10,14 +10,16 @@ import { CAST, castById, type CastMember } from './cast';
 import { Relations } from './relations';
 import { BEATS, type Beat } from './beats';
 import { PROFILES, profileOf, type Perk, type Profile } from './profiles';
-import { ROUTINES, currentPlan, planPath, poseFor, resolvePlace, slotAt, pathLength, type Activity, type PlaceSpec, type Routine, type Spot } from './routines';
+import { ROUTINES, currentPlan, planPath, poseFor, resolvePlace, slotAt, pathLength, collidersClear, type Activity, type ClearFn, type PlaceSpec, type Routine, type Spot } from './routines';
+import { len2 } from '../core/math';
 import { greeting, hourStamp, introduction, applyIntroduction, isRegular, lastMemory, recordService, recordVisit, updateRegular, familiarity, REGULAR_AT } from './memory';
 import { SITUATIONS, choicesFor, favourFor, playSituation, sitCtx, situationFor, type Situation } from './situations';
+import { pick, quote, wo } from '../i18n/wolof';
 
 /**
  * Recurring cast in the street: daily routines, walking on the sidewalks, poses at their places, recognition and
  * situations. Runtime side of src/social/{profiles,routines,memory,situations}.ts. Local to this device, like the crowd.
- * BROUILLON — textes et comportements à relire par Habib.
+ * Wolof in their lines comes from src/i18n/wolof.ts.
  */
 export interface LifeCtx {
   hud: Hud; rel: Relations; state: GameState;
@@ -39,7 +41,9 @@ interface Npc {
   look: string; clip: Clip | 'Walk';
 }
 
-const CHAT: Action[] = [{ id: 'discuter', label: 'Discuter', detail: 'Prendre des nouvelles', needs: { social: 8, moral: 2 }, seconds: 2.5, counter: 'chats' }];
+const CHAT: Action = { id: 'discuter', label: 'Discuter', detail: 'Prendre des nouvelles', needs: { social: 8, moral: 2 }, seconds: 2.5, counter: 'chats' };
+/** Each person has their own way of asking for news (a seeded Wolof question: « Lu bees ? », « Ana waa kër gi ? »…). */
+const chatWith = (id: string): Action[] => [{ ...CHAT, detail: `${quote(pick('news', id).wo)} · Prendre des nouvelles` }];
 /** Height correction for the Sit clip on a 0.57 m seat (kiosk benches, city benches, stools): feet on the ground,
  * hips just above the seat. From the clip's bone heights (hips 0.50, ankle 0.03) and checked in captures. */
 export const SIT_Y = 0.05;
@@ -86,7 +90,7 @@ export class NpcLife {
       const h = humanoidReady() ? new Humanoid(p.looks.base) : undefined;
       const body = h ?? new Character(m.outfit);
       this.group.add(body.group);
-      const it: Interactable = { id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x: 0, z: 0, radius: 3.2, actions: p.menu === 'ibou' ? ACTIONS.ibou : CHAT, npc: m.id };
+      const it: Interactable = { id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x: 0, z: 0, radius: 3.2, actions: p.menu === 'ibou' ? ACTIONS.ibou : chatWith(m.id), npc: m.id };
       world.interactables.push(it);
       const n: Npc = { id: m.id, m, p, r, body, h, it, x: 0, z: 0, yaw: 0, key: '', act: 'wait', place: r.slots[0].place, spot: { x: 0, z: 0, yaw: 0, sit: false, stool: false, approach: [] }, path: [], seg: 0, walking: false, paused: false, look: 'base', clip: 'Idle' };
       this.npcs.push(n);
@@ -125,20 +129,20 @@ export class NpcLife {
       const plan = currentPlan(n.r, hour, id => id in this.ctx.state.data.beats);
       if (plan.key !== n.key) this.retarget(n, hour, false);
       let speed = 0;
-      const dP = Math.hypot(player.x - n.x, player.z - n.z);
+      const dP = len2(player.x - n.x, player.z - n.z);
       if (n.walking) {
         n.paused = dP < STOP_R && this.group.visible;
         if (n.paused) { n.yaw = Math.atan2(player.x - n.x, player.z - n.z); n.clip = 'Talk'; }
         else {
           // Out of sight, people get on with their day: skip ahead until close to the player or arrived.
           let budget = 600;
-          while (n.walking && budget > 0 && Math.hypot(player.x - n.x, player.z - n.z) > FAR) { this.advance(n, 2); budget -= 2; }
+          while (n.walking && budget > 0 && len2(player.x - n.x, player.z - n.z) > FAR) { this.advance(n, 2); budget -= 2; }
           if (n.walking) { this.advance(n, SPEED * dt); speed = SPEED; n.clip = 'Walk'; }
         }
       }
       if (!n.walking) {
         n.x = n.spot.x; n.z = n.spot.z;
-        const partner = this.npcs.find(o => o !== n && !o.walking && Math.hypot(o.x - n.x, o.z - n.z) < 2.6);
+        const partner = this.npcs.find(o => o !== n && !o.walking && len2(o.x - n.x, o.z - n.z) < 2.6);
         const talking = dP < TALK_R ? 'player' : partner ? 'npc' : null;
         n.clip = poseFor(n.act, n.spot.sit, talking);
         if (n.spot.sit) n.yaw = n.spot.yaw;
@@ -150,7 +154,7 @@ export class NpcLife {
       n.body.group.position.set(n.x, 0.1 + (seated ? SIT_Y : 0) + (this.world.heightAt(n.x, n.z) || 0), n.z);
       n.body.group.rotation.y = n.yaw;
       n.it.x = n.x; n.it.z = n.z;
-      const far = Math.hypot(viewer.x - n.x, viewer.z - n.z) > 110;    // not drawn nor animated far from the camera
+      const far = (viewer.x - n.x) * (viewer.x - n.x) + (viewer.z - n.z) * (viewer.z - n.z) > 12100;    // not drawn nor animated far from the camera (110 m)
       n.body.group.visible = !far;
       if (far) continue;
       if (n.h) n.h.hold = n.clip === 'Walk' ? null : n.clip;
@@ -162,7 +166,7 @@ export class NpcLife {
     while (step > 0 && n.walking) {
       const a = n.path[n.seg], b = n.path[n.seg + 1];
       if (!b) { n.walking = false; break; }
-      const dx = b.x - n.x, dz = b.z - n.z, d = Math.hypot(dx, dz);
+      const dx = b.x - n.x, dz = b.z - n.z, d = len2(dx, dz);
       if (d <= step) { n.x = b.x; n.z = b.z; n.seg++; step -= d; if (n.seg >= n.path.length - 1) n.walking = false; }
       else { n.x += (dx / d) * step; n.z += (dz / d) * step; step = 0; }
       if (d > 0.01) n.yaw = Math.atan2(dx, dz);
@@ -188,20 +192,7 @@ export class NpcLife {
 
   /** Straight segment clear of the hub's solid objects (those containing an end point are the place itself: bench, counter). */
   clear = this.makeClear();
-  private makeClear() { return (a: Pt, b: Pt) => this.isClear(a, b); }
-  private isClear(a: Pt, b: Pt): boolean {
-    const cols = this.world?.colliders ?? [], m = 0.25;
-    const len = Math.hypot(b.x - a.x, b.z - a.z), steps = Math.max(1, Math.ceil(len / 0.3));
-    const near = cols.filter(c => c.h > 0.3 && Math.max(a.x, b.x) > c.x0 - m && Math.min(a.x, b.x) < c.x1 + m && Math.max(a.z, b.z) > c.z0 - m && Math.min(a.z, b.z) < c.z1 + m
-      && !(a.x > c.x0 - 0.45 && a.x < c.x1 + 0.45 && a.z > c.z0 - 0.45 && a.z < c.z1 + 0.45)
-      && !(b.x > c.x0 - 0.45 && b.x < c.x1 + 0.45 && b.z > c.z0 - 0.45 && b.z < c.z1 + 0.45));
-    if (!near.length) return true;
-    for (let k = 0; k <= steps; k++) {
-      const t = k / steps, x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
-      if (near.some(c => x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m)) return false;
-    }
-    return true;
-  }
+  private makeClear(): ClearFn { return collidersClear(this.world?.colliders ?? []); }
 
   // ------------------------------------------------------------------ talking
   private npc(id: string) { return this.npcs.find(n => n.id === id); }
@@ -293,7 +284,7 @@ export class NpcLife {
     this.ctx.hud.openMenu('Les gens du quartier', people.length ? 'Où les trouver maintenant, et ce qu’ils retiennent de toi.' : 'Tu ne connais encore personne. Va saluer Tonton Ibou, devant ta chambre.', people.map(c => ({
       label: c.name, detail: `${c.title} · ${this.whereNow(c.id)} · ${Relations.label(r.level(c.id))}`,
       onPick: () => this.openSheet(c.id),
-    })), '<div class="draft">Fiches et routines : brouillon à relire par Habib.</div>');
+    })));
   }
 
   openSheet(id: string) {
@@ -302,7 +293,7 @@ export class NpcLife {
     const mem = lastMemory(id, s, r, this.ctx.clock().hour);
     const html = `<div class="kv"><b>${esc(p.job)}</b><br>${esc(p.hours)}<br>Maintenant : ${esc(this.whereNow(id))}<br>Relation : ${Relations.label(lv)} (${lv > 0 ? '+' : ''}${Math.round(lv)})<br>Dernier souvenir : ${esc(mem ?? 'rien de particulier pour l’instant')}${isRegular(s, id) ? '<br>Tu es un habitué.' : `<br>Passages : ${familiarity(s, id)}/${REGULAR_AT} pour devenir un habitué`}</div>
       <h3>À savoir</h3><div class="kv">${esc(p.ambition)}<br>${esc(p.difficulty)}</div>
-      <div class="draft">Fiche brouillon — à relire par Habib.</div>`;
+      <h3>Sa façon de parler</h3><div class="kv">${esc(p.languages)}. ${esc(p.speech)}<br>${p.expressions.map(e => esc(wo(`« ${e.wo} »`, e.fr))).join(' · ')}</div>`;
     this.ctx.menuMode();
     this.ctx.hud.openMenu(c.name, c.title, [{ label: 'Retour', onPick: () => this.openPeople() }], html);
   }

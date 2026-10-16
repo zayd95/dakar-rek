@@ -3,7 +3,7 @@ import type { Clip } from '../actors/humanoid';
 import { PITCH, BLK, ROAD, NB } from '../world/builder';
 
 /**
- * Daily routines of the recurring cast — BROUILLON, à relire par Habib.
+ * Daily routines of the recurring cast.
  * Each character keeps to their hub. A schedule is a list of slots by city hour (0–24, the shared city clock or the
  * debug `setHour` override); each slot names a place, resolved at run time from the hub's interactables (gargote,
  * Maïga, café, boutique, grand-place…), and an activity that gives the pose (seated, talking, waiting, training).
@@ -47,6 +47,7 @@ const S = (from: number, to: number, place: PlaceSpec, act: Activity): Slot => (
 const BEACH_IN: [number, number][] = [[-125, 60], [-131.6, 60], [-131.6, 66.5]];           // Corniche crossing to Soumbédioune
 const PIKINE_SHOP_IN: [number, number][] = [[-95.5, 86], [-95.5, 79.6]];                   // Boutique Diallo aisle, behind the counter
 const ATELIER_IN: [number, number][] = [[85, 86], [85, 79.6]];                              // Atelier Ndeye aisle
+const GARAGE_IN: [number, number][] = [[102.6, -6], [102.6, -11.1]];                        // Garage Modou: the aisle by the bench (shop kit 'garage')
 const PIK = {
   courtyard: (label = 'devant chez lui, à côté de ta chambre') => P('home', label, { ox: 6, oz: 0, yaw: PI }),
   attaya1: P('city:square', 'sur la grand-place, à l’attaya', { ox: -0.1, oz: -2.4, yaw: PI, sit: true, stool: true }),
@@ -76,9 +77,9 @@ export const ROUTINES: Routine[] = [
     id: 'modou', hub: 'pikine',
     slots: [
       S(0, 7, abs(113.6, -20, 'chez lui, derrière le garage', { yaw: -PI / 2 }), 'home'),
-      S(7, 13, P('garage', 'au Garage Modou', { ox: -4, oz: 0 }), 'work'),
+      S(7, 13, P('abs', 'derrière son établi, au Garage Modou', { ox: 98.84, oz: -11.1, yaw: 0, approach: GARAGE_IN }), 'work'),
       S(13, 15, P('maiga', 'à la Maïga du marché (déjeuner)', { maiga: 1 }), 'eat'),
-      S(15, 19, P('garage', 'au Garage Modou', { ox: -4, oz: 0 }), 'work'),
+      S(15, 19, P('abs', 'derrière son établi, au Garage Modou', { ox: 98.84, oz: -11.1, yaw: 0, approach: GARAGE_IN }), 'work'),
       S(19, 22, PIK.attaya2, 'attaya'),
       S(22, 24, abs(113.6, -20, 'chez lui, derrière le garage', { yaw: -PI / 2 }), 'home'),
     ],
@@ -309,27 +310,154 @@ export function laneGraph(): Graph {
   return graph;
 }
 
-const proj = (p: Pt, a: Pt, b: Pt): Pt => {
-  const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
-  const t = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2)) : 0;
-  return { x: a.x + dx * t, z: a.z + dz * t };
-};
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
 export type ClearFn = (a: Pt, b: Pt) => boolean;
+
+type Box = { x0: number; z0: number; x1: number; z1: number; h: number };
+let clearTick = 0;
+/**
+ * Straight segment test against a hub's solid objects (h > 0.3 m), with a 0.25 m margin. Objects containing an end point
+ * are the place itself (the bench, the counter) and are ignored. Make one per hub: planPath caches by function identity.
+ *
+ * The test reads the list as it is now. It keeps a copy of the solid boxes in flat arrays (a walk through 770 objects was
+ * 15-40 µs a call, and a route asks twenty times), made again when the list has changed since the last `epoch` — a number
+ * that goes up when the world may have changed (default: at every call; the ambient life gives its frame count, so that the
+ * several tests of one route in a frame share one look at the list).
+ */
+export function collidersClear(cols: readonly Box[], epoch: () => number = () => ++clearTick): ClearFn {
+  const m = 0.25;
+  let seen = NaN, sig = NaN, n = 0, X0 = new Float64Array(0), Z0 = X0, X1 = X0, Z1 = X0;
+  const signature = () => { let s = cols.length; for (let i = 0; i < cols.length; i++) { const c = cols[i]; s += (i + 1) * (c.x0 + 3 * c.z0 + 5 * c.x1 + 7 * c.z1 + 11 * c.h); } return s; };
+  const refresh = () => {
+    const e = epoch(); if (e === seen) return; seen = e;
+    const s = signature(); if (s === sig) return; sig = s;
+    if (X0.length < cols.length) { X0 = new Float64Array(cols.length); Z0 = new Float64Array(cols.length); X1 = new Float64Array(cols.length); Z1 = new Float64Array(cols.length); }
+    n = 0;
+    for (let i = 0; i < cols.length; i++) { const c = cols[i]; if (c.h > 0.3) { X0[n] = c.x0; Z0[n] = c.z0; X1[n] = c.x1; Z1[n] = c.z1; n++; } }
+  };
+  const near: number[] = [];                                                                // (the objects in the way: one list for all the calls)
+  return (a, b) => {
+    refresh();
+    const ax = a.x, az = a.z, bx = b.x, bz = b.z;
+    const xhi = Math.max(ax, bx), xlo = Math.min(ax, bx), zhi = Math.max(az, bz), zlo = Math.min(az, bz);
+    let k = 0;
+    for (let i = 0; i < n; i++) {
+      const x0 = X0[i], z0 = Z0[i], x1 = X1[i], z1 = Z1[i];
+      if (xhi > x0 - m && xlo < x1 + m && zhi > z0 - m && zlo < z1 + m
+        && !(ax > x0 - 0.45 && ax < x1 + 0.45 && az > z0 - 0.45 && az < z1 + 0.45)
+        && !(bx > x0 - 0.45 && bx < x1 + 0.45 && bz > z0 - 0.45 && bz < z1 + 0.45)) near[k++] = i;
+    }
+    if (!k) return true;
+    const dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz), steps = Math.max(1, Math.ceil(len / 0.3));
+    // The points of the segment every 30 cm, inside one of the objects? For each object the stretch of the segment inside its box
+    // (slab method) says which of the points can be: only those are tried, with the very test of old. (A long segment past forty
+    // stalls and barriers was 130 points × 40 boxes, 60 µs.)
+    for (let j = 0; j < k; j++) {
+      const i = near[j], bx0 = X0[i] - m, bx1 = X1[i] + m, bz0 = Z0[i] - m, bz1 = Z1[i] + m;
+      let t0 = 0, t1 = 1;
+      if (dx === 0) { if (ax <= bx0 || ax >= bx1) continue; } else { let u = (bx0 - ax) / dx, v = (bx1 - ax) / dx; if (u > v) { const w = u; u = v; v = w; } if (u > t0) t0 = u; if (v < t1) t1 = v; }
+      if (dz === 0) { if (az <= bz0 || az >= bz1) continue; } else { let u = (bz0 - az) / dz, v = (bz1 - az) / dz; if (u > v) { const w = u; u = v; v = w; } if (u > t0) t0 = u; if (v < t1) t1 = v; }
+      if (t0 > t1) continue;
+      const k0 = Math.max(0, Math.floor(t0 * steps) - 1), k1 = Math.min(steps, Math.ceil(t1 * steps) + 1);
+      for (let q = k0; q <= k1; q++) {
+        const t = q / steps, x = ax + dx * t, z = az + dz * t;
+        if (x > bx0 && x < bx1 && z > bz0 && z < bz1) return false;
+      }
+    }
+    return true;
+  };
+}
 const edgeCache = new WeakMap<ClearFn, Map<string, boolean>>();
 
-/** Closest sidewalk entries for a point, nearest first, keeping only those reachable in a straight clear line. */
+/**
+ * Closest sidewalk entries for a point, nearest first, keeping only those reachable in a straight clear line. Kept per
+ * `clear` and point, like the graph's open stretches (edgeCache): the ambient people come from the graph's corners and
+ * walk to the places' fixed spots, so the same few points come back all evening.
+ */
 function entries(p: Pt, clear: ClearFn, max = 3) {
-  const g = laneGraph();
-  const all = g.segs.map(([i, j]) => { const q = proj(p, g.nodes[i], g.nodes[j]); return { i, j, q, d: dist(p, q) }; }).sort((u, v) => u.d - v.d);
-  const out: typeof all = [];
-  for (const e of all) { if (e.d > 60 || out.length >= max) break; if (clear(p, e.q) && clear(g.nodes[e.i], e.q) && clear(e.q, g.nodes[e.j])) out.push(e); }
+  let byPt = entryCache.get(clear);
+  if (!byPt) { byPt = new Map(); entryCache.set(clear, byPt); }
+  const key = `${p.x},${p.z},${max}`, hit = byPt.get(key);
+  if (hit) return hit;
+  const g = laneGraph(), segs = g.segs, n = segs.length;
+  // the stretches by distance from the point, nearest first (the first of equals first: the order of a stable sort), the next
+  // one taken only when the ones before it were no use — no object for each of the graph's stretches, no sort
+  if (eD.length < n) { eD = new Float64Array(n); eQx = new Float64Array(n); eQz = new Float64Array(n); eDone = new Uint8Array(n); }
+  eDone.fill(0, 0, n);
+  for (let k = 0; k < n; k++) {
+    const a = g.nodes[segs[k][0]], b = g.nodes[segs[k][1]];
+    const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
+    const t = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2)) : 0;
+    const qx = a.x + dx * t, qz = a.z + dz * t;
+    eQx[k] = qx; eQz[k] = qz; eD[k] = Math.hypot(p.x - qx, p.z - qz);
+  }
+  const out: { i: number; j: number; q: Pt; d: number }[] = [];
+  while (out.length < max) {
+    let best = -1, bd = Infinity;
+    for (let k = 0; k < n; k++) if (!eDone[k] && eD[k] < bd) { bd = eD[k]; best = k; }
+    if (best < 0 || bd > 60) break;
+    eDone[best] = 1;
+    const [i, j] = segs[best], q = { x: eQx[best], z: eQz[best] };
+    if (clear(p, q) && clear(g.nodes[i], q) && clear(q, g.nodes[j])) out.push({ i, j, q, d: bd });
+  }
+  if (byPt.size > 4000) byPt.clear();
+  byPt.set(key, out);
   return out;
+}
+/** `entries`' working arrays. */
+let eD = new Float64Array(0), eQx = new Float64Array(0), eQz = new Float64Array(0), eDone = new Uint8Array(0);
+const entryCache = new WeakMap<ClearFn, Map<string, { i: number; j: number; q: Pt; d: number }[]>>();
+
+/**
+ * The sidewalk graph as one `clear` test leaves it: a node's open stretches with their lengths, made the first time a search
+ * reaches the node (and each stretch tested once per test, see edgeCache), so the first long route of an evening does not
+ * test the whole city at once.
+ */
+interface OpenGraph { pts: Pt[]; at(i: number): { j: number; w: number }[] }
+const openGraphs = new WeakMap<ClearFn, OpenGraph>();
+function openGraph(clear: ClearFn): OpenGraph {
+  let og = openGraphs.get(clear);
+  if (!og) {
+    const g = laneGraph();
+    // Sidewalk stretches blocked by something solid (a stall, a fence) are left out of the graph.
+    let open = edgeCache.get(clear);
+    if (!open) { open = new Map(); edgeCache.set(clear, open); }
+    const ok = (i: number, j: number) => { const k = i < j ? `${i}-${j}` : `${j}-${i}`; let v = open!.get(k); if (v === undefined) { v = clear(g.nodes[i], g.nodes[j]); open!.set(k, v); } return v; };
+    const adj: ({ j: number; w: number }[] | undefined)[] = new Array(g.nodes.length);
+    og = { pts: g.nodes, at: i => (adj[i] ??= g.adj[i].filter(j => ok(i, j)).map(j => ({ j, w: dist(g.nodes[i], g.nodes[j]) }))) };
+    openGraphs.set(clear, og);
+  }
+  return og;
+}
+/** Dijkstra's working arrays, kept between calls (the graph's nodes and the few a route adds). */
+let dD = new Float64Array(0), dPrev = new Int32Array(0), dDone = new Uint8Array(0);
+/** The heap of (distance, node) the search takes the nearest from: the lowest distance, then the lowest node (the order a scan of the nodes would pick). */
+let hD: number[] = [], hK: number[] = [];
+const hLess = (a: number, b: number) => hD[a] < hD[b] || (hD[a] === hD[b] && hK[a] < hK[b]);
+function hPush(d: number, k: number) {
+  let i = hD.length; hD.push(d); hK.push(k);
+  while (i > 0) { const p = (i - 1) >> 1; if (!hLess(i, p)) break; [hD[i], hD[p]] = [hD[p], hD[i]]; [hK[i], hK[p]] = [hK[p], hK[i]]; i = p; }
+}
+function hPop(): number {
+  const top = hK[0], d = hD.pop()!, k = hK.pop()!;
+  if (hD.length) {
+    hD[0] = d; hK[0] = k;
+    for (let i = 0; ;) {
+      const l = 2 * i + 1, r = l + 1; let m = i;
+      if (l < hD.length && hLess(l, m)) m = l;
+      if (r < hD.length && hLess(r, m)) m = r;
+      if (m === i) break;
+      [hD[i], hD[m]] = [hD[m], hD[i]]; [hK[i], hK[m]] = [hK[m], hK[i]]; i = m;
+    }
+  }
+  return top;
 }
 
 /**
  * Walking route from one spot to another: out through the spot's approach, along the sidewalk graph (Dijkstra),
  * in through the destination's approach. `clear` tests a straight segment against the hub's colliders.
+ * (The graph's open stretches are made once per `clear`; a route adds its own few nodes and edges on top, copying only the
+ * lists it adds to; the search takes the nearest node from a heap — the same route, node for node, as scanning for it.)
  */
 export function planPath(from: Spot | Pt, to: Spot | Pt, clear: ClearFn = () => true): Pt[] {
   const fa = 'approach' in from ? from.approach : [], ta = 'approach' in to ? to.approach : [];
@@ -338,31 +466,52 @@ export function planPath(from: Spot | Pt, to: Spot | Pt, clear: ClearFn = () => 
   const s = out[out.length - 1], t = inn[0];
   let mid: Pt[] = [];
   if (!(dist(s, t) < 14 && clear(s, t))) {
-    const g = laneGraph();
-    // Sidewalk stretches blocked by something solid (a stall, a fence) are left out of the graph.
-    let open = edgeCache.get(clear);
-    if (!open) { open = new Map(); edgeCache.set(clear, open); }
-    const ok = (i: number, j: number) => { const k = i < j ? `${i}-${j}` : `${j}-${i}`; let v = open!.get(k); if (v === undefined) { v = clear(g.nodes[i], g.nodes[j]); open!.set(k, v); } return v; };
-    const pts: Pt[] = [...g.nodes], adj: { j: number; w: number }[][] = g.adj.map((js, i) => js.filter(j => ok(i, j)).map(j => ({ j, w: dist(g.nodes[i], g.nodes[j]) })));
-    const add = (p: Pt) => { pts.push(p); adj.push([]); return pts.length - 1; };
-    const edge = (i: number, j: number) => { const w = dist(pts[i], pts[j]); adj[i].push({ j, w }); adj[j].push({ j: i, w }); };
+    const og = openGraph(clear), N = og.pts.length;
+    const extra: Pt[] = [], extraAdj: { j: number; w: number }[][] = [], own = new Map<number, { j: number; w: number }[]>();
+    const ptOf = (k: number) => (k < N ? og.pts[k] : extra[k - N]);
+    const listOf = (k: number) => (k < N ? own.get(k) ?? og.at(k) : extraAdj[k - N]);
+    const push = (i: number, e: { j: number; w: number }) => {
+      if (i >= N) { extraAdj[i - N].push(e); return; }
+      let l = own.get(i); if (!l) { l = og.at(i).slice(); own.set(i, l); }
+      l.push(e);
+    };
+    const add = (p: Pt) => { extra.push(p); extraAdj.push([]); return N + extra.length - 1; };
+    const edge = (i: number, j: number) => { const w = dist(ptOf(i), ptOf(j)); push(i, { j, w }); push(j, { j: i, w }); };
     const S0 = add(s), T0 = add(t);
     const es = entries(s, clear).map(e => ({ ...e, k: add(e.q) })), et = entries(t, clear).map(e => ({ ...e, k: add(e.q) }));
     for (const e of es) { edge(S0, e.k); edge(e.k, e.i); edge(e.k, e.j); }
     for (const e of et) { edge(T0, e.k); edge(e.k, e.i); edge(e.k, e.j); }
     // Same block side: walk straight along it.
     for (const a of es) for (const b of et) if ((a.i === b.i && a.j === b.j) || (a.i === b.j && a.j === b.i)) edge(a.k, b.k);
-    const D = new Array(pts.length).fill(Infinity), prev = new Array(pts.length).fill(-1), done = new Array(pts.length).fill(false);
-    D[S0] = 0;
-    for (;;) {
-      let u = -1; for (let k = 0; k < pts.length; k++) if (!done[k] && D[k] < Infinity && (u < 0 || D[k] < D[u])) u = k;
-      if (u < 0 || u === T0) break;
-      done[u] = true;
-      for (const { j, w } of adj[u]) if (D[u] + w < D[j]) { D[j] = D[u] + w; prev[j] = u; }
+    const total = N + extra.length;
+    if (dD.length < total) { dD = new Float64Array(total); dPrev = new Int32Array(total); dDone = new Uint8Array(total); }
+    const D = dD, prev = dPrev, done = dDone;
+    D.fill(Infinity, 0, total); prev.fill(-1, 0, total); done.fill(0, 0, total);
+    hD.length = 0; hK.length = 0;
+    D[S0] = 0; hPush(0, S0);
+    while (hD.length) {
+      const u = hPop();
+      if (done[u]) continue;
+      if (u === T0) break;
+      done[u] = 1;
+      for (const { j, w } of listOf(u)) if (D[u] + w < D[j]) { D[j] = D[u] + w; prev[j] = u; hPush(D[j], j); }
     }
-    if (D[T0] < Infinity) { const chain: Pt[] = []; for (let k = prev[T0]; k >= 0 && k !== S0; k = prev[k]) chain.unshift(pts[k]); mid = chain; }
+    if (D[T0] < Infinity) { const chain: Pt[] = []; for (let k = prev[T0]; k >= 0 && k !== S0; k = prev[k]) chain.unshift(ptOf(k)); mid = chain; }
   }
   return simplify([...out, ...mid, ...inn]);
+}
+
+/**
+ * A few routes planned over the sidewalks with a test of their own (nothing is kept, the hub's test is not touched): the
+ * first long route of an evening finds the code cold, which costs 10-25 ms in one frame; made while the hub loads it costs
+ * nobody a frame.
+ */
+export function warmPaths(cols: readonly { x0: number; z0: number; x1: number; z1: number; h: number }[]) {
+  const clear = collidersClear(cols), g = laneGraph(), n = g.nodes.length;
+  for (let k = 0; k < 8; k++) {
+    const a = g.nodes[(k * 37) % n], b = g.nodes[(k * 61 + 17) % n];
+    planPath({ x: a.x + 1.2, z: a.z - 0.8 }, { x: b.x - 1.1, z: b.z + 0.9 }, clear);
+  }
 }
 
 function simplify(pts: Pt[]): Pt[] {

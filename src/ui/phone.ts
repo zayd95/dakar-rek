@@ -10,12 +10,20 @@ import type { HubId } from '../core/types';
 import { HUB_IDS } from '../core/types';
 import { cityTimeAt, CITY_DAY_MS } from '../core/clock';
 import { isMuted, setMuted } from '../core/audioSettings';
+import { mapBridge } from './minimap';
+import { theme, type ThemeMode } from './theme';
+import './theme.css';
+import { fullMapHtml, mountFullMap } from './fullmap';
 import { HUB_NAMES, travelLeg } from '../world/content';
 import type { Relations } from '../social/relations';
 import { suggestion } from '../social/beats';
 import { phoneHooks } from './phoneHooks';
 import { journalView, esc } from './journal';
+import { glossesShown, setGlossesShown } from '../i18n/wolof';
 import { fcfa } from './hud';
+import { quietLog, ago } from './quiet';
+import { walkMinutes } from '../world/walk';
+import { restSpotHere } from '../game/rest';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -39,7 +47,7 @@ export interface PhoneContext {
   lock: (on: boolean) => void;
 }
 
-type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus';
+type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus' | 'cesoir' | 'lutteurs' | 'notifs';
 interface Tile { id: string; label: string; color: string; icon: string; screen?: ScreenId; hook?: () => (() => void) | undefined }
 
 const ICON: Record<string, string> = {
@@ -47,6 +55,7 @@ const ICON: Record<string, string> = {
   portefeuille: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M15.5 14.5h2"/>',
   carte: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/>',
   travail: '<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M9 7V5h6v2M3 12h18"/>',
+  affaires: '<path d="M4 4v16h16"/><path d="M7.5 15.5l3.5-4 3 2.5 5-6"/><path d="M15.5 8h3.5v3.5"/>',
   maison: '<path d="M3 11 12 4l9 7M5 10v10h14V10M10 20v-6h4v6"/>',
   habitants: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M15.5 14c3 0 5.5 2 5.5 5"/>',
   quartier: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
@@ -59,6 +68,7 @@ const ICON: Record<string, string> = {
 /** Home-screen look of each app: an emoji glyph on a gradient tile (iOS-style). Unknown apps fall back to the line icon. */
 const LOOK: Record<string, { emoji: string; grad: string; short?: string }> = {
   messages: { emoji: '💬', grad: '#5df27e,#1fb84a' },
+  notifs: { emoji: '🔔', grad: '#fca5a5,#dc2626', short: 'Notifs' },
   portefeuille: { emoji: '💰', grad: '#fcd34d,#f59e0b' },
   carte: { emoji: '🗺️', grad: '#7dd3fc,#2563eb', short: 'Carte' },
   quartier: { emoji: '📍', grad: '#6ee7b7,#0f766e', short: 'Quartier' },
@@ -66,7 +76,9 @@ const LOOK: Record<string, { emoji: string; grad: string; short?: string }> = {
   maison: { emoji: '🏠', grad: '#fda4af,#e11d48', short: 'Maison' },
   habitants: { emoji: '👥', grad: '#5eead4,#0e7490' },
   affaires: { emoji: '🏢', grad: '#34d399,#047857' },
+  biens: { emoji: '🔑', grad: '#fde68a,#b45309' },
   arene: { emoji: '🤼', grad: '#d8b4fe,#7e22ce' },
+  cesoir: { emoji: '🌆', grad: '#fda4af,#be123c', short: 'Ce soir' },
   carnet: { emoji: '📒', grad: '#fde68a,#d97706' },
   meteo: { emoji: '⛅', grad: '#7dd3fc,#1e40af' },
   sante: { emoji: '❤️', grad: '#fecdd3,#fb7185' },
@@ -83,13 +95,17 @@ const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dima
 
 const TILES: Tile[] = [
   { id: 'messages', label: 'Messages', color: '#16a34a', icon: ICON.messages, hook: () => phoneHooks.openMessages },
+  { id: 'notifs', label: 'Notifications', color: '#dc2626', icon: ICON.messages, screen: 'notifs' },
   { id: 'portefeuille', label: 'Portefeuille', color: '#d97706', icon: ICON.portefeuille, screen: 'portefeuille' },
   { id: 'carte', label: 'Carte et déplacements', color: '#0284c7', icon: ICON.carte, screen: 'carte' },
   { id: 'quartier', label: 'Coins du quartier', color: '#0f766e', icon: ICON.quartier, hook: () => phoneHooks.openPlaces },
   { id: 'travail', label: 'Travail', color: '#7c5a2a', icon: ICON.travail, hook: () => phoneHooks.openJobs },
+  { id: 'affaires', label: 'Affaires', color: '#a16207', icon: ICON.affaires, hook: () => phoneHooks.openBusiness },
   { id: 'maison', label: 'Maison et proches', color: '#dc2626', icon: ICON.maison, hook: () => phoneHooks.openHome },
+  { id: 'biens', label: 'Biens', color: '#b45309', icon: ICON.maison, hook: () => phoneHooks.openAssets },
   { id: 'habitants', label: 'Habitants', color: '#0d9488', icon: ICON.habitants, hook: () => phoneHooks.openPeople },
   { id: 'arene', label: 'Arène', color: '#9333ea', icon: ICON.arene, screen: 'arene' },
+  { id: 'cesoir', label: 'Ce soir', color: '#be123c', icon: ICON.arene, screen: 'cesoir' },
   { id: 'carnet', label: 'Carnet', color: '#475569', icon: ICON.carnet, screen: 'carnet' },
   { id: 'actus', label: 'Actus', color: '#c2410c', icon: ICON.carnet, screen: 'actus' },
   { id: 'sante', label: 'Santé', color: '#fb7185', icon: ICON.aide, screen: 'sante' },
@@ -103,7 +119,8 @@ const TILES: Tile[] = [
 
 const TITLES: Record<ScreenId, string> = {
   home: 'Téléphone', reglages: 'Réglages', aide: 'Aide', nouvelle: 'Nouvelle partie', carnet: 'Carnet',
-  portefeuille: 'Portefeuille', carte: 'Carte et déplacements', arene: 'Arène', meteo: 'Météo', calcul: 'Calculatrice', sante: 'Santé', profil: 'Profil', horloge: 'Horloge', actus: 'Actus · Dakar',
+  portefeuille: 'Portefeuille', carte: 'Carte et déplacements', arene: 'Arène', meteo: 'Météo', calcul: 'Calculatrice', sante: 'Santé', profil: 'Profil', horloge: 'Horloge', actus: 'Actus · Dakar', cesoir: 'Ce soir', lutteurs: 'Lutteurs',
+  notifs: 'Notifications',
 };
 const QUALITY_LABEL: Record<Quality, string> = { low: 'Basse', medium: 'Moyenne', high: 'Haute' };
 const SENSITIVITY: [number, string][] = [[0.6, 'Lente'], [1, 'Normale'], [1.5, 'Rapide']];
@@ -137,6 +154,8 @@ export class Phone {
   /** Navigation stack below the home screen; kept between openings. */
   private stack: ScreenId[] = [];
   private timer = 0;
+  /** Cleanup of the interactive map of the « Carte » screen (src/ui/fullmap.ts). */
+  private mapOff: (() => void) | null = null;
   /** Places seen in each hub, remembered on this device. */
   private known: Partial<Record<HubId, string[]>> = {};
 
@@ -193,7 +212,7 @@ export class Phone {
   close() {
     if (!this.isOpen) return;
     this.el.classList.remove('on'); this.el.setAttribute('aria-hidden', 'true');
-    clearInterval(this.timer);
+    clearInterval(this.timer); this.mapOff?.(); this.mapOff = null;
     if (document.activeElement instanceof HTMLElement && this.el.contains(document.activeElement)) document.activeElement.blur();
     this.ctx.lock(false);
   }
@@ -231,6 +250,7 @@ export class Phone {
     this.el.querySelector('.ph-back')!.textContent = this.stack.length > 1 ? TITLES[this.stack[this.stack.length - 2]] : 'Accueil';
     const s = this.screenEl;
     s.scrollTop = 0;
+    this.mapOff?.(); this.mapOff = null;
     switch (id) {
       case 'home': s.innerHTML = this.homeHtml(); break;
       case 'reglages': s.innerHTML = this.settingsHtml(); break;
@@ -240,7 +260,7 @@ export class Phone {
         <button type="button" class="ph-btn danger" data-act="wipe">Effacer et recommencer</button>`; break;
       case 'carnet': { const j = journalView(this.ctx.rel, this.ctx.state); s.innerHTML = `<p class="ph-sub">${esc(j.subtitle)}</p><div class="ph-journal">${j.html}</div>`; break; }
       case 'portefeuille': s.innerHTML = this.walletHtml(); break;
-      case 'carte': s.innerHTML = this.mapHtml(); break;
+      case 'carte': s.innerHTML = `${fullMapHtml()}<h3>Changer de quartier</h3>${this.mapHtml()}`; break;
       case 'arene': s.innerHTML = this.arenaHtml(); break;
       case 'meteo': s.innerHTML = this.weatherHtml(); break;
       case 'calcul': s.innerHTML = this.calcHtml(); break;
@@ -248,15 +268,21 @@ export class Phone {
       case 'profil': s.innerHTML = this.profileHtml(); break;
       case 'horloge': s.innerHTML = this.clockHtml(); break;
       case 'actus': s.innerHTML = this.newsHtml(); break;
+      case 'cesoir': s.innerHTML = this.tonightHtml(); break;
+      case 'lutteurs': s.innerHTML = this.lutteursHtml(); break;
+      case 'notifs': s.innerHTML = this.notifsHtml(); quietLog.markRead(); break;
     }
     this.bind();
+    if (id === 'carte') this.mapOff = mountFullMap(s);
   }
 
   private homeHtml(): string {
     const hub = this.ctx.hub(), next = suggestion(this.ctx.rel, this.ctx.state), t = cityTimeAt(this.ctx.now());
     const tiles = TILES.filter(t => !t.hook || t.hook());
     const grid = tiles.filter(t => !DOCK.includes(t.id)), dock = tiles.filter(t => DOCK.includes(t.id));
+    const fresh = quietLog.unread ? quietLog.entries.slice(0, Math.min(2, quietLog.unread)) : [];
     return `<div class="ph-lock"><b class="ph-clock">${clock(t.hour, t.minute)}</b><small>${DAYS[(t.day - 1) % 7]} · Jour ${t.day}${hub ? ' · ' + esc(HUB_NAMES[hub].split(' · ')[0]) : ''}</small></div>
+      ${fresh.length ? `<button type="button" class="ph-notes" data-open="notifs" aria-label="Notifications : ${quietLog.unread} nouvelle${quietLog.unread > 1 ? 's' : ''}">${fresh.map(e => `<span>${esc(e.text)}</span>`).join('')}${quietLog.unread > fresh.length ? `<small>+ ${quietLog.unread - fresh.length} autre${quietLog.unread - fresh.length > 1 ? 's' : ''}</small>` : ''}</button>` : ''}
       <div class="ph-widgets">
         <button type="button" class="ph-wid" data-open="portefeuille"><small>💰 Solde</small><b>${fcfa(this.ctx.state.wallet)}</b></button>
         <div class="ph-wid"><small>➜ Prochaine piste</small><span>${next ? esc(next.hint) : 'Pas de piste en cours : la ville est à toi.'}</span></div>
@@ -265,6 +291,15 @@ export class Phone {
       <div class="ph-dock">${dock.map(t => appIcon(t, false)).join('')}</div>`;
   }
 
+  /**
+   * Notifications: the quiet log (src/ui/quiet.ts) — what the game noted without stopping the player (a purchase, a
+   * pay, a tip, an arrival), newest first. Opening it marks them seen (the badge on the phone button goes).
+   */
+  private notifsHtml(): string {
+    const list = quietLog.entries, now = Date.now(), unseen = quietLog.unread;
+    if (!list.length) return '<p class="ph-note">Rien de nouveau. Ce que le jeu note sans t’arrêter (achats, paies, conseils) arrive ici.</p>';
+    return `<ul class="ph-log">${list.map((e, i) => `<li class="${i < unseen ? 'new' : ''}${e.kind === 'warn' ? ' warn' : ''}"><span>${esc(e.text)}</span><small>${ago(now - e.at)}</small></li>`).join('')}</ul>`;
+  }
   private weatherHtml(): string {
     const t = cityTimeAt(this.ctx.now()), h = t.hourFloat;
     const temp = (hour: number) => Math.round(28.5 + 3 * Math.sin(((hour - 9) / 24) * Math.PI * 2));
@@ -279,9 +314,35 @@ export class Phone {
       <p class="ph-note">La météo suit le ciel de la ville : même heure pour tous les joueurs.</p>`;
   }
 
+  /** Arena › Lutteurs: one light card per roster wrestler (portrait from his look, season, belt, last results, « Suivre »). */
+  private lutteursHtml(): string {
+    const list = phoneHooks.lutteurs?.() ?? [];
+    if (!list.length) return '<p class="ph-note">Les lutteurs de la ville apparaîtront ici.</p>';
+    const RES = { V: 'V', D: 'D', N: 'N' } as const;
+    return `<div class="ph-lts">${list.map(w => `<section class="ph-lt" id="lt-${esc(w.id)}">
+        <div class="lt-head"><i class="lt-pic">${w.portrait}</i><span><b>${esc(w.name)}</b><small>${esc(w.ecurie)} · ${esc(w.style)} · ${esc(w.level)}</small></span>
+          <button type="button" class="lt-follow${w.followed ? ' on' : ''}" data-follow="${esc(w.id)}" aria-pressed="${w.followed}">${w.followed ? '★ Suivi' : '☆ Suivre'}</button></div>
+        <div class="lt-stats"><span><b>${w.place}${w.place === 1 ? 'er' : 'e'}</b><small>classement</small></span><span><b>${w.pts}</b><small>points</small></span><span><b>${w.v}-${w.d}${w.n ? `-${w.n}` : ''}</b><small>saison</small></span></div>
+        ${w.belt ? `<p class="lt-belt">🏆 ${esc(w.belt)}</p>` : ''}
+        ${w.last.length ? `<ul class="lt-last">${w.last.map(r => `<li><i class="r${r.res}">${RES[r.res]}</i>${esc(r.vs)}<small>${r.title ? 'titre · ' : r.main ? 'combat principal · ' : ''}jour ${r.day}</small></li>`).join('')}</ul>` : '<p class="lt-none">Pas encore combattu cette saison</p>'}
+      </section>`).join('')}</div>
+      <p class="ph-note">Suivre un lutteur : « Ce soir » et l’annonce du soir te disent quand il combat, et la carte d’après-gala son résultat. Rien à gagner : juste le plaisir de suivre.</p>`;
+  }
+
+  /** « Ce soir » (src/arena/tonight.ts): light cards of rows, « Y aller » on the places the pin can lead to. */
+  private tonightHtml(): string {
+    const page = phoneHooks.tonight?.() ?? [];
+    if (!page.length) return '<p class="ph-note">Rien de prévu ce soir.</p>';
+    return `<div class="ph-tonight">${page.map(sec => `<h3>${esc(sec.title)}</h3><div class="ph-rows">${sec.rows.map(r => `<div>
+        <span><i aria-hidden="true">${esc(r.icon)}</i><span>${esc(r.label)}${r.detail ? `<small>${esc(r.detail)}</small>` : ''}</span></span>${r.go
+        ? `<button type="button" class="ph-go" data-go="${esc(r.go)}">Y aller</button>` : r.open ? `<button type="button" class="ph-go" data-open="${esc(r.open)}">Ouvrir</button>` : ''}</div>`).join('')}</div>`).join('')}</div>
+      <p class="ph-note">« Y aller » place le repère et la ligne d’objectif. Ce qui est écrit vient de la ville : même soirée pour tous.</p>`;
+  }
+
   private healthHtml(): string {
     const n = this.ctx.state.data.needs as unknown as Record<string, number>;
-    const NEEDS: [string, string, string, string][] = [['faim', 'Faim', '#f97316', 'Mange à une gargote, une dibiterie ou au mall.'], ['energie', 'Énergie', '#facc15', 'Dors dans ta chambre ou repose-toi à l’ombre.'],
+    const rest = restSpotHere();
+    const NEEDS: [string, string, string, string][] = [['faim', 'Faim', '#f97316', 'Mange à une gargote, une dibiterie ou au mall.'], ['energie', 'Énergie', '#facc15', rest ? `Repose-toi ici : ${rest}. Marcher ne demande pas d’énergie.` : 'Dors dans ta chambre ou repose-toi à l’ombre. Marcher ne demande pas d’énergie.'],
       ['moral', 'Moral', '#a855f7', 'Retrouve des amis, l’attaya, la plage.'], ['social', 'Social', '#22c55e', 'Parle aux habitants, rejoins les places.'], ['hygiene', 'Hygiène', '#0ea5e9', 'Passe par ta chambre pour te laver.']];
     const ring = (v: number, c: string) => `<i class="ph-ring" style="--v:${Math.round(clamp01(v / 100) * 100)};--c:${c}"><b>${Math.round(v)}</b></i>`;
     return `<div class="ph-health"><small>Humeur</small><b>${esc(this.ctx.state.mood())}</b></div>
@@ -294,7 +355,11 @@ export class Phone {
     const rows: [string, number | string][] = [['Temps de jeu', `${Math.floor(d.playedMs / 3600000)} h ${String(Math.floor(d.playedMs / 60000) % 60).padStart(2, '0')}`],
       ['Repas', c.meals ?? 0], ['Petits boulots', c.shifts ?? 0], ['Livraisons Tiak Tiak', c.livraisons ?? 0], ['Trajets en car rapide', c.trips ?? 0],
       ['Combats', c.combats ?? 0], ['Victoires', c.victoires ?? 0], ['Actions en ville', c.actions ?? 0], ['Meubles achetés', c.meubles ?? 0]];
-    return `<div class="ph-profile"><i>🧑🏾</i><b>Toi</b><small>${fcfa(this.ctx.state.wallet)} · humeur ${esc(this.ctx.state.mood())}</small></div>
+    // What the player became, read from what they did (career module): four light gauges, never a class to pick.
+    const dims = phoneHooks.profileDims?.() ?? [];
+    const dimsHtml = dims.length ? `<div class="ph-dims">${dims.map(d => `<div><span><b>${esc(d.label)}</b><small>${esc(d.note)}</small></span><em>${esc(d.level)}${d.delta ? `<span class="dl ${d.delta.startsWith('+') ? 'up' : 'down'}">${esc(d.delta)}</span>` : ''}</em><i style="--v:${Math.max(0, Math.min(100, Math.round(d.score)))}"></i></div>`).join('')}</div>` : '';
+    return `<div class="ph-profile"><i>🧑🏾</i><b>Toi</b><small>${esc(phoneHooks.profileHeadline?.() ?? '')}${phoneHooks.profileHeadline ? ' · ' : ''}${fcfa(this.ctx.state.wallet)} · humeur ${esc(this.ctx.state.mood())}</small></div>
+      ${dimsHtml}
       <div class="ph-rows">${rows.map(([l, v]) => `<div><span>${l}</span><em>${typeof v === 'number' ? v.toLocaleString('fr-FR') : v}</em></div>`).join('')}</div>
       <p class="ph-note">Partie invité : ton profil est enregistré sur cet appareil.</p>`;
   }
@@ -314,7 +379,7 @@ export class Phone {
     const t = cityTimeAt(this.ctx.now()), c = this.ctx.state.data.counters, w = this.ctx.state.wallet;
     const pool = [
       ['Pikine', 'La grand-place affiche complet pour l’attaya du soir.'], ['Soumbédioune', 'Belle pêche ce matin : les mareyeuses cherchent des bras.'],
-      ['Arène de Pikine', 'Combats amicaux ouverts à tous cette semaine.'], ['Plateau', 'La Banque Teranga cherche des coursiers pour livrer des dossiers.'],
+      ['Arène de Pikine', 'Combats amicaux cette semaine pour les lutteurs des écuries.'], ['Plateau', 'La Banque Teranga cherche des coursiers pour livrer des dossiers.'],
       ['Almadies', 'Le Dakar Life Mall reste ouvert tard ce week-end.'], ['Corniche', 'Les joggeurs envahissent les marches du Monument au lever du soleil.'],
       ['Tiak Tiak', 'Les livraisons à pied ont la cote à Pikine et au Plateau.'], ['Médina', 'L’Atelier Ndeye prépare les tenues d’un grand baptême.'],
       ['Car rapide', 'Les apprentis annoncent des départs toutes les dix minutes.'], ['Fann', 'Les étudiants révisent sur les bancs de la place.'],
@@ -356,19 +421,27 @@ export class Phone {
   }
 
   private settingsHtml(): string {
-    const q = this.ctx.quality(), muted = isMuted(), sens = this.ctx.input.sensitivity;
+    const q = this.ctx.quality(), muted = isMuted(), sens = this.ctx.input.sensitivity, gloss = glossesShown();
     const c = this.ctx.state.data.counters;
-    return `<h3>Graphismes</h3>
+    const tm = theme.mode, TH: [ThemeMode, string][] = [['auto', 'Auto'], ['day', 'Jour'], ['night', 'Nuit']];
+    return `<h3>Apparence</h3>
+      <div class="seg">${TH.map(([k, l]) => `<button type="button" data-theme="${k}" class="${k === tm ? 'on' : ''}" aria-pressed="${k === tm}">${l}</button>`).join('')}</div>
+      <p class="ph-note">${tm === 'auto' ? 'Auto : l’écran s’assombrit avec la nuit de la ville (de 19 h à 6 h).' : tm === 'day' ? 'Jour : l’écran reste clair, même la nuit.' : 'Nuit : l’écran reste sombre, même en plein jour.'}</p>
+      <h3>Graphismes</h3>
       <div class="seg">${(['low', 'medium', 'high'] as Quality[]).map(k => `<button type="button" data-q="${k}" class="${k === q ? 'on' : ''}" aria-pressed="${k === q}">${QUALITY_LABEL[k]}</button>`).join('')}</div>
       <p class="ph-note">Basse : plus fluide sur les petits téléphones. Le quartier est reconstruit, tu restes où tu es.</p>
       <h3>Son</h3>
       <button type="button" class="ph-toggle ${muted ? '' : 'on'}" data-act="sound" aria-pressed="${!muted}"><span>Son du jeu</span><em>${muted ? 'Coupé' : 'Activé'}</em></button>
+      <button type="button" class="ph-toggle ${mapBridge.enabled ? 'on' : ''}" data-act="minimap" aria-pressed="${mapBridge.enabled}"><span>Mini-carte</span><em>${mapBridge.enabled ? 'Affichée' : 'Masquée'}</em></button>
+      <p class="ph-note">Le petit rond en haut à gauche : où tu es, les lieux autour, le quartier et la rue.</p>
       <h3>Caméra</h3>
       <div class="seg">${SENSITIVITY.map(([v, l]) => `<button type="button" data-sens="${v}" class="${v === sens ? 'on' : ''}" aria-pressed="${v === sens}">${l}</button>`).join('')}</div>
       <p class="ph-note">Sensibilité quand tu glisses pour tourner la caméra.</p>
       <h3>Langue</h3>
-      <div class="seg"><button type="button" class="on" aria-pressed="true">Français</button></div>
-      <p class="ph-note">Les textes en wolof et en pulaar sont en cours de relecture ; ils seront proposés une fois validés.</p>
+      <div class="seg"><button type="button" class="on" aria-pressed="true">Français, expressions en wolof</button></div>
+      <p class="ph-note">On parle comme à Dakar : en français, avec le wolof de tous les jours (salutations, merci, marché, attaya, làmb…).</p>
+      <button type="button" class="ph-toggle ${gloss ? 'on' : ''}" data-act="gloss" aria-pressed="${gloss}"><span>Traduction des expressions wolof</span><em>${gloss ? 'Affichée' : 'Masquée'}</em></button>
+      <p class="ph-note">${gloss ? '« Jërëjëf (merci) » : la traduction suit l’expression.' : '« Jërëjëf » : le wolof seul, sans traduction.'}</p>
       <h3>Partie</h3>
       <button type="button" class="ph-btn" data-act="save">Sauvegarder maintenant</button>
       <button type="button" class="ph-btn" data-act="new">Nouvelle partie<small>Efface la sauvegarde de cet appareil</small></button>
@@ -382,20 +455,33 @@ export class Phone {
       ? '<p class="ph-note">L’historique des gains et des dépenses arrive avec les métiers.</p>'
       : rows.length === 0 ? '<p class="ph-note">Aucune opération pour l’instant.</p>'
         : `<div class="ph-rows">${rows.slice().sort((a, b) => b.at - a.at).map(r => `<div><span>${esc(r.label)}<small>${esc(when(r.at))}</small></span><em class="${r.amount < 0 ? 'neg' : 'pos'}">${r.amount < 0 ? '−' : '+'}${fcfa(Math.abs(r.amount))}</em></div>`).join('')}</div>`;
-    return `<div class="ph-balance"><small>Solde</small><b>${fcfa(this.ctx.state.wallet)}</b><span>FCFA · monnaie de jeu, sans valeur réelle</span></div>
+    const cash = this.ctx.state.wallet, w = phoneHooks.wealth?.(), full = fcfa(cash);
+    const size = full.length > 17 ? 'xl' : full.length > 13 ? 'l' : '';   // a long amount stays on one line
+    const wealth = w ? `<div class="ph-rows ph-wealth">
+        <div><span>Valeur des biens<small>Logements, terrains, panneau, affaires, meubles</small></span><em>${fcfa(w.assets)}</em></div>
+        <div><span>Fortune totale<small>En poche + biens</small></span><em class="pos">${fcfa(cash + w.assets)}</em></div>
+        <div><span>Revenus<small>Par heure en ville, pendant que tu joues</small></span><em>+${fcfa(w.perHour)}</em></div>
+        ${w.charges ? `<div><span>Loyers et charges<small>Par heure en ville</small></span><em class="neg">−${fcfa(w.charges)}</em></div>` : ''}
+        <div><span>${esc(w.polyvalence)}</span></div>
+      </div>${phoneHooks.openAssets ? '<button type="button" class="ph-btn" data-app="biens">Biens<small>Logements, terrains, panneau, annonces</small></button>' : ''}${phoneHooks.openBusiness ? '<button type="button" class="ph-btn" data-app="affaires">Affaires<small>Acheter, voir les revenus et la polyvalence</small></button>' : ''}` : '';
+    return `<div class="ph-balance"><small>Solde</small><b class="${size}">${full}</b><span>FCFA · monnaie de jeu, sans valeur réelle</span></div>
+      ${wealth}
       <p class="ph-note">Partie invité : cet argent est enregistré sur cet appareil seulement.</p>
       <h3>Historique</h3>${history}`;
   }
 
   private mapHtml(): string {
     const here = this.ctx.hub();
-    return `<p class="ph-note">Pour changer de quartier, va à la gare des cars rapides du quartier : le trajet se paie et prend du temps.</p>
+    const home = phoneHooks.homeHub?.() ?? null, walk = !!phoneHooks.walkTo;
+    return `<p class="ph-note">Pour changer de quartier : à pied, gratuit et à toute heure, même sans argent ni énergie ; ou en car rapide à la gare, plus vite mais payant.</p>
+      ${walk && here && home && home !== here ? `<button type="button" class="ph-btn" data-walk="${home}">🚶 Rentrer chez moi à pied<small>${esc(HUB_NAMES[home].split(' · ')[0])} · ≈ ${walkMinutes(here, home)} min · gratuit</small></button>` : ''}
       ${phoneHooks.openPlaces ? '<button type="button" class="ph-btn" data-app="quartier">Choisir un repère à pied<small>Commerces, travail et lieux de rencontre du quartier</small></button>' : ''}
       ${[...HUB_IDS].sort((a, b) => Number(b === here) - Number(a === here)).map(h => {
         const leg = here && h !== here ? travelLeg(here, h) : null;
         const places = this.known[h];
         return `<section class="ph-hub ${h === here ? 'here' : ''}" data-hub="${h}">
-          <header><b>${esc(HUB_NAMES[h])}</b>${h === here ? '<em>Tu es ici</em>' : leg ? `<small>${fcfa(leg.cost)} · ≈ ${leg.minutes} min</small>` : ''}</header>
+          <header><b>${esc(HUB_NAMES[h])}</b>${h === here ? '<em>Tu es ici</em>' : leg ? `<small>Car rapide ${fcfa(leg.cost)} · ≈ ${leg.minutes} min</small>` : ''}</header>
+          ${walk && here && h !== here ? `<button type="button" class="ph-walk" data-walk="${h}">🚶 Y aller à pied · ≈ ${walkMinutes(here, h)} min · gratuit</button>` : ''}
           ${places?.length ? `<ul>${places.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '<p class="ph-note">Lieux à découvrir sur place.</p>'}
         </section>`;
       }).join('')}`;
@@ -412,7 +498,14 @@ export class Phone {
       { label: 'Entraînements', value: String(c.lutte ?? 0) },
       ...(phoneHooks.arenaProfile?.() ?? []),
     ];
+    // the city's table (career module): each wrestler's row opens his card in « Lutteurs »
+    const table = phoneHooks.cityTable?.();
+    const tableHtml = table ? `<h3>Classement de la ville · saison ${table.season}</h3><div class="ph-rows ph-table">${table.rows.map(r => r.id
+      ? `<button type="button" data-lutteur="${esc(r.id)}"><b>${r.place}</b><span>${esc(r.name)}<small>${esc(r.sub)}</small></span><em>${r.pts} pts ›</em></button>`
+      : `<div class="you"><b>${r.place}</b><span>${esc(r.name)}<small>${esc(r.sub)}</small></span><em>${r.pts} pts</em></div>`).join('')}</div>` : '';
     return `<div class="ph-rows">${rows.map(r => `<div><span>${esc(r.label)}</span><em>${esc(r.value)}</em></div>`).join('')}</div>
+      ${phoneHooks.lutteurs ? '<button type="button" class="ph-btn" data-open="lutteurs">Lutteurs de la ville<small>Fiches, saison, derniers résultats · suivre un lutteur</small></button>' : ''}
+      ${tableHtml}
       ${d.flags.includes('ecurie_baobab') ? '' : '<p class="ph-note">Pour rejoindre une écurie, va voir Coach Ablaye à l’écurie Baobab, à Pikine.</p>'}
       <p class="ph-note">Lutte sans frappe : règles Dakar Rek. La lutte avec frappe arrive ensuite.</p>`;
   }
@@ -425,19 +518,36 @@ export class Phone {
       if (hook) this.launch(hook); else if (tile.screen) this.go(tile.screen);
     }));
     s.querySelectorAll<HTMLElement>('[data-open]').forEach(b => b.addEventListener('click', () => this.go(b.dataset.open as ScreenId)));
+    s.querySelectorAll<HTMLElement>('[data-lutteur]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.lutteur!;
+      this.go('lutteurs');
+      this.screenEl.querySelector(`#lt-${CSS.escape(id)}`)?.scrollIntoView({ block: 'start' });
+    }));
+    s.querySelectorAll<HTMLButtonElement>('[data-follow]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.follow!, now = phoneHooks.follow?.(b.classList.contains('on') ? null : id) ?? null;
+      s.querySelectorAll<HTMLButtonElement>('[data-follow]').forEach(x => {          // in place: the list keeps its scroll
+        const on = x.dataset.follow === now;
+        x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); x.textContent = on ? '★ Suivi' : '☆ Suivre';
+      });
+    }));
+    s.querySelectorAll<HTMLElement>('[data-go]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.go!; this.launch(() => phoneHooks.tonightGo?.(k)); }));
+    s.querySelectorAll<HTMLElement>('[data-walk]').forEach(b => b.addEventListener('click', () => { const h = b.dataset.walk as HubId; this.launch(() => phoneHooks.walkTo?.(h)); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-k]').forEach(b => b.addEventListener('click', () => this.calcKey(b.dataset.k!)));
     s.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
       const q = b.dataset.q as Quality;
       if (q !== this.ctx.quality()) { this.ctx.setQuality(q); this.remember(); this.ctx.toast('Qualité : ' + QUALITY_LABEL[q]); }
       this.render();
     }));
+    s.querySelectorAll<HTMLButtonElement>('button[data-theme]').forEach(b => b.addEventListener('click', () => { theme.setMode(b.dataset.theme as ThemeMode); this.render(); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-sens]').forEach(b => b.addEventListener('click', () => {
       this.ctx.input.sensitivity = Number(b.dataset.sens);
       try { store()?.setItem(SENS_KEY, b.dataset.sens!); } catch { /* session only */ }
       this.render();
     }));
     const act = (name: string, fn: () => void) => s.querySelector(`[data-act="${name}"]`)?.addEventListener('click', fn);
+    act('minimap', () => { mapBridge.setEnabled(!mapBridge.enabled); this.render(); });
     act('sound', () => { setMuted(!isMuted()); this.render(); });
+    act('gloss', () => { setGlossesShown(!glossesShown()); this.render(); });
     act('save', () => this.ctx.toast(this.ctx.save() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'));
     act('new', () => this.go('nouvelle'));
     act('cancel', () => this.back());
@@ -449,10 +559,11 @@ const clock = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 /** One app icon: emoji on its gradient tile (or the fallback line icon), with its label under it in the grid. */
 function appIcon(t: Tile, label: boolean): string {
-  const look = LOOK[t.id];
+  const look = LOOK[t.id], n = t.id === 'notifs' ? quietLog.unread : 0;
+  const badge = n ? `<b class="ph-badge" aria-hidden="true">${n > 9 ? '9+' : n}</b>` : '';
   const tile = look ? `<i class="ph-ico" style="--g:linear-gradient(180deg,${look.grad})"><span>${look.emoji}</span></i>`
     : `<i class="ph-ico line" style="--g:${t.color}">${svg(t.icon)}</i>`;
-  return `<button type="button" class="ph-app" data-app="${t.id}" aria-label="${esc(t.label)}">${tile}${label ? `<span>${esc(look?.short ?? t.label)}</span>` : ''}</button>`;
+  return `<button type="button" class="ph-app" data-app="${t.id}" aria-label="${esc(t.label)}${n ? ` · ${n}` : ''}">${tile}${badge}${label ? `<span>${esc(look?.short ?? t.label)}</span>` : ''}</button>`;
 }
 
 function when(at: number): string {

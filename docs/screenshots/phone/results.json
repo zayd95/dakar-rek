@@ -7,12 +7,12 @@
   {
     "name": "desktop: status bar shows city time, home widget the FCFA balance",
     "ok": true,
-    "detail": "03:22 4G | 💰 Solde 3 000 F"
+    "detail": "04:05 4G | 💰 Solde 3 000 F"
   },
   {
     "name": "desktop: hook apps shown only with their module",
     "ok": true,
-    "detail": "quartier,travail,maison,habitants,arene,actus,sante,profil,horloge,meteo,calcul,aide,portefeuille,carte,carnet,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"maison\":true,\"habitants\":true}"
+    "detail": "quartier,travail,affaires,maison,biens,habitants,arene,actus,sante,profil,horloge,meteo,calcul,aide,portefeuille,carte,carnet,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"affaires\":true,\"maison\":true,\"biens\":true,\"habitants\":true}"
   },
   {
     "name": "desktop: no movement while the phone is open",
@@ -117,7 +117,7 @@
   {
     "name": "desktop: Escape closes the phone, then W moves the player",
     "ok": true,
-    "detail": "moved 0.56"
+    "detail": "moved 1.12"
   },
   {
     "name": "desktop: M reopens on the last app",
@@ -127,7 +127,7 @@
   {
     "name": "desktop: quality change inside the room keeps the player inside",
     "ok": true,
-    "detail": "{\"x\":\"1001.1\",\"q\":\"medium\"}"
+    "detail": "{\"x\":\"1601.1\",\"q\":\"medium\"}"
   },
   {
     "name": "desktop: exit still leads to the street after the change",
@@ -172,12 +172,12 @@
   {
     "name": "phone: status bar shows city time, home widget the FCFA balance",
     "ok": true,
-    "detail": "06:56 4G | 💰 Solde 3 000 F"
+    "detail": "05:52 4G | 💰 Solde 3 000 F"
   },
   {
     "name": "phone: hook apps shown only with their module",
     "ok": true,
-    "detail": "quartier,travail,maison,habitants,arene,actus,sante,profil,horloge,meteo,calcul,aide,portefeuille,carte,carnet,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"maison\":true,\"habitants\":true}"
+    "detail": "quartier,travail,affaires,maison,biens,habitants,arene,actus,sante,profil,horloge,meteo,calcul,aide,portefeuille,carte,carnet,reglages · hooks {\"messages\":false,\"quartier\":true,\"travail\":true,\"affaires\":true,\"maison\":true,\"biens\":true,\"habitants\":true}"
   },
   {
     "name": "phone: no movement while the phone is open",
@@ -282,7 +282,7 @@
   {
     "name": "phone: Escape closes the phone, then W moves the player",
     "ok": true,
-    "detail": "moved 1.12"
+    "detail": "moved 2.80"
   },
   {
     "name": "phone: M reopens on the last app",
@@ -292,7 +292,7 @@
   {
     "name": "phone: quality change inside the room keeps the player inside",
     "ok": true,
-    "detail": "{\"x\":\"1001.1\",\"q\":\"medium\"}"
+    "detail": "{\"x\":\"1601.1\",\"q\":\"medium\"}"
   },
   {
     "name": "phone: exit still leads to the street after the change",
@@ -327,7 +327,7 @@
   {
     "name": "phone: landscape device fits the screen",
     "ok": true,
-    "detail": "{\"x\":22.71820068359375,\"y\":31.921005249023438,\"width\":693.1104736328125,\"height\":382.89234924316406}"
+    "detail": "{\"x\":20.93328857421875,\"y\":27.6043701171875,\"width\":696.6802978515625,\"height\":384.8644104003906}"
   },
   {
     "name": "phone: no page errors",

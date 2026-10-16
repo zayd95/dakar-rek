@@ -40,29 +40,41 @@ try {
     await page.locator(`#phone button[data-q="${quality}"]`).tap();
     await page.locator('#phone [data-nav="close"]').tap();
     await page.waitForFunction(() => !document.querySelector('#modal').classList.contains('on') && !document.querySelector('#phone').classList.contains('on'));
+    // The door's fade is a 350 ms timer (src/main.ts exitInterior): right after a quality rebuild the main thread can be
+    // busy for seconds on a software renderer (CI runner: still inside after 700 ms), so wait for the street, then judge.
+    const t0 = Date.now();
     await page.evaluate(() => window.__dakar.exit());
-    await sleep(700);
+    await page.waitForFunction(() => window.__dakar.pos().x < 900, null, { timeout: 20000 }).catch(() => {});
     const p = await page.evaluate(() => window.__dakar.pos());
-    check(`changing quality inside ${kind} keeps a working exit`, p.x < 900 && p.hub === 'pikine', JSON.stringify(p));
+    check(`changing quality inside ${kind} keeps a working exit`, p.x < 900 && p.hub === 'pikine', `${JSON.stringify(p)} after ${Date.now() - t0} ms`);
   }
 
   // A lost pointer/blur must not keep walking after returning to the game.
+  // The game steps at most 0.1 s per frame (src/main.ts), so on a slow software renderer the distance walked follows the
+  // frames drawn, not the wall clock: a fixed 900 ms could hold a single frame (≈ 0.25 m) on a loaded CI runner. Each
+  // window below lasts at least its wall time AND 8 drawn frames (> 2 m of brisk walk), and the detail says both.
+  await page.evaluate(() => { if (window.__frames === undefined) { window.__frames = 0; const f = () => { window.__frames++; requestAnimationFrame(f); }; requestAnimationFrame(f); } });
+  const walk = async ms => {
+    const a = await page.evaluate(() => ({ ...window.__dakar.pos(), f: window.__frames })), t = Date.now();
+    await sleep(ms);
+    await page.waitForFunction(f => window.__frames >= f, a.f + 8, { timeout: 60000 });
+    const b = await page.evaluate(() => ({ ...window.__dakar.pos(), f: window.__frames }));
+    const d = Math.hypot(b.x - a.x, b.z - a.z);
+    return { d, detail: `${d.toFixed(2)} m over ${b.f - a.f} frames in ${Date.now() - t} ms` };
+  };
   await page.evaluate(() => window.__dakar.place(-6, -30, 0));
   const joy = await page.locator('#joy').boundingBox();
   const x = joy.x + joy.width / 2, y = joy.y + joy.height / 2 - 35;
   await page.evaluate(([x, y]) => document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', pointerId: 42, clientX: x, clientY: y })), [x, y]);
-  const start = await page.evaluate(() => window.__dakar.pos()); await sleep(1000);
-  const moving = await page.evaluate(() => window.__dakar.pos());
-  check('touch joystick actually moves the player', Math.hypot(moving.x - start.x, moving.z - start.z) > 0.5);
+  const moving = await walk(1000);
+  check('touch joystick actually moves the player', moving.d > 0.5, moving.detail);
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
-  const stopped = await page.evaluate(() => window.__dakar.pos()); await sleep(1100);
-  const later = await page.evaluate(() => window.__dakar.pos());
-  check('losing focus stops a held joystick', Math.hypot(later.x - stopped.x, later.z - stopped.z) < 0.15);
+  const still = await walk(1100);
+  check('losing focus stops a held joystick', still.d < 0.15, still.detail);
   // Another finger can start after the abandoned touch id.
   await page.evaluate(([x, y]) => document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', pointerId: 43, clientX: x, clientY: y })), [x, y]);
-  const resumed = await page.evaluate(() => window.__dakar.pos()); await sleep(900);
-  const after = await page.evaluate(() => window.__dakar.pos());
-  check('a new touch works after returning', Math.hypot(after.x - resumed.x, after.z - resumed.z) > 0.5);
+  const resumed = await walk(900);
+  check('a new touch works after returning', resumed.d > 0.5, resumed.detail);
   await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerType: 'touch', pointerId: 43 })));
   await page.locator('#presenceBtn').tap();
   await page.locator('#presenceName').fill('Mame Awa');
@@ -74,14 +86,19 @@ try {
   await page.waitForFunction(() => document.querySelector('#place').getBoundingClientRect().bottom <= document.querySelector('#presenceBtn').getBoundingClientRect().top);
   const place = await page.locator('#place').boundingBox(), presence = await page.locator('#presenceBtn').boundingBox();
   check('small-phone presence button does not cover the neighbourhood header', place.y + place.height <= presence.y);
-  await page.setViewportSize({ width: 844, height: 390 });
+  await page.setViewportSize({ width: 844, height: 390 }); await sleep(400);
+  // The light side sheet (src/ui/sheet.ts) shows almost the whole profile at 390 px — it overflows by a few pixels only —
+  // so its content is made taller than the screen here: what is tested is the touch scroll of the sheet itself.
+  const fit = await page.locator('#modal .panel').evaluate(el => ({ sh: el.scrollHeight, ch: el.clientHeight }));
+  await page.locator('#modal .panel').evaluate(el => { const s = document.createElement('div'); s.className = 'check-spacer'; s.style.height = '480px'; el.appendChild(s); });
   const panel = await page.locator('#modal .panel').boundingBox();
   const cdp = await ctx.newCDPSession(page);
   const tx = panel.x + panel.width / 2, ty = panel.y + panel.height - 25;
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: tx, y: ty }] });
   for (let i = 1; i <= 8; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: tx, y: ty - i * 20 }] }); await sleep(60); }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await sleep(500);
-  check('landscape profile panel scrolls with an actual touch gesture', (await page.locator('#modal .panel').evaluate(el => el.scrollTop)) > 20);
+  const scrolled = await page.locator('#modal .panel').evaluate(el => el.scrollTop);
+  check('landscape profile panel scrolls with an actual touch gesture', scrolled > 20, `scrollTop ${scrolled} · profile alone ${fit.sh}/${fit.ch} px`);
   await page.getByRole('button', { name: 'Fermer', exact: true }).tap();
   const recovery = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); contexts.push(recovery);
   await recovery.addInitScript(() => {
@@ -90,7 +107,8 @@ try {
   });
   const recovered = await recovery.newPage(); recovered.on('pageerror', e => errors.push(e.message));
   await recovered.goto(`${base}?debug&touch`);
-  await recovered.waitForFunction(() => window.__dakar?.pos().hub);
+  // a second page booting while the first one still renders on the same CPU (as in check-multiplayer.mjs): room to boot
+  await recovered.waitForFunction(() => window.__dakar?.pos().hub, null, { timeout: 120000 });
   const restored = await recovered.evaluate(() => ({ p: window.__dakar.pos(), money: window.__dakar.state.wallet }));
   check('an old off-map save recovers in the city without losing money', Math.abs(restored.p.x) < 200 && Math.abs(restored.p.z) < 200 && restored.money === 7777);
   await page.setViewportSize({ width: 390, height: 844 });

@@ -1,5 +1,5 @@
 import type { HubId } from '../core/types';
-import { nickname, lookIndex, PROTOCOL_VERSION, SEND_INTERVAL_MS, type Move, type Peer, type ServerMessage, type ChatMessage, type ChatAck } from './protocol';
+import { nickname, lookIndex, recordTag, parseBall, BALL_FEATURE, PROTOCOL_VERSION, SEND_INTERVAL_MS, type Move, type Peer, type ServerMessage, type ChatMessage, type ChatAck, type BallRelay, type BallWire } from './protocol';
 import type { ChatRequest, ReportRequest } from './chatRules';
 
 export type ConnectionState = 'solo' | 'connecting' | 'online' | 'reconnecting' | 'offline';
@@ -12,6 +12,10 @@ export class PresenceClient {
   onChat: (message: ChatMessage) => void = () => {};
   onChatAck: (ack: ChatAck) => void = () => {};
   onReportAck: (target: string, ok: boolean) => void = () => {};
+  /** The kickabout ball's states from the others of the room (validated again here); none from servers without it. */
+  onBall: (message: BallRelay) => void = () => {};
+  /** What the server relays beyond presence and chat (`welcome.features`, additive to v1): 'ball'. */
+  readonly features = new Set<string>();
   private socket: WebSocket | null = null;
   private hub: HubId | null = null;
   private requestedRoom: number | null = null;
@@ -30,10 +34,20 @@ export class PresenceClient {
     this.retryAttempt = 0;
     if (this.enabled) this.open(); else this.setStatus('solo');
   }
+  /** Public sporting record shown under the name (« Undercards · 3-1 · Écurie Baobab »); sent once when it changes. */
+  record: string | undefined = undefined;
+  setRecord(rec: string | null) {
+    const next = rec ? recordTag(rec) : undefined;
+    if (next === this.record) return;
+    this.record = next;
+    if (this.status === 'online' && this.socket?.readyState === WebSocket.OPEN) { try { this.socket.send(JSON.stringify({ type: 'rec', rec: next ?? null })); } catch { /* sent again on reconnect (URL) */ } }
+  }
   setProfile(profile: Profile) {
     this.profile = { name: nickname(profile.name), look: lookIndex(profile.look) };
     if (this.hub && this.enabled) this.open();
   }
+  /** The last move this device published (sent when online), for the checks: what friends receive. */
+  get lastPublished(): Move | null { return this.latest; }
   publish(move: Move, now = performance.now()) {
     this.latest = move;
     if (this.status !== 'online' || this.socket?.readyState !== WebSocket.OPEN || now - this.lastSentAt < SEND_INTERVAL_MS) return;
@@ -44,9 +58,20 @@ export class PresenceClient {
   /** Sends a chat request on the open socket; false when offline (the caller keeps it pending and resends with the same id). */
   sendChat(request: ChatRequest): boolean { return this.sendRaw(request); }
   sendReport(request: ReportRequest): boolean { return this.sendRaw(request); }
-  private sendRaw(payload: ChatRequest | ReportRequest) {
+  /** A kickabout ball state, when the server relays it (never to a server that would not know the type). */
+  sendBall(state: BallWire): boolean { return this.features.has(BALL_FEATURE) && this.sendRaw(state); }
+  private sendRaw(payload: ChatRequest | ReportRequest | BallWire) {
     if (this.status !== 'online' || this.socket?.readyState !== WebSocket.OPEN) return false;
     try { this.socket.send(JSON.stringify(payload)); return true; } catch { return false; }
+  }
+  /**
+   * A server time stamped on a live message is a lower bound of the clock offset (the message left before it arrived);
+   * the welcome's, read late by a busy page, is one too: the offset only rises towards the truth, by at most 5 s.
+   */
+  private refineClock(serverMs: unknown) {
+    if (typeof serverMs !== 'number' || !Number.isFinite(serverMs)) return;
+    const o = serverMs - Date.now();
+    if (o > this.clockOffset && o - this.clockOffset < 5000) this.clockOffset = o;
   }
   serverNow() { return Date.now() + (this.status === 'online' ? this.clockOffset : 0); }
   private open() {
@@ -57,6 +82,7 @@ export class PresenceClient {
     const url = new URL(this.endpoint || '/api/presence', location.href);
     url.protocol = url.protocol === 'https:' || url.protocol === 'wss:' ? 'wss:' : 'ws:';
     url.searchParams.set('hub', this.hub); url.searchParams.set('name', this.profile.name); url.searchParams.set('look', String(this.profile.look));
+    if (this.record) url.searchParams.set('rec', this.record);
     const key = deviceChatKey(); if (key) url.searchParams.set('key', key);
     if (this.requestedRoom) url.searchParams.set('room', String(this.requestedRoom));
     let ws: WebSocket;
@@ -70,6 +96,7 @@ export class PresenceClient {
         if (message.version !== PROTOCOL_VERSION || message.hub !== this.hub) { this.stopSocket(); this.setStatus('offline'); return; }
         this.id = message.id; this.room = message.room; this.count = message.count; this.clockOffset = message.time - Date.now();
         this.retryAttempt = 0; this.lastMove = ''; this.lastSentAt = -Infinity; this.lastPong = Date.now();
+        this.features.clear(); if (Array.isArray(message.features)) for (const f of message.features) if (typeof f === 'string') this.features.add(f);
         for (const peer of message.peers) if (peer.id !== this.id) this.peers.set(peer.id, peer);
         this.setStatus('online');
         if (this.latest) this.publish(this.latest);
@@ -79,12 +106,18 @@ export class PresenceClient {
         }, 20000);
       } else if (message.type === 'peer') {
         if (message.peer.id !== this.id) this.peers.set(message.peer.id, message.peer);
+        this.refineClock(message.peer.updatedAt);
       } else if (message.type === 'leave') {
         this.peers.delete(message.id); this.count = message.count; this.onChange();
       } else if (message.type === 'count') { this.count = message.count; this.onChange(); }
       else if (message.type === 'chat') { if (message.from !== this.id) this.onChat(message); }
       else if (message.type === 'chat-ack') this.onChatAck(message);
       else if (message.type === 'report-ack') this.onReportAck(message.target, message.ok);
+      else if (message.type === 'ball') {
+        const from = (message as { from?: unknown }).from, b = parseBall(message, this.serverNow());
+        this.refineClock((message as { s?: unknown }).s);
+        if (b && typeof from === 'string' && from !== this.id && this.peers.has(from)) this.onBall({ ...b, from });
+      }
     };
     ws.onclose = () => { if (generation === this.generation) this.scheduleRetry(); };
     ws.onerror = () => { /* close drives the retry; no effect on local saves or gameplay */ };
@@ -98,7 +131,7 @@ export class PresenceClient {
   private stopSocket() {
     this.generation++; clearTimeout(this.retry); clearInterval(this.heartbeat); this.retry = this.heartbeat = 0;
     if (this.socket) { this.socket.onclose = null; this.socket.close(); this.socket = null; }
-    this.peers.clear(); this.id = ''; this.count = 0; this.room = 0; this.lastMove = ''; this.onChange();
+    this.peers.clear(); this.features.clear(); this.id = ''; this.count = 0; this.room = 0; this.lastMove = ''; this.onChange();
   }
   private setStatus(status: ConnectionState) { this.status = status; this.onChange(); }
 }

@@ -1,0 +1,2 @@
+/* Ride cards (src/transport/ui.ts) now live in the place chip at the top (src/ui/placeEvent.ts; the tag's colours:
+   src/ui/style.css, #placeEv). Nothing of theirs is drawn here any more. */

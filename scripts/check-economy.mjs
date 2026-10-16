@@ -89,6 +89,8 @@ let savedJson = null;
   const wallet0 = await D(page, () => window.__dakar.state.wallet);
   await pick(page, 'Boutique Diallo');
   const job = await D(page, () => window.__dakar.activeJob());
+  // pay shown in the offers, polyvalence included (the welcome beat already counts as « vie sociale »)
+  const pay1 = (await D(page, () => window.__dakar.jobs())).find(j => j.id === 'pk_mame_boutique')?.payNow;
   check('delivery accepted at the pick-up point (parcel in hand)', job?.routeId === 'pk_mame_boutique' && job.stage === 'deliver', JSON.stringify(job));
   await page.waitForFunction(id => window.__dakar.destination() === id, garage.id, { timeout: 15000 }).catch(() => {});
   check('the city walking marker follows the parcel', (await D(page, () => window.__dakar.destination())) === garage.id);
@@ -117,22 +119,23 @@ let savedJson = null;
   const paidToast = await toast(page);
   await page.screenshot({ path: `${out}/desktop-delivery-paid.png` });
   const wallet1 = await D(page, () => window.__dakar.state.wallet);
-  check('walked to the drop-off: delivery paid', wallet1 - wallet0 === 1200 && (await D(page, () => window.__dakar.activeJob())) === null, `${wallet0} → ${wallet1} · ${paidToast}`);
+  check('walked to the drop-off: delivery paid (as shown in the offer)', pay1 >= 1200 && wallet1 - wallet0 === pay1 && (await D(page, () => window.__dakar.activeJob())) === null, `${wallet0} → ${wallet1} · ${paidToast}`);
   check('first client met, recommended run unlocked', /Nouvelle cliente/.test(paidToast) && (await D(page, () => window.__dakar.jobs()))[0]?.recommended === true, paidToast);
   // the same run handed over again pays nothing
   const again = await D(page, id => window.__dakar.completeJob(id), job.runId);
   check('completing the same run id twice pays once', again === null && (await D(page, () => window.__dakar.state.wallet)) === wallet1);
   // a second run via the debug hooks: complete() twice → one payment; cancel → nothing
   check('the city marker is cleared after the hand-over', (await D(page, () => window.__dakar.destination())) === null);
+  const pay2 = (await D(page, () => window.__dakar.jobs())).find(j => j.id === 'pk_boutique_salon')?.payNow;
   const j2 = await D(page, () => window.__dakar.acceptJob('pk_boutique_salon'));
   const c1 = await D(page, () => window.__dakar.completeJob()), c2 = await D(page, id => window.__dakar.completeJob(id), j2.runId);
   const wallet2 = await D(page, () => window.__dakar.state.wallet);
-  check('second run: complete twice → one payment', c1?.paid === 1000 && c2 === null && wallet2 === wallet1 + 1000, `${JSON.stringify(c1)} ${JSON.stringify(c2)} ${wallet2}`);
+  check('second run: complete twice → one payment', pay2 >= 1000 && c1?.paid === pay2 && c2 === null && wallet2 === wallet1 + pay2, `${JSON.stringify(c1)} ${JSON.stringify(c2)} ${wallet2}`);
   await D(page, () => window.__dakar.acceptJob('pk_pathe_square'));
   const cancelled = await D(page, () => [window.__dakar.cancelJob(), window.__dakar.cancelJob(), window.__dakar.completeJob()]);
   check('cancel: no payment, no double effect', cancelled[0] === true && cancelled[1] === false && cancelled[2] === null && (await D(page, () => window.__dakar.state.wallet)) === wallet2);
   const led = await D(page, () => window.__dakar.ledger());
-  check('ledger records the deliveries (newest first)', led.length === 2 && led[0].amount === 1000 && /Livraison Tiak Tiak/.test(led[1].label), JSON.stringify(led));
+  check('ledger records the deliveries (newest first)', led.length === 2 && led[0].amount === pay2 && /Livraison Tiak Tiak/.test(led[1].label), JSON.stringify(led));
 
   // jobs app: Tiak Tiak + the city's existing paid services, with pay, energy and distance; picking one sets the marker
   const appRows = await D(page, () => window.__dakar.jobsApp());
@@ -148,11 +151,13 @@ let savedJson = null;
   // a city paid service lands in the ledger with its place
   const diallo = garage;
   await goNear(page, diallo.x, diallo.z, 0, diallo.name);
+  const stockPay = await D(page, id => window.__dakar.servicePay(id, 'boutique-stock'), diallo.id);
   await D(page, () => window.__dakar.act()); await page.waitForTimeout(300);
   await pick(page, 'ranger le stock');
-  await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 20000 }).catch(() => {});
+  // the service is played in the world (to the shelves and back with the cartons): wait for its end
+  await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 120000 }).catch(() => {});
   const led2 = await D(page, () => window.__dakar.ledger());
-  check('a city service (Boutique Diallo stock) is in the ledger', led2[0]?.amount === 1500 && /Boutique Diallo/.test(led2[0].label), JSON.stringify(led2[0]));
+  check('a city service (Boutique Diallo stock) is in the ledger, paid with the polyvalence bonus', stockPay > 1500 && led2[0]?.amount === stockPay && /Boutique Diallo/.test(led2[0].label), `${stockPay} · ${JSON.stringify(led2[0])}`);
 
   // Ibou reacts to the first delivery and suggests a goal (UI)
   check('Ibou’s delivery beat is suggested', (await D(page, () => window.__dakar.suggestion())) === 'ibou_tiak');
@@ -176,6 +181,10 @@ let savedJson = null;
   await page.screenshot({ path: `${out}/desktop-shop-menu.png` });
   const w3 = await D(page, () => window.__dakar.state.wallet);
   await pick(page, 'Petite radio');
+  const confirmText = await D(page, () => document.querySelector('#modal.on .panel')?.textContent ?? '');
+  check('a confirmation shows the price, the effect and the delivery before paying', /Acheter : Petite radio/.test(confirmText) && /Prix/.test(confirmText) && /Livré/.test(confirmText) && (await D(page, () => window.__dakar.state.wallet)) === w3, confirmText.slice(0, 120));
+  await page.screenshot({ path: `${out}/desktop-shop-confirm.png` });
+  await page.locator('#modal.on .item', { hasText: /^✅/ }).first().click(); await page.waitForTimeout(250);
   const f1 = await D(page, () => window.__dakar.furniture());
   const w4 = await D(page, () => window.__dakar.state.wallet);
   check('bought the radio at the stall (charged once)', f1.owned.includes('radio') && w3 - w4 === 4000, `${w3} → ${w4}`);
@@ -187,13 +196,15 @@ let savedJson = null;
   await roomCam(page, ox); await page.waitForTimeout(700);
   await page.screenshot({ path: `${out}/desktop-room-after-radio.png` });
   await D(page, () => window.__dakar.cam(null));
-  await goNear(page, ox - 0.9, -1.55, Math.PI, 'Petite radio');
-  const nearRadio = await D(page, () => window.__dakar.pos().near);
-  check('radio is in the room with its action', nearRadio === 'Petite radio', nearRadio);
+  // the radio is a piece of furniture of the home: its activity (src/economy/estate.ts) is the action in front of it
+  await D(page, ([x, z]) => window.__dakar.place(x, z, Math.PI), [ox - 0.9, -1.55]);
+  await page.waitForFunction(() => window.__dakar.focus()?.name === 'Petite radio', null, { timeout: 15000 }).catch(() => {});
+  const nearRadio = await D(page, () => window.__dakar.focus());
+  check('radio is in the room with its action', nearRadio?.name === 'Petite radio' && nearRadio.primary === 'Écouter la radio', JSON.stringify(nearRadio));
   const moral0 = await D(page, () => window.__dakar.state.data.needs.moral);
-  await D(page, () => window.__dakar.act()); await page.waitForTimeout(300);
-  await pick(page, 'Écouter la radio');
-  await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, { timeout: 10000 }).catch(() => {});
+  await D(page, () => window.__dakar.act());
+  await page.waitForFunction(() => window.__dakar.activity()?.id === 'radio', null, { timeout: 10000 }).catch(() => {});
+  await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, { timeout: 30000 }).catch(() => {});
   const moral1 = await D(page, () => window.__dakar.state.data.needs.moral);
   check('« Écouter la radio » raises the mood', moral1 > moral0, `${moral0.toFixed(1)} → ${moral1.toFixed(1)}`);
   await page.screenshot({ path: `${out}/desktop-room-radio-gameplay.png` });
@@ -209,9 +220,13 @@ let savedJson = null;
   await page.screenshot({ path: `${out}/desktop-room-after-all-east.png` });
   await D(page, () => window.__dakar.cam(null));
   await goNear(page, ox - 0.25, -0.6, -Math.PI / 2, 'Lit · bon matelas');
-  await D(page, () => window.__dakar.act()); await page.waitForTimeout(300);
+  // the action button acts on the interaction focus (not on the nearest place): wait for the bed to be it, in play
+  await page.waitForFunction(() => window.__dakar.focus()?.name === 'Lit · bon matelas' && window.__dakar.pos().mode === 'play', null, { timeout: 15000 }).catch(() => {});
+  const bedAt = await D(page, () => ({ mode: window.__dakar.pos().mode, near: window.__dakar.pos().near, focus: window.__dakar.focus(), activity: window.__dakar.activity()?.id ?? null }));
+  await D(page, () => window.__dakar.act());
+  await page.waitForFunction(() => /bon matelas/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => {});
   const bedMenu = await D(page, () => document.querySelector('#modal.on')?.textContent ?? '');
-  check('bed now offers the better sleep', /bon matelas/.test(bedMenu), bedMenu.slice(0, 80));
+  check('bed now offers the better sleep', /bon matelas/.test(bedMenu), /bon matelas/.test(bedMenu) ? bedMenu.slice(0, 80) : JSON.stringify({ ...bedAt, menu: bedMenu.slice(0, 80) }));
   await closeModal(page); await page.waitForTimeout(200);
   await outside(page);
 
@@ -220,12 +235,12 @@ let savedJson = null;
   await page.waitForTimeout(300);
   const before = await D(page, () => ({ w: window.__dakar.state.wallet, ledger: window.__dakar.ledger(), owned: window.__dakar.furniture().owned, done: window.__dakar.state.data.jobs.done.length, n: window.__dakar.state.data.counters.livraisons }));
   await page.reload({ waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1500);
-  const after = await D(page, () => ({ w: window.__dakar.state.wallet, ledger: window.__dakar.ledger(), owned: window.__dakar.furniture().owned, done: window.__dakar.state.data.jobs.done.length, n: window.__dakar.state.data.counters.livraisons, ver: JSON.parse(localStorage.getItem('dakarrek.guest.save')).schemaVersion }));
+  const after = await D(page, () => ({ w: window.__dakar.state.wallet, ledger: window.__dakar.ledger(), owned: window.__dakar.furniture().owned, done: window.__dakar.state.data.jobs.done.length, n: window.__dakar.state.data.counters.livraisons, ver: JSON.parse(localStorage.getItem('dakarrek.guest.save.v5')).schemaVersion }));
   check('reload: money persisted', after.w === before.w, `${before.w} / ${after.w}`);
   check('reload: ledger persisted', JSON.stringify(after.ledger) === JSON.stringify(before.ledger) && after.ledger.length >= 8, `${after.ledger.length} entries`);
   check('reload: furniture persisted', JSON.stringify(after.owned) === JSON.stringify(before.owned) && after.owned.length === 6, after.owned.join(','));
   check('reload: completed runs and delivery count persisted', after.done === before.done && after.n === before.n, `${after.done} runs, ${after.n} deliveries`);
-  check('save is schema v3', after.ver === 3, after.ver);
+  check('save is schema v5', after.ver === 5, after.ver);
   check('reload: Ibou’s furniture beat still available', (await D(page, () => window.__dakar.suggestion())) === 'ibou_meuble');
   await D(page, () => { window.__dakar.setHour(10); window.__dakar.teleport('pikine'); }); await page.waitForTimeout(600);
   await D(page, () => window.__dakar.openNpc('ibou')); await page.waitForTimeout(300);
@@ -244,7 +259,7 @@ let savedJson = null;
   await roomCam(page, ox); await page.waitForTimeout(700);
   await page.screenshot({ path: `${out}/desktop-room-after-reload.png` });
   await D(page, () => window.__dakar.cam(null)); await outside(page);
-  savedJson = await D(page, () => { window.__dakar.state.data.jobs.active = null; return localStorage.getItem('dakarrek.guest.save'); });
+  savedJson = await D(page, () => { window.__dakar.state.data.jobs.active = null; return localStorage.getItem('dakarrek.guest.save.v5'); });
   check('desktop: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
@@ -252,7 +267,7 @@ let savedJson = null;
 // ------------------------------------------------------------------ phone 390×844: same save, menus and HUD line
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
-  await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save', s); sessionStorage.setItem('seeded', '1'); } }, savedJson);
+  await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v5', s); sessionStorage.setItem('seeded', '1'); } }, savedJson);
   const page = await ctx.newPage();
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1500);
@@ -301,7 +316,7 @@ let savedJson = null;
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await page.waitForTimeout(800);
   const r = await D(page, () => ({ p: window.__dakar.pos(), w: window.__dakar.state.wallet, ledger: window.__dakar.ledger().length, owned: window.__dakar.furniture().owned.length, ver: window.__dakar.state.data.schemaVersion }));
-  check('old v2 off-map save: recovered in the city, money kept, empty ledger, no furniture, v3', Math.abs(r.p.x) < 200 && Math.abs(r.p.z) < 200 && r.w === 7777 && r.ledger === 0 && r.owned === 0 && r.ver === 3, JSON.stringify(r));
+  check('old v2 off-map save: recovered in the city, money kept, empty ledger, no furniture, v5', Math.abs(r.p.x) < 200 && Math.abs(r.p.z) < 200 && r.w === 7777 && r.ledger === 0 && r.owned === 0 && r.ver === 5, JSON.stringify(r));
   check('old save: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }

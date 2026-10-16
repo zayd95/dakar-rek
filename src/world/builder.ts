@@ -3,13 +3,17 @@ import type { HubId } from '../core/types';
 import { rng, pick } from '../core/rng';
 import { Batch, facadeTextures, signTexture } from './batch';
 import { ACTIONS, ENTER } from './content';
-import type { Collider, HubWorld, Interactable, RoadEdge } from './types';
+import type { Canopy, Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
 import { addGrain } from './grain';
 import { generatedTexture } from './textures';
-import { inGate, tierRadius, tierTop, TIERS, TIER_DEPTH, PARAPET_R, PARAPET_H, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
+import { inGate, inTunnel, AISLES, SECTIONS, WALL_R, WALL_H, ROOF_FRONT_R, ROOF_BACK_R, ROOF_FRONT_Y, ROOF_BACK_Y, roofY } from './geew';
+import { PREP_SIDE, aisleStairs, climbHeight, drummersStand, fightersGate, mediaZone, prepCorner, sectionPlates, standSection, tunnel, type ArenaKit, type Climb } from './arenaModules';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
+import { buildShopInterior, type ShopDetail } from './shopKit';
+import { isComposed, type Site } from './sites';
+import { waysOut } from './walk';
 import { benchSeats } from '../interact/seats';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
@@ -51,9 +55,13 @@ const SPECS: Record<HubId, HubSpec> = {
     spawnBlock: [1, 2],
   },
   pikine: {
-    id: 'pikine', seed: 53, style: 'banlieue', ground: 0xd9b98a, road: 0xb79f78, walk: 0xcdb48a, blockGround: 0xc9a977,
-    palette: [0x5fa8c9, 0x8fcf9a, 0xe7b45a, 0xe58aa0, 0xd9d2c4, 0x9c8fd1, 0xd96f4f, 0x7fb8a4], floors: [1, 2], palms: 5,
-    specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station' },
+    // heavy sand and dust, roads barely paved, a faded mix of paints and bare breeze block, almost no palms
+    id: 'pikine', seed: 53, style: 'banlieue', ground: 0xc49a6c, road: 0x9c7b55, walk: 0xb08960, blockGround: 0xa87d52,
+    palette: [0x5fa8c9, 0x8fcf9a, 0xe7b45a, 0xe58aa0, 0xd9d2c4, 0x9c8fd1, 0xd96f4f, 0x7fb8a4, 0xc4a574, 0xa67c52, 0x8b7355, 0x6b5344, 0xb85c38, 0x4a7043],
+    floors: [1, 2], palms: 2,
+    // '1,0' (across the street from the starter room): an open block where the ownership module builds the Cité Jàmm —
+    // Keur Meubles, the Résidence Jàmm, a family house, two plots and a billboard (src/economy/estate.ts)
+    specials: { '2,1': 'arena', '2,0': 'ecurie', '1,2': 'station', '1,0': 'plaza', '3,3': 'mosque' },   // the neighbourhood mosque: a quiet residential corner, away from the arena and the gare
     kiosks: [
       { i: 1, j: 1, lot: 0, kind: 'home', name: 'Ma chambre' }, { i: 1, j: 1, lot: 1, kind: 'dibiterie', name: 'Dibiterie Chez Pathé' }, { i: 3, j: 2, lot: 2, kind: 'gargote', name: 'Gargote Mame Diarra' },
       { i: 0, j: 2, lot: 1, kind: 'cafe', name: 'Café Touba · Parcelles' }, { i: 3, j: 1, lot: 3, kind: 'garage', name: 'Garage Modou' }, { i: 3, j: 1, lot: 2, kind: 'maiga', name: 'Maïga du marché' },
@@ -102,11 +110,12 @@ function lightPoolTexture() {
 }
 
 /** lite: Low quality — skips purely decorative props (roof clutter, AC units, laundry, zebra crossings, flowers). */
-export function buildHub(id: HubId, lite = false): HubWorld {
+export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubWorld {
   const sp = SPECS[id];
   const R = rng(sp.seed);
   const group = new THREE.Group();
   const colliders: Collider[] = [];
+  const canopies: Canopy[] = [];
   const interactables: Interactable[] = [];
   const plain = new Batch(), fac = new Batch(), lampPosts = new Batch(), lampBulbs = new Batch();
   const glass = new Batch(), water = new Batch(), leaves = new Batch();
@@ -224,7 +233,21 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     if (a < NB) edges.push({ ax: roadC(a), az: roadC(b), bx: roadC(a + 1), bz: roadC(b) });
     if (b < NB) edges.push({ ax: roadC(a), az: roadC(b), bx: roadC(a), bz: roadC(b + 1) });
   }
-  for (let k = 0; k <= NB; k++) {
+  const RP = rng(sp.seed * 7919 + 17);                               // Pikine's own dust and clutter (keeps R's sequence for the rest)
+  if (banlieue) for (let k = 0; k <= NB; k++) for (const along of [true, false]) {
+    for (const lane of [-2.6, -1.1, 1.1, 2.6]) {                      // worn tyre tracks, a little darker and wavering
+      for (let t = -HALF; t < HALF; t += 8) {
+        const w = 0.5 + RP() * 0.25, o = lane + (RP() - 0.5) * 0.35, len = 8.6 + RP() * 1.5;      // overlapping: one wavering track
+        if (along) plain.flat(w, len, roadC(k) + o, 0.083, t + 4, 0x93714c); else plain.flat(len, w, t + 4, 0.083, roadC(k) + o, 0x93714c);
+      }
+    }
+    for (let n = 0; n < 9; n++) {                                      // potholes and dried puddle stains
+      const t = -HALF + RP() * size, o = (RP() - 0.5) * (ROAD - 3), r = 0.45 + RP() * 0.8, x = along ? roadC(k) + o : t, z = along ? t : roadC(k) + o;
+      const g = new THREE.CircleGeometry(r, 14); g.rotateX(-Math.PI / 2); g.scale(1, 1, 0.55 + RP() * 0.45);
+      plain.geometry(g, RP() < 0.6 ? 0x7c5e3f : 0x86705a, x, 0.086, z, RP() * Math.PI);
+    }
+  }
+  for (let k = 0; k <= NB && !banlieue; k++) {
     for (let k2 = 0; k2 < NB; k2++) {
       // centre dashes between intersections only
       const t0 = roadC(k2) + ROAD / 2 + 2, t1 = roadC(k2 + 1) - ROAD / 2 - 2;
@@ -252,10 +275,20 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const bx = blockMin(i), bz = blockMin(j), cx = bx + BLK / 2, cz = bz + BLK / 2, W = BLK + SIDEWALK * 2;
     (banlieue ? plain : pave).box(W, G - 0.01, W, cx, 0, cz, sp.walk);
     // curb stones
-    plain.box(W + 0.3, G + 0.02, 0.3, cx, 0, cz - W / 2, curbCol); plain.box(W + 0.3, G + 0.02, 0.3, cx, 0, cz + W / 2, curbCol);
-    plain.box(0.3, G + 0.02, W, cx - W / 2, 0, cz, curbCol); plain.box(0.3, G + 0.02, W, cx + W / 2, 0, cz, curbCol);
+    if (banlieue) {                                                    // broken kerbs: missing stones, uneven lengths
+      for (const [ax, az, horiz] of [[0, -W / 2, true], [0, W / 2, true], [-W / 2, 0, false], [W / 2, 0, false]] as const) {
+        for (let t = -W / 2; t < W / 2;) {
+          const len = Math.min(W / 2 - t, 2.5 + RP() * 5);
+          if (RP() > 0.28) { const m = t + len / 2, hh = G - 0.03 + RP() * 0.06; if (horiz) plain.box(len - 0.1, hh, 0.3, cx + m, 0, cz + az, curbCol); else plain.box(0.3, hh, len - 0.1, cx + ax, 0, cz + m, curbCol); }
+          t += len;
+        }
+      }
+    } else {
+      plain.box(W + 0.3, G + 0.02, 0.3, cx, 0, cz - W / 2, curbCol); plain.box(W + 0.3, G + 0.02, 0.3, cx, 0, cz + W / 2, curbCol);
+      plain.box(0.3, G + 0.02, W, cx - W / 2, 0, cz, curbCol); plain.box(0.3, G + 0.02, W, cx + W / 2, 0, cz, curbCol);
+    }
     (sp.style === 'dense' ? pave : plain).box(BLK, G + 0.01, BLK, cx, 0, cz, sp.blockGround);
-    if (banlieue) for (let n = 0; n < 5; n++) plain.blob(1.5 + R() * 2, bx - SIDEWALK + R() * (BLK + 4), G - 0.06, bz + (R() < 0.5 ? -1 : BLK + 1), 0xcfb88e, 0.05, 1); // drifted sand
+    if (banlieue) for (let n = 0; n < 11; n++) plain.blob(1.5 + RP() * 2.5, bx - SIDEWALK + RP() * (BLK + 4), G - 0.06, RP() < 0.5 ? bz + (RP() < 0.5 ? -1 : BLK + 1) : bz + RP() * BLK, RP() < 0.5 ? 0xcfb88e : 0xb89466, 0.05, 1); // drifted sand
   }
 
   const lotRect = (i: number, j: number, a: number, b: number) => {
@@ -269,6 +302,8 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const rapides: THREE.Object3D[] = [];
   /** Climbable stairs: height rises linearly from y0 at x0 to y1 at x1, then stays at y1 until xEnd. */
   const ramps: { x0: number; x1: number; z0: number; z1: number; y0: number; y1: number; xEnd: number }[] = [];
+  /** Stepped climbs along radial lines (the arena's aisles, src/world/arenaModules.ts). */
+  const climbs: Climb[] = [];
   const addSign = (text: string, bg: string, fg: string, x: number, y: number, z: number, rotY: number, w = 6, h = 1.5) => {
     const tex = text.length > 18 ? signTexture(text, bg, fg, 768, 112) : signTexture(text, bg, fg);   // long names get a wider canvas so they never clip
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
@@ -279,6 +314,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const h = 6.2 * s;
     for (let k = 0; k < 2; k++) trunks.cyl(0.2 * s + (1 - k) * 0.06, 0.26 * s + (1 - k) * 0.06, h / 2 + 0.05, x, 0.1 + (k * h) / 2, z, k % 2 ? 0x9a7b55 : whitewash ? 0xf1eee6 : 0x8a6d4a, 5);
     const top = 0.1 + h;
+    canopies.push({ x, z, r: 3.3 * s, y0: top - 0.7 * s, y1: top + 0.3 * s });
     for (let k = 0; k < 8; k++) {
       const a = (k / 8) * Math.PI * 2 + R() * 0.5;
       const len = 3.4 * s;
@@ -288,14 +324,17 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     leaves.blob(0.45 * s, x, top - 0.1, z, 0x6b5a2a, 1, 0);
   };
   /** Neem / flamboyant-style shade tree: short trunk, wide clumpy canopy. */
-  const tree = (x: number, z: number, s = 1, flower = false) => {
+  const tree = (x: number, z: number, s = 1, flower = false, rnd = R) => {
     plain.cyl(0.22 * s, 0.32 * s, 2.6 * s, x, 0.1, z, 0x6e5a44, 6);
     plain.cyl(0.12 * s, 0.16 * s, 1.4 * s, x + 0.5 * s, 2.2 * s, z, 0x6e5a44, 5, [0, 0, -0.6]);
     const cols = flower ? [0xc8442c, 0xd9542f, 0x4a7a35] : [0x3f6e2e, 0x4c7d36, 0x365f28];
+    const top = { x, z, r: 0, y0: Infinity, y1: 0 };                  // the canopy's bounds, from its blobs (same random draws)
     for (let k = 0; k < 5; k++) {
-      const a = k * 1.3 + R(), r = k === 0 ? 0 : 1.3 * s;
-      leaves.blob((1.4 + R() * 0.6) * s, x + Math.sin(a) * r, (3.3 + R() * 0.8) * s, z + Math.cos(a) * r, cols[k % 3], 0.75, 0);
+      const a = k * 1.3 + rnd(), r = k === 0 ? 0 : 1.3 * s, br = (1.4 + rnd() * 0.6) * s, by = (3.3 + rnd() * 0.8) * s;
+      leaves.blob(br, x + Math.sin(a) * r, by, z + Math.cos(a) * r, cols[k % 3], 0.75, 0);
+      top.r = Math.max(top.r, r + br * 0.85); top.y0 = Math.min(top.y0, by - br * 0.75); top.y1 = Math.max(top.y1, by + br * 0.75);
     }
+    canopies.push(top);
     solidC(x, z, 0.6, 0.6, 2.4);
   };
   const awning = (cx: number, cz: number, w: number, d: number, y: number, col: number, alongX = true, dir = 1) => {
@@ -307,6 +346,9 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       if (alongX) plain.box(w / n + 0.01, 0.08, d, cx + off, y - 0.25, cz, c, 0); else plain.box(d, 0.08, w / n + 0.01, cx, y - 0.25, cz + off, c);
     }
     if (alongX) plain.box(w, 0.35, 0.06, cx, y - 0.6, cz + dir * d / 2, col); else plain.box(0.06, 0.35, w, cx + dir * d / 2, y - 0.6, cz, col);
+    // the camera keeps out of it like out of leaves: a row of short cylinders along its length
+    const r = d * 0.6, m = Math.max(1, Math.round(w / d));
+    for (let k = 0; k < m; k++) { const off = -w / 2 + (k + 0.5) * (w / m); canopies.push(alongX ? { x: cx + off, z: cz, r, y0: y - 0.7, y1: y } : { x: cx, z: cz + off, r, y0: y - 0.7, y1: y }); }
   };
   /** Rolling metal shutter of a ground-floor boutique, with a painted board above it. */
   const SHOP_BOARDS = [0xd9482b, 0xf4c20d, 0x1e6fd9, 0x2f8f4e, 0xe8742c, 0x6b3fa0];
@@ -387,26 +429,59 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const L = lotRect(i, j, a, b);
     const faces = lotFaces(a, b);
     if (sp.style === 'banlieue') {
-      // Two small breeze-block houses inside a painted yard wall with a coloured metal gate.
-      for (let k = 0; k < 2; k++) {
-        const w = 8 + R() * 3, d = 8 + R() * 3, fl = 1 + (R() < 0.35 ? 1 : 0);
-        const cx = L.cx + (k ? 5.5 : -5.5), cz = L.cz + (R() - 0.5) * 6, h = fl * 3 + 0.3;
-        const col = pick(sp.palette, R);
-        fac.facade(w, h, d, cx, G - 0.02, cz, col);
-        plain.box(w + 0.4, 0.25, d + 0.4, cx, G + h - 0.02, cz, 0x9a968c);            // roof slab
-        parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.2, shade(col, 0.9), 0.5);
-        plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));          // splash band
-        if (R() < 0.6 && !lite) for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) plain.box(0.18, 1.0, 0.18, cx + sx * (w / 2 - 0.3), G + h + 0.2, cz + sz * (d / 2 - 0.3), 0x6b5a4a); // rebar stubs: the next floor, someday
-        if (R() < 0.5) plain.cyl(0.6, 0.6, 1.2, cx + (R() - 0.5) * 3, G + h + 0.22, cz + (R() - 0.5) * 3, 0x1d1f22, 10);
-        if (R() < 0.35) acUnit(cx + (R() - 0.5) * (w - 2), G + 2.2, cz + faces[1][1] * d / 2, 0, faces[1][1]);
-        solidC(cx, cz, w, d, h);
+      // Cramped self-built houses: one to three per yard, set askew, roofs bristling with rebar for the next floor,
+      // behind a low, uneven compound wall; the yard shows its clutter (breeze blocks, sand, a tin lean-to, washing).
+      const n = RP() < 0.18 ? 1 : RP() < 0.7 ? 2 : 3;
+      // [x offset, z offset, width range, depth range]: the houses fill most of the yard, a narrow court between them
+      const slots: [number, number, number, number, number, number][] = n === 1 ? [[0, 0, 12, 15, 11, 14]]
+        : n === 2 ? [[-5.4, (RP() - 0.5) * 3, 8, 10.2, 9, 14], [5.4, (RP() - 0.5) * 3, 8, 10.2, 9, 14]]
+        : [[-5.4, -4.8, 8, 10.2, 7, 9], [5.4, -4.6, 8, 10.2, 7, 9], [(RP() - 0.5) * 3, 5.8, 9, 13, 5.5, 7]];
+      for (const [ox, oz, w0, w1, d0, d1] of slots) {
+        const w = w0 + RP() * (w1 - w0), d = d0 + RP() * (d1 - d0), fl = RP() < 0.22 ? 2 : 1, h = fl * 2.75 + 0.2;
+        const lim = (c: number, half: number, lo: number, hi: number) => Math.min(hi - 1.2 - half, Math.max(lo + 1.2 + half, c));
+        const cx = lim(L.cx + ox + (RP() - 0.5) * 1.2, w / 2, L.x0, L.x1), cz = lim(L.cz + oz + (RP() - 0.5) * 1.6, d / 2, L.z0, L.z1);
+        const tilt = (RP() - 0.5) * 0.12, col = pick(sp.palette, RP), raw = RP() < 0.25;   // some never got their paint
+        fac.facade(w, h, d, cx, G - 0.02, cz, raw ? 0xb3ab9c : col, tilt);
+        plain.box(w + 0.35, 0.25, d + 0.35, cx, G + h - 0.02, cz, 0x8e8a80, tilt);       // flat roof slab
+        plain.box(w + 0.08, 0.6, d + 0.08, cx, G - 0.02, cz, shade(raw ? 0xb3ab9c : col, 0.62), tilt);   // dirt splash band
+        if (!lite) for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1]]) if (RP() < 0.75)   // rebar: the next floor, someday
+          plain.box(0.16, 1.3 + RP() * 0.6, 0.16, cx + sx * (w / 2 - 0.25), G + h + 0.2, cz + sz * (d / 2 - 0.25), 0x5c4e3f);
+        if (RP() < 0.35) plain.cyl(0.7, 0.9, 1.1, cx + (RP() - 0.5) * 2, G + h + 0.22, cz + (RP() - 0.5) * 2, 0xb0b8c0, 8);   // water tank
+        else if (RP() < 0.4) plain.cyl(0.55, 0.55, 1.1, cx + (RP() - 0.5) * 2, G + h + 0.22, cz + (RP() - 0.5) * 2, 0x1d1f22, 10);
+        if (!lite && RP() < 0.4) tin.slab(w * 0.5, 0.06, 2.2, cx + (RP() - 0.5) * w * 0.3, G + h + 0.7, cz, 0x8a6a4a, tilt, 0.12);   // tin sheet weighed on the roof
+        if (RP() < 0.3) acUnit(cx + (RP() - 0.5) * (w - 2), G + 2.0, cz + faces[1][1] * d / 2, 0, faces[1][1]);
+        solidC(cx, cz, w + Math.abs(tilt) * d, d + Math.abs(tilt) * w, h);
       }
-      const wc = pick([0xd8c7a6, 0xe6d4b0, 0xc9b99a, 0xdcc2a0, 0xb8cfc0, 0xe2b9a6], R);
-      wall(L.x0 + 0.5, L.z0 + 0.5, L.x1 - 0.5, L.z1 - 0.5, wc, 2.1, R() < 0.4);
-      const [fx, fz] = faces[1];
-      gate(L.cx + (R() - 0.5) * 8, fz < 0 ? L.z0 + 0.5 : L.z1 - 0.5, fx, fz);
-      if (R() < 0.45) shopfront(L.cx + (R() < 0.5 ? -7 : 7), fz < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, fz);
-      if (R() < 0.35) tree(L.cx + (R() - 0.5) * 4, L.cz + (R() - 0.5) * 4, 0.9, R() < 0.3);
+      // the compound wall: low, uneven, patched, with a gap here and there (never on the gate side)
+      const [fx, fz] = faces[1], wc = pick([0xc2b08a, 0xb8a27c, 0xcdb894, 0xa8977a, 0xd2bd98, 0x9fae9a], RP);
+      const gx = L.cx + (RP() - 0.5) * 8, gz = fz < 0 ? L.z0 + 0.35 : L.z1 - 0.35;
+      for (const [x0, z0, x1, z1] of [[L.x0 + 0.35, L.z0 + 0.35, L.x1 - 0.35, L.z0 + 0.35], [L.x0 + 0.35, L.z1 - 0.35, L.x1 - 0.35, L.z1 - 0.35], [L.x0 + 0.35, L.z0 + 0.35, L.x0 + 0.35, L.z1 - 0.35], [L.x1 - 0.35, L.z0 + 0.35, L.x1 - 0.35, L.z1 - 0.35]]) {
+        const horiz = z0 === z1, front = horiz && Math.abs(z0 - gz) < 0.01, total = horiz ? x1 - x0 : z1 - z0;
+        for (let t = 0; t < total;) {
+          const len = Math.min(total - t, 2.5 + RP() * 4.5), m = t + len / 2, x = horiz ? x0 + m : x0, z = horiz ? z0 : z0 + m;
+          const atGate = front && Math.abs(x - gx) < 1.6 + len / 2;
+          if (!atGate && (front || RP() > 0.12)) {
+            const h = 0.9 + RP() * 0.55, c = RP() < 0.3 ? shade(wc, 0.85) : wc;
+            plain.box(horiz ? len : 0.3, h, horiz ? 0.3 : len, x, G - 0.02, z, c);
+            if (!lite && RP() < 0.5) plain.box(horiz ? len * 0.4 : 0.32, 0.4, horiz ? 0.32 : len * 0.4, x + (horiz ? (RP() - 0.5) * len * 0.5 : 0), G + 0.1 + RP() * (h - 0.5), z + (horiz ? 0 : (RP() - 0.5) * len * 0.5), 0xa59c8c);   // bare block patch
+          } else if (atGate) { /* the gate's opening */ }
+          t += len;
+        }
+      }
+      gate(gx, gz, fx, fz, 1.9);
+      if (RP() < 0.4) shopfront(L.cx + (RP() < 0.5 ? -7 : 7), fz < 0 ? L.z0 + 0.3 : L.z1 - 0.3, 0, fz);
+      // yard clutter, seen over the low wall
+      const yx = () => L.cx + (RP() - 0.5) * 12, yz = () => L.cz + (RP() - 0.5) * 12;
+      if (RP() < 0.6) { const x = yx(), z = yz(); for (let k = 0; k < 3; k++) plain.box(1.8, 0.3, 1.2, x + (RP() - 0.5) * 0.3, G + k * 0.3, z, 0x9a8b72); }   // stacked breeze blocks
+      if (RP() < 0.45) plain.blob(1.3 + RP() * 0.6, yx(), G - 0.1, yz(), 0xc9a87c, 0.45, 1);          // sand pile
+      if (!lite && RP() < 0.35) { const x = yx(), z = yz(); tin.slab(2.6, 0.05, 2.0, x, G + 1.6, z, 0x7a5a3c, 0, 0.25); for (const sx of [-1.2, 1.2]) plain.box(0.1, 1.7, 0.1, x + sx, G, z + 0.9, 0x5a4636); }   // tin lean-to
+      if (!lite && RP() < 0.45) {                                                                     // washing line
+        const x = yx(), z = yz(), cols = [0xd94a4a, 0x2f6fbf, 0xf2c94c, 0xffffff, 0x3f9a5a, 0xd97cb0];
+        for (const sx of [-2, 2]) plain.box(0.06, 1.8, 0.06, x + sx, G, z, 0x5a4a3a);
+        plain.box(4, 0.03, 0.03, x, G + 1.75, z, 0x333333);
+        for (let k = 0; k < 4; k++) plain.box(0.5 + RP() * 0.3, 0.6 + RP() * 0.3, 0.03, x - 1.5 + k * 1.0, G + 1.0, z, pick(cols, RP));
+      }
+      if (RP() < 0.25) tree(L.cx + (RP() - 0.5) * 4, L.cz + (RP() - 0.5) * 4, 0.85, RP() < 0.3);
       return;
     }
     if (sp.style === 'villa') {
@@ -551,7 +626,43 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   const smokeAt: { x: number; y: number; z: number }[] = [];
   const people: HubWorld['people'] = [];
   const seats: HubWorld['seats'] = [];
-  const roofs: HubWorld['roofs'] = [];
+  /** Sites left to the venues module (src/world/sites.ts): ground only, plus the place's identity interactable. */
+  const sites: Site[] = [];
+  /**
+   * Footprint the replaced building had, kept as colliders only while the streets are dressed: random trees, palms and
+   * stalls test them, so the rest of the hub keeps exactly the same layout. Removed before the hub is returned.
+   */
+  const ghosts: Collider[] = [];
+  const ghost = (x0: number, z0: number, x1: number, z1: number, h: number) => { const c = { x0, z0, x1, z1, h }; ghosts.push(c); colliders.push(c); };
+  const inSite = (x: number, z: number) => sites.some(s => x > s.x0 - 0.3 && x < s.x1 + 0.3 && z > s.z0 - 0.3 && z < s.z1 + 0.3);
+  /**
+   * Street dressing that would fall inside a composed site is not drawn, but it draws its random numbers and keeps its
+   * collider as a ghost exactly as before, so every later tree, palm and stall of the hub stays where it was.
+   */
+  const dress = (x: number, z: number, place: () => void) => {
+    if (!inSite(x, z)) { place(); return; }
+    const marks = [plain, leaves, trunks].map(b => b.mark()), n = colliders.length, nc = canopies.length;
+    place();
+    [plain, leaves, trunks].forEach((b, i) => b.rollback(marks[i]));
+    canopies.splice(nc);
+    for (const c of colliders.splice(n)) ghost(c.x0, c.z0, c.x1, c.z1, c.h);
+  };
+  const composedLot = (k: KioskSpec) => {
+    const a = k.lot % 2, b = k.lot >> 1, L = lotRect(k.i, k.j, a, b), dir = b ? 1 : -1;
+    const key = `${k.kind}:${k.i}${k.j}`, itId = `${id}:${key}`;
+    sites.push({ key, kind: 'dibiterie', name: k.name, x0: L.x0, z0: L.z0, x1: L.x1, z1: L.z1, front: { x: 0, z: dir }, side: { x: a ? 1 : -1, z: 0 }, interactable: itId });
+    interactables.push({ id: itId, name: k.name, kind: 'actions', x: L.cx, z: dir > 0 ? L.z1 : L.z0, radius: 3, actions: [] });
+    // the old dibiterie's colliders (same numbers as dibiterie() above)
+    const w = 11, d = 7.5, h = 3.4, cx = L.cx, cz = dir > 0 ? L.z1 - d / 2 - 0.5 : L.z0 + d / 2 + 0.5;
+    const at = (t: number) => cz + dir * t, front = cz + dir * d / 2, back = cz - dir * d / 2;
+    const g = (x: number, z: number, gw: number, gd: number, gh: number) => ghost(x - gw / 2, z - gd / 2, x + gw / 2, z + gd / 2, gh);
+    g(cx - 2.5, at(d / 2 - 0.6), 2.0, 0.8, 1); g(cx + 2.4, at(-d / 2 + 1.4), 4.6, 1.2, 1.1); g(cx - w / 2 + 0.6, cz, 0.6, 3.4, 0.5);
+    g(cx - 1.2, at(-0.3), 1.2, 0.8, 0.8); g(cx + 1.4, at(1.5), 1.2, 0.8, 0.8);
+    ghost(cx - w / 2 - 0.3, Math.min(back, front), cx - w / 2 + 0.15, Math.max(back, front), h);
+    ghost(cx + w / 2 - 0.15, Math.min(back, front), cx + w / 2 + 0.3, Math.max(back, front), h);
+    g(cx, back, w, 0.4, h);
+  };
+  const roofs: Collider[] = [];
 
   const kioskAt = (k: KioskSpec) => {
     const L = lotRect(k.i, k.j, k.lot % 2, k.lot >> 1);
@@ -561,11 +672,19 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const w = small ? 7 : 14, d = small ? 6 : 8, h = small ? 3.6 : 4.2;
     const cz = south ? L.z1 - d / 2 - 0.5 : L.z0 + d / 2 + 0.5, cx = L.cx;
     const col = k.kind === 'cafe' ? 0x6fa56a : k.kind === 'gargote' ? 0xe8a43c : k.kind === 'restaurant' ? 0xf3f0ea : k.kind === 'garage' ? 0x7f8a96 : k.kind === 'maiga' ? 0x6f9e98 : 0xe7b45a;
-    fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    // Garage Modou is an open workshop (the shop kit's 'garage': the bench, tools, a car on the lift, motorbikes for sale)
+    const workshop = k.kind === 'garage';
+    if (!workshop) fac.facade(w, h, d, cx, G - 0.02, cz, col);
+    else {
+      for (const sx of [-1, 1]) plain.box(0.25, h, d, cx + sx * (w / 2 - 0.125), G - 0.02, cz, col);
+      plain.box(w, h, 0.25, cx, G - 0.02, cz - dir * (d / 2 - 0.125), col);
+      plain.box(w, 0.95, 0.25, cx, G + h - 0.97, cz + dir * (d / 2 - 0.125), shade(col, 0.9));   // the header over the opening
+      plain.box(w - 0.3, 0.02, d - 0.3, cx, G - 0.01, cz, 0x6b6e70);                            // oil-stained concrete floor
+    }
     plain.box(w + 0.4, 0.3, d + 0.4, cx, G + h - 0.02, cz, 0xd2cdc2);
     parapet(cx, cz, w + 0.4, d + 0.4, G + h + 0.26, shade(col, 0.9), 0.6);
-    plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));
-    if (!small) {
+    if (!workshop) plain.box(w + 0.1, 0.7, d + 0.1, cx, G - 0.02, cz, shade(col, 0.66));
+    if (!small && !workshop) {
     awning(cx, cz + dir * (d / 2 + 1.2), w - 1, 2.4, 3.0, k.kind === 'cafe' ? 0x2f8f4e : k.kind === 'garage' ? 0x2d3748 : 0xd9482b, true, dir);
     plain.box(w - 3, 1, 0.8, cx, G, cz + dir * (d / 2 + 0.6), 0x7a5a3c);              // counter
     plain.box(w - 2.6, 0.08, 1.0, cx, G + 1, cz + dir * (d / 2 + 0.6), 0x5a3f2a);
@@ -577,6 +696,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       plain.box(1.6, 0.45, 0.4, cx + 1.6, G, cz + dir * (d / 2 + 0.9), 0x6b4a2e);
       seats.push(...benchSeats(`${id}:${k.kind}:${k.i}${k.j}:bench`, cx + 1.6, cz + dir * (d / 2 + 0.9), dir > 0 ? 0 : Math.PI, G + 0.45, 'street', 1.6, 2));
     }
+    if (workshop) awning(cx, cz + dir * (d / 2 + 1.2), w - 1, 2.4, 3.0, 0x2d3748, true, dir);
     if (k.kind === 'gargote' || k.kind === 'cafe' || k.kind === 'restaurant') {
       for (let n = 0; n < 3; n++) {                                                   // benches and a low table out front
         const bx = cx - 4 + n * 4, bz = cz + dir * (d / 2 + 3.2);
@@ -586,7 +706,15 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       }
     }
     if (k.kind === 'garage') for (let n = 0; n < 4; n++) plain.cyl(0.38, 0.38, 0.28, cx + 5 + (n % 2) * 0.2, G + n * 0.28, cz + dir * (d / 2 + 2.4), 0x1d1d1f, 10); // tyre stack
-    solidC(cx, cz, w, d + (small ? 0.2 : 1.4), h);
+    if (!workshop) solidC(cx, cz, w, d + (small ? 0.2 : 1.4), h);
+    else {
+      for (const sx of [-1, 1]) solidC(cx + sx * (w / 2 - 0.125), cz, 0.25, d, h);
+      solidC(cx, cz - dir * (d / 2 - 0.125), w, 0.25, h);
+      const kit = buildShopInterior('garage', { w: w - 0.25, d }, 4242, { detail: shopDetail ?? (lite ? 'low' : 'medium'), at: { x: cx, z: cz, y: G, yaw: dir > 0 ? 0 : Math.PI }, id: `${id}:garage:${k.i}${k.j}`, height: h - 0.3, shadows: false });
+      kit.group.userData.shop = { key: `${id}:${k.kind}:${k.i}${k.j}`, type: 'garage', anchors: kit.anchors, bounds: kit.bounds, budget: kit.budget };
+      kit.group.userData.shopColliders = kit.colliders;
+      group.add(kit.group); colliders.push(...kit.colliders); seats.push(...kit.seats);
+    }
     const bg = k.kind === 'maiga' ? '#3f4f4a' : k.kind === 'cafe' ? '#14532d' : k.kind === 'gargote' ? '#7c2d12' : k.kind === 'restaurant' ? '#0c4a6e' : k.kind === 'garage' ? '#1f2937' : '#78350f';
     // painted sign board flush on the facade, between the awning and the roof
     if (small) addSign('MAÏGA', bg, '#f1e6c8', cx + 1.3, G + 2.6, cz + dir * (d / 2 + 0.03), dir > 0 ? 0 : Math.PI, 2.6, 0.7);
@@ -599,11 +727,105 @@ export function buildHub(id: HubId, lite = false): HubWorld {
   };
 
   /** Street vendor's table under a parasol. */
-  const stall = (x: number, z: number) => {
+  /**
+   * Pikine's gare routier: six cars rapides parked askew with open rear doors (each gets its apprentice and its door
+   * queue from the existing systems), a shelter and a tin lean-to, plastic chairs in disorder, benches, bags and bundles,
+   * a tea spot, tyres, drums and crates, a price board, dusty ground with muddy dips (ready for rain), and the people:
+   * seated and standing waiting passengers, bag loaders, two arguments, and vendors walking between the cars.
+   */
+  const pikineGare = (cx: number, cz: number, B: number) => {
+    const GR = rng(sp.seed * 31 + 5);
+    {                                                                                          // the old station drew two stalls and two trees from the hub's random stream: draw them and drop them, so every street tree and vendor after the gare keeps its place
+      const pm = plain.mark(), lm = leaves.mark(), nc = colliders.length, nk = canopies.length;
+      stall(cx - 10, cz + 6); stall(cx + 3, cz - 6.5); tree(cx + 11, cz + 8, 1.1); tree(cx - 11, cz - 8, 1);
+      plain.rollback(pm); leaves.rollback(lm); colliders.length = nc; canopies.length = nk;
+    }
+    const disc = (batch: Batch, r: number, x: number, z: number, col: number, y = B + 0.05, sq = 1) => {
+      const g = new THREE.CircleGeometry(r, 12); g.rotateX(-Math.PI / 2); g.scale(1, 1, sq); batch.geometry(g, col, x, y, z, GR() * Math.PI);
+    };
+    plain.box(44, 0.05, 40, cx, B - 0.01, cz, 0x9a8260);                                     // trampled dust over the block's sand
+    for (let n = 0; n < 26; n++) disc(plain, 0.8 + GR() * 2.2, cx + (GR() - 0.5) * 38, cz + (GR() - 0.5) * 34, GR() < 0.5 ? 0x86704f : 0xa89068, B + 0.045 + GR() * 0.004, 0.5 + GR() * 0.5);   // tyre-worn patches
+    for (let n = 0; n < 9; n++) disc(plain, 0.5 + GR() * 0.8, cx + (GR() - 0.5) * 36, cz + (GR() - 0.5) * 32, 0x3d3a36, B + 0.052, 0.7);                       // oil stains
+    for (const [px, pz, r] of [[-12, -3, 2.1], [4, 12.5, 1.8], [-1, -17, 2.4], [14, 8, 1.5], [-15, 14, 1.9], [11, -9, 1.6]] as const) disc(water, r, cx + px, cz + pz, 0x6f7f86, B + 0.07, 0.6);   // dips where the water will stand
+    // cars rapides: [dx, dz, yaw]; the first two keep the old station's spots (the stop's interaction stands beside them)
+    const cars: [number, number, number][] = [[-3, 0, Math.PI / 2], [-5, -4.5, Math.PI / 2 + 0.08], [-1, -9.8, Math.PI / 2 - 0.15], [-9.5, 4.8, Math.PI / 2 + 0.12], [5.5, -14.5, 0.55], [4, 10.8, -Math.PI / 2 + 0.1]];
+    cars.forEach(([dx, dz, yaw], k) => {
+      // on the phone the far silhouette takes over sooner: each near car is several draw calls
+      const car = makeCarRapide({ seed: sp.seed * 7 + 1 + k, driver: false, ...(lite ? { lite: true, lodDistance: 70 } : {}) }); car.position.set(cx + dx, B, cz + dz); car.rotation.y = yaw; group.add(car); rapides.push(car);
+      const sk = Math.abs(Math.sin(yaw)) > 0.9 ? [6.8, 2.8] : [5.4, 5.4];
+      solidC(cx + dx, cz + dz, sk[0], sk[1], 2.4);
+    });
+    // shelter (the old one, longer) and a tin lean-to beside it
+    plain.box(14, 0.15, 3.5, cx + 7, 3.2, cz + 4, 0x1e3a8a); plain.box(14, 0.4, 0.06, cx + 7, 2.95, cz + 2.25, 0xf4c20d);
+    for (const dx of [0.2, 13.8]) plain.box(0.2, 3.1, 0.2, cx + dx, B, cz + 4, 0x444444);
+    plain.box(0.3, 4.5, 0.3, cx + 9, B, cz - 5, 0x444444);
+    addSign('GARE · CAR RAPIDE', '#1e3a8a', '#fde68a', cx + 9, 4.6, cz - 5.2, Math.PI, 4.6, 1.0);
+    addSign('PARCELLES · GUÉDIAWAYE · PLATEAU', '#7c2d12', '#ffe9b8', cx - 14, 3.3, cz - 12, Math.PI / 2, 5.4, 0.9);
+    for (const [dx, dz] of [[-17, -10], [-17, -14]]) plain.box(0.14, 3.4, 0.14, cx + dx, B, cz + dz, 0x5a4636);
+    tin.slab(8, 0.06, 3.2, cx - 15, 2.7, cz + 12, 0x8a5f40, 0.1, 0.12); for (const [dx, dz] of [[-18.5, 10.6], [-11.5, 10.8], [-18.5, 13.4], [-11.5, 13.6]]) plain.box(0.12, 2.6, 0.12, cx + dx, B, cz + dz, 0x4e3e30);
+    solidC(cx - 15, cz + 12, 8, 3.4, 2.6);
+    // plastic chairs in disorder; some are seats the waiting people take
+    const CH = [0xf2f2ec, 0x2f6fb3, 0xd9322b, 0x1a9d54, 0xf4c20d, 0xf2f2ec];
+    const chair = (x: number, z: number, yaw: number, seat: boolean, sit: boolean) => {
+      const c = pick(CH, GR), tilt = (GR() - 0.5) * 0.5, ya = yaw + tilt, bx = Math.sin(ya) * 0.22, bz = Math.cos(ya) * 0.22;
+      plain.box(0.45, 0.04, 0.45, x, B + 0.45, z, c, ya); plain.box(0.45, 0.42, 0.04, x - bx, B + 0.47, z - bz, c, ya);
+      for (const [lx, lz] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) plain.box(0.04, 0.45, 0.04, x + lx * Math.cos(ya) + lz * Math.sin(ya), B, z - lx * Math.sin(ya) + lz * Math.cos(ya), 0xdddddd);
+      if (seat) seats.push({ id: `${id}:gare:chair:${seats.length}`, x, z, top: B + 0.49, yaw: ya, kind: 'chair', space: 'street', occupant: null });
+      if (sit) people.push({ x, z, yaw: ya, clip: 'Sit', y: -0.05 });
+    };
+    for (let n = 0; n < 16; n++) {
+      const x = cx + 1 + GR() * 11.5, z = cz + 2.9 + GR() * 2.2;                                      // under the shelter: crowded, some turned away
+      chair(x, z, GR() * Math.PI * 2, n < 9, n < 6);
+    }
+    for (let n = 0; n < 5; n++) chair(cx - 18 + GR() * 7, cz + 11 + GR() * 3, GR() * Math.PI * 2, true, n < 3);                         // under the lean-to
+    for (const [dx, dz, yaw] of [[7, 7.6, Math.PI], [-2, 14.4, 0.2], [-16, -6, Math.PI / 2]] as const) {          // benches
+      plain.box(3, 0.1, 0.5, cx + dx, B + 0.45, cz + dz, 0x6b5a4a, yaw); for (const o of [-1.2, 1.2]) plain.box(0.12, 0.45, 0.4, cx + dx + Math.cos(yaw) * o, B, cz + dz - Math.sin(yaw) * o, 0x555555, yaw);
+      seats.push(...benchSeats(`${id}:gare:bench:${dx}`, cx + dx, cz + dz, yaw + Math.PI, B + 0.45, 'street', 3, 3));
+      for (let k = 0; k < 2; k++) { const o = (k - 0.5) * 1.6; people.push({ x: cx + dx + Math.cos(yaw) * o, z: cz + dz - Math.sin(yaw) * o, yaw: yaw + Math.PI, clip: 'Sit', y: -0.05 }); }
+    }
+    // the tea spot: a low table, a charcoal brazier with kettles, glasses, stools, a sheet on poles, and the maker
+    const tx = cx + 15, tz = cz - 2;
+    plain.box(1.4, 0.7, 0.7, tx, B, tz, 0x7a5a3c); plain.cyl(0.28, 0.22, 0.3, tx + 1.3, B, tz, 0x2b2b2b, 8); plain.cyl(0.14, 0.2, 0.3, tx + 1.3, B + 0.3, tz, 0xc9c9c9, 8); plain.cyl(0.1, 0.14, 0.24, tx + 1.55, B + 0.3, tz - 0.1, 0xb87333, 8);
+    for (let k = 0; k < 6; k++) plain.cyl(0.04, 0.035, 0.07, tx - 0.5 + k * 0.2, B + 0.7, tz + (k % 2) * 0.15 - 0.07, 0xe8e2d0, 6);
+    for (const [dx, dz] of [[-0.9, 1.1], [0.3, 1.3], [-1.6, 0.2], [1.1, -1.2]]) { plain.cyl(0.2, 0.22, 0.38, tx + dx, B, tz + dz, pick(CH, GR), 8); seats.push({ id: `${id}:gare:stool:${dx}`, x: tx + dx, z: tz + dz, top: B + 0.4, yaw: Math.atan2(-dx, -dz), kind: 'stool', space: 'street', occupant: null }); }
+    tin.slab(3.6, 0.05, 3.2, tx, 2.5, tz + 0.2, 0x7a5a3c, 0, 0.1); for (const [dx, dz] of [[-1.7, -1.4], [1.7, -1.4], [-1.7, 1.6], [1.7, 1.6]]) plain.box(0.1, 2.5, 0.1, tx + dx, B, tz + dz, 0x4e3e30);
+    people.push({ x: tx + 0.2, z: tz - 0.9, yaw: 0, clip: 'Talk' }, { x: tx - 0.9, z: tz + 1.1, yaw: Math.atan2(0.9, -1.1), clip: 'Sit', y: -0.05 });
+    solidC(tx, tz, 1.8, 0.9, 0.8);
+    // bags and bundles: check-pattern plastic bags, sacks, tied bundles, a mattress roll; heaped near the rear doors
+    const BAGS = [0xc0392b, 0x2b6cb0, 0xf2f2ec, 0xd98b1a, 0x2f8f4e];
+    const bag = (x: number, z: number) => {
+      const c = pick(BAGS, GR), w = 0.5 + GR() * 0.5, h = 0.35 + GR() * 0.4, d = 0.35 + GR() * 0.3, yaw = GR() * Math.PI;
+      plain.box(w, h, d, x, B, z, c, yaw); plain.box(w + 0.02, 0.05, d + 0.02, x, B + h * 0.55, z, shade(c, 0.7), yaw);
+    };
+    for (const [dx, dz] of [[-8.5, 0.4], [-9.6, -0.6], [-10.6, 0.9], [-11, -1.3], [-10, -5], [-11.2, -4.2], [-12, -6], [-7, -9.5], [-8.3, -11], [-14.8, 5], [-15.8, 6.3], [-13, 8], [2, 7.4], [3.2, 7.8], [10.5, -6], [12, -5.2]] as const)
+      for (let k = 0; k < 2 + Math.floor(GR() * 2); k++) bag(cx + dx + (GR() - 0.5) * 1.2, cz + dz + (GR() - 0.5) * 1.2);
+    for (let n = 0; n < 10; n++) { const x = cx + (GR() - 0.5) * 34, z = cz + (GR() - 0.5) * 30; plain.cyl(0.32, 0.36, 0.8, x, B, z, pick([0xc9c4ba, 0xd8cfae, 0xb8a888], GR), 8); plain.cyl(0.05, 0.05, 0.1, x, B + 0.8, z, 0x7a5a3c, 4); }   // sacks standing
+    plain.box(1.4, 0.4, 0.6, cx - 6, B, cz + 8.6, 0x6b3f2a, 0.3); plain.cyl(0.25, 0.25, 1.3, cx - 6.2, B + 0.25, cz + 9.6, 0xd9d2c4, 8, [0, 0, Math.PI / 2]);
+    // clutter: tyres, drums, crates, jerrycans, a cardboard stack, a broken-down hood
+    for (const [dx, dz] of [[-17, 2], [12, 13], [-4, -19], [16, 12], [-14, -16]] as const) for (let k = 0; k < 3; k++) plain.cyl(0.42, 0.42, 0.22, cx + dx + (GR() - 0.5) * 0.2, B + k * 0.22, cz + dz, 0x1c1c1c, 10);
+    for (const [dx, dz, col] of [[16.5, -9, 0x2f6fb3], [17.4, -8.5, 0xc0392b], [-17.5, 7, 0x8a6a2f], [8, -18, 0x2f6fb3]] as const) { plain.cyl(0.3, 0.3, 0.85, cx + dx, B, cz + dz, col, 10); solidC(cx + dx, cz + dz, 0.6, 0.6, 0.85); }
+    for (const [dx, dz] of [[14, -12], [-1, 16], [17, 3], [-18, -3], [7, -17]] as const) { plain.box(0.6, 0.35, 0.4, cx + dx, B, cz + dz, 0x8b6a47, GR()); plain.box(0.5, 0.3, 0.38, cx + dx + 0.1, B + 0.35, cz + dz, 0x9a7a52, GR()); }
+    for (let n = 0; n < 6; n++) plain.box(0.22, 0.34, 0.12, cx + (GR() - 0.5) * 30, B, cz + (GR() - 0.5) * 28, pick([0xf4c20d, 0xd9322b, 0x2f6fb3], GR));
+    plain.box(1.6, 0.6, 1.2, cx + 18, B, cz + 14, 0xa89868, 0.4); plain.box(1.5, 0.12, 1.1, cx + 18, B + 0.6, cz + 14, 0xb8a878, 0.4);
+    stall(cx - 20, cz - 1, GR); stall(cx + 11, cz - 15.5, GR); stall(cx - 6, cz + 17, GR);                       // vendors' stalls on the edges
+    tree(cx + 18, cz + 16, 1.1, false, GR); tree(cx - 19, cz - 17, 1, false, GR);
+    interactables.push({ id: `${id}:station`, name: 'Car rapide · changer de quartier', kind: 'travel', x: cx - 3, z: cz + 3.2, radius: 4.8, actions: [] });   // the stop: same spot as the small station's
+    // people: waiting standing groups, bag loaders at the rear doors, two arguments, vendors walking between the cars
+    const stand = (x: number, z: number, yaw: number, clip: 'Idle' | 'Talk' = 'Idle') => people.push({ x, z, yaw, clip });
+    for (const [x, z] of [[2, 6.6], [3, 6.9], [4.4, 6.4], [0.6, 6.9], [9, 6.6], [11, 7], [10, 6.4], [-2.2, 1.9], [-2.6, 2.4], [-13.2, -2], [-13.6, -3.3], [14.5, 3], [16, 5]] as const) stand(cx + x, cz + z, GR() * Math.PI * 2, GR() < 0.4 ? 'Talk' : 'Idle');
+    for (const [dx, dz, yaw] of [[-8.2, -0.2, 0], [-8.8, 1.4, -0.6], [-10.6, -4.2, 0.4], [-7.6, -10, 0.2]] as const) stand(cx + dx, cz + dz, Math.PI / 2 + yaw, 'Talk');   // at the rear doors, loading
+    for (const [dx, dz] of [[-10, -9], [14, -12]] as const) { stand(cx + dx, cz + dz, 0, 'Talk'); stand(cx + dx + 0.9, cz + dz, Math.PI, 'Talk'); }   // the arguments: two people facing at a pace
+    stand(cx - 11, cz + 1.5, 1.2, 'Talk'); stand(cx - 11.8, cz + 2.2, -1.9, 'Talk');
+    for (const [x0, z0, x1, z1] of [[-14, 2.4, -1, 2.4], [-13, -2.3, 2, -2.3], [-12, -7, 4, -7], [13, -4, 13, 9], [-16, 9, -16, -12]] as const)
+      people.push({ x: cx + x0, z: cz + z0, yaw: 0, clip: 'Talk', walkTo: { x: cx + x1, z: cz + z1 } });
+  };
+
+  const stall = (x: number, z: number, rnd = R) => {
     plain.box(1.6, 0.8, 0.9, x, G, z, 0x8b6a47);
-    for (let n = 0; n < 4; n++) plain.box(0.3, 0.2, 0.3, x - 0.55 + n * 0.37, G + 0.8, z + (R() - 0.5) * 0.4, pick([0xe58a2f, 0xc4372b, 0x6aa84f, 0xf4c20d, 0xf2f2ec], R));
+    for (let n = 0; n < 4; n++) plain.box(0.3, 0.2, 0.3, x - 0.55 + n * 0.37, G + 0.8, z + (rnd() - 0.5) * 0.4, pick([0xe58a2f, 0xc4372b, 0x6aa84f, 0xf4c20d, 0xf2f2ec], rnd));
     plain.box(0.05, 2.2, 0.05, x + 0.9, G, z, 0x555555);
-    plain.cyl(0.05, 1.3, 0.4, x + 0.9, G + 2.1, z, pick([0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e], R), 8);
+    plain.cyl(0.05, 1.3, 0.4, x + 0.9, G + 2.1, z, pick([0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e], rnd), 8);
+    canopies.push({ x: x + 0.9, z, r: 1.4, y0: G + 2.0, y1: G + 2.6 });                // the parasol: a camera obstacle
     plain.box(0.4, 0.4, 0.4, x - 1.3, G, z + 0.3, 0x3a5fa0);                          // stool
     solidC(x, z, 1.7, 1.0, 1);
   };
@@ -615,6 +837,27 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const B = G + 0.02;
     switch (kind) {
       case 'mosque': {
+        if (isComposed(id, `mosque:${i}${j}`) && id === 'pikine') {
+          // the neighbourhood mosque (src/venues/mosque.ts, modest): its courtyard on the north half of the block, houses on the south lots and on both sides
+          const MR = rng(sp.seed * 17 + i * 5 + j);
+          sites.push({ key: `mosque:${i}${j}`, kind: 'mosque', name: 'Mosquée de Pikine', x0: bx, z0: bz, x1: bx + BLK, z1: bz + 34, front: { x: 0, z: -1 } });
+          buildLotBuilding(i, j, 0, 1); buildLotBuilding(i, j, 1, 1);
+          for (const sx of [-1, 1]) {
+            const w = 5.6 + MR() * 1.2, d = 7 + MR() * 1.5, h = 2.95, x = cx + sx * 18.6, z = bz + 14 + MR() * 3, col = pick(sp.palette, MR);
+            fac.facade(w, h, d, x, G - 0.02, z, col); plain.box(w + 0.35, 0.25, d + 0.35, x, G + h - 0.02, z, 0x8e8a80); plain.box(w + 0.08, 0.6, d + 0.08, x, G - 0.02, z, shade(col, 0.62));
+            for (const [qx, qz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) if (MR() < 0.7) plain.box(0.16, 1.3, 0.16, x + qx * (w / 2 - 0.25), G + h + 0.2, z + qz * (d / 2 - 0.25), 0x5c4e3f);
+            solidC(x, z, w, d, h);
+          }
+          tree(cx - 15.5, bz + 6, 1.0, false, MR); tree(cx + 15.5, bz + 6, 1.1, false, MR);       // two neem trees by the road
+          break;
+        }
+        if (isComposed(id, `mosque:${i}${j}`)) {
+          for (const sx of [-1, 1]) tree(cx + sx * 9, cz - 15, 1.1);          // the forecourt's two shade trees stay
+          for (const sx of [-1, 1]) ghost(cx + sx * 15 - 1.6, cz - 9.6, cx + sx * 15 + 1.6, cz - 6.4, 26);   // old minarets and hall
+          ghost(cx - 13, cz - 9, cx + 13, cz + 13, 11);
+          sites.push({ key: `mosque:${i}${j}`, kind: 'mosque', name: id === 'pikine' ? 'Mosquée de Pikine' : 'Grande Mosquée', x0: bx, z0: bz, x1: bx + BLK, z1: bz + BLK, front: { x: 0, z: -1 } });
+          break;
+        }
         fac.facade(26, 11, 22, cx, B, cz + 2, 0xf6f3ea);
         plain.box(26.2, 0.7, 22.2, cx, B, cz + 2, 0xcfc7b4);
         plain.box(20, 1.2, 16, cx, 11.2, cz + 2, 0xe9e5d8);
@@ -650,10 +893,11 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         break;
       }
       case 'station': {
+        if (id === 'pikine') { pikineGare(cx, cz, B); break; }                              // the suburban gare: dense, noisy, messy (the other hubs keep the small one below)
         pave.box(26, 0.04, 14, cx, B, cz, 0x9a9488);
         for (let k = -2; k <= 2; k++) plain.box(0.2, 0.02, 5, cx - 3 + k * 0.01, B + 0.04, cz + k * 2.8, 0xe8e4d8, Math.PI / 2);
-        const cr = makeCarRapide(); cr.position.set(cx - 3, B, cz); cr.rotation.y = Math.PI / 2; group.add(cr);
-        const cr2 = makeCarRapide(); cr2.position.set(cx - 5, B, cz - 4.5); cr2.rotation.y = Math.PI / 2 + 0.08; group.add(cr2);
+        const cr = makeCarRapide({ seed: sp.seed * 7 + 1, driver: false }); cr.position.set(cx - 3, B, cz); cr.rotation.y = Math.PI / 2; group.add(cr);
+        const cr2 = makeCarRapide({ seed: sp.seed * 7 + 2, driver: false }); cr2.position.set(cx - 5, B, cz - 4.5); cr2.rotation.y = Math.PI / 2 + 0.08; group.add(cr2);
         rapides.push(cr, cr2);
         solidC(cx - 5, cz - 4.5, 6.6, 2.8, 2.4);
         plain.box(0.3, 4.5, 0.3, cx + 9, B, cz - 5, 0x444444);
@@ -778,6 +1022,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
       }
       case 'port': {
         plain.box(6, 0.4, 36, cx, B, bz - 8, 0x8b6a47);                                 // pier toward the sea
+        ramps.push({ x0: cx - 3, x1: cx - 3, z0: bz - 26, z1: bz + 10, y0: 0.4, y1: 0.4, xEnd: cx + 3 });   // walked on: feet on the planks (flat)
         for (let k = 0; k < 12; k++) plain.box(6.05, 0.05, 0.12, cx, B + 0.4, bz - 25 + k * 3, 0x6b4f33);
         const cols = [0x1e6fd9, 0xe7b82f, 0xd9482b, 0x2f8f4e];
         for (let k = 0; k < 5; k++) {
@@ -814,7 +1059,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         const BOARD = [0xf2f2ec, 0x1e6fd9, 0xd9482b, 0x2f8f4e, 0xf4c20d, 0x0f3d6e];
         for (let s = 0; s < 26; s++) {                                                  // sponsor boards around the ring
           const a = ((s + 0.5) / 26) * Math.PI * 2;
-          if (gateGap(a, 0.36)) continue;
+          if (gateGap(a, 0.36) || inTunnel(a, 0.16)) continue;                       // the gate and the wrestlers' passage
           const x = cx + Math.sin(a) * 10.6, z = cz + Math.cos(a) * 10.6, col = BOARD[s % BOARD.length];
           plain.box(2.1, 0.75, 0.08, x, B, z, 0xf2f2ec, a);
           plain.box(1.9, 0.5, 0.02, x + Math.sin(a) * -0.05, B + 0.13, z + Math.cos(a) * -0.05, col, a);   // panel facing the ring
@@ -833,59 +1078,33 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           for (const sz of [-1, 1]) plain.box(4.4, 0.35, 0.03, tx, B + 2.3, tz + sz * 1.7, 0xf4c20d);
           solidC(tx, tz, 3.2, 1.8, 0.9);
         }
-        for (let s = 0; s < 64; s++) {                                                  // metal crowd barriers in front of the parapet
-          const a = ((s + 0.5) / 64) * Math.PI * 2;
-          if (gateGap(a)) continue;
-          const r = 16.4, wSeg = (2 * Math.PI * r) / 64, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
-          plain.box(wSeg - 0.12, 0.05, 0.05, x, B + 1.0, z, 0xa9adb3, a);
-          plain.box(wSeg - 0.12, 0.05, 0.05, x, B + 0.25, z, 0xa9adb3, a);
-          for (let v = 0; v < 4; v++) { const o = (v / 3 - 0.5) * (wSeg - 0.2); plain.box(0.03, 0.8, 0.03, x + Math.cos(a) * o, B + 0.25, z - Math.sin(a) * o, 0xa9adb3, a); }
-        }
-        for (let s = 0; s < 48; s++) {                                                  // bannered parapet in front of the first tier
-          const a = ((s + 0.5) / 48) * Math.PI * 2;
-          if (gateGap(a)) continue;
-          const r = PARAPET_R, wSeg = (2 * Math.PI * r) / 48 + 0.05, x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
-          plain.box(wSeg, PARAPET_H, 0.22, x, 0, z, 0xe9e4d8, a);
-          if (s % 2 === 0) plain.box(wSeg * 1.6, 0.62, 0.03, cx + Math.sin(a) * (r - 0.13), 0.24, cz + Math.cos(a) * (r - 0.13), BOARD[(s / 2) % BOARD.length], a);
-        }
+        // crowd barriers, the bannered parapet and the tiers: one stand-section module per section (src/world/arenaModules.ts)
         if (!lite) for (let s = 0; s < 10; s++) {                                       // feather flags along the barriers
           const a = ((s + 0.5) / 10) * Math.PI * 2 + 0.15;
-          if (gateGap(a, 0.5)) continue;
+          if (gateGap(a, 0.5) || inTunnel(a, 0.3)) continue;
           const x = cx + Math.sin(a) * 15.6, z = cz + Math.cos(a) * 15.6, col = BOARD[(s + 1) % BOARD.length];
           plain.box(0.05, 3.6, 0.05, x, B, z, 0x555555);
           plain.box(0.7, 2.6, 0.03, x + Math.cos(a) * 0.37, B + 0.8, z - Math.sin(a) * 0.37, col, a);
           plain.box(0.6, 0.5, 0.03, x + Math.cos(a) * 0.32, B + 3.4, z - Math.sin(a) * 0.32, col, a);
         }
-        const TIER_COL = [0xd5cbb8, 0xc6bba6, 0xb7ab95];
         const FLAG = [0x1a9d54, 0xf4c20d, 0xd9322b];
-        for (let t = 0; t < TIERS; t++) {                                               // raised tiers (TEMP concrete), one level only
-          const r = tierRadius(t), top = tierTop(t), segs = 48;
-          for (let s = 0; s < segs; s++) {
-            const a = ((s + 0.5) / segs) * Math.PI * 2;
-            if (gateGap(a)) continue;
-            const wSeg = (2 * Math.PI * r) / segs + 0.06;
-            concrete.box(wSeg, top, TIER_DEPTH, cx + Math.sin(a) * r, 0, cz + Math.cos(a) * r, TIER_COL[t], a);  // cast concrete (#11)
-            plain.box(wSeg, 0.12, 0.06, cx + Math.sin(a) * (r - 0.67), top - 0.18, cz + Math.cos(a) * (r - 0.67), FLAG[Math.floor(s / 4) % 3], a); // painted riser band
-            plain.box(wSeg, 0.06, 0.12, cx + Math.sin(a) * (r - 0.6), top, cz + Math.cos(a) * (r - 0.6), 0xe9e4d8, a);  // worn seat edge
-          }
-        }
+        const kit: ArenaKit = { plain, concrete, base: B, lite, solid: solidC, sign: addSign, climb: c => climbs.push(c) };
+        SECTIONS.forEach((sec, i) => standSection(kit, cx, cz, sec, i));                // eight sections between the gaps
+        for (const a of AISLES) aisleStairs(kit, cx, cz, a);                             // stairs up the aisles
         const wallR = WALL_R, wallH = WALL_H, wsegs = 40;
         for (let s = 0; s < wsegs; s++) {
           const a = ((s + 0.5) / wsegs) * Math.PI * 2;
-          if (gateGap(a)) continue;
+          if (gateGap(a) || inTunnel(a)) continue;                                     // the public gate and the wrestlers' gate
           const wSeg = (2 * Math.PI * wallR) / wsegs + 0.1;
           const x = cx + Math.sin(a) * wallR, z = cz + Math.cos(a) * wallR;
           plain.box(wSeg, wallH, 0.5, x, 0, z, 0xd9a45a, a);
           plain.box(wSeg + 0.02, 0.3, 0.6, x, wallH - 0.1, z, 0xf1ead8, a);
           plain.box(wSeg + 0.02, 0.6, 0.56, x, 0, z, 0xa77a40, a);
           if (s % 3 === 0) plain.box(wSeg * 0.7, 1.4, 0.05, cx + Math.sin(a) * (wallR + 0.28), 1.3, cz + Math.cos(a) * (wallR + 0.28), FLAG[(s / 3) % 3], a); // painted banner
-          solidC(x, z, 3.6, 3.6, wallH);
+          // three small boxes just outside the wall line (big ones would reach into the top of the aisles)
+          for (const o of [-1.15, 0, 1.15]) { const ox = cx + Math.sin(a) * (wallR + 0.55) + Math.cos(a) * o, oz = cz + Math.cos(a) * (wallR + 0.55) - Math.sin(a) * o; solidC(ox, oz, 1.2, 1.2, wallH); }
         }
-        // stands collide too (player cannot climb them); their height reaches the roof so the follow camera stays under it
-        for (let t = 0; t < TIERS; t++) for (let s = 0; s < 24; s++) {
-          const a = ((s + 0.5) / 24) * Math.PI * 2; if (gateGap(a)) continue;
-          const r = tierRadius(t); solidC(cx + Math.sin(a) * r, cz + Math.cos(a) * r, 2.6, 2.6, roofY(r));
-        }
+        // the stands' colliders come with the sections and the aisles (up to the roof: the follow camera stays under it)
         {                                                                               // roof over the stands (TEMP painted sheet metal)
           const segs = 40, rm = (ROOF_FRONT_R + ROOF_BACK_R) / 2, ym = (ROOF_FRONT_Y + ROOF_BACK_Y) / 2;
           const run = ROOF_BACK_R - ROOF_FRONT_R, rise = ROOF_FRONT_Y - ROOF_BACK_Y, tilt = Math.atan2(rise, run), depth = Math.hypot(run, rise);
@@ -927,6 +1146,11 @@ export function buildHub(id: HubId, lite = false): HubWorld {
           plain.box(0.4, 0.03, 0.3, bx2, B, bz2 - 0.9, 0xa8adb1); plain.box(0.4, 0.03, 0.3, bx2, B, bz2 + 0.9, 0xa8adb1);
         }
         for (const sx of [-1, 1]) for (let k2 = 0; k2 < 2; k2++) stall(cx + sx * (8 + k2 * 4.5), gzz - 4 - k2 * 1.5);
+        // inside: the wrestlers' tunnel and their own gate, ringside media, the drummers' stand, the écuries' corners
+        tunnel(kit, cx, cz); fightersGate(kit, cx, cz);
+        mediaZone(kit, cx, cz); drummersStand(kit, cx, cz);
+        prepCorner(kit, cx, cz, PREP_SIDE.baobab, 0x1a7a44); prepCorner(kit, cx, cz, PREP_SIDE.teranga, 0xc8322a);   // fictional écuries Baobab and Teranga
+        { const plates = sectionPlates(cx, cz, SECTIONS); if (plates) group.add(plates); }
         interactables.push({ id: `${id}:arena`, name: 'Arène · làmb', kind: 'actions', x: cx, z: cz - 24, radius: 5, actions: ACTIONS.arena });
         arenaInfo = { cx, cz, r: 19 };
         break;
@@ -963,7 +1187,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const key = `${i},${j}`;
     const city = CITY_BLOCKS[id][key];
     if (city) {
-      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, seats, sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
+      buildCityBlock({ hub: id, lite, plain, glass, pave, floor: terrazzo, people, interactables, colliders, seats, shopDetail, add: o => group.add(o), sign: addSign, tree, pool }, city, blockMin(i) + BLK / 2, blockMin(j) + BLK / 2);
       continue;
     }
     const s = sp.specials[key];
@@ -971,7 +1195,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     for (let lot = 0; lot < 4; lot++) {
       const k = kioskLots.get(`${i},${j},${lot}`);
       if (k) {
-        if (k.kind === 'dibiterie') { dibiterie(k); continue; }
+        if (k.kind === 'dibiterie') { if (isComposed(id, `dibiterie:${k.i}${k.j}`)) composedLot(k); else dibiterie(k); continue; }
         const info = kioskAt(k);
         if (k.kind === 'home') {
           // Face the home at an angle: the camera stays on the street side and the first view shows the neighbourhood.
@@ -980,6 +1204,20 @@ export function buildHub(id: HubId, lite = false): HubWorld {
         continue;
       }
       buildLotBuilding(i, j, lot % 2, lot >> 1);
+    }
+  }
+  // Pikine: rusty tin fences and patched walls in the alleys between yards, off the grid's straight lines.
+  if (banlieue && !lite) {
+    const lotBlocks: [number, number][] = [];
+    for (let i = 0; i < NB; i++) for (let j = 0; j < NB; j++) if (!sp.specials[`${i},${j}`] && !CITY_BLOCKS[id][`${i},${j}`]) lotBlocks.push([i, j]);
+    const count = 8 + Math.floor(RP() * 5);
+    for (let n = 0; n < count && lotBlocks.length; n++) {
+      const [i, j] = lotBlocks[Math.floor(RP() * lotBlocks.length)], alongX = RP() < 0.5;
+      const mid = (alongX ? blockMin(j) : blockMin(i)) + LS + 1, at = (alongX ? blockMin(i) : blockMin(j)) + 2 + RP() * (BLK - 10);
+      const len = 3 + RP() * 5, yaw = (alongX ? 0 : Math.PI / 2) + (RP() - 0.5) * 0.25, h = 1.3 + RP() * 0.7;
+      const x = alongX ? at + len / 2 : mid + (RP() - 0.5) * 0.8, z = alongX ? mid + (RP() - 0.5) * 0.8 : at + len / 2;
+      if (RP() < 0.65) { tin.box(len, h, 0.06, x, G - 0.02, z, pick([0x9a6a44, 0x7f5a3e, 0x8a5f40, 0xa07850], RP), yaw); for (let k = 0; k <= 2; k++) plain.box(0.1, h + 0.1, 0.1, x + Math.cos(yaw) * (k - 1) * len / 2, G - 0.02, z - Math.sin(yaw) * (k - 1) * len / 2, 0x4e3e30); }
+      else plain.box(len, 0.9 + RP() * 0.6, 0.3, x, G - 0.02, z, pick([0xb8a27c, 0xa59c8c, 0xc2b08a], RP), yaw);
     }
   }
   const [si, sj] = sp.spawnBlock;
@@ -1020,7 +1258,7 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     const x = along ? roadC(k) + s * treeOff : tt, z = along ? tt : roadC(k) + s * treeOff;
     if (Math.abs(x) > HALF - 4 || Math.abs(z) > HALF - 4 || blocked(x, z, 0.6)) continue;
     if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 2) continue;
-    if (sp.style === 'villa' || sp.style === 'student') palm(x, z, 0.9 + R() * 0.3); else tree(x, z, 0.9 + R() * 0.3, banlieue && R() < 0.2);
+    dress(x, z, () => { if (sp.style === 'villa' || sp.style === 'student') palm(x, z, 0.9 + R() * 0.3); else tree(x, z, 0.9 + R() * 0.3, banlieue && R() < 0.2); });
   }
   let placed = 0;
   while (placed < sp.palms) {
@@ -1030,19 +1268,20 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     placed++;
     if (sp.sea === 'west' && x < -HALF + 8) continue;
     if (blocked(x, z, 0.8)) continue;
-    palm(x, z, 0.9 + R() * 0.4);
+    dress(x, z, () => palm(x, z, 0.9 + R() * 0.4));
   }
   if (sp.sea === 'west') for (let z = -HALF + 6; z < HALF - 4; z += 9) { if (Math.abs(z - roadC(Math.round((z + HALF - ROAD / 2) / PITCH))) > ROAD / 2 + 1) palm(-HALF - 1.2, z, 1.15, true); } // whitewashed trunks
   if (sp.sea === 'north') for (let x = -HALF + 10; x < HALF - 6; x += 18) palm(x, -HALF - 3, 1.1);
   // A few street vendors on the sidewalks.
-  for (let n = 0; n < (banlieue ? 8 : 5); n++) {
+  for (let n = 0; n < (banlieue ? 13 : 5); n++) {
     const k = Math.floor(R() * (NB + 1)), t = -HALF + 20 + R() * (size - 40), s = R() < 0.5 ? -1 : 1, along = R() < 0.5;
     const x = along ? roadC(k) + s * (ROAD / 2 + 1.6) : t, z = along ? t : roadC(k) + s * (ROAD / 2 + 1.6);
     if (Math.abs(x) > HALF - 4 || Math.abs(z) > HALF - 4 || blocked(x, z, 1.2)) continue;
     if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 3) continue;
-    stall(x, z);
+    dress(x, z, () => stall(x, z));
   }
 
+  for (const c of ghosts) colliders.splice(colliders.indexOf(c), 1);   // the venues module builds the real ones
   for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true],
     [asphalt, asphaltMat, false], [tileRoof, tileRoofMat, true], [tin, tinMat, true], [trunks, trunkMat, true], [concrete, concreteMat, true],
     [ringSand, ringSandMat, false], [terrazzo, terrazzoMat, false], [roofSheet, roofSheetMat, true]] as [Batch, THREE.Material, boolean][]) {
@@ -1073,17 +1312,35 @@ export function buildHub(id: HubId, lite = false): HubWorld {
     }
   };
 
+  // the ways out on foot (§0 A): where the middle roads leave the grid, on every side that is not the sea
+  for (const w of waysOut(sp.sea, HALF + 1)) interactables.push({ id: `${id}:walk:${w.side}`, name: 'Sortie du quartier · à pied', kind: 'walk', x: w.x, z: w.z, radius: 6, actions: [] });
+
   return {
-    id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs,
+    id, group, colliders, interactables, bounds, spawn, edges, nodes, lamps: lampMat, facadeMat, lampGlow, signs, canopies,
     tick,
     heightAt(x: number, z: number) {
+      for (const c of climbs) { const h = climbHeight(c, x, z); if (h !== null) return h; }
       for (const r of ramps) {
         if (z < r.z0 || z > r.z1 || x < r.x0 || x > r.xEnd) continue;
         return x >= r.x1 ? r.y1 : r.y0 + ((x - r.x0) / (r.x1 - r.x0)) * (r.y1 - r.y0);
       }
       return 0;
     },
-    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo,
+    people, seats, roofs, rapides, skyDay: 0, arena: arenaInfo, ecurie: ecurieInfo, monument: monumentInfo, sites,
     dispose() { disposeGroup(group); },
+  };
+}
+
+/** Kind of a special block (landmark) of a hub. */
+export type SpecialKind = Special;
+/**
+ * Special blocks of a hub with their centres (mosque, market, station, pitch, gym, port…) and the side of the sea.
+ * Read by systems that populate the city around them (src/social/ambientSpots.ts); the geometry stays in buildHub.
+ */
+export function hubLayout(id: HubId): { specials: { kind: Special; x: number; z: number }[]; sea: 'west' | 'north' | null } {
+  const sp = SPECS[id];
+  return {
+    specials: Object.entries(sp.specials).map(([key, kind]) => { const [i, j] = key.split(',').map(Number); return { kind, x: blockMin(i) + BLK / 2, z: blockMin(j) + BLK / 2 }; }),
+    sea: sp.sea ?? null,
   };
 }

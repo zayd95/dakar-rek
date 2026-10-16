@@ -1,14 +1,18 @@
 import { DurableObject } from 'cloudflare:workers';
-import { isHub, nickname, lookIndex, deviceKey, parseMove, PROTOCOL_VERSION, ROOM_CAPACITY, MAX_ROOMS_PER_HUB, type Peer, type ServerMessage, type ChatMessage } from '../src/multiplayer/protocol';
+import { isHub, nickname, lookIndex, deviceKey, parseMove, parseBall, recordTag, BALL_FEATURE, PROTOCOL_VERSION, ROOM_CAPACITY, MAX_ROOMS_PER_HUB, type Peer, type ServerMessage, type ChatMessage } from '../src/multiplayer/protocol';
 import { parseChatRequest, parseReport, rateLimit, nearRecipients, isPrivateSpace, DedupeMemory, type ChatFailure } from '../src/multiplayer/chatRules';
 import type { HubId } from '../src/core/types';
 
 interface Env { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<CityRoom>; LOBBIES: DurableObjectNamespace<HubLobby>; ALLOWED_ORIGINS?: string }
 interface Session {
-  id: string; name: string; look: number; tag?: string; hub: HubId; room: number; peer: Peer | null; windowAt: number; messages: number;
+  id: string; name: string; look: number; tag?: string; rec?: string; hub: HubId; room: number; peer: Peer | null; windowAt: number; messages: number;
   /** Accepted chat timestamps (sliding window) and players already reported by this connection. */
   chat?: number[]; reported?: string[];
+  /** Kickabout ball relays (src/game/kickabout.ts): this second's window and count, kept apart from the presence budget. */
+  ballAt?: number; balls?: number;
 }
+/** Ball states relayed per second at most (the client sends 10); more are dropped, far more ends the session. */
+const BALL_RATE = 15, BALL_ABUSE = 60;
 const MAX_REPORTS_PER_CONNECTION = 20;
 /** Largest frame accepted: a full chat message (CHAT_MAX_CHARS, any script or emoji) plus its envelope. */
 const MAX_FRAME = 4096;
@@ -87,9 +91,10 @@ export class CityRoom extends DurableObject<Env> {
     const tag = await publicTag(deviceKey(url.searchParams.get('key')));
     if (this.sessions.size >= ROOM_CAPACITY) return new Response('Room full', { status: 409 });
     const [client, server] = Object.values(new WebSocketPair());
-    const session: Session = { id: crypto.randomUUID(), name: nickname(url.searchParams.get('name')), look: lookIndex(url.searchParams.get('look')), tag, hub, room, peer: null, windowAt: Date.now(), messages: 0, chat: [], reported: [] };
+    const rec = recordTag(url.searchParams.get('rec'));
+    const session: Session = { id: crypto.randomUUID(), name: nickname(url.searchParams.get('name')), look: lookIndex(url.searchParams.get('look')), tag, ...(rec ? { rec } : {}), hub, room, peer: null, windowAt: Date.now(), messages: 0, chat: [], reported: [] };
     this.ctx.acceptWebSocket(server); server.serializeAttachment(session); this.sessions.set(server, session);
-    this.send(server, { type: 'welcome', version: PROTOCOL_VERSION, id: session.id, hub, room, time: Date.now(), count: this.sessions.size, peers: [...this.sessions.values()].flatMap(s => s.peer ? [s.peer] : []) });
+    this.send(server, { type: 'welcome', version: PROTOCOL_VERSION, id: session.id, hub, room, time: Date.now(), count: this.sessions.size, peers: [...this.sessions.values()].flatMap(s => s.peer ? [s.peer] : []), features: [BALL_FEATURE] });
     this.broadcast({ type: 'count', count: this.sessions.size }, server);
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -97,16 +102,37 @@ export class CityRoom extends DurableObject<Env> {
     const s = this.sessions.get(ws); if (!s) return;
     if (typeof message !== 'string' || message.length > MAX_FRAME) { this.reject(ws, 1009); return; }
     const now = Date.now();
-    if (now - s.windowAt >= 1000) { s.windowAt = now; s.messages = 0; }
-    if (++s.messages > 20) { this.reject(ws, 1008); return; }
     let data: unknown; try { data = JSON.parse(message); } catch { this.reject(ws, 1008); return; }
     const kind = (data as { type?: unknown } | null)?.type;
+    if (kind === 'ball') { this.ball(ws, s, data, now); return; }
+    if (now - s.windowAt >= 1000) { s.windowAt = now; s.messages = 0; }
+    if (++s.messages > 20) { this.reject(ws, 1008); return; }
     if (kind === 'chat') { await this.chat(ws, s, data, now); return; }
     if (kind === 'report') { await this.report(ws, s, data); return; }
+    if (kind === 'rec') {                                    // the public sporting record under the name (validated shape only)
+      const raw = (data as { rec?: unknown }).rec, rec = raw === null ? undefined : recordTag(raw);
+      if (raw !== null && rec === undefined) { this.reject(ws, 1008); return; }
+      if (rec) s.rec = rec; else delete s.rec;
+      if (s.peer) { s.peer = { ...s.peer, updatedAt: now }; if (s.rec) s.peer.rec = s.rec; else delete s.peer.rec; this.broadcast({ type: 'peer', peer: s.peer }, ws); }
+      ws.serializeAttachment(s); return;
+    }
     const move = parseMove(data, s.hub); if (!move) { this.reject(ws, 1008); return; }
-    s.peer = { ...move, id: s.id, name: s.name, look: s.look, ...(s.tag ? { tag: s.tag } : {}), updatedAt: now };
+    s.peer = { ...move, id: s.id, name: s.name, look: s.look, ...(s.tag ? { tag: s.tag } : {}), ...(s.rec ? { rec: s.rec } : {}), updatedAt: now };
     ws.serializeAttachment(s);
     this.broadcast({ type: 'peer', peer: s.peer }, ws);
+  }
+  /**
+   * The kickabout ball (additive to v1): a sender with a street position relays its ball state to the rest of the room,
+   * validated (finite, clamped to the pitch, no absurd speed), its times never ahead of the server's (a touch cannot
+   * claim the ball in the future), rate-limited apart from presence. Malformed or too frequent: dropped, not answered.
+   */
+  private ball(ws: WebSocket, s: Session, data: unknown, now: number) {
+    if (s.ballAt === undefined || now - s.ballAt >= 1000) { s.ballAt = now; s.balls = 0; }
+    s.balls = (s.balls ?? 0) + 1;
+    if (s.balls > BALL_ABUSE) { this.reject(ws, 1008); return; }
+    if (s.balls > BALL_RATE || !s.peer || s.peer.space !== 'street') return;
+    const b = parseBall(data, now); if (!b) return;
+    this.broadcast({ ...b, t: Math.min(b.t, now), a: Math.min(b.a, now), from: s.id, s: now }, ws);
   }
   /** Proximity or private text. Validated, rate-limited and idempotent by message id; never an economic action. */
   private async chat(ws: WebSocket, s: Session, data: unknown, now: number) {

@@ -32,6 +32,22 @@ describe('interactions: focus', () => {
     expect(sys.update('street', 0, 0, 0)?.id).toBe('x');
     expect(sys.all().map(a => a.id)).toEqual(['a', 'b']);
   });
+  it('an action pressed right after a sheet closed (no focus kept while it was up) picks the focus itself', () => {
+    // the arena's window: « Annuler » on the ticket sheet, then the button again before the next frame
+    let collected = 0;
+    const guichet = T('pikine:arena:guichet:guichet', 0.4, 1.2);
+    const sys = new Interactions(); sys.add({ name: 'places', collect: (_s, _x, _z, out) => { collected++; out.push(guichet); } });
+    expect(sys.update('street', 0, 0, 0)?.id).toBe(guichet.id);
+    sys.focus = null;                                                                   // the sheet was up (main.ts: no focus in menu mode)
+    expect(sys.primary()).toBeNull();                                                   // what the button used to run: nothing
+    expect(sys.current('street', 0, 0, 0)?.id).toBe(guichet.id);
+    expect(sys.primary()?.label).toBe(guichet.id);
+    const n = collected;
+    expect(sys.current('street', 0, 0, 0)?.id).toBe(guichet.id);                        // a focus kept: the frame's, nothing collected again
+    expect(collected).toBe(n);
+    sys.focus = null;
+    expect(sys.current('street', 20, 20, 0)).toBeNull();                               // nothing in reach: still nothing
+  });
 });
 
 describe('seats', () => {

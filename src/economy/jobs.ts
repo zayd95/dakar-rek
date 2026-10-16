@@ -2,11 +2,12 @@ import type { HubId, ActiveJob } from '../core/types';
 import type { GameState } from '../core/state';
 import { DONE_JOBS_MAX } from '../core/save';
 import { ECONOMY } from './config';
+import { payPreview, workPay } from './polyvalence';
 
 /**
  * Tiak Tiak deliveries — data-driven routes and the pure job logic (no Three.js: unit-tested).
  * The courier walks for now (no driving physics). Places are found in the hub by interactable id fragment.
- * Client names and route texts are a PROVISIONAL DRAFT (fictional people; Habib to review).
+ * Client names and route texts are a draft (fictional people; Habib to review the texts). The pay table (config.ts) is the game's own.
  * Money is game money saved on this device: there is no shared or server economy yet.
  */
 export interface Place { frag: string; name: string }
@@ -56,7 +57,10 @@ export const ROUTES: Route[] = [
 ];
 
 export const routeById = (id: string) => ROUTES.find(r => r.id === id);
+/** Base pay of a route (the design table); what is paid is scaled by polyvalence at hand-over. */
 export const routePay = (r: Route) => ECONOMY.tiak.pay[r.id] ?? 1000;
+/** Pay of a route if delivered now, on time, with the polyvalence multiplier (offers and the HUD line). */
+export const payNow = (s: GameState, base: number) => payPreview(s, base, 'livraison');
 
 /** Offers in a hub: recommended (better-paid) runs first once unlocked. */
 export function offers(s: GameState, hub: HubId): Route[] {
@@ -118,7 +122,7 @@ export interface Completion { runId: string; route: Route; paid: number; late: b
 
 /**
  * Hand over the parcel. Pays once per run id: a run already completed (or not the one in progress, or cancelled)
- * pays nothing. Late deliveries pay less, never a negative amount.
+ * pays nothing. Late deliveries pay less, never a negative amount. The pay is scaled by polyvalence (a delivery counts).
  */
 export function completeJob(s: GameState, runId: string): Completion | null {
   const j = s.data.jobs, a = j.active;
@@ -129,7 +133,7 @@ export function completeJob(s: GameState, runId: string): Completion | null {
   if (j.done.length > DONE_JOBS_MAX) j.done.splice(0, j.done.length - DONE_JOBS_MAX);
   if (!route) return null;
   const late = s.data.playedMs - a.startedMs > a.limitMs;
-  const pay = Math.max(0, Math.round(late ? a.pay * ECONOMY.tiak.latePayFactor : a.pay));
+  const pay = Math.max(0, workPay(s, late ? a.pay * ECONOMY.tiak.latePayFactor : a.pay, 'livraison'));
   const paid = s.addMoney(pay, `Livraison Tiak Tiak → ${route.to.name}${late ? ' (en retard)' : ''}`);
   s.adjust(ECONOMY.tiak.fatigue);
   s.count('livraisons'); s.count('actions');

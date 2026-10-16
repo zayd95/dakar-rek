@@ -46,7 +46,7 @@ export interface DisciplineRules {
   /** Break-away timing inside an empoignade: a window of `breakOpen` s every `breakCycle` s, first at `breakFirst` s. */
   breakCycle: number; breakOpen: number; breakFirst: number;
   /** Referee decision at time-out: points per action; equal points = draw. */
-  timeout: { guard: number; grab: number; breakaway: number; tie: 'egalite' };
+  timeout: { guard: number; grab: number; breakaway: number; stagger: number; hit: number; tie: 'egalite' };
 }
 
 export const RULES: Record<Discipline, DisciplineRules> = {
@@ -60,20 +60,20 @@ export const RULES: Record<Discipline, DisciplineRules> = {
     openingSeconds: 0.9,
     clinchSeconds: 2.6,
     breakCycle: 1.0, breakOpen: 0.38, breakFirst: 0.45,
-    timeout: { guard: 1, grab: 1, breakaway: 1, tie: 'egalite' },
+    timeout: { guard: 1, grab: 1, breakaway: 1, stagger: 0, hit: 0, tie: 'egalite' },
   },
-  // TODO(avec frappe): Habib chose "lutte avec frappe" as the target discipline; it is ours to design (no outside
-  // review). Keep `enabled: false` until the strike mechanics exist; the separate ranking counters (`lamb_af_*`) are
-  // reserved so the two disciplines never share a record.
+  // Làmb 2.0 (spec 10 Oct.): « lutte avec frappe », the target discipline, ours to design. Built step by step
+  // (src/lamb/stand.ts, docs/LAMB2.md) and playable behind the `lamb2` flag; `enabled` stays false until it is released.
+  // The separate ranking counters (`lamb_af_*`) are reserved so the two disciplines never share a record.
   avec_frappe: {
     id: 'avec_frappe', label: 'Lutte avec frappe', status: RULES_STATUS, enabled: false, strikes: true,
     roundSeconds: 90,
-    endsBy: 'Prochaine discipline du jeu, en conception',
+    endsBy: 'Projection au sol à la fin d’une empoignade gagnée ; les frappes déséquilibrent et ouvrent',
     grabRange: 1.5,
     stamina: { max: 100, regen: 14, regenGuard: 7, grabCost: 22, breakCost: 25, breakMissCost: 12, dodgeCost: 12, clinchDrain: 8 },
     responseWindow: 0.6, openingSeconds: 0.9, clinchSeconds: 2.6,
     breakCycle: 1.0, breakOpen: 0.38, breakFirst: 0.45,
-    timeout: { guard: 1, grab: 1, breakaway: 1, tie: 'egalite' },
+    timeout: { guard: 1, grab: 1, breakaway: 1, stagger: 2, hit: 1, tie: 'egalite' },
   },
 };
 
@@ -87,11 +87,14 @@ export interface BoutScore {
   grabs: number;
   /** Empoignades broken by a dégagement. */
   breaks: number;
+  /** Avec frappe: clean strikes landed, and opponents made to stagger (counted by the referee). */
+  hits?: number;
+  staggers?: number;
 }
-export const emptyScore = (): BoutScore => ({ guards: 0, grabs: 0, breaks: 0 });
+export const emptyScore = (): BoutScore => ({ guards: 0, grabs: 0, breaks: 0, hits: 0, staggers: 0 });
 
 export function points(s: BoutScore, r: DisciplineRules = RULES.sans_frappe): number {
-  return s.guards * r.timeout.guard + s.grabs * r.timeout.grab + s.breaks * r.timeout.breakaway;
+  return s.guards * r.timeout.guard + s.grabs * r.timeout.grab + s.breaks * r.timeout.breakaway + (s.staggers ?? 0) * r.timeout.stagger + (s.hits ?? 0) * r.timeout.hit;
 }
 
 /** Referee decision when the time runs out without a projection: more points wins, equal points is a draw. */
@@ -188,8 +191,14 @@ export const RECORD_KEYS = {
   classe: { v: 'lamb_classe_v', d: 'lamb_classe_d', n: 'lamb_classe_n', ab: 'lamb_classe_ab' },
 } as const;
 
-export function record(k: Counters, mode: 'amical' | 'classe') {
-  const r = RECORD_KEYS[mode];
+/** Avec frappe keeps its own record (`lamb_af_*`), so the two disciplines never share one. */
+export const RECORD_KEYS_AF = {
+  amical: { v: 'lamb_af_amical_v', d: 'lamb_af_amical_d', n: 'lamb_af_amical_n', ab: 'lamb_af_amical_ab' },
+  classe: { v: 'lamb_af_classe_v', d: 'lamb_af_classe_d', n: 'lamb_af_classe_n', ab: 'lamb_af_classe_ab' },
+} as const;
+
+export function record(k: Counters, mode: 'amical' | 'classe', discipline: Discipline = 'sans_frappe') {
+  const r = (discipline === 'avec_frappe' ? RECORD_KEYS_AF : RECORD_KEYS)[mode];
   return { v: c(k, r.v), d: c(k, r.d), n: c(k, r.n), ab: c(k, r.ab) };
 }
 
@@ -208,10 +217,13 @@ export function boutRewards(r: BoutResult): Rewards {
   return { needs: { ...effort, moral: -4 }, coach: 0, lines: ['Moral −4', 'Coach Ablaye : « On retourne à l’entraînement. »'] };
 }
 
-/** Counter increments for a finished bout (applied with GameState.count). Keeps the global `combats`/`victoires`. */
-export function recordIncrements(r: BoutResult): Counters {
+/**
+ * Counter increments for a finished bout (applied with GameState.count). Keeps the global `combats`/`victoires`; each
+ * discipline has its own record keys.
+ */
+export function recordIncrements(r: BoutResult, discipline: Discipline = 'sans_frappe'): Counters {
   if (r.mode === 'entrainement') return r.outcome === 'abandon' ? {} : { lamb_skill: 1 };
-  const keys = RECORD_KEYS[r.mode];
+  const keys = (discipline === 'avec_frappe' ? RECORD_KEYS_AF : RECORD_KEYS)[r.mode];
   if (r.outcome === 'abandon') return { [keys.ab]: 1, lamb_abandons: 1 };
   const out: Counters = { combats: 1 };
   if (r.winner === 'player') { out.victoires = 1; out[keys.v] = 1; }

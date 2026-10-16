@@ -7,14 +7,47 @@ export interface LedgerEntry { at: number; label: string; amount: number }
 export const phoneHooks: {
   /** Messages app (chat module). */
   openMessages?: () => void;
+  /** « Aller à pied » to a neighbourhood (main.ts doWalk: free, any energy, src/world/walk.ts). */
+  walkTo?: (hub: import('../core/types').HubId) => void;
+  /** The neighbourhood the player lives in (« Rentrer chez moi »), null without a home. */
+  homeHub?: () => import('../core/types').HubId | null;
   /** Wallet history (economy module). Local to the device until a server ledger exists. */
   ledger?: () => LedgerEntry[];
-  /** Home app: furniture owned and available (economy/housing module). */
+  /** Home app: where the player lives, its furniture, arranging it (ownership module). */
   openHome?: () => void;
+  /** « Biens » app: net worth, everything owned or rented, listings (ownership module). */
+  openAssets?: () => void;
+  /** The ownership sheet of one asset id (a home, a plot…; `business:<placeId>` talks business at that place). */
+  openAsset?: (assetId: string) => void;
   /** Jobs app (economy module). */
   openJobs?: () => void;
-  /** Arena app: sporting profile (arena module). */
+  /** « Affaires » app: ventures, income, polyvalence, purchases (economy module). */
+  openBusiness?: () => void;
+  /**
+   * Wealth beside the cash, for the wallet (economy module): value of everything owned (homes, land, billboards,
+   * ventures, furniture), income and charges per in-game hour, polyvalence line.
+   */
+  wealth?: () => { assets: number; perHour: number; charges: number; polyvalence: string };
+  /** Arena app: sporting profile (arena module; the career module adds rank, record, purses and attributes). */
   arenaProfile?: () => { label: string; value: string }[];
+  /**
+   * Profile app: Forme / Richesse / Réputation / Influence, 0–100 each with a word and a reason (career module), and
+   * the change since the last day played (« +6 depuis hier », '' when none; real saved values only).
+   */
+  profileDims?: () => { label: string; score: number; level: string; note: string; delta?: string }[];
+  /**
+   * Arena app › Lutteurs (career module): one card per roster wrestler (src/career/roster.ts wrestlerCard, with an SVG
+   * portrait), the city's table linking to them, and « Suivre » (one wrestler followed, or none: returns who is followed).
+   */
+  lutteurs?: () => { id: string; name: string; ecurie: string; style: string; level: string; v: number; d: number; n: number; pts: number; place: number;
+    belt: string | null; last: { day: number; vs: string; res: 'V' | 'D' | 'N'; main: boolean; title: boolean }[]; portrait: string; followed: boolean }[];
+  cityTable?: () => { season: number; rows: { id: string | null; place: number; name: string; pts: number; sub: string }[] };
+  follow?: (id: string | null) => string | null;
+  /** « Ce soir » app: the evening's page (src/arena/tonight.ts), and « Y aller » toward one of its targets. */
+  tonight?: () => { title: string; rows: { icon: string; label: string; detail?: string; go?: string; open?: string }[] }[];
+  tonightGo?: (key: string) => void;
+  /** Profile app: one line under the name (« Une vie à Dakar », « Lutteur · Undercards »). Never a class to pick. */
+  profileHeadline?: () => string;
   /** People app: neighbours the player knows (NPC module). */
   openPeople?: () => void;
   /** Local places directory and walking destination (city module). */

@@ -80,7 +80,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   check('interior: enter starter room', inRoom.x > 900, `${inRoom.x.toFixed(1)},${inRoom.z.toFixed(1)}`);
   await page.keyboard.down('KeyW'); await page.waitForTimeout(4000); await page.keyboard.up('KeyW');
   const wallPos = await page.evaluate(() => window.__dakar.pos());
-  check('interior: walls hold the player inside', wallPos.x > 996 && wallPos.x < 1004 && Math.abs(wallPos.z) < 3, `${wallPos.x.toFixed(1)},${wallPos.z.toFixed(1)}`);
+  // the room sits where the home's interior is built (x ≈ 1600 since the asset model): stay within a few metres of the way in
+  check('interior: walls hold the player inside', wallPos.x > 900 && Math.abs(wallPos.x - inRoom.x) < 4.5 && Math.abs(wallPos.z - inRoom.z) < 4.5, `${wallPos.x.toFixed(1)},${wallPos.z.toFixed(1)} (in at ${inRoom.x.toFixed(1)},${inRoom.z.toFixed(1)})`);
   await page.screenshot({ path: `${out}/desktop-interior-home.png` });
   await page.evaluate(() => { window.__dakar.state.data.wallet += 0; });
   await page.evaluate(() => window.__dakar.exit());
@@ -90,11 +91,17 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // dibiterie: walk in from the street to the counter
   await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.place(-18, -56, 0); });
   await page.keyboard.down('KeyW'); for (let i = 0; i < 40; i++) { await page.waitForTimeout(300); if ((await page.evaluate(() => window.__dakar.pos())).z > -50.5) break; } await page.keyboard.up('KeyW');
-  const dib = await page.evaluate(() => window.__dakar.pos());
-  check('dibiterie: walk in from the street', /Dibiterie/.test(dib.near ?? ''), `${dib.z.toFixed(1)} ${dib.near}`);
+  const dib = await page.evaluate(() => {
+    const d = window.__dakar, p = d.pos(), it = d.interactables().find(i => /Dibiterie/.test(i.name));
+    return { ...p, focus: d.focus()?.id ?? null, dist: it ? Math.hypot(it.x - p.x, it.z - p.z) : null };
+  });
+  // the Dibi is an open-air venue (src/venues): walking in from the street reaches its tables (benches may all be taken)
+  check('dibiterie: walk in from the street', /Dibiterie/.test(dib.near ?? '') || /dibiterie:/.test(dib.focus ?? '') || (dib.dist !== null && dib.dist < 5), `${dib.z.toFixed(1)} ${dib.near ?? dib.focus ?? `${dib.dist?.toFixed(1)} m from the Dibi`}`);
   // Maïga: enter and find the counter
   await page.evaluate(() => { const d = window.__dakar; d.teleport('pikine'); d.enter('maiga'); });
-  await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 8000 }).catch(() => {});
+  // the door's 350 ms fade runs after the hub's rebuild; on a CI runner's software renderer that rebuild and its first
+  // frame have held the main thread past 8 s (f4b843b): the wait is room for the machine, not what is checked
+  await page.waitForFunction(() => window.__dakar.pos().x > 900, null, { timeout: 30000 }).catch(() => {});
   const mg = await page.evaluate(() => window.__dakar.pos());
   check('maiga: enter the narrow room', mg.x > 900, `${mg.x.toFixed(1)} ${mg.near}`);
   await page.evaluate(() => window.__dakar.exit());
@@ -104,7 +111,7 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.waitForFunction(() => window.__dakar.duelInfo()?.phase === 'fight', null, { timeout: 120000 }).catch(() => {});
   // keep grabbing until the fall (a wall-clock budget: slow CPU rendering stretches the clinch), remembering the last state seen
   let bout = null;
-  for (const t0 = Date.now(); Date.now() - t0 < 90000;) {
+  for (const t0 = Date.now(); Date.now() - t0 < 200000;) {             // 90 s once stopped at 96 % of the clinch (run 38006915021)
     const inf = await page.evaluate(() => window.__dakar.duelInfo());
     if (!inf) break;
     bout = inf;
@@ -168,8 +175,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // save + reload
   await page.evaluate(() => { window.__dakar.state.data.wallet += 1; });
   await page.waitForTimeout(9000);
-  const saved = await page.evaluate(() => localStorage.getItem('dakarrek.guest.save'));
-  check('save: written to device storage', !!saved && JSON.parse(saved).schemaVersion === 3, saved ? `${saved.length} bytes` : 'none');
+  const saved = await page.evaluate(() => localStorage.getItem('dakarrek.guest.save.v5'));
+  check('save: written to device storage', !!saved && JSON.parse(saved).schemaVersion >= 3, saved ? `${saved.length} bytes · v${JSON.parse(saved).schemaVersion}` : 'none');
   const walletBefore = await page.evaluate(() => window.__dakar.state.data.wallet);
   await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(() => window.__dakar, null, { timeout: 30000 });
@@ -205,7 +212,9 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   await page.evaluate(() => { const d = window.__dakar; d.playBeat('ablaye_join', 'rejoindre'); d.state.count('lutte', 2); d.playBeat('ablaye_rival', 'pret'); d.playBeat('lamine_meet', 'respect'); d.setLook('indigo', 'rayures', ['taille', 'bras_d']); });
   await page.evaluate(() => window.__dakar.journal()); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/${label}-journal.png` });
-  await page.keyboard.press('Escape'); await page.evaluate(() => document.querySelector('#modal')?.classList.remove('on')); await page.waitForTimeout(200);
+  // close the journal with its button, not Escape: since the UI lane, Escape also stops a làmb scene, and on a slow
+  // runner (~1 frame/s) the key is read only on the next frame — after the entrance scene below has started.
+  await page.evaluate(() => { document.querySelector('#modal.on .item.close')?.click(); document.querySelector('#modal')?.classList.remove('on'); }); await page.waitForTimeout(200);
   if (label === 'desktop') { await page.evaluate(() => window.__dakar.outfit()); await page.waitForTimeout(300); await page.screenshot({ path: `${out}/desktop-outfit.png` }); await page.evaluate(() => document.querySelector('#modal')?.classList.remove('on')); await page.waitForTimeout(200); }
   for (const [kind, times] of [['entrance', [3.5, 9, 13]], ['training', [3]], ['celebration', [3]], ['watch', [3]]]) {
     await page.evaluate(k => window.__dakar.scene(k), kind); await page.waitForTimeout(300);

@@ -1,12 +1,15 @@
 import type { HubId, Needs, SaveData } from './types';
 import { clamp } from './rng';
-import { newSave, LEDGER_MAX } from './save';
+import { newSave, LEDGER_MAX, MONEY_MAX } from './save';
+import { cityTimeAt } from './clock';
 
 /** Personal played time drains needs; it only advances while the game is actively played. */
 const DRAIN_PER_PLAYED_MIN: Needs = { faim: 1.6, energie: 0.9, moral: 0, social: 0.8, hygiene: 0.6 };
 
 export class GameState {
   data: SaveData;
+  /** City hour 0–24, read by opening hours (src/world/content.ts `during`); the game wires the shared clock and the debug override. */
+  hour: () => number = () => cityTimeAt(Date.now()).hourFloat;
   constructor(data: SaveData = newSave()) { this.data = data; }
 
   get wallet() { return this.data.wallet; }
@@ -15,10 +18,12 @@ export class GameState {
   /**
    * Guest-only local wallet. Transferable money will live in the server ledger (PENDING).
    * Every change is written to the device ledger (last 100) with what was actually applied (the wallet never goes below 0).
+   * No economic cap: amounts stay exact up to MONEY_MAX (≈ 9 × 10^15 F); a non-finite amount is ignored.
    */
   addMoney(n: number, label = 'Divers', at = Date.now()) {
     const before = this.data.wallet;
-    this.data.wallet = Math.max(0, Math.round(this.data.wallet + n));
+    if (!Number.isFinite(n)) return 0;
+    this.data.wallet = Math.min(MONEY_MAX, Math.max(0, Math.round(this.data.wallet + n)));
     const amount = this.data.wallet - before;
     if (amount !== 0) {
       this.data.ledger.push({ at, label, amount });

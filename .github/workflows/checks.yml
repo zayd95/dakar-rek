@@ -7,7 +7,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # city + two-player + full launch suites take 10–15 min on a runner; 15 cut runs off mid-check
+    timeout-minutes: 45  # unit + city + two-player + full launch suites now take about 30 min on a runner (30 cut the run off in its last scenes); 15 cut runs off mid-check
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

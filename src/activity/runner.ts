@@ -1,14 +1,20 @@
 import type { GameState } from '../core/state';
 import type { Clip } from '../actors/humanoid';
-import type { Seat, Seats } from '../interact/seats';
+import { seatClip, type Seat, type Seats } from '../interact/seats';
 import { applyEffects, type EffectHooks } from './effects';
-import type { ActivityCtx, ActivitySpec, SeatPick, Step } from './types';
+import type { ActivityCategory, ActivityCtx, ActivitySpec, Effects, Gesture, SeatPick, Step } from './types';
 
 /** Items an activity takes away (sell, use up), summed over its steps. */
 export function itemsUsed(spec: ActivitySpec): Record<string, number> {
   const out: Record<string, number> = {};
   for (const s of spec.steps) for (const [id, n] of Object.entries(s.effects?.items ?? {})) if (n < 0) out[id] = (out[id] ?? 0) - n;
   return out;
+}
+
+/** Money a gesture step pays for a score (0…1): at least 30 %, a 20 % tip for a perfect job. */
+export function gesturePay(money: number, score: number): number {
+  const k = Math.max(0, Math.min(1, score));
+  return Math.round(money * (0.3 + 0.7 * k) * (k >= 1 ? 1.2 : 1));
 }
 
 /** What the runner needs from the game (main.ts provides it). */
@@ -24,16 +30,21 @@ export interface ActivityServices extends EffectHooks {
   walking?(): boolean;
   /** Hold a clip on the player's body (null = back to normal). */
   clip(c: Clip | null): void;
+  /** Get the player up from their seat (out of bed after sleeping). */
+  stand?(): void;
   /** Movement lock while a timed step runs. */
   busy(on: boolean): void;
   progress(on: boolean, pct?: number, label?: string): void;
+  /** Play a gesture; call `done(score)` when it ends. Returns a function that aborts it (no `done` afterwards).
+   *  Without it, gesture steps fall back to a short timed step with a middling score. */
+  gesture?(g: Gesture, label: string, done: (score: number) => void): () => void;
   /** Inventory check for activities that use or sell items. */
   hasItem?(id: string, n: number): boolean;
   toast(msg: string): void;
   save(): void;
 }
 
-interface Running { spec: ActivitySpec; ctx: ActivityCtx; i: number; t: number; notes: string[]; walk?: boolean }
+interface Running { spec: ActivitySpec; ctx: ActivityCtx; i: number; t: number; notes: string[]; abort?: () => void; score?: number; scores: number[]; walk?: boolean }
 
 /**
  * Plays any ActivitySpec: charge the price, then each step in order — take a seat if asked (and wait while the player
@@ -50,9 +61,12 @@ export class ActivityRunner {
 
   get running() { return this.cur !== null; }
   /** The step running now; `walking` while the player is still on the way to the step's seat. */
-  get current(): { spec: ActivitySpec; step: Step; index: number; t: number; ctx: ActivityCtx; walking: boolean } | null {
-    const c = this.cur; return c ? { spec: c.spec, step: c.spec.steps[c.i], index: c.i, t: c.t, ctx: c.ctx, walking: !!c.walk } : null;
+  get current(): { spec: ActivitySpec; step: Step; index: number; t: number; scores: number[]; ctx: ActivityCtx; walking: boolean } | null {
+    const c = this.cur; return c ? { spec: c.spec, step: c.spec.steps[c.i], index: c.i, t: c.t, scores: [...c.scores], ctx: c.ctx, walking: !!c.walk } : null;
   }
+
+  /** Money an activity step would pay if done now (polyvalence…), for the prices shown before choosing. */
+  payPreview(money: number, c: ActivityCategory | null): number { return this.s.payPreview ? this.s.payPreview(money, c) : money; }
 
   /** Why the activity cannot start right now, or null. */
   blocked(spec: ActivitySpec): string | null {
@@ -70,7 +84,7 @@ export class ActivityRunner {
     const label = ctx.place ? `${spec.label} · ${ctx.place}` : spec.label;
     const notes: string[] = [];
     if (spec.price) notes.push(...applyEffects(this.s.state, { money: -spec.price, label }, label, this.s));
-    this.cur = { spec, ctx, i: -1, t: 0, notes };
+    this.cur = { spec, ctx, i: -1, t: 0, notes, scores: [] };
     this.next();
     return true;
   }
@@ -80,7 +94,8 @@ export class ActivityRunner {
     const c = this.cur; if (!c) return;
     if (c.walk) { if (this.s.walking?.()) return; c.walk = false; this.begin(); return; }
     const step = c.spec.steps[c.i];
-    const dur = step.seconds ?? 0;
+    if (c.abort) return;                                      // a gesture is being played: it ends the step itself
+    const dur = this.duration(step);
     c.t += dt;
     if (dur > 0) this.s.progress(true, Math.min(1, c.t / dur), step.label);
     if (c.t >= dur) this.finishStep();
@@ -90,7 +105,8 @@ export class ActivityRunner {
   cancel(reason = '') {
     const c = this.cur; if (!c) return;
     this.cur = null;
-    this.s.progress(false); this.s.busy(false); this.s.clip(this.s.seated() ? 'Sit' : null);
+    c.abort?.(); c.abort = undefined;
+    this.s.progress(false); this.s.busy(false); this.wakeUp(c.spec); this.s.clip(this.seatPose());
     if (reason) this.s.toast(reason);
     this.onEnd(c.spec, false);
   }
@@ -111,7 +127,19 @@ export class ActivityRunner {
   private begin() {
     const c = this.cur!, step = c.spec.steps[c.i];
     if (step.clip) this.s.clip(step.clip);
-    if ((step.seconds ?? 0) > 0) { this.s.busy(true); this.s.progress(true, 0, step.label); }
+    const line = typeof step.line === 'function' ? step.line() : step.line;
+    if (line) this.s.toast(line);
+    if (step.gesture && this.s.gesture) {
+      this.s.busy(true); this.s.progress(false);
+      const i = c.i; let ended = false;
+      const abort = this.s.gesture(step.gesture, step.label, score => {
+        if (ended || this.cur !== c || c.i !== i) return;
+        ended = true; c.abort = undefined; c.score = score; this.finishStep();
+      });
+      if (!ended) c.abort = () => { ended = true; abort(); };
+      return;
+    }
+    if (this.duration(step) > 0) { this.s.busy(true); this.s.progress(true, 0, step.label); }
     else this.finishStep();
   }
 
@@ -119,27 +147,47 @@ export class ActivityRunner {
     const c = this.cur; if (!c) return;
     const step = c.spec.steps[c.i];
     const label = step.effects?.label ?? (c.ctx.place ? `${c.spec.label} · ${c.ctx.place}` : c.spec.label);
-    c.notes.push(...applyEffects(this.s.state, step.effects, label, this.s));
+    let fx: Effects | undefined = step.effects;
+    if (step.gesture) {
+      const score = c.score ?? 0.6; c.score = undefined; c.scores.push(score);
+      if (fx?.money && fx.money > 0) fx = { ...fx, money: gesturePay(fx.money, score) };
+      c.notes.push(score >= 1 ? 'Parfait !' : score >= 0.6 ? 'Bien joué' : 'Peut mieux faire');
+    }
+    c.notes.push(...applyEffects(this.s.state, fx, label, this.s));
     step.then?.();
     if (this.cur === c) this.next();                          // a follow-up may have cancelled or started something else
   }
 
   private finish() {
     const c = this.cur!; this.cur = null;
-    this.s.progress(false); this.s.busy(false); this.s.clip(this.s.seated() ? 'Sit' : null);
+    this.s.progress(false); this.s.busy(false); this.wakeUp(c.spec); this.s.clip(this.seatPose());
     if (!c.spec.quiet || c.notes.length) this.s.toast([c.spec.label + ' ✓', ...c.notes].join('  '));
     this.s.save();
     this.onEnd(c.spec, true);
   }
 
-  /** Seats that fit the pick, best first: the one the player already sits on, else the free ones nearest to the player. */
+  /** Seconds a step lasts; a gesture step without a gesture player becomes a short timed step. */
+  private duration(step: Step): number {
+    return step.gesture && !this.s.gesture ? (step.seconds ?? 3) : (step.seconds ?? 0);
+  }
+
+  /** Sleeping ends out of bed, whether the night was finished or stopped: the player gets up beside it. */
+  private wakeUp(spec: ActivitySpec) { if (this.s.seated() && spec.steps.some(st => st.primitive === 'sleep')) this.s.stand?.(); }
+
+  /** Back to the seat's own pose (Sit, Kneel on a prayer row…) or to normal when standing. */
+  private seatPose(): Clip | null { const s = this.s.seated(); return s ? seatClip(s) : null; }
+
+  /**
+   * Seats that fit the pick, best first: the one the player already sits on (a second drink at the same stool or
+   * table: stay there), else the free ones nearest to the player (main.ts walks there; an unreachable one is skipped).
+   */
   private seatChoices(p: SeatPick): Seat[] {
     if (typeof p === 'string' && p !== 'near') { const s = this.s.seats.get(p); return s ? [s] : []; }
-    const o = p === 'near' ? {} : p, me = this.s.player(), now = this.s.seated();
+    const o = p === 'near' ? {} : p, me = this.s.player(), now = this.s.seated(), space = this.s.space();
     const at = o.near ?? me, r = o.r ?? (o.near ? 6 : 8);
     const fits = (s: Seat) => (!o.kind || s.kind === o.kind) && Math.hypot(s.x - at.x, s.z - at.z) <= r;
-    if (now && fits(now)) return [now];
-    return this.s.seats.inSpace(this.s.space()).filter(s => !s.occupant && fits(s))
+    if (now && now.space === space && fits(now)) return [now];
+    return this.s.seats.inSpace(space).filter(s => !s.occupant && fits(s))
       .sort((a, b) => Math.hypot(a.x - me.x, a.z - me.z) - Math.hypot(b.x - me.x, b.z - me.z)).slice(0, 6);
   }
 }

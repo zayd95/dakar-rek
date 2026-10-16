@@ -90,9 +90,10 @@ try {
     check(`${label}: mall purchase debits once and feeds the player`, (await page.evaluate(() => window.__dakar.state.wallet)) === wallet - 500 && (await page.evaluate(() => window.__dakar.state.data.needs.faim)) > 39);
     if (!touch) {
       await page.evaluate(() => window.__dakar.place(30, 55, Math.PI));
-      await page.keyboard.down('KeyW');
-      try { await page.waitForFunction(() => window.__dakar.pos().z < 46.5, null, { timeout: 20000 }); }
-      finally { await page.keyboard.up('KeyW'); }
+      // jog (Shift) through the entrance: the default walk is slower, and CI renders a frame every second or so
+      await page.keyboard.down('ShiftLeft'); await page.keyboard.down('KeyW');
+      try { await page.waitForFunction(() => window.__dakar.pos().z < 46.5, null, { timeout: 60000 }); }
+      finally { await page.keyboard.up('KeyW'); await page.keyboard.up('ShiftLeft'); }
       check('desktop: the mall entrance can be walked through', true);
     }
     await page.evaluate(() => { const d = window.__dakar; d.place(30, 47, Math.PI); d.setHour(21); d.cam([60, 16, 60], [30, 2, 26]); });

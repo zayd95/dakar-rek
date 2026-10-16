@@ -1,0 +1,332 @@
+[
+  {
+    "name": "portrait",
+    "drift": {
+      "distance": 0.43166677969035727,
+      "speedAfterCancel": 5.479914997088131e-13
+    },
+    "run": {
+      "selected": "false",
+      "label": "Courir"
+    },
+    "movement": {
+      "walk": 1.9964059794001714,
+      "jog": 4.196040118848153,
+      "sprint": 6.994961255213023,
+      "stopped": 3.8581773877626666e-23,
+      "reset": "false"
+    },
+    "quiet": {
+      "w": 390,
+      "h": 844,
+      "zone": {
+        "left": 117,
+        "right": 273,
+        "top": 279,
+        "bottom": 523
+      },
+      "overlays": [
+        {
+          "id": "#stats",
+          "box": {
+            "left": 10,
+            "top": 10,
+            "right": 162,
+            "bottom": 70
+          }
+        },
+        {
+          "id": "#place",
+          "box": {
+            "left": 219,
+            "top": 10,
+            "right": 328,
+            "bottom": 56
+          }
+        },
+        {
+          "id": "#menuBtn",
+          "box": {
+            "left": 336,
+            "top": 10,
+            "right": 380,
+            "bottom": 54
+          }
+        },
+        {
+          "id": "#goal",
+          "box": {
+            "left": 10,
+            "top": 84,
+            "right": 252,
+            "bottom": 125
+          }
+        },
+        {
+          "id": "#actbar",
+          "box": {
+            "left": 309,
+            "top": 704,
+            "right": 374,
+            "bottom": 822
+          }
+        },
+        {
+          "id": "#temp",
+          "box": {
+            "left": 151,
+            "top": 827,
+            "right": 239,
+            "bottom": 839
+          }
+        },
+        {
+          "id": "#presenceBtn",
+          "box": {
+            "left": 294,
+            "top": 66,
+            "right": 380,
+            "bottom": 106
+          }
+        },
+        {
+          "id": "#runBtn",
+          "box": {
+            "left": 168,
+            "top": 752,
+            "right": 226,
+            "bottom": 810
+          }
+        }
+      ],
+      "over": [],
+      "lines": 0,
+      "moments": 0,
+      "log": 2,
+      "phone": false,
+      "sheet": false
+    },
+    "errors": [],
+    "ok": false
+  },
+  {
+    "name": "landscape",
+    "drift": {
+      "distance": 0.43166677969035727,
+      "speedAfterCancel": 5.479914997088131e-13
+    },
+    "run": {
+      "selected": "false",
+      "label": "Courir"
+    },
+    "movement": {
+      "walk": 1.9964059794001714,
+      "jog": 4.196040118848153,
+      "sprint": 6.994961255213023,
+      "stopped": 3.8581773877626666e-23,
+      "reset": "false"
+    },
+    "quiet": {
+      "w": 844,
+      "h": 390,
+      "zone": {
+        "left": 253,
+        "right": 591,
+        "top": 129,
+        "bottom": 242
+      },
+      "overlays": [
+        {
+          "id": "#stats",
+          "box": {
+            "left": 10,
+            "top": 8,
+            "right": 164,
+            "bottom": 72
+          }
+        },
+        {
+          "id": "#place",
+          "box": {
+            "left": 306,
+            "top": 8,
+            "right": 538,
+            "bottom": 56
+          }
+        },
+        {
+          "id": "#menuBtn",
+          "box": {
+            "left": 790,
+            "top": 10,
+            "right": 834,
+            "bottom": 54
+          }
+        },
+        {
+          "id": "#goal",
+          "box": {
+            "left": 10,
+            "top": 80,
+            "right": 330,
+            "bottom": 121
+          }
+        },
+        {
+          "id": "#actbar",
+          "box": {
+            "left": 759,
+            "top": 250,
+            "right": 828,
+            "bottom": 368
+          }
+        },
+        {
+          "id": "#temp",
+          "box": {
+            "left": 378,
+            "top": 373,
+            "right": 466,
+            "bottom": 385
+          }
+        },
+        {
+          "id": "#presenceBtn",
+          "box": {
+            "left": 748,
+            "top": 66,
+            "right": 834,
+            "bottom": 106
+          }
+        },
+        {
+          "id": "#runBtn",
+          "box": {
+            "left": 569,
+            "top": 310,
+            "right": 627,
+            "bottom": 368
+          }
+        }
+      ],
+      "over": [],
+      "lines": 0,
+      "moments": 0,
+      "log": 2,
+      "phone": false,
+      "sheet": false
+    },
+    "errors": [],
+    "ok": false
+  },
+  {
+    "name": "small",
+    "drift": {
+      "distance": 0.43166677969035727,
+      "speedAfterCancel": 5.479914997088131e-13
+    },
+    "run": {
+      "selected": "false",
+      "label": "Courir"
+    },
+    "movement": {
+      "walk": 1.9964059794001714,
+      "jog": 4.196040118848153,
+      "sprint": 6.994961255213023,
+      "stopped": 3.8581773877626666e-23,
+      "reset": "false"
+    },
+    "quiet": {
+      "w": 360,
+      "h": 640,
+      "zone": {
+        "left": 108,
+        "right": 252,
+        "top": 211,
+        "bottom": 397
+      },
+      "overlays": [
+        {
+          "id": "#stats",
+          "box": {
+            "left": 10,
+            "top": 10,
+            "right": 148,
+            "bottom": 68
+          }
+        },
+        {
+          "id": "#place",
+          "box": {
+            "left": 189,
+            "top": 10,
+            "right": 298,
+            "bottom": 56
+          }
+        },
+        {
+          "id": "#menuBtn",
+          "box": {
+            "left": 306,
+            "top": 10,
+            "right": 350,
+            "bottom": 54
+          }
+        },
+        {
+          "id": "#goal",
+          "box": {
+            "left": 10,
+            "top": 84,
+            "right": 233,
+            "bottom": 125
+          }
+        },
+        {
+          "id": "#actbar",
+          "box": {
+            "left": 279,
+            "top": 500,
+            "right": 344,
+            "bottom": 618
+          }
+        },
+        {
+          "id": "#temp",
+          "box": {
+            "left": 136,
+            "top": 623,
+            "right": 224,
+            "bottom": 635
+          }
+        },
+        {
+          "id": "#presenceBtn",
+          "box": {
+            "left": 264,
+            "top": 66,
+            "right": 350,
+            "bottom": 106
+          }
+        },
+        {
+          "id": "#runBtn",
+          "box": {
+            "left": 168,
+            "top": 548,
+            "right": 226,
+            "bottom": 606
+          }
+        }
+      ],
+      "over": [],
+      "lines": 0,
+      "moments": 0,
+      "log": 2,
+      "phone": false,
+      "sheet": false
+    },
+    "errors": [],
+    "ok": false
+  }
+]

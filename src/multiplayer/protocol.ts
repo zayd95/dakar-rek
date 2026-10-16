@@ -5,24 +5,112 @@ export const PROTOCOL_VERSION = 1;
 export const ROOM_CAPACITY = 24;
 export const MAX_ROOMS_PER_HUB = 128;
 export const SEND_INTERVAL_MS = 200;
-export const PRESENCE_CLIPS = ['Idle', 'Walk', 'Run', 'Talk', 'Sit', 'Stance', 'Dance_A', 'Dance_B', 'Celebrate', 'Prep', 'Entrance_Walk'] as const;
+/** Poses a player may show to others (a narrow list: anything else closes the socket). Lie, SitFloor and Ride are the
+ * kit's held poses (a bed, a mat or cushion, a motorbike: src/actors/humanoid.ts POSES). */
+export const PRESENCE_CLIPS = ['Idle', 'Walk', 'Run', 'Talk', 'Sit', 'Stance', 'Dance_A', 'Dance_B', 'Celebrate', 'Prep', 'Entrance_Walk', 'Kneel', 'Lie', 'SitFloor', 'Ride'] as const;
 export type PresenceClip = typeof PRESENCE_CLIPS[number];
 export interface Move {
   type: 'move'; x: number; y: number; z: number; yaw: number; speed: number;
   space: string; clip: PresenceClip;
+  /** Where this player's arena evening is (optional; src/arena/together.ts). */
+  arena?: ArenaPresence;
+  /** The écurie colours this player wears (optional; src/arena/supporters.ts). */
+  fan?: FanPresence;
 }
+/** Écuries a player can wear the colours of (src/economy/catalog.ts WEAR), 'none' for nothing. */
+export const FAN_SIDES = ['none', 'baobab', 'teranga'] as const;
+export type FanSide = typeof FAN_SIDES[number];
+/** What is worn in them: a scarf, a cap, a small flag, a tee. */
+export const FAN_ITEMS = ['scarf', 'cap', 'flag', 'tee'] as const;
+export type FanItem = typeof FAN_ITEMS[number];
+/**
+ * The supporter's colours others see on this player's avatar (the street, the stands): which écurie `e` and which item
+ * `k`. Display only: what it cost, what else is owned, the wallet never cross the protocol.
+ */
+export interface FanPresence { e: FanSide; k: FanItem }
+/** The `fan` field, or null when it is malformed (the whole move is then refused). */
+export function parseFan(value: unknown): FanPresence | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (Object.keys(v).length !== 2 || !(FAN_SIDES as readonly unknown[]).includes(v.e) || !(FAN_ITEMS as readonly unknown[]).includes(v.k)) return null;
+  return { e: v.e as FanSide, k: v.k as FanItem };
+}
+/** The arena show's phases, in order (src/arena/program.ts ShowPhase), as sent in `arena.p`. */
+export const ARENA_PHASES = ['idle', 'filling', 'prelims', 'entrance', 'bout', 'result', 'leaving', 'over'] as const;
+/** Preliminary bouts of an evening at most (src/arena/undercard.ts PRELIM_COUNT), as sent in `arena.i`. */
+export const ARENA_PRELIMS = 6;
+/** How a bout ended (src/lamb/duel.ts outcomes), as sent in `arena.o`. */
+export const ARENA_OUTCOMES = ['projection', 'decision', 'egalite', 'abandon'] as const;
+/**
+ * A player's arena evening, so that friends inside the arena watch one bout: the city day `d`, the show's phase `p`
+ * (index in ARENA_PHASES) and its time `t` in seconds (during the preliminaries: `i`, which one, 0-based, and the time
+ * within it), `m` = 1 when this player is tonight's main event themselves (src/arena/myGala.ts: friends then show
+ * their name and their own real result, never a simulated duel), and once known the main event's result: `w` 0 = no
+ * winner, 1 = the left (on a player's own night: they won)
+ * wrestler, 2 = the right one; `o` the outcome (index in ARENA_OUTCOMES). Display only — no money, record or reward
+ * depends on it; each client aligns itself (server-authoritative timing comes later).
+ */
+export interface ArenaPresence { d: number; p: number; t: number; i?: number; m?: number; w?: number; o?: number }
+const int = (v: unknown, lo: number, hi: number) => typeof v === 'number' && Number.isInteger(v) && v >= lo && v <= hi;
+/** The `arena` field, or null when it is malformed (the whole move is then refused). */
+export function parseArena(value: unknown): ArenaPresence | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (Object.keys(v).some(k => !['d', 'p', 't', 'i', 'm', 'w', 'o'].includes(k))) return null;
+  if (!int(v.d, 1, 1_000_000) || !int(v.p, 0, ARENA_PHASES.length - 1) || typeof v.t !== 'number' || !Number.isFinite(v.t) || v.t < 0 || v.t > 900) return null;
+  if (v.i !== undefined && !int(v.i, 0, ARENA_PRELIMS - 1)) return null;
+  if (v.m !== undefined && v.m !== 1) return null;
+  if (v.w !== undefined && !int(v.w, 0, 2)) return null;
+  if (v.o !== undefined && !int(v.o, 0, ARENA_OUTCOMES.length - 1)) return null;
+  return { d: v.d as number, p: v.p as number, t: Math.round((v.t as number) * 10) / 10, ...(v.i !== undefined ? { i: v.i as number } : {}), ...(v.m === 1 ? { m: 1 } : {}), ...(v.w !== undefined ? { w: v.w as number } : {}), ...(v.o !== undefined ? { o: v.o as number } : {}) };
+}
+/** Optional fields gameplay modules add to the player's presence (GameModule.presence), each validated in parseMove. */
+export type PresenceExtras = Pick<Move, 'arena' | 'fan'>;
 /** `tag` is a stable public key derived server-side from a private device key: mute/block survive reconnects without revealing the key. */
-export interface Peer extends Move { id: string; name: string; look: number; tag?: string; updatedAt: number }
+export interface Peer extends Move { id: string; name: string; look: number; tag?: string; rec?: string; updatedAt: number }
 export interface ChatMessage { type: 'chat'; id: string; from: string; name: string; tag?: string; channel: ChatChannel; text: string; at: number }
 export interface ChatAck { type: 'chat-ack'; id: string; ok: boolean; reason?: ChatFailure; delivered?: number; duplicate?: boolean; at?: number }
 export type ServerMessage =
-  | { type: 'welcome'; version: number; id: string; hub: HubId; room: number; count: number; time: number; peers: Peer[] }
+  | { type: 'welcome'; version: number; id: string; hub: HubId; room: number; count: number; time: number; peers: Peer[]; features?: string[] }
   | { type: 'peer'; peer: Peer }
   | { type: 'leave'; id: string; count: number }
   | { type: 'count'; count: number }
   | ChatMessage
   | ChatAck
-  | { type: 'report-ack'; target: string; ok: boolean };
+  | { type: 'report-ack'; target: string; ok: boolean }
+  | BallRelay;
+
+/**
+ * The kickabout ball of a pitch (src/game/kickabout.ts), additive to protocol v1: a server that relays it says so in
+ * `welcome.features` ('ball'); clients that do not know the type ignore it. Pitch space (metres from the centre spot,
+ * src/game/footballSim.ts PITCH): position `x z h`, velocity `vx vz vh`, `n` the goal whose net holds it (−1, 0, 1);
+ * `t` the server time (ms) of the sender's last touch — its claim, the latest touch owns the ball — and `a` the server
+ * time of this sample. Display only: no score, money or reward depends on it.
+ */
+export interface BallWire { type: 'ball'; x: number; z: number; h: number; vx: number; vz: number; vh: number; n: -1 | 0 | 1; t: number; a: number }
+/** A ball state as relayed to the others of the room: who sent it (`from`, stamped by the server). */
+export interface BallRelay extends BallWire { from: string; /** The server's time when it relayed it (ms). */ s?: number }
+export const BALL_FEATURE = 'ball';
+/** Ball bounds (the curb round the grass, the net's roof) and the fastest a ball may go (m/s): anything faster is refused. */
+export const BALL_LIMITS = { ex: 22, ez: 17, hMax: 6, vMax: 45, vhMax: 20 } as const;
+const fin = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const clampN = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
+/**
+ * A ball state from the wire, clamped to the pitch (positions) and rounded, or null when malformed or absurd (a non-finite
+ * number, a speed beyond `vMax`, times more than a day off `now`). Unknown keys are dropped.
+ */
+export function parseBall(value: unknown, now: number): BallWire | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (v.type !== 'ball' || !['x', 'z', 'h', 'vx', 'vz', 'vh', 't', 'a'].every(k => fin(v[k]))) return null;
+  if (v.n !== -1 && v.n !== 0 && v.n !== 1) return null;
+  const vx = v.vx as number, vz = v.vz as number, vh = v.vh as number, t = v.t as number, a = v.a as number;
+  if (Math.hypot(vx, vz) > BALL_LIMITS.vMax || Math.abs(vh) > BALL_LIMITS.vhMax) return null;
+  if (Math.abs(t - now) > 86_400_000 || Math.abs(a - now) > 86_400_000 || t > a + 1000) return null;
+  const L = BALL_LIMITS, r3 = (x: number) => Math.round(x * 1000) / 1000;
+  return { type: 'ball', x: r3(clampN(v.x as number, -L.ex, L.ex)), z: r3(clampN(v.z as number, -L.ez, L.ez)), h: r3(clampN(v.h as number, 0, L.hMax)),
+    vx: r3(vx), vz: r3(vz), vh: r3(vh), n: v.n, t: Math.round(t), a: Math.round(a) };
+}
 
 export function isHub(value: unknown): value is HubId { return HUB_IDS.includes(value as HubId); }
 export function nickname(value: unknown): string {
@@ -30,6 +118,22 @@ export function nickname(value: unknown): string {
 }
 /** Private per-device key (random hex) sent on connect; only its hash is ever shared. */
 export function deviceKey(value: unknown): string | null { return typeof value === 'string' && /^[a-f0-9]{32}$/.test(value) ? value : null; }
+/** Rungs of the làmb ladder a public record may name (src/career/career.ts RUNGS labels; a test keeps them in step). */
+export const REC_RUNGS = ['Petits combats', 'Undercards', 'Combats classés', 'Adversaires réputés', 'Contender', 'Champion', 'Roi des Arènes'] as const;
+export const REC_MAX = 48;
+/**
+ * A player's public sporting record, shown to others under the name: « <rung> », optionally « · <wins>-<losses> »
+ * (« -<draws> ») and « · Écurie <Name> », nothing else. Anything that does not fit this shape is refused (undefined).
+ */
+export function recordTag(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value || value.length > REC_MAX) return undefined;
+  const parts = value.normalize('NFC').split(' · ');
+  if (parts.length > 3 || !(REC_RUNGS as readonly string[]).includes(parts[0])) return undefined;
+  let i = 1;
+  if (parts[i] !== undefined && /^\d{1,4}-\d{1,4}(?:-\d{1,4})?$/.test(parts[i])) i++;
+  if (parts[i] !== undefined && /^Écurie \p{L}{2,16}$/u.test(parts[i])) i++;
+  return i === parts.length ? parts.join(' · ') : undefined;
+}
 export function lookIndex(value: unknown): number {
   const n = Number(value); return Number.isInteger(n) && n >= 0 && n < 6 ? n : 0;
 }
@@ -40,7 +144,16 @@ export function parseMove(value: unknown, hub: HubId): Move | null {
   if (v.type !== 'move' || !['x', 'y', 'z', 'yaw', 'speed'].every(k => typeof v[k] === 'number' && Number.isFinite(v[k]))) return null;
   const x = v.x as number, y = v.y as number, z = v.z as number, speed = v.speed as number;
   if (Math.abs(x) > 4096 || Math.abs(z) > 4096 || y < -20 || y > 100 || speed < 0 || speed > 6) return null;
-  if (typeof v.space !== 'string' || !(v.space === 'street' || v.space === 'home' || v.space === 'scene' || new RegExp(`^${hub}:(?:gargote|maiga):[0-9]{2}$`).test(v.space))) return null;
+  // spaces: the street, the own room, a scene, a public interior of this hub, a vehicle of one of its lines
+  // (src/transport), a mosque's prayer hall (src/venues/mosque.ts) or a club's terrace (src/venues/club.ts)
+  if (typeof v.space !== 'string' || !(v.space === 'street' || v.space === 'home' || v.space === 'scene'
+    || new RegExp(`^${hub}:(?:(?:gargote|maiga):[0-9]{2}|rapide:[0-9a-z]{1,6}:[0-9])$`).test(v.space)
+    || new RegExp(`^${hub}:venue:mosque:[0-9]{2}:salle$`).test(v.space)
+    || v.space === `${hub}:venue:club`)) return null;
   if (!PRESENCE_CLIPS.includes(v.clip as PresenceClip)) return null;
-  return { type: 'move', x, y, z, speed, yaw: Math.atan2(Math.sin(v.yaw as number), Math.cos(v.yaw as number)), space: v.space, clip: v.clip as PresenceClip };
+  const arena = v.arena === undefined ? undefined : parseArena(v.arena);
+  if (arena === null) return null;
+  const fan = v.fan === undefined ? undefined : parseFan(v.fan);
+  if (fan === null) return null;
+  return { type: 'move', x, y, z, speed, yaw: Math.atan2(Math.sin(v.yaw as number), Math.cos(v.yaw as number)), space: v.space, clip: v.clip as PresenceClip, ...(arena ? { arena } : {}), ...(fan ? { fan } : {}) };
 }
