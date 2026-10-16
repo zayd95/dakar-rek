@@ -727,6 +727,94 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   };
 
   /** Street vendor's table under a parasol. */
+  /**
+   * Pikine's gare routier: six cars rapides parked askew with open rear doors (each gets its apprentice and its door
+   * queue from the existing systems), a shelter and a tin lean-to, plastic chairs in disorder, benches, bags and bundles,
+   * a tea spot, tyres, drums and crates, a price board, dusty ground with muddy dips (ready for rain), and the people:
+   * seated and standing waiting passengers, bag loaders, two arguments, and vendors walking between the cars.
+   */
+  const pikineGare = (cx: number, cz: number, B: number) => {
+    const GR = rng(sp.seed * 31 + 5);
+    const disc = (batch: Batch, r: number, x: number, z: number, col: number, y = B + 0.05, sq = 1) => {
+      const g = new THREE.CircleGeometry(r, 12); g.rotateX(-Math.PI / 2); g.scale(1, 1, sq); batch.geometry(g, col, x, y, z, GR() * Math.PI);
+    };
+    plain.box(44, 0.05, 40, cx, B - 0.01, cz, 0x9a8260);                                     // trampled dust over the block's sand
+    for (let n = 0; n < 26; n++) disc(plain, 0.8 + GR() * 2.2, cx + (GR() - 0.5) * 38, cz + (GR() - 0.5) * 34, GR() < 0.5 ? 0x86704f : 0xa89068, B + 0.045 + GR() * 0.004, 0.5 + GR() * 0.5);   // tyre-worn patches
+    for (let n = 0; n < 9; n++) disc(plain, 0.5 + GR() * 0.8, cx + (GR() - 0.5) * 36, cz + (GR() - 0.5) * 32, 0x3d3a36, B + 0.052, 0.7);                       // oil stains
+    for (const [px, pz, r] of [[-12, -3, 2.1], [4, 12.5, 1.8], [-1, -17, 2.4], [14, 8, 1.5], [-15, 14, 1.9], [11, -9, 1.6]] as const) disc(water, r, cx + px, cz + pz, 0x6f7f86, B + 0.07, 0.6);   // dips where the water will stand
+    // cars rapides: [dx, dz, yaw]; the first two keep the old station's spots (the stop's interaction stands beside them)
+    const cars: [number, number, number][] = [[-3, 0, Math.PI / 2], [-5, -4.5, Math.PI / 2 + 0.08], [-1, -9.8, Math.PI / 2 - 0.15], [-9.5, 4.8, Math.PI / 2 + 0.12], [5.5, -14.5, 0.55], [4, 10.8, -Math.PI / 2 + 0.1]];
+    cars.forEach(([dx, dz, yaw], k) => {
+      // on the phone the far silhouette takes over sooner: each near car is several draw calls
+      const car = makeCarRapide({ seed: sp.seed * 7 + 1 + k, driver: false, ...(lite ? { lite: true, lodDistance: 70 } : {}) }); car.position.set(cx + dx, B, cz + dz); car.rotation.y = yaw; group.add(car); rapides.push(car);
+      const sk = Math.abs(Math.sin(yaw)) > 0.9 ? [6.8, 2.8] : [5.4, 5.4];
+      solidC(cx + dx, cz + dz, sk[0], sk[1], 2.4);
+    });
+    // shelter (the old one, longer) and a tin lean-to beside it
+    plain.box(14, 0.15, 3.5, cx + 7, 3.2, cz + 4, 0x1e3a8a); plain.box(14, 0.4, 0.06, cx + 7, 2.95, cz + 2.25, 0xf4c20d);
+    for (const dx of [0.2, 13.8]) plain.box(0.2, 3.1, 0.2, cx + dx, B, cz + 4, 0x444444);
+    plain.box(0.3, 4.5, 0.3, cx + 9, B, cz - 5, 0x444444);
+    addSign('GARE · CAR RAPIDE', '#1e3a8a', '#fde68a', cx + 9, 4.6, cz - 5.2, Math.PI, 4.6, 1.0);
+    addSign('PARCELLES · GUÉDIAWAYE · PLATEAU', '#7c2d12', '#ffe9b8', cx - 14, 3.3, cz - 12, Math.PI / 2, 5.4, 0.9);
+    for (const [dx, dz] of [[-17, -10], [-17, -14]]) plain.box(0.14, 3.4, 0.14, cx + dx, B, cz + dz, 0x5a4636);
+    tin.slab(8, 0.06, 3.2, cx - 15, 2.7, cz + 12, 0x8a5f40, 0.1, 0.12); for (const [dx, dz] of [[-18.5, 10.6], [-11.5, 10.8], [-18.5, 13.4], [-11.5, 13.6]]) plain.box(0.12, 2.6, 0.12, cx + dx, B, cz + dz, 0x4e3e30);
+    solidC(cx - 15, cz + 12, 8, 3.4, 2.6);
+    // plastic chairs in disorder; some are seats the waiting people take
+    const CH = [0xf2f2ec, 0x2f6fb3, 0xd9322b, 0x1a9d54, 0xf4c20d, 0xf2f2ec];
+    const chair = (x: number, z: number, yaw: number, seat: boolean, sit: boolean) => {
+      const c = pick(CH, GR), tilt = (GR() - 0.5) * 0.5, ya = yaw + tilt, bx = Math.sin(ya) * 0.22, bz = Math.cos(ya) * 0.22;
+      plain.box(0.45, 0.04, 0.45, x, B + 0.45, z, c, ya); plain.box(0.45, 0.42, 0.04, x - bx, B + 0.47, z - bz, c, ya);
+      for (const [lx, lz] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) plain.box(0.04, 0.45, 0.04, x + lx * Math.cos(ya) + lz * Math.sin(ya), B, z - lx * Math.sin(ya) + lz * Math.cos(ya), 0xdddddd);
+      if (seat) seats.push({ id: `${id}:gare:chair:${seats.length}`, x, z, top: B + 0.49, yaw: ya, kind: 'chair', space: 'street', occupant: null });
+      if (sit) people.push({ x, z, yaw: ya, clip: 'Sit', y: -0.05 });
+    };
+    for (let n = 0; n < 16; n++) {
+      const x = cx + 1 + GR() * 11.5, z = cz + 2.9 + GR() * 2.2;                                      // under the shelter: crowded, some turned away
+      chair(x, z, GR() * Math.PI * 2, n < 9, n < 6);
+    }
+    for (let n = 0; n < 5; n++) chair(cx - 18 + GR() * 7, cz + 11 + GR() * 3, GR() * Math.PI * 2, true, n < 3);                         // under the lean-to
+    for (const [dx, dz, yaw] of [[7, 7.6, Math.PI], [-2, 14.4, 0.2], [-16, -6, Math.PI / 2]] as const) {          // benches
+      plain.box(3, 0.1, 0.5, cx + dx, B + 0.45, cz + dz, 0x6b5a4a, yaw); for (const o of [-1.2, 1.2]) plain.box(0.12, 0.45, 0.4, cx + dx + Math.cos(yaw) * o, B, cz + dz - Math.sin(yaw) * o, 0x555555, yaw);
+      seats.push(...benchSeats(`${id}:gare:bench:${dx}`, cx + dx, cz + dz, yaw + Math.PI, B + 0.45, 'street', 3, 3));
+      for (let k = 0; k < 2; k++) { const o = (k - 0.5) * 1.6; people.push({ x: cx + dx + Math.cos(yaw) * o, z: cz + dz - Math.sin(yaw) * o, yaw: yaw + Math.PI, clip: 'Sit', y: -0.05 }); }
+    }
+    // the tea spot: a low table, a charcoal brazier with kettles, glasses, stools, a sheet on poles, and the maker
+    const tx = cx + 15, tz = cz - 2;
+    plain.box(1.4, 0.7, 0.7, tx, B, tz, 0x7a5a3c); plain.cyl(0.28, 0.22, 0.3, tx + 1.3, B, tz, 0x2b2b2b, 8); plain.cyl(0.14, 0.2, 0.3, tx + 1.3, B + 0.3, tz, 0xc9c9c9, 8); plain.cyl(0.1, 0.14, 0.24, tx + 1.55, B + 0.3, tz - 0.1, 0xb87333, 8);
+    for (let k = 0; k < 6; k++) plain.cyl(0.04, 0.035, 0.07, tx - 0.5 + k * 0.2, B + 0.7, tz + (k % 2) * 0.15 - 0.07, 0xe8e2d0, 6);
+    for (const [dx, dz] of [[-0.9, 1.1], [0.3, 1.3], [-1.6, 0.2], [1.1, -1.2]]) { plain.cyl(0.2, 0.22, 0.38, tx + dx, B, tz + dz, pick(CH, GR), 8); seats.push({ id: `${id}:gare:stool:${dx}`, x: tx + dx, z: tz + dz, top: B + 0.4, yaw: Math.atan2(-dx, -dz), kind: 'stool', space: 'street', occupant: null }); }
+    tin.slab(3.6, 0.05, 3.2, tx, 2.5, tz + 0.2, 0x7a5a3c, 0, 0.1); for (const [dx, dz] of [[-1.7, -1.4], [1.7, -1.4], [-1.7, 1.6], [1.7, 1.6]]) plain.box(0.1, 2.5, 0.1, tx + dx, B, tz + dz, 0x4e3e30);
+    people.push({ x: tx + 0.2, z: tz - 0.9, yaw: 0, clip: 'Talk' }, { x: tx - 0.9, z: tz + 1.1, yaw: Math.atan2(0.9, -1.1), clip: 'Sit', y: -0.05 });
+    solidC(tx, tz, 1.8, 0.9, 0.8);
+    // bags and bundles: check-pattern plastic bags, sacks, tied bundles, a mattress roll; heaped near the rear doors
+    const BAGS = [0xc0392b, 0x2b6cb0, 0xf2f2ec, 0xd98b1a, 0x2f8f4e];
+    const bag = (x: number, z: number) => {
+      const c = pick(BAGS, GR), w = 0.5 + GR() * 0.5, h = 0.35 + GR() * 0.4, d = 0.35 + GR() * 0.3, yaw = GR() * Math.PI;
+      plain.box(w, h, d, x, B, z, c, yaw); plain.box(w + 0.02, 0.05, d + 0.02, x, B + h * 0.55, z, shade(c, 0.7), yaw);
+    };
+    for (const [dx, dz] of [[-8.5, 0.4], [-9.6, -0.6], [-10.6, 0.9], [-11, -1.3], [-10, -5], [-11.2, -4.2], [-12, -6], [-7, -9.5], [-8.3, -11], [-14.8, 5], [-15.8, 6.3], [-13, 8], [2, 7.4], [3.2, 7.8], [10.5, -6], [12, -5.2]] as const)
+      for (let k = 0; k < 2 + Math.floor(GR() * 2); k++) bag(cx + dx + (GR() - 0.5) * 1.2, cz + dz + (GR() - 0.5) * 1.2);
+    for (let n = 0; n < 10; n++) { const x = cx + (GR() - 0.5) * 34, z = cz + (GR() - 0.5) * 30; plain.cyl(0.32, 0.36, 0.8, x, B, z, pick([0xc9c4ba, 0xd8cfae, 0xb8a888], GR), 8); plain.cyl(0.05, 0.05, 0.1, x, B + 0.8, z, 0x7a5a3c, 4); }   // sacks standing
+    plain.box(1.4, 0.4, 0.6, cx - 6, B, cz + 8.6, 0x6b3f2a, 0.3); plain.cyl(0.25, 0.25, 1.3, cx - 6.2, B + 0.25, cz + 9.6, 0xd9d2c4, 8, [0, 0, Math.PI / 2]);
+    // clutter: tyres, drums, crates, jerrycans, a cardboard stack, a broken-down hood
+    for (const [dx, dz] of [[-17, 2], [12, 13], [-4, -19], [16, 12], [-14, -16]] as const) for (let k = 0; k < 3; k++) plain.cyl(0.42, 0.42, 0.22, cx + dx + (GR() - 0.5) * 0.2, B + k * 0.22, cz + dz, 0x1c1c1c, 10);
+    for (const [dx, dz, col] of [[16.5, -9, 0x2f6fb3], [17.4, -8.5, 0xc0392b], [-17.5, 7, 0x8a6a2f], [8, -18, 0x2f6fb3]] as const) { plain.cyl(0.3, 0.3, 0.85, cx + dx, B, cz + dz, col, 10); solidC(cx + dx, cz + dz, 0.6, 0.6, 0.85); }
+    for (const [dx, dz] of [[14, -12], [-1, 16], [17, 3], [-18, -3], [7, -17]] as const) { plain.box(0.6, 0.35, 0.4, cx + dx, B, cz + dz, 0x8b6a47, GR()); plain.box(0.5, 0.3, 0.38, cx + dx + 0.1, B + 0.35, cz + dz, 0x9a7a52, GR()); }
+    for (let n = 0; n < 6; n++) plain.box(0.22, 0.34, 0.12, cx + (GR() - 0.5) * 30, B, cz + (GR() - 0.5) * 28, pick([0xf4c20d, 0xd9322b, 0x2f6fb3], GR));
+    plain.box(1.6, 0.6, 1.2, cx + 18, B, cz + 14, 0xa89868, 0.4); plain.box(1.5, 0.12, 1.1, cx + 18, B + 0.6, cz + 14, 0xb8a878, 0.4);
+    stall(cx - 20, cz - 1); stall(cx + 11, cz - 15.5); stall(cx - 6, cz + 17);                       // vendors' stalls on the edges
+    tree(cx + 18, cz + 16, 1.1); tree(cx - 19, cz - 17, 1);
+    interactables.push({ id: `${id}:station`, name: 'Car rapide · changer de quartier', kind: 'travel', x: cx - 3, z: cz + 3.2, radius: 4.8, actions: [] });   // the stop: same spot as the small station's
+    // people: waiting standing groups, bag loaders at the rear doors, two arguments, vendors walking between the cars
+    const stand = (x: number, z: number, yaw: number, clip: 'Idle' | 'Talk' = 'Idle') => people.push({ x, z, yaw, clip });
+    for (const [x, z] of [[2, 6.6], [3, 6.9], [4.4, 6.4], [0.6, 6.9], [9, 6.6], [11, 7], [10, 6.4], [-2.2, 1.9], [-2.6, 2.4], [-13.2, -2], [-13.6, -3.3], [14.5, 3], [16, 5]] as const) stand(cx + x, cz + z, GR() * Math.PI * 2, GR() < 0.4 ? 'Talk' : 'Idle');
+    for (const [dx, dz, yaw] of [[-8.2, -0.2, 0], [-8.8, 1.4, -0.6], [-10.6, -4.2, 0.4], [-7.6, -10, 0.2]] as const) stand(cx + dx, cz + dz, Math.PI / 2 + yaw, 'Talk');   // at the rear doors, loading
+    for (const [dx, dz] of [[-10, -9], [14, -12]] as const) { stand(cx + dx, cz + dz, 0, 'Talk'); stand(cx + dx + 0.9, cz + dz, Math.PI, 'Talk'); }   // the arguments: two people facing at a pace
+    stand(cx - 11, cz + 1.5, 1.2, 'Talk'); stand(cx - 11.8, cz + 2.2, -1.9, 'Talk');
+    for (const [x0, z0, x1, z1] of [[-14, 2.4, -1, 2.4], [-13, -2.3, 2, -2.3], [-12, -7, 4, -7], [13, -4, 13, 9], [-16, 9, -16, -12]] as const)
+      people.push({ x: cx + x0, z: cz + z0, yaw: 0, clip: 'Talk', walkTo: { x: cx + x1, z: cz + z1 } });
+  };
+
   const stall = (x: number, z: number) => {
     plain.box(1.6, 0.8, 0.9, x, G, z, 0x8b6a47);
     for (let n = 0; n < 4; n++) plain.box(0.3, 0.2, 0.3, x - 0.55 + n * 0.37, G + 0.8, z + (R() - 0.5) * 0.4, pick([0xe58a2f, 0xc4372b, 0x6aa84f, 0xf4c20d, 0xf2f2ec], R));
@@ -786,6 +874,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
         break;
       }
       case 'station': {
+        if (id === 'pikine') { pikineGare(cx, cz, B); break; }                              // the suburban gare: dense, noisy, messy (the other hubs keep the small one below)
         pave.box(26, 0.04, 14, cx, B, cz, 0x9a9488);
         for (let k = -2; k <= 2; k++) plain.box(0.2, 0.02, 5, cx - 3 + k * 0.01, B + 0.04, cz + k * 2.8, 0xe8e4d8, Math.PI / 2);
         const cr = makeCarRapide({ seed: sp.seed * 7 + 1, driver: false }); cr.position.set(cx - 3, B, cz); cr.rotation.y = Math.PI / 2; group.add(cr);

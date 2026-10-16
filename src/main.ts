@@ -1262,7 +1262,7 @@ function frameStep(now: number, dt: number, draw = true) {
   { const run = pacer.step('placed', dt, hidden); if (run !== null) ambient?.update(run, freeCam?.p ?? camera.position, quality === 'low' ? 55 : 90); }
   if (profOn) { profMark('ambient(npc.ts)', tSys); tSys = performance.now(); }
   // (where each apprentice was drawn last frame: no walk up the moving car's parents for a distance)
-  { const run = pacer.step('apprentices', dt, hidden); if (run !== null) for (const a of apprentices) { const wp = tmpV.setFromMatrixPosition(a.h.group.matrixWorld); a.update(run, !inside && Math.hypot(wp.x - pos.x, wp.z - pos.z) < 22); } }
+  { const run = pacer.step('apprentices', dt, hidden); if (run !== null) for (const a of apprentices) { const wp = tmpV.setFromMatrixPosition(a.h.group.matrixWorld), d = Math.hypot(wp.x - pos.x, wp.z - pos.z); if (world.id === 'pikine') a.h.group.visible = d < 60; a.update(run, !inside && d < 22); } }   // Pikine's gare has six: past 60 m they are specks, and each body is several draw calls
   for (const h of debugPeople) h.animate(dt, 0);
   for (const w of debugWalkers) { w.t += dt; const u = w.t % w.run; w.h.group.position.set(w.x0 + w.vx * u, 0.1, w.z0 + w.vz * u); w.h.group.updateMatrixWorld(true); w.h.animate(dt, Math.hypot(w.vx, w.vz)); }
   const space = presenceSpace();
