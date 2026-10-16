@@ -858,17 +858,17 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-2335-PORT.md",
-    "checkedAt": "2026-10-15T23:36:36Z",
-    "result": "Independent PR34 QA found current push274>270 and PR online timeout; PR29 advanced3commits, exact checks green but no new acceptance.",
-    "owner": "producer_2335",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-0428-FREEZE.md",
+    "checkedAt": "2026-10-16T04:29:50Z",
+    "result": "Functional freeze enforced; exact release/Pikine/Tiak/PR36 CI independently audited; no demonstrated new bug; targeted Pikine/ownership proof missing.",
+    "owner": "producer_freeze_0428",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "1da43f63d6777ec2ab5829abaadbb8ead59ffd68",
+    "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-15-2335-PORT.md",
-      "docs/agents/operations/reports/PR34-20261015-2335-QA.md"
+      "docs/agents/operations/CYCLE-2026-10-16-0428-FREEZE.md",
+      "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
     ]
   },
   "evidenceReview": {
@@ -1583,7 +1583,7 @@
     "id": "STAB-20261016-0428-QA",
     "role": "qa",
     "kind": "freeze_stabilization_audit",
-    "status": "active",
+    "status": "needs-decision",
     "owner": "qa_freeze_0428",
     "branch": "codex/agent-studio-active",
     "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
@@ -1603,19 +1603,48 @@
       "Map requested existing Pikine journeys to actual proofs/gaps; no feature, Blender, local Chromium retry or new asset",
       "Return independent ready/needs-decision/blocked with demonstrated defects only and next minimal correction owner"
     ],
-    "report": "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
-  },
-  "registryWriter": {
-    "token": "freeze-20261016T0428Z-audit",
-    "owner": "producer_freeze_0428",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-0428-FREEZE.md",
-      "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
-    ],
-    "acquiredAt": "2026-10-16T04:27:13Z"
+    "report": "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md",
+    "completedAt": "2026-10-16T04:29:50Z",
+    "results": {
+      "verdict": "needs-decision",
+      "reviewer": "qa_freeze_0428",
+      "report": "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md",
+      "completedAt": "2026-10-16T04:29:50Z",
+      "sourceCommits": {
+        "release": "f2335f177f2b8f56b9d3ce3bb83d4e583888b121",
+        "pikine": "0e8fce6ac19257f2b762b608e62c0a35d0a7b67d",
+        "tiak": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+        "candidate": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c"
+      },
+      "local": "local_not_run",
+      "candidate": {
+        "sha": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c",
+        "testsPassed": 1482,
+        "testsSkipped": 2,
+        "testFiles": 121,
+        "serverTypes": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success",
+        "pushJob": 116785582387,
+        "prJob": 116785715592,
+        "prCheckout": "6b2c7dddf12fe5891a44a2cfb86fb160ee6f8d3b",
+        "tree": "d8471bb8a1a7a716dff216e48f3dc886eb3fbe67"
+      },
+      "gaps": [
+        "Exact-source logs ownership/oldsave migration/chair",
+        "Exact-source targeted Pikine gare/mosque/rain logs",
+        "Physical mobile and full wave5 acceptance not established"
+      ],
+      "demonstratedNewSourceBugs": [],
+      "pr35": {
+        "actualBase": "feature/tiak-moto",
+        "oldWrongBaseCorrected": true,
+        "draft": true
+      },
+      "nextOwner": "candidate owner / authorized test runner then distinct QA"
+    },
+    "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure."
   }
 }

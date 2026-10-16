@@ -1,35 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-15T23:36:36Z",
+  "updatedAt": "2026-10-16T04:29:50Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
-  "phase": "operational",
-  "lease": {
-    "token": "freeze-20261016T0428Z-audit",
-    "owner": "producer_freeze_0428",
-    "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
-    "acquiredAt": "2026-10-16T04:27:13Z",
-    "expiresAt": "2026-10-16T05:10:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-0428-FREEZE.md",
-      "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
-    ]
-  },
+  "phase": "freeze_stabilization",
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_freeze_0428",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
-      "allowedFiles": [
-        "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -131,7 +110,7 @@
     "status": "enabled",
     "engine": "Codex cloud automation",
     "automationId": "6ac78ceb6c508191839a41b6c0683b14",
-    "title": "Faire avancer Dakar Rek",
+    "title": "Stabiliser Dakar Rek",
     "isEnabled": true,
     "schedule": "BEGIN:VEVENT\nDTSTART:20261008T123035Z\nRRULE:FREQ=HOURLY\nEND:VEVENT",
     "timingMode": "flexible_schedule",
@@ -140,14 +119,12 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-15T23:36:36Z",
-    "lastVerifiedAt": "2026-10-15T21:29:19Z",
+    "lastCompletedRunAt": "2026-10-16T04:29:50Z",
+    "lastVerifiedAt": "2026-10-16T04:29:50Z",
     "enabled": true
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [
-    "STAB-20261016-0428-QA"
-  ],
+  "reviewTasks": [],
   "activeSessions": [],
   "completedSessions": [
     "activation_producer",
@@ -175,9 +152,10 @@
     "qa_dkag020_0128",
     "qa_dkag020_ci_0236",
     "qa_reference_2129",
-    "qa_port_2335"
+    "qa_port_2335",
+    "qa_freeze_0428"
   ],
-  "nextAction": "PR34 external author/CI addresses exact274>270 + online119; PR29 new5e953d2 needs bounded motion delta QA. Wave5 gates unchanged.",
+  "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -315,17 +293,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-15-2335-PORT.md",
-    "completedAt": "2026-10-15T23:36:36Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-0428-FREEZE.md",
+    "completedAt": "2026-10-16T04:29:50Z",
     "actualRunCompleted": true,
     "tasks": [
-      "WATCH-PR34-20261015-2335-QA"
+      "STAB-20261016-0428-QA"
     ],
     "verifiedCandidates": [],
-    "owner": "producer_2335",
-    "reviewer": "qa_port_2335",
+    "owner": "producer_freeze_0428",
+    "reviewer": "qa_freeze_0428",
     "protectedRefsMutated": false,
-    "leaseReleased": "cycle-20261015T2335Z-portqa"
+    "leaseReleased": "freeze-20261016T0428Z-audit"
   },
   "protectedRefsLatest": [
     {
@@ -587,7 +565,7 @@
     "deployed": false
   },
   "wave5Watch": {
-    "checkedAt": "2026-10-15T23:36:36Z",
+    "checkedAt": "2026-10-16T04:29:50Z",
     "status": "integrated_standard_ci_verified_final_acceptance_pending",
     "candidateBranch": "lane/w5-candidate",
     "candidateCommit": "e5633011555cab012de02453dd7ce32995b6ae10",
@@ -1148,14 +1126,14 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-15T23:36:36Z",
+    "checkedAt": "2026-10-16T04:29:50Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; independent exact failed CI logs reviewed",
-    "delegation": "qa_port_2335 independent review completed",
+    "localTests": "local_not_run; exact GitHub CI logs independently audited",
+    "delegation": "one independent stabilization QA completed; no feature agent",
     "cloudflareAuthenticated": false
   },
   "stabilization": {
@@ -1163,6 +1141,47 @@
     "functionalFreeze": true,
     "blenderForbidden": true,
     "newFeatureAgentsForbidden": true,
-    "scope": "Bug/regression stabilization only; preserve saves/economy/mobile; protected refs read-only"
+    "newAssetsForbiddenExceptIndispensableDemonstratedBug": true,
+    "scope": "Only demonstrated bugs/regressions; preserve saves/economy/mobile; no protected ref mutation, merge or publication",
+    "audit": {
+      "verdict": "needs-decision",
+      "reviewer": "qa_freeze_0428",
+      "report": "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md",
+      "completedAt": "2026-10-16T04:29:50Z",
+      "sourceCommits": {
+        "release": "f2335f177f2b8f56b9d3ce3bb83d4e583888b121",
+        "pikine": "0e8fce6ac19257f2b762b608e62c0a35d0a7b67d",
+        "tiak": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+        "candidate": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c"
+      },
+      "local": "local_not_run",
+      "candidate": {
+        "sha": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c",
+        "testsPassed": 1482,
+        "testsSkipped": 2,
+        "testFiles": 121,
+        "serverTypes": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success",
+        "pushJob": 116785582387,
+        "prJob": 116785715592,
+        "prCheckout": "6b2c7dddf12fe5891a44a2cfb86fb160ee6f8d3b",
+        "tree": "d8471bb8a1a7a716dff216e48f3dc886eb3fbe67"
+      },
+      "gaps": [
+        "Exact-source logs ownership/oldsave migration/chair",
+        "Exact-source targeted Pikine gare/mosque/rain logs",
+        "Physical mobile and full wave5 acceptance not established"
+      ],
+      "demonstratedNewSourceBugs": [],
+      "pr35": {
+        "actualBase": "feature/tiak-moto",
+        "oldWrongBaseCorrected": true,
+        "draft": true
+      },
+      "nextOwner": "candidate owner / authorized test runner then distinct QA"
+    }
   }
 }
