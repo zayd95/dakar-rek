@@ -858,16 +858,16 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-1028-FREEZE.md",
-    "checkedAt": "2026-10-16T10:28:17Z",
-    "result": "No source/check/PR35-36 evidence change; freeze acceptance remains needs-decision; no redundant code or QA",
-    "owner": "producer_freeze_1028",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-1136-FREEZE.md",
+    "checkedAt": "2026-10-16T11:36:24Z",
+    "result": "Freeze candidate unchanged; new PR29 sole alignment observed, CI pending, not approved",
+    "owner": "producer_freeze_1136",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "912cf1f0df11ee8fa54bb48e19f5d397065b15dd",
+    "baseCommit": "72c21a9e91bcf71e4e537db954498d9b80c95bc9",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-1028-FREEZE.md"
+      "docs/agents/operations/CYCLE-2026-10-16-1136-FREEZE.md"
     ]
   },
   "evidenceReview": {
@@ -1645,7 +1645,7 @@
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
     "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
-    "lastReconciledAt": "2026-10-16T10:28:17Z"
+    "lastReconciledAt": "2026-10-16T11:36:24Z"
   },
   "currentRegressionReview": {
     "id": "STAB-20261016-0935-QA",
@@ -1696,16 +1696,32 @@
       "targetedEvidence": "Author versioned JSON inspected, no embedded execution SHA; images/video not viewed; no independent targeted browser execution"
     }
   },
-  "registryWriter": {
-    "token": "freeze-20261016T1136Z-watch",
-    "owner": "producer_freeze_1136",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "72c21a9e91bcf71e4e537db954498d9b80c95bc9",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-1136-FREEZE.md"
+  "pendingExternalRegressionReview": {
+    "pr": 29,
+    "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+    "owner": "external author owns source; producer resumes exact CI then distinct QA",
+    "status": "review",
+    "baseCommit": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
+    "checks": [
+      {
+        "id": 116943857037,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/runs/116943857037"
+      },
+      {
+        "id": 116943438556,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/38891987563/job/116943438556"
+      },
+      {
+        "id": 116943413420,
+        "status": "in_progress",
+        "conclusion": null,
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/38891979435/job/116943413420"
+      }
     ],
-    "acquiredAt": "2026-10-16T11:35:48Z"
+    "nextAction": "Resume exact ecbe629 checks next cycle without rewriting source; if completed, independently review ground-surface cache tests/runtime delta and evidence. No Blender/assets/features or other-session ref mutations."
   }
 }
