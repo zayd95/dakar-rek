@@ -5,10 +5,31 @@
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "operational",
-  "lease": null,
+  "lease": {
+    "token": "freeze-20261016T0428Z-audit",
+    "owner": "producer_freeze_0428",
+    "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
+    "acquiredAt": "2026-10-16T04:27:13Z",
+    "expiresAt": "2026-10-16T05:10:00Z",
+    "scope": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-16-0428-FREEZE.md",
+      "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
+    ]
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "owner": "qa_freeze_0428",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
+      "allowedFiles": [
+        "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
+      ]
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -124,7 +145,9 @@
     "enabled": true
   },
   "productionMutationsAuthorized": false,
-  "reviewTasks": [],
+  "reviewTasks": [
+    "STAB-20261016-0428-QA"
+  ],
   "activeSessions": [],
   "completedSessions": [
     "activation_producer",
@@ -1134,5 +1157,12 @@
     "localTests": "local_not_run; independent exact failed CI logs reviewed",
     "delegation": "qa_port_2335 independent review completed",
     "cloudflareAuthenticated": false
+  },
+  "stabilization": {
+    "decisionDate": "2026-10-16",
+    "functionalFreeze": true,
+    "blenderForbidden": true,
+    "newFeatureAgentsForbidden": true,
+    "scope": "Bug/regression stabilization only; preserve saves/economy/mobile; protected refs read-only"
   }
 }

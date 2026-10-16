@@ -1578,5 +1578,44 @@
       ]
     },
     "nextOwner": "PR34 external author / CI"
+  },
+  "stabilizationReview": {
+    "id": "STAB-20261016-0428-QA",
+    "role": "qa",
+    "kind": "freeze_stabilization_audit",
+    "status": "active",
+    "owner": "qa_freeze_0428",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
+    "sourceCommits": {
+      "release": "f2335f177f2b8f56b9d3ce3bb83d4e583888b121",
+      "pikine": "0e8fce6ac19257f2b762b608e62c0a35d0a7b67d",
+      "tiak": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+      "candidate": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c"
+    },
+    "allowedFiles": [
+      "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
+    ],
+    "controlBriefCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
+    "acceptance": [
+      "Audit exact release/Pikine/Tiak and PR36 CI logs: unit/types/build/city/online/launch vs targeted Pikine scenarios",
+      "Reconcile PR35 actual base without changing it; inspect save/ownership chair regression evidence and candidate fix",
+      "Map requested existing Pikine journeys to actual proofs/gaps; no feature, Blender, local Chromium retry or new asset",
+      "Return independent ready/needs-decision/blocked with demonstrated defects only and next minimal correction owner"
+    ],
+    "report": "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
+  },
+  "registryWriter": {
+    "token": "freeze-20261016T0428Z-audit",
+    "owner": "producer_freeze_0428",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-16-0428-FREEZE.md",
+      "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
+    ],
+    "acquiredAt": "2026-10-16T04:27:13Z"
   }
 }
