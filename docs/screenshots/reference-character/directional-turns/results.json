@@ -1,0 +1,182 @@
+[
+  {
+    "view": "portrait",
+    "ground": [
+      {
+        "z": -66,
+        "floor": 0.08,
+        "sole": 0.08000010117776984,
+        "error": 1.0117776984286397e-7
+      },
+      {
+        "z": -68,
+        "floor": 0.12,
+        "sole": 0.12000016991199032,
+        "error": 1.699119903247892e-7
+      },
+      {
+        "z": -72,
+        "floor": 0.14,
+        "sole": 0.13999994273587135,
+        "error": -5.7264128661138614e-8
+      }
+    ]
+  },
+  {
+    "view": "portrait",
+    "touch": {
+      "distance": 2.7000228532043735,
+      "clip": "Walk",
+      "stopped": "Idle"
+    }
+  },
+  {
+    "view": "portrait",
+    "label": "walk",
+    "clip": "Walk",
+    "speed": 1.9998476453039082,
+    "motion": {
+      "clip": "Walk",
+      "duration": 1.350000023841858,
+      "timeScale": 1.5199811772225722,
+      "time": 0.6228181308858219
+    }
+  },
+  {
+    "view": "portrait",
+    "label": "jog",
+    "clip": "Jog",
+    "speed": 4.199680055138208,
+    "motion": {
+      "clip": "Jog",
+      "duration": 0.949999988079071,
+      "timeScale": 1.3179411636378833,
+      "time": 0.6792535572624843
+    }
+  },
+  {
+    "view": "portrait",
+    "label": "sprint",
+    "clip": "Run",
+    "speed": 6.9994667585636785,
+    "motion": {
+      "clip": "Run",
+      "duration": 0.6833333373069763,
+      "timeScale": 1.1638542452593985,
+      "time": 0.00521854258172183
+    }
+  },
+  {
+    "view": "portrait",
+    "turning": {
+      "left": "TurnLeft",
+      "right": "TurnRight"
+    },
+    "seat": {
+      "id": "pikine:bench:16:0",
+      "top": 0.58,
+      "clip": "Sit"
+    },
+    "metrics": {
+      "meshes": 1,
+      "vertices": 19936,
+      "bones": 52,
+      "clip": "Sit",
+      "clock": "Pikine · Guédiawaye · Parcelles☀️ Jeudi · 09:00",
+      "calls": 39,
+      "quiet": []
+    },
+    "fixedProfile": true,
+    "errors": []
+  },
+  {
+    "view": "landscape",
+    "ground": [
+      {
+        "z": -66,
+        "floor": 0.08,
+        "sole": 0.07999990387255257,
+        "error": -9.612744743259238e-8
+      },
+      {
+        "z": -68,
+        "floor": 0.12,
+        "sole": 0.1199998851746541,
+        "error": -1.1482534589823956e-7
+      },
+      {
+        "z": -72,
+        "floor": 0.14,
+        "sole": 0.13999945305469347,
+        "error": -5.469453065454211e-7
+      }
+    ]
+  },
+  {
+    "view": "landscape",
+    "touch": {
+      "distance": 2.7000228532043735,
+      "clip": "Walk",
+      "stopped": "Idle"
+    }
+  },
+  {
+    "view": "landscape",
+    "label": "walk",
+    "clip": "Walk",
+    "speed": 1.9998476453039082,
+    "motion": {
+      "clip": "Walk",
+      "duration": 1.350000023841858,
+      "timeScale": 1.5199811772225722,
+      "time": 0.6228181308858219
+    }
+  },
+  {
+    "view": "landscape",
+    "label": "jog",
+    "clip": "Jog",
+    "speed": 4.199680055138208,
+    "motion": {
+      "clip": "Jog",
+      "duration": 0.949999988079071,
+      "timeScale": 1.3179411636378833,
+      "time": 0.6792535572624843
+    }
+  },
+  {
+    "view": "landscape",
+    "label": "sprint",
+    "clip": "Run",
+    "speed": 6.9994667585636785,
+    "motion": {
+      "clip": "Run",
+      "duration": 0.6833333373069763,
+      "timeScale": 1.1638542452593985,
+      "time": 0.00521854258172183
+    }
+  },
+  {
+    "view": "landscape",
+    "turning": {
+      "left": "TurnLeft",
+      "right": "TurnRight"
+    },
+    "seat": {
+      "id": "pikine:bench:16:0",
+      "top": 0.58,
+      "clip": "Sit"
+    },
+    "metrics": {
+      "meshes": 1,
+      "vertices": 19936,
+      "bones": 52,
+      "clip": "Sit",
+      "clock": "Pikine · Guédiawaye · Parcelles☀️ Jeudi · 09:00",
+      "calls": 90,
+      "quiet": []
+    },
+    "fixedProfile": true,
+    "errors": []
+  }
+]

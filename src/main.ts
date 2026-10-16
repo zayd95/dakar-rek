@@ -8,6 +8,7 @@ import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
 import { HALF, buildHub, hubLayout } from './world/builder';
+import { groundSurfaceAt } from './world/groundSurface';
 import { Sky } from './world/sky';
 import { setGrainEnabled } from './world/grain';
 import { buildInterior, disposeInterior, setInteriorDaylight, type Interior } from './world/interiors';
@@ -19,6 +20,7 @@ import { MonumentLife } from './actors/life';
 import { PlacedPeople } from './actors/placedPeople';
 import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
+import { preloadReferenceCharacter, referenceCharacter } from './actors/referenceCharacter';
 import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
@@ -75,6 +77,8 @@ import { StrideUi } from './ui/stride';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
+const REFERENCE_CHARACTER = params.has('reference-character');
+const referenceHour = Number(params.get('reference-hour'));
 
 // ------------------------------------------------------------------ storage (guest save is device-local)
 let store: Storage | null = null;
@@ -144,6 +148,7 @@ const pos = new THREE.Vector3();
 const tmpV = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
+let referenceSurface: ReturnType<typeof groundSurfaceAt> | null = null;
 let destination: { id: string; hub: HubId } | null = null;
 let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, life: MonumentLife | null = null;
 let apprentices: Apprentice[] = [];
@@ -167,7 +172,7 @@ const extra = new THREE.Group(); scene.add(extra);
 let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
 /** Set once the module context (`ctx`, below) exists. */
 let ctxReady = false;
-let hourOverride: number | null = null;
+let hourOverride: number | null = REFERENCE_CHARACTER && params.has('reference-hour') && Number.isFinite(referenceHour) && referenceHour >= 0 && referenceHour < 24 ? referenceHour : null;
 /** Walkable interiors of this hub, and the one the player is in. */
 let interiors = new Map<string, Interior>();
 let inside: { int: Interior; door: Interactable } | null = null;
@@ -176,7 +181,7 @@ let camOverride: { dist: number; h: number; side: number } | null = null;
 const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
 const roomParam = Number(params.get('room'));
 const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
-const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
+const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; }, REFERENCE_CHARACTER);
 const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: store, enabled: import.meta.env.VITE_MULTIPLAYER === 'true', local: () => pos, space: presenceSpace,
   suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
 presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); };
@@ -266,6 +271,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   setRestSpot(restSpot(world.interactables, homeHub() === id ? 'ta chambre' : null));
   places.clear(); people.clear();
   for (const m of MODULES) m.hubLoaded?.(ctx, world);
+  referenceSurface = REFERENCE_CHARACTER ? groundSurfaceAt(world.group, world.bounds) : null;
   const p = resumeSpot(at, world.bounds, world.spawn);                  // a spot outside this hub (an old save, a bad teleport): its spawn
   pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
   follow.snapBehind(facing);
@@ -294,6 +300,8 @@ function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, nu
 const interactions = new Interactions();
 const seats = new Seats();
 let seated: Seat | null = null;
+/** Ordinary reference-character seats retain their occupant while the captured stand-up finishes. */
+let referenceRise: { from: THREE.Vector3; to: THREE.Vector3; elapsed: number; duration: number; blend: number } | null = null;
 /** Seconds left standing up on a place in the stands, arms up (« Encourager »), before sitting back down. */
 let cheerT = 0;
 /** Space key shared by seats, targets and presence: 'street', 'home' (own room) or the interior's door id. */
@@ -410,11 +418,29 @@ function cheer(seconds = 2.5) {
   return true;
 }
 /** Stand up in front of the seat (`inPlace`: just clear the state, e.g. before a door or a trip). */
-function standUp(inPlace = false) {
+function standUp(inPlace = false, immediate = false) {
   if (!seated) return;
-  const s = seated, cheering = cheerT > 0; seats.release(s.id, 'player'); seated = null; cheerT = 0;
-  if (playerBody && (playerBody.hold === seatClip(s) || (cheering && playerBody.hold === 'Celebrate'))) playerBody.hold = null;
+  const s = seated, cheering = cheerT > 0, rising = referenceRise;
+  if (!inPlace && !immediate && REFERENCE_CHARACTER && playerBody && world && mode === 'play' && !cheering && !s.locked && seatClip(s) === 'Sit' && ['bench', 'chair', 'stool', 'sofa'].includes(s.kind)) {
+    if (rising) return; // repeated taps do not restart the clip or release the occupied seat
+    const to = standingPosition(s), duration = referenceCharacter()?.clips.find(c => c.name === 'SitExit')?.duration ?? 0;
+    if (duration > 0 && Math.hypot(to.x - pos.x, to.z - pos.z) <= 1.25) {
+      referenceRise = { from: pos.clone(), to, elapsed: 0, duration, blend: 0 };
+      playerBody.hold = 'SitExit';
+      return;
+    }
+  }
+  referenceRise = null;
+  seats.release(s.id, 'player'); seated = null; cheerT = 0;
+  if (playerBody && (rising || playerBody.hold === seatClip(s) || (cheering && playerBody.hold === 'Celebrate'))) playerBody.hold = null;
   if (inPlace || !world) return;
+  const to = rising?.to ?? standingPosition(s);
+  if (s.clip === 'Lie') facing = Math.atan2(to.x - s.x, to.z - s.z);
+  pos.copy(to);
+}
+/** Existing collision-safe exit selection, shared by immediate exits and the reference rise motion. */
+function standingPosition(s: Seat) {
+  if (!world) return pos.clone();
   // the first free spot: in front of a chair; out of a bed by a side (or past its foot), never inside furniture or a wall
   const cols = inside ? inside.int.colliders : world.colliders, r = inside ? 0.3 : 0.5;
   let nx = s.x, nz = s.z, best = Infinity;
@@ -424,8 +450,7 @@ function standUp(inPlace = false) {
     const cost = Math.hypot(x - p.x, z - p.z) + (blocked ? 10 : 0);
     if (cost < best - 1e-6) { best = cost; nx = x; nz = z; }
   }
-  if (s.clip === 'Lie') facing = Math.atan2(nx - s.x, nz - s.z);                // out of bed, facing away from it
-  pos.set(nx, 0.1 + (inside ? 0 : world.heightAt(nx, nz)), nz);
+  return new THREE.Vector3(nx, 0.1 + (inside ? 0 : world.heightAt(nx, nz)), nz);
 }
 /** Registers the seats of the hub, its interiors and marks those already used by the ambient people. */
 function registerSeats() {
@@ -1034,6 +1059,24 @@ setInterval(() => { if (world && mode === 'play') saveNow(); }, 8000);
 
 /** Action button + diegetic prompt for the focused target. */
 const promptV = new THREE.Vector3();
+const promptCorner = new THREE.Vector3(), promptBody = { left: 0, top: 0, right: 0, bottom: 0 };
+/** Conservative human bounds, projected without skinning or raycasting every frame. */
+function referencePromptBody() {
+  if (!REFERENCE_CHARACTER || !playerBody?.group.visible) return undefined;
+  const p = playerBody.group.position, s = Math.sin(facing), c = Math.cos(facing);
+  promptBody.left = promptBody.top = Infinity; promptBody.right = promptBody.bottom = -Infinity;
+  for (let i = 0; i < 8; i++) {
+    const bx = i & 1 ? .38 : -.38, bz = i & 4 ? .22 : -.22;
+    promptCorner.set(p.x + bx * c + bz * s, p.y + (i & 2 ? 1.85 : 0), p.z - bx * s + bz * c).applyMatrix4(camera.matrixWorldInverse);
+    // A camera inside the bounds: leave the view clear rather than projecting behind its near plane.
+    if (promptCorner.z > -camera.near) return { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+    promptCorner.applyMatrix4(camera.projectionMatrix);
+    const x = (promptCorner.x * .5 + .5) * innerWidth, y = (-promptCorner.y * .5 + .5) * innerHeight;
+    promptBody.left = Math.min(promptBody.left, x); promptBody.right = Math.max(promptBody.right, x);
+    promptBody.top = Math.min(promptBody.top, y); promptBody.bottom = Math.max(promptBody.bottom, y);
+  }
+  return promptBody;
+}
 function showPrompt(t: Target | null) {
   const run = activities.current;
   if (run || legacyRun) { hud.setPrompt('Arrêter', run ? run.step.label : legacyRun!.label, false, { icon: '✋', stop: true }); hud.setWorldPrompt(null); return; }
@@ -1045,7 +1088,7 @@ function showPrompt(t: Target | null) {
   camera.updateMatrixWorld();
   promptV.set(t.x, (t.y ?? 1.9) + (inside ? 0 : world.heightAt(t.x, t.z)), t.z).project(camera);
   if (promptV.z > 1 || Math.abs(promptV.x) > 1.1 || Math.abs(promptV.y) > 1.1) { hud.setWorldPrompt(null); return; }
-  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, a.icon, a.label, opt);
+  hud.setWorldPrompt({ x: (promptV.x * 0.5 + 0.5) * innerWidth, y: (-promptV.y * 0.5 + 0.5) * innerHeight }, a.icon, a.label, opt, referencePromptBody());
 }
 /** Title, icon and « step n/m » (timed steps) of the running activity, for the progress pill. */
 function progressMeta() {
@@ -1092,11 +1135,21 @@ function frameStep(now: number, dt: number, draw = true) {
     if (lambScene.snap) { camera.position.copy(f.cam); lambScene.snap = false; } else camera.position.lerp(f.cam, Math.min(1, dt * 3));
     camera.lookAt(f.look);
     if (lambScene.done) endScene();
-  } else if (seated && (mode === 'play' || mode === 'busy' || seated.locked)) {
+  } else if (seated && (mode === 'play' || mode === 'busy' || seated.locked || referenceRise)) {
     // the body follows its seat every frame (seats in vehicles move); the stick stands up, except on a locked seat
     const m = input.move();
     speed = 0;
-    if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp();      // moving the stick stands up (not in a moving vehicle)
+    if (mode === 'play' && !seated.locked && Math.hypot(m.x, m.y) > 0.35) standUp(false, true); // movement can interrupt the captured rise immediately
+    else if (referenceRise) {
+      const rise = referenceRise;
+      rise.elapsed = Math.min(rise.duration, rise.elapsed + dt);
+      // Lift off the seat before advancing to the free spot; camera/physics follow the same position.
+      const p = clamp((rise.elapsed / rise.duration - .2) / .8, 0, 1);
+      rise.blend = p * p * (3 - 2 * p);
+      pos.lerpVectors(rise.from, rise.to, rise.blend); facing = seated.yaw;
+      if (playerBody) playerBody.hold = 'SitExit';
+      if (rise.elapsed >= rise.duration) standUp(false, true);
+    }
     else if (cheerT > 0) { cheerT -= dt; pos.set(seated.x, seated.top + 0.1, seated.z); facing = seated.yaw; if (playerBody) playerBody.hold = 'Celebrate'; }   // up on the tier, arms up
     else { pos.set(seated.x, sitOriginY(seated), seated.z); facing = seated.yaw; if (playerBody && mode === 'play') playerBody.hold = seatClip(seated); }
     if (mode !== 'menu') state.tick(dt * 1000);
@@ -1126,7 +1179,17 @@ function frameStep(now: number, dt: number, draw = true) {
     if (previewT > 0) { previewT -= dt; if (previewT <= 0 && emoteT <= 0) hideProxy(); }
 
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
-    if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
+    if (playerBody) {
+      playerBody.group.visible = true; playerBody.group.position.copy(pos);
+      if (REFERENCE_CHARACTER && (!seated || referenceRise)) {
+        const raised = pos.y - .1;
+        // A rising player's origin can still be inside the bench's low supports; use its free exit.
+        const ground = inside ? .1 : referenceSurface?.(referenceRise?.to.x ?? pos.x, referenceRise?.to.z ?? pos.z) ?? 0;
+        const surface = !inside && raised > .001 ? Math.max(raised, ground) : ground;
+        playerBody.group.position.y = referenceRise ? THREE.MathUtils.lerp(referenceRise.from.y, surface - .035, referenceRise.blend) : surface - .035;
+      }
+      playerBody.group.rotation.y = facing; playerBody.animate(dt, speed);
+    }
   } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
   let tSys = profOn ? performance.now() : 0;
   // inside the arena's walls (on the tiers) the street's cast, walkers, traffic and placed people cannot be seen: they go on
@@ -1178,9 +1241,13 @@ function frameStep(now: number, dt: number, draw = true) {
 // ------------------------------------------------------------------ start
 resize(); applyQuality();
 async function start() {
-  await Promise.all([preloadAssets(), preloadHumanoid()]);
+  await Promise.all([preloadAssets(), preloadHumanoid(), REFERENCE_CHARACTER ? preloadReferenceCharacter() : Promise.resolve()]);
   for (const m of MODULES) m.init?.(ctx);
-  if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false; }
+  if (humanoidReady()) {
+    playerBody = new Humanoid(PLAYER_LOOK, REFERENCE_CHARACTER ? referenceCharacter() : undefined);
+    playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false;
+    if (REFERENCE_CHARACTER) follow.outdoorDistance = 6.5;
+  }
   const startHub = invitedHub ?? state.data.hub;
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
@@ -1259,6 +1326,7 @@ if (DEBUG) {
     scene(kind: SceneKind) { const a = [...ACTIONS.arena, ...ACTIONS.ecurie].find(x => x.special === kind); if (a) runSpecial(a); else startScene(kind); },
     wrestlerReady: () => humanoidReady(),
     body: () => playerBody,
+    motion: () => playerBody?.motionInfo() ?? null,
     faceCamera() { follow.pin(); follow.yaw = facing + Math.PI; },
     portrait(dist = 2.2, h = 1.5, side = 0.35) { camOverride = dist > 0 ? { dist, h, side } : null; },
     /** A body walking from (x, z) along `yaw` at `speed` m/s for `len` m, then again from the start. */
@@ -1273,10 +1341,14 @@ if (DEBUG) {
     camInLeaves: () => !!world?.canopies?.some(t => camera.position.y > t.y0 && camera.position.y < t.y1 && Math.hypot(camera.position.x - t.x, camera.position.z - t.z) < t.r),
     sceneCrowd: () => (lambScene instanceof LambScene ? lambScene.crowdSpots() : []),
     /** Distance from a to the first world surface on the segment a→b (equals the segment length when nothing is in the way). */
-    sightline(a: [number, number, number], b: [number, number, number]) {
+    sightline(a: [number, number, number], b: [number, number, number], visibleOnly = false) {
       const A = new THREE.Vector3(...a), d = new THREE.Vector3(...b).sub(A), len = d.length();
       const rc = new THREE.Raycaster(A, d.normalize(), 0.05, len); rc.camera = camera;
-      const hit = world ? rc.intersectObject(world.group, true)[0] : undefined;
+      const hits = world ? rc.intersectObject(world.group, true) : [];
+      const hit = visibleOnly ? hits.find(h => {
+        for (let o: THREE.Object3D | null = h.object; o; o = o.parent) if (!o.visible) return false;
+        return true;
+      }) : hits[0];
       return { len, hit: hit ? hit.distance : len };
     },
     duel() { startDuel('amical', 'costaud'); },

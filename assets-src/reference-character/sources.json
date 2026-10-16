@@ -1,0 +1,59 @@
+{
+  "generated": "2026-10-16",
+  "integrationBase": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+  "toolchain": {
+    "blender": "5.2.2 LTS",
+    "mpfbBuild": "20260722"
+  },
+  "geometry": {
+    "source": "MakeHuman CC0 hm08 + Mixamo-compatible rig/weights",
+    "sourceUrl": "https://github.com/makehumancommunity/mpfb2",
+    "inputs": {
+      "3dobjs/base.obj": "8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c",
+      "rigs/standard/rig.mixamo.json": "b4e491bacdcae797e53b7692169cf6a160c50fcc1eda5f0982e92fac1561ae56",
+      "rigs/standard/weights.mixamo.json": "4561be4d7c0093d70e3dba4fbacbbbb6d66781573779fb12a0509cefa181b8ae"
+    }
+  },
+  "tee": {
+    "author": "MakeHuman, edited by Elvaerwyn",
+    "license": "CC0",
+    "sourceUrl": "https://static.makehumancommunity.org/assets/assetpacks/shirts01.html",
+    "inputs": {
+      "elvs_crude_t-shirt_male.mhclo": "2400deeb8b5fd4296d7484c6af5612bc48935e79dd4d42668321445f61b6f727",
+      "crude_male_shirt.mhmat": "4e456f7b85ff3023b2ec3b4ed58b0ccceac621f3a02f4887d04eaa2a781b229a",
+      "crude_male_shirt.obj": "f63a60064f8e1a4feb4f19b24a773fc07516f9772ac62d17d6b70c1911acc1de"
+    },
+    "upstreamInputs": {
+      "elvs_crude_t-shirt_male.mhclo": "64dd3e6e2fbba39cc792854e0ae3e2c4829a37fa4e4b690f463c2956476294da",
+      "crude_male_shirt.mhmat": "4e456f7b85ff3023b2ec3b4ed58b0ccceac621f3a02f4887d04eaa2a781b229a",
+      "crude_male_shirt.obj": "3389b981a826396213cce2e69f40b3d9eca6cdfadcfcbee2774acb1dfb322fa7"
+    },
+    "textNormalization": "LF and trailing whitespace only; upstream hashes retained"
+  },
+  "animations": {
+    "author": "Quaternius",
+    "license": "CC0",
+    "sourceUrl": "https://quaternius.itch.io/universal-animation-library",
+    "archiveSha256": "cc73fc4e495b82958207316596317a3f40b9fa38065bde1027937452da537724",
+    "gltfSha256": "69591853d817488edaa8fd9bf8fc1d821eaeaf789f8627b3cd23b41c4ed67997",
+    "adaptations": "Source bind-relative spine/neck/head rotations applied to human neutral rest; torso motion retained at 20% jog / 25% walk-sprint, half on neck/head. Clavicles retain 5% local articulation; whole limbs follow corrected chest once, with outward upper-arm angle halved in its frame and captured sagittal swing/elbow/wrist/finger timing retained. Measured stride/contact and leg IK preserved. Seated arm IK rests palms on thighs, with lifted sit/stand hand trajectory. Sit/stand root height follows measured shoe-sole contact."
+  },
+  "capture": {
+    "sourceUrl": "https://mocap.cs.cmu.edu/",
+    "conversion": "cgspeed / Bruce Hahne Daz-friendly BVH",
+    "inputs": {
+      "cmu-turn.bvh": "c4ab8aa525cc6ee75ee136e33735abcfc5395b4bb21aaa275b39fb0a7ee876df",
+      "cmu-idle.bvh": "1241bb317596590a8481dca0be87583e2e1304cc4fdf871410e0f14b09ac77da"
+    },
+    "beforeWhitespaceNormalization": {
+      "cmu-turn.bvh": "497c1bcbad22d3a31b5301fb6686786d1073b74c36aadd0597adf9965acae7ab",
+      "cmu-idle.bvh": "970eeb068da8c18cb4ce1a4b83769c5be76f7989e3cb173fa95ae3581d008314"
+    },
+    "adaptations": "Nonzero Spine joint defines CMU facing; TurnRight retains the negative-yaw capture, TurnLeft mirrors deformation and swaps limbs. Rig left thigh is +X and front is +Z, so positive game yaw is left. Idle uses relaxed-pose attenuation and a closed envelope."
+  },
+  "output": {
+    "file": "public/assets/reference_character.glb",
+    "sha256": "c4d67ad5d317c050f5b8542d8d98e351d789c1844971cf951a4c5b6dc8225b98",
+    "bytes": 2006092
+  }
+}

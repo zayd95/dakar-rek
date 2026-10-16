@@ -1,0 +1,370 @@
+[
+  {
+    "view": "portrait",
+    "ok": true,
+    "maxWeight": 1,
+    "minWeight": 0.9999999999999999,
+    "maxAngle": 0.0000024148365394514667,
+    "maxPosition": 0,
+    "continuity": [
+      {
+        "clip": "Jog",
+        "angle": 0.0000024148365394514667,
+        "position": 0
+      },
+      {
+        "clip": "Walk",
+        "angle": 0.0000024148365394514667,
+        "position": 0
+      },
+      {
+        "clip": "Run",
+        "angle": 0.0000024148365394514667,
+        "position": 0
+      },
+      {
+        "clip": "Idle",
+        "angle": 0.0000024148365394514667,
+        "position": 0
+      },
+      {
+        "clip": "Walk",
+        "angle": 0.0000024148365394514667,
+        "position": 0
+      }
+    ],
+    "input": [
+      {
+        "label": "start-sprint",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Idle",
+          "Walk",
+          "Jog",
+          "Run"
+        ]
+      },
+      {
+        "label": "walk",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Run",
+          "Jog",
+          "Walk"
+        ]
+      },
+      {
+        "label": "jog",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Walk",
+          "Jog"
+        ]
+      },
+      {
+        "label": "run",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog",
+          "Run"
+        ]
+      },
+      {
+        "label": "rapid-0",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Run"
+        ]
+      },
+      {
+        "label": "rapid-1",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Run",
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-2",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-3",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-4",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-5",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-6",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-7",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-8",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-9",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-10",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-11",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "stop",
+        "minWeight": 0.9999999999999999,
+        "maxWeight": 1,
+        "clips": [
+          "Jog",
+          "Walk",
+          "Idle"
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "view": "landscape",
+    "ok": true,
+    "maxWeight": 1,
+    "minWeight": 0.9999999999999999,
+    "maxAngle": 0.0000024148365394514667,
+    "maxPosition": 0,
+    "continuity": [
+      {
+        "clip": "Jog",
+        "angle": 0.0000024148365394514667,
+        "position": 0
+      },
+      {
+        "clip": "Walk",
+        "angle": 0.0000024148365394514667,
+        "position": 0
+      },
+      {
+        "clip": "Run",
+        "angle": 0.0000024148365394514667,
+        "position": 0
+      },
+      {
+        "clip": "Idle",
+        "angle": 0.0000024148365394514667,
+        "position": 0
+      },
+      {
+        "clip": "Walk",
+        "angle": 0.0000024148365394514667,
+        "position": 0
+      }
+    ],
+    "input": [
+      {
+        "label": "start-sprint",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Idle",
+          "Walk",
+          "Jog",
+          "Run"
+        ]
+      },
+      {
+        "label": "walk",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Run",
+          "Jog",
+          "Walk"
+        ]
+      },
+      {
+        "label": "jog",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Walk",
+          "Jog"
+        ]
+      },
+      {
+        "label": "run",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog",
+          "Run"
+        ]
+      },
+      {
+        "label": "rapid-0",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Run"
+        ]
+      },
+      {
+        "label": "rapid-1",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Run",
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-2",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-3",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-4",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-5",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-6",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-7",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-8",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-9",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-10",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "rapid-11",
+        "minWeight": 1,
+        "maxWeight": 1,
+        "clips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "stop",
+        "minWeight": 0.9999999999999999,
+        "maxWeight": 1,
+        "clips": [
+          "Jog",
+          "Walk",
+          "Idle"
+        ]
+      }
+    ],
+    "errors": []
+  }
+]

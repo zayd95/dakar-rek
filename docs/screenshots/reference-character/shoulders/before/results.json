@@ -1,0 +1,70 @@
+[
+  {
+    "view": "portrait",
+    "ok": true,
+    "rows": [
+      {
+        "label": "walk",
+        "clip": "Walk",
+        "minimum": 0.00889482904701544,
+        "maximum": 0.032043545531615925,
+        "allClips": [
+          "Walk"
+        ]
+      },
+      {
+        "label": "jog",
+        "clip": "Jog",
+        "minimum": 0.007635638185062188,
+        "maximum": 0.10513485944569201,
+        "allClips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "sprint",
+        "clip": "Run",
+        "minimum": 0.0050510795242491024,
+        "maximum": 0.12275669023022617,
+        "allClips": [
+          "Run"
+        ]
+      }
+    ],
+    "errors": []
+  },
+  {
+    "view": "landscape",
+    "ok": true,
+    "rows": [
+      {
+        "label": "walk",
+        "clip": "Walk",
+        "minimum": 0.00889482904701544,
+        "maximum": 0.032043545531615925,
+        "allClips": [
+          "Walk"
+        ]
+      },
+      {
+        "label": "jog",
+        "clip": "Jog",
+        "minimum": 0.007635638185062188,
+        "maximum": 0.10513485944569201,
+        "allClips": [
+          "Jog"
+        ]
+      },
+      {
+        "label": "sprint",
+        "clip": "Run",
+        "minimum": 0.0050510795242491024,
+        "maximum": 0.12275669023022617,
+        "allClips": [
+          "Run"
+        ]
+      }
+    ],
+    "errors": []
+  }
+]

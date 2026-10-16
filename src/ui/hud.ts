@@ -287,8 +287,8 @@ export class Hud {
       + (price && !opt.stop ? `<em class="a-pr ${opt.cost ? 'cost' : 'gain'}">${price}</em>` : '') + '<kbd aria-hidden="true">E</kbd>';
     act.setAttribute('aria-label', glossed([text, sub, price].filter(Boolean).join(' · ')));   // no invisible gloss marks read aloud
   }
-  /** Diegetic bubble above the focused target (screen position in CSS pixels), or hidden. */
-  setWorldPrompt(at: { x: number; y: number } | null, icon = '', label = '', opt: PromptOpts = {}) {
+  /** Bubble above the target; an optional screen rectangle keeps it off the playable body. */
+  setWorldPrompt(at: { x: number; y: number } | null, icon = '', label = '', opt: PromptOpts = {}, avoid?: Rect) {
     const w = this.el.wprompt;
     if (!at) { if (this.wpKey) { w.classList.remove('on'); this.wpKey = ''; } return; }
     const price = opt.cost ? signed(-opt.cost) : opt.gain ? signed(opt.gain) : '';
@@ -303,16 +303,38 @@ export class Hud {
       wp.className = 'wp' + (why ? ' dis why' : '');
       wp.innerHTML = `${icon ? `<i>${esc(icon)}</i>` : ''}<span>${esc(label)}</span>${price ? `<em class="${opt.cost ? 'cost' : 'gain'}">${price}</em>` : ''}<kbd>E</kbd>${why ? `<small>${esc(why)}</small>` : ''}`;
       this.wpHalf = why ? Math.min(140, innerWidth * 0.39) : 0;                    // half the card's max width (style.css)
+      this.wpMeasureWidth = 0;
       if (changed || !w.classList.contains('on')) replay(wp, 'pop');
     }
-    // the card stays on screen (8 px margin) and its tail keeps pointing at the target
-    const { x, tail } = this.wpHalf ? bubbleX(at.x, this.wpHalf, innerWidth) : { x: at.x, tail: 0 };
+    if (avoid) {
+      // Read layout only when the text or viewport changes, never on every camera frame.
+      if (!this.wpMeasureWidth || this.wpViewportWidth !== innerWidth || this.wpViewportHeight !== innerHeight) {
+        const wp = w.firstElementChild as HTMLElement;
+        this.wpMeasureWidth = wp.offsetWidth; this.wpMeasureHeight = wp.offsetHeight;
+        this.wpViewportWidth = innerWidth; this.wpViewportHeight = innerHeight;
+      }
+    }
+    // Reference labels also stay fully on screen; the tail still points toward the target.
+    const half = avoid ? this.wpMeasureWidth / 2 : this.wpHalf;
+    const { x, tail } = half ? bubbleX(at.x, half, innerWidth) : { x: at.x, tail: 0 };
     if (tail !== this.wpTail) { this.wpTail = tail; (w.firstElementChild as HTMLElement).style.setProperty('--tail', `${tail}px`); }
     w.style.transform = `translate(${Math.round(x)}px,${Math.round(at.y)}px) translate(-50%,-100%)`;
+    if (avoid) {
+      const half = this.wpMeasureWidth / 2;
+      // Include the tail and a small clearance. The main action remains in the thumb zone.
+      if (overlaps({ left: x - half - 8, right: x + half + 8, top: at.y - this.wpMeasureHeight - 8, bottom: at.y + 13 }, avoid)) {
+        w.classList.add('over-player'); w.classList.remove('on'); return;
+      }
+    }
+    w.classList.remove('over-player');
     w.classList.add('on');
   }
   private wpHalf = 0;
   private wpTail = 0;
+  private wpMeasureWidth = 0;
+  private wpMeasureHeight = 0;
+  private wpViewportWidth = 0;
+  private wpViewportHeight = 0;
   /** The action is unavailable: shake the button and say why. */
   deny(reason: string) {
     if (!this.el.act.classList.contains('off')) replay(this.el.act, 'deny');

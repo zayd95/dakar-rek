@@ -1,0 +1,128 @@
+{
+  "Idle": {
+    "source": "CMU 18_08 frames 130\u2013490 (relaxed-pose adaptation, closed loop)",
+    "duration": 3.0,
+    "frames": 181,
+    "hipRange": [
+      0.030492070913314823,
+      0.03209147214889527
+    ]
+  },
+  "Walk": {
+    "source": "Walk_Loop",
+    "duration": 1.3333333333333333,
+    "frames": 81,
+    "hipRange": [
+      0.005874845981597904,
+      0.07871513426303864
+    ],
+    "shoulderMotion": "Human neutral spine + 20% jog / 25% walk-sprint bind-relative torso rotation, half that on neck/head; clavicles retain 5% local articulation; whole limbs follow corrected chest",
+    "armCarriage": "Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved",
+    "stanceSpeed": 1.315652266144753
+  },
+  "Jog": {
+    "source": "Jog_Fwd_Loop",
+    "duration": 0.9333333333333333,
+    "frames": 57,
+    "hipRange": [
+      -0.15762304268346092,
+      -0.013236082196235656
+    ],
+    "shoulderMotion": "Human neutral spine + 20% jog / 25% walk-sprint bind-relative torso rotation, half that on neck/head; clavicles retain 5% local articulation; whole limbs follow corrected chest",
+    "armCarriage": "Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved",
+    "stanceSpeed": 3.1864169239997864
+  },
+  "Run": {
+    "source": "Sprint_Loop",
+    "duration": 0.6666666666666666,
+    "frames": 41,
+    "hipRange": [
+      -0.1361597728729248,
+      0.06271391451358796
+    ],
+    "shoulderMotion": "Human neutral spine + 20% jog / 25% walk-sprint bind-relative torso rotation, half that on neck/head; clavicles retain 5% local articulation; whole limbs follow corrected chest",
+    "armCarriage": "Half captured outward arm angle in torso frame; sagittal swing and whole-limb elbow/wrist/finger articulation preserved",
+    "stanceSpeed": 6.013797182589769
+  },
+  "Sit": {
+    "source": "Sitting_Idle_Loop",
+    "duration": 1.6666666666666667,
+    "frames": 101,
+    "hipRange": [
+      -0.3914409923553467,
+      -0.3914409923553467
+    ]
+  },
+  "SitEnter": {
+    "source": "Sitting_Enter",
+    "duration": 1.3,
+    "frames": 79,
+    "hipRange": [
+      -0.3976158118247986,
+      0.05135455071926117
+    ]
+  },
+  "SitExit": {
+    "source": "Sitting_Exit",
+    "duration": 1.0333333333333334,
+    "frames": 63,
+    "hipRange": [
+      -0.4047482824325562,
+      0.05147833466529846
+    ]
+  },
+  "Talk": {
+    "source": "Idle_Talking_Loop",
+    "duration": 2.933333333333333,
+    "frames": 177,
+    "hipRange": [
+      0.0372101104259491,
+      0.04452407717704773
+    ]
+  },
+  "Celebrate": {
+    "source": "Dance_Loop",
+    "duration": 1.0,
+    "frames": 61,
+    "hipRange": [
+      -0.051896743058193466,
+      0.014853753990105278
+    ]
+  },
+  "Kneel": {
+    "source": "Fixing_Kneeling",
+    "duration": 5.2,
+    "frames": 313,
+    "hipRange": [
+      -0.5223183139896798,
+      -0.021701910181851598
+    ]
+  },
+  "Ride": {
+    "source": "Driving_Loop",
+    "duration": 1.6666666666666667,
+    "frames": 101,
+    "hipRange": [
+      -0.37955616782135326,
+      -0.37955616782135326
+    ]
+  },
+  "TurnRight": {
+    "source": "CMU 13_26 frames 977\u20131121 (quarter turn)",
+    "duration": 1.2,
+    "frames": 73,
+    "hipRange": [
+      0.012184422314167026,
+      0.040864672362804416
+    ]
+  },
+  "TurnLeft": {
+    "source": "CMU 13_26 frames 977\u20131121 (quarter turn); mirrored deformation / swapped limbs",
+    "duration": 1.2,
+    "frames": 73,
+    "hipRange": [
+      0.012184422314167026,
+      0.040864672362804416
+    ]
+  }
+}

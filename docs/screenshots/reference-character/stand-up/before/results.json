@@ -1,0 +1,74 @@
+[
+  {
+    "name": "seated",
+    "pos": {
+      "x": -102.2,
+      "y": 0.09999999999999998,
+      "z": 101,
+      "hub": "pikine",
+      "mode": "play",
+      "near": null
+    },
+    "seated": "pikine:bench:16:0",
+    "motion": {
+      "clip": "Sit",
+      "duration": 1.6833332777023315,
+      "timeScale": 1,
+      "time": 0.6666666666666671
+    }
+  },
+  {
+    "name": "stand-start",
+    "pos": {
+      "x": -102.2,
+      "y": 0.1,
+      "z": 101.85,
+      "hub": "pikine",
+      "mode": "play",
+      "near": null
+    },
+    "seated": null,
+    "motion": {
+      "clip": "SitExit",
+      "duration": 1.0499999523162842,
+      "timeScale": 1,
+      "time": 0.016666666666666666
+    }
+  },
+  {
+    "name": "stand-middle",
+    "pos": {
+      "x": -102.2,
+      "y": 0.1,
+      "z": 101.85,
+      "hub": "pikine",
+      "mode": "play",
+      "near": null
+    },
+    "seated": null,
+    "motion": {
+      "clip": "SitExit",
+      "duration": 1.0499999523162842,
+      "timeScale": 1,
+      "time": 0.4333333333333333
+    }
+  },
+  {
+    "name": "stand-end",
+    "pos": {
+      "x": -102.2,
+      "y": 0.1,
+      "z": 101.85,
+      "hub": "pikine",
+      "mode": "play",
+      "near": null
+    },
+    "seated": null,
+    "motion": {
+      "clip": "Idle",
+      "duration": 3.0166666507720947,
+      "timeScale": 1,
+      "time": 0.3833333333333333
+    }
+  }
+]

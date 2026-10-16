@@ -1,0 +1,174 @@
+[
+  {
+    "view": "portrait",
+    "ok": true,
+    "firstStep": 0,
+    "maxStep": 0.025290715284683074,
+    "maxGroundError": 0.009627513813131816,
+    "postRiseClips": [
+      "Idle"
+    ],
+    "worstGround": {
+      "frame": 68,
+      "sole": 0.1303724861868682,
+      "pos": {
+        "x": -102.2,
+        "y": 0.1,
+        "z": 101.85,
+        "hub": "pikine",
+        "mode": "play",
+        "near": null
+      },
+      "clip": "Idle",
+      "time": 0.09999999999999999,
+      "seated": null,
+      "occupant": null
+    },
+    "start": {
+      "frame": 1,
+      "sole": 0.14560259429352365,
+      "pos": {
+        "x": -102.2,
+        "y": 0.09999999999999998,
+        "z": 101,
+        "hub": "pikine",
+        "mode": "play",
+        "near": null
+      },
+      "clip": "SitExit",
+      "time": 0.016666666666666666,
+      "seated": "pikine:bench:16:0",
+      "occupant": "player"
+    },
+    "middle": {
+      "frame": 26,
+      "sole": 0.14087239842125415,
+      "pos": {
+        "x": -102.2,
+        "y": 0.09999999999999998,
+        "z": 101.14830553563426,
+        "hub": "pikine",
+        "mode": "play",
+        "near": null
+      },
+      "clip": "SitExit",
+      "time": 0.4333333333333333,
+      "seated": "pikine:bench:16:0",
+      "occupant": "player"
+    },
+    "end": {
+      "frame": 90,
+      "sole": 0.14000022956455574,
+      "pos": {
+        "x": -102.2,
+        "y": 0.1,
+        "z": 101.85,
+        "hub": "pikine",
+        "mode": "play",
+        "near": null
+      },
+      "clip": "Idle",
+      "time": 0.4666666666666666,
+      "seated": null,
+      "occupant": null
+    },
+    "interrupt": {
+      "firstFrameSeated": null,
+      "seated": null,
+      "clip": "Walk",
+      "occupant": null
+    },
+    "travel": {
+      "hub": "corniche",
+      "seated": null,
+      "clip": "Idle"
+    },
+    "errors": []
+  },
+  {
+    "view": "landscape",
+    "ok": true,
+    "firstStep": 0,
+    "maxStep": 0.025290715284683074,
+    "maxGroundError": 0.009627513813131816,
+    "postRiseClips": [
+      "Idle"
+    ],
+    "worstGround": {
+      "frame": 68,
+      "sole": 0.1303724861868682,
+      "pos": {
+        "x": -102.2,
+        "y": 0.1,
+        "z": 101.85,
+        "hub": "pikine",
+        "mode": "play",
+        "near": null
+      },
+      "clip": "Idle",
+      "time": 0.09999999999999999,
+      "seated": null,
+      "occupant": null
+    },
+    "start": {
+      "frame": 1,
+      "sole": 0.14560259429352365,
+      "pos": {
+        "x": -102.2,
+        "y": 0.09999999999999998,
+        "z": 101,
+        "hub": "pikine",
+        "mode": "play",
+        "near": null
+      },
+      "clip": "SitExit",
+      "time": 0.016666666666666666,
+      "seated": "pikine:bench:16:0",
+      "occupant": "player"
+    },
+    "middle": {
+      "frame": 26,
+      "sole": 0.14087239842125415,
+      "pos": {
+        "x": -102.2,
+        "y": 0.09999999999999998,
+        "z": 101.14830553563426,
+        "hub": "pikine",
+        "mode": "play",
+        "near": null
+      },
+      "clip": "SitExit",
+      "time": 0.4333333333333333,
+      "seated": "pikine:bench:16:0",
+      "occupant": "player"
+    },
+    "end": {
+      "frame": 90,
+      "sole": 0.14000022956455574,
+      "pos": {
+        "x": -102.2,
+        "y": 0.1,
+        "z": 101.85,
+        "hub": "pikine",
+        "mode": "play",
+        "near": null
+      },
+      "clip": "Idle",
+      "time": 0.4666666666666666,
+      "seated": null,
+      "occupant": null
+    },
+    "interrupt": {
+      "firstFrameSeated": null,
+      "seated": null,
+      "clip": "Walk",
+      "occupant": null
+    },
+    "travel": {
+      "hub": "corniche",
+      "seated": null,
+      "clip": "Idle"
+    },
+    "errors": []
+  }
+]

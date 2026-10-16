@@ -1,0 +1,417 @@
+{
+  "attributes": {
+    "position": true,
+    "normal": true,
+    "color": true,
+    "skinIndex": true,
+    "skinWeight": true
+  },
+  "index": true,
+  "lowerBodyTracks": [
+    {
+      "clip": "Walk",
+      "track": "mixamorigHips.position",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigHips.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigHips.scale",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftUpLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftUpLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftUpLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftFoot.position",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftFoot.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftFoot.scale",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftToeBase.position",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftToeBase.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigLeftToeBase.scale",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightUpLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightUpLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightUpLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightFoot.position",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightFoot.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightFoot.scale",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightToeBase.position",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightToeBase.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Walk",
+      "track": "mixamorigRightToeBase.scale",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigHips.position",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigHips.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigHips.scale",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftUpLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftUpLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftUpLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftFoot.position",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftFoot.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftFoot.scale",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftToeBase.position",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftToeBase.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigLeftToeBase.scale",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightUpLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightUpLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightUpLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightFoot.position",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightFoot.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightFoot.scale",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightToeBase.position",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightToeBase.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Jog",
+      "track": "mixamorigRightToeBase.scale",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigHips.position",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigHips.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigHips.scale",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftUpLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftUpLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftUpLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftFoot.position",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftFoot.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftFoot.scale",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftToeBase.position",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftToeBase.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigLeftToeBase.scale",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightUpLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightUpLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightUpLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightLeg.position",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightLeg.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightLeg.scale",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightFoot.position",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightFoot.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightFoot.scale",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightToeBase.position",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightToeBase.quaternion",
+      "identical": true
+    },
+    {
+      "clip": "Run",
+      "track": "mixamorigRightToeBase.scale",
+      "identical": true
+    }
+  ]
+}

@@ -8,6 +8,8 @@ import { GaitState, runCadence, walkCadence } from './gait';
 import { GaitRig } from './gaitRig';
 import { joinNeck } from './neckJoin';
 import { reshapeCharacter } from './proportions';
+import type { CharacterTemplate } from './referenceCharacter';
+import referencePace from './referenceMotion.json';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -15,7 +17,7 @@ import { reshapeCharacter } from './proportions';
  * two ngemb cuts and accessory sockets. Clips: Idle, Walk, Run, Talk, Sit, Stance, Grab, Fall_Back, Prep,
  * Dance_A, Dance_B, Celebrate, Entrance_Walk. Status: TEMP v2 (see docs/ASSET_REGISTER.md).
  */
-export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
+export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'TurnRight' | 'TurnLeft' | 'Talk' | 'Sit' | 'SitEnter' | 'SitExit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
 export type PoseClip = 'Lie' | 'SitFloor' | 'Ride';
 export type Style = 'boubou' | 'tee' | 'dress';
@@ -421,9 +423,21 @@ export class Humanoid {
    */
   private settled = false; private sinceSwitch = 0;
 
-  constructor(look?: PersonLook) {
-    if (!template) throw new Error('character asset not loaded');
-    this.root = cloneSkinned(template.scene);
+  private readonly reference: boolean;
+  private referenceYaw = NaN;
+  private referenceTurnTime = 0;
+  private referenceTurnClip: 'TurnRight' | 'TurnLeft' = 'TurnRight';
+  private referenceSitting = false;
+  private referenceSeatTime = 0;
+  private referenceSeatClip: 'SitEnter' | 'SitExit' = 'SitEnter';
+  private referenceBlend: { action: THREE.AnimationAction; from: number; to: number }[] = [];
+  private referenceBlendTime = 0;
+  private referenceBlendDuration = 0;
+  constructor(look?: PersonLook, source?: CharacterTemplate) {
+    this.reference = !!source;
+    const asset = source ?? template;
+    if (!asset) throw new Error('character asset not loaded');
+    this.root = cloneSkinned(asset.scene);
     this.group.add(this.root); this.group.name = 'humanoid_v2';
     this.skinMat = new THREE.MeshLambertMaterial({ color: 0x5b3420, side: THREE.DoubleSide });
     const hair = new THREE.MeshLambertMaterial({ color: 0x141011, side: THREE.DoubleSide });
@@ -435,6 +449,7 @@ export class Humanoid {
       if (/^Head\w*_\d+$/.test(m.name)) this.face.push(m);
       if (m.morphTargetDictionary) this.morphed.push(m);
       const src = m.material as THREE.MeshStandardMaterial;
+      if (this.reference) { m.material = new THREE.MeshLambertMaterial({ color: src.color, vertexColors: !!m.geometry.getAttribute('color') }); return; }
       if (key) { this.parts.set(key, m); if (key.startsWith('Hair_')) m.material = hair; if (key === 'Beard') m.material = this.beardMat; }
       else if (src.name.startsWith('Skin')) m.material = this.skinMat;
       else if (src.name === 'Hair') m.material = hair;
@@ -442,7 +457,10 @@ export class Humanoid {
       else m.material = new THREE.MeshLambertMaterial({ color: src.color });   // eyes
     });
     this.mixer = new THREE.AnimationMixer(this.root);
-    for (const c of template.clips) this.actions.set(c.name, this.mixer.clipAction(c));
+    for (const c of asset.clips) {
+      const action = this.mixer.clipAction(c);
+      this.actions.set(c.name, action);
+    }
     if (look) this.setLook(look);
   }
 
@@ -451,6 +469,7 @@ export class Humanoid {
 
   /** City clothing. */
   setLook(l: PersonLook) {
+    if (this.reference) return; // one fixed authored character; no wardrobe or creator
     this.clearAccessories();
     this.setSkin(l.skin);
     const vis = ['Cloth_Shoes'];
@@ -485,6 +504,7 @@ export class Humanoid {
 
   /** Wrestling attire: ngemb (cut A short, B long with knot) and accessories on sockets. Cosmetic only. */
   setWrestler(look: WrestlerLook, cut: 'A' | 'B' = 'A', skin?: number) {
+    if (this.reference) return;
     if (skin !== undefined) this.setSkin(skin);
     const tex = ngembTexture(look.ngembColor, look.ngembPattern).clone();
     tex.flipY = false; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 1); tex.needsUpdate = true;
@@ -509,11 +529,48 @@ export class Humanoid {
     if (this.clipName === name) return;
     const next = this.actions.get(name); if (!next) return;
     this.settled = false; this.sinceSwitch = 0;
-    next.reset(); next.setLoop(THREE.LoopRepeat, Infinity); next.timeScale = 1;
-    if (offset) next.time = offset * next.getClip().duration;
-    next.fadeIn(fade).play();
-    this.current?.fadeOut(fade);
+    const once = this.reference && ['TurnRight', 'TurnLeft', 'SitEnter', 'SitExit'].includes(name);
+    next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, once ? 1 : Infinity);
+    next.clampWhenFinished = once; next.timeScale = 1;
+    if (this.reference) this.blendReference(next, fade, offset);
+    else {
+      next.reset();
+      if (offset) next.time = offset * next.getClip().duration;
+      next.fadeIn(fade).play();
+      this.current?.fadeOut(fade);
+    }
     this.current = next; this.clipName = name;
+  }
+
+  /** Interrupted fades continue from the visible mix, including a gait already fading out. */
+  private blendReference(next: THREE.AnimationAction, duration: number, offset: number) {
+    this.referenceBlend.length = 0;
+    let continuing = false;
+    for (const action of this.actions.values()) {
+      const from = action.isScheduled() ? action.getEffectiveWeight() : 0;
+      if (action === next) continuing = from > 0 && !action.paused;
+      if (from > 0 || action === next) {
+        action.stopFading().setEffectiveWeight(from);
+        this.referenceBlend.push({ action, from, to: action === next ? 1 : 0 });
+      }
+    }
+    if (!continuing || offset) next.reset();
+    if (offset) next.time = offset * next.getClip().duration;
+    next.play();
+    this.referenceBlendTime = 0;
+    this.referenceBlendDuration = this.current ? Math.max(0, duration) : 0;
+    this.advanceReferenceBlend(0);
+  }
+
+  private advanceReferenceBlend(dt: number) {
+    if (!this.referenceBlend.length) return;
+    this.referenceBlendTime += dt;
+    const t = this.referenceBlendDuration > 0 ? Math.min(1, this.referenceBlendTime / this.referenceBlendDuration) : 1;
+    for (const { action, from, to } of this.referenceBlend) {
+      action.setEffectiveWeight(from + (to - from) * t);
+      if (t === 1 && to === 0) action.stop();
+    }
+    if (t === 1) this.referenceBlend.length = 0;
   }
 
   /**
@@ -523,6 +580,7 @@ export class Humanoid {
    * clips stay underneath for the cross-fades with held poses (talking, sitting, emotes…), which the gait fades out for.
    */
   animate(dt: number, speed: number) {
+    if (this.reference) { this.animateReference(dt); return; }
     const held = this.hold && !LOCOMOTION.has(this.hold) ? this.hold : null;
     const o = this.group.position;
     // the ground speed from the body's own motion (a jump is not a step): the clips' pace while the gait is not computed
@@ -575,6 +633,46 @@ export class Humanoid {
       this.gaitRig?.apply(this.gait!, w);
     }
   }
+  /** Captured motion on the new rig; V4's numerical gait and proportions are never applied. */
+  private animateReference(dt: number) {
+    const p = this.group.position, yaw = this.group.rotation.y;
+    const distance = Math.hypot(p.x - this.lx, p.z - this.lz);
+    const moving = Number.isFinite(distance) && distance < Math.max(.5, 10 * dt);
+    // The controlled seat exit translates the body, but isn't a walking stride. Letting that
+    // translation enter the gait filter briefly selected Walk as the stand-up finished.
+    const groundSpeed = moving && dt > 0 && this.hold !== 'SitExit' ? distance / dt : 0;
+    this.v += (groundSpeed - this.v) * (1 - Math.exp(-dt / .06));
+    const turn = Number.isFinite(this.referenceYaw) && dt > 0 ? Math.atan2(Math.sin(yaw - this.referenceYaw), Math.cos(yaw - this.referenceYaw)) / dt : 0;
+    this.lx = p.x; this.lz = p.z; this.referenceYaw = yaw;
+    const held = this.hold && this.actions.has(this.hold) ? this.hold : null;
+    const sitting = held === 'Sit';
+    if (sitting !== this.referenceSitting) {
+      this.referenceSeatClip = sitting ? 'SitEnter' : 'SitExit';
+      this.referenceSeatTime = this.actions.get(this.referenceSeatClip)?.getClip().duration ?? 0;
+      this.referenceSitting = sitting;
+    }
+    if (!sitting && (held || this.v > .2)) this.referenceSeatTime = 0;
+    if (!held && this.v < .2 && Math.abs(turn) > .5 && this.referenceTurnTime <= 0) {
+      // This rig faces +Z with its left thigh on +X, so positive yaw turns toward its left.
+      this.referenceTurnClip = turn > 0 ? 'TurnLeft' : 'TurnRight';
+      this.referenceTurnTime = this.actions.get(this.referenceTurnClip)?.getClip().duration ?? 0;
+    }
+    if (held || this.v > .2) this.referenceTurnTime = 0;
+    const name: Clip = this.referenceSeatTime > 0 ? this.referenceSeatClip : held ?? (this.v > 5.4 ? 'Run' : this.v > 2.5 ? 'Jog' : this.v > .2 ? 'Walk' : this.referenceTurnTime > 0 ? this.referenceTurnClip : 'Idle');
+    this.referenceSeatTime = Math.max(0, this.referenceSeatTime - dt);
+    this.referenceTurnTime = Math.max(0, this.referenceTurnTime - dt);
+    this.play(name, .18);
+    if (this.current) {
+      // Median backward speed of the sole during contact, measured from the retargeted clips.
+      const nominal = name === 'Walk' || name === 'Jog' || name === 'Run' ? referencePace[name] : 0;
+      this.current.timeScale = nominal ? Math.max(.3, Math.min(2.3, this.v / nominal)) : 1;
+    }
+    this.update(dt);
+  }
+  /** Current mixer timing for the motion checks; no controls or configuration UI. */
+  motionInfo() {
+    return this.current ? { clip: this.clipName, duration: this.current.getClip().duration, timeScale: this.current.timeScale, time: this.current.time } : null;
+  }
   /**
    * Back to the state of a body just made (its look aside: `setLook` dresses it again): no clip playing, no pose held, the
    * gait and the animation level of detail forgotten. For an owner that keeps spare bodies instead of cloning a new skinned
@@ -586,6 +684,10 @@ export class Humanoid {
     this.gait = null; this.gaitRig = undefined; this.gaitW = 1; this.fullRate = false;     // (the gait's rig takes its rest rotations again at its first use, as a new body's does)
     this.lag = 0; this.due = 0; this.near = true; this.settled = false; this.sinceSwitch = 0;
     this.lx = NaN; this.lz = NaN; this.v = 0; this.saved = null;
+    this.referenceYaw = NaN; this.referenceTurnTime = 0;
+    this.referenceTurnClip = 'TurnRight';
+    this.referenceSitting = false; this.referenceSeatTime = 0;
+    this.referenceBlend.length = 0; this.referenceBlendTime = 0; this.referenceBlendDuration = 0;
     this.faceOn = true; for (const m of this.face) m.visible = true;
     this.group.position.set(0, 0, 0); this.group.rotation.set(0, 0, 0);
   }
@@ -630,7 +732,7 @@ export class Humanoid {
       feet: g.feet.map(f => ({ planted: f.planted, swing: f.swing, settle: f.settle, pitch: f.pitch, slipped: f.slipped })),
     };
   }
-  update(dt: number) { this.mixer.update(dt); }
+  update(dt: number) { if (this.reference) this.advanceReferenceBlend(dt); this.mixer.update(dt); }
   dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
 }
 

@@ -1,0 +1,216 @@
+[
+  {
+    "view": "portrait",
+    "ok": true,
+    "rows": [
+      {
+        "label": "front",
+        "body": {
+          "left": 134.96937190675038,
+          "top": 159.0457077017235,
+          "right": 253.29313991791474,
+          "bottom": 545.8381388824794
+        },
+        "bubble": {
+          "left": 197.1796875,
+          "top": 322,
+          "right": 300.8203125,
+          "bottom": 356
+        },
+        "overlap": 1907.8573822091012,
+        "visible": false,
+        "on": false,
+        "opacity": "0",
+        "focus": {
+          "id": "seat:pikine:bench:16:0",
+          "name": "Banc",
+          "kind": "seat",
+          "space": "street",
+          "primary": "S’asseoir",
+          "all": [
+            "S’asseoir"
+          ],
+          "why": []
+        },
+        "action": "🪑S’asseoirBancE",
+        "clock": "Pikine · Guédiawaye · Parcelles☀️ Vendredi · 09:00Gala ce soir"
+      },
+      {
+        "label": "side",
+        "body": {
+          "left": 149.5789392114109,
+          "top": 163.31868613605778,
+          "right": 218.1887749692939,
+          "bottom": 542.564495843305
+        },
+        "bubble": {
+          "left": 278.1796875,
+          "top": 310,
+          "right": 381.8203125,
+          "bottom": 344
+        },
+        "overlap": 0,
+        "visible": true,
+        "on": true,
+        "opacity": "1",
+        "focus": {
+          "id": "seat:pikine:bench:16:0",
+          "name": "Banc",
+          "kind": "seat",
+          "space": "street",
+          "primary": "S’asseoir",
+          "all": [
+            "S’asseoir"
+          ],
+          "why": []
+        },
+        "action": "🪑S’asseoirBancE",
+        "clock": "Pikine · Guédiawaye · Parcelles☀️ Vendredi · 09:00Gala ce soir"
+      },
+      {
+        "label": "back",
+        "body": {
+          "left": 134.5367647296918,
+          "top": 167.05243212695308,
+          "right": 257.557888780287,
+          "bottom": 538.3519463545338
+        },
+        "bubble": {
+          "left": 129.1796875,
+          "top": 290,
+          "right": 232.8203125,
+          "bottom": 324
+        },
+        "overlap": 3341.6406241904783,
+        "visible": false,
+        "on": false,
+        "opacity": "0",
+        "focus": {
+          "id": "seat:pikine:bench:16:0",
+          "name": "Banc",
+          "kind": "seat",
+          "space": "street",
+          "primary": "S’asseoir",
+          "all": [
+            "S’asseoir"
+          ],
+          "why": []
+        },
+        "action": "🪑S’asseoirBancE",
+        "clock": "Pikine · Guédiawaye · Parcelles☀️ Vendredi · 09:00Gala ce soir"
+      }
+    ],
+    "seated": {
+      "id": "pikine:bench:16:0",
+      "clip": "Sit"
+    },
+    "errors": []
+  },
+  {
+    "view": "landscape",
+    "ok": true,
+    "rows": [
+      {
+        "label": "front",
+        "body": {
+          "left": 389.50171524577524,
+          "top": 52.64660907461039,
+          "right": 453.55767514755166,
+          "bottom": 262.0412292635766
+        },
+        "bubble": {
+          "left": 399.1796875,
+          "top": 125,
+          "right": 502.8203125,
+          "bottom": 159
+        },
+        "overlap": 1848.8515800167565,
+        "visible": false,
+        "on": false,
+        "opacity": "0",
+        "focus": {
+          "id": "seat:pikine:bench:16:0",
+          "name": "Banc",
+          "kind": "seat",
+          "space": "street",
+          "primary": "S’asseoir",
+          "all": [
+            "S’asseoir"
+          ],
+          "why": []
+        },
+        "action": "🪑S’asseoirBancE",
+        "clock": "Pikine · Guédiawaye · Parcelles☀️ Vendredi · 09:00Gala ce soir"
+      },
+      {
+        "label": "side",
+        "body": {
+          "left": 397.4107758950384,
+          "top": 54.959836077532124,
+          "right": 434.5535153635764,
+          "bottom": 260.26900420030535
+        },
+        "bubble": {
+          "left": 464.1796875,
+          "top": 119,
+          "right": 567.8203125,
+          "bottom": 153
+        },
+        "overlap": 0,
+        "visible": true,
+        "on": true,
+        "opacity": "1",
+        "focus": {
+          "id": "seat:pikine:bench:16:0",
+          "name": "Banc",
+          "kind": "seat",
+          "space": "street",
+          "primary": "S’asseoir",
+          "all": [
+            "S’asseoir"
+          ],
+          "why": []
+        },
+        "action": "🪑S’asseoirBancE",
+        "clock": "Pikine · Guédiawaye · Parcelles☀️ Vendredi · 09:00Gala ce soir"
+      },
+      {
+        "label": "back",
+        "body": {
+          "left": 389.26751827543984,
+          "top": 56.98114327131284,
+          "right": 455.8664469751484,
+          "bottom": 257.9884911159728
+        },
+        "bubble": {
+          "left": 363.1796875,
+          "top": 108,
+          "right": 466.8203125,
+          "bottom": 142
+        },
+        "overlap": 2264.3635757900906,
+        "visible": false,
+        "on": false,
+        "opacity": "0",
+        "focus": {
+          "id": "seat:pikine:bench:16:0",
+          "name": "Banc",
+          "kind": "seat",
+          "space": "street",
+          "primary": "S’asseoir",
+          "all": [
+            "S’asseoir"
+          ],
+          "why": []
+        },
+        "action": "🪑S’asseoirBancE",
+        "clock": "Pikine · Guédiawaye · Parcelles☀️ Vendredi · 09:00Gala ce soir"
+      }
+    ],
+    "seated": {
+      "id": "pikine:bench:16:0",
+      "clip": "Sit"
+    },
+    "errors": []
+  }
+]
