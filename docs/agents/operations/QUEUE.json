@@ -1696,5 +1696,17 @@
       },
       "targetedEvidence": "Author versioned JSON inspected, no embedded execution SHA; images/video not viewed; no independent targeted browser execution"
     }
+  },
+  "registryWriter": {
+    "token": "freeze-20261016T1028Z-watch",
+    "owner": "producer_freeze_1028",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "912cf1f0df11ee8fa54bb48e19f5d397065b15dd",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-16-1028-FREEZE.md"
+    ],
+    "acquiredAt": "2026-10-16T10:27:46Z"
   }
 }
