@@ -45,27 +45,27 @@ export class VenueKit {
   private c: number; private s: number;
 
   /** origin: world position of the local (0, 0); yaw: world yaw of the local +z (front); space: seats' space. */
-  constructor(readonly origin: { x: number; z: number }, readonly yaw: number, readonly space = 'street', y = 0, readonly scale = 1) {
-    this.group.position.set(origin.x, y, origin.z); this.group.rotation.y = yaw; this.group.scale.setScalar(scale);   // scale: a smaller copy of a venue (colliders, seats and places follow)
+  constructor(readonly origin: { x: number; z: number }, readonly yaw: number, readonly space = 'street', y = 0) {
+    this.group.position.set(origin.x, y, origin.z); this.group.rotation.y = yaw;
     this.c = Math.cos(yaw); this.s = Math.sin(yaw);
     this.b = { plain: new Batch(), wall: new Batch(), block: new Batch(), tin: new Batch(), wood: new Batch(), floor: new Batch(), paving: new Batch(), metal: new Batch(), glow: new Batch() };
   }
 
   /** Local (x, z) → world. */
-  w(x: number, z: number) { x *= this.scale; z *= this.scale; return { x: this.origin.x + x * this.c + z * this.s, z: this.origin.z - x * this.s + z * this.c }; }
+  w(x: number, z: number) { return { x: this.origin.x + x * this.c + z * this.s, z: this.origin.z - x * this.s + z * this.c }; }
   /** Local facing → world facing. */
   yawW(localYaw: number) { return localYaw + this.yaw; }
 
   /** Solid box centred at local (x, z), w along local x, d along local z (world AABB; venues turn by quarter turns). */
   solid(x: number, z: number, w: number, d: number, h = 2) {
-    const p = this.w(x, z), ac = Math.abs(this.c), as = Math.abs(this.s); w *= this.scale; d *= this.scale; h *= this.scale;
+    const p = this.w(x, z), ac = Math.abs(this.c), as = Math.abs(this.s);
     const W = w * ac + d * as, D = w * as + d * ac;
     this.colliders.push({ x0: p.x - W / 2, x1: p.x + W / 2, z0: p.z - D / 2, z1: p.z + D / 2, h });
   }
   /** A seat at local (x, z) facing local yaw. */
   seat(id: string, x: number, z: number, localYaw: number, top: number, kind: SeatKind, clip?: Clip): Seat {
     const p = this.w(x, z);
-    const s: Seat = { id, x: p.x, z: p.z, top: top * this.scale, yaw: this.yawW(localYaw), kind, space: this.space, occupant: null, ...(clip ? { clip } : {}) };
+    const s: Seat = { id, x: p.x, z: p.z, top, yaw: this.yawW(localYaw), kind, space: this.space, occupant: null, ...(clip ? { clip } : {}) };
     this.seats.push(s); return s;
   }
   /** Seats along a bench of length `len` at local (x, z), sitters facing local yaw. */
@@ -104,7 +104,7 @@ export class VenueKit {
     }
   }
   /** World → local (inverse of `w`). */
-  local(x: number, z: number) { const dx = x - this.origin.x, dz = z - this.origin.z; return { x: (dx * this.c - dz * this.s) / this.scale, z: (dx * this.s + dz * this.c) / this.scale }; }
+  local(x: number, z: number) { const dx = x - this.origin.x, dz = z - this.origin.z; return { x: dx * this.c - dz * this.s, z: dx * this.s + dz * this.c }; }
   dispose() { this.group.removeFromParent(); for (const o of this.own) o.dispose(); this.own = []; }
 }
 

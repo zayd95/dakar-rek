@@ -73,7 +73,7 @@ export function buildMosque(env: VenueEnv, site: Site): Venue {
   Pl.box(HW * 2 + 0.08, 0.16, hd + 0.08, 0, G0 + HHm - 0.75, hc, MOD.trim);                    // the only green: one thin stripe
   Pl.box(HW * 2 + 0.3, 0.22, hd + 0.3, 0, G0 + HHm - 0.04, hc, MOD.roof);                       // flat roof slab
   for (const [x0, z0, x1, z1] of [[-HW, HZ1, HW, HZ1], [-HW, HZ0, HW, HZ0], [-HW, HZ0, -HW, HZ1], [HW, HZ0, HW, HZ1]] as const) {
-    const len = Math.hypot(x1 - x0, z1 - z0); Wa.box(Math.abs(x1 - x0) || 0.25, 0.4, Math.abs(z1 - z0) || 0.25, (x0 + x1) / 2, G0 + HHm + 0.18, (z0 + z1) / 2, MOD.wall); void len;
+    Wa.box(Math.abs(x1 - x0) || 0.25, 0.4, Math.abs(z1 - z0) || 0.25, (x0 + x1) / 2, G0 + HHm + 0.18, (z0 + z1) / 2, MOD.wall);                // roof parapet
   }
   k.solid(0, hc, HW * 2, hd, HHm);
   const win = (x: number, z: number, faceYaw: number) => {
