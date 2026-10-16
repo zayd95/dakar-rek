@@ -858,17 +858,17 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-16-1136-FREEZE.md",
-    "checkedAt": "2026-10-16T11:36:24Z",
-    "result": "Freeze candidate unchanged; new PR29 sole alignment observed, CI pending, not approved",
-    "owner": "producer_freeze_1136",
+    "entry": "docs/agents/operations/CYCLE-2026-10-16-1427-WATCH.md",
+    "checkedAt": "2026-10-16T14:27:40Z",
+    "owner": "producer_audit_1427",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "72c21a9e91bcf71e4e537db954498d9b80c95bc9",
+    "baseCommit": "a9da5e47ebd64ea3f864f25e905066c7917fe51b",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-1136-FREEZE.md"
-    ]
+      "docs/agents/operations/CYCLE-2026-10-16-1427-WATCH.md"
+    ],
+    "result": "PR37 unchanged, quota/New Game defect persists at same source; no new targeted proof or correction, needs-decision unchanged"
   },
   "evidenceReview": {
     "id": "WATCH-20261014-0636-QA",
@@ -1822,7 +1822,8 @@
       "defect": "New Game can delete v5 and resurrect legacy when marker write fails; statically demonstrated, extracted clearSave KV reproduction confirmed",
       "targetedBrowser": "author claims only; save-compat not invoked in inspected CI",
       "publicLaunchApproved": false
-    }
+    },
+    "lastReconciledAt": "2026-10-16T14:27:40Z"
   },
   "saveRegressionProposal": {
     "id": "SAVE-NEWGAME-QUOTA",
@@ -1843,18 +1844,7 @@
       "Exact CI and distinct QA at corrected SHA"
     ],
     "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
-    "note": "Proposal, not dispatch or file reservation; no automatic implementation"
-  },
-  "registryWriter": {
-    "token": "audit-20261016T1427Z-watch",
-    "owner": "producer_audit_1427",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "a9da5e47ebd64ea3f864f25e905066c7917fe51b",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-16-1427-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-16T14:27:07Z"
+    "note": "Proposal, not dispatch or file reservation; no automatic implementation",
+    "lastReconciledAt": "2026-10-16T14:27:40Z"
   }
 }
