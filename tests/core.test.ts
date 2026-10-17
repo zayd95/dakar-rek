@@ -30,6 +30,11 @@ describe('save', () => {
     expect(migrate({ schemaVersion: SCHEMA_VERSION + 1 })).toBeNull();
     expect(migrate('x')).toBeNull();
   });
+  it('keeps a valid avatar and falls back to homme for old or invalid saves', () => {
+    expect(migrate({ schemaVersion: 2, avatar: 'femme' })?.avatar).toBe('femme');
+    expect(migrate({ schemaVersion: 2 })?.avatar).toBe('homme');
+    expect(migrate({ schemaVersion: 2, avatar: 'robot' })?.avatar).toBe('homme');
+  });
   it('survives corrupt storage', () => {
     const s = mem(); s.setItem(SAVE_KEY, '{oops');
     expect(loadSave(s)).toBeNull();

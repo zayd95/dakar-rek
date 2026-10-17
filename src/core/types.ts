@@ -23,6 +23,11 @@ export interface SaveData {
   beats: Record<string, string>;
   /** Wrestling identity (cosmetic only, never combat power). */
   wrestler: WrestlerLook;
+  /** Which city player model is drawn (cosmetic only). */
+  avatar: Avatar;
 }
+
+export type Avatar = 'homme' | 'femme';
+export const AVATARS: Avatar[] = ['homme', 'femme'];
 
 export interface WrestlerLook { ngembColor: string; ngembPattern: string; accessories: string[] }

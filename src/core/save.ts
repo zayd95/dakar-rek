@@ -1,5 +1,5 @@
-import type { HubId, Needs, SaveData, WrestlerLook } from './types';
-import { HUB_IDS } from './types';
+import type { Avatar, HubId, Needs, SaveData, WrestlerLook } from './types';
+import { AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 
 export const SAVE_KEY = 'dakarrek.guest.save';
@@ -18,7 +18,7 @@ export function newSave(now = Date.now()): SaveData {
   return {
     schemaVersion: SCHEMA_VERSION, guestId: newGuestId(), createdAt: now, savedAt: now, playedMs: 0,
     hub: 'pikine', x: 0, z: 0, yaw: 0, wallet: 3000, needs: { ...START_NEEDS }, counters: {},
-    rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] },
+    rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
   };
 }
 
@@ -54,6 +54,7 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     flags: Array.isArray(r.flags) ? (r.flags as unknown[]).filter((f): f is string => typeof f === 'string').slice(0, 500) : [],
     beats: strRecord(r.beats),
     wrestler: wrestlerOf(r.wrestler),
+    avatar: AVATARS.includes(r.avatar as Avatar) ? (r.avatar as Avatar) : base.avatar,
   };
 }
 
