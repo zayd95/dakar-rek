@@ -1,0 +1,60 @@
+# Player body choice (Meshy homme / femme): integration report
+
+Branch `feature/meshy-hero-bodies-20261017` (local, from `6789c6e`, not pushed). Everything below was run on the integrated build.
+
+## What the player gets
+
+* **New Game** shows a choice screen: *Homme* or *Femme*, with a picture each. It cannot be dismissed (no Escape, no tap outside); nothing is saved and the world is not built until a choice is made. The choice is written to the v5 save at once (`SaveData.avatar`, an additive field of the v5 schema: no version change, same key `dakarrek.guest.save.v5`).
+* **Existing saves** (v3 migrated, or v5 without the field) are not asked: they keep the current v4 body. Their progress is untouched (`check-save-compat`: ALL PASS against the schema-v3 production client).
+* **Fallback**: if the Meshy file cannot be loaded (network, corrupt) the game starts on the v4 body and the identity stays in the save; the next start tries again.
+* **Quality**: Low loads the light body file (`body_*_low.glb`, 0.7 and 1.4 MB), Medium and High the full one; changing the quality in Réglages swaps the file and rebuilds the body.
+* The animations, the gait, the pose solvers (sit, lie, ride), the gestures and the wrestling rig are the v4 ones, unchanged. The Meshy mesh is skinned to the v4 skeleton, with a per-body fit (`BODY_FIT` in `humanoid.ts`).
+* Other online players still see the standard look of the player's shirt colour (no protocol change). Crowds and NPCs are untouched.
+
+## Tests (integrated build)
+
+| Check | Result |
+|---|---|
+| `tsc`, `vitest` | clean; 1518 passed, 2 skipped (baseline 1510 + the new avatar tests) |
+| `scripts/check-avatar.mjs` (choice screen, accessibility, persistence, reload, New Game, old saves, quality files, ngemb/emote stand-in, unreachable files, phone portrait and landscape, walk/run/stop) | 29 / 29 (`docs/meshy/proof/avatar/results.json`) |
+| `check-gait` homme / femme | 26/26 / 22/26: the 4 femme failures are the cadence windows (see below) |
+| `check-sit-stand` homme / femme | 22/22 / 22/22 |
+| `check-gestures` homme / femme | 20/20 / 20/20 |
+| `check-moto` homme / femme | desktop all pass; phone 3 failures (joystick throttle, steering, wall), **identical on the untouched baseline build and on v4**: not caused by this work |
+| `check-save-compat` (prod v3 vs candidate) | ALL PASS |
+
+Logs: `docs/meshy/proof/game/integ-m/log.txt`, `integ-f/log.txt`.
+
+### The femme gait failures
+
+`check-gait` expects 105–135 steps/min at 1.4 m/s and 135–175 at 2.0 m/s, windows set for a body of scale 1. The femme is drawn at 0.93, so the gait (which works in the body's own metres) takes more, shorter steps at the same ground speed: 147 and 176 measured vs 135 and 175 allowed; the gait's own figure is 125 and 164 (inside). No foot slides (0 cm). I did not change the check's windows; a scale-aware window (limits ÷ scale) is the honest fix and a one-line change if you want it.
+
+## Run-to-stop (femme)
+
+`scripts/check-stop.mjs` drives the game's own input and deceleration frame by frame, measures the mesh surface (sole of each foot, speed of the fastest surface point, planted-foot slip, pelvis) for v4, **v4 scaled to 0.93**, homme and femme, and shoots a side strip (`docs/meshy/proof/stop/sheet.jpg`); `SWEEP=1` repeats it at 16 release phases of the walk and of the jog (`docs/meshy/proof/stop-sweep/`).
+
+* The femme is **identical to the v4 body scaled to 0.93** in every number (pelvis path, settle step, feet): what she does at a stop is what the game's gait does to any body of that scale, not something the Meshy mesh adds. No sliding feet (0 cm), no sole under the ground beyond v4's own, no extra pop at the Walk/Jog → Idle switch (fastest surface point: femme 7.1 m/s vs 6.6 homme and 6.4 v4 on the same frame, the same event).
+* **A game behaviour found on the way, for every body** (v4 at scale 1 included): depending on the phase of the step at which the player lets go, the gait leaves the feet in stride, the pelvis sinks to its 0.80 m floor (up to **14.8 cm**) for about a third of a second, then a settling step brings the far foot in and the body rises. The sweep shows it at 5 of 16 phases on v4 as on homme and femme. It is the existing behaviour (`gait.ts` `stop()` / `settleFeet()` / `posture()`), visible but not a defect of the new bodies. I did **not** touch it: it is shared locomotion code for every NPC and wrestler, and you asked to keep the current Humanoid animations. A fix would be to start the settling step at once when the pelvis would sink more than ~4 cm; it needs your go-ahead and a re-run of `check-gait`.
+
+## Phone performance (what is and is not known)
+
+`scripts/perf-avatar.mjs`: iPhone-sized viewport, Pikine street by day, the game stepped without drawing so that only JavaScript is timed, CPU throttled ×1, ×4, ×6 by CDP (`docs/meshy/proof/perf-avatar.json`).
+
+* JS per frame is **the same for the three bodies** within noise (for example High, running, ×4: v4 4.1, homme 4.1, femme 4.0 ms; Low ×4: 3.1 / 3.1 / 3.1 ms). The repo's rule of thumb (phone JS ≈ 3–4× this machine) puts every body at ~2–4 ms of JS a frame on a phone, inside the 4 ms budget of `check-perf-evening`.
+* One Meshy body is **1 draw call** against v4's 20 (the scene total is ≈ 1–20 draw calls lower with a Meshy player). Body triangles: homme 6.2 k (Low) / 12.5 k, femme 12.5 k at every quality, v4 10.4 k. Skinned vertices: v4 5.8 k, homme 7.7 k / 14.4 k, femme **21.6 k** (a 3.7× increase for one body, small against a 130–210 k triangle scene, but the GPU side is the part this machine cannot tell).
+* Not measured, cannot be here: the phone's GPU (skinning, fill, texture memory: 512–1024 px textures, ≈ 1.4–4 MB each) and thermal behaviour. **A run on a real phone is still needed**; `docs/meshy/DEVICE_TEST.md` and `device_frame_probe.js` are the 15-minute kit, with pass/concern/blocker thresholds written before the measurement.
+
+## Visual review in the game (`docs/meshy/proof/avatar/play/sheet-*.jpg`)
+
+Both bodies read well in the street at normal camera distance, at the same scale as the NPCs, with the game's lights (their dark colours are darker in shade than v4's: no grading done, as decided).
+
+Findings, with what I did:
+
+1. **Scarf at the mouth (fixed).** The écurie scarf sat at the v4 neck socket, which on a Meshy body is at the chin/mouth. New `BODY_FIT.scarfDrop` (0.08 homme, 0.115 femme, 0 v4) puts it on the neck; checked in close-ups of both.
+2. **The cap (2,500 F) and the tee (« Maillot », 4,000 F) have no visible effect on a Meshy body** (not fixed, needs your decision). They recolour v4's `Cloth_Kufi` / `Cloth_Tee` meshes; the Meshy body's clothes and hair are baked into one mesh. Scarf and flag work (they hang on sockets). Choices: (a) hide cap and tee from the stall for a Meshy identity, (b) a small cap mesh on a head socket like the scarf (the tee stays impossible without a texture variant), (c) accept it and say so. I recommend (a)+(b) for the cap before any public build, because a player can pay for something they cannot see.
+3. **The player's own shirt colour choice (profile) does not show on their own Meshy body** (others still see it). Same cause.
+4. Attire preview and emotes use a v4 body in ngemb as a stand-in (the wrestling rig's ngemb and build are v4 only); the swap is instant and reversible (tested).
+
+## Not done, by decision
+
+No Meshy generation or credit spent (balance unchanged, 940). No NPC bodies, no protocol change, nothing pushed, merged or deployed. The 197 MB source archive was delivered to you with its sha256; it is not in git, and the Meshy tasks must stay until you have stored and verified it.

@@ -43,13 +43,14 @@ const bodies: Partial<Record<BodyId, Template>> = {};
 /**
  * What differs between a body's mesh and the shared rig, in four numbers (measured by proof/meshy/harness.ts against the v4 control):
  * the scale it is drawn at; how much higher the hips sit for seated and lying poses (thicker thighs and back than v4's); how much longer
- * its hand is than v4's mitten (a gesture that puts the wrist on a target puts the fingers beyond it); and where its mouth is from the head bone.
+ * its hand is than v4's mitten (a gesture that puts the wrist on a target puts the fingers beyond it); where its mouth is from the head bone;
+ * and how far below the neck socket a scarf must sit to be at its neck (the Meshy chin is lower than v4's: at the socket it covers the mouth).
  */
-export interface BodyFit { scale: number; sitLift: number; handExtra: number; mouth: { fwd: number; up: number } }
+export interface BodyFit { scale: number; sitLift: number; handExtra: number; mouth: { fwd: number; up: number }; scarfDrop: number }
 export const BODY_FIT: Record<BodyId, BodyFit> = {
-  v4: { scale: 1, sitLift: 0, handExtra: 0, mouth: { fwd: 0.13, up: 0.02 } },
-  meshy_m: { scale: 1, sitLift: 0.03, handExtra: 0.08, mouth: { fwd: 0.114, up: -0.023 } },
-  meshy_f: { scale: 0.93, sitLift: 0, handExtra: 0.08, mouth: { fwd: 0.152, up: 0.008 } },
+  v4: { scale: 1, sitLift: 0, handExtra: 0, mouth: { fwd: 0.13, up: 0.02 }, scarfDrop: 0 },
+  meshy_m: { scale: 1, sitLift: 0.03, handExtra: 0.08, mouth: { fwd: 0.114, up: -0.023 }, scarfDrop: 0.08 },
+  meshy_f: { scale: 0.93, sitLift: 0, handExtra: 0.08, mouth: { fwd: 0.152, up: 0.008 }, scarfDrop: 0.115 },
 };
 export async function preloadBody(id: Exclude<BodyId, 'v4'>, url: string): Promise<boolean> {
   try {
