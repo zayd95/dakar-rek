@@ -1,0 +1,37 @@
+<!doctype html><meta charset="utf-8"><title>Meshy body review viewer</title>
+<body style="margin:0;background:#9bd3f3"><div id="c"></div>
+<script type="module">
+// Review viewer: the game's lights, tone mapping and Lambert materials; poses any clip of the GLB at any time from any side.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+const q = new URLSearchParams(location.search);
+const W = Number(q.get('w') ?? 640), H = Number(q.get('h') ?? 640);
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(W, H); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping;
+document.getElementById('c').appendChild(r.domElement);
+const sc = new THREE.Scene(); sc.background = new THREE.Color(0x9bd3f3);
+sc.add(new THREE.HemisphereLight(0xffffff, 0x8a7a60, 0.9)); const sun = new THREE.DirectionalLight(0xffffff, 1); sun.position.set(4, 8, 5); sc.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshLambertMaterial({ color: 0xb8a98a })); ground.rotation.x = -Math.PI / 2; sc.add(ground);
+const files = (q.get('files') ?? q.get('file') ?? '').split(',').filter(Boolean);
+const models = [];
+for (const [i, f] of files.entries()) {
+  const g = await new GLTFLoader().loadAsync(f); const s = g.scene;
+  s.traverse(o => { if (o.isMesh) { o.frustumCulled = false; const m = o.material; if (m.map) o.material = new THREE.MeshLambertMaterial({ map: m.map, side: THREE.DoubleSide }); } });
+  s.position.x = (i - (files.length - 1) / 2) * 1.1; sc.add(s);
+  models.push({ s, g, mixer: new THREE.AnimationMixer(s) });
+}
+window.bones = (i = 0) => { const o = []; models[i].s.traverse(b => b.isBone && o.push(b.name)); return o; };
+window.show = (clip, t, view = 'front', focus = 'RIGHT') => {
+  for (const m of models) { m.mixer.stopAllAction(); const c = THREE.AnimationClip.findByName(m.g.animations, clip); if (c) { const a = m.mixer.clipAction(c); a.play(); m.mixer.setTime(t * c.duration); } m.s.updateMatrixWorld(true); }
+  const box = new THREE.Box3(); models.forEach(m => box.expandByObject(m.s)); const c0 = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  const cam = new THREE.PerspectiveCamera(30, W / H, 0.05, 80);
+  const dirs = { front: [0, 0, 1], back: [0, 0, -1], side: [1, 0, 0], threeq: [0.7, 0.15, 0.7] };
+  let target = c0.clone(), dist = Math.max(size.y * 2.1, size.x * 1.2);
+  if (view === 'face' || view === 'facesd') { const b = models[0].s.getObjectByName('head'); b.getWorldPosition(target); target.y += 0.1; dist = 1.05; }
+  if (view === 'hand') { const b = models[0].s.getObjectByName(`hand${focus === 'LEFT' ? '.L' : '.R'}`) ?? models[0].s.getObjectByName(`hand${focus === 'LEFT' ? 'L' : 'R'}`); b.getWorldPosition(target); dist = 0.85; }
+  if (view === 'feet') { target.set(c0.x, 0.1, c0.z); dist = 1.2; }
+  const d = new THREE.Vector3(...(dirs[view === 'face' ? 'front' : view === 'facesd' ? 'threeq' : view === 'hand' ? 'threeq' : view === 'feet' ? 'threeq' : view] ?? dirs.front)).normalize();
+  cam.position.copy(target).addScaledVector(d, dist); if (view === 'hand' || view === 'feet') cam.position.y += 0.15; cam.lookAt(target);
+  r.render(sc, cam); return true;
+};
+window.ready = true;
+</script>
