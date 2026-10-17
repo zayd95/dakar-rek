@@ -6,19 +6,19 @@ import { purseOf, boutPoints, rankOf, RUNGS, type BoutEntry, type BoutRes } from
 const JOG = 4.2, HUBHOP = 20, OVER = 3;
 const dist = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 export type Sh = { id: string; cat: string; pay: number; en: number; at: [number, number]; hub: string; secs: number; g?: boolean; fa?: number };
-// secs = real play seconds of the action itself: plain actions = content `seconds`; gesture actions = rounds × per-round time of a competent player
-// (timing 2.2 s/round, choose 2.4 s/round, sequence 1.6 s/step: src/ui/gesture.ts cursor speed and patience).
+// secs = real play seconds of the action itself: plain actions = content `seconds`; gesture actions = MEASURED in the browser by
+// measure-gestures.mjs (human-like bot, gesture clock): meca 13.7 s, roue 6.9 s, vendre 11.8 s (meca_conf has the same gestures as meca).
 export const SH: Record<string, Sh> = {
-  meca:     { id: 'meca', cat: 'artisanat', pay: 2000, en: 18, at: [102, -5], hub: 'pk', secs: 4 * 2.4 + 4 * 2.2, g: true, fa: 6 },
-  meca_conf:{ id: 'meca_conf', cat: 'artisanat', pay: 2800, en: 18, at: [102, -5], hub: 'pk', secs: 4 * 2.4 + 4 * 2.2, g: true, fa: 6 },
-  roue:     { id: 'roue', cat: 'artisanat', pay: 1500, en: 12, at: [102, -5], hub: 'pk', secs: 5 * 1.6, g: true, fa: 4 },
+  meca:     { id: 'meca', cat: 'artisanat', pay: 2000, en: 18, at: [102, -5], hub: 'pk', secs: 13.7, g: true, fa: 6 },
+  meca_conf:{ id: 'meca_conf', cat: 'artisanat', pay: 2800, en: 18, at: [102, -5], hub: 'pk', secs: 13.7, g: true, fa: 6 },
+  roue:     { id: 'roue', cat: 'artisanat', pay: 1500, en: 12, at: [102, -5], hub: 'pk', secs: 6.9, g: true, fa: 4 },
   stock:    { id: 'stock', cat: 'service', pay: 1500, en: 15, at: [-105, 82], hub: 'pk', secs: 4 },
   courrier: { id: 'courrier', cat: 'service', pay: 2400, en: 20, at: [-90, -38], hub: 'pk', secs: 5, fa: 5 },
   debarq:   { id: 'debarq', cat: 'peche', pay: 3200, en: 26, at: [-138, 96], hub: 'co', secs: 6, fa: 8 },
   filets:   { id: 'filets', cat: 'peche', pay: 1800, en: 14, at: [-138, 96], hub: 'co', secs: 5 },
   poisson:  { id: 'poisson', cat: 'peche', pay: 2200, en: 20, at: [-98, 99], hub: 'co', secs: 5 },
   atelier:  { id: 'atelier', cat: 'artisanat', pay: 1600, en: 14, at: [-94, 76], hub: 'co', secs: 5 },
-  vendre:   { id: 'vendre', cat: 'commerce', pay: 2500, en: 22, at: [28, -41], hub: 'pl', secs: 6 * 2.4, g: true, fa: 8 },
+  vendre:   { id: 'vendre', cat: 'commerce', pay: 2500, en: 22, at: [28, -41], hub: 'pl', secs: 11.8, g: true, fa: 8 },
   couture:  { id: 'couture', cat: 'artisanat', pay: 1800, en: 16, at: [75, 82], hub: 'pl', secs: 4 },
 };
 const HOME: [number, number] = [-42, -54], MAIGA: [number, number] = [78, -5];
