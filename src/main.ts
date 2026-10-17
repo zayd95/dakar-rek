@@ -15,6 +15,7 @@ import { Crowd, DecorativeTraffic } from './actors/npc';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
+import { CityPlayer, cityPlayerReady, preloadCityPlayer } from './actors/cityPlayer';
 import { preloadWrestler, wrestlerReady, Wrestler, type Clip } from './actors/wrestler';
 import { CAST, castById } from './social/cast';
 import { Relations, PLAYER } from './social/relations';
@@ -79,6 +80,8 @@ const rel = new Relations(state.data);
 const follow = new FollowCamera(camera);
 const player = new Character(PLAYER_OUTFIT);
 scene.add(player.group);
+/** Meshy-generated city player; drawn instead of the box player whenever no emote, outfit preview or lamb scene needs the box rig. */
+let cityPlayer: CityPlayer | null = null;
 const pos = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
@@ -412,7 +415,12 @@ function frame(now: number) {
     if (previewT > 0) { previewT -= dt; if (previewT <= 0 && emoteT <= 0) hideProxy(); }
     if (proxy) { proxy.group.position.copy(pos); proxy.group.rotation.y = facing; proxy.update(dt); }
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
-  } else player.animate(0, 0);
+    if (cityPlayerReady() && !proxy && !player.pose) {
+      if (!cityPlayer) { cityPlayer = new CityPlayer(); scene.add(cityPlayer.group); }
+      cityPlayer.group.visible = true; player.group.visible = false;
+      cityPlayer.group.position.copy(pos); cityPlayer.group.rotation.y = facing; cityPlayer.update(dt, speed);
+    } else if (cityPlayer) cityPlayer.group.visible = false;
+  } else { player.animate(0, 0); if (cityPlayer) { cityPlayer.group.visible = false; player.group.visible = true; } }
   for (const n of castChars) {
     const d = Math.hypot(pos.x - n.x, pos.z - n.z);
     if (d < 9) n.c.group.rotation.y = Math.atan2(pos.x - n.x, pos.z - n.z);
@@ -434,7 +442,7 @@ function frame(now: number) {
 // ------------------------------------------------------------------ start
 resize(); applyQuality();
 async function start() {
-  await Promise.all([preloadAssets(), preloadWrestler()]);
+  await Promise.all([preloadAssets(), preloadWrestler(), preloadCityPlayer()]);
   const startHub = state.data.hub;
   if (isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
@@ -462,6 +470,7 @@ if (DEBUG) {
     openNpc(id: string) { const it = world?.interactables.find(i => i.npc === id); if (it) openActions(it); },
     scene(kind: SceneKind) { const a = [...ACTIONS.arena, ...ACTIONS.ecurie].find(x => x.special === kind); if (a) runSpecial(a); else startScene(kind); },
     wrestlerReady: () => wrestlerReady(),
+    cityPlayer: () => (cityPlayer ? { visible: cityPlayer.group.visible, clip: cityPlayer.clipName() } : null),
     faceCamera() { follow.yaw = facing + Math.PI; },
     sceneInfo: () => (lambScene ? { kind: lambScene.kind, t: lambScene.t } : null),
     scenePeek(t: number) { if (lambScene) { lambScene.t = t; lambScene.snap = true; } },
