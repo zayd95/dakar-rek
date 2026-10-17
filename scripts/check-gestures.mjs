@@ -113,7 +113,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await shot('market');
   await playGesture(1);
   await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
-  // work pay is scaled by polyvalence (src/economy/polyvalence.ts: +20 % for each other trade practised lately — the
+  // work pay is scaled by polyvalence (src/economy/polyvalence.ts: +5 % for each other trade practised lately, up to +15 % — the
   // garage's, just before): the full rate is 3 000 F times the game's own multiplier
   const paid5 = await d(l => ({ wallet: window.__dakar.state.wallet, mult: window.__dakar.business().mult, lines: window.__dakar.state.data.ledger.slice(l).map(e => [e.label, e.amount]) }), l5);
   check(`${label}: serving everyone right pays the stall's full rate (× polyvalence)`, paid5.wallet === Math.round(3000 * paid5.mult), JSON.stringify(paid5));

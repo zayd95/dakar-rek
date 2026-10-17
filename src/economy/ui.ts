@@ -15,7 +15,7 @@ import { homeGoalLine } from './progress';
 import { ACTIVITIES, ACTIVITY_INFO, WINDOW_MS, activityOf, fromCategory, isRecent, multiplier, noticeActivities, payPreview, polyLine, polyvalence, practise, signature, timeLeft, workPay, type Activity } from './polyvalence';
 import type { ActivityCategory } from '../activity/types';
 import { HOUR_MS, VENTURES, accrue, baseIncome, buyVenture, cannotBuy as cannotBuyVenture, firstVentureHint, incomePerHour, lockedWhy, nextPrice, ownedOf, ownedVentures, perHourOf, unitPrice, unitsOwned, venturesValue } from './business';
-import { fcfaShort, times } from './format';
+import { fcfaShort } from './format';
 import './economy.css';
 
 /**
@@ -303,11 +303,11 @@ export class Economy {
   }
 
   // ---------------------------------------------------------------- polyvalence and ventures
-  /** A finished city action (main.ts runAction): records its activity and returns its pay scaled by polyvalence (0 if unpaid). */
+  /** A finished city action (main.ts runAction): records its activity and returns its pay scaled by the variety bonus (0 if unpaid). */
   work(a: Action, it?: Interactable): number { return workPay(this.s, a.gain ?? 0, activityOf(a, it?.id)); }
   /** What `a` would pay if done now (menus). */
   workPreview(a: Action, it?: Interactable): number { return payPreview(this.s, a.gain ?? 0, activityOf(a, it?.id)); }
-  /** Activity framework (src/activity/effects.ts): a category practised, then the pay it brings, scaled by polyvalence. */
+  /** Activity framework (src/activity/effects.ts): a category practised, then the pay it brings, scaled by the variety bonus. */
   practiseCategory(c: ActivityCategory) { const a = fromCategory(c); if (a) practise(this.s, a); }
   scalePay(money: number, c: ActivityCategory | null) { return fromCategory(c) ? Math.round(money * multiplier(this.s)) : money; }
   previewPay(money: number, c: ActivityCategory | null) { const a = fromCategory(c); return a ? payPreview(this.s, money, a) : money; }
@@ -326,11 +326,11 @@ export class Economy {
     return paid;
   }
 
-  /** « Affaires »: owned ventures, income, polyvalence, next prices; picking one asks for confirmation. */
+  /** « Affaires »: owned ventures, income, next prices; picking one asks for confirmation. Open to whoever can pay. */
   openBusiness() {
-    const s = this.s, m = multiplier(s), value = venturesValue(s), units = unitsOwned(s);
+    const s = this.s, value = venturesValue(s), units = unitsOwned(s);
     const items: MenuItem[] = VENTURES.map(v => {
-      const n = ownedOf(s, v.id), why = lockedWhy(s, v.id), price = nextPrice(s, v.id), each = Math.round(perHourOf(v.id) * m);
+      const n = ownedOf(s, v.id), why = lockedWhy(s, v.id), price = nextPrice(s, v.id), each = perHourOf(v.id);
       const missing = price - s.wallet;
       const detail = why ?? [n ? `+${fcfa(each)}/h chacune · +${fcfa(each * n)}/h en tout` : `${v.what} · +${fcfa(each)}/h`, missing > 0 ? `il manque ${fcfa(missing)}` : 'acheter'].join(' · ');
       return { label: `${v.name}${n ? ` ×${n}` : ''}`, detail, right: why ? 'Bloqué' : fcfa(price), disabled: !!why || missing > 0, onPick: () => this.confirmVenture(v.id) };
@@ -347,18 +347,18 @@ export class Economy {
         <div><small>Fortune totale</small><b>${fcfa(s.wallet + value)}</b></div>
       </div>
       <div class="poly"><b>${esc(polyLine(s))}</b><div class="chips">${chips}</div>
-        <small>Chaque activité différente pratiquée ces 3 derniers jours de jeu : +20\u202f% sur la paie (livraisons, petits boulots) et sur les revenus des affaires, jusqu’à ×2.${todo.length ? ' À essayer : ' + esc(todo.join(' · ')) + '.' : ''}</small></div>
-      <div class="draft">${esc(INCOME_NOTE)} Chaque unité de plus coûte 15\u202f% plus cher. Pour monter d’échelon : des activités variées et une affaire de l’échelon d’avant.</div>`;
+        <small>Bonus facultatif : chaque activité différente pratiquée ces 3 derniers jours de jeu ajoute +5\u202f% à la paie (livraisons, petits boulots), jusqu’à +15\u202f%. Il ne change pas les revenus des affaires.${todo.length ? ' À essayer : ' + esc(todo.join(' · ')) + '.' : ''}</small></div>
+      <div class="draft">${esc(INCOME_NOTE)} Chaque unité de plus coûte 15\u202f% plus cher. Aucune condition : une affaire s’achète dès que tu peux la payer.</div>`;
     this.d.menu();
     this.d.hud.openMenu('Affaires', `${units ? `${units} affaire${units > 1 ? 's' : ''}` : 'Aucune affaire pour l’instant'} · en poche ${fcfa(s.wallet)}`, items, html);
   }
 
   private confirmVenture(id: string) {
     const s = this.s, v = VENTURES.find(x => x.id === id); if (!v) return;
-    const price = nextPrice(s, id), m = multiplier(s, 'commerce'), each = Math.round(perHourOf(id) * m);   // the purchase itself is commerce
+    const price = nextPrice(s, id), each = perHourOf(id);
     this.d.menu();
     this.d.hud.openMenu(`Acheter : ${v.name}`, `${v.what}.`, [
-      { label: 'Confirmer l’achat', detail: `Rapporte +${fcfa(each)} par heure en ville (polyvalence ${times(m)})`, right: '−' + fcfa(price), disabled: !!cannotBuyVenture(s, id), onPick: () => { this.buyVenture(id); this.openBusiness(); } },
+      { label: 'Confirmer l’achat', detail: `Rapporte +${fcfa(each)} par heure en ville`, right: '−' + fcfa(price), disabled: !!cannotBuyVenture(s, id), onPick: () => { this.buyVenture(id); this.openBusiness(); } },
       { label: 'Retour aux affaires', onPick: () => this.openBusiness() },
     ], `<div class="kv">Prix : ${fcfa(price)} · il te restera ${fcfa(Math.max(0, s.wallet - price))}.<br>Tu en as ${ownedOf(s, id)} ; la suivante coûtera ${fcfa(unitPrice(id, ownedOf(s, id) + 1))}.</div>`);
   }
@@ -367,7 +367,7 @@ export class Economy {
   buyVenture(id: string): boolean {
     const s = this.s, v = VENTURES.find(x => x.id === id), price = nextPrice(s, id);
     if (!v || !buyVenture(s, id)) { this.d.hud.toast(cannotBuyVenture(s, id) ?? 'Achat impossible'); return false; }
-    this.d.hud.toast(`${v.name} ✓  −${fcfa(price)} · +${fcfa(Math.round(perHourOf(id) * multiplier(s)))} par heure`);
+    this.d.hud.toast(`${v.name} ✓  −${fcfa(price)} · +${fcfa(perHourOf(id))} par heure`);
     this.d.save();
     return true;
   }
@@ -377,7 +377,7 @@ export class Economy {
     const s = this.s;
     return {
       jobs: () => (this.world ? offers(s, this.world.id).map(r => ({ id: r.id, from: r.from.name, to: r.to.name, pay: ECONOMY.tiak.pay[r.id] ?? 0, payNow: payNow(s, routePay(r)), recommended: !!r.needFlag, blocked: whyNot(s, r) })) : []),
-      /** What a place's action pays if done now (polyvalence included). */
+      /** What a place's action pays if done now (variety bonus included). */
       servicePay: (placeId: string, actionId: string) => { const it = this.world?.interactables.find(i => i.id === placeId), a = it?.actions.find(x => x.id === actionId); return it && a ? this.workPreview(a, it) : null; },
       acceptJob: (id: string, atPickup = true) => { const j = this.accept(id, atPickup); return j ? { ...j } : null; },
       activeJob: () => (s.data.jobs.active ? { ...s.data.jobs.active } : null),

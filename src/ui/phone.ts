@@ -463,7 +463,7 @@ export class Phone {
         <div><span>Revenus<small>Par heure en ville, pendant que tu joues</small></span><em>+${fcfa(w.perHour)}</em></div>
         ${w.charges ? `<div><span>Loyers et charges<small>Par heure en ville</small></span><em class="neg">−${fcfa(w.charges)}</em></div>` : ''}
         <div><span>${esc(w.polyvalence)}</span></div>
-      </div>${phoneHooks.openAssets ? '<button type="button" class="ph-btn" data-app="biens">Biens<small>Logements, terrains, panneau, annonces</small></button>' : ''}${phoneHooks.openBusiness ? '<button type="button" class="ph-btn" data-app="affaires">Affaires<small>Acheter, voir les revenus et la polyvalence</small></button>' : ''}` : '';
+      </div>${phoneHooks.openAssets ? '<button type="button" class="ph-btn" data-app="biens">Biens<small>Logements, terrains, panneau, annonces</small></button>' : ''}${phoneHooks.openBusiness ? '<button type="button" class="ph-btn" data-app="affaires">Affaires<small>Acheter et voir les revenus</small></button>' : ''}` : '';
     return `<div class="ph-balance"><small>Solde</small><b class="${size}">${full}</b><span>FCFA · monnaie de jeu, sans valeur réelle</span></div>
       ${wealth}
       <p class="ph-note">Partie invité : cet argent est enregistré sur cet appareil seulement.</p>

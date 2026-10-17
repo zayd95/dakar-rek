@@ -39,20 +39,18 @@ describe('ventures: the ladder and its prices', () => {
     }
     expect(Number.isFinite(unitPrice('entreprise', 1000))).toBe(true);
   });
-  it('tiers unlock with activity variety and the tier below, not with money alone', () => {
+  it('every tier is open to whoever can pay: no activity count, no tier below', () => {
     const s = fresh(1e12);
-    expect(lockedWhy(s, 'bana')).toBe('À débloquer : une première activité (livraison, petit boulot…)');
-    expect(buyVenture(s, 'bana')).toBe(false);
-    doing(s, 'livraison');
-    expect(lockedWhy(s, 'bana')).toBeNull();
-    expect(lockedWhy(s, 'kiosque')).toMatch(/2 activités.*1 table de bana-bana/);
-    expect(buyVenture(s, 'bana')).toBe(true);                 // buying is commerce: a 2nd activity
-    expect(lockedWhy(s, 'kiosque')).toBeNull();
-    expect(lockedWhy(s, 'boutique')).toBe('À débloquer : 3 activités différentes pratiquées (2/3) et 1 kiosque');
-    expect(lockedWhy(s, 'entreprise')).toMatch(/7 activités/);
-    doing(s, ...ACTIVITIES);
-    for (const v of VENTURES.slice(1)) { expect(buyVenture(s, v.id)).toBe(true); }   // each tier opens the next
+    expect(s.data.activities.known).toEqual([]);                                 // nothing practised, nothing owned
+    for (const v of VENTURES) { expect(lockedWhy(s, v.id)).toBeNull(); expect(cannotBuy(s, v.id)).toBeNull(); }
+    for (const v of [...VENTURES].reverse()) expect(buyVenture(s, v.id)).toBe(true);   // top tier first
     expect(VENTURES.map(v => ownedOf(s, v.id))).toEqual(VENTURES.map(() => 1));
+  });
+  it('without the money a tier says so, and only that', () => {
+    const s = fresh(49_999);
+    expect(cannotBuy(s, 'bana')).toBe('Pas assez d’argent'); expect(buyVenture(s, 'bana')).toBe(false);
+    expect(lockedWhy(s, 'nope')).toBe('Inconnue'); expect(cannotBuy(s, 'nope')).toBe('Inconnue');
+    s.data.wallet = 50_000; expect(buyVenture(s, 'bana')).toBe(true);
   });
   it('buying charges the next price once, records it and makes the next one dearer', () => {
     const s = fresh(200_000); doing(s, 'livraison');
@@ -68,9 +66,9 @@ describe('ventures: the ladder and its prices', () => {
 });
 
 describe('ventures: income per in-game hour of play, paid in hourly batches', () => {
-  const owner = () => { const s = fresh(100_000); doing(s, 'livraison'); buyVenture(s, 'bana'); return s; };   // livraison + commerce → ×1,2
+  const owner = () => { const s = fresh(100_000); doing(s, 'livraison'); buyVenture(s, 'bana'); return s; };   // livraison + commerce: 2 activities, which change nothing here
   it('accrues on played time and pays one ledger line per in-game hour', () => {
-    const s = owner(), rate = 400 * 1.2;
+    const s = owner(), rate = 400;
     expect(HOUR_MS).toBe(60_000);
     expect(incomePerHour(s)).toBe(rate);
     const w0 = s.wallet, lines = s.data.ledger.length;
@@ -78,18 +76,18 @@ describe('ventures: income per in-game hour of play, paid in hourly batches', ()
     play(s, 30_000); expect(accrue(s)).toBe(rate);
     expect(s.data.ledger.at(-1)).toMatchObject({ label: 'Revenus · Table de bana-bana', amount: rate });
     expect(accrue(s)).toBe(0);                                                     // nothing twice for the same hour
-    play(s, 5 * HOUR_MS + 10_000); expect(accrue(s)).toBe(2480);                   // a trip: one batch, all that was counted (5 h 10 s)
-    expect(s.data.ledger.length).toBe(lines + 2); expect(s.data.assets.earned).toBe(480 + 2480);
-    play(s, 50_000); expect(accrue(s)).toBe(400);                                  // the next hour mark: the rest of that hour
+    play(s, 5 * HOUR_MS + 10_000); expect(accrue(s)).toBe(2066);                   // a trip: one batch, all that was counted (5 h 10 s)
+    expect(s.data.ledger.length).toBe(lines + 2); expect(s.data.assets.earned).toBe(400 + 2066);
+    play(s, 50_000); expect(accrue(s)).toBe(334);                                  // the next hour mark: the rest of that hour
     expect(s.data.assets.earned).toBe(7 * rate);
   });
   it('a purchase counts the income so far at the old rate; several ventures share one line', () => {
     const s = owner();
     s.data.wallet = 1e6; play(s, 30_000); accrue(s);
-    doing(s, 'social'); buyVenture(s, 'kiosque');                                  // ×1,4 now (livraison, commerce, social)
+    doing(s, 'social'); buyVenture(s, 'kiosque');                                  // 3 activities now: no effect on ventures
     play(s, 30_000);
     const paid = accrue(s);
-    expect(paid).toBe(Math.floor(400 * 1.2 * 0.5 + (400 + 2200) * multiplier(s) * 0.5));
+    expect(paid).toBe(Math.floor(400 * 0.5 + (400 + 2200) * 0.5));
     expect(s.data.ledger.at(-1)!.label).toBe('Revenus · Kiosque et 1 autre affaire');
   });
   it('accrues nothing while not played, offline, or when the device clock changes', () => {
@@ -107,26 +105,36 @@ describe('ventures: income per in-game hour of play, paid in hourly batches', ()
   });
   it('counts at most a city day of income at once', () => {
     const s = owner();
-    play(s, 100 * HOUR_MS);                                                        // (the activities aged out meanwhile: ×1)
-    expect(accrue(s)).toBe(ECONOMY.business.maxCatchUpHours * baseIncome(s) * multiplier(s));
+    play(s, 100 * HOUR_MS);                                                        // (the activities aged out meanwhile: no matter)
+    expect(accrue(s)).toBe(ECONOMY.business.maxCatchUpHours * baseIncome(s));
     expect(multiplier(s)).toBe(1);
   });
   it('owning nothing earns nothing, and the first hour starts at the purchase', () => {
     const s = fresh(100_000); doing(s, 'livraison');
     play(s, 10 * HOUR_MS); expect(accrue(s)).toBe(0);
     buyVenture(s, 'bana'); play(s, HOUR_MS - 1); expect(accrue(s)).toBe(0);
-    play(s, 1); expect(accrue(s)).toBe(480);
+    play(s, 1); expect(accrue(s)).toBe(400);
   });
 });
 
-describe('polyvalence', () => {
-  it('×1 for one activity, +20 % per other one, capped at ×2', () => {
-    expect([0, 1, 2, 3, 4, 5, 6, 7].map(multiplierFor)).toEqual([1, 1, 1.2, 1.4, 1.6, 1.8, 2, 2]);
+describe('variety bonus (polyvalence): optional, active pay only', () => {
+  it('×1 for one activity, +5 % per other one, capped at +15 %', () => {
+    expect([0, 1, 2, 3, 4, 5, 6, 7].map(multiplierFor)).toEqual([1, 1, 1.05, 1.1, 1.15, 1.15, 1.15, 1.15]);
     const s = fresh(); doing(s, 'livraison', 'peche', 'social', 'combat');
     expect(polyvalence(s)).toBe(4);
-    expect(polyLine(s)).toBe('Polyvalence : 4 activités → revenus ×1,6');
+    expect(polyLine(s)).toBe(`Variété : 4 activités → paie +15${NN}%`);
+    expect(polyLine(fresh())).toBe('Variété : 0 activité → paie normale');
   });
-  it('only activities practised in the last 3 in-game days of play count; they are remembered for unlocks', () => {
+  it('never changes passive income, whatever the player practises', () => {
+    const narrow = fresh(1e9), wide = fresh(1e9);
+    doing(wide, ...ACTIVITIES);
+    for (const s of [narrow, wide]) { buyVenture(s, 'bana'); buyVenture(s, 'kiosque'); }
+    play(narrow, WINDOW_MS * 2); doing(narrow, 'commerce');                       // narrow: only one recent; wide: all of them... then aged out
+    expect(polyvalence(wide)).toBeGreaterThan(polyvalence(narrow));
+    for (const s of [narrow, wide]) expect(incomePerHour(s)).toBe(400 + 2200);
+    doing(wide, ...ACTIVITIES); expect(multiplier(wide)).toBe(1.15); expect(incomePerHour(wide)).toBe(400 + 2200);
+  });
+  it('only activities practised in the last 3 in-game days of play count; the others are only remembered', () => {
     const s = fresh(); doing(s, 'livraison', 'peche');
     play(s, WINDOW_MS - 1000); doing(s, 'social');
     expect(polyvalence(s)).toBe(3);
@@ -134,14 +142,14 @@ describe('polyvalence', () => {
     expect(polyvalence(s)).toBe(1);
     expect(s.data.activities.known).toEqual(['livraison', 'peche', 'social']);
   });
-  it('scales delivery pay; one activity pays the listed price', () => {
+  it('scales delivery pay a little; one activity pays the listed price', () => {
     const s = fresh();
     const a = acceptJob(s, 'pk_mame_boutique', true, 60_000)!;
     expect(completeJob(s, a.runId)!.paid).toBe(1200);
-    doing(s, 'peche', 'social', 'artisanat');                                    // 4 recent → ×1,6
+    doing(s, 'peche', 'social', 'artisanat');                                    // 4 recent → +15 %
     const b = acceptJob(s, 'pk_mame_boutique', true, 60_000)!;
-    expect(completeJob(s, b.runId)!.paid).toBe(1920);
-    expect(s.data.ledger.at(-1)!.amount).toBe(1920);
+    expect(completeJob(s, b.runId)!.paid).toBe(1380);
+    expect(s.data.ledger.at(-1)!.amount).toBe(1380);
   });
   it('categories are inferred from action ids, places and counters', () => {
     const cat = (id: string, place = '') => activityOf(CONTENT_ACTIONS.find(a => a.id === id)!, place);
@@ -218,7 +226,7 @@ describe('save schema v4 → v5', () => {
     expect(m.activities).toEqual({ known: ['livraison', 'service', 'commerce', 'combat', 'social'], last: {} });
     const s = new GameState(m);
     expect(polyvalence(s)).toBe(0);
-    expect(lockedWhy(s, 'car_rapide')).toMatch(/1 boutique de quartier/);       // 5 known activities: only the tier below is missing
+    expect(lockedWhy(s, 'car_rapide')).toBeNull();                              // money is the only condition
     expect(migrate({ schemaVersion: 3 })!.activities).toEqual({ known: [], last: {} });
   });
   it('v1 and v2 saves reach v5 through the chain', () => {
@@ -227,6 +235,15 @@ describe('save schema v4 → v5', () => {
       expect(m.schemaVersion).toBe(5); expect(m.wallet).toBe(500); expect(m.ledger).toEqual([]);
       expect(ownedVentures(new GameState(m))).toEqual({}); expect(m.activities.known).toEqual([]);
     }
+  });
+  it('a saved v5 game keeps its wallet and ventures; their income no longer depends on the activities', () => {
+    const s = fresh(1e9); doing(s, ...ACTIVITIES); buyVenture(s, 'bana'); buyVenture(s, 'kiosque'); play(s, 90_000); accrue(s);
+    expect(s.data.schemaVersion).toBe(5);
+    const back = new GameState(migrate(JSON.parse(JSON.stringify(s.data)))!);
+    expect(back.wallet).toBe(s.wallet); expect(ownedVentures(back)).toEqual({ bana: 1, kiosque: 1 });
+    expect(back.data.assets).toEqual(s.data.assets);
+    expect(incomePerHour(back)).toBe(400 + 2200);                                  // base income, whether or not the activities are still recent
+    play(back, WINDOW_MS * 3); expect(polyvalence(back)).toBe(0); expect(incomePerHour(back)).toBe(400 + 2200);
   });
   it('round-trips ventures and activities, and sanitises bad values', () => {
     const s = fresh(1e9); doing(s, 'livraison', 'peche'); buyVenture(s, 'bana'); buyVenture(s, 'bana'); play(s, 90_000); accrue(s);
@@ -242,7 +259,7 @@ describe('save schema v4 → v5', () => {
 
 /**
  * Pacing, with the real functions: a focused player earns ≈ 800 F per real minute from jobs (deliveries and services,
- * sleep and meals included) before the multiplier, keeps 4 activities recent (×1,6) once they know them, discovers a
+ * sleep and meals included) with the variety bonus (+15 % at 4 recent activities) once they know them, discovers a
  * new category every few hours, and reinvests everything greedily in the best income per franc.
  */
 function simulate(recent: number, hours: number) {
@@ -265,11 +282,12 @@ function simulate(recent: number, hours: number) {
 }
 
 describe('pacing', () => {
-  it('first venture after a session or two, a million in a few hours, a billion after dozens of hours; variety pays', () => {
+  it('first venture after a session or two, a million in a few hours, a billion after dozens of hours; variety is only a soft bonus', () => {
     const varied = simulate(4, 80), narrow = simulate(1, 80);
     expect(varied.first).toBeGreaterThan(0.5); expect(varied.first).toBeLessThan(2.5);
     expect(varied.million).toBeGreaterThan(3); expect(varied.million).toBeLessThan(10);
-    expect(varied.billion).toBeGreaterThan(20); expect(varied.billion).toBeLessThan(60);
-    expect(narrow.billion ?? 999).toBeGreaterThan(varied.billion * 1.2);
+    expect(varied.billion).toBeGreaterThan(20); expect(varied.billion).toBeLessThan(90);
+    expect(narrow.billion ?? 999).toBeGreaterThanOrEqual(varied.billion);           // a varied player is never behind…
+    expect(narrow.billion ?? 999).toBeLessThan(varied.billion * 1.1);               // …and a specialist is never far behind (the snowball is passive)
   });
 });

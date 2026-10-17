@@ -385,7 +385,7 @@ class Estate {
     if (next) rows.push(['À ta portée', next.name]);
     const html = `<div class="est-rows">${rows.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}</div>`;
     this.open(`Affaires · ${place?.name ?? 'le quartier'}`, 'Parler affaires', [
-      { icon: '🏪', label: 'Voir les affaires à acheter', detail: next ? `Prix, revenus par heure, polyvalence · ${next.name}` : 'Tes affaires et leurs revenus', onPick: () => { this.ctx.hud.closeModal(); phoneHooks.openBusiness?.(); } },
+      { icon: '🏪', label: 'Voir les affaires à acheter', detail: next ? `Prix, revenus par heure · ${next.name}` : 'Tes affaires et leurs revenus', onPick: () => { this.ctx.hud.closeModal(); phoneHooks.openBusiness?.(); } },
       { icon: '👋', label: 'Jërëjëf, ba beneen yoon', onPick: () => this.ctx.hud.closeModal() },
     ], html);
   }

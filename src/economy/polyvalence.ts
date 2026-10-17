@@ -4,11 +4,12 @@ import type { ActivityCategory } from '../activity/types';
 import { ACTIVITY_IDS } from '../core/types';
 import { CITY_DAY_MS } from '../core/clock';
 import { ECONOMY } from './config';
-import { times } from './format';
 
 /**
- * Polyvalence: « ceux qui ont beaucoup d'activités, c'est important » (Habib). The categories of activity the player
- * practised within the last 3 in-game days of play raise every job pay and the ventures' income. Pure logic (unit-tested).
+ * Variety (polyvalence): « ceux qui ont beaucoup d'activités, c'est important » (Habib). The categories of activity the
+ * player practised within the last 3 in-game days of play raise ACTIVE pay (jobs, shifts, services) by a few percent, up to
+ * +15 %. It is an optional bonus: it never gates a purchase and never changes passive income (ventures, rents).
+ * Pure logic (unit-tested).
  * Activities played by the activity framework report their `category` through applyEffects (src/activity/effects.ts,
  * `fromCategory`); older content is read from what already exists (action ids, places, counters).
  */
@@ -79,22 +80,22 @@ export const isRecent = (s: GameState, a: Activity) => {
 export const recentActivities = (s: GameState, extra?: Activity | null) => ACTIVITIES.filter(a => a === extra || isRecent(s, a));
 export const polyvalence = (s: GameState, extra?: Activity | null) => recentActivities(s, extra).length;
 export const knownCount = (s: GameState) => ACTIVITIES.filter(a => s.data.activities.known.includes(a)).length;
-/** ×1 for one activity, +20 % for each other one, capped at ×2. */
+/** ×1 for one activity, +5 % for each other one, capped at +15 % (config.ts). */
 export const multiplierFor = (n: number) => Math.min(ECONOMY.polyvalence.cap, Math.round((1 + ECONOMY.polyvalence.step * Math.max(0, n - 1)) * 100) / 100);
 export const multiplier = (s: GameState, extra?: Activity | null) => multiplierFor(polyvalence(s, extra));
 /** Played time left before a recent category stops counting (ms, 0 when not recent). */
 export const timeLeft = (s: GameState, a: Activity) => (isRecent(s, a) ? WINDOW_MS - (s.data.playedMs - s.data.activities.last[a]!) : 0);
 
-/** Pay of a piece of work of category `a`, if done now (the category counts at once). */
+/** Pay of a piece of work of category `a`, if done now (the category counts at once; active pay only). */
 export const payPreview = (s: GameState, base: number, a: Activity | null) => Math.round(base * multiplier(s, a));
-/** Work finished: records its category and returns its pay scaled by the polyvalence multiplier. */
+/** Work finished: records its category and returns its pay scaled by the variety bonus. */
 export function workPay(s: GameState, base: number, a: Activity | null): number {
   if (a) practise(s, a);
   return Math.round(base * multiplier(s));
 }
 
-/** One line for the player: « Polyvalence : 4 activités → revenus ×1,6 ». */
+/** One line for the player: « Variété : 4 activités → paie +15 % ». */
 export function polyLine(s: GameState): string {
-  const n = polyvalence(s);
-  return `Polyvalence : ${n} activité${n > 1 ? 's' : ''} → revenus ${times(multiplierFor(n))}`;
+  const n = polyvalence(s), bonus = Math.round((multiplierFor(n) - 1) * 100);
+  return `Variété : ${n} activité${n > 1 ? 's' : ''} → paie ${bonus > 0 ? `+${bonus}\u202f%` : 'normale'}`;
 }
