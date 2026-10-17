@@ -1,35 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-17T22:36:59Z",
+  "updatedAt": "2026-10-17T23:36:51Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261017T2336Z-pr43-ci",
-    "owner": "producer_audit_2336",
-    "baseCommit": "79c092d00ae726faad8eb6d0edb2b3d372517c55",
-    "acquiredAt": "2026-10-17T23:35:49Z",
-    "expiresAt": "2026-10-18T00:05:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-17-2336-CI.md",
-      "docs/agents/operations/reports/PR43-20261017-2336-CI-QA.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_economy_2236",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "79c092d00ae726faad8eb6d0edb2b3d372517c55",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR43-20261017-2336-CI-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -140,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-17T22:36:59Z",
+    "lastCompletedRunAt": "2026-10-17T23:36:51Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
@@ -314,17 +293,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-17-2236-AUDIT.md",
-    "completedAt": "2026-10-17T22:36:59Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-17-2336-CI.md",
+    "completedAt": "2026-10-17T23:36:51Z",
     "actualRunCompleted": true,
     "tasks": [
-      "STAB-20261017-2236-QA"
+      "STAB-20261017-2336-CI-QA"
     ],
     "verifiedCandidates": [],
-    "owner": "producer_audit_2236",
+    "owner": "producer_audit_2336",
     "reviewer": "qa_economy_2236",
     "protectedRefsMutated": false,
-    "leaseReleased": "audit-20261017T2236Z-pr43"
+    "leaseReleased": "audit-20261017T2336Z-pr43-ci"
   },
   "protectedRefsLatest": [
     {
@@ -1155,13 +1134,13 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-17T22:36:59Z",
+    "checkedAt": "2026-10-17T23:36:51Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; shell pwd exit0 only; independent QA inspected exact PR43 CI log",
+    "localTests": "local_not_run; shell pwd exit0; independent exact completed push CI log review",
     "delegation": "available; no redundant QA on unchanged evidence",
     "cloudflareAuthenticated": false
   },
@@ -1212,7 +1191,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-17T22:36:59Z",
+    "lastReconciledAt": "2026-10-17T23:36:51Z",
     "qualityMandate": {
       "date": "2026-10-16",
       "target": "Approximately two hours voluntary engagement; not measured",
@@ -1337,13 +1316,24 @@
         "online": "success",
         "launch": "success",
         "pushJob": 117516019493,
-        "pushStatus": "in_progress"
+        "pushStatus": "completed",
+        "pushConclusion": "success",
+        "pushCheckout": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+        "pushLaunchCompletedAt": "2026-10-17T22:38:16Z"
       },
       "limits": [
         "Targeted business/gestures/venues absent from inspected PR log",
         "Inherited PR37 quota defect still open",
         "No device measurement or voluntary two-hour play proof"
-      ]
+      ],
+      "ciAddendum": {
+        "status": "needs-decision",
+        "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+        "reviewer": "qa_economy_2236",
+        "report": "docs/agents/operations/reports/PR43-20261017-2336-CI-QA.md",
+        "completedAt": "2026-10-17T23:36:51Z",
+        "scope": "Standard push CI verified; targeted economy, quota save safety, physical mobile and full game acceptance remain open"
+      }
     }
   }
 }
