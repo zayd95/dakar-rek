@@ -6,7 +6,6 @@ import { ACCESSORIES, ngembTexture, type Socket } from '../lamb/look';
 import type { Outfit } from './character';
 import { GaitState } from './gait';
 import { GaitRig } from './gaitRig';
-import { joinNeck } from './neckJoin';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -44,7 +43,6 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
       buf = u8.buffer;
     }
     const gltf = await new GLTFLoader().parseAsync(buf, '');
-    joinNeck(gltf.scene);                                    // the head joined to the body (src/actors/neckJoin.ts)
     fixSitKnees(gltf.animations);
     fixRunClip(gltf.animations);
     deriveKneel(gltf.animations);
@@ -291,12 +289,7 @@ export const ANIM_LOD = {
 /** The rig's bones under a body's skinned scene (what the mixer poses). */
 function boneList(root: THREE.Object3D) { const out: THREE.Object3D[] = []; root.traverse(o => { if ((o as THREE.Bone).isBone) out.push(o); }); return out; }
 /** The camera of the frame (set by main.ts before the modules update; `on` false: every body animated in full). */
-const view = { on: false, x: 0, y: 0, z: 0, frustum: new THREE.Frustum(), shadows: true };
-/**
- * Whether the frame has a shadow pass (medium and high). Without it (the phone preset) a body out of the camera's view can
- * be seen by nobody, and is animated like a hidden one; with it its shadow may still fall in the view.
- */
-export function setAnimShadows(on: boolean) { view.shadows = on; }
+const view = { on: false, x: 0, y: 0, z: 0, frustum: new THREE.Frustum() };
 let madeHumanoids = 0;
 const _viewM = new THREE.Matrix4(), _bodyS = new THREE.Sphere();
 /** The squared distance from the camera of the body `animLod` just looked at when it is drawn and in view, else −1. */
@@ -329,7 +322,7 @@ export function animLod(x: number, y: number, z: number, k: number, drawn: boole
   if (!view.on) return 0;
   if (!drawn) return ANIM_LOD.hidden;
   _bodyS.center.set(x, y + 0.95 * k, z); _bodyS.radius = 1.35 * k;                  // round the standing or seated body
-  if (!view.frustum.intersectsSphere(_bodyS)) return view.shadows ? ANIM_LOD.unseen : ANIM_LOD.hidden;
+  if (!view.frustum.intersectsSphere(_bodyS)) return ANIM_LOD.unseen;
   const dx = x - view.x, dy = y - view.y, dz = z - view.z, d2 = dx * dx + dy * dy + dz * dz;
   seenD2 = d2;
   const g = ANIM_LOD.gaitNear + (near ? ANIM_LOD.gaitSlack : 0);
@@ -378,12 +371,6 @@ export class Humanoid {
   /** Its place in the slower tiers' rhythm (0–1), so that bodies made together do not all update on the same frame. */
   private phase = (madeHumanoids++ * 0.618034) % 1;
   private lx = NaN; private lz = NaN; private v = 0;
-  /**
-   * Hidden (ANIM_LOD.hidden), a body's pose matters only through whether it sits (the far figure standing in for it): once the
-   * mixer has set the pose of the clip it plays, with the cross-fade over, the bones hold it, and the mixer is not asked again
-   * until the clip changes or the body is drawn again (it then gets all the time it owes in one update).
-   */
-  private settled = false; private sinceSwitch = 0;
 
   constructor(look?: PersonLook) {
     if (!template) throw new Error('character asset not loaded');
@@ -472,7 +459,6 @@ export class Humanoid {
   play(name: Clip, fade = 0.2, offset = 0) {
     if (this.clipName === name) return;
     const next = this.actions.get(name); if (!next) return;
-    this.settled = false; this.sinceSwitch = 0;
     next.reset(); next.setLoop(THREE.LoopRepeat, Infinity); next.timeScale = 1;
     if (offset) next.time = offset * next.getClip().duration;
     next.fadeIn(fade).play();
@@ -519,11 +505,7 @@ export class Humanoid {
       else this.play('Idle', 0.25);
     }
     // the mixer: every frame in full detail (and while the gait fades), else at the tier's rate with the time it owes
-    this.lag += dt; this.sinceSwitch += dt;
-    if (this.settled) {
-      if (lod === ANIM_LOD.hidden) return;                                   // the pose it holds is the clip's; the time keeps adding up
-      this.settled = false; this.due = 0;                                    // seen again: updated now, with all the time owed
-    }
+    this.lag += dt;
     if (lod !== 0 && this.gaitW <= 0) {
       if (wasNear) this.due = this.phase / lod;                              // just slowed down: now, then staggered with the others
       // not yet: the mixer's last pose (a hidden body is left as it is: its first update once drawn sets every bone)
@@ -531,27 +513,12 @@ export class Humanoid {
       else this.due = 1 / lod + Math.max(this.due, -0.5 / lod);
     }
     this.mixer.update(this.lag); this.lag = 0;
-    if (lod === ANIM_LOD.hidden && this.sinceSwitch >= 0.3) this.settled = true;      // (0.3 s: longer than any cross-fade)
     if (lod !== 0) this.savePose();
     const w = this.gait ? this.gaitW * this.gait.stand : 0;
     if (w > 0) {
       if (this.gaitRig === undefined) this.gaitRig = GaitRig.from(this.root);
       this.gaitRig?.apply(this.gait!, w);
     }
-  }
-  /**
-   * Back to the state of a body just made (its look aside: `setLook` dresses it again): no clip playing, no pose held, the
-   * gait and the animation level of detail forgotten. For an owner that keeps spare bodies instead of cloning a new skinned
-   * scene (2-8 ms) each time it needs one.
-   */
-  reset() {
-    this.mixer.stopAllAction();                                              // (the bones go back to their rest values)
-    this.current = null; this.clipName = null; this.hold = null;
-    this.gait = null; this.gaitRig = undefined; this.gaitW = 1; this.fullRate = false;     // (the gait's rig takes its rest rotations again at its first use, as a new body's does)
-    this.lag = 0; this.due = 0; this.near = true; this.settled = false; this.sinceSwitch = 0;
-    this.lx = NaN; this.lz = NaN; this.v = 0; this.saved = null;
-    this.faceOn = true; for (const m of this.face) m.visible = true;
-    this.group.position.set(0, 0, 0); this.group.rotation.set(0, 0, 0);
   }
   /** The face's details for a body `d2` (squared m) from the camera: shown within FACE_NEAR, put away beyond FACE_NEAR + FACE_SLACK. */
   private showFace(d2: number) {

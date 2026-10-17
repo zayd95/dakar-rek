@@ -18,7 +18,6 @@ import { LANE, kioskDir } from './routines';
 import { PLACE_TAGS, LEGACY_TAGS } from './ambientData';
 import { pair, prayerRows, ring, type AmbientSpot, type Pt, type SeatLike, type StandSlot } from './ambient';
 import { ShopPaths, type ShopInfo } from '../world/shopFlow';
-import { len2 } from '../core/math';
 
 export interface SpotInputs {
   places: readonly PlaceSpec[];
@@ -59,8 +58,7 @@ export function furnitureSeats(interactables: SpotInputs['interactables'], layou
   const taken = (a: Pt, tags: readonly string[]) => places.some(p => (PLACE_TAGS[p.type] ?? []).some(t => tags.includes(t))
     && p.anchors.some(x => (x.space ?? p.space) === 'street' && Math.hypot(x.x - a.x, x.z - a.z) < 16));
   const add = (s: Omit<SeatLike, 'occupant' | 'space'>) => {
-    // (one seat of the street within 35 cm of this one: it is already there; no copy of the whole registry per candidate)
-    for (const list of [existing, out]) for (let i = 0; i < list.length; i++) { const e = list[i]; if (e.space === 'street' && len2(e.x - s.x, e.z - s.z) < 0.35) return; }
+    if ([...existing, ...out].some(e => e.space === 'street' && Math.hypot(e.x - s.x, e.z - s.z) < 0.35)) return;
     out.push({ ...s, space: 'street', occupant: null });
   };
   for (const a of interactables) {
@@ -96,52 +94,16 @@ export function dibiFrame(a: Pt) {
   return { cx: a.x, cz: a.z - dir * 0.6, dir };
 }
 
-/** The walking grid of a stocked shop, made once (its footprint and furniture do not change; a rebuild of the spots reuses it, and the routes it has found). */
-const shopGrids = new WeakMap<ShopInfo, ShopPaths>();
-const pathsOf = (s: ShopInfo): ShopPaths => { let p = shopGrids.get(s); if (!p) { p = new ShopPaths(s.bounds, s.colliders); shopGrids.set(s, p); } return p; };
-
-/**
- * A fenced lot's walking grid (`PlaceSpec.yard`: a Dibi's yard), made once like a shop's: the furniture and the fence of the lot (its
- * walls and tables are in the hub's colliders), for walkers a little wider than the sampled routes' margin, so that a route round the tables
- * is a route the clear test lets through.
- */
-const yardGrids = new WeakMap<PlaceSpec, ShopPaths>();
-function yardOf(p: PlaceSpec, cols: readonly Collider[]): NonNullable<AmbientSpot['yard']> {
-  const y = p.yard!;
-  let paths = yardGrids.get(p);
-  if (!paths) {
-    const mine = cols.filter(c => c.h > 0.3 && c.x1 > y.x0 - 1 && c.x0 < y.x1 + 1 && c.z1 > y.z0 - 1 && c.z0 < y.z1 + 1);
-    paths = new ShopPaths({ x0: y.x0, x1: y.x1, z0: y.z0, z1: y.z1 }, mine, YARD_R);
-    yardGrids.set(p, paths);
-    for (const g of y.gates) paths.prepare(g.in);                              // (the routes from each gap are read from a tree grown now)
-  }
-  const grid = paths;
-  return { x0: y.x0, x1: y.x1, z0: y.z0, z1: y.z1, gates: y.gates, path: (a, b) => grid.treePath(a, b) };
-}
-/** The margin round the furniture of a yard that its walkers keep (m): the route test leaves 0.25 m. */
-const YARD_R = 0.36;
-
-/** Build every spot of the hub at once. */
+/** Build every spot of the hub. Seats are assigned to one spot only (first come: places, legacy, then the rest). */
 export function buildSpots(inp: SpotInputs): AmbientSpot[] {
-  const steps = buildSpotsSteps(inp);
-  for (;;) { const r = steps.next(); if (r.done) return r.value; }
-}
-
-/**
- * Build every spot of the hub, in steps: it yields now and then (after a registered place, a legacy place, a few seats'
- * groups) so that the caller may spread the 10-20 ms over several frames (src/social/ambientLife.ts). Seats are assigned to
- * one spot only (first come: places, legacy, then the rest). The value it returns is `buildSpots`'.
- */
-export function* buildSpotsSteps(inp: SpotInputs): Generator<void, AmbientSpot[]> {
   const spots: AmbientSpot[] = [];
   const cols = inp.colliders;
   const taken = new Set<string>();
   const anchors: Pt[] = [...inp.interactables, ...inp.places.flatMap(p => p.anchors.filter(a => (a.space ?? p.space) === 'street'))];
   const seatOf = new Map(inp.seats.map(s => [s.id, s]));
   /** A standing slot in the street is usable: not in a solid object, not on a placed person, not on an anchor. */
-  const okStand = (s: StandSlot, room = ANCHOR_ROOM) => !inside(cols, s.x, s.z) && !near(inp.people, s.x, s.z, 0.8) && !near(anchors, s.x, s.z, room);
-  /** Some point of `list` is closer than `r` to (x, z) (squares: this runs for every standing place of the hub). */
-  const near = (list: readonly Pt[], x: number, z: number, r: number) => { const r2 = r * r; for (let i = 0; i < list.length; i++) { const dx = list[i].x - x, dz = list[i].z - z; if (dx * dx + dz * dz < r2) return true; } return false; };
+  const okStand = (s: StandSlot, room = ANCHOR_ROOM) => !inside(cols, s.x, s.z) && !inp.people.some(p => Math.hypot(p.x - s.x, p.z - s.z) < 0.8)
+    && !anchors.some(a => Math.hypot(a.x - s.x, a.z - s.z) < room);
   const stands = (list: StandSlot[]) => list.filter(s => okStand(s));
   const claim = (pred: (s: SeatLike) => boolean) => {
     const ids: string[] = [];
@@ -162,16 +124,14 @@ export function* buildSpotsSteps(inp: SpotInputs): Generator<void, AmbientSpot[]
     const street = p.space === 'street';
     const cx = own.reduce((v, a) => v + a.x, 0) / own.length, cz = own.reduce((v, a) => v + a.z, 0) / own.length;
     const area = p.area;
-    const seats = claim(s => s.space === p.space && (!street || near(own, s.x, s.z, 7) || (!!area && Math.hypot(area.x - s.x, area.z - s.z) <= area.r)));
+    const seats = claim(s => s.space === p.space && (!street || own.some(a => Math.hypot(a.x - s.x, a.z - s.z) < 7) || (!!area && Math.hypot(area.x - s.x, area.z - s.z) <= area.r)));
     let st: StandSlot[] = own.flatMap(a => ring(a.x, a.z, 2.1, 6, 0.3));
     st = street ? stands(st) : st.filter(s => !own.some(a => Math.hypot(a.x - s.x, a.z - s.z) < ANCHOR_ROOM));
     let rows: StandSlot[] | undefined;
     const hall = p.type === 'mosque' ? own.find(a => a.id === 'hall') : undefined;
     if (hall) rows = prayerRows(hall.x, hall.z, 3, 6).filter(s => !street || (!inside(cols, s.x, s.z) && Math.hypot(s.x - hall.x, s.z - hall.z) >= 1));
-    const yard = p.yard && street ? yardOf(p, cols) : undefined;
-    push({ id: `place:${p.id}`, tags, space: p.space, x: cx, z: cz, seats, stands: st, rows, hours: p.hours, peaks: p.peaks, place: p.id, source: 'place', yard });
+    push({ id: `place:${p.id}`, tags, space: p.space, x: cx, z: cz, seats, stands: st, rows, hours: p.hours, peaks: p.peaks, place: p.id, source: 'place' });
     placeTagged.push({ tags, pts: street ? own : [] });
-    yield;
   }
   /** A legacy place is replaced by a registered place of the same family next to it. */
   const superseded = (x: number, z: number, tags: readonly string[], r = 14) =>
@@ -189,13 +149,12 @@ export function* buildSpotsSteps(inp: SpotInputs): Generator<void, AmbientSpot[]
     const stocked = inp.shops?.filter(s => !s.room && (s.key === a.id || s.key.startsWith(a.id + '-'))) ?? [];
     if (stocked.length) {
       for (const s of stocked) {
-        const k = s.anchors, b = s.bounds, paths = pathsOf(s);
+        const k = s.anchors, b = s.bounds, paths = new ShopPaths(b, s.colliders);
         const seats = claim(x => x.space === 'street' && x.x > b.x0 && x.x < b.x1 && x.z > b.z0 && x.z < b.z1);
         const browse = k.browse.filter(p => paths.walkable(p) && paths.path(k.door, p));
         const checkout = k.queue.filter(p => paths.walkable(p));
         push({ ...base, id: stocked.length > 1 ? `${id}:${s.key.slice(a.id.length + 1)}` : id, tags: rule.tags, x: (b.x0 + b.x1) / 2, z: (b.z0 + b.z1) / 2, seats,
           stands: browse.length ? browse : checkout.slice(1), shop: { door: k.door, checkout, path: (p, q) => paths.path(p, q) } });
-        yield;
       }
       continue;
     }
@@ -286,7 +245,6 @@ export function* buildSpotsSteps(inp: SpotInputs): Generator<void, AmbientSpot[]
       const sx = a.x, cz = a.z + 4.3;
       push({ ...base, id, tags: rule.tags, x: sx, z: cz - 10, stands: stands([0, 1, 2].map(k => ({ x: sx + 0.2 + k * 1.4, z: cz - 11.5, yaw: PI }))) });
     }
-    yield;
   }
 
   // 3. landmarks and the sea front
@@ -319,9 +277,7 @@ export function* buildSpotsSteps(inp: SpotInputs): Generator<void, AmbientSpot[]
     const key = s.space === 'street' ? s.id.replace(/:[^:]*$/, '') : s.space;
     const list = byGroup.get(key) ?? []; list.push(s); byGroup.set(key, list);
   }
-  let groups = 0;
   for (const [key, list] of byGroup) {
-    if (++groups % 8 === 0) yield;
     const space = list[0].space, street = space === 'street';
     const rule = street ? null : LEGACY_TAGS.find(r => space.includes(r.has));
     // a room of prayer rows (a venue mosque's hall): the congregation at prayer times
@@ -330,14 +286,13 @@ export function* buildSpotsSteps(inp: SpotInputs): Generator<void, AmbientSpot[]
     const room = street ? undefined : inp.shops?.find(s => s.key === space);
     for (const s of list) taken.add(s.id);
     const shop = room && (() => {
-      const k = room.anchors, paths = pathsOf(room);
+      const k = room.anchors, paths = new ShopPaths(room.bounds, room.colliders);
       return { door: k.door, checkout: k.queue.filter(p => paths.walkable(p)), path: (p: Pt, q: Pt) => paths.path(p, q) };
     })();
     push({ id: `${street ? 'seats' : 'interior'}:${key}`, tags, space, x: list.reduce((v, s) => v + s.x, 0) / list.length, z: list.reduce((v, s) => v + s.z, 0) / list.length,
       seats: list.map(s => s.id), hours: rule?.hours, source: street ? 'seats' : 'interior', prio: street ? 1.3 : 1, ...(shop ? { shop } : {}) });
   }
 
-  yield;
   // 5. street corners: a few pairs chatting on the sidewalk corners, away from the other spots
   for (let a = 0; a <= NB; a++) for (let b = 0; b <= NB; b++) for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     if ((a * 7 + b * 3 + (sx > 0 ? 1 : 0) + (sz > 0 ? 2 : 0)) % 6 !== 0) continue;

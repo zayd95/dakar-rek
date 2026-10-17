@@ -59,9 +59,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   if (greeted) {
     await d(() => window.__dakar.act());
     // Wolof exchange (src/i18n/lines.ts), French typography with no-break spaces: « Toi : « Salaam aleekum ! » · Passant : « Maleekum salaam ! » »
-    // the line on screen (#toast > .t); #toast also holds the hidden screen-reader copy (.sr), which would read the exchange twice
-    const said = () => (document.querySelector('#toast > .t:not(.out)')?.textContent ?? '').replace(/[  ]/g, ' ');
-    await page.waitForFunction(src => new RegExp(src).test((document.querySelector('#toast > .t:not(.out)')?.textContent ?? '').replace(/[  ]/g, ' ')), 'Maleekum salaam', T).catch(() => {});
+    const said = () => (document.getElementById('toast')?.textContent ?? '').replace(/[  ]/g, ' ');
+    await page.waitForFunction(src => new RegExp(src).test((document.getElementById('toast')?.textContent ?? '').replace(/[  ]/g, ' ')), 'Maleekum salaam', T).catch(() => {});
     const answer = await d(said);
     // (the toast may already show this person's follow-up: the greeting of the hour and « Jàmm rekk. »)
     check(`${label}: greeting gets an answer (« Salaam aleekum ! » — « Maleekum salaam ! »)`, /^Toi : « Salaam aleekum ! » · Passan(t|te) : « Maleekum salaam ! »$|· Toi : « Jàmm rekk\. » \(tout va bien\)$/.test(answer), answer);

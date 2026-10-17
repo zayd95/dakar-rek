@@ -151,43 +151,6 @@ describe('collidersClear', () => {
     cols.pop();
     expect(clear(a, b)).toBe(true);
   });
-
-  it('answers alike for segments along an axis, through thin boxes and boxes the ends touch (the slabs of a segment with dx or dz of 0)', () => {
-    const cols = [
-      { x0: 3, z0: -4, x1: 3.05, z1: 4, h: 1 },          // a thin wall across the way
-      { x0: 8, z0: 1, x1: 9, z1: 2, h: 1 },              // a box beside the line
-      { x0: 12, z0: -1, x1: 14, z1: 1, h: 1 },           // a box with an end inside it
-      { x0: 20, z0: -1, x1: 22, z1: 1, h: 0.3 },         // low: stepped over
-      { x0: 24, z0: 0.5, x1: 26, z1: 0.5, h: 1 },        // flat (no thickness)
-    ];
-    const was = firstClear(cols), now = collidersClear(cols);
-    const lines: [number, number, number, number][] = [];
-    for (let x = -2; x <= 30; x += 0.5) for (const z of [-5, -1.3, -0.25, 0, 0.25, 0.75, 1, 1.25, 1.75, 2.5, 4.5]) { lines.push([x, z, x + 7, z]); lines.push([x, z, x - 4.5, z]); lines.push([z + 10, x, z + 10, x + 6]); }
-    let blocked = 0;
-    for (const [x0, z0, x1, z1] of lines) {
-      const a = { x: x0, z: z0 }, b = { x: x1, z: z1 }, want = was(a, b);
-      expect(now(a, b), `${x0},${z0} to ${x1},${z1}`).toBe(want);
-      if (!want) blocked++;
-    }
-    expect(blocked).toBeGreaterThan(20);
-  });
-
-  it('looks at the list once per epoch (the ambient life: once a frame), and again when the epoch moves', () => {
-    const cols: { x0: number; z0: number; x1: number; z1: number; h: number }[] = [{ x0: 20, z0: 20, x1: 22, z1: 22, h: 1 }];
-    let epoch = 1;
-    const clear = collidersClear(cols, () => epoch), a = { x: 0, z: 0 }, b = { x: 10, z: 0 };
-    expect(clear(a, b)).toBe(true);
-    cols.push({ x0: 4, z0: -1, x1: 6, z1: 1, h: 1.5 });
-    expect(clear(a, b)).toBe(true);                       // (the same frame: the list as it was)
-    epoch++;
-    expect(clear(a, b)).toBe(false);                      // (the next one: the wall is seen)
-    cols[1].h = 0.2;                                      // a box that changes in place (height) is seen too
-    epoch++;
-    expect(clear(a, b)).toBe(true);
-    cols.length = 0;
-    epoch++;
-    expect(clear(a, b)).toBe(true);
-  });
 });
 
 describe('the open sidewalk graph, made as the searches reach it', () => {

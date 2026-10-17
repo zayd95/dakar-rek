@@ -310,59 +310,35 @@ export function laneGraph(): Graph {
   return graph;
 }
 
+const proj = (p: Pt, a: Pt, b: Pt): Pt => {
+  const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
+  const t = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2)) : 0;
+  return { x: a.x + dx * t, z: a.z + dz * t };
+};
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
 export type ClearFn = (a: Pt, b: Pt) => boolean;
 
-type Box = { x0: number; z0: number; x1: number; z1: number; h: number };
-let clearTick = 0;
 /**
  * Straight segment test against a hub's solid objects (h > 0.3 m), with a 0.25 m margin. Objects containing an end point
  * are the place itself (the bench, the counter) and are ignored. Make one per hub: planPath caches by function identity.
- *
- * The test reads the list as it is now. It keeps a copy of the solid boxes in flat arrays (a walk through 770 objects was
- * 15-40 µs a call, and a route asks twenty times), made again when the list has changed since the last `epoch` — a number
- * that goes up when the world may have changed (default: at every call; the ambient life gives its frame count, so that the
- * several tests of one route in a frame share one look at the list).
  */
-export function collidersClear(cols: readonly Box[], epoch: () => number = () => ++clearTick): ClearFn {
-  const m = 0.25;
-  let seen = NaN, sig = NaN, n = 0, X0 = new Float64Array(0), Z0 = X0, X1 = X0, Z1 = X0;
-  const signature = () => { let s = cols.length; for (let i = 0; i < cols.length; i++) { const c = cols[i]; s += (i + 1) * (c.x0 + 3 * c.z0 + 5 * c.x1 + 7 * c.z1 + 11 * c.h); } return s; };
-  const refresh = () => {
-    const e = epoch(); if (e === seen) return; seen = e;
-    const s = signature(); if (s === sig) return; sig = s;
-    if (X0.length < cols.length) { X0 = new Float64Array(cols.length); Z0 = new Float64Array(cols.length); X1 = new Float64Array(cols.length); Z1 = new Float64Array(cols.length); }
-    n = 0;
-    for (let i = 0; i < cols.length; i++) { const c = cols[i]; if (c.h > 0.3) { X0[n] = c.x0; Z0[n] = c.z0; X1[n] = c.x1; Z1[n] = c.z1; n++; } }
-  };
-  const near: number[] = [];                                                                // (the objects in the way: one list for all the calls)
+export function collidersClear(cols: readonly { x0: number; z0: number; x1: number; z1: number; h: number }[]): ClearFn {
+  const m = 0.25, near: { x0: number; z0: number; x1: number; z1: number }[] = [];            // (the objects in the way: one list for all the calls)
   return (a, b) => {
-    refresh();
     const ax = a.x, az = a.z, bx = b.x, bz = b.z;
     const xhi = Math.max(ax, bx), xlo = Math.min(ax, bx), zhi = Math.max(az, bz), zlo = Math.min(az, bz);
-    let k = 0;
-    for (let i = 0; i < n; i++) {
-      const x0 = X0[i], z0 = Z0[i], x1 = X1[i], z1 = Z1[i];
-      if (xhi > x0 - m && xlo < x1 + m && zhi > z0 - m && zlo < z1 + m
-        && !(ax > x0 - 0.45 && ax < x1 + 0.45 && az > z0 - 0.45 && az < z1 + 0.45)
-        && !(bx > x0 - 0.45 && bx < x1 + 0.45 && bz > z0 - 0.45 && bz < z1 + 0.45)) near[k++] = i;
+    let n = 0;
+    for (let i = 0; i < cols.length; i++) {
+      const c = cols[i];
+      if (c.h > 0.3 && xhi > c.x0 - m && xlo < c.x1 + m && zhi > c.z0 - m && zlo < c.z1 + m
+        && !(ax > c.x0 - 0.45 && ax < c.x1 + 0.45 && az > c.z0 - 0.45 && az < c.z1 + 0.45)
+        && !(bx > c.x0 - 0.45 && bx < c.x1 + 0.45 && bz > c.z0 - 0.45 && bz < c.z1 + 0.45)) near[n++] = c;
     }
-    if (!k) return true;
-    const dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz), steps = Math.max(1, Math.ceil(len / 0.3));
-    // The points of the segment every 30 cm, inside one of the objects? For each object the stretch of the segment inside its box
-    // (slab method) says which of the points can be: only those are tried, with the very test of old. (A long segment past forty
-    // stalls and barriers was 130 points × 40 boxes, 60 µs.)
-    for (let j = 0; j < k; j++) {
-      const i = near[j], bx0 = X0[i] - m, bx1 = X1[i] + m, bz0 = Z0[i] - m, bz1 = Z1[i] + m;
-      let t0 = 0, t1 = 1;
-      if (dx === 0) { if (ax <= bx0 || ax >= bx1) continue; } else { let u = (bx0 - ax) / dx, v = (bx1 - ax) / dx; if (u > v) { const w = u; u = v; v = w; } if (u > t0) t0 = u; if (v < t1) t1 = v; }
-      if (dz === 0) { if (az <= bz0 || az >= bz1) continue; } else { let u = (bz0 - az) / dz, v = (bz1 - az) / dz; if (u > v) { const w = u; u = v; v = w; } if (u > t0) t0 = u; if (v < t1) t1 = v; }
-      if (t0 > t1) continue;
-      const k0 = Math.max(0, Math.floor(t0 * steps) - 1), k1 = Math.min(steps, Math.ceil(t1 * steps) + 1);
-      for (let q = k0; q <= k1; q++) {
-        const t = q / steps, x = ax + dx * t, z = az + dz * t;
-        if (x > bx0 && x < bx1 && z > bz0 && z < bz1) return false;
-      }
+    if (!n) return true;
+    const len = Math.hypot(bx - ax, bz - az), steps = Math.max(1, Math.ceil(len / 0.3));
+    for (let k = 0; k <= steps; k++) {
+      const t = k / steps, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+      for (let j = 0; j < n; j++) { const c = near[j]; if (x > c.x0 - m && x < c.x1 + m && z > c.z0 - m && z < c.z1 + m) return false; }
     }
     return true;
   };
@@ -379,33 +355,14 @@ function entries(p: Pt, clear: ClearFn, max = 3) {
   if (!byPt) { byPt = new Map(); entryCache.set(clear, byPt); }
   const key = `${p.x},${p.z},${max}`, hit = byPt.get(key);
   if (hit) return hit;
-  const g = laneGraph(), segs = g.segs, n = segs.length;
-  // the stretches by distance from the point, nearest first (the first of equals first: the order of a stable sort), the next
-  // one taken only when the ones before it were no use — no object for each of the graph's stretches, no sort
-  if (eD.length < n) { eD = new Float64Array(n); eQx = new Float64Array(n); eQz = new Float64Array(n); eDone = new Uint8Array(n); }
-  eDone.fill(0, 0, n);
-  for (let k = 0; k < n; k++) {
-    const a = g.nodes[segs[k][0]], b = g.nodes[segs[k][1]];
-    const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
-    const t = l2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2)) : 0;
-    const qx = a.x + dx * t, qz = a.z + dz * t;
-    eQx[k] = qx; eQz[k] = qz; eD[k] = Math.hypot(p.x - qx, p.z - qz);
-  }
-  const out: { i: number; j: number; q: Pt; d: number }[] = [];
-  while (out.length < max) {
-    let best = -1, bd = Infinity;
-    for (let k = 0; k < n; k++) if (!eDone[k] && eD[k] < bd) { bd = eD[k]; best = k; }
-    if (best < 0 || bd > 60) break;
-    eDone[best] = 1;
-    const [i, j] = segs[best], q = { x: eQx[best], z: eQz[best] };
-    if (clear(p, q) && clear(g.nodes[i], q) && clear(q, g.nodes[j])) out.push({ i, j, q, d: bd });
-  }
+  const g = laneGraph();
+  const all = g.segs.map(([i, j]) => { const q = proj(p, g.nodes[i], g.nodes[j]); return { i, j, q, d: dist(p, q) }; }).sort((u, v) => u.d - v.d);
+  const out: typeof all = [];
+  for (const e of all) { if (e.d > 60 || out.length >= max) break; if (clear(p, e.q) && clear(g.nodes[e.i], e.q) && clear(e.q, g.nodes[e.j])) out.push(e); }
   if (byPt.size > 4000) byPt.clear();
   byPt.set(key, out);
   return out;
 }
-/** `entries`' working arrays. */
-let eD = new Float64Array(0), eQx = new Float64Array(0), eQz = new Float64Array(0), eDone = new Uint8Array(0);
 const entryCache = new WeakMap<ClearFn, Map<string, { i: number; j: number; q: Pt; d: number }[]>>();
 
 /**

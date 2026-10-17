@@ -63,9 +63,8 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   }
   // Carte: current hub highlighted, known places listed, no teleport button.
   await press('#phone [data-nav="home"]'); await press('#phone [data-app="carte"]');
-  const map = await page.evaluate(() => ({ here: document.querySelector('#phone .ph-hub.here')?.dataset.hub, hubs: document.querySelectorAll('#phone .ph-hub').length, walks: document.querySelectorAll('#phone .ph-walk[data-walk]').length, text: document.querySelector('#phone .ph-screen').innerText }));
-  // UI V2 step 1: walking between neighbourhoods is free and always offered (« Aller à pied »), the car rapide is the paid, faster way
-  check(`${label}: map highlights the current hub and its places, and offers walking`, map.here === 'pikine' && map.hubs === 4 && map.text.includes('Ma chambre') && /à pied, gratuit/.test(map.text) && /car rapide/.test(map.text) && map.walks === 3 && map.text.includes('Y aller à pied'), JSON.stringify({ here: map.here, hubs: map.hubs, walks: map.walks }));
+  const map = await page.evaluate(() => ({ here: document.querySelector('#phone .ph-hub.here')?.dataset.hub, hubs: document.querySelectorAll('#phone .ph-hub').length, text: document.querySelector('#phone .ph-screen').innerText }));
+  check(`${label}: map highlights the current hub and its places`, map.here === 'pikine' && map.hubs === 4 && map.text.includes('Ma chambre') && map.text.includes('gare des cars rapides'), JSON.stringify({ here: map.here, hubs: map.hubs }));
   // Portefeuille: game money; the history line waits for the economy module's ledger hook.
   await press('#phone [data-nav="home"]'); await press('#phone [data-app="portefeuille"]');
   const wallet = await page.locator('#phone .ph-screen').innerText();

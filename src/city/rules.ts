@@ -15,8 +15,8 @@ export function curve(points: readonly (readonly [number, number])[], hour: numb
   const h = ((hour % 24) + 24) % 24;
   if (h <= points[0][0]) return points[0][1];
   for (let i = 1; i < points.length; i++) {
-    const p1 = points[i], p0 = points[i - 1], h1 = p1[0];                 // (no destructuring: it asked for an iterator at every call, from the per-frame loops)
-    if (h <= h1) return p0[1] + ((p1[1] - p0[1]) * (h - p0[0])) / Math.max(1e-9, h1 - p0[0]);
+    const [h1, v1] = points[i], [h0, v0] = points[i - 1];
+    if (h <= h1) return v0 + ((v1 - v0) * (h - h0)) / Math.max(1e-9, h1 - h0);
   }
   return points[points.length - 1][1];
 }

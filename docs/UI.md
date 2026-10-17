@@ -138,6 +138,19 @@ placer) and a transition's fade. Checks: `tests/quiet.test.ts`, `tests/boutCardL
 landscape), `scripts/check-arena-visit.mjs` (seated at the entrance and the bout; desktop, portrait, landscape).
 Budget: DOM only, nothing per frame (the line, the log, the chip and the cards change on events).
 
+**Compatibility with the checks (what still holds, what changed).** Every message `hud.toast` receives, whatever its
+route, is appended to `#toast > .sr` — the hidden list read to screen readers — for 8 s (six at most). So a check that
+reads `document.getElementById('toast').textContent`, or waits for a text in it, still finds every message within 8 s
+of it, including those that went to the quiet log. What changed:
+- `#toast .t:not(.out)` counts at most ONE (the transient line, `.say` or `.now`); `#toast .mo:not(.out)` at most one;
+  stacked toasts and « three at most » no longer exist;
+- `#galacard`, `.ridecard` (`#ride`, `#taxi-card`, `#car-card`, `#moto-card`) and the after-bout card as « head of the
+  toast column » no longer exist: the gala and the rides read from `#place.ev #placeEv` (and their debug `card` text);
+- the evening's call (« Ce soir à l'arène … »), « Livraison réussie ✓ … », « Arrivée … », purchases and tips are in
+  the quiet log (`__dakar.quietLog()`, phone › Notifications), not on screen — only their 8 s echo in `#toast > .sr`;
+- a spoken line shows as `#toast .t.say` (the speaker in `.who`), a refusal as `#toast .t.now`;
+- the bubble `#wprompt` is off while seated.
+
 ## On foot between neighbourhoods (docs/UI_V2_PLAN.md §0 A; src/world/walk.ts, src/game/rest.ts)
 
 Habib (11 Oct): the player can always go home or reach another neighbourhood on foot, at 0 F and 0 % energy, with no

@@ -1114,14 +1114,6 @@ export function buildVehicle(kind: VehicleKind, opts: VehicleOpts = {}): Vehicle
   return { group, spec, lod };
 }
 
-/**
- * The key of the geometry `buildVehicle(kind, opts)` would draw, without making it: two builds with the same key share one
- * geometry (a taxi of the same two paints, a sedan of the same colour with the same people aboard). `opts.seed` picks the model.
- */
-export function vehicleKey(kind: VehicleKind, opts: VehicleOpts = {}): string {
-  return PICK[kind](seeded(opts.seed ?? 0), opts).key;
-}
-
 /** World yaw of an object (game convention: facing (sin yaw, cos yaw)). */
 export function worldYaw(obj: THREE.Object3D) {
   const q = obj.getWorldQuaternion(new THREE.Quaternion()), f = new THREE.Vector3(0, 0, 1).applyQuaternion(q);

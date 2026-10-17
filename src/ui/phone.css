@@ -190,8 +190,6 @@ button.ph-wid { cursor:pointer; }
   #phone[data-screen="home"] .ph-screen { padding:2px 18px 8px; }
   .ph-lock { display:flex; align-items:baseline; gap:12px; padding:2px 6px 4px; } .ph-clock { font-size:34px; } .ph-lock small { margin:0; font-size:13px; }
   .ph-widgets { margin-bottom:6px; }
-  /* the quiet log's latest notice on the lock screen: one line (the Notifs badge counts the rest) */
-  .ph-notes { margin-bottom:6px; padding:6px 12px; } .ph-notes span:nth-of-type(n+2), .ph-notes small { display:none; }
   .ph-grid { grid-template-columns:repeat(8,1fr); gap:6px 2px; }
   .ph-ico { width:46px; height:46px; border-radius:12px; } .ph-ico span { font-size:25px; }
   .ph-dock { margin-top:6px; padding:6px; } .ph-dock .ph-ico { width:44px; height:44px; }

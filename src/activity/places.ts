@@ -43,11 +43,6 @@ export interface PlaceSpec {
   peaks?: [number, number][];
   /** Where its customers sit (a Dibi's tables): the city's people claim the seats there (src/social/ambientSpots.ts). */
   area?: { x: number; z: number; r: number };
-  /**
-   * A fenced lot whose gaps are its doors (a Dibi's yard): its footprint and, for each gap, the point out in the street and the one
-   * inside. The city's people come in and go out through the gaps and walk round the furniture (src/social/ambientLife.ts).
-   */
-  yard?: { x0: number; z0: number; x1: number; z1: number; gates: { out: { x: number; z: number }; in: { x: number; z: number } }[] };
 }
 
 export const isOpen = (hours: [number, number] | undefined, h: number) =>

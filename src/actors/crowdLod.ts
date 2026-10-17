@@ -94,11 +94,7 @@ export class Impostors {
   addMatrix(m: THREE.Matrix4, color: THREE.Color, seated: boolean) {
     const mesh = seated ? this.sit : this.stand, i = seated ? this.nt : this.ns;
     if (i >= this.max) return;
-    // (the arrays written in place: setMatrixAt and setColorAt go through toArray, which costs more than the copy itself)
-    const a = mesh.instanceMatrix.array as Float32Array, e = m.elements, o = i * 16;
-    for (let k = 0; k < 16; k++) a[o + k] = e[k];
-    const c = mesh.instanceColor!.array as Float32Array, j = i * 3;
-    c[j] = color.r; c[j + 1] = color.g; c[j + 2] = color.b;
+    mesh.setMatrixAt(i, m); mesh.setColorAt(i, color);
     if (seated) this.nt++; else this.ns++;
   }
   /** A figure at a position and facing. */

@@ -9,7 +9,6 @@
  * always some seats left free for players at every place.
  */
 import type { Clip } from '../actors/humanoid';
-import { len2 } from '../core/math';
 
 /** How the body is placed: on a seat, on a standing slot, in a prayer row, moving along a route, or roaming an area. */
 export type AmbientPose = 'sit' | 'stand' | 'row' | 'route' | 'roam';
@@ -98,11 +97,6 @@ export interface AmbientSpot {
    * walks them around the furniture inside.
    */
   shop?: { door: Pt; checkout: readonly StandSlot[]; path(a: Pt, b: Pt): Pt[] | null };
-  /**
-   * A fenced lot (a Dibi's yard, `PlaceSpec.yard`): its footprint, its gaps (`out` in the street, `in` inside the fence) and the
-   * way round its furniture between two points inside, or null when there is none. People go in and out through a gap.
-   */
-  yard?: { x0: number; z0: number; x1: number; z1: number; gates: readonly { out: Pt; in: Pt }[]; path(a: Pt, b: Pt): Pt[] | null };
   /** Where the spot comes from (debug). */
   source: 'place' | 'legacy' | 'seats' | 'special' | 'sea' | 'corner' | 'interior';
 }
@@ -139,20 +133,14 @@ export function activityLevel(a: AmbientActivity, hour: number, dow: number): nu
 /** Piecewise-linear factor at an hour (points sorted by hour; flat before the first and after the last). */
 export function curveAt(pts: readonly (readonly [number, number])[], hour: number): number {
   // a curve may pass midnight ([…, [23, 0.6], [1, 0.25]]): unwrap its hours, and the query hour with them
-  // (two passes over the points and nothing allocated: the street's systems ask for it many times a frame)
-  const n = pts.length;
   let prev = -Infinity, wrap = 0;
-  for (let i = 0; i < n; i++) { const h = pts[i][0]; if (h + wrap < prev) wrap += 24; prev = h + wrap; }
-  const first = pts[0][0];
-  let h = hour; if (h < first && h + 24 <= prev) h += 24;
-  if (h <= first) return pts[0][1];
-  let lo = first; prev = first; wrap = 0;                                           // (hs[0] is the first hour itself)
-  for (let i = 1; i < n; i++) {
-    const x = pts[i][0]; if (x + wrap < prev) wrap += 24; prev = x + wrap;
-    if (h <= prev) { const v0 = pts[i - 1][1], v1 = pts[i][1]; return v0 + (v1 - v0) * (h - lo) / Math.max(prev - lo, 1e-6); }
-    lo = prev;
+  const hs = pts.map(([h]) => { if (h + wrap < prev) wrap += 24; prev = h + wrap; return prev; });
+  let h = hour; if (h < hs[0] && h + 24 <= hs[hs.length - 1]) h += 24;
+  if (h <= hs[0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    if (h <= hs[i]) { const v0 = pts[i - 1][1], v1 = pts[i][1]; return v0 + (v1 - v0) * (h - hs[i - 1]) / Math.max(hs[i] - hs[i - 1], 1e-6); }
   }
-  return pts[n - 1][1];
+  return pts[pts.length - 1][1];
 }
 
 export const spotOpen = (s: Pick<AmbientSpot, 'hours'>, hour: number) => !s.hours || inHours(hour, s.hours);
@@ -245,38 +233,10 @@ export function wanted(a: AmbientActivity, s: AmbientSpot, hour: number, dow: nu
 /** `d`: distance to the player times the spot's priority (the order in which the population cap is shared). */
 export interface DemandRow { spot: AmbientSpot; act: AmbientActivity; n: number; d: number }
 
-/** One activity that fits a spot, with what the spot offers it: worked out once, not at every reconcile. */
-interface Fit { a: AmbientActivity; ai: number; res: number; cap: number; slot: number; draw: number }
-/**
- * What a spot offers a given set of activities (`acts`, by identity): the ones that fit it and the places each has (its
- * seats, standing places and rows do not change between two builds of the spots), and the stable draw of the ten
- * minutes the plan was last made for. Keep one cache per build of the spots (and drop it when the seat registry changes).
- */
-export interface SpotPlan { acts: readonly AmbientActivity[]; fits: Fit[]; shared: number }
-export type PlanCache = WeakMap<AmbientSpot, SpotPlan>;
-
-function spotPlan(s: AmbientSpot, acts: readonly AmbientActivity[], seatKind: (id: string) => string | null): SpotPlan {
-  const fitting: Fit[] = [], kinds = new Map<string, number>();
-  for (let ai = 0; ai < acts.length; ai++) {
-    const a = acts[ai];
-    if (!fits(a, s, seatKind)) continue;
-    // activities of one spot share its places: seats, standing places, rows (Friday prayer and daily prayer, chats)
-    const key = a.pose === 'row' ? 'row' : a.pose === 'sit' ? 'sit' : a.pose === 'stand' ? 'stand' : a.id;
-    let res = kinds.get(key); if (res === undefined) { res = kinds.size; kinds.set(key, res); }
-    fitting.push({ a, ai, res, cap: capacity(a, s, seatKind), slot: NaN, draw: 0 });
-  }
-  return { acts, fits: fitting, shared: kinds.size };
-}
-
-/** Per-call scratch (the plan runs on one thread, and never re-enters itself). */
-let used = new Int32Array(8), levels = new Float64Array(64);
-
 /**
  * What the city wants right now around the player: for every spot within `far` metres, every fitting activity and its
  * head count, nearest spots first (more life where the player is: spots beyond `near` get half), then trimmed to the
  * population cap so the closest life is always the one that exists.
- * `cache`: what each spot offers `acts`, kept between calls (see SpotPlan): the plan then does no search through the seats
- * and allocates only its rows. The answer is the same with or without it.
  */
 export function planDemand(spots: readonly AmbientSpot[], acts: readonly AmbientActivity[], o: {
   hour: number; dow: number; scale: number; px: number; pz: number; near: number; far: number; cap: number;
@@ -284,31 +244,20 @@ export function planDemand(spots: readonly AmbientSpot[], acts: readonly Ambient
   space: string; seatKind: (id: string) => string | null;
   /** An evening's event makes some spots busier (the Dibi after a gala): a factor per spot, 1 for the others. */
   boost?: (s: AmbientSpot) => number;
-}, cache?: PlanCache): DemandRow[] {
+}): DemandRow[] {
   const rows: DemandRow[] = [];
-  const slotNow = Math.floor(o.hour * 6);
-  if (levels.length < acts.length) levels = new Float64Array(acts.length * 2);
-  levels.fill(NaN, 0, acts.length);                                           // (an activity's level is the same at every spot)
   for (const s of spots) {
     if (s.space !== o.space) continue;
-    const d = s.space === 'street' ? len2(s.x - o.px, s.z - o.pz) : 0;
+    const d = s.space === 'street' ? Math.hypot(s.x - o.px, s.z - o.pz) : 0;
     if (d > o.far) continue;
     const k = (d <= o.near ? 1 : 0.5) * (o.boost?.(s) ?? 1);
-    let plan = cache?.get(s);
-    if (!plan || plan.acts !== acts) { plan = spotPlan(s, acts, o.seatKind); cache?.set(s, plan); }
-    if (used.length < plan.shared) used = new Int32Array(plan.shared * 2);
-    used.fill(0, 0, plan.shared);
-    const weight = s.weight ?? 1, dd = d * (s.prio ?? 1), scale = o.scale * k;
-    for (const f of plan.fits) {
-      const a = f.a;
-      if (a.open && !spotOpen(s, o.hour)) continue;
-      const peak = s.peaks?.length ? (s.peaks.some(w => inHours(o.hour, w)) ? 1.4 : 0.85) : 1;
-      let level = levels[f.ai]; if (level !== level) level = levels[f.ai] = activityLevel(a, o.hour, o.dow);
-      const v = a.density * weight * level * scale * peak;
-      if (v <= 0) continue;
-      if (f.slot !== slotNow) { f.slot = slotNow; f.draw = hashStr(`${s.id}/${a.id}/${slotNow}`); }
-      const base = Math.floor(v), n = Math.min(f.cap - used[f.res], base + (f.draw < v - base ? 1 : 0));
-      if (n > 0) { rows.push({ spot: s, act: a, n, d: dd }); used[f.res] += n; }
+    // activities of one spot share its places: seats, standing places, rows (Friday prayer and daily prayer, chats)
+    const used: Record<string, number> = {};
+    for (const a of acts) {
+      if (!fits(a, s, o.seatKind)) continue;
+      const res = a.pose === 'row' ? 'row' : a.pose === 'sit' ? 'sit' : a.pose === 'stand' ? 'stand' : a.id;
+      const n = wanted(a, s, o.hour, o.dow, o.scale * k, capacity(a, s, o.seatKind) - (used[res] ?? 0));
+      if (n > 0) { rows.push({ spot: s, act: a, n, d: d * (s.prio ?? 1) }); used[res] = (used[res] ?? 0) + n; }
     }
   }
   rows.sort((p, q) => p.d - q.d);
