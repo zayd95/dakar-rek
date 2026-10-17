@@ -1,5 +1,7 @@
 # Handoff — after the visual pass (7 Oct 2026)
 
+> **Update 17 Oct 2026:** the current baseline is `candidate/launch-final-20261016` (`9ce15a5`, PR #37, draft). What is done, what is parked and what to do next: `docs/BACKLOG.md`. Save rules: `docs/SAVES.md`. The text below is the history up to 11 Oct.
+
 `main` now includes the visual pass (see `docs/VISUAL_PASS.md` for before/after captures, what changed and performance).
 
 ## Decided
