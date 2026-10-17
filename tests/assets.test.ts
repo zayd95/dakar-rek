@@ -227,7 +227,7 @@ describe('income, charges and net worth', () => {
     const lines = s.data.ledger.length, w = s.wallet;
     play(s, HOUR_MS);
     const net = accrue(s);
-    expect(net).toBe(Math.floor(400 * multiplier(s)) + 10_500 - 250);
+    expect(net).toBe(400 + 10_500 - 250);                                        // passive income: no variety bonus
     expect(s.data.ledger.length).toBe(lines + 2);                               // one line in, one line out
     expect(s.wallet).toBe(w + net);
     expect(accrue(s)).toBe(0);
@@ -280,11 +280,11 @@ describe('save v5: assets and inventory', () => {
 });
 
 describe('activities: polyvalence and religious practice', () => {
-  it('work pay is scaled by polyvalence; the category counts before the pay', () => {
+  it('work pay is scaled by the variety bonus; the category counts before the pay', () => {
     const s = fresh(0); practise(s, 'livraison'); practise(s, 'peche');
     const hooks = { category: (c: string) => { const a = fromCategory(c as never); if (a) practise(s, a); }, pay: (m: number, c: string | null) => (fromCategory(c as never) ? Math.round(m * multiplier(s)) : m) };
-    expect(applyEffects(s, { money: 1000, category: 'service' }, 'Bureau', hooks)).toEqual(['+1 400 F']);   // 3 activities → ×1,4
-    expect(totals(0, [{ effects: { money: 1000, category: 'service' } }], (m, c) => hooks.pay(m, c))).toEqual({ cost: 0, gain: 1400 });
+    expect(applyEffects(s, { money: 1000, category: 'service' }, 'Bureau', hooks)).toEqual(['+1 100 F']);   // 3 activities → ×1,1
+    expect(totals(0, [{ effects: { money: 1000, category: 'service' } }], (m, c) => hooks.pay(m, c))).toEqual({ cost: 0, gain: 1100 });
   });
   it('prayer and leisure never count for polyvalence, even from an old save', () => {
     expect(fromCategory('spirituel')).toBeNull(); expect(fromCategory('loisir')).toBeNull(); expect(fromCategory('transport')).toBeNull();

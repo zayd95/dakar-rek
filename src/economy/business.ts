@@ -1,7 +1,7 @@
 import type { GameState } from '../core/state';
 import { ECONOMY } from './config';
 import { VENTURES, type Venture } from './catalog';
-import { ACTIVITIES, knownCount, multiplier, practise } from './polyvalence';
+import { practise } from './polyvalence';
 import { fcfaText } from './format';
 import { HOUR_MS, accrue, addOwned, adRunning, assetsOf, incomeLabel as assetsIncomeLabel, nice, ownedCount, unitPrice } from './assets';
 
@@ -12,8 +12,9 @@ import { HOUR_MS, accrue, addOwned, adRunning, assetsOf, incomeLabel as assetsIn
  * - Income accrues per in-game hour of PLAY, counted on `playedMs` only: nothing accrues offline, and changing the
  *   device clock changes nothing (played time only advances in the frame loop, ≤ 0.1 s per frame). At most
  *   `maxCatchUpHours` are counted at once. Income is counted continuously and paid in hourly batches (one ledger line
- *   per in-game hour), scaled by the polyvalence multiplier at the time it is counted (and the ad boost, assets.ts).
- * - Tier n needs n different activities ever practised and one unit of the tier below (money alone is not enough).
+ *   per in-game hour), with the ad boost (assets.ts). It does not depend on how varied the player's activities are.
+ * - Every tier is open to whoever can pay: no activity count, no unit of the tier below. Cheaper tiers still pay back
+ *   faster per franc, so the ladder is a choice, not a chain.
  * All ventures are fictional; no real brand or company.
  */
 export { VENTURES, HOUR_MS, accrue, nice, unitPrice };
@@ -29,26 +30,17 @@ export const ownedVentures = (s: GameState): Record<string, number> =>
 
 export const nextPrice = (s: GameState, id: string) => unitPrice(id, ownedOf(s, id));
 export const perHourOf = (id: string) => B.tiers[tierIndex(id)]?.perHour ?? 0;
-/** Base income per in-game hour of everything owned (before the polyvalence multiplier). */
+/** Base income per in-game hour of everything owned (before the ad boost). */
 export const baseIncome = (s: GameState) => B.tiers.reduce((t, x) => t + x.perHour * ownedOf(s, x.id), 0);
-/** Ventures' income per in-game hour now: polyvalence multiplier and ad boost included. */
-export const incomePerHour = (s: GameState) => Math.round(baseIncome(s) * multiplier(s) * (adRunning(s) ? 1 + ECONOMY.property.adSpace.boost : 1));
+/** Ventures' income per in-game hour now, ad boost included. */
+export const incomePerHour = (s: GameState) => Math.round(baseIncome(s) * (adRunning(s) ? 1 + ECONOMY.property.adSpace.boost : 1));
 /** Value of the ventures: what their units cost. */
 export const venturesValue = (s: GameState) => assetsOf(s, 'business').reduce((t, a) => t + a.paid, 0);
 export const unitsOwned = (s: GameState) => assetsOf(s, 'business').filter(a => a.how === 'owned').length;
 
-/** What tier `id` needs beyond money: n activities ever practised, one unit of the tier below. */
-export function requirement(id: string): { activities: number; below: Venture | null } {
-  const i = tierIndex(id);
-  return { activities: Math.min(ACTIVITIES.length, i + 1), below: i > 0 ? ventureById(B.tiers[i - 1].id)! : null };
-}
-/** Why the tier is still locked (null when unlocked). */
-export function lockedWhy(s: GameState, id: string): string | null {
-  if (tierIndex(id) < 0) return 'Inconnue';
-  const r = requirement(id), n = knownCount(s), miss: string[] = [];
-  if (n < r.activities) miss.push(r.activities > 1 ? `${r.activities} activités différentes pratiquées (${n}/${r.activities})` : 'une première activité (livraison, petit boulot…)');
-  if (r.below && ownedOf(s, r.below.id) < 1) miss.push(`1 ${r.below.name.toLowerCase()}`);
-  return miss.length ? 'À débloquer : ' + miss.join(' et ') : null;
+/** Why a tier cannot be bought other than for lack of money: only an unknown id (every real tier is open to whoever can pay). */
+export function lockedWhy(_s: GameState, id: string): string | null {
+  return tierIndex(id) < 0 ? 'Inconnue' : null;
 }
 export function cannotBuy(s: GameState, id: string): string | null {
   return lockedWhy(s, id) ?? (s.canAfford(nextPrice(s, id)) ? null : 'Pas assez d’argent');

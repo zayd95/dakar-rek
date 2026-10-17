@@ -45,12 +45,16 @@ export const ECONOMY = {
     /** Income is counted on played time only; at most this many in-game hours are counted at once (travel, a stalled tab). */
     maxCatchUpHours: 24,
   },
-  /** Polyvalence: distinct activity categories practised within the window (played time) raise job pay and venture income. */
+  /**
+   * Variety (« polyvalence »): distinct activity categories practised within the window (played time) raise ACTIVE pay only
+   * (shifts, deliveries, services). It is an optional bonus: it never gates a purchase and never touches passive income
+   * (ventures, rents).
+   */
   polyvalence: {
     /** 3 in-game days of play (72 min of played time). */
     windowDays: 3,
-    /** +20 % per category beyond the first: 4 → ×1,6; capped at ×2 (6 categories). */
-    step: 0.2, cap: 2,
+    /** +5 % per category beyond the first: 4 or more → +15 %, the cap. Provisional: to be tuned by the lifestyle simulation. */
+    step: 0.05, cap: 1.15,
   },
   /**
    * Ownership rules (src/economy/assets.ts). Homes, land, billboards, ventures and furniture share one model; each item's

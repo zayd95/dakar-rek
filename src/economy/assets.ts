@@ -4,7 +4,7 @@ import { STARTER_HOME } from '../core/save';
 import { CITY_DAY_MS } from '../core/clock';
 import { ECONOMY } from './config';
 import { specOf, homeSpec, furnitureSpec, VENTURES, type AssetKind, type AssetSpec, type HomeSpec } from './catalog';
-import { multiplier, practise } from './polyvalence';
+import { practise } from './polyvalence';
 import { autoPlace, layoutOf, type Placed } from './placement';
 
 /**
@@ -16,7 +16,7 @@ import { autoPlace, layoutOf, type Placed } from './placement';
  * - Income and charges accrue per in-game hour of PLAY (1 city hour = 1 real minute), counted on `playedMs` only:
  *   nothing offline, the device clock changes nothing, at most a city day is counted at once. They are settled each
  *   in-game hour in one batch (one ledger line for the income, one for the charges).
- * - Ventures produce (× polyvalence, + the ad boost); land, billboards and homes bring rent once let; rented homes cost
+ * - Ventures produce (+ the ad boost, never a variety bonus); land, billboards and homes bring rent once let; rented homes cost
  *   their rent, big homes their upkeep. Unpaid rent piles up; after three days of it the landlord takes the keys back.
  * - Selling pays most of the current value at once. Wear (billboards) lowers rent and value; a repair restores it.
  */
@@ -92,15 +92,15 @@ export const netWorth = (s: GameState) => s.wallet + assetsValue(s);
 /** Ad running for the player's ventures: own billboard showing their ad, or ad space rented on one. */
 export const adRunning = (s: GameState) => s.data.assets.adUntil > s.data.playedMs || s.data.assets.list.some(a => a.ownAd && specOf(a.spec)?.kind === 'billboard');
 const rentMult = (sp: AssetSpec, a: AssetState) => a.upgrades.reduce((m, u) => m * (sp.upgrades?.find(x => x.id === u)?.rentMult ?? 1), 1);
-/** Income of one asset per in-game hour, given the polyvalence multiplier and whether an ad runs. */
-function incomeWith(a: AssetState, mult: number, ad: boolean): number {
+/** Income of one asset per in-game hour, given whether an ad runs. */
+function incomeWith(a: AssetState, ad: boolean): number {
   const sp = specOf(a.spec); if (!sp || a.how !== 'owned') return 0;
-  if (sp.kind === 'business') return (sp.income ?? 0) * mult * (ad ? 1 + P.adSpace.boost : 1);
+  if (sp.kind === 'business') return (sp.income ?? 0) * (ad ? 1 + P.adSpace.boost : 1);
   if (a.leased) return (sp.income ?? 0) * rentMult(sp, a) * condFactor(a, P.rentFloor);
   return 0;
 }
 /** Income of one asset per in-game hour now. */
-export const incomeOf = (s: GameState, a: AssetState) => incomeWith(a, multiplier(s), adRunning(s));
+export const incomeOf = (s: GameState, a: AssetState) => incomeWith(a, adRunning(s));
 /** Charges of one asset per in-game hour: the rent of a rented home, the upkeep of an owned one. */
 export function chargeOf(a: AssetState): number {
   const sp = specOf(a.spec); if (!sp) return 0;
@@ -110,8 +110,8 @@ export function chargeOf(a: AssetState): number {
 }
 export function rates(s: GameState): { income: number; charges: number } {
   let income = 0, charges = 0;
-  const mult = multiplier(s), ad = adRunning(s);
-  for (const a of s.data.assets.list) { income += incomeWith(a, mult, ad); charges += chargeOf(a); }
+  const ad = adRunning(s);
+  for (const a of s.data.assets.list) { income += incomeWith(a, ad); charges += chargeOf(a); }
   return { income, charges };
 }
 /** Income per in-game hour, rounded (the sheets and the phone). */
@@ -120,8 +120,8 @@ export const chargesPerHour = (s: GameState) => Math.round(rates(s).charges);
 
 /** « Revenus · Kiosque et 1 autre affaire », « Revenus · Panneau 4 × 3… et 2 autres biens ». */
 export function incomeLabel(s: GameState): string {
-  const mult = multiplier(s), ad = adRunning(s);
-  const earning = s.data.assets.list.filter(a => incomeWith(a, mult, ad) > 0).map(a => specOf(a.spec)!);
+  const ad = adRunning(s);
+  const earning = s.data.assets.list.filter(a => incomeWith(a, ad) > 0).map(a => specOf(a.spec)!);
   const ventures = [...VENTURES].reverse().filter(v => earning.some(x => x.id === v.id)).map(v => v.name);
   const others = [...new Set(earning.filter(x => x.kind !== 'business').sort((a, b) => (b.income ?? 0) - (a.income ?? 0)).map(x => x.name))];
   const names = [...ventures, ...others], n = names.length, word = others.length ? 'bien' : 'affaire';

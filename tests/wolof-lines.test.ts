@@ -228,7 +228,7 @@ describe('recipes and primitives speak through Step.line', async () => {
     const { CITY_ACTIONS } = await import('../src/world/cityContent');
     const stall = ACTIONS.market[0];
     expect(say(stall.steps![0].line)).toMatch(/^Une cliente : « (Ñaata la \?|Seer na ! Wàññi ko tuuti\.) »/);
-    expect(stall.steps![0].effects).toMatchObject({ money: 2500, counters: { shifts: 1 } });
+    expect(stall.steps![0].effects).toMatchObject({ money: 3400, counters: { shifts: 1 } });
     const fish = CITY_ACTIONS.fish[0];
     expect(fish.steps![0]).toMatchObject({ primitive: 'talk', label: 'On discute le prix' });
     expect(say(fish.steps!.at(-1)!.line)).toBe('Toi : « Neex na ! » (c’est bon)');

@@ -73,7 +73,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await playGesture(1);
   await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
   const w1 = await d(() => ({ wallet: window.__dakar.state.wallet, garage: window.__dakar.state.data.counters.garage, energie: window.__dakar.state.data.needs.energie, mode: window.__dakar.pos().mode, toast: document.getElementById('toast').textContent }));
-  check(`${label}: a perfect shift pays the full rate plus the tip, tires, counts`, w1.wallet === 2400 && w1.garage === 1 && w1.energie <= 73 && w1.mode === 'play', JSON.stringify(w1));
+  check(`${label}: a perfect shift pays the full rate plus the tip, tires, counts`, w1.wallet === 3600 && w1.garage === 1 && w1.energie <= 73 && w1.mode === 'play', JSON.stringify(w1));
 
   // 2. Badly played: half the tools wrong → less pay.
   await d(() => { const s = window.__dakar.state; s.data.wallet = 0; s.data.needs.energie = 90; });
@@ -83,7 +83,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await playGesture(0.5);
   await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
   const w2 = await d(() => window.__dakar.state.wallet);
-  check(`${label}: a so-so shift pays less (the play matters)`, w2 > 0 && w2 < 2400, `${w2} F`);
+  check(`${label}: a so-so shift pays less (the play matters)`, w2 > 0 && w2 < 3600, `${w2} F`);
 
   // 3. Change a wheel: steps in the right order.
   await d(() => { const s = window.__dakar.state; s.data.wallet = 0; s.data.needs.energie = 90; });
@@ -93,7 +93,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await shot('garage-wheel');
   await playGesture(1);
   await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
-  check(`${label}: the wheel done in order pays the full rate`, (await d(() => window.__dakar.state.wallet)) === 1800, String(await d(() => window.__dakar.state.wallet)));
+  check(`${label}: the wheel done in order pays the full rate`, (await d(() => window.__dakar.state.wallet)) === 2400, String(await d(() => window.__dakar.state.wallet)));
 
   // 4. Escape in the middle stops cleanly: no pay, card gone, controls back.
   await d(() => { const s = window.__dakar.state; s.data.wallet = 0; s.data.needs.energie = 90; });
@@ -113,10 +113,10 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   await shot('market');
   await playGesture(1);
   await page.waitForFunction(() => !window.__dakar.activity(), null, T).catch(() => {});
-  // work pay is scaled by polyvalence (src/economy/polyvalence.ts: +20 % for each other trade practised lately — the
-  // garage's, just before): the full rate is 3 000 F times the game's own multiplier
+  // work pay is scaled by polyvalence (src/economy/polyvalence.ts: +5 % for each other trade practised lately, up to +15 % — the
+  // garage's, just before): the full rate is 4 080 F (3 400 + the 20 % tip) times the game's own multiplier
   const paid5 = await d(l => ({ wallet: window.__dakar.state.wallet, mult: window.__dakar.business().mult, lines: window.__dakar.state.data.ledger.slice(l).map(e => [e.label, e.amount]) }), l5);
-  check(`${label}: serving everyone right pays the stall's full rate (× polyvalence)`, paid5.wallet === Math.round(3000 * paid5.mult), JSON.stringify(paid5));
+  check(`${label}: serving everyone right pays the stall's full rate (× polyvalence)`, paid5.wallet === Math.round(4080 * paid5.mult), JSON.stringify(paid5));
   check(`${label}: no page errors`, errors.length === 0, errors.join(' | '));
   await page.context().close();                       // this view's page stops rendering before the next one boots
 }

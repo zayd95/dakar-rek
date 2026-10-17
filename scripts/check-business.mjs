@@ -1,4 +1,4 @@
-// « Affaires » headless check: first venture → hourly income → polyvalence → a billion in the HUD (compact) and the phone (full).
+// « Affaires » headless check: first venture (open to whoever can pay) → hourly income → variety bonus (active pay only) → a billion in the HUD (compact) and the phone (full).
 // Usage: npm run build && npx vite preview --port 4206 --strictPort, then node scripts/check-business.mjs [baseUrl] [outDir]
 // Chromium + SwiftShader (CPU rendering): this is not a phone measurement. Played time is advanced with the debug hook.
 import { chromium } from 'playwright';
@@ -35,14 +35,14 @@ let savedJson = null;
   await D(page, () => { window.__dakar.setHour(10); window.__dakar.teleport('pikine'); });
   await page.waitForTimeout(600);
 
-  // the phone shows the Affaires app; on a fresh save every tier is locked
+  // the phone shows the Affaires app; on a fresh save no tier is locked by anything but the price
   await page.locator('#menuBtn').click(); await page.locator('#phone [data-app="affaires"]').waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}); await page.waitForTimeout(900);
   const tiles = await page.locator('#phone [data-app]').evaluateAll(els => els.map(e => e.dataset.app));
   check('phone home shows the « Affaires » app', tiles.includes('affaires'), tiles.join(','));
   await page.screenshot({ path: `${out}/desktop-phone-home.png` });
   await page.locator('#phone [data-app="affaires"]').click(); await page.waitForTimeout(400);
   let m = await modal(page);
-  check('the tile opens the Affaires menu (fresh save: first tier needs an activity)', m.title === 'Affaires' && m.items.length === 7 && /une première activité/.test(m.items[0]) && m.items.slice(1).every(t => /Bloqué/.test(t)), m.items[0]);
+  check('the tile opens the Affaires menu (fresh save: nothing is locked, only the money is missing)', m.title === 'Affaires' && m.items.length === 7 && m.items.every(t => !/Bloqué|À débloquer/.test(t)) && /il manque/.test(m.items[0]), m.items[0]);
   await closeModal(page);
 
   // one delivery (an activity), money for the first venture, then buy it through the menu with confirmation
@@ -76,12 +76,12 @@ let savedJson = null;
   const paid = await D(page, ms => window.__dakar.advancePlayed(ms), 3 * hourMs);
   check('three in-game hours later: one batch for the three', paid >= 3 * 400 && (await D(page, () => window.__dakar.ledger()[0].amount)) === paid, paid);
 
-  // polyvalence: four recent activities → ×1,6, shown in the app and applied to the income
+  // variety: four recent activities → +15 % on active pay, shown in the app, and the venture income does not move
   await D(page, () => { for (const a of ['livraison', 'commerce', 'peche', 'social']) window.__dakar.practise(a); });   // the first two aged out over the 4 h
   b = await D(page, () => window.__dakar.business());
   await D(page, () => window.__dakar.businessApp()); await page.waitForTimeout(300);
   m = await modal(page);
-  check('polyvalence shown: « 4 activités → revenus ×1,6 »', b.poly === 4 && b.mult === 1.6 && m.text.includes('Polyvalence : 4 activités → revenus ×1,6') && b.perHour === 640, `${b.line} · ${b.perHour} F/h`);
+  check('variety shown: « 4 activités → paie +15 % », venture income unchanged', b.poly === 4 && b.mult === 1.15 && m.text.includes('Variété : 4 activités → paie +15\u202f%') && b.perHour === b.base, `${b.line} · ${b.perHour} F/h (base ${b.base})`);
   await page.screenshot({ path: `${out}/desktop-affaires-polyvalence.png` });
   await closeModal(page);
 
@@ -99,7 +99,7 @@ let savedJson = null;
   await page.screenshot({ path: `${out}/desktop-hud-billion.png` });
   await D(page, () => window.__dakar.phone('portefeuille')); await page.waitForTimeout(400);
   const bal = await D(page, () => { const e = document.querySelector('#phone .ph-balance b'); return { text: e.textContent, fits: e.scrollWidth <= e.clientWidth + 1, screen: document.querySelector('#phone .ph-screen').textContent }; });
-  check('phone wallet: the full amount on one line, with total wealth', bal.text === full(1250000000) && bal.fits && /Fortune totale/.test(bal.screen) && /Valeur des biens/.test(bal.screen) && /Polyvalence : 4 activités/.test(bal.screen), bal.text);
+  check('phone wallet: the full amount on one line, with total wealth', bal.text === full(1250000000) && bal.fits && /Fortune totale/.test(bal.screen) && /Valeur des biens/.test(bal.screen) && /Variété : 4 activités/.test(bal.screen), bal.text);
   await page.screenshot({ path: `${out}/desktop-phone-wallet-billion.png` });
   await D(page, () => window.__dakar.phoneClose());
 
@@ -107,9 +107,9 @@ let savedJson = null;
   await D(page, () => { for (const a of ['service', 'combat', 'artisanat']) window.__dakar.practise(a); window.__dakar.giveMoney(1500000000); });
   const ladder = await D(page, () => ['kiosque', 'boutique', 'car_rapide', 'restaurant', 'immeuble', 'entreprise'].map(id => window.__dakar.buyVenture(id)));
   b = await D(page, () => window.__dakar.business());
-  check('every tier can be bought in order once unlocked (bana-bana → grande entreprise)', ladder.every(Boolean) && Object.keys(b.owned).length === 7 && b.mult === 2, `${JSON.stringify(b.owned)} · ×${b.mult} · ${b.perHour} F/h`);
+  check('every tier can be bought with the money alone (bana-bana → grande entreprise)', ladder.every(Boolean) && Object.keys(b.owned).length === 7 && b.mult === 1.15 && b.perHour === b.base, `${JSON.stringify(b.owned)} · ×${b.mult} · ${b.perHour} F/h`);
   const big = await D(page, ms => window.__dakar.advancePlayed(ms), hourMs);
-  check('big ventures pay millions per in-game hour', big >= 10000000 && big === (await D(page, () => window.__dakar.ledger()[0].amount)), big);
+  check('big ventures pay millions per in-game hour', big >= 6000000 && big === (await D(page, () => window.__dakar.ledger()[0].amount)), big);
   await D(page, () => window.__dakar.businessApp()); await page.waitForTimeout(300);
   m = await modal(page);
   check('Affaires lists all seven with income, total earned and wealth', m.items.length === 7 && m.items.every(t => /\/h/.test(t)) && /Total gagné/.test(m.text) && /Fortune totale/.test(m.text), m.items[6]);
