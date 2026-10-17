@@ -130,7 +130,8 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
     const rested = await S();
     check(`${label}: rest — sleeping at home restores energy`, rested.needs.energie > 60, `${f?.name} · énergie ${Math.round(rested.needs.energie)}`);
     await page.waitForFunction(() => !window.__dakar.activity() && window.__dakar.pos().mode === 'play', null, LONG).catch(() => {});
-    // the night over, up beside the bed: standing, on the floor, outside the bed's frame
+    // the night over, up beside the bed: standing, on the floor, outside the bed's frame (getting up takes a moment: the rise from the bed is a short walk)
+    await page.waitForFunction(() => window.__dakar.pos().y < 0.2, null, { timeout: 8000 }).catch(() => {});
     const up = await d(() => ({ clip: window.__dakar.clip(), seat: window.__dakar.seated(), pos: window.__dakar.pos(), bed: window.__dakar.roomInteractables().find(i => /:in:bed$/.test(i.id)) }));
     check(`${label}: rest — awake, standing beside the bed`, up.seat === null && up.clip !== 'Lie' && up.pos.y < 0.2 && Math.abs(up.pos.x - (up.bed.x - 1.05)) > 0.75, JSON.stringify(up));
     await shot('05b-home-awake');
