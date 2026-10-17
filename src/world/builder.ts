@@ -14,6 +14,7 @@ import { BAY, CITY_BLOCKS, buildCityBlock } from './city';
 import { buildShopInterior, type ShopDetail } from './shopKit';
 import { isComposed, type Site } from './sites';
 import { waysOut } from './walk';
+import { PILOT_ALMADIES, createAlmadiesPilot } from './pilotAlmadies';
 
 export const PITCH = 60, BLK = 46, ROAD = 14, NB = 4;
 export const HALF = (NB * PITCH + ROAD) / 2;
@@ -110,6 +111,10 @@ function lightPoolTexture() {
 export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubWorld {
   const sp = SPECS[id];
   const R = rng(sp.seed);
+  // PILOT (?pilot=almadies): three hero villas on the north side of the middle east-west road; null (and free) otherwise
+  const pilotAlm = PILOT_ALMADIES && id === 'almadies'
+    ? createAlmadiesPilot({ quality: shopDetail ?? (lite ? 'low' : 'medium'), G, lotXs: [{ i: 1, j: 1, a: 0, b: 1 }, { i: 1, j: 1, a: 1, b: 1 }, { i: 2, j: 1, a: 0, b: 1 }] })
+    : null;
   const group = new THREE.Group();
   const colliders: Collider[] = [];
   const canopies: Canopy[] = [];
@@ -401,6 +406,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   const buildLotBuilding = (i: number, j: number, a: number, b: number) => {
     const L = lotRect(i, j, a, b);
     const faces = lotFaces(a, b);
+    if (pilotAlm) { const pv = pilotAlm.lot(i, j, a, b); if (pv) { pilotAlm.villa(pv, L, solid); return; } }
     if (sp.style === 'banlieue') {
       // Two small breeze-block houses inside a painted yard wall with a coloured metal gate.
       for (let k = 0; k < 2; k++) {
@@ -1033,7 +1039,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   // Street lamps (post, arm over the road, lamp head) with a light pool on the ground at night; shade trees between them.
   // The new blocks have their own trees and furniture; random street props must not obstruct their aisles.
   const cityRects = Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; });
-  const blocked = (x: number, z: number, r: number) => colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r)
+  const blocked = (x: number, z: number, r: number) => pilotAlm?.blocks(x, z, r) || colliders.some(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r)
     || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r);
   const off = ROAD / 2 - SIDEWALK + 0.6; // lamp posts stand at the kerb
   for (let k = 0; k <= NB; k++) {
@@ -1044,6 +1050,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
           const x = along ? roadC(k) + s * off : tt, z = along ? tt : roadC(k) + s * off;
           if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 1) continue; // not in intersections
           if (sp.sea === 'west' && along && k === 0) continue;                         // the Corniche has median lamps
+          if (pilotAlm?.skipLamp(x, z)) continue;                                      // the pilot street has its own lamps
           const ax = along ? -s : 0, az = along ? 0 : -s;   // arm points over the road
           lampPosts.cyl(0.08, 0.12, 6.4, x, 0, z, 0x3d4047, 6);
           lampPosts.box(along ? 1.6 : 0.1, 0.1, along ? 0.1 : 1.6, x + ax * 0.8, 6.3, z + az * 0.8, 0x3d4047);
@@ -1090,6 +1097,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     [ringSand, ringSandMat, false], [terrazzo, terrazzoMat, false], [roofSheet, roofSheetMat, true]] as [Batch, THREE.Material, boolean][]) {
     const mesh = b.build(m, true, shadow); if (mesh) group.add(mesh);
   }
+  if (pilotAlm) { group.add(pilotAlm.build(canopies)); group.userData.pilot = pilotAlm; }
   const lampGlow = new THREE.Mesh(mergeGeometries(pools, false)!, new THREE.MeshBasicMaterial({ map: lightPoolTexture(), color: 0xffb860, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
   lampGlow.visible = false; lampGlow.renderOrder = 1; group.add(lampGlow);
   for (const s of signs) (s.material as THREE.MeshLambertMaterial).emissiveMap = (s.material as THREE.MeshLambertMaterial).map;

@@ -72,6 +72,7 @@ import { weatherNow } from './city/weather';
 import { GesturePlayer } from './ui/gesture';
 import { Stride, type RunLevel } from './game/stride';
 import { StrideUi } from './ui/stride';
+import { PILOT_ALMADIES, PILOT_SKY_KEYS, pilotGrade, type PilotController } from './world/pilotAlmadies';
 
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
@@ -201,6 +202,8 @@ function updateLighting(hour: number) {
   const a = clamp((hour - 6) / 13, 0, 1) * Math.PI;
   const isNight = hour < 6 || hour >= 19;
   sunDir.set(Math.cos(a) * 0.85, Math.sin(a) * 0.95, 0.42).normalize();
+  const pilotOn = PILOT_ALMADIES && world?.id === 'almadies';              // ?pilot=almadies: the dusk grade, only in that hub
+  sky.keys = pilotOn ? PILOT_SKY_KEYS : null;
   sky.update(hour, sunDir, isNight ? 0 : 1, camera.position);
   sky.overcast(weatherNow.cloud, isNight);                               // the day's weather (src/city/weather.ts)
   (scene.background as THREE.Color).copy(sky.horizon); (scene.fog as THREE.Fog).color.copy(sky.horizon);
@@ -214,6 +217,8 @@ function updateLighting(hour: number) {
   hemi.color.copy(isNight ? new THREE.Color(0x5a6ea8) : sky.zenith.clone().lerp(new THREE.Color(0xffffff), 0.55 - 0.25 * weatherNow.cloud));
   hemi.groundColor.set(isNight ? 0x2a2620 : 0x9a7a52).multiplyScalar(1 - 0.35 * weatherNow.wet);
   renderer.toneMappingExposure = isNight ? 1.3 : 1.0;
+  if (pilotOn && !inside) { pilotGrade({ hemi, sun, fog: scene.fog as THREE.Fog, renderer, sunPos: new THREE.Vector3(), hour }); }
+  if (pilotOn) (world!.group.userData.pilot as PilotController | undefined)?.update(hour);
   if (inside) {
     // indoors: the sun only comes through the shutters; the ceiling light does the work
     sun.intensity *= 0.25; hemi.intensity = isNight ? 0.35 : 0.55; hemi.color.set(0xfff2e0); hemi.groundColor.set(0x6a5a48);
