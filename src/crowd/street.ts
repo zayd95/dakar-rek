@@ -366,11 +366,11 @@ export class StreetLife {
       if (!it.spot || it.off === undefined) continue;
       const off = it.off, at = (a: number, b: number) => itemAt(it, off, a, b);
       if (it.kind === 'stall') {
-        const v = at(1.2, -0.05), c1 = at(0.45, 5.75 - off), c2 = at(-1.25, 5.8 - off);
+        const v = at(1.2, -0.05), c1 = at(0.45, 5.62 - off), c2 = at(-1.25, 5.62 - off);
         add('stall', [{ ...v, yaw: face(v, c1), sit: 0.36, mood: 'chat' }, { ...c1, yaw: face(c1, c2) + 0.25, mood: 'chat' }, { ...c2, yaw: face(c2, c1) - 0.25, mood: 'chat' }]);
       } else if (it.kind === 'cantine') {
         const sg = R() < 0.5 ? -1 : 1, n = 3 + (R() < 0.45 ? 1 : 0), head = at(0, 6.15 - off), ring: Place[] = [];
-        for (let k = 0; k < n; k++) { const p = at(sg * (0.05 + k * 0.72), 5.75 - off); ring.push({ ...p, yaw: face(p, head), mood: k === 0 ? 'rest' : 'chat' }); }
+        for (let k = 0; k < n; k++) { const p = at(sg * (0.05 + k * 0.72), 5.62 - off); ring.push({ ...p, yaw: face(p, head), mood: k === 0 ? 'rest' : 'chat' }); }
         add('queue', ring);
       } else if (it.kind === 'tea') {
         const seats = [at(-0.95, 0), at(0.95, 0), at(0, -0.78)], mid = at(0, 0), n = 2 + (R() < 0.5 ? 1 : 0), ring: Place[] = [];
