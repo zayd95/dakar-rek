@@ -1,35 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-17T12:35:21Z",
+  "updatedAt": "2026-10-17T21:36:36Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261017T2135Z-stabilization",
-    "owner": "producer_audit_2135",
-    "baseCommit": "31b024067f6a5c09bcac44e1676e855d7b60c55a",
-    "acquiredAt": "2026-10-17T21:34:50Z",
-    "expiresAt": "2026-10-17T22:15:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR41-20261017-2135-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-17-2135-AUDIT.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_regressions_2135",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "31b024067f6a5c09bcac44e1676e855d7b60c55a",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR41-20261017-2135-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -140,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-17T12:35:21Z",
+    "lastCompletedRunAt": "2026-10-17T21:36:36Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
@@ -314,15 +293,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-17-1235-WATCH.md",
-    "completedAt": "2026-10-17T12:35:21Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-17-2135-AUDIT.md",
+    "completedAt": "2026-10-17T21:36:36Z",
     "actualRunCompleted": true,
-    "tasks": [],
+    "tasks": [
+      "STAB-20261017-2135-QA"
+    ],
     "verifiedCandidates": [],
-    "owner": "producer_audit_1235",
-    "reviewer": null,
+    "owner": "producer_audit_2135",
+    "reviewer": "qa_regressions_2135",
     "protectedRefsMutated": false,
-    "leaseReleased": "audit-20261017T1235Z-watch"
+    "leaseReleased": "audit-20261017T2135Z-stabilization"
   },
   "protectedRefsLatest": [
     {
@@ -1153,13 +1134,13 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-17T12:35:21Z",
+    "checkedAt": "2026-10-17T21:36:36Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; unchanged exact SHA/check reconciliation; shell pwd exit0",
+    "localTests": "local_not_run; shell pwd exit0 only; independent QA inspected actual GitHub CI logs",
     "delegation": "available; no redundant QA on unchanged evidence",
     "cloudflareAuthenticated": false
   },
@@ -1210,7 +1191,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-17T12:35:21Z",
+    "lastReconciledAt": "2026-10-17T21:36:36Z",
     "qualityMandate": {
       "date": "2026-10-16",
       "target": "Approximately two hours voluntary engagement; not measured",
@@ -1304,7 +1285,17 @@
         "publicLaunchApproved": false
       },
       "authority": "External source read-only; no merge/deploy",
-      "checkedAt": "2026-10-17T12:35:21Z"
+      "checkedAt": "2026-10-17T21:36:36Z"
+    },
+    "externalDeltaReview": {
+      "pr": 41,
+      "sourceCommit": "6789c6e2809b2f6476e52e1971fe249cff3d8508",
+      "status": "needs-decision",
+      "reviewer": "qa_regressions_2135",
+      "report": "docs/agents/operations/reports/PR41-20261017-2135-QA.md",
+      "checkedAt": "2026-10-17T21:36:36Z",
+      "ciGeneral": "1510pass/2skip, types/build/city/online/launch; targeted scripts absent",
+      "nextAction": "Exact targeted logs from external author then distinct QA; inherited PR37 quota defect not corrected"
     }
   }
 }
