@@ -19,14 +19,17 @@ Nothing is active. The next phase is gameplay (see the end of this file).
 
 ## WORK RECOVERED, WAITING FOR APPROVAL
 - `recover/small-fixes-20261017` (`1c93cba`, on top of `9ce15a5`): presence retries a socket that never gets `welcome` after 8 s (`src/multiplayer/client.ts`); `Fall_Back` plays once and holds its last pose (`src/actors/humanoid.ts`). 15 new unit tests; 1 510 tests, `tsc`, server typecheck, build and `check-multiplayer` pass. Not merged into #37.
-- Unpushed work that only lived in a container, now backed up: `backup/busy-street-2-20261017` (`27f1a57`), `backup/ui-v2-skin-20261017` (`6635586`, includes `d09c26d`).
+- Unpushed work that only lived in a container, now backed up on the remote (nothing was removed from the worktrees):
+  - committed: `backup/busy-street-2-20261017` (`27f1a57`), `backup/ui-v2-skin-20261017` (`6635586`, includes `d09c26d`);
+  - uncommitted, saved as snapshot commits: `backup/almadies-dusk-uncommitted-20261017` (real WIP, +564 lines), `backup/busy-street-2-uncommitted-20261017` (2-line tweak), `backup/ui-v2-skin-uncommitted-20261017` (2 files), and two that are mostly staged deletions of a stale checkout and probably noise: `backup/ui-v2-uncommitted-20261017`, `backup/mygala-online-uncommitted-20261017`.
+  - screenshots, images and `node_modules` are not included in the snapshots.
 
 ## FUTURE BACKLOG (worth keeping, not started now)
 | Item | Where | State and remaining work | Risk |
 |---|---|---|---|
 | Busy street round 2 | `backup/busy-street-2-20261017` (`28a7eb7`, `27f1a57`: 11 files, +613/-111, traffic tests) | WIP, never verified; needs a draw-call and traffic check (low preset budget 180) before anything else | medium to high (traffic, perf) |
 | HUD redesign to Habib's mockup | `backup/ui-v2-skin-20261017` (`d09c26d`: dark skin, bundled Inter, HUD cards, online pill, dock; 14 files, +409/-199); plan on `origin/ui/v2-plan` (`f18d20c`, `ee41913`, with Habib's two mandatory corrections as acceptance criteria) | step 1 is in the baseline; the skin is not; the mockup re-skin has not been started; check the skin against the two corrections first | medium (touches the whole HUD, mobile layouts) |
-| Almadies dusk visual pilot | no commits of its own (`pilot/almadies-dusk` is an old ancestor) | not started | low to medium |
+| Almadies dusk visual pilot | uncommitted WIP saved on `backup/almadies-dusk-uncommitted-20261017` (`28b37cb`: new `src/world/pilotAlmadies.ts`, `scripts/check-pilot-almadies.mjs`, edits to `main.ts`, `builder.ts`, `sky.ts`; +564/-7); the branch `pilot/almadies-dusk` itself has no commits | in progress, never committed or verified; needs a review of the look (Habib's approval of the direction) and a perf check | low to medium |
 | Duel input reset on focus loss and pointer interruption (DKAG-008) | `origin/codex/agents/dkag-008-duel-input-reset` (`55def6b`: `duelInput.ts` + tests + `scripts/check-duel-input.mjs`) | small and tested, good next candidate; port onto the current `src/lamb/duel.ts` | low |
 | Ibou follow-up (DKAG-016), place activity summaries (DKAG-015/020), Aïda revision activity (PR #7) | `codex/agents/dkag-016-ibou-followup`, `dkag-020-place-summary-current`, `codex/aida-revision-activity` | optional content or features written against the older line; port only if wanted | low to medium |
 | Arena car park | `origin/lane/w5-car-parking` (`70d915c`, unfinished and untested; `carPark.ts`, `arenaCarPark.test.ts`) | the baseline already has `arrival.ts` (guarded moto parking); decide whether cars are still wanted | medium |
