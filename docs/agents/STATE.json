@@ -1,22 +1,11 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-17T08:27:02Z",
+  "updatedAt": "2026-10-17T09:35:40Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261017T0936Z-watch",
-    "owner": "producer_audit_0936",
-    "baseCommit": "f51b267843407c77bc16c6abc16ef4edd5c84e4d",
-    "acquiredAt": "2026-10-17T09:35:18Z",
-    "expiresAt": "2026-10-17T10:00:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-17-0936-WATCH.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
   "reservations": [],
@@ -130,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-17T08:27:02Z",
+    "lastCompletedRunAt": "2026-10-17T09:35:40Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
@@ -304,15 +293,15 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-17-0827-WATCH.md",
-    "completedAt": "2026-10-17T08:27:02Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-17-0936-WATCH.md",
+    "completedAt": "2026-10-17T09:35:40Z",
     "actualRunCompleted": true,
     "tasks": [],
     "verifiedCandidates": [],
-    "owner": "producer_audit_0827",
+    "owner": "producer_audit_0936",
     "reviewer": null,
     "protectedRefsMutated": false,
-    "leaseReleased": "audit-20261017T0827Z-watch"
+    "leaseReleased": "audit-20261017T0936Z-watch"
   },
   "protectedRefsLatest": [
     {
@@ -1143,7 +1132,7 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-17T08:27:02Z",
+    "checkedAt": "2026-10-17T09:35:40Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
@@ -1200,7 +1189,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-17T08:27:02Z",
+    "lastReconciledAt": "2026-10-17T09:35:40Z",
     "qualityMandate": {
       "date": "2026-10-16",
       "target": "Approximately two hours voluntary engagement; not measured",
@@ -1294,7 +1283,7 @@
         "publicLaunchApproved": false
       },
       "authority": "External source read-only; no merge/deploy",
-      "checkedAt": "2026-10-17T08:27:02Z"
+      "checkedAt": "2026-10-17T09:35:40Z"
     }
   }
 }
