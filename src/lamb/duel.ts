@@ -232,6 +232,12 @@ export class LambDuel {
 
   /** Last strike that landed (for the checks and the HUD). */
   lastStrike: { by: Side; kind: StrikeKind; result: string } | null = null;
+  /** The window lost focus (alt-tab, another app): the key-up never arrives, so a held guard would stay on. */
+  private releaseControls = () => {
+    this.guardHeld = false;
+    this.ui?.querySelectorAll('[data-k=guard],[data-k=grab],[data-k=break],[data-k=quick],[data-k=big]').forEach(b => b.classList.remove('on'));
+  };
+  private onHidden = () => { if (document.hidden) this.releaseControls(); };
   private onKey = (e: KeyboardEvent) => {
     const down = e.type === 'keydown';
     if (e.code === 'KeyG' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyF') { this.guardHeld = down; this.ui.querySelector('[data-k=guard]')?.classList.toggle('on', down); }
@@ -304,6 +310,7 @@ export class LambDuel {
     this.ui = this.headless ? (null as unknown as HTMLDivElement) : this.buildUi();
     if (this.spectate || this.headless) return;               // watched from the stands: no keys, no controls
     addEventListener('keydown', this.onKey); addEventListener('keyup', this.onKey);
+    addEventListener('blur', this.releaseControls); document.addEventListener('visibilitychange', this.onHidden);
     input.enabled = true; input.takeAction();
   }
 
@@ -1468,6 +1475,7 @@ export class LambDuel {
     if (!this.headless) {
       document.getElementById('joy')?.classList.remove('teach');
       removeEventListener('keydown', this.onKey); removeEventListener('keyup', this.onKey);
+      removeEventListener('blur', this.releaseControls); document.removeEventListener('visibilitychange', this.onHidden);
       this.ui.remove(); document.body.classList.remove('induel');
     }
     for (const f of [this.me, this.ai]) f.w?.dispose();
