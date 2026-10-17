@@ -8,6 +8,10 @@ export const HUB_IDS: HubId[] = ['plateau', 'corniche', 'almadies', 'pikine'];
 export const ACTIVITY_IDS = ['livraison', 'service', 'commerce', 'combat', 'peche', 'artisanat', 'social'] as const;
 export type ActivityId = typeof ACTIVITY_IDS[number];
 
+/** The two playable identities (Meshy bodies); null in a save means the shipped v4 body. */
+export type Avatar = 'homme' | 'femme';
+export const AVATARS: Avatar[] = ['homme', 'femme'];
+
 export interface Needs { faim: number; energie: number; moral: number; social: number; hygiene: number }
 
 /** Guest save: device-local, never authoritative for transferable money (see design doc, Saves and accounts). */
@@ -45,6 +49,11 @@ export interface SaveData {
   inventory: Record<string, number>;
   /** Fight record and best rung reached (src/career/career.ts). Additive field: older saves start with an empty record. */
   career: CareerSave;
+  /**
+   * The player's body, chosen once on New Game and kept for the whole save (src/actors/playerBody.ts). Additive field, no version
+   * change: a save without it (every save made before the choice existed) is null and keeps the shipped v4 body.
+   */
+  avatar: Avatar | null;
 }
 
 export interface LedgerEntry { at: number; label: string; amount: number }

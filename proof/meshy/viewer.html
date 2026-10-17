@@ -8,9 +8,9 @@ const q = new URLSearchParams(location.search);
 const W = Number(q.get('w') ?? 640), H = Number(q.get('h') ?? 640);
 const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r.setSize(W, H); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping;
 document.getElementById('c').appendChild(r.domElement);
-const sc = new THREE.Scene(); sc.background = new THREE.Color(0x9bd3f3);
+const sc = new THREE.Scene(); sc.background = new THREE.Color(q.has('bg') ? parseInt(q.get('bg'), 16) : 0x9bd3f3);
 sc.add(new THREE.HemisphereLight(0xffffff, 0x8a7a60, 0.9)); const sun = new THREE.DirectionalLight(0xffffff, 1); sun.position.set(4, 8, 5); sc.add(sun);
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshLambertMaterial({ color: 0xb8a98a })); ground.rotation.x = -Math.PI / 2; sc.add(ground);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshLambertMaterial({ color: 0xb8a98a })); ground.rotation.x = -Math.PI / 2; ground.visible = q.get('ground') !== '0'; sc.add(ground);
 const files = (q.get('files') ?? q.get('file') ?? '').split(',').filter(Boolean);
 const models = [];
 for (const [i, f] of files.entries()) {

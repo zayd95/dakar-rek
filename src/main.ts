@@ -8,6 +8,8 @@ import { cityTimeAt, daylight } from './core/clock';
 import { clamp, lerp, rng } from './core/rng';
 import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save';
 import { readTestParams } from './core/testParams';
+import { loadPlayerBody, bodyOf } from './actors/playerBody';
+import { pickAvatar } from './ui/avatarPick';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
 import { HALF, buildHub, hubLayout } from './world/builder';
@@ -179,6 +181,22 @@ const npcLife = new NpcLife({ hud, rel, state, clock: () => { const ct = cityTim
 /** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
 const PLAYER_LOOK: PersonLook = avatarLook(presence.profile.look);
 let playerBody: Humanoid | null = null;
+/** The player's body for the identity in the save (v4 for a save without one, or when the Meshy file cannot be loaded). Rebuilt when the quality class changes. */
+let bodyLow: boolean | null = null;
+async function makePlayerBody() {
+  const low = quality === 'low', id = await loadPlayerBody(state.data.avatar, low);
+  if (playerBody && playerBody.body === id && bodyLow === low) return;
+  const old = playerBody;
+  playerBody = new Humanoid(PLAYER_LOOK, id); playerBody.fullRate = true; playerBody.hold = old?.hold ?? null; bodyLow = low;
+  scene.add(playerBody.group); player.group.visible = false;
+  old?.dispose();
+}
+/** New Game (no save, not a ?debug run): the player picks their body once; it is kept for the whole save. Test links can force it (src/core/testParams.ts). */
+async function settleAvatar() {
+  if (TEST.avatar === 'homme' || TEST.avatar === 'femme') state.data.avatar = TEST.avatar;
+  else if (TEST.avatar === 'v4') state.data.avatar = null;
+  else if (isNewGame && (TEST.avatar === 'choose' || !DEBUG)) { state.data.avatar = await pickAvatar(); writeSave(store, state.data); }   // saved at once (the world is not built yet: no place to record): leaving before the first autosave keeps the choice
+}
 const debugPeople: Humanoid[] = [];
 /** ?debug: bodies walking in a straight line at a set speed (the gait checks: near and far from the camera, ANIM_LOD). */
 const debugWalkers: { h: Humanoid; vx: number; vz: number; x0: number; z0: number; t: number; run: number }[] = [];
@@ -894,12 +912,20 @@ function openOutfit() {
 let previewT = 0;
 /** Wrestling attire and emotes shown on the player's Blender body (box character fallback). */
 let proxy = false;
+/** A Meshy body is dressed (no ngemb, no wrestler's build): for the attire preview and the emotes a v4 body in ngemb stands in for it (like the arena's wrestlers). */
+let ngembBody: Humanoid | null = null;
 function showProxy(clip: Clip) {
   if (!playerBody) { player.setWrestler(state.data.wrestler); return; }
-  const w = state.data.wrestler; playerBody.setWrestler(w, w.ngembPattern === 'bordure' ? 'B' : 'A'); playerBody.hold = clip; proxy = true;
+  const w = state.data.wrestler, cut = w.ngembPattern === 'bordure' ? 'B' : 'A';
+  if (playerBody.body !== 'v4') {
+    if (!ngembBody) { ngembBody = new Humanoid(PLAYER_LOOK); ngembBody.fullRate = true; scene.add(ngembBody.group); }
+    ngembBody.setWrestler(w, cut, PLAYER_LOOK.skin); ngembBody.hold = clip; proxy = true; return;
+  }
+  playerBody.setWrestler(w, cut); playerBody.hold = clip; proxy = true;
 }
 function hideProxy() {
-  if (playerBody && proxy) { playerBody.setLook(PLAYER_LOOK); playerBody.hold = null; }
+  if (ngembBody) { ngembBody.dispose(); ngembBody = null; }
+  if (playerBody && proxy && playerBody.body === 'v4') { playerBody.setLook(PLAYER_LOOK); playerBody.hold = null; }
   proxy = false; player.setWrestler(null);
 }
 function previewOutfit() { showProxy('Idle'); previewT = 6; hud.toast('Aperçu de la tenue (6 s)'); }
@@ -1085,6 +1111,7 @@ function setQuality(q: Quality) {
   const roomId = inside?.door.id, roomPosition = inside ? pos.clone() : null;
   const at = { x: inside ? inside.door.x : pos.x, z: inside ? inside.door.z : pos.z, yaw: facing };
   quality = q; applyQuality();
+  if (state.data.avatar && humanoidReady()) void makePlayerBody();      // the light body files on the low preset
   if (world) {
     loadHub(world.id, at);
     // Rebuild at the street doorway, then restore the room without leaking its off-map coordinates.
@@ -1247,8 +1274,9 @@ function frameStep(now: number, dt: number, draw = true) {
     if (previewT > 0) { previewT -= dt; if (previewT <= 0 && emoteT <= 0) hideProxy(); }
 
     player.group.position.copy(pos); player.group.rotation.y = facing; player.animate(dt, speed);
-    if (playerBody) { playerBody.group.visible = true; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
-  } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; }
+    if (playerBody) { playerBody.group.visible = !ngembBody; playerBody.group.position.copy(pos); playerBody.group.rotation.y = facing; playerBody.animate(dt, speed); }
+    if (ngembBody) { ngembBody.group.position.copy(pos); ngembBody.group.rotation.y = facing; ngembBody.animate(dt, speed); }
+  } else { player.animate(0, 0); if (playerBody) playerBody.group.visible = false; if (ngembBody) ngembBody.group.visible = false; }
   let tSys = profOn ? performance.now() : 0;
   // inside the arena's walls (on the tiers) the street's cast, walkers, traffic and placed people cannot be seen: they go on
   // at 4 Hz with the time gone by
@@ -1306,8 +1334,9 @@ let started = false, markStarted = () => {};
 const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
   await Promise.all([preloadAssets(), preloadHumanoid()]);
+  await settleAvatar();
   for (const m of MODULES) m.init?.(ctx);
-  if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false; }
+  if (humanoidReady()) await makePlayerBody();
   const startHub = invitedHub ?? state.data.hub;
   if (invitedHub || isNewGame || (state.data.x === 0 && state.data.z === 0)) loadHub(startHub);
   else loadHub(startHub, { x: state.data.x, z: state.data.z, yaw: state.data.yaw });
@@ -1372,6 +1401,7 @@ if (DEBUG) {
     cheer(s?: number) { return cheer(s); },
     more() { openMore(); },
     clip: () => playerBody?.clipName ?? null,
+    avatar: () => ({ identity: state.data.avatar, body: playerBody?.body ?? null, expected: bodyOf(state.data.avatar), stand: ngembBody?.body ?? null }),
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores, t: +c.t.toFixed(2), seconds: c.step.seconds ?? 0 } : null; },
     gesture: () => gestures.info(),
     stride: () => ({ stamina: Math.round(stride.stamina), max: stride.maxStamina(), running: stride.running, sprinting: stride.sprinting, gait: stride.gait, winded: stride.winded, forme: stride.forme, speed, run: stride.runSpeed(), why: stride.whyNot(), toggle: strideUi.runToggle }),

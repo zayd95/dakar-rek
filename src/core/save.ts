@@ -1,5 +1,5 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, WrestlerLook } from './types';
-import { ACTIVITY_IDS, HUB_IDS } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, WrestlerLook } from './types';
+import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
 
@@ -39,7 +39,7 @@ export function newSave(now = Date.now()): SaveData {
     hub: 'pikine', x: 0, z: 0, yaw: 0, wallet: 3000, needs: { ...START_NEEDS }, counters: {},
     rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] },
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
-    assets: newAssets(0), inventory: {}, career: newCareer(),
+    assets: newAssets(0), inventory: {}, career: newCareer(), avatar: null,
   };
 }
 
@@ -119,6 +119,8 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     inventory,
     // fight record (additive, no version change: a save without it starts with an empty record)
     career: careerOf(r.career),
+    // the body chosen on New Game (additive, no version change): a save without a valid one keeps the v4 body
+    avatar: AVATARS.includes(r.avatar as Avatar) ? (r.avatar as Avatar) : null,
   };
 }
 
