@@ -42,8 +42,8 @@ export function zoomRadius(speed: number): number {
   }
   return pts[pts.length - 1][1];
 }
-/** One smoothing step toward the target radius (zooming out is quicker than zooming in: no blind spot at speed). */
-export const approach = (cur: number, target: number, dt: number) => cur + (target - cur) * Math.min(1, dt * (target > cur ? 3 : 1.6));
+/** One smoothing step toward the target radius (zooming out is still quicker than zooming in: no blind spot at speed). */
+export const approach = (cur: number, target: number, dt: number) => cur + (target - cur) * Math.min(1, dt * (target > cur ? 4 : 3.2));
 
 /** A point outside the circle of radius R (pixels from the centre) pulled onto the ring, with its direction. */
 export function onRing(u: number, v: number, R: number): { x: number; y: number; angle: number; outside: boolean } {
