@@ -1909,5 +1909,38 @@
     ],
     "implementationAuthorized": false,
     "nextAction": "Resume exact CI when completed, independent acceptance before any claim; no automatic feature or new implementation"
+  },
+  "registryWriter": {
+    "token": "audit-20261017T2236Z-pr43",
+    "owner": "producer_audit_2236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "b566f317948701a6441211d1c7ddf7d3dfa1bb07",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR43-20261017-2236-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-17-2236-AUDIT.md"
+    ],
+    "acquiredAt": "2026-10-17T22:35:44Z"
+  },
+  "currentEconomyQa": {
+    "id": "STAB-20261017-2236-QA",
+    "role": "qa",
+    "owner": "qa_economy_2236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "b566f317948701a6441211d1c7ddf7d3dfa1bb07",
+    "controlBriefCommit": "b566f317948701a6441211d1c7ddf7d3dfa1bb07",
+    "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+    "sourceBase": "6789c6e2809b2f6476e52e1971fe249cff3d8508",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR43-20261017-2236-QA.md"
+    ],
+    "status": "active",
+    "acceptance": [
+      "Review exact PR43 source/test delta: money-only purchase gates, passive income not variety, active bonus<=15%, v5 round-trip; no implementation",
+      "Inspect completed PR CI117516030425 and push117516019493 actual status/checkout/logs; never call pending green",
+      "Separate targeted author claims and gameplay simulations/proposals from executed CI; inherited PR37 save defect remains open",
+      "Return bounded needs-decision/ready-limited/blocked with SHA evidence; no feature/source/assets/Blender/Chromium EPERM retry/install/merge/deploy"
+    ]
   }
 }
