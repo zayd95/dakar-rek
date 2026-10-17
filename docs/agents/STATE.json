@@ -1,35 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-17T21:36:36Z",
+  "updatedAt": "2026-10-17T22:36:59Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261017T2236Z-pr43",
-    "owner": "producer_audit_2236",
-    "baseCommit": "b566f317948701a6441211d1c7ddf7d3dfa1bb07",
-    "acquiredAt": "2026-10-17T22:35:44Z",
-    "expiresAt": "2026-10-17T23:10:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR43-20261017-2236-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-17-2236-AUDIT.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_economy_2236",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "b566f317948701a6441211d1c7ddf7d3dfa1bb07",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR43-20261017-2236-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -140,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-17T21:36:36Z",
+    "lastCompletedRunAt": "2026-10-17T22:36:59Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
@@ -314,17 +293,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-17-2135-AUDIT.md",
-    "completedAt": "2026-10-17T21:36:36Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-17-2236-AUDIT.md",
+    "completedAt": "2026-10-17T22:36:59Z",
     "actualRunCompleted": true,
     "tasks": [
-      "STAB-20261017-2135-QA"
+      "STAB-20261017-2236-QA"
     ],
     "verifiedCandidates": [],
-    "owner": "producer_audit_2135",
-    "reviewer": "qa_regressions_2135",
+    "owner": "producer_audit_2236",
+    "reviewer": "qa_economy_2236",
     "protectedRefsMutated": false,
-    "leaseReleased": "audit-20261017T2135Z-stabilization"
+    "leaseReleased": "audit-20261017T2236Z-pr43"
   },
   "protectedRefsLatest": [
     {
@@ -1155,13 +1134,13 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-17T21:36:36Z",
+    "checkedAt": "2026-10-17T22:36:59Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; shell pwd exit0 only; independent QA inspected actual GitHub CI logs",
+    "localTests": "local_not_run; shell pwd exit0 only; independent QA inspected exact PR43 CI log",
     "delegation": "available; no redundant QA on unchanged evidence",
     "cloudflareAuthenticated": false
   },
@@ -1212,7 +1191,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-17T21:36:36Z",
+    "lastReconciledAt": "2026-10-17T22:36:59Z",
     "qualityMandate": {
       "date": "2026-10-16",
       "target": "Approximately two hours voluntary engagement; not measured",
@@ -1306,7 +1285,7 @@
         "publicLaunchApproved": false
       },
       "authority": "External source read-only; no merge/deploy",
-      "checkedAt": "2026-10-17T21:36:36Z"
+      "checkedAt": "2026-10-17T22:36:59Z"
     },
     "externalDeltaReview": {
       "pr": 41,
@@ -1317,6 +1296,33 @@
       "checkedAt": "2026-10-17T21:36:36Z",
       "ciGeneral": "1510pass/2skip, types/build/city/online/launch; targeted scripts absent",
       "nextAction": "Exact targeted logs from external author then distinct QA; inherited PR37 quota defect not corrected"
+    },
+    "economyCandidateReview": {
+      "status": "needs-decision",
+      "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR43-20261017-2236-QA.md",
+      "completedAt": "2026-10-17T22:36:59Z",
+      "ci": {
+        "prJob": 117516030425,
+        "prCheckout": "ef6a5da3c5da4281e2796999e1628ed1ed270541",
+        "tree": "50717bbea1592e01628c38a2594586267424c7a9",
+        "testsPassed": 1513,
+        "testsSkipped": 2,
+        "testFiles": 124,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success",
+        "pushJob": 117516019493,
+        "pushStatus": "in_progress"
+      },
+      "limits": [
+        "Targeted business/gestures/venues absent from inspected PR log",
+        "Inherited PR37 quota defect still open",
+        "No device measurement or voluntary two-hour play proof"
+      ]
     }
   }
 }
