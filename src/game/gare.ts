@@ -4,6 +4,7 @@ import { Humanoid, humanoidReady, randomLook } from '../actors/humanoid';
 import { PRAYER_TIMES, PRAYER_WINDOW } from '../venues/prayer';
 import { weatherNow } from '../city/weather';
 import type { GameState } from '../core/state';
+import type { Needs } from '../core/types';
 import type { Action, Interactable } from '../world/types';
 import { apprentiLine } from '../i18n/lines';
 
@@ -33,29 +34,33 @@ export function gareActions(state: () => GameState, hour: () => number) {
       line: () => pick(['Un car se remplit, un autre part en klaxonnant. Il faut de la patience.', 'On dit qu’il part quand il est plein. Il n’est jamais plein.', 'Le soleil tape sur la tôle ; l’abri est bondé.']),
       effects: { needs: { energie: 3, moral: 1 } } }] },
   ];
+  const SAC_NEEDS: Partial<Needs> = { energie: -10, hygiene: -4, faim: -3, social: 3 };
+  const COLIS_NEEDS: Partial<Needs> = { energie: -22, hygiene: -8, faim: -7, moral: 3, social: 2 };
+  const PLUIE_NEEDS: Partial<Needs> = { energie: -8, hygiene: -6, social: 4, moral: 2 };
   const bagages: Action[] = [
-    { id: 'charger_sac', label: 'Aider à charger un sac', detail: '+500 F · un peu de fatigue', gain: 500, seconds: 4,
+    { id: 'charger_sac', label: 'Aider à charger un sac', detail: '+500 F · un peu de fatigue', gain: 500, needs: SAC_NEEDS, seconds: 4,
       requires: s => (s.data.needs.energie < 15 ? 'Trop fatigué' : null), steps: [{
       label: 'Hisser le sac', primitive: 'work', seconds: 4, clip: 'Grab',
       line: () => say('Une cliente', pick(['Doucement avec ça, il y a des assiettes dedans !', 'Sur le toit, bien attaché, hein ?', 'Merci, mon fils. Tiens, pour ta peine.'])),
-      effects: { money: 500, category: 'transport', needs: { energie: -10, hygiene: -4, faim: -3, social: 3 }, counters: { shifts: 1 }, flags: ['helped_gare'] } }] },
-    { id: 'charger_colis', label: 'Charger un gros colis sur la galerie', detail: '+1 200 F · fatigant', gain: 1200, seconds: 6,
+      effects: { money: 500, category: 'transport', needs: SAC_NEEDS, counters: { shifts: 1 }, flags: ['helped_gare'] } }] },
+    { id: 'charger_colis', label: 'Charger un gros colis sur la galerie', detail: '+1 200 F · fatigant', gain: 1200, needs: COLIS_NEEDS, seconds: 6,
       requires: s => (s.data.needs.energie < 28 ? 'Trop fatigué' : null), steps: [{
       label: 'Monter le colis', primitive: 'work', seconds: 6, clip: 'Grab',
       line: () => say('L’apprenti', 'Un, deux, trois… hop ! Attache bien la corde, grand !'),
-      effects: { money: 1200, category: 'transport', needs: { energie: -22, hygiene: -8, faim: -7, moral: 3, social: 2 }, counters: { shifts: 1 }, flags: ['helped_gare'] } }] },
-    { id: 'sacs_pluie', label: 'Aider quelqu’un avec ses sacs', detail: 'Sous la pluie, à l’abri : +300 F', gain: 300, seconds: 4, visible: () => weatherNow.rain > 0.2 || weatherNow.wet > 0.5,
+      effects: { money: 1200, category: 'transport', needs: COLIS_NEEDS, counters: { shifts: 1 }, flags: ['helped_gare'] } }] },
+    { id: 'sacs_pluie', label: 'Aider quelqu’un avec ses sacs', detail: 'Sous la pluie, à l’abri : +300 F', gain: 300, needs: PLUIE_NEEDS, seconds: 4, visible: () => weatherNow.rain > 0.2 || weatherNow.wet > 0.5,
       requires: s => (s.data.needs.energie < 12 ? 'Trop fatigué' : null), steps: [{
       label: 'Porter les sacs', primitive: 'work', seconds: 4, clip: 'Grab',
       line: () => say('Une dame', pick(['Mes sacs sont trempés, tu peux les mettre sous l’abri ? Dieureudieuf !', 'Attention, ça glisse ! Tiens, pour ta peine.', 'Ils ne veulent pas monter avec ça, avec la boue… aide-moi !'])),
-      effects: { money: 300, category: 'transport', needs: { energie: -8, hygiene: -6, social: 4, moral: 2 }, counters: { shifts: 1 }, flags: ['helped_gare'] } }] },
+      effects: { money: 300, category: 'transport', needs: PLUIE_NEEDS, counters: { shifts: 1 }, flags: ['helped_gare'] } }] },
   ];
+  const POUSSER_NEEDS: Partial<Needs> = { energie: -20, hygiene: -14, faim: -5, social: 5, moral: 2 };
   const embourbe: Action[] = [
-    { id: 'pousser_car', label: 'Pousser le car', detail: 'Il est enlisé dans la boue : +400 F', gain: 400, seconds: 6, visible: () => weatherNow.wet > 0.5,
+    { id: 'pousser_car', label: 'Pousser le car', detail: 'Il est enlisé dans la boue : +400 F', gain: 400, needs: POUSSER_NEEDS, seconds: 6, visible: () => weatherNow.wet > 0.5,
       requires: s => (s.data.needs.energie < 22 ? 'Trop fatigué' : null), steps: [{
       label: 'Pousser', primitive: 'work', seconds: 6, clip: 'Grab',
       line: () => say('L’apprenti', pick(['Poussez ! Poussez ! Encore un coup, il sort !', 'Tous ensemble ! Un, deux, trois !', 'La boue, la boue… Merci, grand, tu as de la force !'])),
-      effects: { money: 400, category: 'transport', needs: { energie: -20, hygiene: -14, faim: -5, social: 5, moral: 2 }, counters: { shifts: 1 }, flags: ['helped_gare', 'pushed_car'] } }] },
+      effects: { money: 400, category: 'transport', needs: POUSSER_NEEDS, counters: { shifts: 1 }, flags: ['helped_gare', 'pushed_car'] } }] },
   ];
   const vendeur: Action[] = [
     { id: 'eau_gare', label: 'Acheter un sachet d’eau', detail: 'Frais, 50 F', cost: 50, seconds: 1.5, steps: [{
