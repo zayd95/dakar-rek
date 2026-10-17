@@ -54,8 +54,8 @@ export const ACTIONS: Record<string, Action[]> = {
   ],
   market: [
     // A shift at the stall: a customer opens by discussing the price (« Ñaata la ? », « Wàññi ko tuuti ! »), then serve them all.
-    { id: 'vendre', label: 'Tenir l’étal', detail: 'Servir les clientes · jusqu’à +3 000 F', gain: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: both(during(8, 18, 'L’étal est fermé · Adja revient à 8 h'), tired(22)),
-      steps: trade({ id: 'vendre', label: 'Tenir l’étal', pay: 2500, needs: { energie: -22, hygiene: -8, faim: -8 }, counter: 'marche', category: 'commerce', clip: 'Talk', line: haggler('sell', 1500, 'Une cliente'), parts: [{ label: 'Servir les clientes', gesture: G.stall(6) }] }).steps },
+    { id: 'vendre', label: 'Tenir l’étal', detail: 'Servir les clientes · jusqu’à +4 080 F', gain: 3400, needs: { energie: -22, hygiene: -8, faim: -8 }, seconds: 4, counter: 'shifts', requires: both(during(8, 18, 'L’étal est fermé · Adja revient à 8 h'), tired(22)),
+      steps: trade({ id: 'vendre', label: 'Tenir l’étal', pay: 3400, needs: { energie: -22, hygiene: -8, faim: -8 }, counter: 'marche', category: 'commerce', clip: 'Talk', line: haggler('sell', 1500, 'Une cliente'), parts: [{ label: 'Servir les clientes', gesture: G.stall(6) }] }).steps },
   ],
   gym: [
     { id: 'courir', label: 'Courir sur la Corniche', detail: 'Forme +1', needs: { energie: -20, moral: 10, hygiene: -10, faim: -8 }, seconds: 4, counter: 'forme', requires: tired(20) },
@@ -69,12 +69,12 @@ export const ACTIONS: Record<string, Action[]> = {
       steps: trade({ id: 'pirogue', label: 'Pirogue du matin', pay: 4500, needs: { energie: -28, hygiene: -12, faim: -10 }, counter: 'peche', category: 'peche', clip: 'Grab', parts: [{ label: 'Tirer la pirogue', gesture: G.haul(5) }] }).steps },
   ],
   garage: [
-    { id: 'meca', label: 'Aider le mécanicien', detail: 'Passer les outils, serrer les écrous · jusqu’à +2 400 F', gain: 2000, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: noFlag('modou_trust'),
-      steps: garageShift('meca', 'Aider le mécanicien', 2000).steps },
-    { id: 'meca_conf', label: 'Travailler au garage (tarif de confiance)', detail: 'Recommandé par Ibou · jusqu’à +3 360 F', gain: 2800, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: flag('modou_trust'),
-      steps: garageShift('meca_conf', 'Travailler au garage', 2800).steps },
-    { id: 'roue', label: 'Changer une roue', detail: 'Dans le bon ordre · jusqu’à +1 800 F', gain: 1500, needs: { energie: -12, hygiene: -10, faim: -4 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(12)),
-      steps: trade({ id: 'roue', label: 'Changer une roue', pay: 1500, needs: { energie: -12, hygiene: -10, faim: -4 }, counter: 'garage', category: 'artisanat', clip: 'Grab', parts: [{ label: 'Changer la roue', gesture: G.wheel() }] }).steps },
+    { id: 'meca', label: 'Aider le mécanicien', detail: 'Passer les outils, serrer les écrous · jusqu’à +3 600 F', gain: 3000, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: noFlag('modou_trust'),
+      steps: garageShift('meca', 'Aider le mécanicien', 3000).steps },
+    { id: 'meca_conf', label: 'Travailler au garage (tarif de confiance)', detail: 'Recommandé par Ibou · jusqu’à +5 040 F', gain: 4200, needs: { energie: -18, hygiene: -14, faim: -6 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(18)), visible: flag('modou_trust'),
+      steps: garageShift('meca_conf', 'Travailler au garage', 4200).steps },
+    { id: 'roue', label: 'Changer une roue', detail: 'Dans le bon ordre · jusqu’à +2 400 F', gain: 2000, needs: { energie: -12, hygiene: -10, faim: -4 }, seconds: 4, counter: 'shifts', requires: both(garage, tired(12)),
+      steps: trade({ id: 'roue', label: 'Changer une roue', pay: 2000, needs: { energie: -12, hygiene: -10, faim: -4 }, counter: 'garage', category: 'artisanat', clip: 'Grab', parts: [{ label: 'Changer la roue', gesture: G.wheel() }] }).steps },
   ],
   home: [
     { id: 'dormir', label: 'Dormir', detail: 'Retrouver de l’énergie', needs: { energie: 70, faim: -10, moral: 4 }, seconds: 5 },

@@ -20,6 +20,13 @@ export interface WCfg {
   name: string; skill: 'novice' | 'decent' | 'expert'; trainAt: number | null;   // bouts after which the player has trained (fresh → trained attributes)
   ritual: number; eOrd: number; eGala: number; policy: 'grind' | 'weekend';
   ord?: number[];                     // option only: a separate ordinary purse table (not proposed for implementation)
+  /** Anti-exploit candidate: the purse (and optionally the ladder points) of an ordinary bout against an opponent already fought `free`
+   *  times in the same `window` city days shrinks to 1 / (1 + slope × (n − free + 1)), never below `floor`. Friendly bouts and galas/titles: untouched. */
+  rematch?: { window: number; free: number; slope: number; floor: number; points?: boolean };
+  /** Anti-exploit candidate: the base purse of an ordinary ranked bout comes from the OPPONENT's level (index level − 1), not from the
+   *  player's rung; the win / draw / loss factors of purseOf stay. Galas and titles keep RUNGS[rung].purse ×2 / ×3. */
+  ordByLevel?: number[];
+  ordPerEvening?: number;             // 'weekend' fighters: ordinary bouts per fight evening (default: as many as fit)
 }
 export interface WRes { nw: Record<number, number>; rungAt: Record<number, number>; src: { ord: number; gala: number; title: number; jobs: number }; n: { ord: number; gala: number; title: number }; win: number; titles: number; rung: number; secsInBouts: number }
 const DAY0 = 3;                       // city day the first phase starts on (day numbers: weekday = day mod 7, Friday = 4)
@@ -27,7 +34,7 @@ export function run(c: WCfg, minutes: number, phaseHours: number, seed: number, 
   const s = fresh(); let rng = (seed * 2654435761) >>> 0;
   const rnd = () => { rng = (rng * 1664525 + 1013904223) >>> 0; return rng / 2 ** 32; };
   const bouts: BoutEntry[] = []; const src = { ord: 0, gala: 0, title: 0, jobs: 0 }, n = { ord: 0, gala: 0, title: 0 };
-  let wins = 0, titles = 0, galaDay = -1, secsInBouts = 0, k = 0; const snaps: Record<number, number> = {}, rungAt: Record<number, number> = {};
+  let wins = 0, titles = 0, galaDay = -1, secsInBouts = 0, k = 0; const ordToday = new Map<number, number>(); const snaps: Record<number, number> = {}, rungAt: Record<number, number> = {};
   const hoursAbs = () => phaseHours + s.t / 60;                                  // city hours: 1 city hour = 1 real minute of play
   const dayNow = () => DAY0 + Math.floor(hoursAbs() / 24), hourNow = () => hoursAbs() % 24;
   let memo: { key: string; l: ReturnType<typeof ladderAt> } | null = null;
@@ -46,11 +53,14 @@ export function run(c: WCfg, minutes: number, phaseHours: number, seed: number, 
     const dur = m.mean * (0.6 + 0.8 * rnd());
     adv(s, c.ritual + dur); secsInBouts += c.ritual + dur;
     const rung = rankNow().rung, level = w.level;
-    let purse: number;
-    if (kind === 'ord' && c.ord) { const kk = res === 'V' ? 1.5 * (1 + 0.1 * Math.max(1, level)) : res === 'N' ? 1 : 0.6; purse = Math.round(c.ord[rung] * kk / 250) * 250; }
+    let purse: number, f = 1;
+    if (kind === 'ord' && c.rematch) { const R = c.rematch, nPrev = bouts.filter(b => b.opp === w.name && b.mode === 'classe' && !b.kind && dayNow() - b.day < R.window).length; f = nPrev < R.free ? 1 : Math.max(R.floor, 1 / (1 + R.slope * (nPrev - R.free + 1))); }
+    if (kind === 'ord' && c.ordByLevel) { const kk = res === 'V' ? 1.5 * (1 + 0.1 * Math.max(1, level)) : res === 'N' ? 1 : 0.6; purse = Math.round(c.ordByLevel[level - 1] * kk / 250) * 250; }
+    else if (kind === 'ord' && c.ord) { const kk = res === 'V' ? 1.5 * (1 + 0.1 * Math.max(1, level)) : res === 'N' ? 1 : 0.6; purse = Math.round(c.ord[rung] * kk / 250) * 250; }
     else purse = purseOf('classe', res, rung, level, kind === 'ord' ? undefined : kind);
+    purse = Math.round(purse * f / 250) * 250;
     s.money += purse; s.en = Math.max(0, s.en - e); src[kind] += purse; n[kind]++; if (res === 'V') wins++;
-    bouts.push({ at: s.t * 1000, day: dayNow(), mode: 'classe', opp: w.name, style: w.style, level, res, how: 'projection', purse, pts: boutPoints('classe', res, level, false, kind === 'ord' ? undefined : kind), kind: kind === 'ord' ? undefined : kind });
+    bouts.push({ at: s.t * 1000, day: dayNow(), mode: 'classe', opp: w.name, style: w.style, level, res, how: 'projection', purse, pts: Math.round(boutPoints('classe', res, level, false, kind === 'ord' ? undefined : kind) * (c.rematch?.points && boutPoints('classe', res, level) > 0 ? f : 1)), kind: kind === 'ord' ? undefined : kind });
     if (kind === 'title' && res === 'V' && beltOf(ladder(), dayNow()).defences === 0) titles++;
     const nr = rankNow().rung; for (let r = 0; r <= nr; r++) rungAt[r] ??= s.t / 60;
     reinvest(s);
@@ -69,7 +79,8 @@ export function run(c: WCfg, minutes: number, phaseHours: number, seed: number, 
       }
     }
     if (!did) {
-      if (c.policy === 'grind' || evening) fight('ord', opponentFor(l, rk.score, rankedCount(), isFightDay(d) ? mainEvent(l, d) : []).id);
+      const room = (ordToday.get(d) ?? 0) < (c.ordPerEvening ?? Infinity);
+      if (c.policy === 'grind' || (evening && room)) { ordToday.set(d, (ordToday.get(d) ?? 0) + 1); fight('ord', opponentFor(l, rk.score, rankedCount(), isFightDay(d) ? mainEvent(l, d) : []).id); }
       else { const b = s.active; doShift(s, jobPick[Math.floor(k++ / 3) % 6], jobCfg); src.jobs += s.active - b; }
     }
     for (const m of CP) if (before < m * 60 && s.t >= m * 60) snaps[m] = nw(s);

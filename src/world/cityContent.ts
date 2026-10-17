@@ -12,22 +12,22 @@ const energy = (amount: number): NonNullable<Action['requires']> => s => s.data.
 export const CITY_ACTIONS = {
   landing: [
     { id: 'debarquement', label: 'Débarquer les caisses de poisson', detail: 'Avec l’équipe de pêche · +3 200 F', gain: 3200, needs: { energie: -26, hygiene: -12, faim: -8, social: 4 }, seconds: 6, counter: 'shifts', requires: energy(26) },
-    { id: 'filets', label: 'Aider à réparer les filets', detail: 'À l’ombre, avant la prochaine sortie · +1 800 F', gain: 1800, needs: { energie: -14, social: 6 }, seconds: 5, counter: 'shifts', requires: energy(14) },
+    { id: 'filets', label: 'Aider à réparer les filets', detail: 'À l’ombre, avant la prochaine sortie · +1 550 F', gain: 1550, needs: { energie: -14, social: 6 }, seconds: 5, counter: 'shifts', requires: energy(14) },
     { id: 'quai', label: 'Prendre des nouvelles des pêcheurs', detail: `${say('Na nga def ?')} Ça a donné quoi aujourd’hui ?`, needs: { social: 14, moral: 6 }, seconds: 3, counter: 'chats' },
   ],
   fish: [
     // Composed: the price is discussed at the stall (« Ñaata la ? »), the fish is grilled, then eaten at the table beside the market.
     { id: 'poisson-frais', label: 'Commander du poisson grillé', detail: 'Poisson du jour, pain et citron · servi à table', cost: 1200, needs: { faim: 42, moral: 7 }, seconds: 3, counter: 'meals',
       steps: talkFirst(order({ id: 'poisson-frais', label: 'Commander du poisson grillé', price: 1200, prep: 1.5, eat: 3, prop: 'poisson', needs: { faim: 42, moral: 7 }, eatLine: tasteLine }), haggler('buy', 1200, 'La vendeuse'), 'On discute le prix').steps },
-    { id: 'poisson-service', label: 'Aider au nettoyage et à la vente', detail: 'Un service avec les mareyeuses · +2 200 F', gain: 2200, needs: { energie: -20, hygiene: -10, social: 5 }, seconds: 5, counter: 'shifts', requires: energy(20) },
+    { id: 'poisson-service', label: 'Aider au nettoyage et à la vente', detail: 'Un service avec les mareyeuses · +2 050 F', gain: 2050, needs: { energie: -20, hygiene: -10, social: 5 }, seconds: 5, counter: 'shifts', requires: energy(20) },
   ],
   craft: [
-    { id: 'atelier', label: 'Aider à préparer une commande', detail: 'Emballer paniers et objets de bois · +1 600 F', gain: 1600, needs: { energie: -14, moral: 5 }, seconds: 5, counter: 'shifts', requires: energy(14) },
+    { id: 'atelier', label: 'Aider à préparer une commande', detail: 'Emballer paniers et objets de bois · +1 500 F', gain: 1500, needs: { energie: -14, moral: 5 }, seconds: 5, counter: 'shifts', requires: energy(14) },
     { id: 'savoir-faire', label: 'Découvrir le travail des artisans', detail: 'Tressage, cuir et petites pirogues peintes', needs: { moral: 10, social: 9 }, seconds: 4, counter: 'visits' },
     { id: 'craft-panier', label: 'Acheter un petit panier tressé', detail: 'Fait main à l’atelier', cost: 1500, needs: { moral: 8 }, seconds: 2 },
   ],
   bank: [
-    { id: 'courrier', label: 'Livrer les dossiers de l’agence', detail: 'Une petite mission rémunérée · +2 400 F', gain: 2400, needs: { energie: -20, faim: -5 }, seconds: 5, counter: 'shifts', requires: energy(20) },
+    { id: 'courrier', label: 'Livrer les dossiers de l’agence', detail: 'Une petite mission rémunérée · +2 100 F', gain: 2100, needs: { energie: -20, faim: -5 }, seconds: 5, counter: 'shifts', requires: energy(20) },
     { id: 'conseiller', label: 'Parler de son projet au conseiller', detail: 'Une maison, un commerce… on en parle', needs: { social: 10, moral: 5 }, seconds: 3, counter: 'chats' },
   ],
   mall: [
