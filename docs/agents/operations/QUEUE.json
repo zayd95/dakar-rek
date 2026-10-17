@@ -1984,5 +1984,35 @@
         "No device measurement or voluntary two-hour play proof"
       ]
     }
+  },
+  "registryWriter": {
+    "token": "audit-20261017T2336Z-pr43-ci",
+    "owner": "producer_audit_2336",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "79c092d00ae726faad8eb6d0edb2b3d372517c55",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-17-2336-CI.md",
+      "docs/agents/operations/reports/PR43-20261017-2336-CI-QA.md"
+    ],
+    "acquiredAt": "2026-10-17T23:35:49Z"
+  },
+  "currentEconomyCiReview": {
+    "id": "STAB-20261017-2336-CI-QA",
+    "role": "qa",
+    "owner": "qa_economy_2236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "79c092d00ae726faad8eb6d0edb2b3d372517c55",
+    "controlBriefCommit": "79c092d00ae726faad8eb6d0edb2b3d372517c55",
+    "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR43-20261017-2336-CI-QA.md"
+    ],
+    "acceptance": [
+      "Inspect newly completed exact push117516019493 checkout/tree/test/type/build/city/online/launch and targeted invocation limits",
+      "Do not redo source review, amend evidence only; retain known quota/targeted browser/physical/two-hour gaps"
+    ],
+    "status": "active"
   }
 }

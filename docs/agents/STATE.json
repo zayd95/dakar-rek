@@ -5,10 +5,31 @@
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": null,
+  "lease": {
+    "token": "audit-20261017T2336Z-pr43-ci",
+    "owner": "producer_audit_2336",
+    "baseCommit": "79c092d00ae726faad8eb6d0edb2b3d372517c55",
+    "acquiredAt": "2026-10-17T23:35:49Z",
+    "expiresAt": "2026-10-18T00:05:00Z",
+    "scope": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-17-2336-CI.md",
+      "docs/agents/operations/reports/PR43-20261017-2336-CI-QA.md"
+    ]
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "owner": "qa_economy_2236",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "79c092d00ae726faad8eb6d0edb2b3d372517c55",
+      "allowedFiles": [
+        "docs/agents/operations/reports/PR43-20261017-2336-CI-QA.md"
+      ]
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
