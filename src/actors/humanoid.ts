@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { WrestlerLook } from '../core/types';
 import { ACCESSORIES, ngembTexture, type Socket } from '../lamb/look';
@@ -29,8 +29,38 @@ export interface PersonLook {
   hair?: 'short' | 'puff' | 'none'; beard?: number | null; // beard colour, null = none
 }
 
-let template: { scene: THREE.Object3D; clips: THREE.AnimationClip[] } | null = null;
+type Template = { scene: THREE.Object3D; clips: THREE.AnimationClip[] };
+let template: Template | null = null;
 export const humanoidReady = () => !!template;
+
+/**
+ * Other bodies on the same rig (PROOF, docs/meshy/PROOF_REPORT.md): a GLB made by scripts/meshy/transplant-to-v4-rig.mjs has the bones,
+ * sockets and clips of character_v4.glb, so the gait, the pose solvers, the strike rig and the gestures run on it unchanged. A body that
+ * is not loaded (or failed to load) falls back to the v4 body: `new Humanoid(look, 'meshy_m')` never throws when v4 is ready.
+ */
+export type BodyId = 'v4' | 'meshy_m' | 'meshy_f';
+const bodies: Partial<Record<BodyId, Template>> = {};
+/**
+ * What differs between a body's mesh and the shared rig, in four numbers (measured by proof/meshy/harness.ts against the v4 control):
+ * the scale it is drawn at; how much higher the hips sit for seated and lying poses (thicker thighs and back than v4's); how much longer
+ * its hand is than v4's mitten (a gesture that puts the wrist on a target puts the fingers beyond it); and where its mouth is from the head bone.
+ */
+export interface BodyFit { scale: number; sitLift: number; handExtra: number; mouth: { fwd: number; up: number } }
+export const BODY_FIT: Record<BodyId, BodyFit> = {
+  v4: { scale: 1, sitLift: 0, handExtra: 0, mouth: { fwd: 0.13, up: 0.02 } },
+  meshy_m: { scale: 1, sitLift: 0.03, handExtra: 0.08, mouth: { fwd: 0.114, up: -0.023 } },
+  meshy_f: { scale: 0.93, sitLift: 0, handExtra: 0.08, mouth: { fwd: 0.152, up: 0.008 } },
+};
+export async function preloadBody(id: Exclude<BodyId, 'v4'>, url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return false;
+    bodies[id] = finishTemplate(await new GLTFLoader().parseAsync(await res.arrayBuffer(), ''), BODY_FIT[id].sitLift);
+    return true;
+  } catch { return false; }
+}
+export const bodyReady = (id: BodyId) => id === 'v4' ? !!template : !!bodies[id];
+export function dropBody(id: Exclude<BodyId, 'v4'>) { delete bodies[id]; }
 
 export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<void> {
   try {
@@ -49,15 +79,21 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     joinNeck(gltf.scene);                                    // the head joined to the body (src/actors/neckJoin.ts)
     fitEyes(gltf.scene);                                     // the iris lenses sit in the eye whites, not in front of them
     reshapeCharacter(gltf.scene);                            // shorter neck, oval face with a jaw (src/actors/proportions.ts)
-    fixSitKnees(gltf.animations);
-    fixRunClip(gltf.animations);
-    deriveJog(gltf.animations);
-    widenWalk(gltf.animations);
-    deriveKneel(gltf.animations);
-    const clips = [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)];
-    stripStaticTracks(gltf.scene, clips);
-    template = { scene: gltf.scene, clips };
+    template = finishTemplate(gltf);
   } catch { /* box characters stay in use */ }
+}
+
+/** The steps every body shares once its head is dealt with: the clips corrected, derived and stripped (the poses solved from the rest pose). */
+function finishTemplate(gltf: GLTF, sitLift = 0): Template {
+  fixSitKnees(gltf.animations);
+  fixRunClip(gltf.animations);
+  deriveJog(gltf.animations);
+  widenWalk(gltf.animations);
+  deriveKneel(gltf.animations);
+  const clips = [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)];
+  if (sitLift) for (const c of clips) if (c.name === 'Sit' || c.name === 'SitFloor' || c.name === 'Lie' || c.name === 'Kneel') for (const t of c.tracks) if (t.name === 'root.position') for (let i = 1; i < t.values.length; i += 3) t.values[i] += sitLift;   // (the hips' own position is in the root's turned frame: up is its z)
+  stripStaticTracks(gltf.scene, clips);
+  return { scene: gltf.scene, clips };
 }
 
 /**
@@ -431,9 +467,16 @@ export class Humanoid {
   overlay: ((h: Humanoid, dt: number) => void) | null = null;
   private underOverlay: Float64Array | null = null;
 
-  constructor(look?: PersonLook) {
-    if (!template) throw new Error('character asset not loaded');
-    this.root = cloneSkinned(template.scene);
+  /** The body drawn: the one asked for when it is loaded, else v4. */
+  readonly body: BodyId;
+  /** How this body's mesh differs from the rig (BODY_FIT); v4's own is all zeros. */
+  readonly fit: BodyFit;
+
+  constructor(look?: PersonLook, body: BodyId = 'v4') {
+    const t = (body !== 'v4' ? bodies[body] : undefined) ?? template;
+    if (!t) throw new Error('character asset not loaded');
+    this.body = t === template ? 'v4' : body; this.fit = BODY_FIT[this.body];
+    this.root = cloneSkinned(t.scene);
     this.group.add(this.root); this.group.name = 'humanoid_v2';
     this.skinMat = new THREE.MeshLambertMaterial({ color: 0x5b3420, side: THREE.DoubleSide });
     const hair = new THREE.MeshLambertMaterial({ color: 0x141011, side: THREE.DoubleSide });
@@ -446,14 +489,16 @@ export class Humanoid {
       if (m.morphTargetDictionary) this.morphed.push(m);
       const src = m.material as THREE.MeshStandardMaterial;
       if (key) { this.parts.set(key, m); if (key.startsWith('Hair_')) m.material = hair; if (key === 'Beard') m.material = this.beardMat; }
+      else if (this.body !== 'v4' && src.map) m.material = new THREE.MeshLambertMaterial({ map: src.map, side: THREE.DoubleSide });   // a body that carries its own texture
       else if (src.name.startsWith('Skin')) m.material = this.skinMat;
       else if (src.name === 'Hair') m.material = hair;
       else if (src.name === 'Lips') m.material = this.lipsMat;
       else m.material = new THREE.MeshLambertMaterial({ color: src.color });   // eyes
     });
     this.mixer = new THREE.AnimationMixer(this.root);
-    for (const c of template.clips) this.actions.set(c.name, this.mixer.clipAction(c));
+    for (const c of t.clips) this.actions.set(c.name, this.mixer.clipAction(c));
     if (look) this.setLook(look);
+    if (this.body !== 'v4') this.group.scale.setScalar(this.fit.scale);
   }
 
   /** A rig bone (`hand.R`, `forearm.R`, `upper_arm.R`, `head`, `chest`…) for props and gestures. */
@@ -479,7 +524,7 @@ export class Humanoid {
     if (l.hat === 'headwrap') set('Cloth_Headwrap', clothMat(l.hatColor ?? l.top, l.pattern === 'wax' ? 'wax' : 'uni', l.accent ?? 0xf6e7c1));
     const shoes = this.parts.get('Cloth_Shoes'); if (shoes) shoes.material = clothMat(l.shoes ?? 0x3a2a1e);
     this.show(vis);
-    this.group.scale.set(l.female ? 0.96 : 1, l.female ? 0.95 : 1, l.female ? 0.96 : 1);
+    if (this.body === 'v4') this.group.scale.set(l.female ? 0.96 : 1, l.female ? 0.95 : 1, l.female ? 0.96 : 1);
   }
 
   /** Body shape via morph targets shared by the body and every fitted garment. */

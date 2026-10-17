@@ -9,6 +9,7 @@ import type { Humanoid } from './humanoid';
  */
 const S = new THREE.Vector3(), E = new THREE.Vector3(), W = new THREE.Vector3(), T = new THREE.Vector3(), P = new THREE.Vector3();
 const U = new THREE.Vector3(), V = new THREE.Vector3(), E2 = new THREE.Vector3(), A = new THREE.Vector3(), B = new THREE.Vector3();
+const HT = new THREE.Vector3();
 const Q = new THREE.Quaternion(), QP = new THREE.Quaternion(), QW = new THREE.Quaternion(), Q0 = new THREE.Quaternion();
 
 /** Turns `bone` so that the world direction `from` becomes `to` (both from the bone's origin), blended by `w`. */
@@ -47,7 +48,10 @@ function limb(h: Humanoid, a: string, b: string, c: string, target: THREE.Vector
  * weight `w` (0 = the clip's own pose, 1 = fully on target). Out-of-reach targets are approached along the line.
  */
 export function reach(h: Humanoid, side: 'L' | 'R', target: THREE.Vector3, pole: THREE.Vector3, w = 1) {
-  if (w > 0) limb(h, `upper_arm.${side}`, `forearm.${side}`, `hand.${side}`, target, pole, Math.min(1, w));
+  if (w <= 0) return;
+  const extra = h.fit.handExtra, up = extra > 0 ? h.bone(`upper_arm.${side}`) : null;
+  if (up) { h.group.updateMatrixWorld(true); up.getWorldPosition(S); target = HT.copy(target).addScaledVector(U.copy(target).sub(S).normalize(), -extra); }   // a longer hand: the wrist stops short so the palm lands on the target
+  limb(h, `upper_arm.${side}`, `forearm.${side}`, `hand.${side}`, target, pole, Math.min(1, w));
 }
 
 /** World position of a point given in the body's frame: forward, up (from the feet), right. */
@@ -67,8 +71,8 @@ export function bodyAxes(h: Humanoid, fwd = new THREE.Vector3(), right = new THR
 export function mouth(h: Humanoid, out = new THREE.Vector3()) {
   const head = h.bone('head'); if (!head) return bodyPoint(h, 0.12, 1.62, 0, out);
   head.getWorldPosition(out);
-  const y = h.group.rotation.y;
-  return out.add(new THREE.Vector3(Math.sin(y) * 0.13, 0.02, Math.cos(y) * 0.13));
+  const y = h.group.rotation.y, m = h.fit.mouth;
+  return out.add(new THREE.Vector3(Math.sin(y) * m.fwd, m.up, Math.cos(y) * m.fwd));
 }
 
 const AX = new THREE.Vector3();
