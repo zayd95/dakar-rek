@@ -1,32 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T13:36:55.293Z",
+  "updatedAt": "2026-10-18T13:38:27.782Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261018T1335Z-watch",
-    "owner": "producer_audit_1335",
-    "acquiredAt": "2026-10-18T13:36:55.293Z",
-    "expiresAt": "2026-10-18T14:20:00Z",
-    "purpose": "Exact-head stabilization audit of PR46 delta, PR47, issue45 and protected refs"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "producer_audit_1335",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "0d1cc5b7b4c28d2d4318272527bfa4db5aa0862a",
-      "allowedFiles": [
-        "docs/agents/STATE.json",
-        "docs/agents/operations/QUEUE.json",
-        "docs/agents/operations/CYCLE-2026-10-18-1335-AUDIT.md"
-      ],
-      "purpose": "Registry-only stabilization audit; no source/PR/protected-ref mutation"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -137,15 +119,13 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-18T12:27:33Z",
+    "lastCompletedRunAt": "2026-10-18T13:38:27.782Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
-  "activeSessions": [
-    "producer_audit_1335"
-  ],
+  "activeSessions": [],
   "completedSessions": [
     "activation_producer",
     "activation_qa",
@@ -175,7 +155,7 @@
     "qa_port_2335",
     "qa_freeze_0428"
   ],
-  "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
+  "nextAction": "Recheck exact PR46 SHA 2fbd4169 CI jobs 117687693974/117687703280; pending is not green. If complete, independent QA must review save-v6 cross-version logs before any validated-fix claim.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -313,12 +293,12 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-1227-AUDIT.md",
-    "completedAt": "2026-10-18T12:27:33Z",
-    "owner": "producer_audit_1227",
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-1335-AUDIT.md",
+    "completedAt": "2026-10-18T13:38:27.782Z",
+    "owner": "producer_audit_1335",
     "reviewer": null,
     "tasks": [
-      "Fresh exact-head stabilization watch for PR47, PR46, issue45 and protected refs"
+      "Fresh exact-head audit of PR46 save-v6 delta, PR47, issue45 and protected refs"
     ],
     "verifiedCandidates": [],
     "protectedRefsMutated": false,

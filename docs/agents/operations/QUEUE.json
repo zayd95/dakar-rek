@@ -2225,29 +2225,29 @@
   "pendingTourCandidate": {
     "pr": 46,
     "branch": "feature/m1b-tiak-tour-20261018",
-    "sourceCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+    "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
     "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
-    "status": "review",
+    "status": "review_pending_ci",
     "owner": "external author, read-only audit",
-    "checkedAt": "2026-10-18T03:35:23Z",
+    "checkedAt": "2026-10-18T13:38:27.782Z",
     "checks": [
       {
-        "id": 117576329847,
+        "id": 117687877638,
         "status": "completed",
         "conclusion": "success",
-        "url": "https://github.com/zayd95/dakar-rek/runs/117576329847"
+        "url": "https://github.com/zayd95/dakar-rek/runs/117687877638"
       },
       {
-        "id": 117576172348,
+        "id": 117687693974,
         "status": "in_progress",
         "conclusion": null,
-        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39093890868/job/117576172348"
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39131586429/job/117687693974"
       },
       {
-        "id": 117576140269,
+        "id": 117687703280,
         "status": "in_progress",
         "conclusion": null,
-        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39093880468/job/117576140269"
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39131589820/job/117687703280"
       }
     ],
     "review": {
@@ -2283,7 +2283,7 @@
       "targetedTourBrowser": "not invoked",
       "verification": "producer log reconciliation; no new independent approval"
     },
-    "reason": "Old-v5 rollback defect remains; targeted tour browser absent in standard CI"
+    "reason": "Save-v6 isolation candidate targets the verified old-v5 rollback defect, but exact push and PR CI are pending; no independent acceptance yet"
   },
   "tourRollbackProposal": {
     "id": "SAVE-TOUR-OLDV5-ROLLBACK",
@@ -2355,7 +2355,7 @@
   },
   "currentStabilizationWatch": {
     "id": "STAB-20261018-1335-AUDIT",
-    "status": "active",
+    "status": "completed",
     "owner": "producer_audit_1335",
     "branch": "codex/agent-studio-active",
     "baseCommit": "0d1cc5b7b4c28d2d4318272527bfa4db5aa0862a",
@@ -2373,6 +2373,9 @@
       "pr46": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
       "pr47": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e"
     },
-    "startedAt": "2026-10-18T13:36:55.293Z"
+    "startedAt": "2026-10-18T13:36:55.293Z",
+    "completedAt": "2026-10-18T13:38:27.782Z",
+    "result": "PR46 save-v6 fix candidate observed; exact push and PR CI still in_progress; no validation or notification",
+    "report": "docs/agents/operations/CYCLE-2026-10-18-1335-AUDIT.md"
   }
 }
