@@ -1,13 +1,15 @@
 /*
  * Small UI primitives (src/ui/primitives.ts, docs/UI-PRIMITIVES.md), written with the tokens of tokens.css only:
- * .ui-card · .ui-row (an action row: icon tile, label, one optional line, a price) · .ui-price (.gain / .cost) · .ui-btn (the primary
- * button) · states .is-selected / .is-disabled, :hover only on a real pointer, :active, :focus-visible.
- * A row is a compact line (shops, menus); a card is a layout of its own (deliveries). They share colours, radii, type and states.
+ * .ui-card · .ui-price (.gain / .cost / .xl) · .ui-btn (the primary button, .quiet = ink on the card) · shop cards: .ui-line (an outlined
+ * action: line icon, title, kind line, price, chevron) and .ui-feature (a raised card with its own button) · states .is-selected,
+ * .is-disabled, :hover only on a real pointer, :active, :focus-visible.
+ * A shop is a stack of compact cards; a delivery is a route card of its own. They share colours, radii, type and states.
  */
 .ui-card { border-radius: var(--ui-r-card); background: var(--ui-card); box-shadow: var(--ui-card-shadow); color: var(--ui-ink); }
 
 #modal .ui-btn, .ui-btn { display: block; padding: 15px var(--ui-s3); border: 0; border-radius: var(--ui-r-md); background: var(--ui-btn-bg); box-shadow: var(--ui-btn-shadow); color: var(--ui-btn-ink); text-align: center; font: 850 19px/1.2 var(--font); letter-spacing: -.2px; cursor: pointer; }
 .ui-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ui-btn-edge); }
+#modal .ui-btn.quiet { width: 100%; padding: 12px var(--ui-s3); border-radius: var(--ui-r-pill); background: var(--ui-ink); box-shadow: none; color: var(--ui-card); font: 650 17px/1.2 var(--font); letter-spacing: 0; }
 .ui-btn.is-disabled { background: var(--ui-tile); box-shadow: none; color: var(--ui-ink-3); cursor: default; }
 
 .ui-price { flex: none; font-style: normal; font-size: var(--ui-t-price); font-weight: var(--ui-w-price); letter-spacing: -.3px; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ui-ink); }
@@ -15,19 +17,27 @@
 .ui-price.cost { color: var(--ui-cost); }
 .ui-price.xl { font-size: var(--ui-t-price-xl); line-height: 1; letter-spacing: -.8px; }
 
-/* an action row inside a grouped list (a shop, a place's actions) */
-#modal .list.ui-list { margin-top: var(--ui-s1); border-radius: var(--ui-r-card); background: var(--ui-card); box-shadow: var(--ui-card-shadow); overflow: hidden; }
-#modal .ui-row { position: relative; display: flex; align-items: center; gap: var(--ui-s3); width: 100%; min-height: var(--ui-tap); margin: 0; padding: var(--ui-s2) var(--ui-s4) var(--ui-s2) var(--ui-s3); border: 0; border-radius: 0; background: var(--ui-card); color: var(--ui-ink); text-align: left; font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-#modal .list.ui-list .ui-row + .ui-row::before { content: ''; position: absolute; top: 0; right: 0; left: calc(var(--ui-s3) + 44px + var(--ui-s3)); border-top: 1px solid var(--ui-line); }
-#modal .ui-row .ic { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--ui-r-sm); background: var(--ui-tile); font-style: normal; font-size: 22px; }
-#modal .ui-row .tx { flex: 1; min-width: 0; font-size: var(--ui-t-body); font-weight: var(--ui-w-label); line-height: 1.25; color: var(--ui-ink); }
-#modal .ui-row .tx small { display: block; margin-top: 2px; font-size: var(--ui-t-small); font-weight: 600; line-height: 1.3; color: var(--ui-ink-2); }
-#modal .ui-row:active { background-image: linear-gradient(var(--ui-press), var(--ui-press)); }
-@media (hover: hover) and (pointer: fine) { #modal .ui-row:hover { background-image: linear-gradient(var(--ui-hover), var(--ui-hover)); } }
-#modal .ui-row:focus-visible { outline: 3px solid var(--ui-ring); outline-offset: -3px; }
-#modal .ui-row.is-selected { background-image: linear-gradient(var(--ui-selected), var(--ui-selected)); }
-#modal .ui-row.is-disabled { cursor: default; }
-#modal .ui-row.is-disabled .tx, #modal .ui-row.is-disabled .ui-price { color: var(--ui-ink-3); }
-#modal .ui-row.is-disabled .tx small { color: var(--ui-warn); }
-#modal .ui-row.is-disabled .ic { filter: grayscale(1); opacity: .55; }
-#modal .ui-row.deny { animation: deny .32s ease-in-out; }
+/* the shop: a stack of cards, a featured one first */
+#modal .list.ui-stack { display: flex; flex-direction: column; gap: 10px; margin-top: var(--ui-s2); border-radius: 0; background: none; overflow: visible; }
+#modal .ui-line, #modal .ui-feature { position: relative; display: flex; align-items: center; gap: var(--ui-s3); width: 100%; min-height: 60px; margin: 0; padding: 10px var(--ui-s4); border-radius: var(--ui-r-card); color: var(--ui-ink); text-align: left; font: inherit; -webkit-tap-highlight-color: transparent; }
+#modal .ui-line::before, #modal .ui-feature::before { display: none; }
+#modal .ui-line { border: 1px solid var(--ui-outline); background: transparent; cursor: pointer; }
+#modal .ui-feature { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px var(--ui-s4); border: 0; background: var(--ui-card); box-shadow: var(--ui-card-shadow); cursor: pointer; }
+#modal .ui-feature-head { display: flex; align-items: center; gap: var(--ui-s3); }
+#modal .ui-ic { flex: none; display: grid; place-items: center; width: 28px; height: 28px; font-style: normal; font-size: 22px; color: var(--ui-ink-2); }
+#modal .ui-ic .glyph { width: 26px; height: 26px; }
+#modal .ui-line .tx, #modal .ui-feature .tx { flex: 1; min-width: 0; font-size: 20px; font-weight: 650; line-height: 1.2; letter-spacing: -.2px; color: var(--ui-ink); }
+#modal .ui-line .tx small, #modal .ui-feature .tx small { display: block; margin-top: 3px; font-size: 14px; font-weight: 500; letter-spacing: 0; line-height: 1.25; color: var(--ui-ink-2); }
+#modal .ui-line .ui-price, #modal .ui-feature .ui-price { font-size: 21px; }
+#modal .ui-chev { flex: none; display: grid; place-items: center; width: 20px; color: var(--ui-ink-2); }
+#modal .ui-chev .glyph { width: 22px; height: 22px; }
+#modal .ui-line:active { background-image: linear-gradient(var(--ui-press), var(--ui-press)); }
+#modal .ui-feature:active { background-image: linear-gradient(var(--ui-press), var(--ui-press)); }
+@media (hover: hover) and (pointer: fine) { #modal .ui-line:hover { background-image: linear-gradient(var(--ui-hover), var(--ui-hover)); } }
+#modal .ui-line:focus-visible, #modal .ui-feature:focus-within { outline: 3px solid var(--ui-ring); outline-offset: 2px; }
+#modal .ui-line.is-selected { background-image: linear-gradient(var(--ui-selected), var(--ui-selected)); }
+#modal .ui-line.is-disabled { cursor: default; }
+#modal .ui-line.is-disabled .tx, #modal .ui-line.is-disabled .ui-price, #modal .ui-line.is-disabled .ui-ic { color: var(--ui-ink-3); }
+#modal .ui-line.is-disabled .tx small { color: var(--ui-warn); }
+#modal .ui-line.is-disabled .ui-ic { opacity: .6; }
+#modal .ui-line.deny, #modal .ui-feature.deny { animation: deny .32s ease-in-out; }

@@ -1,4 +1,4 @@
-import { actionRow, shortLine } from './primitives';
+import { shopFeature, shopRow } from './primitives';
 /**
  * Sheets (docs/UI.md): every menu of the game goes through one element, #modal, in one of two forms.
  *
@@ -21,6 +21,8 @@ export interface MenuItem {
   reason?: string;
   /** One emoji. */
   icon?: string;
+  /** Compact menus ('shop' variant) only: a short title, a kind line and a line icon name (src/ui/shopCopy.ts). */
+  short?: string; tag?: string; glyph?: string;
   onPick: () => void;
 }
 
@@ -102,11 +104,13 @@ export class Sheet {
     const h = el('h2', '', title); h.id = 'shTitle';
     top.append(h);
     p.append(top);
-    const sub = el('p', 'sh-sub', variant === 'shop' ? shortLine(subtitle) : subtitle);
+    const sub = el('p', 'sh-sub', variant === 'shop' ? 'Que veux-tu faire ?' : subtitle);
     p.append(sub);
     if (extraHtml) { const x = el('div', 'sh-extra'); x.innerHTML = extraHtml; p.append(x); }
-    const list = el('div', variant === 'shop' ? 'list ui-list' : 'list');
-    for (const it of items) list.appendChild(variant === 'shop' ? this.shopRow(it) : this.row(it, kind === 'quick'));
+    const list = el('div', variant === 'shop' ? 'list ui-stack' : 'list');
+    // shop: the first available purchase is the featured card (with its own « Acheter »); the rest are outlined rows
+    const featured = variant === 'shop' ? items.find(i => !i.disabled && /^[−-]\s?\d/.test(i.right ?? '')) : undefined;
+    for (const it of items) list.appendChild(variant === 'shop' ? this.shopItem(it, it === featured) : this.row(it, kind === 'quick'));
     p.append(list);
     p.scrollTop = 0;
     this.box.classList.remove('tall');
@@ -115,14 +119,15 @@ export class Sheet {
     afterRender?.(p);
   }
 
-  /** A compact row of the shared primitives: the icon, the label, the price; the one-line description only when the row is unavailable (its reason). */
-  private shopRow(it: MenuItem): HTMLButtonElement {
+  /** A compact card of the shared primitives: line icon, short title, kind line, price; the first available purchase is featured with its button. */
+  private shopItem(it: MenuItem, featured: boolean): HTMLElement {
     const why = it.reason ?? it.detail;
-    return actionRow({
-      icon: it.icon, label: it.label, price: it.right, disabled: it.disabled, note: it.disabled ? why : undefined, title: it.detail,
+    const o = {
+      glyph: it.glyph, icon: it.icon, label: it.short ?? it.label, tag: it.disabled ? why : it.tag, price: it.right, disabled: it.disabled, title: it.detail,
       onPick: () => { this.hooks.picked?.(); it.onPick(); },
-      onDeny: b => { replay(b, 'deny'); this.hooks.deny(why || 'Indisponible'); },
-    });
+      onDeny: (b: HTMLElement) => { replay(b, 'deny'); this.hooks.deny(why || 'Indisponible'); },
+    };
+    return featured ? shopFeature({ ...o, cta: 'Acheter' }) : shopRow(o);
   }
 
   private row(it: MenuItem, tile: boolean): HTMLButtonElement {
