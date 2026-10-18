@@ -1,33 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T18:27:20Z",
+  "updatedAt": "2026-10-18T18:28:15Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "qa-pr48-ci-20261018T1826Z",
-    "owner": "qa_pr48_ci_1826",
-    "acquiredAt": "2026-10-18T18:27:20Z",
-    "expiresAt": "2026-10-18T19:15:00Z",
-    "purpose": "Exact-head PR48 CI reconciliation after pending jobs"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_pr48_ci_1826",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "97de3a8fbbb346da90850a8a330ad4f751af7c21",
-      "allowedFiles": [
-        "docs/agents/STATE.json",
-        "docs/agents/operations/QUEUE.json",
-        "docs/agents/operations/reports/PR48-20261018-1826-CI-QA.md",
-        "docs/agents/operations/CYCLE-2026-10-18-1826-AUDIT.md"
-      ],
-      "purpose": "Registry and CI QA reports only; no source/PR/ref mutation"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -175,7 +156,7 @@
     "qa_freeze_0428",
     "qa_save_1434"
   ],
-  "nextAction": "PR48: correct the vacuous browser assertion, then provide completed exact-SHA push/PR CI and targeted browser evidence; keep review.",
+  "nextAction": "PR48 remains needs-correction: remove the vacuous || true, rerun targeted browser proof, and resolve/qualify Workers failure.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -313,12 +294,12 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-1735-AUDIT.md",
-    "completedAt": "2026-10-18T17:37:30Z",
-    "owner": "qa_pr48_1735",
-    "reviewer": "qa_pr48_1735",
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-1826-AUDIT.md",
+    "completedAt": "2026-10-18T18:28:15Z",
+    "owner": "qa_pr48_ci_1826",
+    "reviewer": "qa_pr48_ci_1826",
     "tasks": [
-      "Independent exact-head QA of PR48 and current CI"
+      "Exact-head PR48 CI reconciliation and known-defect recheck"
     ],
     "verifiedCandidates": [],
     "protectedRefsMutated": false,
@@ -1463,16 +1444,36 @@
         },
         "push": {
           "id": 117742389271,
-          "status": "in_progress",
-          "conclusion": null
+          "status": "completed",
+          "conclusion": "success"
         },
         "pr": {
           "id": 117742397811,
-          "status": "in_progress",
-          "conclusion": null
-        }
+          "status": "completed",
+          "conclusion": "success"
+        },
+        "suite": {
+          "files": 128,
+          "passed": 1581,
+          "skipped": 2
+        },
+        "saveV6": {
+          "passed": 24,
+          "total": 24
+        },
+        "regular": {
+          "passed": 13,
+          "total": 13
+        },
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
       },
-      "publicLaunchApproved": false
+      "publicLaunchApproved": false,
+      "ciAddendum": "docs/agents/operations/reports/PR48-20261018-1826-CI-QA.md",
+      "checkedAt": "2026-10-18T18:28:15Z"
     }
   }
 }
