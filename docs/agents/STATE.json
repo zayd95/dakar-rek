@@ -1,33 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T14:35:20.292Z",
+  "updatedAt": "2026-10-18T14:36:30.104Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "qa-save-20261018T1434Z",
-    "owner": "qa_save_1434",
-    "acquiredAt": "2026-10-18T14:35:20.292Z",
-    "expiresAt": "2026-10-18T15:20:00Z",
-    "purpose": "Independent exact-SHA review of PR46 save-v6 fix and completed CI"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_save_1434",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "afb758037b211d0458e9ca0ebb4b3a8326559683",
-      "allowedFiles": [
-        "docs/agents/STATE.json",
-        "docs/agents/operations/QUEUE.json",
-        "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md",
-        "docs/agents/operations/CYCLE-2026-10-18-1434-AUDIT.md"
-      ],
-      "purpose": "Registry and QA evidence only; no source/PR/ref mutation"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -138,15 +119,13 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-18T13:38:27.782Z",
+    "lastCompletedRunAt": "2026-10-18T14:36:30.104Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
-  "activeSessions": [
-    "qa_save_1434"
-  ],
+  "activeSessions": [],
   "completedSessions": [
     "activation_producer",
     "activation_qa",
@@ -174,9 +153,10 @@
     "qa_dkag020_ci_0236",
     "qa_reference_2129",
     "qa_port_2335",
-    "qa_freeze_0428"
+    "qa_freeze_0428",
+    "qa_save_1434"
   ],
-  "nextAction": "Recheck exact PR46 SHA 2fbd4169 CI jobs 117687693974/117687703280; pending is not green. If complete, independent QA must review save-v6 cross-version logs before any validated-fix claim.",
+  "nextAction": "Keep PR46 review. Run check-save-v6.mjs and check-save-compat.mjs with actual v5/v3/current builds before full cross-version acceptance; do not merge/deploy. Re-review rebased PR47 UI evidence separately.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -314,14 +294,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-1335-AUDIT.md",
-    "completedAt": "2026-10-18T13:38:27.782Z",
-    "owner": "producer_audit_1335",
-    "reviewer": null,
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-1434-AUDIT.md",
+    "completedAt": "2026-10-18T14:36:30.104Z",
+    "owner": "qa_save_1434",
+    "reviewer": "qa_save_1434",
     "tasks": [
-      "Fresh exact-head audit of PR46 save-v6 delta, PR47, issue45 and protected refs"
+      "Independent exact-SHA review of PR46 save-v6 regression fix and completed CI",
+      "Read-only reconciliation of PR47, issue45 and protected refs"
     ],
-    "verifiedCandidates": [],
+    "verifiedCandidates": [
+      "PR46 save-v6 regression fix only (validated-limited)"
+    ],
     "protectedRefsMutated": false,
     "leaseReleased": true
   },

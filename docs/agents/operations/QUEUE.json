@@ -2201,7 +2201,7 @@
     "allowedFiles": [
       "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
     ],
-    "status": "needs-decision",
+    "status": "superseded_by_verified_fix",
     "acceptance": [
       "Read-only narrow PR46 save/jobs/tour tests: v5 ordinary jobs compatibility, malformed tours, once-only payment/reload and rollback risk",
       "Do not implement or approve new tour feature; distinguish schema number unchanged from additive data/old-v5 compatibility",
@@ -2220,6 +2220,52 @@
       "defect": "Active tour is stripped/cancelled and save rewritten by old v5 client on same origin/key; tour progress lost, wallet credited amounts preserved; no double payment shown",
       "ci": "push and PR in_progress, not green",
       "nextAction": "External author decides rollback contract and provides cross-version test/fix; no new feature automatically authorized"
+    },
+    "supersededAt": "2026-10-18T14:36:30.104Z",
+    "fixReview": {
+      "status": "validated-limited",
+      "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+      "reviewer": "qa_save_1434",
+      "report": "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md",
+      "completedAt": "2026-10-18T14:36:30.104Z",
+      "unit": {
+        "saveV6": {
+          "passed": 18,
+          "total": 18
+        },
+        "saveKeys": {
+          "passed": 13,
+          "total": 13
+        },
+        "suite": {
+          "passed": 1558,
+          "skipped": 2,
+          "files": 126
+        }
+      },
+      "ci": {
+        "workers": {
+          "id": 117687877638,
+          "conclusion": "success"
+        },
+        "push": {
+          "id": 117687693974,
+          "conclusion": "success"
+        },
+        "pr": {
+          "id": 117687703280,
+          "conclusion": "success"
+        }
+      },
+      "validatedDefects": [
+        "old-v5 rollback cannot overwrite v6 tour progress",
+        "quota-full New Game retries anti-import marker after removing v6 save"
+      ],
+      "limits": [
+        "multi-build browser scripts not invoked by standard CI",
+        "CSS minifier warning remains unqualified",
+        "PR feature acceptance remains review"
+      ]
     }
   },
   "pendingTourCandidate": {
@@ -2227,9 +2273,9 @@
     "branch": "feature/m1b-tiak-tour-20261018",
     "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
     "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
-    "status": "review_pending_ci",
+    "status": "review",
     "owner": "external author, read-only audit",
-    "checkedAt": "2026-10-18T13:38:27.782Z",
+    "checkedAt": "2026-10-18T14:36:30.104Z",
     "checks": [
       {
         "id": 117687877638,
@@ -2239,14 +2285,14 @@
       },
       {
         "id": 117687693974,
-        "status": "in_progress",
-        "conclusion": null,
+        "status": "completed",
+        "conclusion": "success",
         "url": "https://github.com/zayd95/dakar-rek/actions/runs/39131586429/job/117687693974"
       },
       {
         "id": 117687703280,
-        "status": "in_progress",
-        "conclusion": null,
+        "status": "completed",
+        "conclusion": "success",
         "url": "https://github.com/zayd95/dakar-rek/actions/runs/39131589820/job/117687703280"
       }
     ],
@@ -2283,7 +2329,52 @@
       "targetedTourBrowser": "not invoked",
       "verification": "producer log reconciliation; no new independent approval"
     },
-    "reason": "Save-v6 isolation candidate targets the verified old-v5 rollback defect, but exact push and PR CI are pending; no independent acceptance yet"
+    "reason": "Two targeted save regressions validated-limited; full PR still review because multi-build E2E script and broader feature acceptance are not independently complete",
+    "saveFixReview": {
+      "status": "validated-limited",
+      "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+      "reviewer": "qa_save_1434",
+      "report": "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md",
+      "completedAt": "2026-10-18T14:36:30.104Z",
+      "unit": {
+        "saveV6": {
+          "passed": 18,
+          "total": 18
+        },
+        "saveKeys": {
+          "passed": 13,
+          "total": 13
+        },
+        "suite": {
+          "passed": 1558,
+          "skipped": 2,
+          "files": 126
+        }
+      },
+      "ci": {
+        "workers": {
+          "id": 117687877638,
+          "conclusion": "success"
+        },
+        "push": {
+          "id": 117687693974,
+          "conclusion": "success"
+        },
+        "pr": {
+          "id": 117687703280,
+          "conclusion": "success"
+        }
+      },
+      "validatedDefects": [
+        "old-v5 rollback cannot overwrite v6 tour progress",
+        "quota-full New Game retries anti-import marker after removing v6 save"
+      ],
+      "limits": [
+        "multi-build browser scripts not invoked by standard CI",
+        "CSS minifier warning remains unqualified",
+        "PR feature acceptance remains review"
+      ]
+    }
   },
   "tourRollbackProposal": {
     "id": "SAVE-TOUR-OLDV5-ROLLBACK",
@@ -2300,10 +2391,10 @@
   },
   "pendingShopUiCandidate": {
     "pr": 47,
-    "sourceCommit": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
-    "baseCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+    "sourceCommit": "c5cb818cfcf07e9228e04f6008eb4e1774f2aaa2",
+    "baseCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
     "status": "review",
-    "checkedAt": "2026-10-18T07:28:45Z",
+    "checkedAt": "2026-10-18T14:36:30.104Z",
     "owner": "external session; read only",
     "reviewer": "qa_ui_0528",
     "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
@@ -2327,7 +2418,8 @@
         "url": "https://github.com/zayd95/dakar-rek/actions/runs/39097671208/job/117587370283"
       }
     ],
-    "nextAction": "External author supplies accessible description decision, exact check-menu-density result, current desktop+phone targeted proof and successful PR CI; inherited PR46 rollback handled separately"
+    "nextAction": "External author supplies accessible description decision, exact check-menu-density result, current desktop+phone targeted proof and successful PR CI; inherited PR46 rollback handled separately",
+    "reason": "Rebased owner candidate has green checks; prior independent UI/accessibility evidence gaps are not automatically resolved"
   },
   "currentShopUiQa": {
     "id": "STAB-20261018-0528-PR47-QA",
@@ -2391,13 +2483,59 @@
     "allowedFiles": [
       "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md"
     ],
-    "status": "active",
+    "status": "completed",
     "criteria": [
       "Review exact 5234097..2fbd416 save-key delta and old-v5 rollback behavior",
       "Read exact push and PR CI logs including saveV6/saveKeys tests, types, build, city, online and launch",
       "Separate unit/static validation from non-invoked two-build browser script",
       "No source edits, feature approval, merge, deploy, Blender or paid generation"
     ],
-    "startedAt": "2026-10-18T14:35:20.292Z"
+    "startedAt": "2026-10-18T14:35:20.292Z",
+    "completedAt": "2026-10-18T14:36:30.104Z",
+    "result": {
+      "status": "validated-limited",
+      "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+      "reviewer": "qa_save_1434",
+      "report": "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md",
+      "completedAt": "2026-10-18T14:36:30.104Z",
+      "unit": {
+        "saveV6": {
+          "passed": 18,
+          "total": 18
+        },
+        "saveKeys": {
+          "passed": 13,
+          "total": 13
+        },
+        "suite": {
+          "passed": 1558,
+          "skipped": 2,
+          "files": 126
+        }
+      },
+      "ci": {
+        "workers": {
+          "id": 117687877638,
+          "conclusion": "success"
+        },
+        "push": {
+          "id": 117687693974,
+          "conclusion": "success"
+        },
+        "pr": {
+          "id": 117687703280,
+          "conclusion": "success"
+        }
+      },
+      "validatedDefects": [
+        "old-v5 rollback cannot overwrite v6 tour progress",
+        "quota-full New Game retries anti-import marker after removing v6 save"
+      ],
+      "limits": [
+        "multi-build browser scripts not invoked by standard CI",
+        "CSS minifier warning remains unqualified",
+        "PR feature acceptance remains review"
+      ]
+    }
   }
 }
