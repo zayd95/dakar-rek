@@ -21,7 +21,8 @@ export function isTestHost(hostname: string): boolean {
 export function readTestParams(hostname: string, search: string): TestParams {
   const none: TestParams = { hour: null, money: null, weather: null };
   if (!isTestHost(hostname)) return none;
-  const q = new URLSearchParams(search || (PREVIEW_BUILD ? import.meta.env.VITE_PREVIEW_SEARCH ?? '' : ''));
+  const q = new URLSearchParams(PREVIEW_BUILD ? import.meta.env.VITE_PREVIEW_SEARCH ?? '' : '');      // a preview build's own link, which a query of the page can still override
+  for (const [k, v] of new URLSearchParams(search)) q.set(k, v);
   const h = Number(q.get('heure'));
   const m = Number(q.get('argent'));
   return {

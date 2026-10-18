@@ -48,6 +48,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     const drive = async (until, arg = null, back = false) => {
       const hold = () => page.waitForFunction(until, arg, { timeout: 120000 }).catch(() => {});
       if (!touch) { const k = back ? 'KeyS' : 'KeyW'; await page.keyboard.down(k); await hold(); await page.keyboard.up(k); return; }
+      if (V.moto) await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, T);      // the pad shows a frame after the player is seated
       const j = await tr.centre('#joy');
       if (V.moto && !back) { const g = await tr.centre('#ridepad .rp-gas'); await tr.down(1, g.x, g.y); await hold(); await tr.up(1); }
       else if (V.moto) { const b = await tr.centre('#ridepad .rp-brake'); await tr.down(1, b.x, b.y); await hold(); await tr.up(1); }
@@ -69,7 +70,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     check(`${tag}: picking it puts the vehicle at the kerb, costs nothing, owns nothing, saves nothing`, t1.here && t1.trial && !t1.owned && (await wallet()) === w0 && (await ledger()) === l0 && (await counters()).length === 0 && t1.record === null
       && Math.hypot(t1.x - dealer.delivery.x, t1.z - dealer.delivery.z) < 0.1, JSON.stringify({ here: t1.here, trial: t1.trial, owned: t1.owned, record: t1.record, wallet: [w0, await wallet()], counters: await counters() }));
     // get on: from behind the vehicle
-    const standBehind = async () => { const c = await info(); await d(c => { const f = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }; window.__dakar.place(c.x - f.x * 3.3, c.z - f.z * 3.3, c.yaw); }, c); };
+    const standBehind = async () => { const c = await info(); await d(([c, back]) => { const f = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }; window.__dakar.place(c.x - f.x * back, c.z - f.z * back, c.yaw); }, [c, V.moto ? 1.7 : 3.3]); };
     await standBehind();
     await page.waitForFunction(() => /Véhicule d’essai/.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
     const f1 = await d(() => window.__dakar.focus());
