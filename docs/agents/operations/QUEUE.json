@@ -1824,7 +1824,7 @@
       "targetedBrowser": "author claims only; save-compat not invoked in inspected CI",
       "publicLaunchApproved": false
     },
-    "lastReconciledAt": "2026-10-18T01:37:02Z"
+    "lastReconciledAt": "2026-10-18T02:36:13Z"
   },
   "saveRegressionProposal": {
     "id": "SAVE-NEWGAME-QUOTA",
@@ -1846,7 +1846,7 @@
     ],
     "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
     "note": "Proposal, not dispatch or file reservation; no automatic implementation",
-    "lastReconciledAt": "2026-10-18T01:37:02Z"
+    "lastReconciledAt": "2026-10-18T02:36:13Z"
   },
   "currentStabilizationDeltaReview": {
     "id": "STAB-20261017-2135-QA",
@@ -2076,7 +2076,7 @@
     "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
     "status": "review",
     "owner": "external author; read-only audit",
-    "checkedAt": "2026-10-18T01:37:02Z",
+    "checkedAt": "2026-10-18T02:36:13Z",
     "checks": [
       {
         "id": 117547962939,
@@ -2098,7 +2098,7 @@
       }
     ],
     "implementationAuthorized": false,
-    "nextAction": "Exact targeted default-lamb minimal-input evidence and owner decision; quota correction remains separate. No feature, merge or launch automatically.",
+    "nextAction": "Issue45 already owned externally; no duplicate issue or automatic combat change. Await exact targeted evidence/owner decision; retain inherited quota issue.",
     "review": {
       "status": "needs-decision",
       "sourceCommit": "ed7a8c2441883ab873f98361476984eff7751724",
@@ -2129,6 +2129,15 @@
         "Inherited quota defect open",
         "No physical mobile or voluntary two-hour session proof"
       ]
+    },
+    "drawFarmIssue": {
+      "number": 45,
+      "url": "https://github.com/zayd95/dakar-rek/issues/45",
+      "state": "open",
+      "createdAt": "2026-10-18T01:46:41Z",
+      "checkedAt": "2026-10-18T02:36:13Z",
+      "evidence": "External author reproduction claim; not independently rerun",
+      "decision": "Owner decision; nothing implemented"
     }
   },
   "currentOrdinaryPurseQa": {
@@ -2182,17 +2191,5 @@
       ]
     },
     "completedAt": "2026-10-18T01:37:02Z"
-  },
-  "registryWriter": {
-    "token": "audit-20261018T0236Z-watch",
-    "owner": "producer_audit_0236",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "fa674734ed379cce5b8a6776a5dbfa9765ab94a8",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-0236-WATCH.md"
-    ],
-    "acquiredAt": "2026-10-18T02:35:48Z"
   }
 }
