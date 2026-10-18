@@ -73,6 +73,7 @@ import { Inventory } from './activity/inventory';
 import { actionVerb } from './interact/legacy';
 import { SHOP_COPY } from './ui/shopCopy';
 import { objectiveMarks, isObjectiveAction } from './social/objectiveMarks';
+import { shopRegular } from './social/regular';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
@@ -611,12 +612,14 @@ function describe(a: Action): string {
 function openActions(it: Interactable) {
   mode = 'menu';
   const marks = objectiveMarks(suggestion(rel, state));          // what the current objective points at (a gold star on those actions)
-  const visible = it.actions.filter(a => !a.visible || a.visible(state));
+  // a shop that knows its regular (src/social/regular.ts): a few words from the shopkeeper, and the neighbour price in place of the full one
+  const reg = it.menu === 'shop' ? shopRegular(it.id, state, rel, hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat) : null;
+  const visible = it.actions.filter(a => (!a.visible || a.visible(state)) && !reg?.hide.has(a.id));
   const items: MenuItem[] = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { icon: actionVerb(a)[1], ...(it.menu === 'shop' ? SHOP_COPY[a.id] : {}), ...(isObjectiveAction(a, marks) ? { objective: true } : {}), label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
+    return { icon: actionVerb(a)[1], ...(it.menu === 'shop' ? SHOP_COPY[a.id] : {}), ...(isObjectiveAction(a, marks) ? { objective: true } : {}), ...(reg?.was[a.id] ? { was: fcfa(reg.was[a.id]) } : {}), label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
   });
-  let subtitle = it.description ?? 'Que veux-tu faire ?';
+  let subtitle = reg ? (reg.greeting ? `« ${reg.greeting} »` : 'Que veux-tu faire ?') : it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {
     items.unshift(...npcLife.menuItems(it.npc));            // situation, favour, introduction (after the beat)
     const beat = availableBeat(it.npc, rel, state);

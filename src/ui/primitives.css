@@ -29,6 +29,7 @@
 #modal .ui-ic .glyph { width: 24px; height: 24px; }
 #modal .ui-line .tx { flex: 1; min-width: 0; font-size: 18px; font-weight: 650; line-height: 1.2; letter-spacing: -.2px; color: var(--ui-ink); }
 #modal .ui-line .ui-price { font-size: 18px; }
+#modal .ui-line .ui-was { flex: none; margin-right: -4px; font-size: 14px; font-weight: 600; color: var(--ui-ink-3); text-decoration: line-through; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #modal .ui-chev { flex: none; display: grid; place-items: center; width: 20px; color: var(--ui-ink-2); }
 #modal .ui-chev .glyph { width: 22px; height: 22px; }
 #modal .ui-line:active { background-image: linear-gradient(var(--ui-press), var(--ui-press)); }

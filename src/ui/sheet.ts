@@ -23,6 +23,8 @@ export interface MenuItem {
   icon?: string;
   /** Compact menus ('shop' variant) only: a short title, a kind line and a line icon name (src/ui/shopCopy.ts). */
   short?: string; glyph?: string;
+  /** Compact menus only: the price this one replaces, shown struck through before `right` (a regular's neighbour price, src/social/regular.ts). */
+  was?: string;
   /** The action belongs to the player's current objective: a gold star after its name (src/social/objectiveMarks.ts derives it). */
   objective?: boolean;
   onPick: () => void;
@@ -106,7 +108,7 @@ export class Sheet {
     const h = el('h2', '', title); h.id = 'shTitle';
     top.append(h);
     p.append(top);
-    const sub = el('p', 'sh-sub', variant === 'shop' ? 'Que veux-tu faire ?' : subtitle);
+    const sub = el('p', 'sh-sub', subtitle);
     p.append(sub);
     if (extraHtml) { const x = el('div', 'sh-extra'); x.innerHTML = extraHtml; p.append(x); }
     const list = el('div', variant === 'shop' ? 'list ui-stack' : 'list');
@@ -123,7 +125,7 @@ export class Sheet {
   private shopItem(it: MenuItem): HTMLElement {
     const why = it.reason ?? it.detail;
     return shopRow({
-      glyph: it.glyph, icon: it.icon, label: it.short ?? it.label, price: it.right, disabled: it.disabled, objective: it.objective, title: it.detail,
+      glyph: it.glyph, icon: it.icon, label: it.short ?? it.label, price: it.right, was: it.was, disabled: it.disabled, objective: it.objective, title: it.detail,
       onPick: () => { this.hooks.picked?.(); it.onPick(); },
       onDeny: b => { replay(b, 'deny'); this.hooks.deny(why || 'Indisponible'); },
     });

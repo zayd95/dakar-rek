@@ -31,6 +31,8 @@ export interface Reaction {
   when: Cond; line: string;
   /** Small effect when the line greets a counted visit (at most once per city hour). */
   effect?: { needs?: Partial<Needs> };
+  /** The same greeting in a few words, said on the sheet of the character's own shop (src/social/regular.ts); only regulars' lines have one. */
+  short?: string;
 }
 export interface Intro { to: string; when: Cond[]; flag: string; line: string }
 export interface Fact { when: Cond; text: string }
@@ -238,8 +240,8 @@ export const PROFILES: Profile[] = [
       { when: { flag: 'info_livraison', noBeat: 'mamadou_livraison' }, line: 'Alors, ces sacs de riz ? Ils ne vont pas marcher tout seuls jusque chez Mame.' },
       { when: { act: ['attaya'] }, line: 'Ibou met trop de sucre. Je le lui dis depuis vingt ans, il ne m’écoute pas.' },
       { when: { act: ['eat'] }, line: 'Je mange derrière le comptoir : un client peut arriver à tout moment.' },
-      { when: { flag: 'mamadou_trust', regular: true }, line: `${say('Na nga def ?')} Mon livreur et client fidèle ! Ton sucre est prêt, au prix de voisin : ${say('yomb na')}.` },
-      { when: { regular: true }, line: `Salaam aleekum ! Je connais tes habitudes maintenant : ${say('mburu ak meew')}, et pas de crédit.` },
+      { when: { flag: 'mamadou_trust', regular: true }, short: 'Mon client fidèle ! Prix de voisin pour toi.', line: `${say('Na nga def ?')} Mon livreur et client fidèle ! Ton sucre est prêt, au prix de voisin : ${say('yomb na')}.` },
+      { when: { regular: true }, short: 'Ah, l’habitué ! Entre, entre.', line: `Salaam aleekum ! Je connais tes habitudes maintenant : ${say('mburu ak meew')}, et pas de crédit.` },
       { when: {}, line: `${say('Dalal ak jàmm')} ! Entre, regarde. Tout ce qui est noté dans ce carnet est payé… presque tout.` },
     ],
     intros: [{ to: 'kadiatou', when: [{ regular: true }, { flag: 'mamadou_trust' }], flag: 'intro_kadiatou', line: 'Ma nièce Kadiatou étudie à Fann. Elle cherche des gens pour son enquête sur les boutiques. Passe à la place des étudiants, dis-lui que c’est moi qui t’envoie.' }],
