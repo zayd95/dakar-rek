@@ -22,6 +22,17 @@ export const ECONOMY = {
     /** Below this energy the player is too tired to take a delivery. */
     minEnergy: 8,
     fatigue: { energie: -6, faim: -3, hygiene: -3 },
+    /** « Tournée » (src/economy/tour.ts): one pick-up, two clients, the player picks who is served first. */
+    tour: {
+      /** A client's trust is a whole number between these; a late stop or an abandoned one costs 1, a stop on time earns 1. */
+      trustMin: -3, trustMax: 5,
+      /** Each trust level above 0 raises that client's pay by this share (never below the base); each level, up or down, moves their patience (the stop's time limit). */
+      payPerLevel: 0.04, patiencePerLevel: 0.06,
+      /** The clock of a tour starts when the courier is this far (m) from the pick-up point. */
+      departRadius: 8,
+      /** Below this energy the courier is too tired for two stops. */
+      minEnergy: 14,
+    },
   },
   /** Starter-room furniture prices (see src/economy/furniture.ts). */
   furniture: { miroir: 2500, tapis: 3000, chaises: 3500, radio: 4000, matelas: 7500, tele: 12000 } as Record<string, number>,

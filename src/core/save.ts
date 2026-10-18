@@ -1,4 +1,4 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, WrestlerLook } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, TourRun, WrestlerLook } from './types';
 import { ACTIVITY_IDS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
@@ -225,6 +225,19 @@ function ledgerOf(v: unknown): LedgerEntry[] {
   }
   return out.slice(-LEDGER_MAX);
 }
+function tourOf(v: unknown): TourRun | null {
+  const t = (v && typeof v === 'object' ? v : null) as Record<string, unknown> | null;
+  if (!t || typeof t.id !== 'string' || !Array.isArray(t.order) || t.order.length !== 2) return null;
+  const [p, q] = t.order as unknown[];
+  if (!((p === 0 && q === 1) || (p === 1 && q === 0))) return null;
+  const pair = (x: unknown): [number, number] | null => (Array.isArray(x) && x.length === 2 && x.every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0) ? [x[0] as number, x[1] as number] : null);
+  const limitS = pair(t.limitS), pay = pair(t.pay);
+  if (!limitS || !pay) return null;
+  const late = Array.isArray(t.late) ? (t.late as unknown[]).filter((x): x is boolean => typeof x === 'boolean').slice(0, 2) : [];
+  const leg = t.leg === 1 ? 1 : 0;
+  if (late.length !== leg) return null;                    // the stops served and the leg being served must agree
+  return { id: t.id, order: [p, q], leg, departed: t.departed === true, limitS, pay, late };
+}
 function jobsOf(v: unknown): JobsState {
   const j = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
   const done = Array.isArray(j.done) ? (j.done as unknown[]).filter((d): d is string => typeof d === 'string').slice(-DONE_JOBS_MAX) : [];
@@ -235,6 +248,9 @@ function jobsOf(v: unknown): JobsState {
       runId: a.runId, routeId: a.routeId, hub: a.hub as HubId, stage: a.stage === 'pickup' ? 'pickup' : 'deliver',
       pay: Math.max(0, Math.round(num(a.pay, 0))), startedMs: Math.max(0, num(a.startedMs, 0)), limitMs: Math.max(0, num(a.limitMs, 0)),
     };
+    const t = tourOf(a.tour);
+    if (t) active.tour = t;
+    else if (a.tour !== undefined) active = null;          // a tour this build cannot read: dropped, nothing paid
   }
   return { active, done, seq: Math.max(0, Math.floor(num(j.seq, 0))) };
 }

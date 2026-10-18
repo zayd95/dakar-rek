@@ -8,7 +8,9 @@ import type { ShopDetail } from '../world/shopKit';
 import { buildQuincaillerie } from './stall';
 import { HUB_NAMES } from '../world/content';
 import { ECONOMY } from './config';
-import { ROUTES, acceptJob, cancelJob, completeJob, deliveryLimitMs, offers, payNow, pickUp, pickupFrags, remainingMs, routeById, routePay, whyNot, type Completion, type Route } from './jobs';
+import { ROUTES, acceptJob, cancelJob, completeJob, deliveryLimitMs, offers, payNow, pickUp, pickupFrags, remainingMs, routeById, routePay, whyNot, type Completion, type Place, type Route } from './jobs';
+import { cards, routeCard, orderCard, actionCard, tip, disclosure, iconOf, type Spot } from './deliveryCards';
+import { ORDERS, TOURS, abandonTour, acceptTour, completeStop, currentTour, depart, historyOf, limitsOf, patienceFactor, payFactor, paysOf, previewOrder, tourRemainingMs, tourTotal, toursAt, toursIn, trustOf, trustWord, whyNotTour, type Order, type Tour, type TourCompletion, type TourStop } from './tour';
 import { FURNITURE, cannotBuy, deliverFurniture, furnitureCount, furnitureById, ownedFurnitureIds, owns, priceOf } from './furniture';
 import { assetsValue, chargesPerHour, currentHome, incomePerHour as allIncome, specOfAsset, takeNotices } from './assets';
 import { homeGoalLine } from './progress';
@@ -42,6 +44,15 @@ export interface EconomyDeps {
 }
 
 const esc = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
+/** A stop as a card shows it: an icon and the place's short name (« Banque Teranga · Pikine » → « Banque Teranga »). */
+const SHORT: Record<string, string> = {
+  'Gargote Mame Diarra': 'Chez Mame', 'Gargote Chez Fatou': 'Chez Fatou', 'Dibiterie Chez Pathé': 'Chez Pathé', 'Dibiterie de la Médina': 'Dibiterie',
+  'Maïga du marché': 'Maïga', 'Garage Modou': 'Garage', 'Boutique Diallo': 'Boutique', 'Banque Teranga': 'Banque', 'Étal de Sandaga': 'Étal',
+  'Atelier Ndeye': 'Atelier Ndeye', 'Dakar Réparation': 'Réparation', 'Place de la Médina': 'Place', 'Grand-place de Pikine': 'Grand-place',
+};
+const shortName = (n: string) => { const base = n.split(' · ')[0]; return SHORT[base] ?? base; };
+const stopSpot = (st: TourStop): Spot => ({ icon: iconOf(st.place.frag), name: shortName(st.place.name) });
+const TOURS_BY = (id: string) => TOURS.find(t => t.id === id);
 const clock = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
 export class Economy {
@@ -55,6 +66,8 @@ export class Economy {
   private line: HTMLElement;
   private t = 0;
   private lineT = 0;
+  /** What the delivery line shows now (rebuilt only when it changes). */
+  private lineSig = '';
   /** Last player position seen (street position at the door when indoors), for distances in the jobs app. */
   private here = { x: 0, z: 0 };
   /** Run and stage the city walking marker was last set for (so it follows pick-up → drop-off once each). */
@@ -91,6 +104,10 @@ export class Economy {
       const it = this.placeOf(frag);
       if (it && !it.actions.includes(JOBS_ACTION)) it.actions = [...it.actions, JOBS_ACTION];
     }
+    for (const t of toursIn(world.id)) {                                 // a tour leaves from its own pick-up point too
+      const it = this.placeOf(t.pickup.frag);
+      if (it && !it.actions.includes(JOBS_ACTION)) it.actions = [...it.actions, JOBS_ACTION];
+    }
     for (const it of world.interactables) if (it.id.startsWith(world.id + ':city:bank') && !it.actions.includes(BUSINESS_ACTION)) it.actions = [...it.actions, BUSINESS_ACTION];
     if (world.id === 'pikine') this.buildShop(world, detail);
   }
@@ -124,18 +141,49 @@ export class Economy {
     const w = this.world; if (!w) return;
     const s = this.s, a = s.data.jobs.active, hub = w.id;
     const fromHere = at && at.id.startsWith(hub + ':') ? (r: Route) => at.id.includes(r.from.frag) : null;
-    const items: MenuItem[] = [];
+    const items: MenuItem[] = [];                                   // plain rows: the city's paid services (phone app only)
+    const deck = cards();
     const away = (x: number, z: number) => Math.round(Math.hypot(x - this.here.x, z - this.here.z));
-    const tiakEnergy = `${ECONOMY.tiak.fatigue.energie} énergie`.replace('-', '−');
-    if (a) {
+    const spotOf = (p: Place): Spot => ({ icon: iconOf(p.frag), name: shortName(p.name) });
+    const energy = `⚡ ${ECONOMY.tiak.fatigue.energie}`.replace('-', '−');
+    const first = (s.data.counters.livraisons ?? 0) === 0;
+    if (a?.tour) {
+      const c = currentTour(s);
+      if (c) {
+        const left = tourRemainingMs(s);
+        const live = routeCard({ from: { icon: '🏍️', name: `Tournée ${c.run.leg + 1}/2` }, to: [stopSpot(c.stop)], reward: '+' + fcfa(payNow(s, a.pay)), chips: [c.run.departed ? (left >= 0 ? `⏱ ${clock(left)}` : '⏰ En retard') : '⏱ Chrono au départ'], cta: '', live: true, tour: true, onPick: () => {} });
+        deck.append(live);
+      }
+      deck.append(actionCard('🚪', 'Abandonner', () => { this.d.hud.closeModal(); this.openAbandon(); }));
+    } else if (a) {
       const r = routeById(a.routeId);
-      items.push({ label: `Tiak Tiak en cours : ${r?.from.name ?? '?'} → ${r?.to.name ?? '?'}`, detail: a.stage === 'pickup' ? 'Colis à récupérer' : this.limitText(), right: '+' + fcfa(payNow(s, a.pay)), disabled: true, onPick: () => {} });
-      items.push({ label: 'Annuler la livraison', detail: 'Aucun paiement', onPick: () => { this.cancel(); this.d.hud.closeModal(); } });
+      const left = remainingMs(s);
+      deck.append(routeCard({ from: r ? spotOf(r.from) : { icon: '📦', name: '?' }, to: r ? [spotOf(r.to)] : [], reward: '+' + fcfa(payNow(s, a.pay)), chips: [a.stage === 'pickup' ? '📦 Colis à prendre' : left === Infinity ? '' : left >= 0 ? `⏱ ${clock(left)}` : '⏰ En retard'].filter(Boolean), cta: '', live: true, onPick: () => {} }));
+      deck.append(actionCard('✖', 'Annuler', () => { this.cancel(); this.d.hud.closeModal(); }));
     } else {
+      let badge = first;
       for (const r of offers(s, hub).filter(r => !fromHere || fromHere(r))) {
         const why = whyNot(s, r), dist = this.distance(r), start = this.placeOf(r.from.frag);
-        const parts = [r.what, tiakEnergy, dist !== null ? `trajet ≈ ${Math.round(dist)} m` : '', !fromHere && start ? `départ à ${away(start.x, start.z)} m` : ''].filter(Boolean);
-        items.push({ label: `${r.needFlag ? '★ ' : ''}Tiak Tiak · ${r.from.name} → ${r.to.name}`, detail: why ?? parts.join(' · '), right: '+' + fcfa(payNow(s, routePay(r))), disabled: !!why, onPick: () => { this.d.hud.closeModal(); this.accept(r.id, !!fromHere); } });
+        const chips = [dist !== null ? `📏 ${Math.round(dist)} m` : '', energy, !fromHere && start ? `🚶 ${away(start.x, start.z)} m` : ''].filter(Boolean);
+        deck.append(routeCard({
+          from: spotOf(r.from), to: [spotOf(r.to)], reward: '+' + fcfa(payNow(s, routePay(r))), chips, cta: fromHere ? 'Livrer' : 'Y aller', blocked: why ?? undefined,
+          badge: r.needFlag ? '★ Client fidèle' : badge && !why ? '👍 Pour débuter' : undefined,
+          onPick: () => { this.d.hud.closeModal(); this.accept(r.id, !!fromHere); },
+        }));
+        if (!r.needFlag) badge = false;
+      }
+      // the optional tour: two clients, the courier picks who is served first (at its pick-up point, or as a marker from the phone)
+      for (const t of fromHere ? toursAt(hub, at!.id) : toursIn(hub)) {
+        const why = whyNotTour(s, t), pays = paysOf(s, t), start = this.placeOf(t.pickup.frag);
+        deck.append(routeCard({
+          from: spotOf(t.pickup), to: t.stops.map(st => stopSpot(st)), reward: '+' + fcfa(payNow(s, pays[0] + pays[1] + t.bonus)),
+          chips: ['📍 2 arrêts', `🎁 Bonus +${fcfa(t.bonus)}`, !fromHere && start ? `🚶 ${away(start.x, start.z)} m` : ''].filter(Boolean), cta: fromHere ? 'Choisir' : 'Y aller', tour: true, blocked: why ?? undefined,
+          onPick: () => {
+            this.d.hud.closeModal();
+            if (fromHere) this.openTourOrder(t);
+            else if (start) { this.d.walkTo(start.id); this.d.hud.toast(`📍 ${t.pickup.name}`); }
+          },
+        }));
       }
     }
     if (!fromHere) {
@@ -144,25 +192,18 @@ export class Economy {
         .flatMap(it => it.actions.filter(x => x.gain && !x.special && (!x.visible || x.visible(s))).map(x => ({ it, x })))
         .sort((p, q) => away(p.it.x, p.it.z) - away(q.it.x, q.it.z));
       for (const { it, x } of services) {
-        const why = x.requires?.(s) ?? null, energy = x.needs?.energie ?? 0;
+        const why = x.requires?.(s) ?? null, en = x.needs?.energie ?? 0;
         items.push({
           label: x.label, right: '+' + fcfa(this.workPreview(x, it)), disabled: !!why,
-          detail: [it.name, energy < 0 ? `−${-energy} énergie` : '', `${away(it.x, it.z)} m`, why ?? ''].filter(Boolean).join(' · '),
+          detail: [it.name, en < 0 ? `−${-en} énergie` : '', `${away(it.x, it.z)} m`, why ?? ''].filter(Boolean).join(' · '),
           onPick: () => { this.d.hud.closeModal(); this.d.walkTo(it.id); this.d.hud.toast(`Repère : ${it.name} · ${x.label}`); },
         });
       }
     }
-    const none = pickupFrags(hub).length === 0;
-    const sub = fromHere ? 'Commandes à livrer depuis ici. Temps large ; en retard, la course paie moins.'
-      : `${HUB_NAMES[hub]} · ${a ? 'une livraison à la fois' : none ? 'pas encore de Tiak Tiak ici (Pikine et Plateau)' : 'le colis se récupère au point de départ'}. Choisir un service pose un repère à suivre, à pied ou avec ta moto.`;
-    const done = s.data.counters.livraisons ?? 0, hint = firstVentureHint(s);
+    if (!deck.children.length && !items.length) deck.append(tip('📵', 'Pas de Tiak Tiak ici (Pikine et Plateau).'));
     this.d.menu();
-    this.d.hud.openMenu(fromHere ? 'Tiak Tiak · livraisons' : 'Petits boulots', sub, items, `<div class="kv">Livraisons faites : ${done}. ${esc(polyLine(s))} (paies affichées avec ce bonus).${hint ? '<br>' + esc(hint) : ''}</div><div class="draft">Trajets et clients Tiak Tiak : textes à relire. À pied, à moto ou en voiture : le colis se prend et se remet en arrivant, sans descendre.</div>`);
-  }
-
-  private limitText() {
-    const left = remainingMs(this.s);
-    return left === Infinity ? '' : left >= 0 ? `Temps restant ${clock(left)}` : 'En retard : la course paiera moins';
+    const hint = fromHere && first && !a && toursAt(hub, at!.id).length ? '👍 1re fois ? Commence simple.' : '';
+    this.d.hud.openMenu(fromHere ? 'Tiak Tiak' : 'Petits boulots', hint, items, '', panel => panel.insertBefore(deck, panel.querySelector('.list')));
   }
 
   accept(routeId: string, atPickup: boolean) {
@@ -176,10 +217,82 @@ export class Economy {
   }
 
   cancel() {
+    if (this.s.data.jobs.active?.tour) return this.abandon();
     if (!cancelJob(this.s)) return false;
     this.unmark();
     this.d.hud.toast('Livraison annulée · aucun paiement'); this.d.save();
     return true;
+  }
+
+  // ---------------------------------------------------------------- the tour (src/economy/tour.ts)
+  /** What a client remembers, as one line in the offer: « ★★ · 2 à l’heure, 0 en retard · patience +8 % · paie +8 % ». */
+  private memoryLine(st: TourStop): string {
+    const tr = trustOf(this.s, st.id), h = historyOf(this.s, st.id), pct = (f: number) => Math.round((f - 1) * 100);
+    const seen = h.ok + h.late + h.dropped === 0 ? 'jamais servi' : `${h.ok} à l’heure, ${h.late} en retard${h.dropped ? `, ${h.dropped} abandonné${h.dropped > 1 ? 's' : ''}` : ''}`;
+    const pat = pct(patienceFactor(tr)), pay = pct(payFactor(tr));
+    return `${trustWord(tr)} · ${seen} · patience ${pat > 0 ? '+' : pat < 0 ? '−' : ''}${Math.abs(pat)} %${pay > 0 ? ` · paie +${pay} %` : ''}`;
+  }
+
+  /** The two orders of a tour as two cards: who is served first, each client's urgency, who will be on time. */
+  openTourOrder(t: Tour) {
+    const s = this.s, deck = cards();
+    const urgency = (limitS: number): 1 | 2 | 3 => (limitS <= 12 ? 3 : limitS <= 20 ? 2 : 1);
+    const mem = (st: TourStop) => { const tr = trustOf(s, st.id); return tr > 0 ? '★'.repeat(tr) : tr < 0 ? '😒' : ''; };
+    for (const order of ORDERS) {
+      const p = previewOrder(s, t, order);
+      deck.append(orderCard({
+        first: order[0], reward: '≈ +' + fcfa(payNow(s, p.pay)),
+        stops: order.map((i, k) => ({ spot: stopSpot(t.stops[i]), urgency: urgency(p.limit[k]), limit: `${Math.round(p.limit[k])} s`, ok: p.onTime[k], memory: mem(t.stops[i]) })),
+        onPick: () => { this.d.hud.closeModal(); this.acceptTourRun(t, order); },
+      }));
+    }
+    deck.append(disclosure('Si j’abandonne ?', 'Avant de partir : gratuit. Après : les stops livrés sont payés, pas de bonus, −1 ★ pour chaque client non livré. La confiance se regagne en livrant à l’heure.'));
+    this.d.menu();
+    this.d.hud.openMenu('Qui en premier ?', '⏱ Le chrono part quand tu démarres.', [], '', panel => panel.insertBefore(deck, panel.querySelector('.list')));
+  }
+
+  acceptTourRun(t: Tour, order: Order) {
+    const job = acceptTour(this.s, t.id, order);
+    if (!job) { this.d.hud.toast(whyNotTour(this.s, t) ?? 'Tournée indisponible'); return null; }
+    this.d.hud.toast(`📦 → ${t.stops[order[0]].place.name} · chrono au départ`);
+    this.d.save();
+    return job;
+  }
+
+  /** Confirmation before abandoning a tour: two big buttons and what it costs, in a line. */
+  openAbandon() {
+    const s = this.s, c = currentTour(s);
+    if (!c) return;
+    const deck = cards();
+    const waiting = c.run.order.slice(c.run.leg).map(i => c.tour.stops[i]);
+    if (c.run.departed) deck.append(tip('⚠️', `Pas de bonus · −1 ★ : ${waiting.map(st => iconOf(st.place.frag)).join(' ')}`));
+    else deck.append(tip('👌', 'Pas encore parti : aucun coût.'));
+    deck.append(actionCard('🚪', 'Oui, abandonner', () => { this.d.hud.closeModal(); this.abandon(); }, true), actionCard('🏍️', 'Continuer', () => this.d.hud.closeModal()));
+    this.d.menu();
+    this.d.hud.openMenu('Abandonner ?', '', [], '', panel => panel.insertBefore(deck, panel.querySelector('.list')));
+  }
+
+  abandon() {
+    const r = abandonTour(this.s);
+    if (!r) return false;
+    this.unmark();
+    this.d.hud.toast(r.free ? '🚪 Tournée annulée' : `🚪 Abandon · −1 ★ (${r.lost.length})`);
+    this.d.save();
+    return true;
+  }
+
+  /** Hand over the parcel of the stop being served (pays once per stop, the second pays the bonus too). */
+  finishStop(runId: string): TourCompletion | null {
+    const c = completeStop(this.s, runId);
+    if (!c) return null;
+    this.unmark();
+    const msg = [`${c.late ? '⏰' : '✓'} ${c.stop.place.name} +${fcfa(c.paid)}`];
+    if (c.finished) msg.push(`🎁 +${fcfa(c.bonus)}`);
+    else { const next = currentTour(this.s); if (next) msg.push(`→ ${next.stop.place.name}`); }
+    msg.push(c.trust > 0 ? '★'.repeat(c.trust) : c.trust < 0 ? '😒' : '');
+    this.d.hud.toast(msg.filter(Boolean).join(' · '));
+    this.d.save();
+    return c;
   }
 
   /** Hand over the parcel for this run id (pays once; a second call with the same id pays nothing). */
@@ -203,12 +316,20 @@ export class Economy {
     this.bizT -= dt;
     if (this.bizT <= 0) { this.bizT = 0.25; this.tickBusiness(); }
     const s = this.s, a = s.data.jobs.active, w = this.world;
-    const r = a ? routeById(a.routeId) : undefined;
-    if (a && !r) { cancelJob(s); this.d.save(); }        // a route removed from the design table: drop the run, pay nothing
-    const tgt = a && r && w && w.id === a.hub ? this.placeOf(a.stage === 'pickup' ? r.from.frag : r.to.frag) : undefined;
+    const tc = currentTour(s);                                           // the tour in hand (null for a delivery, or a tour removed from the table)
+    const r = a && !a.tour ? routeById(a.routeId) : undefined;
+    if (a && !a.tour && !r) { cancelJob(s); this.d.save(); }             // a route removed from the design table: drop the run, pay nothing
+    if (a?.tour && !tc) { abandonTour(s); this.d.save(); }               // a tour removed from the design table: same
+    const tgtPlace = tc ? tc.stop.place : a && r ? (a.stage === 'pickup' ? r.from : r.to) : null;
+    const tgt = a && tgtPlace && w && w.id === a.hub ? this.placeOf(tgtPlace.frag) : undefined;
     this.marker.visible = !!tgt && !inside;
     if (!a && this.markedFor) this.unmark();
-    if (tgt && `${a!.runId}:${a!.stage}` !== this.markedFor) { this.markedFor = `${a!.runId}:${a!.stage}`; this.d.walkTo(tgt.id); }   // the city's arrow follows the parcel
+    const mark = a ? `${a.runId}:${tc ? 'tour' + tc.run.leg : a.stage}` : '';
+    if (tgt && mark !== this.markedFor) { this.markedFor = mark; this.d.walkTo(tgt.id); }   // the city's arrow follows the parcel
+    if (tc && !tc.run.departed) {                                        // the clock of a tour starts when the courier leaves the pick-up point (or the hub)
+      const from = w && w.id === tc.tour.hub ? this.placeOf(tc.tour.pickup.frag) : undefined;
+      if (!from || Math.hypot(this.here.x - from.x, this.here.z - from.z) > ECONOMY.tiak.tour.departRadius) { depart(s); this.d.save(); }
+    }
     if (tgt && w) {
       const col = a!.stage === 'pickup' ? 0x4fd1ff : 0xffc83d;
       this.ringMat.color.setHex(col); this.beamMat.color.setHex(col);
@@ -216,7 +337,8 @@ export class Economy {
       this.arrow.position.y = 3.2 + Math.sin(this.t * 3) * 0.25; this.arrow.rotation.y = this.t * 1.5;
       const d = Math.hypot(pos.x - tgt.x, pos.z - tgt.z);
       if (playing && !inside && d < ECONOMY.tiak.arriveRadius) {
-        if (a!.stage === 'pickup') {
+        if (tc) { if (tc.run.departed) this.finishStop(a!.runId); }
+        else if (a!.stage === 'pickup') {
           const dist = this.distance(r!) ?? 120;
           pickUp(s, deliveryLimitMs(dist));
           this.d.hud.toast(`Colis récupéré ✓ → ${r!.to.name} · ${clock(s.data.jobs.active!.limitMs)} pour livrer`);
@@ -227,16 +349,38 @@ export class Economy {
     this.lineT -= dt;
     if (this.lineT > 0) return;
     this.lineT = 0.25;
-    const job = s.data.jobs.active, route = job ? routeById(job.routeId) : undefined;
-    if (!job || !route) { this.line.classList.remove('on'); return; }
-    const place = job.stage === 'pickup' ? route.from.name : route.to.name;
+    const job = s.data.jobs.active, route = job && !job.tour ? routeById(job.routeId) : undefined, tour = job ? currentTour(s) : null;
+    if (!job || (!route && !tour)) { this.line.classList.remove('on'); return; }
     const dist = tgt ? `${Math.round(Math.hypot(pos.x - tgt.x, pos.z - tgt.z))} m` : HUB_NAMES[job.hub as HubId];
-    const left = remainingMs(s);
-    this.line.innerHTML = '';
-    const b = document.createElement('b'); b.textContent = `${job.stage === 'pickup' ? 'Colis à récupérer' : 'Livraison'} → ${place}, ${inside ? 'sors d’abord' : dist}`;
-    const small = document.createElement('small'); small.textContent = job.stage === 'pickup' ? `  +${fcfa(payNow(s, job.pay))}` : left >= 0 ? `  · ${clock(left)}` : '  · en retard';
-    this.line.append(b, small);
-    this.line.classList.toggle('late', left < 0);
+    // the ride: only the next place, the progress and the countdown
+    let name: string, icon: string, progress = '', clockText: string, late = false, wait = false;
+    if (tour) {
+      const left = tourRemainingMs(s);
+      name = shortName(tour.stop.place.name); icon = iconOf(tour.stop.place.frag);
+      progress = tour.run.leg === 0 ? '●○' : '●●';
+      late = left < 0; wait = !tour.run.departed;
+      clockText = wait ? 'Va !' : late ? '⏰' : clock(left);
+    } else {
+      const left = remainingMs(s), stage = job.stage;
+      const place = stage === 'pickup' ? route!.from : route!.to;
+      name = shortName(place.name); icon = iconOf(place.frag);
+      late = left < 0; wait = stage === 'pickup';
+      clockText = stage === 'pickup' ? '📦' : left === Infinity ? '' : late ? '⏰' : clock(left);
+    }
+    const sig = `${name}|${inside ? 1 : 0}${dist}|${progress}|${clockText}|${late}|${wait}`;
+    if (sig !== this.lineSig) {
+      this.lineSig = sig;
+      this.line.innerHTML = '';
+      const ic = document.createElement('i'); ic.className = 'dv-ic'; ic.textContent = icon;
+      const main = document.createElement('div'); main.className = 'dv-main';
+      const b = document.createElement('b'); b.textContent = name;
+      const small = document.createElement('small'); small.textContent = inside ? 'Sors d’abord' : dist;
+      main.append(b, small);
+      this.line.append(ic, main);
+      if (progress) { const pr = document.createElement('span'); pr.className = 'dv-prog'; pr.textContent = progress; this.line.append(pr); }
+      if (clockText) { const ck = document.createElement('span'); ck.className = 'dv-clock' + (wait ? ' wait' : ''); ck.textContent = clockText; this.line.append(ck); }
+    }
+    this.line.classList.toggle('late', late);
     this.line.classList.add('on');
     const goal = document.getElementById('goal');
     const top = goal && goal.classList.contains('on') ? goal.offsetTop + goal.offsetHeight + 6 : goal ? parseFloat(getComputedStyle(goal).top) || 160 : 160;
@@ -390,6 +534,19 @@ export class Economy {
         return c ? { runId: c.runId, paid: c.paid, late: c.late, newClient: c.newClient } : null;
       },
       cancelJob: () => this.cancel(),
+      /** The tour(s) of this hub: what the order menu predicts, and what each client remembers (limits and pay are the ones an acceptance now would fix). */
+      tourOffer: () => toursIn(this.world?.id ?? s.data.hub).map(t => ({
+        id: t.id, pickup: t.pickup.name, why: whyNotTour(s, t), total: tourTotal(t), limits: limitsOf(s, t), pays: paysOf(s, t),
+        orders: ORDERS.map(o => { const p = previewOrder(s, t, o); return { first: t.stops[o[0]].id, arrive: p.arrive.map(x => +x.toFixed(1)), limit: p.limit, onTime: p.onTime, pay: p.pay }; }),
+        memory: t.stops.map(st => ({ id: st.id, client: st.client, trust: trustOf(s, st.id), history: historyOf(s, st.id), line: this.memoryLine(st) })),
+      })),
+      /** Accept the tour as the order menu would (first = index of the stop served first); null when refused. */
+      acceptTour: (id: string, first: 0 | 1 = 0) => { const t = toursIn(this.world?.id ?? s.data.hub).find(x => x.id === id); const j = t ? this.acceptTourRun(t, first === 0 ? [0, 1] : [1, 0]) : null; return j ? { ...j } : null; },
+      tourState: () => { const c = currentTour(s); return c ? { runId: c.job.runId, leg: c.run.leg, order: c.run.order, departed: c.run.departed, stop: c.stop.id, left: tourRemainingMs(s), leftOther: c.run.leg === 0 ? tourRemainingMs(s, 1) : null, clock: c.run.departed ? +((s.data.playedMs - c.job.startedMs) / 1000).toFixed(2) : null, late: [...c.run.late], limitS: c.run.limitS, pay: c.run.pay, parcel: c.job.stage } : null; },
+      abandonTour: () => this.abandon(),
+      /** The hub's solid boxes as built at run time (modules add theirs), for the bike's route planning (scripts/m1b-tour/legs.ts). */
+      colliders: () => (this.world ? this.world.colliders.map(c => [c.x0, c.z0, c.x1, c.z1, c.h]) : []),
+      tourMenu: (id?: string) => { const t = id ? TOURS_BY(id) : toursIn(this.world?.id ?? s.data.hub)[0]; if (t) this.openTourOrder(t); },
       jobsMenu: () => this.openJobs(),
       jobsApp: () => { this.openJobs(); return [...document.querySelectorAll('#modal.on .item:not(.close)')].map(e => e.textContent ?? ''); }, shop: () => this.openShop(false), homeApp: () => this.openShop(true), wallet: () => this.openWallet(),
       buy: (id: string) => this.buy(id),

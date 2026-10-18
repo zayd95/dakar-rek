@@ -1,6 +1,7 @@
 import type { GameState } from '../core/state';
 import { fcfaText } from './format';
 import { pickupFrags, routeById } from './jobs';
+import { currentTour } from './tour';
 import type { HubId } from '../core/types';
 import { furnitureCount, goalItem, owns, priceOf } from './furniture';
 
@@ -24,6 +25,8 @@ export function stepHub(st: Step, s: GameState): HubId | null {
 export function economyStep(s: GameState): Step | null {
   const a = s.data.jobs.active;
   if (a) {
+    const t = currentTour(s);
+    if (t) return { id: 'goal_deliver', hint: `Tiak Tiak : livre ${t.stop.client} (${t.stop.place.name}).` };
     const r = routeById(a.routeId);
     if (r) return a.stage === 'pickup'
       ? { id: 'goal_pickup', hint: `Tiak Tiak : récupère le colis à ${r.from.name}.` }

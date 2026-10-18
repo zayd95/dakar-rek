@@ -55,6 +55,21 @@ export interface ActiveJob {
   pay: number;
   /** Played time (ms) when the delivery leg started, and its limit. */
   startedMs: number; limitMs: number;
+  /** A « tournée » (src/economy/tour.ts): two clients served in the order picked. Absent for an ordinary delivery. */
+  tour?: TourRun;
+}
+/**
+ * A tour in hand. `order` lists the two stops (indexes into the tour's stops) in the order they are served, `leg` is the
+ * one being served now. Time limits and pay are fixed when the tour is accepted (the clients' trust at that moment), so
+ * what was shown is what is paid, across reloads. The clock (`startedMs`) starts at `departed`.
+ */
+export interface TourRun {
+  id: string; order: [number, number]; leg: 0 | 1;
+  departed: boolean;
+  /** Seconds allowed and base pay of each stop, by stop index. */
+  limitS: [number, number]; pay: [number, number];
+  /** Whether each stop served so far was late. */
+  late: boolean[];
 }
 export interface JobsState { active: ActiveJob | null; done: string[]; seq: number }
 
