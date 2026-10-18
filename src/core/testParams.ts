@@ -7,15 +7,21 @@
 export interface TestParams { hour: number | null; money: number | null; /** `?meteo=pluie|apres|couvert|soleil`: holds the weather (the rain of the Pikine gare is seen on demand). */ weather: 'rain' | 'after' | 'overcast' | 'sun' | null }
 
 const PREVIEW_HOST = /^[a-z0-9-]+-dakar-rek\.[a-z0-9-]+\.workers\.dev$/;
+/**
+ * An offline preview build (`VITE_PREVIEW_TEST=true`, set only by whoever builds one) served where the page cannot receive a query string, such as a private
+ * claude.ai artifact: it is a test host by construction and carries its test link in `VITE_PREVIEW_SEARCH` (e.g. `?argent=200000000`). The preview has its own
+ * origin, so its wallet is never a production save, and a production build sets neither variable.
+ */
+const PREVIEW_BUILD = import.meta.env.VITE_PREVIEW_TEST === 'true';
 
 export function isTestHost(hostname: string): boolean {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || PREVIEW_HOST.test(hostname);
+  return PREVIEW_BUILD || hostname === 'localhost' || hostname === '127.0.0.1' || PREVIEW_HOST.test(hostname);
 }
 
 export function readTestParams(hostname: string, search: string): TestParams {
   const none: TestParams = { hour: null, money: null, weather: null };
   if (!isTestHost(hostname)) return none;
-  const q = new URLSearchParams(search);
+  const q = new URLSearchParams(search || (PREVIEW_BUILD ? import.meta.env.VITE_PREVIEW_SEARCH ?? '' : ''));
   const h = Number(q.get('heure'));
   const m = Number(q.get('argent'));
   return {

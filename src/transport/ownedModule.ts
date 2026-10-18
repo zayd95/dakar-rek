@@ -184,6 +184,8 @@ export class OwnedVehicleModule implements GameModule {
   private box: CourierBox | null = null;
   /** Stepping up to the saddle (0.28 s) before the seat is taken: from where the player stood. */
   private mounting: { t: number; fx: number; fz: number } | null = null;
+  /** A free test drive from the dealer (« Essayer »): the vehicle on the road is the dealer's, not the player's. Never saved; it goes back when the player gets off. */
+  private trial = false;
 
   readonly def: OwnedDef;
   private readonly parkedTarget: Target;
@@ -228,6 +230,7 @@ export class OwnedVehicleModule implements GameModule {
     const s = this.ctx.state, a = this.def.asset;
     this.showSale();
     if (!ownsVehicle(s, a)) {
+      if (this.trial) return;                                     // the dealer's vehicle on a test drive: not the player's, not touched by the asset model
       if (this.vehicle) { if (this.driving) this.getOff(false); this.setSolid(false); this.vehicle.dispose(); this.vehicle = null; unpark(s.data, a); }
       return;
     }
@@ -251,7 +254,7 @@ export class OwnedVehicleModule implements GameModule {
    * parking spot. False while it is ridden or not here.
    */
   moveParked(x: number, z: number, yaw: number): boolean {
-    if (!this.vehicle || this.driving || !this.hub) return false;
+    if (!this.vehicle || this.driving || !this.hub || this.trial) return false;
     this.st.x = x; this.st.z = z; this.st.yaw = yaw; this.st.speed = 0;
     this.vehicle.place(x, z, yaw, 0, 0, this.st.odo, 0);
     this.setSolid(true);
@@ -267,7 +270,7 @@ export class OwnedVehicleModule implements GameModule {
   /** Saved while driving: the vehicle is parked where it is, the player standing beside it. */
   safePlace(): { x: number; z: number; yaw: number } | null {
     if (!this.driving || !this.hub || !this.vehicle) return null;
-    park(this.ctx.state.data, { asset: this.def.asset, hub: this.hub.id, x: this.st.x, z: this.st.z, yaw: this.st.yaw });
+    if (!this.trial) park(this.ctx.state.data, { asset: this.def.asset, hub: this.hub.id, x: this.st.x, z: this.st.z, yaw: this.st.yaw });
     const p = this.beside();
     return { x: p.x, z: p.z, yaw: this.st.yaw };
   }
@@ -331,7 +334,7 @@ export class OwnedVehicleModule implements GameModule {
     this.ctx = ctx;
     return {
       [this.def.key]: {
-        info: () => ({ id: this.def.asset, name: this.label(), price: this.price(), owned: ownsVehicle(ctx.state, this.def.asset), asset: holding(ctx.state, this.def.asset) ?? null, record: parked(ctx.state.data, this.def.asset), here: !!this.vehicle, driving: this.driving, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, bumps: this.bumps, bought: this.bought,
+        info: () => ({ id: this.def.asset, name: this.label(), price: this.price(), owned: ownsVehicle(ctx.state, this.def.asset), asset: holding(ctx.state, this.def.asset) ?? null, record: parked(ctx.state.data, this.def.asset), here: !!this.vehicle, trial: this.trial, driving: this.driving, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, bumps: this.bumps, bought: this.bought,
           dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.lots ?? this.dealer.site.displays.length, onSale: this.dealer.sale ? this.dealer.sale.group.visible : null, card: !!this.dealer.card } : null,
           space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, views: this.spec?.cameras.map(c => c.id) ?? [], view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
@@ -405,10 +408,37 @@ export class OwnedVehicleModule implements GameModule {
 
   private openCatalogue() {
     const ctx = this.ctx, mine = ownsVehicle(ctx.state, this.def.asset);
-    ctx.menu(this.def.dealer!.name, 'Le prix est affiché avant de confirmer.', [{
+    ctx.menu(this.def.dealer!.name, 'Le prix est affiché avant de confirmer. L’essai est gratuit.', [{
       icon: this.def.icon, label: this.label(), detail: mine ? this.def.text.owned : this.def.detail, right: fcfa(this.price()), disabled: mine,
       onPick: () => this.confirm(),
+    }, {
+      icon: '🔑', label: 'Essayer', detail: mine ? this.def.text.owned : `${this.label()} · gratuit, le vendeur la reprend quand tu descends`, right: 'Gratuit',
+      disabled: mine || !!this.vehicle, onPick: () => this.tryOut(),
     }]);
+  }
+
+  /**
+   * « Essayer »: a free test drive, separate from buying. The dealer's vehicle waits at the kerb like a delivered one, the player gets on and drives it as
+   * their own; nothing is paid, owned, listed or saved, and it goes back to the dealer when the player gets off (or leaves the hub, or reloads).
+   */
+  private tryOut() {
+    const ctx = this.ctx;
+    ctx.hud.closeModal(); ctx.setMode('play');
+    if (!this.dealer || !this.hub || this.vehicle || ownsVehicle(ctx.state, this.def.asset)) return;
+    const d = this.dealer.site.delivery;
+    this.trial = true;
+    this.parkedTarget.name = 'Véhicule d’essai';
+    this.spawn(d.x, d.z, d.yaw);
+    ctx.toast('Essai gratuit : monte et roule. Le vendeur le reprend quand tu descends.');
+  }
+
+  /** The test drive is over: the vehicle goes back to the dealer (nothing was saved). */
+  private endTrial() {
+    this.trial = false;
+    this.parkedTarget.name = this.def.text.mine;
+    this.setSolid(false);
+    this.vehicle?.dispose(); this.vehicle = null;
+    this.box?.dispose(); this.box = null;
   }
 
   private confirm() {
@@ -427,6 +457,7 @@ export class OwnedVehicleModule implements GameModule {
     const ctx = this.ctx, s = ctx.state, a = this.def.asset;
     ctx.hud.closeModal(); ctx.setMode('play');
     if (!this.dealer || !this.hub) return;
+    if (this.trial && !this.driving) this.endTrial();                       // bought after a test drive: the real one is delivered
     const why = cannotBuy(s, a);
     if (why) { ctx.toast(why); return; }
     park(s.data, { asset: a, hub: this.hub.id, ...this.dealer.site.delivery });   // where sync() delivers it
@@ -497,12 +528,13 @@ export class OwnedVehicleModule implements GameModule {
     m.place(this.st.x, this.st.z, this.st.yaw, 0, 0, this.st.odo, 0);
     m.setRidden(false);                                         // also a fresh model: upright, wheels straight
     this.upright();
-    park(ctx.state.data, { asset: this.def.asset, hub: this.hub.id, x: this.st.x, z: this.st.z, yaw: this.st.yaw });
+    if (!this.trial) park(ctx.state.data, { asset: this.def.asset, hub: this.hub.id, x: this.st.x, z: this.st.z, yaw: this.st.yaw });
     this.setSolid(true);
     this.cam.end();
     if (normal || !ctx.inside()) { const p = this.beside(); ctx.player.place(p.x, p.z, this.st.yaw); }
     this.card?.show(null);
-    if (normal) ctx.toast(this.def.text.parked);
+    if (this.trial) { this.endTrial(); ctx.toast('Essai terminé : le vendeur reprend le véhicule.'); }
+    else if (normal) ctx.toast(this.def.text.parked);
     ctx.save();
   }
 
@@ -559,6 +591,7 @@ export class OwnedVehicleModule implements GameModule {
     if (this.driving) { this.driving = false; this.cam.end(); this.upright(); }
     this.setSolid(false);
     this.mounting = null;
+    this.trial = false; this.parkedTarget.name = this.def.text.mine;
     this.vehicle?.dispose(); this.vehicle = null;
     this.box?.dispose(); this.box = null; ridePad.hide(this);
     if (this.dealer) {
