@@ -2265,7 +2265,28 @@
       "ci": "push and PR in_progress, not green",
       "nextAction": "External author decides rollback contract and provides cross-version test/fix; no new feature automatically authorized"
     },
-    "implementationAuthorized": false
+    "implementationAuthorized": false,
+    "ci": {
+      "checkedAt": "2026-10-18T04:35:22Z",
+      "pushJob": 117576140269,
+      "prJob": 117576172348,
+      "pushCheckout": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+      "prCheckout": "c98f3f4f646e1c18168928a4fa19febd5f037b02",
+      "tree": "8740c1ee74df68e892baf6694ef5fface126950b",
+      "testsPassed": 1540,
+      "testsSkipped": 2,
+      "testFiles": 125,
+      "tourTests": 27,
+      "saveKeyTests": 13,
+      "types": "success",
+      "build": "success",
+      "city": "success",
+      "online": "success",
+      "launch": "success",
+      "targetedTourBrowser": "not invoked",
+      "verification": "producer log reconciliation; no new independent approval"
+    },
+    "reason": "Old-v5 rollback defect remains; targeted tour browser absent in standard CI"
   },
   "tourRollbackProposal": {
     "id": "SAVE-TOUR-OLDV5-ROLLBACK",
@@ -2280,14 +2301,33 @@
     ],
     "report": "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
   },
-  "registryWriter": {
-    "owner": "producer_audit_0435",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "4d4d2813627d06519ecd324f0793c41a9fe1a1f4",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-0435-AUDIT.md"
-    ]
+  "pendingShopUiCandidate": {
+    "pr": 47,
+    "sourceCommit": "27e723632bc96bfdbe239a44f5fa6be7353ebe5a",
+    "baseCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+    "status": "review",
+    "checkedAt": "2026-10-18T04:35:22Z",
+    "owner": "external session; read only",
+    "checks": [
+      {
+        "id": 117584883925,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/runs/117584883925"
+      },
+      {
+        "id": 117584699126,
+        "status": "in_progress",
+        "conclusion": null,
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39096750106/job/117584699126"
+      },
+      {
+        "id": 117584693726,
+        "status": "in_progress",
+        "conclusion": null,
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39096748353/job/117584693726"
+      }
+    ],
+    "nextAction": "Resume exact CI then independent UI regression review; no source work commissioned"
   }
 }

@@ -1,30 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T03:35:23Z",
+  "updatedAt": "2026-10-18T04:35:22Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261018T0435Z-ci-watch",
-    "owner": "producer_audit_0435",
-    "acquiredAt": "2026-10-18T04:35:22Z",
-    "expiresAt": "2026-10-18T04:55:22Z"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "producer_audit_0435",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "4d4d2813627d06519ecd324f0793c41a9fe1a1f4",
-      "allowedFiles": [
-        "docs/agents/STATE.json",
-        "docs/agents/operations/QUEUE.json",
-        "docs/agents/operations/CYCLE-2026-10-18-0435-AUDIT.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -135,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-18T03:35:23Z",
+    "lastCompletedRunAt": "2026-10-18T04:35:22Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
@@ -309,17 +293,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-0335-AUDIT.md",
-    "completedAt": "2026-10-18T03:35:23Z",
-    "actualRunCompleted": true,
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-0435-AUDIT.md",
+    "completedAt": "2026-10-18T04:35:22Z",
+    "owner": "producer_audit_0435",
+    "reviewer": null,
     "tasks": [
-      "STAB-20261018-0335-SAVE-QA"
+      "PR46 CI reconciliation",
+      "PR47 pending evidence inventory"
     ],
     "verifiedCandidates": [],
-    "owner": "producer_audit_0335",
-    "reviewer": "qa_economy_2236",
     "protectedRefsMutated": false,
-    "leaseReleased": "audit-20261018T0335Z-save46"
+    "leaseReleased": true
   },
   "protectedRefsLatest": [
     {
@@ -1150,13 +1134,13 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-18T03:35:23Z",
+    "checkedAt": "2026-10-18T04:35:22Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; shell pwd exit0; independent static cross-version review",
+    "localTests": "local_not_run; shell date only; GitHub workflow logs inspected",
     "delegation": "available; no redundant QA on unchanged evidence",
     "cloudflareAuthenticated": false
   },
@@ -1207,7 +1191,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-18T03:35:23Z",
+    "lastReconciledAt": "2026-10-18T04:35:22Z",
     "qualityMandate": {
       "date": "2026-10-16",
       "target": "Approximately two hours voluntary engagement; not measured",
@@ -1420,8 +1404,56 @@
       "completedAt": "2026-10-18T03:35:23Z",
       "local": "local_not_run; static cross-version control-flow proof only",
       "defect": "Active tour is stripped/cancelled and save rewritten by old v5 client on same origin/key; tour progress lost, wallet credited amounts preserved; no double payment shown",
-      "ci": "push and PR in_progress, not green",
+      "ci": {
+        "checkedAt": "2026-10-18T04:35:22Z",
+        "pushJob": 117576140269,
+        "prJob": 117576172348,
+        "pushCheckout": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+        "prCheckout": "c98f3f4f646e1c18168928a4fa19febd5f037b02",
+        "tree": "8740c1ee74df68e892baf6694ef5fface126950b",
+        "testsPassed": 1540,
+        "testsSkipped": 2,
+        "testFiles": 125,
+        "tourTests": 27,
+        "saveKeyTests": 13,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success",
+        "targetedTourBrowser": "not invoked",
+        "verification": "producer log reconciliation; no new independent approval"
+      },
       "nextAction": "External author decides rollback contract and provides cross-version test/fix; no new feature automatically authorized"
+    },
+    "shopUiCandidate": {
+      "pr": 47,
+      "sourceCommit": "27e723632bc96bfdbe239a44f5fa6be7353ebe5a",
+      "baseCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+      "status": "review",
+      "checkedAt": "2026-10-18T04:35:22Z",
+      "owner": "external session; read only",
+      "checks": [
+        {
+          "id": 117584883925,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/runs/117584883925"
+        },
+        {
+          "id": 117584699126,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/39096750106/job/117584699126"
+        },
+        {
+          "id": 117584693726,
+          "status": "in_progress",
+          "conclusion": null,
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/39096748353/job/117584693726"
+        }
+      ],
+      "nextAction": "Resume exact CI then independent UI regression review; no source work commissioned"
     }
   }
 }
