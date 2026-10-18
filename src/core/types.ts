@@ -30,6 +30,8 @@ export interface SaveData {
   beats: Record<string, string>;
   /** Wrestling identity (cosmetic only, never combat power). */
   wrestler: WrestlerLook;
+  /** Which city player model is drawn (cosmetic only; the Meshy avatar lane, branch claude/lucid-cori-60vlgt). Carried through every migration. */
+  avatar: Avatar;
   /** v3: wallet history on this device (last 100 money changes). Not a server ledger. */
   ledger: LedgerEntry[];
   /** v3: Tiak Tiak delivery in progress and completed run ids (a run is paid once). */
@@ -120,5 +122,8 @@ export interface ActivityState {
   /** Categories ever practised (unlocks), and the played time (ms) each was last practised (polyvalence). */
   known: ActivityId[]; last: Partial<Record<ActivityId, number>>;
 }
+
+export type Avatar = 'homme' | 'femme';
+export const AVATARS: Avatar[] = ['homme', 'femme'];
 
 export interface WrestlerLook { ngembColor: string; ngembPattern: string; accessories: string[] }

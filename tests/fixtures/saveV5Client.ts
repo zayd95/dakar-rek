@@ -1,9 +1,11 @@
 // FROZEN COPY of the schema-5 client's save.ts (src/core/save.ts at 2c82709, the build served before the v6 save): the older client a rollback
 // would serve. tests/saveV6.test.ts runs it on the same storage as the current client. Do not update it: it IS the old client.
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, WrestlerLook } from '../../src/core/types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData as SaveDataNow, WrestlerLook } from '../../src/core/types';
 import { ACTIVITY_IDS, HUB_IDS } from '../../src/core/types';
 import { clamp } from '../../src/core/rng';
 import { careerOf, newCareer } from '../../src/career/career';
+/** The schema-5 client's save has no `avatar` (the cosmetic field was added after): the frozen client is typed without it. */
+type SaveData = Omit<SaveDataNow, 'avatar'>;
 
 /**
  * Where the game keeps its save. Schema v5 lives under its own key and the key every older client wrote

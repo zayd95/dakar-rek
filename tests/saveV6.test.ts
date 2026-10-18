@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  IMPORT_DONE_KEY, LEGACY_DONE_KEY, LEGACY_SAVE_KEY, SAVE_KEY, SCHEMA_VERSION, V5_SAVE_KEY, clearSave, loadSave, newSave, writeSave, type KV,
+  AVATAR_SUGGESTION_KEY, IMPORT_DONE_KEY, LEGACY_DONE_KEY, LEGACY_SAVE_KEY, SAVE_KEY, SCHEMA_VERSION, V5_SAVE_KEY, clearSave, loadSave, newSave, suggestedAvatar, writeSave, type KV,
 } from '../src/core/save';
 import { clearSave as clearV5, loadSave as loadV5, newSave as newSaveV5, writeSave as writeV5 } from './fixtures/saveV5Client';
 import { GameState } from '../src/core/state';
@@ -19,7 +19,7 @@ const [AGENCE, DAMES] = [tour.stops[0].id, tour.stops[1].id];
 
 /** A v5 player with a bit of everything: money, a lived-in room, a classic delivery in hand, relationships, a wrestler, a fight record. */
 function v5Player(): SaveData {
-  const d = newSaveV5(1000);                                          // what the schema-5 client writes (schemaVersion 5)
+  const d = newSaveV5(1000) as SaveData;                              // what the schema-5 client writes (schemaVersion 5, no avatar)
   d.guestId = 'g-v5-player'; d.wallet = 41_250; d.playedMs = 3_600_000; d.hub = 'pikine';
   d.flags = ['met_ibou', 'reco_modou']; d.beats = { ibou_welcome: 'oui' }; d.rel = { 'ibou|player': 22, 'ablaye|player': 35 };
   d.counters = { livraisons: 9, shifts: 3, chats: 5, combats: 2, [`tiak_trust_${AGENCE}`]: 2 };
@@ -32,7 +32,7 @@ function v5Player(): SaveData {
   return d;
 }
 /** The older client plays: it loads from its own key and saves into it. */
-const olderClientPlays = (s: KV, change: (d: SaveData) => void) => { const d = loadV5(s)!; change(d); writeV5(s, d); };
+const olderClientPlays = (s: KV, change: (d: SaveData) => void) => { const d = loadV5(s)! as SaveData; change(d); writeV5(s, d); };
 const written = (s: KV, d: SaveData) => { expect(writeSave(s, d)).toBe(true); };
 
 describe('v5 → v6: a one-time migration that keeps everything and never touches the v5 key', () => {
@@ -214,5 +214,49 @@ describe('corrupt, unreadable and newer saves', () => {
     const m = new Map<string, string>(); const v5 = JSON.stringify(v5Player()); m.set(V5_SAVE_KEY, v5);
     const full: KV = { getItem: k => m.get(k) ?? null, setItem: () => { throw new Error('QuotaExceededError'); }, removeItem: k => { m.delete(k); } };
     expect(loadSave(full)!.wallet).toBe(41_250); expect(m.has(SAVE_KEY)).toBe(false); expect(m.get(V5_SAVE_KEY)).toBe(v5);
+  });
+});
+
+describe('the Meshy avatar lane: its save field is carried, never silently dropped (claude/lucid-cori-60vlgt adds `avatar`)', () => {
+  const withAvatar = (schemaVersion: number, avatar: unknown) => JSON.stringify({ schemaVersion, guestId: 'g-avatar', wallet: 900, playedMs: 1000, hub: 'pikine', avatar });
+  it('a legacy save (the key that lane wrote), a v5 save and a v6 save keep the chosen model through the migration', () => {
+    for (const [key, v] of [[LEGACY_SAVE_KEY, 3], [V5_SAVE_KEY, 5], [SAVE_KEY, 6]] as const) {
+      const s = mem(); s.setItem(key, withAvatar(v, 'femme'));
+      const d = loadSave(s)!; expect(`${key} ${d.avatar}`).toBe(`${key} femme`); expect(d.guestId).toBe('g-avatar');
+      expect(JSON.parse(s.getItem(SAVE_KEY)!).avatar).toBe('femme');                  // and the v6 key holds it from the first write
+    }
+  });
+  it('a save without it (or with something unknown) gets the default model; the rest is untouched', () => {
+    for (const a of [undefined, 'robot', 3, null]) { const s = mem(); s.setItem(LEGACY_SAVE_KEY, withAvatar(3, a)); const d = loadSave(s)!; expect(d.avatar).toBe('homme'); expect(d.wallet).toBe(900); }
+  });
+  it('the choice survives write → reload; a New Game starts with the default look and only SUGGESTS the previous one', () => {
+    const s = mem(); const d = newSave(); d.avatar = 'femme'; d.guestId = 'g-keep'; d.wallet = 77_000; d.flags.push('regular_mamadou'); written(s, d);
+    expect(loadSave(s)!.avatar).toBe('femme'); expect(loadSave(s)!.guestId).toBe('g-keep');
+    expect(suggestedAvatar(s)).toBeNull();                                                      // nothing is suggested while the game goes on
+    clearSave(s); expect(loadSave(s)).toBeNull();
+    expect(suggestedAvatar(s)).toBe('femme');                                                  // the previous choice, offered…
+    const fresh = newSave();
+    expect(fresh.avatar).toBe('homme');                                                        // …never imposed: the new game has the default look
+    expect(fresh.wallet).toBe(3000); expect(fresh.flags).toEqual([]); expect(fresh.guestId).not.toBe('g-keep');
+    written(s, fresh); expect(loadSave(s)!.avatar).toBe('homme');                              // until the player confirms or chooses again (the picker's job)
+    expect(suggestedAvatar(s)).toBe('femme');                                                  // the suggestion stays until the next New Game replaces it
+  });
+  it('an unreadable or invalid suggestion record, or no storage: no suggestion; the previous avatar is whatever the save held (the default included)', () => {
+    const s = mem(); written(s, newSave()); clearSave(s); expect(suggestedAvatar(s)).toBe('homme');
+    for (const raw of ['{oops', JSON.stringify({ avatar: 'robot' }), 'null', '{}']) { const t = mem(); t.setItem(AVATAR_SUGGESTION_KEY, raw); expect(suggestedAvatar(t)).toBeNull(); }
+    expect(suggestedAvatar(null)).toBeNull();
+  });
+  it('a second New Game before any save keeps the suggestion, and a full storage never throws', () => {
+    const s = mem(); const d = newSave(); d.avatar = 'femme'; written(s, d);
+    clearSave(s); clearSave(s);                                                                 // nothing to read the second time: the suggestion stays
+    expect(suggestedAvatar(s)).toBe('femme');
+    const m = new Map<string, string>([[SAVE_KEY, JSON.stringify(d)]]);
+    const full: KV = { getItem: k => m.get(k) ?? null, setItem: () => { throw new Error('QuotaExceededError'); }, removeItem: k => { m.delete(k); } };
+    expect(() => clearSave(full)).not.toThrow();
+  });
+  it('the device-level identity of the player (the presence profile: name and look) and the chat key are not touched by a migration or a New Game', () => {
+    const s = mem(); s.setItem('dakarrek.presence.profile', '{"name":"Awa","look":3}'); s.setItem('dakarrek.chat.key', 'k'.repeat(32));
+    s.setItem(V5_SAVE_KEY, withAvatar(5, 'femme')); loadSave(s); clearSave(s);
+    expect(s.getItem('dakarrek.presence.profile')).toBe('{"name":"Awa","look":3}'); expect(s.getItem('dakarrek.chat.key')).toBe('k'.repeat(32));
   });
 });

@@ -49,6 +49,8 @@ export interface RowOptions {
   onPick: () => void;
   /** Called instead of `onPick` when a disabled row is tapped (the sheet shakes it and says why). */
   onDeny?: (row: HTMLElement) => void;
+  /** The price this row replaces, struck through before `price`. */
+  was?: string;
 }
 
 /** A one-line action row: line icon, label (and the objective star), the price, a chevron. Keeps the sheet's `.item` hook. */
@@ -63,6 +65,7 @@ export function shopRow(o: RowOptions): HTMLButtonElement {
   tx.append(el('span', 'lb', o.label));
   if (o.objective) tx.append(starEl());
   b.append(tx);
+  if (o.was) { const w = el('s', 'ui-was', o.was); w.setAttribute('aria-label', 'avant ' + o.was); b.append(w); }
   if (o.price) b.append(priceTag(o.price));
   const ch = glyphEl('chevron'); if (ch) { const w = el('span', 'ui-chev'); w.append(ch); b.append(w); }
   if (o.selected) b.setAttribute('aria-current', 'true');

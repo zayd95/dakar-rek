@@ -1,5 +1,5 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, TourRun, WrestlerLook } from './types';
-import { ACTIVITY_IDS, HUB_IDS } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, TourRun, WrestlerLook } from './types';
+import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
 
@@ -16,6 +16,12 @@ export const LEGACY_SAVE_KEY = 'dakarrek.guest.save';
 export const LEGACY_DONE_KEY = 'dakarrek.guest.save.legacy';
 /** Written by this client at a New Game (`declined`): the older saves (v5 and legacy) are not imported again. It lives in v6's own namespace. */
 export const IMPORT_DONE_KEY = 'dakarrek.guest.save.v6.import';
+/**
+ * A New Game starts with the default look, but remembers which avatar the player had chosen as a SUGGESTION: it is written here at a New
+ * Game (v6's own namespace; older clients never read it) and read back with `suggestedAvatar`. Nothing applies it: whoever offers the
+ * choice of look (the Meshy avatar lane's picker) shows it pre-selected, and the player confirms it or chooses again.
+ */
+export const AVATAR_SUGGESTION_KEY = 'dakarrek.guest.save.v6.avatar-suggestion';
 export const SCHEMA_VERSION = 6;
 /** Wallet history entries kept in the save, and completed delivery ids remembered (no double payment). */
 export const LEDGER_MAX = 100;
@@ -40,10 +46,15 @@ export function newSave(now = Date.now()): SaveData {
   return {
     schemaVersion: SCHEMA_VERSION, guestId: newGuestId(), createdAt: now, savedAt: now, playedMs: 0,
     hub: 'pikine', x: 0, z: 0, yaw: 0, wallet: 3000, needs: { ...START_NEEDS }, counters: {},
-    rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] },
+    rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
     assets: newAssets(0), inventory: {}, career: newCareer(),
   };
+}
+
+/** The avatar the player had chosen before their last New Game, to offer again as a pre-selected suggestion (null: none, or unreadable). */
+export function suggestedAvatar(store: KV | null): Avatar | null {
+  try { const r = JSON.parse(store?.getItem(AVATAR_SUGGESTION_KEY) ?? 'null') as { avatar?: unknown } | null; return AVATARS.includes(r?.avatar as Avatar) ? r!.avatar as Avatar : null; } catch { return null; }
 }
 
 /** Asset state of a new game: only the starter room, where the player lives. */
@@ -111,6 +122,8 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     flags: Array.isArray(r.flags) ? (r.flags as unknown[]).filter((f): f is string => typeof f === 'string').slice(0, 500) : [],
     beats,
     wrestler: wrestlerOf(r.wrestler),
+    // cosmetic city player model (additive, no version change: a save without it gets the default)
+    avatar: AVATARS.includes(r.avatar as Avatar) ? (r.avatar as Avatar) : base.avatar,
     // v2 -> v3: wallet history and deliveries start empty.
     ledger: ledgerOf(r.ledger),
     jobs: jobsOf(r.jobs),
@@ -308,6 +321,10 @@ export function writeSave(store: KV | null, data: SaveData): boolean {
  */
 export function clearSave(store: KV | null) {
   if (!store) return;
+  try {                                                  // remember the chosen look, as a suggestion for the next game (never applied here)
+    const cur = JSON.parse(store.getItem(SAVE_KEY) ?? 'null') as { avatar?: unknown } | null;
+    if (AVATARS.includes(cur?.avatar as Avatar)) store.setItem(AVATAR_SUGGESTION_KEY, JSON.stringify({ avatar: cur!.avatar }));
+  } catch { /* unreadable save or full storage: no suggestion */ }
   let marked = true;
   try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { marked = false; }
   try { store.removeItem(SAVE_KEY); } catch { /* ignore */ }

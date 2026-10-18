@@ -16,6 +16,13 @@ const read = () => document.querySelector('#modal.on') && ({
   featured: document.querySelectorAll('#modal.on .ui-feature, #modal.on .ui-btn').length, buy: /Acheter/.test(document.querySelector('#modal.on').innerText),
   scrolls: (() => { const l = document.querySelector('#modal.on .list'); return l ? getComputedStyle(l).overflowY : ''; })(),
 });
+// closes the sheet: Escape, then the ✕ button if the key was not taken (a key pressed right after the sheet opened can be missed on a slow machine)
+async function shut(page) {
+  for (let i = 0; i < 4 && await page.evaluate(() => !!document.querySelector('#modal.on')); i++) {
+    if (i === 0) await page.keyboard.press('Escape'); else await page.locator('#modal.on .close').first().click({ force: true }).catch(() => {});
+    await page.waitForTimeout(500);
+  }
+}
 async function open(page) {
   await page.evaluate(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T);
@@ -53,13 +60,13 @@ for (const [scene, hour] of [['day', 11], ['night', 22]]) {
   ok(!!star && star.w >= 16 && star.label === 'Objectif en cours', `${scene}: the star is visible and labelled (${JSON.stringify(star)})`);
   if (shots) await page.screenshot({ path: `${shots}/${scene}-objective.png` });
   // 2. objective done (a delivery made): ordinary rows only, no star anywhere
-  await page.keyboard.press('Escape'); await page.waitForTimeout(500);
+  await shut(page);
   await page.evaluate(() => { window.__dakar.state.data.counters.livraisons = 3; });
   m = await open(page);
   ok(m.rows.every(r => !r.star), `${scene}: no star once the objective is done (${m.rows.filter(r => r.star).map(r => r.text)})`);
   if (shots) await page.screenshot({ path: `${shots}/${scene}-ordinary.png` });
   // 3. a disabled row keeps its reason (toast) when tapped
-  await page.keyboard.press('Escape'); await page.waitForTimeout(500);
+  await shut(page);
   await page.evaluate(() => { const d = window.__dakar.state.data; d.wallet = 100; d.needs.energie = 5; });
   m = await open(page);
   const dis = m.rows.filter(r => r.dis);
