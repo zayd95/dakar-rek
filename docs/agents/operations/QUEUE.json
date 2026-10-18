@@ -858,18 +858,14 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-17-2236-AUDIT.md",
-    "checkedAt": "2026-10-17T22:36:59Z",
-    "owner": "producer_audit_2236",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "b566f317948701a6441211d1c7ddf7d3dfa1bb07",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR43-20261017-2236-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-17-2236-AUDIT.md"
-    ],
-    "result": "PR43 independent needs-decision; PR green, push pending; known save defect unchanged"
+    "checkedAt": "2026-10-18T06:29:02Z",
+    "owner": "producer_audit_0629",
+    "sourceHeads": {
+      "pr47": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
+      "pr46": "5234097e3168b13dcf87e632a109e1ebae59ed08"
+    },
+    "result": "unchanged: PR47 push/workers success, PR job failure; PR46 green but old-v5 rollback unresolved; issue45 open unchanged",
+    "nextAction": "Wait for new exact SHA or evidence; no duplicate QA or source work"
   },
   "evidenceReview": {
     "id": "WATCH-20261014-0636-QA",
@@ -2306,7 +2302,7 @@
     "sourceCommit": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
     "baseCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
     "status": "review",
-    "checkedAt": "2026-10-18T05:30:19Z",
+    "checkedAt": "2026-10-18T06:29:02Z",
     "owner": "external session; read only",
     "reviewer": "qa_ui_0528",
     "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
@@ -2354,15 +2350,5 @@
     "verdict": "needs-decision",
     "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
     "completedAt": "2026-10-18T05:30:19Z"
-  },
-  "registryWriter": {
-    "owner": "producer_audit_0629",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "099e86d266f771272aeb13bcba8b2ebcc53eda0c",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-0629-AUDIT.md"
-    ]
   }
 }
