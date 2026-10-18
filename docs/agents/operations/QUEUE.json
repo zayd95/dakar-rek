@@ -2352,5 +2352,27 @@
     "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
     "completedAt": "2026-10-18T05:30:19Z",
     "checkedAt": "2026-10-18T07:28:45Z"
+  },
+  "currentStabilizationWatch": {
+    "id": "STAB-20261018-1335-AUDIT",
+    "status": "active",
+    "owner": "producer_audit_1335",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "0d1cc5b7b4c28d2d4318272527bfa4db5aa0862a",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-18-1335-AUDIT.md"
+    ],
+    "scope": [
+      "Read-only exact PR46 new head and CI",
+      "Recheck PR47, issue45 and protected refs",
+      "Record evidence only; no feature/source/merge/deploy"
+    ],
+    "sourceRefs": {
+      "pr46": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+      "pr47": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e"
+    },
+    "startedAt": "2026-10-18T13:36:55.293Z"
   }
 }
