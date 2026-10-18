@@ -1,5 +1,9 @@
 # Ordinary-bout purses (separate PR, stacked on M1-A)
 
+## Which làmb the numbers come from (read first)
+
+The game's default làmb is the original **sans frappe** (`LAMB2_DEFAULT = false`; Làmb 2.0 « avec frappe » is only on with `?lamb2`). The first set of tables below (`duel-matrix.json`, `stall-matrix.json`) was measured in Làmb 2.0, the one shipped behind the flag. The tables in « Validation in the default làmb » were measured in the default one (`sans-matrix.json`, `DUEL_MATRIX=sans`) and are the ones that apply to the launch candidate. The conclusions hold in both; the figures differ.
+
 ## The change
 
 `purseOf` in `src/career/career.ts`:
@@ -45,6 +49,33 @@ The implemented table is the lighter one: the 5 / 8 / 12 / 17 / 24 k starting hy
 | abandon every bout | 0 |
 
 Draws: none occurred in the duel matrix (40 bouts for each of 72 skill × training × wrestler pairings) or in the stalling matrix (30 for each of 24 pairings), so a draw (paid at factor 1) cannot be farmed. Repeated wins against the same opponents: the purse is a pure function of opponent level and result, so n wins pay n times one win at any rung (tested).
+
+## Validation in the default làmb (sans frappe), and the minimal-input staller
+
+**Real keyboard in the real game** (`scripts/m1a-sim/staller-browser.mjs`, ranked bouts through the game's own flow, 2 bouts per strategy) and **headless** (`staller-check.ts`, 108 bouts per strategy: 3 levels × 3 styles × 12):
+
+| strategy (default làmb) | result | what it paid |
+|---|---|---|
+| no input at all | lost by projection in 6–8 s (browser and headless, 100 %) | the loss purse (3 000 F at level 1) |
+| hold Garde (one key, KeyG), nothing else | **a time-out draw, 90 s, in 100 % of bouts at levels 1, 3 and 5** | the draw purse: 5 000 F (level 1), 6 500 F (level 2): factor 1.0, more than a loss |
+| hold Garde + Dégager in the clinch window | the same draw, 100 % | the same |
+
+In the default làmb nobody wins by guarding: a win needs moving in, timing the grab, guarding the opponent's grab at the right moment and tapping in the clinch (the headless players that do this win 79 % of their bouts; the one that does not cannot win at all). So a win always needs play, but **a guaranteed paid draw needs one held key**: about 255 k F/h when repeated (ritual and 90 s of holding), the jobs' level (net worth ×0.5 to ×1.0 the jobs' at 1 to 20 h), on rung 0 for ever since a draw is not a win (`rankedWins` gates the rungs). It is not above a job and it opens no prestige, but it is an AFK-able income. Options, none implemented, for you to decide: a draw in an ordinary bout pays the loss factor (0.6) when the player never grabbed; or leave it (it is at job level).
+
+In Làmb 2.0 (flag off) the same strategies lose (idle and Garde held: 92–100 % losses, 9–36 s); only the reactive staller of the earlier matrix wins (63–100 % against levels 5 to 1), and it needs expert-level reactions (0.2–0.3 s, 95 % of attacks answered, 90 % of throws countered): meaningful counterplay skill, not minimal input.
+
+**Economics in the default làmb** (`DUEL_MATRIX=sans npx vite-node scripts/m1a-sim/wrestling3-report.ts`: bouts last 4–7 s, so the 55 s ritual is nearly the whole cycle; a decent player wins 79 %). Net worth ÷ the jobs mean at 1 / 2 / 5 / 10 / 20 h, previous rule → implemented:
+
+| player | previous | implemented |
+|---|---|---|
+| casual weekend fighter, novice | ×1.1 / 1.2 / 1.2 / 1.6 / 2.6 | ×1.1 / 1.1 / 1.1 / 1.3 / 1.7 |
+| casual weekend fighter, decent | ×1.3 / 1.3 / 2.6 / 4.1 / 4.6 | ×1.1 / 1.1 / 1.8 / 2.4 / 2.8 |
+| all evening, decent | ×3.6 / 4.4 / 8.6 / 9.5 / 8.3 | ×2.4 / 2.4 / 3.4 / 3.9 / 3.6 |
+| all evening, expert | ×3.9 / 4.8 / 14 / 21 / 22 | ×2.4 / 2.6 / 4.6 / 8.0 / 9.6 |
+| bout grinder, decent | ×102 / 109 / 106 / 79 / 51 | ×8.8 / 8.7 / 8.6 / 6.9 / 5.1 |
+| bout grinder, expert | ×133 / 176 / 249 / 189 / 169 | ×10.7 / 11.8 / 15.5 / 14.3 / 13.9 |
+
+The ordinary-bout loop alone: decent ×155 → ×4.3 the jobs' hourly income, expert ×663 → ×5.7; quick losses from the start ×0.9. Weekend fighters stay viable at every horizon. Over 20 h the decent grinder earns 22.0 M from ordinary bouts, 19.3 M from galas and 4.6 M from titles; the all-evening weekend fighter 2.4 M, 19.1 M and 4.1 M: in the default làmb the prestige income is the same (24.0 M against 23.2 M, it is calendar-limited), and the grinder's extra comes from the ordinary loop (×4.3 the jobs per hour), which is the skill and time premium the owner accepted. The decent player reaches rung 4 and not the belt (the champion, Babacar, a level-5 « costaud », beats the headless decent player every time; the expert reaches rung 5).
 
 ## What this does not solve
 

@@ -31,7 +31,7 @@ for (const [lab, ord] of RULES) {
   console.log('  ' + lab.padEnd(34), 'honest decent', f(d.ord).padEnd(16), 'honest expert', f(e.ord).padEnd(16), 'quick losses after rung 5', f(q5.ord).padEnd(16), 'quick losses from the start', f(q0.ord));
 }
 console.log('\nC. DELIBERATE BEHAVIOURS under the implemented rule (net worth ÷ jobs; ordinary / gala / title income over 20 h)');
-for (const [lab, over] of [['honest grinder, decent', {}], ['pure staller (guards, never attacks)', { behaviour: 'stall' }], ['quick losses from the start', { behaviour: 'quickLoss' }], ['honest to rung 3, then quick losses', { behaviour: 'quickLoss', climbTo: 3 }], ['honest to rung 5, then quick losses', { behaviour: 'quickLoss', climbTo: 5 }], ['abandon every bout', { behaviour: 'abandon' }]] as [string, Partial<WCfg>][]) {
+for (const [lab, over] of [['honest grinder, decent', {}], ['pure staller (guards, never attacks)', { behaviour: 'stall' }], ['holds Garde all round (draw farm, default làmb)', { behaviour: 'holdGuard' }], ['quick losses from the start', { behaviour: 'quickLoss' }], ['honest to rung 3, then quick losses', { behaviour: 'quickLoss', climbTo: 3 }], ['honest to rung 5, then quick losses', { behaviour: 'quickLoss', climbTo: 5 }], ['abandon every bout', { behaviour: 'abandon' }]] as [string, Partial<WCfg>][]) {
   const r = stats({ ...base, ...over, ordinary: 'real' });
   console.log('  ' + lab.padEnd(40), xs(r.nw), `  ord ${fmt(r.ord)} gala ${fmt(r.gala)} title ${fmt(r.title)}  win ${(r.win * 100).toFixed(0)}% rung ${r.rung.toFixed(1)}`);
 }

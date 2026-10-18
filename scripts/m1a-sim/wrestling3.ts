@@ -11,7 +11,7 @@ import { ladderAt, opponentFor, titleBout, beltOf, mainEvent, isFightDay, isTitl
 import { galaBlock } from '../../src/career/roster';
 import { RUNGS } from '../../src/career/career';
 import { fresh, adv, move, maintain, reinvest, nw, doShift, SH, type Cfg } from './lifestyles';
-const MATRIX = JSON.parse(fs.readFileSync(new URL('./duel-matrix.json', import.meta.url), 'utf8')) as Record<string, Record<string, Record<string, { win: number; loss: number; mean: number }>>>;
+const MATRIX = JSON.parse(fs.readFileSync(new URL(process.env.DUEL_MATRIX === 'sans' ? './sans-matrix.json' : './duel-matrix.json', import.meta.url), 'utf8')) as Record<string, Record<string, Record<string, { win: number; loss: number; mean: number }>>>;
 const STALL = JSON.parse(fs.readFileSync(new URL('./stall-matrix.json', import.meta.url), 'utf8')) as Record<string, Record<string, { win: number; loss: number; mean: number }>>;
 const GALA_RUNG = RUNGS.findIndex(r => r.id === 'reputes'), TITLE_RUNG = RUNGS.findIndex(r => r.id === 'contender');
 const PARITY: Record<string, number> = { meca: 3600, meca_conf: 3600, roue: 2150, stock: 2000, courrier: 2250, debarq: 2850, filets: 1450, poisson: 1800, atelier: 1450, vendre: 3400, couture: 1500 };
@@ -27,7 +27,7 @@ export interface WCfg {
    *  rung), or a table by opponent level (a candidate). Galas and titles always use the real `purseOf`. */
   ordinary?: 'real' | 'legacy' | number[];
   /** What the player does in an ordinary bout: honest play (measured duels), deliberate quick losses, abandoning, or a pure stall. */
-  behaviour?: 'honest' | 'quickLoss' | 'abandon' | 'stall'; climbTo?: number;   // behaviour applies once the rank reaches `climbTo` (honest before)
+  behaviour?: 'honest' | 'quickLoss' | 'abandon' | 'stall' | 'holdGuard'; climbTo?: number;   // behaviour applies once the rank reaches `climbTo` (honest before)
   ordPerEvening?: number;             // 'weekend' fighters: ordinary bouts per fight evening (default: as many as fit)
 }
 export interface WRes { nw: Record<number, number>; rungAt: Record<number, number>; src: { ord: number; gala: number; title: number; jobs: number }; n: { ord: number; gala: number; title: number }; win: number; titles: number; rung: number; secsInBouts: number }
@@ -56,6 +56,7 @@ export function run(c: WCfg, minutes: number, phaseHours: number, seed: number, 
     let res: BoutRes, dur: number; const u = rnd();
     if (beh === 'quickLoss') { res = 'D'; dur = 8; }
     else if (beh === 'abandon') { res = 'A'; dur = 15; }
+    else if (beh === 'holdGuard') { res = 'N'; dur = 90; }                     // default làmb: Garde held all round = a time-out draw (staller-check.ts)
     else if (beh === 'stall') { res = u < sm.win ? 'V' : u < sm.win + sm.loss ? 'D' : 'N'; dur = sm.mean * (0.6 + 0.8 * rnd()); }
     else { res = u < m.win ? 'V' : u < m.win + m.loss ? 'D' : 'N'; dur = m.mean * (0.6 + 0.8 * rnd()); }
     adv(s, c.ritual + dur); secsInBouts += c.ritual + dur;
