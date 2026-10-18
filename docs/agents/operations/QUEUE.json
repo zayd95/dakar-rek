@@ -2020,5 +2020,37 @@
       "completedAt": "2026-10-17T23:36:51Z",
       "scope": "Standard push CI verified; targeted economy, quota save safety, physical mobile and full game acceptance remain open"
     }
+  },
+  "registryWriter": {
+    "token": "audit-20261018T0036Z-pay",
+    "owner": "producer_audit_0036",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "90febf2473aaf1fa06829593cd516fb90919f275",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-18-0036-AUDIT.md",
+      "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md"
+    ],
+    "acquiredAt": "2026-10-18T00:35:37Z"
+  },
+  "currentEconomyPayReview": {
+    "id": "STAB-20261018-0036-PAY-QA",
+    "role": "qa",
+    "owner": "qa_economy_2236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "90febf2473aaf1fa06829593cd516fb90919f275",
+    "controlBriefCommit": "90febf2473aaf1fa06829593cd516fb90919f275",
+    "sourceCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+    "sourceBase": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md"
+    ],
+    "acceptance": [
+      "Review only new pay delta at2c82709, no implementation: amounts source/steps/labels/tests coherent, no schema/save/storage mutation",
+      "Read exact completed push117534389627 and PR117534401394 checkout/tree/types/tests/build/city/online/launch, targeted claims separate",
+      "Retain inherited quota/targeted/device/voluntary session gaps; PR44 pending not approved or copied"
+    ],
+    "status": "active"
   }
 }
