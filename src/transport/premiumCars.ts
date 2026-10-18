@@ -20,8 +20,8 @@ export const SUV_BLACK = 0x1a1b1d, SUV_WHITE = 0xf2f2f0, SUV_GREEN = 0x2f4a33;
 export const berlineSeed = (c = BERLINE_GRAPHITE) => kitSeedFor('luxury', c);
 export const suvSeed = (c = SUV_BLACK) => kitSeedFor('suv', c);
 
-export const BERLINE_DETAIL = 'Climatisée, sièges en cuir · 4 portes · 5 places · se gare où tu la laisses';
-export const SUV_DETAIL = 'Grand, haut, confortable · 5 places · se gare où tu le laisses';
+export const BERLINE_DETAIL = 'Modèle provisoire · 4 portes · 5 places · se gare où tu la laisses';
+export const SUV_DETAIL = 'Modèle provisoire · 5 places · se gare où tu le laisses';
 
 let berlineCache: ReturnType<typeof kitCarSpec> | null = null, suvCache: ReturnType<typeof kitCarSpec> | null = null;
 /** A little faster and softer than the modern sedan. */
