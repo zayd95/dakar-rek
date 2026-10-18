@@ -2191,5 +2191,38 @@
       ]
     },
     "completedAt": "2026-10-18T01:37:02Z"
+  },
+  "registryWriter": {
+    "token": "audit-20261018T0335Z-save46",
+    "owner": "producer_audit_0335",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "9bb9d1e662bc0e75cb314bbc0d6ef48e0dab5995",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-18-0335-AUDIT.md",
+      "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
+    ],
+    "acquiredAt": "2026-10-18T03:34:14Z"
+  },
+  "currentTourSaveQa": {
+    "id": "STAB-20261018-0335-SAVE-QA",
+    "role": "qa",
+    "owner": "qa_economy_2236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "9bb9d1e662bc0e75cb314bbc0d6ef48e0dab5995",
+    "controlBriefCommit": "9bb9d1e662bc0e75cb314bbc0d6ef48e0dab5995",
+    "sourceCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+    "sourceBase": "2c8270978f50f89192ded073321688ce9f87e938",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
+    ],
+    "status": "active",
+    "acceptance": [
+      "Read-only narrow PR46 save/jobs/tour tests: v5 ordinary jobs compatibility, malformed tours, once-only payment/reload and rollback risk",
+      "Do not implement or approve new tour feature; distinguish schema number unchanged from additive data/old-v5 compatibility",
+      "Current exact CI pending must remain pending; inspect completed evidence only; known quota issue remains",
+      "No source/ref edits, Blender/assets/paid/install/Chromium EPERM retry/merge/deploy"
+    ]
   }
 }
