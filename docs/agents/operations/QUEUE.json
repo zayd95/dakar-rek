@@ -1,0 +1,2618 @@
+{
+  "schemaVersion": 1,
+  "order": [
+    "DKAG-007",
+    "DKAG-008",
+    "DKAG-009",
+    "DKAG-010",
+    "DKAG-011",
+    "DKAG-012",
+    "DKAG-013",
+    "DKAG-014",
+    "DKAG-005",
+    "DKAG-015",
+    "DKAG-016",
+    "DKAG-017",
+    "DKAG-018",
+    "DKAG-019"
+  ],
+  "tasks": [
+    {
+      "id": "DKAG-007",
+      "role": "network",
+      "kind": "implementation",
+      "status": "done",
+      "owner": "activation_network",
+      "reviewer": "activation_network_qa",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "branch": "codex/agents/dkag-007-network-handshake",
+      "allowedFiles": [
+        "src/multiplayer/client.ts",
+        "tests/presence-client.test.ts",
+        "docs/agents/reports/DKAG-007-network.md"
+      ],
+      "acceptance": [
+        "8-second per-attempt deadline covers socket never opening or welcome never arriving",
+        "Valid welcome cancels deadline; teardown cancels stale work",
+        "Retry uses existing lifecycle with no duplicate peers and latest position",
+        "Deterministic fake WebSocket/timer regression tests",
+        "Exact-commit existing unit/build/server/network/full-launch CI and independent QA"
+      ],
+      "dependencies": [],
+      "authority": "Current isolated-development authorization, generic client lifecycle fix; no protocol/server/schema change",
+      "sourceCommit": "183311c58185678421a70969371fed625d6347c2",
+      "pullRequest": 11,
+      "ownerState": "completed handoff",
+      "validation": {
+        "independentUnit": {
+          "passed": 42,
+          "total": 42
+        },
+        "independentBuild": "PASS",
+        "independentClientTypecheck": "PASS",
+        "independentServerTypecheck": "PASS",
+        "ciPush": {
+          "id": 37774079135,
+          "status": "completed",
+          "conclusion": "cancelled"
+        },
+        "ciPr": {
+          "id": 37774210307,
+          "jobId": 113300900972,
+          "status": "completed",
+          "conclusion": "success",
+          "independentlyRead": true,
+          "results": {
+            "unit": 42,
+            "network": 17,
+            "aida": 52,
+            "generalGameplay": 58
+          }
+        }
+      },
+      "acceptedScope": "verified isolated candidate, not merged/deployed"
+    },
+    {
+      "id": "DKAG-008",
+      "role": "combat",
+      "kind": "implementation",
+      "status": "done",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "branch": "codex/agents/dkag-008-duel-input-reset",
+      "allowedFiles": [
+        "src/lamb/duel.ts",
+        "src/lamb/duelInput.ts",
+        "tests/duel-input.test.ts",
+        "scripts/check-duel-input.mjs",
+        "docs/agents/reports/DKAG-008-combat.md"
+      ],
+      "acceptance": [
+        "Blur or hidden document releases guard and pending grab inputs",
+        "A fresh key/touch works after return",
+        "Touch cancellation and pointer loss reset guard and visual state",
+        "Editable form input cannot activate fight controls",
+        "Dispose removes listeners; replacement instances do not accumulate handlers",
+        "No combat rules/rewards/phases/animation/network/save changes",
+        "Meaningful deterministic tests and exact-source CI; dedicated browser check if execution available, limitation explicit otherwise"
+      ],
+      "dependencies": [
+        "DKAG-007"
+      ],
+      "verifiedDefect": {
+        "path": "src/lamb/duel.ts",
+        "blob": "992b4dfeceff90a58f8310bf34dd0a75a32bb756",
+        "basis": "producer actual static review, no blur/visibility reset unlike src/core/input.ts"
+      },
+      "owner": "combat_resume_1655",
+      "reviewer": "qa_resume_1655",
+      "ownerState": "completed frozen handoff",
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "sourceCommit": "55def6b14e7cdf47d9ca0e0885a6e5950219c920",
+      "pullRequest": 13,
+      "validation": {
+        "authorUnit": {
+          "passed": 48,
+          "total": 48
+        },
+        "authorBrowser": {
+          "passed": 28,
+          "total": 28,
+          "scope": "real UI/source fixture, not full game or physical phone"
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "ci": {
+          "runs": [
+            {
+              "id": 37813286790,
+              "status": "completed",
+              "conclusion": "success",
+              "event": "pull_request",
+              "sha": "55def6b14e7cdf47d9ca0e0885a6e5950219c920"
+            },
+            {
+              "id": 37813282258,
+              "status": "completed",
+              "conclusion": "success",
+              "event": "push",
+              "sha": "55def6b14e7cdf47d9ca0e0885a6e5950219c920"
+            }
+          ],
+          "readAt": "2026-10-08T17:19:43Z"
+        },
+        "independentQa": "ready candidate after exact source CI",
+        "independentUnit": {
+          "passed": 48,
+          "total": 48
+        },
+        "independentBuild": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBrowser": {
+          "passed": 28,
+          "total": 28,
+          "scope": "actual UI/source fixture, no renderer"
+        }
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-008-combat-review.md",
+      "acceptedScope": "verified isolated candidate; independent local tests and exact source push/PR complete CI; not merged/deployed"
+    },
+    {
+      "id": "DKAG-009",
+      "role": "world",
+      "kind": "compatibility_review",
+      "status": "done",
+      "owner": "world_resume_1655",
+      "inputs": [
+        {
+          "pr": 10,
+          "sha": "e4f1c291117fb61633d169a008823efd59dce19f"
+        },
+        {
+          "pr": 9,
+          "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+        }
+      ],
+      "acceptance": [
+        "Inspect actual navigation/collisions/door anchors and quality rebuild",
+        "Name exact overlapping files and compatibility defects",
+        "Do not recreate city/mosque/ads or mutate their refs"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-009-world.md",
+      "dependencies": [],
+      "ownerState": "completed report handoff",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-009-world.md"
+      ],
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
+    },
+    {
+      "id": "DKAG-010",
+      "role": "gameplay",
+      "kind": "design_review",
+      "status": "done",
+      "inputs": [
+        {
+          "pr": 9,
+          "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+        }
+      ],
+      "acceptance": [
+        "Trace income to food/rest player journey in actual cityContent/main",
+        "Identify one observed comprehension/progression gap",
+        "Produce a bounded playable task with costs/duration/effects/interrupt and reload criteria"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-010-gameplay.md",
+      "dependencies": [],
+      "scope": "design review only; no source edit",
+      "owner": "activation_gameplay",
+      "ownerState": "completed handoff",
+      "inspectedControlCommit": "99ea0da7f200d638c69d7c84333dc9d4cb004ca2",
+      "nextTask": "DKAG-015"
+    },
+    {
+      "id": "DKAG-011",
+      "role": "characters",
+      "kind": "design",
+      "status": "done",
+      "inputs": [
+        {
+          "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+          "paths": [
+            "src/social/cast.ts",
+            "src/social/beats.ts",
+            "src/social/relations.ts"
+          ]
+        }
+      ],
+      "acceptance": [
+        "Inspect actual NPC APIs and anchors",
+        "Prepare one existing NPC routine with objective/reactions and testable consequence",
+        "No new cast or overlapping city edits; French dialogue remains unverified"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-011-characters.md",
+      "dependencies": [],
+      "owner": "characters_resume_1655",
+      "ownerState": "completed report handoff",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-011-characters.md"
+      ],
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
+    },
+    {
+      "id": "DKAG-012",
+      "role": "animation",
+      "kind": "asset_review",
+      "status": "done",
+      "inputs": [
+        {
+          "commit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+          "paths": [
+            "src/lamb/duel.ts",
+            "src/actors/humanoid.ts"
+          ]
+        }
+      ],
+      "acceptance": [
+        "Verify actual asset loader/clip names for Stance Grab Fall_Back Celebrate and fallbacks",
+        "Prepare transition/clipping/scale checks against existing exported assets",
+        "Distinguish metadata inspection from visual playback; no paid generation"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-012-animation.md",
+      "dependencies": [],
+      "owner": "animation_resume_1655",
+      "ownerState": "completed report handoff",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-012-animation.md"
+      ],
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
+    },
+    {
+      "id": "DKAG-013",
+      "role": "culture",
+      "kind": "provenance_review",
+      "status": "done",
+      "inputs": [
+        {
+          "pr": 10,
+          "sha": "e4f1c291117fb61633d169a008823efd59dce19f"
+        },
+        {
+          "pr": 9,
+          "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
+        }
+      ],
+      "acceptance": [
+        "Inspect actual fishing/social/mosque/ads claims and provenance",
+        "Keep mosque optional with no invented religious reward or cultural certification",
+        "List only concrete content requiring human review; do not block unrelated generic fixes"
+      ],
+      "output": "docs/agents/operations/reports/DKAG-013-culture.md",
+      "dependencies": [],
+      "owner": "culture_resume_1655",
+      "ownerState": "completed report handoff",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "allowedFiles": [
+        "docs/agents/operations/reports/DKAG-013-culture.md"
+      ],
+      "controlBriefCommit": "feac8c3da1cefd766f43794133d135ea6a99853e",
+      "acceptedScope": "specialist static/design inspection only; no merged source, human cultural approval, or visual gameplay claim"
+    },
+    {
+      "id": "DKAG-014",
+      "role": "qa",
+      "kind": "review",
+      "status": "done",
+      "target": "DKAG-007",
+      "acceptance": [
+        "Distinct reviewer verifies source diff/tests/exact CI and scope",
+        "Owner cannot accept itself; failures returned to author"
+      ],
+      "dependencies": [
+        "DKAG-007:code-ready"
+      ],
+      "owner": "activation_network_qa",
+      "output": "docs/agents/operations/reports/DKAG-007-network-review.md"
+    },
+    {
+      "id": "DKAG-005",
+      "role": "cloudflare-ops",
+      "kind": "attestation",
+      "status": "blocked",
+      "blocker": "No authenticated Cloudflare tool exposed; active version unknown",
+      "acceptance": [
+        "Read existing Worker active deployment and traffic in connected owner session",
+        "No deploy or public probe required"
+      ],
+      "dependencies": [
+        "authenticated Cloudflare owner access"
+      ]
+    },
+    {
+      "id": "DKAG-015",
+      "role": "gameplay",
+      "kind": "implementation",
+      "status": "done",
+      "sourceCommit": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
+      "proposedBranch": "codex/agents/dkag-015-place-summary",
+      "proposedFiles": [
+        "src/ui/placeSummary.ts",
+        "tests/place-summary.test.ts",
+        "src/main.ts",
+        "scripts/check-city-life.mjs"
+      ],
+      "dependency": null,
+      "acceptance": [
+        "Directory advertises existing job/food/rest capabilities from actual action data",
+        "Show actual cost/duration/effects and disabled reasons, omit invisible actions",
+        "Directory only changes marker: zero wallet/need/counter effect",
+        "Existing income/food/rest economy and save behavior preserved",
+        "Meaningful formatter tests and desktop/touch journey at exact source"
+      ],
+      "culturalStatus": "fictional balance, unverified",
+      "branch": "codex/agents/dkag-015-place-summary",
+      "baseCommit": "84311a716fa722cd20b4e725a72fd15f60511291",
+      "allowedFiles": [
+        "src/ui/placeSummary.ts",
+        "tests/place-summary.test.ts",
+        "src/main.ts",
+        "scripts/check-city-life.mjs",
+        "docs/agents/reports/DKAG-015-gameplay.md"
+      ],
+      "owner": "gameplay_dkag015_1927",
+      "reviewer": "qa_dkag015_ci_2028",
+      "controlBriefCommit": "d9f5c84267c560863c8bdc41d281d17d489c9d9a",
+      "decision": "Producer explicitly commissions separate candidate from exact closed PR9 head 84311a7; current protected wip 4cc788b still has generic directory detail. Only surgical openPlaces formatter integration permitted in main.ts; never copy main.ts from current wip or integrate other session changes. Candidate complements existing city code, not its reimplementation. Integration with Living Dakar deferred to its owner.",
+      "reviewAllowedFiles": [
+        "docs/agents/operations/reports/DKAG-015-gameplay-review.md"
+      ],
+      "reviewReport": "docs/agents/operations/reports/DKAG-015-gameplay-review.md",
+      "ownerState": "verified frozen handoff",
+      "validation": {
+        "authorUnit": {
+          "passed": 33,
+          "total": 33
+        },
+        "authorBuild": "PASS",
+        "authorTypecheck": "PASS",
+        "authorBrowser": "local_not_run: Chromium absent",
+        "ci": {
+          "readAt": "2026-10-11T20:31:00Z",
+          "runs": [
+            {
+              "id": 38168543352,
+              "event": "pull_request",
+              "jobId": 114556077792,
+              "artifactId": 11713311443,
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "0de3c4a7980e413b867603c770dc45dd855ef3d6"
+            },
+            {
+              "id": 38168518669,
+              "event": "push",
+              "jobId": 114556003538,
+              "artifactId": 11713561857,
+              "status": "completed",
+              "conclusion": "cancelled",
+              "sha": "0de3c4a7980e413b867603c770dc45dd855ef3d6",
+              "note": "all assertions including full suite PASS before exact 15-minute workflow timeout; not counted green"
+            }
+          ]
+        },
+        "independentQa": "READY: exact diff, local evidence and complete PR browser CI reviewed independently",
+        "independentUnit": {
+          "passed": 33,
+          "total": 33
+        },
+        "independentTypecheck": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBuild": "PASS",
+        "independentBrowser": {
+          "result": "PASS",
+          "scope": "Playwright Chromium desktop and phone viewport/touch; not physical phone"
+        }
+      },
+      "pullRequest": 19,
+      "acceptedScope": "verified isolated candidate via complete green PR CI and independent QA; not merged/deployed"
+    },
+    {
+      "id": "DKAG-016",
+      "role": "characters",
+      "kind": "implementation",
+      "status": "done",
+      "branch": "codex/agents/dkag-016-ibou-followup",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "allowedFiles": [
+        "src/social/beats.ts",
+        "tests/social.test.ts",
+        "scripts/check-ibou-followup.mjs",
+        "docs/agents/reports/DKAG-016-characters.md"
+      ],
+      "dependencies": [],
+      "authority": "Producer commissions bounded existing-NPC reaction within approved daily-life scope; no main/world/economy/schema/assets edit",
+      "basis": "DKAG-011 design and actual current base API inspected by producer",
+      "acceptance": [
+        "New optional Ibou follow-up requires completed welcome and modou_trust; shifts alone does not unlock it",
+        "Confirmation adds exactly +2 player-Ibou once and persistent completion flag; wallet/needs/counters/other relationships unchanged",
+        "Refusal repeat has zero state effect and keeps beat available",
+        "Direct replay/double call/foreign choice/missing preconditions cannot apply effects; save roundtrip preserves completion",
+        "Existing beats order and Aida/Modou flows preserved; narrowly guard this new beat without unrelated refactor",
+        "Meaningful deterministic tests, exact-source build/typechecks/CI and independent QA; dedicated browser flow if available"
+      ],
+      "culturalStatus": "fictional French dialogue unverified",
+      "decision": "Only beats.ts and tests/social.test.ts modified game sources; disjoint from active combat. Single active code rule remains; dispatch only after combat author handoff.",
+      "owner": "characters_resume_1655",
+      "reviewer": "qa_ibou_1701",
+      "controlBriefCommit": "c089dce66e972d8785208e0cb64055ddb954430f",
+      "ownerState": "verified frozen handoff",
+      "sourceCommit": "a26e90543641c1fe0ef396f8938598de9897940f",
+      "pullRequest": 14,
+      "validation": {
+        "authorUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "authorBrowser": {
+          "passed": 22,
+          "total": 22,
+          "scope": "compiled real menu/save journey with debug positioning desktop/touch"
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "ci": {
+          "runs": [
+            {
+              "id": 37814046695,
+              "event": "pull_request",
+              "artifactId": 11566637617,
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "a26e90543641c1fe0ef396f8938598de9897940f"
+            },
+            {
+              "id": 37814040671,
+              "event": "push",
+              "artifactId": 11567495978,
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "a26e90543641c1fe0ef396f8938598de9897940f"
+            }
+          ],
+          "readAt": "2026-10-08T22:38:00Z"
+        },
+        "independentQa": "verified candidate after exact-source push and PR CI",
+        "independentUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "independentBuild": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBrowser": {
+          "passed": 22,
+          "total": 22,
+          "scope": "compiled game menu/save browser with debug positioning"
+        }
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-016-characters-review.md",
+      "acceptedScope": "verified isolated candidate; independent local validation and exact-source push/PR CI; not merged/deployed"
+    },
+    {
+      "id": "DKAG-017",
+      "role": "animation",
+      "kind": "implementation",
+      "status": "done",
+      "branch": "codex/agents/dkag-017-fall-one-shot",
+      "baseCommit": "0af76c38b152df885c0c27352aa43ac320aa71af",
+      "allowedFiles": [
+        "src/actors/humanoid.ts",
+        "tests/humanoid-animation.test.ts",
+        "scripts/check-fall-animation.mjs",
+        "docs/agents/reports/DKAG-017-animation.md"
+      ],
+      "dependencies": [],
+      "authority": "Producer commissions generic one-shot Fall_Back playback for provisional lamb; no changes to combat outcomes, phases, rig, assets, other clips, packages or workflows",
+      "acceptance": [
+        "Fall_Back plays once and clamps finished action; final pose stable beyond 0.6s through result duration",
+        "Returning Stance then Fall_Back restarts action correctly",
+        "Stance Grab Celebrate retain looping behavior, no save/economy/network changes",
+        "Deterministic mixer regression tests and exact-source build/unit/CI independent QA",
+        "Playback with existing exported asset and both duel outcomes if feasible; disclose static metadata versus visual checks"
+      ],
+      "basis": "DKAG-012 actual clip0.6s looping +0.71mY/+0.90mZ root jump",
+      "decision": "Separate humanoid.ts-only fix, no duel.ts ownership conflict; one active code task remains.",
+      "owner": "animation_resume_1655",
+      "reviewer": "qa_animation_1707",
+      "controlBriefCommit": "e3cdf9ad3c697a51d50bca3766f6ea51364befda",
+      "ownerState": "verified frozen handoff",
+      "sourceCommit": "25bbb40e7882ccbd06e2181689982d0f0085b504",
+      "pullRequest": 15,
+      "validation": {
+        "authorUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "authorBrowser": "PASS both controlled duel outcomes; real GLB and renderer; not phone/visual clipping",
+        "ci": {
+          "runs": [
+            {
+              "id": 37814728980,
+              "event": "pull_request",
+              "artifactId": 11567745850,
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "25bbb40e7882ccbd06e2181689982d0f0085b504"
+            },
+            {
+              "id": 37814723950,
+              "event": "push",
+              "artifactId": 11565944947,
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "25bbb40e7882ccbd06e2181689982d0f0085b504"
+            }
+          ],
+          "readAt": "2026-10-08T22:38:00Z"
+        },
+        "independentQa": "verified candidate after exact-source push and PR CI",
+        "independentUnit": {
+          "passed": 37,
+          "total": 37
+        },
+        "independentBuild": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBrowser": {
+          "result": "PASS",
+          "scope": "real GLB/Three renderer and both controlled duel outcomes; no clipping/physical-phone attestation"
+        }
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-017-animation-review.md",
+      "acceptedScope": "verified isolated candidate; independent local validation and exact-source push/PR CI; not merged/deployed"
+    },
+    {
+      "id": "DKAG-018",
+      "role": "world",
+      "kind": "implementation",
+      "status": "done",
+      "branch": "codex/agents/dkag-018-arena-billboard-offset",
+      "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
+      "allowedFiles": [
+        "src/world/builder.ts",
+        "scripts/check-v1-core.mjs",
+        "docs/agents/reports/DKAG-018-world.md"
+      ],
+      "dependencies": [],
+      "basis": "DKAG-009 exact-source calculation: arena and ad interaction anchors10cm apart; central approach menu changes with10cm movement",
+      "authority": "Producer commissions surgical existing billboard relocation on isolated fork; complements PR10 without duplicating city/mosque/ads code or touching other refs",
+      "decision": "Explicit externalReservation exception for candidate ONLY: base PR10 exact preserving all other blobs, modify only arena billboard transform/approach parameters plus its existing regression script. No PR9/10 integration and no replacement of builder with another head. Recheck current #10 before dispatch; if owner has already fixed defect reconcile instead of duplicate.",
+      "acceptance": [
+        "Arena entrance centerline retains arena menu across nearby approach positions, not billboard",
+        "Billboard and advertising menu remain deliberately reachable away from entry axis",
+        "Chosen lateral placement tested against actual neighboring stalls/stands/poles/barriers, player0.5mclearance",
+        "Desktop/touch and low/medium navigation tests and door/ring framing captures at exact source",
+        "No new ads/rules/global nearest priority/assets/packages/workflows/schema/economy changes; existing mosque and ads suites preserved",
+        "Independent QA and exact-source CI; source/base pinned and draft PR only"
+      ],
+      "culturalStatus": "provisional geometry, no cultural certification",
+      "owner": "world_dkag018_2236",
+      "reviewer": "qa_dkag018_final_0336",
+      "ownerState": "verified frozen handoff",
+      "controlBriefCommit": "8495ac2ebe75aae8e56618ba91dd688ff5123d63",
+      "dispatchBaseVerifiedAt": "2026-10-08T22:38:00Z",
+      "sourceCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+      "pullRequest": 16,
+      "validation": {
+        "authorUnit": {
+          "passed": 34,
+          "total": 34
+        },
+        "authorBuild": "PASS",
+        "authorServerTypecheck": "PASS",
+        "authorBrowser": "container blocked; exact-source CI required",
+        "independentQa": "READY after DKAG-019 exact green push+PR",
+        "ci": {
+          "runs": [
+            {
+              "id": 37856142783,
+              "event": "push",
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+              "artifactId": 11584073506
+            },
+            {
+              "id": 37856146883,
+              "event": "pull_request",
+              "status": "completed",
+              "conclusion": "failure",
+              "sha": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+              "attempts": 2,
+              "jobs": [
+                113580679139,
+                113658491542
+              ],
+              "artifactId": 11584566053
+            }
+          ],
+          "readAt": "2026-10-09T03:47:00Z"
+        }
+      },
+      "correctionAttempts": [
+        {
+          "attempt": 1,
+          "assignedAt": "2026-10-08T22:51:00Z",
+          "scope": [
+            "scripts/check-v1-core.mjs",
+            "docs/agents/reports/DKAG-018-world.md"
+          ],
+          "reason": "replace fixed delay with bounded state-driven navigation; use real touch events; retain assertions",
+          "sourceCommit": "99f24f90aa60413f034607486c1a8bcce871378b",
+          "result": "bounded 3s state-driven keyboard/touch navigation, guaranteed release, real CDP touch events, logs, assertions retained"
+        },
+        {
+          "attempt": 2,
+          "assignedAt": "2026-10-08T23:04:00Z",
+          "scope": [
+            "scripts/check-v1-core.mjs",
+            "docs/agents/reports/DKAG-018-world.md"
+          ],
+          "reason": "wait for post-place nearest recalculation away from expected before movement; retain all movement assertions",
+          "sourceCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+          "result": "post-place wait for nearest != expected before bounded movement; assertions retained"
+        }
+      ],
+      "reviewOutput": "docs/agents/operations/reports/DKAG-018-world-review.md",
+      "reviewAllowedFiles": [
+        "docs/agents/operations/reports/DKAG-018-world-review.md"
+      ],
+      "reviewReport": "docs/agents/operations/reports/DKAG-018-world-review.md",
+      "resolvedBlocker": "DKAG-019 aae476b produced exact same-tree green push and PR CI",
+      "acceptedScope": "verified isolated product candidate via green harness follow-up; not merged/deployed"
+    },
+    {
+      "id": "DKAG-019",
+      "role": "gameplay",
+      "kind": "ci_harness_implementation",
+      "status": "done",
+      "owner": "gameplay_dkag019_resume_0437",
+      "reviewer": "qa_dkag019_resume_0437",
+      "branch": "codex/agents/dkag-019-ci-navigation-determinism",
+      "baseCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
+      "allowedFiles": [
+        "scripts/check-v1-core.mjs",
+        "docs/agents/reports/DKAG-019-ci-navigation.md"
+      ],
+      "dependencies": [
+        "DKAG-018:source-frozen"
+      ],
+      "authority": "Bounded follow-up for reproducible PR-only navigation timeout; no third DKAG-018 correction and no product/workflow/package/schema/asset change",
+      "basis": "PR run 37856146883 failed twice at 3s while exact push run 37856142783 passed same-tree full journey",
+      "acceptance": [
+        "Replace fixed 3s dependency with deterministic bounded navigation compatible with observed slow runner",
+        "Retain >3.5m movement threshold and every arena/board assertion",
+        "No product source, workflow, package, schema, asset, priority, economy or cultural change",
+        "Local node/diff/unit/build/typecheck evidence",
+        "Exact same-source push and PR runs both success",
+        "Independent QA reviews diff and logs before DKAG-018 requalification"
+      ],
+      "ownerState": "verified frozen handoff",
+      "controlBriefCommit": "991a52359ad0e634b146654cc6af20a62b085cba",
+      "sourceCommit": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
+      "pullRequest": 18,
+      "validation": {
+        "authorUnit": {
+          "passed": 34,
+          "total": 34
+        },
+        "authorTypecheck": "PASS",
+        "authorBuild": "PASS",
+        "authorNodeCheck": "PASS",
+        "authorDiffCheck": "PASS",
+        "authorBrowser": "local_not_run: Chrome absent",
+        "independentQa": "READY",
+        "ci": {
+          "runs": [
+            {
+              "id": 38112260296,
+              "event": "push",
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
+              "jobId": 114390084378,
+              "artifactId": 11692795601
+            },
+            {
+              "id": 38112298129,
+              "event": "pull_request",
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "aae476b2b1868657b0290d12e9bd7c09fcaf89f5",
+              "jobId": 114390204066,
+              "artifactId": 11692825516,
+              "tree": "e27215c3895120a29342287fb1acf7557d0fb4d9"
+            }
+          ],
+          "readAt": "2026-10-11T04:58:00Z"
+        },
+        "independentUnit": {
+          "passed": 34,
+          "total": 34
+        },
+        "independentTypecheck": "PASS",
+        "independentBuild": "PASS",
+        "independentBrowser": "local_not_run: Chrome absent; exact CI used"
+      },
+      "reviewReport": "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md",
+      "reviewAllowedFiles": [
+        "docs/agents/operations/reports/DKAG-019-ci-navigation-review.md"
+      ],
+      "acceptedScope": "verified harness-only candidate; exact same-tree push and PR CI; not merged/deployed"
+    },
+    {
+      "id": "DKAG-020",
+      "role": "gameplay",
+      "kind": "compatibility_implementation",
+      "status": "done",
+      "branch": "codex/agents/dkag-020-place-summary-current",
+      "baseCommit": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
+      "allowedFiles": [
+        "src/ui/placeSummary.ts",
+        "tests/place-summary.test.ts",
+        "src/main.ts",
+        "scripts/check-city-life.mjs",
+        "docs/agents/reports/DKAG-020-gameplay.md"
+      ],
+      "dependencies": [
+        "DKAG-015:verified"
+      ],
+      "basis": "Fresh GitHub inspection of current wip/visual-pass e6c678a on 2026-10-12: openPlaces still exposes only generic paid-service/meeting summary; DKAG-015 exact candidate is based on older closed PR9 and cannot be integrated directly without current-base conflict review.",
+      "authority": "Producer commissions isolated forward-port candidate only. Explicit externalReservation exception for separate branch from exact wip snapshot; never mutate wip/visual-pass or copy unrelated old main.ts. Preserve every current-base blob and behavior except surgical directory formatter integration and exact tests.",
+      "decision": "Fresh base/conflict review: main.ts openPlaces remains generic at e6c678a, no src/ui/placeSummary.ts exists. Port semantics, not old files. Current wip owner remains external; draft PR only, no merge/deploy.",
+      "acceptance": [
+        "Current-base directory advertises existing visible job/food/rest capabilities from actual Action data",
+        "Show actual cost/duration/effects and disabled reasons; omit invisible actions",
+        "Directory selection remains marker-only with zero wallet/need/counter/save effect",
+        "All current-base economy, save, animation, performance and activity behavior preserved",
+        "Meaningful formatter tests plus exact-source desktop/touch CI; independent QA"
+      ],
+      "culturalStatus": "fictional balance and French labels unverified",
+      "owner": "gameplay_dkag020_0128",
+      "reviewer": "qa_dkag020_ci_0236",
+      "controlBriefCommit": "541bc60de5f7fc1da6ce182f729f984bbca849a4",
+      "reviewAllowedFiles": [
+        "docs/agents/operations/reports/DKAG-020-gameplay-review.md"
+      ],
+      "sourceCommit": "9632c7666cf76dbd23a8de4b50d44c31fe85e07e",
+      "ownerState": "completed frozen handoff; independent QA READY with exact CI reconciliation",
+      "validation": {
+        "authorUnit": {
+          "passed": 128,
+          "total": 128
+        },
+        "authorFormatter": {
+          "passed": 6,
+          "total": 6
+        },
+        "authorTypecheck": "PASS",
+        "authorServerTypecheck": "PASS",
+        "authorBuild": "PASS",
+        "authorNodeCheck": "PASS",
+        "authorDiffCheck": "PASS",
+        "authorBrowser": "local_not_run: browser reserved to exact CI",
+        "ci": {
+          "readAt": "2026-10-12T02:43:00Z",
+          "runs": [
+            {
+              "id": 38192271378,
+              "event": "pull_request",
+              "jobId": 114627363316,
+              "artifactId": 11722366741,
+              "artifactDigest": "sha256:dfef8951f8f892cbfd957cc5628e34c09a2a8a25e33fa2051ae504c6c7d1ad1d",
+              "status": "completed",
+              "conclusion": "success",
+              "sha": "9632c7666cf76dbd23a8de4b50d44c31fe85e07e",
+              "note": "full unit/typecheck/build/check:city/check:online/check:launch success"
+            },
+            {
+              "id": 38192251481,
+              "event": "push",
+              "jobId": 114627304089,
+              "artifactId": 11722455497,
+              "artifactDigest": "sha256:1c54cf161d57e474c7e16d2a9a39bd2644dc020d224c9368e683548b69bb102b",
+              "status": "completed",
+              "conclusion": "failure",
+              "sha": "9632c7666cf76dbd23a8de4b50d44c31fe85e07e",
+              "note": "real TimeoutError 30s in check:city rest wait; online/launch skipped; not counted green"
+            }
+          ]
+        },
+        "independentQa": "READY: exact diff and exact CI logs/artifacts reviewed independently",
+        "independentUnit": {
+          "passed": 128,
+          "total": 128,
+          "filesPassed": 13,
+          "filesTotal": 13
+        },
+        "independentTypecheck": "PASS",
+        "independentServerTypecheck": "PASS",
+        "independentBuild": "PASS",
+        "independentBrowser": {
+          "result": "PASS",
+          "scope": "GitHub Actions Playwright Chromium desktop and phone viewport/touch; not physical phone; local_not_run"
+        }
+      },
+      "pullRequest": 20,
+      "reviewReport": "docs/agents/operations/reports/DKAG-020-gameplay-review.md",
+      "acceptedScope": "verified isolated candidate on exact current Living Dakar base; complete PR CI green and push timing failure explicitly preserved; not merged/deployed"
+    }
+  ],
+  "lastReadOnlyCycle": {
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-1227-AUDIT.md",
+    "checkedAt": "2026-10-18T12:27:33Z",
+    "owner": "producer_audit_1227",
+    "sourceHeads": {
+      "pr47": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
+      "pr46": "5234097e3168b13dcf87e632a109e1ebae59ed08"
+    },
+    "result": "unchanged: PR47 push/workers success, PR job failure; PR46 green but old-v5 rollback unresolved; issue45 open unchanged",
+    "nextAction": "Wait for new exact SHA or evidence; no duplicate QA or source work"
+  },
+  "evidenceReview": {
+    "id": "WATCH-20261014-0636-QA",
+    "role": "qa",
+    "kind": "read_only_evidence_review",
+    "status": "needs-decision",
+    "owner": "qa_wave5_current_0636",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f",
+    "sourceCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+    "allowedFiles": [
+      "docs/agents/operations/reports/WAVE5-20261014-0636-QA.md"
+    ],
+    "acceptance": [
+      "Reconcile true Wave5 scope/integration from current documents and commits",
+      "Read exact current source CI checkout/tests/typechecks/build/browser logs",
+      "Seek exact wave-specific performance/browser reports and final distinct acceptance",
+      "Report ready/needs-decision/blocked with evidence, no self-approval or source edits"
+    ],
+    "authority": "Read-only current-source evidence review; never mutate external refs",
+    "controlBriefCommit": "1a8bea6337179ff86262eb3bb146f185bcbcfb5f",
+    "report": "docs/agents/operations/reports/WAVE5-20261014-0636-QA.md",
+    "completedAt": "2026-10-14T06:41:18Z"
+  },
+  "externalFollowups": [
+    {
+      "pr": 26,
+      "branch": "codex/v4-eye-fit",
+      "sha": "3bde71c40c6f31eed6740a9e5c45628c43a924ed",
+      "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+      "owner": "other session; never mutate",
+      "paths": [
+        "docs/V4_EYE_FIT.md",
+        "docs/screenshots/eyes/after/landscape-close.png",
+        "docs/screenshots/eyes/after/landscape-front.png",
+        "docs/screenshots/eyes/after/landscape-headwrap.png",
+        "docs/screenshots/eyes/after/landscape-profile.png",
+        "docs/screenshots/eyes/after/landscape-quarter.png",
+        "docs/screenshots/eyes/after/portrait-close.png",
+        "docs/screenshots/eyes/after/portrait-front.png",
+        "docs/screenshots/eyes/after/portrait-headwrap.png",
+        "docs/screenshots/eyes/after/portrait-profile.png",
+        "docs/screenshots/eyes/after/portrait-quarter.png",
+        "docs/screenshots/eyes/after/results.json",
+        "docs/screenshots/eyes/before/landscape-close.png",
+        "docs/screenshots/eyes/before/landscape-front.png",
+        "docs/screenshots/eyes/before/landscape-headwrap.png",
+        "docs/screenshots/eyes/before/landscape-profile.png",
+        "docs/screenshots/eyes/before/landscape-quarter.png",
+        "docs/screenshots/eyes/before/portrait-close.png",
+        "docs/screenshots/eyes/before/portrait-front.png",
+        "docs/screenshots/eyes/before/portrait-headwrap.png",
+        "docs/screenshots/eyes/before/portrait-profile.png",
+        "docs/screenshots/eyes/before/portrait-quarter.png",
+        "docs/screenshots/eyes/before/results.json",
+        "docs/screenshots/eyes/perf-low.json",
+        "scripts/shots-eyes.mjs",
+        "src/actors/eyes.ts",
+        "src/actors/humanoid.ts",
+        "tests/eyes.test.ts"
+      ],
+      "ci": "exact check-runs completed success; no independent acceptance performed here"
+    },
+    {
+      "pr": 25,
+      "branch": "codex/mobile-touch-controls",
+      "sha": "4244261b1006430051dd63b5aa4da48d041cbd58",
+      "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+      "owner": "other session; never mutate",
+      "paths": [
+        "docs/MOBILE_TAKEOVER_2026-10-13.md",
+        "docs/screenshots/mobile-controls/after/landscape-face.png",
+        "docs/screenshots/mobile-controls/after/landscape-run-selected.png",
+        "docs/screenshots/mobile-controls/after/landscape-street.png",
+        "docs/screenshots/mobile-controls/after/landscape-thumb-rest.png",
+        "docs/screenshots/mobile-controls/after/portrait-face.png",
+        "docs/screenshots/mobile-controls/after/portrait-run-selected.png",
+        "docs/screenshots/mobile-controls/after/portrait-street.png",
+        "docs/screenshots/mobile-controls/after/portrait-thumb-rest.png",
+        "docs/screenshots/mobile-controls/after/results.json",
+        "docs/screenshots/mobile-controls/after/small-face.png",
+        "docs/screenshots/mobile-controls/after/small-run-selected.png",
+        "docs/screenshots/mobile-controls/after/small-street.png",
+        "docs/screenshots/mobile-controls/after/small-thumb-rest.png",
+        "docs/screenshots/mobile-controls/before/landscape-face.png",
+        "docs/screenshots/mobile-controls/before/landscape-run-selected.png",
+        "docs/screenshots/mobile-controls/before/landscape-street.png",
+        "docs/screenshots/mobile-controls/before/landscape-thumb-rest.png",
+        "docs/screenshots/mobile-controls/before/portrait-face.png",
+        "docs/screenshots/mobile-controls/before/portrait-run-selected.png",
+        "docs/screenshots/mobile-controls/before/portrait-street.png",
+        "docs/screenshots/mobile-controls/before/portrait-thumb-rest.png",
+        "docs/screenshots/mobile-controls/before/results.json",
+        "docs/screenshots/mobile-controls/before/small-face.png",
+        "docs/screenshots/mobile-controls/before/small-run-selected.png",
+        "docs/screenshots/mobile-controls/before/small-street.png",
+        "docs/screenshots/mobile-controls/before/small-thumb-rest.png",
+        "docs/screenshots/mobile-controls/perf-low.json",
+        "scripts/check-mobile-controls.mjs",
+        "src/core/stick.ts"
+      ],
+      "ci": "exact check-runs completed success; no independent acceptance performed here"
+    }
+  ],
+  "externalReconciliation": {
+    "pr": 28,
+    "branch": "claude/reconcile-candidate",
+    "sha": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
+    "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+    "owner": "other session; never mutate",
+    "checkedAt": "2026-10-14T14:36:47Z",
+    "ci": [
+      {
+        "id": 115555018390,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/claude-reconcile-candidate/builds/a8444def-fc1c-4c9a-a5b4-5ac1f36f3d1b"
+      },
+      {
+        "id": 115554563645,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/38472406800/job/115554563645"
+      },
+      {
+        "id": 115554529894,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/38472397069/job/115554529894"
+      }
+    ],
+    "reviews": [],
+    "status": "isolated candidate; standard checks green, whole-wave reception not established"
+  },
+  "externalNewCandidates": [
+    {
+      "pr": 34,
+      "branch": "feature/portwise-dakar-spike",
+      "sha": "b3314813f816791a7960aafa3fdd658b10169088",
+      "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+      "title": "Port de Dakar: prototype Portwise / Three.js (opt-in, non-production)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-15T23:36:36Z",
+      "draft": true,
+      "accepted": false,
+      "status": "needs-decision: exact push274>270 and PR online timeout",
+      "checks": [
+        {
+          "id": 116717083531,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-portwise-dakar-spike/builds/4e8907bf-cee8-404d-80da-93d6b3fd468f"
+        },
+        {
+          "id": 116716682261,
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38820812280/job/116716682261"
+        },
+        {
+          "id": 116716662731,
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38820805996/job/116716662731"
+        }
+      ],
+      "previousFailure": {
+        "sha": "ff01495f0ec3d9582b66af1fdb6619afbbcbc9f7",
+        "jobId": 116231023217,
+        "checkoutSha": "8d55f6f373a1a9e89081e7048de1d962604bba87",
+        "testFilesFailed": 11,
+        "testsFailed": 18,
+        "testsPassed": 1462,
+        "testsSkipped": 2,
+        "error": "TypeError reading window.location.search in src/game/portwiseDakar.ts:145",
+        "logUrl": "https://github.com/zayd95/dakar-rek/actions/runs/38676442076/job/116231023217"
+      },
+      "correctionObserved": "Initial window.location.search regression absent from new runs; PR browser smoke success, push medium draw-call budget failure remains.",
+      "nextAction": "External author/CI reproduces both exact failures, preserves assertions and provides specialized port logs; distinct QA.",
+      "previousSource": "5758fcc78c3422e4f5e7b8269b0128a14d0d8dc0",
+      "previousReview": {
+        "status": "needs-decision",
+        "reviewer": "qa_port_0435",
+        "report": "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
+        "completedAt": "2026-10-15T04:38:53.219Z",
+        "sourceCommit": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+        "local": "local_not_run",
+        "prCI": {
+          "runId": 38678398718,
+          "jobId": 116237130828,
+          "checkoutSha": "9c45a62da6472fba7d172a1c57e76fc98d0501e6",
+          "tree": "ff64cbd41c2bcfdbaf014e0d8d01362eee18d75e",
+          "conclusion": "success",
+          "testsPassed": 1480,
+          "testsSkipped": 2,
+          "browser": "phone/desktop port arrival and opt-out PASS; images not visually reviewed"
+        },
+        "pushCI": {
+          "runId": 38678394215,
+          "jobId": 116237117966,
+          "checkoutSha": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+          "tree": "ff64cbd41c2bcfdbaf014e0d8d01362eee18d75e",
+          "conclusion": "failure",
+          "testsPassed": 1479,
+          "testsFailed": 1,
+          "testsSkipped": 2,
+          "error": "tests/perf.calls.test.ts:34:90; 17:30 medium draw calls 280 > 270; cause not established"
+        },
+        "artifact": {
+          "id": 11948481361,
+          "digest": "sha256:4815c96902cfe4ced13551ceb56928ae8ca78687dd1f5d5aea7638e8662cdc38"
+        },
+        "missing": [
+          "Walk from Plateau, water collision and pedestrian return",
+          "Hub change/return, duplicates and memory",
+          "Port low/medium/high budgets, camera/joystick/minimap",
+          "Physical Android/iPhone and geography review"
+        ]
+      },
+      "review": {
+        "status": "needs-decision",
+        "reviewer": "qa_port_2335",
+        "report": "docs/agents/operations/reports/PR34-20261015-2335-QA.md",
+        "completedAt": "2026-10-15T23:36:36Z",
+        "sourceCommit": "b3314813f816791a7960aafa3fdd658b10169088",
+        "local": "local_not_run",
+        "pushCI": {
+          "runId": 38820805996,
+          "jobId": 116716662731,
+          "checkoutSha": "b3314813f816791a7960aafa3fdd658b10169088",
+          "testsPassed": 1480,
+          "testsFailed": 1,
+          "testsSkipped": 2,
+          "error": "perf.calls.test.ts:34:90; medium17:30 draw calls274>270"
+        },
+        "prCI": {
+          "runId": 38820812280,
+          "jobId": 116716682261,
+          "checkoutSha": "4cba9e11ea699c570f9272fb11d00ca1445cf114",
+          "testsPassed": 1481,
+          "testsSkipped": 2,
+          "typechecks": "success",
+          "build": "success",
+          "portPreview": "phone/desktop arrival+opt-out success",
+          "city": "success",
+          "online": "Timeout30000ms check-multiplayer.mjs:119:11",
+          "launch": "skipped"
+        },
+        "tree": "3277f2004f2709806a22086ca6fbcb5e573b62ce",
+        "artifact": {
+          "id": 12013676255,
+          "digest": "sha256:780f45b7b0a4c9d42483e6e0b231c64135851255f236ea813f66856eeed330d8"
+        },
+        "missing": [
+          "Targeted walk/life/chaloupe execution not in current CI",
+          "Independent hub return/collision/performance and device acceptance"
+        ],
+        "documentationIssues": [
+          "No salary/save mutation claims conflict with1500F action and persistent economic state",
+          "Historical1.6k and new10k triangle budgets unreconciled"
+        ]
+      }
+    },
+    {
+      "pr": 33,
+      "branch": "feature/magic-land",
+      "sha": "e494be1e7d4e466918b81977dbbfbb1bda8b1b71",
+      "baseCommit": "631e3742507dd807acf6ec635721feebb43af056",
+      "title": "Magic Land Lite on the Corniche (preview only)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-15T06:36:39.210Z",
+      "checks": [
+        {
+          "id": 115925714333,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-magic-land/builds/f7ec9815-daea-43bf-8231-eb66e9363ea1"
+        },
+        {
+          "id": 115924766140,
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38585077560/job/115924766140"
+        },
+        {
+          "id": 115924676586,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38585051940/job/115924676586"
+        }
+      ],
+      "accepted": false,
+      "review": {
+        "status": "needs-decision",
+        "reviewer": "qa_pr33_1532",
+        "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
+        "completedAt": "2026-10-14T15:47:13.076Z",
+        "local": {
+          "testsPassed": 1478,
+          "testsSkipped": 2,
+          "testFilesPassed": 120,
+          "typecheck": "success",
+          "build": "success",
+          "magicland": "partial"
+        },
+        "browserSubreview": {
+          "status": "blocked",
+          "reviewer": "qa_pr33_browser_1635",
+          "completedAt": "2026-10-14T16:41:33.651Z",
+          "assertions": 0,
+          "captures": 0,
+          "reason": "Chromium socket() EPERM before page launch",
+          "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
+        }
+      }
+    },
+    {
+      "pr": 32,
+      "branch": "feature/home-editor-ux",
+      "sha": "631e3742507dd807acf6ec635721feebb43af056",
+      "baseCommit": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+      "title": "Furnishing UX on mobile: orbit/zoom camera, drag to place, compact toolbar (preview only)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-14T18:29:11.502Z",
+      "checks": [
+        {
+          "id": 115683879753,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-home-editor-ux/builds/b2a46dbf-d090-48eb-99da-4b4803a615f2"
+        },
+        {
+          "id": 115683566951,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38512380303/job/115683566951"
+        },
+        {
+          "id": 115683555539,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38512376971/job/115683555539"
+        }
+      ],
+      "accepted": false
+    },
+    {
+      "pr": 31,
+      "branch": "feature/tiak-moto",
+      "sha": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+      "baseCommit": "ede516e599a74afe32a76201de10823570e88d85",
+      "title": "Tiak moto: free basic bike, Monter anytime, mobile ride pad, courier box (preview only)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-14T18:29:11.502Z",
+      "checks": [
+        {
+          "id": 115653633113,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/feature-tiak-moto/builds/45e7080c-30c2-4ee2-a6c1-5514be35c7db"
+        },
+        {
+          "id": 115653348930,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38502780812/job/115653348930"
+        },
+        {
+          "id": 115653333382,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38502775781/job/115653333382"
+        }
+      ],
+      "accepted": false
+    },
+    {
+      "pr": 30,
+      "branch": "candidate/busy-map",
+      "sha": "ede516e599a74afe32a76201de10823570e88d85",
+      "baseCommit": "e7a601ef8e658e6e8a077f30a9cfa1e86fb0d7fb",
+      "title": "Test candidate: busy street + dynamic minimap on top of the reconcile candidate (do not merge)",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-14T18:29:11.502Z",
+      "checks": [
+        {
+          "id": 115604961651,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/candidate-busy-map/builds/265e7c08-ffa6-44f7-ac77-4dcfceaec05c"
+        },
+        {
+          "id": 115604288693,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38487412146/job/115604288693"
+        },
+        {
+          "id": 115604273533,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38487407541/job/115604273533"
+        }
+      ],
+      "accepted": false
+    },
+    {
+      "pr": 29,
+      "branch": "codex/reference-character",
+      "sha": "5e953d2edace0fcc99feae722266d536d6a33e3f",
+      "baseCommit": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+      "title": "Preview one reference character with a new rig and natural retargeted motion",
+      "owner": "other session; never mutate or duplicate",
+      "checkedAt": "2026-10-15T23:36:36Z",
+      "checks": [
+        {
+          "id": 116714928061,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://dash.cloudflare.com/6ee24bcf4f369603bc401e53444c9348/workers/services/view/dakar-rek/production/previews/codex-reference-character/builds/4c6a5ffc-8bba-45bb-8c07-016c78273d6b"
+        },
+        {
+          "id": 116714155097,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38820049502/job/116714155097"
+        },
+        {
+          "id": 116714140184,
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/zayd95/dakar-rek/actions/runs/38820044891/job/116714140184"
+        }
+      ],
+      "accepted": false,
+      "previousSource": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+      "status": "review: new shoulder/arm-carriage asset delta; exact checks green, independent current-delta QA pending",
+      "nextAction": "Independent review of3commit asset/motion delta after port incident; older76eb239 review remains historical.",
+      "previousReview": {
+        "status": "needs-decision",
+        "reviewer": "qa_reference_2129",
+        "report": "docs/agents/operations/reports/PR29-20261015-2129-QA.md",
+        "completedAt": "2026-10-15T21:31:11Z",
+        "sourceCommit": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+        "local": "local_not_run",
+        "ci": {
+          "pushRun": 38805192936,
+          "pushJob": 116664100496,
+          "pushCheckout": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+          "prRun": 38805200993,
+          "prJob": 116664148549,
+          "prCheckout": "faaf627b5a429b84728582928ca3166cf3d1ecbd",
+          "tree": "69913d603b56b9da913cb8da9499f704ea88895a",
+          "testsPassed": 1399,
+          "testsSkipped": 2,
+          "testFiles": 110,
+          "typechecks": "success",
+          "build": "success",
+          "browser": "general city/online/launch success; targeted reference scripts absent"
+        },
+        "missing": [
+          "Independent exact-checkout seat-exit/prompts script execution and reviewed captures",
+          "Global art/provenance/physical device acceptance out of delta scope"
+        ]
+      }
+    }
+  ],
+  "evidenceReviewHistory": [
+    {
+      "id": "WATCH-20261013-0028-QA",
+      "role": "qa",
+      "kind": "read_only_evidence_review",
+      "status": "needs-decision",
+      "owner": "qa_wave5_0028",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "5c830d2788ae4b2695120e15fcb86712e154cd9d",
+      "sourceCommit": "146c280168504ab1b963ab64e729bb09c05bfe8a",
+      "allowedFiles": [
+        "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md"
+      ],
+      "acceptance": [
+        "Inspect exact current integration CI logs and scope",
+        "Identify missing wave-specific controls and distinct final acceptance",
+        "No source edits, external ref mutation or self-approval; report evidence gaps honestly"
+      ],
+      "report": "docs/agents/operations/reports/WAVE5-20261013-0028-QA.md",
+      "completedAt": "2026-10-13T00:31:00Z"
+    }
+  ],
+  "externalCandidateReview": {
+    "id": "WATCH-PR33-20261014-1635-BROWSER",
+    "role": "qa",
+    "kind": "read_only_external_candidate_review",
+    "status": "blocked",
+    "owner": "qa_pr33_browser_1635",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "427211bf92f511f7c999e884052756bb712ef5c3",
+    "sourceBranch": "feature/magic-land",
+    "sourceCommit": "e494be1e7d4e466918b81977dbbfbb1bda8b1b71",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR33-20261014-1532-QA.md"
+    ],
+    "acceptance": [
+      "Execute the complete existing check-magicland.mjs at exact SHA in an isolated checkout without changing assertions",
+      "Record every assertion, exit code, browser limitation and capture result",
+      "Reconcile result with existing exact-SHA green/red checks",
+      "Return ready/needs-decision/blocked without source edits or self-approval"
+    ],
+    "authority": "Read-only QA of other-session candidate; never mutate external refs",
+    "controlBriefCommit": "8b9f099c6f39ca0ba46e187bf40fbb1504086ab6",
+    "report": "docs/agents/operations/reports/PR33-20261014-1532-QA.md",
+    "completedAt": "2026-10-14T16:41:33.651Z",
+    "verdict": "blocked",
+    "results": {
+      "localBrowser": "0 assertions; 0 captures; Chromium socket() EPERM",
+      "ci": "unchanged: exact-SHA push success, PR failure, Workers preview success"
+    },
+    "overallVerdict": "needs-decision",
+    "nextOwner": "PR33 author/CI owner",
+    "nextAction": "Run unchanged check-magicland.mjs in a Chromium-compatible runner; archive full outputs and nine captures; independent QA rechecks.",
+    "lastReconciledAt": "2026-10-15T22:27:07Z"
+  },
+  "externalPortCandidateReview": {
+    "id": "WATCH-PR34-20261015-0435-QA",
+    "role": "qa",
+    "kind": "read_only_external_candidate_review",
+    "status": "needs-decision",
+    "owner": "qa_port_0435",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
+    "sourceBranch": "feature/portwise-dakar-spike",
+    "sourceCommit": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR34-20261015-0435-QA.md"
+    ],
+    "controlBriefCommit": "4094beaea361ad476cfeaa8cc3df5054b9d5cfb1",
+    "acceptance": [
+      "Read exact diff, document criteria, actual push/PR checkout/logs and artifacts metadata.",
+      "Determine whether original 18-test regression is fixed and classify present red CI.",
+      "Review opt-in/opt-out, scene lifecycle, collision and host restriction test coverage; do not claim browser tests from screenshots you have not seen.",
+      "Return independent ready/needs-decision/blocked report with exact evidence and limits; no source edits, CI changes, external refs or local browser retry."
+    ],
+    "completedAt": "2026-10-15T04:38:53.219Z",
+    "report": "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
+    "verdict": "needs-decision",
+    "results": {
+      "status": "needs-decision",
+      "reviewer": "qa_port_0435",
+      "report": "docs/agents/operations/reports/PR34-20261015-0435-QA.md",
+      "completedAt": "2026-10-15T04:38:53.219Z",
+      "sourceCommit": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+      "local": "local_not_run",
+      "prCI": {
+        "runId": 38678398718,
+        "jobId": 116237130828,
+        "checkoutSha": "9c45a62da6472fba7d172a1c57e76fc98d0501e6",
+        "tree": "ff64cbd41c2bcfdbaf014e0d8d01362eee18d75e",
+        "conclusion": "success",
+        "testsPassed": 1480,
+        "testsSkipped": 2,
+        "browser": "phone/desktop port arrival and opt-out PASS; images not visually reviewed"
+      },
+      "pushCI": {
+        "runId": 38678394215,
+        "jobId": 116237117966,
+        "checkoutSha": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+        "tree": "ff64cbd41c2bcfdbaf014e0d8d01362eee18d75e",
+        "conclusion": "failure",
+        "testsPassed": 1479,
+        "testsFailed": 1,
+        "testsSkipped": 2,
+        "error": "tests/perf.calls.test.ts:34:90; 17:30 medium draw calls 280 > 270; cause not established"
+      },
+      "artifact": {
+        "id": 11948481361,
+        "digest": "sha256:4815c96902cfe4ced13551ceb56928ae8ca78687dd1f5d5aea7638e8662cdc38"
+      },
+      "missing": [
+        "Walk from Plateau, water collision and pedestrian return",
+        "Hub change/return, duplicates and memory",
+        "Port low/medium/high budgets, camera/joystick/minimap",
+        "Physical Android/iPhone and geography review"
+      ]
+    },
+    "nextOwner": "PR34 author/CI owner",
+    "nextAction": "PR34 external author diagnoses exact push draw-call budget failure; retain independent needs-decision. PR33 browser/PR failure and Wave5 acceptance remain with owners.",
+    "lastReconciledAt": "2026-10-15T22:27:07Z"
+  },
+  "externalReferenceCandidateReview": {
+    "id": "WATCH-PR29-20261015-2129-QA",
+    "role": "qa",
+    "kind": "read_only_external_delta_review",
+    "status": "needs-decision",
+    "owner": "qa_reference_2129",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
+    "sourceBranch": "codex/reference-character",
+    "sourceCommit": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+    "previousSource": "4ef13226e2829d65ea1a6916f9e2532e990d3880",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR29-20261015-2129-QA.md"
+    ],
+    "controlBriefCommit": "2bddd0d36450a41d7dace33feb3cade699ed0e2a",
+    "acceptance": [
+      "Inspect two new commits seat-exit and prompt overlap at exact current SHA",
+      "Read exact current push/PR checkout, tests/typechecks/build/browser logs; distinguish default CI from opt-in reference scripts",
+      "Audit author JSON/script evidence for seat ownership/interruption/travel/contact and label overlap/touch, no unviewed screenshot claim",
+      "Return bounded ready/needs-decision/blocked report with specific evidence gaps; no source edits or local Chromium retry"
+    ],
+    "report": "docs/agents/operations/reports/PR29-20261015-2129-QA.md",
+    "completedAt": "2026-10-15T21:31:11Z",
+    "verdict": "needs-decision",
+    "results": {
+      "status": "needs-decision",
+      "reviewer": "qa_reference_2129",
+      "report": "docs/agents/operations/reports/PR29-20261015-2129-QA.md",
+      "completedAt": "2026-10-15T21:31:11Z",
+      "sourceCommit": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+      "local": "local_not_run",
+      "ci": {
+        "pushRun": 38805192936,
+        "pushJob": 116664100496,
+        "pushCheckout": "76eb239af5fc7ae391dc06ba8bc391acf91e055e",
+        "prRun": 38805200993,
+        "prJob": 116664148549,
+        "prCheckout": "faaf627b5a429b84728582928ca3166cf3d1ecbd",
+        "tree": "69913d603b56b9da913cb8da9499f704ea88895a",
+        "testsPassed": 1399,
+        "testsSkipped": 2,
+        "testFiles": 110,
+        "typechecks": "success",
+        "build": "success",
+        "browser": "general city/online/launch success; targeted reference scripts absent"
+      },
+      "missing": [
+        "Independent exact-checkout seat-exit/prompts script execution and reviewed captures",
+        "Global art/provenance/physical device acceptance out of delta scope"
+      ]
+    },
+    "nextOwner": "PR29 author / authorized browser runner then distinct QA"
+  },
+  "externalPortDeltaReview": {
+    "id": "WATCH-PR34-20261015-2335-QA",
+    "role": "qa",
+    "kind": "read_only_external_delta_review",
+    "status": "needs-decision",
+    "owner": "qa_port_2335",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "1da43f63d6777ec2ab5829abaadbb8ead59ffd68",
+    "sourceBranch": "feature/portwise-dakar-spike",
+    "sourceCommit": "b3314813f816791a7960aafa3fdd658b10169088",
+    "previousSource": "58822b59cc33f3f833ce69928b1d06d59f2e951e",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR34-20261015-2335-QA.md"
+    ],
+    "controlBriefCommit": "1da43f63d6777ec2ab5829abaadbb8ead59ffd68",
+    "acceptance": [
+      "Read exact push/PR failed logs and checkouts; classify failures without guessing",
+      "Inspect port delta models/quay/ferry and walk/preview checks, compare prior280>270 status honestly",
+      "Return reproducible blockers and next external owner; no source edits, local Chromium retry or self-approval"
+    ],
+    "report": "docs/agents/operations/reports/PR34-20261015-2335-QA.md",
+    "completedAt": "2026-10-15T23:36:36Z",
+    "verdict": "needs-decision",
+    "results": {
+      "status": "needs-decision",
+      "reviewer": "qa_port_2335",
+      "report": "docs/agents/operations/reports/PR34-20261015-2335-QA.md",
+      "completedAt": "2026-10-15T23:36:36Z",
+      "sourceCommit": "b3314813f816791a7960aafa3fdd658b10169088",
+      "local": "local_not_run",
+      "pushCI": {
+        "runId": 38820805996,
+        "jobId": 116716662731,
+        "checkoutSha": "b3314813f816791a7960aafa3fdd658b10169088",
+        "testsPassed": 1480,
+        "testsFailed": 1,
+        "testsSkipped": 2,
+        "error": "perf.calls.test.ts:34:90; medium17:30 draw calls274>270"
+      },
+      "prCI": {
+        "runId": 38820812280,
+        "jobId": 116716682261,
+        "checkoutSha": "4cba9e11ea699c570f9272fb11d00ca1445cf114",
+        "testsPassed": 1481,
+        "testsSkipped": 2,
+        "typechecks": "success",
+        "build": "success",
+        "portPreview": "phone/desktop arrival+opt-out success",
+        "city": "success",
+        "online": "Timeout30000ms check-multiplayer.mjs:119:11",
+        "launch": "skipped"
+      },
+      "tree": "3277f2004f2709806a22086ca6fbcb5e573b62ce",
+      "artifact": {
+        "id": 12013676255,
+        "digest": "sha256:780f45b7b0a4c9d42483e6e0b231c64135851255f236ea813f66856eeed330d8"
+      },
+      "missing": [
+        "Targeted walk/life/chaloupe execution not in current CI",
+        "Independent hub return/collision/performance and device acceptance"
+      ],
+      "documentationIssues": [
+        "No salary/save mutation claims conflict with1500F action and persistent economic state",
+        "Historical1.6k and new10k triangle budgets unreconciled"
+      ]
+    },
+    "nextOwner": "PR34 external author / CI"
+  },
+  "stabilizationReview": {
+    "id": "STAB-20261016-0428-QA",
+    "role": "qa",
+    "kind": "freeze_stabilization_audit",
+    "status": "needs-decision",
+    "owner": "qa_freeze_0428",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
+    "sourceCommits": {
+      "release": "f2335f177f2b8f56b9d3ce3bb83d4e583888b121",
+      "pikine": "0e8fce6ac19257f2b762b608e62c0a35d0a7b67d",
+      "tiak": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+      "candidate": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c"
+    },
+    "allowedFiles": [
+      "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md"
+    ],
+    "controlBriefCommit": "cc53fd046cb4f78068a478a8d706fdb4b9d60a4c",
+    "acceptance": [
+      "Audit exact release/Pikine/Tiak and PR36 CI logs: unit/types/build/city/online/launch vs targeted Pikine scenarios",
+      "Reconcile PR35 actual base without changing it; inspect save/ownership chair regression evidence and candidate fix",
+      "Map requested existing Pikine journeys to actual proofs/gaps; no feature, Blender, local Chromium retry or new asset",
+      "Return independent ready/needs-decision/blocked with demonstrated defects only and next minimal correction owner"
+    ],
+    "report": "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md",
+    "completedAt": "2026-10-16T04:29:50Z",
+    "results": {
+      "verdict": "needs-decision",
+      "reviewer": "qa_freeze_0428",
+      "report": "docs/agents/operations/reports/FREEZE-20261016-0428-QA.md",
+      "completedAt": "2026-10-16T04:29:50Z",
+      "sourceCommits": {
+        "release": "f2335f177f2b8f56b9d3ce3bb83d4e583888b121",
+        "pikine": "0e8fce6ac19257f2b762b608e62c0a35d0a7b67d",
+        "tiak": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+        "candidate": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c"
+      },
+      "local": "local_not_run",
+      "candidate": {
+        "sha": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c",
+        "testsPassed": 1482,
+        "testsSkipped": 2,
+        "testFiles": 121,
+        "serverTypes": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success",
+        "pushJob": 116785582387,
+        "prJob": 116785715592,
+        "prCheckout": "6b2c7dddf12fe5891a44a2cfb86fb160ee6f8d3b",
+        "tree": "d8471bb8a1a7a716dff216e48f3dc886eb3fbe67"
+      },
+      "gaps": [
+        "Exact-source logs ownership/oldsave migration/chair",
+        "Exact-source targeted Pikine gare/mosque/rain logs",
+        "Physical mobile and full wave5 acceptance not established"
+      ],
+      "demonstratedNewSourceBugs": [],
+      "pr35": {
+        "actualBase": "feature/tiak-moto",
+        "oldWrongBaseCorrected": true,
+        "draft": true
+      },
+      "nextOwner": "candidate owner / authorized test runner then distinct QA"
+    },
+    "nextAction": "Under functional freeze, obtain existing ownership/Pikine targeted scripts logs at0966eea94 exact; distinct review. No feature/Blender/new asset or patch without demonstrated failure.",
+    "lastReconciledAt": "2026-10-16T12:39:38Z"
+  },
+  "currentRegressionReview": {
+    "id": "STAB-20261016-1237-QA",
+    "role": "qa",
+    "kind": "regression_delta_review",
+    "status": "done",
+    "owner": "qa_ground_1237",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
+    "controlBriefCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
+    "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+    "previousSourceCommit": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR29-20261016-1237-QA.md"
+    ],
+    "acceptance": [
+      "Review exact ground cache/runtime/regression tests and before/after author evidence; no invented browser visual review",
+      "Read both exact CI checkout/logs types/build/city/online/launch; distinguish general technical vs numeric fix vs full candidate",
+      "No Blender, feature/source mutation, local Chromium retry; return ready-limited or needs-decision with demonstrated issues and remaining gaps"
+    ],
+    "completedAt": "2026-10-16T12:39:38Z",
+    "result": {
+      "status": "ready-limited-delta",
+      "reviewer": "qa_ground_1237",
+      "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+      "report": "docs/agents/operations/reports/PR29-20261016-1237-QA.md",
+      "completedAt": "2026-10-16T12:39:38Z",
+      "scope": "Numerical ground index and three unit regressions; no independent visual contact, global art/device/public launch acceptance",
+      "local": "local_not_run",
+      "ci": {
+        "pushRun": 38891979435,
+        "pushJob": 116943413420,
+        "pushCheckout": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+        "prRun": 38891987563,
+        "prJob": 116943438556,
+        "prCheckout": "9b7dfa3dcbf22a546c60a16c081e89537e3a511f",
+        "tree": "2c6139be45b98694a2a2af88da3fcf80e952e711",
+        "testsPassed": 1406,
+        "testsSkipped": 2,
+        "testFiles": 111,
+        "groundTests": 3,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "targetedEvidence": "Author JSON inspected; no execution SHA embedded, no independent browser replay/captures viewed"
+    }
+  },
+  "pendingExternalRegressionReview": {
+    "pr": 29,
+    "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+    "owner": "external author owns source; producer resumes exact CI then distinct QA",
+    "status": "review",
+    "baseCommit": "a918c051cfa4933cd02d1bbd46fe2af65346c60d",
+    "checks": [
+      {
+        "id": 116943857037,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/runs/116943857037"
+      },
+      {
+        "id": 116943438556,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/38891987563/job/116943438556"
+      },
+      {
+        "id": 116943413420,
+        "status": "in_progress",
+        "conclusion": null,
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/38891979435/job/116943413420"
+      }
+    ],
+    "nextAction": "Independent targeted browser run with SHA and visual/mobile cache performance acceptance, no feature/source mutation for proof gap",
+    "ci": "completed success",
+    "review": {
+      "status": "ready-limited-delta",
+      "reviewer": "qa_ground_1237",
+      "sourceCommit": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+      "report": "docs/agents/operations/reports/PR29-20261016-1237-QA.md",
+      "completedAt": "2026-10-16T12:39:38Z",
+      "scope": "Numerical ground index and three unit regressions; no independent visual contact, global art/device/public launch acceptance",
+      "local": "local_not_run",
+      "ci": {
+        "pushRun": 38891979435,
+        "pushJob": 116943413420,
+        "pushCheckout": "ecbe6296eee8b476a6d6384326904cbe122352d3",
+        "prRun": 38891987563,
+        "prJob": 116943438556,
+        "prCheckout": "9b7dfa3dcbf22a546c60a16c081e89537e3a511f",
+        "tree": "2c6139be45b98694a2a2af88da3fcf80e952e711",
+        "testsPassed": 1406,
+        "testsSkipped": 2,
+        "testFiles": 111,
+        "groundTests": 3,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "targetedEvidence": "Author JSON inspected; no execution SHA embedded, no independent browser replay/captures viewed"
+    }
+  },
+  "producerAudit": {
+    "owner": "producer_audit_1237",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "74b5a9f28d621b53cbb30ab660a923a6c9d7859c",
+    "allowedFiles": [
+      "docs/agents/operations/reports/FINISHED-LOTS-20261016.md"
+    ],
+    "status": "proposals_complete_awaiting_user_approval",
+    "completedAt": "2026-10-16T12:39:38Z",
+    "report": "docs/agents/operations/reports/FINISHED-LOTS-20261016.md",
+    "implementationAuthorized": false,
+    "proposedLots": [
+      "S0 save/ownership",
+      "A1 existing arena",
+      "M1 Magic Land Lite",
+      "T1 transport/Tiak",
+      "V1 daily life",
+      "E1 economy/home",
+      "L1 social venues",
+      "P1 port only if retained"
+    ]
+  },
+  "currentSaveReview": {
+    "id": "STAB-20261016-1335-QA",
+    "role": "qa",
+    "kind": "save_safety_regression_review",
+    "status": "needs-decision",
+    "owner": "qa_save_1335",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
+    "controlBriefCommit": "5ab7c70cae65c7a1eb007b1334034a1537323aa6",
+    "sourceCommit": "9ce15a51d2d7c5ac10d88eb279813d349bec29e4",
+    "previousSourceCommit": "0966eea94f0dfe0688d4a44fc71f4ad4bb87f73c",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR37-20261016-1335-QA.md"
+    ],
+    "acceptance": [
+      "Review actual key isolation migration/new-game/rollback/full storage/corruption diff and tests at9ce15 exact; preserve v3-v5 save integrity",
+      "Verify actual exact CI checkout/totals and whether targeted save-compat/Pikine/life-loop/economy scripts execute in CI or author-only",
+      "Inspect known failures without treating author baseline claims as independent reproduction; no merge/deploy/source mutation/Blender/local Chromium retry; distinguish technical delta vs full game/public launch"
+    ],
+    "completedAt": "2026-10-16T13:37:44Z",
+    "result": {
+      "status": "needs-decision",
+      "sourceCommit": "9ce15a51d2d7c5ac10d88eb279813d349bec29e4",
+      "reviewer": "qa_save_1335",
+      "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
+      "completedAt": "2026-10-16T13:37:44Z",
+      "local": "local_not_run; extracted clearSave V8 KV control-flow reproduction only",
+      "ci": {
+        "pushRun": 38903243471,
+        "pushJob": 116980397527,
+        "prRun": 38903335007,
+        "prJob": 116980697418,
+        "prCheckout": "3962c5d6be0af1586a87f21d682ee92cb4de9b3d",
+        "tree": "b5ebf148673b7a5928c5e67066039318553586ad",
+        "testsPassed": 1495,
+        "testsSkipped": 2,
+        "testFiles": 122,
+        "saveKeysTests": 13,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "defect": "New Game can delete v5 and resurrect legacy when marker write fails; statically demonstrated, extracted clearSave KV reproduction confirmed",
+      "targetedBrowser": "author claims only; save-compat not invoked in inspected CI",
+      "publicLaunchApproved": false
+    },
+    "lastReconciledAt": "2026-10-18T03:35:23Z"
+  },
+  "saveRegressionProposal": {
+    "id": "SAVE-NEWGAME-QUOTA",
+    "status": "approval_required",
+    "implementationAuthorized": false,
+    "sourceCommit": "9ce15a51d2d7c5ac10d88eb279813d349bec29e4",
+    "owner": "external author, or isolated correction task after explicit approval",
+    "proposedBranch": "codex/agents/save-newgame-quota",
+    "proposedFiles": [
+      "src/core/save.ts",
+      "src/main.ts",
+      "tests/saveKeys.test.ts"
+    ],
+    "criteria": [
+      "Marker write failure must not silently delete current progress then resurrect legacy",
+      "Explicit safe failure behavior before reload; preserve legacy bytes",
+      "Regression missing-marker/quota failure/removal possible, nominal migration and rollback unchanged",
+      "Exact CI and distinct QA at corrected SHA"
+    ],
+    "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
+    "note": "Proposal, not dispatch or file reservation; no automatic implementation",
+    "lastReconciledAt": "2026-10-18T03:35:23Z"
+  },
+  "currentStabilizationDeltaReview": {
+    "id": "STAB-20261017-2135-QA",
+    "role": "qa",
+    "owner": "qa_regressions_2135",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "31b024067f6a5c09bcac44e1676e855d7b60c55a",
+    "controlBriefCommit": "31b024067f6a5c09bcac44e1676e855d7b60c55a",
+    "sourceCommit": "6789c6e2809b2f6476e52e1971fe249cff3d8508",
+    "sourceBase": "8d4f9bc78ec7c6ba59237ffad07407c173b2cc0e",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR41-20261017-2135-QA.md"
+    ],
+    "status": "needs-decision",
+    "acceptance": [
+      "Review PR41 exact diff: blur/visibility guard cleanup, gare costs no double charge, life-loop wait keeps assertions",
+      "Read exact push and PR CI checkout/logs at6789c6e; distinguish general CI versus author targeted script claims",
+      "Identify inheritance of unresolved PR37 quota/save defect without re-alerting old defect; no global acceptance",
+      "Return independent ready-limited/needs-decision/blocked report, no source edits/Blender/browser EPERM retry/install/paid assets/merge/deploy"
+    ],
+    "completedAt": "2026-10-17T21:36:36Z",
+    "result": {
+      "pr": 41,
+      "sourceCommit": "6789c6e2809b2f6476e52e1971fe249cff3d8508",
+      "status": "needs-decision",
+      "reviewer": "qa_regressions_2135",
+      "report": "docs/agents/operations/reports/PR41-20261017-2135-QA.md",
+      "checkedAt": "2026-10-17T21:36:36Z",
+      "ciGeneral": "1510pass/2skip, types/build/city/online/launch; targeted scripts absent",
+      "nextAction": "Exact targeted logs from external author then distinct QA; inherited PR37 quota defect not corrected"
+    }
+  },
+  "pendingEconomyCandidate": {
+    "pr": 43,
+    "branch": "feature/m1a-freedom-economy-20261017",
+    "sourceCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+    "baseCommit": "6789c6e2809b2f6476e52e1971fe249cff3d8508",
+    "status": "review",
+    "owner": "external author; read-only audit",
+    "checkedAt": "2026-10-18T00:36:47Z",
+    "checks": [
+      {
+        "id": 117534596573,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/runs/117534596573"
+      },
+      {
+        "id": 117534401394,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39079852391/job/117534401394"
+      },
+      {
+        "id": 117534389627,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39079848527/job/117534389627"
+      }
+    ],
+    "implementationAuthorized": false,
+    "nextAction": "Keep pay delta limited; external targeted evidence and quota correction, then independent acceptance. No public launch approval.",
+    "review": {
+      "status": "needs-decision",
+      "sourceCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "previousSourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md",
+      "completedAt": "2026-10-18T00:36:47Z",
+      "scope": "Pay delta statically coherent and general exact CI verified; no global acceptance",
+      "ci": {
+        "pushJob": 117534389627,
+        "prJob": 117534401394,
+        "prCheckout": "e44b338f944f2236d1d7c0d23700a516d634cfb3",
+        "tree": "9b668e0423783bd71aab15be99aa6514064ecf0d",
+        "testsPassed": 1513,
+        "testsSkipped": 2,
+        "testFiles": 124,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "local": "local_not_run",
+      "limits": [
+        "Targeted scripts absent",
+        "Quota defect inherited",
+        "No physical mobile performance or voluntary two-hour play proof"
+      ]
+    },
+    "ciAddendum": {
+      "status": "needs-decision",
+      "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR43-20261017-2336-CI-QA.md",
+      "completedAt": "2026-10-17T23:36:51Z",
+      "scope": "Standard push CI verified; targeted economy, quota save safety, physical mobile and full game acceptance remain open"
+    }
+  },
+  "currentEconomyQa": {
+    "id": "STAB-20261017-2236-QA",
+    "role": "qa",
+    "owner": "qa_economy_2236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "b566f317948701a6441211d1c7ddf7d3dfa1bb07",
+    "controlBriefCommit": "b566f317948701a6441211d1c7ddf7d3dfa1bb07",
+    "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+    "sourceBase": "6789c6e2809b2f6476e52e1971fe249cff3d8508",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR43-20261017-2236-QA.md"
+    ],
+    "status": "needs-decision",
+    "acceptance": [
+      "Review exact PR43 source/test delta: money-only purchase gates, passive income not variety, active bonus<=15%, v5 round-trip; no implementation",
+      "Inspect completed PR CI117516030425 and push117516019493 actual status/checkout/logs; never call pending green",
+      "Separate targeted author claims and gameplay simulations/proposals from executed CI; inherited PR37 save defect remains open",
+      "Return bounded needs-decision/ready-limited/blocked with SHA evidence; no feature/source/assets/Blender/Chromium EPERM retry/install/merge/deploy"
+    ],
+    "completedAt": "2026-10-17T22:36:59Z",
+    "result": {
+      "status": "needs-decision",
+      "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR43-20261017-2236-QA.md",
+      "completedAt": "2026-10-17T22:36:59Z",
+      "ci": {
+        "prJob": 117516030425,
+        "prCheckout": "ef6a5da3c5da4281e2796999e1628ed1ed270541",
+        "tree": "50717bbea1592e01628c38a2594586267424c7a9",
+        "testsPassed": 1513,
+        "testsSkipped": 2,
+        "testFiles": 124,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success",
+        "pushJob": 117516019493,
+        "pushStatus": "in_progress"
+      },
+      "limits": [
+        "Targeted business/gestures/venues absent from inspected PR log",
+        "Inherited PR37 quota defect still open",
+        "No device measurement or voluntary two-hour play proof"
+      ]
+    }
+  },
+  "currentEconomyCiReview": {
+    "id": "STAB-20261017-2336-CI-QA",
+    "role": "qa",
+    "owner": "qa_economy_2236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "79c092d00ae726faad8eb6d0edb2b3d372517c55",
+    "controlBriefCommit": "79c092d00ae726faad8eb6d0edb2b3d372517c55",
+    "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR43-20261017-2336-CI-QA.md"
+    ],
+    "acceptance": [
+      "Inspect newly completed exact push117516019493 checkout/tree/test/type/build/city/online/launch and targeted invocation limits",
+      "Do not redo source review, amend evidence only; retain known quota/targeted browser/physical/two-hour gaps"
+    ],
+    "status": "done",
+    "completedAt": "2026-10-17T23:36:51Z",
+    "result": {
+      "status": "needs-decision",
+      "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR43-20261017-2336-CI-QA.md",
+      "completedAt": "2026-10-17T23:36:51Z",
+      "scope": "Standard push CI verified; targeted economy, quota save safety, physical mobile and full game acceptance remain open"
+    }
+  },
+  "currentEconomyPayReview": {
+    "id": "STAB-20261018-0036-PAY-QA",
+    "role": "qa",
+    "owner": "qa_economy_2236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "90febf2473aaf1fa06829593cd516fb90919f275",
+    "controlBriefCommit": "90febf2473aaf1fa06829593cd516fb90919f275",
+    "sourceCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+    "sourceBase": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md"
+    ],
+    "acceptance": [
+      "Review only new pay delta at2c82709, no implementation: amounts source/steps/labels/tests coherent, no schema/save/storage mutation",
+      "Read exact completed push117534389627 and PR117534401394 checkout/tree/types/tests/build/city/online/launch, targeted claims separate",
+      "Retain inherited quota/targeted/device/voluntary session gaps; PR44 pending not approved or copied"
+    ],
+    "status": "needs-decision",
+    "completedAt": "2026-10-18T00:36:47Z",
+    "result": {
+      "status": "needs-decision",
+      "sourceCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "previousSourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md",
+      "completedAt": "2026-10-18T00:36:47Z",
+      "scope": "Pay delta statically coherent and general exact CI verified; no global acceptance",
+      "ci": {
+        "pushJob": 117534389627,
+        "prJob": 117534401394,
+        "prCheckout": "e44b338f944f2236d1d7c0d23700a516d634cfb3",
+        "tree": "9b668e0423783bd71aab15be99aa6514064ecf0d",
+        "testsPassed": 1513,
+        "testsSkipped": 2,
+        "testFiles": 124,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "local": "local_not_run",
+      "limits": [
+        "Targeted scripts absent",
+        "Quota defect inherited",
+        "No physical mobile performance or voluntary two-hour play proof"
+      ]
+    }
+  },
+  "pendingOrdinaryPurseCandidate": {
+    "pr": 44,
+    "sourceCommit": "ed7a8c2441883ab873f98361476984eff7751724",
+    "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+    "status": "review",
+    "owner": "external author; read-only audit",
+    "checkedAt": "2026-10-18T02:36:13Z",
+    "checks": [
+      {
+        "id": 117547962939,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/runs/117547962939"
+      },
+      {
+        "id": 117547687890,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39084349885/job/117547687890"
+      },
+      {
+        "id": 117547678504,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39084346616/job/117547678504"
+      }
+    ],
+    "implementationAuthorized": false,
+    "nextAction": "Issue45 already owned externally; no duplicate issue or automatic combat change. Await exact targeted evidence/owner decision; retain inherited quota issue.",
+    "review": {
+      "status": "needs-decision",
+      "sourceCommit": "ed7a8c2441883ab873f98361476984eff7751724",
+      "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR44-20261018-0136-QA.md",
+      "completedAt": "2026-10-18T01:37:02Z",
+      "scope": "Purse arithmetic statically coherent and standard CI verified; no global economic/AFK acceptance",
+      "ci": {
+        "pushJob": 117547678504,
+        "prJob": 117547687890,
+        "prCheckout": "4914b8e60a59c7019da186e3bfbe2e1ca07dbd87",
+        "tree": "5e6df22113d8b7f548c793c7af5a198fc7c8c84e",
+        "testsPassed": 1527,
+        "testsSkipped": 2,
+        "testFiles": 125,
+        "ordinaryPurseTests": 14,
+        "galaTitleEquivalenceCases": 720,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "local": "local_not_run",
+      "limits": [
+        "Staller/default-lamb and economy simulations not executed in inspected CI",
+        "Inherited quota defect open",
+        "No physical mobile or voluntary two-hour session proof"
+      ]
+    },
+    "drawFarmIssue": {
+      "number": 45,
+      "url": "https://github.com/zayd95/dakar-rek/issues/45",
+      "state": "open",
+      "createdAt": "2026-10-18T01:46:41Z",
+      "checkedAt": "2026-10-18T02:36:13Z",
+      "evidence": "External author reproduction claim; not independently rerun",
+      "decision": "Owner decision; nothing implemented"
+    }
+  },
+  "currentOrdinaryPurseQa": {
+    "id": "STAB-20261018-0136-PURSE-QA",
+    "role": "qa",
+    "owner": "qa_economy_2236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "ee074336228e91f3c66e21a1dd10b68ee6df0d54",
+    "controlBriefCommit": "ee074336228e91f3c66e21a1dd10b68ee6df0d54",
+    "sourceCommit": "ed7a8c2441883ab873f98361476984eff7751724",
+    "sourceBase": "2c8270978f50f89192ded073321688ce9f87e938",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR44-20261018-0136-QA.md"
+    ],
+    "status": "needs-decision",
+    "acceptance": [
+      "Exact PR44 purseOf delta: level table, gala/title preservation, friendly/abandon zero, clamps/tests and no new schema/state",
+      "Inspect current head push117547678504 and PR117547687890 exact checkout/tree/logs; do not reassign older4202 CI",
+      "Separate default sans-frappe and flag lamb2 author simulations; paid hold-guard draws not independently executed unless actual evidence, no game completion",
+      "No source implementation, no Blender/asset/paid/install/Chromium EPERM retry/merge/deploy; return bounded report"
+    ],
+    "result": {
+      "status": "needs-decision",
+      "sourceCommit": "ed7a8c2441883ab873f98361476984eff7751724",
+      "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR44-20261018-0136-QA.md",
+      "completedAt": "2026-10-18T01:37:02Z",
+      "scope": "Purse arithmetic statically coherent and standard CI verified; no global economic/AFK acceptance",
+      "ci": {
+        "pushJob": 117547678504,
+        "prJob": 117547687890,
+        "prCheckout": "4914b8e60a59c7019da186e3bfbe2e1ca07dbd87",
+        "tree": "5e6df22113d8b7f548c793c7af5a198fc7c8c84e",
+        "testsPassed": 1527,
+        "testsSkipped": 2,
+        "testFiles": 125,
+        "ordinaryPurseTests": 14,
+        "galaTitleEquivalenceCases": 720,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "local": "local_not_run",
+      "limits": [
+        "Staller/default-lamb and economy simulations not executed in inspected CI",
+        "Inherited quota defect open",
+        "No physical mobile or voluntary two-hour session proof"
+      ]
+    },
+    "completedAt": "2026-10-18T01:37:02Z"
+  },
+  "currentTourSaveQa": {
+    "id": "STAB-20261018-0335-SAVE-QA",
+    "role": "qa",
+    "owner": "qa_economy_2236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "9bb9d1e662bc0e75cb314bbc0d6ef48e0dab5995",
+    "controlBriefCommit": "9bb9d1e662bc0e75cb314bbc0d6ef48e0dab5995",
+    "sourceCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+    "sourceBase": "2c8270978f50f89192ded073321688ce9f87e938",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
+    ],
+    "status": "superseded_by_verified_fix",
+    "acceptance": [
+      "Read-only narrow PR46 save/jobs/tour tests: v5 ordinary jobs compatibility, malformed tours, once-only payment/reload and rollback risk",
+      "Do not implement or approve new tour feature; distinguish schema number unchanged from additive data/old-v5 compatibility",
+      "Current exact CI pending must remain pending; inspect completed evidence only; known quota issue remains",
+      "No source/ref edits, Blender/assets/paid/install/Chromium EPERM retry/merge/deploy"
+    ],
+    "completedAt": "2026-10-18T03:35:23Z",
+    "result": {
+      "status": "needs-decision",
+      "sourceCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+      "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md",
+      "completedAt": "2026-10-18T03:35:23Z",
+      "local": "local_not_run; static cross-version control-flow proof only",
+      "defect": "Active tour is stripped/cancelled and save rewritten by old v5 client on same origin/key; tour progress lost, wallet credited amounts preserved; no double payment shown",
+      "ci": "push and PR in_progress, not green",
+      "nextAction": "External author decides rollback contract and provides cross-version test/fix; no new feature automatically authorized"
+    },
+    "supersededAt": "2026-10-18T14:36:30.104Z",
+    "fixReview": {
+      "status": "validated-limited",
+      "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+      "reviewer": "qa_save_1434",
+      "report": "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md",
+      "completedAt": "2026-10-18T14:36:30.104Z",
+      "unit": {
+        "saveV6": {
+          "passed": 18,
+          "total": 18
+        },
+        "saveKeys": {
+          "passed": 13,
+          "total": 13
+        },
+        "suite": {
+          "passed": 1558,
+          "skipped": 2,
+          "files": 126
+        }
+      },
+      "ci": {
+        "workers": {
+          "id": 117687877638,
+          "conclusion": "success"
+        },
+        "push": {
+          "id": 117687693974,
+          "conclusion": "success"
+        },
+        "pr": {
+          "id": 117687703280,
+          "conclusion": "success"
+        }
+      },
+      "validatedDefects": [
+        "old-v5 rollback cannot overwrite v6 tour progress",
+        "quota-full New Game retries anti-import marker after removing v6 save"
+      ],
+      "limits": [
+        "multi-build browser scripts not invoked by standard CI",
+        "CSS minifier warning remains unqualified",
+        "PR feature acceptance remains review"
+      ]
+    }
+  },
+  "pendingTourCandidate": {
+    "pr": 46,
+    "branch": "feature/m1b-tiak-tour-20261018",
+    "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+    "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+    "status": "review",
+    "owner": "external author, read-only audit",
+    "checkedAt": "2026-10-18T14:36:30.104Z",
+    "checks": [
+      {
+        "id": 117687877638,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/runs/117687877638"
+      },
+      {
+        "id": 117687693974,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39131586429/job/117687693974"
+      },
+      {
+        "id": 117687703280,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39131589820/job/117687703280"
+      }
+    ],
+    "review": {
+      "status": "needs-decision",
+      "sourceCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+      "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md",
+      "completedAt": "2026-10-18T03:35:23Z",
+      "local": "local_not_run; static cross-version control-flow proof only",
+      "defect": "Active tour is stripped/cancelled and save rewritten by old v5 client on same origin/key; tour progress lost, wallet credited amounts preserved; no double payment shown",
+      "ci": "push and PR in_progress, not green",
+      "nextAction": "External author decides rollback contract and provides cross-version test/fix; no new feature automatically authorized"
+    },
+    "implementationAuthorized": false,
+    "ci": {
+      "checkedAt": "2026-10-18T04:35:22Z",
+      "pushJob": 117576140269,
+      "prJob": 117576172348,
+      "pushCheckout": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+      "prCheckout": "c98f3f4f646e1c18168928a4fa19febd5f037b02",
+      "tree": "8740c1ee74df68e892baf6694ef5fface126950b",
+      "testsPassed": 1540,
+      "testsSkipped": 2,
+      "testFiles": 125,
+      "tourTests": 27,
+      "saveKeyTests": 13,
+      "types": "success",
+      "build": "success",
+      "city": "success",
+      "online": "success",
+      "launch": "success",
+      "targetedTourBrowser": "not invoked",
+      "verification": "producer log reconciliation; no new independent approval"
+    },
+    "reason": "Two targeted save regressions validated-limited; full PR still review because multi-build E2E script and broader feature acceptance are not independently complete",
+    "saveFixReview": {
+      "status": "validated-limited",
+      "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+      "reviewer": "qa_save_1434",
+      "report": "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md",
+      "completedAt": "2026-10-18T14:36:30.104Z",
+      "unit": {
+        "saveV6": {
+          "passed": 18,
+          "total": 18
+        },
+        "saveKeys": {
+          "passed": 13,
+          "total": 13
+        },
+        "suite": {
+          "passed": 1558,
+          "skipped": 2,
+          "files": 126
+        }
+      },
+      "ci": {
+        "workers": {
+          "id": 117687877638,
+          "conclusion": "success"
+        },
+        "push": {
+          "id": 117687693974,
+          "conclusion": "success"
+        },
+        "pr": {
+          "id": 117687703280,
+          "conclusion": "success"
+        }
+      },
+      "validatedDefects": [
+        "old-v5 rollback cannot overwrite v6 tour progress",
+        "quota-full New Game retries anti-import marker after removing v6 save"
+      ],
+      "limits": [
+        "multi-build browser scripts not invoked by standard CI",
+        "CSS minifier warning remains unqualified",
+        "PR feature acceptance remains review"
+      ]
+    }
+  },
+  "tourRollbackProposal": {
+    "id": "SAVE-TOUR-OLDV5-ROLLBACK",
+    "status": "approval_required",
+    "implementationAuthorized": false,
+    "owner": "external PR46 author / explicit bounded decision",
+    "criteria": [
+      "Define compatibility contract for new tour save opened by older v5 on same origin",
+      "No silent cancellation/rewrite of active tour during supported rollback",
+      "Cross-version new→old-v5→new test including partially paid tour; preserve wallet and prevent duplicate payment",
+      "Ordinary deliveries, v3 legacy isolation and known quota issue remain separately tested"
+    ],
+    "report": "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
+  },
+  "pendingShopUiCandidate": {
+    "pr": 47,
+    "sourceCommit": "c5cb818cfcf07e9228e04f6008eb4e1774f2aaa2",
+    "baseCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+    "status": "review",
+    "checkedAt": "2026-10-18T14:36:30.104Z",
+    "owner": "external session; read only",
+    "reviewer": "qa_ui_0528",
+    "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
+    "checks": [
+      {
+        "id": 117587544379,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/runs/117587544379"
+      },
+      {
+        "id": 117587380157,
+        "status": "completed",
+        "conclusion": "failure",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39097674487/job/117587380157"
+      },
+      {
+        "id": 117587370283,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39097671208/job/117587370283"
+      }
+    ],
+    "nextAction": "External author supplies accessible description decision, exact check-menu-density result, current desktop+phone targeted proof and successful PR CI; inherited PR46 rollback handled separately",
+    "reason": "Rebased owner candidate has green checks; prior independent UI/accessibility evidence gaps are not automatically resolved"
+  },
+  "currentShopUiQa": {
+    "id": "STAB-20261018-0528-PR47-QA",
+    "kind": "independent-review",
+    "status": "completed",
+    "owner": "external session; read only",
+    "reviewer": "qa_ui_0528",
+    "branch": "ui/shared-primitives-20261018",
+    "baseCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+    "sourceCommit": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR47-20261018-0528-QA.md"
+    ],
+    "criteria": [
+      "Read actual diff and exact CI logs",
+      "Verify no save/economy/mission logic regression from UI/objective markers",
+      "Inspect compact menu/touch/accessibility evidence without treating screenshots as physical-device proof",
+      "Separate push success from PR multiplayer timeout",
+      "No source edits or feature approval"
+    ],
+    "verdict": "needs-decision",
+    "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
+    "completedAt": "2026-10-18T05:30:19Z",
+    "checkedAt": "2026-10-18T07:28:45Z"
+  },
+  "currentStabilizationWatch": {
+    "id": "STAB-20261018-1926-PR48-AVATAR-QA",
+    "status": "completed",
+    "owner": "qa_pr48_avatar_1926",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "50a6bbb37f12559cdc53b1ee58f63c0a9529338a",
+    "sourceCommit": "03477aa1ad86a9899301eefbb45d4bd970255b74",
+    "sourceBase": "c5cb818cfcf07e9228e04f6008eb4e1774f2aaa2",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/reports/PR48-20261018-1926-AVATAR-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-18-1926-AUDIT.md"
+    ],
+    "scope": [
+      "Review exact avatar/New Game delta",
+      "Verify exact checks and known PR48 defect",
+      "No source, feature, merge, deploy, Blender or paid generation"
+    ],
+    "startedAt": "2026-10-18T19:27:05Z",
+    "completedAt": "2026-10-18T19:28:10Z",
+    "result": "avatar-validated-limited-pr-needs-correction",
+    "report": "docs/agents/operations/reports/PR48-20261018-1926-AVATAR-QA.md",
+    "findings": [
+      "Avatar/New Game delta is unit- and general-CI coherent",
+      "Workers exact-head build failure remains",
+      "Vacuous || true assertion remains; targeted script absent from standard CI",
+      "Avatar picker consumes suggestion only on another branch, not demonstrated here"
+    ]
+  },
+  "currentSaveV6Qa": {
+    "id": "STAB-20261018-1434-SAVE-V6-QA",
+    "role": "qa",
+    "owner": "qa_save_1434",
+    "reviewer": "qa_save_1434",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "afb758037b211d0458e9ca0ebb4b3a8326559683",
+    "controlBriefCommit": "afb758037b211d0458e9ca0ebb4b3a8326559683",
+    "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+    "sourceBase": "2c8270978f50f89192ded073321688ce9f87e938",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md"
+    ],
+    "status": "completed",
+    "criteria": [
+      "Review exact 5234097..2fbd416 save-key delta and old-v5 rollback behavior",
+      "Read exact push and PR CI logs including saveV6/saveKeys tests, types, build, city, online and launch",
+      "Separate unit/static validation from non-invoked two-build browser script",
+      "No source edits, feature approval, merge, deploy, Blender or paid generation"
+    ],
+    "startedAt": "2026-10-18T14:35:20.292Z",
+    "completedAt": "2026-10-18T14:36:30.104Z",
+    "result": {
+      "status": "validated-limited",
+      "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+      "reviewer": "qa_save_1434",
+      "report": "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md",
+      "completedAt": "2026-10-18T14:36:30.104Z",
+      "unit": {
+        "saveV6": {
+          "passed": 18,
+          "total": 18
+        },
+        "saveKeys": {
+          "passed": 13,
+          "total": 13
+        },
+        "suite": {
+          "passed": 1558,
+          "skipped": 2,
+          "files": 126
+        }
+      },
+      "ci": {
+        "workers": {
+          "id": 117687877638,
+          "conclusion": "success"
+        },
+        "push": {
+          "id": 117687693974,
+          "conclusion": "success"
+        },
+        "pr": {
+          "id": 117687703280,
+          "conclusion": "success"
+        }
+      },
+      "validatedDefects": [
+        "old-v5 rollback cannot overwrite v6 tour progress",
+        "quota-full New Game retries anti-import marker after removing v6 save"
+      ],
+      "limits": [
+        "multi-build browser scripts not invoked by standard CI",
+        "CSS minifier warning remains unqualified",
+        "PR feature acceptance remains review"
+      ]
+    }
+  },
+  "currentPr48Qa": {
+    "id": "STAB-20261018-1735-PR48-QA",
+    "status": "completed",
+    "owner": "qa_pr48_1735",
+    "reviewer": "qa_pr48_1735",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "2212e2a169e5ffd96767cc627f2b267e54c5dc23",
+    "sourceCommit": "03477aa1ad86a9899301eefbb45d4bd970255b74",
+    "sourceBase": "c5cb818cfcf07e9228e04f6008eb4e1774f2aaa2",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR48-20261018-1735-QA.md"
+    ],
+    "completedAt": "2026-10-18T17:37:30Z",
+    "result": {
+      "status": "needs-correction",
+      "sourceCommit": "03477aa1ad86a9899301eefbb45d4bd970255b74",
+      "baseCommit": "c5cb818cfcf07e9228e04f6008eb4e1774f2aaa2",
+      "reviewer": "qa_pr48_1735",
+      "report": "docs/agents/operations/reports/PR48-20261018-1926-AVATAR-QA.md",
+      "completedAt": "2026-10-18T17:37:30Z",
+      "defect": "scripts/check-regular-mamadou.mjs contains an assertion ending in || true, making that browser criterion vacuous",
+      "ci": {
+        "workers": {
+          "id": 117755272096,
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        "push": {
+          "id": 117755024405,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        "pr": {
+          "id": 117755038751,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        "suite": {
+          "files": 128,
+          "passed": 1581,
+          "skipped": 2
+        },
+        "saveV6": {
+          "passed": 24,
+          "total": 24
+        },
+        "regular": {
+          "passed": 13,
+          "total": 13
+        },
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "publicLaunchApproved": false,
+      "ciAddendum": "docs/agents/operations/reports/PR48-20261018-1826-CI-QA.md",
+      "checkedAt": "2026-10-18T19:28:10Z",
+      "avatarCorrection": {
+        "status": "validated-limited",
+        "scope": "New Game resets avatar to default and stores prior value only as suggestion; migration still carries avatar",
+        "limits": [
+          "Picker consumption is on another branch and not demonstrated here",
+          "Targeted browser script is not invoked by standard CI"
+        ]
+      }
+    },
+    "checkedAt": "2026-10-18T19:28:10Z",
+    "ciAddendum": "docs/agents/operations/reports/PR48-20261018-1826-CI-QA.md",
+    "avatarQa": "docs/agents/operations/reports/PR48-20261018-1926-AVATAR-QA.md"
+  }
+}
