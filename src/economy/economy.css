@@ -15,8 +15,8 @@
 #modal .dcard { position:relative; display:flex; flex-direction:column; align-items:stretch; gap:10px; width:100%; min-height:0; padding:0; border:0; border-radius:0; background:none; color:var(--ink); text-align:left; font:inherit; box-shadow:none; cursor:pointer; }
 #modal .dcard::before { display:none; }
 #modal .dcard:hover, #modal .dcard:active { background:none; }
-#modal .dcard .face { display:flex; align-items:stretch; gap:12px; padding:14px; border-radius:22px; background:var(--row); box-shadow:0 1px 2px rgba(0,0,0,.06), 0 6px 18px rgba(0,0,0,.08), inset 0 0 0 1px var(--sep); }
-#modal .dcard:active .face { background:var(--press); }
+#modal .dcard .face { display:flex; align-items:stretch; gap:12px; padding:14px; }
+#modal .dcard:active .face { background-image:linear-gradient(var(--ui-press), var(--ui-press)); }
 #modal .dcard.dis { opacity:.6; cursor:default; }
 #modal .dcard.live { cursor:default; }
 #modal .dcard .main { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:10px; }
@@ -29,7 +29,7 @@
 #modal .dcard .mark.start { box-sizing:border-box; border:3px solid var(--gain); background:var(--row); width:22px; height:22px; margin:3px; }
 #modal .dcard .mark.start::after { content:''; width:8px; height:8px; border-radius:50%; background:var(--gain); }
 #modal .dcard .mark.num { background:var(--ink-2); color:var(--surface-2); }
-#modal .dcard .pill { display:inline-flex; align-items:center; gap:8px; min-width:0; flex:1 1 auto; padding:6px 12px 6px 8px; border-radius:999px; background:var(--surface-2); font-size:15.5px; line-height:1.15; }
+#modal .dcard .pill { display:inline-flex; align-items:center; gap:8px; min-width:0; flex:1 1 auto; padding:6px 12px 6px 8px; border-radius:999px; background:var(--ui-tile); font-size:15.5px; line-height:1.15; }
 #modal .dcard .pill b { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:750; }
 #modal .dcard .pill .ic { flex:none; font-style:normal; font-size:22px; line-height:1; width:auto; height:auto; background:none; }
 #modal .dcard .chips { display:flex; flex-wrap:wrap; gap:8px; min-width:0; }
@@ -40,10 +40,7 @@ body.theme-night #modal .dcard .chip.bonus { background:#4a3a10; color:#ffd77a; 
 #modal .dcard .vdiv { flex:none; width:1px; background:var(--sep); }
 #modal .dcard .side { flex:none; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:4px; min-width:0; }
 #modal .dcard .side small { font-size:13px; font-weight:650; color:var(--ink-2); }
-#modal .dcard .reward { font-style:normal; font-size:28px; font-weight:850; line-height:1; letter-spacing:-.8px; color:var(--gain); white-space:nowrap; font-variant-numeric:tabular-nums; }
-/* the big yellow action (outside the card on a route, inside it on an order) */
-#modal .dcard .go { display:block; padding:15px 12px; border-radius:16px; background:var(--sun); box-shadow:0 3px 0 var(--sun-deep), 0 8px 16px rgba(240,168,0,.25); color:#2b2000; text-align:center; font-size:19px; font-weight:850; letter-spacing:-.2px; }
-#modal .dcard:active .go { transform:translateY(2px); box-shadow:0 1px 0 var(--sun-deep); }
+/* the big yellow action (the shared .ui-btn; outside the card on a route, inside it on an order) */
 #modal .dcard.dis .go { display:none; }
 /* the two orders of a tour */
 #modal .dcard.order .face { flex-direction:column; gap:12px; }

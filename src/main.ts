@@ -621,7 +621,7 @@ function openActions(it: Interactable) {
     const lv = rel.level(it.npc);
     subtitle = `« ${npcLife.greet(it.npc)} » · Relation : ${Relations.label(lv)} (${lv > 0 ? '+' : ''}${Math.round(lv)})`;
   }
-  hud.openMenu(it.name, subtitle, items);
+  hud.openMenu(it.name, subtitle, items, '', undefined, it.menu);
 }
 
 function openBeat(beat: Beat) {

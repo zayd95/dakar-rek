@@ -53,8 +53,8 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
   const solid = (x: number, z: number, w: number, d: number, h = 3) => c.colliders.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, h });
   const box = (w: number, h: number, d: number, x: number, z: number, color: number, y = FLOOR) => b.box(w, h, d, x, y, z, color);
   const sign = (name: string, x: number, z: number, color = '#214e52', y = 3.1, w = 6, yaw = 0) => c.sign(name, color, '#fff2d3', x, y, z, yaw, w, 0.8);
-  const place = (key: string, name: string, x: number, z: number, actions: Action[], description: string, radius = 3) => {
-    c.interactables.push({ id: `${c.hub}:city:${key}`, name, x, z, radius, kind: 'actions', actions, description });
+  const place = (key: string, name: string, x: number, z: number, actions: Action[], description: string, radius = 3, menu?: 'shop') => {
+    c.interactables.push({ id: `${c.hub}:city:${key}`, name, x, z, radius, kind: 'actions', actions, description, ...(menu ? { menu } : {}) });
   };
   let personCount = 0;
   const person = (x: number, z: number, yaw: number, clip: 'Idle' | 'Talk' | 'Sit' = 'Talk', look?: PersonLook, walkTo?: { x: number; z: number }) => {
@@ -258,7 +258,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
     // Boutique Diallo / Atelier Ndeye: their owners (src/social/routines.ts) keep the counter; the kit keeps their aisle clear
     shop(pikine ? 'Boutique Diallo' : 'Atelier Ndeye', cx - 11, cz - 10, pikine ? 0x368f8d : 0xc69055, 17);
     const left = stock('boutique', pikine ? 'grocery' : 'clothing', cx - 11, cz - 10, 17, 8);
-    place('boutique', pikine ? 'Boutique Diallo' : 'Atelier Ndeye · couture', left.anchors.counter.x, left.anchors.counter.z, pikine ? A.boutique : A.style, pikine ? `Salaam aleekum ! Mamadou t’accueille. ${say('Mburu ak meew')} ou un petit service ?` : `${say('Dalal ak jàmm')}. Les commandes de la fête arrivent.`, 3);
+    place('boutique', pikine ? 'Boutique Diallo' : 'Atelier Ndeye · couture', left.anchors.counter.x, left.anchors.counter.z, pikine ? A.boutique : A.style, pikine ? `Salaam aleekum ! Mamadou t’accueille. ${say('Mburu ak meew')} ou un petit service ?` : `${say('Dalal ak jàmm')}. Les commandes de la fête arrivent.`, 3, pikine ? 'shop' : undefined);
     if (pikine) { const v = left.anchors.browse[0]; if (v) person(v.x, v.z, v.yaw, 'Idle', { ...FISHER, style: 'boubou', top: 0xe8decb, hatColor: 0xeee4d4 }); }
     else { const t = left.anchors.staff[0]; if (t) person(t.x, t.z, t.yaw, 'Sit', { ...VENDOR, top: 0x7a2f55, bottom: 0x7a2f55, hatColor: 0x7a2f55 }); }
     // Salon Awa: the venue (src/venues/salon.ts) furnishes the chairs on the right and works from the sheet, which stays put
