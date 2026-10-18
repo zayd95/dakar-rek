@@ -2182,5 +2182,17 @@
       ]
     },
     "completedAt": "2026-10-18T01:37:02Z"
+  },
+  "registryWriter": {
+    "token": "audit-20261018T0236Z-watch",
+    "owner": "producer_audit_0236",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "fa674734ed379cce5b8a6776a5dbfa9765ab94a8",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-18-0236-WATCH.md"
+    ],
+    "acquiredAt": "2026-10-18T02:35:48Z"
   }
 }
