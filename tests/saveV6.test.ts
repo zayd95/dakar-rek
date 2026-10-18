@@ -19,7 +19,7 @@ const [AGENCE, DAMES] = [tour.stops[0].id, tour.stops[1].id];
 
 /** A v5 player with a bit of everything: money, a lived-in room, a classic delivery in hand, relationships, a wrestler, a fight record. */
 function v5Player(): SaveData {
-  const d = newSaveV5(1000);                                          // what the schema-5 client writes (schemaVersion 5)
+  const d = newSaveV5(1000) as SaveData;                              // what the schema-5 client writes (schemaVersion 5, no avatar)
   d.guestId = 'g-v5-player'; d.wallet = 41_250; d.playedMs = 3_600_000; d.hub = 'pikine';
   d.flags = ['met_ibou', 'reco_modou']; d.beats = { ibou_welcome: 'oui' }; d.rel = { 'ibou|player': 22, 'ablaye|player': 35 };
   d.counters = { livraisons: 9, shifts: 3, chats: 5, combats: 2, [`tiak_trust_${AGENCE}`]: 2 };
@@ -32,7 +32,7 @@ function v5Player(): SaveData {
   return d;
 }
 /** The older client plays: it loads from its own key and saves into it. */
-const olderClientPlays = (s: KV, change: (d: SaveData) => void) => { const d = loadV5(s)!; change(d); writeV5(s, d); };
+const olderClientPlays = (s: KV, change: (d: SaveData) => void) => { const d = loadV5(s)! as SaveData; change(d); writeV5(s, d); };
 const written = (s: KV, d: SaveData) => { expect(writeSave(s, d)).toBe(true); };
 
 describe('v5 → v6: a one-time migration that keeps everything and never touches the v5 key', () => {
@@ -216,3 +216,24 @@ describe('corrupt, unreadable and newer saves', () => {
     expect(loadSave(full)!.wallet).toBe(41_250); expect(m.has(SAVE_KEY)).toBe(false); expect(m.get(V5_SAVE_KEY)).toBe(v5);
   });
 });
+
+describe('the Meshy avatar lane: its save field is carried, never silently dropped (claude/lucid-cori-60vlgt adds `avatar`)', () => {
+  const withAvatar = (schemaVersion: number, avatar: unknown) => JSON.stringify({ schemaVersion, guestId: 'g-avatar', wallet: 900, playedMs: 1000, hub: 'pikine', avatar });
+  it('a legacy save (the key that lane wrote), a v5 save and a v6 save keep the chosen model through the migration', () => {
+    for (const [key, v] of [[LEGACY_SAVE_KEY, 3], [V5_SAVE_KEY, 5], [SAVE_KEY, 6]] as const) {
+      const s = mem(); s.setItem(key, withAvatar(v, 'femme'));
+      const d = loadSave(s)!; expect(`${key} ${d.avatar}`).toBe(`${key} femme`); expect(d.guestId).toBe('g-avatar');
+      expect(JSON.parse(s.getItem(SAVE_KEY)!).avatar).toBe('femme');                  // and the v6 key holds it from the first write
+    }
+  });
+  it('a save without it (or with something unknown) gets the default model; the rest is untouched', () => {
+    for (const a of [undefined, 'robot', 3, null]) { const s = mem(); s.setItem(LEGACY_SAVE_KEY, withAvatar(3, a)); const d = loadSave(s)!; expect(d.avatar).toBe('homme'); expect(d.wallet).toBe(900); }
+  });
+  it('the choice survives write → reload, the older client keeps ignoring it, and New Game resets it to the default', () => {
+    const s = mem(); const d = newSave(); d.avatar = 'femme'; d.guestId = 'g-keep'; written(s, d);
+    expect(loadSave(s)!.avatar).toBe('femme'); expect(loadSave(s)!.guestId).toBe('g-keep');
+    clearSave(s); expect(loadSave(s)).toBeNull();
+    const fresh = newSave(); expect(fresh.avatar).toBe('homme');
+  });
+});
+

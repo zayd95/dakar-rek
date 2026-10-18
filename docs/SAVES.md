@@ -21,6 +21,9 @@ The Tiak Tiak tour adds an active-run field (`jobs.active.tour`) that only a v6 
 5. If the storage is full or blocked at the migration, the migrated save is still used in memory and the older saves are intact; the next save tries again.
 6. A v6 build never migrates **into** an older key: nothing flows back to v5 or v3.
 
+## Fields that other lanes add
+`migrate()` rebuilds the save field by field, so a field it does not list is dropped on the next load. Every field a lane adds to `SaveData` must be listed there (with a default for older saves) and covered by a migration test. Carried today: the cosmetic city-player model `avatar` (`'homme' | 'femme'`, the Meshy avatar lane, branch `claude/lucid-cori-60vlgt`: same names and values as on that branch, so the two merge without a semantic conflict; tests in `tests/saveV6.test.ts`). The permanent identity (`guestId`, `createdAt`) and the wrestler look were already carried. A New Game resets the avatar to the default like everything else in the save.
+
 ## Rollback to the older client
 The older client only knows its own key. It opens its own save (the state at the moment of migration), plays and saves there, and never touches the v6 key. When the v6 client is served again the v6 save is intact and wins: an active tour, the stops already paid, the trust, the wallet — all exactly as they were left. Progress made on the older client after the rollback stays in its own key and is not merged back (a known limit). A New Game on either client leaves the other one's save alone.
 

@@ -1,5 +1,5 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, TourRun, WrestlerLook } from './types';
-import { ACTIVITY_IDS, HUB_IDS } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, TourRun, WrestlerLook } from './types';
+import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
 
@@ -40,7 +40,7 @@ export function newSave(now = Date.now()): SaveData {
   return {
     schemaVersion: SCHEMA_VERSION, guestId: newGuestId(), createdAt: now, savedAt: now, playedMs: 0,
     hub: 'pikine', x: 0, z: 0, yaw: 0, wallet: 3000, needs: { ...START_NEEDS }, counters: {},
-    rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] },
+    rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
     assets: newAssets(0), inventory: {}, career: newCareer(),
   };
@@ -111,6 +111,8 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     flags: Array.isArray(r.flags) ? (r.flags as unknown[]).filter((f): f is string => typeof f === 'string').slice(0, 500) : [],
     beats,
     wrestler: wrestlerOf(r.wrestler),
+    // cosmetic city player model (additive, no version change: a save without it gets the default)
+    avatar: AVATARS.includes(r.avatar as Avatar) ? (r.avatar as Avatar) : base.avatar,
     // v2 -> v3: wallet history and deliveries start empty.
     ledger: ledgerOf(r.ledger),
     jobs: jobsOf(r.jobs),
