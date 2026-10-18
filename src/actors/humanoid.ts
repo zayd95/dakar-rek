@@ -56,7 +56,7 @@ export async function preloadBody(id: Exclude<BodyId, 'v4'>, url: string): Promi
   try {
     const res = await fetch(url);
     if (!res.ok) return false;
-    bodies[id] = finishTemplate(await new GLTFLoader().parseAsync(await res.arrayBuffer(), ''), BODY_FIT[id].sitLift);
+    bodies[id] = finishTemplate(await new GLTFLoader().parseAsync(await res.arrayBuffer(), ''), BODY_FIT[id].sitLift, BODY_FIT[id]);
     return true;
   } catch { return false; }
 }
@@ -85,14 +85,15 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
 }
 
 /** The steps every body shares once its head is dealt with: the clips corrected, derived and stripped (the poses solved from the rest pose). */
-function finishTemplate(gltf: GLTF, sitLift = 0): Template {
+function finishTemplate(gltf: GLTF, sitLift = 0, body?: { scale: number }): Template {
   fixSitKnees(gltf.animations);
   fixRunClip(gltf.animations);
   deriveJog(gltf.animations);
   widenWalk(gltf.animations);
   deriveKneel(gltf.animations);
-  const clips = [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)];
+  const clips = [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations, body)];
   if (sitLift) for (const c of clips) if (c.name === 'Sit' || c.name === 'SitFloor' || c.name === 'Lie' || c.name === 'Kneel') for (const t of c.tracks) if (t.name === 'root.position') for (let i = 1; i < t.values.length; i += 3) t.values[i] += sitLift;   // (the hips' own position is in the root's turned frame: up is its z)
+  if (body) rollPalmsInClips(gltf.scene, clips, ['Sit', 'Kneel']);
   stripStaticTracks(gltf.scene, clips);
   return { scene: gltf.scene, clips };
 }
@@ -203,7 +204,12 @@ export function widenWalk(clips: THREE.AnimationClip[]) {
  * Ride keeps the chair convention (origin SIT_HIPS under the saddle, like Sit): astride a motorbike, hands on the
  * grips and feet on the pegs of the vehicle kit's 125 cc (spec.controls.grips / pegs).
  */
-interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number]; aim: Record<string, [number, number, number]> }
+interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number]; aim: Record<string, [number, number, number]>;
+  /** Where the palm faces (character space), for a body whose hand has a palm (buildPoseClips `palm`): the hand is rolled about its own axis to it. v4's mitten has none. */
+  palm?: Record<string, [number, number, number]>;
+  /** Where the hands hold on (character space, for a body of scale 1): for a body whose hand has a palm, the arms are solved (two bones, elbow towards `pole`)
+   * so that the middle of the palm — `along` metres from the wrist, `lift` above the palm's skin — is on the grip, not the wrist as v4's mitten has it. */
+  reach?: { L: [number, number, number]; R: [number, number, number]; along: number; lift: number; pole: [number, number, number] } }
 export const POSES: Record<PoseClip, PoseDef> = {
   // on the back, head towards −z on the pillow, one knee raised, hands resting on the belly
   Lie: {
@@ -215,6 +221,7 @@ export const POSES: Record<PoseClip, PoseDef> = {
       thighL: [0.12, 0.3, 1], shinL: [0.04, -0.33, 1], footL: [0.12, 0.95, 0.28],
       thighR: [-0.08, 0, 1], shinR: [-0.03, 0, 1], footR: [-0.15, 0.95, 0.25],
     },
+    palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // resting on the belly
   },
   // cross-legged on a mat, rug or cushion (attaya circles, floor seats), hands on the knees
   SitFloor: {
@@ -226,6 +233,7 @@ export const POSES: Record<PoseClip, PoseDef> = {
       upper_armL: [0.27, -0.88, 0.42], forearmL: [0.39, -0.83, 0.39], handL: [0.2, -0.5, 0.85],
       upper_armR: [-0.27, -0.88, 0.42], forearmR: [-0.39, -0.83, 0.39], handR: [-0.2, -0.5, 0.85],
     },
+    palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // flat on the knees
   },
   // astride a two-wheeler: leaning forward, hands on the handlebar grips, knees against the tank, feet on the pegs
   Ride: {
@@ -237,15 +245,68 @@ export const POSES: Record<PoseClip, PoseDef> = {
       thighL: [0.2, -0.35, 0.91], shinL: [-0.05, -0.9, -0.43], footL: [0.05, -0.2, 1],
       thighR: [-0.2, -0.35, 0.91], shinR: [0.05, -0.9, -0.43], footR: [-0.05, -0.2, 1],
     },
+    palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // over the grips, the fingers round them
+    reach: { L: [0.36, 0.66, 0.55], R: [-0.36, 0.66, 0.55], along: 0.085, lift: 0.03, pole: [0.5, -1, -0.1] },   // the 125 cc's grips (vehicleSpec controls.grips relative to the driver's seat)
   },
 };
+
+/** Where each hand's palm faces in the bone's own frame: at rest the palm of a body that has one turns to the thigh (the fitted frame of scripts/meshy/relax-hand.mjs). Needs the scene at rest. */
+function restPalms(scene: THREE.Object3D) {
+  scene.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(scene.matrixWorld).invert(), out = new Map<string, THREE.Vector3>();
+  for (const side of ['L', 'R']) {
+    const hand = scene.getObjectByName(`hand${side}`); if (!hand) continue;
+    const q = new THREE.Quaternion(); new THREE.Matrix4().multiplyMatrices(inv, hand.matrixWorld).decompose(new THREE.Vector3(), q, new THREE.Vector3());
+    const along = new THREE.Vector3(0, 1, 0).applyQuaternion(q), inward = new THREE.Vector3(side === 'L' ? -1 : 1, 0, 0);
+    out.set(`hand${side}`, inward.sub(along.multiplyScalar(inward.dot(along))).normalize().applyQuaternion(q.clone().invert()));
+  }
+  return out;
+}
+
+/**
+ * Clips made for v4's mitten (Sit, Kneel: hands on the thighs) turn a hand that has a palm face up. Rolls the forearm and the hand, half each, about their own
+ * axes so the palm faces `want` (character space) at the clip's first frame; every keyframe gets the same roll. The scene is left as it was found.
+ */
+function rollPalmsInClips(scene: THREE.Object3D, clips: THREE.AnimationClip[], names: string[], want = new THREE.Vector3(0, -1, 0)) {
+  const rest = restPalms(scene), bones: THREE.Object3D[] = [];
+  scene.traverse(o => bones.push(o));
+  const saved = bones.map(o => [o.position.clone(), o.quaternion.clone(), o.scale.clone()] as const);
+  const inv = new THREE.Matrix4().copy(scene.matrixWorld).invert(), roll: Record<string, number> = {};
+  for (const clip of clips.filter(c => names.includes(c.name))) {
+    const mixer = new THREE.AnimationMixer(scene); mixer.clipAction(clip).play(); mixer.setTime(0); scene.updateMatrixWorld(true);
+    for (const side of ['L', 'R']) {
+      const hand = scene.getObjectByName(`hand${side}`), pl = rest.get(`hand${side}`); if (!hand || !pl) continue;
+      const q = new THREE.Quaternion(); new THREE.Matrix4().multiplyMatrices(inv, hand.matrixWorld).decompose(new THREE.Vector3(), q, new THREE.Vector3());
+      roll[`${clip.name}|${side}`] = palmAngle(q, pl, want);
+    }
+    mixer.stopAllAction(); mixer.uncacheRoot(scene);
+  }
+  bones.forEach((o, i) => { o.position.copy(saved[i][0]); o.quaternion.copy(saved[i][1]); o.scale.copy(saved[i][2]); }); scene.updateMatrixWorld(true);
+  for (const clip of clips) for (const t of clip.tracks) {
+    const m = /^(forearm|hand)([LR])\.quaternion$/.exec(t.name), a = m && roll[`${clip.name}|${m[2]}`];
+    if (!m || !a) continue;
+    const r = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a / 2), q = new THREE.Quaternion(), v = t.values as unknown as number[];
+    for (let i = 0; i < v.length; i += 4) { q.set(v[i], v[i + 1], v[i + 2], v[i + 3]).multiply(r); v[i] = q.x; v[i + 1] = q.y; v[i + 2] = q.z; v[i + 3] = q.w; }
+  }
+}
+
+/** The angle (rad) about the bone's own axis (+Y of world orientation `w`) that brings its palm (the bone-local vector `palmLocal`) to face `want` as nearly as that allows. */
+function palmAngle(w: THREE.Quaternion, palmLocal: THREE.Vector3, want: THREE.Vector3): number {
+  const axis = new THREE.Vector3(0, 1, 0).applyQuaternion(w).normalize(), flat = (v: THREE.Vector3) => v.clone().sub(axis.clone().multiplyScalar(v.dot(axis)));
+  const a = flat(palmLocal.clone().applyQuaternion(w)), b = flat(want.clone().normalize());
+  if (a.lengthSq() < 1e-8 || b.lengthSq() < 1e-8) return 0;
+  return Math.atan2(axis.dot(new THREE.Vector3().crossVectors(a, b)), a.dot(b));
+}
+/** `w` turned about its own axis by `angle`. */
+const rolled = (w: THREE.Quaternion, angle: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0).applyQuaternion(w).normalize(), angle).multiply(w);
 
 /**
  * One-frame clips for POSES, solved from the rest pose of `scene` (the rig as GLTFLoader gives it). Every track of
  * `like` (an existing clip, so cross-fades cover every bone) gets a value: the posed rotation where the pose aims the
  * bone, the rest value otherwise; the hips also get their position.
  */
-export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip[]): THREE.AnimationClip[] {
+export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip[], body?: { scale: number }): THREE.AnimationClip[] {
+  const palm = !!body;
   const like = clips.find(c => c.name === 'Idle') ?? clips[0];
   const rootBone = scene.getObjectByName('root'), hipsBone = scene.getObjectByName('hips');
   if (!like || !rootBone || !hipsBone) return [];
@@ -253,8 +314,14 @@ export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip
   const sceneInv = new THREE.Matrix4().copy(scene.matrixWorld).invert();
   const inScene = (o: THREE.Object3D) => { const m = new THREE.Matrix4().multiplyMatrices(sceneInv, o.matrixWorld), q = new THREE.Quaternion(); m.decompose(new THREE.Vector3(), q, new THREE.Vector3()); return q; };
   const Y = new THREE.Vector3(0, 1, 0);
+  const restPalm = palm ? restPalms(scene) : new Map<string, THREE.Vector3>();
+  const restPos = (o: THREE.Object3D) => new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().multiplyMatrices(sceneInv, o.matrixWorld));
+  const restLen = (a: string, b: string) => { const A = scene.getObjectByName(a), B = scene.getObjectByName(b); return A && B ? restPos(A).distanceTo(restPos(B)) : 0.27; };
+  const L1 = restLen('upper_armL', 'forearmL'), L2 = restLen('forearmL', 'handL');
   return (Object.keys(POSES) as PoseClip[]).map(name => {
     const def = POSES[name];
+    const pos = new Map<THREE.Object3D, THREE.Vector3>([[hipsBone, new THREE.Vector3(0, def.hipsY, def.hipsZ ?? 0)]]);
+    const ikAim = new Map<string, THREE.Vector3>();
     const world = new Map<THREE.Object3D, THREE.Quaternion>(), local = new Map<THREE.Object3D, THREE.Quaternion>();
     const parentQ = inScene(hipsBone.parent!);
     const hq = new THREE.Quaternion().setFromEuler(new THREE.Euler(...def.hips, 'XYZ'));
@@ -263,8 +330,32 @@ export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip
       for (const c of o.children) {
         const pw = world.get(o)!;
         let w = pw.clone().multiply(c.quaternion);
-        const aim = def.aim[c.name];
-        if (aim) w = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(w), new THREE.Vector3(...aim).normalize()).multiply(w);
+        const cp = pos.get(o)!.clone().add(c.position.clone().normalize().multiplyScalar(restPos(o).distanceTo(restPos(c))).applyQuaternion(pw));
+        pos.set(c, cp);
+        if (palm && def.reach && /^upper_arm[LR]$/.test(c.name)) {
+          // two-bone solve of the arm to the grip (see PoseDef.reach)
+          const side = c.name.slice(-1), r = def.reach, k = body!.scale, sgn = side === 'L' ? 1 : -1;
+          const hand = new THREE.Vector3(...def.aim[`hand${side}`]).normalize(), grip = new THREE.Vector3(...r[side as 'L' | 'R']).divideScalar(k);
+          const wrist = grip.add(new THREE.Vector3(0, r.lift, 0)).addScaledVector(hand, -r.along);
+          const u = wrist.clone().sub(cp), d = Math.min(Math.max(u.length(), Math.abs(L1 - L2) + 1e-3), L1 + L2 - 1e-3); u.normalize();
+          const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d), hgt = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+          const pole = new THREE.Vector3(r.pole[0] * sgn, r.pole[1], r.pole[2]); pole.addScaledVector(u, -pole.dot(u)).normalize();
+          const elbow = cp.clone().addScaledVector(u, a).addScaledVector(pole, hgt);
+          ikAim.set(c.name, elbow.clone().sub(cp).normalize()); ikAim.set(`forearm${side}`, cp.clone().addScaledVector(u, d).sub(elbow).normalize());
+        }
+        const fixed = def.aim[c.name], aim = ikAim.get(c.name) ?? (fixed ? new THREE.Vector3(...fixed).normalize() : null);
+        if (aim) w = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(w), aim).multiply(w);
+        const want = palm ? def.palm?.[c.name] : undefined;
+        if (want) w = rolled(w, palmAngle(w, restPalm.get(c.name)!, new THREE.Vector3(...want)));
+        else if (palm && /^forearm[LR]$/.test(c.name) && def.palm) {
+          // the forearm takes half of the roll the hand will need, so the wrist is not wrung by all of it
+          const hand = c.children.find(k => k.name === `hand${c.name.slice(-1)}`), hAim = hand && def.aim[hand.name], hWant = hand && def.palm[hand.name];
+          if (hand && hAim && hWant) {
+            let hw = w.clone().multiply(hand.quaternion);
+            hw = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(hw), new THREE.Vector3(...hAim).normalize()).multiply(hw);
+            w = rolled(w, palmAngle(hw, restPalm.get(hand.name)!, new THREE.Vector3(...hWant)) / 2);
+          }
+        }
         world.set(c, w); local.set(c, pw.clone().invert().multiply(w));
         visit(c);
       }

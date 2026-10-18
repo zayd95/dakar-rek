@@ -58,3 +58,17 @@ Findings, with what I did:
 ## Not done, by decision
 
 No Meshy generation or credit spent (balance unchanged, 940). No NPC bodies, no protocol change, nothing pushed, merged or deployed. The 197 MB source archive was delivered to you with its sha256; it is not in git, and the Meshy tasks must stay until you have stored and verified it.
+
+## Hands (second pass, after the first review)
+
+The first integration kept Meshy's hands as generated: open, fingers fanned, thumb out, the palm turned whichever way the rest pose had it (the femme's the most). Fixed in the mesh and in the poses, nothing in the animation clips of v4:
+
+* **Hand relaxed in the mesh** (`scripts/meshy/relax-hand.mjs`, used by `transplant-to-v4-rig.mjs`): the skeleton has one bone per hand and no fingers, so the pose is baked once into the rest shape. The hand's own frame is found from its vertices (finger axis, palm normal, thumb side) and put on the forearm with the palm towards the thigh; the fan is closed to 30 % of its splay, the fingers curl 85° at the tips (the little finger a little more than the index), the thumb comes in 30° and bends 25° towards the palm. Wrist straight. Same numbers for both bodies (`scripts/meshy/build-bodies.mjs`); every number is a flag if one body needs its own.
+* **Sit, Kneel**: v4's mitten has no palm, so those clips left the new hand palm up. The forearm and hand are rolled half each about their own axes so the palms lie on the thighs (`rollPalmsInClips`, Meshy bodies only; v4 untouched).
+* **Lie, SitFloor, Ride** (solved in code): the same palm rule (belly, knees, grips).
+* **Ride, the grips**: v4's repo grips are at the wrist (a mitten holds the bar there). A hand with a palm held that way lay beside the bar with its fingers hanging. For Meshy bodies the arms are now solved (two bones, elbow out and down) so that the middle of the palm — 8.5 cm along the hand — is on the grip, scaled by the body's scale (`POSES.Ride.reach`, test in `tests/poses.test.ts`): palm-to-grip error under 2 cm for both bodies, the bar under the palm, the fingers over it, the elbows bent as a rider's are.
+* **Selection screen pictures** are now taken in the game itself (`scripts/meshy/make-previews.mjs`), idle pose, head to mid-thigh, so the hands show as the game draws them (they were the viewer's raw clip, with the right hand open to the front).
+
+Seen in `docs/meshy/proof/hands/after/` (before: `…/before/`): `sheet-idle|walk|run|stop|ride-moving.jpg` (rows: homme, femme; columns: full body, hand from the outside, from the front, from above), `pair-idle|walk|run.jpg` (front and both sides: the two hands are mirror images), `cycle-run|walk.jpg` (a cycle at game distance), `poses.jpg` (Sit, SitFloor, Lie, Kneel), the choice screen in `docs/meshy/proof/avatar/`.
+
+Checks after the change (integrated build): unit tests 1519 passed, 2 skipped; `check-avatar` 30/30; gestures 20/20 and sit-stand 22/22 and moto (desktop) 18/18 on both bodies; gait 26/26 homme, 22/22 femme except the 4 scale-dependent cadence windows already reported. Honest limits: the fingers are curled, not wrapped (the hand cannot close round a bar without finger bones, so on the motorbike they hang over the grip); the femme's mesh has longer, pointier fingers than the homme's (her source mesh, not the pose); the Talk and emote clips were not changed (the emote preview uses v4's body in ngemb); a phone was not involved.

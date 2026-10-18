@@ -9,7 +9,8 @@
 //
 // Method (a linear-blend bake, nothing is re-authored): uniform scale so the straightened leg reaches v4's hip height (0.95 m);
 // legs and arms are rotated and stretched segment by segment onto v4's knee, elbow and wrist positions; hands and feet stay rigid
-// (feet flat and pointing forward, hands twisted so the palms face the thighs); the torso, neck and head keep their shape.
+// (feet flat and pointing forward); the hands are put on the forearm with the palm to the thigh and made relaxed (closed fan, curled fingers, thumb in:
+// scripts/meshy/relax-hand.mjs; --relax 0 keeps Meshy's open hand with a fixed --twist); the torso, neck and head keep their shape.
 // Skin weights are Meshy's own, merged onto v4's bones. Base colour only, JPEG.
 import fs from 'node:fs';
 import * as THREE from 'three';
@@ -17,12 +18,16 @@ import sharp from 'sharp';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { prune } from '@gltf-transform/functions';
+import { fitHand } from './relax-hand.mjs';
 
 const args = process.argv.slice(2);
 const [meshyPath, outPath] = args;
 const opt = (n, d) => { const i = args.indexOf(`--${n}`); return i < 0 ? d : args[i + 1]; };
 const TWIST = (Number(opt('twist', -75)) * Math.PI) / 180, TEX = Number(opt('tex', 1024));
 const WARP = Number(opt('torso-warp', 1)), HANDALIGN = Number(opt('hand-align', 1)), LATERAL = Number(opt('lateral', 1)), FOOTFIT = Number(opt('foot-fit', 1));
+// relaxed hand (scripts/meshy/relax-hand.mjs): on by default; --relax 0 keeps the generated open hand with the old rigid twist
+const RELAX = Number(opt('relax', 1)), DEG = Math.PI / 180, WRIST_IN = Number(opt('wrist-in', 0)) * DEG, WRIST_FWD = Number(opt('wrist-fwd', 0)) * DEG;
+const HAND_OPTS = {}; for (const k of ['knuckle', 'fan', 'curl', 'curlSpread', 'curlShape', 'thumbIn', 'thumbFlex']) { const f = k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()); if (args.includes(`--${f}`)) HAND_OPTS[k] = Number(opt(f)); }
 const FOOT = { heel: -0.035, toe: 0.178 };      // the gait's foot model (src/actors/gait.ts RIG): heel 3.5 cm behind the ankle, toe tip 17.8 cm ahead
 const V4 = 'public/assets/character_v4.glb';
 
@@ -84,12 +89,31 @@ for (const [s, S, sign] of [['L', 'Left', 1], ['R', 'Right', -1]]) {
   const lat = v => v.clone().add(new THREE.Vector3(dx, 0, 0));
   const tSh = lat(T(`upper_arm.${s}`)), tEl = lat(T(`forearm.${s}`)), tWr = lat(T(`hand.${s}`));
   const up = segment(sh, el, tSh, tEl);
-  const fa = segment(el, wr, tEl, tWr, (TWIST / 2) * sign);
-  // the hand's own axis (wrist to the centre of the hand's vertices) is brought in line with the forearm, so the wrist is straight
+  let fa, hand;
+  if (RELAX) {
+    // the hand's own frame from its vertices, put on the forearm: palm towards the thigh, fingers along the forearm (plus an optional wrist tilt)
+    const pr = myRoot.listMeshes()[0].listPrimitives()[0], Pp = pr.getAttribute('POSITION').getArray(), Jj = pr.getAttribute('JOINTS_0').getArray(), Ww = pr.getAttribute('WEIGHTS_0').getArray();
+    const ih = myNames.indexOf(`${S}Hand`), pts = [];
+    for (let vi = 0; vi < Pp.length / 3; vi++) { let w = 0; for (let k = 0; k < 4; k++) if (Jj[vi * 4 + k] === ih) w += Ww[vi * 4 + k]; if (w > 0.5) pts.push(new THREE.Vector3(Pp[vi * 3], Pp[vi * 3 + 1], Pp[vi * 3 + 2]).sub(B[`${S}Hand`]).multiplyScalar(G)); }
+    const hm = fitHand(pts, sign, HAND_OPTS);
+    const f = tWr.clone().sub(tEl).normalize(), inward = new THREE.Vector3(-sign, 0, 0);
+    let Yt = f.clone(), Nt = inward.clone().sub(f.clone().multiplyScalar(inward.dot(f))).normalize(), Xt = new THREE.Vector3().crossVectors(Yt, Nt);
+    const tilt = new THREE.Quaternion().setFromAxisAngle(Xt, WRIST_IN).premultiply(new THREE.Quaternion().setFromAxisAngle(Nt, WRIST_FWD * -hm.thumbSign));
+    Yt.applyQuaternion(tilt); Nt.applyQuaternion(tilt); Xt.applyQuaternion(tilt);
+    const basis = (a, b, c) => new THREE.Matrix4().makeBasis(a, b, c);
+    const Rh = new THREE.Quaternion().setFromRotationMatrix(basis(Xt, Yt, Nt).multiply(basis(hm.X, hm.Y, hm.N).transpose()));
+    // the part of that turn that is a twist about the forearm is shared by forearm and hand (half each), as the fixed twist was
+    const twistAngle = 2 * Math.atan2(new THREE.Vector3(Rh.x, Rh.y, Rh.z).dot(f), Rh.w), wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+    fa = segment(el, wr, tEl, tWr, wrap(twistAngle) / 2);
+    const P = x => { const u = x.clone().multiplyScalar(G).add(T0).sub(wr), [a, b, c] = hm.relax(u.dot(hm.X), u.dot(hm.Y), u.dot(hm.N)); return tWr.clone().addScaledVector(Xt, a).addScaledVector(Yt, b).addScaledVector(Nt, c); };
+    hand = { p: P, n: (n, x) => { const e = 0.004 / G; return P(x.clone().addScaledVector(n, e)).sub(P(x.clone().addScaledVector(n, -e))).normalize(); } };
+  } else {
+  fa = segment(el, wr, tEl, tWr, (TWIST / 2) * sign);
   const handCentre = (() => { const pr = myRoot.listMeshes()[0].listPrimitives()[0], Pp = pr.getAttribute('POSITION').getArray(), Jj = pr.getAttribute('JOINTS_0').getArray(), Ww = pr.getAttribute('WEIGHTS_0').getArray(); const ih = myNames.indexOf(`${S}Hand`), c = new THREE.Vector3(); let n = 0; for (let v = 0; v < Pp.length / 3; v++) { let w = 0; for (let k = 0; k < 4; k++) if (Jj[v * 4 + k] === ih) w += Ww[v * 4 + k]; if (w > 0.6) { c.x += Pp[v * 3]; c.y += Pp[v * 3 + 1]; c.z += Pp[v * 3 + 2]; n++; } } return c.multiplyScalar(1 / Math.max(n, 1) * G).add(T0); })();
   const handAxis = HANDALIGN ? handCentre.clone().sub(wr) : wr.clone().sub(el);
   const handR = minRot(handAxis, tWr.clone().sub(tEl)).premultiply(new THREE.Quaternion().setFromAxisAngle(tWr.clone().sub(tEl).normalize(), TWIST * sign));
-  const hand = { p: x => { const u = x.clone().multiplyScalar(G).add(T0).sub(wr).applyQuaternion(handR); return tWr.clone().add(u); }, n: n => n.clone().applyQuaternion(handR) };
+  hand = { p: x => { const u = x.clone().multiplyScalar(G).add(T0).sub(wr).applyQuaternion(handR); return tWr.clone().add(u); }, n: n => n.clone().applyQuaternion(handR) };
+  }
   out[`${S}Arm`] = up; out[`${S}ForeArm`] = fa; out[`${S}Hand`] = hand;
   report.push([`upper_arm.${s}`, up.k], [`forearm.${s}`, fa.k]);
 }
@@ -113,7 +137,7 @@ for (let i = 0; i < nV; i++) {
     const w = W[i * 4 + k]; if (w <= 0) continue;
     const name = myNames[J[i * 4 + k]], tf = out[name];
     v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]); nn.set(N[i * 3], N[i * 3 + 1], N[i * 3 + 2]);
-    acc.addScaledVector(tf.p(v), w); accN.addScaledVector(tf.n(nn), w);
+    acc.addScaledVector(tf.p(v), w); accN.addScaledVector(tf.n(nn, v), w);
     const t = v4Index[MAP[name]]; merged.set(t, (merged.get(t) ?? 0) + w);
   }
   P2.set([acc.x, acc.y, acc.z], i * 3); accN.normalize(); N2.set([accN.x, accN.y, accN.z], i * 3);
