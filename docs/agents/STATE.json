@@ -1,14 +1,32 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T15:36:19.755Z",
+  "updatedAt": "2026-10-18T16:35:40Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": null,
+  "lease": {
+    "token": "audit-20261018T1635Z-watch",
+    "owner": "producer_audit_1635",
+    "acquiredAt": "2026-10-18T16:35:40Z",
+    "expiresAt": "2026-10-18T17:20:00Z",
+    "purpose": "Fresh exact-head stabilization watch after PR46 save-v6 validation"
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "owner": "producer_audit_1635",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "f32b21992d5800fe6bc9117fdf04168ce10470a0",
+      "allowedFiles": [
+        "docs/agents/STATE.json",
+        "docs/agents/operations/QUEUE.json",
+        "docs/agents/operations/CYCLE-2026-10-18-1635-AUDIT.md"
+      ],
+      "purpose": "Registry-only read audit; no source/PR/ref mutation"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
