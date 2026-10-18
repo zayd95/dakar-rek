@@ -10,6 +10,7 @@
 // On a shared machine run browsers one at a time: flock /tmp/dakar-browser.lock node scripts/check-car.mjs …
 // ONLY=desktop or ONLY=phone runs one viewport. EXTRA='&vehicleModel=kit' appends a test link (the procedural car instead of the generated body).
 import { chromium } from 'playwright';
+import { realTouch } from './lib/realTouch.mjs';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4213/';
@@ -38,6 +39,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
     };
   });
   const d = (fn, arg) => page.evaluate(fn, arg);
+  const tr = touch ? await realTouch(page) : null;
   const info = () => d(() => window.__dakar.car.info());
   const shot = async name => { await page.waitForTimeout(500); await page.screenshot({ path: `${out}/${label}-${name}.png` }); };
   const ready = () => page.waitForFunction(() => window.__dakar.focus() !== null && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
@@ -53,10 +55,10 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
       await hold();
       if (steer) await page.keyboard.up(steer > 0 ? 'KeyD' : 'KeyA'); await page.keyboard.up(key);
     } else {
-      const j = await d(() => { const r = document.getElementById('joy').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
-      await page.mouse.move(j.x, j.y); await page.mouse.down(); await page.mouse.move(j.x + steer * 30, j.y + (back ? 42 : -42), { steps: 4 });
+      const j = await tr.centre('#joy');                                                          // a real finger on the joystick
+      await tr.down(1, j.x, j.y); await tr.move(1, j.x + steer * 30, j.y + (back ? 42 : -42));
       await hold();
-      await page.mouse.up();
+      await tr.up(1);
     }
   };
   const view = async want => {
@@ -132,10 +134,9 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await page.waitForTimeout(800);
   if (!touch) { await page.keyboard.down('KeyW'); await page.waitForFunction(c => Math.abs(window.__dakar.pos().x - c.x) < 1.2, car0, { timeout: 15000 }).catch(() => {}); await page.keyboard.up('KeyW'); }
   else {
-    const j = await d(() => { const r = document.getElementById('joy').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
-    await page.mouse.move(j.x, j.y); await page.mouse.down(); await page.mouse.move(j.x, j.y - 42, { steps: 4 });
+    const j = await tr.centre('#joy'); await tr.down(1, j.x, j.y); await tr.move(1, j.x, j.y - 42);
     await page.waitForFunction(c => Math.abs(window.__dakar.pos().x - c.x) < 1.2, car0, { timeout: 15000 }).catch(() => {});
-    await page.mouse.up();
+    await tr.up(1);
   }
   const pw = await d(() => window.__dakar.pos());
   check(`${label}: the parked car is solid (walking into it stops at its side)`, bought.solid && Math.abs(local(car0, pw).lateral) > 0.85, JSON.stringify({ solid: bought.solid, lateral: local(car0, pw).lateral.toFixed(2), walked: Math.abs(pw.x - pave.x).toFixed(2) }));

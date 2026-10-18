@@ -1,7 +1,8 @@
 // The Tiak Tiak lent motorbike: free « Monter » at any time (no 150 000 F, no delivery), riding in the hub (touch: the
-// stick steers, two held buttons give gas and brake, « Descendre » when stopped; desktop: the keys), the courier's box on the
+// stick steers, two held buttons give gas and brake, pressed with real touch events, « Descendre » when stopped; desktop: the keys), the courier's box on the
 // back with the parcel in it during a run, the paid Jakarta untouched. Usage: flock /tmp/dakar-browser.lock node scripts/check-tiak-moto.mjs [baseUrl] [outDir]
 import { chromium } from 'playwright';
+import { realTouch } from './lib/realTouch.mjs';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4232/';
@@ -18,6 +19,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const page = await context.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 120000 });
+  const rt = touch ? await realTouch(page) : null;
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.tiak, null, { timeout: 240000 });
   const d = (fn, arg) => page.evaluate(fn, arg);
   const shot = async name => { await page.waitForTimeout(500); try { await page.screenshot({ path: `${out}/${label}-${name}.png` }); } catch { /* */ } };
@@ -63,7 +65,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
       check(`${label}/${hub}: « Descendre » shows when stopped`, offStopped !== 'none', offStopped);
       await shot(`${hub}-riding-stopped`);
       // hold the gas button
-      await d(() => document.querySelector('#ridepad .rp-gas').dispatchEvent(new PointerEvent('pointerdown', { pointerId: 7, bubbles: true })));
+      { const g = await rt.centre('#ridepad .rp-gas'); await rt.down(7, g.x, g.y); }                      // a real finger on the gas button
     } else { await page.keyboard.down('KeyW'); }
     // (game time runs slower than the clock on this software renderer: wait for the speed rather than for seconds)
     await page.waitForFunction(() => window.__dakar.tiak.at()?.speed > 4, null, { timeout: 40000 }).catch(() => {});
@@ -73,10 +75,10 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
       const offMoving = await d(() => getComputedStyle(document.querySelector('#ridepad .rp-off')).display);
       check(`${label}/${hub}: « Descendre » is hidden while moving`, offMoving === 'none', offMoving);
       await shot(`${hub}-riding-fast`);
-      await d(() => { document.querySelector('#ridepad .rp-gas').dispatchEvent(new PointerEvent('pointerup', { pointerId: 7, bubbles: true })); document.querySelector('#ridepad .rp-brake').dispatchEvent(new PointerEvent('pointerdown', { pointerId: 8, bubbles: true })); });
+      await rt.up(7); { const g = await rt.centre('#ridepad .rp-brake'); await rt.down(8, g.x, g.y); }       // the finger moves to the brake
     } else { await page.keyboard.up('KeyW'); await page.keyboard.down('KeyS'); }
     await page.waitForFunction(() => Math.abs(window.__dakar.tiak.at().speed) < 0.3, null, { timeout: 20000 }).catch(() => {});
-    if (touch) await d(() => document.querySelector('#ridepad .rp-brake').dispatchEvent(new PointerEvent('pointerup', { pointerId: 8, bubbles: true }))); else await page.keyboard.up('KeyS');
+    if (touch) await rt.up(8); else await page.keyboard.up('KeyS');
     const stopped = await at();
     check(`${label}/${hub}: the brake stops it (${stopped?.speed} m/s)`, stopped && stopped.speed < 0.5 && stopped.speed > -3);
     check(`${label}/${hub}: it stayed in the hub`, (await d(() => window.__dakar.pos().hub)) === hub);
