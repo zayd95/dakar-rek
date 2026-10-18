@@ -1,14 +1,33 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T13:38:27.782Z",
+  "updatedAt": "2026-10-18T14:35:20.292Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": null,
+  "lease": {
+    "token": "qa-save-20261018T1434Z",
+    "owner": "qa_save_1434",
+    "acquiredAt": "2026-10-18T14:35:20.292Z",
+    "expiresAt": "2026-10-18T15:20:00Z",
+    "purpose": "Independent exact-SHA review of PR46 save-v6 fix and completed CI"
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "owner": "qa_save_1434",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "afb758037b211d0458e9ca0ebb4b3a8326559683",
+      "allowedFiles": [
+        "docs/agents/STATE.json",
+        "docs/agents/operations/QUEUE.json",
+        "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md",
+        "docs/agents/operations/CYCLE-2026-10-18-1434-AUDIT.md"
+      ],
+      "purpose": "Registry and QA evidence only; no source/PR/ref mutation"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
@@ -125,7 +144,9 @@
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
-  "activeSessions": [],
+  "activeSessions": [
+    "qa_save_1434"
+  ],
   "completedSessions": [
     "activation_producer",
     "activation_qa",

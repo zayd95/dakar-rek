@@ -2377,5 +2377,27 @@
     "completedAt": "2026-10-18T13:38:27.782Z",
     "result": "PR46 save-v6 fix candidate observed; exact push and PR CI still in_progress; no validation or notification",
     "report": "docs/agents/operations/CYCLE-2026-10-18-1335-AUDIT.md"
+  },
+  "currentSaveV6Qa": {
+    "id": "STAB-20261018-1434-SAVE-V6-QA",
+    "role": "qa",
+    "owner": "qa_save_1434",
+    "reviewer": "qa_save_1434",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "afb758037b211d0458e9ca0ebb4b3a8326559683",
+    "controlBriefCommit": "afb758037b211d0458e9ca0ebb4b3a8326559683",
+    "sourceCommit": "2fbd4169f6cf3b1a97d7146f6a0234f17ea057b1",
+    "sourceBase": "2c8270978f50f89192ded073321688ce9f87e938",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR46-20261018-1434-SAVE-V6-QA.md"
+    ],
+    "status": "active",
+    "criteria": [
+      "Review exact 5234097..2fbd416 save-key delta and old-v5 rollback behavior",
+      "Read exact push and PR CI logs including saveV6/saveKeys tests, types, build, city, online and launch",
+      "Separate unit/static validation from non-invoked two-build browser script",
+      "No source edits, feature approval, merge, deploy, Blender or paid generation"
+    ],
+    "startedAt": "2026-10-18T14:35:20.292Z"
   }
 }
