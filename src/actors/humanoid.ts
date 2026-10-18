@@ -208,8 +208,9 @@ interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number
   /** Where the palm faces (character space), for a body whose hand has a palm (buildPoseClips `palm`): the hand is rolled about its own axis to it. v4's mitten has none. */
   palm?: Record<string, [number, number, number]>;
   /** Where the hands hold on (character space, for a body of scale 1): for a body whose hand has a palm, the arms are solved (two bones, elbow towards `pole`)
-   * so that the middle of the palm — `along` metres from the wrist, `lift` above the palm's skin — is on the grip, not the wrist as v4's mitten has it. */
-  reach?: { L: [number, number, number]; R: [number, number, number]; along: number; lift: number; pole: [number, number, number] } }
+   * so that the grip is where the closed hand holds it, not at the wrist as v4's mitten has it: at the point the body's `grip` extras give in the hand's own frame (the fist of the
+   * `grip` morph target) or, without them, in the middle of the palm — `along` metres from the wrist, `lift` above the skin. `drop`: the rubber grip's middle is this far below the bar's. */
+  reach?: { L: [number, number, number]; R: [number, number, number]; along: number; lift: number; drop: number; pole: [number, number, number] } }
 export const POSES: Record<PoseClip, PoseDef> = {
   // on the back, head towards −z on the pillow, one knee raised, hands resting on the belly
   Lie: {
@@ -246,7 +247,7 @@ export const POSES: Record<PoseClip, PoseDef> = {
       thighR: [-0.2, -0.35, 0.91], shinR: [0.05, -0.9, -0.43], footR: [-0.05, -0.2, 1],
     },
     palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // over the grips, the fingers round them
-    reach: { L: [0.36, 0.66, 0.55], R: [-0.36, 0.66, 0.55], along: 0.085, lift: 0.03, pole: [0.5, -1, -0.1] },   // the 125 cc's grips (vehicleSpec controls.grips relative to the driver's seat)
+    reach: { L: [0.36, 0.66, 0.55], R: [-0.36, 0.66, 0.55], along: 0.085, lift: 0.03, drop: 0.02, pole: [0.5, -1, -0.1] },   // the 125 cc's grips (vehicleSpec controls.grips relative to the driver's seat)
   },
 };
 
@@ -260,6 +261,13 @@ function restPalms(scene: THREE.Object3D) {
     const along = new THREE.Vector3(0, 1, 0).applyQuaternion(q), inward = new THREE.Vector3(side === 'L' ? -1 : 1, 0, 0);
     out.set(`hand${side}`, inward.sub(along.multiplyScalar(inward.dot(along))).normalize().applyQuaternion(q.clone().invert()));
   }
+  return out;
+}
+
+/** Where the middle of a handlebar grip sits in each hand bone's own frame when the hand is closed on it (the body's `grip` extras, written by scripts/meshy/transplant-to-v4-rig.mjs), or none. */
+function restGrips(scene: THREE.Object3D) {
+  const out = new Map<string, THREE.Vector3>();
+  for (const side of ['L', 'R']) { const g = scene.getObjectByName(`hand${side}`)?.userData?.grip; if (Array.isArray(g) && g.length === 3) out.set(`hand${side}`, new THREE.Vector3(g[0], g[1], g[2])); }
   return out;
 }
 
@@ -314,7 +322,7 @@ export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip
   const sceneInv = new THREE.Matrix4().copy(scene.matrixWorld).invert();
   const inScene = (o: THREE.Object3D) => { const m = new THREE.Matrix4().multiplyMatrices(sceneInv, o.matrixWorld), q = new THREE.Quaternion(); m.decompose(new THREE.Vector3(), q, new THREE.Vector3()); return q; };
   const Y = new THREE.Vector3(0, 1, 0);
-  const restPalm = palm ? restPalms(scene) : new Map<string, THREE.Vector3>();
+  const restPalm = palm ? restPalms(scene) : new Map<string, THREE.Vector3>(), restGrip = palm ? restGrips(scene) : new Map<string, THREE.Vector3>();
   const restPos = (o: THREE.Object3D) => new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().multiplyMatrices(sceneInv, o.matrixWorld));
   const restLen = (a: string, b: string) => { const A = scene.getObjectByName(a), B = scene.getObjectByName(b); return A && B ? restPos(A).distanceTo(restPos(B)) : 0.27; };
   const L1 = restLen('upper_armL', 'forearmL'), L2 = restLen('forearmL', 'handL');
@@ -335,8 +343,13 @@ export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip
         if (palm && def.reach && /^upper_arm[LR]$/.test(c.name)) {
           // two-bone solve of the arm to the grip (see PoseDef.reach)
           const side = c.name.slice(-1), r = def.reach, k = body!.scale, sgn = side === 'L' ? 1 : -1;
-          const hand = new THREE.Vector3(...def.aim[`hand${side}`]).normalize(), grip = new THREE.Vector3(...r[side as 'L' | 'R']).divideScalar(k);
-          const wrist = grip.add(new THREE.Vector3(0, r.lift, 0)).addScaledVector(hand, -r.along);
+          const hand = new THREE.Vector3(...def.aim[`hand${side}`]).normalize(), grip = new THREE.Vector3(...r[side as 'L' | 'R']).divideScalar(k), held = restGrip.get(`hand${side}`);
+          let wrist: THREE.Vector3;
+          if (held) {                                                   // the closed hand's own grip point: the hand's orientation is fixed by its aim and its palm, so the wrist follows
+            const q0 = new THREE.Quaternion().setFromUnitVectors(Y, hand), want = def.palm?.[`hand${side}`];
+            const qh = want ? rolled(q0, palmAngle(q0, restPalm.get(`hand${side}`)!, new THREE.Vector3(...want))) : q0;
+            wrist = grip.add(new THREE.Vector3(0, -r.drop / k, 0)).sub(held.clone().applyQuaternion(qh));
+          } else wrist = grip.add(new THREE.Vector3(0, r.lift, 0)).addScaledVector(hand, -r.along);
           const u = wrist.clone().sub(cp), d = Math.min(Math.max(u.length(), Math.abs(L1 - L2) + 1e-3), L1 + L2 - 1e-3); u.normalize();
           const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d), hgt = Math.sqrt(Math.max(0, L1 * L1 - a * a));
           const pole = new THREE.Vector3(r.pole[0] * sgn, r.pole[1], r.pole[2]); pole.addScaledVector(u, -pole.dot(u)).normalize();
@@ -520,6 +533,8 @@ export class Humanoid {
   private lipsMat = new THREE.MeshLambertMaterial({ color: 0x3a1a12 });
   private beardMat = new THREE.MeshLambertMaterial({ color: 0x1a1414 });
   private morphed: THREE.Mesh[] = [];
+  /** The mesh that carries the 'grip' morph target (the fist for a handlebar, Meshy bodies) and how far it is closed (0–1). */
+  private gripMesh: THREE.Mesh | null = null; private gripW = 0;
   private accessoryMeshes: THREE.Object3D[] = [];
   clipName: Clip | null = null;
   /** When set, city movement does not change the clip (emotes, talking, sitting). Idle, Walk and Run are not held: the gait runs. */
@@ -578,7 +593,7 @@ export class Humanoid {
       m.castShadow = true; m.frustumCulled = false;
       const key = CLOTH.find(n => m.name.startsWith(n));
       if (/^Head\w*_\d+$/.test(m.name)) this.face.push(m);
-      if (m.morphTargetDictionary) this.morphed.push(m);
+      if (m.morphTargetDictionary) { this.morphed.push(m); if (m.morphTargetDictionary.grip !== undefined) this.gripMesh = m; }
       const src = m.material as THREE.MeshStandardMaterial;
       if (key) { this.parts.set(key, m); if (key.startsWith('Hair_')) m.material = hair; if (key === 'Beard') m.material = this.beardMat; }
       else if (this.body !== 'v4' && src.map) m.material = new THREE.MeshLambertMaterial({ map: src.map, side: THREE.DoubleSide });   // a body that carries its own texture
@@ -686,6 +701,7 @@ export class Humanoid {
       if (!this.overlay) this.underOverlay = null;
     }
     this.locomote(dt, speed);
+    if (this.gripMesh) this.closeFist(dt);
     if (!this.overlay) return;
     const keep = (this.underOverlay ??= new Float64Array(b.length * 7));
     for (let i = 0, o = 0; i < b.length; i++, o += 7) {
@@ -693,6 +709,14 @@ export class Humanoid {
       keep[o] = q.x; keep[o + 1] = q.y; keep[o + 2] = q.z; keep[o + 3] = q.w; keep[o + 4] = p.x; keep[o + 5] = p.y; keep[o + 6] = p.z;
     }
     this.overlay(this, dt);
+  }
+
+  /** The hands close on the grips while the rider has the Ride pose (a morph target: the skeleton has no finger bones), and open again after. */
+  private closeFist(dt: number) {
+    const to = this.clipName === 'Ride' ? 1 : 0;
+    if (this.gripW === to) return;
+    this.gripW = to > this.gripW ? Math.min(to, this.gripW + dt / 0.3) : Math.max(to, this.gripW - dt / 0.3);
+    const m = this.gripMesh!; m.morphTargetInfluences![m.morphTargetDictionary!.grip] = this.gripW;
   }
 
   private locomote(dt: number, speed: number) {

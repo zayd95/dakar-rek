@@ -27,7 +27,7 @@ const TWIST = (Number(opt('twist', -75)) * Math.PI) / 180, TEX = Number(opt('tex
 const WARP = Number(opt('torso-warp', 1)), HANDALIGN = Number(opt('hand-align', 1)), LATERAL = Number(opt('lateral', 1)), FOOTFIT = Number(opt('foot-fit', 1));
 // relaxed hand (scripts/meshy/relax-hand.mjs): on by default; --relax 0 keeps the generated open hand with the old rigid twist
 const RELAX = Number(opt('relax', 1)), DEG = Math.PI / 180, WRIST_IN = Number(opt('wrist-in', 0)) * DEG, WRIST_FWD = Number(opt('wrist-fwd', 0)) * DEG;
-const HAND_OPTS = {}; for (const k of ['knuckle', 'fan', 'curl', 'curlSpread', 'curlShape', 'thumbIn', 'thumbFlex']) { const f = k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()); if (args.includes(`--${f}`)) HAND_OPTS[k] = Number(opt(f)); }
+const HAND_OPTS = {}; for (const k of ['knuckle', 'fan', 'curl', 'curlSpread', 'curlShape', 'thumbIn', 'thumbFlex', 'fingerScale', 'fingerThick']) { const f = k.replace(/[A-Z]/g, m => '-' + m.toLowerCase()); if (args.includes(`--${f}`)) HAND_OPTS[k] = Number(opt(f)); }
 const FOOT = { heel: -0.035, toe: 0.178 };      // the gait's foot model (src/actors/gait.ts RIG): heel 3.5 cm behind the ankle, toe tip 17.8 cm ahead
 const V4 = 'public/assets/character_v4.glb';
 
@@ -66,6 +66,10 @@ function segment(O, E, o, e, twist = 0, twistPivot = o) {
     p: x => { const u = x.clone().multiplyScalar(G).add(T0).sub(O).applyQuaternion(R); return o.clone().add(u).addScaledVector(axis, (k - 1) * u.dot(axis)); },
     n: n => n.clone().applyQuaternion(R) };
 }
+// the fist round a handlebar grip: a second shape of the same hand, stored as a morph target (scripts/meshy/grip-morph.mjs) that the game blends in while the rider has the Ride pose
+const GRIP = Number(opt('grip', 1)), GRIP_OPTS = { ...HAND_OPTS, gripRadius: Number(opt('grip-radius', 0.022)), fingerThick: Number(opt('grip-finger-thick', 0.3)), fan: 0.15, curlSpread: 0.1, thumbIn: Number(opt('grip-thumb-in', 70)), thumbFlex: Number(opt('grip-thumb-flex', 60)) };
+const outGrip = {};     // Meshy bone name -> the same, for the fist (only the hands differ)
+const gripLocal = {};   // side -> where the middle of the bar sits in the v4 hand bone's own frame (metres), for the game's arm solve
 const out = {};          // Meshy bone name -> { p, n }
 const report = [];
 for (const [bone] of Object.entries(B)) out[bone] = rigid;
@@ -106,7 +110,15 @@ for (const [s, S, sign] of [['L', 'Left', 1], ['R', 'Right', -1]]) {
     const twistAngle = 2 * Math.atan2(new THREE.Vector3(Rh.x, Rh.y, Rh.z).dot(f), Rh.w), wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
     fa = segment(el, wr, tEl, tWr, wrap(twistAngle) / 2);
     const P = x => { const u = x.clone().multiplyScalar(G).add(T0).sub(wr), [a, b, c] = hm.relax(u.dot(hm.X), u.dot(hm.Y), u.dot(hm.N)); return tWr.clone().addScaledVector(Xt, a).addScaledVector(Yt, b).addScaledVector(Nt, c); };
-    hand = { p: P, n: (n, x) => { const e = 0.004 / G; return P(x.clone().addScaledVector(n, e)).sub(P(x.clone().addScaledVector(n, -e))).normalize(); } };
+    const push = Pf => (n, x) => { const e = 0.004 / G; return Pf(x.clone().addScaledVector(n, e)).sub(Pf(x.clone().addScaledVector(n, -e))).normalize(); };
+    hand = { p: P, n: push(P) };
+    if (GRIP) {
+      const hg = fitHand(pts, sign, GRIP_OPTS);
+      const Pg = x => { const u = x.clone().multiplyScalar(G).add(T0).sub(wr), [a, b, c] = hg.relax(u.dot(hg.X), u.dot(hg.Y), u.dot(hg.N)); return tWr.clone().addScaledVector(Xt, a).addScaledVector(Yt, b).addScaledVector(Nt, c); };
+      outGrip[`${S}Hand`] = { p: Pg, n: push(Pg) };
+      const [ga, gb, gc] = hg.gripCentre, centre = tWr.clone().addScaledVector(Xt, ga).addScaledVector(Yt, gb).addScaledVector(Nt, gc);
+      gripLocal[s] = centre.applyMatrix4(M4(v4joint[`hand.${s}`]).invert()).toArray().map(x => +x.toFixed(4));
+    }
   } else {
   fa = segment(el, wr, tEl, tWr, (TWIST / 2) * sign);
   const handCentre = (() => { const pr = myRoot.listMeshes()[0].listPrimitives()[0], Pp = pr.getAttribute('POSITION').getArray(), Jj = pr.getAttribute('JOINTS_0').getArray(), Ww = pr.getAttribute('WEIGHTS_0').getArray(); const ih = myNames.indexOf(`${S}Hand`), c = new THREE.Vector3(); let n = 0; for (let v = 0; v < Pp.length / 3; v++) { let w = 0; for (let k = 0; k < 4; k++) if (Jj[v * 4 + k] === ih) w += Ww[v * 4 + k]; if (w > 0.6) { c.x += Pp[v * 3]; c.y += Pp[v * 3 + 1]; c.z += Pp[v * 3 + 2]; n++; } } return c.multiplyScalar(1 / Math.max(n, 1) * G).add(T0); })();
@@ -126,21 +138,67 @@ for (const n of myNames) if (!MAP[n]) throw new Error(`unmapped Meshy bone ${n}`
 
 // ---- bake
 const prim = myRoot.listMeshes()[0].listPrimitives()[0];
-const P = prim.getAttribute('POSITION').getArray(), N = prim.getAttribute('NORMAL').getArray(), UV = prim.getAttribute('TEXCOORD_0').getArray();
-const J = prim.getAttribute('JOINTS_0').getArray(), W = prim.getAttribute('WEIGHTS_0').getArray(), IDX = prim.getIndices().getArray();
-const nV = P.length / 3, P2 = new Float32Array(nV * 3), N2 = new Float32Array(nV * 3), J2 = new Uint8Array(nV * 4), W2 = new Float32Array(nV * 4);
-const v = new THREE.Vector3(), nn = new THREE.Vector3(), acc = new THREE.Vector3(), accN = new THREE.Vector3();
+let P = prim.getAttribute('POSITION').getArray(), N = prim.getAttribute('NORMAL').getArray(), UV = prim.getAttribute('TEXCOORD_0').getArray();
+let J = prim.getAttribute('JOINTS_0').getArray(), W = prim.getAttribute('WEIGHTS_0').getArray(), IDX = prim.getIndices().getArray();
+// the hands' long thin triangles (a finger is two or three strips) cannot bend smoothly: every edge between two hand vertices longer than --hand-subdiv metres is halved (a few passes);
+// edges, not triangles, decide, so neighbours agree and nothing cracks. 0 turns it off.
+const SUBDIV = Number(opt('hand-subdiv', 0.025)), HAND_W = Number(opt('hand-subdiv-weight', 0.05));   // a vertex counts as the hand's from this share of hand weight (the wrist blends with the forearm)
+if (SUBDIV > 0) {
+  const hands = ['LeftHand', 'RightHand'].map(n => myNames.indexOf(n)), maxEdge = SUBDIV / G;
+  const pos = Array.from(P), nor = Array.from(N), uvs = Array.from(UV), jnt = Array.from(J), wgt = Array.from(W);
+  const isHand = i => { let w = 0; for (let k = 0; k < 4; k++) if (hands.includes(jnt[i * 4 + k])) w += wgt[i * 4 + k]; return w > HAND_W; };
+  let tri = Array.from(IDX), added = 0;
+  for (let pass = 0; pass < 5; pass++) {
+    const mid = new Map(), next = [];
+    const split = (a, b) => {
+      const key = a < b ? `${a},${b}` : `${b},${a}`; if (mid.has(key)) return mid.get(key);
+      let m = -1;
+      if (Math.hypot(pos[a * 3] - pos[b * 3], pos[a * 3 + 1] - pos[b * 3 + 1], pos[a * 3 + 2] - pos[b * 3 + 2]) > maxEdge && isHand(a) && isHand(b)) {
+        m = pos.length / 3;
+        for (let k = 0; k < 3; k++) { pos.push((pos[a * 3 + k] + pos[b * 3 + k]) / 2); nor.push(nor[a * 3 + k] + nor[b * 3 + k]); }
+        const l = Math.hypot(nor[m * 3], nor[m * 3 + 1], nor[m * 3 + 2]) || 1; for (let k = 0; k < 3; k++) nor[m * 3 + k] /= l;
+        uvs.push((uvs[a * 2] + uvs[b * 2]) / 2, (uvs[a * 2 + 1] + uvs[b * 2 + 1]) / 2);
+        const bl = new Map(); for (const [v, f] of [[a, 0.5], [b, 0.5]]) for (let k = 0; k < 4; k++) if (wgt[v * 4 + k] > 0) bl.set(jnt[v * 4 + k], (bl.get(jnt[v * 4 + k]) ?? 0) + wgt[v * 4 + k] * f);
+        const top = [...bl].sort((x, y) => y[1] - x[1]).slice(0, 4), sum = top.reduce((t, [, w]) => t + w, 0);
+        for (let k = 0; k < 4; k++) { jnt.push(top[k]?.[0] ?? 0); wgt.push(top[k] ? top[k][1] / sum : 0); }
+        added++;
+      }
+      mid.set(key, m); return m;
+    };
+    let any = false;
+    for (let t = 0; t < tri.length; t += 3) {
+      let [a, b, c] = [tri[t], tri[t + 1], tri[t + 2]];
+      let m = [split(a, b), split(b, c), split(c, a)], k = m.filter(x => x >= 0).length;
+      if (!k) { next.push(a, b, c); continue; }
+      any = true;
+      if (k === 1) {                                           // rotate so that the edge a–b is the split one
+        while (m[0] < 0) { [a, b, c] = [b, c, a]; m = [m[1], m[2], m[0]]; }
+        next.push(a, m[0], c, m[0], b, c);
+      } else if (k === 2) {                                    // rotate so that a–b and b–c are split (b shared)
+        while (m[2] >= 0 || m[0] < 0) { [a, b, c] = [b, c, a]; m = [m[1], m[2], m[0]]; }
+        next.push(m[0], b, m[1], a, m[0], m[1], a, m[1], c);
+      } else next.push(a, m[0], m[2], m[0], b, m[1], m[2], m[1], c, m[0], m[1], m[2]);
+    }
+    tri = next; if (!any) break;
+  }
+  P = Float32Array.from(pos); N = Float32Array.from(nor); UV = Float32Array.from(uvs); J = new J.constructor(jnt); W = Float32Array.from(wgt); IDX = Uint32Array.from(tri);
+  console.error(`hand subdivision: +${added} vertices, ${IDX.length / 3} triangles`);
+}
+const nV = P.length / 3, P2 = new Float32Array(nV * 3), N2 = new Float32Array(nV * 3), GD = new Float32Array(nV * 3), GN = new Float32Array(nV * 3), J2 = new Uint8Array(nV * 4), W2 = new Float32Array(nV * 4);
+const v = new THREE.Vector3(), nn = new THREE.Vector3(), acc = new THREE.Vector3(), accN = new THREE.Vector3(), accG = new THREE.Vector3(), accGN = new THREE.Vector3();
 for (let i = 0; i < nV; i++) {
-  acc.set(0, 0, 0); accN.set(0, 0, 0);
+  acc.set(0, 0, 0); accN.set(0, 0, 0); accG.set(0, 0, 0); accGN.set(0, 0, 0);
   const merged = new Map();
   for (let k = 0; k < 4; k++) {
     const w = W[i * 4 + k]; if (w <= 0) continue;
     const name = myNames[J[i * 4 + k]], tf = out[name];
     v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]); nn.set(N[i * 3], N[i * 3 + 1], N[i * 3 + 2]);
     acc.addScaledVector(tf.p(v), w); accN.addScaledVector(tf.n(nn, v), w);
+    const tg = outGrip[name] ?? tf; accG.addScaledVector(tg.p(v), w); accGN.addScaledVector(tg.n(nn, v), w);
     const t = v4Index[MAP[name]]; merged.set(t, (merged.get(t) ?? 0) + w);
   }
   P2.set([acc.x, acc.y, acc.z], i * 3); accN.normalize(); N2.set([accN.x, accN.y, accN.z], i * 3);
+  accGN.normalize(); GD.set([accG.x - acc.x, accG.y - acc.y, accG.z - acc.z], i * 3); GN.set([accGN.x - accN.x, accGN.y - accN.y, accGN.z - accN.z], i * 3);
   const top = [...merged].sort((a, b) => b[1] - a[1]).slice(0, 4); const sum = top.reduce((s, [, w]) => s + w, 0);
   top.forEach(([j, w], k) => { J2[i * 4 + k] = j; W2[i * 4 + k] = w / sum; });
 }
@@ -155,6 +213,10 @@ const mesh = v4.createMesh('Meshy_Body').addPrimitive(v4.createPrimitive()
   .setAttribute('POSITION', acc3('VEC3', P2, 'pos')).setAttribute('NORMAL', acc3('VEC3', N2, 'nrm')).setAttribute('TEXCOORD_0', acc3('VEC2', UV, 'uv'))
   .setAttribute('JOINTS_0', acc3('VEC4', J2, 'j')).setAttribute('WEIGHTS_0', acc3('VEC4', W2, 'w'))
   .setIndices(acc3('SCALAR', IDX instanceof Uint32Array ? IDX : Uint16Array.from(IDX), 'i')).setMaterial(mat));
+if (GRIP) {                                         // the fist as temporary attributes (they survive simplify-body); grip-morph.mjs turns them into the 'grip' morph target
+  mesh.listPrimitives()[0].setAttribute('_GRIPD', acc3('VEC3', GD, 'gd')).setAttribute('_GRIPN', acc3('VEC3', GN, 'gn'));
+  for (const s of ['L', 'R']) { const n = v4joint[`hand.${s}`]; n.setExtras({ ...(n.getExtras() ?? {}), grip: gripLocal[s] }); }
+}
 const rig = v4root.listNodes().find(n => n.getName() === 'DR_Rig');
 rig.addChild(v4.createNode('Meshy_Body').setMesh(mesh).setSkin(v4skin));
 await v4.transform(prune({ keepLeaves: true }));   // keepLeaves: the socket_* empties are leaves that props attach to

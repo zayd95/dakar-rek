@@ -20,6 +20,9 @@ const DEFAULTS = {
   curlShape: 1.25,   // the bend grows as (distance along the finger)^shape: > 1 bends the tips more than the knuckles
   thumbIn: 22,       // degrees the thumb is turned towards the fingers
   thumbFlex: 15,     // degrees the thumb is bent towards the palm
+  fingerScale: 1,    // the fingers' length past the knuckle line is multiplied by this
+  fingerThick: 1,    // the fingers' thickness (palm to back) is multiplied by this
+  gripRadius: 0,     // > 0: a fist round a bar of this radius (metres): the fingers bend as one circular arc of that radius from the knuckle line, as far round as their length goes (curl, curlShape ignored)
 };
 export const handDefaults = DEFAULTS;
 
@@ -57,15 +60,16 @@ export function fitHand(pts, side, o = {}) {
   const dist = fr.filter(c => c[1] > bk + 0.25 * Lf), aMin = Math.min(...dist.map(c => c[0])), aMax = Math.max(...dist.map(c => c[0]));
   const ac = (aMin + aMax) / 2, halfW = (aMax - aMin) / 2, c0 = dist.reduce((s, c) => s + c[2], 0) / dist.length;
   const bp = bk - 0.15 * L, tPiv = [ac + thumbSign * halfW * 1.1, 0.22 * L];
-  const curlRad = (p.curl * Math.PI) / 180, thIn = (p.thumbIn * Math.PI) / 180, thFlex = (p.thumbFlex * Math.PI) / 180;
+  const LfE = Lf * p.fingerScale, curlRad = p.gripRadius > 0 ? Math.min(4.2, LfE / p.gripRadius) : (p.curl * Math.PI) / 180, curlShape = p.gripRadius > 0 ? 1 : p.curlShape;
+  const thIn = (p.thumbIn * Math.PI) / 180, thFlex = (p.thumbFlex * Math.PI) / 180;
   // the bent centreline of a finger: arc length s -> (along, towards the palm) and tangent angle; k scales the curl (little finger more than the index)
   const steps = 48;
   const cache = new Map();
   const finger = (k, s) => {
     const key = Math.round(k * 100); let t = cache.get(key);
-    if (!t) { t = [{ s: 0, b: 0, c: 0, psi: 0 }]; for (let i = 1; i <= steps; i++) { const ss = (i / steps) * Lf, psi = k * curlRad * Math.pow(ss / Lf, p.curlShape), pr = t[i - 1], ds = Lf / steps, pm = (psi + pr.psi) / 2; t.push({ s: ss, psi, b: pr.b + Math.cos(pm) * ds, c: pr.c + Math.sin(pm) * ds }); } cache.set(key, t); }
-    const f = Math.min(1, s / Lf) * steps, i = Math.min(steps - 1, Math.floor(f)), u = f - i, A = t[i], B = t[i + 1];
-    const psi = A.psi + (B.psi - A.psi) * u, extra = Math.max(0, s - Lf);
+    if (!t) { t = [{ s: 0, b: 0, c: 0, psi: 0 }]; for (let i = 1; i <= steps; i++) { const ss = (i / steps) * LfE, psi = k * curlRad * Math.pow(ss / LfE, curlShape), pr = t[i - 1], ds = LfE / steps, pm = (psi + pr.psi) / 2; t.push({ s: ss, psi, b: pr.b + Math.cos(pm) * ds, c: pr.c + Math.sin(pm) * ds }); } cache.set(key, t); }
+    const f = Math.min(1, s / LfE) * steps, i = Math.min(steps - 1, Math.floor(f)), u = f - i, A = t[i], B = t[i + 1];
+    const psi = A.psi + (B.psi - A.psi) * u, extra = Math.max(0, s - LfE);
     return { b: A.b + (B.b - A.b) * u + Math.cos(psi) * extra, c: A.c + (B.c - A.c) * u + Math.sin(psi) * extra, psi };
   };
   /** The relaxed position of a point given in frame coordinates (a across, b along the fingers, c out of the palm). */
@@ -83,6 +87,9 @@ export function fitHand(pts, side, o = {}) {
       a = a2; b = tPiv[1] + bb * Math.cos(f) - c2 * Math.sin(f); c = bb * Math.sin(f) + c2 * Math.cos(f);
     }
     if (wf <= 0) return [a, b, c];
+    // 1. the fingers' length and thickness (a body whose fingers come out long and pointed)
+    if (p.fingerScale !== 1) b += (bk + (b - bk) * p.fingerScale - b) * wf;
+    if (p.fingerThick !== 1) c = c0 + (c - c0) * (1 + (p.fingerThick - 1) * wf);
     // 2. the fan: each finger is turned about the pivot by a fraction of its splay angle
     const ra = a - ac, rb = b - bp, r = Math.hypot(ra, rb), th = Math.atan2(ra, rb), th2 = th * (1 - wf * (1 - p.fan));
     const a1 = ac + r * Math.sin(th2), b1 = bp + r * Math.cos(th2);
@@ -94,5 +101,7 @@ export function fitHand(pts, side, o = {}) {
     const bb = bk + ce.b + off * nB, cc = c0 + ce.c + off * nC;
     return [a1, b1 + (bb - b1) * wf, c + (cc - c) * wf];
   }
-  return { Y, N, X, L, thumbSign, relax, params: p, debug: { ac, halfW, bk, c0 } };
+  // the middle of the circle the fingers make when they close on a bar (gripRadius): frame coordinates, [across, along, out of the palm]
+  const gripCentre = p.gripRadius > 0 ? [ac, bk, c0 + LfE / curlRad] : null;
+  return { Y, N, X, L, thumbSign, relax, params: p, gripCentre, debug: { ac, halfW, bk, c0 } };
 }
