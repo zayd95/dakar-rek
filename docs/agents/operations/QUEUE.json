@@ -2279,5 +2279,15 @@
       "Ordinary deliveries, v3 legacy isolation and known quota issue remain separately tested"
     ],
     "report": "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
+  },
+  "registryWriter": {
+    "owner": "producer_audit_0435",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "4d4d2813627d06519ecd324f0793c41a9fe1a1f4",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-18-0435-AUDIT.md"
+    ]
   }
 }
