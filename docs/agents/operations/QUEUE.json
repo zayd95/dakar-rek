@@ -2329,5 +2329,35 @@
       }
     ],
     "nextAction": "Resume exact CI then independent UI regression review; no source work commissioned"
+  },
+  "registryWriter": {
+    "owner": "producer_audit_0528",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "c32833d71281c52a86ddbc109ae7521acf390899",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-18-0528-AUDIT.md"
+    ]
+  },
+  "currentShopUiQa": {
+    "id": "STAB-20261018-0528-PR47-QA",
+    "kind": "independent-review",
+    "status": "active",
+    "owner": "external session; read only",
+    "reviewer": "qa_ui_0528",
+    "branch": "ui/shared-primitives-20261018",
+    "baseCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+    "sourceCommit": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
+    "allowedFiles": [
+      "docs/agents/operations/reports/PR47-20261018-0528-QA.md"
+    ],
+    "criteria": [
+      "Read actual diff and exact CI logs",
+      "Verify no save/economy/mission logic regression from UI/objective markers",
+      "Inspect compact menu/touch/accessibility evidence without treating screenshots as physical-device proof",
+      "Separate push success from PR multiplayer timeout",
+      "No source edits or feature approval"
+    ]
   }
 }
