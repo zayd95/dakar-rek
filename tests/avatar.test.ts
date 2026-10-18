@@ -72,4 +72,14 @@ describe('the avatar test link', () => {
     expect(readTestParams('localhost', '?avatar=robot').avatar).toBeNull();
     expect(readTestParams('dakar-rek.habibjallow95.workers.dev', '?avatar=femme').avatar).toBeNull();
   });
+
+  it('the starting identity forces no career: a new save has an empty record whatever the identity', () => {
+    const s = newSave();
+    expect(s.avatar).toBeNull();
+    expect(s.career.bouts).toEqual([]);
+    for (const a of AVATARS) {
+      const r = migrate({ ...s, avatar: a })!;
+      expect(r.avatar).toBe(a); expect(r.career.bouts).toEqual([]); expect(r.career.fav).toBeUndefined();
+    }
+  });
 });

@@ -81,6 +81,8 @@ const shot = async (p, name) => { await p.waitForTimeout(500); try { await p.scr
   await p.click('#avatarPick .ap-card[data-id="homme"]'); await started(p); await p.waitForTimeout(1500);
   a = await who(p); s = await save(p);
   check('the new game takes the other identity (homme)', a.identity === 'homme' && a.body === 'meshy_m' && s.avatar === 'homme' && s.guestId !== guest && s.wallet === 3000, JSON.stringify({ a, wallet: s.wallet }));
+  const career = await p.evaluate(() => { const d = window.__dakar.state.data; return { bouts: d.career.bouts.length, fav: d.career.fav ?? null, wrestlerFlags: d.flags.filter(f => /lutt|wrestl|ecurie|career|carriere/i.test(f)), at: window.__dakar.pos().hub }; });
+  check('the pick forces no career: no bout, no followed wrestler, no career flag, the game starts in the open city', career.bouts === 0 && career.fav === null && career.wrestlerFlags.length === 0 && !!career.at, JSON.stringify(career));
   await shot(p, 'desktop-homme-street');
   await context.close();
 }
