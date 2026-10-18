@@ -2350,5 +2350,15 @@
     "verdict": "needs-decision",
     "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
     "completedAt": "2026-10-18T05:30:19Z"
+  },
+  "registryWriter": {
+    "owner": "producer_audit_0728",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "b6d2c6d0b217b8ef1e4cfc28605d43a2520bc351",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-18-0728-AUDIT.md"
+    ]
   }
 }
