@@ -1,35 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T00:36:47Z",
+  "updatedAt": "2026-10-18T01:37:02Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261018T0136Z-purse",
-    "owner": "producer_audit_0136",
-    "baseCommit": "ee074336228e91f3c66e21a1dd10b68ee6df0d54",
-    "acquiredAt": "2026-10-18T01:35:47Z",
-    "expiresAt": "2026-10-18T02:05:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-0136-AUDIT.md",
-      "docs/agents/operations/reports/PR44-20261018-0136-QA.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_economy_2236",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "ee074336228e91f3c66e21a1dd10b68ee6df0d54",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR44-20261018-0136-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -140,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-18T00:36:47Z",
+    "lastCompletedRunAt": "2026-10-18T01:37:02Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
@@ -314,17 +293,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-0036-AUDIT.md",
-    "completedAt": "2026-10-18T00:36:47Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-0136-AUDIT.md",
+    "completedAt": "2026-10-18T01:37:02Z",
     "actualRunCompleted": true,
     "tasks": [
-      "STAB-20261018-0036-PAY-QA"
+      "STAB-20261018-0136-PURSE-QA"
     ],
     "verifiedCandidates": [],
-    "owner": "producer_audit_0036",
+    "owner": "producer_audit_0136",
     "reviewer": "qa_economy_2236",
     "protectedRefsMutated": false,
-    "leaseReleased": "audit-20261018T0036Z-pay"
+    "leaseReleased": "audit-20261018T0136Z-purse"
   },
   "protectedRefsLatest": [
     {
@@ -1155,13 +1134,13 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-18T00:36:47Z",
+    "checkedAt": "2026-10-18T01:37:02Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; shell pwd exit0; exact CI independently inspected",
+    "localTests": "local_not_run; shell pwd exit0; independent exact PR44 CI evidence",
     "delegation": "available; no redundant QA on unchanged evidence",
     "cloudflareAuthenticated": false
   },
@@ -1212,7 +1191,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-18T00:36:47Z",
+    "lastReconciledAt": "2026-10-18T01:37:02Z",
     "qualityMandate": {
       "date": "2026-10-16",
       "target": "Approximately two hours voluntary engagement; not measured",
@@ -1383,6 +1362,37 @@
         "Targeted scripts absent",
         "Quota defect inherited",
         "No physical mobile performance or voluntary two-hour play proof"
+      ]
+    },
+    "ordinaryPurseReview": {
+      "status": "needs-decision",
+      "sourceCommit": "ed7a8c2441883ab873f98361476984eff7751724",
+      "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR44-20261018-0136-QA.md",
+      "completedAt": "2026-10-18T01:37:02Z",
+      "scope": "Purse arithmetic statically coherent and standard CI verified; no global economic/AFK acceptance",
+      "ci": {
+        "pushJob": 117547678504,
+        "prJob": 117547687890,
+        "prCheckout": "4914b8e60a59c7019da186e3bfbe2e1ca07dbd87",
+        "tree": "5e6df22113d8b7f548c793c7af5a198fc7c8c84e",
+        "testsPassed": 1527,
+        "testsSkipped": 2,
+        "testFiles": 125,
+        "ordinaryPurseTests": 14,
+        "galaTitleEquivalenceCases": 720,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "local": "local_not_run",
+      "limits": [
+        "Staller/default-lamb and economy simulations not executed in inspected CI",
+        "Inherited quota defect open",
+        "No physical mobile or voluntary two-hour session proof"
       ]
     }
   }

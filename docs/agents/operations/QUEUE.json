@@ -1824,7 +1824,7 @@
       "targetedBrowser": "author claims only; save-compat not invoked in inspected CI",
       "publicLaunchApproved": false
     },
-    "lastReconciledAt": "2026-10-18T00:36:47Z"
+    "lastReconciledAt": "2026-10-18T01:37:02Z"
   },
   "saveRegressionProposal": {
     "id": "SAVE-NEWGAME-QUOTA",
@@ -1846,7 +1846,7 @@
     ],
     "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
     "note": "Proposal, not dispatch or file reservation; no automatic implementation",
-    "lastReconciledAt": "2026-10-18T00:36:47Z"
+    "lastReconciledAt": "2026-10-18T01:37:02Z"
   },
   "currentStabilizationDeltaReview": {
     "id": "STAB-20261017-2135-QA",
@@ -2072,46 +2072,64 @@
   },
   "pendingOrdinaryPurseCandidate": {
     "pr": 44,
-    "sourceCommit": "4202c5f1d7ed03f47c1de844185e78fcd64ba626",
+    "sourceCommit": "ed7a8c2441883ab873f98361476984eff7751724",
     "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
     "status": "review",
     "owner": "external author; read-only audit",
-    "checkedAt": "2026-10-18T00:36:47Z",
+    "checkedAt": "2026-10-18T01:37:02Z",
     "checks": [
       {
-        "id": 117542337804,
+        "id": 117547962939,
         "status": "completed",
         "conclusion": "success",
-        "url": "https://github.com/zayd95/dakar-rek/runs/117542337804"
+        "url": "https://github.com/zayd95/dakar-rek/runs/117547962939"
       },
       {
-        "id": 117542158146,
-        "status": "in_progress",
-        "conclusion": null,
-        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39082490420/job/117542158146"
+        "id": 117547687890,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39084349885/job/117547687890"
       },
       {
-        "id": 117542124376,
-        "status": "in_progress",
-        "conclusion": null,
-        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39082478713/job/117542124376"
+        "id": 117547678504,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39084346616/job/117547678504"
       }
     ],
     "implementationAuthorized": false,
-    "nextAction": "Resume actual CI conclusion at exact SHA, then independent diff/test/log review; do not redo or alter external source."
-  },
-  "registryWriter": {
-    "token": "audit-20261018T0136Z-purse",
-    "owner": "producer_audit_0136",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "ee074336228e91f3c66e21a1dd10b68ee6df0d54",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-0136-AUDIT.md",
-      "docs/agents/operations/reports/PR44-20261018-0136-QA.md"
-    ],
-    "acquiredAt": "2026-10-18T01:35:47Z"
+    "nextAction": "Exact targeted default-lamb minimal-input evidence and owner decision; quota correction remains separate. No feature, merge or launch automatically.",
+    "review": {
+      "status": "needs-decision",
+      "sourceCommit": "ed7a8c2441883ab873f98361476984eff7751724",
+      "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR44-20261018-0136-QA.md",
+      "completedAt": "2026-10-18T01:37:02Z",
+      "scope": "Purse arithmetic statically coherent and standard CI verified; no global economic/AFK acceptance",
+      "ci": {
+        "pushJob": 117547678504,
+        "prJob": 117547687890,
+        "prCheckout": "4914b8e60a59c7019da186e3bfbe2e1ca07dbd87",
+        "tree": "5e6df22113d8b7f548c793c7af5a198fc7c8c84e",
+        "testsPassed": 1527,
+        "testsSkipped": 2,
+        "testFiles": 125,
+        "ordinaryPurseTests": 14,
+        "galaTitleEquivalenceCases": 720,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "local": "local_not_run",
+      "limits": [
+        "Staller/default-lamb and economy simulations not executed in inspected CI",
+        "Inherited quota defect open",
+        "No physical mobile or voluntary two-hour session proof"
+      ]
+    }
   },
   "currentOrdinaryPurseQa": {
     "id": "STAB-20261018-0136-PURSE-QA",
@@ -2125,12 +2143,44 @@
     "allowedFiles": [
       "docs/agents/operations/reports/PR44-20261018-0136-QA.md"
     ],
-    "status": "active",
+    "status": "needs-decision",
     "acceptance": [
       "Exact PR44 purseOf delta: level table, gala/title preservation, friendly/abandon zero, clamps/tests and no new schema/state",
       "Inspect current head push117547678504 and PR117547687890 exact checkout/tree/logs; do not reassign older4202 CI",
       "Separate default sans-frappe and flag lamb2 author simulations; paid hold-guard draws not independently executed unless actual evidence, no game completion",
       "No source implementation, no Blender/asset/paid/install/Chromium EPERM retry/merge/deploy; return bounded report"
-    ]
+    ],
+    "result": {
+      "status": "needs-decision",
+      "sourceCommit": "ed7a8c2441883ab873f98361476984eff7751724",
+      "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR44-20261018-0136-QA.md",
+      "completedAt": "2026-10-18T01:37:02Z",
+      "scope": "Purse arithmetic statically coherent and standard CI verified; no global economic/AFK acceptance",
+      "ci": {
+        "pushJob": 117547678504,
+        "prJob": 117547687890,
+        "prCheckout": "4914b8e60a59c7019da186e3bfbe2e1ca07dbd87",
+        "tree": "5e6df22113d8b7f548c793c7af5a198fc7c8c84e",
+        "testsPassed": 1527,
+        "testsSkipped": 2,
+        "testFiles": 125,
+        "ordinaryPurseTests": 14,
+        "galaTitleEquivalenceCases": 720,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "local": "local_not_run",
+      "limits": [
+        "Staller/default-lamb and economy simulations not executed in inspected CI",
+        "Inherited quota defect open",
+        "No physical mobile or voluntary two-hour session proof"
+      ]
+    },
+    "completedAt": "2026-10-18T01:37:02Z"
   }
 }
