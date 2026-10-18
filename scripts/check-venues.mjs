@@ -101,7 +101,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await until(() => !window.__dakar.activity(), null, 120000);
   const ate = await d(() => ({ faim: window.__dakar.state.data.needs.faim, seated: window.__dakar.seated(), focus: window.__dakar.focus()?.primary, meals: window.__dakar.venues().find(x => x.type === 'dibi').counters.meals }));
   check(`${label}: the meal feeds you, counts at this Dibi and you stay seated`, ate.faim >= 80 && !!ate.seated && ate.focus === 'Se lever' && ate.meals === 1, JSON.stringify(ate));
-  const saved = await d(() => { const s = JSON.parse(localStorage.getItem('dakarrek.guest.save.v5') ?? '{}'); return Object.entries(s.counters ?? {}).filter(([k]) => k.includes('venue:dibiterie')); });
+  const saved = await d(() => { const s = JSON.parse(localStorage.getItem('dakarrek.guest.save.v6') ?? '{}'); return Object.entries(s.counters ?? {}).filter(([k]) => k.includes('venue:dibiterie')); });
   check(`${label}: the meal is saved on the device`, saved.some(([k, n]) => k.startsWith('repas:') && n >= 1), JSON.stringify(saved));
   await d(() => window.__dakar.stand());
 
@@ -294,7 +294,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   await d(() => window.__dakar.act());
   await until(() => !window.__dakar.activity() && (window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0) < 6 + 0, null, 60000);
   await until(() => !window.__dakar.activity(), null, 60000);
-  const sold = await d(l0 => ({ w: window.__dakar.state.wallet, fish: window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0, save: JSON.parse(localStorage.getItem('dakarrek.guest.save.v5') ?? '{}').inventory?.poisson ?? 0,   // schema v5: the save's own inventory (no longer counters inv:<id>)
+  const sold = await d(l0 => ({ w: window.__dakar.state.wallet, fish: window.__dakar.inventory().find(i => i.id === 'poisson')?.count ?? 0, save: JSON.parse(localStorage.getItem('dakarrek.guest.save.v6') ?? '{}').inventory?.poisson ?? 0,   // schema v5: the save's own inventory (no longer counters inv:<id>)
     mult: window.__dakar.business().mult, lines: window.__dakar.state.data.ledger.slice(l0).map(l => [l.label, l.amount]) }), l0);
   // a sale is trade (category « commerce »): its money is scaled by polyvalence like work pay (src/economy/polyvalence.ts,
   // +5 % for each other trade practised lately, up to +15 %), so 4 × 600 F times the game's own multiplier
@@ -329,7 +329,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   check(`${label}: « Coiffure afro » is paid and you sit in the free chair`, (cut.seat ?? '').includes('venue:salon:fauteuil') && cut.wallet === 2500, JSON.stringify(cut));
   await d(() => window.__dakar.portrait(2.6, 1.6, 1.1)); await shot('salon-cut'); await d(() => window.__dakar.portrait(0));
   await until(() => !window.__dakar.activity(), null, 120000);
-  const look = await d(() => { let short = false, puff = false; window.__dakar.body().group.traverse(o => { if (o.isMesh && o.name.startsWith('Hair_Short')) short ||= o.visible; if (o.isMesh && o.name.startsWith('Hair_Puff')) puff ||= o.visible; }); return { short, puff, saved: JSON.parse(localStorage.getItem('dakarrek.guest.save.v5') ?? '{}').counters?.coiffure ?? 0 }; });
+  const look = await d(() => { let short = false, puff = false; window.__dakar.body().group.traverse(o => { if (o.isMesh && o.name.startsWith('Hair_Short')) short ||= o.visible; if (o.isMesh && o.name.startsWith('Hair_Puff')) puff ||= o.visible; }); return { short, puff, saved: JSON.parse(localStorage.getItem('dakarrek.guest.save.v6') ?? '{}').counters?.coiffure ?? 0 }; });
   check(`${label}: the new cut shows on your character and is saved`, !look.short && look.puff && look.saved === 3, JSON.stringify(look));
   await d(() => window.__dakar.portrait(2.2, 1.5, 0.6)); await shot('salon-afro'); await d(() => window.__dakar.portrait(0));
   await d(() => window.__dakar.stand());

@@ -31,7 +31,7 @@ export const CLIENTS: Partial<Record<HubId, { name: string; flag: string }>> = {
  * the Banque Teranga agencies, the squares, Sandaga, Atelier Ndeye, Dakar Réparation): no new points are invented.
  * `frag` matches the place's interactable id (src/world/builder.ts kiosks, src/world/city.ts places).
  */
-const P = {
+export const P = {
   mame: { frag: ':gargote:', name: 'Gargote Mame Diarra' }, maiga: { frag: ':maiga:', name: 'Maïga du marché' },
   pathe: { frag: ':dibiterie:', name: 'Dibiterie Chez Pathé' }, garage: { frag: ':garage:', name: 'Garage Modou' },
   diallo: { frag: ':city:boutique', name: 'Boutique Diallo' }, salonAwa: { frag: ':city:salon-tech', name: 'Salon Awa' },
@@ -126,7 +126,7 @@ export interface Completion { runId: string; route: Route; paid: number; late: b
  */
 export function completeJob(s: GameState, runId: string): Completion | null {
   const j = s.data.jobs, a = j.active;
-  if (!a || a.runId !== runId || a.stage !== 'deliver' || j.done.includes(runId)) return null;
+  if (!a || a.tour || a.runId !== runId || a.stage !== 'deliver' || j.done.includes(runId)) return null;   // a tour is handed over stop by stop (tour.ts)
   const route = routeById(a.routeId);
   j.active = null;
   j.done.push(runId);

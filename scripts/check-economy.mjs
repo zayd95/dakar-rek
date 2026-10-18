@@ -87,7 +87,7 @@ let savedJson = null;
   const offerCount = await page.locator('#modal.on .item:not(.close)').count();
   check('pick-up point lists its delivery offers', offerCount >= 2, `${offerCount} offers`);
   const wallet0 = await D(page, () => window.__dakar.state.wallet);
-  await pick(page, 'Boutique Diallo');
+  await pick(page, 'Boutique');
   const job = await D(page, () => window.__dakar.activeJob());
   // pay shown in the offers, polyvalence included (the welcome beat already counts as « vie sociale »)
   const pay1 = (await D(page, () => window.__dakar.jobs())).find(j => j.id === 'pk_mame_boutique')?.payNow;
@@ -98,11 +98,11 @@ let savedJson = null;
   // marker + HUD line, seen from the street
   const far = await approach(page, garage, 22);
   await D(page, p => window.__dakar.place(p.x, p.z, p.yaw), far);
-  await page.waitForFunction(() => /, 2\d m/.test(document.querySelector('#delivery.on')?.textContent ?? ''), null, { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => /Boutique.*2\d m/.test(document.querySelector('#delivery.on')?.textContent ?? ''), null, { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(800);
   const line = await D(page, () => document.querySelector('#delivery.on')?.textContent ?? '');
   const mk = await D(page, () => window.__dakar.marker());
-  check('HUD line "Livraison → <place>, X m"', /Livraison → Boutique Diallo, \d+ m/.test(line), line);
+  check('HUD line: the next place and its distance (icon, name, metres, countdown)', /Boutique\d+ m\d+:\d\d/.test(line), line);
   const chip = await D(page, () => document.querySelector('#goal')?.textContent ?? '');
   check('the city direction chip points to the drop-off', /Boutique Diallo · \d+ m/.test(chip), chip);
   check('world marker on the drop-off', mk.visible && Math.hypot(mk.x - garage.x, mk.z - garage.z) < 0.5, JSON.stringify(mk));
@@ -140,8 +140,8 @@ let savedJson = null;
   // jobs app: Tiak Tiak + the city's existing paid services, with pay, energy and distance; picking one sets the marker
   const appRows = await D(page, () => window.__dakar.jobsApp());
   await page.screenshot({ path: `${out}/desktop-jobs-app.png` });
-  const svc = appRows.filter(t => !/Tiak Tiak/.test(t));
-  check('jobs app lists Tiak Tiak offers and the city’s paid services', appRows.some(t => /Tiak Tiak/.test(t)) && svc.some(t => /Ranger|ranger le stock/.test(t) && /Boutique Diallo/.test(t)) && svc.some(t => /dossiers/.test(t)), `${appRows.length} rows: ${svc.slice(0, 4).join(' | ')}`);
+  const svc = appRows.filter(t => !/Gain estimé/.test(t));
+  check('jobs app lists Tiak Tiak offers and the city’s paid services', appRows.some(t => /Gain estimé/.test(t)) && svc.some(t => /Ranger|ranger le stock/.test(t) && /Boutique Diallo/.test(t)) && svc.some(t => /dossiers/.test(t)), `${appRows.length} rows: ${svc.slice(0, 4).join(' | ')}`);
   check('service rows show pay, energy cost and distance', svc.length > 0 && svc.every(t => /\+\d[\d\s]*F/.test(t) && /énergie/.test(t) && /\d+ m/.test(t)), svc.filter(t => !(/énergie/.test(t) && /\d+ m/.test(t))).join(' | ') || svc[0]);
   const posBefore = await D(page, () => window.__dakar.pos());
   await pick(page, 'dossiers');
@@ -235,12 +235,12 @@ let savedJson = null;
   await page.waitForTimeout(300);
   const before = await D(page, () => ({ w: window.__dakar.state.wallet, ledger: window.__dakar.ledger(), owned: window.__dakar.furniture().owned, done: window.__dakar.state.data.jobs.done.length, n: window.__dakar.state.data.counters.livraisons }));
   await page.reload({ waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1500);
-  const after = await D(page, () => ({ w: window.__dakar.state.wallet, ledger: window.__dakar.ledger(), owned: window.__dakar.furniture().owned, done: window.__dakar.state.data.jobs.done.length, n: window.__dakar.state.data.counters.livraisons, ver: JSON.parse(localStorage.getItem('dakarrek.guest.save.v5')).schemaVersion }));
+  const after = await D(page, () => ({ w: window.__dakar.state.wallet, ledger: window.__dakar.ledger(), owned: window.__dakar.furniture().owned, done: window.__dakar.state.data.jobs.done.length, n: window.__dakar.state.data.counters.livraisons, ver: JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).schemaVersion }));
   check('reload: money persisted', after.w === before.w, `${before.w} / ${after.w}`);
   check('reload: ledger persisted', JSON.stringify(after.ledger) === JSON.stringify(before.ledger) && after.ledger.length >= 8, `${after.ledger.length} entries`);
   check('reload: furniture persisted', JSON.stringify(after.owned) === JSON.stringify(before.owned) && after.owned.length === 6, after.owned.join(','));
   check('reload: completed runs and delivery count persisted', after.done === before.done && after.n === before.n, `${after.done} runs, ${after.n} deliveries`);
-  check('save is schema v5', after.ver === 5, after.ver);
+  check('save is schema v6', after.ver === 6, after.ver);
   check('reload: Ibou’s furniture beat still available', (await D(page, () => window.__dakar.suggestion())) === 'ibou_meuble');
   await D(page, () => { window.__dakar.setHour(10); window.__dakar.teleport('pikine'); }); await page.waitForTimeout(600);
   await D(page, () => window.__dakar.openNpc('ibou')); await page.waitForTimeout(300);
@@ -259,7 +259,7 @@ let savedJson = null;
   await roomCam(page, ox); await page.waitForTimeout(700);
   await page.screenshot({ path: `${out}/desktop-room-after-reload.png` });
   await D(page, () => window.__dakar.cam(null)); await outside(page);
-  savedJson = await D(page, () => { window.__dakar.state.data.jobs.active = null; return localStorage.getItem('dakarrek.guest.save.v5'); });
+  savedJson = await D(page, () => { window.__dakar.state.data.jobs.active = null; return localStorage.getItem('dakarrek.guest.save.v6'); });
   check('desktop: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
@@ -267,7 +267,7 @@ let savedJson = null;
 // ------------------------------------------------------------------ phone 390×844: same save, menus and HUD line
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
-  await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v5', s); sessionStorage.setItem('seeded', '1'); } }, savedJson);
+  await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v6', s); sessionStorage.setItem('seeded', '1'); } }, savedJson);
   const page = await ctx.newPage();
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1500);
@@ -275,7 +275,7 @@ let savedJson = null;
   check('phone: save loaded with furniture', (await D(page, () => window.__dakar.furniture().owned.length)) === 6);
   await D(page, () => window.__dakar.jobsMenu()); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/phone-jobs-app.png` });
-  await pick(page, 'Maïga du marché → Garage Modou');      // accepted from the phone: go to the pick-up first
+  await pick(page, /Maïga.*Garage/);      // accepted from the phone: go to the pick-up first
   const pj = await D(page, () => window.__dakar.activeJob());
   check('phone: accepted from the jobs app → pick-up stage', pj?.stage === 'pickup', JSON.stringify(pj));
   const its = await D(page, () => window.__dakar.interactables());
@@ -289,7 +289,7 @@ let savedJson = null;
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${out}/phone-delivery-marker.png` });
   const line = await D(page, () => document.querySelector('#delivery.on')?.textContent ?? '');
-  check('phone: HUD line visible', /Livraison → Garage Modou, \d+ m/.test(line), line);
+  check('phone: HUD line visible (next place, distance)', /Garage\d+ m/.test(line), line);
   await D(page, () => window.__dakar.completeJob()); await page.waitForTimeout(300);
   await D(page, () => window.__dakar.homeApp()); await page.waitForTimeout(300);
   await page.screenshot({ path: `${out}/phone-home-app.png` });
@@ -316,7 +316,7 @@ let savedJson = null;
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await page.waitForTimeout(800);
   const r = await D(page, () => ({ p: window.__dakar.pos(), w: window.__dakar.state.wallet, ledger: window.__dakar.ledger().length, owned: window.__dakar.furniture().owned.length, ver: window.__dakar.state.data.schemaVersion }));
-  check('old v2 off-map save: recovered in the city, money kept, empty ledger, no furniture, v5', Math.abs(r.p.x) < 200 && Math.abs(r.p.z) < 200 && r.w === 7777 && r.ledger === 0 && r.owned === 0 && r.ver === 5, JSON.stringify(r));
+  check('old v2 off-map save: recovered in the city, money kept, empty ledger, no furniture, v6', Math.abs(r.p.x) < 200 && Math.abs(r.p.z) < 200 && r.w === 7777 && r.ledger === 0 && r.owned === 0 && r.ver === 6, JSON.stringify(r));
   check('old save: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }

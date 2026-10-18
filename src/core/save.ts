@@ -1,19 +1,22 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, WrestlerLook } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, TourRun, WrestlerLook } from './types';
 import { ACTIVITY_IDS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
 
 /**
- * Where the game keeps its save. Schema v5 lives under its own key and the key every older client wrote
- * (`LEGACY_SAVE_KEY`: schemas 1 to 4, or a v5 test build) is only ever READ, once, to migrate it: an older client that
- * is served again (a rollback) keeps reading and writing its own key and can never overwrite v5 progress. A future
- * schema gets its own key the same way.
+ * Where the game keeps its save. Every schema owns a key: schema v6 lives under `SAVE_KEY`; the keys older clients write —
+ * `V5_SAVE_KEY` (schema 5: the launch client) and `LEGACY_SAVE_KEY` (schemas 1 to 4, or a v5 test build) — are only ever READ,
+ * once, to migrate. An older client that is served again (a rollback) keeps reading and writing its own key and can never
+ * overwrite v6 progress, and this client never rewrites or removes what an older one wrote. A future schema gets its own key.
  */
-export const SAVE_KEY = 'dakarrek.guest.save.v5';
+export const SAVE_KEY = 'dakarrek.guest.save.v6';
+export const V5_SAVE_KEY = 'dakarrek.guest.save.v5';
 export const LEGACY_SAVE_KEY = 'dakarrek.guest.save';
-/** `migrated` once the legacy save was carried over, `declined` after a New Game: either way the legacy save is not read again. */
+/** Written by the v5 client: `migrated` once it carried the legacy save over, `declined` after its New Game. Only read here (never written). */
 export const LEGACY_DONE_KEY = 'dakarrek.guest.save.legacy';
-export const SCHEMA_VERSION = 5;
+/** Written by this client at a New Game (`declined`): the older saves (v5 and legacy) are not imported again. It lives in v6's own namespace. */
+export const IMPORT_DONE_KEY = 'dakarrek.guest.save.v6.import';
+export const SCHEMA_VERSION = 6;
 /** Wallet history entries kept in the save, and completed delivery ids remembered (no double payment). */
 export const LEDGER_MAX = 100;
 export const DONE_JOBS_MAX = 200;
@@ -225,6 +228,19 @@ function ledgerOf(v: unknown): LedgerEntry[] {
   }
   return out.slice(-LEDGER_MAX);
 }
+function tourOf(v: unknown): TourRun | null {
+  const t = (v && typeof v === 'object' ? v : null) as Record<string, unknown> | null;
+  if (!t || typeof t.id !== 'string' || !Array.isArray(t.order) || t.order.length !== 2) return null;
+  const [p, q] = t.order as unknown[];
+  if (!((p === 0 && q === 1) || (p === 1 && q === 0))) return null;
+  const pair = (x: unknown): [number, number] | null => (Array.isArray(x) && x.length === 2 && x.every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0) ? [x[0] as number, x[1] as number] : null);
+  const limitS = pair(t.limitS), pay = pair(t.pay);
+  if (!limitS || !pay) return null;
+  const late = Array.isArray(t.late) ? (t.late as unknown[]).filter((x): x is boolean => typeof x === 'boolean').slice(0, 2) : [];
+  const leg = t.leg === 1 ? 1 : 0;
+  if (late.length !== leg) return null;                    // the stops served and the leg being served must agree
+  return { id: t.id, order: [p, q], leg, departed: t.departed === true, limitS, pay, late };
+}
 function jobsOf(v: unknown): JobsState {
   const j = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
   const done = Array.isArray(j.done) ? (j.done as unknown[]).filter((d): d is string => typeof d === 'string').slice(-DONE_JOBS_MAX) : [];
@@ -235,6 +251,9 @@ function jobsOf(v: unknown): JobsState {
       runId: a.runId, routeId: a.routeId, hub: a.hub as HubId, stage: a.stage === 'pickup' ? 'pickup' : 'deliver',
       pay: Math.max(0, Math.round(num(a.pay, 0))), startedMs: Math.max(0, num(a.startedMs, 0)), limitMs: Math.max(0, num(a.limitMs, 0)),
     };
+    const t = tourOf(a.tour);
+    if (t) active.tour = t;
+    else if (a.tour !== undefined) active = null;          // a tour this build cannot read: dropped, nothing paid
   }
   return { active, done, seq: Math.max(0, Math.floor(num(j.seq, 0))) };
 }
@@ -264,21 +283,33 @@ export function loadSave(store: KV | null): SaveData | null {
   if (!store) return null;
   try {
     const own = store.getItem(SAVE_KEY);
-    if (own) return migrate(JSON.parse(own));   // a v5 save wins for good, even when it cannot be read: nothing falls back to the legacy one
+    if (own) return migrate(JSON.parse(own));   // a v6 save wins for good, even when it cannot be read: nothing falls back to an older one
+    if (store.getItem(IMPORT_DONE_KEY)) return null;   // New Game: the older saves stay on the device for an older client, they do not come back
+    // one-time migration from the newest older save: v5, else the legacy one (production, schema 3). Written at once so a second tab
+    // or a reload takes the v6 save; the older bytes are never touched.
+    const v5 = store.getItem(V5_SAVE_KEY);
+    if (v5) return carryOver(store, migrate(JSON.parse(v5)));   // a v5 save that cannot be read is not replaced by the legacy one either
     if (store.getItem(LEGACY_DONE_KEY)) return null;
     const legacy = store.getItem(LEGACY_SAVE_KEY);
-    const data = legacy ? migrate(JSON.parse(legacy)) : null;
-    if (!data) return null;
-    // one-time migration, written at once so a second tab or a reload takes the v5 save; the legacy save is left untouched
-    try { store.setItem(SAVE_KEY, JSON.stringify(data)); store.setItem(LEGACY_DONE_KEY, 'migrated'); } catch { /* full or blocked storage: it is tried again at the next save */ }
-    return data;
+    return legacy ? carryOver(store, migrate(JSON.parse(legacy))) : null;
   } catch { return null; }
+}
+function carryOver(store: KV, data: SaveData | null): SaveData | null {
+  if (!data) return null;
+  try { store.setItem(SAVE_KEY, JSON.stringify(data)); } catch { /* full or blocked storage: it is tried again at the next save */ }
+  return data;
 }
 export function writeSave(store: KV | null, data: SaveData): boolean {
   try { store?.setItem(SAVE_KEY, JSON.stringify({ ...data, savedAt: Date.now() })); return !!store; } catch { return false; }
 }
-/** New Game: forget the v5 save, and never carry the legacy one over again (it stays in the storage, for an older client). */
+/**
+ * New Game: forget the v6 save and never carry an older one over again (they stay in the storage, for an older client). The marker is
+ * written first; on a full storage it is retried once the v6 save is gone (that frees the room it needs).
+ */
 export function clearSave(store: KV | null) {
-  try { store?.setItem(LEGACY_DONE_KEY, 'declined'); } catch { /* ignore */ }
-  try { store?.removeItem(SAVE_KEY); } catch { /* ignore */ }
+  if (!store) return;
+  let marked = true;
+  try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { marked = false; }
+  try { store.removeItem(SAVE_KEY); } catch { /* ignore */ }
+  if (!marked) { try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { /* blocked storage: the older save may come back */ } }
 }
