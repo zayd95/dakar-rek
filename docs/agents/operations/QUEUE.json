@@ -2446,32 +2446,25 @@
     "checkedAt": "2026-10-18T07:28:45Z"
   },
   "currentStabilizationWatch": {
-    "id": "STAB-20261018-1826-PR48-CI",
-    "status": "completed",
-    "owner": "qa_pr48_ci_1826",
+    "id": "STAB-20261018-1926-PR48-AVATAR-QA",
+    "status": "active",
+    "owner": "qa_pr48_avatar_1926",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "97de3a8fbbb346da90850a8a330ad4f751af7c21",
-    "sourceCommit": "e2133338caf47d23972a4bc2d9ca4406882469f9",
+    "baseCommit": "50a6bbb37f12559cdc53b1ee58f63c0a9529338a",
+    "sourceCommit": "03477aa1ad86a9899301eefbb45d4bd970255b74",
+    "sourceBase": "c5cb818cfcf07e9228e04f6008eb4e1774f2aaa2",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR48-20261018-1826-CI-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-18-1826-AUDIT.md"
+      "docs/agents/operations/reports/PR48-20261018-1926-AVATAR-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-18-1926-AUDIT.md"
     ],
     "scope": [
-      "Reconcile exact PR48 checks and logs",
-      "Recheck known vacuous assertion",
+      "Review exact avatar/New Game delta",
+      "Verify exact checks and known PR48 defect",
       "No source, feature, merge, deploy, Blender or paid generation"
     ],
-    "startedAt": "2026-10-18T18:27:20Z",
-    "completedAt": "2026-10-18T18:28:15Z",
-    "result": "needs-correction-unchanged",
-    "report": "docs/agents/operations/reports/PR48-20261018-1826-CI-QA.md",
-    "findings": [
-      "Push and PR jobs now success: 1581 pass/2 skip; types/build/city/online/launch success",
-      "Workers exact-head build failure remains",
-      "Vacuous || true assertion remains and targeted script is absent from standard CI"
-    ]
+    "startedAt": "2026-10-18T19:27:05Z"
   },
   "currentSaveV6Qa": {
     "id": "STAB-20261018-1434-SAVE-V6-QA",

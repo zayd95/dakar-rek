@@ -1,14 +1,33 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T18:28:15Z",
+  "updatedAt": "2026-10-18T19:27:05Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": null,
+  "lease": {
+    "token": "qa-pr48-avatar-20261018T1926Z",
+    "owner": "qa_pr48_avatar_1926",
+    "acquiredAt": "2026-10-18T19:27:05Z",
+    "expiresAt": "2026-10-18T20:15:00Z",
+    "purpose": "Independent exact-head QA of PR48 avatar/New Game correction"
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "owner": "qa_pr48_avatar_1926",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "50a6bbb37f12559cdc53b1ee58f63c0a9529338a",
+      "allowedFiles": [
+        "docs/agents/STATE.json",
+        "docs/agents/operations/QUEUE.json",
+        "docs/agents/operations/reports/PR48-20261018-1926-AVATAR-QA.md",
+        "docs/agents/operations/CYCLE-2026-10-18-1926-AUDIT.md"
+      ],
+      "purpose": "Registry and QA reports only; no source/PR/ref mutation"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
