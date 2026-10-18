@@ -1,33 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T17:35:50Z",
+  "updatedAt": "2026-10-18T17:37:30Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "qa-pr48-20261018T1735Z",
-    "owner": "qa_pr48_1735",
-    "acquiredAt": "2026-10-18T17:35:50Z",
-    "expiresAt": "2026-10-18T18:25:00Z",
-    "purpose": "Independent read-only QA of PR48 exact head and CI"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_pr48_1735",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "2212e2a169e5ffd96767cc627f2b267e54c5dc23",
-      "allowedFiles": [
-        "docs/agents/STATE.json",
-        "docs/agents/operations/QUEUE.json",
-        "docs/agents/operations/reports/PR48-20261018-1735-QA.md",
-        "docs/agents/operations/CYCLE-2026-10-18-1735-AUDIT.md"
-      ],
-      "purpose": "Registry and QA reports only; no source/PR/ref mutation"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -175,7 +156,7 @@
     "qa_freeze_0428",
     "qa_save_1434"
   ],
-  "nextAction": "Wait for exact multi-build save E2E evidence or a new head/CI mutation; keep PR46/47 review. No global readiness claim.",
+  "nextAction": "PR48: correct the vacuous browser assertion, then provide completed exact-SHA push/PR CI and targeted browser evidence; keep review.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -313,12 +294,12 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-1635-AUDIT.md",
-    "completedAt": "2026-10-18T16:36:45Z",
-    "owner": "producer_audit_1635",
-    "reviewer": null,
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-1735-AUDIT.md",
+    "completedAt": "2026-10-18T17:37:30Z",
+    "owner": "qa_pr48_1735",
+    "reviewer": "qa_pr48_1735",
     "tasks": [
-      "Fresh exact-head stabilization watch for PR46, PR47, issue45 and protected refs"
+      "Independent exact-head QA of PR48 and current CI"
     ],
     "verifiedCandidates": [],
     "protectedRefsMutated": false,
@@ -1445,6 +1426,33 @@
         "Full description is in HTML title without aria-label/aria-describedby; availability before immediate action on touch/screen reader is not established",
         "Browser mobile emulation is not a physical-phone test"
       ],
+      "publicLaunchApproved": false
+    },
+    "pr48Review": {
+      "status": "needs-correction",
+      "sourceCommit": "e2133338caf47d23972a4bc2d9ca4406882469f9",
+      "baseCommit": "c5cb818cfcf07e9228e04f6008eb4e1774f2aaa2",
+      "reviewer": "qa_pr48_1735",
+      "report": "docs/agents/operations/reports/PR48-20261018-1735-QA.md",
+      "completedAt": "2026-10-18T17:37:30Z",
+      "defect": "scripts/check-regular-mamadou.mjs contains an assertion ending in || true, making that browser criterion vacuous",
+      "ci": {
+        "workers": {
+          "id": 117742620955,
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        "push": {
+          "id": 117742389271,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        "pr": {
+          "id": 117742397811,
+          "status": "in_progress",
+          "conclusion": null
+        }
+      },
       "publicLaunchApproved": false
     }
   }
