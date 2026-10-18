@@ -1824,7 +1824,7 @@
       "targetedBrowser": "author claims only; save-compat not invoked in inspected CI",
       "publicLaunchApproved": false
     },
-    "lastReconciledAt": "2026-10-17T23:36:51Z"
+    "lastReconciledAt": "2026-10-18T00:36:47Z"
   },
   "saveRegressionProposal": {
     "id": "SAVE-NEWGAME-QUOTA",
@@ -1846,7 +1846,7 @@
     ],
     "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
     "note": "Proposal, not dispatch or file reservation; no automatic implementation",
-    "lastReconciledAt": "2026-10-17T23:36:51Z"
+    "lastReconciledAt": "2026-10-18T00:36:47Z"
   },
   "currentStabilizationDeltaReview": {
     "id": "STAB-20261017-2135-QA",
@@ -1882,43 +1882,46 @@
   "pendingEconomyCandidate": {
     "pr": 43,
     "branch": "feature/m1a-freedom-economy-20261017",
-    "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+    "sourceCommit": "2c8270978f50f89192ded073321688ce9f87e938",
     "baseCommit": "6789c6e2809b2f6476e52e1971fe249cff3d8508",
     "status": "review",
     "owner": "external author; read-only audit",
-    "checkedAt": "2026-10-17T23:36:51Z",
+    "checkedAt": "2026-10-18T00:36:47Z",
     "checks": [
       {
-        "id": 117516273057,
+        "id": 117534596573,
         "status": "completed",
         "conclusion": "success",
-        "url": "https://github.com/zayd95/dakar-rek/runs/117516273057"
+        "url": "https://github.com/zayd95/dakar-rek/runs/117534596573"
       },
       {
-        "id": 117516030425,
+        "id": 117534401394,
         "status": "completed",
         "conclusion": "success",
-        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39073581295/job/117516030425"
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39079852391/job/117534401394"
       },
       {
-        "id": 117516019493,
+        "id": 117534389627,
         "status": "completed",
         "conclusion": "success",
-        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39073577810/job/117516019493"
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39079848527/job/117534389627"
       }
     ],
     "implementationAuthorized": false,
-    "nextAction": "Standard CI complete; exact targeted economy evidence and quota correction remain with external author, then distinct QA. No new feature or public launch authorized.",
+    "nextAction": "Keep pay delta limited; external targeted evidence and quota correction, then independent acceptance. No public launch approval.",
     "review": {
       "status": "needs-decision",
-      "sourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+      "sourceCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "previousSourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
       "reviewer": "qa_economy_2236",
-      "report": "docs/agents/operations/reports/PR43-20261017-2236-QA.md",
-      "completedAt": "2026-10-17T22:36:59Z",
+      "report": "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md",
+      "completedAt": "2026-10-18T00:36:47Z",
+      "scope": "Pay delta statically coherent and general exact CI verified; no global acceptance",
       "ci": {
-        "prJob": 117516030425,
-        "prCheckout": "ef6a5da3c5da4281e2796999e1628ed1ed270541",
-        "tree": "50717bbea1592e01628c38a2594586267424c7a9",
+        "pushJob": 117534389627,
+        "prJob": 117534401394,
+        "prCheckout": "e44b338f944f2236d1d7c0d23700a516d634cfb3",
+        "tree": "9b668e0423783bd71aab15be99aa6514064ecf0d",
         "testsPassed": 1513,
         "testsSkipped": 2,
         "testFiles": 124,
@@ -1926,16 +1929,13 @@
         "build": "success",
         "city": "success",
         "online": "success",
-        "launch": "success",
-        "pushJob": 117516019493,
-        "pushStatus": "completed",
-        "pushConclusion": "success",
-        "pushCheckout": "08720d53e1c7be809e8d010551469bf6d5a8a402"
+        "launch": "success"
       },
+      "local": "local_not_run",
       "limits": [
-        "Targeted business/gestures/venues absent from inspected PR log",
-        "Inherited PR37 quota defect still open",
-        "No device measurement or voluntary two-hour play proof"
+        "Targeted scripts absent",
+        "Quota defect inherited",
+        "No physical mobile performance or voluntary two-hour play proof"
       ]
     },
     "ciAddendum": {
@@ -2021,19 +2021,6 @@
       "scope": "Standard push CI verified; targeted economy, quota save safety, physical mobile and full game acceptance remain open"
     }
   },
-  "registryWriter": {
-    "token": "audit-20261018T0036Z-pay",
-    "owner": "producer_audit_0036",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "90febf2473aaf1fa06829593cd516fb90919f275",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-0036-AUDIT.md",
-      "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md"
-    ],
-    "acquiredAt": "2026-10-18T00:35:37Z"
-  },
   "currentEconomyPayReview": {
     "id": "STAB-20261018-0036-PAY-QA",
     "role": "qa",
@@ -2051,6 +2038,66 @@
       "Read exact completed push117534389627 and PR117534401394 checkout/tree/types/tests/build/city/online/launch, targeted claims separate",
       "Retain inherited quota/targeted/device/voluntary session gaps; PR44 pending not approved or copied"
     ],
-    "status": "active"
+    "status": "needs-decision",
+    "completedAt": "2026-10-18T00:36:47Z",
+    "result": {
+      "status": "needs-decision",
+      "sourceCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "previousSourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md",
+      "completedAt": "2026-10-18T00:36:47Z",
+      "scope": "Pay delta statically coherent and general exact CI verified; no global acceptance",
+      "ci": {
+        "pushJob": 117534389627,
+        "prJob": 117534401394,
+        "prCheckout": "e44b338f944f2236d1d7c0d23700a516d634cfb3",
+        "tree": "9b668e0423783bd71aab15be99aa6514064ecf0d",
+        "testsPassed": 1513,
+        "testsSkipped": 2,
+        "testFiles": 124,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "local": "local_not_run",
+      "limits": [
+        "Targeted scripts absent",
+        "Quota defect inherited",
+        "No physical mobile performance or voluntary two-hour play proof"
+      ]
+    }
+  },
+  "pendingOrdinaryPurseCandidate": {
+    "pr": 44,
+    "sourceCommit": "4202c5f1d7ed03f47c1de844185e78fcd64ba626",
+    "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+    "status": "review",
+    "owner": "external author; read-only audit",
+    "checkedAt": "2026-10-18T00:36:47Z",
+    "checks": [
+      {
+        "id": 117542337804,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/runs/117542337804"
+      },
+      {
+        "id": 117542158146,
+        "status": "in_progress",
+        "conclusion": null,
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39082490420/job/117542158146"
+      },
+      {
+        "id": 117542124376,
+        "status": "in_progress",
+        "conclusion": null,
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39082478713/job/117542124376"
+      }
+    ],
+    "implementationAuthorized": false,
+    "nextAction": "Resume actual CI conclusion at exact SHA, then independent diff/test/log review; do not redo or alter external source."
   }
 }

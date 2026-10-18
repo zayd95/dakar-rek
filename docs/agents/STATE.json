@@ -1,35 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-17T23:36:51Z",
+  "updatedAt": "2026-10-18T00:36:47Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261018T0036Z-pay",
-    "owner": "producer_audit_0036",
-    "baseCommit": "90febf2473aaf1fa06829593cd516fb90919f275",
-    "acquiredAt": "2026-10-18T00:35:37Z",
-    "expiresAt": "2026-10-18T01:05:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-0036-AUDIT.md",
-      "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_economy_2236",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "90febf2473aaf1fa06829593cd516fb90919f275",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -140,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-17T23:36:51Z",
+    "lastCompletedRunAt": "2026-10-18T00:36:47Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
@@ -314,17 +293,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-17-2336-CI.md",
-    "completedAt": "2026-10-17T23:36:51Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-0036-AUDIT.md",
+    "completedAt": "2026-10-18T00:36:47Z",
     "actualRunCompleted": true,
     "tasks": [
-      "STAB-20261017-2336-CI-QA"
+      "STAB-20261018-0036-PAY-QA"
     ],
     "verifiedCandidates": [],
-    "owner": "producer_audit_2336",
+    "owner": "producer_audit_0036",
     "reviewer": "qa_economy_2236",
     "protectedRefsMutated": false,
-    "leaseReleased": "audit-20261017T2336Z-pr43-ci"
+    "leaseReleased": "audit-20261018T0036Z-pay"
   },
   "protectedRefsLatest": [
     {
@@ -1155,13 +1134,13 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-17T23:36:51Z",
+    "checkedAt": "2026-10-18T00:36:47Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; shell pwd exit0; independent exact completed push CI log review",
+    "localTests": "local_not_run; shell pwd exit0; exact CI independently inspected",
     "delegation": "available; no redundant QA on unchanged evidence",
     "cloudflareAuthenticated": false
   },
@@ -1212,7 +1191,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-17T23:36:51Z",
+    "lastReconciledAt": "2026-10-18T00:36:47Z",
     "qualityMandate": {
       "date": "2026-10-16",
       "target": "Approximately two hours voluntary engagement; not measured",
@@ -1355,6 +1334,35 @@
         "completedAt": "2026-10-17T23:36:51Z",
         "scope": "Standard push CI verified; targeted economy, quota save safety, physical mobile and full game acceptance remain open"
       }
+    },
+    "economyPayReview": {
+      "status": "needs-decision",
+      "sourceCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "previousSourceCommit": "08720d53e1c7be809e8d010551469bf6d5a8a402",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR43-20261018-0036-PAY-QA.md",
+      "completedAt": "2026-10-18T00:36:47Z",
+      "scope": "Pay delta statically coherent and general exact CI verified; no global acceptance",
+      "ci": {
+        "pushJob": 117534389627,
+        "prJob": 117534401394,
+        "prCheckout": "e44b338f944f2236d1d7c0d23700a516d634cfb3",
+        "tree": "9b668e0423783bd71aab15be99aa6514064ecf0d",
+        "testsPassed": 1513,
+        "testsSkipped": 2,
+        "testFiles": 124,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "online": "success",
+        "launch": "success"
+      },
+      "local": "local_not_run",
+      "limits": [
+        "Targeted scripts absent",
+        "Quota defect inherited",
+        "No physical mobile performance or voluntary two-hour play proof"
+      ]
     }
   }
 }
