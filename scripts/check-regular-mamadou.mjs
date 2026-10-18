@@ -107,10 +107,10 @@ const g1 = await openHere();
 check('another place (the gargote): no greeting line from Mamadou, no struck price', !/habitué/.test(g1.sub) && g1.rows.every(r => !r.was), JSON.stringify({ sub: g1.sub, rows: g1.rows.map(r => r.label) }));
 await closeSheet();
 
-// 6. reload keeps it
-await d(() => { window.dispatchEvent(new Event('pagehide')); });
+// 6. reload keeps it (and the chosen avatar, the Meshy lane's field, rides along in the v6 save)
+await d(() => { window.__dakar.state.data.avatar = 'femme'; window.dispatchEvent(new Event('pagehide')); });
 const saved = await peek();
-check('the v6 save holds it: flag and counters', saved?.schemaVersion === 6 && saved.flags.includes('regular_mamadou') && saved.counters.served_mamadou === 4, JSON.stringify({ v: saved?.schemaVersion, c: saved?.counters?.served_mamadou }));
+check('the v6 save holds it: flag, counters and the chosen avatar', saved?.avatar === 'femme' && saved?.schemaVersion === 6 && saved.flags.includes('regular_mamadou') && saved.counters.served_mamadou === 4, JSON.stringify({ v: saved?.schemaVersion, c: saved?.counters?.served_mamadou }));
 await page.reload({ waitUntil: 'load' }); await ready();
 await goTo(':city:boutique');
 sh = await openHere();
@@ -125,6 +125,7 @@ await goTo(':city:boutique');
 sh = await openHere();
 check('after New Game: a stranger again (plain question, one sugar row at 300 F, nothing struck)', /Que veux-tu faire/.test(sh.sub) && sh.rows.filter(r => /Sucre/.test(r.label)).length === 1 && sh.rows.every(r => !r.was) && (await d(() => window.__dakar.state.data.flags.includes('regular_mamadou'))) === false, sh.sub);
 await closeSheet();
+check('New Game keeps the chosen avatar (an identity, not progress) while the game itself is new', (await d(() => window.__dakar.state.data.avatar)) === 'femme' && (await d(() => window.__dakar.state.wallet)) === 5000, await d(() => window.__dakar.state.data.avatar));
 check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 await browser.close();
 console.log(`regular Mamadou: ${pass} passed, ${fail} failed`);

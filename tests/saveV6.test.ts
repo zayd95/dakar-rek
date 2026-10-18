@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  IMPORT_DONE_KEY, LEGACY_DONE_KEY, LEGACY_SAVE_KEY, SAVE_KEY, SCHEMA_VERSION, V5_SAVE_KEY, clearSave, loadSave, newSave, writeSave, type KV,
+  IDENTITY_KEY, IMPORT_DONE_KEY, LEGACY_DONE_KEY, LEGACY_SAVE_KEY, SAVE_KEY, SCHEMA_VERSION, V5_SAVE_KEY, clearSave, freshSave, loadSave, newSave, writeSave, type KV,
 } from '../src/core/save';
 import { clearSave as clearV5, loadSave as loadV5, newSave as newSaveV5, writeSave as writeV5 } from './fixtures/saveV5Client';
 import { GameState } from '../src/core/state';
@@ -229,11 +229,31 @@ describe('the Meshy avatar lane: its save field is carried, never silently dropp
   it('a save without it (or with something unknown) gets the default model; the rest is untouched', () => {
     for (const a of [undefined, 'robot', 3, null]) { const s = mem(); s.setItem(LEGACY_SAVE_KEY, withAvatar(3, a)); const d = loadSave(s)!; expect(d.avatar).toBe('homme'); expect(d.wallet).toBe(900); }
   });
-  it('the choice survives write → reload, the older client keeps ignoring it, and New Game resets it to the default', () => {
-    const s = mem(); const d = newSave(); d.avatar = 'femme'; d.guestId = 'g-keep'; written(s, d);
+  it('the choice survives write → reload and a New Game; everything else of the game is reset', () => {
+    const s = mem(); const d = newSave(); d.avatar = 'femme'; d.guestId = 'g-keep'; d.wallet = 77_000; d.flags.push('regular_mamadou'); written(s, d);
     expect(loadSave(s)!.avatar).toBe('femme'); expect(loadSave(s)!.guestId).toBe('g-keep');
     clearSave(s); expect(loadSave(s)).toBeNull();
-    const fresh = newSave(); expect(fresh.avatar).toBe('homme');
+    const fresh = freshSave(s);
+    expect(fresh.avatar).toBe('femme');                                                        // the chosen look is kept…
+    expect(fresh.wallet).toBe(3000); expect(fresh.flags).toEqual([]); expect(fresh.guestId).not.toBe('g-keep');   // …the game is new
+    written(s, fresh); expect(loadSave(s)!.avatar).toBe('femme');                              // and it carries on in the v6 save
+  });
+  it('a New Game on a device that never chose gets the default; an unreadable or invalid identity record is the default', () => {
+    const s = mem(); written(s, newSave()); clearSave(s); expect(freshSave(s).avatar).toBe('homme');
+    for (const raw of ['{oops', JSON.stringify({ avatar: 'robot' }), 'null']) { const t = mem(); t.setItem(IDENTITY_KEY, raw); expect(freshSave(t).avatar).toBe('homme'); }
+    expect(freshSave(null).avatar).toBe('homme');
+  });
+  it('the identity survives a second New Game before any save, and a full storage never throws', () => {
+    const s = mem(); const d = newSave(); d.avatar = 'femme'; written(s, d);
+    clearSave(s); clearSave(s);                                                                 // nothing to read the second time: the record stays
+    expect(freshSave(s).avatar).toBe('femme');
+    const m = new Map<string, string>([[SAVE_KEY, JSON.stringify(d)]]);
+    const full: KV = { getItem: k => m.get(k) ?? null, setItem: () => { throw new Error('QuotaExceededError'); }, removeItem: k => { m.delete(k); } };
+    expect(() => clearSave(full)).not.toThrow();
+  });
+  it('the device-level identity of the player (the presence profile: name and look) and the chat key are not touched by a migration or a New Game', () => {
+    const s = mem(); s.setItem('dakarrek.presence.profile', '{"name":"Awa","look":3}'); s.setItem('dakarrek.chat.key', 'k'.repeat(32));
+    s.setItem(V5_SAVE_KEY, withAvatar(5, 'femme')); loadSave(s); clearSave(s);
+    expect(s.getItem('dakarrek.presence.profile')).toBe('{"name":"Awa","look":3}'); expect(s.getItem('dakarrek.chat.key')).toBe('k'.repeat(32));
   });
 });
-

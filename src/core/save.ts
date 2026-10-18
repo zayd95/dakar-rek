@@ -16,6 +16,11 @@ export const LEGACY_SAVE_KEY = 'dakarrek.guest.save';
 export const LEGACY_DONE_KEY = 'dakarrek.guest.save.legacy';
 /** Written by this client at a New Game (`declined`): the older saves (v5 and legacy) are not imported again. It lives in v6's own namespace. */
 export const IMPORT_DONE_KEY = 'dakarrek.guest.save.v6.import';
+/**
+ * The player's chosen look (the cosmetic `avatar`) is an identity, not game progress: a New Game keeps it. It is mirrored here at a New
+ * Game (v6's own namespace; older clients never read it) and read back by `freshSave`.
+ */
+export const IDENTITY_KEY = 'dakarrek.guest.save.v6.identity';
 export const SCHEMA_VERSION = 6;
 /** Wallet history entries kept in the save, and completed delivery ids remembered (no double payment). */
 export const LEDGER_MAX = 100;
@@ -44,6 +49,13 @@ export function newSave(now = Date.now()): SaveData {
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
     assets: newAssets(0), inventory: {}, career: newCareer(),
   };
+}
+
+/** A new game on this device: `newSave`, with the identity the player chose before (a New Game keeps the chosen avatar). */
+export function freshSave(store: KV | null, now = Date.now()): SaveData {
+  const s = newSave(now);
+  try { const id = JSON.parse(store?.getItem(IDENTITY_KEY) ?? 'null') as { avatar?: unknown } | null; if (AVATARS.includes(id?.avatar as Avatar)) s.avatar = id!.avatar as Avatar; } catch { /* unreadable: the default */ }
+  return s;
 }
 
 /** Asset state of a new game: only the starter room, where the player lives. */
@@ -310,6 +322,10 @@ export function writeSave(store: KV | null, data: SaveData): boolean {
  */
 export function clearSave(store: KV | null) {
   if (!store) return;
+  try {                                                  // the chosen look outlives the game it was chosen in
+    const cur = JSON.parse(store.getItem(SAVE_KEY) ?? 'null') as { avatar?: unknown } | null;
+    if (AVATARS.includes(cur?.avatar as Avatar)) store.setItem(IDENTITY_KEY, JSON.stringify({ avatar: cur!.avatar }));
+  } catch { /* unreadable save or full storage: the default look */ }
   let marked = true;
   try { store.setItem(IMPORT_DONE_KEY, 'declined'); } catch { marked = false; }
   try { store.removeItem(SAVE_KEY); } catch { /* ignore */ }
