@@ -1,35 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T02:36:13Z",
+  "updatedAt": "2026-10-18T03:35:23Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261018T0335Z-save46",
-    "owner": "producer_audit_0335",
-    "baseCommit": "9bb9d1e662bc0e75cb314bbc0d6ef48e0dab5995",
-    "acquiredAt": "2026-10-18T03:34:14Z",
-    "expiresAt": "2026-10-18T04:05:00Z",
-    "scope": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-0335-AUDIT.md",
-      "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
-    ]
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "qa_economy_2236",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "9bb9d1e662bc0e75cb314bbc0d6ef48e0dab5995",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -140,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-18T02:36:13Z",
+    "lastCompletedRunAt": "2026-10-18T03:35:23Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
@@ -314,15 +293,17 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-0236-WATCH.md",
-    "completedAt": "2026-10-18T02:36:13Z",
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-0335-AUDIT.md",
+    "completedAt": "2026-10-18T03:35:23Z",
     "actualRunCompleted": true,
-    "tasks": [],
+    "tasks": [
+      "STAB-20261018-0335-SAVE-QA"
+    ],
     "verifiedCandidates": [],
-    "owner": "producer_audit_0236",
-    "reviewer": null,
+    "owner": "producer_audit_0335",
+    "reviewer": "qa_economy_2236",
     "protectedRefsMutated": false,
-    "leaseReleased": "audit-20261018T0236Z-watch"
+    "leaseReleased": "audit-20261018T0335Z-save46"
   },
   "protectedRefsLatest": [
     {
@@ -1153,13 +1134,13 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-18T02:36:13Z",
+    "checkedAt": "2026-10-18T03:35:23Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; shell pwd exit0; unchanged source/CI reconciliation only",
+    "localTests": "local_not_run; shell pwd exit0; independent static cross-version review",
     "delegation": "available; no redundant QA on unchanged evidence",
     "cloudflareAuthenticated": false
   },
@@ -1210,7 +1191,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-18T02:36:13Z",
+    "lastReconciledAt": "2026-10-18T03:35:23Z",
     "qualityMandate": {
       "date": "2026-10-16",
       "target": "Approximately two hours voluntary engagement; not measured",
@@ -1413,6 +1394,18 @@
         "Inherited quota defect open",
         "No physical mobile or voluntary two-hour session proof"
       ]
+    },
+    "tourSaveReview": {
+      "status": "needs-decision",
+      "sourceCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+      "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md",
+      "completedAt": "2026-10-18T03:35:23Z",
+      "local": "local_not_run; static cross-version control-flow proof only",
+      "defect": "Active tour is stripped/cancelled and save rewritten by old v5 client on same origin/key; tour progress lost, wallet credited amounts preserved; no double payment shown",
+      "ci": "push and PR in_progress, not green",
+      "nextAction": "External author decides rollback contract and provides cross-version test/fix; no new feature automatically authorized"
     }
   }
 }

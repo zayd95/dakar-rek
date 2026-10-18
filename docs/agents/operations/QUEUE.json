@@ -1824,7 +1824,7 @@
       "targetedBrowser": "author claims only; save-compat not invoked in inspected CI",
       "publicLaunchApproved": false
     },
-    "lastReconciledAt": "2026-10-18T02:36:13Z"
+    "lastReconciledAt": "2026-10-18T03:35:23Z"
   },
   "saveRegressionProposal": {
     "id": "SAVE-NEWGAME-QUOTA",
@@ -1846,7 +1846,7 @@
     ],
     "report": "docs/agents/operations/reports/PR37-20261016-1335-QA.md",
     "note": "Proposal, not dispatch or file reservation; no automatic implementation",
-    "lastReconciledAt": "2026-10-18T02:36:13Z"
+    "lastReconciledAt": "2026-10-18T03:35:23Z"
   },
   "currentStabilizationDeltaReview": {
     "id": "STAB-20261017-2135-QA",
@@ -2192,19 +2192,6 @@
     },
     "completedAt": "2026-10-18T01:37:02Z"
   },
-  "registryWriter": {
-    "token": "audit-20261018T0335Z-save46",
-    "owner": "producer_audit_0335",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "9bb9d1e662bc0e75cb314bbc0d6ef48e0dab5995",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-0335-AUDIT.md",
-      "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
-    ],
-    "acquiredAt": "2026-10-18T03:34:14Z"
-  },
   "currentTourSaveQa": {
     "id": "STAB-20261018-0335-SAVE-QA",
     "role": "qa",
@@ -2217,12 +2204,80 @@
     "allowedFiles": [
       "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
     ],
-    "status": "active",
+    "status": "needs-decision",
     "acceptance": [
       "Read-only narrow PR46 save/jobs/tour tests: v5 ordinary jobs compatibility, malformed tours, once-only payment/reload and rollback risk",
       "Do not implement or approve new tour feature; distinguish schema number unchanged from additive data/old-v5 compatibility",
       "Current exact CI pending must remain pending; inspect completed evidence only; known quota issue remains",
       "No source/ref edits, Blender/assets/paid/install/Chromium EPERM retry/merge/deploy"
-    ]
+    ],
+    "completedAt": "2026-10-18T03:35:23Z",
+    "result": {
+      "status": "needs-decision",
+      "sourceCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+      "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md",
+      "completedAt": "2026-10-18T03:35:23Z",
+      "local": "local_not_run; static cross-version control-flow proof only",
+      "defect": "Active tour is stripped/cancelled and save rewritten by old v5 client on same origin/key; tour progress lost, wallet credited amounts preserved; no double payment shown",
+      "ci": "push and PR in_progress, not green",
+      "nextAction": "External author decides rollback contract and provides cross-version test/fix; no new feature automatically authorized"
+    }
+  },
+  "pendingTourCandidate": {
+    "pr": 46,
+    "branch": "feature/m1b-tiak-tour-20261018",
+    "sourceCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+    "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+    "status": "review",
+    "owner": "external author, read-only audit",
+    "checkedAt": "2026-10-18T03:35:23Z",
+    "checks": [
+      {
+        "id": 117576329847,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/runs/117576329847"
+      },
+      {
+        "id": 117576172348,
+        "status": "in_progress",
+        "conclusion": null,
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39093890868/job/117576172348"
+      },
+      {
+        "id": 117576140269,
+        "status": "in_progress",
+        "conclusion": null,
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39093880468/job/117576140269"
+      }
+    ],
+    "review": {
+      "status": "needs-decision",
+      "sourceCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
+      "baseCommit": "2c8270978f50f89192ded073321688ce9f87e938",
+      "reviewer": "qa_economy_2236",
+      "report": "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md",
+      "completedAt": "2026-10-18T03:35:23Z",
+      "local": "local_not_run; static cross-version control-flow proof only",
+      "defect": "Active tour is stripped/cancelled and save rewritten by old v5 client on same origin/key; tour progress lost, wallet credited amounts preserved; no double payment shown",
+      "ci": "push and PR in_progress, not green",
+      "nextAction": "External author decides rollback contract and provides cross-version test/fix; no new feature automatically authorized"
+    },
+    "implementationAuthorized": false
+  },
+  "tourRollbackProposal": {
+    "id": "SAVE-TOUR-OLDV5-ROLLBACK",
+    "status": "approval_required",
+    "implementationAuthorized": false,
+    "owner": "external PR46 author / explicit bounded decision",
+    "criteria": [
+      "Define compatibility contract for new tour save opened by older v5 on same origin",
+      "No silent cancellation/rewrite of active tour during supported rollback",
+      "Cross-version new→old-v5→new test including partially paid tour; preserve wallet and prevent duplicate payment",
+      "Ordinary deliveries, v3 legacy isolation and known quota issue remain separately tested"
+    ],
+    "report": "docs/agents/operations/reports/PR46-20261018-0335-SAVE-QA.md"
   }
 }
