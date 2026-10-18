@@ -1,5 +1,5 @@
 {
- "base": "http://127.0.0.1:4310/",
+ "base": "http://127.0.0.1:4320/",
  "results": [
   {
    "name": "New Game: two cards, Homme and Femme, with their pictures",
@@ -65,6 +65,11 @@
    "name": "the new game takes the other identity (homme)",
    "ok": true,
    "detail": "{\"a\":{\"identity\":\"homme\",\"body\":\"meshy_m\",\"expected\":\"meshy_m\",\"stand\":null},\"wallet\":3000}"
+  },
+  {
+   "name": "the pick forces no career: no bout, no followed wrestler, no career flag, the game starts in the open city",
+   "ok": true,
+   "detail": "{\"bouts\":0,\"fav\":null,\"wrestlerFlags\":[],\"at\":\"pikine\"}"
   },
   {
    "name": "a v5 save without the field: no prompt, the v4 body, the progress kept",
@@ -148,8 +153,8 @@
   },
   {
    "name": "no page errors",
-   "ok": true,
-   "detail": ""
+   "ok": false,
+   "detail": "console: Failed to load resource: the server responded with a status of 404 (File not found) | console: Failed to load resource: the server responded with a status of 404 (File not found) | console: Failed to load resource: the server responded with a status of 404 (File not found)"
   }
  ]
 }
