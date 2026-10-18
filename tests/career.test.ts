@@ -73,13 +73,14 @@ describe('career: no classes, progression read from what the player did', () => 
     expect(regularity([bout({ day: 10, res: 'A' })], 12)).toBe(0);
   });
 
-  it('purse: ranked bouts only; a win pays more, a defeat less, an abandon nothing; higher rungs pay more', () => {
+  it('purse: ranked bouts only; a win pays more, a defeat less, an abandon nothing; a stronger opponent (ordinary) or a higher rung (gala, title) pays more', () => {
     expect(purseOf('amical', 'V', 0, 1)).toBe(0);
     expect(purseOf('classe', 'A', 0, 1)).toBe(0);
     expect(purseOf('classe', 'V', 0, 1)).toBeGreaterThan(purseOf('classe', 'N', 0, 1));
     expect(purseOf('classe', 'N', 0, 1)).toBeGreaterThan(purseOf('classe', 'D', 0, 1));
     expect(purseOf('classe', 'D', 0, 1)).toBeGreaterThan(0);
-    expect(purseOf('classe', 'V', 2, 1)).toBeGreaterThan(purseOf('classe', 'V', 0, 1));
+    expect(purseOf('classe', 'V', 0, 3)).toBeGreaterThan(purseOf('classe', 'V', 0, 1));                 // a stronger opponent pays more (ordinary bouts pay by the opponent's level)
+    expect(purseOf('classe', 'V', 4, 3, 'gala')).toBeGreaterThan(purseOf('classe', 'V', 2, 3, 'gala'));   // galas and titles pay by the rung
     expect(purseOf('classe', 'V', 0, 1) % 250).toBe(0);
   });
 
