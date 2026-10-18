@@ -1,6 +1,6 @@
 # M1-B — Tiak Tiak tour (pilot)
 
-Branch `feature/m1b-tiak-tour-20261018`, based on the M1-A head `2c82709` (PR #43). One tour, in Pikine, optional. No new engine, vehicle, district or asset. Save schema stays v5.
+Branch `feature/m1b-tiak-tour-20261018`, based on the M1-A head `2c82709` (PR #43). One tour, in Pikine, optional. No new engine, vehicle, district or asset. Save schema v6, isolated under its own key (docs/SAVES.md): a tour half done survives a rollback to the schema-5 client and back.
 
 ## What it is
 
@@ -31,7 +31,7 @@ In the real tour the first stop is reached at tour clock **4.9 s (Banque) / 10.4
 
 ## Client memory
 
-Per client, whole number −3…+5 in the open `counters` map (`tiak_trust_<stop>`, `tiak_ok_…`, `tiak_late_…`, `tiak_drop_…`; no schema change, old saves start at 0): +1 for a stop on time, −1 for a late one or one abandoned. It adds to that client's **pay** (+4 % per level above 0, up to +20 %) and moves their **patience** (the limit −18 % … +30 %). Limits and pay are fixed when the tour is accepted, so what was shown is what is paid, across reloads. The client served first can always be reached with ≥ 20 % to spare even at −3. At trust 5 with the Grand-place client the Agence-first order is on time twice: serving the Dames first a few times (they gain trust, the Agence loses some, harmlessly) opens the perfect order. Nothing is ever refused; three on-time stops bring a client from −3 back to 0.
+Per client, whole number −3…+5 in the open `counters` map (`tiak_trust_<stop>`, `tiak_ok_…`, `tiak_late_…`, `tiak_drop_…`; old saves start at 0): +1 for a stop on time, −1 for a late one or one abandoned. It adds to that client's **pay** (+4 % per level above 0, up to +20 %) and moves their **patience** (the limit −18 % … +30 %). Limits and pay are fixed when the tour is accepted, so what was shown is what is paid, across reloads. The client served first can always be reached with ≥ 20 % to spare even at −3. At trust 5 with the Grand-place client the Agence-first order is on time twice: serving the Dames first a few times (they gain trust, the Agence loses some, harmlessly) opens the perfect order. Nothing is ever refused; three on-time stops bring a client from −3 back to 0.
 
 ## Abandoning
 

@@ -128,9 +128,9 @@ let savedJson = null;
   const before = await D(page, () => ({ b: window.__dakar.business(), w: window.__dakar.state.wallet }));
   await D(page, () => window.__dakar.phone('reglages')); await page.locator('#phone [data-act="save"]').click(); await D(page, () => window.__dakar.phoneClose());
   await page.reload({ waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1200);
-  const after = await D(page, () => ({ b: window.__dakar.business(), w: window.__dakar.state.wallet, ver: JSON.parse(localStorage.getItem('dakarrek.guest.save.v5')).schemaVersion }));
+  const after = await D(page, () => ({ b: window.__dakar.business(), w: window.__dakar.state.wallet, ver: JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).schemaVersion }));
   check('reload: ventures, earnings, activities and wallet persisted (schema v5)', after.ver === 5 && JSON.stringify(after.b.owned) === JSON.stringify(before.b.owned) && after.b.earned === before.b.earned && after.b.known.length === 7 && after.w >= before.w, `${after.w} F · earned ${after.b.earned}`);
-  savedJson = await D(page, () => localStorage.getItem('dakarrek.guest.save.v5'));
+  savedJson = await D(page, () => localStorage.getItem('dakarrek.guest.save.v6'));
   check('desktop: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
@@ -138,7 +138,7 @@ let savedJson = null;
 // ------------------------------------------------------------------ phone 390×844 touch: same save, compact HUD, full wallet, touch purchase
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
-  await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v5', s); localStorage.setItem('dakarrek.quality', 'low'); sessionStorage.setItem('seeded', '1'); } }, savedJson);
+  await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v6', s); localStorage.setItem('dakarrek.quality', 'low'); sessionStorage.setItem('seeded', '1'); } }, savedJson);
   const page = await ctx.newPage();
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1200);

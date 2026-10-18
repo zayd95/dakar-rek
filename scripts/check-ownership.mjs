@@ -246,9 +246,9 @@ let savedJson = null;
   const before = await est(page), wb = await wallet(page);
   await D(page, () => window.__dakar.phone('reglages')); await page.locator('#phone [data-act="save"]').click(); await D(page, () => window.__dakar.phoneClose());
   await page.reload({ waitUntil: 'load' }); await ready(page); await settle(page, 1200);
-  const after = await est(page), ver = await D(page, () => JSON.parse(localStorage.getItem('dakarrek.guest.save.v5')).schemaVersion);
+  const after = await est(page), ver = await D(page, () => JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).schemaVersion);
   check('reload: assets, placements, home and wallet persisted (schema v5)', ver === 5 && JSON.stringify(after.assets) === JSON.stringify(before.assets) && after.home === before.home && (await wallet(page)) >= wb - 300, `${ver} · ${after.assets.length} assets`);
-  savedJson = await D(page, () => localStorage.getItem('dakarrek.guest.save.v5'));
+  savedJson = await D(page, () => localStorage.getItem('dakarrek.guest.save.v6'));
   check('desktop: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }
@@ -256,7 +256,7 @@ let savedJson = null;
 // ------------------------------------------------------------------ phone 390×844 touch: same save
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 1 });
-  await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v5', s); localStorage.setItem('dakarrek.quality', 'low'); sessionStorage.setItem('seeded', '1'); } }, savedJson);
+  await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v6', s); localStorage.setItem('dakarrek.quality', 'low'); sessionStorage.setItem('seeded', '1'); } }, savedJson);
   const page = await ctx.newPage();
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await settle(page, 1200);
@@ -331,7 +331,7 @@ let savedJson = null;
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const v4 = { schemaVersion: 4, guestId: 'v4-test', hub: 'pikine', x: 0, z: 0, wallet: 123456, playedMs: 600000, counters: { livraisons: 3, 'inv:poisson': 4 }, furniture: ['radio', 'tapis', 'matelas'],
     business: { owned: { bana: 2 }, clockMs: 600000, payMs: 600000, carry: 12, earned: 900 }, activities: { known: ['livraison', 'services', 'commerce'], last: { livraison: 500000 } }, ledger: [], flags: [], beats: {} };
-  await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v5', s); localStorage.setItem('dakarrek.quality', 'low'); sessionStorage.setItem('seeded', '1'); } }, JSON.stringify(v4));
+  await ctx.addInitScript(s => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('dakarrek.guest.save.v6', s); localStorage.setItem('dakarrek.quality', 'low'); sessionStorage.setItem('seeded', '1'); } }, JSON.stringify(v4));
   const page = await ctx.newPage();
   const errors = watchErrors(page);
   await page.goto(`${base}?debug`, { waitUntil: 'load' }); await ready(page); await settle(page, 1200);
