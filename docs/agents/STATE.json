@@ -1,32 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T16:35:40Z",
+  "updatedAt": "2026-10-18T16:36:45Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261018T1635Z-watch",
-    "owner": "producer_audit_1635",
-    "acquiredAt": "2026-10-18T16:35:40Z",
-    "expiresAt": "2026-10-18T17:20:00Z",
-    "purpose": "Fresh exact-head stabilization watch after PR46 save-v6 validation"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "producer_audit_1635",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "f32b21992d5800fe6bc9117fdf04168ce10470a0",
-      "allowedFiles": [
-        "docs/agents/STATE.json",
-        "docs/agents/operations/QUEUE.json",
-        "docs/agents/operations/CYCLE-2026-10-18-1635-AUDIT.md"
-      ],
-      "purpose": "Registry-only read audit; no source/PR/ref mutation"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -312,9 +294,9 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-1535-AUDIT.md",
-    "completedAt": "2026-10-18T15:36:19.755Z",
-    "owner": "producer_audit_1535",
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-1635-AUDIT.md",
+    "completedAt": "2026-10-18T16:36:45Z",
+    "owner": "producer_audit_1635",
     "reviewer": null,
     "tasks": [
       "Fresh exact-head stabilization watch for PR46, PR47, issue45 and protected refs"
@@ -323,52 +305,15 @@
     "protectedRefsMutated": false,
     "leaseReleased": true
   },
-  "protectedRefsLatest": [
-    {
-      "name": "codex/agent-studio-bootstrap",
-      "sha": "3ef649b19382955ad2c933fce551ea7ba36d8c57"
-    },
-    {
-      "name": "codex/aida-revision-activity",
-      "sha": "0af76c38b152df885c0c27352aa43ac320aa71af"
-    },
-    {
-      "name": "codex/cloudflare-agent",
-      "sha": "53345bf594e7015c56eef9871610e8f25e8b18ff"
-    },
-    {
-      "name": "codex/dakar-city-life",
-      "sha": "84311a716fa722cd20b4e725a72fd15f60511291"
-    },
-    {
-      "name": "codex/launch-controls",
-      "sha": "6216bb80db6bb7d777997e70d1681fa71240b057"
-    },
-    {
-      "name": "codex/multiplayer-launch",
-      "sha": "792a455acd681dea0476a5dcc11cfc8e7594f312"
-    },
-    {
-      "name": "codex/preserve-vehicle-materials",
-      "sha": "e20b9f775062048a76cf0b9470992dc31de511a3"
-    },
-    {
-      "name": "codex/v1-core-launch-scope",
-      "sha": "9f9b76dfae5f34f3ecba6defdd1154c966560a1e"
-    },
-    {
-      "name": "codex/v1-mosque-ads",
-      "sha": "e4f1c291117fb61633d169a008823efd59dce19f"
-    },
-    {
-      "name": "main",
-      "sha": "547bb1e8077127094a3fc647821cf6ac73d2a42c"
-    },
-    {
-      "name": "wip/visual-pass",
-      "sha": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187"
-    }
-  ],
+  "protectedRefsLatest": {
+    "release": "f2335f177f2b8f56b9d3ce3bb83d4e583888b121",
+    "pikineIdentity": "0e8fce6ac19257f2b762b608e62c0a35d0a7b67d",
+    "tiakMoto": "1f5ab88554f9e45f57a64a442903aafef6867ab8",
+    "main": "547bb1e8077127094a3fc647821cf6ac73d2a42c",
+    "visualPass": "e6c678a0e0ab9c6d5a000c58740b6231d59cf187",
+    "livingDakar": "0cbf0d410cdf1ed891cd340c359b90ddfb9075ff",
+    "checkedAt": "2026-10-18T16:36:45Z"
+  },
   "worldCandidate": {
     "sourceCommit": "17108c2039cfef85bffdc592fbab7081e32a5c0f",
     "baseCommit": "e4f1c291117fb61633d169a008823efd59dce19f",
