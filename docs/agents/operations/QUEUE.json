@@ -2447,7 +2447,7 @@
   },
   "currentStabilizationWatch": {
     "id": "STAB-20261018-1926-PR48-AVATAR-QA",
-    "status": "active",
+    "status": "completed",
     "owner": "qa_pr48_avatar_1926",
     "branch": "codex/agent-studio-active",
     "baseCommit": "50a6bbb37f12559cdc53b1ee58f63c0a9529338a",
@@ -2464,7 +2464,16 @@
       "Verify exact checks and known PR48 defect",
       "No source, feature, merge, deploy, Blender or paid generation"
     ],
-    "startedAt": "2026-10-18T19:27:05Z"
+    "startedAt": "2026-10-18T19:27:05Z",
+    "completedAt": "2026-10-18T19:28:10Z",
+    "result": "avatar-validated-limited-pr-needs-correction",
+    "report": "docs/agents/operations/reports/PR48-20261018-1926-AVATAR-QA.md",
+    "findings": [
+      "Avatar/New Game delta is unit- and general-CI coherent",
+      "Workers exact-head build failure remains",
+      "Vacuous || true assertion remains; targeted script absent from standard CI",
+      "Avatar picker consumes suggestion only on another branch, not demonstrated here"
+    ]
   },
   "currentSaveV6Qa": {
     "id": "STAB-20261018-1434-SAVE-V6-QA",
@@ -2541,7 +2550,7 @@
     "reviewer": "qa_pr48_1735",
     "branch": "codex/agent-studio-active",
     "baseCommit": "2212e2a169e5ffd96767cc627f2b267e54c5dc23",
-    "sourceCommit": "e2133338caf47d23972a4bc2d9ca4406882469f9",
+    "sourceCommit": "03477aa1ad86a9899301eefbb45d4bd970255b74",
     "sourceBase": "c5cb818cfcf07e9228e04f6008eb4e1774f2aaa2",
     "allowedFiles": [
       "docs/agents/operations/reports/PR48-20261018-1735-QA.md"
@@ -2549,25 +2558,25 @@
     "completedAt": "2026-10-18T17:37:30Z",
     "result": {
       "status": "needs-correction",
-      "sourceCommit": "e2133338caf47d23972a4bc2d9ca4406882469f9",
+      "sourceCommit": "03477aa1ad86a9899301eefbb45d4bd970255b74",
       "baseCommit": "c5cb818cfcf07e9228e04f6008eb4e1774f2aaa2",
       "reviewer": "qa_pr48_1735",
-      "report": "docs/agents/operations/reports/PR48-20261018-1735-QA.md",
+      "report": "docs/agents/operations/reports/PR48-20261018-1926-AVATAR-QA.md",
       "completedAt": "2026-10-18T17:37:30Z",
       "defect": "scripts/check-regular-mamadou.mjs contains an assertion ending in || true, making that browser criterion vacuous",
       "ci": {
         "workers": {
-          "id": 117742620955,
+          "id": 117755272096,
           "status": "completed",
           "conclusion": "failure"
         },
         "push": {
-          "id": 117742389271,
+          "id": 117755024405,
           "status": "completed",
           "conclusion": "success"
         },
         "pr": {
-          "id": 117742397811,
+          "id": 117755038751,
           "status": "completed",
           "conclusion": "success"
         },
@@ -2592,9 +2601,18 @@
       },
       "publicLaunchApproved": false,
       "ciAddendum": "docs/agents/operations/reports/PR48-20261018-1826-CI-QA.md",
-      "checkedAt": "2026-10-18T18:28:15Z"
+      "checkedAt": "2026-10-18T19:28:10Z",
+      "avatarCorrection": {
+        "status": "validated-limited",
+        "scope": "New Game resets avatar to default and stores prior value only as suggestion; migration still carries avatar",
+        "limits": [
+          "Picker consumption is on another branch and not demonstrated here",
+          "Targeted browser script is not invoked by standard CI"
+        ]
+      }
     },
-    "checkedAt": "2026-10-18T18:28:15Z",
-    "ciAddendum": "docs/agents/operations/reports/PR48-20261018-1826-CI-QA.md"
+    "checkedAt": "2026-10-18T19:28:10Z",
+    "ciAddendum": "docs/agents/operations/reports/PR48-20261018-1826-CI-QA.md",
+    "avatarQa": "docs/agents/operations/reports/PR48-20261018-1926-AVATAR-QA.md"
   }
 }
