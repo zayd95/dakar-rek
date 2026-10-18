@@ -1,39 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T04:35:22Z",
+  "updatedAt": "2026-10-18T05:30:19Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261018T0528Z-pr47-qa",
-    "owner": "producer_audit_0528",
-    "acquiredAt": "2026-10-18T05:27:57Z",
-    "expiresAt": "2026-10-18T05:57:57Z"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "producer_audit_0528",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "c32833d71281c52a86ddbc109ae7521acf390899",
-      "allowedFiles": [
-        "docs/agents/STATE.json",
-        "docs/agents/operations/QUEUE.json",
-        "docs/agents/operations/CYCLE-2026-10-18-0528-AUDIT.md"
-      ]
-    },
-    {
-      "owner": "qa_ui_0528",
-      "branch": "read-only PR47",
-      "baseCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
-      "sourceCommit": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
-      "allowedFiles": [
-        "docs/agents/operations/reports/PR47-20261018-0528-QA.md"
-      ]
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -144,7 +119,7 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-18T04:35:22Z",
+    "lastCompletedRunAt": "2026-10-18T05:30:19Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
@@ -318,13 +293,12 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-0435-AUDIT.md",
-    "completedAt": "2026-10-18T04:35:22Z",
-    "owner": "producer_audit_0435",
-    "reviewer": null,
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-0528-AUDIT.md",
+    "completedAt": "2026-10-18T05:30:19Z",
+    "owner": "producer_audit_0528",
+    "reviewer": "qa_ui_0528",
     "tasks": [
-      "PR46 CI reconciliation",
-      "PR47 pending evidence inventory"
+      "PR47 exact-head CI reconciliation and independent UI/accessibility QA"
     ],
     "verifiedCandidates": [],
     "protectedRefsMutated": false,
@@ -1159,13 +1133,13 @@
     }
   ],
   "runtimeCapabilities": {
-    "checkedAt": "2026-10-18T04:35:22Z",
+    "checkedAt": "2026-10-18T05:30:19Z",
     "githubRead": true,
     "githubCommit": true,
     "githubCAS": true,
     "shell": true,
     "shellReason": "exec_command functional; Chromium sandbox blocks browser socket with EPERM",
-    "localTests": "local_not_run; shell date only; GitHub workflow logs inspected",
+    "localTests": "local_not_run; shell date only; exact GitHub CI logs and diff independently reviewed",
     "delegation": "available; no redundant QA on unchanged evidence",
     "cloudflareAuthenticated": false
   },
@@ -1216,7 +1190,7 @@
       },
       "nextOwner": "candidate owner / authorized test runner then distinct QA"
     },
-    "lastReconciledAt": "2026-10-18T04:35:22Z",
+    "lastReconciledAt": "2026-10-18T05:30:19Z",
     "qualityMandate": {
       "date": "2026-10-16",
       "target": "Approximately two hours voluntary engagement; not measured",
@@ -1453,32 +1427,42 @@
     },
     "shopUiCandidate": {
       "pr": 47,
-      "sourceCommit": "27e723632bc96bfdbe239a44f5fa6be7353ebe5a",
+      "status": "needs-decision",
+      "sourceCommit": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
       "baseCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
-      "status": "review",
-      "checkedAt": "2026-10-18T04:35:22Z",
-      "owner": "external session; read only",
-      "checks": [
-        {
-          "id": 117584883925,
-          "status": "completed",
-          "conclusion": "success",
-          "url": "https://github.com/zayd95/dakar-rek/runs/117584883925"
-        },
-        {
-          "id": 117584699126,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/39096750106/job/117584699126"
-        },
-        {
-          "id": 117584693726,
-          "status": "in_progress",
-          "conclusion": null,
-          "url": "https://github.com/zayd95/dakar-rek/actions/runs/39096748353/job/117584693726"
-        }
+      "reviewer": "qa_ui_0528",
+      "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
+      "completedAt": "2026-10-18T05:30:19Z",
+      "local": "local_not_run",
+      "scope": "Independent static UI/accessibility review plus exact CI logs; no source edits",
+      "ci": {
+        "workersJob": 117587544379,
+        "workers": "success",
+        "pushJob": 117587370283,
+        "push": "success",
+        "pushCheckout": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
+        "prJob": 117587380157,
+        "pr": "failure",
+        "prCheckout": "676a34716700b34850c28cc359194c5e2ca03648",
+        "tree": "9c635694a2873cd29b680a4521646a0634561cd7",
+        "testsPassed": 1544,
+        "testsSkipped": 2,
+        "testFiles": 126,
+        "types": "success",
+        "build": "success",
+        "city": "success",
+        "pushOnline": "success",
+        "pushLaunch": "success",
+        "prFailure": "check:online page.waitForFunction timeout 30000ms at scripts/check-multiplayer.mjs:119; check:launch not run"
+      },
+      "findings": [
+        "No new save, economy or mission regression demonstrated; inherited PR46 old-v5 rollback remains open",
+        "Targeted check-menu-density (claimed 28 checks) absent from inspected CI and no matching results JSON committed",
+        "Current Tiak result JSON has 25 phone assertions; desktop result is historical, not current at source SHA",
+        "Full description is in HTML title without aria-label/aria-describedby; availability before immediate action on touch/screen reader is not established",
+        "Browser mobile emulation is not a physical-phone test"
       ],
-      "nextAction": "Resume exact CI then independent UI regression review; no source work commissioned"
+      "publicLaunchApproved": false
     }
   }
 }

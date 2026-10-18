@@ -2303,47 +2303,39 @@
   },
   "pendingShopUiCandidate": {
     "pr": 47,
-    "sourceCommit": "27e723632bc96bfdbe239a44f5fa6be7353ebe5a",
+    "sourceCommit": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
     "baseCommit": "5234097e3168b13dcf87e632a109e1ebae59ed08",
     "status": "review",
-    "checkedAt": "2026-10-18T04:35:22Z",
+    "checkedAt": "2026-10-18T05:30:19Z",
     "owner": "external session; read only",
+    "reviewer": "qa_ui_0528",
+    "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
     "checks": [
       {
-        "id": 117584883925,
+        "id": 117587544379,
         "status": "completed",
         "conclusion": "success",
-        "url": "https://github.com/zayd95/dakar-rek/runs/117584883925"
+        "url": "https://github.com/zayd95/dakar-rek/runs/117587544379"
       },
       {
-        "id": 117584699126,
-        "status": "in_progress",
-        "conclusion": null,
-        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39096750106/job/117584699126"
+        "id": 117587380157,
+        "status": "completed",
+        "conclusion": "failure",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39097674487/job/117587380157"
       },
       {
-        "id": 117584693726,
-        "status": "in_progress",
-        "conclusion": null,
-        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39096748353/job/117584693726"
+        "id": 117587370283,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/zayd95/dakar-rek/actions/runs/39097671208/job/117587370283"
       }
     ],
-    "nextAction": "Resume exact CI then independent UI regression review; no source work commissioned"
-  },
-  "registryWriter": {
-    "owner": "producer_audit_0528",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "c32833d71281c52a86ddbc109ae7521acf390899",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-0528-AUDIT.md"
-    ]
+    "nextAction": "External author supplies accessible description decision, exact check-menu-density result, current desktop+phone targeted proof and successful PR CI; inherited PR46 rollback handled separately"
   },
   "currentShopUiQa": {
     "id": "STAB-20261018-0528-PR47-QA",
     "kind": "independent-review",
-    "status": "active",
+    "status": "completed",
     "owner": "external session; read only",
     "reviewer": "qa_ui_0528",
     "branch": "ui/shared-primitives-20261018",
@@ -2358,6 +2350,9 @@
       "Inspect compact menu/touch/accessibility evidence without treating screenshots as physical-device proof",
       "Separate push success from PR multiplayer timeout",
       "No source edits or feature approval"
-    ]
+    ],
+    "verdict": "needs-decision",
+    "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
+    "completedAt": "2026-10-18T05:30:19Z"
   }
 }
