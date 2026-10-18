@@ -858,9 +858,9 @@
     }
   ],
   "lastReadOnlyCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-0935-AUDIT.md",
-    "checkedAt": "2026-10-18T09:35:39Z",
-    "owner": "producer_audit_0935",
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-1035-AUDIT.md",
+    "checkedAt": "2026-10-18T10:35:47Z",
+    "owner": "producer_audit_1035",
     "sourceHeads": {
       "pr47": "4c72cb5ea8fdd2d4ef2e039215f5481275d0631e",
       "pr46": "5234097e3168b13dcf87e632a109e1ebae59ed08"
@@ -2352,15 +2352,5 @@
     "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
     "completedAt": "2026-10-18T05:30:19Z",
     "checkedAt": "2026-10-18T07:28:45Z"
-  },
-  "registryWriter": {
-    "owner": "producer_audit_1035",
-    "branch": "codex/agent-studio-active",
-    "baseCommit": "67bf512f44d47dc01dbafe0f21343e82f7c5b0ed",
-    "allowedFiles": [
-      "docs/agents/STATE.json",
-      "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/CYCLE-2026-10-18-1035-AUDIT.md"
-    ]
   }
 }
