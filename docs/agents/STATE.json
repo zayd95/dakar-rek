@@ -1,32 +1,14 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T15:35:48.963Z",
+  "updatedAt": "2026-10-18T15:36:19.755Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": {
-    "token": "audit-20261018T1535Z-watch",
-    "owner": "producer_audit_1535",
-    "acquiredAt": "2026-10-18T15:35:48.963Z",
-    "expiresAt": "2026-10-18T16:20:00Z",
-    "purpose": "Fresh exact-head stabilization watch after PR46 save-v6 validation"
-  },
+  "lease": null,
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [
-    {
-      "owner": "producer_audit_1535",
-      "branch": "codex/agent-studio-active",
-      "baseCommit": "5da15753d057c7bf5b02542d09bf5309e43fc406",
-      "allowedFiles": [
-        "docs/agents/STATE.json",
-        "docs/agents/operations/QUEUE.json",
-        "docs/agents/operations/CYCLE-2026-10-18-1535-AUDIT.md"
-      ],
-      "purpose": "Registry-only read audit; no source/PR/ref mutation"
-    }
-  ],
+  "reservations": [],
   "externalWork": [
     {
       "pr": 10,
@@ -137,15 +119,13 @@
     "firstAutonomousRunCompleted": true,
     "rolesDispatchedOnDemand": true,
     "claudeNativeLoadVerified": false,
-    "lastCompletedRunAt": "2026-10-18T14:36:30.104Z",
+    "lastCompletedRunAt": "2026-10-18T15:36:19.755Z",
     "lastVerifiedAt": "2026-10-16T12:39:38Z",
     "enabled": true
   },
   "productionMutationsAuthorized": false,
   "reviewTasks": [],
-  "activeSessions": [
-    "producer_audit_1535"
-  ],
+  "activeSessions": [],
   "completedSessions": [
     "activation_producer",
     "activation_qa",
@@ -176,7 +156,7 @@
     "qa_freeze_0428",
     "qa_save_1434"
   ],
-  "nextAction": "Keep PR46 review. Run check-save-v6.mjs and check-save-compat.mjs with actual v5/v3/current builds before full cross-version acceptance; do not merge/deploy. Re-review rebased PR47 UI evidence separately.",
+  "nextAction": "Wait for exact multi-build save E2E evidence or a new head/CI mutation; keep PR46/47 review. No global readiness claim.",
   "externalReservations": {
     "authority": "Other sessions; do not edit refs",
     "prs": [
@@ -314,17 +294,14 @@
     "deployed": false
   },
   "lastCycle": {
-    "entry": "docs/agents/operations/CYCLE-2026-10-18-1434-AUDIT.md",
-    "completedAt": "2026-10-18T14:36:30.104Z",
-    "owner": "qa_save_1434",
-    "reviewer": "qa_save_1434",
+    "entry": "docs/agents/operations/CYCLE-2026-10-18-1535-AUDIT.md",
+    "completedAt": "2026-10-18T15:36:19.755Z",
+    "owner": "producer_audit_1535",
+    "reviewer": null,
     "tasks": [
-      "Independent exact-SHA review of PR46 save-v6 regression fix and completed CI",
-      "Read-only reconciliation of PR47, issue45 and protected refs"
+      "Fresh exact-head stabilization watch for PR46, PR47, issue45 and protected refs"
     ],
-    "verifiedCandidates": [
-      "PR46 save-v6 regression fix only (validated-limited)"
-    ],
+    "verifiedCandidates": [],
     "protectedRefsMutated": false,
     "leaseReleased": true
   },
