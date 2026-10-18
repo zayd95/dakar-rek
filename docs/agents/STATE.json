@@ -1,14 +1,30 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T10:35:47Z",
+  "updatedAt": "2026-10-18T11:35:10Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": null,
+  "lease": {
+    "token": "audit-20261018T1135Z-watch",
+    "owner": "producer_audit_1135",
+    "acquiredAt": "2026-10-18T11:35:10Z",
+    "expiresAt": "2026-10-18T11:55:10Z"
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "owner": "producer_audit_1135",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "26a65197505445e86b249ff7a7bf04ac0e3c0cb6",
+      "allowedFiles": [
+        "docs/agents/STATE.json",
+        "docs/agents/operations/QUEUE.json",
+        "docs/agents/operations/CYCLE-2026-10-18-1135-AUDIT.md"
+      ]
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
