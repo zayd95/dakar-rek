@@ -2352,5 +2352,15 @@
     "report": "docs/agents/operations/reports/PR47-20261018-0528-QA.md",
     "completedAt": "2026-10-18T05:30:19Z",
     "checkedAt": "2026-10-18T07:28:45Z"
+  },
+  "registryWriter": {
+    "owner": "producer_audit_0935",
+    "branch": "codex/agent-studio-active",
+    "baseCommit": "d9429f712cbc37d1aa87f168a678274ad271afb3",
+    "allowedFiles": [
+      "docs/agents/STATE.json",
+      "docs/agents/operations/QUEUE.json",
+      "docs/agents/operations/CYCLE-2026-10-18-0935-AUDIT.md"
+    ]
   }
 }
