@@ -9,6 +9,7 @@ const PATHS: Record<string, string> = {
   bike: '<circle cx="6" cy="17" r="3.2"/><circle cx="18" cy="17" r="3.2"/><path d="M6 17l4-8h5l3 8M10 9L9 6H7M13 12.5h4"/>',
   cup: '<path d="M5 8h11v5a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5V8z"/><path d="M16 9h2a2.5 2.5 0 0 1 0 5h-2"/><path d="M8 3.5v2M12 3.5v2"/>',
   chevron: '<path d="M9 6l6 6-6 6"/>',
+  star: '<path d="M12 3.2l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.7l-5.4 3 1.2-6-4.5-4.2 6.1-.7L12 3.2z" fill="currentColor"/>',
 };
 export const GLYPHS = Object.keys(PATHS);
 export function glyphEl(name: string | undefined): SVGElement | null {

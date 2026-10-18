@@ -21,14 +21,14 @@ body {
   /* states of a row or a card: a tint over the card, never a fixed colour */
   --ui-hover: rgba(60, 60, 67, .07); --ui-press: rgba(60, 60, 67, .15); --ui-selected: rgba(255, 200, 61, .26);
   --ui-ring: var(--sun-deep);
-  --ui-outline: rgba(60, 60, 67, .30);                 /* the outline of a compact card */
+  --ui-star: #e0a100;                                  /* the gold star of an objective: 3:1 or better on the card, day (#fff) and night (#2c2c2e) */
   /* the one primary button (yellow, dark ink, a darker edge) */
   --ui-btn-bg: var(--sun); --ui-btn-ink: #2b2000; --ui-btn-edge: var(--sun-deep);
   --ui-btn-shadow: 0 3px 0 var(--ui-btn-edge), 0 8px 16px rgba(240, 168, 0, .25);
   --ui-card-shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 6px 18px rgba(0, 0, 0, .08), inset 0 0 0 1px var(--sep);
 }
 body.theme-night {
-  --ui-outline: rgba(255, 255, 255, .24);
+  --ui-star: #ffc83d;
   --ui-hover: rgba(255, 255, 255, .08); --ui-press: rgba(255, 255, 255, .16); --ui-selected: rgba(255, 200, 61, .22);
   --ui-card-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .45), inset 0 0 0 1px var(--sep);
 }

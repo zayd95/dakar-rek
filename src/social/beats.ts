@@ -252,7 +252,7 @@ export function settleWelcome(r: Relations, s: GameState): boolean {
 }
 
 /** The leads in the order they are suggested (see `suggestion`). */
-function leads(r: Relations, s: GameState): (Beat | Step)[] {
+export function leads(r: Relations, s: GameState): (Beat | Step)[] {
   const open = (b: Beat) => !r.beatDone(b.id) && b.when(r, s);
   const welcome = BEATS[0], out: (Beat | Step)[] = [];
   if (open(welcome) && welcomeEarly(s.data)) out.push(welcome);
