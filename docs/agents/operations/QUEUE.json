@@ -2446,34 +2446,24 @@
     "checkedAt": "2026-10-18T07:28:45Z"
   },
   "currentStabilizationWatch": {
-    "id": "STAB-20261018-1735-PR48-QA",
-    "status": "completed",
-    "owner": "qa_pr48_1735",
+    "id": "STAB-20261018-1826-PR48-CI",
+    "status": "active",
+    "owner": "qa_pr48_ci_1826",
     "branch": "codex/agent-studio-active",
-    "baseCommit": "2212e2a169e5ffd96767cc627f2b267e54c5dc23",
-    "controlBriefCommit": "2212e2a169e5ffd96767cc627f2b267e54c5dc23",
+    "baseCommit": "97de3a8fbbb346da90850a8a330ad4f751af7c21",
     "sourceCommit": "e2133338caf47d23972a4bc2d9ca4406882469f9",
-    "sourceBase": "c5cb818cfcf07e9228e04f6008eb4e1774f2aaa2",
     "allowedFiles": [
       "docs/agents/STATE.json",
       "docs/agents/operations/QUEUE.json",
-      "docs/agents/operations/reports/PR48-20261018-1735-QA.md",
-      "docs/agents/operations/CYCLE-2026-10-18-1735-AUDIT.md"
+      "docs/agents/operations/reports/PR48-20261018-1826-CI-QA.md",
+      "docs/agents/operations/CYCLE-2026-10-18-1826-AUDIT.md"
     ],
     "scope": [
-      "Review PR48 exact diff and save compatibility additions",
-      "Verify current checks and browser-test claims",
+      "Reconcile exact PR48 checks and logs",
+      "Recheck known vacuous assertion",
       "No source, feature, merge, deploy, Blender or paid generation"
     ],
-    "startedAt": "2026-10-18T17:35:50Z",
-    "completedAt": "2026-10-18T17:37:30Z",
-    "result": "needs-correction",
-    "report": "docs/agents/operations/reports/PR48-20261018-1735-QA.md",
-    "findings": [
-      "Browser assertion for unchanged rows/prices is forced true by || true",
-      "Workers exact-head build failed with unavailable Cloudflare log",
-      "Push and PR checks pending; targeted regular script absent from standard CI"
-    ]
+    "startedAt": "2026-10-18T18:27:20Z"
   },
   "currentSaveV6Qa": {
     "id": "STAB-20261018-1434-SAVE-V6-QA",
