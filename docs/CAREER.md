@@ -155,9 +155,11 @@ most) and closes the connection otherwise; `null` clears it.
 
 ## Purse and record (§14–15)
 
-A ranked bout pays a purse by the rung at the start of the bout: 5 000 F (petits combats), 15 000, 50 000, 150 000,
-400 000, 1 000 000, 2 500 000 F (Roi des Arènes) — × 1.5 × (1 + 0.1 × level) for a win, × 1 for a draw, × 0.6 for a
-defeat (« baisse de cachet »), nothing for an abandon or a friendly bout. Paid once, with a wallet line « Cachet · combat
+An ordinary ranked bout pays a purse by the OPPONENT's level, not by the player's rung: 5 000 F (level 1), 6 500, 8 500,
+11 000, 14 000 F (level 5) — × 1.5 × (1 + 0.1 × level) for a win, × 1 for a draw, × 0.6 for a defeat (« baisse de
+cachet »), nothing for an abandon or a friendly bout (`ORDINARY_BASE`, `purseOf`; docs/ORDINARY-PURSES.md). The prestige
+purses are unchanged: a gala place pays twice and a title bout three times the rung's own purse (5 000 F at petits combats,
+15 000, 50 000, 150 000, 400 000, 1 000 000, 2 500 000 F at Roi des Arènes, with the same win / draw / defeat factors). Paid once, with a wallet line « Cachet · combat
 classé contre <nom> ». Every finished bout is kept (day, mode, opponent, style, level, result, how, purse, points; the
 last 300): totals, the rival (most history, or a defeat), the biggest purse, the current streak, the last bouts, and
 one shareable line for presence later (`recordLine`: « 4 combats · 3 V · 1 D · Undercards · rivalité avec Gora · plus
