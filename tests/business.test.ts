@@ -219,7 +219,7 @@ describe('save schema v4 → v5', () => {
   it('a v3 save gains no ventures and the activities its counters show (known, not recent); its furniture becomes assets', () => {
     const v3 = { schemaVersion: 3, wallet: 52_000, playedMs: 7_200_000, counters: { livraisons: 4, shifts: 2, chats: 1, combats: 1 }, furniture: ['radio'], beats: { ibou_welcome: 'oui' } };
     const m = migrate(v3)!;
-    expect(SCHEMA_VERSION).toBe(5); expect(m.schemaVersion).toBe(5);
+    expect(SCHEMA_VERSION).toBe(6); expect(m.schemaVersion).toBe(6);
     expect(ownedVentures(new GameState(m))).toEqual({});
     expect(m.assets).toMatchObject({ clockMs: 7_200_000, payMs: 7_200_000, carryIn: 0, earned: 0 });
     expect(ownedFurnitureIds(new GameState(m))).toEqual(['radio']);
@@ -232,13 +232,13 @@ describe('save schema v4 → v5', () => {
   it('v1 and v2 saves reach v5 through the chain', () => {
     for (const v of [1, 2]) {
       const m = migrate({ schemaVersion: v, wallet: 500 })!;
-      expect(m.schemaVersion).toBe(5); expect(m.wallet).toBe(500); expect(m.ledger).toEqual([]);
+      expect(m.schemaVersion).toBe(6); expect(m.wallet).toBe(500); expect(m.ledger).toEqual([]);
       expect(ownedVentures(new GameState(m))).toEqual({}); expect(m.activities.known).toEqual([]);
     }
   });
   it('a saved v5 game keeps its wallet and ventures; their income no longer depends on the activities', () => {
     const s = fresh(1e9); doing(s, ...ACTIVITIES); buyVenture(s, 'bana'); buyVenture(s, 'kiosque'); play(s, 90_000); accrue(s);
-    expect(s.data.schemaVersion).toBe(5);
+    expect(s.data.schemaVersion).toBe(6);
     const back = new GameState(migrate(JSON.parse(JSON.stringify(s.data)))!);
     expect(back.wallet).toBe(s.wallet); expect(ownedVentures(back)).toEqual({ bana: 1, kiosque: 1 });
     expect(back.data.assets).toEqual(s.data.assets);
@@ -253,7 +253,7 @@ describe('save schema v4 → v5', () => {
     expect(ownedVentures(new GameState(bad))).toEqual({ bana: 2 });
     expect(bad.assets).toMatchObject({ clockMs: 1000, payMs: 0, carryIn: 0, earned: 0 });
     expect(bad.activities).toEqual({ known: ['livraison', 'peche'], last: { peche: 1000 } });
-    expect(migrate({ schemaVersion: 6 })).toBeNull();
+    expect(migrate({ schemaVersion: 7 })).toBeNull();
   });
 });
 

@@ -17,8 +17,8 @@ describe('save schema v3 (now part of v5)', () => {
   it('a v2 save migrates with an empty ledger, no furniture and no delivery, keeping money and story', () => {
     const v2 = { schemaVersion: 2, guestId: 'g', hub: 'pikine', x: 1040, z: 0, wallet: 7777, flags: ['reco_modou'], beats: { ibou_welcome: 'oui' } };
     const m = migrate(v2)!;
-    expect(SCHEMA_VERSION).toBe(5);
-    expect(m.schemaVersion).toBe(5);
+    expect(SCHEMA_VERSION).toBe(6);
+    expect(m.schemaVersion).toBe(6);
     expect(m.ledger).toEqual([]); expect(ownedFurnitureIds(new GameState(m))).toEqual([]);
     expect(m.jobs).toEqual({ active: null, done: [], seq: 0 });
     expect(m.wallet).toBe(7777); expect(m.flags).toEqual(['reco_modou']); expect(m.beats.ibou_welcome).toBe('oui');

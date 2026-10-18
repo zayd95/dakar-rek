@@ -268,7 +268,7 @@ describe('save v5: assets and inventory', () => {
     expect(bad.assets.list[1]).toMatchObject({ how: 'owned', condition: 100, leased: false });
     expect(bad.assets.home).toBe(bad.assets.list[0].uid); expect(bad.assets.clockMs).toBe(1000); expect(bad.assets.carryIn).toBe(0);
     expect(bad.assets.seq).toBeGreaterThanOrEqual(5);
-    expect(migrate({ schemaVersion: 6 })).toBeNull();
+    expect(migrate({ schemaVersion: 7 })).toBeNull();
   });
   it('a purchase saved then reloaded is kept once (no double payment, no lost purchase)', () => {
     const s = fresh(20_000);

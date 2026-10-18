@@ -242,9 +242,9 @@ describe('the tour: what the clients remember', () => {
     for (let i = 0; i < 3; i++) { s.data.needs.energie = 90; run(s, BANK_FIRST, [5, 40]); }   // the agency is served first and on time each time
     expect(trustOf(s, AGENCE)).toBe(0);
   });
-  it('old saves have no memory and start every client at trust 0; no schema change', () => {
+  it('old saves have no memory and start every client at trust 0; a v5 save carries over', () => {
     const m = migrate({ schemaVersion: 5, wallet: 10, counters: { livraisons: 4 } })!;
-    expect(SCHEMA_VERSION).toBe(5); expect(m.schemaVersion).toBe(5);
+    expect(SCHEMA_VERSION).toBe(6); expect(m.schemaVersion).toBe(6);
     const s = new GameState(m);
     expect(trustOf(s, AGENCE)).toBe(0); expect(historyOf(s, DAMES)).toEqual({ ok: 0, late: 0, dropped: 0 });
     expect(m.jobs).toEqual({ active: null, done: [], seq: 0 });
