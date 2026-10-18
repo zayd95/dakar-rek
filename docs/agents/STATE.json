@@ -1,14 +1,33 @@
 {
   "schemaVersion": 2,
   "project": "Dakar Rek",
-  "updatedAt": "2026-10-18T16:36:45Z",
+  "updatedAt": "2026-10-18T17:35:50Z",
   "controlBranch": "codex/agent-studio-active",
   "userAuthorization": "D-AG-003: activate working agents on isolated branches",
   "phase": "freeze_stabilization",
-  "lease": null,
+  "lease": {
+    "token": "qa-pr48-20261018T1735Z",
+    "owner": "qa_pr48_1735",
+    "acquiredAt": "2026-10-18T17:35:50Z",
+    "expiresAt": "2026-10-18T18:25:00Z",
+    "purpose": "Independent read-only QA of PR48 exact head and CI"
+  },
   "activeCodeTask": null,
   "maxConcurrentCodeTasks": 1,
-  "reservations": [],
+  "reservations": [
+    {
+      "owner": "qa_pr48_1735",
+      "branch": "codex/agent-studio-active",
+      "baseCommit": "2212e2a169e5ffd96767cc627f2b267e54c5dc23",
+      "allowedFiles": [
+        "docs/agents/STATE.json",
+        "docs/agents/operations/QUEUE.json",
+        "docs/agents/operations/reports/PR48-20261018-1735-QA.md",
+        "docs/agents/operations/CYCLE-2026-10-18-1735-AUDIT.md"
+      ],
+      "purpose": "Registry and QA reports only; no source/PR/ref mutation"
+    }
+  ],
   "externalWork": [
     {
       "pr": 10,
