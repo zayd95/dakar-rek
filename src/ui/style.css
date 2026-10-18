@@ -277,7 +277,8 @@ body.sheet-open #wprompt, body.sheet-open #hint { opacity:0; }
   font:inherit; text-align:left; cursor:pointer; }
 #modal .item + .item::before { content:''; position:absolute; top:0; right:0; left:14px; border-top:1px solid var(--sep); }
 #modal .list .item:has(.ic) + .item::before { left:62px; }
-#modal .item:hover { background:#fafafa; } #modal .item:active { background:var(--press); }
+@media (hover:hover) and (pointer:fine) { #modal .item:hover { background-image:linear-gradient(var(--ui-hover, var(--press)), var(--ui-hover, var(--press))); } }   /* a tint over the row, never a fixed colour: #fafafa under the night ink was white on white */
+#modal .item:active { background:var(--press); }
 #modal .item .ic { flex:none; display:grid; place-items:center; width:36px; height:36px; border-radius:10px; background:var(--surface-2); font-style:normal; font-size:20px; }
 #modal .item .tx { flex:1; min-width:0; font-size:15px; font-weight:650; line-height:1.25; color:var(--ink); }
 #modal .item small { display:block; margin-top:2px; font-size:12.5px; font-weight:500; line-height:1.3; color:var(--ink-2); }

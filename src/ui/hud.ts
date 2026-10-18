@@ -1,7 +1,7 @@
 import type { Needs } from '../core/types';
 import type { Input } from '../core/input';
 import { stickMagnitude } from '../core/stick';
-import { Sheet, replay, type MenuItem } from './sheet';
+import { Sheet, replay, type MenuItem, type SheetVariant } from './sheet';
 import { momentArrives, MOMENT_QUEUE, type MomentKind } from './moments';
 import { centreZone, lineMs, overlaps, quietLog, route, speechOf, type Rect } from './quiet';
 import { placeEvents } from './placeEvent';
@@ -553,8 +553,8 @@ export class Hud {
   get modalOpen() { return this.sheet.isOpen; }
   closeModal() { this.sheet.close(); }
   /** A menu as a bottom sheet (phones) or a floating card (desktop). Same contract as before the sheets. */
-  openMenu(title: string, subtitle: string, items: MenuItem[], extraHtml = '', afterRender?: (panel: HTMLElement) => void) {
-    this.sheet.open('menu', title, subtitle, items, extraHtml, afterRender);
+  openMenu(title: string, subtitle: string, items: MenuItem[], extraHtml = '', afterRender?: (panel: HTMLElement) => void, variant?: SheetVariant) {
+    this.sheet.open('menu', title, subtitle, items, extraHtml, afterRender, variant);
   }
   /** Quick actions of a target (« ⋯ »): an icon grid near the action button, prices and disabled reasons included. */
   openQuick(title: string, items: MenuItem[], subtitle = '') {

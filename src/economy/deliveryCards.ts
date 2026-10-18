@@ -33,7 +33,7 @@ export function routeCard(o: {
 }): HTMLElement {
   const b = node(o.live ? 'div' : 'button', 'item dcard' + (o.tour ? ' tour' : '') + (o.blocked ? ' dis' : '') + (o.live ? ' live' : '')) as HTMLElement;
   if (b instanceof HTMLButtonElement) b.type = 'button';
-  const face = node('div', 'face');
+  const face = node('div', 'face ui-card');
   const main = node('div', 'main');
   if (o.badge) main.append(node('span', 'dbadge', o.badge));
   const stops = node('div', 'stops');
@@ -44,10 +44,10 @@ export function routeCard(o: {
   for (const c of o.blocked ? [o.blocked] : o.chips ?? []) chips.append(chip(c, o.blocked ? 'warn' : /^🎁/.test(c) ? 'bonus' : ''));
   if (chips.children.length) main.append(chips);
   const side = node('div', 'side');
-  side.append(node('small', '', 'Gain estimé'), node('em', 'reward', o.reward));
+  side.append(node('small', '', 'Gain estimé'), node('em', 'reward ui-price gain xl', o.reward));
   face.append(main, node('span', 'vdiv'), side);
   b.append(face);
-  if (!o.live) b.append(node('span', 'go', o.blocked ? '' : o.cta + ' ›'));
+  if (!o.live) b.append(node('span', 'go ui-btn', o.blocked ? '' : o.cta + ' ›'));
   if (o.blocked) b.setAttribute('aria-disabled', 'true');
   else if (!o.live) b.addEventListener('click', o.onPick);
   return b;
@@ -72,7 +72,7 @@ export function orderCard(o: {
 }): HTMLButtonElement {
   const b = node('button', 'item dcard order');
   b.type = 'button'; b.dataset.first = String(o.first);
-  const face = node('div', 'face col');
+  const face = node('div', 'face col ui-card');
   const stops = node('div', 'stops');
   o.stops.forEach((s, k) => {
     const row = node('div', 'stop' + (s.ok ? ' ok' : ' late') + (k < o.stops.length - 1 ? ' link ' + (o.stops[k + 1].ok ? 'link-ok' : 'link-late') : ''));
@@ -85,8 +85,8 @@ export function orderCard(o: {
   face.append(stops);
   const allOk = o.stops.every(s => s.ok);
   const price = node('div', 'pricerow');
-  price.append(node('span', 'verdict ' + (allOk ? 'ok' : 'warn'), allOk ? '✓' : '!'), node('em', 'reward', o.reward));
-  face.append(price, node('span', 'go', 'Partir ›'));
+  price.append(node('span', 'verdict ' + (allOk ? 'ok' : 'warn'), allOk ? '✓' : '!'), node('em', 'reward ui-price gain xl', o.reward));
+  face.append(price, node('span', 'go ui-btn', 'Partir ›'));
   b.append(face);
   b.addEventListener('click', o.onPick);
   return b;

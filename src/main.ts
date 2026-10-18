@@ -71,6 +71,8 @@ import { ActivityRunner } from './activity/runner';
 import { Places } from './activity/places';
 import { Inventory } from './activity/inventory';
 import { actionVerb } from './interact/legacy';
+import { SHOP_COPY } from './ui/shopCopy';
+import { objectiveMarks, isObjectiveAction } from './social/objectiveMarks';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
@@ -608,20 +610,21 @@ function describe(a: Action): string {
 
 function openActions(it: Interactable) {
   mode = 'menu';
+  const marks = objectiveMarks(suggestion(rel, state));          // what the current objective points at (a gold star on those actions)
   const visible = it.actions.filter(a => !a.visible || a.visible(state));
   const items: MenuItem[] = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { icon: actionVerb(a)[1], label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
+    return { icon: actionVerb(a)[1], ...(it.menu === 'shop' ? SHOP_COPY[a.id] : {}), ...(isObjectiveAction(a, marks) ? { objective: true } : {}), label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
   });
   let subtitle = it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {
     items.unshift(...npcLife.menuItems(it.npc));            // situation, favour, introduction (after the beat)
     const beat = availableBeat(it.npc, rel, state);
-    if (beat) items.unshift({ label: '★ ' + beat.title, detail: 'Histoire', right: undefined, disabled: false, onPick: () => openBeat(beat) });
+    if (beat) items.unshift({ label: beat.title, detail: 'Histoire', right: undefined, disabled: false, objective: marks.npcs.has(beat.npc), onPick: () => openBeat(beat) });
     const lv = rel.level(it.npc);
     subtitle = `« ${npcLife.greet(it.npc)} » · Relation : ${Relations.label(lv)} (${lv > 0 ? '+' : ''}${Math.round(lv)})`;
   }
-  hud.openMenu(it.name, subtitle, items);
+  hud.openMenu(it.name, subtitle, items, '', undefined, it.menu);
 }
 
 function openBeat(beat: Beat) {

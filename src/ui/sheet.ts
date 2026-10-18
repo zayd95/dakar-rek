@@ -1,3 +1,4 @@
+import { shopRow, starEl } from './primitives';
 /**
  * Sheets (docs/UI.md): every menu of the game goes through one element, #modal, in one of two forms.
  *
@@ -20,10 +21,16 @@ export interface MenuItem {
   reason?: string;
   /** One emoji. */
   icon?: string;
+  /** Compact menus ('shop' variant) only: a short title, a kind line and a line icon name (src/ui/shopCopy.ts). */
+  short?: string; glyph?: string;
+  /** The action belongs to the player's current objective: a gold star after its name (src/social/objectiveMarks.ts derives it). */
+  objective?: boolean;
   onPick: () => void;
 }
 
 export type SheetKind = 'menu' | 'quick';
+/** How a menu's rows look: the default list, or compact action rows of the shared primitives (shops: icon tile, label, price). */
+export type SheetVariant = 'shop';
 
 export interface SheetHooks {
   /** A disabled row was tapped: say why (toast) — the row itself shakes. */
@@ -87,10 +94,11 @@ export class Sheet {
   get isOpen() { return this.root.classList.contains('on'); }
   close() { this.root.classList.remove('on'); }
 
-  open(kind: SheetKind, title: string, subtitle: string, items: MenuItem[], extraHtml = '', afterRender?: (panel: HTMLElement) => void) {
+  open(kind: SheetKind, title: string, subtitle: string, items: MenuItem[], extraHtml = '', afterRender?: (panel: HTMLElement) => void, variant?: SheetVariant) {
     this.hooks.opened();
     this.kind = kind;
     this.root.dataset.kind = kind;
+    if (variant) this.root.dataset.variant = variant; else delete this.root.dataset.variant;
     const p = this.panel;
     p.innerHTML = '';
     const top = el('div', 'sh-top');
@@ -98,11 +106,11 @@ export class Sheet {
     const h = el('h2', '', title); h.id = 'shTitle';
     top.append(h);
     p.append(top);
-    const sub = el('p', 'sh-sub', subtitle);
+    const sub = el('p', 'sh-sub', variant === 'shop' ? 'Que veux-tu faire ?' : subtitle);
     p.append(sub);
     if (extraHtml) { const x = el('div', 'sh-extra'); x.innerHTML = extraHtml; p.append(x); }
-    const list = el('div', 'list');
-    for (const it of items) list.appendChild(this.row(it, kind === 'quick'));
+    const list = el('div', variant === 'shop' ? 'list ui-stack' : 'list');
+    for (const it of items) list.appendChild(variant === 'shop' ? this.shopItem(it) : this.row(it, kind === 'quick'));
     p.append(list);
     p.scrollTop = 0;
     this.box.classList.remove('tall');
@@ -111,12 +119,23 @@ export class Sheet {
     afterRender?.(p);
   }
 
+  /** A compact one-line row of the shared primitives: line icon, short title (and the star of an objective), the price, a chevron. What the action is and why it is unavailable come after a tap. */
+  private shopItem(it: MenuItem): HTMLElement {
+    const why = it.reason ?? it.detail;
+    return shopRow({
+      glyph: it.glyph, icon: it.icon, label: it.short ?? it.label, price: it.right, disabled: it.disabled, objective: it.objective, title: it.detail,
+      onPick: () => { this.hooks.picked?.(); it.onPick(); },
+      onDeny: b => { replay(b, 'deny'); this.hooks.deny(why || 'Indisponible'); },
+    });
+  }
+
   private row(it: MenuItem, tile: boolean): HTMLButtonElement {
     const b = el('button', 'item' + (tile ? ' tile' : '') + (it.disabled ? ' dis' : ''));
     b.type = 'button';
     if (it.icon) { const ic = el('i', 'ic', it.icon); ic.setAttribute('aria-hidden', 'true'); b.appendChild(ic); }
     const l = el('div', 'tx');
     l.appendChild(el('span', 'lb', it.label));
+    if (it.objective) l.appendChild(starEl());
     const why = it.reason ?? it.detail;
     if (it.detail || (tile && it.disabled && why)) l.appendChild(el('small', '', it.disabled ? why : it.detail));
     b.appendChild(l);

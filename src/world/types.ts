@@ -38,6 +38,8 @@ export interface Interactable {
   description?: string;
   /** Set when this interactable is a recurring cast member. */
   npc?: string;
+  /** How its action menu looks (presentation only): 'shop' = compact action rows of the shared UI primitives (src/ui/primitives.ts). */
+  menu?: 'shop';
 }
 export interface Collider { x0: number; z0: number; x1: number; z1: number; h: number }
 /** A tree top seen by the follow camera: a vertical cylinder of leaves (centre, radius, bottom and top heights). */
