@@ -240,7 +240,7 @@ let savedJson = null;
   check('reload: ledger persisted', JSON.stringify(after.ledger) === JSON.stringify(before.ledger) && after.ledger.length >= 8, `${after.ledger.length} entries`);
   check('reload: furniture persisted', JSON.stringify(after.owned) === JSON.stringify(before.owned) && after.owned.length === 6, after.owned.join(','));
   check('reload: completed runs and delivery count persisted', after.done === before.done && after.n === before.n, `${after.done} runs, ${after.n} deliveries`);
-  check('save is schema v5', after.ver === 5, after.ver);
+  check('save is schema v6', after.ver === 6, after.ver);
   check('reload: Ibou’s furniture beat still available', (await D(page, () => window.__dakar.suggestion())) === 'ibou_meuble');
   await D(page, () => { window.__dakar.setHour(10); window.__dakar.teleport('pikine'); }); await page.waitForTimeout(600);
   await D(page, () => window.__dakar.openNpc('ibou')); await page.waitForTimeout(300);
@@ -316,7 +316,7 @@ let savedJson = null;
   const errors = watchErrors(page);
   await page.goto(`${base}?debug&touch`, { waitUntil: 'load' }); await ready(page); await page.waitForTimeout(800);
   const r = await D(page, () => ({ p: window.__dakar.pos(), w: window.__dakar.state.wallet, ledger: window.__dakar.ledger().length, owned: window.__dakar.furniture().owned.length, ver: window.__dakar.state.data.schemaVersion }));
-  check('old v2 off-map save: recovered in the city, money kept, empty ledger, no furniture, v5', Math.abs(r.p.x) < 200 && Math.abs(r.p.z) < 200 && r.w === 7777 && r.ledger === 0 && r.owned === 0 && r.ver === 5, JSON.stringify(r));
+  check('old v2 off-map save: recovered in the city, money kept, empty ledger, no furniture, v6', Math.abs(r.p.x) < 200 && Math.abs(r.p.z) < 200 && r.w === 7777 && r.ledger === 0 && r.owned === 0 && r.ver === 6, JSON.stringify(r));
   check('old save: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
 }

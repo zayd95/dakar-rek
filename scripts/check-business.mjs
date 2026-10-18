@@ -123,13 +123,13 @@ let savedJson = null;
   const bank = await D(page, () => window.__dakar.cityPlaces().find(p => /:city:bank/.test(p.id)));
   check('Banque Teranga offers « Investir dans une affaire »', bank?.actions.some(a => a.id === 'affaires'), bank?.name);
 
-  // reload: everything persisted in schema v5
+  // reload: everything persisted in schema v6
   await D(page, () => window.__dakar.state.data.jobs.active = null);
   const before = await D(page, () => ({ b: window.__dakar.business(), w: window.__dakar.state.wallet }));
   await D(page, () => window.__dakar.phone('reglages')); await page.locator('#phone [data-act="save"]').click(); await D(page, () => window.__dakar.phoneClose());
   await page.reload({ waitUntil: 'load' }); await ready(page); await page.waitForTimeout(1200);
   const after = await D(page, () => ({ b: window.__dakar.business(), w: window.__dakar.state.wallet, ver: JSON.parse(localStorage.getItem('dakarrek.guest.save.v6')).schemaVersion }));
-  check('reload: ventures, earnings, activities and wallet persisted (schema v5)', after.ver === 5 && JSON.stringify(after.b.owned) === JSON.stringify(before.b.owned) && after.b.earned === before.b.earned && after.b.known.length === 7 && after.w >= before.w, `${after.w} F · earned ${after.b.earned}`);
+  check('reload: ventures, earnings, activities and wallet persisted (schema v6)', after.ver === 6 && JSON.stringify(after.b.owned) === JSON.stringify(before.b.owned) && after.b.earned === before.b.earned && after.b.known.length === 7 && after.w >= before.w, `${after.w} F · earned ${after.b.earned}`);
   savedJson = await D(page, () => localStorage.getItem('dakarrek.guest.save.v6'));
   check('desktop: no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   await ctx.close();
