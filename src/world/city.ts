@@ -7,7 +7,6 @@ import { CITY_ACTIONS as A } from './cityContent';
 import { benchSeats, type Seat } from '../interact/seats';
 import { say } from '../i18n/wolof';
 import { buildShopInterior, type ShopDetail, type ShopInterior, type ShopOptions, type ShopType } from './shopKit';
-import { sedanSeed, SEDAN_BLUE, SEDAN_WHITE } from '../transport/car';
 
 export type CityBlock = 'soumbedioune' | 'mall' | 'bank' | 'square' | 'shops';
 /** Compact, stylised geography within the existing four hubs. Never displaces an existing landmark. */
@@ -274,13 +273,13 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
       const at = { x: cx + 17.5, z: cz + 4, y: FLOOR, yaw: Math.PI / 2 }, W = 14, D = 9;
       const show = buildShopInterior('showroom_cars', { w: W, d: D }, seedOf(NDIAYE_AUTO), {
         detail: c.shopDetail ?? (lite ? 'low' : 'medium'), at, id: `${c.hub}:shop:ndiaye-auto`, height: 3.6, shell: 'open', shadows: false,
-        lots: [null, { kind: 'sedan', seed: sedanSeed(SEDAN_WHITE) }, { kind: 'sedan', seed: sedanSeed(SEDAN_BLUE) }],
+        lots: [null, null, null],                          // all three are drawn by the dealer (src/transport/carModule.ts): the one for sale and the two taken
       });
       show.group.userData.shop = { key: NDIAYE_AUTO, type: 'showroom_cars', anchors: show.anchors, bounds: show.bounds, budget: show.budget, front: show.front };
       show.group.userData.shopColliders = show.colliders;
       if (c.add) c.add(show.group); else show.dispose();
       c.colliders.push(...show.colliders); c.seats.push(...show.seats);
-      sign('NDIAYE AUTO · VOITURES D’OCCASION', at.x + D / 2 + 0.06, at.z, '#1b2a7a', 3.37, W - 3, Math.PI / 2);
+      sign('NDIAYE AUTO · VOITURES', at.x + D / 2 + 0.06, at.z, '#1b2a7a', 3.37, W - 3, Math.PI / 2);
       keeper(show.anchors.keeper, SALESMAN);
       const st = show.anchors.staff[0]; if (st) person(st.x, st.z, st.yaw, 'Idle', { ...SALESMAN, top: 0x1b2a7a, bottom: 0x2b2f36 });
       c.pool(at.x + 2, at.z, 6);

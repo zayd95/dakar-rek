@@ -24,6 +24,7 @@ import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
+import { preloadGlbVehicles } from './actors/glbVehicle';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById, CAST } from './social/cast';
@@ -1311,7 +1312,7 @@ resize(); applyQuality();
 let started = false, markStarted = () => {};
 const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
-  await Promise.all([preloadAssets(), preloadHumanoid()]);
+  await Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte'])]);
   for (const m of MODULES) m.init?.(ctx);
   if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false; }
   const startHub = invitedHub ?? state.data.hub;

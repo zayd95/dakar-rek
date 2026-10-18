@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { KitBuilder, paintAtlas, seeded, type Paint, type Rect, type V3 } from '../world/kitGeometry';
 import { AW, AH, UV, PLAIN_UV, sub, drawVehicleAtlas } from './vehicleAtlas';
 import type { Seat } from '../interact/seats';
+import { animateGlbRig, type GlbRig } from './glbVehicle';
 
 /**
  * Vehicle kit: believable low-poly Dakar vehicles, procedural and our own (docs/ASSET_REGISTER.md).
@@ -190,6 +191,8 @@ interface AnimState { spin: number; lean: number; lod: THREE.LOD | null; body: T
  */
 export function animateVehicle(group: THREE.Object3D, speed: number, steer: number, dt: number) {
   const spec = group.userData.vehicleSpec as VehicleSpec | undefined; if (!spec) return;
+  const glb = group.userData.glbRig as GlbRig | undefined;                       // a prepared GLB body: its own separate wheels (src/actors/glbVehicle.ts)
+  if (glb) { animateGlbRig(glb, speed, steer, dt); return; }
   let st = group.userData.kitAnim as AnimState | undefined;
   if (!st) {
     const lod = (group.children.find(c => (c as THREE.LOD).isLOD) as THREE.LOD | undefined) ?? null;

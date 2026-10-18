@@ -1,0 +1,68 @@
+[
+ {
+  "id": "front_emblem",
+  "note": "grille emblem: filled with the grille below it (fillUv: a texel of the grille)",
+  "box": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "fillUv": [
+   null,
+   null
+  ]
+ },
+ {
+  "id": "front_plate",
+  "note": "plate and its frame: filled with the dark bumper colour around it (sample it: the ring around the box, not a guess)",
+  "box": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "colour": [
+   null,
+   null,
+   null
+  ]
+ },
+ {
+  "id": "rear_emblem",
+  "note": "boot emblem: filled with the paint around it",
+  "box": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "fillUv": [
+   null,
+   null
+  ]
+ },
+ {
+  "id": "rear_plate",
+  "note": "plate and lettering: filled with the boot paint around it",
+  "box": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ],
+  "colour": [
+   null,
+   null,
+   null
+  ]
+ }
+]

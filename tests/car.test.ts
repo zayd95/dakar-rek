@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { driveStep, hits, newDriveState, type Blocked } from '../src/transport/drive';
-import { carSpec, sedanSeed, CAR_ASSET, SEDAN_SILVER } from '../src/transport/car';
+import { carSpec, sedanSeed, CAR_ASSET, COMPACTE_GREY } from '../src/transport/car';
 import { motoSpec, jakartaSeed } from '../src/transport/moto';
 import { footprint, kerbDealer, roadDistance } from '../src/transport/ownedModule';
 import { kerbCoords } from '../src/transport/passengers';
@@ -18,12 +18,12 @@ const drive = (d: DriveSpec, steps: number, f: (i: number) => { throttle: number
   return s;
 };
 
-describe('the used saloon', () => {
+describe('the modern sedan', () => {
   const spec = carSpec();
 
-  it('is a silver kit saloon, left-hand drive, the other seats not for the driver, closed cabin', () => {
+  it('is a silver-grey kit saloon, left-hand drive, the other seats not for the driver, closed cabin', () => {
     const k = vehicleSpec('sedan', { seed: sedanSeed(), driver: false, passengers: false });
-    expect(k.colors.body).toBe(SEDAN_SILVER);
+    expect(k.colors.body).toBe(COMPACTE_GREY);
     expect(spec.kind).toBe('car'); expect(spec.cabin).toBe('closed');
     expect(spec.driver.id).toBe('driver'); expect(spec.driver.x).toBeGreaterThan(0);        // +x = the car's left
     // a seated humanoid (about 0.95 m from the seat to the top of the head) stays under the roof
@@ -72,9 +72,13 @@ describe('the used saloon', () => {
     expect(Math.min(...boxes.map(b => b.x0))).toBeCloseTo(10 - d.halfWidth); expect(Math.max(...boxes.map(b => b.z1))).toBeCloseTo(5 + d.halfLength);
   });
 
-  it('is the catalogue\'s « Voiture d\'occasion », for sale at its price', () => {
-    expect(specOf(CAR_ASSET)).toMatchObject({ kind: 'vehicle', name: 'Voiture d’occasion', price: 2_800_000 });
+  it('is the catalogue\'s « Berline moderne » (its own id, not the retired clando), for sale at a provisional price that is not the old car\'s', () => {
+    expect(CAR_ASSET).toBe('compacte');
+    expect(specOf(CAR_ASSET)).toMatchObject({ kind: 'vehicle', name: 'Berline moderne' });
+    expect(specOf(CAR_ASSET)?.price).toBeGreaterThan(0); expect(specOf(CAR_ASSET)?.price).not.toBe(2_800_000);
     expect(specOf(CAR_ASSET)?.soon).toBeUndefined();
+    expect(specOf('clando')).toBeUndefined();                                                     // nobody can buy the old one
+    expect(carSpec().name).toBe('Berline moderne');
   });
 });
 
@@ -100,15 +104,15 @@ describe('the dealer at the kerb', () => {
 
 describe('owning the car and the motorbike side by side', () => {
   it('two assets, two parking spots', () => {
-    const s = new GameState(newSave(0)); s.data.wallet = 3_000_000;
-    expect(buyAsset(s, 'jakarta')).toBeTruthy(); expect(ownsVehicle(s, 'clando')).toBe(false);
-    expect(buyAsset(s, 'clando')).toBeTruthy();
-    expect(s.wallet).toBe(3_000_000 - 150_000 - 2_800_000);
+    const s = new GameState(newSave(0)), price = specOf(CAR_ASSET)!.price!; s.data.wallet = 20_000_000;
+    expect(buyAsset(s, 'jakarta')).toBeTruthy(); expect(ownsVehicle(s, CAR_ASSET)).toBe(false);
+    expect(buyAsset(s, CAR_ASSET)).toBeTruthy();
+    expect(s.wallet).toBe(20_000_000 - 150_000 - price);
     park(s.data, { asset: 'jakarta', hub: 'pikine', x: 1, z: 2, yaw: 0 });
-    park(s.data, { asset: 'clando', hub: 'corniche', x: -30.5, z: 64.3, yaw: 1.5708 });
-    expect(parked(s.data, 'clando')).toMatchObject({ hub: 'corniche', x: -30.5, z: 64.3 });
+    park(s.data, { asset: CAR_ASSET, hub: 'corniche', x: -30.5, z: 64.3, yaw: 1.5708 });
+    expect(parked(s.data, CAR_ASSET)).toMatchObject({ hub: 'corniche', x: -30.5, z: 64.3 });
     expect(parked(s.data, 'jakarta')).toMatchObject({ hub: 'pikine', x: 1 });
-    expect(holding(s, 'clando')?.paid).toBe(2_800_000);
+    expect(holding(s, CAR_ASSET)?.paid).toBe(price);
   });
 });
 
@@ -132,7 +136,7 @@ describe('the motorbike side stand', () => {
     for (let i = 0; i < 60; i++) lean = v.animate(10, -1, 1 / 30);            // full left at 36 km/h
     expect(Math.abs(lean)).toBeGreaterThan(0.2);
     v.setRidden(false); expect(v.animate(0, 0, 1 / 30)).toBe(0);              // a fresh model when getting off: upright
-    const c = new Vehicle(carSpec(), 'plateau:car:berline', 1, sedanSeed());
+    const c = new Vehicle(carSpec(), 'plateau:car:compacte', 1, sedanSeed());
     for (let i = 0; i < 30; i++) expect(c.animate(10, 1, 1 / 30)).toBe(0);   // cars do not lean
   });
 });

@@ -15,6 +15,7 @@ import { LINES } from '../transport/lines';
 import { transport } from '../transport/module';
 import { moto } from '../transport/motoModule';
 import { car } from '../transport/carModule';
+import { berline, suv } from '../transport/premiumCars';
 import { ownsVehicle, parked, type VehicleAsset } from '../transport/owned';
 import { careerTonight } from '../career/module';
 
@@ -49,7 +50,7 @@ export interface TonightInput {
   /** Ligne 23 now: the nearest stop to board (name, distance) and the fare; null outside Pikine. */
   ride: { stop: string; dist: number; fare: number } | null;
   /** Owned vehicles: here (distance to where it is parked, or ridden now) or parked in another hub. */
-  vehicles: { key: 'moto' | 'car'; label: string; dist: number | null; riding?: boolean; hub?: string }[];
+  vehicles: { key: 'moto' | 'car' | 'berline' | 'suv'; label: string; dist: number | null; riding?: boolean; hub?: string }[];
   /** The place open after the bout (name, hours, distance from the arena gate). */
   after: { name: string; close?: number; dist: number | null } | null;
   weather: string | null;
@@ -111,8 +112,8 @@ export function tonightPage(i: TonightInput): TonightSection[] {
     } else go.push({ icon: '🗺️', label: 'Va à Pikine', detail: `Tu es à ${i.hub} : change de quartier par la Carte, puis ligne 23, arrêt « Arène »`, open: 'carte' });
     if (!i.gate?.inside) for (const v of i.vehicles) {
       if (v.riding) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: `${v.label} : tu es dessus`, detail: v.key === 'moto' ? 'Parking motos gardé à côté de l’entrée' : 'Gare-la près de l’arène' });
-      else if (v.dist !== null) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: v.label, detail: `Garée à ${metres(v.dist)}`, go: v.key });
-      else if (v.hub) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: v.label, detail: `Garée à ${v.hub}` });
+      else if (v.dist !== null) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: v.label, detail: `${v.key === 'suv' ? 'Garé' : 'Garée'} à ${metres(v.dist)}`, go: v.key });
+      else if (v.hub) go.push({ icon: v.key === 'moto' ? '🏍️' : '🚗', label: v.label, detail: `${v.key === 'suv' ? 'Garé' : 'Garée'} à ${v.hub}` });
     }
     out.push({ title: 'Y aller', rows: go });
   }
@@ -127,9 +128,11 @@ export function tonightPage(i: TonightInput): TonightSection[] {
 }
 
 // ------------------------------------------------------------------ the live facts
-const VEHICLES: { key: 'moto' | 'car'; asset: VehicleAsset; label: string; mod: typeof moto }[] = [
+const VEHICLES: { key: 'moto' | 'car' | 'berline' | 'suv'; asset: VehicleAsset; label: string; mod: typeof moto }[] = [
   { key: 'moto', asset: 'jakarta', label: 'Ta moto Jakarta', mod: moto },
-  { key: 'car', asset: 'clando', label: 'Ta voiture', mod: car },
+  { key: 'car', asset: 'compacte', label: 'Ta voiture', mod: car },
+  { key: 'berline', asset: 'berline', label: 'Ta berline', mod: berline },
+  { key: 'suv', asset: 'tout_terrain', label: 'Ton 4 × 4', mod: suv },
 ];
 const hubShort = (h: HubId) => HUB_NAMES[h].split(' · ')[0];
 

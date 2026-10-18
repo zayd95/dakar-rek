@@ -82,7 +82,7 @@ export function valueOf(a: AssetState): number {
   const sp = specOf(a.spec); if (!sp || a.how !== 'owned') return 0;
   if (sp.kind === 'furniture') return Math.round((a.paid || sp.price || 0) * P.furnitureResale);
   if (sp.kind === 'business') return a.paid || sp.price || 0;
-  return Math.round(((sp.price ?? 0) + upgradeCost(sp, a)) * condFactor(a, P.valueFloor));
+  return Math.round(((a.basis ?? sp.price ?? 0) + upgradeCost(sp, a)) * condFactor(a, P.valueFloor));      // `basis`: a vehicle carried over from a retired entry keeps what it was paid
 }
 /** Paid at once when selling. */
 export const saleValue = (a: AssetState) => { const sp = specOf(a.spec); return sp?.kind === 'furniture' ? valueOf(a) : Math.round(valueOf(a) * P.saleShare); };

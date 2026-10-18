@@ -1,5 +1,5 @@
 // Headless checks of the player's car (src/transport/carModule.ts on src/transport/ownedModule.ts): buy the used
-// car (« Voiture d'occasion », the catalogue's `clando`) at Ndiaye Auto, the Plateau's used-car showroom (the cars on
+// car (« Berline moderne », the catalogue's `compacte`, the modern sedan; the price is provisional so it is read, not fixed) at Ndiaye Auto, the Plateau's showroom (the cars on
 // their lots, the silver one for sale with its price card; at the salesman's desk: price shown, then confirmed, paid
 // once through the asset model, listed in « Biens »; the car leaves its lot for the kerb outside the door, the
 // salesman hands over the keys with a line in Wolof), walk around it (it is
@@ -8,7 +8,7 @@
 // and after a trip to another hub.
 // Usage: node scripts/check-car.mjs [baseUrl] [outDir]   (needs a running build, e.g. `npx vite preview --port 4213`)
 // On a shared machine run browsers one at a time: flock /tmp/dakar-browser.lock node scripts/check-car.mjs …
-// ONLY=desktop or ONLY=phone runs one viewport.
+// ONLY=desktop or ONLY=phone runs one viewport. EXTRA='&vehicleModel=kit' appends a test link (the procedural car instead of the generated body).
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 
@@ -27,8 +27,16 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const context = await browser.newContext(touch ? { viewport, deviceScaleFactor: 1, isMobile: true, hasTouch: true } : { viewport });
   const page = await context.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 120000 });
+  await page.goto(`${base}?debug${touch ? '&touch' : ''}${process.env.EXTRA ?? ''}`, { timeout: 120000 });   // EXTRA='&vehicleModel=glb': the prepared GLB body (src/actors/glbVehicle.ts)
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
+  // the animated wheels of the generated body nearest to the car being driven: spin and steering angles, by wheel
+  await page.evaluate(() => {
+    window.__rig = () => {
+      const D = window.__dakar, car = D.car.info(); let g = null, best = 1e9;
+      D.three.scene.traverse(o => { if (o.userData?.glbRig) { const q = o.getWorldPosition(D.three.camera.position.clone()), dd = Math.hypot(q.x - car.x, q.z - car.z); if (dd < best) { best = dd; g = o; } } });
+      return g ? g.userData.glbRig.wheels.map(w => ({ n: w.spin.name, spin: w.spin.rotation.x, steer: w.steer ? w.steer.rotation.y : 0 })) : null;
+    };
+  });
   const d = (fn, arg) => page.evaluate(fn, arg);
   const info = () => d(() => window.__dakar.car.info());
   const shot = async name => { await page.waitForTimeout(500); await page.screenshot({ path: `${out}/${label}-${name}.png` }); };
@@ -61,7 +69,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
     return (await info()).view;
   };
 
-  await d(() => { window.__dakar.teleport('plateau'); window.__dakar.setHour(10); window.__dakar.state.data.wallet = 3000000; });
+  await d(() => { window.__dakar.teleport('plateau'); window.__dakar.setHour(10); window.__dakar.state.data.wallet = 20000000; });
   await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.car.info().dealer, null, T);
   const i0 = await info(), dealer = i0.dealer, price = i0.price;
   check(`${label}: the Plateau has Ndiaye Auto's showroom: cars on display, the one for sale on its lot with its price card`, !!dealer && dealer.displays >= 2 && dealer.onSale === true && dealer.card === true, JSON.stringify(dealer));
@@ -77,17 +85,17 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
 
   // 1. The dealer: « Voir les articles » at the desk, the price before confirming, then paid once.
   await d(([p, s]) => window.__dakar.place(p.x + s * 0.7, p.z + 0.4, -s * Math.PI / 2), [dealer, toRoad]);
-  await page.waitForFunction(() => /Occasion/i.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
+  await page.waitForFunction(() => /Ndiaye Auto/i.test(window.__dakar.focus()?.name ?? ''), null, T).catch(() => {});
   const f1 = await d(() => window.__dakar.focus());
-  check(`${label}: the dealer counter offers its catalogue`, /Occasion/i.test(f1?.name ?? '') && f1.all.includes('Voir les articles'), JSON.stringify(f1));
+  check(`${label}: the dealer counter offers its catalogue`, /Ndiaye Auto/i.test(f1?.name ?? '') && f1.all.includes('Voir les articles'), JSON.stringify(f1));
   await shot('1-dealer');
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Voiture d’occasion/.test(t)) ?? null);
+  const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Berline moderne/.test(t)) ?? null);
   const digits = s => (s ?? '').replace(/[^0-9]/g, '');
-  check(`${label}: the catalogue shows the used car with its catalogue price`, /Voiture d’occasion/.test(item ?? '') && price === 2800000 && digits(item).includes(String(price)) && /\sF/.test(item ?? ''), String(item));
+  check(`${label}: the catalogue shows the modern sedan with its catalogue price`, /Berline moderne/.test(item ?? '') && price > 0 && digits(item).includes(String(price)) && /\sF/.test(item ?? ''), String(item));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
-  await page.locator('#modal .item', { hasText: 'Voiture d’occasion' }).first().click();
+  await page.locator('#modal .item', { hasText: 'Berline moderne' }).first().click();
   await page.waitForFunction(() => /Acheter/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, T).catch(() => {});
   const confirmText = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
   check(`${label}: a confirmation shows the price and the wallet before paying`, /Acheter/.test(confirmText) && digits(confirmText).includes(String(price)) && /Ton argent/.test(confirmText) && (await d(() => window.__dakar.state.wallet)) === w0, confirmText.slice(0, 160));
@@ -97,7 +105,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const bought = await info(), w1 = await d(() => window.__dakar.state.wallet);
   const lines = await d(n => window.__dakar.state.data.ledger.slice(n), l0);
   const rec = bought.record;
-  check(`${label}: bought once: −price, one wallet line, delivered at the kerb`, bought.owned && bought.here && w0 - w1 === price && lines.length === 1 && /Voiture/.test(lines[0].label) && bought.bought === 1 && bought.asset?.paid === price
+  check(`${label}: bought once: −price, one wallet line, delivered at the kerb`, bought.owned && bought.here && w0 - w1 === price && lines.length === 1 && /Berline/.test(lines[0].label) && bought.bought === 1 && bought.asset?.paid === price
     && Math.hypot(rec.x - dealer.delivery.x, rec.z - dealer.delivery.z) < 0.05 && Math.abs(roadDistance(rec.x, rec.z) - 4.3) < 0.2, JSON.stringify({ w0, w1, lines, rec }));
   const keys = await page.waitForFunction(() => /clés/.test(document.querySelector('#toast')?.textContent ?? ''), null, { timeout: 8000 }).then(() => d(() => document.querySelector('#toast')?.textContent ?? ''), () => '');
   check(`${label}: the salesman hands over the keys (Wolof with its French gloss); the car for sale has left its lot`, /clés/.test(keys) && /Jërëjëf/.test(keys) && /porte/.test(keys) && bought.dealer?.onSale === false,
@@ -108,13 +116,13 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await ready();
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const again = await d(() => [...document.querySelectorAll('#modal .item')].find(b => /Voiture d’occasion/.test(b.textContent))?.className ?? '');
+  const again = await d(() => [...document.querySelectorAll('#modal .item')].find(b => /Berline moderne/.test(b.textContent))?.className ?? '');
   await d(() => document.querySelector('#modal .item.close')?.click());
   await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   const biens = await d(() => { window.__dakar.assetsApp(); return [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent ?? ''); });
   await d(() => document.querySelector('#modal .item.close')?.click());
   await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T).catch(() => {});
-  check(`${label}: « Biens » lists the car once`, biens.filter(t => /Voiture d’occasion/.test(t)).length === 1, JSON.stringify(biens.filter(t => /Voiture/.test(t))));
+  check(`${label}: « Biens » lists the car once`, biens.filter(t => /Berline moderne/.test(t)).length === 1, JSON.stringify(biens.filter(t => /Berline/.test(t))));
   check(`${label}: it cannot be bought twice`, /disabled|off/.test(again) || (await d(() => window.__dakar.state.wallet)) === w1, again);
 
   // 2. Parked, it is solid: walking into it from the pavement stops at its side.
@@ -143,7 +151,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   let i2 = await info();
   await page.waitForFunction(() => window.__dakar.clip() === 'Sit', null, { timeout: 30000 }).catch(() => {});
   const clip = await d(() => window.__dakar.clip());
-  check(`${label}: at the wheel: driver seat (seated), own interaction space, still in the street for the others, chase view`, i2.driving && /car:berline:driver$/.test(await d(() => window.__dakar.seated()) ?? '') && i2.space === 'plateau:car:berline' && i2.presence === 'street' && i2.camera && i2.view === 'chase' && !i2.solid && clip === 'Sit',
+  check(`${label}: at the wheel: driver seat (seated), own interaction space, still in the street for the others, chase view`, i2.driving && /car:compacte:driver$/.test(await d(() => window.__dakar.seated()) ?? '') && i2.space === 'plateau:car:compacte' && i2.presence === 'street' && i2.camera && i2.view === 'chase' && !i2.solid && clip === 'Sit',
     JSON.stringify({ ...i2, clip }));
   await shot('4-in');
 
@@ -154,8 +162,15 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const moved = Math.hypot(i2.x - p0.x, i2.z - p0.z);
   check(`${label}: the throttle moves the car and the card shows the speed`, moved > 5 && /km\/h/.test(await d(() => window.__dakar.car.card())), `${moved.toFixed(1)} m, ${await d(() => window.__dakar.car.card())}`);
   await shot('5-driving');
+  // wheel animation: all four spin while it rolls (two readings a moment apart), the rear pair never turns
+  const reads = []; for (let k = 0; k < 4; k++) { reads.push(await d(() => ({ rig: window.__rig(), speed: window.__dakar.car.info().speed }))); await d(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 150))))); }
+  const spun = reads[0].rig && reads[0].rig.length === 4 && reads[0].rig.every((w, i) => reads.some((r, k) => k > 0 && Math.abs(r.rig[i].spin - reads[k - 1].rig[i].spin) > 0.01));
+  check(`${label}: the four wheels spin while the car rolls (separate animated wheels)`, !!spun, JSON.stringify({ speed: reads.map(r => +r.speed.toFixed(1)), spin: reads.at(-1).rig?.map(w => `${w.n} ${w.spin.toFixed(2)}`) }));
   const y0 = i2.yaw;
+  await d(() => { window.__maxSteer = 0; window.__steerRead = setInterval(() => { const r = window.__rig(); if (r) window.__maxSteer = Math.max(window.__maxSteer, ...r.filter(w => /_f[lr]$/.test(w.n)).map(w => Math.abs(w.steer))); window.__rearSteer = Math.max(window.__rearSteer ?? 0, ...r.filter(w => /_r[lr]$/.test(w.n)).map(w => Math.abs(w.steer))); }, 40); });
   await drive(120000, 1, y => window.__dakar.car.info().yaw < y - 0.3, y0);
+  const steerRead = await d(() => { clearInterval(window.__steerRead); return { front: window.__maxSteer, rear: window.__rearSteer ?? 0 }; });
+  check(`${label}: steering turns the front wheels (not the rear ones)`, steerRead.front > 0.05 && steerRead.rear < 1e-6, JSON.stringify(steerRead));
   i2 = await info();
   check(`${label}: steering right turns the car right`, i2.yaw < y0 - 0.2, `${y0.toFixed(2)} → ${i2.yaw.toFixed(2)}`);
   // brake to a stop (down on the stick)
@@ -163,12 +178,10 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
 
   // 5. The views: at the wheel (the driver's body hidden, the dashboard ahead), high above, back behind the car.
   await d(c => window.__dakar.car.place(c.x, c.z, c.yaw), car0);                // back at the kerb, looking down the road
-  const v1 = await view('volant');
-  await shot('6-volant');
-  const v2 = await view('haut');
-  await shot('7-haut');
+  const views = (await info()).views ?? ['chase', 'volant', 'haut'], others = views.filter(v => v !== 'chase'), seen = [];
+  for (const want of others) { seen.push(await view(want)); await shot(want === 'volant' ? '6-volant' : '7-haut'); }
   const v3 = await view('chase');
-  check(`${label}: three views (behind, at the wheel, high above)`, v1 === 'volant' && v2 === 'haut' && v3 === 'chase', `${v1} ${v2} ${v3}`);
+  check(`${label}: the views (${views.join(', ')}; the wheel view only when the body has a cabin to sit in) cycle`, others.includes('haut') && seen.every((v, i) => v === others[i]) && v3 === 'chase', `${seen.join(' ')} ${v3}`);
 
   // 6. Into a wall: the shop's back wall, 2.5 m ahead. It stops against it, never inside.
   const wall = await d(() => {

@@ -11,7 +11,7 @@ import { addOwned, holds } from '../economy/assets';
  * No record yet (bought from « Biens », or never driven): it waits at its dealer's kerb.
  */
 /** 'tiak': the courier's basic motorbike, lent by the Tiak Tiak depot of each hub: always available, never bought, never sold. */
-export type VehicleAsset = 'jakarta' | 'clando' | 'tiak';
+export type VehicleAsset = 'jakarta' | 'compacte' | 'berline' | 'tout_terrain' | 'tiak';
 export interface Parked { asset: VehicleAsset; hub: HubId; x: number; z: number; yaw: number }
 
 const key = (id: VehicleAsset, f: string) => `vehicle:${id}:${f}`;
@@ -36,6 +36,31 @@ export function park(data: SaveData, p: Parked) {
 /** Forget the parking spot (sold: a vehicle bought again is delivered at the dealer's kerb). */
 export function unpark(data: SaveData, id: VehicleAsset) {
   for (const f of ['hub', 'x', 'z', 'yaw']) delete data.counters[key(id, f)];
+}
+
+/**
+ * Vehicles that are not sold any more and what their owners' save turns into. `clando` (the old « Voiture d'occasion ») was retired when the
+ * modern sedan `compacte` became the player's first car: nobody can buy it, but every owner keeps their car.
+ */
+export const LEGACY_VEHICLES: Readonly<Record<string, VehicleAsset>> = { clando: 'compacte' };
+
+/**
+ * A save that owns a retired vehicle gets its successor: the same asset (uid, what it was paid, its condition, the home it stands in…) under the new
+ * catalogue id, and its parking spot under the new counters; nothing is charged, refunded or lost, and the wallet and the ledger are not touched.
+ * Idempotent; if the save somehow holds both ids, the legacy one is left as it is rather than merged. Returns true when something was moved over.
+ */
+export function migrateLegacyVehicles(s: GameState): boolean {
+  let moved = false;
+  for (const [old, now] of Object.entries(LEGACY_VEHICLES)) {
+    const list = s.data.assets.list, a = list.find(x => x.spec === old);
+    if (!a || list.some(x => x.spec === now)) continue;
+    a.spec = now; moved = true;
+    if (a.paid > 0 && a.basis === undefined) a.basis = a.paid;                  // its worth stays what its owner paid: no windfall from the new entry's price
+    const p = parked(s.data, old as VehicleAsset);
+    if (p && !parked(s.data, now)) park(s.data, { ...p, asset: now });
+    unpark(s.data, old as VehicleAsset);
+  }
+  return moved;
 }
 
 /**

@@ -14,7 +14,7 @@ import { assetsRevision, buyAsset, cannotBuy, holding } from '../economy/assets'
 import { specOf } from '../economy/catalog';
 import { buildCourierBox, type CourierBox } from './courierBox';
 import { ridePad } from './ridePad';
-import { migrateOwned, ownsVehicle, park, parked, unpark, type VehicleAsset } from './owned';
+import { migrateLegacyVehicles, migrateOwned, ownsVehicle, park, parked, unpark, type VehicleAsset } from './owned';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
 import { transport } from './module';
@@ -67,6 +67,8 @@ export interface OwnedDef {
   detail: string;
   icon: string;
   kit: VehicleKind;
+  /** A replacement look for the vehicle on display at the dealer (a prepared GLB body, src/actors/glbVehicle.ts); null keeps the kit model. */
+  visual?(seed: number): THREE.Object3D | null;
   seed(): number;
   spec(): VehicleSpec;
   /** Height of the parked footprint (m). */
@@ -210,6 +212,7 @@ export class OwnedVehicleModule implements GameModule {
     this.spec = this.def.spec();
     if (this.def.dealer && hub.id === this.def.dealer.hub) this.buildDealer(ctx, hub);
     migrateOwned(ctx.state);                                    // a save from before the asset model
+    migrateLegacyVehicles(ctx.state);                           // a retired vehicle (the old « Voiture d'occasion ») becomes its successor, same asset
     this.sync(); this.rev = assetsRevision();
   }
 
@@ -299,10 +302,13 @@ export class OwnedVehicleModule implements GameModule {
   }
 
   camera(ctx: GameCtx, dt: number, drag: { yaw: number; pitch: number }): boolean {
-    const m = this.vehicle; if (!m || !this.driving || !this.cam.active || !this.spec) return false;
+    const m = this.vehicle;
+    if (m && !(this.driving && this.cam.active && this.spec)) m.setCockpit(false);               // never leave the body hidden after the inside view
+    if (!m || !this.driving || !this.cam.active || !this.spec) return false;
     const t = performance.now(), real = this.camMs ? Math.min(1, (t - this.camMs) / 1000) : dt; this.camMs = t;
     const a = this.spec.cameras[this.cam.view % this.spec.cameras.length];
     this.cam.update(Math.max(dt, real), ctx.camera, m.pose, m.bounce, a, drag, this.hub?.colliders ?? []);
+    m.setCockpit(!!a.inside);                                  // a solid-shell body's shared cockpit: seen from inside only
     const body = ctx.player.body();
     if (body && a.inside) body.group.visible = false;         // at the wheel: looking out (shown again next frame)
     if (body) this.leanRider(body.group, m);
@@ -327,7 +333,7 @@ export class OwnedVehicleModule implements GameModule {
       [this.def.key]: {
         info: () => ({ id: this.def.asset, name: this.label(), price: this.price(), owned: ownsVehicle(ctx.state, this.def.asset), asset: holding(ctx.state, this.def.asset) ?? null, record: parked(ctx.state.data, this.def.asset), here: !!this.vehicle, driving: this.driving, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, bumps: this.bumps, bought: this.bought,
           dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.lots ?? this.dealer.site.displays.length, onSale: this.dealer.sale ? this.dealer.sale.group.visible : null, card: !!this.dealer.card } : null,
-          space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
+          space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, views: this.spec?.cameras.map(c => c.id) ?? [], view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
         at: () => this.vehicle ? { x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active } : null,
         card: () => this.card?.text ?? '',
@@ -350,7 +356,7 @@ export class OwnedVehicleModule implements GameModule {
     const drive = this.spec?.drive;
     let sale: Dealer['sale'] = null, card: THREE.CanvasTexture | null = null;
     site.displays.forEach((s, i) => {
-      const b = buildVehicle(this.def.kit, { seed: s.seed, driver: false, passengers: false });
+      const b = { group: this.def.visual?.(s.seed) ?? buildVehicle(this.def.kit, { seed: s.seed, driver: false, passengers: false }).group };
       b.group.position.set(s.x, 0.12, s.z); b.group.rotation.y = s.yaw;
       const cols = drive ? footprint(drive, s.x, s.z, s.yaw, this.def.height) : [];
       if (i !== site.forSale) { g.add(b.group); hub.colliders.push(...cols); return; }
@@ -602,7 +608,7 @@ function cardTexture(name: string, price: string, o: NonNullable<OwnedDef['deale
   c.fillStyle = '#ffffff'; c.fillRect(6, 6, 228, 148);
   c.fillStyle = o.bg; c.fillRect(6, 6, 228, 36);
   c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillStyle = o.band; c.font = '900 24px system-ui, sans-serif'; c.fillText('OCCASION', 120, 25, 216);
+  c.fillStyle = o.band; c.font = '900 24px system-ui, sans-serif'; c.fillText('VOITURE', 120, 25, 216);
   c.fillStyle = '#1d1f24'; c.font = '700 19px system-ui, sans-serif'; c.fillText(name, 120, 66, 216);
   c.font = '900 34px system-ui, sans-serif'; c.fillText(price, 120, 106, 220);
   c.fillStyle = o.bg; c.font = '800 15px system-ui, sans-serif'; c.fillText('À VENDRE · PRIX FIXE', 120, 140, 216);

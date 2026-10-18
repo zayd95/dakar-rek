@@ -93,6 +93,13 @@ export class Vehicle {
     return (this.model.userData.kitAnim as { lean?: number } | undefined)?.lean ?? 0;
   }
 
+  /** A solid-shell body's shared cockpit (src/actors/cockpit.ts) is drawn only in an inside view (« Au volant »). */
+  setCockpit(on: boolean) {
+    const u = this.model.userData, c = u.glbCockpit as THREE.Object3D | undefined, hide = u.glbHide as THREE.Object3D[] | undefined;
+    if (c) c.visible = on;
+    if (hide) for (const o of hide) o.visible = !on;                                 // the shell's own inside is not drawn from inside
+  }
+
   /** The player takes / leaves the controls: the model is rebuilt only when that changes the look (a motorbike's stand). */
   setRidden(on: boolean) {
     if (on === this.ridden) return;
