@@ -259,7 +259,10 @@ function updateLighting(hour: number) {
 // ------------------------------------------------------------------ hubs
 const rand = rng(Date.now() & 0xffff);
 
+/** When the current hub was built (a place a module adds, such as a dealer's counter, appears a moment after). */
+let hubAt = 0;
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
+  hubAt = performance.now();
   activities.cancel(); standUp(true);
   pacer.reset();
   for (const a of apprentices) a.dispose();          // detach them before the hub geometry is freed
@@ -1059,7 +1062,7 @@ let eveningTarget: { name: string; x: number; z: number } | null = null;
 /** Way-finding: the walking destination, else the suggested person (or the nearest Tiak Tiak pick-up for the first job) in this hub. */
 function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
-  if (destination?.hub === world.id) { const it = world.interactables.find(i => i.id === destination!.id); if (it) return { name: it.name, x: it.x, z: it.z }; }
+  if (destination?.hub === world.id) { const it = guidePlace(destination.id); if (it) return it; }
   if (eveningTarget) return eveningTarget;
   if (needTarget) return needTarget;
   if (guideJob) {
@@ -1079,12 +1082,19 @@ function withBearing(text: string, t: { x: number; z: number } | null): string {
   return `${['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8]} ${text} · ${Math.round(Math.hypot(dx, dz))} m`;
 }
 
+/** A place the player can be guided to: a place of the hub's content, or one a module adds (a vehicle dealer's counter). */
+function guidePlace(id: string): { name: string; x: number; z: number } | null {
+  const it = world?.interactables.find(i => i.id === id); if (it) return { name: it.name, x: it.x, z: it.z };
+  const pl = ctxReady ? ctx.places.all().find(p => p.id === id) : undefined, a = pl?.anchors[0];
+  return pl && a ? { name: pl.name, x: a.x, z: a.z } : null;
+}
+
 function walkingHint(): string | null {
   if (!destination) return null;
   // a place of another district (a dealer marked from the phone's Carte): the marker waits, the goal line says where to go
   if (destination.hub !== world?.id) return `📍 ${destination.name ?? 'Repère'} · ${HUB_NAMES[destination.hub].split(' · ')[0]} : téléphone › Carte › y aller à pied`;
-  const target = world.interactables.find(i => i.id === destination!.id);
-  if (!target) { destination = null; return null; }
+  const target = guidePlace(destination.id);
+  if (!target) { if (performance.now() - hubAt > 5000) destination = null; return null; }
   if (inside) return 'Sors dans la rue pour rejoindre ' + target.name;
   const dx = target.x - pos.x, dz = target.z - pos.z, distance = Math.hypot(dx, dz);
   if (distance < 2.3) { destination = null; hud.toast('Te voilà : ' + target.name); return null; }

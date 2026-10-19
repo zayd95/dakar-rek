@@ -42,8 +42,8 @@ const goal = await d(() => document.querySelector('#goal')?.textContent ?? '');
 check('after the walk to Almadies the marker is on Prestige Auto and the goal line shows the way (name, distance)', (await d(() => window.__dakar.destination())) === 'berline:dealer' && /Prestige Auto/.test(goal) && /\d+ m/.test(goal), JSON.stringify({ dest: await d(() => window.__dakar.destination()), goal }));
 await page.screenshot({ path: `${out}/2-almadies-guide.png` });
 // the minimap names it too; walking up to the dealer clears the marker with « Te voilà »
-const ev = await d(() => window.__dakar.interactables().find(i => i.id === 'berline:dealer'));
-await d(p => window.__dakar.place(p.x - 3, p.z + 3, 0), ev);
+const ev = await d(() => window.__dakar.berline.info().dealer);
+await d(p => window.__dakar.place(p.x, p.z + 1.2, 0), ev);
 await page.waitForFunction(() => window.__dakar.destination() === null, null, T).catch(() => {});
 check('arriving at the dealer clears the marker', (await d(() => window.__dakar.destination())) === null, JSON.stringify(ev));
 // the other direction: from Almadies, Ndiaye Auto (Plateau) is « Y aller » and the marker waits during the trip, then shows on arrival
