@@ -16,6 +16,8 @@ export interface Move {
   arena?: ArenaPresence;
   /** The écurie colours this player wears (optional; src/arena/supporters.ts). */
   fan?: FanPresence;
+  /** The last greeting or reaction this player made (optional; src/multiplayer/social.ts). */
+  emo?: EmotePresence;
 }
 /** Écuries a player can wear the colours of (src/economy/catalog.ts WEAR), 'none' for nothing. */
 export const FAN_SIDES = ['none', 'baobab', 'teranga'] as const;
@@ -28,6 +30,27 @@ export type FanItem = typeof FAN_ITEMS[number];
  * `k`. Display only: what it cost, what else is owned, the wallet never cross the protocol.
  */
 export interface FanPresence { e: FanSide; k: FanItem }
+/**
+ * Greetings and small reactions a player can show the others nearby: a glyph over the head and a short gesture. A fixed
+ * list, no free text and no payload, so there is nothing to insult with and nothing to spoof: display only.
+ */
+export const EMOTES = ['salut', 'merci', 'bravo', 'rire'] as const;
+export type EmoteKind = typeof EMOTES[number];
+/**
+ * The last emote this player made: its kind `k`, a counter `n` that rises with each one (the others react when it
+ * changes, never to the first value they see, so someone joining does not replay an old greeting), and optionally
+ * `to`, the presence id of the player it was meant for (who is then told in particular).
+ */
+export interface EmotePresence { k: EmoteKind; n: number; to?: string }
+/** The `emo` field, or null when it is malformed (the whole move is then refused). */
+export function parseEmote(value: unknown): EmotePresence | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  if (Object.keys(v).some(k => !['k', 'n', 'to'].includes(k))) return null;
+  if (!(EMOTES as readonly unknown[]).includes(v.k) || typeof v.n !== 'number' || !Number.isInteger(v.n) || v.n < 1 || v.n > 1_000_000) return null;
+  if (v.to !== undefined && (typeof v.to !== 'string' || !/^[A-Za-z0-9-]{8,64}$/.test(v.to))) return null;
+  return { k: v.k as EmoteKind, n: v.n, ...(v.to !== undefined ? { to: v.to as string } : {}) };
+}
 /** The `fan` field, or null when it is malformed (the whole move is then refused). */
 export function parseFan(value: unknown): FanPresence | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
@@ -155,5 +178,7 @@ export function parseMove(value: unknown, hub: HubId): Move | null {
   if (arena === null) return null;
   const fan = v.fan === undefined ? undefined : parseFan(v.fan);
   if (fan === null) return null;
-  return { type: 'move', x, y, z, speed, yaw: Math.atan2(Math.sin(v.yaw as number), Math.cos(v.yaw as number)), space: v.space, clip: v.clip as PresenceClip, ...(arena ? { arena } : {}), ...(fan ? { fan } : {}) };
+  const emo = v.emo === undefined ? undefined : parseEmote(v.emo);
+  if (emo === null) return null;
+  return { type: 'move', x, y, z, speed, yaw: Math.atan2(Math.sin(v.yaw as number), Math.cos(v.yaw as number)), space: v.space, clip: v.clip as PresenceClip, ...(arena ? { arena } : {}), ...(fan ? { fan } : {}), ...(emo ? { emo } : {}) };
 }
