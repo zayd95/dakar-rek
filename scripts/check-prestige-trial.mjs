@@ -5,6 +5,7 @@
 //   – the bay refills with the same car (same paint), and the car can be tried again.
 // Usage: node scripts/check-prestige-trial.mjs [baseUrl] [outDir]   (a running build)
 import { chromium } from 'playwright';
+import { realTouch, pilot } from './lib/realTouch.mjs';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4214/';
@@ -19,6 +20,7 @@ const page = await context.newPage(); page.setDefaultTimeout(300000);
 const errors = []; page.on('pageerror', e => errors.push(e.message));
 await page.goto(`${base}?debug&touch`, { timeout: 120000 });
 await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
+const t = await realTouch(page);
 const d = (fn, arg) => page.evaluate(fn, arg), B = () => d(() => window.__dakar.berline.info()), AT = () => d(() => window.__dakar.berline.at());
 const shot = async n => { await page.waitForTimeout(400); await page.screenshot({ path: `${out}/trial-${n}.png` }); };
 const click = async text => { await page.locator('#modal .item', { hasText: text }).first().click(); };
@@ -36,10 +38,9 @@ await d(s => window.__dakar.place(s.x, s.z, Math.PI / 2), f0.step);
 await page.waitForFunction(() => /Ouvrir/.test(window.__dakar.focus()?.primary ?? ''), null, T);
 await d(() => window.__dakar.act());
 await page.waitForFunction(() => window.__dakar.berline.info().driving, null, T);
-// out on the forecourt (the car moved there by the check: the drive itself is scripts/check-prestige-flow.mjs), then out of the car
-await d(() => window.__dakar.berline.place(-84, 12, -Math.PI / 2));
-await page.waitForTimeout(600);
-await page.locator('#ridepad .rp-off').tap();
+// out through the bay to the forecourt with the real pedals, then out of the car by the real button
+await pilot(page, t, 'berline', [{ x: -92.6, z: 12, tol: 1.6, speed: 2.5 }], { brakeAtEnd: true });
+await t.tap('#ridepad .rp-off');
 await page.waitForFunction(() => { const b = window.__dakar.berline.info(); return !b.driving && !b.exit && b.here; }, null, T);
 const parked = await AT();
 check('left on the forecourt, the trial car stays where it was parked and is the same car the bay lost', (await B()).trial && !(await B()).floor[0].here && (await B()).floor[0].state === 'out' && (await B()).trialSlot === 0, JSON.stringify(parked));
