@@ -80,6 +80,9 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
       if (!prev) prev = { x: at.x, z: at.z };
       const d = Math.hypot(w.x - at.x, w.z - at.z);
       if (d < (w.tol ?? tol)) break;
+      // the sim runs slower than the clock and a sample can land metres apart: a waypoint the car has already passed along its segment is done too
+      const gx = w.x - prev.x, gz = w.z - prev.z, gl = Math.hypot(gx, gz) || 1;
+      if (((at.x - prev.x) * gx + (at.z - prev.z) * gz) / gl > gl - 1.5) break;
       if (d < best - 0.3) { best = d; lastGain = Date.now(); } else if (Date.now() - lastGain > stall) break;
       // pure pursuit: aim at a point 9 m ahead of the car's nearest point on the segment from the last waypoint to this one (the car holds the lane, it does not cut the corner)
       const sx = w.x - prev.x, sz = w.z - prev.z, sl = Math.hypot(sx, sz) || 1, u = Math.max(0, Math.min(sl, ((at.x - prev.x) * sx + (at.z - prev.z) * sz) / sl)), look = Math.min(sl, u + 14);
