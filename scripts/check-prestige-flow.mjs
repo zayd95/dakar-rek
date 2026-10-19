@@ -107,7 +107,7 @@ const LAP = [
   { x: -114.8, z: 59.2, tol: 2.5, speed: 3 }, { x: -119.2, z: 55.6, tol: 2.5, speed: 3 }, { x: -120, z: 46, tol: 3.5 }, { x: -120, z: 24, tol: 4 },
   { x: -120, z: 16, tol: 3 }, { x: -120, z: 9.5, tol: 2, speed: 2.5 }, { x: -118.2, z: 4.6, tol: 2, speed: 2.5 }, { x: -113.5, z: 1.4, tol: 2.5, speed: 3 }, { x: -106, z: 1, tol: 3 }, { x: -98, z: 1.4, tol: 3 }, { x: -94, z: 3.8, tol: 2.5, speed: 3 }, { x: -91, z: 9, tol: 2.5, speed: 4 },
 ];
-if (process.env.SKIP_LAP) await d(() => window.__dakar.berline.place(-100, 2, Math.PI / 2 + 0.2));   // development only: the recorded run drives the whole lap
+if (process.env.SKIP_LAP) await d(() => window.__dakar.berline.place(-94, 3.8, 0.55));   // development only: the recorded run drives the whole lap
 else {
   await pilot(page, t, 'berline', LAP.slice(0, 6));
   await shot('10-out-on-the-road');
@@ -133,7 +133,7 @@ await shot('14-salesman-comes');
 
 // ---- 6. talk to him: the price and the confirmation, then the purchase on the spot
 await walkTo(page, t, meet.x - 0.2, meet.z - 0.3, { tol: 1.55 });
-await wait(() => window.__dakar.focus()?.id === 'prestige:sales', null, 60000);
+await wait(() => window.__dakar.focus()?.id === 'prestige:sales', null, 60000).catch(async e => { console.log('FOCUS', JSON.stringify(await d(() => ({ focus: window.__dakar.focus(), pos: window.__dakar.pos(), sales: window.__dakar.sales.info() })))); throw e; });
 await t.tap('#act');
 await wait(() => /Acheter/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, 60000);
 await shot('15-talk');
