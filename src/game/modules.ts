@@ -18,6 +18,7 @@ import { wolofModule } from '../i18n/module';
 import { arenaModule } from '../arena/module';
 import { assetKitModule } from './assetKit';
 import { streetDressModule } from './streetDress';
+import { pikineDnaModule } from './pikineDna';
 import { transport } from '../transport/module';
 import { moto, tiakMoto } from '../transport/motoModule';
 import { car } from '../transport/carModule';
@@ -239,4 +240,5 @@ export const MODULES: GameModule[] = [
   supportersModule,     // who supports whom: the écurie colours worn, seen by the others, the stands answering (src/arena/supporters.ts)
   meals,                // table service: the plate in front of the seat, eaten spoonful by spoonful (src/game/meals.ts)
   perform,              // actions done in the world: carrying, handwork, cups to the lips, washing… (src/game/perform.ts)
+  pikineDnaModule,      // Pikine Street DNA phase 2: the first walk's walls, gates, wires, landmarks, in one draw call (src/game/pikineDna.ts)
 ];
