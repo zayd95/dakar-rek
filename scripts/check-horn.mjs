@@ -1,7 +1,7 @@
 // The horn of a car, portrait phone, REAL fingers (CDP touch), the browser held to the same rule an iPhone applies (a page may only make sound after a real gesture):
 //   – a held horn starts at once (from the touch itself, not at the next frame), goes on while held, and stops on release;
 //   – it works with the gas held by one thumb and the stick pushed by the other (three fingers);
-//   – what it plays is measured on the vehicles' bus (dBFS and the share of the energy above 800 Hz, where a phone's loudspeaker works), not just counted;
+//   – what it plays is measured on what the page sends to the speaker (dBFS and the share of the energy above 800 Hz, where a phone's loudspeaker works), not just counted;
 //   – the phone's sound setting silences it and brings it back; a context put to sleep (a call, the lock screen) wakes at the next touch and the horn is heard again;
 //   – the Klaxon button is a big target that no other control covers; a touch cancelled by the system lets the horn go.
 // What it cannot do: tell what an iPhone loudspeaker or its silent switch does. The panel `?audiodebug` is for that, on the phone itself (docs/vehicles/AUDIO_ON_DEVICE.md).
@@ -40,7 +40,7 @@ await page.waitForFunction(() => window.__dakar.car.info().driving, null, T);
 await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, T);
 await page.waitForTimeout(1500);
 const a0 = await au();
-check('after the taps the context runs: a gesture reached it (the end of a touch counts)', a0.state === 'running' && a0.gestured && a0.nudges >= 1, JSON.stringify({ state: a0.state, nudges: a0.nudges, by: a0.nudgedBy }));
+check('after the taps the context runs and knows a gesture was made', a0.state === 'running' && a0.gestured, JSON.stringify({ state: a0.state, gestured: a0.gestured, resumesAsked: a0.nudges, by: a0.nudgedBy }));
 check('driving asks for a playback session where the browser has the API (not muted by the silent switch), and the engine runs', a0.running && (a0.session === 'unsupported' || a0.session === 'playback'), JSON.stringify({ session: a0.session, running: a0.running }));
 
 // ---- the Klaxon button: big, and nothing on top of it

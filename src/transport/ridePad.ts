@@ -41,7 +41,7 @@ export const ridePad = {
     brakeB = mk(pedals, 'rp-brake', 'Frein'); gasB = mk(pedals, 'rp-gas', 'Accélérer');
     revB.title = 'Marche arrière';
     const hold = (b: HTMLButtonElement, set: (on: boolean) => void, count?: (what: 'down' | 'up' | 'cancel') => void) => {
-      const up = (e: Event) => { count?.(e.type === 'pointerup' ? 'up' : 'cancel'); set(false); b.classList.remove('down'); };
+      const up = (e: Event) => { if (e.type === 'pointerup') count?.('up'); else if (e.type === 'pointercancel') count?.('cancel'); set(false); b.classList.remove('down'); };   // lostpointercapture follows every up: not counted
       b.addEventListener('pointerdown', e => { e.preventDefault(); count?.('down'); try { b.setPointerCapture?.(e.pointerId); } catch { /* a synthetic or already released pointer: the buttons still work */ } set(true); b.classList.add('down'); });
       for (const t of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(t, up);
       b.addEventListener('contextmenu', e => e.preventDefault());

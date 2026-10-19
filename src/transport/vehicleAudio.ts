@@ -45,10 +45,10 @@ export interface HornVoice {
   level: number;
 }
 export const HORNS: Record<keyof typeof PROFILES, HornVoice> = {
-  sedan: { reeds: [440, 554], wave: 'sawtooth', detune: 2.2, hp: 260, peakHz: 1700, peakDb: 8, level: 0.34 },
-  luxury: { reeds: [392, 494], wave: 'sawtooth', detune: 1.4, hp: 240, peakHz: 1500, peakDb: 6, level: 0.32 },
-  suv: { reeds: [349, 440], wave: 'sawtooth', detune: 2.6, hp: 230, peakHz: 1400, peakDb: 8, level: 0.36 },
-  moto: { reeds: [880], wave: 'square', detune: 3.5, hp: 520, peakHz: 2600, peakDb: 7, level: 0.28 },
+  sedan: { reeds: [440, 554], wave: 'sawtooth', detune: 2.2, hp: 260, peakHz: 1700, peakDb: 8, level: 0.28 },
+  luxury: { reeds: [392, 494], wave: 'sawtooth', detune: 1.4, hp: 240, peakHz: 1500, peakDb: 6, level: 0.27 },
+  suv: { reeds: [349, 440], wave: 'sawtooth', detune: 2.6, hp: 230, peakHz: 1400, peakDb: 8, level: 0.30 },
+  moto: { reeds: [880], wave: 'square', detune: 3.5, hp: 520, peakHz: 2600, peakDb: 7, level: 0.24 },
 };
 export const hornFor = (kit: string): HornVoice => HORNS[(kit in HORNS ? kit : 'sedan') as keyof typeof HORNS];
 
@@ -87,9 +87,11 @@ class VehicleAudio {
     const master = audioMaster();
     if (master) {
       try {
-        const lim = b.ctx.createDynamicsCompressor();
-        lim.threshold.value = -14; lim.knee.value = 8; lim.ratio.value = 6; lim.attack.value = 0.004; lim.release.value = 0.14;
-        b.gain.disconnect(); b.gain.connect(lim); lim.connect(master);
+        const lim = b.ctx.createDynamicsCompressor(), pre = b.ctx.createGain(), soft = b.ctx.createWaveShaper();
+        lim.threshold.value = -14; lim.knee.value = 8; lim.ratio.value = 8; lim.attack.value = 0.004; lim.release.value = 0.14;
+        // what the compressor lets through is rounded off, never cut flat: tanh over a doubled range (unity gain for small signals, nothing past ±0.96)
+        pre.gain.value = 0.5; const curve = new Float32Array(1025); curve.forEach((_, i) => { curve[i] = Math.tanh(2 * ((i / 512) - 1)); }); soft.curve = curve; soft.oversample = '2x';
+        b.gain.disconnect(); b.gain.connect(lim); lim.connect(pre); pre.connect(soft); soft.connect(master);
       } catch { /* the plain bus still plays */ }
     }
     return b;
@@ -272,12 +274,12 @@ class VehicleAudio {
   }
 
   /**
-   * What the vehicle bus is playing right now: peak and rms in dBFS, and the share of the energy above 800 Hz (a phone speaker's range). The checks and the on-device diagnostics read it:
+   * What the page is sending to the speaker right now (after the limiter and the sound setting): peak and rms in dBFS, and the share of the energy above 800 Hz (a phone speaker's range). The checks and the on-device diagnostics read it:
    * a number a person can quote, where « the counter went up » says nothing about what comes out. Null before the bus exists.
    */
   meter(): { peakDb: number; rmsDb: number; high: number } | null {
     const b = this.bus; if (!b) return null;
-    if (!this.meterNode) { this.meterNode = b.ctx.createAnalyser(); this.meterNode.fftSize = 2048; this.meterNode.smoothingTimeConstant = 0; b.gain.connect(this.meterNode); }
+    if (!this.meterNode) { this.meterNode = b.ctx.createAnalyser(); this.meterNode.fftSize = 2048; this.meterNode.smoothingTimeConstant = 0; (audioMaster() ?? b.gain).connect(this.meterNode); }   // after the limiter and the sound setting: what is sent to the speaker
     const a = this.meterNode, td = new Float32Array(a.fftSize), fd = new Float32Array(a.frequencyBinCount);
     a.getFloatTimeDomainData(td); a.getFloatFrequencyData(fd);
     let peak = 0, sum = 0; for (const x of td) { const m = Math.abs(x); if (m > peak) peak = m; sum += x * x; }
