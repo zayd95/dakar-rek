@@ -105,7 +105,7 @@ const LAP = [
   { x: -88.3, z: 12, tol: 3 }, { x: -87, z: 6, tol: 2.2, speed: 4 }, { x: -80, z: 1.2, tol: 3, speed: 5 }, { x: -70, z: 1.2, tol: 3 }, { x: -64.5, z: 2.6, tol: 2.5, speed: 4 }, { x: -61.2, z: 7, tol: 2.5, speed: 4 }, { x: -60.4, z: 16, tol: 3 }, { x: -60.4, z: 30, tol: 4 }, { x: -60.4, z: 44, tol: 4 },
   { x: -61.4, z: 52.5, tol: 2.5, speed: 3 }, { x: -65, z: 58.8, tol: 2.5, speed: 3 }, { x: -72, z: 60, tol: 3, speed: 4 }, { x: -92, z: 60, tol: 4 }, { x: -108, z: 60, tol: 4 },
   { x: -114.8, z: 59.2, tol: 2.5, speed: 3 }, { x: -119.2, z: 55.6, tol: 2.5, speed: 3 }, { x: -120, z: 46, tol: 3.5 }, { x: -120, z: 24, tol: 4 },
-  { x: -120, z: 14, tol: 3.5 }, { x: -119.6, z: 8, tol: 2.5, speed: 3 }, { x: -116.2, z: 2.4, tol: 2.5, speed: 3 }, { x: -110, z: 1, tol: 3 }, { x: -100, z: 1.2, tol: 3 }, { x: -94, z: 3.6, tol: 2.5, speed: 3 }, { x: -91, z: 9, tol: 2.5, speed: 4 },
+  { x: -120, z: 16, tol: 3 }, { x: -120, z: 9.5, tol: 2, speed: 2.5 }, { x: -118.2, z: 4.6, tol: 2, speed: 2.5 }, { x: -113.5, z: 1.4, tol: 2.5, speed: 3 }, { x: -106, z: 1, tol: 3 }, { x: -98, z: 1.4, tol: 3 }, { x: -94, z: 3.8, tol: 2.5, speed: 3 }, { x: -91, z: 9, tol: 2.5, speed: 4 },
 ];
 await pilot(page, t, 'berline', LAP.slice(0, 6));
 await shot('10-out-on-the-road');
