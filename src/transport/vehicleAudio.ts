@@ -19,12 +19,14 @@ export interface EngineProfile {
   gears: number;
   /** Overall level of this engine. */
   level: number;
+  /** The weight of the engine's « body » band (a growl at 500–1600 Hz that follows the revs): what a phone loudspeaker plays of an engine. */
+  mid: number;
 }
 export const PROFILES: Record<'sedan' | 'luxury' | 'suv' | 'moto', EngineProfile> = {
-  sedan: { base: 34, span: 105, sub: 0.55, cutoff: 700, gears: 4, level: 1 },
-  luxury: { base: 28, span: 95, sub: 0.8, cutoff: 560, gears: 5, level: 0.95 },
-  suv: { base: 26, span: 88, sub: 0.9, cutoff: 520, gears: 4, level: 1 },
-  moto: { base: 62, span: 190, sub: 0.25, cutoff: 1500, gears: 4, level: 0.9 },
+  sedan: { base: 34, span: 105, sub: 0.55, cutoff: 700, gears: 4, level: 1, mid: 0.36 },
+  luxury: { base: 28, span: 95, sub: 0.8, cutoff: 560, gears: 5, level: 0.95, mid: 0.26 },
+  suv: { base: 26, span: 88, sub: 0.9, cutoff: 520, gears: 4, level: 1, mid: 0.46 },
+  moto: { base: 62, span: 190, sub: 0.25, cutoff: 1500, gears: 4, level: 0.9, mid: 0.6 },
 };
 export const profileFor = (kit: string): EngineProfile => PROFILES[(kit in PROFILES ? kit : 'sedan') as keyof typeof PROFILES];
 
@@ -70,11 +72,14 @@ type Bus = { ctx: AudioContext; gain: GainNode };
 let noiseBuf: AudioBuffer | null = null;
 const noise = (c: AudioContext) => noiseBuf ??= (() => { const b = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; })();
 
+/** A soft-saturation curve (tanh) with `drive`: the bass note of an engine gets its harmonics. */
+function driveCurve(drive: number): Float32Array<ArrayBuffer> { const n = 1025, c = new Float32Array(new ArrayBuffer(n * 4)); for (let i = 0; i < n; i++) c[i] = Math.tanh(drive * ((i / (n - 1)) * 2 - 1)) / Math.tanh(drive); return c; }
+
 class VehicleAudio {
   /** Sounds asked for and played, by kind (the checks: nothing before a gesture, nothing when muted). */
   readonly count: Record<string, number> = { asked: 0, played: 0, door: 0, start: 0, brake: 0, tap: 0, impact: 0, horn: 0, unlock: 0 };
   private bus: Bus | null = null;
-  private eng: { prof: EngineProfile; o1: OscillatorNode; o2: OscillatorNode; lp: BiquadFilterNode; gEng: GainNode; road: GainNode; roadF: BiquadFilterNode; bed: GainNode; srcs: AudioScheduledSourceNode[]; rpm: number; ready: number } | null = null;
+  private eng: { prof: EngineProfile; o1: OscillatorNode; o2: OscillatorNode; lp: BiquadFilterNode; bp: BiquadFilterNode; gMid: GainNode; lopeG: GainNode; gEng: GainNode; road: GainNode; roadF: BiquadFilterNode; bed: GainNode; srcs: AudioScheduledSourceNode[]; rpm: number; ready: number } | null = null;
   private horn: { gain: GainNode; oscs: OscillatorNode[] } | null = null;
   private lastShot = new Map<string, number>();
   private bedTimer = 0;
@@ -184,7 +189,14 @@ class VehicleAudio {
     const o1 = c.createOscillator(), o2 = c.createOscillator(), lp = c.createBiquadFilter(), gEng = c.createGain(), mix2 = c.createGain();
     o1.type = 'sawtooth'; o2.type = 'square'; lp.type = 'lowpass'; lp.Q.value = 0.8; mix2.gain.value = prof.sub;
     gEng.gain.value = 0;
-    o1.connect(lp); o2.connect(mix2).connect(lp); lp.connect(gEng).connect(b.gain);
+    // the two oscillators go through a soft saturation (it makes harmonics out of a bass note: all a phone loudspeaker has to play), then two ways to the output:
+    // the low-pass that follows the revs (the body), and a band-pass at 500–1600 Hz (the growl) whose weight is the engine's `mid`
+    const pre = c.createGain(), sat = c.createWaveShaper(), bp = c.createBiquadFilter(), gMid = c.createGain();
+    pre.gain.value = 0.8; sat.curve = driveCurve(2.4); sat.oversample = '2x';
+    bp.type = 'bandpass'; bp.frequency.value = 600; bp.Q.value = 1.1; gMid.gain.value = prof.mid * 0.5;
+    o1.connect(pre); o2.connect(mix2).connect(pre); pre.connect(sat); sat.connect(lp).connect(gEng); sat.connect(bp).connect(gMid).connect(gEng); gEng.connect(b.gain);
+    // an idle that is not a perfectly steady tone: a slow wobble of the level, there at idle and gone as the revs rise
+    const lope = c.createOscillator(), lopeG = c.createGain(); lope.type = 'sine'; lope.frequency.value = 5.3; lopeG.gain.value = 0.006; lope.connect(lopeG).connect(gEng.gain);
     const n1 = c.createBufferSource(), roadF = c.createBiquadFilter(), road = c.createGain();
     n1.buffer = noise(c); n1.loop = true; roadF.type = 'bandpass'; roadF.frequency.value = 400; roadF.Q.value = 0.6; road.gain.value = 0;
     n1.connect(roadF).connect(road).connect(b.gain);
@@ -194,10 +206,10 @@ class VehicleAudio {
     n2.connect(bedF).connect(bed).connect(b.gain);
     const f0 = prof.base;
     o1.frequency.value = f0; o2.frequency.value = f0 / 2;
-    for (const s of [o1, o2, n1, n2, lfo]) s.start(t + delay);
+    for (const s of [o1, o2, n1, n2, lfo, lope]) s.start(t + delay);
     gEng.gain.setTargetAtTime(0.06 * prof.level, t + delay, 0.12);
     bed.gain.setTargetAtTime(0.011, t + delay + 0.5, 0.8);
-    this.eng = { prof, o1, o2, lp, gEng, road, roadF, bed, srcs: [o1, o2, n1, n2, lfo], rpm: 0.15, ready: t + delay };
+    this.eng = { prof, o1, o2, lp, bp, gMid, lopeG, gEng, road, roadF, bed, srcs: [o1, o2, n1, n2, lfo, lope], rpm: 0.15, ready: t + delay };
     this.bedTimer = 7 + Math.random() * 8;
   }
 
@@ -209,7 +221,11 @@ class VehicleAudio {
     e.rpm += (want - e.rpm) * Math.min(1, dt * (want > e.rpm ? 5 : 3));
     const f = e.prof.base + e.prof.span * e.rpm;
     e.o1.frequency.setTargetAtTime(f, t, 0.04); e.o2.frequency.setTargetAtTime(f / 2, t, 0.04);
-    e.lp.frequency.setTargetAtTime(e.prof.cutoff * (0.55 + 1.3 * e.rpm), t, 0.06);
+    const lift = throttle <= 0 && Math.abs(speed) > 4;                                  // off the throttle at speed: the engine brakes, the note closes up
+    e.lp.frequency.setTargetAtTime(e.prof.cutoff * (0.55 + 1.3 * e.rpm) * (lift ? 0.8 : 1), t, 0.06);
+    e.bp.frequency.setTargetAtTime((420 + 1150 * e.rpm) * (e.prof === PROFILES.moto ? 1.25 : 1), t, 0.06);
+    e.gMid.gain.setTargetAtTime(e.prof.mid * (lift ? 0.18 : 0.3 + 0.7 * Math.max(0, throttle)) * (0.5 + 0.6 * e.rpm), t, 0.06);
+    e.lopeG.gain.setTargetAtTime(0.006 * Math.max(0, 1 - e.rpm * 3), t, 0.2);
     const load = 0.06 + 0.09 * e.rpm + 0.05 * Math.max(0, throttle);
     e.gEng.gain.setTargetAtTime(Math.min(0.12, load * 0.62) * e.prof.level, t, 0.06);   // below the horn: the engine is the bed of the drive, not its loudest voice
     const v = Math.min(1, Math.abs(speed) / Math.max(0.1, maxSpeed));
