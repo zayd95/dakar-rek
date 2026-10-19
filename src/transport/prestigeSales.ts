@@ -262,7 +262,23 @@ export class PrestigeSales implements GameModule, TargetSource {
     const g = new NavGrid(GRID, this.hub.colliders), from = { x: this.pos.x, z: this.pos.z };
     // `stop`: end that far short of the goal (beside the customer, not on them)
     let to = goal;
-    if (o.stop) { const dx = from.x - goal.x, dz = from.z - goal.z, l = Math.hypot(dx, dz) || 1; if (l > o.stop) to = { x: goal.x + (dx / l) * o.stop, z: goal.z + (dz / l) * o.stop }; else to = from; }
+    if (o.stop) {
+      const dx = from.x - goal.x, dz = from.z - goal.z, l = Math.hypot(dx, dz) || 1;
+      if (l > o.stop) {
+        to = { x: goal.x + (dx / l) * o.stop, z: goal.z + (dz / l) * o.stop };
+        // the straight line may end inside a parked car beside the customer: stand where he is free, within reach and in sight of them (nearest such spot to him)
+        const seen = (c: Pt) => g.free(c) && g.clear(c, { x: c.x + (goal.x - c.x) * 0.6, z: c.z + (goal.z - c.z) * 0.6 });   // free, and nothing solid between him and the customer
+        if (!seen(to)) {
+          let best: Pt | null = null, bd = Infinity;
+          for (const r of [o.stop, o.stop * 0.8, o.stop * 1.2]) for (let k = 0; k < 16; k++) {
+            const a = (k / 16) * Math.PI * 2, c = { x: goal.x + Math.sin(a) * r, z: goal.z + Math.cos(a) * r };
+            if (!seen(c)) continue;
+            const d = Math.hypot(c.x - from.x, c.z - from.z); if (d < bd) { bd = d; best = c; }
+          }
+          if (best) to = best;
+        }
+      } else to = from;
+    }
     const path = g.path(from, to);
     this.log.walks++;
     if (!path) { this.move = null; o.done?.(); return; }

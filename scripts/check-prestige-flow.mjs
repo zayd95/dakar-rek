@@ -128,7 +128,7 @@ check('they stepped out through the door; the trial car stays exactly where it w
 await wait(() => window.__dakar.sales.info().task === 'meet', null, 120000);
 await wait(() => { const s = window.__dakar.sales.info(); return s.task === 'meet' && !s.moving; }, null, 240000);
 const meet = await S();
-check('the salesperson walked over to the customer who came back (a real walk)', Math.hypot(meet.x - pAfter.x, meet.z - pAfter.z) < 4.2 && meet.log.maxStep < 0.4, JSON.stringify({ sales: [meet.x, meet.z], player: [pAfter.x, pAfter.z] }));
+check('the salesperson walked over to the customer who came back (a real walk)', Math.hypot(meet.x - pAfter.x, meet.z - pAfter.z) < 3.2 && meet.log.maxStep < 0.4, JSON.stringify({ sales: [meet.x, meet.z], player: [pAfter.x, pAfter.z] }));
 await shot('14-salesman-comes');
 
 // ---- 6. talk to him: the price and the confirmation, then the purchase on the spot
