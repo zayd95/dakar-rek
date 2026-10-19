@@ -5,7 +5,7 @@
 // Usage: node scripts/check-trial.mjs [baseUrl] [outDir]   (a running build; ONLY=desktop|phone, VEHICLE=jakarta|compacte|berline|tout_terrain to run one)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-import { realTouch } from './lib/realTouch.mjs';
+import { realTouch, padDrive } from './lib/realTouch.mjs';
 
 const base = process.argv[2] ?? 'http://localhost:4213/', out = process.argv[3] ?? 'docs/screenshots/trial';
 fs.mkdirSync(out, { recursive: true });
@@ -52,7 +52,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
       const j = await tr.centre('#joy');
       if (V.moto && !back) { const g = await tr.centre('#ridepad .rp-gas'); await tr.down(1, g.x, g.y); await hold(); await tr.up(1); }
       else if (V.moto) { const b = await tr.centre('#ridepad .rp-brake'); await tr.down(1, b.x, b.y); await hold(); await tr.up(1); }
-      else { await tr.down(1, j.x, j.y); await tr.move(1, j.x, j.y + (back ? 42 : -42)); await hold(); await tr.up(1); }
+      else await padDrive(page, tr, { brake: back, hold });
     };
     const ledger = () => d(() => window.__dakar.state.data.ledger.length), wallet = () => d(() => window.__dakar.state.wallet);
     const counters = () => d(a => Object.keys(window.__dakar.state.data.counters).filter(k => k.startsWith(`vehicle:${a}:`)), V.asset);

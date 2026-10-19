@@ -1,11 +1,20 @@
-/* Touch riding pad (src/transport/ridePad.ts): gas and brake under the right thumb, « Descendre » above them when stopped. */
-#ridepad { display: none; position: absolute; right: calc(14px + var(--sa-r)); bottom: calc(18px + var(--sa-b)); z-index: 6; gap: 12px; align-items: flex-end; flex-wrap: wrap; justify-content: flex-end; max-width: 220px; pointer-events: none; }
+/* Touch driving pad (src/transport/ridePad.ts): brake and gas under the right thumb, « Descendre » / « R » / « Vue » above them. */
+#ridepad { display: none; position: absolute; right: calc(14px + var(--sa-r)); bottom: calc(18px + var(--sa-b)); z-index: 6; flex-direction: column; align-items: flex-end; gap: 12px; max-width: 250px; pointer-events: none; }
 body.ridepad #ridepad { display: flex; }
+#ridepad .rp-top, #ridepad .rp-pedals { display: flex; gap: 12px; align-items: flex-end; justify-content: flex-end; }
+#ridepad .rp-top { flex-wrap: wrap; }
 #ridepad button { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; border: 0; border-radius: 999px; color: #fff; font: 800 15px/1.1 system-ui, sans-serif; text-shadow: 0 1px 2px rgba(0, 0, 0, .35); box-shadow: 0 3px 12px rgba(0, 0, 0, .35), inset 0 0 0 2px rgba(255, 255, 255, .35); }
 #ridepad .rp-gas { width: 92px; height: 92px; background: #16a34a; }
 #ridepad .rp-brake { width: 74px; height: 74px; background: #dc2626; }
+/* a car: bigger pedals, well apart, both under the one thumb */
+body.ridepad-car #ridepad .rp-gas { width: 112px; height: 112px; font-size: 17px; }
+body.ridepad-car #ridepad .rp-brake { width: 92px; height: 92px; font-size: 16px; }
 #ridepad button.down { transform: scale(.94); filter: brightness(1.15); box-shadow: 0 1px 4px rgba(0, 0, 0, .35), inset 0 0 0 3px rgba(255, 255, 255, .7); }
-#ridepad .rp-off { display: none; order: -1; flex-basis: 100%; height: 48px; background: rgba(17, 24, 39, .88); font-size: 15px; }
+#ridepad .rp-off { display: none; height: 46px; padding: 0 16px; background: rgba(17, 24, 39, .88); font-size: 15px; }
 #ridepad.stopped .rp-off { display: block; }
-/* the pad takes the place of the action button while riding (a bike's only action is getting off) */
+#ridepad .rp-view { height: 46px; padding: 0 14px; background: rgba(17, 24, 39, .72); font-size: 14px; }
+#ridepad .rp-rev { display: none; height: 46px; padding: 0 16px; background: rgba(17, 24, 39, .88); font-size: 15px; }
+#ridepad.canrev .rp-rev { display: block; }
+#ridepad .rp-rev.on { background: #d97706; }
+/* the pad takes the place of the action button while driving (the only action is getting off, which the pad holds) */
 body.ridepad #ui > #actbar { display: none; }

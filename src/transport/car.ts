@@ -71,12 +71,13 @@ export function kitCarSpec(o: KitCarOpts): VehicleSpec {
     driver: { ...toSeat(driver), y: driver.top - DRIVER_DROP },
     doors: [{ id: door.id, x: door.board[0], z: door.board[2], outX: door.board[0] + 0.3, outZ: door.board[2] }],
     cameras: [
-      // behind the car (the kit's chase anchor); on a phone held upright, higher and further back to see the road ahead
-      { id: 'chase', label: 'Derrière la voiture', pos: v3(chase.pos), look: v3(chase.look),
-        portrait: { pos: [chase.pos[0], chase.pos[1] + 2.2, chase.pos[2] - 3.4], look: [chase.look[0], chase.look[1] - 0.1, chase.look[2] + 4] } },
-      // at the wheel (the kit's driver anchor): the dashboard and the street through the windscreen
+      // behind the car, lower and closer than the kit's anchor, looking well down the road: the car sits in the lower third and the street ahead stays readable
+      { id: 'chase', label: 'Derrière la voiture', pos: [chase.pos[0], chase.pos[1] - 0.5, chase.pos[2] + 0.5], look: [chase.look[0], chase.look[1] + 0.15, chase.look[2] + 4],
+        portrait: { pos: [chase.pos[0], chase.pos[1] - 0.25, chase.pos[2] - 0.6], look: [chase.look[0], chase.look[1] + 0.35, chase.look[2] + 8] } },
+      // at the wheel (the kit's driver anchor): the street through the windscreen. On a phone held upright the eye is a little higher and the gaze
+      // tilted down, so the dashboard and the roof lining take less of a narrow screen (the camera also opens its field of view, OwnedVehicleModule.camera)
       { id: 'volant', label: 'Au volant', pos: v3(wheel.pos), look: v3(wheel.look), inside: true,
-        portrait: { pos: [wheel.pos[0], wheel.pos[1] + 0.04, wheel.pos[2] - 0.15], look: [wheel.look[0], wheel.look[1] - 0.25, wheel.look[2]] } },
+        portrait: { pos: [wheel.pos[0], wheel.pos[1] + 0.06, wheel.pos[2] - 0.1], look: [wheel.look[0], wheel.look[1] - 1.1, wheel.look[2]] } },
       { id: 'haut', label: 'Vue d’en haut', pos: [0, 11, -12], look: [0, 0, 7], portrait: { pos: [0, 16, -14], look: [0, 0, 8] } },
     ],
     cabin: 'closed',

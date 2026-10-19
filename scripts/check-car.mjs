@@ -10,7 +10,7 @@
 // On a shared machine run browsers one at a time: flock /tmp/dakar-browser.lock node scripts/check-car.mjs …
 // ONLY=desktop or ONLY=phone runs one viewport. EXTRA='&vehicleModel=kit' appends a test link (the procedural car instead of the generated body).
 import { chromium } from 'playwright';
-import { realTouch } from './lib/realTouch.mjs';
+import { realTouch, padDrive } from './lib/realTouch.mjs';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4213/';
@@ -55,10 +55,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
       await hold();
       if (steer) await page.keyboard.up(steer > 0 ? 'KeyD' : 'KeyA'); await page.keyboard.up(key);
     } else {
-      const j = await tr.centre('#joy');                                                          // a real finger on the joystick
-      await tr.down(1, j.x, j.y); await tr.move(1, j.x + steer * 30, j.y + (back ? 42 : -42));
-      await hold();
-      await tr.up(1);
+      await padDrive(page, tr, { steer, brake: back, hold });                                     // real fingers: the gas (or brake) pedal, and the joystick to steer
     }
   };
   const view = async want => {

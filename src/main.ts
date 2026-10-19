@@ -48,6 +48,7 @@ import { FRIENDLY_MORE, STYLE_MAP, rosterOpponent } from './lamb/opponents';
 import { lamb2On } from './lamb/flag';
 import { PARTNER, RULES, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type Discipline, type StyleId } from './lamb/rules';
 import { phoneHooks } from './ui/phoneHooks';
+import { dealerDirectory } from './transport/dealers';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
@@ -171,7 +172,7 @@ const pos = new THREE.Vector3();
 const tmpV = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
-let destination: { id: string; hub: HubId } | null = null;
+let destination: { id: string; hub: HubId; name?: string } | null = null;
 let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, life: MonumentLife | null = null;
 let apprentices: Apprentice[] = [];
 /** Ambient people placed by the hub builder (dibiterie cook, customers…). */
@@ -995,6 +996,9 @@ function doWalk(dest: HubId) {
   }, 1400);
 }
 phoneHooks.walkTo = doWalk;
+phoneHooks.dealers = () => dealerDirectory(state);
+phoneHooks.markPlace = (id, hub, name) => { destination = id && hub ? { id, hub, name } : null; };
+phoneHooks.marked = () => destination;
 phoneHooks.homeHub = homeHub;
 
 function doTravel(dest: HubId) {
@@ -1076,7 +1080,9 @@ function withBearing(text: string, t: { x: number; z: number } | null): string {
 }
 
 function walkingHint(): string | null {
-  if (!destination || destination.hub !== world?.id) { destination = null; return null; }
+  if (!destination) return null;
+  // a place of another district (a dealer marked from the phone's Carte): the marker waits, the goal line says where to go
+  if (destination.hub !== world?.id) return `📍 ${destination.name ?? 'Repère'} · ${HUB_NAMES[destination.hub].split(' · ')[0]} : téléphone › Carte › y aller à pied`;
   const target = world.interactables.find(i => i.id === destination!.id);
   if (!target) { destination = null; return null; }
   if (inside) return 'Sors dans la rue pour rejoindre ' + target.name;

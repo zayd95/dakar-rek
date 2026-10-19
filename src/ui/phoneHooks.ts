@@ -9,6 +9,11 @@ export const phoneHooks: {
   openMessages?: () => void;
   /** « Aller à pied » to a neighbourhood (main.ts doWalk: free, any energy, src/world/walk.ts). */
   walkTo?: (hub: import('../core/types').HubId) => void;
+  /** The vehicle dealers of every district, and the walking marker that can name a place of another district (the map's « Concessionnaires »). */
+  dealers?: () => { id: string; name: string; hub: import('../core/types').HubId; vehicle: string; icon: string; price: number; owned: boolean }[];
+  markPlace?: (id: string | null, hub?: import('../core/types').HubId, name?: string) => void;
+  /** The place marked on foot (any district), or null. */
+  marked?: () => { id: string; hub: import('../core/types').HubId; name?: string } | null;
   /** The neighbourhood the player lives in (« Rentrer chez moi »), null without a home. */
   homeHub?: () => import('../core/types').HubId | null;
   /** Wallet history (economy module). Local to the device until a server ledger exists. */

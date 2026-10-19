@@ -23,3 +23,18 @@ export async function realTouch(page) {
     async tap(selector, id = 9) { const c = await this.centre(selector); await this.down(id, c.x, c.y); await new Promise(r => setTimeout(r, 60)); await this.up(id); },
   };
 }
+
+/**
+ * Drive a car with real fingers, as on a phone (src/transport/ridePad.ts): one thumb on the gas (or, with `brake`, the brake) pedal on the right and, for `steer` ≠ 0, another
+ * on the joystick on the left, which only steers. `reverse` first selects the reverse gear with a tap on « R » (the car must be stopped). Holds until `hold()` resolves, then lets go.
+ */
+export async function padDrive(page, t, { steer = 0, brake = false, reverse = false, hold }) {
+  await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
+  if (reverse) await t.tap('#ridepad .rp-rev');
+  const pedal = await t.centre(brake ? '#ridepad .rp-brake' : '#ridepad .rp-gas');
+  await t.down(1, pedal.x, pedal.y);
+  if (steer) { const j = await t.centre('#joy'); await t.down(2, j.x, j.y); await t.move(2, j.x + steer * 30, j.y); }
+  await hold();
+  await t.up(1); if (steer) await t.up(2);
+  if (reverse) await t.tap('#ridepad .rp-rev');
+}

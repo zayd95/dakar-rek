@@ -9,7 +9,8 @@ import { fcfa } from '../ui/hud';
 import { Vehicle } from './vehicle';
 import { PassengerCamera } from './camera';
 import { RideCard } from './ui';
-import { driveStep, newDriveState, type DriveState } from './drive';
+import { fovFor } from '../core/view';
+import { driveStep, newDriveState, pedalThrottle, type DriveState } from './drive';
 import { assetsRevision, buyAsset, cannotBuy, holding } from '../economy/assets';
 import { specOf } from '../economy/catalog';
 import { buildCourierBox, type CourierBox } from './courierBox';
@@ -147,6 +148,9 @@ export function kerbDealer(px: number, pz: number, o: { displays: { along: numbe
   };
 }
 
+/** Vertical field of view at the wheel in portrait (the page's is 66°). */
+const INSIDE_FOV_PORTRAIT = 78;
+
 interface Dealer {
   group: THREE.Group; site: DealerSite; sign: THREE.CanvasTexture | null; card: THREE.CanvasTexture | null; mats: THREE.Material[]; geos: THREE.BufferGeometry[];
   /** The vehicle for sale on the floor with its card, and its solid boxes (`forSale`). */
@@ -186,6 +190,8 @@ export class OwnedVehicleModule implements GameModule {
   private mounting: { t: number; fx: number; fz: number } | null = null;
   /** A free test drive from the dealer (« Essayer »): the vehicle on the road is the dealer's, not the player's. Never saved; it goes back when the player gets off. */
   private trial = false;
+  /** The field of view is the wheel view's own (portrait): given back when the view ends. */
+  private fovSet = false;
 
   readonly def: OwnedDef;
   private readonly parkedTarget: Target;
@@ -204,7 +210,7 @@ export class OwnedVehicleModule implements GameModule {
     const ui = document.getElementById('ui');
     if (ui) this.card = new RideCard(ui, `${this.def.key}-card`);
     ctx.interactions.add(this.targets);
-    if (ui && this.def.kit === 'moto') ridePad.init(ui);
+    if (ui) ridePad.init(ui);
   }
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
@@ -219,6 +225,11 @@ export class OwnedVehicleModule implements GameModule {
   }
 
   /** Name and price from the catalogue. */
+  /** The dealer as the phone's map lists it, from any district (src/transport/dealers.ts). */
+  directoryRow(state: GameCtx['state']) {
+    const D = this.def.dealer;
+    return D ? { id: `${this.def.key}:dealer`, name: D.name, hub: D.hub, vehicle: this.label(), icon: this.def.icon, price: this.price(), owned: ownsVehicle(state, this.def.asset) } : null;
+  }
   private label() { return specOf(this.def.asset)?.name ?? this.def.text.mine; }
   private price() { return specOf(this.def.asset)?.price ?? 0; }
 
@@ -290,8 +301,10 @@ export class OwnedVehicleModule implements GameModule {
     if (!this.driving) return;
     if (ctx.player.seated()?.id !== m.driverSeat.id) { this.getOff(false); return; }   // taken off by a door, a trip…
     const mv = ctx.mode() === 'play' ? ctx.input.move() : { x: 0, y: 0 };
-    if (this.def.kit === 'moto') ridePad.show(this, Math.abs(this.st.speed) < 0.3 && !this.leaving, () => { if (Math.abs(this.st.speed) < 0.5) this.getOff(true); });
-    const throttle = ridePad.active ? ridePad.throttle : mv.y;               // touch: the buttons give gas and brake, the stick only steers
+    const moto = this.def.kit === 'moto';
+    ridePad.show(this, Math.abs(this.st.speed) < 0.3 && !this.leaving, () => { if (Math.abs(this.st.speed) < 0.5) this.getOff(true); }, { car: !moto, view: () => this.cam.next(this.spec?.cameras.length ?? 1) });
+    // touch: the buttons give gas and brake and the stick only steers (a car: the brake never backs it up, « R » does)
+    const throttle = !ridePad.active ? mv.y : moto ? ridePad.throttle : pedalThrottle(ridePad.gas, ridePad.brake, ridePad.reverse, this.st.speed);
     const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : { throttle, steer: mv.x };
     transport.obstacles(this.obst, this.def.kit);
     const v0 = Math.abs(this.st.speed);
@@ -307,11 +320,18 @@ export class OwnedVehicleModule implements GameModule {
   camera(ctx: GameCtx, dt: number, drag: { yaw: number; pitch: number }): boolean {
     const m = this.vehicle;
     if (m && !(this.driving && this.cam.active && this.spec)) m.setCockpit(false);               // never leave the body hidden after the inside view
-    if (!m || !this.driving || !this.cam.active || !this.spec) return false;
+    if (!m || !this.driving || !this.cam.active || !this.spec) {
+      if (this.fovSet) { this.fovSet = false; ctx.camera.fov = fovFor(ctx.camera.aspect * 1000, 1000); ctx.camera.updateProjectionMatrix(); }
+      return false;
+    }
     const t = performance.now(), real = this.camMs ? Math.min(1, (t - this.camMs) / 1000) : dt; this.camMs = t;
     const a = this.spec.cameras[this.cam.view % this.spec.cameras.length];
     this.cam.update(Math.max(dt, real), ctx.camera, m.pose, m.bounce, a, drag, this.hub?.colliders ?? []);
     m.setCockpit(!!a.inside);                                  // a solid-shell body's shared cockpit: seen from inside only
+    // at the wheel on a phone held upright (narrow field of view): a wider vertical angle so the road shows above the dashboard; the page's own angle comes back outside
+    const cam = ctx.camera, base = fovFor(cam.aspect * 1000, 1000), want = a.inside && cam.aspect < 1 ? INSIDE_FOV_PORTRAIT : base;
+    if (Math.abs(cam.fov - want) > 0.01) { cam.fov = want; cam.updateProjectionMatrix(); }
+    this.fovSet = want !== base;
     const body = ctx.player.body();
     if (body && a.inside) body.group.visible = false;         // at the wheel: looking out (shown again next frame)
     if (body) this.leanRider(body.group, m);
@@ -348,6 +368,33 @@ export class OwnedVehicleModule implements GameModule {
     };
   }
 
+  /**
+   * What makes a kerb dealer read as a dealership from the street: a coloured strip of forecourt under the cars and the desk,
+   * and a canopy over the desk whose fascia repeats the sign toward the road (the pole sign alone looked like street furniture).
+   */
+  private buildForecourt(site: DealerSite, o: NonNullable<OwnedDef['dealer']>['sign'], sign: THREE.CanvasTexture | null, mesh: (geo: THREE.BufferGeometry, mat: THREE.Material) => THREE.Mesh, hub: HubWorld) {
+    const f = { x: Math.sin(site.delivery.yaw), z: Math.cos(site.delivery.yaw) };
+    const dx = site.counter.x - site.delivery.x, dz = site.counter.z - site.delivery.z, dAlong = dx * f.x + dz * f.z;
+    let nx = dx - f.x * dAlong, nz = dz - f.z * dAlong; const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;   // toward the buildings
+    const along = (p: { x: number; z: number }) => (p.x - site.counter.x) * f.x + (p.z - site.counter.z) * f.z;
+    const lo = Math.min(...site.displays.map(along), 0) - 3.2, hi = Math.max(along(site.delivery) + 2.8, 4);
+    const w = (a: number, l: number) => ({ x: site.counter.x + f.x * a + nx * l, z: site.counter.z + f.z * a + nz * l });
+    const yaw = Math.atan2(-f.z, f.x), lat = (l: number) => l - 6.2;                                              // lateral measured from the counter's line
+    const slab = mesh(new THREE.BoxGeometry(hi - lo, 0.03, 3.1), new THREE.MeshLambertMaterial({ color: o.band }));
+    const sc = w((lo + hi) / 2, lat(4.9)); slab.position.set(sc.x, 0.135, sc.z); slab.rotation.y = yaw;
+    const roofLen = 5.2, roofC = w(-1.5, lat(6.4));                                    // clear of the pole sign at +2.4
+    const roof = mesh(new THREE.BoxGeometry(roofLen, 0.12, 2.6), new THREE.MeshLambertMaterial({ color: o.bg }));
+    roof.position.set(roofC.x, 3.1, roofC.z); roof.rotation.y = yaw;
+    const fascia = mesh(new THREE.BoxGeometry(roofLen, roofLen / 3 * 0.62, 0.06), new THREE.MeshLambertMaterial({ map: sign }));
+    const fc = w(-1.5, lat(5.1)); fascia.position.set(fc.x, 3.1 + 0.06 + roofLen / 3 * 0.31, fc.z); fascia.rotation.y = Math.atan2(-nx, -nz);   // faces the road
+    const post = new THREE.BoxGeometry(0.1, 3.05, 0.1), postMat = new THREE.MeshLambertMaterial({ color: 0x3b3f46 });
+    // the posts stand at the back, against the buildings, clear of the cars at the kerb; solid like the desk
+    for (const a of [-1.5 - roofLen / 2 + 0.15, -1.5 + roofLen / 2 - 0.15]) {
+      const p = mesh(post, postMat), q = w(a, lat(7.3)); p.position.set(q.x, 0.12 + 1.525, q.z);
+      hub.colliders.push({ x0: q.x - 0.12, x1: q.x + 0.12, z0: q.z - 0.12, z1: q.z + 0.12, h: 3.2 });
+    }
+  }
+
   // ---------------------------------------------------------------- the dealer corner
   private buildDealer(ctx: GameCtx, hub: HubWorld) {
     const D = this.def.dealer!, site = D.site(hub);
@@ -381,6 +428,7 @@ export class OwnedVehicleModule implements GameModule {
     pole.position.set(site.sign.x, 0.12 + top / 2, site.sign.z);
     const plate = mesh(new THREE.BoxGeometry(sw, sh, 0.05), new THREE.MeshLambertMaterial({ map: sign }));
     plate.position.set(site.sign.x, 2.5 + sh / 2, site.sign.z); plate.rotation.y = site.sign.yaw;
+    if (site.desk) this.buildForecourt(site, D.sign, sign, mesh, hub);
     if (site.desk) {
       const desk = mesh(new THREE.BoxGeometry(1.3, 0.85, 0.6), new THREE.MeshLambertMaterial({ color: 0x2e5c8a }));
       desk.position.set(site.desk.x, 0.55, site.desk.z); desk.rotation.y = site.desk.yaw;
@@ -408,12 +456,13 @@ export class OwnedVehicleModule implements GameModule {
 
   private openCatalogue() {
     const ctx = this.ctx, mine = ownsVehicle(ctx.state, this.def.asset);
-    ctx.menu(this.def.dealer!.name, 'Le prix est affiché avant de confirmer. L’essai est gratuit.', [{
-      icon: this.def.icon, label: this.label(), detail: mine ? this.def.text.owned : this.def.detail, right: fcfa(this.price()), disabled: mine,
-      onPick: () => this.confirm(),
-    }, {
-      icon: '🔑', label: 'Essayer', detail: mine ? this.def.text.owned : `${this.label()} · gratuit, le vendeur la reprend quand tu descends`, right: 'Gratuit',
+    // the free test drive comes first and says so: a player should meet « Essayer gratuitement » before the price
+    ctx.menu(this.def.dealer!.name, 'Essaie d’abord, c’est gratuit. Le prix est affiché avant de confirmer l’achat.', [{
+      icon: '🔑', label: 'Essayer gratuitement', detail: mine ? this.def.text.owned : `${this.label()} · rien n’est payé · le vendeur la reprend quand tu descends`, right: 'Gratuit',
       disabled: mine || !!this.vehicle, onPick: () => this.tryOut(),
+    }, {
+      icon: this.def.icon, label: `Acheter · ${this.label()}`, detail: mine ? this.def.text.owned : this.def.detail, right: fcfa(this.price()), disabled: mine,
+      onPick: () => this.confirm(),
     }]);
   }
 
@@ -444,6 +493,7 @@ export class OwnedVehicleModule implements GameModule {
   private confirm() {
     const ctx = this.ctx, price = this.price(), why = cannotBuy(ctx.state, this.def.asset);
     ctx.menu(this.def.text.confirm, `Prix : ${fcfa(price)} · Ton argent : ${fcfa(ctx.state.wallet)}`, [
+      { icon: '🔑', label: 'Essayer gratuitement d’abord', detail: 'Rien n’est payé', right: 'Gratuit', disabled: !!this.vehicle, onPick: () => this.tryOut() },
       { icon: '✅', label: 'Confirmer l’achat', right: '−' + fcfa(price), detail: why ?? this.def.text.delivered, disabled: !!why, onPick: () => this.buy() },
       { icon: '↩️', label: 'Pas maintenant', onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); } },
     ]);

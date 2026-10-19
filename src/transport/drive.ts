@@ -28,6 +28,15 @@ export const newDriveState = (x: number, z: number, yaw: number): DriveState => 
 /** Coasting deceleration with the throttle released (m/s²). */
 const COAST = 1.4;
 
+/**
+ * Throttle for a car driven with gas and brake buttons: the brake only slows the car down, it never backs it up from a stop
+ * (reverse is a gear the driver selects), and in reverse the gas backs up while the brake slows that down.
+ */
+export function pedalThrottle(gas: boolean, brake: boolean, reverse: boolean, speed: number): number {
+  if (!reverse) return brake && speed > 0.4 ? -1 : brake ? 0 : gas ? 1 : 0;
+  return brake && speed < -0.4 ? 1 : brake ? 0 : gas ? -1 : 0;
+}
+
 /** Speed the vehicle heads for, given the throttle (positive forward, negative brake-then-reverse). */
 export function targetSpeed(d: DriveSpec, speed: number, throttle: number): number {
   if (throttle > 0.05) return d.maxSpeed * Math.min(1, throttle);

@@ -475,6 +475,7 @@ export class Phone {
     const home = phoneHooks.homeHub?.() ?? null, walk = !!phoneHooks.walkTo;
     return `<p class="ph-note">Pour changer de quartier : à pied, gratuit et à toute heure, même sans argent ni énergie ; ou en car rapide à la gare, plus vite mais payant.</p>
       ${walk && here && home && home !== here ? `<button type="button" class="ph-btn" data-walk="${home}">🚶 Rentrer chez moi à pied<small>${esc(HUB_NAMES[home].split(' · ')[0])} · ≈ ${walkMinutes(here, home)} min · gratuit</small></button>` : ''}
+      ${this.dealersHtml(here, walk)}
       ${phoneHooks.openPlaces ? '<button type="button" class="ph-btn" data-app="quartier">Choisir un repère à pied<small>Commerces, travail et lieux de rencontre du quartier</small></button>' : ''}
       ${[...HUB_IDS].sort((a, b) => Number(b === here) - Number(a === here)).map(h => {
         const leg = here && h !== here ? travelLeg(here, h) : null;
@@ -485,6 +486,18 @@ export class Phone {
           ${places?.length ? `<ul>${places.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '<p class="ph-note">Lieux à découvrir sur place.</p>'}
         </section>`;
       }).join('')}`;
+  }
+
+  /** « Concessionnaires »: every dealer of the city, in any district: mark it, and from another district walk there (free) with the marker kept. */
+  private dealersHtml(here: HubId | null, walk: boolean): string {
+    const rows = phoneHooks.dealers?.() ?? [], mark = phoneHooks.marked?.() ?? null;
+    if (!rows.length || !phoneHooks.markPlace) return '';
+    return `<h3>Concessionnaires · essai gratuit</h3><div class="ph-dealers">${rows.map(r => {
+      const marked = mark?.id === r.id, there = here === r.hub, leg = here && !there ? walkMinutes(here, r.hub) : 0;
+      const act = there ? (marked ? 'Retirer le repère' : 'Marquer') : walk ? `🚶 Y aller · ≈ ${leg} min · gratuit` : 'Marquer';
+      return `<div class="ph-dealer${marked ? ' on' : ''}"><span>${r.icon} <b>${esc(r.name)}</b><small>${esc(HUB_NAMES[r.hub].split(' · ')[0])} · ${esc(r.vehicle)} · ${r.owned ? 'à toi' : fcfa(r.price)} · essai gratuit</small></span>
+        <button type="button" class="ph-btn" data-dealer="${esc(r.id)}" data-hub="${r.hub}" data-name="${esc(r.name)}">${act}</button></div>`;
+    }).join('')}</div>`;
   }
 
   private arenaHtml(): string {
@@ -531,6 +544,13 @@ export class Phone {
       });
     }));
     s.querySelectorAll<HTMLElement>('[data-go]').forEach(b => b.addEventListener('click', () => { const k = b.dataset.go!; this.launch(() => phoneHooks.tonightGo?.(k)); }));
+    s.querySelectorAll<HTMLElement>('[data-dealer]').forEach(b => b.addEventListener('click', () => {
+      const id = b.dataset.dealer!, hub = b.dataset.hub as HubId, name = b.dataset.name ?? '', here = this.ctx.hub();
+      if (phoneHooks.marked?.()?.id === id && here === hub) { phoneHooks.markPlace?.(null); this.render(); return; }
+      phoneHooks.markPlace?.(id, hub, name);
+      if (here === hub || !phoneHooks.walkTo) { this.ctx.toast?.('Repère : ' + name); this.render(); return; }
+      this.launch(() => phoneHooks.walkTo?.(hub));                    // on foot to that district, the marker kept: it shows the way on arrival
+    }));
     s.querySelectorAll<HTMLElement>('[data-walk]').forEach(b => b.addEventListener('click', () => { const h = b.dataset.walk as HubId; this.launch(() => phoneHooks.walkTo?.(h)); }));
     s.querySelectorAll<HTMLButtonElement>('button[data-k]').forEach(b => b.addEventListener('click', () => this.calcKey(b.dataset.k!)));
     s.querySelectorAll<HTMLButtonElement>('button[data-q]').forEach(b => b.addEventListener('click', () => {
