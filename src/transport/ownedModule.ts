@@ -220,6 +220,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private returned = false;
   private parkedT = 0;
   private lookT = 0;
+  /** Seconds of game time this vehicle has been updated (debug: the checks' pilot reads yaw rates against it, the headless clock being slower than the wall's). */
+  private simT = 0;
   /** Paint (kit seed) of the vehicle in hand: the floor car's; saved when it is bought. 0: the catalogue's. */
   private seed = 0;
   /** Getting in through the driver's door: the door opens, the body slips onto the seat, the door shuts, then the engine starts (stepEntry). */
@@ -331,6 +333,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const r = assetsRevision(); if (r !== this.rev && this.hub) { this.rev = r; this.sync(); }   // bought or sold in « Biens »
     if (this.floor.length) this.watchFloor(ctx, dt);
     const m = this.vehicle; if (!m || !this.spec?.drive) return;
+    this.simT += dt;
     this.stepDoor(dt, m);
     if (this.box) this.box.parcel.visible = ctx.state.data.jobs.active?.stage === 'deliver';   // the run's parcel is in the box
     if (this.solidCheck) { this.solidCheck = false; this.setSolid(!this.driving); }
@@ -641,7 +644,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
           dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.lots ?? this.dealer.site.displays.length, onSale: this.dealer.sale ? this.dealer.sale.group.visible : null, card: !!this.dealer.card } : null,
           space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, views: this.spec?.cameras.map(c => c.id) ?? [], view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
-        at: () => this.vehicle ? { x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active } : null,
+        at: () => this.vehicle ? { t: +this.simT.toFixed(3), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active } : null,
         card: () => this.card?.text ?? '',
         /** Checks: the vehicle sounds (counts asked and played, whether the engine runs). */
         audio: () => vehicleAudio.info(),
