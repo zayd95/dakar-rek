@@ -52,7 +52,7 @@ await d(() => window.__dakar.act());
 await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
 const menu = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
 if (/Rendre/.test(menu)) await click('Rendre la voiture');
-else { await d(() => document.querySelector('#modal .item.close')?.click()); const s = await d(() => window.__dakar.sales.info()); await d(p => window.__dakar.place(p.x + 1.2, p.z + 0.2, 0), s); await page.waitForFunction(() => window.__dakar.focus()?.id === 'prestige:sales', null, T); await d(() => window.__dakar.act()); await page.waitForSelector('#modal.on', T); await click('Rendre la voiture'); }
+else { await d(() => document.querySelector('#modal .item.close')?.click()); const s = await d(() => window.__dakar.sales.info()); await d(p => window.__dakar.place(p.x + 1.2, p.z + 0.2, 0), s); await page.waitForFunction(() => window.__dakar.focus()?.id === 'prestige:sales', null, T).catch(async e => { console.log('FOCUS', JSON.stringify(await d(() => ({ focus: window.__dakar.focus(), pos: window.__dakar.pos(), sales: window.__dakar.sales.info(), m: document.querySelector('#modal.on')?.textContent ?? '' }))), menu.slice(0, 200)); throw e; }); await d(() => window.__dakar.act()); await page.waitForSelector('#modal.on', T); await click('Rendre la voiture'); }
 await page.waitForFunction(() => window.__dakar.berline.info().returned, null, T);
 await page.waitForTimeout(4000);
 const still = await B(), at1 = await AT();
