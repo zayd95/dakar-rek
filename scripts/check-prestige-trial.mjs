@@ -49,7 +49,8 @@ check('nothing was paid or saved', (await d(() => window.__dakar.state.wallet)) 
 await shot('1-left');
 
 // handed back at the salesperson: it stays put, in plain sight, for as long as it is on screen
-await page.waitForFunction(() => { const s = window.__dakar.sales.info(); return s.task === 'meet' && !s.moving; }, null, T);   // he walks over to the customer who left the car
+await page.waitForFunction(() => { const s = window.__dakar.sales.info(); return s.task === 'meet' && s.moving; }, null, T);   // he sets off...
+await page.waitForFunction(() => { const s = window.__dakar.sales.info(); return s.task === 'meet' && !s.moving; }, null, T);   // ...and arrives   // he walks over to the customer who left the car
 await d(() => window.__dakar.act());
 await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
 const menu = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
