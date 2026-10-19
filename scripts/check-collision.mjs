@@ -51,30 +51,32 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
   const s = await session(true);
   const save0 = await s.d(() => JSON.stringify([window.__dakar.state.data.counters, window.__dakar.state.data.ledger.length, window.__dakar.state.wallet]));
   const a0 = await s.au();
-  // ---- 1. a light bump
-  const bump = await onAWall(s, async c => {
-    await startAt(s, c, 8); await s.d(() => window.__dakar.car.boost(1.7));
+  // ---- 1. a hard hit, head on: this also finds a CLEAN wall (a run-up of 9 m that really arrives at speed, nothing else in the way) which every later step uses
+  const aH = await s.au(), nv0 = (await s.vib()).length;
+  const found = await onAWall(s, async c => {
+    await startAt(s, c, 9); await s.d(() => window.__dakar.car.boost(11));
     await s.page.waitForFunction(() => window.__dakar.car.feel().impacts.length > 0, null, { timeout: 25000 }).catch(() => {});
-    const f = await s.feel(); return f.impacts.length ? f : null;
+    await s.page.waitForTimeout(250);
+    const f = await s.feel(); return f.impacts.length && f.impacts[0].speed >= 9.5 ? f : null;
   });
-  const wall = bump?.c, fb = bump?.r, ab = await s.au(), vb = await s.vib();
-  check('a slow touch is a bump: a soft thud (a tap, not a crash), a tiny jolt, a short tick of the phone', !!fb && fb.impacts[0].kind === 'bump' && ab.count.tap > a0.count.tap && ab.count.impact === a0.count.impact && fb.shakePeak <= 0.2 && vb.length >= 1 && vb.every(v => typeof v.p === 'number' && v.p <= 20), JSON.stringify({ impacts: fb?.impacts, tap: ab.count.tap - a0.count.tap, shakePeak: fb?.shakePeak, vib: vb }));
-  if (!wall) { console.log('no wall found'); process.exit(1); }
-  // ---- 2. a hard hit, head on
-  await s.tr.tap('#ridepad .rp-view').catch(() => {});
-  await startAt(s, wall, 9); const aH = await s.au(), nv0 = (await s.vib()).length;
-  await s.d(() => window.__dakar.car.boost(11));
-  await s.page.waitForFunction(() => window.__dakar.car.feel().impacts.length > 0, null, { timeout: 25000 }).catch(() => {});
-  await s.page.waitForTimeout(250);
-  const fh = await s.feel(), sp = Math.abs((await s.at()).speed), ah = await s.au(), vh = (await s.vib()).slice(nv0);
+  if (!found) { console.log('FAIL: no clean wall found'); process.exit(1); }
+  const wall = found.c, fh = found.r, sp = Math.abs((await s.at()).speed), ah = await s.au(), vh = (await s.vib()).slice(nv0);
   const imp = fh.impacts[0];
   check('a hard hit is a crash: one impact of real strength, the speed is cut, the screen shakes and the camera lurches, the body is knocked', !!imp && imp.kind === 'hit' && imp.strength > 0.6 && imp.headOn && sp < 4 && fh.shakePeak >= 0.6 && fh.kickPeak >= 0.1 && ah.count.impact === aH.count.impact + 1, JSON.stringify({ imp, speedAfter: +sp.toFixed(2), shakePeak: fh.shakePeak, kickPeak: fh.kickPeak, crashes: ah.count.impact - aH.count.impact }));
-  const total = ms => ms.reduce((a, v) => a + [v.p].flat().reduce((x, y) => x + y, 0), 0);
-  check('and the phone gives a longer thump for it than for the bump', vh.length >= 1 && Array.isArray(vh[0].p) && total(vh) >= 60 && total(vh) > total(vb), JSON.stringify({ hit: vh.map(v => v.p), bump: vb.map(v => v.p) }));
   await s.page.screenshot({ path: `${out}/1-hit.png` });
+  // ---- 2. a light bump: a slow touch, from close
+  await s.simWait(1.0);
+  await startAt(s, wall, 3.4); const aB0 = await s.au(), nvb = (await s.vib()).length;
+  await s.d(() => window.__dakar.car.boost(1.7));
+  await s.page.waitForFunction(() => window.__dakar.car.feel().impacts.length > 0, null, { timeout: 25000 }).catch(() => {});
+  await s.page.waitForTimeout(250);
+  const fb = await s.feel(), ab = await s.au(), vb = (await s.vib()).slice(nvb);
+  check('a slow touch is a bump: a soft thud (a tap, not a crash), a tiny jolt, a short tick of the phone', fb.impacts.length === 1 && fb.impacts[0].kind === 'bump' && ab.count.tap === aB0.count.tap + 1 && ab.count.impact === aB0.count.impact && fb.shakePeak <= 0.2 && vb.length >= 1 && vb.every(v => typeof v.p === 'number' && v.p <= 20), JSON.stringify({ impacts: fb.impacts, tap: ab.count.tap - aB0.count.tap, shakePeak: fb.shakePeak, vib: vb.map(v => v.p) }));
+  const total = ms => ms.reduce((a, v) => a + [v.p].flat().reduce((x, y) => x + y, 0), 0);
+  check('and the phone gives a longer thump for the hit than for the bump', vh.length >= 1 && Array.isArray(vh[0].p) && total(vh) >= 60 && total(vh) > total(vb), JSON.stringify({ hit: vh.map(v => v.p), bump: vb.map(v => v.p) }));
   // ---- 3. a push against the wall, the gas held: one knock, the shake dies, nothing goes through
   await s.simWait(1.0);
-  await startAt(s, wall, 4); const aP = await s.au(), nvP = (await s.vib()).length;
+  await startAt(s, wall, 5); const aP = await s.au(), nvP = (await s.vib()).length;
   // the pad may have been left in reverse (the « R » of a car that stood still): the push is made in the forward gear
   const rev = () => s.d(() => document.querySelector('#ridepad .rp-rev')?.classList.contains('on') ?? false);
   const reverseWas = await rev(); if (reverseWas) { await s.tr.tap('#ridepad .rp-rev'); await s.page.waitForTimeout(300); }
