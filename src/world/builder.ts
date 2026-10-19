@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { HubId } from '../core/types';
 import { rng, pick } from '../core/rng';
-import { Batch, facadeTextures, signTexture } from './batch';
+import { Batch, facadeTextures, signTexture, signCanvasSize } from './batch';
 import { ACTIONS, ENTER } from './content';
 import type { Canopy, Collider, HubWorld, Interactable, RoadEdge } from './types';
 import { makeCarRapide } from '../actors/vehicles';
@@ -305,7 +305,8 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   /** Stepped climbs along radial lines (the arena's aisles, src/world/arenaModules.ts). */
   const climbs: Climb[] = [];
   const addSign = (text: string, bg: string, fg: string, x: number, y: number, z: number, rotY: number, w = 6, h = 1.5) => {
-    const tex = text.length > 18 ? signTexture(text, bg, fg, 768, 112) : signTexture(text, bg, fg);   // long names get a wider canvas so they never clip
+    const { width: canvasWidth, height: canvasHeight } = signCanvasSize(w, h);
+    const tex = signTexture(text, bg, fg, canvasWidth, canvasHeight); // no horizontal stretching of lettering
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: null, emissiveIntensity: 0 }));
     m.position.set(x, y, z); m.rotation.y = rotY; group.add(m); signs.push(m);
   };

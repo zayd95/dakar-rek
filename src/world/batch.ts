@@ -121,6 +121,19 @@ export function facadeTextures() {
   return { map, glow };
 }
 
+/**
+ * Canvas textures must have the same aspect ratio as their physical sign plane.
+ * Otherwise the GPU stretches letters (especially on long, narrow shop fronts).
+ * Keep the texture relatively small for mobile graphics memory.
+ */
+export function signCanvasSize(boardWidth: number, boardHeight: number): { width: number; height: number } {
+  const pixelsPerMetre = Math.min(96 / boardHeight, 1536 / boardWidth);
+  return {
+    width: Math.max(1, Math.round(boardWidth * pixelsPerMetre)),
+    height: Math.max(1, Math.round(boardHeight * pixelsPerMetre)),
+  };
+}
+
 export function signTexture(text: string, bg: string, fg: string, w = 256, h = 64): THREE.CanvasTexture {
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   const c = cv.getContext('2d')!;
