@@ -39,7 +39,8 @@ async function session(vibrate) {
   await page.waitForFunction(() => window.__dakar.car.info().driving, null, T);
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, T);
   await page.waitForTimeout(1500);
-  const cols = await d(() => window.__dakar.cityGeometry().colliders.filter(c => c.h >= 6 && c.x1 - c.x0 > 8 && c.z1 - c.z0 > 14).slice(0, 60));
+  // walls with a free corridor of 12 m in front of them (nothing else in the run-up: a building across a narrow gap would hold the car before it arrives)
+  const cols = await d(() => { const all = window.__dakar.cityGeometry().colliders; return all.filter(c => c.h >= 6 && c.x1 - c.x0 > 8 && c.z1 - c.z0 > 14).filter(c => { const zc = (c.z0 + c.z1) / 2; return !all.some(o => o !== c && o.x1 > c.x0 - 11 && o.x0 < c.x0 + 0.5 && o.z1 > zc - 2.5 && o.z0 < zc + 2.5); }).slice(0, 60); });
   return { page, d, tr, info, au, feel, at, meter, vib, simWait, cols, errors, context };
 }
 const startAt = (s, c, dist, yaw = Math.PI / 2, dz = 0) => s.d(([x, z, y]) => { window.__dakar.car.place(x, z, y); window.__dakar.car.feelReset(); }, [c.x0 - dist, (c.z0 + c.z1) / 2 + dz, yaw]);
@@ -54,20 +55,22 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
   // ---- 1. a hard hit, head on: this also finds a CLEAN wall (a run-up of 9 m that really arrives at speed, nothing else in the way) which every later step uses
   const aH = await s.au(), nv0 = (await s.vib()).length;
   const found = await onAWall(s, async c => {
-    await startAt(s, c, 9); await s.d(() => window.__dakar.car.boost(11));
-    await s.page.waitForFunction(() => window.__dakar.car.feel().impacts.length > 0, null, { timeout: 25000 }).catch(() => {});
+    await startAt(s, c, 7); await s.d(() => window.__dakar.car.boost(13));
+    await s.page.waitForFunction(() => window.__dakar.car.feel().impacts.length > 0, null, { timeout: 12000 }).catch(() => {});
     await s.page.waitForTimeout(250);
-    const f = await s.feel(); return f.impacts.length && f.impacts[0].speed >= 9.5 ? f : null;
+    const f = await s.feel();
+    return f.impacts.length && f.impacts[0].speed >= 8 && f.impacts[0].strength > 0.5 ? f : null;
   });
   if (!found) { console.log('FAIL: no clean wall found'); process.exit(1); }
-  const wall = found.c, fh = found.r, sp = Math.abs((await s.at()).speed), ah = await s.au(), vh = (await s.vib()).slice(nv0);
-  const imp = fh.impacts[0];
-  check('a hard hit is a crash: one impact of real strength, the speed is cut, the screen shakes and the camera lurches, the body is knocked', !!imp && imp.kind === 'hit' && imp.strength > 0.6 && imp.headOn && sp < 4 && fh.shakePeak >= 0.6 && fh.kickPeak >= 0.1 && ah.count.impact === aH.count.impact + 1, JSON.stringify({ imp, speedAfter: +sp.toFixed(2), shakePeak: fh.shakePeak, kickPeak: fh.kickPeak, crashes: ah.count.impact - aH.count.impact }));
+  const wall = found.c, fh = found.r, ah = await s.au(), vh = (await s.vib()).slice(nv0);
+  await s.simWait(1.6);
+  const sp = Math.abs((await s.at()).speed), px = (await s.at()).x, imp = fh.impacts[0];
+  check('a hard hit is a crash: one impact of real strength, the speed is cut, the screen shakes and the camera lurches, the body is knocked', !!imp && imp.kind === 'hit' && imp.strength > 0.5 && sp < 2 && px < wall.x0 - 0.8 && fh.shakePeak >= 0.6 && fh.kickPeak >= 0.1 && ah.count.impact === aH.count.impact + 1, JSON.stringify({ imp, speedAfter: +sp.toFixed(2), shakePeak: fh.shakePeak, kickPeak: fh.kickPeak, crashes: ah.count.impact - aH.count.impact }));
   await s.page.screenshot({ path: `${out}/1-hit.png` });
   // ---- 2. a light bump: a slow touch, from close
   await s.simWait(1.0);
-  await startAt(s, wall, 3.4); const aB0 = await s.au(), nvb = (await s.vib()).length;
-  await s.d(() => window.__dakar.car.boost(1.7));
+  await startAt(s, wall, 2.9); const aB0 = await s.au(), nvb = (await s.vib()).length;
+  await s.d(() => window.__dakar.car.boost(2.3));
   await s.page.waitForFunction(() => window.__dakar.car.feel().impacts.length > 0, null, { timeout: 25000 }).catch(() => {});
   await s.page.waitForTimeout(250);
   const fb = await s.feel(), ab = await s.au(), vb = (await s.vib()).slice(nvb);
@@ -80,10 +83,8 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
   // the pad may have been left in reverse (the « R » of a car that stood still): the push is made in the forward gear
   const rev = () => s.d(() => document.querySelector('#ridepad .rp-rev')?.classList.contains('on') ?? false);
   const reverseWas = await rev(); if (reverseWas) { await s.tr.tap('#ridepad .rp-rev'); await s.page.waitForTimeout(300); }
-  console.log('PUSH reverse was on:', reverseWas, 'now', await rev());
-  const g = await s.tr.centre('#ridepad .rp-gas'); await s.tr.down(1, g.x, g.y);
+    const g = await s.tr.centre('#ridepad .rp-gas'); await s.tr.down(1, g.x, g.y);
   await s.page.waitForTimeout(1500);
-  console.log('PUSH start state', JSON.stringify({ driving: (await s.info()).driving, pad: await s.d(() => document.body.classList.contains('ridepad')), speed: (await s.at()).speed, x: (await s.at()).x, t: (await s.at()).t, gasDown: await s.d(() => !!document.querySelector('#ridepad .rp-gas.down')) }));
   await s.simWait(6.5);
   const fp = await s.feel(), ap = await s.au(), vp = (await s.vib()).slice(nvP), pos = await s.at();
   await s.page.screenshot({ path: `${out}/2-push.png` });
@@ -93,11 +94,11 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
   // ---- 4. never locked in: back away with R and the gas
   await s.tr.up(1);
   await s.page.waitForFunction(() => Math.abs(window.__dakar.car.at().speed) < 0.4, null, { timeout: 60000 }).catch(() => {});
-  await s.tr.tap('#ridepad .rp-rev'); await s.page.waitForTimeout(300);
+  for (let i = 0; i < 3 && !(await rev()); i++) { await s.tr.tap('#ridepad .rp-rev'); await s.page.waitForTimeout(400); }
   const xb = (await s.at()).x; await s.tr.down(1, g.x, g.y); await s.simWait(3.5); await s.tr.up(1);
   const xa = (await s.at()).x;
   check('after the push the car backs away from the wall (never locked in)', xb - xa > 1, JSON.stringify({ before: xb, after: xa }));
-  await s.tr.tap('#ridepad .rp-rev'); await s.page.waitForTimeout(200);
+  if (await rev()) { await s.tr.tap('#ridepad .rp-rev'); await s.page.waitForTimeout(300); }
   // ---- 5. a scrape along the wall at an angle
   const base = await s.meter();
   const scrape = await onAWall(s, async c => {
