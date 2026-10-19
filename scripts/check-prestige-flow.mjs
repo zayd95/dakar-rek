@@ -102,9 +102,9 @@ const trial = await B();
 check('it is a free trial: nothing paid, nothing owned, nothing saved', trial.trial && !trial.owned && !trial.record && (await d(() => window.__dakar.state.wallet)) === 200000000, JSON.stringify({ trial: trial.trial, owned: trial.owned, record: trial.record }));
 // the lane is the middle of the road: the kerb lane (4.3 m off the centre line) is where the hub parks its cars
 const LAP = [
-  { x: -88.3, z: 12, tol: 3 }, { x: -86.5, z: 6.5, tol: 2.2, speed: 6 }, { x: -76, z: 2.6, tol: 3, speed: 8 }, { x: -62.5, z: 4, tol: 3, speed: 8 }, { x: -60.4, z: 12, tol: 3 }, { x: -60.4, z: 24, tol: 4 }, { x: -60.4, z: 50, tol: 4 },
-  { x: -63, z: 58.8, tol: 3.5, speed: 7 }, { x: -76, z: 59.6, tol: 4 }, { x: -112, z: 59.6, tol: 4 }, { x: -119, z: 52, tol: 3.5, speed: 7 }, { x: -119.8, z: 40, tol: 4 }, { x: -119.8, z: 14, tol: 4 },
-  { x: -114, z: 3, tol: 3.5, speed: 7 }, { x: -100, z: 2.4, tol: 3 }, { x: -92, z: 10.5, tol: 2.2, speed: 5 },
+  { x: -88.3, z: 12, tol: 3 }, { x: -86.5, z: 6.5, tol: 2.2, speed: 6 }, { x: -76, z: 2.6, tol: 3, speed: 6 }, { x: -62.5, z: 4, tol: 3, speed: 6 }, { x: -60.4, z: 12, tol: 3 }, { x: -60.4, z: 24, tol: 4 }, { x: -60.4, z: 50, tol: 4 },
+  { x: -63, z: 58.8, tol: 3.5, speed: 5 }, { x: -76, z: 59.6, tol: 4 }, { x: -112, z: 59.6, tol: 4 }, { x: -119, z: 52, tol: 3.5, speed: 5 }, { x: -119.8, z: 40, tol: 4 }, { x: -119.8, z: 14, tol: 4 },
+  { x: -114, z: 3, tol: 3.5, speed: 5 }, { x: -100, z: 2.4, tol: 3 }, { x: -92, z: 10.5, tol: 2.2, speed: 5 },
 ];
 await pilot(page, t, 'berline', LAP.slice(0, 5));
 await shot('10-out-on-the-road');

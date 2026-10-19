@@ -64,7 +64,7 @@ export async function walkTo(page, t, x, z, { tol = 0.5, ms = 90000, finger = 3 
  * the stick steers toward the next point (the car's own heading error), each point is done within `tol` m. A stall (no progress for `stall` ms) moves on to the next point.
  * Lifts both fingers at the end (`brakeAtEnd`: then holds the brake until the car has stopped). Returns the car's last `at()`.
  */
-export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stall = 12000, brakeAtEnd = false, cruise = 8.5 } = {}) {
+export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stall = 12000, brakeAtEnd = false, cruise = 6 } = {}) {
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
   const gas = await t.centre('#ridepad .rp-gas'), j = await t.centre('#joy'), r = 30, t0 = Date.now();
   let gasOn = false;
@@ -80,7 +80,7 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
       if (d < (w.tol ?? tol)) break;
       if (d < best - 0.3) { best = d; lastGain = Date.now(); } else if (Date.now() - lastGain > stall) break;
       // pure pursuit: aim at a point 9 m ahead of the car's nearest point on the segment from the last waypoint to this one (the car holds the lane, it does not cut the corner)
-      const sx = w.x - prev.x, sz = w.z - prev.z, sl = Math.hypot(sx, sz) || 1, u = Math.max(0, Math.min(sl, ((at.x - prev.x) * sx + (at.z - prev.z) * sz) / sl)), look = Math.min(sl, u + 12);
+      const sx = w.x - prev.x, sz = w.z - prev.z, sl = Math.hypot(sx, sz) || 1, u = Math.max(0, Math.min(sl, ((at.x - prev.x) * sx + (at.z - prev.z) * sz) / sl)), look = Math.min(sl, u + 10);
       const aim = { x: prev.x + (sx / sl) * look, z: prev.z + (sz / sl) * look };
       const err = wrap(Math.atan2(aim.x - at.x, aim.z - at.z) - at.yaw), steer = Math.max(-1, Math.min(1, -err * 0.85));   // the stick to the right turns the car to the right: its yaw falls
       await t.move(2, j.x + steer * r, j.y, 1);
