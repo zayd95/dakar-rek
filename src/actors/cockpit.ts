@@ -27,7 +27,7 @@ const shared = () => material ??= Object.assign(new THREE.MeshLambertMaterial({ 
 
 export function buildCockpit(spec: VehicleSpec): Cockpit {
   const [sx, sy, sz] = spec.controls.steering;
-  const hw = spec.width / 2 - 0.1, top = spec.height, trim = 0x5a5b62, dash = 0x5a5b62, liner = 0xb9b7b0, dark = 0x2a2b2f, ez = spec.cameras.driver.pos[2];
+  const hw = spec.width / 2 - 0.1, top = spec.height, trim = 0x5a5b62, dash = 0x5a5b62, liner = 0x8c8b87, dark = 0x2a2b2f, ez = spec.cameras.driver.pos[2];
   const geos: THREE.BufferGeometry[] = [];
   // dashboard across the car, a hood over the instruments in front of the driver, a glove-box side
   geos.push(box(2 * hw, 0.12, 0.45, 0, sy - 0.2, sz + 0.14, dash), box(0.56, 0.08, 0.24, sx, sy - 0.1, sz + 0.1, trim), box(0.46, 0.04, 0.02, sx, sy - 0.12, sz - 0.02, 0x0c0d0f));

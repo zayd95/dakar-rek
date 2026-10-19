@@ -384,14 +384,15 @@ export class OwnedVehicleModule implements GameModule {
     const sc = w((lo + hi) / 2, lat(4.9)); slab.position.set(sc.x, 0.135, sc.z); slab.rotation.y = yaw;
     const roofLen = 5.2, roofC = w(-1.5, lat(6.4));                                    // clear of the pole sign at +2.4
     const roof = mesh(new THREE.BoxGeometry(roofLen, 0.12, 2.6), new THREE.MeshLambertMaterial({ color: o.bg }));
-    roof.position.set(roofC.x, 3.1, roofC.z); roof.rotation.y = yaw;
-    const fascia = mesh(new THREE.BoxGeometry(roofLen, roofLen / 3 * 0.62, 0.06), new THREE.MeshLambertMaterial({ map: sign }));
-    const fc = w(-1.5, lat(5.1)); fascia.position.set(fc.x, 3.1 + 0.06 + roofLen / 3 * 0.31, fc.z); fascia.rotation.y = Math.atan2(-nx, -nz);   // faces the road
-    const post = new THREE.BoxGeometry(0.1, 3.05, 0.1), postMat = new THREE.MeshLambertMaterial({ color: 0x3b3f46 });
+    roof.position.set(roofC.x, 3.7, roofC.z); roof.rotation.y = yaw;
+    const plain = new THREE.MeshLambertMaterial({ color: o.bg }), face = new THREE.MeshLambertMaterial({ map: sign });
+    const fascia = mesh(new THREE.BoxGeometry(roofLen, roofLen / 3 * 0.62, 0.06), plain); fascia.material = [plain, plain, plain, plain, face, plain];   // the sign on the road side only; high, above the follow camera
+    const fc = w(-1.5, lat(5.1)); fascia.position.set(fc.x, 3.7 + 0.06 + roofLen / 3 * 0.31, fc.z); fascia.rotation.y = Math.atan2(-nx, -nz);   // faces the road
+    const post = new THREE.BoxGeometry(0.1, 3.6, 0.1), postMat = new THREE.MeshLambertMaterial({ color: 0x3b3f46 });
     // the posts stand at the back, against the buildings, clear of the cars at the kerb; solid like the desk
     for (const a of [-1.5 - roofLen / 2 + 0.15, -1.5 + roofLen / 2 - 0.15]) {
-      const p = mesh(post, postMat), q = w(a, lat(7.3)); p.position.set(q.x, 0.12 + 1.525, q.z);
-      hub.colliders.push({ x0: q.x - 0.12, x1: q.x + 0.12, z0: q.z - 0.12, z1: q.z + 0.12, h: 3.2 });
+      const p = mesh(post, postMat), q = w(a, lat(7.3)); p.position.set(q.x, 0.12 + 1.8, q.z);
+      hub.colliders.push({ x0: q.x - 0.12, x1: q.x + 0.12, z0: q.z - 0.12, z1: q.z + 0.12, h: 3.7 });
     }
   }
 
