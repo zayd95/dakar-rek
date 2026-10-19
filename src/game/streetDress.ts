@@ -32,13 +32,13 @@ const BOARDS: { big: string; sub: string; bg: string; fg: string; accent: string
 ];
 const WALL: { t: string; s?: string; bg: string; fg: string }[] = [
   { t: 'ALIMENTATION', s: 'GÉNÉRALE', bg: '#d8b24a', fg: '#2b1d10' },
-  { t: 'MULTISERVICES', bg: '#4f8f8a', fg: '#fdf6e4' },
+  { t: 'ESPACE SERVICES', s: 'Crédit · Factures', bg: '#4f8f8a', fg: '#fdf6e4' },
   { t: 'COUTURE', s: 'Modèles sur mesure', bg: '#b4533c', fg: '#fdf0d4' },
-  { t: 'TÉLÉCENTRE', s: 'Crédit · Transfert', bg: '#e9e1c8', fg: '#a1321f' },
-  { t: 'BOUTIQUE', bg: '#5c8a4f', fg: '#fdf6e4' },
-  { t: 'QUINCAILLERIE', bg: '#3f6f9e', fg: '#fdf6e4' },
+  { t: 'MULTISERVICE', s: 'Wave · Orange Money', bg: '#e9e1c8', fg: '#a1321f' },
+  { t: 'CHEZ ABDOU', s: 'Boutique · Alimentation', bg: '#5c8a4f', fg: '#fdf6e4' },
+  { t: 'QUINCAILLERIE', s: 'Ciment · Fer · Peinture', bg: '#3f6f9e', fg: '#fdf6e4' },
   { t: 'COIFFURE', s: 'Hommes · Dames', bg: '#7b4a8a', fg: '#fdf3d8' },
-  { t: 'CYBER · IMPRESSION', bg: '#2f2f35', fg: '#f4d35e' },
+  { t: 'CYBER', s: 'Impression · Photocopie', bg: '#2f2f35', fg: '#f4d35e' },
 ];
 const PLATES: Record<HubId, string[]> = {
   plateau: ['RUE SANDAGA', 'RUE 11 × RUE 24', 'AV. DE LA LIBERTÉ', 'RUE DU MARCHÉ'],
@@ -227,7 +227,7 @@ export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid:
     const y = 0.12, yaw = rot(s), body = SUN[Math.floor(R() * SUN.length)];
     P.box(1.9, 2.1, 1.1, f.cx, y, f.cz, body, yaw);
     const front = at(s, off, 0, -0.56), sign = A.wall[Math.floor(R() * A.wall.length)];
-    P.board(1.7, 0.55, 0.06, front.x, y + 1.55, front.z, 0xffffff, sign, yaw);
+    P.board(1.7, 1.7 / (CELL.w / CELL.h), 0.06, front.x, y + 1.55, front.z, 0xffffff, sign, yaw);   // the board has its cell's proportions: no stretched letter
     const awn = at(s, off, 0, -0.95); P.box(2.1, 0.07, 0.8, awn.x, y + 1.35, awn.z, 0xefe7d3, yaw);
     const cnt = at(s, off, 0, -0.62); P.box(1.5, 0.12, 0.4, cnt.x, y + 0.85, cnt.z, 0x6b4a2e, yaw);
     return { r: f.r, h: 2.1 };
@@ -253,7 +253,7 @@ export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid:
     if (!ok(f.cx, f.cz, 16) || !free(f.r)) return null;
     const y = 0.12, yaw = rot(s), ad = A.board[Math.floor(R() * A.board.length)];
     for (const a of [-1.9, 1.9]) { const p = at(s, off, a, 0); P.box(0.22, 3.7, 0.22, p.x, y, p.z, 0x55585c, yaw); }
-    P.board(4.8, 2.3, 0.18, f.cx, y + 3.55, f.cz, 0xffffff, ad, yaw);
+    P.board(4.6, 2.3, 0.18, f.cx, y + 3.55, f.cz, 0xffffff, ad, yaw);                                      // 2 : 1, like the 512 × 256 cell
     // only the posts are solid (the pavement under the board is walkable)
     const px = at(s, off, -1.9, 0), qx = at(s, off, 1.9, 0);
     const post = (p: { x: number; z: number }) => ({ x0: p.x - 0.18, x1: p.x + 0.18, z0: p.z - 0.18, z1: p.z + 0.18 });
@@ -280,10 +280,10 @@ export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid:
     P.box(0.1, 2.9, 0.1, c.x, y, c.z, 0x4a4d52);
     const rect = plates[np % plates.length];
     // one plate along each road meeting at the corner (the plate's face looks along the road, towards whoever walks it)
-    P.board(1.0, 0.32, 0.04, c.x, y + 2.45, c.z + 0.07, 0xffffff, rect, 0);
-    P.board(1.0, 0.32, 0.04, c.x, y + 2.45, c.z - 0.07, 0xffffff, rect, Math.PI);
-    P.board(1.0, 0.32, 0.04, c.x + 0.07, y + 2.1, c.z, 0xffffff, plates[(np + 1) % plates.length], Math.PI / 2);
-    P.board(1.0, 0.32, 0.04, c.x - 0.07, y + 2.1, c.z, 0xffffff, plates[(np + 1) % plates.length], -Math.PI / 2);
+    P.board(1.0, 1.0 / (CELL.w / CELL.h), 0.04, c.x, y + 2.45, c.z + 0.07, 0xffffff, rect, 0);
+    P.board(1.0, 1.0 / (CELL.w / CELL.h), 0.04, c.x, y + 2.45, c.z - 0.07, 0xffffff, rect, Math.PI);
+    P.board(1.0, 1.0 / (CELL.w / CELL.h), 0.04, c.x + 0.07, y + 2.1, c.z, 0xffffff, plates[(np + 1) % plates.length], Math.PI / 2);
+    P.board(1.0, 1.0 / (CELL.w / CELL.h), 0.04, c.x - 0.07, y + 2.1, c.z, 0xffffff, plates[(np + 1) % plates.length], -Math.PI / 2);
     taken.push(r); hub.colliders.push({ ...r, h: 2.9 }); items.push({ kind: 'plate', x: c.x, z: c.z }); np++;
   }
 

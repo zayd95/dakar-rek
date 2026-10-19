@@ -134,15 +134,45 @@ export function signCanvasSize(boardWidth: number, boardHeight: number): { width
   };
 }
 
+/** Paints a sign into `cv` at its own size and returns what it painted: the font size, and the measured width of the line (letter-spaced if it was). */
+function paintSignCanvas(cv: HTMLCanvasElement, text: string, bg: string, fg: string): { size: number; width: number } {
+  const w = cv.width, h = cv.height, c = cv.getContext('2d')!;
+  c.fillStyle = bg; c.fillRect(0, 0, w, h);
+  c.strokeStyle = fg; c.lineWidth = Math.max(3, Math.round(h / 28)); c.strokeRect(4, 4, w - 8, h - 8);
+  c.fillStyle = fg; c.textBaseline = 'middle';
+  const pad = Math.max(12, Math.round(h * 0.28)), font = (s: number) => `800 ${s}px system-ui, sans-serif`;
+  let size = Math.round(h * 0.6); c.font = font(size);
+  while (c.measureText(text).width > w - 2 * pad && size > 8) { size -= 1; c.font = font(size); }
+  const glyphs = [...text], base = c.measureText(text).width;
+  // a long, low board with a short name (« BOUTIQUE DIALLO » on 16 m): the letters keep their shape and are spaced out, never stretched
+  const track = glyphs.length > 1 && w / h > 7 ? Math.max(0, Math.min(size * 0.3, (w * 0.62 - base) / (glyphs.length - 1))) : 0;
+  if (track > 0.5) {
+    c.textAlign = 'left';
+    let x = (w - base - track * (glyphs.length - 1)) / 2;
+    for (const g of glyphs) { c.fillText(g, x, h / 2 + 2); x += c.measureText(g).width + track; }
+  } else { c.textAlign = 'center'; c.fillText(text, w / 2, h / 2 + 2); }
+  return { size, width: base + track * Math.max(0, glyphs.length - 1) };
+}
+
 export function signTexture(text: string, bg: string, fg: string, w = 256, h = 64): THREE.CanvasTexture {
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-  const c = cv.getContext('2d')!;
-  c.fillStyle = bg; c.fillRect(0, 0, w, h);
-  c.strokeStyle = fg; c.lineWidth = 3; c.strokeRect(4, 4, w - 8, h - 8);
-  c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle';
-  let size = Math.round(h * 0.53); c.font = `800 ${size}px system-ui, sans-serif`;
-  while (c.measureText(text).width > w - 24 && size > 12) { size -= 2; c.font = `800 ${size}px system-ui, sans-serif`; }
-  c.fillText(text, w / 2, h / 2 + 2);
+  const { size, width } = paintSignCanvas(cv, text, bg, fg);
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  t.userData.sign = { text, bg, fg, size, w, h, width };   // read by refitSign and by the signage audit (scripts/check-pikine-signs.mjs)
   return t;
+}
+
+/**
+ * A sign painted by `signTexture` at a size chosen by its caller may sit on a plane of other proportions (a 512 × 128 canvas on a
+ * 7 m × 0.95 m board): repaint it at the plane's own proportions so the letters are never stretched. True when it was repainted.
+ */
+export function refitSign(t: THREE.Texture, planeW: number, planeH: number): boolean {
+  const info = t.userData.sign as { text: string; bg: string; fg: string; w: number; h: number } | undefined;
+  if (!info || !(t.image instanceof HTMLCanvasElement) || Math.abs(info.w / info.h / (planeW / planeH) - 1) <= 0.02) return false;
+  const { width, height } = signCanvasSize(planeW, planeH), cv = t.image;
+  cv.width = width; cv.height = height;
+  const { size, width: tw } = paintSignCanvas(cv, info.text, info.bg, info.fg);
+  t.userData.sign = { ...info, size, w: width, h: height, width: tw };
+  t.needsUpdate = true;
+  return true;
 }
