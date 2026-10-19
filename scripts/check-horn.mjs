@@ -19,7 +19,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? 
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
 const page = await context.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));
 const d = (fn, arg) => page.evaluate(fn, arg), info = () => d(() => window.__dakar.car.info()), au = () => d(() => window.__dakar.car.audio()), meter = () => d(() => window.__dakar.car.audioMeter()), tr = await realTouch(page);
-await page.goto(`${base}?debug&touch&heure=11&audiodebug`, { timeout: 120000 });
+await page.goto(`${base}?debug&touch&heure=11&audiodebug&klaxon`, { timeout: 120000 });
 await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
 check('before any touch the page may not make sound (the rule an iPhone applies)', !(await au()).gestured && (await au()).state === 'none', JSON.stringify(await au()));
 

@@ -1,52 +1,24 @@
 {
- "car-idle-a": {
+ "car-idle": {
   "seconds": 7.8,
   "bytes": 47349,
   "loop": true,
   "source": "Kenney racing/audio/engine.ogg",
   "sha256": "c737691d9d945964"
  },
- "car-rev-a": {
+ "car-rev": {
   "seconds": 3.298,
   "bytes": 20349,
   "loop": true,
   "source": "pmndrs racing-game/public/sounds/engine.mp3",
   "sha256": "fc1a359c7e6719c9"
  },
- "car-idle-b": {
-  "seconds": 2.816,
-  "bytes": 17541,
-  "loop": true,
-  "source": "OGA car-sound-effects-pack-low-quality / Car_Engine_Loop.ogg",
-  "sha256": "bf27e1e23e213e36"
- },
- "car-rev-b": {
-  "seconds": 3.835,
-  "bytes": 23589,
-  "loop": true,
-  "source": "OGA car-sound-effects-pack-low-quality / Car_Engine_Loop_2.ogg",
-  "sha256": "b0c9a007673d0fb4"
- },
- "moto-idle-a": {
+ "moto-idle": {
   "seconds": 7.811,
   "bytes": 47349,
   "loop": true,
   "source": "Kenney racing/audio/engine-motorcycle.ogg",
   "sha256": "7687ce29987caacd"
- },
- "moto-idle-b": {
-  "seconds": 7.75,
-  "bytes": 54981,
-  "loop": true,
-  "source": "OGA engines-startup-idle-rev / 090912-022.mp3 0.3-8.3 s (dklon, CC-BY-SA 3.0)",
-  "sha256": "50b81d845e38f68b"
- },
- "moto-rev-b": {
-  "seconds": 2.4,
-  "bytes": 17433,
-  "loop": true,
-  "source": "OGA engines-startup-idle-rev / 090912-022.mp3 9.0-11.6 s (dklon, CC-BY-SA 3.0)",
-  "sha256": "e0facb45c62d161d"
  },
  "start-car": {
   "seconds": 1.947,
@@ -55,13 +27,6 @@
   "source": "OGA car-sound-effects-pack-low-quality / Car_Engine_Start_Up.ogg",
   "sha256": "f251da7aea7bb34c"
  },
- "start-moto": {
-  "seconds": 2.0,
-  "bytes": 14661,
-  "loop": false,
-  "source": "OGA engines-startup-idle-rev / 090912-002.mp3 1.0-3.0 s (dklon, CC-BY-SA 3.0)",
-  "sha256": "275c932f0e49b3a0"
- },
  "horn-car": {
   "seconds": 2.9,
   "bytes": 23867,
@@ -69,82 +34,12 @@
   "source": "pmndrs racing-game/public/sounds/honk.mp3",
   "sha256": "932c175956df7311"
  },
- "horn-moto-a": {
+ "horn-moto": {
   "seconds": 2.9,
   "bytes": 23867,
   "loop": true,
   "source": "pmndrs racing-game/public/sounds/honk.mp3 (pitched x1.5, lower reed removed)",
   "sha256": "b5f2895c70455666"
- },
- "horn-moto-b": {
-  "seconds": 0.32,
-  "bytes": 3178,
-  "loop": true,
-  "source": "OGA car-sound-effects-pack-low-quality / Car_Horn.ogg 0.06-0.46 s",
-  "sha256": "2a6254eae41f809a"
- },
- "thud-1": {
-  "seconds": 0.456,
-  "bytes": 4223,
-  "loop": false,
-  "source": "OGA 75-cc0-breaking-falling-hit-sfx / bfh1_hit_07.ogg",
-  "sha256": "c21f0f5a1375ceaa"
- },
- "thud-2": {
-  "seconds": 0.797,
-  "bytes": 6940,
-  "loop": false,
-  "source": "OGA 75-cc0-breaking-falling-hit-sfx / bfh1_hit_02.ogg",
-  "sha256": "7d4d5627d1cdc350"
- },
- "thud-3": {
-  "seconds": 0.418,
-  "bytes": 3805,
-  "loop": false,
-  "source": "OGA metal-impact-sounds / thud3.wav",
-  "sha256": "f71af6b4f3f5121d"
- },
- "metal-1": {
-  "seconds": 0.55,
-  "bytes": 5059,
-  "loop": false,
-  "source": "OGA 75-cc0-breaking-falling-hit-sfx / bfh1_metal_hit_02.ogg",
-  "sha256": "2327a12ed7a3a5fb"
- },
- "metal-2": {
-  "seconds": 0.46,
-  "bytes": 4223,
-  "loop": false,
-  "source": "OGA 75-cc0-breaking-falling-hit-sfx / bfh1_metal_hit_03.ogg",
-  "sha256": "0121d8a991592745"
- },
- "metal-3": {
-  "seconds": 0.371,
-  "bytes": 3596,
-  "loop": false,
-  "source": "OGA 75-cc0-breaking-falling-hit-sfx / bfh1_metal_hit_06.ogg",
-  "sha256": "7bd40dda501be699"
- },
- "metal-4": {
-  "seconds": 0.406,
-  "bytes": 3805,
-  "loop": false,
-  "source": "OGA 75-cc0-breaking-falling-hit-sfx / bfh1_metal_hit_04.ogg",
-  "sha256": "d4a50405c052bc56"
- },
- "clink-1": {
-  "seconds": 0.255,
-  "bytes": 2551,
-  "loop": false,
-  "source": "OGA metal-impact-sounds / clink2.wav",
-  "sha256": "ef68592007aeea18"
- },
- "clink-2": {
-  "seconds": 0.29,
-  "bytes": 2969,
-  "loop": false,
-  "source": "OGA metal-impact-sounds / clink3.wav",
-  "sha256": "a1713b2e0c5e4522"
  },
  "crash": {
   "seconds": 1.817,
@@ -153,47 +48,12 @@
   "source": "pmndrs racing-game/public/sounds/crash.mp3",
   "sha256": "ec5dcda88ffbc728"
  },
- "crash-2": {
-  "seconds": 0.584,
-  "bytes": 5268,
+ "thud": {
+  "seconds": 0.654,
+  "bytes": 5895,
   "loop": false,
-  "source": "OGA crash-collision / qubodup-crash.ogg",
-  "sha256": "e4fd554a4eb4c8f6"
- },
- "rattle": {
-  "seconds": 0.741,
-  "bytes": 6522,
-  "loop": false,
-  "source": "OGA 75-cc0-breaking-falling-hit-sfx / bfh1_metal_falling_02.ogg",
-  "sha256": "dde310cafb026324"
- },
- "scrape-1": {
-  "seconds": 1.144,
-  "bytes": 9657,
-  "loop": false,
-  "source": "OGA scrapes / scrape-1.ogg",
-  "sha256": "97324bdc40c0521c"
- },
- "scrape-2": {
-  "seconds": 1.285,
-  "bytes": 10910,
-  "loop": false,
-  "source": "OGA scrapes / scrape-2.ogg",
-  "sha256": "e611f81d6e7acd56"
- },
- "scrape-3": {
-  "seconds": 1.4,
-  "bytes": 11746,
-  "loop": false,
-  "source": "OGA scrapes / scrape-4.ogg",
-  "sha256": "20a919351bc8e9b1"
- },
- "scrape-4": {
-  "seconds": 1.33,
-  "bytes": 11119,
-  "loop": false,
-  "source": "OGA scrapes / scrape-7.ogg",
-  "sha256": "84f8cab706d07210"
+  "source": "Kenney racing/audio/impact.ogg",
+  "sha256": "804bbfb7194d20ec"
  },
  "squeal": {
   "seconds": 3.387,

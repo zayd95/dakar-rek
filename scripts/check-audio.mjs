@@ -16,7 +16,7 @@ async function session(muted) {
   if (muted) await context.addInitScript(() => localStorage.setItem('dakarrek.sound', 'off'));
   const page = await context.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));
   const d = (fn, arg) => page.evaluate(fn, arg), tr = await realTouch(page);
-  await page.goto(`${base}?debug&touch&heure=11&argent=50000000`, { timeout: 120000 });
+  await page.goto(`${base}?debug&touch&heure=11&argent=50000000&klaxon`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
   await d(() => window.__dakar.teleport('plateau'));
   await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.car?.info().dealer, null, T);

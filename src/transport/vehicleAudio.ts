@@ -14,8 +14,8 @@ import { SampleBank, type SampleName } from './vehicleSamples';
 export interface EngineProfile {
   /** The two recorded loops: the idle one and the one that takes over as the revs climb. */
   idle: SampleName; rev: SampleName;
-  /** The recorded ignition, and the second at which the engine catches in it (the loops fade in there). */
-  start: SampleName; catchAt: number;
+  /** The recorded ignition, its playback rate (the motorbike\'s is the same recording pitched up), and the second at which the engine catches in it (the loops fade in there). */
+  start: SampleName; startRate: number; catchAt: number;
   /** Playback rate of each loop at the lowest and the highest revs (the loop's pitch follows the revs), and the revs (0…1) over which the idle loop hands over to the high one. */
   idleRate: [number, number]; revRate: [number, number]; xf: [number, number];
   /** Gears: the revs fall each time the car passes a gear's top. */
@@ -26,10 +26,10 @@ export interface EngineProfile {
   hp: number; lpIdle: number; lpTop: number; air: number; excite: number;
 }
 export const PROFILES: Record<'sedan' | 'luxury' | 'suv' | 'moto', EngineProfile> = {
-  sedan: { idle: 'car-idle-a', rev: 'car-rev-a', start: 'start-car', catchAt: 0.8, idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, hp: 40, lpIdle: 2400, lpTop: 6500, air: 3, excite: 0.35 },
-  luxury: { idle: 'car-idle-a', rev: 'car-rev-a', start: 'start-car', catchAt: 0.8, idleRate: [0.8, 1.35], revRate: [0.85, 1.55], xf: [0.35, 0.8], gears: 5, level: 0.9, hp: 40, lpIdle: 1700, lpTop: 4600, air: 2, excite: 0.3 },
-  suv: { idle: 'car-idle-a', rev: 'car-rev-a', start: 'start-car', catchAt: 0.8, idleRate: [0.7, 1.3], revRate: [0.75, 1.55], xf: [0.3, 0.7], gears: 4, level: 1, hp: 32, lpIdle: 1900, lpTop: 5200, air: 3, excite: 0.45 },
-  moto: { idle: 'moto-idle-a', rev: 'car-rev-a', start: 'start-moto', catchAt: 0.7, idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, hp: 230, lpIdle: 3800, lpTop: 8000, air: 6, excite: 0.5 },
+  sedan: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, hp: 40, lpIdle: 2400, lpTop: 6500, air: 3, excite: 0.35 },
+  luxury: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.8, 1.35], revRate: [0.85, 1.55], xf: [0.35, 0.8], gears: 5, level: 0.9, hp: 40, lpIdle: 1700, lpTop: 4600, air: 2, excite: 0.3 },
+  suv: { start: 'start-car', startRate: 0.92, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.7, 1.3], revRate: [0.75, 1.55], xf: [0.3, 0.7], gears: 4, level: 1, hp: 32, lpIdle: 1900, lpTop: 5200, air: 3, excite: 0.45 },
+  moto: { start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, hp: 230, lpIdle: 3800, lpTop: 8000, air: 6, excite: 0.5 },
 };
 export const profileFor = (kit: string): EngineProfile => PROFILES[(kit in PROFILES ? kit : 'sedan') as keyof typeof PROFILES];
 
@@ -50,7 +50,7 @@ export const HORNS: Record<keyof typeof PROFILES, HornVoice> = {
   sedan: { sample: 'horn-car', rate: 1, hp: 200, peakHz: 1300, peakDb: 3, level: 0.5 },
   luxury: { sample: 'horn-car', rate: 0.94, hp: 200, peakHz: 1200, peakDb: 2, level: 0.46 },
   suv: { sample: 'horn-car', rate: 0.84, hp: 180, peakHz: 1100, peakDb: 3, level: 0.52 },
-  moto: { sample: 'horn-moto-a', rate: 1, hp: 380, peakHz: 1800, peakDb: 3, level: 0.4 },
+  moto: { sample: 'horn-moto', rate: 1, hp: 380, peakHz: 1800, peakDb: 3, level: 0.4 },
 };
 export const hornFor = (kit: string): HornVoice => HORNS[(kit in HORNS ? kit : 'sedan') as keyof typeof HORNS];
 
@@ -66,7 +66,6 @@ export function impactKind(speed: number): 'tap' | 'impact' { return Math.abs(sp
 /** How hard a brake is, 0…1: the deceleration against what a hard stop is (m/s²), only while really moving. */
 export function brakeIntensity(decel: number, speed: number): number { return speed < 4 ? 0 : Math.max(0, Math.min(1, (decel - 3) / 6)); }
 
-const pick = <T,>(a: readonly T[]): T => a[Math.floor(Math.random() * a.length)];
 /** Below this (Hz) a phone's loudspeaker gives next to nothing. */
 export const SPEAKER_HZ = 300;
 type Bus = { ctx: AudioContext; gain: GainNode };
@@ -84,7 +83,7 @@ class VehicleAudio {
   private horn: { gain: GainNode; srcs: AudioBufferSourceNode[] } | null = null;
   /** The recordings, and whether they are decoded; a horn asked for before they are decoded starts when they are. */
   readonly bank = new SampleBank();
-  private decoded = false; private hornWanted: string | null = null;
+  private decoded = false; private hornWanted: string | null = null; private hitN = 0;
   private lastShot = new Map<string, number>();
   private bedTimer = 0;
   private unlocked = false;
@@ -175,9 +174,9 @@ class VehicleAudio {
   }
 
   /** A recorded one-shot through a small chain (optional high-pass / low-pass), with its own envelope. `dur` and `offset` are in the sample's own time. */
-  private shot(b: Bus, name: SampleName, o: { at?: number; offset?: number; dur?: number; rate?: number; gain: number; hp?: number; lp?: number; attack?: number; release?: number; dest?: AudioNode }) {
+  private shot(b: Bus, name: SampleName, o: { at?: number; offset?: number; dur: number; rate?: number; gain: number; hp?: number; lp?: number; attack?: number; release?: number; dest?: AudioNode }) {
     const buf = this.bank.get(name); if (!buf) return;
-    const off = Math.min(o.offset ?? 0, Math.max(0, buf.duration - 0.01)), dur = Math.min(o.dur ?? buf.duration, buf.duration - off), c = b.ctx, t = (o.at ?? c.currentTime), rate = o.rate ?? 1, wall = dur / rate, att = o.attack ?? 0.004, rel = Math.min(o.release ?? 0.06, wall * 0.8);
+    const c = b.ctx, t = (o.at ?? c.currentTime), rate = o.rate ?? 1, wall = o.dur / rate, att = o.attack ?? 0.004, rel = Math.min(o.release ?? 0.06, wall * 0.8);
     const s = c.createBufferSource(), g = c.createGain();
     s.buffer = buf; s.playbackRate.value = rate;
     let node: AudioNode = s;
@@ -185,15 +184,15 @@ class VehicleAudio {
     if (o.lp) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lp; node.connect(f); node = f; }
     g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(o.gain, t + att); g.gain.setValueAtTime(o.gain, Math.max(t + att, t + wall - rel)); g.gain.linearRampToValueAtTime(0.0001, t + wall);
     node.connect(g).connect(o.dest ?? b.gain);
-    s.start(t, off, dur + 0.02); s.stop(t + wall + 0.03);
+    s.start(t, Math.min(o.offset ?? 0, Math.max(0, buf.duration - 0.01)), o.dur + 0.02); s.stop(t + wall + 0.03);
   }
   /** Makes the samples ready: fetched at once, decoded as soon as the context exists. Idempotent. */
   private ensureSamples(b: Bus) { this.bank.decode(b.ctx).then(() => { this.decoded = true; }); }
 
-  /** Engine start: the recorded ignition of this vehicle (the starter, the engine catching). Returns the second at which the engine catches in it (the loops fade in there). */
+  /** Engine start: the recorded ignition (the starter, the engine catching). Returns the second at which the engine catches in it (the loops fade in there). */
   start(prof: EngineProfile): number {
     const b = this.ready('start', 0.5); if (!b) return 0;
-    this.shot(b, prof.start, { gain: 0.55 * prof.level, hp: 80, attack: 0.02, release: 0.6, rate: 1 });
+    const buf = this.bank.get(prof.start); if (buf) this.shot(b, prof.start, { dur: buf.duration, rate: prof.startRate, gain: 0.55 * prof.level, hp: prof.hp > 100 ? 160 : 70, attack: 0.02, release: 0.6 });
     return prof.catchAt;
   }
 
@@ -277,39 +276,37 @@ class VehicleAudio {
     this.shot(b, 'squeal', { offset: Math.random() * (buf.duration - 1.2), dur: 0.4 + 0.5 * intensity, rate: 0.92 + Math.random() * 0.16, gain: 0.12 + 0.3 * intensity, hp: 500, attack: 0.03, release: 0.18 });
   }
   /**
-   * A light tap (a soft knock of the body and a small clink) or a real impact: a body thump, a solid metallic hit, and for a heavy one a crash with a rattling tail, by the speed at the moment
-   * of contact. Every layer is picked at random from several recordings and a little differently pitched, so that two hits never sound the same.
+   * A light tap (a soft bump of the body) or a real impact (a solid metallic hit, and for a heavy one a crash with its long tail), by the speed at the moment of contact. Layers of the recordings,
+   * each picked a little differently every time (pitch, start) so that two hits never sound the same.
    */
   impact(speed: number) {
     const kind = impactKind(speed), b = this.ready(kind, kind === 'tap' ? 0.25 : 0.4); if (!b) return;
-    const v = Math.abs(speed), jit = 0.94 + Math.random() * 0.14, now = b.ctx.currentTime;
+    const v = Math.abs(speed), j = (this.hitN = (this.hitN + 1) % 3), jit = [1, 0.93, 1.08][j] * (0.97 + Math.random() * 0.06);
     if (kind === 'tap') {
-      this.shot(b, 'thud-3', { rate: 1.3 * jit, gain: 0.2 + 0.04 * v, hp: 90, release: 0.08 });
-      this.shot(b, pick(['clink-1', 'clink-2'] as const), { rate: 0.9 * jit, gain: 0.04 + 0.015 * v, hp: 500, release: 0.1 });
+      this.shot(b, 'thud', { dur: 0.16, rate: 1.7 * jit, gain: 0.18 + 0.05 * v, hp: 110, release: 0.05 });
+      this.shot(b, 'crash', { offset: 0.004 * j, dur: 0.05, rate: 1.5 * jit, gain: 0.06 + 0.02 * v, hp: 1400, release: 0.02 });
       return;
     }
     const k = Math.min(1, v / 14);
-    this.shot(b, k > 0.55 ? 'thud-2' : 'thud-1', { rate: 0.95 * jit, gain: 0.45 + 0.4 * k, release: 0.25 });                                              // the body
-    this.shot(b, pick(['metal-1', 'metal-2', 'metal-3', 'metal-4'] as const), { rate: jit, gain: 0.3 + 0.35 * k, hp: 200, release: 0.15 });                       // the metal
-    if (k > 0.4) this.shot(b, 'crash-2', { at: now + 0.015, rate: 0.95 * jit, gain: 0.2 + 0.3 * k, hp: 150, release: 0.2 });
-    if (k > 0.7) { this.shot(b, 'crash', { at: now + 0.04, rate: 0.9 * jit, gain: 0.14 + 0.2 * k, lp: 4500, attack: 0.02, release: 0.5 }); this.shot(b, 'rattle', { at: now + 0.12, rate: jit, gain: 0.18 + 0.15 * k, release: 0.25 }); }
+    this.shot(b, 'thud', { dur: 0.5, rate: 0.95 * jit, gain: 0.45 + 0.4 * k, lp: 2600, release: 0.2 });                                   // the body
+    this.shot(b, 'crash', { offset: 0.006 * j, dur: 0.22 + 0.35 * k, rate: (0.98 + 0.12 * (1 - k)) * jit, gain: 0.3 + 0.45 * k, hp: 280, release: 0.15 });   // the metal
+    if (k > 0.5) this.shot(b, 'crash', { at: b.ctx.currentTime + 0.05, offset: 0.12, dur: 0.5 + 0.8 * k, rate: 0.85 * jit, gain: 0.14 + 0.22 * k, lp: 3800, hp: 120, attack: 0.03, release: 0.4 });   // the long tail of a heavy one
   }
   /**
-   * A scrape: the vehicle sliding along a wall or another vehicle. A continuous grind made of short overlapping grains cut at random from the recorded scrapes (mid-pitched ones when slow, higher
-   * and brighter ones when fast), at a pitch and a level that follow `level` (0…1, the speed along the wall); it stops by itself when it is no longer asked for (a frame or two): called every frame
-   * while it lasts, never a new knock per frame.
+   * A scrape: the vehicle sliding along a wall or another vehicle. A continuous grind made of short overlapping grains cut from the middle of the recorded crash (the metal texture), at a pitch and
+   * a level that follow `level` (0…1, the speed along the wall); it stops by itself when it is no longer asked for (a frame or two): called every frame while it lasts, never a new knock per frame.
    */
   scrape(level: number) {
     const b = this.open(); if (!b) return;
+    const buf = this.bank.get('crash'); if (!buf) return;
     const c = b.ctx, t = c.currentTime, k = Math.max(0, Math.min(1, level));
     if (!this.scr) {
-      const g = c.createGain(), hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 200; g.gain.value = 1; g.connect(hp).connect(b.gain);
+      const g = c.createGain(), hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 260; g.gain.value = 1; g.connect(hp).connect(b.gain);
       this.scr = { gain: g, bp: hp, srcs: [], next: 0 }; this.count.scrape++; this.count.asked++; this.count.played++;
     }
     if (t >= this.scr.next) {
-      this.scr.next = t + 0.09;
-      const name = pick((k < 0.45 ? ['scrape-1', 'scrape-2'] : ['scrape-2', 'scrape-3', 'scrape-4']) as readonly SampleName[]), buf = this.bank.get(name);
-      if (buf) this.shot(b, name, { offset: Math.random() * Math.max(0, buf.duration - 0.3), dur: 0.22, rate: (0.9 + 0.25 * k) * (0.96 + Math.random() * 0.08), gain: 0.14 + 0.3 * k, attack: 0.05, release: 0.09, dest: this.scr.gain });
+      this.scr.next = t + 0.06;
+      this.shot(b, 'crash', { offset: 0.35 + Math.random() * 0.8, dur: 0.12, rate: 0.85 + 0.35 * k + Math.random() * 0.1, gain: 0.07 + 0.2 * k, attack: 0.04, release: 0.06, dest: this.scr.gain });
     }
     this.scrLast = performance.now();
   }

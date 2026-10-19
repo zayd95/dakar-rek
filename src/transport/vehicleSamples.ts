@@ -1,13 +1,9 @@
 /**
- * The recorded sounds of the vehicles (public/assets/audio/vehicles/*.mp3, a few hundred KB in all; sources and licences: docs/audio/VEHICLE_SAMPLES.md, built by scripts/audio/build-vehicle-samples.py).
+ * The recorded sounds of the vehicles (public/assets/audio/vehicles/*.mp3, ~190 KB in all; sources and licences: docs/audio/VEHICLE_SAMPLES.md, built by scripts/audio/build-vehicle-samples.py).
  * The bytes are fetched as soon as the page wants a vehicle's sound (no audio context is needed for that); they are decoded the moment the page's audio context exists (the first gesture),
  * long before the first horn or the first engine start asks for them. A sample that failed to load or decode is simply absent: its voice stays silent, nothing else is touched.
  */
-export const SAMPLE_NAMES = [
-  'car-idle-a', 'car-rev-a', 'car-idle-b', 'car-rev-b', 'moto-idle-a', 'moto-idle-b', 'moto-rev-b', 'start-car', 'start-moto',
-  'horn-car', 'horn-moto-a', 'horn-moto-b',
-  'thud-1', 'thud-2', 'thud-3', 'metal-1', 'metal-2', 'metal-3', 'metal-4', 'clink-1', 'clink-2', 'crash', 'crash-2', 'rattle', 'scrape-1', 'scrape-2', 'scrape-3', 'scrape-4', 'squeal',
-] as const;
+export const SAMPLE_NAMES = ['car-idle', 'car-rev', 'moto-idle', 'start-car', 'horn-car', 'horn-moto', 'crash', 'thud', 'squeal'] as const;
 export type SampleName = typeof SAMPLE_NAMES[number];
 
 const url = (n: SampleName) => `${import.meta.env.BASE_URL}assets/audio/vehicles/${n}.mp3`;
