@@ -63,7 +63,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await shot('1-dealer');
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Jakarta/.test(t)) ?? null);
+  const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Jakarta/.test(t) && /Acheter/.test(t)) ?? null);
   check(`${label}: the catalogue shows the Jakarta with its catalogue price`, /Jakarta/.test(item ?? '') && price === 150000 && digits(item).includes(String(price)), String(item));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
   await page.locator('#modal .item', { hasText: 'Acheter' }).first().click();
@@ -87,7 +87,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await ready();
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const again = await d(() => [...document.querySelectorAll('#modal .item')].find(b => /Jakarta/.test(b.textContent))?.className ?? '');
+  const again = await d(() => [...document.querySelectorAll('#modal .item')].find(b => /Jakarta/.test(b.textContent) && /Acheter/.test(b.textContent))?.className ?? '');
   await d(() => document.querySelector('#modal .item.close')?.click());
   await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   check(`${label}: it cannot be bought twice`, /disabled|off/.test(again) || (await d(() => window.__dakar.state.wallet)) === w1, again);

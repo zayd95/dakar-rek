@@ -95,7 +95,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await shot('1-dealer');
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const item = await d(n => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => t.includes(n)) ?? null, CONF.item);
+  const item = await d(n => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => t.includes(n) && /Acheter/.test(t)) ?? null, CONF.item);
   const digits = s => (s ?? '').replace(/[^0-9]/g, '');
   check(`${label}: the catalogue shows ${CONF.item} with its catalogue price`, (item ?? '').includes(CONF.item) && price > 0 && digits(item).includes(String(price)) && /\sF/.test(item ?? ''), String(item));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
@@ -120,7 +120,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await ready();
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const again = await d(n => [...document.querySelectorAll('#modal .item')].find(b => b.textContent.includes(n))?.className ?? '', CONF.item);
+  const again = await d(n => [...document.querySelectorAll('#modal .item')].find(b => b.textContent.includes(n) && /Acheter/.test(b.textContent))?.className ?? '', CONF.item);
   await d(() => document.querySelector('#modal .item.close')?.click());
   await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   const biens = await d(() => { window.__dakar.assetsApp(); return [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent ?? ''); });

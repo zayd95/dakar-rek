@@ -90,7 +90,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await shot('1-dealer');
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Berline moderne/.test(t)) ?? null);
+  const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Berline moderne/.test(t) && /Acheter/.test(t)) ?? null);
   const digits = s => (s ?? '').replace(/[^0-9]/g, '');
   check(`${label}: the catalogue shows the modern sedan with its catalogue price`, /Berline moderne/.test(item ?? '') && price > 0 && digits(item).includes(String(price)) && /\sF/.test(item ?? ''), String(item));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
@@ -115,7 +115,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await ready();
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const again = await d(() => [...document.querySelectorAll('#modal .item')].find(b => /Berline moderne/.test(b.textContent))?.className ?? '');
+  const again = await d(() => [...document.querySelectorAll('#modal .item')].find(b => /Berline moderne/.test(b.textContent) && /Acheter/.test(b.textContent))?.className ?? '');
   await d(() => document.querySelector('#modal .item.close')?.click());
   await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   const biens = await d(() => { window.__dakar.assetsApp(); return [...document.querySelectorAll('#modal.on .item')].map(b => b.textContent ?? ''); });
