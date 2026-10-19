@@ -2,6 +2,8 @@ import type { HubWorld } from '../world/types';
 import { kitCarSpec, kitSeedFor } from './car';
 import { OwnedVehicleModule, kerbDealer, type DealerSite } from './ownedModule';
 import { say } from '../i18n/wolof';
+import { specOf } from '../economy/catalog';
+import { fcfa } from '../ui/hud';
 
 /**
  * The two upper rungs of the player's cars, on the same owned-vehicle system as the Jakarta and the Berline moderne (src/transport/ownedModule.ts:
@@ -39,10 +41,18 @@ export const suvSpec = () => (suvCache ??= kitCarSpec({
 export const PRESTIGE = { x: -92, z: 6 } as const;
 
 /** A pavement dealer on the road z = 0: `side` +1 is the plaza's pavement, −1 the one across; two cars on show behind the desk, the bought one ahead. */
-function prestigeDealer(side: 1 | -1, seeds: [number, number]) {
+function prestigeDealer(side: 1 | -1, seeds: [number, number], kind: string, asset: typeof BERLINE_ASSET | typeof SUV_ASSET) {
   return (hub: HubWorld): DealerSite | null => {
     if (hub.id !== 'almadies') return null;
-    return kerbDealer(PRESTIGE.x, side * PRESTIGE.z, { displays: [{ along: -6, seed: seeds[0] }, { along: -11.5, seed: seeds[1] }], delivery: 6.5, sign: 2.4, desk: true, clear: [-16, 12] });
+    const sp = specOf(asset);
+    // a glass pavilion over the two cars (src/transport/showroom.ts): the glass line 3.95 m from the road's centre (clear of the traffic lanes), the cars a metre in, the desk behind the entrance
+    return kerbDealer(PRESTIGE.x, side * PRESTIGE.z, {
+      displays: [{ along: -6, seed: seeds[0] }, { along: -11.5, seed: seeds[1] }], displayLateral: 5.2, delivery: 6.5, sign: 2.4, desk: true, clear: [-16, 12],
+      showroom: {
+        along: [-15.6, 3.0], gaps: [[-1.9, 1.9]], depth: 3.55, setback: 3.95, tower: 3.4,
+        brand: { title: 'PRESTIGE AUTO', sub: `${kind} · Almadies`, bg: '#16171b', band: '#c9a227', fg: '#f4efe2', plaque: { name: sp?.name ?? kind, price: fcfa(sp?.price ?? 0) } },
+      },
+    });
   };
 }
 
@@ -50,7 +60,7 @@ export const berline = new OwnedVehicleModule({
   key: 'berline', asset: BERLINE_ASSET, detail: BERLINE_DETAIL, icon: '🚘', kit: 'luxury',
   seed: () => berlineSeed(), spec: berlineSpec, height: 1.5, space: 'car:berline',
   dealer: {
-    hub: 'almadies', name: 'Prestige Auto · Berlines', catalogue: 'berlines', site: prestigeDealer(1, [berlineSeed(BERLINE_WHITE), berlineSeed(BERLINE_NAVY)]),
+    hub: 'almadies', name: 'Prestige Auto · Berlines', catalogue: 'berlines', site: prestigeDealer(1, [berlineSeed(BERLINE_WHITE), berlineSeed(BERLINE_NAVY)], 'BERLINES', BERLINE_ASSET),
     sign: { bg: '#1c1d21', band: '#c9a227', title: 'BERLINES', sub: 'Prestige Auto · Almadies', subColor: '#1c1d21' },
   },
   text: {
@@ -65,7 +75,7 @@ export const suv = new OwnedVehicleModule({
   key: 'suv', asset: SUV_ASSET, detail: SUV_DETAIL, icon: '🚙', kit: 'suv',
   seed: () => suvSeed(), spec: suvSpec, height: 1.95, space: 'car:tout_terrain',
   dealer: {
-    hub: 'almadies', name: 'Prestige Auto · 4 × 4', catalogue: 'tout-terrains', site: prestigeDealer(-1, [suvSeed(SUV_WHITE), suvSeed(SUV_GREEN)]),
+    hub: 'almadies', name: 'Prestige Auto · 4 × 4', catalogue: 'tout-terrains', site: prestigeDealer(-1, [suvSeed(SUV_WHITE), suvSeed(SUV_GREEN)], '4 × 4 DE LUXE', SUV_ASSET),
     sign: { bg: '#1c1d21', band: '#c9a227', title: '4 × 4 DE LUXE', sub: 'Prestige Auto · Almadies', subColor: '#1c1d21' },
   },
   text: {

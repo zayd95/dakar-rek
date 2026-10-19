@@ -13,6 +13,7 @@ body.ridepad-car #ridepad .rp-brake { width: 92px; height: 92px; font-size: 16px
 #ridepad .rp-off { display: none; height: 46px; padding: 0 16px; background: rgba(17, 24, 39, .88); font-size: 15px; }
 #ridepad.stopped .rp-off { display: block; }
 #ridepad .rp-view { height: 46px; padding: 0 14px; background: rgba(17, 24, 39, .72); font-size: 14px; }
+#ridepad .rp-horn { height: 46px; padding: 0 14px; background: rgba(17, 24, 39, .72); font-size: 14px; }
 #ridepad .rp-rev { display: none; height: 46px; padding: 0 16px; background: rgba(17, 24, 39, .88); font-size: 15px; }
 #ridepad.canrev .rp-rev { display: block; }
 #ridepad .rp-rev.on { background: #d97706; }

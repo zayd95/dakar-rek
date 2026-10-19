@@ -13,10 +13,12 @@ export interface PadOptions {
   /** « Vue »: next camera. */
   view?: () => void;
 }
-let root: HTMLDivElement | null = null, gasB: HTMLButtonElement, brakeB: HTMLButtonElement, offB: HTMLButtonElement, revB: HTMLButtonElement, viewB: HTMLButtonElement;
+let root: HTMLDivElement | null = null, gasB: HTMLButtonElement, brakeB: HTMLButtonElement, offB: HTMLButtonElement, revB: HTMLButtonElement, viewB: HTMLButtonElement, hornB: HTMLButtonElement;
 let owner: Owner | null = null, onDescend: (() => void) | null = null, onView: (() => void) | null = null;
 export const ridePad = {
   gas: false, brake: false,
+  /** The horn, held. */
+  horn: false,
   /** Reverse gear selected (a car, stopped): the gas then backs up. */
   reverse: false,
   get active() { return owner !== null; },
@@ -29,7 +31,7 @@ export const ridePad = {
     const row = (cls: string) => { const r = document.createElement('div'); r.className = cls; root!.appendChild(r); return r; };
     const top = row('rp-top'), pedals = row('rp-pedals');
     const mk = (into: HTMLElement, cls: string, label: string) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = label; into.appendChild(b); return b; };
-    offB = mk(top, 'rp-off', 'Descendre'); revB = mk(top, 'rp-rev', 'R'); viewB = mk(top, 'rp-view', 'Vue');
+    offB = mk(top, 'rp-off', 'Descendre'); revB = mk(top, 'rp-rev', 'R'); hornB = mk(top, 'rp-horn', 'Klaxon'); viewB = mk(top, 'rp-view', 'Vue');
     brakeB = mk(pedals, 'rp-brake', 'Frein'); gasB = mk(pedals, 'rp-gas', 'Accélérer');
     revB.title = 'Marche arrière';
     const hold = (b: HTMLButtonElement, set: (on: boolean) => void) => {
@@ -38,7 +40,7 @@ export const ridePad = {
       for (const t of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(t, up);
       b.addEventListener('contextmenu', e => e.preventDefault());
     };
-    hold(gasB, on => { this.gas = on; }); hold(brakeB, on => { this.brake = on; });
+    hold(gasB, on => { this.gas = on; }); hold(brakeB, on => { this.brake = on; }); hold(hornB, on => { this.horn = on; });
     // taps fire on release of the same button, so a tap with the second thumb works while the first one holds the gas (a browser may not synthesise a click then)
     const tap = (b: HTMLButtonElement, fn: () => void) => {
       let armed = false;
@@ -69,8 +71,8 @@ export const ridePad = {
   /** Gives the pad back (only the module that holds it can). */
   hide(by: Owner) {
     if (owner !== by) return;
-    owner = null; onDescend = null; onView = null; this.gas = false; this.brake = false; this.reverse = false;
+    owner = null; onDescend = null; onView = null; this.gas = false; this.brake = false; this.reverse = false; this.horn = false;
     document.body.classList.remove('ridepad', 'ridepad-car'); root?.classList.remove('stopped', 'canrev');
-    gasB?.classList.remove('down'); brakeB?.classList.remove('down'); revB?.classList.remove('on'); if (revB) revB.textContent = 'R';
+    gasB?.classList.remove('down'); brakeB?.classList.remove('down'); hornB?.classList.remove('down'); revB?.classList.remove('on'); if (revB) revB.textContent = 'R';
   },
 };

@@ -10,6 +10,8 @@ import { Vehicle } from './vehicle';
 import { PassengerCamera } from './camera';
 import { RideCard } from './ui';
 import { fovFor } from '../core/view';
+import { vehicleAudio, profileFor, brakeIntensity, IMPACT_SPEED } from './vehicleAudio';
+import { buildShowroom, type ShowroomBrand, type ShowroomSpec } from './showroom';
 import { driveStep, newDriveState, pedalThrottle, type DriveState } from './drive';
 import { assetsRevision, buyAsset, cannotBuy, holding } from '../economy/assets';
 import { specOf } from '../economy/catalog';
@@ -57,6 +59,8 @@ export interface DealerSite {
   card?: Spot;
   /** Vehicles on show in all, the shop's own included (a showroom's lots); default: the displays. */
   lots?: number;
+  /** A glass front with its lit signs (src/transport/showroom.ts): the dealer is then a showroom, not a stand. */
+  showroom?: { spec: ShowroomSpec; brand: ShowroomBrand };
 }
 
 export interface OwnedDef {
@@ -105,7 +109,7 @@ export interface OwnedDef {
   reach: number;
 }
 
-const HINT = '↑ accélérer · ↓ freiner · ← → tourner';
+const HINT = '↑ accélérer · ↓ freiner · ← → tourner · H klaxon';
 
 /** Distance from (x, z) to the nearest road centre line (pavements are 5–7 m from it). */
 export function roadDistance(x: number, z: number): number {
@@ -127,7 +131,7 @@ export function footprint(d: DriveSpec, x: number, z: number, yaw: number, h: nu
  * A dealer on the pavement of the road nearest to (px, pz): the counter on the pavement, the vehicles at the kerb
  * facing the way the traffic goes on that side (Senegal drives on the right). `along` distances follow that heading.
  */
-export function kerbDealer(px: number, pz: number, o: { displays: { along: number; seed: number }[]; delivery: number; sign: number; desk?: boolean; clear: [number, number] }): DealerSite {
+export function kerbDealer(px: number, pz: number, o: { displays: { along: number; seed: number }[]; delivery: number; sign: number; desk?: boolean; clear: [number, number]; displayLateral?: number; showroom?: { along: [number, number]; gaps: [number, number][]; depth: number; tower: number; setback: number; brand: ShowroomBrand } }): DealerSite {
   const near = (v: number) => roadCentre(Math.max(0, Math.min(GRID.nb, Math.round((v - roadCentre(0)) / GRID.pitch))));
   const rx = near(px), rz = near(pz);
   const alongZ = Math.abs(px - rx) <= Math.abs(pz - rz);                   // the nearest road is a line x = rx
@@ -141,10 +145,15 @@ export function kerbDealer(px: number, pz: number, o: { displays: { along: numbe
   return {
     counter: { x: counter.x, z: counter.z },
     sign: { ...at(o.sign, 6.6, alongZ ? Math.PI / 2 : 0), w: 2.4 },
-    displays: o.displays.map(d => ({ ...at(d.along, 4.3), seed: d.seed })),
+    displays: o.displays.map(d => ({ ...at(d.along, o.displayLateral ?? 4.3), seed: d.seed })),
     delivery,
     kerb: [{ x: delivery.x, z: delivery.z, dx: fx, dz: fz, rx: nx, rz: nz, offset: 4.3, from: o.clear[0] - o.delivery, to: o.clear[1] - o.delivery }],
     desk: o.desk ? at(0, 6.75, yaw + Math.PI / 2) : undefined,
+    showroom: o.showroom ? {
+      // the street-side line of the glass `setback` m from the road's centre line; `n` toward the road
+      spec: { style: 'prestige', origin: at(0, o.showroom.setback), n: { x: -nx, z: -nz }, a0: o.showroom.along[0], a1: o.showroom.along[1], depth: o.showroom.depth, gaps: o.showroom.gaps, tower: o.showroom.tower, displays: o.displays.map(d => at(d.along, o.displayLateral ?? 4.3)) },
+      brand: o.showroom.brand,
+    } : undefined,
   };
 }
 
@@ -155,6 +164,8 @@ interface Dealer {
   group: THREE.Group; site: DealerSite; sign: THREE.CanvasTexture | null; card: THREE.CanvasTexture | null; mats: THREE.Material[]; geos: THREE.BufferGeometry[];
   /** The vehicle for sale on the floor with its card, and its solid boxes (`forSale`). */
   sale: { group: THREE.Group; cols: Collider[] } | null;
+  /** The showroom's sign textures. */
+  extraTex: THREE.Texture[];
 }
 
 export class OwnedVehicleModule implements GameModule {
@@ -192,6 +203,8 @@ export class OwnedVehicleModule implements GameModule {
   private trial = false;
   /** The field of view is the wheel view's own (portrait): given back when the view ends. */
   private fovSet = false;
+  /** Feel (camera only): the settle at the engine start, the dip under a hard brake, the shake of a contact; and when the brake last squealed. */
+  private fx = { settle: 0, ignite: 0, dip: 0, shake: 0, hard: 0 };
 
   readonly def: OwnedDef;
   private readonly parkedTarget: Target;
@@ -211,6 +224,7 @@ export class OwnedVehicleModule implements GameModule {
     if (ui) this.card = new RideCard(ui, `${this.def.key}-card`);
     ctx.interactions.add(this.targets);
     if (ui) ridePad.init(ui);
+    vehicleAudio.unlockOnGesture();                              // the first tap or key lets the page play sound (iPhone Safari)
   }
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
@@ -309,12 +323,36 @@ export class OwnedVehicleModule implements GameModule {
     transport.obstacles(this.obst, this.def.kit);
     const v0 = Math.abs(this.st.speed);
     const hit = driveStep(this.st, input, this.spec.drive, dt, this.blocked);
-    if (hit && v0 > 0.5) this.bumps++;
+    if (hit && v0 > 0.5) {
+      this.bumps++;
+      vehicleAudio.impact(v0);                                                   // a tap or a real impact, by the speed at contact
+      this.fx.shake = Math.max(this.fx.shake, v0 >= IMPACT_SPEED ? 0.55 + Math.min(0.45, v0 / 25) : 0.16);
+    }
     m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(this.st.speed), this.st.accel, this.st.odo, dt);
     this.lean = m.animate(this.st.speed, this.st.steer, dt);                     // wheels, steering, a motorbike's lean
+    // sound and feel: the engine follows the speed, a hard brake squeals and dips the camera a little, the horn is held
+    const bi = brakeIntensity(-this.st.accel * Math.sign(this.st.speed || 1), v0);
+    if (bi > 0.05 && input.throttle !== 0) { vehicleAudio.brake(bi); if (bi > 0.3) this.fx.hard = 0.6; }
+    if (!vehicleAudio.running) vehicleAudio.run(profileFor(this.def.kit));       // the first tap may come after getting in: the engine joins then
+    vehicleAudio.update(dt, this.st.speed, this.spec.drive.maxSpeed, input.throttle);
+    if (ctx.mode() === 'play' && (ctx.input.keys.has('KeyH') || ridePad.horn)) vehicleAudio.hornOn(this.def.kit === 'moto'); else vehicleAudio.hornOff();
+    this.fx.hard = Math.max(0, this.fx.hard - dt);
     if (this.leaving && Math.abs(this.st.speed) < 0.3) this.getOff(true);
     this.cardT -= dt;
     if (this.cardT <= 0) { this.cardT = 0.25; this.refreshCard(); }
+  }
+
+  /** A few centimetres of the camera, never the physics: it settles when the engine catches, dips under a hard brake, shakes at a contact (a tap a little, a crash more). */
+  private feel(cam: THREE.Camera, dt: number, inside: boolean) {
+    const f = this.fx, k = inside ? 0.6 : 1;
+    f.settle = Math.max(0, f.settle - dt / 0.9); f.ignite = Math.max(0, f.ignite - dt);
+    f.dip += ((f.hard > 0 ? 0.06 : 0) - f.dip) * Math.min(1, dt * 9);
+    f.shake = Math.max(0, f.shake - dt * 2.6);
+    const t = performance.now() / 1000;
+    let y = -0.055 * Math.sin(Math.PI * (1 - f.settle)) - f.dip, x = 0;
+    x += Math.sin(t * 170) * 0.006 * (f.ignite / 0.55); y += Math.sin(t * 150) * 0.004 * (f.ignite / 0.55);
+    if (f.shake > 0) { x += (Math.random() - 0.5) * 0.14 * f.shake; y += (Math.random() - 0.5) * 0.1 * f.shake; }
+    cam.position.x += x * k; cam.position.y += y * k;
   }
 
   camera(ctx: GameCtx, dt: number, drag: { yaw: number; pitch: number }): boolean {
@@ -327,6 +365,7 @@ export class OwnedVehicleModule implements GameModule {
     const t = performance.now(), real = this.camMs ? Math.min(1, (t - this.camMs) / 1000) : dt; this.camMs = t;
     const a = this.spec.cameras[this.cam.view % this.spec.cameras.length];
     this.cam.update(Math.max(dt, real), ctx.camera, m.pose, m.bounce, a, drag, this.hub?.colliders ?? []);
+    this.feel(ctx.camera, Math.max(dt, real), !!a.inside);
     m.setCockpit(!!a.inside);                                  // a solid-shell body's shared cockpit: seen from inside only
     // at the wheel on a phone held upright (narrow field of view): a wider vertical angle so the road shows above the dashboard; the page's own angle comes back outside
     const cam = ctx.camera, base = fovFor(cam.aspect * 1000, 1000), want = a.inside && cam.aspect < 1 ? INSIDE_FOV_PORTRAIT : base;
@@ -360,6 +399,8 @@ export class OwnedVehicleModule implements GameModule {
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
         at: () => this.vehicle ? { x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active } : null,
         card: () => this.card?.text ?? '',
+        /** Checks: the vehicle sounds (counts asked and played, whether the engine runs). */
+        audio: () => vehicleAudio.info(),
         /** Checks: the bike's speed in m/s while it is ridden (the online check rides above the 6 m/s presence limit). */
         boost: (v: number) => { if (this.driving) this.st.speed = v; },
         /** Checks: put the vehicle (and its driver) at a spot, stopped. */
@@ -417,19 +458,23 @@ export class OwnedVehicleModule implements GameModule {
       if (!site.card) return;
       card = cardTexture(this.label(), fcfa(this.price()), D.sign);
       const c = site.card, white = new THREE.MeshLambertMaterial({ color: 0xf2f2ee }), chrome = new THREE.MeshLambertMaterial({ color: 0xc9cdd2 });
-      const pole = mesh(new THREE.BoxGeometry(0.03, 0.92, 0.03), chrome); pole.position.set(c.x, 0.12 + 0.46, c.z);
-      const back = mesh(new THREE.BoxGeometry(0.52, 0.36, 0.015), white); back.position.set(c.x, 0.12 + 1.08, c.z); back.rotation.y = c.yaw;
-      const face = mesh(new THREE.PlaneGeometry(0.5, 0.333), new THREE.MeshLambertMaterial({ map: card }));
-      face.position.set(c.x + Math.sin(c.yaw) * 0.009, 0.12 + 1.08, c.z + Math.cos(c.yaw) * 0.009); face.rotation.y = c.yaw;
+      const k = site.showroom ? 1.9 : 1;                          // a showroom's price card is read from the street: larger
+      const pole = mesh(new THREE.BoxGeometry(0.03, 0.92 * k, 0.03), chrome); pole.position.set(c.x, 0.12 + 0.46 * k, c.z);
+      const back = mesh(new THREE.BoxGeometry(0.52 * k, 0.36 * k, 0.015), white); back.position.set(c.x, 0.12 + 1.08 * k * (site.showroom ? 0.78 : 1), c.z); back.rotation.y = c.yaw;
+      const face = mesh(new THREE.PlaneGeometry(0.5 * k, 0.333 * k), new THREE.MeshBasicMaterial({ map: card }));
+      face.position.set(c.x + Math.sin(c.yaw) * 0.009, back.position.y, c.z + Math.cos(c.yaw) * 0.009); face.rotation.y = c.yaw;
       for (const m of [pole, back, face]) { m.removeFromParent(); sg.add(m); }
     });
     const sign = signTexture(D.sign);
-    const sw = site.sign.w ?? 1.5, sh = sw / 3, top = 2.5 + sh;
-    const pole = mesh(new THREE.BoxGeometry(0.08, top, 0.08), new THREE.MeshLambertMaterial({ color: 0x3b3f46 }));
-    pole.position.set(site.sign.x, 0.12 + top / 2, site.sign.z);
-    const plate = mesh(new THREE.BoxGeometry(sw, sh, 0.05), new THREE.MeshLambertMaterial({ map: sign }));
-    plate.position.set(site.sign.x, 2.5 + sh / 2, site.sign.z); plate.rotation.y = site.sign.yaw;
-    if (site.desk) this.buildForecourt(site, D.sign, sign, mesh, hub);
+    const extraTex: THREE.Texture[] = [];
+    if (!site.showroom) {                                       // a stand has its pole sign; a showroom its lit fascia and blade (src/transport/showroom.ts)
+      const sw = site.sign.w ?? 1.5, sh = sw / 3, top = 2.5 + sh;
+      const pole = mesh(new THREE.BoxGeometry(0.08, top, 0.08), new THREE.MeshLambertMaterial({ color: 0x3b3f46 }));
+      pole.position.set(site.sign.x, 0.12 + top / 2, site.sign.z);
+      const plate = mesh(new THREE.BoxGeometry(sw, sh, 0.05), new THREE.MeshLambertMaterial({ map: sign }));
+      plate.position.set(site.sign.x, 2.5 + sh / 2, site.sign.z); plate.rotation.y = site.sign.yaw;
+    } else buildShowroom(site.showroom.spec, site.showroom.brand, mesh, hub.colliders, extraTex);
+    if (site.desk && !site.showroom) this.buildForecourt(site, D.sign, sign, mesh, hub);
     if (site.desk) {
       const desk = mesh(new THREE.BoxGeometry(1.3, 0.85, 0.6), new THREE.MeshLambertMaterial({ color: 0x2e5c8a }));
       desk.position.set(site.desk.x, 0.55, site.desk.z); desk.rotation.y = site.desk.yaw;
@@ -437,7 +482,7 @@ export class OwnedVehicleModule implements GameModule {
       hub.colliders.push({ x0: site.desk.x - hx, x1: site.desk.x + hx, z0: site.desk.z - hz, z1: site.desk.z + hz, h: 1 });
     }
     ctx.extra.add(g);
-    this.dealer = { group: g, site, sign, card, mats, geos, sale };
+    this.dealer = { group: g, site, sign, card, mats, geos, sale, extraTex };
     ctx.places.add(shop({
       id: `${this.def.key}:dealer`, name: D.name, space: 'street', catalogue: D.catalogue,
       anchors: [{ id: 'till', kind: 'shop', x: site.counter.x, z: site.counter.z, y: 2.2, radius: 2.8, bias: -0.2 }],
@@ -553,7 +598,7 @@ export class OwnedVehicleModule implements GameModule {
   private getOn() {
     const ctx = this.ctx, m = this.vehicle; if (!m || this.driving || this.mounting || ctx.activities.running) return;
     const p = ctx.player.pos;
-    if (Math.hypot(m.driverSeat.x - p.x, m.driverSeat.z - p.z) > 0.7 && !ctx.player.seated()) { this.mounting = { t: 0, fx: p.x, fz: p.z }; return; }
+    if (Math.hypot(m.driverSeat.x - p.x, m.driverSeat.z - p.z) > 0.7 && !ctx.player.seated()) { this.mounting = { t: 0, fx: p.x, fz: p.z }; if (this.def.kit !== 'moto') vehicleAudio.door(true); return; }
     this.mountNow();
   }
   private mountNow() {
@@ -566,6 +611,12 @@ export class OwnedVehicleModule implements GameModule {
     this.setSolid(false);
     m.setRidden(true);
     this.cam.begin(ctx.camera, m.pose); this.camMs = 0;
+    // the door shuts, the engine cranks and catches, the camera settles a little
+    const prof = profileFor(this.def.kit);
+    if (this.def.kit !== 'moto') vehicleAudio.door(false);
+    const catches = vehicleAudio.start(prof);
+    vehicleAudio.run(prof, catches);
+    this.fx.settle = 1; this.fx.ignite = catches > 0 ? 0.55 : 0.2;
     if (!document.body.classList.contains('touch')) ctx.toast(HINT);          // touch: the pad's own labels say it
     this.refreshCard();
   }
@@ -574,6 +625,9 @@ export class OwnedVehicleModule implements GameModule {
   private getOff(normal: boolean) {
     const ctx = this.ctx, m = this.vehicle; if (!m || !this.driving || !this.hub) return;
     this.driving = false; this.leaving = false; ridePad.hide(this);
+    vehicleAudio.stop();
+    if (this.def.kit !== 'moto') { vehicleAudio.door(true); setTimeout(() => vehicleAudio.door(false), 450); }
+    this.fx.dip = 0; this.fx.hard = 0;
     if (ctx.player.seated()?.id === m.driverSeat.id) ctx.player.standUp(true);
     this.st.speed = 0;
     m.place(this.st.x, this.st.z, this.st.yaw, 0, 0, this.st.odo, 0);
@@ -629,7 +683,7 @@ export class OwnedVehicleModule implements GameModule {
     if (!this.card) return;
     if (!this.driving) { this.card.show(null); return; }
     const kmh = Math.round(Math.abs(this.st.speed) * 3.6);
-    this.card.show({ num: this.def.icon, title: `${this.label()} · ${kmh} km/h`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : HINT });
+    this.card.show({ num: this.def.icon, title: `${this.label()} · ${kmh} km/h`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : this.fx.hard > 0 ? 'Freinage fort' : HINT });
   }
 
   private upright() {
@@ -639,7 +693,7 @@ export class OwnedVehicleModule implements GameModule {
   }
 
   private clear() {
-    if (this.driving) { this.driving = false; this.cam.end(); this.upright(); }
+    if (this.driving) { this.driving = false; this.cam.end(); this.upright(); vehicleAudio.stop(); }
     this.setSolid(false);
     this.mounting = null;
     this.trial = false; this.parkedTarget.name = this.def.text.mine;
@@ -648,7 +702,7 @@ export class OwnedVehicleModule implements GameModule {
     if (this.dealer) {
       for (const geo of this.dealer.geos) geo.dispose();
       for (const mat of this.dealer.mats) mat.dispose();
-      this.dealer.group.removeFromParent(); this.dealer.sign?.dispose(); this.dealer.card?.dispose(); this.dealer = null;
+      this.dealer.group.removeFromParent(); this.dealer.sign?.dispose(); this.dealer.card?.dispose(); for (const t of this.dealer.extraTex) t.dispose(); this.dealer = null;
     }
     this.card?.show(null);
     this.hub = null;
