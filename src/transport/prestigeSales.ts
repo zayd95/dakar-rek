@@ -109,7 +109,7 @@ export class PrestigeSales implements GameModule, TargetSource {
     if (Math.hypot(this.pos.x - x, this.pos.z - z) > 6) return;
     this.target.x = this.pos.x; this.target.z = this.pos.z;
     // a lower score wins the prompt: a car wins near a car, but he wins when he has come over to talk to the customer who came back from the drive
-    this.target.bias = this.task?.kind === 'meet' && this.task.arrived ? -1.5 : 0.6;
+    this.target.bias = this.task?.kind === 'meet' && this.task.arrived ? -3 : 0.6;
     out.push(this.target);
   }
 
