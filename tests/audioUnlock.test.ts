@@ -74,7 +74,7 @@ describe('the audio session', () => {
 
 describe('the horns', () => {
   it('each kind of vehicle has its own: a car\'s recording at three pitches, and the motorbike\'s own recording', () => {
-    expect(HORNS.sedan.sample).toBe('horn-car'); expect(HORNS.suv.sample).toBe('horn-car'); expect(HORNS.moto.sample).toBe('horn-moto');
+    expect(HORNS.sedan.sample).toBe('horn-car'); expect(HORNS.suv.sample).toBe('horn-car'); expect(HORNS.moto.sample).toBe('horn-moto-a');
     expect(new Set(Object.values(HORNS).map(h => `${h.sample}@${h.rate}`)).size).toBe(Object.keys(HORNS).length);
     expect(hornFor('nothing')).toBe(HORNS.sedan);
   });

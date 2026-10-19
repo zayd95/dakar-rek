@@ -19,9 +19,10 @@ await page.evaluate(() => { window.__dakar.car.lab().va.beep(); });             
 await page.waitForFunction(() => { const i = window.__dakar.car.lab().va.info(); return i.state === 'running' && (!i.samples || i.samples.loaded + i.samples.failed.length >= 8); }, null, { timeout: 60000 }).catch(() => {});
 console.log(label, JSON.stringify(await page.evaluate(() => window.__dakar.car.lab().va.info().samples ?? 'synth')));
 
-const clip = async (name, scenario, arg) => {
-  const b64 = await page.evaluate(async ([scenario, arg]) => {
-    const { va, PROFILES } = window.__dakar.car.lab();
+const clip = async (name, scenario, arg, variant = null) => {
+  const b64 = await page.evaluate(async ([scenario, arg, variant]) => {
+    const { va, PROFILES, HORNS } = window.__dakar.car.lab();
+    if (variant) { const V = { 'car-a': ['sedan', { idle: 'car-idle-a', rev: 'car-rev-a', start: 'start-car', catchAt: 0.8 }], 'car-b': ['sedan', { idle: 'car-idle-b', rev: 'car-rev-b', start: 'start-car', catchAt: 0.8 }], 'moto-a': ['moto', { idle: 'moto-idle-a', rev: 'car-rev-a', start: 'start-moto', catchAt: 0.7 }], 'moto-b': ['moto', { idle: 'moto-idle-b', rev: 'moto-rev-b', start: 'start-moto', catchAt: 0.7 }] }[variant]; if (V) Object.assign(PROFILES[V[0]], V[1]); if (variant === 'horn-b') HORNS.moto.sample = 'horn-moto-b'; if (variant === 'horn-a') HORNS.moto.sample = 'horn-moto-a'; }
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     const frames = async (seconds, fn) => { const t0 = performance.now(); let last = t0; while (performance.now() - t0 < seconds * 1000) { const now = performance.now(), dt = (now - last) / 1000; last = now; fn((now - t0) / 1000, dt); await sleep(16); } };
     const S = {
@@ -55,14 +56,18 @@ const clip = async (name, scenario, arg) => {
     await sleep(300); mr.stop(); await new Promise(r => { mr.onstop = r; });
     const buf = await new Blob(chunks).arrayBuffer(); let s = ''; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000));
     return btoa(s);
-  }, [scenario, arg]);
+  }, [scenario, arg, variant]);
   const webm = `${out}/${label}-${name}.webm`; fs.writeFileSync(webm, Buffer.from(b64, 'base64'));
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', webm, '-ac', '2', '-ar', '44100', '-codec:a', 'libmp3lame', '-b:a', '128k', `${out}/${label}-${name}.mp3`]);
   fs.rmSync(webm); console.log('clip', `${label}-${name}.mp3`);
 };
 
-await clip('1-car-engine', 'engine', 'sedan');
-await clip('2-jakarta-engine', 'engine', 'moto');
-await clip('3-horns', 'horn', ['sedan', 'suv', 'moto']);
-await clip('4-collisions', 'collisions');
+const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
+const jobs = [
+  ['1a-car-engine-set-a', 'engine', 'sedan', 'car-a'], ['1b-car-engine-set-b', 'engine', 'sedan', 'car-b'],
+  ['2a-jakarta-engine-set-a', 'engine', 'moto', 'moto-a'], ['2b-jakarta-engine-set-b', 'engine', 'moto', 'moto-b'],
+  ['3a-horns-jakarta-a', 'horn', ['sedan', 'suv', 'moto'], 'horn-a'], ['3b-horns-jakarta-b', 'horn', ['sedan', 'suv', 'moto'], 'horn-b'],
+  ['4-collisions', 'collisions', undefined, null],
+];
+for (const [n, sc, arg, v] of jobs) if (!only || only.some(o => n.startsWith(o))) await clip(n, sc, arg, v);
 await browser.close();
