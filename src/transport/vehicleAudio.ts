@@ -1,6 +1,7 @@
-import { audioBus } from '../lamb/audio';
+import { audioBus, audioMaster } from '../lamb/audio';
 import { isMuted } from '../core/audioSettings';
 import { hasGestured, listenForGesture } from '../arena/exteriorAudio';
+import { keepAlive, nudge, sessionType, setPlaybackSession } from './audioUnlock';
 
 /**
  * The sounds of a vehicle the player drives (synthesised, no audio file; TEMPORARY like the rest of the city's sound): door, engine start, idle, an engine
@@ -27,6 +28,30 @@ export const PROFILES: Record<'sedan' | 'luxury' | 'suv' | 'moto', EngineProfile
 };
 export const profileFor = (kit: string): EngineProfile => PROFILES[(kit in PROFILES ? kit : 'sedan') as keyof typeof PROFILES];
 
+/**
+ * The horn of each kind of vehicle. A phone's loudspeaker gives next to nothing below ~300 Hz, so a horn made of two low square waves was there on paper and not in the pocket:
+ * these reeds start at 350 Hz and up, are sawtooth/square (full of harmonics, which a small speaker does reproduce), are lifted in the 1.4–2.6 kHz band where the ear and the speaker are
+ * strongest, and each reed is two oscillators a few Hz apart (the beating is the buzz of a real horn). A car sounds a major third (two reeds), a saloon sharper than a big SUV, a motorbike one
+ * higher, reedier note.
+ */
+export interface HornVoice {
+  /** The reeds (Hz): a car sounds two together. */
+  reeds: number[]; wave: OscillatorType;
+  /** The two oscillators of a reed are this far apart (Hz). */
+  detune: number;
+  /** High-pass (Hz), and the lift (dB at Hz) that carries it through a phone speaker. */
+  hp: number; peakHz: number; peakDb: number;
+  /** Level of the horn before the bus's limiter. */
+  level: number;
+}
+export const HORNS: Record<keyof typeof PROFILES, HornVoice> = {
+  sedan: { reeds: [440, 554], wave: 'sawtooth', detune: 2.2, hp: 260, peakHz: 1700, peakDb: 8, level: 0.34 },
+  luxury: { reeds: [392, 494], wave: 'sawtooth', detune: 1.4, hp: 240, peakHz: 1500, peakDb: 6, level: 0.32 },
+  suv: { reeds: [349, 440], wave: 'sawtooth', detune: 2.6, hp: 230, peakHz: 1400, peakDb: 8, level: 0.36 },
+  moto: { reeds: [880], wave: 'square', detune: 3.5, hp: 520, peakHz: 2600, peakDb: 7, level: 0.28 },
+};
+export const hornFor = (kit: string): HornVoice => HORNS[(kit in HORNS ? kit : 'sedan') as keyof typeof HORNS];
+
 /** Revs 0…1 for a speed (m/s) up to `maxSpeed`: idle at a standstill, climbing within a gear, falling back at each change. */
 export function rpmOf(speed: number, maxSpeed: number, gears: number, throttle = 0): number {
   const v = Math.min(1, Math.abs(speed) / Math.max(0.1, maxSpeed)), span = 1 / gears, g = Math.min(gears - 1, Math.floor(v / span)), within = (v - g * span) / span;
@@ -52,21 +77,41 @@ class VehicleAudio {
   private lastShot = new Map<string, number>();
   private bedTimer = 0;
   private unlocked = false;
+  /** How often the context was asked to resume, and by which event (the on-device diagnostics: a silent phone shows whether a gesture ever reached it). */
+  private nudges = 0; private lastNudge = '';
+  private meterNode: AnalyserNode | null = null;
 
-  /** First tap or key: create and resume the audio context inside the gesture (iPhone Safari). Idempotent. */
+  /** The vehicles' bus: its own gain, then a limiter (a horn over an engine over a crash must not clip), then the page's master gain (which carries the sound setting). */
+  private makeBus(): Bus | null {
+    const b = audioBus(); if (!b) return null;
+    const master = audioMaster();
+    if (master) {
+      try {
+        const lim = b.ctx.createDynamicsCompressor();
+        lim.threshold.value = -14; lim.knee.value = 8; lim.ratio.value = 6; lim.attack.value = 0.004; lim.release.value = 0.14;
+        b.gain.disconnect(); b.gain.connect(lim); lim.connect(master);
+      } catch { /* the plain bus still plays */ }
+    }
+    return b;
+  }
+
+  /**
+   * Keeps the page's sound alive for as long as the page lives (src/transport/audioUnlock.ts): every gesture (the end of a touch, a click, a key) and every return to the page resumes a
+   * context that stopped (suspended, or « interrupted » on iPhone after a call, the lock screen, another tab). The first one also creates it, inside the gesture. Idempotent.
+   */
   unlockOnGesture() {
     if (this.unlocked || typeof window === 'undefined') return;
     this.unlocked = true; listenForGesture();
-    const go = () => { try { this.bus ??= audioBus(); void this.bus?.ctx.resume(); } catch { /* no audio on this device */ } for (const t of ['pointerdown', 'touchend', 'keydown']) window.removeEventListener(t, go, true); };
-    for (const t of ['pointerdown', 'touchend', 'keydown']) window.addEventListener(t, go, { capture: true, passive: true });
+    keepAlive(window, document, () => this.bus?.ctx ?? null, () => { try { this.bus ??= this.makeBus(); } catch { /* no audio on this device */ } return this.bus?.ctx ?? null; },
+      why => { this.nudges++; this.lastNudge = why; });
   }
 
   /** The bus, when sound may play (a gesture was made, the sound setting is on). */
   private open(): Bus | null {
     if (isMuted() || !hasGestured()) return null;
-    try { this.bus ??= audioBus(); } catch { return null; }
+    try { this.bus ??= this.makeBus(); } catch { return null; }
     const b = this.bus; if (!b) return null;
-    if (b.ctx.state === 'suspended') void b.ctx.resume();
+    if (nudge(b.ctx)) { this.nudges++; this.lastNudge = 'frame'; }
     b.gain.gain.value = 1;
     return b;
   }
@@ -130,6 +175,7 @@ class VehicleAudio {
   run(prof: EngineProfile, delay = 0) {
     if (this.eng) return;
     const b = this.open(); if (!b) return;
+    setPlaybackSession(true);                                                    // driving is not background music: not muted by the silent switch (where the browser has the API)
     const c = b.ctx, t = c.currentTime;
     const o1 = c.createOscillator(), o2 = c.createOscillator(), lp = c.createBiquadFilter(), gEng = c.createGain(), mix2 = c.createGain();
     o1.type = 'sawtooth'; o2.type = 'square'; lp.type = 'lowpass'; lp.Q.value = 0.8; mix2.gain.value = prof.sub;
@@ -176,7 +222,7 @@ class VehicleAudio {
     e.o1.frequency.setTargetAtTime(e.prof.base * 0.6, t, 0.12); e.o2.frequency.setTargetAtTime(e.prof.base * 0.3, t, 0.12);
     const srcs = e.srcs; this.eng = null;
     setTimeout(() => { for (const s of srcs) { try { s.stop(); s.disconnect(); } catch { /* already stopped */ } } }, 700);
-    this.hornOff();
+    this.hornOff(); setPlaybackSession(false);
   }
   get running() { return !!this.eng; }
   get rpm() { return this.eng?.rpm ?? 0; }
@@ -197,21 +243,25 @@ class VehicleAudio {
     this.thud(b, t, 58, 0.4, 0.3 + 0.3 * k); this.burst(b, t, 0.22, 1100, 0.7, 0.14 + 0.16 * k);
     for (const [f, d] of [[420, 0.3], [637, 0.22]] as const) { const o = b.ctx.createOscillator(), g = b.ctx.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.05 + 0.06 * k, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0008, t + d); o.connect(g).connect(b.gain); o.start(t); o.stop(t + d + 0.02); }
   }
-  /** The horn, held (two reeds for a car, one for a motorbike). */
-  hornOn(moto = false) {
+  /** The horn, held: the voice of this kind of vehicle (HORNS). Starts at once and goes on for as long as it is asked for; `hornOff` releases it. */
+  hornOn(kit = 'sedan') {
     if (this.horn) return;
     const b = this.ready('horn', 0); if (!b) return;
-    const c = b.ctx, g = c.createGain(), lp = c.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 1900; g.gain.setValueAtTime(0, c.currentTime); g.gain.linearRampToValueAtTime(0.14, c.currentTime + 0.02);
-    const oscs = (moto ? [740] : [392, 494]).map(f => { const o = c.createOscillator(); o.type = 'square'; o.frequency.value = f; o.connect(lp); o.start(); return o; });
-    lp.connect(g).connect(b.gain); this.horn = { gain: g, oscs };
+    const v = hornFor(kit), c = b.ctx, t = c.currentTime;
+    const hp = c.createBiquadFilter(), pk = c.createBiquadFilter(), lp = c.createBiquadFilter(), g = c.createGain();
+    hp.type = 'highpass'; hp.frequency.value = v.hp; pk.type = 'peaking'; pk.frequency.value = v.peakHz; pk.Q.value = 1.1; pk.gain.value = v.peakDb; lp.type = 'lowpass'; lp.frequency.value = 5200;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v.level / Math.max(1, v.reeds.length), t + 0.008);
+    const oscs: OscillatorNode[] = [];
+    for (const f of v.reeds) for (const d of [-v.detune / 2, v.detune / 2]) { const o = c.createOscillator(); o.type = v.wave; o.frequency.value = f + d; o.connect(hp); o.start(t); oscs.push(o); }
+    hp.connect(pk).connect(lp).connect(g).connect(b.gain); this.horn = { gain: g, oscs };
   }
   hornOff() {
     const h = this.horn; if (!h || !this.bus) { this.horn = null; return; }
     this.horn = null;
-    const t = this.bus.ctx.currentTime; h.gain.gain.cancelScheduledValues(t); h.gain.gain.setTargetAtTime(0, t, 0.02);
-    setTimeout(() => { for (const o of h.oscs) { try { o.stop(); o.disconnect(); } catch { /* done */ } } }, 160);
+    const t = this.bus.ctx.currentTime; h.gain.gain.cancelScheduledValues(t); h.gain.gain.setValueAtTime(h.gain.gain.value, t); h.gain.gain.setTargetAtTime(0, t, 0.018);
+    setTimeout(() => { for (const o of h.oscs) { try { o.stop(); o.disconnect(); } catch { /* done */ } } }, 180);
   }
+  get hornHeld() { return !!this.horn; }
   /** A far-off horn in the traffic bed: very quiet, now and then. */
   private distantHorn() {
     const b = this.bus; if (!b || isMuted()) return;
@@ -221,7 +271,32 @@ class VehicleAudio {
     lp.connect(g).connect(b.gain);
   }
 
-  info() { return { count: { ...this.count }, running: !!this.eng, rpm: +(this.eng?.rpm ?? 0).toFixed(2), horn: !!this.horn, gestured: hasGestured(), muted: isMuted(), state: this.bus?.ctx.state ?? 'none' }; }
+  /**
+   * What the vehicle bus is playing right now: peak and rms in dBFS, and the share of the energy above 800 Hz (a phone speaker's range). The checks and the on-device diagnostics read it:
+   * a number a person can quote, where « the counter went up » says nothing about what comes out. Null before the bus exists.
+   */
+  meter(): { peakDb: number; rmsDb: number; high: number } | null {
+    const b = this.bus; if (!b) return null;
+    if (!this.meterNode) { this.meterNode = b.ctx.createAnalyser(); this.meterNode.fftSize = 2048; this.meterNode.smoothingTimeConstant = 0; b.gain.connect(this.meterNode); }
+    const a = this.meterNode, td = new Float32Array(a.fftSize), fd = new Float32Array(a.frequencyBinCount);
+    a.getFloatTimeDomainData(td); a.getFloatFrequencyData(fd);
+    let peak = 0, sum = 0; for (const x of td) { const m = Math.abs(x); if (m > peak) peak = m; sum += x * x; }
+    const hz = b.ctx.sampleRate / a.fftSize; let lo = 0, hi = 0;
+    fd.forEach((db, i) => { const p = Math.pow(10, db / 10); if (i * hz >= 800) hi += p; else lo += p; });
+    const dB = (x: number) => x > 1e-6 ? +(20 * Math.log10(x)).toFixed(1) : -120;
+    return { peakDb: dB(peak), rmsDb: dB(Math.sqrt(sum / td.length)), high: +(hi / Math.max(1e-12, hi + lo)).toFixed(2) };
+  }
+  /** Test hook: puts the context to sleep as a phone call or the lock screen does. */
+  suspendForTest(): Promise<void> { return this.bus?.ctx.suspend() ?? Promise.resolve(); }
+  /** A short test tone through the same path as the horn (the diagnostics' button): whether it was started. */
+  beep(): boolean {
+    const b = this.open(); if (!b) return false;
+    const c = b.ctx, t = c.currentTime, o = c.createOscillator(), g = c.createGain();
+    o.type = 'triangle'; o.frequency.value = 880; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.25, t + 0.02); g.gain.setValueAtTime(0.25, t + 0.3); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.4);
+    o.connect(g).connect(b.gain); o.start(t); o.stop(t + 0.42); return true;
+  }
+
+  info() { return { count: { ...this.count }, running: !!this.eng, rpm: +(this.eng?.rpm ?? 0).toFixed(2), horn: !!this.horn, gestured: hasGestured(), muted: isMuted(), state: this.bus?.ctx.state ?? 'none', session: sessionType(), nudges: this.nudges, nudgedBy: this.lastNudge }; }
 }
 
 export const vehicleAudio = new VehicleAudio();

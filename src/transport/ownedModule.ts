@@ -12,6 +12,8 @@ import { PassengerCamera } from './camera';
 import { RideCard } from './ui';
 import { fovFor } from '../core/view';
 import { vehicleAudio, profileFor, brakeIntensity, IMPACT_SPEED } from './vehicleAudio';
+import { mountAudioDiag } from './audioDiag';
+import { setMuted } from '../core/audioSettings';
 import { driveStep, newDriveState, pedalThrottle, type DriveState } from './drive';
 import { assetsRevision, buyAsset, cannotBuy, holding } from '../economy/assets';
 import { specOf } from '../economy/catalog';
@@ -184,6 +186,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private spec: VehicleSpec | null = null;
   private st: DriveState = newDriveState(0, 0, 0);
   private driving = false;
+  /** The horn button went down or up (ridePad.onHorn): the horn sounds from the touch itself. */
+  private readonly hornEvent = (on: boolean) => { if (on && this.driving && this.ctx.mode() === 'play') vehicleAudio.hornOn(this.def.kit); else if (!on) vehicleAudio.hornOff(); };
   /** « Descendre » asked while moving: brake, then get off. */
   private leaving = false;
   private cam = new PassengerCamera();
@@ -252,7 +256,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (ui) this.card = new RideCard(ui, `${this.def.key}-card`);
     ctx.interactions.add(this.targets);
     if (ui) ridePad.init(ui);
-    vehicleAudio.unlockOnGesture();                              // the first tap or key lets the page play sound (iPhone Safari)
+    vehicleAudio.unlockOnGesture();
+    mountAudioDiag();                              // the first tap or key lets the page play sound (iPhone Safari)
   }
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
@@ -369,7 +374,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (bi > 0.05 && input.throttle !== 0) { vehicleAudio.brake(bi); if (bi > 0.3) this.fx.hard = 0.6; }
     if (!vehicleAudio.running) vehicleAudio.run(profileFor(this.def.kit));       // the first tap may come after getting in: the engine joins then
     vehicleAudio.update(dt, this.st.speed, this.spec.drive.maxSpeed, input.throttle);
-    if (ctx.mode() === 'play' && (ctx.input.keys.has('KeyH') || ridePad.horn)) vehicleAudio.hornOn(this.def.kit === 'moto'); else vehicleAudio.hornOff();
+    ridePad.onHorn(this, this.hornEvent);                                         // the button tells the horn at once; this frame is the safety net (a key, a missed « up »)
+    if (ctx.mode() === 'play' && (ctx.input.keys.has('KeyH') || ridePad.horn)) vehicleAudio.hornOn(this.def.kit); else vehicleAudio.hornOff();
     this.fx.hard = Math.max(0, this.fx.hard - dt);
     if (this.leaving && Math.abs(this.st.speed) < 0.3) this.getOff(true);
     this.cardT -= dt;
@@ -648,6 +654,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         card: () => this.card?.text ?? '',
         /** Checks: the vehicle sounds (counts asked and played, whether the engine runs). */
         audio: () => vehicleAudio.info(),
+        audioMeter: () => vehicleAudio.meter(),                                   // dBFS of what the vehicle bus plays (scripts/check-horn.mjs)
+        audioMute: (on: boolean) => setMuted(on),                                 // the phone's sound setting
+        audioSuspend: () => vehicleAudio.suspendForTest(),                        // what a call or the lock screen does to the context
         /** Checks: the bike's speed in m/s while it is ridden (the online check rides above the 6 m/s presence limit). */
         boost: (v: number) => { if (this.driving) this.st.speed = v; },
         /** Checks: put the vehicle (and its driver) at a spot, stopped. */

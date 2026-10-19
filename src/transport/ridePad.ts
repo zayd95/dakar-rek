@@ -14,7 +14,9 @@ export interface PadOptions {
   view?: () => void;
 }
 let root: HTMLDivElement | null = null, gasB: HTMLButtonElement, brakeB: HTMLButtonElement, offB: HTMLButtonElement, revB: HTMLButtonElement, viewB: HTMLButtonElement, hornB: HTMLButtonElement;
-let owner: Owner | null = null, onDescend: (() => void) | null = null, onView: (() => void) | null = null;
+let owner: Owner | null = null, onDescend: (() => void) | null = null, onView: (() => void) | null = null, onHorn: ((on: boolean) => void) | null = null;
+/** What the pad's own buttons count (the on-device diagnostics: whether a thumb's touch reached the Klaxon button at all). */
+const seen = { hornDown: 0, hornUp: 0, hornCancel: 0 };
 export const ridePad = {
   gas: false, brake: false,
   /** The horn, held. */
@@ -24,6 +26,10 @@ export const ridePad = {
   get active() { return owner !== null; },
   /** Gas − brake, in −1…1 (a motorbike: the brake backs it up once stopped, as before). */
   get throttle() { return (this.gas ? 1 : 0) - (this.brake ? 1 : 0); },
+  /** Touches the Klaxon button has received (down, up, cancelled): the evidence on a phone that a thumb reached it. */
+  get touches() { return { ...seen }; },
+  /** The horn button went down or up: told at once, from the event itself, not at the next frame (the sound starts with the touch). Only the pad's owner may set it. */
+  onHorn(by: Owner, fn: ((on: boolean) => void) | null) { if (owner === by) onHorn = fn; },
   /** Builds the pad (once) in the HUD layer. */
   init(parent: HTMLElement) {
     if (root) return;
@@ -34,13 +40,17 @@ export const ridePad = {
     offB = mk(top, 'rp-off', 'Descendre'); revB = mk(top, 'rp-rev', 'R'); hornB = mk(top, 'rp-horn', 'Klaxon'); viewB = mk(top, 'rp-view', 'Vue');
     brakeB = mk(pedals, 'rp-brake', 'Frein'); gasB = mk(pedals, 'rp-gas', 'Accélérer');
     revB.title = 'Marche arrière';
-    const hold = (b: HTMLButtonElement, set: (on: boolean) => void) => {
-      const up = () => { set(false); b.classList.remove('down'); };
-      b.addEventListener('pointerdown', e => { e.preventDefault(); try { b.setPointerCapture?.(e.pointerId); } catch { /* a synthetic or already released pointer: the buttons still work */ } set(true); b.classList.add('down'); });
+    const hold = (b: HTMLButtonElement, set: (on: boolean) => void, count?: (what: 'down' | 'up' | 'cancel') => void) => {
+      const up = (e: Event) => { count?.(e.type === 'pointerup' ? 'up' : 'cancel'); set(false); b.classList.remove('down'); };
+      b.addEventListener('pointerdown', e => { e.preventDefault(); count?.('down'); try { b.setPointerCapture?.(e.pointerId); } catch { /* a synthetic or already released pointer: the buttons still work */ } set(true); b.classList.add('down'); });
       for (const t of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) b.addEventListener(t, up);
       b.addEventListener('contextmenu', e => e.preventDefault());
     };
-    hold(gasB, on => { this.gas = on; }); hold(brakeB, on => { this.brake = on; }); hold(hornB, on => { this.horn = on; });
+    hold(gasB, on => { this.gas = on; }); hold(brakeB, on => { this.brake = on; });
+    hold(hornB, on => { this.horn = on; onHorn?.(on); }, what => { if (what === 'down') seen.hornDown++; else if (what === 'up') seen.hornUp++; else seen.hornCancel++; });
+    // a touch the system takes away (a call, the app switcher, a banner) sends no « up » to a pedal under the thumb: everything is let go, the horn included, rather than left on
+    const letGo = () => { this.gas = false; this.brake = false; if (this.horn) { this.horn = false; onHorn?.(false); } gasB.classList.remove('down'); brakeB.classList.remove('down'); hornB.classList.remove('down'); };
+    window.addEventListener('blur', letGo); document.addEventListener('visibilitychange', () => { if (document.hidden) letGo(); });
     // taps fire on release of the same button, so a tap with the second thumb works while the first one holds the gas (a browser may not synthesise a click then)
     const tap = (b: HTMLButtonElement, fn: () => void) => {
       let armed = false;
@@ -71,7 +81,8 @@ export const ridePad = {
   /** Gives the pad back (only the module that holds it can). */
   hide(by: Owner) {
     if (owner !== by) return;
-    owner = null; onDescend = null; onView = null; this.gas = false; this.brake = false; this.reverse = false; this.horn = false;
+    if (this.horn) onHorn?.(false);
+    owner = null; onDescend = null; onView = null; onHorn = null; this.gas = false; this.brake = false; this.reverse = false; this.horn = false;
     document.body.classList.remove('ridepad', 'ridepad-car'); root?.classList.remove('stopped', 'canrev');
     gasB?.classList.remove('down'); brakeB?.classList.remove('down'); hornB?.classList.remove('down'); revB?.classList.remove('on'); if (revB) revB.textContent = 'R';
   },
