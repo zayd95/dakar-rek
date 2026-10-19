@@ -224,7 +224,7 @@ class VehicleAudio {
     const lift = throttle <= 0 && Math.abs(speed) > 4;                                  // off the throttle at speed: the engine brakes, the note closes up
     e.lp.frequency.setTargetAtTime(e.prof.cutoff * (0.55 + 1.3 * e.rpm) * (lift ? 0.8 : 1), t, 0.06);
     e.bp.frequency.setTargetAtTime((520 + 1100 * e.rpm) * (e.prof === PROFILES.moto ? 1.25 : 1), t, 0.06);
-    e.gMid.gain.setTargetAtTime(e.prof.mid * 0.25 * (lift ? 0.2 : 0.62 + 0.38 * Math.max(0, throttle)) * (0.8 + 0.6 * e.rpm), t, 0.06);   // the growl: there at idle (it is what a phone plays of it), fuller under load, drawn in on lift-off
+    e.gMid.gain.setTargetAtTime(e.prof.mid * 0.4 * (lift ? 0.2 : 0.62 + 0.38 * Math.max(0, throttle)) * (0.8 + 0.6 * e.rpm), t, 0.06);   // the growl: there at idle (it is what a phone plays of it), fuller under load, drawn in on lift-off
     e.lopeG.gain.setTargetAtTime(0.006 * Math.max(0, 1 - e.rpm * 3), t, 0.2);
     const load = 0.06 + 0.09 * e.rpm + 0.05 * Math.max(0, throttle);
     e.gEng.gain.setTargetAtTime(Math.min(0.12, load * 0.62) * e.prof.level, t, 0.06);   // below the horn: the engine is the bed of the drive, not its loudest voice
@@ -252,7 +252,7 @@ class VehicleAudio {
     if (intensity <= 0.05) return;
     const b = this.ready('brake', 0.9); if (!b) return;
     const t = b.ctx.currentTime;
-    this.burst(b, t, 0.4, 2300, 9, 0.025 + 0.06 * intensity); this.burst(b, t + 0.03, 0.34, 3100, 12, 0.012 + 0.03 * intensity);
+    this.burst(b, t, 0.45, 2300, 9, 0.04 + 0.1 * intensity); this.burst(b, t + 0.03, 0.4, 3100, 12, 0.02 + 0.05 * intensity);
   }
   /** A light tap (a soft bump) or a real impact (a crunch, a boom, a metallic ring), by the speed at the moment of contact. */
   impact(speed: number) {
