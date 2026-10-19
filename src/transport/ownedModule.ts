@@ -26,6 +26,7 @@ import { prestige, type FloorCarInfo, type FloorOwner } from './prestigeSales';
 import { seatClip, sitOriginY } from '../interact/seats';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
+import { crossing } from './hubLink';
 import { transport } from './module';
 import type { DriveSpec, VehicleSpec } from './spec';
 
@@ -197,6 +198,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private dealer: Dealer | null = null;
   private cardT = 0;
   private camMs = 0;
+  /** A crossing into the next district in progress: the pose, speed and steering the ride resumes with once the hub is built. */
+  private carry: { x: number; z: number; yaw: number; speed: number; steer: number; odo: number } | null = null;
   private obst: { x: number; z: number; yaw: number; hl: number; hw: number }[] = [];
   private bumps = 0;
   /** Purchases made (debug: the checks verify it is paid once). */
@@ -275,6 +278,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     migrateOwned(ctx.state);                                    // a save from before the asset model
     migrateLegacyVehicles(ctx.state);                           // a retired vehicle (the old « Voiture d'occasion ») becomes its successor, same asset
     this.sync(); this.rev = assetsRevision();
+    if (this.carry) this.resume();
   }
 
   /** Name and price from the catalogue. */
@@ -367,13 +371,14 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : { throttle, steer: mv.x };
     transport.obstacles(this.obst, this.def.kit);
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
-    const hit = driveStep(this.st, input, this.spec.drive, dt, this.blocked);
+    const z0 = this.st.z, hit = driveStep(this.st, input, this.spec.drive, dt, this.blocked);
     // how it FEELS (src/transport/contact.ts): one bump or hit per contact, a scrape while it slides, never a knock on every frame of a push against a wall
     const cf = this.contact.step(dt, hit, vs0, this.st.speed);
     if (cf.impact) this.onImpact(cf.impact, m);
     if (cf.scraping) vehicleAudio.scrape(cf.scrape); else vehicleAudio.scrapeOff();
     if (cf.scraping) this.scrapeFrames++;
     m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(this.st.speed), this.st.accel, this.st.odo, dt);
+    if (!this.trial && !this.leaving && ctx.mode() === 'play' && this.hub) { const c = crossing(this.hub.id, this.st.x, z0, this.st.z, this.st.speed * Math.cos(this.st.yaw)); if (c) { this.cross(c.link.to, c.x, c.z); return; } }
     this.lean = m.animate(this.st.speed, this.st.steer, dt);                     // wheels, steering, a motorbike's lean
     // sound and feel: the engine follows the speed, a hard brake squeals and dips the camera a little, the horn is held
     const bi = brakeIntensity(-this.st.accel * Math.sign(this.st.speed || 1), v0);
@@ -944,6 +949,33 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.refreshCard();
   }
 
+  /**
+   * The car has crossed the border road into the next district (src/transport/hubLink.ts). The same car is saved as parked there at the same pose, and the next hub is built around
+   * it at the start of the next frame (`crossHub`); `hubLoaded` then seats the player in it again with the speed, steering and camera it had. The engine, the pad and the held
+   * fingers are not touched: the player keeps driving.
+   */
+  private cross(dest: HubId, x: number, z: number) {
+    if (this.carry || !this.hub) return;
+    const yaw = this.st.yaw;
+    this.carry = { x, z, yaw, speed: this.st.speed, steer: this.st.steer, odo: this.st.odo };
+    park(this.ctx.state.data, { asset: this.def.asset, hub: dest, x, z, yaw });
+    this.ctx.crossHub(dest, { x, z, yaw });
+  }
+  /** After a crossing: the car stands where it was saved, the player sits in it and drives on at the speed it had. */
+  private resume() {
+    const c = this.carry!, ctx = this.ctx, m = this.vehicle; this.carry = null;
+    if (!m) return;
+    this.st.speed = c.speed; this.st.steer = c.steer; this.st.odo = c.odo;
+    m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(c.speed), 0, c.odo, 0);
+    ctx.player.standUp(true);
+    ctx.player.sit(m.driverSeat);
+    if (ctx.player.seated()?.id !== m.driverSeat.id) { vehicleAudio.stop(); ridePad.hide(this); this.setSolid(true); return; }   // could not sit: it stays parked here, nothing lost
+    this.driving = true; this.leaving = false; this.contact.reset();
+    this.setSolid(false);
+    m.setRidden(true);
+    this.refreshCard();                                        // the camera is kept as it was: it lives relative to the vehicle, so it does not jump with the new coordinates
+  }
+
   /** Off the vehicle, beside it; it stays parked there. `normal`: the player chose to get off. A car with a door steps out through it (stepExit). */
   private getOff(normal: boolean) {
     const ctx = this.ctx, m = this.vehicle; if (!m || !this.driving || !this.hub) return;
@@ -1019,7 +1051,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   }
 
   private clear() {
-    if (this.driving) { this.driving = false; this.cam.end(); this.upright(); vehicleAudio.stop(); }
+    const ride = this.carry !== null;                           // crossing into the next district: the ride goes on (engine, pad, camera)
+    if (this.driving) { this.driving = false; if (!ride) { this.cam.end(); this.upright(); vehicleAudio.stop(); } }
     this.setSolid(false);
     this.mounting = null; this.entry = null; this.exit = null; this.doorK = this.doorGoal = 0; this.doorSound = false;
     this.trial = false; this.trialSlot = -1; this.returned = false; this.seed = 0; this.parkedTarget.name = this.def.text.mine;
@@ -1027,7 +1060,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     for (const fc of this.floor) { fc.vehicle?.dispose(); fc.card.forEach(m => m.removeFromParent()); }
     this.floor = []; this.floorTargets = []; for (const t of this.cardTex) t.dispose(); this.cardTex = [];
     this.vehicle?.dispose(); this.vehicle = null;
-    this.box?.dispose(); this.box = null; ridePad.hide(this);
+    this.box?.dispose(); this.box = null; if (!ride) ridePad.hide(this);
     if (this.dealer) {
       for (const geo of this.dealer.geos) geo.dispose();
       for (const mat of this.dealer.mats) mat.dispose();

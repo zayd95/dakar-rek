@@ -302,7 +302,7 @@ export class PerfHost {
       peers: () => [], ballNet: { self: () => '', send: () => false, listen: () => {} }, mode: () => this.mode, setMode: m => { this.mode = m; },
       menu: () => { /* a sheet would open: the player keeps playing here */ }, guide: () => null, toast: noop, save: noop,
       addInterior: (_door, int) => { world.group.add(int.group); int.group.visible = false; seats.addAll(int.seats.map(s => ({ ...s, space: _door.id }))); },
-      enter: noop, exit: noop, startBout: () => false, walkTo: noop, setPublicRecord: noop, travel: noop,
+      enter: noop, exit: noop, startBout: () => false, walkTo: noop, setPublicRecord: noop, travel: noop, crossHub: noop,
     };
     this.modules = M.modules.MODULES;
     for (const m of this.modules) m.init?.(ctx);

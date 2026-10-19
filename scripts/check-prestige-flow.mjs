@@ -8,7 +8,7 @@
 //
 // Usage: node scripts/check-prestige-flow.mjs [baseUrl] [outDir]   (a running build; RECORD=1 films the whole thing: outDir/prestige-journey.webm)
 import { chromium } from 'playwright';
-import { realTouch, walkTo, pilot } from './lib/realTouch.mjs';
+import { realTouch, walkTo, pilot, padDrive } from './lib/realTouch.mjs';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4214/';
@@ -162,6 +162,97 @@ await page.reload(); await page.waitForFunction(() => window.__dakar?.pos && win
 await page.waitForTimeout(2500);
 const re = await B(), n3 = await count();
 check('after a reload the car stands where it was left, in the same paint, not duplicated; the bay is empty', re.owned && re.here && Math.abs(re.x - parkedAt.x) < 0.1 && Math.abs(re.z - parkedAt.z) < 0.1 && re.seed === bought.seed && !re.floor[1].here && re.floor[0].here && n3.n === 2, JSON.stringify({ x: re.x, z: re.z, seed: re.seed, floor: re.floor.map(f => [f.slot, f.here, f.state]), names: n3.names }));
+
+// ============================================================================ DRIVE_ON=1: the same car, on from the forecourt in Almadies to the Corniche, with no teleport (docs/vehicles/CONTINUOUS_DRIVE.md)
+if (process.env.DRIVE_ON) {
+  const CH = 240;                                                         // two perimeter roads laid end to end: Almadies z 120 is Corniche z -120
+  const getIn = async () => {
+    const c = await AT(), L = { x: Math.cos(c.yaw), z: -Math.sin(c.yaw) }, F = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) };
+    const me = await d(() => window.__dakar.pos());
+    const spots = [[2.0, 0.4], [-2.0, 0.4], [1.6, -1.2], [-1.6, -1.2]].sort((a, b) => Math.hypot(c.x + L.x * a[0] + F.x * a[1] - me.x, c.z + L.z * a[0] + F.z * a[1] - me.z) - Math.hypot(c.x + L.x * b[0] + F.x * b[1] - me.x, c.z + L.z * b[0] + F.z * b[1] - me.z));
+    for (const [side, along] of spots) {                                   // the nearest side first: nobody walks through the car
+      await walkTo(page, t, c.x + L.x * side + F.x * along, c.z + L.z * side + F.z * along, { tol: 0.9, ms: 40000 });
+      const ok = await page.waitForFunction(() => window.__dakar.focus()?.id === 'berline:parked', null, { timeout: 6000 }).then(() => true, () => false);
+      console.log('SIDE', side, along, ok, JSON.stringify(await d(() => ({ focus: window.__dakar.focus()?.id ?? null, pos: [window.__dakar.pos().x, window.__dakar.pos().z] }))));
+      if (ok) break;
+    }
+    await wait(() => window.__dakar.focus()?.id === 'berline:parked', null, 20000).catch(async e => { console.log('NOFOCUS', JSON.stringify(await d(() => ({ focus: window.__dakar.focus(), pos: window.__dakar.pos(), car: window.__dakar.berline.at() })))); throw e; });
+    await t.tap('#act');
+    await wait(() => window.__dakar.berline.at().driving && document.body.classList.contains('ridepad'), null, 120000);
+    await page.waitForTimeout(600);
+  };
+  await getIn();
+  const pre = await B(), seedBefore = pre.seed, paintBefore = pre.paint;
+  check('the owner gets in the car they bought', pre.owned && (await AT()).driving, JSON.stringify({ owned: pre.owned }));
+  // every frame is logged from inside the page: which district, where the car is, how fast, whether the player is in the seat, the pad, the engine, and where the camera is
+  await d(() => {
+    window.__frames = [];
+    const tick = () => {
+      const A = window.__dakar, a = A.berline.at(), p = A.pos(), c = A.camera().at;
+      window.__frames.push({ ms: performance.now(), hub: p.hub, t: a.t, x: a.x, z: a.z, yaw: a.yaw, speed: a.speed, driving: a.driving, pad: document.body.classList.contains('ridepad'), engine: A.berline.audio().running, cam: c, mode: p.mode });
+      if (window.__frames.length < 60000) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  const ROUTE = [
+    { x: -88, z: 6, tol: 2.5, speed: 3 }, { x: -80, z: 1.2, tol: 3, speed: 5 }, { x: -70, z: 1.2, tol: 3 }, { x: -64.5, z: 2.6, tol: 2.5, speed: 4 }, { x: -61.2, z: 7, tol: 2.5, speed: 4 },
+    { x: -60.4, z: 16, tol: 3 }, { x: -60.4, z: 50, tol: 4 }, { x: -60.4, z: 90, tol: 4 }, { x: -60.4, z: 128, tol: 3 },        // … Almadies’ south end; the road goes on
+    { x: -60.4, z: 170, tol: 4 }, { x: -60.4, z: 215, tol: 4 },                                                          // … in Corniche coordinates z -70, -25 (the route is written in the first district’s frame)
+  ];
+  // the car stands on the forecourt facing the showroom: backed out to the road with the reverse gear (« R » and the gas), then driven away forward
+  await padDrive(page, t, { reverse: true, hold: () => page.waitForFunction(() => window.__dakar.berline.at().z < 3.2, null, { timeout: 120000 }) });
+  await page.waitForFunction(() => Math.abs(window.__dakar.berline.at().speed) < 0.3, null, { timeout: 60000 }).catch(() => {});
+  await pilot(page, t, 'berline', ROUTE, { cruise: 8, stall: 25000 });
+  const fr = await d(() => window.__frames), swaps = [];
+  for (let i = 1; i < fr.length; i++) if (fr[i].hub !== fr[i - 1].hub) swaps.push(i);
+  const i = swaps[0];
+  check('the car crossed into the Corniche on its own wheels (exactly one district change on the route)', swaps.length === 1 && fr[i - 1].hub === 'almadies' && fr[i].hub === 'corniche', JSON.stringify({ swaps: swaps.length, from: fr[i - 1]?.hub, to: fr[i]?.hub }));
+  if (i) {
+    const a = fr[i - 1], b = fr[i], dxz = Math.hypot(b.x - a.x, b.z + CH - a.z), step = Math.max(0.5, Math.abs(a.speed) * 0.12);
+    check('the car’s pose is continuous across the swap: same x, same heading, one frame’s travel and not a metre more (no teleport)', Math.abs(b.x - a.x) < 0.6 && Math.abs(Math.atan2(Math.sin(b.yaw - a.yaw), Math.cos(b.yaw - a.yaw))) < 0.1 && dxz < step + 1.2, JSON.stringify({ dx: +(b.x - a.x).toFixed(2), dyaw: +(b.yaw - a.yaw).toFixed(3), travel: +dxz.toFixed(2), speed: a.speed }));
+    check('speed is kept (no stop, no reset)', Math.abs(b.speed - a.speed) < 1.0 && a.speed > 3, JSON.stringify({ before: a.speed, after: b.speed }));
+    const around = fr.slice(Math.max(0, i - 40), i + 40);
+    check('the player stays in the driver’s seat, the touch pad stays up and the engine keeps running on every frame around the swap', around.every(f => f.driving && f.pad && f.engine && f.mode === 'play'), JSON.stringify({ frames: around.length, notDriving: around.filter(f => !f.driving).length, noPad: around.filter(f => !f.pad).length, noEngine: around.filter(f => !f.engine).length }));
+    const rel = f => { const s = Math.sin(f.yaw), c = Math.cos(f.yaw), dx = f.cam[0] - f.x, dz = f.cam[2] - f.z; return [dx * c - dz * s, f.cam[1], dx * s + dz * c]; };
+    const ra = rel(a), rb = rel(b), dc = Math.hypot(ra[0] - rb[0], ra[1] - rb[1], ra[2] - rb[2]);
+    check('the camera keeps its place behind the car (no jump, no re-framing)', dc < 1.2, JSON.stringify({ before: ra.map(v => +v.toFixed(2)), after: rb.map(v => +v.toFixed(2)), jump: +dc.toFixed(2) }));
+    const stall = (b.ms - a.ms), crossMs = await d(() => window.__dakar.crossMs());
+    console.log('swap frame gap ms', Math.round(stall), 'hub build ms', Math.round(crossMs));
+    check('the district was built in one step (the hitch is measured, not hidden: see the doc)', crossMs > 0 && crossMs < 4000, JSON.stringify({ buildMs: Math.round(crossMs), frameGapMs: Math.round(stall) }));
+    await shot('20-corniche-after-crossing');
+  }
+  const inC = await B();
+  check('it is the same car: same colour seed, still owned, saved as parked in the Corniche, not in Almadies', inC.owned && inC.seed === seedBefore && inC.paint === paintBefore && inC.record?.hub === 'corniche' && (await count()).n === 1, JSON.stringify({ seed: inC.seed, record: inC.record, copies: (await count()).n }));
+  // collisions still work in the new district: drive at a building face
+  const wall = await d(() => window.__dakar.cityGeometry().colliders.filter(c => c.h >= 6 && c.x0 > -50 && c.x0 < -30 && c.x1 - c.x0 > 8 && c.z1 - c.z0 > 14 && c.z0 > -112 && c.z1 < -20).sort((p, q) => p.x0 - q.x0)[0]);
+  const here = await AT();
+  console.log('WALL', JSON.stringify(wall), 'car', JSON.stringify(here));
+  await d(() => window.__dakar.berline.feelReset());
+  await pilot(page, t, 'berline', [{ x: here.x, z: (wall.z0 + wall.z1) / 2 - 6, tol: 4 }, { x: wall.x0 + 4, z: (wall.z0 + wall.z1) / 2, tol: 2, speed: 6 }], { cruise: 7, stall: 14000 });
+  const ft = await d(() => window.__dakar.berline.feel()), atWall = await AT();
+  check('in the Corniche the car still collides: it hits the building and stays out of it', ft.impacts.length >= 1 && atWall.x < wall.x0 - 0.5, JSON.stringify({ impacts: ft.impacts.length, x: atWall.x, wallX0: wall.x0 }));
+  // park, get out, reload: the car is saved in the Corniche, with the player beside it
+  await padDrive(page, t, { reverse: true, hold: () => page.waitForTimeout(5000) });                       // back away from the wall (the reverse gear)
+  await page.waitForFunction(() => Math.abs(window.__dakar.berline.at().speed) < 0.3, null, { timeout: 60000 }).catch(() => {});
+  const off = await AT();
+  await pilot(page, t, 'berline', [{ x: -60.4, z: off.z, tol: 3 }], { brakeAtEnd: true, cruise: 3 }).catch(() => {});
+  await page.waitForFunction(() => Math.abs(window.__dakar.berline.at().speed) < 0.3, null, { timeout: 60000 }).catch(() => {});
+  await t.tap('#ridepad .rp-off');
+  await wait(() => !window.__dakar.berline.at().driving && !window.__dakar.berline.info().exit, null, 120000);
+  await d(() => window.__dakar.save?.()); await page.waitForTimeout(1500);
+  const parkedC = await AT();
+  await page.reload(); await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.berline?.info().owned, null, T); await page.waitForTimeout(2500);
+  const rc = await B(), rp = await d(() => window.__dakar.pos());
+  check('after a reload the player is in the Corniche beside the car they drove there (save compatible, not duplicated)', rp.hub === 'corniche' && rc.owned && rc.here && Math.abs(rc.x - parkedC.x) < 0.2 && Math.abs(rc.z - parkedC.z) < 0.2 && rc.seed === seedBefore && (await count()).n === 1, JSON.stringify({ hub: rp.hub, here: rc.here, record: rc.record }));
+  // and back: the way home is the same road
+  await getIn();
+  await d(() => { window.__frames = []; const tick = () => { const A = window.__dakar, a = A.berline.at(), p = A.pos(); window.__frames.push({ hub: p.hub, x: a.x, z: a.z, speed: a.speed, driving: a.driving }); if (window.__frames.length < 60000) requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+  const back = await AT();
+  await pilot(page, t, 'berline', [{ x: -60.4, z: back.z > -100 ? back.z : -100, tol: 6 }, { x: -60.4, z: -128, tol: 3 }, { x: -60.4, z: -170, tol: 4 }, { x: -60.4, z: -215, tol: 4 }], { cruise: 8, stall: 25000 }).catch(e => console.log('BACK pilot', e.message));
+  console.log('BACK end', JSON.stringify(await AT()), 'hub', (await d(() => window.__dakar.pos())).hub);
+  const fb = await d(() => window.__frames), sw = fb.findIndex((f, k) => k && f.hub !== fb[k - 1].hub);
+  check('the way back works too: the same road leads from the Corniche into Almadies while driving', sw > 0 && fb[sw - 1].hub === 'corniche' && fb[sw].hub === 'almadies' && fb.slice(Math.max(0, sw - 20), sw + 20).every(f => f.driving) && Math.abs(fb[sw].speed - fb[sw - 1].speed) < 1.0, JSON.stringify({ swap: sw, hubs: sw > 0 ? [fb[sw - 1].hub, fb[sw].hub] : null }));
+}
 check('no JavaScript errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 await context.close();
 if (filmed) { const p = await filmed.path(); fs.copyFileSync(p, `${out}/prestige-journey.webm`); console.log('film', `${out}/prestige-journey.webm`); }
