@@ -75,6 +75,10 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
   // ---- 3. a push against the wall, the gas held: one knock, the shake dies, nothing goes through
   await s.simWait(1.0);
   await startAt(s, wall, 4); const aP = await s.au(), nvP = (await s.vib()).length;
+  // the pad may have been left in reverse (the « R » of a car that stood still): the push is made in the forward gear
+  const rev = () => s.d(() => document.querySelector('#ridepad .rp-rev')?.classList.contains('on') ?? false);
+  const reverseWas = await rev(); if (reverseWas) { await s.tr.tap('#ridepad .rp-rev'); await s.page.waitForTimeout(300); }
+  console.log('PUSH reverse was on:', reverseWas, 'now', await rev());
   const g = await s.tr.centre('#ridepad .rp-gas'); await s.tr.down(1, g.x, g.y);
   await s.page.waitForTimeout(1500);
   console.log('PUSH start state', JSON.stringify({ driving: (await s.info()).driving, pad: await s.d(() => document.body.classList.contains('ridepad')), speed: (await s.at()).speed, x: (await s.at()).x, t: (await s.at()).t, gasDown: await s.d(() => !!document.querySelector('#ridepad .rp-gas.down')) }));
