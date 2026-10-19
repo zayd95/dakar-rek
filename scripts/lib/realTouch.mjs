@@ -69,6 +69,8 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
   const gas = await t.centre('#ridepad .rp-gas'), j = await t.centre('#joy'), r = 30, t0 = Date.now();
   let gasOn = false;
   const press = async on => { if (on === gasOn) return; gasOn = on; if (on) await t.down(1, gas.x, gas.y); else await t.up(1); };
+  const brk = await t.centre('#ridepad .rp-brake'); let brakeOn = false;
+  const brake = async on => { if (on === brakeOn) return; brakeOn = on; if (on) await t.down(4, brk.x, brk.y); else await t.up(4); };
   await t.down(2, j.x, j.y);
   let at = null, prev = null;
   for (const w of points) {
@@ -82,15 +84,16 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
       // pure pursuit: aim at a point 9 m ahead of the car's nearest point on the segment from the last waypoint to this one (the car holds the lane, it does not cut the corner)
       const sx = w.x - prev.x, sz = w.z - prev.z, sl = Math.hypot(sx, sz) || 1, u = Math.max(0, Math.min(sl, ((at.x - prev.x) * sx + (at.z - prev.z) * sz) / sl)), look = Math.min(sl, u + 14);
       const aim = { x: prev.x + (sx / sl) * look, z: prev.z + (sz / sl) * look };
-      const err = wrap(Math.atan2(aim.x - at.x, aim.z - at.z) - at.yaw), steer = Math.max(-1, Math.min(1, -err * 0.6));   // the stick to the right turns the car to the right: its yaw falls
+      const err = wrap(Math.atan2(aim.x - at.x, aim.z - at.z) - at.yaw), steer = Math.max(-1, Math.min(1, -err * 1.0));   // the stick to the right turns the car to the right: its yaw falls
       await t.move(2, j.x + steer * r, j.y, 1);
-      const limit = (w.speed ?? cruise) * (Math.abs(err) > 0.6 ? 0.45 : 1) * (d < 9 ? 0.7 : 1);
+      const limit = (w.speed ?? cruise) * (Math.abs(err) > 0.5 ? 0.4 : 1) * (d < 9 ? 0.7 : 1);
+      await brake(at.speed > limit + 1.2);                               // a corner is taken slowly: the brake, then the gas again
       await press(at.speed < limit);
       await page.waitForTimeout(90);
     }
     prev = { x: w.x, z: w.z };
   }
-  await t.up(2); await press(false);
+  await t.up(2); await press(false); await brake(false);
   if (brakeAtEnd) { const b = await t.centre('#ridepad .rp-brake'); await t.down(1, b.x, b.y); await page.waitForFunction(k => Math.abs(window.__dakar[k].at()?.speed ?? 0) < 0.15, key, { timeout: 60000 }).catch(() => {}); await t.up(1); }
   return at;
 }

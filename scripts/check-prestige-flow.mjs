@@ -102,15 +102,15 @@ const trial = await B();
 check('it is a free trial: nothing paid, nothing owned, nothing saved', trial.trial && !trial.owned && !trial.record && (await d(() => window.__dakar.state.wallet)) === 200000000, JSON.stringify({ trial: trial.trial, owned: trial.owned, record: trial.record }));
 // the lane is the middle of the road: the kerb lane (4.3 m off the centre line) is where the hub parks its cars
 const LAP = [
-  { x: -88.3, z: 12, tol: 3 }, { x: -86.5, z: 6.5, tol: 2.2, speed: 6 }, { x: -76, z: 2.6, tol: 3, speed: 6 }, { x: -62.5, z: 4, tol: 3, speed: 6 }, { x: -60.4, z: 12, tol: 3 }, { x: -60.4, z: 24, tol: 4 }, { x: -60.4, z: 50, tol: 4 },
-  { x: -63, z: 58.8, tol: 3.5, speed: 5 }, { x: -76, z: 59.6, tol: 4 }, { x: -112, z: 59.6, tol: 4 }, { x: -119, z: 52, tol: 3.5, speed: 5 }, { x: -119.8, z: 40, tol: 4 }, { x: -119.8, z: 14, tol: 4 },
-  { x: -114, z: 3, tol: 3.5, speed: 5 }, { x: -100, z: 2.4, tol: 3 }, { x: -92, z: 10.5, tol: 2.2, speed: 5 },
+  { x: -88.3, z: 12, tol: 3 }, { x: -87, z: 6, tol: 2.2, speed: 4 }, { x: -80, z: 1.2, tol: 3, speed: 5 }, { x: -70, z: 1.2, tol: 3 }, { x: -64.5, z: 2.6, tol: 2.5, speed: 4 }, { x: -61.2, z: 7, tol: 2.5, speed: 4 }, { x: -60.4, z: 16, tol: 3 }, { x: -60.4, z: 30, tol: 4 }, { x: -60.4, z: 48, tol: 4 },
+  { x: -62, z: 56.5, tol: 3, speed: 4 }, { x: -68, z: 59.6, tol: 3, speed: 4 }, { x: -82, z: 59.6, tol: 4 }, { x: -112, z: 59.6, tol: 4 }, { x: -117.5, z: 55, tol: 3, speed: 4 }, { x: -119.8, z: 46, tol: 3 }, { x: -119.8, z: 20, tol: 4 },
+  { x: -119, z: 7, tol: 3, speed: 4 }, { x: -114, z: 1.8, tol: 3, speed: 4 }, { x: -104, z: 1.2, tol: 3 }, { x: -94, z: 2.5, tol: 3, speed: 4 }, { x: -91, z: 8.5, tol: 2.5, speed: 4 },
 ];
-await pilot(page, t, 'berline', LAP.slice(0, 5));
+await pilot(page, t, 'berline', LAP.slice(0, 6));
 await shot('10-out-on-the-road');
-await pilot(page, t, 'berline', LAP.slice(5, 13));
+await pilot(page, t, 'berline', LAP.slice(6, 16));
 await shot('11-round-the-block');
-await pilot(page, t, 'berline', LAP.slice(13));
+await pilot(page, t, 'berline', LAP.slice(16));
 // ---- 5. park on the forecourt and get out
 await pilot(page, t, 'berline', [{ x: -96, z: 13.5, tol: 1.6, speed: 3 }], { brakeAtEnd: true });
 const parkedAt = await AT();
