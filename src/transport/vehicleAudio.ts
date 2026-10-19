@@ -193,8 +193,8 @@ class VehicleAudio {
     // the low-pass that follows the revs (the body), and a band-pass at 500–1600 Hz (the growl) whose weight is the engine's `mid`
     const pre = c.createGain(), sat = c.createWaveShaper(), bp = c.createBiquadFilter(), gMid = c.createGain();
     pre.gain.value = 0.8; sat.curve = driveCurve(2.4); sat.oversample = '2x';
-    bp.type = 'bandpass'; bp.frequency.value = 600; bp.Q.value = 1.1; gMid.gain.value = prof.mid * 0.5;
-    o1.connect(pre); o2.connect(mix2).connect(pre); pre.connect(sat); sat.connect(lp).connect(gEng); sat.connect(bp).connect(gMid).connect(gEng); gEng.connect(b.gain);
+    bp.type = 'bandpass'; bp.frequency.value = 600; bp.Q.value = 1.1; gMid.gain.value = 0;
+    o1.connect(pre); o2.connect(mix2).connect(pre); pre.connect(sat); sat.connect(lp).connect(gEng); gEng.connect(b.gain); sat.connect(bp).connect(gMid).connect(b.gain);   // the growl has its own level: through the engine's gain (≈0.05) it would be inaudible
     // an idle that is not a perfectly steady tone: a slow wobble of the level, there at idle and gone as the revs rise
     const lope = c.createOscillator(), lopeG = c.createGain(); lope.type = 'sine'; lope.frequency.value = 5.3; lopeG.gain.value = 0.006; lope.connect(lopeG).connect(gEng.gain);
     const n1 = c.createBufferSource(), roadF = c.createBiquadFilter(), road = c.createGain();
@@ -224,7 +224,7 @@ class VehicleAudio {
     const lift = throttle <= 0 && Math.abs(speed) > 4;                                  // off the throttle at speed: the engine brakes, the note closes up
     e.lp.frequency.setTargetAtTime(e.prof.cutoff * (0.55 + 1.3 * e.rpm) * (lift ? 0.8 : 1), t, 0.06);
     e.bp.frequency.setTargetAtTime((520 + 1100 * e.rpm) * (e.prof === PROFILES.moto ? 1.25 : 1), t, 0.06);
-    e.gMid.gain.setTargetAtTime(e.prof.mid * (lift ? 0.2 : 0.62 + 0.38 * Math.max(0, throttle)) * (0.8 + 0.6 * e.rpm), t, 0.06);   // the growl: there at idle (it is what a phone plays of it), fuller under load, drawn in on lift-off
+    e.gMid.gain.setTargetAtTime(e.prof.mid * 0.25 * (lift ? 0.2 : 0.62 + 0.38 * Math.max(0, throttle)) * (0.8 + 0.6 * e.rpm), t, 0.06);   // the growl: there at idle (it is what a phone plays of it), fuller under load, drawn in on lift-off
     e.lopeG.gain.setTargetAtTime(0.006 * Math.max(0, 1 - e.rpm * 3), t, 0.2);
     const load = 0.06 + 0.09 * e.rpm + 0.05 * Math.max(0, throttle);
     e.gEng.gain.setTargetAtTime(Math.min(0.12, load * 0.62) * e.prof.level, t, 0.06);   // below the horn: the engine is the bed of the drive, not its loudest voice
@@ -238,7 +238,7 @@ class VehicleAudio {
   stop() {
     const e = this.eng; if (!e || !this.bus) { this.eng = null; return; }
     const c = this.bus.ctx, t = c.currentTime;
-    e.gEng.gain.cancelScheduledValues(t); e.gEng.gain.setTargetAtTime(0, t, 0.09); e.road.gain.setTargetAtTime(0, t, 0.08); e.bed.gain.setTargetAtTime(0, t, 0.15);
+    e.gEng.gain.cancelScheduledValues(t); e.gEng.gain.setTargetAtTime(0, t, 0.09); e.gMid.gain.setTargetAtTime(0, t, 0.09); e.road.gain.setTargetAtTime(0, t, 0.08); e.bed.gain.setTargetAtTime(0, t, 0.15);
     e.o1.frequency.setTargetAtTime(e.prof.base * 0.6, t, 0.12); e.o2.frequency.setTargetAtTime(e.prof.base * 0.3, t, 0.12);
     const srcs = e.srcs; this.eng = null;
     setTimeout(() => { for (const s of srcs) { try { s.stop(); s.disconnect(); } catch { /* already stopped */ } } }, 700);
