@@ -52,6 +52,8 @@ export const mapBridge = {
   /** Opens the phone on its map. */
   openMap: () => {},
   friendsNow: (): MapFriend[] => [],
+  /** Real players near, in the street (src/multiplayer/social.ts): a quiet dot on the map, no name, nothing on the 3D screen. */
+  playersNow: (): MapFriend[] => [],
   get enabled() { return store()?.getItem(KEY) !== 'off'; },
   setEnabled(on: boolean) { try { if (on) store()?.removeItem(KEY); else store()?.setItem(KEY, 'off'); } catch { /* session only */ } document.body.classList.toggle('mm-off', !on); },
 };
@@ -178,6 +180,12 @@ export function minimapModule(): GameModule {
       const m = P(f.x, f.z);
       if ((m.x - c) ** 2 + (m.y - c) ** 2 > R * R) continue;
       g.beginPath(); g.arc(m.x, m.y, 3.6, 0, TAU); g.fillStyle = '#7CFFB2'; g.fill(); g.lineWidth = 1.4; g.strokeStyle = '#0c1115'; g.stroke();
+    }
+    // real players nearby: a small cool dot, no label (the 3D view shows their names only when they are close)
+    for (const f of mapBridge.playersNow()) {
+      const m = P(f.x, f.z);
+      if ((m.x - c) ** 2 + (m.y - c) ** 2 > R * R) continue;
+      g.beginPath(); g.arc(m.x, m.y, 3, 0, TAU); g.fillStyle = '#6ee7ff'; g.fill(); g.lineWidth = 1.2; g.strokeStyle = '#0c1115'; g.stroke();
     }
     // the objective, pulsing, with an arrow on the ring when it is off the map
     const gd = mapBridge.guide;
