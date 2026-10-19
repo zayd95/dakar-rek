@@ -31,3 +31,17 @@ export const ROUTE_DETAILS = [
   ['d09-salon-awa-flank', -62, 80, -70.3, 80],
   ['d10-shops-court', -90, 95, -100, 85],
 ];
+/** The home street and its frontage (round 2): the room's road, the Cité Jàmm side, the dibiterie, the bank on the avenue. */
+export const HOME_DETAILS = [
+  ['h01-home-road-east', -8, -58.5, -30, -58.5],
+  ['h02-home-road-mid', -26, -58.5, -46, -58.5],
+  ['h03-home-door', -34, -58.5, -42, -54.5],
+  ['h04-cite-jamm-frontage', -30, -58, -30, -70],
+  ['h05-cite-jamm-west', -50, -58, -44, -70],
+  ['h06-dibiterie', -12, -60, -15.6, -51.3],
+  ['h07-bank-from-avenue', -60, -22, -67, -34],
+  ['h08-bank-front', -60, -47, -67, -40],
+  ['h09-bank-corner', -55, -56, -67, -53],
+];
+/** The home street walk (round 2): the road east of the room, past the dibiterie and the Cité Jàmm side, to the avenue and down the bank's flank (x, z). */
+export const HOME_PATH = [[-8, -58.5], [-60, -60], [-60, -8]];

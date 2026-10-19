@@ -1,8 +1,9 @@
 // Pikine Street DNA, phase 2: iPhone-sized close-ups of what the slice adds (see ROUTE_DETAILS in pikine-route.mjs).
-// Usage: node scripts/capture-pikine-details.mjs [baseUrl] [outDir] [hours=11,18.5] [quality=medium]
+// Usage: [SET=home] node scripts/capture-pikine-details.mjs [baseUrl] [outDir] [hours=11,18.5] [quality=medium]   (SET=home: the home street and its frontage)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-import { ROUTE_DETAILS } from './pikine-route.mjs';
+import { ROUTE_DETAILS as DETAILS, HOME_DETAILS } from './pikine-route.mjs';
+const ROUTE_DETAILS = process.env.SET === 'home' ? HOME_DETAILS : DETAILS;
 
 const base = process.argv[2] ?? 'http://127.0.0.1:4323/', out = process.argv[3] ?? 'shots/pikine-details';
 const hours = (process.argv[4] ?? '11,18.5').split(',').map(Number), quality = process.argv[5] ?? 'medium';

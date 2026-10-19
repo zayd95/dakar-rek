@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import assert from 'node:assert/strict';
-import { ROUTE_PATH } from './pikine-route.mjs';
+import { ROUTE_PATH, HOME_PATH } from './pikine-route.mjs';
 
 const given = process.argv[2];
 let server, base = given;
@@ -44,9 +44,33 @@ try {
   console.log('medium items', JSON.stringify(kinds), 'tris', a.stats.tris);
   assert.equal(a.meshes.length, 1, 'one slice mesh'); assert.equal(a.meshes[0].material, 1, 'one material');
   assert.ok(a.stats.tris < 30000, `triangle budget: ${a.stats.tris}`);
-  for (const k of ['mural', 'gate', 'shop', 'pole', 'baobab', 'portal', 'gateway', 'planter', 'standpipe']) assert.ok(kinds[k] > 0, `a ${k} was placed`);
+  for (const k of ['mural', 'shop', 'pole', 'baobab', 'portal', 'gateway', 'planter', 'standpipe', 'bank-sign']) assert.ok(kinds[k] > 0, `a ${k} was placed`);
+  assert.ok(kinds.pole >= 12, `poles on the room's road too: ${kinds.pole}`);
   assert.equal(kinds.gateway, 4, 'the grand-place and the market gateways: four pillars'); assert.equal(kinds.portal, 2, 'the gare portal: two pylons');
   console.log('PASS the slice: one mesh, one material, within budget, every kind of piece placed');
+
+  // rhythm: along each stretch of house frontage of the avenue (east z −51…−8, west z 8…51) the wall units come in clusters (almost
+  // touching) with empty stretches between and at the ends, not at an even pace
+  const wallKinds = ['mural', 'gate', 'shop', 'rough'], zones = [{ name: 'east', x: -52.9, z0: -51.4, z1: -8 }, { name: 'west', x: -67.1, z0: 8.6, z1: 51 }];
+  const rhythm = [];
+  for (const zn of zones) {
+    const us = a.items.filter(i => wallKinds.includes(i.kind) && i.rect && Math.abs(i.x - zn.x) < 0.6 && i.rect.z1 > zn.z0 && i.rect.z0 < zn.z1).map(i => i.rect).sort((p, q) => p.z0 - q.z0);
+    const empties = us.length ? [us[0].z0 - zn.z0, zn.z1 - us[us.length - 1].z1] : [zn.z1 - zn.z0];
+    const touching = [];
+    for (let k = 1; k < us.length; k++) { const g = us[k].z0 - us[k - 1].z1; (g <= 2 ? touching : empties).push(g); }
+    const covered = us.reduce((t, r) => t + (r.z1 - r.z0), 0) / (zn.z1 - zn.z0);
+    rhythm.push({ zone: zn.name, units: us.length, touching: touching.length, longestEmpty: +Math.max(...empties).toFixed(1), covered: +covered.toFixed(2) });
+  }
+  console.log('rhythm', JSON.stringify(rhythm));
+  assert.ok(rhythm.some(r => r.touching >= 2), 'a cluster: units almost touching'); assert.ok(rhythm.every(r => r.longestEmpty >= 8), 'an empty stretch of 8 m or more on each side'); assert.ok(rhythm.every(r => r.covered < 0.8), 'not a continuous wall');
+  console.log('PASS the wall units come in clusters with empty stretches, not at an even pace');
+
+  // night: the warm pools are off at noon and on in the evening
+  const pools = h => m.page.evaluate(async hour => { window.__dakar.setHour(hour); const look = () => { let o = null; window.__dakar.three.scene.traverse(x => { if (x.name === 'pikine_dna_night') o = { visible: x.visible, opacity: x.material.opacity }; }); return o; }; for (let i = 0; i < 12; i++) { await new Promise(r => setTimeout(r, 1000)); const o = look(); if (o && o.visible === (hour >= 18)) return o; } return look(); }, h);
+  const noon = await pools(12), dusk = await pools(20);
+  assert.ok(noon && !noon.visible, 'no warm pools at noon: ' + JSON.stringify(noon)); assert.ok(dusk && dusk.visible && dusk.opacity > 0.3, 'warm pools at 20 h: ' + JSON.stringify(dusk));
+  console.log(`PASS the warm pools follow the evening (noon off, 20 h opacity ${dusk.opacity.toFixed(2)})`);
+  await m.page.evaluate(() => window.__dakar.setHour(null));
 
   const solids = a.items.filter(i => i.solid && i.rect);
   const overlap = (r, c) => r.x0 < c[2] && r.x1 > c[0] && r.z0 < c[3] && r.z1 > c[1];
@@ -67,8 +91,8 @@ try {
   const R = 0.5, stuck = [], others = [];
   const hit = (list, x, z) => list.find(c => c[4] > 0.5 && x > c[0] - R && x < c[2] + R && z > c[1] - R && z < c[3] + R);
   const mine = solids.map(i => [i.rect.x0, i.rect.z0, i.rect.x1, i.rect.z1, i.rect.h]);
-  for (let i = 1; i < ROUTE_PATH.length; i++) {
-    const [ax, az] = ROUTE_PATH[i - 1], [bx, bz] = ROUTE_PATH[i], n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.25);
+  for (const PATHS of [ROUTE_PATH, HOME_PATH]) for (let i = 1; i < PATHS.length; i++) {
+    const [ax, az] = PATHS[i - 1], [bx, bz] = PATHS[i], n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.25);
     for (let k = 0; k <= n; k++) {
       const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n;
       if (hit(mine, x, z)) { stuck.push([i, +x.toFixed(1), +z.toFixed(1)]); break; }
@@ -76,7 +100,7 @@ try {
     }
   }
   assert.equal(stuck.length, 0, 'the slice blocks the walk: ' + JSON.stringify(stuck));
-  console.log(`PASS the whole walk (${ROUTE_PATH.length - 1} legs) is clear of the slice for a 0.5 m body` + (others.length ? ` (today's road events block ${others.length} leg(s) at ${JSON.stringify(others)}: not the slice's)` : ''));
+  console.log(`PASS the whole walk and the home street (${ROUTE_PATH.length + HOME_PATH.length - 2} legs) is clear of the slice for a 0.5 m body` + (others.length ? ` (today's road events block ${others.length} leg(s) at ${JSON.stringify(others)}: not the slice's)` : ''));
 
   for (const id of HAD) assert.ok(a.ids.includes(id), `the hub still has ${id}`);
   console.log(`PASS the ${HAD.length} places and ways out the hub already had are all there`);
@@ -100,7 +124,7 @@ try {
   const lk = {}; for (const i of b.items) lk[i.kind.split(':')[0]] = (lk[i.kind.split(':')[0]] ?? 0) + 1;
   console.log('low items', JSON.stringify(lk), 'tris', b.stats.tris);
   assert.equal(b.meshes.length, 1); assert.ok(b.stats.tris < a.stats.tris, 'Low draws fewer triangles'); assert.ok(!lk.pole && !lk.standpipe && !lk.planter, 'no overhead layer or props on Low');
-  assert.ok(lk.mural > 0 && lk.gate > 0 && lk.baobab === 1 && lk.portal === 2, 'the walls, gates and landmarks stay on Low');
+  assert.ok(lk.mural > 0 && lk.shop > 0 && lk.baobab === 1 && lk.portal === 2, 'the walls, boutiques and landmarks stay on Low');
   console.log('PASS Low keeps the walls, gates and landmarks, drops the overhead layer and props');
   await l.ctx.close();
   assert.equal(errors.length, 0, 'page errors: ' + errors.slice(0, 3).join(' | '));

@@ -57,6 +57,13 @@ live in `scripts/pikine-route.mjs`.
 
 Results are in `docs/pikine-dna/REPORT.md`; the screenshots and walkthrough in `docs/pikine-dna/`.
 
+## Round 2 (after the first review)
+
+Rhythm, ground, night and the room's own street: see `docs/pikine-dna/round2/REPORT.md`. In the module: wall units placed as clusters,
+gaps and unfinished stretches (`unit(..., 'rough')`); worn patches, dust and darker soil as flat discs; a lit cell in the atlas for windows
+and bulbs plus one additive mesh of warm pools, driven by the same night measure as the street lamps (`pikineDnaModule.update`); poles
+generalised to any line (`network`) with a free-place search; the bank's flank sign and the Cité Jàmm blade on the room's road.
+
 ## Not done, on purpose
 
 - Other districts (the Cité Jàmm block, the bank's frontage, the arena street, the east side of the grid).
