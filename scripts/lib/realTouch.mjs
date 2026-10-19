@@ -90,7 +90,7 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
       const err = wrap(Math.atan2(aim.x - at.x, aim.z - at.z) - at.yaw);
       // PD on the heading: the yaw rate is read against the game's own clock (the headless one runs slower than the wall's), and damps the swing
       const rate = last && at.t > last.t ? wrap(at.yaw - last.yaw) / (at.t - last.t) : 0; last = { t: at.t, yaw: at.yaw };
-      const steer = Math.max(-1, Math.min(1, -(0.9 * err - 0.55 * Math.max(-1.5, Math.min(1.5, rate)))));   // the stick to the right turns the car to the right: its yaw falls
+      const steer = Math.max(-1, Math.min(1, -(1.7 * err - 0.55 * Math.max(-1.5, Math.min(1.5, rate)))));   // the stick to the right turns the car to the right: its yaw falls
       await t.move(2, j.x + steer * r, j.y, 1);
       const limit = (w.speed ?? cruise) * (Math.abs(err) > 0.5 ? 0.4 : 1) * (d < 9 ? 0.7 : 1);
       await brake(at.speed > limit + 1.2);                               // a corner is taken slowly: the brake, then the gas again
