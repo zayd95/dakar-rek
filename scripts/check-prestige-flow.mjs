@@ -107,15 +107,18 @@ const LAP = [
   { x: -114.8, z: 59.2, tol: 2.5, speed: 3 }, { x: -119.2, z: 55.6, tol: 2.5, speed: 3 }, { x: -120, z: 46, tol: 3.5 }, { x: -120, z: 24, tol: 4 },
   { x: -120, z: 16, tol: 3 }, { x: -120, z: 9.5, tol: 2, speed: 2.5 }, { x: -118.2, z: 4.6, tol: 2, speed: 2.5 }, { x: -113.5, z: 1.4, tol: 2.5, speed: 3 }, { x: -106, z: 1, tol: 3 }, { x: -98, z: 1.4, tol: 3 }, { x: -94, z: 3.8, tol: 2.5, speed: 3 }, { x: -91, z: 9, tol: 2.5, speed: 4 },
 ];
-await pilot(page, t, 'berline', LAP.slice(0, 6));
-await shot('10-out-on-the-road');
-await pilot(page, t, 'berline', LAP.slice(6, 19));
-await shot('11-round-the-block');
-await pilot(page, t, 'berline', LAP.slice(19));
+if (process.env.SKIP_LAP) await d(() => window.__dakar.berline.place(-100, 2, Math.PI / 2 + 0.2));   // development only: the recorded run drives the whole lap
+else {
+  await pilot(page, t, 'berline', LAP.slice(0, 6));
+  await shot('10-out-on-the-road');
+  await pilot(page, t, 'berline', LAP.slice(6, 19));
+  await shot('11-round-the-block');
+  await pilot(page, t, 'berline', LAP.slice(19));
+}
 // ---- 5. park on the forecourt and get out
-await pilot(page, t, 'berline', [{ x: -96, z: 13.5, tol: 1.6, speed: 3 }], { brakeAtEnd: true });
+await pilot(page, t, 'berline', [{ x: -95, z: 11, tol: 1.6, speed: 2 }], { brakeAtEnd: true });
 const parkedAt = await AT();
-check('they drove it and came back to the forecourt', parkedAt && parkedAt.z > 8 && parkedAt.z < 17 && parkedAt.x > -112 && parkedAt.x < -68, JSON.stringify(parkedAt));
+check('they drove it and came back to the forecourt', parkedAt && parkedAt.z > 8 && parkedAt.z < 16.5 && parkedAt.x > -112 && parkedAt.x < -68, JSON.stringify(parkedAt));
 await shot('12-parked');
 await t.tap('#ridepad .rp-off');
 let exitSeen = false;
