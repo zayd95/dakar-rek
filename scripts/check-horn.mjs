@@ -53,15 +53,15 @@ const g = await tr.centre('#ridepad .rp-gas'), j = await tr.centre('#joy'), k = 
 await tr.down(1, g.x, g.y); await page.waitForTimeout(1200);
 await tr.down(2, j.x, j.y); await tr.move(2, j.x + 24, j.y); await page.waitForTimeout(1200);
 const base0 = []; for (let i = 0; i < 6; i++) { base0.push(await meter()); await page.waitForTimeout(100); }
-const baseRms = Math.max(...base0.map(m => m.rmsDb)), basePeak = Math.max(...base0.map(m => m.peakDb));
+const baseRms = Math.max(...base0.map(m => m.rmsDb)), basePeak = Math.max(...base0.map(m => m.peakDb)), baseSp = Math.max(...base0.map(m => m.speakerDb));
 const yaw0 = (await info()).yaw;
 await tr.down(3, k.x, k.y);
 const right = await au();                                        // the very next thing the page is asked: before any frame could have run the sim
 check('a held horn starts with the touch itself, not at the next frame', right.horn === true && right.count.horn >= 1, JSON.stringify({ horn: right.horn, count: right.count.horn }));
 await page.waitForTimeout(250);
 const held = []; for (let i = 0; i < 8; i++) { held.push(await meter()); await page.waitForTimeout(90); }
-const hRms = Math.max(...held.map(m => m.rmsDb)), hPeak = Math.max(...held.map(m => m.peakDb)), hHigh = Math.max(...held.map(m => m.high));
-check('the horn is plainly there on the bus: its level is at least 6 dB above the engine alone, and not clipping', hRms >= baseRms + 6 && hPeak <= -0.5 && hPeak >= -24, JSON.stringify({ engineRms: baseRms, enginePeak: basePeak, hornRms: hRms, hornPeak: hPeak }));
+const hRms = Math.max(...held.map(m => m.rmsDb)), hPeak = Math.max(...held.map(m => m.peakDb)), hHigh = Math.max(...held.map(m => m.high)), hSp = Math.max(...held.map(m => m.speakerDb));
+check('the horn stands clear of the engine where a phone speaker can play it (speaker band ≥ 8 dB over the engine alone), is loud enough and never clips', hSp >= baseSp + 8 && hPeak <= -0.5 && hPeak >= -18, JSON.stringify({ engineSpeakerDb: baseSp, hornSpeakerDb: hSp, enginePeak: basePeak, hornPeak: hPeak, engineRms: baseRms, hornRms: hRms }));
 check('and it is made of what a phone loudspeaker reproduces: most of its energy is above 800 Hz', hHigh >= 0.5, JSON.stringify({ aboveHz800: hHigh }));
 await page.screenshot({ path: `${out}/2-horn-held.png` });
 await page.waitForTimeout(2500);
@@ -72,7 +72,7 @@ const off = await au();
 check('released, it stops at once', off.horn === false, JSON.stringify({ horn: off.horn }));
 await page.waitForTimeout(450);
 const after = []; for (let i = 0; i < 5; i++) { after.push(await meter()); await page.waitForTimeout(80); }
-check('and the bus falls back to the engine\'s level within half a second', Math.max(...after.map(m => m.rmsDb)) <= baseRms + 3, JSON.stringify({ afterRms: Math.max(...after.map(m => m.rmsDb)), engineRms: baseRms }));
+check('and the bus falls back to the engine\'s level within half a second', Math.max(...after.map(m => m.speakerDb)) <= baseSp + 3, JSON.stringify({ afterSpeakerDb: Math.max(...after.map(m => m.speakerDb)), engineSpeakerDb: baseSp }));
 const t1 = await d(() => window.__dakar.car.audio().count.horn);
 await tr.tap('#ridepad .rp-horn'); await tr.tap('#ridepad .rp-horn'); await page.waitForTimeout(200);
 check('short taps are heard too (two taps, two horns)', (await au()).count.horn - t1 >= 2, JSON.stringify({ before: t1, after: (await au()).count.horn }));
@@ -88,10 +88,10 @@ await tr.up(3);
 // ---- the phone's sound setting
 await d(() => window.__dakar.car.audioMute(true)); await page.waitForTimeout(150);
 const a1 = await au(); await tr.down(3, k.x, k.y); await page.waitForTimeout(300); const muted = await au(), mm = await meter(); await tr.up(3);
-check('with the sound off (Réglages) the horn is silent: asked, not played', muted.muted && !muted.horn && muted.count.horn === a1.count.horn && mm.rmsDb <= baseRms - 20, JSON.stringify({ muted: muted.muted, horn: muted.horn, rms: mm.rmsDb }));
+check('with the sound off (Réglages) the horn is silent: asked, not played', muted.muted && !muted.horn && muted.count.horn === a1.count.horn && mm.rmsDb <= -80, JSON.stringify({ muted: muted.muted, horn: muted.horn, rms: mm.rmsDb }));
 await d(() => window.__dakar.car.audioMute(false)); await page.waitForTimeout(150);
 await tr.down(3, k.x, k.y); await page.waitForTimeout(350); const un = await au(), um = await meter(); await tr.up(3);
-check('with it back on, the horn sounds again', un.horn && um.rmsDb >= baseRms + 4, JSON.stringify({ horn: un.horn, rms: um.rmsDb }));
+check('with it back on, the horn sounds again', un.horn && um.speakerDb >= baseSp + 6, JSON.stringify({ horn: un.horn, speakerDb: um.speakerDb, engineSpeakerDb: baseSp }));
 
 // ---- a call, the lock screen: the context sleeps; the next touch wakes it; the horn is heard again
 await tr.up(1); await tr.up(2);

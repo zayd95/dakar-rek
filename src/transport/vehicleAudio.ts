@@ -64,6 +64,8 @@ export function impactKind(speed: number): 'tap' | 'impact' { return Math.abs(sp
 /** How hard a brake is, 0…1: the deceleration against what a hard stop is (m/s²), only while really moving. */
 export function brakeIntensity(decel: number, speed: number): number { return speed < 4 ? 0 : Math.max(0, Math.min(1, (decel - 3) / 6)); }
 
+/** Below this (Hz) a phone's loudspeaker gives next to nothing. */
+export const SPEAKER_HZ = 300;
 type Bus = { ctx: AudioContext; gain: GainNode };
 let noiseBuf: AudioBuffer | null = null;
 const noise = (c: AudioContext) => noiseBuf ??= (() => { const b = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; })();
@@ -193,7 +195,7 @@ class VehicleAudio {
     const f0 = prof.base;
     o1.frequency.value = f0; o2.frequency.value = f0 / 2;
     for (const s of [o1, o2, n1, n2, lfo]) s.start(t + delay);
-    gEng.gain.setTargetAtTime(0.1 * prof.level, t + delay, 0.12);
+    gEng.gain.setTargetAtTime(0.06 * prof.level, t + delay, 0.12);
     bed.gain.setTargetAtTime(0.011, t + delay + 0.5, 0.8);
     this.eng = { prof, o1, o2, lp, gEng, road, roadF, bed, srcs: [o1, o2, n1, n2, lfo], rpm: 0.15, ready: t + delay };
     this.bedTimer = 7 + Math.random() * 8;
@@ -209,7 +211,7 @@ class VehicleAudio {
     e.o1.frequency.setTargetAtTime(f, t, 0.04); e.o2.frequency.setTargetAtTime(f / 2, t, 0.04);
     e.lp.frequency.setTargetAtTime(e.prof.cutoff * (0.55 + 1.3 * e.rpm), t, 0.06);
     const load = 0.06 + 0.09 * e.rpm + 0.05 * Math.max(0, throttle);
-    e.gEng.gain.setTargetAtTime(Math.min(0.2, load) * e.prof.level, t, 0.06);
+    e.gEng.gain.setTargetAtTime(Math.min(0.12, load * 0.62) * e.prof.level, t, 0.06);   // below the horn: the engine is the bed of the drive, not its loudest voice
     const v = Math.min(1, Math.abs(speed) / Math.max(0.1, maxSpeed));
     e.road.gain.setTargetAtTime(0.035 * v * v * (e.prof === PROFILES.moto ? 1.3 : 1), t, 0.1); e.roadF.frequency.setTargetAtTime(260 + 900 * v, t, 0.1);
     e.bed.gain.setTargetAtTime(this.horn ? 0.002 : 0.011, t, 0.2);
@@ -277,16 +279,17 @@ class VehicleAudio {
    * What the page is sending to the speaker right now (after the limiter and the sound setting): peak and rms in dBFS, and the share of the energy above 800 Hz (a phone speaker's range). The checks and the on-device diagnostics read it:
    * a number a person can quote, where « the counter went up » says nothing about what comes out. Null before the bus exists.
    */
-  meter(): { peakDb: number; rmsDb: number; high: number } | null {
+  meter(): { peakDb: number; rmsDb: number; high: number; speakerDb: number } | null {
     const b = this.bus; if (!b) return null;
     if (!this.meterNode) { this.meterNode = b.ctx.createAnalyser(); this.meterNode.fftSize = 2048; this.meterNode.smoothingTimeConstant = 0; (audioMaster() ?? b.gain).connect(this.meterNode); }   // after the limiter and the sound setting: what is sent to the speaker
     const a = this.meterNode, td = new Float32Array(a.fftSize), fd = new Float32Array(a.frequencyBinCount);
     a.getFloatTimeDomainData(td); a.getFloatFrequencyData(fd);
     let peak = 0, sum = 0; for (const x of td) { const m = Math.abs(x); if (m > peak) peak = m; sum += x * x; }
-    const hz = b.ctx.sampleRate / a.fftSize; let lo = 0, hi = 0;
-    fd.forEach((db, i) => { const p = Math.pow(10, db / 10); if (i * hz >= 800) hi += p; else lo += p; });
-    const dB = (x: number) => x > 1e-6 ? +(20 * Math.log10(x)).toFixed(1) : -120;
-    return { peakDb: dB(peak), rmsDb: dB(Math.sqrt(sum / td.length)), high: +(hi / Math.max(1e-12, hi + lo)).toFixed(2) };
+    const hz = b.ctx.sampleRate / a.fftSize; let lo = 0, hi = 0, sp = 0;
+    fd.forEach((db, i) => { const p = Math.pow(10, db / 10); if (i * hz >= 800) hi += p; else lo += p; if (i * hz >= SPEAKER_HZ) sp += p; });
+    const dB = (x: number) => x > 1e-6 ? +(20 * Math.log10(x)).toFixed(1) : -120, rms = Math.sqrt(sum / td.length);
+    // « speaker » level: the rms of only what a phone's loudspeaker can play (above SPEAKER_HZ): an engine's bass counts for little there, a horn's body for all of it
+    return { peakDb: dB(peak), rmsDb: dB(rms), high: +(hi / Math.max(1e-12, hi + lo)).toFixed(2), speakerDb: dB(rms * Math.sqrt(sp / Math.max(1e-12, hi + lo))) };
   }
   /** Test hook: puts the context to sleep as a phone call or the lock screen does. */
   suspendForTest(): Promise<void> { return this.bus?.ctx.suspend() ?? Promise.resolve(); }

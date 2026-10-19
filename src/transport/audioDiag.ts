@@ -22,7 +22,7 @@ export function mountAudioDiag(parent: HTMLElement = document.body) {
       `context ${i.state} · session ${i.session} · gesture ${i.gestured ? 'yes' : 'NO'} · muted ${i.muted ? 'YES' : 'no'}`,
       `resumes ${i.nudges} (last: ${i.nudgedBy || '-'}) · engine ${i.running ? 'on' : 'off'} · horn ${i.horn ? 'ON' : 'off'}`,
       `klaxon touches: down ${t.hornDown} up ${t.hornUp} cancel ${t.hornCancel}`,
-      `level: peak ${m?.peakDb ?? '-'} dB · rms ${m?.rmsDb ?? '-'} dB · >800 Hz ${m ? Math.round(m.high * 100) + ' %' : '-'}`,
+      `level: peak ${m?.peakDb ?? '-'} dB · rms ${m?.rmsDb ?? '-'} dB · speaker band ${m?.speakerDb ?? '-'} dB · >800 Hz ${m ? Math.round(m.high * 100) + ' %' : '-'}`,
       `vibration API: ${vib ? 'yes' : 'no'} · bip: ${txt.dataset.bip ?? '-'}`,
     ].join('\n');
   };
