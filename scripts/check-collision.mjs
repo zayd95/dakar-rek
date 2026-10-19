@@ -76,6 +76,8 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
   await s.simWait(1.0);
   await startAt(s, wall, 4); const aP = await s.au(), nvP = (await s.vib()).length;
   const g = await s.tr.centre('#ridepad .rp-gas'); await s.tr.down(1, g.x, g.y);
+  await s.page.waitForTimeout(1500);
+  console.log('PUSH start state', JSON.stringify({ driving: (await s.info()).driving, pad: await s.d(() => document.body.classList.contains('ridepad')), speed: (await s.at()).speed, x: (await s.at()).x, t: (await s.at()).t, gasDown: await s.d(() => !!document.querySelector('#ridepad .rp-gas.down')) }));
   await s.simWait(6.5);
   const fp = await s.feel(), ap = await s.au(), vp = (await s.vib()).slice(nvP), pos = await s.at();
   await s.page.screenshot({ path: `${out}/2-push.png` });
