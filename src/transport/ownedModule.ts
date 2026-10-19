@@ -11,8 +11,10 @@ import { Vehicle } from './vehicle';
 import { PassengerCamera } from './camera';
 import { RideCard } from './ui';
 import { fovFor } from '../core/view';
-import { vehicleAudio, profileFor, brakeIntensity, IMPACT_SPEED } from './vehicleAudio';
+import { vehicleAudio, profileFor, brakeIntensity } from './vehicleAudio';
 import { mountAudioDiag } from './audioDiag';
+import { ContactTracker, type Impact } from './contact';
+import { buzz, impactPattern as impactBuzz, HORN_TICK } from './haptics';
 import { setMuted } from '../core/audioSettings';
 import { driveStep, newDriveState, pedalThrottle, type DriveState } from './drive';
 import { assetsRevision, buyAsset, cannotBuy, holding } from '../economy/assets';
@@ -187,7 +189,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private st: DriveState = newDriveState(0, 0, 0);
   private driving = false;
   /** The horn button went down or up (ridePad.onHorn): the horn sounds from the touch itself. */
-  private readonly hornEvent = (on: boolean) => { if (on && this.driving && this.ctx.mode() === 'play') vehicleAudio.hornOn(this.def.kit); else if (!on) vehicleAudio.hornOff(); };
+  private readonly hornEvent = (on: boolean) => { if (on && this.driving && this.ctx.mode() === 'play') { vehicleAudio.hornOn(this.def.kit); buzz(HORN_TICK); } else if (!on) vehicleAudio.hornOff(); };
   /** « Descendre » asked while moving: brake, then get off. */
   private leaving = false;
   private cam = new PassengerCamera();
@@ -236,7 +238,11 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private doorK = 0; private doorGoal = 0; private doorSound = false;
   private readonly frustum = new THREE.Frustum(); private readonly pm = new THREE.Matrix4(); private readonly sph = new THREE.Sphere(); private readonly v3 = new THREE.Vector3();
   /** Feel (camera only): the settle at the engine start, the dip under a hard brake, the shake of a contact; and when the brake last squealed. */
-  private fx = { settle: 0, ignite: 0, dip: 0, shake: 0, hard: 0 };
+  private fx = { settle: 0, ignite: 0, dip: 0, shake: 0, hard: 0, kickX: 0, kickZ: 0 };
+  private readonly contact = new ContactTracker();
+  /** What contacts did (the checks): each bump / hit with its speed and strength, the frames spent scraping, the largest shake and camera kick seen. */
+  private feelLog = { impacts: [] as { kind: string; speed: number; strength: number; headOn: boolean }[], shakePeak: 0, kickPeak: 0 };
+  private scrapeFrames = 0;
 
   readonly def: OwnedDef;
   private readonly parkedTarget: Target;
@@ -360,13 +366,13 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const throttle = !ridePad.active ? mv.y : moto ? ridePad.throttle : pedalThrottle(ridePad.gas, ridePad.brake, ridePad.reverse, this.st.speed);
     const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : { throttle, steer: mv.x };
     transport.obstacles(this.obst, this.def.kit);
-    const v0 = Math.abs(this.st.speed);
+    const vs0 = this.st.speed, v0 = Math.abs(vs0);
     const hit = driveStep(this.st, input, this.spec.drive, dt, this.blocked);
-    if (hit && v0 > 0.5) {
-      this.bumps++;
-      vehicleAudio.impact(v0);                                                   // a tap or a real impact, by the speed at contact
-      this.fx.shake = Math.max(this.fx.shake, v0 >= IMPACT_SPEED ? 0.55 + Math.min(0.45, v0 / 25) : 0.16);
-    }
+    // how it FEELS (src/transport/contact.ts): one bump or hit per contact, a scrape while it slides, never a knock on every frame of a push against a wall
+    const cf = this.contact.step(dt, hit, vs0, this.st.speed);
+    if (cf.impact) this.onImpact(cf.impact, m);
+    if (cf.scraping) vehicleAudio.scrape(cf.scrape); else vehicleAudio.scrapeOff();
+    if (cf.scraping) this.scrapeFrames++;
     m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(this.st.speed), this.st.accel, this.st.odo, dt);
     this.lean = m.animate(this.st.speed, this.st.steer, dt);                     // wheels, steering, a motorbike's lean
     // sound and feel: the engine follows the speed, a hard brake squeals and dips the camera a little, the horn is held
@@ -577,6 +583,19 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     ctx.save();
   }
 
+  /** One contact, felt: the crash (or tap) sound, the shake and the lurch of the camera, the knock of the body, a buzz of the phone where it has one. */
+  private onImpact(im: Impact, m: Vehicle) {
+    this.bumps++;
+    vehicleAudio.impact(im.speed);                                               // a tap or a real impact, by the speed at contact
+    const hit = im.kind === 'hit', side = Math.sign(this.st.steer) || 1;
+    this.fx.shake = Math.max(this.fx.shake, hit ? 0.35 + 0.65 * im.strength : 0.12);
+    this.fx.kickZ = im.dir * (hit ? (im.headOn ? 0.1 + 0.32 * im.strength : 0.05 + 0.12 * im.strength) : 0.03);     // the camera lurches the way the vehicle was going, then settles back
+    this.fx.kickX = im.headOn ? 0 : -side * (0.05 + 0.16 * im.strength);                                             // a glancing blow throws it sideways
+    m.jolt(im.dir * (hit ? 0.025 + 0.065 * im.strength : 0.008), im.headOn ? 0 : -side * 0.05 * (0.4 + im.strength), hit ? 0.02 + 0.04 * im.strength : 0);
+    buzz(impactBuzz(im.kind, im.strength));
+    this.feelLog.impacts.push({ kind: im.kind, speed: +im.speed.toFixed(2), strength: +im.strength.toFixed(2), headOn: im.headOn }); if (this.feelLog.impacts.length > 60) this.feelLog.impacts.shift();
+  }
+
   /** A few centimetres of the camera, never the physics: it settles when the engine catches, dips under a hard brake, shakes at a contact (a tap a little, a crash more). */
   private feel(cam: THREE.Camera, dt: number, inside: boolean) {
     const f = this.fx, k = inside ? 0.6 : 1;
@@ -588,6 +607,12 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     x += Math.sin(t * 170) * 0.006 * (f.ignite / 0.55); y += Math.sin(t * 150) * 0.004 * (f.ignite / 0.55);
     if (f.shake > 0) { x += (Math.random() - 0.5) * 0.14 * f.shake; y += (Math.random() - 0.5) * 0.1 * f.shake; }
     cam.position.x += x * k; cam.position.y += y * k;
+    this.feelLog.shakePeak = Math.max(this.feelLog.shakePeak, f.shake);
+    if (Math.abs(f.kickZ) > 1e-3 || Math.abs(f.kickX) > 1e-3) {
+      cam.translateZ(-f.kickZ * k); cam.translateX(f.kickX * k);                  // along the camera's own axes: forward lurch, sideways throw
+      this.feelLog.kickPeak = Math.max(this.feelLog.kickPeak, Math.abs(f.kickZ), Math.abs(f.kickX));
+      const keep = Math.max(0, 1 - dt * 9); f.kickZ *= keep; f.kickX *= keep;      // and back in about a third of a second
+    } else { f.kickZ = 0; f.kickX = 0; }
   }
 
   /**
@@ -654,6 +679,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         card: () => this.card?.text ?? '',
         /** Checks: the vehicle sounds (counts asked and played, whether the engine runs). */
         audio: () => vehicleAudio.info(),
+        feel: () => ({ ...this.feelLog, impacts: [...this.feelLog.impacts], shake: this.fx.shake, scrapeFrames: this.scrapeFrames, scraping: vehicleAudio.scraping, contact: this.contact.active }),   // what contacts did (scripts/check-collision.mjs)
+        feelReset: () => { this.feelLog = { impacts: [], shakePeak: 0, kickPeak: 0 }; this.scrapeFrames = 0; this.contact.reset(); },
         audioMeter: () => vehicleAudio.meter(),                                   // dBFS of what the vehicle bus plays (scripts/check-horn.mjs)
         audioMute: (on: boolean) => setMuted(on),                                 // the phone's sound setting
         audioSuspend: () => vehicleAudio.suspendForTest(),                        // what a call or the lock screen does to the context
@@ -902,7 +929,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     m.place(this.st.x, this.st.z, this.st.yaw, 0, 0, this.st.odo, 0);
     ctx.player.sit(m.driverSeat);
     if (ctx.player.seated()?.id !== m.driverSeat.id) return;
-    this.driving = true; this.leaving = false; this.st.speed = 0; this.st.steer = 0;
+    this.driving = true; this.leaving = false; this.contact.reset(); this.st.speed = 0; this.st.steer = 0;
     this.setSolid(false);
     m.setRidden(true);
     this.cam.begin(ctx.camera, m.pose); this.camMs = 0;

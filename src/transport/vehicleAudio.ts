@@ -77,7 +77,7 @@ function driveCurve(drive: number): Float32Array<ArrayBuffer> { const n = 1025, 
 
 class VehicleAudio {
   /** Sounds asked for and played, by kind (the checks: nothing before a gesture, nothing when muted). */
-  readonly count: Record<string, number> = { asked: 0, played: 0, door: 0, start: 0, brake: 0, tap: 0, impact: 0, horn: 0, unlock: 0 };
+  readonly count: Record<string, number> = { asked: 0, played: 0, door: 0, start: 0, brake: 0, tap: 0, impact: 0, horn: 0, unlock: 0, scrape: 0 };
   private bus: Bus | null = null;
   private eng: { prof: EngineProfile; o1: OscillatorNode; o2: OscillatorNode; lp: BiquadFilterNode; bp: BiquadFilterNode; gMid: GainNode; lopeG: GainNode; gEng: GainNode; road: GainNode; roadF: BiquadFilterNode; bed: GainNode; srcs: AudioScheduledSourceNode[]; rpm: number; ready: number } | null = null;
   private horn: { gain: GainNode; oscs: OscillatorNode[] } | null = null;
@@ -87,6 +87,8 @@ class VehicleAudio {
   /** How often the context was asked to resume, and by which event (the on-device diagnostics: a silent phone shows whether a gesture ever reached it). */
   private nudges = 0; private lastNudge = '';
   private meterNode: AnalyserNode | null = null;
+  private scr: { gain: GainNode; bp: BiquadFilterNode; srcs: AudioScheduledSourceNode[] } | null = null;
+  private scrLast = 0;
 
   /** The vehicles' bus: its own gain, then a limiter (a horn over an engine over a crash must not clip), then the page's master gain (which carries the sound setting). */
   private makeBus(): Bus | null {
@@ -232,6 +234,7 @@ class VehicleAudio {
     e.road.gain.setTargetAtTime(0.035 * v * v * (e.prof === PROFILES.moto ? 1.3 : 1), t, 0.1); e.roadF.frequency.setTargetAtTime(260 + 900 * v, t, 0.1);
     e.bed.gain.setTargetAtTime(this.horn ? 0.002 : 0.011, t, 0.2);
     if ((this.bedTimer -= dt) <= 0) { this.bedTimer = 12 + Math.random() * 14; this.distantHorn(); }
+    if (this.scr && performance.now() - this.scrLast > 220) this.scrapeOff();           // a scrape that is not renewed ends
   }
 
   /** The engine stops (a short fall of the revs). */
@@ -242,7 +245,7 @@ class VehicleAudio {
     e.o1.frequency.setTargetAtTime(e.prof.base * 0.6, t, 0.12); e.o2.frequency.setTargetAtTime(e.prof.base * 0.3, t, 0.12);
     const srcs = e.srcs; this.eng = null;
     setTimeout(() => { for (const s of srcs) { try { s.stop(); s.disconnect(); } catch { /* already stopped */ } } }, 700);
-    this.hornOff(); setPlaybackSession(false);
+    this.hornOff(); this.scrapeOff(); setPlaybackSession(false);
   }
   get running() { return !!this.eng; }
   get rpm() { return this.eng?.rpm ?? 0; }
@@ -263,6 +266,32 @@ class VehicleAudio {
     this.thud(b, t, 58, 0.4, 0.3 + 0.3 * k); this.burst(b, t, 0.22, 1100, 0.7, 0.14 + 0.16 * k);
     for (const [f, d] of [[420, 0.3], [637, 0.22]] as const) { const o = b.ctx.createOscillator(), g = b.ctx.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.05 + 0.06 * k, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0008, t + d); o.connect(g).connect(b.gain); o.start(t); o.stop(t + d + 0.02); }
   }
+  /**
+   * A scrape: the vehicle sliding along a wall or another vehicle. A continuous grind (filtered noise with a low rumble under it) that follows `level` (0…1, the speed along the wall) and
+   * stops by itself when it is no longer asked for (a frame or two): called every frame while it lasts, never a new knock per frame.
+   */
+  scrape(level: number) {
+    const b = this.open(); if (!b) return;
+    const c = b.ctx, t = c.currentTime, k = Math.max(0, Math.min(1, level));
+    if (!this.scr) {
+      const n1 = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain(), n2 = c.createBufferSource(), lp = c.createBiquadFilter(), g2 = c.createGain();
+      n1.buffer = noise(c); n1.loop = true; bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.9; g.gain.value = 0;
+      n2.buffer = noise(c); n2.loop = true; lp.type = 'lowpass'; lp.frequency.value = 260; g2.gain.value = 0.5;
+      n1.connect(bp).connect(g).connect(b.gain); n2.connect(lp).connect(g2).connect(g);
+      n1.start(t, Math.random()); n2.start(t, Math.random());
+      this.scr = { gain: g, bp, srcs: [n1, n2] }; this.count.scrape++; this.count.asked++; this.count.played++;
+    }
+    this.scr.gain.gain.setTargetAtTime(0.05 + 0.13 * k, t, 0.03); this.scr.bp.frequency.setTargetAtTime(900 + 1500 * k, t, 0.05);
+    this.scrLast = performance.now();
+  }
+  scrapeOff() {
+    const s = this.scr; if (!s) return;
+    this.scr = null;
+    if (this.bus) s.gain.gain.setTargetAtTime(0, this.bus.ctx.currentTime, 0.05);
+    setTimeout(() => { for (const x of s.srcs) { try { x.stop(); x.disconnect(); } catch { /* done */ } } }, 350);
+  }
+  get scraping() { return !!this.scr; }
+
   /** The horn, held: the voice of this kind of vehicle (HORNS). Starts at once and goes on for as long as it is asked for; `hornOff` releases it. */
   hornOn(kit = 'sedan') {
     if (this.horn) return;
@@ -317,7 +346,7 @@ class VehicleAudio {
     o.connect(g).connect(b.gain); o.start(t); o.stop(t + 0.42); return true;
   }
 
-  info() { return { count: { ...this.count }, running: !!this.eng, rpm: +(this.eng?.rpm ?? 0).toFixed(2), horn: !!this.horn, gestured: hasGestured(), muted: isMuted(), state: this.bus?.ctx.state ?? 'none', session: sessionType(), nudges: this.nudges, nudgedBy: this.lastNudge }; }
+  info() { return { count: { ...this.count }, running: !!this.eng, rpm: +(this.eng?.rpm ?? 0).toFixed(2), horn: !!this.horn, scraping: !!this.scr, gestured: hasGestured(), muted: isMuted(), state: this.bus?.ctx.state ?? 'none', session: sessionType(), nudges: this.nudges, nudgedBy: this.lastNudge }; }
 }
 
 export const vehicleAudio = new VehicleAudio();

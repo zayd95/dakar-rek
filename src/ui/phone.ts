@@ -10,6 +10,7 @@ import type { HubId } from '../core/types';
 import { HUB_IDS } from '../core/types';
 import { cityTimeAt, CITY_DAY_MS } from '../core/clock';
 import { isMuted, setMuted } from '../core/audioSettings';
+import { canVibrate, hapticsOn, setHaptics } from '../transport/haptics';
 import { mapBridge } from './minimap';
 import { theme, type ThemeMode } from './theme';
 import './theme.css';
@@ -432,6 +433,9 @@ export class Phone {
       <p class="ph-note">Basse : plus fluide sur les petits téléphones. Le quartier est reconstruit, tu restes où tu es.</p>
       <h3>Son</h3>
       <button type="button" class="ph-toggle ${muted ? '' : 'on'}" data-act="sound" aria-pressed="${!muted}"><span>Son du jeu</span><em>${muted ? 'Coupé' : 'Activé'}</em></button>
+      ${canVibrate()
+        ? `<button type="button" class="ph-toggle ${hapticsOn() ? 'on' : ''}" data-act="haptics" aria-pressed="${hapticsOn()}"><span>Vibrations (chocs, klaxon)</span><em>${hapticsOn() ? 'Activées' : 'Coupées'}</em></button>`
+        : `<p class="ph-note">Ce navigateur ne fait pas vibrer le téléphone : les chocs se sentent par le son et la caméra.</p>`}
       <button type="button" class="ph-toggle ${mapBridge.enabled ? 'on' : ''}" data-act="minimap" aria-pressed="${mapBridge.enabled}"><span>Mini-carte</span><em>${mapBridge.enabled ? 'Affichée' : 'Masquée'}</em></button>
       <p class="ph-note">Le petit rond en haut à gauche : où tu es, les lieux autour, le quartier et la rue.</p>
       <h3>Caméra</h3>
@@ -567,6 +571,7 @@ export class Phone {
     const act = (name: string, fn: () => void) => s.querySelector(`[data-act="${name}"]`)?.addEventListener('click', fn);
     act('minimap', () => { mapBridge.setEnabled(!mapBridge.enabled); this.render(); });
     act('sound', () => { setMuted(!isMuted()); this.render(); });
+    act('haptics', () => { setHaptics(!hapticsOn()); this.render(); });
     act('gloss', () => { setGlossesShown(!glossesShown()); this.render(); });
     act('save', () => this.ctx.toast(this.ctx.save() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'));
     act('new', () => this.go('nouvelle'));
