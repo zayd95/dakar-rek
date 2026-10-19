@@ -247,6 +247,9 @@ if (process.env.DRIVE_ON) {
   // and back: the way home is the same road
   await getIn();
   await d(() => { window.__frames = []; const tick = () => { const A = window.__dakar, a = A.berline.at(), p = A.pos(); window.__frames.push({ hub: p.hub, x: a.x, z: a.z, speed: a.speed, driving: a.driving }); if (window.__frames.length < 60000) requestAnimationFrame(tick); }; requestAnimationFrame(tick); });
+  // parked tight against the kerb: backed out into the road with the reverse gear first
+  await padDrive(page, t, { reverse: true, hold: () => page.waitForFunction(() => window.__dakar.berline.at().x < -58.5, null, { timeout: 90000 }).catch(() => {}) });
+  await page.waitForFunction(() => Math.abs(window.__dakar.berline.at().speed) < 0.3, null, { timeout: 60000 }).catch(() => {});
   const back = await AT();
   await pilot(page, t, 'berline', [{ x: -60.4, z: back.z > -100 ? back.z : -100, tol: 6 }, { x: -60.4, z: -128, tol: 3 }, { x: -60.4, z: -170, tol: 4 }, { x: -60.4, z: -215, tol: 4 }], { cruise: 8, stall: 25000 }).catch(e => console.log('BACK pilot', e.message));
   console.log('BACK end', JSON.stringify(await AT()), 'hub', (await d(() => window.__dakar.pos())).hub);
