@@ -593,6 +593,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.fx.kickX = im.headOn ? 0 : -side * (0.05 + 0.16 * im.strength);                                             // a glancing blow throws it sideways
     m.jolt(im.dir * (hit ? 0.025 + 0.065 * im.strength : 0.008), im.headOn ? 0 : -side * 0.05 * (0.4 + im.strength), hit ? 0.02 + 0.04 * im.strength : 0);
     buzz(impactBuzz(im.kind, im.strength));
+    this.feelLog.shakePeak = Math.max(this.feelLog.shakePeak, this.fx.shake);      // read at the knock itself: the frame loop may be slow and decay it before it is seen
     this.feelLog.impacts.push({ kind: im.kind, speed: +im.speed.toFixed(2), strength: +im.strength.toFixed(2), headOn: im.headOn }); if (this.feelLog.impacts.length > 60) this.feelLog.impacts.shift();
   }
 

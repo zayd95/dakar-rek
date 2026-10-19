@@ -17,7 +17,7 @@ describe('the three things a contact is', () => {
     expect(impacts).toBe(1); expect(first).toMatchObject({ kind: 'bump', strength: 0 });
   });
   it('a fast head-on contact is ONE hit, stronger the faster, and the rebound against the wall does not hit again', () => {
-    const t = new ContactTracker(); const got: { kind: string; strength: number }[] = [];
+    const t = new ContactTracker(); const got: { kind: string; strength: number; headOn: boolean }[] = [];
     for (let i = 0; i < 4 * 60; i++) { const f = t.step(1 / 60, i % 2 === 0 || i < 40, i === 0 ? 11 : 0.8, i === 0 ? -1.65 : 0.5); if (f.impact) got.push(f.impact); }
     expect(got).toHaveLength(1); expect(got[0].kind).toBe('hit'); expect(got[0].strength).toBeGreaterThan(0.7); expect(got[0].headOn).toBe(true);
     expect(strengthOf(IMPACT_SPEED)).toBe(0); expect(strengthOf(STRONG)).toBe(1); expect(strengthOf(30)).toBe(1); expect(strengthOf(8)).toBeGreaterThan(strengthOf(5));

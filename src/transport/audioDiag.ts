@@ -8,7 +8,7 @@ import { ridePad } from './ridePad';
  * Nothing in it is drawn unless the address asks for it.
  */
 export function mountAudioDiag(parent: HTMLElement = document.body) {
-  if (typeof document === 'undefined' || !new URLSearchParams(location.search).has('audiodebug') || document.getElementById('audiodiag')) return;
+  if (typeof document === 'undefined' || typeof location === 'undefined' || !new URLSearchParams(location.search).has('audiodebug') || document.getElementById('audiodiag')) return;   // not in a test host (no address, no page)
   const el = document.createElement('div'); el.id = 'audiodiag';
   el.style.cssText = 'position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:8px;z-index:60;max-width:calc(100vw - 16px);padding:6px 8px;border-radius:8px;background:rgba(0,0,0,.72);color:#aef;font:11px/1.35 ui-monospace,monospace;white-space:pre;pointer-events:none';
   const txt = document.createElement('div'); el.appendChild(txt);
