@@ -39,9 +39,17 @@ Branch `vehicles/integration-20261018` (PR #49), save v6 untouched, driving phys
 - Only the **driver's door** opens. Passenger and rear doors are still part of the body.
 - The generated GLB body of Ndiaye Auto's saloon has fused doors; it is out of scope and untouched.
 - NPC customers browsing were left out on purpose (no cost to movement or frame rate).
+- When the player steps out right beside the parked car, the salesperson stops on a free spot within reach and in sight of them (not on the far side of the car), and his prompt wins over the car's for as long as he is waiting for them.
 
 ## Checks
 
 - `tests/prestige.test.ts`, `tests/navgrid.test.ts`, `tests/premiumCars.test.ts`: parcel, bays, walking map, door geometry, paint counters.
 - `scripts/check-prestige-flow.mjs`: the whole journey above in one portrait session with real CDP touches, then a reload. `RECORD=1` films it (`prestige-journey.webm`).
-- `scripts/check-prestige-trial.mjs`: handing back, abandoning and recovering the trial car.
+- `scripts/check-prestige-trial.mjs`: handing back, abandoning and recovering the trial car (leaves the bay with the real pedals and the real « Descendre » button).
+- Screenshots of every step and the recording: `docs/screenshots/prestige/` (`prestige-journey.mp4`, 10 min of wall time, 23/23 checks).
+
+### About the recording
+
+It is a real-touch journey (CDP `Input.dispatchTouchEvent`: joystick, Gas, Brake, « Ouvrir », « Descendre », the menus), played by a script in **headless Chromium with software GL**, portrait 390 × 844. The simulation runs at roughly a third of real time there, so the film is slower than a phone would be; it is **not** a capture of a physical iPhone, and frame rate on a real iPhone is still to be measured by hand (`?debug` shows it). The lap is steered by a small pilot (`scripts/lib/realTouch.mjs`) that only moves the two thumbs; it has no access to the car.
+
+`SKIP_LAP=1 node scripts/check-prestige-flow.mjs …` puts the car at the end of the lap and checks the rest of the journey in a few minutes (development only).
