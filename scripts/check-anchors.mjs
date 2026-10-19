@@ -136,10 +136,12 @@ await closeSheet();
 await d(() => window.dispatchEvent(new Event('pagehide')));
 const saved = await d(() => JSON.parse(localStorage.getItem('dakarrek.guest.save.v6') ?? 'null'));
 check('the save holds the moments lived (counters), the favour and the bout', !!saved && saved.schemaVersion === 6 && saved.counters.sit_gargote_midi_n === 1 && saved.counters.sit_garage_etabli_n === 1 && saved.career.bouts.length === 1, JSON.stringify(Object.keys(saved?.counters ?? {}).filter(k => k.startsWith('sit_'))));
+const lived = saved.counters.sit_gargote_midi_day;                  // the city day the moment was lived (a city day is 24 real minutes: this script may well cross one)
 await page.reload({ waitUntil: 'load' }); await ready();
 await hour(12);
 sh = await openMenuOf('mame');
-check('after a reload: the moment of today is not offered again (it was lived)', !sh.rows.some(r => /Le service de midi/.test(r.label)), JSON.stringify(sh.rows.map(r => r.label)));
+const dayNow = await dayOf(), again = sh.rows.some(r => /Le service de midi/.test(r.label));
+check('after a reload: the moment lived today is not offered again (and it is, as designed, on the next city day)', again === (dayNow !== lived), `lived day ${lived}, day now ${dayNow}, offered ${again}`);
 await closeSheet();
 await page.keyboard.press('Escape'); await page.locator('[data-app="reglages"]').first().click(); await page.locator('[data-act="new"]').click(); await page.locator('[data-act="wipe"]').click();
 await ready(); await hour(12);
