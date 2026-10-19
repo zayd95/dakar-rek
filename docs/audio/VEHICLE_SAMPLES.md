@@ -18,21 +18,28 @@ The engines, ignition, horns and collisions of the driven vehicles are **recordi
 
 `horn-moto` is `horn-car` pitched ×1.5 with the lower reed removed. The motorbike's ignition is `start-car` played ×1.3 (a CC0 stand-in: the review clip used a CC-BY-SA recording that is **not** shipped).
 
-## Licence verification
+## Licence verification (final)
 
-| Source | Licence as found | How it was checked | Files |
-|---|---|---|---|
-| Kenney, *Starter Kit Racing*, <https://github.com/KenneyNL/starter-kit-racing> @ `2f2e5f2646dda89cb21d4e8539bab60c6e955dc8` | **CC0** | The repo README states *"3D Models & sounds (CC0 licensed)"* and *"Assets included in this package (2D sprites, 3D models and sound effects) are CC0 licensed; the skid sound effect was made by Landeplage and is also CC0 licensed"*. Code is MIT. | `car-idle`, `moto-idle`, `thud`, `squeal` |
-| OpenGameArt, *Car Sound Effects Pack (Low Quality)*, <https://opengameart.org/content/car-sound-effects-pack-low-quality> | **CC0** | The page's licence field reads CC0 (fetched Oct 2026). | `start-car` |
-| pmndrs, *racing-game*, <https://github.com/pmndrs/racing-game> @ `7816a5d954b75e6ad853ae4e4f0cbbd628072643` | **Claimed CC0, not verifiable per file** | The README says *"100% open source and community built, CC0 assets only"* (code: MIT). | `car-rev`, `horn-car`, `horn-moto`, `crash` |
+**Verified** = the licence is stated by the rights holder or the host for these very files. **Project-level claim** = a statement about the whole project, with nothing per file.
 
-### Remaining provenance uncertainty: pmndrs (4 of the 9 files)
+| Files | Status | Evidence |
+|---|---|---|
+| `car-idle`, `moto-idle`, `thud`, `squeal` (Kenney) | **Verified CC0** | Kenney's *Starter Kit Racing* README: *"Assets included in this package (2D sprites, 3D models and sound effects) are CC0 licensed"*, and the skid sound by Landeplage *"is also CC0 licensed"*. The assets are Kenney's own and the statement is the author's. Repo <https://github.com/KenneyNL/starter-kit-racing> @ `2f2e5f2646dda89cb21d4e8539bab60c6e955dc8`. |
+| `start-car` (OpenGameArt) | **Verified CC0** (host's licence field) | <https://opengameart.org/content/car-sound-effects-pack-low-quality>: licence field CC0, read from the page in October 2026. The page gives no author name that could be checked beyond the uploader's own submission. |
+| `car-rev`, `horn-car`, `horn-moto` (derived from `horn-car`), `crash` (pmndrs) | **Project-level CC0 claim only** | <https://github.com/pmndrs/racing-game> @ `7816a5d954b75e6ad853ae4e4f0cbbd628072643`. README: *"This project is 100% open source and community built, CC0 assets only"*. The repository's `LICENSE.md` is the MIT licence of the **code**. |
 
-* `honk.mp3` and `engine.mp3` were added by the maintainer (Paul Henschel) on 2021-06-02, `crash.mp3` on 2021-06-05; no commit, file tag, credits file or code comment names where any of them was recorded or downloaded.
-* So their CC0 status rests on the project's blanket statement only. It is a statement by the people who published them, which is reasonable evidence, but it is **not** a per-file licence record.
-* Risk is low but not zero. **Mitigation if it matters**: the four files are isolated (`car-rev`, `horn-car`, `horn-moto`, `crash`), loaded by name in one table (`src/transport/vehicleSamples.ts`), and can be replaced by any CC0 equivalent without code changes beyond the profile table. Candidates already vetted as CC0 on OpenGameArt are listed in `AUDIO_REVIEW.md`.
+### What was checked on the pmndrs files, and what is still unknown
 
-No paid asset, no generated audio, no Meshy credit. The CC-BY-SA recordings by dklon were **not** integrated.
+* The sounds were added by the maintainer (Paul Henschel, *drcmda*): `honk.mp3` and `engine.mp3` on 2021-06-02 (a merge commit), `crash.mp3` on 2021-06-05 ("better sounds"). The history (400 commits fetched) contains licence commits only for the code (MIT, 2021-06-03); **no commit message, file tag, credits file, code comment or issue names where any of the three sounds came from**, and no per-file licence.
+* So it is **unknown** who recorded them, whether they were downloaded from a CC0 library or edited from something else, and under what terms. The only assurance is the maintainers' own statement that the project uses CC0 assets only.
+* This is a real but small risk. It is **not resolved** and cannot be from here (the sources are not named). The decision whether to accept it belongs to the owner.
+* **Replacement path, if the owner prefers certainty**: the four files are the only ones in the shipping set that carry it. Verified-CC0 alternatives already identified: engine loops and a horn from the OpenGameArt car pack above (`Car_Engine_Loop*.ogg`, `Car_Horn.ogg`), and the crash/impact set (`75-cc0-breaking-falling-hit-sfx`, `crash-collision`). Swapping them changes the approved sound, so it is not done without the owner's say-so.
+
+### Declined audio is absent from the shipping build
+
+The CC-BY-SA 3.0 motorcycle recordings by *dklon* (`moto-idle-b`, `moto-rev-b`, `start-moto`) are **not** in the build: the build's audio folder holds exactly the nine files in the table above (checked by listing and by comparing the SHA-256 of every `.mp3` in `public/`, `src/` and the built `dist` to the three declined files: no match), and the string "dklon" appears nowhere in the source, the assets or the build script. They exist only in the history of the review commit `335e67f` on `vehicles/audio-overhaul-20261019`; when this branch is integrated into the main line, it is integrated as a **single squashed commit** so that they do not enter that history.
+
+No paid asset, no generated audio, no Meshy credit.
 
 ## How they were prepared
 

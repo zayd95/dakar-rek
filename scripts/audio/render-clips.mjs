@@ -63,11 +63,8 @@ const clip = async (name, scenario, arg, variant = null) => {
 };
 
 const only = process.env.ONLY ? process.env.ONLY.split(',') : null;
-const jobs = [
-  ['1a-car-engine-set-a', 'engine', 'sedan', 'car-a'], ['1b-car-engine-set-b', 'engine', 'sedan', 'car-b'],
-  ['2a-jakarta-engine-set-a', 'engine', 'moto', 'moto-a'], ['2b-jakarta-engine-set-b', 'engine', 'moto', 'moto-b'],
-  ['3a-horns-jakarta-a', 'horn', ['sedan', 'suv', 'moto'], 'horn-a'], ['3b-horns-jakarta-b', 'horn', ['sedan', 'suv', 'moto'], 'horn-b'],
-  ['4-collisions', 'collisions', undefined, null],
+const jobs = [          // the shipped set (the approved B): the variants of the review round are gone from the build
+  ['1-car-engine', 'engine', 'sedan', null], ['2-jakarta', 'engine', 'moto', null], ['3-horns', 'horn', ['sedan', 'suv', 'moto'], null], ['4-collisions', 'collisions', undefined, null],
 ];
 for (const [n, sc, arg, v] of jobs) if (!only || only.some(o => n.startsWith(o))) await clip(n, sc, arg, v);
 await browser.close();
