@@ -24,6 +24,10 @@ describe('the engine of a driven vehicle', () => {
     for (const p of Object.values(PROFILES)) { expect(SAMPLE_NAMES).toContain(p.idle); expect(SAMPLE_NAMES).toContain(p.rev); expect(p.xf[0]).toBeLessThan(p.xf[1]); }
     expect(profileFor('unknown')).toBe(PROFILES.sedan);
   });
+  it('only the Jakarta is brought down at speed (about −5 dB measured at the speaker when riding); the cars are not touched', () => {
+    expect(PROFILES.moto.topTrim).toBeCloseTo(0.2, 2);
+    for (const k of ['sedan', 'luxury', 'suv'] as const) expect(PROFILES[k].topTrim).toBe(1);
+  });
 });
 
 describe('contacts and brakes', () => {

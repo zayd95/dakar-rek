@@ -22,14 +22,16 @@ export interface EngineProfile {
   gears: number;
   /** Overall level of this engine. */
   level: number;
+  /** The gain it is brought down to at full revs (1 = not at all; the fall follows the revs, so the idle keeps its level; the bus limiter flattens loud input, so a −14 dB trim is about −5 dB at the speaker): a small motorbike's loops are far louder at speed than at rest. */
+  topTrim: number;
   /** The tone: high-pass (Hz), low-pass at idle and at full revs (Hz), the lift of the 1.3 kHz band (dB: what a phone loudspeaker plays of an engine), and the weight of the harmonic exciter (the bass note's overtones). */
   hp: number; lpIdle: number; lpTop: number; air: number; excite: number;
 }
 export const PROFILES: Record<'sedan' | 'luxury' | 'suv' | 'moto', EngineProfile> = {
-  sedan: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, hp: 40, lpIdle: 2400, lpTop: 6500, air: 3, excite: 0.35 },
-  luxury: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.8, 1.35], revRate: [0.85, 1.55], xf: [0.35, 0.8], gears: 5, level: 0.9, hp: 40, lpIdle: 1700, lpTop: 4600, air: 2, excite: 0.3 },
-  suv: { start: 'start-car', startRate: 0.92, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.7, 1.3], revRate: [0.75, 1.55], xf: [0.3, 0.7], gears: 4, level: 1, hp: 32, lpIdle: 1900, lpTop: 5200, air: 3, excite: 0.45 },
-  moto: { start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, hp: 230, lpIdle: 3800, lpTop: 8000, air: 6, excite: 0.5 },
+  sedan: { topTrim: 1, start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, hp: 40, lpIdle: 2400, lpTop: 6500, air: 3, excite: 0.35 },
+  luxury: { topTrim: 1, start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.8, 1.35], revRate: [0.85, 1.55], xf: [0.35, 0.8], gears: 5, level: 0.9, hp: 40, lpIdle: 1700, lpTop: 4600, air: 2, excite: 0.3 },
+  suv: { topTrim: 1, start: 'start-car', startRate: 0.92, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.7, 1.3], revRate: [0.75, 1.55], xf: [0.3, 0.7], gears: 4, level: 1, hp: 32, lpIdle: 1900, lpTop: 5200, air: 3, excite: 0.45 },
+  moto: { topTrim: 0.2, start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, hp: 230, lpIdle: 3800, lpTop: 8000, air: 6, excite: 0.5 },
 };
 export const profileFor = (kit: string): EngineProfile => PROFILES[(kit in PROFILES ? kit : 'sedan') as keyof typeof PROFILES];
 
@@ -245,8 +247,8 @@ class VehicleAudio {
     e.gIdle.gain.setTargetAtTime(Math.cos(h * Math.PI / 2) * 0.9 + 0.1, t, 0.06);                                       // equal-power hand-over; a little idle stays under the high loop
     e.gRev.gain.setTargetAtTime(Math.sin(h * Math.PI / 2) * (lift ? 0.7 : 0.8 + 0.3 * load), t, 0.06);
     e.lp.frequency.setTargetAtTime((P.lpIdle + (P.lpTop - P.lpIdle) * k) * (lift ? 0.65 : 0.85 + 0.25 * load), t, 0.06);
-    const lvl = (0.3 + 0.2 * e.rpm + 0.1 * load) * (lift ? 0.78 : 1);
-    e.gEng.gain.setTargetAtTime(Math.min(0.7, lvl) * P.level, t, 0.06);
+    const lvl = (0.3 + 0.2 * e.rpm + 0.1 * load) * (lift ? 0.78 : 1), trim = 1 + (P.topTrim - 1) * Math.pow(k, 0.6);   // the Jakarta: measured at the speaker, 0.2 here is about −5 dB when riding and −1 dB at idle (the limiter flattens what goes in)
+    e.gEng.gain.setTargetAtTime(Math.min(0.7, lvl) * P.level * trim, t, 0.06);
     const v = Math.min(1, Math.abs(speed) / Math.max(0.1, maxSpeed));
     e.road.gain.setTargetAtTime(0.035 * v * v * (P === PROFILES.moto ? 1.3 : 1), t, 0.1); e.roadF.frequency.setTargetAtTime(260 + 900 * v, t, 0.1);
     e.bed.gain.setTargetAtTime(this.horn ? 0.002 : 0.011, t, 0.2);
