@@ -170,6 +170,9 @@ function dressAtlas() {
 class Pieces {
   geos: THREE.BufferGeometry[] = [];
   tris = 0;
+  /** The part of the slice the next pieces belong to, and the triangles each part costs (the budget, in the debug stats). */
+  cat = 'misc';
+  byCat: Record<string, number> = {};
   constructor(private white: Rect, private litCell: Rect) {}
   private put(g: THREE.BufferGeometry, color: number, x: number, y: number, z: number, rotY: number, rotX = 0) {
     g.rotateX(rotX); g.rotateY(rotY); g.translate(x, y, z);
@@ -177,7 +180,7 @@ class Pieces {
     const n = g.attributes.position.count, col = new THREE.Color(color), arr = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { arr[i * 3] = col.r; arr[i * 3 + 1] = col.g; arr[i * 3 + 2] = col.b; }
     g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
-    this.geos.push(g); this.tris += n / 3;
+    this.geos.push(g); this.tris += n / 3; this.byCat[this.cat] = (this.byCat[this.cat] ?? 0) + n / 3;
   }
   private plain(g: THREE.BufferGeometry, cell: Rect = this.white) {
     const n = g.attributes.position.count, uv = new Float32Array(n * 2), [u0, v0, u1, v1] = cell;
@@ -209,6 +212,14 @@ class Pieces {
   disc(r: number, x: number, y: number, z: number, color: number, sq = 1, rot = 0) {
     const g = new THREE.CircleGeometry(r, 16); g.rotateX(-Math.PI / 2); g.scale(1, 1, sq); this.plain(g); this.put(g, color, x, y, z, rot);
   }
+  /** A soft-edged blotch lying on the ground: the colour runs from `centre` to `rim` (the ground's own colour) by vertex colours, so no edge shows and no texture is needed. */
+  blot(r: number, x: number, y: number, z: number, centre: number, rim: number, sq = 1, rot = 0, seg = 10) {
+    const g = new THREE.CircleGeometry(r, seg); g.rotateX(-Math.PI / 2); g.scale(1, 1, sq); this.plain(g); g.rotateY(rot); g.translate(x, y, z);
+    const n = g.attributes.position.count, arr = new Float32Array(n * 3), c = new THREE.Color(centre), e = new THREE.Color(rim);
+    for (let i = 0; i < n; i++) { const k = i === 0 ? c : e; arr[i * 3] = k.r; arr[i * 3 + 1] = k.g; arr[i * 3 + 2] = k.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+    const ng = g.toNonIndexed(); this.geos.push(ng); this.tris += n > 2 ? seg : 0; this.byCat[this.cat] = (this.byCat[this.cat] ?? 0) + seg;
+  }
   /** Box centred at y keeping all faces, tilted about its own x axis (awnings). */
   slab(w: number, h: number, d: number, x: number, y: number, z: number, color: number, rotY = 0, tilt = 0) {
     this.put(this.plain(new THREE.BoxGeometry(w, h, d)), color, x, y, z, rotY, tilt);
@@ -232,7 +243,7 @@ class Pieces {
   }
   /** A wire hanging between two points (a sagging chain of rods). */
   wire(a: [number, number, number], b: [number, number, number], sag: number, color = 0x1d1d20, r = 0.018) {
-    const n = Math.max(3, Math.round(Math.hypot(b[0] - a[0], b[2] - a[2]) / 4));
+    const n = Math.max(2, Math.round(Math.hypot(b[0] - a[0], b[2] - a[2]) / 6));
     let prev = a;
     for (let k = 1; k <= n; k++) {
       const t = k / n, p: [number, number, number] = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - sag * 4 * t * (1 - t), a[2] + (b[2] - a[2]) * t];
@@ -271,12 +282,23 @@ const houseBlock = (x: number, z: number) => {
 
 const SUN = [0xe0a24a, 0xc8654a, 0x5f9aa8, 0x8bb26e, 0xe4cf9a, 0xb86a8c, 0xd9d2bc];
 const GATE = [0x2f7a4a, 0x2b5c9e, 0xa8402f, 0xc89a38, 0x5a3f8a];
+/** The colours each trade paints itself in (walls, shutters, awnings, the goods on the shelf): no two shopfronts alike. */
+const SHOP_TRAIT: Record<string, { walls: number[]; shutters: number[]; awnings: number[]; goods: number[] }> = {
+  boutique: { walls: [0xe4cf9a, 0xd9d2bc, 0x8bb26e], shutters: [0x2f7a4a, 0xc89a38], awnings: [0xd7312f, 0x2f7a4a], goods: [0xe58a2f, 0xb8372b, 0xefe9da, 0xe8c24a, 0x6aa84f] },
+  couture: { walls: [0xb86a8c, 0xc8654a, 0xe0a24a], shutters: [0x5a3f8a, 0xa8402f], awnings: [0x1f3d75, 0xf08a24], goods: [0x1f3d75, 0xf08a24, 0xd7312f, 0x7a2d8a] },
+  quinc: { walls: [0x5f9aa8, 0xd9d2bc, 0x9a9a94], shutters: [0x2b5c9e, 0x5a5a5a], awnings: [0x2b5c9e, 0xa8402f], goods: [0xb0a58f, 0xc23a2a, 0x2b5c9e, 0xf2c230] },
+  telecentre: { walls: [0xe4cf9a, 0xf1e7c6, 0xc89a38], shutters: [0xa8402f, 0x2b5c9e], awnings: [0xf2c230, 0xd7312f], goods: [0x222222, 0x2b5c9e, 0xefe9da] },
+  cantine: { walls: [0xc8654a, 0xe0a24a, 0xd9d2bc], shutters: [0x5a3f8a, 0xa8402f], awnings: [0xc8654a, 0xf3ead4], goods: [0xbfc4c8, 0xb8372b, 0xe8c24a, 0x6aa84f] },
+  pharmacie: { walls: [0xf1efe6, 0xd9d2bc], shutters: [0x2f7a4a], awnings: [0x2f7a4a, 0xf3ead4], goods: [0xefe9da, 0x2f7a4a, 0x5f9aa8] },
+  coiffure: { walls: [0xb86a8c, 0x5f9aa8, 0x8bb26e], shutters: [0x5a3f8a, 0x2f7a4a], awnings: [0x7a2d8a, 0xf5cd2e], goods: [0xb86a8c, 0xefe9da, 0x5a3f8a] },
+  cyber: { walls: [0x6a6e70, 0x5f9aa8, 0x2b5c9e], shutters: [0x2b2b2b], awnings: [0x2b5c9e, 0xf4d35e], goods: [0x7fd3ff, 0xefe9da] },
+};
 const TRICOLOR = [0x1d8040, 0xf5cd2e, 0xd7312f];
 const BUNTING = [0x1d8040, 0xf5cd2e, 0xd7312f, 0xf4efe2, 0x2b5c9e];
 
 export interface DnaItem { kind: string; x: number; z: number; solid: boolean; rect?: { x0: number; z0: number; x1: number; z1: number; h: number } }
 
-export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { mesh: THREE.Mesh | null; night: THREE.Mesh | null; items: DnaItem[]; tris: number } {
+export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { mesh: THREE.Mesh | null; night: THREE.Mesh | null; items: DnaItem[]; tris: number; byCat: Record<string, number> } {
   const O = DNA_COUNT[q], A = dressAtlas(), P = new Pieces(A.white, A.lit), R = rng(0x9177a1);
   const items: DnaItem[] = [];
   const taken: { x0: number; z0: number; x1: number; z1: number }[] = [];
@@ -295,6 +317,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
   const rectOn = (L: Line, along: number, off: number, side: 1 | -1, len: number, th: number) => { const p = at(L, along, off, side); return L.alongZ ? rectAt(p.x, p.z, th, len) : rectAt(p.x, p.z, len, th); };
   const nearCrossing = (L: Line, t: number, pad = CROSS_CLEAR) => L.crossings.some(k => Math.abs(t - k) < pad);
 
+  P.cat = 'walls';
   // ---- the street's edge: painted compound walls, house gates, boutiques and unfinished stretches, in clusters and gaps
   const muralOrder = [...MURALS.filter(m => m !== 'salon')];
   const keur: SignId[] = ['keur_mbaye', 'keur_sarr', 'keur_gueye'], shops: SignId[] = ['boutique', 'couture', 'quinc', 'telecentre', 'cantine', 'pharmacie', 'coiffure', 'cyber'];
@@ -303,6 +326,46 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
   /** What the ground and the night add in front of a unit: darker soil, a pool of warm light. */
   const soils: { x: number; z: number; w: number; d: number; rot: number }[] = [], spills: { x: number; z: number; w: number; d: number; rot: number }[] = [];
   const LIT = 0xfff0c4, DARKROOM = 0x3b2c1c;
+  const CHAIRS = [0xf2f2ec, 0x2f6fb3, 0xd9322b, 0x1a9d54, 0xf4c20d];
+  const WAX = [0x1f3d75, 0xf08a24, 0xd7312f, 0x2f7a4a, 0x7a2d8a, 0xf5cd2e];
+  type Fwd = (d: number, a?: number) => { x: number; z: number };
+  /** What each business keeps outside its door: the trade's own things, a few metres of the pavement's back strip (0.5 m deep, clear of the lanes). */
+  const forecourt = (sg: SignId, f: Fwd, len: number, yaw: number) => {
+    const bx = (w: number, h: number, dd: number, d: number, a: number, y: number, col: number, rot = 0) => { const q2 = f(d, a); P.box(w, h, dd, q2.x, G + y, q2.z, col, yaw + rot); };
+    const cy = (r0: number, r1: number, h: number, d: number, a: number, y: number, col: number, seg = 7) => { const q2 = f(d, a); P.cyl(r0, r1, h, q2.x, G + y, q2.z, col, seg); };
+    const stool = (d: number, a: number, col: number) => { cy(0.17, 0.2, 0.4, d, a, 0, col); };
+    const chair = (d: number, a: number, col: number, rot = 0) => { bx(0.4, 0.04, 0.4, d, a, 0.42, col, rot); bx(0.4, 0.38, 0.04, d + 0.18, a, 0.46, col, rot); bx(0.3, 0.42, 0.3, d, a, 0, shade(col, 0.8), rot); };
+    const lo = -len / 2 + 0.7, hi = len / 2 - 0.9;
+    if (sg === 'boutique') {                                                       // sacks of rice, a strip of sachets hung across the door, a stool and a crate of bottles
+      for (let k = 0; k < 3; k++) { bx(0.5, 0.5, 0.32, 0.5, lo + k * 0.5, 0, [0xe9dfc6, 0xd8c9a0, 0xcfb88e][k], k * 0.1); bx(0.16, 0.08, 0.16, 0.5, lo + k * 0.5, 0.5, 0xcfb88e); }
+      for (let k = 0; k < 9; k++) bx(0.07, 0.2, 0.02, 0.32, -1.5 + k * 0.38, 1.5 + (k % 2) * 0.12, pick([0xd7312f, 0xf5cd2e, 0x2f7a4a, 0x2b5c9e, 0xf3ead4], R));
+      stool(0.55, hi, 0x3a5fa0); bx(0.45, 0.3, 0.3, 0.55, hi + 0.5, 0, 0xc23a2a);
+    } else if (sg === 'couture') {                                                 // a mannequin in wax print, cloths hung off the awning, a sewing machine on its table
+      cy(0.03, 0.03, 0.9, 0.58, lo, 0, 0x777777, 5); cy(0.16, 0.12, 0.5, 0.58, lo, 0.9, pick(WAX, R), 7); cy(0.09, 0.09, 0.16, 0.58, lo, 1.4, 0x5a3a2a, 6);
+      for (let k = 0; k < 4; k++) bx(0.44, 1.0, 0.02, 0.32, -0.9 + k * 0.6, 1.05, WAX[(k + 1) % WAX.length]);
+      bx(0.6, 0.6, 0.38, 0.55, hi, 0, 0x6b4a2e); bx(0.3, 0.14, 0.2, 0.55, hi, 0.6, 0x222222); stool(0.55, hi + 0.7, 0xb8372b);
+    } else if (sg === 'quinc') {                                                   // buckets, bags of cement, a ladder against the wall
+      cy(0.2, 0.17, 0.3, 0.55, lo, 0, 0xc23a2a, 8); cy(0.2, 0.17, 0.3, 0.55, lo, 0.3, 0x2b5c9e, 8); cy(0.2, 0.17, 0.3, 0.55, lo + 0.45, 0, 0xf2c230, 8);
+      for (let k = 0; k < 3; k++) bx(0.5, 0.12, 0.32, 0.55, hi, k * 0.12, 0xa9a59c, k * 0.15);
+      for (const o of [-0.18, 0.18]) { const a0 = f(0.75, hi + 0.9 + o), a1 = f(0.15, hi + 0.9 + o); P.rod([a0.x, G, a0.z], [a1.x, G + 2.4, a1.z], 0.025, 0xb0a58f); }
+    } else if (sg === 'telecentre') {                                              // a parasol over a table and two stools: credit sold at the kerb
+      const q2 = f(0.6, lo + 0.3); P.cyl(0.03, 0.03, 2.1, q2.x, G, q2.z, 0x4a4a4a, 5); P.cyl(0.04, 1.1, 0.35, q2.x, G + 2.1, q2.z, 0xf2c230, 8);
+      bx(0.7, 0.6, 0.45, 0.6, lo + 0.3, 0, 0x8a6a48); stool(0.6, lo - 0.45, 0x3a5fa0); stool(0.6, lo + 1.05, 0xd9322b);
+    } else if (sg === 'cantine') {                                                 // a bench, a table with the pots, a brazier
+      bx(1.3, 0.4, 0.35, 0.55, lo + 0.2, 0, 0x6b4a2e); bx(0.8, 0.7, 0.4, 0.55, hi - 0.2, 0, 0x8a6a48);
+      for (let k = 0; k < 3; k++) cy(0.16, 0.15, 0.3, 0.55, hi - 0.45 + k * 0.32, 0.7, 0xbfc4c8, 8);
+      cy(0.2, 0.17, 0.25, 0.6, hi + 0.7, 0, 0x2b2b2b, 8);
+    } else if (sg === 'pharmacie') {                                               // the green cross, lit, on the roof edge; a bench for whoever waits
+      const q2 = f(0.28, 0); P.litBox(0.7, 0.18, 0.1, q2.x, G + 3.3, q2.z, 0x2faa5a, yaw); P.litBox(0.18, 0.7, 0.1, q2.x, G + 3.04, q2.z, 0x2faa5a, yaw);
+      bx(1.2, 0.4, 0.35, 0.55, lo + 0.2, 0, 0x6b4a2e); bx(0.4, 0.5, 0.3, 0.55, hi + 0.4, 0, 0xe9e4d8);
+    } else if (sg === 'coiffure') {                                                // a barber's chair in the doorway and a mirror on the wall
+      bx(0.45, 0.42, 0.45, 0.6, lo, 0, 0x2b4f86); bx(0.45, 0.55, 0.08, 0.78, lo, 0.42, 0x2b4f86); bx(0.3, 0.08, 0.3, 0.45, lo, 0.1, 0x555555);
+      const m = f(0.3, lo); P.litBox(0.55, 0.8, 0.04, m.x, G + 1.0, m.z, 0xcfe4f0, yaw); chair(0.55, hi, pick(CHAIRS, R));
+    } else {                                                                       // the cyber café: three screens in the window, a plastic chair
+      for (let k = -1; k <= 1; k++) { const m = f(0.32, k * 1.0); P.litBox(0.5, 0.32, 0.05, m.x, G + 1.1, m.z, 0x7fd3ff, yaw); }
+      chair(0.55, hi, pick(CHAIRS, R)); chair(0.55, lo, pick(CHAIRS, R), 0.3);
+    }
+  };
   /** A unit of the street's edge centred `mid` along the line; false when something stands there. */
   const unit = (L: Line, side: 1 | -1, mid: number, len: number, kind: Unit, frac = 1): boolean => {
     const r = rectOn(L, mid, WALL_OFF, side, len, 0.6), c = at(L, mid, WALL_OFF, side), yaw = yawOf(L, side);
@@ -335,18 +398,27 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
       const pb = fwd(0.15, -len / 2 + len * 0.16); P.box(len * 0.32, 0.8, 0.05, pb.x, G, pb.z, pick(SUN, R), yaw);        // the part someone painted
       claim(r, h, 'rough');
     } else {
-      // a boutique built into the wall: painted front, the shutter half up on a lit shop, a shelf, goods, a fascia sign, a striped awning
-      const sg = shops[shopK++ % shops.length], body = pick(SUN, R), shut = pick(GATE, R), stripe = [pick(GATE, R), 0xf3ead4];
+      // a boutique built into the wall, each its own: a painted front in the trade's colours, the shutter half up on a lit shop, goods that
+      // are the trade's goods, a fascia, an awning of its own kind, and a forecourt of what that business keeps outside
+      P.cat = 'shops';
+      const sg = shops[shopK++ % shops.length], tr = SHOP_TRAIT[sg], body = pick(tr.walls, R), shut = pick(tr.shutters, R), style = Math.floor(R() * 3);
       P.box(len, 2.9, 0.56, c.x, G, c.z, body, yaw);
       for (const e of [-1, 1]) { const q2 = fwd(0.29, e * (len / 2 - 0.2)); P.box(0.4, 2.6, 0.08, q2.x, G, q2.z, shade(body, 0.8), yaw); }
       const door = fwd(0.29); P.litBox(3.2, 1.95, 0.05, door.x, G, door.z, DARKROOM, yaw);                  // the shop inside: dark by day, warm at night
       const roll = fwd(0.34); P.box(3.4, 0.4, 0.2, roll.x, G + 1.95, roll.z, shut, yaw);                    // the shutter, rolled up
       for (let k = 0; k < 3; k++) { const sl = fwd(0.4); P.box(3.3, 0.06, 0.05, sl.x, G + 1.62 + k * 0.1, sl.z, shade(shut, 0.7), yaw); }
       const shelf = fwd(0.42); P.box(3.1, 0.1, 0.46, shelf.x, G + 0.92, shelf.z, 0x6b4a2e, yaw);
-      for (let k = 0; k < 6; k++) { const g2 = fwd(0.4, -1.35 + k * 0.54); P.box(0.34, 0.26 + (k % 3) * 0.06, 0.28, g2.x, G + 1.02, g2.z, pick([0xe58a2f, 0xb8372b, 0x6aa84f, 0xe8c24a, 0xefe9da, 0x2b5c9e], R), yaw); }
+      for (let k = 0; k < 5; k++) { const g2 = fwd(0.4, -1.2 + k * 0.6); P.box(0.34, 0.24 + (k % 3) * 0.07, 0.28, g2.x, G + 1.02, g2.z, pick(tr.goods, R), yaw); }
       const fas = fwd(0.31); P.board(len - 0.5, 0.78, 0.1, fas.x, G + 2.2, fas.z, A.sign[sg], yaw);       // the fascia
       for (const e of [-1, 1]) { const bl = fwd(0.5, e * (len / 2 - 0.5)); P.litBox(0.24, 0.12, 0.24, bl.x, G + 2.02, bl.z, LIT, yaw); }   // a bulb at each end of the awning
-      for (let k = 0; k < 4; k++) { const aw = fwd(0.8, (k - 1.5) * (len - 0.4) / 4); P.slab((len - 0.4) / 4, 0.05, 1.1, aw.x, G + 2.15, aw.z, stripe[k % 2], yaw, 0.32); }
+      if (style === 0) { const stripe = [pick(tr.awnings, R), 0xf3ead4]; for (let k = 0; k < 4; k++) { const aw = fwd(0.8, (k - 1.5) * (len - 0.4) / 4); P.slab((len - 0.4) / 4, 0.05, 1.1, aw.x, G + 2.15, aw.z, stripe[k % 2], yaw, 0.32); } }   // striped canvas
+      else if (style === 1) { const aw = fwd(0.8); P.slab(len - 0.3, 0.04, 1.15, aw.x, G + 2.2, aw.z, pick(tr.awnings, R), yaw, 0.22); }                                          // a plain tarpaulin
+      else { const aw = fwd(0.75); P.slab(len - 0.2, 0.05, 0.9, aw.x, G + 2.25, aw.z, 0x8f8a80, yaw, 0.15); const lip = fwd(1.2); P.box(len - 0.2, 0.12, 0.04, lip.x, G + 2.1, lip.z, 0x6e6a60, yaw); }   // a tin visor
+      const board = fwd(0.6, len / 2 - 0.45); P.box(0.46, 0.6, 0.05, board.x, G, board.z, 0x2f3b34, yaw + 0.25);   // the chalkboard with today's prices
+      for (const yy of [0.42, 0.32, 0.22]) P.box(0.3, 0.025, 0.06, board.x, G + yy, board.z, 0xf3ead4, yaw + 0.25);
+      const fr = rectOn(L, mid, 6.5, side, len * 0.8, 0.5);
+      if (O.props && free(fr)) { forecourt(sg, fwd, len, yaw); claim(fr, 1.0, 'forecourt'); }
+      P.cat = 'walls';
       ground(len, 1.5);
       claim(r, 2.9, 'shop');
     }
@@ -380,6 +452,59 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
   // the room's flanks: a narrower painted wall on each side of the home on the first road
   for (const a of [-50.3, -33.4]) unit(LINES[1], 1, a, 3.6, 'mural', 0.66);
 
+  // ---- the pavement's own life: where no unit stands, someone has put a few chairs, a tea, a tray, some sacks, a bench, a washing line against the wall
+  // (the back strip only, 6.25–6.75 m from the centre line: clear of the carriageway and of the crowd's lanes; solid, small, and never in a doorway)
+  if (O.props) {
+    P.cat = 'life';
+    const pt = (L: Line, side: 1 | -1, a: number, d: number) => at(L, a, WALL_OFF - d, side), yawL = (L: Line, side: 1 | -1) => yawOf(L, side);
+    const seat = (x: number, z: number, yaw: number, col: number) => { P.box(0.4, 0.04, 0.4, x, G + 0.42, z, col, yaw); P.box(0.4, 0.38, 0.04, x - Math.sin(yaw) * 0.18, G + 0.46, z - Math.cos(yaw) * 0.18, col, yaw); P.box(0.3, 0.42, 0.3, x, G, z, shade(col, 0.8), yaw); };
+    const kinds = ['tontine', 'tea', 'tray', 'sacks', 'bench', 'laundry', 'parasol', 'parasol'] as const;
+    let last = -99, count = 0;
+    for (const L of LINES) for (const side of [1, -1] as const) {
+      last = -99;
+      for (let t = L.a + 6 + R() * 4; t < L.b - 6 && count < 26; t += 3.5 + R() * 5) {
+        if (nearCrossing(L, t, 9) || t - last < 5.5) continue;
+        const p = at(L, t, WALL_OFF, side), gareEdge = L === LINES[0] && side === 1 && ((t > 9 && t < 23) || (t > 38 && t < 51));
+        if (!gareEdge && !houseBlock(p.x + (L.alongZ ? side * 4 : 0), p.z + (L.alongZ ? 0 : side * 4))) continue;
+        const kind = kinds[Math.floor(R() * kinds.length)], len = kind === 'laundry' ? 3.8 : kind === 'tontine' ? 1.9 : 1.5;
+        const r = rectOn(L, t, 6.5, side, len, kind === 'laundry' ? 0.3 : 0.55), c = at(L, t, 6.5, side), yaw = yawL(L, side);
+        if (!free(r) || !clear(c.x, c.z, 2.5)) continue;
+        const f = (d: number, a: number) => pt(L, side, t + a, d);
+        if (kind === 'tontine') {                                                  // three plastic chairs round a low table: the neighbours' evening
+          for (let k = -1; k <= 1; k++) { const q2 = f(0.55, k * 0.65); seat(q2.x, q2.z, yaw + (k * 0.25), CHAIRS[Math.floor(R() * CHAIRS.length)]); }
+          const q2 = f(0.5, 0); P.cyl(0.25, 0.25, 0.04, q2.x, G + 0.45, q2.z, 0xe9e4d8, 8); P.cyl(0.04, 0.04, 0.45, q2.x, G, q2.z, 0x555555, 5);
+        } else if (kind === 'tea') {                                               // attaya: a brazier and its kettles, a tray of glasses, two stools, a sack of charcoal
+          const b = f(0.55, -0.2); P.cyl(0.2, 0.17, 0.25, b.x, G, b.z, 0x2b2b2b, 7); P.cyl(0.1, 0.13, 0.2, b.x, G + 0.25, b.z, 0xc9c9c9, 7);
+          const tr = f(0.5, 0.35); P.box(0.5, 0.05, 0.35, tr.x, G + 0.38, tr.z, 0xb0a58f, yaw); for (let k = 0; k < 4; k++) P.cyl(0.03, 0.03, 0.07, tr.x - 0.15 + k * 0.1, G + 0.43, tr.z, 0xe8e2d0, 5);
+          for (const a of [-0.65, 0.8]) { const q2 = f(0.6, a); P.cyl(0.17, 0.2, 0.38, q2.x, G, q2.z, a < 0 ? 0xd9322b : 0x2f6fb3, 7); }
+          const sk = f(0.45, -0.7); P.box(0.4, 0.5, 0.25, sk.x, G, sk.z, 0x3a3a3a, yaw + 0.2);
+        } else if (kind === 'tray') {                                              // a girl's tray of fruit on a stool
+          const q2 = f(0.55, 0); P.cyl(0.17, 0.2, 0.4, q2.x, G, q2.z, 0x3a5fa0, 7); P.box(0.6, 0.05, 0.42, q2.x, G + 0.4, q2.z, 0xe9e4d8, yaw);
+          for (let k = 0; k < 6; k++) P.box(0.12, 0.1, 0.12, q2.x - 0.2 + (k % 3) * 0.2, G + 0.45 + Math.floor(k / 3) * 0.1, q2.z + (k % 2) * 0.08, k % 2 ? 0xe58a2f : 0xe8c24a, yaw);
+        } else if (kind === 'sacks') {                                             // charcoal and grain, a crate
+          for (let k = 0; k < 4; k++) { const q2 = f(0.5, -0.5 + (k % 2) * 0.5); P.box(0.5, 0.5, 0.32, q2.x, G + Math.floor(k / 2) * 0.5, q2.z, k % 2 ? 0xd8c9a0 : 0x3a3a3a, yaw + k * 0.15); }
+          const q2 = f(0.5, 0.55); P.box(0.45, 0.3, 0.3, q2.x, G, q2.z, 0x8b6a47, yaw);
+        } else if (kind === 'bench') {                                             // a plank bench on two blocks, a bucket
+          const q2 = f(0.5, 0); P.box(1.4, 0.06, 0.35, q2.x, G + 0.38, q2.z, 0x6b4a2e, yaw); for (const a of [-0.55, 0.55]) { const l = f(0.5, a); P.box(0.12, 0.38, 0.3, l.x, G, l.z, 0xa59c8c, yaw); }
+          const bk = f(0.5, 0.95); P.cyl(0.17, 0.14, 0.3, bk.x, G, bk.z, 0x2b5c9e, 8);
+        } else if (kind === 'parasol') {                                           // a vendor's parasol: a tall coloured cone over a table of small goods, the silhouette that calls from the end of the street
+          const q2 = f(0.55, 0), col = [0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e, 0xe895ac][Math.floor(R() * 5)];
+          P.cyl(0.03, 0.03, 2.2, q2.x, G, q2.z, 0x4a4a4a, 5); P.cyl(0.05, 1.15, 0.4, q2.x, G + 2.1, q2.z, col, 8);
+          P.box(0.9, 0.7, 0.45, q2.x, G, q2.z, 0x8a6a48, yaw); for (let k = 0; k < 4; k++) P.box(0.2, 0.18, 0.2, q2.x - 0.3 + k * 0.2, G + 0.7, q2.z, pick([0xe58a2f, 0xb8372b, 0x6aa84f, 0xe8c24a], R), yaw);
+          const st = f(0.55, 0.8); P.cyl(0.17, 0.2, 0.38, st.x, G, st.z, 0x3a5fa0, 7);
+        } else {                                                                   // the washing: a line between two stakes, five cloths
+          const a0 = f(0.45, -1.8), a1 = f(0.45, 1.8);
+          for (const q2 of [a0, a1]) P.cyl(0.04, 0.05, 2.5, q2.x, G, q2.z, 0x6b5a4a, 5);
+          P.wire([a0.x, G + 2.35, a0.z], [a1.x, G + 2.35, a1.z], 0.12, 0x555555, 0.012);
+          for (let k = 0; k < 5; k++) { const q2 = f(0.45, -1.4 + k * 0.7); P.box(0.4, 0.6, 0.02, q2.x, G + 1.72, q2.z, WAX[(k + 2) % WAX.length], yaw + (L.alongZ ? Math.PI / 2 : 0)); }
+          claim(rectAt(a0.x, a0.z, 0.25, 0.25), 2.5, 'laundry'); claim(rectAt(a1.x, a1.z, 0.25, 0.25), 2.5, 'laundry'); last = t; count++; continue;
+        }
+        claim(r, 0.9, kind); last = t; count++;
+      }
+    }
+  }
+
+  P.cat = 'landmarks';
   // ---- landmarks
   // the baobab at the first corner: a girth no tree of the hub has, stubby limbs, a sparse crown (at a corner of the first crossing, inside the yard behind the kerb, never on the roadway)
   {
@@ -395,36 +520,35 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
       claim(rectAt(x, z, 2.4, 2.4), 4.3, 'baobab');
     }
   }
-  // the gare's portal over its west entrance, two painted pylons and a board
+  // Heights: the phone's follow camera rides 5.1 m up (10.5 m behind the player), so nothing of the slice hangs between 4.2 and 5.9 m over a
+  // road or an entrance the player walks through (a board there is in the lens, or between the lens and the player): span boards and bunting
+  // go above 5.9 m, and what hangs lower stands to the side, off the road (scripts/check-pikine-camera.mjs measures it).
+  // the gare's portal over its west entrance: two painted pylons, a board along the kerb line, blade signs on the yard side
   {
     const x = -53.4, z0 = 25.2, z1 = 35.2;                                      // on the kerb line of the block, clear of the crowd's pavement lanes
-    for (const z of [z0, z1]) { P.box(0.9, 5.4, 0.9, x, G, z, 0xf3ead4); for (let k = 0; k < 3; k++) P.box(0.93, 0.5, 0.93, x, G + 2.9 + k * 0.5, z, TRICOLOR[k]); P.box(1.1, 0.16, 1.1, x, G + 5.4, z, 0x8a8174); claim(rectAt(x, z, 1.0, 1.0), 5.4, 'portal'); }
+    for (const z of [z0, z1]) { P.box(0.9, 6.6, 0.9, x, G, z, 0xf3ead4); for (let k = 0; k < 3; k++) P.box(0.93, 0.5, 0.93, x, G + 3.4 + k * 0.5, z, TRICOLOR[k]); P.box(1.1, 0.16, 1.1, x, G + 6.6, z, 0x8a8174); claim(rectAt(x, z, 1.0, 1.0), 6.6, 'portal'); }
     const zc = (z0 + z1) / 2;
     P.box(0.3, 0.3, 10.2, x, G + 3.7, zc, 0x1e3a8a);                                                        // the beam
     P.board(9.4, 1.9, 0.08, x - 0.2, G + 3.95, zc, A.sign.gare, -Math.PI / 2);                              // its board, towards the avenue
     P.board(9.4, 1.9, 0.08, x + 0.2, G + 3.95, zc, A.sign.gare, Math.PI / 2);                               // and towards the yard
-    for (const [z, yaw] of [[z0, Math.PI], [z1, 0]] as const) P.board(2.6, 1.3, 0.08, x - 1.5, G + 4.6, z + (yaw ? -0.55 : 0.55), A.sign.gare, yaw);   // blade signs, for whoever walks the avenue
-    if (O.bunting) P.bunting([x, G + 5.2, z0], [x + 9, G + 4.3, z0 - 3], 0.6, BUNTING);
+    for (const [z, yaw] of [[z0, Math.PI], [z1, 0]] as const) P.board(2.2, 1.0, 0.08, x + 1.0, G + 5.9, z + (yaw ? -0.55 : 0.55), A.sign.gare, yaw);   // blade signs, for whoever walks the avenue: on the yard side, high
+    if (O.bunting) P.bunting([x, G + 6.5, z0], [x + 9, G + 6.6, z0 - 3], 0.5, BUNTING);
   }
-  // the grand-place's gateway on its north side
+  // the grand-place's gateway on its north side: tall pylons and the board above the camera's reach
   {
     const z = 67.4, xs = [-39, -21];
-    for (const x of xs) { P.box(1.0, 4.4, 1.0, x, G, z, 0xf3ead4); for (let k = 0; k < 3; k++) P.box(1.03, 0.45, 1.03, x, G + 2.3 + k * 0.45, z, TRICOLOR[k]); P.box(1.2, 0.18, 1.2, x, G + 4.4, z, 0x8a8174); claim(rectAt(x, z, 1.1, 1.1), 4.5, 'gateway'); }
-    P.board(17.4, 1.2, 0.2, -30, G + 3.9, z, A.sign.place, Math.PI, 0xffffff);                              // facing the road to the north
-    P.board(17.4, 1.2, 0.2, -30, G + 3.9, z + 0.01, A.sign.place, 0, 0xffffff);
-    P.board(2.8, 1.1, 0.08, -39.2 - 1.4, G + 4.7, z, A.sign.place, Math.PI / 2);                              // a blade towards whoever walks the road east
-    if (O.bunting) { P.bunting([-39, G + 4.2, z], [-30, G + 3.3, z + 8], 0.7, BUNTING); P.bunting([-21, G + 4.2, z], [-30, G + 3.3, z + 8], 0.7, BUNTING); P.bunting([-30, G + 3.4, z + 8], [-30, G + 5.3, z + 23], 1.2, BUNTING); }
+    for (const x of xs) { P.box(1.1, 7.0, 1.1, x, G, z, 0xf3ead4); for (let k = 0; k < 3; k++) P.box(1.13, 0.6, 1.13, x, G + 3.2 + k * 0.6, z, TRICOLOR[k]); P.box(1.3, 0.2, 1.3, x, G + 7.0, z, 0x8a8174); claim(rectAt(x, z, 1.2, 1.2), 7.2, 'gateway'); }
+    P.board(17.4, 1.2, 0.2, -30, G + 5.95, z, A.sign.place, Math.PI, 0xffffff);                             // facing the road to the north
+    P.board(17.4, 1.2, 0.2, -30, G + 5.95, z + 0.01, A.sign.place, 0, 0xffffff);
   }
   // the shops' court: its market gateway on the avenue, and Salon Awa's painted flank (the court's first sight)
   {
     const x = -66.7, zs = [86.4, 97.6];
-    for (const z of zs) { P.box(0.9, 4.0, 0.9, x, G, z, 0xf3ead4); P.box(0.93, 0.5, 0.93, x, G + 1.0, z, 0xd7312f); P.box(0.93, 0.5, 0.93, x, G + 2.0, z, 0xf5cd2e); P.box(1.1, 0.16, 1.1, x, G + 4.0, z, 0x8a8174); claim(rectAt(x, z, 1.0, 1.0), 4.1, 'gateway'); }
+    for (const z of zs) { P.box(0.9, 7.0, 0.9, x, G, z, 0xf3ead4); P.box(0.93, 0.6, 0.93, x, G + 3.0, z, 0xd7312f); P.box(0.93, 0.6, 0.93, x, G + 3.6, z, 0xf5cd2e); P.box(1.1, 0.16, 1.1, x, G + 7.0, z, 0x8a8174); claim(rectAt(x, z, 1.0, 1.0), 7.2, 'gateway'); }
     const zc = (zs[0] + zs[1]) / 2;
-    P.box(0.26, 0.26, 12.0, x, G + 3.2, zc, 0xb85a1f);
-    P.board(11.8, 1.1, 0.08, x - 0.17, G + 3.45, zc, A.sign.marche, -Math.PI / 2);                          // towards the avenue
-    P.board(11.8, 1.1, 0.08, x + 0.17, G + 3.45, zc, A.sign.marche, Math.PI / 2);                           // towards the court
-    P.board(2.4, 1.1, 0.08, x - 1.3, G + 4.2, zs[0] - 0.5, A.sign.marche, Math.PI);                          // a blade, for whoever walks down the avenue
-    if (O.bunting) { P.bunting([x, G + 3.6, zs[0]], [x - 12, G + 3.8, zs[0] - 1.5], 0.5, BUNTING); P.bunting([x, G + 3.6, zs[1]], [x - 12, G + 3.8, zs[1] + 1.5], 0.5, BUNTING); }
+    P.box(0.26, 0.26, 12.0, x, G + 5.85, zc, 0xb85a1f);
+    P.board(11.8, 1.1, 0.08, x - 0.17, G + 6.0, zc, A.sign.marche, -Math.PI / 2);                           // towards the avenue
+    P.board(11.8, 1.1, 0.08, x + 0.17, G + 6.0, zc, A.sign.marche, Math.PI / 2);                            // towards the court
     // Salon Awa's east flank (the shop's 0.25 m wall at x = -70.5, z 76…84): a mural board in front of it, and the gate sign
     const fx = -70.5 + 0.2, fz = 80;
     if (clear(fx, fz, 1)) { P.board(7.2, 2.7, 0.05, fx, G + 0.4, fz, A.mural.salon, Math.PI / 2, 0xffffff); }
@@ -434,6 +558,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
       items.push({ kind: `apron:${name}`, x: sx, z: 86.2, solid: false });
     }
   }
+  P.cat = 'props';
   // the avenue's pavement furniture: a standpipe with its jerrycans, whitewashed-tyre planters at the gare's portal
   if (O.props) {
     const sp = { x: -67.0, z: -30 };
@@ -466,6 +591,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
     }
   }
 
+  P.cat = 'wires';
   // ---- the overhead layer: poles with crossarms at irregular spacing, three strands along each side, spans across the road, service drops
   if (O.wires) {
     type Pole = { x: number; z: number } | null;
@@ -478,14 +604,13 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
         // the frontage is crowded: the pole takes the first free place within a few metres of where it was wanted
         for (const d of [0, 1.2, -1.2, 2.4, -2.4, 3.6]) {
           const along = want + d, p = at(L, along, 6.55, side), r = rectAt(p.x, p.z, 0.4, 0.4);
-          if (!free(r) || !clear(p.x, p.z, 2.6) || nearCrossing(L, along, 3)) continue;
-          P.cyl(0.11, 0.17, 7.4, p.x, G, p.z, 0x7a6a58, 6);
+          if (!free(r) || !clear(p.x, p.z, 2.6) || nearCrossing(L, along, 6.8)) continue;      // never in the roadway of the crossing road
+          P.cyl(0.11, 0.17, 7.4, p.x, G, p.z, 0x7a6a58, 5);
           P.box(2.0, 0.12, 0.12, p.x, G + 6.9, p.z, 0x5a4a3a, rot); P.box(1.4, 0.1, 0.1, p.x, G + 6.3, p.z, 0x5a4a3a, rot);          // the crossarms
-          for (const dx of [-0.8, 0, 0.8]) { const i = loc(p, dx); P.cyl(0.04, 0.04, 0.16, i.x, G + 7.0, i.z, 0xdcd8c8, 5); }
           if (R() < 0.5) { const t = loc(p, 0.55 * side * away); P.box(0.55, 0.7, 0.4, t.x, G + 4.4, t.z, 0x6a6e70, rot); }              // a transformer / meter box
           if (blade && !bladed && blade[0] === side) {                                                                                  // a sign hung over the road
-            bladed = true; const b = loc(p, -0.9 * side * away);
-            for (const f of [0, Math.PI]) P.board(2.2, 0.9, 0.06, b.x, G + 4.9, b.z, A.sign[blade[1]], (L.alongZ ? 0 : Math.PI / 2) + f, 0xffffff);
+            bladed = true; const b = loc(p, 1.1 * side * away);                                                   // on the house side of the pole, high: never over the roadway
+            for (const f of [0, Math.PI]) P.board(2.2, 0.9, 0.06, b.x, G + 5.9, b.z, A.sign[blade[1]], (L.alongZ ? 0 : Math.PI / 2) + f, 0xffffff);
           }
           claim(r, 7.4, 'pole'); return { x: p.x, z: p.z };
         }
@@ -497,36 +622,39 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
         if (sides.includes('A')) A_.push(a); if (sides.includes('B')) B_.push(b);
         if (sides === 'AB') pairs.push([a, b]);
       }
-      const run = (list: Pole[]) => { for (let k = 1; k < list.length; k++) { const a = list[k - 1], b = list[k]; if (!a || !b) continue; for (const dx of [-0.8, 0, 0.8]) { const u = loc(a, dx), v = loc(b, dx); P.wire([u.x, G + 7.0, u.z], [v.x, G + 7.0, v.z], 0.45); } } };
+      const run = (list: Pole[]) => { for (let k = 1; k < list.length; k++) { const a = list[k - 1], b = list[k]; if (!a || !b) continue; for (const dx of [-0.8, 0.8]) { const u = loc(a, dx), v = loc(b, dx); P.wire([u.x, G + 7.0, u.z], [v.x, G + 7.0, v.z], 0.45); } } };
       run(A_); run(B_);
-      for (const [a, b] of pairs) if (a && b) for (const [y, dz, sag] of [[6.8, 0, 0.7], [6.3, -0.4, 0.8]] as const) { const u = loc(a, 0, dz), v = loc(b, 0, dz); P.wire([u.x, G + y, u.z], [v.x, G + y, v.z], sag); }   // across the road
+      for (const [a, b] of pairs) if (a && b) for (const [y, dz, sag] of [[7.2, 0, 0.5], [7.0, -0.4, 0.5]] as const) { const u = loc(a, 0, dz), v = loc(b, 0, dz); P.wire([u.x, G + y, u.z], [v.x, G + y, v.z], sag); }   // across the road
       for (const p of [...A_, ...B_]) if (p) {                                                           // the service drops to the houses
-        const s = (L.alongZ ? p.x : p.z) < L.c ? -1 : 1, w = loc(p, 0), d1 = loc(p, s * away * 5, 2.5), d2 = loc(p, s * away * 6.5, -3);
-        P.wire([w.x, G + 6.3, w.z], [d1.x, G + 4.6, d1.z], 0.4, 0x1d1d20, 0.014); P.wire([w.x, G + 6.2, w.z], [d2.x, G + 4.2, d2.z], 0.4, 0x1d1d20, 0.014);
+        const s = (L.alongZ ? p.x : p.z) < L.c ? -1 : 1, w = loc(p, 0), d1 = loc(p, s * away * 5, 0);
+        P.wire([w.x, G + 6.3, w.z], [d1.x, G + 4.6, d1.z], 0.4, 0x1d1d20, 0.014);
       }
     };
     network(LINES[0], [[-54, 'A'], [-32, 'AB'], [-10, 'B'], [12, 'A'], [34, 'AB'], [56, 'B'], [72, 'AB'], [100, 'A']]);
     network(LINES[1], [[-53, 'B'], [-46, 'A'], [-36, 'AB'], [-27, 'A'], [-21, 'B'], [-13, 'AB'], [-6, 'A']], [-1, 'jamm']);          // the room's road; the Cité Jàmm sign hangs on the first pole of its side
     network(LINES[2], [[-50, 'A'], [-14, 'AB']]);
   }
+  P.cat = 'bunting';
   // bunting across the avenue at the first corner and before the market: the neighbourhood is expecting something
   if (O.bunting) {
-    P.bunting([-65.5, G + 6.2, -34], [-54.5, G + 6.0, -34], 0.9, BUNTING);
-    P.bunting([-65.5, G + 6.0, 74], [-54.5, G + 6.2, 74], 0.9, BUNTING);
-    P.bunting([-46, G + 5.8, 53.5], [-46, G + 5.8, 66.5], 0.9, BUNTING);
-    P.bunting([-28, G + 6.0, -66.2], [-28, G + 5.8, -53.8], 0.9, BUNTING);                                  // over the room's road, between the home and the Cité Jàmm
+    P.bunting([-65.5, G + 7.3, -34], [-54.5, G + 7.2, -34], 0.6, BUNTING);
+    P.bunting([-65.5, G + 7.2, 74], [-54.5, G + 7.3, 74], 0.6, BUNTING);
+    P.bunting([-46, G + 7.3, 53.5], [-46, G + 7.3, 66.5], 0.6, BUNTING);
+    P.bunting([-28, G + 7.3, -66.2], [-28, G + 7.3, -53.8], 0.6, BUNTING);                                  // over the room's road, between the home and the Cité Jàmm
   }
+  P.cat = 'kerbs';
   // painted kerbs (a coat of white and blue over the broken stones) and the speed bumps with their yellow-and-black stripes
   if (O.kerbs) {
-    for (const L of LINES) for (const side of [1, -1] as const) for (let t = L.a; t < L.b; t += 1.0) {
+    for (const L of LINES) for (const side of [1, -1] as const) for (let t = L.a; t < L.b; t += 2.0) {
       if (nearCrossing(L, t, 7.2)) continue;
-      const p = at(L, t + 0.5, 5.02, side), alongZ = L.alongZ;
-      if ((Math.floor(t / 1.0) + (side > 0 ? 0 : 1)) % 4 === 3) continue;
-      P.flat(alongZ ? 0.34 : 0.96, alongZ ? 0.96 : 0.34, p.x, G + 0.05, p.z, Math.floor(t) % 2 ? 0xf4efe2 : 0x2b5c9e);
+      const p = at(L, t + 1, 5.02, side), alongZ = L.alongZ;
+      if ((Math.floor(t / 2.0) + (side > 0 ? 0 : 1)) % 4 === 3) continue;
+      P.flat(alongZ ? 0.34 : 1.9, alongZ ? 1.9 : 0.34, p.x, G + 0.05, p.z, Math.floor(t / 2) % 2 ? 0xf4efe2 : 0x2b5c9e);
     }
     for (const z of [-40, 30, 88]) for (let k = 0; k < 20; k++) P.flat(0.5, 1.6, -60 - 5 + k * 0.5 + 0.25, 0.094, z, k % 2 ? 0x1a1a1a : 0xf2c230);
   }
 
+  P.cat = 'landmarks';
   // ---- the bank's flank on the avenue: its own name over the wall that faced the street blank (the sign, two lamps, a pool of light)
   {
     const x = -73.75, zc = -37;
@@ -540,23 +668,35 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
   // the gare's portal, the gateways and the market gate are lit too
   spills.push({ x: -55.8, z: 30, w: 12, d: 5, rot: Math.PI / 2 }, { x: -30, z: 66, w: 18, d: 4.5, rot: 0 }, { x: -64.6, z: 92, w: 12, d: 4, rot: Math.PI / 2 });
 
-  // ---- the ground: restrained irregularity on the main walk (worn patches in the roadway, dust along the kerbs, darker soil where people stand)
+  P.cat = 'ground';
+  // ---- the ground: the sand's own stripes repeat, so the roadway gets long soft drifts and slanted lenses of blown sand, the pavements get dust
+  // and swept strips, every shop a darker patch of trodden earth. Vertex-coloured blotches fading into the ground's own colour: no texture, no
+  // transparency, the same draw call.
   {
-    const Gr = rng(0x51a7c3), sc = q === 'low' ? 0.5 : 1;
+    const Gr = rng(0x51a7c3), sc = q === 'low' ? 0.5 : 1, ROAD = shade(0x9c7b55, 0.93), WALK = shade(0xb08960, 0.93);                 // the ground's own colours as rendered (its grain takes a few per cent off), so a blotch's rim vanishes into it
     for (const L of LINES) {
       const along = L.alongZ ? Math.PI / 2 : 0;
-      for (let t = L.a + 3; t < L.b - 3; t += (8 + Gr() * 11) / sc) {
-        if (nearCrossing(L, t, 2.5)) continue;
-        const off = (Gr() - 0.5) * 8, p = at(L, t, Math.abs(off), off < 0 ? -1 : 1);
-        P.disc(0.8 + Gr() * 1.4, p.x, 0.091 + Gr() * 0.002, p.z, Gr() < 0.55 ? 0x93724b : 0xa88557, 0.3 + Gr() * 0.25, along + (Gr() - 0.5) * 0.35);
+      for (let t = L.a + 2; t < L.b - 2; t += (4.5 + Gr() * 7) / sc) {                         // long drifts, darker and lighter, one side then the other
+        if (nearCrossing(L, t, 2)) continue;
+        const off = (Gr() - 0.5) * 7, p = at(L, t, Math.abs(off), off < 0 ? -1 : 1), dark = Gr() < 0.5;
+        P.blot(1.6 + Gr() * 3.4, p.x, 0.089 + Gr() * 0.004, p.z, shade(ROAD, dark ? 0.88 + Gr() * 0.05 : 1.06 + Gr() * 0.05), ROAD, 0.18 + Gr() * 0.2, along + (Gr() - 0.5) * 0.4);
       }
-      for (const side of [1, -1] as const) for (let t = L.a + 2; t < L.b - 2; t += (5 + Gr() * 9) / sc) {
+      for (let t = L.a + 8; t < L.b - 8; t += (16 + Gr() * 14) / sc) {                         // sand blown across the road: pale lenses at a slant
+        if (nearCrossing(L, t, 6)) continue;
+        const p = at(L, t, (Gr() - 0.5) * 3, Gr() < 0.5 ? 1 : -1);
+        P.blot(2.8 + Gr() * 1.6, p.x, 0.093, p.z, shade(ROAD, 1.07), ROAD, 0.2, along + Math.PI / 2 + (Gr() - 0.5));
+      }
+      for (let t = L.a + 10; t < L.b - 10; t += (20 + Gr() * 14) / sc) {                       // a dark patch where something dripped
+        if (nearCrossing(L, t, 4)) continue;
+        const p = at(L, t, (Gr() - 0.5) * 6, 1); P.blot(0.5 + Gr() * 0.5, p.x, 0.095, p.z, shade(ROAD, 0.68), ROAD, 0.7, Gr() * 3);
+      }
+      for (const side of [1, -1] as const) for (let t = L.a + 2; t < L.b - 2; t += (5 + Gr() * 9) / sc) {     // dust along the kerbs, and strips swept clean
         if (nearCrossing(L, t, 3)) continue;
-        const p = at(L, t, 5.7 + Gr() * 0.9, side);
-        P.disc(0.7 + Gr() * 0.9, p.x, 0.122, p.z, 0xd0b98d, 0.4 + Gr() * 0.2, along + (Gr() - 0.5) * 0.5);
+        const p = at(L, t, 5.7 + Gr() * 0.9, side), swept = Gr() < 0.3;
+        P.blot(0.9 + Gr() * 1.4, p.x, 0.122 + Gr() * 0.003, p.z, shade(WALK, swept ? 0.92 : 1.14), WALK, 0.3 + Gr() * 0.2, along + (Gr() - 0.5) * 0.5);
       }
     }
-    for (const sl of soils) { const long = Math.max(sl.w, sl.d); P.disc(long * 0.5, sl.x, 0.124, sl.z, 0x74583a, Math.min(sl.w, sl.d) / long, sl.rot); }
+    for (const sl of soils) { const long = Math.max(sl.w, sl.d); P.blot(long * 0.55, sl.x, 0.125, sl.z, shade(WALK, 0.76), WALK, Math.min(sl.w, sl.d) / long * 0.9, sl.rot); }
   }
 
   let night: THREE.Mesh | null = null;
@@ -567,14 +707,14 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
     night.name = 'pikine_dna_night'; night.visible = false; night.renderOrder = 1;
   }
 
-  if (!P.geos.length) return { mesh: null, night, items, tris: 0 };
+  if (!P.geos.length) return { mesh: null, night, items, tris: 0, byCat: {} };
   const geo = mergeGeometries(P.geos, false)!;
   for (const g of P.geos) g.dispose();
   geo.computeBoundingSphere();
   const mat = new THREE.MeshLambertMaterial({ map: A.tex, vertexColors: true, emissive: 0xffd9a0, emissiveMap: A.glow, emissiveIntensity: 0, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(geo, mat); mesh.name = 'pikine_dna'; mesh.castShadow = q !== 'low'; mesh.receiveShadow = false;
   hub.signs.push(mesh);                                                      // lit a little at night with the shop signs (main.ts)
-  return { mesh, night, items, tris: P.tris };
+  return { mesh, night, items, tris: P.tris, byCat: P.byCat };
 }
 
 let poolTex: THREE.CanvasTexture | null = null;
@@ -593,7 +733,7 @@ const shade = (c: number, k: number) => new THREE.Color(c).multiplyScalar(k).get
 
 let current: { mesh: THREE.Mesh | null; night: THREE.Mesh | null } | null = null;
 let slice: DnaItem[] = [];
-let sliceStats = { tris: 0, quality: 'medium' as string };
+let sliceStats = { tris: 0, quality: 'medium' as string, byCat: {} as Record<string, number> };
 
 /** The module: dresses the Pikine slice when the hub loads (one merged mesh, one for the night's pools, and a few colliders). */
 export const pikineDnaModule: GameModule = {
@@ -608,7 +748,7 @@ export const pikineDnaModule: GameModule = {
     const r = dressPikineSlice(hub, ctx.quality());
     for (const m of [r.mesh, r.night]) if (m) ctx.extra.add(m);
     current = { mesh: r.mesh, night: r.night };
-    slice = r.items; sliceStats = { tris: r.tris, quality: ctx.quality() };
+    slice = r.items; sliceStats = { tris: r.tris, quality: ctx.quality(), byCat: r.byCat };
   },
   /** The warm pools in front of the shops and gates follow the dusk (the same night measure as the lamps). */
   update(ctx) {

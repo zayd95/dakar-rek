@@ -82,10 +82,26 @@ try {
     const [lo, hi] = alongZ ? [i.rect.x0, i.rect.x1] : [i.rect.z0, i.rect.z1], [t0, t1] = alongZ ? [i.rect.z0, i.rect.z1] : [i.rect.x0, i.rect.x1];
     if (t1 < from || t0 > to) return false;
     const near = Math.min(Math.abs(lo - c), Math.abs(hi - c)), far = Math.max(Math.abs(lo - c), Math.abs(hi - c)), straddle = lo < c && hi > c;
-    return straddle || (near <= 5.95 && far >= 5.05 && near < 6.2);
+    return straddle || near < 5.95;                                                    // any part of it in the carriageway or the pedestrian lanes
   }));
   assert.equal(inLane.length, 0, 'solid pieces in the crowd’s pavement lanes: ' + JSON.stringify(inLane.slice(0, 4).map(b => [b.kind, +b.x.toFixed(1), +b.z.toFixed(1)])));
   console.log('PASS no solid piece in the pavement lanes (5.05–5.95 m from the road’s centre line) or on the roadway');
+
+  // the air over the road: nothing of the slice between 0.4 and 4.6 m over a carriageway (a car rapide with its luggage is 3.8 m), and nothing
+  // between 3.8 and 6.2 m within 5.6 m of a centre line, where the phone's follow camera rides (5.1 m up, over the road)
+  const air = await m.page.evaluate(() => {
+    let mesh = null; window.__dakar.three.scene.traverse(o => { if (o.name === 'pikine_dna') mesh = o; });
+    const a = mesh.geometry.attributes.position.array, roads = [-120, -60, 0, 60, 120], off = (v) => Math.min(...roads.map(c => Math.abs(v - c)));
+    const veh = [], cam = [];
+    for (let i = 0; i < a.length; i += 3) {
+      const x = a[i], y = a[i + 1], z = a[i + 2], o = Math.min(off(x), off(z));
+      if (o < 5.05 && y > 0.4 && y < 4.6) veh.push([+x.toFixed(1), +y.toFixed(1), +z.toFixed(1)]);
+      if (o < 5.6 && y > 3.8 && y < 6.2) cam.push([+x.toFixed(1), +y.toFixed(1), +z.toFixed(1)]);
+    }
+    return { veh: veh.length, vehAt: veh.slice(0, 4), cam: cam.length, camAt: cam.slice(0, 4) };
+  });
+  assert.equal(air.veh, 0, 'something in the carriageway under 4.6 m: ' + JSON.stringify(air.vehAt)); assert.equal(air.cam, 0, 'something in the phone camera’s band (3.8–6.2 m) over the road: ' + JSON.stringify(air.camAt));
+  console.log('PASS the road is clear overhead: nothing under 4.6 m over a carriageway, nothing in the phone camera’s height band');
 
   // the walk against the slice's own colliders (the road events' cones and barrows, which come and go with the city's day, are not the slice's: listed, not failed)
   const R = 0.5, stuck = [], others = [];

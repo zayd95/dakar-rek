@@ -64,6 +64,13 @@ gaps and unfinished stretches (`unit(..., 'rough')`); worn patches, dust and dar
 and bulbs plus one additive mesh of warm pools, driven by the same night measure as the street lamps (`pikineDnaModule.update`); poles
 generalised to any line (`network`) with a free-place search; the bank's flank sign and the Cité Jàmm blade on the room's road.
 
+## Round 3 (phone camera, roadside life, ground)
+
+See `docs/pikine-dna/round3/REPORT.md`. The follow camera (5.1 m up, 10.5 m behind) is audited by `scripts/check-pikine-camera.mjs`; gateways,
+bunting, wires and blade signs were lifted clear of its band (static rule in `check-pikine-dna.mjs`). Roadside clusters (tontine, attaya, tray, sacks,
+bench, washing line, parasol) stand on the pavement's back strip; eight trades each have their own forecourt; the roadway's ground is broken up by
+vertex-coloured drifts whose rim is the ground's own colour. Slice triangles went down (12 982 → 10 771 medium), still 2 draw calls and the same atlas.
+
 ## Not done, on purpose
 
 - Other districts (the Cité Jàmm block, the bank's frontage, the arena street, the east side of the grid).

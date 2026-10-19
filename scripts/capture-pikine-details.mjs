@@ -3,7 +3,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { ROUTE_DETAILS as DETAILS, HOME_DETAILS } from './pikine-route.mjs';
-const ROUTE_DETAILS = process.env.SET === 'home' ? HOME_DETAILS : DETAILS;
+let ROUTE_DETAILS = process.env.SET === 'home' ? HOME_DETAILS : DETAILS;
 
 const base = process.argv[2] ?? 'http://127.0.0.1:4323/', out = process.argv[3] ?? 'shots/pikine-details';
 const hours = (process.argv[4] ?? '11,18.5').split(',').map(Number), quality = process.argv[5] ?? 'medium';
@@ -16,6 +16,14 @@ await page.goto(`${base}?debug&touch`);
 await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, { timeout: 240000 });
 await page.evaluate(() => window.__dakar.teleport('pikine'));
 await page.waitForFunction(() => window.__dakar.pos().hub === 'pikine', null, { timeout: 240000 });
+if (process.env.SET === 'life') {   // every shop and every roadside cluster the slice placed, seen from the middle of the road in front of it
+  const items = await page.evaluate(() => window.__dakar.pikineDna());
+  const roads = [-120, -60, 0, 60, 120], near = v => roads.reduce((b, c) => Math.abs(v - c) < Math.abs(v - b) ? c : b, roads[0]);
+  ROUTE_DETAILS = items.filter(i => ['shop', 'tontine', 'tea', 'tray', 'sacks', 'bench', 'laundry'].includes(i.kind)).map((i, k) => {
+    const cx = near(i.x), cz = near(i.z), alongZ = Math.abs(i.x - cx) < Math.abs(i.z - cz);      // on the avenue (runs along z) or on an east–west road
+    return alongZ ? [`l${String(k).padStart(2, '0')}-${i.kind}`, cx - Math.sign(i.x - cx) * 1.5, i.z - 5, i.x, i.z] : [`l${String(k).padStart(2, '0')}-${i.kind}`, i.x - 5, cz - Math.sign(i.z - cz) * 1.5, i.x, i.z];
+  });
+}
 for (const h of hours) {
   await page.evaluate(x => window.__dakar.setHour(x), h); await page.waitForTimeout(1500);
   for (const [name, x, z, tx, tz] of ROUTE_DETAILS) {

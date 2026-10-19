@@ -12,7 +12,7 @@ const base = process.argv[2] ?? 'http://127.0.0.1:4323/', out = process.argv[3] 
 fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(`${out}/frames`, { recursive: true });
 // door → the avenue south past the gare → east along the road to the grand-place → into it → back, and west into the shops' court
 const HOME = process.env.WALK === 'home';
-const PATH = HOME ? HOME_PATH.slice(1) : [[-42, -59], [-60, -60], [-60, 60], [-26, 60], [-26, 86], [-26, 62], [-60, 62], [-60, 92], [-100, 92]];
+const PATH = HOME ? HOME_PATH.slice(1) : [[-42, -59], [-60, -60], [-60, 60], [-26, 60], [-26, 86], [-26, 62], [-63, 62], [-63, 92], [-100, 92]];
 const START = HOME ? { x: HOME_PATH[0][0], z: HOME_PATH[0][1] } : { x: -42, z: -56.5 };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
