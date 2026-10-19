@@ -19,7 +19,7 @@ const context = await browser.newContext({ viewport: { width: 390, height: 844 }
 const page = await context.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));
 const d = (fn, arg) => page.evaluate(fn, arg), info = () => d(() => window.__dakar.car.info()), au = () => d(() => window.__dakar.car.audio()), meter = () => d(() => window.__dakar.car.audioMeter()), tr = await realTouch(page);
 /** n readings, `gap` ms apart: the loudest of each figure (and the lowest). */
-const sample = async (n, gap = 80) => { const r = []; for (let i = 0; i < n; i++) { r.push(await meter()); await page.waitForTimeout(gap); } const mx = k => Math.max(...r.map(m => m[k])), mn = k => Math.min(...r.map(m => m[k])); return { peak: mx('peakDb'), rms: mx('rmsDb'), sp: mx('speakerDb'), spMin: mn('speakerDb'), high: mx('high'), highMin: mn('high') }; };
+const sample = async (n, gap = 80) => { const r = []; for (let i = 0; i < n; i++) { r.push(await meter()); await page.waitForTimeout(gap); } const mx = k => Math.max(...r.map(m => m[k])), mn = k => Math.min(...r.map(m => m[k])); return { peak: mx('peakDb'), rms: mx('rmsDb'), sp: mx('speakerDb'), spMin: mn('speakerDb'), high: mx('high'), highMin: mn('high'), air: mx('airDb') }; };
 await page.goto(`${base}?debug&touch&heure=11`, { timeout: 120000 });
 await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
 await d(() => window.__dakar.teleport('plateau'));
@@ -51,17 +51,17 @@ await page.waitForFunction(() => window.__dakar.car.info().speed > 6.5, null, T)
 await page.waitForTimeout(600);
 const cruise = await sample(8, 100), cs = (await info()).speed;
 check('the revs are heard: at cruise the engine is clearly above the idle in the speaker band', cruise.sp >= idle.sp + 3, JSON.stringify({ idleSpeakerDb: idle.sp, cruiseSpeakerDb: cruise.sp, speed: +cs.toFixed(1) }));
-// lift off: the note closes
+// lift off: the note closes (wait until the car has really begun to slow: the headless renderer steps the sim slowly)
 await tr.up(1);
-await page.waitForTimeout(250);
+await page.waitForFunction(v => window.__dakar.car.info().speed < v - 0.4, cs, { timeout: 60000 }).catch(() => {});
 const lift = await sample(6, 90), ls = (await info()).speed;
 check('lifting off at speed closes the note (the engine falls away in the speaker band)', ls > 3 && lift.sp <= cruise.sp - 2, JSON.stringify({ cruiseSpeakerDb: cruise.sp, liftSpeakerDb: lift.sp, speedAfter: +ls.toFixed(1) }));
-// a hard brake from speed: the squeal
+// a hard brake from speed: the squeal (energy at 1.8–4.5 kHz), read every 40 ms while it sounds
 await d(() => window.__dakar.car.boost(13)); await page.waitForTimeout(500);
 const pre = await sample(4, 60);
 const pb = await tr.centre('#ridepad .rp-brake'); await tr.down(1, pb.x, pb.y);
-const squeal = await sample(10, 70); await tr.up(1);
-check('a hard brake adds the squeal: more of the output is above 800 Hz while it sounds', squeal.high >= pre.high + 0.08 || (await au()).count.brake > 0 && squeal.high >= 0.5, JSON.stringify({ before: pre.high, during: squeal.high, brakes: (await au()).count.brake }));
+const squeal = await sample(30, 40); await tr.up(1);
+check('a hard brake adds the squeal: the 1.8–4.5 kHz band rises by at least 6 dB while it sounds', squeal.air >= pre.air + 6 && (await au()).count.brake > 0, JSON.stringify({ airBefore: pre.air, airDuring: squeal.air, brakes: (await au()).count.brake }));
 const all = [quiet, idle, cruise, lift, pre, squeal];
 check('nothing clips anywhere (the limiter holds the peak under −0.3 dBFS)', Math.max(...all.map(m => m.peak)) <= -0.3, JSON.stringify({ peaks: all.map(m => m.peak) }));
 await d(() => window.__dakar.car.audioMute(true)); await page.waitForTimeout(250);
