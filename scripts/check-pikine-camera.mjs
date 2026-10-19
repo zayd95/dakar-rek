@@ -13,9 +13,11 @@ const args = process.argv.slice(2).filter(a => !a.startsWith('--')), strict = pr
 const base = args[0] ?? 'http://127.0.0.1:4323/', out = args[1] ?? 'shots/pikine-camera', which = args[2] ?? 'route';
 fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
 const KERB = [[-57.6, -50], [-57.6, 56], [-62.4, 56], [-62.4, -50]];                        // the two side lanes of the avenue, 2.4 m off the centre line (the existing stalls stand on the pavement lanes beyond)
-const PATH = which === 'kerb' ? KERB.slice(1) : which === 'home' ? HOME_PATH.slice(1) : [[-42, -59], [-60, -60], [-60, 60], [-26, 60], [-26, 86], [-26, 62], [-63, 62], [-63, 92], [-100, 92]];
-const START = which === 'kerb' ? { x: KERB[0][0], z: KERB[0][1] } : which === 'home' ? { x: HOME_PATH[0][0], z: HOME_PATH[0][1] } : { x: -42, z: -56.5 };
-const YAW0 = which === 'home' ? -Math.PI / 2 : which === 'kerb' ? 0 : Math.PI;
+const ARENA = which0() === 'arenakerb' ? [[2, -65.4], [54, -65.4], [56, -60], [54, -54.6], [46, -54.6], [2, -54.6]] : [[-4, -62.4], [54, -62.4], [56, -60], [54, -57.6], [46, -57.6], [-4, -57.6]];   // the arena street: out along its north side, round the east end and back along the south one (2.4 m off the centre line; or on the pavement lanes)
+function which0() { return process.argv.slice(2).filter(a => !a.startsWith('--'))[2]; }
+const PATH = which.startsWith('arena') ? ARENA.slice(1) : which === 'kerb' ? KERB.slice(1) : which === 'home' ? HOME_PATH.slice(1) : [[-42, -59], [-60, -60], [-60, 60], [-26, 60], [-26, 86], [-26, 62], [-63, 62], [-63, 92], [-100, 92]];
+const START = which.startsWith('arena') ? { x: ARENA[0][0], z: ARENA[0][1] } : which === 'kerb' ? { x: KERB[0][0], z: KERB[0][1] } : which === 'home' ? { x: HOME_PATH[0][0], z: HOME_PATH[0][1] } : { x: -42, z: -56.5 };
+const YAW0 = which === 'home' ? -Math.PI / 2 : which === 'kerb' ? 0 : which.startsWith('arena') ? Math.PI / 2 : Math.PI;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
 await ctx.addInitScript(() => { try { localStorage.setItem('dakarrek.quality', 'medium'); localStorage.setItem('dakarrek.guest.save.v6', ''); } catch { /* */ } });

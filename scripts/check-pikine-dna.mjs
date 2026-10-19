@@ -8,7 +8,7 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import assert from 'node:assert/strict';
-import { ROUTE_PATH, HOME_PATH } from './pikine-route.mjs';
+import { ROUTE_PATH, HOME_PATH, ARENA_PATHS } from './pikine-route.mjs';
 
 const given = process.argv[2];
 let server, base = given;
@@ -20,7 +20,7 @@ if (!given) {
 }
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM, args: ['--no-sandbox', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const errors = [];
-const LANES = [[-60, true, -64, 116], [-60, false, -60, -2], [60, false, -64, -4]];   // [centre, runs along z, from, to] (src/game/pikineDna.ts LINES)
+const LANES = [[-60, true, -64, 116], [-60, false, -60, -2], [60, false, -64, -4], [-60, false, 2, 60]];   // [centre, runs along z, from, to] (src/game/pikineDna.ts LINES)
 const HAD = ['pikine:home:11', 'pikine:station', 'pikine:city:square', 'pikine:city:salon-tech', 'pikine:city:boutique', 'pikine:cafe:02', 'pikine:city:bank', 'pikine:dibiterie:11', 'pikine:arena', 'pikine:gare:apprenti', 'pikine:walk:north', 'pikine:walk:south'];
 async function load(quality, hub = 'pikine') {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
@@ -46,8 +46,16 @@ try {
   assert.ok(a.stats.tris < 30000, `triangle budget: ${a.stats.tris}`);
   for (const k of ['mural', 'shop', 'pole', 'baobab', 'portal', 'gateway', 'planter', 'standpipe', 'bank-sign']) assert.ok(kinds[k] > 0, `a ${k} was placed`);
   assert.ok(kinds.pole >= 12, `poles on the room's road too: ${kinds.pole}`);
-  assert.equal(kinds.gateway, 4, 'the grand-place and the market gateways: four pillars'); assert.equal(kinds.portal, 2, 'the gare portal: two pylons');
+  assert.equal(kinds.gateway, 6, 'the grand-place, the market and the arena street gateways: six pillars'); assert.equal(kinds.portal, 2, 'the gare portal: two pylons');
   console.log('PASS the slice: one mesh, one material, within budget, every kind of piece placed');
+
+  // the arena street: the slice dresses it (a gateway, shops, walls, life) and keeps clear of the gate's own ground
+  const arena = a.items.filter(i => i.x > 2 && i.x < 60 && i.z > -70 && i.z < -50), open = await m.page.evaluate(() => window.__dakar.pikineDnaOpen());
+  assert.ok(arena.some(i => i.kind === 'gateway') && arena.some(i => i.kind === 'shop') && arena.some(i => i.kind === 'mural') && arena.some(i => ['jerseys', 'grill', 'tea', 'tontine'].includes(i.kind)), 'the arena street has its gateway, a shop, a mural and some life: ' + JSON.stringify(arena.map(i => i.kind)));
+  assert.ok(open.length >= 5, 'the gate’s open ground is known: ' + open.length);
+  const onOpen = a.items.filter(i => i.rect && open.some(o => i.rect.x0 < o.x1 && i.rect.x1 > o.x0 && i.rect.z0 < o.z1 && i.rect.z1 > o.z0));
+  assert.equal(onOpen.length, 0, 'pieces on the arena gate’s queue, apron, stalls or fans’ corners: ' + JSON.stringify(onOpen.slice(0, 4).map(i => [i.kind, +i.x.toFixed(1), +i.z.toFixed(1)])));
+  console.log(`PASS the arena street: ${arena.length} pieces (gateway, shops, walls, life), none on the gate's queue, apron, stalls or the fans' corners`);
 
   // rhythm: along each stretch of house frontage of the avenue (east z −51…−8, west z 8…51) the wall units come in clusters (almost
   // touching) with empty stretches between and at the ends, not at an even pace
@@ -107,7 +115,7 @@ try {
   const R = 0.5, stuck = [], others = [];
   const hit = (list, x, z) => list.find(c => c[4] > 0.5 && x > c[0] - R && x < c[2] + R && z > c[1] - R && z < c[3] + R);
   const mine = solids.map(i => [i.rect.x0, i.rect.z0, i.rect.x1, i.rect.z1, i.rect.h]);
-  for (const PATHS of [ROUTE_PATH, HOME_PATH]) for (let i = 1; i < PATHS.length; i++) {
+  for (const PATHS of [ROUTE_PATH, HOME_PATH, ...ARENA_PATHS]) for (let i = 1; i < PATHS.length; i++) {
     const [ax, az] = PATHS[i - 1], [bx, bz] = PATHS[i], n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.25);
     for (let k = 0; k <= n; k++) {
       const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n;
@@ -116,7 +124,7 @@ try {
     }
   }
   assert.equal(stuck.length, 0, 'the slice blocks the walk: ' + JSON.stringify(stuck));
-  console.log(`PASS the whole walk and the home street (${ROUTE_PATH.length + HOME_PATH.length - 2} legs) is clear of the slice for a 0.5 m body` + (others.length ? ` (today's road events block ${others.length} leg(s) at ${JSON.stringify(others)}: not the slice's)` : ''));
+  console.log(`PASS the whole walk and the home street (${ROUTE_PATH.length + HOME_PATH.length - 2} legs, and the arena street on three lanes) is clear of the slice for a 0.5 m body` + (others.length ? ` (today's road events block ${others.length} leg(s) at ${JSON.stringify(others)}: not the slice's)` : ''));
 
   for (const id of HAD) assert.ok(a.ids.includes(id), `the hub still has ${id}`);
   console.log(`PASS the ${HAD.length} places and ways out the hub already had are all there`);

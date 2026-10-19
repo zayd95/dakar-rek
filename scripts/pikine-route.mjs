@@ -45,3 +45,6 @@ export const HOME_DETAILS = [
 ];
 /** The home street walk (round 2): the road east of the room, past the dibiterie and the Cité Jàmm side, to the avenue and down the bank's flank (x, z). */
 export const HOME_PATH = [[-8, -58.5], [-60, -60], [-60, -8]];
+
+/** The arena street (the road z = −60 east of the junction), walked out and back on three lanes: the north pavement lane, the carriageway's centre, the south pavement lane. */
+export const ARENA_PATHS = [[[-4, -65.4], [56, -65.4]], [[-4, -62.4], [56, -62.4]], [[-4, -54.6], [56, -54.6]]];

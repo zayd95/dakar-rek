@@ -5,6 +5,7 @@ import type { HubWorld } from '../world/types';
 import { rng, pick } from '../core/rng';
 import { daylight } from '../core/clock';
 import { nightOf } from '../city/nightRules';
+import { gateOf, gatePlaza, stallFronts, streetEnds } from '../arena/exteriorRules';
 
 /**
  * Pikine Street DNA, phase 2: one polished neighbourhood slice along the first walk (the room, the avenue south past the
@@ -42,13 +43,13 @@ const MURALS = ['lutteur', 'lions', 'telecom', 'bissap', 'pikine', 'wax', 'defen
  */
 const BOARD = {
   gare: { w: 5.2, h: 1.4, ppm: 80 }, gare_blade: { w: 2.2, h: 1.0, ppm: 100 }, jamm: { w: 2.2, h: 0.9, ppm: 100 },
-  place: { w: 8.4, h: 1.0, ppm: 72 }, marche: { w: 7.0, h: 1.1, ppm: 66 }, banque: { w: 6.2, h: 0.95, ppm: 80 },
+  place: { w: 8.4, h: 1.0, ppm: 60 }, arene: { w: 8.4, h: 1.0, ppm: 60 }, marche: { w: 7.0, h: 1.1, ppm: 60 }, banque: { w: 6.2, h: 0.95, ppm: 80 },
   keur_mbaye: { w: 1.7, h: 0.6, ppm: 150 }, keur_sarr: { w: 1.7, h: 0.6, ppm: 150 }, keur_gueye: { w: 1.7, h: 0.6, ppm: 150 },
-  borne: { w: 1.7, h: 0.75, ppm: 130 }, prix: { w: 0.75, h: 1.0, ppm: 130 },
+  borne: { w: 1.7, h: 0.75, ppm: 130 }, prix: { w: 0.75, h: 1.0, ppm: 100 },
 } as const;
 const FASCIA = { w: 4.5, h: 1.0, ppm: 75 };
 
-type Trade = 'boutique' | 'couture' | 'quinc' | 'multiservice' | 'cantine' | 'pharmacie' | 'coiffure' | 'cyber';
+type Trade = 'boutique' | 'couture' | 'quinc' | 'multiservice' | 'cantine' | 'pharmacie' | 'coiffure' | 'cyber' | 'supporters';
 interface ShopName { trade: Trade; name: string; sub: string | string[]; bg: string; fg: string; accent: string; subFg: string }
 /**
  * The names above the shops. Each trade keeps one look (its colours, its goods, its forecourt: SHOP_TRAIT, `forecourt`) and several
@@ -68,6 +69,7 @@ const SHOP_NAMES: ShopName[] = [
   { trade: 'coiffure', name: 'COIFFURE PAPE', sub: 'Hommes · Dames · Enfants', bg: '#6a3f8a', fg: '#fdf0d4', accent: '#fdf0d4', subFg: '#ffd23a' },
   { trade: 'coiffure', name: 'BARBER MOUSTAPHA', sub: 'Dégradé · Barbe · Rasage', bg: '#24262c', fg: '#f5cd2e', accent: '#f5cd2e', subFg: '#ffffff' },
   { trade: 'cyber', name: 'CYBER NDOYE', sub: 'Internet · Jeux · Scan', bg: '#24262c', fg: '#f4d35e', accent: '#7fd3ff', subFg: '#ffffff' },
+  { trade: 'supporters', name: 'LÀMB SHOP', sub: ['Maillots · Écharpes', 'Drapeaux des écuries'], bg: '#1a7a44', fg: '#f5cd2e', accent: '#c8322a', subFg: '#ffffff' },
 ];
 const shopSignId = (i: number) => `shop${i}` as const;
 type SignId = keyof typeof BOARD | `shop${number}`;
@@ -189,6 +191,7 @@ function paintSign(c: CanvasRenderingContext2D, id: SignId, W: number, H: number
   if (bd === 'gare') { frame(c, W, H, '#1e3a8a', '#fde68a'); plate(c, W, H, 'GARE ROUTIÈRE', '#fde68a', 'PIKINE · Car rapide · Ndiaga Ndiaye', '#ffffff'); c.fillStyle = '#f4c20d'; c.fillRect(H * 0.14, H * 0.9, W - H * 0.28, H * 0.05); }
   else if (bd === 'gare_blade') { frame(c, W, H, '#1e3a8a', '#fde68a'); text(c, 'GARE', W / 2, H * 0.28, W - 40, H * 0.36, '#fde68a'); text(c, 'ROUTIÈRE', W / 2, H * 0.6, W - 40, H * 0.26, '#ffffff'); text(c, 'car rapide', W / 2, H * 0.83, W - 40, H * 0.13, '#ffd23a', undefined, 700); }
   else if (bd === 'place') { frame(c, W, H, '#1d6b3c', '#ffd23a'); plate(c, W, H, 'GRAND-PLACE', '#ffe58a', 'de Pikine · attaya · palabres · jàmm', '#ffffff'); c.fillStyle = '#d7312f'; c.fillRect(H * 0.14, H * 0.9, W - H * 0.28, H * 0.05); }
+  else if (bd === 'arene') { frame(c, W, H, '#1a5c36', '#f5cd2e'); plate(c, W, H, 'RUE DE L’ARÈNE', '#f5cd2e', 'Làmb · billets · attaya · jàmm', '#ffffff'); c.fillStyle = '#c8322a'; c.fillRect(H * 0.14, H * 0.9, W - H * 0.28, H * 0.05); }
   else if (bd === 'marche') { frame(c, W, H, '#b85a1f', '#ffe9b8'); plate(c, W, H, 'MARCHÉ', '#ffe9b8', 'Boutiques · Salon · Couture', '#ffffff'); }
   else if (bd === 'keur_mbaye') { frame(c, W, H, '#f3ead4', '#2f6f4a'); plate(c, W, H, 'KEUR MBAYE', '#2f6f4a', 'Dieureudieuf', '#7a4a2a'); }
   else if (bd === 'keur_sarr') { frame(c, W, H, '#2b4f86', '#f3ead4'); plate(c, W, H, 'KEUR SARR', '#f3ead4', 'Bienvenue', '#ffd23a'); }
@@ -362,6 +365,7 @@ const SHOP_TRAIT: Record<Trade, { walls: number[]; shutters: number[]; awnings: 
   pharmacie: { walls: [0xf1efe6, 0xd9d2bc], shutters: [0x2f7a4a], awnings: [0x2f7a4a, 0xf3ead4], goods: [0xefe9da, 0x2f7a4a, 0x5f9aa8] },
   coiffure: { walls: [0xb86a8c, 0x5f9aa8, 0x8bb26e], shutters: [0x5a3f8a, 0x2f7a4a], awnings: [0x7a2d8a, 0xf5cd2e], goods: [0xb86a8c, 0xefe9da, 0x5a3f8a] },
   cyber: { walls: [0x6a6e70, 0x5f9aa8, 0x2b5c9e], shutters: [0x2b2b2b], awnings: [0x2b5c9e, 0xf4d35e], goods: [0x7fd3ff, 0xefe9da] },
+  supporters: { walls: [0xf1efe6, 0xe4cf9a, 0x8bb26e], shutters: [0x1a7a44, 0xc8322a], awnings: [0x1a7a44, 0xc8322a], goods: [0x1a7a44, 0xc8322a, 0xf4efe2, 0xf5cd2e] },   // the écuries' colours: Baobab green, Teranga red
 };
 const TRICOLOR = [0x1d8040, 0xf5cd2e, 0xd7312f];
 const BUNTING = [0x1d8040, 0xf5cd2e, 0xd7312f, 0xf4efe2, 0x2b5c9e];
@@ -370,8 +374,9 @@ const BUNTING = [0x1d8040, 0xf5cd2e, 0xd7312f, 0xf4efe2, 0x2b5c9e];
 export interface DnaSignUse { id: string; role: string; w: number; h: number; x: number; y: number; z: number; yaw: number }
 export interface DnaItem { kind: string; x: number; z: number; solid: boolean; rect?: { x0: number; z0: number; x1: number; z1: number; h: number } }
 
-export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { mesh: THREE.Mesh | null; night: THREE.Mesh | null; items: DnaItem[]; signs: DnaSignUse[]; tris: number; byCat: Record<string, number> } {
-  const O = DNA_COUNT[q], A = dressAtlas(), P = new Pieces(A.white, A.lit), R = rng(0x9177a1);
+export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { mesh: THREE.Mesh | null; night: THREE.Mesh | null; items: DnaItem[]; signs: DnaSignUse[]; open: { x0: number; z0: number; x1: number; z1: number }[]; tris: number; byCat: Record<string, number> } {
+  const O = DNA_COUNT[q], A = dressAtlas(), P = new Pieces(A.white, A.lit);
+  let R = rng(0x9177a1);                                                          // the avenue's stream; the arena street swaps in a stream of its own, so nothing already placed moves
   const items: DnaItem[] = [];
   const uses: DnaSignUse[] = [];
   /** A painted board at its own proportions (the cell was cut for it). */
@@ -383,9 +388,12 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
     const b = boardDim(id), n = bd / 2 + 0.02; sign(id, x + Math.sin(yaw) * n, y + (bh - b.h) / 2, z + Math.cos(yaw) * n, yaw, 0.04, role);
   };
   const taken: { x0: number; z0: number; x1: number; z1: number }[] = [];
+  /** Ground the slice keeps open whatever stands nearby: the arena gate's queue and apron, the stalls' customers, the fans' corners (src/arena/exteriorRules.ts). */
+  const keepOpen: { x0: number; z0: number; x1: number; z1: number }[] = [];
   const G = 0.12;
   const free = (r: { x0: number; z0: number; x1: number; z1: number }, pad = 0.05) =>
-    !hub.colliders.some(c => r.x0 < c.x1 + pad && r.x1 > c.x0 - pad && r.z0 < c.z1 + pad && r.z1 > c.z0 - pad) && !taken.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0);
+    !hub.colliders.some(c => r.x0 < c.x1 + pad && r.x1 > c.x0 - pad && r.z0 < c.z1 + pad && r.z1 > c.z0 - pad) && !taken.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0)
+    && !keepOpen.some(c => r.x0 < c.x1 && r.x1 > c.x0 && r.z0 < c.z1 && r.z1 > c.z0);
   const clear = (x: number, z: number, d = 5) => !hub.interactables.some(i => Math.hypot(i.x - x, i.z - z) < d) && !hub.seats.some(s => Math.hypot(s.x - x, s.z - z) < 2.4)
     && !hub.rapides.some(o => Math.hypot(o.position.x - x, o.position.z - z) < 4.5) && Math.hypot(hub.spawn.x - x, hub.spawn.z - z) > 3.2;
   const claim = (r: { x0: number; z0: number; x1: number; z1: number }, h: number, kind: string, solid = true) => {
@@ -446,13 +454,20 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
     } else if (sg === 'coiffure') {                                                // a barber's chair in the doorway and a mirror on the wall
       bx(0.45, 0.42, 0.45, 0.6, lo, 0, 0x2b4f86); bx(0.45, 0.55, 0.08, 0.78, lo, 0.42, 0x2b4f86); bx(0.3, 0.08, 0.3, 0.45, lo, 0.1, 0x555555);
       const m = f(0.3, lo); P.litBox(0.55, 0.8, 0.04, m.x, G + 1.0, m.z, 0xcfe4f0, yaw); chair(0.55, hi, pick(CHAIRS, R));
+    } else if (sg === 'supporters') {                                              // a rail of jerseys in the écuries' colours, a crate of scarves, a flag on a pole, a stool
+      for (const a of [lo - 0.2, lo + 1.7]) cy(0.03, 0.03, 1.9, 0.55, a, 0, 0x5a4a3a, 5);
+      bx(1.95, 0.05, 0.05, 0.55, lo + 0.75, 1.85, 0x5a4a3a);
+      for (let k = 0; k < 5; k++) bx(0.3, 0.55, 0.03, 0.55, lo - 0.05 + k * 0.38, 1.1, [0x1a7a44, 0xf4efe2, 0xc8322a, 0xf5cd2e, 0x1a7a44][k]);
+      bx(0.55, 0.35, 0.35, 0.55, hi, 0, 0x8b6a47); bx(0.5, 0.1, 0.3, 0.55, hi, 0.35, 0xc8322a);
+      cy(0.03, 0.03, 3.1, 0.6, hi + 0.8, 0, 0x4a4a4a, 5); bx(0.55, 0.34, 0.02, 0.6, hi + 0.8, 2.75, 0x1a7a44);
+      stool(0.6, hi - 0.7, 0xc8322a);
     } else {                                                                       // the cyber café: three screens in the window, a plastic chair
       for (let k = -1; k <= 1; k++) { const m = f(0.32, k * 1.0); P.litBox(0.5, 0.32, 0.05, m.x, G + 1.1, m.z, 0x7fd3ff, yaw); }
       chair(0.55, hi, pick(CHAIRS, R)); chair(0.55, lo, pick(CHAIRS, R), 0.3);
     }
   };
   /** A unit of the street's edge centred `mid` along the line; false when something stands there. */
-  const unit = (L: Line, side: 1 | -1, mid: number, len: number, kind: Unit, frac = 1): boolean => {
+  const unit = (L: Line, side: 1 | -1, mid: number, len: number, kind: Unit, frac = 1, pickOf: { mural?: MuralId; trade?: Trade; name?: number } = {}): boolean => {
     const r = rectOn(L, mid, WALL_OFF, side, len, 0.6), c = at(L, mid, WALL_OFF, side), yaw = yawOf(L, side);
     if (!free(r) || !clear(c.x, c.z, 3)) return false;
     const fwd = (d: number, a = 0) => at(L, mid + a, WALL_OFF - d, side);                          // a point `d` in front of the wall, `a` along it
@@ -469,7 +484,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
       ground(3.2, 1.0);
       claim(r, 2.8, 'gate');
     } else if (kind === 'mural') {
-      const id = frac < 1 ? flankMural(frac) : muralOrder[muralK++ % muralOrder.length], rect: Rect = [A.mural[id][0], A.mural[id][1], A.mural[id][0] + (A.mural[id][2] - A.mural[id][0]) * frac, A.mural[id][3]];
+      const id = pickOf.mural ?? (frac < 1 ? flankMural(frac) : muralOrder[muralK++ % muralOrder.length]), rect: Rect = [A.mural[id][0], A.mural[id][1], A.mural[id][0] + (A.mural[id][2] - A.mural[id][0]) * frac, A.mural[id][3]];
       P.board(len, MURAL_H, 0.16, c.x, G, c.z, rect, yaw);                                                    // 2 m: the mural's own proportions (512 : 192)
       P.box(len + 0.1, 0.18, 0.24, c.x, G + MURAL_H, c.z, 0xcfc6b0, yaw);                                    // the coping
       P.box(len + 0.04, 0.22, 0.2, c.x, G, c.z, 0x6e6252, yaw);                                           // the dirt band at the foot
@@ -486,7 +501,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
       // a boutique built into the wall, each its own: a painted front in the trade's colours, the shutter half up on a lit shop, goods that
       // are the trade's goods, a fascia, an awning of its own kind, and a forecourt of what that business keeps outside
       P.cat = 'shops';
-      const sg = shops[shopK++ % shops.length], names = namesOf(sg), sid = names[(nameUsed[sg] = (nameUsed[sg] ?? -1) + 1) % names.length], tr = SHOP_TRAIT[sg], body = pick(tr.walls, R), shut = pick(tr.shutters, R), style = Math.floor(R() * 3);
+      const sg = pickOf.trade ?? shops[shopK++ % shops.length], names = namesOf(sg), sid = names[pickOf.name ?? ((nameUsed[sg] = (nameUsed[sg] ?? -1) + 1) % names.length)], tr = SHOP_TRAIT[sg], body = pick(tr.walls, R), shut = pick(tr.shutters, R), style = Math.floor(R() * 3);
       P.box(len, 2.9, 0.56, c.x, G, c.z, body, yaw);
       for (const e of [-1, 1]) { const q2 = fwd(0.29, e * (len / 2 - 0.2)); P.box(0.4, 2.6, 0.08, q2.x, G, q2.z, shade(body, 0.8), yaw); }
       const door = fwd(0.29); P.litBox(3.2, 1.95, 0.05, door.x, G, door.z, DARKROOM, yaw);                  // the shop inside: dark by day, warm at night
@@ -537,6 +552,39 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
   // the room's flanks: a narrower painted wall on each side of the home on the first road
   for (const a of [-50.3, -33.4]) unit(LINES[1], 1, a, 3.6, 'mural', 0.66);
 
+  // ---- the ARENA STREET: the road z = −60 east of the junction at x = 0, up to the gate's parvis and past it. The gate's own world (the queue, the
+  // stalls, the guarded moto lot, the fans' corners) belongs to src/arena: the slice keeps clear of it and dresses what the street was missing
+  // around it: the approach (a gateway, paint on the ground, a pole line), the frontage on the yard side, the shops a fight evening needs.
+  // Its own random stream: nothing placed above moves.
+  const AR = hub.arena, gate = AR ? gateOf(AR) : null;
+  const LA: Line | null = AR ? { alongZ: false, c: -60, a: 2, b: 60, crossings: [0, 60] } : null;
+  const LINES_ALL: Line[] = LA ? [...LINES, LA] : LINES;
+  if (AR && gate && LA) {
+    const q = gate.queue;
+    keepOpen.push({ x0: q.x - q.half - 4, x1: q.x + q.half + 4, z0: q.z1 - 4, z1: q.z0 + 4 });                      // the queue lane and the 4 m margin its checks keep
+    for (const r of gatePlaza(AR).slice(1)) keepOpen.push({ x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1 });               // the apron from the pavement up to the gate
+    for (const s of stallFronts(AR)) keepOpen.push({ x0: s.x - 1.8, x1: s.x + 1.8, z0: s.z - 1.8, z1: s.z + 1.8 }); // where the stalls' last customers stand
+    for (const e of streetEnds(gate)) keepOpen.push({ x0: e.x - 3, x1: e.x + 3, z0: e.z - 3, z1: e.z + 3 });        // the pavement corners the fans come from and go to
+    // the street's gateway, at its west end: pylons painted in the écuries' colours, a beam above the camera's reach, the street's name on both faces
+    P.cat = 'landmarks';
+    const x = 13.2, zs = [-67.12, -52.88];                                   // past the fans' pavement corner (x = 6.5, kept open)
+    if (zs.every(z => free(rectAt(x, z, 1.2, 1.2)) && clear(x, z, 1.5))) {
+      for (const z of zs) { P.box(1.1, 7.5, 1.1, x, G, z, 0xf3ead4); [0x1a7a44, 0xf4efe2, 0xc8322a].forEach((col, k) => P.box(1.13, 0.6, 1.13, x, G + 3.4 + k * 0.6, z, col)); P.box(1.3, 0.2, 1.3, x, G + 7.5, z, 0x8a8174); claim(rectAt(x, z, 1.2, 1.2), 7.7, 'gateway'); }
+      P.box(0.3, 1.2, 15.6, x, G + 6.15, -60, 0x1a5c36);                                       // over the road, so its underside clears the camera's band (≤ 6.2 m)
+      panelOn('arene', x, G + 6.15, -60, -Math.PI / 2, 1.2, 0.3); panelOn('arene', x, G + 6.15, -60, Math.PI / 2, 1.2, 0.3);
+      spills.push({ x, z: -60, w: 5, d: 14, rot: 0 });
+    }
+    P.cat = 'walls';
+    const R0 = R; R = rng(0xa7e4a1);
+    const put = (side: 1 | -1, mids: number[], len: number, kind: Unit, pickOf: { mural?: MuralId; trade?: Trade; name?: number }) => mids.some(m => unit(LA, side, m, len, kind, 1, pickOf));
+    put(-1, [16.8, 17.6, 18.4], 5.4, 'mural', { mural: 'lutteur' });                  // the wrestler: the yard side of the street says what the street is for
+    put(1, [40.7, 40.3, 41.1], 5.0, 'shop', { trade: 'supporters', name: 0 });        // LÀMB SHOP, facing the parvis: jerseys, scarves, flags
+    put(-1, [41.4, 42.2, 43.0], 5.0, 'shop', { trade: 'cantine', name: 1 });          // Chez Tante Yacine: dibi and mafé for after the bout
+    put(-1, [47.2, 46.4, 48.0], 5.4, 'mural', { mural: 'lions' });
+    put(1, [16.6, 17.4, 18.2], 5.0, 'shop', { trade: 'coiffure', name: 1 });          // Barber Moustapha: a cut before the evening
+    R = R0;
+  }
+
   // ---- the pavement's own life: where no unit stands, someone has put a few chairs, a tea, a tray, some sacks, a bench, a washing line against the wall
   // (the back strip only, 6.25–6.75 m from the centre line: clear of the carriageway and of the crowd's lanes; solid, small, and never in a doorway)
   if (O.props) {
@@ -545,47 +593,73 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
     const seat = (x: number, z: number, yaw: number, col: number) => { P.box(0.4, 0.04, 0.4, x, G + 0.42, z, col, yaw); P.box(0.4, 0.38, 0.04, x - Math.sin(yaw) * 0.18, G + 0.46, z - Math.cos(yaw) * 0.18, col, yaw); P.box(0.3, 0.42, 0.3, x, G, z, shade(col, 0.8), yaw); };
     const kinds = ['tontine', 'tea', 'tray', 'sacks', 'bench', 'laundry', 'parasol', 'parasol'] as const;
     let last = -99, count = 0;
+    type Kind = typeof kinds[number] | 'jerseys' | 'grill';
+    /** One cluster of the pavement's life at `t` along `side` of `L`; false when something stands there. */
+    const cluster = (L: Line, side: 1 | -1, t: number, kind: Kind): boolean => {
+      const len = kind === 'laundry' ? 3.8 : kind === 'tontine' ? 1.9 : kind === 'jerseys' ? 2.2 : kind === 'grill' ? 2.6 : 1.5;
+      const r = rectOn(L, t, 6.5, side, len, kind === 'laundry' ? 0.3 : 0.55), c = at(L, t, 6.5, side), yaw = yawL(L, side);
+      if (!free(r) || !clear(c.x, c.z, 2.5)) return false;
+      const f = (d: number, a: number) => pt(L, side, t + a, d);
+      if (kind === 'tontine') {                                                  // three plastic chairs round a low table: the neighbours' evening
+        for (let k = -1; k <= 1; k++) { const q2 = f(0.55, k * 0.65); seat(q2.x, q2.z, yaw + (k * 0.25), CHAIRS[Math.floor(R() * CHAIRS.length)]); }
+        const q2 = f(0.5, 0); P.cyl(0.25, 0.25, 0.04, q2.x, G + 0.45, q2.z, 0xe9e4d8, 8); P.cyl(0.04, 0.04, 0.45, q2.x, G, q2.z, 0x555555, 5);
+      } else if (kind === 'tea') {                                               // attaya: a brazier and its kettles, a tray of glasses, two stools, a sack of charcoal
+        const b = f(0.55, -0.2); P.cyl(0.2, 0.17, 0.25, b.x, G, b.z, 0x2b2b2b, 7); P.cyl(0.1, 0.13, 0.2, b.x, G + 0.25, b.z, 0xc9c9c9, 7);
+        const tr = f(0.5, 0.35); P.box(0.5, 0.05, 0.35, tr.x, G + 0.38, tr.z, 0xb0a58f, yaw); for (let k = 0; k < 4; k++) P.cyl(0.03, 0.03, 0.07, tr.x - 0.15 + k * 0.1, G + 0.43, tr.z, 0xe8e2d0, 5);
+        for (const a of [-0.65, 0.8]) { const q2 = f(0.6, a); P.cyl(0.17, 0.2, 0.38, q2.x, G, q2.z, a < 0 ? 0xd9322b : 0x2f6fb3, 7); }
+        const sk = f(0.45, -0.7); P.box(0.4, 0.5, 0.25, sk.x, G, sk.z, 0x3a3a3a, yaw + 0.2);
+      } else if (kind === 'tray') {                                              // a girl's tray of fruit on a stool
+        const q2 = f(0.55, 0); P.cyl(0.17, 0.2, 0.4, q2.x, G, q2.z, 0x3a5fa0, 7); P.box(0.6, 0.05, 0.42, q2.x, G + 0.4, q2.z, 0xe9e4d8, yaw);
+        for (let k = 0; k < 6; k++) P.box(0.12, 0.1, 0.12, q2.x - 0.2 + (k % 3) * 0.2, G + 0.45 + Math.floor(k / 3) * 0.1, q2.z + (k % 2) * 0.08, k % 2 ? 0xe58a2f : 0xe8c24a, yaw);
+      } else if (kind === 'sacks') {                                             // charcoal and grain, a crate
+        for (let k = 0; k < 4; k++) { const q2 = f(0.5, -0.5 + (k % 2) * 0.5); P.box(0.5, 0.5, 0.32, q2.x, G + Math.floor(k / 2) * 0.5, q2.z, k % 2 ? 0xd8c9a0 : 0x3a3a3a, yaw + k * 0.15); }
+        const q2 = f(0.5, 0.55); P.box(0.45, 0.3, 0.3, q2.x, G, q2.z, 0x8b6a47, yaw);
+      } else if (kind === 'bench') {                                             // a plank bench on two blocks, a bucket
+        const q2 = f(0.5, 0); P.box(1.4, 0.06, 0.35, q2.x, G + 0.38, q2.z, 0x6b4a2e, yaw); for (const a of [-0.55, 0.55]) { const l = f(0.5, a); P.box(0.12, 0.38, 0.3, l.x, G, l.z, 0xa59c8c, yaw); }
+        const bk = f(0.5, 0.95); P.cyl(0.17, 0.14, 0.3, bk.x, G, bk.z, 0x2b5c9e, 8);
+      } else if (kind === 'parasol') {                                           // a vendor's parasol: a tall coloured cone over a table of small goods, the silhouette that calls from the end of the street
+        const q2 = f(0.55, 0), col = [0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e, 0xe895ac][Math.floor(R() * 5)];
+        P.cyl(0.03, 0.03, 2.2, q2.x, G, q2.z, 0x4a4a4a, 5); P.cyl(0.05, 1.15, 0.4, q2.x, G + 2.1, q2.z, col, 8);
+        P.box(0.9, 0.7, 0.45, q2.x, G, q2.z, 0x8a6a48, yaw); for (let k = 0; k < 4; k++) P.box(0.2, 0.18, 0.2, q2.x - 0.3 + k * 0.2, G + 0.7, q2.z, pick([0xe58a2f, 0xb8372b, 0x6aa84f, 0xe8c24a], R), yaw);
+        const st = f(0.55, 0.8); P.cyl(0.17, 0.2, 0.38, st.x, G, st.z, 0x3a5fa0, 7);
+      } else if (kind === 'jerseys') {                                           // by the arena: a rail of jerseys in the écuries' colours, a crate of scarves, a stool
+        for (const a of [-0.95, 0.95]) { const q2 = f(0.5, a); P.cyl(0.03, 0.03, 1.9, q2.x, G, q2.z, 0x5a4a3a, 5); }
+        const rail = f(0.5, 0); P.box(1.9, 0.05, 0.05, rail.x, G + 1.85, rail.z, 0x5a4a3a, yaw);
+        for (let k = 0; k < 5; k++) { const q2 = f(0.5, -0.76 + k * 0.38); P.box(0.3, 0.55, 0.03, q2.x, G + 1.1, q2.z, [0x1a7a44, 0xf4efe2, 0xc8322a, 0xf5cd2e, 0x1a7a44][k], yaw); }
+        const cr = f(0.5, 0.3), st = f(0.62, -0.3); P.box(0.5, 0.3, 0.32, cr.x, G, cr.z, 0x8b6a47, yaw); P.box(0.45, 0.08, 0.28, cr.x, G + 0.3, cr.z, 0xc8322a, yaw); P.cyl(0.17, 0.2, 0.38, st.x, G, st.z, 0x3a5fa0, 7);
+      } else if (kind === 'grill') {                                             // dibi on the kerb: half an oil drum on legs with its grate, skewers and a heap of charcoal, a chopping table, a stool
+        const gr = f(0.55, -0.35); P.box(0.9, 0.5, 0.45, gr.x, G + 0.3, gr.z, 0x2b2b2b, yaw); P.box(0.94, 0.04, 0.5, gr.x, G + 0.8, gr.z, 0x4a4a4a, yaw);
+        for (const a of [-0.38, 0.38]) { const q2 = f(0.45, -0.35 + a); P.box(0.06, 0.3, 0.06, q2.x, G, q2.z, 0x2b2b2b, yaw); }
+        for (let k = 0; k < 6; k++) { const q2 = f(0.55, -0.35 - 0.36 + k * 0.145); P.box(0.1, 0.06, 0.3, q2.x, G + 0.84, q2.z, k % 2 ? 0x8a4b2a : 0x9a5a34, yaw); }
+        const tb = f(0.55, 0.65); P.box(0.8, 0.7, 0.4, tb.x, G, tb.z, 0x8a6a48, yaw); P.box(0.3, 0.06, 0.25, tb.x, G + 0.7, tb.z, 0xe8e2d0, yaw);
+        const sk = f(0.6, 1.25); P.cyl(0.17, 0.2, 0.38, sk.x, G, sk.z, 0xd9322b, 7);
+      } else {                                                                   // the washing: a line between two stakes, five cloths
+        const a0 = f(0.45, -1.8), a1 = f(0.45, 1.8);
+        for (const q2 of [a0, a1]) P.cyl(0.04, 0.05, 2.5, q2.x, G, q2.z, 0x6b5a4a, 5);
+        P.wire([a0.x, G + 2.35, a0.z], [a1.x, G + 2.35, a1.z], 0.12, 0x555555, 0.012);
+        for (let k = 0; k < 5; k++) { const q2 = f(0.45, -1.4 + k * 0.7); P.box(0.4, 0.6, 0.02, q2.x, G + 1.72, q2.z, WAX[(k + 2) % WAX.length], yaw + (L.alongZ ? Math.PI / 2 : 0)); }
+        claim(rectAt(a0.x, a0.z, 0.25, 0.25), 2.5, 'laundry'); claim(rectAt(a1.x, a1.z, 0.25, 0.25), 2.5, 'laundry'); return true;
+      }
+
+      claim(r, 0.9, kind); return true;
+    };
     for (const L of LINES) for (const side of [1, -1] as const) {
       last = -99;
       for (let t = L.a + 6 + R() * 4; t < L.b - 6 && count < 26; t += 3.5 + R() * 5) {
         if (nearCrossing(L, t, 9) || t - last < 5.5) continue;
         const p = at(L, t, WALL_OFF, side), gareEdge = L === LINES[0] && side === 1 && ((t > 9 && t < 23) || (t > 38 && t < 51));
         if (!gareEdge && !houseBlock(p.x + (L.alongZ ? side * 4 : 0), p.z + (L.alongZ ? 0 : side * 4))) continue;
-        const kind = kinds[Math.floor(R() * kinds.length)], len = kind === 'laundry' ? 3.8 : kind === 'tontine' ? 1.9 : 1.5;
-        const r = rectOn(L, t, 6.5, side, len, kind === 'laundry' ? 0.3 : 0.55), c = at(L, t, 6.5, side), yaw = yawL(L, side);
-        if (!free(r) || !clear(c.x, c.z, 2.5)) continue;
-        const f = (d: number, a: number) => pt(L, side, t + a, d);
-        if (kind === 'tontine') {                                                  // three plastic chairs round a low table: the neighbours' evening
-          for (let k = -1; k <= 1; k++) { const q2 = f(0.55, k * 0.65); seat(q2.x, q2.z, yaw + (k * 0.25), CHAIRS[Math.floor(R() * CHAIRS.length)]); }
-          const q2 = f(0.5, 0); P.cyl(0.25, 0.25, 0.04, q2.x, G + 0.45, q2.z, 0xe9e4d8, 8); P.cyl(0.04, 0.04, 0.45, q2.x, G, q2.z, 0x555555, 5);
-        } else if (kind === 'tea') {                                               // attaya: a brazier and its kettles, a tray of glasses, two stools, a sack of charcoal
-          const b = f(0.55, -0.2); P.cyl(0.2, 0.17, 0.25, b.x, G, b.z, 0x2b2b2b, 7); P.cyl(0.1, 0.13, 0.2, b.x, G + 0.25, b.z, 0xc9c9c9, 7);
-          const tr = f(0.5, 0.35); P.box(0.5, 0.05, 0.35, tr.x, G + 0.38, tr.z, 0xb0a58f, yaw); for (let k = 0; k < 4; k++) P.cyl(0.03, 0.03, 0.07, tr.x - 0.15 + k * 0.1, G + 0.43, tr.z, 0xe8e2d0, 5);
-          for (const a of [-0.65, 0.8]) { const q2 = f(0.6, a); P.cyl(0.17, 0.2, 0.38, q2.x, G, q2.z, a < 0 ? 0xd9322b : 0x2f6fb3, 7); }
-          const sk = f(0.45, -0.7); P.box(0.4, 0.5, 0.25, sk.x, G, sk.z, 0x3a3a3a, yaw + 0.2);
-        } else if (kind === 'tray') {                                              // a girl's tray of fruit on a stool
-          const q2 = f(0.55, 0); P.cyl(0.17, 0.2, 0.4, q2.x, G, q2.z, 0x3a5fa0, 7); P.box(0.6, 0.05, 0.42, q2.x, G + 0.4, q2.z, 0xe9e4d8, yaw);
-          for (let k = 0; k < 6; k++) P.box(0.12, 0.1, 0.12, q2.x - 0.2 + (k % 3) * 0.2, G + 0.45 + Math.floor(k / 3) * 0.1, q2.z + (k % 2) * 0.08, k % 2 ? 0xe58a2f : 0xe8c24a, yaw);
-        } else if (kind === 'sacks') {                                             // charcoal and grain, a crate
-          for (let k = 0; k < 4; k++) { const q2 = f(0.5, -0.5 + (k % 2) * 0.5); P.box(0.5, 0.5, 0.32, q2.x, G + Math.floor(k / 2) * 0.5, q2.z, k % 2 ? 0xd8c9a0 : 0x3a3a3a, yaw + k * 0.15); }
-          const q2 = f(0.5, 0.55); P.box(0.45, 0.3, 0.3, q2.x, G, q2.z, 0x8b6a47, yaw);
-        } else if (kind === 'bench') {                                             // a plank bench on two blocks, a bucket
-          const q2 = f(0.5, 0); P.box(1.4, 0.06, 0.35, q2.x, G + 0.38, q2.z, 0x6b4a2e, yaw); for (const a of [-0.55, 0.55]) { const l = f(0.5, a); P.box(0.12, 0.38, 0.3, l.x, G, l.z, 0xa59c8c, yaw); }
-          const bk = f(0.5, 0.95); P.cyl(0.17, 0.14, 0.3, bk.x, G, bk.z, 0x2b5c9e, 8);
-        } else if (kind === 'parasol') {                                           // a vendor's parasol: a tall coloured cone over a table of small goods, the silhouette that calls from the end of the street
-          const q2 = f(0.55, 0), col = [0xd9482b, 0x1e6fd9, 0xf4c20d, 0x2f8f4e, 0xe895ac][Math.floor(R() * 5)];
-          P.cyl(0.03, 0.03, 2.2, q2.x, G, q2.z, 0x4a4a4a, 5); P.cyl(0.05, 1.15, 0.4, q2.x, G + 2.1, q2.z, col, 8);
-          P.box(0.9, 0.7, 0.45, q2.x, G, q2.z, 0x8a6a48, yaw); for (let k = 0; k < 4; k++) P.box(0.2, 0.18, 0.2, q2.x - 0.3 + k * 0.2, G + 0.7, q2.z, pick([0xe58a2f, 0xb8372b, 0x6aa84f, 0xe8c24a], R), yaw);
-          const st = f(0.55, 0.8); P.cyl(0.17, 0.2, 0.38, st.x, G, st.z, 0x3a5fa0, 7);
-        } else {                                                                   // the washing: a line between two stakes, five cloths
-          const a0 = f(0.45, -1.8), a1 = f(0.45, 1.8);
-          for (const q2 of [a0, a1]) P.cyl(0.04, 0.05, 2.5, q2.x, G, q2.z, 0x6b5a4a, 5);
-          P.wire([a0.x, G + 2.35, a0.z], [a1.x, G + 2.35, a1.z], 0.12, 0x555555, 0.012);
-          for (let k = 0; k < 5; k++) { const q2 = f(0.45, -1.4 + k * 0.7); P.box(0.4, 0.6, 0.02, q2.x, G + 1.72, q2.z, WAX[(k + 2) % WAX.length], yaw + (L.alongZ ? Math.PI / 2 : 0)); }
-          claim(rectAt(a0.x, a0.z, 0.25, 0.25), 2.5, 'laundry'); claim(rectAt(a1.x, a1.z, 0.25, 0.25), 2.5, 'laundry'); last = t; count++; continue;
-        }
-        claim(r, 0.9, kind); last = t; count++;
+        const kind = kinds[Math.floor(R() * kinds.length)];
+        if (!cluster(L, side, t, kind)) continue;
+        last = t; count++;
       }
+    }
+    if (LA) {                                                                      // by the arena: dibi on the kerb, jerseys on a rail, tea and chairs for whoever waits for the evening
+      const R1 = R; R = rng(0xa7e4a2);
+      // the gaps the gate's own ground leaves (its queue, apron and stalls are kept open): each is tried at its place, then a little either side
+      const wants: [1 | -1, number, Kind][] = [[1, 20.4, 'jerseys'], [-1, 21.6, 'tea'], [-1, 37.6, 'grill'], [1, 45.6, 'grill'], [1, 50.0, 'jerseys'], [-1, 52.4, 'tontine']];
+      for (const [side, t0, kind] of wants) for (const d of [0, 0.8, -0.8, 1.6, -1.6]) if (!nearCrossing(LA, t0 + d, 8.2) && cluster(LA, side, t0 + d, kind)) break;
+      R = R1;
     }
   }
 
@@ -718,6 +792,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
     network(LINES[0], [[-54, 'A'], [-32, 'AB'], [-10, 'B'], [12, 'A'], [34, 'AB'], [56, 'B'], [72, 'AB'], [100, 'A']]);
     network(LINES[1], [[-53, 'B'], [-46, 'A'], [-36, 'AB'], [-27, 'A'], [-21, 'B'], [-13, 'AB'], [-6, 'A']], [-1, 'jamm']);          // the room's road; the Cité Jàmm sign hangs on the first pole of its side
     network(LINES[2], [[-50, 'A'], [-14, 'AB']]);
+    if (LA) { const R2 = R; R = rng(0xa7e4a3); network(LA, [[7.5, 'AB'], [19, 'AB'], [41, 'AB'], [52.5, 'AB']]); R = R2; }   // the pole line goes on east of the junction, along the arena street
   }
   P.cat = 'bunting';
   // bunting across the avenue at the first corner and before the market: the neighbourhood is expecting something
@@ -726,6 +801,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
     P.bunting([-65.5, G + 7.2, 74], [-54.5, G + 7.3, 74], 0.6, BUNTING);
     P.bunting([-46, G + 7.3, 53.5], [-46, G + 7.3, 66.5], 0.6, BUNTING);
     P.bunting([-28, G + 7.3, -66.2], [-28, G + 7.3, -53.8], 0.6, BUNTING);                                  // over the room's road, between the home and the Cité Jàmm
+    if (LA) for (const x of [16.5, 43.5]) P.bunting([x, G + 7.3, -66.2], [x, G + 7.3, -53.8], 0.6, [0x1a7a44, 0xf4efe2, 0xc8322a, 0xf5cd2e]);   // the two écuries' colours over the parvis
   }
   P.cat = 'kerbs';
   // painted kerbs (a coat of white and blue over the broken stones) and the speed bumps with their yellow-and-black stripes
@@ -737,6 +813,15 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
       P.flat(alongZ ? 0.34 : 1.9, alongZ ? 1.9 : 0.34, p.x, G + 0.05, p.z, Math.floor(t / 2) % 2 ? 0xf4efe2 : 0x2b5c9e);
     }
     for (const z of [-40, 30, 88]) for (let k = 0; k < 20; k++) P.flat(0.5, 1.6, -60 - 5 + k * 0.5 + 0.25, 0.094, z, k % 2 ? 0x1a1a1a : 0xf2c230);
+    if (LA) {                                                                      // the arena street: kerbs (green and white across the parvis, the écuries' colours), a zebra at each end, bumps before the junctions
+      for (const side of [1, -1] as const) for (let t = LA.a; t < LA.b; t += 2.0) {
+        if (nearCrossing(LA, t, 7.2) || (Math.floor(t / 2.0) + (side > 0 ? 0 : 1)) % 4 === 3) continue;
+        const p = at(LA, t + 1, 5.02, side), parvis = t + 1 > 15.5 && t + 1 < 44.5, odd = Math.floor(t / 2) % 2;
+        P.flat(1.9, 0.34, p.x, G + 0.05, p.z, odd ? 0xf4efe2 : parvis ? 0x1a7a44 : 0x2b5c9e);
+      }
+      for (const x of [12.2, 47.8]) for (let k = 0; k < 10; k++) P.flat(2.6, 0.5, x, 0.095, -64.5 + k, 0xf1ede0);
+      for (const x of [3.8, 56.2]) for (let k = 0; k < 20; k++) P.flat(1.6, 0.5, x, 0.094, -65 + k * 0.5 + 0.25, k % 2 ? 0x1a1a1a : 0xf2c230);
+    }
   }
 
   P.cat = 'landmarks';
@@ -759,7 +844,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
   // transparency, the same draw call.
   {
     const Gr = rng(0x51a7c3), sc = q === 'low' ? 0.5 : 1, ROAD = shade(0x9c7b55, 0.93), WALK = shade(0xb08960, 0.93);                 // the ground's own colours as rendered (its grain takes a few per cent off), so a blotch's rim vanishes into it
-    for (const L of LINES) {
+    for (const L of LINES_ALL) {
       const along = L.alongZ ? Math.PI / 2 : 0;
       for (let t = L.a + 2; t < L.b - 2; t += (4.5 + Gr() * 7) / sc) {                         // long drifts, darker and lighter, one side then the other
         if (nearCrossing(L, t, 2)) continue;
@@ -792,14 +877,14 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
     night.name = 'pikine_dna_night'; night.visible = false; night.renderOrder = 1;
   }
 
-  if (!P.geos.length) return { mesh: null, night, items, signs: uses, tris: 0, byCat: {} };
+  if (!P.geos.length) return { mesh: null, night, items, signs: uses, open: keepOpen, tris: 0, byCat: {} };
   const geo = mergeGeometries(P.geos, false)!;
   for (const g of P.geos) g.dispose();
   geo.computeBoundingSphere();
   const mat = new THREE.MeshLambertMaterial({ map: A.tex, vertexColors: true, emissive: 0xffd9a0, emissiveMap: A.glow, emissiveIntensity: 0, side: THREE.DoubleSide });
   const mesh = new THREE.Mesh(geo, mat); mesh.name = 'pikine_dna'; mesh.castShadow = q !== 'low'; mesh.receiveShadow = false;
   hub.signs.push(mesh);                                                      // lit a little at night with the shop signs (main.ts)
-  return { mesh, night, items, signs: uses, tris: P.tris, byCat: P.byCat };
+  return { mesh, night, items, signs: uses, open: keepOpen, tris: P.tris, byCat: P.byCat };
 }
 
 let poolTex: THREE.CanvasTexture | null = null;
@@ -817,7 +902,7 @@ function poolTexture() {
 const shade = (c: number, k: number) => new THREE.Color(c).multiplyScalar(k).getHex();
 
 let current: { mesh: THREE.Mesh | null; night: THREE.Mesh | null } | null = null;
-let slice: DnaItem[] = [], signUses: DnaSignUse[] = [];
+let slice: DnaItem[] = [], signUses: DnaSignUse[] = [], openZones: { x0: number; z0: number; x1: number; z1: number }[] = [];
 let sliceStats = { tris: 0, quality: 'medium' as string, byCat: {} as Record<string, number> };
 
 /** The module: dresses the Pikine slice when the hub loads (one merged mesh, one for the night's pools, and a few colliders). */
@@ -828,12 +913,12 @@ export const pikineDnaModule: GameModule = {
       for (const m of [current.mesh, current.night]) if (m) { m.removeFromParent(); m.geometry.dispose(); (m.material as THREE.Material).dispose(); }
       current = null;
     }
-    slice = []; signUses = [];
+    slice = []; signUses = []; openZones = [];
     if (hub.id !== 'pikine') return;
     const r = dressPikineSlice(hub, ctx.quality());
     for (const m of [r.mesh, r.night]) if (m) ctx.extra.add(m);
     current = { mesh: r.mesh, night: r.night };
-    slice = r.items; signUses = r.signs; sliceStats = { tris: r.tris, quality: ctx.quality(), byCat: r.byCat };
+    slice = r.items; signUses = r.signs; openZones = r.open; sliceStats = { tris: r.tris, quality: ctx.quality(), byCat: r.byCat };
   },
   /** The warm pools in front of the shops and gates follow the dusk (the same night measure as the lamps). */
   update(ctx) {
@@ -843,6 +928,8 @@ export const pikineDnaModule: GameModule = {
   },
   debug: () => ({
     pikineDna: () => slice, pikineDnaStats: () => sliceStats,
+    /** The ground the slice keeps open at the arena gate (queue lane, apron, the stalls' customers, the fans' corners). */
+    pikineDnaOpen: () => openZones,
     /** The boards as placed, the cells they were painted in, and every line of text with how it fitted (scripts/check-pikine-signs.mjs). */
     pikineDnaSigns: () => { const A = dressAtlas(); return { atlas: { w: A.w, h: A.h }, uses: signUses, cells: A.cells, texts: A.texts, names: SHOP_NAMES.map((n, i) => ({ id: shopSignId(i), ...n })) }; },
   }),

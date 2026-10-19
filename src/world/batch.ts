@@ -168,8 +168,9 @@ export function signTexture(text: string, bg: string, fg: string, w = 256, h = 6
  */
 export function refitSign(t: THREE.Texture, planeW: number, planeH: number): boolean {
   const info = t.userData.sign as { text: string; bg: string; fg: string; w: number; h: number } | undefined;
-  if (!info || !(t.image instanceof HTMLCanvasElement) || Math.abs(info.w / info.h / (planeW / planeH) - 1) <= 0.02) return false;
-  const { width, height } = signCanvasSize(planeW, planeH), cv = t.image;
+  const cv = t.image as HTMLCanvasElement | undefined;
+  if (!info || typeof cv?.getContext !== 'function' || Math.abs(info.w / info.h / (planeW / planeH) - 1) <= 0.02) return false;
+  const { width, height } = signCanvasSize(planeW, planeH);
   cv.width = width; cv.height = height;
   const { size, width: tw } = paintSignCanvas(cv, info.text, info.bg, info.fg);
   t.userData.sign = { ...info, size, w: width, h: height, width: tw };
