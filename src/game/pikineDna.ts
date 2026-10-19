@@ -82,7 +82,7 @@ function paintMural(c: CanvasRenderingContext2D, id: MuralId) {
   } else if (id === 'telecom') {                                                // an invented operator's advert
     const g = c.createLinearGradient(0, 0, MW, 0); g.addColorStop(0, '#1b4f9c'); g.addColorStop(1, '#2d7bd0'); c.fillStyle = g; c.fillRect(0, 0, MW, MH);
     c.fillStyle = '#ffd23a'; c.fillRect(0, MH - 44, MW, 44); c.fillRect(0, 0, MW, 12);
-    text(c, 'JAMM TÉLÉCOM', 220, 56, 390, 64, '#ffffff', '#0e2f63'); text(c, 'Internet 4G · Wave · Recharge ici', 220, MH - 22, 420, 28, '#0e2f63', undefined, 800);
+    text(c, 'JAMM TÉLÉCOM', 220, 56, 390, 64, '#ffffff', '#0e2f63'); text(c, 'Internet 4G · Forfaits · Recharge ici', 220, MH - 22, 420, 28, '#0e2f63', undefined, 800);
     c.fillStyle = '#0e2f63'; c.fillRect(420, 22, 56, 118); c.fillStyle = '#a9d4ff'; c.fillRect(426, 32, 44, 88); disc(c, 448, 130, 4, '#a9d4ff');
     for (let k = 0; k < 3; k++) { c.strokeStyle = '#ffd23a'; c.lineWidth = 4; c.beginPath(); c.arc(448, 28, 22 + k * 14, Math.PI * 1.2, Math.PI * 1.8); c.stroke(); }
     text(c, '77 000 00 00', 220, 98, 300, 30, '#ffe58a', undefined, 700);
@@ -133,7 +133,7 @@ function paintSign(c: CanvasRenderingContext2D, id: SignId) {
   else if (id === 'boutique') { box('#2f7a4a', '#fdf0c0'); text(c, 'BOUTIQUE ABDOU', 128, 36, 230, 30, '#fdf0c0'); text(c, 'Alimentation générale', 128, 72, 230, 20, '#ffffff', undefined, 700); }
   else if (id === 'couture') { box('#a8402f', '#fdf0d4'); text(c, 'COUTURE FATOU', 128, 36, 230, 30, '#fdf0d4'); text(c, 'Modèles sur mesure · wax', 128, 72, 230, 20, '#ffe58a', undefined, 700); }
   else if (id === 'quinc') { box('#2b4f86', '#f3ead4'); text(c, 'QUINCAILLERIE', 128, 36, 230, 30, '#f3ead4'); text(c, 'NDIAYE & FILS · ciment · fer', 128, 72, 232, 20, '#ffd23a', undefined, 700); }
-  else { box('#f1e7c6', '#a1321f'); text(c, 'TÉLÉCENTRE', 128, 36, 230, 30, '#a1321f'); text(c, 'Crédit · Transfert · Wave', 128, 72, 230, 20, '#1b1b1b', undefined, 700); }
+  else { box('#f1e7c6', '#a1321f'); text(c, 'TÉLÉCENTRE', 128, 36, 230, 30, '#a1321f'); text(c, 'Crédit · Transfert · Factures', 128, 72, 230, 20, '#1b1b1b', undefined, 700); }
 }
 
 function dressAtlas() {
@@ -146,10 +146,11 @@ function dressAtlas() {
   SIGNS.forEach((id, i) => { const x = (i % 4) * SW, y = 4 * MH + Math.floor(i / 4) * SH; c.save(); c.translate(x, y); c.beginPath(); c.rect(0, 0, SW, SH); c.clip(); paintSign(c, id); c.restore(); sign[id] = rectOf(x, y, SW, SH); });
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
   // the night glow: the small signs, a little of the murals (a wall is lit by the lamps, not by itself); the plain parts stay dark
-  const cg = document.createElement('canvas'); cg.width = AW; cg.height = AH;
-  const g2 = cg.getContext('2d')!; g2.fillStyle = '#000'; g2.fillRect(0, 0, AW, AH);
-  g2.globalAlpha = 0.28; g2.drawImage(cv, 0, 0, AW, 4 * MH, 0, 0, AW, 4 * MH); g2.globalAlpha = 1; g2.drawImage(cv, 0, 4 * MH, AW, 3 * SH, 0, 4 * MH, AW, 3 * SH);
-  g2.fillStyle = '#000'; g2.fillRect(0, 4 * MH + 3 * SH, AW, AH - 4 * MH - 3 * SH);
+  // (half the size: it shares the atlas's UVs, and a glow needs no more detail, so it costs a quarter of the memory)
+  const cg = document.createElement('canvas'); cg.width = AW / 2; cg.height = AH / 2;
+  const g2 = cg.getContext('2d')!; g2.fillStyle = '#000'; g2.fillRect(0, 0, AW / 2, AH / 2);
+  g2.globalAlpha = 0.28; g2.drawImage(cv, 0, 0, AW, 4 * MH, 0, 0, AW / 2, 2 * MH); g2.globalAlpha = 1; g2.drawImage(cv, 0, 4 * MH, AW, 3 * SH, 0, 2 * MH, AW / 2, 1.5 * SH);
+  g2.fillStyle = '#000'; g2.fillRect(0, 2 * MH + 1.5 * SH, AW / 2, AH / 2 - 2 * MH - 1.5 * SH);
   const glow = new THREE.CanvasTexture(cg); glow.colorSpace = THREE.SRGBColorSpace;
   atlas = { tex, glow, mural, sign, white: rectOf(1000, 1010, 14, 12) };
   return atlas;

@@ -12,7 +12,7 @@ export const ROUTE_SHOTS = [
   ['07-avenue-to-place', -60, 50, 0],
   ['08-road-east', -46, 60, PI / 2],
   ['09-place-approach', -26, 68, 0],
-  ['10-grand-place', -26, 86, 0],
+  ['10-grand-place', -26, 99, PI],
   ['11-shops-court', -60, 92, -PI / 2],
   ['12-boutique-diallo', -100, 93, PI],
 ];
@@ -25,7 +25,7 @@ export const ROUTE_DETAILS = [
   ['d03-painted-walls-east', -60, -31, -52.9, -31],
   ['d04-painted-walls-west', -60, 32, -67.1, 32],
   ['d05-gare-portal', -61, 14, -54.6, 30],
-  ['d06-standpipe', -60, -27, -66.3, -30],
+  ['d06-standpipe', -62, -21, -67, -30],
   ['d07-grand-place-gateway', -30, 55, -30, 67.4],
   ['d08-market-gate', -57, 92, -66.2, 92],
   ['d09-salon-awa-flank', -62, 80, -70.3, 80],

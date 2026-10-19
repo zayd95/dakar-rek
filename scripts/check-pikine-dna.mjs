@@ -1,7 +1,7 @@
 // Pikine Street DNA, phase 2: checks on the slice (src/game/pikineDna.ts). Local only.
 //  - the slice exists once, in one mesh and one material, within a triangle budget; Low keeps the static pieces only
 //  - nothing solid stands on another collider, in the crowd's pavement lanes (PAVE: 5.05–5.95 m from a road's centre line), or on the walk
-//  - the walk (room → avenue → gare → grand-place → shops' court) is clear for the game's 0.5 m body, and the slice is the same on every load
+//  - the walk (room → avenue → gare → grand-place → shops' court) is clear of the slice for the game's 0.5 m body, and the slice is the same on every load
 //  - the places and the way out the hub already had are all still there; leaving Pikine drops the slice
 // Usage: node scripts/check-pikine-dna.mjs [baseUrl]   (without it, serves dist with vite preview on a free port)
 import { chromium } from 'playwright';
@@ -63,13 +63,20 @@ try {
   assert.equal(inLane.length, 0, 'solid pieces in the crowd’s pavement lanes: ' + JSON.stringify(inLane.slice(0, 4).map(b => [b.kind, +b.x.toFixed(1), +b.z.toFixed(1)])));
   console.log('PASS no solid piece in the pavement lanes (5.05–5.95 m from the road’s centre line) or on the roadway');
 
-  const R = 0.5, stuck = [];
+  // the walk against the slice's own colliders (the road events' cones and barrows, which come and go with the city's day, are not the slice's: listed, not failed)
+  const R = 0.5, stuck = [], others = [];
+  const hit = (list, x, z) => list.find(c => c[4] > 0.5 && x > c[0] - R && x < c[2] + R && z > c[1] - R && z < c[3] + R);
+  const mine = solids.map(i => [i.rect.x0, i.rect.z0, i.rect.x1, i.rect.z1, i.rect.h]);
   for (let i = 1; i < ROUTE_PATH.length; i++) {
     const [ax, az] = ROUTE_PATH[i - 1], [bx, bz] = ROUTE_PATH[i], n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.25);
-    for (let k = 0; k <= n; k++) { const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n; if (a.colliders.some(c => c[4] > 0.5 && x > c[0] - R && x < c[2] + R && z > c[1] - R && z < c[3] + R)) { stuck.push([i, +x.toFixed(1), +z.toFixed(1)]); break; } }
+    for (let k = 0; k <= n; k++) {
+      const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n;
+      if (hit(mine, x, z)) { stuck.push([i, +x.toFixed(1), +z.toFixed(1)]); break; }
+      if (hit(a.colliders, x, z)) { others.push([i, +x.toFixed(1), +z.toFixed(1)]); break; }
+    }
   }
-  assert.equal(stuck.length, 0, 'the walk is blocked: ' + JSON.stringify(stuck));
-  console.log(`PASS the whole walk (${ROUTE_PATH.length - 1} legs) is clear for a 0.5 m body`);
+  assert.equal(stuck.length, 0, 'the slice blocks the walk: ' + JSON.stringify(stuck));
+  console.log(`PASS the whole walk (${ROUTE_PATH.length - 1} legs) is clear of the slice for a 0.5 m body` + (others.length ? ` (today's road events block ${others.length} leg(s) at ${JSON.stringify(others)}: not the slice's)` : ''));
 
   for (const id of HAD) assert.ok(a.ids.includes(id), `the hub still has ${id}`);
   console.log(`PASS the ${HAD.length} places and ways out the hub already had are all there`);
