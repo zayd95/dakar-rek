@@ -1,0 +1,58 @@
+{
+ "car-idle": {
+  "seconds": 7.8,
+  "bytes": 47349,
+  "loop": true,
+  "source": "Kenney racing/audio/engine.ogg",
+  "sha256": "c737691d9d945964"
+ },
+ "car-rev": {
+  "seconds": 3.298,
+  "bytes": 20349,
+  "loop": true,
+  "source": "pmndrs racing-game/public/sounds/engine.mp3",
+  "sha256": "fc1a359c7e6719c9"
+ },
+ "moto-idle": {
+  "seconds": 7.811,
+  "bytes": 47349,
+  "loop": true,
+  "source": "Kenney racing/audio/engine-motorcycle.ogg",
+  "sha256": "7687ce29987caacd"
+ },
+ "horn-car": {
+  "seconds": 2.9,
+  "bytes": 23867,
+  "loop": true,
+  "source": "pmndrs racing-game/public/sounds/honk.mp3",
+  "sha256": "932c175956df7311"
+ },
+ "horn-moto": {
+  "seconds": 2.9,
+  "bytes": 23867,
+  "loop": true,
+  "source": "pmndrs racing-game/public/sounds/honk.mp3 (pitched x1.5, lower reed removed)",
+  "sha256": "b5f2895c70455666"
+ },
+ "crash": {
+  "seconds": 1.817,
+  "bytes": 22614,
+  "loop": false,
+  "source": "pmndrs racing-game/public/sounds/crash.mp3",
+  "sha256": "ec5dcda88ffbc728"
+ },
+ "thud": {
+  "seconds": 0.654,
+  "bytes": 5895,
+  "loop": false,
+  "source": "Kenney racing/audio/impact.ogg",
+  "sha256": "804bbfb7194d20ec"
+ },
+ "squeal": {
+  "seconds": 3.387,
+  "bytes": 27629,
+  "loop": true,
+  "source": "Kenney racing/audio/skid.ogg (Landeplage, CC0)",
+  "sha256": "65ed1d330394b65d"
+ }
+}

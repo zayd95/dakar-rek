@@ -11,7 +11,7 @@ import { Vehicle } from './vehicle';
 import { PassengerCamera } from './camera';
 import { RideCard } from './ui';
 import { fovFor } from '../core/view';
-import { vehicleAudio, profileFor, brakeIntensity } from './vehicleAudio';
+import { vehicleAudio, profileFor, brakeIntensity, PROFILES } from './vehicleAudio';
 import { mountAudioDiag } from './audioDiag';
 import { ContactTracker, type Impact } from './contact';
 import { buzz, impactPattern as impactBuzz, HORN_TICK } from './haptics';
@@ -682,6 +682,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         audio: () => vehicleAudio.info(),
         feel: () => ({ ...this.feelLog, impacts: [...this.feelLog.impacts], shake: this.fx.shake, scrapeFrames: this.scrapeFrames, scraping: vehicleAudio.scraping, contact: this.contact.active }),   // what contacts did (scripts/check-collision.mjs)
         feelReset: () => { this.feelLog = { impacts: [], shakePeak: 0, kickPeak: 0 }; this.scrapeFrames = 0; this.contact.reset(); },
+        lab: () => ({ va: vehicleAudio, PROFILES }),                                // the audio review's recordings (scripts/audio/render-clips.mjs)
         audioMeter: () => vehicleAudio.meter(),                                   // dBFS of what the vehicle bus plays (scripts/check-horn.mjs)
         audioMute: (on: boolean) => setMuted(on),                                 // the phone's sound setting
         audioSuspend: () => vehicleAudio.suspendForTest(),                        // what a call or the lock screen does to the context
