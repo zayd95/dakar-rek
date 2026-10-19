@@ -69,7 +69,18 @@ back nearer round 1's figure, the cheapest levers are fewer poles on the plaza r
 
 ### Regressions
 
-`npm test` and the browser checks were re-run on the final build; see the table at the end of this file.
+Re-run on the final build:
+
+| check | result |
+|---|---|
+| `npm test` | 128 files, 1 581 passed, 2 skipped |
+| `check-pikine-gare` | all pass |
+| `check-crowd` (the street crowd's lanes and pavements: the new poles stand outside them) | 24 / 24 |
+| `check-night` (lamps, lit shops and signs) | 18 / 18 |
+| `check-pikine-mosque` | all pass |
+| `check-city-life` (the CI check `check:city`, desktop and phone) | 37 pass, 0 fail |
+
+`check-minimap` and `check-npc-density` (which has two gargote failures that the baseline has too) were not re-run: nothing in this round touches either.
 
 ## Left for your call
 
