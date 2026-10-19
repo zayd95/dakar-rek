@@ -117,3 +117,13 @@ describe('the paint of a car bought from the floor', () => {
     unpark(s.data, 'berline'); expect(paintSeed(s.data, 'berline')).toBeNull(); expect(parked(s.data, 'berline')).toBeNull();
   });
 });
+
+describe('the street dressing leaves the dealership\'s frontage alone', () => {
+  it('no stall, bin or sign stands on the parcel or the pavement before it, so the cars can turn out onto the road', async () => {
+    const { buildHub } = await import('../src/world/builder'), { dressHub } = await import('../src/game/streetDress');
+    const h = buildHub('almadies', true), r = dressHub(h, 'high');
+    expect(r.items.length).toBeGreaterThan(5);
+    for (const i of r.items) expect(inGrounds(i.x, i.z, 1.5), JSON.stringify(i)).toBe(false);
+    for (const c of h.colliders) if (c.h <= 5 && c.x0 > -100 && c.x1 < -78 && c.z0 > 0 && c.z1 < 8) expect(JSON.stringify(c)).toBe('nothing');
+  });
+});

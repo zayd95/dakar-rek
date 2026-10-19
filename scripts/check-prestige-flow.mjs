@@ -101,14 +101,14 @@ await shot('9-engine');
 const trial = await B();
 check('it is a free trial: nothing paid, nothing owned, nothing saved', trial.trial && !trial.owned && !trial.record && (await d(() => window.__dakar.state.wallet)) === 200000000, JSON.stringify({ trial: trial.trial, owned: trial.owned, record: trial.record }));
 const LAP = [
-  { x: -88.3, z: 13, tol: 3 }, { x: -85, z: 4.2, tol: 3 }, { x: -64, z: 3.6, tol: 4 }, { x: -63.4, z: 22, tol: 4 }, { x: -63.4, z: 50, tol: 4 }, { x: -68, z: 56.6, tol: 4 },
+  { x: -88.3, z: 12, tol: 3 }, { x: -86.5, z: 6.5, tol: 2.2, speed: 6 }, { x: -78, z: 3.9, tol: 3, speed: 8 }, { x: -64, z: 3.6, tol: 4 }, { x: -63.4, z: 22, tol: 4 }, { x: -63.4, z: 50, tol: 4 }, { x: -68, z: 56.6, tol: 4 },
   { x: -112, z: 56.6, tol: 4 }, { x: -116.4, z: 48, tol: 4 }, { x: -116.4, z: 12, tol: 4 }, { x: -110, z: 3.8, tol: 4 }, { x: -98, z: 3.8, tol: 3 }, { x: -92, z: 11, tol: 2.2, speed: 5 },
 ];
-await pilot(page, t, 'berline', LAP.slice(0, 3));
+await pilot(page, t, 'berline', LAP.slice(0, 4));
 await shot('10-out-on-the-road');
-await pilot(page, t, 'berline', LAP.slice(3, 9));
+await pilot(page, t, 'berline', LAP.slice(4, 10));
 await shot('11-round-the-block');
-await pilot(page, t, 'berline', LAP.slice(9));
+await pilot(page, t, 'berline', LAP.slice(10));
 // ---- 5. park on the forecourt and get out
 await pilot(page, t, 'berline', [{ x: -96, z: 13.5, tol: 1.6, speed: 3 }], { brakeAtEnd: true });
 const parkedAt = await AT();

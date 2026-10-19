@@ -40,12 +40,14 @@ export const suvSpec = () => (suvCache ??= kitCarSpec({
  * The dealership: one hall on a parcel of its own (src/world/prestige.ts, block (0, 2) of the Almadies), four real cars on its floor, two of each model, each in
  * its own paint. A car on the floor is the one the player test-drives and buys, where it stands (src/transport/ownedModule.ts, src/transport/prestigeSales.ts).
  */
+/** The kerb in front of the forecourt, kept free of parked vehicles (src/game/parkedVehicles.ts) so the cars can turn out of the bay onto the road. */
+const KERB = { x: -86, z: 4.3, dx: 1, dz: 0, rx: 0, rz: 1, offset: 4.3, from: -17, to: 17 };
 function prestigeFloor(model: 'berline' | 'suv', seeds: number[], colours: string[]) {
   return (hub: HubWorld): DealerSite | null => {
     if (hub.id !== PRESTIGE_HUB) return null;
     const slots = SLOTS.filter(s => s.model === model).map((s, i) => ({ x: s.x, z: s.z, yaw: s.yaw, seed: seeds[i], colour: colours[i] }));
     // the phone's order for a car bought elsewhere is delivered on the forecourt, clear of the bay
-    return { counter: { ...COUNTER }, sign: { ...COUNTER, yaw: 0 }, displays: [], delivery: { ...FORECOURT_PARK }, kerb: [], floor: { slots } };
+    return { counter: { ...COUNTER }, sign: { ...COUNTER, yaw: 0 }, displays: [], delivery: { ...FORECOURT_PARK }, kerb: [KERB], floor: { slots } };
   };
 }
 

@@ -78,7 +78,7 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
       const d = Math.hypot(w.x - at.x, w.z - at.z);
       if (d < (w.tol ?? tol)) break;
       if (d < best - 0.3) { best = d; lastGain = Date.now(); } else if (Date.now() - lastGain > stall) break;
-      const err = wrap(Math.atan2(w.x - at.x, w.z - at.z) - at.yaw), steer = Math.max(-1, Math.min(1, err * 1.8));
+      const err = wrap(Math.atan2(w.x - at.x, w.z - at.z) - at.yaw), steer = Math.max(-1, Math.min(1, -err * 1.8));   // the stick to the right turns the car to the right: its yaw falls
       await t.move(2, j.x + steer * r, j.y, 1);
       const limit = (w.speed ?? cruise) * (Math.abs(err) > 0.7 ? 0.45 : 1) * (d < 9 ? 0.7 : 1);
       await press(at.speed < limit);
