@@ -30,6 +30,8 @@ export interface PrismOpts {
   capNeg?: Paint | null;
   /** Colour of the band face that starts at profile point i (its tag is the profile point's third value). null skips it. */
   band?: (i: number, tag: number | undefined) => Paint | null | undefined;
+  /** A rectangular opening (z0..z1, y0..y1 in the profile's coordinates) cut in the +x side face only (a door; the caller closes the hole behind it). */
+  holePos?: { z0: number; z1: number; y0: number; y1: number };
 }
 
 const tc = new THREE.Color();
@@ -219,9 +221,13 @@ export class KitBuilder {
       this.toward([[xc + hw(a[1]), a[1], a[0]], [xc - hw(a[1]), a[1], a[0]], [xc - hw(b[1]), b[1], b[0]], [xc + hw(b[1]), b[1], b[0]]], [0, -dz, dy], paint ?? o.paint);
     }
     const tris = THREE.ShapeUtils.triangulateShape(pts.map(p => new THREE.Vector2(p[0], p[1])), []);
+    const h = o.holePos;
+    // the +x face with its opening: the contour and the rectangle triangulated together (indices run over the contour, then the rectangle's corners)
+    const holed = h ? { all: [...pts.map(p => [p[0], p[1]] as [number, number]), [h.z0, h.y0], [h.z1, h.y0], [h.z1, h.y1], [h.z0, h.y1]] as [number, number][], tris: THREE.ShapeUtils.triangulateShape(pts.map(p => new THREE.Vector2(p[0], p[1])), [[[h.z0, h.y0], [h.z1, h.y0], [h.z1, h.y1], [h.z0, h.y1]].map(q => new THREE.Vector2(q[0], q[1]))]) } : null;
     for (const [side, cap] of [[1, o.capPos], [-1, o.capNeg]] as const) {
       if (cap === null) continue;
       const paint = cap ?? o.paint;
+      if (side > 0 && holed) { for (const t of holed.tris) this.toward(t.map(k => [xc + hw(holed.all[k][1]), holed.all[k][1], holed.all[k][0]] as V3), [1, 0, 0], paint); continue; }
       for (const t of tris) this.toward(t.map(k => [xc + side * hw(pts[k][1]), pts[k][1], pts[k][0]] as V3), [side, 0, 0], paint);
     }
   }

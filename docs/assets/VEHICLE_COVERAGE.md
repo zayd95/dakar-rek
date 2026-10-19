@@ -10,8 +10,8 @@ No Meshy credit spent for this. Branch `asset/vehicles-furniture-20261018`, loca
 | Motorbike | `jakarta` · Moto Jakarta · 150 000 F · Garage Modou, Pikine | the kit's red 125 cc (procedural) | **yes** | `check-moto`: desktop all pass; **phone: 3 of 18 fail (joystick does not move the bike), identical on the original baseline `6789c6e`, so not from this work, not yet investigated** |
 | Courier bike (lent, never owned) | `tiak` | the kit's green moto | **yes** | `check-tiak-moto` 57 / 57 (one parcel check flaked once under load, 18 / 18 alone) |
 | Modern compact sedan | `compacte` · Berline moderne · provisional price · Ndiaye Auto, Plateau | **generated GLB** (Stage A, 7 606 tris) | **yes** | `check-car` 44 / 44 |
-| Premium saloon | `berline` · Berline neuve · 14 000 000 F · Prestige Auto, Almadies | the kit's `luxury` saloon, **interim** | **yes, new** | `check-prestige` 42 / 42, `tests/premiumCars.test.ts` |
-| Luxury SUV | `tout_terrain` · 4 × 4 de luxe · 75 000 000 F · Prestige Auto, Almadies | the kit's `suv`, **interim** | **yes, new** | `check-prestige` 42 / 42 |
+| Premium saloon | `berline` · Berline neuve · 14 000 000 F · Prestige Auto, Almadies | the kit's `luxury` saloon, **interim** | **yes, new** | `scripts/check-prestige-flow.mjs`, `tests/prestige.test.ts`, `tests/premiumCars.test.ts` |
+| Luxury SUV | `tout_terrain` · 4 × 4 de luxe · 75 000 000 F · Prestige Auto, Almadies | the kit's `suv`, **interim** | **yes, new** | `scripts/check-prestige-flow.mjs` |
 | Urban scooter | none | the kit's scooter (a cargo scooter, white) | no | model only |
 | Pick-up | none | the kit's `pickup` (traffic, deliveries) | no | model only |
 | Delivery truck | `camion` · 32 000 000 F · still « soon » | the kit's `truck` | no | model only |

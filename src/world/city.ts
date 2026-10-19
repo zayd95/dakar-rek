@@ -6,14 +6,15 @@ import type { Action, Collider, HubWorld, Interactable } from './types';
 import { CITY_ACTIONS as A } from './cityContent';
 import { benchSeats, type Seat } from '../interact/seats';
 import { say } from '../i18n/wolof';
+import { buildPrestige, PRESTIGE_BLOCK } from './prestige';
 import { buildShopInterior, type ShopDetail, type ShopInterior, type ShopOptions, type ShopType } from './shopKit';
 
-export type CityBlock = 'soumbedioune' | 'mall' | 'bank' | 'square' | 'shops';
+export type CityBlock = 'soumbedioune' | 'mall' | 'bank' | 'square' | 'shops' | 'prestige';
 /** Compact, stylised geography within the existing four hubs. Never displaces an existing landmark. */
 export const CITY_BLOCKS: Record<HubId, Record<string, CityBlock>> = {
   corniche: { '0,3': 'soumbedioune', '2,3': 'square' },
   plateau: { '3,1': 'bank', '1,3': 'square', '3,3': 'shops' },
-  almadies: { '2,2': 'mall', '3,2': 'square' },
+  almadies: { '2,2': 'mall', '3,2': 'square', [PRESTIGE_BLOCK]: 'prestige' },
   pikine: { '0,1': 'bank', '0,3': 'shops', '1,3': 'square' },
 };
 export const BAY = { z0: 64, z1: 116, shoreX: -155, railX: -133.55 };
@@ -48,6 +49,7 @@ const SALESMAN: PersonLook = { ...FISHER, skin: 0x4e2e1c, top: 0xeef2f6, bottom:
 const seedOf = (k: string) => { let h = 2166136261; for (let i = 0; i < k.length; i++) h = Math.imul(h ^ k.charCodeAt(i), 16777619); return (h >>> 0) % 100000 + 1; };
 
 export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: number) {
+  if (kind === 'prestige') { buildPrestige(c); return; }                     // Prestige Auto: its own reserved parcel (src/world/prestige.ts)
   const { plain: b, pave, glass, lite } = c;
   const solid = (x: number, z: number, w: number, d: number, h = 3) => c.colliders.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, h });
   const box = (w: number, h: number, d: number, x: number, z: number, color: number, y = FLOOR) => b.box(w, h, d, x, y, z, color);

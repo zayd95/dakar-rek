@@ -1,6 +1,6 @@
 // Touch pedals of a car (src/transport/ridePad.ts, src/transport/drive.ts pedalThrottle), portrait phone, REAL fingers (CDP touch): the joystick only steers, « Accélérer » and « Frein »
 // are held with the right thumb at the same time as the stick; the brake never backs the car up from a stop (« R » does); coasting, braking, the camera button with a second finger.
-// Usage: node scripts/check-pedals.mjs [baseUrl] [outDir]   (a running build; VEHICLE=compacte|berline|tout_terrain)
+// Usage: node scripts/check-pedals.mjs [baseUrl] [outDir]   (a running build; VEHICLE=compacte)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch } from './lib/realTouch.mjs';
@@ -9,7 +9,7 @@ const base = process.argv[2] ?? 'http://localhost:4213/', out = process.argv[3] 
 fs.mkdirSync(out, { recursive: true });
 const T = { timeout: 240000 }, results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
-const V = { compacte: { key: 'car', hub: 'plateau' }, berline: { key: 'berline', hub: 'almadies' }, tout_terrain: { key: 'suv', hub: 'almadies' } }[process.env.VEHICLE ?? 'compacte'];
+const V = { compacte: { key: 'car', hub: 'plateau' } }[process.env.VEHICLE ?? 'compacte'];   // the Prestige cars are driven out of the hall by scripts/check-prestige-flow.mjs
 const near = v => [-120, -60, 0, 60, 120].reduce((b, c) => Math.abs(c - v) < Math.abs(b - v) ? c : b);
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });

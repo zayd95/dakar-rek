@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { carSpec, kitSeedFor } from '../src/transport/car';
-import { BERLINE_ASSET, BERLINE_GRAPHITE, BERLINE_NAVY, BERLINE_WHITE, PRESTIGE, SUV_ASSET, SUV_BLACK, SUV_GREEN, SUV_WHITE, berlineSeed, berlineSpec, suvSeed, suvSpec } from '../src/transport/premiumCars';
+import { BERLINE_ASSET, BERLINE_GRAPHITE, BERLINE_NAVY, BERLINE_WHITE, SUV_ASSET, SUV_BLACK, SUV_GREEN, SUV_WHITE, berlineSeed, berlineSpec, suvSeed, suvSpec } from '../src/transport/premiumCars';
 import { motoSpec } from '../src/transport/moto';
-import { kerbDealer, footprint } from '../src/transport/ownedModule';
+import { footprint } from '../src/transport/ownedModule';
 import { driveStep, newDriveState } from '../src/transport/drive';
 import { ownsVehicle, park, parked, unpark } from '../src/transport/owned';
 import { buyAsset, holding, sellAsset } from '../src/economy/assets';
@@ -64,20 +64,6 @@ describe('the premium saloon and the SUV on the owned-vehicle system', () => {
     }
     expect(new Set([berlineSeed(), berlineSeed(BERLINE_WHITE), berlineSeed(BERLINE_NAVY)]).size).toBe(3);
     expect(new Set([suvSeed(), suvSeed(SUV_WHITE), suvSeed(SUV_GREEN)]).size).toBe(3);
-  });
-
-  it('the two corners face each other across the Almadies road z = 0: counters on their pavements, the vehicles in the kerb lane, traffic on the right', () => {
-    const mk = (side: 1 | -1) => kerbDealer(PRESTIGE.x, side * PRESTIGE.z, { displays: [{ along: -6, seed: 1 }, { along: -11.5, seed: 2 }], delivery: 6.5, sign: 2.4, desk: true, clear: [-16, 12] });
-    const north = mk(1), south = mk(-1);
-    expect(north.delivery.z).toBeCloseTo(4.3); expect(north.delivery.yaw).toBeCloseTo(Math.PI / 2);
-    expect(south.delivery.z).toBeCloseTo(-4.3); expect(south.delivery.yaw).toBeCloseTo(-Math.PI / 2);
-    expect(north.counter.z).toBeGreaterThan(5); expect(south.counter.z).toBeLessThan(-5);
-    for (const site of [north, south]) {
-      expect(Math.abs(site.delivery.x - PRESTIGE.x)).toBeGreaterThan(4);
-      for (const d of site.displays) expect(Math.abs(d.z)).toBeCloseTo(4.3);
-      // inside the hub (±130) and clear of the cross road at x = −120 (its asphalt starts at −127… −113)
-      for (const p of [site.delivery, site.counter, site.sign, ...site.displays]) { expect(p.x).toBeGreaterThan(-110); expect(p.x).toBeLessThan(-60); }
-    }
   });
 });
 

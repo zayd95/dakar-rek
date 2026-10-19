@@ -38,3 +38,54 @@ export async function padDrive(page, t, { steer = 0, brake = false, reverse = fa
   await t.up(1); if (steer) await t.up(2);
   if (reverse) await t.tap('#ridepad .rp-rev');
 }
+
+const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+/**
+ * Walk on foot to (x, z) with the joystick, as a thumb does: the stick is pushed the way the target lies relative to the camera, and re-aimed every ~120 ms as the camera follows.
+ * Resolves when within `tol` metres (or after `ms`); the finger is lifted at the end. Returns the final distance.
+ */
+export async function walkTo(page, t, x, z, { tol = 0.5, ms = 90000, finger = 3 } = {}) {
+  const j = await t.centre('#joy'), r = 30, t0 = Date.now();
+  await t.down(finger, j.x, j.y);
+  let dist = Infinity;
+  while (Date.now() - t0 < ms) {
+    const p = await page.evaluate(() => window.__dakar.pos());
+    dist = Math.hypot(x - p.x, z - p.z); if (dist < tol) break;
+    const a = wrap(Math.atan2(x - p.x, z - p.z) - p.cam), mx = -Math.sin(a), my = Math.cos(a);
+    await t.move(finger, j.x + mx * r, j.y - my * r, 1);
+    await page.waitForTimeout(120);
+  }
+  await t.up(finger);
+  return dist;
+}
+
+/**
+ * Drive a car through waypoints with real fingers on the pedal and the stick (src/transport/ridePad.ts): the gas is held and lifted for a tight turn or a close point,
+ * the stick steers toward the next point (the car's own heading error), each point is done within `tol` m. A stall (no progress for `stall` ms) moves on to the next point.
+ * Lifts both fingers at the end (`brakeAtEnd`: then holds the brake until the car has stopped). Returns the car's last `at()`.
+ */
+export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stall = 12000, brakeAtEnd = false, cruise = 11 } = {}) {
+  await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
+  const gas = await t.centre('#ridepad .rp-gas'), j = await t.centre('#joy'), r = 30, t0 = Date.now();
+  let gasOn = false;
+  const press = async on => { if (on === gasOn) return; gasOn = on; if (on) await t.down(1, gas.x, gas.y); else await t.up(1); };
+  await t.down(2, j.x, j.y);
+  let at = null;
+  for (const w of points) {
+    let best = Infinity, lastGain = Date.now();
+    while (Date.now() - t0 < ms) {
+      at = await page.evaluate(k => window.__dakar[k].at(), key); if (!at) break;
+      const d = Math.hypot(w.x - at.x, w.z - at.z);
+      if (d < (w.tol ?? tol)) break;
+      if (d < best - 0.3) { best = d; lastGain = Date.now(); } else if (Date.now() - lastGain > stall) break;
+      const err = wrap(Math.atan2(w.x - at.x, w.z - at.z) - at.yaw), steer = Math.max(-1, Math.min(1, err * 1.8));
+      await t.move(2, j.x + steer * r, j.y, 1);
+      const limit = (w.speed ?? cruise) * (Math.abs(err) > 0.7 ? 0.45 : 1) * (d < 9 ? 0.7 : 1);
+      await press(at.speed < limit);
+      await page.waitForTimeout(90);
+    }
+  }
+  await t.up(2); await press(false);
+  if (brakeAtEnd) { const b = await t.centre('#ridepad .rp-brake'); await t.down(1, b.x, b.y); await page.waitForFunction(k => Math.abs(window.__dakar[k].at()?.speed ?? 0) < 0.15, key, { timeout: 60000 }).catch(() => {}); await t.up(1); }
+  return at;
+}

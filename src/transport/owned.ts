@@ -35,8 +35,15 @@ export function park(data: SaveData, p: Parked) {
 
 /** Forget the parking spot (sold: a vehicle bought again is delivered at the dealer's kerb). */
 export function unpark(data: SaveData, id: VehicleAsset) {
-  for (const f of ['hub', 'x', 'z', 'yaw']) delete data.counters[key(id, f)];
+  for (const f of ['hub', 'x', 'z', 'yaw', 'seed']) delete data.counters[key(id, f)];
 }
+
+/**
+ * The paint of a vehicle bought from the floor of a showroom is the one of the car the player chose (its kit seed): kept with the parking spot, `vehicle:<asset>:seed`.
+ * A vehicle with no such counter (every one bought before, at the kerb) keeps its catalogue paint. Never set for a trial vehicle.
+ */
+export const paintSeed = (data: SaveData, id: VehicleAsset): number | null => { const v = data.counters[key(id, 'seed')]; return typeof v === 'number' && v > 0 ? v : null; };
+export const setPaintSeed = (data: SaveData, id: VehicleAsset, seed: number) => { data.counters[key(id, 'seed')] = seed; };
 
 /**
  * Vehicles that are not sold any more and what their owners' save turns into. `clando` (the old « Voiture d'occasion ») was retired when the

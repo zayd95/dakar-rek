@@ -2,7 +2,7 @@
 // 4 × 4 de luxe), on desktop (keys) and phone (real touch events): at the desk « Essayer » is offered next to the price; picking it costs nothing (no wallet line, nothing owned, nothing
 // parked in the save) and puts the vehicle at the kerb; the player gets on, drives, gets off, and the vehicle goes back to the dealer. A reload mid-test leaves nothing behind. Buying
 // right after a test drive still delivers the real one, and once owned « Essayer » is off.
-// Usage: node scripts/check-trial.mjs [baseUrl] [outDir]   (a running build; ONLY=desktop|phone, VEHICLE=jakarta|compacte|berline|tout_terrain to run one)
+// Usage: node scripts/check-trial.mjs [baseUrl] [outDir]   (a running build; ONLY=desktop|phone, VEHICLE=jakarta|compacte to run one)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { realTouch, padDrive } from './lib/realTouch.mjs';
@@ -14,8 +14,6 @@ const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); i
 const VEHICLES = [
   { asset: 'jakarta', key: 'moto', hub: 'pikine', item: 'Moto Jakarta', mine: 'Ta moto Jakarta', moto: true },
   { asset: 'compacte', key: 'car', hub: 'plateau', item: 'Berline moderne', mine: 'Ta voiture' },
-  { asset: 'berline', key: 'berline', hub: 'almadies', item: 'Berline neuve', mine: 'Ta berline' },
-  { asset: 'tout_terrain', key: 'suv', hub: 'almadies', item: '4 × 4 de luxe', mine: 'Ton 4 × 4' },
 ].filter(v => !process.env.VEHICLE || v.asset === process.env.VEHICLE);
 const near = v => [-120, -60, 0, 60, 120].reduce((b, c) => Math.abs(c - v) < Math.abs(b - v) ? c : b);
 

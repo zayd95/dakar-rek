@@ -53,6 +53,8 @@ export interface KitCarOpts {
   drive: Omit<DriveSpec, 'halfWidth' | 'halfLength' | 'lean'>;
   /** A prepared GLB body for a kit seed, or null for the kit's own model. */
   visual?: (seed: number) => ReturnType<typeof glbCar>;
+  /** The kit body has a driver's door of its own that opens (src/actors/vehicleKit.ts `openable`). */
+  openable?: boolean;
 }
 
 /** A kit car as a transport VehicleSpec with a driver seat (left-hand drive), no lean and car handling. Built empty: the player drives it. */
@@ -83,7 +85,7 @@ export function kitCarSpec(o: KitCarOpts): VehicleSpec {
     cabin: 'closed',
     sway: 0.6,
     drive: { ...o.drive, halfWidth: k.width / 2, halfLength: k.length / 2, lean: false },
-    build: b => o.visual?.(b?.seed ?? seed) ?? buildVehicle(o.kind, { seed: b?.seed ?? seed, driver: false, passengers: false }).group,
+    build: b => o.visual?.(b?.seed ?? seed) ?? buildVehicle(o.kind, { seed: b?.seed ?? seed, driver: false, passengers: false, ...(o.openable ? { openable: true } : {}) }).group,
   };
 }
 

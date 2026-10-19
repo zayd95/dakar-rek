@@ -3,7 +3,7 @@ import type { HubId } from '../core/types';
 import type { Seat } from '../interact/seats';
 import { Apprentice } from '../actors/apprenti';
 import { humanoidReady } from '../actors/humanoid';
-import { animateVehicle } from '../actors/vehicleKit';
+import { animateVehicle, hasKitDoor, setKitDoor } from '../actors/vehicleKit';
 import { newMotion, pullIn, type Motion, type Path, type Pose, type Timetable } from './route';
 import { seatToWorld, toWorld, type LocalPose, type VehicleSpec, type WorldPose } from './spec';
 
@@ -51,6 +51,8 @@ export class Vehicle {
   private model: THREE.Object3D;
   private shown = '';
   private ridden = false;
+  /** The driver's door, 0 shut … 1 open (kept across a model swap). */
+  private door = 0;
   /** Shirts of the passengers drawn now (null: their own looks). */
   colours: readonly number[] | null = null;
 
@@ -93,6 +95,12 @@ export class Vehicle {
     return (this.model.userData.kitAnim as { lean?: number } | undefined)?.lean ?? 0;
   }
 
+  /** True when this model has a driver's door of its own that opens. */
+  get hasDoor() { return hasKitDoor(this.model); }
+  /** The driver's door: 0 shut … 1 wide open. */
+  setDoor(k: number) { this.door = k; setKitDoor(this.model, k); }
+  get doorOpen() { return this.door; }
+
   /** A solid-shell body's shared cockpit (src/actors/cockpit.ts) is drawn only in an inside view (« Au volant »). */
   setCockpit(on: boolean) {
     const u = this.model.userData, c = u.glbCockpit as THREE.Object3D | undefined, hide = u.glbHide as THREE.Object3D[] | undefined;
@@ -111,6 +119,7 @@ export class Vehicle {
   private swap(next: THREE.Object3D) {
     this.body.remove(this.model); dropAnimated(this.model);
     this.body.add(next); this.model = next;
+    if (this.door) setKitDoor(next, this.door);
   }
 
   /** Spec ids of the passenger seats NPCs hold now. */

@@ -45,7 +45,7 @@ const noise = (c: AudioContext) => noiseBuf ??= (() => { const b = c.createBuffe
 
 class VehicleAudio {
   /** Sounds asked for and played, by kind (the checks: nothing before a gesture, nothing when muted). */
-  readonly count: Record<string, number> = { asked: 0, played: 0, door: 0, start: 0, brake: 0, tap: 0, impact: 0, horn: 0 };
+  readonly count: Record<string, number> = { asked: 0, played: 0, door: 0, start: 0, brake: 0, tap: 0, impact: 0, horn: 0, unlock: 0 };
   private bus: Bus | null = null;
   private eng: { prof: EngineProfile; o1: OscillatorNode; o2: OscillatorNode; lp: BiquadFilterNode; gEng: GainNode; road: GainNode; roadF: BiquadFilterNode; bed: GainNode; srcs: AudioScheduledSourceNode[]; rpm: number; ready: number } | null = null;
   private horn: { gain: GainNode; oscs: OscillatorNode[] } | null = null;
@@ -100,6 +100,18 @@ class VehicleAudio {
     const t = b.ctx.currentTime;
     if (open) { this.burst(b, t, 0.06, 1800, 3, 0.05); this.burst(b, t + 0.05, 0.1, 700, 1, 0.05); this.thud(b, t + 0.03, 110, 0.12, 0.18); }
     else { this.thud(b, t, 72, 0.2, 0.42); this.burst(b, t, 0.1, 520, 0.8, 0.12, 'lowpass'); this.burst(b, t + 0.06, 0.03, 2400, 4, 0.04); }
+  }
+
+  /** The remote of a car: two short chirps (the salesperson unlocks it), or one lower one (locks it again). */
+  unlock() {
+    const b = this.ready('unlock', 0.5); if (!b) return;
+    const c = b.ctx, t = c.currentTime;
+    for (const [i, f] of [1850, 2350].entries()) {
+      const o = c.createOscillator(), g = c.createGain(), at = t + i * 0.16;
+      o.type = 'square'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.035, at + 0.01); g.gain.setValueAtTime(0.035, at + 0.07); g.gain.exponentialRampToValueAtTime(0.0008, at + 0.1);
+      o.connect(g).connect(b.gain); o.start(at); o.stop(at + 0.12);
+    }
   }
 
   /** Engine start: a stuttering crank that catches (the loop's own fade-in follows it). Returns the seconds until it catches. */

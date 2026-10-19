@@ -21,16 +21,8 @@ export function carDealer(hub: HubWorld): DealerSite | null {
   if (show && lot && door) {
     // the pavement before the open front: the bought car waits at the kerb right there, the pole sign by the corner
     const kerb = kerbDealer(door.x, door.z, { displays: [], delivery: 0, sign: 7.6, clear: [-9, 9] });
-    // the glass front of the showroom with its entrance, lit fascia and blade sign (src/transport/showroom.ts), on the shop's own front line
-    const b = show.bounds, f = show.front ?? { x: door.x, z: door.z }, cx = (b.x0 + b.x1) / 2, cz = (b.z0 + b.z1) / 2, dx = f.x - cx, dz = f.z - cz;
-    const n = Math.abs(dx) > Math.abs(dz) ? { x: Math.sign(dx), z: 0 } : { x: 0, z: Math.sign(dz) };
-    const half = n.x ? (b.z1 - b.z0) / 2 : (b.x1 - b.x0) / 2, depth = n.x ? b.x1 - b.x0 : b.z1 - b.z0;
     return {
-      ...kerb, showroom: {
-        spec: { style: 'ndiaye', origin: f, n, a0: -half, a1: half, depth, gaps: [[-1.7, 1.7]], tower: half - 0.4 },
-        brand: { title: 'NDIAYE AUTO', sub: 'VOITURES · Plateau', bg: '#1b2a7a', band: '#f4c20d', fg: '#ffffff' },
-      },
-      counter: { x: show.anchors.counter.x, z: show.anchors.counter.z },
+      ...kerb, counter: { x: show.anchors.counter.x, z: show.anchors.counter.z },
       // the first lot is the one for sale (shown by showSale()); the two others stand taken (reserved, sold), the same car in another paint
       displays: show.anchors.lots!.map((l, i) => ({ x: l.x, z: l.z, yaw: l.yaw, seed: i === 0 ? sedanSeed() : sedanSeed(i === 1 ? SEDAN_WHITE : SEDAN_BLUE) })), forSale: 0, card: lot.card, lots: show.anchors.lots!.length,
     };
