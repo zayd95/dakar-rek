@@ -41,7 +41,8 @@ await page.waitForFunction(() => window.__dakar.berline.info().driving, null, T)
 // out through the bay to the forecourt with the real pedals, then out of the car by the real button
 await pilot(page, t, 'berline', [{ x: -92.6, z: 12, tol: 1.6, speed: 2.5 }], { brakeAtEnd: true });
 await t.tap('#ridepad .rp-off');
-await page.waitForFunction(() => { const b = window.__dakar.berline.info(); return !b.driving && !b.exit && b.here; }, null, T);
+await page.waitForFunction(() => window.__dakar.berline.info().exit, null, T);   // the door opens and the player steps out: wait for that to begin, then to end
+await page.waitForFunction(() => { const b = window.__dakar.berline.info(); return !b.driving && !b.exit && b.here && window.__dakar.pos().mode === 'play'; }, null, T);
 const parked = await AT();
 check('left on the forecourt, the trial car stays where it was parked and is the same car the bay lost', (await B()).trial && !(await B()).floor[0].here && (await B()).floor[0].state === 'out' && (await B()).trialSlot === 0, JSON.stringify(parked));
 check('nothing was paid or saved', (await d(() => window.__dakar.state.wallet)) === 200000000 && !(await B()).record && !(await B()).owned);
