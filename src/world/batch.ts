@@ -127,7 +127,7 @@ export function facadeTextures() {
  * Keep the texture relatively small for mobile graphics memory.
  */
 export function signCanvasSize(boardWidth: number, boardHeight: number): { width: number; height: number } {
-  const pixelsPerMetre = Math.min(96 / boardHeight, 1536 / boardWidth);
+  const pixelsPerMetre = Math.min(80, 96 / boardHeight, 1536 / boardWidth);   // 80 px a metre is 1 : 1 for a name's letters (0.4 m) seen from 12 m on the phone, and keeps a 21 m board under 1 536 px
   return {
     width: Math.max(1, Math.round(boardWidth * pixelsPerMetre)),
     height: Math.max(1, Math.round(boardHeight * pixelsPerMetre)),

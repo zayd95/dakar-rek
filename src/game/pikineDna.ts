@@ -79,7 +79,8 @@ type MuralId = typeof MURALS[number];
 /** One line of painted text and how it fitted its cell (read by the signage check). */
 export interface DnaTextLog { id: string; text: string; size: number; wanted: number; width: number; avail: number; x0: number; x1: number; y0: number; y1: number; cw: number; ch: number }
 let textLog: DnaTextLog[] = [], cellId = '', cellW = 0, cellH = 0;
-let atlas: { tex: THREE.CanvasTexture; glow: THREE.CanvasTexture; mural: Record<MuralId, Rect>; sign: Record<string, Rect>; cells: Record<string, { cw: number; ch: number }>; texts: DnaTextLog[]; w: number; h: number; white: Rect; lit: Rect } | null = null;
+type Atlas = { tex: THREE.CanvasTexture; glow: THREE.CanvasTexture; mural: Record<MuralId, Rect>; sign: Record<string, Rect>; cells: Record<string, { cw: number; ch: number }>; texts: DnaTextLog[]; w: number; h: number; white: Rect; lit: Rect };
+let atlas: Atlas | null = null, atlasKey = '';
 
 /** Centred text that shrinks (never stretches) to fit `w`; every line is logged with its measured box. */
 function text(c: CanvasRenderingContext2D, t: string, x: number, y: number, w: number, size: number, fill: string, stroke?: string, weight = 800) {
@@ -206,10 +207,14 @@ function paintSign(c: CanvasRenderingContext2D, id: SignId, W: number, H: number
   }
 }
 
-function dressAtlas() {
-  if (atlas) return atlas;
+/** The atlas: the murals, and a cell for each board the layout uses (`want`: every board when omitted, or the cached atlas). */
+function dressAtlas(want?: ReadonlySet<string>): Atlas {
+  if (atlas && !want) return atlas;
+  const key = want ? [...want].sort().join(',') : '*';
+  if (atlas && key === atlasKey) return atlas;
+  atlas?.tex.dispose(); atlas?.glow.dispose();
   // the cells: murals on top, then every board in a cell of its own proportions, packed in rows (the tallest first)
-  const ids: SignId[] = [...(Object.keys(BOARD) as SignId[]), ...SHOP_NAMES.map((_, i) => shopSignId(i))];
+  const ids = ([...(Object.keys(BOARD) as SignId[]), ...SHOP_NAMES.map((_, i) => shopSignId(i))] as SignId[]).filter(id => !want || want.has(id));
   const cells = ids.map(id => { const b = boardDim(id); return { id, cw: Math.round(b.w * b.ppm), ch: Math.round(b.h * b.ppm) }; }).sort((a, b) => b.ch - a.ch);
   const place: Record<string, { x: number; y: number }> = {}, rows: { y: number; h: number; x: number }[] = [];
   let signsEnd = 4 * MH;
@@ -235,6 +240,7 @@ function dressAtlas() {
   g2.fillStyle = '#000'; g2.fillRect(0, signsEnd / 2, AW / 2, AH / 2 - signsEnd / 2);
   g2.fillStyle = '#fff'; g2.fillRect(480, (AH - 14) / 2, 7, 6);                                // the lit cell: windows and bulbs
   const glow = new THREE.CanvasTexture(cg); glow.colorSpace = THREE.SRGBColorSpace;
+  atlasKey = key;
   atlas = { tex, glow, mural, sign, cells: dims, texts: textLog, w: AW, h: AH, white: rectOf(1000, AH - 14, 14, 12), lit: rectOf(960, AH - 14, 14, 12) };
   return atlas;
 }
@@ -374,8 +380,27 @@ const BUNTING = [0x1d8040, 0xf5cd2e, 0xd7312f, 0xf4efe2, 0x2b5c9e];
 export interface DnaSignUse { id: string; role: string; w: number; h: number; x: number; y: number; z: number; yaw: number }
 export interface DnaItem { kind: string; x: number; z: number; solid: boolean; rect?: { x0: number; z0: number; x1: number; z1: number; h: number } }
 
-export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { mesh: THREE.Mesh | null; night: THREE.Mesh | null; items: DnaItem[]; signs: DnaSignUse[]; open: { x0: number; z0: number; x1: number; z1: number }[]; tris: number; byCat: Record<string, number> } {
-  const O = DNA_COUNT[q], A = dressAtlas(), P = new Pieces(A.white, A.lit);
+type SliceOut = { mesh: THREE.Mesh | null; night: THREE.Mesh | null; items: DnaItem[]; signs: DnaSignUse[]; open: { x0: number; z0: number; x1: number; z1: number }[]; tris: number; byCat: Record<string, number> };
+
+/** A stand-in atlas for the first pass of the layout: it paints nothing and only notes which boards the layout asks for. */
+function stubAtlas(want: Set<string>): Atlas {
+  const cell: Rect = [0, 0, 1, 1], any = new Proxy({}, { get: (_, id: string) => { want.add(id); return cell; } }) as Record<string, Rect>;
+  return { tex: null as never, glow: null as never, mural: new Proxy({}, { get: () => cell }) as Atlas['mural'], sign: any, cells: {}, texts: [], w: 0, h: 0, white: cell, lit: cell };
+}
+
+/**
+ * The slice is laid out twice with the same seeds: once on a stand-in atlas, to learn which boards it really uses (a name nobody sees costs no
+ * atlas pixels), then for real on an atlas with a cell for each of them. The first pass leaves nothing behind (the colliders it claimed are dropped).
+ */
+export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): SliceOut {
+  const want = new Set<string>(), n0 = hub.colliders.length;
+  layoutSlice(hub, q, stubAtlas(want), true);
+  hub.colliders.length = n0;
+  return layoutSlice(hub, q, dressAtlas(want), false);
+}
+
+function layoutSlice(hub: HubWorld, q: keyof typeof DNA_COUNT, A: Atlas, dry: boolean): SliceOut {
+  const O = DNA_COUNT[q], P = new Pieces(A.white, A.lit);
   let R = rng(0x9177a1);                                                          // the avenue's stream; the arena street swaps in a stream of its own, so nothing already placed moves
   const items: DnaItem[] = [];
   const uses: DnaSignUse[] = [];
@@ -449,7 +474,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
       for (let k = 0; k < 3; k++) cy(0.16, 0.15, 0.3, 0.55, hi - 0.45 + k * 0.32, 0.7, 0xbfc4c8, 8);
       cy(0.2, 0.17, 0.25, 0.6, hi + 0.7, 0, 0x2b2b2b, 8);
     } else if (sg === 'pharmacie') {                                               // the green cross, lit, on the roof edge; a bench for whoever waits
-      const q2 = f(0.28, 0); P.litBox(0.7, 0.18, 0.1, q2.x, G + 3.3, q2.z, 0x2faa5a, yaw); P.litBox(0.18, 0.7, 0.1, q2.x, G + 3.04, q2.z, 0x2faa5a, yaw);
+      const q2 = f(0.28, 0); P.litBox(0.7, 0.18, 0.1, q2.x, G + 3.85, q2.z, 0x2faa5a, yaw); P.litBox(0.18, 0.7, 0.1, q2.x, G + 3.59, q2.z, 0x2faa5a, yaw);
       bx(1.2, 0.4, 0.35, 0.55, lo + 0.2, 0, 0x6b4a2e); bx(0.4, 0.5, 0.3, 0.55, hi + 0.4, 0, 0xe9e4d8);
     } else if (sg === 'coiffure') {                                                // a barber's chair in the doorway and a mirror on the wall
       bx(0.45, 0.42, 0.45, 0.6, lo, 0, 0x2b4f86); bx(0.45, 0.55, 0.08, 0.78, lo, 0.42, 0x2b4f86); bx(0.3, 0.08, 0.3, 0.45, lo, 0.1, 0x555555);
@@ -509,7 +534,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
       for (let k = 0; k < 3; k++) { const sl = fwd(0.4); P.box(3.3, 0.06, 0.05, sl.x, G + 1.62 + k * 0.1, sl.z, shade(shut, 0.7), yaw); }
       const shelf = fwd(0.42); P.box(3.1, 0.1, 0.46, shelf.x, G + 0.92, shelf.z, 0x6b4a2e, yaw);
       for (let k = 0; k < 5; k++) { const g2 = fwd(0.4, -1.2 + k * 0.6); P.box(0.34, 0.24 + (k % 3) * 0.07, 0.28, g2.x, G + 1.02, g2.z, pick(tr.goods, R), yaw); }
-      const fas = fwd(0.31); sign(sid, fas.x, G + 2.2, fas.z, yaw, 0.1, 'fascia');       // the fascia
+      const fas = fwd(0.31); sign(sid, fas.x, G + 2.55, fas.z, yaw, 0.1, 'fascia');                           // above the awning (2.15–2.4 m), so all its lines read; the board stands a little over the shop's roof edge, like a signboard       // the fascia
       for (const e of [-1, 1]) { const bl = fwd(0.5, e * (len / 2 - 0.5)); P.litBox(0.24, 0.12, 0.24, bl.x, G + 2.02, bl.z, LIT, yaw); }   // a bulb at each end of the awning
       if (style === 0) { const stripe = [pick(tr.awnings, R), 0xf3ead4]; for (let k = 0; k < 4; k++) { const aw = fwd(0.8, (k - 1.5) * (len - 0.4) / 4); P.slab((len - 0.4) / 4, 0.05, 1.1, aw.x, G + 2.15, aw.z, stripe[k % 2], yaw, 0.32); } }   // striped canvas
       else if (style === 1) { const aw = fwd(0.8); P.slab(len - 0.3, 0.04, 1.15, aw.x, G + 2.2, aw.z, pick(tr.awnings, R), yaw, 0.22); }                                          // a plain tarpaulin
@@ -869,6 +894,7 @@ export function dressPikineSlice(hub: HubWorld, q: keyof typeof DNA_COUNT): { me
     for (const sl of soils) { const long = Math.max(sl.w, sl.d); P.blot(long * 0.55, sl.x, 0.125, sl.z, shade(WALK, 0.76), WALK, Math.min(sl.w, sl.d) / long * 0.9, sl.rot); }
   }
 
+  if (dry) return { mesh: null, night: null, items, signs: uses, open: keepOpen, tris: 0, byCat: {} };
   let night: THREE.Mesh | null = null;
   if (spills.length) {
     const geos = spills.map(sp => { const g = new THREE.PlaneGeometry(sp.w, sp.d); g.rotateX(-Math.PI / 2); g.rotateY(sp.rot); g.translate(sp.x, 0.16, sp.z); return g; });
@@ -931,6 +957,6 @@ export const pikineDnaModule: GameModule = {
     /** The ground the slice keeps open at the arena gate (queue lane, apron, the stalls' customers, the fans' corners). */
     pikineDnaOpen: () => openZones,
     /** The boards as placed, the cells they were painted in, and every line of text with how it fitted (scripts/check-pikine-signs.mjs). */
-    pikineDnaSigns: () => { const A = dressAtlas(); return { atlas: { w: A.w, h: A.h }, uses: signUses, cells: A.cells, texts: A.texts, names: SHOP_NAMES.map((n, i) => ({ id: shopSignId(i), ...n })) }; },
+    pikineDnaSigns: () => { const A = dressAtlas(); return { atlas: { w: A.w, h: A.h }, uses: signUses, cells: A.cells, texts: A.texts, names: SHOP_NAMES.map((n, i) => ({ id: shopSignId(i), ...n })).filter(n => A.cells[n.id]) }; },
   }),
 };

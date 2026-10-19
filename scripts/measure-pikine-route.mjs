@@ -5,7 +5,9 @@
 // Usage: node scripts/measure-pikine-route.mjs [baseUrl] [out.json] [quality=medium]
 import { chromium } from 'playwright';
 import fs from 'node:fs';
-import { ROUTE_PATH, ROUTE_SHOTS } from './pikine-route.mjs';
+import { ROUTE_PATH as WALK_PATH, ROUTE_SHOTS as WALK_SHOTS, ARENA_SHOTS } from './pikine-route.mjs';
+// SET=arena: the arena street (its waypoints, and its three lanes for the collision sweep) instead of the starting walk
+const ARENA = process.env.SET === 'arena', ROUTE_SHOTS = ARENA ? ARENA_SHOTS : WALK_SHOTS, ROUTE_PATH = ARENA ? [[-4, -65.4], [56, -65.4], [56, -62.4], [-4, -62.4], [-4, -54.6], [56, -54.6]] : WALK_PATH;   // the arena street's three lanes as one polyline
 
 const base = process.argv[2] ?? 'http://127.0.0.1:4322/', outFile = process.argv[3] ?? 'shots/pikine-route/measure.json', quality = process.argv[4] ?? 'medium';
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });

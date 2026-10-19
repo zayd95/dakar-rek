@@ -71,6 +71,15 @@ bunting, wires and blade signs were lifted clear of its band (static rule in `ch
 bench, washing line, parasol) stand on the pavement's back strip; eight trades each have their own forecourt; the roadway's ground is broken up by
 vertex-coloured drifts whose rim is the ground's own colour. Slice triangles went down (12 982 → 10 771 medium), still 2 draw calls and the same atlas.
 
+## Round 4 (signage, and the road to the arena)
+
+See `docs/pikine-dna/round4/REPORT.md`. Every painted sign is now cut in a cell of exactly its board's proportions (`BOARD`, `FASCIA` in the module: no letter is ever stretched);
+the atlas holds a cell only for the boards the layout really uses (the layout runs twice with the same seeds: a stand-in atlas first, to learn which). « Télécentre » became
+**MULTISERVICE JÀMM** (Wave · Orange Money · Impression · Photocopie) and the shops have names of their own (`SHOP_NAMES`: one trade, one look; several owners). Draft PR #52's aspect-correct canvases
+(`signCanvasSize`) are integrated, with `src/game/signFit.ts`, which repaints any other `signTexture` board at its plane's proportions. The **arena street** (the road z = −60 east of the
+junction, up to the gate's parvis) gets a gateway (« RUE DE L'ARÈNE »), a pole line and bunting in the écuries' colours, shops and walls on the yard side, roadside life (dibi, jerseys, tea),
+and ground paint; it keeps clear of the gate's queue, apron, stalls and the fans' corners (`keepOpen`, from `src/arena/exteriorRules.ts`), and has a random stream of its own.
+
 ## Not done, on purpose
 
 - Other districts (the Cité Jàmm block, the bank's frontage, the arena street, the east side of the grid).

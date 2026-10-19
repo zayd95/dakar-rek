@@ -48,3 +48,9 @@ export const HOME_PATH = [[-8, -58.5], [-60, -60], [-60, -8]];
 
 /** The arena street (the road z = −60 east of the junction), walked out and back on three lanes: the north pavement lane, the carriageway's centre, the south pavement lane. */
 export const ARENA_PATHS = [[[-4, -65.4], [56, -65.4]], [[-4, -62.4], [56, -62.4]], [[-4, -54.6], [56, -54.6]]];
+
+/** The arena street, from the junction to the gate's parvis and back (yaw: PI / 2 looks east): the waypoints of the performance and capture runs. */
+export const ARENA_SHOTS = [
+  ['a01-junction', -6, -60, PI / 2], ['a02-gateway', 3, -60, PI / 2], ['a03-approach', 9, -62.4, PI / 2], ['a04-lamb-shop-side', 22, -58.5, PI / 2], ['a05-parvis', 28, -60, PI / 2],
+  ['a06-gate', 30, -59, 0], ['a07-east-parvis', 38, -62.4, PI / 2], ['a08-east-end', 50, -60, PI / 2], ['a09-from-east', 52, -60, -PI / 2], ['a10-from-parvis', 26, -60, -PI / 2], ['a11-gateway-east', 20, -60, -PI / 2],
+];
