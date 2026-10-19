@@ -78,10 +78,9 @@ check('the gesture is brief: the glyph is gone a few seconds later', (await soci
 
 // 3. replying, and not spamming
 await b.waitForFunction(id => window.__dakar.focus()?.id === 'peer:' + id, idA, T);
-await b.evaluate(() => window.__dakar.act());
+await b.evaluate(() => { window.__dakar.act(); window.__dakar.act(); });                    // the second one right away
+check('a second gesture right away is refused politely (rate limit)', await waitToast(b, /Doucement/, 8000), JSON.stringify(await toasts(b)));
 check('B answers, A is told', await waitToast(a, /Awa te salue/), JSON.stringify(await toasts(a)));
-await b.evaluate(() => window.__dakar.act());
-check('a second gesture right away is refused politely (rate limit)', await waitToast(b, /Doucement/), JSON.stringify(await toasts(b)));
 
 // 4. distance: the chat's radius bounds what is shown
 await place(b, start.x + 45, start.z); await sleep(3500);

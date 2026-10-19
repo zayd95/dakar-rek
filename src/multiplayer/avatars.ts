@@ -4,7 +4,7 @@ import { Character, PLAYER_OUTFIT } from '../actors/character';
 import type { PresenceClient } from './client';
 import type { PresenceClip } from './protocol';
 import type { EmotePresence, Peer } from './protocol';
-import { EMOTE_INFO, EMOTE_SHOW_MS, RECEIVE_GAP_MS, shownHere } from './social';
+import { EMOTE_INFO, EMOTE_SHOW_MS, RECEIVE_GAP_MS, emoteChanged, shownHere } from './social';
 import { buildVehicle } from '../actors/vehicleKit';
 
 export const SHIRT_COLORS = [0x1a9d54, 0x2f6fb3, 0xd9482b, 0xf4c20d, 0x6b3fa0, 0xf2f2ec];
@@ -59,10 +59,8 @@ export class RemoteAvatars {
   }
   /** Shows a new emote of this peer (a glyph over the head, a short gesture) when it is close enough to be seen and not too soon after the last. */
   private emote(a: Avatar, peer: Peer, local: THREE.Vector3, space: string) {
-    const emo = peer.emo; if (!emo) return;
-    const prev = this.emoSeen.get(peer.id);
-    this.emoSeen.set(peer.id, emo.n);
-    if (prev === undefined || prev === emo.n) return;                       // first sight or no change
+    const emo = peer.emo;
+    if (!emoteChanged(this.emoSeen, peer.id, emo) || !emo) return;          // no new emote (nor one already there when the peer was first seen)
     const now = performance.now();
     if (now - a.lastEmoteAt < RECEIVE_GAP_MS || !shownHere(peer, { x: local.x, z: local.z, space })) return;
     a.lastEmoteAt = now;

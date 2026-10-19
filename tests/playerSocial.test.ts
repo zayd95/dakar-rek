@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EMOTES, parseEmote, parseMove, type Peer } from '../src/multiplayer/protocol';
-import { EMOTE_GAP_MS, EMOTE_INFO, Emoter, GREET_REACH, NOTICE_GAP_MS, NOTICE_R, Notice, PlayerSocial, seatedPeers, shownHere } from '../src/multiplayer/social';
+import { EMOTE_GAP_MS, EMOTE_INFO, Emoter, emoteChanged, GREET_REACH, NOTICE_GAP_MS, NOTICE_R, Notice, PlayerSocial, seatedPeers, shownHere } from '../src/multiplayer/social';
 import { CHAT_NEAR_RADIUS } from '../src/multiplayer/chatRules';
 import type { Target } from '../src/interact/types';
 
@@ -32,6 +32,18 @@ describe('the emote field of the presence protocol', () => {
   });
 });
 
+describe('reacting to a new emote only', () => {
+  it('a peer first seen with an emote already there does not replay it; a peer who then makes one does', () => {
+    const seen = new Map<string, number>();
+    expect(emoteChanged(seen, 'old', { k: 'salut', n: 4 })).toBe(false);                      // arrived with an old greeting: nothing
+    expect(emoteChanged(seen, 'old', { k: 'salut', n: 4 })).toBe(false);
+    expect(emoteChanged(seen, 'old', { k: 'bravo', n: 5 })).toBe(true);                       // a new one
+    expect(emoteChanged(seen, 'new', undefined)).toBe(false);                                 // seen without any…
+    expect(emoteChanged(seen, 'new', { k: 'salut', n: 1 })).toBe(true);                       // …then the first greeting counts
+    expect(emoteChanged(seen, 'new', { k: 'salut', n: 1 })).toBe(false);
+  });
+});
+
 describe('making an emote', () => {
   it('counts up, remembers who it was for, and never faster than once per EMOTE_GAP_MS', () => {
     const e = new Emoter();
@@ -53,6 +65,10 @@ describe('greeting the player next to you', () => {
     const acted: string[] = [], src = new PlayerSocial(() => ps, hidden, (k, p) => { acted.push(`${k}:${p.id}`); });
     const out: Target[] = []; src.collect(space, at.x, at.z, out); return { out, acted };
   };
+  it('a free seat beside a seated player is offered before the greeting (sitting together comes first)', () => {
+    const { out } = collect([peer('p1', 1.5, 1)]);
+    expect(out[0].bias).toBeGreaterThan(1);                                                    // a seat's bias is 1 (src/interact/seats.ts)
+  });
   it('a player within reach is a target, named after them, « Saluer » first', () => {
     const { out, acted } = collect([peer('p1', 1.5, 1)]);
     expect(out.map(t => t.id)).toEqual(['peer:p1']); expect(out[0].name).toBe('Joueur p1'); expect(out[0].kind).toBe('person');

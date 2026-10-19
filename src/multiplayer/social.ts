@@ -26,6 +26,17 @@ export const EMOTE_SHOW_MS = 3000;
 export const NOTICE_R = 14;
 export const NOTICE_GAP_MS = 45_000;
 
+/**
+ * Records a peer's emote counter and says whether a NEW emote just appeared: the counter changed since this peer was last
+ * seen. Never for the first sighting of a peer whose emote was already there (someone arriving does not replay an old greeting),
+ * but a peer first seen without any emote who then makes one does count (their counter goes from 0 to 1).
+ */
+export function emoteChanged(seen: Map<string, number>, id: string, emo: EmotePresence | undefined): boolean {
+  const n = emo?.n ?? 0, prev = seen.get(id);
+  seen.set(id, n);
+  return prev !== undefined && prev !== n && n !== 0;
+}
+
 /** This player's own emotes: the last one is part of their presence until they make another. */
 export class Emoter {
   emo: EmotePresence | null = null;
@@ -49,7 +60,7 @@ export class PlayerSocial implements TargetSource {
     for (const p of this.peers()) {
       if (p.space !== space || Math.abs(p.x - x) > GREET_REACH || Math.abs(p.z - z) > GREET_REACH || this.hidden(p)) continue;
       out.push({
-        id: 'peer:' + p.id, name: p.name, kind: 'person', space, x: p.x, z: p.z, y: 2.15, radius: GREET_REACH, bias: 0.5,
+        id: 'peer:' + p.id, name: p.name, kind: 'person', space, x: p.x, z: p.z, y: 2.15, radius: GREET_REACH, bias: 1.3,   // a free seat next to a seated player (bias 1) is offered before the greeting: sitting together comes first
         affordances: () => EMOTES.map(k => ({ id: k, verb: 'greet' as const, label: EMOTE_INFO[k].label, icon: EMOTE_INFO[k].glyph, run: () => this.act(k, p) })),
       });
     }
