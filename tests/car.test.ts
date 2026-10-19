@@ -35,7 +35,9 @@ describe('the modern sedan', () => {
   it('cameras come from the kit anchors: behind the car (with a phone-portrait placement) and at the wheel', () => {
     const k = vehicleSpec('sedan', { seed: sedanSeed(), driver: false, passengers: false });
     const chase = spec.cameras[0], wheel = spec.cameras.find(c => c.id === 'volant')!;
-    expect(chase.id).toBe('chase'); expect(chase.pos).toEqual([...k.cameras.chase.pos]);
+    expect(chase.id).toBe('chase');
+    // lower and closer than the kit's anchor, still behind the car and above its roof
+    expect(chase.pos[1]).toBeLessThan(k.cameras.chase.pos[1]); expect(chase.pos[1]).toBeGreaterThan(k.height + 0.8); expect(chase.pos[2]).toBeLessThan(-k.length / 2);
     expect(chase.portrait!.pos[2]).toBeLessThan(chase.pos[2]); expect(chase.portrait!.pos[1]).toBeGreaterThan(chase.pos[1]);
     expect(wheel.inside).toBe(true); expect(wheel.pos).toEqual([...k.cameras.driver.pos]);
     expect(spec.cameras.every(c => c.portrait)).toBe(true);
