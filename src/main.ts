@@ -614,10 +614,11 @@ function openActions(it: Interactable) {
   const marks = objectiveMarks(suggestion(rel, state));          // what the current objective points at (a gold star on those actions)
   // a shop that knows its regular (src/social/regular.ts): a few words from the shopkeeper, and the neighbour price in place of the full one
   const reg = it.menu === 'shop' ? shopRegular(it.id, state, rel, hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat) : null;
+  const enc = reg?.owner ? npcLife.encounter(reg.owner) : null;       // a moment at the counter (src/social/situations.ts): the « Parler à » row opens it
   const visible = it.actions.filter(a => (!a.visible || a.visible(state)) && !reg?.hide.has(a.id));
   const items: MenuItem[] = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { icon: actionVerb(a)[1], ...(it.menu === 'shop' ? SHOP_COPY[a.id] : {}), ...(isObjectiveAction(a, marks) ? { objective: true } : {}), ...(reg?.was[a.id] ? { was: fcfa(reg.was[a.id]) } : {}), label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
+    return { icon: actionVerb(a)[1], ...(it.menu === 'shop' ? SHOP_COPY[a.id] : {}), ...(enc && a.id === 'boutique-salut' ? { short: 'Un moment avec Mamadou' } : {}), ...(isObjectiveAction(a, marks) ? { objective: true } : {}), ...(reg?.was[a.id] ? { was: fcfa(reg.was[a.id]) } : {}), label: a.label, detail: enc && a.id === 'boutique-salut' ? enc.detail : why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (enc && a.id === 'boutique-salut') enc.open(); else if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
   });
   let subtitle = reg ? (reg.greeting ? `« ${reg.greeting} »` : 'Que veux-tu faire ?') : it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {

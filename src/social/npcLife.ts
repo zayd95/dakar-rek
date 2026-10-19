@@ -13,6 +13,7 @@ import { PROFILES, profileOf, type Perk, type Profile } from './profiles';
 import { ROUTINES, currentPlan, planPath, poseFor, resolvePlace, slotAt, pathLength, collidersClear, type Activity, type ClearFn, type PlaceSpec, type Routine, type Spot } from './routines';
 import { len2 } from '../core/math';
 import { greeting, hourStamp, introduction, applyIntroduction, isRegular, lastMemory, recordService, recordFreeService, recordVisit, updateRegular, familiarity, REGULAR_AT } from './memory';
+import { revisitReasons } from './revisit';
 import { GAP_S, REARM_R, WALK_R, markWalkup, spokenToast, walkupLine, wuKey } from './walkup';
 import { SITUATIONS, choicesFor, favourFor, playSituation, sitCtx, situationFor, type Situation } from './situations';
 import { pick, quote, wo } from '../i18n/wolof';
@@ -223,8 +224,8 @@ export class NpcLife {
 
   // ------------------------------------------------------------------ talking
   private npc(id: string) { return this.npcs.find(n => n.id === id); }
-  private hostAt = (host: string) => { const n = this.npc(host); return n && !n.walking ? n.place.at : null; };
-  private presentAt(at: string) { return new Set(this.npcs.filter(n => !n.walking && n.place.at === at).map(n => n.id)); }
+  private hostAt = (host: string) => { const n = this.npc(host); return n && !n.walking ? n.place.id ?? n.place.at : null; };
+  private presentAt(at: string) { return new Set(this.npcs.filter(n => !n.walking && (n.place.id ?? n.place.at) === at).map(n => n.id)); }
 
   /** Greeting line for the NPC menu; counts the visit (once per city hour) and notices a new regular. */
   greet(id: string): string {
@@ -237,6 +238,23 @@ export class NpcLife {
     if (counted && line.effect?.needs) s.adjust(line.effect.needs);
     if (updateRegular(s, r, id)) this.ctx.hud.toast(`${castById(id)?.name ?? id} te reconnaît : tu es un habitué ▲`);
     return line.line;
+  }
+
+  /**
+   * The moment this character can share now (src/social/situations.ts), or null: used by the boutique's « Parler à Mamadou »
+   * row, where the player talks to the shopkeeper without opening the person's own menu. Opening it counts as a visit.
+   */
+  encounter(id: string): { title: string; detail: string; open: () => void } | null {
+    const { hour, day } = this.ctx.clock(), s = this.ctx.state, r = this.ctx.rel;
+    const sit = situationFor(id, hour, this.hostAt, s, day);
+    if (!sit) return null;
+    return { title: sit.title, detail: sit.detail, open: () => {
+      const stamp = hourStamp(day, hour);
+      recordVisit(s, id, stamp); s.data.counters[wuKey.at(id)] = stamp;
+      const n = this.npc(id); if (n) n.near = true;
+      if (updateRegular(s, r, id)) this.ctx.hud.toast(`${castById(id)?.name ?? id} te reconnaît : tu es un habitué ▲`);
+      this.openSituation(sit);
+    } };
   }
 
   /** Extra menu entries for an NPC: today's situation, a favour owed, an introduction. Inserted after the story beat. */
@@ -318,10 +336,12 @@ export class NpcLife {
   openPeople() {
     const people = this.known(), r = this.ctx.rel;
     this.ctx.menuMode();
+    const { hour, day } = this.ctx.clock();
+    const again = this.world ? revisitReasons({ s: this.ctx.state, r, hub: this.world.id, day, hour, where: id => this.whereNow(id) }) : [];
     this.ctx.hud.openMenu('Les gens du quartier', people.length ? 'Où les trouver maintenant, et ce qu’ils retiennent de toi.' : 'Tu ne connais encore personne. Va saluer Tonton Ibou, devant ta chambre.', people.map(c => ({
       label: c.name, detail: `${c.title} · ${this.whereNow(c.id)} · ${Relations.label(r.level(c.id))}`,
       onPick: () => this.openSheet(c.id),
-    })));
+    })), again.length ? `<h3>À revoir</h3><div class="kv">${again.map(esc).join('<br>')}</div>` : '');
   }
 
   openSheet(id: string) {
