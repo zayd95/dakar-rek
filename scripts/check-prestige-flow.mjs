@@ -251,7 +251,9 @@ if (process.env.DRIVE_ON) {
   await padDrive(page, t, { reverse: true, hold: () => page.waitForFunction(() => window.__dakar.berline.at().x < -58.5, null, { timeout: 90000 }).catch(() => {}) });
   await page.waitForFunction(() => Math.abs(window.__dakar.berline.at().speed) < 0.3, null, { timeout: 60000 }).catch(() => {});
   const back = await AT();
-  await pilot(page, t, 'berline', [{ x: -60.4, z: back.z > -100 ? back.z : -100, tol: 6 }, { x: -60.4, z: -128, tol: 3 }, { x: -60.4, z: -170, tol: 4 }, { x: -60.4, z: -215, tol: 4 }], { cruise: 8, stall: 25000 }).catch(e => console.log('BACK pilot', e.message));
+  console.log('BACK start', JSON.stringify(back));
+  await pilot(page, t, 'berline', [{ x: -60.4, z: back.z - 10, tol: 4, speed: 3 }, { x: -60.4, z: -128, tol: 3 }, { x: -60.4, z: -170, tol: 4 }, { x: -60.4, z: -215, tol: 4 }], { cruise: 8, stall: 25000 }).catch(e => console.log('BACK pilot', e.message));
+  { const fr2 = await d(() => window.__frames); console.log('BACK trace', JSON.stringify(fr2.filter((f, k) => k % Math.max(1, Math.floor(fr2.length / 24)) === 0).map(f => [f.hub[0], +f.x.toFixed(1), +f.z.toFixed(1), +f.speed.toFixed(1)]))); }
   console.log('BACK end', JSON.stringify(await AT()), 'hub', (await d(() => window.__dakar.pos())).hub);
   const fb = await d(() => window.__frames), sw = fb.findIndex((f, k) => k && f.hub !== fb[k - 1].hub);
   check('the way back works too: the same road leads from the Corniche into Almadies while driving', sw > 0 && fb[sw - 1].hub === 'corniche' && fb[sw].hub === 'almadies' && fb.slice(Math.max(0, sw - 20), sw + 20).every(f => f.driving) && Math.abs(fb[sw].speed - fb[sw - 1].speed) < 1.0, JSON.stringify({ swap: sw, hubs: sw > 0 ? [fb[sw - 1].hub, fb[sw].hub] : null }));
