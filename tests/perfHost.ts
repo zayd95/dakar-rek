@@ -319,7 +319,7 @@ export class PerfHost {
     const life = world.monument ? new M.life.MonumentLife(world.monument, rand, QUAL[q].crowd) : null;
     if (life) this.extra.add(life.group);
     const rel = new M.relations.Relations(state.data);
-    const npcLife = new M.npcLife.NpcLife({ hud, rel, state, clock: () => ({ hour: this.hour, day: this.day }), menuMode: noop, save: noop, openBeat: noop });
+    const npcLife = new M.npcLife.NpcLife({ hud, rel, state, clock: () => ({ hour: this.hour, day: this.day }), menuMode: noop, idle: () => false, save: noop, openBeat: noop });
     npcLife.load(world, this.extra);
     seats.addAll(world.seats);
     for (const p of world.people) if (p.clip === 'Sit') seats.occupyNear('street', p.x, p.z, 'npc');

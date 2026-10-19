@@ -7,12 +7,13 @@ import { Humanoid, humanoidReady, type Clip, type PersonLook } from '../actors/h
 import { fcfa, type Hud, type MenuItem } from '../ui/hud';
 import { phoneHooks } from '../ui/phoneHooks';
 import { CAST, castById, type CastMember } from './cast';
-import { Relations } from './relations';
+import { Relations, PLAYER } from './relations';
 import { BEATS, type Beat } from './beats';
 import { PROFILES, profileOf, type Perk, type Profile } from './profiles';
 import { ROUTINES, currentPlan, planPath, poseFor, resolvePlace, slotAt, pathLength, collidersClear, type Activity, type ClearFn, type PlaceSpec, type Routine, type Spot } from './routines';
 import { len2 } from '../core/math';
-import { greeting, hourStamp, introduction, applyIntroduction, isRegular, lastMemory, recordService, recordVisit, updateRegular, familiarity, REGULAR_AT } from './memory';
+import { greeting, hourStamp, introduction, applyIntroduction, isRegular, lastMemory, recordService, recordFreeService, recordVisit, updateRegular, familiarity, REGULAR_AT } from './memory';
+import { GAP_S, REARM_R, WALK_R, markWalkup, spokenToast, walkupLine, wuKey } from './walkup';
 import { SITUATIONS, choicesFor, favourFor, playSituation, sitCtx, situationFor, type Situation } from './situations';
 import { pick, quote, wo } from '../i18n/wolof';
 
@@ -27,6 +28,8 @@ export interface LifeCtx {
   clock(): { hour: number; day: number };
   /** Called before opening a menu (pauses the player). */
   menuMode(): void;
+  /** Free to speak: the player is walking about (no menu, scene or activity). */
+  idle(): boolean;
   save(): void;
   openBeat(b: Beat): void;
 }
@@ -39,6 +42,8 @@ interface Npc {
   key: string; act: Activity; place: PlaceSpec; spot: Spot;
   path: Pt[]; seg: number; walking: boolean; paused: boolean;
   look: string; clip: Clip | 'Walk';
+  /** Within greeting range now (a walk-up greeting is said once per approach: the player must go away to re-arm it). */
+  near: boolean;
 }
 
 const CHAT: Action = { id: 'discuter', label: 'Discuter', detail: 'Prendre des nouvelles', needs: { social: 8, moral: 2 }, seconds: 2.5, counter: 'chats' };
@@ -92,7 +97,7 @@ export class NpcLife {
       this.group.add(body.group);
       const it: Interactable = { id: 'npc:' + m.id, name: `${m.name} · ${m.title}`, kind: 'actions', x: 0, z: 0, radius: 3.2, actions: p.menu === 'ibou' ? ACTIONS.ibou : chatWith(m.id), npc: m.id };
       world.interactables.push(it);
-      const n: Npc = { id: m.id, m, p, r, body, h, it, x: 0, z: 0, yaw: 0, key: '', act: 'wait', place: r.slots[0].place, spot: { x: 0, z: 0, yaw: 0, sit: false, stool: false, approach: [] }, path: [], seg: 0, walking: false, paused: false, look: 'base', clip: 'Idle' };
+      const n: Npc = { id: m.id, m, p, r, body, h, it, x: 0, z: 0, yaw: 0, key: '', act: 'wait', place: r.slots[0].place, spot: { x: 0, z: 0, yaw: 0, sit: false, stool: false, approach: [] }, path: [], seg: 0, walking: false, paused: false, look: 'base', clip: 'Idle', near: false };
       this.npcs.push(n);
       this.retarget(n, hour, true);
     }
@@ -124,12 +129,14 @@ export class NpcLife {
   // ------------------------------------------------------------------ per frame
   update(dt: number, player: Pt, viewer: Pt = player) {
     if (!this.world) return;
+    this.sinceGreet += dt;
     const { hour } = this.ctx.clock();
     for (const n of this.npcs) {
       const plan = currentPlan(n.r, hour, id => id in this.ctx.state.data.beats);
       if (plan.key !== n.key) this.retarget(n, hour, false);
       let speed = 0;
       const dP = len2(player.x - n.x, player.z - n.z);
+      this.walkUp(n, dP);
       if (n.walking) {
         n.paused = dP < STOP_R && this.group.visible;
         if (n.paused) { n.yaw = Math.atan2(player.x - n.x, player.z - n.z); n.clip = 'Talk'; }
@@ -160,6 +167,26 @@ export class NpcLife {
       if (n.h) n.h.hold = n.clip === 'Walk' ? null : n.clip;
       n.body.animate(dt, speed);
     }
+  }
+
+  /** Real seconds since the last walk-up greeting (two neighbours do not speak over each other). */
+  private sinceGreet = GAP_S;
+  /**
+   * A familiar person says a few words when the player walks up (src/social/walkup.ts): once per approach and city hour,
+   * only while the player is walking about, and only the characters of the hub the player is in, in view.
+   */
+  private walkUp(n: Npc, dP: number) {
+    if (dP > REARM_R) { n.near = false; return; }
+    if (n.near || dP > WALK_R || !this.group.visible || !n.body.group.visible) return;
+    if (!this.ctx.idle()) { n.near = true; return; }                 // a menu, a scene, an activity: the talk is the greeting
+    if (this.sinceGreet < GAP_S) return;                              // someone else just spoke: try again in a moment
+    n.near = true;
+    const { hour, day } = this.ctx.clock(), s = this.ctx.state;
+    const said = walkupLine(n.id, s, this.ctx.rel, day, hour, n.act);
+    if (!said) return;
+    markWalkup(n.id, said, s, day, hour);
+    this.sinceGreet = 0;
+    this.ctx.hud.toast(spokenToast(n.id, said.line));
   }
 
   private advance(n: Npc, step: number) {
@@ -204,7 +231,9 @@ export class NpcLife {
     const p = profileOf(id); if (!p) return '';
     const { hour, day } = this.ctx.clock(), s = this.ctx.state, r = this.ctx.rel;
     const counted = recordVisit(s, id, hourStamp(day, hour));
-    const line = greeting(p, { id, s, r, hour, act: this.npc(id)?.act });
+    s.data.counters[wuKey.at(id)] = hourStamp(day, hour);           // talking to someone is the greeting of this hour: no walk-up one after it
+    const npc = this.npc(id); if (npc) npc.near = true;
+    const line = greeting(p, { id, s, r, hour, day, act: this.npc(id)?.act });
     if (counted && line.effect?.needs) s.adjust(line.effect.needs);
     if (updateRegular(s, r, id)) this.ctx.hud.toast(`${castById(id)?.name ?? id} te reconnaît : tu es un habitué ▲`);
     return line.line;
@@ -231,9 +260,17 @@ export class NpcLife {
     if (!it) return;
     const owner = it.npc ?? PROFILES.find(p => p.place && it.id.startsWith(p.place))?.id;
     if (!owner) return;
-    recordService(this.ctx.state, owner);
+    // paid: always counted (the money is the price); free (a chat): once per city hour, so it cannot be farmed
+    const { hour, day } = this.ctx.clock();
+    if (a.cost) recordService(this.ctx.state, owner); else recordFreeService(this.ctx.state, owner, hourStamp(day, hour));
     if (updateRegular(this.ctx.state, this.ctx.rel, owner)) this.ctx.hud.toast(`${castById(owner)?.name} te reconnaît : tu es un habitué ▲`);
-    void a;
+  }
+
+  /** What doing something with someone does to the relation: +1, but a free action (a chat) only once per city hour per person. */
+  talked(id: string, a: Action) {
+    const { hour, day } = this.ctx.clock(), s = this.ctx.state, k = `freerel_${id}`, stamp = hourStamp(day, hour);
+    if (!a.cost) { if (s.data.counters[k] === stamp) return; s.data.counters[k] = stamp; }
+    this.ctx.rel.change(PLAYER, id, 1);
   }
 
   private reply(title: string, text: string, toast?: string) {
@@ -290,7 +327,7 @@ export class NpcLife {
   openSheet(id: string) {
     const p = profileOf(id), c = castById(id); if (!p || !c) return;
     const s = this.ctx.state, r = this.ctx.rel, lv = r.level(id);
-    const mem = lastMemory(id, s, r, this.ctx.clock().hour);
+    const mem = lastMemory(id, s, r, this.ctx.clock().hour, this.ctx.clock().day);
     const html = `<div class="kv"><b>${esc(p.job)}</b><br>${esc(p.hours)}<br>Maintenant : ${esc(this.whereNow(id))}<br>Relation : ${Relations.label(lv)} (${lv > 0 ? '+' : ''}${Math.round(lv)})<br>Dernier souvenir : ${esc(mem ?? 'rien de particulier pour l’instant')}${isRegular(s, id) ? '<br>Tu es un habitué.' : `<br>Passages : ${familiarity(s, id)}/${REGULAR_AT} pour devenir un habitué`}</div>
       <h3>À savoir</h3><div class="kv">${esc(p.ambition)}<br>${esc(p.difficulty)}</div>
       <h3>Sa façon de parler</h3><div class="kv">${esc(p.languages)}. ${esc(p.speech)}<br>${p.expressions.map(e => esc(wo(`« ${e.wo} »`, e.fr))).join(' · ')}</div>`;

@@ -178,7 +178,7 @@ let ambient: PlacedPeople | null = null;
 /** Debug-only fixed camera (screenshots of landmarks). */
 let freeCam: { p: THREE.Vector3; t: THREE.Vector3 } | null = null;
 /** Recurring cast: routines, memory, situations (src/social/npcLife.ts). */
-const npcLife = new NpcLife({ hud, rel, state, clock: () => { const ct = cityTimeAt(presence.serverNow()); return { hour: hourOverride ?? ct.hourFloat, day: ct.day }; }, menuMode: () => { mode = 'menu'; }, save: () => { saveNow(); }, openBeat: b => openBeat(b) });
+const npcLife = new NpcLife({ hud, rel, state, clock: () => { const ct = cityTimeAt(presence.serverNow()); return { hour: hourOverride ?? ct.hourFloat, day: ct.day }; }, menuMode: () => { mode = 'menu'; }, idle: () => mode === 'play' && !moduleSpace(), save: () => { saveNow(); }, openBeat: b => openBeat(b) });
 /** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
 const PLAYER_LOOK: PersonLook = avatarLook(presence.profile.look);
 let playerBody: Humanoid | null = null;
@@ -937,7 +937,7 @@ function runAction(a: Action, npc?: string, it?: Interactable) {
   const where = it?.name && !it.name.startsWith(a.label) ? it.name : undefined;   // wallet history: « action · place »
   activities.onEnd = (_s, done) => {                      // once: later activities (places, venues) must not replay this action's hooks
     activities.onEnd = () => {};
-    if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); welcomed(npc); }   // counters belong to the steps
+    if (done) { if (npc) npcLife.talked(npc, a); state.count('actions'); npcLife.afterAction(a, it ?? null); welcomed(npc); }   // counters belong to the steps
   };
   activities.start(actionSpec(a, it), { place: where, at: it && { x: it.x, z: it.z } });
 }
@@ -1398,6 +1398,8 @@ if (DEBUG) {
     /** The quiet log (the phone's Notifications): unseen count and the latest entries. */
     quietLog: () => ({ unread: quietLog.unread, entries: quietLog.entries.slice(0, 12).map(e => e.text) }),
     playBeat(id: string, choice: string) { const b = BEATS.find(x => x.id === id)!; const c = b.choices.find(x => x.id === choice)!; return applyChoice(b, c, rel, state); },
+    /** The city day (the shared clock), for the checks. */
+    cityDay: () => cityTimeAt(presence.serverNow()).day,
     npcWhere: (id: string) => npcLife.where(id), npcSheet: (id: string) => npcLife.sheet(id),
     npcSettle: () => npcLife.settle(), npcAudit: () => npcLife.audit(), npcSlots: (h: number) => npcLife.slotsAt(h), people: () => npcLife.openPeople(),
     openNpc(id: string) { const it = world?.interactables.find(i => i.npc === id); if (it) openActions(it); },
