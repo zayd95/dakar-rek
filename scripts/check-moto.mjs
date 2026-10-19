@@ -66,7 +66,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Jakarta/.test(t)) ?? null);
   check(`${label}: the catalogue shows the Jakarta with its catalogue price`, /Jakarta/.test(item ?? '') && price === 150000 && digits(item).includes(String(price)), String(item));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
-  await page.locator('#modal .item', { hasText: 'Jakarta' }).first().click();
+  await page.locator('#modal .item', { hasText: 'Acheter' }).first().click();
   await page.waitForFunction(() => /Acheter/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, T).catch(() => {});
   const confirmText = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
   check(`${label}: a confirmation shows the price and the wallet before paying`, /Acheter/.test(confirmText) && digits(confirmText).includes(String(price)) && (await d(() => window.__dakar.state.wallet)) === w0, confirmText.slice(0, 160));

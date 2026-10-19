@@ -110,7 +110,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     await openDesk(dealer);
     const m2 = await items();
     check(`${tag}: while the test vehicle is out « Essayer » is off (one at a time)`, !!m2.find(m => /Essayer/.test(m.text))?.off, JSON.stringify(m2.map(m => [m.text.slice(0, 30), m.off])));
-    await page.locator('#modal .item', { hasText: V.item }).first().click();
+    await page.locator('#modal .item', { hasText: 'Acheter · ' + V.item }).first().click();
     await page.waitForFunction(() => /Acheter/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, T).catch(() => {});
     await page.locator('#modal .item', { hasText: 'Confirmer' }).first().click();
     await page.waitForFunction(() => window.__veh().info().owned && window.__veh().info().here, null, T).catch(() => {});
