@@ -43,7 +43,7 @@ watches Dakar pass, asks to get off and steps out onto the pavement. Inter-hub t
 | `drive.ts` | Drive mode as pure logic: stick → throttle / steering, bicycle model, braking then reverse, coasting, collisions (a row of footprint circles front to back: stops at walls, slides along them, creeps out if left touching). |
 | `ownedModule.ts` | `OwnedVehicleModule(def)`: one owned, drivable vehicle — dealer corner (shop recipe, price → confirmation → paid once, delivered at the kerb), get in / drive / get out (beside it; a car: on the pavement side), solid when parked, parked where left and saved per hub, the kit's camera views, speed card, debug API `__dakar.<key>`. `kerbDealer()` lays a dealer out on the pavement of the nearest road. |
 | `moto.ts`, `motoModule.ts` | The Jakarta motorbike: kit spec + drive handling (leans); its def — the dealer corner at Garage Modou (Pikine). |
-| `car.ts`, `carModule.ts` | The used car (catalogue `clando`, a kit `sedan`) + car handling (no lean, wider turning circle, faster); its def — « Voitures d’occasion · Ndiaye Auto », the Plateau's used-car showroom (shop kit `showroom_cars`, src/world/city.ts): sold from the salesman's desk, the car for sale on the first lot, delivered at the kerb outside the door. |
+| `car.ts`, `carModule.ts` | The modern sedan « Berline moderne » (catalogue `compacte`; the kit `sedan` until its own body is generated; the old `clando` is retired, its owners keep their car: `owned.ts` `migrateLegacyVehicles`) + car handling (no lean, wider turning circle, faster); its def — « Ndiaye Auto », the Plateau's car showroom (all three lots drawn by the dealer: the car for sale and two more of it in other paint) (shop kit `showroom_cars`, src/world/city.ts): sold from the salesman's desk, the car for sale on the first lot, delivered at the kerb outside the door. |
 | `owned.ts` | Where each owned vehicle is parked, keyed to its catalogue id: counters `vehicle:<asset>:hub|x|z|yaw`. Ownership itself is the asset model (`src/economy/assets.ts`). `migrateOwned()` moves saves from the earlier flag (`asset:vehicle:moto_jakarta`) to the `jakarta` asset at what was paid. |
 | `route.ts` | Pure math: `lanePath` (right-hand lane around road-grid nodes, rounded corners), `Path` (arc length, smooth heading, projection, curvature), `Timetable` (speed profile with corner speeds, acceleration, braking, rest and dwell at every stop; deterministic and periodic), `pullIn` (to the kerb at stops). |
 | `lines.ts` | Line data (loop nodes, stops by leg + metres, fare, fleet, calls) and the French / Wolof lines (draft for review). |
@@ -117,12 +117,12 @@ away while the player is still on the way to the door, they get in at once.
 - **Buy:** « Voitures d’occasion · Ndiaye Auto » (fictional) on the Plateau: a small used-car showroom open on the road
   east of the shops block (shop kit `showroom_cars` 14 × 9, open front, src/world/city.ts), beside Dakar Réparation.
   Three saloons on their lots, nose to the street, each with its price card: the silver one is the catalogue's car,
-  drawn by the dealer with its card painted from the catalogue (« OCCASION · Voiture d’occasion · 2 800 000 F »), the
+  drawn by the dealer with its card painted from the catalogue (« OCCASION · Berline moderne · <catalogue price> »), the
   white and the blue are already taken (« RÉSERVÉE », « VENDUE »). The salesman (Moussa Ndiaye) stands behind his desk
   at the back, the keys on a board behind him; a waiting bench, a shelf of oil and parts; the pole sign « OCCASIONS »
-  stays on the pavement by the corner. At the desk, « Voir les articles » lists the catalogue's « Voiture d’occasion »
-  (`clando`, **2 800 000 F**) with its price; a confirmation shows the price and the wallet; « Confirmer l’achat » pays
-  once through the asset model (wallet line « Achat : Voiture d’occasion »), listed in « Biens ». The silver saloon
+  stays on the pavement by the corner. At the desk, « Voir les articles » lists the catalogue's « Berline moderne »
+  (`compacte`, **price provisional**, set by the economy pass) with its price; a confirmation shows the price and the wallet; « Confirmer l’achat » pays
+  once through the asset model (wallet line « Achat : Berline moderne »), listed in « Biens ». The silver saloon
   leaves its lot (lot and card empty while you own it; back if you sell it) and waits at the kerb outside the door,
   facing the traffic of that side; the salesman hands over the keys: « Elle t’attend devant la porte. Jërëjëf (merci) !
   Ñibbil ak jàmm (rentre bien) ! ». The dealer site (`carDealer`) reads the showroom's anchors (`stockedShop`): the
@@ -139,7 +139,7 @@ away while the player is still on the way to the door, they get in at once.
 - **Get out:** « Sortir de la voiture » (it brakes first if moving): the player stands on the pavement side — the side
   farther from the road's centre line, the right-hand side when parked at a kerb — else the other side, else behind.
   It stays parked there, solid, in that hub, across reloads (a reload while driving parks it where it was).
-- **Ownership:** the `clando` asset; `owned.ts` keeps where it is parked.
+- **Ownership:** the `compacte` asset (a save that owns the retired `clando` is moved to it at load, same asset, nothing charged); `owned.ts` keeps where it is parked.
 
 ## Fight evenings and taxis (lane `w3-city`)
 

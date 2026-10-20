@@ -24,6 +24,7 @@ import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
+import { preloadGlbVehicles } from './actors/glbVehicle';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById, CAST } from './social/cast';
@@ -47,6 +48,7 @@ import { FRIENDLY_MORE, STYLE_MAP, rosterOpponent } from './lamb/opponents';
 import { lamb2On } from './lamb/flag';
 import { PARTNER, RULES, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type Discipline, type StyleId } from './lamb/rules';
 import { phoneHooks } from './ui/phoneHooks';
+import { dealerDirectory } from './transport/dealers';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
@@ -170,7 +172,7 @@ const pos = new THREE.Vector3();
 const tmpV = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
-let destination: { id: string; hub: HubId } | null = null;
+let destination: { id: string; hub: HubId; name?: string } | null = null;
 let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, life: MonumentLife | null = null;
 let apprentices: Apprentice[] = [];
 /** Ambient people placed by the hub builder (dibiterie cook, customers…). */
@@ -257,7 +259,10 @@ function updateLighting(hour: number) {
 // ------------------------------------------------------------------ hubs
 const rand = rng(Date.now() & 0xffff);
 
+/** When the current hub was built (a place a module adds, such as a dealer's counter, appears a moment after). */
+let hubAt = 0;
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
+  hubAt = performance.now();
   activities.cancel(); standUp(true);
   pacer.reset();
   for (const a of apprentices) a.dispose();          // detach them before the hub geometry is freed
@@ -994,6 +999,9 @@ function doWalk(dest: HubId) {
   }, 1400);
 }
 phoneHooks.walkTo = doWalk;
+phoneHooks.dealers = () => dealerDirectory(state);
+phoneHooks.markPlace = (id, hub, name) => { destination = id && hub ? { id, hub, name } : null; };
+phoneHooks.marked = () => destination;
 phoneHooks.homeHub = homeHub;
 
 function doTravel(dest: HubId) {
@@ -1054,7 +1062,7 @@ let eveningTarget: { name: string; x: number; z: number } | null = null;
 /** Way-finding: the walking destination, else the suggested person (or the nearest Tiak Tiak pick-up for the first job) in this hub. */
 function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
-  if (destination?.hub === world.id) { const it = world.interactables.find(i => i.id === destination!.id); if (it) return { name: it.name, x: it.x, z: it.z }; }
+  if (destination?.hub === world.id) { const it = guidePlace(destination.id); if (it) return it; }
   if (eveningTarget) return eveningTarget;
   if (needTarget) return needTarget;
   if (guideJob) {
@@ -1074,10 +1082,19 @@ function withBearing(text: string, t: { x: number; z: number } | null): string {
   return `${['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8]} ${text} · ${Math.round(Math.hypot(dx, dz))} m`;
 }
 
+/** A place the player can be guided to: a place of the hub's content, or one a module adds (a vehicle dealer's counter). */
+function guidePlace(id: string): { name: string; x: number; z: number } | null {
+  const it = world?.interactables.find(i => i.id === id); if (it) return { name: it.name, x: it.x, z: it.z };
+  const pl = ctxReady ? ctx.places.all().find(p => p.id === id) : undefined, a = pl?.anchors[0];
+  return pl && a ? { name: pl.name, x: a.x, z: a.z } : null;
+}
+
 function walkingHint(): string | null {
-  if (!destination || destination.hub !== world?.id) { destination = null; return null; }
-  const target = world.interactables.find(i => i.id === destination!.id);
-  if (!target) { destination = null; return null; }
+  if (!destination) return null;
+  // a place of another district (a dealer marked from the phone's Carte): the marker waits, the goal line says where to go
+  if (destination.hub !== world?.id) return `📍 ${destination.name ?? 'Repère'} · ${HUB_NAMES[destination.hub].split(' · ')[0]} : téléphone › Carte › y aller à pied`;
+  const target = guidePlace(destination.id);
+  if (!target) { if (performance.now() - hubAt > 5000) destination = null; return null; }
   if (inside) return 'Sors dans la rue pour rejoindre ' + target.name;
   const dx = target.x - pos.x, dz = target.z - pos.z, distance = Math.hypot(dx, dz);
   if (distance < 2.3) { destination = null; hud.toast('Te voilà : ' + target.name); return null; }
@@ -1311,7 +1328,7 @@ resize(); applyQuality();
 let started = false, markStarted = () => {};
 const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
-  await Promise.all([preloadAssets(), preloadHumanoid()]);
+  await Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte'])]);
   for (const m of MODULES) m.init?.(ctx);
   if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false; }
   const startHub = invitedHub ?? state.data.hub;
@@ -1331,7 +1348,7 @@ if (DEBUG) {
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
     setHour(h: number | null) { hourOverride = h; },
     camera: () => ({ fov: camera.fov, aspect: Math.round(camera.aspect * 1000) / 1000, hfov: Math.round(2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) * 1800 / Math.PI) / 10 }),
-    pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
+    pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null, yaw: facing, cam: follow.yaw }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
     cityPlaces: () => world?.interactables.filter(i => i.id.includes(':city:')).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, radius: i.radius, actions: i.actions.map(a => ({ id: a.id, label: a.label, gain: a.gain, cost: a.cost })) })) ?? [],
     cityGeometry: () => world ? { bounds: world.bounds, colliders: world.colliders, people: world.people } : null,

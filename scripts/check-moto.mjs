@@ -1,11 +1,12 @@
 // Headless checks of the player's motorbike (src/transport/motoModule.ts): buy it at the dealer corner (price shown,
-// then confirmed, paid once), get on, ride with the keys (desktop) or the joystick (phone), never through a wall, get
+// then confirmed, paid once), get on, ride with the keys (desktop) or real touch (phone: a finger on the gas button, one on the joystick), never through a wall, get
 // off beside it, find it parked after a reload (also mid-ride) and after a trip to another hub. Ownership is the asset
 // model: listed once in « Biens », charged once; a Tiak Tiak delivery is picked up and handed over while riding.
 // Usage: node scripts/check-moto.mjs [baseUrl] [outDir]   (needs a running build, e.g. `npx vite preview --port 4213`)
 // On a shared machine run browsers one at a time: flock /tmp/dakar-browser.lock node scripts/check-moto.mjs …
 // ONLY=desktop or ONLY=phone runs one viewport.
 import { chromium } from 'playwright';
+import { realTouch } from './lib/realTouch.mjs';
 import fs from 'node:fs';
 
 const base = process.argv[2] ?? 'http://localhost:4213/';
@@ -24,12 +25,13 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await page.goto(`${base}?debug${touch ? '&touch' : ''}`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
   const d = (fn, arg) => page.evaluate(fn, arg);
+  const touch_ = touch ? await realTouch(page) : null;
   const info = () => d(() => window.__dakar.moto.info());
   const shot = async name => { await page.waitForTimeout(500); await page.screenshot({ path: `${out}/${label}-${name}.png` }); };
   const ready = () => page.waitForFunction(() => window.__dakar.focus() !== null && window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   const inWall = async p => (await d(() => window.__dakar.cityGeometry())).colliders.some(c => p.x > c.x0 && p.x < c.x1 && p.z > c.z0 && p.z < c.z1);
   /**
-   * Ride: hold the throttle (keys on desktop, the joystick on the phone), steering −1 / 0 / 1, until `until` holds in
+   * Ride: hold the throttle (keys on desktop; on the phone a finger on the ride pad's gas button, the joystick only steers), steering −1 / 0 / 1, until `until` holds in
    * the page (frames are slow on the test machine: wait on the motorbike, not on the clock) or `ms` at most.
    */
   const ride = async (ms, steer = 0, until = null, arg = null) => {
@@ -39,10 +41,11 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
       await hold();
       if (steer) await page.keyboard.up(steer > 0 ? 'KeyD' : 'KeyA'); await page.keyboard.up('KeyW');
     } else {
-      const j = await d(() => { const r = document.getElementById('joy').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
-      await page.mouse.move(j.x, j.y); await page.mouse.down(); await page.mouse.move(j.x + steer * 30, j.y - 42, { steps: 4 });
+      // real fingers: one on the gas button (the ride pad), one on the joystick, which only steers
+      const gas = await touch_.centre('#ridepad .rp-gas'), j = await touch_.centre('#joy');
+      await touch_.down(1, gas.x, gas.y); await touch_.down(2, j.x, j.y); if (steer) await touch_.move(2, j.x + steer * 30, j.y);
       await hold();
-      await page.mouse.up();
+      await touch_.upAll();
     }
   };
 
@@ -60,10 +63,10 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await shot('1-dealer');
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Jakarta/.test(t)) ?? null);
+  const item = await d(() => [...document.querySelectorAll('#modal .item')].map(b => b.textContent).find(t => /Jakarta/.test(t) && /Acheter/.test(t)) ?? null);
   check(`${label}: the catalogue shows the Jakarta with its catalogue price`, /Jakarta/.test(item ?? '') && price === 150000 && digits(item).includes(String(price)), String(item));
   const w0 = await d(() => window.__dakar.state.wallet), l0 = await d(() => window.__dakar.state.data.ledger.length);
-  await page.locator('#modal .item', { hasText: 'Jakarta' }).first().click();
+  await page.locator('#modal .item', { hasText: 'Acheter' }).first().click();
   await page.waitForFunction(() => /Acheter/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, T).catch(() => {});
   const confirmText = await d(() => document.querySelector('#modal.on')?.textContent ?? '');
   check(`${label}: a confirmation shows the price and the wallet before paying`, /Acheter/.test(confirmText) && digits(confirmText).includes(String(price)) && (await d(() => window.__dakar.state.wallet)) === w0, confirmText.slice(0, 160));
@@ -84,7 +87,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   await ready();
   await d(() => window.__dakar.act());
   await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {});
-  const again = await d(() => [...document.querySelectorAll('#modal .item')].find(b => /Jakarta/.test(b.textContent))?.className ?? '');
+  const again = await d(() => [...document.querySelectorAll('#modal .item')].find(b => /Jakarta/.test(b.textContent) && /Acheter/.test(b.textContent))?.className ?? '');
   await d(() => document.querySelector('#modal .item.close')?.click());
   await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T).catch(() => {});
   check(`${label}: it cannot be bought twice`, /disabled|off/.test(again) || (await d(() => window.__dakar.state.wallet)) === w1, again);

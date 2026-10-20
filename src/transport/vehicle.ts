@@ -3,7 +3,7 @@ import type { HubId } from '../core/types';
 import type { Seat } from '../interact/seats';
 import { Apprentice } from '../actors/apprenti';
 import { humanoidReady } from '../actors/humanoid';
-import { animateVehicle } from '../actors/vehicleKit';
+import { animateVehicle, hasKitDoor, setKitDoor } from '../actors/vehicleKit';
 import { newMotion, pullIn, type Motion, type Path, type Pose, type Timetable } from './route';
 import { seatToWorld, toWorld, type LocalPose, type VehicleSpec, type WorldPose } from './spec';
 
@@ -51,6 +51,8 @@ export class Vehicle {
   private model: THREE.Object3D;
   private shown = '';
   private ridden = false;
+  /** The driver's door, 0 shut … 1 open (kept across a model swap). */
+  private door = 0;
   /** Shirts of the passengers drawn now (null: their own looks). */
   colours: readonly number[] | null = null;
 
@@ -93,6 +95,19 @@ export class Vehicle {
     return (this.model.userData.kitAnim as { lean?: number } | undefined)?.lean ?? 0;
   }
 
+  /** True when this model has a driver's door of its own that opens. */
+  get hasDoor() { return hasKitDoor(this.model); }
+  /** The driver's door: 0 shut … 1 wide open. */
+  setDoor(k: number) { this.door = k; setKitDoor(this.model, k); }
+  get doorOpen() { return this.door; }
+
+  /** A solid-shell body's shared cockpit (src/actors/cockpit.ts) is drawn only in an inside view (« Au volant »). */
+  setCockpit(on: boolean) {
+    const u = this.model.userData, c = u.glbCockpit as THREE.Object3D | undefined, hide = u.glbHide as THREE.Object3D[] | undefined;
+    if (c) c.visible = on;
+    if (hide) for (const o of hide) o.visible = !on;                                 // the shell's own inside is not drawn from inside
+  }
+
   /** The player takes / leaves the controls: the model is rebuilt only when that changes the look (a motorbike's stand). */
   setRidden(on: boolean) {
     if (on === this.ridden) return;
@@ -104,10 +119,15 @@ export class Vehicle {
   private swap(next: THREE.Object3D) {
     this.body.remove(this.model); dropAnimated(this.model);
     this.body.add(next); this.model = next;
+    if (this.door) setKitDoor(next, this.door);
   }
 
   /** Spec ids of the passenger seats NPCs hold now. */
   passengers(): string[] { return this.spec.seats.filter((_, i) => this.seats[i].occupant === 'npc').map(s => s.id); }
+
+  /** A knock the body shows (never the physics): a short damped pitch / roll / bounce of the body on its springs. Pitch is positive nose-down (as for braking). */
+  jolt(pitch: number, roll = 0, bounce = 0) { this.joltA = { p: pitch, r: roll, y: bounce }; this.joltAge = 0; }
+  private joltA = { p: 0, r: 0, y: 0 }; private joltAge = 9;
 
   /**
    * Put the vehicle at a ground pose (x, z, yaw) with its speed and acceleration; `travelled` (m) drives the road bumps.
@@ -128,6 +148,10 @@ export class Vehicle {
     const roll = this.yawRate * speed * 0.011 * sway;
     this.body.rotation.z = this.spec.drive?.lean ? 0 : Math.max(-0.06, Math.min(0.06, roll));   // a two-wheeler's lean: animate()
     this.body.rotation.x = (Math.max(-0.035, Math.min(0.035, -accel * 0.012)) + Math.sin(travelled * 3.1) * 0.004 * k) * sway;
+    if (this.joltAge < 1) {                                                         // a knock rings out in about half a second
+      this.joltAge += dt; const env = this.joltAge < 1 ? Math.exp(-7 * this.joltAge) * Math.cos(16 * this.joltAge) : 0;
+      this.body.rotation.x += this.joltA.p * env; this.body.rotation.z += this.joltA.r * env; this.body.position.y += this.joltA.y * env; this.bounce = this.body.position.y;
+    }
     for (let i = 0; i < this.seats.length; i++) seatToWorld(this.pose, this.spec.seats[i], this.seats[i], this.bounce);
     seatToWorld(this.pose, this.spec.driver, this.driverSeat, this.bounce);
   }

@@ -1,0 +1,102 @@
+[
+  {
+    "name": "desktop: the Plateau has Ndiaye Auto's showroom: cars on display, the one for sale on its lot with its price card",
+    "ok": true,
+    "detail": "{\"x\":105.495,\"z\":94,\"delivery\":{\"x\":115.7,\"z\":94,\"yaw\":0},\"displays\":3,\"onSale\":true,\"card\":true}"
+  },
+  {
+    "name": "desktop: the dealer counter offers its catalogue",
+    "ok": true,
+    "detail": "{\"id\":\"car:dealer:till\",\"name\":\"Ndiaye Auto\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Voir les articles\",\"all\":[\"Voir les articles\"],\"why\":[]}"
+  },
+  {
+    "name": "desktop: the catalogue shows the modern sedan with its catalogue price",
+    "ok": true,
+    "detail": "🚗Berline moderneModerne et soignée · 4 portes · 5 places · se gare où tu la laisses6 000 000 F"
+  },
+  {
+    "name": "desktop: a confirmation shows the price and the wallet before paying",
+    "ok": true,
+    "detail": "Acheter la berline moderne ?Prix : 6 000 000 F · Ton argent : 20 000 000 F✅Confirmer l’achatElle t’attendra devant la porte, prête à rouler−6 000 000 F↩️Pas mai"
+  },
+  {
+    "name": "desktop: bought once: −price, one wallet line, delivered at the kerb",
+    "ok": true,
+    "detail": "{\"w0\":20000000,\"w1\":14000000,\"lines\":[{\"at\":1792330252471,\"label\":\"Achat : Berline moderne\",\"amount\":-6000000}],\"rec\":{\"asset\":\"compacte\",\"hub\":\"plateau\",\"x\":115.7,\"z\":94,\"yaw\":0}}"
+  },
+  {
+    "name": "desktop: the salesman hands over the keys (Wolof with its French gloss); the car for sale has left its lot",
+    "ok": true,
+    "detail": "{\"keys\":\"Moussa Ndiaye te tend les clés : « Elle t’attend devant la porte. Jërëjëf (merci) ! Ñibbil ak jàmm (rentre bien) ! »Moussa Ndiaye te tend les clés : « Elle t’attend devant la porte. Jërëjëf (merci) ! Ñibbil ak jàmm (rentre bien) ! »\",\"onSale\":false}"
+  },
+  {
+    "name": "desktop: « Biens » lists the car once",
+    "ok": true,
+    "detail": "[\"🚗Berline moderneà toi6 000 000 F\"]"
+  },
+  {
+    "name": "desktop: it cannot be bought twice",
+    "ok": true,
+    "detail": "item dis"
+  },
+  {
+    "name": "desktop: the parked car is solid (walking into it stops at its side)",
+    "ok": true,
+    "detail": "{\"solid\":true,\"lateral\":\"-1.39\",\"walked\":\"0.81\"}"
+  },
+  {
+    "name": "desktop: walking up to it offers « Monter (conducteur) »",
+    "ok": true,
+    "detail": "{\"id\":\"car:parked\",\"name\":\"Ta voiture\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Monter (conducteur)\",\"all\":[\"Monter (conducteur)\"],\"why\":[]}"
+  },
+  {
+    "name": "desktop: at the wheel: driver seat (seated), own interaction space, still in the street for the others, chase view",
+    "ok": true,
+    "detail": "{\"id\":\"compacte\",\"name\":\"Berline moderne\",\"price\":6000000,\"owned\":true,\"asset\":{\"uid\":\"a2\",\"spec\":\"compacte\",\"how\":\"owned\",\"since\":1033.4000000000015,\"paid\":6000000,\"condition\":100,\"upgrades\":[],\"leased\":false},\"record\":{\"asset\":\"compacte\",\"hub\":\"plateau\",\"x\":115.7,\"z\":94,\"yaw\":0},\"here\":true,\"driving\":true,\"x\":115.7,\"z\":94,\"yaw\":0,\"speed\":0,\"bumps\":0,\"bought\":1,\"dealer\":{\"x\":105.495,\"z\":94,\"delivery\":{\"x\":115.7,\"z\":94,\"yaw\":0},\"displays\":3,\"onSale\":false,\"card\":true},\"space\":\"plateau:car:compacte\",\"presence\":\"street\",\"camera\":true,\"views\":[\"chase\",\"volant\",\"haut\"],\"view\":\"chase\",\"solid\":false,\"clip\":\"Sit\"}"
+  },
+  {
+    "name": "desktop: the throttle moves the car and the card shows the speed",
+    "ok": true,
+    "detail": "6.2 m, 🚗 Berline moderne · 19 km/h ↑ accélérer · ↓ freiner · ← → tourner"
+  },
+  {
+    "name": "desktop: steering right turns the car right",
+    "ok": true,
+    "detail": "0.00 → -0.34"
+  },
+  {
+    "name": "desktop: the views (chase, volant, haut; the wheel view only when the body has a cabin to sit in) cycle",
+    "ok": true,
+    "detail": "volant haut chase"
+  },
+  {
+    "name": "desktop: driving into a wall stops the car against it (never inside)",
+    "ok": true,
+    "detail": "{\"wall\":{\"x\":97.09,\"z\":75.875},\"x\":97.08999930095608,\"z\":73.39946278348292,\"bumps\":1}"
+  },
+  {
+    "name": "desktop: « Sortir de la voiture »: on the pavement side, beside it, it stays parked there",
+    "ok": true,
+    "detail": "{\"me\":{\"x\":114.11,\"y\":0.1,\"z\":96,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null},\"car\":{\"x\":115.7,\"z\":96,\"yaw\":0},\"rec\":{\"asset\":\"compacte\",\"hub\":\"plateau\",\"x\":115.7,\"z\":96,\"yaw\":0},\"solid\":true}"
+  },
+  {
+    "name": "desktop: after a reload the car is still parked where it was left",
+    "ok": true,
+    "detail": "{\"before\":{\"x\":115.7,\"z\":96},\"after\":{\"x\":115.7,\"z\":96}}"
+  },
+  {
+    "name": "desktop: reload mid-drive: parked where it was, standing beside it, not driving",
+    "ok": true,
+    "detail": "{\"mid\":{\"x\":115.7,\"z\":97.27007813827024},\"after\":{\"x\":115.7,\"z\":97.27},\"me3\":{\"x\":114.11,\"y\":0.1,\"z\":97.27007813827024,\"hub\":\"plateau\",\"mode\":\"play\",\"near\":null}}"
+  },
+  {
+    "name": "desktop: in another hub it is not there; back in the Plateau it waits where it was",
+    "ok": true,
+    "detail": "{\"away\":false,\"back\":{\"x\":115.7,\"z\":97.27}}"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]
