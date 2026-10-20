@@ -1,4 +1,4 @@
-# Pass 3 · S3 — Garage Modou repair service: implementation plan (nothing coded yet)
+# Pass 3 · S3 — Garage Modou repair service (built with the apprentice; this document is the plan and, at the end, what was built)
 
 Owner decisions applied (20 Oct): physical repair in **Pikine only** for now (no teleporting cars or mechanics across districts; cars in districts not yet joined by continuous roads keep the roadside fix and cannot reach the garage — accepted); **Option B** (the real Modou does the work) if a safe, isolated hook exists, otherwise a separate apprentice, never a duplicate Modou; ~30 s physical repair, **quote before confirmation, one payment at completion, no charge on cancel**; damage and repair prices reviewed so a crash matters without making driving a chore.
 
@@ -86,3 +86,16 @@ Findings and what I propose to adjust **in S3 (numbers only, easy to tune, with 
 
 * Repair only in Pikine; cars elsewhere keep the roadside fix and cannot reach the garage until continuous roads connect the districts. No towing, no teleport.
 * NPC behaviour is local to the device like the rest of the cast.
+
+## 8. As built (21 Oct): the apprentice, not the real Modou
+
+Decision applied: the owner asked for the real Modou **only if safe with M1-C**, otherwise a visibly distinct apprentice, never a duplicate Modou, and no change to the shared social system without coordination. The seam proposed in §2 touches `src/social/npcLife.ts`, which #50 also changes, and there was nobody to coordinate it with in this session, so S3 uses **Lamine, Modou's apprentice**: a separate person (orange overalls, a dark cap) owned by the vehicle layer. The cast, routines, relations, situations and multiplayer code are not read or changed; the real Modou keeps his routine at his bench. If the seam is agreed later, only the walking/working adapter changes (`garageModule.ts` talks to one person object), not the quote, the activity or the payment.
+
+* `src/transport/garage.ts` (pure): quote, opening hours, bay geometry. `src/transport/garageModule.ts`: the bay (painted pad and « ATELIER » sign built by the vehicle module in front of the workshop, nothing of the Visual Pass touched), Lamine (walks from his place just inside the workshop on a walking map built from the hub's colliders, kneels, speaks in bubbles), the job state machine and the 30 s activity. Registered with one line in `src/game/modules.ts`.
+* Quote shown **before** any payment (state, price, duration, « une seule fois, à la fin »); « Pas maintenant », closing the card, walking off, driving away or « Arrêter » mid-work all end with **nothing paid**; the price is taken once, in the last step, through `repairAsset(state, uid, quote)` (the asset model: save v6 unchanged).
+* The old « Biens » panel offered an instant remote « Réparer » for any owned asset, which would have become a no-garage repair shortcut for vehicles: for a vehicle it is now a disabled row that points to Garage Modou (`src/economy/estate.ts`).
+* Pricing, as proposed in §5 and implemented: the asset model's 0.1 % of the price per missing point; under 3 points lost a free touch-up; never under 1 000 F; rounded to 100 F (500 F from a million up). Numbers are in `garage.ts` and easy to retune.
+* Hours: 7–13 h and 15–19 h (Modou's). Closed: the row says when it reopens.
+* Only Pikine has a garage: cars are parked per district, so today only the Jakarta (bought in Pikine) can reach it; cars wait for connected roads. Nothing is towed or teleported.
+* Verified: `tests/garage.test.ts` (10), `scripts/check-garage.mjs` with real touch (15 checks: bay on open kerb, Lamine walks without teleporting, quote before payment, refuse and stop pay nothing, one payment at the end equal to the quote, health 100 % and kept after a reload, no second Modou, no JavaScript error).
+* Not built: S4 (towing) stays on hold.
