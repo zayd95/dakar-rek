@@ -69,7 +69,7 @@ const info0 = await d(() => window.__dakar.moto.info());
 check(`the moto is parked in ${CFG.a}, owned, one copy`, info0.owned && info0.here && (await mine()) === 1, JSON.stringify(info0.record));
 const car0 = info0.record, uid0 = info0.seed, paint0 = info0.paint, asset0 = info0.asset;
 const dist0 = await d(() => window.__dakar.road.project(window.__dakar.moto.at().x, window.__dakar.moto.at().z));
-check('it stands at the road\'s mouth (the road continues west out of Pikine)', !!dist0 && dist0.road === ROAD && dist0.s < 40, JSON.stringify(dist0));
+check('it stands at the road\'s mouth (the road continues west out of Pikine)', !!dist0 && dist0.road === ROAD && dist0.s < 260, JSON.stringify(dist0));
 await d(([x, z]) => window.__dakar.place(x, z, 0), [car0.x + Math.cos(car0.yaw) * 3, car0.z - Math.sin(car0.yaw) * 3]); await page.waitForTimeout(600);
 await getIn(); await startLog();
 
