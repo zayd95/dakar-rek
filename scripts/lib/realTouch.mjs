@@ -72,12 +72,15 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
   const brk = await t.centre('#ridepad .rp-brake'); let brakeOn = false;
   const brake = async on => { if (on === brakeOn) return; brakeOn = on; if (on) await t.down(4, brk.x, brk.y); else await t.up(4); };
   await t.down(2, j.x, j.y);
-  let at = null, prev = null, last = null;
+  let at = null, prev = null, last = null, seen = null;
+  points = points.map(p => ({ ...p }));                                     // written in the frame of the district the route starts in; a crossing into the next one (z jumps by a whole street grid) shifts the rest
   for (const w of points) {
     let best = Infinity, lastGain = Date.now();
     while (Date.now() - t0 < ms) {
       at = await page.evaluate(k => window.__dakar[k].at(), key); if (!at) break;
       if (!prev) prev = { x: at.x, z: at.z };
+      if (seen && Math.abs(at.z - seen.z) > 100) { const dz = at.z - seen.z; for (const q of points) q.z += dz; prev.z += dz; best = Infinity; lastGain = Date.now(); last = null; }   // another district: same road, new coordinates
+      seen = { z: at.z };
       const d = Math.hypot(w.x - at.x, w.z - at.z);
       if (d < (w.tol ?? tol)) break;
       // the sim runs slower than the clock and a sample can land metres apart: a waypoint the car has already passed along its segment is done too
