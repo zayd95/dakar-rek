@@ -1,0 +1,74 @@
+{
+ "note": "headless Chromium + SwiftShader; relative cost only, not a phone",
+ "id": "compacte",
+ "kind": "sedan",
+ "seed": 14,
+ "rows": [
+  {
+   "quality": "low",
+   "drawCalls": 131,
+   "tris": 97883,
+   "geometries": 106,
+   "textures": 140,
+   "glb": false
+  },
+  {
+   "quality": "low",
+   "drawCalls": 130,
+   "tris": 110441,
+   "geometries": 103,
+   "textures": 109,
+   "glb": true
+  },
+  {
+   "quality": "medium",
+   "drawCalls": 164,
+   "tris": 136285,
+   "geometries": 123,
+   "textures": 334,
+   "glb": false
+  },
+  {
+   "quality": "medium",
+   "drawCalls": 153,
+   "tris": 145201,
+   "geometries": 120,
+   "textures": 350,
+   "glb": true
+  }
+ ],
+ "model": {
+  "kitNear": {
+   "meshes": 3,
+   "materials": 3,
+   "tris": 688,
+   "textureMB": 2.7
+  },
+  "kitFar": {
+   "meshes": 1,
+   "materials": 1,
+   "tris": 78,
+   "textureMB": 2.66
+  },
+  "glb": {
+   "meshes": 7,
+   "materials": 2,
+   "tris": 8054,
+   "textureMB": 5.32
+  }
+ },
+ "js": {
+  "x1": {
+   "kitMicrosPerCall": 0.38,
+   "glbMicrosPerCall": 0.98
+  },
+  "x4": {
+   "kitMicrosPerCall": 0.83,
+   "glbMicrosPerCall": 1.6
+  },
+  "x6": {
+   "kitMicrosPerCall": 0.11,
+   "glbMicrosPerCall": 5.17
+  }
+ }
+}

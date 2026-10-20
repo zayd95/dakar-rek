@@ -113,10 +113,12 @@ const DRIVE_SOON = 'Arrive avec la conduite (transports, vague 2)';
 export const VEHICLES: AssetSpec[] = [
   // drivable (src/transport/ownedModule.ts): sold at a dealer corner of their hub (or here), delivered at its kerb
   { id: 'jakarta', kind: 'vehicle', name: 'Moto Jakarta', what: 'D’occasion · la moto des livreurs et des clandos à deux roues', price: 150_000, tier: 1, where: 'Garage Modou · Pikine' },
-  { id: 'clando', kind: 'vehicle', name: 'Voiture d’occasion', what: 'Une berline fatiguée mais fidèle, idéale pour faire le clando', price: 2_800_000, tier: 2, where: 'Ndiaye Auto · Plateau' },
-  { id: 'berline', kind: 'vehicle', name: 'Berline neuve', what: 'Climatisée, sièges en cuir', price: 14_000_000, tier: 3, soon: DRIVE_SOON },
+  // the modern sedan (Stage A of the player-owned lineup, docs/assets/VEHICLE_LINEUP.md). The price is a PROVISIONAL placeholder: the economy balance pass sets it (it is not the old car's)
+  { id: 'compacte', kind: 'vehicle', name: 'Berline moderne', what: 'Moderne et soignée, quatre portes : ta première vraie voiture', price: 6_000_000, tier: 2, where: 'Ndiaye Auto · Plateau' },
+  // PROVISIONAL: the kit's bodies until Stages B and C of the lineup give them bodies worth their prices (prices and handling wait for the economy pass)
+  { id: 'berline', kind: 'vehicle', name: 'Berline neuve', what: 'Climatisée, sièges en cuir · modèle provisoire', price: 14_000_000, tier: 3, where: 'Prestige Auto · Almadies' },
   { id: 'camion', kind: 'vehicle', name: 'Camion de livraison', what: 'Pour une affaire de transport', price: 32_000_000, tier: 3, soon: DRIVE_SOON },
-  { id: 'tout_terrain', kind: 'vehicle', name: '4 × 4 de luxe', what: 'Le grand véhicule des belles occasions', price: 75_000_000, tier: 4, soon: DRIVE_SOON },
+  { id: 'tout_terrain', kind: 'vehicle', name: '4 × 4 de luxe', what: 'Le grand véhicule des belles occasions · modèle provisoire', price: 75_000_000, tier: 4, where: 'Prestige Auto · Almadies' },
 ];
 export const AIRCRAFT: AssetSpec[] = [
   { id: 'jet', kind: 'aircraft', name: 'Jet privé', what: 'Pour les plus fortunés de Dakar', price: 12_000_000_000, tier: 5, soon: 'Arrive avec l’aéroport (vague 3)' },

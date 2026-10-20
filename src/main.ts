@@ -24,6 +24,7 @@ import { Apprentice } from './actors/apprenti';
 import { FollowCamera } from './actors/camera';
 import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
+import { preloadGlbVehicles } from './actors/glbVehicle';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById, CAST } from './social/cast';
@@ -47,6 +48,7 @@ import { FRIENDLY_MORE, STYLE_MAP, rosterOpponent } from './lamb/opponents';
 import { lamb2On } from './lamb/flag';
 import { PARTNER, RULES, RULES_STATUS, STYLES, STYLE_IDS, arenaProfileRows, opponentLevel, rankedStyle, record, recordIncrements, type BoutMode, type Discipline, type StyleId } from './lamb/rules';
 import { phoneHooks } from './ui/phoneHooks';
+import { dealerDirectory } from './transport/dealers';
 import { EMOTES } from './lamb/poses';
 import { ACCESSORIES, NGEMB_COLORS, NGEMB_PATTERNS, REVIEW_STATUS } from './lamb/look';
 import { PresenceClient, loadProfile } from './multiplayer/client';
@@ -57,6 +59,7 @@ import { Phone } from './ui/phone';
 import { mapBridge } from './ui/minimap';
 import { theme } from './ui/theme';
 import { ChatUi } from './multiplayer/chat';
+import { EMOTE_INFO, Emoter, Notice, PlayerSocial, seatedPeers } from './multiplayer/social';
 import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { pickupFrags } from './economy/jobs';
@@ -160,6 +163,7 @@ const state = new GameState(saved ?? newSave());
 if (TEST.money !== null && state.wallet < TEST.money) state.addMoney(TEST.money - state.wallet, 'Test');
 const presence = new PresenceClient(loadProfile(store, state.data.guestId), import.meta.env.VITE_MULTIPLAYER === 'true', import.meta.env.VITE_PRESENCE_URL);
 const remoteAvatars = new RemoteAvatars(presence); scene.add(remoteAvatars.group);
+const emoter = new Emoter(), notice = new Notice();
 remoteAvatars.dress = (body, peer) => { dressFan(body, peer.fan); };   // the écurie colours another player wears (presence `fan`)
 const rel = new Relations(state.data);
 settleWelcome(rel, state);                                   // a save whose player already talked with Ibou: his welcome is done
@@ -170,7 +174,7 @@ const pos = new THREE.Vector3();
 const tmpV = new THREE.Vector3();
 let facing = 0, speed = 0;
 let world: HubWorld | null = null;
-let destination: { id: string; hub: HubId } | null = null;
+let destination: { id: string; hub: HubId; name?: string } | null = null;
 let crowd: Crowd | null = null, traffic: DecorativeTraffic | null = null, life: MonumentLife | null = null;
 let apprentices: Apprentice[] = [];
 /** Ambient people placed by the hub builder (dibiterie cook, customers…). */
@@ -178,7 +182,7 @@ let ambient: PlacedPeople | null = null;
 /** Debug-only fixed camera (screenshots of landmarks). */
 let freeCam: { p: THREE.Vector3; t: THREE.Vector3 } | null = null;
 /** Recurring cast: routines, memory, situations (src/social/npcLife.ts). */
-const npcLife = new NpcLife({ hud, rel, state, clock: () => { const ct = cityTimeAt(presence.serverNow()); return { hour: hourOverride ?? ct.hourFloat, day: ct.day }; }, menuMode: () => { mode = 'menu'; }, save: () => { saveNow(); }, openBeat: b => openBeat(b) });
+const npcLife = new NpcLife({ hud, rel, state, clock: () => { const ct = cityTimeAt(presence.serverNow()); return { hour: hourOverride ?? ct.hourFloat, day: ct.day }; }, menuMode: () => { mode = 'menu'; }, idle: () => mode === 'play' && !moduleSpace(), save: () => { saveNow(); }, openBeat: b => openBeat(b) });
 /** Player's visible body: the Blender humanoid when loaded (the box Character stays as the logic stand-in). */
 const PLAYER_LOOK: PersonLook = avatarLook(presence.profile.look);
 let playerBody: Humanoid | null = null;
@@ -257,7 +261,14 @@ function updateLighting(hour: number) {
 // ------------------------------------------------------------------ hubs
 const rand = rng(Date.now() & 0xffff);
 
+/** When the current hub was built (a place a module adds, such as a dealer's counter, appears a moment after). */
+let hubAt = 0;
+/** A district crossing asked by a module during the frame (src/transport/hubLink.ts): carried out before the next frame's updates, so no module is mid-step when the hub is rebuilt. */
+/** How long the last district crossing took to build (ms): shown by the debug hook, read by the checks. */
+let lastCrossMs = 0;
+let pendingCross: { dest: HubId; at: { x: number; z: number; yaw: number } } | null = null;
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
+  hubAt = performance.now();
   activities.cancel(); standUp(true);
   pacer.reset();
   for (const a of apprentices) a.dispose();          // detach them before the hub geometry is freed
@@ -297,7 +308,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   follow.snapBehind(facing);
   state.place(id, p.x, p.z, p.yaw);
   hud.setPlace(HUB_NAMES[id], '', false);
-  remoteAvatars.clear(); presence.join(id, id === invitedHub ? invitedRoom : null);
+  remoteAvatars.clear(); emoter.reset(); notice.reset(); presence.join(id, id === invitedHub ? invitedRoom : null);
   phone.remember();
 }
 
@@ -378,6 +389,12 @@ const activities = new ActivityRunner({
 });
 const places = new Places(activities, () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat);
 interactions.add(places);
+/** Real players next to you can be greeted (src/multiplayer/social.ts): a gesture the players nearby see, and a quiet word to the one it is meant for. */
+interactions.add(new PlayerSocial(() => presence.peers.values(), p => remoteAvatars.hidden(p), (kind, peer) => {
+  if (!emoter.make(kind, peer.id, performance.now())) { hud.toast('Doucement : un geste à la fois.'); return; }
+  hud.toast(`${EMOTE_INFO[kind].you} ${peer.name} ${EMOTE_INFO[kind].glyph}`);
+}));
+remoteAvatars.onEmote = (peer, emo) => { if (emo.to && emo.to === presence.id) hud.toast(`${peer.name} ${EMOTE_INFO[emo.k].toast} ${EMOTE_INFO[emo.k].glyph}`); };
 /** Everyone in the street can be greeted (placed people and walkers). */
 const people = interactions.add(new People(() => [
   ...(ambient?.bodies() ?? []).map(b => ({ id: b.id, obj: b.h.group, h: b.h, seated: b.seated, female: b.female })),
@@ -419,6 +436,7 @@ const ctx: GameCtx = {
   setPublicRecord: rec => presence.setRecord(rec),
   // the fighter's evening (src/arena/fighter.ts) plays avec frappe when Làmb 2.0 is on (?lamb2); otherwise as before
   startBout(m, style, after) { if (lambScene || !world?.arena) return false; startDuel(m, style as StyleId | undefined, after, LAMB2 ? 'avec_frappe' : 'sans_frappe'); return !!lambScene; },
+  crossHub(dest, at) { if (world) pendingCross = { dest, at }; },
   travel(dest, at, label) {
     if (!world) return;
     mode = 'busy'; input.enabled = false; input.reset();
@@ -614,10 +632,11 @@ function openActions(it: Interactable) {
   const marks = objectiveMarks(suggestion(rel, state));          // what the current objective points at (a gold star on those actions)
   // a shop that knows its regular (src/social/regular.ts): a few words from the shopkeeper, and the neighbour price in place of the full one
   const reg = it.menu === 'shop' ? shopRegular(it.id, state, rel, hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat) : null;
+  const enc = reg?.owner ? npcLife.encounter(reg.owner) : null;       // a moment at the counter (src/social/situations.ts): the « Parler à » row opens it
   const visible = it.actions.filter(a => (!a.visible || a.visible(state)) && !reg?.hide.has(a.id));
   const items: MenuItem[] = visible.map(a => {
     const why = a.requires?.(state) ?? (a.cost && !state.canAfford(a.cost) ? 'Pas assez d’argent' : null);
-    return { icon: actionVerb(a)[1], ...(it.menu === 'shop' ? SHOP_COPY[a.id] : {}), ...(isObjectiveAction(a, marks) ? { objective: true } : {}), ...(reg?.was[a.id] ? { was: fcfa(reg.was[a.id]) } : {}), label: a.label, detail: why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
+    return { icon: actionVerb(a)[1], ...(it.menu === 'shop' ? SHOP_COPY[a.id] : {}), ...(enc && a.id === 'boutique-salut' ? { short: 'Un moment avec Mamadou' } : {}), ...(isObjectiveAction(a, marks) ? { objective: true } : {}), ...(reg?.was[a.id] ? { was: fcfa(reg.was[a.id]) } : {}), label: a.label, detail: enc && a.id === 'boutique-salut' ? enc.detail : why ?? describe(a), right: a.cost ? '−' + fcfa(a.cost) : a.gain ? '+' + fcfa(economy.workPreview(a, it)) : undefined, disabled: !!why, onPick: () => { hud.closeModal(); if (enc && a.id === 'boutique-salut') enc.open(); else if (a.special) runSpecial(a); else runAction(a, it.npc, it); } };
   });
   let subtitle = reg ? (reg.greeting ? `« ${reg.greeting} »` : 'Que veux-tu faire ?') : it.description ?? 'Que veux-tu faire ?';
   if (it.npc) {
@@ -937,7 +956,7 @@ function runAction(a: Action, npc?: string, it?: Interactable) {
   const where = it?.name && !it.name.startsWith(a.label) ? it.name : undefined;   // wallet history: « action · place »
   activities.onEnd = (_s, done) => {                      // once: later activities (places, venues) must not replay this action's hooks
     activities.onEnd = () => {};
-    if (done) { if (npc) rel.change(PLAYER, npc, 1); state.count('actions'); npcLife.afterAction(a, it ?? null); welcomed(npc); }   // counters belong to the steps
+    if (done) { if (npc) npcLife.talked(npc, a); state.count('actions'); npcLife.afterAction(a, it ?? null); welcomed(npc); }   // counters belong to the steps
   };
   activities.start(actionSpec(a, it), { place: where, at: it && { x: it.x, z: it.z } });
 }
@@ -994,6 +1013,9 @@ function doWalk(dest: HubId) {
   }, 1400);
 }
 phoneHooks.walkTo = doWalk;
+phoneHooks.dealers = () => dealerDirectory(state);
+phoneHooks.markPlace = (id, hub, name) => { destination = id && hub ? { id, hub, name } : null; };
+phoneHooks.marked = () => destination;
 phoneHooks.homeHub = homeHub;
 
 function doTravel(dest: HubId) {
@@ -1054,7 +1076,7 @@ let eveningTarget: { name: string; x: number; z: number } | null = null;
 /** Way-finding: the walking destination, else the suggested person (or the nearest Tiak Tiak pick-up for the first job) in this hub. */
 function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
-  if (destination?.hub === world.id) { const it = world.interactables.find(i => i.id === destination!.id); if (it) return { name: it.name, x: it.x, z: it.z }; }
+  if (destination?.hub === world.id) { const it = guidePlace(destination.id); if (it) return it; }
   if (eveningTarget) return eveningTarget;
   if (needTarget) return needTarget;
   if (guideJob) {
@@ -1074,10 +1096,19 @@ function withBearing(text: string, t: { x: number; z: number } | null): string {
   return `${['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(Math.round(angle / (Math.PI / 4)) % 8 + 8) % 8]} ${text} · ${Math.round(Math.hypot(dx, dz))} m`;
 }
 
+/** A place the player can be guided to: a place of the hub's content, or one a module adds (a vehicle dealer's counter). */
+function guidePlace(id: string): { name: string; x: number; z: number } | null {
+  const it = world?.interactables.find(i => i.id === id); if (it) return { name: it.name, x: it.x, z: it.z };
+  const pl = ctxReady ? ctx.places.all().find(p => p.id === id) : undefined, a = pl?.anchors[0];
+  return pl && a ? { name: pl.name, x: a.x, z: a.z } : null;
+}
+
 function walkingHint(): string | null {
-  if (!destination || destination.hub !== world?.id) { destination = null; return null; }
-  const target = world.interactables.find(i => i.id === destination!.id);
-  if (!target) { destination = null; return null; }
+  if (!destination) return null;
+  // a place of another district (a dealer marked from the phone's Carte): the marker waits, the goal line says where to go
+  if (destination.hub !== world?.id) return `📍 ${destination.name ?? 'Repère'} · ${HUB_NAMES[destination.hub].split(' · ')[0]} : téléphone › Carte › y aller à pied`;
+  const target = guidePlace(destination.id);
+  if (!target) { if (performance.now() - hubAt > 5000) destination = null; return null; }
   if (inside) return 'Sors dans la rue pour rejoindre ' + target.name;
   const dx = target.x - pos.x, dz = target.z - pos.z, distance = Math.hypot(dx, dz);
   if (distance < 2.3) { destination = null; hud.toast('Te voilà : ' + target.name); return null; }
@@ -1120,6 +1151,7 @@ const phone = new Phone({
 mapBridge.walkTo = id => setDestination(id);
 mapBridge.destination = () => (destination && destination.hub === world?.id ? destination.id : null);
 mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
+mapBridge.playersNow = () => presenceSpace() !== 'street' ? [] : [...presence.peers.values()].filter(p => p.space === 'street' && !remoteAvatars.hidden(p) && Math.hypot(p.x - pos.x, p.z - pos.z) < 90).slice(0, 12).map(p => ({ id: p.id, name: p.name, x: p.x, z: p.z }));
 mapBridge.friendsNow = () => CAST.filter(c => c.hub === world?.id && rel.level(c.id) >= 15).flatMap(c => { const w = npcLife.where(c.id); return w && w.here && w.x !== undefined && w.z !== undefined ? [{ id: c.id, name: c.name, x: w.x, z: w.z }] : []; });
 
 function saveNow(): boolean {
@@ -1172,6 +1204,23 @@ function progressMeta() {
 let last = performance.now(), hudAt = -Infinity, hudKey = '';
 /** The routine characters' bench seats are re-held twice a second (syncNpcSeats). */
 let npcSeatT = 0;
+/** A real player seated on a bench takes that place for you too (src/multiplayer/social.ts): you sit next to them, not through them. */
+function syncPeerSeats() {
+  const sp = interactSpace(), held = new Set<string>();
+  for (const p of seatedPeers(presence.peers.values(), sp)) {
+    if (remoteAvatars.hidden(p)) continue;                       // a blocked player is not drawn: their place is free
+    const who = 'peer:' + p.id;
+    const s = seats.inSpace(sp).find(x => x.occupant === who) ?? seats.occupyNear(sp, p.x, p.z, who, 0.6);
+    if (s) held.add(s.id);
+  }
+  for (const s of seats.all()) if (s.occupant?.startsWith('peer:') && !held.has(s.id)) seats.release(s.id, s.occupant);
+}
+/** One quiet line when a real player comes close (each once, not more than one every 45 s). */
+function noticePlayers() {
+  if (mode !== 'play' || !presence.peers.size) return;
+  const p = notice.next(presence.peers.values(), { x: pos.x, z: pos.z, space: presenceSpace() }, q => remoteAvatars.hidden(q), performance.now());
+  if (p) hud.toast(`${p.name} est près de toi`);
+}
 /**
  * Debug profiler (?debug: `__dakar.perfOn(true)`, then `__dakar.perf()`): milliseconds per system and per module of the
  * frame loop, smoothed, for the evening performance budget (scripts/check-perf-evening.mjs). Off: one boolean test.
@@ -1192,6 +1241,11 @@ function frameStep(now: number, dt: number, draw = true) {
   if (document.hidden || !world) return;
   const tFrame = profOn ? performance.now() : 0;
   setHumanoidView(camera);                                 // far, unseen and hidden bodies get less animation work (ANIM_LOD)
+  if (pendingCross) {                                      // a car crossing the border road: the district changes around it, no fade
+    const c = pendingCross; pendingCross = null;
+    const t0 = performance.now(); loadHub(c.dest, c.at); lastCrossMs = performance.now() - t0;
+    hud.toast(HUB_NAMES[c.dest]); saveNow();
+  }
 
   if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
@@ -1261,7 +1315,7 @@ function frameStep(now: number, dt: number, draw = true) {
   const hidden = hiddenEvery(world.arena, camera.position);
   { const run = pacer.step('cast', dt, hidden); if (run !== null) npcLife.update(run, pos, freeCam?.p ?? camera.position); }
   if (profOn) { profMark('npcLife', tSys); tSys = performance.now(); }
-  if ((npcSeatT -= dt) <= 0) { npcSeatT = 0.5; syncNpcSeats(); }
+  if ((npcSeatT -= dt) <= 0) { npcSeatT = 0.5; syncNpcSeats(); syncPeerSeats(); noticePlayers(); }
   { const run = pacer.step('walkers', dt, hidden); if (run !== null) { crowd?.update(run); traffic?.update(run); life?.update(run); } }
   world.tick(dt);
   if (profOn) { profMark('walkers+traffic+life+world', tSys); tSys = performance.now(); }
@@ -1278,8 +1332,8 @@ function frameStep(now: number, dt: number, draw = true) {
   const extras: Partial<PresenceExtras> = {}; for (const m of MODULES) Object.assign(extras, m.presence?.(ctx) ?? {});
   // fighting at the arena: where the player's wrestler stands in the ring, in a fighting stance (src/arena/myGala.ts)
   const ring = arenaDuel() ? (lambScene as LambDuel).fighterPoints()[0] : null;
-  presence.publish(ring ? { type: 'move', x: ring[0], y: ring[1], z: ring[2], yaw: facing, speed: 0, space, clip: 'Stance', ...extras }
-    : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach || drive ? Math.min(speed, 6) : 0, space, clip, ...extras }, now);   // walking to a seat or carrying: the legs move for others too
+  presence.publish(ring ? { type: 'move', x: ring[0], y: ring[1], z: ring[2], yaw: facing, speed: 0, space, clip: 'Stance', ...extras, ...(emoter.emo ? { emo: emoter.emo } : {}) }
+    : { type: 'move', x: pos.x, y: pos.y, z: pos.z, yaw: facing, speed: mode === 'play' || approach || drive ? Math.min(speed, 6) : 0, space, clip, ...extras, ...(emoter.emo ? { emo: emoter.emo } : {}) }, now);   // walking to a seat or carrying: the legs move for others too
   remoteAvatars.update(dt, pos, space, quality === 'low' ? 6 : quality === 'medium' ? 10 : 14, camera, innerHeight);
   chat.update(dt, camera, innerHeight);
   findNearest();
@@ -1311,7 +1365,7 @@ resize(); applyQuality();
 let started = false, markStarted = () => {};
 const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
-  await Promise.all([preloadAssets(), preloadHumanoid()]);
+  await Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte'])]);
   for (const m of MODULES) m.init?.(ctx);
   if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false; }
   const startHub = invitedHub ?? state.data.hub;
@@ -1330,10 +1384,11 @@ if (DEBUG) {
     // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
     setHour(h: number | null) { hourOverride = h; },
-    camera: () => ({ fov: camera.fov, aspect: Math.round(camera.aspect * 1000) / 1000, hfov: Math.round(2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) * 1800 / Math.PI) / 10 }),
-    pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null }),
+    camera: () => ({ at: [camera.position.x, camera.position.y, camera.position.z], fov: camera.fov, aspect: Math.round(camera.aspect * 1000) / 1000, hfov: Math.round(2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) * 1800 / Math.PI) / 10 }),
+    pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null, yaw: facing, cam: follow.yaw }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
     cityPlaces: () => world?.interactables.filter(i => i.id.includes(':city:')).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, radius: i.radius, actions: i.actions.map(a => ({ id: a.id, label: a.label, gain: a.gain, cost: a.cost })) })) ?? [],
+    crossMs: () => lastCrossMs,
     cityGeometry: () => world ? { bounds: world.bounds, colliders: world.colliders, people: world.people } : null,
     places: openPlaces,
     destination: () => destination?.id ?? null,
@@ -1398,6 +1453,11 @@ if (DEBUG) {
     /** The quiet log (the phone's Notifications): unseen count and the latest entries. */
     quietLog: () => ({ unread: quietLog.unread, entries: quietLog.entries.slice(0, 12).map(e => e.text) }),
     playBeat(id: string, choice: string) { const b = BEATS.find(x => x.id === id)!; const c = b.choices.find(x => x.id === choice)!; return applyChoice(b, c, rel, state); },
+    /** The city day (the shared clock), for the checks. */
+    cityDay: () => cityTimeAt(presence.serverNow()).day,
+    /** Social between real players (checks): the last emote this device made, the glyphs shown, the seats taken by peers. */
+    social: () => ({ emo: emoter.emo, players: mapBridge.playersNow(), glyphs: remoteAvatars.glyphs(), peerSeats: seats.all().filter(s => s.occupant?.startsWith('peer:')).map(s => ({ id: s.id, by: s.occupant })), hidden: [...presence.peers.values()].filter(p => remoteAvatars.hidden(p)).map(p => p.id) }),
+    socialEmote(kind: 'salut' | 'merci' | 'bravo' | 'rire', to?: string) { return emoter.make(kind, to, performance.now()); },
     npcWhere: (id: string) => npcLife.where(id), npcSheet: (id: string) => npcLife.sheet(id),
     npcSettle: () => npcLife.settle(), npcAudit: () => npcLife.audit(), npcSlots: (h: number) => npcLife.slotsAt(h), people: () => npcLife.openPeople(),
     openNpc(id: string) { const it = world?.interactables.find(i => i.npc === id); if (it) openActions(it); },

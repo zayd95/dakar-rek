@@ -21,6 +21,8 @@ const out = () => master!;
  * A bus of its own under the master gain (silent until its gain is raised): a sound placed in the world (the drummers
  * outside the arena…) gets its own loudness by distance. Null when audio is unavailable.
  */
+/** The master gain itself (after the sound setting), for a module that puts its own chain (a limiter) in front of it. Null when audio is unavailable. */
+export function audioMaster(): GainNode | null { return ac() ? master : null; }
 export function audioBus(): { ctx: AudioContext; gain: GainNode } | null {
   const c = ac(); if (!c) return null;
   const g = c.createGain(); g.gain.value = 0; g.connect(out());

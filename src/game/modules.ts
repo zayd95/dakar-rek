@@ -18,9 +18,14 @@ import { wolofModule } from '../i18n/module';
 import { arenaModule } from '../arena/module';
 import { assetKitModule } from './assetKit';
 import { streetDressModule } from './streetDress';
+import { pikineDnaModule } from './pikineDna';
+import { signFitModule } from './signFit';
 import { transport } from '../transport/module';
 import { moto, tiakMoto } from '../transport/motoModule';
 import { car } from '../transport/carModule';
+import { berline, suv } from '../transport/premiumCars';
+import { garage } from '../transport/garageModule';
+import { prestige } from '../transport/prestigeSales';
 import { taxi } from '../transport/taxi';
 import { arenaStreetsModule } from '../city/arena';
 import { weatherModule } from '../city/weather';
@@ -145,6 +150,11 @@ export interface GameCtx {
    * its vehicle there), the player at `at` or the hub's spawn. Charges nothing: the caller has taken any fare.
    */
   travel(dest: HubId, at?: { x: number; z: number; yaw: number }, label?: string): void;
+  /**
+   * Cross into the next district on a road that continues there (src/transport/hubLink.ts): no fade, no menu, nobody moved. The hub is built at the start of the next frame, around the
+   * same pose (`at`: the driver's vehicle, already mapped to the new district's coordinates); the module that was driving puts the player back in its seat (`hubLoaded`).
+   */
+  crossHub(dest: HubId, at: { x: number; z: number; yaw: number }): void;
 }
 
 /** A gameplay module: hooks are called by main.ts in this order every hub / frame. */
@@ -222,7 +232,7 @@ const clock: GameModule = { name: 'clock', init: ctx => { ctx.state.hour = ctx.h
 
 export const MODULES: GameModule[] = [
   clock,                // the city hour for content actions' opening hours (src/world/content.ts `during`)
-  wolofModule, assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, taxi, ESTATE_MODULE, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
+  wolofModule, assetKitModule, streetDressModule, transport, VenuesModule, RooftopModule, moto, tiakMoto, car, berline, suv, garage, prestige, taxi, ESTATE_MODULE, gareModule, arenaModule, arenaExteriorModule, arenaInteriorModule, crowdModule, fightTalkModule, postersModule, fighterModule, bakkModule,
   arenaStreetsModule, weatherModule, streetVendorsModule, roadEventsModule,   // city lane: the arena's streets, weather, vendors, road events (docs/CITY.md)
   galaTrafficModule,    // the gala-night road to the arena: the jam, the agent, moto-taxis, the rank, fans on the step, horns (docs/CITY.md)
   nightModule,          // the city at night: lamps (some out, some flickering), vehicle lights, the arena's floodlights, lit shops (docs/CITY.md)
@@ -239,4 +249,6 @@ export const MODULES: GameModule[] = [
   supportersModule,     // who supports whom: the écurie colours worn, seen by the others, the stands answering (src/arena/supporters.ts)
   meals,                // table service: the plate in front of the seat, eaten spoonful by spoonful (src/game/meals.ts)
   perform,              // actions done in the world: carrying, handwork, cups to the lips, washing… (src/game/perform.ts)
+  signFitModule,        // every painted board repainted at its plane's own proportions after the hub is built (src/game/signFit.ts)
+  pikineDnaModule,      // Pikine Street DNA phase 2: the first walk's walls, gates, wires, landmarks, in one draw call (src/game/pikineDna.ts)
 ];

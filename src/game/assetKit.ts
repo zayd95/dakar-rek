@@ -7,7 +7,8 @@ import type { Humanoid } from '../actors/humanoid';
 import { rng } from '../core/rng';
 import { ParkedBake, placeParked, PARKED_COUNT } from './parkedVehicles';
 import type { FurnitureId } from '../world/furnitureKit';
-import { animateVehicle, buildVehicle, scaleVehicleLods, setVehicleNight, VEHICLE_KINDS, type VehicleKind, type VehicleOpts } from '../actors/vehicleKit';
+import { glbVehicle, glbStats, setGlbVehicles, preloadGlbVehicles } from '../actors/glbVehicle';
+import { animateVehicle, buildVehicle, vehicleSpec, scaleVehicleLods, setVehicleNight, VEHICLE_KINDS, type VehicleKind, type VehicleOpts } from '../actors/vehicleKit';
 
 /**
  * 3D asset kit module: drives the kit's night lamps from the city clock, and gives the checks a showroom (?debug):
@@ -50,6 +51,13 @@ export const assetKitModule: GameModule = {
         scaleVehicleLods(v.group, lodOf());
         return v.group;
       },
+      /** A prepared GLB body (src/actors/glbVehicle.ts) in the kit vehicle's place; loads it first. null if it is not there. */
+      async kitGlb(id: string, kind: VehicleKind, seed: number) {
+        setGlbVehicles(true); await preloadGlbVehicles([id]);
+        return glbVehicle(id, vehicleSpec(kind, { seed, driver: false, passengers: false }));
+      },
+      glbStats,
+      animateVehicle,
       kitSpec: (kind: VehicleKind, seed = 1) => buildVehicle(kind, { seed, lod: 'far' }).spec,
       /** Line items up on a plain floor far from the hub; returns where each one stands. */
       kitShowroom(o: { vehicles?: { kind: VehicleKind; seed?: number; opts?: VehicleOpts }[]; x?: number; z?: number; gap?: number; yaw?: number; floor?: number }) {

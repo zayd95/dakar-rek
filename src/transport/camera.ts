@@ -24,10 +24,10 @@ export function anchorToWorld(v: { x: number; y: number; z: number }, yaw: numbe
 }
 
 /** Fraction of the segment from → want that stays out of the colliders (same rule as the follow camera). */
-export function clearOfWalls(from: Vec3, want: Vec3, colliders: readonly Collider[], steps = 12): number {
+export function clearOfWalls(from: Vec3, want: Vec3, colliders: readonly Collider[], steps = 12, pad = 0.4): number {
   for (let k = 1; k <= steps; k++) {
     const f = k / steps, x = from.x + (want.x - from.x) * f, y = from.y + (want.y - from.y) * f, z = from.z + (want.z - from.z) * f;
-    for (const c of colliders) if (x > c.x0 - 0.4 && x < c.x1 + 0.4 && z > c.z0 - 0.4 && z < c.z1 + 0.4 && y < c.h + 0.5) return Math.max(0.15, (k - 1) / steps);
+    for (const c of colliders) if (x > c.x0 - pad && x < c.x1 + pad && z > c.z0 - pad && z < c.z1 + pad && y < c.h + 0.5) return Math.max(0.15, (k - 1) / steps);
   }
   return 1;
 }
@@ -44,6 +44,7 @@ export class PassengerCamera {
   private want = new THREE.Vector3();
   private wantLook = new THREE.Vector3();
   private from = new THREE.Vector3();
+  private eye = new THREE.Vector3();
   private live = false;
 
   /** Start from where the camera is now (smooth hand-over from the follow camera). */
@@ -73,6 +74,12 @@ export class PassengerCamera {
     const a = 1 - Math.exp(-dt * 5), b = 1 - Math.exp(-dt * 7);
     this.rel.lerp(this.want, a); this.relLook.lerp(this.wantLook, b);
     camera.position.set(v.x + this.rel.x, v.y + this.rel.y, v.z + this.rel.z);
+    if (!anchor.inside) {
+      // the smoothed camera, not only the wanted one, stays out of buildings (it swings through a corner on its way): pulled in at once, with a margin
+      this.eye.set(v.x, v.y + 2.6, v.z);
+      const k2 = clearOfWalls(this.eye, camera.position, colliders, 20, 0.8);
+      if (k2 < 1) camera.position.lerpVectors(this.eye, camera.position, k2);
+    }
     this.from.set(v.x + this.relLook.x, v.y + this.relLook.y, v.z + this.relLook.z);
     camera.lookAt(this.from);
   }

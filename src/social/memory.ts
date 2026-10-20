@@ -24,6 +24,17 @@ export function recordVisit(s: GameState, id: string, stamp: number): boolean {
   return true;
 }
 export function recordService(s: GameState, id: string) { s.count(memKey.served(id)); }
+/**
+ * A service that costs nothing (a chat, a free favour) counts at most once per city hour per person, like a visit: talking
+ * to someone ten times in a row does not make a regular. A paid service always counts: the money is the price of it.
+ * Returns true when counted.
+ */
+export function recordFreeService(s: GameState, id: string, stamp: number): boolean {
+  const k = `freesvc_${id}`;
+  if (s.data.counters[k] === stamp) return false;
+  s.data.counters[k] = stamp; recordService(s, id);
+  return true;
+}
 export const familiarity = (s: GameState, id: string) => (s.data.counters[memKey.visit(id)] ?? 0) + (s.data.counters[memKey.served(id)] ?? 0);
 export const isRegular = (s: GameState, id: string) => s.data.flags.includes(memKey.regular(id));
 
@@ -34,7 +45,16 @@ export function updateRegular(s: GameState, r: Relations, id: string): boolean {
   return true;
 }
 
-export interface Ctx { id: string; s: GameState; r: Relations; hour: number; act?: Activity }
+export interface Ctx { id: string; s: GameState; r: Relations; hour: number; act?: Activity; /** City day (needed by `bout` conditions). */ day?: number }
+
+/** The player's last bout (career), or null. */
+export const lastBout = (s: GameState) => { const b = s.data.career?.bouts; return b && b.length ? b[b.length - 1] : null; };
+/** The last bout ended with `res` at most `within` city days before `day` (today included). */
+export function boutWithin(s: GameState, day: number, res: 'V' | 'D', within: number): boolean {
+  const b = lastBout(s); if (!b || b.res !== res) return false;
+  const ago = Math.floor(day) - Math.floor(b.day);
+  return ago >= 0 && ago <= within;
+}
 export function matches(c: Cond, x: Ctx): boolean {
   const f = x.s.data.flags, beats = x.s.data.beats;
   if (c.flag && !f.includes(c.flag)) return false;
@@ -48,6 +68,7 @@ export function matches(c: Cond, x: Ctx): boolean {
   if (c.relBelow !== undefined && lv >= c.relBelow) return false;
   if (c.act && (!x.act || !c.act.includes(x.act))) return false;
   if (c.counter && (x.s.data.counters[c.counter[0]] ?? 0) < c.counter[1]) return false;
+  if (c.bout && (x.day === undefined || !boutWithin(x.s, x.day, c.bout.res, c.bout.within))) return false;
   return true;
 }
 
@@ -67,9 +88,9 @@ export function applyIntroduction(p: Profile, i: Intro, s: GameState, r: Relatio
 }
 
 /** The last thing this character remembers about the player (or null). */
-export function lastMemory(id: string, s: GameState, r: Relations, hour = 12): string | null {
+export function lastMemory(id: string, s: GameState, r: Relations, hour = 12, day?: number): string | null {
   const p = profileOf(id); if (!p) return null;
-  const x: Ctx = { id, s, r, hour };
+  const x: Ctx = { id, s, r, hour, day };
   const facts = [...(isRegular(s, id) ? [`Te reconnaît comme un habitué (${familiarity(s, id)} passages)`] : []), ...p.memories.filter(f => matches(f.when, x)).map(f => f.text)];
   return facts.length ? facts[facts.length - 1] : null;
 }

@@ -52,6 +52,8 @@ export const mapBridge = {
   /** Opens the phone on its map. */
   openMap: () => {},
   friendsNow: (): MapFriend[] => [],
+  /** Real players near, in the street (src/multiplayer/social.ts): a quiet dot on the map, no name, nothing on the 3D screen. */
+  playersNow: (): MapFriend[] => [],
   get enabled() { return store()?.getItem(KEY) !== 'off'; },
   setEnabled(on: boolean) { try { if (on) store()?.removeItem(KEY); else store()?.setItem(KEY, 'off'); } catch { /* session only */ } document.body.classList.toggle('mm-off', !on); },
 };
@@ -87,11 +89,16 @@ export function minimapModule(): GameModule {
   };
 
   /** The places of the hub that a player can use, with what to do there (kept fresh: modules add theirs after the load). */
-  const refreshPlaces = (hub: HubWorld) => {
+  const refreshPlaces = (hub: HubWorld, ctx: GameCtx) => {
     const list: MapPlace[] = [];
     for (const i of hub.interactables) {
       if (i.npc || /:arena:/.test(i.id)) continue;
       list.push({ id: i.id, name: i.name, x: i.x, z: i.z, kind: placeKind(i.id, i.name), what: i.actions.map(a => a.label).slice(0, 4) });
+    }
+    // the vehicle dealers (src/transport/ownedModule.ts) are places the modules add: on the map too, to walk to them (« Marquer »)
+    for (const pl of ctx.places.all()) {
+      const a = pl.anchors[0];
+      if (a && /:dealer$/.test(pl.id)) list.push({ id: pl.id, name: pl.name, x: a.x, z: a.z, kind: 'shop', what: ['Voir les articles', 'Essayer'] });
     }
     mapBridge.places = dedupePlaces(list);
   };
@@ -179,6 +186,12 @@ export function minimapModule(): GameModule {
       if ((m.x - c) ** 2 + (m.y - c) ** 2 > R * R) continue;
       g.beginPath(); g.arc(m.x, m.y, 3.6, 0, TAU); g.fillStyle = '#7CFFB2'; g.fill(); g.lineWidth = 1.4; g.strokeStyle = '#0c1115'; g.stroke();
     }
+    // real players nearby: a small cool dot, no label (the 3D view shows their names only when they are close)
+    for (const f of mapBridge.playersNow()) {
+      const m = P(f.x, f.z);
+      if ((m.x - c) ** 2 + (m.y - c) ** 2 > R * R) continue;
+      g.beginPath(); g.arc(m.x, m.y, 3, 0, TAU); g.fillStyle = '#6ee7ff'; g.fill(); g.lineWidth = 1.2; g.strokeStyle = '#0c1115'; g.stroke();
+    }
     // the objective, pulsing, with an arrow on the ring when it is off the map
     const gd = mapBridge.guide;
     if (gd && !ctx.inside()) {
@@ -213,10 +226,10 @@ export function minimapModule(): GameModule {
       mapBridge.setEnabled(mapBridge.enabled);
       void ctx;
     },
-    hubLoaded(_ctx, hub) {
+    hubLoaded(ctx, hub) {
       mapBridge.hub = hub; mapBridge.hubName = HUB_NAMES[hub.id];
       mapBridge.layer = buildLayer(hub);
-      refreshPlaces(hub);
+      refreshPlaces(hub, ctx);
       tracked.clear(); mapBridge.vehicles = []; mapBridge.route = null; routeKey = ''; last = { x: NaN, z: NaN };
       mapBridge.version++;
     },
@@ -237,7 +250,7 @@ export function minimapModule(): GameModule {
       const p = mapBridge.player; p.x = pos.x; p.z = pos.z; p.yaw = yaw; p.facing = ctx.player.facing(); p.speed = speedAvg; p.driving = ctx.space() !== 'street';
       mapBridge.hour = ctx.hour();
       mapBridge.guide = ctx.guide();
-      if ((placesT -= step) <= 0) { placesT = 2; refreshPlaces(hub); mapBridge.friends = mapBridge.friendsNow(); }
+      if ((placesT -= step) <= 0) { placesT = 2; refreshPlaces(hub, ctx); mapBridge.friends = mapBridge.friendsNow(); }
       if ((scanT -= step) <= 0) { scanT = 1.5; scanVehicles(ctx); }
       // the route to the objective, along the roads: when the objective or the player's block changes
       const gd = mapBridge.guide;

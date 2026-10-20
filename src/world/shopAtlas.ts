@@ -296,10 +296,10 @@ export function drawShopAtlas(c: C2, g: C2) {
     if (band) { c.fillStyle = bandCol; c.fillRect(x + 2, y + h - 12, w - 4, 10); label(c, x, y + h - 7, w, band, 7, '#ffffff'); }
     else { label(c, x, y + h - 8, w, 'BON ÉTAT', 6, '#1b2a7a'); }
   };
-  card('carCard0', 'OCCASION', 'À VENDRE', null, '');
-  card('carCard1', 'OCCASION', '3 400 000 F', 'RÉSERVÉE', '#c8322a');
-  card('carCard2', 'OCCASION', '4 100 000 F', 'VENDUE', '#2e6b30');
-  panel(c, 'pnlCars', '#1b2a7a', '#f2c230', 'NDIAYE AUTO · OCCASIONS');
+  card('carCard0', 'VOITURE', 'À VENDRE', null, '');
+  card('carCard1', 'VOITURE', '3 400 000 F', 'RÉSERVÉE', '#c8322a');
+  card('carCard2', 'VOITURE', '4 100 000 F', 'VENDUE', '#2e6b30');
+  panel(c, 'pnlCars', '#1b2a7a', '#f2c230', 'NDIAYE AUTO · VOITURES');
   { const [x, y] = P('floorShow'); for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) { c.fillStyle = (i + j) % 2 ? '#e4e5e2' : '#dcdedb'; c.fillRect(x + i * 32, y + j * 32, 32, 32); }
     c.fillStyle = '#b9bcb8'; for (let k = 0; k <= 64; k += 32) { c.fillRect(x + Math.min(k, 63), y, 1, 64); c.fillRect(x, y + Math.min(k, 63), 64, 1); }
     c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x + 4, y + 4, 10, 2); c.fillRect(x + 36, y + 36, 10, 2); }
