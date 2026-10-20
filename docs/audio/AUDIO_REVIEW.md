@@ -20,3 +20,15 @@ Three rounds on the owner's real iPhone; the report page (private): <https://cla
 | Real motorcycle idle / rev / start recordings (dklon) | OpenGameArt *engines-startup-idle-rev* | **CC-BY-SA 3.0** (credit dklon; share-alike): declined, not integrated |
 
 The build of the review set (all candidates, ~0.44 MB) is in the git history of `vehicles/audio-overhaul-20261019` (commit `335e67f`).
+
+## Jakarta riding level (owner's two mixing requests)
+
+The approved B recordings, ignition and engine character are unchanged; only the riding/rev gain of the Jakarta was brought down, in two steps measured at the speaker (master output, after the limiter, which flattens loud input — so the gain trim is not the dB figure):
+
+| Step | `topTrim` (moto) | Riding (speaker) | Idle |
+|---|---|---|---|
+| shipped in the audition | 1 | reference | reference |
+| first request (4–6 dB) | 0.2 | about −5 dB | about −1 dB |
+| second request | 0.08 | about −8 dB | unchanged (audible) |
+
+The trim only acts above idle: `trim = 1 + (topTrim − 1)·k^0.6`, `k = (rpm − 0.12)/0.88`. Cars use `topTrim: 1` (untouched).
