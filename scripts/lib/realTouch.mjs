@@ -106,3 +106,38 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
   if (brakeAtEnd) { const b = await t.centre('#ridepad .rp-brake'); await t.down(1, b.x, b.y); await page.waitForFunction(k => Math.abs(window.__dakar[k].at()?.speed ?? 0) < 0.15, key, { timeout: 60000 }).catch(() => {}); await t.up(1); }
   return at;
 }
+
+/**
+ * Turn a car round in a street too narrow for one sweep, as a driver does: a multi-point turn with the real controls. The stick locks the wheel the way that brings the heading
+ * (`yaw`) closer to `target`, the gas goes forward until the bumper is `margin` m from the edge of `area` ({ x0, x1, z0, z1 }: the carriageway), then the car is braked to a stop,
+ * « R » selects the reverse gear and it backs the other way with the opposite lock (reversing flips the effect of the lock on the heading), and so on until the heading is within `tol`.
+ * Lifts every finger and leaves the car stopped, in the forward gear. Returns the car's last `at()`. Written for the return leg of the continuous drive (the pilot below only goes forward).
+ */
+export async function turnAround(page, t, key, target, { area, tol = 0.3, margin = 1.4, length = 4.7, ms = 120000, speed = 2.6 } = {}) {
+  await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
+  const gas = await t.centre('#ridepad .rp-gas'), brk = await t.centre('#ridepad .rp-brake'), j = await t.centre('#joy'), r = 30, t0 = Date.now();
+  let reverse = false, gasOn = false, at = null, moves = 0;
+  const press = async on => { if (on === gasOn) return; gasOn = on; if (on) await t.down(1, gas.x, gas.y); else await t.up(1); };
+  const stop = async () => { await press(false); await t.down(4, brk.x, brk.y); await page.waitForFunction(k => Math.abs(window.__dakar[k].at()?.speed ?? 0) < 0.15, key, { timeout: 30000 }).catch(() => {}); await t.up(4); };
+  const gear = async rev => { if (rev === reverse) return; await t.tap('#ridepad .rp-rev'); reverse = rev; };
+  await t.down(2, j.x, j.y);
+  while (Date.now() - t0 < ms) {
+    at = await page.evaluate(k => window.__dakar[k].at(), key); if (!at) break;
+    const err = Math.atan2(Math.sin(target - at.yaw), Math.cos(target - at.yaw));
+    if (Math.abs(err) < tol) break;
+    const f = { x: Math.sin(at.yaw), z: Math.cos(at.yaw) }, dir = reverse ? -1 : 1, reach = length / 2 + margin;
+    const px = at.x + f.x * dir * reach, pz = at.z + f.z * dir * reach;
+    const outside = px < area.x0 || px > area.x1 || pz < area.z0 || pz > area.z1;
+    if (outside) {                                                                      // the bumper has reached the kerb: stop, change gear, back the other way
+      await stop(); await t.move(2, j.x, j.y, 1); await gear(!reverse); moves++;
+      if (moves > 14) break;
+      continue;
+    }
+    const lock = (err > 0 ? -1 : 1) * (reverse ? -1 : 1);                               // forward: the stick to the left raises the heading; in reverse the effect flips
+    await t.move(2, j.x + lock * r, j.y, 1);
+    await press(Math.abs(at.speed) < speed);
+    await page.waitForTimeout(90);
+  }
+  await stop(); await t.up(2); await gear(false);
+  return page.evaluate(k => window.__dakar[k].at(), key);
+}
