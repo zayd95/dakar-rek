@@ -41,8 +41,8 @@ for (const road of ROADS) describe(`chunks of ${road.id}`, () => {
     }
   });
 
-  it('are light: a few meshes and a few thousand triangles each', () => {
-    for (const c of all) { expect(meshes(c.group)).toBeLessThanOrEqual(3); expect(tris(c.group)).toBeLessThan(14000); }
+  it('are light: a handful of meshes and a few thousand triangles each', () => {
+    for (const c of all) { expect(meshes(c.group)).toBeLessThanOrEqual(5); expect(tris(c.group)).toBeLessThan(14000); }
   });
 
   it('have finite geometry', () => {

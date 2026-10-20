@@ -258,6 +258,7 @@ function updateLighting(hour: number) {
     world.facadeMat.emissiveIntensity = night * 1.25;
     world.lamps.color.setScalar(lerp(0.45, 1, night));
     world.lampGlow.visible = night > 0.3;
+    corridors.setNight(night);
     for (const m of world.signs) (m.material as THREE.MeshLambertMaterial).emissiveIntensity = night * 0.45;
   }
 }

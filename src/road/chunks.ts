@@ -1,8 +1,9 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Batch } from '../world/batch';
 import { addGrain } from '../world/grain';
 import { generatedTexture } from '../world/textures';
-import { hubSurface } from '../world/builder';
+import { hubSurface, lightPoolTexture } from '../world/builder';
 import { rng } from '../core/rng';
 import type { Collider, HubWorld } from '../world/types';
 import { ROAD_HALF, SHOULDER, type Profile, type Road } from './routes';
@@ -20,12 +21,17 @@ const ASPHALT = 0x4d5057;
 /** The materials every chunk shares (made once for the road, freed with it). `lite`: no procedural grain or detail texture (the Low quality preset). */
 export class ChunkMats {
   readonly ground: THREE.MeshLambertMaterial; readonly asphalt: THREE.MeshLambertMaterial; readonly plain: THREE.MeshLambertMaterial;
+  /** Lamp heads (dimmer by day, full at night) and the pools of light on the road under them (night only), like the districts' own (world/builder.ts). */
+  readonly bulb = new THREE.MeshBasicMaterial({ vertexColors: true });
+  readonly glow = new THREE.MeshBasicMaterial({ map: typeof document !== 'undefined' ? lightPoolTexture() : null, color: 0xffb860, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, visible: false });
   constructor(lite: boolean) {
     this.ground = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 1.2, 0.5, false, lite ? undefined : generatedTexture('sand'), 3) as THREE.MeshLambertMaterial;
     this.asphalt = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.5, 1, false, lite ? undefined : generatedTexture('asphalt'), 3) as THREE.MeshLambertMaterial;
     this.plain = addGrain(new THREE.MeshLambertMaterial({ vertexColors: true }), 1, 1) as THREE.MeshLambertMaterial;
   }
-  dispose() { this.ground.dispose(); this.asphalt.dispose(); this.plain.dispose(); }
+  /** `night`: 0 (day) … 1. */
+  setNight(night: number) { this.bulb.color.setScalar(0.45 + 0.55 * night); this.glow.visible = night > 0.3; }
+  dispose() { this.ground.dispose(); this.asphalt.dispose(); this.plain.dispose(); this.bulb.dispose(); this.glow.dispose(); }
 }
 
 export interface Chunk {
@@ -89,7 +95,7 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
   const s0 = index * CHUNK, s1 = Math.min(L, s0 + CHUNK + 4);        // a few metres of overlap: no seam between two chunks
   const R = rng(0x5f3a + index * 7919 + road.id.length * 131 + road.id.charCodeAt(0) * 17);
   const sa = hubSurface(road.def.a), sb = hubSurface(road.def.b);
-  const plain = new Batch(), asphalt = new Batch(), ground = new Batch();
+  const plain = new Batch(), asphalt = new Batch(), ground = new Batch(), bulbs = new Batch(), pools: THREE.BufferGeometry[] = [];
   const colliders: Collider[] = [], people: HubWorld['people'] = [];
   const disposables: { dispose(): void }[] = [];
   const group = new THREE.Group(); group.name = `road:${road.id}:${index}`;
@@ -152,7 +158,8 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
     plain.cyl(0.07, 0.1, 6.6, p.x, 0, p.z, 0x3e4349, 6);
     const ax = p.x + p.f.lx * arm * 1.1, az = p.z + p.f.lz * arm * 1.1;
     plain.box(2.2, 0.1, 0.1, ax, 6.6, az, 0x3e4349, p.yaw + Math.PI / 2);
-    plain.box(0.5, 0.14, 0.28, p.x + p.f.lx * arm * 2, 6.5, p.z + p.f.lz * arm * 2, 0xfff1c0, p.yaw + Math.PI / 2);
+    bulbs.box(0.5, 0.14, 0.28, p.x + p.f.lx * arm * 2, 6.5, p.z + p.f.lz * arm * 2, 0xfff1c0, p.yaw + Math.PI / 2);
+    const g = new THREE.PlaneGeometry(14, 14); g.rotateX(-Math.PI / 2); g.translate(p.x + p.f.lx * arm * 2, ROAD_Y + 0.06, p.z + p.f.lz * arm * 2); pools.push(g);
     solid(p.x, p.z, 0.5, 0.5, 6.6);
   };
   const pole = (s: number, side: number) => {
@@ -269,7 +276,8 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
 
   const meshes: THREE.Mesh[] = [];
   const add = (b: Batch, m: THREE.Material, cast: boolean, receive = true) => { const mesh = b.build(m, receive, cast); if (mesh) { mesh.frustumCulled = true; group.add(mesh); meshes.push(mesh); disposables.push(mesh.geometry); } };
-  add(ground, o.mats.ground, false); add(asphalt, o.mats.asphalt, false); add(plain, o.mats.plain, true);
+  add(ground, o.mats.ground, false); add(asphalt, o.mats.asphalt, false); add(plain, o.mats.plain, true); add(bulbs, o.mats.bulb, false, false);
+  if (pools.length) { const glow = new THREE.Mesh(mergeGeometries(pools, false)!, o.mats.glow); glow.renderOrder = 1; group.add(glow); meshes.push(glow); disposables.push(glow.geometry); for (const g of pools) g.dispose(); }
 
   // the direction boards at the junctions of this chunk: two a driver coming from each end reads in time
   for (const j of road.junctionS) {

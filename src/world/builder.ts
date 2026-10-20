@@ -98,7 +98,7 @@ function limb(b: Batch, A: [number, number, number], Bp: [number, number, number
 
 /** Soft radial light pool texture for street lamps at night. */
 let poolTex: THREE.Texture | null = null;
-function lightPoolTexture() {
+export function lightPoolTexture() {
   if (poolTex) return poolTex;
   const cv = document.createElement('canvas'); cv.width = cv.height = 64;
   const c = cv.getContext('2d')!;

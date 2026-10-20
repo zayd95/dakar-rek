@@ -25,6 +25,7 @@ export class CorridorHost {
   private lite = false;
   private handover: string | null = null;
   private quality: Quality = 'medium';
+  private night = 0;
 
   constructor(private scene: THREE.Object3D, private rand: () => number) {}
 
@@ -33,7 +34,7 @@ export class CorridorHost {
     this.quality = quality;
     const lite = quality === 'low';
     if (this.mats && lite !== this.lite) { for (const v of this.views) v.dispose(); this.views = []; this.mats.dispose(); this.mats = null; }
-    if (!this.mats) { this.lite = lite; this.mats = new ChunkMats(lite); }
+    if (!this.mats) { this.lite = lite; this.mats = new ChunkMats(lite); this.mats.setNight(this.night); }
     const roads = roadsOf(world.id), keep: CorridorView[] = [];
     for (const v of this.views) {
       if (this.handover === v.road.id && roads.includes(v.road)) { v.detach(); v.attach(world, world.id); keep.push(v); }
@@ -53,6 +54,9 @@ export class CorridorHost {
   update(dt: number, x: number, z: number, player: Pt | null) {
     for (const v of this.views) v.update(dt, x, z, player, TRAFFIC[this.quality]);
   }
+
+  /** The lamps along the roads follow the dusk (0 day … 1 night), like the districts' own. */
+  setNight(night: number) { this.night = night; this.mats?.setNight(night); }
 
   /** Has the player gone past the middle of a road? (x, z in the loaded district's frame.) */
   watch(x: number, z: number): Swap | null {
