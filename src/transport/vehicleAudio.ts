@@ -197,6 +197,11 @@ class VehicleAudio {
     const buf = this.bank.get(prof.start); if (buf) this.shot(b, prof.start, { dur: buf.duration, rate: prof.startRate, gain: 0.55 * prof.level, hp: prof.hp > 100 ? 160 : 70, attack: 0.02, release: 0.6 });
     return prof.catchAt;
   }
+  /** The starter turning over and not catching (a dead car): the recorded ignition up to just before the engine catches (`catchAt`), then it dies away. No engine follows. */
+  crank(prof: EngineProfile) {
+    const b = this.ready('crank', 0.8); if (!b) return;
+    this.shot(b, prof.start, { dur: Math.max(0.3, (prof.catchAt - 0.1) * prof.startRate), rate: prof.startRate, gain: 0.5 * prof.level, hp: prof.hp > 100 ? 160 : 70, attack: 0.02, release: 0.3 });
+  }
 
   /** The engine loops and the traffic bed: on while driving. */
   run(prof: EngineProfile, delay = 0) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BAND_LABEL, LIMP_HP, TAP_SPEED, TOW_FEE, bandOf, bandWarning, canMakeshift, damageOf, performance, repairQuote, scaledDrive, towFee } from '../src/transport/condition';
+import { BAND_LABEL, LIMP_HP, TAP_SPEED, TOW_FEE, bandOf, bandWarning, canMakeshift, damageOf, healthAlert, healthTag, hitDamage, performance, repairQuote, roadsideResult, scaledDrive, towFee, warnLevel, ROADSIDE_SECONDS } from '../src/transport/condition';
 import { driveStep, newDriveState } from '../src/transport/drive';
 import type { DriveSpec } from '../src/transport/spec';
 import type { AssetState } from '../src/core/types';
@@ -39,7 +39,7 @@ describe('what condition does to the driving', () => {
     for (const hp of [60, 30, 10]) { const s = scaledDrive(drive, hp); expect(s.maxSpeed).toBeLessThan(last * drive.maxSpeed + 1e-9); last = s.maxSpeed / drive.maxSpeed; expect(s.accel).toBeLessThan(drive.accel); expect(s.brake).toBe(drive.brake); }
     const dead = scaledDrive(drive, 0), s = newDriveState(0, 0, 0);
     for (let i = 0; i < 600; i++) driveStep(s, { throttle: 1, steer: 0 }, dead, 1 / 60, () => false);
-    expect(Math.abs(s.speed)).toBeLessThan(0.05);
+    expect(Math.abs(s.speed)).toBeLessThan(0.05); expect(Number.isFinite(s.x + s.z + s.yaw)).toBe(true);
   });
   it('a car at 10 % still crawls forward (it is never stuck for good)', () => {
     const s = newDriveState(0, 0, 0), d = scaledDrive(drive, 10);
@@ -68,5 +68,35 @@ describe('the garage', () => {
   });
   it('the makeshift fix is for the very worst cars only', () => {
     expect(canMakeshift(0)).toBe(true); expect(canMakeshift(LIMP_HP - 1)).toBe(true); expect(canMakeshift(LIMP_HP)).toBe(false); expect(canMakeshift(80)).toBe(false);
+  });
+});
+
+describe('Pass 3 S1/S2: what a hit costs, what the card says, the roadside fix', () => {
+  it('a glancing hit costs 60 % of a head-on one at the same speed, a tap nothing', () => {
+    expect(hitDamage(10, true)).toBeCloseTo(damageOf(10), 1);
+    expect(hitDamage(10, false)).toBeCloseTo(damageOf(10) * 0.6, 1);
+    expect(hitDamage(TAP_SPEED - 0.1, true)).toBe(0); expect(hitDamage(1, false)).toBe(0);
+  });
+  it('the card is discreet when the car is healthy, clearer under 70 % and under 30 %, loud when it is dead', () => {
+    expect(healthTag(100)).toBe(''); expect(healthTag(92.4)).toBe('92 %');
+    expect(healthAlert(100)).toBeNull(); expect(healthAlert(70)).toBeNull(); expect(healthAlert(92)).toBeNull();
+    expect(healthAlert(69)).toMatch(/Abîmée/); expect(healthAlert(45)).toMatch(/Abîmée/);
+    expect(healthAlert(29)).toMatch(/Très abîmée.*Garage Modou/); expect(healthAlert(0)).toMatch(/En panne/);
+    expect([100, 70, 69, 30, 29, 1, 0].map(warnLevel)).toEqual([0, 0, 1, 1, 2, 2, 3]);
+  });
+  it('a dead car cannot move either way (not even backwards)', () => {
+    const dead = scaledDrive(drive, 0), s = newDriveState(0, 0, 0);
+    for (let i = 0; i < 600; i++) driveStep(s, { throttle: -1, steer: 0 }, dead, 1 / 60, () => false);
+    expect(Math.abs(s.speed)).toBeLessThan(0.05); expect(dead.reverseSpeed).toBe(0);
+    expect(Number.isFinite(s.x) && Number.isFinite(s.z) && Number.isFinite(s.yaw)).toBe(true);        // (a top speed of exactly 0 made driveStep divide 0 by 0)
+    expect(Math.hypot(s.x, s.z)).toBeLessThan(0.05);
+  });
+  it('the roadside fix lifts only a car that will not run, only to « enough to crawl », and is not a repair', () => {
+    expect(roadsideResult(0)).toBe(LIMP_HP); expect(roadsideResult(7)).toBe(LIMP_HP);
+    expect(roadsideResult(LIMP_HP)).toBe(LIMP_HP); expect(roadsideResult(40)).toBe(40); expect(roadsideResult(100)).toBe(100);
+    expect(ROADSIDE_SECONDS).toBeGreaterThanOrEqual(8); expect(ROADSIDE_SECONDS).toBeLessThanOrEqual(20);
+    // after the fix the car still crawls slower than a repaired one, and a paid repair is still worth it
+    expect(scaledDrive(drive, LIMP_HP).maxSpeed).toBeLessThan(scaledDrive(drive, 60).maxSpeed);
+    expect(repairQuote(14_000_000, LIMP_HP)).toBeGreaterThan(0);
   });
 });
