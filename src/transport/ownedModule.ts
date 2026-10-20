@@ -379,6 +379,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const bi = brakeIntensity(-this.st.accel * Math.sign(this.st.speed || 1), v0);
     if (bi > 0.05 && input.throttle !== 0) { vehicleAudio.brake(bi); if (bi > 0.3) this.fx.hard = 0.6; }
     if (!vehicleAudio.running) vehicleAudio.run(profileFor(this.def.kit));       // the first tap may come after getting in: the engine joins then
+    vehicleAudio.cabin = this.insideCar();                                                       // the wheel view of a car: its own engine is heard through the cabin
     vehicleAudio.update(dt, this.st.speed, this.spec.drive.maxSpeed, input.throttle);
     ridePad.onHorn(this, this.hornEvent);                                         // the button tells the horn at once; this frame is the safety net (a key, a missed « up »)
     if (ctx.mode() === 'play' && (ctx.input.keys.has('KeyH') || ridePad.horn)) vehicleAudio.hornOn(this.def.kit); else vehicleAudio.hornOff();
@@ -390,6 +391,12 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
 
   // ---------------------------------------------------------------- the driver's door, getting in and out
   /** The door follows its goal at 2.4 turns of the full swing per second; the shut sound plays as it lands. */
+  /** The player sits inside a car with the wheel view on (the motorbike has no cabin; the chase and bird's-eye views are outside it). */
+  private insideCar(): boolean {
+    if (this.def.kit === 'moto' || !this.cam.active || !this.spec) return false;
+    return !!this.spec.cameras[this.cam.view % this.spec.cameras.length]?.inside;
+  }
+
   private stepDoor(dt: number, m: Vehicle) {
     if (!m.hasDoor) return;
     const was = this.doorK;
