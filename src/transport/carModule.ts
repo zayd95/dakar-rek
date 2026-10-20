@@ -1,12 +1,12 @@
 import type { HubWorld } from '../world/types';
-import { carSpec, sedanSeed, CAR_ASSET, CAR_DETAIL, SEDAN_BLUE, SEDAN_WHITE } from './car';
+import { carSpec, glbCar, sedanSeed, CAR_ASSET, CAR_DETAIL, SEDAN_BLUE, SEDAN_WHITE } from './car';
 import { OwnedVehicleModule, kerbDealer, type DealerSite } from './ownedModule';
 import { stockedShop, stockedShopFront } from '../world/shopKit';
 import { NDIAYE_AUTO } from '../world/city';
 import { say } from '../i18n/wolof';
 
 /**
- * The player's car: the catalogue's « Voiture d'occasion » (`clando`, a used kit saloon) bought at « Voitures
+ * The player's car: the catalogue's « Berline moderne » (`compacte`, the modern sedan; the kit saloon until its own body exists) bought at « Voitures
  * d'occasion · Ndiaye Auto » (fictional), a small used-car showroom of the Plateau open on the road east of the shops
  * block (src/world/city.ts, the shop kit's `showroom_cars`): three saloons on their lots, the silver one for sale with
  * its price card (the catalogue's price), the two others already taken; the salesman's desk at the back, the keys on
@@ -23,7 +23,8 @@ export function carDealer(hub: HubWorld): DealerSite | null {
     const kerb = kerbDealer(door.x, door.z, { displays: [], delivery: 0, sign: 7.6, clear: [-9, 9] });
     return {
       ...kerb, counter: { x: show.anchors.counter.x, z: show.anchors.counter.z },
-      displays: [{ x: lot.x, z: lot.z, yaw: lot.yaw, seed: sedanSeed() }], forSale: 0, card: lot.card, lots: show.anchors.lots!.length,
+      // the first lot is the one for sale (shown by showSale()); the two others stand taken (reserved, sold), the same car in another paint
+      displays: show.anchors.lots!.map((l, i) => ({ x: l.x, z: l.z, yaw: l.yaw, seed: i === 0 ? sedanSeed() : sedanSeed(i === 1 ? SEDAN_WHITE : SEDAN_BLUE) })), forSale: 0, card: lot.card, lots: show.anchors.lots!.length,
     };
   }
   // without the showroom (another layout): the used-car corner on the pavement by Dakar Réparation, as before
@@ -43,14 +44,14 @@ export const KEYS_LINE = `Moussa Ndiaye te tend les clés : « Elle t’attend d
 
 export const car = new OwnedVehicleModule({
   key: 'car', asset: CAR_ASSET, detail: CAR_DETAIL, icon: '🚗', kit: 'sedan',
-  seed: () => sedanSeed(), spec: carSpec, height: 1.45, space: 'car:berline',
+  seed: () => sedanSeed(), spec: carSpec, visual: glbCar, height: 1.45, space: 'car:compacte',
   dealer: {
-    hub: 'plateau', name: 'Voitures d’occasion · Ndiaye Auto', catalogue: 'voitures', site: carDealer,
-    sign: { bg: '#1b2a7a', band: '#f4c20d', title: 'OCCASIONS', sub: 'Ndiaye Auto · Plateau', subColor: '#1b2a7a' },
+    hub: 'plateau', name: 'Ndiaye Auto', catalogue: 'voitures', site: carDealer,
+    sign: { bg: '#1b2a7a', band: '#f4c20d', title: 'VOITURES', sub: 'Ndiaye Auto · Plateau', subColor: '#1b2a7a' },
   },
   text: {
     mine: 'Ta voiture', getOn: 'Monter (conducteur)', getOff: 'Sortir de la voiture',
-    confirm: 'Acheter la voiture d’occasion ?', delivered: 'Elle t’attendra devant la porte, prête à rouler',
+    confirm: 'Acheter la berline moderne ?', delivered: 'Elle t’attendra devant la porte, prête à rouler',
     welcome: KEYS_LINE, parked: 'Voiture garée.', owned: 'Elle est déjà à toi',
   },
   exit: 'pavement', reach: 1.4,

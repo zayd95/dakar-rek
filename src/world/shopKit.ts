@@ -26,7 +26,7 @@ export const SHOP_TYPES: readonly ShopType[] = ['grocery', 'phone', 'clothing', 
 export const SHOP_TYPE_NAME: Record<ShopType, string> = {
   grocery: 'Boutique · alimentation', phone: 'Téléphonie · réparation', clothing: 'Couture · prêt-à-porter', furniture: 'Meubles · maison',
   pharmacy: 'Santé · soins', cafe: 'Café · jus', bank: 'Banque · agence', hardware: 'Quincaillerie', craft: 'Artisanat', beauty: 'Beauté',
-  garage: 'Garage · atelier', restaurant: 'Restaurant', showroom_cars: 'Voitures · occasions',
+  garage: 'Garage · atelier', restaurant: 'Restaurant', showroom_cars: 'Voitures',
 };
 export type ShopDetail = 'low' | 'medium' | 'high';
 /** Rectangle on the floor plan (local or world): x0 < x1, z0 < z1. */

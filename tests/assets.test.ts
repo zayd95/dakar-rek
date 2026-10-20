@@ -39,10 +39,10 @@ describe('catalogue', () => {
   it('land, billboard, ventures; the drivable vehicles are for sale, the others and aircraft say when they come', () => {
     expect(LAND.length).toBe(2); expect(BILLBOARDS.length).toBe(1); expect(BUSINESSES.length).toBe(7);
     for (const s of [...LAND, ...BILLBOARDS]) { expect(s.price).toBeGreaterThan(0); expect(s.income).toBeGreaterThan(0); }
-    const drivable = ['jakarta', 'clando'];
+    const drivable = ['jakarta', 'compacte', 'berline', 'tout_terrain'];
     for (const s of [...VEHICLES, ...AIRCRAFT].filter(x => !drivable.includes(x.id))) { expect(s.soon).toBeTruthy(); expect(cannotBuy(fresh(1e12), s.id)).toBe(s.soon); }
     for (const id of drivable) { expect(specOf(id)?.soon).toBeUndefined(); expect(cannotBuy(fresh(1e12), id)).toBeNull(); }
-    expect(specOf('jakarta')?.price).toBe(150_000); expect(specOf('clando')?.price).toBe(2_800_000);
+    expect(specOf('jakarta')?.price).toBe(150_000); expect(specOf('compacte')?.price).toBeGreaterThan(0); expect(specOf('clando')).toBeUndefined();
   });
   it('furniture: every type in basic, better and premium, footprints and seats that fit', () => {
     const types = new Set(FURNITURE_SPECS.map(f => f.type));

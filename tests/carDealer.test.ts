@@ -11,7 +11,7 @@ import { glossed } from '../src/i18n/wolof';
 import type { Collider, HubWorld } from '../src/world/types';
 
 stubCanvas();
-/** Ndiaye Auto as the Plateau places it (src/world/city.ts): open on the road east of the shops block. */
+/** Ndiaye Auto's position as the Plateau places it (src/world/city.ts): open on the road east of the shops block. (The shop kit can also stock the lots itself, as in these fixtures; the Plateau leaves all three to the dealer.) */
 const AT = { x: 107.5, z: 94, y: 0.12, yaw: Math.PI / 2 };
 const LOTS = [null, { kind: 'sedan' as const, seed: sedanSeed(SEDAN_WHITE) }, { kind: 'sedan' as const, seed: sedanSeed(SEDAN_BLUE) }];
 const inRect = (r: { x0: number; x1: number; z0: number; z1: number }, p: { x: number; z: number }, m = 0) => p.x > r.x0 + m && p.x < r.x1 - m && p.z > r.z0 + m && p.z < r.z1 - m;
@@ -83,7 +83,11 @@ describe('Ndiaye Auto in the Plateau (src/world/city.ts + src/transport/carModul
     const h = await plateau(), show = stockedShop(h.group, NDIAYE_AUTO)!, { carDealer } = await import('../src/transport/carModule');
     const site = carDealer(h)!, lot = show.anchors.lots![0], door = stockedShopFront(h.group, NDIAYE_AUTO, 0)!;
     expect(site.counter).toEqual({ x: show.anchors.counter.x, z: show.anchors.counter.z });
-    expect(site.displays).toEqual([{ x: lot.x, z: lot.z, yaw: lot.yaw, seed: sedanSeed() }]);   // the one sold is the one shown
+    const lots = show.anchors.lots!;
+    expect(site.displays).toEqual([                                                   // the three lots are the dealer's: the one sold is the one shown, then the two taken
+      { x: lot.x, z: lot.z, yaw: lot.yaw, seed: sedanSeed() },
+      { x: lots[1].x, z: lots[1].z, yaw: lots[1].yaw, seed: sedanSeed(SEDAN_WHITE) },
+      { x: lots[2].x, z: lots[2].z, yaw: lots[2].yaw, seed: sedanSeed(SEDAN_BLUE) }]);
     expect(site.forSale).toBe(0);
     expect(site.card).toEqual(lot.card);
     expect(site.lots).toBe(3);
@@ -103,8 +107,9 @@ describe('Ndiaye Auto in the Plateau (src/world/city.ts + src/transport/carModul
     expect(inCols(h.colliders, { x: d.x - toRoad * 2.2, z: d.z }, 0.3)).toBe(false);
     expect(inRect(show.bounds, site.sign)).toBe(false);
     // the price card shows the catalogue's price
-    expect(specOf(CAR_ASSET)?.price).toBe(2800000);
-    expect(fcfa(specOf(CAR_ASSET)?.price ?? 0).replace(/\s/g, ' ')).toBe('2 800 000 F');
+    const price = specOf(CAR_ASSET)?.price ?? 0;
+    expect(price).toBeGreaterThan(0);
+    expect(fcfa(price).replace(/\s/g, ' ')).toMatch(/^\d[\d ]* F$/);                                      // the card shows the catalogue's price, whatever the economy pass makes it
   });
 
   it('the salesman hands over the keys: a short line, Wolof glossed in French', async () => {

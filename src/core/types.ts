@@ -95,6 +95,11 @@ export interface AssetState {
   leased: boolean;
   /** A billboard the player owns showing the player's own ad. */
   ownAd?: boolean;
+  /**
+   * A vehicle moved over from a retired catalogue entry (the old « Voiture d'occasion »): its worth stays what its owner paid, not the new
+   * entry's price, so resale and net worth carry no windfall when the catalogue changes. Absent: worth follows the catalogue price.
+   */
+  basis?: number;
   /** Furniture: the home (asset uid) it belongs to, and where it stands there (null = stored). */
   home?: string;
   at?: Placement | null;

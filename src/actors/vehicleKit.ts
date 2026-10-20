@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { KitBuilder, paintAtlas, seeded, type Paint, type Rect, type V3 } from '../world/kitGeometry';
 import { AW, AH, UV, PLAIN_UV, sub, drawVehicleAtlas } from './vehicleAtlas';
 import type { Seat } from '../interact/seats';
+import { animateGlbRig, type GlbRig } from './glbVehicle';
 
 /**
  * Vehicle kit: believable low-poly Dakar vehicles, procedural and our own (docs/ASSET_REGISTER.md).
@@ -123,6 +124,11 @@ export interface VehicleOpts {
   driver?: boolean;
   /** Motorbike without a baked rider: side stand down (default) or up (the player is riding it). */
   stand?: boolean;
+  /**
+   * Closed cars: the driver's door is a separate leaf on a hinge (`group.userData.kitDoor`, turned by `setKitDoor`), with an opening cut in the body behind it
+   * and a dark footwell; shut it is the same car. Each model with a door is another cached body (a leaf and an opening).
+   */
+  openable?: boolean;
 }
 export interface VehicleBuild { group: THREE.Group; spec: VehicleSpec; lod: THREE.LOD | null }
 
@@ -190,6 +196,8 @@ interface AnimState { spin: number; lean: number; lod: THREE.LOD | null; body: T
  */
 export function animateVehicle(group: THREE.Object3D, speed: number, steer: number, dt: number) {
   const spec = group.userData.vehicleSpec as VehicleSpec | undefined; if (!spec) return;
+  const glb = group.userData.glbRig as GlbRig | undefined;                       // a prepared GLB body: its own separate wheels (src/actors/glbVehicle.ts)
+  if (glb) { animateGlbRig(glb, speed, steer, dt); return; }
   let st = group.userData.kitAnim as AnimState | undefined;
   if (!st) {
     const lod = (group.children.find(c => (c as THREE.LOD).isLOD) as THREE.LOD | undefined) ?? null;
@@ -217,6 +225,16 @@ export function animateVehicle(group: THREE.Object3D, speed: number, steer: numb
   st.spin = (st.spin + (speed * dt) / d.wheelRadius) % (Math.PI * 2);
   st.u.uSpin.value = st.spin; st.u.uSteer.value = s;
 }
+
+/** How far the driver's door swings open (rad). */
+export const DOOR_OPEN = 1.12;
+/** Opens the driver's door of a kit car built with `openable` (0 shut … 1 wide open); false when the model has none. */
+export function setKitDoor(model: THREE.Object3D, k: number): boolean {
+  const p = model.userData.kitDoor as THREE.Object3D | undefined; if (!p) return false;
+  p.rotation.y = -DOOR_OPEN * THREE.MathUtils.clamp(k, 0, 1);
+  return true;
+}
+export const hasKitDoor = (model: THREE.Object3D) => !!model.userData.kitDoor;
 
 /** Night factor 0 (day) … 1 (night): lamps glow and headlight beams light the road. Called every frame by the kit module. */
 export function setVehicleNight(f: number) {
@@ -324,6 +342,8 @@ interface Model {
   near(b: KitBuilder, g: KitBuilder): void;
   far(b: KitBuilder): void;
   beam(b: KitBuilder): void;
+  /** The driver's door, a separate leaf (see VehicleOpts.openable): its hinge in the body's frame, and how to build it (hinge at the origin, the leaf toward −z). */
+  door?: { hinge: V3; build(b: KitBuilder, g: KitBuilder): void };
   /**
    * Models whose passengers change while the vehicle runs (the car rapide: people get on and off at every stop) are
    * built in pieces: the cabin without anyone (cached by `key`), and each passenger apart (cached by its own key: the
@@ -383,8 +403,44 @@ function carLayout(d: CarDims, extraSeats: VehicleSeat[] = []): Layout {
   };
 }
 
+
+/** The driver's door of a closed car: from the B pillar (zR) to the hinge at the front (zF, clear of the front wheel arch), between the sill strip (y0) and the belt (y1). */
+function driverDoor(d: CarDims) {
+  const ar = d.r + 0.06;
+  return { zF: Math.min(d.zWs + 0.02, d.fz - ar - 0.08), zR: d.zB, y0: d.sill + 0.12, y1: d.cowl - 0.03 };
+}
+const hwOf = (d: CarDims, y: number) => d.W / 2 - 0.035 * (y - d.sill) / (d.cowl - d.sill);
+/** The footwell behind the opening of the driver's door: a closed dark box (floor, ceiling, front, back, inner wall), so the opening reads as a cabin and never shows the sky through the shell. */
+function doorWell(b: KitBuilder, d: CarDims, r: ReturnType<typeof driverDoor>) {
+  const { zF, zR, y0, y1 } = r, xi = d.W / 2 - 0.34, a = hwOf(d, y0), c = hwOf(d, y1);
+  b.toward([[xi, y0, zR], [a, y0, zR], [a, y0, zF], [xi, y0, zF]], [0, 1, 0], 0x1d1d20);
+  b.toward([[xi, y1, zR], [c, y1, zR], [c, y1, zF], [xi, y1, zF]], [0, -1, 0], 0x161618);
+  b.toward([[xi, y0, zR], [a, y0, zR], [c, y1, zR], [xi, y1, zR]], [0, 0, 1], 0x232326);
+  b.toward([[xi, y0, zF], [a, y0, zF], [c, y1, zF], [xi, y1, zF]], [0, 0, -1], 0x232326);
+  b.toward([[xi, y0, zR], [xi, y0, zF], [xi, y1, zF], [xi, y1, zR]], [1, 0, 0], 0x2f2f33);
+}
+/** The leaf itself, built in the body's frame (the caller moves the hinge to the origin): outer skin, inner card, edges, window glass, top rail, handle. */
+function doorLeaf(b: KitBuilder, g: KitBuilder, d: CarDims, P: CarPaint) {
+  const { zF, zR, y0 } = driverDoor(d), ya = y0 - 0.03, yb = d.cowl, t = 0.065;
+  const xo = (y: number) => hwOf(d, y) + 0.004, xin = (y: number) => hwOf(d, y) - t;
+  const za = zF + 0.012, zb = zR - 0.012;
+  b.toward([[xo(ya), ya, za], [xo(ya), ya, zb], [xo(yb), yb, zb], [xo(yb), yb, za]], [1, 0, 0], P.body);
+  b.toward([[xin(ya), ya, za], [xin(ya), ya, zb], [xin(yb), yb, zb], [xin(yb), yb, za]], [-1, 0, 0], 0x46464a);
+  b.toward([[xin(yb), yb, za], [xo(yb), yb, za], [xo(yb), yb, zb], [xin(yb), yb, zb]], [0, 1, 0], P.body);
+  b.toward([[xin(ya), ya, za], [xo(ya), ya, za], [xo(ya), ya, zb], [xin(ya), ya, zb]], [0, -1, 0], 0x1c1c1e);
+  b.toward([[xin(ya), ya, za], [xo(ya), ya, za], [xo(yb), yb, za], [xin(yb), yb, za]], [0, 0, 1], P.body);
+  b.toward([[xin(ya), ya, zb], [xo(ya), ya, zb], [xo(yb), yb, zb], [xin(yb), yb, zb]], [0, 0, -1], P.body);
+  // the window: glass between the pillars, a rail along its top, a frame at the front edge
+  const hwG = d.W / 2 - d.inG, hwR = d.W / 2 - d.inR, yT = d.roof - 0.05;
+  const gx = (y: number) => hwG + (hwR - hwG) * (y - d.cowl) / (yT - d.cowl) - 0.006;
+  g.toward([[gx(d.cowl + 0.01), d.cowl + 0.01, zR], [gx(d.cowl + 0.01), d.cowl + 0.01, d.zWs + 0.03], [gx(yT - 0.01), yT - 0.01, d.zRf - 0.02], [gx(yT - 0.01), yT - 0.01, zR]], [1, 0, 0], glassGrad(d.cowl, yT));
+  b.beam([gx(yT - 0.01) + 0.006, yT - 0.012, zR], [gx(yT - 0.01) + 0.006, yT - 0.012, d.zRf - 0.02], 0.04, 0.035, P.trim);
+  b.beam([gx(d.cowl) + 0.006, d.cowl + 0.005, zR], [gx(d.cowl) + 0.006, d.cowl + 0.005, d.zWs + 0.03], 0.03, 0.025, P.trim);
+  b.box(0.03, 0.035, 0.16, xo(d.cowl - 0.14) + 0.012, d.cowl - 0.17, zR + 0.2, P.trim);
+}
+
 /** Saloon / hatch / SUV / pickup body: side profile with wheel arches, glasshouse with pillars and tinted glass, people inside. */
-function carNear(b: KitBuilder, g: KitBuilder, d: CarDims, P: CarPaint, people: { seat: VehicleSeat; look: Look }[]) {
+function carNear(b: KitBuilder, g: KitBuilder, d: CarDims, P: CarPaint, people: { seat: VehicleSeat; look: Look }[], door = false) {
   const zr = -d.L / 2, zf = d.L / 2, hw = d.W / 2, ar = d.r + 0.06;
   const arches = [{ z: d.rz, r: ar, y: d.r }, { z: d.fz, r: ar, y: d.r }];
   b.shade = { lo: 0.62, y0: d.sill - 0.1, h: d.cowl - d.sill + 0.2 };
@@ -394,11 +450,13 @@ function carNear(b: KitBuilder, g: KitBuilder, d: CarDims, P: CarPaint, people: 
   else top.push([d.zDeck, d.cowl, T.DECK], [zr + tr + 0.08, d.tail, T.REAR], [zr + tr, d.tail - 0.08, T.REAR]);
   const pts = outline(zr + 0.05, zf - 0.05, d.sill, d.cowl, arches, [[zf, d.sill + 0.12, T.FRONT], ...top, [zr, d.sill + 0.12, T.REAR]]);
   const hwAt = (y: number) => hw - 0.035 * (y - d.sill) / (d.cowl - d.sill);
+  const dr = door ? driverDoor(d) : null;
   b.prism(pts, {
-    hw: [d.sill, hw, d.cowl, hw - 0.035], paint: P.body,
+    hw: [d.sill, hw, d.cowl, hw - 0.035], paint: P.body, holePos: dr ? { z0: dr.zR, z1: dr.zF, y0: dr.y0, y1: dr.y1 } : undefined,
     band: (_i, t) => t === T.ARCH ? 0x121212 : t === T.SILL ? dim(P.body, 0.35) : t === T.BELT ? INTERIOR : t === T.BONNET ? P.bonnet : t === T.DECK ? P.deck : t === T.BED ? 0x2e2e30 : P.body,
   });
   b.shade = null;
+  if (dr) doorWell(b, d, dr);
   // glasshouse: roof, pillars, glass
   const hwG = hw - d.inG, hwR = hw - d.inR, yR = d.roof - 0.05, zC = d.zDeck + d.cw;
   b.prism([[d.zRr - 0.02, yR, T.CEIL], [d.zRf + 0.02, yR, T.FRONT], [d.zRf - 0.07, d.roof, T.TOP], [d.zRr + 0.08, d.roof, T.REAR]], { hw: hwR + 0.015, paint: P.roof, band: (_i, t) => t === T.CEIL ? 0xcfc9bd : P.roof });
@@ -409,13 +467,15 @@ function carNear(b: KitBuilder, g: KitBuilder, d: CarDims, P: CarPaint, people: 
     if (d.bed || d.cw < 0.2) b.beam([s * (hwG - 0.02), d.cowl - 0.01, d.zDeck + 0.02], [s * (hwR - 0.01), yR, d.zRr + 0.02], 0.07, 0.06, P.body);
     // side glass
     const gx = (y: number) => s * (hwG + (hwR - hwG) * (y - d.cowl) / (yR - d.cowl) - 0.006);
-    g.toward([[gx(d.cowl + 0.01), d.cowl + 0.01, zC], [gx(d.cowl + 0.01), d.cowl + 0.01, d.zWs + 0.03], [gx(yR - 0.01), yR - 0.01, d.zRf - 0.02], [gx(yR - 0.01), yR - 0.01, d.zRr + Math.max(0.08, d.cw * 0.45)]], [s, 0, 0], glassGrad(d.cowl, yR));
+    // the driver's side glass belongs to the door leaf: the body keeps the part behind the B pillar
+    const zGf = dr && s > 0 ? d.zB : d.zWs + 0.03, zGt = dr && s > 0 ? d.zB : d.zRf - 0.02;
+    g.toward([[gx(d.cowl + 0.01), d.cowl + 0.01, zC], [gx(d.cowl + 0.01), d.cowl + 0.01, zGf], [gx(yR - 0.01), yR - 0.01, zGt], [gx(yR - 0.01), yR - 0.01, d.zRr + Math.max(0.08, d.cw * 0.45)]], [s, 0, 0], glassGrad(d.cowl, yR));
     // mirror, door seams, handles
     b.beam([s * hwG, d.cowl + 0.02, d.zWs - 0.06], [s * (hwG + 0.1), d.cowl + 0.06, d.zWs - 0.1], 0.03, 0.03, P.trim);
     b.box(0.07, 0.1, 0.15, s * (hwG + 0.13), d.cowl + 0.02, d.zWs - 0.12, P.body);
     const seams = [d.zWs + 0.06, d.zB]; if (d.rearZ !== null && !d.bed) seams.push(Math.max(d.rz + ar + 0.04, d.zDeck + 0.1));
-    for (const z of seams) b.toward([[s * (hwAt(d.sill + 0.1) + 0.003), d.sill + 0.1, z - 0.006], [s * (hwAt(d.sill + 0.1) + 0.003), d.sill + 0.1, z + 0.006], [s * (hwAt(d.cowl - 0.03) + 0.003), d.cowl - 0.03, z + 0.006], [s * (hwAt(d.cowl - 0.03) + 0.003), d.cowl - 0.03, z - 0.006]], [s, 0, 0], dim(P.body, 0.3));
-    for (const z of seams.slice(1)) b.box(0.025, 0.035, 0.13, s * (hwAt(d.cowl - 0.15) + 0.012), d.cowl - 0.17, z - 0.17, P.trim);
+    for (const z of dr && s > 0 ? seams.slice(2) : seams) b.toward([[s * (hwAt(d.sill + 0.1) + 0.003), d.sill + 0.1, z - 0.006], [s * (hwAt(d.sill + 0.1) + 0.003), d.sill + 0.1, z + 0.006], [s * (hwAt(d.cowl - 0.03) + 0.003), d.cowl - 0.03, z + 0.006], [s * (hwAt(d.cowl - 0.03) + 0.003), d.cowl - 0.03, z - 0.006]], [s, 0, 0], dim(P.body, 0.3));
+    for (const z of dr && s > 0 ? seams.slice(2) : seams.slice(1)) b.box(0.025, 0.035, 0.13, s * (hwAt(d.cowl - 0.15) + 0.012), d.cowl - 0.17, z - 0.17, P.trim);
   }
   g.toward([[-hwG + 0.03, d.cowl + 0.01, d.zWs], [hwG - 0.03, d.cowl + 0.01, d.zWs], [hwR - 0.03, yR, d.zRf], [-hwR + 0.03, yR, d.zRf]], [0, 0.6, 1], glassGrad(d.cowl, yR));
   g.toward([[-hwG + 0.03, d.cowl + 0.01, d.zDeck], [hwG - 0.03, d.cowl + 0.01, d.zDeck], [hwR - 0.03, yR, d.zRr], [-hwR + 0.03, yR, d.zRr]], [0, 0.6, -1], glassGrad(d.cowl, yR));
@@ -454,12 +514,14 @@ function carFar(b: KitBuilder, d: CarDims, P: CarPaint) {
 }
 function carModel(kind: VehicleKind, d: CarDims, P: CarPaint, key: string, variant: number, o: VehicleOpts, p: number, extra?: { near?: (b: KitBuilder, g: KitBuilder) => void; far?: (b: KitBuilder) => void; seats?: VehicleSeat[]; cargo?: Layout['cargo'] }, speed = 7): Model {
   const layout = carLayout(d, extra?.seats);
+  const door = !!o.openable && !d.bed && d.rearZ !== null;                                  // a closed car with a driver's door of its own
   if (extra?.cargo) layout.cargo = extra.cargo;
   const people = occupied(layout.seats, o, p, 0.35).map((s, i) => ({ seat: s, look: lookOf(i + 1, p + variant * 3) }));
   const occKey = people.map(q => q.seat.id).join('.');
   return {
-    key: `${kind}|${key}|${occKey}`, variant, colors: { body: P.body, accent: P.roof }, layout, speed, lod: 40,
-    near: (b, g) => { carNear(b, g, d, P, people.filter(q => q.seat.kind !== 'bench')); for (const q of people) if (q.seat.kind === 'bench') person(b, q.seat.x, q.seat.top, q.seat.z, q.look, undefined, q.seat.yaw); extra?.near?.(b, g); },
+    key: `${kind}|${key}|${occKey}${door ? '|door' : ''}`, variant, colors: { body: P.body, accent: P.roof }, layout, speed, lod: 40,
+    door: door ? { hinge: [hwOf(d, (driverDoor(d).y0 + driverDoor(d).y1) / 2), 0, driverDoor(d).zF], build: (b, g) => { const h = hwOf(d, (driverDoor(d).y0 + driverDoor(d).y1) / 2); b.with(new THREE.Matrix4().makeTranslation(-h, 0, -driverDoor(d).zF), () => g.with(new THREE.Matrix4().makeTranslation(-h, 0, -driverDoor(d).zF), () => doorLeaf(b, g, d, P))); } } : undefined,
+    near: (b, g) => { carNear(b, g, d, P, people.filter(q => q.seat.kind !== 'bench'), door); for (const q of people) if (q.seat.kind === 'bench') person(b, q.seat.x, q.seat.top, q.seat.z, q.look, undefined, q.seat.yaw); extra?.near?.(b, g); },
     far: b => { carFar(b, d, P); extra?.far?.(b); },
     beam: b => beamQuad(b, d.L / 2 + 0.3, 8, 1.7, 4.2),
   };
@@ -497,7 +559,7 @@ const pickLuxury: Pick = (r, o) => {
     near: b => {
       const hwG = d.W / 2 - d.inG;
       for (const s of [1, -1]) {
-        b.beam([s * (hwG + 0.006), d.cowl + 0.005, d.zDeck + 0.05], [s * (hwG + 0.006), d.cowl + 0.005, d.zWs - 0.02], 0.022, 0.022, CHROME);
+        b.beam([s * (hwG + 0.006), d.cowl + 0.005, d.zDeck + 0.05], [s * (hwG + 0.006), d.cowl + 0.005, o.openable && s > 0 ? d.zB : d.zWs - 0.02], 0.022, 0.022, CHROME);
         sideStrip(b, s, d.W / 2 - 0.02 + 0.006, -1.95, 1.95, d.sill + 0.1, d.sill + 0.125, CHROME);
       }
       b.box(d.W - 0.3, 0.035, 0.05, 0, d.sill + 0.21, d.L / 2 + 0.03, CHROME);
@@ -1090,6 +1152,13 @@ export function buildVehicle(kind: VehicleKind, opts: VehicleOpts = {}): Vehicle
     nearGroup.add(mesh(near.body, M.body, 'body', true));
     if (near.glass) nearGroup.add(mesh(near.glass, M.glass, 'glass', false));
     nearGroup.add(mesh(beam, M.beam, 'beam', false));
+    if (m.door) {                                                                    // the driver's door: its own leaf on a hinge, shut until setKitDoor() turns it
+      const leaf = geometryOf(m.key + '|leaf', m.door.build), pivot = new THREE.Group();
+      pivot.name = 'door'; pivot.position.set(...m.door.hinge);
+      pivot.add(mesh(leaf.body, M.body, 'doorBody', true));
+      if (leaf.glass) pivot.add(mesh(leaf.glass, M.glass, 'doorGlass', false));
+      nearGroup.add(pivot); group.userData.kitDoor = pivot;
+    }
   }
   const farMesh = far ? mesh(far.body, M.body, 'far', false) : null;
   if (near && farMesh) { lod = new THREE.LOD(); lod.name = 'lod'; lod.addLevel(nearGroup, 0, 0.08); lod.addLevel(farMesh, lodDistance, 0.08); lod.userData.kitBase = lodDistance; group.add(lod); }
