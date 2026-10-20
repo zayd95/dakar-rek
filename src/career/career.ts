@@ -151,7 +151,7 @@ export interface Rung {
   id: string; label: string;
   /** Rank score needed. */
   min: number;
-  /** Base purse of a ranked bout at this rung (F CFA). */
+  /** Base purse of a gala place (× 2) or a title bout (× 3) at this rung (F CFA); ordinary bouts pay by the opponent's level (`ORDINARY_BASE`). */
   purse: number;
   /** Other conditions (ranked wins, opponents of a level, a title) and how to say what is missing. */
   needs?: { rankedWins?: number; beatenLevel?: number; title?: boolean; defences?: number };
@@ -222,13 +222,29 @@ export function rankOf(bouts: readonly BoutEntry[], today: number, belt: Belt | 
   return { score, rung, label: RUNGS[rung].label, next };
 }
 
-/** Purse of a ranked bout at a rung: a win pays more (and more against a stronger opponent), a defeat less, an abandon nothing. Friendly bouts pay nothing. */
+/**
+ * Base purse of an ORDINARY ranked bout by the opponent's level 1–5 (F CFA): the legitimate opponent and the challenge set the
+ * purse, not the player's own rung, so a player at the top of the ladder gains nothing by beating the same neighbours again and
+ * again. Galas and title bouts are the prestige purses: they keep the rung's purse (`RUNGS[].purse`) × 2 and × 3.
+ */
+export const ORDINARY_BASE: readonly number[] = [5_000, 6_500, 8_500, 11_000, 14_000];
+
+/** Win / draw / defeat factor of a purse: a win pays more against a stronger opponent. */
+const purseFactor = (res: BoutRes, level: number) => (res === 'V' ? 1.5 * (1 + 0.1 * Math.max(1, level)) : res === 'N' ? 1 : 0.6);
+/** The rung's own purse for a result: the base of galas and title bouts, exactly as they have always been paid. */
+const rungPurse = (res: BoutRes, rung: number, level: number) =>
+  Math.round((RUNGS[Math.max(0, Math.min(RUNGS.length - 1, rung))].purse * purseFactor(res, level)) / 250) * 250;
+
+/**
+ * Purse of a ranked bout: an ordinary bout pays by the opponent's level (`ORDINARY_BASE`), a gala place (× 2) or a title bout
+ * (× 3) by the player's rung; a win pays more (and more against a stronger opponent), a defeat less, an abandon nothing.
+ * Friendly bouts pay nothing.
+ */
 export function purseOf(mode: BoutMode, res: BoutRes, rung: number, level: number, kind?: 'gala' | 'title'): number {
   if (mode !== 'classe' || res === 'A') return 0;
-  if (kind) return Math.round((purseOf(mode, res, rung, level) * (kind === 'title' ? 3 : 2)) / 250) * 250;
-  const base = RUNGS[Math.max(0, Math.min(RUNGS.length - 1, rung))].purse;
-  const k = res === 'V' ? 1.5 * (1 + 0.1 * Math.max(1, level)) : res === 'N' ? 1 : 0.6;
-  return Math.round((base * k) / 250) * 250;
+  if (kind) return Math.round((rungPurse(res, rung, level) * (kind === 'title' ? 3 : 2)) / 250) * 250;
+  const base = ORDINARY_BASE[Math.max(0, Math.min(ORDINARY_BASE.length - 1, Math.round(level) - 1))];
+  return Math.round((base * purseFactor(res, level)) / 250) * 250;
 }
 
 /** Reputation points of the record: ranked wins against good opponents most, spectacular projections, entrances. */

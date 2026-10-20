@@ -133,8 +133,8 @@ describe('roster: the city’s ladder of fictional wrestlers', () => {
     expect(boutPoints('classe', 'V', 3, false, 'gala')).toBeGreaterThan(boutPoints('classe', 'V', 3));
     expect(boutPoints('classe', 'V', 3, false, 'title')).toBeGreaterThan(boutPoints('classe', 'V', 3, false, 'gala'));
     expect(boutPoints('classe', 'D', 3, false, 'title')).toBe(boutPoints('classe', 'D', 3));    // a defeat costs the same
-    expect(purseOf('classe', 'V', 3, 3, 'gala')).toBe(2 * purseOf('classe', 'V', 3, 3));
-    expect(purseOf('classe', 'V', 4, 5, 'title')).toBe(3 * purseOf('classe', 'V', 4, 5));
+    expect(purseOf('classe', 'V', 3, 3, 'gala')).toBe(2 * 292_500);           // twice the rung's own purse (150 000 × 1.95), as always: ordinary bouts pay by the opponent's level now
+    expect(purseOf('classe', 'V', 4, 5, 'title')).toBe(3 * 900_000);          // three times the rung's own purse (400 000 × 2.25)
     expect(RUNGS[GALA_RUNG].id).toBe('reputes'); expect(RUNGS[TITLE_RUNG].id).toBe('contender');
   });
 
