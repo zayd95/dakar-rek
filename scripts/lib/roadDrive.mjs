@@ -36,7 +36,13 @@ export async function driveRoad(page, t, key, road, toS, { cruise = 8, lane = 2.
     await page.waitForTimeout(90);
   }
   await t.up(2); await press(false); await brake(false);
-  if (brakeAtEnd) { await t.down(1, brk.x, brk.y); await page.waitForFunction(k => Math.abs(window.__dakar[k].at()?.speed ?? 0) < 0.15, key, { timeout: 60000 }).catch(() => {}); await t.up(1); }
+  if (brakeAtEnd) {
+    // the brake pedal slows the car and, on a motorbike, goes on to reverse it: it is let go as soon as the vehicle has (nearly) stopped, and the vehicle then rolls the last bit
+    await t.down(1, brk.x, brk.y);
+    for (let i = 0; i < 400; i++) { const sp = await page.evaluate(k => window.__dakar[k].at()?.speed ?? 0, key); if (sp < 0.35) break; await page.waitForTimeout(40); }
+    await t.up(1);
+    await page.waitForFunction(k => Math.abs(window.__dakar[k].at()?.speed ?? 0) < 0.15, key, { timeout: 30000 }).catch(() => {});
+  }
   return await page.evaluate(k => window.__dakar[k].at(), key);
 }
 
