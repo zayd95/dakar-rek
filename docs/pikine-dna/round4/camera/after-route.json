@@ -1,0 +1,31 @@
+{
+ "sum": {
+  "route": "route",
+  "samples": 636,
+  "triangles": 9354,
+  "cameraHeight": [
+   1.64,
+   5.1
+  ],
+  "bodyBlockedFrames": 0,
+  "nearLensFrames": 0,
+  "minLens": 1.04,
+  "viewBlockedFrames": 1,
+  "errors": 0
+ },
+ "flagged": [
+  {
+   "n": 567,
+   "x": -63.2,
+   "z": 92.8,
+   "cam": [
+    -60.02,
+    5.1,
+    83.28
+   ],
+   "body": 0,
+   "ahead": 2,
+   "near": 5.93
+  }
+ ]
+}

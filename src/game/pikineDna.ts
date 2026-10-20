@@ -6,6 +6,7 @@ import { rng, pick } from '../core/rng';
 import { daylight } from '../core/clock';
 import { nightOf } from '../city/nightRules';
 import { gateOf, gatePlaza, stallFronts, streetEnds } from '../arena/exteriorRules';
+import { motoLot } from '../arena/arrivalRules';
 
 /**
  * Pikine Street DNA, phase 2: one polished neighbourhood slice along the first walk (the room, the avenue south past the
@@ -41,22 +42,22 @@ const MURALS = ['lutteur', 'lions', 'telecom', 'bissap', 'pikine', 'wax', 'defen
  * Every board of the slice, in metres, and the atlas pixels each metre gets. A sign is painted in a cell of exactly its board's
  * proportions (width : height), so no letter is ever stretched; a shop's fascia is a board of its own size, not a strip of someone else's.
  */
-const BOARD = {
+export const BOARD = {
   gare: { w: 5.2, h: 1.4, ppm: 80 }, gare_blade: { w: 2.2, h: 1.0, ppm: 100 }, jamm: { w: 2.2, h: 0.9, ppm: 100 },
   place: { w: 8.4, h: 1.0, ppm: 60 }, arene: { w: 8.4, h: 1.0, ppm: 60 }, marche: { w: 7.0, h: 1.1, ppm: 60 }, banque: { w: 6.2, h: 0.95, ppm: 80 },
   keur_mbaye: { w: 1.7, h: 0.6, ppm: 150 }, keur_sarr: { w: 1.7, h: 0.6, ppm: 150 }, keur_gueye: { w: 1.7, h: 0.6, ppm: 150 },
   borne: { w: 1.7, h: 0.75, ppm: 130 }, prix: { w: 0.75, h: 1.0, ppm: 100 },
 } as const;
-const FASCIA = { w: 4.5, h: 1.0, ppm: 75 };
+export const FASCIA = { w: 4.5, h: 1.0, ppm: 75 };
 
 type Trade = 'boutique' | 'couture' | 'quinc' | 'multiservice' | 'cantine' | 'pharmacie' | 'coiffure' | 'cyber' | 'supporters';
-interface ShopName { trade: Trade; name: string; sub: string | string[]; bg: string; fg: string; accent: string; subFg: string }
+export interface ShopName { trade: Trade; name: string; sub: string | string[]; bg: string; fg: string; accent: string; subFg: string }
 /**
  * The names above the shops. Each trade keeps one look (its colours, its goods, its forecourt: SHOP_TRAIT, `forecourt`) and several
  * owners: the street reads as many businesses of a few kinds, not as one shop repeated. Invented names, Dakar vocabulary: « keur » (the
  * house of), « chez », « dibi » (grilled meat), « thiébou djeun » (rice and fish), « attaya » (tea), « jàmm » (peace), « teranga » (hospitality).
  */
-const SHOP_NAMES: ShopName[] = [
+export const SHOP_NAMES: ShopName[] = [
   { trade: 'boutique', name: 'BOUTIQUE ABDOU', sub: 'Alimentation générale', bg: '#2f7a4a', fg: '#fdf0c0', accent: '#fdf0c0', subFg: '#ffffff' },
   { trade: 'boutique', name: 'BOUTIQUE MARIAMA', sub: 'Riz · Huile · Sucre · Lait', bg: '#d9b23a', fg: '#2a2410', accent: '#2f7a4a', subFg: '#1f5a36' },
   { trade: 'couture', name: 'COUTURE FATOU', sub: 'Modèles sur mesure · wax', bg: '#a8402f', fg: '#fdf0d4', accent: '#fdf0d4', subFg: '#ffe58a' },
@@ -590,6 +591,8 @@ function layoutSlice(hub: HubWorld, q: keyof typeof DNA_COUNT, A: Atlas, dry: bo
     for (const r of gatePlaza(AR).slice(1)) keepOpen.push({ x0: r.x0, x1: r.x1, z0: r.z0, z1: r.z1 });               // the apron from the pavement up to the gate
     for (const s of stallFronts(AR)) keepOpen.push({ x0: s.x - 1.8, x1: s.x + 1.8, z0: s.z - 1.8, z1: s.z + 1.8 }); // where the stalls' last customers stand
     for (const e of streetEnds(gate)) keepOpen.push({ x0: e.x - 3, x1: e.x + 3, z0: e.z - 3, z1: e.z + 3 });        // the pavement corners the fans come from and go to
+    const lot = motoLot(AR).area;                                                                                   // the guarded moto parking, and the way from it to the gate (along its edge, z = gate − 1.9)
+    keepOpen.push({ x0: lot.x0 - 0.6, x1: lot.x1 + 0.6, z0: lot.z0 - 0.7, z1: lot.z1 + 0.6 }, { x0: gate.x, x1: lot.x0, z0: gate.z - 2.6, z1: gate.z - 1.2 });
     // the street's gateway, at its west end: pylons painted in the écuries' colours, a beam above the camera's reach, the street's name on both faces
     P.cat = 'landmarks';
     const x = 13.2, zs = [-67.12, -52.88];                                   // past the fans' pavement corner (x = 6.5, kept open)
@@ -603,10 +606,9 @@ function layoutSlice(hub: HubWorld, q: keyof typeof DNA_COUNT, A: Atlas, dry: bo
     const R0 = R; R = rng(0xa7e4a1);
     const put = (side: 1 | -1, mids: number[], len: number, kind: Unit, pickOf: { mural?: MuralId; trade?: Trade; name?: number }) => mids.some(m => unit(LA, side, m, len, kind, 1, pickOf));
     put(-1, [16.8, 17.6, 18.4], 5.4, 'mural', { mural: 'lutteur' });                  // the wrestler: the yard side of the street says what the street is for
-    put(1, [40.7, 40.3, 41.1], 5.0, 'shop', { trade: 'supporters', name: 0 });        // LÀMB SHOP, facing the parvis: jerseys, scarves, flags
-    put(-1, [41.4, 42.2, 43.0], 5.0, 'shop', { trade: 'cantine', name: 1 });          // Chez Tante Yacine: dibi and mafé for after the bout
+    put(-1, [41.4, 42.2, 43.0], 5.0, 'shop', { trade: 'supporters', name: 0 });       // LÀMB SHOP, across the street from the gate: jerseys, scarves, flags
     put(-1, [47.2, 46.4, 48.0], 5.4, 'mural', { mural: 'lions' });
-    put(1, [16.6, 17.4, 18.2], 5.0, 'shop', { trade: 'coiffure', name: 1 });          // Barber Moustapha: a cut before the evening
+    put(1, [16.6, 17.4, 18.2], 5.0, 'shop', { trade: 'cantine', name: 1 });          // Chez Tante Yacine: dibi and mafé for after the bout
     R = R0;
   }
 
@@ -621,7 +623,7 @@ function layoutSlice(hub: HubWorld, q: keyof typeof DNA_COUNT, A: Atlas, dry: bo
     type Kind = typeof kinds[number] | 'jerseys' | 'grill';
     /** One cluster of the pavement's life at `t` along `side` of `L`; false when something stands there. */
     const cluster = (L: Line, side: 1 | -1, t: number, kind: Kind): boolean => {
-      const len = kind === 'laundry' ? 3.8 : kind === 'tontine' ? 1.9 : kind === 'jerseys' ? 2.2 : kind === 'grill' ? 2.6 : 1.5;
+      const len = kind === 'laundry' ? 3.8 : kind === 'tontine' ? 1.9 : kind === 'jerseys' ? 2.2 : kind === 'grill' ? 2.2 : 1.5;
       const r = rectOn(L, t, 6.5, side, len, kind === 'laundry' ? 0.3 : 0.55), c = at(L, t, 6.5, side), yaw = yawL(L, side);
       if (!free(r) || !clear(c.x, c.z, 2.5)) return false;
       const f = (d: number, a: number) => pt(L, side, t + a, d);
@@ -682,7 +684,7 @@ function layoutSlice(hub: HubWorld, q: keyof typeof DNA_COUNT, A: Atlas, dry: bo
     if (LA) {                                                                      // by the arena: dibi on the kerb, jerseys on a rail, tea and chairs for whoever waits for the evening
       const R1 = R; R = rng(0xa7e4a2);
       // the gaps the gate's own ground leaves (its queue, apron and stalls are kept open): each is tried at its place, then a little either side
-      const wants: [1 | -1, number, Kind][] = [[1, 20.4, 'jerseys'], [-1, 21.6, 'tea'], [-1, 37.6, 'grill'], [1, 45.6, 'grill'], [1, 50.0, 'jerseys'], [-1, 52.4, 'tontine']];
+      const wants: [1 | -1, number, Kind][] = [[1, 20.4, 'jerseys'], [-1, 21.6, 'tea'], [-1, 37.7, 'grill'], [-1, 51.0, 'tontine']];
       for (const [side, t0, kind] of wants) for (const d of [0, 0.8, -0.8, 1.6, -1.6]) if (!nearCrossing(LA, t0 + d, 8.2) && cluster(LA, side, t0 + d, kind)) break;
       R = R1;
     }
