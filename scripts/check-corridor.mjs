@@ -10,7 +10,12 @@ import { driveRoad } from './lib/roadDrive.mjs';
 
 const [base, out, saveFile] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
-const ROAD = 'pikine-almadies';
+/** The roads under test: the two districts, the offset of the second's frame from the first's, a stretch of the second's end straight enough to turn round on (in the second's frame, with the heading toward the first), and a point inside the first district to arrive at. */
+const CFGS = {
+  'pikine-almadies': { a: 'pikine', b: 'almadies', D: { x: 1665, z: -48 }, turn: { area: { x0: 134, x1: 380, z0: -69, z1: -51 }, yaw: Math.PI / 2 }, home: { x: -70, z: -57.2 } },
+  'pikine-plateau': { a: 'pikine', b: 'plateau', D: { x: 190, z: -1387 }, turn: { area: { x0: -69, x1: -51, z0: -222, z1: -134 }, yaw: Math.PI }, home: { x: -57.2, z: 70 } },
+};
+const ROAD = process.env.ROAD ?? 'pikine-almadies', CFG = CFGS[ROAD];
 let failed = 0, total = 0;
 const check = (name, ok, detail = '') => { total++; if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
@@ -60,7 +65,7 @@ const state = () => d(() => ({ me: window.__dakar.pos(), car: window.__dakar.ber
 
 // ---------------------------------------------------------------- set-up: the car is parked in Pikine at the start of the road
 const info0 = await d(() => window.__dakar.berline.info());
-check('the berline is parked in Pikine, owned, one copy', info0.owned && info0.here && (await mine()) === 1, JSON.stringify(info0.record));
+check(`the berline is parked in ${CFG.a}, owned, one copy`, info0.owned && info0.here && (await mine()) === 1, JSON.stringify(info0.record));
 const car0 = info0.record, uid0 = info0.seed, paint0 = info0.paint, asset0 = info0.asset;
 const dist0 = await d(() => window.__dakar.road.project(window.__dakar.berline.at().x, window.__dakar.berline.at().z));
 check('it stands at the road\'s mouth (the road continues west out of Pikine)', !!dist0 && dist0.road === ROAD && dist0.s < 40, JSON.stringify(dist0));
@@ -68,7 +73,7 @@ await d(([x, z]) => window.__dakar.place(x, z, 0), [car0.x + Math.cos(car0.yaw) 
 await getIn(); await startLog();
 
 
-const D1 = { x: 1665, z: -48 };           // Pikine's frame → Almadies's (src/road/routes.ts)
+const D1 = CFG.D;           // the first district's frame → the second's (src/road/routes.ts)
 /** What the frames around one district change say: pose continuity, seat / pad / engine, camera, and the longest wall-clock gap between two frames near it. */
 const swapChecks = async (tag, fr, jump) => {
   const sw = swaps(fr);
@@ -91,7 +96,7 @@ const tick = (a, pr) => { maxLateral = Math.max(maxLateral, Math.abs(pr.d)); };
 await driveRoad(page, t, 'berline', ROAD, 250, { cruise: 9, onTick: tick, brakeAtEnd: true });
 // a stop anywhere on the road: the car stays where it stopped, the player gets out on the road, walks, and gets back in
 let s1 = await state();
-check('stopped at 250 m: still Pikine, the road\'s chunks are built round the car, the player at the wheel', s1.me.hub === 'pikine' && s1.car.driving && Math.abs(s1.car.speed) < 0.3 && s1.road[0]?.n >= 3, JSON.stringify(s1.road));
+check('stopped at 250 m: still Pikine, the road\'s chunks are built round the car, the player at the wheel', s1.me.hub === 'pikine' && s1.car.driving && Math.abs(s1.car.speed) < 0.3 && s1.road.find(r => r.road === ROAD)?.n >= 3, JSON.stringify(s1.road));
 await page.screenshot({ path: `${out}/leg1-stop-250.png` });
 await getOut();
 let s1b = await state();
@@ -112,15 +117,15 @@ const g1 = await swapChecks('out', await frames(), D1);
 await page.screenshot({ path: `${out}/leg1-after-swap.png` });
 check('the car stayed on the road\'s ground the whole way (never more than the ground\'s half width from the centre line)', maxLateral < 10, maxLateral.toFixed(2));
 const hubNow = await d(() => window.__dakar.pos().hub);
-check('the road\'s traffic is there: cars, in both directions', await d(() => { const i = window.__dakar.road.info().find(r => r.road === 'pikine-almadies'); return i.traffic.length >= 2; }), JSON.stringify(await d(() => window.__dakar.road.info().find(r => r.road === 'pikine-almadies').traffic.map(c => [Math.round(c.x), c.dir, +c.v.toFixed(1), c.kind]))));
+check('the road\'s traffic is there: cars, in both directions', await d(id => { const i = window.__dakar.road.info().find(r => r.road === id); return i.traffic.length >= 2; }, ROAD), JSON.stringify(await d(id => window.__dakar.road.info().find(r => r.road === id).traffic.map(c => [Math.round(c.x), c.dir, +c.v.toFixed(1), c.kind]), ROAD)));
 void hubNow;
 await driveRoad(page, t, 'berline', ROAD, road.length - 40, { cruise: 9, onTick: tick, brakeAtEnd: true });
 const s2 = await state();
-check('at the end of the road, in Almadies\'s frame, the car stopped, still the driver', s2.me.hub === 'almadies' && s2.car.driving && Math.abs(s2.car.speed) < 0.3, JSON.stringify({ hub: s2.me.hub, at: [s2.car.x, s2.car.z] }));
+check('at the end of the road, in the second district\'s frame, the car stopped, still the driver', s2.me.hub === CFG.b && s2.car.driving && Math.abs(s2.car.speed) < 0.3, JSON.stringify({ hub: s2.me.hub, at: [s2.car.x, s2.car.z] }));
 await page.screenshot({ path: `${out}/leg1-arrival.png` });
 await getOut();
 const s3 = await state();
-check('« Descendre »: the player on foot beside the car, the pad gone, the engine stopped; the car saved as parked in Almadies', s3.me.hub === 'almadies' && !s3.car.driving && !s3.pad && !s3.engine && s3.info.record?.hub === 'almadies' && Math.hypot(s3.me.x - s3.car.x, s3.me.z - s3.car.z) < 6, JSON.stringify(s3.info.record));
+check('« Descendre »: the player on foot beside the car, the pad gone, the engine stopped; the car saved as parked in Almadies', s3.me.hub === CFG.b && !s3.car.driving && !s3.pad && !s3.engine && s3.info.record?.hub === CFG.b && Math.hypot(s3.me.x - s3.car.x, s3.me.z - s3.car.z) < 6, JSON.stringify(s3.info.record));
 check('the same car: same paint, one copy, its record (uid) and condition kept', s3.info.seed === uid0 && s3.info.paint === paint0 && (await mine()) === 1 && s3.info.asset?.uid === asset0?.uid && s3.info.asset?.condition <= asset0?.condition, JSON.stringify({ before: asset0 && { uid: asset0.uid, c: asset0.condition }, after: s3.info.asset && { uid: s3.info.asset.uid, c: s3.info.asset.condition } }));
 
 // ---------------------------------------------------------------- save and reload with the car parked on the road, the player on foot on it
@@ -130,25 +135,26 @@ await page.waitForTimeout(1500);
 await boot();
 const rb = await state();
 const onRoad2 = await d(([x, z]) => window.__dakar.road.project(x, z), [rb.me.x, rb.me.z]);
-check('after a reload: the player is where they were, on the road (not sent back to the district\'s spawn), the same car parked there, one copy', rb.me.hub === 'almadies' && !!onRoad2 && onRoad2.on && Math.hypot(rb.me.x - before.me.x, rb.me.z - before.me.z) < 3 && rb.info.here && Math.hypot(rb.car.x - before.car.x, rb.car.z - before.car.z) < 0.3 && (await mine()) === 1 && rb.info.asset?.uid === asset0?.uid, JSON.stringify({ hub: rb.me.hub, me: [rb.me.x, rb.me.z], car: [rb.car.x, rb.car.z], road: onRoad2 && onRoad2.s }));
+check('after a reload: the player is where they were, on the road (not sent back to the district\'s spawn), the same car parked there, one copy', rb.me.hub === CFG.b && !!onRoad2 && onRoad2.on && Math.hypot(rb.me.x - before.me.x, rb.me.z - before.me.z) < 3 && rb.info.here && Math.hypot(rb.car.x - before.car.x, rb.car.z - before.car.z) < 0.3 && (await mine()) === 1 && rb.info.asset?.uid === asset0?.uid, JSON.stringify({ hub: rb.me.hub, me: [rb.me.x, rb.me.z], car: [rb.car.x, rb.car.z], road: onRoad2 && onRoad2.s }));
 await page.screenshot({ path: `${out}/reload-on-road.png` });
 
 // ---------------------------------------------------------------- leg 2: turn round, Almadies → Pikine
 await getIn();
-const turned = await turnAround(page, t, 'berline', Math.PI / 2, { area: { x0: 134, x1: 380, z0: -69, z1: -51 } });
-check('the car is turned round on the road with the controls (lock, forward, « R », back) and faces Pikine', Math.abs(Math.atan2(Math.sin(turned.yaw - Math.PI / 2), Math.cos(turned.yaw - Math.PI / 2))) < 0.35, JSON.stringify({ yaw: turned.yaw }));
+const turned = await turnAround(page, t, 'berline', CFG.turn.yaw, { area: CFG.turn.area });
+check('the car is turned round on the road with the controls (lock, forward, « R », back) and faces Pikine', Math.abs(Math.atan2(Math.sin(turned.yaw - CFG.turn.yaw), Math.cos(turned.yaw - CFG.turn.yaw))) < 0.35, JSON.stringify({ yaw: turned.yaw }));
 await startLog();
 await driveRoad(page, t, 'berline', ROAD, road.swapS + 60, { cruise: 9, onTick: tick, brakeAtEnd: false });
 await driveRoad(page, t, 'berline', ROAD, road.swapS - 70, { cruise: 9, onTick: tick, brakeAtEnd: false });
 await swapChecks('home', await frames(), { x: -D1.x, z: -D1.z });
 await driveRoad(page, t, 'berline', ROAD, 30, { cruise: 9, onTick: tick, brakeAtEnd: false });
-await pilot(page, t, 'berline', [{ x: -70, z: -57.2, tol: 3, speed: 4 }], { cruise: 6, stall: 30000, brakeAtEnd: true });
+await pilot(page, t, 'berline', [{ ...CFG.home, tol: 3, speed: 4 }], { cruise: 6, stall: 30000, brakeAtEnd: true });
 const s4 = await state();
-check('home: back in Pikine, on its west street, the car stopped, still the driver', s4.me.hub === 'pikine' && s4.car.driving && Math.abs(s4.car.speed) < 0.3 && s4.car.x > -127, JSON.stringify({ at: [s4.car.x, s4.car.z] }));
+const bnd = await d(() => window.__dakar.cityGeometry().bounds);
+check('home: back in Pikine, inside its streets, the car stopped, still the driver', s4.me.hub === CFG.a && s4.car.driving && Math.abs(s4.car.speed) < 0.3 && s4.car.x > bnd.x0 && s4.car.x < bnd.x1 && s4.car.z > bnd.z0 && s4.car.z < bnd.z1, JSON.stringify({ at: [s4.car.x, s4.car.z] }));
 await page.screenshot({ path: `${out}/leg2-home.png` });
 await getOut();
 const s5 = await state();
-check('home: « Descendre » in Pikine, the car parked there (saved), the same car, one copy, its condition kept', s5.me.hub === 'pikine' && !s5.car.driving && s5.info.record?.hub === 'pikine' && (await mine()) === 1 && s5.info.asset?.uid === asset0?.uid && s5.info.asset?.condition <= asset0?.condition, JSON.stringify(s5.info.record));
+check('home: « Descendre » in Pikine, the car parked there (saved), the same car, one copy, its condition kept', s5.me.hub === CFG.a && !s5.car.driving && s5.info.record?.hub === CFG.a && (await mine()) === 1 && s5.info.asset?.uid === asset0?.uid && s5.info.asset?.condition <= asset0?.condition, JSON.stringify(s5.info.record));
 
 check('no JavaScript errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 await browser.close();
