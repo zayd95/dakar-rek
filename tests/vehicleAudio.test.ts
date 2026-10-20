@@ -25,7 +25,7 @@ describe('the engine of a driven vehicle', () => {
     expect(profileFor('unknown')).toBe(PROFILES.sedan);
   });
   it('the engine is a quiet background presence while driving (a life simulation, not a racing game): the Jakarta slightly more present than the cars; the ignition and the other sounds keep their own levels', () => {
-    for (const k of ['sedan', 'luxury', 'suv'] as const) { expect(PROFILES[k].drive).toBeGreaterThan(0.02); expect(PROFILES[k].swell).toBe(1); }
+    for (const k of ['sedan', 'luxury', 'suv'] as const) { expect(PROFILES[k].drive).toBeGreaterThan(0.01); expect(PROFILES[k].swell).toBe(1); }
     expect(PROFILES.moto.swell).toBeLessThan(1);                                            // the Jakarta's level hardly follows the revs
     for (const p of Object.values(PROFILES)) expect(p.level).toBeGreaterThan(0.85);       // `level` also scales the ignition: it stays as approved
     expect(vehicleAudio.cabin).toBe(false);                                                // exterior views by default; the vehicle module sets it in a car's wheel view

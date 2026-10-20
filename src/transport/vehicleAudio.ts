@@ -35,10 +35,10 @@ const IGNITION = 0.12;
 const CABIN = 0.5;
 
 export const PROFILES: Record<'sedan' | 'luxury' | 'suv' | 'moto', EngineProfile> = {
-  sedan: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, drive: 0.045, swell: 1, hp: 40, lpIdle: 2400, lpTop: 4600, air: 3, excite: 0.35 },
-  luxury: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.8, 1.35], revRate: [0.85, 1.55], xf: [0.35, 0.8], gears: 5, level: 0.9, drive: 0.04, swell: 1, hp: 40, lpIdle: 1700, lpTop: 3400, air: 2, excite: 0.3 },
-  suv: { start: 'start-car', startRate: 0.92, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.7, 1.3], revRate: [0.75, 1.55], xf: [0.3, 0.7], gears: 4, level: 1, drive: 0.045, swell: 1, hp: 32, lpIdle: 1900, lpTop: 3800, air: 3, excite: 0.45 },
-  moto: { start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, drive: 0.048, swell: 0.5, hp: 230, lpIdle: 3800, lpTop: 5600, air: 6, excite: 0.5 },
+  sedan: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, drive: 0.0225, swell: 1, hp: 40, lpIdle: 2400, lpTop: 4600, air: 3, excite: 0.35 },
+  luxury: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.8, 1.35], revRate: [0.85, 1.55], xf: [0.35, 0.8], gears: 5, level: 0.9, drive: 0.02, swell: 1, hp: 40, lpIdle: 1700, lpTop: 3400, air: 2, excite: 0.3 },
+  suv: { start: 'start-car', startRate: 0.92, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.7, 1.3], revRate: [0.75, 1.55], xf: [0.3, 0.7], gears: 4, level: 1, drive: 0.0225, swell: 1, hp: 32, lpIdle: 1900, lpTop: 3800, air: 3, excite: 0.45 },
+  moto: { start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, drive: 0.024, swell: 0.5, hp: 230, lpIdle: 3800, lpTop: 5600, air: 6, excite: 0.5 },
 };
 export const profileFor = (kit: string): EngineProfile => PROFILES[(kit in PROFILES ? kit : 'sedan') as keyof typeof PROFILES];
 

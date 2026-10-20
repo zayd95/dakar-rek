@@ -50,3 +50,5 @@ The owner's direction: the engine is a quiet background presence you feel rather
 * Cabin: in a car's wheel view (`camera.inside`) the engine is 6 dB lower, its top end and the tyre noise shut in (`vehicleAudio.cabin`, set by the vehicle module every frame); the chase and bird's-eye views are outside. The motorbike has no cabin.
 * Street ambience, measured: the game's only continuous street sound is the traffic bed (about −53 dB rms) with a distant horn now and then (about −36 dB). The engine sits above that bed so the vehicle is felt to be running; one global step of 3 dB is the remaining knob (`drive` of the four profiles).
 * `scripts/audio/render-street.mjs` records the in-game audition (video and the game's own audio output, real touch) used for the owner's listening.
+
+Final step (owner: « make it quieter »): every engine's `drive` halved again (−6 dB): cars 0.0225 (luxury 0.02), Jakarta 0.024. The table above is therefore 6 dB lower still (idle about −40 dB at the output, against the traffic bed at about −53 dB).
