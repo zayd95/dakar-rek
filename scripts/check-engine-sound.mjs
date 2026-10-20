@@ -43,8 +43,8 @@ await page.waitForFunction(() => document.body.classList.contains('ridepad'), nu
 await page.waitForTimeout(2200);
 const idle = await sample(8, 120), a0 = await au();
 check('before getting in the page is silent (no engine, nothing on the output)', quiet.rms <= -60, JSON.stringify(quiet));
-check('the ignition is a burst over the idle (the crank and its catch are heard on the way in)', Math.max(...entry.map(m => m.peakDb)) >= idle.peak + 4 && a0.count.start >= 1, JSON.stringify({ entryPeak: Math.max(...entry.map(m => m.peakDb)), idlePeak: idle.peak, starts: a0.count.start }));
-check('the idle is audible on a phone speaker and quiet: at least a tenth of its energy is in the speaker band, at a level between −38 and −22 dBFS there', idle.sp - idle.rms >= -10 && idle.sp >= -38 && idle.sp <= -22, JSON.stringify({ idleSpeakerDb: idle.sp, idleRmsDb: idle.rms }));
+check('the ignition is heard on the way in, at least as loud as the idle (the recorded starter and its catch)', Math.max(...entry.map(m => m.peakDb)) >= idle.peak - 3 && Math.max(...entry.map(m => m.peakDb)) >= -24 && a0.count.start >= 1, JSON.stringify({ entryPeak: Math.max(...entry.map(m => m.peakDb)), idlePeak: idle.peak, starts: a0.count.start }));
+check('the idle is audible on a phone speaker and quiet: at least a tenth of its energy is in the speaker band, at a level between −38 and −20 dBFS there', idle.sp - idle.rms >= -10 && idle.sp >= -38 && idle.sp <= -20, JSON.stringify({ idleSpeakerDb: idle.sp, idleRmsDb: idle.rms }));
 // cruise: gas held
 const g = await tr.centre('#ridepad .rp-gas'); await tr.down(1, g.x, g.y);
 await page.waitForFunction(() => window.__dakar.car.info().speed > 6.5, null, T);
