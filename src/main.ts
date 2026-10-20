@@ -80,6 +80,10 @@ import { shopRegular } from './social/regular';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { ownsVehicle, park, parked, type VehicleAsset } from './transport/owned';
+import { CorridorHost, type Swap } from './road/host';
+import { transport } from './transport/module';
+import { specOf as catalogSpec } from './economy/catalog';
 import { arenaShow } from './arena/module';
 import { eveningLine, placeClock } from './arena/eveningCall';
 import { GALA_DONE_COUNTER } from './arena/program';
@@ -260,14 +264,16 @@ function updateLighting(hour: number) {
 
 // ------------------------------------------------------------------ hubs
 const rand = rng(Date.now() & 0xffff);
+/** The roads between districts (src/road): attached to each district as it loads, streamed round the player, swapped at their middle. */
+const corridors = new CorridorHost(scene, rand);
 
 /** When the current hub was built (a place a module adds, such as a dealer's counter, appears a moment after). */
 let hubAt = 0;
 /** A district crossing asked by a module during the frame (src/transport/hubLink.ts): carried out before the next frame's updates, so no module is mid-step when the hub is rebuilt. */
 /** How long the last district crossing took to build (ms): shown by the debug hook, read by the checks. */
 let lastCrossMs = 0;
-let pendingCross: { dest: HubId; at: { x: number; z: number; yaw: number } } | null = null;
-function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
+let pendingCross: { dest: HubId; at: { x: number; z: number; yaw: number }; keepSpeed?: number; quiet?: boolean } | null = null;
+function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }, keepSpeed = 0) {
   hubAt = performance.now();
   activities.cancel(); standUp(true);
   pacer.reset();
@@ -279,6 +285,7 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   extra.clear();
   world = buildHub(id, quality === 'low', quality);
   economy.decorateHub(world, quality);                   // before the placed people: the quincaillerie's keeper is one of them
+  corridors.attach(world, quality, at ?? null);          // the roads that leave this district: before the modules and the player's place (both may be on one)
   scene.add(world.group);
   crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
   extra.add(crowd.group, traffic.group);
@@ -303,13 +310,45 @@ function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   setRestSpot(restSpot(world.interactables, homeHub() === id ? 'ta chambre' : null));
   places.clear(); people.clear();
   for (const m of MODULES) m.hubLoaded?.(ctx, world);
-  const p = resumeSpot(at, world.bounds, world.spawn);                  // a spot outside this hub (an old save, a bad teleport): its spawn
-  pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
+  const w0 = world, p = resumeSpot(at, world.bounds, world.spawn, (x, z) => !!w0.corridors?.some(c => c.contains(x, z, 0.5)));   // a spot outside this hub and its roads (an old save, a bad teleport): its spawn
+  pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = keepSpeed;
   follow.snapBehind(facing);
   state.place(id, p.x, p.z, p.yaw);
   hud.setPlace(HUB_NAMES[id], '', false);
   remoteAvatars.clear(); emoter.reset(); notice.reset(); presence.join(id, id === invitedHub ? invitedRoom : null);
   phone.remember();
+}
+
+/** True if (x, z) is inside the rectangle. */
+const inRect = (b: { x0: number; x1: number; z0: number; z1: number }, x: number, z: number) => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1;
+
+/**
+ * Every frame on a district that has a road leaving it: the road's chunks and traffic follow the player, and past the middle of the road the other district becomes the loaded one
+ * (the player, on foot or driving, is carried across by `corridorSwap`). The swap itself is in the next frame's start, like a border crossing (`pendingCross`).
+ */
+function corridorStep(dt: number) {
+  const w = world; if (!w) return;
+  corridors.update(dt, pos.x, pos.z, mode === 'play' && !inside ? { x: pos.x, z: pos.z } : null);
+  if (mode !== 'play' || inside || lambScene || rising || approach) return;
+  const sw = corridors.watch(pos.x, pos.z);
+  if (sw) corridorSwap(sw);
+}
+
+/**
+ * The player has crossed the middle of a road: the district at the other end becomes the loaded one, in the SAME instant and place. Both districts' frames differ by a translation
+ * only (src/road/routes.ts), so heading, speed, steering and the camera need nothing: the vehicle being driven records the new frame's pose (`corridorCross`), a vehicle
+ * parked on the road is re-homed to the new district's frame, and the player is placed at the same spot of the new frame.
+ */
+function corridorSwap(sw: Swap) {
+  const w = world!, b = w.bounds;
+  for (const a of ['jakarta', 'compacte', 'berline', 'tout_terrain', 'tiak'] as VehicleAsset[]) {          // vehicles parked on the road follow the frame
+    const p = parked(state.data, a);
+    if (!p || p.hub !== sw.from || inRect(b, p.x, p.z)) continue;
+    park(state.data, { ...p, hub: sw.to, x: p.x + sw.dx, z: p.z + sw.dz });
+  }
+  for (const m of MODULES) if (m.corridorCross?.(ctx, sw.to, sw.dx, sw.dz)) break;                          // the one being driven keeps driving
+  corridors.prepare(sw.road);
+  pendingCross = { dest: sw.to, at: { x: pos.x + sw.dx, z: pos.z + sw.dz, yaw: facing }, keepSpeed: speed, quiet: true };
 }
 
 function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, number] {
@@ -1148,7 +1187,15 @@ const phone = new Phone({
 });
 
 // the minimap and the phone's map (src/ui/minimap.ts): the game's walking marker, the phone, the contacts around
+transport.addObstacles(out => { if (corridors.active) corridors.footprints(out, pos.x, pos.z); });     // the road's traffic is solid for the vehicle the player drives
 mapBridge.walkTo = id => setDestination(id);
+/** The vehicles the player owns and where they stand parked (the city map shows them; the one being driven is the player's own marker). */
+mapBridge.owned = () => (['jakarta', 'compacte', 'berline', 'tout_terrain', 'tiak'] as VehicleAsset[]).flatMap(a => {
+  if (!ownsVehicle(state, a)) return [];
+  const p = parked(state.data, a); if (!p) return [];
+  if (MODULES.some(m => { const o = m as unknown as { ridden?: boolean; def?: { asset?: string } }; return o.ridden && o.def?.asset === a; })) return [];
+  return [{ asset: a, name: catalogSpec(a)?.name ?? a, hub: p.hub, x: p.x, z: p.z, yaw: p.yaw }];
+});
 mapBridge.destination = () => (destination && destination.hub === world?.id ? destination.id : null);
 mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
 mapBridge.playersNow = () => presenceSpace() !== 'street' ? [] : [...presence.peers.values()].filter(p => p.space === 'street' && !remoteAvatars.hidden(p) && Math.hypot(p.x - pos.x, p.z - pos.z) < 90).slice(0, 12).map(p => ({ id: p.id, name: p.name, x: p.x, z: p.z }));
@@ -1243,8 +1290,9 @@ function frameStep(now: number, dt: number, draw = true) {
   setHumanoidView(camera);                                 // far, unseen and hidden bodies get less animation work (ANIM_LOD)
   if (pendingCross) {                                      // a car crossing the border road: the district changes around it, no fade
     const c = pendingCross; pendingCross = null;
-    const t0 = performance.now(); loadHub(c.dest, c.at); lastCrossMs = performance.now() - t0;
-    hud.toast(HUB_NAMES[c.dest]); saveNow();
+    const t0 = performance.now(); loadHub(c.dest, c.at, c.keepSpeed); lastCrossMs = performance.now() - t0;
+    if (!c.quiet) hud.toast(HUB_NAMES[c.dest]);
+    saveNow();
   }
 
   if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
@@ -1254,6 +1302,7 @@ function frameStep(now: number, dt: number, draw = true) {
   { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
   if (profOn) for (const m of MODULES) { const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }
   else for (const m of MODULES) m.update?.(ctx, dt);
+  if (corridors.active && !pendingCross) corridorStep(dt);
 
   if (rising && mode !== 'play') finishRising();                        // a door, a trip or a scene took over mid-rise
   const drag = input.takeDrag();
@@ -1287,7 +1336,12 @@ function frameStep(now: number, dt: number, draw = true) {
     if (mag > 0.05) {
       let nx = pos.x + Math.sin(facing) * speed * dt, nz = pos.z + Math.cos(facing) * speed * dt;      // along the body, not the raw stick
       [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
-      const b = inside ? inside.int.bounds : world.bounds; nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1);
+      const b = inside ? inside.int.bounds : world.bounds;
+      if (inside) { nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1); }
+      else if (!inRect(b, nx, nz)) {                                         // beyond the district's streets: only on a road that leaves it (slide along its edge like the wall)
+        const roads = world.corridors, ok = (x: number, z: number) => inRect(b, x, z) || !!roads?.some(c => c.contains(x, z, 0.4));
+        if (!ok(nx, nz)) { if (ok(nx, pos.z)) nz = pos.z; else if (ok(pos.x, nz)) nx = pos.x; else { nx = pos.x; nz = pos.z; } }
+      }
       stride.moved(Math.hypot(nx - pos.x, nz - pos.z));
       pos.x = nx; pos.z = nz;
     } else speed *= 0.8;
@@ -1389,6 +1443,17 @@ if (DEBUG) {
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
     cityPlaces: () => world?.interactables.filter(i => i.id.includes(':city:')).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, radius: i.radius, actions: i.actions.map(a => ({ id: a.id, label: a.label, gain: a.gain, cost: a.cost })) })) ?? [],
     crossMs: () => lastCrossMs,
+    /** ?debug: writes the save now (the player's place included). */
+    save: () => { if (world) saveNow(); },
+    /** The roads between districts (src/road): chunks, traffic, and where a point of this district's frame stands on a road. */
+    road: {
+      info: () => corridors.info(),
+      /** The road a point (this district's frame) is on: its id, arc length, side (+ left of the travel direction a → b), the road's heading there, and its length. */
+      project: (x: number, z: number) => { let best: { road: string; s: number; d: number; yaw: number; length: number; swapS: number; hub: HubId; a: HubId; b: HubId; on: boolean } | null = null; for (const id of corridors.info().map(i => i.road)) { const v = corridors.view(id)!, p = v.project(x, z), on = v.contains(x, z, 0); if (Math.abs(p.d) > 80 && !on) continue; if (!best || (on && !best.on) || (on === best.on && Math.abs(p.d) < Math.abs(best.d))) best = { road: id, s: p.s, d: p.d, yaw: p.yaw, length: v.road.length, swapS: v.road.swapS, hub: v.hub, a: v.road.def.a, b: v.road.def.b, on }; } return best; },
+      /** A point of the road, in the loaded district's frame: `s` metres from a, `lat` metres to the left of the a → b direction. */
+      at: (id: string, s: number, lat = 0) => { const v = corridors.view(id); if (!v) return null; const a = v.road.spine.at(s), y = Math.atan2(v.road.spine.at(s + 2).x - v.road.spine.at(s - 2).x, v.road.spine.at(s + 2).z - v.road.spine.at(s - 2).z); return { x: a.x + Math.cos(y) * lat + v.offset.x, z: a.z - Math.sin(y) * lat + v.offset.z, yaw: y }; },
+      lastSwapMs: () => lastCrossMs,
+    },
     cityGeometry: () => world ? { bounds: world.bounds, colliders: world.colliders, people: world.people } : null,
     places: openPlaces,
     destination: () => destination?.id ?? null,

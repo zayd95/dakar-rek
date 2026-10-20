@@ -1338,6 +1338,12 @@ export type SpecialKind = Special;
  * Special blocks of a hub with their centres (mosque, market, station, pitch, gym, port…) and the side of the sea.
  * Read by systems that populate the city around them (src/social/ambientSpots.ts); the geometry stays in buildHub.
  */
+/** The colours a district's ground, roads and pavements are drawn in (the roads between districts blend into them, src/road/chunks.ts). */
+export function hubSurface(id: HubId): { ground: number; road: number; walk: number; banlieue: boolean } {
+  const sp = SPECS[id];
+  return { ground: sp.ground, road: sp.road, walk: sp.walk, banlieue: sp.style === 'banlieue' };
+}
+
 export function hubLayout(id: HubId): { specials: { kind: Special; x: number; z: number }[]; sea: 'west' | 'north' | null } {
   const sp = SPECS[id];
   return {

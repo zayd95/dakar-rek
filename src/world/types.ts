@@ -45,12 +45,17 @@ export interface Collider { x0: number; z0: number; x1: number; z1: number; h: n
 /** A tree top seen by the follow camera: a vertical cylinder of leaves (centre, radius, bottom and top heights). */
 export interface Canopy { x: number; z: number; r: number; y0: number; y1: number }
 
+/** The ground of a road that leaves the district (src/road): beyond `bounds`, vehicles and walkers may stand where this says they may. */
+export interface RoadGround { contains(x: number, z: number, r: number): boolean }
+
 export interface HubWorld {
   id: HubId;
   group: THREE.Group;
   colliders: Collider[];
   interactables: Interactable[];
   bounds: { x0: number; x1: number; z0: number; z1: number };
+  /** The roads between districts attached to this one (src/road/host.ts), once the district is loaded: their ground extends the walkable and drivable area beyond `bounds`. */
+  corridors?: RoadGround[];
   spawn: { x: number; z: number; yaw: number };
   edges: RoadEdge[];
   nodes: { x: number; z: number }[][];

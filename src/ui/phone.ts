@@ -15,6 +15,7 @@ import { mapBridge } from './minimap';
 import { theme, type ThemeMode } from './theme';
 import './theme.css';
 import { fullMapHtml, mountFullMap } from './fullmap';
+import { geoMapHtml } from './geoMapHtml';
 import { HUB_NAMES, travelLeg } from '../world/content';
 import type { Relations } from '../social/relations';
 import { suggestion } from '../social/beats';
@@ -48,6 +49,8 @@ export interface PhoneContext {
   lock: (on: boolean) => void;
 }
 
+/** The tab of the map screen the player last used. */
+let lastMapTab: 'quartier' | 'ville' = 'quartier';
 type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus' | 'cesoir' | 'lutteurs' | 'notifs';
 interface Tile { id: string; label: string; color: string; icon: string; screen?: ScreenId; hook?: () => (() => void) | undefined }
 
@@ -261,7 +264,8 @@ export class Phone {
         <button type="button" class="ph-btn danger" data-act="wipe">Effacer et recommencer</button>`; break;
       case 'carnet': { const j = journalView(this.ctx.rel, this.ctx.state); s.innerHTML = `<p class="ph-sub">${esc(j.subtitle)}</p><div class="ph-journal">${j.html}</div>`; break; }
       case 'portefeuille': s.innerHTML = this.walletHtml(); break;
-      case 'carte': s.innerHTML = `${fullMapHtml()}<h3>Changer de quartier</h3>${this.mapHtml()}`; break;
+      case 'carte': s.innerHTML = `<div class="gm-tabs" role="tablist" aria-label="Carte"><button type="button" role="tab" data-mt="quartier">Quartier</button><button type="button" role="tab" data-mt="ville">Ville</button></div>
+        <div class="gm-pane" data-pane="quartier">${fullMapHtml()}</div><div class="gm-pane" data-pane="ville" hidden>${geoMapHtml()}</div><h3>Changer de quartier</h3>${this.mapHtml()}`; break;
       case 'arene': s.innerHTML = this.arenaHtml(); break;
       case 'meteo': s.innerHTML = this.weatherHtml(); break;
       case 'calcul': s.innerHTML = this.calcHtml(); break;
@@ -274,7 +278,26 @@ export class Phone {
       case 'notifs': s.innerHTML = this.notifsHtml(); quietLog.markRead(); break;
     }
     this.bind();
-    if (id === 'carte') this.mapOff = mountFullMap(s);
+    if (id === 'carte') this.mapOff = this.mountCarte(s);
+  }
+
+  /**
+   * The map screen's two tabs: « Quartier » (the district's own canvas map) and « Ville » (the whole city on MapLibre, src/ui/geoMap.ts). Only the open tab is alive: the other is released, and
+   * MapLibre (its code, its WebGL context, its tiles) is only ever loaded while « Ville » is showing.
+   */
+  private mountCarte(s: HTMLElement): () => void {
+    let off: (() => void) | null = null, tab: 'quartier' | 'ville' | null = null;
+    const show = (t: 'quartier' | 'ville') => {
+      if (t === tab) return;
+      off?.(); off = null; tab = t; lastMapTab = t;
+      s.querySelectorAll<HTMLElement>('[data-mt]').forEach(b => { const on = b.dataset.mt === t; b.setAttribute('aria-selected', String(on)); b.classList.toggle('on', on); });
+      s.querySelectorAll<HTMLElement>('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== t; });
+      if (t === 'quartier') off = mountFullMap(s);
+      else void import('./geoMap').then(m => { if (tab === 'ville') off = m.mountGeoMap(s); });
+    };
+    s.querySelectorAll<HTMLElement>('[data-mt]').forEach(b => b.addEventListener('click', () => show(b.dataset.mt as 'quartier' | 'ville')));
+    show(lastMapTab);
+    return () => { off?.(); off = null; tab = null; };
   }
 
   private homeHtml(): string {

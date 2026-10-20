@@ -164,6 +164,11 @@ export interface GameModule {
   init?(ctx: GameCtx): void;
   /** After a hub is built and the shared registries were reset: register places, seats, targets, interiors here. */
   hubLoaded?(ctx: GameCtx, hub: HubWorld): void;
+  /**
+   * The player has crossed the middle of a road between districts (src/road): the district at its other end is about to be loaded, its frame differing from this one's by (dx, dz).
+   * A module that has the player in a vehicle takes the ride across (records the pose in the new frame, as a border crossing does) and returns true.
+   */
+  corridorCross?(ctx: GameCtx, dest: HubId, dx: number, dz: number): boolean;
   /** Every frame after the activity runner, before the interaction focus. */
   update?(ctx: GameCtx, dt: number): void;
   /** The player entered or left an interior (space = new interaction space). */

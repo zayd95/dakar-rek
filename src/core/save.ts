@@ -74,10 +74,10 @@ const HOW: AssetState['how'][] = ['owned', 'rented', 'given'];
 
 /**
  * Where the player resumes in a hub (main.ts loadHub, from a save or a teleport): the requested spot when it lies inside
- * the hub's bounds, else the hub's spawn — a save from an older map or a corrupt position is put back in the city.
+ * the hub's bounds (or on a road leaving it: `onRoad`), else the hub's spawn — a save from an older map or a corrupt position is put back in the city.
  */
-export function resumeSpot<S extends { x: number; z: number; yaw: number }>(at: S | undefined, bounds: { x0: number; x1: number; z0: number; z1: number }, spawn: S): S {
-  return at && at.x >= bounds.x0 && at.x <= bounds.x1 && at.z >= bounds.z0 && at.z <= bounds.z1 ? at : spawn;
+export function resumeSpot<S extends { x: number; z: number; yaw: number }>(at: S | undefined, bounds: { x0: number; x1: number; z0: number; z1: number }, spawn: S, onRoad?: (x: number, z: number) => boolean): S {
+  return at && ((at.x >= bounds.x0 && at.x <= bounds.x1 && at.z >= bounds.z0 && at.z <= bounds.z1) || onRoad?.(at.x, at.z)) ? at : spawn;
 }
 
 /** Validate and migrate any stored object into a current SaveData; returns null if unusable. */

@@ -16,6 +16,14 @@ export class Batch {
     this.finish(g, color, x, y, z, yaw);
   }
 
+  /** A surface that already carries its own vertex colours (a road ribbon that fades from one surface to another), added to the same merged draw call. */
+  coloured(g: THREE.BufferGeometry) {
+    if (!g.attributes.normal) g.computeVertexNormals();
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (g.index) g = g.toNonIndexed();
+    this.geos.push(g); this.count++;
+  }
+
   private finish(g: THREE.BufferGeometry, color: THREE.ColorRepresentation, x: number, y: number, z: number, rotY = 0, rotX = 0, rotZ = 0) {
     g.rotateX(rotX); g.rotateZ(rotZ); g.rotateY(rotY); g.translate(x, y, z);
     const c = new THREE.Color(color);
