@@ -277,8 +277,10 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
       const s = j.s - dir * 62;
       if (s < s0 || s >= s0 + CHUNK) continue;
       const lat = dir > 0 ? -(VERGE - 0.2) : VERGE - 0.2, f = frame(road, s), x = f.x + f.lx * lat, z = f.z + f.lz * lat;
-      const board = directionBoard(j.name, signTarget(road, dir), f.yaw + (dir > 0 ? Math.PI : 0), x, z);
-      group.add(board.mesh); disposables.push(board.mesh.geometry, board.mat, board.tex);
+      if (typeof document !== 'undefined') {                                  // (no canvas under the unit tests' node: the board is a browser thing)
+        const board = directionBoard(j.name, signTarget(road, dir), f.yaw + (dir > 0 ? Math.PI : 0), x, z);
+        group.add(board.mesh); disposables.push(board.mesh.geometry, board.mat, board.tex);
+      }
       plain.cyl(0.08, 0.08, 4, x, 0, z, 0x555a60, 6);
       colliders.push({ x0: x - 0.4, x1: x + 0.4, z0: z - 0.4, z1: z + 0.4, h: 4 });
     }

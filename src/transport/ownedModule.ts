@@ -252,6 +252,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private scrapeFrames = 0;
 
   readonly def: OwnedDef;
+  /** The vehicle the player drives across a road's middle is carried over in the swap frame itself. */
+  readonly critical = true;
   private readonly parkedTarget: Target;
   private readonly rideTarget: Target;
   private readonly targets: TargetSource;

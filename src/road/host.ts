@@ -64,6 +64,16 @@ export class CorridorHost {
     return null;
   }
 
+  /** How far out on a road the point is, and which district it leads to (null off the roads). The district is built ahead once the player is far enough out. */
+  approach(x: number, z: number): { to: HubId; depth: number } | null {
+    for (const v of this.views) {
+      if (!v.contains(x, z, 0)) continue;
+      const s = v.project(x, z).s;
+      return v.hub === v.road.def.a ? { to: v.road.def.b, depth: s } : { to: v.road.def.a, depth: v.road.length - s };
+    }
+    return null;
+  }
+
   /** The next `attach` is a swap along this road: its chunks, traffic and people stay. */
   prepare(road: Road) { this.handover = road.id; }
 
