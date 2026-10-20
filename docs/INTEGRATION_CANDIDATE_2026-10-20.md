@@ -1,6 +1,6 @@
 # Integration candidate, 20 Oct 2026 (local, isolated, not for production)
 
-Branch `integration/candidate-vehicles-pikine-20261020`. Code commit `41399ac` (this file is the only addition after it).
+Branch `integration/candidate-vehicles-pikine-20261020`. Code commit `41399ac`; after it only this file, and the #51 return-leg fix (PR #57: checks, tooling, a doc and a film, no game code).
 Built from the PR #53 head (`8ba4508`, Pikine Street DNA, which already contains the PR #52 signage commits) by merging, in this order:
 
 | # | Merged | Head | Result |
@@ -60,7 +60,7 @@ Pre-existing (identical on the base, recorded separately, not caused by the merg
 * `check-npc-density`: 4 failures, all gargote (`people eat seated at the gargote at lunch`, `the player sits on a free gargote bench`, desktop and phone).
 * `check-arena-arrival`: 24/28, the same four-check shape as #53 alone (24/28).
 * `check-tiak-tour`: 51/58, the same seven ride-timing failures on #53 alone (51/58).
-* `check-prestige-flow` with `DRIVE_ON=1` (#51's return leg): 33/34, `the way back works too`. The **identical** failure and count on #51's own head built alone, so not introduced by the merge. The forward crossing, the collision, the reload and the same-car checks pass. Left to the Vehicles session.
+* ~~`check-prestige-flow` with `DRIVE_ON=1` (#51's return leg): 33/34~~ **Fixed** (PR #57, `c38f385`, merged here as `85f6534`; checks and tooling only, no game code): the failure was the automated route (a forward-only pilot that cannot turn a car round in the 11 m Corniche carriageway), not the game; the check now turns the car round with the real controls and proves the way home as fully as the way out. `DRIVE_ON=1 SKIP_LAP=1` on this candidate: **43/43**, the car's condition kept across the crossings (100 → 99.5 after the wall hit, same asset record). Film: `docs/vehicles/continuous-drive-roundtrip.mp4`.
 
 Timing flakes (failed once, passed on rerun; each rerun with nothing else running): `check-horn` 16/17 → 17/17 (and #55 alone 17/17 twice); `check-ui` 147/149 → 149/149 (#53 alone 149/149, #55 alone 149/149); `check-social` 23/24 → 24/24; `check-recognition` 19/20 and 18/20 → 20/20 twice on the candidate (20/20 on #50 alone and on the candidate without #44).
 
