@@ -23,6 +23,6 @@ for (const [body, { id, full, low }] of Object.entries(STEPS)) {
   run('transplant-to-v4-rig.mjs', [`${src}/${body}/rigged.glb`, t, ...HAND[body]]);
   if (full) run('simplify-body.mjs', [t, `${out}/body_${id}.glb`, ...full]); else fs.copyFileSync(t, `${out}/body_${id}.glb`);
   run('simplify-body.mjs', [t, `${out}/body_${id}_low.glb`, ...low]);
-  for (const f of [`${out}/body_${id}.glb`, `${out}/body_${id}_low.glb`]) { run('grip-morph.mjs', [f, f]); }   // the fist for the motorbike grip, as a morph target (after simplify: simplify drops morph targets)
+  for (const f of [`${out}/body_${id}.glb`, `${out}/body_${id}_low.glb`]) { run('grip-morph.mjs', [f, f]); run('../avatar/add-hair.mjs', [f]); }   // the fist for the motorbike grip, as a morph target (after simplify: simplify drops morph targets); then the character creator's hair: the `_HAIR` attribute and the 'shave' morph target
   console.log(body, fs.statSync(`${out}/body_${id}.glb`).size, fs.statSync(`${out}/body_${id}_low.glb`).size);
 }

@@ -1,4 +1,4 @@
-// New Game choice of the player's body (src/ui/avatarPick.ts, src/actors/playerBody.ts): the choice screen, the identity kept in the v5
+// New Game choice of the player's body (now inside the character creator, src/ui/characterCreator.ts; src/actors/playerBody.ts): the choice screen, the identity kept in the v5
 // save, reload, New Game, saves made before the choice (they keep the v4 body, no prompt), the light body files on the low preset, the
 // v4 stand-in for the ngemb preview and the emotes, the fallback when the Meshy files cannot be loaded, the phone layouts, and a short
 // play on each identity. Usage: node scripts/check-avatar.mjs [baseUrl=http://localhost:4310/] [outDir=docs/meshy/proof/avatar]
@@ -39,36 +39,41 @@ const started = p => p.waitForFunction(() => window.__dakar?.pos?.().hub, null, 
 const goto = (p, query) => p.goto(`${base}?${query}`, { waitUntil: 'load', timeout: 180000 });
 const save = p => p.evaluate(k => { const s = localStorage.getItem(k); return s ? JSON.parse(s) : null; }, KEY);
 const who = p => p.evaluate(() => window.__dakar.avatar());
+/** New Game now goes through the character creator (src/ui/characterCreator.ts; its own checks: scripts/check-creator.mjs): a name, the body, the one action. */
+const choose = async (p, id) => {
+  await p.waitForSelector('#creator', { timeout: 120000 });
+  await p.fill('#crName', 'Test'); await p.click('#crContinue'); await p.waitForSelector('#crCanvas');
+  if (id === 'femme') await p.click('#creator .cr-chip[data-g="body"][data-v="femme"]');
+  await p.click('#crPlay');
+};
 const shot = async (p, name) => { await p.waitForTimeout(500); try { await p.screenshot({ path: `${out}/${name}.png` }); } catch { /* */ } };
 
 // 1 — a new game shows the choice, which cannot be dismissed, and nothing is saved before it is made
 {
   const { context, page: p } = await open();
   await goto(p, 'debug&avatar=choisir');
-  await p.waitForSelector('#avatarPick', { timeout: 120000 });
-  const cards = await p.$$eval('#avatarPick .ap-card', els => els.map(e => ({ id: e.dataset.id, label: e.querySelector('b')?.textContent, img: e.querySelector('img')?.complete && e.querySelector('img').naturalWidth > 0 })));
-  check('New Game: two cards, Homme and Femme, with their pictures', cards.length === 2 && cards[0].label === 'Homme' && cards[1].label === 'Femme' && cards.every(c => c.img), JSON.stringify(cards));
-  check('New Game: the dialog is announced and named', await p.$eval('#avatarPick', e => e.getAttribute('role') === 'dialog' && e.getAttribute('aria-modal') === 'true' && !!document.getElementById(e.getAttribute('aria-labelledby'))));
-  check('New Game: the online note is shown (others see the standard look)', /autres joueurs/.test(await p.$eval('#avatarPick', e => e.textContent)));
+  await p.waitForSelector('#creator', { timeout: 120000 });
+  check('New Game: the creator opens on the first name (step 1)', await p.locator('#crName').isVisible() && await p.$eval('#creator', e => e.dataset.step === 'name'));
+  check('New Game: the dialog is announced and named', await p.$eval('#creator', e => e.getAttribute('role') === 'dialog' && e.getAttribute('aria-modal') === 'true' && !!document.getElementById(e.getAttribute('aria-labelledby'))));
   await p.keyboard.press('Escape'); await p.mouse.click(5, 5); await p.waitForTimeout(300);
-  check('the choice stays on Escape and on a tap outside', await p.$('#avatarPick') !== null);
+  check('the creator stays on Escape and on a tap outside', await p.$('#creator') !== null);
   const pre = await p.evaluate(() => ({ hub: window.__dakar.pos().hub ?? null, keys: Object.keys(localStorage).filter(k => k.startsWith('dakarrek')), identity: window.__dakar.avatar().identity }));
   check('nothing is saved and the world is not loaded before the choice', pre.hub === null && !pre.keys.includes(KEY) && pre.identity === null, JSON.stringify(pre));
   await shot(p, 'desktop-choice');
-  await p.click('#avatarPick .ap-card[data-id="femme"]');
+  await choose(p, 'femme');
   await started(p); await p.waitForTimeout(1500);
-  check('after the choice the overlay is gone and the game runs', await p.$('#avatarPick') === null);
+  check('after the choice the overlay is gone and the game runs', await p.$('#creator') === null);
   let a = await who(p), s = await save(p);
   check('the femme is the player\'s body (Meshy femme)', a.identity === 'femme' && a.body === 'meshy_f' && a.expected === 'meshy_f', JSON.stringify(a));
   check('the identity is in the v5 save at once, same schema, same key', s?.avatar === 'femme' && s.schemaVersion === 5, JSON.stringify({ avatar: s?.avatar, v: s?.schemaVersion }));
   const keysNow = await p.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('dakarrek')));
-  check('no other storage key was added (the identity lives in the v5 save)', keysNow.every(k => [KEY, 'dakarrek.quality', 'dakarrek.phone.places'].includes(k)), JSON.stringify(keysNow));
+  check('no other storage key was added (the identity and the look live in the v5 save; the first name in the existing presence profile)', keysNow.every(k => [KEY, 'dakarrek.quality', 'dakarrek.phone.places', 'dakarrek.presence.profile'].includes(k)), JSON.stringify(keysNow));
   await shot(p, 'desktop-femme-street');
   const guest = s.guestId;
   // 2 — reload keeps it, with or without the test link
   await p.reload({ waitUntil: 'load' }); await started(p); await p.waitForTimeout(1200);
   a = await who(p);
-  check('reload: no prompt, same identity and body', await p.$('#avatarPick') === null && a.identity === 'femme' && a.body === 'meshy_f', JSON.stringify(a));
+  check('reload: no prompt, same identity and body', await p.$('#creator') === null && a.identity === 'femme' && a.body === 'meshy_f', JSON.stringify(a));
   await goto(p, 'debug'); await started(p); await p.waitForTimeout(1200);
   a = await who(p); s = await save(p);
   check('another link on the same device: still the femme, same game', a.body === 'meshy_f' && s.guestId === guest, JSON.stringify({ a, same: s.guestId === guest }));
@@ -76,9 +81,9 @@ const shot = async (p, name) => { await p.waitForTimeout(500); try { await p.scr
   await p.keyboard.press('Escape'); await p.locator('[data-app="reglages"]').first().click(); await p.locator('[data-act="new"]').click();
   await Promise.all([p.waitForEvent('load'), p.locator('[data-act="wipe"]').click()]);
   await p.goto(`${base}?debug&avatar=choisir`, { waitUntil: 'load' });
-  await p.waitForSelector('#avatarPick', { timeout: 120000 });
+  await p.waitForSelector('#creator', { timeout: 120000 });
   check('New Game from the phone: the save is gone and the choice is offered again', (await save(p)) === null);
-  await p.click('#avatarPick .ap-card[data-id="homme"]'); await started(p); await p.waitForTimeout(1500);
+  await choose(p, 'homme'); await started(p); await p.waitForTimeout(1500);
   a = await who(p); s = await save(p);
   check('the new game takes the other identity (homme)', a.identity === 'homme' && a.body === 'meshy_m' && s.avatar === 'homme' && s.guestId !== guest && s.wallet === 3000, JSON.stringify({ a, wallet: s.wallet }));
   const career = await p.evaluate(() => { const d = window.__dakar.state.data; return { bouts: d.career.bouts.length, fav: d.career.fav ?? null, wrestlerFlags: d.flags.filter(f => /lutt|wrestl|ecurie|career|carriere/i.test(f)), at: window.__dakar.pos().hub }; });
@@ -93,7 +98,7 @@ for (const [name, seed] of [['a v5 save without the field', { v5: { schemaVersio
   const { context, page: p } = await open({ seed });
   await goto(p, 'debug&avatar=choisir'); await started(p); await p.waitForTimeout(1500);
   const a = await who(p), w = await p.evaluate(() => window.__dakar.state.data.wallet);
-  check(`${name}: no prompt, the v4 body, the progress kept`, await p.$('#avatarPick') === null && a.identity === null && a.body === 'v4' && [4321, 5555].includes(w), JSON.stringify({ a, wallet: w }));
+  check(`${name}: no prompt, the v4 body, the progress kept`, await p.$('#creator') === null && a.identity === null && a.body === 'v4' && [4321, 5555].includes(w), JSON.stringify({ a, wallet: w }));
   await p.evaluate(() => window.__dakar.phone('reglages')); await p.keyboard.press('Escape');
   await p.evaluate(() => window.__dakar.state.data.wallet += 0);
   await context.close();
@@ -103,11 +108,10 @@ for (const [name, seed] of [['a v5 save without the field', { v5: { schemaVersio
 {
   const { context, page: p } = await open();
   await p.goto(base, { waitUntil: 'load' });
-  await p.waitForSelector('#avatarPick', { timeout: 120000 });
-  await p.click('#avatarPick .ap-card[data-id="homme"]');
+  await choose(p, 'homme');
   await p.waitForFunction(k => { const s = localStorage.getItem(k); return !!s && JSON.parse(s).avatar === 'homme'; }, KEY, { timeout: 60000 });
   await p.waitForTimeout(2500);
-  check('without ?debug: the choice appears, the pick is saved and the game starts', await p.$('#avatarPick') === null && (await p.$('canvas')) !== null);
+  check('without ?debug: the creator appears, the pick is saved and the game starts', await p.$('#creator') === null && (await p.$('canvas')) !== null);
   await context.close();
 }
 
@@ -118,7 +122,7 @@ for (const [name, seed] of [['a v5 save without the field', { v5: { schemaVersio
   await goto(p, 'debug'); await started(p); await p.waitForTimeout(1500);
   check('low preset: the light femme file only', requests.includes('body_f_low.glb') && !requests.includes('body_f.glb'), requests.join(','));
   const before = await p.evaluate(() => { window.__q = window.__dakar.body(); return window.__dakar.avatar(); });
-  await p.evaluate(() => window.__dakar.phone('reglages')); await p.locator('#phone button[data-q="high"]').click(); await p.waitForTimeout(2500);
+  await p.evaluate(() => window.__dakar.phone('reglages')); await p.locator('#phone button[data-q="high"]').click(); await p.waitForFunction(() => window.__dakar.body() !== window.__q, null, { timeout: 60000 }).catch(() => {}); await p.waitForTimeout(500);
   const after = await p.evaluate(() => ({ a: window.__dakar.avatar(), rebuilt: window.__dakar.body() !== window.__q }));
   check('switching to high: the full file is loaded and the body rebuilt, same identity', requests.includes('body_f.glb') && after.rebuilt && after.a.body === 'meshy_f' && before.body === 'meshy_f', JSON.stringify({ requests, after }));
   await context.close();
@@ -149,21 +153,23 @@ for (const [name, seed] of [['a v5 save without the field', { v5: { schemaVersio
   await context.close();
 }
 
-// 9 — phone layouts: both cards reachable, tap targets, a tap picks
+// 9 — phone layouts: the creator's two steps fit the screen in both orientations, every control at least 44 px, a tap picks
 for (const [label, viewport] of [['portrait', { width: 390, height: 844 }], ['landscape', { width: 844, height: 390 }]]) {
   const { context, page: p } = await open({ viewport, touch: true });
   await goto(p, 'debug&touch&avatar=choisir');
-  await p.waitForSelector('#avatarPick', { timeout: 120000 });
-  const boxes = await p.$$eval('#avatarPick .ap-card', els => els.map(e => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }));
-  const inside = boxes.every(b => b.x >= 0 && b.x + b.w <= viewport.width && b.w >= 44 && b.h >= 44 && b.y + Math.min(b.h, 120) <= viewport.height);
-  check(`phone ${label}: both cards inside the screen and at least 44 px`, boxes.length === 2 && inside, JSON.stringify(boxes.map(b => [Math.round(b.x), Math.round(b.y), Math.round(b.w), Math.round(b.h)])));
-  const noHScroll = await p.evaluate(() => document.getElementById('avatarPick').scrollWidth <= innerWidth + 1);
-  check(`phone ${label}: no sideways scroll`, noHScroll);
-  await shot(p, `phone-${label}-choice`);
-  await p.touchscreen.tap(boxes[1].x + boxes[1].w / 2, Math.min(boxes[1].y + 40, viewport.height - 20));
+  await p.waitForSelector('#creator', { timeout: 120000 });
+  check(`phone ${label}: step 1 fits (name, suggestions, Continue) with no scrolling`, await p.evaluate(() => { const c = document.getElementById('creator'), r = document.getElementById('crContinue').getBoundingClientRect(); return c.scrollHeight <= innerHeight + 1 && c.scrollWidth <= innerWidth + 1 && r.bottom <= innerHeight; }));
+  await p.fill('#crName', 'Awa'); await p.tap('#crContinue'); await p.waitForSelector('#crCanvas');
+  const boxes = await p.$$eval('#creator .cr-chip, #crPlay', els => els.map(e => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }));
+  const inside = boxes.every(b => b.x >= 0 && b.x + b.w <= viewport.width && b.y >= 0 && b.y + b.h <= viewport.height && b.w >= 43.5 && b.h >= 43.5);
+  check(`phone ${label}: step 2: every choice inside the screen and at least 44 px`, boxes.length === 22 && inside, JSON.stringify(boxes.filter(b => b.y + b.h > viewport.height || b.h < 43.5).slice(0, 3)));
+  check(`phone ${label}: step 2: no scrolling`, await p.evaluate(() => { const c = document.getElementById('creator'); return c.scrollHeight <= innerHeight + 1 && c.scrollWidth <= innerWidth + 1; }));
+  await p.waitForFunction(() => !!document.querySelector('#crCanvas').dataset.body, null, { timeout: 120000 }); await p.waitForTimeout(1200);
+  await shot(p, `phone-${label}-creator`);
+  await p.tap('#creator .cr-chip[data-g="body"][data-v="femme"]'); await p.tap('#crPlay');
   await started(p); await p.waitForTimeout(1200);
   const a = await who(p);
-  check(`phone ${label}: a tap on Femme picks it`, a.identity === 'femme' && a.body === 'meshy_f', JSON.stringify(a));
+  check(`phone ${label}: a tap on Femme, then on the one action, plays her`, a.identity === 'femme' && a.body === 'meshy_f', JSON.stringify(a));
   if (label === 'portrait') await shot(p, 'phone-portrait-femme-street');
   await context.close();
 }

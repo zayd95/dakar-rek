@@ -1,4 +1,5 @@
 import type { CareerSave } from '../career/career';
+import type { Appearance } from '../actors/appearance';
 export type HubId = 'plateau' | 'corniche' | 'almadies' | 'pikine';
 export const HUB_IDS: HubId[] = ['plateau', 'corniche', 'almadies', 'pikine'];
 /**
@@ -54,6 +55,11 @@ export interface SaveData {
    * change: a save without it (every save made before the choice existed) is null and keeps the shipped v4 body.
    */
   avatar: Avatar | null;
+  /**
+   * The look chosen in the character creator (src/actors/appearance.ts: skin tone, hairstyle, outfit, outfit colour), for the body above. Additive field, no version
+   * change: a save without it (every save made before the creator) is null and keeps the body exactly as it was.
+   */
+  appearance: Appearance | null;
 }
 
 export interface LedgerEntry { at: number; label: string; amount: number }

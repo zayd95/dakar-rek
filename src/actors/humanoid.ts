@@ -9,6 +9,8 @@ import { GaitRig } from './gaitRig';
 import { joinNeck } from './neckJoin';
 import { reshapeCharacter } from './proportions';
 import { fitEyes } from './eyes';
+import type { Appearance } from './appearance';
+import { MeshyLook, makeMeshyMaterial, type MeshyUniforms } from './meshyLook';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -574,6 +576,11 @@ export class Humanoid {
   overlay: ((h: Humanoid, dt: number) => void) | null = null;
   private underOverlay: Float64Array | null = null;
 
+  /** The recolour and hair variants of a Meshy body (the character creator); null on v4. */
+  private meshy: MeshyLook | null = null;
+  /** The look the creator chose, on a Meshy body (a v4 body has none: the creator is for the Meshy identities). null: the body as it was. */
+  setAppearance(a: Appearance | null) { this.meshy?.apply(a); }
+  get appearance(): Appearance | null { return this.meshy?.applied ?? null; }
   /** The body drawn: the one asked for when it is loaded, else v4. */
   readonly body: BodyId;
   /** How this body's mesh differs from the rig (BODY_FIT); v4's own is all zeros. */
@@ -587,6 +594,7 @@ export class Humanoid {
     this.group.add(this.root); this.group.name = 'humanoid_v2';
     this.skinMat = new THREE.MeshLambertMaterial({ color: 0x5b3420, side: THREE.DoubleSide });
     const hair = new THREE.MeshLambertMaterial({ color: 0x141011, side: THREE.DoubleSide });
+    let shell: THREE.Mesh | null = null, shellU: MeshyUniforms | null = null;
     this.root.traverse(o => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
@@ -596,7 +604,7 @@ export class Humanoid {
       if (m.morphTargetDictionary) { this.morphed.push(m); if (m.morphTargetDictionary.grip !== undefined) this.gripMesh = m; }
       const src = m.material as THREE.MeshStandardMaterial;
       if (key) { this.parts.set(key, m); if (key.startsWith('Hair_')) m.material = hair; if (key === 'Beard') m.material = this.beardMat; }
-      else if (this.body !== 'v4' && src.map) m.material = new THREE.MeshLambertMaterial({ map: src.map, side: THREE.DoubleSide });   // a body that carries its own texture
+      else if (this.body !== 'v4' && src.map) { const mm = makeMeshyMaterial(src.map, this.body === 'meshy_f'); m.material = mm.mat; shell = m; shellU = mm.u; }   // a body that carries its own texture (the creator's recolour is in its shader)
       else if (src.name.startsWith('Skin')) m.material = this.skinMat;
       else if (src.name === 'Hair') m.material = hair;
       else if (src.name === 'Lips') m.material = this.lipsMat;
@@ -604,6 +612,7 @@ export class Humanoid {
     });
     this.mixer = new THREE.AnimationMixer(this.root);
     for (const c of t.clips) this.actions.set(c.name, this.mixer.clipAction(c));
+    if (shell && shellU) this.meshy = new MeshyLook(this.root, this.bone('head'), shell, shellU);
     if (look) this.setLook(look);
     if (this.body !== 'v4') this.group.scale.setScalar(this.fit.scale);
   }
@@ -829,7 +838,7 @@ export class Humanoid {
   }
   /** Clips only (scenes that drive a body themselves): the gesture overlay still goes on top. */
   update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
-  dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
+  dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.meshy?.dispose(); this.group.removeFromParent(); }
 }
 
 /** Wrestler: a humanoid in ngemb (used by arena and écurie scenes). */

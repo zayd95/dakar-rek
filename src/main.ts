@@ -10,6 +10,8 @@ import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save
 import { readTestParams } from './core/testParams';
 import { loadPlayerBody, bodyOf } from './actors/playerBody';
 import { pickAvatar } from './ui/avatarPick';
+import { openCreator, type CreatorResult } from './ui/characterCreator';
+import { appearanceOf } from './actors/appearance';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
 import { HALF, buildHub, hubLayout } from './world/builder';
@@ -59,7 +61,7 @@ import { Phone } from './ui/phone';
 import { mapBridge } from './ui/minimap';
 import { theme } from './ui/theme';
 import { ChatUi } from './multiplayer/chat';
-import { isHub, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
+import { isHub, lookIndex, nickname, MAX_ROOMS_PER_HUB, PRESENCE_CLIPS, type PresenceClip, type PresenceExtras } from './multiplayer/protocol';
 import { Economy } from './economy/ui';
 import { pickupFrags } from './economy/jobs';
 import { activityOf } from './economy/polyvalence';
@@ -185,9 +187,10 @@ let playerBody: Humanoid | null = null;
 let bodyLow: boolean | null = null;
 async function makePlayerBody() {
   const low = quality === 'low', id = await loadPlayerBody(state.data.avatar, low);
-  if (playerBody && playerBody.body === id && bodyLow === low) return;
+  if (playerBody && playerBody.body === id && bodyLow === low) { playerBody.setAppearance(state.data.appearance); return; }
   const old = playerBody;
   playerBody = new Humanoid(PLAYER_LOOK, id); playerBody.fullRate = true; playerBody.hold = old?.hold ?? null; bodyLow = low;
+  playerBody.setAppearance(state.data.appearance);                  // the creator's skin, hair and outfit (null: the body as it was)
   scene.add(playerBody.group); player.group.visible = false;
   old?.dispose();
 }
@@ -195,7 +198,29 @@ async function makePlayerBody() {
 async function settleAvatar() {
   if (TEST.avatar === 'homme' || TEST.avatar === 'femme') state.data.avatar = TEST.avatar;
   else if (TEST.avatar === 'v4') state.data.avatar = null;
-  else if (isNewGame && (TEST.avatar === 'choose' || !DEBUG)) { state.data.avatar = await pickAvatar(); writeSave(store, state.data); }   // saved at once (the world is not built yet: no place to record): leaving before the first autosave keeps the choice
+  else if (isNewGame && (TEST.avatar === 'choose' || !DEBUG)) {
+    if (humanoidReady()) { const r = await openCreator({ mode: 'new', low: quality === 'low', name: /^Dakarois [0-9A-F]{4}$/.test(presence.profile.name) ? '' : presence.profile.name }); if (r) applyCharacter(r); else state.data.avatar = await pickAvatar(); }
+    else state.data.avatar = await pickAvatar();                  // no 3D body to show (the box characters are in use): the plain choice, the look stays as it was
+    writeSave(store, state.data);                                 // saved at once (the world is not built yet: no place to record): leaving before the first autosave keeps the choice
+  }
+}
+/** The first name and the shirt colour go to the device's presence profile (what other players read: a name and a colour index); the body and the look to the save. */
+function setPresenceProfile(name: string | null, color: number) {
+  const profile = { name: nickname(name ?? presence.profile.name), look: lookIndex(color) };
+  try { store?.setItem('dakarrek.presence.profile', JSON.stringify(profile)); } catch { /* session-only profile */ }
+  presence.setProfile(profile); Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK);
+}
+function applyCharacter(r: CreatorResult) {
+  state.data.avatar = r.avatar; state.data.appearance = appearanceOf(r.appearance, r.avatar);
+  setPresenceProfile(r.name, r.appearance.color);
+}
+/** Phone › Profil › « Modifier mon personnage »: the creator's screen on the current look, over the paused game; nothing else changes (no new game, no loss). */
+async function editCharacter() {
+  if (!humanoidReady()) { hud.toast('Aperçu indisponible sur cet appareil.'); return; }
+  const was = mode; mode = 'busy'; input.enabled = false; input.reset(); hud.resetControls();
+  const r = await openCreator({ mode: 'edit', low: quality === 'low', avatar: state.data.avatar, appearance: state.data.appearance });
+  if (r) { applyCharacter(r); saveNow(); await makePlayerBody(); hud.toast('Ton personnage est enregistré.'); }   // saved before the body loads: leaving at once keeps the choice
+  if (mode === 'busy') { mode = was === 'menu' ? 'play' : was; input.enabled = mode === 'play'; }
 }
 const debugPeople: Humanoid[] = [];
 /** ?debug: bodies walking in a straight line at a set speed (the gait checks: near and far from the camera, ANIM_LOD). */
@@ -217,7 +242,7 @@ let camOverride: { dist: number; h: number; side: number } | null = null;
 const invitedHub = isHub(params.get('hub')) ? params.get('hub') as HubId : null;
 const roomParam = Number(params.get('room'));
 const invitedRoom = Number.isInteger(roomParam) && roomParam >= 1 && roomParam <= MAX_ROOMS_PER_HUB ? roomParam : null;
-const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); }, () => { mode = 'menu'; input.enabled = false; });
+const presenceUi = new PresenceUi(presence, hud, store, () => world?.id ?? null, profile => { Object.assign(PLAYER_LOOK, avatarLook(profile.look)); playerBody?.setLook(PLAYER_LOOK); if (state.data.appearance && state.data.appearance.color !== profile.look) { state.data.appearance = { ...state.data.appearance, color: profile.look }; playerBody?.setAppearance(state.data.appearance); } }, () => { mode = 'menu'; input.enabled = false; });
 const chat = new ChatUi({ presence, avatars: remoteAvatars, scene, storage: store, enabled: import.meta.env.VITE_MULTIPLAYER === 'true', local: () => pos, space: presenceSpace,
   suspend: on => { if (on) { input.enabled = false; input.reset(); } else if (mode === 'play') input.enabled = true; } });
 presence.onChange = () => { presenceUi.update(); chat.refresh(); if (!presence.count) remoteAvatars.clear(); };
@@ -1014,6 +1039,8 @@ function doWalk(dest: HubId) {
   }, 1400);
 }
 phoneHooks.walkTo = doWalk;
+phoneHooks.editCharacter = () => { void editCharacter(); };
+phoneHooks.profileName = () => presence.profile.name;
 phoneHooks.homeHub = homeHub;
 
 function doTravel(dest: HubId) {
@@ -1401,7 +1428,7 @@ if (DEBUG) {
     cheer(s?: number) { return cheer(s); },
     more() { openMore(); },
     clip: () => playerBody?.clipName ?? null,
-    avatar: () => ({ identity: state.data.avatar, body: playerBody?.body ?? null, expected: bodyOf(state.data.avatar), stand: ngembBody?.body ?? null }),
+    avatar: () => ({ identity: state.data.avatar, appearance: state.data.appearance, drawn: playerBody?.appearance ?? null, body: playerBody?.body ?? null, expected: bodyOf(state.data.avatar), stand: ngembBody?.body ?? null }),
     activity: () => { const c = activities.current; return c ? { id: c.spec.id, step: c.step.label, index: c.index, scores: c.scores, t: +c.t.toFixed(2), seconds: c.step.seconds ?? 0 } : null; },
     gesture: () => gestures.info(),
     stride: () => ({ stamina: Math.round(stride.stamina), max: stride.maxStamina(), running: stride.running, sprinting: stride.sprinting, gait: stride.gait, winded: stride.winded, forme: stride.forme, speed, run: stride.runSpeed(), why: stride.whyNot(), toggle: strideUi.runToggle }),
