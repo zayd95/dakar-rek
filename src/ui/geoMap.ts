@@ -96,20 +96,24 @@ export function mountGeoMap(host: HTMLElement): () => void {
       for (const r of ROADS) { const mid = roadToLngLat(r, r.length / 2).lngLat; add(div('gm-road', '🛣️'), mid, () => showRoad(r)); }
     };
 
+    const reveal = () => card.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
     const showHub = (id: HubId) => {
       const cur = mapBridge.hub?.id === id, roads = ROADS.filter(r => r.touches(id));
       const rows = roads.map(r => `<p>🛣️ Route vers <b>${esc(HUB_NAMES[r.other(id)].split(' · ')[0])}</b> : ${km(r.length)} à parcourir (environ ${Math.round(r.length * 9 / 1000)} km dans la vraie ville)</p>`).join('');
       card.innerHTML = `<div class="fm-row"><b>${esc(HUB_NAMES[id])}</b><em>${cur ? 'Tu es ici' : 'Quartier jouable'}</em></div>${rows || '<p>Pas encore de route pour s’y rendre au volant : prends le taxi ou le bus depuis le plan du quartier.</p>'}`;
+      reveal();
     };
     const showRoad = (r: (typeof ROADS)[number]) => {
       const via = r.anchorS.slice(1, -1).map(a => esc(a.name)).join(' → ');
       card.innerHTML = `<div class="fm-row"><b>${esc(HUB_NAMES[r.def.a].split(' · ')[0])} ↔ ${esc(HUB_NAMES[r.def.b].split(' · ')[0])}</b><em>Route</em></div>
         <p>${km(r.length)} à parcourir, environ ${Math.round(r.length * 9 / 1000)} km dans la vraie ville. Passe par ${via}.</p><p>Au volant de ta voiture ou de ta moto : pas d’écran de chargement, tu peux t’arrêter, descendre et repartir.</p>`;
+      reveal();
     };
     const showPlace = (p: MapPlace) => {
       const dest = mapBridge.destination() === p.id;
       card.innerHTML = `<div class="fm-row"><span class="fm-dot" style="--c:${KIND_COLOR[p.kind]}"></span><b>${esc(p.name)}</b><em>${KIND_LABEL[p.kind]}</em></div>${p.what.length ? `<p>${esc(p.what.join(' · '))}</p>` : ''}
         <button type="button" class="ph-btn fm-mark" data-gm-mark="${esc(p.id)}">${dest ? 'Retirer le repère' : 'Marquer'}</button>`;
+      reveal();
     };
     card.addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-gm-mark]'); if (!b) return;

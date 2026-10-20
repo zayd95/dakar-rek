@@ -18,8 +18,8 @@ export function fullMapHtml(): string {
   const kinds = new Set(mapBridge.places.map(p => p.kind));
   return `<div class="fm" id="fm"><canvas class="fm-cv" aria-label="Carte du quartier"></canvas>
       <div class="fm-btns"><button type="button" data-fm="in" aria-label="Zoom avant">+</button><button type="button" data-fm="out" aria-label="Zoom arrière">−</button><button type="button" data-fm="me" aria-label="Me recentrer">◎</button></div></div>
-    <div class="fm-legend" role="group" aria-label="Types de lieux">${KIND_ORDER.filter(k => kinds.has(k)).map(k => `<button type="button" class="fm-chip ${hidden.has(k) ? '' : 'on'}" data-kind="${k}" aria-pressed="${!hidden.has(k)}" style="--c:${KIND_COLOR[k]}"><i></i>${KIND_LABEL[k]}</button>`).join('')}</div>
-    <div class="fm-card" aria-live="polite"></div>`;
+    <div class="gm-side"><div class="fm-legend" role="group" aria-label="Types de lieux">${KIND_ORDER.filter(k => kinds.has(k)).map(k => `<button type="button" class="fm-chip ${hidden.has(k) ? '' : 'on'}" data-kind="${k}" aria-pressed="${!hidden.has(k)}" style="--c:${KIND_COLOR[k]}"><i></i>${KIND_LABEL[k]}</button>`).join('')}</div>
+    <div class="fm-card" aria-live="polite"></div></div>`;
 }
 
 /** Brings the map block of `host` to life; returns what to call when the screen goes away. */
@@ -127,6 +127,7 @@ export function mountFullMap(host: HTMLElement): () => void {
     selected = p; note = '';
     selRoute = p ? routePath(hub.edges, { x: mapBridge.player.x, z: mapBridge.player.z }, p) : null;
     refreshCard(true); kick();
+    if (p) card.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });      // portrait: the card sits under the map
   };
 
   // ---- pointer: drag to pan, tap to select, pinch and wheel to zoom
