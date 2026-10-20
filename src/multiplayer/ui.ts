@@ -35,7 +35,7 @@ export class PresenceUi {
       { label: 'Enregistrer mon profil', onPick: () => {
         const profile = { name: nickname((document.getElementById('presenceName') as HTMLInputElement).value), look: lookIndex(look) };
         try { this.storage?.setItem('dakarrek.presence.profile', JSON.stringify(profile)); } catch { /* session-only profile */ }
-        p.setProfile(profile); this.onProfile(profile); this.hud.closeModal();
+        this.onProfile(profile); p.setProfile(profile); this.hud.closeModal();   // (the game first: a look that follows the colour goes out with this one reconnection)
       } },
       { label: 'Copier le lien pour un ami', detail: 'Le même quartier et le même groupe', disabled: p.status !== 'online', onPick: async () => {
         const hub = this.hub(); if (!hub || !p.room) return;

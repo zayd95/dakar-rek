@@ -1,5 +1,6 @@
-// Records the whole creator journey on a phone with real touch (video + frames): New Game › name › « Mon personnage » (each row tried) › « C'est moi → Jouer » › a few steps in Pikine
-// with the game's own joystick › phone › Profile › « Modifier mon personnage » › Enregistrer › walking on. Usage: node scripts/avatar/record-flow.mjs [baseUrl] [outDir=docs/avatar/proof]  (needs ffmpeg)
+// Films the whole first launch on a phone with real touch (one MP4): the welcome, a first name, the studio (each category tried, both bodies, a few looks), « C'est moi →
+// Jouer », the arrival, a few steps in Pikine with the game's own stick, the phone's Profile with the avatar's picture, « Modifier mon personnage », and walking on.
+// Usage: node scripts/avatar/record-flow.mjs [baseUrl] [outDir=docs/avatar/proof]   (needs ffmpeg)
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -12,32 +13,40 @@ const context = await browser.newContext({ viewport: { width: W, height: H }, de
 const p = await context.newPage(); p.setDefaultTimeout(180000);
 const cdp = await context.newCDPSession(p);
 const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
-/** The game's floating stick, a real finger: down on the left zone, pushed up (forward) for `s` seconds, released. */
+/** The game's floating stick, a real finger: down on the left of the screen, pushed forward for `s` seconds. */
 const walk = async (s, dx = 0) => { await touch('touchStart', 90, 690); for (let i = 1; i <= 6; i++) { await touch('touchMove', 90 + dx * i, 690 - 14 * i); await p.waitForTimeout(40); } await p.waitForTimeout(s * 1000); await touch('touchEnd'); };
-const chip = (g, v) => p.locator(`#creator .cr-chip[data-g="${g}"][data-v="${v}"]`);
+/** A drag across the stage: the avatar turns. */
+const turn = async dx => { await touch('touchStart', 120, 330); for (let i = 1; i <= 10; i++) { await touch('touchMove', 120 + (dx * i) / 10, 330); await p.waitForTimeout(30); } await touch('touchEnd'); };
+const tap = sel => p.locator(sel).first().tap();
+const choice = (g, v) => tap(`#studio .st-panel [data-g="${g}"][data-v="${v}"]`);
 const beat = ms => p.waitForTimeout(ms);
-await p.goto(`${base}?debug&touch&avatar=choisir&heure=11`, { waitUntil: 'load', timeout: 180000 });
-await p.waitForSelector('#creator'); await beat(1500);
-await p.locator('.cr-pill', { hasText: 'Awa' }).tap(); await beat(900);
-await p.locator('#crContinue').tap();
-await p.waitForFunction(() => !!document.querySelector('#crCanvas')?.dataset.body, null, { timeout: 180000 }); await beat(1800);
-await chip('body', 'femme').tap(); await p.waitForFunction(() => document.querySelector('#crCanvas').dataset.body === 'meshy_f'); await beat(1500);
-for (const s of [1, 3, 5, 4]) { await chip('skin', s).tap(); await beat(1100); }
-for (const h of ['shaved', 'afro', 'wrap', 'natural']) { await chip('hair', h).tap(); await beat(1500); }
-for (const [o, c] of [[1, 2], [2, 3], [2, 4], [0, 0]]) { await chip('outfit', o).tap(); await chip('color', c).tap(); await beat(1500); }
-await chip('hair', 'afro').tap(); await chip('skin', 2).tap(); await chip('outfit', 2).tap(); await chip('color', 3).tap(); await beat(2000);
-await p.locator('#crPlay').tap();
-await p.waitForFunction(() => window.__dakar?.pos?.().hub, null, { timeout: 180000 }); await beat(3500);
-await walk(3.5, 4); await beat(500); await walk(2.5, -6); await beat(700);
-await p.locator('#menuBtn').tap(); await beat(900);
-await p.locator('#phone [data-app="profil"]').tap(); await beat(1200);
-await p.locator('#phone [data-act="editchar"]').tap();
-await p.waitForSelector('#creator'); await p.waitForFunction(() => !!document.querySelector('#crCanvas')?.dataset.body); await beat(1800);
-await chip('hair', 'wrap').tap(); await beat(1300); await chip('outfit', 1).tap(); await chip('color', 2).tap(); await beat(1500);
-await p.locator('#crPlay').tap(); await beat(2500);
-await walk(3.5, -4); await beat(800);
+await p.goto(`${base}?debug&touch&avatar=choisir&heure=11`, { waitUntil: 'load' });
+await p.waitForSelector('#studio .st-hero h1'); await beat(1800);
+await p.locator('#stName').type('Awa', { delay: 160 }); await beat(700);
+await tap('#stContinue');
+await p.waitForFunction(() => window.__studio?.state().drawn, null, { timeout: 180000 }); await beat(1800);
+await turn(160); await beat(1400);
+await choice('body', 'femme'); await p.waitForFunction(() => window.__studio.state().drawn === 'meshy_f'); await beat(1600);
+await tap('.st-tab[data-cat="peau"]'); await beat(1300);
+for (const s of [1, 2, 5, 3]) { await choice('skin', s); await beat(900); }
+await tap('.st-tab[data-cat="coiffure"]'); await beat(1500);
+for (const h of ['afro', 'puff', 'wrap', 'afro']) { await choice('hair', h); await beat(1300); }
+await tap('.st-tab[data-cat="tenue"]'); await beat(1300);
+for (const [o, c] of [[1, 2], [2, 1], [2, 4], [2, 2]]) { await choice('outfit', o); await choice('color', c); await beat(1300); }
+await tap('.st-tab[data-cat="corps"]'); await beat(900); await choice('body', 'homme'); await beat(1500); await choice('body', 'femme'); await beat(1400);
+await tap('#stPlay');
+await p.waitForFunction(() => window.__dakar?.pos?.().hub, null, { timeout: 180000 });
+await p.waitForFunction(() => !document.getElementById('studio'), null, { timeout: 60000 }); await beat(2200);
+await walk(3.2, 4); await beat(500); await walk(2.4, -6); await beat(800);
+await tap('#menuBtn'); await beat(900);
+await tap('#phone [data-app="profil"]'); await beat(2200);
+await tap('#phone [data-act="editchar"]');
+await p.waitForFunction(() => window.__studio?.state().drawn, null, { timeout: 180000 }); await beat(1600);
+await tap('.st-tab[data-cat="coiffure"]'); await beat(1200); await choice('hair', 'wrap'); await beat(1500);
+await tap('#stPlay'); await beat(2200);
+await walk(3.2, -4); await beat(900);
 await context.close(); await browser.close();
 const vid = fs.readdirSync(`${out}/video`).filter(f => f.endsWith('.webm')).map(f => `${out}/video/${f}`).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)[0];
-execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', vid, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '30', '-pix_fmt', 'yuv420p', '-r', '20', '-movflags', '+faststart', `${out}/creator-flow.mp4`]);
+execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', vid, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-pix_fmt', 'yuv420p', '-r', '24', '-movflags', '+faststart', `${out}/studio-flow.mp4`]);
 fs.rmSync(`${out}/video`, { recursive: true, force: true });
-console.log('wrote', `${out}/creator-flow.mp4`, (fs.statSync(`${out}/creator-flow.mp4`).size / 1e6).toFixed(1), 'MB');
+console.log('wrote', `${out}/studio-flow.mp4`, (fs.statSync(`${out}/studio-flow.mp4`).size / 1e6).toFixed(1), 'MB');

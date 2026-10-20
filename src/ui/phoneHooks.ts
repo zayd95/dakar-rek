@@ -57,6 +57,8 @@ export const phoneHooks: {
   editCharacter?: () => void;
   /** Profile app: the player's first name (presence profile). */
   profileName?: () => string;
+  /** Profile app: a picture of the player's own avatar (data URL), or null while it is not drawn yet. */
+  profilePortrait?: () => string | null;
   /** People app: neighbours the player knows (NPC module). */
   openPeople?: () => void;
   /** Local places directory and walking destination (city module). */

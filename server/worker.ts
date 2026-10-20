@@ -1,11 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
-import { isHub, nickname, lookIndex, deviceKey, parseMove, parseBall, recordTag, BALL_FEATURE, PROTOCOL_VERSION, ROOM_CAPACITY, MAX_ROOMS_PER_HUB, type Peer, type ServerMessage, type ChatMessage } from '../src/multiplayer/protocol';
+import { isHub, nickname, lookIndex, deviceKey, parseMove, parseBall, recordTag, appearanceCode, BALL_FEATURE, PROTOCOL_VERSION, ROOM_CAPACITY, MAX_ROOMS_PER_HUB, type Peer, type ServerMessage, type ChatMessage } from '../src/multiplayer/protocol';
 import { parseChatRequest, parseReport, rateLimit, nearRecipients, isPrivateSpace, DedupeMemory, type ChatFailure } from '../src/multiplayer/chatRules';
 import type { HubId } from '../src/core/types';
 
 interface Env { ASSETS: Fetcher; ROOMS: DurableObjectNamespace<CityRoom>; LOBBIES: DurableObjectNamespace<HubLobby>; ALLOWED_ORIGINS?: string }
 interface Session {
-  id: string; name: string; look: number; tag?: string; rec?: string; hub: HubId; room: number; peer: Peer | null; windowAt: number; messages: number;
+  id: string; name: string; look: number; tag?: string; rec?: string; app?: string; hub: HubId; room: number; peer: Peer | null; windowAt: number; messages: number;
   /** Accepted chat timestamps (sliding window) and players already reported by this connection. */
   chat?: number[]; reported?: string[];
   /** Kickabout ball relays (src/game/kickabout.ts): this second's window and count, kept apart from the presence budget. */
@@ -91,8 +91,8 @@ export class CityRoom extends DurableObject<Env> {
     const tag = await publicTag(deviceKey(url.searchParams.get('key')));
     if (this.sessions.size >= ROOM_CAPACITY) return new Response('Room full', { status: 409 });
     const [client, server] = Object.values(new WebSocketPair());
-    const rec = recordTag(url.searchParams.get('rec'));
-    const session: Session = { id: crypto.randomUUID(), name: nickname(url.searchParams.get('name')), look: lookIndex(url.searchParams.get('look')), tag, ...(rec ? { rec } : {}), hub, room, peer: null, windowAt: Date.now(), messages: 0, chat: [], reported: [] };
+    const rec = recordTag(url.searchParams.get('rec')), app = appearanceCode(url.searchParams.get('app'));   // (app: the studio's look, strictly shaped; absent from older clients)
+    const session: Session = { id: crypto.randomUUID(), name: nickname(url.searchParams.get('name')), look: lookIndex(url.searchParams.get('look')), tag, ...(rec ? { rec } : {}), ...(app ? { app } : {}), hub, room, peer: null, windowAt: Date.now(), messages: 0, chat: [], reported: [] };
     this.ctx.acceptWebSocket(server); server.serializeAttachment(session); this.sessions.set(server, session);
     this.send(server, { type: 'welcome', version: PROTOCOL_VERSION, id: session.id, hub, room, time: Date.now(), count: this.sessions.size, peers: [...this.sessions.values()].flatMap(s => s.peer ? [s.peer] : []), features: [BALL_FEATURE] });
     this.broadcast({ type: 'count', count: this.sessions.size }, server);
@@ -117,7 +117,7 @@ export class CityRoom extends DurableObject<Env> {
       ws.serializeAttachment(s); return;
     }
     const move = parseMove(data, s.hub); if (!move) { this.reject(ws, 1008); return; }
-    s.peer = { ...move, id: s.id, name: s.name, look: s.look, ...(s.tag ? { tag: s.tag } : {}), ...(s.rec ? { rec: s.rec } : {}), updatedAt: now };
+    s.peer = { ...move, id: s.id, name: s.name, look: s.look, ...(s.tag ? { tag: s.tag } : {}), ...(s.rec ? { rec: s.rec } : {}), ...(s.app ? { app: s.app } : {}), updatedAt: now };
     ws.serializeAttachment(s);
     this.broadcast({ type: 'peer', peer: s.peer }, ws);
   }

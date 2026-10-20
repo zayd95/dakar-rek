@@ -143,6 +143,7 @@ button.ph-wid { cursor:pointer; }
 .ph-ring b { font-size:14px; color:var(--ios-ink); font-style:normal; }
 .ph-profile { display:flex; flex-direction:column; align-items:center; gap:2px; margin:4px 0 14px; }
 .ph-profile i { display:grid; place-items:center; width:76px; height:76px; border-radius:50%; background:linear-gradient(180deg,#c4b5fd,#6d28d9); font-style:normal; font-size:42px; }
+.ph-profile .ph-portrait { display:block; width:84px; height:84px; border-radius:50%; object-fit:cover; background:#1d2438; box-shadow:0 0 0 3px #fff, 0 0 0 5px #c4b5fd, 0 6px 18px rgba(30,20,80,.25); }
 .ph-profile b { font-size:22px; color:var(--ios-ink); } .ph-profile small { font-size:13px; color:var(--ios-sub); }
 .ph-clocks em { font-size:32px !important; font-weight:300; color:var(--ios-ink) !important; font-variant-numeric:tabular-nums; }
 .ph-daybar { position:relative; height:10px; margin:14px 4px 6px; border-radius:5px; background:linear-gradient(90deg,#1e293b 0 25%,#fbbf24 25% 79%,#1e293b 79%); }

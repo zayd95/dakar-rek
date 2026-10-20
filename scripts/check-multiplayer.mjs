@@ -52,6 +52,16 @@ try {
   check('two independent clients see each other', (await a.evaluate(() => window.__dakar.presence().count)) === 2 && (await b.evaluate(() => window.__dakar.presence().count)) === 2);
   await a.waitForFunction(() => window.__dakar.presence().visible === 1);
   check('remote avatar rendered on phone', (await a.evaluate(() => window.__dakar.presence().visible)) === 1);
+  // the studio's look travels with the connection (`app`, src/actors/appearance.ts): B makes her character (femme, Doré, headwrap, Imprimé, Safran: what
+  // « Modifier mon personnage » saves), A gets her body and look and draws her in it; A, who never chose one, sends none
+  {
+    await b.evaluate(() => window.__dakar.character('femme', { skin: 1, hair: 'wrap', outfit: 2, color: 3 }));
+    await b.waitForFunction(() => window.__dakar.presence().status === 'online', null, { timeout: 60000 });
+    const appB = await b.evaluate(() => window.__dakar.presenceLook());
+    const seenApp = await a.waitForFunction(app => window.__dakar.presence().peers.some(p => p.name === 'Awa' && p.app === app), appB, { timeout: 30000 }).then(() => true).catch(() => false);
+    const onA = await b.evaluate(() => window.__dakar.presence().peers.map(p => p.app ?? null));
+    check('the studio look travels: A sees B as she made herself (femme, Doré, headwrap, Imprimé, Safran); A sends none', appB === 'f1w23' && seenApp && onA.every(x => x === null), JSON.stringify({ appB, onA }));
+  }
   await a.evaluate(() => window.__dakar.place(-4, -30, 0));
   await b.waitForFunction(() => window.__dakar.presence().peers.some(p => p.name === 'Moussa' && Math.abs(p.x + 4) < 0.2 && Math.abs(p.z + 30) < 0.2));
   check('movement replicated', true);
@@ -290,6 +300,15 @@ try {
   fatou.ws.send(JSON.stringify({ type: 'move', x: -4, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Idle', fan: { e: 'teranga', k: 'flag' } }));
   const flagSeen = await b.waitForFunction(() => { const p = window.__dakar.presence(), f = p.peers.find(x => x.name === 'Fatou'); return f?.fan?.e === 'teranga' && f.fan.k === 'flag' && p.gear?.[f.id] === 'teranga:flag'; }, null, { timeout: 30000 }).then(() => true).catch(() => false);
   check('remote colours shown: a Teranga flag in Fatou\'s hand', flagSeen, JSON.stringify(await b.evaluate(() => window.__dakar.presence().gear)));
+  // a look in its strict shape is relayed; anything else is simply no look (the socket stays open: older and odd clients still play)
+  {
+    const aminata = await connect({ hub: 'pikine', name: 'Aminata', app: 'f5w15' }), badou = await connect({ hub: 'pikine', name: 'Badou', app: 'x<b>9' });
+    for (const [c, x] of [[aminata, -2], [badou, -1]]) c.ws.send(JSON.stringify({ type: 'move', x, y: 0.1, z: -24, yaw: 0, speed: 0, space: 'street', clip: 'Idle' }));
+    const got = await b.waitForFunction(() => { const ps = window.__dakar.presence().peers, am = ps.find(x => x.name === 'Aminata'), ba = ps.find(x => x.name === 'Badou'); return am && ba ? { am: am.app ?? null, ba: ba.app ?? null } : null; }, null, { timeout: 30000 }).then(h => h.jsonValue()).catch(() => null);
+    check('a look in its shape is relayed, anything else dropped without closing the socket', got?.am === 'f5w15' && got?.ba === null && badou.ws.readyState === 1, JSON.stringify(got));
+    aminata.ws.close(); badou.ws.close();
+    await b.waitForFunction(() => !window.__dakar.presence().peers.some(x => x.name === 'Aminata' || x.name === 'Badou'), null, { timeout: 30000 }).catch(() => {});
+  }
   // anything else in that field (a price, what is owned) closes the socket
   const ibou = await connect({ hub: 'pikine', name: 'Ibou' });
   const priced = new Promise(resolve => ibou.ws.addEventListener('close', e => resolve(e.code), { once: true }));
