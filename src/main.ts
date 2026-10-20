@@ -415,6 +415,7 @@ function* loadHubSteps(id: HubId, at: { x: number; z: number; yaw: number } | un
     remoteAvatars.clear(); emoter.reset(); notice.reset(); presence.join(id, id === invitedHub ? invitedRoom : null);
     phone.remember();
   };
+  let criticalSeats: Seat[] = [];
   const runModule = function* (m: (typeof MODULES)[number]): Generator<void, void, void> {
     let t0 = performance.now();
     const r: unknown = early && m.hubLoadedSteps ? m.hubLoadedSteps(ctx, w) : m.hubLoaded?.(ctx, w);
@@ -425,7 +426,9 @@ function* loadHubSteps(id: HubId, at: { x: number; z: number; yaw: number } | un
   places.clear(); people.clear();
   if (early) {
     // the swap frame: the vehicle the player drives and the player's place. Everything else of the district follows, a few ms a frame.
+    const seatsBefore = new Set(seats.all().map(s => s.id));
     for (const m of MODULES) if (m.critical) for (const _ of runModule(m)) { /* critical modules never pause */ }
+    criticalSeats = seats.all().filter(s => !seatsBefore.has(s.id));          // the owned vehicle's driver seat: registerSeats below must not wipe it
     place();
     yield* pause('swap frame');
   }
@@ -449,6 +452,8 @@ function* loadHubSteps(id: HubId, at: { x: number; z: number; yaw: number } | un
     if (early) yield* pause('interior');
   }
   registerSeats();
+  for (const s of criticalSeats) seats.add(s);                  // the same objects, so the occupant the module set (the player at the wheel) stays
+  criticalSeats = [];
   // where to rest here (the tired refusals and phone › Santé name it): the player's bed in their own hub, else the free rest
   setRestSpot(restSpot(w.interactables, homeHub() === id ? 'ta chambre' : null));
   if (early) yield* pause('seats');

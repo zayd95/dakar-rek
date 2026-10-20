@@ -128,6 +128,10 @@ await getOut();
 const s3 = await state();
 check('« Descendre »: the player on foot beside the car, the pad gone, the engine stopped; the car saved as parked in Almadies', s3.me.hub === CFG.b && !s3.car.driving && !s3.pad && !s3.engine && s3.info.record?.hub === CFG.b && Math.hypot(s3.me.x - s3.car.x, s3.me.z - s3.car.z) < 6, JSON.stringify(s3.info.record));
 check('the same car: same paint, one copy, its record (uid) and condition kept', s3.info.seed === uid0 && s3.info.paint === paint0 && (await mine()) === 1 && s3.info.asset?.uid === asset0?.uid && s3.info.asset?.condition <= asset0?.condition, JSON.stringify({ before: asset0 && { uid: asset0.uid, c: asset0.condition }, after: s3.info.asset && { uid: s3.info.asset.uid, c: s3.info.asset.condition } }));
+// back on the vehicle right after the swap, with NO reload: the district the swap loaded must still know the vehicle's driver seat (its seat registry is rebuilt during the load)
+await getIn();
+{ const sIn = await state(); check(`« Monter » again in ${CFG.b} right after the swap, no reload: the player is at the wheel of the same bike, the pad is back`, sIn.car.driving && sIn.pad && sIn.me.hub === CFG.b, JSON.stringify({ hub: sIn.me.hub, driving: sIn.car.driving, pad: sIn.pad })); }
+await getOut();
 
 // ---------------------------------------------------------------- save and reload with the car parked on the road, the player on foot on it
 const before = { car: s3.car, me: s3.me, rec: s3.info.record };

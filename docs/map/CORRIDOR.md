@@ -42,7 +42,7 @@ Reading them honestly: the swap frame is 25–50 times cheaper and the build is 
 | Check | What it proves |
 |---|---|
 | `check-corridor.mjs` (both roads) | out and back: exactly one swap at the middle; pose, speed, seat, pad, engine, camera kept on every frame around it; stop at 250 m, get out, walk 14 m, get back in; arrival in the other district; same car (uid, paint, condition), one copy; reload with the car parked on the road and the player on foot beside it; multi-point turn-round; traffic in both directions |
-| `check-corridor-moto.mjs` | the same with the Jakarta |
+| `check-corridor-moto.mjs` | the same with the Jakarta; « Monter » again right after the swap, with no reload (a bug found by the owner: the district load rebuilt the seat registry and dropped the vehicle's driver seat, so a vehicle left after the swap could not be boarded until a reload) |
 | `check-corridor-hazards.mjs` | traffic stops behind a vehicle parked in its lane; the car runs into what stands at the roadside, stops, is hurt, backs away |
 | `check-corridor-online.mjs` | two real clients on local Workers/Durable Objects: the driver is in Pikine's room, then Almadies's after the middle and seen there; the connection dropped over the swap, the drive continues and the player is back online in the new room; back across the middle the other client no longer sees them |
 | `check-geomap.mjs` | MapLibre not loaded until « Ville » opens, one WebGL context while open and none after (tab switch, phone close); bundled layers offline and the message; a served basemap style, its credit and the playable layer on top; markers, cards, waypoint |
