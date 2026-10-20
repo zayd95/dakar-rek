@@ -150,6 +150,11 @@ export interface GameCtx {
    * its vehicle there), the player at `at` or the hub's spawn. Charges nothing: the caller has taken any fare.
    */
   travel(dest: HubId, at?: { x: number; z: number; yaw: number }, label?: string): void;
+  /**
+   * Cross into the next district on a road that continues there (src/transport/hubLink.ts): no fade, no menu, nobody moved. The hub is built at the start of the next frame, around the
+   * same pose (`at`: the driver's vehicle, already mapped to the new district's coordinates); the module that was driving puts the player back in its seat (`hubLoaded`).
+   */
+  crossHub(dest: HubId, at: { x: number; z: number; yaw: number }): void;
 }
 
 /** A gameplay module: hooks are called by main.ts in this order every hub / frame. */

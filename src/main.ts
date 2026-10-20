@@ -263,6 +263,10 @@ const rand = rng(Date.now() & 0xffff);
 
 /** When the current hub was built (a place a module adds, such as a dealer's counter, appears a moment after). */
 let hubAt = 0;
+/** A district crossing asked by a module during the frame (src/transport/hubLink.ts): carried out before the next frame's updates, so no module is mid-step when the hub is rebuilt. */
+/** How long the last district crossing took to build (ms): shown by the debug hook, read by the checks. */
+let lastCrossMs = 0;
+let pendingCross: { dest: HubId; at: { x: number; z: number; yaw: number } } | null = null;
 function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
   hubAt = performance.now();
   activities.cancel(); standUp(true);
@@ -432,6 +436,7 @@ const ctx: GameCtx = {
   setPublicRecord: rec => presence.setRecord(rec),
   // the fighter's evening (src/arena/fighter.ts) plays avec frappe when Làmb 2.0 is on (?lamb2); otherwise as before
   startBout(m, style, after) { if (lambScene || !world?.arena) return false; startDuel(m, style as StyleId | undefined, after, LAMB2 ? 'avec_frappe' : 'sans_frappe'); return !!lambScene; },
+  crossHub(dest, at) { if (world) pendingCross = { dest, at }; },
   travel(dest, at, label) {
     if (!world) return;
     mode = 'busy'; input.enabled = false; input.reset();
@@ -1236,6 +1241,11 @@ function frameStep(now: number, dt: number, draw = true) {
   if (document.hidden || !world) return;
   const tFrame = profOn ? performance.now() : 0;
   setHumanoidView(camera);                                 // far, unseen and hidden bodies get less animation work (ANIM_LOD)
+  if (pendingCross) {                                      // a car crossing the border road: the district changes around it, no fade
+    const c = pendingCross; pendingCross = null;
+    const t0 = performance.now(); loadHub(c.dest, c.at); lastCrossMs = performance.now() - t0;
+    hud.toast(HUB_NAMES[c.dest]); saveNow();
+  }
 
   if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
   if (phone.isOpen && mode === 'play') { mode = 'menu'; input.enabled = false; }   // a door or trip that finished behind the phone: keep movement off
@@ -1374,10 +1384,11 @@ if (DEBUG) {
     // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
     setHour(h: number | null) { hourOverride = h; },
-    camera: () => ({ fov: camera.fov, aspect: Math.round(camera.aspect * 1000) / 1000, hfov: Math.round(2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) * 1800 / Math.PI) / 10 }),
+    camera: () => ({ at: [camera.position.x, camera.position.y, camera.position.z], fov: camera.fov, aspect: Math.round(camera.aspect * 1000) / 1000, hfov: Math.round(2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) * 1800 / Math.PI) / 10 }),
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null, yaw: facing, cam: follow.yaw }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
     cityPlaces: () => world?.interactables.filter(i => i.id.includes(':city:')).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, radius: i.radius, actions: i.actions.map(a => ({ id: a.id, label: a.label, gain: a.gain, cost: a.cost })) })) ?? [],
+    crossMs: () => lastCrossMs,
     cityGeometry: () => world ? { bounds: world.bounds, colliders: world.colliders, people: world.people } : null,
     places: openPlaces,
     destination: () => destination?.id ?? null,
