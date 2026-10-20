@@ -115,6 +115,12 @@ export class CorridorView implements RoadGround {
     this.traffic?.update(dt, { solid: (a, b, r) => this.solidRoad(a, b, r), player: player ? { x: player.x - this.offset.x, z: player.z - this.offset.z } : null }, near ? { x: px, z: pz } : null);
   }
 
+  /** Checks: put traffic car `i` on the road (see CorridorTraffic.put). Makes the traffic first if the road has none yet. */
+  putTraffic(i: number, s: number, dir: 1 | -1) {
+    if (!this.traffic) { this.traffic = new CorridorTraffic(this.road, this.o.rand, Math.max(this.o.traffic, 4), this.o.lite); this.root.add(this.traffic.group); }
+    return this.traffic.put(i, s, dir);
+  }
+
   /** Footprints of the traffic near (x, z) for the vehicle the player drives (hub frame). */
   footprints(out: Footprint[], x: number, z: number, range = 60) {
     this.traffic?.footprints(out, x - this.offset.x, z - this.offset.z, range, this.offset.x, this.offset.z);

@@ -1613,6 +1613,7 @@ if (DEBUG) {
       probe: (x: number, z: number, r = 6) => world ? { colliders: world.colliders.filter(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r).map(c => [+c.x0.toFixed(1), +c.z0.toFixed(1), +c.x1.toFixed(1), +c.z1.toFixed(1), c.h]), ground: !!world.corridors?.some(c => c.contains(x, z, 1)) } : null,
       staged: () => (staged ? { steps: staged.steps, maxStep: staged.maxStep, done: staged.done.size } : null),
       lastStaged: () => lastStaged,
+      putTraffic: (id: string, i: number, sArc: number, dir: 1 | -1) => corridors.view(id)?.putTraffic(i, sArc, dir) ?? null,
       frames: () => frameRing,
       slowMods: () => slowMods,
       prewarm: () => (prewarm ? { id: prewarm.id, ready: !!prewarm.world, ms: Math.round(prewarm.ms), steps: prewarm.steps, warmed: prewarm.warm ? `${prewarm.warm.i}/${prewarm.warm.kids.length}` : null } : null),

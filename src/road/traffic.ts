@@ -49,6 +49,13 @@ export class CorridorTraffic {
 
   get count() { return this.cars.length; }
 
+  /** Checks: car `i` goes on the road at `s` in direction `dir`, live and at its cruising speed. */
+  put(i: number, s: number, dir: 1 | -1) {
+    const c = this.cars[i % this.cars.length];
+    c.s = s; c.dir = dir; c.v = c.cruise; c.stopped = 0; c.live = true; c.g.visible = true; this.place(c, true, 0);
+    return { kind: c.kind, hl: c.hl, hw: c.hw, cruise: c.cruise };
+  }
+
   /** Footprints of the live cars within `range` metres of (x, z) (road frame), for the vehicle the player drives. */
   footprints(out: Footprint[], x: number, z: number, range: number, dx: number, dz: number) {
     for (const c of this.cars) {
