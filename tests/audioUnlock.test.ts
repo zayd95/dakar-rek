@@ -73,22 +73,20 @@ describe('the audio session', () => {
 });
 
 describe('the horns', () => {
-  it('each kind of vehicle has its own, a car sounds two reeds and a motorbike one', () => {
-    expect(HORNS.sedan.reeds).toHaveLength(2); expect(HORNS.suv.reeds).toHaveLength(2); expect(HORNS.moto.reeds).toHaveLength(1);
-    expect(new Set(Object.values(HORNS).map(h => h.reeds.join('/'))).size).toBe(Object.keys(HORNS).length);
+  it('each kind of vehicle has its own: a car\'s recording at three pitches, and the motorbike\'s own recording', () => {
+    expect(HORNS.sedan.sample).toBe('horn-car'); expect(HORNS.suv.sample).toBe('horn-car'); expect(HORNS.moto.sample).toBe('horn-moto');
+    expect(new Set(Object.values(HORNS).map(h => `${h.sample}@${h.rate}`)).size).toBe(Object.keys(HORNS).length);
     expect(hornFor('nothing')).toBe(HORNS.sedan);
   });
-  it('are made for a phone speaker: every reed above 330 Hz, full of harmonics, lifted where a small speaker is strong', () => {
+  it('are shaped for a phone speaker: nothing below 180 Hz, lifted in the 1–2 kHz band where a small speaker is strong, loud enough to be the voice of the street', () => {
     for (const [k, h] of Object.entries(HORNS)) {
-      expect(Math.min(...h.reeds), k).toBeGreaterThanOrEqual(330);
-      expect(['sawtooth', 'square']).toContain(h.wave);
-      expect(h.hp).toBeGreaterThanOrEqual(200); expect(h.peakHz).toBeGreaterThanOrEqual(1200); expect(h.peakHz).toBeLessThanOrEqual(3000); expect(h.peakDb).toBeGreaterThan(0);
-      expect(h.detune).toBeGreaterThan(0); expect(h.level).toBeGreaterThan(0.2);
+      expect(h.hp, k).toBeGreaterThanOrEqual(180); expect(h.peakHz).toBeGreaterThanOrEqual(1000); expect(h.peakHz).toBeLessThanOrEqual(3000); expect(h.peakDb).toBeGreaterThan(0);
+      expect(h.level).toBeGreaterThan(0.3);
     }
   });
-  it('the SUV\'s is lower than the saloon\'s and the motorbike\'s higher, as their engines are', () => {
-    expect(Math.min(...HORNS.suv.reeds)).toBeLessThan(Math.min(...HORNS.sedan.reeds));
-    expect(Math.min(...HORNS.moto.reeds)).toBeGreaterThan(Math.max(...HORNS.sedan.reeds));
+  it('the SUV\'s is lower than the saloon\'s and the motorbike\'s is a smaller, higher note, as their engines are', () => {
+    expect(HORNS.suv.rate).toBeLessThan(HORNS.sedan.rate);
+    expect(HORNS.moto.hp).toBeGreaterThan(HORNS.sedan.hp);
     expect(Object.keys(HORNS).sort()).toEqual(Object.keys(PROFILES).sort());
   });
 });
