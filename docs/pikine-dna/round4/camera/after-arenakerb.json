@@ -1,0 +1,17 @@
+{
+ "sum": {
+  "route": "arenakerb",
+  "samples": 201,
+  "triangles": 9354,
+  "cameraHeight": [
+   2.02,
+   5.1
+  ],
+  "bodyBlockedFrames": 0,
+  "nearLensFrames": 0,
+  "minLens": 1.08,
+  "viewBlockedFrames": 0,
+  "errors": 0
+ },
+ "flagged": []
+}
