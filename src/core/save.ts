@@ -161,6 +161,7 @@ function assetsOf(v: unknown, playedMs: number): AssetsState {
       leased: x.leased === true,
     };
     if (x.ownAd === true) asset.ownAd = true;
+    if (typeof x.basis === 'number' && x.basis > 0) asset.basis = money(x.basis);
     if (typeof x.home === 'string' && UID.test(x.home)) { asset.home = x.home; asset.at = placementOf(x.at); }
     list.push(asset);
   }

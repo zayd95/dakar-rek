@@ -119,3 +119,5 @@ frame with the 12 vehicles minus the frame without them.
 
 Every piece has a `use` anchor (where the person stands, sits or lies, facing, verb, label, clip) and its seats.
 Captures: `docs/screenshots/assets/` (`node scripts/shots-assets.mjs`).
+| **Berline moderne (the modern sedan, `compacte`)** — Meshy text-to-3D (35 credits), the four wheels cut out of the fused shell and animated, badges / plates / lettering painted out, hidden triangles culled, fitted to the kit; « Au volant » through the shared cockpit; the vehicle GLB pipeline | `scripts/vehicles/` (`split-fused-body`, `prepare-vehicle-glb`), `src/actors/glbVehicle.ts`, `src/actors/cockpit.ts`, `public/assets/vehicles/compacte.glb`, `assets-src/vehicles/` | Generated for the owner with their Meshy account (plan terms apply, not re-verified); original unbranded design inspired by a class of car | 7 606 tris, 5 draw calls, 1.1 MB | TEMP | **Unreviewed** look; raw Meshy files are private (`assets-src/meshy_output/`); report `docs/assets/VEHICLE_LINEUP.md` |
+

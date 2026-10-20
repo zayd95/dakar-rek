@@ -8,7 +8,7 @@ import {
 import {
   HOUR_MS, DAY_MS, accrue, assetsValue, buyAsset, cannotBuy, cannotLet, cannotRent, chargesPerHour, comfortOf, currentHome, endLease, furnitureIn, holding,
   incomeOf, incomePerHour, moveIn, netWorth, normalize, rentAdSpace, rentAsset, repairAsset, repairCost, saleValue, sellAsset, setLeased, setOwnAd, setPlacement,
-  takeNotices, upgradeAsset, valueOf, adRunning,
+  takeNotices, upgradeAsset, valueOf, adRunning, setCondition,
 } from '../src/economy/assets';
 import { buyVenture, ownedOf } from '../src/economy/business';
 import { buyFurniture, cannotBuy as cannotBuyPiece, deliverFurniture, ownedFurnitureIds } from '../src/economy/furniture';
@@ -39,10 +39,10 @@ describe('catalogue', () => {
   it('land, billboard, ventures; the drivable vehicles are for sale, the others and aircraft say when they come', () => {
     expect(LAND.length).toBe(2); expect(BILLBOARDS.length).toBe(1); expect(BUSINESSES.length).toBe(7);
     for (const s of [...LAND, ...BILLBOARDS]) { expect(s.price).toBeGreaterThan(0); expect(s.income).toBeGreaterThan(0); }
-    const drivable = ['jakarta', 'clando'];
+    const drivable = ['jakarta', 'compacte', 'berline', 'tout_terrain'];
     for (const s of [...VEHICLES, ...AIRCRAFT].filter(x => !drivable.includes(x.id))) { expect(s.soon).toBeTruthy(); expect(cannotBuy(fresh(1e12), s.id)).toBe(s.soon); }
     for (const id of drivable) { expect(specOf(id)?.soon).toBeUndefined(); expect(cannotBuy(fresh(1e12), id)).toBeNull(); }
-    expect(specOf('jakarta')?.price).toBe(150_000); expect(specOf('clando')?.price).toBe(2_800_000);
+    expect(specOf('jakarta')?.price).toBe(150_000); expect(specOf('compacte')?.price).toBeGreaterThan(0); expect(specOf('clando')).toBeUndefined();
   });
   it('furniture: every type in basic, better and premium, footprints and seats that fit', () => {
     const types = new Set(FURNITURE_SPECS.map(f => f.type));
@@ -308,5 +308,26 @@ describe('the F2 has two bedrooms', () => {
     expect(whyNot(L, bed, { x: (w.x0 + w.x1) / 2, z: w.z0, rot: 0 }, [])).not.toBeNull();
     const r = P.rooms[0];
     expect(whyNot(L, furnitureSpec('table_basse')!, { x: (r.x0 + r.x1) / 2 + 0.3, z: r.z0 + 0.6, rot: 0 }, [])).toBeNull();
+  });
+});
+
+describe('a vehicle’s condition (Pass 3)', () => {
+  it('a hit lowers it, it is clamped to 0–100, saved with the asset (save v6, no new key) and followed by the worth and the repair quote', () => {
+    const s = fresh(50_000_000), a = buyAsset(s, 'compacte')!;
+    expect(a.condition).toBe(100);
+    const whole = valueOf(a);
+    setCondition(a, 72.34); expect(a.condition).toBe(72.3);
+    expect(valueOf(a)).toBeLessThan(whole); expect(repairCost(a)).toBe(Math.round(specOf('compacte')!.price! * ECONOMY.property.repairPerPoint * (100 - 72.3)));
+    setCondition(a, -5); expect(a.condition).toBe(0); setCondition(a, 140); expect(a.condition).toBe(100);
+    setCondition(a, 31.5);
+    const b = back(s).data.assets.list.find(x => x.uid === a.uid)!;
+    expect(b.condition).toBe(31.5); expect(SCHEMA_VERSION).toBe(6);                    // the same save version, the same field
+  });
+  it('an old save (no condition on a vehicle) loads whole, and the paid repair still charges once and restores it', () => {
+    const s = fresh(50_000_000), a = buyAsset(s, 'compacte')!;
+    const raw = JSON.parse(JSON.stringify(s.data)); delete raw.assets.list.find((x: { uid: string }) => x.uid === a.uid).condition;
+    expect(back(new GameState(raw)).data.assets.list.find(x => x.uid === a.uid)!.condition).toBe(100);
+    setCondition(a, 50); const w0 = s.data.wallet, q = repairCost(a);
+    expect(repairAsset(s, a.uid)).toBe(true); expect(w0 - s.data.wallet).toBe(q); expect(a.condition).toBe(100); expect(repairAsset(s, a.uid)).toBe(false);
   });
 });

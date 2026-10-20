@@ -1,0 +1,541 @@
+[
+ {
+  "id": "jakarta",
+  "role": "OWNED today (catalogue jakarta, 150 000 F)",
+  "kind": "moto",
+  "seed": 8,
+  "variant": 0,
+  "bodyColour": "#c0392b",
+  "size_m": [
+   1.95,
+   0.75,
+   1.15
+  ],
+  "wheelbase": 1.27,
+  "seats": "driver,passenger",
+  "doors": 1,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.36,
+    1.08,
+    0.32999999999999996
+   ],
+   [
+    -0.36,
+    1.08,
+    0.32999999999999996
+   ]
+  ],
+  "pegs": [
+   [
+    0.16,
+    0.37,
+    -0.05
+   ],
+   [
+    -0.16,
+    0.37,
+    -0.05
+   ]
+  ],
+  "steering": [
+   0,
+   1.08,
+   0.32999999999999996
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 34,
+   "drawCalls": 1
+  },
+  "speed": 7.5,
+  "lodDistance": 32
+ },
+ {
+  "id": "tiak loaner",
+  "role": "Tiak Tiak loaner (not owned, free)",
+  "kind": "moto",
+  "seed": 2,
+  "variant": 4,
+  "bodyColour": "#2e8b3c",
+  "size_m": [
+   1.95,
+   0.75,
+   1.15
+  ],
+  "wheelbase": 1.27,
+  "seats": "driver,passenger",
+  "doors": 1,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.36,
+    1.08,
+    0.32999999999999996
+   ],
+   [
+    -0.36,
+    1.08,
+    0.32999999999999996
+   ]
+  ],
+  "pegs": [
+   [
+    0.16,
+    0.37,
+    -0.05
+   ],
+   [
+    -0.16,
+    0.37,
+    -0.05
+   ]
+  ],
+  "steering": [
+   0,
+   1.08,
+   0.32999999999999996
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 34,
+   "drawCalls": 1
+  },
+  "speed": 7.5,
+  "lodDistance": 32
+ },
+ {
+  "id": "scooter",
+  "role": "candidate: urban scooter (kit moto variant ≥ 10)",
+  "kind": "moto",
+  "seed": 1,
+  "variant": 13,
+  "bodyColour": "#e8e8e4",
+  "size_m": [
+   1.95,
+   0.75,
+   1.15
+  ],
+  "wheelbase": 1.22,
+  "seats": "driver,passenger",
+  "doors": 1,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.36,
+    1.12,
+    0.38
+   ],
+   [
+    -0.36,
+    1.12,
+    0.38
+   ]
+  ],
+  "pegs": [
+   [
+    0.12,
+    0.37,
+    0.05
+   ],
+   [
+    -0.12,
+    0.37,
+    0.05
+   ]
+  ],
+  "steering": [
+   0,
+   1.12,
+   0.38
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 34,
+   "drawCalls": 1
+  },
+  "speed": 7.5,
+  "lodDistance": 32
+ },
+ {
+  "id": "sedan silver",
+  "role": "OWNED today (catalogue clando, 2 800 000 F)",
+  "kind": "sedan",
+  "seed": 18,
+  "variant": 3,
+  "bodyColour": "#b9bdc2",
+  "size_m": [
+   4.5,
+   1.78,
+   1.43
+  ],
+  "wheelbase": 2.68,
+  "seats": "driver,passenger,passenger,passenger,passenger",
+  "doors": 4,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.53,
+    1.03,
+    0.53
+   ],
+   [
+    0.18999999999999997,
+    1.03,
+    0.53
+   ]
+  ],
+  "pegs": null,
+  "steering": [
+   0.36,
+   1.03,
+   0.53
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 78,
+   "drawCalls": 1
+  },
+  "speed": 7,
+  "lodDistance": 40
+ },
+ {
+  "id": "sedan white",
+  "role": "dealer display",
+  "kind": "sedan",
+  "seed": 7,
+  "variant": 0,
+  "bodyColour": "#f2f2f0",
+  "size_m": [
+   4.5,
+   1.78,
+   1.43
+  ],
+  "wheelbase": 2.68,
+  "seats": "driver,passenger,passenger,passenger,passenger",
+  "doors": 4,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.53,
+    1.03,
+    0.53
+   ],
+   [
+    0.18999999999999997,
+    1.03,
+    0.53
+   ]
+  ],
+  "pegs": null,
+  "steering": [
+   0.36,
+   1.03,
+   0.53
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 78,
+   "drawCalls": 1
+  },
+  "speed": 7,
+  "lodDistance": 40
+ },
+ {
+  "id": "sedan blue",
+  "role": "dealer display",
+  "kind": "sedan",
+  "seed": 1,
+  "variant": 6,
+  "bodyColour": "#1f3f78",
+  "size_m": [
+   4.5,
+   1.78,
+   1.43
+  ],
+  "wheelbase": 2.68,
+  "seats": "driver,passenger,passenger,passenger,passenger",
+  "doors": 4,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.53,
+    1.03,
+    0.53
+   ],
+   [
+    0.18999999999999997,
+    1.03,
+    0.53
+   ]
+  ],
+  "pegs": null,
+  "steering": [
+   0.36,
+   1.03,
+   0.53
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 78,
+   "drawCalls": 1
+  },
+  "speed": 7,
+  "lodDistance": 40
+ },
+ {
+  "id": "luxury",
+  "role": "candidate: modern sedan (catalogue berline, soon)",
+  "kind": "luxury",
+  "seed": 1,
+  "variant": 5,
+  "bodyColour": "#9da3a9",
+  "size_m": [
+   5.15,
+   1.92,
+   1.45
+  ],
+  "wheelbase": 3.2,
+  "seats": "driver,passenger,passenger,passenger,passenger",
+  "doors": 4,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.53,
+    1.06,
+    0.6600000000000001
+   ],
+   [
+    0.18999999999999997,
+    1.06,
+    0.6600000000000001
+   ]
+  ],
+  "pegs": null,
+  "steering": [
+   0.36,
+   1.06,
+   0.6600000000000001
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 78,
+   "drawCalls": 1
+  },
+  "speed": 8,
+  "lodDistance": 40
+ },
+ {
+  "id": "suv black",
+  "role": "candidate: premium SUV (catalogue tout_terrain, soon)",
+  "kind": "suv",
+  "seed": 6,
+  "variant": 3,
+  "bodyColour": "#1a1b1d",
+  "size_m": [
+   4.85,
+   1.94,
+   1.9
+  ],
+  "wheelbase": 2.89,
+  "seats": "driver,passenger,passenger,passenger,passenger",
+  "doors": 4,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.53,
+    1.28,
+    0.6800000000000002
+   ],
+   [
+    0.18999999999999997,
+    1.28,
+    0.6800000000000002
+   ]
+  ],
+  "pegs": null,
+  "steering": [
+   0.36,
+   1.28,
+   0.6800000000000002
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 142,
+   "drawCalls": 1
+  },
+  "speed": 7,
+  "lodDistance": 40
+ },
+ {
+  "id": "suv white",
+  "role": "candidate colour",
+  "kind": "suv",
+  "seed": 7,
+  "variant": 0,
+  "bodyColour": "#f2f2f0",
+  "size_m": [
+   4.85,
+   1.94,
+   1.9
+  ],
+  "wheelbase": 2.89,
+  "seats": "driver,passenger,passenger,passenger,passenger",
+  "doors": 4,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.53,
+    1.28,
+    0.6800000000000002
+   ],
+   [
+    0.18999999999999997,
+    1.28,
+    0.6800000000000002
+   ]
+  ],
+  "pegs": null,
+  "steering": [
+   0.36,
+   1.28,
+   0.6800000000000002
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 142,
+   "drawCalls": 1
+  },
+  "speed": 7,
+  "lodDistance": 40
+ },
+ {
+  "id": "pickup",
+  "role": "out of scope (kit has it)",
+  "kind": "pickup",
+  "seed": 1,
+  "variant": 3,
+  "bodyColour": "#9b1d1d",
+  "size_m": [
+   5.2,
+   1.82,
+   1.8
+  ],
+  "wheelbase": 3.16,
+  "seats": "driver,passenger,bench,bench,bench,bench",
+  "doors": 3,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.53,
+    1.2000000000000002,
+    0.6000000000000001
+   ],
+   [
+    0.18999999999999997,
+    1.2000000000000002,
+    0.6000000000000001
+   ]
+  ],
+  "pegs": null,
+  "steering": [
+   0.36,
+   1.2000000000000002,
+   0.6000000000000001
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 112,
+   "drawCalls": 1
+  },
+  "speed": 7,
+  "lodDistance": 40
+ },
+ {
+  "id": "truck",
+  "role": "out of scope (catalogue camion, soon)",
+  "kind": "truck",
+  "seed": 1,
+  "variant": 3,
+  "bodyColour": "#f2c20f",
+  "size_m": [
+   7.4,
+   2.3,
+   2.9
+  ],
+  "wheelbase": 4.65,
+  "seats": "driver,passenger,passenger",
+  "doors": 2,
+  "cameras": "chase,driver,passenger,side",
+  "grips": [
+   [
+    0.82,
+    1.8,
+    3.1500000000000004
+   ],
+   [
+    0.38,
+    1.8,
+    3.1500000000000004
+   ]
+  ],
+  "pegs": null,
+  "steering": [
+   0.6,
+   1.8,
+   3.1500000000000004
+  ],
+  "near": {
+   "tris": 0,
+   "drawCalls": 0,
+   "nightDrawCalls": 0
+  },
+  "far": {
+   "tris": 80,
+   "drawCalls": 1
+  },
+  "speed": 5,
+  "lodDistance": 60
+ }
+]

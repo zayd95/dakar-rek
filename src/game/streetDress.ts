@@ -1,3 +1,4 @@
+import { PRESTIGE_HUB, inGrounds } from '../world/prestige';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { GameModule } from './modules';
@@ -165,6 +166,7 @@ export function dressHub(hub: HubWorld, q: keyof typeof DRESS_COUNT, extraAvoid:
   const ok = (x: number, z: number, nodeClear = 12) => {
     if (x < hub.bounds.x0 + 6 || x > hub.bounds.x1 - 6 || z < hub.bounds.z0 + 6 || z > hub.bounds.z1 - 6) return false;
     if (Math.hypot(hub.spawn.x - x, hub.spawn.z - z) < 9) return false;
+    if (hub.id === PRESTIGE_HUB && inGrounds(x, z, 2.5)) return false;                 // Prestige Auto's parcel and the pavement before it: its cars drive out there
     if (gate && Math.hypot(gate.x - x, gate.z - z) < 46) return false;
     if (stops.some(s => Math.hypot(s.x - x, s.z - z) < 13) || extraAvoid.some(s => Math.hypot(s.x - x, s.z - z) < 8)) return false;
     if (hub.interactables.some(i => Math.hypot(i.x - x, i.z - z) < 5.5) || hub.rapides.some(o => Math.hypot(o.position.x - x, o.position.z - z) < 10)) return false;

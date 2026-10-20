@@ -82,7 +82,7 @@ export function valueOf(a: AssetState): number {
   const sp = specOf(a.spec); if (!sp || a.how !== 'owned') return 0;
   if (sp.kind === 'furniture') return Math.round((a.paid || sp.price || 0) * P.furnitureResale);
   if (sp.kind === 'business') return a.paid || sp.price || 0;
-  return Math.round(((sp.price ?? 0) + upgradeCost(sp, a)) * condFactor(a, P.valueFloor));
+  return Math.round(((a.basis ?? sp.price ?? 0) + upgradeCost(sp, a)) * condFactor(a, P.valueFloor));      // `basis`: a vehicle carried over from a retired entry keeps what it was paid
 }
 /** Paid at once when selling. */
 export const saleValue = (a: AssetState) => { const sp = specOf(a.spec); return sp?.kind === 'furniture' ? valueOf(a) : Math.round(valueOf(a) * P.saleShare); };
@@ -333,12 +333,14 @@ export function upgradeAsset(s: GameState, uid: string, upId: string): boolean {
 }
 /** Energy a night brings in this home on top of the bed (comfort upgrades). */
 export const comfortOf = (a: AssetState) => { const sp = specOf(a.spec); return a.upgrades.reduce((t, u) => t + (sp?.upgrades?.find(x => x.id === u)?.comfort ?? 0), 0); };
+/** A collision, a roadside fix or a repair sets an asset's condition: clamped to 0–100, one decimal; « Biens » and the net worth follow. */
+export function setCondition(a: AssetState, v: number) { a.condition = Math.max(0, Math.min(100, Math.round(v * 10) / 10)); bump(); }
 export const repairCost = (a: AssetState) => Math.round((specOf(a.spec)?.price ?? 0) * P.repairPerPoint * (100 - a.condition));
-export function repairAsset(s: GameState, uid: string): boolean {
+export function repairAsset(s: GameState, uid: string, price?: number, label?: string): boolean {
   const a = assetByUid(s, uid); if (!a || a.how !== 'owned' || a.condition >= 100) return false;
-  const cost = repairCost(a); if (!s.canAfford(cost)) return false;
+  const cost = price ?? repairCost(a); if (!s.canAfford(cost)) return false;       // `price`: a quote the player was shown first (a vehicle at Garage Modou); a free job charges nothing
   accrue(s);
-  s.addMoney(-cost, `Réparation · ${specOfAsset(a).name}`);
+  if (cost > 0) s.addMoney(-cost, label ?? `Réparation · ${specOfAsset(a).name}`);
   a.condition = 100;
   bump();
   return true;
