@@ -16,7 +16,7 @@ async function session(muted) {
   if (muted) await context.addInitScript(() => localStorage.setItem('dakarrek.sound', 'off'));
   const page = await context.newPage(), errors = []; page.on('pageerror', e => errors.push(e.message));
   const d = (fn, arg) => page.evaluate(fn, arg), tr = await realTouch(page);
-  await page.goto(`${base}?debug&touch&heure=11&argent=50000000`, { timeout: 120000 });
+  await page.goto(`${base}?debug&touch&heure=11&argent=50000000&klaxon`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
   await d(() => window.__dakar.teleport('plateau'));
   await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.car?.info().dealer, null, T);
@@ -81,7 +81,7 @@ await s.d(() => window.__dakar.car.boost(9)); await s.page.waitForTimeout(8000);
 const cols = await s.d(() => window.__dakar.cityGeometry().colliders.filter(c => c.h >= 6 && c.x1 - c.x0 > 8 && c.z1 - c.z0 > 8).slice(0, 40));
 const hit = async speed => {
   for (const c of cols) {
-    const cz = (c.z0 + c.z1) / 2, x = c.x0 - 9;
+    const cz = (c.z0 + c.z1) / 2, x = c.x0 - (speed > 5 ? 9 : 2.9);   // a slow touch is made from close: the car coasts to a stop in a few metres
     await s.d(([x, z]) => window.__dakar.car.place(x, z, Math.PI / 2), [x, cz]); await s.page.waitForTimeout(400);
     const n0 = await s.au(); await s.d(v => window.__dakar.car.boost(v), speed);
     await s.page.waitForTimeout(speed > 5 ? 2200 : 7000);
@@ -90,7 +90,7 @@ const hit = async speed => {
   }
   return { ok: false };
 };
-const tap = await hit(1.6), imp = await hit(11);
+const tap = await hit(2.3), imp = await hit(11);
 check('a slow touch is a tap (a light thud)', tap.ok, JSON.stringify(tap));
 check('a fast contact is an impact (a crunch)', imp.ok, JSON.stringify(imp));
 // the horn, held with the Klaxon button

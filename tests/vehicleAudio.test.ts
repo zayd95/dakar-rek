@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SAMPLE_NAMES } from '../src/transport/vehicleSamples';
 import { IMPACT_SPEED, PROFILES, brakeIntensity, impactKind, profileFor, rpmOf, vehicleAudio } from '../src/transport/vehicleAudio';
 
 describe('the engine of a driven vehicle', () => {
@@ -14,11 +15,18 @@ describe('the engine of a driven vehicle', () => {
     expect(rpmOf(8, 20, 4, 1)).toBeGreaterThan(rpmOf(8, 20, 4, 0));
     for (const v of [-5, 0, 7, 19, 60]) for (const t of [-1, 0, 1]) { const r = rpmOf(v, 20, 4, t); expect(r).toBeGreaterThanOrEqual(0.12); expect(r).toBeLessThanOrEqual(1); }
   });
-  it('a bigger engine is lower and thicker, a motorbike higher', () => {
-    expect(PROFILES.suv.base).toBeLessThan(PROFILES.sedan.base);
-    expect(PROFILES.suv.sub).toBeGreaterThan(PROFILES.sedan.sub);
-    expect(PROFILES.moto.base).toBeGreaterThan(PROFILES.sedan.base);
+  it('a bigger engine is lower, a motorbike higher, thinner and brighter, and each uses recordings that exist', () => {
+    expect(PROFILES.suv.idleRate[0]).toBeLessThan(PROFILES.sedan.idleRate[0]);
+    expect(PROFILES.moto.idleRate[0]).toBeGreaterThan(PROFILES.sedan.idleRate[0] * 1.5);
+    expect(PROFILES.moto.hp).toBeGreaterThan(PROFILES.sedan.hp * 3);              // nothing of a car's boom
+    expect(PROFILES.moto.lpTop).toBeGreaterThan(PROFILES.sedan.lpTop);
+    expect(PROFILES.moto.idle).not.toBe(PROFILES.sedan.idle);                      // its own recording at idle
+    for (const p of Object.values(PROFILES)) { expect(SAMPLE_NAMES).toContain(p.idle); expect(SAMPLE_NAMES).toContain(p.rev); expect(p.xf[0]).toBeLessThan(p.xf[1]); }
     expect(profileFor('unknown')).toBe(PROFILES.sedan);
+  });
+  it('only the Jakarta is brought down at speed (about −8 dB measured at the speaker when riding); the cars are not touched', () => {
+    expect(PROFILES.moto.topTrim).toBeCloseTo(0.08, 2);
+    for (const k of ['sedan', 'luxury', 'suv'] as const) expect(PROFILES[k].topTrim).toBe(1);
   });
 });
 
