@@ -32,3 +32,23 @@ The approved B recordings, ignition and engine character are unchanged; only the
 | second request | 0.08 | about −8 dB | unchanged (audible) |
 
 The trim only acts above idle: `trim = 1 + (topTrim − 1)·k^0.6`, `k = (rpm − 0.12)/0.88`. Cars use `topTrim: 1` (untouched).
+
+## Understated engine mix (final direction: a life simulation, not a racing game)
+
+The owner's direction: the engine is a quiet background presence you feel rather than hear. Recordings, ignition character and RPM behaviour are the approved B set; only gains, the level's relationship to the revs, the tone at high revs, the ignition's level and the cabin changed. Horns, collisions, doors, brakes and scrapes were not touched.
+
+| | Idle | Cruising | Accelerating |
+|---|---|---|---|
+| Car before (rms at the output, limiter included) | −19 dB | −19 dB | −17.5 dB |
+| Car now | about −34 dB | about −34 dB | about −31 dB |
+| Jakarta before | −22 dB | −25 dB | −23 dB |
+| Jakarta now | about −34 dB | about −33 dB | about −30 dB |
+
+* `EngineProfile.drive` is now the engine's gain at idle (cars 0.04–0.045, Jakarta 0.048); `swell` says how much throttle and speed lift it (cars 1: about 5 dB at full throttle; Jakarta 0.5: about 3 dB). The level hardly follows the revs (they show in the pitch and the tone). The old top-speed trim is gone.
+* Revs de-emphasised: the high-revs loop is held back (weight 0.55 instead of 0.8), the tone closes earlier (low-pass at top revs about 30 % lower), the cars' peak brightness lower.
+* Ignition: gain 0.55 → 0.12 of the recorded sample, a slower first 70 ms and a 3.6 kHz low-pass: peak −5 → about −14.5 dBFS.
+* Cabin: in a car's wheel view (`camera.inside`) the engine is 6 dB lower, its top end and the tyre noise shut in (`vehicleAudio.cabin`, set by the vehicle module every frame); the chase and bird's-eye views are outside. The motorbike has no cabin.
+* Street ambience, measured: the game's only continuous street sound is the traffic bed (about −53 dB rms) with a distant horn now and then (about −36 dB). The engine sits above that bed so the vehicle is felt to be running; one global step of 3 dB is the remaining knob (`drive` of the four profiles).
+* `scripts/audio/render-street.mjs` records the in-game audition (video and the game's own audio output, real touch) used for the owner's listening.
+
+Final step (owner: « make it quieter »): every engine's `drive` halved again (−6 dB): cars 0.0225 (luxury 0.02), Jakarta 0.024. The table above is therefore 6 dB lower still (idle about −40 dB at the output, against the traffic bed at about −53 dB).

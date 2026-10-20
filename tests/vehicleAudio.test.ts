@@ -24,9 +24,11 @@ describe('the engine of a driven vehicle', () => {
     for (const p of Object.values(PROFILES)) { expect(SAMPLE_NAMES).toContain(p.idle); expect(SAMPLE_NAMES).toContain(p.rev); expect(p.xf[0]).toBeLessThan(p.xf[1]); }
     expect(profileFor('unknown')).toBe(PROFILES.sedan);
   });
-  it('only the Jakarta is brought down at speed (about −8 dB measured at the speaker when riding); the cars are not touched', () => {
-    expect(PROFILES.moto.topTrim).toBeCloseTo(0.08, 2);
-    for (const k of ['sedan', 'luxury', 'suv'] as const) expect(PROFILES[k].topTrim).toBe(1);
+  it('the engine is a quiet background presence while driving (a life simulation, not a racing game): the Jakarta slightly more present than the cars; the ignition and the other sounds keep their own levels', () => {
+    for (const k of ['sedan', 'luxury', 'suv'] as const) { expect(PROFILES[k].drive).toBeGreaterThan(0.01); expect(PROFILES[k].swell).toBe(1); }
+    expect(PROFILES.moto.swell).toBeLessThan(1);                                            // the Jakarta's level hardly follows the revs
+    for (const p of Object.values(PROFILES)) expect(p.level).toBeGreaterThan(0.85);       // `level` also scales the ignition: it stays as approved
+    expect(vehicleAudio.cabin).toBe(false);                                                // exterior views by default; the vehicle module sets it in a car's wheel view
   });
 });
 

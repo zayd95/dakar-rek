@@ -22,16 +22,23 @@ export interface EngineProfile {
   gears: number;
   /** Overall level of this engine. */
   level: number;
-  /** The gain it is brought down to at full revs (1 = not at all; the fall follows the revs, so the idle keeps its level; the bus limiter flattens loud input, so a −14 dB trim is about −5 dB at the speaker): a small motorbike's loops are far louder at speed than at rest. */
-  topTrim: number;
+  /** The engine while driving, as a quiet background presence (Dakar Rek is a life simulation, not a racing game): its gain at idle. Cruising is about 3 dB above it, accelerating about 6 dB; the revs show in the pitch and the tone more than in the level. Ignition, horns, doors and impacts do not follow it. */
+  drive: number;
+  /** How much the throttle and the speed lift it above its idle level (1: about 5 dB at full throttle). */
+  swell: number;
   /** The tone: high-pass (Hz), low-pass at idle and at full revs (Hz), the lift of the 1.3 kHz band (dB: what a phone loudspeaker plays of an engine), and the weight of the harmonic exciter (the bass note's overtones). */
   hp: number; lpIdle: number; lpTop: number; air: number; excite: number;
 }
+/** The ignition: recognisable, not startling (the recorded sample is unchanged; this is its gain, and its first 70 ms and top end are softened). */
+const IGNITION = 0.12;
+/** What a car's cabin lets through of its own engine (the engine's gain; the tone and the tyre noise are shut in as well). */
+const CABIN = 0.5;
+
 export const PROFILES: Record<'sedan' | 'luxury' | 'suv' | 'moto', EngineProfile> = {
-  sedan: { topTrim: 1, start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, hp: 40, lpIdle: 2400, lpTop: 6500, air: 3, excite: 0.35 },
-  luxury: { topTrim: 1, start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.8, 1.35], revRate: [0.85, 1.55], xf: [0.35, 0.8], gears: 5, level: 0.9, hp: 40, lpIdle: 1700, lpTop: 4600, air: 2, excite: 0.3 },
-  suv: { topTrim: 1, start: 'start-car', startRate: 0.92, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.7, 1.3], revRate: [0.75, 1.55], xf: [0.3, 0.7], gears: 4, level: 1, hp: 32, lpIdle: 1900, lpTop: 5200, air: 3, excite: 0.45 },
-  moto: { topTrim: 0.08, start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, hp: 230, lpIdle: 3800, lpTop: 8000, air: 6, excite: 0.5 },
+  sedan: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, drive: 0.0225, swell: 1, hp: 40, lpIdle: 2400, lpTop: 4600, air: 3, excite: 0.35 },
+  luxury: { start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.8, 1.35], revRate: [0.85, 1.55], xf: [0.35, 0.8], gears: 5, level: 0.9, drive: 0.02, swell: 1, hp: 40, lpIdle: 1700, lpTop: 3400, air: 2, excite: 0.3 },
+  suv: { start: 'start-car', startRate: 0.92, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.7, 1.3], revRate: [0.75, 1.55], xf: [0.3, 0.7], gears: 4, level: 1, drive: 0.0225, swell: 1, hp: 32, lpIdle: 1900, lpTop: 3800, air: 3, excite: 0.45 },
+  moto: { start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, drive: 0.024, swell: 0.5, hp: 230, lpIdle: 3800, lpTop: 5600, air: 6, excite: 0.5 },
 };
 export const profileFor = (kit: string): EngineProfile => PROFILES[(kit in PROFILES ? kit : 'sedan') as keyof typeof PROFILES];
 
@@ -194,13 +201,13 @@ class VehicleAudio {
   /** Engine start: the recorded ignition (the starter, the engine catching). Returns the second at which the engine catches in it (the loops fade in there). */
   start(prof: EngineProfile): number {
     const b = this.ready('start', 0.5); if (!b) return 0;
-    const buf = this.bank.get(prof.start); if (buf) this.shot(b, prof.start, { dur: buf.duration, rate: prof.startRate, gain: 0.55 * prof.level, hp: prof.hp > 100 ? 160 : 70, attack: 0.02, release: 0.6 });
+    const buf = this.bank.get(prof.start); if (buf) this.shot(b, prof.start, { dur: buf.duration, rate: prof.startRate, gain: IGNITION * prof.level, hp: prof.hp > 100 ? 160 : 70, lp: 3600, attack: 0.07, release: 0.6 });
     return prof.catchAt;
   }
-  /** The starter turning over and not catching (a dead car): the recorded ignition up to just before the engine catches (`catchAt`), then it dies away. No engine follows. */
+  /** The starter turning over and not catching (a dead car): the recorded ignition up to just before the engine catches (`catchAt`), then it dies away, at the approved ignition level and softening. No engine follows. */
   crank(prof: EngineProfile) {
     const b = this.ready('crank', 0.8); if (!b) return;
-    this.shot(b, prof.start, { dur: Math.max(0.3, (prof.catchAt - 0.1) * prof.startRate), rate: prof.startRate, gain: 0.5 * prof.level, hp: prof.hp > 100 ? 160 : 70, attack: 0.02, release: 0.3 });
+    this.shot(b, prof.start, { dur: Math.max(0.3, (prof.catchAt - 0.1) * prof.startRate), rate: prof.startRate, gain: IGNITION * prof.level, hp: prof.hp > 100 ? 160 : 70, lp: 3600, attack: 0.07, release: 0.3 });
   }
 
   /** The engine loops and the traffic bed: on while driving. */
@@ -233,7 +240,7 @@ class VehicleAudio {
     lfo.frequency.value = 0.09; lfoG.gain.value = 0.006; lfo.connect(lfoG).connect(bed.gain);
     n2.connect(bedF).connect(bed).connect(b.gain);
     sIdle.start(t + delay, Math.random() * idle.duration); sRev.start(t + delay, Math.random() * rev.duration); n1.start(t + delay); n2.start(t + delay); lfo.start(t + delay);
-    gEng.gain.setTargetAtTime(0.3 * prof.level, t + delay, 0.22);
+    gEng.gain.setTargetAtTime(prof.level * prof.drive, t + delay, 0.22);
     bed.gain.setTargetAtTime(0.011, t + delay + 0.5, 0.8);
     this.eng = { prof, sIdle, sRev, gIdle, gRev, lp, gEng, road, roadF, bed, srcs: [sIdle, sRev, n1, n2, lfo], rpm: 0.15, ready: t + delay };
     this.bedTimer = 7 + Math.random() * 8;
@@ -250,12 +257,13 @@ class VehicleAudio {
     e.sRev.playbackRate.setTargetAtTime(P.revRate[0] + (P.revRate[1] - P.revRate[0]) * k, t, 0.05);
     const x = Math.max(0, Math.min(1, (e.rpm - P.xf[0]) / (P.xf[1] - P.xf[0]))), h = x * x * (3 - 2 * x), load = Math.max(0, throttle);
     e.gIdle.gain.setTargetAtTime(Math.cos(h * Math.PI / 2) * 0.9 + 0.1, t, 0.06);                                       // equal-power hand-over; a little idle stays under the high loop
-    e.gRev.gain.setTargetAtTime(Math.sin(h * Math.PI / 2) * (lift ? 0.7 : 0.8 + 0.3 * load), t, 0.06);
-    e.lp.frequency.setTargetAtTime((P.lpIdle + (P.lpTop - P.lpIdle) * k) * (lift ? 0.65 : 0.85 + 0.25 * load), t, 0.06);
-    const lvl = (0.3 + 0.2 * e.rpm + 0.1 * load) * (lift ? 0.78 : 1), trim = 1 + (P.topTrim - 1) * Math.pow(k, 0.6);   // the Jakarta: measured at the speaker (the limiter flattens what goes in), 0.2 was about −5 dB when riding, 0.08 is about −8 dB (−2.7 dB more, owner's second request); idle stays where it was
-    e.gEng.gain.setTargetAtTime(Math.min(0.7, lvl) * P.level * trim, t, 0.06);
+    e.gRev.gain.setTargetAtTime(Math.sin(h * Math.PI / 2) * (lift ? 0.45 : 0.55 + 0.2 * load), t, 0.06);       // the high loop is held back: the revs are not the star
+    e.lp.frequency.setTargetAtTime((P.lpIdle + (P.lpTop - P.lpIdle) * k) * (lift ? 0.6 : 0.75 + 0.15 * load) * (this.cabin ? 0.75 : 1), t, 0.08);
+    // quiet by design: the level hardly follows the revs (they are heard in the pitch and the tone), only the throttle and the speed lift it a little; the cabin of a car shuts most of it out
+    const swell = (1 + P.swell * (0.45 * e.rpm + 0.55 * load)) * (lift ? 0.78 : 1), cab = this.cabin ? CABIN : 1;
+    e.gEng.gain.setTargetAtTime(swell * P.level * P.drive * cab, t, 0.08);
     const v = Math.min(1, Math.abs(speed) / Math.max(0.1, maxSpeed));
-    e.road.gain.setTargetAtTime(0.035 * v * v * (P === PROFILES.moto ? 1.3 : 1), t, 0.1); e.roadF.frequency.setTargetAtTime(260 + 900 * v, t, 0.1);
+    e.road.gain.setTargetAtTime(0.035 * v * v * (P === PROFILES.moto ? 1.3 : 1) * (this.cabin ? 0.5 : 1), t, 0.1); e.roadF.frequency.setTargetAtTime(260 + 900 * v, t, 0.1);
     e.bed.gain.setTargetAtTime(this.horn ? 0.002 : 0.011, t, 0.2);
     if ((this.bedTimer -= dt) <= 0) { this.bedTimer = 12 + Math.random() * 14; this.distantHorn(); }
     if (this.hornWanted && !this.horn) this.startHorn(this.bus, this.hornWanted);       // the button was pressed before the recording was decoded
@@ -268,10 +276,12 @@ class VehicleAudio {
     const c = this.bus.ctx, t = c.currentTime;
     e.gEng.gain.cancelScheduledValues(t); e.gEng.gain.setTargetAtTime(0, t, 0.09); e.road.gain.setTargetAtTime(0, t, 0.08); e.bed.gain.setTargetAtTime(0, t, 0.15);
     e.sIdle.playbackRate.setTargetAtTime(e.prof.idleRate[0] * 0.55, t, 0.14); e.sRev.playbackRate.setTargetAtTime(e.prof.revRate[0] * 0.55, t, 0.14);
-    const srcs = e.srcs; this.eng = null;
+    const srcs = e.srcs; this.eng = null; this.cabin = false;
     setTimeout(() => { for (const s of srcs) { try { s.stop(); s.disconnect(); } catch { /* already stopped */ } } }, 700);
     this.hornOff(); this.scrapeOff(); setPlaybackSession(false);
   }
+  /** The player is inside a car (the wheel view): the engine is heard through the cabin. Set by the vehicle module every frame. */
+  cabin = false;
   get running() { return !!this.eng; }
   get rpm() { return this.eng?.rpm ?? 0; }
 
