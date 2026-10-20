@@ -14,7 +14,7 @@ Every district is built on the same street grid (`GRID`: 5 roads, pitch 60 m). L
 
 Not crossing: a trial car (the dealer's, not the player's), a car being left (`leaving`), anything with the game not in `play` mode, any other street, any other district pair. Those keep the map trip.
 
-## Evidence (Chromium, real CDP touch input, `DRIVE_ON=1 scripts/check-prestige-flow.mjs`, 34/34)
+## Evidence (Chromium, real CDP touch input, `DRIVE_ON=1 scripts/check-prestige-flow.mjs`, 34/34 on the way out and back as first written; 43/43 with the return leg proven as fully as the way out, see below)
 
 Real Prestige purchase → reload → the owner gets in through the real door → backs out with R → drives the road with a thumb on the gas and one on the stick:
 
@@ -32,6 +32,16 @@ Real Prestige purchase → reload → the owner gets in through the real door �
 | JavaScript errors | none |
 
 Unit: `tests/hubLink.test.ts` (8): both directions, a fast step cannot jump the line, no ping-pong after arrival, off-street / other districts do not cross.
+
+## The way back, and the 33/34 (20 Oct): the route, not the game
+
+`DRIVE_ON=1` stopped at 33/34 on `the way back works too`: after a reload the car stood across the Corniche's carriageway (heading east-south-east, where the wall test had left it, x −63) and the forward-only pilot crawled along the east kerb until its stall rule gave up (`BACK end` at x −54.5, still in the Corniche).
+
+Diagnosed before any change, with the same save (a berline parked there) and the real touch controls:
+* the game was not the cause: from that pose the same pilot **did** get through when it was given time (it grinds along the kerb for about 12 m at 0.5–1 m/s, then crosses into Almadies, one swap, speed kept); and a multi-point turn with the real controls (lock, forward, « R », back) turned the car to face north in 12 s of game time and it crossed cleanly;
+* the street is the limit: the berline's turn radius is 6 m, a forward-only quarter-turn from a heading of 1.13 rad needs about 8.6 m of sweep plus the half width of the car, and the carriageway is 11 m wide with the car already 1.2 m from the west kerb. A driver reverses; the pilot (`scripts/lib/realTouch.mjs`) only goes forward and gave up on a slow, legitimate crawl.
+
+Fix, in the checks only (no game code, the assertion is unchanged): `turnAround()` in `scripts/lib/realTouch.mjs` turns the car round with the real controls before the return leg. The check now also proves, on the way home, what it proved on the way out: pose and speed continuous across the swap, seat / pad / engine on every frame, camera offset kept, the same car and the same asset record (uid, condition neither reset nor healed), then the brake to a halt, « Descendre », the player on foot beside the parked car with the pad gone and the engine stopped, and a reload beside it. `DRIVE_ON=1 SKIP_LAP=1 scripts/check-prestige-flow.mjs`: **43/43** (it was 33/34). `scripts/film-continuous-drive.mjs` films the round trip (`docs/vehicles/continuous-drive-roundtrip.mp4`, 17/17 checks on its own run).
 
 ## The cost, honestly: a hitch at the border
 
