@@ -12,6 +12,9 @@
 // (feet flat and pointing forward); the hands are put on the forearm with the palm to the thigh and made relaxed (closed fan, curled fingers, thumb in:
 // scripts/meshy/relax-hand.mjs; --relax 0 keeps Meshy's open hand with a fixed --twist); the torso, neck and head keep their shape.
 // Skin weights are Meshy's own, merged onto v4's bones. Base colour only, JPEG.
+// --joint-fit 1 (the homme): his own copy of the skeleton gets its arm joints where his shoulders are (see below); --dqs 1: the elbow is baked with dual
+// quaternions (a source arm bent ~100° is straightened without the linear blend's collapse); --elbow-fit 1: the elbow's weights solved over the arm's surface,
+// the sleeve held to the upper arm, and the unfolded crook relaxed (see below). All default off: the femme is built exactly as before.
 import fs from 'node:fs';
 import * as THREE from 'three';
 import sharp from 'sharp';
@@ -54,7 +57,28 @@ const A = Object.fromEntries(Object.entries(B).map(([k, p]) => [k, p.clone().mul
 const yHip = (A.LeftUpLeg.y + A.RightUpLeg.y) / 2, yNeck = A.neck.y, vHip = T('thigh.L').y, vNeck = T('neck').y;
 const warpY = y => (WARP ? (y <= yHip ? y * (vHip / yHip) : y <= yNeck ? vHip + (y - yHip) * ((vNeck - vHip) / (yNeck - yHip)) : vNeck + (y - yNeck)) : y);
 const warpK = WARP ? (vNeck - vHip) / (yNeck - yHip) : 1;
+const report = [];
 const rigid = { p: x => { const q = x.clone().multiplyScalar(G).add(T0); q.y = warpY(q.y); return q; }, n: n => n.clone() };
+// ---- joint fit: Meshy's rig put the homme's spine and neck joints ~8 cm in front of his chest, so his shoulders (where his arms really turn) sit 7.7 cm behind
+// v4's arm joints: fitted onto them, the arms were dragged forward off the torso (a stretched deltoid, arms that look detached). With --joint-fit his own copy of
+// the skeleton gets its upper_arm joints at his shoulders instead (both sides at their mean width, v4's height), the rest of each arm following; the inverse bind
+// matrices and the clips' rest translations of those two bones are rewritten to match (src/actors/humanoid.ts drops position tracks that hold the rest value).
+const JOINTFIT = Number(opt('joint-fit', 0)), DQS = Number(opt('dqs', 0));
+const parentOf = n => v4root.listNodes().find(p => p.listChildren().includes(n));
+if (JOINTFIT) {
+  const anat = { L: rigid.p(B.LeftArm), R: rigid.p(B.RightArm) }, halfW = (Math.abs(anat.L.x) + Math.abs(anat.R.x)) / 2, zMid = (anat.L.z + anat.R.z) / 2;
+  for (const s of ['L', 'R']) {
+    const node = v4joint[`upper_arm.${s}`], cur = T(`upper_arm.${s}`), want = new THREE.Vector3(Math.sign(cur.x) * halfW, cur.y, zMid);
+    const local = want.clone().applyMatrix4(M4(parentOf(node)).invert());
+    node.setTranslation(local.toArray());
+    for (const a of v4root.listAnimations()) for (const ch of a.listChannels()) {
+      if (ch.getTargetNode() !== node || ch.getTargetPath() !== 'translation') continue;
+      const smp = ch.getSampler(), n = smp.getOutput().getCount(), arr = new Float32Array(n * 3); for (let i = 0; i < n; i++) arr.set(local.toArray(), i * 3);
+      smp.setOutput(v4.createAccessor(`${node.getName()}_rest`).setType('VEC3').setArray(arr).setBuffer(v4root.listBuffers()[0]));
+    }
+    report.push([`jointFit.${s}`, want.distanceTo(cur)]);
+  }
+}
 // ---- per-bone transforms (functions on world points / directions)
 const minRot = (a, t) => new THREE.Quaternion().setFromUnitVectors(a.clone().normalize(), t.clone().normalize());
 /** Segment O→E (anatomical) placed on o→e: rotate about O by the minimal rotation (plus a twist about the target axis), stretch along it. */
@@ -64,14 +88,16 @@ function segment(O, E, o, e, twist = 0, twistPivot = o) {
   const k = t.length() / a.length();
   return { R, k, o, O, axis, twistPivot, stretch: k,
     p: x => { const u = x.clone().multiplyScalar(G).add(T0).sub(O).applyQuaternion(R); return o.clone().add(u).addScaledVector(axis, (k - 1) * u.dot(axis)); },
-    n: n => n.clone().applyQuaternion(R) };
+    n: n => n.clone().applyQuaternion(R),
+    // for the dual-quaternion bake: the rigid part (rotation R, then the translation o − R·O) and what the stretch adds along the target axis
+    t: o.clone().sub(O.clone().applyQuaternion(R)),
+    s: x => { const u = x.clone().multiplyScalar(G).add(T0).sub(O).applyQuaternion(R); return axis.clone().multiplyScalar((k - 1) * u.dot(axis)); } };
 }
 // the fist round a handlebar grip: a second shape of the same hand, stored as a morph target (scripts/meshy/grip-morph.mjs) that the game blends in while the rider has the Ride pose
 const GRIP = Number(opt('grip', 1)), GRIP_OPTS = { ...HAND_OPTS, gripRadius: Number(opt('grip-radius', 0.022)), fingerThick: Number(opt('grip-finger-thick', 0.3)), fan: 0.15, curlSpread: 0.1, thumbIn: Number(opt('grip-thumb-in', 70)), thumbFlex: Number(opt('grip-thumb-flex', 60)) };
 const outGrip = {};     // Meshy bone name -> the same, for the fist (only the hands differ)
 const gripLocal = {};   // side -> where the middle of the bar sits in the v4 hand bone's own frame (metres), for the game's arm solve
 const out = {};          // Meshy bone name -> { p, n }
-const report = [];
 for (const [bone] of Object.entries(B)) out[bone] = rigid;
 for (const [s, S, sign] of [['L', 'Left', 1], ['R', 'Right', -1]]) {
   const hip = A[`${S}UpLeg`], knee = A[`${S}Leg`], ankle = A[`${S}Foot`], toe = A[`${S}ToeBase`];
@@ -93,6 +119,7 @@ for (const [s, S, sign] of [['L', 'Left', 1], ['R', 'Right', -1]]) {
   const lat = v => v.clone().add(new THREE.Vector3(dx, 0, 0));
   const tSh = lat(T(`upper_arm.${s}`)), tEl = lat(T(`forearm.${s}`)), tWr = lat(T(`hand.${s}`));
   const up = segment(sh, el, tSh, tEl);
+  report.push([`armRootShift.${s}.x`, tSh.x - shW.x], [`armRootShift.${s}.y`, tSh.y - shW.y], [`armRootShift.${s}.z`, tSh.z - shW.z]);
   let fa, hand;
   if (RELAX) {
     // the hand's own frame from its vertices, put on the forearm: palm towards the thigh, fingers along the forearm (plus an optional wrist tilt)
@@ -186,9 +213,85 @@ if (SUBDIV > 0) {
 }
 const nV = P.length / 3, P2 = new Float32Array(nV * 3), N2 = new Float32Array(nV * 3), GD = new Float32Array(nV * 3), GN = new Float32Array(nV * 3), J2 = new Uint8Array(nV * 4), W2 = new Float32Array(nV * 4);
 const v = new THREE.Vector3(), nn = new THREE.Vector3(), acc = new THREE.Vector3(), accN = new THREE.Vector3(), accG = new THREE.Vector3(), accGN = new THREE.Vector3();
+// dual-quaternion blend of rigid segment transforms (x scaled into place, as the segments take it): r = Σ w·q (sign-aligned), d = Σ w·½·t·q, normalised
+const qmul = (a, b) => new THREE.Quaternion(a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y, a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x, a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w, a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z);
+function dqsBlend(parts, x, n) {
+  const r = new THREE.Quaternion(0, 0, 0, 0), d = new THREE.Quaternion(0, 0, 0, 0), q0 = parts[0].tf.R;
+  for (const { tf, w } of parts) {
+    const sgn = q0.dot(tf.R) < 0 ? -1 : 1, dq = qmul(new THREE.Quaternion(tf.t.x, tf.t.y, tf.t.z, 0), tf.R);
+    r.x += sgn * w * tf.R.x; r.y += sgn * w * tf.R.y; r.z += sgn * w * tf.R.z; r.w += sgn * w * tf.R.w;
+    d.x += sgn * w * 0.5 * dq.x; d.y += sgn * w * 0.5 * dq.y; d.z += sgn * w * 0.5 * dq.z; d.w += sgn * w * 0.5 * dq.w;
+  }
+  const len = Math.hypot(r.x, r.y, r.z, r.w); r.set(r.x / len, r.y / len, r.z / len, r.w / len); d.set(d.x / len, d.y / len, d.z / len, d.w / len);
+  const tq = qmul(d, new THREE.Quaternion(-r.x, -r.y, -r.z, r.w)), t = new THREE.Vector3(2 * tq.x, 2 * tq.y, 2 * tq.z);
+  const xs = x.clone().multiplyScalar(G).add(T0), p = xs.applyQuaternion(r).add(t);
+  for (const { tf, w } of parts) p.addScaledVector(tf.s(x), w);
+  return { p, n: n.clone().applyQuaternion(r) };
+}
+const ELBOW = { Left: ['LeftArm', 'LeftForeArm'], Right: ['RightArm', 'RightForeArm'] };
+let dqsCount = 0;
+// ---- elbow fit (--elbow-fit 1, the homme): his source arms are bent ~100°, and in that pose the sleeve's inner hem lies against the forearm: Meshy's weights
+// (a blend ~20 cm wide, uneven) give the sleeve and the crook a share of the forearm, so straightening the arm crumples the sleeve's hem, pinches the crook and dents
+// the back of the elbow, and the game's own bending folds them again. Instead the share of the forearm is solved over the arm's surface (harmonic weights: each
+// vertex the mean of its neighbours), held at 0 on the sleeve and at 1 on the forearm from ELB_FAR below the elbow: smooth, monotone along the skin, the crook
+// unfolding in order. Used by the bake (dual quaternions) and kept as the skin weights. One value per position (a UV seam's copies agree).
+const ELBOWFIT = Number(opt('elbow-fit', 0)), ELB_FAR = Number(opt('elbow-far', 0.08));
+let elbowFree = 0, elbowRelaxed = 0;
+const elbowMix = new Float32Array(nV);   // 4·w·(1−w) of a solved vertex: how far inside the transition it is (for the relaxation after the bake)
+if (ELBOWFIT) {
+  const img = await sharp(Buffer.from(prim.getMaterial().getBaseColorTexture().getImage())).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const cloth = i => { const x = Math.min(img.info.width - 1, Math.floor(UV[i * 2] * img.info.width)), y = Math.min(img.info.height - 1, Math.floor(UV[i * 2 + 1] * img.info.height)), k = (y * img.info.width + x) * 3, [r, g, b] = [img.data[k], img.data[k + 1], img.data[k + 2]]; return b > r + 15 && b > g; };
+  const keyOf = i => `${Math.round(P[i * 3] * 1e6)},${Math.round(P[i * 3 + 1] * 1e6)},${Math.round(P[i * 3 + 2] * 1e6)}`;
+  const ids = new Map(), rep = new Int32Array(nV);
+  for (let i = 0; i < nV; i++) { const k = keyOf(i); if (!ids.has(k)) ids.set(k, ids.size); rep[i] = ids.get(k); }
+  const nU = ids.size, nb = Array.from({ length: nU }, () => new Set());
+  for (let t = 0; t < IDX.length; t += 3) for (const [a, b2] of [[IDX[t], IDX[t + 1]], [IDX[t + 1], IDX[t + 2]], [IDX[t + 2], IDX[t]]]) { const ra = rep[a], rb = rep[b2]; if (ra !== rb) { nb[ra].add(rb); nb[rb].add(ra); } }
+  for (const [S, [upN, foN]] of Object.entries(ELBOW)) {
+    const sh = A[upN], el = A[foN], wr = A[`${S}Hand`], u = el.clone().sub(sh).normalize(), f = wr.clone().sub(el).normalize();
+    const iu = myNames.indexOf(upN), iF = myNames.indexOf(foN);
+    const state = new Int8Array(nU).fill(-1), w = new Float64Array(nU);   // -1 outside the arm, 0 solved, 1 held
+    for (let i = 0; i < nV; i++) {
+      let wu = 0, wf = 0; for (let k = 0; k < 4; k++) { const ww = W[i * 4 + k]; if (J[i * 4 + k] === iu) wu += ww; else if (J[i * 4 + k] === iF) wf += ww; }
+      if (wu + wf < 0.5) continue;                                                         // (the arm's: a share of the hand or the shoulder is kept as it is)
+      const r = rep[i], x = v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]).multiplyScalar(G).add(T0).sub(el), su = -x.dot(u), sf = x.dot(f);
+      if ((cloth(i) && su > 0.05) || su > 0.065) { state[r] = 1; w[r] = 0; }      // (the sleeve, its hem ~7.5 cm up and the hem's olive rim; never the grey-blue highlights Meshy painted on the forearm)
+      else if (sf > ELB_FAR) { state[r] = 1; w[r] = 1; }                               // (the forearm, bent ~100° away: its own axis decides)
+      else if (state[r] < 0) { state[r] = 0; w[r] = wf / (wu + wf); }
+    }
+    const free = [...Array(nU).keys()].filter(r => state[r] === 0);
+    for (let it = 0; it < 20000; it++) {
+      let mx = 0;
+      for (const r of free) { let sum = 0, n = 0; for (const q of nb[r]) if (state[q] >= 0) { sum += w[q]; n++; } if (!n) continue; const nw = sum / n; mx = Math.max(mx, Math.abs(nw - w[r])); w[r] = nw; }
+      if (mx < 1e-6) break;
+    }
+    for (let i = 0; i < nV; i++) {
+      const r = rep[i]; if (state[r] !== 0) continue;
+      const f2 = Math.min(1, Math.max(0, w[r])), keep = [];
+      let m = 0; for (let k = 0; k < 4; k++) { const j = J[i * 4 + k], ww = W[i * 4 + k]; if (ww <= 0) continue; if (j === iu || j === iF) m += ww; else keep.push([j, ww]); }
+      const all = [...keep, [iu, m * (1 - f2)], [iF, m * f2]].filter(([, ww]) => ww > 1e-3).sort((x, y) => y[1] - x[1]).slice(0, 4), tot = all.reduce((t, [, ww]) => t + ww, 0);
+      for (let k = 0; k < 4; k++) { J[i * 4 + k] = all[k]?.[0] ?? 0; W[i * 4 + k] = all[k] ? all[k][1] / tot : 0; }
+      elbowMix[i] = 4 * f2 * (1 - f2);
+    }
+    elbowFree += free.length;
+  }
+}
 for (let i = 0; i < nV; i++) {
   acc.set(0, 0, 0); accN.set(0, 0, 0); accG.set(0, 0, 0); accGN.set(0, 0, 0);
   const merged = new Map();
+  if (DQS) {   // an elbow vertex (weights on that arm's upper arm and forearm only, both present): blended as dual quaternions, the hand's fist morph untouched
+    const names = [], ws = []; for (let k = 0; k < 4; k++) if (W[i * 4 + k] > 0) { names.push(myNames[J[i * 4 + k]]); ws.push(W[i * 4 + k]); }
+    const side = Object.values(ELBOW).find(pair => names.every(nm => pair.includes(nm)) && pair.every(nm => names.includes(nm)));
+    if (side) {
+      v.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]); nn.set(N[i * 3], N[i * 3 + 1], N[i * 3 + 2]);
+      const sum = ws.reduce((a, b) => a + b, 0), r = dqsBlend(names.map((nm, k) => ({ tf: out[nm], w: ws[k] / sum })), v, nn);
+      P2.set([r.p.x, r.p.y, r.p.z], i * 3); r.n.normalize(); N2.set([r.n.x, r.n.y, r.n.z], i * 3);
+      GD.set([0, 0, 0], i * 3); GN.set([0, 0, 0], i * 3);
+      names.forEach((nm, k) => { const t = v4Index[MAP[nm]]; merged.set(t, (merged.get(t) ?? 0) + ws[k]); });
+      const top = [...merged].sort((a, b) => b[1] - a[1]).slice(0, 4), tot = top.reduce((s2, [, w]) => s2 + w, 0);
+      top.forEach(([j, w], k) => { J2[i * 4 + k] = j; W2[i * 4 + k] = w / tot; });
+      dqsCount++; continue;
+    }
+  }
   for (let k = 0; k < 4; k++) {
     const w = W[i * 4 + k]; if (w <= 0) continue;
     const name = myNames[J[i * 4 + k]], tf = out[name];
@@ -201,6 +304,39 @@ for (let i = 0; i < nV; i++) {
   accGN.normalize(); GD.set([accG.x - acc.x, accG.y - acc.y, accG.z - acc.z], i * 3); GN.set([accGN.x - accN.x, accGN.y - accN.y, accGN.z - accN.z], i * 3);
   const top = [...merged].sort((a, b) => b[1] - a[1]).slice(0, 4); const sum = top.reduce((s, [, w]) => s + w, 0);
   top.forEach(([j, w], k) => { J2[i * 4 + k] = j; W2[i * 4 + k] = w / sum; });
+}
+
+// ---- elbow fit, then: the crook, unfolded from ~100°, keeps the pleats of its fold: the transition's surface is relaxed (Taubin λ|μ, so it keeps its volume), most
+// at the middle of the transition, nothing where a bone holds the skin alone; one point per position, its normals rebuilt from the faces around it
+if (ELBOWFIT) {
+  const keyOf = i => `${Math.round(P2[i * 3] * 1e6)},${Math.round(P2[i * 3 + 1] * 1e6)},${Math.round(P2[i * 3 + 2] * 1e6)}`;
+  const ids = new Map(), rep = new Int32Array(nV);
+  for (let i = 0; i < nV; i++) { const k = keyOf(i); if (!ids.has(k)) ids.set(k, ids.size); rep[i] = ids.get(k); }
+  const nU = ids.size, U = new Float64Array(nU * 3), mix = new Float32Array(nU), nb = Array.from({ length: nU }, () => new Set());
+  for (let i = 0; i < nV; i++) { const r = rep[i]; for (let a = 0; a < 3; a++) U[r * 3 + a] = P2[i * 3 + a]; mix[r] = Math.max(mix[r], elbowMix[i]); }
+  for (let t = 0; t < IDX.length; t += 3) for (const [a, b2] of [[IDX[t], IDX[t + 1]], [IDX[t + 1], IDX[t + 2]], [IDX[t + 2], IDX[t]]]) { const ra = rep[a], rb = rep[b2]; if (ra !== rb) { nb[ra].add(rb); nb[rb].add(ra); } }
+  const list = [...Array(nU).keys()].filter(r => mix[r] > 0.02 && nb[r].size), step = lam => {
+    const D = new Float64Array(nU * 3);
+    for (const r of list) { const k = Math.min(1, mix[r] * 1.5) * lam / nb[r].size; for (const q of nb[r]) for (let a = 0; a < 3; a++) D[r * 3 + a] += (U[q * 3 + a] - U[r * 3 + a]) * k; }
+    for (const r of list) for (let a = 0; a < 3; a++) U[r * 3 + a] += D[r * 3 + a];
+  };
+  for (let it = 0; it < Number(opt('elbow-relax', 20)); it++) { step(0.6); step(-0.62); }
+  const touched = new Uint8Array(nU); for (const r of list) { touched[r] = 2; for (const q of nb[r]) if (!touched[q]) touched[q] = 1; }
+  const FN = new Float64Array(nU * 3);
+  for (let t = 0; t < IDX.length; t += 3) {
+    const [a, b2, c] = [rep[IDX[t]], rep[IDX[t + 1]], rep[IDX[t + 2]]]; if (!(touched[a] || touched[b2] || touched[c])) continue;
+    const e1 = [0, 1, 2].map(k => U[b2 * 3 + k] - U[a * 3 + k]), e2 = [0, 1, 2].map(k => U[c * 3 + k] - U[a * 3 + k]);
+    const fn = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+    for (const r of [a, b2, c]) for (let k = 0; k < 3; k++) FN[r * 3 + k] += fn[k];
+  }
+  for (let i = 0; i < nV; i++) {
+    const r = rep[i]; if (!touched[r]) continue;
+    for (let a = 0; a < 3; a++) P2[i * 3 + a] = U[r * 3 + a];
+    const l = Math.hypot(FN[r * 3], FN[r * 3 + 1], FN[r * 3 + 2]); if (!l) continue;
+    const fn = [FN[r * 3] / l, FN[r * 3 + 1] / l, FN[r * 3 + 2] / l], sgn = fn[0] * N2[i * 3] + fn[1] * N2[i * 3 + 1] + fn[2] * N2[i * 3 + 2] < 0 ? -1 : 1, m = touched[r] === 2 ? 1 : 0.5;
+    const nx = N2[i * 3] * (1 - m) + sgn * fn[0] * m, ny = N2[i * 3 + 1] * (1 - m) + sgn * fn[1] * m, nz = N2[i * 3 + 2] * (1 - m) + sgn * fn[2] * m, nl = Math.hypot(nx, ny, nz) || 1;
+    N2.set([nx / nl, ny / nl, nz / nl], i * 3); if (touched[r] === 2) elbowRelaxed++;
+  }
 }
 
 // ---- write: v4 document minus its meshes, plus the Meshy body
@@ -217,6 +353,11 @@ if (GRIP) {                                         // the fist as temporary att
   mesh.listPrimitives()[0].setAttribute('_GRIPD', acc3('VEC3', GD, 'gd')).setAttribute('_GRIPN', acc3('VEC3', GN, 'gn'));
   for (const s of ['L', 'R']) { const n = v4joint[`hand.${s}`]; n.setExtras({ ...(n.getExtras() ?? {}), grip: gripLocal[s] }); }
 }
+if (JOINTFIT) {   // the skin's inverse bind matrices from the (refitted) joints' rest
+  const js = v4skin.listJoints(), ibm = new Float32Array(js.length * 16);
+  js.forEach((j, k) => ibm.set(M4(j).invert().toArray(), k * 16));
+  v4skin.setInverseBindMatrices(v4.createAccessor('ibm_fit').setType('MAT4').setArray(ibm).setBuffer(buffer));
+}
 const rig = v4root.listNodes().find(n => n.getName() === 'DR_Rig');
 rig.addChild(v4.createNode('Meshy_Body').setMesh(mesh).setSkin(v4skin));
 await v4.transform(prune({ keepLeaves: true }));   // keepLeaves: the socket_* empties are leaves that props attach to
@@ -225,4 +366,4 @@ await io.write(outPath, v4);
 // ---- report
 const bb = new THREE.Box3(); for (let i = 0; i < nV; i++) bb.expandByPoint(v.set(P2[i * 3], P2[i * 3 + 1], P2[i * 3 + 2]));
 console.log(JSON.stringify({ out: outPath, bytes: fs.statSync(outPath).size, scaleG: +G.toFixed(4), height: +(bb.max.y - bb.min.y).toFixed(3), minY: +bb.min.y.toFixed(3), vertices: nV, triangles: IDX.length / 3,
-  segmentStretch: Object.fromEntries(report.map(([k, s]) => [k, +s.toFixed(3)])), twistDeg: +(TWIST * 180 / Math.PI).toFixed(1), torsoWarp: WARP ? +warpK.toFixed(3) : 0, handAlign: HANDALIGN, lateral: LATERAL }, null, 1));
+  segmentStretch: Object.fromEntries(report.map(([k, s]) => [k, +s.toFixed(3)])), twistDeg: +(TWIST * 180 / Math.PI).toFixed(1), jointFit: JOINTFIT, dqsElbowVertices: dqsCount, elbowFit: ELBOWFIT, elbowHarmonicVertices: elbowFree, elbowRelaxed, torsoWarp: WARP ? +warpK.toFixed(3) : 0, handAlign: HANDALIGN, lateral: LATERAL }, null, 1));
