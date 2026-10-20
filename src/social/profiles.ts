@@ -26,6 +26,8 @@ export interface Cond {
   act?: Activity[];
   /** counters[name] >= n */
   counter?: [string, number];
+  /** The player's last bout (career) ended this way within `within` city days, today included (src/social/memory.ts). */
+  bout?: { res: 'V' | 'D'; within: number };
 }
 export interface Reaction {
   when: Cond; line: string;
@@ -34,6 +36,11 @@ export interface Reaction {
   /** The same greeting in a few words, said on the sheet of the character's own shop (src/social/regular.ts); only regulars' lines have one. */
   short?: string;
 }
+/**
+ * What a familiar character says in a few words as the player walks up (src/social/walkup.ts). Ordered: the first
+ * matching line that was not just said is spoken. `once` lines are said one time only (a favour acknowledged).
+ */
+export interface Walkup { id: string; when: Cond; line: string; once?: boolean }
 export interface Intro { to: string; when: Cond[]; flag: string; line: string }
 export interface Fact { when: Cond; text: string }
 export interface Perk {
@@ -65,6 +72,8 @@ export interface Profile {
   sells?: Perk[];
   /** Ordered: the first matching reaction greets the player. */
   reactions: Reaction[];
+  /** Said as the player walks up (no menu open); falls back to the general lines of src/social/walkup.ts. */
+  walkup?: Walkup[];
   intros?: Intro[];
   /** Ordered from first met to most advanced: the last true fact is "the last thing they remember". */
   memories: Fact[];
@@ -85,6 +94,8 @@ export const PROFILES: Profile[] = [
     looks: { base: { skin: 0x5b3420, style: 'boubou', top: 0xf2f2ec, pattern: 'bazin', hat: 'kufi', hatColor: 0xd9d2c4, beard: 0xd8d4cc, heavy: 0.4 }, evening: { skin: 0x5b3420, style: 'boubou', top: 0x9cc8e8, pattern: 'bazin', hat: 'kufi', hatColor: 0xf2f2ec, beard: 0xd8d4cc, heavy: 0.4 } },
     menu: 'ibou',
     reactions: [
+      { when: { bout: { res: 'V', within: 2 } }, line: 'Mon fils ! Tout le quartier parle de ton combat. Assieds-toi, raconte-moi.' },
+      { when: { bout: { res: 'D', within: 2 } }, line: 'Viens, mon fils. Les plus grands ont perdu avant de gagner. Le thé est chaud.' },
       { when: { noBeat: 'ibou_welcome' }, line: 'Salaam aleekum ! Te voilà enfin ! Viens, que je te présente le quartier.' },
       { when: { act: ['attaya'] }, line: `${say('Toogal')}, la théière chauffe. Le premier verre est pour celui qui arrive.`, effect: { needs: { social: 4 } } },
       { when: { flag: 'reco_modou', noBeat: 'modou_reco' }, line: 'Alors, tu es passé voir Modou ? Il t’attend, je lui ai parlé de toi.' },
@@ -95,11 +106,20 @@ export const PROFILES: Profile[] = [
       { when: {}, line: `${SALUT} Le quartier est calme aujourd’hui. Enfin… calme pour Pikine.` },
     ],
     intros: [{ to: 'mamadou', when: [{ regular: true, beat: 'ibou_welcome' }], flag: 'intro_mamadou', line: 'Va voir Mamadou Diallo, à la boutique près de la grand-place. C’est mon compagnon d’attaya, et il a besoin de bras.' }],
+    walkup: [
+      { id: 'won', when: { bout: { res: 'V', within: 2 } }, line: 'Mon fils ! Tout le quartier parle de ton combat.' },
+      { id: 'lost', when: { bout: { res: 'D', within: 2 } }, line: 'Viens t’asseoir, mon fils. Les plus grands ont perdu avant de gagner.' },
+      { id: 'modou', once: true, when: { flag: 'modou_trust' }, line: 'Modou me dit que tu travailles bien. Je savais que je pouvais compter sur toi.' },
+      { id: 'tea', when: { act: ['attaya'], regular: true }, line: 'Le premier verre est pour toi. Assieds-toi !' },
+      { id: 'late', when: { regular: true, hours: [5, 12] }, line: 'Tu te lèves tôt, maintenant. Ça me plaît.' },
+    ],
     memories: [
       { when: { beat: 'ibou_welcome' }, text: 'T’a accueilli dans le quartier' },
       { when: { flag: 'reco_modou' }, text: 'T’a recommandé à Modou' },
       { when: { counter: ['sit_attaya_place_n', 1] }, text: 'A partagé l’attaya avec toi sur la grand-place' },
       { when: { flag: 'info_ousmane' }, text: 'T’a parlé de son cousin Ousmane' },
+      { when: { bout: { res: 'V', within: 14 } }, text: 'A fêté ta victoire' },
+      { when: { bout: { res: 'D', within: 14 } }, text: 'T’a soutenu après ta défaite' },
     ],
   },
   {
@@ -114,6 +134,8 @@ export const PROFILES: Profile[] = [
     looks: { base: { skin: 0x6b3f25, style: 'tee', top: 0x3c4a5c, bottom: 0x3c4a5c, muscular: 0.3 }, evening: { skin: 0x6b3f25, style: 'boubou', top: 0x27407a, pattern: 'uni', heavy: 0.2 } },
     place: 'pikine:garage', menu: 'chat',
     reactions: [
+      { when: { bout: { res: 'V', within: 2 } }, line: 'Alors, champion ! Le garage a suivi ton combat. Tu pousses les voitures comme les adversaires ?' },
+      { when: { bout: { res: 'D', within: 2 } }, line: 'Un combat perdu, ça se répare, comme un moteur. Entre, on boit un thé.' },
       { when: { flag: 'reco_modou', noBeat: 'modou_reco' }, line: 'Salaam aleekum. Ibou m’a prévenu que tu passerais. Entre, n’aie pas peur du cambouis.' },
       { when: { act: ['attaya'] }, line: 'Le soir, je laisse les moteurs. Ibou fait l’attaya, moi je fais les commentaires.' },
       { when: { act: ['eat'] }, line: 'Ici on mange vite : les voitures n’attendent pas.' },
@@ -122,9 +144,17 @@ export const PROFILES: Profile[] = [
       { when: { hours: [7, 10] }, line: `Le matin, c’est l’heure des pannes de démarrage. Tout le monde arrive en poussant, ${say('ndank ndank')}.` },
       { when: {}, line: `${SALUT} Garage Modou : tout se répare. Sauf les mauvais conducteurs.` },
     ],
+    walkup: [
+      { id: 'won', when: { bout: { res: 'V', within: 2 } }, line: 'Alors, champion ! Tu pousses les voitures comme les adversaires ?' },
+      { id: 'lost', when: { bout: { res: 'D', within: 2 } }, line: 'Un combat perdu, ça se répare, comme un moteur. Passe boire un thé.' },
+      { id: 'trust', once: true, when: { flag: 'modou_trust' }, line: 'Mon bon aide ! J’ai gardé une boîte de vitesses pour toi.' },
+      { id: 'keys', when: { flag: 'modou_trust', regular: true }, line: 'Le garage te connaît maintenant. Entre !' },
+    ],
     memories: [
       { when: { flag: 'modou_trust' }, text: 'T’embauche au tarif de confiance' },
       { when: { counter: ['served_modou', 3] }, text: 'T’a vu travailler au garage plusieurs fois' },
+      { when: { bout: { res: 'V', within: 14 } }, text: 'A fêté ta victoire' },
+      { when: { bout: { res: 'D', within: 14 } }, text: 'T’a soutenu après ta défaite' },
     ],
   },
   {
@@ -140,6 +170,8 @@ export const PROFILES: Profile[] = [
     place: 'pikine:gargote', menu: 'chat',
     perk: { id: 'mame_habitue', label: 'Le plat de l’habitué', detail: 'Mame te reconnaît : une louche de plus', cost: 900, needs: { faim: 55, moral: 8, social: 4 }, seconds: 3, counter: 'meals', flags: ['regular_mame'], served: { prop: 'ceebu' } },
     reactions: [
+      { when: { bout: { res: 'V', within: 2 } }, line: 'Le lutteur ! Viens manger, il te faut des forces pour la suite.' },
+      { when: { bout: { res: 'D', within: 2 } }, line: 'Sama doom, viens. Un bon plat remet tout en place après un combat perdu.' },
       { when: { flag: 'mame_helped', regular: true }, line: 'Mon habitué ! Ta place est gardée, et la louche est plus généreuse pour toi.' },
       { when: { flag: 'mame_helped' }, line: `${say('Kaay lekk')} ! Toi qui m’as porté la bonbonne, ici tu manges à prix d’ami. Je n’oublie pas.` },
       { when: { act: ['eat'] }, line: `Laisse-moi manger cinq minutes, ${say('sama doom')}. Ma fille t’apporte ton plat.` },
@@ -148,9 +180,17 @@ export const PROFILES: Profile[] = [
       { when: {}, line: `${say('Kaay lekk')}, ${say('sama doom')} ! Assieds-toi, ça mange bien chez Mame Diarra.` },
     ],
     intros: [{ to: 'mamadou', when: [{ regular: true }], flag: 'intro_mamadou', line: 'Tu connais Mamadou Diallo, de la Boutique Diallo ? Il me livre le riz. Va le voir de ma part, il cherche quelqu’un de sérieux.' }],
+    walkup: [
+      { id: 'won', when: { bout: { res: 'V', within: 2 } }, line: 'Le lutteur ! Viens manger, il te faut des forces.' },
+      { id: 'lost', when: { bout: { res: 'D', within: 2 } }, line: 'Sama doom, viens. Un bon plat remet tout en place.' },
+      { id: 'helped', once: true, when: { flag: 'mame_helped' }, line: 'La bonbonne ! Je n’oublie pas. Ta place est gardée.' },
+      { id: 'usual', when: { regular: true, hours: [11, 15] }, line: 'Comme d’habitude ? Le ceebu est prêt.' },
+    ],
     memories: [
       { when: { flag: 'mame_helped' }, text: 'Se souvient que tu as porté sa bonbonne de gaz' },
       { when: { flag: 'mamadou_trust' }, text: 'A reçu le riz que tu as livré' },
+      { when: { bout: { res: 'V', within: 14 } }, text: 'A fêté ta victoire' },
+      { when: { bout: { res: 'D', within: 14 } }, text: 'T’a soutenu après ta défaite' },
     ],
   },
   {
@@ -165,16 +205,26 @@ export const PROFILES: Profile[] = [
     looks: { base: { skin: 0x4e2e1c, style: 'tee', top: 0x1a7a44, bottom: 0x2b2b33, muscular: 0.6, beard: 0x8a8580 } },
     place: 'pikine:ecurie', menu: 'chat',
     reactions: [
+      { when: { bout: { res: 'V', within: 2 } }, line: 'Bien lutté. La victoire n’est qu’un début, souviens-toi : patience.' },
+      { when: { bout: { res: 'D', within: 2 } }, line: 'Tu as perdu, tu as appris. Reviens à l’écurie, on travaille ça.' },
       { when: { flag: 'ecurie_baobab', counter: ['lutte', 5] }, line: `${say('Ndank ndank')}, tu commences à avoir des appuis. Ne le dis pas aux autres, ils seraient jaloux.` },
       { when: { flag: 'rival_lamine', act: ['chat'] }, line: `Lamine est là-bas, il parle encore. ${say('Bul tiit')} : on répond sur le sable.` },
       { when: { act: ['eat'] }, line: 'Même un coach doit manger. Mame Diarra veille sur toute l’écurie.' },
       { when: { flag: 'ecurie_baobab' }, line: 'Échauffement, puis prises. Et en arrivant, on salue les anciens : « Salaam aleekum », pas « salut ».' },
       { when: {}, line: `Tu as le gabarit. Reste à voir si tu as la patience : ${say('ndank ndank mooy jàpp golo ci ñaay')}.` },
     ],
+    walkup: [
+      { id: 'won', when: { bout: { res: 'V', within: 2 } }, line: 'Bien lutté. La victoire n’est qu’un début, souviens-toi.' },
+      { id: 'lost', when: { bout: { res: 'D', within: 2 } }, line: 'Tu as perdu, tu as appris. Reviens à l’écurie, on travaille.' },
+      { id: 'reco', once: true, when: { flag: 'reco_ablaye' }, line: 'Babacar m’a parlé de toi. La porte de l’écurie est ouverte.' },
+      { id: 'baobab', when: { flag: 'ecurie_baobab' }, line: 'Un des nôtres. L’écurie compte sur toi.' },
+    ],
     memories: [
       { when: { flag: 'ecurie_baobab' }, text: 'T’a accepté à l’écurie Baobab' },
       { when: { flag: 'meet_lamine' }, text: 'T’a présenté à Lamine, le rival' },
       { when: { counter: ['victoires', 1] }, text: 'A vu ta première victoire' },
+      { when: { bout: { res: 'V', within: 14 } }, text: 'A fêté ta victoire' },
+      { when: { bout: { res: 'D', within: 14 } }, text: 'T’a soutenu après ta défaite' },
     ],
   },
   {
@@ -189,6 +239,8 @@ export const PROFILES: Profile[] = [
     looks: { base: { skin: 0x5b3420, style: 'tee', top: 0xf2f2ec, bottom: 0x2b2b33, muscular: 1 }, train: { skin: 0x5b3420, style: 'tee', top: 0x1a7a44, bottom: 0x1c1c1f, muscular: 1 } },
     menu: 'chat',
     reactions: [
+      { when: { bout: { res: 'V', within: 2 } }, line: 'Frère, tu as dominé ! Montre-moi ta prise, je veux l’apprendre.' },
+      { when: { bout: { res: 'D', within: 2 } }, line: 'Ça arrive à tout le monde. On se relève et on recommence plus fort.' },
       { when: { flag: 'babacar_doit', noFlag: 'babacar_rendu' }, line: `${say('Jërëjëf')} encore, hein. Je n’oublie pas le repas de la Maïga, je te revaudrai ça.` },
       { when: { flag: 'fete_baobab' }, line: 'Tu as dansé avec nous ! Tout Pikine en parle encore.' },
       { when: { act: ['train'] }, line: `${say('Xaaral tuuti')}, Coach compte les séries… Bon, deux minutes.` },
@@ -196,10 +248,18 @@ export const PROFILES: Profile[] = [
       { when: { relBelow: -5 }, line: 'Tu veux quoi ?' },
       { when: {}, line: `${say('Lu bees ?')} Un jour, mon nom sera sur toutes les affiches de l’arène. Retiens-le.` },
     ],
+    walkup: [
+      { id: 'won', when: { bout: { res: 'V', within: 2 } }, line: 'Frère, tu as dominé ! Montre-moi ta prise.' },
+      { id: 'lost', when: { bout: { res: 'D', within: 2 } }, line: 'Ça arrive. On se relève, et on recommence plus fort.' },
+      { id: 'owes', once: true, when: { flag: 'babacar_doit', noFlag: 'babacar_rendu' }, line: 'Le repas de la Maïga, je n’ai pas oublié. Passe me voir.' },
+      { id: 'repaid', once: true, when: { flag: 'babacar_rendu' }, line: 'On est quittes, toi et moi. Presque.' },
+    ],
     memories: [
       { when: { flag: 'babacar_doit' }, text: 'Tu lui as payé son repas à la Maïga' },
       { when: { flag: 'babacar_rendu' }, text: 'T’a rendu la pareille' },
       { when: { flag: 'fete_baobab' }, text: 'A fêté sa victoire avec toi' },
+      { when: { bout: { res: 'V', within: 14 } }, text: 'A fêté ta victoire' },
+      { when: { bout: { res: 'D', within: 14 } }, text: 'T’a soutenu après ta défaite' },
     ],
   },
   {
@@ -236,6 +296,8 @@ export const PROFILES: Profile[] = [
     sells: [{ id: 'sucre', label: 'Sucre et thé pour l’attaya', detail: 'Un paquet de sucre, un paquet de thé vert', cost: 300, needs: { moral: 2 }, seconds: 1.5, counter: 'sucre', flags: [] }],
     perk: { id: 'sucre_voisin', label: 'Sucre et thé · prix de voisin', detail: 'Pour l’attaya · Mamadou te fait le prix des habitués', cost: 200, needs: { moral: 2 }, seconds: 1.5, counter: 'sucre', flags: ['regular_mamadou', 'mamadou_trust'] },
     reactions: [
+      { when: { bout: { res: 'V', within: 2 } }, line: 'J’ai entendu pour ton combat ! Le quartier est fier de toi.' },
+      { when: { bout: { res: 'D', within: 2 } }, line: 'Courage pour ton combat. Passe prendre du sucre : cette fois, c’est pour la maison.' },
       { when: { flag: 'kadiatou_carnet' }, line: 'Kadiatou m’a raconté que tu parles de mon carnet. Méfie-toi : j’y note aussi les moqueurs.' },
       { when: { flag: 'info_livraison', noBeat: 'mamadou_livraison' }, line: 'Alors, ces sacs de riz ? Ils ne vont pas marcher tout seuls jusque chez Mame.' },
       { when: { act: ['attaya'] }, line: 'Ibou met trop de sucre. Je le lui dis depuis vingt ans, il ne m’écoute pas.' },
@@ -245,10 +307,19 @@ export const PROFILES: Profile[] = [
       { when: {}, line: `${say('Dalal ak jàmm')} ! Entre, regarde. Tout ce qui est noté dans ce carnet est payé… presque tout.` },
     ],
     intros: [{ to: 'kadiatou', when: [{ regular: true }, { flag: 'mamadou_trust' }], flag: 'intro_kadiatou', line: 'Ma nièce Kadiatou étudie à Fann. Elle cherche des gens pour son enquête sur les boutiques. Passe à la place des étudiants, dis-lui que c’est moi qui t’envoie.' }],
+    walkup: [
+      { id: 'won', when: { bout: { res: 'V', within: 2 } }, line: 'J’ai entendu pour ton combat ! Le quartier est fier.' },
+      { id: 'lost', when: { bout: { res: 'D', within: 2 } }, line: 'Courage pour ton combat. Passe prendre du sucre, c’est pour la maison.' },
+      { id: 'rice', once: true, when: { flag: 'mamadou_trust' }, line: 'Le riz est arrivé à temps, grâce à toi. Merci !' },
+      { id: 'price', when: { flag: 'mamadou_trust', regular: true }, line: 'Prix de voisin pour toi, comme toujours.' },
+      { id: 'tea', when: { regular: true, hours: [16, 22] }, line: 'Le sucre pour l’attaya, c’est moi. Ibou te garde une place.' },
+    ],
     memories: [
       { when: { flag: 'info_livraison' }, text: 'T’a parlé d’une livraison pendant l’attaya' },
       { when: { flag: 'mamadou_trust' }, text: 'A noté ton nom « du bon côté » du carnet' },
       { when: { flag: 'kadiatou_carnet' }, text: 'Sait que tu te moques de son carnet' },
+      { when: { bout: { res: 'V', within: 14 } }, text: 'A fêté ta victoire' },
+      { when: { bout: { res: 'D', within: 14 } }, text: 'T’a soutenu après ta défaite' },
     ],
   },
   {

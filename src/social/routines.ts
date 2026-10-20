@@ -30,6 +30,8 @@ export interface PlaceSpec {
   approach?: [number, number][];
   /** Where the People app says they are. */
   label: string;
+  /** A name for the place when `at` is 'abs' (a fixed spot): what a situation's `at` names (src/social/situations.ts). */
+  id?: string;
 }
 export interface Slot { from: number; to: number; place: PlaceSpec; act: Activity }
 export interface Routine {
@@ -53,7 +55,7 @@ const PIK = {
   attaya1: P('city:square', 'sur la grand-place, à l’attaya', { ox: -0.1, oz: -2.4, yaw: PI, sit: true, stool: true }),
   attaya2: P('city:square', 'sur la grand-place, à l’attaya', { ox: 1.1, oz: -2.4, yaw: PI, sit: true, stool: true }),
   maigaStool: P('maiga', 'à la Maïga du marché', { ox: 3.2, oz: -0.5, yaw: -PI / 2, sit: true, stool: true }),
-  counter: P('abs', 'derrière le comptoir de la Boutique Diallo', { ox: -105, oz: 80.1, yaw: 0, approach: PIKINE_SHOP_IN }),
+  counter: P('abs', 'derrière le comptoir de la Boutique Diallo', { id: 'boutique', ox: -105, oz: 80.1, yaw: 0, approach: PIKINE_SHOP_IN }),
   counterStool: P('abs', 'à la boutique (il mange derrière le comptoir)', { ox: -106.6, oz: 79.9, yaw: 0, sit: true, stool: true, approach: PIKINE_SHOP_IN }),
 };
 
@@ -66,7 +68,7 @@ export const ROUTINES: Routine[] = [
       S(0, 7, PIK.courtyard('chez lui (il dort)'), 'home'),
       S(7, 9.5, P('cafe', 'au café Touba des Parcelles', { bench: { n: 0, side: -1 } }), 'eat'),
       S(9.5, 11, PIK.courtyard('devant chez lui : il reçoit les voisins'), 'chat'),
-      S(11, 13, P('abs', 'à la Boutique Diallo, chez Mamadou', { ox: -104.5, oz: 82.6, yaw: PI, approach: [[-99, 86]] }), 'chat'),
+      S(11, 13, P('abs', 'à la Boutique Diallo, chez Mamadou', { id: 'boutique', ox: -104.5, oz: 82.6, yaw: PI, approach: [[-99, 86]] }), 'chat'),
       S(13, 15, P('maiga', 'à la Maïga du marché (déjeuner)', { maiga: -1 }), 'eat'),
       S(15, 17, PIK.courtyard('devant chez lui (sieste à l’ombre)'), 'rest'),
       S(17, 22, PIK.attaya1, 'attaya'),
@@ -77,9 +79,9 @@ export const ROUTINES: Routine[] = [
     id: 'modou', hub: 'pikine',
     slots: [
       S(0, 7, abs(113.6, -20, 'chez lui, derrière le garage', { yaw: -PI / 2 }), 'home'),
-      S(7, 13, P('abs', 'derrière son établi, au Garage Modou', { ox: 98.84, oz: -11.1, yaw: 0, approach: GARAGE_IN }), 'work'),
+      S(7, 13, P('abs', 'derrière son établi, au Garage Modou', { id: 'garage', ox: 98.84, oz: -11.1, yaw: 0, approach: GARAGE_IN }), 'work'),
       S(13, 15, P('maiga', 'à la Maïga du marché (déjeuner)', { maiga: 1 }), 'eat'),
-      S(15, 19, P('abs', 'derrière son établi, au Garage Modou', { ox: 98.84, oz: -11.1, yaw: 0, approach: GARAGE_IN }), 'work'),
+      S(15, 19, P('abs', 'derrière son établi, au Garage Modou', { id: 'garage', ox: 98.84, oz: -11.1, yaw: 0, approach: GARAGE_IN }), 'work'),
       S(19, 22, PIK.attaya2, 'attaya'),
       S(22, 24, abs(113.6, -20, 'chez lui, derrière le garage', { yaw: -PI / 2 }), 'home'),
     ],

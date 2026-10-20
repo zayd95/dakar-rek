@@ -3,6 +3,7 @@ import type { GameState } from '../core/state';
 import { Relations, PLAYER } from './relations';
 import { applyEffects, type Effects } from './beats';
 import { say } from '../i18n/wolof';
+import { boutWithin, isRegular } from './memory';
 
 /**
  * Replayable everyday situations (one per city day each): a short branching scene with a choice and a consequence
@@ -56,14 +57,71 @@ export const SITUATIONS: Situation[] = [
     detail: 'Situation · le thé du soir',
     text: x => {
       const guest = x.present.has('mamadou') ? ' Mamadou Diallo est là avec un paquet de sucre — « pour équilibrer, dit-il, Ibou sucre trop ».' : x.present.has('modou') ? ' Modou, encore en bleu de travail, garde la place à côté de lui.' : '';
-      return (x.times === 0 ? `Sur la grand-place, Ibou fait chauffer la théière. « ${say('Toogal')}, le premier verre est presque prêt. »` : '« Encore toi ! Tu deviens un habitué de mon attaya. »') + guest;
+      const fight = boutWithin(x.s, x.day, 'V', 2) ? ' Les verres se lèvent : « Le lutteur est là ! »' : boutWithin(x.s, x.day, 'D', 2) ? ' Ibou te tend un verre sans rien dire : on ne parle pas d’un combat perdu avant le deuxième thé.' : '';
+      return (x.times === 0 ? `Sur la grand-place, Ibou fait chauffer la théière. « ${say('Toogal')}, le premier verre est presque prêt. »` : '« Encore toi ! Tu deviens un habitué de mon attaya. »') + fight + guest;
     },
     choices: [
       { id: 'mousse', label: 'Proposer de faire la mousse', reply: x => (x.times === 0 || x.last !== 'mousse' ? 'Ibou goûte et grimace : « Trop de sucre ! » Tout le monde rit. « Mamadou va encore dire que c’est ma faute. »' : '« Tu progresses. Encore quelques soirs et je te laisse la théière. »'), effects: { rel: [[P, 'ibou', 4]], needs: { social: 12, moral: 6 } } },
       { id: 'nouvelles', label: 'Écouter les nouvelles du quartier', show: x => x.present.has('mamadou'), reply: 'Mamadou baisse la voix : « Thierno ne peut pas quitter le comptoir et Mame Diarra attend son riz. Si tu as des bras, passe à la boutique. »', effects: { rel: [[P, 'mamadou', 3], [P, 'ibou', 2]], needs: { social: 10 }, flags: ['info_livraison'] } },
       { id: 'cousin', label: 'Écouter les nouvelles du quartier', show: x => !x.present.has('mamadou'), reply: 'Ibou baisse la voix : « Mon cousin Ousmane, au port de Ngor, cherche des gens sérieux pour la pirogue du matin. Dis-lui que tu viens de ma part. »', effects: { rel: [[P, 'ibou', 4]], needs: { social: 10 }, flags: ['info_ousmane'] } },
       { id: 'sucre', label: 'Offrir le sucre acheté chez Mamadou', show: x => (x.s.data.counters.sucre ?? 0) > 0, uses: 'sucre', reply: x => (x.present.has('mamadou') ? 'Mamadou reconnaît le paquet : « C’est mon sucre ! Au moins, il revient à la maison. »' : `« ${say('Jërëjëf')} ! Le sucre de Mamadou… Il va dire que je lui fais de la publicité. »`), effects: { rel: [[P, 'ibou', 6], [P, 'mamadou', 3]], needs: { social: 14, moral: 8 } } },
+      { id: 'raconter', label: 'Raconter ton dernier combat', show: x => boutWithin(x.s, x.day, 'V', 2) || boutWithin(x.s, x.day, 'D', 2),
+        reply: x => (boutWithin(x.s, x.day, 'V', 2) ? 'Tu racontes la prise, le public, le bruit. Modou frappe dans ses mains, Ibou hoche la tête : « Voilà ce que je disais. »' : 'Tu racontes sans te ménager. Ibou verse le deuxième verre : « Celui qui raconte sa défaite a déjà commencé à gagner. »'),
+        effects: { rel: [[P, 'ibou', 2], [P, 'modou', 1]], needs: { social: 8, moral: 4 } } },
       { id: 'partir', label: 'Partir avant la fin', reply: `« Déjà ? On ne se lève pas au milieu de l’attaya, voyons… Bon, va. ${say('Ba ci kanam')} : on te garde ton verre. »`, effects: { rel: [[P, 'ibou', -1]] } },
+    ],
+  },
+  {
+    id: 'boutique_comptoir', title: 'Au comptoir de la Boutique Diallo', hub: 'pikine', host: 'mamadou', with: ['ibou'], at: 'boutique', hours: [9, 19],
+    detail: 'Un moment au comptoir',
+    text: x => {
+      const ibou = x.present.has('ibou') ? ' Tonton Ibou, accoudé au comptoir, discute le prix du sucre.' : '';
+      if (boutWithin(x.s, x.day, 'V', 2)) return `Mamadou lève les yeux : « Les clients ne parlent que de ton combat ! »${ibou}`;
+      if (boutWithin(x.s, x.day, 'D', 2)) return `Mamadou pousse un verre de thé vers toi : « Un combat perdu, ça arrive. Ici, personne ne t’en veut. »${ibou}`;
+      if (x.r.has('mamadou_trust') && isRegular(x.s, 'mamadou')) return `« Le riz que tu as livré s’est vendu comme du pain ! » Mamadou te fait de la place derrière le comptoir.${ibou}`;
+      if (isRegular(x.s, 'mamadou')) return (x.times > 0 ? '« Encore toi ! Le quartier passe par ici, et toi aussi, maintenant. »' : '« L’habitué ! » Mamadou pousse un tabouret.') + ibou;
+      return `Mamadou range des paquets de thé. « ${say('Ana waa kër gi ?')} Tu cherches quelque chose, ou tu regardes ? »${ibou}`;
+    },
+    choices: [
+      { id: 'nouvelles', label: 'Écouter les nouvelles du comptoir', reply: x => (x.present.has('ibou') ? 'Ibou baisse la voix : « Ce soir, attaya sur la grand-place. Mamadou apporte le sucre, et moi la théière. »' : 'Mamadou compte ses billets : « Ce soir, Ibou fait l’attaya sur la grand-place. Passe, il y a toujours un verre pour un visage connu. »'), effects: { needs: { social: 7, moral: 3 }, rel: [[P, 'mamadou', 1]] } },
+      { id: 'ranger', label: 'Aider à ranger les étagères', reply: x => (isRegular(x.s, 'mamadou') ? '« Voilà qui est fait. Tu connais la boutique mieux que mon neveu ! »' : '« Merci, ça m’évite de monter sur l’escabeau. »'), effects: { needs: { energie: -6, moral: 4 }, rel: [[P, 'mamadou', 2]], counter: 'boutique_help' } },
+      { id: 'the', label: 'Accepter le premier verre', show: x => isRegular(x.s, 'mamadou'), reply: '« Le premier verre est pour toi, c’est la règle de la maison. »', effects: { needs: { moral: 6, social: 5 } } },
+      { id: 'passer', label: 'Juste passer', reply: '« Reviens quand tu veux. »', effects: {} },
+    ],
+  },
+  {
+    id: 'gargote_midi', title: 'Le service de midi chez Mame Diarra', hub: 'pikine', host: 'mame', with: ['ablaye'], at: 'gargote', hours: [11, 15],
+    detail: 'Un moment à la gargote',
+    text: x => {
+      const coach = x.present.has('ablaye') ? ' Coach Ablaye mange au bout du banc, sans un mot de trop.' : '';
+      if (boutWithin(x.s, x.day, 'V', 2)) return `Mame t’apporte une louche de plus avant que tu demandes : « Le lutteur ! Mange, il te faut des forces. »${coach}`;
+      if (boutWithin(x.s, x.day, 'D', 2)) return `Mame te regarde longuement, puis pose un plat devant toi : « Mange. Un combat perdu, ça se digère avec du ceebu. »${coach}`;
+      if (x.r.has('mame_helped') && x.times === 0) return `« Ta place est gardée ! » Mame essuie le bout du banc de son pagne.${coach}`;
+      if (isRegular(x.s, 'mame')) return `La salle est pleine. Mame te fait un signe : « Comme d’habitude ? Assieds-toi, ${say('sama doom')}. »${coach}`;
+      return `Midi à la gargote : les assiettes passent, les voix montent. Mame te jette un coup d’œil : « Une place au fond, si tu ne fais pas de bruit. »${coach}`;
+    },
+    choices: [
+      { id: 'ecouter', label: 'Prendre une place et écouter la salle', reply: x => (x.present.has('ablaye') ? 'À côté, Ablaye parle de patience, de sable et de respect. Tu manges sans parler, et tu retiens tout.' : 'Autour de toi, on parle de la pluie, des prix et du prochain combat. Tu te sens un peu du quartier.'), effects: { needs: { social: 8, moral: 4 } } },
+      { id: 'service', label: 'Donner un coup de main au service', reply: x => (x.r.has('mame_helped') ? 'Mame te glisse une cuillère de ceebu : « Pour toi, pas pour les clients. »' : 'Mame hoche la tête : « Tu portes bien les plats. Reviens. »'), effects: { needs: { energie: -8, moral: 5, faim: 8 }, rel: [[P, 'mame', 2]], counter: 'gargote_help' } },
+      { id: 'coach', label: 'Parler d’entraînement avec Ablaye', show: x => x.present.has('ablaye'), reply: x => (boutWithin(x.s, x.day, 'V', 2) || boutWithin(x.s, x.day, 'D', 2) ? '« J’ai entendu pour ton combat. On en parle demain, à l’écurie, quand la tête sera claire. »' : '« Viens à l’écurie quand tu veux. L’entraînement ne ment pas. »'), effects: { needs: { social: 4 }, rel: [[P, 'ablaye', 2]] } },
+      { id: 'passer', label: 'Juste dire bonjour', reply: '« À bientôt, alors. »', effects: {} },
+    ],
+  },
+  {
+    id: 'garage_etabli', title: 'L’établi du Garage Modou', hub: 'pikine', host: 'modou', with: [], at: 'garage', hours: [7, 19],
+    detail: 'Un moment au garage',
+    text: x => {
+      if (boutWithin(x.s, x.day, 'V', 2)) return 'Modou t’accueille les mains noires de cambouis : « Alors, champion ! Tu pousses les voitures comme les adversaires ? »';
+      if (boutWithin(x.s, x.day, 'D', 2)) return 'Modou essuie ses mains : « Un combat perdu, ça se répare, comme un moteur. On ne jette pas une voiture pour une panne. »';
+      if (x.r.has('babacar_rendu')) return '« Babacar est passé : il dit que tu es un homme de parole. » Modou sourit sans lever les yeux de son moteur.';
+      if (x.r.has('modou_trust') && x.times === 0) return `« ${say('Kaay fi')}, mon bon aide ! Tiens-moi cette lampe, j’ai une boîte de vitesses qui boude. »`;
+      if (isRegular(x.s, 'modou')) return 'Modou ne se retourne pas : « Je t’ai entendu venir. Le garage te connaît, maintenant. »';
+      return 'Modou, sous une voiture, ne sort que ses bottes : « Passe-moi la clé de douze… non, l’autre. Ah, tu n’es pas mon apprenti. »';
+    },
+    choices: [
+      { id: 'lampe', label: 'Tenir la lampe pendant qu’il répare', reply: x => (x.r.has('modou_trust') ? '« Voilà, tu vois la panne ? Un jour tu la verras avant moi. »' : 'Tu éclaires. Modou grogne, serre, sourit : « Ça démarre ! Merci. »'), effects: { needs: { energie: -5, moral: 3 }, rel: [[P, 'modou', 2]], counter: 'garage_help' } },
+      { id: 'pannes', label: 'Écouter ses histoires de pannes', reply: x => (x.times > 0 ? '« La Peugeot du marchand ? Elle est revenue, avec le même bruit ! » Tu ris, il rit plus fort.' : '« Une fois, une voiture est arrivée en remorque… avec une chèvre dedans. » Il en rit encore.'), effects: { needs: { social: 6, moral: 3 } } },
+      { id: 'passer', label: 'Juste passer', reply: '« Repasse quand tu veux, la porte est ouverte. »', effects: {} },
     ],
   },
 ];
