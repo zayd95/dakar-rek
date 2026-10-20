@@ -53,6 +53,10 @@ export const phoneHooks: {
   tonightGo?: (key: string) => void;
   /** Profile app: one line under the name (« Une vie à Dakar », « Lutteur · Undercards »). Never a class to pick. */
   profileHeadline?: () => string;
+  /** Profile app › « Modifier mon personnage »: the character creator's screen on the current look (main.ts), without a new game. */
+  editCharacter?: () => void;
+  /** Profile app: the player's first name (presence profile). */
+  profileName?: () => string;
   /** People app: neighbours the player knows (NPC module). */
   openPeople?: () => void;
   /** Local places directory and walking destination (city module). */

@@ -1,0 +1,92 @@
+[
+  {
+    "name": "desktop: Pikine has the motorbike corner at Garage Modou",
+    "ok": true,
+    "detail": "{\"x\":110.5,\"z\":-5.3,\"delivery\":{\"x\":103.5,\"z\":-4.3,\"yaw\":1.5707963267948966},\"displays\":2,\"onSale\":null,\"card\":false}"
+  },
+  {
+    "name": "desktop: the dealer counter offers its catalogue",
+    "ok": true,
+    "detail": "{\"id\":\"moto:dealer:till\",\"name\":\"Motos · Garage Modou\",\"kind\":\"shop\",\"space\":\"street\",\"primary\":\"Voir les articles\",\"all\":[\"Voir les articles\"],\"why\":[]}"
+  },
+  {
+    "name": "desktop: the catalogue shows the Jakarta with its catalogue price",
+    "ok": true,
+    "detail": "🏍️Moto JakartaD’occasion · 125 cm³ · se gare où tu la laisses150 000 F"
+  },
+  {
+    "name": "desktop: a confirmation shows the price and the wallet before paying",
+    "ok": true,
+    "detail": "Acheter la Moto Jakarta ?Prix : 150 000 F · Ton argent : 400 000 F✅Confirmer l’achatD’occasion, livrée devant le garage, prête à rouler−150 000 F↩️Pas maintenan"
+  },
+  {
+    "name": "desktop: bought once through the asset model: −price, one wallet line, the motorbike delivered at the kerb",
+    "ok": true,
+    "detail": "{\"w0\":400000,\"w1\":250000,\"lines\":[{\"at\":1792290525330,\"label\":\"Achat : Moto Jakarta\",\"amount\":-150000}],\"rec\":{\"asset\":\"jakarta\",\"hub\":\"pikine\",\"x\":103.5,\"z\":-4.3,\"yaw\":1.571},\"asset\":{\"uid\":\"a2\",\"spec\":\"jakarta\",\"how\":\"owned\",\"since\":916.5999999999985,\"paid\":150000,\"condition\":100,\"upgrades\":[],\"leased\":false}}"
+  },
+  {
+    "name": "desktop: « Biens » lists the motorbike once (not in the listings any more)",
+    "ok": true,
+    "detail": "{\"biens\":[\"🚗Moto Jakartaà toi150 000 F\"],\"ads\":[]}"
+  },
+  {
+    "name": "desktop: it cannot be bought twice",
+    "ok": true,
+    "detail": "item dis"
+  },
+  {
+    "name": "desktop: walking up to it offers « Monter sur la moto »",
+    "ok": true,
+    "detail": "{\"id\":\"moto:parked\",\"name\":\"Ta moto Jakarta\",\"kind\":\"vehicle\",\"space\":\"street\",\"primary\":\"Monter sur la moto\",\"all\":[\"Monter sur la moto\"],\"why\":[]}"
+  },
+  {
+    "name": "desktop: on the motorbike: driver seat (astride, Ride pose), own interaction space, still in the street for the others",
+    "ok": true,
+    "detail": "{\"id\":\"jakarta\",\"name\":\"Moto Jakarta\",\"price\":150000,\"owned\":true,\"asset\":{\"uid\":\"a2\",\"spec\":\"jakarta\",\"how\":\"owned\",\"since\":916.5999999999985,\"paid\":150000,\"condition\":100,\"upgrades\":[],\"leased\":false},\"record\":{\"asset\":\"jakarta\",\"hub\":\"pikine\",\"x\":103.5,\"z\":-4.3,\"yaw\":1.571},\"here\":true,\"driving\":true,\"x\":103.5,\"z\":-4.3,\"yaw\":1.571,\"speed\":0,\"bumps\":0,\"bought\":1,\"dealer\":{\"x\":110.5,\"z\":-5.3,\"delivery\":{\"x\":103.5,\"z\":-4.3,\"yaw\":1.5707963267948966},\"displays\":2,\"onSale\":null,\"card\":false},\"space\":\"pikine:moto:jakarta\",\"presence\":\"street\",\"camera\":true,\"view\":\"chase\",\"solid\":false,\"clip\":\"Ride\"}"
+  },
+  {
+    "name": "desktop: the throttle moves the motorbike and the card shows the speed",
+    "ok": true,
+    "detail": "5.4 m, 🏍️ Moto Jakarta · 18 km/h ↑ accélérer · ↓ freiner · ← → tourner"
+  },
+  {
+    "name": "desktop: steering right turns the motorbike right",
+    "ok": true,
+    "detail": "1.57 → 1.21"
+  },
+  {
+    "name": "desktop: riding into the block stops at the wall (never inside it)",
+    "ok": true,
+    "detail": "{\"x\":103.68981641707413,\"z\":-7.318532160119299,\"bumps\":1}"
+  },
+  {
+    "name": "desktop: a Tiak Tiak delivery is picked up and handed over while riding",
+    "ok": true,
+    "detail": "{\"job\":\"pk_mame_boutique\",\"run\":\"pickup\",\"picked\":\"deliver\",\"delivered\":1,\"riding\":true}"
+  },
+  {
+    "name": "desktop: « Descendre de la moto »: standing beside it, it stays parked there",
+    "ok": true,
+    "detail": "{\"me\":{\"x\":97.28,\"y\":0.1,\"z\":-5.1499999999999995,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Boutique Diallo\"},\"moto\":{\"x\":97.5,\"z\":-4.3},\"rec\":{\"asset\":\"jakarta\",\"hub\":\"pikine\",\"x\":97.5,\"z\":-4.3,\"yaw\":1.571}}"
+  },
+  {
+    "name": "desktop: after a reload the motorbike is still owned (once, charged once) and parked where it was left",
+    "ok": true,
+    "detail": "{\"before\":{\"x\":97.5,\"z\":-4.3},\"after\":{\"x\":97.5,\"z\":-4.3},\"buys\":1,\"held\":1}"
+  },
+  {
+    "name": "desktop: reload mid-ride: parked where it was, standing beside it, not riding",
+    "ok": true,
+    "detail": "{\"mid\":{\"x\":98.19745444805864,\"z\":-4.300142052784814},\"after\":{\"x\":98.2,\"z\":-4.3},\"me3\":{\"x\":97.9772813303986,\"y\":0.1,\"z\":-5.150097227049821,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Garage Modou\"}}"
+  },
+  {
+    "name": "desktop: in another hub it is not there; back in Pikine it waits where it was",
+    "ok": true,
+    "detail": "{\"away\":false,\"back\":{\"x\":98.2,\"z\":-4.3}}"
+  },
+  {
+    "name": "desktop: no page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

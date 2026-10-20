@@ -1,0 +1,17 @@
+/* New Game: the choice of the player's body (src/ui/avatarPick.ts). Its own full-screen layer, not a sheet: it cannot be dismissed. */
+#avatarPick { position:fixed; inset:0; z-index:40; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+  padding:calc(16px + var(--sa-t)) calc(16px + var(--sa-r)) calc(16px + var(--sa-b)) calc(16px + var(--sa-l)); overflow-y:auto; overscroll-behavior:contain;
+  background:radial-gradient(120% 80% at 50% 0%, #1d3a6e 0%, #0b1530 62%); color:#fff; font-family:var(--font); touch-action:pan-y; }
+#avatarPick h1 { margin:0; font-size:15px; letter-spacing:.14em; text-transform:uppercase; color:var(--sun); font-weight:700; }
+#avatarPick h2 { margin:0; font-size:26px; line-height:1.15; font-weight:700; text-align:center; }
+#avatarPick p { margin:0; max-width:34em; text-align:center; color:rgba(255,255,255,.86); font-size:15px; line-height:1.4; }
+#avatarPick .ap-cards { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin:6px 0; }
+#avatarPick .ap-card { appearance:none; border:2px solid rgba(255,255,255,.2); background:rgba(255,255,255,.06); color:#fff; border-radius:var(--r-sheet); padding:10px 10px 12px; width:min(46vw, 196px);
+  display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; font:inherit; touch-action:manipulation; transition:transform .12s, border-color .12s, background .12s; }
+#avatarPick .ap-card img { width:100%; aspect-ratio:2/3; object-fit:cover; border-radius:12px; background:#2b3a55; display:block; }
+#avatarPick .ap-card b { font-size:18px; }
+#avatarPick .ap-card small { color:rgba(255,255,255,.75); font-size:12.5px; line-height:1.25; text-align:center; }
+#avatarPick .ap-card:hover, #avatarPick .ap-card:focus-visible { border-color:var(--sun); background:rgba(255,200,61,.12); outline:none; }
+#avatarPick .ap-card:active { transform:scale(.97); }
+#avatarPick .ap-note { font-size:12.5px; color:rgba(255,255,255,.66); }
+@media (max-height:560px) and (orientation:landscape) { #avatarPick { flex-direction:column; gap:8px; } #avatarPick h2 { font-size:20px; } #avatarPick .ap-card { width:min(22vw, 120px); padding:6px; } #avatarPick .ap-card small { display:none; } #avatarPick p { font-size:13px; } }

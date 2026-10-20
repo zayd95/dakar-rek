@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { WrestlerLook } from '../core/types';
 import { ACCESSORIES, ngembTexture, type Socket } from '../lamb/look';
@@ -9,6 +9,8 @@ import { GaitRig } from './gaitRig';
 import { joinNeck } from './neckJoin';
 import { reshapeCharacter } from './proportions';
 import { fitEyes } from './eyes';
+import type { Appearance } from './appearance';
+import { MeshyLook, makeMeshyMaterial, type MeshyUniforms } from './meshyLook';
 
 /**
  * Shared humanoid from Blender (public/assets/character_v4.glb, source assets-src/character_rig_v4.blend):
@@ -29,8 +31,39 @@ export interface PersonLook {
   hair?: 'short' | 'puff' | 'none'; beard?: number | null; // beard colour, null = none
 }
 
-let template: { scene: THREE.Object3D; clips: THREE.AnimationClip[] } | null = null;
+type Template = { scene: THREE.Object3D; clips: THREE.AnimationClip[] };
+let template: Template | null = null;
 export const humanoidReady = () => !!template;
+
+/**
+ * Other bodies on the same rig (PROOF, docs/meshy/PROOF_REPORT.md): a GLB made by scripts/meshy/transplant-to-v4-rig.mjs has the bones,
+ * sockets and clips of character_v4.glb, so the gait, the pose solvers, the strike rig and the gestures run on it unchanged. A body that
+ * is not loaded (or failed to load) falls back to the v4 body: `new Humanoid(look, 'meshy_m')` never throws when v4 is ready.
+ */
+export type BodyId = 'v4' | 'meshy_m' | 'meshy_f';
+const bodies: Partial<Record<BodyId, Template>> = {};
+/**
+ * What differs between a body's mesh and the shared rig, in four numbers (measured by proof/meshy/harness.ts against the v4 control):
+ * the scale it is drawn at; how much higher the hips sit for seated and lying poses (thicker thighs and back than v4's); how much longer
+ * its hand is than v4's mitten (a gesture that puts the wrist on a target puts the fingers beyond it); where its mouth is from the head bone;
+ * and how far below the neck socket a scarf must sit to be at its neck (the Meshy chin is lower than v4's: at the socket it covers the mouth).
+ */
+export interface BodyFit { scale: number; sitLift: number; handExtra: number; mouth: { fwd: number; up: number }; scarfDrop: number }
+export const BODY_FIT: Record<BodyId, BodyFit> = {
+  v4: { scale: 1, sitLift: 0, handExtra: 0, mouth: { fwd: 0.13, up: 0.02 }, scarfDrop: 0 },
+  meshy_m: { scale: 1, sitLift: 0.03, handExtra: 0.08, mouth: { fwd: 0.114, up: -0.023 }, scarfDrop: 0.08 },
+  meshy_f: { scale: 0.93, sitLift: 0, handExtra: 0.08, mouth: { fwd: 0.152, up: 0.008 }, scarfDrop: 0.115 },
+};
+export async function preloadBody(id: Exclude<BodyId, 'v4'>, url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return false;
+    bodies[id] = finishTemplate(await new GLTFLoader().parseAsync(await res.arrayBuffer(), ''), BODY_FIT[id].sitLift, BODY_FIT[id]);
+    return true;
+  } catch { return false; }
+}
+export const bodyReady = (id: BodyId) => id === 'v4' ? !!template : !!bodies[id];
+export function dropBody(id: Exclude<BodyId, 'v4'>) { delete bodies[id]; }
 
 export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<void> {
   try {
@@ -49,15 +82,22 @@ export async function preloadHumanoid(base = import.meta.env.BASE_URL): Promise<
     joinNeck(gltf.scene);                                    // the head joined to the body (src/actors/neckJoin.ts)
     fitEyes(gltf.scene);                                     // the iris lenses sit in the eye whites, not in front of them
     reshapeCharacter(gltf.scene);                            // shorter neck, oval face with a jaw (src/actors/proportions.ts)
-    fixSitKnees(gltf.animations);
-    fixRunClip(gltf.animations);
-    deriveJog(gltf.animations);
-    widenWalk(gltf.animations);
-    deriveKneel(gltf.animations);
-    const clips = [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations)];
-    stripStaticTracks(gltf.scene, clips);
-    template = { scene: gltf.scene, clips };
+    template = finishTemplate(gltf);
   } catch { /* box characters stay in use */ }
+}
+
+/** The steps every body shares once its head is dealt with: the clips corrected, derived and stripped (the poses solved from the rest pose). */
+function finishTemplate(gltf: GLTF, sitLift = 0, body?: { scale: number }): Template {
+  fixSitKnees(gltf.animations);
+  fixRunClip(gltf.animations);
+  deriveJog(gltf.animations);
+  widenWalk(gltf.animations);
+  deriveKneel(gltf.animations);
+  const clips = [...gltf.animations, ...buildPoseClips(gltf.scene, gltf.animations, body)];
+  if (sitLift) for (const c of clips) if (c.name === 'Sit' || c.name === 'SitFloor' || c.name === 'Lie' || c.name === 'Kneel') for (const t of c.tracks) if (t.name === 'root.position') for (let i = 1; i < t.values.length; i += 3) t.values[i] += sitLift;   // (the hips' own position is in the root's turned frame: up is its z)
+  if (body) rollPalmsInClips(gltf.scene, clips, ['Sit', 'Kneel']);
+  stripStaticTracks(gltf.scene, clips);
+  return { scene: gltf.scene, clips };
 }
 
 /**
@@ -166,7 +206,13 @@ export function widenWalk(clips: THREE.AnimationClip[]) {
  * Ride keeps the chair convention (origin SIT_HIPS under the saddle, like Sit): astride a motorbike, hands on the
  * grips and feet on the pegs of the vehicle kit's 125 cc (spec.controls.grips / pegs).
  */
-interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number]; aim: Record<string, [number, number, number]> }
+interface PoseDef { hipsY: number; hipsZ?: number; hips: [number, number, number]; aim: Record<string, [number, number, number]>;
+  /** Where the palm faces (character space), for a body whose hand has a palm (buildPoseClips `palm`): the hand is rolled about its own axis to it. v4's mitten has none. */
+  palm?: Record<string, [number, number, number]>;
+  /** Where the hands hold on (character space, for a body of scale 1): for a body whose hand has a palm, the arms are solved (two bones, elbow towards `pole`)
+   * so that the grip is where the closed hand holds it, not at the wrist as v4's mitten has it: at the point the body's `grip` extras give in the hand's own frame (the fist of the
+   * `grip` morph target) or, without them, in the middle of the palm — `along` metres from the wrist, `lift` above the skin. `drop`: the rubber grip's middle is this far below the bar's. */
+  reach?: { L: [number, number, number]; R: [number, number, number]; along: number; lift: number; drop: number; pole: [number, number, number] } }
 export const POSES: Record<PoseClip, PoseDef> = {
   // on the back, head towards −z on the pillow, one knee raised, hands resting on the belly
   Lie: {
@@ -178,6 +224,7 @@ export const POSES: Record<PoseClip, PoseDef> = {
       thighL: [0.12, 0.3, 1], shinL: [0.04, -0.33, 1], footL: [0.12, 0.95, 0.28],
       thighR: [-0.08, 0, 1], shinR: [-0.03, 0, 1], footR: [-0.15, 0.95, 0.25],
     },
+    palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // resting on the belly
   },
   // cross-legged on a mat, rug or cushion (attaya circles, floor seats), hands on the knees
   SitFloor: {
@@ -189,6 +236,7 @@ export const POSES: Record<PoseClip, PoseDef> = {
       upper_armL: [0.27, -0.88, 0.42], forearmL: [0.39, -0.83, 0.39], handL: [0.2, -0.5, 0.85],
       upper_armR: [-0.27, -0.88, 0.42], forearmR: [-0.39, -0.83, 0.39], handR: [-0.2, -0.5, 0.85],
     },
+    palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // flat on the knees
   },
   // astride a two-wheeler: leaning forward, hands on the handlebar grips, knees against the tank, feet on the pegs
   Ride: {
@@ -200,15 +248,75 @@ export const POSES: Record<PoseClip, PoseDef> = {
       thighL: [0.2, -0.35, 0.91], shinL: [-0.05, -0.9, -0.43], footL: [0.05, -0.2, 1],
       thighR: [-0.2, -0.35, 0.91], shinR: [0.05, -0.9, -0.43], footR: [-0.05, -0.2, 1],
     },
+    palm: { handL: [0, -1, 0], handR: [0, -1, 0] },   // over the grips, the fingers round them
+    reach: { L: [0.36, 0.66, 0.55], R: [-0.36, 0.66, 0.55], along: 0.085, lift: 0.03, drop: 0.02, pole: [0.5, -1, -0.1] },   // the 125 cc's grips (vehicleSpec controls.grips relative to the driver's seat)
   },
 };
+
+/** Where each hand's palm faces in the bone's own frame: at rest the palm of a body that has one turns to the thigh (the fitted frame of scripts/meshy/relax-hand.mjs). Needs the scene at rest. */
+function restPalms(scene: THREE.Object3D) {
+  scene.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(scene.matrixWorld).invert(), out = new Map<string, THREE.Vector3>();
+  for (const side of ['L', 'R']) {
+    const hand = scene.getObjectByName(`hand${side}`); if (!hand) continue;
+    const q = new THREE.Quaternion(); new THREE.Matrix4().multiplyMatrices(inv, hand.matrixWorld).decompose(new THREE.Vector3(), q, new THREE.Vector3());
+    const along = new THREE.Vector3(0, 1, 0).applyQuaternion(q), inward = new THREE.Vector3(side === 'L' ? -1 : 1, 0, 0);
+    out.set(`hand${side}`, inward.sub(along.multiplyScalar(inward.dot(along))).normalize().applyQuaternion(q.clone().invert()));
+  }
+  return out;
+}
+
+/** Where the middle of a handlebar grip sits in each hand bone's own frame when the hand is closed on it (the body's `grip` extras, written by scripts/meshy/transplant-to-v4-rig.mjs), or none. */
+function restGrips(scene: THREE.Object3D) {
+  const out = new Map<string, THREE.Vector3>();
+  for (const side of ['L', 'R']) { const g = scene.getObjectByName(`hand${side}`)?.userData?.grip; if (Array.isArray(g) && g.length === 3) out.set(`hand${side}`, new THREE.Vector3(g[0], g[1], g[2])); }
+  return out;
+}
+
+/**
+ * Clips made for v4's mitten (Sit, Kneel: hands on the thighs) turn a hand that has a palm face up. Rolls the forearm and the hand, half each, about their own
+ * axes so the palm faces `want` (character space) at the clip's first frame; every keyframe gets the same roll. The scene is left as it was found.
+ */
+function rollPalmsInClips(scene: THREE.Object3D, clips: THREE.AnimationClip[], names: string[], want = new THREE.Vector3(0, -1, 0)) {
+  const rest = restPalms(scene), bones: THREE.Object3D[] = [];
+  scene.traverse(o => bones.push(o));
+  const saved = bones.map(o => [o.position.clone(), o.quaternion.clone(), o.scale.clone()] as const);
+  const inv = new THREE.Matrix4().copy(scene.matrixWorld).invert(), roll: Record<string, number> = {};
+  for (const clip of clips.filter(c => names.includes(c.name))) {
+    const mixer = new THREE.AnimationMixer(scene); mixer.clipAction(clip).play(); mixer.setTime(0); scene.updateMatrixWorld(true);
+    for (const side of ['L', 'R']) {
+      const hand = scene.getObjectByName(`hand${side}`), pl = rest.get(`hand${side}`); if (!hand || !pl) continue;
+      const q = new THREE.Quaternion(); new THREE.Matrix4().multiplyMatrices(inv, hand.matrixWorld).decompose(new THREE.Vector3(), q, new THREE.Vector3());
+      roll[`${clip.name}|${side}`] = palmAngle(q, pl, want);
+    }
+    mixer.stopAllAction(); mixer.uncacheRoot(scene);
+  }
+  bones.forEach((o, i) => { o.position.copy(saved[i][0]); o.quaternion.copy(saved[i][1]); o.scale.copy(saved[i][2]); }); scene.updateMatrixWorld(true);
+  for (const clip of clips) for (const t of clip.tracks) {
+    const m = /^(forearm|hand)([LR])\.quaternion$/.exec(t.name), a = m && roll[`${clip.name}|${m[2]}`];
+    if (!m || !a) continue;
+    const r = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a / 2), q = new THREE.Quaternion(), v = t.values as unknown as number[];
+    for (let i = 0; i < v.length; i += 4) { q.set(v[i], v[i + 1], v[i + 2], v[i + 3]).multiply(r); v[i] = q.x; v[i + 1] = q.y; v[i + 2] = q.z; v[i + 3] = q.w; }
+  }
+}
+
+/** The angle (rad) about the bone's own axis (+Y of world orientation `w`) that brings its palm (the bone-local vector `palmLocal`) to face `want` as nearly as that allows. */
+function palmAngle(w: THREE.Quaternion, palmLocal: THREE.Vector3, want: THREE.Vector3): number {
+  const axis = new THREE.Vector3(0, 1, 0).applyQuaternion(w).normalize(), flat = (v: THREE.Vector3) => v.clone().sub(axis.clone().multiplyScalar(v.dot(axis)));
+  const a = flat(palmLocal.clone().applyQuaternion(w)), b = flat(want.clone().normalize());
+  if (a.lengthSq() < 1e-8 || b.lengthSq() < 1e-8) return 0;
+  return Math.atan2(axis.dot(new THREE.Vector3().crossVectors(a, b)), a.dot(b));
+}
+/** `w` turned about its own axis by `angle`. */
+const rolled = (w: THREE.Quaternion, angle: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0).applyQuaternion(w).normalize(), angle).multiply(w);
 
 /**
  * One-frame clips for POSES, solved from the rest pose of `scene` (the rig as GLTFLoader gives it). Every track of
  * `like` (an existing clip, so cross-fades cover every bone) gets a value: the posed rotation where the pose aims the
  * bone, the rest value otherwise; the hips also get their position.
  */
-export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip[]): THREE.AnimationClip[] {
+export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip[], body?: { scale: number }): THREE.AnimationClip[] {
+  const palm = !!body;
   const like = clips.find(c => c.name === 'Idle') ?? clips[0];
   const rootBone = scene.getObjectByName('root'), hipsBone = scene.getObjectByName('hips');
   if (!like || !rootBone || !hipsBone) return [];
@@ -216,8 +324,14 @@ export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip
   const sceneInv = new THREE.Matrix4().copy(scene.matrixWorld).invert();
   const inScene = (o: THREE.Object3D) => { const m = new THREE.Matrix4().multiplyMatrices(sceneInv, o.matrixWorld), q = new THREE.Quaternion(); m.decompose(new THREE.Vector3(), q, new THREE.Vector3()); return q; };
   const Y = new THREE.Vector3(0, 1, 0);
+  const restPalm = palm ? restPalms(scene) : new Map<string, THREE.Vector3>(), restGrip = palm ? restGrips(scene) : new Map<string, THREE.Vector3>();
+  const restPos = (o: THREE.Object3D) => new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().multiplyMatrices(sceneInv, o.matrixWorld));
+  const restLen = (a: string, b: string) => { const A = scene.getObjectByName(a), B = scene.getObjectByName(b); return A && B ? restPos(A).distanceTo(restPos(B)) : 0.27; };
+  const L1 = restLen('upper_armL', 'forearmL'), L2 = restLen('forearmL', 'handL');
   return (Object.keys(POSES) as PoseClip[]).map(name => {
     const def = POSES[name];
+    const pos = new Map<THREE.Object3D, THREE.Vector3>([[hipsBone, new THREE.Vector3(0, def.hipsY, def.hipsZ ?? 0)]]);
+    const ikAim = new Map<string, THREE.Vector3>();
     const world = new Map<THREE.Object3D, THREE.Quaternion>(), local = new Map<THREE.Object3D, THREE.Quaternion>();
     const parentQ = inScene(hipsBone.parent!);
     const hq = new THREE.Quaternion().setFromEuler(new THREE.Euler(...def.hips, 'XYZ'));
@@ -226,8 +340,37 @@ export function buildPoseClips(scene: THREE.Object3D, clips: THREE.AnimationClip
       for (const c of o.children) {
         const pw = world.get(o)!;
         let w = pw.clone().multiply(c.quaternion);
-        const aim = def.aim[c.name];
-        if (aim) w = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(w), new THREE.Vector3(...aim).normalize()).multiply(w);
+        const cp = pos.get(o)!.clone().add(c.position.clone().normalize().multiplyScalar(restPos(o).distanceTo(restPos(c))).applyQuaternion(pw));
+        pos.set(c, cp);
+        if (palm && def.reach && /^upper_arm[LR]$/.test(c.name)) {
+          // two-bone solve of the arm to the grip (see PoseDef.reach)
+          const side = c.name.slice(-1), r = def.reach, k = body!.scale, sgn = side === 'L' ? 1 : -1;
+          const hand = new THREE.Vector3(...def.aim[`hand${side}`]).normalize(), grip = new THREE.Vector3(...r[side as 'L' | 'R']).divideScalar(k), held = restGrip.get(`hand${side}`);
+          let wrist: THREE.Vector3;
+          if (held) {                                                   // the closed hand's own grip point: the hand's orientation is fixed by its aim and its palm, so the wrist follows
+            const q0 = new THREE.Quaternion().setFromUnitVectors(Y, hand), want = def.palm?.[`hand${side}`];
+            const qh = want ? rolled(q0, palmAngle(q0, restPalm.get(`hand${side}`)!, new THREE.Vector3(...want))) : q0;
+            wrist = grip.add(new THREE.Vector3(0, -r.drop / k, 0)).sub(held.clone().applyQuaternion(qh));
+          } else wrist = grip.add(new THREE.Vector3(0, r.lift, 0)).addScaledVector(hand, -r.along);
+          const u = wrist.clone().sub(cp), d = Math.min(Math.max(u.length(), Math.abs(L1 - L2) + 1e-3), L1 + L2 - 1e-3); u.normalize();
+          const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d), hgt = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+          const pole = new THREE.Vector3(r.pole[0] * sgn, r.pole[1], r.pole[2]); pole.addScaledVector(u, -pole.dot(u)).normalize();
+          const elbow = cp.clone().addScaledVector(u, a).addScaledVector(pole, hgt);
+          ikAim.set(c.name, elbow.clone().sub(cp).normalize()); ikAim.set(`forearm${side}`, cp.clone().addScaledVector(u, d).sub(elbow).normalize());
+        }
+        const fixed = def.aim[c.name], aim = ikAim.get(c.name) ?? (fixed ? new THREE.Vector3(...fixed).normalize() : null);
+        if (aim) w = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(w), aim).multiply(w);
+        const want = palm ? def.palm?.[c.name] : undefined;
+        if (want) w = rolled(w, palmAngle(w, restPalm.get(c.name)!, new THREE.Vector3(...want)));
+        else if (palm && /^forearm[LR]$/.test(c.name) && def.palm) {
+          // the forearm takes half of the roll the hand will need, so the wrist is not wrung by all of it
+          const hand = c.children.find(k => k.name === `hand${c.name.slice(-1)}`), hAim = hand && def.aim[hand.name], hWant = hand && def.palm[hand.name];
+          if (hand && hAim && hWant) {
+            let hw = w.clone().multiply(hand.quaternion);
+            hw = new THREE.Quaternion().setFromUnitVectors(Y.clone().applyQuaternion(hw), new THREE.Vector3(...hAim).normalize()).multiply(hw);
+            w = rolled(w, palmAngle(hw, restPalm.get(hand.name)!, new THREE.Vector3(...hWant)) / 2);
+          }
+        }
         world.set(c, w); local.set(c, pw.clone().invert().multiply(w));
         visit(c);
       }
@@ -392,6 +535,8 @@ export class Humanoid {
   private lipsMat = new THREE.MeshLambertMaterial({ color: 0x3a1a12 });
   private beardMat = new THREE.MeshLambertMaterial({ color: 0x1a1414 });
   private morphed: THREE.Mesh[] = [];
+  /** The mesh that carries the 'grip' morph target (the fist for a handlebar, Meshy bodies) and how far it is closed (0–1). */
+  private gripMesh: THREE.Mesh | null = null; private gripW = 0;
   private accessoryMeshes: THREE.Object3D[] = [];
   clipName: Clip | null = null;
   /** When set, city movement does not change the clip (emotes, talking, sitting). Idle, Walk and Run are not held: the gait runs. */
@@ -431,29 +576,45 @@ export class Humanoid {
   overlay: ((h: Humanoid, dt: number) => void) | null = null;
   private underOverlay: Float64Array | null = null;
 
-  constructor(look?: PersonLook) {
-    if (!template) throw new Error('character asset not loaded');
-    this.root = cloneSkinned(template.scene);
+  /** The recolour and hair variants of a Meshy body (the character creator); null on v4. */
+  private meshy: MeshyLook | null = null;
+  /** The look the creator chose, on a Meshy body (a v4 body has none: the creator is for the Meshy identities). null: the body as it was. */
+  setAppearance(a: Appearance | null) { this.meshy?.apply(a); }
+  get appearance(): Appearance | null { return this.meshy?.applied ?? null; }
+  /** The body drawn: the one asked for when it is loaded, else v4. */
+  readonly body: BodyId;
+  /** How this body's mesh differs from the rig (BODY_FIT); v4's own is all zeros. */
+  readonly fit: BodyFit;
+
+  constructor(look?: PersonLook, body: BodyId = 'v4') {
+    const t = (body !== 'v4' ? bodies[body] : undefined) ?? template;
+    if (!t) throw new Error('character asset not loaded');
+    this.body = t === template ? 'v4' : body; this.fit = BODY_FIT[this.body];
+    this.root = cloneSkinned(t.scene);
     this.group.add(this.root); this.group.name = 'humanoid_v2';
     this.skinMat = new THREE.MeshLambertMaterial({ color: 0x5b3420, side: THREE.DoubleSide });
     const hair = new THREE.MeshLambertMaterial({ color: 0x141011, side: THREE.DoubleSide });
+    let shell: THREE.Mesh | null = null, shellU: MeshyUniforms | null = null;
     this.root.traverse(o => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
       m.castShadow = true; m.frustumCulled = false;
       const key = CLOTH.find(n => m.name.startsWith(n));
       if (/^Head\w*_\d+$/.test(m.name)) this.face.push(m);
-      if (m.morphTargetDictionary) this.morphed.push(m);
+      if (m.morphTargetDictionary) { this.morphed.push(m); if (m.morphTargetDictionary.grip !== undefined) this.gripMesh = m; }
       const src = m.material as THREE.MeshStandardMaterial;
       if (key) { this.parts.set(key, m); if (key.startsWith('Hair_')) m.material = hair; if (key === 'Beard') m.material = this.beardMat; }
+      else if (this.body !== 'v4' && src.map) { const mm = makeMeshyMaterial(src.map, this.body === 'meshy_f'); m.material = mm.mat; shell = m; shellU = mm.u; }   // a body that carries its own texture (the creator's recolour is in its shader)
       else if (src.name.startsWith('Skin')) m.material = this.skinMat;
       else if (src.name === 'Hair') m.material = hair;
       else if (src.name === 'Lips') m.material = this.lipsMat;
       else m.material = new THREE.MeshLambertMaterial({ color: src.color });   // eyes
     });
     this.mixer = new THREE.AnimationMixer(this.root);
-    for (const c of template.clips) this.actions.set(c.name, this.mixer.clipAction(c));
+    for (const c of t.clips) this.actions.set(c.name, this.mixer.clipAction(c));
+    if (shell && shellU) this.meshy = new MeshyLook(this.root, this.bone('head'), shell, shellU);
     if (look) this.setLook(look);
+    if (this.body !== 'v4') this.group.scale.setScalar(this.fit.scale);
   }
 
   /** A rig bone (`hand.R`, `forearm.R`, `upper_arm.R`, `head`, `chest`…) for props and gestures. */
@@ -479,7 +640,7 @@ export class Humanoid {
     if (l.hat === 'headwrap') set('Cloth_Headwrap', clothMat(l.hatColor ?? l.top, l.pattern === 'wax' ? 'wax' : 'uni', l.accent ?? 0xf6e7c1));
     const shoes = this.parts.get('Cloth_Shoes'); if (shoes) shoes.material = clothMat(l.shoes ?? 0x3a2a1e);
     this.show(vis);
-    this.group.scale.set(l.female ? 0.96 : 1, l.female ? 0.95 : 1, l.female ? 0.96 : 1);
+    if (this.body === 'v4') this.group.scale.set(l.female ? 0.96 : 1, l.female ? 0.95 : 1, l.female ? 0.96 : 1);
   }
 
   /** Body shape via morph targets shared by the body and every fitted garment. */
@@ -549,6 +710,7 @@ export class Humanoid {
       if (!this.overlay) this.underOverlay = null;
     }
     this.locomote(dt, speed);
+    if (this.gripMesh) this.closeFist(dt);
     if (!this.overlay) return;
     const keep = (this.underOverlay ??= new Float64Array(b.length * 7));
     for (let i = 0, o = 0; i < b.length; i++, o += 7) {
@@ -556,6 +718,14 @@ export class Humanoid {
       keep[o] = q.x; keep[o + 1] = q.y; keep[o + 2] = q.z; keep[o + 3] = q.w; keep[o + 4] = p.x; keep[o + 5] = p.y; keep[o + 6] = p.z;
     }
     this.overlay(this, dt);
+  }
+
+  /** The hands close on the grips while the rider has the Ride pose (a morph target: the skeleton has no finger bones), and open again after. */
+  private closeFist(dt: number) {
+    const to = this.clipName === 'Ride' ? 1 : 0;
+    if (this.gripW === to) return;
+    this.gripW = to > this.gripW ? Math.min(to, this.gripW + dt / 0.3) : Math.max(to, this.gripW - dt / 0.3);
+    const m = this.gripMesh!; m.morphTargetInfluences![m.morphTargetDictionary!.grip] = this.gripW;
   }
 
   private locomote(dt: number, speed: number) {
@@ -668,7 +838,7 @@ export class Humanoid {
   }
   /** Clips only (scenes that drive a body themselves): the gesture overlay still goes on top. */
   update(dt: number) { this.mixer.update(dt); this.overlay?.(this, dt); }
-  dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.group.removeFromParent(); }
+  dispose() { this.mixer.stopAllAction(); this.clearAccessories(); this.meshy?.dispose(); this.group.removeFromParent(); }
 }
 
 /** Wrestler: a humanoid in ngemb (used by arena and écurie scenes). */

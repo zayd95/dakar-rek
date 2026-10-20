@@ -359,7 +359,8 @@ export class Phone {
     // What the player became, read from what they did (career module): four light gauges, never a class to pick.
     const dims = phoneHooks.profileDims?.() ?? [];
     const dimsHtml = dims.length ? `<div class="ph-dims">${dims.map(d => `<div><span><b>${esc(d.label)}</b><small>${esc(d.note)}</small></span><em>${esc(d.level)}${d.delta ? `<span class="dl ${d.delta.startsWith('+') ? 'up' : 'down'}">${esc(d.delta)}</span>` : ''}</em><i style="--v:${Math.max(0, Math.min(100, Math.round(d.score)))}"></i></div>`).join('')}</div>` : '';
-    return `<div class="ph-profile"><i>🧑🏾</i><b>Toi</b><small>${esc(phoneHooks.profileHeadline?.() ?? '')}${phoneHooks.profileHeadline ? ' · ' : ''}${fcfa(this.ctx.state.wallet)} · humeur ${esc(this.ctx.state.mood())}</small></div>
+    return `<div class="ph-profile"><i>🧑🏾</i><b>${esc(phoneHooks.profileName?.() || 'Toi')}</b><small>${esc(phoneHooks.profileHeadline?.() ?? '')}${phoneHooks.profileHeadline ? ' · ' : ''}${fcfa(this.ctx.state.wallet)} · humeur ${esc(this.ctx.state.mood())}</small></div>
+      ${phoneHooks.editCharacter ? '<button type="button" class="ph-btn" data-act="editchar">Modifier mon personnage<small>Corps, peau, cheveux, tenue et couleur : tu ne perds rien</small></button>' : ''}
       ${dimsHtml}
       <div class="ph-rows">${rows.map(([l, v]) => `<div><span>${l}</span><em>${typeof v === 'number' ? v.toLocaleString('fr-FR') : v}</em></div>`).join('')}</div>
       <p class="ph-note">Partie invité : ton profil est enregistré sur cet appareil.</p>`;
@@ -575,6 +576,7 @@ export class Phone {
     act('gloss', () => { setGlossesShown(!glossesShown()); this.render(); });
     act('save', () => this.ctx.toast(this.ctx.save() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'));
     act('new', () => this.go('nouvelle'));
+    act('editchar', () => this.launch(() => phoneHooks.editCharacter?.()));
     act('cancel', () => this.back());
     act('wipe', () => this.ctx.newGame());
   }
