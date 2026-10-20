@@ -182,6 +182,16 @@ class VehicleAudio {
     return 0.55;
   }
 
+  /** The starter turning over and not catching (a dead car): the first half-second of the ignition, no engine after it. */
+  crank(prof: EngineProfile) {
+    const b = this.ready('crank', 0.8); if (!b) return;
+    const c = b.ctx, t = c.currentTime, o = c.createOscillator(), lp = c.createBiquadFilter(), g = c.createGain();
+    o.type = 'sawtooth'; lp.type = 'lowpass'; lp.frequency.value = 420;
+    [16, 21, 15, 23, 17, 12].forEach((f, i) => o.frequency.setValueAtTime(f * (prof.base / 34), t + i * 0.1));
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.1 * prof.level, t + 0.05); g.gain.setValueAtTime(0.1 * prof.level, t + 0.45); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.65);
+    o.connect(lp).connect(g).connect(b.gain); o.start(t); o.stop(t + 0.7);
+  }
+
   /** The engine loop and the traffic bed: on while driving. */
   run(prof: EngineProfile, delay = 0) {
     if (this.eng) return;

@@ -4,6 +4,8 @@ import type { GameCtx, GameModule } from '../game/modules';
 import type { Collider, HubWorld } from '../world/types';
 import type { Affordance, Target, TargetSource } from '../interact/types';
 import { shop } from '../activity/templates';
+import type { ActivitySpec } from '../activity/types';
+import { ROADSIDE_REACH, ROADSIDE_SECONDS, bandWarning, canMakeshift, healthAlert, healthTag, hitDamage, roadsideResult, scaledDrive } from './condition';
 import { buildVehicle, type VehicleKind } from '../actors/vehicleKit';
 import { fcfa } from '../ui/hud';
 import { say } from '../i18n/wolof';
@@ -17,7 +19,7 @@ import { ContactTracker, type Impact } from './contact';
 import { buzz, impactPattern as impactBuzz, HORN_TICK } from './haptics';
 import { setMuted } from '../core/audioSettings';
 import { driveStep, newDriveState, pedalThrottle, type DriveState } from './drive';
-import { assetsRevision, buyAsset, cannotBuy, holding } from '../economy/assets';
+import { assetsRevision, buyAsset, cannotBuy, holding, setCondition } from '../economy/assets';
 import { specOf } from '../economy/catalog';
 import { buildCourierBox, type CourierBox } from './courierBox';
 import { ridePad } from './ridePad';
@@ -197,6 +199,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private dealer: Dealer | null = null;
   private cardT = 0;
   private camMs = 0;
+  /** The roadside fix of a car that will not run (src/transport/condition.ts): its affordance, built once. */
+  private fixAff: Affordance | null = null;
   private obst: { x: number; z: number; yaw: number; hl: number; hw: number }[] = [];
   private bumps = 0;
   /** Purchases made (debug: the checks verify it is paid once). */
@@ -367,10 +371,11 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : { throttle, steer: mv.x };
     transport.obstacles(this.obst, this.def.kit);
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
-    const hit = driveStep(this.st, input, this.spec.drive, dt, this.blocked);
+    const drv = scaledDrive(this.spec.drive, this.hp());                              // a worn car is slower (the same object when whole: the physics are untouched)
+    const hit = driveStep(this.st, input, drv, dt, this.blocked);
     // how it FEELS (src/transport/contact.ts): one bump or hit per contact, a scrape while it slides, never a knock on every frame of a push against a wall
     const cf = this.contact.step(dt, hit, vs0, this.st.speed);
-    if (cf.impact) this.onImpact(cf.impact, m);
+    if (cf.impact) { this.onImpact(cf.impact, m); this.hurt(cf.impact); }
     if (cf.scraping) vehicleAudio.scrape(cf.scrape); else vehicleAudio.scrapeOff();
     if (cf.scraping) this.scrapeFrames++;
     m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(this.st.speed), this.st.accel, this.st.odo, dt);
@@ -378,8 +383,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     // sound and feel: the engine follows the speed, a hard brake squeals and dips the camera a little, the horn is held
     const bi = brakeIntensity(-this.st.accel * Math.sign(this.st.speed || 1), v0);
     if (bi > 0.05 && input.throttle !== 0) { vehicleAudio.brake(bi); if (bi > 0.3) this.fx.hard = 0.6; }
-    if (!vehicleAudio.running) vehicleAudio.run(profileFor(this.def.kit));       // the first tap may come after getting in: the engine joins then
-    vehicleAudio.update(dt, this.st.speed, this.spec.drive.maxSpeed, input.throttle);
+    if (!vehicleAudio.running && this.hp() > 0) vehicleAudio.run(profileFor(this.def.kit));       // the first tap may come after getting in: the engine joins then
+    if (vehicleAudio.running) vehicleAudio.update(dt, this.st.speed, drv.maxSpeed, input.throttle);
     ridePad.onHorn(this, this.hornEvent);                                         // the button tells the horn at once; this frame is the safety net (a key, a missed « up »)
     if (ctx.mode() === 'play' && (ctx.input.keys.has('KeyH') || ridePad.horn)) vehicleAudio.hornOn(this.def.kit); else vehicleAudio.hornOff();
     this.fx.hard = Math.max(0, this.fx.hard - dt);
@@ -583,6 +588,41 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     ctx.save();
   }
 
+  // ---------------------------------------------------------------- condition (Pass 3: src/transport/condition.ts, saved in the asset model)
+  /** The asset behind the vehicle the player drives; null for a dealer's trial car and the courier's loaner (not theirs: never worn). */
+  private asset() { return this.trial || !this.ctx ? null : holding(this.ctx.state, this.def.asset) ?? null; }
+  /** Its condition, 0–100 (100 for anything without one: every vehicle bought before this existed is whole). */
+  private hp(): number { return this.asset()?.condition ?? 100; }
+  /** A hard hit wears the vehicle (a tap, a bump or a scrape costs nothing); a car at 0 stalls where it is. */
+  private hurt(im: Impact) {
+    const a = this.asset(); if (!a || im.kind !== 'hit') return;
+    const lost = hitDamage(im.speed, im.headOn); if (lost <= 0) return;
+    const before = a.condition; setCondition(a, before - lost);
+    const warn = bandWarning(before, a.condition);
+    if (warn) { this.ctx.toast(warn); this.ctx.save(); }                                  // the band changed: kept now, not only when the player gets out
+    if (a.condition <= 0) { vehicleAudio.stop(); this.fx.hard = 0; }                      // the engine dies; the car coasts to a stop (its top speed is 0 now)
+    this.refreshCard();
+  }
+  /** In front of the bonnet, where the player works on a car that will not run. */
+  private hoodPoint() { const d = this.spec?.drive, f = (d?.halfLength ?? 2) + 0.5; return { x: this.st.x + Math.sin(this.st.yaw) * f, z: this.st.z + Math.cos(this.st.yaw) * f }; }
+  /** The roadside fix, physical: the player stands at the bonnet and works for a few seconds (the activity runner's progress bar); only when it finishes the car is lifted to « enough to crawl ». */
+  private roadside() {
+    const ctx = this.ctx, a = this.asset(); if (!a || !canMakeshift(a.condition)) return;
+    const p = this.hoodPoint(), me = ctx.player.pos;
+    if (Math.hypot(me.x - p.x, me.z - p.z) > ROADSIDE_REACH) { ctx.toast('Place-toi devant le capot.'); return; }
+    const spec: ActivitySpec = {
+      id: `${this.def.key}:roadside`, primitive: 'work', label: 'Réparation de fortune', icon: '🔧', quiet: true,
+      steps: [{ label: 'Tu bricoles le moteur…', primitive: 'work', seconds: ROADSIDE_SECONDS, then: () => this.roadsideDone() }],
+    };
+    ctx.activities.start(spec, { place: this.label(), at: p });
+  }
+  private roadsideDone() {
+    const a = this.asset(); if (!a) return;
+    const up = roadsideResult(a.condition); if (up <= a.condition) return;
+    setCondition(a, up);
+    this.ctx.toast('Ça repart, mais au ralenti. Le Garage Modou la remettra en état.'); this.ctx.save();
+  }
+
   /** One contact, felt: the crash (or tap) sound, the shake and the lurch of the camera, the knock of the body, a buzz of the phone where it has one. */
   private onImpact(im: Impact, m: Vehicle) {
     this.bumps++;
@@ -686,6 +726,10 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
         audioMute: (on: boolean) => setMuted(on),                                 // the phone's sound setting
         audioSuspend: () => vehicleAudio.suspendForTest(),                        // what a call or the lock screen does to the context
         /** Checks: the bike's speed in m/s while it is ridden (the online check rides above the 6 m/s presence limit). */
+        /** Checks: the condition of the player's vehicle, and a hard hit at `speed` (what a crash does). */
+        health: () => this.hp(),
+        hurt: (speed: number, headOn = true) => this.hurt({ kind: 'hit', speed, strength: Math.min(1, speed / 12), headOn, dir: 1 }),
+        own: () => this.buy(),
         boost: (v: number) => { if (this.driving) this.st.speed = v; },
         /** Checks: put the vehicle (and its driver) at a spot, stopped. */
         place: (x: number, z: number, yaw: number) => { if (!this.vehicle) return; this.st.x = x; this.st.z = z; this.st.yaw = yaw; this.st.speed = 0; this.vehicle.place(x, z, yaw, 0, 0, this.st.odo, 0); if (!this.driving) this.setSolid(true); },
@@ -937,8 +981,10 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     // the door shuts, the engine cranks and catches, the camera settles a little
     const prof = profileFor(this.def.kit);
     if (this.def.kit !== 'moto' && doorSound) vehicleAudio.door(false);
-    const catches = vehicleAudio.start(prof);
-    vehicleAudio.run(prof, catches);
+    const dead = this.hp() <= 0;
+    const catches = dead ? 0 : vehicleAudio.start(prof);
+    if (dead) { vehicleAudio.crank(prof); ctx.toast(canMakeshift(this.hp()) ? 'Ça ne démarre pas. Descends : une réparation de fortune devant le capot, ou le Garage Modou.' : 'Ça ne démarre pas.'); }
+    else vehicleAudio.run(prof, catches);
     this.fx.settle = 1; this.fx.ignite = catches > 0 ? 0.55 : 0.2;
     if (!document.body.classList.contains('touch')) ctx.toast(HINT);          // touch: the pad's own labels say it
     this.refreshCard();
@@ -1009,7 +1055,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     if (!this.card) return;
     if (!this.driving) { this.card.show(null); return; }
     const kmh = Math.round(Math.abs(this.st.speed) * 3.6);
-    this.card.show({ num: this.def.icon, title: `${this.label()} · ${kmh} km/h`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : this.fx.hard > 0 ? 'Freinage fort' : HINT });
+    const hp = this.hp(), tag = healthTag(hp);
+    this.card.show({ num: this.def.icon, title: `${this.label()} · ${kmh} km/h${tag ? ' · ' + tag : ''}`, sub: this.leaving ? 'Tu t’arrêtes pour descendre' : hp <= 0 ? 'Le moteur ne tourne plus : descends' : this.fx.hard > 0 ? 'Freinage fort' : HINT, req: healthAlert(hp) });
   }
 
   private upright() {
@@ -1079,6 +1126,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const c = Math.cos(this.st.yaw), s = Math.sin(this.st.yaw), dx = x - this.st.x, dz = z - this.st.z;
     const lx = Math.max(-d.halfWidth, Math.min(d.halfWidth, dx * c - dz * s)), lz = Math.max(-d.halfLength, Math.min(d.halfLength, dx * s + dz * c));
     const t = this.parkedTarget; t.x = this.st.x + lx * c + lz * s; t.z = this.st.z - lx * s + lz * c;
+    const tag = healthTag(this.hp()); t.name = tag ? `${this.def.text.mine} · ${tag}` : this.def.text.mine;     // a discreet figure once it has a scratch
     if (m.hasDoor) { const p = this.stepPoint(); t.x = p.x; t.z = p.z; }                // a car with a door: offered at the driver's door
     out.push(t);
   }
@@ -1097,6 +1145,13 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     }
     if (!this.parkedAff.length) this.parkedAff = [{ id: 'monter', verb: 'drive', label: this.def.text.getOn, icon: this.def.icon, run: () => this.getOn() }];
     this.parkedAff[0].disabled = this.ctx.activities.running ? 'Termine d’abord ce que tu fais' : null;
+    this.parkedAff[0].detail = healthAlert(this.hp()) ?? undefined;
+    if (!this.trial && canMakeshift(this.hp())) {                                                // a car that will not run: the roadside fix, free, at the bonnet
+      this.fixAff ??= { id: 'bricoler', verb: 'work', label: 'Réparation de fortune', icon: '🔧', detail: 'Gratuit · devant le capot, quelques secondes · elle repart au ralenti, sans plus', run: () => this.roadside() };
+      const p = this.hoodPoint(), me = this.ctx.player.pos;
+      this.fixAff.disabled = this.ctx.activities.running ? 'Termine d’abord ce que tu fais' : Math.hypot(me.x - p.x, me.z - p.z) > ROADSIDE_REACH ? 'Place-toi devant le capot' : null;
+      return [this.parkedAff[0], this.fixAff];
+    }
     return this.parkedAff;
   }
   private rideAffordances(): Affordance[] {

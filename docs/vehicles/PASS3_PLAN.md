@@ -1,6 +1,6 @@
 # Pass 3 — vehicle condition and Garage Modou repairs (implementation plan)
 
-Status: **plan only, nothing built.** Base: the #49 tip (`vehicles/integration-20261018`), after the approved audio is integrated. The continuous-drive work (#51) is not touched.
+Status: **S1 and S2 built** (this branch); **S3 and S4 prepared below for review, not built.** Base: the #49 tip (`vehicles/integration-20261018`), after the approved audio is integrated. The continuous-drive work (#51) is not touched.
 
 ## What already exists (so this is small)
 
@@ -9,39 +9,43 @@ Status: **plan only, nothing built.** Base: the #49 tip (`vehicles/integration-2
 * The contact feel (#49): `ContactTracker` gives one `Impact {kind, speed, strength}` per contact episode (a push against a wall is one hit, not sixty).
 * Garage Modou: in Pikine, interactable `pikine:garage:31`, an open workshop (bench, lift, tools) and a module-built Jakarta dealer corner on its pavement (`src/transport/motoModule.ts`); Modou works at the bench 7–13 h and 15–19 h (`routines.ts`).
 
-## Slices (each mergeable, each with tests; order matters)
+## Owner's decisions (Oct 2026) that shape the slices
 
-**S1 — damage and persistent health (no new UI beyond the ride card)**
-* In `OwnedVehicleModule.onImpact`: for an *owned* vehicle only (not a dealer's trial car, not the loaner), `hit` impacts call `damageOf(speed)` and lower the asset's `condition`; bumps/taps/scrapes cost nothing. The episode gating already prevents repeated charging.
-* Show « État : 72 % · Un peu usée » in the existing ride card; say `bandWarning` once when a band changes (toast).
-* Apply `scaledDrive` to the vehicle's drive spec only when below 70 % (physics untouched at full health).
-* Saved through the existing asset save (v6 unchanged); written when a band changes, on getting off and on save.
-* Tests: damage per speed, once per episode, trial/loaner exempt, round-trip through save, old saves load at 100 %, `scaledDrive` identity when whole.
+1. **No invisible cross-district towing, no vehicle teleportation.** Recovery is local and physical until the connected-road network supports towing to Pikine.
+2. **A repair bay at Garage Modou, owned by the vehicle module.** No change to Visual Pass buildings or roads.
+3. **A repair takes about 30 seconds**, with Modou physically inspecting and working on the vehicle; the quote is shown first; the charge is made once, at completion.
+4. **Health in the vehicle detail card**, discreet when healthy, clearer warnings under 70 % and under 30 %.
+5. **At 0 % a limited, physical roadside fix** lets the car reach help, without making paid repairs pointless.
 
-**S2 — an undrivable car, and never a soft-lock**
-* At 0 % the engine stalls (the car coasts and the player can get off); a dead car does not start (« Ça ne démarre pas », the ignition sound plays and fails to catch: same recordings, no new asset).
-* It stays where it is parked (persisted like today). Options offered at the car and on the phone: **tow** (S4) and the **makeshift fix** (free, a short timed activity at the car, lifts a car below 15 % back to 15 %: enough to crawl at the « poor » performance). A wallet at 0 can still tow (free).
-* Tests: stall, no start, makeshift only below 15 %, never charged, state kept on reload.
+## S1 — damage and persistent health (built)
+* `OwnedVehicleModule.hurt()` on every hit impact of a vehicle the player owns (never a dealer's trial car or the courier's loaner): `hitDamage(speed, headOn)` points off the asset's `condition` (a tap, a bump or a scrape costs nothing; a glancing hit 60 % of a head-on one; one hit per contact thanks to `ContactTracker`'s episodes). Written through `setCondition` (new, clamped 0–100, one decimal) into the asset the save already carries: **save v6 and every existing purchase are untouched**, a vehicle without a `condition` loads at 100.
+* The band changes are said once (toast) and saved at once; the small changes are saved with the usual saves and when the player gets out.
+* Below 70 % the drive spec is `scaledDrive(...)` (top speed and pick-up down); at 70 % and over it is the very same object, so a healthy vehicle drives exactly as before.
+* The card: `Berline moderne · 18 km/h · 87 %` (a discreet figure once it has a scratch, nothing at 100 %); under 70 % a line « Abîmée · 54 % · moins de vitesse et de reprise »; under 30 % « Très abîmée · 22 % · elle n’ira plus loin : Garage Modou »; at 0 « En panne ». The parked vehicle's prompt carries the same figure and warning.
 
-**S3 — Garage Modou: the physical repair**
-* A **repair bay** on Modou's pavement next to the Jakarta corner, built the same way (module-owned props: a marked bay and a sign; **no change to the building, roads or street dressing**, which belong to the Visual Pass).
-* Flow, all on foot and by car: drive the car into the bay and stop → talk to Modou (only when he is at the bench) → « Inspecter ma voiture » → he **walks to the car** (the NPC walk used for the Prestige salesperson) and looks it over → the **quote** is shown: the car, its condition, the exact `repairQuote`, the wallet (the price is the one charged; nothing is paid yet) → « Confirmer la réparation » → a timed repair activity (progress bar, the car stays in the bay, the player waits or stays nearby) → **paid once on completion** (`repairAsset`, one ledger line) → Modou hands back the keys → the player drives out.
-* Leaving before the end cancels the job and charges nothing. No instant repair, no menu repair from anywhere, no teleport of car or player.
-* Tests: quote equals the charge, nothing charged on cancel, one ledger line, condition 100 after, insufficient funds refuses cleanly, Modou off-hours.
+## S2 — an undrivable car and the roadside fix (built)
+* At 0 % the engine stops where the car is (it coasts down; the player can get out), the car cannot move under full gas, **not even in reverse**, and getting back in: the starter turns and does not catch (`vehicleAudio.crank`, no engine), a toast says why. The car stays where it is, saved like any parked car.
+* **Roadside fix (« Réparation de fortune »)**: offered on a parked car under 15 %, free, **only at the bonnet** (the player must stand within 2.6 m of the car's front, else the button says « Place-toi devant le capot »), a 12-second timed activity with the progress bar (the activity runner; leaving it cancels it, nothing changes); only when it finishes the car goes to **15 %**. 15 % is the « poor » band: 50 % top speed, 55 % pick-up, so it crawls to help; the paid repair (S3) is still the only way back to a healthy car, and the fix is no longer offered once the car runs (it cannot be repeated to keep a car at 15 % for free after it has been repaired: it only lifts a dead one).
+* No tow, no teleport, no money involved, no wallet check: a broken car never locks the player out.
+* Tested: `tests/condition.test.ts`, `tests/assets.test.ts` (unit) and `scripts/check-condition.mjs` (a phone, real fingers).
 
-**S4 — tow (recovery from anywhere)**
-* Calling the tow (phone, or at the dead car) starts a **real tow**: a truck drives in from the edge of the hub along the roads, hooks the car and drives it away; the car is saved as « at Garage Modou » and is waiting on the garage forecourt in Pikine (the fee is `towFee`, free if the wallet cannot pay it).
-* In **Pikine** the whole tow is seen on the street. From another district the truck is seen taking the car off the street and driving away; the car then appears on the Pikine forecourt after a delay, as the trial car returns to its bay today (never seen to appear or vanish, `watchTrial` style), and the player travels there by the usual means. **This is the one place where a car changes district without being driven: the owner decides if that is acceptable** (alternative: tow only inside the district and leave a dead car elsewhere to the makeshift fix).
-* Tests: the truck's motion is continuous (no frame jump), the fee, free tow at 0 francs, the car arrives once and is not duplicated, reload mid-tow.
+## S3 — Garage Modou: the physical repair (for review, not built)
+**Where**: Garage Modou is in **Pikine** (`pikine:garage:31`); the module builds a marked **bay** and a small sign on Modou's pavement, next to its Jakarta dealer corner (the same kind of module-owned props: no change to the building, the roads, the trees or the street dressing).
+**Flow**
+1. The player drives the car into the bay and stops (a trigger zone; the car is then locked in place while it is worked on).
+2. A mechanic walks out of the workshop to the car and **inspects it**: a short look-over (walks round the bonnet, the progress label says « Modou regarde ta voiture »).
+3. **The quote first**: a sheet with the car, its condition, the exact `repairQuote` (the same number `repairAsset` charges), the wallet; nothing is paid yet. « Confirmer la réparation » / « Refuser ».
+4. **About 30 seconds** of repair, the mechanic at the bonnet working (the activity runner's progress bar, the player may stand by; leaving cancels the job and charges nothing).
+5. **Charged once, at completion**: `repairAsset` (one ledger line « Réparation · … »), the condition goes to 100, he hands the keys back, the player drives out.
+**Open design choice (needs the owner)**: Modou himself is a recurring character of the cast who stands at his bench (`npcLife`, 7–13 h and 15–19 h). Two ways to have him physically do it: **(A) recommended** — the module spawns a *mechanic with Modou's look* for the job (like the Prestige salesperson, which the module owns), while the cast Modou stays at his bench and speaks; **(B)** take over the cast character's body for 40 seconds through an `npcLife` hook (touches a system outside the vehicle module).
+**Real constraint to decide**: the only garage is in Pikine, and with the connected-road network limited to Almadies ↔ Corniche **a car in Almadies, Corniche, Plateau or the Medina cannot be driven to it**. With no towing allowed, those cars could only be roadside-fixed. Options: (i) accept it for now (repair only in Pikine; damage elsewhere is a reason to drive less); (ii) a **call-out**: Modou comes in his own vehicle to the car's district, drives up, and repairs there at a higher quote (a real vehicle driving in on the roads, no teleport); (iii) wait for the network. Recommendation: (i) now, (ii) later.
+**Tests**: quote equals charge, nothing charged on cancel/refusal, one ledger line, condition 100 after, insufficient funds refuse cleanly, not outside Modou's hours, no car duplicated, reload mid-repair keeps the car and charges nothing.
 
-## Out of scope for now
-Damage visuals (dents, smoke), engine-damage sound variants, wear from age, insurance, the continuous-drive network (still only Almadies ↔ Corniche), and any change to driving physics.
+## S4 — recovery by tow (for review, not built, and held)
+Held until the connected-road network supports towing to Pikine (decision 1). What it would be when that time comes: a tow truck that **drives in on the roads** (the decorative-traffic path code), hooks the car, and drives it to the Pikine garage forecourt, the car moving with it every frame; fee `towFee` (free when the wallet cannot pay); a fee-free alternative of walking to the garage and having Modou come with the truck. Nothing of it is in this branch.
 
-## Decisions I need
-1. **Tow across districts** (above): allowed with the delayed arrival at the Pikine garage, or in-district only?
-2. **Pikine coordination**: a module-owned repair bay on Modou's pavement. Fine, or hold S3 until the Visual Pass owner has seen it?
-3. **Repair time**: a short wait (≈ 30–60 s real time, scaled by damage) or none beyond the quote and the walk?
-4. **Show the condition on the ride card** for every car (proposed), or only below « Bon état »?
+## Out of scope
+Damage visuals (dents, smoke), engine-damage sound variants, wear from age, insurance, extending the continuous-drive network, any change to driving physics at full health.
 
 ## Risks
-Save: none planned (existing field; the plan adds no key). Balance: `damageOf` at 14 m/s costs 24 points, so a few hard crashes kill a car; the quote is 0.1 % of the price per point (a 14 M berline costs ≈ 336 000 F for 24 points), and the free makeshift fix prevents a soft-lock. Both are numbers in `condition.ts`/`ECONOMY` and can be tuned after one phone session.
+Balance: `damageOf` at 14 m/s costs 24 points, so a few hard crashes kill a car; the quote is 0.1 % of the price per point (a 14 M berline costs ≈ 336 000 F for 24 points). Both are numbers in `condition.ts`/`ECONOMY`, tunable after a phone session. The roadside fix is deliberately slow (12 s) and limited (15 %).
