@@ -33,6 +33,7 @@ export const ridePad = {
   /** Builds the pad (once) in the HUD layer. */
   init(parent: HTMLElement) {
     if (root) return;
+    if (typeof location !== 'undefined' && /[?&]klaxon\b/.test(location.search)) document.body.classList.add('klaxon');   // the horn button is hidden unless asked for (ridePad.css)
     root = document.createElement('div'); root.id = 'ridepad'; root.setAttribute('aria-hidden', 'true');
     const row = (cls: string) => { const r = document.createElement('div'); r.className = cls; root!.appendChild(r); return r; };
     const top = row('rp-top'), pedals = row('rp-pedals');

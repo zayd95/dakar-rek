@@ -2,55 +2,57 @@ import { audioBus, audioMaster } from '../lamb/audio';
 import { isMuted } from '../core/audioSettings';
 import { hasGestured, listenForGesture } from '../arena/exteriorAudio';
 import { keepAlive, nudge, sessionType, setPlaybackSession } from './audioUnlock';
+import { SampleBank, type SampleName } from './vehicleSamples';
 
 /**
- * The sounds of a vehicle the player drives (synthesised, no audio file; TEMPORARY like the rest of the city's sound): door, engine start, idle, an engine
- * that rises and falls with the speed through its gears, brake squeal, a tap or a real impact, the horn, and a very low bed of Dakar traffic while driving.
- * Few layers on purpose (two oscillators, two filtered noises, one-shots), all under the page's master gain: the sound setting (phone › Réglages) mutes
- * it, and nothing plays before the player's first tap or key (an iPhone only lets a page play after one: the first gesture creates and resumes the context).
- * Pure helpers (`rpmOf`, `impactKind`, `brakeIntensity`) carry the rules and are unit-tested.
+ * The sounds of a vehicle the player drives: door, engine start, idle, an engine that rises and falls with the speed through its gears, brake squeal, a tap or a real impact, a scrape,
+ * the horn, and a very low bed of Dakar traffic while driving. The engines, horns and collisions are RECORDINGS (CC0, ~210 KB: src/transport/vehicleSamples.ts, docs/audio/VEHICLE_SAMPLES.md)
+ * played through a small Web Audio graph: loops pitched with the revs and cross-faded, one-shots layered by severity, a grain scheduler for the scrape. The door, the key chirps and the
+ * road/traffic noise bed stay synthesised. Everything goes through the page's master gain: the sound setting (phone › Réglages) mutes it, and nothing plays before the player's first tap
+ * or key (an iPhone only lets a page play after one: the first gesture creates and resumes the context). Pure helpers (`rpmOf`, `impactKind`, `brakeIntensity`) carry the rules and are unit-tested.
  */
 export interface EngineProfile {
-  /** Firing frequency at idle and the span up to the rev limit (Hz). */
-  base: number; span: number;
-  /** The sub-octave's weight (a bigger engine is thicker) and the filter's opening (Hz at mid revs). */
-  sub: number; cutoff: number;
+  /** The two recorded loops: the idle one and the one that takes over as the revs climb. */
+  idle: SampleName; rev: SampleName;
+  /** The recorded ignition, its playback rate (the motorbike\'s is the same recording pitched up), and the second at which the engine catches in it (the loops fade in there). */
+  start: SampleName; startRate: number; catchAt: number;
+  /** Playback rate of each loop at the lowest and the highest revs (the loop's pitch follows the revs), and the revs (0…1) over which the idle loop hands over to the high one. */
+  idleRate: [number, number]; revRate: [number, number]; xf: [number, number];
   /** Gears: the revs fall each time the car passes a gear's top. */
   gears: number;
   /** Overall level of this engine. */
   level: number;
-  /** The weight of the engine's « body » band (a growl at 500–1600 Hz that follows the revs): what a phone loudspeaker plays of an engine. */
-  mid: number;
+  /** The gain it is brought down to at full revs (1 = not at all; the fall follows the revs, so the idle keeps its level; the bus limiter flattens loud input, so a −14 dB trim is about −5 dB at the speaker): a small motorbike's loops are far louder at speed than at rest. */
+  topTrim: number;
+  /** The tone: high-pass (Hz), low-pass at idle and at full revs (Hz), the lift of the 1.3 kHz band (dB: what a phone loudspeaker plays of an engine), and the weight of the harmonic exciter (the bass note's overtones). */
+  hp: number; lpIdle: number; lpTop: number; air: number; excite: number;
 }
 export const PROFILES: Record<'sedan' | 'luxury' | 'suv' | 'moto', EngineProfile> = {
-  sedan: { base: 34, span: 105, sub: 0.55, cutoff: 700, gears: 4, level: 1, mid: 0.36 },
-  luxury: { base: 28, span: 95, sub: 0.8, cutoff: 560, gears: 5, level: 0.95, mid: 0.26 },
-  suv: { base: 26, span: 88, sub: 0.9, cutoff: 520, gears: 4, level: 1, mid: 0.46 },
-  moto: { base: 62, span: 190, sub: 0.25, cutoff: 1500, gears: 4, level: 0.9, mid: 0.6 },
+  sedan: { topTrim: 1, start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.85, 1.55], revRate: [0.9, 1.85], xf: [0.3, 0.7], gears: 4, level: 1, hp: 40, lpIdle: 2400, lpTop: 6500, air: 3, excite: 0.35 },
+  luxury: { topTrim: 1, start: 'start-car', startRate: 1, catchAt: 0.8, idle: 'car-idle', rev: 'car-rev', idleRate: [0.8, 1.35], revRate: [0.85, 1.55], xf: [0.35, 0.8], gears: 5, level: 0.9, hp: 40, lpIdle: 1700, lpTop: 4600, air: 2, excite: 0.3 },
+  suv: { topTrim: 1, start: 'start-car', startRate: 0.92, catchAt: 0.87, idle: 'car-idle', rev: 'car-rev', idleRate: [0.7, 1.3], revRate: [0.75, 1.55], xf: [0.3, 0.7], gears: 4, level: 1, hp: 32, lpIdle: 1900, lpTop: 5200, air: 3, excite: 0.45 },
+  moto: { topTrim: 0.08, start: 'start-car', startRate: 1.3, catchAt: 0.62, idle: 'moto-idle', rev: 'car-rev', idleRate: [1.55, 2.7], revRate: [1.4, 2.8], xf: [0.2, 0.55], gears: 4, level: 0.9, hp: 230, lpIdle: 3800, lpTop: 8000, air: 6, excite: 0.5 },
 };
 export const profileFor = (kit: string): EngineProfile => PROFILES[(kit in PROFILES ? kit : 'sedan') as keyof typeof PROFILES];
 
 /**
- * The horn of each kind of vehicle. A phone's loudspeaker gives next to nothing below ~300 Hz, so a horn made of two low square waves was there on paper and not in the pocket:
- * these reeds start at 350 Hz and up, are sawtooth/square (full of harmonics, which a small speaker does reproduce), are lifted in the 1.4–2.6 kHz band where the ear and the speaker are
- * strongest, and each reed is two oscillators a few Hz apart (the beating is the buzz of a real horn). A car sounds a major third (two reeds), a saloon sharper than a big SUV, a motorbike one
- * higher, reedier note.
+ * The horn of each kind of vehicle: a recorded car horn (two reeds, a major-third-ish pair near 400 and 500 Hz, with its overtones to 1.6 kHz: what a phone loudspeaker does play), played a little
+ * lower for a big SUV and a little softer for a saloon; the motorbike has its own recording, derived from it at build time: pitched up, the lower reed taken out, so a smaller, single, reedier note.
  */
 export interface HornVoice {
-  /** The reeds (Hz): a car sounds two together. */
-  reeds: number[]; wave: OscillatorType;
-  /** The two oscillators of a reed are this far apart (Hz). */
-  detune: number;
+  sample: SampleName;
+  /** Playback rate (the pitch). */
+  rate: number;
   /** High-pass (Hz), and the lift (dB at Hz) that carries it through a phone speaker. */
   hp: number; peakHz: number; peakDb: number;
   /** Level of the horn before the bus's limiter. */
   level: number;
 }
 export const HORNS: Record<keyof typeof PROFILES, HornVoice> = {
-  sedan: { reeds: [440, 554], wave: 'sawtooth', detune: 2.2, hp: 260, peakHz: 1700, peakDb: 8, level: 0.28 },
-  luxury: { reeds: [392, 494], wave: 'sawtooth', detune: 1.4, hp: 240, peakHz: 1500, peakDb: 6, level: 0.27 },
-  suv: { reeds: [349, 440], wave: 'sawtooth', detune: 2.6, hp: 230, peakHz: 1400, peakDb: 8, level: 0.30 },
-  moto: { reeds: [880], wave: 'square', detune: 3.5, hp: 520, peakHz: 2600, peakDb: 7, level: 0.24 },
+  sedan: { sample: 'horn-car', rate: 1, hp: 200, peakHz: 1300, peakDb: 3, level: 0.5 },
+  luxury: { sample: 'horn-car', rate: 0.94, hp: 200, peakHz: 1200, peakDb: 2, level: 0.46 },
+  suv: { sample: 'horn-car', rate: 0.84, hp: 180, peakHz: 1100, peakDb: 3, level: 0.52 },
+  moto: { sample: 'horn-moto', rate: 1, hp: 380, peakHz: 1800, peakDb: 3, level: 0.4 },
 };
 export const hornFor = (kit: string): HornVoice => HORNS[(kit in HORNS ? kit : 'sedan') as keyof typeof HORNS];
 
@@ -79,15 +81,18 @@ class VehicleAudio {
   /** Sounds asked for and played, by kind (the checks: nothing before a gesture, nothing when muted). */
   readonly count: Record<string, number> = { asked: 0, played: 0, door: 0, start: 0, brake: 0, tap: 0, impact: 0, horn: 0, unlock: 0, scrape: 0 };
   private bus: Bus | null = null;
-  private eng: { prof: EngineProfile; o1: OscillatorNode; o2: OscillatorNode; lp: BiquadFilterNode; bp: BiquadFilterNode; gMid: GainNode; lopeG: GainNode; gEng: GainNode; road: GainNode; roadF: BiquadFilterNode; bed: GainNode; srcs: AudioScheduledSourceNode[]; rpm: number; ready: number } | null = null;
-  private horn: { gain: GainNode; oscs: OscillatorNode[] } | null = null;
+  private eng: { prof: EngineProfile; sIdle: AudioBufferSourceNode; sRev: AudioBufferSourceNode; gIdle: GainNode; gRev: GainNode; lp: BiquadFilterNode; gEng: GainNode; road: GainNode; roadF: BiquadFilterNode; bed: GainNode; srcs: AudioScheduledSourceNode[]; rpm: number; ready: number } | null = null;
+  private horn: { gain: GainNode; srcs: AudioBufferSourceNode[] } | null = null;
+  /** The recordings, and whether they are decoded; a horn asked for before they are decoded starts when they are. */
+  readonly bank = new SampleBank();
+  private decoded = false; private hornWanted: string | null = null; private hitN = 0;
   private lastShot = new Map<string, number>();
   private bedTimer = 0;
   private unlocked = false;
   /** How often the context was asked to resume, and by which event (the on-device diagnostics: a silent phone shows whether a gesture ever reached it). */
   private nudges = 0; private lastNudge = '';
   private meterNode: AnalyserNode | null = null;
-  private scr: { gain: GainNode; bp: BiquadFilterNode; srcs: AudioScheduledSourceNode[] } | null = null;
+  private scr: { gain: GainNode; bp: BiquadFilterNode; srcs: AudioScheduledSourceNode[]; next: number } | null = null;
   private scrLast = 0;
 
   /** The vehicles' bus: its own gain, then a limiter (a horn over an engine over a crash must not clip), then the page's master gain (which carries the sound setting). */
@@ -112,8 +117,8 @@ class VehicleAudio {
    */
   unlockOnGesture() {
     if (this.unlocked || typeof window === 'undefined') return;
-    this.unlocked = true; listenForGesture();
-    keepAlive(window, document, () => this.bus?.ctx ?? null, () => { try { this.bus ??= this.makeBus(); } catch { /* no audio on this device */ } return this.bus?.ctx ?? null; },
+    this.unlocked = true; listenForGesture(); this.bank.prefetch();               // the recordings start downloading now; they are decoded when the first gesture makes the context
+    keepAlive(window, document, () => this.bus?.ctx ?? null, () => { try { this.bus ??= this.makeBus(); } catch { /* no audio on this device */ } if (this.bus) this.ensureSamples(this.bus); return this.bus?.ctx ?? null; },
       why => { this.nudges++; this.lastNudge = why; });
   }
 
@@ -170,45 +175,56 @@ class VehicleAudio {
     }
   }
 
-  /** Engine start: a stuttering crank that catches (the loop's own fade-in follows it). Returns the seconds until it catches. */
+  /** A recorded one-shot through a small chain (optional high-pass / low-pass), with its own envelope. `dur` and `offset` are in the sample's own time. */
+  private shot(b: Bus, name: SampleName, o: { at?: number; offset?: number; dur: number; rate?: number; gain: number; hp?: number; lp?: number; attack?: number; release?: number; dest?: AudioNode }) {
+    const buf = this.bank.get(name); if (!buf) return;
+    const c = b.ctx, t = (o.at ?? c.currentTime), rate = o.rate ?? 1, wall = o.dur / rate, att = o.attack ?? 0.004, rel = Math.min(o.release ?? 0.06, wall * 0.8);
+    const s = c.createBufferSource(), g = c.createGain();
+    s.buffer = buf; s.playbackRate.value = rate;
+    let node: AudioNode = s;
+    if (o.hp) { const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = o.hp; node.connect(f); node = f; }
+    if (o.lp) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lp; node.connect(f); node = f; }
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(o.gain, t + att); g.gain.setValueAtTime(o.gain, Math.max(t + att, t + wall - rel)); g.gain.linearRampToValueAtTime(0.0001, t + wall);
+    node.connect(g).connect(o.dest ?? b.gain);
+    s.start(t, Math.min(o.offset ?? 0, Math.max(0, buf.duration - 0.01)), o.dur + 0.02); s.stop(t + wall + 0.03);
+  }
+  /** Makes the samples ready: fetched at once, decoded as soon as the context exists. Idempotent. */
+  private ensureSamples(b: Bus) { this.bank.decode(b.ctx).then(() => { this.decoded = true; }); }
+
+  /** Engine start: the recorded ignition (the starter, the engine catching). Returns the second at which the engine catches in it (the loops fade in there). */
   start(prof: EngineProfile): number {
     const b = this.ready('start', 0.5); if (!b) return 0;
-    const c = b.ctx, t = c.currentTime, o = c.createOscillator(), lp = c.createBiquadFilter(), g = c.createGain();
-    o.type = 'sawtooth'; lp.type = 'lowpass'; lp.frequency.value = 420;
-    const steps = [16, 21, 15, 23, 18, 28, 44, prof.base];
-    steps.forEach((f, i) => o.frequency.setValueAtTime(f * (prof.base / 34), t + i * 0.085));
-    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.1 * prof.level, t + 0.05); g.gain.setValueAtTime(0.1 * prof.level, t + 0.6); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.8);
-    o.connect(lp).connect(g).connect(b.gain); o.start(t); o.stop(t + 0.85);
-    return 0.55;
+    const buf = this.bank.get(prof.start); if (buf) this.shot(b, prof.start, { dur: buf.duration, rate: prof.startRate, gain: 0.55 * prof.level, hp: prof.hp > 100 ? 160 : 70, attack: 0.02, release: 0.6 });
+    return prof.catchAt;
   }
-
-  /** The starter turning over and not catching (a dead car): the first half-second of the ignition, no engine after it. */
+  /** The starter turning over and not catching (a dead car): the recorded ignition up to just before the engine catches (`catchAt`), then it dies away. No engine follows. */
   crank(prof: EngineProfile) {
     const b = this.ready('crank', 0.8); if (!b) return;
-    const c = b.ctx, t = c.currentTime, o = c.createOscillator(), lp = c.createBiquadFilter(), g = c.createGain();
-    o.type = 'sawtooth'; lp.type = 'lowpass'; lp.frequency.value = 420;
-    [16, 21, 15, 23, 17, 12].forEach((f, i) => o.frequency.setValueAtTime(f * (prof.base / 34), t + i * 0.1));
-    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.1 * prof.level, t + 0.05); g.gain.setValueAtTime(0.1 * prof.level, t + 0.45); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.65);
-    o.connect(lp).connect(g).connect(b.gain); o.start(t); o.stop(t + 0.7);
+    this.shot(b, prof.start, { dur: Math.max(0.3, (prof.catchAt - 0.1) * prof.startRate), rate: prof.startRate, gain: 0.5 * prof.level, hp: prof.hp > 100 ? 160 : 70, attack: 0.02, release: 0.3 });
   }
 
-  /** The engine loop and the traffic bed: on while driving. */
+  /** The engine loops and the traffic bed: on while driving. */
   run(prof: EngineProfile, delay = 0) {
     if (this.eng) return;
     const b = this.open(); if (!b) return;
+    this.ensureSamples(b);
+    const idle = this.bank.get(prof.idle), rev = this.bank.get(prof.rev);
+    if (!idle || !rev) return;                                                   // still decoding: the module asks again next frame
     setPlaybackSession(true);                                                    // driving is not background music: not muted by the silent switch (where the browser has the API)
     const c = b.ctx, t = c.currentTime;
-    const o1 = c.createOscillator(), o2 = c.createOscillator(), lp = c.createBiquadFilter(), gEng = c.createGain(), mix2 = c.createGain();
-    o1.type = 'sawtooth'; o2.type = 'square'; lp.type = 'lowpass'; lp.Q.value = 0.8; mix2.gain.value = prof.sub;
-    gEng.gain.value = 0;
-    // the two oscillators go through a soft saturation (it makes harmonics out of a bass note: all a phone loudspeaker has to play), then two ways to the output:
-    // the low-pass that follows the revs (the body), and a band-pass at 500–1600 Hz (the growl) whose weight is the engine's `mid`
-    const pre = c.createGain(), sat = c.createWaveShaper(), bp = c.createBiquadFilter(), gMid = c.createGain();
-    pre.gain.value = 0.8; sat.curve = driveCurve(2.4); sat.oversample = '2x';
-    bp.type = 'bandpass'; bp.frequency.value = 600; bp.Q.value = 1.1; gMid.gain.value = 0;
-    o1.connect(pre); o2.connect(mix2).connect(pre); pre.connect(sat); sat.connect(lp).connect(gEng); gEng.connect(b.gain); sat.connect(bp).connect(gMid).connect(b.gain);   // the growl has its own level: through the engine's gain (≈0.05) it would be inaudible
-    // an idle that is not a perfectly steady tone: a slow wobble of the level, there at idle and gone as the revs rise
-    const lope = c.createOscillator(), lopeG = c.createGain(); lope.type = 'sine'; lope.frequency.value = 5.3; lopeG.gain.value = 0.006; lope.connect(lopeG).connect(gEng.gain);
+    const sIdle = c.createBufferSource(), sRev = c.createBufferSource(), gIdle = c.createGain(), gRev = c.createGain(), mix = c.createGain();
+    sIdle.buffer = idle; sRev.buffer = rev; sIdle.loop = sRev.loop = true; sIdle.playbackRate.value = prof.idleRate[0]; sRev.playbackRate.value = prof.revRate[0];
+    gIdle.gain.value = 1; gRev.gain.value = 0;
+    sIdle.connect(gIdle).connect(mix); sRev.connect(gRev).connect(mix);
+    // the tone: high-pass (a phone gives nothing below), a low-pass that opens with the revs and the throttle, a lift in the band the speaker does play
+    const hp = c.createBiquadFilter(), lp = c.createBiquadFilter(), air = c.createBiquadFilter(), gEng = c.createGain();
+    hp.type = 'highpass'; hp.frequency.value = prof.hp; hp.Q.value = 0.5; lp.type = 'lowpass'; lp.frequency.value = prof.lpIdle; lp.Q.value = 0.6;
+    air.type = 'peaking'; air.frequency.value = 1300; air.Q.value = 0.8; air.gain.value = prof.air; gEng.gain.value = 0;
+    mix.connect(hp).connect(lp).connect(air).connect(gEng).connect(b.gain);
+    // the harmonic exciter: the bass note, saturated, keeps only its overtones in 200–1200 Hz (what is left of a 30–120 Hz engine on a small speaker)
+    const exHp = c.createBiquadFilter(), ws = c.createWaveShaper(), exBp = c.createBiquadFilter(), gEx = c.createGain();
+    exHp.type = 'highpass'; exHp.frequency.value = 50; ws.curve = driveCurve(3); ws.oversample = '2x'; exBp.type = 'bandpass'; exBp.frequency.value = 520; exBp.Q.value = 0.6; gEx.gain.value = prof.excite * 0.5;
+    mix.connect(exHp).connect(ws).connect(exBp).connect(gEx).connect(gEng);
     const n1 = c.createBufferSource(), roadF = c.createBiquadFilter(), road = c.createGain();
     n1.buffer = noise(c); n1.loop = true; roadF.type = 'bandpass'; roadF.frequency.value = 400; roadF.Q.value = 0.6; road.gain.value = 0;
     n1.connect(roadF).connect(road).connect(b.gain);
@@ -216,34 +232,33 @@ class VehicleAudio {
     n2.buffer = noise(c); n2.loop = true; bedF.type = 'lowpass'; bedF.frequency.value = 330; bed.gain.value = 0;
     lfo.frequency.value = 0.09; lfoG.gain.value = 0.006; lfo.connect(lfoG).connect(bed.gain);
     n2.connect(bedF).connect(bed).connect(b.gain);
-    const f0 = prof.base;
-    o1.frequency.value = f0; o2.frequency.value = f0 / 2;
-    for (const s of [o1, o2, n1, n2, lfo, lope]) s.start(t + delay);
-    gEng.gain.setTargetAtTime(0.06 * prof.level, t + delay, 0.12);
+    sIdle.start(t + delay, Math.random() * idle.duration); sRev.start(t + delay, Math.random() * rev.duration); n1.start(t + delay); n2.start(t + delay); lfo.start(t + delay);
+    gEng.gain.setTargetAtTime(0.3 * prof.level, t + delay, 0.22);
     bed.gain.setTargetAtTime(0.011, t + delay + 0.5, 0.8);
-    this.eng = { prof, o1, o2, lp, bp, gMid, lopeG, gEng, road, roadF, bed, srcs: [o1, o2, n1, n2, lfo, lope], rpm: 0.15, ready: t + delay };
+    this.eng = { prof, sIdle, sRev, gIdle, gRev, lp, gEng, road, roadF, bed, srcs: [sIdle, sRev, n1, n2, lfo], rpm: 0.15, ready: t + delay };
     this.bedTimer = 7 + Math.random() * 8;
   }
 
-  /** Each frame while driving: revs follow the speed and the throttle, tyre noise follows the speed, the bed stays very low (and ducks under the horn). */
+  /** Each frame while driving: revs follow the speed and the throttle (the loops are pitched with them and handed over), tyre noise follows the speed, the bed stays very low (and ducks under the horn). */
   update(dt: number, speed: number, maxSpeed: number, throttle: number) {
     const e = this.eng; if (!e || !this.bus) return;
-    const c = this.bus.ctx, t = c.currentTime;
-    const want = rpmOf(speed, maxSpeed, e.prof.gears, throttle);
+    const c = this.bus.ctx, t = c.currentTime, P = e.prof;
+    const want = rpmOf(speed, maxSpeed, P.gears, throttle);
     e.rpm += (want - e.rpm) * Math.min(1, dt * (want > e.rpm ? 5 : 3));
-    const f = e.prof.base + e.prof.span * e.rpm;
-    e.o1.frequency.setTargetAtTime(f, t, 0.04); e.o2.frequency.setTargetAtTime(f / 2, t, 0.04);
-    const lift = throttle <= 0 && Math.abs(speed) > 4;                                  // off the throttle at speed: the engine brakes, the note closes up
-    e.lp.frequency.setTargetAtTime(e.prof.cutoff * (0.55 + 1.3 * e.rpm) * (lift ? 0.8 : 1), t, 0.06);
-    e.bp.frequency.setTargetAtTime((520 + 1100 * e.rpm) * (e.prof === PROFILES.moto ? 1.25 : 1), t, 0.06);
-    e.gMid.gain.setTargetAtTime(e.prof.mid * 0.4 * (lift ? 0.2 : 0.62 + 0.38 * Math.max(0, throttle)) * (0.8 + 0.6 * e.rpm), t, 0.06);   // the growl: there at idle (it is what a phone plays of it), fuller under load, drawn in on lift-off
-    e.lopeG.gain.setTargetAtTime(0.006 * Math.max(0, 1 - e.rpm * 3), t, 0.2);
-    const load = 0.06 + 0.09 * e.rpm + 0.05 * Math.max(0, throttle);
-    e.gEng.gain.setTargetAtTime(Math.min(0.12, load * 0.62) * e.prof.level, t, 0.06);   // below the horn: the engine is the bed of the drive, not its loudest voice
+    const k = Math.max(0, Math.min(1, (e.rpm - 0.12) / 0.88)), lift = throttle <= 0 && Math.abs(speed) > 4;       // off the throttle at speed: the engine brakes, the note closes up
+    e.sIdle.playbackRate.setTargetAtTime(P.idleRate[0] + (P.idleRate[1] - P.idleRate[0]) * k, t, 0.05);
+    e.sRev.playbackRate.setTargetAtTime(P.revRate[0] + (P.revRate[1] - P.revRate[0]) * k, t, 0.05);
+    const x = Math.max(0, Math.min(1, (e.rpm - P.xf[0]) / (P.xf[1] - P.xf[0]))), h = x * x * (3 - 2 * x), load = Math.max(0, throttle);
+    e.gIdle.gain.setTargetAtTime(Math.cos(h * Math.PI / 2) * 0.9 + 0.1, t, 0.06);                                       // equal-power hand-over; a little idle stays under the high loop
+    e.gRev.gain.setTargetAtTime(Math.sin(h * Math.PI / 2) * (lift ? 0.7 : 0.8 + 0.3 * load), t, 0.06);
+    e.lp.frequency.setTargetAtTime((P.lpIdle + (P.lpTop - P.lpIdle) * k) * (lift ? 0.65 : 0.85 + 0.25 * load), t, 0.06);
+    const lvl = (0.3 + 0.2 * e.rpm + 0.1 * load) * (lift ? 0.78 : 1), trim = 1 + (P.topTrim - 1) * Math.pow(k, 0.6);   // the Jakarta: measured at the speaker (the limiter flattens what goes in), 0.2 was about −5 dB when riding, 0.08 is about −8 dB (−2.7 dB more, owner's second request); idle stays where it was
+    e.gEng.gain.setTargetAtTime(Math.min(0.7, lvl) * P.level * trim, t, 0.06);
     const v = Math.min(1, Math.abs(speed) / Math.max(0.1, maxSpeed));
-    e.road.gain.setTargetAtTime(0.035 * v * v * (e.prof === PROFILES.moto ? 1.3 : 1), t, 0.1); e.roadF.frequency.setTargetAtTime(260 + 900 * v, t, 0.1);
+    e.road.gain.setTargetAtTime(0.035 * v * v * (P === PROFILES.moto ? 1.3 : 1), t, 0.1); e.roadF.frequency.setTargetAtTime(260 + 900 * v, t, 0.1);
     e.bed.gain.setTargetAtTime(this.horn ? 0.002 : 0.011, t, 0.2);
     if ((this.bedTimer -= dt) <= 0) { this.bedTimer = 12 + Math.random() * 14; this.distantHorn(); }
+    if (this.hornWanted && !this.horn) this.startHorn(this.bus, this.hornWanted);       // the button was pressed before the recording was decoded
     if (this.scr && performance.now() - this.scrLast > 220) this.scrapeOff();           // a scrape that is not renewed ends
   }
 
@@ -251,8 +266,8 @@ class VehicleAudio {
   stop() {
     const e = this.eng; if (!e || !this.bus) { this.eng = null; return; }
     const c = this.bus.ctx, t = c.currentTime;
-    e.gEng.gain.cancelScheduledValues(t); e.gEng.gain.setTargetAtTime(0, t, 0.09); e.gMid.gain.setTargetAtTime(0, t, 0.09); e.road.gain.setTargetAtTime(0, t, 0.08); e.bed.gain.setTargetAtTime(0, t, 0.15);
-    e.o1.frequency.setTargetAtTime(e.prof.base * 0.6, t, 0.12); e.o2.frequency.setTargetAtTime(e.prof.base * 0.3, t, 0.12);
+    e.gEng.gain.cancelScheduledValues(t); e.gEng.gain.setTargetAtTime(0, t, 0.09); e.road.gain.setTargetAtTime(0, t, 0.08); e.bed.gain.setTargetAtTime(0, t, 0.15);
+    e.sIdle.playbackRate.setTargetAtTime(e.prof.idleRate[0] * 0.55, t, 0.14); e.sRev.playbackRate.setTargetAtTime(e.prof.revRate[0] * 0.55, t, 0.14);
     const srcs = e.srcs; this.eng = null;
     setTimeout(() => { for (const s of srcs) { try { s.stop(); s.disconnect(); } catch { /* already stopped */ } } }, 700);
     this.hornOff(); this.scrapeOff(); setPlaybackSession(false);
@@ -260,74 +275,87 @@ class VehicleAudio {
   get running() { return !!this.eng; }
   get rpm() { return this.eng?.rpm ?? 0; }
 
-  /** Tyres on hard braking: a squeal, louder the harder. */
+  /** Tyres on hard braking: the recorded squeal, louder and longer the harder. */
   brake(intensity: number) {
     if (intensity <= 0.05) return;
     const b = this.ready('brake', 0.9); if (!b) return;
-    const t = b.ctx.currentTime;
-    this.burst(b, t, 0.45, 2300, 9, 0.04 + 0.1 * intensity); this.burst(b, t + 0.03, 0.4, 3100, 12, 0.02 + 0.05 * intensity);
-  }
-  /** A light tap (a soft bump) or a real impact (a crunch, a boom, a metallic ring), by the speed at the moment of contact. */
-  impact(speed: number) {
-    const kind = impactKind(speed), b = this.ready(kind, kind === 'tap' ? 0.25 : 0.4); if (!b) return;
-    const t = b.ctx.currentTime, v = Math.abs(speed);
-    if (kind === 'tap') { this.thud(b, t, 150, 0.09, 0.12 + 0.03 * v); this.burst(b, t, 0.05, 800, 1, 0.05); return; }
-    const k = Math.min(1, v / 14);
-    this.thud(b, t, 58, 0.4, 0.3 + 0.3 * k); this.burst(b, t, 0.22, 1100, 0.7, 0.14 + 0.16 * k);
-    for (const [f, d] of [[420, 0.3], [637, 0.22]] as const) { const o = b.ctx.createOscillator(), g = b.ctx.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.05 + 0.06 * k, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0008, t + d); o.connect(g).connect(b.gain); o.start(t); o.stop(t + d + 0.02); }
+    const buf = this.bank.get('squeal'); if (!buf) return;
+    this.shot(b, 'squeal', { offset: Math.random() * (buf.duration - 1.2), dur: 0.4 + 0.5 * intensity, rate: 0.92 + Math.random() * 0.16, gain: 0.12 + 0.3 * intensity, hp: 500, attack: 0.03, release: 0.18 });
   }
   /**
-   * A scrape: the vehicle sliding along a wall or another vehicle. A continuous grind (filtered noise with a low rumble under it) that follows `level` (0…1, the speed along the wall) and
-   * stops by itself when it is no longer asked for (a frame or two): called every frame while it lasts, never a new knock per frame.
+   * A light tap (a soft bump of the body) or a real impact (a solid metallic hit, and for a heavy one a crash with its long tail), by the speed at the moment of contact. Layers of the recordings,
+   * each picked a little differently every time (pitch, start) so that two hits never sound the same.
+   */
+  impact(speed: number) {
+    const kind = impactKind(speed), b = this.ready(kind, kind === 'tap' ? 0.25 : 0.4); if (!b) return;
+    const v = Math.abs(speed), j = (this.hitN = (this.hitN + 1) % 3), jit = [1, 0.93, 1.08][j] * (0.97 + Math.random() * 0.06);
+    if (kind === 'tap') {
+      this.shot(b, 'thud', { dur: 0.16, rate: 1.7 * jit, gain: 0.18 + 0.05 * v, hp: 110, release: 0.05 });
+      this.shot(b, 'crash', { offset: 0.004 * j, dur: 0.05, rate: 1.5 * jit, gain: 0.06 + 0.02 * v, hp: 1400, release: 0.02 });
+      return;
+    }
+    const k = Math.min(1, v / 14);
+    this.shot(b, 'thud', { dur: 0.5, rate: 0.95 * jit, gain: 0.45 + 0.4 * k, lp: 2600, release: 0.2 });                                   // the body
+    this.shot(b, 'crash', { offset: 0.006 * j, dur: 0.22 + 0.35 * k, rate: (0.98 + 0.12 * (1 - k)) * jit, gain: 0.3 + 0.45 * k, hp: 280, release: 0.15 });   // the metal
+    if (k > 0.5) this.shot(b, 'crash', { at: b.ctx.currentTime + 0.05, offset: 0.12, dur: 0.5 + 0.8 * k, rate: 0.85 * jit, gain: 0.14 + 0.22 * k, lp: 3800, hp: 120, attack: 0.03, release: 0.4 });   // the long tail of a heavy one
+  }
+  /**
+   * A scrape: the vehicle sliding along a wall or another vehicle. A continuous grind made of short overlapping grains cut from the middle of the recorded crash (the metal texture), at a pitch and
+   * a level that follow `level` (0…1, the speed along the wall); it stops by itself when it is no longer asked for (a frame or two): called every frame while it lasts, never a new knock per frame.
    */
   scrape(level: number) {
     const b = this.open(); if (!b) return;
+    const buf = this.bank.get('crash'); if (!buf) return;
     const c = b.ctx, t = c.currentTime, k = Math.max(0, Math.min(1, level));
     if (!this.scr) {
-      const n1 = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain(), n2 = c.createBufferSource(), lp = c.createBiquadFilter(), g2 = c.createGain();
-      n1.buffer = noise(c); n1.loop = true; bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.9; g.gain.value = 0;
-      n2.buffer = noise(c); n2.loop = true; lp.type = 'lowpass'; lp.frequency.value = 260; g2.gain.value = 0.5;
-      n1.connect(bp).connect(g).connect(b.gain); n2.connect(lp).connect(g2).connect(g);
-      n1.start(t, Math.random()); n2.start(t, Math.random());
-      this.scr = { gain: g, bp, srcs: [n1, n2] }; this.count.scrape++; this.count.asked++; this.count.played++;
+      const g = c.createGain(), hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 260; g.gain.value = 1; g.connect(hp).connect(b.gain);
+      this.scr = { gain: g, bp: hp, srcs: [], next: 0 }; this.count.scrape++; this.count.asked++; this.count.played++;
     }
-    this.scr.gain.gain.setTargetAtTime(0.05 + 0.13 * k, t, 0.03); this.scr.bp.frequency.setTargetAtTime(900 + 1500 * k, t, 0.05);
+    if (t >= this.scr.next) {
+      this.scr.next = t + 0.06;
+      this.shot(b, 'crash', { offset: 0.35 + Math.random() * 0.8, dur: 0.12, rate: 0.85 + 0.35 * k + Math.random() * 0.1, gain: 0.07 + 0.2 * k, attack: 0.04, release: 0.06, dest: this.scr.gain });
+    }
     this.scrLast = performance.now();
   }
   scrapeOff() {
     const s = this.scr; if (!s) return;
     this.scr = null;
-    if (this.bus) s.gain.gain.setTargetAtTime(0, this.bus.ctx.currentTime, 0.05);
-    setTimeout(() => { for (const x of s.srcs) { try { x.stop(); x.disconnect(); } catch { /* done */ } } }, 350);
+    if (this.bus) s.gain.gain.setTargetAtTime(0, this.bus.ctx.currentTime, 0.04);
+    setTimeout(() => { try { s.gain.disconnect(); } catch { /* done */ } }, 400);
   }
   get scraping() { return !!this.scr; }
 
-  /** The horn, held: the voice of this kind of vehicle (HORNS). Starts at once and goes on for as long as it is asked for; `hornOff` releases it. */
+  /** The horn, held: the recording of this kind of vehicle (HORNS), looped. Starts at once and goes on for as long as it is asked for; `hornOff` releases it. */
   hornOn(kit = 'sedan') {
     if (this.horn) return;
     const b = this.ready('horn', 0); if (!b) return;
-    const v = hornFor(kit), c = b.ctx, t = c.currentTime;
-    const hp = c.createBiquadFilter(), pk = c.createBiquadFilter(), lp = c.createBiquadFilter(), g = c.createGain();
-    hp.type = 'highpass'; hp.frequency.value = v.hp; pk.type = 'peaking'; pk.frequency.value = v.peakHz; pk.Q.value = 1.1; pk.gain.value = v.peakDb; lp.type = 'lowpass'; lp.frequency.value = 5200;
-    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v.level / Math.max(1, v.reeds.length), t + 0.008);
-    const oscs: OscillatorNode[] = [];
-    for (const f of v.reeds) for (const d of [-v.detune / 2, v.detune / 2]) { const o = c.createOscillator(); o.type = v.wave; o.frequency.value = f + d; o.connect(hp); o.start(t); oscs.push(o); }
-    hp.connect(pk).connect(lp).connect(g).connect(b.gain); this.horn = { gain: g, oscs };
+    this.ensureSamples(b);
+    this.hornWanted = kit;
+    this.startHorn(b, kit);
+  }
+  private startHorn(b: Bus, kit: string) {
+    if (this.horn) return;
+    const v = hornFor(kit), buf = this.bank.get(v.sample); if (!buf) return;      // still decoding: started the moment it is ready (see `update`) if the button is still held
+    const c = b.ctx, t = c.currentTime, s = c.createBufferSource(), hp = c.createBiquadFilter(), pk = c.createBiquadFilter(), lp = c.createBiquadFilter(), g = c.createGain();
+    s.buffer = buf; s.loop = true; s.playbackRate.value = v.rate;
+    hp.type = 'highpass'; hp.frequency.value = v.hp; pk.type = 'peaking'; pk.frequency.value = v.peakHz; pk.Q.value = 0.9; pk.gain.value = v.peakDb; lp.type = 'lowpass'; lp.frequency.value = 7000;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(v.level, t + 0.012);
+    s.connect(hp).connect(pk).connect(lp).connect(g).connect(b.gain); s.start(t, 0);
+    this.horn = { gain: g, srcs: [s] };
   }
   hornOff() {
+    this.hornWanted = null;
     const h = this.horn; if (!h || !this.bus) { this.horn = null; return; }
     this.horn = null;
-    const t = this.bus.ctx.currentTime; h.gain.gain.cancelScheduledValues(t); h.gain.gain.setValueAtTime(h.gain.gain.value, t); h.gain.gain.setTargetAtTime(0, t, 0.018);
-    setTimeout(() => { for (const o of h.oscs) { try { o.stop(); o.disconnect(); } catch { /* done */ } } }, 180);
+    const t = this.bus.ctx.currentTime; h.gain.gain.cancelScheduledValues(t); h.gain.gain.setValueAtTime(h.gain.gain.value, t); h.gain.gain.setTargetAtTime(0, t, 0.02);
+    setTimeout(() => { for (const o of h.srcs) { try { o.stop(); o.disconnect(); } catch { /* done */ } } }, 200);
   }
   get hornHeld() { return !!this.horn; }
-  /** A far-off horn in the traffic bed: very quiet, now and then. */
+  /** A far-off horn in the traffic bed: the recorded horn, very quiet, now and then. */
   private distantHorn() {
     const b = this.bus; if (!b || isMuted()) return;
-    const c = b.ctx, t = c.currentTime, g = c.createGain(), lp = c.createBiquadFilter();
-    lp.type = 'lowpass'; lp.frequency.value = 900; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.012, t + 0.03); g.gain.setValueAtTime(0.012, t + 0.2); g.gain.linearRampToValueAtTime(0, t + 0.3);
-    for (const f of [350 + Math.random() * 80, 440 + Math.random() * 60]) { const o = c.createOscillator(); o.type = 'square'; o.frequency.value = f; o.connect(lp); o.start(t); o.stop(t + 0.32); }
-    lp.connect(g).connect(b.gain);
+    const f = 0.9 + Math.random() * 0.25;
+    this.shot(b, 'horn-car', { dur: 0.3, rate: f, gain: 0.03, lp: 900, hp: 150, attack: 0.03, release: 0.1 });
   }
 
   /**
@@ -346,6 +374,11 @@ class VehicleAudio {
     // « speaker » level: the rms of only what a phone's loudspeaker can play (above SPEAKER_HZ): an engine's bass counts for little there, a horn's body for all of it
     return { peakDb: dB(peak), rmsDb: dB(rms), high: +(hi / Math.max(1e-12, hi + lo)).toFixed(2), speakerDb: dB(rms * Math.sqrt(sp / Math.max(1e-12, hi + lo))), airDb: dB(rms * Math.sqrt(air / Math.max(1e-12, hi + lo))) };
   }
+  /** Review hook: a stream of what the page sends to the speaker (after the limiter and the sound setting), for the A/B recordings of the audio review (scripts/audio/render-clips.mjs). */
+  captureStream(): MediaStream | null {
+    const b = this.bus; if (!b) return null;
+    const d = b.ctx.createMediaStreamDestination(); (audioMaster() ?? b.gain).connect(d); return d.stream;
+  }
   /** Test hook: puts the context to sleep as a phone call or the lock screen does. */
   suspendForTest(): Promise<void> { return this.bus?.ctx.suspend() ?? Promise.resolve(); }
   /** A short test tone through the same path as the horn (the diagnostics' button): whether it was started. */
@@ -356,7 +389,7 @@ class VehicleAudio {
     o.connect(g).connect(b.gain); o.start(t); o.stop(t + 0.42); return true;
   }
 
-  info() { return { count: { ...this.count }, running: !!this.eng, rpm: +(this.eng?.rpm ?? 0).toFixed(2), horn: !!this.horn, scraping: !!this.scr, gestured: hasGestured(), muted: isMuted(), state: this.bus?.ctx.state ?? 'none', session: sessionType(), nudges: this.nudges, nudgedBy: this.lastNudge }; }
+  info() { return { samples: { loaded: this.bank.loaded, failed: [...this.bank.failed], decoded: this.decoded }, count: { ...this.count }, running: !!this.eng, rpm: +(this.eng?.rpm ?? 0).toFixed(2), horn: !!this.horn, scraping: !!this.scr, gestured: hasGestured(), muted: isMuted(), state: this.bus?.ctx.state ?? 'none', session: sessionType(), nudges: this.nudges, nudgedBy: this.lastNudge }; }
 }
 
 export const vehicleAudio = new VehicleAudio();
