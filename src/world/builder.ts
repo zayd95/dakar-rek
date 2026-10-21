@@ -98,7 +98,7 @@ function limb(b: Batch, A: [number, number, number], Bp: [number, number, number
 
 /** Soft radial light pool texture for street lamps at night. */
 let poolTex: THREE.Texture | null = null;
-function lightPoolTexture() {
+export function lightPoolTexture() {
   if (poolTex) return poolTex;
   const cv = document.createElement('canvas'); cv.width = cv.height = 64;
   const c = cv.getContext('2d')!;
@@ -110,7 +110,11 @@ function lightPoolTexture() {
 }
 
 /** lite: Low quality — skips purely decorative props (roof clutter, AC units, laundry, zebra crossings, flowers). */
-export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubWorld {
+/**
+ * The district built in steps: each `yield` is a point where the work can stop and go on a frame later (src/main.ts builds the next district while the player is still on the road,
+ * a few milliseconds a frame). Nothing is added to the scene by it: the finished world is the generator's return value.
+ */
+export function* buildHubSteps(id: HubId, lite = false, shopDetail?: ShopDetail): Generator<void, HubWorld, void> {
   const sp = SPECS[id];
   const R = rng(sp.seed);
   const group = new THREE.Group();
@@ -163,6 +167,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
 
   const bounds = { x0: -HALF - 3, x1: HALF + 3, z0: -HALF - 3, z1: HALF + 3 };
   const seaMat = new THREE.MeshLambertMaterial({ color: 0x1f7fae, emissive: 0x0b3a55, emissiveIntensity: 0.35 });
+  yield;
   if (sp.sea === 'west') {
     const wallC = (x0: number, z0: number, x1: number, z1: number, h: number) => colliders.push({ x0, z0, x1, z1, h });
     // Corniche Ouest (after Habib's reference photos): dual carriageway with a concrete median, sidewalk with
@@ -213,6 +218,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       }
     }
   }
+  yield;
   if (sp.sea === 'north') {
     plain.box(size + 40, 0.1, 40, 0, 0, -HALF - 16, 0xe9d9a8);                       // beach
     const sea = new THREE.Mesh(new THREE.PlaneGeometry(1400, 700), seaMat); sea.rotation.x = -Math.PI / 2; sea.position.set(0, 0.05, -HALF - 36 - 350); group.add(sea);
@@ -221,9 +227,11 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   }
 
   // Roads, sidewalks, block slabs.
+  yield;
   const edges: RoadEdge[] = [];
   const nodes: { x: number; z: number }[][] = [];
   for (let k = 0; k <= NB; k++) {
+    yield;
     const road = banlieue ? plain : asphalt;                         // Pikine's roads stay sandy
     road.box(ROAD, 0.08, size + 12, roadC(k), 0, 0, sp.road);       // roads along z (x = roadC(k))
     road.box(size + 12, 0.08, ROAD, 0, 0, roadC(k), sp.road);       // roads along x
@@ -234,6 +242,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     if (b < NB) edges.push({ ax: roadC(a), az: roadC(b), bx: roadC(a), bz: roadC(b + 1) });
   }
   const RP = rng(sp.seed * 7919 + 17);                               // Pikine's own dust and clutter (keeps R's sequence for the rest)
+  yield;
   if (banlieue) for (let k = 0; k <= NB; k++) for (const along of [true, false]) {
     for (const lane of [-2.6, -1.1, 1.1, 2.6]) {                      // worn tyre tracks, a little darker and wavering
       for (let t = -HALF; t < HALF; t += 8) {
@@ -247,6 +256,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       plain.geometry(g, RP() < 0.6 ? 0x7c5e3f : 0x86705a, x, 0.086, z, RP() * Math.PI);
     }
   }
+  yield;
   for (let k = 0; k <= NB && !banlieue; k++) {
     for (let k2 = 0; k2 < NB; k2++) {
       // centre dashes between intersections only
@@ -257,6 +267,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       }
     }
   }
+  yield;
   if (!banlieue && !lite) {
     // zebra crossings on every side of every intersection
     for (let a = 0; a <= NB; a++) for (let b = 0; b <= NB; b++) {
@@ -272,6 +283,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   }
   const curbCol = banlieue ? 0xb89d74 : 0xb9b3a6;
   for (let i = 0; i < NB; i++) for (let j = 0; j < NB; j++) {
+    yield;
     const bx = blockMin(i), bz = blockMin(j), cx = bx + BLK / 2, cz = bz + BLK / 2, W = BLK + SIDEWALK * 2;
     (banlieue ? plain : pave).box(W, G - 0.01, W, cx, 0, cz, sp.walk);
     // curb stones
@@ -1185,6 +1197,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   let spawn = { x: 0, z: 0, yaw: 0 };
   let arenaInfo: HubWorld['arena'] = null, ecurieInfo: HubWorld['ecurie'] = null, monumentInfo: HubWorld['monument'] = null;
   for (let i = 0; i < NB; i++) for (let j = 0; j < NB; j++) {
+    yield;
     const key = `${i},${j}`;
     const city = CITY_BLOCKS[id][key];
     if (city) {
@@ -1207,6 +1220,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
       buildLotBuilding(i, j, lot % 2, lot >> 1);
     }
   }
+  yield;
   // Pikine: rusty tin fences and patched walls in the alleys between yards, off the grid's straight lines.
   if (banlieue && !lite) {
     const lotBlocks: [number, number][] = [];
@@ -1228,6 +1242,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     spawn = { x: sx - 3, z: sz + 7, yaw: Math.PI + 0.75 };
   }
 
+  yield;
   // Street lamps (post, arm over the road, lamp head) with a light pool on the ground at night; shade trees between them.
   // The new blocks have their own trees and furniture; random street props must not obstruct their aisles.
   const cityRects = Object.keys(CITY_BLOCKS[id]).map(key => { const [i, j] = key.split(',').map(Number); return { x: blockMin(i), z: blockMin(j) }; });
@@ -1235,6 +1250,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     || cityRects.some(c => x > c.x - r && x < c.x + BLK + r && z > c.z - r && z < c.z + BLK + r);
   const off = ROAD / 2 - SIDEWALK + 0.6; // lamp posts stand at the kerb
   for (let k = 0; k <= NB; k++) {
+    yield;
     for (let t = -HALF + 14; t < HALF - 8; t += 30) {
       for (const s of [-1, 1]) {
         const tt = t + (s > 0 ? 15 : 0);
@@ -1253,6 +1269,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     }
   }
   const treeOff = ROAD / 2 + 0.9;
+  yield;
   for (let k = 0; k <= NB; k++) for (let t = -HALF + 22; t < HALF - 8; t += 30) for (const s of [-1, 1]) for (const along of [true, false]) {
     if (R() < (banlieue ? 0.45 : sp.style === 'villa' ? 0.5 : 0.35)) continue;
     const tt = t + (s > 0 ? 15 : 0) + (R() - 0.5) * 4;
@@ -1261,6 +1278,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     if (Math.abs((along ? z : x) - roadC(Math.round((((along ? z : x) + HALF - ROAD / 2) / PITCH)))) < ROAD / 2 + 2) continue;
     dress(x, z, () => { if (sp.style === 'villa' || sp.style === 'student') palm(x, z, 0.9 + R() * 0.3); else tree(x, z, 0.9 + R() * 0.3, banlieue && R() < 0.2); });
   }
+  yield;
   let placed = 0;
   while (placed < sp.palms) {
     const k = Math.floor(R() * (NB + 1)), t = -HALF + 10 + R() * (size - 20), o2 = (R() < 0.5 ? -1 : 1) * (ROAD / 2 + 2.4);
@@ -1274,6 +1292,7 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
   if (sp.sea === 'west') for (let z = -HALF + 6; z < HALF - 4; z += 9) { if (Math.abs(z - roadC(Math.round((z + HALF - ROAD / 2) / PITCH))) > ROAD / 2 + 1) palm(-HALF - 1.2, z, 1.15, true); } // whitewashed trunks
   if (sp.sea === 'north') for (let x = -HALF + 10; x < HALF - 6; x += 18) palm(x, -HALF - 3, 1.1);
   // A few street vendors on the sidewalks.
+  yield;
   for (let n = 0; n < (banlieue ? 13 : 5); n++) {
     const k = Math.floor(R() * (NB + 1)), t = -HALF + 20 + R() * (size - 40), s = R() < 0.5 ? -1 : 1, along = R() < 0.5;
     const x = along ? roadC(k) + s * (ROAD / 2 + 1.6) : t, z = along ? t : roadC(k) + s * (ROAD / 2 + 1.6);
@@ -1282,12 +1301,15 @@ export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubW
     dress(x, z, () => stall(x, z));
   }
 
+  yield;
   for (const c of ghosts) colliders.splice(colliders.indexOf(c), 1);   // the venues module builds the real ones
   for (const [b, m, shadow] of [[plain, plainMat, true], [fac, facadeMat, true], [lampPosts, plainMat, true], [lampBulbs, lampMat, false], [glass, glassMat, false], [water, glassMat, false], [leaves, leafMat, true], [pave, paveMat, false], [blocks, blockMat, true], [metal, metalMat, true],
     [asphalt, asphaltMat, false], [tileRoof, tileRoofMat, true], [tin, tinMat, true], [trunks, trunkMat, true], [concrete, concreteMat, true],
     [ringSand, ringSandMat, false], [terrazzo, terrazzoMat, false], [roofSheet, roofSheetMat, true]] as [Batch, THREE.Material, boolean][]) {
     const mesh = b.build(m, true, shadow); if (mesh) group.add(mesh);
+    yield;
   }
+  yield;
   const lampGlow = new THREE.Mesh(mergeGeometries(pools, false)!, new THREE.MeshBasicMaterial({ map: lightPoolTexture(), color: 0xffb860, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
   lampGlow.visible = false; lampGlow.renderOrder = 1; group.add(lampGlow);
   for (const s of signs) (s.material as THREE.MeshLambertMaterial).emissiveMap = (s.material as THREE.MeshLambertMaterial).map;
@@ -1338,6 +1360,18 @@ export type SpecialKind = Special;
  * Special blocks of a hub with their centres (mosque, market, station, pitch, gym, port…) and the side of the sea.
  * Read by systems that populate the city around them (src/social/ambientSpots.ts); the geometry stays in buildHub.
  */
+/** The district, built at once. */
+export function buildHub(id: HubId, lite = false, shopDetail?: ShopDetail): HubWorld {
+  const steps = buildHubSteps(id, lite, shopDetail);
+  for (;;) { const r = steps.next(); if (r.done) return r.value; }
+}
+
+/** The colours a district's ground, roads and pavements are drawn in (the roads between districts blend into them, src/road/chunks.ts). */
+export function hubSurface(id: HubId): { ground: number; road: number; walk: number; banlieue: boolean } {
+  const sp = SPECS[id];
+  return { ground: sp.ground, road: sp.road, walk: sp.walk, banlieue: sp.style === 'banlieue' };
+}
+
 export function hubLayout(id: HubId): { specials: { kind: Special; x: number; z: number }[]; sea: 'west' | 'north' | null } {
   const sp = SPECS[id];
   return {

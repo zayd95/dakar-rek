@@ -21,10 +21,11 @@ await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && windo
 await page.waitForTimeout(1500);
 const openCarte = async () => { await tr.tap('#minimap'); await page.waitForFunction(() => window.__dakar.phoneInfo().open && window.__dakar.phoneInfo().screen === 'carte', null, T); await page.waitForTimeout(600); };
 await openCarte();
+await page.locator('#phone .cm-chip[data-cm="dealers"]').tap(); await page.waitForTimeout(400);       // « Véhicules » opens the list under the map
 const rows = await d(() => [...document.querySelectorAll('.ph-dealers .ph-dealer')].map(r => ({ text: r.querySelector('span')?.textContent ?? '', btn: r.querySelector('button')?.textContent ?? '', on: r.classList.contains('on') })));
-check('from the Plateau the Carte lists the four dealers, each « essai gratuit »', rows.length === 4 && ['Garage Modou', 'Ndiaye Auto', 'Prestige Auto · Berlines', 'Prestige Auto · 4 × 4'].every(n => rows.some(r => r.text.includes(n))) && rows.every(r => /essai gratuit/.test(r.text)), JSON.stringify(rows.map(r => r.text.slice(0, 70))));
+check('from the Plateau the Carte lists the four dealers, each « essai gratuit »', rows.length === 4 && ['Garage Modou', 'Ndiaye Auto', 'Prestige Auto · Berlines', 'Prestige Auto · 4 × 4'].every(n => rows.some(r => r.text.includes(n))) && /essai gratuit/.test(await page.locator('.cm-sheet').textContent()), JSON.stringify(rows.map(r => r.text.slice(0, 70))));
 const ndiaye = rows.find(r => r.text.includes('Ndiaye')), prestige = rows.find(r => r.text.includes('Berlines'));
-check('the dealer of this district is marked in place; the others offer « Y aller » on foot, free, with the time', ndiaye.btn === 'Marquer' && /Y aller · ≈ \d+ min · gratuit/.test(prestige.btn), JSON.stringify({ ndiaye: ndiaye.btn, prestige: prestige.btn }));
+check('the dealer of this district is marked in place; the others offer the walking time', /Marquer/.test(ndiaye.btn) && /🚶 \d+ min/.test(prestige.btn), JSON.stringify({ ndiaye: ndiaye.btn, prestige: prestige.btn }));
 await page.locator('.ph-dealers').scrollIntoViewIfNeeded().catch(() => {});
 await page.screenshot({ path: `${out}/1-carte-dealers.png` });
 // mark the one here

@@ -32,3 +32,8 @@ body.theme-night #phone .ph-screen .kv, body.theme-night #phone .ph-screen .rel 
 body.theme-night .ph-btn:active, body.theme-night .ph-table > button:active { background: #3a3a3c; }
 body.theme-night .ph-rows em.pos { color: #4ade80; } body.theme-night .ph-rows em.neg { color: #ff8a80; }
 body.theme-night .ph-ring { background: radial-gradient(closest-side, var(--ios-card) 74%, transparent 75%), conic-gradient(var(--c) calc(var(--v) * 1%), #3a3a3c 0); }
+
+body.theme-night #phone .cm-tabs, body.theme-night #phone .cm-filter, body.theme-night #phone .cm-pop { background: rgba(28, 28, 30, .92); color: #f5f5f7; }
+body.theme-night #phone .cm-tabs button { color: #a1a1a6; } body.theme-night #phone .cm-tabs button.on { background: #48484a; color: #fff; }
+body.theme-night #phone .cm-filter[aria-expanded="true"] { background: #0a84ff; color: #fff; }
+body.theme-night #phone .cm-pin { background: #2c2c2e; } body.theme-night #phone .cm-pin.on { color: #ffd60a; }

@@ -119,16 +119,18 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   check(`${label}: a tap on the minimap opens the full map (the phone's « Carte »)`, pi.open && pi.screen === 'carte', JSON.stringify(pi));
   await page.waitForFunction(() => !window.__dakar.minimap().on, null, { timeout: 15000 }).catch(() => {});
   check(`${label}: the minimap steps aside while the phone is open`, !(await rect('#minimap')));
-  const fm = await d(() => { const c = document.querySelector('#phone .fm-cv'); if (!c) return null; const r = c.getBoundingClientRect(); return { w: r.width, h: r.height, chips: document.querySelectorAll('#phone .fm-chip').length, hubs: document.querySelectorAll('#phone .ph-hub').length, travel: !!document.querySelector('#phone [data-hub].here'), walk: !!document.querySelector('#phone [data-app="quartier"]') }; });
-  check(`${label}: the full map shows the hub, a legend by type, and keeps the neighbourhood travel and « choisir un repère à pied »`, !!fm && fm.w > 200 && fm.h > 200 && fm.chips >= 4 && fm.hubs === 4 && fm.travel && fm.walk, JSON.stringify(fm));
+  const fm = await d(() => { const c = document.querySelector('#phone .fm-cv'); if (!c) return null; const r = c.getBoundingClientRect(); return { w: r.width, h: r.height, chips: document.querySelectorAll('#phone .fm-chip').length, hubs: document.querySelectorAll('#phone .cm-chip.hub').length, travel: [...document.querySelectorAll('#phone .cm-chip.hub small')].every(x => /\d+ min/.test(x.textContent)), walk: !!document.querySelector('#phone .cm-chip[data-cm="dealers"]') }; });
+  check(`${label}: the full map shows the hub, type filters, and under it the other districts with their walking time and the vehicles`, !!fm && fm.w > 200 && fm.h > 200 && fm.chips >= 4 && fm.hubs === 3 && fm.travel && fm.walk, JSON.stringify(fm));
   await shot('7-fullmap');
 
   // legend filter
   const first = await d(() => document.querySelector('#phone .fm-chip').dataset.kind);
+  await press('#phone [data-fm="filters"]');                                // the type filters open over the map
   await press('#phone .fm-chip >> nth=0');
   check(`${label}: a legend chip filters its type`, await d(() => document.querySelector('#phone .fm-chip').getAttribute('aria-pressed') === 'false'));
   await press('#phone .fm-chip >> nth=0');
   check(`${label}: and shows it again`, await d(() => document.querySelector('#phone .fm-chip').getAttribute('aria-pressed') === 'true'), first);
+  await press('#phone [data-fm="filters"]');
 
   // zoom buttons (the scale bar changes) and scroll zoom
   const cv0 = await d(() => document.querySelector('#phone .fm-cv').toDataURL().length);
@@ -143,7 +145,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   const at = await d(t => window.__dakar.fullMapAt(t.x, t.z), target);
   await tapAt(at.x, at.y); await settle(500);
   const card = await d(() => document.querySelector('#phone .fm-card').innerText.replace(/\s+/g, ' '));
-  check(`${label}: tapping a place shows its name, what to do, the distance and the walking time`, /Gargote Chez Fatou/.test(card) && /\d+ (m|km)/.test(card) && /à pied ≈ \d+ (s|min)/.test(card) && /Ici :/.test(card) && /Marquer/.test(card), card);
+  check(`${label}: tapping a place shows its name, the distance and the walking time, « Marquer » and « Raccourci »`, /Gargote Chez Fatou/.test(card) && /\d+ (m|km)/.test(card) && /🚶 ≈ \d+ (s|min)/.test(card) && /Marquer/.test(card) && /Raccourci/.test(card), card);
   await shot('8-selected');
   await press('#phone .fm-mark'); await settle(500);
   const dest = await d(() => window.__dakar.destination());

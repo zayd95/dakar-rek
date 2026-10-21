@@ -2,6 +2,7 @@ import './minimap.css';
 import * as THREE from 'three';
 import type { GameCtx, GameModule } from '../game/modules';
 import type { HubWorld } from '../world/types';
+import type { HubId } from '../core/types';
 import { HUB_NAMES } from '../world/content';
 import { buildLayer, drawArrow, drawEdgeArrow, drawIcon, PALETTE, type Layer } from './minimapDraw';
 import {
@@ -38,6 +39,8 @@ export const mapBridge = {
   guide: null as { name: string; x: number; z: number } | null,
   friends: [] as MapFriend[],
   vehicles: [] as MapVehicle[],
+  /** The vehicles the player owns, wherever they are parked (wired by main.ts): the city map (src/ui/geoMap.ts) shows them. */
+  owned: (): { asset: string; name: string; hub: HubId; x: number; z: number; yaw: number }[] => [],
   hour: 12,
   /** The walking route to the current objective (along the roads), refreshed with the minimap. */
   route: null as { points: Pt[]; length: number } | null,

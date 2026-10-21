@@ -164,6 +164,15 @@ export interface GameModule {
   init?(ctx: GameCtx): void;
   /** After a hub is built and the shared registries were reset: register places, seats, targets, interiors here. */
   hubLoaded?(ctx: GameCtx, hub: HubWorld): void;
+  /** The same load as `hubLoaded`, in steps (a `yield` between two pieces of work): a district swapped in along a road finishes loading a few ms a frame (src/main.ts `loadHubStaged`). Optional; `hubLoaded` must do the same work at once. */
+  hubLoadedSteps?(ctx: GameCtx, hub: HubWorld): Generator<void, void, void>;
+  /** Needed in the very frame a district is swapped in along a road (the one that drives the player): the others finish loading in the frames after (src/main.ts `loadHubStaged`). */
+  critical?: boolean;
+  /**
+   * The player has crossed the middle of a road between districts (src/road): the district at its other end is about to be loaded, its frame differing from this one's by (dx, dz).
+   * A module that has the player in a vehicle takes the ride across (records the pose in the new frame, as a border crossing does) and returns true.
+   */
+  corridorCross?(ctx: GameCtx, dest: HubId, dx: number, dz: number): boolean;
   /** Every frame after the activity runner, before the interaction focus. */
   update?(ctx: GameCtx, dt: number): void;
   /** The player entered or left an interior (space = new interaction space). */

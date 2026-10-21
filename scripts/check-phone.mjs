@@ -63,9 +63,11 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   }
   // Carte: current hub highlighted, known places listed, no teleport button.
   await press('#phone [data-nav="home"]'); await press('#phone [data-app="carte"]');
-  const map = await page.evaluate(() => ({ here: document.querySelector('#phone .ph-hub.here')?.dataset.hub, hubs: document.querySelectorAll('#phone .ph-hub').length, walks: document.querySelectorAll('#phone .ph-walk[data-walk]').length, text: document.querySelector('#phone .ph-screen').innerText }));
-  // UI V2 step 1: walking between neighbourhoods is free and always offered (« Aller à pied »), the car rapide is the paid, faster way
-  check(`${label}: map highlights the current hub and its places, and offers walking`, map.here === 'pikine' && map.hubs === 4 && map.text.includes('Ma chambre') && /à pied, gratuit/.test(map.text) && /car rapide/.test(map.text) && map.walks === 3 && map.text.includes('Y aller à pied'), JSON.stringify({ here: map.here, hubs: map.hubs, walks: map.walks }));
+  const map = await page.evaluate(() => ({ hubs: [...document.querySelectorAll('#phone .cm-chip.hub')].map(c => c.dataset.cmHub + ':' + (c.querySelector('small')?.textContent ?? '')), veh: !!document.querySelector('#phone .cm-chip[data-cm="dealers"]'), tabs: [...document.querySelectorAll('#phone .cm-tabs')].length, text: document.querySelector('#phone .ph-screen').innerText }));
+  // the map is the screen: the strip under it offers the other districts with their walking time, and a district's card says how to go (on foot, free; the car rapide is the paid, faster way)
+  await press('#phone .cm-chip.hub >> nth=0');
+  const card = await page.evaluate(() => ({ text: document.querySelector('#phone .fm-card:not([hidden])')?.innerText ?? '', walks: document.querySelectorAll('#phone .fm-card [data-walk]').length }));
+  check(`${label}: the map's strip offers the other districts with their walking time, and a district's card offers the walk and names the car rapide`, map.hubs.length === 3 && map.hubs.every(h => /\d+ min/.test(h)) && map.veh && map.tabs === 2 && /à pied/.test(card.text) && /Car rapide/.test(card.text) && card.walks === 1, JSON.stringify({ hubs: map.hubs, card }));
   // Portefeuille: game money; the history line waits for the economy module's ledger hook.
   await press('#phone [data-nav="home"]'); await press('#phone [data-app="portefeuille"]');
   const wallet = await page.locator('#phone .ph-screen').innerText();

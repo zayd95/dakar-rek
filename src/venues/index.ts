@@ -61,7 +61,9 @@ export const VenuesModule: GameModule = {
     people = new People(() => bodies.flatMap(f => f()), ctx.activities, line => ctx.toast(line), () => ({ x: ctx.player.pos.x, z: ctx.player.pos.z }));
     ctx.interactions.add({ name: 'venue-people', collect: (space, x, z, out) => people?.collect(space, x, z, out) });
   },
-  hubLoaded(ctx, hub) {
+  hubLoaded(ctx, hub) { for (const _ of this.hubLoadedSteps!(ctx, hub)) { /* all at once */ } },
+  /** Each venue is built in its own step (a district swapped in along a road, src/main.ts): the mosques and dibiteries are tens of ms apiece. */
+  *hubLoadedSteps(ctx, hub) {
     clear();
     const sites = hub.sites ?? [];
     // Soumbédioune's beach is a city block of the hub: the venue joins it through the places it already has
@@ -71,9 +73,9 @@ export const VenuesModule: GameModule = {
     if (!sites.length && !(landing && market) && !salon && !club) return;
     mats = new VenueMaterials();
     const env: VenueEnv = { ctx, mats, lite: ctx.quality() === 'low', addPeople: f => bodies.push(f) };
-    for (const s of sites) venues.push(s.kind === 'mosque' ? buildMosque(env, s) : buildDibi(env, s));
-    if (landing && market) venues.push(buildBeach(env, landing, market));
-    if (salon) venues.push(buildSalon(env, salon));
+    for (const s of sites) { venues.push(s.kind === 'mosque' ? buildMosque(env, s) : buildDibi(env, s)); yield; }
+    if (landing && market) { venues.push(buildBeach(env, landing, market)); yield; }
+    if (salon) { venues.push(buildSalon(env, salon)); yield; }
     if (club) venues.push(buildClub(env));
   },
   update(ctx, dt) {

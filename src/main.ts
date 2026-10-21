@@ -10,7 +10,7 @@ import { loadSave, writeSave, clearSave, newSave, resumeSpot } from './core/save
 import { readTestParams } from './core/testParams';
 import type { HubId } from './core/types';
 import { HUB_IDS } from './core/types';
-import { HALF, buildHub, hubLayout } from './world/builder';
+import { HALF, buildHub, buildHubSteps, hubLayout } from './world/builder';
 import { Sky } from './world/sky';
 import { setGrainEnabled } from './world/grain';
 import { buildInterior, disposeInterior, setInteriorDaylight, type Interior } from './world/interiors';
@@ -80,6 +80,10 @@ import { shopRegular } from './social/regular';
 import { People } from './interact/people';
 import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
+import { ownsVehicle, park, parked, type VehicleAsset } from './transport/owned';
+import { CorridorHost, type Swap } from './road/host';
+import { transport } from './transport/module';
+import { specOf as catalogSpec } from './economy/catalog';
 import { arenaShow } from './arena/module';
 import { eveningLine, placeClock } from './arena/eveningCall';
 import { GALA_DONE_COUNTER } from './arena/program';
@@ -254,62 +258,244 @@ function updateLighting(hour: number) {
     world.facadeMat.emissiveIntensity = night * 1.25;
     world.lamps.color.setScalar(lerp(0.45, 1, night));
     world.lampGlow.visible = night > 0.3;
+    corridors.setNight(night);
     for (const m of world.signs) (m.material as THREE.MeshLambertMaterial).emissiveIntensity = night * 0.45;
   }
 }
 
 // ------------------------------------------------------------------ hubs
 const rand = rng(Date.now() & 0xffff);
+/** The roads between districts (src/road): attached to each district as it loads, streamed round the player, swapped at their middle. */
+const corridors = new CorridorHost(scene, rand);
 
 /** When the current hub was built (a place a module adds, such as a dealer's counter, appears a moment after). */
 let hubAt = 0;
 /** A district crossing asked by a module during the frame (src/transport/hubLink.ts): carried out before the next frame's updates, so no module is mid-step when the hub is rebuilt. */
 /** How long the last district crossing took to build (ms): shown by the debug hook, read by the checks. */
 let lastCrossMs = 0;
-let pendingCross: { dest: HubId; at: { x: number; z: number; yaw: number } } | null = null;
-function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }) {
+let pendingCross: { dest: HubId; at: { x: number; z: number; yaw: number }; keepSpeed?: number; quiet?: boolean; road?: boolean } | null = null;
+/**
+ * A district being loaded in steps: what is left to do after the frame that swapped it in. Modules whose `hubLoaded` has not run yet (`done`) are not updated meanwhile, so none is ever
+ * stepped on a half-built district; `maxStep` is the longest single step (ms): what the checks read as the cost of the worst frame of the load.
+ */
+let staged: { gen: Generator<void, void, void>; done: Set<object>; steps: number; maxStep: number; start: number; log: [string, number][] } | null = null;
+/** The last staged load's per-step cost, slowest first (debug: where the remaining spikes are). */
+let lastStaged: { total: number; steps: number; maxStep: number; log: [string, number][] } | null = null;
+/** Milliseconds a frame may spend finishing a staged load (the frame's own work is not counted: this is the extra). */
+const STAGE_BUDGET_MS = 5;
+const isGen = (r: unknown): r is Generator<void, void, void> => !!r && typeof (r as Generator).next === 'function';
+
+/** Metres out on a road at which the district at its other end starts to be built, and the milliseconds a frame that may take. */
+const PREWARM_AT = 130, PREWARM_BUDGET_MS = 4;
+/** Vertices of the built district drawn off screen per frame to put them on the GPU. */
+const WARM_VERTS = 90000;
+/** ?nostage: swap the way #51's border road does (the whole district built and loaded in the swap frame): the measurements' baseline (scripts/perf-corridor.mjs). */
+const STAGING = !new URLSearchParams(location.search).has('nostage');
+/** A district built ahead of the player while they are still on the road to it (src/road): the generator, then the finished world. */
+let prewarm: { id: HubId; gen: Generator<void, HubWorld, void>; world: HubWorld | null; ms: number; steps: number; warmMs: number; warm?: Warm } | null = null;
+function prewarmStart(id: HubId) {
+  if (prewarm?.id === id) return;
+  prewarmDrop();
+  setGrainEnabled(quality !== 'low');
+  prewarm = { id, gen: buildHubSteps(id, quality === 'low', quality), world: null, ms: 0, steps: 0, warmMs: 0 };
+}
+function prewarmStep(budgetMs: number) {
+  const w = prewarm; if (!w || w.world) return;
+  const t0 = performance.now();
+  while (performance.now() - t0 < budgetMs) {
+    const r = w.gen.next(); w.steps++;
+    if (r.done) {
+      w.world = r.value; w.warm = warmBegin(w.world);
+      renderer.compileAsync(w.world.group, camera, scene).catch(() => { /* compiled on first draw instead */ });   // the programs link in parallel where the browser can (KHR_parallel_shader_compile)
+      break;
+    }
+  }
+  w.ms += performance.now() - t0;
+}
+function prewarmDrop() {
+  const w = prewarm; prewarm = null; if (!w?.world) return;
+  if (w.warm) warmEnd(w.warm, w.world); scene.remove(w.world.group); w.world.dispose();
+}
+/** Takes the built district for `id` (finishing its build now if it is not done: the old cost, but only for a player who outran the build). */
+function prewarmTake(id: HubId): HubWorld | null {
+  const w = prewarm; if (!w || w.id !== id) return null;
+  while (!w.world) { const r = w.gen.next(); if (r.done) w.world = r.value; }
+  if (w.warm) warmEnd(w.warm, w.world);
+  scene.remove(w.world.group);                              // (loadHubSteps adds it where it belongs)
+  prewarm = null; return w.world;
+}
+
+/**
+ * Getting the built district's meshes onto the GPU before the player can see them. The first draw of a mesh uploads its buffers and textures, which on a phone is a pause of many ms; here
+ * each of the district's top-level pieces is drawn once, one or a few a frame, into a 1 × 1 pixel of the screen that the real frame then overwrites. The district stands in the scene meanwhile on
+ * a layer the player's camera does not draw (and the lights are on both), so the same programs, lights and fog apply as in the real frame and nobody sees anything.
+ */
+const WARM_LAYER = 5;
+interface Warm { cam: THREE.PerspectiveCamera; kids: THREE.Object3D[]; verts: number[]; i: number; saved: { o: THREE.Object3D; fc: boolean }[]; done: boolean }
+function warmBegin(world: HubWorld): Warm {
+  const cam = new THREE.PerspectiveCamera(); cam.layers.set(WARM_LAYER);
+  const saved: Warm['saved'] = [];
+  world.group.traverse(o => { o.layers.set(WARM_LAYER); if ((o as THREE.Mesh).isMesh || (o as THREE.Sprite).isSprite) { saved.push({ o, fc: o.frustumCulled }); o.frustumCulled = false; } });
+  hemi.layers.enable(WARM_LAYER); sun.layers.enable(WARM_LAYER);
+  const kids = [...world.group.children], verts = kids.map(k => { let n = 0; k.traverse(o => { const g = (o as THREE.Mesh).geometry; if (g?.attributes?.position) n += g.attributes.position.count; }); return n; });
+  scene.add(world.group);
+  return { cam, kids, verts, i: 0, saved, done: kids.length === 0 };
+}
+/** Draws the next pieces (up to `maxVerts` vertices) off screen. Called just before the frame's own render. */
+function warmStep(maxVerts: number) {
+  const w = prewarm?.warm; if (!w || w.done) return;
+  const vp = renderer.getViewport(new THREE.Vector4()), ac = renderer.autoClear;
+  let n = 0;
+  renderer.autoClear = false; renderer.setViewport(0, 0, 1, 1);
+  while (w.i < w.kids.length && n < maxVerts) {
+    for (let k = 0; k < w.kids.length; k++) w.kids[k].visible = k === w.i;
+    renderer.render(scene, w.cam); n += w.verts[w.i] + 3000; w.i++;
+  }
+  renderer.autoClear = ac; renderer.setViewport(vp);
+  if (w.i >= w.kids.length) { for (const k of w.kids) k.visible = true; w.done = true; }
+}
+/** Puts the district back as a normal one: drawn by the player's camera, frustum culling on. */
+function warmEnd(w: Warm, world: HubWorld) {
+  for (const k of w.kids) k.visible = true;
+  for (const s of w.saved) s.o.frustumCulled = s.fc;
+  world.group.traverse(o => o.layers.set(0));
+  w.done = true;
+}
+
+function loadHub(id: HubId, at?: { x: number; z: number; yaw: number }, keepSpeed = 0) {
+  const g = loadHubSteps(id, at, keepSpeed, null, false);
+  for (;;) if (g.next().done) break;
+}
+/** The same load, in steps: the frame that swaps the district in does the least that must be done at once (staged: the player's vehicle and place), the rest follows within a few ms a frame. */
+function loadHubStaged(id: HubId, at: { x: number; z: number; yaw: number }, keepSpeed: number, built: HubWorld | null) {
+  const gen = loadHubSteps(id, at, keepSpeed, built, true);
+  staged = { gen, done: new Set(), steps: 0, maxStep: 0, start: performance.now(), log: [] };
+  const t0 = performance.now(); gen.next();                                 // the swap's own frame: up to the first pause
+  staged.maxStep = performance.now() - t0; staged.steps = 1;
+}
+/** Runs the staged load for at most `budgetMs` (a step that is longer still runs whole). */
+function stagedStep(budgetMs: number) {
+  const st = staged; if (!st) return;
+  const t0 = performance.now();
+  while (performance.now() - t0 < budgetMs) {
+    const a = performance.now(); const r = st.gen.next(); st.steps++; st.maxStep = Math.max(st.maxStep, performance.now() - a);
+    if (r.done) { lastStaged = { total: performance.now() - st.start, steps: st.steps, maxStep: st.maxStep, log: st.log.sort((a, b) => b[1] - a[1]).slice(0, 8).map(([n, ms]) => [n, Math.round(ms)]) }; staged = null; return; }
+  }
+}
+
+function* loadHubSteps(id: HubId, at: { x: number; z: number; yaw: number } | undefined, keepSpeed: number, built: HubWorld | null, early: boolean): Generator<void, void, void> {
   hubAt = performance.now();
+  let lt = performance.now();
+  const lap = (n: string) => { const t = performance.now(); staged?.log.push([n, t - lt]); lt = t; };
+  const pause = function* (n: string) { lap(n); yield; lt = performance.now(); };
   activities.cancel(); standUp(true);
   pacer.reset();
   for (const a of apprentices) a.dispose();          // detach them before the hub geometry is freed
   apprentices = [];
   ambient?.dispose(); ambient = null;
-  if (world) { scene.remove(world.group); world.dispose(); }
+  const old = world;
+  if (old) scene.remove(old.group);
+  if (old && !early) old.dispose();                  // (staged: freed a few frames later, below)
   setGrainEnabled(quality !== 'low');                     // procedural surface noise is the main per-pixel cost
   extra.clear();
-  world = buildHub(id, quality === 'low', quality);
+  if (early) { crowd = null; traffic = null; }          // the old district's walkers and traffic must not be updated (or greeted) while the new one is still loading
+  world = built ?? buildHub(id, quality === 'low', quality);
   economy.decorateHub(world, quality);                   // before the placed people: the quincaillerie's keeper is one of them
+  corridors.attach(world, quality, at ?? null);          // the roads that leave this district: before the modules and the player's place (both may be on one)
   scene.add(world.group);
-  crowd = new Crowd(world, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(world, rand, QUAL[quality].traffic);
-  extra.add(crowd.group, traffic.group);
-  apprentices = humanoidReady() ? world.rapides.map(car => { const a = new Apprentice(id, rand); a.attach(car); return a; }) : [];
-  for (const car of traffic.rapides()) { if (!humanoidReady()) break; const a = new Apprentice(id, rand, true); a.attach(car); apprentices.push(a); }
-  ambient = new PlacedPeople(world, rand, h => extra.add(h.group));
-  life?.dispose(); life = world.monument ? new MonumentLife(world.monument, rand, QUAL[quality].crowd) : null;
-  if (life) extra.add(life.group);
-  npcLife.load(world, extra);                            // recurring cast on their daily routines
+  const w = world;
   interiors = new Map(); inside = null; follow.indoor = false; scene.remove(roomLight);
   doorSeq++; hud.fade(false);                            // cancel a door transition still fading
+  const place = () => {
+    const p = resumeSpot(at, w.bounds, w.spawn, (x, z) => !!w.corridors?.some(c => c.contains(x, z, 0.5)));   // a spot outside this hub and its roads (an old save, a bad teleport): its spawn
+    pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = keepSpeed;
+    follow.snapBehind(facing);
+    state.place(id, p.x, p.z, p.yaw);
+    hud.setPlace(HUB_NAMES[id], '', false);
+    remoteAvatars.clear(); emoter.reset(); notice.reset(); presence.join(id, id === invitedHub ? invitedRoom : null);
+    phone.remember();
+  };
+  let criticalSeats: Seat[] = [];
+  const runModule = function* (m: (typeof MODULES)[number]): Generator<void, void, void> {
+    let t0 = performance.now();
+    const r: unknown = early && m.hubLoadedSteps ? m.hubLoadedSteps(ctx, w) : m.hubLoaded?.(ctx, w);
+    if (isGen(r)) for (;;) { const s = r.next(); if (s.done) break; if (early) { staged?.log.push(['mod:' + m.name, performance.now() - t0]); yield; lt = performance.now(); t0 = lt; } }
+    staged?.log.push(['mod:' + m.name, performance.now() - t0]);
+    staged?.done.add(m);
+  };
+  places.clear(); people.clear();
+  if (early) {
+    // the swap frame: the vehicle the player drives and the player's place. Everything else of the district follows, a few ms a frame.
+    const seatsBefore = new Set(seats.all().map(s => s.id));
+    for (const m of MODULES) if (m.critical) for (const _ of runModule(m)) { /* critical modules never pause */ }
+    criticalSeats = seats.all().filter(s => !seatsBefore.has(s.id));          // the owned vehicle's driver seat: registerSeats below must not wipe it
+    place();
+    yield* pause('swap frame');
+  }
+  crowd = new Crowd(w, rand, QUAL[quality].crowd); traffic = new DecorativeTraffic(w, rand, QUAL[quality].traffic);
+  extra.add(crowd.group, traffic.group);
+  if (early) yield* pause('crowd + traffic');
+  apprentices = humanoidReady() ? w.rapides.map(car => { const a = new Apprentice(id, rand); a.attach(car); return a; }) : [];
+  for (const car of traffic.rapides()) { if (!humanoidReady()) break; const a = new Apprentice(id, rand, true); a.attach(car); apprentices.push(a); }
+  ambient = new PlacedPeople(w, rand, h => extra.add(h.group));
+  life?.dispose(); life = w.monument ? new MonumentLife(w.monument, rand, QUAL[quality].crowd) : null;
+  if (life) extra.add(life.group);
+  npcLife.load(w, extra);                            // recurring cast on their daily routines
+  if (early) yield* pause('people + cast');
   let n = 0;
-  for (const it of world.interactables) {
+  for (const it of w.interactables) {
     // homes (the starter room included) are built by the ownership module through ctx.addInterior (src/economy/estate.ts)
     const kind = it.id.includes(':gargote:') ? 'gargote' : it.id.includes(':maiga:') ? 'maiga' : null;
     if (!kind) continue;
     const int = buildInterior(kind, 1000 + n * 40, 0, it.name, id); n++;
-    world.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
+    w.group.add(int.group); int.group.visible = false; interiors.set(it.id, int);
+    if (early) yield* pause('interior');
   }
   registerSeats();
+  for (const s of criticalSeats) seats.add(s);                  // the same objects, so the occupant the module set (the player at the wheel) stays
+  criticalSeats = [];
   // where to rest here (the tired refusals and phone › Santé name it): the player's bed in their own hub, else the free rest
-  setRestSpot(restSpot(world.interactables, homeHub() === id ? 'ta chambre' : null));
-  places.clear(); people.clear();
-  for (const m of MODULES) m.hubLoaded?.(ctx, world);
-  const p = resumeSpot(at, world.bounds, world.spawn);                  // a spot outside this hub (an old save, a bad teleport): its spawn
-  pos.set(p.x, 0.1, p.z); facing = p.yaw; speed = 0;
-  follow.snapBehind(facing);
-  state.place(id, p.x, p.z, p.yaw);
-  hud.setPlace(HUB_NAMES[id], '', false);
-  remoteAvatars.clear(); emoter.reset(); notice.reset(); presence.join(id, id === invitedHub ? invitedRoom : null);
-  phone.remember();
+  setRestSpot(restSpot(w.interactables, homeHub() === id ? 'ta chambre' : null));
+  if (early) yield* pause('seats');
+  for (const m of MODULES) { if (early && m.critical) continue; yield* runModule(m); if (early) { yield; lt = performance.now(); } }
+  if (!early) place();
+  if (early && old) { old.dispose(); yield* pause('dispose old district'); }
+}
+
+/** True if (x, z) is inside the rectangle. */
+const inRect = (b: { x0: number; x1: number; z0: number; z1: number }, x: number, z: number) => x >= b.x0 && x <= b.x1 && z >= b.z0 && z <= b.z1;
+
+/**
+ * Every frame on a district that has a road leaving it: the road's chunks and traffic follow the player, and past the middle of the road the other district becomes the loaded one
+ * (the player, on foot or driving, is carried across by `corridorSwap`). The swap itself is in the next frame's start, like a border crossing (`pendingCross`).
+ */
+function corridorStep(dt: number) {
+  const w = world; if (!w) return;
+  corridors.update(dt, pos.x, pos.z, mode === 'play' && !inside ? { x: pos.x, z: pos.z } : null);
+  // the district at the other end is built ahead while the player is well out on the road, and let go if they turn back
+  const ap = inside ? null : corridors.approach(pos.x, pos.z);
+  if (STAGING && ap && ap.depth > PREWARM_AT) { if (!prewarm) prewarmStart(ap.to); prewarmStep(PREWARM_BUDGET_MS); }
+  else if (prewarm && (!ap || ap.depth < PREWARM_AT - 60)) prewarmDrop();
+  if (staged || mode !== 'play' || inside || lambScene || rising || approach) return;
+  const sw = corridors.watch(pos.x, pos.z);
+  if (sw) corridorSwap(sw);
+}
+
+/**
+ * The player has crossed the middle of a road: the district at the other end becomes the loaded one, in the SAME instant and place. Both districts' frames differ by a translation
+ * only (src/road/routes.ts), so heading, speed, steering and the camera need nothing: the vehicle being driven records the new frame's pose (`corridorCross`), a vehicle
+ * parked on the road is re-homed to the new district's frame, and the player is placed at the same spot of the new frame.
+ */
+function corridorSwap(sw: Swap) {
+  const w = world!, b = w.bounds;
+  for (const a of ['jakarta', 'compacte', 'berline', 'tout_terrain', 'tiak'] as VehicleAsset[]) {          // vehicles parked on the road follow the frame
+    const p = parked(state.data, a);
+    if (!p || p.hub !== sw.from || inRect(b, p.x, p.z)) continue;
+    park(state.data, { ...p, hub: sw.to, x: p.x + sw.dx, z: p.z + sw.dz });
+  }
+  for (const m of MODULES) if (m.corridorCross?.(ctx, sw.to, sw.dx, sw.dz)) break;                          // the one being driven keeps driving
+  corridors.prepare(sw.road);
+  pendingCross = { dest: sw.to, at: { x: pos.x + sw.dx, z: pos.z + sw.dz, yaw: facing }, keepSpeed: speed, quiet: true, road: STAGING };
 }
 
 function pushOut(x: number, z: number, r: number, cols: Collider[]): [number, number] {
@@ -1148,7 +1334,15 @@ const phone = new Phone({
 });
 
 // the minimap and the phone's map (src/ui/minimap.ts): the game's walking marker, the phone, the contacts around
+transport.addObstacles(out => { if (corridors.active) corridors.footprints(out, pos.x, pos.z); });     // the road's traffic is solid for the vehicle the player drives
 mapBridge.walkTo = id => setDestination(id);
+/** The vehicles the player owns and where they stand parked (the city map shows them; the one being driven is the player's own marker). */
+mapBridge.owned = () => (['jakarta', 'compacte', 'berline', 'tout_terrain', 'tiak'] as VehicleAsset[]).flatMap(a => {
+  if (!ownsVehicle(state, a)) return [];
+  const p = parked(state.data, a); if (!p) return [];
+  if (MODULES.some(m => { const o = m as unknown as { ridden?: boolean; def?: { asset?: string } }; return o.ridden && o.def?.asset === a; })) return [];
+  return [{ asset: a, name: catalogSpec(a)?.name ?? a, hub: p.hub, x: p.x, z: p.z, yaw: p.yaw }];
+});
 mapBridge.destination = () => (destination && destination.hub === world?.id ? destination.id : null);
 mapBridge.openMap = () => { if (mode === 'play' && !phone.isOpen) phone.open('carte'); };
 mapBridge.playersNow = () => presenceSpace() !== 'street' ? [] : [...presence.peers.values()].filter(p => p.space === 'street' && !remoteAvatars.hidden(p) && Math.hypot(p.x - pos.x, p.z - pos.z) < 90).slice(0, 12).map(p => ({ id: p.id, name: p.name, x: p.x, z: p.z }));
@@ -1237,14 +1431,23 @@ function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (!stepping) frameStep(now, dt);
 }
+/** Per frame: [ms of game work, ms of renderer.render] for the last 400 frames (debug: what a district swap costs the frame, scripts/perf-corridor.mjs). */
+const frameRing: number[][] = [];
+/** ?debug: modules whose update took over 25 ms in a frame: [frame index in the ring, name, ms, 1 if a district was loading]. */
+const slowMods: (string | number)[][] = [];
+const DEBUG_SLOW = new URLSearchParams(location.search).has('debug');
 function frameStep(now: number, dt: number, draw = true) {
+  const tFrame0 = performance.now();
   if (document.hidden || !world) return;
   const tFrame = profOn ? performance.now() : 0;
   setHumanoidView(camera);                                 // far, unseen and hidden bodies get less animation work (ANIM_LOD)
   if (pendingCross) {                                      // a car crossing the border road: the district changes around it, no fade
     const c = pendingCross; pendingCross = null;
-    const t0 = performance.now(); loadHub(c.dest, c.at); lastCrossMs = performance.now() - t0;
-    hud.toast(HUB_NAMES[c.dest]); saveNow();
+    const t0 = performance.now();
+    if (c.road) loadHubStaged(c.dest, c.at, c.keepSpeed ?? 0, prewarmTake(c.dest)); else loadHub(c.dest, c.at, c.keepSpeed);
+    lastCrossMs = performance.now() - t0;
+    if (!c.quiet) hud.toast(HUB_NAMES[c.dest]);
+    saveNow();
   }
 
   if (input.takeMenu()) { if (activities.running) activities.cancel('Arrêté'); else if (lambScene instanceof LambScene) stopScene(); else if (hud.modalOpen) hud.closeModal(); else if (phone.isOpen) phone.close(); else if (mode === 'play') phone.open(); }
@@ -1252,8 +1455,15 @@ function frameStep(now: number, dt: number, draw = true) {
   if (input.takeAction() && (mode === 'play' || activities.running)) hud.onAction();   // the focus: picked by onAction if no frame has yet
   activities.update(dt);
   { const mv = input.move(); strideUi.update(dt, Math.hypot(mv.x, mv.y) > 0.05, mode === 'play' && !seated && !lambScene); }
-  if (profOn) for (const m of MODULES) { const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }
-  else for (const m of MODULES) m.update?.(ctx, dt);
+  if (staged) stagedStep(STAGE_BUDGET_MS);                // a district swapped in by a road: its load finishes a few ms a frame
+  if (profOn) for (const m of MODULES) { if (staged && !staged.done.has(m)) continue; const t = performance.now(); m.update?.(ctx, dt); profMark('module:' + m.name, t); }
+  else for (const m of MODULES) {
+    if (staged && !staged.done.has(m)) continue;
+    if (!DEBUG_SLOW) { m.update?.(ctx, dt); continue; }
+    const t = performance.now(); m.update?.(ctx, dt); const ms = performance.now() - t;
+    if (ms > 25 && slowMods.length < 60) slowMods.push([frameRing.length, 'update:' + m.name, Math.round(ms), staged ? 1 : 0]);
+  }
+  if (corridors.active && !pendingCross) corridorStep(dt);
 
   if (rising && mode !== 'play') finishRising();                        // a door, a trip or a scene took over mid-rise
   const drag = input.takeDrag();
@@ -1287,7 +1497,12 @@ function frameStep(now: number, dt: number, draw = true) {
     if (mag > 0.05) {
       let nx = pos.x + Math.sin(facing) * speed * dt, nz = pos.z + Math.cos(facing) * speed * dt;      // along the body, not the raw stick
       [nx, nz] = pushOut(nx, nz, inside ? 0.3 : 0.5, inside ? inside.int.colliders : world.colliders);
-      const b = inside ? inside.int.bounds : world.bounds; nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1);
+      const b = inside ? inside.int.bounds : world.bounds;
+      if (inside) { nx = clamp(nx, b.x0, b.x1); nz = clamp(nz, b.z0, b.z1); }
+      else if (!inRect(b, nx, nz)) {                                         // beyond the district's streets: only on a road that leaves it (slide along its edge like the wall)
+        const roads = world.corridors, ok = (x: number, z: number) => inRect(b, x, z) || !!roads?.some(c => c.contains(x, z, 0.4));
+        if (!ok(nx, nz)) { if (ok(nx, pos.z)) nz = pos.z; else if (ok(pos.x, nz)) nx = pos.x; else { nx = pos.x; nz = pos.z; } }
+      }
       stride.moved(Math.hypot(nx - pos.x, nz - pos.z));
       pos.x = nx; pos.z = nz;
     } else speed *= 0.8;
@@ -1355,7 +1570,8 @@ function frameStep(now: number, dt: number, draw = true) {
   if (freeCam) { camera.position.copy(freeCam.p); camera.lookAt(freeCam.t); }
   showPrompt(focus);                                       // after the camera moved: the bubble sticks to its target
   if (profOn) { profMark('rest of update', tSys); tSys = performance.now(); }
-  if (draw) renderer.render(scene, camera);
+  if (draw && prewarm?.warm && !prewarm.warm.done) warmStep(WARM_VERTS);
+  if (draw) { const tr = performance.now(); renderer.render(scene, camera); const done = performance.now(); frameRing.push([Math.round(tr - tFrame0), Math.round(done - tr), renderer.info.memory.geometries, renderer.info.memory.textures, renderer.info.programs?.length ?? 0]); if (frameRing.length > 400) frameRing.shift(); }
   if (profOn) { profMark('render (CPU)', tSys); profMark('frame (JS)', tFrame); }
 }
 
@@ -1389,6 +1605,25 @@ if (DEBUG) {
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],
     cityPlaces: () => world?.interactables.filter(i => i.id.includes(':city:')).map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z, radius: i.radius, actions: i.actions.map(a => ({ id: a.id, label: a.label, gain: a.gain, cost: a.cost })) })) ?? [],
     crossMs: () => lastCrossMs,
+    /** ?debug: writes the save now (the player's place included). */
+    save: () => { if (world) saveNow(); },
+    /** The roads between districts (src/road): chunks, traffic, and where a point of this district's frame stands on a road. */
+    road: {
+      info: () => corridors.info(),
+      /** The road a point (this district's frame) is on: its id, arc length, side (+ left of the travel direction a → b), the road's heading there, and its length. */
+      project: (x: number, z: number) => { let best: { road: string; s: number; d: number; yaw: number; length: number; swapS: number; hub: HubId; a: HubId; b: HubId; on: boolean } | null = null; for (const id of corridors.info().map(i => i.road)) { const v = corridors.view(id)!, p = v.project(x, z), on = v.contains(x, z, 0); if (Math.abs(p.d) > 80 && !on) continue; if (!best || (on && !best.on) || (on === best.on && Math.abs(p.d) < Math.abs(best.d))) best = { road: id, s: p.s, d: p.d, yaw: p.yaw, length: v.road.length, swapS: v.road.swapS, hub: v.hub, a: v.road.def.a, b: v.road.def.b, on }; } return best; },
+      /** A point of the road, in the loaded district's frame: `s` metres from a, `lat` metres to the left of the a → b direction. */
+      at: (id: string, s: number, lat = 0) => { const v = corridors.view(id); if (!v) return null; const a = v.road.spine.at(s), y = Math.atan2(v.road.spine.at(s + 2).x - v.road.spine.at(s - 2).x, v.road.spine.at(s + 2).z - v.road.spine.at(s - 2).z); return { x: a.x + Math.cos(y) * lat + v.offset.x, z: a.z - Math.sin(y) * lat + v.offset.z, yaw: y }; },
+      lastSwapMs: () => lastCrossMs,
+      /** What is solid within `r` metres of (x, z): the district's colliders (stalls, poles, parked vehicles…) and whether the road's ground holds the point. */
+      probe: (x: number, z: number, r = 6) => world ? { colliders: world.colliders.filter(c => x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r).map(c => [+c.x0.toFixed(1), +c.z0.toFixed(1), +c.x1.toFixed(1), +c.z1.toFixed(1), c.h]), ground: !!world.corridors?.some(c => c.contains(x, z, 1)) } : null,
+      staged: () => (staged ? { steps: staged.steps, maxStep: staged.maxStep, done: staged.done.size } : null),
+      lastStaged: () => lastStaged,
+      putTraffic: (id: string, i: number, sArc: number, dir: 1 | -1) => corridors.view(id)?.putTraffic(i, sArc, dir) ?? null,
+      frames: () => frameRing,
+      slowMods: () => slowMods,
+      prewarm: () => (prewarm ? { id: prewarm.id, ready: !!prewarm.world, ms: Math.round(prewarm.ms), steps: prewarm.steps, warmed: prewarm.warm ? `${prewarm.warm.i}/${prewarm.warm.kids.length}` : null } : null),
+    },
     cityGeometry: () => world ? { bounds: world.bounds, colliders: world.colliders, people: world.people } : null,
     places: openPlaces,
     destination: () => destination?.id ?? null,

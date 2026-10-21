@@ -203,7 +203,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   /** The roadside fix of a car that will not run (src/transport/condition.ts): its affordance, built once. */
   private fixAff: Affordance | null = null;
   /** A crossing into the next district in progress: the pose, speed and steering the ride resumes with once the hub is built. */
-  private carry: { x: number; z: number; yaw: number; speed: number; steer: number; odo: number } | null = null;
+  private carry: { x: number; z: number; yaw: number; speed: number; steer: number; odo: number; leaving?: boolean } | null = null;
   private obst: { x: number; z: number; yaw: number; hl: number; hw: number }[] = [];
   private bumps = 0;
   /** Purchases made (debug: the checks verify it is paid once). */
@@ -252,6 +252,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private scrapeFrames = 0;
 
   readonly def: OwnedDef;
+  /** The vehicle the player drives across a road's middle is carried over in the swap frame itself. */
+  readonly critical = true;
   private readonly parkedTarget: Target;
   private readonly rideTarget: Target;
   private readonly targets: TargetSource;
@@ -1015,6 +1017,17 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     park(this.ctx.state.data, { asset: this.def.asset, hub: dest, x, z, yaw });
     this.ctx.crossHub(dest, { x, z, yaw });
   }
+  /**
+   * The player has driven past the middle of a road between districts (src/road/host.ts): the same ride as a border crossing, in the next district's frame, which is this one's moved by
+   * (dx, dz). Returns true when this module has the player at the wheel and takes the ride across; main then loads the district (`hubLoaded` → `resume`).
+   */
+  corridorCross(_ctx: GameCtx, dest: HubId, dx: number, dz: number): boolean {
+    if (!this.driving || this.carry || !this.hub || this.trial) return false;
+    const x = this.st.x + dx, z = this.st.z + dz, yaw = this.st.yaw;
+    this.carry = { x, z, yaw, speed: this.st.speed, steer: this.st.steer, odo: this.st.odo, leaving: this.leaving };
+    park(this.ctx.state.data, { asset: this.def.asset, hub: dest, x, z, yaw });
+    return true;
+  }
   /** After a crossing: the car stands where it was saved, the player sits in it and drives on at the speed it had. */
   private resume() {
     const c = this.carry!, ctx = this.ctx, m = this.vehicle; this.carry = null;
@@ -1024,7 +1037,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     ctx.player.standUp(true);
     ctx.player.sit(m.driverSeat);
     if (ctx.player.seated()?.id !== m.driverSeat.id) { vehicleAudio.stop(); ridePad.hide(this); this.setSolid(true); return; }   // could not sit: it stays parked here, nothing lost
-    this.driving = true; this.leaving = false; this.contact.reset();
+    this.driving = true; this.leaving = !!c.leaving; this.contact.reset();
     this.setSolid(false);
     m.setRidden(true);
     this.refreshCard();                                        // the camera is kept as it was: it lives relative to the vehicle, so it does not jump with the new coordinates
@@ -1080,7 +1093,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private blocked = (x: number, z: number, r: number): boolean => {
     const w = this.hub; if (!w) return false;
     const b = w.bounds;
-    if (x < b.x0 + r || x > b.x1 - r || z < b.z0 + r || z > b.z1 - r) return true;
+    if (x < b.x0 + r || x > b.x1 - r || z < b.z0 + r || z > b.z1 - r) {                    // the district's edge: a wall, except where a road leaves it (src/road)
+      if (this.trial || !w.corridors?.some(c => c.contains(x, z, r))) return true;          // a dealer's test drive stays in its district
+    }
     for (const c of w.colliders) if (x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r) return true;
     if (w.heightAt(x, z) > 0.3) return true;
     for (const o of this.obst) {
