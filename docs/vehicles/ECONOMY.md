@@ -15,7 +15,7 @@ pipeline (`body` › `door` + `cabin`, four `axle_*` › `wheel_*`, a sidecar `.
 | **Teranga** (white, black roof; silver, blue, red) | a modern 5-door city car (Yaris-like) | Sarr Auto (Pikine), Ndiaye Auto (Plateau) | 4 000 000 F | 3.96 × 1.75 × 1.53 m | 275 kB | 12.9k · 9 |
 | **Rafet** (yellow, white) | a sporty 5-door hatch (208-like) | Ndiaye Auto (Plateau) | 5 500 000 F | 4.08 × 1.75 × 1.46 m | 277 kB | 13.1k · 9 |
 | **Lamane Sport** (red, black; floating black roof) | a large luxury SUV (Range Rover Sport-like) | Prestige Auto (Almadies) | 70 000 000 F | 4.90 × 1.98 × 1.83 m | 278 kB | 12.9k · 9 |
-| **Gaïndé** (white, black) | an SUV coupé (X6-like), clearly distinct from the Lamane: falling roof, shorter glasshouse | Prestige Auto (Almadies) | 65 000 000 F | 4.96 × 2.00 × 1.72 m | 290 kB | 13.8k · 9 |
+| **Gaïndé** (white, black) | an SUV coupé (X6-like), clearly distinct from the Lamane: falling roof, shorter glasshouse | Prestige Auto (Almadies) | 65 000 000 F | 4.96 × 2.00 × 1.72 m | 300 kB | 15.5k · 9 |
 | Berline moderne (`compacte.glb`, unchanged) | — | Ndiaye Auto (Plateau) | 6 000 000 F | as before | as before | as before |
 
 * **The Ndiaye Auto « box cars »** were the procedural kit drawn because `compacte.glb` failed to load **silently** in the playable preview: its asset shim answered `fetch(url)`
