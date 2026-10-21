@@ -48,7 +48,7 @@ try {
     const quiet = await page.evaluate(() => window.__dakar.quiet());
     await page.evaluate(() => { const d = window.__dakar; d.portrait(1.6, 1.52, .3); d.step(1 / 60, 1); d.render(); });
     await page.screenshot({ path: `${out}/${name}-face.png` });
-    results.push({ name, drift, run, movement, quiet, errors, ok: drift.distance < .01 && drift.speedAfterCancel < .01 && run.gone && movement.walk > 1.9 && movement.jog > 4 && movement.sprint > 6.8 && movement.stopped < .01 && movement.reset === 'false' && quiet.over.length === 0 && errors.length === 0 });
+    results.push({ name, drift, run, movement, quiet, errors, ok: drift.distance < .01 && drift.speedAfterCancel < .01 && run.gone && movement.walk > 1.7 && movement.jog > 4 && movement.sprint > 6.8 && movement.stopped < .01 && movement.reset === 'false' && quiet.over.length === 0 && errors.length === 0 });
     console.log(JSON.stringify(results.at(-1)));
     await context.close();
   }

@@ -70,7 +70,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
     // (game time runs slower than the clock on this software renderer: wait for the speed rather than for seconds)
     await page.waitForFunction(() => window.__dakar.tiak.at()?.speed > 4, null, { timeout: 40000 }).catch(() => {});
     const fast = await at();
-    check(`${label}/${hub}: holding the gas it accelerates (${fast?.speed} m/s) and has moved`, fast && fast.speed > 3 && Math.hypot(fast.x - a0.x, fast.z - a0.z) > 2, JSON.stringify(fast));
+    check(`${label}/${hub}: holding the gas it accelerates (${fast?.speed} m/s) and has moved`, fast && fast.speed > 3 && Math.hypot(fast.x - a0.x, fast.z - a0.z) > 1, JSON.stringify(fast));       // (the Jakarta pulls away faster now: by the time it is at 4 m/s it has gone ≈ 1.6 m)
     if (touch) {
       const offMoving = await d(() => getComputedStyle(document.querySelector('#ridepad .rp-off')).display);
       check(`${label}/${hub}: « Descendre » is hidden while moving`, offMoving === 'none', offMoving);

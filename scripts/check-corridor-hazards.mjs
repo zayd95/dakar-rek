@@ -26,16 +26,17 @@ const car = await d(() => window.__dakar.berline.at());
 const pr = await d(([x, z]) => window.__dakar.road.project(x, z), [car.x, car.z]);
 check('the car is parked on the road, in the right-hand lane', pr.on && pr.road === ROAD && Math.abs(pr.d + 2.8) < 1.2, JSON.stringify({ s: pr.s, d: pr.d }));
 const put = await d(([id, s]) => window.__dakar.road.putTraffic(id, 0, s - 45, 1), [ROAD, pr.s]);
-let minGap = Infinity, stoppedGap = null, last = null;
-for (let i = 0; i < 90 && stoppedGap === null; i++) {
+let minGap = Infinity, stoppedGap = null, last = null, passed = false;
+for (let i = 0; i < 90 && stoppedGap === null && !passed; i++) {
   await page.waitForTimeout(700);
   const cars = await d(id => window.__dakar.road.info().find(r => r.road === id).traffic, ROAD);
   const mine = cars.filter(c => c.dir === 1 && c.x > car.x - 5).map(c => ({ ...c, gap: Math.hypot(c.x - car.x, c.z - car.z) })).sort((a, b) => a.gap - b.gap)[0];
   if (!mine) continue;
   last = mine; minGap = Math.min(minGap, mine.gap);
   if (mine.v < 0.1 && mine.gap < 20) stoppedGap = mine.gap;
+  if (mine.s - pr.s > put.hl + 4) passed = true;                      // it has gone round by the other lane and is ahead of the parked car
 }
-check('the traffic car behind it stops, a few metres short (it does not drive through the parked car)', stoppedGap !== null && minGap > put.hl + 1.6, JSON.stringify({ stoppedGap, minGap: +minGap.toFixed(1), kind: put.kind, last }));
+check('the traffic car behind it stops a few metres short, or goes round it by the other lane when that is clear: it never drives through the parked car', (stoppedGap !== null || passed) && minGap > put.hl + 1.6, JSON.stringify({ passed, stoppedGap, minGap: +minGap.toFixed(1), kind: put.kind, last }));
 await page.screenshot({ path: `${out}/traffic-behind-parked.png` });
 
 // ---------------------------------------------------------------- 2. what stands at the roadside is a wall for the car

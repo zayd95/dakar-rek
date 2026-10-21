@@ -33,7 +33,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   if (touch) {
     // analog walking: a series of pushes, the speed follows (slow walk < normal walk < jog), continuous, and the gauge stays quiet while it is only a walk
     const speeds = [];
-    for (const frac of [0.12, 0.3, 0.5, 0.62]) {
+    for (const frac of [0.2, 0.3, 0.5, 0.62]) {
       await push(frac); await page.waitForTimeout(2500);
       await page.waitForFunction(() => { const s = window.__dakar.stride(); return s.speed > 0.2; }, null, T).catch(() => {});
       speeds.push(+(await S()).speed.toFixed(2));

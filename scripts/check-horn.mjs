@@ -49,9 +49,11 @@ check('the Klaxon button is a big target (≥ 88 × 52 px), on the screen, with 
 await page.screenshot({ path: `${out}/1-pad.png` });
 
 // ---- gas (right thumb) + stick (left thumb) + horn (a third finger), all held
-const g = await tr.centre('#ridepad .rp-gas'), j = await tr.centre('#joy'), k = await tr.centre('#ridepad .rp-horn');
+const g = await tr.centre('#ridepad .rp-gas'), j = await tr.centre('#joy');
+let k;
 await tr.down(1, g.x, g.y); await page.waitForTimeout(1200);
 await tr.down(2, j.x, j.y); await tr.move(2, j.x + 24, j.y); await page.waitForTimeout(1200);
+k = await tr.centre('#ridepad .rp-horn');                       // the pad's buttons settle once the vehicle moves (« Descendre » goes): the Klaxon is found where it is now, as a thumb would
 const base0 = []; for (let i = 0; i < 6; i++) { base0.push(await meter()); await page.waitForTimeout(100); }
 const baseRms = Math.max(...base0.map(m => m.rmsDb)), basePeak = Math.max(...base0.map(m => m.peakDb)), baseSp = Math.max(...base0.map(m => m.speakerDb));
 const yaw0 = (await info()).yaw;
