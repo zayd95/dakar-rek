@@ -1,4 +1,4 @@
-// Touch pedals of a car (src/transport/ridePad.ts, src/transport/drive.ts pedalThrottle), portrait phone, REAL fingers (CDP touch): the joystick only steers, « Accélérer » and « Frein »
+// Touch controls of a car (src/transport/ridePad.ts, src/transport/drive.ts pedalThrottle), portrait phone, REAL fingers (CDP touch): the joystick only steers, « Accélérer » and « Frein »
 // are held with the right thumb at the same time as the stick; the brake never backs the car up from a stop (« R » does); coasting, braking, the camera button with a second finger.
 // Usage: node scripts/check-pedals.mjs [baseUrl] [outDir]   (a running build; VEHICLE=compacte)
 import { chromium } from 'playwright';

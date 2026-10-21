@@ -40,3 +40,19 @@ export function crossing(hub: HubId, x: number, z0: number, z1: number, vz: numb
   }
   return null;
 }
+
+/** Does a hub have a border street leading out of it? (The loaded district keeps its streaming step running for it.) */
+export const hasLinks = (hub: HubId) => LINKS.some(l => l.from === hub);
+
+/**
+ * Is a point of `hub`'s frame on the way to a border street's line, within the distance the next district is built ahead? `depth` grows as the line gets nearer (the same scale as
+ * a corridor's: the district at the far side is built once it passes the threshold, and let go again if the player turns away).
+ */
+export function approachLink(hub: HubId, x: number, z: number): { to: HubId; depth: number } | null {
+  for (const l of LINKS) {
+    if (l.from !== hub || Math.abs(x - l.x) > l.half + 8) continue;
+    const ahead = (l.at - z) * l.dir;                           // metres still to go to the line, along the way out
+    if (ahead >= -4 && ahead < 220) return { to: l.to, depth: 260 - ahead };
+  }
+  return null;
+}

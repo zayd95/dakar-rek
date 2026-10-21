@@ -13,6 +13,7 @@ fs.mkdirSync(out, { recursive: true });
 /** The roads under test: the two districts, the offset of the second's frame from the first's, a stretch of the second's end straight enough to turn round on (in the second's frame, with the heading toward the first), and a point inside the first district to arrive at. */
 const CFGS = {
   'pikine-almadies': { a: 'pikine', b: 'almadies', D: { x: 1665, z: -48 }, turn: { area: { x0: 134, x1: 380, z0: -69, z1: -51 }, yaw: Math.PI / 2 }, home: { x: -70, z: -57.2 } },
+  'corniche-plateau': { a: 'corniche', b: 'plateau', D: { x: -1475, z: -1099 }, turn: { area: { x0: -370, x1: -134, z0: -69, z1: -51 }, yaw: -Math.PI / 2 }, home: { x: 70, z: 57.2 } },
   'pikine-plateau': { a: 'pikine', b: 'plateau', D: { x: 190, z: -1387 }, turn: { area: { x0: -69, x1: -51, z0: -222, z1: -134 }, yaw: Math.PI }, home: { x: -57.2, z: 70 } },
 };
 const ROAD = process.env.ROAD ?? 'pikine-almadies', CFG = CFGS[ROAD];

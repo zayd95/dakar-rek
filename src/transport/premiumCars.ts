@@ -28,12 +28,12 @@ let berlineCache: ReturnType<typeof kitCarSpec> | null = null, suvCache: ReturnT
 /** A little faster and softer than the modern sedan. */
 export const berlineSpec = () => (berlineCache ??= kitCarSpec({
   id: 'berline', name: 'Berline neuve', kind: 'luxury', seed: berlineSeed(), openable: true,
-  drive: { maxSpeed: 19.5, reverseSpeed: 3, accel: 3.4, brake: 7.2, turnRadius: 6, steer: 2.5 },
+  drive: { maxSpeed: 21, boostSpeed: 32, reverseSpeed: 3, accel: 4.6, brake: 8, turnRadius: 6, steer: 2.7, grip: 10 },
 }));
 /** The heaviest: slower to pick up, the widest circle. */
 export const suvSpec = () => (suvCache ??= kitCarSpec({
   id: 'suv', name: '4 × 4 de luxe', kind: 'suv', seed: suvSeed(), openable: true,
-  drive: { maxSpeed: 17.5, reverseSpeed: 3, accel: 2.6, brake: 6.6, turnRadius: 6.4, steer: 2.4 },
+  drive: { maxSpeed: 19.5, boostSpeed: 28.5, reverseSpeed: 3, accel: 3.8, brake: 7.4, turnRadius: 6.4, steer: 2.4, grip: 8.2 },
 }));
 
 /**

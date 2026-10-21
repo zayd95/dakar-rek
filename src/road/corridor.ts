@@ -13,7 +13,7 @@ export const WINDOW = 340, KEEP = 470;
 
 interface Live { chunk: Chunk; solid: Collider[]; people: PlacedPeople | null }
 
-export interface ViewOpts { mats: ChunkMats; lite: boolean; rand: () => number; traffic: number }
+export interface ViewOpts { mats: ChunkMats; lite: boolean; rand: () => number; traffic: number; waiters?: number; onHorn?: (near: number) => void }
 
 /**
  * A road between districts, as the loaded district sees it: its ground (what `world.corridors` asks), its chunks, built round the player and freed behind, and its traffic.
@@ -111,13 +111,13 @@ export class CorridorView implements RoadGround {
     const px = x - this.offset.x, pz = z - this.offset.z;
     for (const l of this.chunks.values()) l.people?.update(dt, { x: px, z: pz }, 70);
     const near = this.chunks.size > 0 && Math.min(...[...this.chunks.keys()].map(i => { const m = this.road.spine.at(i * CHUNK + CHUNK / 2); return Math.hypot(m.x - px, m.z - pz); })) < WINDOW;
-    if (!this.traffic && density > 0 && near) { this.traffic = new CorridorTraffic(this.road, this.o.rand, density, this.o.lite); this.root.add(this.traffic.group); }
+    if (!this.traffic && density > 0 && near) { this.traffic = new CorridorTraffic(this.road, this.o.rand, density, this.o.lite, { waiters: this.o.waiters, onHorn: this.o.onHorn }); this.root.add(this.traffic.group); }
     this.traffic?.update(dt, { solid: (a, b, r) => this.solidRoad(a, b, r), player: player ? { x: player.x - this.offset.x, z: player.z - this.offset.z } : null }, near ? { x: px, z: pz } : null);
   }
 
   /** Checks: put traffic car `i` on the road (see CorridorTraffic.put). Makes the traffic first if the road has none yet. */
   putTraffic(i: number, s: number, dir: 1 | -1) {
-    if (!this.traffic) { this.traffic = new CorridorTraffic(this.road, this.o.rand, Math.max(this.o.traffic, 4), this.o.lite); this.root.add(this.traffic.group); }
+    if (!this.traffic) { this.traffic = new CorridorTraffic(this.road, this.o.rand, Math.max(this.o.traffic, 4), this.o.lite, { waiters: this.o.waiters, onHorn: this.o.onHorn }); this.root.add(this.traffic.group); }
     return this.traffic.put(i, s, dir);
   }
 

@@ -33,6 +33,8 @@ export interface RouteDef {
   junctions: JunctionDef[];
   /** Roadside character along the road: [0..1 of the length, profile]. */
   profile: [number, Profile][];
+  /** How much shorter the road is in the game than in reality, when it is not the usual `ROAD_SCALE`: the Corniche and the Plateau are close in reality, but the four districts' frames must close (a ring of roads), so this road is only slightly condensed. */
+  condensed?: number;
   /** Where the district swap happens, as a fraction of the length: on a plain stretch, out of sight of both districts and of any junction. */
   swap: number;
 }
@@ -89,11 +91,36 @@ export const ROUTES: readonly RouteDef[] = [
     profile: [[0, 'banlieue'], [0.25, 'artery'], [0.55, 'market'], [0.78, 'downtown']],
     swap: 0.55,
   },
+  {
+    // Corniche · Fann → the coast road → Gueule Tapée → Plateau: it leaves the Corniche district by its east edge and enters the Plateau by its west edge. Written in the frame of the
+    // Corniche; the Plateau's origin is (1475, 1099) in it (the four districts' frames close: Pikine → Almadies → Corniche → Plateau → Pikine adds up to nothing, see graph.test.ts).
+    id: 'corniche-plateau', a: 'corniche', b: 'plateau', condensed: 1.2,
+    nodes: [{ x: H, z: 60 }, { x: 350, z: 60 }, { x: 800, z: 400 }, { x: 1100, z: 1039 }, { x: 1348, z: 1039 }],
+    radius: 120,
+    aMouth: { x: H, z: 60, yaw: Math.PI / 2 }, bMouth: { x: -H, z: -60, yaw: Math.PI / 2 },
+    anchors: [
+      { name: 'Corniche', node: 0, lngLat: [-17.4540, 14.6870] },
+      { name: 'Fann · Corniche Ouest', node: 2, lngLat: [-17.4490, 14.6820] },
+      { name: 'Gueule Tapée', node: 3, lngLat: [-17.4420, 14.6750] },
+      { name: 'Plateau', node: 4, lngLat: [-17.4399, 14.6727] },
+    ],
+    junctions: [
+      { name: 'Fann', node: 2, arms: [{ side: 1, len: 50 }, { side: -1, len: 50 }] },
+      { name: 'Gueule Tapée', node: 3, arms: [{ side: -1, len: 45 }] },
+    ],
+    profile: [[0, 'coast'], [0.45, 'artery'], [0.78, 'downtown']],
+    swap: 0.5,
+  },
 ];
 
 /** A route with its derived geometry. */
+/** A kerbside stop for traffic going `dir` (a → b is +1): taxis, car rapides and buses pull over to it, and a few people wait there. */
+export interface RoadStop { s: number; dir: 1 | -1 }
+
 export class Road {
   readonly def: RouteDef;
+  /** Where the road's public transport stops, deterministic from the road itself (no randomness: every client and every run sees the same stops). */
+  readonly stops: RoadStop[];
   readonly spine: Spine;
   readonly arms: Arm[];
   readonly ground: Ground;
@@ -121,6 +148,15 @@ export class Road {
     const last = def.nodes[def.nodes.length - 1];
     this.dx = def.bMouth.x - last.x; this.dz = def.bMouth.z - last.z;
     this.swapS = this.spine.length * def.swap;
+    // stops: a pair before each junction (one for each direction), and one every ~250 m along the busy stretches, none near the ends (the districts' own stops are there)
+    const stops: RoadStop[] = [], L = this.spine.length, hash = (n: number) => { const x = Math.sin(n * 12.9898 + L * 0.37) * 43758.5453; return x - Math.floor(x); };
+    for (const j of this.junctionS) { stops.push({ s: j.s - 40, dir: 1 }); stops.push({ s: j.s + 40, dir: -1 }); }
+    for (let k = 1; k * 250 < L - 200; k++) {
+      const s = k * 250 + (hash(k) - 0.5) * 60, prof = this.profileAt(s);
+      if (s < 200 || s > L - 200 || this.junctionS.some(j => Math.abs(j.s - s) < 120)) continue;
+      if (prof === 'market' || prof === 'banlieue' || prof === 'downtown' || (prof === 'artery' && hash(k + 7) < 0.5)) stops.push({ s, dir: hash(k + 3) < 0.5 ? 1 : -1 });
+    }
+    this.stops = stops.filter(t => t.s > 150 && t.s < L - 150).sort((a, b) => a.s - b.s);
   }
   get length() { return this.spine.length; }
   get id() { return this.def.id; }

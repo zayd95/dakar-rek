@@ -9,7 +9,9 @@ import { roadsOf, type Road } from './routes';
 
 export type Quality = 'low' | 'medium' | 'high';
 /** Cars on a road at once, by graphics preset. */
-const TRAFFIC: Record<Quality, number> = { low: 3, medium: 6, high: 8 };
+const TRAFFIC: Record<Quality, number> = { low: 4, medium: 7, high: 9 };
+/** Vehicles waiting at the side roads of the junctions, by graphics preset. */
+const WAITERS: Record<Quality, number> = { low: 0, medium: 2, high: 3 };
 
 /** The swap the player has just reached: which district to load, how the frames differ, and which road it is. */
 export interface Swap { road: Road; to: HubId; from: HubId; /** add to a position of `from`'s frame to get it in `to`'s */ dx: number; dz: number }
@@ -26,6 +28,8 @@ export class CorridorHost {
   private handover: string | null = null;
   private quality: Quality = 'medium';
   private night = 0;
+  /** A traffic driver sounds a horn (the game answers with a very quiet recorded one). */
+  onHorn: ((near: number) => void) | null = null;
 
   constructor(private scene: THREE.Object3D, private rand: () => number) {}
 
@@ -43,7 +47,7 @@ export class CorridorHost {
     this.handover = null;
     for (const road of roads) {
       if (keep.some(v => v.road === road)) continue;
-      const v = new CorridorView(road, world.id, { mats: this.mats, lite, rand: this.rand, traffic: TRAFFIC[quality] });
+      const v = new CorridorView(road, world.id, { mats: this.mats, lite, rand: this.rand, traffic: TRAFFIC[quality], waiters: WAITERS[quality], onHorn: n => this.onHorn?.(n) });
       this.scene.add(v.root); v.attach(world, world.id); keep.push(v);
     }
     this.views = keep;

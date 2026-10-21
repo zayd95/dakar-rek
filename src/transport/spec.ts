@@ -58,6 +58,10 @@ export interface DriveSpec {
   halfWidth: number; halfLength: number;
   /** Two-wheeler: leans into turns instead of rolling out. */
   lean?: boolean;
+  /** Top speed (m/s) while « Accélérer » is held: `maxSpeed` is the ordinary cruising speed (a full push of the stick). Without it, no boost. */
+  boostSpeed?: number;
+  /** Sideways grip (m/s²): the steering gives a smaller turning circle at low speed and holds the car on its line at high speed (the stable, analog model). Without it, the older steering. */
+  grip?: number;
 }
 
 export interface VehicleSpec {

@@ -18,7 +18,11 @@ export interface DriveState {
   /** Metres travelled (road bumps). */
   odo: number;
 }
-export interface DriveInput { throttle: number; steer: number }
+export interface DriveInput {
+  throttle: number; steer: number;
+  /** Analog controls (src/transport/controls.ts): the speed to head for (m/s, negative = reverse), whether the driver is braking, how far « Accélérer » is open (0…1), reverse acceleration. */
+  target?: number; braking?: boolean; boost?: number; reverseAccel?: number;
+}
 
 /** Is a circle of radius r at (x, z) inside something solid? */
 export type Blocked = (x: number, z: number, r: number) => boolean;
@@ -27,15 +31,6 @@ export const newDriveState = (x: number, z: number, yaw: number): DriveState => 
 
 /** Coasting deceleration with the throttle released (m/s²). */
 const COAST = 1.4;
-
-/**
- * Throttle for a car driven with gas and brake buttons: the brake only slows the car down, it never backs it up from a stop
- * (reverse is a gear the driver selects), and in reverse the gas backs up while the brake slows that down.
- */
-export function pedalThrottle(gas: boolean, brake: boolean, reverse: boolean, speed: number): number {
-  if (!reverse) return brake && speed > 0.4 ? -1 : brake ? 0 : gas ? 1 : 0;
-  return brake && speed < -0.4 ? 1 : brake ? 0 : gas ? -1 : 0;
-}
 
 /** Speed the vehicle heads for, given the throttle (positive forward, negative brake-then-reverse). */
 export function targetSpeed(d: DriveSpec, speed: number, throttle: number): number {
@@ -64,18 +59,31 @@ export function hits(d: DriveSpec, x: number, z: number, yaw: number, blocked: B
  * wall when it meets it at an angle).
  */
 export function driveStep(s: DriveState, inp: DriveInput, d: DriveSpec, dt: number, blocked: Blocked): boolean {
-  s.steer += (Math.max(-1, Math.min(1, inp.steer)) - s.steer) * Math.min(1, d.steer * dt);
-  const target = targetSpeed(d, s.speed, inp.throttle);
+  const analog = inp.target !== undefined, v0 = Math.abs(s.speed);
+  // steering: the wheel follows the stick, more slowly the faster the vehicle goes (the analog model), so a fast bike or car does not wobble
+  const follow = d.grip ? d.steer / (1 + 0.035 * v0) : d.steer;
+  s.steer += (Math.max(-1, Math.min(1, inp.steer)) - s.steer) * Math.min(1, follow * dt);
+  const target = analog ? inp.target! : targetSpeed(d, s.speed, inp.throttle);
   const before = s.speed;
-  const speeding = Math.sign(target) === Math.sign(s.speed) && Math.abs(target) > Math.abs(s.speed);
-  const rate = speeding ? d.accel * (1 - 0.6 * Math.abs(s.speed) / d.maxSpeed) : Math.abs(inp.throttle) > 0.05 ? d.brake : COAST;
+  let rate: number;
+  if (analog) {
+    const sameWay = Math.sign(target) === Math.sign(s.speed) || (target === 0 && s.speed > 0) || v0 < 0.3, top = d.boostSpeed ?? d.maxSpeed;
+    if (inp.braking) rate = d.brake;
+    else if (Math.abs(target) > Math.abs(s.speed) && sameWay) rate = (target < 0 ? inp.reverseAccel ?? 1.6 : d.accel * (1 - 0.5 * v0 / top) * (1 + 0.25 * (inp.boost ?? 0)));
+    else if (!sameWay) rate = d.brake * 0.8;                                         // asked the other way: it stops first
+    else rate = Math.min(2.2, COAST + 0.06 * Math.abs(s.speed - target));   // lifting off: engine braking, stronger the further above the target
+  } else {
+    const speeding = Math.sign(target) === Math.sign(s.speed) && Math.abs(target) > Math.abs(s.speed);
+    rate = speeding ? d.accel * (1 - 0.6 * Math.abs(s.speed) / d.maxSpeed) : Math.abs(inp.throttle) > 0.05 ? d.brake : COAST;
+  }
   const dv = target - s.speed;
   s.speed += Math.sign(dv) * Math.min(Math.abs(dv), rate * dt);
   if (Math.abs(s.speed) < 0.02 && Math.abs(target) < 0.02) s.speed = 0;
   s.accel = dt > 0 ? (s.speed - before) / dt : 0;
-  // bicycle model: yaw rate = speed / radius × steering; steering softens at speed so the bike stays controllable
-  const soft = 1 - 0.45 * Math.min(1, Math.abs(s.speed) / d.maxSpeed);
-  const yawRate = (s.speed / d.turnRadius) * s.steer * soft;
+  // bicycle model: yaw rate = speed / radius × steering. Analog model: the radius grows with speed (v² / grip), so the lateral acceleration stays within what the tyres hold.
+  const yawRate = d.grip
+    ? (s.speed / Math.max(d.turnRadius, (s.speed * s.speed) / d.grip)) * s.steer
+    : (s.speed / d.turnRadius) * s.steer * (1 - 0.45 * Math.min(1, Math.abs(s.speed) / d.maxSpeed));
   const yaw = s.yaw - yawRate * dt;
   const step = s.speed * dt;
   const nx = s.x + Math.sin(yaw) * step, nz = s.z + Math.cos(yaw) * step;

@@ -33,7 +33,8 @@ describe('roads', () => {
     it('passes through its anchors, in order, and its real length is about ROAD_SCALE times its game length', () => {
       let real = 0;
       for (let i = 1; i < an.length; i++) { real += metres(an[i].lngLat, an[i - 1].lngLat); expect(roadToLngLat(road, an[i].s).lngLat[0]).toBeCloseTo(an[i].lngLat[0], 8); }
-      expect(real / road.length).toBeGreaterThan(ROAD_SCALE * 0.7); expect(real / road.length).toBeLessThan(ROAD_SCALE * 1.4);
+      const scale = road.def.condensed ?? ROAD_SCALE;
+      expect(real / road.length).toBeGreaterThan(scale * 0.7); expect(real / road.length).toBeLessThan(scale * 1.4);
     });
     it('round-trips along its centre line', () => {
       for (let s = 0; s <= road.length; s += road.length / 10) { const back = lngLatToRoad(road, roadToLngLat(road, s).lngLat); expect(back.s).toBeCloseTo(s, 0); expect(back.metres).toBeLessThan(0.5); }

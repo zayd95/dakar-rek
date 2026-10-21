@@ -82,6 +82,8 @@ import type { ActivitySpec } from './activity/types';
 import { MODULES, type GameCtx } from './game/modules';
 import { ownsVehicle, park, parked, type VehicleAsset } from './transport/owned';
 import { CorridorHost, type Swap } from './road/host';
+import { approachLink, hasLinks } from './transport/hubLink';
+import { vehicleAudio as trafficAudio } from './transport/vehicleAudio';
 import { transport } from './transport/module';
 import { specOf as catalogSpec } from './economy/catalog';
 import { arenaShow } from './arena/module';
@@ -267,6 +269,7 @@ function updateLighting(hour: number) {
 const rand = rng(Date.now() & 0xffff);
 /** The roads between districts (src/road): attached to each district as it loads, streamed round the player, swapped at their middle. */
 const corridors = new CorridorHost(scene, rand);
+corridors.onHorn = n => trafficAudio.trafficHorn(n);
 
 /** When the current hub was built (a place a module adds, such as a dealer's counter, appears a moment after). */
 let hubAt = 0;
@@ -473,8 +476,8 @@ function corridorStep(dt: number) {
   const w = world; if (!w) return;
   corridors.update(dt, pos.x, pos.z, mode === 'play' && !inside ? { x: pos.x, z: pos.z } : null);
   // the district at the other end is built ahead while the player is well out on the road, and let go if they turn back
-  const ap = inside ? null : corridors.approach(pos.x, pos.z);
-  if (STAGING && ap && ap.depth > PREWARM_AT) { if (!prewarm) prewarmStart(ap.to); prewarmStep(PREWARM_BUDGET_MS); }
+  const ap = inside ? null : corridors.approach(pos.x, pos.z) ?? approachLink(w.id, pos.x, pos.z);       // out on a road, or nearing a border street: the district beyond is built ahead
+  if (STAGING && ap && ap.depth > PREWARM_AT) { if (prewarm?.id !== ap.to) prewarmStart(ap.to); prewarmStep(PREWARM_BUDGET_MS); }
   else if (prewarm && (!ap || ap.depth < PREWARM_AT - 60)) prewarmDrop();
   if (staged || mode !== 'play' || inside || lambScene || rising || approach) return;
   const sw = corridors.watch(pos.x, pos.z);
@@ -622,7 +625,7 @@ const ctx: GameCtx = {
   setPublicRecord: rec => presence.setRecord(rec),
   // the fighter's evening (src/arena/fighter.ts) plays avec frappe when Làmb 2.0 is on (?lamb2); otherwise as before
   startBout(m, style, after) { if (lambScene || !world?.arena) return false; startDuel(m, style as StyleId | undefined, after, LAMB2 ? 'avec_frappe' : 'sans_frappe'); return !!lambScene; },
-  crossHub(dest, at) { if (world) pendingCross = { dest, at }; },
+  crossHub(dest, at) { if (world) pendingCross = { dest, at, keepSpeed: speed, road: STAGING }; },       // the border street: the same staged, built-ahead hand-over as a corridor's middle
   travel(dest, at, label) {
     if (!world) return;
     mode = 'busy'; input.enabled = false; input.reset();
@@ -1463,7 +1466,7 @@ function frameStep(now: number, dt: number, draw = true) {
     const t = performance.now(); m.update?.(ctx, dt); const ms = performance.now() - t;
     if (ms > 25 && slowMods.length < 60) slowMods.push([frameRing.length, 'update:' + m.name, Math.round(ms), staged ? 1 : 0]);
   }
-  if (corridors.active && !pendingCross) corridorStep(dt);
+  if ((corridors.active || hasLinks(world.id)) && !pendingCross) corridorStep(dt);
 
   if (rising && mode !== 'play') finishRising();                        // a door, a trip or a scene took over mid-rise
   const drag = input.takeDrag();
@@ -1492,7 +1495,9 @@ function frameStep(now: number, dt: number, draw = true) {
     const shiftLevel = input.shift.level(input.keys.has('ShiftLeft') || input.keys.has('ShiftRight'));       // Shift: jog; double-tapped and held: sprint
     let keep = 1;
     if (mag > 0.05) { const t = turnStep(facing, Math.atan2(dx, dz), dt, speed); facing = t.facing; keep = t.keep; }   // turn first, pace follows the facing
-    const target = stride.target(mag, Math.max(shiftLevel, strideUi.level) as RunLevel, dt) * keep;
+    const keyed = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].some(k => input.keys.has(k)), stick = Math.hypot(input.joy.x, input.joy.y);
+    const analog = stick > 0.01 && !keyed && strideUi.level === 0;                    // the phone's stick: the push is the speed, along one smooth curve (the keys keep walk / Shift jog / double-tap sprint)
+    const target = (analog ? stride.analog(stick, dt) : stride.target(mag, Math.max(shiftLevel, strideUi.level) as RunLevel, dt)) * keep;
     speed += (target - speed) * Math.min(1, dt * (target > speed ? 6 : 12));
     if (mag > 0.05) {
       let nx = pos.x + Math.sin(facing) * speed * dt, nz = pos.z + Math.cos(facing) * speed * dt;      // along the body, not the raw stick

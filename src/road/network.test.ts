@@ -84,9 +84,10 @@ describe('the roads of the game', () => {
       for (let s = 0; s <= spine.length; s += 1) { const p = spine.at(s); expect(road.ground.contains(p.x, p.z, 2)).toBe(true); }
     });
   });
-  it('a district knows its roads; Pikine has two, on different edges', () => {
+  it('a district knows its roads: no district is the only hub, Plateau has two (north and west), the Corniche one (east)', () => {
     expect(roadsOf('pikine').map(r => r.id).sort()).toEqual(['pikine-almadies', 'pikine-plateau']);
-    expect(roadsOf('almadies').map(r => r.id)).toEqual(['pikine-almadies']);
-    expect(roadsOf('corniche')).toEqual([]);
+    expect(roadsOf('almadies').map(r => r.id)).toEqual(['pikine-almadies']);                       // and its border street to the Corniche (src/transport/hubLink.ts)
+    expect(roadsOf('corniche').map(r => r.id)).toEqual(['corniche-plateau']);
+    expect(roadsOf('plateau').map(r => r.id).sort()).toEqual(['corniche-plateau', 'pikine-plateau']);
   });
 });
