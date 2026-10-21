@@ -19,7 +19,7 @@ async function session(save, key) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
   await ctx.addInitScript(([s, once]) => { try { if (!sessionStorage.getItem(once)) { localStorage.setItem('dakarrek.guest.save.v6', s); sessionStorage.setItem(once, '1'); } localStorage.setItem('dakarrek.quality', 'medium'); } catch { /* */ } }, [fs.readFileSync(save, 'utf8'), 'once']);
   const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto(`${base}?debug&touch&heure=11`);
+  await page.goto(`${base}?debug&touch&heure=11${process.env.TRAFFIC === '1' ? '' : '&notraffic'}`);       // empty roads by default: what the vehicle itself does (TRAFFIC=1 for the road's own traffic)
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, { timeout: 240000 });
   await page.waitForFunction(k => window.__dakar[k]?.info().here, key, { timeout: 120000 });
   const t = await realTouch(page);
@@ -27,14 +27,16 @@ async function session(save, key) {
 }
 
 /** Drives the whole road with the stick only (or the stick and « Accélérer »), logging the game clock and the speed; returns the travel time in game seconds and the speed profile. */
-async function lap(S, key, boost) {
+async function lap(S, key, boost, back = false) {
   const road = await S.d(id => { const p = window.__dakar.road.at(id, 0, 0), q = window.__dakar.road.project(p.x, p.z); return { length: q.length }; }, ROAD);
   const log = []; let t0 = null, t1 = null;
-  await driveRoad(S.page, S.t, key, ROAD, 60, { cruise: 40, boost: false, brakeAtEnd: false, stall: 120000 });
+  // going out (Pikine → Almadies) the first leg only gets the car to the measured stretch; coming back it already stands at the Almadies end, turned round
+  if (!back) await driveRoad(S.page, S.t, key, ROAD, 60, { cruise: 40, boost: false, brakeAtEnd: false, stall: 120000 });
   const a0 = await S.AT(); t0 = a0.t;
-  await driveRoad(S.page, S.t, key, ROAD, road.length - 60, { cruise: 40, boost, brakeAtEnd: false, stall: 120000, onTick: at => log.push([at.t, at.speed]) });
-  const a1 = await S.AT(); t1 = a1.t;
+  await driveRoad(S.page, S.t, key, ROAD, back ? 60 : road.length - 60, { cruise: 40, boost, brakeAtEnd: true, stall: 120000, onTick: at => log.push([at.t, at.speed]) });
+  t1 = log.length ? log[log.length - 1][0] : (await S.AT()).t;                       // the clock stops where the road's end is reached (the brake after it is not part of the journey)
   const sp = log.map(l => l[1]).sort((a, b) => a - b);
+  void t0;
   return { secs: t1 - t0, metres: road.length - 120, top: sp[sp.length - 1] ?? 0, median: sp[Math.floor(sp.length / 2)] ?? 0 };
 }
 
@@ -47,10 +49,10 @@ for (const [save, key, label] of [[berlineSave, 'berline', 'Berline'], [motoSave
   const cruise = await lap(S, key, false);
   console.log(`${label}: stick alone ${cruise.metres.toFixed(0)} m in ${cruise.secs.toFixed(1)} game s (median ${cruise.median.toFixed(1)} m/s, top ${cruise.top.toFixed(1)} m/s)`);
   const spec = await S.d(k => window.__dakar[k].info().asset?.spec ?? null, key);
-  check(`${label}: with the stick alone the whole road is a short journey (not a crawl): ${cruise.secs.toFixed(0)} s`, cruise.secs < 100 && cruise.secs > 45, JSON.stringify({ spec }));
+  check(`${label}: with the stick alone the whole road is a short journey (not a crawl): ${cruise.secs.toFixed(0)} s`, cruise.secs < (process.env.TRAFFIC === '1' ? 140 : 100) && cruise.secs > 45, JSON.stringify({ spec }));
   const a = await S.AT();
   await S.d(([x, z, yaw, k]) => window.__dakar[k].place(x, z, yaw), [a.x, a.z, a.yaw + Math.PI, key]);
-  const boosted = await lap(S, key, true);
+  const boosted = await lap(S, key, true, true);
   console.log(`${label}: stick + Accélérer ${boosted.metres.toFixed(0)} m in ${boosted.secs.toFixed(1)} game s (median ${boosted.median.toFixed(1)} m/s, top ${boosted.top.toFixed(1)} m/s)`);
   check(`${label}: holding « Accélérer » is clearly faster (${boosted.secs.toFixed(0)} s against ${cruise.secs.toFixed(0)} s) and its top speed is higher (${boosted.top.toFixed(1)} against ${cruise.top.toFixed(1)} m/s)`, boosted.secs < cruise.secs * 0.85 && boosted.top > cruise.top * 1.2);
 

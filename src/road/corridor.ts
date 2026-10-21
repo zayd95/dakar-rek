@@ -41,7 +41,13 @@ export class CorridorView implements RoadGround {
   contains(x: number, z: number, r: number): boolean { return this.road.ground.contains(x - this.offset.x, z - this.offset.z, r); }
 
   /** Where a point (hub frame) stands on the road. */
-  project(x: number, z: number): Projection { const p = this.road.spine.project(x - this.offset.x, z - this.offset.z, this.lastS, 160); this.lastS = p.s; return p; }
+  project(x: number, z: number): Projection {
+    const px = x - this.offset.x, pz = z - this.offset.z;
+    let p = this.road.spine.project(px, pz, this.lastS, 160);
+    // a view that has just been attached round a player who is already far along the road (a reload, a swap onto a road already driven) has no useful hint: the whole road is searched, once
+    if (Math.hypot(px - p.x, pz - p.z) > 40) p = this.road.spine.project(px, pz);
+    this.lastS = p.s; return p;
+  }
 
   /** The loaded district (`world`) takes over this road: colliders go into its list, in its frame. Used by the first load and by a rebase. */
   attach(world: HubWorld, hub: HubId) {
@@ -81,7 +87,7 @@ export class CorridorView implements RoadGround {
     const px = x - this.offset.x, pz = z - this.offset.z, n = Math.ceil(this.road.length / CHUNK);
     const mid = (i: number) => this.road.spine.at(i * CHUNK + CHUNK / 2);
     const dist = (i: number) => { const m = mid(i); return Math.hypot(m.x - px, m.z - pz); };
-    const s = this.road.spine.project(px, pz, this.lastS, 400).s, c = Math.floor(s / CHUNK), span = Math.ceil(WINDOW / CHUNK) + 2;
+    const s = this.project(x, z).s, c = Math.floor(s / CHUNK), span = Math.ceil(WINDOW / CHUNK) + 2;
     const want: { i: number; d: number }[] = [];
     for (let i = Math.max(0, c - span); i <= Math.min(n - 1, c + span); i++) { const d = dist(i); if (d <= WINDOW && !this.chunks.has(i)) want.push({ i, d }); }
     want.sort((a, b) => a.d - b.d);
