@@ -1,4 +1,4 @@
-import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, HubId, JobsState, LedgerEntry, Needs, Placement, SaveData, TourRun, WrestlerLook } from './types';
+import type { ActiveJob, ActivityId, ActivityState, AssetState, AssetsState, Avatar, HubId, JobsState, LedgerEntry, LoanState, LoansState, Needs, Placement, SaveData, TourRun, VtcState, VtcTrip, WrestlerLook } from './types';
 import { ACTIVITY_IDS, AVATARS, HUB_IDS } from './types';
 import { clamp } from './rng';
 import { careerOf, newCareer } from '../career/career';
@@ -48,7 +48,7 @@ export function newSave(now = Date.now()): SaveData {
     hub: 'pikine', x: 0, z: 0, yaw: 0, wallet: 3000, needs: { ...START_NEEDS }, counters: {},
     rel: {}, flags: [], beats: {}, wrestler: { ...DEFAULT_WRESTLER, accessories: [] }, avatar: 'homme',
     ledger: [], jobs: { active: null, done: [], seq: 0 }, activities: { known: [], last: {} },
-    assets: newAssets(0), inventory: {}, career: newCareer(),
+    assets: newAssets(0), inventory: {}, career: newCareer(), loans: { list: [], seq: 0 }, vtc: { active: null, done: [], seq: 0, trips: 0, earned: 0 },
   };
 }
 
@@ -135,7 +135,56 @@ export function migrate(raw: unknown, now = Date.now()): SaveData | null {
     inventory,
     // fight record (additive, no version change: a save without it starts with an empty record)
     career: careerOf(r.career),
+    // debts and VTC rides (additive, no version change: a save without them owes nothing and has no ride in hand)
+    loans: loansOf(r.loans),
+    vtc: vtcOf(r.vtc, playedMs),
   };
+}
+
+const LOAN_ID = /^L\d{1,6}$/;
+/** Debts: malformed entries dropped, amounts whole and non-negative, a debt never repaid beyond what was owed. */
+function loansOf(v: unknown): LoansState {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>, list: LoanState[] = [], seen = new Set<string>();
+  for (const e of Array.isArray(o.list) ? (o.list as unknown[]).slice(0, 40) : []) {
+    const x = (e && typeof e === 'object' ? e : {}) as Record<string, unknown>;
+    if (typeof x.id !== 'string' || !LOAN_ID.test(x.id) || seen.has(x.id)) continue;
+    if (x.lender !== 'sarr' && x.lender !== 'modou') continue;
+    if (x.kind !== 'vehicle' && x.kind !== 'repair') continue;
+    const principal = money(num(x.principal, 0)); if (principal <= 0) continue;
+    seen.add(x.id);
+    const l: LoanState = {
+      id: x.id, lender: x.lender, kind: x.kind, label: typeof x.label === 'string' ? x.label.slice(0, 80) : 'Crédit',
+      principal, paid: Math.min(principal, money(num(x.paid, 0))), installment: Math.max(1, money(num(x.installment, principal))), every: clamp(Math.round(num(x.every, 1)), 1, 30),
+      openedDay: Math.max(0, Math.round(num(x.openedDay, 0))), checkedDay: Math.max(0, Math.round(num(x.checkedDay, 0))), missed: clamp(Math.round(num(x.missed, 0)), 0, 999),
+      status: x.status === 'closed' ? 'closed' : 'open',
+    };
+    if (typeof x.asset === 'string' && UID.test(x.asset)) l.asset = x.asset;
+    if (typeof x.spec === 'string' && ID.test(x.spec)) l.spec = x.spec;
+    if (typeof x.closedDay === 'number') l.closedDay = Math.max(0, Math.round(x.closedDay));
+    if (l.paid >= l.principal) l.status = 'closed';
+    list.push(l);
+  }
+  return { list, seq: Math.max(Math.round(num(o.seq, 0)), list.length) };
+}
+
+const TRIP_ID = /^V\d{1,7}$/;
+/** VTC: the ride in hand (dropped when malformed: the passenger simply was not picked up), the paid rides' ids. */
+function vtcOf(v: unknown, playedMs: number): VtcState {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  const done = Array.isArray(o.done) ? [...new Set((o.done as unknown[]).filter((d): d is string => typeof d === 'string' && TRIP_ID.test(d)))].slice(-60) : [];
+  const spot = (p: unknown) => { const q = (p && typeof p === 'object' ? p : {}) as Record<string, unknown>; return typeof q.x === 'number' && typeof q.z === 'number' && Number.isFinite(q.x) && Number.isFinite(q.z) ? { x: q.x, z: q.z, name: typeof q.name === 'string' ? q.name.slice(0, 60) : '' } : null; };
+  let active: VtcTrip | null = null;
+  const a = (o.active && typeof o.active === 'object' ? o.active : null) as Record<string, unknown> | null;
+  if (a && typeof a.id === 'string' && TRIP_ID.test(a.id) && !done.includes(a.id) && HUB_IDS.includes(a.from as HubId) && HUB_IDS.includes(a.to as HubId)) {
+    const pickup = spot(a.pickup), dropoff = spot(a.dropoff), ps = (a.passenger && typeof a.passenger === 'object' ? a.passenger : {}) as Record<string, unknown>;
+    if (pickup && dropoff) active = {
+      id: a.id, from: a.from as HubId, to: a.to as HubId, pickup, dropoff, fare: money(num(a.fare, 0)), stage: a.stage === 'aboard' ? 'aboard' : 'pickup',
+      passenger: { name: typeof ps.name === 'string' ? ps.name.slice(0, 40) : 'Passager', seed: Math.round(num(ps.seed, 1)) },
+      ...(typeof a.asset === 'string' && ID.test(a.asset) ? { asset: a.asset } : {}), ...(typeof a.seat === 'string' && ID.test(a.seat) ? { seat: a.seat } : {}),
+      acceptedMs: clamp(num(a.acceptedMs, playedMs), 0, playedMs),
+    };
+  }
+  return { active, done, seq: Math.max(0, Math.round(num(o.seq, 0))), trips: Math.max(0, Math.round(num(o.trips, 0))), earned: money(num(o.earned, 0)) };
 }
 
 /** Whole, non-negative, exact amount. */

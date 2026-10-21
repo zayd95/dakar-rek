@@ -11,7 +11,7 @@ import { addOwned, holds } from '../economy/assets';
  * No record yet (bought from « Biens », or never driven): it waits at its dealer's kerb.
  */
 /** 'tiak': the courier's basic motorbike, lent by the Tiak Tiak depot of each hub: always available, never bought, never sold. */
-export type VehicleAsset = 'jakarta' | 'compacte' | 'berline' | 'tout_terrain' | 'tiak';
+export type VehicleAsset = 'jakarta' | 'compacte' | 'teranga' | 'rafet' | 'berline' | 'tout_terrain' | 'gainde' | 'tiak';
 export interface Parked { asset: VehicleAsset; hub: HubId; x: number; z: number; yaw: number }
 
 const key = (id: VehicleAsset, f: string) => `vehicle:${id}:${f}`;

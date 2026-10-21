@@ -13,9 +13,7 @@ import { holding, repairAsset } from '../economy/assets';
 import { specOf } from '../economy/catalog';
 import { healthTag } from './condition';
 import { INSPECT_SECONDS, REPAIR_SECONDS, REPAIR_STEPS, garageOpen, garageQuote, inBay, reopens, type Bay, type Quote } from './garage';
-import { moto } from './motoModule';
-import { car } from './carModule';
-import { berline, suv } from './premiumCars';
+import { OWNED_VEHICLES } from './fleet';
 import type { OwnedVehicleModule } from './ownedModule';
 
 /**
@@ -46,6 +44,8 @@ type Phase = 'coming' | 'inspect' | 'quote' | 'work';
 interface Job { v: Vehicle; phase: Phase; t: number; quote: Quote | null; stand: Pt; paid: boolean }
 
 export class GarageModule implements GameModule, TargetSource {
+  /** The repair bay at the workshop's kerb, when Garage Modou is in this hub (another module's errand ends there). */
+  bayNow(): Bay | null { return this.bay; }
   readonly name = 'garage';
   private ctx!: GameCtx;
   private hub: HubWorld | null = null;
@@ -128,7 +128,7 @@ export class GarageModule implements GameModule, TargetSource {
   private vehicles(): Vehicle[] {
     if (!this.bay) return [];
     const out: Vehicle[] = [];
-    for (const mod of [moto, car, berline, suv]) {
+    for (const mod of OWNED_VEHICLES) {
       const p = mod.parkedHere(), a = holding(this.ctx.state, mod.def.asset), sp = specOf(mod.def.asset);
       if (!p || !a || !sp || a.how !== 'owned' || !inBay(this.bay, p)) continue;
       out.push({ mod, asset: mod.def.asset, uid: a.uid, name: sp.name, price: sp.price ?? 0, hp: a.condition, x: p.x, z: p.z, yaw: p.yaw });

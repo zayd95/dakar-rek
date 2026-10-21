@@ -31,16 +31,30 @@ let enabled = typeof location === 'undefined' || glbVehiclesWanted(location.host
 export const setGlbVehicles = (on: boolean) => { enabled = on; };
 export const glbVehiclesEnabled = () => enabled;
 
-/** Loads the prepared models (once; a missing or broken one is remembered as absent, the kit model stays). */
+/** Why a model is not there (checks and the showroom's diagnosis read it: a silent fallback to the kit was how Ndiaye Auto came to show box cars). */
+const failures = new Map<string, string>();
+export const glbFailure = (id: string) => failures.get(id) ?? null;
+
+/**
+ * Loads the prepared models (once; a missing or broken one is remembered as absent, the kit model stays). A failed load is tried once more (a
+ * dropped request on a phone network) and then reported on the console with its reason, never silently.
+ */
 export async function preloadGlbVehicles(ids: readonly string[], base = import.meta.env.BASE_URL): Promise<void> {
   if (!enabled) return;
   await Promise.all(ids.filter(id => !prepared.has(id)).map(async id => {
-    try {
-      const gltf = await new GLTFLoader().loadAsync(`${base}assets/vehicles/${id}.glb`);
-      // the sidecar of the pipeline says whether the cabin is hollow; without it the model is taken as a solid shell (no « at the wheel » view)
-      const side = await fetch(`${base}assets/vehicles/${id}.json`).then(r => r.ok ? r.json() : null, () => null) as { interior?: boolean } | null;
-      prepared.set(id, prepare(gltf.scene, side?.interior === true));
-    } catch { prepared.set(id, null); }
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const gltf = await new GLTFLoader().loadAsync(`${base}assets/vehicles/${id}.glb`);
+        // the sidecar of the pipeline says whether the cabin is hollow; without it the model is taken as a solid shell (no « at the wheel » view)
+        const side = await fetch(`${base}assets/vehicles/${id}.json`).then(r => r.ok ? r.json() : null, () => null) as { interior?: boolean } | null;
+        prepared.set(id, prepare(gltf.scene, side?.interior === true)); failures.delete(id);
+        return;
+      } catch (e) {
+        failures.set(id, String((e as Error)?.message ?? e));
+      }
+    }
+    prepared.set(id, null);
+    console.warn(`[vehicles] ${id}.glb did not load (${failures.get(id)}): the procedural model stands in for it`);
   }));
 }
 
@@ -48,7 +62,7 @@ const lamberts = new Map<string, THREE.Material>();                         // o
 const lambert = (m: THREE.Material): THREE.Material => {
   const hit = lamberts.get(m.uuid); if (hit) return hit;
   const s = m as THREE.MeshStandardMaterial;
-  const out = new THREE.MeshLambertMaterial({ color: s.color ?? 0xffffff, map: s.map ?? null, emissive: s.emissive ?? 0x000000, emissiveMap: s.emissiveMap ?? null, transparent: s.transparent, opacity: s.opacity, alphaTest: s.alphaTest });
+  const out = new THREE.MeshLambertMaterial({ color: s.color ?? 0xffffff, map: s.map ?? null, emissive: s.emissive ?? 0x000000, emissiveMap: s.emissiveMap ?? null, transparent: s.transparent, opacity: s.opacity, alphaTest: s.alphaTest, vertexColors: s.vertexColors });
   out.name = m.name; out.userData.shared = true;
   lamberts.set(m.uuid, out);
   return out;
@@ -98,14 +112,23 @@ export function glbVehicle(id: string, kit: VehicleSpec): THREE.Group | null {
     const shell = body.getObjectByName('body'); if (shell) g.userData.glbHide = [shell];     // seen from inside, the shell's own interior would be a mess: it is not drawn, the cockpit is
   }
   g.userData.glbRig = rig;
+  // a body with its own driver's door (scripts/vehicles/author): the kit's door code swings it about its hinge, and the cabin behind it is drawn only while it is open
+  const door = body.getObjectByName('door'), cabin = body.getObjectByName('cabin');
+  if (door) { g.userData.kitDoor = door; if (cabin) { cabin.visible = false; g.userData.kitCabin = cabin; } }
   return g;
 }
 
 const tints = new Map<string, THREE.Material>();
-/** Paints the body of a prepared car another colour (a multiplier on its paint texture: the showroom's other lots). The wheels keep theirs. */
+/**
+ * Paints the body of a prepared car another colour (a multiplier on its paint texture: the showroom's other lots). The wheels keep theirs; a body
+ * with a material named `paint` (the authored ones) has only that tinted, its glass, lamps and trim stay as they are.
+ */
 export function tintBody(g: THREE.Object3D, hex: number) {
-  g.getObjectByName('body')?.traverse(o => {
+  const body = g.getObjectByName('body'); if (!body) return;
+  let painted = false; body.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh && !Array.isArray(m.material) && m.material.name === 'paint') painted = true; });
+  body.traverse(o => {
     const m = o as THREE.Mesh; if (!m.isMesh || Array.isArray(m.material)) return;
+    if (painted && m.material.name !== 'paint') return;
     const key = `${m.material.uuid}:${hex}`; let t = tints.get(key);
     if (!t) { t = m.material.clone(); (t as THREE.MeshLambertMaterial).color.setHex(hex); t.userData.shared = true; tints.set(key, t); }
     m.material = t;

@@ -47,7 +47,50 @@ export interface SaveData {
   inventory: Record<string, number>;
   /** Fight record and best rung reached (src/career/career.ts). Additive field: older saves start with an empty record. */
   career: CareerSave;
+  /**
+   * Money owed to the people who trusted the player (src/economy/credit.ts): a car bought on credit from Sarr Auto, a repair Modou let them pay later.
+   * Additive field (no version change): a save without it owes nothing. Game money only.
+   */
+  loans: LoansState;
+  /** VTC rides (src/transport/vtc.ts): the ride in hand and the ones already paid (a ride is paid once). Additive field. */
+  vtc: VtcState;
 }
+
+/** One debt. The schedule is fixed when it is signed: `installment` every `every` city days from `openedDay`, until `principal` is repaid. */
+export interface LoanState {
+  id: string;
+  /** Who lent: Pape Sarr (Sarr Auto) or Modou (Garage Modou). */
+  lender: 'sarr' | 'modou';
+  kind: 'vehicle' | 'repair';
+  label: string;
+  /** The financed vehicle (asset uid) and its catalogue id. */
+  asset?: string; spec?: string;
+  /** What is owed after the down payment, what has been repaid. */
+  principal: number; paid: number;
+  installment: number; every: number;
+  openedDay: number;
+  /** The last city day whose due dates were looked at, and how many due dates were missed (the lender remembers). */
+  checkedDay: number; missed: number;
+  status: 'open' | 'closed';
+  closedDay?: number;
+}
+export interface LoansState { list: LoanState[]; seq: number }
+
+/** A VTC ride in hand (src/transport/vtc.ts): fixed when accepted, so what was shown is what is paid, across reloads. */
+export interface VtcTrip {
+  id: string;
+  from: HubId; to: HubId;
+  /** Where the passenger waits and where they get out (hub-local metres), and the places' names. */
+  pickup: { x: number; z: number; name: string }; dropoff: { x: number; z: number; name: string };
+  fare: number;
+  /** 'pickup': drive to the passenger · 'aboard': they sit in the car. */
+  stage: 'pickup' | 'aboard';
+  passenger: { name: string; seed: number };
+  /** The vehicle they ride in (catalogue id) and their seat. */
+  asset?: string; seat?: string;
+  acceptedMs: number;
+}
+export interface VtcState { active: VtcTrip | null; done: string[]; seq: number; trips: number; earned: number }
 
 export interface LedgerEntry { at: number; label: string; amount: number }
 export interface ActiveJob {

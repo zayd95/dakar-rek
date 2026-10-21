@@ -87,6 +87,51 @@ export const ECONOMY = {
     /** Ad space on a billboard: price per in-game day, and the boost to the ventures' income while the ad runs. */
     adSpace: { perDay: 25_000, boost: 0.1 },
   },
+  /**
+   * Credit between people (src/economy/credit.ts): Pape Sarr (Sarr Auto, Pikine) finances a city car, Modou lets a customer pay a repair later.
+   * Game money only, no interest; trust is the relationship level (src/social/relations.ts, −100…100). PROVISIONAL until the economy pass.
+   */
+  credit: {
+    dealer: {
+      /** He finances a car up to this price (a city car), one credit at a time. */
+      maxPrice: 6_000_000,
+      /** Terms by trust, best first: a fixed down payment or a share of the price, and in how many installments the rest is repaid. */
+      tiers: [{ trust: 60, down: 50_000, n: 40 }, { trust: 45, share: 0.1, n: 30 }, { trust: 30, share: 0.25, n: 20 }, { trust: 20, share: 0.4, n: 12 }],
+      /** City days between installments (one city day is 24 minutes of play). */
+      every: 2,
+      /** Due dates missed with him before he refuses any new credit. */
+      missedLimit: 3,
+    },
+    garage: {
+      /** Modou talks arrangements from this trust (or once he has said the player works well: the `modou_trust` flag). */
+      trustToArrange: 10, trustedLevel: 35,
+      /** Share of the bill paid now: someone he knows, someone he trusts. */
+      partKnown: 0.6, partTrusted: 0.35,
+      /** Never less than this now; never more than this on the slate; the trusted, reliable customer's discount. */
+      minNow: 1000, maxDebt: 60_000, discount: 0.1,
+      /** The rest is repaid in this many installments, one every `every` city days. */
+      installments: 3, every: 1, missedLimit: 2,
+    },
+    /** Trust: an errand done (the first, second… of a city day; nothing after the fourth), a first visit, an installment on time, a due date missed, a debt repaid in full. */
+    trust: { errands: [10, 8, 6, 4], firstVisit: 4, paidOnTime: 2, missed: -6, repaidAll: 6 },
+  },
+  /**
+   * VTC rides (src/transport/vtc.ts): the fare is fixed when the ride is accepted. Placeholder numbers: a base, a rate per metre of the trip (as the
+   * crow flies inside a district, the roads' lengths between districts), and a supplement per district boundary crossed; rounded to 500 F.
+   */
+  vtc: { base: 2500, perMetre: 9, perDistrict: 2500, step: 500 },
+  /**
+   * Repairs (src/transport/garage.ts): the work a car needs is priced by how much is wrong, not by what the car cost: a touch-up is free, ordinary damage
+   * costs what a garage in Pikine would ask, and a dearer car only costs somewhat more (its class factor, (price / ref)^exp, within [min, max]).
+   * `points`: [lost condition points, F] corners of the price curve for a car of the reference class.
+   */
+  repair: {
+    freeBelow: 5,
+    points: [[5, 2000], [15, 8000], [40, 33000], [100, 63000]] as [number, number][],
+    classRef: 6_000_000, classExp: 0.3, classMin: 0.5, classMax: 2.2,
+    /** The partial repair brings the car back to this condition (« remise en route »), or no lower than where it is. */
+    partialTo: 70,
+  },
   /** Wallet history kept in the save. */
   ledgerMax: 100,
 } as const;

@@ -1,4 +1,4 @@
-import { buildVehicle, vehicleSpec, type VehicleKind, type VehicleSeat } from '../actors/vehicleKit';
+import { buildVehicle, vehicleSpec, type CarModelId, type VehicleKind, type VehicleSeat } from '../actors/vehicleKit';
 import { glbVehicle, tintBody } from '../actors/glbVehicle';
 import type { DriveSpec, SeatSpec, VehicleSpec } from './spec';
 
@@ -55,11 +55,13 @@ export interface KitCarOpts {
   visual?: (seed: number) => ReturnType<typeof glbCar>;
   /** The kit body has a driver's door of its own that opens (src/actors/vehicleKit.ts `openable`). */
   openable?: boolean;
+  /** A car with a body of its own (src/actors/vehicleKit.ts CAR_MODELS): the kit takes its proportions, so seats, door, cameras and collisions fit it. */
+  model?: CarModelId;
 }
 
 /** A kit car as a transport VehicleSpec with a driver seat (left-hand drive), no lean and car handling. Built empty: the player drives it. */
 export function kitCarSpec(o: KitCarOpts): VehicleSpec {
-  const seed = o.seed, k = vehicleSpec(o.kind, { seed, driver: false, passengers: false });
+  const seed = o.seed, k = vehicleSpec(o.kind, { seed, driver: false, passengers: false, ...(o.model ? { model: o.model } : {}) });
   const toSeat = (s: VehicleSeat): SeatSpec => ({ id: s.id, x: s.x, y: s.top, z: s.z, yaw: s.yaw, npcOnly: s.kind !== 'driver' });
   const driver = k.seats.find(s => s.kind === 'driver') ?? k.seats[0];
   const door = k.doors.find(d => d.seats.includes(driver.id)) ?? k.doors[0];
@@ -85,7 +87,7 @@ export function kitCarSpec(o: KitCarOpts): VehicleSpec {
     cabin: 'closed',
     sway: 0.6,
     drive: { ...o.drive, halfWidth: k.width / 2, halfLength: k.length / 2, lean: false },
-    build: b => o.visual?.(b?.seed ?? seed) ?? buildVehicle(o.kind, { seed: b?.seed ?? seed, driver: false, passengers: false, ...(o.openable ? { openable: true } : {}) }).group,
+    build: b => o.visual?.(b?.seed ?? seed) ?? buildVehicle(o.kind, { seed: b?.seed ?? seed, driver: false, passengers: false, ...(o.openable ? { openable: true } : {}), ...(o.model ? { model: o.model } : {}) }).group,
   };
 }
 
