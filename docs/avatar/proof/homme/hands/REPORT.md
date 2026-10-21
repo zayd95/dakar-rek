@@ -1,33 +1,36 @@
-# Male hand repair — PR #60 avatar branch
+# Male arm and hand repair — PR #60 avatar branch
 
-## Scope and diagnosis
+## Diagnosis
 
-Audited `feature/avatar-studio-v6-20261020` at `951fe34` and repaired only `body_m.glb` and `body_m_low.glb`. The source body has one welded `Meshy_Body` primitive and a 20-joint skeleton. Its 13 animation clips use the same skeleton; there are no finger joints. The hand surface is too coarse and welded across the finger gaps. The existing relaxation step only offsets vertices and cannot split those connected surfaces into separate digits. In the clay close-ups at fixed camera poses, the webbing and elongated/spiky finger silhouette remain visible without the production texture, which rules out lighting, texture, or camera framing as the cause.
+Reviewed `feature/avatar-studio-v6-20261020` at `951fe34`, the supplied studio-flow video and screenshot, and fixed-camera renders of the male GLBs. The hand close-up alone was misleading: the deformation extended through the upper-arm/forearm skin, and the same angular folds appear in the base GLB before the hand patch. Matched clay renders rule out lighting, texture, and camera framing as the cause. The mesh is closed (8 boundary edges on the whole primitive, none in the arm region), so this is not an open hole. It is a geometry-shape problem, present before this repair.
 
-The replacement is an offline procedural mesh operation. It cuts each hand at a reproducible wrist plane, preserves the forearm-side boundary, and rebuilds only the palm, four fingers and thumb. The wrist collar blends hand and forearm weights; new hand vertices follow the existing `hand.L` / `hand.R` bones. Existing `grip` is used for the motorcycle grip; no finger articulation is claimed because the rig has no phalanx bones. The repair pass runs last after simplification so finger gaps cannot be re-welded. It is male-only and guarded to accept only the two male GLB filenames.
+The existing transplant script documents that the male source arms were bent about 100 degrees before fitting them to the game rig. Its DQS and elbow-weight fitting preserve the original mesh, but the remaining arm surface still has folds in the side view. The private source archive is absent from this checkout, so the exact source-stage cause cannot be reproduced here.
 
-No arm orientation, bone transform, inverse-bind matrix, face, nose, chin, shoulders, body geometry outside the wrist cut, female asset, texture, animation clip, or paid generation service was changed. The complete and low male GLBs remain complete, textured, rigged assets.
+## Change
+
+The final male-only pipeline now fairies the exposed upper-arm and forearm surface, then rebuilds the hands, then smooths normals across UV seams. The fairing welds UV duplicates for topology, uses bounded Taubin surface smoothing on vertices weighted to the male upper-arm/forearm bones, and caps movement at 2.5 cm per vertex. It leaves the shirt/shoulder seam and hands fixed. The hand rebuild remains offline and procedural, using the existing skeleton and motorcycle `grip` morph.
+
+The female assets and all body geometry outside the male exposed arms and hands are unchanged. Bone transforms, inverse binds, skin weights, textures, animation clips, face and clothing were preserved. No Meshy generation, paid credits, force push, production or Cloudflare action was used.
 
 ## Measurements
 
-| Asset | Before | After | Change |
-|---|---:|---:|---:|
-| `body_m.glb` | 15,354 vertices / 13,904 triangles / 1,574,552 bytes | 13,958 / 13,496 / 1,458,864 bytes | -1,396 vertices; -408 triangles; -115,688 bytes |
-| `body_m_low.glb` | 8,533 vertices / 6,952 triangles / 847,840 bytes | 7,930 / 7,418 / 839,732 bytes | -603 vertices; +466 triangles; -8,108 bytes |
+| Asset | Before | After |
+|---|---:|---:|
+| `body_m.glb` | 15,354 vertices / 13,904 triangles / 1,574,552 bytes | 13,958 / 13,496 / 1,458,884 bytes |
+| `body_m_low.glb` | 8,533 vertices / 6,952 triangles / 847,840 bytes | 7,930 / 7,418 / 839,748 bytes |
 
-The low model remains 42.4% smaller than full by bytes. In a 375×667 CSS-pixel mobile emulation at DPR 2, the rendered close-up used 731 hand triangles after repair versus 462 before (+269, +58% for the cropped hand surface). The low GLB transferred 839,732 bytes. The page reported no runtime errors. This is browser emulation, not a physical-device benchmark.
+The arm fairing affects 656 welded vertices in the full model and 375 in the low model; the displacement cap is 25 mm. Independent runs of the complete local male repair sequence produced identical SHA-256 outputs: full `4e5707cfaf752805efdd9e9feca6f6b703667d3d4bb1ab39b3c3121e71cb6df7`; low `2d750627d37e5bdd913bbc1cd99822c703a724e0238ed43e2dcf021dc003070d`.
 
-Independent repair runs on the same original inputs produced identical SHA-256 outputs: full `611fe9e20c2799a996c6d6665ae68a591d08d72aa8369b1cd519d1e4242719b7`; low `c5371b1de602b6dadd8b6bf8a183f9fbe36ab3cc523a8dba750585a7bde98fce`.
+The low model remains 42.4% smaller than full by bytes. In a 375×667 CSS-pixel mobile emulation at DPR 2, the earlier close-up measured 731 rendered hand triangles after repair versus 462 before; this is a browser simulation, not a physical-device benchmark.
 
-## Integrity and checks
+## Verification
 
-- Both male assets retain all 20 joints, the same inverse bind matrices, the same 13 clips and animation accessor values, and morph targets `grip` and `shave`; all vertex weights remain normalized. Texture hashes are unchanged.
-- Female GLBs are byte-identical to the base branch.
-- Fixed-camera before/after clay close-ups cover left and right hands from palm, back and profile, at rest and during idle, walk, run, motorcycle grip and representative gestures. Matched comparison sheets are included alongside this report.
-- `npm test`: 151 files, 1,811 passed, 2 skipped. `npm run build` and `npm run typecheck:server` passed. Gait check: 26/26 desktop/phone scenarios passed; maximum measured slide was 1.3 cm per step (2 cm threshold).
-- Phone-emulated car check passed showroom and purchase, parked interaction, Sit driver pose, driving, wheel rotation and steering, three camera views, wall stop, and curb exit. It stalled in a later reload-while-driving scenario; the full car script is therefore partial.
-- Phone-emulated motorcycle check passed showroom/purchase, ownership, Ride pose, acceleration, steering, wall stop, riding delivery and exit/save-reload park. It stalled at a later repeated mid-ride reload scenario; the full motorcycle script is partial.
+- `npm test`: 151 files, 1,811 passed, 2 skipped. `npm run build` and `npm run typecheck:server` passed.
+- Desktop and phone gait checks: 26/26 passed. Maximum measured foot slide was 1.3 cm per step on desktop and 1.7 cm on phone.
+- Fixed-camera clay views cover the full arm at rest and in Ride/Sit, plus low-mesh mobile views. Side-profile folds are reduced; the rig and pose are unchanged. See [full-arm side views](male-arm-side-before-after.jpg), [Ride/Sit views](male-arm-ride-sit-before-after.jpg), and [low-mesh mobile views](male-arm-mobile-low-before-after.jpg).
+- Earlier interactive car/Jakarta checks verified purchase, Ride/Sit driving poses, steering and vehicle controls but stalled in later reload-while-moving stages. Those interactive checks were not repeated after the arm fairing; the updated Ride/Sit proof is visual.
+- Female GLBs remain byte-identical to the base branch: full SHA `e5fd992c872a222895b1a67192fcab1ec4e7baaa8fe0c50555456d47583e35e3`; low SHA `51b7819cda3e3968e9f8c10adfdcae88a3acf887d97981dcfbbe5c1b05eaeee8`.
 
-## Limitations
+## Limitation
 
-The branch checkout does not contain `private-archive/meshy-20261017/sources`, so the full source-to-four-assets build could not be run. The repair was tested directly and repeatably on the branch's existing male GLBs, and its final male-only invocation is integrated into `scripts/meshy/build-bodies.mjs`. The supplied attachment previews show the studio flow but do not include diagnostic close-ups of the male hands; fixed-camera mesh captures from the branch assets were used to isolate the geometry. Car uses the existing `Sit` animation and has no car-specific wrist/wheel IK, so the hand repair does not alter its arm pose.
+The checkout lacks `private-archive/meshy-20261017/sources`, so the complete four-asset source build could not be rerun. The two male GLBs were corrected directly and reproducibly, and both male-only passes are integrated into `scripts/meshy/build-bodies.mjs`.

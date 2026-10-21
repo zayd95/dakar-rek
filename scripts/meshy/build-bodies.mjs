@@ -28,7 +28,11 @@ for (const [body, { id, full, low }] of Object.entries(STEPS)) {
   if (full) run('simplify-body.mjs', [t, `${out}/body_${id}.glb`, ...full]); else { fs.copyFileSync(t, `${out}/body_${id}.glb`); run('../avatar/smooth-normals.mjs', [`${out}/body_${id}.glb`]); }   // (the homme's full body is not simplified: its seams still get smooth light)
   run('simplify-body.mjs', [t, `${out}/body_${id}_low.glb`, ...low]);
   for (const f of [`${out}/body_${id}.glb`, `${out}/body_${id}_low.glb`]) { run('grip-morph.mjs', [f, f]); run('../avatar/add-hair.mjs', [f]); run('../avatar/pad-texture.mjs', [f]); }   // the fist for the motorbike grip, as a morph target (after simplify: simplify drops morph targets); then the studio's hair: the `_HAIR` attribute and the 'shave' morph target (read from the texture as made); then the texture's edge padding (no ground bleeding into the seams)
-  // Final male-only hand reconstruction: do it after simplification so the low mesh cannot re-weld the finger gaps.
-  if (body === 'homme') for (const f of [`${out}/body_m.glb`, `${out}/body_m_low.glb`]) run('repair-male-hands.mjs', [f]);
+  // Male-only arm fairing, then hands, after simplification so low meshes keep the corrected silhouette and finger gaps.
+  if (body === 'homme') for (const f of [`${out}/body_m.glb`, `${out}/body_m_low.glb`]) {
+    run('repair-male-arms.mjs', [f]);
+    run('repair-male-hands.mjs', [f]);
+    run('../avatar/smooth-normals.mjs', [f]);
+  }
   console.log(body, fs.statSync(`${out}/body_${id}.glb`).size, fs.statSync(`${out}/body_${id}_low.glb`).size);
 }

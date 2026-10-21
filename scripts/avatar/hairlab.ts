@@ -10,7 +10,7 @@ import { STUDIO_LIGHT, gameLight } from '../../src/ui/studioStage';
 const q = new URLSearchParams(location.search);
 const rows = (q.get('rows') ?? 'f:natural:4:0:0').split(',').map(r => {
   const [b, hair, skin, outfit, color, clip, t] = r.split(':');
-  return { avatar: b.startsWith('m') ? 'homme' as const : 'femme' as const, base: b.endsWith('b') ? '/_before/' : '/', clip: (clip || 'Idle') as Clip, t: Number(t ?? 0.66),
+  return { avatar: b.startsWith('m') ? 'homme' as const : 'femme' as const, low: b === 'ml' || b === 'mlb', base: b.endsWith('b') ? '/_before/' : '/', clip: (clip || 'Idle') as Clip, t: Number(t ?? 0.66),
     look: hair === 'none' ? null : { hair: hair as HairId, skin: +skin, outfit: +outfit, color: +color } as Appearance };
 });
 const views = (q.get('views') ?? 'front,34,side,back').split(','), frame = q.get('frame') ?? 'head', light = q.get('light') ?? 'studio', cell = +(q.get('cell') ?? 300);
@@ -41,7 +41,7 @@ if (q.get('glb')) {
 }
 const bodies: Humanoid[] = [];
 for (const row of rows) {
-  const id = await loadPlayerBody(row.avatar, false, row.base);
+  const id = await loadPlayerBody(row.avatar, row.low, row.base);
   // locomotion as the game drives it (the body moves, the gait follows the speed); a held pose (Sit, Ride, Lie, Kneel) through `hold`; anything else played
   const LOCO: Record<string, number> = { Walk: 1.4, Jog: 3, Run: 5.5 }, HOLD = ['Sit', 'Ride', 'Lie', 'Kneel', 'SitFloor'];
   const h = new Humanoid(undefined, id); h.fullRate = true; h.setAppearance(row.look);
