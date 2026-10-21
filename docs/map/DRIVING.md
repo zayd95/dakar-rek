@@ -69,3 +69,17 @@ Reused kits, no heavy assets, free passing space always kept (the lanes are unit
 | `scripts/check-drive-feel.mjs` | real touch, game seconds: travel times, speeds, boost, brake-to-reverse and its « R » badge, the Jakarta never reversing |
 | `scripts/check-network-trip.mjs` | Almadies → Corniche → Plateau and back (border street and road), Corniche → Almadies → Pikine and back: the districts crossed in order, the game in play mode on every frame, the driver in the seat with the pad and the speed kept, the same car (uid, paint, one copy) saved where the trip ends |
 | `scripts/check-corridor.mjs` (each road) | the corridor flow, including stopping, getting out, walking, getting in, and a reload on the road |
+
+## Performance, before and after (software renderer, NOT an iPhone)
+
+Headless Chromium + SwiftShader on a shared 2-core VM; `scripts/perf-corridor.mjs`, the berline driven with real touch across the middle of Pikine ↔ Almadies, medium quality, one run each, the PR #59 build (`f55a93c`) against this one (with the road's traffic, and with `?debug&notraffic` for the extra life alone). Single runs on a noisy machine: differences of a few percent mean nothing, only the order of magnitude does.
+
+| | #59 out | now out | now, no traffic, out | #59 back | now back | now, no traffic, back |
+|---|---|---|---|---|---|---|
+| Median frame gap | 193 ms | 193 ms | 200 ms | 155 ms | 164 ms | 167 ms |
+| 95th percentile | 281 ms | 269 ms | 294 ms | 466 ms | 448 ms | 481 ms |
+| Swap frame's own cost | 34 ms | 47 ms | 48 ms | 31 ms | 33 ms | 29 ms |
+| Longest step of the staged load | 61 ms | 59 ms | 76 ms | 352 ms | 409 ms | 421 ms |
+| Build ahead (CPU) | 339 ms | 269 ms | 415 ms | 618 ms | 550 ms | 570 ms |
+
+Reading it: the extra traffic and street life do not move the frame loop or the swap beyond the run-to-run noise (the no-traffic runs are not faster than the runs with it); the swap stays a staged, ~30–50 ms frame; the longest remaining step is still the venues load on the way back to Pikine (as in #59). The border street between Almadies and the Corniche now goes through the same prewarm and staged load as a corridor swap instead of the old all-in-one load; I did not compare it against the old border crossing in a browser. Nothing here says what an iPhone's frame rate is, and no such figure is claimed.
