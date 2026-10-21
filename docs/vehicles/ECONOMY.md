@@ -119,7 +119,7 @@ Browser journeys: real CDP touches on a 390 × 844 phone page, Chromium + SwiftS
 
 | Journey | Script | Result |
 |---|---|---|
-| A · new player → Sarr's errands over two days → trust → credit → the Teranga → first VTC passenger → repayment → reload | `scripts/check-first-car.mjs` | rerun in progress (15 checks; every step through the credit signature passed) |
+| A · new player → Sarr's errands over two days → trust → credit → the Teranga → first VTC passenger → repayment → reload | `scripts/check-first-car.mjs` | **15/15** |
 | B · Prestige: the red Lamane Sport looked at, test-driven, cannot be afforded, left | `scripts/check-prestige-suv.mjs` | **11/11** |
 | C · Jakarta backed out of a 2.5 m gap with the feet; a parcel Pikine → Plateau, paid once | `scripts/check-jakarta-courier.mjs` | **15/15** · film `jakarta-paddle.mp4` |
 | D · damaged Teranga → Modou → arrangement → Lamine → slate repaid | `scripts/check-garage-credit.mjs` | **14/14** |
@@ -133,6 +133,10 @@ debt 3 985 000 F on the car's asset, the wallet only down by the advance); a Pik
 (436 samples), the car at 98.1 % after the cross-district drive; the Jakarta's paddle first moves after 0.7 s of game time, never faster than 0.85 m/s, the « RidePaddle » pose, no
 « R », stopped within 0.17 m on release, 3.44 m backed out of the gap with no contact; a 51.9 % damaged Teranga quoted 34 500 F at Modou's (13 000 F to 70 %), 12 500 F paid and
 22 000 F on his slate, repaid from « Crédits ».
+
+Regression on this branch: `npm test` 1945 passed (2 skipped), `npm run build`, `npm run typecheck:server`; `npm run check:online` (two browsers on a local Workers runtime) 44/44;
+`check-garage.mjs` 15/15; `check-prestige-flow.mjs` 23/23 and `check-prestige-trial.mjs` 7/7 (updated to the new Prestige floor: one berline, two Lamane Sports, the Gaïndé);
+`check-horn.mjs` 17/17 (now entering the car through Ndiaye Auto's floor, which replaced the catalogue menu); `check-city-life.mjs` 37/37; `check-drive-feel.mjs` (the Jakarta's release now read after half a second of game time) rerun in progress.
 
 These run in headless Chromium with a software renderer. They prove what the page does; **they are not an iPhone test**.
 
