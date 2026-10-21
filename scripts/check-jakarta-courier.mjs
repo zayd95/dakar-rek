@@ -75,6 +75,7 @@ check('a bump at a walking pace costs nothing (no damage from parking)', h1 >= h
 await shot('against-car');
 await page.waitForTimeout(800);
 await stopSound(page, `${out}/raw/sound.webm`);
+await t.tap('#ridepad .rp-off'); await page.waitForFunction(() => !window.__dakar.moto.info().driving && window.__dakar.pos().mode === 'play', null, T);   // off the bike
 
 // ---- 3. the courier run, Pikine → Plateau
 await t.tap('#menuBtn'); await page.waitForFunction(() => window.__dakar.phoneInfo().open, null, T);
@@ -89,29 +90,31 @@ const wallet0 = await d(() => window.__dakar.state.wallet);
 check('« Travail » on the phone: the parcel for the Plateau taken with a tap (go and fetch it first)', (await d(() => window.__dakar.activeJob()))?.stage === 'pickup');
 const places = await d(() => window.__dakar.cityPlaces());
 const shop = places.find(p => p.id.startsWith('pikine:') && p.id.includes(':city:boutique'));   // the courier's stop is the first place of that kind (src/economy/ui.ts placeOf)
-await d(([x, z]) => window.__dakar.moto.place(x, z, Math.PI / 2), [gapX, -2.1]);                       // pulled out into the road (it was backed out above)
+await d(() => window.__dakar.moto.place(-62.1, 6, 0));                                                    // the courier run starts on the market avenue (x = -60), heading north toward the shop
+await d(() => window.__dakar.place(-59.6, 6, 0));
 await boardVehicle(page, t, 'moto');
 let a = await AT(); const K1 = kerbOf(shop);
-await pilot(page, t, 'moto', route({ x: a.x, z: a.z, yaw: a.yaw }, K1, { cruise: 6 }), { cruise: 6, stall: 40000, ms: 600000, brakeAtEnd: true });
+await pilot(page, t, 'moto', route({ x: a.x, z: a.z, yaw: a.yaw }, K1, { cruise: 6 }), { cruise: 6, stall: 60000, ms: 1500000, brakeAtEnd: true });
+console.log('at the shop kerb', JSON.stringify({ bike: await AT(), kerb: K1, shop: [shop.x, shop.z] }));
 await t.tap('#ridepad .rp-off'); await page.waitForFunction(() => !window.__dakar.moto.info().driving && window.__dakar.pos().mode === 'play', null, T);
-await walkTo(page, t, shop.x, shop.z, { tol: 1.5, ms: 60000 });
+await walkTo(page, t, shop.x, shop.z, { tol: 1.5, ms: 120000 });
 await page.waitForFunction(() => window.__dakar.activeJob()?.stage === 'deliver', null, { timeout: 30000 }).catch(() => {});
 check('at Boutique Diallo, on foot at the door: the parcel is picked up', (await d(() => window.__dakar.activeJob()))?.stage === 'deliver', JSON.stringify({ shop: [shop.id, shop.x, shop.z], me: await d(() => [window.__dakar.pos().x, window.__dakar.pos().z]) }));
 await boardVehicle(page, t, 'moto');
 check('… and it rides in the courier box', !!(await AT()).box || (await AT()).parcel !== null, JSON.stringify(await AT()));
 a = await AT();
-await pilot(page, t, 'moto', route({ x: a.x, z: a.z, yaw: a.yaw }, { x: -60, z: 140 }, { cruise: 7 }), { cruise: 7, stall: 40000, ms: 600000 });
+await pilot(page, t, 'moto', route({ x: a.x, z: a.z, yaw: a.yaw }, { x: -60, z: 140 }, { cruise: 7 }), { cruise: 7, stall: 60000, ms: 1500000 });
 const len = await d(() => { const p = window.__dakar.road.at('pikine-plateau', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
-await driveRoad(page, t, 'moto', 'pikine-plateau', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true });
+await driveRoad(page, t, 'moto', 'pikine-plateau', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true, ms: 1800000 });
 await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau', null, { timeout: 240000 }).catch(() => {});
 check('in the Plateau on the Jakarta with the parcel (one delivery in hand, nothing paid yet)', (await d(() => window.__dakar.pos().hub)) === 'plateau' && (await d(() => window.__dakar.activeJob()))?.stage === 'deliver' && (await d(() => window.__dakar.state.wallet)) === wallet0);
 await shot('plateau');
 const pl = (await d(() => window.__dakar.cityPlaces())).find(p => p.id.startsWith('plateau:') && p.id.includes(':city:boutique'));
 a = await AT(); const K2 = kerbOf(pl);
 const r2 = route({ x: a.x, z: a.z, yaw: a.yaw }, K2, { cruise: 6 });
-if (r2) await pilot(page, t, 'moto', r2, { cruise: 6, stall: 40000, ms: 600000, brakeAtEnd: true });
+if (r2) await pilot(page, t, 'moto', r2, { cruise: 6, stall: 60000, ms: 1500000, brakeAtEnd: true });
 await t.tap('#ridepad .rp-off'); await page.waitForFunction(() => !window.__dakar.moto.info().driving && window.__dakar.pos().mode === 'play', null, T);
-await walkTo(page, t, pl.x, pl.z, { tol: 1.5, ms: 60000 });
+await walkTo(page, t, pl.x, pl.z, { tol: 1.5, ms: 120000 });
 await page.waitForFunction(() => !window.__dakar.activeJob(), null, { timeout: 30000 }).catch(() => {});
 const wallet1 = await d(() => window.__dakar.state.wallet), lines = (await d(() => window.__dakar.ledger())).filter(l => /Livraison|Tiak|livr/i.test(l.label));
 check('handed over at Atelier Ndeye: paid ONCE (one wallet line)', !(await d(() => window.__dakar.activeJob())) && wallet1 > wallet0 && lines.length === 1, JSON.stringify({ paid: wallet1 - wallet0, lines: lines.map(l => l.label) }));

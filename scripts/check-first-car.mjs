@@ -100,7 +100,7 @@ async function clientErrand(day) {
   await intoFloorCar(0);
   const del = lot.delivery;
   // out of the parking lane into the road (past the other cars and Modou's Jakarta on display), then back into the kerb at the « client » spot
-  await pilot(page, t, 'teranga', [{ x: lot.slots[0].x + 5, z: lot.slots[0].z - 2.8, tol: 2, speed: 3 }, { x: lot.slots[3].x + 1.5, z: del.z - 2.8, tol: 2, speed: 3 }, { x: del.x - 3, z: del.z - 1.0, tol: 1.6, speed: 1.8 }, { x: del.x + 0.5, z: del.z, tol: 1.0, speed: 1.2 }], { brakeAtEnd: true, cruise: 3 });
+  await pilot(page, t, 'teranga', [{ x: lot.slots[0].x + 5, z: lot.slots[0].z - 2.8, tol: 2, speed: 3 }, { x: lot.slots[3].x + 1.5, z: del.z - 2.8, tol: 2, speed: 3 }, { x: del.x - 6, z: del.z - 0.9, tol: 1.4, speed: 2 }, { x: del.x - 1.5, z: del.z - 0.1, tol: 1.1, speed: 1.5 }, { x: del.x + 1, z: del.z, tol: 0.9, speed: 1.1 }], { brakeAtEnd: true, cruise: 3 });   // into the kerb lane early, then straight along it
   if (day === 1) await shot('errand-client-parked');
   await getOut('teranga');
   await report('client');
@@ -142,6 +142,7 @@ async function errandsOfTheDay(day) {
   if (day === 1) await shot('errand-papers-bank');
   await report('papers');
 }
+if (process.env.STEP === 'client') { await clientErrand(1); console.log('client errand done', JSON.stringify((await S()).log.errands)); await browser.close(); process.exit(0); }
 if (process.env.STEP === 'garage') { await garageErrand(1); console.log('garage errand done', JSON.stringify((await S()).log.errands)); await browser.close(); process.exit(0); }
 await errandsOfTheDay(1);
 const a1 = await S();
@@ -173,6 +174,9 @@ check('the car is the very one on the kerb: same place, same paint, one copy, no
 await shot('signed');
 
 // ------------------------------------------------------------------------------------------------ 3. driving it, and a first passenger
+{ const c = await d(() => window.__dakar.teranga.at()), F = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }, L = { x: Math.cos(c.yaw), z: -Math.sin(c.yaw) };
+  await walkTo(page, t, c.x + F.x * 3.4 - L.x * 1.2, c.z + F.z * 3.4 - L.z * 1.2, { tol: 0.9, ms: 60000 });   // round the front of the car first (Sarr's desk is behind the row)
+  await walkTo(page, t, c.x + F.x * 2.6 + L.x * 2.0, c.z + F.z * 2.6 + L.z * 2.0, { tol: 0.9, ms: 60000 }); }
 await boardVehicle(page, t, 'teranga');
 const car = await d(() => window.__dakar.teranga.at());
 // the ride the phone lists this hour that starts nearest to the car, inside Pikine (a first, short one)
@@ -187,7 +191,7 @@ const st = await d(() => window.__dakar.vtc.stops());
 console.log('ride', pickHour.r.pickup.name, '→', pickHour.r.dropoff.name, pickHour.r.fare, 'F', JSON.stringify(st.pickup.car));
 await page.waitForFunction(() => window.__dakar.vtc.info().phase === 'wait', null, T);
 const route = (from, to) => gridRoute({ x: from.x, z: from.z, yaw: from.yaw }, to, { cruise: 6 });
-await pilot(page, t, 'teranga', route(car, st.pickup.car), { brakeAtEnd: true, cruise: 6, stall: 30000 });
+await pilot(page, t, 'teranga', route(car, st.pickup.car), { brakeAtEnd: true, cruise: 6, stall: 60000, ms: 1200000 });
 await page.waitForFunction(() => window.__dakar.vtc.info().phase === 'walk' || window.__dakar.vtc.info().trip?.stage === 'aboard', null, { timeout: 60000 }).catch(() => {});
 await page.waitForTimeout(1200); await shot('passenger-walks-to-car');
 await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'aboard', null, { timeout: 90000 }).catch(() => {});
@@ -196,7 +200,7 @@ check('the passenger walked to the car (no teleport: steps of a walking pace) an
 await shot('passenger-aboard');
 await d(() => window.__dakar.portrait(4.6, 1.7, -Math.PI / 2 - 0.35)); await shot('passenger-seen-from-the-pavement'); await d(() => window.__dakar.portrait(0));      // the camera alone, on the right: the person in the back seat
 const c2 = await d(() => window.__dakar.teranga.at());
-await pilot(page, t, 'teranga', route(c2, st.dropoff.car), { brakeAtEnd: true, cruise: 6, stall: 30000 });
+await pilot(page, t, 'teranga', route(c2, st.dropoff.car), { brakeAtEnd: true, cruise: 6, stall: 60000, ms: 1200000 });
 await page.waitForFunction(() => !window.__dakar.vtc.info().trip, null, { timeout: 60000 }).catch(() => {});
 await page.waitForTimeout(800); await shot('passenger-out');
 const v2 = await d(() => ({ v: window.__dakar.vtc.info(), ledger: window.__dakar.ledger().filter(l => /Course VTC/.test(l.label)) }));

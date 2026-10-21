@@ -59,7 +59,7 @@ class CreditClock implements GameModule {
         ctx.toast(`${who} attendait ${fcfa(standing(l, day).late)} (${l.label}) : il te fera un peu moins confiance. Rembourse dès que tu peux.`);
       } else if (!first) {
         const st = standing(l, day);
-        if (st.nextDay === day + l.every && st.late === 0 && (day - l.openedDay) % l.every === 0 && day > l.openedDay) { this.log.reminders++; ctx.toast(`${who} : échéance de ${fcfa(l.installment)} réglée ou à régler aujourd’hui · ${l.label}`); }
+        if (st.nextDay === day && st.next > 0) { this.log.reminders++; ctx.toast(`${who} : échéance de ${fcfa(st.next)} à régler aujourd’hui · ${l.label}`); }
       }
     }
   }

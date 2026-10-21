@@ -45,12 +45,18 @@ describe('the schedule (dueBy, standing, repay, settle)', () => {
     expect(dueBy(l, 10_000)).toBe(l.principal);
     const st = standing(l, 11); expect(st.late).toBe(0); expect(st.next).toBe(99_000); expect(st.nextDay).toBe(12);
   });
-  it('a missed due date is counted once, however often the day is looked at; paying on time misses nothing', () => {
+  it('an installment that falls due today is today\'s, not late; the day after, it is late', () => {
     const l = loan();
-    expect(settle(l, 11)).toBe(0);
-    expect(settle(l, 12)).toBe(1); expect(settle(l, 12)).toBe(0); expect(l.missed).toBe(1);
-    const ok = loan(); repay(ok, 99_000, 12); expect(settle(ok, 12)).toBe(0); expect(ok.missed).toBe(0);
-    const far = loan(); expect(settle(far, 16)).toBe(3); expect(far.missed).toBe(3);
+    const today = standing(l, 12); expect(today.late).toBe(0); expect(today.next).toBe(99_000); expect(today.nextDay).toBe(12);
+    const after = standing(l, 13); expect(after.late).toBe(99_000); expect(after.nextDay).toBe(14);
+    repay(l, 99_000, 12); const paid = standing(l, 12); expect(paid.late).toBe(0); expect(paid.nextDay).toBe(14); expect(paid.next).toBe(99_000);
+  });
+  it('a due date is missed only once its day is over unpaid, counted once however often it is looked at; paying on the day misses nothing', () => {
+    const l = loan();
+    expect(settle(l, 11)).toBe(0); expect(settle(l, 12)).toBe(0);                     // the due day itself: still time to pay
+    expect(settle(l, 13)).toBe(1); expect(settle(l, 13)).toBe(0); expect(l.missed).toBe(1);
+    const ok = loan(); repay(ok, 99_000, 12); expect(settle(ok, 13)).toBe(0); expect(ok.missed).toBe(0);
+    const far = loan(); expect(settle(far, 17)).toBe(3); expect(far.missed).toBe(3);
   });
   it('repays no more than what is left and closes the debt when it is all repaid', () => {
     const l = loan({ principal: 100_000, installment: 50_000 });

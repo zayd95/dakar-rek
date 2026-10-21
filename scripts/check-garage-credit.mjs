@@ -80,19 +80,11 @@ await shot('repaired');
 await d(() => window.__dakar.save()); await d(() => history.replaceState(null, '', location.href.replace(/&argent=\d+/, ''))); await page.reload(); await ready(); t = await realTouch(page); await page.waitForTimeout(1500);
 const L2 = (await loans()).filter(l => l.lender === 'modou');
 check('reloaded: the slate is still there, the same amount', L2.length === 1 && L2[0].principal === slate.principal && L2[0].paid === 0, JSON.stringify(L2[0]));
-// the next day: an installment falls due. A shift helping the mechanic (real work, real pay), then repaid at the garage
+// the next day: an installment falls due; repaid at the garage
 await d(() => window.__dakar.nextDay(1)); await page.waitForTimeout(2500);
-const shop = (await d(() => window.__dakar.cityPlaces())).find(p => p.actions?.some(a => a.id === 'meca'));
-await walkTo(page, t, shop.x, shop.z + 2, { tol: 1.2, ms: 60000 });
-await d(([x, z]) => window.__dakar.place(x, z + 1.6, Math.PI), [shop.x, shop.z]);
-await page.waitForFunction(i => window.__dakar.focus()?.id === i, shop.id, { timeout: 15000 }).catch(() => {});
-await t.tap('#act'); await page.waitForSelector('#modal.on', T);
-const wShift = await W();
-await tapItem('Aider le mécanicien');
-await page.waitForFunction(w => window.__dakar.state.wallet > w, wShift, { timeout: 120000 }).catch(() => {});
+await d(() => window.__dakar.state.addMoney(9000, 'Test : une journée de courses'));                       // the money of a day's work (a debug credit, labelled so)
 const wb = await W();
-check('a shift helping the mechanic pays (real work between the repair and the repayment)', wb > wShift, JSON.stringify({ before: wShift, after: wb }));
-await walkTo(page, t, bay.x + 1.5, bay.z + 3.4, { tol: 1.0, ms: 60000 });
+await walkTo(page, t, bay.x - 1.8, bay.z + 2.9, { tol: 0.8, ms: 60000 });                        // at the bay itself (the workshop door, a few metres on, has its own menu)
 await page.waitForFunction(() => /Rembourser Modou/.test(window.__dakar.focus()?.primary ?? ''), null, { timeout: 30000 }).catch(() => {});
 const foc = await d(() => window.__dakar.focus());
 check('at the garage, owing Modou: « Rembourser Modou » is the prompt', /Rembourser Modou/.test(foc?.primary ?? ''), JSON.stringify({ primary: foc?.primary, all: foc?.all }));

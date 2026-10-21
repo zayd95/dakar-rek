@@ -54,9 +54,13 @@ export function dueBy(l: LoanState, day: number): number {
   const n = Math.max(0, Math.floor((day - l.openedDay) / l.every));
   return Math.min(l.principal, n * l.installment);
 }
-/** What is late now (owed by today and not repaid), and the next installment (amount, day). */
+/**
+ * Where a debt stands on city day `day`: what is late (due on an earlier day and not repaid), what is left, and the next installment to pay (amount, day):
+ * an installment that falls due today is today's, not late — the whole of its day is there to pay it.
+ */
 export function standing(l: LoanState, day: number) {
-  const late = Math.max(0, dueBy(l, day) - l.paid), left = l.principal - l.paid;
+  const left = l.principal - l.paid, late = Math.max(0, dueBy(l, day - 1) - l.paid), owed = Math.max(0, dueBy(l, day) - l.paid);
+  if (owed > late) return { late, left, next: Math.min(left, owed), nextDay: day };
   const k = Math.floor((day - l.openedDay) / l.every) + 1, nextDay = l.openedDay + k * l.every;
   return { late, left, next: Math.min(left, Math.max(0, dueBy(l, nextDay) - l.paid)), nextDay };
 }
@@ -79,14 +83,16 @@ export function repay(l: LoanState, amount: number, day: number): number {
 }
 
 /**
- * The days that passed since the debt was last looked at: each due date reached with less repaid than the schedule asked is one more missed date. Returns
- * how many were missed now (the lender's trust falls by that many steps; the caller says so). Idempotent for the same day.
+ * The days that are over since the debt was last looked at: each due date whose day ended with less repaid than the schedule asked is one more missed date
+ * (on its own day an installment can still be paid on time). Returns how many were missed now (the lender's trust falls by that many steps; the caller says so).
+ * Idempotent for the same day.
  */
 export function settle(l: LoanState, day: number): number {
-  if (l.status !== 'open' || day <= l.checkedDay) { l.checkedDay = Math.max(l.checkedDay, day); return 0; }
+  const over = day - 1;                                                                // the last city day that has ended
+  if (l.status !== 'open' || over <= l.checkedDay) { if (l.status !== 'open') l.checkedDay = Math.max(l.checkedDay, over); return 0; }
   let missed = 0;
-  for (let d = l.checkedDay + 1; d <= day; d++) if ((d - l.openedDay) % l.every === 0 && d > l.openedDay && l.paid < dueBy(l, d)) missed++;
-  l.missed += missed; l.checkedDay = day;
+  for (let d = l.checkedDay + 1; d <= over; d++) if ((d - l.openedDay) % l.every === 0 && d > l.openedDay && l.paid < dueBy(l, d)) missed++;
+  l.missed += missed; l.checkedDay = over;
   return missed;
 }
 
