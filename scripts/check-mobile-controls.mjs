@@ -45,6 +45,8 @@ try {
       const stopped = d.stride().speed, reset = 'false';
       return { walk, jog, sprint, stopped, reset };
     });
+    // the layout is read at the same spot whatever the speed of the walk before it (the minimap's caption is the nearest place's name, whose width depends on where the player stands)
+    await page.evaluate(() => { const d = window.__dakar; d.place(-42, -66, Math.PI / 2); d.step(1 / 60, 90); d.render(); });
     const quiet = await page.evaluate(() => window.__dakar.quiet());
     await page.evaluate(() => { const d = window.__dakar; d.portrait(1.6, 1.52, .3); d.step(1 / 60, 1); d.render(); });
     await page.screenshot({ path: `${out}/${name}-face.png` });

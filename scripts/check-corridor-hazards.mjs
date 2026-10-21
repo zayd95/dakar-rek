@@ -26,13 +26,13 @@ const car = await d(() => window.__dakar.berline.at());
 const pr = await d(([x, z]) => window.__dakar.road.project(x, z), [car.x, car.z]);
 check('the car is parked on the road, in the right-hand lane', pr.on && pr.road === ROAD && Math.abs(pr.d + 2.8) < 1.2, JSON.stringify({ s: pr.s, d: pr.d }));
 const put = await d(([id, s]) => window.__dakar.road.putTraffic(id, 0, s - 45, 1), [ROAD, pr.s]);
-let minGap = Infinity, stoppedGap = null, last = null, passed = false;
+let minGap = Infinity, stoppedGap = null, last = null, passed = false, trackS = pr.s - 45;
 for (let i = 0; i < 90 && stoppedGap === null && !passed; i++) {
   await page.waitForTimeout(700);
   const cars = await d(id => window.__dakar.road.info().find(r => r.road === id).traffic, ROAD);
-  const mine = cars.filter(c => c.dir === 1 && c.x > car.x - 5).map(c => ({ ...c, gap: Math.hypot(c.x - car.x, c.z - car.z) })).sort((a, b) => a.gap - b.gap)[0];
+  const mine = cars.filter(c => c.dir === 1 && c.kind === put.kind && c.s > pr.s - 60).map(c => ({ ...c, gap: Math.hypot(c.x - car.x, c.z - car.z) })).sort((a, b) => Math.abs(a.s - trackS) - Math.abs(b.s - trackS))[0];       // the car put there (of its kind, the one nearest where it was put)
   if (!mine) continue;
-  last = mine; minGap = Math.min(minGap, mine.gap);
+  last = mine; trackS = mine.s; minGap = Math.min(minGap, mine.gap);
   if (mine.v < 0.1 && mine.gap < 20) stoppedGap = mine.gap;
   if (mine.s - pr.s > put.hl + 4) passed = true;                      // it has gone round by the other lane and is ahead of the parked car
 }

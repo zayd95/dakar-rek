@@ -25,6 +25,18 @@ Free-road top speeds (m/s; the previous values in brackets) and what that means 
 | Compact | 19 (16.5) | 29 | 4.0 | 9.5 |
 | Jakarta | 17.5 (12.5) | 26.5 | 5.2 | 12.5 |
 
+Travel times on the empty road (game seconds, a simulated driver at 60 Hz with the real controls and physics, `tests/helpers/pilot.ts`; the stick fully pushed, then with Accélérer held; no collision in any run):
+
+| Road | Length | Berline | SUV | Compact | Jakarta |
+|---|---|---|---|---|---|
+| Pikine ↔ Almadies | 1 477 m | 69 s · 47 s | 75 s · 53 s | 76 s · 52 s | 82 s · 55 s |
+| Pikine ↔ Plateau | 1 175 m | 55 s · 38 s | 59 s · 42 s | 60 s · 41 s | 64 s · 44 s |
+| Corniche ↔ Plateau | 1 720 m | 81 s · 55 s | 87 s · 61 s | 89 s · 60 s | 96 s · 64 s |
+
+With the road's own traffic to overtake the same drive takes about 1,3 to 1,6 times as long (the simulated driver overtakes slower traffic when the other lane is clear: Pikine ↔ Almadies 109 s berline, 102 s Jakarta; medians of six seeds). In a real browser, with real fingers and an empty road, the berline's Pikine ↔ Almadies run took 64.7 game seconds (`check-drive-feel.mjs`, at its 21 m/s cruise), in line with the simulation. All of this is calibration on game seconds, not a measure of how it feels on an iPhone.
+
+The Jakarta's gain is mostly in how fast it pulls away and how it turns (accel 5.2 against 3.4, a 3.2 m radius, quick steering), with a cruise 40 % above the previous one; it is not faster than the berline at the top, on purpose: it is the nimble one, the berline the substantial one.
+
 Berline and SUV are heavier and steadier (larger turning radius, lower grip, calmer steering response); the Jakarta is the nimble one (small radius, quick steering, lean). Steering gets calmer with speed (`steer / (1 + 0.035 v)`) and the radius grows with `v²/grip`, so no vehicle can turn tighter than its tyres hold; a worn car is slower and boosts less (`scaledDrive`, damage-scaled as before). The camera pulls back and widens a little with speed (`PassengerCamera.update`), and collisions are unchanged. **Audio is untouched**: the engine pitch follows the boosted range, not the volume; the approved mix is as it was.
 
 ## Why traffic stalled, and what was done
