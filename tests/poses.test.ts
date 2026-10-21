@@ -13,9 +13,9 @@ import { buildVehicle, vehicleSeats, vehicleSpec } from '../src/actors/vehicleKi
 import { loadRig, posed } from './rig';
 
 /** Joint positions of a pose built from the shipped rig (character space: origin on the surface under the hips). */
-function pose(name: PoseClip) {
+function pose(name: PoseClip, body?: { scale: number }) {
   const { root, clips } = loadRig();
-  const clip = buildPoseClips(root, clips).find(c => c.name === name)!;
+  const clip = buildPoseClips(root, clips, body).find(c => c.name === name)!;
   const p = posed(root, clip);
   const tip = (bone: string, len: number) => p.pos(bone).add(p.dir(bone).multiplyScalar(len));
   return { ...p, tip };
@@ -76,6 +76,41 @@ describe('procedural poses', () => {
     expect(p.pos('head').y).toBeGreaterThan(0.75);
     // the shins cross at different heights (no interpenetration at the ankles)
     expect(Math.abs(p.pos('footL').y - p.pos('footR').y)).toBeGreaterThan(0.025);
+  });
+
+  it('Ride, a body whose hand has a palm: the middle of the palm is on the grip, palm down, elbows bent; the scale of the body moves the target', () => {
+    let seed = 1; while (vehicleSpec('moto', { seed }).controls.pegs![0][2] > 0) seed++;
+    const spec = vehicleSpec('moto', { seed }), drv = spec.seats.find(x => x.kind === 'driver')!;
+    const toChar = (p: readonly number[], k: number) => new THREE.Vector3(p[0] - drv.x, p[1] - (drv.top - SIT_HIPS), p[2] - drv.z).divideScalar(k);
+    for (const k of [1, 0.93]) {
+      const p = pose('Ride', { scale: k });
+      for (const [i, s] of (['L', 'R'] as const).entries()) {
+        const palm = p.tip(`hand${s}`, 0.085).add(new THREE.Vector3(0, -0.03, 0)), grip = toChar(spec.controls.grips[i], k);
+        expect(palm.distanceTo(grip), `scale ${k} hand ${s}`).toBeLessThan(0.02);
+        expect(p.dir(`hand${s}`).z, `hand ${s} points forward`).toBeGreaterThan(0.8);
+        // the elbow is bent and out: the forearm is not the upper arm's straight continuation
+        expect(p.dir(`upper_arm${s}`).dot(p.dir(`forearm${s}`)), `elbow ${s}`).toBeLessThan(0.97);
+        expect(Math.abs(p.pos(`forearm${s}`).x), `elbow ${s} out`).toBeGreaterThan(0.16 / k);
+      }
+    }
+  });
+
+  it('Ride, a body with a closed-fist grip point (hand extras): that point of the hand, not the palm, lands on the grip, for each scale', () => {
+    let seed = 1; while (vehicleSpec('moto', { seed }).controls.pegs![0][2] > 0) seed++;
+    const spec = vehicleSpec('moto', { seed }), drv = spec.seats.find(x => x.kind === 'driver')!;
+    const toChar = (p: readonly number[], k: number) => new THREE.Vector3(p[0] - drv.x, p[1] - 0.02 - (drv.top - SIT_HIPS), p[2] - drv.z).divideScalar(k);
+    const held = { L: [-0.03, 0.1, -0.003], R: [0.03, 0.1, -0.003] };
+    for (const k of [1, 0.93]) {
+      const { root, clips } = loadRig();
+      for (const s of ['L', 'R'] as const) root.getObjectByName(`hand${s}`)!.userData.grip = held[s];
+      const p = posed(root, buildPoseClips(root, clips, { scale: k }).find(c => c.name === 'Ride')!);
+      for (const [i, s] of (['L', 'R'] as const).entries()) {
+        const hand = root.getObjectByName(`hand${s}`)!; hand.updateWorldMatrix(true, false);
+        const point = new THREE.Vector3(...held[s]).applyMatrix4(hand.matrixWorld);
+        expect(point.distanceTo(toChar(spec.controls.grips[i], k)), `scale ${k} hand ${s}`).toBeLessThan(0.02);
+        expect(p.dir(`hand${s}`).z, `hand ${s} points forward`).toBeGreaterThan(0.8);
+      }
+    }
   });
 
   it('Ride: astride the kit motorbike, hands on its grips, feet on its pegs, the saddle under the hips', () => {

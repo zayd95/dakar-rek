@@ -1,0 +1,279 @@
+{
+ "base": "http://127.0.0.1:4601/",
+ "metrics": {
+  "welcomeMs": 780,
+  "studioReadyMs": 117,
+  "firstBodyMs": 5050.699999999255,
+  "stage": {
+   "calls": 3,
+   "triangles": 13970,
+   "geometries": 4,
+   "textures": 8,
+   "programs": 2
+  },
+  "playToGameMs": 33746,
+  "heapAfterStudioMB": 25.5
+ },
+ "results": [
+  {
+   "name": "the welcome is on screen as soon as the page has loaded (before the city's assets)",
+   "ok": true,
+   "detail": "780 ms from navigation"
+  },
+  {
+   "name": "welcome: « Bienvenue à Dakar. », a name field, suggestions, one Continuer",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Continuer stays off until there is a name",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the studio's controls are out of reach (inert) until the name is given: no way round it with a tab key",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« d'autres prénoms » offers others",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "one letter is not a name",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "any first name of the player's own works (accents, a space)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "a suggestion fills the name",
+   "ok": true,
+   "detail": "Khady"
+  },
+  {
+   "name": "the studio: the real homme body, three-quarters, the default look",
+   "ok": true,
+   "detail": "{\"drawn\":\"meshy_m\",\"yaw\":-0.42,\"look\":{\"skin\":4,\"hair\":\"natural\",\"outfit\":0,\"color\":1}}"
+  },
+  {
+   "name": "in the studio the welcome is inert, and so are the categories not shown",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "four categories; only Corps is shown; the main action is on screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "no scrolling; nothing outside the screen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the whole body is in view, head to feet, clear of the header and the panel",
+   "ok": true,
+   "detail": "{\"feet\":519,\"crown\":93,\"top\":60,\"bottom\":535}"
+  },
+  {
+   "name": "Corps: both bodies shown as pictures of the real avatars",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "each category shows only its own choices",
+   "ok": true,
+   "detail": "{\"peau\":{\"focus\":\"face\",\"d\":2.68,\"shown\":\"peau\"},\"coiffure\":{\"focus\":\"hair\",\"d\":3.63,\"shown\":\"coiffure\"},\"tenue\":{\"focus\":\"body\",\"d\":10.56,\"shown\":\"tenue\"},\"corps\":{\"focus\":\"body\",\"d\":10.56,\"shown\":\"corps\"}}"
+  },
+  {
+   "name": "the camera comes to the face for Peau and Coiffure, back to the whole body for Tenue and Corps",
+   "ok": true,
+   "detail": "{\"peau\":{\"focus\":\"face\",\"d\":2.68,\"shown\":\"peau\"},\"coiffure\":{\"focus\":\"hair\",\"d\":3.63,\"shown\":\"coiffure\"},\"tenue\":{\"focus\":\"body\",\"d\":10.56,\"shown\":\"tenue\"},\"corps\":{\"focus\":\"body\",\"d\":10.56,\"shown\":\"corps\"}}"
+  },
+  {
+   "name": "every control is a comfortable tap (≥ 38 px, swatches 42–48 px)",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "homme · skin tone: the avatar changes on screen",
+   "ok": true,
+   "detail": "mean diff 11.24"
+  },
+  {
+   "name": "homme · Rasé vs Court: the avatar changes on screen",
+   "ok": true,
+   "detail": "mean diff 2.38"
+  },
+  {
+   "name": "homme · Afro vs Court: the avatar changes on screen",
+   "ok": true,
+   "detail": "mean diff 2.27"
+  },
+  {
+   "name": "homme · Kufi vs Court: the avatar changes on screen",
+   "ok": true,
+   "detail": "mean diff 3.08"
+  },
+  {
+   "name": "homme · Rayé vs Uni: the avatar changes on screen",
+   "ok": true,
+   "detail": "mean diff 7.68"
+  },
+  {
+   "name": "homme · Imprimé vs Rayé: the avatar changes on screen",
+   "ok": true,
+   "detail": "mean diff 6.03"
+  },
+  {
+   "name": "homme · colour: the avatar changes on screen",
+   "ok": true,
+   "detail": "mean diff 7.27"
+  },
+  {
+   "name": "six skin tones, each visibly different from the next",
+   "ok": true,
+   "detail": "smallest neighbour diff 1.70"
+  },
+  {
+   "name": "Femme: drawn at once, the look kept (skin, outfit, colour), the kufi becomes her headwrap",
+   "ok": true,
+   "detail": "{\"skin\":2,\"hair\":\"wrap\",\"outfit\":2,\"color\":3}"
+  },
+  {
+   "name": "her four styles are offered (Locks, Afro, Chignon, Foulard)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "rapid taps on every row: the screen ends on the last choice of each (no stale body or look)",
+   "ok": true,
+   "detail": "{\"shown\":{\"body\":\"meshy_f\",\"look\":{\"skin\":2,\"hair\":\"puff\",\"outfit\":2,\"color\":5}},\"look\":{\"skin\":2,\"hair\":\"puff\",\"outfit\":2,\"color\":5}}"
+  },
+  {
+   "name": "into the game: the studio gone, in Pikine, with the character as chosen",
+   "ok": true,
+   "detail": "{\"identity\":\"femme\",\"appearance\":{\"skin\":2,\"hair\":\"afro\",\"outfit\":2,\"color\":2},\"drawn\":{\"skin\":2,\"hair\":\"afro\",\"outfit\":2,\"color\":2},\"body\":\"meshy_f\",\"expected\":\"meshy_f\",\"stand\":null}"
+  },
+  {
+   "name": "the starting economy and life untouched: 3 000 F, Pikine, no job, no career",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the v6 save holds the body and the look (schema 6, own key)",
+   "ok": true,
+   "detail": "{\"v\":6,\"a\":\"femme\",\"l\":{\"skin\":2,\"hair\":\"afro\",\"outfit\":2,\"color\":2}}"
+  },
+  {
+   "name": "the first name and colour go to the presence profile; the look to the presence",
+   "ok": true,
+   "detail": "{\"name\":\"Awa\",\"look\":2}"
+  },
+  {
+   "name": "Tonton Ibou's welcome is there as before",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "the joystick moves the player straight away",
+   "ok": true,
+   "detail": "{\"x\":-38.948629194215854,\"y\":0.1,\"z\":-53.7,\"hub\":\"pikine\",\"mode\":\"play\",\"near\":\"Tonton Ibou · voisin\",\"yaw\":0.9012021878195025,\"cam\":0.9136671615888103}"
+  },
+  {
+   "name": "a district change keeps the look",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Profile: the player's own avatar as its picture (not an emoji), the name, « Modifier mon personnage »",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "« Modifier mon personnage »: the same studio, on the current body and look, the game paused under it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Annuler: everything as before (body, look, save), the game resumes",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "Enregistrer: the new body and look in the game and the save",
+   "ok": true,
+   "detail": "{\"skin\":4,\"hair\":\"kufi\",\"outfit\":1,\"color\":0}"
+  },
+  {
+   "name": "nothing else changes: money, place, counters, flags, relations, owned things, inventory, jobs, ledger, career",
+   "ok": true,
+   "detail": "none lost; gauges unchanged"
+  },
+  {
+   "name": "the Profile picture follows the new look",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "reload: no studio, the same body and look",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "a v6 save without a look: no studio, nothing lost, drawn as it should",
+   "ok": true,
+   "detail": "{\"w\":{\"identity\":\"femme\",\"appearance\":null,\"drawn\":null,\"body\":\"meshy_f\",\"expected\":\"meshy_f\",\"stand\":null},\"wallet\":4321}"
+  },
+  {
+   "name": "…its studio opens on that body's default look, and keeps what is chosen",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "…saved, money untouched",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "a v5 save from the launch client (imported): no studio, nothing lost, drawn as it should",
+   "ok": true,
+   "detail": "{\"w\":{\"identity\":\"homme\",\"appearance\":null,\"drawn\":null,\"body\":\"meshy_m\",\"expected\":\"meshy_m\",\"stand\":null},\"wallet\":4321}"
+  },
+  {
+   "name": "a v6 save with a broken look: no studio, nothing lost, drawn as it should",
+   "ok": true,
+   "detail": "{\"w\":{\"identity\":\"homme\",\"appearance\":{\"skin\":4,\"hair\":\"kufi\",\"outfit\":0,\"color\":1},\"drawn\":{\"skin\":4,\"hair\":\"kufi\",\"outfit\":0,\"color\":1},\"body\":\"meshy_m\",\"expected\":\"meshy_m\",\"stand\":null},\"wallet\":4321}"
+  },
+  {
+   "name": "storage refusing the picture: the Profile shows it (kept for the session), drawn once, the screen still (no redraw loop)",
+   "ok": true,
+   "detail": "{\"same\":true,\"n\":0,\"pic\":true}"
+  },
+  {
+   "name": "…and « Modifier mon personnage » opens",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "375×667: both steps fit, nothing cut off, the whole body in view",
+   "ok": true,
+   "detail": "{\"fits1\":true,\"fits2\":true,\"feet\":373,\"crown\":83,\"top\":60,\"bottom\":384}"
+  },
+  {
+   "name": "844×390: both steps fit, nothing cut off, the whole body in view",
+   "ok": true,
+   "detail": "{\"fits1\":true,\"fits2\":true,\"feet\":371,\"crown\":79,\"top\":56,\"bottom\":382}"
+  },
+  {
+   "name": "no console or page errors",
+   "ok": true,
+   "detail": ""
+  }
+ ]
+}

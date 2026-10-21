@@ -1,5 +1,5 @@
 import type { HubId } from '../core/types';
-import { nickname, lookIndex, recordTag, parseBall, BALL_FEATURE, PROTOCOL_VERSION, SEND_INTERVAL_MS, type Move, type Peer, type ServerMessage, type ChatMessage, type ChatAck, type BallRelay, type BallWire } from './protocol';
+import { nickname, lookIndex, recordTag, appearanceCode, parseBall, BALL_FEATURE, PROTOCOL_VERSION, SEND_INTERVAL_MS, type Move, type Peer, type ServerMessage, type ChatMessage, type ChatAck, type BallRelay, type BallWire } from './protocol';
 import type { ChatRequest, ReportRequest } from './chatRules';
 
 export type ConnectionState = 'solo' | 'connecting' | 'online' | 'reconnecting' | 'offline';
@@ -42,6 +42,14 @@ export class PresenceClient {
     this.record = next;
     if (this.status === 'online' && this.socket?.readyState === WebSocket.OPEN) { try { this.socket.send(JSON.stringify({ type: 'rec', rec: next ?? null })); } catch { /* sent again on reconnect (URL) */ } }
   }
+  /** The studio's look (src/actors/appearance.ts encodeAppearance), sent with the connection only: `reconnect` false when a profile change follows and reconnects anyway. */
+  appearance: string | undefined = undefined;
+  setAppearance(code: string | null, reconnect = true) {
+    const next = appearanceCode(code);
+    if (next === this.appearance) return;
+    this.appearance = next;
+    if (reconnect && this.hub && this.enabled) this.open();
+  }
   setProfile(profile: Profile) {
     this.profile = { name: nickname(profile.name), look: lookIndex(profile.look) };
     if (this.hub && this.enabled) this.open();
@@ -83,6 +91,7 @@ export class PresenceClient {
     url.protocol = url.protocol === 'https:' || url.protocol === 'wss:' ? 'wss:' : 'ws:';
     url.searchParams.set('hub', this.hub); url.searchParams.set('name', this.profile.name); url.searchParams.set('look', String(this.profile.look));
     if (this.record) url.searchParams.set('rec', this.record);
+    if (this.appearance) url.searchParams.set('app', this.appearance);
     const key = deviceChatKey(); if (key) url.searchParams.set('key', key);
     if (this.requestedRoom) url.searchParams.set('room', String(this.requestedRoom));
     let ws: WebSocket;
