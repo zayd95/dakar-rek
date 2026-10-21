@@ -37,7 +37,7 @@ const TRIPS = {
       // Corniche → (the border street, north) → Almadies → its east mouth → the road to Pikine
       { street: [[W, -150], [W, -60 - 240], [H - 8, -60 - 240]] },
       { road: 'pikine-almadies', to: 'start' },
-      { turn: { area: { x0: -380, x1: -134, z0: -69, z1: -51 }, yaw: Math.PI / 2 } },
+      { turn: { area: { x0: -380, x1: -134, z0: -69, z1: -51 }, yaw: -Math.PI / 2 } },       // back toward Almadies: west
       { road: 'pikine-almadies', to: 'end' },
       // Almadies → (the border street, south) → Corniche
       { street: [[W, -60], [W, 150], [W, 60 + 240]] },
@@ -72,7 +72,8 @@ check(`the trip starts in ${CFG.start}, where the berline is parked (saved there
 const uid0 = info0.seed, paint0 = info0.paint, asset0 = info0.asset;
 // the car is put on the street the trip starts along, facing the way it goes (the way a player would pull out), and boarded with the real touch controls
 await d(([x, z, yaw]) => window.__dakar.berline.place(x, z, yaw), [CFG.place.x, CFG.place.z, CFG.place.yaw]);
-await page.waitForTimeout(600);
+await d(([x, z]) => window.__dakar.place(x, z, 0), [CFG.place.x + Math.cos(CFG.place.yaw) * 3, CFG.place.z - Math.sin(CFG.place.yaw) * 3]);       // the player beside the driver's door
+await page.waitForTimeout(800);
 await boardVehicle(page, t, 'berline');
 await startLog();
 let lastHub = hub0, stepNo = 0;
@@ -90,6 +91,8 @@ for (const step of CFG.steps) {
   const st = await d(() => ({ hub: window.__dakar.pos().hub, driving: window.__dakar.berline.at().driving, speed: window.__dakar.berline.at().speed, at: [Math.round(window.__dakar.berline.at().x), Math.round(window.__dakar.berline.at().z)] }));
   console.log(`step ${stepNo}: ${JSON.stringify(step).slice(0, 90)} → ${st.hub}${st.hub !== lastHub ? ' (changed)' : ''} at ${st.at}`);
   lastHub = st.hub;
+  const felt = await d(() => { const f = window.__dakar.berline.feel?.(); const o = f ? f.impacts.map(i => `${i.kind}@${i.speed.toFixed(1)}`) : []; window.__dakar.berline.feelReset?.(); return o; });
+  if (felt.length) console.log(`  impacts on this step: ${felt.join(', ')}`);
   await page.screenshot({ path: `${out}/${TRIP}-step${stepNo}.png` });
 }
 const fr = await d(() => window.__frames);

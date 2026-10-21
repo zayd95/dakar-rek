@@ -119,7 +119,7 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
  * brake is HELD at the standstill until it backs (no reverse button: a deliberate hold), with the opposite lock (reversing flips the effect of the lock on the heading), and so on
  * until the heading is within `tol`. Lifts every finger and leaves the car stopped. Returns the car's last `at()`.
  */
-export async function turnAround(page, t, key, target, { area, tol = 0.3, margin = 1.4, length = 4.7, ms = 120000, speed = 2.6 } = {}) {
+export async function turnAround(page, t, key, target, { area, tol = 0.3, margin = 1.4, length = 4.7, ms = 300000, speed = 2.6 } = {}) {
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
   const brk = await t.centre('#ridepad .rp-brake'), j = await t.centre('#joy'), r = STICK, t0 = Date.now();
   let reverse = false, gasOn = false, lockNow = 0, at = null, moves = 0, brakeOn = false;

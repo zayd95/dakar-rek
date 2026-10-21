@@ -11,6 +11,8 @@ import { driveRoad } from './lib/roadDrive.mjs';
 const [base, out, berlineSave, motoSave] = process.argv.slice(2);
 fs.mkdirSync(out, { recursive: true });
 const ROAD = 'pikine-almadies';
+// The software renderer runs the page at a few frames a second, so the real fingers steer at a few hertz: at the boosted top speed (26–32 m/s) that is too slow to hold a bend, which a phone at 60 fps does not have to. The boosted lap is flown at up to BOOST_CAP m/s; the boosted top speeds themselves are measured in tests/driveRoads.test.ts (60 Hz, same controls and physics).
+const BOOST_CAP = 26;
 let failed = 0, total = 0;
 const check = (name, ok, detail = '') => { total++; if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
@@ -30,14 +32,17 @@ async function session(save, key) {
 async function lap(S, key, boost, back = false) {
   const road = await S.d(id => { const p = window.__dakar.road.at(id, 0, 0), q = window.__dakar.road.project(p.x, p.z); return { length: q.length }; }, ROAD);
   const log = []; let t0 = null, t1 = null;
-  // going out (Pikine → Almadies) the first leg only gets the car to the measured stretch; coming back it already stands at the Almadies end, turned round
-  if (!back) await driveRoad(S.page, S.t, key, ROAD, 60, { cruise: 40, boost: false, brakeAtEnd: false, stall: 120000 });
+  // going out (Pikine → Almadies) the first leg only gets the car to the measured stretch when it starts near Pikine's end; a vehicle parked further along the road (the Jakarta's seed) is timed from where it stands.
+  // Coming back it already stands at the Almadies end, turned round.
+  const here = await S.d(([x, z, id]) => { const p = window.__dakar.road.project(x, z); return p && p.road === id ? p.s : 0; }, [(await S.AT()).x, (await S.AT()).z, ROAD]);
+  if (!back && here < 60) await driveRoad(S.page, S.t, key, ROAD, 60, { cruise: 40, boost: false, brakeAtEnd: false, stall: 120000 });
   const a0 = await S.AT(); t0 = a0.t;
-  await driveRoad(S.page, S.t, key, ROAD, back ? 60 : road.length - 60, { cruise: 40, boost, brakeAtEnd: true, stall: 120000, onTick: at => log.push([at.t, at.speed]) });
+  const startS = back ? road.length - 60 : Math.max(60, here);
+  await driveRoad(S.page, S.t, key, ROAD, back ? 60 : road.length - 60, { cruise: boost ? BOOST_CAP : 40, boost, brakeAtEnd: true, stall: 120000, onTick: at => log.push([at.t, at.speed]) });
   t1 = log.length ? log[log.length - 1][0] : (await S.AT()).t;                       // the clock stops where the road's end is reached (the brake after it is not part of the journey)
-  const sp = log.map(l => l[1]).sort((a, b) => a - b);
-  void t0;
-  return { secs: t1 - t0, metres: road.length - 120, top: sp[sp.length - 1] ?? 0, median: sp[Math.floor(sp.length / 2)] ?? 0 };
+  const sp = log.map(l => l[1]).sort((a, b) => a - b), metres = Math.abs((back ? 60 : road.length - 60) - startS);
+  // the time of the whole road at the pace measured over the stretch that was driven
+  return { secs: ((t1 - t0) * (road.length - 120)) / Math.max(1, metres), metres: road.length - 120, top: sp[sp.length - 1] ?? 0, median: sp[Math.floor(sp.length / 2)] ?? 0 };
 }
 
 for (const [save, key, label] of [[berlineSave, 'berline', 'Berline'], [motoSave, 'moto', 'Jakarta']]) {
