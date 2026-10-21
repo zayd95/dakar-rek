@@ -30,9 +30,11 @@ The older client only knows its own key. It opens its own save (the state at the
 ## Known limits
 - Two v6 tabs on the same device: the last one to save wins (a tab that is hidden saves what it holds). This is how saves always worked.
 - Progress made on an older client after a rollback is not carried back to v6.
+- A rollback to a client older than the vehicles economy (before `loans` and `vtc`) keeps every vehicle (checked by `scripts/check-save-vehicles.mjs`) but, once that client saves, forgets the debts (Sarr's credit, Modou's slate) and a VTC ride in hand: it rebuilds the save from the fields it knows.
 - A v5-keyed save written by an earlier **tour-pilot preview build** (a tour under the v5 key) is carried over to v6 with its tour; an older client reading *that* v5 key would still cancel the tour. Only preview builds ever wrote it; the production client is v3.
 
 ## Checks
 - `tests/saveKeys.test.ts` (production v3 → v6) and `tests/saveV6.test.ts` (v5 → v6; new → older v5 client → new with a tour half done; reload; New Game; a full storage at New Game; unreadable, newer and malformed saves). The older client in those tests is a **frozen copy of the schema-5 `save.ts`** (`tests/fixtures/saveV5Client.ts`) running on the same fake storage.
 - `node scripts/check-save-v6.mjs <v5-dist> <current-dist>`: two real builds on one origin; the first tour stop is ridden for real, the older client is served, the current one returns, the second stop and the bonus are paid once.
+- `node scripts/check-save-vehicles.mjs <old-dist> <current-dist>`: the build before the vehicles economy (PR #61) buys four vehicles in their dealerships; the current one loads them (same uids, prices paid, parking spots, paints; no debt, no ride), reload, rollback, return.
 - `node scripts/check-save-compat.mjs <prod-dist> <current-dist>`: the production v3 build and the current one: migration, reload, rollback, return, several tabs, New Game, an unreadable v6 save.

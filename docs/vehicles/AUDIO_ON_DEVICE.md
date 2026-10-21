@@ -89,6 +89,8 @@ Under the buttons, in plain words, what the page knows about its sound:
   the game.
 
 `scripts/check-jakarta-courier.mjs` also films the Jakarta backing out of a gap with its feet, with its sound: `docs/vehicles/audio/jakarta-paddle.mp4`.
+`scripts/capture-drive-av.mjs` films the Teranga driven with real touches, with its sound (58 s): getting in by the door, the ignition and idle, pulling away, cruising, the horn, braking,
+and a bump into a wall at 17 km/h (a light knock: 0.2 % damage): `docs/vehicles/audio/teranga-drive.mp4`.
 
 **What these do not prove**: that an iPhone's or an Android phone's loudspeaker plays it. No phone is attached to this environment; Chromium with a software renderer is not Safari. The
 on-device check is the 30-second one above (`?audiodebug`), or now simply Réglages › Son › Tester le son, which shows the same facts without a URL parameter.

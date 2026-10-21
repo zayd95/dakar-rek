@@ -179,14 +179,17 @@ await shot('signed');
   await walkTo(page, t, c.x + F.x * 2.6 + L.x * 2.0, c.z + F.z * 2.6 + L.z * 2.0, { tol: 0.9, ms: 60000 }); }
 await boardVehicle(page, t, 'teranga');
 const car = await d(() => window.__dakar.teranga.at());
-// the ride the phone lists this hour that starts nearest to the car, inside Pikine (a first, short one)
-const pickHour = await d(([x, z]) => { const A = window.__dakar; let best = null; for (let h = 8; h <= 18; h++) { A.setHour(h); for (const [i, r] of A.vtc.requests().entries()) { if (r.to !== 'pikine') continue; const dd = Math.hypot(r.pickup.x - x, r.pickup.z - z) + Math.hypot(r.dropoff.x - r.pickup.x, r.dropoff.z - r.pickup.z) * 0.5; if (!best || dd < best.dd) best = { h, i, dd, r }; } } A.setHour(best.h); return best; }, [car.x, car.z]);
+// the ride the phone lists this hour that starts nearest to the car (but a real drive away, 40 m or more), inside Pikine (a first, short one)
+const pickHour = await d(([x, z]) => { const A = window.__dakar; let best = null; for (let h = 8; h <= 18; h++) { A.setHour(h); for (const [i, r] of A.vtc.requests().entries()) { if (r.to !== 'pikine' || Math.hypot(r.pickup.x - x, r.pickup.z - z) < 40) continue; const dd = Math.hypot(r.pickup.x - x, r.pickup.z - z) + Math.hypot(r.dropoff.x - r.pickup.x, r.dropoff.z - r.pickup.z) * 0.5; if (!best || dd < best.dd) best = { h, i, dd, r }; } } A.setHour(best.h); return best; }, [car.x, car.z]);
 // accepted on the phone, by tapping it in « VTC »
 await t.tap('#menuBtn'); await page.waitForFunction(() => window.__dakar.phoneInfo().open, null, T);
 await t.tap('#phone [data-nav="home"]'); await page.waitForTimeout(300);
 await t.tap('#phone [data-app="vtc"]'); await page.waitForSelector('#modal.on', T);
 { const it = page.locator('#modal .item', { hasText: `${pickHour.r.pickup.name} → ${pickHour.r.dropoff.name}` }).first(); await it.scrollIntoViewIfNeeded(); const b = await it.boundingBox(); await t.down(5, b.x + b.width / 2, b.y + b.height / 2); await page.waitForTimeout(60); await t.up(5); }
-await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'pickup', null, { timeout: 20000 });
+if (!(await page.waitForFunction(() => !!window.__dakar.vtc.info().trip, null, { timeout: 20000 }).then(() => true, () => false))) {
+  await shot('vtc-not-accepted');
+  throw new Error('ride not accepted ' + JSON.stringify(await d(() => ({ modal: document.querySelector('#modal.on')?.innerText.slice(0, 600) ?? null, vtc: window.__dakar.vtc.info(), car: window.__dakar.teranga.at() }))));
+}
 const st = await d(() => window.__dakar.vtc.stops());
 console.log('ride', pickHour.r.pickup.name, '→', pickHour.r.dropoff.name, pickHour.r.fare, 'F', JSON.stringify(st.pickup.car));
 await page.waitForFunction(() => window.__dakar.vtc.info().phase === 'wait', null, T);

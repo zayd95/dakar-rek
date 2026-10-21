@@ -112,17 +112,39 @@ full closed, a ride already paid never back in hand). Older saves load owing not
 ## 9. Checks
 
 Unit tests: `tests/credit.test.ts`, `tests/vtc.test.ts`, `tests/condition.test.ts`, `tests/garage.test.ts`, `tests/controls.test.ts`, `tests/premiumCars.test.ts`, `tests/prestige.test.ts`,
-`tests/carDealer.test.ts`, `tests/assets.test.ts`, `tests/economy.test.ts` (part of `npm test`).
+`tests/carDealer.test.ts`, `tests/assets.test.ts`, `tests/economy.test.ts`, `tests/soundTest.test.ts` (part of `npm test`).
 
-Browser journeys (real CDP touches on a 390 × 844 phone page, Chromium + SwiftShader; debug hooks only where each script says so):
+Browser journeys: real CDP touches on a 390 × 844 phone page, Chromium + SwiftShader; debug hooks only where each script's header says so. Results on this branch
+(screenshots in `docs/vehicles/economy/`, films in `docs/vehicles/audio/`):
 
-| Journey | Script |
-|---|---|
-| A · new player → Sarr's errands over two days → trust → credit → the Teranga → first VTC passenger → repayment → reload | `scripts/check-first-car.mjs` |
-| B · Prestige: the red Lamane Sport looked at, test-driven, cannot be afforded, left | `scripts/check-prestige-suv.mjs` |
-| C · Jakarta backed out of a tight gap with the feet; a parcel Pikine → Plateau | `scripts/check-jakarta-courier.mjs` |
-| D · damaged Teranga → Modou → arrangement → Lamine → slate repaid | `scripts/check-garage-credit.mjs` |
-| E · a VTC passenger from Pikine to the Plateau by the road, reload mid-ride | `scripts/check-vtc-ride.mjs` |
-| sound test (gesture rule, every voice, mute, sleep/wake, a missing recording) + MP4 | `scripts/check-sound-test.mjs` |
+| Journey | Script | Result |
+|---|---|---|
+| A · new player → Sarr's errands over two days → trust → credit → the Teranga → first VTC passenger → repayment → reload | `scripts/check-first-car.mjs` | rerun in progress (15 checks; every step through the credit signature passed) |
+| B · Prestige: the red Lamane Sport looked at, test-driven, cannot be afforded, left | `scripts/check-prestige-suv.mjs` | **11/11** |
+| C · Jakarta backed out of a 2.5 m gap with the feet; a parcel Pikine → Plateau, paid once | `scripts/check-jakarta-courier.mjs` | **15/15** · film `jakarta-paddle.mp4` |
+| D · damaged Teranga → Modou → arrangement → Lamine → slate repaid | `scripts/check-garage-credit.mjs` | **14/14** |
+| E · a VTC passenger from Pikine to the Plateau by the road, reload mid-ride, paid once | `scripts/check-vtc-ride.mjs` | **13/13** |
+| sound test (gesture rule, every voice, mute, sleep/wake, a missing recording) | `scripts/check-sound-test.mjs` | **23/23** · film `sound-test.mp4` |
+| the Teranga driven with its sound (door, ignition, idle, pulling away, horn, braking, a slow bump) | `scripts/capture-drive-av.mjs` | film `teranga-drive.mp4` |
+| purchased vehicles across this update: bought in the build before it (PR #61), loaded here, reloaded, rolled back, back | `scripts/check-save-vehicles.mjs` | **9/9** (sedan, berline, 4 × 4, Jakarta: same uids, prices paid, spots, paints; no debt, no ride) |
+
+Figures from the journeys: Sarr's trust 4 after the greeting, 32 after day 1's four errands, 60 after day 2's (his best terms: 15 000 F down, 40 × 100 000 F every two days, the
+debt 3 985 000 F on the car's asset, the wallet only down by the advance); a Pikine → Plateau VTC fare of 18 500 F paid in one line, never more than one passenger in the scene
+(436 samples), the car at 98.1 % after the cross-district drive; the Jakarta's paddle first moves after 0.7 s of game time, never faster than 0.85 m/s, the « RidePaddle » pose, no
+« R », stopped within 0.17 m on release, 3.44 m backed out of the gap with no contact; a 51.9 % damaged Teranga quoted 34 500 F at Modou's (13 000 F to 70 %), 12 500 F paid and
+22 000 F on his slate, repaid from « Crédits ».
 
 These run in headless Chromium with a software renderer. They prove what the page does; **they are not an iPhone test**.
+
+## 10. Not done, and limits
+
+- **No physical iPhone test.** Every journey ran in headless Chromium with SwiftShader (CPU rendering) on a 390 × 844 touch page with real CDP touches. Sound, frame rate and touch feel on a real iPhone still need a person with the phone (the in-game « Tester le son » screen is there for that).
+- **Player-to-player VTC is not built.** The multiplayer layer replicates only presence, greetings and seats at venues; vehicles and their seats are not replicated, so a second player cannot sit in your car. Faking it was ruled out; VTC passengers are NPCs.
+- **The seated passenger is hard to see from outside.** The authored glass is opaque and the cabin is drawn only while the door is open, so a VTC passenger in the back seat is proven by the seat state and seen getting in and out, not through the window.
+- **The CBR-style motorbike was not made** (the brief made it optional "only if stable"); time went to the four cars, the economy and the journeys.
+- **Journey D uses two labelled debug credits** (9 000 F and 20 000 F) instead of playing Modou's garage shifts: those shifts are a timed gesture mini-game the touch scripts cannot play reliably. Everything else in D is played by touch.
+- **The Jakarta paddle is checked in game time**: SwiftShader runs the simulation slower than the wall clock, so the paddle's timings are read from the game's own clock.
+- **Some in-game car pictures are cluttered** (player, walls, dealership furniture). The four cars are also shown in clean multi-angle renders of the very GLB files the game loads.
+- **Elantra-like sedan**: the existing `compacte.glb` berline at Ndiaye Auto was kept (its id and paints unchanged); the "box car" fallback was a preview-only fetch bug, now fixed, not a missing model.
+- **A rollback to the build before this one forgets debts.** That client keeps every vehicle, but rebuilds the save from the fields it knows: once it saves, Sarr's credit, Modou's slate and a ride in hand are gone (in the player's favour). Not a migration of purchased vehicles, which are always kept.
+- **Vehicles bought in the older build at the Almadies** (the berline and the 4 × 4) were both delivered to one spot by that build; they load where they were left, one on the other, until the player moves one.
