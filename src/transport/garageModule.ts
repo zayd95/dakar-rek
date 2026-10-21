@@ -10,6 +10,9 @@ import { vehicleAudio, profileFor } from './vehicleAudio';
 import { fcfa } from '../ui/hud';
 import { say } from '../i18n/wolof';
 import { holding, repairAsset } from '../economy/assets';
+import { C, garageDeals, nextLoanSeq, openLoan, openLoans } from '../economy/credit';
+import { creditClock } from '../economy/creditModule';
+import { relLevel } from '../venues/venue';
 import { specOf } from '../economy/catalog';
 import { healthTag } from './condition';
 import { INSPECT_SECONDS, REPAIR_SECONDS, REPAIR_STEPS, garageOpen, garageQuote, inBay, reopens, type Bay, type Quote } from './garage';
@@ -25,8 +28,10 @@ import type { OwnedVehicleModule } from './ownedModule';
  *   – « Réparer » runs about 30 s of visible work (three steps, tool taps, the player held at the bay, « Arrêter » at any time: nothing is paid then either), and the price is taken **once, at the end**, exactly as quoted;
  *   – the engine is tried, the horn tapped, Lamine walks back to his bench.
  *
- * Lamine is a separate, visibly different person (orange overalls, a cap): the real Modou is not touched. The cast, routines, relations and situations of the social system
- * (src/social) are neither read nor changed here, so the M1-C work cannot be disturbed by this service. The vehicle's health lives in its asset (save v6); a repair sets it back to 100 %.
+ * Lamine is a separate, visibly different person (orange overalls, a cap): the real Modou is not touched (his routines and situations are not read or changed here). The bill
+ * is Modou's business: « Discuter » asks him for an arrangement (src/economy/credit.ts `garageDeals`): he reads his relationship with the player (the relations store, `modou`,
+ * and the `modou_trust` flag the social beats set) and his memory of their slate; a part now and the rest later becomes a garage debt (src/economy/creditModule.ts), repaid at the
+ * bay or from the phone, and paying it back raises his trust. The vehicle's health lives in its asset (save v6); a repair sets it back to 100 % (or, partial, to 70 %).
  * Only the garage of Pikine exists for now: a vehicle in another district keeps the roadside fix, and nothing is towed or teleported.
  */
 const HUB = 'pikine', GARAGE = 'pikine:garage:31';
@@ -41,7 +46,9 @@ const LINES = {
 
 type Vehicle = { mod: OwnedVehicleModule; asset: string; uid: string; name: string; price: number; hp: number; x: number; z: number; yaw: number };
 type Phase = 'coming' | 'inspect' | 'quote' | 'work';
-interface Job { v: Vehicle; phase: Phase; t: number; quote: Quote | null; stand: Pt; paid: boolean }
+/** What was agreed: the condition the vehicle is brought back to, what is paid at the end, what goes on Modou's slate. */
+interface Plan { to: number; pay: number; debt: number; label: string }
+interface Job { v: Vehicle; phase: Phase; t: number; quote: Quote | null; stand: Pt; paid: boolean; plan: Plan | null }
 
 export class GarageModule implements GameModule, TargetSource {
   /** The repair bay at the workshop's kerb, when Garage Modou is in this hub (another module's errand ends there). */
@@ -145,6 +152,11 @@ export class GarageModule implements GameModule, TargetSource {
   }
   private affordances(): Affordance[] {
     const vs = this.vehicles(), hour = this.ctx.hour(), busy = !!this.job || this.ctx.activities.running;
+    const slate = openLoans(this.ctx.state.data.loans.list, 'modou')[0];
+    const pay: Affordance[] = slate ? [{ id: 'ardoise', verb: 'talk', label: 'Rembourser Modou', icon: '💵', detail: `${slate.label} · reste ${fcfa(slate.principal - slate.paid)}`, run: () => creditClock.repayMenu(this.ctx, slate) }] : [];
+    return [...pay, ...this.repairAffordances(vs, hour, busy)];
+  }
+  private repairAffordances(vs: Vehicle[], hour: number, busy: boolean): Affordance[] {
     if (!vs.length) return [{ id: 'garer', verb: 'inspect', label: 'Faire réparer', icon: '🔧', detail: 'Gare ta moto ou ta voiture dans l’emplacement jaune, puis reviens ici', disabled: 'Gare ton véhicule dans l’emplacement jaune', run: () => {} }];
     return vs.map((v): Affordance => {
       const q = garageQuote(v.price, v.hp);
@@ -164,7 +176,7 @@ export class GarageModule implements GameModule, TargetSource {
     const b = this.bay, nx = Math.sin(b.yaw + Math.PI / 2), nz = Math.cos(b.yaw + Math.PI / 2);
     const sideSign = (this.post.z - v.z) * nz + (this.post.x - v.x) * nx >= 0 ? 1 : -1;
     const stand = { x: v.x + nx * sideSign * 1.35, z: v.z + nz * sideSign * 1.35 };
-    this.job = { v, phase: 'coming', t: 0, quote: null, stand, paid: false };
+    this.job = { v, phase: 'coming', t: 0, quote: null, stand, paid: false, plan: null };
     this.log.started++;
     ctx.toast('Modou, depuis son établi : « Lamine ! Va voir cette ' + (v.mod.def.kit === 'moto' ? 'moto' : 'voiture') + ' ! »');
     this.speak(this.pick(LINES.coming));
@@ -186,13 +198,33 @@ export class GarageModule implements GameModule, TargetSource {
   private openQuote() {
     const j = this.job; if (!j) return;
     const ctx = this.ctx, v = j.v, q = garageQuote(v.price, v.hp); j.quote = q; j.phase = 'quote'; this.log.quotes++;
-    const can = q.cost === 0 || ctx.state.canAfford(q.cost);
-    const html = `<div class="kv">État de ${v.name} : <b>${Math.round(v.hp)} %</b> → remise à <b>100 %</b><br>Durée : environ ${REPAIR_SECONDS} secondes · Lamine travaille devant toi<br>Tu paies <b>une seule fois, à la fin</b>${q.cost ? ` : ${fcfa(q.cost)}` : ' : rien (petite retouche offerte)'}<br>Ton argent : ${fcfa(ctx.state.wallet)}</div>`;
+    const can = (c: number) => c === 0 || ctx.state.canAfford(c);
+    const html = `<div class="kv">État de ${v.name} : <b>${Math.round(v.hp)} %</b> → remise à <b>100 %</b>${q.partial ? ` (ou à ${q.partial.to} % : ${fcfa(q.partial.cost)})` : ''}<br>Durée : environ ${REPAIR_SECONDS} secondes · Lamine travaille devant toi<br>Tu paies <b>une seule fois, à la fin</b>${q.cost ? ` : ${fcfa(q.cost)}` : ' : rien (petite retouche offerte)'}<br>Ton argent : ${fcfa(ctx.state.wallet)}</div>`;
+    const name = v.name;
     ctx.menu('Garage Modou · devis', `Lamine : « ${say('Jërëjëf')} d’être venu. Voilà ce qu’il faut faire. »`, [
-      { icon: '🔧', label: 'Réparer', detail: can ? `Environ ${REPAIR_SECONDS} s · tu paies à la fin` : 'Pas assez d’argent', right: q.cost ? fcfa(q.cost) : 'Offert', disabled: !can, reason: 'Pas assez d’argent pour ce devis', onPick: () => this.confirm() },
+      { icon: '🔧', label: 'Réparer entièrement', detail: can(q.cost) ? `Remise à 100 % · environ ${REPAIR_SECONDS} s · tu paies à la fin` : 'Pas assez d’argent', right: q.cost ? fcfa(q.cost) : 'Offert', disabled: !can(q.cost), reason: 'Pas assez d’argent pour ce devis', onPick: () => this.agree({ to: 100, pay: q.cost, debt: 0, label: `Réparation · ${name} · Garage Modou` }) },
+      ...(q.partial ? [{ icon: '🪛', label: `Réparation partielle · jusqu’à ${q.partial.to} %`, detail: can(q.partial.cost) ? 'Elle repart bien, pas comme neuve · tu paies à la fin' : 'Pas assez d’argent', right: fcfa(q.partial.cost), disabled: !can(q.partial.cost), reason: 'Pas assez d’argent pour ce devis', onPick: () => this.agree({ to: q.partial!.to, pay: q.partial!.cost, debt: 0, label: `Réparation partielle · ${name} · Garage Modou` }) }] : []),
+      ...(q.cost > 0 ? [{ icon: '🗣️', label: 'Discuter avec Modou', detail: 'Payer une partie plus tard, un prix d’ami… il décide', onPick: () => this.discuss() }] : []),
       { icon: '↩️', label: 'Pas maintenant', detail: 'Rien à payer', onPick: () => this.refuse() },
     ], html);
   }
+  /** « Discuter »: Modou's answer for the full and the partial repair (src/economy/credit.ts garageDeals), by what he thinks of the player and their slate. */
+  private discuss() {
+    const j = this.job, ctx = this.ctx; if (!j?.quote) return;
+    const q = j.quote, trust = relLevel(ctx, 'modou'), trusted = ctx.state.data.flags.includes('modou_trust'), loans = ctx.state.data.loans.list, name = j.v.name;
+    const scopes = [{ to: 100, cost: q.cost, what: 'tout' }, ...(q.partial ? [{ to: q.partial.to, cost: q.partial.cost, what: `jusqu’à ${q.partial.to} %` }] : [])];
+    const items: Parameters<GameCtx['menu']>[2] = []; let line = '';
+    for (const sc of scopes) {
+      const r = garageDeals({ cost: sc.cost, trust, trusted, loans }); line = r.line;
+      for (const d of r.deals) if (d.id !== 'full') items.push({ icon: d.id === 'trust' ? '🤝' : '📝', label: `${sc.to === 100 ? 'Tout réparer' : `Réparer ${sc.what}`} · ${d.label}`, detail: d.debt ? `${fcfa(d.pay)} à la fin, ${fcfa(d.debt)} sur l’ardoise de Modou (${C.garage.installments} fois)` : 'Payé à la fin, une fois', right: fcfa(d.pay), disabled: !ctx.state.canAfford(d.pay), reason: 'Pas assez d’argent', onPick: () => this.agree({ to: sc.to, pay: d.pay, debt: d.debt, label: `${sc.to === 100 ? 'Réparation' : 'Réparation partielle'} · ${name} · Garage Modou` }) });
+    }
+    this.log.said.push(`discuss:${trust}:${items.length}`);
+    ctx.menu('Garage Modou · Modou', `Modou : « ${line} » (confiance ${trust})`, [
+      ...items,
+      { icon: '↩️', label: items.length ? 'Revenir au devis' : 'D’accord', onPick: () => this.openQuote() },
+    ]);
+  }
+  private agree(p: Plan) { const j = this.job; if (!j) return; j.plan = p; this.confirm(); }
   private confirm() {
     const j = this.job, ctx = this.ctx; if (!j || j.phase !== 'quote' || !j.quote) return;
     ctx.hud.closeModal(); ctx.setMode('play');
@@ -205,16 +237,21 @@ export class GarageModule implements GameModule, TargetSource {
     this.speak(this.pick(LINES.work));
     ctx.activities.start(spec, { place: 'Garage Modou', at: { x: j.v.x, z: j.v.z } });
   }
-  /** The last step ended: the one payment, exactly the quote, and the vehicle is whole. */
+  /** The last step ended: the one payment, exactly what was agreed; the rest (an arrangement) goes on Modou's slate; the vehicle is back to the agreed condition. */
   private complete() {
     const j = this.job, ctx = this.ctx; if (!j || j.phase !== 'work' || !j.quote) return;
+    const plan = j.plan ?? { to: 100, pay: j.quote.cost, debt: 0, label: `Réparation · ${j.v.name} · Garage Modou` };
     const a = holding(ctx.state, j.v.asset);
-    const ok = !!a && a.uid === j.v.uid && repairAsset(ctx.state, j.v.uid, j.quote.cost, `Réparation · ${j.v.name} · Garage Modou`);
+    const ok = !!a && a.uid === j.v.uid && repairAsset(ctx.state, j.v.uid, plan.pay, plan.label, plan.to);
     j.paid = true;
     if (!ok) { this.job = null; ctx.toast('Impossible de finir : rien n’a été pris.'); this.goHome(); return; }
-    this.log.paid++; this.log.charged += j.quote.cost;
+    if (plan.debt > 0) {
+      openLoan(ctx.state.data.loans.list, nextLoanSeq(ctx.state), { lender: 'modou', kind: 'repair', label: `${plan.label.split(' · ')[0]} ${j.v.name} · ardoise Modou`, principal: plan.debt, installment: Math.ceil(plan.debt / C.garage.installments / 500) * 500, every: C.garage.every, day: ctx.day(), asset: j.v.uid, spec: j.v.asset });
+      ctx.toast(`Modou note ${fcfa(plan.debt)} sur ton ardoise : « Tu me le rends en ${C.garage.installments} fois. »`);
+    }
+    this.log.paid++; this.log.charged += plan.pay;
     vehicleAudio.start(profileFor(j.v.mod.def.kit)); window.setTimeout(() => { vehicleAudio.hornOn(j.v.mod.def.kit); window.setTimeout(() => vehicleAudio.hornOff(), 220); }, 1300);
-    ctx.toast(`${j.v.name} est comme neuve ✓ ${j.quote.cost ? `· ${fcfa(j.quote.cost)}` : '· retouche offerte'}`);
+    ctx.toast(plan.to >= 100 ? `${j.v.name} est comme neuve ✓ ${plan.pay ? `· ${fcfa(plan.pay)}` : '· retouche offerte'}` : `${j.v.name} repart à ${plan.to} % ✓ · ${fcfa(plan.pay)}`);
     this.speak(this.pick(LINES.done));
     ctx.save();
     this.job = null; this.goHome();

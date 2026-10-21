@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { isTestHost } from '../core/testParams';
 import type { VehicleSpec } from './vehicleKit';
 import { buildCockpit } from './cockpit';
@@ -19,7 +20,9 @@ import { buildCockpit } from './cockpit';
 export interface GlbWheel { spin: THREE.Object3D; steer: THREE.Object3D | null; r: number }
 export interface GlbRig { wheels: GlbWheel[]; angle: number; steerMax: number; /** The cockpit's steering wheel (a solid-shell body only). */ cockpitWheel?: THREE.Object3D }
 
-interface Prepared { scene: THREE.Object3D; wheels: { id: string; r: number; steer: boolean }[]; tris: number; drawCalls: number; interior: boolean }
+interface Prepared { scene: THREE.Object3D; wheels: { id: string; r: number; steer: boolean }[]; tris: number; drawCalls: number; interior: boolean; far: THREE.Object3D | null }
+/** Beyond this distance an authored body is drawn as its far model: the same shell and details merged into two meshes, wheels fixed (8 draw calls → 2). */
+export const FAR_LOD = 38;
 const prepared = new Map<string, Prepared | null>();
 
 /** The prepared bodies are used, except on a test host (local, preview) with `?vehicleModel=kit`. */
@@ -80,7 +83,45 @@ export function prepare(scene: THREE.Object3D, interior = false): Prepared {
     }
     if (/^axle_/.test(o.name)) wheels.push({ id: o.name.slice(5), r: o.userData.r ?? 0.3, steer: !!o.userData.steer });
   });
-  return { scene, wheels, tris, drawCalls, interior };
+  return { scene, wheels, tris, drawCalls, interior, far: farModel(scene) };
+}
+
+/** Float copies of a geometry's attributes (quantised normals and uvs become plain floats), so pieces from different meshes merge. */
+function plain(g: THREE.BufferGeometry, m: THREE.Matrix4): THREE.BufferGeometry {
+  const out = new THREE.BufferGeometry();
+  for (const [k, a] of Object.entries(g.attributes)) {
+    const n = a.count, s = a.itemSize, arr = new Float32Array(n * s);
+    for (let i = 0; i < n; i++) for (let c = 0; c < s; c++) arr[i * s + c] = c === 0 ? a.getX(i) : c === 1 ? a.getY(i) : c === 2 ? a.getZ(i) : a.getW(i);
+    out.setAttribute(k, new THREE.BufferAttribute(arr, s));
+  }
+  if (g.index) out.setIndex(Array.from(g.index.array as ArrayLike<number>));
+  out.applyMatrix4(m);
+  return out;
+}
+/**
+ * The far model of an authored body (one with a `paint` material: scripts/vehicles/author): everything but the cabin, the door shut and the wheels where
+ * they stand, merged by material into one paint mesh and one trim mesh. Null for any other body (it keeps a single level).
+ */
+function farModel(scene: THREE.Object3D): THREE.Object3D | null {
+  const byMat = new Map<THREE.Material, THREE.BufferGeometry[]>();
+  let painted = false;
+  scene.updateMatrixWorld(true);
+  scene.traverse(o => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || Array.isArray(m.material)) return;
+    for (let p: THREE.Object3D | null = m; p; p = p.parent) if (p.name === 'cabin') return;
+    if (m.material.name === 'paint') painted = true;
+    const list = byMat.get(m.material) ?? []; list.push(plain(m.geometry, m.matrixWorld)); byMat.set(m.material, list);
+  });
+  if (!painted) return null;
+  const far = new THREE.Group(); far.name = 'far';
+  for (const [mat, gs] of byMat) {
+    const merged = mergeGeometries(gs, false); for (const g of gs) g.dispose();
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, mat); mesh.name = mat.name === 'paint' ? 'far_paint' : 'far_trim'; mesh.castShadow = true; mesh.userData.shared = true;
+    far.add(mesh);
+  }
+  return far;
 }
 
 /** The wheels of a model built with the node names above (what the pipeline writes). */
@@ -103,7 +144,11 @@ export function glbVehicle(id: string, kit: VehicleSpec): THREE.Group | null {
   if (!p) return null;
   const g = new THREE.Group(); g.name = `glb_${id}`;
   const body = p.scene.clone(true);
-  g.add(body);
+  if (p.far) {                                                   // near: the whole rig; far (FAR_LOD): two merged meshes
+    const lod = new THREE.LOD(); lod.name = 'glb_lod';
+    lod.addLevel(body, 0); lod.addLevel(p.far.clone(true), FAR_LOD);
+    g.add(lod);
+  } else g.add(body);
   g.userData.vehicleSpec = kit;
   const rig = rigOf(g, kit.drive.steerMax);
   if (!p.interior) {                                              // a solid shell has no cabin: the shared cockpit, shown in the « Au volant » view only
@@ -124,8 +169,9 @@ const tints = new Map<string, THREE.Material>();
  * with a material named `paint` (the authored ones) has only that tinted, its glass, lamps and trim stay as they are.
  */
 export function tintBody(g: THREE.Object3D, hex: number) {
-  const body = g.getObjectByName('body'); if (!body) return;
-  let painted = false; body.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh && !Array.isArray(m.material) && m.material.name === 'paint') painted = true; });
+  const body0 = g.getObjectByName('body'); if (!body0) return;
+  let painted = false; body0.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh && !Array.isArray(m.material) && m.material.name === 'paint') painted = true; });
+  const body = painted ? g : body0;                                 // an authored body: its far model is painted too
   body.traverse(o => {
     const m = o as THREE.Mesh; if (!m.isMesh || Array.isArray(m.material)) return;
     if (painted && m.material.name !== 'paint') return;

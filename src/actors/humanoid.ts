@@ -18,7 +18,7 @@ import { fitEyes } from './eyes';
  */
 export type Clip = 'Idle' | 'Walk' | 'Jog' | 'Run' | 'Talk' | 'Sit' | 'Stance' | 'Grab' | 'Fall_Back' | 'Prep' | 'Dance_A' | 'Dance_B' | 'Celebrate' | 'Entrance_Walk' | 'Kneel' | PoseClip;
 /** Poses built in code from the rig's rest pose (buildPoseClips): lying on the back, sitting cross-legged, astride a two-wheeler. 'Kneel' is derived from Sit (deriveKneel). */
-export type PoseClip = 'Lie' | 'SitFloor' | 'Ride';
+export type PoseClip = 'Lie' | 'SitFloor' | 'Ride' | 'RidePaddle';
 export type Style = 'boubou' | 'tee' | 'dress';
 export type Pattern = 'uni' | 'wax' | 'bazin' | 'rayure';
 export interface PersonLook {
@@ -199,6 +199,17 @@ export const POSES: Record<PoseClip, PoseDef> = {
       upper_armR: [-0.27, -0.68, 0.68], forearmR: [-0.24, -0.64, 0.73], handR: [-0.1, -0.3, 1],
       thighL: [0.2, -0.35, 0.91], shinL: [-0.05, -0.9, -0.43], footL: [0.05, -0.2, 1],
       thighR: [-0.2, -0.35, 0.91], shinR: [0.05, -0.9, -0.43], footR: [-0.05, -0.2, 1],
+    },
+  },
+  // astride, pushing the bike backwards with the feet (the Jakarta's foot-paddle reverse): upright, hands on the grips, both legs down to the ground either side
+  RidePaddle: {
+    hipsY: 0.5, hips: [0, 0, 0],
+    aim: {
+      spine: [0, 1, 0.12], chest: [0, 1, 0.15], neck: [0, 1, 0.1], head: [0, 1, -0.05],
+      upper_armL: [0.27, -0.68, 0.68], forearmL: [0.24, -0.64, 0.73], handL: [0.1, -0.3, 1],
+      upper_armR: [-0.27, -0.68, 0.68], forearmR: [-0.24, -0.64, 0.73], handR: [-0.1, -0.3, 1],
+      thighL: [0.34, -0.93, 0.1], shinL: [0.08, -1, -0.12], footL: [0.05, -0.12, 1],
+      thighR: [-0.34, -0.93, 0.1], shinR: [-0.08, -1, -0.12], footR: [-0.05, -0.12, 1],
     },
   },
 };

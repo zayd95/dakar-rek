@@ -1,4 +1,4 @@
-import { FULL } from './condition';
+import { FULL, workCost } from './condition';
 import { ECONOMY } from '../economy/config';
 
 /**
@@ -28,17 +28,20 @@ export interface Quote {
   cost: number;
   /** A cosmetic touch-up, offered. */
   free: boolean;
+  /** The partial repair (« remise en route »): back to ECONOMY.repair.partialTo for this, when the vehicle is below it; null otherwise. */
+  partial: { to: number; cost: number } | null;
 }
 
 /**
- * What the repair costs, shown before anything is paid and charged exactly once at the end: the asset model's rule (a share of the price per missing point,
- * `repairPerPoint`, so a wreck is 10 % of the price), nothing for a cosmetic scratch, never under MIN_JOB, rounded to 100 F (to 500 F for a vehicle worth a million or more).
+ * What the repair costs, shown before anything is paid and charged exactly once at the end (src/transport/condition.ts `workCost`: priced by the damage, a dearer
+ * car somewhat more): nothing for a touch-up, never under MIN_JOB. Below ECONOMY.repair.partialTo a partial repair is offered too: back on the road, not like new.
  */
 export function garageQuote(price: number, hp: number): Quote {
-  const lost = Math.max(0, Math.min(FULL, FULL - hp));
-  if (lost < COSMETIC_LOSS) return { lost, cost: 0, free: true };
-  const raw = price * ECONOMY.property.repairPerPoint * lost, step = price >= 1_000_000 ? 500 : 100;
-  return { lost, cost: Math.max(MIN_JOB, Math.round(raw / step) * step), free: false };
+  const lost = Math.max(0, Math.min(FULL, FULL - hp)), to = ECONOMY.repair.partialTo;
+  if (lost < COSMETIC_LOSS) return { lost, cost: 0, free: true, partial: null };
+  const cost = Math.max(MIN_JOB, workCost(price, lost));
+  const partial = hp < to - 5 ? { to, cost: Math.max(MIN_JOB, workCost(price, to - hp)) } : null;
+  return { lost, cost, free: cost === 0, partial: partial && partial.cost < cost ? partial : null };
 }
 
 /** Garage Modou works the hours of its owner's routine (src/social/routines.ts: 7–13 h and 15–19 h). */

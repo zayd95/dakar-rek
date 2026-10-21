@@ -8,7 +8,8 @@ import type { ShopDetail } from '../world/shopKit';
 import { buildQuincaillerie } from './stall';
 import { HUB_NAMES } from '../world/content';
 import { ECONOMY } from './config';
-import { ROUTES, acceptJob, cancelJob, completeJob, deliveryLimitMs, offers, payNow, pickUp, pickupFrags, remainingMs, routeById, routePay, whyNot, type Completion, type Place, type Route } from './jobs';
+import { ROUTES, acceptJob, cancelJob, completeJob, deliveryHub, deliveryLimitMs, offers, payNow, pickUp, pickupFrags, remainingMs, routeById, routePay, whyNot, type Completion, type Place, type Route } from './jobs';
+import { planTrip } from '../road/graph';
 import { cards, routeCard, orderCard, actionCard, tip, disclosure, iconOf, type Spot } from './deliveryCards';
 import { ORDERS, TOURS, abandonTour, acceptTour, completeStop, currentTour, depart, historyOf, limitsOf, patienceFactor, payFactor, paysOf, previewOrder, tourRemainingMs, tourTotal, toursAt, toursIn, trustOf, trustWord, whyNotTour, type Order, type Tour, type TourCompletion, type TourStop } from './tour';
 import { FURNITURE, cannotBuy, deliverFurniture, furnitureCount, furnitureById, ownedFurnitureIds, owns, priceOf } from './furniture';
@@ -117,6 +118,7 @@ export class Economy {
     return w?.interactables.find(i => i.id.startsWith(w.id + ':') && i.id.includes(frag));
   }
   private distance(r: Route): number | null {
+    if (r.toHub && r.toHub !== r.hub) return planTrip(r.hub, r.toHub)?.metres ?? 2000;     // between districts: the roads' length
     const a = this.placeOf(r.from.frag), b = this.placeOf(r.to.frag);
     return a && b && this.world?.id === r.hub ? Math.hypot(a.x - b.x, a.z - b.z) : null;
   }
@@ -321,7 +323,8 @@ export class Economy {
     if (a && !a.tour && !r) { cancelJob(s); this.d.save(); }             // a route removed from the design table: drop the run, pay nothing
     if (a?.tour && !tc) { abandonTour(s); this.d.save(); }               // a tour removed from the design table: same
     const tgtPlace = tc ? tc.stop.place : a && r ? (a.stage === 'pickup' ? r.from : r.to) : null;
-    const tgt = a && tgtPlace && w && w.id === a.hub ? this.placeOf(tgtPlace.frag) : undefined;
+    const tgtHub = a && r && a.stage === 'deliver' ? deliveryHub(r) : a?.hub;                // a parcel for another district is handed over there
+    const tgt = a && tgtPlace && w && w.id === tgtHub ? this.placeOf(tgtPlace.frag) : undefined;
     this.marker.visible = !!tgt && !inside;
     if (!a && this.markedFor) this.unmark();
     const mark = a ? `${a.runId}:${tc ? 'tour' + tc.run.leg : a.stage}` : '';
@@ -351,7 +354,7 @@ export class Economy {
     this.lineT = 0.25;
     const job = s.data.jobs.active, route = job && !job.tour ? routeById(job.routeId) : undefined, tour = job ? currentTour(s) : null;
     if (!job || (!route && !tour)) { this.line.classList.remove('on'); return; }
-    const dist = tgt ? `${Math.round(Math.hypot(pos.x - tgt.x, pos.z - tgt.z))} m` : HUB_NAMES[job.hub as HubId];
+    const dist = tgt ? `${Math.round(Math.hypot(pos.x - tgt.x, pos.z - tgt.z))} m` : HUB_NAMES[(route && job.stage === 'deliver' ? deliveryHub(route) : job.hub) as HubId];
     // the ride: only the next place, the progress and the countdown
     let name: string, icon: string, progress = '', clockText: string, late = false, wait = false;
     if (tour) {

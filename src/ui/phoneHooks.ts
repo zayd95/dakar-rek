@@ -26,6 +26,10 @@ export const phoneHooks: {
   openAsset?: (assetId: string) => void;
   /** Jobs app (economy module). */
   openJobs?: () => void;
+  /** « Courses VTC »: rides asked for with the player's own car (src/transport/vtc.ts). */
+  openVtc?: () => void;
+  /** « Crédits »: what the player owes and to whom, and repaying it (src/transport/sarrAuto.ts). */
+  openCredits?: () => void;
   /** « Affaires » app: ventures, income, polyvalence, purchases (economy module). */
   openBusiness?: () => void;
   /**

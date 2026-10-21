@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { GameCtx, GameModule } from '../game/modules';
 import type { HubWorld, Collider } from '../world/types';
 import type { Affordance, Target, TargetSource } from '../interact/types';
@@ -9,7 +10,8 @@ import { relate, relLevel } from '../venues/venue';
 import { Relations } from '../social/relations';
 import { fcfa } from '../ui/hud';
 import { say } from '../i18n/wolof';
-import { C, dealerOffer, nextLoanSeq, openLoan, openLoans, repay, standing } from '../economy/credit';
+import { C, dealerOffer, nextLoanSeq, openLoan, openLoans, standing } from '../economy/credit';
+import { creditClock } from '../economy/creditModule';
 import { specOf } from '../economy/catalog';
 import { addMissionGuide } from '../game/missionGuide';
 import { inBay } from './garage';
@@ -61,7 +63,6 @@ class SarrAuto implements GameModule, TargetSource {
     sarrSales.cfg.onGreet = c => { if (!c.state.data.flags.includes(key.met)) { c.state.data.flags.push(key.met); relate(c, 'sarr', C.trust.firstVisit); } };
     addMissionGuide(() => this.guide());
   }
-
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
     this.ctx = ctx; this.clear(); this.hub = hub;
     if (this.errand?.stage === 'go' && (this.errand.kind === 'garage' || this.errand.kind === 'client')) this.dropErrand(false);   // the lent car stayed in the district left
@@ -72,8 +73,13 @@ class SarrAuto implements GameModule, TargetSource {
   // ---------------------------------------------------------------- the lot
   private dress(ctx: GameCtx, hub: HubWorld) {
     const L = sarrLot(), g = new THREE.Group(); g.name = 'sarr-auto';
+    // every box of the lot is gathered by material and merged at the end: a handful of draw calls for the whole lot
+    const parts = new Map<THREE.Material, THREE.BufferGeometry[]>();
     const mat = (c: number) => { const m = new THREE.MeshLambertMaterial({ color: c }); this.disposables.push(m); return m; };
-    const box = (w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Material, ry = 0) => { const geo = new THREE.BoxGeometry(w, h, d); this.disposables.push(geo); const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = true; g.add(o); return o; };
+    const box = (w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Material, ry = 0, rz = 0) => {
+      const geo = new THREE.BoxGeometry(w, h, d); if (rz) geo.rotateZ(rz); if (ry) geo.rotateY(ry); geo.translate(x, y, z);
+      const l = parts.get(m) ?? []; l.push(geo); parts.set(m, l);
+    };
     const solid = (x: number, z: number, hx: number, hz: number, h: number) => { const c = { x0: x - hx, x1: x + hx, z0: z - hz, z1: z + hz, h }; this.cols.push(c); hub.colliders.push(c); };
     const f = { x: Math.sin(L.delivery.yaw), z: Math.cos(L.delivery.yaw) };                   // along the kerb
     const n = { x: L.counter.x - L.delivery.x - f.x * ((L.counter.x - L.delivery.x) * f.x + (L.counter.z - L.delivery.z) * f.z), z: 0 };
@@ -88,19 +94,19 @@ class SarrAuto implements GameModule, TargetSource {
     // the tarp over the desk: four poles, a blue sheet sloping toward the road
     const tc = at(0, 7.0);
     for (const [a, l] of [[-1.6, 5.6], [1.6, 5.6], [-1.6, 8.2], [1.6, 8.2]] as const) { const p = at(a, l); box(0.07, l < 6 ? 2.35 : 2.75, 0.07, p.x, 0.12 + (l < 6 ? 1.17 : 1.37), p.z, steel); solid(p.x, p.z, 0.08, 0.08, 2.5); }
-    { const sheet = box(3.6, 0.04, 2.9, tc.x, 2.62, tc.z, blue, yaw + Math.PI / 2); sheet.rotation.order = 'YXZ'; sheet.rotation.x = 0; sheet.rotateZ(0.14); }
+    box(3.6, 0.04, 2.9, tc.x, 2.62, tc.z, blue, yaw + Math.PI / 2, 0.14);
     // the desk and two red plastic chairs
     if (L.desk) {
       box(1.4, 0.75, 0.7, L.desk.x, 0.5, L.desk.z, wood, L.desk.yaw); solid(L.desk.x, L.desk.z, 0.6, 0.6, 0.9);
       for (const a of [-0.55, 0.55]) { const p = at(a, 6.0); box(0.42, 0.42, 0.42, p.x, 0.33, p.z, red, yaw); const b = at(a, 5.82); box(0.42, 0.45, 0.06, b.x, 0.75, b.z, red, yaw); }
-      const papers = box(0.3, 0.02, 0.22, L.desk.x, 0.89, L.desk.z, white, L.desk.yaw + 0.3); void papers;
+      box(0.3, 0.02, 0.22, L.desk.x, 0.89, L.desk.z, white, L.desk.yaw + 0.3);
     }
     // the board: hand-painted, on two posts facing the road
     { const s = at(-12.6, 7.4), tex = boardTexture(); this.disposables.push(tex);
       for (const a of [-1.45, 1.45]) { const p = at(-12.6 + a, 7.4); box(0.1, 3.1, 0.1, p.x, 0.12 + 1.55, p.z, wood); solid(p.x, p.z, 0.08, 0.08, 3); }
       const face = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.4), new THREE.MeshLambertMaterial({ map: tex })); this.disposables.push(face.geometry, face.material as THREE.Material);
       face.position.set(s.x - n.x * 0.06, 2.45, s.z - n.z * 0.06); face.rotation.y = Math.atan2(-n.x, -n.z); g.add(face);
-      const back = box(3.3, 1.5, 0.05, s.x, 2.45, s.z, white, Math.atan2(-n.x, -n.z)); void back; }
+      box(3.3, 1.5, 0.05, s.x, 2.45, s.z, white, Math.atan2(-n.x, -n.z)); }
     // bunting along the lot, pole to pole, in the colours of the board
     { const cols = [0xe23b2e, 0xf2c94c, 0x2f6fa8, 0x2e8b57, 0xf1ece0], tri = new THREE.BufferGeometry(), pos: number[] = [], colr: number[] = [];
       const a0 = -14, a1 = 21, poles = [a0, 3.5, a1];
@@ -119,6 +125,7 @@ class SarrAuto implements GameModule, TargetSource {
       const card = soldCard(); this.disposables.push(card); const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.3), new THREE.MeshBasicMaterial({ map: card })); this.disposables.push(pl.geometry, pl.material as THREE.Material);
       pl.position.set(s.x + Math.sin(s.yaw) * 0.9, 1.25, s.z + Math.cos(s.yaw) * 0.9); pl.rotation.y = s.yaw; pl.rotateX(-0.5); g.add(pl); this.wash = { x: s.x, z: s.z, yaw: s.yaw }; }
     { const s = L.slots[3], v = buildVehicle('moto', { seed: 3, driver: false, passengers: false }).group; v.position.set(s.x, 0.12, s.z); v.rotation.y = s.yaw; g.add(v); solid(s.x, s.z, 1.0, 1.0, 1.2); }
+    for (const [m, gs] of parts) { const merged = mergeGeometries(gs, false); for (const x of gs) x.dispose(); if (!merged) continue; this.disposables.push(merged); const mesh = new THREE.Mesh(merged, m); mesh.castShadow = true; g.add(mesh); }
     ctx.extra.add(g); this.group = g;
   }
   /** The saloon sold (the wash errand's car). */
@@ -167,7 +174,7 @@ class SarrAuto implements GameModule, TargetSource {
       ]);
       return;
     }
-    ctx.menu('Pape Sarr · un service', `${say('Mbaa')} tu peux m’aider ? Chaque course une fois par jour, payée à ton retour.`, [
+    ctx.menu('Pape Sarr · un service', `${say('Na nga def ?')} Tu peux m’aider ? Chaque course une fois par jour, payée à ton retour.`, [
       ...ORDER.map(k => ({ icon: k === 'papers' ? '📄' : k === 'wash' ? '🧽' : '🔑', label: ERRANDS[k].label, detail: this.doneToday(k) ? 'Déjà fait aujourd’hui : reviens demain' : ERRANDS[k].detail, right: fcfa(ERRANDS[k].pay), disabled: this.doneToday(k) || !this.canStart(k), reason: this.canStart(k) ? undefined : 'Pas possible maintenant', onPick: () => { close(); this.start(k); } })),
       { icon: '↩️', label: 'Pas maintenant', onPick: close },
     ]);
@@ -281,29 +288,8 @@ class SarrAuto implements GameModule, TargetSource {
     if (ok) { relate(ctx, 'sarr', 3); ctx.toast(`Pape Sarr te donne les clés : « Elle est à toi. Rembourse-moi ${fcfa(installment)} tous les ${every} jours, avec tes courses. ${say('Jërëjëf')} ! »`); ctx.save(); }
     return ok;
   }
-  repayMenu(l: LoanState) {
-    const ctx = this.ctx, close = () => { ctx.hud.closeModal(); ctx.setMode('play'); }, st = standing(l, day(ctx));
-    const opt = (label: string, amount: number, detail: string) => ({ icon: '💵', label, detail, right: '−' + fcfa(amount), disabled: amount <= 0 || !ctx.state.canAfford(amount), reason: amount > 0 && !ctx.state.canAfford(amount) ? 'Pas assez d’argent' : undefined, onPick: () => { close(); this.pay(l, amount); } });
-    ctx.menu(`Rembourser · ${l.label}`, `Reste ${fcfa(st.left)} · ${st.late > 0 ? `en retard : ${fcfa(st.late)}` : `prochaine échéance ${fcfa(st.next)} le jour ${st.nextDay}`}`, [
-      ...(st.late > 0 ? [opt('Payer le retard', st.late, 'Ce qui aurait dû être payé')] : []),
-      opt('Payer une échéance', Math.min(l.installment, st.left), 'D’avance, ça compte aussi'),
-      opt('Tout rembourser', st.left, 'Et la voiture est entièrement à toi'),
-      { icon: '↩️', label: 'Pas maintenant', onPick: close },
-    ]);
-  }
-  pay(l: LoanState, amount: number) {
-    const ctx = this.ctx, d = day(ctx), wasLate = standing(l, d).late > 0;
-    if (l.status !== 'open' || amount <= 0 || !ctx.state.canAfford(amount)) return 0;
-    const take = repay(l, amount, d); if (!take) return 0;
-    ctx.state.addMoney(-take, `Remboursement : ${l.label}`);
-    this.log.repaid += take;
-    const who = l.lender === 'sarr' ? 'sarr' : 'modou';
-    if ((l.status as string) === 'closed') { relate(ctx, who, C.trust.repaidAll); ctx.toast(`${l.lender === 'sarr' ? 'Pape Sarr' : 'Modou'} : « Tout est réglé. ${say('Jërëjëf')}, tu es quelqu’un de parole. »`); }
-    else { if (!wasLate) relate(ctx, who, C.trust.paidOnTime); ctx.toast(`Remboursé ${fcfa(take)} · reste ${fcfa(l.principal - l.paid)}`); }
-    ctx.save();
-    return take;
-  }
-
+  repayMenu(l: LoanState) { creditClock.repayMenu(this.ctx, l); }
+  pay(l: LoanState, amount: number) { const t = creditClock.pay(this.ctx, l, amount); if (t) this.log.repaid += t; return t; }
 
   debug(): Record<string, unknown> {
     return {

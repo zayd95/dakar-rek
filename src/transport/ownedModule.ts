@@ -348,6 +348,10 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   }
   /** The player is riding / driving it now. */
   get ridden() { return this.driving; }
+  /** This model's own car in this hub (parked or driven; never a dealer's car out on trial): a VTC passenger rides in it (src/transport/vtc.ts). */
+  carNow(): { v: Vehicle; spec: VehicleSpec; x: number; z: number; yaw: number; speed: number; driving: boolean } | null {
+    return this.vehicle && this.spec && !this.trial ? { v: this.vehicle, spec: this.spec, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, driving: this.driving } : null;
+  }
   /**
    * Move the parked vehicle to another spot of this hub (a guarded parking's place, src/arena/arrival.ts), saved like a
    * parking spot. False while it is ridden or not here.
@@ -402,7 +406,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       ? { fwd: forwardIntent(joy.x, joy.y), steer: mv.x, boost: ridePad.gas, brake: ridePad.brake || joy.y < -0.6 }
       : { fwd: pressed('KeyW', 'ArrowUp') ? 1 : 0, steer: mv.x, boost: pressed('ShiftLeft', 'ShiftRight'), brake: pressed('KeyS', 'ArrowDown') };
     const drv = scaledDrive(this.spec.drive, this.hp());                              // a worn car is slower (the same object when whole: the physics are untouched)
-    const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : this.ctl.update(dt, cmd, this.st.speed, drv, !moto);
+    const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : this.ctl.update(dt, cmd, this.st.speed, drv, moto ? 'paddle' : true);
+    if (moto) { const want = this.ctl.paddling ? 'RidePaddle' : 'Ride'; if (m.driverSeat.clip !== want) m.driverSeat.clip = want; }   // pushing it backwards: both feet on the ground
     ridePad.reversing = this.ctl.showR;
     transport.obstacles(this.obst, this.def.kit);
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
@@ -415,6 +420,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(this.st.speed), this.st.accel, this.st.odo, dt);
     if (!this.trial && !this.leaving && ctx.mode() === 'play' && this.hub) { const c = crossing(this.hub.id, this.st.x, z0, this.st.z, this.st.speed * Math.cos(this.st.yaw)); if (c) { this.cross(c.link.to, c.x, c.z); return; } }
     this.lean = m.animate(this.st.speed, this.st.steer, dt);                     // wheels, steering, a motorbike's lean
+    if (this.ctl.paddling) this.lean = 0;                                        // pushed backwards with the feet: the rider sits upright
     // sound and feel: the engine follows the speed, a hard brake squeals and dips the camera a little, the horn is held
     const bi = brakeIntensity(-this.st.accel * Math.sign(this.st.speed || 1), v0);
     if (bi > 0.05 && input.throttle !== 0) { vehicleAudio.brake(bi); if (bi > 0.3) this.fx.hard = 0.6; }

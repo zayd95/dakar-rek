@@ -63,14 +63,18 @@ describe('ledger', () => {
 describe('Tiak Tiak deliveries', () => {
   it('has 3–5 ordinary routes in Pikine and Plateau, each with a pay and a better-paid recommended follow-up', () => {
     for (const hub of ['pikine', 'plateau'] as const) {
-      const ordinary = ROUTES.filter(r => r.hub === hub && !r.needFlag);
+      const ordinary = ROUTES.filter(r => r.hub === hub && !r.needFlag && !r.toHub);
       expect(ordinary.length).toBeGreaterThanOrEqual(3); expect(ordinary.length).toBeLessThanOrEqual(5);
       expect(pickupFrags(hub).length).toBeGreaterThanOrEqual(2);
       const reco = ROUTES.find(r => r.hub === hub && r.needFlag)!;
       expect(reco.needFlag).toBe(CLIENTS[hub]!.flag);
       expect(Math.max(...ordinary.map(routePay))).toBeLessThan(routePay(reco));
     }
-    for (const r of ROUTES) { expect(ECONOMY.tiak.pay[r.id]).toBeGreaterThan(0); expect(r.from.frag).not.toBe(r.to.frag); }
+    for (const r of ROUTES) { expect(ECONOMY.tiak.pay[r.id]).toBeGreaterThan(0); if (!r.toHub) expect(r.from.frag).not.toBe(r.to.frag); }
+    // between districts: a ride on the roads, paid more than any delivery inside one
+    const cross = ROUTES.filter(r => r.toHub && r.toHub !== r.hub);
+    expect(cross.length).toBeGreaterThanOrEqual(3);
+    for (const r of cross) expect(routePay(r)).toBeGreaterThan(Math.max(...ROUTES.filter(x => !x.toHub).map(routePay)));
   });
   it('pays once: completing the same run id twice pays a single time', () => {
     const { s } = fresh();

@@ -353,12 +353,12 @@ export const comfortOf = (a: AssetState) => { const sp = specOf(a.spec); return 
 /** A collision, a roadside fix or a repair sets an asset's condition: clamped to 0–100, one decimal; « Biens » and the net worth follow. */
 export function setCondition(a: AssetState, v: number) { a.condition = Math.max(0, Math.min(100, Math.round(v * 10) / 10)); bump(); }
 export const repairCost = (a: AssetState) => Math.round((specOf(a.spec)?.price ?? 0) * P.repairPerPoint * (100 - a.condition));
-export function repairAsset(s: GameState, uid: string, price?: number, label?: string): boolean {
-  const a = assetByUid(s, uid); if (!a || a.how !== 'owned' || a.condition >= 100) return false;
+export function repairAsset(s: GameState, uid: string, price?: number, label?: string, to = 100): boolean {
+  const a = assetByUid(s, uid); if (!a || a.how !== 'owned' || a.condition >= to) return false;
   const cost = price ?? repairCost(a); if (!s.canAfford(cost)) return false;       // `price`: a quote the player was shown first (a vehicle at Garage Modou); a free job charges nothing
   accrue(s);
   if (cost > 0) s.addMoney(-cost, label ?? `Réparation · ${specOfAsset(a).name}`);
-  a.condition = 100;
+  a.condition = Math.max(a.condition, Math.min(100, to));                // `to`: a partial repair brings it back to that condition only
   bump();
   return true;
 }

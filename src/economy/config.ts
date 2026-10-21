@@ -12,6 +12,8 @@ export const ECONOMY = {
       pk_reco_salon_bank: 2200,
       pl_fatou_market: 1300, pl_fatou_bank: 1200, pl_medina_square: 1100, pl_atelier_reparation: 1000,
       pl_reco_reparation_bank: 2400,
+      // between districts (a ride of 1.2 to 2 km on the roads): PROVISIONAL
+      x_pk_pl_diallo_ndeye: 5000, x_pl_pk_market_mame: 5000, x_pk_al_maiga_pointe: 6500, x_pl_co_fatou_etudiants: 6000,
     } as Record<string, number>,
     /** Share of the pay when the delivery arrives after the time limit (never negative). */
     latePayFactor: 0.6,
@@ -128,7 +130,7 @@ export const ECONOMY = {
   repair: {
     freeBelow: 5,
     points: [[5, 2000], [15, 8000], [40, 33000], [100, 63000]] as [number, number][],
-    classRef: 6_000_000, classExp: 0.3, classMin: 0.5, classMax: 2.2,
+    classRef: 6_000_000, classExp: 0.3, classMin: 0.3, classMax: 2.2,
     /** The partial repair brings the car back to this condition (« remise en route »), or no lower than where it is. */
     partialTo: 70,
   },

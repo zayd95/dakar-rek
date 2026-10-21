@@ -11,16 +11,22 @@ describe('damage', () => {
   it('a light contact costs nothing', () => {
     expect(damageOf(0)).toBe(0); expect(damageOf(1.2)).toBe(0); expect(damageOf(TAP_SPEED - 0.01)).toBe(0); expect(damageOf(-2)).toBe(0);
   });
-  it('a real impact costs points, growing with the speed, capped', () => {
-    const d = [3, 6, 10, 14, 30].map(damageOf);
+  it('a parking bump costs nothing, an ordinary mistake a little, a real crash a lot (capped)', () => {
+    expect(TAP_SPEED).toBeGreaterThanOrEqual(3.5);                                      // ≈ 13 km/h: nudging a car while parking is free
+    const d = [4, 6, 10, 14, 20, 30].map(damageOf);
     expect(d[0]).toBeGreaterThan(0);
     for (let i = 1; i < d.length; i++) expect(d[i]).toBeGreaterThanOrEqual(d[i - 1]);
-    expect(d[1]).toBeLessThan(8); expect(d[2]).toBeGreaterThan(8); expect(d[4]).toBeLessThanOrEqual(35);
+    expect(d[1]).toBeLessThan(2);                                                        // 21 km/h into a post
+    expect(d[2]).toBeGreaterThan(3); expect(d[2]).toBeLessThan(9);                       // 36 km/h: an ordinary mistake
+    expect(d[4]).toBeGreaterThan(20);                                                    // 72 km/h: a real crash
+    expect(d[5]).toBeLessThanOrEqual(45);
   });
-  it('a few ordinary bumps do not kill a car, a handful of crashes do', () => {
-    let hp = 100; for (let i = 0; i < 6; i++) hp -= damageOf(4);
-    expect(hp).toBeGreaterThan(70);
-    hp = 100; for (let i = 0; i < 5; i++) hp = Math.max(0, hp - damageOf(14));
+  it('a few ordinary bumps do not ruin a car; several trips across districts with the usual knocks leave it drivable; a handful of crashes do kill it', () => {
+    let hp = 100; for (let i = 0; i < 10; i++) hp -= damageOf(6);
+    expect(hp).toBeGreaterThan(85);
+    hp = 100; for (let i = 0; i < 8; i++) hp -= hitDamage(10, false);                  // eight glancing knocks at town speed
+    expect(hp).toBeGreaterThan(60);
+    hp = 100; for (let i = 0; i < 4; i++) hp = Math.max(0, hp - damageOf(20));
     expect(hp).toBe(0);
   });
 });
@@ -41,10 +47,11 @@ describe('what condition does to the driving', () => {
     for (let i = 0; i < 600; i++) driveStep(s, { throttle: 1, steer: 0 }, dead, 1 / 60, () => false);
     expect(Math.abs(s.speed)).toBeLessThan(0.05); expect(Number.isFinite(s.x + s.z + s.yaw)).toBe(true);
   });
-  it('a car at 10 % still crawls forward (it is never stuck for good)', () => {
+  it('a car at 10 % still drives (never stuck, never painfully slow), slower than a repaired one', () => {
     const s = newDriveState(0, 0, 0), d = scaledDrive(drive, 10);
     for (let i = 0; i < 600; i++) driveStep(s, { throttle: 1, steer: 0 }, d, 1 / 60, () => false);
-    expect(s.speed).toBeGreaterThan(3); expect(s.speed).toBeLessThan(drive.maxSpeed * 0.55);
+    expect(s.speed).toBeGreaterThan(drive.maxSpeed * 0.55); expect(s.speed).toBeLessThan(drive.maxSpeed * 0.7);
+    expect(performance(30).top).toBeGreaterThanOrEqual(0.8); expect(performance(60).top).toBeGreaterThanOrEqual(0.9);
   });
   it('says so when a hit moves the car into a worse band, and only then', () => {
     expect(bandWarning(100, 90)).toBeNull();
@@ -53,15 +60,20 @@ describe('what condition does to the driving', () => {
 });
 
 describe('the garage', () => {
-  it('quotes nothing for a whole car and the asset model\'s own repair cost otherwise', () => {
-    expect(repairQuote(6_000_000, 100)).toBe(0);
-    expect(repairQuote(6_000_000, 50)).toBe(300_000);
-    expect(repairQuote(6_000_000, 0)).toBe(600_000);
-    expect(repairQuote(150_000, 0)).toBe(15_000);
-    for (const [price, hp] of [[14_000_000, 63], [75_000_000, 12], [150_000, 80]] as const) {
-      const a = { uid: 'a1', spec: 'compacte', how: 'owned', since: 0, paid: 0, condition: hp, upgrades: [], leased: false } as AssetState;
-      expect(repairQuote(price, hp)).toBe(Math.round(price * ECONOMY.property.repairPerPoint * (100 - a.condition)));
-    }
+  it('prices the work by the damage, not by what the car cost: a touch-up free, ordinary damage what a Pikine garage asks', () => {
+    expect(repairQuote(6_000_000, 100)).toBe(0); expect(repairQuote(6_000_000, 97)).toBe(0);
+    const moderate = repairQuote(6_000_000, 88), significant = repairQuote(6_000_000, 65);
+    expect(moderate).toBeGreaterThanOrEqual(5_000); expect(moderate).toBeLessThanOrEqual(15_000);
+    expect(significant).toBeGreaterThanOrEqual(20_000); expect(significant).toBeLessThanOrEqual(50_000);
+    // the 14 M saloon nearly wrecked (7 %): a real bill, never the 1 302 000 F of the old rule (0.1 % of the price per point)
+    const wreck = repairQuote(14_000_000, 7);
+    expect(wreck).toBeGreaterThan(30_000); expect(wreck).toBeLessThan(150_000); expect(wreck).toBeLessThan(14_000_000 * ECONOMY.property.repairPerPoint * 93 / 5);
+    // a dearer car costs somewhat more, never in proportion: the 70 M SUV wrecked is under 200 000 F; a motorbike's damage is cheap
+    expect(repairQuote(70_000_000, 0)).toBeGreaterThan(repairQuote(6_000_000, 0)); expect(repairQuote(70_000_000, 0)).toBeLessThan(200_000);
+    expect(repairQuote(150_000, 85)).toBeLessThanOrEqual(5_000);
+    // property upkeep is a separate rule (homes, billboards): unchanged
+    const a = { uid: 'a1', spec: 'compacte', how: 'owned', since: 0, paid: 0, condition: 63, upgrades: [], leased: false } as AssetState;
+    expect(ECONOMY.property.repairPerPoint * 1_000_000 * (100 - a.condition)).toBe(37_000);
   });
   it('the tow is a flat fee, free when the wallet cannot pay it', () => {
     expect(towFee(1_000_000)).toBe(TOW_FEE); expect(towFee(TOW_FEE)).toBe(TOW_FEE); expect(towFee(TOW_FEE - 1)).toBe(0); expect(towFee(0)).toBe(0);

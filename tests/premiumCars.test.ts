@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { paintSeedOf } from '../src/transport/modelCars';
 import { carSpec, kitSeedFor } from '../src/transport/car';
 import { BERLINE_ASSET, BERLINE_GRAPHITE, BERLINE_NAVY, BERLINE_WHITE, SUV_ASSET, SUV_BLACK, SUV_GREEN, SUV_WHITE, berlineSeed, berlineSpec, suvSeed, suvSpec } from '../src/transport/premiumCars';
 import { motoSpec } from '../src/transport/moto';
@@ -18,16 +19,16 @@ const speedAfter = (d: DriveSpec, seconds: number) => { const s = newDriveState(
 describe('the premium saloon and the SUV on the owned-vehicle system', () => {
   const berline = berlineSpec(), suv = suvSpec(), sedan = carSpec();
 
-  it('are the catalogue\'s « Berline neuve » and « 4 × 4 de luxe », for sale at Prestige Auto (no longer « soon »), prices unchanged', () => {
+  it('are the catalogue\'s « Berline neuve » and the « Lamane Sport » (the luxury SUV, same asset id), for sale at Prestige Auto (no longer « soon »)', () => {
     expect(specOf(BERLINE_ASSET)).toMatchObject({ kind: 'vehicle', name: 'Berline neuve', price: 14_000_000, where: 'Prestige Auto · Almadies' });
-    expect(specOf(SUV_ASSET)).toMatchObject({ kind: 'vehicle', name: '4 × 4 de luxe', price: 75_000_000, where: 'Prestige Auto · Almadies' });
+    expect(specOf(SUV_ASSET)).toMatchObject({ kind: 'vehicle', name: 'Lamane Sport', price: 70_000_000, where: 'Prestige Auto · Almadies' });
     expect(specOf(BERLINE_ASSET)?.soon).toBeUndefined(); expect(specOf(SUV_ASSET)?.soon).toBeUndefined();
     expect(specOf('camion')?.soon).toBeTruthy();                                                   // the delivery truck stays out
   });
 
   it('wear the kit\'s luxury saloon and suv: left-hand drive, closed cabin, the driver under the roof, the three cameras from the kit anchors', () => {
-    for (const [spec, kind, seed] of [[berline, 'luxury', berlineSeed()], [suv, 'suv', suvSeed()]] as const) {
-      const k = vehicleSpec(kind, { seed, driver: false, passengers: false });
+    for (const [spec, kind, seed, model] of [[berline, 'luxury', berlineSeed(), undefined], [suv, 'suv', paintSeedOf(0), 'lamane']] as const) {
+      const k = vehicleSpec(kind, { seed, driver: false, passengers: false, ...(model ? { model } : {}) });
       expect(spec.kind).toBe('car'); expect(spec.cabin).toBe('closed'); expect(spec.driver.id).toBe('driver'); expect(spec.driver.x).toBeGreaterThan(0);
       expect(spec.driver.y + 0.95).toBeLessThan(k.height - 0.05);
       expect(spec.length).toBe(k.length); expect(spec.width).toBe(k.width);

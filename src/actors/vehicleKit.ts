@@ -42,7 +42,7 @@ export interface VehicleSeat {
   /** Door used to reach it. */
   door: string;
   /** Pose held there when it is not the chair Sit (motorbikes: 'Ride'); copied to the interaction seat. */
-  clip?: 'Ride';
+  clip?: 'Ride' | 'RidePaddle';
 }
 export interface VehicleDoor {
   id: string;

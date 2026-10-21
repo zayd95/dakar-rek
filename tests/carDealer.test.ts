@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ndiayeSales } from '../src/transport/modelCars';
 import { stubCanvas } from './hubstub';
 import { buildShopInterior, stockedShop, stockedShopFront, type ShopInterior } from '../src/world/shopKit';
 import { ShopPaths } from '../src/world/shopFlow';
@@ -75,8 +76,10 @@ describe('Ndiaye Auto in the Plateau (src/world/city.ts + src/transport/carModul
     const own = new Set(h.group.getObjectByName('shop_showroom_cars')?.userData.shopColliders as Collider[]);
     const others = h.colliders.filter(c => !own.has(c) && c.h > 0.3);
     for (const c of others) expect(c.x1 <= b.x0 + 0.01 || c.x0 >= b.x1 - 0.01 || c.z1 <= b.z0 + 0.01 || c.z0 >= b.z1 - 0.01, JSON.stringify(c)).toBe(true);
-    // the salesman stands at his place
-    expect(h.people.some(p => Math.hypot(p.x - show.anchors.keeper.x, p.z - show.anchors.keeper.z) < 0.05)).toBe(true);
+    // the salesman's place is Moussa Ndiaye's post: he walks the floor himself (src/transport/modelCars.ts), nobody else is put there
+    const post = ndiayeSales.cfg.layout(h)!.home;
+    expect(Math.hypot(post.x - show.anchors.keeper.x, post.z - show.anchors.keeper.z)).toBeLessThan(0.05);
+    expect(h.people.some(p => Math.hypot(p.x - show.anchors.keeper.x, p.z - show.anchors.keeper.z) < 0.05)).toBe(false);
   });
 
   it('the dealer sells from the desk, shows the silver saloon on the first lot and delivers outside the door', async () => {

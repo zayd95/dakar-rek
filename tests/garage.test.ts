@@ -15,21 +15,25 @@ describe('Garage Modou: the quote', () => {
     expect(garageQuote(BERLINE, 100 - COSMETIC_LOSS + 0.1)).toMatchObject({ cost: 0, free: true });
     expect(garageQuote(BERLINE, 100 - COSMETIC_LOSS)).toMatchObject({ free: false });
   });
-  it('follows the asset model\'s rule (0.1 % of the price per missing point), rounded, never under the visit', () => {
-    expect(garageQuote(BERLINE, 76).cost).toBe(144_000);                    // 24 points
-    expect(garageQuote(BERLINE, 0).cost).toBe(600_000);                     // a wreck is 10 % of the price
-    expect(garageQuote(SUV, 0).cost).toBe(7_500_000);
-    expect(garageQuote(JAKARTA, 0).cost).toBe(15_000);
-    expect(garageQuote(JAKARTA, 95).cost).toBe(MIN_JOB);                    // 5 points of a motorbike: 750 F, the visit is 1 000 F
-    for (const hp of [10, 33, 57, 72, 90]) { const c = garageQuote(BERLINE, hp).cost; expect(c % 500).toBe(0); }
-    for (const hp of [10, 33, 57, 72, 90]) { const c = garageQuote(JAKARTA, hp).cost; expect(c % 100).toBe(0); expect(c).toBeGreaterThanOrEqual(MIN_JOB); }
+  it('is priced by the damage (src/transport/condition.ts workCost), a dearer car only somewhat more, rounded, never under the visit', () => {
+    const a = garageQuote(BERLINE, 76).cost, b = garageQuote(SUV, 76).cost;
+    expect(b).toBeGreaterThan(a); expect(b).toBeLessThan(a * 2.5);
+    expect(garageQuote(BERLINE, 0).cost).toBeLessThan(100_000);
+    expect(garageQuote(SUV, 0).cost).toBeLessThan(200_000);
+    expect(garageQuote(JAKARTA, 95).cost).toBe(MIN_JOB);                    // 5 points of a motorbike: under the visit, the visit is 1 000 F
+    for (const p of [JAKARTA, BERLINE, SUV]) for (const hp of [10, 33, 57, 72, 90]) { const c = garageQuote(p, hp).cost; expect(c % 500).toBe(0); expect(c).toBeGreaterThanOrEqual(MIN_JOB); }
   });
-  it('is never negative and never more than 10 % of the price', () => {
+  it('is never negative and never a fortune: under 5 % of a car\'s price, a motorbike\'s wreck under a fifth of its own', () => {
     for (const price of [JAKARTA, BERLINE, SUV]) for (let hp = 0; hp <= 100; hp += 0.5) {
       const q = garageQuote(price, hp);
       expect(q.cost).toBeGreaterThanOrEqual(0);
-      expect(q.cost).toBeLessThanOrEqual(Math.max(MIN_JOB, price * 0.1 + 500));
+      expect(q.cost).toBeLessThanOrEqual(Math.max(MIN_JOB, price * (price >= 1_000_000 ? 0.05 : 0.2)));
     }
+  });
+  it('offers a partial repair (back to 70 %) for less when the vehicle is well below it', () => {
+    const q = garageQuote(BERLINE, 30);
+    expect(q.partial).not.toBeNull(); expect(q.partial!.to).toBe(70); expect(q.partial!.cost).toBeLessThan(q.cost); expect(q.partial!.cost).toBeGreaterThanOrEqual(MIN_JOB);
+    expect(garageQuote(BERLINE, 80).partial).toBeNull();
   });
   it('grows with the damage', () => {
     let last = -1;

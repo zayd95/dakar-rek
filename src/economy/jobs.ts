@@ -14,6 +14,8 @@ export interface Place { frag: string; name: string }
 export interface Route {
   id: string; hub: HubId;
   from: Place; to: Place;
+  /** A delivery to another district (the parcel picked up in `hub`, handed over in `toHub`, by the roads: the Jakarta's work). */
+  toHub?: HubId;
   /** What is carried (shown in the offer). */
   what: string;
   /** Only offered once this flag is set (a client's recommendation). */
@@ -40,6 +42,7 @@ export const P = {
   market: { frag: ':market', name: 'Étal de Sandaga' }, bankPl: { frag: ':city:bank', name: 'Banque Teranga · Plateau' },
   ndeye: { frag: ':city:boutique', name: 'Atelier Ndeye · couture' }, reparation: { frag: ':city:salon-tech', name: 'Dakar Réparation' },
   squarePl: { frag: ':city:square', name: 'Place de la Médina' },
+  pointe: { frag: ':restaurant:', name: 'Restaurant Le Pointe · Almadies' }, etudiants: { frag: ':gargote:', name: 'Gargote des étudiants · Fann' },
 } satisfies Record<string, Place>;
 
 export const ROUTES: Route[] = [
@@ -54,7 +57,14 @@ export const ROUTES: Route[] = [
   { id: 'pl_medina_square', hub: 'plateau', from: P.medina, to: P.squarePl, what: 'Dibi pour les joueurs de dames' },
   { id: 'pl_atelier_reparation', hub: 'plateau', from: P.ndeye, to: P.reparation, what: 'Housses de téléphone cousues' },
   { id: 'pl_reco_reparation_bank', hub: 'plateau', from: P.reparation, to: P.bankPl, what: 'Téléphones réparés (recommandée par M. Sarr)', needFlag: 'tiak_client_plateau' },
+  // between districts, by the roads (src/road/graph.ts): the parcel goes with the courier from one district to the other
+  { id: 'x_pk_pl_diallo_ndeye', hub: 'pikine', toHub: 'plateau', from: P.diallo, to: P.ndeye, what: 'Un rouleau de bazin pour l’Atelier Ndeye' },
+  { id: 'x_pl_pk_market_mame', hub: 'plateau', toHub: 'pikine', from: P.market, to: P.mame, what: 'Épices et poisson séché de Sandaga pour Mame Diarra' },
+  { id: 'x_pk_al_maiga_pointe', hub: 'pikine', toHub: 'almadies', from: P.maiga, to: P.pointe, what: 'Bissap et gingembre pour le Pointe' },
+  { id: 'x_pl_co_fatou_etudiants', hub: 'plateau', toHub: 'corniche', from: P.fatou, to: P.etudiants, what: 'Thiéboudienne pour la gargote des étudiants' },
 ];
+/** The district where a run's parcel is handed over. */
+export const deliveryHub = (r: Route): HubId => r.toHub ?? r.hub;
 
 export const routeById = (id: string) => ROUTES.find(r => r.id === id);
 /** Base pay of a route (the design table); what is paid is scaled by polyvalence at hand-over. */
