@@ -22,7 +22,10 @@ pipeline (`body` › `door` + `cabin`, four `axle_*` › `wheel_*`, a sidecar `.
   but not `fetch(Request)`, which is how the GLTF loader asks. The shim now answers both; the loader tries a failed model once more and reports why (`glbFailure`, a console warning)
   instead of falling back without a word. IDs are unchanged: a car already bought keeps its asset, its uid and its paint.
 * **`tout_terrain` kept its id** and became the Lamane Sport: an owner's existing SUV is now drawn with the new body, nothing is replaced or lost (save untouched).
-* A **far LOD** (38 m) merges paint and trim so a street of parked cars stays within the frame budget (`perf.frame` passes).
+* **Levels of detail**: beyond 38 m paint and trim are merged (8 draw calls → 2); beyond 70 m the same model is coarsened by vertex clustering (≈ 11k → 2k triangles), so the
+  dealers' cars cost little from across a district.
+* Pictures: six-view renders of the very GLB files the game loads, `economy/cars/studio-{teranga,rafet,lamane,gainde}.jpg`; in the game on their dealers' floors,
+  `economy/cars/{teranga,rafet,lamane-sport,gainde}-{front,side,rear,front-other-side}.jpg`; the dealerships, `economy/cars/dealer-*.jpg`.
 * **Motorbike (CBR-like)**: not done. The four cars took the time; adding a fast sports bike before the four were solid was out of order, as the brief asked.
 
 ## 2. Dealerships (data-driven: `src/transport/modelCars.ts`, `prestigeSales.ts`)
@@ -136,7 +139,12 @@ debt 3 985 000 F on the car's asset, the wallet only down by the advance); a Pik
 
 Regression on this branch: `npm test` 1945 passed (2 skipped), `npm run build`, `npm run typecheck:server`; `npm run check:online` (two browsers on a local Workers runtime) 44/44;
 `check-garage.mjs` 15/15; `check-prestige-flow.mjs` 23/23 and `check-prestige-trial.mjs` 7/7 (updated to the new Prestige floor: one berline, two Lamane Sports, the Gaïndé);
-`check-horn.mjs` 17/17 (now entering the car through Ndiaye Auto's floor, which replaced the catalogue menu); `check-city-life.mjs` 37/37; `check-drive-feel.mjs` (the Jakarta's release now read after half a second of game time) rerun in progress.
+`check-horn.mjs` 17/17 (now entering the car through Ndiaye Auto's floor, which replaced the catalogue menu); `check-city-life.mjs` 37/37; `check-drive-feel.mjs` 12/12 (the Jakarta's release now read after half a second of game time); `check-save-vehicles.mjs` 9/9.
+
+Performance (`scripts/perf.mjs`, Chromium + SwiftShader, the build before this branch → this one): download 5.6 → 6.8 MB (the four GLBs); Pikine on a phone page at 13 h
+164 → 163 draw calls, 216k → 206k triangles; Plateau 100 → 95 draw calls. Frame rate in 15 s samples on a phone page in Pikine, twice each, alternating builds: at the spawn 3.9 / 3.8 →
+3.9 / 3.6 fps, at the arena 3.7 / 3.6 → 3.6 / 3.7, and looking straight at Sarr Auto's lot 3.6 / 3.6 → 2.9 / 3.1 (the new dealership itself, its cars and Pape Sarr). The JS of a
+frame is the same (17.2 → 17.3 ms). Software-renderer numbers compare builds; they are not phone measurements.
 
 These run in headless Chromium with a software renderer. They prove what the page does; **they are not an iPhone test**.
 
