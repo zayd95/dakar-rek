@@ -4,6 +4,7 @@
 // Usage: node scripts/check-geomap.mjs [baseUrl] [outDir]   (needs a running build or dev server)
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+const ROAD_COUNT = 3;                                   // the corridors: Pikine↔Almadies, Pikine↔Plateau, Corniche↔Plateau (the Almadies↔Corniche border street is not a corridor)
 
 const base = process.argv[2] ?? 'http://localhost:4385/';
 const out = process.argv[3] ?? 'docs/screenshots/geomap';
@@ -57,7 +58,7 @@ async function session(variant) {
     const g = window.__geoMap, m = g.map, hubs = m.getSource('hubs'), pl = [...document.querySelectorAll('.gm-me')];
     const me = document.querySelector('.gm-me'), r = me?.getBoundingClientRect(), box = document.querySelector('.gm-map').getBoundingClientRect();
     return {
-      canvas: document.querySelectorAll('.maplibregl-canvas').length, hubMarkers: document.querySelectorAll('.gm-hub').length, roadMarkers: document.querySelectorAll('.gm-road').length,
+      canvas: document.querySelectorAll('.maplibregl-canvas').length, hubMarkers: document.querySelectorAll('.gm-hub:not(.planned)').length, plannedMarkers: document.querySelectorAll('.gm-hub.planned').length, routeLayer: !!window.__geoMap?.map?.getLayer?.('route'), roadMarkers: document.querySelectorAll('.gm-road').length,
       layers: ['hubs-fill', 'hubs-line', 'corridors-casing', 'corridors'].map(id => !!m.getLayer(id)), land: !!m.getLayer('land'), refRoads: !!m.getLayer('ref-roads'),
       players: pl.length, meInside: !!r && r.left >= box.left && r.right <= box.right && r.top >= box.top && r.bottom <= box.bottom,
       center: m.getCenter().toArray(), zoom: m.getZoom(), status: document.querySelector('.gm-status')?.hidden ? '' : document.querySelector('.gm-status')?.textContent,
@@ -67,7 +68,7 @@ async function session(variant) {
   });
   console.log(tag, JSON.stringify(st));
   check(`${tag} one canvas, one WebGL context`, st.canvas === 1 && st.glMapLibre === 1);
-  check(`${tag} the playable layer is there: districts, the roads between them, 4 district markers, 2 road markers`, st.layers.every(Boolean) && st.hubMarkers === 4 && st.roadMarkers === 2, JSON.stringify(st.layers));
+  check(`${tag} the playable layer is there: districts, the roads between them, 4 district markers, 3 road markers, the planned districts dimmed, a route layer`, st.layers.every(Boolean) && st.hubMarkers === 4 && st.roadMarkers === ROAD_COUNT && st.plannedMarkers === 4 && st.routeLayer, JSON.stringify(st.layers));
   check(`${tag} the player is on the map, in view, and the map is centred on their district (Pikine)`, st.players === 1 && st.meInside && Math.abs(st.center[0] + 17.393) < 0.02 && Math.abs(st.center[1] - 14.754) < 0.02, JSON.stringify(st.center));
   check(`${tag} the scale note and the attribution are shown`, /condensés/.test(st.note) && /approximatifs/.test(st.attrib) && (variant === 'fixture' || /Natural Earth/.test(st.attrib)), st.attrib.slice(0, 120));
   if (variant === 'blocked') {

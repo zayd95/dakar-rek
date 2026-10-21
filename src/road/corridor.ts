@@ -138,7 +138,7 @@ export class CorridorView implements RoadGround {
 
   /** What the checks and the debug hook read. */
   info() {
-    return { road: this.road.id, hub: this.hub, offset: this.offset, chunks: [...this.chunks.keys()].sort((a, b) => a - b), ...this.stats, colliders: [...this.chunks.values()].reduce((a, l) => a + l.solid.length, 0), traffic: this.traffic?.positions() ?? [] };
+    return { road: this.road.id, hub: this.hub, offset: this.offset, chunks: [...this.chunks.keys()].sort((a, b) => a - b), ...this.stats, colliders: [...this.chunks.values()].reduce((a, l) => a + l.solid.length, 0), traffic: (this.traffic?.positions() ?? []).map(c => ({ ...c, x: c.x + this.offset.x, z: c.z + this.offset.z })) };       // in the loaded district's frame, like everything the debug API gives
   }
 
   dispose() {

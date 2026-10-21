@@ -62,7 +62,7 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 800 }
   const measure = () => d(() => {
     const c = [...document.querySelectorAll('#toast .mo.bc:not(.out)')].pop(); if (!c) return null;
     const r = c.getBoundingClientRect(), over = [];
-    for (const id of ['act', 'actMore', 'joy', 'runBtn', 'progress']) {
+    for (const id of ['act', 'actMore', 'joy', 'progress']) {
       const e = document.getElementById(id); if (!e) continue;
       const b = e.getBoundingClientRect(), st = getComputedStyle(e);
       if (!b.width || !b.height || st.display === 'none' || st.visibility === 'hidden' || +st.opacity <= 0.1) continue;

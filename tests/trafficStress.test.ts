@@ -60,7 +60,7 @@ function step(m: Sim, dt: number, pilot: (m: Sim) => DriveCmd) {
  * little with the brake (a vehicle that can reverse), takes the other lane to get by and comes back to its own once past; if it is still stuck it backs off and tries again.
  */
 function driver(opts: { lane?: number; boost?: boolean } = {}) {
-  let mode: 'lane' | 'back' | 'pass' = 'lane', modeT = 0, cur = 0, slowFor = 0, stuckFor = 0, obstS = 0, ownPrev = Infinity, ownT = 0;
+  let mode: 'lane' | 'back' | 'pass' = 'lane', modeT = 0, cur = 0, slowFor = 0, stuckFor = 0, obstS = 0, ownPrev = Infinity, ownT = 0, movingPass = false;
   return (m: Sim): DriveCmd => {
     const p = m.road.spine.project(m.s.x, m.s.z, cur, 160); cur = p.s;
     const dir = Math.cos(wrapAngle(m.s.yaw - p.yaw)) >= 0 ? 1 : -1, v = Math.abs(m.s.speed), canBack = m.d !== JAKARTA;
@@ -78,10 +78,25 @@ function driver(opts: { lane?: number; boost?: boolean } = {}) {
     let still = false; ownT += 1 / 60;
     if (ownT >= 0.4) { still = own < 30 && ownPrev < Infinity && v > 1.5 && (ownPrev - own) / ownT > 0.85 * v - 0.4; ownPrev = own; ownT = 0; }
     const otherClear = aheadIn(laneOf(true), 75) === Infinity;                          // he looks at the other lane before pulling out
-    if (mode === 'lane' && still && own > 8 && otherClear) { mode = 'pass'; modeT = 0; obstS = p.s + dir * own; }
+    // a slower car ahead in his lane (he sees how fast it goes): he overtakes it when the other lane is clear for a good way, as one does on this road
+    let leader: { ds: number; v: number; s: number } | null = null;
+    for (const c of m.traffic.positions()) {
+      if (c.dir !== dir) continue;
+      const ds = (c.s - p.s) * dir - 3.2, pr = m.road.spine.project(c.x, c.z, c.s, 10);
+      if (ds > 0 && ds < 45 && Math.abs(pr.d - laneOf(false)) < 2.1 && (!leader || ds < leader.ds)) leader = { ds, v: c.v, s: c.s };
+    }
+    const slowLeader = !!leader && leader.v < Math.min(v + 0.5, m.d.maxSpeed * 0.72) && leader.ds < 28;
+    if (mode === 'lane' && slowLeader && otherClear && leader!.v > 1) { mode = 'pass'; modeT = 0; obstS = leader!.s + dir * 6; movingPass = true; }
+    else if (mode === 'pass' && leader === null && false) { /* (kept simple: the leader is tracked below) */ }
+    if (mode === 'lane' && still && own > 8 && otherClear) { mode = 'pass'; modeT = 0; obstS = p.s + dir * own; movingPass = false; }
     else if (mode === 'lane' && stuckFor > 1.2 && otherClear) { mode = canBack ? 'back' : 'pass'; modeT = 0; obstS = p.s + dir * own; }
     else if (mode === 'back' && ((obstS - p.s) * dir > 13 || modeT > 6)) { mode = 'lane'; modeT = 0; stuckFor = 0; }          // then looks at the other lane again before pulling out
-    else if (mode === 'pass' && (p.s - obstS) * dir > 14) { mode = 'lane'; modeT = 0; stuckFor = 0; }
+    else if (mode === 'pass' && (p.s - obstS) * dir > 14) {
+      // still a car in his own lane just ahead of the one passed (a queue)? keep going when the other lane stays clear, else back in
+      let next: number | null = null;
+      for (const c of m.traffic.positions()) { if (c.dir !== dir) continue; const ds = (c.s - p.s) * dir, pr = m.road.spine.project(c.x, c.z, c.s, 10); if (ds > -14 && ds < 18 && Math.abs(pr.d - laneOf(false)) < 2.1) next = Math.max(next ?? -1e9, c.s * dir); }
+      if (next !== null && otherClear) obstS = next * dir + dir * 6; else { mode = 'lane'; modeT = 0; stuckFor = 0; }
+    }
     else if (mode === 'pass' && stuckFor > 3) { mode = canBack ? 'back' : 'lane'; modeT = 0; stuckFor = 0; }
     const lane = laneOf(mode === 'pass');
     const tgt = at(p.s + dir * lookFor(v), lane);
@@ -91,10 +106,10 @@ function driver(opts: { lane?: number; boost?: boolean } = {}) {
     const reach = 12 + v * 2.4, slow = own < reach ? Math.max(0, Math.min(1, (own - 6) / (reach - 6))) : 1;
     slowFor = slow;
     const safe = Math.sqrt(2 * 6 * Math.max(0, own - 5)), brake = m.s.speed > 0.5 && m.s.speed > safe + 0.5;        // a person brakes for what is ahead, not only lifts
-    const off = Math.abs(p.d - laneOf(false)), crawl = mode === 'pass' && off < 3.4 && (obstS - p.s) * dir < 10 && (obstS - p.s) * dir > -4;     // alongside the thing being passed: slow, wide
+    const off = Math.abs(p.d - laneOf(false)), crawl = mode === 'pass' && !(leader && leader.v > 1) && off < 3.4 && (obstS - p.s) * dir < 10 && (obstS - p.s) * dir > -4;     // alongside the thing being passed: slow, wide
     const merging = mode === 'lane' && Math.abs(p.d - laneOf(false)) > 1.2;                  // coming back into his lane: not at full speed
     const brakeNow = brake || (merging && m.s.speed > 7) || (crawl && m.s.speed > 2.0);
-    return { fwd: brakeNow ? 0 : merging ? 0.4 : crawl ? 0.18 : mode === 'pass' ? Math.max(0.55, Math.min(slow, 0.7)) : slowFor, steer, boost: !!opts.boost && slow > 0.9 && mode === 'lane', brake: brakeNow };
+    return { fwd: brakeNow ? 0 : merging ? 0.4 : crawl ? 0.18 : mode === 'pass' ? (movingPass ? Math.max(0.7, slow) : Math.max(0.55, Math.min(slow, 0.7))) : slowFor, steer, boost: !!opts.boost && slow > 0.9 && mode === 'lane', brake: brakeNow };
   };
 }
 

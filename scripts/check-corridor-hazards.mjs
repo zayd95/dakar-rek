@@ -79,7 +79,7 @@ if (st) {
   check('the hit is felt and costs the car: an impact is recorded and its condition falls', (after.feel?.impacts?.length ?? 0) >= 1 && after.info.asset?.condition < hp0, JSON.stringify({ hp: [hp0, after.info.asset?.condition], impacts: after.feel?.impacts?.slice(0, 2) }));
   await page.screenshot({ path: `${out}/stall-hit.png` });
   // and the car can back away and drive on
-  const brake = await t.centre('#ridepad .rp-brake'); await t.tap('#ridepad .rp-rev'); await t.down(1, gas.x, gas.y); await page.waitForTimeout(3000); await t.up(1); await t.tap('#ridepad .rp-rev');
+  const brake = await t.centre('#ridepad .rp-brake'); await t.down(1, brake.x, brake.y); await page.waitForTimeout(4000); await t.up(1);       // the brake held at the standstill backs the car up gently
   const back = await d(() => window.__dakar.berline.at());
   check('it backs away from the stall and is free again', Math.hypot(back.x - st.cx, back.z - st.cz) > minD + 1.5, JSON.stringify({ was: +minD.toFixed(2), now: +Math.hypot(back.x - st.cx, back.z - st.cz).toFixed(2) }));
   void brake;

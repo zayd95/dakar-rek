@@ -80,9 +80,6 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
   // ---- 3. a push against the wall, the gas held: one knock, the shake dies, nothing goes through
   await s.simWait(1.0);
   await startAt(s, wall, 5); const aP = await s.au(), nvP = (await s.vib()).length;
-  // the pad may have been left in reverse (the « R » of a car that stood still): the push is made in the forward gear
-  const rev = () => s.d(() => document.querySelector('#ridepad .rp-rev')?.classList.contains('on') ?? false);
-  const reverseWas = await rev(); if (reverseWas) { await s.tr.tap('#ridepad .rp-rev'); await s.page.waitForTimeout(300); }
     const g = await s.tr.centre('#ridepad .rp-gas'); await s.tr.down(1, g.x, g.y);
   await s.page.waitForTimeout(1500);
   await s.simWait(6.5);
@@ -91,14 +88,14 @@ async function onAWall(s, run) { for (const c of s.cols) { const r = await run(c
   check('held against a wall for six seconds the car knocks once or twice, not on every frame (sound and buzz)', fp.impacts.length >= 1 && fp.impacts.length <= 2 && (ap.count.impact + ap.count.tap) - (aP.count.impact + aP.count.tap) <= 2 && vp.length <= 3, JSON.stringify({ impacts: fp.impacts.length, sounds: (ap.count.impact + ap.count.tap) - (aP.count.impact + aP.count.tap), buzzes: vp.length }));
   check('the shake has died away by then (not an endless shake against the wall)', fp.shake < 0.05, JSON.stringify({ shakeNow: fp.shake }));
   check('the car is in front of the wall, never inside it', pos.x < wall.x0 - 0.8, JSON.stringify({ x: pos.x, wallX0: wall.x0 }));
-  // ---- 4. never locked in: back away with R and the gas
+  // ---- 4. never locked in: back away with the brake held at the standstill
   await s.tr.up(1);
   await s.page.waitForFunction(() => Math.abs(window.__dakar.car.at().speed) < 0.4, null, { timeout: 60000 }).catch(() => {});
-  for (let i = 0; i < 3 && !(await rev()); i++) { await s.tr.tap('#ridepad .rp-rev'); await s.page.waitForTimeout(400); }
-  const xb = (await s.at()).x; await s.tr.down(1, g.x, g.y); await s.simWait(3.5); await s.tr.up(1);
+  // the brake, held at the standstill, eases the car into a gentle reverse (there is no R button any more)
+  const br = await s.tr.centre('#ridepad .rp-brake');
+  const xb = (await s.at()).x; await s.tr.down(1, br.x, br.y); await s.simWait(4.5); await s.tr.up(1);
   const xa = (await s.at()).x;
   check('after the push the car backs away from the wall (never locked in)', xb - xa > 1, JSON.stringify({ before: xb, after: xa }));
-  if (await rev()) { await s.tr.tap('#ridepad .rp-rev'); await s.page.waitForTimeout(300); }
   // ---- 5. a scrape along the wall at an angle
   const base = await s.meter();
   const scrape = await onAWall(s, async c => {

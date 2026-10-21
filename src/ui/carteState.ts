@@ -1,7 +1,7 @@
 import type { HubId } from '../core/types';
 import { HUB_IDS } from '../core/types';
 import { HUB_NAMES, travelLeg } from '../world/content';
-import { ROADS } from '../road/routes';
+import { planTrip } from '../road/graph';
 import { walkMinutes } from '../world/walk';
 import { phoneHooks } from './phoneHooks';
 import { fcfa } from './hud';
@@ -35,6 +35,7 @@ export const shortcuts = {
 };
 
 const short = (h: HubId) => HUB_NAMES[h].split(' · ')[0];
+const driveKm = (m: number) => (m / 1000).toFixed(1).replace('.', ',') + ' km';
 
 /** « ☆ Raccourci » / « ★ Raccourci »: the pin button of a place's card. */
 export function pinHtml(s: Shortcut): string {
@@ -46,8 +47,8 @@ export function pinHtml(s: Shortcut): string {
 export function remoteCardHtml(f: Focus, here: HubId | null): string {
   const walk = !!phoneHooks.walkTo, there = f.hub === here;
   const min = here && !there ? walkMinutes(here, f.hub) : 0, leg = here && !there ? travelLeg(here, f.hub) : null;
-  const road = here && !there ? ROADS.find(r => r.touches(here) && r.touches(f.hub)) : null;               // a road you can drive between the two districts
-  const facts = there ? '' : `<p class="cm-facts"><span>🚶 ${min} min · gratuit</span>${leg ? `<span>🚌 Car rapide ${esc(fcfa(leg.cost))} · ≈ ${leg.minutes} min</span>` : ''}${road ? `<span>🛣️ Au volant · ${(road.length / 1000).toFixed(1).replace('.', ',')} km</span>` : ''}</p>`;
+  const trip = here && !there ? planTrip(here, f.hub) : null;                                              // the way to drive there (through the districts in between, when it is not a direct road)
+  const facts = there ? '' : `<p class="cm-facts"><span>🚶 ${min} min · gratuit</span>${leg ? `<span>🚌 Car rapide ${esc(fcfa(leg.cost))} · ≈ ${leg.minutes} min</span>` : ''}${trip ? `<span>🛣️ Au volant · ${driveKm(trip.metres)}${trip.hubs.length > 2 ? ` · via ${esc(trip.hubs.slice(1, -1).map(short).join(' → '))}` : ''}</span>` : ''}</p>`;
   if (f.kind === 'hub') {
     return `<div class="fm-row"><b>${esc(HUB_NAMES[f.hub])}</b>${there ? '<em>Tu es ici</em>' : ''}</div>${facts}
       ${!there && walk ? `<div class="cm-acts"><button type="button" class="ph-btn cm-go" data-walk="${f.hub}">🚶 Y aller à pied</button></div>` : ''}`;

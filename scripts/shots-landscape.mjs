@@ -33,7 +33,7 @@ for (const [label, viewport, insets] of views) {
   await page.waitForTimeout(1500);
   await shot('street');
   const W = viewport.width, H = viewport.height;
-  const ids = ['#stats', '#place', '#menuBtn', '#presenceBtn', '#chatBtn', '#goal', '#joy', '#runBtn', '#actbar', '#act'];
+  const ids = ['#stats', '#place', '#menuBtn', '#presenceBtn', '#chatBtn', '#goal', '#joy', '#actbar', '#act'];
   const boxes = {}; for (const id of ids) boxes[id] = await rect(id);
   console.log(label, JSON.stringify(boxes));
   for (const [id, b] of Object.entries(boxes)) if (b && b.r > b.l) check(`${label}: ${id} inside the safe area`, b.l >= insets.left && b.r <= W - insets.right && b.t >= insets.top && b.b <= H - insets.bottom, JSON.stringify(b));
@@ -43,7 +43,7 @@ for (const [label, viewport, insets] of views) {
     // nothing of the top HUD reaches down into the middle third of the view
     for (const id of ['#stats', '#place', '#menuBtn', '#presenceBtn', '#chatBtn', '#goal']) { const b = boxes[id]; if (b && b.r > b.l) check(`${label}: ${id} stays in the top band`, b.b <= H * 0.42, JSON.stringify(b)); }
     // the controls stay in the bottom corners
-    for (const id of ['#joy', '#runBtn']) { const b = boxes[id]; if (b) check(`${label}: ${id} in the bottom-left corner`, b.r <= W * 0.36 && b.t >= H * 0.4, JSON.stringify(b)); }
+    for (const id of ['#joy']) { const b = boxes[id]; if (b) check(`${label}: ${id} in the bottom-left corner`, b.r <= W * 0.36 && b.t >= H * 0.4, JSON.stringify(b)); }
   }
 
   // a sheet: « Ville partagée » (profile and invitation)

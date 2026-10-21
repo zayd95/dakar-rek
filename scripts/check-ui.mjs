@@ -85,8 +85,6 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   check(`${label}: action button shows the verb with its icon, 60 px tall`, act.height >= 56 && /Jus & Go/.test(actText) && !!(await d(() => document.querySelector('#act .a-ic'))), `${act.width}×${act.height} ${actText}`);
   check(`${label}: « ⋯ » is a 44 px target above the action button`, more.width >= 44 && more.height >= 44 && more.bottom <= act.top, `${more.width}×${more.height}`);
   check(`${label}: action area clear of the joystick`, !touch || !overlap(act, await rect('#joy')));
-  const run = await rect('#runBtn');
-  check(`${label}: action button clear of the « Courir » button`, !run?.width || !overlap(act, run), JSON.stringify(run));
 
   // 3. Every way of closing a sheet gives the controls back.
   const openSheet = async () => { await d(() => window.__dakar.act()); await page.waitForFunction(() => document.querySelector('#modal.on'), null, T).catch(() => {}); await settle(); return (await isOpen()) && (await mode()) === 'menu'; };
@@ -262,7 +260,7 @@ for (const [label, viewport, touch] of views.filter(v => !only.length || only.in
   const bcText = await d(() => { const c = document.querySelector('#toast .mo.bc:not(.out)'); return c ? { title: c.querySelector('.mo-tx > b')?.textContent, rows: [...c.querySelectorAll('.bc-r dt')].map(x => x.textContent), next: c.querySelectorAll('.bc-next span').length,
     font: Math.min(...[...c.querySelectorAll('.bc-v, .bc-d:not(:empty), .bc-r dt, .bc-next span')].filter(x => x.getBoundingClientRect().width > 0).map(x => parseFloat(getComputedStyle(x).fontSize))) } : null; });
   const near = [];
-  for (const s of ['#act', '#actMore', '#joy', '#runBtn', '#progress']) { const r = await rect(s); if (r?.width && bc && overlap(bc, r) && (await d(q => { const e = document.querySelector(q); const st = getComputedStyle(e); return st.display !== 'none' && +st.opacity > 0.1; }, s))) near.push(s); }
+  for (const s of ['#act', '#actMore', '#joy', '#progress']) { const r = await rect(s); if (r?.width && bc && overlap(bc, r) && (await d(q => { const e = document.querySelector(q); const st = getComputedStyle(e); return st.display !== 'none' && +st.opacity > 0.1; }, s))) near.push(s); }
   check(`${label}: the after-bout card shows the result, Palmarès, Classement, Réputation, Influence and « Ensuite »`,
     bcText?.title === 'Victoire' && ['Palmarès', 'Classement', 'Réputation', 'Influence', 'Cachet'].every(k => bcText.rows.includes(k)) && bcText.next >= 1, JSON.stringify(bcText));
   check(`${label}: the after-bout card is on screen, readable (≥ 11.5 px), clear of the action column, the joystick and « Courir »`,

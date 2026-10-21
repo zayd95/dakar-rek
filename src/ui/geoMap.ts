@@ -4,6 +4,7 @@ import { HUB_NAMES } from '../world/content';
 import { HUB_ANCHORS, gameToLngLat, hubToLngLat, roadToLngLat } from '../geo/anchors';
 import { HUB_IDS, type HubId } from '../core/types';
 import { ROADS } from '../road/routes';
+import { CITY_HUBS, planTrip, type TripPlan } from '../road/graph';
 import { mapBridge } from './minimap';
 export { geoMapHtml, geoCardHtml } from './geoMapHtml';
 import { KIND_COLOR, KIND_LABEL, nightness, type MapPlace } from './minimapMath';
@@ -84,6 +85,16 @@ export function mountGeoMap(host: HTMLElement): () => void {
       m.addSource('corridors', { type: 'geojson', data: { type: 'FeatureCollection', features: ROADS.map(r => ({ type: 'Feature', properties: { id: r.id }, geometry: { type: 'LineString', coordinates: sampleRoad(r) } })) } });
       m.addLayer({ id: 'corridors-casing', type: 'line', source: 'corridors', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': night ? '#1f1f23' : '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 4, 15, 12] } });
       m.addLayer({ id: 'corridors', type: 'line', source: 'corridors', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#e8590c', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.2, 15, 7] } });
+      // the way to drive to the district being looked at (through the districts in between): drawn over the corridors
+      m.addSource('route', { type: 'geojson', data: routeData });
+      m.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 6, 15, 15] } });
+      m.addLayer({ id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1971c2', 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 3.4, 15, 9] } });
+    };
+    let routeData: FeatureCollection = { type: 'FeatureCollection', features: [] };
+    /** Draws (or clears) the driving route of a trip plan. */
+    const setRoute = (plan: TripPlan | null) => {
+      routeData = { type: 'FeatureCollection', features: plan ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: routeLine(plan) } }] : [] };
+      try { (m.getSource('route') as ML.GeoJSONSource | undefined)?.setData(routeData); } catch { /* the style is being replaced: overlays() adds it with the data */ }
     };
     m.on('style.load', () => { if (dead) return; try { overlays(); } catch { /* a style change mid-way: the next one adds them */ } });
 
@@ -96,6 +107,8 @@ export function mountGeoMap(host: HTMLElement): () => void {
       if (!online) for (const l of data.LANDMARKS) add(div(`gm-lab gm-${l.kind}`, esc(l.name)), l.lngLat);
       for (const id of HUB_IDS) add(div('gm-hub', `<i></i>${esc(HUB_NAMES[id].split(' · ')[0])}`), HUB_ANCHORS[id].lngLat, () => showHub(id));
       for (const r of ROADS) { const mid = roadToLngLat(r, r.length / 2).lngLat; add(div('gm-road', '🛣️'), mid, () => showRoad(r)); }
+      // districts that are planned but not open yet: on the map, dimmed, with no road to them
+      for (const h of CITY_HUBS) if (h.status === 'planned') add(div('gm-hub planned', `<i></i>${esc(h.name.split(' · ')[0])}`), h.lngLat, () => showPlanned(h.name));
     };
 
     const reveal = () => card.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
@@ -104,10 +117,16 @@ export function mountGeoMap(host: HTMLElement): () => void {
     const showHub = (id: HubId) => {
       redraw = () => showHub(id);
       card.innerHTML = remoteCardHtml({ kind: 'hub', hub: id }, hubNow());
+      const h = hubNow(); setRoute(h && h !== id ? planTrip(h, id) : null);
+      reveal();
+    };
+    const showPlanned = (name: string) => {
+      redraw = () => showPlanned(name); setRoute(null);
+      card.innerHTML = `<div class="fm-row"><span class="cm-ic" aria-hidden="true">🚧</span><b>${esc(name)}</b><em>À venir</em></div><p class="fm-sub">Ce quartier n’est pas encore ouvert : pas de route pour y aller.</p>`;
       reveal();
     };
     const showRoad = (r: (typeof ROADS)[number]) => {
-      redraw = () => showRoad(r);
+      redraw = () => showRoad(r); setRoute(null);
       const a = HUB_NAMES[r.def.a].split(' · ')[0], b = HUB_NAMES[r.def.b].split(' · ')[0];
       const via = r.anchorS.slice(1, -1).map(x => esc(x.name)).join(' → ');
       card.innerHTML = `<div class="fm-row"><span class="cm-ic" aria-hidden="true">🛣️</span><b>${esc(a)} ↔ ${esc(b)}</b><em>Route</em></div>
@@ -127,6 +146,7 @@ export function mountGeoMap(host: HTMLElement): () => void {
       if (f.kind === 'hub') { showHub(f.hub); map?.easeTo({ center: HUB_ANCHORS[f.hub].lngLat, zoom: Math.max(map.getZoom(), 12.5), duration: 500 }); return; }
       redraw = () => { card.innerHTML = remoteCardHtml(f, hubNow()); };
       redraw(); reveal();
+      const h = hubNow(); setRoute(h && h !== f.hub ? planTrip(h, f.hub) : null);
       map?.easeTo({ center: HUB_ANCHORS[f.hub].lngLat, zoom: Math.max(map.getZoom(), 12.5), duration: 500 });
     };
     focusHandler = onFocus; host.addEventListener('carte:focus', onFocus); host.addEventListener('carte:refresh', () => redraw());
@@ -223,6 +243,16 @@ function sampleRoad(r: (typeof ROADS)[number]): [number, number][] {
   const out: [number, number][] = [];
   for (let s = 0; s < r.length; s += 12) out.push(roadToLngLat(r, s).lngLat);
   out.push(roadToLngLat(r, r.length).lngLat);
+  return out;
+}
+
+/** The drive of a trip plan on the map: district centre → road → district centre …, each corridor read in the direction it is driven. */
+function routeLine(plan: TripPlan): [number, number][] {
+  const out: [number, number][] = [HUB_ANCHORS[plan.from].lngLat];
+  for (const l of plan.legs) {
+    if (l.edge.road) { const seg = sampleRoad(l.edge.road); out.push(...(l.from === l.edge.road.def.b ? seg.reverse() : seg)); }
+    out.push(HUB_ANCHORS[l.to].lngLat);
+  }
   return out;
 }
 
