@@ -23,18 +23,22 @@ await page.goto(`${base}?debug&touch&heure=11&audiodebug&klaxon`, { timeout: 120
 await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
 check('before any touch the page may not make sound (the rule an iPhone applies)', !(await au()).gestured && (await au()).state === 'none', JSON.stringify(await au()));
 
-// ---- into a car through the dealer's real menu (these are taps: the gestures that unlock the sound), then at the wheel
+// ---- into the car on Ndiaye Auto's floor with Moussa Ndiaye's keys, by real taps (the gestures that unlock the sound), then at the wheel
 await d(() => window.__dakar.teleport('plateau'));
-await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.car?.info().dealer, null, T);
-const dealer = (await info()).dealer, rx = near(dealer.x), rz = near(dealer.z), road = Math.abs(dealer.z - rz) < Math.abs(dealer.x - rx) ? { x: 0, z: Math.sign(rz - dealer.z) || 1 } : { x: Math.sign(rx - dealer.x) || 1, z: 0 };
-await d(([p, r]) => window.__dakar.place(p.x + r.x * 0.7 + (r.x ? 0 : 0.4), p.z + r.z * 0.7 + (r.z ? 0 : 0.4), Math.atan2(-r.x, -r.z)), [dealer, road]);
-await page.waitForFunction(() => /Voir les articles/.test(window.__dakar.focus()?.all?.join('|') ?? ''), null, T).catch(() => {});
-await tr.tap('#act'); await page.waitForSelector('#modal.on', T);
-await page.locator('#modal .item', { hasText: 'Essayer gratuitement' }).first().tap();
-await page.waitForFunction(() => window.__dakar.car.info().here, null, T);
-const c0 = await info();
-await d(c => { const f = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }; window.__dakar.place(c.x - f.x * 3.3, c.z - f.z * 3.3, c.yaw); }, c0);
-await page.waitForTimeout(1200);
+await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.car?.info().floor.some(f => f.here) && window.__dakar.sales_ndiaye?.info().here, null, T);
+const f0 = (await info()).floor[0];
+for (const [dx, dz] of [[0, -3.2], [3.2, 0], [-3.2, 0], [0, 3.2]]) {                // in front of the car, where its own prompt is offered
+  await d(([x, z, cx, cz]) => window.__dakar.place(x, z, Math.atan2(cx - x, cz - z)), [f0.x + dx, f0.z + dz, f0.x, f0.z]);
+  if (await page.waitForFunction(() => window.__dakar.focus()?.id === 'car:floor:0', null, { timeout: 4000 }).then(() => true, () => false)) break;
+}
+await tr.tap('#act');
+await page.waitForFunction(() => /clés/.test(document.querySelector('#modal.on')?.textContent ?? ''), null, T);
+await page.locator('#modal .item', { hasText: 'Prendre les clés' }).first().tap();
+await page.waitForFunction(() => window.__dakar.pos().mode === 'play', null, T);
+const c0 = (await info()).floor[0];
+await d(s => window.__dakar.place(s.x, s.z, 0), c0.step);
+await page.waitForFunction(() => /Ouvrir/.test(window.__dakar.focus()?.primary ?? ''), null, T);
+await page.waitForTimeout(800);
 await tr.tap('#act');
 await page.waitForFunction(() => window.__dakar.car.info().driving, null, T);
 await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, T);
