@@ -98,7 +98,7 @@ export const ECONOMY = {
       /** He finances a car up to this price (a city car), one credit at a time. */
       maxPrice: 6_000_000,
       /** Terms by trust, best first: a fixed down payment or a share of the price, and in how many installments the rest is repaid. */
-      tiers: [{ trust: 60, down: 50_000, n: 40 }, { trust: 45, share: 0.1, n: 30 }, { trust: 30, share: 0.25, n: 20 }, { trust: 20, share: 0.4, n: 12 }],
+      tiers: [{ trust: 60, down: 15_000, n: 40 }, { trust: 45, share: 0.05, n: 36 }, { trust: 30, share: 0.15, n: 30 }, { trust: 20, share: 0.3, n: 20 }],
       /** City days between installments (one city day is 24 minutes of play). */
       every: 2,
       /** Due dates missed with him before he refuses any new credit. */

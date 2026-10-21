@@ -13,6 +13,7 @@ import { say } from '../i18n/wolof';
 import { C, dealerOffer, nextLoanSeq, openLoan, openLoans, standing } from '../economy/credit';
 import { creditClock } from '../economy/creditModule';
 import { specOf } from '../economy/catalog';
+import { cannotSell } from '../economy/assets';
 import { addMissionGuide } from '../game/missionGuide';
 import { inBay } from './garage';
 import { garage } from './garageModule';
@@ -175,12 +176,19 @@ class SarrAuto implements GameModule, TargetSource {
       return;
     }
     ctx.menu('Pape Sarr · un service', `${say('Na nga def ?')} Tu peux m’aider ? Chaque course une fois par jour, payée à ton retour.`, [
-      ...ORDER.map(k => ({ icon: k === 'papers' ? '📄' : k === 'wash' ? '🧽' : '🔑', label: ERRANDS[k].label, detail: this.doneToday(k) ? 'Déjà fait aujourd’hui : reviens demain' : ERRANDS[k].detail, right: fcfa(ERRANDS[k].pay), disabled: this.doneToday(k) || !this.canStart(k), reason: this.canStart(k) ? undefined : 'Pas possible maintenant', onPick: () => { close(); this.start(k); } })),
+      ...ORDER.map(k => ({ icon: k === 'papers' ? '📄' : k === 'wash' ? '🧽' : '🔑', label: ERRANDS[k].label, detail: this.doneToday(k) ? 'Déjà fait aujourd’hui : reviens demain' : this.canStart(k) ? ERRANDS[k].detail : this.notNow(k), right: fcfa(ERRANDS[k].pay), disabled: this.doneToday(k) || !this.canStart(k), reason: this.canStart(k) ? undefined : this.notNow(k), onPick: () => { close(); this.start(k); } })),
       { icon: '↩️', label: 'Pas maintenant', onPick: close },
     ]);
   }
+  /** Why an errand cannot start now (the menu says it). */
+  private notNow(k: ErrandKind) {
+    if (!sarrSales.open(this.ctx)) return 'Le parc est fermé';
+    if ((k === 'garage' || k === 'client') && teranga.carOut) return 'Un de ses gars ramène d’abord l’autre voiture au parc';
+    return 'Pas possible maintenant';
+  }
   private canStart(k: ErrandKind) {
     if (!sarrSales.open(this.ctx)) return false;
+    if ((k === 'garage' || k === 'client') && teranga.carOut) return false;          // one of the lot's cars still out (parked where the last errand left it)
     if (k === 'garage') return teranga.floorCars().some(c => c.slot === 1 && c.state === 'display') && !!garage.bayNow();
     if (k === 'client') return teranga.floorCars().some(c => c.slot === 0 && c.state === 'display');
     if (k === 'wash') return !!this.wash;
@@ -299,6 +307,8 @@ class SarrAuto implements GameModule, TargetSource {
         offer: () => dealerOffer({ trust: this.trust(), price: specOf('teranga')?.price ?? 0, wallet: this.ctx.state.wallet, loans: this.loans() }),
         sign: (slot: number) => { const o = dealerOffer({ trust: this.trust(), price: specOf('teranga')?.price ?? 0, wallet: this.ctx.state.wallet, loans: this.loans() }); return o.verdict === 'accept' ? this.sign(slot, o.down, o.installment, o.every, o.principal, PAINTS.teranga[slot]?.name ?? '') : o; },
         pay: (amount: number) => { const l = openLoans(this.loans(), 'sarr')[0]; return l ? this.pay(l, amount) : 0; },
+        /** Checks: why the financed car cannot be sold now (null: it can). */
+        whyNotSell: () => { const a = this.ctx.state.data.assets.list.find(x => x.spec === 'teranga'); return a ? cannotSell(this.ctx.state, a.uid) : 'none'; },
       },
     };
   }

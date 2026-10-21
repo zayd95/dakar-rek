@@ -26,6 +26,7 @@ import { fcfa } from './hud';
 import { quietLog, ago } from './quiet';
 import { walkMinutes } from '../world/walk';
 import { restSpotHere } from '../game/rest';
+import { mountSoundTest, soundTestHtml, type TestKit } from './soundTest';
 
 export type Quality = 'low' | 'medium' | 'high';
 
@@ -53,7 +54,7 @@ export interface PhoneContext {
 let lastMapTab: 'quartier' | 'ville' = 'quartier';
 /** The vehicles list under the map's strip stays as the player left it while the screen is redrawn (marking a dealer redraws it). */
 let vehiclesOpen = false;
-type ScreenId = 'home' | 'reglages' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus' | 'cesoir' | 'lutteurs' | 'notifs';
+type ScreenId = 'home' | 'reglages' | 'sontest' | 'aide' | 'nouvelle' | 'carnet' | 'portefeuille' | 'carte' | 'arene' | 'meteo' | 'calcul' | 'sante' | 'profil' | 'horloge' | 'actus' | 'cesoir' | 'lutteurs' | 'notifs';
 interface Tile { id: string; label: string; color: string; icon: string; screen?: ScreenId; hook?: () => (() => void) | undefined }
 
 const ICON: Record<string, string> = {
@@ -128,7 +129,7 @@ const TILES: Tile[] = [
 ];
 
 const TITLES: Record<ScreenId, string> = {
-  home: 'Téléphone', reglages: 'Réglages', aide: 'Aide', nouvelle: 'Nouvelle partie', carnet: 'Carnet',
+  home: 'Téléphone', reglages: 'Réglages', sontest: 'Test du son', aide: 'Aide', nouvelle: 'Nouvelle partie', carnet: 'Carnet',
   portefeuille: 'Portefeuille', carte: 'Carte et déplacements', arene: 'Arène', meteo: 'Météo', calcul: 'Calculatrice', sante: 'Santé', profil: 'Profil', horloge: 'Horloge', actus: 'Actus · Dakar', cesoir: 'Ce soir', lutteurs: 'Lutteurs',
   notifs: 'Notifications',
 };
@@ -164,8 +165,10 @@ export class Phone {
   /** Navigation stack below the home screen; kept between openings. */
   private stack: ScreenId[] = [];
   private timer = 0;
-  /** Cleanup of the interactive map of the « Carte » screen (src/ui/fullmap.ts). */
+  /** Cleanup of the live screen showing (the interactive map of « Carte », src/ui/fullmap.ts; the sound test, src/ui/soundTest.ts). */
   private mapOff: (() => void) | null = null;
+  /** The sound test's vehicle (car or Jakarta). */
+  private testKit: TestKit = 'sedan';
   /** Places seen in each hub, remembered on this device. */
   private known: Partial<Record<HubId, string[]>> = {};
 
@@ -264,6 +267,7 @@ export class Phone {
     switch (id) {
       case 'home': s.innerHTML = this.homeHtml(); break;
       case 'reglages': s.innerHTML = this.settingsHtml(); break;
+      case 'sontest': s.innerHTML = soundTestHtml(this.testKit); break;
       case 'aide': s.innerHTML = HELP_HTML; break;
       case 'nouvelle': s.innerHTML = `<p class="ph-note">Effacer la partie enregistrée sur cet appareil ? Argent, relations et progression seront perdus. Cette action est définitive.</p>
         <button type="button" class="ph-btn" data-act="cancel">Annuler</button>
@@ -284,6 +288,7 @@ export class Phone {
     }
     this.bind();
     if (id === 'carte') this.mapOff = this.mountCarte(s);
+    if (id === 'sontest') this.mapOff = mountSoundTest(s, k => { this.testKit = k; this.render(); }, this.testKit);
   }
 
   /**
@@ -487,6 +492,7 @@ export class Phone {
       <p class="ph-note">Basse : plus fluide sur les petits téléphones. Le quartier est reconstruit, tu restes où tu es.</p>
       <h3>Son</h3>
       <button type="button" class="ph-toggle ${muted ? '' : 'on'}" data-act="sound" aria-pressed="${!muted}"><span>Son du jeu</span><em>${muted ? 'Coupé' : 'Activé'}</em></button>
+      <button type="button" class="ph-btn" data-act="soundtest">Tester le son<small>Démarrage, moteur, klaxon, chocs : le vrai son du jeu, et ce qui l’empêche</small></button>
       ${canVibrate()
         ? `<button type="button" class="ph-toggle ${hapticsOn() ? 'on' : ''}" data-act="haptics" aria-pressed="${hapticsOn()}"><span>Vibrations (chocs, klaxon)</span><em>${hapticsOn() ? 'Activées' : 'Coupées'}</em></button>`
         : `<p class="ph-note">Ce navigateur ne fait pas vibrer le téléphone : les chocs se sentent par le son et la caméra.</p>`}
@@ -621,6 +627,7 @@ export class Phone {
     const act = (name: string, fn: () => void) => s.querySelector(`[data-act="${name}"]`)?.addEventListener('click', fn);
     act('minimap', () => { mapBridge.setEnabled(!mapBridge.enabled); this.render(); });
     act('sound', () => { setMuted(!isMuted()); this.render(); });
+    act('soundtest', () => this.go('sontest'));
     act('haptics', () => { setHaptics(!hapticsOn()); this.render(); });
     act('gloss', () => { setGlossesShown(!glossesShown()); this.render(); });
     act('save', () => this.ctx.toast(this.ctx.save() ? 'Partie sauvegardée' : 'Sauvegarde impossible sur ce navigateur'));

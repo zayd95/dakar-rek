@@ -591,6 +591,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   trialCar() {
     return this.trial && this.vehicle && this.trialSlot >= 0 && !this.returned ? { x: this.st.x, z: this.st.z, yaw: this.st.yaw, driving: this.driving, slot: this.trialSlot, name: this.label(), price: this.price() } : null;
   }
+  /** A dealer's car still out of its bay (on a trial or an errand, handed back or not, until it is collected). */
+  get carOut() { return this.trial && !!this.vehicle; }
   returnTrial() {
     if (!this.trial || !this.vehicle || this.driving) return;
     this.returned = true; this.ctx.toast(`Rendue : ${this.sales().cfg.title} la reprend, dès qu’elle ne gêne plus la vue.`);
@@ -799,7 +801,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
           dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.lots ?? this.dealer.site.displays.length, onSale: this.dealer.sale ? this.dealer.sale.group.visible : null, card: !!this.dealer.card } : null,
           space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, views: this.spec?.cameras.map(c => c.id) ?? [], view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
-        at: () => this.vehicle ? { t: +this.simT.toFixed(3), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active } : null,
+        at: () => this.vehicle ? { t: +this.simT.toFixed(3), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active, paddling: this.ctl.paddling, rBadge: this.ctl.showR, clip: this.vehicle.driverSeat?.clip ?? null } : null,
         card: () => this.card?.text ?? '',
         /** Checks: the vehicle sounds (counts asked and played, whether the engine runs). */
         audio: () => vehicleAudio.info(),

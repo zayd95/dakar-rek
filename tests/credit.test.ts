@@ -19,13 +19,13 @@ describe('Pape Sarr\'s credit (src/economy/credit.ts dealerOffer)', () => {
     const [a, b, c, d] = [20, 30, 45, 60].map(at);
     for (const o of [a, b, c, d]) expect(o.verdict).toBe('accept');
     expect(a.down).toBeGreaterThan(b.down); expect(b.down).toBeGreaterThan(c.down); expect(c.down).toBeGreaterThan(d.down);
-    expect(d.down).toBe(50_000);
+    expect(d.down).toBe(15_000);
     expect(d.installments).toBeGreaterThan(a.installments);
     for (const o of [a, b, c, d]) { expect(o.down + o.principal).toBe(TERANGA); expect(o.installment * o.installments).toBeGreaterThanOrEqual(o.principal); }
   });
   it('counters when the wallet cannot cover the down payment (the same terms, signing waits)', () => {
-    const o = dealerOffer({ trust: 60, price: TERANGA, wallet: 49_999, loans: [] });
-    expect(o.verdict).toBe('counter'); expect(o.down).toBe(50_000); expect(o.line).toMatch(/50/);
+    const o = dealerOffer({ trust: 60, price: TERANGA, wallet: 14_999, loans: [] });
+    expect(o.verdict).toBe('counter'); expect(o.down).toBe(15_000); expect(o.line).toMatch(/15/);
   });
   it('one credit at a time, a city car only, and not after letting him down', () => {
     expect(dealerOffer({ trust: 80, price: TERANGA, wallet: 1e9, loans: [loan()] }).verdict).toBe('refuse');

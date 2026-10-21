@@ -95,6 +95,8 @@ button.ph-wid { cursor:pointer; }
 .ph-sub { margin:0 4px 8px; font-size:13px; color:var(--ios-sub); }
 .ph-btn { display:block; width:100%; margin-top:8px; padding:13px 16px; border:0; border-radius:12px; background:var(--ios-card); color:var(--ios-blue);
   font:400 16px/1.25 var(--ph-font); text-align:left; cursor:pointer; }
+#phone .ph-sound { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin-top:10px; }
+#phone .ph-sound .ph-btn { margin-top:0; text-align:center; font-weight:600; }
 .ph-btn small { display:block; margin-top:2px; font-size:12.5px; color:var(--ios-sub); }
 .ph-btn:active { background:#e5e5ea; }
 .ph-btn.danger { background:#ff3b30; color:#fff; text-align:center; font-weight:600; }

@@ -1,7 +1,7 @@
 // How the vehicles FEEL with the analog controls (src/transport/controls.ts), measured with REAL touch on the phone-sized page, on the Pikine ↔ Almadies road (about 1.5 km):
 // the stick alone (a full push: the cruising speed), the stick with « Accélérer » held (the boosted range), the travel time of the whole road in game seconds for each, the brake
 // that stops the car and, held at the standstill, backs it up gently (with the subtle « R » badge only while it really moves backwards and no reverse once let go), and a motorbike
-// whose brake never reverses. The numbers go to the log: they are the evidence for the calibration (travel times, top speeds), not thresholds beyond sanity.
+// that has no reverse gear: its rider pushes it backwards with the feet, slowly, and only while the brake is held. The numbers go to the log: they are the evidence for the calibration (travel times, top speeds), not thresholds beyond sanity.
 // Usage: node scripts/check-drive-feel.mjs <baseUrl> <outDir> <berlineSaveJson> <motoSaveJson>
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -78,7 +78,11 @@ for (const [save, key, label] of [[berlineSave, 'berline', 'Berline'], [motoSave
     check(`${label}: the brake let go, the reverse stops and the « R » goes`, Math.abs(after.speed) < 0.2 && !(await S.d(() => document.querySelector('#ridepad').classList.contains('reversing'))), JSON.stringify({ v: after.speed }));
     check(`${label}: there is no separate R button`, (await S.d(() => document.querySelector('#ridepad .rp-rev'))) === null);
   } else {
-    check(`${label}: the motorbike's brake never reverses it (min ${hold.minV.toFixed(2)} m/s) and shows no « R »`, hold.minV > -0.2 && !hold.badge, JSON.stringify(hold));
+    // no reverse gear on a motorbike: held at the standstill the brake has the rider push it backwards with the feet, at a slow walk at most, with no « R »
+    check(`${label}: the brake held at the standstill: the rider pushes the motorbike backwards with the feet (min ${hold.minV.toFixed(2)} m/s, a walk at most) and no « R » shows`, hold.minV < -0.3 && hold.minV > -0.95 && !hold.badge, JSON.stringify(hold));
+    await S.page.waitForTimeout(600);
+    const after = await S.AT();
+    check(`${label}: the brake let go, the push stops at once`, Math.abs(after.speed) < 0.15 && !after.paddling, JSON.stringify({ v: after.speed, paddling: after.paddling }));
   }
   check(`${label}: no JavaScript errors`, S.errors.length === 0, S.errors.slice(0, 2).join(' | '));
   await S.ctx.close();

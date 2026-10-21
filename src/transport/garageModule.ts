@@ -146,8 +146,8 @@ export class GarageModule implements GameModule, TargetSource {
     if (!this.bay || space !== 'street' || this.ctx.player.seated()) return;
     if (Math.hypot(x - this.bay.x, z - this.bay.z) > REACH) return;
     this.target.x = this.bay.x; this.target.z = this.bay.z;
-    const need = this.vehicles().some(v => v.hp < 100);
-    this.target.bias = need || this.job ? -1.5 : 3;                                          // it wins the prompt when a vehicle in the bay needs the garage; otherwise it stays in the sheet
+    const need = this.vehicles().some(v => v.hp < 100), owed = openLoans(this.ctx.state.data.loans.list, 'modou').length > 0;
+    this.target.bias = need || this.job ? -1.5 : owed ? -0.5 : 3;                            // it wins the prompt when a vehicle in the bay needs the garage, or the player owes Modou; otherwise it stays in the sheet
     out.push(this.target);
   }
   private affordances(): Affordance[] {

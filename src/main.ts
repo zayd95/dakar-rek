@@ -205,6 +205,8 @@ let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
 /** Set once the module context (`ctx`, below) exists. */
 let ctxReady = false;
 let hourOverride: number | null = TEST.hour;
+/** Checks: days moved forward on the city's calendar (the vehicles economy's debts and once-a-day errands are dated by city day). */
+let dayShift = 0;
 /** Walkable interiors of this hub, and the one the player is in. */
 let interiors = new Map<string, Interior>();
 let inside: { int: Interior; door: Interactable } | null = null;
@@ -594,7 +596,7 @@ const people = interactions.add(new People(() => [
 const ctx: GameCtx = {
   scene, camera, follow, extra, state, hud, input, interactions, seats, people, places, activities, inventory,
   quality: () => quality, world: () => world, inside: () => inside, space: () => interactSpace(),
-  hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day, now: () => presence.serverNow(),
+  hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day + dayShift, now: () => presence.serverNow(),
   player: {
     pos, facing: () => facing, body: () => playerBody, seated: () => seated,
     sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace), drive: m => { drive = m; },
@@ -1610,6 +1612,8 @@ if (DEBUG) {
     // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
     setHour(h: number | null) { hourOverride = h; },
+    /** Checks: the next city day(s) for the modules that date things by day (errands, debts). */
+    nextDay(n = 1) { dayShift += n; return cityTimeAt(presence.serverNow()).day + dayShift; },
     camera: () => ({ at: [camera.position.x, camera.position.y, camera.position.z], fov: camera.fov, aspect: Math.round(camera.aspect * 1000) / 1000, hfov: Math.round(2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) * 1800 / Math.PI) / 10 }),
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null, yaw: facing, cam: follow.yaw }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],

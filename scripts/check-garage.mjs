@@ -19,7 +19,14 @@ const tr = await realTouch(page);
 const g = () => d(() => window.__dakar.garage.info()), m = () => d(() => window.__dakar.moto.info()), wallet = () => d(() => window.__dakar.state.wallet), hp = () => d(() => window.__dakar.moto.health());
 const wait = (fn, arg, ms = 180000) => page.waitForFunction(fn, arg, { timeout: ms });
 const shot = async n => { await page.waitForTimeout(400); await page.screenshot({ path: `${out}/${n}.png` }); };
-const quote = (price, hp0) => { const lost = 100 - hp0; if (lost < 3) return 0; const step = price >= 1e6 ? 500 : 100; return Math.max(1000, Math.round(price * 0.001 * lost / step) * step); };
+// the garage's price (src/transport/garage.ts garageQuote, src/transport/condition.ts workCost, ECONOMY.repair): by damage, scaled gently by the vehicle's class; nothing for a touch-up
+const REPAIR = { freeBelow: 5, points: [[5, 2000], [15, 8000], [40, 33000], [100, 63000]], classRef: 6e6, classExp: 0.3, classMin: 0.3, classMax: 2.2 };
+const quote = (price, hp0) => {
+  const lost = Math.max(0, Math.min(100, 100 - hp0)); if (lost < 3) return 0;
+  let cost = 0;
+  if (lost >= REPAIR.freeBelow) { const P = REPAIR.points; let base = P[P.length - 1][1]; for (let i = 1; i < P.length; i++) if (lost <= P[i][0]) { const [x0, y0] = P[i - 1], [x1, y1] = P[i]; base = y0 + ((y1 - y0) * (lost - x0)) / (x1 - x0); break; } cost = Math.round((base * Math.min(REPAIR.classMax, Math.max(REPAIR.classMin, Math.pow(price / REPAIR.classRef, REPAIR.classExp)))) / 500) * 500; }
+  return Math.max(1000, cost);
+};
 
 async function boot(reload = false) {
   if (reload) { await d(() => window.__dakar.save?.()); await page.waitForTimeout(1200); await page.reload(); } else await page.goto(`${base}?debug&touch&heure=11&argent=50000000`, { timeout: 120000 });

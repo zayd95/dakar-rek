@@ -107,7 +107,7 @@ export const ndiayeSales = new PrestigeSales({
  */
 export const SARR_HUB = 'pikine' as const;
 export function sarrLot() {
-  const k = kerbDealer(89, 6.2, { displays: [{ along: -8.2, seed: 0 }, { along: -1.6, seed: 0 }, { along: 5.0, seed: 0 }, { along: 11.4, seed: 0 }], delivery: 17.5, sign: -12.6, desk: true, clear: [-14, 21] });
+  const k = kerbDealer(89, 6.2, { displays: [{ along: -8.2, seed: 0 }, { along: -1.6, seed: 0 }, { along: 5.0, seed: 0 }, { along: 11.4, seed: 0 }], delivery: 20.5, sign: -12.6, desk: true, clear: [-14, 24] });
   const xs = k.displays.map(d => d.x), zs = k.displays.map(d => d.z);
   return {
     ...k,

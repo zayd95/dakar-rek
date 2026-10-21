@@ -33,6 +33,7 @@ class CreditClock implements GameModule {
     ctx.menu(`Rembourser · ${l.label}`, `Reste ${fcfa(st.left)} · ${st.late > 0 ? `en retard : ${fcfa(st.late)}` : `prochaine échéance ${fcfa(st.next)} le jour ${st.nextDay}`}`, [
       ...(st.late > 0 ? [opt('Payer le retard', st.late, 'Ce qui aurait dû être payé')] : []),
       opt('Payer une échéance', Math.min(l.installment, st.left), 'D’avance, ça compte aussi'),
+      ...(ctx.state.wallet < Math.min(l.installment, st.left) && ctx.state.wallet >= 1000 ? [opt('Payer ce que j’ai', Math.floor(Math.min(ctx.state.wallet, st.left) / 500) * 500, 'Une partie de l’échéance : ça compte, le reste plus tard')] : []),
       opt('Tout rembourser', st.left, l.kind === 'vehicle' ? 'Et la voiture est entièrement à toi' : 'Et l’ardoise est effacée'),
       { icon: '↩️', label: 'Pas maintenant', onPick: close },
     ]);
