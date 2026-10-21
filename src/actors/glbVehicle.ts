@@ -20,9 +20,12 @@ import { buildCockpit } from './cockpit';
 export interface GlbWheel { spin: THREE.Object3D; steer: THREE.Object3D | null; r: number }
 export interface GlbRig { wheels: GlbWheel[]; angle: number; steerMax: number; /** The cockpit's steering wheel (a solid-shell body only). */ cockpitWheel?: THREE.Object3D }
 
-interface Prepared { scene: THREE.Object3D; wheels: { id: string; r: number; steer: boolean }[]; tris: number; drawCalls: number; interior: boolean; far: THREE.Object3D | null }
+interface Prepared { scene: THREE.Object3D; wheels: { id: string; r: number; steer: boolean }[]; tris: number; drawCalls: number; interior: boolean; far: THREE.Object3D | null; far2: THREE.Object3D | null }
 /** Beyond this distance an authored body is drawn as its far model: the same shell and details merged into two meshes, wheels fixed (8 draw calls → 2). */
 export const FAR_LOD = 38;
+/** Beyond this one, the far model coarser still: its vertices gathered on a grid of CLUSTER metres (a car across a district is a few pixels; it keeps its paint). */
+export const FAR2_LOD = 70;
+const CLUSTER = 0.16;
 const prepared = new Map<string, Prepared | null>();
 
 /** The prepared bodies are used, except on a test host (local, preview) with `?vehicleModel=kit`. */
@@ -83,7 +86,8 @@ export function prepare(scene: THREE.Object3D, interior = false): Prepared {
     }
     if (/^axle_/.test(o.name)) wheels.push({ id: o.name.slice(5), r: o.userData.r ?? 0.3, steer: !!o.userData.steer });
   });
-  return { scene, wheels, tris, drawCalls, interior, far: farModel(scene) };
+  const far = farModel(scene);
+  return { scene, wheels, tris, drawCalls, interior, far, far2: far && coarse(far) };
 }
 
 /** Float copies of a geometry's attributes (quantised normals and uvs become plain floats), so pieces from different meshes merge. */
@@ -124,6 +128,40 @@ function farModel(scene: THREE.Object3D): THREE.Object3D | null {
   return far;
 }
 
+/** The far model with its meshes coarsened (vertex clustering): the same materials, a fraction of the triangles. */
+function coarse(far: THREE.Object3D): THREE.Object3D {
+  const out = new THREE.Group(); out.name = 'far2';
+  for (const c of far.children) {
+    const m = c as THREE.Mesh; if (!m.isMesh) continue;
+    const mesh = new THREE.Mesh(clustered(m.geometry, CLUSTER), m.material); mesh.name = m.name; mesh.castShadow = true; mesh.userData.shared = true;
+    out.add(mesh);
+  }
+  return out;
+}
+/** Every vertex moves onto the first vertex of its grid cell (its normal and uv too); the triangles that collapse are dropped. */
+function clustered(g: THREE.BufferGeometry, cell: number): THREE.BufferGeometry {
+  const pos = g.attributes.position, n = pos.count, idx = g.index ? (g.index.array as ArrayLike<number>) : null;
+  const slot = new Map<string, number>(), remap = new Int32Array(n), keep: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const k = `${Math.round(pos.getX(i) / cell)},${Math.round(pos.getY(i) / cell)},${Math.round(pos.getZ(i) / cell)}`;
+    let j = slot.get(k); if (j === undefined) { j = keep.length; slot.set(k, j); keep.push(i); }
+    remap[i] = j;
+  }
+  const out = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(g.attributes)) {
+    const s = a.itemSize, src = a.array as ArrayLike<number>, arr = new Float32Array(keep.length * s);
+    keep.forEach((i, j) => { for (let c = 0; c < s; c++) arr[j * s + c] = src[i * s + c]; });
+    out.setAttribute(name, new THREE.BufferAttribute(arr, s));
+  }
+  const tri: number[] = [], len = idx ? idx.length : n;
+  for (let t = 0; t + 2 < len; t += 3) {
+    const a = remap[idx ? idx[t] : t], b = remap[idx ? idx[t + 1] : t + 1], c = remap[idx ? idx[t + 2] : t + 2];
+    if (a !== b && b !== c && a !== c) tri.push(a, b, c);
+  }
+  out.setIndex(tri);
+  return out;
+}
+
 /** The wheels of a model built with the node names above (what the pipeline writes). */
 export function rigOf(root: THREE.Object3D, steerMax = 0.6): GlbRig {
   const wheels: GlbWheel[] = [];
@@ -144,9 +182,10 @@ export function glbVehicle(id: string, kit: VehicleSpec): THREE.Group | null {
   if (!p) return null;
   const g = new THREE.Group(); g.name = `glb_${id}`;
   const body = p.scene.clone(true);
-  if (p.far) {                                                   // near: the whole rig; far (FAR_LOD): two merged meshes
+  if (p.far) {                                                   // near: the whole rig; far (FAR_LOD): two merged meshes; farther (FAR2_LOD): the same, coarse
     const lod = new THREE.LOD(); lod.name = 'glb_lod';
     lod.addLevel(body, 0); lod.addLevel(p.far.clone(true), FAR_LOD);
+    if (p.far2) lod.addLevel(p.far2.clone(true), FAR2_LOD);
     g.add(lod);
   } else g.add(body);
   g.userData.vehicleSpec = kit;
