@@ -194,7 +194,12 @@ const st = await d(() => window.__dakar.vtc.stops());
 console.log('ride', pickHour.r.pickup.name, '→', pickHour.r.dropoff.name, pickHour.r.fare, 'F', JSON.stringify(st.pickup.car));
 await page.waitForFunction(() => window.__dakar.vtc.info().phase === 'wait', null, T);
 const route = (from, to) => gridRoute({ x: from.x, z: from.z, yaw: from.yaw }, to, { cruise: 6 });
-await pilot(page, t, 'teranga', route(car, st.pickup.car), { brakeAtEnd: true, cruise: 6, stall: 60000, ms: 1200000 });
+// off Sarr's kerb as the errands leave it: 5 m on and 2.8 m out (his other floor cars stand along the kerb ahead), then into the traffic lane, 2.1 m right of the street's centre line
+const pullOut = c => { const F = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }, R = { x: -Math.cos(c.yaw), z: Math.sin(c.yaw) }, p = { x: c.x + F.x * 9, z: c.z + F.z * 9 };
+  const snap = v => [-120, -60, 0, 60, 120].reduce((b, s) => (Math.abs(s - v) < Math.abs(b - v) ? s : b));
+  const q = Math.abs(F.x) > Math.abs(F.z) ? { x: p.x, z: snap(c.z) } : { x: snap(c.x), z: p.z };
+  return [{ x: c.x + F.x * 5 - R.x * 2.8, z: c.z + F.z * 5 - R.z * 2.8, tol: 2, speed: 3 }, { x: q.x + F.x * 4 + R.x * 2.1, z: q.z + F.z * 4 + R.z * 2.1, tol: 2.5, speed: 4 }]; };
+await pilot(page, t, 'teranga', [...pullOut(car), ...route(car, st.pickup.car)], { brakeAtEnd: true, cruise: 6, stall: 60000, ms: 1200000 });
 await page.waitForFunction(() => window.__dakar.vtc.info().phase === 'walk' || window.__dakar.vtc.info().trip?.stage === 'aboard', null, { timeout: 60000 }).catch(() => {});
 await page.waitForTimeout(1200); await shot('passenger-walks-to-car');
 await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'aboard', null, { timeout: 90000 }).catch(() => {});
