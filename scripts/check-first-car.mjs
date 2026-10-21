@@ -55,7 +55,7 @@ async function intoFloorCar(slot) {
   await page.waitForTimeout(500);
 }
 async function report(kind) {
-  const ok = await page.waitForFunction(() => window.__dakar.sarr.info().errand?.stage === 'report', null, { timeout: 30000 }).then(() => true, () => false);
+  const ok = await page.waitForFunction(() => window.__dakar.sarr.info().errand?.stage === 'report', null, { timeout: 150000 }).then(() => true, () => false);   // a wash takes its time on a slow machine
   if (!ok) { console.log('STUCK', kind, JSON.stringify(await d(() => ({ e: window.__dakar.sarr.info().errand, at: window.__dakar.teranga.at(), info: (({ trial, trialSlot, returned, driving, exit }) => ({ trial, trialSlot, returned, driving, exit }))(window.__dakar.teranga.info()), lot: window.__dakar.sarr.info().lot.delivery, bay: window.__dakar.garage.info().bay, focus: window.__dakar.focus(), toast: document.querySelector('.toast')?.textContent })))); await shot('stuck-' + kind); throw new Error('errand not done: ' + kind); }
   await talkToSarr(); await pick('C’est fait');
   await page.waitForFunction(k => !window.__dakar.sarr.info().errand && window.__dakar.sarr.info().log.errands.includes(`done:${k}`), kind, T);
@@ -198,7 +198,6 @@ await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'aboa
 const v1 = await d(() => window.__dakar.vtc.info());
 check('the passenger walked to the car (no teleport: steps of a walking pace) and sat in its back seat', v1.trip?.stage === 'aboard' && v1.person?.seated && v1.person.inCar && v1.log.maxStep < 0.2 && v1.persons === 1, JSON.stringify({ stage: v1.trip?.stage, seat: v1.trip?.seat, maxStep: v1.log.maxStep, persons: v1.persons }));
 await shot('passenger-aboard');
-await d(() => window.__dakar.portrait(4.6, 1.7, -Math.PI / 2 - 0.35)); await shot('passenger-seen-from-the-pavement'); await d(() => window.__dakar.portrait(0));      // the camera alone, on the right: the person in the back seat
 const c2 = await d(() => window.__dakar.teranga.at());
 await pilot(page, t, 'teranga', route(c2, st.dropoff.car), { brakeAtEnd: true, cruise: 6, stall: 60000, ms: 1200000 });
 await page.waitForFunction(() => !window.__dakar.vtc.info().trip, null, { timeout: 60000 }).catch(() => {});

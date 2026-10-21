@@ -76,7 +76,6 @@ await page.waitForFunction(() => window.__dakar.vtc.info().trip?.stage === 'aboa
 const aboard = await V();
 check('the passenger sits in the car\'s right rear seat (the seat is taken, they ride in it)', aboard.trip?.stage === 'aboard' && aboard.trip.seat === 'rearR' && aboard.person?.inCar && aboard.persons === 1, JSON.stringify({ stage: aboard.trip?.stage, seat: aboard.trip?.seat, person: aboard.person, events: aboard.log.events }));
 await shot('passenger-aboard');
-await d(() => window.__dakar.portrait(4.6, 1.7, -Math.PI / 2 - 0.35)); await shot('passenger-seen-from-the-pavement'); await d(() => window.__dakar.portrait(0));      // the camera alone, on the right: the person in the back seat
 
 // a reload with the passenger aboard: they are still in the back, one person
 await d(() => window.__dakar.save?.());

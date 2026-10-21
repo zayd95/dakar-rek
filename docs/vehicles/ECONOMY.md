@@ -54,8 +54,8 @@ car, nothing saved; buying after a drive buys that car where it stands.
   Not enough for the down payment: he **counters** (same terms, signing waits). One credit at a time, city cars only (≤ 6 000 000 F), refused after letting him down, or with Modou's slate in arrears.
 * **The same car**: signing hands over the Teranga that stands on his kerb (`buyInPlace`): same place, same paint, one copy, nothing delivered.
 * **The debt is tied to the car's asset uid** (`loans` in the save, an additive field, no schema bump); **credit never creates money** (only the down payment leaves the wallet); a financed car
-  **cannot be sold** while the debt is open (no buy-on-credit-and-sell); missed instalments are counted once per due date; **no repossession**: after repeated misses the only consequence is
-  that he will not lend again. The car is usable for work from the first minute (VTC, deliveries).
+  **cannot be sold** while the debt is open (no buy-on-credit-and-sell); an instalment is **missed only when its due day ends unpaid** (on the day itself it is today's, not late),
+  counted once; **no repossession**: after repeated misses the only consequence is that he will not lend again. The car is usable for work from the first minute (VTC, deliveries).
 * Repayments: the phone's **« Crédits »** app or at the dealer: the late part, one instalment ahead, « Payer ce que j'ai » (part of an instalment), or all of it. Amounts in `src/economy/config.ts` (`credit`).
 
 ## 4. VTC rides (`src/transport/vtc.ts`, `vtcRules.ts`)

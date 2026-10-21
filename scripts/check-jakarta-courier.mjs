@@ -26,6 +26,11 @@ let shotN = 0; const shot = async n => { await page.waitForTimeout(300); await p
 const AT = () => d(() => window.__dakar.moto.at());
 const ready = () => page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub && window.__dakar.moto, null, T);
 
+/** On foot from the bike to a shop's counter: the shop courts open to the north (their side and back walls are solid), so round the wall's end, then in. */
+async function toCounter(place) {
+  const me = await d(() => window.__dakar.pos()), sx = Math.sign(place.x - me.x) || 1;
+  for (const [x, z, tol] of [[me.x + sx * 2.6, place.z + 4.4, 1.2], [place.x, place.z + 4.4, 1.0], [place.x, place.z + 1.2, 0.8]]) await walkTo(page, t, x, z, { tol, ms: 90000 });
+}
 await page.goto(`${base}?debug&touch&heure=10&argent=1500000`, { timeout: 180000 });
 await ready();
 let t = await realTouch(page);
@@ -97,11 +102,12 @@ let a = await AT(); const K1 = kerbOf(shop);
 await pilot(page, t, 'moto', route({ x: a.x, z: a.z, yaw: a.yaw }, K1, { cruise: 6 }), { cruise: 6, stall: 60000, ms: 1500000, brakeAtEnd: true });
 console.log('at the shop kerb', JSON.stringify({ bike: await AT(), kerb: K1, shop: [shop.x, shop.z] }));
 await t.tap('#ridepad .rp-off'); await page.waitForFunction(() => !window.__dakar.moto.info().driving && window.__dakar.pos().mode === 'play', null, T);
-await walkTo(page, t, shop.x, shop.z, { tol: 1.5, ms: 120000 });
+await toCounter(shop);
 await page.waitForFunction(() => window.__dakar.activeJob()?.stage === 'deliver', null, { timeout: 30000 }).catch(() => {});
-check('at Boutique Diallo, on foot at the door: the parcel is picked up', (await d(() => window.__dakar.activeJob()))?.stage === 'deliver', JSON.stringify({ shop: [shop.id, shop.x, shop.z], me: await d(() => [window.__dakar.pos().x, window.__dakar.pos().z]) }));
+check('at Boutique Diallo, on foot at the counter: the parcel is picked up', (await d(() => window.__dakar.activeJob()))?.stage === 'deliver', JSON.stringify({ shop: [shop.id, shop.x, shop.z], me: await d(() => [window.__dakar.pos().x, window.__dakar.pos().z]) }));
+{ const b = await AT(); await walkTo(page, t, shop.x, shop.z + 4.4, { tol: 1.0, ms: 90000 }); await walkTo(page, t, b.x + 2.4, shop.z + 4.4, { tol: 1.2, ms: 90000 }); }   // back out of the court, round the wall
 await boardVehicle(page, t, 'moto');
-check('… and it rides in the courier box', !!(await AT()).box || (await AT()).parcel !== null, JSON.stringify(await AT()));
+check('… back on the Jakarta with the parcel in hand (one delivery, nothing paid yet)', (await d(() => window.__dakar.activeJob()))?.stage === 'deliver' && (await AT()).driving, JSON.stringify(await d(() => window.__dakar.activeJob())));
 a = await AT();
 await pilot(page, t, 'moto', route({ x: a.x, z: a.z, yaw: a.yaw }, { x: -60, z: 140 }, { cruise: 7 }), { cruise: 7, stall: 60000, ms: 1500000 });
 const len = await d(() => { const p = window.__dakar.road.at('pikine-plateau', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
@@ -114,7 +120,7 @@ a = await AT(); const K2 = kerbOf(pl);
 const r2 = route({ x: a.x, z: a.z, yaw: a.yaw }, K2, { cruise: 6 });
 if (r2) await pilot(page, t, 'moto', r2, { cruise: 6, stall: 60000, ms: 1500000, brakeAtEnd: true });
 await t.tap('#ridepad .rp-off'); await page.waitForFunction(() => !window.__dakar.moto.info().driving && window.__dakar.pos().mode === 'play', null, T);
-await walkTo(page, t, pl.x, pl.z, { tol: 1.5, ms: 120000 });
+await toCounter(pl);
 await page.waitForFunction(() => !window.__dakar.activeJob(), null, { timeout: 30000 }).catch(() => {});
 const wallet1 = await d(() => window.__dakar.state.wallet), lines = (await d(() => window.__dakar.ledger())).filter(l => /Livraison|Tiak|livr/i.test(l.label));
 check('handed over at Atelier Ndeye: paid ONCE (one wallet line)', !(await d(() => window.__dakar.activeJob())) && wallet1 > wallet0 && lines.length === 1, JSON.stringify({ paid: wallet1 - wallet0, lines: lines.map(l => l.label) }));
