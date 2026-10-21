@@ -74,12 +74,14 @@ class SarrAuto implements GameModule, TargetSource {
   // ---------------------------------------------------------------- the lot
   private dress(ctx: GameCtx, hub: HubWorld) {
     const L = sarrLot(), g = new THREE.Group(); g.name = 'sarr-auto';
-    // every box of the lot is gathered by material and merged at the end: a handful of draw calls for the whole lot
-    const parts = new Map<THREE.Material, THREE.BufferGeometry[]>();
-    const mat = (c: number) => { const m = new THREE.MeshLambertMaterial({ color: c }); this.disposables.push(m); return m; };
-    const box = (w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Material, ry = 0, rz = 0) => {
+    // every box of the lot carries its colour in its vertices and they are merged at the end: one draw call for all of them
+    const parts: THREE.BufferGeometry[] = [];
+    const mat = (c: number) => new THREE.Color(c);
+    const box = (w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Color, ry = 0, rz = 0) => {
       const geo = new THREE.BoxGeometry(w, h, d); if (rz) geo.rotateZ(rz); if (ry) geo.rotateY(ry); geo.translate(x, y, z);
-      const l = parts.get(m) ?? []; l.push(geo); parts.set(m, l);
+      const n = geo.attributes.position.count, col = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { col[i * 3] = m.r; col[i * 3 + 1] = m.g; col[i * 3 + 2] = m.b; }
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); parts.push(geo);
     };
     const solid = (x: number, z: number, hx: number, hz: number, h: number) => { const c = { x0: x - hx, x1: x + hx, z0: z - hz, z1: z + hz, h }; this.cols.push(c); hub.colliders.push(c); };
     const f = { x: Math.sin(L.delivery.yaw), z: Math.cos(L.delivery.yaw) };                   // along the kerb
@@ -126,7 +128,7 @@ class SarrAuto implements GameModule, TargetSource {
       const card = soldCard(); this.disposables.push(card); const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.3), new THREE.MeshBasicMaterial({ map: card })); this.disposables.push(pl.geometry, pl.material as THREE.Material);
       pl.position.set(s.x + Math.sin(s.yaw) * 0.9, 1.25, s.z + Math.cos(s.yaw) * 0.9); pl.rotation.y = s.yaw; pl.rotateX(-0.5); g.add(pl); this.wash = { x: s.x, z: s.z, yaw: s.yaw }; }
     { const s = L.slots[3], v = buildVehicle('moto', { seed: 3, driver: false, passengers: false }).group; v.position.set(s.x, 0.12, s.z); v.rotation.y = s.yaw; g.add(v); solid(s.x, s.z, 1.0, 1.0, 1.2); }
-    for (const [m, gs] of parts) { const merged = mergeGeometries(gs, false); for (const x of gs) x.dispose(); if (!merged) continue; this.disposables.push(merged); const mesh = new THREE.Mesh(merged, m); mesh.castShadow = true; g.add(mesh); }
+    { const merged = mergeGeometries(parts, false); for (const x of parts) x.dispose(); if (merged) { const m = new THREE.MeshLambertMaterial({ vertexColors: true }); this.disposables.push(merged, m); const mesh = new THREE.Mesh(merged, m); mesh.castShadow = true; g.add(mesh); } }
     ctx.extra.add(g); this.group = g;
   }
   /** The saloon sold (the wash errand's car). */
