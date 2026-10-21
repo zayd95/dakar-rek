@@ -80,7 +80,8 @@ for (const [save, key, label] of [[berlineSave, 'berline', 'Berline'], [motoSave
   } else {
     // no reverse gear on a motorbike: held at the standstill the brake has the rider push it backwards with the feet, at a slow walk at most, with no « R »
     check(`${label}: the brake held at the standstill: the rider pushes the motorbike backwards with the feet (min ${hold.minV.toFixed(2)} m/s, a walk at most) and no « R » shows`, hold.minV < -0.3 && hold.minV > -0.95 && !hold.badge, JSON.stringify(hold));
-    await S.page.waitForTimeout(600);
+    // half a second of game time (the sim's own clock: a loaded software renderer can draw a single frame in 600 ms of wall clock)
+    { const t1 = (await S.AT()).t; await S.page.waitForFunction(([k, t]) => window.__dakar[k].at().t > t + 0.5, [key, t1], { timeout: 60000 }).catch(() => {}); }
     const after = await S.AT();
     check(`${label}: the brake let go, the push stops at once`, Math.abs(after.speed) < 0.15 && !after.paddling, JSON.stringify({ v: after.speed, paddling: after.paddling }));
   }
