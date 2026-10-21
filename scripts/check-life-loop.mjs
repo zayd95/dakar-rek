@@ -286,10 +286,10 @@ for (const [label, viewport, touch] of [['desktop', { width: 1280, height: 720 }
   }
   // back to the Almadies by phone › Carte, then home again the same day: no limit
   await d(() => window.__dakar.phone('carte')); await page.waitForTimeout(300);
-  await page.locator('#phone [data-walk="almadies"]').first().click();
+  await page.locator('#phone .cm-chip[data-cm-hub="almadies"]').click(); await page.locator('#phone .fm-card [data-walk="almadies"]').click();
   const back = await hubIs('almadies');
   await d(() => window.__dakar.phone('carte')); await page.waitForTimeout(300);
-  await page.locator('#phone [data-walk="pikine"]').first().click();
+  await page.locator('#phone .cm-chip[data-cm-hub="pikine"]').click(); await page.locator('#phone .fm-card [data-walk="pikine"]').click();
   const again = await hubIs('pikine');
   const m2 = await money();
   check(`${label}: back by phone › Carte, then home again the same day — free, no limit`, back && again && m2.wallet === 0 && m2.trips === m0.trips && m2.ledger === m0.ledger, JSON.stringify({ back, again, m2 }));

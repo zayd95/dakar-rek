@@ -44,12 +44,12 @@ async function session(variant) {
   // opening the map: the Quartier tab, MapLibre not loaded yet
   await page.locator('#minimap').tap();
   await page.waitForSelector('#phone .gm-tabs', T);
-  check(`${tag} the map screen has two tabs, Quartier first`, (await d(() => [...document.querySelectorAll('#phone [data-mt]')].map(b => b.textContent + ':' + b.getAttribute('aria-selected')))).join() === 'Quartier:true,Ville:false');
+  check(`${tag} the map screen has two tabs, Quartier first`, (await d(() => [...document.querySelectorAll('#phone [data-mt]')].slice(0, 2).map(b => b.textContent + ':' + b.getAttribute('aria-selected')))).join() === 'Quartier:true,Ville:false');
   check(`${tag} MapLibre is not loaded (no chunk, no canvas, no WebGL context) while the district map is showing`, !reqs.some(u => /maplibre/.test(u)) && (await d(() => document.querySelectorAll('.maplibregl-canvas').length)) === 0 && (await d(() => window.__gl.filter(g => /maplibre/.test(g.cls)).length)) === 0);
   const jsBefore = reqs.filter(u => /\.js(\?|$)/.test(u)).length;
 
   // the Ville tab
-  await page.locator('#phone [data-mt="ville"]').tap();
+  await page.locator('#phone [data-mt="ville"] >> visible=true').tap();
   await page.waitForFunction(() => window.__geoMap?.ready, null, T);
   check(`${tag} MapLibre's chunk is fetched only now`, reqs.some(u => /maplibre-gl-[\w-]+\.js/.test(u)) && reqs.filter(u => /\.js(\?|$)/.test(u)).length > jsBefore);
   await page.waitForTimeout(2500);
@@ -80,10 +80,10 @@ async function session(variant) {
   // a district's card, a road's card
   await page.evaluate(() => [...document.querySelectorAll('.gm-hub')].find(e => /Almadies/.test(e.textContent)).click());
   const hubCard = await d(() => document.querySelector('.gm-card').textContent);
-  check(`${tag} tapping a district says what it is and the road to Pikine`, /Almadies/.test(hubCard) && /Pikine/.test(hubCard) && /km/.test(hubCard), hubCard.slice(0, 160));
+  check(`${tag} tapping a district says how long on foot and by car rapide, and the drive to Pikine`, /Almadies/.test(hubCard) && /\d+ min/.test(hubCard) && /Au volant · \d+,\d km/.test(hubCard), hubCard.slice(0, 160));
   await page.evaluate(() => document.querySelector('.gm-road').click());
   const roadCard = await d(() => document.querySelector('.gm-card').textContent);
-  check(`${tag} tapping a road gives its length, its real length and what it passes`, /à parcourir/.test(roadCard) && /vraie ville/.test(roadCard) && /Patte d’Oie/.test(roadCard), roadCard.slice(0, 200));
+  check(`${tag} tapping a road gives its length, its real length and what it passes`, /à parcourir/.test(roadCard) && /en vrai/.test(roadCard) && /Patte d’Oie/.test(roadCard), roadCard.slice(0, 200));
   // places of the district: close in, a place card with « Marquer » that sets the game's waypoint
   await page.evaluate(() => window.__geoMap.map.jumpTo({ zoom: 14.5 }));
   await page.waitForTimeout(900);
@@ -99,12 +99,12 @@ async function session(variant) {
   void before;
 
   // leaving the tab frees everything
-  await page.locator('#phone [data-mt="quartier"]').tap();
+  await page.locator('#phone [data-mt="quartier"] >> visible=true').tap();
   await page.waitForTimeout(800);
   const gone = await d(() => ({ ready: !!window.__geoMap, canvas: document.querySelectorAll('.maplibregl-canvas').length, lost: window.__gl.filter(x => /maplibre/.test(x.cls)).map(x => x.gl.isContextLost()), fm: !!document.querySelector('#phone .fm-cv') && document.querySelector('#phone [data-pane="quartier"]').hidden === false }));
   check(`${tag} leaving « Ville »: the map, its canvas and its WebGL context are gone, the district map is back`, !gone.ready && gone.canvas === 0 && gone.lost.length === 1 && gone.lost.every(Boolean) && gone.fm, JSON.stringify(gone));
   // and again, then the phone closes: nothing is left
-  await page.locator('#phone [data-mt="ville"]').tap();
+  await page.locator('#phone [data-mt="ville"] >> visible=true').tap();
   await page.waitForFunction(() => window.__geoMap?.ready, null, T);
   check(`${tag} opening it again works (a second context, not a leak)`, (await d(() => window.__gl.filter(x => /maplibre/.test(x.cls)).length)) === 2);
   await d(() => document.querySelector('#phone .ph-close, #phone [data-close], #phone .ph-x')?.click());

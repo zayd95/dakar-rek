@@ -1,4 +1,5 @@
 import { mapBridge } from './minimap';
+import { pinHtml, remoteCardHtml, tabsHtml, type Focus } from './carteState';
 import { drawArrow, drawIcon, PALETTE } from './minimapDraw';
 import { KIND_COLOR, KIND_LABEL, KIND_ORDER, distText, nightness, routePath, walkTime, whereLabel, type MapPlace, type PlaceKind, type Pt } from './minimapMath';
 
@@ -13,14 +14,15 @@ const hidden = new Set<PlaceKind>();                                   // legend
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const TAU = Math.PI * 2;
 
-/** Markup of the map block: the canvas, its buttons, the legend and the card (filled by `mountFullMap`). */
+/** Markup of the map: the canvas, its buttons, the tabs and the type filters laid over it. The caption under it is `fullCardHtml`; the strip is built by the phone. */
 export function fullMapHtml(): string {
   const kinds = new Set(mapBridge.places.map(p => p.kind));
   return `<div class="fm" id="fm"><canvas class="fm-cv" aria-label="Carte du quartier"></canvas>
-      <div class="fm-btns"><button type="button" data-fm="in" aria-label="Zoom avant">+</button><button type="button" data-fm="out" aria-label="Zoom arrière">−</button><button type="button" data-fm="me" aria-label="Me recentrer">◎</button></div></div>
-    <div class="gm-side"><div class="fm-legend" role="group" aria-label="Types de lieux">${KIND_ORDER.filter(k => kinds.has(k)).map(k => `<button type="button" class="fm-chip ${hidden.has(k) ? '' : 'on'}" data-kind="${k}" aria-pressed="${!hidden.has(k)}" style="--c:${KIND_COLOR[k]}"><i></i>${KIND_LABEL[k]}</button>`).join('')}</div>
-    <div class="fm-card" aria-live="polite"></div></div>`;
+      <div class="cm-top">${tabsHtml()}<button type="button" class="cm-filter" data-fm="filters" aria-expanded="false" aria-controls="cm-pop">Filtres</button></div>
+      <div class="cm-pop" id="cm-pop" hidden><div class="fm-legend" role="group" aria-label="Types de lieux">${KIND_ORDER.filter(k => kinds.has(k)).map(k => `<button type="button" class="fm-chip ${hidden.has(k) ? '' : 'on'}" data-kind="${k}" aria-pressed="${!hidden.has(k)}" style="--c:${KIND_COLOR[k]}"><i></i>${KIND_LABEL[k]}</button>`).join('')}</div></div>
+      <div class="fm-btns"><button type="button" data-fm="in" aria-label="Zoom avant">+</button><button type="button" data-fm="out" aria-label="Zoom arrière">−</button><button type="button" data-fm="me" aria-label="Me recentrer">◎</button></div></div>`;
 }
+export const fullCardHtml = () => '<div class="fm-card" data-pane="quartier" aria-live="polite"></div>';
 
 /** Brings the map block of `host` to life; returns what to call when the screen goes away. */
 export function mountFullMap(host: HTMLElement): () => void {
@@ -32,7 +34,7 @@ export function mountFullMap(host: HTMLElement): () => void {
   let W = 0, H = 0, dpr = 1;
   const bounds = hub.bounds, span = Math.max(bounds.x1 - bounds.x0, bounds.z1 - bounds.z0) + 30;
   const view = { cx: mapBridge.player.x, cz: mapBridge.player.z, scale: 1 };
-  let fit = 1, selected: MapPlace | null = null, selRoute: { points: Pt[]; length: number } | null = null, note = '', t = 0, timer = 0, raf = 0;
+  let fit = 1, remote: Focus | null = null, selected: MapPlace | null = null, selRoute: { points: Pt[]; length: number } | null = null, note = '', t = 0, timer = 0, raf = 0;
 
   const resize = () => {
     const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
@@ -105,17 +107,23 @@ export function mountFullMap(host: HTMLElement): () => void {
     g.fillStyle = '#f4f6f8'; g.fillRect(14, H - 12, bar * view.scale, 2); g.font = '700 10px system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.fillText(bar + ' m', 14, H - 15);
   };
 
+  const here = (mapBridge.hub?.id ?? null) as import('../core/types').HubId | null;
   const cardHtml = () => {
     const pl = mapBridge.player;
+    if (remote) return remoteCardHtml(remote, here);
     if (!selected) {
+      const mk = mapBridge.destination(), mp = mk ? mapBridge.places.find(q => q.id === mk) : null;
+      if (mp) { const d = mapBridge.route?.length ?? Math.hypot(mp.x - pl.x, mp.z - pl.z);
+        return `<div class="fm-row"><span class="cm-ic" aria-hidden="true">📍</span><b>${esc(mp.name)}</b><em>Repère</em></div><p class="fm-sub"><strong>${distText(d)}</strong> · 🚶 ${walkTime(d)}</p>
+          <div class="cm-acts"><button type="button" class="ph-btn" data-fm="clear">Retirer le repère</button></div>`; }
       const w = whereLabel(mapBridge.hubName, mapBridge.places, pl.x, pl.z);
-      return `<b>${esc(w.district)}</b><p>${esc(w.street)}. Touche un lieu pour le voir : ce qu’on y fait, la distance et le temps à pied.</p>${mapBridge.destination() ? '<button type="button" class="ph-btn" data-fm="clear">Retirer le repère</button>' : ''}`;
+      return `<div class="fm-row"><b>${esc(w.district)}</b></div><p class="fm-sub">${esc(w.street)} · touche un lieu</p>`;
     }
     const p = selected, d = selRoute?.length ?? Math.hypot(p.x - pl.x, p.z - pl.z), marked = mapBridge.destination() === p.id;
-    const what = p.what.length ? `<p>Ici : ${p.what.map(esc).join(' · ')}</p>` : '';
-    return `<div class="fm-row"><i class="fm-dot" style="--c:${KIND_COLOR[p.kind]}"></i><b>${esc(p.name)}</b><em>${KIND_LABEL[p.kind]}</em></div>${what}
-      <p class="fm-dist"><strong>${distText(d)}</strong> · à pied ${walkTime(d)}</p>
-      <button type="button" class="ph-btn fm-mark${marked ? ' on' : ''}" data-fm="mark">${marked ? 'Retirer le repère' : 'Marquer'}</button>${note ? `<p class="fm-note">${esc(note)}</p>` : ''}`;
+    const what = p.what.length ? ` · ${esc(p.what[0])}` : '';
+    return `<div class="fm-row"><i class="fm-dot" style="--c:${KIND_COLOR[p.kind]}"></i><b>${esc(p.name)}</b><em>${KIND_LABEL[p.kind]}</em></div>
+      <p class="fm-sub fm-dist"><strong>${distText(d)}</strong> · 🚶 ${walkTime(d)}${what}</p>
+      <div class="cm-acts"><button type="button" class="ph-btn fm-mark${marked ? ' on' : ''}" data-fm="mark">${marked ? 'Retirer le repère' : '📍 Marquer'}</button>${here ? pinHtml({ id: p.id, name: p.name, hub: here, icon: '📍' }) : ''}</div>${note ? `<p class="fm-note">${esc(note)}</p>` : ''}`;
   };
   let cardKey = '';
   const refreshCard = (force = false) => {
@@ -124,7 +132,7 @@ export function mountFullMap(host: HTMLElement): () => void {
   };
 
   const select = (p: MapPlace | null) => {
-    selected = p; note = '';
+    selected = p; note = ''; remote = null;
     selRoute = p ? routePath(hub.edges, { x: mapBridge.player.x, z: mapBridge.player.z }, p) : null;
     refreshCard(true); kick();
     if (p) card.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });      // portrait: the card sits under the map
@@ -177,14 +185,31 @@ export function mountFullMap(host: HTMLElement): () => void {
       case 'out': zoomAt(W / 2, H / 2, 1 / 1.5); break;
       case 'me': view.cx = mapBridge.player.x; view.cz = mapBridge.player.z; view.scale = Math.max(view.scale, fit * 1.6); clampView(); kick(); break;
       case 'mark': if (selected) {
-        if (mapBridge.destination() === selected.id) { mapBridge.walkTo(null); note = 'Repère retiré.'; }
-        else { mapBridge.walkTo(selected.id); note = 'Repère placé : il est sur la mini-carte et dans la rue.'; }
+        if (mapBridge.destination() === selected.id) { mapBridge.walkTo(null); note = 'Repère retiré'; }
+        else { mapBridge.walkTo(selected.id); note = 'Repère placé : suis le trait pointillé'; }
         refreshCard(true); kick();
       } break;
       case 'clear': mapBridge.walkTo(null); refreshCard(true); kick(); break;
+      case 'filters': { const pop = host.querySelector<HTMLElement>('#cm-pop'); if (pop) { pop.hidden = !pop.hidden; b.setAttribute('aria-expanded', String(!pop.hidden)); } } break;
     }
   };
   host.addEventListener('click', onClick);
+  /** The strip under the map asks for a place or a district: this district's places are selected (and centred), anything else gets its card (how far, the button that goes there). */
+  const onFocus = (e: Event) => {
+    const f = (e as CustomEvent<Focus>).detail, pl = mapBridge.player;
+    if (f.kind === 'place' && f.hub === here) {
+      const p = mapBridge.places.find(q => q.id === f.id);
+      if (p) {
+        if (hidden.delete(p.kind)) { const chip = host.querySelector<HTMLElement>(`.fm-chip[data-kind="${p.kind}"]`); chip?.classList.add('on'); chip?.setAttribute('aria-pressed', 'true'); }
+        select(p); view.cx = p.x; view.cz = p.z; view.scale = Math.max(view.scale, fit * 2); clampView(); kick(); return;
+      }
+    }
+    if (f.kind === 'hub' && f.hub === here) { remote = null; select(null); view.cx = pl.x; view.cz = pl.z; clampView(); kick(); return; }
+    remote = f; selected = null; selRoute = null; refreshCard(true); kick();
+  };
+  const onRefresh = () => refreshCard(true);
+  host.addEventListener('carte:focus', onFocus); host.addEventListener('carte:refresh', onRefresh);
+  cv.addEventListener('pointerdown', () => { const pop = host.querySelector<HTMLElement>('#cm-pop'); if (pop && !pop.hidden) { pop.hidden = true; host.querySelector('[data-fm="filters"]')?.setAttribute('aria-expanded', 'false'); } });
 
   mapBridge.screenOf = (x, z) => { const r = cv.getBoundingClientRect(), m = S(x, z); return { x: r.left + m.x, y: r.top + m.y }; };
   const ro = new ResizeObserver(resize); ro.observe(cv);
@@ -195,5 +220,5 @@ export function mountFullMap(host: HTMLElement): () => void {
     if (selected && (selRoute?.points[0].x !== pl.x || selRoute?.points[0].z !== pl.z) && Math.hypot((selRoute?.points[0].x ?? 0) - pl.x, (selRoute?.points[0].z ?? 0) - pl.z) > 3) { selRoute = routePath(hub.edges, { x: pl.x, z: pl.z }, selected); }
     refreshCard(); draw();
   }, 100);
-  return () => { mapBridge.screenOf = null; clearInterval(timer); cancelAnimationFrame(raf); ro.disconnect(); host.removeEventListener('click', onClick); };
+  return () => { mapBridge.screenOf = null; clearInterval(timer); cancelAnimationFrame(raf); ro.disconnect(); host.removeEventListener('click', onClick); host.removeEventListener('carte:focus', onFocus); host.removeEventListener('carte:refresh', onRefresh); };
 }

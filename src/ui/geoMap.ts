@@ -5,8 +5,9 @@ import { HUB_ANCHORS, gameToLngLat, hubToLngLat, roadToLngLat } from '../geo/anc
 import { HUB_IDS, type HubId } from '../core/types';
 import { ROADS } from '../road/routes';
 import { mapBridge } from './minimap';
-export { geoMapHtml } from './geoMapHtml';
+export { geoMapHtml, geoCardHtml } from './geoMapHtml';
 import { KIND_COLOR, KIND_LABEL, nightness, type MapPlace } from './minimapMath';
+import { pinHtml, remoteCardHtml, type Focus } from './carteState';
 
 /**
  * The phone's city map (Carte › « Ville »): the whole of Dakar on a MapLibre GL map, with the playable districts, the roads that join them, the player and the vehicles on it.
@@ -31,6 +32,7 @@ export function mountGeoMap(host: HTMLElement): () => void {
   if (!root || !box || !card || !status) return () => {};
   let dead = false, map: ML.Map | null = null, timer = 0, online = false, errors = 0;
   const markers: ML.Marker[] = [];
+  let focusHandler: (e: Event) => void = () => {};
   const dyn: { player?: ML.Marker; owned: ML.Marker[]; places: ML.Marker[]; pin?: ML.Marker } = { owned: [], places: [] };
   let styleEl: HTMLStyleElement | null = null;
 
@@ -97,31 +99,44 @@ export function mountGeoMap(host: HTMLElement): () => void {
     };
 
     const reveal = () => card.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+    const hubNow = () => (mapBridge.hub?.id ?? null) as HubId | null;
+    let redraw: () => void = () => {};
     const showHub = (id: HubId) => {
-      const cur = mapBridge.hub?.id === id, roads = ROADS.filter(r => r.touches(id));
-      const rows = roads.map(r => `<p>🛣️ Route vers <b>${esc(HUB_NAMES[r.other(id)].split(' · ')[0])}</b> : ${km(r.length)} à parcourir (environ ${Math.round(r.length * 9 / 1000)} km dans la vraie ville)</p>`).join('');
-      card.innerHTML = `<div class="fm-row"><b>${esc(HUB_NAMES[id])}</b><em>${cur ? 'Tu es ici' : 'Quartier jouable'}</em></div>${rows || '<p>Pas encore de route pour s’y rendre au volant : prends le taxi ou le bus depuis le plan du quartier.</p>'}`;
+      redraw = () => showHub(id);
+      card.innerHTML = remoteCardHtml({ kind: 'hub', hub: id }, hubNow());
       reveal();
     };
     const showRoad = (r: (typeof ROADS)[number]) => {
-      const via = r.anchorS.slice(1, -1).map(a => esc(a.name)).join(' → ');
-      card.innerHTML = `<div class="fm-row"><b>${esc(HUB_NAMES[r.def.a].split(' · ')[0])} ↔ ${esc(HUB_NAMES[r.def.b].split(' · ')[0])}</b><em>Route</em></div>
-        <p>${km(r.length)} à parcourir, environ ${Math.round(r.length * 9 / 1000)} km dans la vraie ville. Passe par ${via}.</p><p>Au volant de ta voiture ou de ta moto : pas d’écran de chargement, tu peux t’arrêter, descendre et repartir.</p>`;
+      redraw = () => showRoad(r);
+      const a = HUB_NAMES[r.def.a].split(' · ')[0], b = HUB_NAMES[r.def.b].split(' · ')[0];
+      const via = r.anchorS.slice(1, -1).map(x => esc(x.name)).join(' → ');
+      card.innerHTML = `<div class="fm-row"><span class="cm-ic" aria-hidden="true">🛣️</span><b>${esc(a)} ↔ ${esc(b)}</b><em>Route</em></div>
+        <p class="fm-sub"><strong>${km(r.length)}</strong> à parcourir · ≈ ${Math.round(r.length * 9 / 1000)} km en vrai</p><p class="fm-sub">Par ${via} · sans chargement</p>`;
       reveal();
     };
     const showPlace = (p: MapPlace) => {
-      const dest = mapBridge.destination() === p.id;
-      card.innerHTML = `<div class="fm-row"><span class="fm-dot" style="--c:${KIND_COLOR[p.kind]}"></span><b>${esc(p.name)}</b><em>${KIND_LABEL[p.kind]}</em></div>${p.what.length ? `<p>${esc(p.what.join(' · '))}</p>` : ''}
-        <button type="button" class="ph-btn fm-mark" data-gm-mark="${esc(p.id)}">${dest ? 'Retirer le repère' : 'Marquer'}</button>`;
+      redraw = () => showPlace(p);
+      const dest = mapBridge.destination() === p.id, h = hubNow();
+      card.innerHTML = `<div class="fm-row"><span class="fm-dot" style="--c:${KIND_COLOR[p.kind]}"></span><b>${esc(p.name)}</b><em>${KIND_LABEL[p.kind]}</em></div>${p.what.length ? `<p class="fm-sub">${esc(p.what[0])}</p>` : ''}
+        <div class="cm-acts"><button type="button" class="ph-btn fm-mark${dest ? ' on' : ''}" data-gm-mark="${esc(p.id)}">${dest ? 'Retirer le repère' : '📍 Marquer'}</button>${h ? pinHtml({ id: p.id, name: p.name, hub: h, icon: '📍' }) : ''}</div>`;
       reveal();
     };
+    /** The strip under the map asks for a district, or a place of another district: the map flies there and the card says how to go. */
+    const onFocus = (e: Event) => {
+      const f = (e as CustomEvent<Focus>).detail;
+      if (f.kind === 'hub') { showHub(f.hub); map?.easeTo({ center: HUB_ANCHORS[f.hub].lngLat, zoom: Math.max(map.getZoom(), 12.5), duration: 500 }); return; }
+      redraw = () => { card.innerHTML = remoteCardHtml(f, hubNow()); };
+      redraw(); reveal();
+      map?.easeTo({ center: HUB_ANCHORS[f.hub].lngLat, zoom: Math.max(map.getZoom(), 12.5), duration: 500 });
+    };
+    focusHandler = onFocus; host.addEventListener('carte:focus', onFocus); host.addEventListener('carte:refresh', () => redraw());
     card.addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-gm-mark]'); if (!b) return;
       const id = b.dataset.gmMark!; mapBridge.walkTo(mapBridge.destination() === id ? null : id);
       const p = mapBridge.places.find(q => q.id === id); if (p) showPlace(p);
       refresh();
     });
-    card.innerHTML = '<p>Touche un quartier, une route ou un lieu.</p>';
+    card.innerHTML = '<div class="fm-row"><b>Dakar</b></div><p class="fm-sub">Touche un quartier ou une route</p>';
 
     /** Player, own vehicles, the places of the district you are in and the marked place: cheap, refreshed twice a second while the tab is open. */
     const refresh = () => {
@@ -192,6 +207,7 @@ export function mountGeoMap(host: HTMLElement): () => void {
 
   return () => {
     dead = true; clearInterval(timer);
+    host.removeEventListener('carte:focus', focusHandler);
     try { for (const k of [...markers, ...dyn.owned, ...dyn.places, dyn.player, dyn.pin]) k?.remove(); } catch { /* */ }
     try { map?.remove(); } catch { /* the context is already gone */ }
     map = null; styleEl?.remove();
