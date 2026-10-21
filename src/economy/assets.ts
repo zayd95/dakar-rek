@@ -203,6 +203,21 @@ export function buyAsset(s: GameState, specId: string): AssetState | null {
   practise(s, 'commerce'); s.count('biens');
   return a;
 }
+/**
+ * A vehicle bought on credit (src/economy/credit.ts): only the down payment leaves the wallet (one ledger line), the car is the player's at its full price (its
+ * worth); the debt is recorded by the caller against the asset's uid. Never puts money in the wallet. Null when it cannot be bought now.
+ */
+export function buyAssetFinanced(s: GameState, specId: string, down: number, lender: string): AssetState | null {
+  const sp = specOf(specId);
+  if (!sp || sp.kind !== 'vehicle' || !sp.price || sp.soon || down < 0 || down > sp.price) return null;
+  const h = holding(s, specId); if (h && h.how !== 'rented') return null;
+  if (!s.canAfford(down)) return null;
+  accrue(s);
+  if (down > 0) s.addMoney(-down, `Avance : ${label(sp)} (crédit ${lender})`);
+  const a = addAsset(s, specId, 'owned', sp.price);
+  practise(s, 'commerce'); s.count('biens');
+  return a;
+}
 /** A unit of a venture or a piece of furniture, already paid by the caller. */
 export function addOwned(s: GameState, specId: string, paid: number, extra: Partial<AssetState> = {}) { return addAsset(s, specId, 'owned', paid, extra); }
 
@@ -244,6 +259,8 @@ export function cannotSell(s: GameState, uid: string): string | null {
   const a = assetByUid(s, uid);
   if (!a) return 'Inconnu';
   if (a.how !== 'owned') return a.how === 'rented' ? 'Tu le loues : rends les clés plutôt' : 'Ce n’est pas à toi de le vendre';
+  // a car still on credit is not the player's to sell yet (src/economy/credit.ts): buying on credit and selling at once would make money from nothing
+  if (s.data.loans?.list.some(l => l.status === 'open' && l.asset === uid)) return 'Crédit en cours : rembourse-le d’abord';
   return null;
 }
 /** Sell at once for most of the current value. Returns what was paid. */
@@ -336,12 +353,12 @@ export const comfortOf = (a: AssetState) => { const sp = specOf(a.spec); return 
 /** A collision, a roadside fix or a repair sets an asset's condition: clamped to 0–100, one decimal; « Biens » and the net worth follow. */
 export function setCondition(a: AssetState, v: number) { a.condition = Math.max(0, Math.min(100, Math.round(v * 10) / 10)); bump(); }
 export const repairCost = (a: AssetState) => Math.round((specOf(a.spec)?.price ?? 0) * P.repairPerPoint * (100 - a.condition));
-export function repairAsset(s: GameState, uid: string, price?: number, label?: string): boolean {
-  const a = assetByUid(s, uid); if (!a || a.how !== 'owned' || a.condition >= 100) return false;
+export function repairAsset(s: GameState, uid: string, price?: number, label?: string, to = 100): boolean {
+  const a = assetByUid(s, uid); if (!a || a.how !== 'owned' || a.condition >= to) return false;
   const cost = price ?? repairCost(a); if (!s.canAfford(cost)) return false;       // `price`: a quote the player was shown first (a vehicle at Garage Modou); a free job charges nothing
   accrue(s);
   if (cost > 0) s.addMoney(-cost, label ?? `Réparation · ${specOfAsset(a).name}`);
-  a.condition = 100;
+  a.condition = Math.max(a.condition, Math.min(100, to));                // `to`: a partial repair brings it back to that condition only
   bump();
   return true;
 }

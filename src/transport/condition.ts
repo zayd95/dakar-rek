@@ -9,18 +9,22 @@ import { ECONOMY } from '../economy/config';
  * existed is whole); a dealer's test vehicle is not an asset, so it never saves one.
  */
 export const FULL = 100;
-/** Below this contact speed (m/s) a touch is a tap and costs nothing (the same line as the sound's: src/transport/vehicleAudio.ts IMPACT_SPEED). */
-export const TAP_SPEED = 2.5;
+/**
+ * Below this contact speed (m/s, ≈ 13 km/h) a touch costs nothing: parking bumps and scrapes are free (the sound still plays from src/transport/vehicleAudio.ts
+ * IMPACT_SPEED). Rebalanced (vehicles economy pass): ordinary mistakes cost a few points, only a real crash costs a lot, so a car makes several trips across
+ * districts between two visits to the garage.
+ */
+export const TAP_SPEED = 3.6;
 /** At most one damaging contact in this many seconds (pushing against a wall is one hit, not sixty). */
 export const CONTACT_GAP = 0.8;
-/** The biggest single impact, in points. */
-export const MAX_HIT = 35;
+/** The biggest single impact, in points (a violent crash). */
+export const MAX_HIT = 45;
 
-/** Points lost in a contact at `speed` (m/s): none for a tap, then a steady climb (about 5 at 6 m/s, 14 at 10, 24 at 14), capped. */
+/** Points lost in a contact at `speed` (m/s): none for a tap, then a climb that stays modest at town speeds (≈ 1 at 6 m/s, 6 at 10, 13 at 14, 27 at 20) and is severe only in a real crash. */
 export function damageOf(speed: number): number {
   const v = Math.abs(speed);
   if (v < TAP_SPEED) return 0;
-  return Math.min(MAX_HIT, Math.round(0.9 * Math.pow(v - TAP_SPEED, 1.35) * 10) / 10);
+  return Math.min(MAX_HIT, Math.round(0.35 * Math.pow(v - TAP_SPEED, 1.55) * 10) / 10);
 }
 
 export type Band = 'whole' | 'worn' | 'rough' | 'poor' | 'dead';
@@ -32,9 +36,9 @@ export const BAND_LABEL: Record<Band, string> = { whole: 'Bon état', worn: 'Un 
 export function performance(hp: number): { top: number; accel: number } {
   switch (bandOf(hp)) {
     case 'whole': return { top: 1, accel: 1 };
-    case 'worn': return { top: 0.88, accel: 0.9 };
-    case 'rough': return { top: 0.72, accel: 0.75 };
-    case 'poor': return { top: 0.5, accel: 0.55 };
+    case 'worn': return { top: 0.94, accel: 0.94 };                  // a damaged car stays drivable: slower to pick up, never painful
+    case 'rough': return { top: 0.85, accel: 0.84 };
+    case 'poor': return { top: 0.66, accel: 0.66 };
     default: return { top: 0, accel: 0 };
   }
 }
@@ -57,13 +61,20 @@ export function bandWarning(before: number, after: number): string | null {
 }
 
 /**
- * The repair quote, in francs, for a car worth `price` at `hp` %: the asset model's own rule (src/economy/assets.ts `repairCost`: a share of the price per missing
- * point, 10 % for a wreck), nothing when whole. The garage shows it before anything is paid and charges exactly it.
+ * What it costs to put back `points` condition points on a vehicle worth `price` (src/economy/config.ts ECONOMY.repair): the work, priced by how much is wrong —
+ * nothing for a touch-up, a garage's price for ordinary damage — times the vehicle's class (a dearer car costs somewhat more, never in proportion to its price).
+ * Separate from the upkeep of property (homes, billboards: ECONOMY.property).
  */
-export function repairQuote(price: number, hp: number): number {
-  const lost = Math.max(0, Math.min(FULL, FULL - hp));
-  return lost < 0.5 ? 0 : Math.round(price * ECONOMY.property.repairPerPoint * lost);
+export function workCost(price: number, points: number): number {
+  const R = ECONOMY.repair, p = Math.max(0, Math.min(FULL, points));
+  if (p < R.freeBelow) return 0;
+  const pts = R.points; let base = pts[pts.length - 1][1];
+  for (let i = 1; i < pts.length; i++) if (p <= pts[i][0]) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; base = y0 + ((y1 - y0) * (p - x0)) / (x1 - x0); break; }
+  const k = Math.min(R.classMax, Math.max(R.classMin, Math.pow(Math.max(1, price) / R.classRef, R.classExp)));
+  return Math.round((base * k) / 500) * 500;
 }
+/** The full repair quote, in francs, for a vehicle worth `price` at `hp` %: the work of every missing point (0 when whole or for a touch-up). */
+export function repairQuote(price: number, hp: number): number { return workCost(price, FULL - hp); }
 
 /** The tow to the garage: a flat fee, or free when the wallet cannot pay it (Modou: « tu me paieras plus tard »): a broken car never locks the player out. */
 export const TOW_FEE = 5000;

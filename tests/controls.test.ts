@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DriveControls, REVERSE_DELAY, STOPPED, forwardIntent, throttleCurve, type DriveCmd } from '../src/transport/controls';
+import { DriveControls, REVERSE_DELAY, STOPPED, forwardIntent, throttleCurve, type DriveCmd, PADDLE_SPEED } from '../src/transport/controls';
 import { driveStep, newDriveState, type Blocked } from '../src/transport/drive';
 import { carSpec } from '../src/transport/car';
 import { berlineSpec, suvSpec } from '../src/transport/premiumCars';
@@ -158,5 +158,32 @@ describe('calibration: a ~1.5 km corridor is a short journey, not a crawl', () =
       expect(c, name).toBeLessThan(90); expect(c, name).toBeGreaterThan(50);
       expect(b, name).toBeLessThan(c * 0.8); expect(b, name).toBeGreaterThan(40);
     }
+  });
+});
+
+describe('the Jakarta pushed backwards with the feet (paddle)', () => {
+  const bike = { maxSpeed: 17.5, boostSpeed: 26.5, reverseSpeed: 0, accel: 5.2, brake: 9, turnRadius: 3.2, steer: 3.4, halfWidth: 0.4, halfLength: 1, lean: true } as DriveSpec;
+  const run = (secs: number, cmd: DriveCmd, ctl: DriveControls, s: { speed: number }) => { for (let i = 0; i < secs * 60; i++) { const inp = ctl.update(1 / 60, cmd, s.speed, bike, 'paddle'); const st = { x: 0, z: 0, yaw: 0, speed: s.speed, steer: 0, accel: 0, odo: 0 }; driveStep(st, inp, bike, 1 / 60, () => false); s.speed = st.speed; } };
+  it('moving, the brake only slows it; stopped and held a moment, it creeps back at a walking pace at most, with no « R »', () => {
+    const ctl = new DriveControls(), s = { speed: 8 };
+    run(0.5, { fwd: 0, steer: 0, boost: false, brake: true }, ctl, s);
+    expect(s.speed).toBeGreaterThanOrEqual(0);
+    run(0.3, { fwd: 0, steer: 0, boost: false, brake: true }, ctl, s);                  // stopped now, not yet held long enough
+    expect(s.speed).toBeGreaterThan(-0.05);
+    run(3, { fwd: 0, steer: 0, boost: false, brake: true }, ctl, s);
+    expect(s.speed).toBeLessThan(-0.3); expect(s.speed).toBeGreaterThanOrEqual(-PADDLE_SPEED - 1e-6);
+    expect(ctl.paddling).toBe(true); expect(ctl.showR).toBe(false);
+  });
+  it('lets go and it stops at once (no rolling on): the feet hold it', () => {
+    const ctl = new DriveControls(), s = { speed: 0 };
+    run(3, { fwd: 0, steer: 0, boost: false, brake: true }, ctl, s);
+    expect(s.speed).toBeLessThan(-0.3);
+    run(0.25, { fwd: 0, steer: 0, boost: false, brake: false }, ctl, s);
+    expect(Math.abs(s.speed)).toBeLessThan(0.05); expect(ctl.paddling).toBe(false);
+  });
+  it('a car still reverses as before (its own speed, the « R » shown)', () => {
+    const car = { ...bike, reverseSpeed: 3, lean: false } as DriveSpec, ctl = new DriveControls(); let v = 0;
+    for (let i = 0; i < 240; i++) { const inp = ctl.update(1 / 60, { fwd: 0, steer: 0, boost: false, brake: true }, v, car, true); const st = { x: 0, z: 0, yaw: 0, speed: v, steer: 0, accel: 0, odo: 0 }; driveStep(st, inp, car, 1 / 60, () => false); v = st.speed; }
+    expect(v).toBeLessThan(-1); expect(ctl.showR).toBe(true);
   });
 });

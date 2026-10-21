@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { GameCtx, GameModule } from '../game/modules';
+import type { HubId } from '../core/types';
 import type { HubWorld } from '../world/types';
 import type { Affordance, Target, TargetSource } from '../interact/types';
 import { Humanoid, humanoidReady, type PersonLook } from '../actors/humanoid';
@@ -34,7 +35,10 @@ export interface FloorCarInfo {
   locked: string | null;
 }
 export interface FloorOwner {
-  readonly model: 'berline' | 'suv';
+  /** The module's key (icons and the checks): 'berline', 'suv', 'car', 'teranga'… */
+  readonly model: string;
+  /** An SUV (its icon). */
+  readonly tall?: boolean;
   floorCars(): FloorCarInfo[];
   unlockFloor(slot: number): void;
   lockFloor(slot: number): void;
@@ -49,6 +53,33 @@ export interface FloorOwner {
 const SALESMAN: PersonLook = { skin: 0x4e2e1c, style: 'tee', top: 0xf1f1ee, bottom: 0x17181c, hat: null, shoes: 0x101012, muscular: 0.2 };
 const WALK = 1.35, GREET_RANGE = 22, GREET_PAUSE = 240, WAIT = 9;
 const GRID = { x0: -114, x1: -66, z0: 5, z1: 54 };
+type MenuItems = Parameters<GameCtx['menu']>[2];
+/**
+ * One dealership's floor and its salesperson (Prestige Auto, Ndiaye Auto, Sarr Auto): where he stands, the ground he walks, who he is and what he says.
+ * Everything else (the cars, the trial, the purchase) is the vehicle modules'.
+ */
+export interface SalesConfig {
+  /** Module name (and debug key: `sales` for Prestige, `sales_<key>` for the others). */
+  key: string;
+  hub: HubId;
+  /** The dealership's name (menus, toasts). */
+  title: string;
+  /** How the menus name him (« le vendeur », « Pape Sarr »). */
+  person: string;
+  look: PersonLook;
+  /** Where he stands at his post, the walking map's bounds and the dealership's grounds, from the built hub (null: this layout has no such dealer). */
+  layout(hub: HubWorld): { home: { x: number; z: number; yaw: number }; grid: { x0: number; x1: number; z0: number; z1: number }; grounds: (x: number, z: number, pad?: number) => boolean } | null;
+  greetings: { bubble: string; say: () => string }[];
+  /** Opening hours [from, to) on the city clock; absent: always there. */
+  hours?: [number, number];
+  /** More lines in his menu (a relationship: errands, credit), before « Rien, merci ». */
+  talkExtra?(ctx: GameCtx): MenuItems;
+  /** The first words of his menu (a relationship's memory), else the default. */
+  talkIntro?(ctx: GameCtx, trial: boolean): string | null;
+  /** He has just greeted the customer (a relationship counts the visit). */
+  onGreet?(ctx: GameCtx): void;
+}
+const PRESTIGE_LAYOUT: SalesConfig['layout'] = hub => (hub.id === PRESTIGE_HUB ? { home: { x: SALES_HOME.x, z: SALES_HOME.z, yaw: Math.PI }, grid: GRID, grounds: inGrounds } : null);
 const GREETINGS = [
   { bubble: 'Bienvenue chez Prestige !', say: () => `Bonjour, ${say('Dalal ak jàmm')} chez Prestige ! ${say('Na nga def ?')} Une voiture à essayer ? C’est gratuit.` },
   { bubble: 'Bonjour, bienvenue !', say: () => `Bonjour ! ${say('Na nga def ?')} Regardez à votre aise : dites-moi laquelle, je vous apporte les clés.` },
@@ -64,11 +95,13 @@ type Task =
   | { kind: 'home' };
 
 export class PrestigeSales implements GameModule, TargetSource {
-  readonly name = 'prestige';
+  readonly name: string;
+  readonly cfg: SalesConfig;
   private ctx!: GameCtx;
   private hub: HubWorld | null = null;
   private h: Humanoid | null = null;
-  private pos = { x: SALES_HOME.x, z: SALES_HOME.z }; private yaw = 0;
+  private lay: NonNullable<ReturnType<SalesConfig['layout']>> | null = null;
+  private pos: { x: number; z: number } = { x: SALES_HOME.x, z: SALES_HOME.z }; private yaw = 0;
   private move: Move | null = null;
   private task: Task | null = null;
   private owners = new Set<FloorOwner>();
@@ -78,10 +111,18 @@ export class PrestigeSales implements GameModule, TargetSource {
   /** The keys in the customer's hand: the car (owner, slot), and since when. */
   private keys: { owner: FloorOwner; slot: number; t: number } | null = null;
   /** The target the interaction system offers: « Parler au vendeur ». */
-  private readonly target: Target = { id: 'prestige:sales', name: 'Vendeur · Prestige Auto', kind: 'person', space: 'street', x: 0, y: 1.9, z: 0, radius: 2.4, bias: 0.6, affordances: () => this.affordances() };
+  private readonly target: Target;
   private aff: Affordance[] = [];
   /** Walk log for the checks: how far he walked, and the largest single-frame step (a teleport would show). */
   private log = { walked: 0, maxStep: 0, greetings: 0, said: [] as string[], walks: 0 };
+
+  constructor(cfg: SalesConfig) {
+    this.cfg = cfg; this.name = cfg.key;
+    this.target = { id: `${cfg.key}:sales`, name: cfg.person === 'le vendeur' ? `Vendeur · ${cfg.title}` : `${cfg.person} · ${cfg.title}`, kind: 'person', space: 'street', x: 0, y: 1.9, z: 0, radius: 2.4, bias: 0.6, affordances: () => this.affordances() };
+  }
+  private grounds(x: number, z: number, pad = 0) { return this.lay ? this.lay.grounds(x, z, pad) : false; }
+  /** Open now (his hours on the city clock). */
+  open(ctx: GameCtx = this.ctx) { const h = this.cfg.hours; if (!h || !ctx) return true; const hr = ctx.hour(); return hr >= h[0] && hr < h[1]; }
 
   init(ctx: GameCtx) { this.ctx = ctx; ctx.interactions.add(this); }
 
@@ -90,9 +131,10 @@ export class PrestigeSales implements GameModule, TargetSource {
 
   hubLoaded(ctx: GameCtx, hub: HubWorld) {
     this.ctx = ctx; this.clear(); this.hub = hub;
-    if (hub.id !== PRESTIGE_HUB || !humanoidReady()) return;
-    this.h = new Humanoid(SALESMAN); this.h.hold = 'Idle';
-    this.pos = { x: SALES_HOME.x, z: SALES_HOME.z }; this.yaw = Math.PI;
+    if (hub.id !== this.cfg.hub || !humanoidReady()) return;
+    this.lay = this.cfg.layout(hub); if (!this.lay) return;
+    this.h = new Humanoid(this.cfg.look); this.h.hold = 'Idle';
+    this.pos = { x: this.lay.home.x, z: this.lay.home.z }; this.yaw = this.lay.home.yaw;
     this.place();
     ctx.extra.add(this.h.group);
     this.visit = false; this.greeted = false; this.pause = 0; this.lastGreet = -1;
@@ -101,11 +143,11 @@ export class PrestigeSales implements GameModule, TargetSource {
     if (this.h) { this.h.group.removeFromParent(); this.h.dispose(); this.h = null; }
     if (this.bubble) { this.bubble.removeFromParent(); (this.bubble.material as THREE.SpriteMaterial).dispose(); this.bubble = null; }
     this.bubbleTex?.dispose(); this.bubbleTex = null;
-    this.move = null; this.task = null; this.keys = null; this.hub = null;
+    this.move = null; this.task = null; this.keys = null; this.hub = null; this.lay = null;
   }
 
   collect(space: string, x: number, z: number, out: Target[]) {
-    if (!this.h || space !== 'street' || this.ctx.player.seated()) return;
+    if (!this.h || !this.h.group.visible || space !== 'street' || this.ctx.player.seated()) return;
     if (Math.hypot(this.pos.x - x, this.pos.z - z) > 6) return;
     this.target.x = this.pos.x; this.target.z = this.pos.z;
     // a lower score wins the prompt: a car wins near a car, but he wins when he has come over to talk to the customer who came back from the drive
@@ -115,7 +157,7 @@ export class PrestigeSales implements GameModule, TargetSource {
 
   // ---------------------------------------------------------------- what the player can say to him
   private affordances(): Affordance[] {
-    if (!this.aff.length) this.aff = [{ id: 'parler', verb: 'talk', label: 'Parler au vendeur', icon: '🤝', run: () => this.talk() }];
+    if (!this.aff.length) this.aff = [{ id: 'parler', verb: 'talk', label: this.cfg.person === 'le vendeur' ? 'Parler au vendeur' : `Parler à ${this.cfg.person}`, icon: '🤝', run: () => this.talk() }];
     return this.aff;
   }
   private trial() { for (const o of this.owners) { const t = o.trialCar(); if (t) return { o, t }; } return null; }
@@ -133,16 +175,17 @@ export class PrestigeSales implements GameModule, TargetSource {
       const seen = new Set<string>();
       for (const { c } of cars) if (!seen.has(c.name)) { seen.add(c.name); items.push({ icon: '🏷️', label: c.name, detail: 'Prix fixe, affiché sur la fiche · se choisit sur le plancher', right: fcfa(c.price), disabled: true, reason: 'Approche la voiture qui te plaît : « Essayer » ou « Acheter ».', onPick: () => {} }); }
     }
+    if (this.cfg.talkExtra) items.push(...this.cfg.talkExtra(ctx));
     items.push({ icon: '↩️', label: 'Rien, merci', onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); } });
-    ctx.menu('Prestige Auto · le vendeur', tr ? `Alors, elle te plaît ? ${say('Jërëjëf')} d’avoir essayé.` : `${say('Dalal ak jàmm')} chez Prestige Auto.`, items);
+    ctx.menu(`${this.cfg.title} · ${this.cfg.person}`, this.cfg.talkIntro?.(ctx, !!tr) ?? (tr ? `Alors, elle te plaît ? ${say('Jërëjëf')} d’avoir essayé.` : `${say('Dalal ak jàmm')} chez ${this.cfg.title}.`), items);
   }
 
   /** The desk's catalogue: the cars on the floor with their prices; each one offers a free trial or the purchase. */
   openCatalogue(ctx: GameCtx) {
     const cars = [...this.owners].flatMap(o => o.floorCars().filter(c => c.state !== 'out').map(c => ({ o, c })));
     const close = () => { ctx.hud.closeModal(); ctx.setMode('play'); };
-    ctx.menu('Prestige Auto', 'Prix fixes, affichés. Essaie d’abord : c’est gratuit.', [
-      ...cars.map(({ o, c }) => ({ icon: o.model === 'suv' ? '🚙' : '🚘', label: `${c.name} · ${c.colour}`, detail: c.locked ?? 'Essayer gratuitement ou acheter', right: fcfa(c.price), disabled: !!c.locked, onPick: () => this.carMenu(o, c) })),
+    ctx.menu(this.cfg.title, 'Prix fixes, affichés. Essaie d’abord : c’est gratuit.', [
+      ...cars.map(({ o, c }) => ({ icon: o.tall ? '🚙' : '🚘', label: `${c.name} · ${c.colour}`, detail: c.locked ?? 'Essayer gratuitement ou acheter', right: fcfa(c.price), disabled: !!c.locked, onPick: () => this.carMenu(o, c) })),
       { icon: '↩️', label: 'Fermer', onPick: close },
     ]);
   }
@@ -160,6 +203,7 @@ export class PrestigeSales implements GameModule, TargetSource {
   requestTrial(owner: FloorOwner, slot: number) {
     const car = owner.floorCars().find(c => c.slot === slot); if (!car || car.state !== 'display') return;
     if (car.locked) { this.ctx.toast(car.locked); return; }
+    if (this.h && !this.open()) { this.ctx.toast(`${this.cfg.title} est fermé : ${this.cfg.person} revient à ${this.cfg.hours![0]} h.`); return; }
     if (!this.h) { owner.unlockFloor(slot); this.keys = { owner, slot, t: 0 }; this.ctx.toast('Clés en main : va côté conducteur et ouvre la portière.'); return; }
     if (this.task && this.task.kind === 'car' && this.task.owner === owner && this.task.slot === slot) return;
     this.dropKeys();
@@ -172,7 +216,7 @@ export class PrestigeSales implements GameModule, TargetSource {
   /** The player got out of the trial car at (x, z): if they are near, he walks over to them. */
   trialEnded(o: FloorOwner, x: number, z: number) {
     if (!this.h) return;
-    if (!inGrounds(x, z, 60) || Math.hypot(x - this.pos.x, z - this.pos.z) > 90) return;
+    if (!this.grounds(x, z, 60) || Math.hypot(x - this.pos.x, z - this.pos.z) > 90) return;
     this.task = { kind: 'meet', owner: o, t: 0, arrived: false };
     this.walk({ x, z }, { stop: 2.0, face: { x, z }, done: () => { const t = this.task; if (t?.kind === 'meet') { t.arrived = true; t.t = 0; this.speak('Alors, ça roule ? Elle vous plaît ?'); this.ctx.toast(`Le vendeur : « Alors, elle te plaît ? Je te fais le prix affiché, ${say('Jërëjëf')} pour l’essai. »`); } } });
   }
@@ -189,33 +233,43 @@ export class PrestigeSales implements GameModule, TargetSource {
       if (this.task !== t) return;
       t.phase = 'keys';
       this.speak('Voilà les clés.');
-      this.ctx.menu('Prestige Auto · les clés', `« La voici. ${say('Jërëjëf')} d’essayer chez nous. Côté conducteur, la portière est ouverte pour vous. »`, [
+      this.ctx.menu(`${this.cfg.title} · les clés`, `« La voici. ${say('Jërëjëf')} d’essayer chez nous. Côté conducteur, la portière est ouverte pour vous. »`, [
         { icon: '🔑', label: 'Prendre les clés', detail: 'Va côté conducteur et touche « Ouvrir »', onPick: () => { this.ctx.hud.closeModal(); this.ctx.setMode('play'); this.keys = { owner: t.owner, slot: t.slot, t: 0 }; this.task = null; this.ctx.toast('Clés en main : va côté conducteur et ouvre la portière.'); this.goHome(); } },
         { icon: '↩️', label: 'Pas maintenant', onPick: () => { this.ctx.hud.closeModal(); this.ctx.setMode('play'); t.owner.lockFloor(t.slot); vehicleAudio.unlock(); this.task = null; this.goHome(); } },
       ]);
     }, 900);
   }
+  /** He hands over the keys of a floor car from where he stands (an errand he asks for: no sales walk). */
+  giveKeys(o: FloorOwner, slot: number) { this.dropKeys(); this.task = null; this.keys = { owner: o, slot, t: 0 }; vehicleAudio.unlock(); }
   /** Is this car's key in the customer's hand? */
   hasKeys(o: FloorOwner, slot: number) { return this.keys?.owner === o && this.keys.slot === slot; }
   private dropKeys() { if (this.keys) { const k = this.keys; this.keys = null; k.owner.lockFloor(k.slot); } }
 
   private goHome() {
     this.task = { kind: 'home' };
-    this.walk({ x: SALES_HOME.x, z: SALES_HOME.z }, { done: () => { if (this.task?.kind === 'home') this.task = null; this.faceYaw(Math.PI); } });
+    const home = this.lay?.home ?? { x: SALES_HOME.x, z: SALES_HOME.z, yaw: Math.PI };
+    this.walk({ x: home.x, z: home.z }, { done: () => { if (this.task?.kind === 'home') this.task = null; this.faceYaw(home.yaw); } });
   }
 
   update(ctx: GameCtx, dt: number) {
     const h = this.h; if (!h || !this.hub) return;
+    // his hours: outside them he is not there (an open-air lot is closed for the night); he comes back at his post
+    const open = this.open(ctx);
+    if (open !== h.group.visible) {
+      h.group.visible = open; if (this.bubble) this.bubble.visible = false;
+      if (!open) { this.dropKeys(); this.move = null; this.task = null; if (this.lay) { this.pos = { x: this.lay.home.x, z: this.lay.home.z }; this.yaw = this.lay.home.yaw; this.place(); } }
+    }
+    if (!open) return;
     const p = ctx.player.pos, d = Math.hypot(p.x - this.pos.x, p.z - this.pos.z), seated = !!ctx.player.seated();
     this.pause = Math.max(0, this.pause - dt);
     // a visit: the customer in the grounds on foot; it ends when they are well away
-    const inside = inGrounds(p.x, p.z, 4) && !seated;
-    if (inside) this.visit = true; else if (!inGrounds(p.x, p.z, 30)) { if (this.visit) { this.visit = false; this.greeted = false; } }
+    const inside = this.grounds(p.x, p.z, 4) && !seated;
+    if (inside) this.visit = true; else if (!this.grounds(p.x, p.z, 30)) { if (this.visit) { this.visit = false; this.greeted = false; } }
     // the keys are given back by the customer's absence: far from the car for a while, or sitting somewhere else
     if (this.keys) {
       const car = this.keys.owner.floorCars().find(c => c.slot === this.keys!.slot);
       this.keys.t += dt;
-      if (!car || car.state !== 'unlocked' || (Math.hypot(p.x - car.x, p.z - car.z) > 30 && this.keys.t > 20) || (!inGrounds(p.x, p.z, 25))) this.dropKeys();
+      if (!car || car.state !== 'unlocked' || (Math.hypot(p.x - car.x, p.z - car.z) > 30 && this.keys.t > 20) || (!this.grounds(p.x, p.z, 25))) this.dropKeys();
     }
     const t = this.task;
     // notice → walk to the customer → greet (once per visit)
@@ -244,22 +298,22 @@ export class PrestigeSales implements GameModule, TargetSource {
 
   /** Can he see the customer from where he stands? (Anyone in the hall or on its forecourt: the glass is clear, a wall is not.) */
   private sees(p: { x: number; z: number }) {
-    if (inGrounds(p.x, p.z, 0)) return true;
+    if (this.grounds(p.x, p.z, 0)) return true;
     return Math.hypot(p.x - this.pos.x, p.z - this.pos.z) < 11;
   }
 
   private greet() {
     const t = this.task; if (t?.kind !== 'greet') return;
     t.arrived = true; t.t = 0;
-    let i = this.greetN++ % GREETINGS.length; if (i === this.lastGreet) i = (i + 1) % GREETINGS.length; this.lastGreet = i;
-    const g = GREETINGS[i]; this.speak(g.bubble); this.ctx.toast(`Le vendeur : « ${g.say()} »`);
-    this.log.greetings++;
+    const n = this.cfg.greetings.length; let i = this.greetN++ % n; if (i === this.lastGreet) i = (i + 1) % n; this.lastGreet = i;
+    const G = this.cfg.greetings, g = G[i % G.length]; this.speak(g.bubble); this.ctx.toast(`${this.cfg.person === 'le vendeur' ? 'Le vendeur' : this.cfg.person} : « ${g.say()} »`);
+    this.log.greetings++; this.cfg.onGreet?.(this.ctx);
   }
 
   // ---------------------------------------------------------------- movement
   private walk(goal: Pt, o: { stop?: number; face?: Pt; done?: () => void }) {
     if (!this.hub) return;
-    const g = new NavGrid(GRID, this.hub.colliders), from = { x: this.pos.x, z: this.pos.z };
+    const g = new NavGrid(this.lay?.grid ?? GRID, this.hub.colliders), from = { x: this.pos.x, z: this.pos.z };
     // `stop`: end that far short of the goal (beside the customer, not on them)
     let to = goal;
     if (o.stop) {
@@ -324,8 +378,8 @@ export class PrestigeSales implements GameModule, TargetSource {
 
   debug(_ctx: GameCtx): Record<string, unknown> {
     return {
-      sales: {
-        info: () => ({ here: !!this.h, x: +this.pos.x.toFixed(2), z: +this.pos.z.toFixed(2), yaw: +this.yaw.toFixed(2), task: this.task?.kind ?? null, phase: (this.task as { phase?: string } | null)?.phase ?? null, moving: !!this.move, visit: this.visit, greeted: this.greeted, pause: Math.round(this.pause), keys: this.keys ? { model: this.keys.owner.model, slot: this.keys.slot } : null, bubble: this.bubbleT > 0, log: { ...this.log, said: [...this.log.said] }, hall: HALL }),
+      [this.cfg.key === 'prestige' ? 'sales' : `sales_${this.cfg.key}`]: {
+        info: () => ({ here: !!this.h && this.h.group.visible, open: this.open(), home: this.lay?.home ?? null, x: +this.pos.x.toFixed(2), z: +this.pos.z.toFixed(2), yaw: +this.yaw.toFixed(2), task: this.task?.kind ?? null, phase: (this.task as { phase?: string } | null)?.phase ?? null, moving: !!this.move, visit: this.visit, greeted: this.greeted, pause: Math.round(this.pause), keys: this.keys ? { model: this.keys.owner.model, slot: this.keys.slot } : null, bubble: this.bubbleT > 0, log: { ...this.log, said: [...this.log.said] }, hall: HALL }),
         /** Checks: let the customer's greeting through at once (no pause). */
         eager: () => { this.pause = 0; this.greeted = false; },
       },
@@ -333,4 +387,6 @@ export class PrestigeSales implements GameModule, TargetSource {
   }
 }
 
-export const prestige = new PrestigeSales();
+export const prestige = new PrestigeSales({
+  key: 'prestige', hub: PRESTIGE_HUB, title: 'Prestige Auto', person: 'le vendeur', look: SALESMAN, layout: PRESTIGE_LAYOUT, greetings: GREETINGS,
+});

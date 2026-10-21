@@ -282,7 +282,7 @@ export function buildCityBlock(c: CityContext, kind: CityBlock, cx: number, cz: 
       if (c.add) c.add(show.group); else show.dispose();
       c.colliders.push(...show.colliders); c.seats.push(...show.seats);
       sign('NDIAYE AUTO · VOITURES', at.x + D / 2 + 0.06, at.z, '#1b2a7a', 3.37, W - 3, Math.PI / 2);
-      keeper(show.anchors.keeper, SALESMAN);
+      // Moussa Ndiaye himself walks the floor (src/transport/modelCars.ts `ndiayeSales`): his post is the keeper's spot, so nobody stands there for him
       const st = show.anchors.staff[0]; if (st) person(st.x, st.z, st.yaw, 'Idle', { ...SALESMAN, top: 0x1b2a7a, bottom: 0x2b2f36 });
       c.pool(at.x + 2, at.z, 6);
     }

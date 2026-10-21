@@ -136,8 +136,15 @@ for (const [label, vp, touch] of [['desktop', { width: 1280, height: 720 }, fals
   // headless frame rates make walking slow (~0.5 m/s): start just outside the wall and walk past the stands and barriers
   await page.evaluate(([x, z]) => window.__dakar.place(x, z, 0), [ar.x, ar.z - 23.5]);
   await page.keyboard.down('KeyW');
-  // wall clock, up to 75 s: one slow CI runner covered 2.8 m in the old 27 s budget where another walked the 9.5 m in 16 s
-  for (const t0 = Date.now(); Date.now() - t0 < 75000;) { await page.waitForTimeout(300); const p = await page.evaluate(() => window.__dakar.pos()); if (Math.hypot(p.x - ar.x, p.z - ar.z) < 14) break; }
+  // judged in game time (the save's played time), not the wall clock: a software renderer walks the same metres in more seconds, and how many depends on the
+  // runner and on the district's load (one runner covered 2.8 m in an old 27 s budget, another 8.9 m in 75 s); 25 s of play is about three times what the
+  // 9.5 m need at a walk, and the wall clock still stops it after 4 min
+  const g0 = await page.evaluate(() => window.__dakar.state.data.playedMs);
+  for (const t0 = Date.now(); Date.now() - t0 < 240000;) {
+    await page.waitForTimeout(300);
+    const p = await page.evaluate(() => ({ ...window.__dakar.pos(), played: window.__dakar.state.data.playedMs }));
+    if (Math.hypot(p.x - ar.x, p.z - ar.z) < 14 || p.played - g0 > 25000) break;
+  }
   await page.keyboard.up('KeyW');
   const gp = await page.evaluate(() => window.__dakar.pos());
   check('arena: walk in through the gate past the stands', Math.hypot(gp.x - ar.x, gp.z - ar.z) < 14.5, `${Math.hypot(gp.x - ar.x, gp.z - ar.z).toFixed(1)} m from the centre`);

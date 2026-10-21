@@ -26,10 +26,13 @@ export const PARCEL = { x0: -113, x1: -67, z0: 7, z1: 53 } as const;
 export const HALL = { x0: -109, x1: -69, z0: 17, z1: 33, h: 4.8 } as const;
 /** Street front, from the west: glass, the entrance (a walkable gap), glass, the vehicle bay (open), glass. */
 export const FRONT = { door: [-103, -99.4], bay: [-95.5, -77.5] } as const;
-/** The four cars on the floor, nose to the street (yaw π): two saloons, then two SUVs, 4.3 m apart, each with a straight way out through the bay. */
-export const SLOTS: readonly { x: number; z: number; yaw: number; model: 'berline' | 'suv' }[] = [
-  { x: -92.6, z: 23, yaw: Math.PI, model: 'berline' }, { x: -88.3, z: 23, yaw: Math.PI, model: 'berline' },
-  { x: -84.0, z: 23, yaw: Math.PI, model: 'suv' }, { x: -79.7, z: 23, yaw: Math.PI, model: 'suv' },
+/**
+ * The four cars on the floor, nose to the street (yaw π), 4.3 m apart, each with a straight way out through the bay: the saloon, the flagship Lamane Sport
+ * in red at the centre of the bay with a black one beside it, the Gaïndé SUV coupé.
+ */
+export const SLOTS: readonly { x: number; z: number; yaw: number; model: 'berline' | 'suv' | 'gainde' }[] = [
+  { x: -92.6, z: 23, yaw: Math.PI, model: 'berline' }, { x: -88.3, z: 23, yaw: Math.PI, model: 'suv' },
+  { x: -84.0, z: 23, yaw: Math.PI, model: 'suv' }, { x: -79.7, z: 23, yaw: Math.PI, model: 'gainde' },
 ];
 /** Jakarta motorbikes on a plinth by the west glass: for show only (they are sold at Garage Modou, Pikine). */
 export const MOTO_PLINTH = { x0: -108.6, x1: -104, z0: 19, z1: 23.2 } as const;

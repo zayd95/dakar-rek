@@ -42,7 +42,7 @@ export interface VehicleSeat {
   /** Door used to reach it. */
   door: string;
   /** Pose held there when it is not the chair Sit (motorbikes: 'Ride'); copied to the interaction seat. */
-  clip?: 'Ride';
+  clip?: 'Ride' | 'RidePaddle';
 }
 export interface VehicleDoor {
   id: string;
@@ -129,6 +129,11 @@ export interface VehicleOpts {
    * and a dark footwell; shut it is the same car. Each model with a door is another cached body (a leaf and an opening).
    */
   openable?: boolean;
+  /**
+   * A player car with its own body (src/actors/glbVehicle.ts, authored by scripts/vehicles/author): the kit takes that car's real proportions (length, wheelbase,
+   * wheels, roof, belt, seats, doors) so the seats, the doors, the cameras and the collision box fit the body that is drawn. Its kit model is the fallback look.
+   */
+  model?: CarModelId;
 }
 export interface VehicleBuild { group: THREE.Group; spec: VehicleSpec; lod: THREE.LOD | null }
 
@@ -232,6 +237,7 @@ export const DOOR_OPEN = 1.12;
 export function setKitDoor(model: THREE.Object3D, k: number): boolean {
   const p = model.userData.kitDoor as THREE.Object3D | undefined; if (!p) return false;
   p.rotation.y = -DOOR_OPEN * THREE.MathUtils.clamp(k, 0, 1);
+  const cabin = model.userData.kitCabin as THREE.Object3D | undefined; if (cabin) cabin.visible = k > 0.002;    // an authored body's cabin is drawn only while its door is open
   return true;
 }
 export const hasKitDoor = (model: THREE.Object3D) => !!model.userData.kitDoor;
@@ -368,6 +374,33 @@ interface CarDims {
   /** How far the top of the front / rear face leans back (m): modern noses and tails. */
   rake?: number; tailRake?: number;
 }
+/** The player cars that have a body of their own (proportions of the real class of car each one is inspired by; names are the game's own). */
+export type CarModelId = 'teranga' | 'rafet' | 'lamane' | 'gainde';
+export const CAR_MODELS: Record<CarModelId, { kind: 'sedan' | 'suv'; d: Partial<CarDims> }> = {
+  // a modern five-door city hatch (3.94 m, 2.56 m between the axles)
+  teranga: { kind: 'sedan', d: { L: 3.94, W: 1.745, r: 0.31, tw: 0.205, fz: 1.24, rz: -1.32, sill: 0.3, nose: 0.8, cowl: 0.98, tail: 1.02, zWs: 0.62, zRf: -0.08, zRr: -1.2, zDeck: -1.78, zB: -0.36, cw: 0.3, roof: 1.5, inG: 0.07, inR: 0.21, seatTop: 0.52, frontZ: -0.05, rearZ: -0.92, rake: 0.22, tailRake: 0.18 } },
+  // a sporty five-door hatch, lower and a little longer (4.06 m, 2.54 m)
+  rafet: { kind: 'sedan', d: { L: 4.06, W: 1.745, r: 0.31, tw: 0.205, fz: 1.33, rz: -1.21, sill: 0.28, nose: 0.76, cowl: 0.95, tail: 1.0, zWs: 0.6, zRf: -0.05, zRr: -1.25, zDeck: -1.85, zB: -0.35, cw: 0.3, roof: 1.43, inG: 0.07, inR: 0.22, seatTop: 0.5, frontZ: -0.02, rearZ: -0.9, rake: 0.25, tailRake: 0.15 } },
+  // a large luxury SUV, high and long (4.88 m, 2.92 m)
+  lamane: { kind: 'suv', d: { L: 4.88, W: 1.98, r: 0.4, tw: 0.27, fz: 1.52, rz: -1.4, sill: 0.46, nose: 1.05, cowl: 1.13, tail: 1.12, zWs: 1.0, zRf: 0.45, zRr: -1.95, zDeck: -2.3, zB: -0.12, cw: 0.15, roof: 1.8, inG: 0.08, inR: 0.18, seatTop: 0.7, frontZ: 0.12, rearZ: -0.9, rake: 0.08, tailRake: 0.12 } },
+  // an SUV coupé: as long, lower roof falling to the tail (4.94 m, 2.97 m)
+  gainde: { kind: 'suv', d: { L: 4.94, W: 2.0, r: 0.4, tw: 0.28, fz: 1.48, rz: -1.49, sill: 0.44, nose: 0.98, cowl: 1.1, tail: 1.05, zWs: 0.95, zRf: 0.35, zRr: -1.55, zDeck: -2.15, zB: -0.2, cw: 0.1, roof: 1.69, inG: 0.08, inR: 0.2, seatTop: 0.66, frontZ: 0.1, rearZ: -0.85, rake: 0.1, tailRake: 0.25 } },
+};
+const withModel = (d: CarDims, o: VehicleOpts): CarDims => (o.model ? { ...d, ...CAR_MODELS[o.model].d } : d);
+/** The kit's dimensions for a player car's own body (the authoring tool fits the body to them): base dims of its kit kind, then the model's. */
+export function carModelDims(model: CarModelId): CarDims {
+  const base: Record<'sedan' | 'suv', CarDims> = {
+    sedan: { L: 4.5, W: 1.78, r: 0.31, tw: 0.2, fz: 1.36, rz: -1.32, sill: 0.27, nose: 0.74, cowl: 0.95, tail: 1.0, zWs: 0.95, zRf: 0.08, zRr: -0.9, zDeck: -1.52, zB: -0.25, cw: 0.32, roof: 1.43, inG: 0.07, inR: 0.22, seatTop: 0.52, frontZ: 0.0, rearZ: -0.92, rake: 0.14, tailRake: 0.1 },
+    suv: { L: 4.85, W: 1.94, r: 0.39, tw: 0.27, fz: 1.47, rz: -1.42, sill: 0.42, nose: 1.06, cowl: 1.2, tail: 1.22, zWs: 1.1, zRf: 0.55, zRr: -2.24, zDeck: -2.36, zB: -0.15, cw: 0.12, roof: 1.9, inG: 0.06, inR: 0.14, seatTop: 0.72, frontZ: 0.2, rearZ: -0.85, rake: 0.06 },
+  };
+  return { ...base[CAR_MODELS[model].kind], ...CAR_MODELS[model].d };
+}
+/** The driver's door of a player car's own body: hinge (front edge) and the opening (between the B pillar and the hinge, the sill strip and the belt), as the kit cuts it. */
+export function carModelDoor(model: CarModelId) {
+  const d = carModelDims(model), r = driverDoor(d);
+  return { ...r, hinge: [hwOf(d, (r.y0 + r.y1) / 2), 0, r.zF] as V3, hw: (y: number) => hwOf(d, y) };
+}
+
 /** Point and up vector on the (raked) front face at height y; same for the rear face. */
 function frontFace(d: CarDims, y: number): { z: number; up: V3 } {
   const y0 = d.sill + 0.12, y1 = d.nose - 0.07, r = d.rake ?? 0, k = (y - y0) / (y1 - y0), n = Math.hypot(y1 - y0, r);
@@ -536,9 +569,9 @@ const TAXI_YELLOW = 0xf5c400, TAXI_BLACK = 0x141414;
 
 const pickSedan: Pick = (r, o) => {
   const ci = Math.floor(r() * SEDAN_COLORS.length), body = o.color ?? SEDAN_COLORS[ci], p = Math.floor(r() * 3);
-  const d: CarDims = { L: 4.5, W: 1.78, r: 0.31, tw: 0.2, fz: 1.36, rz: -1.32, sill: 0.27, nose: 0.74, cowl: 0.95, tail: 1.0, zWs: 0.95, zRf: 0.08, zRr: -0.9, zDeck: -1.52, zB: -0.25, cw: 0.32, roof: 1.43, inG: 0.07, inR: 0.22, seatTop: 0.52, frontZ: 0.0, rearZ: -0.92, rake: 0.14, tailRake: 0.1 };
+  const d: CarDims = withModel({ L: 4.5, W: 1.78, r: 0.31, tw: 0.2, fz: 1.36, rz: -1.32, sill: 0.27, nose: 0.74, cowl: 0.95, tail: 1.0, zWs: 0.95, zRf: 0.08, zRr: -0.9, zDeck: -1.52, zB: -0.25, cw: 0.32, roof: 1.43, inG: 0.07, inR: 0.22, seatTop: 0.52, frontZ: 0.0, rearZ: -0.92, rake: 0.14, tailRake: 0.1 }, o);
   const P = { ...basePaint(body, UV.rimHubcap), bumper: body, trim: DARK };
-  return carModel('sedan', d, P, `${body.toString(16)}`, ci, o, p);
+  return carModel('sedan', d, P, `${body.toString(16)}${o.model ? '|' + o.model : ''}`, ci, o, p);
 };
 const pickTaxi: Pick = (r, o) => {
   const v = Math.floor(r() * 2), p = Math.floor(r() * 3);
@@ -568,10 +601,10 @@ const pickLuxury: Pick = (r, o) => {
 };
 const pickSuv: Pick = (r, o) => {
   const ci = Math.floor(r() * SUV_COLORS.length), body = o.color ?? SUV_COLORS[ci], v = Math.floor(r() * 2), p = Math.floor(r() * 3);
-  const d: CarDims = { L: 4.85, W: 1.94, r: 0.39, tw: 0.27, fz: 1.47, rz: -1.42, sill: 0.42, nose: 1.06, cowl: 1.2, tail: 1.22, zWs: 1.1, zRf: 0.55, zRr: -2.24, zDeck: -2.36, zB: -0.15, cw: 0.12, roof: 1.9, inG: 0.06, inR: 0.14, seatTop: 0.72, frontZ: 0.2, rearZ: -0.85, rake: 0.06 };
+  const d: CarDims = withModel({ L: 4.85, W: 1.94, r: 0.39, tw: 0.27, fz: 1.47, rz: -1.42, sill: 0.42, nose: 1.06, cowl: 1.2, tail: 1.22, zWs: 1.1, zRf: 0.55, zRr: -2.24, zDeck: -2.36, zB: -0.15, cw: 0.12, roof: 1.9, inG: 0.06, inR: 0.14, seatTop: 0.72, frontZ: 0.2, rearZ: -0.85, rake: 0.06 }, o);
   const P: CarPaint = { ...basePaint(body, UV.rimSteel), bumper: 0x2a2a2c, trim: 0x2a2a2c, seat: 0x3a3530, grille: UV.grille };
   const rails = (b: KitBuilder) => { const x = d.W / 2 - d.inR - 0.06; for (const s of [1, -1]) { b.beam([s * x, d.roof + 0.07, d.zRr + 0.12], [s * x, d.roof + 0.07, d.zRf - 0.1], 0.04, 0.04, 0x2a2a2c); for (const z of [d.zRr + 0.15, d.zRf - 0.15]) b.box(0.04, 0.07, 0.06, s * x, d.roof - 0.005, z, 0x2a2a2c); } };
-  return carModel('suv', d, P, `${body.toString(16)}|${v}`, ci, o, p, {
+  return carModel('suv', d, P, `${body.toString(16)}|${v}${o.model ? '|' + o.model : ''}`, ci, o, p, {
     near: b => {
       rails(b);
       // spare wheel on the tailgate, black wheel-arch flares and sills, bull bar on some

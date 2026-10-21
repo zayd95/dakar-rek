@@ -25,6 +25,7 @@ import { FollowCamera } from './actors/camera';
 import { Hud, fcfa, type MenuItem } from './ui/hud';
 import { preloadAssets } from './actors/vehicles';
 import { preloadGlbVehicles } from './actors/glbVehicle';
+import { missionTarget } from './game/missionGuide';
 import { preloadHumanoid, humanoidReady, Humanoid, randomLook, setAnimShadows, setHumanoidView, type Clip, type PersonLook } from './actors/humanoid';
 import { SOLE as GAIT_SOLE } from './actors/gait';
 import { castById, CAST } from './social/cast';
@@ -204,6 +205,8 @@ let mode: 'play' | 'menu' | 'busy' | 'scene' = 'play';
 /** Set once the module context (`ctx`, below) exists. */
 let ctxReady = false;
 let hourOverride: number | null = TEST.hour;
+/** Checks: days moved forward on the city's calendar (the vehicles economy's debts and once-a-day errands are dated by city day). */
+let dayShift = 0;
 /** Walkable interiors of this hub, and the one the player is in. */
 let interiors = new Map<string, Interior>();
 let inside: { int: Interior; door: Interactable } | null = null;
@@ -593,7 +596,7 @@ const people = interactions.add(new People(() => [
 const ctx: GameCtx = {
   scene, camera, follow, extra, state, hud, input, interactions, seats, people, places, activities, inventory,
   quality: () => quality, world: () => world, inside: () => inside, space: () => interactSpace(),
-  hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day, now: () => presence.serverNow(),
+  hour: () => hourOverride ?? cityTimeAt(presence.serverNow()).hourFloat, day: () => cityTimeAt(presence.serverNow()).day + dayShift, now: () => presence.serverNow(),
   player: {
     pos, facing: () => facing, body: () => playerBody, seated: () => seated,
     sit: s => sitOn(s, true), standUp: inPlace => standUp(inPlace), drive: m => { drive = m; },
@@ -1266,6 +1269,7 @@ let eveningTarget: { name: string; x: number; z: number } | null = null;
 function guideTarget(): { name: string; x: number; z: number } | null {
   if (!world) return null;
   if (destination?.hub === world.id) { const it = guidePlace(destination.id); if (it) return it; }
+  { const m = destination ? null : missionTarget(); if (m && m.hub === world.id) return m; }
   if (eveningTarget) return eveningTarget;
   if (needTarget) return needTarget;
   if (guideJob) {
@@ -1293,6 +1297,9 @@ function guidePlace(id: string): { name: string; x: number; z: number } | null {
 }
 
 function walkingHint(): string | null {
+  // a task in hand (an errand, a VTC passenger) leads the goal line, wherever its target is
+  const m = destination ? null : missionTarget();
+  if (m) return m.hint ?? (m.hub === world?.id ? withBearing(`📍 ${m.name}`, m) : `📍 ${m.name} · ${HUB_NAMES[m.hub].split(' · ')[0]}`);
   if (!destination) return null;
   // a place of another district (a dealer marked from the phone's Carte): the marker waits, the goal line says where to go
   if (destination.hub !== world?.id) return `📍 ${destination.name ?? 'Repère'} · ${HUB_NAMES[destination.hub].split(' · ')[0]} : téléphone › Carte › y aller à pied`;
@@ -1340,7 +1347,7 @@ const phone = new Phone({
 transport.addObstacles(out => { if (corridors.active) corridors.footprints(out, pos.x, pos.z); });     // the road's traffic is solid for the vehicle the player drives
 mapBridge.walkTo = id => setDestination(id);
 /** The vehicles the player owns and where they stand parked (the city map shows them; the one being driven is the player's own marker). */
-mapBridge.owned = () => (['jakarta', 'compacte', 'berline', 'tout_terrain', 'tiak'] as VehicleAsset[]).flatMap(a => {
+mapBridge.owned = () => (['jakarta', 'teranga', 'rafet', 'compacte', 'berline', 'gainde', 'tout_terrain', 'tiak'] as VehicleAsset[]).flatMap(a => {
   if (!ownsVehicle(state, a)) return [];
   const p = parked(state.data, a); if (!p) return [];
   if (MODULES.some(m => { const o = m as unknown as { ridden?: boolean; def?: { asset?: string } }; return o.ridden && o.def?.asset === a; })) return [];
@@ -1586,7 +1593,7 @@ resize(); applyQuality();
 let started = false, markStarted = () => {};
 const whenStarted = new Promise<void>(r => { markStarted = r; });
 async function start() {
-  await Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte'])]);
+  await Promise.all([preloadAssets(), preloadHumanoid(), preloadGlbVehicles(['compacte', 'teranga', 'rafet', 'lamane', 'gainde'])]);
   for (const m of MODULES) m.init?.(ctx);
   if (humanoidReady()) { playerBody = new Humanoid(PLAYER_LOOK); playerBody.fullRate = true; scene.add(playerBody.group); player.group.visible = false; }
   const startHub = invitedHub ?? state.data.hub;
@@ -1605,6 +1612,8 @@ if (DEBUG) {
     // before the modules' init has run (the assets still loading), the trip waits for it (the returned promise)
     teleport(hub: HubId, x?: number, z?: number, yaw = 0) { const go = () => loadHub(hub, x === undefined ? undefined : { x, z: z ?? 0, yaw }); if (started) go(); else return whenStarted.then(go); },
     setHour(h: number | null) { hourOverride = h; },
+    /** Checks: the next city day(s) for the modules that date things by day (errands, debts). */
+    nextDay(n = 1) { dayShift += n; return cityTimeAt(presence.serverNow()).day + dayShift; },
     camera: () => ({ at: [camera.position.x, camera.position.y, camera.position.z], fov: camera.fov, aspect: Math.round(camera.aspect * 1000) / 1000, hfov: Math.round(2 * Math.atan(Math.tan(camera.fov * Math.PI / 360) * camera.aspect) * 1800 / Math.PI) / 10 }),
     pos: () => ({ x: pos.x, y: pos.y, z: pos.z, hub: world?.id, mode, near: nearest?.name ?? null, yaw: facing, cam: follow.yaw }),
     interactables: () => world?.interactables.map(i => ({ id: i.id, name: i.name, x: i.x, z: i.z })) ?? [],

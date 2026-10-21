@@ -25,7 +25,7 @@ const STYLE_URL: string = (typeof window !== 'undefined' && (window as unknown a
 const STYLE_TIMEOUT_MS = 6000;
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const km = (m: number) => m >= 1000 ? (m / 1000).toFixed(1).replace('.', ',') + ' km' : Math.round(m / 10) * 10 + ' m';
-const OWNED_ICON: Record<string, string> = { jakarta: '🏍️', tiak: '🛵', compacte: '🚗', berline: '🚘', tout_terrain: '🚙' };
+const OWNED_ICON: Record<string, string> = { jakarta: '🏍️', tiak: '🛵', compacte: '🚗', teranga: '🚗', rafet: '🚗', berline: '🚘', gainde: '🚙', tout_terrain: '🚙' };
 
 /** Mounts the city map in `host` (the markup above); returns what to call when the tab or the phone closes. */
 export function mountGeoMap(host: HTMLElement): () => void {

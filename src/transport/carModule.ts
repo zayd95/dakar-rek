@@ -1,5 +1,6 @@
 import type { HubWorld } from '../world/types';
 import { carSpec, glbCar, sedanSeed, CAR_ASSET, CAR_DETAIL, SEDAN_BLUE, SEDAN_WHITE } from './car';
+import { NDIAYE_LOTS, ndiayeFloor, ndiayeSales } from './modelCars';
 import { OwnedVehicleModule, kerbDealer, type DealerSite } from './ownedModule';
 import { stockedShop, stockedShopFront } from '../world/shopKit';
 import { NDIAYE_AUTO } from '../world/city';
@@ -45,9 +46,10 @@ export const KEYS_LINE = `Moussa Ndiaye te tend les clés : « Elle t’attend d
 export const car = new OwnedVehicleModule({
   key: 'car', asset: CAR_ASSET, detail: CAR_DETAIL, icon: '🚗', kit: 'sedan',
   seed: () => sedanSeed(), spec: carSpec, visual: glbCar, height: 1.45, space: 'car:compacte',
+  // the showroom's first lot: a real car on the floor, tried with Moussa Ndiaye's keys and bought where it stands (the old kerb sale is carDealer, kept for a layout without the showroom)
   dealer: {
-    hub: 'plateau', name: 'Ndiaye Auto', catalogue: 'voitures', site: carDealer,
-    sign: { bg: '#1b2a7a', band: '#f4c20d', title: 'VOITURES', sub: 'Ndiaye Auto · Plateau', subColor: '#1b2a7a' },
+    hub: 'plateau', name: 'Ndiaye Auto', catalogue: 'voitures', site: hub => ndiayeFloor(NDIAYE_LOTS.car, sedanSeed(), 'gris argent')(hub) ?? carDealer(hub),
+    sign: { bg: '#1b2a7a', band: '#f4c20d', title: 'VOITURES', sub: 'Ndiaye Auto · Plateau', subColor: '#1b2a7a' }, sales: ndiayeSales, counterBias: -0.2,
   },
   text: {
     mine: 'Ta voiture', getOn: 'Monter (conducteur)', getOff: 'Sortir de la voiture',

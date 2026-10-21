@@ -25,7 +25,7 @@ const d = (fn, arg) => page.evaluate(fn, arg), B = () => d(() => window.__dakar.
 const shot = async n => { await page.waitForTimeout(400); await page.screenshot({ path: `${out}/trial-${n}.png` }); };
 const click = async text => { await page.locator('#modal .item', { hasText: text }).first().click(); };
 await d(() => { window.__dakar.teleport('almadies', -94, 14, Math.PI); window.__dakar.setHour(11); window.__dakar.state.data.wallet = 200000000; });
-await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.sales?.info().here && window.__dakar.berline?.info().floor.length === 2, null, T);
+await page.waitForFunction(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.sales?.info().here && window.__dakar.berline?.info().floor.length === 1, null, T);   // one berline on the floor, beside the two Lamane Sports and the Gaïndé
 
 // take the white berline (slot 0) on a trial, through the real prompts
 await d(() => window.__dakar.place(-92.6, 19.7, Math.PI));

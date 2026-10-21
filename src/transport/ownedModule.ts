@@ -20,12 +20,13 @@ import { buzz, impactPattern as impactBuzz, HORN_TICK } from './haptics';
 import { setMuted } from '../core/audioSettings';
 import { driveStep, newDriveState, type DriveState } from './drive';
 import { DriveControls, forwardIntent, type DriveCmd } from './controls';
-import { assetsRevision, buyAsset, cannotBuy, holding, setCondition } from '../economy/assets';
+import { assetsRevision, buyAsset, buyAssetFinanced, cannotBuy, holding, setCondition } from '../economy/assets';
+import type { AssetState } from '../core/types';
 import { specOf } from '../economy/catalog';
 import { buildCourierBox, type CourierBox } from './courierBox';
 import { ridePad } from './ridePad';
 import { migrateLegacyVehicles, migrateOwned, ownsVehicle, paintSeed, park, parked, setPaintSeed, unpark, type VehicleAsset } from './owned';
-import { prestige, type FloorCarInfo, type FloorOwner } from './prestigeSales';
+import { prestige, type FloorCarInfo, type FloorOwner, type PrestigeSales } from './prestigeSales';
 import { seatClip, sitOriginY } from '../interact/seats';
 import { clearKerb, type KerbZone } from './passengers';
 import { GRID, roadCentre } from './lines';
@@ -101,11 +102,9 @@ export interface OwnedDef {
   height: number;
   /** Interaction space while driving: `<hub>:<space>`. */
   space: string;
-  dealer?: {
-    hub: HubId; name: string; catalogue: string;
-    site(hub: HubWorld): DealerSite | null;
-    sign: { bg: string; band: string; title: string; sub: string; subColor: string };
-  };
+  dealer?: DealerDef;
+  /** The same model sold at other dealerships too (another hub each): its floor there, its salesperson. */
+  branches?: DealerDef[];
   /**
    * A lent vehicle (the Tiak depot's motorbike): no dealer and no price, it is in every hub where the player stands, at
    * the spot returned here until they leave it somewhere (then it stays there, in that hub).
@@ -128,6 +127,16 @@ export interface OwnedDef {
   exit: 'left' | 'pavement';
   /** How close to the body « Monter » is offered (m). */
   reach: number;
+}
+
+export interface DealerDef {
+  hub: HubId; name: string; catalogue: string;
+  site(hub: HubWorld): DealerSite | null;
+  sign: { bg: string; band: string; title: string; sub: string; subColor: string };
+  /** A floor dealer's salesperson (default: Prestige Auto's). */
+  sales?: PrestigeSales;
+  /** The counter's prompt priority among the dealership's modules (one of them leads: −0.2; the default 4 stays behind). */
+  counterBias?: number;
 }
 
 const HINT = '↑ accélérer · ↓ freiner · ← → tourner · H klaxon';
@@ -199,6 +208,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private cam = new PassengerCamera();
   private card: RideCard | null = null;
   private dealer: Dealer | null = null;
+  /** This hub's dealership of the model (the main one or a branch), and the salesperson the floor is registered with. */
+  private dd: DealerDef | null = null;
+  private salesReg: PrestigeSales | null = null;
   private cardT = 0;
   private camMs = 0;
   /** The roadside fix of a car that will not run (src/transport/condition.ts): its affordance, built once. */
@@ -283,13 +295,22 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.clear();
     this.hub = hub;
     this.spec = this.def.spec();
-    if (this.def.dealer && hub.id === this.def.dealer.hub) this.buildDealer(ctx, hub);
+    this.dd = this.dealerFor(hub.id);
+    if (this.dd) this.buildDealer(ctx, hub);
     migrateOwned(ctx.state);                                    // a save from before the asset model
     migrateLegacyVehicles(ctx.state);                           // a retired vehicle (the old « Voiture d'occasion ») becomes its successor, same asset
     this.sync(); this.rev = assetsRevision();
     if (this.carry) this.resume();
   }
 
+  /** The model's dealership in hub `h` (the main one or a branch). */
+  private dealerFor(h: HubId): DealerDef | null { return [this.def.dealer, ...(this.def.branches ?? [])].find(d => d?.hub === h) ?? null; }
+  /** The salesperson of this hub's floor. */
+  private sales(): PrestigeSales { return this.dd?.sales ?? prestige; }
+  /** The dealerships as the phone's map lists them: one row for each (src/transport/dealers.ts). */
+  directoryRows(state: GameCtx['state']) {
+    return [this.def.dealer, ...(this.def.branches ?? [])].filter((d): d is DealerDef => !!d).map(D => ({ id: `${this.def.key}:dealer:${D.hub}`, name: D.name, hub: D.hub, vehicle: this.label(), icon: this.def.icon, price: this.price(), owned: ownsVehicle(state, this.def.asset) }));
+  }
   /** Name and price from the catalogue. */
   /** The dealer as the phone's map lists it, from any district (src/transport/dealers.ts). */
   directoryRow(state: GameCtx['state']) {
@@ -327,6 +348,10 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   }
   /** The player is riding / driving it now. */
   get ridden() { return this.driving; }
+  /** This model's own car in this hub (parked or driven; never a dealer's car out on trial): a VTC passenger rides in it (src/transport/vtc.ts). */
+  carNow(): { v: Vehicle; spec: VehicleSpec; x: number; z: number; yaw: number; speed: number; driving: boolean } | null {
+    return this.vehicle && this.spec && !this.trial ? { v: this.vehicle, spec: this.spec, x: this.st.x, z: this.st.z, yaw: this.st.yaw, speed: this.st.speed, driving: this.driving } : null;
+  }
   /**
    * Move the parked vehicle to another spot of this hub (a guarded parking's place, src/arena/arrival.ts), saved like a
    * parking spot. False while it is ridden or not here.
@@ -381,7 +406,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       ? { fwd: forwardIntent(joy.x, joy.y), steer: mv.x, boost: ridePad.gas, brake: ridePad.brake || joy.y < -0.6 }
       : { fwd: pressed('KeyW', 'ArrowUp') ? 1 : 0, steer: mv.x, boost: pressed('ShiftLeft', 'ShiftRight'), brake: pressed('KeyS', 'ArrowDown') };
     const drv = scaledDrive(this.spec.drive, this.hp());                              // a worn car is slower (the same object when whole: the physics are untouched)
-    const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : this.ctl.update(dt, cmd, this.st.speed, drv, !moto);
+    const input = this.leaving ? { throttle: this.st.speed > 0.3 ? -1 : this.st.speed < -0.3 ? 1 : 0, steer: 0 } : this.ctl.update(dt, cmd, this.st.speed, drv, moto ? 'paddle' : true);
+    if (moto) { const want = this.ctl.paddling ? 'RidePaddle' : 'Ride'; if (m.driverSeat.clip !== want) m.driverSeat.clip = want; }   // pushing it backwards: both feet on the ground
     ridePad.reversing = this.ctl.showR;
     transport.obstacles(this.obst, this.def.kit);
     const vs0 = this.st.speed, v0 = Math.abs(vs0);
@@ -394,6 +420,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     m.place(this.st.x, this.st.z, this.st.yaw, Math.abs(this.st.speed), this.st.accel, this.st.odo, dt);
     if (!this.trial && !this.leaving && ctx.mode() === 'play' && this.hub) { const c = crossing(this.hub.id, this.st.x, z0, this.st.z, this.st.speed * Math.cos(this.st.yaw)); if (c) { this.cross(c.link.to, c.x, c.z); return; } }
     this.lean = m.animate(this.st.speed, this.st.steer, dt);                     // wheels, steering, a motorbike's lean
+    if (this.ctl.paddling) this.lean = 0;                                        // pushed backwards with the feet: the rider sits upright
     // sound and feel: the engine follows the speed, a hard brake squeals and dips the camera a little, the horn is held
     const bi = brakeIntensity(-this.st.accel * Math.sign(this.st.speed || 1), v0);
     if (bi > 0.05 && input.throttle !== 0) { vehicleAudio.brake(bi); if (bi > 0.3) this.fx.hard = 0.6; }
@@ -477,7 +504,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
       if (k >= 1) {
         const trial = x.trial; this.exit = null; ctx.setMode('play'); this.shutDoor();
         ctx.player.place(x.to.x, x.to.z, this.st.yaw);
-        if (trial) { this.parkedT = 0; ctx.toast('Voiture garée. Le vendeur vient te voir.'); prestige.trialEnded(this, x.to.x, x.to.z); }
+        if (trial && this.errand) this.errandParked();
+        else if (trial) { this.parkedT = 0; ctx.toast(`Voiture garée. ${this.sales().cfg.person === 'le vendeur' ? 'Le vendeur' : this.sales().cfg.person} vient te voir.`); this.sales().trialEnded(this, x.to.x, x.to.z); }
         else ctx.toast(this.def.text.parked);
         ctx.save();
       }
@@ -518,7 +546,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.vehicle?.dispose(); this.vehicle = null; this.entry = null; this.exit = null; this.doorK = this.doorGoal = 0;
     this.trial = false; this.returned = false; this.trialSlot = -1; this.seed = 0; this.parkedTarget.name = this.def.text.mine;
     this.spawnFloor(fc); fc.state = 'display'; this.syncCards();
-    if (say) ctx.toast('Prestige Auto a repris sa voiture d’essai.');
+    if (say) ctx.toast(`${this.sales().cfg.title} a repris sa voiture d’essai.`);
   }
 
   /** A real car on the floor, in its bay, solid. */
@@ -549,7 +577,8 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   }
 
   // FloorOwner: what the salesperson and the catalogue ask of this module
-  get model() { return this.def.key as 'berline' | 'suv'; }
+  get model() { return this.def.key; }
+  get tall() { return this.def.kit === 'suv'; }
   floorCars(): FloorCarInfo[] {
     const sp = this.spec; if (!sp) return [];
     return this.floor.map(fc => {
@@ -562,18 +591,20 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   trialCar() {
     return this.trial && this.vehicle && this.trialSlot >= 0 && !this.returned ? { x: this.st.x, z: this.st.z, yaw: this.st.yaw, driving: this.driving, slot: this.trialSlot, name: this.label(), price: this.price() } : null;
   }
+  /** A dealer's car still out of its bay (on a trial or an errand, handed back or not, until it is collected). */
+  get carOut() { return this.trial && !!this.vehicle; }
   returnTrial() {
     if (!this.trial || !this.vehicle || this.driving) return;
-    this.returned = true; this.ctx.toast('Rendue : Prestige Auto la reprend, dès qu’elle ne gêne plus la vue.');
+    this.returned = true; this.ctx.toast(`Rendue : ${this.sales().cfg.title} la reprend, dès qu’elle ne gêne plus la vue.`);
   }
   /** « Ouvrir » on the driver's door, with the salesperson's keys: the floor car becomes the player's test vehicle (the same car) and is entered through its door. */
   private enterFloor(slot: number) {
     const fc = this.floor[slot], ctx = this.ctx;
-    if (!fc?.vehicle || fc.state !== 'unlocked' || !prestige.hasKeys(this, slot) || this.vehicle || ctx.activities.running) return;
+    if (!fc?.vehicle || fc.state !== 'unlocked' || !this.sales().hasKeys(this, slot) || this.vehicle || ctx.activities.running) return;
     this.adoptFloor(fc);
     this.trial = true; this.trialSlot = slot; this.returned = false; this.parkedT = 0;
     this.parkedTarget.name = 'Voiture d’essai';
-    prestige.trialStarted(this);
+    this.sales().trialStarted(this);
     this.beginEntry();
   }
   /** The price and the confirmation (for floor car `slot`, or the trial vehicle in hand), then the purchase right where the car stands. */
@@ -582,7 +613,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const tried = this.trial && s === this.trialSlot && !!this.vehicle;
     const fc = this.floor[s]; if (!tried && (!fc || !fc.vehicle)) return;
     ctx.menu(this.def.text.confirm, `Prix : ${fcfa(price)} · Ton argent : ${fcfa(ctx.state.wallet)}${tried ? '' : ` · ${this.label()} ${fc.colour}`}`, [
-      ...(tried ? [] : [{ icon: '🔑', label: 'Essayer gratuitement d’abord', detail: 'Rien n’est payé', right: 'Gratuit', disabled: !!this.vehicle || ownsVehicle(ctx.state, this.def.asset), onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); prestige.requestTrial(this, s); } }]),
+      ...(tried ? [] : [{ icon: '🔑', label: 'Essayer gratuitement d’abord', detail: 'Rien n’est payé', right: 'Gratuit', disabled: !!this.vehicle || ownsVehicle(ctx.state, this.def.asset), onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); this.sales().requestTrial(this, s); } }]),
       { icon: '✅', label: 'Confirmer l’achat', right: '−' + fcfa(price), detail: why ?? 'Cette voiture-là, là où elle est : pas de livraison, pas de copie', disabled: !!why, onPick: () => this.buyInPlace(s) },
       { icon: '↩️', label: 'Pas maintenant', onPick: () => { ctx.hud.closeModal(); ctx.setMode('play'); } },
     ]);
@@ -591,23 +622,56 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
    * Bought on the spot: paid once through the asset model, and the car that was chosen (the trial vehicle where the player left it, or the floor car where it
    * stands) becomes the owned vehicle, its parking spot and paint saved. Nothing is delivered and nothing is copied: the bay is simply left empty if the car drives off.
    */
-  private buyInPlace(slot: number) {
+  private buyInPlace(slot: number, financed?: { down: number; lender: string; then(a: AssetState): void }): boolean {
     const ctx = this.ctx, s = ctx.state, a = this.def.asset;
     ctx.hud.closeModal(); ctx.setMode('play');
-    if (!this.hub) return;
+    if (!this.hub) return false;
+    if (this.errand) { ctx.toast('Termine d’abord la course pour le vendeur.'); return false; }
     const tried = this.trial && slot === this.trialSlot && !!this.vehicle, fc = this.floor[slot];
-    if (!tried && (!fc || !fc.vehicle)) return;
-    const why = cannotBuy(s, a); if (why) { ctx.toast(why); return; }
+    if (!tried && (!fc || !fc.vehicle)) return false;
+    const why = financed ? (ownsVehicle(s, a) ? this.def.text.owned : !s.canAfford(financed.down) ? 'Pas assez pour l’avance' : null) : cannotBuy(s, a); if (why) { ctx.toast(why); return false; }
     const at = tried ? { x: this.st.x, z: this.st.z, yaw: this.st.yaw } : { x: fc.spot.x, z: fc.spot.z, yaw: fc.spot.yaw }, seed = tried ? (this.seed || this.def.seed()) : fc.seed;
     park(s.data, { asset: a, hub: this.hub.id, ...at }); setPaintSeed(s.data, a, seed);
-    if (!buyAsset(s, a)) { unpark(s.data, a); return; }
+    const asset = financed ? buyAssetFinanced(s, a, financed.down, financed.lender) : buyAsset(s, a);
+    if (!asset) { unpark(s.data, a); return false; }
+    financed?.then(asset);
     this.bought++; s.count('vehicules'); this.rev = assetsRevision();
     if (!tried) this.adoptFloor(fc);
     this.floor[slot].state = 'sold'; this.syncCards();
     this.trial = false; this.returned = false; this.seed = seed; this.parkedTarget.name = this.def.text.mine;
     ctx.toast(`Elle est à toi ! ${say('Jërëjëf')} : le vendeur te serre la main.`);
     ctx.save();
+    return true;
   }
+  /**
+   * Bought on credit (src/transport/sarrAuto.ts): the same car, the one on the floor or the one just tried, where it stands; only the down payment is paid
+   * (src/economy/assets.ts `buyAssetFinanced`) and `then` records the debt against its asset. False when nothing was bought.
+   */
+  buyFinanced(slot: number, down: number, lender: string, then: (a: AssetState) => void): boolean { return this.buyInPlace(slot, { down, lender, then }); }
+
+  // ---------------------------------------------------------------- errands with a dealership's car (src/transport/sarrAuto.ts)
+  /**
+   * An errand for the dealer: the floor car `slot` is lent (the same machinery as a free trial: the same car, nothing saved, it goes back to its bay when
+   * nobody sees it); each time the player gets out of it, `parked(pose)` says whether the errand is done (then the car is handed back).
+   */
+  private errand: { parked(p: { x: number; z: number; yaw: number }): boolean } | null = null;
+  lendFloor(slot: number, parked: (p: { x: number; z: number; yaw: number }) => boolean): boolean {
+    const fc = this.floor[slot];
+    if (!fc?.vehicle || fc.state !== 'display' || this.vehicle || ownsVehicle(this.ctx.state, this.def.asset)) return false;
+    fc.state = 'unlocked'; this.errand = { parked };
+    this.sales().giveKeys(this, slot);
+    return true;
+  }
+  /** Out of the lent car: is it where the dealer wanted it? Done: the dealership takes it back (out of sight, as a returned trial car). */
+  private errandParked() {
+    const e = this.errand; if (!e) return;
+    this.parkedT = 0;
+    if (e.parked({ x: this.st.x, z: this.st.z, yaw: this.st.yaw })) { this.errand = null; this.returned = true; }
+    else this.ctx.toast('Pas encore là : gare-la à l’endroit indiqué.');
+  }
+  /** The errand ends (done or given up): the car is the dealer's again. */
+  endErrand() { if (!this.errand) return; this.errand = null; if (this.trial && this.vehicle) { this.returned = true; } else for (const fc of this.floor) if (fc.state === 'unlocked') { fc.state = 'display'; } }
+  get onErrand() { return !!this.errand; }
 
   // ---------------------------------------------------------------- condition (Pass 3: src/transport/condition.ts, saved in the asset model)
   /** The asset behind the vehicle the player drives; null for a dealer's trial car and the courier's loaner (not theirs: never worn). */
@@ -737,7 +801,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
           dealer: this.dealer ? { x: this.dealer.site.counter.x, z: this.dealer.site.counter.z, delivery: this.dealer.site.delivery, displays: this.dealer.site.lots ?? this.dealer.site.displays.length, onSale: this.dealer.sale ? this.dealer.sale.group.visible : null, card: !!this.dealer.card } : null,
           space: this.space(), presence: this.presenceSpace(), camera: this.cam.active, views: this.spec?.cameras.map(c => c.id) ?? [], view: this.spec?.cameras[this.cam.view % (this.spec?.cameras.length || 1)]?.id ?? null,
           solid: this.solid.length > 0 && !!this.hub && this.solid.every(c => this.hub!.colliders.includes(c)) }),
-        at: () => this.vehicle ? { t: +this.simT.toFixed(3), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active } : null,
+        at: () => this.vehicle ? { t: +this.simT.toFixed(3), x: +this.st.x.toFixed(2), z: +this.st.z.toFixed(2), yaw: +this.st.yaw.toFixed(2), speed: +this.st.speed.toFixed(2), driving: this.driving, mounting: !!this.mounting, box: !!this.box, parcel: this.box?.parcel.visible ?? null, pad: ridePad.active, paddling: this.ctl.paddling, rBadge: this.ctl.showR, clip: this.vehicle.driverSeat?.clip ?? null } : null,
         card: () => this.card?.text ?? '',
         /** Checks: the vehicle sounds (counts asked and played, whether the engine runs). */
         audio: () => vehicleAudio.info(),
@@ -763,7 +827,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
    * What makes a kerb dealer read as a dealership from the street: a coloured strip of forecourt under the cars and the desk,
    * and a canopy over the desk whose fascia repeats the sign toward the road (the pole sign alone looked like street furniture).
    */
-  private buildForecourt(site: DealerSite, o: NonNullable<OwnedDef['dealer']>['sign'], sign: THREE.CanvasTexture | null, mesh: (geo: THREE.BufferGeometry, mat: THREE.Material) => THREE.Mesh, hub: HubWorld) {
+  private buildForecourt(site: DealerSite, o: DealerDef['sign'], sign: THREE.CanvasTexture | null, mesh: (geo: THREE.BufferGeometry, mat: THREE.Material) => THREE.Mesh, hub: HubWorld) {
     const f = { x: Math.sin(site.delivery.yaw), z: Math.cos(site.delivery.yaw) };
     const dx = site.counter.x - site.delivery.x, dz = site.counter.z - site.delivery.z, dAlong = dx * f.x + dz * f.z;
     let nx = dx - f.x * dAlong, nz = dz - f.z * dAlong; const nl = Math.hypot(nx, nz) || 1; nx /= nl; nz /= nl;   // toward the buildings
@@ -789,7 +853,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
 
   // ---------------------------------------------------------------- the dealer corner
   private buildDealer(ctx: GameCtx, hub: HubWorld) {
-    const D = this.def.dealer!, site = D.site(hub);
+    const D = this.dd!, site = D.site(hub);
     if (!site) return;
     if (site.floor) { this.buildFloorDealer(ctx, hub, site, D); return; }
     clearKerb(ctx.extra, hub.colliders, site.kerb);
@@ -844,7 +908,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
    * A floor dealer (Prestige Auto): the hall is the world generator's (src/world/prestige.ts); here are its real cars on their bays with their price cards, and
    * the counter place that the phone's map and the guide find. The salesperson (src/transport/prestigeSales.ts) sells them.
    */
-  private buildFloorDealer(ctx: GameCtx, hub: HubWorld, site: DealerSite, D: NonNullable<OwnedDef['dealer']>) {
+  private buildFloorDealer(ctx: GameCtx, hub: HubWorld, site: DealerSite, D: DealerDef) {
     clearKerb(ctx.extra, hub.colliders, site.kerb);
     const g = new THREE.Group(); g.name = `${this.def.key}:dealer`;
     const mats: THREE.Material[] = [], geos: THREE.BufferGeometry[] = [];
@@ -869,9 +933,9 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.dealer = { group: g, site, sign: null, card: null, mats, geos, sale: null, extraTex: [] };
     ctx.places.add(shop({
       id: `${this.def.key}:dealer`, name: D.name, space: 'street', catalogue: D.catalogue,
-      anchors: [{ id: 'till', kind: 'shop', x: site.counter.x, z: site.counter.z, y: 2.2, radius: 2.8, bias: this.def.key === 'berline' ? -0.2 : 4 }],
-    }, { browse: () => prestige.openCatalogue(ctx) }));
-    prestige.register(this);
+      anchors: [{ id: 'till', kind: 'shop', x: site.counter.x, z: site.counter.z, y: 2.2, radius: 2.8, bias: D.counterBias ?? 4 }],
+    }, { browse: () => this.sales().openCatalogue(ctx) }));
+    this.salesReg = this.sales(); this.salesReg.register(this);
   }
   /** A price card stands only by a car that is there to be bought. */
   private syncCards() { for (const fc of this.floor) for (const m of fc.card) m.visible = fc.state === 'display' || fc.state === 'unlocked'; }
@@ -888,10 +952,10 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   }
 
   private openCatalogue() {
-    if (this.dealer?.site.floor) { prestige.openCatalogue(this.ctx); return; }
+    if (this.dealer?.site.floor) { this.sales().openCatalogue(this.ctx); return; }
     const ctx = this.ctx, mine = ownsVehicle(ctx.state, this.def.asset);
     // the free test drive comes first and says so: a player should meet « Essayer gratuitement » before the price
-    ctx.menu(this.def.dealer!.name, 'Essaie d’abord, c’est gratuit. Le prix est affiché avant de confirmer l’achat.', [{
+    ctx.menu(this.dd!.name, 'Essaie d’abord, c’est gratuit. Le prix est affiché avant de confirmer l’achat.', [{
       icon: '🔑', label: 'Essayer gratuitement', detail: mine ? this.def.text.owned : `${this.label()} · rien n’est payé · le vendeur la reprend quand tu descends`, right: 'Gratuit',
       disabled: mine || !!this.vehicle, onPick: () => this.tryOut(),
     }, {
@@ -1071,7 +1135,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     else if (normal || !ctx.inside()) ctx.player.place(p.x, p.z, this.st.yaw);
     this.card?.show(null);
     if (this.trial && !floorTrial) { this.endTrial(); ctx.toast('Essai terminé : le vendeur reprend le véhicule.'); }
-    else if (!door) { if (floorTrial) { this.parkedT = 0; prestige.trialEnded(this, p.x, p.z); } else if (normal) ctx.toast(this.def.text.parked); }
+    else if (!door) { if (floorTrial && this.errand) this.errandParked(); else if (floorTrial) { this.parkedT = 0; this.sales().trialEnded(this, p.x, p.z); } else if (normal) ctx.toast(this.def.text.parked); }
     ctx.save();
   }
 
@@ -1133,7 +1197,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     this.setSolid(false);
     this.mounting = null; this.entry = null; this.exit = null; this.doorK = this.doorGoal = 0; this.doorSound = false;
     this.trial = false; this.trialSlot = -1; this.returned = false; this.seed = 0; this.parkedTarget.name = this.def.text.mine;
-    prestige.unregister(this);
+    this.salesReg?.unregister(this); this.salesReg = null;
     for (const fc of this.floor) { fc.vehicle?.dispose(); fc.card.forEach(m => m.removeFromParent()); }
     this.floor = []; this.floorTargets = []; for (const t of this.cardTex) t.dispose(); this.cardTex = [];
     this.vehicle?.dispose(); this.vehicle = null;
@@ -1155,7 +1219,7 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
     const d = this.spec?.drive; if (!d) return;
     for (const fc of this.floor) {
       if (!fc.vehicle || (fc.state !== 'display' && fc.state !== 'unlocked')) continue;
-      const s = fc.spot, keys = fc.state === 'unlocked' && prestige.hasKeys(this, fc.slot), reach = keys ? 1.3 : this.def.reach;
+      const s = fc.spot, keys = fc.state === 'unlocked' && this.sales().hasKeys(this, fc.slot), reach = keys ? 1.3 : this.def.reach;
       if (Math.hypot(s.x - x, s.z - z) > d.halfLength + reach + 0.5) continue;
       const t = (this.floorTargets[fc.slot] ??= { id: `${this.def.key}:floor:${fc.slot}`, name: '', kind: 'vehicle', space: 'street', x: 0, z: 0, y: 1.6, radius: reach, bias: -0.2, affordances: () => this.floorAffordances(fc.slot) });
       if (keys) { const p = this.stepPoint(s.x, s.z, s.yaw); t.x = p.x; t.z = p.z; }
@@ -1171,11 +1235,11 @@ export class OwnedVehicleModule implements GameModule, FloorOwner {
   private floorAffordances(slot: number): Affordance[] {
     const fc = this.floor[slot], ctx = this.ctx, mine = ownsVehicle(ctx.state, this.def.asset); if (!fc) return [];
     if (fc.state === 'unlocked') {
-      if (prestige.hasKeys(this, slot)) return [{ id: 'ouvrir', verb: 'open', label: 'Ouvrir', icon: '🚪', detail: 'Portière conducteur', run: () => this.enterFloor(slot) }];
+      if (this.sales().hasKeys(this, slot)) return [{ id: 'ouvrir', verb: 'open', label: 'Ouvrir', icon: '🚪', detail: 'Portière conducteur', run: () => this.enterFloor(slot) }];
       return [{ id: 'attente', verb: 'wait', label: 'Le vendeur apporte les clés', icon: '🔑', disabled: 'Un instant…', run: () => {} }];
     }
     return [
-      { id: 'essayer', verb: 'drive', label: 'Essayer cette voiture', icon: '🔑', detail: 'Gratuit · le vendeur t’apporte les clés', disabled: mine ? this.def.text.owned : this.vehicle ? 'Rends d’abord ta voiture d’essai' : null, run: () => prestige.requestTrial(this, slot) },
+      { id: 'essayer', verb: 'drive', label: 'Essayer cette voiture', icon: '🔑', detail: 'Gratuit · le vendeur t’apporte les clés', disabled: mine ? this.def.text.owned : this.vehicle ? 'Rends d’abord ta voiture d’essai' : null, run: () => this.sales().requestTrial(this, slot) },
       { id: 'acheter', verb: 'buy', label: `Acheter · ${fcfa(this.price())}`, icon: '💰', detail: 'Le prix est affiché, tu confirmes avant de payer', disabled: mine ? this.def.text.owned : this.vehicle ? 'Rends d’abord ta voiture d’essai' : null, run: () => this.askBuy(slot) },
     ];
   }

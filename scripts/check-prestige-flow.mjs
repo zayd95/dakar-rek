@@ -37,10 +37,10 @@ const count = () => d(() => { let n = 0; const names = []; window.__dakar.three.
 
 // ---- 0. on the pavement outside, at noon, with money in the pocket
 await d(() => { window.__dakar.teleport('almadies', -100.5, 4.6, 0); window.__dakar.setHour(11); window.__dakar.state.data.wallet = 200000000; });
-await wait(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.sales?.info().here && window.__dakar.berline?.info().dealer && window.__dakar.suv?.info().floor.length === 2);
+await wait(() => window.__dakar.pos().hub === 'almadies' && window.__dakar.sales?.info().here && window.__dakar.berline?.info().dealer && window.__dakar.suv?.info().floor.length === 2 && window.__dakar.berline.info().floor.length === 1 && window.__dakar.gainde?.info().floor.length === 1);
 await page.waitForTimeout(1500);
-const b0 = await B(), s0 = await d(() => window.__dakar.suv.info());
-check('the dealership has four real cars on its floor: two berlines and two SUVs, each in its own bay', b0.floor.length === 2 && s0.floor.length === 2 && [...b0.floor, ...s0.floor].every(c => c.here && c.state === 'display') && new Set([...b0.floor, ...s0.floor].map(c => c.x)).size === 4, JSON.stringify([...b0.floor, ...s0.floor].map(c => [c.x, c.z])));
+const b0 = await B(), s0 = await d(() => window.__dakar.suv.info()), g0 = await d(() => window.__dakar.gainde.info());
+check('the dealership has four real cars on its floor: the berline, two Lamane Sports and the Gaïndé, each in its own bay', b0.floor.length === 1 && s0.floor.length === 2 && g0.floor.length === 1 && [...b0.floor, ...s0.floor, ...g0.floor].every(c => c.here && c.state === 'display') && new Set([...b0.floor, ...s0.floor, ...g0.floor].map(c => c.x)).size === 4, JSON.stringify([...b0.floor, ...s0.floor].map(c => [c.x, c.z])));
 check('no car is on the road or the pavement: nothing was delivered outside', !b0.here && !s0.here);
 await shot('1-pavement');
 
@@ -56,12 +56,12 @@ const toast = await d(() => document.querySelector('#toast')?.textContent ?? '')
 check('he walked over and greeted them in French with a little Wolof, once', greeted.log.greetings === 1 && /Bonjour|Salaam|Dalal|Na nga def/.test(toast + greeted.log.said.join(' ')) && greeted.log.walked > 2, JSON.stringify({ said: greeted.log.said, walked: +greeted.log.walked.toFixed(1), toast: toast.slice(0, 80) }));
 check('his walk never jumped: the biggest step of one frame is a walking step', greeted.log.maxStep < 0.4, `maxStep ${greeted.log.maxStep.toFixed(2)} m`);
 // declining: the player simply walks on to look at the cars; no second greeting, nothing forced
-await walkTo(page, t, -88.3, 19.9, { tol: 0.45 });
+await walkTo(page, t, b0.floor[0].x, 19.9, { tol: 0.45 });
 await page.waitForTimeout(1500);
 check('walking away is a fine answer: no menu was forced on them and he did not greet again', (await S()).log.greetings === 1 && !(await d(() => document.querySelector('#modal.on'))), '');
 
-// ---- 2. the navy berline: « Essayer cette voiture »
-await wait(() => window.__dakar.focus()?.id === 'berline:floor:1', null, 60000);
+// ---- 2. the white berline: « Essayer cette voiture »
+await wait(() => window.__dakar.focus()?.id === 'berline:floor:0', null, 60000);
 const f1 = await d(() => window.__dakar.focus());
 check('the car on the floor offers a free trial and the purchase, by itself', f1.primary === 'Essayer cette voiture' && f1.all.some(a => /^Acheter/.test(a)), JSON.stringify(f1));
 await shot('3-car');
@@ -69,7 +69,7 @@ await t.tap('#act');
 await wait(() => window.__dakar.sales.info().task === 'car', null, 60000);
 await shot('4-salesman-walks');
 await wait(() => /clés/.test(document.querySelector('#modal.on')?.textContent ?? ''));
-const atCar = await S(), flo = (await B()).floor[1];
+const atCar = await S(), flo = (await B()).floor[0];
 check('he walked to that car, unlocked it (a chirp) and offered the keys', Math.hypot(atCar.x - flo.stand.x, atCar.z - flo.stand.z) < 0.8 && flo.state === 'unlocked' && (await d(() => window.__dakar.berline.audio().count.unlock)) >= 1, JSON.stringify({ sales: [atCar.x, atCar.z], stand: flo.stand, state: flo.state }));
 await shot('5-keys');
 check('he still has not teleported', (await S()).log.maxStep < 0.4);
@@ -95,7 +95,7 @@ await wait(() => window.__dakar.berline.info().driving, null, 60000);
 const au = await d(() => window.__dakar.berline.audio()), n1 = await count();
 check('the door really opened (a separate leaf, turned out) and shut again', maxDoor >= 0.95 && (await B()).door < 0.05, `door ${maxDoor}`);
 check('it sounded: door open, door shut, the engine starting', au.count.door >= 2 && au.count.start >= 1, JSON.stringify(au.count));
-check('the car under the player is the very car they chose: same place, one vehicle, no copy', Math.abs((await AT()).x - flo.x) < 0.6 && n0.n === n1.n && n1.names.filter(x => x === 'berline:floor:1').length === 1 && !n1.names.includes('berline:mine') && !(await B()).floor[1].here, JSON.stringify({ n0: n0.names, n1: n1.names }));
+check('the car under the player is the very car they chose: same place, one vehicle, no copy', Math.abs((await AT()).x - flo.x) < 0.6 && n0.n === n1.n && n1.names.filter(x => x === 'berline:floor:0').length === 1 && !n1.names.includes('berline:mine') && !(await B()).floor[0].here, JSON.stringify({ n0: n0.names, n1: n1.names }));
 await shot('9-engine');
 
 // ---- 4. drive it out, round the block, back to the forecourt
@@ -103,7 +103,7 @@ const trial = await B();
 check('it is a free trial: nothing paid, nothing owned, nothing saved', trial.trial && !trial.owned && !trial.record && (await d(() => window.__dakar.state.wallet)) === 200000000, JSON.stringify({ trial: trial.trial, owned: trial.owned, record: trial.record }));
 // the lane is the middle of the road: the kerb lane (4.3 m off the centre line) is where the hub parks its cars
 const LAP = [
-  { x: -88.3, z: 12, tol: 3 }, { x: -87, z: 6, tol: 2.2, speed: 4 }, { x: -80, z: 1.2, tol: 3, speed: 5 }, { x: -70, z: 1.2, tol: 3 }, { x: -64.5, z: 2.6, tol: 2.5, speed: 4 }, { x: -61.2, z: 7, tol: 2.5, speed: 4 }, { x: -60.4, z: 16, tol: 3 }, { x: -60.4, z: 30, tol: 4 }, { x: -60.4, z: 44, tol: 4 },
+  { x: b0.floor[0].x, z: 12, tol: 3 }, { x: -87, z: 6, tol: 2.2, speed: 4 }, { x: -80, z: 1.2, tol: 3, speed: 5 }, { x: -70, z: 1.2, tol: 3 }, { x: -64.5, z: 2.6, tol: 2.5, speed: 4 }, { x: -61.2, z: 7, tol: 2.5, speed: 4 }, { x: -60.4, z: 16, tol: 3 }, { x: -60.4, z: 30, tol: 4 }, { x: -60.4, z: 44, tol: 4 },
   { x: -61.4, z: 52.5, tol: 2.5, speed: 3 }, { x: -65, z: 58.8, tol: 2.5, speed: 3 }, { x: -72, z: 60, tol: 3, speed: 4 }, { x: -92, z: 60, tol: 4 }, { x: -108, z: 60, tol: 4 },
   { x: -114.8, z: 59.2, tol: 2.5, speed: 3 }, { x: -119.2, z: 55.6, tol: 2.5, speed: 3 }, { x: -120, z: 46, tol: 3.5 }, { x: -120, z: 24, tol: 4 },
   { x: -120, z: 16, tol: 3 }, { x: -120, z: 9.5, tol: 2, speed: 2.5 }, { x: -118.2, z: 4.6, tol: 2, speed: 2.5 }, { x: -113.5, z: 1.4, tol: 2.5, speed: 3 }, { x: -106, z: 1, tol: 3 }, { x: -98, z: 1.4, tol: 3 }, { x: -94, z: 3.8, tol: 2.5, speed: 3 }, { x: -91, z: 9, tol: 2.5, speed: 4 },
@@ -149,8 +149,8 @@ await wait(() => window.__dakar.berline.info().owned, null, 60000);
 await page.waitForTimeout(800);
 const bought = await B(), w1 = await d(() => window.__dakar.state.wallet), led1 = await d(() => window.__dakar.state.data.ledger.slice(-2)), n2 = await count();
 check('paid once, the exact price, one ledger line', bought.owned && wallet0 - w1 === price && (await d(() => window.__dakar.state.data.ledger.length)) === led0 + 1 && /Berline neuve/.test(led1[led1.length - 1].label) && bought.bought === 1, JSON.stringify({ paid: wallet0 - w1, price, led: led1.map(l => l.label) }));
-check('the same car became theirs, where it stood: position kept, parked record there, no delivery, no copy, no trial', !bought.trial && Math.abs(bought.x - parkedAt.x) < 0.1 && Math.abs(bought.z - parkedAt.z) < 0.1 && bought.record && Math.hypot(bought.record.x - parkedAt.x, bought.record.z - parkedAt.z) < 0.1 && n2.n === n0.n && n2.names.filter(x => x === 'berline:floor:1').length === 1 && !n2.names.includes('berline:mine'), JSON.stringify({ record: bought.record, names: n2.names }));
-check('its paint (the navy of the car chosen) is saved with it; the bay stays empty; the white berline is still on the floor', bought.paint === bought.seed && bought.paint > 0 && !bought.floor[1].here && bought.floor[0].here && bought.floor[0].state === 'display', JSON.stringify({ paint: bought.paint, floor: bought.floor.map(f => [f.slot, f.here, f.state]) }));
+check('the same car became theirs, where it stood: position kept, parked record there, no delivery, no copy, no trial', !bought.trial && Math.abs(bought.x - parkedAt.x) < 0.1 && Math.abs(bought.z - parkedAt.z) < 0.1 && bought.record && Math.hypot(bought.record.x - parkedAt.x, bought.record.z - parkedAt.z) < 0.1 && n2.n === n0.n && n2.names.filter(x => x === 'berline:floor:0').length === 1 && !n2.names.includes('berline:mine'), JSON.stringify({ record: bought.record, names: n2.names }));
+check('its paint (the white of the car chosen) is saved with it; the bay stays empty; the SUVs are still on the floor', bought.paint === bought.seed && bought.paint > 0 && !bought.floor[0].here && (await d(() => window.__dakar.suv.info().floor.every(f => f.here && f.state === 'display'))), JSON.stringify({ paint: bought.paint, floor: bought.floor.map(f => [f.slot, f.here, f.state]) }));
 await shot('17-bought');
 // the player gets in again, as an owner, through the same door
 await page.waitForTimeout(500);
@@ -162,7 +162,7 @@ const filmed = process.env.RECORD ? page.video() : null;
 await page.reload(); await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub === 'almadies' && window.__dakar.berline?.info().dealer, null, T);
 await page.waitForTimeout(2500);
 const re = await B(), n3 = await count();
-check('after a reload the car stands where it was left, in the same paint, not duplicated; the bay is empty', re.owned && re.here && Math.abs(re.x - parkedAt.x) < 0.1 && Math.abs(re.z - parkedAt.z) < 0.1 && re.seed === bought.seed && !re.floor[1].here && re.floor[0].here && n3.n === 2, JSON.stringify({ x: re.x, z: re.z, seed: re.seed, floor: re.floor.map(f => [f.slot, f.here, f.state]), names: n3.names }));
+check('after a reload the car stands where it was left, in the same paint, not duplicated; the bay is empty', re.owned && re.here && Math.abs(re.x - parkedAt.x) < 0.1 && Math.abs(re.z - parkedAt.z) < 0.1 && re.seed === bought.seed && !re.floor[0].here && n3.n === 1, JSON.stringify({ x: re.x, z: re.z, seed: re.seed, floor: re.floor.map(f => [f.slot, f.here, f.state]), names: n3.names }));
 
 // ============================================================================ DRIVE_ON=1: the same car, on from the forecourt in Almadies to the Corniche, with no teleport (docs/vehicles/CONTINUOUS_DRIVE.md)
 if (process.env.DRIVE_ON) {

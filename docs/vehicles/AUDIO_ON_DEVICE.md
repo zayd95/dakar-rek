@@ -59,3 +59,38 @@ A screenshot of that panel while holding Klaxon is the evidence still missing.
 ## Haptics
 
 See the collision doc (`docs/vehicles/COLLISION_FEEL.md`): vibration only where `navigator.vibrate` exists. iPhone Safari does not implement it; there, sound + camera + visual impact carry the feedback.
+
+## « Tester le son » in the game (October 2026)
+
+Réglages › Son › **Tester le son** (`src/ui/soundTest.ts`). Each button plays one of the vehicles' sounds through the very path the game uses while driving — the approved B recordings,
+the same engine, horn and impact voices, the vehicles' bus, its limiter and the sound setting — with nothing driven: **Démarrage** (the ignition, the engine catching, the idle), **Ralenti**,
+**Accélération** (idle, revs rising, cruising, the engine falling back), **Klaxon**, **Petit choc**, **Gros choc**, **Bip** (an 880 Hz test tone); « Voiture » or « Jakarta ». Nothing in the
+recordings or the mix changed.
+
+Under the buttons, in plain words, what the page knows about its sound:
+
+| Line | Says | When it is red |
+|---|---|---|
+| Son du jeu | Activé / Coupé | the game's own switch is off: every sound is silent, the buttons say so |
+| Audio du téléphone | Actif / En veille : la prochaine touche le réveille / Pas encore démarré | the phone has not let the page play yet, or put it to sleep (a call, the lock screen, another app); the next touch wakes it |
+| Enregistrements | 9/9 prêts / n/9 · échec : <name> | a recording did not download or decode: its sound says it could not be loaded, the others still play |
+| Mode silencieux | Géré (playback while driving) / Non géré par ce navigateur | without the Audio Session API (Safari < 16.4, every Chromium) the iPhone's silent switch mutes the game |
+| Envoyé au haut-parleur | peak and speaker-band level, live | — (if this moves and nothing is heard: the phone's volume, its silent switch, a Bluetooth route) |
+
+`scripts/check-sound-test.mjs` (portrait, real CDP touches, Chromium held to the iPhone's gesture rule `--autoplay-policy=user-gesture-required`), **23/23**:
+
+* before any touch: no context, no sound; the touches that open the phone start it; the nine recordings decode;
+* every button sends sound to the speaker, measured at the master output: ignition peak −14.5 dBFS, idle −29, acceleration −23.5, horn −5.2, light impact −14.1, heavy impact −4.7,
+  test tone −7.3; Jakarta ignition −14.8, acceleration −23.9, horn −5.5; the engine is off when the test ends;
+* sound off: the horn plays nothing (−120 dB) and the panel says why; the context put to sleep (as a call does) shows « En veille », and the next touch wakes it (horn −5.4 dBFS again);
+* a recording blocked on the network (`horn-car.mp3` → 404): « 8/9 prêts · échec : horn-car », the horn button says it could not be loaded, the ignition still plays;
+* the session is filmed with its sound: `docs/vehicles/audio/sound-test.mp4` (H.264 + AAC, plays on a phone), lined up by a clapperboard (a magenta flash and the test tone at the same
+  instant). In that film the screen follows the sound by about a second: the software renderer paints the page slowly while the sound runs in real time. It is the picture that lags, not
+  the game.
+
+`scripts/check-jakarta-courier.mjs` also films the Jakarta backing out of a gap with its feet, with its sound: `docs/vehicles/audio/jakarta-paddle.mp4`.
+`scripts/capture-drive-av.mjs` films the Teranga driven with real touches, with its sound (58 s): getting in by the door, the ignition and idle, pulling away, cruising, the horn, braking,
+and a bump into a wall at 17 km/h (a light knock: 0.2 % damage): `docs/vehicles/audio/teranga-drive.mp4`.
+
+**What these do not prove**: that an iPhone's or an Android phone's loudspeaker plays it. No phone is attached to this environment; Chromium with a software renderer is not Safari. The
+on-device check is the 30-second one above (`?audiodebug`), or now simply Réglages › Son › Tester le son, which shows the same facts without a URL parameter.
