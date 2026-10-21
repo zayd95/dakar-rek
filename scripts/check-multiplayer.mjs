@@ -103,7 +103,8 @@ try {
   await b.evaluate(() => window.__dakar.teleport('pikine')); await a.evaluate(() => window.__dakar.teleport('pikine'));
   await b.waitForFunction(() => window.__dakar.tiak?.at(), null, { timeout: 60000 });
   await b.evaluate(() => { const k = window.__dakar.tiak.at(); window.__dakar.place(k.x - Math.sin(k.yaw) * 1.6, k.z - Math.cos(k.yaw) * 1.6, k.yaw); });
-  await b.waitForTimeout(1200); await b.keyboard.press('KeyE');
+  // (an action presses what the HUD has in focus: wait for it to be the bike, not a fixed time — a slow frame left the last place's action there)
+  await b.waitForFunction(() => /Tiak/.test(document.getElementById('act')?.textContent ?? ''), null, { timeout: 30000 }); await b.keyboard.press('KeyE');
   await b.waitForFunction(() => window.__dakar.tiak.at()?.driving === true, null, { timeout: 15000 });
   await b.keyboard.down('KeyW');
   await b.waitForFunction(() => window.__dakar.tiak.at()?.speed > 8, null, { timeout: 25000 }).catch(async () => { console.log('RIDE STATE', JSON.stringify(await b.evaluate(() => ({ t: window.__dakar.tiak.at(), p: window.__dakar.pos(), status: window.__dakar.presence().status })))); });
@@ -125,7 +126,7 @@ try {
   // a passenger in another vehicle (a car rapide) is not drawn on a bike for the other player
   const L0 = (await b.evaluate(() => window.__dakar.transport.lines()))[0], st0 = L0.stops[0];
   await b.evaluate(([x, z, yaw]) => { window.__dakar.setHour(10); window.__dakar.state.data.wallet = Math.max(window.__dakar.state.data.wallet, 2000); window.__dakar.place(x, z, yaw); }, [st0.x - st0.dx * 1.2, st0.z - st0.dz * 1.2, st0.yaw]);
-  await b.waitForTimeout(1200); await b.evaluate(() => window.__dakar.act());
+  await b.waitForFunction(() => /Arrêt/.test(document.getElementById('act')?.textContent ?? ''), null, { timeout: 30000 }); await b.evaluate(() => window.__dakar.act());   // (the stop in focus, not the bike just left)
   await b.waitForFunction(() => window.__dakar.transport.trip().phase === 'waiting', null, { timeout: 30000 });
   const wait0 = await b.evaluate(([l, i]) => window.__dakar.transport.nextAt(l, i), [L0.id, 0]);
   if (wait0 > 8) await b.evaluate(w => window.__dakar.transport.warp(w), wait0 - 6);
