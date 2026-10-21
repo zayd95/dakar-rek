@@ -10,7 +10,7 @@ import { centreZone } from '../src/ui/quiet';
  * keeps the numbers in step.
  */
 const text = (path: string) => new TextDecoder().decode(readFileSync(new URL(path, import.meta.url)));
-const css = text('../src/ui/style.css'), stride = text('../src/ui/stride.css'), chat = text('../src/multiplayer/chat.css');
+const css = text('../src/ui/style.css'), chat = text('../src/multiplayer/chat.css');
 const rule = (src: string, sel: string) => {
   const at = src.indexOf(`${sel} {`); expect(at, sel).toBeGreaterThanOrEqual(0);
   return src.slice(at, src.indexOf('}', at));
@@ -23,9 +23,8 @@ const px = (r: string, prop: string) => {
 const portrait = css.slice(css.indexOf('@media (max-width:640px) and (orientation:portrait) {\n  #stats'));
 const landscape = css.slice(css.indexOf('@media (max-height:500px) and (orientation:landscape)'));
 const joy = rule(css, '#joy'), bar = rule(css, '#ui > #actbar'), act = rule(css, '#act'), more = rule(css, '#actMore');
-const run = rule(stride, 'body.touch #runBtn');
 const joyTop = px(joy, 'bottom') + px(joy, 'height');                                           // 154
-const runTop = px(run, 'bottom') + px(run, 'height'), runRight = px(run, 'left') + px(run, 'width');
+const runTop = 0, runRight = 0;                                                                  // there is no « Courir » button any more: the joystick sets the pace
 const barTop = px(bar, 'bottom') + px(act, 'min-height') + px(bar, 'gap') + px(more, 'height');
 const controlsTop = Math.max(joyTop, runTop, barTop);
 

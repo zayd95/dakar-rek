@@ -14,8 +14,9 @@ describe('the Klaxon button on the phone', () => {
     expect(ts).toContain('onHorn(by: Owner');                              // …and still wired to the horn
   });
   it('does not touch the other driving controls', () => {
-    expect(css).toMatch(/#ridepad \.rp-rev \{ display: none; height: 46px;/);
-    expect(css).toMatch(/#ridepad\.canrev \.rp-rev \{ display: block; \}/);
+    expect(css).not.toContain('.rp-rev');                                                // the separate R button is gone: the brake backs a car up when held at a standstill
+    expect(ts).not.toMatch(/mk\(top, 'rp-rev'/);
+    expect(css).toMatch(/#ridepad\.reversing \.rp-r \{ display: block; \}/);            // a subtle « R » shows only while the vehicle really reverses
     for (const line of css.split('\n').filter(l => /\.rp-(gas|brake|view)\b/.test(l))) expect(line).not.toContain('display: none');   // gas, brake and « Vue » are never hidden
   });
 });

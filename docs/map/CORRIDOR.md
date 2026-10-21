@@ -1,6 +1,6 @@
 # Roads between districts: how they work, how they were checked
 
-Branch `feature/maplibre-corridor-20261020` (from the integration candidate `d9f46be`). Plan and file ownership: `PLAN.md`. Map data and licences: `PROVENANCE.md`.
+Branch `feature/maplibre-corridor-20261020` (from the integration candidate `d9f46be`), extended by `feature/driving-2-20261021`: the Corniche ↔ Plateau road, the network (`NETWORK.md`), the analog controls, living traffic and the stall fixes (`DRIVING.md`). Plan and file ownership: `PLAN.md`. Map data and licences: `PROVENANCE.md`.
 
 ## What a player gets
 
@@ -12,7 +12,7 @@ Pikine ↔ Almadies (1.48 km, from Pikine's west street) and Pikine ↔ Plateau 
 * **Two frames, one translation.** Both ends of a road face the same way, so the second district's frame is the first's moved by `(dx, dz)` (Almadies: `1665, −48`; Plateau: `190, −1387`). Crossing the middle of the road changes only which district is loaded: heading, speed, steering, camera and the vehicle's state are not touched (the same rule as #51's border road). The swap is on a plain stretch, 591 m / 886 m from the ends (beyond the 300 m fog), with 14 m of hysteresis.
 * **Chunks** (`chunks.ts`): 100 m of road each, deterministic from their index, 3–5 merged meshes, their own colliders. Streamed round the player (nearest first, one a frame, freed beyond 470 m). They live in the road's own frame under one group; the swap moves that group, nothing is rebuilt.
 * **Collision.** `HubWorld.corridors` extends the district's `bounds`: the owned vehicle's `blocked`, the walker's clamp and `resumeSpot` (reload on the road) ask it. Stalls, lamps, poles, parked vehicles are real colliders; the carriageway and both lanes are guaranteed clear (unit-tested for every chunk).
-* **Traffic** (`traffic.ts`): kit vehicles both ways, right-hand lanes, slowing and stopping behind a car, a parked vehicle or a solid thing; their footprints are solid for the player's vehicle (`transport.addObstacles`).
+* **Traffic** (`traffic.ts`): kit vehicles both ways, right-hand lanes, slowing and stopping behind a car, a parked vehicle or a solid thing; their footprints are solid for the player's vehicle (`transport.addObstacles`). Since driving 2.0 it also pulls over at stops, overtakes a stopped car when the other lane is clear, waits at junctions, hesitates and sounds an occasional quiet horn, and recovers from deadlocks without ever moving the player's vehicle (`DRIVING.md`).
 * **Vehicle carry.** `OwnedVehicleModule.corridorCross` records the pose in the new frame (as `cross()` does at a border), `hubLoaded` re-seats the player. A vehicle parked on the road is re-homed to the new district's frame at each swap (`corridorSwap`, `main.ts`), so it is never duplicated or lost.
 * **Streaming the next district** (Phase 3). `buildHub` is now `buildHubSteps`, a generator with 18 pause points. Once the player is 130 m out on a road the district at its other end is built ahead, 4 ms a frame; when done its meshes are drawn once, off screen (1 × 1 pixel, a layer the player's camera ignores), so buffers and textures are on the GPU, and `compileAsync` links its programs. At the swap, `loadHubStaged` does only what must happen at once (the vehicle's `hubLoaded`, the player's place); crowd, traffic, people, interiors and every other module's `hubLoaded` follow a few ms a frame (`hubLoadedSteps` lets a module split its own load: venues does, one venue a step). Modules not yet loaded are not updated, so none runs on a half-built district. Disposal of the old district comes last. `?nostage` restores the old all-in-one swap for comparison.
 
@@ -52,6 +52,6 @@ Reading them honestly: the swap frame is 25–50 times cheaper and the build is 
 ## Known limits
 
 * Hand-placed, approximate geography (see PROVENANCE): the roads are in the right order and the right part of town, not surveyed; the OSM extraction has not been run on real data.
-* One observed flake: in one of five full runs the car stalled for a minute 114 m from Pikine on the way home with a traffic car stopped behind it; not reproduced in the following runs; diagnostics are in `scripts/lib/roadDrive.mjs`.
+* The one observed stall (one of five full runs: the car stood for a minute 114 m from Pikine with a traffic car stopped behind it) was investigated in driving 2.0 (`DRIVING.md`): traffic could never restart at 60 fps, and its deadlock recovery never ran. Both are fixed and covered by deterministic tests; whether that was the exact cause of that one run cannot be proved.
 * A car parked within the swap's 14 m margin is re-homed at the swap; a vehicle left far out on a road is only drawn while a district whose frame contains it is loaded.
 * The corridor traffic is visual and physical only (nothing saved or shared), like the districts' own.

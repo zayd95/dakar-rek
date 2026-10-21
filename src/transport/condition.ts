@@ -43,7 +43,7 @@ export function scaledDrive(d: DriveSpec, hp: number): DriveSpec {
   if (hp >= 70) return d;
   const p = performance(hp);
   // a dead car has no top speed at all, but never exactly 0: driveStep divides by it (0 / 0 would put NaN in the car's position)
-  return { ...d, maxSpeed: Math.max(0.01, d.maxSpeed * p.top), accel: d.accel * p.accel, reverseSpeed: p.top === 0 ? 0 : d.reverseSpeed * Math.max(0.5, p.top) };
+  return { ...d, maxSpeed: Math.max(0.01, d.maxSpeed * p.top), boostSpeed: d.boostSpeed === undefined ? undefined : Math.max(0.01, d.boostSpeed * p.top), accel: d.accel * p.accel, reverseSpeed: p.top === 0 ? 0 : d.reverseSpeed * Math.max(0.5, p.top) };
 }
 
 /** What is said when a hit carries the car into a worse band (or the same band: nothing), null for no message. */

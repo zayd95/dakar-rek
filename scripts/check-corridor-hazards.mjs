@@ -26,16 +26,17 @@ const car = await d(() => window.__dakar.berline.at());
 const pr = await d(([x, z]) => window.__dakar.road.project(x, z), [car.x, car.z]);
 check('the car is parked on the road, in the right-hand lane', pr.on && pr.road === ROAD && Math.abs(pr.d + 2.8) < 1.2, JSON.stringify({ s: pr.s, d: pr.d }));
 const put = await d(([id, s]) => window.__dakar.road.putTraffic(id, 0, s - 45, 1), [ROAD, pr.s]);
-let minGap = Infinity, stoppedGap = null, last = null;
-for (let i = 0; i < 90 && stoppedGap === null; i++) {
+let minGap = Infinity, stoppedGap = null, last = null, passed = false, trackS = pr.s - 45;
+for (let i = 0; i < 90 && stoppedGap === null && !passed; i++) {
   await page.waitForTimeout(700);
   const cars = await d(id => window.__dakar.road.info().find(r => r.road === id).traffic, ROAD);
-  const mine = cars.filter(c => c.dir === 1 && c.x > car.x - 5).map(c => ({ ...c, gap: Math.hypot(c.x - car.x, c.z - car.z) })).sort((a, b) => a.gap - b.gap)[0];
+  const mine = cars.filter(c => c.dir === 1 && c.kind === put.kind && c.s > pr.s - 60).map(c => ({ ...c, gap: Math.hypot(c.x - car.x, c.z - car.z) })).sort((a, b) => Math.abs(a.s - trackS) - Math.abs(b.s - trackS))[0];       // the car put there (of its kind, the one nearest where it was put)
   if (!mine) continue;
-  last = mine; minGap = Math.min(minGap, mine.gap);
+  last = mine; trackS = mine.s; minGap = Math.min(minGap, mine.gap);
   if (mine.v < 0.1 && mine.gap < 20) stoppedGap = mine.gap;
+  if (mine.s - pr.s > put.hl + 4) passed = true;                      // it has gone round by the other lane and is ahead of the parked car
 }
-check('the traffic car behind it stops, a few metres short (it does not drive through the parked car)', stoppedGap !== null && minGap > put.hl + 1.6, JSON.stringify({ stoppedGap, minGap: +minGap.toFixed(1), kind: put.kind, last }));
+check('the traffic car behind it stops a few metres short, or goes round it by the other lane when that is clear: it never drives through the parked car', (stoppedGap !== null || passed) && minGap > put.hl + 1.6, JSON.stringify({ passed, stoppedGap, minGap: +minGap.toFixed(1), kind: put.kind, last }));
 await page.screenshot({ path: `${out}/traffic-behind-parked.png` });
 
 // ---------------------------------------------------------------- 2. what stands at the roadside is a wall for the car
@@ -79,7 +80,7 @@ if (st) {
   check('the hit is felt and costs the car: an impact is recorded and its condition falls', (after.feel?.impacts?.length ?? 0) >= 1 && after.info.asset?.condition < hp0, JSON.stringify({ hp: [hp0, after.info.asset?.condition], impacts: after.feel?.impacts?.slice(0, 2) }));
   await page.screenshot({ path: `${out}/stall-hit.png` });
   // and the car can back away and drive on
-  const brake = await t.centre('#ridepad .rp-brake'); await t.tap('#ridepad .rp-rev'); await t.down(1, gas.x, gas.y); await page.waitForTimeout(3000); await t.up(1); await t.tap('#ridepad .rp-rev');
+  const brake = await t.centre('#ridepad .rp-brake'); await t.down(1, brake.x, brake.y); await page.waitForTimeout(4000); await t.up(1);       // the brake held at the standstill backs the car up gently
   const back = await d(() => window.__dakar.berline.at());
   check('it backs away from the stall and is free again', Math.hypot(back.x - st.cx, back.z - st.cz) > minD + 1.5, JSON.stringify({ was: +minD.toFixed(2), now: +Math.hypot(back.x - st.cx, back.z - st.cz).toFixed(2) }));
   void brake;

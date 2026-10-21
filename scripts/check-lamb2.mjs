@@ -84,7 +84,7 @@ const layout = page => page.evaluate(() => {
   const shown = el => !!el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden' && el.getBoundingClientRect().width > 0;
   const btns = [...document.querySelectorAll('.duel-btns button')].map(b => ({ k: b.dataset.k, text: b.innerText.replace(/\s+/g, ' ').trim(), font: parseFloat(getComputedStyle(b).fontSize), cut: b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 1, ...r(b) }));
   const hit = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
-  const others = ['joy', 'runBtn', 'act', 'actMore', 'gesture'].map(id => document.getElementById(id)).filter(shown).map(el => ({ k: el.id, ...r(el) }));
+  const others = ['joy', 'act', 'actMore', 'gesture'].map(id => document.getElementById(id)).filter(shown).map(el => ({ k: el.id, ...r(el) }));
   const overlaps = [];
   for (let i = 0; i < btns.length; i++) for (let k = i + 1; k < btns.length; k++) if (hit(btns[i], btns[k])) overlaps.push(`${btns[i].k}/${btns[k].k}`);
   for (const o of others) for (const b of btns) if (hit(b, o)) overlaps.push(`${b.k}/${o.k}`);

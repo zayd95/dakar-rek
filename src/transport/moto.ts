@@ -43,7 +43,7 @@ export function motoSpec(): VehicleSpec {
     cabin: 'open',
     sway: 1,
     // town riding: about 45 km/h flat out, quick to stop, tight turns, leans into corners
-    drive: { maxSpeed: 12.5, reverseSpeed: 1.6, accel: 3.4, brake: 7.5, turnRadius: 3.2, steer: 4, halfWidth: 0.42, halfLength: k.length / 2, lean: true },
+    drive: { maxSpeed: 17.5, boostSpeed: 26.5, reverseSpeed: 1.6, accel: 5.2, brake: 8.5, turnRadius: 3.2, steer: 4.2, grip: 12.5, halfWidth: 0.42, halfLength: k.length / 2, lean: true },
     build: o => buildVehicle('moto', { seed: o?.seed ?? seed, driver: false, passengers: false, stand: !o?.ridden }).group,
   };
   return (cached = spec);

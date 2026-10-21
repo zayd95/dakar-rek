@@ -42,7 +42,7 @@ for (const [label, viewport, touch] of RUNS.filter(r => !process.env.ONLY || r[0
   check(`${label}: the minimap is visible while playing`, m.on && !!box, JSON.stringify({ on: m.on, size: m.size }));
   const sz = label === 'phone' ? [84, 130] : label === 'landscape' ? [70, 76] : [110, 150];
   check(`${label}: it is round, ${sz[0]}-${sz[1]} px, top corner`, !!box && Math.abs(box.width - box.height) < 1 && box.width >= sz[0] && box.width <= sz[1] && (box.left < 40 || (label === 'phone' && box.right > 390 - 40)) && box.top < 200, JSON.stringify(box));   // portrait phone: the right column (the left one keeps UI V2's cards)
-  const others = ['#stats', '#menuBtn', '#joy', '#stamina', '#runBtn', '#actbar', '#hint', '#place'];
+  const others = ['#stats', '#menuBtn', '#joy', '#stamina', '#actbar', '#hint', '#place'];
   const full = await rect('#minimap');
   const hits = [];
   for (const sel of others) { const r = await rect(sel); if (r && overlap(full, r)) hits.push(sel); }

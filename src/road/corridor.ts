@@ -13,7 +13,7 @@ export const WINDOW = 340, KEEP = 470;
 
 interface Live { chunk: Chunk; solid: Collider[]; people: PlacedPeople | null }
 
-export interface ViewOpts { mats: ChunkMats; lite: boolean; rand: () => number; traffic: number }
+export interface ViewOpts { mats: ChunkMats; lite: boolean; rand: () => number; traffic: number; waiters?: number; onHorn?: (near: number) => void }
 
 /**
  * A road between districts, as the loaded district sees it: its ground (what `world.corridors` asks), its chunks, built round the player and freed behind, and its traffic.
@@ -41,7 +41,13 @@ export class CorridorView implements RoadGround {
   contains(x: number, z: number, r: number): boolean { return this.road.ground.contains(x - this.offset.x, z - this.offset.z, r); }
 
   /** Where a point (hub frame) stands on the road. */
-  project(x: number, z: number): Projection { const p = this.road.spine.project(x - this.offset.x, z - this.offset.z, this.lastS, 160); this.lastS = p.s; return p; }
+  project(x: number, z: number): Projection {
+    const px = x - this.offset.x, pz = z - this.offset.z;
+    let p = this.road.spine.project(px, pz, this.lastS, 160);
+    // a view that has just been attached round a player who is already far along the road (a reload, a swap onto a road already driven) has no useful hint: the whole road is searched, once
+    if (Math.hypot(px - p.x, pz - p.z) > 40) p = this.road.spine.project(px, pz);
+    this.lastS = p.s; return p;
+  }
 
   /** The loaded district (`world`) takes over this road: colliders go into its list, in its frame. Used by the first load and by a rebase. */
   attach(world: HubWorld, hub: HubId) {
@@ -81,7 +87,7 @@ export class CorridorView implements RoadGround {
     const px = x - this.offset.x, pz = z - this.offset.z, n = Math.ceil(this.road.length / CHUNK);
     const mid = (i: number) => this.road.spine.at(i * CHUNK + CHUNK / 2);
     const dist = (i: number) => { const m = mid(i); return Math.hypot(m.x - px, m.z - pz); };
-    const s = this.road.spine.project(px, pz, this.lastS, 400).s, c = Math.floor(s / CHUNK), span = Math.ceil(WINDOW / CHUNK) + 2;
+    const s = this.project(x, z).s, c = Math.floor(s / CHUNK), span = Math.ceil(WINDOW / CHUNK) + 2;
     const want: { i: number; d: number }[] = [];
     for (let i = Math.max(0, c - span); i <= Math.min(n - 1, c + span); i++) { const d = dist(i); if (d <= WINDOW && !this.chunks.has(i)) want.push({ i, d }); }
     want.sort((a, b) => a.d - b.d);
@@ -111,13 +117,13 @@ export class CorridorView implements RoadGround {
     const px = x - this.offset.x, pz = z - this.offset.z;
     for (const l of this.chunks.values()) l.people?.update(dt, { x: px, z: pz }, 70);
     const near = this.chunks.size > 0 && Math.min(...[...this.chunks.keys()].map(i => { const m = this.road.spine.at(i * CHUNK + CHUNK / 2); return Math.hypot(m.x - px, m.z - pz); })) < WINDOW;
-    if (!this.traffic && density > 0 && near) { this.traffic = new CorridorTraffic(this.road, this.o.rand, density, this.o.lite); this.root.add(this.traffic.group); }
+    if (!this.traffic && density > 0 && near) { this.traffic = new CorridorTraffic(this.road, this.o.rand, density, this.o.lite, { waiters: this.o.waiters, onHorn: this.o.onHorn }); this.root.add(this.traffic.group); }
     this.traffic?.update(dt, { solid: (a, b, r) => this.solidRoad(a, b, r), player: player ? { x: player.x - this.offset.x, z: player.z - this.offset.z } : null }, near ? { x: px, z: pz } : null);
   }
 
   /** Checks: put traffic car `i` on the road (see CorridorTraffic.put). Makes the traffic first if the road has none yet. */
   putTraffic(i: number, s: number, dir: 1 | -1) {
-    if (!this.traffic) { this.traffic = new CorridorTraffic(this.road, this.o.rand, Math.max(this.o.traffic, 4), this.o.lite); this.root.add(this.traffic.group); }
+    if (!this.traffic) { this.traffic = new CorridorTraffic(this.road, this.o.rand, Math.max(this.o.traffic, 4), this.o.lite, { waiters: this.o.waiters, onHorn: this.o.onHorn }); this.root.add(this.traffic.group); }
     return this.traffic.put(i, s, dir);
   }
 
@@ -138,7 +144,7 @@ export class CorridorView implements RoadGround {
 
   /** What the checks and the debug hook read. */
   info() {
-    return { road: this.road.id, hub: this.hub, offset: this.offset, chunks: [...this.chunks.keys()].sort((a, b) => a - b), ...this.stats, colliders: [...this.chunks.values()].reduce((a, l) => a + l.solid.length, 0), traffic: this.traffic?.positions() ?? [] };
+    return { road: this.road.id, hub: this.hub, offset: this.offset, chunks: [...this.chunks.keys()].sort((a, b) => a - b), ...this.stats, colliders: [...this.chunks.values()].reduce((a, l) => a + l.solid.length, 0), traffic: (this.traffic?.positions() ?? []).map(c => ({ ...c, x: c.x + this.offset.x, z: c.z + this.offset.z })) };       // in the loaded district's frame, like everything the debug API gives
   }
 
   dispose() {

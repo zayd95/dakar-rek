@@ -361,6 +361,13 @@ class VehicleAudio {
     setTimeout(() => { for (const o of h.srcs) { try { o.stop(); o.disconnect(); } catch { /* done */ } } }, 200);
   }
   get hornHeld() { return !!this.horn; }
+  private trafficHornAt = 0;
+  /** A driver of the road's traffic sounds a horn: the recorded horn, short and very quiet (no louder than the far-off ones of the bed), a touch more when the driver is close. At most one every few seconds. */
+  trafficHorn(near: number) {
+    const b = this.bus; if (!b || isMuted()) return;
+    const now = performance.now(); if (now - this.trafficHornAt < 3500) return; this.trafficHornAt = now;
+    this.shot(b, 'horn-car', { dur: 0.28, rate: 0.85 + Math.random() * 0.3, gain: 0.016 + 0.014 * Math.max(0, Math.min(1, near)), lp: 1000, hp: 170, attack: 0.02, release: 0.1 });
+  }
   /** A far-off horn in the traffic bed: the recorded horn, very quiet, now and then. */
   private distantHorn() {
     const b = this.bus; if (!b || isMuted()) return;

@@ -100,9 +100,20 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
   const disposables: { dispose(): void }[] = [];
   const group = new THREE.Group(); group.name = `road:${road.id}:${index}`;
 
+  /**
+   * A solid box (width w across, depth d along its heading) as colliders. A box turned off the axes (the road runs at an angle) is a CHAIN of small boxes along its long side, not one big
+   * axis-aligned one: the single box's corners would swell far into the carriageway (the lanes must stay clear at every angle: chunks.test.ts).
+   */
   const solid = (cx: number, cz: number, w: number, d: number, h: number, yaw = 0) => {
-    const c = Math.abs(Math.cos(yaw)), s = Math.abs(Math.sin(yaw)), hw = (w * c + d * s) / 2, hd = (w * s + d * c) / 2;
-    colliders.push({ x0: cx - hw, x1: cx + hw, z0: cz - hd, z1: cz + hd, h });
+    const c = Math.abs(Math.cos(yaw)), s = Math.abs(Math.sin(yaw)), diag = Math.abs(Math.sin(2 * yaw)) > 0.2, long = Math.max(w, d), short = Math.min(w, d);
+    const n = diag && short > 0.3 && long > short * 1.4 ? Math.min(6, Math.round(long / short)) : 1;
+    const sw = d >= w ? w : w / n, sd = d >= w ? d / n : d;
+    const hw = (sw * c + sd * s) / 2, hd = (sw * s + sd * c) / 2;
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0 : ((i + 0.5) / n - 0.5) * long;
+      const ox = d >= w ? Math.sin(yaw) * t : Math.cos(yaw) * t, oz = d >= w ? Math.cos(yaw) * t : -Math.sin(yaw) * t;
+      colliders.push({ x0: cx + ox - hw, x1: cx + ox + hw, z0: cz + oz - hd, z1: cz + oz + hd, h });
+    }
   };
   const clear = (x: number, z: number, r: number) => !o.keepClear?.some(k => Math.hypot(k.x - x, k.z - z) < k.r + r);
 
@@ -259,6 +270,17 @@ export function buildChunk(o: ChunkOpts, index: number): Chunk {
         if (!near) { if (s % 36 === 0) lamp(s, side); palm(s + 3, side * (VERGE + 1.5), 1); }
         break;
     }
+  }
+  // people waiting at the public-transport stops (where taxis, car rapides and buses pull over), and standing in small groups at the junctions: a few, at the kerb, never in the carriageway
+  const waiter = (s: number, lat: number) => { const p = place(s, lat); people.push({ x: p.x, z: p.z, yaw: p.yaw + (lat > 0 ? -Math.PI / 2 : Math.PI / 2) + (R() - 0.5) * 0.5, clip: R() < 0.5 ? 'Talk' : 'Idle' }); };
+  for (const t of road.stops) {
+    if (t.s < s0 || t.s >= s1) continue;
+    const lat = -t.dir * (KERB + 0.9), n = o.lite ? 1 : 2 + (R() < 0.4 ? 1 : 0);
+    for (let k = 0; k < n; k++) waiter(t.s + (k - (n - 1) / 2) * 1.2 * t.dir, lat + (R() - 0.5) * 0.4);
+  }
+  for (const j of road.junctionS) {
+    if (j.s < s0 || j.s >= s1) continue;
+    for (const side of [-1, 1]) for (let k = 0; k < (o.lite ? 1 : 2); k++) waiter(j.s + (side * 12 + (k ? 1.1 : 0) * side), side * (KERB + 0.9) + (R() - 0.5) * 0.3);
   }
   // the fuel station of the artery, once
   if (road.profileAt(s0 + 50) === 'artery' && R() < 0.35 && !nearJunction(s0 + 50, 90)) station(s0 + 50, R() < 0.5 ? -1 : 1);

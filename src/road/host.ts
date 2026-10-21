@@ -9,7 +9,11 @@ import { roadsOf, type Road } from './routes';
 
 export type Quality = 'low' | 'medium' | 'high';
 /** Cars on a road at once, by graphics preset. */
-const TRAFFIC: Record<Quality, number> = { low: 3, medium: 6, high: 8 };
+const TRAFFIC: Record<Quality, number> = { low: 4, medium: 7, high: 9 };
+/** `?debug&notraffic`: empty roads, to measure what a vehicle itself can do (scripts/check-drive-feel.mjs); never in a normal game. */
+const NO_TRAFFIC = typeof location !== 'undefined' && /[?&]debug\b/.test(location.search) && /[?&]notraffic\b/.test(location.search);
+/** Vehicles waiting at the side roads of the junctions, by graphics preset. */
+const WAITERS: Record<Quality, number> = { low: 0, medium: 2, high: 3 };
 
 /** The swap the player has just reached: which district to load, how the frames differ, and which road it is. */
 export interface Swap { road: Road; to: HubId; from: HubId; /** add to a position of `from`'s frame to get it in `to`'s */ dx: number; dz: number }
@@ -26,6 +30,8 @@ export class CorridorHost {
   private handover: string | null = null;
   private quality: Quality = 'medium';
   private night = 0;
+  /** A traffic driver sounds a horn (the game answers with a very quiet recorded one). */
+  onHorn: ((near: number) => void) | null = null;
 
   constructor(private scene: THREE.Object3D, private rand: () => number) {}
 
@@ -43,7 +49,7 @@ export class CorridorHost {
     this.handover = null;
     for (const road of roads) {
       if (keep.some(v => v.road === road)) continue;
-      const v = new CorridorView(road, world.id, { mats: this.mats, lite, rand: this.rand, traffic: TRAFFIC[quality] });
+      const v = new CorridorView(road, world.id, { mats: this.mats, lite, rand: this.rand, traffic: NO_TRAFFIC ? 0 : TRAFFIC[quality], waiters: NO_TRAFFIC ? 0 : WAITERS[quality], onHorn: n => this.onHorn?.(n) });
       this.scene.add(v.root); v.attach(world, world.id); keep.push(v);
     }
     this.views = keep;
@@ -52,7 +58,7 @@ export class CorridorHost {
 
   /** The player is standing at (x, z) of the loaded district, `player`: the vehicle or body traffic must not run into. Builds and frees chunks, moves the traffic. */
   update(dt: number, x: number, z: number, player: Pt | null) {
-    for (const v of this.views) v.update(dt, x, z, player, TRAFFIC[this.quality]);
+    for (const v of this.views) v.update(dt, x, z, player, NO_TRAFFIC ? 0 : TRAFFIC[this.quality]);
   }
 
   /** The lamps along the roads follow the dusk (0 day … 1 night), like the districts' own. */

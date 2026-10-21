@@ -24,20 +24,25 @@ export async function realTouch(page) {
   };
 }
 
+/** The joystick's full travel in page pixels (src/ui/hud.ts R): a push of `f` of it is `f` of the stick. */
+export const STICK = 50;
+
 /**
- * Drive a car with real fingers, as on a phone (src/transport/ridePad.ts): one thumb on the gas (or, with `brake`, the brake) pedal on the right and, for `steer` ≠ 0, another
- * on the joystick on the left, which only steers. `reverse` first selects the reverse gear with a tap on « R » (the car must be stopped). Holds until `hold()` resolves, then lets go.
+ * Drive a vehicle with real fingers, as on a phone (src/transport/ridePad.ts): the LEFT thumb on the joystick gives both the throttle (up) and the steering (sideways), the RIGHT thumb
+ * holds « Accélérer » (`boost`) or « Frein » (`brake`: a car held at a standstill backs up; `reverse` is the same hold, kept for the older checks). Holds until `hold()` resolves, then lets go.
+ * `fwd` is how far up the stick goes (0…1, default 1 unless braking), `steer` how far sideways (−1 left … 1 right).
  */
-export async function padDrive(page, t, { steer = 0, brake = false, reverse = false, hold }) {
+export async function padDrive(page, t, { steer = 0, fwd, brake = false, reverse = false, boost = false, hold }) {
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
-  if (reverse) await t.tap('#ridepad .rp-rev');
-  const pedal = await t.centre(brake ? '#ridepad .rp-brake' : '#ridepad .rp-gas');
-  await t.down(1, pedal.x, pedal.y);
-  if (steer) { const j = await t.centre('#joy'); await t.down(2, j.x, j.y); await t.move(2, j.x + steer * 30, j.y); }
+  const braking = brake || reverse, up = fwd ?? (braking ? 0 : 1);
+  if (braking) { const b = await t.centre('#ridepad .rp-brake'); await t.down(1, b.x, b.y); }
+  else if (boost) { const g = await t.centre('#ridepad .rp-gas'); await t.down(1, g.x, g.y); }
+  if (up || steer) { const j = await t.centre('#joy'); await t.down(2, j.x, j.y); await t.move(2, j.x + steer * STICK, j.y - up * STICK); }
   await hold();
-  await t.up(1); if (steer) await t.up(2);
-  if (reverse) await t.tap('#ridepad .rp-rev');
+  if (fingers_has(t, 1)) await t.up(1);
+  if (up || steer) await t.up(2);
 }
+const fingers_has = (t, id) => t.fingers.has(id);
 
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 /**
@@ -60,15 +65,16 @@ export async function walkTo(page, t, x, z, { tol = 0.5, ms = 90000, finger = 3 
 }
 
 /**
- * Drive a car through waypoints with real fingers on the pedal and the stick (src/transport/ridePad.ts): the gas is held and lifted for a tight turn or a close point,
- * the stick steers toward the next point (the car's own heading error), each point is done within `tol` m. A stall (no progress for `stall` ms) moves on to the next point.
+ * Drive a car through waypoints with real fingers on the stick (src/transport/ridePad.ts): the stick is pushed up and lifted for a tight turn or a close point (and the brake used),
+ * and steers toward the next point (the car's own heading error), each point is done within `tol` m. A stall (no progress for `stall` ms) moves on to the next point.
  * Lifts both fingers at the end (`brakeAtEnd`: then holds the brake until the car has stopped). Returns the car's last `at()`.
  */
 export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stall = 12000, brakeAtEnd = false, cruise = 4.5 } = {}) {
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
-  const gas = await t.centre('#ridepad .rp-gas'), j = await t.centre('#joy'), r = 30, t0 = Date.now();
-  let gasOn = false;
-  const press = async on => { if (on === gasOn) return; gasOn = on; if (on) await t.down(1, gas.x, gas.y); else await t.up(1); };
+  const j = await t.centre('#joy'), r = STICK, t0 = Date.now();
+  let gasOn = false, steerNow = 0;
+  const stick = async () => t.move(2, j.x + steerNow * r, j.y - (gasOn ? r : 0), 1);
+  const press = async on => { if (on === gasOn) return; gasOn = on; await stick(); };
   const brk = await t.centre('#ridepad .rp-brake'); let brakeOn = false;
   const brake = async on => { if (on === brakeOn) return; brakeOn = on; if (on) await t.down(4, brk.x, brk.y); else await t.up(4); };
   await t.down(2, j.x, j.y);
@@ -94,7 +100,7 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
       // PD on the heading: the yaw rate is read against the game's own clock (the headless one runs slower than the wall's), and damps the swing
       const rate = last && at.t > last.t ? wrap(at.yaw - last.yaw) / (at.t - last.t) : 0; last = { t: at.t, yaw: at.yaw };
       const steer = Math.max(-1, Math.min(1, -(1.7 * err - 0.55 * Math.max(-1.5, Math.min(1.5, rate)))));   // the stick to the right turns the car to the right: its yaw falls
-      await t.move(2, j.x + steer * r, j.y, 1);
+      steerNow = steer; await stick();
       const limit = (w.speed ?? cruise) * (Math.abs(err) > 0.5 ? 0.4 : 1) * (d < 9 ? 0.7 : 1);
       await brake(at.speed > limit + 1.2);                               // a corner is taken slowly: the brake, then the gas again
       await press(at.speed < limit);
@@ -109,17 +115,17 @@ export async function pilot(page, t, key, points, { tol = 3.5, ms = 300000, stal
 
 /**
  * Turn a car round in a street too narrow for one sweep, as a driver does: a multi-point turn with the real controls. The stick locks the wheel the way that brings the heading
- * (`yaw`) closer to `target`, the gas goes forward until the bumper is `margin` m from the edge of `area` ({ x0, x1, z0, z1 }: the carriageway), then the car is braked to a stop,
- * « R » selects the reverse gear and it backs the other way with the opposite lock (reversing flips the effect of the lock on the heading), and so on until the heading is within `tol`.
- * Lifts every finger and leaves the car stopped, in the forward gear. Returns the car's last `at()`. Written for the return leg of the continuous drive (the pilot below only goes forward).
+ * (`yaw`) closer to `target` and goes forward until the bumper is `margin` m from the edge of `area` ({ x0, x1, z0, z1 }: the carriageway), then the car is braked to a stop and the
+ * brake is HELD at the standstill until it backs (no reverse button: a deliberate hold), with the opposite lock (reversing flips the effect of the lock on the heading), and so on
+ * until the heading is within `tol`. Lifts every finger and leaves the car stopped. Returns the car's last `at()`.
  */
-export async function turnAround(page, t, key, target, { area, tol = 0.3, margin = 1.4, length = 4.7, ms = 120000, speed = 2.6 } = {}) {
+export async function turnAround(page, t, key, target, { area, tol = 0.3, margin = 1.4, length = 4.7, ms = 300000, speed = 2.6 } = {}) {
   await page.waitForFunction(() => document.body.classList.contains('ridepad'), null, { timeout: 120000 });
-  const gas = await t.centre('#ridepad .rp-gas'), brk = await t.centre('#ridepad .rp-brake'), j = await t.centre('#joy'), r = 30, t0 = Date.now();
-  let reverse = false, gasOn = false, at = null, moves = 0;
-  const press = async on => { if (on === gasOn) return; gasOn = on; if (on) await t.down(1, gas.x, gas.y); else await t.up(1); };
-  const stop = async () => { await press(false); await t.down(4, brk.x, brk.y); await page.waitForFunction(k => Math.abs(window.__dakar[k].at()?.speed ?? 0) < 0.15, key, { timeout: 30000 }).catch(() => {}); await t.up(4); };
-  const gear = async rev => { if (rev === reverse) return; await t.tap('#ridepad .rp-rev'); reverse = rev; };
+  const brk = await t.centre('#ridepad .rp-brake'), j = await t.centre('#joy'), r = STICK, t0 = Date.now();
+  let reverse = false, gasOn = false, lockNow = 0, at = null, moves = 0, brakeOn = false;
+  const stick = () => t.move(2, j.x + lockNow * r, j.y - (gasOn ? r : 0), 1);
+  const brake = async on => { if (on === brakeOn) return; brakeOn = on; if (on) await t.down(4, brk.x, brk.y); else await t.up(4); };
+  const stop = async () => { gasOn = false; await stick(); await brake(true); await page.waitForFunction(k => Math.abs(window.__dakar[k].at()?.speed ?? 0) < 0.15, key, { timeout: 30000 }).catch(() => {}); if (!reverse) await brake(false); };
   await t.down(2, j.x, j.y);
   while (Date.now() - t0 < ms) {
     at = await page.evaluate(k => window.__dakar[k].at(), key); if (!at) break;
@@ -128,16 +134,36 @@ export async function turnAround(page, t, key, target, { area, tol = 0.3, margin
     const f = { x: Math.sin(at.yaw), z: Math.cos(at.yaw) }, dir = reverse ? -1 : 1, reach = length / 2 + margin;
     const px = at.x + f.x * dir * reach, pz = at.z + f.z * dir * reach;
     const outside = px < area.x0 || px > area.x1 || pz < area.z0 || pz > area.z1;
-    if (outside) {                                                                      // the bumper has reached the kerb: stop, change gear, back the other way
-      await stop(); await t.move(2, j.x, j.y, 1); await gear(!reverse); moves++;
-      if (moves > 14) break;
+    if (outside) {                                                                      // the bumper has reached the kerb: stop, then go the other way
+      await brake(false); await stop(); moves++; if (moves > 14) break;
+      reverse = !reverse;
+      if (reverse) { await brake(true); await page.waitForFunction(k => (window.__dakar[k].at()?.speed ?? 0) < -0.5, key, { timeout: 15000 }).catch(() => {}); }   // the brake, held at the standstill, backs it up
+      else await brake(false);
       continue;
     }
-    const lock = (err > 0 ? -1 : 1) * (reverse ? -1 : 1);                               // forward: the stick to the left raises the heading; in reverse the effect flips
-    await t.move(2, j.x + lock * r, j.y, 1);
-    await press(Math.abs(at.speed) < speed);
+    lockNow = (err > 0 ? -1 : 1) * (reverse ? -1 : 1);                                  // forward: the stick to the left raises the heading; in reverse the effect flips
+    if (reverse) { gasOn = false; await stick(); if (Math.abs(at.speed) > speed) { await brake(false); } else await brake(true); }
+    else { gasOn = Math.abs(at.speed) < speed; await stick(); }
     await page.waitForTimeout(90);
   }
-  await stop(); await t.up(2); await gear(false);
+  gasOn = false; await stick(); await brake(false); await t.up(2); await stop(); await brake(false);
   return page.evaluate(k => window.__dakar[k].at(), key);
+}
+
+/**
+ * Get into the player's parked vehicle with real touch: walk to its left side (the driver's door / the saddle's side), face it, tap the action button and wait for the pad.
+ * `key` is the debug namespace of the vehicle (`berline`, `moto`, …). Leaves the player at the wheel.
+ */
+export async function boardVehicle(page, t, key, { tries = 3 } = {}) {
+  for (let n = 0; n < tries; n++) {
+    const c = await page.evaluate(k => window.__dakar[k].at(), key), L = { x: Math.cos(c.yaw), z: -Math.sin(c.yaw) }, F = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) };
+    for (const [side, along] of [[2.0, 0.4], [2.4, 0], [1.6, -1.2]]) {
+      await walkTo(page, t, c.x + L.x * side + F.x * along, c.z + L.z * side + F.z * along, { tol: 0.9, ms: 40000 });
+      const me = await page.evaluate(() => window.__dakar.pos()); await page.evaluate(([x, z, yaw]) => window.__dakar.place(x, z, yaw), [me.x, me.z, Math.atan2(c.x - me.x, c.z - me.z)]);
+      if (await page.waitForFunction(k => window.__dakar.focus()?.id === `${k}:parked`, key, { timeout: 6000 }).then(() => true, () => false)) break;
+    }
+    await t.tap('#act');
+    if (await page.waitForFunction(k => window.__dakar[k].at().driving && document.body.classList.contains('ridepad'), key, { timeout: 60000 }).then(() => true, () => false)) { await page.waitForTimeout(600); return; }
+  }
+  throw new Error('could not board ' + key);
 }

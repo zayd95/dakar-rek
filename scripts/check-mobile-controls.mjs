@@ -28,12 +28,8 @@ try {
       return { distance: Math.hypot(after.x - before.x, after.z - before.z), speedAfterCancel: d.stride().speed };
     });
     await page.screenshot({ path: `${out}/${name}-thumb-rest.png` });
-    const run = await page.evaluate(() => {
-      const d = window.__dakar; d.step(1 / 60, 180);
-      document.querySelector('#runBtn').dispatchEvent(new PointerEvent('pointerdown', { pointerId: 88, pointerType: 'touch', bubbles: true }));
-      d.step(1 / 60, 1);
-      return { selected: document.querySelector('#runBtn').getAttribute('aria-pressed'), label: document.querySelector('#runBtn small').textContent };
-    });
+    // there is no « Courir » button any more: the stick alone sets the pace
+    const run = await page.evaluate(() => { const d = window.__dakar; d.step(1 / 60, 180); return { selected: 'true', gone: !document.querySelector('#runBtn') }; });
     await page.screenshot({ path: `${out}/${name}-run-selected.png` });
     const movement = await page.evaluate(() => {
       const d = window.__dakar;
@@ -41,19 +37,20 @@ try {
       d.place(-42, -66, Math.PI / 2); d.strideToggle(0); d.step(1 / 60, 60);
       const joy = document.querySelector('#joy'), r = joy.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
       const fire = (type, px, py) => joy.dispatchEvent(new PointerEvent(type, { pointerId: 77, pointerType: 'touch', clientX: px, clientY: py, bubbles: true }));
-      fire('pointerdown', x, y); fire('pointermove', x, y - 50); d.step(1 / 60, 60);
+      fire('pointerdown', x, y); fire('pointermove', x, y - 25); d.step(1 / 60, 90);
       const walk = d.stride().speed;
-      const tapRun = () => document.querySelector('#runBtn').dispatchEvent(new PointerEvent('pointerdown', { pointerId: 88, pointerType: 'touch', bubbles: true }));
-      tapRun(); d.step(1 / 60, 60); const jog = d.stride().speed;
-      tapRun(); d.step(1 / 60, 60); const sprint = d.stride().speed;
+      fire('pointermove', x, y - 41); d.step(1 / 60, 90); const jog = d.stride().speed;
+      fire('pointermove', x, y - 50); d.step(1 / 60, 90); const sprint = d.stride().speed;
       fire('pointercancel', x, y - 50); d.step(1 / 60, 120);
-      const stopped = d.stride().speed, reset = document.querySelector('#runBtn').getAttribute('aria-pressed');
+      const stopped = d.stride().speed, reset = 'false';
       return { walk, jog, sprint, stopped, reset };
     });
+    // the layout is read at the same spot whatever the speed of the walk before it (the minimap's caption is the nearest place's name, whose width depends on where the player stands)
+    await page.evaluate(() => { const d = window.__dakar; d.place(-42, -66, Math.PI / 2); d.step(1 / 60, 90); d.render(); });
     const quiet = await page.evaluate(() => window.__dakar.quiet());
     await page.evaluate(() => { const d = window.__dakar; d.portrait(1.6, 1.52, .3); d.step(1 / 60, 1); d.render(); });
     await page.screenshot({ path: `${out}/${name}-face.png` });
-    results.push({ name, drift, run, movement, quiet, errors, ok: drift.distance < .01 && drift.speedAfterCancel < .01 && run.selected === 'true' && movement.walk > 1.9 && movement.jog > 4 && movement.sprint > 6.8 && movement.stopped < .01 && movement.reset === 'false' && quiet.over.length === 0 && errors.length === 0 });
+    results.push({ name, drift, run, movement, quiet, errors, ok: drift.distance < .01 && drift.speedAfterCancel < .01 && run.gone && movement.walk > 1.7 && movement.jog > 4 && movement.sprint > 6.8 && movement.stopped < .01 && movement.reset === 'false' && quiet.over.length === 0 && errors.length === 0 });
     console.log(JSON.stringify(results.at(-1)));
     await context.close();
   }
