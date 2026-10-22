@@ -12,7 +12,6 @@ const base = process.argv[2] ?? 'http://localhost:4214/', out = process.argv[3] 
 fs.mkdirSync(out, { recursive: true });
 const T = { timeout: 240000 }, results = []; let failed = 0;
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); if (!ok) failed++; console.log(`${ok ? 'PASS' : 'FAIL'}: ${name} ${detail}`); };
-const near = v => [-120, -60, 0, 60, 120].reduce((b, c) => Math.abs(c - v) < Math.abs(b - v) ? c : b);
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 
 async function session(vibrate) {
@@ -23,16 +22,13 @@ async function session(vibrate) {
   const info = () => d(() => window.__dakar.car.info()), au = () => d(() => window.__dakar.car.audio()), feel = () => d(() => window.__dakar.car.feel()), at = () => d(() => window.__dakar.car.at()), meter = () => d(() => window.__dakar.car.audioMeter());
   const vib = () => d(() => window.__vib ?? null);
   const simWait = async (s, ms = 120000) => { const t0 = (await at()).t; await page.waitForFunction(([a, s]) => window.__dakar.car.at().t >= a + s, [t0, s], { timeout: ms }).catch(() => {}); };
-  await page.goto(`${base}?debug&touch&heure=11`, { timeout: 120000 });
+  await page.goto(`${base}?debug&touch&heure=11&argent=50000000`, { timeout: 120000 });
   await page.waitForFunction(() => window.__dakar?.pos && window.__dakar.pos().hub, null, T);
   await d(() => window.__dakar.teleport('plateau'));
   await page.waitForFunction(() => window.__dakar.pos().hub === 'plateau' && window.__dakar.car?.info().dealer, null, T);
-  const dealer = (await info()).dealer, rx = near(dealer.x), rz = near(dealer.z), road = Math.abs(dealer.z - rz) < Math.abs(dealer.x - rx) ? { x: 0, z: Math.sign(rz - dealer.z) || 1 } : { x: Math.sign(rx - dealer.x) || 1, z: 0 };
-  await d(([p, r]) => window.__dakar.place(p.x + r.x * 0.7 + (r.x ? 0 : 0.4), p.z + r.z * 0.7 + (r.z ? 0 : 0.4), Math.atan2(-r.x, -r.z)), [dealer, road]);
-  await page.waitForFunction(() => /Voir les articles/.test(window.__dakar.focus()?.all?.join('|') ?? ''), null, T).catch(() => {});
-  await tr.tap('#act'); await page.waitForSelector('#modal.on', T);
-  await page.locator('#modal .item', { hasText: 'Essayer gratuitement' }).first().tap();
-  await page.waitForFunction(() => window.__dakar.car.info().here, null, T);
+  // the saloon, bought outright and delivered at the kerb (a debug shortcut: since PR #63's dealer floors it has no kerb test drive; the hits wear it, which these checks do not read)
+  await d(() => window.__dakar.car.own());
+  await page.waitForFunction(() => window.__dakar.car.info().here && window.__dakar.car.info().owned, null, T);
   const c0 = await info();
   await d(c => { const f = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }; window.__dakar.place(c.x - f.x * 3.3, c.z - f.z * 3.3, c.yaw); }, c0);
   await page.waitForTimeout(1200); await tr.tap('#act');
