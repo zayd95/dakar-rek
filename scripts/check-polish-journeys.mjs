@@ -260,8 +260,10 @@ const takeJob = async (text, routeId) => {
  * Drive or ride `key` along the streets to a kerb spot k ({ x, z, yaw }) of this district, never through the arena's pedestrian street (as the game's own directions).
  * Held up for long on the way (a car rapide at its stop: its dwell lasts minutes of wall clock on a software renderer), it plans again from where it stands, twice at most.
  */
+/** The streets closed to cars here (the arena's pedestrian zone), for the test's own street planner. */
+const closedZones = async () => (await d(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [];
 const driveToKerb = async (key, k, o = {}) => {
-  const avoid = (await d(() => window.__dakar.arenaOut?.().plaza?.rects)) ?? [], cruise = o.cruise ?? 6, f = { x: Math.sin(k.yaw), z: Math.cos(k.yaw) };
+  const avoid = await closedZones(), cruise = o.cruise ?? 6, f = { x: Math.sin(k.yaw), z: Math.cos(k.yaw) };
   let at = null;
   for (let n = 0; n < 3; n++) {
     const a = await d(kk => window.__dakar[kk].at(), key);
@@ -502,7 +504,7 @@ J.D = async () => {
   const w0 = await d(() => window.__dakar.state.wallet), l0 = (await ledger()).length;
   // out of the Corniche by the road to the Plateau, then to the drop-off kerb
   const mouth = await d(() => { const p = window.__dakar.road.at('corniche-plateau', 0, 0); return p; });
-  { const a = await d(() => window.__dakar.teranga.at()), r = route({ x: a.x, z: a.z, yaw: a.yaw }, { x: mouth.x, z: mouth.z }, { cruise: 7 }); await pilot(page, t, 'teranga', r, { cruise: 7, stall: 60000, ms: 1500000 }); }
+  { const a = await d(() => window.__dakar.teranga.at()), r = route({ x: a.x, z: a.z, yaw: a.yaw }, { x: mouth.x, z: mouth.z }, { cruise: 7, avoid: await closedZones() }); await pilot(page, t, 'teranga', r, { cruise: 7, stall: 60000, ms: 1500000 }); }
   const len = await d(() => { const p = window.__dakar.road.at('corniche-plateau', 1, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
   const sOnRoad = []; await driveRoad(page, t, 'teranga', 'corniche-plateau', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true, ms: 2400000, onTick: async () => { if (sOnRoad.length < 3) { const g = await goal(); if (g?.nav) sOnRoad.push(g.text); } } });
   check('on the road between districts: « Tout droit » and the kilometres left', sOnRoad.some(x => /Tout droit/.test(x) && /km/.test(x)), JSON.stringify(sOnRoad));
@@ -531,7 +533,7 @@ J.E = async () => {
   const g1 = await goal(), n1 = await d(() => window.__dakar.nav.info().now); await shot('nav-out-of-pikine');
   check('the parcel aboard: the directions lead to the way out of Pikine toward the Almadies, the whole distance left', g1?.nav && /Le Pointe/.test(g1.text) && /km/.test(g1.text) && /Almadies/.test(n1?.local?.name ?? ''), JSON.stringify({ g1, local: n1?.local }));
   const mm = await d(() => window.__dakar.minimap?.info?.() ?? null);
-  { const a = await d(() => window.__dakar.moto.at()), r = route({ x: a.x, z: a.z, yaw: a.yaw }, { x: -140, z: -60 }, { cruise: 7 }); await pilot(page, t, 'moto', r, { cruise: 7, stall: 60000, ms: 1500000 }); }
+  { const a = await d(() => window.__dakar.moto.at()), r = route({ x: a.x, z: a.z, yaw: a.yaw }, { x: -140, z: -60 }, { cruise: 7, avoid: await closedZones() }); await pilot(page, t, 'moto', r, { cruise: 7, stall: 60000, ms: 1500000 }); }
   const len = await d(() => { const p = window.__dakar.road.at('pikine-almadies', 0, 0); return p ? window.__dakar.road.project(p.x, p.z).length : null; });
   const onRoad = []; await driveRoad(page, t, 'moto', 'pikine-almadies', len - 40, { cruise: 11, brakeAtEnd: false, stall: 240000, boost: true, ms: 2400000, onTick: async () => { if (onRoad.length < 2) { const g = await goal(); if (g?.nav) { onRoad.push(g.text); if (onRoad.length === 1) await shot('nav-on-the-road'); } } } });
   check('on the road: « Tout droit sur la route · Restaurant Le Pointe » and the kilometres left', onRoad.some(x => /Tout droit/.test(x) && /Le Pointe/.test(x) && /km/.test(x)), JSON.stringify(onRoad));
