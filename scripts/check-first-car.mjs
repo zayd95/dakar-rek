@@ -175,7 +175,10 @@ await shot('signed');
 
 // ------------------------------------------------------------------------------------------------ 3. driving it, and a first passenger
 { const c = await d(() => window.__dakar.teranga.at()), F = { x: Math.sin(c.yaw), z: Math.cos(c.yaw) }, L = { x: Math.cos(c.yaw), z: -Math.sin(c.yaw) };
-  await walkTo(page, t, c.x + F.x * 3.4 - L.x * 1.2, c.z + F.z * 3.4 - L.z * 1.2, { tol: 0.9, ms: 60000 });   // round the front of the car first (Sarr's desk is behind the row)
+  // signed at his desk, the player stands in the narrow gap between the desk and the next car of the row: out of it to the east first, round that car on the street side
+  const me = await d(() => window.__dakar.pos()), desk = await d(() => window.__dakar.sales_sarr.info());
+  if (Math.hypot(me.x - desk.x, me.z - desk.z) < 4) { await walkTo(page, t, desk.x + 2.4, me.z, { tol: 0.9, ms: 60000 }); await walkTo(page, t, desk.x + 2.4, c.z + L.z * 2.6, { tol: 0.9, ms: 60000 }); }
+  else await walkTo(page, t, c.x + F.x * 3.4 - L.x * 1.2, c.z + F.z * 3.4 - L.z * 1.2, { tol: 0.9, ms: 60000 });   // round the front of the car first (Sarr's desk is behind the row)
   await walkTo(page, t, c.x + F.x * 2.6 + L.x * 2.0, c.z + F.z * 2.6 + L.z * 2.0, { tol: 0.9, ms: 60000 }); }
 await boardVehicle(page, t, 'teranga');
 const car = await d(() => window.__dakar.teranga.at());
